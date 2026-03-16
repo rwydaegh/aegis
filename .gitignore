@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Data (mesh files, databases - too large for git)
+data/
+*.stl
+*.obj
+*.db
+*.sqlite
+
+# MkDocs build
+site/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Logs
+*.log
