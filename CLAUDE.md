@@ -28,7 +28,24 @@ py -3.12 -m mkdocs serve                              # local docs preview
 - `src/aegis/paths.py` - PropagationPaths dataclass
 - `src/aegis/result.py` - DosimetryResult dataclass
 
-## Ground truth
+## Theory (the monograph)
+
+All theory lives in `../monograph/`. Read these carefully before implementing physics.
+
+- `../monograph/monograph_v2.tex` - **the full monograph** (~6000 lines LaTeX). This is the single source of truth for all equations, tables, proofs, and fidelity level definitions. Read it thoroughly before any physics implementation.
+- `../monograph/monograph_v2.pdf` - compiled PDF (latest build)
+- `../monograph/summary_paper.tex` - condensed version (~1100 lines), good for quick reference
+- `../monograph/summary_vs_monograph.md` - what's in the summary vs the full monograph
+- `../monograph/factcheck_fixes.md` - corrections applied after fact-checking
+- `../monograph/references.bib` - bibliography
+
+There are also prior design documents in `../coding_project/`:
+
+- `../coding_project/project_proposal.md` - original AEGIS project proposal (627 lines)
+- `../coding_project/implementation_plan.md` - detailed implementation plan with data model (692 lines)
+- `../coding_project/ray_tracer_comparison.md` - DiffeRT vs Sionna RT comparison
+
+## Ground truth (scripts)
 
 The `../scripts/` directory contains 40+ standalone research scripts that produce correct results. Every extraction into `src/aegis/` must be validated against the original script output. Key oracle scripts:
 
