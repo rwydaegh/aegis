@@ -1,0 +1,1232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="data:,">
+    <title>AEGIS Interactive Viewer</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { overflow: hidden; background: #111; color: #eee; font-family: 'Segoe UI', sans-serif; }
+
+        #panel {
+            position: absolute; top: 12px; left: 12px; z-index: 100;
+            background: rgba(0,0,0,0.88); padding: 16px; border-radius: 8px;
+            max-width: 300px; backdrop-filter: blur(8px);
+            max-height: calc(100vh - 24px); overflow-y: auto;
+        }
+        #panel h2 { font-size: 15px; color: #7eb4ff; margin-bottom: 8px; }
+        .section { margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid #333; }
+        .section-title { font-size: 12px; color: #aaa; font-weight: bold; margin-bottom: 6px; }
+
+        /* Dashboard stats */
+        #dashboard { font-size: 12px; line-height: 1.8; }
+        #dashboard .stat-label { color: #888; }
+        #dashboard .stat-value { color: #fff; font-weight: bold; font-variant-numeric: tabular-nums; }
+        #dashboard .pass { color: #2ecc71; }
+        #dashboard .fail { color: #e74c3c; }
+
+        /* Controls */
+        select, input[type=number] {
+            width: 100%; background: #222; color: #ccc; border: 1px solid #444;
+            padding: 4px 8px; border-radius: 4px; font-size: 12px; margin-top: 4px;
+        }
+        label { font-size: 12px; color: #aaa; display: block; margin-top: 6px; }
+
+        /* Layer buttons */
+        .layer-btn {
+            display: block; width: 100%; text-align: left;
+            background: #222; color: #ccc; border: 1px solid #444;
+            padding: 5px 10px; margin: 2px 0; cursor: pointer;
+            border-radius: 4px; font-size: 11px; transition: all 0.15s;
+        }
+        .layer-btn:hover { background: #333; }
+        .layer-btn.active { background: #2a2a3a; color: #fff; border-color: #667eea; }
+        .layer-btn.inactive { opacity: 0.4; background: #1a1a1a; }
+
+        .ctrl-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; border: none; padding: 6px 12px; cursor: pointer;
+            border-radius: 4px; font-size: 12px; margin: 3px 2px;
+        }
+        .ctrl-btn:hover { transform: translateY(-1px); box-shadow: 0 2px 6px rgba(102,126,234,0.4); }
+        .ctrl-btn.active { background: linear-gradient(135deg, #764ba2 0%, #667eea 100%); box-shadow: inset 0 2px 4px rgba(0,0,0,0.3); }
+
+        .hint { font-size: 10px; color: #666; margin-top: 8px; }
+
+        /* Loading overlay */
+        #loading {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            z-index: 200; text-align: center; color: #7eb4ff; font-size: 18px;
+        }
+        #loading .spinner {
+            width: 40px; height: 40px; border: 3px solid #333; border-top: 3px solid #7eb4ff;
+            border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 12px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Computing overlay */
+        #computing {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            z-index: 150; text-align: center; color: #7eb4ff; font-size: 14px;
+            background: rgba(0,0,0,0.6); padding: 16px 24px; border-radius: 8px;
+            display: none; pointer-events: none;
+        }
+        #computing .spinner {
+            width: 24px; height: 24px; border: 2px solid #333; border-top: 2px solid #7eb4ff;
+            border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 8px;
+        }
+
+        /* Color legend */
+        #color-legend {
+            position: absolute; right: 16px; top: 50%; transform: translateY(-50%);
+            z-index: 100; display: none;
+        }
+        #color-legend .legend-bar {
+            width: 18px; height: 200px; border-radius: 3px; border: 1px solid #444;
+            background: linear-gradient(to bottom,
+                rgb(252,255,164),
+                rgb(249,142,9),
+                rgb(188,55,84),
+                rgb(87,16,110),
+                rgb(0,4,18)
+            );
+        }
+        #color-legend .legend-label {
+            font-size: 10px; color: #ccc; text-align: right; width: 80px;
+            position: absolute; right: 24px; font-variant-numeric: tabular-nums;
+        }
+        #color-legend .legend-title {
+            font-size: 10px; color: #888; text-align: center; margin-bottom: 4px;
+            width: 80px; margin-left: -31px;
+        }
+
+        /* Camera preset buttons */
+        .cam-btn {
+            background: #222; color: #aaa; border: 1px solid #444;
+            padding: 4px 8px; cursor: pointer; border-radius: 3px;
+            font-size: 11px; margin: 2px 1px; transition: all 0.15s;
+        }
+        .cam-btn:hover { background: #333; color: #fff; border-color: #667eea; }
+
+        /* Location loader */
+        #location-section input[type=text] {
+            width: 100%; background: #222; color: #ccc; border: 1px solid #444;
+            padding: 4px 8px; border-radius: 4px; font-size: 12px; margin-top: 4px;
+        }
+        #location-log {
+            max-height: 120px; overflow-y: auto; font-size: 10px; color: #888;
+            background: #1a1a1a; border-radius: 4px; padding: 4px 6px;
+            margin-top: 6px; display: none; white-space: pre-wrap; word-break: break-all;
+        }
+        #location-log.visible { display: block; }
+        .location-btns { margin-top: 6px; display: flex; gap: 4px; align-items: center; }
+        .location-btns .ctrl-btn { font-size: 11px; padding: 4px 10px; }
+        #cancelLocationBtn { display: none; background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); }
+    </style>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+</head>
+<body>
+    <div id="loading"><div class="spinner"></div>Loading scene...</div>
+    <div id="computing"><div class="spinner"></div>Computing...</div>
+
+    <!-- Color legend -->
+    <div id="color-legend">
+        <div class="legend-title">S_ab (W/m²)</div>
+        <div style="position:relative;">
+            <div class="legend-bar"></div>
+            <span class="legend-label" id="legend-max" style="top:-6px;">--</span>
+            <span class="legend-label" id="legend-mid" style="top:93px;">--</span>
+            <span class="legend-label" id="legend-min" style="top:192px;">0</span>
+        </div>
+    </div>
+
+    <div id="panel" style="display:none;">
+        <h2>AEGIS Viewer</h2>
+
+        <!-- Dashboard -->
+        <div class="section" id="dashboard">
+            <div class="section-title">Dosimetry</div>
+            <div><span class="stat-label">P_abs:</span> <span class="stat-value" id="stat-pabs">--</span></div>
+            <div><span class="stat-label">Peak S_ab:</span> <span class="stat-value" id="stat-peak">--</span></div>
+            <div><span class="stat-label">S_inc:</span> <span class="stat-value" id="stat-sinc">--</span></div>
+            <div><span class="stat-label">Distance:</span> <span class="stat-value" id="stat-dist">--</span></div>
+            <div><span class="stat-label">Illuminated:</span> <span class="stat-value" id="stat-illum">--</span></div>
+            <div><span class="stat-label">Compliance:</span> <span class="stat-value" id="stat-compliance">--</span></div>
+        </div>
+
+        <!-- Controls -->
+        <div class="section">
+            <div class="section-title">Parameters</div>
+            <label>Fidelity level
+                <select id="levelSelect">
+                    <option value="0">Level 0 - Bound</option>
+                    <option value="1">Level 1 - Aggregate</option>
+                    <option value="2" selected>Level 2 - Geometric ReLU</option>
+                    <option value="3">Level 3 - Fresnel</option>
+                    <option value="4">Level 4 - Polarisation</option>
+                    <option value="5">Level 5 - Curvature</option>
+                    <option value="6">Level 6 - Diffraction</option>
+                </select>
+            </label>
+            <label>TX power (dBm)
+                <input type="number" id="powerInput" value="30" min="0" max="60" step="1">
+            </label>
+            <label>Paths
+                <select id="pathsSelect">
+                    <option value="1" selected>1 (single plane wave)</option>
+                    <option value="5">5 (multipath)</option>
+                    <option value="20">20 (rich multipath)</option>
+                </select>
+            </label>
+        </div>
+
+        <!-- Ray tracing (shown only if DiffeRT available) -->
+        <div class="section" id="rt-section" style="display:none;">
+            <div class="section-title">Ray tracing (DiffeRT)</div>
+            <label>
+                <input type="checkbox" id="rtEnabled"> Enable ray tracing
+            </label>
+            <label>RT scene source
+                <select id="rtSourceSelect">
+                    <option value="voxel" id="rtSourceVoxel">Voxel environment</option>
+                </select>
+            </label>
+            <label>Max reflections
+                <select id="maxOrderSelect">
+                    <option value="0" selected>0 (LOS only)</option>
+                    <option value="1">1 (+ single reflection)</option>
+                    <option value="2">2 (+ double reflection)</option>
+                </select>
+            </label>
+            <div id="rt-status" style="font-size:11px;color:#888;margin-top:4px;"></div>
+        </div>
+
+        <!-- Location loader (shown only if pipeline available) -->
+        <div class="section" id="location-section" style="display:none;">
+            <div class="section-title">Location</div>
+            <label>Location
+                <input type="text" id="locationInput" placeholder="e.g. Ghent, Belgium">
+            </label>
+            <label>Radius (m)
+                <input type="number" id="radiusInput" value="30" min="10" max="500" step="10">
+            </label>
+            <label style="font-size:11px;margin-top:4px;">
+                <input type="checkbox" id="forceReload"> Force re-download
+            </label>
+            <div class="location-btns">
+                <button class="ctrl-btn" id="loadLocationBtn" onclick="loadLocation()">Load</button>
+                <button class="ctrl-btn" id="cancelLocationBtn" onclick="cancelLocation()">Cancel</button>
+            </div>
+            <div id="location-log"></div>
+        </div>
+
+        <!-- Layers -->
+        <div class="section">
+            <div class="section-title">Layers</div>
+            <div id="layers"></div>
+        </div>
+
+        <!-- Camera -->
+        <div class="section">
+            <div class="section-title">Camera</div>
+            <button class="cam-btn" onclick="viewPreset('front')">Front</button>
+            <button class="cam-btn" onclick="viewPreset('side')">Side</button>
+            <button class="cam-btn" onclick="viewPreset('top')">Top</button>
+            <button class="cam-btn" onclick="focusBody()">Focus body</button>
+            <button class="cam-btn" onclick="resetCamera()">Reset</button>
+        </div>
+
+        <!-- Actions -->
+        <div class="section">
+            <button class="ctrl-btn" id="wireframeBtn" onclick="toggleWireframe()">Wireframe</button>
+        </div>
+
+        <div class="hint">
+            Click ground/voxels to place antenna<br>
+            Arrow keys: nudge antenna<br>
+            WASD: move body | QE: up/down<br>
+            Mouse: orbit | Scroll: zoom | Right-click: pan
+        </div>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        const MATERIAL_COLORS = {
+            concrete: [180, 180, 180],
+            asphalt: [80, 80, 80],
+            vegetation: [40, 160, 40],
+            water: [30, 100, 220],
+            brick: [200, 80, 50],
+            glass: [150, 210, 240],
+        };
+
+        let scene, camera, renderer, controls, raycaster, mouse;
+        let bodyMesh = null;
+        let bodyMeta = null;
+        let antennaMesh = null;
+        let antennaPos = null;
+        let pathLines = [];
+        let voxelMeshes = {};
+        let sceneMeshes = [];
+        let groundPlane = null;
+        let wireframe = false;
+        let bodyCenterWorld = new THREE.Vector3();
+        let bodyOffset = new THREE.Vector3();  // WASD body translation
+        let hasDiffert = false;
+        let currentScenePath = null;
+        let distanceLine = null;
+        let distanceLabel = null;
+        let computeDebounceTimer = null;
+        let isComputing = false;
+
+        init();
+        loadScene();
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x111115);
+
+            camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.01, 5000);
+            camera.position.set(2, 1.5, 2);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.2;
+            document.body.appendChild(renderer.domElement);
+
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.minDistance = 0.1;
+            controls.maxDistance = 2000;
+
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
+            // Lighting
+            scene.add(new THREE.AmbientLight(0x404050, 0.6));
+
+            const sun = new THREE.DirectionalLight(0xfff5e6, 1.2);
+            sun.position.set(100, 200, 80);
+            sun.castShadow = true;
+            scene.add(sun);
+
+            scene.add(new THREE.DirectionalLight(0x6688cc, 0.4).translateX(-30).translateY(20));
+            scene.add(new THREE.HemisphereLight(0x8899bb, 0x444422, 0.3));
+
+            // Ground grid (visible, semi-transparent)
+            const grid = new THREE.GridHelper(200, 100, 0x444444, 0x2a2a2a);
+            grid.position.y = -0.01;
+            scene.add(grid);
+
+            // Semi-transparent ground plane
+            const planeGeo = new THREE.PlaneGeometry(500, 500);
+            planeGeo.rotateX(-Math.PI / 2);
+            const planeMat = new THREE.MeshStandardMaterial({
+                color: 0x1a1a20, transparent: true, opacity: 0.5,
+                roughness: 1.0, metalness: 0.0,
+            });
+            groundPlane = new THREE.Mesh(planeGeo, planeMat);
+            groundPlane.receiveShadow = true;
+            scene.add(groundPlane);
+
+            // Click handler for antenna placement (track drag to avoid orbit conflicts)
+            let mouseDownPos = null;
+            renderer.domElement.addEventListener('pointerdown', (e) => {
+                if (e.button === 0) mouseDownPos = { x: e.clientX, y: e.clientY };
+            });
+            renderer.domElement.addEventListener('click', (e) => {
+                if (!mouseDownPos) return;
+                const dx = e.clientX - mouseDownPos.x;
+                const dy = e.clientY - mouseDownPos.y;
+                if (dx * dx + dy * dy < 9) onSceneClick(e); // < 3px movement
+                mouseDownPos = null;
+            });
+            window.addEventListener('resize', onResize);
+
+            // WASD body movement + arrow key antenna nudge
+            window.addEventListener('keydown', onKeyDown);
+
+            animate();
+        }
+
+        async function loadScene() {
+            const config = await (await fetch('/api/config')).json();
+
+            // Load body mesh
+            if (config.body_meta) {
+                await loadBody();
+            }
+
+            // Load voxels
+            if (config.has_voxels) {
+                await loadVoxels(config.voxel_meta);
+            }
+
+            // Setup DiffeRT if available
+            if (config.has_differt) {
+                hasDiffert = true;
+                document.getElementById('rt-section').style.display = 'block';
+                const rtSourceSelect = document.getElementById('rtSourceSelect');
+
+                // Add Sionna scenes as options
+                if (config.scenes && config.scenes.length > 0) {
+                    for (const s of config.scenes) {
+                        const opt = document.createElement('option');
+                        opt.value = 'sionna:' + s.path;
+                        opt.textContent = s.name + ' (Sionna)';
+                        rtSourceSelect.appendChild(opt);
+                    }
+                }
+
+                rtSourceSelect.addEventListener('change', onRTSourceChange);
+                document.getElementById('rtEnabled').addEventListener('change', (e) => {
+                    if (!e.target.checked) {
+                        // Clear stale RT status and ray lines
+                        document.getElementById('rt-status').textContent = '';
+                        for (const line of pathLines) scene.remove(line);
+                        pathLines = [];
+                        if (antennaPos) drawPaths(antennaPos);
+                    }
+                    if (antennaPos) computeDosimetry(antennaPos);
+                });
+                document.getElementById('maxOrderSelect').addEventListener('change', () => {
+                    if (antennaPos) computeDosimetry(antennaPos);
+                });
+            }
+
+            // Show location loader (always visible, with guidance if API key missing)
+            const locSection = document.getElementById('location-section');
+            locSection.style.display = 'block';
+            if (!config.has_api_key) {
+                const logDiv = document.getElementById('location-log');
+                logDiv.classList.add('visible');
+                logDiv.textContent = 'Set GOOGLE_API_KEY env var to enable location loading.\nRestart the viewer after setting it.';
+                document.getElementById('loadLocationBtn').disabled = true;
+            } else if (!config.has_location_loader) {
+                const logDiv = document.getElementById('location-log');
+                logDiv.classList.add('visible');
+                logDiv.textContent = 'nodejs-voxelearth pipeline not found.\nSet VOXELEARTH_DIR or place it at ../nodejs-voxelearth/';
+                document.getElementById('loadLocationBtn').disabled = true;
+            }
+
+            // Build layer buttons
+            buildLayerButtons();
+
+            // Hide loading, show panel
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('panel').style.display = 'block';
+
+            // Place body at street level if placement info available
+            if (config.body_placement && bodyMesh) {
+                const bp = config.body_placement;
+                // Convert Z-up [x,y,z] to Y-up [x,z,-y]
+                bodyOffset.set(bp[0], bp[2], -bp[1]);
+                bodyMesh.position.copy(bodyOffset);
+            }
+
+            // Center camera
+            centerCamera();
+        }
+
+        async function loadBody() {
+            const resp = await fetch('/api/body');
+            const meta = JSON.parse(resp.headers.get('X-Meta'));
+            bodyMeta = meta;
+            const buf = await resp.arrayBuffer();
+
+            const nVerts = meta.n_vertices;
+            const positions = new Float32Array(buf, 0, nVerts * 3);
+            const normals = new Float32Array(buf, nVerts * 3 * 4, nVerts * 3);
+
+            const geom = new THREE.BufferGeometry();
+            // Swap Y/Z for Three.js Y-up
+            const posSwapped = new Float32Array(nVerts * 3);
+            const normSwapped = new Float32Array(nVerts * 3);
+            for (let i = 0; i < nVerts; i++) {
+                posSwapped[i*3]   = positions[i*3];
+                posSwapped[i*3+1] = positions[i*3+2];
+                posSwapped[i*3+2] = -positions[i*3+1];
+                normSwapped[i*3]   = normals[i*3];
+                normSwapped[i*3+1] = normals[i*3+2];
+                normSwapped[i*3+2] = -normals[i*3+1];
+            }
+
+            geom.setAttribute('position', new THREE.BufferAttribute(posSwapped, 3));
+            geom.setAttribute('normal', new THREE.BufferAttribute(normSwapped, 3));
+
+            // Default gray color
+            const colors = new Float32Array(nVerts * 3);
+            colors.fill(0.5);
+            geom.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+            const mat = new THREE.MeshStandardMaterial({
+                vertexColors: true, roughness: 0.6, metalness: 0.1, side: THREE.DoubleSide,
+            });
+            bodyMesh = new THREE.Mesh(geom, mat);
+            bodyMesh.castShadow = true;
+            scene.add(bodyMesh);
+
+            // Compute body center for path visualization
+            geom.computeBoundingBox();
+            geom.boundingBox.getCenter(bodyCenterWorld);
+        }
+
+        async function loadVoxels(voxelMeta) {
+            const resp = await fetch('/api/voxels');
+            const meta = JSON.parse(resp.headers.get('X-Meta'));
+            const buf = await resp.arrayBuffer();
+
+            const n = meta.n_voxels;
+            const materials = meta.materials;
+            const positions = new Float32Array(buf, 0, n * 3);
+            const colors = new Uint8Array(buf, n * 3 * 4, n * 3);
+            const matIndices = new Uint8Array(buf, n * 3 * 4 + n * 3, n);
+
+            const geometry = new THREE.BoxGeometry(0.9, 0.9, 0.9);
+            const dummy = new THREE.Object3D();
+            const tmpColor = new THREE.Color();
+
+            // Group by material
+            const groups = {};
+            for (let i = 0; i < n; i++) {
+                const matName = materials[matIndices[i]];
+                if (!groups[matName]) groups[matName] = [];
+                groups[matName].push(i);
+            }
+
+            for (const [matName, indices] of Object.entries(groups)) {
+                const count = indices.length;
+                const mc = MATERIAL_COLORS[matName] || [200, 200, 200];
+
+                // Material-colored mesh (default visible)
+                const matClass = new THREE.MeshStandardMaterial({
+                    color: new THREE.Color(mc[0]/255, mc[1]/255, mc[2]/255),
+                    roughness: 0.85, metalness: 0.05, flatShading: true,
+                });
+                const meshClass = new THREE.InstancedMesh(geometry, matClass, count);
+                meshClass.castShadow = true;
+                meshClass.receiveShadow = true;
+
+                for (let j = 0; j < count; j++) {
+                    const i = indices[j];
+                    // Swap Y/Z for Three.js
+                    dummy.position.set(positions[i*3], positions[i*3+2], -positions[i*3+1]);
+                    dummy.updateMatrix();
+                    meshClass.setMatrixAt(j, dummy.matrix);
+                }
+                meshClass.instanceMatrix.needsUpdate = true;
+
+                scene.add(meshClass);
+                voxelMeshes[matName] = { classified: meshClass };
+            }
+        }
+
+        function buildLayerButtons() {
+            const container = document.getElementById('layers');
+            container.innerHTML = '';
+
+            for (const [mat, meshes] of Object.entries(voxelMeshes)) {
+                const mc = MATERIAL_COLORS[mat] || [200, 200, 200];
+                const count = meshes.classified.count;
+                const btn = document.createElement('button');
+                btn.className = 'layer-btn active';
+                btn.dataset.layer = mat;
+                btn.style.borderLeft = `4px solid rgb(${mc[0]},${mc[1]},${mc[2]})`;
+                btn.textContent = `${mat} (${count.toLocaleString()})`;
+                btn.addEventListener('click', () => toggleLayer(btn, mat));
+                container.appendChild(btn);
+            }
+
+            if (bodyMesh) {
+                const btn = document.createElement('button');
+                btn.className = 'layer-btn active';
+                btn.dataset.layer = 'body';
+                btn.style.borderLeft = '4px solid rgb(255,140,0)';
+                btn.textContent = `body (${bodyMeta ? bodyMeta.n_triangles.toLocaleString() + ' tri' : ''})`;
+                btn.addEventListener('click', () => {
+                    const active = btn.classList.toggle('active');
+                    btn.classList.toggle('inactive', !active);
+                    bodyMesh.visible = active;
+                });
+                container.appendChild(btn);
+            }
+        }
+
+        function toggleLayer(btn, matName) {
+            const active = btn.classList.toggle('active');
+            btn.classList.toggle('inactive', !active);
+            if (voxelMeshes[matName]) {
+                voxelMeshes[matName].classified.visible = active;
+            }
+        }
+
+        // --- Location loading ---
+
+        window.loadLocation = function() {
+            const location = document.getElementById('locationInput').value.trim();
+            const radius = parseInt(document.getElementById('radiusInput').value) || 30;
+            const force = document.getElementById('forceReload').checked;
+
+            if (!location) return;
+
+            const logDiv = document.getElementById('location-log');
+            logDiv.textContent = '';
+            logDiv.classList.add('visible');
+            document.getElementById('loadLocationBtn').disabled = true;
+            document.getElementById('cancelLocationBtn').style.display = 'inline-block';
+
+            const params = new URLSearchParams({ location, radius, force });
+            const es = new EventSource('/api/location/load?' + params);
+
+            es.addEventListener('progress', (e) => {
+                logDiv.textContent += e.data + '\n';
+                logDiv.scrollTop = logDiv.scrollHeight;
+            });
+
+            es.addEventListener('done', async (e) => {
+                es.close();
+                logDiv.textContent += 'Loading voxels into scene...\n';
+                await reloadVoxels();
+                document.getElementById('loadLocationBtn').disabled = false;
+                document.getElementById('cancelLocationBtn').style.display = 'none';
+                logDiv.textContent += 'Done.\n';
+            });
+
+            es.addEventListener('error', (e) => {
+                if (e.data) {
+                    logDiv.textContent += 'Error: ' + e.data + '\n';
+                }
+                es.close();
+                document.getElementById('loadLocationBtn').disabled = false;
+                document.getElementById('cancelLocationBtn').style.display = 'none';
+            });
+        };
+
+        window.cancelLocation = function() {
+            fetch('/api/location/cancel', { method: 'POST' });
+            const logDiv = document.getElementById('location-log');
+            logDiv.textContent += 'Cancelled.\n';
+            document.getElementById('loadLocationBtn').disabled = false;
+            document.getElementById('cancelLocationBtn').style.display = 'none';
+        };
+
+        async function reloadVoxels() {
+            // Remove old voxel meshes from scene
+            for (const [matName, meshes] of Object.entries(voxelMeshes)) {
+                scene.remove(meshes.classified);
+                meshes.classified.geometry.dispose();
+                meshes.classified.material.dispose();
+            }
+            voxelMeshes = {};
+
+            // Fetch new voxel data
+            try {
+                const resp = await fetch('/api/voxels');
+                if (!resp.ok) return;
+                const meta = JSON.parse(resp.headers.get('X-Meta'));
+                await loadVoxels(meta);
+                buildLayerButtons();
+
+                // Re-fetch config for updated body placement
+                const config = await (await fetch('/api/config')).json();
+                if (config.body_placement && bodyMesh) {
+                    const bp = config.body_placement;
+                    bodyOffset.set(bp[0], bp[2], -bp[1]);
+                    bodyMesh.position.copy(bodyOffset);
+                }
+                centerCamera();
+            } catch (e) {
+                console.error('Failed to reload voxels:', e);
+            }
+        }
+
+        function getBodyViewDist() {
+            if (!bodyMesh) return 5;
+            const box = bodyMesh.geometry.boundingBox;
+            const size = new THREE.Vector3();
+            box.getSize(size);
+            return Math.max(size.x, size.y, size.z) * 2.5;
+        }
+
+        function centerCamera() {
+            if (bodyMesh) {
+                const target = bodyCenterWorld.clone().add(bodyOffset);
+                controls.target.copy(target);
+                const dist = getBodyViewDist();
+                camera.position.set(
+                    target.x + dist * 0.7,
+                    target.y + dist * 0.5,
+                    target.z + dist * 0.7,
+                );
+            }
+        }
+
+        // --- Antenna placement and dosimetry ---
+
+        function onSceneClick(event) {
+            // Only on left click without modifier
+            if (event.button !== 0 || event.ctrlKey || event.shiftKey) return;
+
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+
+            // Raycast against ground, voxels, and body
+            const targets = [groundPlane];
+            for (const meshes of Object.values(voxelMeshes)) {
+                targets.push(meshes.classified);
+            }
+
+            const hits = raycaster.intersectObjects(targets, false);
+            if (hits.length === 0) return;
+
+            const hit = hits[0];
+            const pos = hit.point.clone();
+
+            // Place antenna slightly above hit point
+            pos.y += 2.0;
+
+            placeAntenna(pos);
+            computeDosimetry(pos);
+        }
+
+        function placeAntenna(pos) {
+            if (!antennaMesh) {
+                // Create antenna marker: cone + sphere
+                const group = new THREE.Group();
+
+                const sphere = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.08, 16, 16),
+                    new THREE.MeshStandardMaterial({ color: 0xff3333, emissive: 0x881111 }),
+                );
+                group.add(sphere);
+
+                const cone = new THREE.Mesh(
+                    new THREE.ConeGeometry(0.05, 0.15, 8),
+                    new THREE.MeshStandardMaterial({ color: 0xff3333, emissive: 0x881111 }),
+                );
+                cone.position.y = -0.12;
+                cone.rotation.x = Math.PI;
+                group.add(cone);
+
+                // Pole
+                const pole = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.015, 0.015, 2, 8),
+                    new THREE.MeshStandardMaterial({ color: 0x888888 }),
+                );
+                pole.position.y = -1.2;
+                group.add(pole);
+
+                antennaMesh = group;
+                scene.add(antennaMesh);
+            }
+
+            antennaMesh.position.copy(pos);
+            antennaPos = pos.clone();
+
+            // Update path lines
+            drawPaths(pos);
+        }
+
+        function drawPaths(antennaWorldPos) {
+            // Remove old lines
+            for (const line of pathLines) scene.remove(line);
+            pathLines = [];
+
+            // Remove old distance line and label
+            if (distanceLine) { scene.remove(distanceLine); distanceLine = null; }
+            if (distanceLabel) { scene.remove(distanceLabel); distanceLabel = null; }
+
+            if (!bodyMesh) return;
+
+            const bodyCenter = bodyCenterWorld.clone().add(bodyOffset);
+
+            // Dashed distance line from antenna to body center
+            const dist = antennaWorldPos.distanceTo(bodyCenter);
+            const dashedGeo = new THREE.BufferGeometry().setFromPoints([antennaWorldPos, bodyCenter]);
+            const dashedMat = new THREE.LineDashedMaterial({
+                color: 0xffffff, dashSize: 0.15, gapSize: 0.08,
+                transparent: true, opacity: 0.5,
+            });
+            distanceLine = new THREE.Line(dashedGeo, dashedMat);
+            distanceLine.computeLineDistances();
+            scene.add(distanceLine);
+
+            // Distance label at midpoint using a sprite
+            const midpoint = antennaWorldPos.clone().add(bodyCenter).multiplyScalar(0.5);
+            const canvas = document.createElement('canvas');
+            canvas.width = 128; canvas.height = 32;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = 'rgba(0,0,0,0.6)';
+            ctx.roundRect(0, 0, 128, 32, 6);
+            ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 18px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(dist.toFixed(1) + ' m', 64, 22);
+
+            const texture = new THREE.CanvasTexture(canvas);
+            const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false });
+            distanceLabel = new THREE.Sprite(spriteMat);
+            distanceLabel.position.copy(midpoint);
+            distanceLabel.position.y += 0.2;
+            distanceLabel.scale.set(1.0, 0.25, 1);
+            scene.add(distanceLabel);
+
+            // Draw line from antenna to body center (path indicator)
+            const points = [antennaWorldPos, bodyCenter];
+            const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
+            const lineMat = new THREE.LineBasicMaterial({ color: 0xff6600, linewidth: 2, transparent: true, opacity: 0.6 });
+            const line = new THREE.Line(lineGeo, lineMat);
+            scene.add(line);
+            pathLines.push(line);
+        }
+
+        function setVoxelVisibility(visible) {
+            for (const [mat, meshes] of Object.entries(voxelMeshes)) {
+                meshes.classified.visible = visible;
+            }
+            // Update layer buttons to match
+            for (const btn of document.querySelectorAll('.layer-btn')) {
+                if (btn.dataset.layer && btn.dataset.layer !== 'body') {
+                    btn.classList.toggle('active', visible);
+                    btn.classList.toggle('inactive', !visible);
+                }
+            }
+        }
+
+        async function onRTSourceChange() {
+            const val = document.getElementById('rtSourceSelect').value;
+            if (!val || val === 'voxel') {
+                currentScenePath = null;
+                // Remove Sionna scene meshes and restore voxels
+                for (const m of sceneMeshes) scene.remove(m);
+                sceneMeshes = [];
+                setVoxelVisibility(true);
+                return;
+            }
+            // Hide voxels when showing a Sionna scene
+            setVoxelVisibility(false);
+            const path = val.replace('sionna:', '');
+            currentScenePath = path;
+
+            const statusEl = document.getElementById('rt-status');
+            statusEl.textContent = 'Loading scene...';
+
+            try {
+                const resp = await fetch('/api/scene/load', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path }),
+                });
+
+                if (!resp.ok) {
+                    statusEl.textContent = 'Failed to load scene';
+                    return;
+                }
+
+                const meta = JSON.parse(resp.headers.get('X-Meta'));
+                const buf = await resp.arrayBuffer();
+                currentScenePath = path;
+
+                // Remove old scene meshes
+                for (const m of sceneMeshes) scene.remove(m);
+                sceneMeshes = [];
+
+                // Parse binary: vertices (V*3 f32) + triangles (T*3 i32) + optional face_colors (T*3 f32)
+                const nV = meta.n_vertices;
+                const nT = meta.n_triangles;
+                const vertices = new Float32Array(buf, 0, nV * 3);
+                const triangles = new Int32Array(buf, nV * 3 * 4, nT * 3);
+
+                const geom = new THREE.BufferGeometry();
+                // Swap Y/Z for Three.js
+                const posSwapped = new Float32Array(nV * 3);
+                for (let i = 0; i < nV; i++) {
+                    posSwapped[i*3] = vertices[i*3];
+                    posSwapped[i*3+1] = vertices[i*3+2];
+                    posSwapped[i*3+2] = -vertices[i*3+1];
+                }
+                geom.setAttribute('position', new THREE.BufferAttribute(posSwapped, 3));
+                geom.setIndex(new THREE.BufferAttribute(new Uint32Array(triangles), 1));
+                geom.computeVertexNormals();
+
+                const mat = new THREE.MeshStandardMaterial({
+                    color: 0x8899aa, roughness: 0.8, metalness: 0.1,
+                    side: THREE.DoubleSide, transparent: true, opacity: 0.7,
+                });
+                const mesh = new THREE.Mesh(geom, mat);
+                mesh.castShadow = true;
+                scene.add(mesh);
+                sceneMeshes.push(mesh);
+
+                statusEl.textContent = `Loaded: ${meta.n_triangles} tris`;
+            } catch (e) {
+                statusEl.textContent = `Error: ${e.message}`;
+            }
+        }
+
+        async function computeDosimetry(worldPos) {
+            if (!bodyMesh) return;
+
+            // Show computing overlay
+            isComputing = true;
+            document.getElementById('computing').style.display = 'block';
+
+            try {
+                const level = parseInt(document.getElementById('levelSelect').value);
+                const powerDbm = parseFloat(document.getElementById('powerInput').value);
+                const nPaths = parseInt(document.getElementById('pathsSelect').value);
+                const rtCheckbox = document.getElementById('rtEnabled');
+                const rtEnabled = rtCheckbox?.checked;
+                const rtSource = document.getElementById('rtSourceSelect')?.value || '';
+                const useVoxelRT = rtEnabled && (rtSource === 'voxel');
+                const useSionnaRT = rtEnabled && rtSource.startsWith('sionna:');
+
+                // Convert Three.js Y-up back to Z-up for Python
+                const scenePos = [worldPos.x, -worldPos.z, worldPos.y];
+                // Body offset in Z-up coords
+                const bodyOff = [bodyOffset.x, -bodyOffset.z, bodyOffset.y];
+
+                let resp;
+                if (useVoxelRT) {
+                    // DiffeRT on voxel environment geometry
+                    const maxOrder = parseInt(document.getElementById('maxOrderSelect').value);
+                    const statusEl = document.getElementById('rt-status');
+                    statusEl.textContent = 'Ray tracing through voxels...';
+
+                    resp = await fetch('/api/compute/voxel-rt', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            antenna_pos: scenePos,
+                            level: level,
+                            power_dbm: powerDbm,
+                            max_order: maxOrder,
+                        }),
+                    });
+
+                    if (!resp.ok) {
+                        const err = await resp.json().catch(() => ({ error: 'Unknown error' }));
+                        statusEl.textContent = `Error: ${err.error || resp.statusText}`;
+                        return;
+                    }
+
+                    const stats = JSON.parse(resp.headers.get('X-Stats'));
+                    statusEl.textContent = `${stats.n_rt_paths || 0} paths (voxel RT)`;
+
+                    const sabBuf = await resp.arrayBuffer();
+                    const sabArray = new Float32Array(sabBuf);
+
+                    if (stats.path_viz) drawRTPaths(stats.path_viz);
+                    updateBodyColors(sabArray, stats);
+                    updateDashboard(stats);
+                } else if (useSionnaRT) {
+                    // DiffeRT on Sionna XML scene
+                    const maxOrder = parseInt(document.getElementById('maxOrderSelect').value);
+                    const statusEl = document.getElementById('rt-status');
+                    statusEl.textContent = 'Ray tracing (Sionna scene)...';
+
+                    resp = await fetch('/api/compute/rt', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            antenna_pos: scenePos,
+                            scene_path: currentScenePath,
+                            level: level,
+                            power_dbm: powerDbm,
+                            max_order: maxOrder,
+                        }),
+                    });
+
+                    if (!resp.ok) {
+                        const err = await resp.json().catch(() => ({ error: 'Unknown error' }));
+                        statusEl.textContent = `Error: ${err.error || resp.statusText}`;
+                        return;
+                    }
+
+                    const stats = JSON.parse(resp.headers.get('X-Stats'));
+                    statusEl.textContent = `${stats.n_rt_paths || 0} paths (Sionna RT)`;
+
+                    const sabBuf = await resp.arrayBuffer();
+                    const sabArray = new Float32Array(sabBuf);
+
+                    if (stats.path_viz) drawRTPaths(stats.path_viz);
+                    updateBodyColors(sabArray, stats);
+                    updateDashboard(stats);
+                } else {
+                    // Synthetic paths
+                    resp = await fetch('/api/compute', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            antenna_pos: scenePos,
+                            body_offset: bodyOff,
+                            level: level,
+                            power_dbm: powerDbm,
+                            n_paths: nPaths,
+                        }),
+                    });
+
+                    if (!resp.ok) {
+                        console.error('Compute failed:', resp.status, resp.statusText);
+                        return;
+                    }
+
+                    const stats = JSON.parse(resp.headers.get('X-Stats'));
+                    const sabBuf = await resp.arrayBuffer();
+                    const sabArray = new Float32Array(sabBuf);
+
+                    updateBodyColors(sabArray, stats);
+                    updateDashboard(stats);
+                }
+            } catch (err) {
+                console.error('Dosimetry computation error:', err);
+                const statusEl = document.getElementById('rt-status');
+                if (statusEl) statusEl.textContent = `Error: ${err.message}`;
+            } finally {
+                // Always hide computing overlay
+                isComputing = false;
+                document.getElementById('computing').style.display = 'none';
+            }
+        }
+
+        function drawRTPaths(pathViz) {
+            // Remove old path lines
+            for (const line of pathLines) scene.remove(line);
+            pathLines = [];
+
+            for (const pv of pathViz) {
+                const points = pv.vertices.map(v =>
+                    new THREE.Vector3(v[0], v[2], -v[1])  // Y/Z swap
+                );
+                const color = pv.order === 0 ? 0x00ff44 : pv.order === 1 ? 0xff8800 : 0xff0088;
+                const geo = new THREE.BufferGeometry().setFromPoints(points);
+                const mat = new THREE.LineBasicMaterial({
+                    color, linewidth: 2, transparent: true, opacity: 0.8,
+                });
+                const line = new THREE.Line(geo, mat);
+                scene.add(line);
+                pathLines.push(line);
+            }
+        }
+
+        function updateBodyColors(sabPerFace, stats) {
+            if (!bodyMesh) return;
+
+            const colorAttr = bodyMesh.geometry.getAttribute('color');
+            const nFaces = sabPerFace.length;
+            const maxSab = stats.S_inc * stats.T0;
+            const safeMax = Math.max(maxSab, 1e-12);
+
+            // Inferno colormap (simplified 5-stop)
+            const inferno = [
+                [0.0, 0.001, 0.014, 0.071],
+                [0.25, 0.341, 0.063, 0.431],
+                [0.5, 0.737, 0.216, 0.329],
+                [0.75, 0.976, 0.557, 0.035],
+                [1.0, 0.988, 1.0, 0.644],
+            ];
+
+            function sampleInferno(t) {
+                t = Math.max(0, Math.min(1, t));
+                for (let i = 0; i < inferno.length - 1; i++) {
+                    if (t <= inferno[i+1][0]) {
+                        const f = (t - inferno[i][0]) / (inferno[i+1][0] - inferno[i][0]);
+                        return [
+                            inferno[i][1] + f * (inferno[i+1][1] - inferno[i][1]),
+                            inferno[i][2] + f * (inferno[i+1][2] - inferno[i][2]),
+                            inferno[i][3] + f * (inferno[i+1][3] - inferno[i][3]),
+                        ];
+                    }
+                }
+                return [inferno[4][1], inferno[4][2], inferno[4][3]];
+            }
+
+            for (let f = 0; f < nFaces; f++) {
+                const t = sabPerFace[f] / safeMax;
+                const [r, g, b] = sampleInferno(t);
+                // 3 vertices per face
+                for (let v = 0; v < 3; v++) {
+                    const idx = f * 3 + v;
+                    colorAttr.setXYZ(idx, r, g, b);
+                }
+            }
+            colorAttr.needsUpdate = true;
+
+            // Update color legend
+            const legendEl = document.getElementById('color-legend');
+            legendEl.style.display = 'block';
+            const maxVal = stats.peak_sab;
+            document.getElementById('legend-max').textContent = maxVal >= 0.01 ? maxVal.toFixed(3) : maxVal.toExponential(1);
+            document.getElementById('legend-mid').textContent = (maxVal / 2) >= 0.01 ? (maxVal / 2).toFixed(3) : (maxVal / 2).toExponential(1);
+        }
+
+        function updateDashboard(stats) {
+            document.getElementById('stat-pabs').textContent = stats.p_abs_mw.toFixed(2) + ' mW';
+            document.getElementById('stat-peak').textContent = stats.peak_sab.toFixed(3) + ' W/m\u00b2';
+            document.getElementById('stat-sinc').textContent = stats.S_inc.toExponential(2) + ' W/m\u00b2';
+            document.getElementById('stat-dist').textContent = stats.distance_m.toFixed(1) + ' m';
+            document.getElementById('stat-illum').textContent =
+                stats.n_illuminated.toLocaleString() + ' / ' + stats.n_triangles.toLocaleString();
+
+            const compEl = document.getElementById('stat-compliance');
+            if (stats.compliant) {
+                compEl.textContent = 'PASS (< 10 W/m\u00b2)';
+                compEl.className = 'stat-value pass';
+            } else {
+                compEl.textContent = 'FAIL (\u2265 10 W/m\u00b2)';
+                compEl.className = 'stat-value fail';
+            }
+        }
+
+        // --- Utility ---
+
+        function onResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        window.resetCamera = () => {
+            centerCamera();
+        };
+
+        window.toggleWireframe = () => {
+            wireframe = !wireframe;
+            for (const meshes of Object.values(voxelMeshes)) {
+                meshes.classified.material.wireframe = wireframe;
+            }
+            if (bodyMesh) bodyMesh.material.wireframe = wireframe;
+            if (groundPlane) groundPlane.material.wireframe = wireframe;
+            document.getElementById('wireframeBtn').classList.toggle('active', wireframe);
+        };
+
+        // --- Camera presets ---
+
+        window.viewPreset = (view) => {
+            if (!bodyMesh) return;
+            const target = bodyCenterWorld.clone().add(bodyOffset);
+            const dist = getBodyViewDist();
+            controls.target.copy(target);
+
+            switch (view) {
+                case 'front':
+                    camera.position.set(target.x, target.y + dist * 0.3, target.z + dist);
+                    break;
+                case 'side':
+                    camera.position.set(target.x + dist, target.y + dist * 0.3, target.z);
+                    break;
+                case 'top':
+                    camera.position.set(target.x, target.y + dist * 2, target.z + 0.01);
+                    break;
+            }
+            controls.update();
+        };
+
+        window.focusBody = () => {
+            if (!bodyMesh) return;
+            const target = bodyCenterWorld.clone().add(bodyOffset);
+            const dist = getBodyViewDist();
+            controls.target.copy(target);
+            const dir = camera.position.clone().sub(target).normalize();
+            camera.position.copy(target).addScaledVector(dir, dist);
+            controls.update();
+        };
+
+        // --- WASD body movement ---
+
+        function onKeyDown(e) {
+            // Skip if focused on an input element
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+
+            const fast = e.shiftKey ? 3.0 : 1.0;
+            const moveStep = 1.0 * fast;
+            const nudgeStep = 1.0 * fast;
+            let moved = false;
+            let nudged = false;
+
+            switch (e.key.toLowerCase()) {
+                // WASD: move body
+                case 'w': bodyOffset.z -= moveStep; moved = true; break;
+                case 's': bodyOffset.z += moveStep; moved = true; break;
+                case 'a': bodyOffset.x -= moveStep; moved = true; break;
+                case 'd': bodyOffset.x += moveStep; moved = true; break;
+                case 'q': bodyOffset.y -= moveStep; moved = true; break;
+                case 'e': bodyOffset.y += moveStep; moved = true; break;
+
+                // Arrow keys: nudge antenna
+                case 'arrowup':
+                    if (antennaPos) { antennaPos.z -= nudgeStep; nudged = true; }
+                    break;
+                case 'arrowdown':
+                    if (antennaPos) { antennaPos.z += nudgeStep; nudged = true; }
+                    break;
+                case 'arrowleft':
+                    if (antennaPos) { antennaPos.x -= nudgeStep; nudged = true; }
+                    break;
+                case 'arrowright':
+                    if (antennaPos) { antennaPos.x += nudgeStep; nudged = true; }
+                    break;
+                default: return;
+            }
+
+            e.preventDefault();
+
+            if (moved && bodyMesh) {
+                bodyMesh.position.copy(bodyOffset);
+                // Update orbit target to follow body
+                controls.target.copy(bodyCenterWorld.clone().add(bodyOffset));
+                // Redraw path lines
+                if (antennaPos) drawPaths(antennaPos);
+                // Debounced recompute
+                debouncedRecompute();
+            }
+
+            if (nudged && antennaPos) {
+                placeAntenna(antennaPos);
+                debouncedRecompute();
+            }
+        }
+
+        function debouncedRecompute() {
+            if (computeDebounceTimer) clearTimeout(computeDebounceTimer);
+            computeDebounceTimer = setTimeout(() => {
+                if (antennaPos && !isComputing) computeDosimetry(antennaPos);
+            }, 200);
+        }
+
+        // Re-compute when parameters change
+        document.getElementById('levelSelect').addEventListener('change', () => {
+            if (antennaPos) computeDosimetry(antennaPos);
+        });
+        document.getElementById('powerInput').addEventListener('change', () => {
+            if (antennaPos) computeDosimetry(antennaPos);
+        });
+        document.getElementById('pathsSelect').addEventListener('change', () => {
+            if (antennaPos) computeDosimetry(antennaPos);
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+    </script>
+</body>
+</html>
