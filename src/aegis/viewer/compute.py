@@ -23,6 +23,44 @@ def _rotation_matrix_z(angle: float) -> np.ndarray:
     return np.array([[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]])
 
 
+def _transform_body_for_viewer(
+    body: BodyMesh,
+    body_offset: np.ndarray,
+    body_rotation_y: float,
+) -> BodyMesh:
+    """Apply viewer yaw (Z-up) and translation; keeps vertices, centroids, normals consistent.
+
+    Previously, only normals and centroids were rotated while vertices stayed fixed, which
+    breaks triangle geometry and mis-places coherent phases. Offset must move the mesh,
+    not only the aim point used for k_hat.
+    """
+    off = np.asarray(body_offset, dtype=np.float64).reshape(3)
+    rigid = abs(body_rotation_y) > 1e-9 or np.any(np.abs(off) > 1e-12)
+    if not rigid:
+        return body
+
+    if abs(body_rotation_y) > 1e-9:
+        R = _rotation_matrix_z(body_rotation_y)
+        vertices = body.vertices @ R.T
+        normals = body.normals @ R.T
+        centroids = body.centroids @ R.T
+    else:
+        vertices = body.vertices
+        normals = body.normals
+        centroids = body.centroids
+
+    vertices = vertices + off.reshape(1, 1, 3)
+    centroids = centroids + off
+
+    return BodyMesh(
+        vertices=vertices,
+        normals=normals,
+        centroids=centroids,
+        areas=body.areas,
+        name=body.name,
+    )
+
+
 def compute_dosimetry(
     body: BodyMesh,
     antenna_pos: np.ndarray,
@@ -40,7 +78,7 @@ def compute_dosimetry(
     ----------
     body : the body mesh
     antenna_pos : (3,) antenna position in scene coordinates [meters]
-    body_offset : (3,) translation applied to the body [meters]
+    body_offset : (3,) translation applied to all triangle vertices [meters]
     body_rotation_y : yaw angle [radians], Three.js Y-rotation mapped to Z-rotation in Z-up
     level : fidelity level 0-6
     tissue : tissue model (defaults to skin at 28 GHz)
@@ -62,18 +100,8 @@ def compute_dosimetry(
     antenna_pos = np.asarray(antenna_pos, dtype=np.float64)
     body_offset = np.asarray(body_offset, dtype=np.float64) if body_offset is not None else np.zeros(3)
 
-    # Apply yaw rotation to body normals and centroids (Z-up convention).
-    # Three.js Y-rotation maps to Z-rotation in AEGIS Z-up coordinates.
-    if abs(body_rotation_y) > 1e-9:
-        R = _rotation_matrix_z(body_rotation_y)
-        rotated_normals = body.normals @ R.T
-        rotated_centroids = body.centroids @ R.T
-    else:
-        rotated_normals = body.normals
-        rotated_centroids = body.centroids
-
-    # Body center (average of rotated centroids), shifted by offset
-    body_center = rotated_centroids.mean(axis=0) + body_offset
+    rotated_body = _transform_body_for_viewer(body, body_offset, body_rotation_y)
+    body_center = rotated_body.centroids.mean(axis=0)
 
     # Direction from antenna to body
     direction = body_center - antenna_pos
@@ -109,18 +137,6 @@ def compute_dosimetry(
         powers[1:] *= rng.uniform(lo, hi, size=n_paths - 1)
 
         paths = PropagationPaths.from_powers(k_hat=k_hats, power=powers)
-
-    # Create a rotated copy of the body for the engine
-    if abs(body_rotation_y) > 1e-9:
-        rotated_body = BodyMesh(
-            vertices=body.vertices,
-            normals=rotated_normals,
-            centroids=rotated_centroids,
-            areas=body.areas,
-            name=body.name,
-        )
-    else:
-        rotated_body = body
 
     engine = DosimetryEngine(tissue)
 

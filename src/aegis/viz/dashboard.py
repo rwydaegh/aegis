@@ -79,6 +79,8 @@ def plot_dashboard(
     if result.sar_wb is not None:
         lines.append(f"SAR_wb: {result.sar_wb * 1e3:.2f} mW/kg")
     elif body_mass is not None:
+        if body_mass <= 0:
+            raise ValueError("body_mass must be positive when provided")
         sar = result.p_abs / body_mass
         lines.append(f"SAR_wb: {sar * 1e3:.2f} mW/kg")
 

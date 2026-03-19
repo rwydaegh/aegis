@@ -41,6 +41,8 @@ class DosimetryResult:
     @property
     def peak_sab(self) -> float:
         """Peak per-triangle S_ab [W/m^2]."""
+        if self.sab.size == 0:
+            raise ValueError("peak_sab is undefined for empty sab")
         return float(np.max(self.sab))
 
     @property
@@ -48,6 +50,8 @@ class DosimetryResult:
         """Peak spatially averaged S_ab [W/m^2], or None if not computed."""
         if self.sab_averaged is None:
             return None
+        if self.sab_averaged.size == 0:
+            raise ValueError("peak_sab_averaged is undefined for empty sab_averaged")
         return float(np.max(self.sab_averaged))
 
     @property

@@ -8,6 +8,7 @@ import pytest
 from aegis.constants import C_0
 from aegis.integration.differt import paths_from_differt
 from aegis.tissue.fresnel import fresnel_reflection, n_complex
+from aegis.viewer.raytracer import isotropic_incident_power_density
 
 
 class TestPathsFromDiffert:
@@ -44,6 +45,11 @@ class TestPathsFromDiffert:
         dist = np.linalg.norm(body_pos - tx_pos[0])
         np.testing.assert_allclose(paths.delay[0], dist / C_0, rtol=1e-10)
 
+        assert bool(paths.is_los[0])
+        tx_power_w = 10 ** ((30.0 - 30) / 10)
+        expected_S = tx_power_w / (4.0 * np.pi * dist**2)
+        np.testing.assert_allclose(paths.power[0], expected_S, rtol=1e-10)
+
     def test_multiple_paths_multi_element(self):
         """Multiple paths from 2 TX elements."""
         tx_positions = np.array([[5.0, 0.0, 3.0], [5.0, 0.05, 3.0]])
@@ -77,6 +83,22 @@ class TestPathsFromDiffert:
 
         # All powers positive
         assert np.all(paths.power > 0)
+
+        np.testing.assert_array_equal(paths.is_los, [True, False, True])
+
+    def test_isotropic_incident_power_matches_friis_relation(self):
+        """S = P_rx / A_e with isotropic RX is equivalent to P_tx / (4 pi d^2)."""
+        d = 10.0
+        freq_hz = 28e9
+        wavelength = C_0 / freq_hz
+        tx_power_w = 1.0
+        # Friis received power (isotropic Gt=Gr=1)
+        p_rx = tx_power_w * (wavelength / (4 * np.pi * d)) ** 2
+        ae = wavelength**2 / (4 * np.pi)
+        s_from_friis = p_rx / ae
+        s_direct = isotropic_incident_power_density(tx_power_w, d)
+        np.testing.assert_allclose(s_from_friis, s_direct, rtol=1e-12)
+        np.testing.assert_allclose(s_direct, tx_power_w / (4 * np.pi * d**2), rtol=1e-12)
 
     def test_empty_paths(self):
         """No paths should return empty PropagationPaths."""

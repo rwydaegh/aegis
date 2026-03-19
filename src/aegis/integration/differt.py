@@ -297,9 +297,9 @@ def paths_from_differt(
     # Propagation delay
     delay = total_length / C_0
 
-    # LOS flag: paths with exactly 2 vertices (TX -> body) are LOS
-    n_vertices_per_path = path_vertices.shape[1]
-    is_los = np.full(n_paths, n_vertices_per_path == 2, dtype=bool)
+    # LOS: one non-degenerate segment (handles max-length padding / repeated RX verts)
+    n_nonzero_segs = np.sum(seg_lengths > 1e-12, axis=1)
+    is_los = n_nonzero_segs == 1
 
     return PropagationPaths(
         k_hat=k_hat,

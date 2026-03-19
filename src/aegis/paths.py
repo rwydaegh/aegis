@@ -41,6 +41,12 @@ class PropagationPaths:
             raise ValueError(f"psi must be (N, 3), got {self.psi.shape}")
         if self.element_index.shape != (n,):
             raise ValueError(f"element_index must be (N,), got {self.element_index.shape}")
+        if self.delay.shape != (n,):
+            raise ValueError(f"delay must be (N,), got {self.delay.shape}")
+        if self.is_los.shape != (n,):
+            raise ValueError(f"is_los must be (N,), got {self.is_los.shape}")
+        if n > 0 and np.any(self.element_index < 0):
+            raise ValueError("element_index must be non-negative")
 
     @property
     def n_paths(self) -> int:
@@ -88,7 +94,9 @@ class PropagationPaths:
 
         # Normalise directions
         norms = np.linalg.norm(k_hat, axis=1, keepdims=True)
-        k_hat = k_hat / np.where(norms > 0, norms, 1.0)
+        if n > 0 and np.any(norms[:, 0] <= 0):
+            raise ValueError("k_hat rows must have positive norm (non-zero direction)")
+        k_hat = k_hat / norms
 
         # Build arbitrary perpendicular polarisation for each k_hat
         # Pick the axis least aligned with k_hat as reference
