@@ -9,6 +9,7 @@ from pathlib import Path
 import numpy as np
 from flask import Flask, Response, jsonify, render_template, request
 
+from aegis.compliance import ICNIRP_2020
 from aegis.viewer.scene_data import (
     body_to_binary,
     find_body_placement,
@@ -275,6 +276,7 @@ def create_app(
         params = request.get_json()
         antenna_pos = params.get("antenna_pos", [5, 0, 1])
         body_offset = params.get("body_offset", [0, 0, 0])
+        body_rotation_y = params.get("body_rotation_y", 0.0)
         level = params.get("level", 2)
         tissue_name = params.get("tissue", "skin_28ghz")
         power_dbm = params.get("power_dbm", 30.0)
@@ -286,6 +288,7 @@ def create_app(
             body,
             antenna_pos=np.array(antenna_pos),
             body_offset=np.array(body_offset),
+            body_rotation_y=float(body_rotation_y),
             level=level,
             tissue=tissue,
             power_dbm=power_dbm,
@@ -417,7 +420,7 @@ def create_app(
             "p_abs": float(result.p_abs),
             "p_abs_mw": float(result.p_abs * 1e3),
             "peak_sab": float(result.peak_sab),
-            "compliant": bool(result.peak_sab < _cache["config"]["dosimetry"]["compliance_threshold"]),
+            "compliant": bool(result.peak_sab < ICNIRP_2020.sab_peak),
             "n_illuminated": int(np.sum(result.sab > 0)),
             "n_triangles": body.n_triangles,
             "level": level,
@@ -455,6 +458,7 @@ def create_app(
         params = request.get_json()
         antenna_pos = np.array(params.get("antenna_pos", [5, 0, 1]))
         body_offset = np.array(params.get("body_offset", [0, 0, 0]), dtype=np.float64)
+        body_rotation_y = float(params.get("body_rotation_y", 0.0))
         level = params.get("level", 2)
         tissue_name = params.get("tissue", "skin_28ghz")
         power_dbm = params.get("power_dbm", 30.0)
@@ -466,7 +470,18 @@ def create_app(
 
             tissue = SKIN_28GHZ
 
-        body_center = body.centroids.mean(axis=0) + body_offset
+        # Apply yaw rotation to body geometry
+        from aegis.viewer.compute import _rotation_matrix_z
+
+        if abs(body_rotation_y) > 1e-9:
+            R = _rotation_matrix_z(body_rotation_y)
+            rotated_centroids = body.centroids @ R.T
+            rotated_normals = body.normals @ R.T
+        else:
+            rotated_centroids = body.centroids
+            rotated_normals = body.normals
+
+        body_center = rotated_centroids.mean(axis=0) + body_offset
 
         # Build or get cached voxel DiffeRT scene
         max_rt_triangles = _cache["config"]["raytracer"]["max_rt_triangles"]
@@ -566,7 +581,22 @@ def create_app(
 
             paths = PropagationPaths.from_powers(k_hat=np.array(all_k_hat), power=np.array(all_power))
             engine = DosimetryEngine(tissue)
-            result = engine.compute(body, paths, level=level)
+
+            # Use rotated body for correct normal-incidence geometry
+            if abs(body_rotation_y) > 1e-9:
+                from aegis.geometry.mesh import BodyMesh as _BM
+
+                rt_body = _BM(
+                    vertices=body.vertices,
+                    normals=rotated_normals,
+                    centroids=rotated_centroids,
+                    areas=body.areas,
+                    name=body.name,
+                )
+            else:
+                rt_body = body
+
+            result = engine.compute(rt_body, paths, level=level)
 
             sab_bytes = result.sab.astype(np.float32).tobytes()
             dist = float(np.linalg.norm(antenna_pos - body_center))
@@ -574,7 +604,7 @@ def create_app(
                 "p_abs": float(result.p_abs),
                 "p_abs_mw": float(result.p_abs * 1e3),
                 "peak_sab": float(result.peak_sab),
-                "compliant": bool(result.peak_sab < _cache["config"]["dosimetry"]["compliance_threshold"]),
+                "compliant": bool(result.peak_sab < ICNIRP_2020.sab_peak),
                 "n_illuminated": int(np.sum(result.sab > 0)),
                 "n_triangles": body.n_triangles,
                 "level": level,

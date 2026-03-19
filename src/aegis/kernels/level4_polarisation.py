@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from aegis.tissue.fresnel import fresnel_transmission
+from aegis.kernels._base import fresnel_weights, incidence_geometry
 
 
 def level4_polarisation(
@@ -41,12 +41,8 @@ def level4_polarisation(
     -------
     sab : (M,) absorbed power density per triangle [W/m^2]
     """
-    mu = normals @ (-k_hat).T  # (M, N)
-    mu_plus = np.maximum(mu, 0.0)  # (M, N)
-
-    mu_for_fresnel = np.clip(mu, 0.0, 1.0)
-    T_s, T_p = fresnel_transmission(mu_for_fresnel, n_tilde)
-    T_avg = 0.5 * (T_s + T_p)  # (M, N)
+    mu, mu_plus = incidence_geometry(normals, k_hat)
+    T_s, T_p, T_avg = fresnel_weights(mu, n_tilde)
     DeltaT = T_p - T_s  # (M, N)
 
     T_eff = T_avg + 0.5 * q * DeltaT  # (M, N)

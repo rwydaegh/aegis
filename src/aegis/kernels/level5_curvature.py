@@ -18,7 +18,7 @@ from __future__ import annotations
 import numpy as np
 
 from aegis.constants import C_0
-from aegis.tissue.fresnel import fresnel_transmission
+from aegis.kernels._base import fresnel_weights, incidence_geometry
 
 
 def level5_curvature(
@@ -48,13 +48,8 @@ def level5_curvature(
     """
     k = 2.0 * np.pi * freq_hz / C_0
 
-    mu = normals @ (-k_hat).T  # (M, N)
-    mu_plus = np.maximum(mu, 0.0)  # (M, N)
-
-    # Level 3 base: angle-dependent Fresnel
-    mu_for_fresnel = np.clip(mu, 0.0, 1.0)
-    T_s, T_p = fresnel_transmission(mu_for_fresnel, n_tilde)
-    T_avg = 0.5 * (T_s + T_p)  # (M, N)
+    mu, mu_plus = incidence_geometry(normals, k_hat)
+    _T_s, _T_p, T_avg = fresnel_weights(mu, n_tilde)
     sab_base = (T_avg * mu_plus) @ power  # (M,)
 
     # Curvature correction: T_0 * (H_j / k) * ReLU(mu)^2

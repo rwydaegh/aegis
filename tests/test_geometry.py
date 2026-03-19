@@ -5,6 +5,7 @@ Unit tests use synthetic meshes. Slow tests need the Thelonious STL file.
 
 import numpy as np
 import pytest
+from conftest import make_cube_mesh, make_single_triangle
 
 from aegis.geometry.cauchy import cauchy_projected_area, cauchy_relative_error, mean_projected_area
 from aegis.geometry.directivity import (
@@ -21,103 +22,42 @@ from aegis.geometry.occlusion import (
 from aegis.geometry.projected_area import compute_projected_area, fibonacci_sphere
 
 # ---------------------------------------------------------------------------
-# Synthetic mesh helpers
-# ---------------------------------------------------------------------------
-
-
-def _make_cube_mesh() -> BodyMesh:
-    """Unit cube centered at origin, 12 triangles (2 per face)."""
-    # 8 vertices of unit cube
-    v = np.array(
-        [
-            [-0.5, -0.5, -0.5],
-            [0.5, -0.5, -0.5],
-            [0.5, 0.5, -0.5],
-            [-0.5, 0.5, -0.5],
-            [-0.5, -0.5, 0.5],
-            [0.5, -0.5, 0.5],
-            [0.5, 0.5, 0.5],
-            [-0.5, 0.5, 0.5],
-        ]
-    )
-    # 12 triangles (2 per face), CCW winding
-    faces = [
-        # -Z face
-        (0, 2, 1),
-        (0, 3, 2),
-        # +Z face
-        (4, 5, 6),
-        (4, 6, 7),
-        # -Y face
-        (0, 1, 5),
-        (0, 5, 4),
-        # +Y face
-        (2, 3, 7),
-        (2, 7, 6),
-        # -X face
-        (0, 4, 7),
-        (0, 7, 3),
-        # +X face
-        (1, 2, 6),
-        (1, 6, 5),
-    ]
-    vertices = np.array([[v[i] for i in f] for f in faces], dtype=np.float64)
-    areas = triangle_areas(vertices)
-    # Compute normals from cross product
-    v0, v1, v2 = vertices[:, 0], vertices[:, 1], vertices[:, 2]
-    cross = np.cross(v1 - v0, v2 - v0)
-    norms = np.linalg.norm(cross, axis=1, keepdims=True)
-    normals = cross / norms
-    centroids = np.mean(vertices, axis=1)
-    return BodyMesh(vertices=vertices, normals=normals, centroids=centroids, areas=areas, name="cube")
-
-
-def _make_single_triangle() -> BodyMesh:
-    """Single right triangle in the XY plane, normal along +Z."""
-    vertices = np.array([[[0, 0, 0], [1, 0, 0], [0, 1, 0]]], dtype=np.float64)
-    areas = triangle_areas(vertices)
-    normals = np.array([[0, 0, 1]], dtype=np.float64)
-    centroids = np.mean(vertices, axis=1)
-    return BodyMesh(vertices=vertices, normals=normals, centroids=centroids, areas=areas, name="tri")
-
-
-# ---------------------------------------------------------------------------
 # BodyMesh
 # ---------------------------------------------------------------------------
 
 
 class TestBodyMesh:
     def test_cube_triangle_count(self):
-        mesh = _make_cube_mesh()
+        mesh = make_cube_mesh()
         assert mesh.n_triangles == 12
 
     def test_cube_total_area(self):
-        mesh = _make_cube_mesh()
+        mesh = make_cube_mesh()
         # Unit cube: 6 faces * 1 m^2 = 6 m^2
         assert mesh.total_area == pytest.approx(6.0, abs=1e-10)
 
     def test_cube_bounding_box(self):
-        mesh = _make_cube_mesh()
+        mesh = make_cube_mesh()
         bmin, bmax = mesh.bounding_box
         np.testing.assert_allclose(bmin, [-0.5, -0.5, -0.5])
         np.testing.assert_allclose(bmax, [0.5, 0.5, 0.5])
 
     def test_cube_scale(self):
-        mesh = _make_cube_mesh()
+        mesh = make_cube_mesh()
         # Diagonal of unit cube = sqrt(3)
         assert mesh.scale == pytest.approx(np.sqrt(3), abs=1e-10)
 
     def test_single_triangle_area(self):
-        mesh = _make_single_triangle()
+        mesh = make_single_triangle()
         assert mesh.total_area == pytest.approx(0.5, abs=1e-10)
 
     def test_frozen(self):
-        mesh = _make_cube_mesh()
+        mesh = make_cube_mesh()
         with pytest.raises(AttributeError):
             mesh.name = "other"
 
     def test_repr(self):
-        mesh = _make_cube_mesh()
+        mesh = make_cube_mesh()
         r = repr(mesh)
         assert "cube" in r
         assert "12" in r
@@ -174,14 +114,14 @@ class TestFibonacciSphere:
 class TestProjectedArea:
     def test_cube_along_axis(self):
         """Cube illuminated from +Z: A_perp = 1 m^2 (top face)."""
-        mesh = _make_cube_mesh()
+        mesh = make_cube_mesh()
         k_hat = np.array([[0.0, 0.0, -1.0]])  # wave from +z
         A = compute_projected_area(mesh.normals, mesh.areas, k_hat)
         assert A[0] == pytest.approx(1.0, abs=0.01)
 
     def test_cube_all_axes(self):
         """Cube projected area is 1.0 along any axis."""
-        mesh = _make_cube_mesh()
+        mesh = make_cube_mesh()
         axes = np.array(
             [
                 [1, 0, 0],
@@ -200,20 +140,20 @@ class TestProjectedArea:
 
     def test_single_triangle_normal_incidence(self):
         """Triangle illuminated head-on: A_perp = triangle area."""
-        mesh = _make_single_triangle()
+        mesh = make_single_triangle()
         k_hat = np.array([[0.0, 0.0, -1.0]])
         A = compute_projected_area(mesh.normals, mesh.areas, k_hat)
         assert A[0] == pytest.approx(0.5, abs=1e-10)
 
     def test_single_triangle_backface(self):
         """Triangle illuminated from behind: A_perp = 0."""
-        mesh = _make_single_triangle()
+        mesh = make_single_triangle()
         k_hat = np.array([[0.0, 0.0, 1.0]])
         A = compute_projected_area(mesh.normals, mesh.areas, k_hat)
         assert A[0] == pytest.approx(0.0, abs=1e-10)
 
     def test_nonnegative(self):
-        mesh = _make_cube_mesh()
+        mesh = make_cube_mesh()
         k_hat = fibonacci_sphere(100)
         A = compute_projected_area(mesh.normals, mesh.areas, k_hat)
         assert np.all(A >= 0)
@@ -227,7 +167,7 @@ class TestProjectedArea:
 class TestCauchy:
     def test_convex_cube(self):
         """For a convex cube, mean(A_perp) should be close to A_total/4."""
-        mesh = _make_cube_mesh()
+        mesh = make_cube_mesh()
         k_hat = fibonacci_sphere(2048)
         A = compute_projected_area(mesh.normals, mesh.areas, k_hat)
         cauchy_val = cauchy_projected_area(mesh.total_area)
@@ -236,7 +176,7 @@ class TestCauchy:
         assert mean_projected_area(A) == pytest.approx(cauchy_val, rel=0.02)
 
     def test_relative_error_small_for_cube(self):
-        mesh = _make_cube_mesh()
+        mesh = make_cube_mesh()
         k_hat = fibonacci_sphere(2048)
         A = compute_projected_area(mesh.normals, mesh.areas, k_hat)
         err = cauchy_relative_error(A, mesh.total_area)
@@ -309,7 +249,7 @@ class TestSHFit:
 
 class TestBVH:
     def test_build_bvh_cube(self):
-        mesh = _make_cube_mesh()
+        mesh = make_cube_mesh()
         v0 = mesh.vertices[:, 0]
         v1 = mesh.vertices[:, 1]
         v2 = mesh.vertices[:, 2]

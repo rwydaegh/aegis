@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from aegis.tissue.fresnel import fresnel_transmission
+from aegis.kernels._base import fresnel_weights, incidence_geometry
 
 
 def level3_fresnel(
@@ -34,14 +34,8 @@ def level3_fresnel(
     -------
     sab : (M,) absorbed power density per triangle [W/m^2]
     """
-    mu = normals @ (-k_hat).T  # (M, N)
-    mu_plus = np.maximum(mu, 0.0)  # (M, N)
-
-    # Compute Fresnel transmission at each (triangle, path) pair
-    # Use mu_plus for Fresnel (avoids issues at mu < 0)
-    mu_for_fresnel = np.clip(mu, 0.0, 1.0)
-    T_s, T_p = fresnel_transmission(mu_for_fresnel, n_tilde)
-    T_avg = 0.5 * (T_s + T_p)  # (M, N)
+    mu, mu_plus = incidence_geometry(normals, k_hat)
+    _T_s, _T_p, T_avg = fresnel_weights(mu, n_tilde)
 
     # S_ab_j = sum_i S_i * T_avg(mu_ji) * [mu_ji]_+
     sab = (T_avg * mu_plus) @ power  # (M,)
