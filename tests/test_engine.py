@@ -59,6 +59,33 @@ class TestPropagationPaths:
         )
         assert "n_paths=1" in repr(p)
 
+    def test_from_powers_rejects_zero_direction(self):
+        with pytest.raises(ValueError, match="non-zero"):
+            PropagationPaths.from_powers(
+                k_hat=np.array([[0.0, 0.0, 0.0]]),
+                power=np.array([1.0]),
+            )
+
+    def test_constructor_rejects_negative_element_index(self):
+        with pytest.raises(ValueError, match="non-negative"):
+            PropagationPaths(
+                k_hat=np.array([[0, 0, -1.0]]),
+                psi=np.array([[1 + 0j, 0j, 0j]]),
+                element_index=np.array([-1], dtype=np.intp),
+                delay=np.zeros(1),
+                is_los=np.ones(1, dtype=bool),
+            )
+
+    def test_constructor_requires_matching_delay_length(self):
+        with pytest.raises(ValueError, match="delay"):
+            PropagationPaths(
+                k_hat=np.array([[0, 0, -1.0]]),
+                psi=np.array([[1 + 0j, 0j, 0j]]),
+                element_index=np.zeros(1, dtype=np.intp),
+                delay=np.zeros(2),
+                is_los=np.ones(1, dtype=bool),
+            )
+
 
 # ---------------------------------------------------------------------------
 # DosimetryResult tests
@@ -86,6 +113,19 @@ class TestDosimetryResult:
         r = repr(result)
         assert "level=2" in r
         assert "p_abs=" in r
+
+    def test_peak_sab_empty_raises(self):
+        from aegis.result import DosimetryResult
+
+        empty = DosimetryResult(sab=np.array([]), p_abs=0.0, fidelity_level=2)
+        with pytest.raises(ValueError, match="empty sab"):
+            _ = empty.peak_sab
+
+    def test_body_mass_nonpositive_raises(self, engine, flat_mesh, single_path_down):
+        with pytest.raises(ValueError, match="body_mass"):
+            engine.compute(flat_mesh, single_path_down, level=2, body_mass=0.0)
+        with pytest.raises(ValueError, match="body_mass"):
+            engine.compute(flat_mesh, single_path_down, level=2, body_mass=-1.0)
 
 
 # ---------------------------------------------------------------------------

@@ -84,6 +84,8 @@ class DosimetryEngine:
         """
         if level < 0 or level > 8:
             raise ValueError(f"Fidelity level must be 0-8, got {level}")
+        if body_mass is not None and body_mass <= 0:
+            raise ValueError("body_mass must be positive when provided")
 
         if level >= 7:
             return self._compute_coherent(

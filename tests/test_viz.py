@@ -157,6 +157,20 @@ class TestDashboard:
         fig = plot_dashboard(result, show=False)
         assert fig is not None
 
+    def test_dashboard_rejects_nonpositive_body_mass(self):
+        import matplotlib
+
+        matplotlib.use("Agg")
+        from aegis.viz.dashboard import plot_dashboard
+
+        result = DosimetryResult(
+            sab=np.array([1.0, 2.0]),
+            p_abs=0.001,
+            fidelity_level=2,
+        )
+        with pytest.raises(ValueError, match="body_mass"):
+            plot_dashboard(result, body_mass=0.0, show=False)
+
 
 class TestComparison:
     def test_matplotlib_comparison(self, simple_mesh, tmp_path):

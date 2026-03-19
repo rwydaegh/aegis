@@ -10,8 +10,20 @@ from pathlib import Path
 
 import numpy as np
 
-from aegis.constants import C_0
 from aegis.paths import PropagationPaths
+
+_DEFAULT_FSPL_DISTANCE_CLAMP_M = 0.01
+
+
+def isotropic_incident_power_density(
+    tx_power_w: float,
+    path_length_m: float,
+    *,
+    min_distance_m: float = _DEFAULT_FSPL_DISTANCE_CLAMP_M,
+) -> float:
+    """Spherical spreading: S = P_tx / (4 pi d^2) [W/m^2] for an isotropic radiator."""
+    d = max(float(path_length_m), float(min_distance_m))
+    return tx_power_w / (4.0 * np.pi * d * d)
 
 
 def _check_differt() -> None:
@@ -133,12 +145,9 @@ def compute_paths_differt(
     # Collect paths from all orders
     all_k_hat = []
     all_power = []
-    all_delays = []
-    all_is_los = []
     path_viz = []
 
     tx_power_w = 10 ** ((tx_power_dbm - 30) / 10)
-    wavelength = C_0 / freq_hz
 
     for order in range(max_order + 1):
         try:
@@ -171,16 +180,10 @@ def compute_paths_differt(
             k_hat = last_seg / np.linalg.norm(last_seg)
             all_k_hat.append(k_hat)
 
-            # Power: FSPL based on total path length
-            fspl_amplitude = wavelength / (4 * np.pi * max(total_length, 0.01))
-            # Apply reflection loss (~3 dB per reflection)
+            # Match paths_from_differt: S_inc = P_tx / (4 pi d^2) for isotropic spreading
             reflection_loss = 0.5**order
-            S_inc = tx_power_w * (fspl_amplitude**2) * reflection_loss
+            S_inc = isotropic_incident_power_density(tx_power_w, total_length) * reflection_loss
             all_power.append(S_inc)
-
-            # Delay
-            all_delays.append(total_length / C_0)
-            all_is_los.append(order == 0)
 
             # Visualization data
             path_viz.append(

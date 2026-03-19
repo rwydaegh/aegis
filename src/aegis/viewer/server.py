@@ -10,6 +10,7 @@ import numpy as np
 from flask import Flask, Response, jsonify, render_template, request
 
 from aegis.compliance import ICNIRP_2020
+from aegis.viewer.raytracer import isotropic_incident_power_density
 from aegis.viewer.scene_data import (
     body_to_binary,
     find_body_placement,
@@ -529,7 +530,7 @@ def create_app(
 
             rt_cfg = _cache["config"]["raytracer"]
             tx_power_w = 10 ** ((power_dbm - 30) / 10)
-            wavelength = 3e8 / tissue.freq_hz
+            d_clamp = float(rt_cfg["fspl_distance_clamp"])
 
             for order in range(max_order + 1):
                 try:
@@ -555,8 +556,9 @@ def create_app(
                     k_hat = segments[-1] / np.linalg.norm(segments[-1])
                     all_k_hat.append(k_hat)
 
-                    fspl_amp = wavelength / (4 * np.pi * max(total_len, rt_cfg["fspl_distance_clamp"]))
-                    S_inc = tx_power_w * (fspl_amp**2) * (rt_cfg["reflection_loss_per_order"] ** order)
+                    S_inc = isotropic_incident_power_density(tx_power_w, total_len, min_distance_m=d_clamp) * (
+                        rt_cfg["reflection_loss_per_order"] ** order
+                    )
                     all_power.append(S_inc)
 
                     path_viz.append(
