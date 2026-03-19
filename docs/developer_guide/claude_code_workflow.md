@@ -1,6 +1,18 @@
-# Claude Code workflow
+# Claude Code and Cursor workflow
 
-AEGIS is developed with Claude Code as the primary coding agent. The `.claude/` directory contains all configuration that keeps sessions productive as the codebase grows.
+AEGIS is developed with Claude Code as the primary coding agent. Cursor uses the same repo conventions via `.cursor/rules/`. The `.claude/` directory contains Claude-specific automation (rules with path globs, slash-command skills, hooks).
+
+## Cursor rules (`.cursor/rules/`)
+
+Cursor loads **project rules** from `.cursor/rules/*.mdc`. These mirror the intent of `.claude/rules/` and `CLAUDE.md`:
+
+| File | Role |
+|------|------|
+| `aegis.mdc` | Always apply: Python version, pre-commit checks, GitHub ship steps, docs pointer. |
+| `viewer.mdc` | Scoped to `src/aegis/viewer/**` and viewer config paths. |
+| `documentation.mdc` | Scoped to `docs/**`. |
+
+Skills under `.claude/skills/` (for example `/ship`, `/qa`, `/docs`) do not run inside Cursor automatically. Agents should still follow the same procedures when the user asks to ship or document.
 
 ## Directory layout
 

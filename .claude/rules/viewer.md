@@ -14,10 +14,9 @@ description: Viewer-specific rules for the Flask + Three.js 3D frontend
 
 ## Server lifecycle
 
-- Always kill existing processes on the viewer port before launching a new server
-- Check with: `netstat -aon | grep ":5070.*LISTENING"`
-- Kill with: `taskkill /F /PID <pid>`
-- Start server in background, wait 15-20 seconds before opening browser
+- Always kill existing processes on the viewer port before launching a new server (default **5000** from config; `__main__.py` can kill stale listeners on Windows).
+- Check with: `netstat -aon` (Windows) or `ss -lntp` (Linux) for the configured port.
+- Start the server, then open the URL printed in the console.
 
 ## Architecture
 
@@ -27,8 +26,8 @@ description: Viewer-specific rules for the Flask + Three.js 3D frontend
 - Compute: `src/aegis/viewer/compute.py` (dosimetry wrapper, accepts `config` kwarg)
 - Scene data: `src/aegis/viewer/scene_data.py` (binary serialization, uses `set_config()`)
 - Ray tracer: `src/aegis/viewer/raytracer.py` (DiffeRT bridge)
-- CLI entry: `src/aegis/viewer/__main__.py` (accepts `--config` flag)
-- Default config: `configs/default.json` (generated from Python defaults)
+- CLI entry: `src/aegis/viewer/__main__.py` (`--config`, `--scenario`, voxel/location flags)
+- Default config: `configs/default.json` merged over `config.py` defaults; scenarios in `configs/README.md`
 
 ## Configuration
 
@@ -39,15 +38,9 @@ description: Viewer-specific rules for the Flask + Three.js 3D frontend
 - When adding new values: add to DEFAULTS in config.py, regenerate default.json.
 - Never add hardcoded constants to other viewer files. Put them in config.py DEFAULTS.
 
-## Known bugs
+## Known issues and QA
 
-- BUG-1: Orbit drag triggers antenna placement (high severity)
-- BUG-2: Sionna geometry overlaps voxel environment
-- BUG-3: Floating voxels, body at arbitrary elevation
-- BUG-4: RT ray paths converge on wrong point (offset from body)
-- BUG-5: Stale RT status text after disabling
-- BUG-6: Stale ray path lines after disabling RT
-- BUG-7: Missing favicon (trivial)
+Track viewer behavior against `docs/internal/viewer_bug_report.md` and `docs/internal/features.md`. Several older UI items there have been fixed (drag threshold, Sionna voxel hiding, RT teardown, favicon). Prefer exercising current `index.html` and server routes before copying bug text into new issues.
 
 ## Testing
 

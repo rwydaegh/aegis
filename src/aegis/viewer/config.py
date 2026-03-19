@@ -334,6 +334,16 @@ DEFAULTS: dict = {
         "version": "0.160.0",
         "cdn": "https://unpkg.com/three@0.160.0",
     },
+    "default_scenario": "open_ground",
+    "scenarios": {
+        "open_ground": {
+            "description": "Body mesh and ground plane only (no voxel environment).",
+            "launch": {
+                "voxel_dir": None,
+                "voxel_json": None,
+            },
+        },
+    },
 }
 
 
@@ -364,6 +374,34 @@ def load_config(config_path: str | Path | None = None) -> dict:
         user_config = json.load(f)
 
     return _deep_merge(DEFAULTS, user_config)
+
+
+def scenario_launch(cfg: dict, scenario_name: str | None) -> dict:
+    """Return the `launch` block for a named scenario, or {} if missing.
+
+    Launch keys are optional: voxel_dir, voxel_json, body, bbox (scene radius
+    in meters, same Semantics as ``--bbox``), data_dir.
+    """
+    if not scenario_name:
+        return {}
+    scenarios = cfg.get("scenarios") or {}
+    entry = scenarios.get(scenario_name)
+    if not entry:
+        return {}
+    return copy.deepcopy(entry.get("launch") or {})
+
+
+def apply_scenario_to_config(cfg: dict, scenario_name: str | None) -> dict:
+    """Copy cfg and set ``active_scenario`` / ``active_scenario_description`` for the client."""
+    out = copy.deepcopy(cfg)
+    if not scenario_name:
+        return out
+    out["active_scenario"] = scenario_name
+    entry = (out.get("scenarios") or {}).get(scenario_name) or {}
+    desc = entry.get("description")
+    if desc:
+        out["active_scenario_description"] = desc
+    return out
 
 
 def save_default_config(path: str | Path) -> None:

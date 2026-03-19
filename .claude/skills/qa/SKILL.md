@@ -10,8 +10,8 @@ Launch the viewer, open it in a browser with Playwright, look around, and report
 
 ## What to do
 
-1. Kill any stale process on port 5070, then start the viewer in the background.
-2. Open `http://127.0.0.1:5070` with `npx @playwright/cli open --headed`.
+1. Kill any stale process on the viewer port from config (default **5000**), then start the viewer in the background.
+2. Open `http://127.0.0.1:5000` (or the printed URL) with `npx playwright screenshot` / `open --headed` as needed.
 3. Interact with the viewer naturally — place an antenna, move the body, change settings, toggle layers, check compliance. Use your judgment about what to exercise.
 4. Take screenshots with `npx @playwright/cli screenshot --filename=test_screenshots/<name>.png` and read each one. You are multimodal — look at what is on screen.
 5. Check the browser console with `npx @playwright/cli console` for JS errors.

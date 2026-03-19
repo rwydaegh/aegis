@@ -46,6 +46,7 @@ nav:
   - Getting started: getting_started.md
   - User guide:
     - Overview: user_guide/overview.md
+    - Interactive viewer: user_guide/viewer.md
     - Fidelity levels: user_guide/fidelity_levels.md
     - Tissue and Fresnel: user_guide/tissue.md
     - Geometry: user_guide/geometry.md
@@ -53,7 +54,7 @@ nav:
   - Developer guide:
     - Architecture: developer_guide/architecture.md
     - Testing: developer_guide/testing.md
-    - Claude Code workflow: developer_guide/claude_code_workflow.md
+    - Agent workflow (Claude & Cursor): developer_guide/claude_code_workflow.md
   - Reference:
     - API reference: reference/api.md
   - Internal:

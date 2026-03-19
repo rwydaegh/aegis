@@ -128,6 +128,9 @@ def create_app(
             print(f"  Warning: voxel directory load failed: {e}")
             _cache["voxel_binary"] = None
             _cache["voxel_meta"] = None
+            _cache["voxel_grid_coords"] = None
+            _cache["body_placement"] = None
+            _cache["voxel_positions"] = None
     elif voxel_json:
         try:
             _load_and_cache_voxels_single(voxel_json, bbox_radius)
@@ -135,9 +138,15 @@ def create_app(
             print(f"  Warning: voxel load failed: {e}")
             _cache["voxel_binary"] = None
             _cache["voxel_meta"] = None
+            _cache["voxel_grid_coords"] = None
+            _cache["body_placement"] = None
+            _cache["voxel_positions"] = None
     else:
         _cache["voxel_binary"] = None
         _cache["voxel_meta"] = None
+        _cache["voxel_grid_coords"] = None
+        _cache["body_placement"] = None
+        _cache["voxel_positions"] = None
 
     # Resolve tiles directory (sibling of voxels dir from pipeline)
     _cache["tiles_dir"] = None
@@ -248,13 +257,15 @@ def create_app(
         cfg = _cache["config"]
         levels = [lv["value"] for lv in cfg["dosimetry"]["fidelity_levels"]]
 
+        has_voxels = _cache.get("voxel_binary") is not None
         return jsonify(
             {
                 "bodies": bodies,
                 "tissues": ["skin_28ghz", "skin_60ghz"],
                 "levels": levels,
-                "has_voxels": _cache.get("voxel_binary") is not None,
+                "has_voxels": has_voxels,
                 "has_differt": has_differt,
+                "voxel_rt_available": has_voxels and has_differt,
                 "scenes": scenes,
                 "body_meta": _cache.get("body_meta"),
                 "voxel_meta": _cache.get("voxel_meta"),

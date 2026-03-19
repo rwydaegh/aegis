@@ -138,6 +138,7 @@
 
     <div id="panel" style="display:none;">
         <h2 id="viewer-title">AEGIS Viewer</h2>
+        <div id="scenario-info" style="display:none;font-size:11px;color:#888;margin:-4px 0 10px 0;line-height:1.35;"></div>
 
         <!-- Dashboard -->
         <div class="section" id="dashboard">
@@ -148,6 +149,7 @@
             <div><span class="stat-label">Distance:</span> <span class="stat-value" id="stat-dist">--</span></div>
             <div><span class="stat-label">Illuminated:</span> <span class="stat-value" id="stat-illum">--</span></div>
             <div><span class="stat-label">Compliance:</span> <span class="stat-value" id="stat-compliance">--</span></div>
+            <div id="compute-status" style="display:none;font-size:11px;color:#e74c3c;margin-top:6px;"></div>
         </div>
 
         <!-- Controls (populated from config) -->
@@ -222,7 +224,7 @@
         </div>
 
         <div class="hint">
-            Click ground/voxels to place antenna<br>
+            Click ground, body, or voxels to place antenna<br>
             Arrow keys: nudge antenna<br>
             WASD: walk body | QE: rotate | Space: jump | Shift: sprint<br>
             Mouse: orbit | Scroll: zoom | Right-click: pan<br>
@@ -324,6 +326,14 @@
             panel.style.backdropFilter = `blur(${CFG.ui.panel.backdrop_blur}px)`;
 
             document.querySelector('#panel h2').style.color = CFG.ui.colors.heading;
+
+            if (CFG.active_scenario) {
+                const si = document.getElementById('scenario-info');
+                si.style.display = 'block';
+                si.textContent = CFG.active_scenario_description
+                    ? `${CFG.active_scenario} — ${CFG.active_scenario_description}`
+                    : String(CFG.active_scenario);
+            }
 
             // Populate fidelity level select from config
             const levelSelect = document.getElementById('levelSelect');
@@ -536,12 +546,20 @@
             // Load photorealistic GLB tiles if available
             await loadGlbTiles();
 
-            if (config.has_differt) {
+            const voxelRt = (config.voxel_rt_available !== false) && config.has_voxels;
+            const hasSionna = config.scenes && config.scenes.length > 0;
+
+            if (config.has_differt && (voxelRt || hasSionna)) {
                 hasDiffert = true;
                 document.getElementById('rt-section').style.display = 'block';
                 const rtSourceSelect = document.getElementById('rtSourceSelect');
 
-                if (config.scenes && config.scenes.length > 0) {
+                if (!voxelRt) {
+                    const vo = document.getElementById('rtSourceVoxel');
+                    if (vo) vo.remove();
+                }
+
+                if (hasSionna) {
                     for (const s of config.scenes) {
                         const opt = document.createElement('option');
                         opt.value = 'sionna:' + s.path;
@@ -905,6 +923,7 @@
             raycaster.setFromCamera(mouse, camera);
 
             const targets = [groundPlane];
+            if (bodyMesh) targets.push(bodyMesh);
             for (const meshes of Object.values(voxelMeshes)) {
                 targets.push(meshes.classified);
             }
@@ -914,6 +933,10 @@
 
             const hit = hits[0];
             const pos = hit.point.clone();
+            if (hit.face && hit.face.normal) {
+                const n = hit.face.normal.clone().transformDirection(hit.object.matrixWorld);
+                pos.addScaledVector(n, 0.05);
+            }
             pos.y += CFG.antenna.placement_height_offset;
 
             placeAntenna(pos);
@@ -1100,10 +1123,23 @@
             }
         }
 
+        function setComputeError(msg) {
+            const el = document.getElementById('compute-status');
+            if (!el) return;
+            if (msg) {
+                el.textContent = msg;
+                el.style.display = 'block';
+            } else {
+                el.textContent = '';
+                el.style.display = 'none';
+            }
+        }
+
         async function computeDosimetry(worldPos) {
             if (!bodyMesh) return;
 
             isComputing = true;
+            setComputeError('');
             const computeStart = performance.now();
             const computeTextEl = document.getElementById('computing-text');
             computeTextEl.textContent = 'Computing...';
@@ -1208,7 +1244,10 @@
                     });
 
                     if (!resp.ok) {
-                        console.error('Compute failed:', resp.status, resp.statusText);
+                        const err = await resp.json().catch(() => ({}));
+                        const detail = err.error || resp.statusText || String(resp.status);
+                        setComputeError(`Compute failed: ${detail}`);
+                        console.error('Compute failed:', resp.status, detail);
                         return;
                     }
 
@@ -1221,8 +1260,10 @@
                 }
             } catch (err) {
                 console.error('Dosimetry computation error:', err);
+                const errMsg = err instanceof Error ? err.message : String(err);
+                setComputeError(errMsg);
                 const statusEl = document.getElementById('rt-status');
-                if (statusEl) statusEl.textContent = `Error: ${err.message}`;
+                if (statusEl) statusEl.textContent = `Error: ${errMsg}`;
             } finally {
                 isComputing = false;
                 clearInterval(computeTimerInterval);

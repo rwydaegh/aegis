@@ -1,0 +1,20 @@
+---
+description: MkDocs and prose style for docs/
+globs: docs/**
+---
+
+# Documentation (Cursor)
+
+## Build
+
+```bash
+py -3.12 -m mkdocs serve
+```
+
+Navigation is defined in `mkdocs.yml`. Add new pages to the `nav` tree.
+
+## Style
+
+Follow `.claude/rules/docs-style.md`: sentence case headings, no em dashes or semicolons, concise technical prose, physics-first where relevant.
+
+Internal design notes under `docs/internal/` are not required to be perfect polish but should stay accurate.
