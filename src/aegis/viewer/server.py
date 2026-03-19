@@ -35,35 +35,51 @@ def _load_grid_coords(voxel_json: str) -> np.ndarray | None:
         return None
 
 
-def _load_and_cache_voxels_single(voxel_json: str, max_voxels: int) -> None:
+def _load_and_cache_voxels_single(voxel_json: str, bbox_radius: float) -> None:
     """Load a single voxel JSON file into _cache."""
-    positions, colors, materials, grid_coords = load_voxels(voxel_json, max_voxels)
+    positions, colors, materials, grid_coords, voxel_size = load_voxels(
+        voxel_json,
+        bbox_radius=bbox_radius,
+    )
     _cache["voxel_positions"] = positions
     _cache["voxel_materials"] = materials
-    _cache["voxel_binary"], _cache["voxel_meta"] = voxels_to_binary(positions, colors, materials)
+    _cache["voxel_binary"], _cache["voxel_meta"] = voxels_to_binary(
+        positions,
+        colors,
+        materials,
+        voxel_size=voxel_size,
+    )
     _cache["voxel_grid_coords"] = grid_coords if len(grid_coords) > 0 else _load_grid_coords(voxel_json)
     _cache["body_placement"] = find_body_placement(positions, materials)
-    print(f"  Voxels: {len(positions):,} loaded")
+    print(f"  Voxels: {len(positions):,} loaded, voxel_size={voxel_size:.4f}")
     print(f"  Body placement: {_cache['body_placement']}")
 
 
-def _load_and_cache_voxels_dir(voxel_dir: str, max_voxels: int) -> None:
+def _load_and_cache_voxels_dir(voxel_dir: str, bbox_radius: float) -> None:
     """Load all voxel JSONs from a directory into _cache."""
-    positions, colors, materials, grid_coords = load_voxels_directory(voxel_dir, max_voxels)
+    positions, colors, materials, grid_coords, voxel_size = load_voxels_directory(
+        voxel_dir,
+        bbox_radius=bbox_radius,
+    )
     _cache["voxel_positions"] = positions
     _cache["voxel_materials"] = materials
-    _cache["voxel_binary"], _cache["voxel_meta"] = voxels_to_binary(positions, colors, materials)
+    _cache["voxel_binary"], _cache["voxel_meta"] = voxels_to_binary(
+        positions,
+        colors,
+        materials,
+        voxel_size=voxel_size,
+    )
     _cache["voxel_grid_coords"] = grid_coords if len(grid_coords) > 0 else None
     _cache["body_placement"] = find_body_placement(positions, materials)
     print(f"  Body placement: {_cache['body_placement']}")
-    print(f"  Voxels (directory): {len(positions):,} loaded")
+    print(f"  Voxels (directory): {len(positions):,} loaded, voxel_size={voxel_size:.4f}")
 
 
 def create_app(
     data_dir: str,
     voxel_json: str | None = None,
     voxel_dir: str | None = None,
-    max_voxels: int = 60000,
+    bbox_radius: float = 15.0,
     body_name: str = "thelonious",
     pipeline_dir: str | None = None,
     cache_dir: str | None = None,
@@ -73,7 +89,7 @@ def create_app(
     app = Flask(__name__, template_folder=template_dir)
 
     # Store pipeline config
-    _cache["max_voxels"] = max_voxels
+    _cache["bbox_radius"] = bbox_radius
     _cache["pipeline_dir"] = pipeline_dir
     _cache["cache_dir"] = cache_dir
 
@@ -92,14 +108,14 @@ def create_app(
     _cache["voxel_json_path"] = voxel_json
     if voxel_dir:
         try:
-            _load_and_cache_voxels_dir(voxel_dir, max_voxels)
+            _load_and_cache_voxels_dir(voxel_dir, bbox_radius)
         except Exception as e:
             print(f"  Warning: voxel directory load failed: {e}")
             _cache["voxel_binary"] = None
             _cache["voxel_meta"] = None
     elif voxel_json:
         try:
-            _load_and_cache_voxels_single(voxel_json, max_voxels)
+            _load_and_cache_voxels_single(voxel_json, bbox_radius)
         except Exception as e:
             print(f"  Warning: voxel load failed: {e}")
             _cache["voxel_binary"] = None
@@ -542,8 +558,8 @@ def create_app(
             # Load voxels from output directory
             try:
                 yield "event: progress\ndata: Loading voxels into viewer...\n\n"
-                mv = _cache.get("max_voxels", 60000)
-                _load_and_cache_voxels_dir(str(voxel_output), mv)
+                br = _cache.get("bbox_radius", 15.0)
+                _load_and_cache_voxels_dir(str(voxel_output), br)
                 meta = _cache.get("voxel_meta", {})
                 yield f"event: done\ndata: {json.dumps(meta)}\n\n"
             except Exception as e:

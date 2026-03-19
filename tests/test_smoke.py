@@ -5,7 +5,7 @@ from aegis.constants import C_0, EPS_0, Z_0
 
 
 def test_version():
-    assert aegis.__version__ == "0.0.1"
+    assert aegis.__version__ == "0.3.0"
 
 
 def test_constants_physically_consistent():
