@@ -37,6 +37,12 @@ Run: `py -3.12 -m aegis.viewer --config configs/default.json --scenario my_site`
 
 `--location` / `--voxel-dir` on the CLI still win over the scenario after merge.
 
+## Antenna radiation pattern (viewer)
+
+The 3D viewer can draw a **jet-colored** radiation lobe around the hub (`antenna.radiation_pattern`). By default it shows a vertical **short dipole** donut in scene space (Y is up in Three.js). That is **illustrative**: synthetic dosimetry and the bundled ray tracer still use **isotropic** equivalent power toward the body. Set `match_physics` to `true` for a uniform sphere that matches that isotropic assumption.
+
+For future **MIMO / arrays**, use `elements`: each entry has `offset` [m], complex `weight` `[Re, Im]`, and dipole `axis` in scene coordinates. With more than one element, small markers appear at each offset; gain is an **incoherent sum** of element powers (not a phased array beam yet).
+
 ## Automated E2E lab
 
 `configs/e2e_lab.json` drives a **small tracked STL** under `tests/fixtures/e2e_lab/` (no voxels, deterministic multipath jitter). Use it for Playwright and `test_viewer_e2e.py` without Thelonious or voxel data.

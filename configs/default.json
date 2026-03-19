@@ -147,7 +147,33 @@
     "pole_color": "#888888",
     "placement_height_offset": 2.0,
     "nudge_step": 1.0,
-    "nudge_step_shift": 3.0
+    "nudge_step_shift": 3.0,
+    "radiation_pattern": {
+      "enabled": true,
+      "match_physics": false,
+      "type": "short_dipole",
+      "ico_detail": 4,
+      "radius": 0.9,
+      "lobe_gamma": 0.42,
+      "dynamic_range_db": 36,
+      "opacity": 0.94,
+      "metalness": 0.12,
+      "roughness": 0.5,
+      "wireframe": false,
+      "edge_lines": true,
+      "edge_color": "#222233",
+      "hub_radius": 0.055,
+      "hub_color": "#aa2222",
+      "hub_emissive": "#441010",
+      "show_legacy_cone": false,
+      "elements": [
+        {
+          "offset": [0, 0, 0],
+          "weight": [1, 0],
+          "axis": [0, 1, 0]
+        }
+      ]
+    }
   },
   "physics": {
     "gravity": 9.81,
