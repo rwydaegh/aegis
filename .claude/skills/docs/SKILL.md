@@ -1,4 +1,5 @@
 ---
+name: docs
 description: Write or update AEGIS documentation pages. Use when creating new docs, rewriting existing docs, or adding content to the documentation site.
 user_invocable: true
 ---

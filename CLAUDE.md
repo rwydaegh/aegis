@@ -1,4 +1,6 @@
-# AEGIS - Claude Code instructions
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## What this project is
 
@@ -12,38 +14,39 @@ This machine has Python 3.14 (system) and 3.12 (user). AEGIS is installed under 
 pip install -e ".[dev]"                              # install with dev deps (uses 3.12)
 py -3.12 -m pytest tests/ -m "not slow" -x           # fast tests (~5s)
 py -3.12 -m pytest tests/                             # all tests (~30s)
+py -3.12 -m pytest tests/test_fresnel.py::test_name   # single test
 py -3.12 -m ruff check src/ tests/                    # lint
 py -3.12 -m ruff format src/ tests/                   # format
 py -3.12 -m mkdocs serve                              # local docs preview
+py -3.12 -m aegis.viewer --location "Ghent, Belgium"  # launch 3D viewer
 ```
 
 ## Architecture
 
+The data flow is: ray tracer -> `PropagationPaths` -> `DosimetryEngine.compute(body, paths, level)` -> `DosimetryResult`. Incoherent levels (0-6) use `paths.power`. Coherent levels (7-8) use `paths.psi` directly.
+
+- `src/aegis/engine.py` - main entry point, dispatches to kernel by level
+- `src/aegis/paths.py` - PropagationPaths (k_hat, psi, element_index). Use `.from_powers()` for incoherent-only paths.
+- `src/aegis/result.py` - DosimetryResult (sab, p_abs, sar_wb, Q, rho)
+- `src/aegis/precoder.py` - Precoder dataclass for MIMO beamforming vector x
 - `src/aegis/tissue/` - tissue EM properties, Fresnel coefficients, Cole-Cole model
 - `src/aegis/geometry/` - body mesh, ambient occlusion, directivity, spatial averaging
 - `src/aegis/kernels/` - fidelity levels 0-8, each file is one level
 - `src/aegis/coherent/` - field channel, exposure operator Q, ECBF solver
 - `src/aegis/compliance/` - ICNIRP 2020 limits
-- `src/aegis/engine.py` - main entry point, level dispatch
-- `src/aegis/paths.py` - PropagationPaths dataclass
-- `src/aegis/result.py` - DosimetryResult dataclass
+- `src/aegis/integration/` - DiffeRT ray tracer bridge (requires `pip install aegis[rt]`)
+- `src/aegis/viewer/` - Flask + Three.js 3D viewer (voxel scenes, body mesh, APD heatmap)
+- `src/aegis/viz/` - matplotlib/plotly dashboards and comparison plots
 
 ## Theory (the monograph)
 
-All theory lives in `../monograph/`. Read these carefully before implementing physics.
+All theory lives in `../monograph/`. Read before implementing physics.
 
-- `../monograph/monograph_v2.tex` - **the full monograph** (~6000 lines LaTeX). This is the single source of truth for all equations, tables, proofs, and fidelity level definitions. Read it thoroughly before any physics implementation.
-- `../monograph/monograph_v2.pdf` - compiled PDF (latest build)
+- `../monograph/monograph_v2.tex` - the full monograph (~6000 lines LaTeX). Single source of truth for all equations, tables, proofs, and fidelity level definitions.
 - `../monograph/summary_paper.tex` - condensed version (~1100 lines), good for quick reference
-- `../monograph/summary_vs_monograph.md` - what's in the summary vs the full monograph
 - `../monograph/factcheck_fixes.md` - corrections applied after fact-checking
-- `../monograph/references.bib` - bibliography
 
-There are also prior design documents in `../coding_project/`:
-
-- `../coding_project/project_proposal.md` - original AEGIS project proposal (627 lines)
-- `../coding_project/implementation_plan.md` - detailed implementation plan with data model (692 lines)
-- `../coding_project/ray_tracer_comparison.md` - DiffeRT vs Sionna RT comparison
+Design documents in `../coding_project/`: `project_proposal.md`, `implementation_plan.md`, `ray_tracer_comparison.md`.
 
 ## Ground truth (scripts)
 
@@ -71,8 +74,10 @@ Mesh files (STL, ~5MB) live in `../data/`. Set `AEGIS_DATA_DIR` env var or the d
 
 - NumPy-only core (no JAX yet). Clean path to JAX later.
 - Type annotations on public API. No docstrings on private helpers unless non-obvious.
-- Follow the writing style guide in `.claude/style_guide.md` for all docs and comments.
-- No em dashes, no semicolons, no AI buzzwords. Sentence case for headings.
+- No em dashes (--), no semicolons. Sentence case for headings.
+- Banned words: "delve", "leverage", "seamlessly", "robust", "comprehensive", "landscape", "ecosystem", "journey", "harness", "unlock", "empower".
+- No "it's important to note", "in order to" (just "to"), no rhetorical question headers.
+- Full writing guides: `.claude/style_guide.md` and `.claude/ai_writing_tells.md`.
 
 ## Git workflow
 
@@ -108,14 +113,9 @@ This is a vibe-coded project. Claude is often the only one making changes in a s
 
 ### What not to commit
 
-- `.env` files, credentials, API keys.
-- Large binary files (STL meshes, databases). These are in `.gitignore`.
-- Generated files (coverage reports, `site/`, `__pycache__/`).
-- Temporary test screenshots or debug outputs.
+No `.env`/credentials, no large binaries (STL), no generated files (`site/`, `__pycache__/`, coverage). All covered by `.gitignore`.
 
 ## Self-evolution
-
-Claude should actively maintain this file and create skills when patterns emerge:
 
 - If you correct the same mistake twice, add a rule here.
 - If you repeat a multi-step workflow 3+ times, create a skill for it.
