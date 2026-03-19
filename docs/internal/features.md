@@ -280,7 +280,7 @@ Nine kernel levels that trade accuracy for speed. Each level adds one physics co
 
 ---
 
-## Known bugs (as of 2026-03-17)
+## Known bugs (as of 2026-03-19)
 
 | ID | Severity | Description |
 |----|----------|-------------|
@@ -291,6 +291,14 @@ Nine kernel levels that trade accuracy for speed. Each level adds one physics co
 | BUG-5 | Low | Stale RT status text after disabling ray tracing. |
 | BUG-6 | Low | Stale ray path lines remain visible after disabling RT. |
 | BUG-7 | Trivial | Missing favicon (404 on /favicon.ico). |
+| BUG-8 | High | Body faces 180 degrees wrong for WASD. Pressing W walks body backward relative to face direction. STL coord frame flipped. |
+| BUG-9 | High | Voxel RT with reflections (order >= 1) exhausts 16 GB RAM and crashes server. No timeout, progress, or cancel. |
+| BUG-10 | Medium | WASD keys require prior canvas click to work. No visual hint that canvas needs focus. |
+| BUG-11 | Medium | Distance label vs dashboard mismatch (sprite shows different value than panel). |
+| BUG-12 | Medium | Peak S_ab displays "0.000 W/m^2" for small values due to fixed 3-decimal formatting. Should use scientific notation. |
+| BUG-13 | Low | "Focus body" camera frames poorly (body small at edge, voxels dominate). |
+| BUG-14 | Low | No RT progress indicator or cancel button. Slow RT gives no feedback. |
+| BUG-15 | Low | Paths dropdown missing "10 (multipath)" option (only has 1, 5, 20). |
 
 ---
 

@@ -2,7 +2,7 @@
 
 ## An Open-Source Real-Time Dosimetry Engine for 5G/6G
 
-> *"The framework transforms a 10¹²-cell volumetric simulation into O(M) surface operations: a reduction of six orders of magnitude that preserves the essential physics."*  
+> *"The framework transforms a 10¹²-cell volumetric simulation into O(M) surface operations: a reduction of six orders of magnitude that preserves the essential physics."*
 > — Geometric Dosimetry monograph
 
 ---
@@ -621,7 +621,7 @@ The open-source release makes the monograph's results reproducible, extensible, 
 
 ---
 
-*"I did not expect the geometry to have the structure it does."*  
+*"I did not expect the geometry to have the structure it does."*
 *— Preface, Geometric Dosimetry monograph*
 
 *AEGIS exists to show people that structure.*

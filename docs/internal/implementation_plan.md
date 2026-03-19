@@ -45,7 +45,7 @@ Methods:
     n_abs(f) → float                # |ñ|
     T0(f) → float                   # Normal-incidence power absorption: 4n/((1+n)²+κ²)
     Tbar(f) → float                 # Flux-weighted averaged transmission: 2∫₀¹ Tavg(μ)μ dμ
-    
+
     # --- Per-angle quantities (vectorised over θ or μ) ---
     xi(mu, f) → complex             # ξ = √(ñ² - 1 + μ²), Re(ξ)>0
     rs(mu, f) → complex             # TE reflection amplitude
@@ -56,7 +56,7 @@ Methods:
     Tp(mu, f) → float               # TM power absorption: 1-|rp|²
     Tavg(mu, f) → float             # Unpolarised average: (Ts+Tp)/2
     DeltaT(mu, f) → float           # Polarisation splitting: Tp-Ts
-    
+
     # --- Depth quantities (needed for coherent) ---
     alpha(mu, f) → float            # Amplitude decay rate into tissue
     beta(mu, f) → float             # Phase rate into tissue
@@ -76,7 +76,7 @@ Methods:
 BodyMesh:
     vertices: float[V, 3]           # Vertex positions (metres)
     triangles: int[M, 3]            # Triangle vertex indices
-    
+
     # --- Derived (recomputed per pose) ---
     normals: float[M, 3]            # Unit outward normals, per triangle
     areas: float[M]                 # Triangle areas (m²)
@@ -89,13 +89,13 @@ BodyMesh:
 ```
 Methods:
     recompute_from_vertices()       # Update normals, areas, centroids from vertices
-    
+
     # --- Static geometry (computed once, cached) ---
     compute_ambient_occlusion(n_dirs) → float[M]       # Exposure fraction η(r)
     compute_projected_area_table(dirs) → float[n_dirs]  # A⊥(k̂) per direction
     compute_absorption_area() → float                   # Aab = Σ aᵢηᵢ
     compute_directivity_sh(L_max) → float[(L+1)²]      # SH coefficients of D(k̂)
-    
+
     # --- ICNIRP spatial averaging ---
     build_averaging_matrix(radius_m) → sparse[M, M]    # G matrix for 4cm² averaging
 ```
@@ -114,13 +114,13 @@ Methods:
 PropagationPaths:
     # --- Always present ---
     k_hat: float[N, 3]              # Direction of arrival at body (unit vectors)
-    
+
     # --- Full representation (coherent-ready) ---
     psi: complex[N, 3]              # Polarisation-amplitude vector ψ_n ∈ ℂ³ (⊥ k̂_n)
-                                     # Units: V·m⁻¹·W⁻¹/² 
+                                     # Units: V·m⁻¹·W⁻¹/²
                                      # Power of path n: |ψ_n|²·Z₀/(4π) [W/m²]
     element_index: int[N]            # j(n) ∈ {0,...,M-1} — originating antenna element
-    
+
     # --- Optional metadata ---
     delay: float[N]                  # Propagation delay τ_n (for channel, not dosimetry)
     is_los: bool[N]                  # Line-of-sight flag
@@ -128,7 +128,7 @@ PropagationPaths:
     # --- Derived convenience ---
     @property
     power: float[N]                  # Sᵢ = |ψᵢ|² · Z₀/(4π)  [W/m²]
-    
+
     @property
     n_elements: int                  # M = max(element_index) + 1
 ```
@@ -163,10 +163,10 @@ paths = PropagationPaths.from_sionna(sionna_paths_output)
 ```
 Precoder:
     x: complex[M_ant]               # Precoding vector, ||x||² = P
-    
+
     @staticmethod
     mrt(h) → Precoder               # x = √P · h*/||h||
-    
+
     @staticmethod
     ecbf(h, Q, P_abs_max, P) → Precoder  # Solve QCQP
 ```
@@ -182,20 +182,20 @@ DosimetryResult:
     # --- Per-triangle ---
     sab: float[M]                    # Absorbed power density per triangle [W/m²]
     sab_averaged: float[M]           # 4cm²-averaged (ICNIRP) [W/m²]
-    
+
     # --- Aggregate ---
     p_abs: float                     # Total absorbed power [W]
     sar_wb: float                    # Whole-body SAR [W/kg]
-    
+
     # --- Compliance ---
     peak_sab: float                  # max(sab_averaged) [W/m²]
     compliant_sab: bool              # peak_sab < 10 W/m²
     compliant_sar: bool              # sar_wb < 0.08 W/kg
-    
+
     # --- Diagnostics ---
     fidelity_level: int              # Which level was used (0–8)
     approx_errors: dict              # Estimated approximation errors
-    
+
     # --- Coherent-specific (None for incoherent) ---
     Q: complex[M_ant, M_ant] | None  # Exposure operator
     rho: float | None                # Exposure-signal alignment
@@ -213,7 +213,7 @@ DosimetryResult:
 ```python
 class DosimetryEngine:
     """Computes Sab on a body mesh from propagation paths."""
-    
+
     def __init__(self, tissue: TissueModel, frequency: float):
         self.tissue = tissue
         self.freq = frequency
@@ -221,7 +221,7 @@ class DosimetryEngine:
         self.T0 = tissue.T0(frequency)
         self.Tbar = tissue.Tbar(frequency)
         self.n_tilde = tissue.n_tilde(frequency)
-    
+
     def compute(
         self,
         body: BodyMesh,
@@ -523,14 +523,14 @@ def _geometric_relu_numpy(normals, k_hat, power, T0):
 try:
     import jax
     import jax.numpy as jnp
-    
+
     @jax.jit
     def _geometric_relu_jax(normals, k_hat, power, T0):
         """GPU-accelerated implementation."""
         mu = normals @ (-k_hat).T
         mu_plus = jnp.maximum(mu, 0)
         return T0 * (mu_plus @ power)
-    
+
     _geometric_relu = _geometric_relu_jax
 except ImportError:
     _geometric_relu = _geometric_relu_numpy
@@ -676,7 +676,7 @@ def test_single_wave_coherent_matches_incoherent():
 ```
 PHASE 0: TissueModel
    ↓  (pure physics, no geometry)
-PHASE 1: BodyMesh  
+PHASE 1: BodyMesh
    ↓  (pure geometry, no EM)
 PHASE 2: PropagationPaths + DosimetryEngine (Levels 0–6)
    ↓  (incoherent EM on geometry — validates against monograph)

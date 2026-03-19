@@ -1,7 +1,7 @@
 ---
 name: docs
 description: Write or update AEGIS documentation pages. Use when creating new docs, rewriting existing docs, or adding content to the documentation site.
-user_invocable: true
+user-invocable: true
 ---
 
 # Documentation skill
@@ -10,8 +10,8 @@ You are writing documentation for AEGIS, a geometric dosimetry engine for wirele
 
 ## Before writing
 
-1. Read `.claude/doc_writing_guide.md` for the full style guide
-2. Read `.claude/style_guide.md` and `.claude/ai_writing_tells.md` for banned patterns
+1. Read `.claude/rules/docs-style.md` for the full style guide (includes writing rules, MkDocs formatting, banned patterns)
+2. Read `.claude/ai_writing_tells.md` for the AI writing tells checklist
 3. Read `mkdocs.yml` to understand the current site structure
 4. Read relevant source code to understand the API you're documenting
 

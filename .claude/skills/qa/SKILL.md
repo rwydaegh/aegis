@@ -1,7 +1,7 @@
 ---
 name: qa
 description: QA test the AEGIS viewer and backend using Playwright CLI screenshots and pytest
-user_invocable: true
+user-invocable: true
 ---
 
 # /qa - QA testing for AEGIS

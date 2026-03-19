@@ -1,7 +1,7 @@
 ---
 name: ship
 description: Full DevOps workflow - create issue, branch, commit, PR, and merge using gh CLI
-user_invocable: true
+user-invocable: true
 ---
 
 # /ship - DevOps shipping workflow
@@ -20,7 +20,8 @@ Ship a logical unit of work through the full GitHub workflow: issue, branch, com
 
 1. Analyze changes with `git status -s` and `git diff --stat`
 2. Run pre-flight: ruff check, ruff format, pytest fast tests
-3. Create GitHub issue with `gh issue create`
+3. If any files in `kernels/`, `tissue/`, or `coherent/` are in the diff, run `/physics-review` first
+4. Create GitHub issue with `gh issue create`
 4. Create feature branch from master
 5. Stage specific files and commit (reference issue with `Closes #N`)
 6. Push and create PR with `gh pr create`
