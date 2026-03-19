@@ -266,7 +266,7 @@
         let bodyOffset = new THREE.Vector3();
         let bodyRotationY = 0;
         let bodyGroundOffset = 0;
-        const BODY_FACING_OFFSET = Math.PI;
+        // STL meshes are pre-rotated to face +Y in Z-up coords (no runtime offset needed)
         let voxelHeightmap = null;
         let voxelSize = CFG.voxels.default_size_fallback;
         const keysDown = new Set();
@@ -1386,7 +1386,7 @@
             if (!bodyMesh) return;
             bodyMesh.position.copy(bodyOffset);
             bodyMesh.position.y += bodyGroundOffset;
-            bodyMesh.rotation.y = bodyRotationY + BODY_FACING_OFFSET;
+            bodyMesh.rotation.y = bodyRotationY;
             controls.target.copy(bodyCenterWorld.clone().add(bodyOffset));
             controls.target.y += bodyGroundOffset;
         }
