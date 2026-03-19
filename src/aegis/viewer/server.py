@@ -37,12 +37,13 @@ def _load_grid_coords(voxel_json: str) -> np.ndarray | None:
 
 def _load_and_cache_voxels_single(voxel_json: str, bbox_radius: float) -> None:
     """Load a single voxel JSON file into _cache."""
-    positions, colors, materials, grid_coords, voxel_size = load_voxels(
+    positions, colors, materials, grid_coords, voxel_size, transform = load_voxels(
         voxel_json,
         bbox_radius=bbox_radius,
     )
     _cache["voxel_positions"] = positions
     _cache["voxel_materials"] = materials
+    _cache["voxel_transform"] = transform
     _cache["voxel_binary"], _cache["voxel_meta"] = voxels_to_binary(
         positions,
         colors,
@@ -57,12 +58,13 @@ def _load_and_cache_voxels_single(voxel_json: str, bbox_radius: float) -> None:
 
 def _load_and_cache_voxels_dir(voxel_dir: str, bbox_radius: float) -> None:
     """Load all voxel JSONs from a directory into _cache."""
-    positions, colors, materials, grid_coords, voxel_size = load_voxels_directory(
+    positions, colors, materials, grid_coords, voxel_size, transform = load_voxels_directory(
         voxel_dir,
         bbox_radius=bbox_radius,
     )
     _cache["voxel_positions"] = positions
     _cache["voxel_materials"] = materials
+    _cache["voxel_transform"] = transform
     _cache["voxel_binary"], _cache["voxel_meta"] = voxels_to_binary(
         positions,
         colors,
@@ -83,8 +85,20 @@ def create_app(
     body_name: str = "thelonious",
     pipeline_dir: str | None = None,
     cache_dir: str | None = None,
+    config: dict | None = None,
 ) -> Flask:
     """Create and configure the Flask app."""
+    from aegis.viewer.config import load_config
+
+    if config is None:
+        config = load_config()
+    _cache["config"] = config
+
+    # Propagate config to scene_data module
+    from aegis.viewer.scene_data import set_config as set_scene_config
+
+    set_scene_config(config)
+
     template_dir = str(Path(__file__).parent / "templates")
     app = Flask(__name__, template_folder=template_dir)
 
@@ -124,11 +138,25 @@ def create_app(
         _cache["voxel_binary"] = None
         _cache["voxel_meta"] = None
 
+    # Resolve tiles directory (sibling of voxels dir from pipeline)
+    _cache["tiles_dir"] = None
+    _vs = voxel_dir or (str(Path(voxel_json).parent) if voxel_json else None)
+    if _vs:
+        _tc = Path(_vs).parent / "tiles"
+        if _tc.is_dir() and any(_tc.glob("*.glb")):
+            _cache["tiles_dir"] = _tc
+            print(f"  Tiles: {len(list(_tc.glob('*.glb')))} GLB files")
+
     # --- Routes ---
 
     @app.route("/")
     def index():
-        return render_template("index.html")
+        return render_template("index.html", viewer_config=json.dumps(config))
+
+    @app.route("/api/viewer-config")
+    def api_viewer_config():
+        """Return the full viewer configuration."""
+        return jsonify(_cache["config"])
 
     @app.route("/api/body")
     def api_body():
@@ -157,6 +185,40 @@ def create_app(
         resp.headers["X-Meta"] = json.dumps(meta)
         return resp
 
+    @app.route("/api/tiles")
+    def api_tiles_list():
+        """Return list of available GLB tile files and the ECEF->local transform."""
+        td = _cache.get("tiles_dir")
+        if td is None:
+            return jsonify({"tiles": [], "transform": None})
+
+        tile_names = sorted(p.name for p in Path(td).glob("*.glb"))
+
+        # Compose Python Z-up transform with Z-up -> Y-up swap for Three.js
+        transform = _cache.get("voxel_transform")
+        if transform is not None:
+            z_to_y = np.array(
+                [[1, 0, 0, 0], [0, 0, 1, 0], [0, -1, 0, 0], [0, 0, 0, 1]],
+                dtype=np.float64,
+            )
+            combined = z_to_y @ transform
+            # Three.js Matrix4.fromArray expects column-major order
+            transform_list = combined.T.flatten().tolist()
+        else:
+            transform_list = None
+
+        return jsonify({"tiles": tile_names, "transform": transform_list})
+
+    @app.route("/api/tiles/<path:filename>")
+    def api_tiles_file(filename: str):
+        """Serve an individual GLB tile file."""
+        from flask import send_from_directory
+
+        td = _cache.get("tiles_dir")
+        if td is None:
+            return jsonify({"error": "No tiles directory"}), 404
+        return send_from_directory(str(td), filename)
+
     @app.route("/api/config")
     def api_config():
         """Return available configuration options."""
@@ -182,11 +244,14 @@ def create_app(
         has_pipeline = find_pipeline() is not None
         has_api_key = bool(os.environ.get("GOOGLE_API_KEY"))
 
+        cfg = _cache["config"]
+        levels = [lv["value"] for lv in cfg["dosimetry"]["fidelity_levels"]]
+
         return jsonify(
             {
                 "bodies": bodies,
                 "tissues": ["skin_28ghz", "skin_60ghz"],
-                "levels": list(range(7)),
+                "levels": levels,
                 "has_voxels": _cache.get("voxel_binary") is not None,
                 "has_differt": has_differt,
                 "scenes": scenes,
@@ -225,6 +290,7 @@ def create_app(
             tissue=tissue,
             power_dbm=power_dbm,
             n_paths=n_paths,
+            config=_cache["config"],
         )
 
         # Return binary S_ab with JSON stats in header
@@ -299,7 +365,8 @@ def create_app(
             tissue = SKIN_28GHZ
 
         # Body position in scene coordinates (defaults to origin at height 1.0)
-        body_center = np.array(body_pos) if body_pos is not None else np.array([0.0, 0.0, 1.0])
+        default_bc = _cache["config"]["raytracer"]["default_body_center"]
+        body_center = np.array(body_pos) if body_pos is not None else np.array(default_bc)
 
         # Run DiffeRT
         try:
@@ -350,7 +417,7 @@ def create_app(
             "p_abs": float(result.p_abs),
             "p_abs_mw": float(result.p_abs * 1e3),
             "peak_sab": float(result.peak_sab),
-            "compliant": bool(result.peak_sab < 10.0),
+            "compliant": bool(result.peak_sab < _cache["config"]["dosimetry"]["compliance_threshold"]),
             "n_illuminated": int(np.sum(result.sab > 0)),
             "n_triangles": body.n_triangles,
             "level": level,
@@ -402,7 +469,7 @@ def create_app(
         body_center = body.centroids.mean(axis=0) + body_offset
 
         # Build or get cached voxel DiffeRT scene
-        MAX_RT_TRIANGLES = 50_000
+        max_rt_triangles = _cache["config"]["raytracer"]["max_rt_triangles"]
         try:
             ext_mask = extract_exterior(grid_coords)
             ext_grid = grid_coords[ext_mask]
@@ -410,11 +477,11 @@ def create_app(
 
             # Each exterior voxel face is 2 triangles, up to 6 faces per voxel
             est_triangles = len(ext_pos) * 12
-            if est_triangles > MAX_RT_TRIANGLES and max_order > 0:
+            if est_triangles > max_rt_triangles and max_order > 0:
                 return jsonify(
                     {
                         "error": f"Scene too large for reflections ({est_triangles:,} triangles, "
-                        f"limit {MAX_RT_TRIANGLES:,}). Use LOS only (order 0) or reduce scene size."
+                        f"limit {max_rt_triangles:,}). Use LOS only (order 0) or reduce scene size."
                     }
                 ), 400
 
@@ -434,6 +501,7 @@ def create_app(
             all_power = []
             path_viz = []
 
+            rt_cfg = _cache["config"]["raytracer"]
             tx_power_w = 10 ** ((power_dbm - 30) / 10)
             wavelength = 3e8 / tissue.freq_hz
 
@@ -461,8 +529,8 @@ def create_app(
                     k_hat = segments[-1] / np.linalg.norm(segments[-1])
                     all_k_hat.append(k_hat)
 
-                    fspl_amp = wavelength / (4 * np.pi * max(total_len, 0.01))
-                    S_inc = tx_power_w * (fspl_amp**2) * (0.5**order)
+                    fspl_amp = wavelength / (4 * np.pi * max(total_len, rt_cfg["fspl_distance_clamp"]))
+                    S_inc = tx_power_w * (fspl_amp**2) * (rt_cfg["reflection_loss_per_order"] ** order)
                     all_power.append(S_inc)
 
                     path_viz.append(
@@ -506,7 +574,7 @@ def create_app(
                 "p_abs": float(result.p_abs),
                 "p_abs_mw": float(result.p_abs * 1e3),
                 "peak_sab": float(result.peak_sab),
-                "compliant": bool(result.peak_sab < 10.0),
+                "compliant": bool(result.peak_sab < _cache["config"]["dosimetry"]["compliance_threshold"]),
                 "n_illuminated": int(np.sum(result.sab > 0)),
                 "n_triangles": body.n_triangles,
                 "level": level,

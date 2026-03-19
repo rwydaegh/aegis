@@ -9,6 +9,16 @@ from pathlib import Path
 import numpy as np
 
 from aegis.geometry.mesh import BodyMesh
+from aegis.viewer.config import DEFAULTS
+
+_config: dict = DEFAULTS
+
+
+def set_config(config: dict) -> None:
+    """Set the active config for scene_data operations."""
+    global _config
+    _config = config
+
 
 # ---------------------------------------------------------------------------
 # Material classification (from spike_viewer.py)
@@ -16,29 +26,34 @@ from aegis.geometry.mesh import BodyMesh
 
 
 def classify_material(r: int, g: int, b: int) -> str:
+    mc = _config["material_classification"]
     rf, gf, bf = r / 255, g / 255, b / 255
     h, s, v = colorsys.rgb_to_hsv(rf, gf, bf)
     hue = h * 360
 
-    if s < 0.08:
-        return "asphalt" if v < 0.35 else "concrete"
-    if v < 0.15:
+    if s < mc["saturation_gray_threshold"]:
+        return "asphalt" if v < mc["value_asphalt_threshold"] else "concrete"
+    if v < mc["value_dark_threshold"]:
         return "asphalt"
-    if 60 < hue < 150 and s > 0.15 and v > 0.2:
+    vhr1 = mc["vegetation_hue_range_1"]
+    if vhr1[0] < hue < vhr1[1] and s > mc["vegetation_sat_min_1"] and v > mc["vegetation_val_min_1"]:
         return "vegetation"
-    if 40 < hue < 60 and s > 0.25 and v > 0.25:
+    vhr2 = mc["vegetation_hue_range_2"]
+    if vhr2[0] < hue < vhr2[1] and s > mc["vegetation_sat_min_2"] and v > mc["vegetation_val_min_2"]:
         return "vegetation"
-    if (hue < 40 or hue > 330) and s > 0.15:
+    if (hue < mc["brick_hue_low"] or hue > mc["brick_hue_high"]) and s > mc["brick_sat_min"]:
         return "brick"
-    if 160 < hue < 280:
-        if s > 0.6 and v > 0.4:
+    bhr = mc["blue_hue_range"]
+    if bhr[0] < hue < bhr[1]:
+        if s > mc["water_sat_min"] and v > mc["water_val_min"]:
             return "water"
-        if s > 0.45 and v > 0.55:
+        if s > mc["glass_sat_min"] and v > mc["glass_val_min"]:
             return "glass"
         return "concrete"
-    if s < 0.15:
-        return "asphalt" if v < 0.35 else "concrete"
-    if 20 < hue < 50 and s < 0.4:
+    if s < mc["brick_sat_min"]:
+        return "asphalt" if v < mc["value_asphalt_threshold"] else "concrete"
+    bshr = mc["brick_secondary_hue_range"]
+    if bshr[0] < hue < bshr[1] and s < mc["brick_secondary_sat_max"]:
         return "brick"
     return "concrete"
 
@@ -233,7 +248,7 @@ def _transform_to_local(positions: np.ndarray, has_ecef: bool) -> np.ndarray:
         return positions
 
     max_coord = np.abs(positions).max()
-    if has_ecef and max_coord > 100000:
+    if has_ecef and max_coord > _config["ecef"]["detection_threshold"]:
         center_ecef = positions.mean(axis=0)
         positions = positions - center_ecef
         lon_rad = np.arctan2(center_ecef[1], center_ecef[0])
@@ -311,7 +326,7 @@ def load_voxels(
         exterior_only,
     )
 
-    has_ecef = np.abs(positions).max() > 100000 if len(positions) > 0 else False
+    has_ecef = np.abs(positions).max() > _config["ecef"]["detection_threshold"] if len(positions) > 0 else False
     positions = _transform_to_local(positions, has_ecef)
 
     return positions, colors, materials, grid_coords, voxel_size
@@ -381,7 +396,7 @@ def load_voxels_directory(
         exterior_only,
     )
 
-    has_ecef = np.abs(positions).max() > 100000 if len(positions) > 0 else False
+    has_ecef = np.abs(positions).max() > _config["ecef"]["detection_threshold"] if len(positions) > 0 else False
     positions = _transform_to_local(positions, has_ecef)
 
     return positions, colors, all_materials, grid_coords, voxel_size
@@ -455,27 +470,33 @@ def find_body_placement(positions: np.ndarray, materials: list[str]) -> list[flo
 
     Returns [x, y, z] in Z-up coordinates (z = vertical).
     """
+    mc = _config["material_classification"]
+    min_voxels = mc["min_voxels_for_material"]
+    pct = mc["ground_height_percentile"]
+    margin = mc["ground_height_margin"]
+    z_offset = mc["ground_center_z_offset"]
+
     mat_arr = np.array(materials)
 
     for target in ["asphalt", "concrete"]:
         mask = mat_arr == target
-        if mask.sum() < 5:
+        if mask.sum() < min_voxels:
             continue
         subset = positions[mask]
         z_vals = subset[:, 2]
-        z_low = np.percentile(z_vals, 10)
-        ground_mask = z_vals <= z_low + 2.0
+        z_low = np.percentile(z_vals, pct)
+        ground_mask = z_vals <= z_low + margin
         ground = subset[ground_mask]
         if len(ground) > 0:
             center = np.median(ground, axis=0)
-            center[2] = z_low + 1.0
+            center[2] = z_low + z_offset
             return center.tolist()
 
     z_vals = positions[:, 2]
-    z_low = np.percentile(z_vals, 10)
-    ground = positions[z_vals <= z_low + 2.0]
+    z_low = np.percentile(z_vals, pct)
+    ground = positions[z_vals <= z_low + margin]
     center = np.median(ground, axis=0) if len(ground) > 0 else positions.mean(axis=0)
-    center[2] = z_low + 1.0
+    center[2] = z_low + z_offset
     return center.tolist()
 
 

@@ -246,6 +246,7 @@
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
         // --- Config-driven constants ---
         const MATERIAL_COLORS = CFG.voxels.material_colors;
@@ -258,6 +259,7 @@
         let pathLines = [];
         let voxelMeshes = {};
         let sceneMeshes = [];
+        let glbGroup = null;
         let groundPlane = null;
         let wireframe = false;
         let bodyCenterWorld = new THREE.Vector3();
@@ -295,6 +297,8 @@
         let computeDebounceTimer = null;
         let isComputing = false;
         let computeTimerInterval = null;
+        let lastRecomputeTime = 0;
+        const RECOMPUTE_INTERVAL_MS = CFG.interaction.recompute_interval_ms;
 
         // --- Apply config to dynamic UI elements ---
         applyConfigToUI();
@@ -529,6 +533,9 @@
                 await loadVoxels(config.voxel_meta);
             }
 
+            // Load photorealistic GLB tiles if available
+            await loadGlbTiles();
+
             if (config.has_differt) {
                 hasDiffert = true;
                 document.getElementById('rt-section').style.display = 'block';
@@ -696,6 +703,42 @@
             }
         }
 
+        async function loadGlbTiles() {
+            try {
+                const resp = await fetch('/api/tiles');
+                const data = await resp.json();
+                if (!data.tiles || data.tiles.length === 0) return;
+
+                const loader = new GLTFLoader();
+                glbGroup = new THREE.Group();
+                glbGroup.visible = false;
+
+                if (data.transform) {
+                    const m = new THREE.Matrix4();
+                    m.fromArray(data.transform);
+                    glbGroup.applyMatrix4(m);
+                }
+
+                let loaded = 0;
+                for (const name of data.tiles) {
+                    try {
+                        const gltf = await new Promise((resolve, reject) => {
+                            loader.load('/api/tiles/' + name, resolve, undefined, reject);
+                        });
+                        glbGroup.add(gltf.scene);
+                        loaded++;
+                    } catch (e) {
+                        console.warn('Failed to load tile:', name, e);
+                    }
+                }
+
+                scene.add(glbGroup);
+                console.log('Loaded ' + loaded + '/' + data.tiles.length + ' GLB tiles');
+            } catch (e) {
+                console.warn('GLB tiles not available:', e);
+            }
+        }
+
         function buildLayerButtons() {
             const container = document.getElementById('layers');
             container.innerHTML = '';
@@ -723,6 +766,21 @@
                     const active = btn.classList.toggle('active');
                     btn.classList.toggle('inactive', !active);
                     bodyMesh.visible = active;
+                });
+                container.appendChild(btn);
+            }
+
+            if (glbGroup) {
+                const btn = document.createElement('button');
+                btn.className = 'layer-btn inactive';
+                btn.dataset.layer = '3dtiles';
+                btn.style.borderLeft = '4px solid #4fc3f7';
+                const nTiles = glbGroup.children.length;
+                btn.textContent = `3D Tiles (${nTiles})`;
+                btn.addEventListener('click', () => {
+                    const active = btn.classList.toggle('active');
+                    btn.classList.toggle('inactive', !active);
+                    glbGroup.visible = active;
                 });
                 container.appendChild(btn);
             }
@@ -1081,6 +1139,7 @@
                         body: JSON.stringify({
                             antenna_pos: scenePos,
                             body_offset: bodyOff,
+                            body_rotation_y: bodyRotationY,
                             level: level,
                             power_dbm: powerDbm,
                             max_order: maxOrder,
@@ -1141,6 +1200,7 @@
                         body: JSON.stringify({
                             antenna_pos: scenePos,
                             body_offset: bodyOff,
+                            body_rotation_y: bodyRotationY,
                             level: level,
                             power_dbm: powerDbm,
                             n_paths: nPaths,
@@ -1505,6 +1565,13 @@
             updateBodyTransform();
             if (antennaPos) drawPaths(antennaPos);
             _needRecompute = true;
+
+            // Periodic recompute while moving
+            const now = performance.now();
+            if (antennaPos && !isComputing && (now - lastRecomputeTime) >= RECOMPUTE_INTERVAL_MS) {
+                lastRecomputeTime = now;
+                computeDosimetry(antennaPos);
+            }
         }
     </script>
 </body>
