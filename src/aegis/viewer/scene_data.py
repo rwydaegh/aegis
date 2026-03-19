@@ -237,27 +237,39 @@ def _apply_filters(
     return grid_coords, positions, colors, materials
 
 
-def _transform_to_local(positions: np.ndarray, has_ecef: bool) -> np.ndarray:
+def _transform_to_local(
+    positions: np.ndarray,
+    has_ecef: bool,
+) -> tuple[np.ndarray, np.ndarray]:
     """Transform positions to local Z-up coordinates.
 
     ECEF data gets rotated to ENU (already Z-up).
     Local data (from voxelearth/glTF) is Y-up and gets converted to Z-up
     so the JS Z-to-Y swap produces correct Three.js Y-up output.
+
+    Returns (transformed_positions, transform_4x4).
     """
     if len(positions) == 0:
-        return positions
+        return positions, np.eye(4)
 
     max_coord = np.abs(positions).max()
     if has_ecef and max_coord > _config["ecef"]["detection_threshold"]:
         center_ecef = positions.mean(axis=0)
         positions = positions - center_ecef
         lon_rad = np.arctan2(center_ecef[1], center_ecef[0])
-        lat_rad = np.arctan2(center_ecef[2], np.sqrt(center_ecef[0] ** 2 + center_ecef[1] ** 2))
+        lat_rad = np.arctan2(
+            center_ecef[2],
+            np.sqrt(center_ecef[0] ** 2 + center_ecef[1] ** 2),
+        )
         R = ecef_to_enu_matrix(np.degrees(lon_rad), np.degrees(lat_rad))
         positions = positions @ R.T
+        M = np.eye(4)
+        M[:3, :3] = R
+        M[:3, 3] = -R @ center_ecef
     else:
         # Y-up [x, y_up, z_horiz] -> Z-up [x, -z_horiz, y_up]
-        positions = positions - positions.mean(axis=0)
+        center = positions.mean(axis=0)
+        positions = positions - center
         positions = np.column_stack(
             [
                 positions[:, 0],
@@ -265,8 +277,12 @@ def _transform_to_local(positions: np.ndarray, has_ecef: bool) -> np.ndarray:
                 positions[:, 1],
             ]
         )
+        R_swap = np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]], dtype=np.float64)
+        M = np.eye(4)
+        M[:3, :3] = R_swap
+        M[:3, 3] = -R_swap @ center
 
-    return positions
+    return positions, M
 
 
 # ---------------------------------------------------------------------------
@@ -327,9 +343,9 @@ def load_voxels(
     )
 
     has_ecef = np.abs(positions).max() > _config["ecef"]["detection_threshold"] if len(positions) > 0 else False
-    positions = _transform_to_local(positions, has_ecef)
+    positions, transform = _transform_to_local(positions, has_ecef)
 
-    return positions, colors, materials, grid_coords, voxel_size
+    return positions, colors, materials, grid_coords, voxel_size, transform
 
 
 def load_voxels_directory(
@@ -397,9 +413,9 @@ def load_voxels_directory(
     )
 
     has_ecef = np.abs(positions).max() > _config["ecef"]["detection_threshold"] if len(positions) > 0 else False
-    positions = _transform_to_local(positions, has_ecef)
+    positions, transform = _transform_to_local(positions, has_ecef)
 
-    return positions, colors, all_materials, grid_coords, voxel_size
+    return positions, colors, all_materials, grid_coords, voxel_size, transform
 
 
 # ---------------------------------------------------------------------------
