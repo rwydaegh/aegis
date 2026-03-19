@@ -7,7 +7,7 @@ Tissue: eps_r=17.0, sigma=25.0 S/m, freq=28 GHz.
 import numpy as np
 import pytest
 
-from aegis.tissue.fresnel import T0, fresnel_transmission, n_complex
+from aegis.tissue.fresnel import T0, fresnel_reflection, fresnel_transmission, n_complex
 
 # Skin at 28 GHz
 N_SKIN_28 = n_complex(17.0, 25.0, 28e9)
@@ -98,3 +98,48 @@ class TestRefractiveIndex:
         """|n| for skin at 28 GHz should be ~4.84."""
         n = n_complex(17.0, 25.0, 28e9)
         assert abs(n) == pytest.approx(4.84, abs=0.02)
+
+
+class TestFresnelReflection:
+    """Tests for fresnel_reflection amplitude coefficients."""
+
+    def test_normal_incidence_formula(self):
+        """At normal incidence |r_s| = |r_p| = |1 - n| / |1 + n|."""
+        n = n_complex(4.0, 0.0, 28e9)  # lossless dielectric, n=2
+        r_s, r_p = fresnel_reflection(1.0, n)
+        # r_s = (mu - xi)/(mu + xi) = (1 - n)/(1 + n) at normal incidence
+        assert r_s == pytest.approx((1 - n) / (1 + n), abs=1e-10)
+        # r_p = (n^2*mu - xi)/(n^2*mu + xi) = (n^2 - n)/(n^2 + n) = (n-1)/(n+1)
+        assert r_p == pytest.approx((n - 1) / (n + 1), abs=1e-10)
+        # |r_s| == |r_p| at normal incidence
+        assert abs(r_s) == pytest.approx(abs(r_p), abs=1e-10)
+
+    def test_normal_incidence_symmetry(self):
+        """|r_s| == |r_p| at normal incidence (signs differ by convention)."""
+        r_s, r_p = fresnel_reflection(1.0, N_SKIN_28)
+        assert abs(r_s) == pytest.approx(abs(r_p), abs=1e-10)
+
+    def test_reflection_transmission_conservation(self):
+        """Energy conservation: |r|^2 + T = 1 for lossless media."""
+        n = n_complex(4.0, 0.0, 28e9)
+        mu = np.cos(np.linspace(0.01, np.pi / 2, 50))
+        r_s, r_p = fresnel_reflection(mu, n)
+        T_s, T_p = fresnel_transmission(mu, n)
+        np.testing.assert_allclose(np.abs(r_s) ** 2 + T_s, 1.0, atol=1e-10)
+        np.testing.assert_allclose(np.abs(r_p) ** 2 + T_p, 1.0, atol=1e-10)
+
+    def test_reflection_bounded(self):
+        """|r_s|, |r_p| <= 1 for all angles."""
+        mu = np.cos(np.linspace(0, np.pi / 2, 91))
+        r_s, r_p = fresnel_reflection(mu, N_SKIN_28)
+        assert np.all(np.abs(r_s) <= 1.0 + 1e-10)
+        assert np.all(np.abs(r_p) <= 1.0 + 1e-10)
+
+    def test_vectorized_matches_scalar(self):
+        """Array input matches element-wise scalar calls."""
+        mu_arr = np.cos(np.radians([0, 30, 45, 60, 75]))
+        r_s_vec, r_p_vec = fresnel_reflection(mu_arr, N_SKIN_28)
+        for i, mu in enumerate(mu_arr):
+            r_s_s, r_p_s = fresnel_reflection(float(mu), N_SKIN_28)
+            assert r_s_vec[i] == pytest.approx(r_s_s, abs=1e-12)
+            assert r_p_vec[i] == pytest.approx(r_p_s, abs=1e-12)
