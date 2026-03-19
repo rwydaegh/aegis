@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='14' fill='%23667eea'/><text x='16' y='22' text-anchor='middle' fill='white' font-size='18' font-weight='bold'>A</text></svg>">
     <title>AEGIS Interactive Viewer</title>
+    <script>
+        // Config injected from server (deep-merged defaults + user overrides)
+        const CFG = {{ viewer_config | safe }};
+    </script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { overflow: hidden; background: #111; color: #eee; font-family: 'Segoe UI', sans-serif; }
@@ -83,13 +87,6 @@
         }
         #color-legend .legend-bar {
             width: 18px; height: 200px; border-radius: 3px; border: 1px solid #444;
-            background: linear-gradient(to bottom,
-                rgb(252,255,164),
-                rgb(249,142,9),
-                rgb(188,55,84),
-                rgb(87,16,110),
-                rgb(0,4,18)
-            );
         }
         #color-legend .legend-label {
             font-size: 10px; color: #ccc; text-align: right; width: 80px;
@@ -123,14 +120,6 @@
         .location-btns .ctrl-btn { font-size: 11px; padding: 4px 10px; }
         #cancelLocationBtn { display: none; background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); }
     </style>
-    <script type="importmap">
-    {
-        "imports": {
-            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-        }
-    }
-    </script>
 </head>
 <body>
     <div id="loading"><div class="spinner"></div>Loading scene...</div>
@@ -148,7 +137,7 @@
     </div>
 
     <div id="panel" style="display:none;">
-        <h2>AEGIS Viewer</h2>
+        <h2 id="viewer-title">AEGIS Viewer</h2>
 
         <!-- Dashboard -->
         <div class="section" id="dashboard">
@@ -161,30 +150,17 @@
             <div><span class="stat-label">Compliance:</span> <span class="stat-value" id="stat-compliance">--</span></div>
         </div>
 
-        <!-- Controls -->
+        <!-- Controls (populated from config) -->
         <div class="section">
             <div class="section-title">Parameters</div>
             <label>Fidelity level
-                <select id="levelSelect">
-                    <option value="0">Level 0 - Bound</option>
-                    <option value="1">Level 1 - Aggregate</option>
-                    <option value="2" selected>Level 2 - Geometric ReLU</option>
-                    <option value="3">Level 3 - Fresnel</option>
-                    <option value="4">Level 4 - Polarisation</option>
-                    <option value="5">Level 5 - Curvature</option>
-                    <option value="6">Level 6 - Diffraction</option>
-                </select>
+                <select id="levelSelect"></select>
             </label>
             <label>TX power (dBm)
-                <input type="number" id="powerInput" value="30" min="0" max="60" step="1">
+                <input type="number" id="powerInput">
             </label>
             <label>Paths
-                <select id="pathsSelect">
-                    <option value="1" selected>1 (single plane wave)</option>
-                    <option value="5">5 (multipath)</option>
-                    <option value="10">10 (multipath)</option>
-                    <option value="20">20 (rich multipath)</option>
-                </select>
+                <select id="pathsSelect"></select>
             </label>
         </div>
 
@@ -200,11 +176,7 @@
                 </select>
             </label>
             <label>Max reflections
-                <select id="maxOrderSelect">
-                    <option value="0" selected>0 (LOS only)</option>
-                    <option value="1">1 (+ single reflection)</option>
-                    <option value="2">2 (+ double reflection)</option>
-                </select>
+                <select id="maxOrderSelect"></select>
             </label>
             <div id="rt-status" style="font-size:11px;color:#888;margin-top:4px;"></div>
         </div>
@@ -216,7 +188,7 @@
                 <input type="text" id="locationInput" placeholder="e.g. Ghent, Belgium">
             </label>
             <label>Radius (m)
-                <input type="number" id="radiusInput" value="30" min="10" max="500" step="10">
+                <input type="number" id="radiusInput">
             </label>
             <label style="font-size:11px;margin-top:4px;">
                 <input type="checkbox" id="forceReload"> Force re-download
@@ -263,18 +235,20 @@
         ">Click the 3D scene to enable keyboard controls</div>
     </div>
 
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-        const MATERIAL_COLORS = {
-            concrete: [180, 180, 180],
-            asphalt: [80, 80, 80],
-            vegetation: [40, 160, 40],
-            water: [30, 100, 220],
-            brick: [200, 80, 50],
-            glass: [150, 210, 240],
-        };
+        // --- Config-driven constants ---
+        const MATERIAL_COLORS = CFG.voxels.material_colors;
 
         let scene, camera, renderer, controls, raycaster, mouse;
         let bodyMesh = null;
@@ -289,29 +263,30 @@
         let bodyCenterWorld = new THREE.Vector3();
         let bodyOffset = new THREE.Vector3();
         let bodyRotationY = 0;
-        let bodyGroundOffset = 0;  // -boundingBox.min.y so feet touch ground
-        const BODY_FACING_OFFSET = 0;  // STL face points +Z in Three.js; atan2(vx,vz) already gives correct heading
-        let voxelHeightmap = null;  // {key: maxY} for gravity
-        let voxelSize = 0.244;
+        let bodyGroundOffset = 0;
+        const BODY_FACING_OFFSET = Math.PI;
+        let voxelHeightmap = null;
+        let voxelSize = CFG.voxels.default_size_fallback;
         const keysDown = new Set();
         const clock = new THREE.Clock();
-        // --- Physics constants ---
-        const GRAVITY = 9.81;           // m/s² downward
-        const WALK_ACCEL = 25.0;        // m/s² lateral acceleration from input
-        const GROUND_FRICTION = 12.0;   // 1/s velocity damping on ground
-        const AIR_FRICTION = 0.5;       // 1/s velocity damping in air
-        const MAX_WALK_SPEED = 3.0;     // m/s lateral speed cap
-        const SPRINT_MULT = 2.5;        // shift multiplier
-        const JUMP_IMPULSE = 5.0;       // m/s upward
-        const ROT_ACCEL = 15.0;         // rad/s² angular acceleration from Q/E
-        const ROT_FRICTION = 8.0;       // 1/s angular damping
-        const MAX_ROT_SPEED = 3.0;      // rad/s angular speed cap
-        const FACING_SMOOTH = 8.0;      // 1/s lerp rate for body facing toward move dir
-        const GROUND_SNAP = 0.05;       // m tolerance for "on ground"
+
+        // --- Physics constants from config ---
+        const GRAVITY = CFG.physics.gravity;
+        const WALK_ACCEL = CFG.physics.walk_accel;
+        const GROUND_FRICTION = CFG.physics.ground_friction;
+        const AIR_FRICTION = CFG.physics.air_friction;
+        const MAX_WALK_SPEED = CFG.physics.max_walk_speed;
+        const SPRINT_MULT = CFG.physics.sprint_multiplier;
+        const JUMP_IMPULSE = CFG.physics.jump_impulse;
+        const ROT_ACCEL = CFG.physics.rotation_accel;
+        const ROT_FRICTION = CFG.physics.rotation_friction;
+        const MAX_ROT_SPEED = CFG.physics.max_rotation_speed;
+        const FACING_SMOOTH = CFG.physics.facing_smooth;
+        const GROUND_SNAP = CFG.physics.ground_snap;
 
         // --- Physics state ---
-        const bodyVelocity = new THREE.Vector3();  // m/s
-        let angularVelocity = 0;                   // rad/s
+        const bodyVelocity = new THREE.Vector3();
+        let angularVelocity = 0;
         let onGround = true;
         let hasDiffert = false;
         let currentScenePath = null;
@@ -321,64 +296,174 @@
         let isComputing = false;
         let computeTimerInterval = null;
 
+        // --- Apply config to dynamic UI elements ---
+        applyConfigToUI();
         init();
         loadScene();
 
+        function applyConfigToUI() {
+            // Title
+            document.getElementById('viewer-title').textContent = CFG.ui.title;
+            document.title = CFG.ui.title;
+
+            // Apply dynamic CSS from config
+            document.body.style.background = CFG.ui.colors.body_background;
+            document.body.style.fontFamily = CFG.ui.fonts.family;
+
+            const panel = document.getElementById('panel');
+            panel.style.top = CFG.ui.panel.position_top + 'px';
+            panel.style.left = CFG.ui.panel.position_left + 'px';
+            panel.style.maxWidth = CFG.ui.panel.max_width + 'px';
+            panel.style.padding = CFG.ui.panel.padding + 'px';
+            panel.style.borderRadius = CFG.ui.panel.border_radius + 'px';
+            panel.style.background = CFG.ui.panel.background;
+            panel.style.backdropFilter = `blur(${CFG.ui.panel.backdrop_blur}px)`;
+
+            document.querySelector('#panel h2').style.color = CFG.ui.colors.heading;
+
+            // Populate fidelity level select from config
+            const levelSelect = document.getElementById('levelSelect');
+            for (const lv of CFG.dosimetry.fidelity_levels) {
+                const opt = document.createElement('option');
+                opt.value = lv.value;
+                opt.textContent = lv.label;
+                if (lv.value === CFG.dosimetry.default_level) opt.selected = true;
+                levelSelect.appendChild(opt);
+            }
+
+            // Populate power input from config
+            const powerInput = document.getElementById('powerInput');
+            powerInput.value = CFG.dosimetry.default_power_dbm;
+            powerInput.min = CFG.dosimetry.power_input.min;
+            powerInput.max = CFG.dosimetry.power_input.max;
+            powerInput.step = CFG.dosimetry.power_input.step;
+
+            // Populate paths select from config
+            const pathsSelect = document.getElementById('pathsSelect');
+            for (const po of CFG.dosimetry.path_options) {
+                const opt = document.createElement('option');
+                opt.value = po.value;
+                opt.textContent = po.label;
+                if (po.value === CFG.dosimetry.default_n_paths) opt.selected = true;
+                pathsSelect.appendChild(opt);
+            }
+
+            // Populate max order select from config
+            const maxOrderSelect = document.getElementById('maxOrderSelect');
+            for (const mo of CFG.dosimetry.max_order_options) {
+                const opt = document.createElement('option');
+                opt.value = mo.value;
+                opt.textContent = mo.label;
+                if (mo.value === CFG.dosimetry.default_max_order) opt.selected = true;
+                maxOrderSelect.appendChild(opt);
+            }
+
+            // Populate location radius from config
+            const radiusInput = document.getElementById('radiusInput');
+            radiusInput.value = CFG.location.default_radius;
+            radiusInput.min = CFG.location.radius_min;
+            radiusInput.max = CFG.location.radius_max;
+            radiusInput.step = CFG.location.radius_step;
+
+            // Apply legend gradient from config
+            const legendBar = document.querySelector('#color-legend .legend-bar');
+            if (legendBar) {
+                legendBar.style.background = CFG.colormap.legend.gradient_css;
+            }
+
+            // Dynamic style overrides from config
+            const style = document.createElement('style');
+            style.textContent = `
+                #dashboard .pass { color: ${CFG.ui.colors.pass}; }
+                #dashboard .fail { color: ${CFG.ui.colors.fail}; }
+                #dashboard .stat-label { color: ${CFG.ui.colors.stat_label}; }
+                #dashboard .stat-value { color: ${CFG.ui.colors.stat_value}; }
+                .section-title { color: ${CFG.ui.colors.section_title}; }
+                .layer-btn { background: ${CFG.ui.colors.layer_btn_bg}; }
+                .layer-btn:hover { background: ${CFG.ui.colors.layer_btn_hover_bg}; }
+                .layer-btn.active { background: ${CFG.ui.colors.layer_btn_active_bg}; border-color: ${CFG.ui.colors.layer_btn_active_border}; }
+                .ctrl-btn { background: linear-gradient(135deg, ${CFG.ui.colors.button_gradient_start} 0%, ${CFG.ui.colors.button_gradient_end} 100%); }
+                .ctrl-btn.active { background: linear-gradient(135deg, ${CFG.ui.colors.button_gradient_end} 0%, ${CFG.ui.colors.button_gradient_start} 100%); }
+                #cancelLocationBtn { background: linear-gradient(135deg, ${CFG.ui.colors.cancel_gradient_start} 0%, ${CFG.ui.colors.cancel_gradient_end} 100%); }
+                select, input[type=number] { background: ${CFG.ui.colors.input_background}; color: ${CFG.ui.colors.input_text}; border-color: ${CFG.ui.colors.input_border}; }
+                #location-log { background: ${CFG.ui.colors.log_background}; }
+            `;
+            document.head.appendChild(style);
+        }
+
+        function hexToInt(hex) {
+            return parseInt(hex.replace('#', ''), 16);
+        }
+
         function init() {
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x111115);
+            scene.background = new THREE.Color(CFG.scene.background_color);
 
-            camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.01, 5000);
-            camera.position.set(2, 1.5, 2);
+            const camCfg = CFG.camera;
+            camera = new THREE.PerspectiveCamera(camCfg.fov, window.innerWidth / window.innerHeight, camCfg.near, camCfg.far);
+            camera.position.set(...camCfg.initial_position);
 
-            renderer = new THREE.WebGLRenderer({ antialias: true });
+            const renCfg = CFG.renderer;
+            renderer = new THREE.WebGLRenderer({ antialias: renCfg.antialias });
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-            renderer.shadowMap.enabled = true;
-            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-            renderer.toneMapping = THREE.ACESFilmicToneMapping;
-            renderer.toneMappingExposure = 1.2;
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, renCfg.max_pixel_ratio));
+            renderer.shadowMap.enabled = renCfg.shadows_enabled;
+            renderer.shadowMap.type = THREE[renCfg.shadow_map_type + 'ShadowMap'] || THREE.PCFSoftShadowMap;
+            renderer.toneMapping = THREE[renCfg.tone_mapping + 'ToneMapping'] || THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = renCfg.tone_mapping_exposure;
             document.body.appendChild(renderer.domElement);
 
+            const ctrlCfg = camCfg.controls;
             controls = new OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true;
-            controls.dampingFactor = 0.05;
-            controls.minDistance = 0.1;
-            controls.maxDistance = 2000;
+            controls.enableDamping = ctrlCfg.enable_damping;
+            controls.dampingFactor = ctrlCfg.damping_factor;
+            controls.minDistance = ctrlCfg.min_distance;
+            controls.maxDistance = ctrlCfg.max_distance;
 
             raycaster = new THREE.Raycaster();
             mouse = new THREE.Vector2();
 
-            // Lighting
-            scene.add(new THREE.AmbientLight(0x404050, 0.6));
+            // Lighting from config
+            const litCfg = CFG.lighting;
+            scene.add(new THREE.AmbientLight(hexToInt(litCfg.ambient.color), litCfg.ambient.intensity));
 
-            const sun = new THREE.DirectionalLight(0xfff5e6, 1.2);
-            sun.position.set(100, 200, 80);
-            sun.castShadow = true;
+            const sun = new THREE.DirectionalLight(hexToInt(litCfg.sun.color), litCfg.sun.intensity);
+            sun.position.set(...litCfg.sun.position);
+            sun.castShadow = litCfg.sun.cast_shadow;
             scene.add(sun);
 
-            scene.add(new THREE.DirectionalLight(0x6688cc, 0.4).translateX(-30).translateY(20));
-            scene.add(new THREE.HemisphereLight(0x8899bb, 0x444422, 0.3));
+            const fill = new THREE.DirectionalLight(hexToInt(litCfg.fill.color), litCfg.fill.intensity);
+            fill.position.set(...litCfg.fill.position);
+            scene.add(fill);
 
-            // Ground grid (visible, semi-transparent)
-            const grid = new THREE.GridHelper(200, 100, 0x444444, 0x2a2a2a);
-            grid.position.y = -0.01;
+            scene.add(new THREE.HemisphereLight(
+                hexToInt(litCfg.hemisphere.sky_color),
+                hexToInt(litCfg.hemisphere.ground_color),
+                litCfg.hemisphere.intensity,
+            ));
+
+            // Ground grid from config
+            const gridCfg = CFG.scene.grid;
+            const grid = new THREE.GridHelper(gridCfg.size, gridCfg.divisions, hexToInt(gridCfg.color), hexToInt(gridCfg.line_color));
+            grid.position.y = gridCfg.y_offset;
             scene.add(grid);
 
-            // Semi-transparent ground plane
-            const planeGeo = new THREE.PlaneGeometry(500, 500);
+            // Ground plane from config
+            const gpCfg = CFG.scene.ground_plane;
+            const planeGeo = new THREE.PlaneGeometry(gpCfg.size, gpCfg.size);
             planeGeo.rotateX(-Math.PI / 2);
             const planeMat = new THREE.MeshStandardMaterial({
-                color: 0x1a1a20, transparent: true, opacity: 0.5,
-                roughness: 1.0, metalness: 0.0,
+                color: hexToInt(gpCfg.color), transparent: true, opacity: gpCfg.opacity,
+                roughness: gpCfg.roughness, metalness: gpCfg.metalness,
             });
             groundPlane = new THREE.Mesh(planeGeo, planeMat);
             groundPlane.receiveShadow = true;
             scene.add(groundPlane);
 
-            // Click handler for antenna placement (track drag to avoid orbit conflicts)
+            // Click handler for antenna placement
             let mouseDownPos = null;
             let mouseDownTime = 0;
+            const clickCfg = CFG.interaction;
             renderer.domElement.addEventListener('pointerdown', (e) => {
                 if (e.button === 0) {
                     mouseDownPos = { x: e.clientX, y: e.clientY };
@@ -390,21 +475,19 @@
                 const dx = e.clientX - mouseDownPos.x;
                 const dy = e.clientY - mouseDownPos.y;
                 const elapsed = performance.now() - mouseDownTime;
-                // Only treat as click if mouse moved < 5px AND held < 300ms
-                if (dx * dx + dy * dy < 25 && elapsed < 300) onSceneClick(e);
+                const maxDragSq = clickCfg.click_max_drag_px * clickCfg.click_max_drag_px;
+                if (dx * dx + dy * dy < maxDragSq && elapsed < clickCfg.click_max_hold_ms) onSceneClick(e);
                 mouseDownPos = null;
             });
             window.addEventListener('resize', onResize);
 
-            // Continuous key tracking for smooth movement
+            // Continuous key tracking
             window.addEventListener('keydown', (e) => {
                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
                 keysDown.add(e.code);
-                // Prevent spacebar from scrolling page
                 if (e.code === 'Space') e.preventDefault();
-                // Arrow keys for antenna nudge (discrete, not continuous)
                 if (e.code.startsWith('Arrow') && antennaPos) {
-                    const step = e.shiftKey ? 3.0 : 1.0;
+                    const step = e.shiftKey ? CFG.antenna.nudge_step_shift : CFG.antenna.nudge_step;
                     if (e.code === 'ArrowUp') antennaPos.z -= step;
                     if (e.code === 'ArrowDown') antennaPos.z += step;
                     if (e.code === 'ArrowLeft') antennaPos.x -= step;
@@ -418,7 +501,7 @@
             window.addEventListener('keyup', (e) => keysDown.delete(e.code));
             window.addEventListener('blur', () => keysDown.clear());
 
-            // BUG-10: Show focus hint when WASD pressed but canvas doesn't have pointer focus
+            // Focus hint
             let canvasHasFocus = false;
             let focusHintTimer = null;
             renderer.domElement.addEventListener('pointerdown', () => { canvasHasFocus = true; });
@@ -428,7 +511,7 @@
                     const hint = document.getElementById('focus-hint');
                     hint.style.display = 'block';
                     clearTimeout(focusHintTimer);
-                    focusHintTimer = setTimeout(() => { hint.style.display = 'none'; }, 3000);
+                    focusHintTimer = setTimeout(() => { hint.style.display = 'none'; }, clickCfg.focus_hint_timeout_ms);
                 }
             });
 
@@ -438,23 +521,19 @@
         async function loadScene() {
             const config = await (await fetch('/api/config')).json();
 
-            // Load body mesh
             if (config.body_meta) {
                 await loadBody();
             }
 
-            // Load voxels
             if (config.has_voxels) {
                 await loadVoxels(config.voxel_meta);
             }
 
-            // Setup DiffeRT if available
             if (config.has_differt) {
                 hasDiffert = true;
                 document.getElementById('rt-section').style.display = 'block';
                 const rtSourceSelect = document.getElementById('rtSourceSelect');
 
-                // Add Sionna scenes as options
                 if (config.scenes && config.scenes.length > 0) {
                     for (const s of config.scenes) {
                         const opt = document.createElement('option');
@@ -466,7 +545,6 @@
 
                 rtSourceSelect.addEventListener('change', onRTSourceChange);
                 document.getElementById('rtEnabled').addEventListener('change', (e) => {
-                    // Always clear RT status and ray path lines on toggle
                     document.getElementById('rt-status').textContent = '';
                     for (const line of pathLines) scene.remove(line);
                     pathLines = [];
@@ -478,7 +556,7 @@
                 });
             }
 
-            // Show location loader (always visible, with guidance if API key missing)
+            // Show location loader
             const locSection = document.getElementById('location-section');
             locSection.style.display = 'block';
             if (!config.has_api_key) {
@@ -493,23 +571,18 @@
                 document.getElementById('loadLocationBtn').disabled = true;
             }
 
-            // Build layer buttons
             buildLayerButtons();
 
-            // Hide loading, show panel
             document.getElementById('loading').style.display = 'none';
             document.getElementById('panel').style.display = 'block';
 
-            // Place body at street level if placement info available
             if (config.body_placement && bodyMesh) {
                 const bp = config.body_placement;
-                // Convert Z-up [x,y,z] to Y-up [x,z,-y]
                 bodyOffset.set(bp[0], bp[2], -bp[1]);
                 bodyOffset.y = getGroundY(bodyOffset.x, bodyOffset.z, true);
                 updateBodyTransform();
             }
 
-            // Center camera
             centerCamera();
         }
 
@@ -524,7 +597,6 @@
             const normals = new Float32Array(buf, nVerts * 3 * 4, nVerts * 3);
 
             const geom = new THREE.BufferGeometry();
-            // Swap Y/Z for Three.js Y-up
             const posSwapped = new Float32Array(nVerts * 3);
             const normSwapped = new Float32Array(nVerts * 3);
             for (let i = 0; i < nVerts; i++) {
@@ -539,19 +611,21 @@
             geom.setAttribute('position', new THREE.BufferAttribute(posSwapped, 3));
             geom.setAttribute('normal', new THREE.BufferAttribute(normSwapped, 3));
 
-            // Default gray color
             const colors = new Float32Array(nVerts * 3);
-            colors.fill(0.5);
+            colors.fill(CFG.body.default_color);
             geom.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
+            const bodyCfg = CFG.body.material;
             const mat = new THREE.MeshStandardMaterial({
-                vertexColors: true, roughness: 0.6, metalness: 0.1, side: THREE.DoubleSide,
+                vertexColors: true,
+                roughness: bodyCfg.roughness,
+                metalness: bodyCfg.metalness,
+                side: bodyCfg.double_sided ? THREE.DoubleSide : THREE.FrontSide,
             });
             bodyMesh = new THREE.Mesh(geom, mat);
             bodyMesh.castShadow = true;
             scene.add(bodyMesh);
 
-            // Compute body center and ground offset (so feet touch ground)
             geom.computeBoundingBox();
             geom.boundingBox.getCenter(bodyCenterWorld);
             bodyGroundOffset = -geom.boundingBox.min.y;
@@ -568,14 +642,12 @@
             const colors = new Uint8Array(buf, n * 3 * 4, n * 3);
             const matIndices = new Uint8Array(buf, n * 3 * 4 + n * 3, n);
 
-            const vs = meta.voxel_size || 0.244;
+            const vs = meta.voxel_size || CFG.voxels.default_size_fallback;
             voxelSize = vs;
-            const cubeSize = vs * 0.95;
+            const cubeSize = vs * CFG.voxels.size_scale;
             const geometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
             const dummy = new THREE.Object3D();
-            const tmpColor = new THREE.Color();
 
-            // Group by material
             const groups = {};
             for (let i = 0; i < n; i++) {
                 const matName = materials[matIndices[i]];
@@ -583,13 +655,16 @@
                 groups[matName].push(i);
             }
 
+            const voxMatCfg = CFG.voxels.material;
             for (const [matName, indices] of Object.entries(groups)) {
                 const count = indices.length;
                 const mc = MATERIAL_COLORS[matName] || [200, 200, 200];
 
                 const matClass = new THREE.MeshStandardMaterial({
                     color: new THREE.Color(mc[0]/255, mc[1]/255, mc[2]/255),
-                    roughness: 0.85, metalness: 0.05, flatShading: true,
+                    roughness: voxMatCfg.roughness,
+                    metalness: voxMatCfg.metalness,
+                    flatShading: voxMatCfg.flat_shading,
                 });
                 const meshClass = new THREE.InstancedMesh(geometry, matClass, count);
                 meshClass.castShadow = true;
@@ -597,7 +672,6 @@
 
                 for (let j = 0; j < count; j++) {
                     const i = indices[j];
-                    // Z-up [x,y,z] -> Three.js Y-up [x,z,-y]
                     dummy.position.set(positions[i*3], positions[i*3+2], -positions[i*3+1]);
                     dummy.updateMatrix();
                     meshClass.setMatrixAt(j, dummy.matrix);
@@ -608,13 +682,13 @@
                 voxelMeshes[matName] = { classified: meshClass };
             }
 
-            // Build heightmap for gravity: max Three.js-Y at each quantized (X,Z) cell
-            const hmRes = vs * 2;
+            // Build heightmap for gravity
+            const hmRes = vs * CFG.voxels.heightmap_resolution_factor;
             voxelHeightmap = {};
             for (let i = 0; i < n; i++) {
-                const tx = positions[i*3];           // Three.js X
-                const ty = positions[i*3+2];         // Three.js Y (= Z-up Z)
-                const tz = -positions[i*3+1];        // Three.js Z (= -Z-up Y)
+                const tx = positions[i*3];
+                const ty = positions[i*3+2];
+                const tz = -positions[i*3+1];
                 const key = Math.round(tx / hmRes) + ',' + Math.round(tz / hmRes);
                 if (!(key in voxelHeightmap) || ty > voxelHeightmap[key]) {
                     voxelHeightmap[key] = ty;
@@ -639,10 +713,11 @@
             }
 
             if (bodyMesh) {
+                const bc = CFG.body.layer_button_color;
                 const btn = document.createElement('button');
                 btn.className = 'layer-btn active';
                 btn.dataset.layer = 'body';
-                btn.style.borderLeft = '4px solid rgb(255,140,0)';
+                btn.style.borderLeft = `4px solid rgb(${bc[0]},${bc[1]},${bc[2]})`;
                 btn.textContent = `body (${bodyMeta ? bodyMeta.n_triangles.toLocaleString() + ' tri' : ''})`;
                 btn.addEventListener('click', () => {
                     const active = btn.classList.toggle('active');
@@ -665,7 +740,7 @@
 
         window.loadLocation = function() {
             const location = document.getElementById('locationInput').value.trim();
-            const radius = parseInt(document.getElementById('radiusInput').value) || 30;
+            const radius = parseInt(document.getElementById('radiusInput').value) || CFG.location.default_radius;
             const force = document.getElementById('forceReload').checked;
 
             if (!location) return;
@@ -712,7 +787,6 @@
         };
 
         async function reloadVoxels() {
-            // Remove old voxel meshes from scene
             for (const [matName, meshes] of Object.entries(voxelMeshes)) {
                 scene.remove(meshes.classified);
                 meshes.classified.geometry.dispose();
@@ -720,7 +794,6 @@
             }
             voxelMeshes = {};
 
-            // Fetch new voxel data
             try {
                 const resp = await fetch('/api/voxels');
                 if (!resp.ok) return;
@@ -728,7 +801,6 @@
                 await loadVoxels(meta);
                 buildLayerButtons();
 
-                // Re-fetch config for updated body placement
                 const config = await (await fetch('/api/config')).json();
                 if (config.body_placement && bodyMesh) {
                     const bp = config.body_placement;
@@ -767,7 +839,6 @@
         // --- Antenna placement and dosimetry ---
 
         function onSceneClick(event) {
-            // Only on left click without modifier
             if (event.button !== 0 || event.ctrlKey || event.shiftKey) return;
 
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -775,7 +846,6 @@
 
             raycaster.setFromCamera(mouse, camera);
 
-            // Raycast against ground, voxels, and body
             const targets = [groundPlane];
             for (const meshes of Object.values(voxelMeshes)) {
                 targets.push(meshes.classified);
@@ -786,9 +856,7 @@
 
             const hit = hits[0];
             const pos = hit.point.clone();
-
-            // Place antenna slightly above hit point
-            pos.y += 2.0;
+            pos.y += CFG.antenna.placement_height_offset;
 
             placeAntenna(pos);
             computeDosimetry(pos);
@@ -796,29 +864,28 @@
 
         function placeAntenna(pos) {
             if (!antennaMesh) {
-                // Create antenna marker: cone + sphere
                 const group = new THREE.Group();
+                const antCfg = CFG.antenna;
 
                 const sphere = new THREE.Mesh(
-                    new THREE.SphereGeometry(0.08, 16, 16),
-                    new THREE.MeshStandardMaterial({ color: 0xff3333, emissive: 0x881111 }),
+                    new THREE.SphereGeometry(antCfg.sphere_radius, antCfg.sphere_segments, antCfg.sphere_segments),
+                    new THREE.MeshStandardMaterial({ color: hexToInt(antCfg.color), emissive: hexToInt(antCfg.emissive_color) }),
                 );
                 group.add(sphere);
 
                 const cone = new THREE.Mesh(
-                    new THREE.ConeGeometry(0.05, 0.15, 8),
-                    new THREE.MeshStandardMaterial({ color: 0xff3333, emissive: 0x881111 }),
+                    new THREE.ConeGeometry(antCfg.cone_radius, antCfg.cone_height, antCfg.cone_segments),
+                    new THREE.MeshStandardMaterial({ color: hexToInt(antCfg.color), emissive: hexToInt(antCfg.emissive_color) }),
                 );
-                cone.position.y = -0.12;
+                cone.position.y = antCfg.cone_y_offset;
                 cone.rotation.x = Math.PI;
                 group.add(cone);
 
-                // Pole
                 const pole = new THREE.Mesh(
-                    new THREE.CylinderGeometry(0.015, 0.015, 2, 8),
-                    new THREE.MeshStandardMaterial({ color: 0x888888 }),
+                    new THREE.CylinderGeometry(antCfg.pole_radius, antCfg.pole_radius, antCfg.pole_height, antCfg.pole_segments),
+                    new THREE.MeshStandardMaterial({ color: hexToInt(antCfg.pole_color) }),
                 );
-                pole.position.y = -1.2;
+                pole.position.y = -(antCfg.pole_height / 2 + antCfg.cone_height * 0.5);
                 group.add(pole);
 
                 antennaMesh = group;
@@ -827,17 +894,13 @@
 
             antennaMesh.position.copy(pos);
             antennaPos = pos.clone();
-
-            // Update path lines
             drawPaths(pos);
         }
 
         function drawPaths(antennaWorldPos) {
-            // Remove old lines
             for (const line of pathLines) scene.remove(line);
             pathLines = [];
 
-            // Remove old distance line and label
             if (distanceLine) { scene.remove(distanceLine); distanceLine = null; }
             if (distanceLabel) { scene.remove(distanceLabel); distanceLabel = null; }
 
@@ -846,42 +909,49 @@
             const bodyCenter = bodyCenterWorld.clone().add(bodyOffset);
             bodyCenter.y += bodyGroundOffset;
 
-            // Dashed distance line from antenna to body center
+            const dvCfg = CFG.distance_viz;
             const dist = antennaWorldPos.distanceTo(bodyCenter);
             const dashedGeo = new THREE.BufferGeometry().setFromPoints([antennaWorldPos, bodyCenter]);
             const dashedMat = new THREE.LineDashedMaterial({
-                color: 0xffffff, dashSize: 0.15, gapSize: 0.08,
-                transparent: true, opacity: 0.5,
+                color: hexToInt(dvCfg.line_color),
+                dashSize: dvCfg.dash_size,
+                gapSize: dvCfg.gap_size,
+                transparent: true,
+                opacity: dvCfg.line_opacity,
             });
             distanceLine = new THREE.Line(dashedGeo, dashedMat);
             distanceLine.computeLineDistances();
             scene.add(distanceLine);
 
-            // Distance label at midpoint using a sprite
             const midpoint = antennaWorldPos.clone().add(bodyCenter).multiplyScalar(0.5);
             const canvas = document.createElement('canvas');
-            canvas.width = 128; canvas.height = 32;
+            canvas.width = dvCfg.label_canvas_width;
+            canvas.height = dvCfg.label_canvas_height;
             const ctx = canvas.getContext('2d');
-            ctx.fillStyle = 'rgba(0,0,0,0.6)';
-            ctx.roundRect(0, 0, 128, 32, 6);
+            ctx.fillStyle = dvCfg.label_bg_color;
+            ctx.roundRect(0, 0, dvCfg.label_canvas_width, dvCfg.label_canvas_height, 6);
             ctx.fill();
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 18px sans-serif';
+            ctx.fillStyle = dvCfg.label_text_color;
+            ctx.font = dvCfg.label_font;
             ctx.textAlign = 'center';
-            ctx.fillText(dist.toFixed(1) + ' m', 64, 22);
+            ctx.fillText(dist.toFixed(1) + ' m', dvCfg.label_canvas_width / 2, dvCfg.label_canvas_height * 0.69);
 
             const texture = new THREE.CanvasTexture(canvas);
             const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false });
             distanceLabel = new THREE.Sprite(spriteMat);
             distanceLabel.position.copy(midpoint);
-            distanceLabel.position.y += 0.2;
-            distanceLabel.scale.set(1.0, 0.25, 1);
+            distanceLabel.position.y += dvCfg.label_y_offset;
+            distanceLabel.scale.set(...dvCfg.label_scale);
             scene.add(distanceLabel);
 
-            // Draw line from antenna to body center (path indicator)
             const points = [antennaWorldPos, bodyCenter];
             const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
-            const lineMat = new THREE.LineBasicMaterial({ color: 0xff6600, linewidth: 2, transparent: true, opacity: 0.6 });
+            const lineMat = new THREE.LineBasicMaterial({
+                color: hexToInt(dvCfg.path_line_color),
+                linewidth: 2,
+                transparent: true,
+                opacity: dvCfg.path_line_opacity,
+            });
             const line = new THREE.Line(lineGeo, lineMat);
             scene.add(line);
             pathLines.push(line);
@@ -891,7 +961,6 @@
             for (const [mat, meshes] of Object.entries(voxelMeshes)) {
                 meshes.classified.visible = visible;
             }
-            // Update layer buttons to match
             for (const btn of document.querySelectorAll('.layer-btn')) {
                 if (btn.dataset.layer && btn.dataset.layer !== 'body') {
                     btn.classList.toggle('active', visible);
@@ -904,13 +973,11 @@
             const val = document.getElementById('rtSourceSelect').value;
             if (!val || val === 'voxel') {
                 currentScenePath = null;
-                // Remove Sionna scene meshes and restore voxels
                 for (const m of sceneMeshes) scene.remove(m);
                 sceneMeshes = [];
                 setVoxelVisibility(true);
                 return;
             }
-            // Hide voxels when showing a Sionna scene
             setVoxelVisibility(false);
             const path = val.replace('sionna:', '');
             currentScenePath = path;
@@ -927,7 +994,7 @@
 
                 if (!resp.ok) {
                     statusEl.textContent = 'Failed to load scene';
-                    setVoxelVisibility(true);  // Restore voxels on failure
+                    setVoxelVisibility(true);
                     return;
                 }
 
@@ -935,18 +1002,15 @@
                 const buf = await resp.arrayBuffer();
                 currentScenePath = path;
 
-                // Remove old scene meshes
                 for (const m of sceneMeshes) scene.remove(m);
                 sceneMeshes = [];
 
-                // Parse binary: vertices (V*3 f32) + triangles (T*3 i32) + optional face_colors (T*3 f32)
                 const nV = meta.n_vertices;
                 const nT = meta.n_triangles;
                 const vertices = new Float32Array(buf, 0, nV * 3);
                 const triangles = new Int32Array(buf, nV * 3 * 4, nT * 3);
 
                 const geom = new THREE.BufferGeometry();
-                // Swap Y/Z for Three.js
                 const posSwapped = new Float32Array(nV * 3);
                 for (let i = 0; i < nV; i++) {
                     posSwapped[i*3] = vertices[i*3];
@@ -957,9 +1021,14 @@
                 geom.setIndex(new THREE.BufferAttribute(new Uint32Array(triangles), 1));
                 geom.computeVertexNormals();
 
+                const sCfg = CFG.sionna_scene;
                 const mat = new THREE.MeshStandardMaterial({
-                    color: 0x8899aa, roughness: 0.8, metalness: 0.1,
-                    side: THREE.DoubleSide, transparent: true, opacity: 0.7,
+                    color: hexToInt(sCfg.color),
+                    roughness: sCfg.roughness,
+                    metalness: sCfg.metalness,
+                    side: sCfg.double_sided ? THREE.DoubleSide : THREE.FrontSide,
+                    transparent: true,
+                    opacity: sCfg.opacity,
                 });
                 const mesh = new THREE.Mesh(geom, mat);
                 mesh.castShadow = true;
@@ -969,14 +1038,13 @@
                 statusEl.textContent = `Loaded: ${meta.n_triangles} tris`;
             } catch (e) {
                 statusEl.textContent = `Error: ${e.message}`;
-                setVoxelVisibility(true);  // Restore voxels on error
+                setVoxelVisibility(true);
             }
         }
 
         async function computeDosimetry(worldPos) {
             if (!bodyMesh) return;
 
-            // Show computing overlay with elapsed timer
             isComputing = true;
             const computeStart = performance.now();
             const computeTextEl = document.getElementById('computing-text');
@@ -998,14 +1066,11 @@
                 const useVoxelRT = rtEnabled && (rtSource === 'voxel');
                 const useSionnaRT = rtEnabled && rtSource.startsWith('sionna:');
 
-                // Convert Three.js Y-up back to Z-up for Python
                 const scenePos = [worldPos.x, -worldPos.z, worldPos.y];
-                // Body offset in Z-up coords
                 const bodyOff = [bodyOffset.x, -bodyOffset.z, bodyOffset.y];
 
                 let resp;
                 if (useVoxelRT) {
-                    // DiffeRT on voxel environment geometry
                     const maxOrder = parseInt(document.getElementById('maxOrderSelect').value);
                     const statusEl = document.getElementById('rt-status');
                     statusEl.textContent = 'Ray tracing through voxels...';
@@ -1038,7 +1103,6 @@
                     updateBodyColors(sabArray, stats);
                     updateDashboard(stats);
                 } else if (useSionnaRT) {
-                    // DiffeRT on Sionna XML scene
                     const maxOrder = parseInt(document.getElementById('maxOrderSelect').value);
                     const statusEl = document.getElementById('rt-status');
                     statusEl.textContent = 'Ray tracing (Sionna scene)...';
@@ -1071,7 +1135,6 @@
                     updateBodyColors(sabArray, stats);
                     updateDashboard(stats);
                 } else {
-                    // Synthetic paths
                     resp = await fetch('/api/compute', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -1101,7 +1164,6 @@
                 const statusEl = document.getElementById('rt-status');
                 if (statusEl) statusEl.textContent = `Error: ${err.message}`;
             } finally {
-                // Always hide computing overlay and stop timer
                 isComputing = false;
                 clearInterval(computeTimerInterval);
                 document.getElementById('computing').style.display = 'none';
@@ -1109,18 +1171,25 @@
         }
 
         function drawRTPaths(pathViz) {
-            // Remove old path lines
             for (const line of pathLines) scene.remove(line);
             pathLines = [];
 
+            const rtCfg = CFG.rt_paths;
             for (const pv of pathViz) {
                 const points = pv.vertices.map(v =>
-                    new THREE.Vector3(v[0], v[2], -v[1])  // Y/Z swap
+                    new THREE.Vector3(v[0], v[2], -v[1])
                 );
-                const color = pv.order === 0 ? 0x00ff44 : pv.order === 1 ? 0xff8800 : 0xff0088;
+                const color = pv.order === 0
+                    ? hexToInt(rtCfg.los_color)
+                    : pv.order === 1
+                        ? hexToInt(rtCfg.single_reflection_color)
+                        : hexToInt(rtCfg.multi_reflection_color);
                 const geo = new THREE.BufferGeometry().setFromPoints(points);
                 const mat = new THREE.LineBasicMaterial({
-                    color, linewidth: 2, transparent: true, opacity: 0.8,
+                    color,
+                    linewidth: rtCfg.line_width,
+                    transparent: true,
+                    opacity: rtCfg.opacity,
                 });
                 const line = new THREE.Line(geo, mat);
                 scene.add(line);
@@ -1136,14 +1205,7 @@
             const maxSab = stats.S_inc * stats.T0;
             const safeMax = Math.max(maxSab, 1e-12);
 
-            // Inferno colormap (simplified 5-stop)
-            const inferno = [
-                [0.0, 0.001, 0.014, 0.071],
-                [0.25, 0.341, 0.063, 0.431],
-                [0.5, 0.737, 0.216, 0.329],
-                [0.75, 0.976, 0.557, 0.035],
-                [1.0, 0.988, 1.0, 0.644],
-            ];
+            const inferno = CFG.colormap.stops;
 
             function sampleInferno(t) {
                 t = Math.max(0, Math.min(1, t));
@@ -1157,13 +1219,12 @@
                         ];
                     }
                 }
-                return [inferno[4][1], inferno[4][2], inferno[4][3]];
+                return [inferno[inferno.length-1][1], inferno[inferno.length-1][2], inferno[inferno.length-1][3]];
             }
 
             for (let f = 0; f < nFaces; f++) {
                 const t = sabPerFace[f] / safeMax;
                 const [r, g, b] = sampleInferno(t);
-                // 3 vertices per face
                 for (let v = 0; v < 3; v++) {
                     const idx = f * 3 + v;
                     colorAttr.setXYZ(idx, r, g, b);
@@ -1171,7 +1232,6 @@
             }
             colorAttr.needsUpdate = true;
 
-            // Update color legend
             const legendEl = document.getElementById('color-legend');
             legendEl.style.display = 'block';
             const maxVal = stats.peak_sab;
@@ -1180,12 +1240,12 @@
         }
 
         function updateDashboard(stats) {
+            const threshold = CFG.dosimetry.compliance_threshold;
             document.getElementById('stat-pabs').textContent = stats.p_abs_mw.toFixed(2) + ' mW';
             const peakVal = stats.peak_sab;
             document.getElementById('stat-peak').textContent =
                 (peakVal >= 0.001 ? peakVal.toFixed(3) : peakVal.toExponential(2)) + ' W/m\u00b2';
             document.getElementById('stat-sinc').textContent = stats.S_inc.toExponential(2) + ' W/m\u00b2';
-            // Use client-side distance (matches the sprite label) to avoid server mismatch
             const clientDist = antennaPos && bodyMesh
                 ? antennaPos.distanceTo(bodyCenterWorld.clone().add(bodyOffset).setY(bodyCenterWorld.y + bodyOffset.y + bodyGroundOffset))
                 : stats.distance_m;
@@ -1195,10 +1255,10 @@
 
             const compEl = document.getElementById('stat-compliance');
             if (stats.compliant) {
-                compEl.textContent = 'PASS (< 10 W/m\u00b2)';
+                compEl.textContent = `PASS (< ${threshold} W/m\u00b2)`;
                 compEl.className = 'stat-value pass';
             } else {
-                compEl.textContent = 'FAIL (\u2265 10 W/m\u00b2)';
+                compEl.textContent = `FAIL (\u2265 ${threshold} W/m\u00b2)`;
                 compEl.className = 'stat-value fail';
             }
         }
@@ -1236,7 +1296,7 @@
 
             switch (view) {
                 case 'front':
-                    camera.position.set(target.x, target.y + dist * 0.3, target.z + dist);
+                    camera.position.set(target.x, target.y + dist * 0.3, target.z - dist);
                     break;
                 case 'side':
                     camera.position.set(target.x + dist, target.y + dist * 0.3, target.z);
@@ -1254,7 +1314,6 @@
             target.y += bodyGroundOffset;
             const dist = getBodyViewDist();
             controls.target.copy(target);
-            // Use a fixed 3/4 view angle so the body is always well-framed
             camera.position.set(
                 target.x + dist * 0.6,
                 target.y + dist * 0.4,
@@ -1272,14 +1331,13 @@
             controls.target.y += bodyGroundOffset;
         }
 
-        // --- Ground height lookup for gravity ---
+        // --- Ground height lookup ---
 
         function getGroundY(x, z, wide) {
             if (!voxelHeightmap) return bodyOffset.y;
-            const hmRes = voxelSize * 2;
+            const hmRes = voxelSize * CFG.voxels.heightmap_resolution_factor;
             const cx = Math.round(x / hmRes);
             const cz = Math.round(z / hmRes);
-            // Search neighborhood: 3x3 for movement, 5x5 for initial placement
             const r = wide ? 2 : 1;
             let bestY = null;
             for (let dx = -r; dx <= r; dx++) {
@@ -1298,7 +1356,7 @@
             if (computeDebounceTimer) clearTimeout(computeDebounceTimer);
             computeDebounceTimer = setTimeout(() => {
                 if (antennaPos && !isComputing) computeDosimetry(antennaPos);
-            }, 200);
+            }, CFG.interaction.debounce_ms);
         }
 
         // Re-compute when parameters change
@@ -1324,8 +1382,7 @@
 
         function updateMovement(dt) {
             if (!bodyMesh) return;
-            // Clamp dt to avoid physics explosions on tab-away
-            dt = Math.min(dt, 0.1);
+            dt = Math.min(dt, CFG.physics.dt_clamp);
 
             const hasMove = keysDown.has('KeyW') || keysDown.has('KeyS') ||
                             keysDown.has('KeyA') || keysDown.has('KeyD');
@@ -1333,7 +1390,6 @@
             const wantsJump = keysDown.has('Space');
             const sprint = keysDown.has('ShiftLeft') || keysDown.has('ShiftRight') ? SPRINT_MULT : 1.0;
 
-            // Check if body is still (for recompute debounce)
             const speed = bodyVelocity.length();
             const isStill = speed < 0.01 && Math.abs(angularVelocity) < 0.01;
             if (isStill && !hasMove && !hasRot && !wantsJump) {
@@ -1344,18 +1400,18 @@
                 return;
             }
 
-            // --- Angular dynamics (Q/E rotation) ---
+            // Angular dynamics
             let angularAccel = 0;
             if (keysDown.has('KeyQ')) angularAccel += ROT_ACCEL * sprint;
             if (keysDown.has('KeyE')) angularAccel -= ROT_ACCEL * sprint;
 
             angularVelocity += angularAccel * dt;
-            angularVelocity -= angularVelocity * ROT_FRICTION * dt;  // damping
+            angularVelocity -= angularVelocity * ROT_FRICTION * dt;
             angularVelocity = THREE.MathUtils.clamp(angularVelocity, -MAX_ROT_SPEED * sprint, MAX_ROT_SPEED * sprint);
             if (Math.abs(angularVelocity) < 0.01) angularVelocity = 0;
             bodyRotationY += angularVelocity * dt;
 
-            // --- Lateral dynamics (WASD) ---
+            // Lateral dynamics
             const accel = new THREE.Vector3();
 
             if (hasMove) {
@@ -1377,17 +1433,14 @@
                 }
             }
 
-            // Apply friction (ground vs air)
             const friction = onGround ? GROUND_FRICTION : AIR_FRICTION;
             const lateralVel = new THREE.Vector3(bodyVelocity.x, 0, bodyVelocity.z);
             const frictionForce = lateralVel.clone().multiplyScalar(-friction);
             accel.add(frictionForce);
 
-            // Integrate lateral velocity
             bodyVelocity.x += accel.x * dt;
             bodyVelocity.z += accel.z * dt;
 
-            // Clamp lateral speed
             const maxSpeed = MAX_WALK_SPEED * sprint;
             const lateralSpeed = Math.sqrt(bodyVelocity.x ** 2 + bodyVelocity.z ** 2);
             if (lateralSpeed > maxSpeed) {
@@ -1396,13 +1449,12 @@
                 bodyVelocity.z *= scale;
             }
 
-            // Kill tiny lateral drift
             if (!hasMove && lateralSpeed < 0.02) {
                 bodyVelocity.x = 0;
                 bodyVelocity.z = 0;
             }
 
-            // --- Vertical dynamics (gravity + jump) ---
+            // Vertical dynamics
             const groundY = getGroundY(bodyOffset.x, bodyOffset.z);
 
             if (onGround) {
@@ -1410,15 +1462,12 @@
                     bodyVelocity.y = JUMP_IMPULSE;
                     onGround = false;
                 } else {
-                    // Snap to ground, kill downward velocity
                     bodyVelocity.y = 0;
                     bodyOffset.y = groundY;
                 }
             } else {
-                // Free fall
                 bodyVelocity.y -= GRAVITY * dt;
 
-                // Ground collision
                 if (bodyOffset.y + bodyVelocity.y * dt <= groundY) {
                     bodyOffset.y = groundY;
                     bodyVelocity.y = 0;
@@ -1426,18 +1475,15 @@
                 }
             }
 
-            // --- Integrate position ---
             bodyOffset.x += bodyVelocity.x * dt;
             bodyOffset.z += bodyVelocity.z * dt;
             if (!onGround) {
                 bodyOffset.y += bodyVelocity.y * dt;
             }
 
-            // Re-check ground after lateral move (walking off edges)
             const newGroundY = getGroundY(bodyOffset.x, bodyOffset.z);
             if (onGround) {
                 bodyOffset.y = newGroundY;
-                // Detect walking off an edge
                 if (Math.abs(newGroundY - groundY) > 1.0) {
                     onGround = false;
                 }
@@ -1447,10 +1493,9 @@
                 onGround = true;
             }
 
-            // --- Smooth body facing toward movement direction ---
+            // Smooth body facing
             if (lateralSpeed > 0.1) {
                 const targetAngle = Math.atan2(bodyVelocity.x, bodyVelocity.z);
-                // Shortest-arc lerp
                 let diff = targetAngle - bodyRotationY;
                 while (diff > Math.PI) diff -= 2 * Math.PI;
                 while (diff < -Math.PI) diff += 2 * Math.PI;
