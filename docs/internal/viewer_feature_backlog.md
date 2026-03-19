@@ -23,10 +23,10 @@ Dashed white line from antenna to body centroid. Distance label (sprite) at the 
 Front, Side, and Top buttons in a Camera section. Each snaps the camera to frame the body from that direction at a fixed distance. Replaces the old single "Reset camera" button.
 
 ### Focus on body
-Button that moves the camera to tightly frame the body at the current orbit direction. Useful after zooming out to explore the full voxel environment.
+Button that moves the camera to frame the body from a consistent 3/4 view angle. Useful after zooming out to explore the full voxel environment.
 
 ### Live recompute on body movement
 WASD movement triggers debounced recompute (200ms). Same for arrow-key antenna nudge. Computing overlay shows while the request is in flight.
 
 ### Loading spinner for recomputation
-"Computing..." overlay with spinner displayed during all dosimetry fetch calls. Disappears when the response arrives. Does not block camera interaction (pointer-events: none).
+"Computing..." overlay with spinner and elapsed time counter displayed during all dosimetry fetch calls. Disappears when the response arrives. Does not block camera interaction (pointer-events: none).

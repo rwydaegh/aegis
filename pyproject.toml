@@ -64,6 +64,9 @@ markers = [
 ]
 addopts = "-ra --strict-markers"
 
+[tool.codespell]
+ignore-words-list = "te,nd"
+
 [tool.coverage.run]
 source = ["aegis"]
 
