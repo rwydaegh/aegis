@@ -53,6 +53,7 @@ nav:
   - Developer guide:
     - Architecture: developer_guide/architecture.md
     - Testing: developer_guide/testing.md
+    - Claude Code workflow: developer_guide/claude_code_workflow.md
   - Reference:
     - API reference: reference/api.md
   - Internal:
@@ -67,6 +68,9 @@ nav:
     - Viewer bug report: internal/viewer_bug_report.md
     - Viewer feature backlog: internal/viewer_feature_backlog.md
     - Viewer testing prompt: internal/viewer_testing_prompt.md
+    - Implementation plan: internal/implementation_plan.md
+    - Execution plan: internal/plan.md
+    - Project proposal: internal/project_proposal.md
 
 plugins:
   - search:

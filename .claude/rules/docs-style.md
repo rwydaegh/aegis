@@ -1,3 +1,8 @@
+---
+paths: ["docs/**"]
+description: Documentation writing style rules for AEGIS. Loaded when editing docs.
+---
+
 # AEGIS documentation writing guide
 
 Complete reference for writing and maintaining AEGIS documentation. Consolidates style rules, MkDocs formatting, and content patterns.
