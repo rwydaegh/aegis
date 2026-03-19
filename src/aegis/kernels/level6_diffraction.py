@@ -1,12 +1,10 @@
-"""Level 6: Diffraction smoothing (ReLU -> GELU).
+"""Level 6: Diffraction smoothing (ReLU -> physical GELU).
 
-Replaces the sharp ReLU at the shadow boundary with a physical GELU:
-    ReLU_phys(mu) = mu * Phi(mu / sigma_j)
+Replaces the sharp ReLU at the shadow boundary with:
+    ReLU_phys(mu) = mu * (1/2)[1 + erf(mu / sigma_j)]
 
-where Phi is the standard normal CDF and
-    sigma_j = sqrt(lambda / (2 * pi * R_j))
-
-is set by the local radius of curvature R_j at the shadow boundary.
+where sigma_j = sqrt(lambda / (2 * pi * R_j)) is set by the local
+radius of curvature R_j at the shadow boundary (monograph eq:gelu).
 
 This smooths the shadow-boundary discontinuity over a Fresnel-zone width.
 For compliance, the sharp ReLU (Level 2-5) is sufficient because ICNIRP's
@@ -20,14 +18,17 @@ Cost: O(M * N), same as Level 3 but with GELU instead of ReLU.
 from __future__ import annotations
 
 import numpy as np
-from scipy.special import ndtr  # standard normal CDF
+from scipy.special import erf
 
 from aegis.constants import C_0
-from aegis.tissue.fresnel import fresnel_transmission
+from aegis.kernels._base import fresnel_weights
 
 
 def _physical_gelu(mu: np.ndarray, sigma: np.ndarray) -> np.ndarray:
-    """Physical GELU: mu * Phi(mu / sigma).
+    """Physical GELU: mu * (1/2)[1 + erf(mu / sigma)].
+
+    Uses erf directly as in monograph eq:gelu, not the standard normal
+    CDF Phi (which would introduce a spurious sqrt(2) factor).
 
     Parameters
     ----------
@@ -41,7 +42,7 @@ def _physical_gelu(mu: np.ndarray, sigma: np.ndarray) -> np.ndarray:
     # Avoid division by zero for zero-curvature triangles
     sigma_safe = np.where(sigma > 0, sigma, 1e-30)
     z = mu / sigma_safe[:, np.newaxis]
-    return mu * ndtr(z)
+    return mu * 0.5 * (1.0 + erf(z))
 
 
 def level6_diffraction(
@@ -85,9 +86,7 @@ def level6_diffraction(
     mu_gelu = _physical_gelu(mu, sigma)  # (M, N)
 
     # Fresnel at each incidence angle
-    mu_for_fresnel = np.clip(mu, 0.0, 1.0)
-    T_s, T_p = fresnel_transmission(mu_for_fresnel, n_tilde)
-    T_avg = 0.5 * (T_s + T_p)  # (M, N)
+    _T_s, _T_p, T_avg = fresnel_weights(mu, n_tilde)
 
     # Base Fresnel term with GELU
     sab_base = (T_avg * mu_gelu) @ power  # (M,)

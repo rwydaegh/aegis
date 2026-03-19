@@ -146,6 +146,7 @@ class DosimetryEngine:
         """Dispatch coherent levels 7-8."""
         sigma = self.tissue.sigma
         n_elements = paths.n_elements
+        x_star = None
 
         if level == 7:
             if precoder is None:
@@ -208,6 +209,7 @@ class DosimetryEngine:
             Q=Q,
             rho=rho,
             eigenvalues=eigenvalues,
+            x_star=x_star,
         )
 
     def _dispatch(

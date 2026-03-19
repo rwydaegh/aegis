@@ -243,9 +243,9 @@ def ray_mesh_any_hit(
     t_min: float,
 ) -> bool:
     """BVH traversal for any-hit ray-mesh intersection."""
-    inv_dx = 1.0 / dx if abs(dx) > 1e-15 else 1.0e30
-    inv_dy = 1.0 / dy if abs(dy) > 1e-15 else 1.0e30
-    inv_dz = 1.0 / dz if abs(dz) > 1e-15 else 1.0e30
+    inv_dx = 1.0 / dx if abs(dx) > 1e-15 else (1.0e30 if dx >= 0 else -1.0e30)
+    inv_dy = 1.0 / dy if abs(dy) > 1e-15 else (1.0e30 if dy >= 0 else -1.0e30)
+    inv_dz = 1.0 / dz if abs(dz) > 1e-15 else (1.0e30 if dz >= 0 else -1.0e30)
 
     stack = [0]
     bmin = bvh["bmin"]
