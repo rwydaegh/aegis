@@ -21,17 +21,31 @@ Ship a logical unit of work through the full GitHub workflow: issue, branch, com
 1. Analyze changes with `git status -s` and `git diff --stat`
 2. Run pre-flight: ruff check, ruff format, pytest fast tests
 3. If any files in `kernels/`, `tissue/`, or `coherent/` are in the diff, run `/physics-review` first
-4. Create GitHub issue with `gh issue create`
-4. Create feature branch from master
-5. Stage specific files and commit (reference issue with `Closes #N`)
-6. Push and create PR with `gh pr create`
-7. Squash merge with `gh pr merge --squash --delete-branch`
-8. Return to master, pull, verify tests pass
+4. List available labels with `gh label list` and pick appropriate ones (create new labels with `gh label create` if none fit)
+5. Create GitHub issue with `gh issue create --label <labels>`
+6. Create feature branch from master
+7. Stage specific files and commit (reference issue with `Closes #N`)
+8. Push and create PR with `gh pr create --label <labels>` (same labels as the issue, plus PR-specific ones like `ready for review`)
+9. Squash merge with `gh pr merge --squash --delete-branch`
+10. Return to master, pull, verify tests pass
+
+## Labels
+
+Always label both issues and PRs. Use multiple labels — be generous. Check existing labels first with `gh label list`. Create new ones freely if no existing label fits well.
+
+Common label categories to apply:
+- **Type**: `bug`, `enhancement`, `refactor`, `docs`, `test`, `chore`
+- **Area**: `physics`, `geometry`, `viewer`, `kernels`, `tissue`, `coherent`, `compliance`, `integration`, `viz`, `ci`
+- **Priority**: `high priority`, `low priority`
+- **Status**: `ready for review`, `blocked`
+
+Create new labels with: `gh label create "label-name" --color <hex> --description "short description"`
 
 ## Rules
 
 - One PR per logical unit. No bundling unrelated changes.
 - Every PR references an issue.
+- Both issues and PRs must have labels. No unlabeled items.
 - Pre-flight checks must pass before PR creation.
 - Squash merge to keep master clean.
 - Ship in dependency order when doing multiple phases.
