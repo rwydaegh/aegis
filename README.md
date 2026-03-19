@@ -21,6 +21,11 @@ uv pip install -e ".[dev]"
 pytest
 ```
 
+## Documentation and viewer
+
+- [Documentation site source](docs/index.md): run `py -3.12 -m mkdocs serve` after `pip install -e ".[docs]"`.
+- **3D viewer**: `py -3.12 -m aegis.viewer` (see [docs/user_guide/viewer.md](docs/user_guide/viewer.md)).
+
 ## License
 
 Apache-2.0

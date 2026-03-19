@@ -1,0 +1,30 @@
+---
+description: Flask + Three.js viewer (coordinates, config, port)
+globs: src/aegis/viewer/**,configs/*.json,configs/README.md
+---
+
+# Viewer (Cursor)
+
+## Coordinates
+
+- Python / AEGIS: **Z-up**
+- Three.js client: **Y-up**
+- Transforms belong in scene serialization and the client consistently. Do not change one side without the other.
+
+## Config
+
+- Defaults: `src/aegis/viewer/config.py` (`DEFAULTS`, deep-merge loader, scenarios helpers).
+- Example JSON: `configs/default.json`; scenario schema: `configs/README.md`.
+- Frontend reads injected `CFG` in `templates/index.html`.
+
+## Server and port
+
+- Default listen port is **5000** (see `server.port` in config). Kill stale listeners before restarting during development.
+
+## Ray tracing in the UI
+
+Only expose voxel ray tracing when voxels are loaded and DiffeRT is available (`voxel_rt_available` from `/api/config`). Sionna scenes use separate endpoints.
+
+## Testing browser flows
+
+Prefer the Playwright CLI for screenshots (see `.claude/skills/qa/SKILL.md`). Save artifacts under `test_screenshots/` (gitignored).

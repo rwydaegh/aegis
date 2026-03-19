@@ -18,8 +18,9 @@ py -3.12 -m pytest tests/test_fresnel.py::test_name   # single test
 py -3.12 -m ruff check src/ tests/                    # lint
 py -3.12 -m ruff format src/ tests/                   # format
 py -3.12 -m mkdocs serve                              # local docs preview
-py -3.12 -m aegis.viewer --location "Ghent, Belgium"  # launch 3D viewer
-py -3.12 -m aegis.viewer --config configs/my.json     # launch with custom config
+py -3.12 -m aegis.viewer --location "Ghent, Belgium"   # launch 3D viewer
+py -3.12 -m aegis.viewer --config configs/my.json      # custom config JSON
+py -3.12 -m aegis.viewer --scenario open_ground        # named scenario from config
 ```
 
 ## Architecture

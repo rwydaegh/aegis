@@ -2,10 +2,13 @@
 
 Usage
 -----
-    py -3.12 -m aegis.viewer                                # empty scene, load via UI
-    py -3.12 -m aegis.viewer --location "Ghent, Belgium"    # fetch and load
-    py -3.12 -m aegis.viewer --voxel-dir path/to/voxels/    # use local data
-    py -3.12 -m aegis.viewer --bbox 40                      # 40m scene box
+    py -3.12 -m aegis.viewer                                 # uses default_scenario from config
+    py -3.12 -m aegis.viewer --scenario open_ground         # same if that is the default
+    py -3.12 -m aegis.viewer --location "Ghent, Belgium"     # fetch voxels (overrides scenario voxels)
+    py -3.12 -m aegis.viewer --voxel-dir path/to/voxels/     # use local data
+    py -3.12 -m aegis.viewer --bbox 40                       # 40 m scene box
+
+Named scenarios live under ``scenarios`` in the JSON config (see ``config.py`` defaults).
 """
 
 from __future__ import annotations
@@ -93,13 +96,18 @@ def _fetch_location(location: str, radius: int, cache_dir: str | None) -> str | 
 
 
 def main() -> None:
-    from aegis.viewer.config import load_config
+    from aegis.viewer.config import apply_scenario_to_config, load_config, scenario_launch
 
     parser = argparse.ArgumentParser(description="AEGIS interactive 3D viewer")
     parser.add_argument(
         "--config",
         default=None,
         help="Path to JSON config file (see configs/default.json for schema)",
+    )
+    parser.add_argument(
+        "--scenario",
+        default=None,
+        help="Named scenario from config JSON (overrides default_scenario).",
     )
     parser.add_argument("--port", type=int, default=None)
     parser.add_argument("--host", default=None)
@@ -138,26 +146,65 @@ def main() -> None:
     # Load config (defaults merged with user overrides)
     cfg = load_config(args.config)
 
-    # CLI flags override config values
+    scenario_name = args.scenario if args.scenario is not None else cfg.get("default_scenario")
+    if isinstance(scenario_name, str) and not scenario_name.strip():
+        scenario_name = None
+    scen_launch = scenario_launch(cfg, scenario_name)
+
+    if scenario_name and scenario_name not in (cfg.get("scenarios") or {}):
+        print(f"  Warning: unknown scenario {scenario_name!r}, ignoring scenario launch block")
+        scen_launch = {}
+        scenario_name = None
+
+    # CLI flags override config and scenario launch
     host = args.host or cfg["server"]["host"]
     port = args.port or cfg["server"]["port"]
-    bbox = args.bbox if args.bbox is not None else cfg["location"]["default_radius"]
-    body_name = args.body or cfg["body"]["default_name"]
+    bbox = float(cfg["location"]["default_radius"])
+    if "bbox" in scen_launch and scen_launch["bbox"] is not None:
+        bbox = float(scen_launch["bbox"])
+    if args.bbox is not None:
+        bbox = float(args.bbox)
+
+    body_name = cfg["body"]["default_name"]
+    if "body" in scen_launch and scen_launch["body"]:
+        body_name = str(scen_launch["body"])
+    if args.body:
+        body_name = args.body
+
     no_open = args.no_open or not cfg["server"]["open_browser"]
 
     data_dir = args.data_dir
+    if data_dir is None and scen_launch.get("data_dir"):
+        data_dir = str(scen_launch["data_dir"])
     if data_dir is None:
         data_dir = str(Path(__file__).resolve().parent.parent.parent.parent.parent / "data")
 
-    # Resolve voxel source: explicit dir > explicit json > location fetch
-    voxel_dir = args.voxel_dir
-    voxel_json = args.voxel_json
+    voxel_dir = None
+    voxel_json = None
+    if scen_launch:
+        if "voxel_dir" in scen_launch:
+            voxel_dir = scen_launch["voxel_dir"]
+        if "voxel_json" in scen_launch:
+            voxel_json = scen_launch["voxel_json"]
+    if args.voxel_dir is not None:
+        voxel_dir = args.voxel_dir
+    if args.voxel_json is not None:
+        voxel_json = args.voxel_json
+
     if not voxel_dir and not voxel_json and args.location:
         voxel_dir = _fetch_location(
             args.location,
             int(bbox / 2),
             args.cache_dir,
         )
+
+    if scenario_name:
+        print(f"  Scenario: {scenario_name}")
+        desc = (cfg.get("scenarios") or {}).get(scenario_name, {}).get("description")
+        if desc:
+            print(f"    {desc}")
+
+    cfg = apply_scenario_to_config(cfg, scenario_name)
 
     _kill_previous_on_port(port)
 

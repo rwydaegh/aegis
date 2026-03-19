@@ -151,8 +151,18 @@ py -3.12 -m pytest tests/                     # all tests (~30s)
 py -3.12 -m ruff check src/ tests/            # lint
 ```
 
+## Interactive 3D viewer
+
+```bash
+py -3.12 -m pip install -e ".[rt]"   # optional: ray tracing in the UI
+py -3.12 -m aegis.viewer --config configs/default.json
+```
+
+See [Interactive viewer](user_guide/viewer.md) for scenarios, ports, and API overview.
+
 ## Where to go next
 
+- [Interactive viewer](user_guide/viewer.md) for the Flask + Three.js UI
 - [Fidelity levels](user_guide/fidelity_levels.md) for detailed physics of each level
 - [Tissue and Fresnel](user_guide/tissue.md) for dielectric properties and transmission coefficients
 - [Geometry](user_guide/geometry.md) for mesh operations, occlusion, and spatial averaging

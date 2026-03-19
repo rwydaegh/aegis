@@ -1,0 +1,35 @@
+---
+description: AEGIS repository defaults for Cursor (aligned with CLAUDE.md and .claude/rules)
+alwaysApply: true
+---
+
+# AEGIS (Cursor)
+
+Read `CLAUDE.md` in the repo root for build commands, architecture, and data paths.
+
+## Python
+
+Use **Python 3.12** for this project: `py -3.12` on Windows, or the path called out in `CLAUDE.md`.
+
+Before committing Python changes: `py -3.12 -m ruff check src/ tests/` and `py -3.12 -m pytest tests/ -m "not slow" -x`.
+
+## Shipping to GitHub
+
+When asked to ship or open a PR:
+
+1. Run the same pre-flight checks as above.
+2. Create a **GitHub issue** with labels (`gh issue create --label ...`).
+3. Branch from `master`: `feature/...`, `fix/...`, or `docs/...`.
+4. Commit a logical change (imperative subject, optional body). Reference the issue: `Closes #N` when appropriate.
+5. Push and open a PR with `gh pr create` and matching labels.
+6. Prefer **squash merge** and delete the branch when done (`gh pr merge --squash --delete-branch`).
+
+Do not stage secrets (`.env`), large binaries, or paths ignored by `.gitignore`. Use `git add` on specific paths, not blind `git add -A`.
+
+## Documentation
+
+User-facing docs live under `docs/` and are built with MkDocs (`py -3.12 -m mkdocs serve`). Follow sentence case headings and the style in `.claude/rules/docs-style.md` when editing documentation.
+
+## Parity with Claude Code
+
+Rules under `.claude/rules/` and skills under `.claude/skills/` are the canonical automation for Claude Code. This file summarizes what Cursor agents should do the same; path-scoped detail is in sibling `.mdc` rules where useful.

@@ -451,5 +451,6 @@
   "three_js": {
     "version": "0.160.0",
     "cdn": "https://unpkg.com/three@0.160.0"
-  }
+  },
+  "default_scenario": "open_ground"
 }
