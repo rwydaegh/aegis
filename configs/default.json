@@ -194,7 +194,8 @@
     "click_max_drag_px": 5,
     "click_max_hold_ms": 300,
     "debounce_ms": 200,
-    "focus_hint_timeout_ms": 3000
+    "focus_hint_timeout_ms": 3000,
+    "recompute_interval_ms": 500
   },
   "dosimetry": {
     "default_level": 2,

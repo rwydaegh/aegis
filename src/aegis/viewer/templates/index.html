@@ -974,7 +974,7 @@
                 }
 
                 scene.add(glbGroup);
-                console.log('Loaded ' + loaded + '/' + data.tiles.length + ' GLB tiles');
+                if (CFG.server && CFG.server.debug) console.log('Loaded ' + loaded + '/' + data.tiles.length + ' GLB tiles');
             } catch (e) {
                 console.warn('GLB tiles not available:', e);
             }
