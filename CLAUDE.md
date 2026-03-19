@@ -19,6 +19,7 @@ py -3.12 -m ruff check src/ tests/                    # lint
 py -3.12 -m ruff format src/ tests/                   # format
 py -3.12 -m mkdocs serve                              # local docs preview
 py -3.12 -m aegis.viewer --location "Ghent, Belgium"  # launch 3D viewer
+py -3.12 -m aegis.viewer --config configs/my.json     # launch with custom config
 ```
 
 ## Architecture
@@ -35,7 +36,7 @@ The data flow is: ray tracer -> `PropagationPaths` -> `DosimetryEngine.compute(b
 - `src/aegis/coherent/` - field channel, exposure operator Q, ECBF solver
 - `src/aegis/compliance/` - ICNIRP 2020 limits
 - `src/aegis/integration/` - DiffeRT ray tracer bridge (requires `pip install aegis[rt]`)
-- `src/aegis/viewer/` - Flask + Three.js 3D viewer (voxel scenes, body mesh, APD heatmap)
+- `src/aegis/viewer/` - Flask + Three.js 3D viewer (config-driven, `configs/default.json`)
 - `src/aegis/viz/` - matplotlib/plotly dashboards and comparison plots
 
 ## Theory (the monograph)

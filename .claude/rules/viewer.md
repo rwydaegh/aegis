@@ -21,12 +21,23 @@ description: Viewer-specific rules for the Flask + Three.js 3D frontend
 
 ## Architecture
 
-- Server: `src/aegis/viewer/server.py` (Flask, 12 endpoints)
-- Frontend: `src/aegis/viewer/templates/index.html` (Three.js SPA, ~1400 lines)
-- Compute: `src/aegis/viewer/compute.py` (dosimetry wrapper)
-- Scene data: `src/aegis/viewer/scene_data.py` (binary mesh/voxel serialization)
+- Config: `src/aegis/viewer/config.py` (DEFAULTS dict, deep-merge loader)
+- Server: `src/aegis/viewer/server.py` (Flask, 13 endpoints incl `/api/viewer-config`)
+- Frontend: `src/aegis/viewer/templates/index.html` (Three.js SPA, reads `CFG` global)
+- Compute: `src/aegis/viewer/compute.py` (dosimetry wrapper, accepts `config` kwarg)
+- Scene data: `src/aegis/viewer/scene_data.py` (binary serialization, uses `set_config()`)
 - Ray tracer: `src/aegis/viewer/raytracer.py` (DiffeRT bridge)
-- CLI entry: `src/aegis/viewer/__main__.py`
+- CLI entry: `src/aegis/viewer/__main__.py` (accepts `--config` flag)
+- Default config: `configs/default.json` (generated from Python defaults)
+
+## Configuration
+
+- All viewer constants live in `config.py` DEFAULTS. No hardcoded values elsewhere.
+- User configs in `configs/` deep-merge over defaults (only override what you need).
+- Launch: `py -3.12 -m aegis.viewer --config configs/my_scene.json`
+- Frontend gets config as `CFG` global via Jinja2 template injection.
+- When adding new values: add to DEFAULTS in config.py, regenerate default.json.
+- Never add hardcoded constants to other viewer files. Put them in config.py DEFAULTS.
 
 ## Known bugs
 
