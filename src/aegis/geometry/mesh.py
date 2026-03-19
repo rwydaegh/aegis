@@ -119,5 +119,25 @@ class BodyMesh:
         bmin, bmax = self.bounding_box
         return float(np.linalg.norm(bmax - bmin))
 
+    def save_binary_stl(self, path: str | Path) -> None:
+        """Write a binary STL (little-endian float32) for this mesh."""
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        n = self.n_triangles
+        header = b"AEGIS BodyMesh" + b"\0" * (80 - 14)
+        if len(header) != 80:
+            raise ValueError("STL header must be 80 bytes")
+
+        with path.open("wb") as f:
+            f.write(header)
+            f.write(struct.pack("<I", n))
+            for i in range(n):
+                ni = self.normals[i].astype(np.float32)
+                f.write(struct.pack("<3f", float(ni[0]), float(ni[1]), float(ni[2])))
+                for j in range(3):
+                    v = self.vertices[i, j].astype(np.float32)
+                    f.write(struct.pack("<3f", float(v[0]), float(v[1]), float(v[2])))
+                f.write(struct.pack("<H", 0))
+
     def __repr__(self) -> str:
         return f"BodyMesh(name={self.name!r}, n_triangles={self.n_triangles}, total_area={self.total_area:.6g})"

@@ -33,6 +33,7 @@ desktop.ini
 # Data (mesh files, databases - too large for git)
 data/
 *.stl
+!tests/fixtures/e2e_lab/e2e_icosahedron.stl
 *.obj
 *.db
 *.sqlite

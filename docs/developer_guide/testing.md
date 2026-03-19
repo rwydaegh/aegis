@@ -10,6 +10,7 @@ AEGIS uses five categories of tests:
 - **Engine tests** validate the incoherent dosimetry pipeline (Levels 0-6) from PropagationPaths through DosimetryResult on synthetic meshes.
 - **Coherent tests** validate the MIMO pipeline (Levels 7-8), including Q properties, corollaries 4.1-4.2, ECBF constraint satisfaction, and the Precoder dataclass.
 - **E2E tests** (marked slow) run the full pipeline on the Thelonious mesh.
+- **Viewer E2E lab** uses `configs/e2e_lab.json` and a tracked icosahedron STL in `tests/fixtures/e2e_lab/` (no voxel data). Run `test_viewer_e2e.py --profile lab` against a server started with that config; see `configs/README.md`.
 
 ## Running tests
 

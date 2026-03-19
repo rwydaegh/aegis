@@ -1,0 +1,32 @@
+{
+  "server": {
+    "port": 5070,
+    "open_browser": false
+  },
+  "default_scenario": "e2e_lab",
+  "scenarios": {
+    "e2e_lab": {
+      "description": "Tracked icosahedron fixture, no voxels, deterministic synthetic paths for automated E2E.",
+      "launch": {
+        "voxel_dir": null,
+        "voxel_json": null,
+        "body": "e2e_icosahedron",
+        "data_dir": "tests/fixtures/e2e_lab",
+        "bbox": 8.0
+      }
+    }
+  },
+  "body": {
+    "default_name": "e2e_icosahedron"
+  },
+  "dosimetry": {
+    "synthetic_paths": {
+      "angular_jitter_std": 0.0,
+      "seed": 42,
+      "scatter_power_range": [0.25, 0.25]
+    }
+  },
+  "raytracer": {
+    "default_body_center": [0.0, 0.0, 0.0]
+  }
+}
