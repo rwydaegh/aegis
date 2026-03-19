@@ -387,6 +387,7 @@ def create_app(
 
         params = request.get_json()
         antenna_pos = np.array(params.get("antenna_pos", [5, 0, 1]))
+        body_offset = np.array(params.get("body_offset", [0, 0, 0]), dtype=np.float64)
         level = params.get("level", 2)
         tissue_name = params.get("tissue", "skin_28ghz")
         power_dbm = params.get("power_dbm", 30.0)
@@ -398,13 +399,24 @@ def create_app(
 
             tissue = SKIN_28GHZ
 
-        body_center = body.centroids.mean(axis=0)
+        body_center = body.centroids.mean(axis=0) + body_offset
 
         # Build or get cached voxel DiffeRT scene
+        MAX_RT_TRIANGLES = 50_000
         try:
             ext_mask = extract_exterior(grid_coords)
             ext_grid = grid_coords[ext_mask]
             ext_pos = ext_grid.astype(float)
+
+            # Each exterior voxel face is 2 triangles, up to 6 faces per voxel
+            est_triangles = len(ext_pos) * 12
+            if est_triangles > MAX_RT_TRIANGLES and max_order > 0:
+                return jsonify(
+                    {
+                        "error": f"Scene too large for reflections ({est_triangles:,} triangles, "
+                        f"limit {MAX_RT_TRIANGLES:,}). Use LOS only (order 0) or reduce scene size."
+                    }
+                ), 400
 
             scene = get_or_build_voxel_scene(ext_pos, ext_grid, voxel_size=1.0)
         except Exception as e:
