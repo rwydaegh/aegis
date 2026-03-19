@@ -157,54 +157,92 @@ Raw photogrammetry meshes are a nightmare (holes, overlaps, degenerate triangles
 
 ## 4. Implementation Phases
 
-### Phase -1: Spike / Proof of Concept (Day 1-2)
+### Phase -1: Spike / Proof of Concept (DONE)
 **Goal:** Test the core loop before investing in architecture.
 
-**Spike A — Voxel environment:**
-1. Get Google Maps API key (3D Tiles + Elevation APIs)
-2. Download tiles: `python -m scripts.download_tiles -k KEY <lon> <lat> -r 200 -o tiles/`
-3. Voxelize: `node voxelize_tiles.js tiles/ voxels/ 200`
-4. Python: load voxel JSONs → numpy arrays → display in browser (Trame or plotly)
-5. Test color→material classification
+**Spike A — Voxel environment:** DONE
+- Python voxel loader (`VoxelScene.from_json()`) parses nodejs-voxelearth JSON output
+- Color-to-material classifier (concrete, asphalt, vegetation, water, brick, glass)
+- Synthetic urban scene generator for testing without Google API key
+- Interactive Plotly 3D scatter visualization in browser
+- Script: `examples/spike_a_voxel_env.py`
+- Pending: Google Maps API key needed for real 3D Tiles data
 
-**Spike B — Dosimetry heatmap:**
-1. Load Thelonious STL (reuse `scripts/_geom.py`)
-2. Compute Sab (reuse `scripts/apd_pipeline.py`)
-3. Render body mesh + heatmap in browser
+**Spike B — Dosimetry heatmap:** DONE
+- Loads Thelonious STL (23,826 triangles), computes Sab = S_inc * T_0 * ReLU[n.(-k)]
+- Interactive Plotly Mesh3d with per-face inferno colormap in browser
+- Full-mesh render: 5s for 23k triangles, peak Sab = 5.39 W/m² at S_inc=10
+- Script: `examples/spike_b_heatmap.py`
 
-**Decision point:** Which frontend approach works best?
+**Combined spike:** Body mesh inside voxel environment, single interactive scene.
+- Script: `examples/spike_combined.py`
 
-### Phase 0: Skeleton & DevOps (Day 2-3)
+**Decision: Plotly for prototyping, Three.js for production.**
+- Plotly works now with zero setup, good for development and demos
+- PyVista/Trame could not be tested (disk space), but adds a VTK dependency
+- For the final web frontend, Three.js (already used in `nodejs-voxelearth/visualizer.html`) will handle larger scenes and custom rendering
+- CesiumJS remains an option if we want streaming photorealistic tile backgrounds
+
+### Phase 0: Skeleton & DevOps (DONE)
 1. `mkdir aegis && cd aegis && git init`
 2. pyproject.toml, src/aegis/__init__.py, tests/conftest.py
 3. .pre-commit-config.yaml, .github/workflows/ci.yml, .gitignore
 4. `uv pip install -e ".[dev]"` works, `pytest` passes, CI green
 5. Push to GitHub
 
-### Phase 1: Tissue Physics (Day 3-6)
-Extract from scripts into `aegis.tissue.*`:
-- `scripts/_fresnel.py` → `aegis.tissue.fresnel`
+### Phase 1: Tissue Physics (DONE)
+Extracted from scripts into `aegis.tissue.*`:
+- `scripts/_fresnel.py` → `aegis.tissue.fresnel` (n_complex, fresnel_transmission, T0)
 - `scripts/mie_theory_corrected.py` → `aegis.tissue.database` + `aegis.tissue.cole_cole`
 - `scripts/apd_pipeline.py:42-60` → `aegis.tissue.dielectric` (TissueModel)
-- Golden tests: Tables 1, 7, 9
-- **Deliverable:** `TissueModel.from_database("Skin").T0(28e9)` → ~0.539
+- Golden tests: monograph Tables 1, 4, 5. Mie regression canary.
+- 50 tests, all passing. Lint clean.
+- **Deliverable:** `TissueModel.from_database("Skin", 28e9).T0` → 0.536
+- Hand-off: `docs/phase1_handoff.md`
 
-### Phase 2: Body Geometry (Day 6-11)
-Extract into `aegis.geometry.*`:
-- `scripts/_geom.py` → `aegis.geometry.mesh`
-- `scripts/compute_exposure_fraction_eta.py` → `aegis.geometry.occlusion`
-- `scripts/compute_body_directivity.py` → `aegis.geometry.directivity`
-- **Deliverable:** `BodyMesh.load("thelonious.stl").compute_ambient_occlusion(512)` works
+### Phase 2: Body Geometry (DONE)
+Extracted from scripts into `aegis.geometry.*`:
+- `scripts/_geom.py` → `aegis.geometry.mesh` (BodyMesh dataclass, STL loading)
+- `scripts/compute_exposure_fraction_eta.py` → `aegis.geometry.occlusion` (BVH, ray tracing, AO)
+- `scripts/compute_body_directivity.py` → `aegis.geometry.directivity` (D(k_hat), SH compression)
+- `scripts/compute_projected_area_table.py` → `aegis.geometry.projected_area` (A_perp LUT, Fibonacci sphere)
+- `scripts/verify_cauchy_fixes.py` → `aegis.geometry.cauchy` (Cauchy formula)
+- `scripts/sab_demo.py` → `aegis.geometry.averaging` (ICNIRP 4 cm^2 averaging)
+- 42 geometry tests (35 unit + 7 slow). 77 total tests, all passing. Lint clean.
+- **Deliverable:** `BodyMesh.load("thelonious.stl").total_area` works, A_perp LUT, directivity, AO
+- Hand-off: `docs/phase2_handoff.md`
 
-### Phase 3: Incoherent Engine (Day 11-21)
-Levels 0-6:
-- `scripts/apd_pipeline.py:73-120` → `aegis.kernels.level2_geometric`
-- New: DosimetryEngine, PropagationPaths, DosimetryResult
-- E2E tests, Mie regression, property tests
+### Phase 3: Incoherent Engine (DONE)
+Extracted from `scripts/apd_pipeline.py` into `aegis.kernels.*` and `aegis.engine`:
+- `aegis.paths` (PropagationPaths dataclass, from_powers constructor)
+- `aegis.result` (DosimetryResult dataclass, compliance properties)
+- `aegis.engine` (DosimetryEngine, level dispatch 0-6)
+- `aegis.kernels.level0_bound` (O(1) worst-case bound)
+- `aegis.kernels.level1_aggregate` (O(N) via SH directivity)
+- `aegis.kernels.level2_geometric` (O(MN) ReLU map with T0)
+- `aegis.kernels.level3_fresnel` (O(MN) with angle-dependent Tavg)
+- `aegis.kernels.level4_polarisation` (+ q * DeltaT/2 correction)
+- `aegis.kernels.level5_curvature` (+ H/k * ReLU^2)
+- `aegis.kernels.level6_diffraction` (ReLU -> physical GELU)
+- 39 new engine tests (PropagationPaths, DosimetryResult, all levels, consistency). 116 total tests, all passing. Lint clean.
 - **Deliverable:** `engine.compute(body, paths, level=2)` returns correct results
+- Version bumped to 0.1.0
 
-### Phase 4: Coherent MIMO (Day 21-36)
-Levels 7-8: field channel G, exposure operator Q, ECBF solver
+### Phase 4: Coherent MIMO (DONE)
+Extracted from monograph Part III into `aegis.coherent.*` and `aegis.kernels.level7/8`:
+- `aegis.tissue.fresnel` extended with `fresnel_amplitude()`, `xi_from_mu()`
+- `aegis.coherent.fresnel_operator` (TE/TM basis, F_n operator, Approximation 1)
+- `aegis.coherent.field_channel` (G(r) from paths)
+- `aegis.coherent.body_channel` (G_tilde with depth coupling, Approximation 2)
+- `aegis.coherent.exposure_operator` (Q matrix, eigendecomposition, rho)
+- `aegis.coherent.ecbf` (QCQP solver via bisection in Q eigenbasis)
+- `aegis.precoder` (Precoder dataclass, MRT and ECBF constructors)
+- `aegis.kernels.level7_coherent` (S_ab = norm(G_tilde @ x)^2)
+- `aegis.kernels.level8_ecbf` (ECBF-optimised S_ab)
+- 26 new coherent tests (Corollaries 4.1-4.2, Q Hermitian PSD, ECBF constraint satisfaction). 133 total fast tests, all passing. Lint clean.
+- **Deliverable:** `engine.compute(body, paths, level=7, precoder=p)` returns S_ab, Q, eigenvalues, rho
+- Version bumped to 0.2.0
+- Hand-off: `docs/phase4_handoff.md`
 
 ### Phase 5: Web Visualization (Day 36+)
 Based on Phase -1 findings — either all-Python (Trame) or JS+Python (CesiumJS/Three.js + FastAPI)
