@@ -72,6 +72,37 @@ def fresnel_transmission(mu: np.ndarray, n_tilde: complex) -> tuple[np.ndarray, 
     return T_s, T_p
 
 
+def fresnel_reflection(mu: np.ndarray, n_tilde: complex) -> tuple[np.ndarray, np.ndarray]:
+    """Fresnel amplitude reflection coefficients for TE (s) and TM (p).
+
+    Parameters
+    ----------
+    mu
+        cos(theta_i), the cosine of the incidence angle. Scalar or array.
+    n_tilde
+        Complex refractive index of the medium.
+
+    Returns
+    -------
+    r_s, r_p
+        Complex TE and TM amplitude reflection coefficients.
+    """
+    mu = np.asarray(mu, dtype=complex)
+    scalar_input = mu.ndim == 0
+    mu = np.atleast_1d(mu)
+
+    n2 = n_tilde**2
+    xi = np.sqrt(n2 - 1 + mu**2)
+    xi = np.where(np.real(xi) < 0, -xi, xi)
+
+    r_s = (mu - xi) / (mu + xi)
+    r_p = (n2 * mu - xi) / (n2 * mu + xi)
+
+    if scalar_input:
+        return complex(r_s[0]), complex(r_p[0])
+    return r_s, r_p
+
+
 def fresnel_amplitude(mu: np.ndarray, n_tilde: complex) -> tuple[np.ndarray, np.ndarray]:
     """Fresnel amplitude transmission coefficients for TE (s) and TM (p).
 

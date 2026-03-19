@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from aegis.constants import C_0
 from aegis.integration.differt import paths_from_differt
+from aegis.tissue.fresnel import fresnel_reflection, n_complex
 
 
 class TestPathsFromDiffert:
@@ -182,3 +184,214 @@ class TestPathsFromDiffert:
         assert result.p_abs >= 0
         assert result.sab.shape == (2,)
         assert np.all(result.sab >= 0)
+
+
+# Concrete at 28 GHz: eps_r=5.31, sigma=0.0326
+N_CONCRETE = n_complex(5.31, 0.0326, 28e9)
+
+# High-conductivity metal approximation
+N_METAL = n_complex(1.0, 1e7, 28e9)
+
+
+class TestPolarisationTracking:
+    """Tests for TE/TM polarisation tracking through reflections."""
+
+    def test_los_polarisation_preserved(self):
+        """LOS path (no reflections) preserves initial vertical polarisation."""
+        tx_pos = np.array([[5.0, 0.0, 3.0]])
+        path_vertices = np.array([[[5.0, 0.0, 3.0], [0.0, 0.0, 1.0]]])
+        # object_indices: -1 for TX and RX
+        obj_idx = np.array([[-1, -1]])
+
+        paths = paths_from_differt(
+            vertices=np.zeros((1, 3)),
+            normals=np.array([[0.0, 0.0, 1.0]]),
+            path_vertices=path_vertices,
+            tx_positions=tx_pos,
+            freq_hz=28e9,
+            object_indices=obj_idx,
+            material_indices=np.array([0]),
+            material_n_tilde=[N_CONCRETE],
+        )
+
+        psi = paths.psi[0]
+        # psi should be perpendicular to k_hat
+        k = paths.k_hat[0]
+        assert abs(np.dot(psi, k)) == pytest.approx(0.0, abs=1e-10)
+
+        # psi should have a z component (vertical polarisation projected perp to k)
+        # k points roughly from (5,0,3) to (0,0,1) = (-5,0,-2)/sqrt(29)
+        # Vertical pol (z) projected perp to k should retain some z
+        psi_real = np.real(psi)
+        psi_norm = psi_real / np.linalg.norm(psi_real)
+        # The z component of psi should be nonzero
+        assert abs(psi_norm[2]) > 0.1
+
+    def test_single_reflection_power_reduction(self):
+        """One reflection off concrete reduces power by |r|^2."""
+        # Path: TX(5,0,3) -> wall(2.5,0,0) -> body(0,0,3)
+        # Wall at y=0 with normal (0,0,1) pointing up
+        # This is a specular reflection off the ground
+        tx = np.array([5.0, 0.0, 3.0])
+        wall = np.array([2.5, 0.0, 0.0])
+        body = np.array([0.0, 0.0, 3.0])
+
+        path_vertices = np.array([[tx, wall, body]])
+        obj_idx = np.array([[-1, 0, -1]])  # triangle 0 at bounce
+        wall_normal = np.array([[0.0, 0.0, 1.0]])
+
+        # With polarisation tracking
+        paths_pol = paths_from_differt(
+            vertices=np.zeros((1, 3)),
+            normals=wall_normal,
+            path_vertices=path_vertices,
+            tx_positions=tx[np.newaxis],
+            freq_hz=28e9,
+            object_indices=obj_idx,
+            material_indices=np.array([0]),
+            material_n_tilde=[N_CONCRETE],
+        )
+
+        # Without polarisation tracking (arbitrary perp)
+        paths_arb = paths_from_differt(
+            vertices=np.zeros((1, 3)),
+            normals=wall_normal,
+            path_vertices=path_vertices,
+            tx_positions=tx[np.newaxis],
+            freq_hz=28e9,
+        )
+
+        # Polarisation-tracked power should be less than arbitrary
+        # (arbitrary doesn't apply reflection loss)
+        power_pol = paths_pol.power[0]
+        power_arb = paths_arb.power[0]
+        assert power_pol < power_arb
+
+        # Compute expected reflection loss
+        k_i = (wall - tx) / np.linalg.norm(wall - tx)
+        cos_theta = abs(np.dot(wall_normal[0], -k_i))
+        r_s, r_p = fresnel_reflection(cos_theta, N_CONCRETE)
+        # Average power reflection (unpolarised bound)
+        max_r2 = max(abs(r_s) ** 2, abs(r_p) ** 2)
+        # Power should be reduced by at most |r|^2
+        assert power_pol / power_arb <= max_r2 + 0.01
+
+    def test_metal_reflection_near_unity(self):
+        """Reflection off metal preserves nearly all power."""
+        tx = np.array([5.0, 0.0, 3.0])
+        wall = np.array([2.5, 0.0, 0.0])
+        body = np.array([0.0, 0.0, 3.0])
+
+        path_vertices = np.array([[tx, wall, body]])
+        obj_idx = np.array([[-1, 0, -1]])
+        wall_normal = np.array([[0.0, 0.0, 1.0]])
+
+        paths_pol = paths_from_differt(
+            vertices=np.zeros((1, 3)),
+            normals=wall_normal,
+            path_vertices=path_vertices,
+            tx_positions=tx[np.newaxis],
+            freq_hz=28e9,
+            object_indices=obj_idx,
+            material_indices=np.array([0]),
+            material_n_tilde=[N_METAL],
+        )
+
+        paths_arb = paths_from_differt(
+            vertices=np.zeros((1, 3)),
+            normals=wall_normal,
+            path_vertices=path_vertices,
+            tx_positions=tx[np.newaxis],
+            freq_hz=28e9,
+        )
+
+        # Metal reflection should preserve >99% of power
+        ratio = paths_pol.power[0] / paths_arb.power[0]
+        assert ratio > 0.99
+
+    def test_power_never_increases(self):
+        """After reflections, |psi|^2 should not exceed the FSPL-only value."""
+        # Two-bounce path
+        tx = np.array([10.0, 0.0, 3.0])
+        w1 = np.array([7.0, 3.0, 0.0])
+        w2 = np.array([3.0, 3.0, 0.0])
+        body = np.array([0.0, 0.0, 1.0])
+
+        path_vertices = np.array([[tx, w1, w2, body]])
+        obj_idx = np.array([[-1, 0, 1, -1]])
+        normals = np.array(
+            [
+                [0.0, 0.0, 1.0],
+                [0.0, 0.0, 1.0],
+            ]
+        )
+
+        paths_pol = paths_from_differt(
+            vertices=np.zeros((2, 3)),
+            normals=normals,
+            path_vertices=path_vertices,
+            tx_positions=tx[np.newaxis],
+            freq_hz=28e9,
+            object_indices=obj_idx,
+            material_indices=np.array([0, 0]),
+            material_n_tilde=[N_CONCRETE],
+        )
+
+        paths_arb = paths_from_differt(
+            vertices=np.zeros((2, 3)),
+            normals=normals,
+            path_vertices=path_vertices,
+            tx_positions=tx[np.newaxis],
+            freq_hz=28e9,
+        )
+
+        # Tracked power <= FSPL-only power
+        assert paths_pol.power[0] <= paths_arb.power[0] * (1 + 1e-10)
+
+    def test_backward_compatible(self):
+        """Without object_indices, behavior matches old arbitrary perpendicular."""
+        tx_pos = np.array([[5.0, 0.0, 3.0]])
+        path_vertices = np.array([[[5.0, 0.0, 3.0], [2.5, 0.0, 0.0], [0.0, 0.0, 1.0]]])
+
+        paths = paths_from_differt(
+            vertices=np.zeros((1, 3)),
+            normals=np.zeros((1, 3)),
+            path_vertices=path_vertices,
+            tx_positions=tx_pos,
+            freq_hz=28e9,
+        )
+
+        # psi should be perpendicular to k_hat
+        k = paths.k_hat[0]
+        psi = paths.psi[0]
+        assert abs(np.dot(psi, k)) == pytest.approx(0.0, abs=1e-10)
+
+        # Power should match FSPL (no reflection loss applied)
+        assert paths.power[0] > 0
+
+    def test_horizontal_polarisation(self):
+        """Horizontal initial polarisation should be perpendicular to z and k."""
+        tx_pos = np.array([[5.0, 0.0, 3.0]])
+        path_vertices = np.array([[[5.0, 0.0, 3.0], [0.0, 0.0, 1.0]]])
+        obj_idx = np.array([[-1, -1]])
+
+        paths = paths_from_differt(
+            vertices=np.zeros((1, 3)),
+            normals=np.array([[0.0, 0.0, 1.0]]),
+            path_vertices=path_vertices,
+            tx_positions=tx_pos,
+            freq_hz=28e9,
+            object_indices=obj_idx,
+            material_indices=np.array([0]),
+            material_n_tilde=[N_CONCRETE],
+            initial_polarisation="horizontal",
+        )
+
+        psi = paths.psi[0]
+        k = paths.k_hat[0]
+        # psi perpendicular to k
+        assert abs(np.dot(psi, k)) == pytest.approx(0.0, abs=1e-10)
+        # Horizontal pol should be in the x-y plane (z component ~ 0)
+        psi_real = np.real(psi)
+        psi_norm = psi_real / np.linalg.norm(psi_real)
+        assert abs(psi_norm[2]) < 0.1

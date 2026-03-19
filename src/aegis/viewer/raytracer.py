@@ -95,6 +95,10 @@ def compute_paths_differt(
     max_order: int = 1,
     freq_hz: float = 28e9,
     tx_power_dbm: float = 30.0,
+    # NOTE: Uses from_powers() with scalar power only. Polarisation direction
+    # is irrelevant here because the viewer runs incoherent levels (0-6) where
+    # only |psi|^2 matters. For coherent levels (7-8) with proper TE/TM
+    # tracking, use aegis.integration.differt.paths_from_differt_scene().
 ) -> tuple[PropagationPaths, list[dict]]:
     """Run DiffeRT ray tracing and return AEGIS PropagationPaths.
 
