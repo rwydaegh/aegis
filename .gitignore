@@ -65,3 +65,6 @@ test_screenshots/
 
 # MCP config (local)
 .mcp.json
+
+# Local theory artifacts (not part of the repo)
+theory/summary_paper.pdf
