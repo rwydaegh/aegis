@@ -257,17 +257,14 @@ def paths_from_differt(
     # Total path length (excluding zero-length padding segments)
     total_length = np.sum(seg_lengths, axis=1)  # (N,)
 
-    # Free-space path loss per path
-    wavelength = C_0 / freq_hz
-    # FSPL amplitude = wavelength / (4*pi*d)
-    fspl_amplitude = wavelength / (4 * np.pi * np.maximum(total_length, 1e-10))
-
     # TX power in watts
     tx_power_w = 10 ** ((tx_power_dbm - 30) / 10)
 
-    # Electric field amplitude: E = sqrt(2 * Z_0 * S_inc) where S_inc = P_tx * FSPL^2 / (4*pi)
-    # Simplified: |psi| = sqrt(2 * Z_0 * P_tx) * fspl_amplitude
-    amplitude = np.sqrt(2 * Z_0 * tx_power_w) * fspl_amplitude
+    # E-field amplitude at distance d from isotropic radiator:
+    # S_inc = P_tx / (4*pi*d^2),  |E| = sqrt(2*Z_0*S_inc)
+    # So |E| = sqrt(2*Z_0*P_tx / (4*pi)) / d
+    d_safe = np.maximum(total_length, 1e-10)
+    amplitude = np.sqrt(2 * Z_0 * tx_power_w / (4 * np.pi)) / d_safe
 
     # Build polarisation vector
     if object_indices is not None and material_n_tilde is not None:

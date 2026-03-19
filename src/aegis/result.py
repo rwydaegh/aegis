@@ -10,6 +10,8 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+from aegis.compliance import ICNIRP_2020
+
 
 @dataclass(frozen=True)
 class DosimetryResult:
@@ -34,6 +36,7 @@ class DosimetryResult:
     Q: np.ndarray | None = field(default=None, repr=False)
     rho: float | None = None
     eigenvalues: np.ndarray | None = field(default=None, repr=False)
+    x_star: np.ndarray | None = field(default=None, repr=False)
 
     @property
     def peak_sab(self) -> float:
@@ -49,24 +52,24 @@ class DosimetryResult:
 
     @property
     def compliant_sab(self) -> bool | None:
-        """ICNIRP compliance for S_ab: peak averaged < 10 W/m^2.
+        """ICNIRP compliance for S_ab: peak averaged < limit.
 
         Returns None if spatial averaging was not performed.
         """
         peak = self.peak_sab_averaged
         if peak is None:
             return None
-        return peak < 10.0
+        return peak < ICNIRP_2020.sab_peak
 
     @property
     def compliant_sar(self) -> bool | None:
-        """ICNIRP compliance for whole-body SAR: < 0.08 W/kg.
+        """ICNIRP compliance for whole-body SAR: < limit.
 
         Returns None if SAR was not computed.
         """
         if self.sar_wb is None:
             return None
-        return self.sar_wb < 0.08
+        return self.sar_wb < ICNIRP_2020.sar_wb
 
     def __repr__(self) -> str:
         parts = [
