@@ -10,6 +10,7 @@ from typing import Any
 
 import numpy as np
 
+from aegis.compliance import ICNIRP_2020
 from aegis.result import DosimetryResult
 
 
@@ -55,7 +56,8 @@ def plot_dashboard(
     ax = axes[0]
     sab = result.sab
     ax.hist(sab[sab > 0], bins=50, color="#e74c3c", alpha=0.8, edgecolor="white")
-    ax.axvline(10.0, color="gold", linewidth=2, linestyle="--", label="ICNIRP limit (10 W/m\u00b2)")
+    limit = ICNIRP_2020.sab_peak
+    ax.axvline(limit, color="gold", linewidth=2, linestyle="--", label=f"ICNIRP limit ({limit} W/m\u00b2)")
     ax.set_xlabel("S_ab (W/m\u00b2)")
     ax.set_ylabel("Triangle count")
     ax.set_title("S_ab distribution")
@@ -81,12 +83,12 @@ def plot_dashboard(
         lines.append(f"SAR_wb: {sar * 1e3:.2f} mW/kg")
 
     # Compliance status
-    sab_status = "PASS" if result.peak_sab < 10.0 else "FAIL"
+    sab_status = "PASS" if result.peak_sab < ICNIRP_2020.sab_peak else "FAIL"
     lines.append("")
     lines.append(f"S_ab compliance: {sab_status}")
 
     if result.sar_wb is not None:
-        sar_status = "PASS" if result.sar_wb < 0.08 else "FAIL"
+        sar_status = "PASS" if result.sar_wb < ICNIRP_2020.sar_wb else "FAIL"
         lines.append(f"SAR compliance: {sar_status}")
 
     for i, line in enumerate(lines):

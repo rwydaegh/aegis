@@ -20,113 +20,13 @@ from aegis.coherent.fresnel_operator import (
     compute_fresnel_operator,
     te_tm_basis,
 )
-from aegis.engine import DosimetryEngine
-from aegis.geometry.mesh import BodyMesh
 from aegis.paths import PropagationPaths
 from aegis.precoder import Precoder
 from aegis.tissue.dielectric import SKIN_28GHZ
 from aegis.tissue.fresnel import fresnel_amplitude, fresnel_transmission
 
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
-
-
-def _make_flat_mesh(n: int = 100) -> BodyMesh:
-    """Flat square mesh in the xy-plane, normals pointing +z."""
-    rng = np.random.default_rng(42)
-    side = np.sqrt(n * 1e-4)
-    vertices = np.zeros((n, 3, 3))
-    s = np.sqrt(1e-4 * 2)
-    for i in range(n):
-        cx = rng.uniform(0, side)
-        cy = rng.uniform(0, side)
-        vertices[i, 0] = [cx, cy, 0]
-        vertices[i, 1] = [cx + s, cy, 0]
-        vertices[i, 2] = [cx, cy + s, 0]
-
-    normals = np.tile([0, 0, 1.0], (n, 1))
-    centroids = np.mean(vertices, axis=1)
-    areas = 0.5 * s * s * np.ones(n)
-    return BodyMesh(vertices=vertices, normals=normals, centroids=centroids, areas=areas, name="flat_plane")
-
-
-def _make_icosahedron() -> BodyMesh:
-    """Icosahedron mesh (20 triangles) centered at origin, ~10cm radius."""
-    phi = (1 + np.sqrt(5)) / 2
-    verts_raw = np.array(
-        [
-            [-1, phi, 0],
-            [1, phi, 0],
-            [-1, -phi, 0],
-            [1, -phi, 0],
-            [0, -1, phi],
-            [0, 1, phi],
-            [0, -1, -phi],
-            [0, 1, -phi],
-            [phi, 0, -1],
-            [phi, 0, 1],
-            [-phi, 0, -1],
-            [-phi, 0, 1],
-        ],
-        dtype=float,
-    )
-    verts_raw /= np.linalg.norm(verts_raw[0])
-    verts_raw *= 0.1
-
-    faces = [
-        (0, 11, 5),
-        (0, 5, 1),
-        (0, 1, 7),
-        (0, 7, 10),
-        (0, 10, 11),
-        (1, 5, 9),
-        (5, 11, 4),
-        (11, 10, 2),
-        (10, 7, 6),
-        (7, 1, 8),
-        (3, 9, 4),
-        (3, 4, 2),
-        (3, 2, 6),
-        (3, 6, 8),
-        (3, 8, 9),
-        (4, 9, 5),
-        (2, 4, 11),
-        (6, 2, 10),
-        (8, 6, 7),
-        (9, 8, 1),
-    ]
-
-    n = len(faces)
-    vertices = np.zeros((n, 3, 3))
-    for i, (a, b, c) in enumerate(faces):
-        vertices[i] = [verts_raw[a], verts_raw[b], verts_raw[c]]
-
-    v0, v1, v2 = vertices[:, 0], vertices[:, 1], vertices[:, 2]
-    cross = np.cross(v1 - v0, v2 - v0)
-    norms = np.linalg.norm(cross, axis=1, keepdims=True)
-    normals = cross / norms
-    centroids = np.mean(vertices, axis=1)
-    flip = np.sum(normals * centroids, axis=1) < 0
-    normals[flip] *= -1
-    areas = 0.5 * norms[:, 0]
-
-    return BodyMesh(vertices=vertices, normals=normals, centroids=centroids, areas=areas, name="icosahedron")
-
-
-@pytest.fixture
-def flat_mesh():
-    return _make_flat_mesh()
-
-
-@pytest.fixture
-def ico_mesh():
-    return _make_icosahedron()
-
-
-@pytest.fixture
-def engine():
-    return DosimetryEngine(SKIN_28GHZ)
+# Fixtures (flat_mesh, ico_mesh, engine, single_path_down, multi_path)
+# are provided by conftest.py.
 
 
 # ---------------------------------------------------------------------------

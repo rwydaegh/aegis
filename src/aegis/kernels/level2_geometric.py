@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import numpy as np
 
+from aegis.kernels._base import incidence_geometry
+
 
 def level2_geometric(
     normals: np.ndarray,
@@ -36,8 +38,6 @@ def level2_geometric(
     -------
     sab : (M,) absorbed power density per triangle [W/m^2]
     """
-    # mu_plus[j, i] = [n_j . (-k_i)]_+ = ReLU of cosine of local incidence
-    mu = normals @ (-k_hat).T  # (M, N)
-    mu_plus = np.maximum(mu, 0.0)  # (M, N)
+    _mu, mu_plus = incidence_geometry(normals, k_hat)
     sab = T0 * (mu_plus @ power)  # (M,)
     return sab
