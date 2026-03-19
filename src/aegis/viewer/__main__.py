@@ -93,9 +93,16 @@ def _fetch_location(location: str, radius: int, cache_dir: str | None) -> str | 
 
 
 def main() -> None:
+    from aegis.viewer.config import load_config
+
     parser = argparse.ArgumentParser(description="AEGIS interactive 3D viewer")
-    parser.add_argument("--port", type=int, default=5000)
-    parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument(
+        "--config",
+        default=None,
+        help="Path to JSON config file (see configs/default.json for schema)",
+    )
+    parser.add_argument("--port", type=int, default=None)
+    parser.add_argument("--host", default=None)
     parser.add_argument(
         "--location",
         default=None,
@@ -110,10 +117,10 @@ def main() -> None:
     parser.add_argument(
         "--bbox",
         type=float,
-        default=30.0,
+        default=None,
         help="Scene bounding box size in meters (default: 30)",
     )
-    parser.add_argument("--body", default="thelonious", help="Body mesh name (without .stl)")
+    parser.add_argument("--body", default=None, help="Body mesh name (without .stl)")
     parser.add_argument("--data-dir", default=None, help="Path to data directory")
     parser.add_argument(
         "--pipeline-dir",
@@ -128,6 +135,16 @@ def main() -> None:
     parser.add_argument("--no-open", action="store_true", help="Don't open browser")
     args = parser.parse_args()
 
+    # Load config (defaults merged with user overrides)
+    cfg = load_config(args.config)
+
+    # CLI flags override config values
+    host = args.host or cfg["server"]["host"]
+    port = args.port or cfg["server"]["port"]
+    bbox = args.bbox if args.bbox is not None else cfg["location"]["default_radius"]
+    body_name = args.body or cfg["body"]["default_name"]
+    no_open = args.no_open or not cfg["server"]["open_browser"]
+
     data_dir = args.data_dir
     if data_dir is None:
         data_dir = str(Path(__file__).resolve().parent.parent.parent.parent.parent / "data")
@@ -138,11 +155,11 @@ def main() -> None:
     if not voxel_dir and not voxel_json and args.location:
         voxel_dir = _fetch_location(
             args.location,
-            int(args.bbox / 2),
+            int(bbox / 2),
             args.cache_dir,
         )
 
-    _kill_previous_on_port(args.port)
+    _kill_previous_on_port(port)
 
     from aegis.viewer.server import create_app
 
@@ -150,19 +167,20 @@ def main() -> None:
         data_dir=data_dir,
         voxel_json=voxel_json,
         voxel_dir=voxel_dir,
-        bbox_radius=args.bbox / 2.0,
-        body_name=args.body,
+        bbox_radius=bbox / 2.0,
+        body_name=body_name,
         pipeline_dir=args.pipeline_dir,
         cache_dir=args.cache_dir,
+        config=cfg,
     )
 
-    url = f"http://{args.host}:{args.port}"
+    url = f"http://{host}:{port}"
     print(f"\n  AEGIS Viewer: {url}\n")
 
-    if not args.no_open:
+    if not no_open:
         webbrowser.open(url)
 
-    app.run(host=args.host, port=args.port, debug=False, threaded=True)
+    app.run(host=host, port=port, debug=cfg["server"]["debug"], threaded=True)
 
 
 if __name__ == "__main__":
