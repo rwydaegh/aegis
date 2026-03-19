@@ -250,6 +250,9 @@ DEFAULTS: dict = {
         "metalness": 0.1,
         "opacity": 0.7,
         "double_sided": True,
+        "ground_ray_height": 2000.0,
+        "ground_sample_step_m": 0.35,
+        "feet_clearance_m": 0.05,
     },
     "location": {
         "default_radius": 30,
