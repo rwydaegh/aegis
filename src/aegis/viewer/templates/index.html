@@ -1145,8 +1145,10 @@
 
             raycaster.setFromCamera(mouse, camera);
 
-            const targets = [groundPlane];
+            const targets = [];
+            if (groundPlane && groundPlane.visible) targets.push(groundPlane);
             if (bodyMesh) targets.push(bodyMesh);
+            for (const m of sceneMeshes) targets.push(m);
             for (const meshes of Object.values(voxelMeshes)) {
                 targets.push(meshes.classified);
             }
@@ -1255,6 +1257,7 @@
                 currentScenePath = null;
                 for (const m of sceneMeshes) scene.remove(m);
                 sceneMeshes = [];
+                if (groundPlane) groundPlane.visible = true;
                 setVoxelVisibility(true);
                 return;
             }
@@ -1274,6 +1277,7 @@
 
                 if (!resp.ok) {
                     statusEl.textContent = 'Failed to load scene';
+                    if (groundPlane) groundPlane.visible = true;
                     setVoxelVisibility(true);
                     return;
                 }
@@ -1315,9 +1319,14 @@
                 scene.add(mesh);
                 sceneMeshes.push(mesh);
 
+                if (groundPlane) groundPlane.visible = false;
+                bodyOffset.y = getGroundY(bodyOffset.x, bodyOffset.z, true);
+                updateBodyTransform();
+
                 statusEl.textContent = `Loaded: ${meta.n_triangles} tris`;
             } catch (e) {
                 statusEl.textContent = `Error: ${e.message}`;
+                if (groundPlane) groundPlane.visible = true;
                 setVoxelVisibility(true);
             }
         }
@@ -1633,7 +1642,44 @@
 
         // --- Ground height lookup ---
 
+        function usingSionnaScene() {
+            return currentScenePath !== null && sceneMeshes.length > 0;
+        }
+
+        const _sionnaGroundOrigin = new THREE.Vector3();
+        const _sionnaGroundDir = new THREE.Vector3(0, -1, 0);
+
+        function getGroundYFromSionnaMeshes(x, z, wide) {
+            const sc = CFG.sionna_scene || {};
+            const yTop = sc.ground_ray_height ?? 2000;
+            const step = sc.ground_sample_step_m ?? 0.35;
+            const clearance = sc.feet_clearance_m ?? 0.05;
+            _sionnaGroundOrigin.set(x, yTop, z);
+            raycaster.set(_sionnaGroundOrigin, _sionnaGroundDir);
+            let hits = raycaster.intersectObjects(sceneMeshes, false);
+            let bestY = null;
+            if (hits.length > 0) bestY = hits[0].point.y;
+            if (wide && bestY !== null) {
+                const wr = 2;
+                for (let dx = -wr; dx <= wr; dx++) {
+                    for (let dz = -wr; dz <= wr; dz++) {
+                        if (dx === 0 && dz === 0) continue;
+                        _sionnaGroundOrigin.set(x + dx * step, yTop, z + dz * step);
+                        raycaster.set(_sionnaGroundOrigin, _sionnaGroundDir);
+                        hits = raycaster.intersectObjects(sceneMeshes, false);
+                        if (hits.length > 0 && (bestY === null || hits[0].point.y > bestY)) {
+                            bestY = hits[0].point.y;
+                        }
+                    }
+                }
+            }
+            return bestY !== null ? bestY + clearance : bodyOffset.y;
+        }
+
         function getGroundY(x, z, wide) {
+            if (usingSionnaScene()) {
+                return getGroundYFromSionnaMeshes(x, z, wide);
+            }
             if (!voxelHeightmap) return bodyOffset.y;
             const hmRes = voxelSize * CFG.voxels.heightmap_resolution_factor;
             const cx = Math.round(x / hmRes);
