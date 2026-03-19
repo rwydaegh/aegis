@@ -315,7 +315,7 @@ def load_voxels(
     path: str | Path,
     bbox_radius: float = 15.0,
     exterior_only: bool = True,
-) -> tuple[np.ndarray, np.ndarray, list[str], np.ndarray, float]:
+) -> tuple[np.ndarray, np.ndarray, list[str], np.ndarray, float, np.ndarray]:
     """Load voxel JSON, crop to bbox, filter, transform to local Z-up.
 
     Returns (positions, colors, materials, grid_coords, voxel_size).
@@ -352,7 +352,7 @@ def load_voxels_directory(
     dir_path: str | Path,
     bbox_radius: float = 15.0,
     exterior_only: bool = True,
-) -> tuple[np.ndarray, np.ndarray, list[str], np.ndarray, float]:
+) -> tuple[np.ndarray, np.ndarray, list[str], np.ndarray, float, np.ndarray]:
     """Load all voxel JSONs from a directory, crop to bbox, filter, transform.
 
     Returns (positions, colors, materials, grid_coords, voxel_size).
