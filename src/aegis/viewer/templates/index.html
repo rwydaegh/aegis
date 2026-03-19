@@ -409,6 +409,229 @@
             return parseInt(hex.replace('#', ''), 16);
         }
 
+        /** Matplotlib-style jet, 0 = blue, 1 = red (good for gain heat maps). */
+        function jetColorT(t) {
+            t = Math.max(0, Math.min(1, t));
+            let r;
+            let g;
+            let b;
+            if (t < 0.125) {
+                const u = t / 0.125;
+                r = 0;
+                g = 0;
+                b = 0.5 + 0.5 * u;
+            } else if (t < 0.375) {
+                const u = (t - 0.125) / 0.25;
+                r = 0;
+                g = u;
+                b = 1;
+            } else if (t < 0.625) {
+                const u = (t - 0.375) / 0.25;
+                r = u;
+                g = 1;
+                b = 1 - u;
+            } else if (t < 0.875) {
+                const u = (t - 0.625) / 0.25;
+                r = 1;
+                g = 1 - u;
+                b = 0;
+            } else {
+                const u = (t - 0.875) / 0.125;
+                r = 1 - 0.5 * u;
+                g = 0;
+                b = 0;
+            }
+            return new THREE.Color(r, g, b);
+        }
+
+        function gainTFromLinear(g, gMax, dynamicRangeDb) {
+            if (!(dynamicRangeDb > 0) || !(gMax > 0)) return 0.5;
+            const gMin = gMax * 10 ** (-dynamicRangeDb / 10);
+            const lnMax = Math.log10(Math.max(gMax, gMin * 1.0001));
+            const lnMin = Math.log10(gMin);
+            const gg = Math.max(g, gMin);
+            const t = (Math.log10(gg) - lnMin) / (lnMax - lnMin);
+            return Math.max(0, Math.min(1, t));
+        }
+
+        /** Far-field-style scalar gain in Three.js coords (Y is scene up). */
+        function scalarRadiationGain(dir, rp) {
+            if (rp.match_physics) return 1;
+            const type = rp.type || 'short_dipole';
+            const els = rp.elements && rp.elements.length
+                ? rp.elements
+                : [{ offset: [0, 0, 0], weight: [1, 0], axis: [0, 1, 0] }];
+            if (type === 'isotropic') {
+                let s = 0;
+                for (const el of els) {
+                    const w = el.weight || [1, 0];
+                    s += w[0] * w[0] + w[1] * w[1];
+                }
+                return Math.max(s, 1e-9);
+            }
+            if (type === 'short_dipole') {
+                let gsum = 0;
+                for (const el of els) {
+                    const w = el.weight || [1, 0];
+                    const w2 = w[0] * w[0] + w[1] * w[1];
+                    const ax = new THREE.Vector3(...(el.axis || [0, 1, 0]));
+                    if (ax.lengthSq() < 1e-12) ax.set(0, 1, 0);
+                    ax.normalize();
+                    const c = dir.dot(ax);
+                    gsum += w2 * Math.max(0, 1 - c * c);
+                }
+                return Math.max(gsum, 1e-12);
+            }
+            return 1;
+        }
+
+        function buildAntennaGroup(antCfg) {
+            const group = new THREE.Group();
+            const rp = antCfg.radiation_pattern;
+            const usePattern = rp && rp.enabled !== false;
+
+            if (usePattern) {
+                const detail = Number.isFinite(rp.ico_detail) ? rp.ico_detail : 4;
+                const base = new THREE.IcosahedronGeometry(1, detail);
+                const posAttr = base.attributes.position;
+                const nV = posAttr.count;
+                const gains = new Float32Array(nV);
+                const dirs = [];
+                let gMax = 0;
+                for (let i = 0; i < nV; i++) {
+                    const x = posAttr.getX(i);
+                    const y = posAttr.getY(i);
+                    const z = posAttr.getZ(i);
+                    const dir = new THREE.Vector3(x, y, z).normalize();
+                    dirs.push(dir.clone());
+                    const g = scalarRadiationGain(dir, rp);
+                    gains[i] = g;
+                    if (g > gMax) gMax = g;
+                }
+                if (gMax < 1e-12) gMax = 1;
+                const dynDb = Number.isFinite(rp.dynamic_range_db) ? rp.dynamic_range_db : 36;
+                const lobeG = Number.isFinite(rp.lobe_gamma) ? rp.lobe_gamma : 0.42;
+                const rad = Number.isFinite(rp.radius) ? rp.radius : 0.9;
+                const colors = new Float32Array(nV * 3);
+                for (let i = 0; i < nV; i++) {
+                    const g = gains[i];
+                    const gn = g / gMax;
+                    const rr = rad * (Math.max(gn, 1e-9) ** lobeG);
+                    const d = dirs[i];
+                    posAttr.setXYZ(i, d.x * rr, d.y * rr, d.z * rr);
+                    let t;
+                    if (rp.match_physics) t = 0.62;
+                    else t = gainTFromLinear(g, gMax, dynDb);
+                    const col = jetColorT(t);
+                    colors[i * 3] = col.r;
+                    colors[i * 3 + 1] = col.g;
+                    colors[i * 3 + 2] = col.b;
+                }
+                posAttr.needsUpdate = true;
+                base.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+                base.computeVertexNormals();
+
+                const mat = new THREE.MeshStandardMaterial({
+                    vertexColors: true,
+                    transparent: true,
+                    opacity: Number.isFinite(rp.opacity) ? rp.opacity : 0.94,
+                    metalness: Number.isFinite(rp.metalness) ? rp.metalness : 0.12,
+                    roughness: Number.isFinite(rp.roughness) ? rp.roughness : 0.5,
+                    side: THREE.DoubleSide,
+                    wireframe: !!rp.wireframe,
+                });
+                const patMesh = new THREE.Mesh(base, mat);
+                patMesh.castShadow = false;
+                patMesh.receiveShadow = false;
+                group.add(patMesh);
+
+                if (rp.edge_lines !== false) {
+                    const eg = new THREE.EdgesGeometry(base, 22);
+                    const em = new THREE.LineBasicMaterial({
+                        color: hexToInt(rp.edge_color || '#222233'),
+                        transparent: true,
+                        opacity: 0.38,
+                    });
+                    group.add(new THREE.LineSegments(eg, em));
+                }
+
+                const hr = Number.isFinite(rp.hub_radius) ? rp.hub_radius : 0.055;
+                const hub = new THREE.Mesh(
+                    new THREE.SphereGeometry(hr, 18, 18),
+                    new THREE.MeshStandardMaterial({
+                        color: hexToInt(rp.hub_color || '#aa2222'),
+                        emissive: hexToInt(rp.hub_emissive || '#441010'),
+                        emissiveIntensity: 0.6,
+                        metalness: 0.35,
+                        roughness: 0.35,
+                    }),
+                );
+                group.add(hub);
+
+                const els = rp.elements && rp.elements.length
+                    ? rp.elements
+                    : [{ offset: [0, 0, 0], weight: [1, 0] }];
+                if (els.length > 1) {
+                    let wMax = 0;
+                    for (const el of els) {
+                        const w = el.weight || [1, 0];
+                        const m = Math.hypot(w[0], w[1]);
+                        if (m > wMax) wMax = m;
+                    }
+                    if (wMax < 1e-12) wMax = 1;
+                    for (const el of els) {
+                        const off = el.offset || [0, 0, 0];
+                        const w = el.weight || [1, 0];
+                        const m = Math.hypot(w[0], w[1]) / wMax;
+                        const marker = new THREE.Mesh(
+                            new THREE.SphereGeometry(hr * 0.55, 12, 12),
+                            new THREE.MeshStandardMaterial({
+                                color: jetColorT(0.12 + 0.78 * m),
+                                emissive: jetColorT(0.12 + 0.78 * m),
+                                emissiveIntensity: 0.35,
+                                metalness: 0.2,
+                                roughness: 0.4,
+                            }),
+                        );
+                        marker.position.set(off[0], off[1], off[2]);
+                        group.add(marker);
+                    }
+                }
+            } else {
+                const sphere = new THREE.Mesh(
+                    new THREE.SphereGeometry(antCfg.sphere_radius, antCfg.sphere_segments, antCfg.sphere_segments),
+                    new THREE.MeshStandardMaterial({ color: hexToInt(antCfg.color), emissive: hexToInt(antCfg.emissive_color) }),
+                );
+                group.add(sphere);
+                const cone = new THREE.Mesh(
+                    new THREE.ConeGeometry(antCfg.cone_radius, antCfg.cone_height, antCfg.cone_segments),
+                    new THREE.MeshStandardMaterial({ color: hexToInt(antCfg.color), emissive: hexToInt(antCfg.emissive_color) }),
+                );
+                cone.position.y = antCfg.cone_y_offset;
+                cone.rotation.x = Math.PI;
+                group.add(cone);
+            }
+
+            if (usePattern && rp.show_legacy_cone) {
+                const cone = new THREE.Mesh(
+                    new THREE.ConeGeometry(antCfg.cone_radius, antCfg.cone_height, antCfg.cone_segments),
+                    new THREE.MeshStandardMaterial({ color: hexToInt(antCfg.color), emissive: hexToInt(antCfg.emissive_color) }),
+                );
+                cone.position.y = antCfg.cone_y_offset;
+                cone.rotation.x = Math.PI;
+                group.add(cone);
+            }
+
+            const pole = new THREE.Mesh(
+                new THREE.CylinderGeometry(antCfg.pole_radius, antCfg.pole_radius, antCfg.pole_height, antCfg.pole_segments),
+                new THREE.MeshStandardMaterial({ color: hexToInt(antCfg.pole_color) }),
+            );
+            pole.position.y = -(antCfg.pole_height / 2 + antCfg.cone_height * 0.5);
+            group.add(pole);
+
+            return group;
+        }
+
         function init() {
             scene = new THREE.Scene();
             scene.background = new THREE.Color(CFG.scene.background_color);
@@ -945,31 +1168,7 @@
 
         function placeAntenna(pos) {
             if (!antennaMesh) {
-                const group = new THREE.Group();
-                const antCfg = CFG.antenna;
-
-                const sphere = new THREE.Mesh(
-                    new THREE.SphereGeometry(antCfg.sphere_radius, antCfg.sphere_segments, antCfg.sphere_segments),
-                    new THREE.MeshStandardMaterial({ color: hexToInt(antCfg.color), emissive: hexToInt(antCfg.emissive_color) }),
-                );
-                group.add(sphere);
-
-                const cone = new THREE.Mesh(
-                    new THREE.ConeGeometry(antCfg.cone_radius, antCfg.cone_height, antCfg.cone_segments),
-                    new THREE.MeshStandardMaterial({ color: hexToInt(antCfg.color), emissive: hexToInt(antCfg.emissive_color) }),
-                );
-                cone.position.y = antCfg.cone_y_offset;
-                cone.rotation.x = Math.PI;
-                group.add(cone);
-
-                const pole = new THREE.Mesh(
-                    new THREE.CylinderGeometry(antCfg.pole_radius, antCfg.pole_radius, antCfg.pole_height, antCfg.pole_segments),
-                    new THREE.MeshStandardMaterial({ color: hexToInt(antCfg.pole_color) }),
-                );
-                pole.position.y = -(antCfg.pole_height / 2 + antCfg.cone_height * 0.5);
-                group.add(pole);
-
-                antennaMesh = group;
+                antennaMesh = buildAntennaGroup(CFG.antenna);
                 scene.add(antennaMesh);
             }
 
