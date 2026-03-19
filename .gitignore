@@ -54,3 +54,13 @@ test_screenshots/
 
 # Playwright CLI state
 .playwright-cli/
+.playwright-mcp/
+
+# Hypothesis test database
+.hypothesis/
+
+# Debug screenshots
+*.png
+
+# MCP config (local)
+.mcp.json

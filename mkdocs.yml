@@ -7,6 +7,8 @@ docs_dir: docs
 theme:
   name: material
   language: en
+  icon:
+    logo: material/shield-sun
   features:
     - content.code.annotate
     - content.code.copy
@@ -45,6 +47,9 @@ nav:
   - User guide:
     - Overview: user_guide/overview.md
     - Fidelity levels: user_guide/fidelity_levels.md
+    - Tissue and Fresnel: user_guide/tissue.md
+    - Geometry: user_guide/geometry.md
+    - Coherent MIMO: user_guide/coherent.md
   - Developer guide:
     - Architecture: developer_guide/architecture.md
     - Testing: developer_guide/testing.md
@@ -95,6 +100,9 @@ markdown_extensions:
   - pymdownx.keys
   - pymdownx.mark
   - pymdownx.smartsymbols
+  - pymdownx.snippets:
+      auto_append:
+        - docs/includes/abbreviations.md
   - pymdownx.superfences
   - pymdownx.tabbed:
       alternate_style: true
@@ -104,3 +112,6 @@ markdown_extensions:
 
 extra_javascript:
   - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
+
+extra_css:
+  - stylesheets/extra.css
