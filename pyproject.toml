@@ -20,6 +20,7 @@ dependencies = [
 gpu = ["jax[cuda]>=0.4.20"]
 viz = [
     "matplotlib>=3.7",
+    "plotly>=5.18",
     "pyvista>=0.43",
     "trame>=3.0",
     "scienceplots>=2.1.0",
