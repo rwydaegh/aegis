@@ -19,6 +19,7 @@ def find_pipeline(pipeline_dir: str | None = None) -> Path | None:
     Search order:
     1. Explicit *pipeline_dir* argument (from ``--pipeline-dir`` CLI flag)
     2. ``VOXELEARTH_DIR`` environment variable
+    3. ``../nodejs-voxelearth/`` relative to the repo root
     """
     if pipeline_dir:
         p = Path(pipeline_dir) / "run_pipeline.js"
@@ -30,6 +31,12 @@ def find_pipeline(pipeline_dir: str | None = None) -> Path | None:
         p = Path(env_dir) / "run_pipeline.js"
         if p.exists():
             return p
+
+    # Fallback: sibling directory of the repo root
+    repo_root = Path(__file__).resolve().parents[3]  # src/aegis/viewer -> repo root
+    p = repo_root.parent / "nodejs-voxelearth" / "run_pipeline.js"
+    if p.exists():
+        return p
 
     return None
 
