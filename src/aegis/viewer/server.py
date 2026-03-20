@@ -258,6 +258,41 @@ def create_app(
 
         return jsonify({"status": "ok", "version": __version__})
 
+    @app.route("/api/system")
+    def api_system():
+        """Host info and GPU status for the server info badge."""
+        import platform
+        import socket
+        import subprocess as _sp
+
+        info = {
+            "hostname": socket.gethostname(),
+            "platform": platform.system(),
+            "gpu": None,
+        }
+        try:
+            out = _sp.check_output(
+                [
+                    "nvidia-smi",
+                    "--query-gpu=name,memory.total,memory.used,utilization.gpu,temperature.gpu",
+                    "--format=csv,noheader,nounits",
+                ],
+                text=True,
+                timeout=5,
+            ).strip()
+            parts = [p.strip() for p in out.split(",")]
+            if len(parts) >= 5:
+                info["gpu"] = {
+                    "name": parts[0],
+                    "vram_total_mb": int(parts[1]),
+                    "vram_used_mb": int(parts[2]),
+                    "utilization_pct": int(parts[3]),
+                    "temp_c": int(parts[4]),
+                }
+        except Exception:
+            pass
+        return jsonify(info)
+
     @app.route("/api/levels")
     def api_levels():
         """Fidelity levels 0-8 with short descriptions."""
