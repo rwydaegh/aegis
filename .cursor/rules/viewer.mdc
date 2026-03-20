@@ -5,30 +5,47 @@ globs: src/aegis/viewer/**,configs/*.json,configs/README.md
 
 # Viewer (Cursor)
 
-## Coordinates
+## Coordinate systems
 
 - Python / AEGIS: **Z-up**
 - Three.js client: **Y-up**
-- Transforms belong in scene serialization and the client consistently. Do not change one side without the other.
+- The swap happens in `scene_data.py` during binary serialization
+- Never mix conventions. If you touch coordinate transforms, verify both sides.
 
-## Config
+## Server lifecycle
 
-- Defaults: `src/aegis/viewer/config.py` (`DEFAULTS`, deep-merge loader, scenarios helpers).
-- Example JSON: `configs/default.json`; scenario schema: `configs/README.md`.
-- Frontend reads injected `CFG` in `templates/index.html`.
+- Always kill existing processes on the viewer port before launching a new server (default **5000** from config; `__main__.py` can kill stale listeners on Windows).
+- Check with: `netstat -aon` (Windows) or `ss -lntp` (Linux) for the configured port.
+- Start the server, then open the URL printed in the console.
 
-## Server and port
+## Architecture
 
-- Default listen port is **5000** (see `server.port` in config). Kill stale listeners before restarting during development.
+- Config: `src/aegis/viewer/config.py` (DEFAULTS dict, deep-merge loader)
+- Server: `src/aegis/viewer/server.py` (Flask, 13 endpoints incl `/api/viewer-config`)
+- Frontend: `src/aegis/viewer/templates/index.html` (Three.js SPA, reads `CFG` global)
+- Compute: `src/aegis/viewer/compute.py` (dosimetry wrapper, accepts `config` kwarg)
+- Scene data: `src/aegis/viewer/scene_data.py` (binary serialization, uses `set_config()`)
+- Ray tracer: `src/aegis/viewer/raytracer.py` (DiffeRT bridge)
+- CLI entry: `src/aegis/viewer/__main__.py` (`--config`, `--scenario`, voxel/location flags)
+- Default config: `configs/default.json` merged over `config.py` defaults; scenarios in `configs/README.md`
 
-## Ray tracing in the UI
+## Configuration
 
-Only expose voxel ray tracing when voxels are loaded and DiffeRT is available (`voxel_rt_available` from `/api/config`). Sionna scenes use separate endpoints.
+- All viewer constants live in `config.py` DEFAULTS. No hardcoded values elsewhere.
+- User configs in `configs/` deep-merge over defaults (only override what you need).
+- Launch: `py -3.12 -m aegis.viewer --config configs/my_scene.json`
+- Frontend gets config as `CFG` global via Jinja2 template injection.
+- When adding new values: add to DEFAULTS in config.py, regenerate default.json.
+- Never add hardcoded constants to other viewer files. Put them in config.py DEFAULTS.
+
+## Known issues and QA
+
+Track viewer behavior against `docs/internal/viewer_bug_report.md` and `docs/internal/features.md`. Several older UI items there have been fixed (drag threshold, Sionna voxel hiding, RT teardown, favicon). Prefer exercising current `index.html` and server routes before copying bug text into new issues.
 
 ## Environment view (appearance)
 
 The **Environment view** dropdown (`#envDisplaySelect`) switches how the scene environment is drawn: instanced voxel cubes, the DiffeRT triangle hull (`GET /api/voxels/hull-mesh`), or photorealistic GLB tiles when `has_tiles` is true from `/api/config`. This is separate from **RT scene source**, which chooses what geometry ray tracing uses (voxel vs Sionna XML). Loading a Sionna mesh for display locks Environment view until RT source is set back to voxels.
 
-## Testing browser flows
+## Testing
 
-Prefer the Playwright CLI for screenshots (see `.claude/skills/qa/SKILL.md`). Save artifacts under `test_screenshots/` (gitignored).
+Use `npx @playwright/cli` for all browser interaction, NOT the Playwright MCP server. Save screenshots to `test_screenshots/`. Read every screenshot with the Read tool.

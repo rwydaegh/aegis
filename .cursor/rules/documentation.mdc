@@ -15,6 +15,14 @@ Navigation is defined in `mkdocs.yml`. Add new pages to the `nav` tree.
 
 ## Style
 
-Follow `.claude/rules/docs-style.md`: sentence case headings, no em dashes or semicolons, concise technical prose, physics-first where relevant.
+Follow `.claude/rules/docs-style.md`: sentence case headings, no em dashes or semicolons, concise technical prose, physics-first where relevant. Key rules:
+
+- No AI buzzwords (leverage, utilize, delve, seamlessly, etc.)
+- Short paragraphs (3-4 sentences max)
+- Active voice, present tense
+- Specific numbers, not vague language
+- MathJax for equations: inline `$S_{ab}$`, display `$$...$$`
+- Code blocks need language tags (`python`, `bash`, `json`)
+- Use `-` for all bullets (not `*`)
 
 Internal design notes under `docs/internal/` are not required to be perfect polish but should stay accurate.
