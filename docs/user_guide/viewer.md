@@ -39,7 +39,7 @@ The console prints the URL (usually `http://127.0.0.1:5000`).
 
 ## Configuration and scenarios
 
-Viewer constants are defined in `src/aegis/viewer/config.py` and merged with your JSON. The repo ships `configs/default.json` plus [configs/README.md](../../configs/README.md) for the schema.
+Viewer constants are defined in `src/aegis/viewer/config.py` and merged with your JSON. The repo ships `configs/default.json` plus [configs/README.md](https://github.com/rwydaegh/aegis/blob/master/configs/README.md) for the schema.
 
 **Scenarios** group launch inputs so runs are repeatable:
 

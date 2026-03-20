@@ -1,6 +1,9 @@
 site_name: AEGIS Documentation
+site_url: https://rwydaegh.github.io/aegis/
 site_description: Geometric dosimetry engine for wireless exposure assessment
 site_author: rwydaegh
+repo_url: https://github.com/rwydaegh/aegis
+repo_name: rwydaegh/aegis
 
 docs_dir: docs
 
@@ -45,7 +48,10 @@ nav:
   - Home: index.md
   - Getting started: getting_started.md
   - User guide:
+    - Quickstart: user_guide/quickstart.md
     - Overview: user_guide/overview.md
+    - FAQ: user_guide/faq.md
+    - Troubleshooting: user_guide/troubleshooting.md
     - Interactive viewer: user_guide/viewer.md
     - Fidelity levels: user_guide/fidelity_levels.md
     - Tissue and Fresnel: user_guide/tissue.md
@@ -53,6 +59,7 @@ nav:
     - Coherent MIMO: user_guide/coherent.md
   - Developer guide:
     - Architecture: developer_guide/architecture.md
+    - Adding a kernel: developer_guide/adding_a_kernel.md
     - Testing: developer_guide/testing.md
     - Agent workflow (Claude & Cursor): developer_guide/claude_code_workflow.md
   - Reference:

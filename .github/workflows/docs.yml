@@ -2,11 +2,12 @@ name: Deploy docs
 
 on:
   push:
-    branches: [main]
+    branches: [master]
     paths:
       - 'docs/**'
       - 'mkdocs.yml'
       - 'src/aegis/**'
+  workflow_dispatch:
 
 permissions:
   contents: write
