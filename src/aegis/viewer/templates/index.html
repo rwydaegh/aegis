@@ -234,7 +234,7 @@
         <div class="hint">
             Click ground, body, or voxels to place antenna<br>
             Arrow keys: nudge antenna<br>
-            WASD: walk | QE: rotate | Space: jump | Shift: sprint | T: teleport<br>
+            WASD: walk | QE: rotate | Space: jump | Shift: sprint<br>
             Mouse: orbit | Scroll: zoom | Right-click: pan<br>
             Body has gravity (snaps to ground)
         </div>
@@ -750,11 +750,7 @@
                     debouncedRecompute();
                     e.preventDefault();
                 }
-                if (e.code === 'KeyT') {
-                    teleportToTop();
-                    e.preventDefault();
-                }
-                if ('KeyW KeyA KeyS KeyD KeyQ KeyE KeyT'.includes(e.code)) e.preventDefault();
+                if ('KeyW KeyA KeyS KeyD KeyQ KeyE'.includes(e.code)) e.preventDefault();
             });
             window.addEventListener('keyup', (e) => keysDown.delete(e.code));
             window.addEventListener('blur', () => keysDown.clear());
@@ -952,7 +948,7 @@
                 voxelMeshes[matName] = { classified: meshClass };
             }
 
-            // Build heightmap for gravity
+            // Build multi-level heightmap for gravity (stores all voxel Y tops per column)
             const hmRes = vs * CFG.voxels.heightmap_resolution_factor;
             voxelHeightmap = {};
             for (let i = 0; i < n; i++) {
@@ -960,9 +956,16 @@
                 const ty = positions[i*3+2];
                 const tz = -positions[i*3+1];
                 const key = Math.round(tx / hmRes) + ',' + Math.round(tz / hmRes);
-                if (!(key in voxelHeightmap) || ty > voxelHeightmap[key]) {
-                    voxelHeightmap[key] = ty;
+                const top = ty + vs * 0.5;
+                if (!(key in voxelHeightmap)) {
+                    voxelHeightmap[key] = [top];
+                } else {
+                    voxelHeightmap[key].push(top);
                 }
+            }
+            // Sort each column ascending so we can search efficiently
+            for (const key in voxelHeightmap) {
+                voxelHeightmap[key].sort((a, b) => a - b);
             }
         }
 
@@ -1875,42 +1878,28 @@
             return bodyOffset.y;
         }
 
-        function getGroundY(x, z) {
+        function getGroundY(x, z, refY) {
             if (usingSionnaScene()) {
                 return getGroundYFromSionnaMeshes(x, z);
             }
             if (!voxelHeightmap) return bodyOffset.y;
+            if (refY === undefined) refY = bodyOffset.y;
             const hmRes = voxelSize * CFG.voxels.heightmap_resolution_factor;
             const cx = Math.round(x / hmRes);
             const cz = Math.round(z / hmRes);
             const key = cx + ',' + cz;
-            return key in voxelHeightmap ? voxelHeightmap[key] + voxelSize * 0.5 : bodyOffset.y;
-        }
-
-        function teleportToTop() {
-            if (usingSionnaScene()) {
-                bodyOffset.y = getGroundY(bodyOffset.x, bodyOffset.z);
-            } else if (voxelHeightmap) {
-                const hmRes = voxelSize * CFG.voxels.heightmap_resolution_factor;
-                const cx = Math.round(bodyOffset.x / hmRes);
-                const cz = Math.round(bodyOffset.z / hmRes);
-                const r = CFG.physics.teleport_radius;
-                let bestY = null;
-                for (let dx = -r; dx <= r; dx++) {
-                    for (let dz = -r; dz <= r; dz++) {
-                        const k = (cx + dx) + ',' + (cz + dz);
-                        if (k in voxelHeightmap) {
-                            const y = voxelHeightmap[k];
-                            if (bestY === null || y > bestY) bestY = y;
-                        }
-                    }
+            if (!(key in voxelHeightmap)) return bodyOffset.y;
+            // Find the highest voxel top at or below the phantom's feet + step tolerance
+            const tops = voxelHeightmap[key];
+            const threshold = refY + MAX_STEP;
+            let bestY = null;
+            for (let i = tops.length - 1; i >= 0; i--) {
+                if (tops[i] <= threshold) {
+                    bestY = tops[i];
+                    break;
                 }
-                if (bestY !== null) bodyOffset.y = bestY + voxelSize * 0.5;
             }
-            bodyVelocity.y = 0;
-            onGround = true;
-            updateBodyTransform();
-            debouncedRecompute();
+            return bestY !== null ? bestY : bodyOffset.y;
         }
 
         function debouncedRecompute() {
@@ -2016,7 +2005,7 @@
             }
 
             // Vertical dynamics
-            const groundY = getGroundY(bodyOffset.x, bodyOffset.z);
+            const groundY = getGroundY(bodyOffset.x, bodyOffset.z, bodyOffset.y);
 
             if (onGround) {
                 if (wantsJump) {
@@ -2029,8 +2018,10 @@
             } else {
                 bodyVelocity.y -= GRAVITY * dt;
 
-                if (bodyOffset.y + bodyVelocity.y * dt <= groundY) {
-                    bodyOffset.y = groundY;
+                const predictedY = bodyOffset.y + bodyVelocity.y * dt;
+                const landingGroundY = getGroundY(bodyOffset.x, bodyOffset.z, predictedY);
+                if (predictedY <= landingGroundY) {
+                    bodyOffset.y = landingGroundY;
                     bodyVelocity.y = 0;
                     onGround = true;
                 }
@@ -2042,14 +2033,14 @@
 
             if (onGround) {
                 // Test X axis independently (allows wall-sliding)
-                const testXGroundY = getGroundY(nextX, bodyOffset.z);
+                const testXGroundY = getGroundY(nextX, bodyOffset.z, bodyOffset.y);
                 if (testXGroundY - bodyOffset.y > MAX_STEP) {
                     nextX = bodyOffset.x;
                     bodyVelocity.x = 0;
                 }
 
                 // Test Z axis independently (allows wall-sliding)
-                const testZGroundY = getGroundY(nextX, nextZ);
+                const testZGroundY = getGroundY(nextX, nextZ, bodyOffset.y);
                 if (testZGroundY - bodyOffset.y > MAX_STEP) {
                     nextZ = bodyOffset.z;
                     bodyVelocity.z = 0;
@@ -2063,7 +2054,7 @@
             }
 
             // Cliff and landing detection
-            const newGroundY = getGroundY(bodyOffset.x, bodyOffset.z);
+            const newGroundY = getGroundY(bodyOffset.x, bodyOffset.z, bodyOffset.y);
             if (onGround) {
                 if (bodyOffset.y - newGroundY > MAX_STEP) {
                     // Walked off a cliff

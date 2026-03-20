@@ -160,7 +160,6 @@ DEFAULTS: dict = {
         "ground_snap": 0.05,
         "dt_clamp": 0.1,
         "max_step_height": 0.5,
-        "teleport_radius": 2,
     },
     "interaction": {
         "click_max_drag_px": 5,
