@@ -293,7 +293,7 @@ DEFAULTS: dict = {
         "min_voxels_for_material": 5,
         "ground_height_percentile": 10,
         "ground_height_margin": 2.0,
-        "ground_center_z_offset": 1.0,
+        "ground_center_vertical_offset": 1.0,
     },
     "ecef": {
         "detection_threshold": 100000,

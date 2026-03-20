@@ -57,3 +57,39 @@ def test_old_format_without_metadata_still_loads():
     assert len(positions) == 4
     # Fallback: voxel size computed from adjacent grid cells
     assert all(voxel_sizes > 0)
+
+
+def test_prepare_for_raytracing_converts_to_zup():
+    """Adapter should swap Y-up to Z-up and produce integer grid coords."""
+    from aegis.viewer.scene_data import prepare_for_raytracing
+
+    # Y-up: (x, y_up, z_horiz)
+    positions = np.array([[1.0, 2.0, 3.0], [1.5, 2.0, 3.0]], dtype=np.float64)
+    voxel_sizes = np.array([0.5, 0.5], dtype=np.float32)
+
+    z_up_pos, grid_coords, dominant_size = prepare_for_raytracing(positions, voxel_sizes)
+
+    # Z-up: (x, -z_horiz, y_up) -> (1.0, -3.0, 2.0)
+    assert z_up_pos[0, 0] == pytest.approx(1.0)
+    assert z_up_pos[0, 1] == pytest.approx(-3.0)
+    assert z_up_pos[0, 2] == pytest.approx(2.0)
+    assert dominant_size == pytest.approx(0.5)
+    assert grid_coords.dtype == np.int64
+
+
+def test_body_placement_uses_yup_vertical():
+    """Body placement should use axis 1 (Y) as vertical in Y-up coordinates."""
+    from aegis.viewer.scene_data import find_body_placement
+
+    positions = np.array(
+        [
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0],
+            [1.0, 0.0, 1.0],
+        ]
+    )
+    materials = ["asphalt"] * 4
+    result = find_body_placement(positions, materials)
+    # Vertical (Y) should be near 0 + offset
+    assert result[1] == pytest.approx(0.0, abs=1.0)

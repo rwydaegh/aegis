@@ -473,14 +473,57 @@ def load_voxels(
     return positions, colors, materials, voxel_sizes
 
 
+def _spatial_deduplicate(
+    positions: np.ndarray,
+    colors: np.ndarray,
+    materials: list[str],
+    voxel_sizes: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, list[str], np.ndarray]:
+    """Remove spatially overlapping voxels, keeping higher-resolution ones."""
+    from scipy.spatial import cKDTree
+
+    n = len(positions)
+    if n == 0:
+        return positions, colors, materials, voxel_sizes
+
+    tree = cKDTree(positions)
+    max_size = float(np.max(voxel_sizes))
+    candidate_pairs = tree.query_pairs(max_size * 0.5)
+
+    keep = np.ones(n, dtype=bool)
+    for i, j in candidate_pairs:
+        if not keep[i] or not keep[j]:
+            continue
+        threshold = min(voxel_sizes[i], voxel_sizes[j]) * 0.5
+        dist = np.linalg.norm(positions[i] - positions[j])
+        if dist > threshold:
+            continue
+        if voxel_sizes[i] <= voxel_sizes[j]:
+            keep[j] = False
+        else:
+            keep[i] = False
+
+    n_removed = n - keep.sum()
+    if n_removed > 0:
+        print(f"  Spatial dedup: {n:,} -> {keep.sum():,} ({n_removed:,} removed, {n_removed / n * 100:.1f}%)")
+
+    return (
+        positions[keep],
+        colors[keep],
+        [m for m, k in zip(materials, keep, strict=True) if k],
+        voxel_sizes[keep],
+    )
+
+
 def load_voxels_directory(
     dir_path: str | Path,
     bbox_radius: float = 15.0,
-    exterior_only: bool = True,
-) -> tuple[np.ndarray, np.ndarray, list[str], np.ndarray, float, np.ndarray]:
-    """Load all voxel JSONs from a directory, crop to bbox, filter, transform.
+    exterior_only: bool = False,
+) -> tuple[np.ndarray, np.ndarray, list[str], np.ndarray]:
+    """Load all voxel JSONs from a directory, crop, dedup, classify.
 
-    Returns (positions, colors, materials, grid_coords, voxel_size).
+    Returns (positions, colors, materials, voxel_sizes).
+    Positions are in Y-up local frame (meters).
     """
     dir_path = Path(dir_path)
     files = sorted(dir_path.glob("*_voxels.json"))
@@ -489,81 +532,65 @@ def load_voxels_directory(
     if not files:
         raise FileNotFoundError(f"No voxel JSON files found in {dir_path}")
 
-    all_grid = []
-    all_pos = []
-    all_colors = []
-    all_materials: list[str] = []
-    per_tile_sizes: list[float] = []
+    all_pos, all_colors, all_materials, all_sizes = [], [], [], []
 
     for f in files:
-        try:
-            gc, pos, col, mats, _tile_unit = _parse_voxel_json(f)
-            if len(pos) > 0:
-                all_grid.append(gc)
-                all_pos.append(pos)
-                all_colors.append(col)
-                all_materials.extend(mats)
-                if len(gc) >= 2:
-                    tile_vs = compute_voxel_size(gc, pos)
-                    if 0 < tile_vs < 10:
-                        per_tile_sizes.append(tile_vs)
-                print(f"  Loaded {f.name}: {len(pos):,} voxels")
-        except Exception as e:
-            print(f"  Warning: skipping {f.name}: {e}")
+        gc, pos, col, mats, tile_unit = _parse_voxel_json(f)
+        if len(pos) == 0:
+            continue
+        vs = tile_unit if tile_unit is not None else compute_voxel_size(gc, pos)
+        all_pos.append(pos)
+        all_colors.append(col)
+        all_materials.extend(mats)
+        all_sizes.append(np.full(len(pos), vs, dtype=np.float32))
+        print(f"  Loaded {f.name}: {len(pos):,} voxels, unit={vs:.4f}")
 
     if not all_pos:
         raise ValueError(f"No valid voxel data found in {dir_path}")
 
     positions = np.concatenate(all_pos, axis=0)
     colors = np.concatenate(all_colors, axis=0)
-
-    # Use median per-tile voxel size for robustness across tiles with
-    # different resolutions (Google 3D Tiles LOD variation).
-    voxel_size = float(np.median(per_tile_sizes)) if per_tile_sizes else 1.0
-
-    # Recompute grid_coords globally from world positions so they form a
-    # single consistent grid. Tile-local grid coords are not aligned across
-    # tiles with different resolutions.
-    grid_coords = np.round(positions / voxel_size).astype(np.int64)
+    voxel_sizes = np.concatenate(all_sizes, axis=0)
 
     print(f"  Total merged: {len(positions):,} voxels from {len(files)} files")
-    print(f"  Voxel size: {voxel_size:.4f} world units (median of {len(per_tile_sizes)} tiles)")
 
-    # Crop to bbox BEFORE expensive dedup/exterior filter
+    # Crop to bbox
     center = positions.mean(axis=0)
-    grid_coords, positions, colors, all_materials = _crop_to_bbox(
-        grid_coords,
+    # _crop_to_bbox now accepts voxel_sizes keyword
+    result = _crop_to_bbox(
+        np.zeros((len(positions), 3), dtype=np.int64),  # dummy grid_coords (not used for rendering)
         positions,
         colors,
         all_materials,
         center,
         bbox_radius,
+        voxel_sizes=voxel_sizes,
     )
+    _, positions, colors, all_materials, voxel_sizes = result
 
-    grid_coords, positions, colors, all_materials = _apply_filters(
-        grid_coords,
+    # Spatial dedup
+    positions, colors, all_materials, voxel_sizes = _spatial_deduplicate(
         positions,
         colors,
         all_materials,
-        exterior_only,
+        voxel_sizes,
     )
 
-    has_ecef = np.abs(positions).max() > _config["ecef"]["detection_threshold"] if len(positions) > 0 else False
-    positions, transform = _transform_to_local(positions, has_ecef)
+    # Optional exterior filter (needs grid coords)
+    if exterior_only and len(positions) > 0:
+        dominant_size = float(np.median(voxel_sizes))
+        centered = positions - positions.mean(axis=0)
+        gc = np.round(centered / dominant_size).astype(np.int64)
+        ext_mask = extract_exterior(gc)
+        n_interior = len(positions) - int(ext_mask.sum())
+        if n_interior > 0:
+            print(f"  Exterior filter: {len(positions):,} -> {int(ext_mask.sum()):,} ({n_interior:,} interior removed)")
+            positions = positions[ext_mask]
+            colors = colors[ext_mask]
+            all_materials = [m for m, keep in zip(all_materials, ext_mask, strict=True) if keep]
+            voxel_sizes = voxel_sizes[ext_mask]
 
-    # Match grid_coords axes to the Z-up convention applied to positions.
-    # Y-up [gx, gy_up, gz_horiz] -> Z-up [gx, -gz_horiz, gy_up]
-    # Only for non-ECEF data (ECEF uses a rotation matrix).
-    if not has_ecef and len(grid_coords) > 0:
-        grid_coords = np.column_stack(
-            [
-                grid_coords[:, 0],
-                -grid_coords[:, 2],
-                grid_coords[:, 1],
-            ]
-        )
-
-    return positions, colors, all_materials, grid_coords, voxel_size, transform
+    return positions, colors, all_materials, voxel_sizes
 
 
 # ---------------------------------------------------------------------------
@@ -629,16 +656,43 @@ def voxels_to_binary(
     return data, meta
 
 
+def prepare_for_raytracing(
+    positions: np.ndarray,
+    voxel_sizes: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, float]:
+    """Convert Y-up positions to Z-up and compute grid coords for greedy meshing.
+
+    Y-up [x, y_up, z_horiz] -> Z-up [x, -z_horiz, y_up].
+
+    Returns (z_up_positions, grid_coords, dominant_voxel_size).
+    """
+    dominant_size = float(np.median(voxel_sizes))
+
+    z_up = np.column_stack(
+        [
+            positions[:, 0],
+            -positions[:, 2],
+            positions[:, 1],
+        ]
+    )
+
+    center = z_up.mean(axis=0)
+    centered = z_up - center
+    grid_coords = np.round(centered / dominant_size).astype(np.int64)
+
+    return z_up, grid_coords, dominant_size
+
+
 def find_body_placement(positions: np.ndarray, materials: list[str]) -> list[float]:
     """Find a good street-level position to place the body.
 
-    Returns [x, y, z] in Z-up coordinates (z = vertical).
+    Returns [x, y, z] in Y-up coordinates (y = vertical).
     """
     mc = _config["material_classification"]
     min_voxels = mc["min_voxels_for_material"]
     pct = mc["ground_height_percentile"]
     margin = mc["ground_height_margin"]
-    z_offset = mc["ground_center_z_offset"]
+    y_offset = mc["ground_center_vertical_offset"]
 
     mat_arr = np.array(materials)
 
@@ -647,20 +701,20 @@ def find_body_placement(positions: np.ndarray, materials: list[str]) -> list[flo
         if mask.sum() < min_voxels:
             continue
         subset = positions[mask]
-        z_vals = subset[:, 2]
-        z_low = np.percentile(z_vals, pct)
-        ground_mask = z_vals <= z_low + margin
+        y_vals = subset[:, 1]
+        y_low = np.percentile(y_vals, pct)
+        ground_mask = y_vals <= y_low + margin
         ground = subset[ground_mask]
         if len(ground) > 0:
             center = np.median(ground, axis=0)
-            center[2] = z_low + z_offset
+            center[1] = y_low + y_offset
             return center.tolist()
 
-    z_vals = positions[:, 2]
-    z_low = np.percentile(z_vals, pct)
-    ground = positions[z_vals <= z_low + margin]
+    y_vals = positions[:, 1]
+    y_low = np.percentile(y_vals, pct)
+    ground = positions[y_vals <= y_low + margin]
     center = np.median(ground, axis=0) if len(ground) > 0 else positions.mean(axis=0)
-    center[2] = z_low + z_offset
+    center[1] = y_low + y_offset
     return center.tolist()
 
 
