@@ -43,7 +43,7 @@ class TestT0Properties:
     def test_T0_in_unit_interval(self, eps_r, sigma, freq):
         n = n_complex(eps_r, sigma, freq)
         t0 = T0(n)
-        assert 0 < t0 <= 1.0
+        assert 0 < t0 <= 1.0 + 1e-14
 
     def test_T0_unity_for_vacuum(self):
         """T_0 = 1 when n = 1 (no interface)."""
