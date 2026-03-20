@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
-from aegis.viewer.server import _cache, _cache_lock
+import pytest
+
+flask = pytest.importorskip("flask")
+
+from aegis.viewer.server import _cache, _cache_lock  # noqa: E402
 
 
 def test_cache_lock_exists():
