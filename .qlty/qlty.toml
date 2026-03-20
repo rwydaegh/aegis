@@ -1,0 +1,59 @@
+# Qlty configuration for AEGIS
+# Used by both Qlty CLI and Qlty Cloud.
+# Docs: https://qlty.sh/d/qlty-toml
+config_version = "0"
+
+exclude_patterns = [
+  "*_min.*",
+  "*-min.*",
+  "*.min.*",
+  "**/node_modules/**",
+  "**/vendor/**",
+  "**/dist/**",
+  "**/build/**",
+  "**/site/**",
+  "**/__pycache__/**",
+  "**/*.egg-info/**",
+]
+
+test_patterns = [
+  "tests/**",
+  "**/test_*.*",
+]
+
+[smells]
+mode = "comment"
+
+[smells.duplication]
+nodes_threshold = 40
+
+[language.python.smells]
+function_complexity.threshold = 20
+function_parameters.threshold = 8
+
+[[source]]
+name = "default"
+default = true
+
+# --- Linters ---
+
+[[plugin]]
+name = "ruff"
+drivers = ["lint"]
+
+[[plugin]]
+name = "bandit"
+
+[[plugin]]
+name = "radarlint-python"
+mode = "comment"
+
+# --- Security ---
+
+[[plugin]]
+name = "trufflehog"
+
+# --- CI ---
+
+[[plugin]]
+name = "actionlint"
