@@ -301,6 +301,87 @@ def ray_mesh_any_hit(
 # ---------------------------------------------------------------------------
 
 
+def _precompute_triangle_data(vertices: np.ndarray) -> dict[str, np.ndarray]:
+    """Precompute per-triangle geometry arrays for ray intersection.
+
+    Parameters
+    ----------
+    vertices : (N, 3, 3) array of triangle vertices
+
+    Returns
+    -------
+    dict with keys: tri_v0x, tri_v0y, tri_v0z, tri_e1x, tri_e1y, tri_e1z,
+    tri_e2x, tri_e2y, tri_e2z, tri_bmin, tri_bmax
+    """
+    v0 = vertices[:, 0].astype(np.float64, copy=False)
+    v1 = vertices[:, 1].astype(np.float64, copy=False)
+    v2 = vertices[:, 2].astype(np.float64, copy=False)
+    e1 = (v1 - v0).astype(np.float64, copy=False)
+    e2 = (v2 - v0).astype(np.float64, copy=False)
+    return {
+        "tri_v0x": v0[:, 0],
+        "tri_v0y": v0[:, 1],
+        "tri_v0z": v0[:, 2],
+        "tri_e1x": e1[:, 0],
+        "tri_e1y": e1[:, 1],
+        "tri_e1z": e1[:, 2],
+        "tri_e2x": e2[:, 0],
+        "tri_e2y": e2[:, 1],
+        "tri_e2z": e2[:, 2],
+        "tri_bmin": np.minimum(np.minimum(v0, v1), v2),
+        "tri_bmax": np.maximum(np.maximum(v0, v1), v2),
+    }
+
+
+def _sample_and_test(
+    i: int,
+    centroid: np.ndarray,
+    normal: np.ndarray,
+    base_dirs: np.ndarray,
+    n_rays: int,
+    origin_eps: float,
+    t_min: float,
+    bvh: dict[str, np.ndarray],
+    tri_order: np.ndarray,
+    tri_data: dict[str, np.ndarray],
+) -> float:
+    """Fire hemisphere rays from triangle i and return the unoccluded fraction."""
+    o = centroid + origin_eps * normal
+    ox, oy, oz = float(o[0]), float(o[1]), float(o[2])
+
+    t, b = make_tangent_frame(normal)
+    dirs = base_dirs[:, 0:1] * t[None, :] + base_dirs[:, 1:2] * b[None, :] + base_dirs[:, 2:3] * normal[None, :]
+
+    vis = 0
+    for r in range(dirs.shape[0]):
+        d = dirs[r]
+        hit = ray_mesh_any_hit(
+            ox,
+            oy,
+            oz,
+            float(d[0]),
+            float(d[1]),
+            float(d[2]),
+            bvh,
+            tri_order,
+            tri_data["tri_v0x"],
+            tri_data["tri_v0y"],
+            tri_data["tri_v0z"],
+            tri_data["tri_e1x"],
+            tri_data["tri_e1y"],
+            tri_data["tri_e1z"],
+            tri_data["tri_e2x"],
+            tri_data["tri_e2y"],
+            tri_data["tri_e2z"],
+            ignore_tri=i,
+            t_min=t_min,
+        )
+        if not hit:
+            vis += 1
+
+    return vis / float(n_rays)
+
+
 def compute_ambient_occlusion(
     mesh: BodyMesh,
     n_rays: int = 64,
@@ -323,71 +404,32 @@ def compute_ambient_occlusion(
     -------
     eta : (N,) array in [0, 1]
     """
-    vertices = mesh.vertices
     normals = mesh.normals
     centroids = mesh.centroids
     n_tri = mesh.n_triangles
 
-    # Mesh scale for eps offsets
     origin_eps = 1e-6 * mesh.scale
     t_min = 10.0 * origin_eps
 
-    # Precompute triangle edge data
-    v0 = vertices[:, 0].astype(np.float64, copy=False)
-    v1 = vertices[:, 1].astype(np.float64, copy=False)
-    v2 = vertices[:, 2].astype(np.float64, copy=False)
-    e1 = (v1 - v0).astype(np.float64, copy=False)
-    e2 = (v2 - v0).astype(np.float64, copy=False)
-
-    tri_v0x, tri_v0y, tri_v0z = v0[:, 0], v0[:, 1], v0[:, 2]
-    tri_e1x, tri_e1y, tri_e1z = e1[:, 0], e1[:, 1], e1[:, 2]
-    tri_e2x, tri_e2y, tri_e2z = e2[:, 0], e2[:, 1], e2[:, 2]
-
-    tri_bmin = np.minimum(np.minimum(v0, v1), v2)
-    tri_bmax = np.maximum(np.maximum(v0, v1), v2)
-
-    bvh, tri_order = build_bvh(tri_bmin, tri_bmax, centroids, max_leaf=max_leaf)
+    tri_data = _precompute_triangle_data(mesh.vertices)
+    bvh, tri_order = build_bvh(tri_data["tri_bmin"], tri_data["tri_bmax"], centroids, max_leaf=max_leaf)
 
     rng = np.random.default_rng(seed)
     base_dirs = cosine_weighted_hemisphere_samples(n_rays, rng=rng)
 
     eta = np.zeros(n_tri, dtype=np.float64)
-
     for i in range(n_tri):
-        n = normals[i]
-        o = centroids[i] + origin_eps * n
-        ox, oy, oz = float(o[0]), float(o[1]), float(o[2])
-
-        t, b = make_tangent_frame(n)
-        dirs = base_dirs[:, 0:1] * t[None, :] + base_dirs[:, 1:2] * b[None, :] + base_dirs[:, 2:3] * n[None, :]
-
-        vis = 0
-        for r in range(dirs.shape[0]):
-            d = dirs[r]
-            hit = ray_mesh_any_hit(
-                ox,
-                oy,
-                oz,
-                float(d[0]),
-                float(d[1]),
-                float(d[2]),
-                bvh,
-                tri_order,
-                tri_v0x,
-                tri_v0y,
-                tri_v0z,
-                tri_e1x,
-                tri_e1y,
-                tri_e1z,
-                tri_e2x,
-                tri_e2y,
-                tri_e2z,
-                ignore_tri=i,
-                t_min=t_min,
-            )
-            if not hit:
-                vis += 1
-
-        eta[i] = vis / float(n_rays)
+        eta[i] = _sample_and_test(
+            i,
+            centroids[i],
+            normals[i],
+            base_dirs,
+            n_rays,
+            origin_eps,
+            t_min,
+            bvh,
+            tri_order,
+            tri_data,
+        )
 
     return np.clip(eta, 0.0, 1.0)
