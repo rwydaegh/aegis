@@ -6,6 +6,7 @@ Unit tests use synthetic meshes. Slow tests need the Thelonious STL file.
 import numpy as np
 import pytest
 from conftest import make_cube_mesh, make_single_triangle
+from scipy import stats
 
 from aegis.geometry.cauchy import cauchy_projected_area, cauchy_relative_error, mean_projected_area
 from aegis.geometry.directivity import (
@@ -104,6 +105,20 @@ class TestFibonacciSphere:
     def test_invalid_n(self):
         with pytest.raises(ValueError):
             fibonacci_sphere(0)
+
+    def test_z_marginal_moments(self):
+        """z-coordinate marginal is uniform on [-1, 1] for uniform sphere points."""
+        k = fibonacci_sphere(6000)
+        z = k[:, 2]
+        assert abs(float(np.mean(z))) < 0.04
+        expected_std = 1.0 / np.sqrt(3)
+        assert abs(float(np.std(z)) - expected_std) < 0.03
+
+    def test_z_marginal_kstest(self):
+        k = fibonacci_sphere(8000)
+        z = k[:, 2]
+        _stat, p = stats.kstest(z, "uniform", args=(-1.0, 2.0))
+        assert p > 1e-5
 
 
 # ---------------------------------------------------------------------------

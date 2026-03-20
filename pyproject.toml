@@ -16,6 +16,9 @@ dependencies = [
     "scipy>=1.10",
 ]
 
+[project.scripts]
+aegis = "aegis.__main__:main"
+
 [project.optional-dependencies]
 gpu = ["jax[cuda]>=0.4.20"]
 viz = [

@@ -4,7 +4,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from aegis.viewer.config import apply_scenario_to_config, load_config, scenario_launch
+from aegis.viewer.config import (
+    _deep_merge,
+    apply_scenario_to_config,
+    load_config,
+    scenario_launch,
+)
 
 
 def test_scenario_launch_open_ground_in_defaults():
@@ -48,3 +53,29 @@ def test_apply_scenario_to_config_sets_active_fields():
     assert out["active_scenario_description"] == "Test scenario"
     assert out["other"] == 1
     assert out["scenarios"]["demo"]["launch"]["bbox"] == 25.0
+
+
+def test_deep_merge_nested_preserves_sibling_keys():
+    base = {"scene": {"grid": {"enabled": False, "size": 200}, "background_color": "#111"}}
+    override = {"scene": {"grid": {"enabled": True}}}
+    out = _deep_merge(base, override)
+    assert out["scene"]["grid"]["enabled"] is True
+    assert out["scene"]["grid"]["size"] == 200
+    assert out["scene"]["background_color"] == "#111"
+
+
+def test_deep_merge_replaces_lists():
+    base = {"dosimetry": {"fidelity_levels": [{"value": 0, "label": "A"}]}}
+    override = {"dosimetry": {"fidelity_levels": [{"value": 2, "label": "B"}]}}
+    out = _deep_merge(base, override)
+    assert out["dosimetry"]["fidelity_levels"] == [{"value": 2, "label": "B"}]
+
+
+def test_deep_merge_empty_override_is_noop():
+    from copy import deepcopy
+
+    from aegis.viewer.config import DEFAULTS
+
+    base = deepcopy(DEFAULTS)
+    out = _deep_merge(base, {})
+    assert out == base

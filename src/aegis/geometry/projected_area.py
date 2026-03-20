@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import numpy as np
 
+_fibonacci_sphere_cache: dict[int, np.ndarray] = {}
+
 
 def fibonacci_sphere(n: int) -> np.ndarray:
     """Deterministic near-uniform sampling on S^2 via golden spiral.
@@ -15,6 +17,10 @@ def fibonacci_sphere(n: int) -> np.ndarray:
     """
     if n <= 0:
         raise ValueError("n must be positive")
+
+    cached = _fibonacci_sphere_cache.get(n)
+    if cached is not None:
+        return cached
 
     i = np.arange(n, dtype=np.float64)
     golden_ratio = (1.0 + np.sqrt(5.0)) / 2.0
@@ -27,7 +33,10 @@ def fibonacci_sphere(n: int) -> np.ndarray:
     y = r * np.sin(phi)
     k_hat = np.stack([x, y, z], axis=1)
     k_hat /= np.linalg.norm(k_hat, axis=1, keepdims=True)
-    return k_hat
+    out = np.array(k_hat, copy=True)
+    out.flags.writeable = False
+    _fibonacci_sphere_cache[n] = out
+    return out
 
 
 def compute_projected_area(

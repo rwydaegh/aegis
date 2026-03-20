@@ -1,5 +1,7 @@
 """Tests for TissueModel dataclass."""
 
+from pathlib import Path
+
 import pytest
 
 from aegis.tissue import FAT_28GHZ, MUSCLE_28GHZ, SKIN_28GHZ, SKIN_60GHZ, TissueModel
@@ -56,3 +58,17 @@ class TestTissueModel:
     def test_frozen(self):
         with pytest.raises(AttributeError):
             SKIN_28GHZ.eps_r = 99.0
+
+
+class TestSkinColeColeVsPreset:
+    @pytest.mark.slow
+    def test_skin_28ghz_database_near_literature_preset(self, data_dir: Path):
+        db_path = data_dir / "itis_v5.db"
+        if not db_path.exists():
+            pytest.skip("itis_v5.db not found")
+        from_db = TissueModel.from_database("Skin", 28e9, db_path=db_path)
+        # Literature preset vs IT'IS Cole-Cole fit: allow moderate deviation.
+        rel_eps = abs(from_db.eps_r - SKIN_28GHZ.eps_r) / max(SKIN_28GHZ.eps_r, 1e-12)
+        rel_sig = abs(from_db.sigma - SKIN_28GHZ.sigma) / max(SKIN_28GHZ.sigma, 1e-12)
+        assert rel_eps <= 0.20
+        assert rel_sig <= 0.20

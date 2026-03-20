@@ -765,8 +765,8 @@
             window.addEventListener('keydown', (e) => {
                 if ('KeyW KeyA KeyS KeyD KeyQ KeyE Space'.includes(e.code) && !canvasHasFocus) {
                     const hint = document.getElementById('focus-hint');
+                    if (hint.style.display === 'block') return;  // already showing
                     hint.style.display = 'block';
-                    clearTimeout(focusHintTimer);
                     focusHintTimer = setTimeout(() => { hint.style.display = 'none'; }, clickCfg.focus_hint_timeout_ms);
                 }
             });
@@ -1324,6 +1324,50 @@
         };
 
         async function reloadVoxels() {
+            // Clear antenna state from previous scene
+            if (antennaMesh) {
+                scene.remove(antennaMesh);
+                antennaMesh.traverse((obj) => {
+                    if (obj.isMesh) {
+                        obj.geometry?.dispose();
+                        if (obj.material) {
+                            const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+                            for (const m of mats) m.dispose();
+                        }
+                    }
+                });
+                antennaMesh = null;
+            }
+            antennaPos = null;
+
+            // Clear path visualizations
+            for (const line of pathLines) {
+                scene.remove(line);
+                disposeLine(line);
+            }
+            pathLines = [];
+            if (distanceLine) {
+                scene.remove(distanceLine);
+                disposeLine(distanceLine);
+                distanceLine = null;
+            }
+            if (distanceLabel) {
+                scene.remove(distanceLabel);
+                disposeLine(distanceLabel);
+                distanceLabel = null;
+            }
+
+            // Clear dosimetry display
+            document.getElementById('color-legend').style.display = 'none';
+            document.getElementById('stat-pabs').textContent = '--';
+            document.getElementById('stat-peak').textContent = '--';
+            document.getElementById('stat-sinc').textContent = '--';
+            document.getElementById('stat-dist').textContent = '--';
+            document.getElementById('stat-illum').textContent = '--';
+            document.getElementById('stat-compliance').textContent = '--';
+            document.getElementById('stat-compliance').className = 'stat-value';
+            setComputeError('');
+
             for (const [matName, meshes] of Object.entries(voxelMeshes)) {
                 scene.remove(meshes.classified);
                 meshes.classified.geometry.dispose();

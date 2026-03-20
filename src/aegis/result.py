@@ -6,7 +6,8 @@ fields (Q, rho, eigenvalues) are None for incoherent computations.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+import json
+from dataclasses import dataclass, field, fields
 
 import numpy as np
 
@@ -38,12 +39,40 @@ class DosimetryResult:
     eigenvalues: np.ndarray | None = field(default=None, repr=False)
     x_star: np.ndarray | None = field(default=None, repr=False)
 
+    def to_dict(self) -> dict:
+        """Serialize fields to a JSON-friendly dict. Omits None values."""
+        out: dict = {}
+        for f in fields(self):
+            val = getattr(self, f.name)
+            if val is None:
+                continue
+            if isinstance(val, np.ndarray):
+                out[f.name] = val.tolist()
+            elif isinstance(val, np.generic):
+                out[f.name] = val.item()
+            else:
+                out[f.name] = val
+        return out
+
+    def to_json(self, indent: int | None = 2) -> str:
+        return json.dumps(self.to_dict(), indent=indent)
+
     @property
     def peak_sab(self) -> float:
         """Peak per-triangle S_ab [W/m^2]."""
         if self.sab.size == 0:
             raise ValueError("peak_sab is undefined for empty sab")
         return float(np.max(self.sab))
+
+    @property
+    def peak_triangle_index(self) -> int:
+        """Triangle index with maximum S_ab."""
+        return int(np.argmax(self.sab))
+
+    @property
+    def mean_sab(self) -> float:
+        """Mean per-triangle S_ab [W/m^2]."""
+        return float(np.mean(self.sab))
 
     @property
     def peak_sab_averaged(self) -> float | None:

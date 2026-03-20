@@ -52,8 +52,29 @@ def plot_dashboard(
         axes = [axes]
     fig.suptitle(title, fontsize=14, fontweight="bold")
 
-    # Panel 1: S_ab histogram
-    ax = axes[0]
+    _draw_sab_histogram(axes[0], result)
+    _draw_compliance_summary(axes[1], result, body_mass)
+
+    if is_coherent:
+        _draw_eigenspectrum(axes[2], result)
+        rho = result.rho if result.rho is not None else 0.0
+        _draw_rho_gauge(axes[3], rho)
+
+    plt.tight_layout()
+
+    if out_path is not None:
+        out_path = Path(out_path)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(str(out_path), dpi=150, bbox_inches="tight")
+
+    if show:
+        plt.show()
+
+    return fig
+
+
+def _draw_sab_histogram(ax: Any, result: DosimetryResult) -> None:
+    """Draw S_ab histogram with ICNIRP limit line (panel 1)."""
     sab = result.sab
     ax.hist(sab[sab > 0], bins=50, color="#e74c3c", alpha=0.8, edgecolor="white")
     limit = ICNIRP_2020.sab_peak
@@ -63,8 +84,9 @@ def plot_dashboard(
     ax.set_title("S_ab distribution")
     ax.legend(fontsize=8)
 
-    # Panel 2: compliance summary
-    ax = axes[1]
+
+def _draw_compliance_summary(ax: Any, result: DosimetryResult, body_mass: float | None) -> None:
+    """Draw compliance text summary panel (panel 2)."""
     ax.axis("off")
 
     lines = [
@@ -114,34 +136,17 @@ def plot_dashboard(
         )
     ax.set_title("Compliance summary")
 
-    if is_coherent:
-        # Panel 3: Q eigenspectrum
-        ax = axes[2]
-        eigs = result.eigenvalues
-        if eigs is not None:
-            n_eigs = len(eigs)
-            ax.bar(range(n_eigs), eigs, color="#3498db", alpha=0.8)
-            ax.set_xlabel("Eigenvalue index")
-            ax.set_ylabel("Eigenvalue magnitude")
-            ax.set_title("Q eigenspectrum")
-            ax.set_yscale("log" if np.max(eigs) / (np.min(eigs[eigs > 0]) + 1e-30) > 100 else "linear")
 
-        # Panel 4: rho gauge
-        ax = axes[3]
-        rho = result.rho if result.rho is not None else 0.0
-        _draw_rho_gauge(ax, rho)
-
-    plt.tight_layout()
-
-    if out_path is not None:
-        out_path = Path(out_path)
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        fig.savefig(str(out_path), dpi=150, bbox_inches="tight")
-
-    if show:
-        plt.show()
-
-    return fig
+def _draw_eigenspectrum(ax: Any, result: DosimetryResult) -> None:
+    """Draw Q eigenvalue bar chart (panel 3)."""
+    eigs = result.eigenvalues
+    if eigs is not None:
+        n_eigs = len(eigs)
+        ax.bar(range(n_eigs), eigs, color="#3498db", alpha=0.8)
+        ax.set_xlabel("Eigenvalue index")
+        ax.set_ylabel("Eigenvalue magnitude")
+        ax.set_title("Q eigenspectrum")
+        ax.set_yscale("log" if np.max(eigs) / (np.min(eigs[eigs > 0]) + 1e-30) > 100 else "linear")
 
 
 def _draw_rho_gauge(ax: Any, rho: float) -> None:

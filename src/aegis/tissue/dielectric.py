@@ -13,6 +13,8 @@ from pathlib import Path
 from aegis.tissue.fresnel import T0 as _T0_from_n
 from aegis.tissue.fresnel import n_complex as _n_complex
 
+_tissue_db_props_cache: dict[tuple[str, float], dict[str, float]] = {}
+
 
 @dataclass(frozen=True)
 class TissueModel:
@@ -65,7 +67,10 @@ class TissueModel:
         """
         from aegis.tissue.database import get_tissue_properties
 
-        props = get_tissue_properties(tissue_name, freq_hz, db_path=db_path)
+        key = (tissue_name, float(freq_hz))
+        if key not in _tissue_db_props_cache:
+            _tissue_db_props_cache[key] = get_tissue_properties(tissue_name, freq_hz, db_path=db_path)
+        props = _tissue_db_props_cache[key]
         return cls(
             name=f"{tissue_name} {freq_hz / 1e9:.0f} GHz",
             eps_r=props["eps_r"],

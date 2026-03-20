@@ -96,9 +96,15 @@ def _fetch_location(location: str, radius: int, cache_dir: str | None) -> str | 
 
 
 def main() -> None:
+    from aegis import __version__
     from aegis.viewer.config import apply_scenario_to_config, load_config, scenario_launch
 
     parser = argparse.ArgumentParser(description="AEGIS interactive 3D viewer")
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"aegis-viewer {__version__}",
+    )
     parser.add_argument(
         "--config",
         default=None,
@@ -109,7 +115,12 @@ def main() -> None:
         default=None,
         help="Named scenario from config JSON (overrides default_scenario).",
     )
-    parser.add_argument("--port", type=int, default=None)
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=None,
+        help="Server port (overrides config server.port)",
+    )
     parser.add_argument("--host", default=None)
     parser.add_argument(
         "--location",
@@ -141,6 +152,14 @@ def main() -> None:
         help="Pipeline output cache directory",
     )
     parser.add_argument("--no-open", action="store_true", help="Don't open browser")
+    parser.add_argument(
+        "--level",
+        type=int,
+        choices=range(9),
+        default=None,
+        metavar="N",
+        help="Default dosimetry fidelity level 0-8 (overrides config dosimetry.default_level)",
+    )
     args = parser.parse_args()
 
     # Load config (defaults merged with user overrides)
@@ -205,6 +224,9 @@ def main() -> None:
             print(f"    {desc}")
 
     cfg = apply_scenario_to_config(cfg, scenario_name)
+
+    if args.level is not None:
+        cfg["dosimetry"]["default_level"] = int(args.level)
 
     _kill_previous_on_port(port)
 
