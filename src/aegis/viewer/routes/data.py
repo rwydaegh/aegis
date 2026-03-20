@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 
 import numpy as np
-from flask import Flask, Response, jsonify, render_template
+from flask import Flask, Response, jsonify, render_template, request
 
 
 def register(app: Flask, cache: dict, cache_lock) -> None:
@@ -82,6 +82,30 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             return jsonify({"error": "No tiles directory"}), 404
         return send_from_directory(str(td), filename)
 
+    @app.route("/api/body/switch", methods=["POST"])
+    def api_body_switch():
+        """Switch the active body mesh at runtime."""
+        from aegis.viewer.scene_data import body_to_binary, load_body
+
+        body_name = request.json.get("name") if request.is_json else None
+        if not body_name:
+            return jsonify({"error": "Missing 'name' in request body"}), 400
+
+        data_dir = cache.get("data_dir")
+        if not data_dir:
+            return jsonify({"error": "No data directory configured"}), 500
+
+        try:
+            body = load_body(body_name, data_dir)
+        except FileNotFoundError:
+            return jsonify({"error": f"Body mesh '{body_name}' not found"}), 404
+
+        with cache_lock:
+            cache["body"] = body
+            cache["body_binary"], cache["body_meta"] = body_to_binary(body)
+
+        return jsonify({"ok": True, "meta": cache["body_meta"]})
+
     @app.route("/api/config")
     def api_config():
         """Return available configuration options."""
@@ -108,7 +132,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         # Check location loader availability
         from aegis.viewer.pipeline import find_pipeline
 
-        has_pipeline = find_pipeline() is not None
+        has_pipeline = find_pipeline(cache.get("pipeline_dir")) is not None
         has_api_key = bool(os.environ.get("GOOGLE_API_KEY"))
 
         cfg = cache["config"]

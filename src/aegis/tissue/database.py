@@ -23,7 +23,7 @@ def find_database() -> Path:
 
     Search order:
     1. AEGIS_DATA_DIR environment variable
-    2. Default data directory (../../data relative to aegis/)
+    2. Repository data/ directory (aegis/data/)
     """
     candidates: list[Path] = []
 
@@ -31,15 +31,16 @@ def find_database() -> Path:
     if env_path:
         candidates.append(Path(env_path) / "itis_v5.db")
 
-    # Default: aegis/../../data/ (Geometric Dosimetry/data/)
+    # Default: aegis/data/ (repo-local)
+    # __file__ = src/aegis/tissue/database.py -> 4 parents to repo root
     repo_root = Path(__file__).resolve().parent.parent.parent.parent
-    candidates.append(repo_root.parent / "data" / "itis_v5.db")
+    candidates.append(repo_root / "data" / "itis_v5.db")
 
     for path in candidates:
         if path.exists():
             return path
 
-    raise FileNotFoundError("Could not find itis_v5.db. Set AEGIS_DATA_DIR or place it in ../data/.")
+    raise FileNotFoundError("Could not find itis_v5.db. Set AEGIS_DATA_DIR or place it in data/.")
 
 
 def get_gabriel_params(tissue_name: str, db_path: Path | None = None) -> dict | None:

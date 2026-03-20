@@ -88,7 +88,7 @@ aegis/
 - **Core deps:** numpy, scipy | **Optional:** `[gpu]` jax, `[viz]` matplotlib+pyvista, `[dev]` pytest+ruff+hypothesis
 - **CI:** GitHub Actions — ruff lint + pytest on py3.11/3.12 x ubuntu/windows
 - **Pre-commit:** ruff + codespell + fast pytest (`-m "not slow"`)
-- **Data:** mesh files outside git, referenced via `AEGIS_DATA_DIR` env var
+- **Data:** phantom meshes and tissue database in `data/` (override via `AEGIS_DATA_DIR`)
 
 ---
 
@@ -272,7 +272,7 @@ Q eigenspectrum, ECBF demo, antenna placement optimizer, fidelity slider
 
 1. `cd aegis && uv pip install -e ".[dev]"`
 2. `pytest tests/ -m "not slow"` — golden + property tests pass (~5s)
-3. `AEGIS_DATA_DIR=../../data pytest tests/` — Mie regression + mesh tests (~30s)
+3. `pytest tests/` — Mie regression + mesh tests (~30s)
 4. `python examples/01_quickstart.py` — Sab heatmap plot
 5. `ruff check src/ tests/` — no lint errors
 6. Push to GitHub → CI green

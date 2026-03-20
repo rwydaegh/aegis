@@ -55,7 +55,7 @@ skin_db = TissueModel.from_database("Skin", 28e9)
 print(f"T_0 = {skin_db.T0:.3f}")
 ```
 
-The database file (`itis_v5.db`) must be in the data directory. Set `AEGIS_DATA_DIR` or use the default location `../../data/`.
+The database file (`itis_v5.db`) ships in `data/` inside the repo. Override with `AEGIS_DATA_DIR` if needed.
 
 The Cole-Cole model computes complex permittivity from 14 parameters (4 poles with relaxation times spanning picoseconds to milliseconds). This gives accurate dielectric properties across 10 Hz to 100 GHz.
 

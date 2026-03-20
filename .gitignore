@@ -31,13 +31,17 @@ Thumbs.db
 desktop.ini
 *.stackdump
 
-# Data (mesh files, databases - too large for git)
-data/
+# Data (phantom meshes, tissue database) - tracked in data/
+# Ignore stray STL/DB files outside data/ and test fixtures
 *.stl
-!tests/fixtures/e2e_lab/e2e_icosahedron.stl
 *.obj
 *.db
 *.sqlite
+!data/
+!data/*.stl
+!data/*.db
+!data/*.csv
+!tests/fixtures/e2e_lab/e2e_icosahedron.stl
 
 # MkDocs build
 site/

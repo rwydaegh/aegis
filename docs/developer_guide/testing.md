@@ -93,7 +93,7 @@ Tests marked `@pytest.mark.slow` need external data:
 - `test_geometry.py` slow tests need `thelonious.stl` mesh
 - `test_engine.py::TestE2EThelonious` needs `thelonious.stl` mesh
 
-Set `AEGIS_DATA_DIR` to point to the data directory, or place files at the default location (`../../data/` relative to the aegis repo root).
+Data files ship in `data/` inside the repo. Override with `AEGIS_DATA_DIR` if needed.
 
 ## Golden test values
 

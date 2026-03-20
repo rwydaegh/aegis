@@ -23,8 +23,8 @@ def data_dir():
     env_path = os.environ.get("AEGIS_DATA_DIR")
     if env_path:
         return Path(env_path)
-    # Default: two levels up from aegis/ into Geometric Dosimetry/data/
-    default = Path(__file__).parent.parent.parent.parent / "data"
+    # Default: aegis/data/ (repo-local)
+    default = Path(__file__).parent.parent / "data"
     return default
 
 

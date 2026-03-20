@@ -38,7 +38,7 @@ def run_pipeline(location, radius, api_key, output_dir, resolution=200) -> Gener
 def cancel_pipeline() -> bool
 ```
 
-- Locates `run_pipeline.js` via `VOXELEARTH_DIR` env var or auto-detect (`../../nodejs-voxelearth` relative to repo)
+- Locates `run_pipeline.js` via `--pipeline-dir` CLI flag or `VOXELEARTH_DIR` env var
 - Runs as `subprocess.Popen` with `stdout=PIPE, stderr=STDOUT, text=True`
 - Yields each stdout line for progress streaming
 - Module-level `_active_process` for cancellation

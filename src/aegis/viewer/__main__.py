@@ -22,6 +22,7 @@ import webbrowser
 from pathlib import Path
 
 # Load .env from project root if present
+# __file__ = src/aegis/viewer/__main__.py -> 4 parents to repo root
 _env_file = Path(__file__).resolve().parent.parent.parent.parent / ".env"
 if _env_file.exists():
     with open(_env_file) as _f:
@@ -59,11 +60,11 @@ def _kill_previous_on_port(port: int) -> None:
         pass
 
 
-def _fetch_location(location: str, radius: int, cache_dir: str | None) -> str | None:
+def _fetch_location(location: str, radius: int, cache_dir: str | None, pipeline_dir: str | None = None) -> str | None:
     """Fetch voxels for a location via the pipeline. Returns voxel dir path or None."""
     from aegis.viewer.pipeline import cache_dir_for, find_pipeline, run_pipeline
 
-    pipeline_js = find_pipeline()
+    pipeline_js = find_pipeline(pipeline_dir)
     if pipeline_js is None:
         print("  Warning: nodejs-voxelearth pipeline not found, cannot fetch location")
         return None
@@ -137,7 +138,8 @@ def _resolve_config(args: argparse.Namespace) -> tuple[dict, dict]:
     if data_dir is None and scen_launch.get("data_dir"):
         data_dir = str(scen_launch["data_dir"])
     if data_dir is None:
-        data_dir = str(Path(__file__).resolve().parent.parent.parent.parent.parent / "data")
+        # __file__ = src/aegis/viewer/__main__.py -> 4 parents to repo root
+        data_dir = str(Path(__file__).resolve().parent.parent.parent.parent / "data")
 
     voxel_dir = None
     voxel_json = None
@@ -211,7 +213,7 @@ def main() -> None:
     cfg, opts = _resolve_config(args)
 
     if not opts["voxel_dir"] and not opts["voxel_json"] and args.location:
-        opts["voxel_dir"] = _fetch_location(args.location, int(opts["bbox"] / 2), args.cache_dir)
+        opts["voxel_dir"] = _fetch_location(args.location, int(opts["bbox"] / 2), args.cache_dir, args.pipeline_dir)
 
     _kill_previous_on_port(opts["port"])
 

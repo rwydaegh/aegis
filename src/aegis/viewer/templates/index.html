@@ -202,6 +202,14 @@
             <div id="location-log"></div>
         </div>
 
+        <!-- Body / Phantom -->
+        <div class="section" id="body-section">
+            <div class="section-title">Phantom</div>
+            <label>Body mesh
+                <select id="bodySelect"></select>
+            </label>
+        </div>
+
         <!-- Layers -->
         <div class="section">
             <div class="section-title">Layers</div>
@@ -778,6 +786,22 @@
             try {
                 const config = await (await fetch('/api/config')).json();
 
+                // Populate phantom selector
+                const bodySelect = document.getElementById('bodySelect');
+                if (config.bodies && config.bodies.length > 0) {
+                    bodySelect.innerHTML = '';
+                    for (const name of config.bodies) {
+                        const opt = document.createElement('option');
+                        opt.value = name;
+                        opt.textContent = name;
+                        if (config.body_meta && config.body_meta.name === name) opt.selected = true;
+                        bodySelect.appendChild(opt);
+                    }
+                    document.getElementById('body-section').style.display = 'block';
+                } else {
+                    document.getElementById('body-section').style.display = 'none';
+                }
+
                 if (config.body_meta) {
                     await loadBody();
                 }
@@ -812,6 +836,11 @@
                     }
 
                     rtSourceSelect.addEventListener('change', onRTSourceChange);
+                    // Initialize currentScenePath from the default selection
+                    const initVal = rtSourceSelect.value;
+                    if (initVal && initVal.startsWith('sionna:')) {
+                        currentScenePath = initVal.replace('sionna:', '');
+                    }
                     document.getElementById('rtEnabled').addEventListener('change', (e) => {
                         document.getElementById('rt-status').textContent = '';
                         for (const line of pathLines) scene.remove(line);
@@ -2016,6 +2045,20 @@
         });
         document.getElementById('pathsSelect').addEventListener('change', () => {
             if (antennaPos) computeDosimetry(antennaPos);
+        });
+        document.getElementById('bodySelect').addEventListener('change', async () => {
+            const name = document.getElementById('bodySelect').value;
+            const resp = await fetch('/api/body/switch', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({name})
+            });
+            if (resp.ok) {
+                if (bodyMesh) { scene.remove(bodyMesh); bodyMesh.geometry.dispose(); bodyMesh = null; }
+                await loadBody();
+                buildLayerButtons();
+                if (antennaPos) computeDosimetry(antennaPos);
+            }
         });
 
         function animate() {

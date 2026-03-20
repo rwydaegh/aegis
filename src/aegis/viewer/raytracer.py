@@ -6,6 +6,7 @@ and converts them to AEGIS PropagationPaths.
 
 from __future__ import annotations
 
+import os
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
@@ -53,9 +54,12 @@ def list_available_scenes(scenes_dir: str | Path | None = None) -> list[dict]:
     Returns list of dicts with keys: name, path, n_vertices, n_triangles.
     """
     if scenes_dir is None:
-        # Default location relative to project
-        base = Path(__file__).resolve().parent.parent.parent.parent.parent
-        scenes_dir = base / "coding_project" / "sionna-rt" / "src" / "sionna" / "rt" / "scenes"
+        # Use SIONNA_SCENES_DIR env var or return empty
+        env_dir = os.environ.get("SIONNA_SCENES_DIR")
+        if env_dir:
+            scenes_dir = Path(env_dir)
+        else:
+            return []
 
     scenes_dir = Path(scenes_dir)
     if not scenes_dir.exists():

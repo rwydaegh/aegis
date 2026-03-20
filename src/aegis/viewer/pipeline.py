@@ -13,27 +13,23 @@ from pathlib import Path
 _active_process: subprocess.Popen | None = None
 
 
-def find_pipeline() -> Path | None:
+def find_pipeline(pipeline_dir: str | None = None) -> Path | None:
     """Locate the run_pipeline.js script.
 
-    Checks VOXELEARTH_DIR env var first, then auto-detects relative to the
-    aegis repo root (../../nodejs-voxelearth).
+    Search order:
+    1. Explicit *pipeline_dir* argument (from ``--pipeline-dir`` CLI flag)
+    2. ``VOXELEARTH_DIR`` environment variable
     """
+    if pipeline_dir:
+        p = Path(pipeline_dir) / "run_pipeline.js"
+        if p.exists():
+            return p
+
     env_dir = os.environ.get("VOXELEARTH_DIR")
     if env_dir:
         p = Path(env_dir) / "run_pipeline.js"
         if p.exists():
             return p
-
-    # Auto-detect: aegis repo root -> ../../nodejs-voxelearth
-    repo_root = Path(__file__).resolve().parent.parent.parent.parent
-    candidates = [
-        repo_root.parent / "nodejs-voxelearth" / "run_pipeline.js",
-        repo_root.parent.parent / "nodejs-voxelearth" / "run_pipeline.js",
-    ]
-    for c in candidates:
-        if c.exists():
-            return c
 
     return None
 
@@ -58,6 +54,7 @@ def run_pipeline(
     api_key: str,
     output_dir: Path,
     resolution: int = 200,
+    pipeline_dir: str | None = None,
 ) -> Generator[str]:
     """Run the Voxel Earth pipeline, yielding stdout lines for progress.
 
@@ -75,7 +72,7 @@ def run_pipeline(
     """
     global _active_process
 
-    pipeline_js = find_pipeline()
+    pipeline_js = find_pipeline(pipeline_dir)
     if pipeline_js is None:
         yield "ERROR: run_pipeline.js not found"
         return

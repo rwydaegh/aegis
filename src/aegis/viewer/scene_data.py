@@ -460,7 +460,7 @@ def load_voxels_directory(
     all_pos = []
     all_colors = []
     all_materials: list[str] = []
-    voxel_size = 1.0
+    per_tile_sizes: list[float] = []
 
     for f in files:
         try:
@@ -470,8 +470,10 @@ def load_voxels_directory(
                 all_pos.append(pos)
                 all_colors.append(col)
                 all_materials.extend(mats)
-                if voxel_size == 1.0 and len(gc) >= 2:
-                    voxel_size = compute_voxel_size(gc, pos)
+                if len(gc) >= 2:
+                    tile_vs = compute_voxel_size(gc, pos)
+                    if 0 < tile_vs < 10:
+                        per_tile_sizes.append(tile_vs)
                 print(f"  Loaded {f.name}: {len(pos):,} voxels")
         except Exception as e:
             print(f"  Warning: skipping {f.name}: {e}")
@@ -479,11 +481,20 @@ def load_voxels_directory(
     if not all_pos:
         raise ValueError(f"No valid voxel data found in {dir_path}")
 
-    grid_coords = np.concatenate(all_grid, axis=0)
     positions = np.concatenate(all_pos, axis=0)
     colors = np.concatenate(all_colors, axis=0)
+
+    # Use median per-tile voxel size for robustness across tiles with
+    # different resolutions (Google 3D Tiles LOD variation).
+    voxel_size = float(np.median(per_tile_sizes)) if per_tile_sizes else 1.0
+
+    # Recompute grid_coords globally from world positions so they form a
+    # single consistent grid. Tile-local grid coords are not aligned across
+    # tiles with different resolutions.
+    grid_coords = np.round(positions / voxel_size).astype(np.int64)
+
     print(f"  Total merged: {len(positions):,} voxels from {len(files)} files")
-    print(f"  Voxel size: {voxel_size:.4f} world units")
+    print(f"  Voxel size: {voxel_size:.4f} world units (median of {len(per_tile_sizes)} tiles)")
 
     # Crop to bbox BEFORE expensive dedup/exterior filter
     center = positions.mean(axis=0)

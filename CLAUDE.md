@@ -62,7 +62,7 @@ The `../scripts/` directory contains 40+ standalone research scripts that produc
 
 ## Data
 
-Mesh files (STL, ~5MB) live in `../data/`. Set `AEGIS_DATA_DIR` env var or the default `../../data` is used. Tests needing mesh data are marked `@pytest.mark.slow` and skipped if data is absent.
+Phantom meshes (STL) and the IT'IS tissue database live in `data/` inside the repo. Available phantoms: thelonious, duke, eartha, ella. Override with `AEGIS_DATA_DIR` env var. Tests needing mesh data are marked `@pytest.mark.slow` and skipped if data is absent.
 
 ## Testing rules
 

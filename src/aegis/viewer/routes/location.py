@@ -32,14 +32,16 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         if not api_key:
             return jsonify({"error": "GOOGLE_API_KEY not set"}), 400
 
-        if find_pipeline() is None:
-            return jsonify({"error": "Pipeline not found"}), 404
+        pipeline_dir = cache.get("pipeline_dir")
+        if find_pipeline(pipeline_dir) is None:
+            return jsonify({"error": "Pipeline not found. Set VOXELEARTH_DIR or use --pipeline-dir"}), 404
 
         # Determine cache/output directory
+        pipeline_js = find_pipeline(pipeline_dir)
         base_cache = Path(
             cache.get("cache_dir")
             or os.environ.get("VOXELEARTH_CACHE_DIR")
-            or str(find_pipeline().parent / "pipeline_cache")
+            or str(pipeline_js.parent / "pipeline_cache")
         )
         voxel_output = cache_dir_for(location, radius, base_cache)
         pipeline_output = voxel_output.parent
@@ -51,7 +53,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                 yield "event: progress\ndata: Using cached data\n\n"
             else:
                 # Run pipeline
-                for line in run_pipeline(location, radius, api_key, pipeline_output):
+                for line in run_pipeline(location, radius, api_key, pipeline_output, pipeline_dir=pipeline_dir):
                     yield f"event: progress\ndata: {line}\n\n"
                     if line.startswith("ERROR:"):
                         yield f"event: error\ndata: {line}\n\n"

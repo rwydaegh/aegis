@@ -4,7 +4,7 @@
 
 Symptoms: tests skipped with “slow” or file-not-found errors, or `BodyMesh.load` raises `FileNotFoundError`.
 
-AEGIS does not ship large STL assets in git. Place meshes where the project expects them (often `../data/` relative to the repo root) or set **`AEGIS_DATA_DIR`** to the directory that contains your `.stl` files.
+Phantom meshes ship in `data/` inside the repo. If you moved them, set **`AEGIS_DATA_DIR`** to the directory containing your `.stl` files.
 
 ## DiffeRT not installed
 
