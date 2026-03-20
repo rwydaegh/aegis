@@ -3,6 +3,7 @@
 
 # Python
 __pycache__/
+src/aegis/_version.py
 *.pyc
 *.pyo
 *.egg-info/

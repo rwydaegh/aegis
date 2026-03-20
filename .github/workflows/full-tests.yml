@@ -1,0 +1,25 @@
+name: Full test suite
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'  # Monday 6am UTC
+  workflow_dispatch:
+
+jobs:
+  test-all:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: astral-sh/setup-uv@v4
+      - run: uv sync --python 3.12 --extra dev
+      - run: uv run pytest tests/ --cov=aegis --cov-report=xml -v
+      - name: Upload coverage
+        if: always()
+        uses: codecov/codecov-action@v4
+        with:
+          file: coverage.xml
+          flags: full
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

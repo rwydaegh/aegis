@@ -1,6 +1,9 @@
 """AEGIS - Adaptive Electromagnetic Geometric Illumination & Safety."""
 
-__version__ = "0.3.0"
+try:
+    from aegis._version import __version__
+except ImportError:
+    __version__ = "0.0.0+unknown"
 
 from aegis.engine import DosimetryEngine
 from aegis.geometry.mesh import BodyMesh
