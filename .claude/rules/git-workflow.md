@@ -34,6 +34,32 @@ This is a vibe-coded project. Claude is often the only one making changes in a s
 - If a change is large or experimental (touching 5+ files across multiple modules), create a feature branch, commit there, then ask the user before merging to master.
 - Branch naming: `feature/short-description`, `fix/short-description`, `refactor/short-description`.
 
+## Versioning
+
+Version is automatic via `hatch-vcs` (derived from git tags). Claude is responsible for tagging releases.
+
+### When to tag
+
+- **Patch** (`v0.3.0` -> `v0.3.1`): bug fix, test fix, doc fix, small correction.
+- **Minor** (`v0.3.x` -> `v0.4.0`): new feature, new kernel, new module, meaningful capability added.
+- **Major** (`v0.x` -> `v1.0.0`): only when the user says so (paper submission, stable API).
+
+Tag after merging or committing work that fits one of these categories. Do not tag after pure refactors, CI changes, or config tweaks unless they fix a bug.
+
+### How to tag
+
+```bash
+git tag v0.X.Y
+git push origin master --tags
+gh release create v0.X.Y --generate-notes
+```
+
+`--generate-notes` auto-builds a changelog from commits since the last tag. If the auto-generated notes are poor (too many commits, unclear), write a short summary in the release body instead.
+
+### Between tags
+
+Dev installs automatically show `0.X.Y.dev3+g<hash>`. No manual version bumps needed.
+
 ## What not to commit
 
-No `.env`/credentials, no large binaries (STL), no generated files (`site/`, `__pycache__/`, coverage). All covered by `.gitignore`.
+No `.env`/credentials, no large binaries (STL), no generated files (`site/`, `__pycache__/`, `_version.py`, coverage). All covered by `.gitignore`.
