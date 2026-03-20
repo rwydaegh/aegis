@@ -49,7 +49,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
     @app.route("/api/tiles")
     def api_tiles_list():
-        """Return list of available GLB tile files and the ECEF->local transform."""
+        """Return list of available GLB tile files."""
         td = cache.get("tiles_dir")
         if td is None:
             return jsonify({"tiles": [], "transform": None})

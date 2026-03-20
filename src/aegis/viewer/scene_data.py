@@ -220,7 +220,6 @@ def _crop_to_bbox(
     """Crop to a horizontal square bbox around center. Keeps all heights.
 
     Positions are in Y-up format [x, y_up, z_horiz], so horizontal = axes 0 and 2.
-    For ECEF data the horizontal axes are still 0 and 2 before ENU transform.
     """
     n = len(positions)
     if n == 0:
@@ -249,7 +248,7 @@ def _apply_filters(
     positions: np.ndarray,
     colors: np.ndarray,
     materials: list[str],
-    exterior_only: bool = True,
+    exterior_only: bool = False,
     *,
     voxel_sizes: np.ndarray | None = None,
 ) -> tuple:
