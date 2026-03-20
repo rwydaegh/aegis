@@ -310,6 +310,7 @@
         let isComputing = false;
         let computeTimerInterval = null;
         let computeAbortController = null;
+        let activeLocationES = null;
         let lastRecomputeTime = 0;
         const RECOMPUTE_INTERVAL_MS = CFG.interaction.recompute_interval_ms;
 
@@ -1238,6 +1239,12 @@
 
             if (!location) return;
 
+            // Close any existing location stream
+            if (activeLocationES) {
+                activeLocationES.close();
+                activeLocationES = null;
+            }
+
             const logDiv = document.getElementById('location-log');
             logDiv.textContent = '';
             logDiv.classList.add('visible');
@@ -1246,6 +1253,7 @@
 
             const params = new URLSearchParams({ location, radius, force });
             const es = new EventSource('/api/location/load?' + params);
+            activeLocationES = es;
 
             es.addEventListener('progress', (e) => {
                 logDiv.textContent += e.data + '\n';
@@ -1254,6 +1262,7 @@
 
             es.addEventListener('done', async (e) => {
                 es.close();
+                activeLocationES = null;
                 logDiv.textContent += 'Loading voxels into scene...\n';
                 await reloadVoxels();
                 document.getElementById('loadLocationBtn').disabled = false;
@@ -1266,12 +1275,17 @@
                     logDiv.textContent += 'Error: ' + e.data + '\n';
                 }
                 es.close();
+                activeLocationES = null;
                 document.getElementById('loadLocationBtn').disabled = false;
                 document.getElementById('cancelLocationBtn').style.display = 'none';
             });
         };
 
         window.cancelLocation = function() {
+            if (activeLocationES) {
+                activeLocationES.close();
+                activeLocationES = null;
+            }
             fetch('/api/location/cancel', { method: 'POST' });
             const logDiv = document.getElementById('location-log');
             logDiv.textContent += 'Cancelled.\n';
