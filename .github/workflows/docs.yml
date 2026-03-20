@@ -20,6 +20,5 @@ jobs:
         with:
           fetch-depth: 0
       - uses: astral-sh/setup-uv@v4
-      - run: uv python install 3.12
-      - run: uv pip install --system -e ".[docs]"
-      - run: mkdocs gh-deploy --force
+      - run: uv sync --python 3.12 --extra docs
+      - run: uv run mkdocs gh-deploy --force
