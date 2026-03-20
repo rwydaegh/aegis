@@ -62,6 +62,16 @@ else
     sudo -u user "$VENV_DIR/bin/pip" install -q -e "$AEGIS_DIR[dev,gpu]"
 fi
 
+# --- Voxelearth pipeline (location loading) ---
+VOXELEARTH_DIR="/home/user/nodejs-voxelearth"
+if [ ! -d "$VOXELEARTH_DIR" ]; then
+    echo "Installing nodejs-voxelearth pipeline..."
+    sudo -u user git clone https://github.com/voxelearth/nodejs-voxelearth.git "$VOXELEARTH_DIR"
+    cd "$VOXELEARTH_DIR" && sudo -u user npm install && cd -
+else
+    echo "Voxelearth: already installed"
+fi
+
 # --- Claude Code ---
 if ! command -v claude &>/dev/null; then
     echo "Installing Claude Code CLI..."
@@ -110,6 +120,8 @@ if [ -d "$HOME/aegis/.venv" ]; then
     source "$HOME/aegis/.venv/bin/activate"
     cd "$HOME/aegis"
     export AEGIS_VIEWER_AUTH=$(cat "$HOME/.aegis-viewer-auth" 2>/dev/null || true)
+    export VOXELEARTH_DIR="$HOME/nodejs-voxelearth"
+    export GOOGLE_API_KEY=$(grep GOOGLE_API_KEY "$HOME/aegis/.env" 2>/dev/null | cut -d= -f2 || true)
 fi
 BASHRC_APPEND
 fi
