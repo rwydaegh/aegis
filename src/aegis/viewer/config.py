@@ -295,9 +295,6 @@ DEFAULTS: dict = {
         "ground_height_margin": 2.0,
         "ground_center_vertical_offset": 1.0,
     },
-    "ecef": {
-        "detection_threshold": 100000,
-    },
     "ui": {
         "title": "AEGIS Viewer",
         "panel": {

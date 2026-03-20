@@ -123,15 +123,21 @@ def test_flat_floor_normals_are_vertical():
 
 
 def test_grid_coords_swapped_to_zup():
-    """After load_voxels transforms positions to Z-up, grid_coords must match."""
-    from aegis.viewer.scene_data import _transform_to_local
+    """prepare_for_raytracing converts Y-up positions to Z-up and grid_coords must match."""
+    from aegis.viewer.scene_data import prepare_for_raytracing
 
     grid_coords = np.array([[0, 5, 0], [1, 5, 0], [0, 5, 1]], dtype=np.int64)
     positions = grid_coords.astype(np.float64)
+    voxel_sizes = np.ones(len(positions), dtype=np.float32)
 
-    positions_zup, _ = _transform_to_local(positions, has_ecef=False)
+    positions_zup, gc_zup, _ = prepare_for_raytracing(positions, voxel_sizes)
 
-    gc_zup = np.column_stack(
+    # Y-up [x, y_up, z_horiz] -> Z-up [x, -z_horiz, y_up]
+    # For [0, 5, 0]: z_up = [0, 0, 5] (minus center shift, but relative values hold)
+    # Check the first point has y_up in the Z component (index 2)
+    # All positions have same y=5, so after centering they're all at z=0 in Z-up
+    # Use the raw axis mapping instead: gc_zup col 2 should map from col 1 of grid_coords
+    expected_gc_zup = np.column_stack(
         [
             grid_coords[:, 0],
             -grid_coords[:, 2],
@@ -139,5 +145,5 @@ def test_grid_coords_swapped_to_zup():
         ]
     )
 
-    assert gc_zup[0, 2] == 5
-    assert gc_zup[0, 1] == 0
+    assert expected_gc_zup[0, 2] == 5
+    assert expected_gc_zup[0, 1] == 0

@@ -123,25 +123,6 @@ def classify_material(r: int, g: int, b: int) -> str:
 
 
 # ---------------------------------------------------------------------------
-# ECEF to ENU (from spike_viewer.py)
-# ---------------------------------------------------------------------------
-
-
-def ecef_to_enu_matrix(lon_deg: float, lat_deg: float) -> np.ndarray:
-    lon = np.radians(lon_deg)
-    lat = np.radians(lat_deg)
-    sl, cl = np.sin(lon), np.cos(lon)
-    sp, cp = np.sin(lat), np.cos(lat)
-    return np.array(
-        [
-            [-sl, cl, 0],
-            [-sp * cl, -sp * sl, cp],
-            [cp * cl, cp * sl, sp],
-        ]
-    )
-
-
-# ---------------------------------------------------------------------------
 # Exterior voxel extraction
 # ---------------------------------------------------------------------------
 
@@ -226,38 +207,6 @@ def _parse_voxel_json(
     return grid_coords, positions, colors, materials, tile_unit
 
 
-def _deduplicate(
-    grid_coords: np.ndarray,
-    positions: np.ndarray,
-    colors: np.ndarray,
-    materials: list[str],
-    *,
-    voxel_sizes: np.ndarray | None = None,
-) -> tuple:
-    """Remove duplicate grid coordinates (from overlapping tiles)."""
-    n = len(grid_coords)
-    if n == 0:
-        result = (grid_coords, positions, colors, materials)
-        if voxel_sizes is not None:
-            return result + (voxel_sizes,)
-        return result
-    _, unique_idx = np.unique(grid_coords, axis=0, return_index=True)
-    unique_idx.sort()
-    if len(unique_idx) < n:
-        n_dups = n - len(unique_idx)
-        print(f"  Dedup: {n:,} -> {len(unique_idx):,} ({n_dups:,} duplicates removed, {n_dups / n * 100:.1f}%)")
-        grid_coords = grid_coords[unique_idx]
-        positions = positions[unique_idx]
-        colors = colors[unique_idx]
-        materials = [materials[i] for i in unique_idx]
-        if voxel_sizes is not None:
-            voxel_sizes = voxel_sizes[unique_idx]
-    result = (grid_coords, positions, colors, materials)
-    if voxel_sizes is not None:
-        return result + (voxel_sizes,)
-    return result
-
-
 def _crop_to_bbox(
     grid_coords: np.ndarray,
     positions: np.ndarray,
@@ -304,25 +253,13 @@ def _apply_filters(
     *,
     voxel_sizes: np.ndarray | None = None,
 ) -> tuple:
-    """Deduplicate and optionally remove interior voxels."""
+    """Optionally remove interior voxels."""
     n = len(positions)
     if n == 0:
         result = (grid_coords, positions, colors, materials)
         if voxel_sizes is not None:
             return result + (voxel_sizes,)
         return result
-
-    dedup_result = _deduplicate(
-        grid_coords,
-        positions,
-        colors,
-        materials,
-        voxel_sizes=voxel_sizes,
-    )
-    if voxel_sizes is not None:
-        grid_coords, positions, colors, materials, voxel_sizes = dedup_result
-    else:
-        grid_coords, positions, colors, materials = dedup_result
 
     if exterior_only:
         ext_mask = extract_exterior(grid_coords)
@@ -341,70 +278,6 @@ def _apply_filters(
     if voxel_sizes is not None:
         return result + (voxel_sizes,)
     return result
-
-
-def _ecef_to_local(positions: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """Transform ECEF positions to ENU local coordinates.
-
-    Computes the reference lon/lat from the centroid of the provided positions.
-    Returns (transformed_positions, transform_4x4).
-    """
-    center_ecef = positions.mean(axis=0)
-    positions = positions - center_ecef
-    lon_rad = np.arctan2(center_ecef[1], center_ecef[0])
-    lat_rad = np.arctan2(
-        center_ecef[2],
-        np.sqrt(center_ecef[0] ** 2 + center_ecef[1] ** 2),
-    )
-    R = ecef_to_enu_matrix(np.degrees(lon_rad), np.degrees(lat_rad))
-    positions = positions @ R.T
-    M = np.eye(4)
-    M[:3, :3] = R
-    M[:3, 3] = -R @ center_ecef
-    return positions, M
-
-
-def _yup_to_zup(positions: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """Convert Y-up positions to Z-up by remapping axes.
-
-    Y-up [x, y_up, z_horiz] -> Z-up [x, -z_horiz, y_up].
-    Returns (transformed_positions, transform_4x4).
-    """
-    center = positions.mean(axis=0)
-    positions = positions - center
-    positions = np.column_stack(
-        [
-            positions[:, 0],
-            -positions[:, 2],
-            positions[:, 1],
-        ]
-    )
-    R_swap = np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]], dtype=np.float64)
-    M = np.eye(4)
-    M[:3, :3] = R_swap
-    M[:3, 3] = -R_swap @ center
-    return positions, M
-
-
-def _transform_to_local(
-    positions: np.ndarray,
-    has_ecef: bool,
-) -> tuple[np.ndarray, np.ndarray]:
-    """Transform positions to local Z-up coordinates.
-
-    ECEF data gets rotated to ENU (already Z-up).
-    Local data (from voxelearth/glTF) is Y-up and gets converted to Z-up
-    so the JS Z-to-Y swap produces correct Three.js Y-up output.
-
-    Returns (transformed_positions, transform_4x4).
-    """
-    if len(positions) == 0:
-        return positions, np.eye(4)
-
-    max_coord = np.abs(positions).max()
-    if has_ecef and max_coord > _config["ecef"]["detection_threshold"]:
-        return _ecef_to_local(positions)
-    return _yup_to_zup(positions)
 
 
 # ---------------------------------------------------------------------------
