@@ -25,36 +25,100 @@ def set_config(config: dict) -> None:
 # ---------------------------------------------------------------------------
 
 
+def _build_material_rules(mc: dict) -> list[dict]:
+    """Build an ordered list of material classification rules from the config.
+
+    Each rule has a "test" callable (hue, s, v) -> bool and a "name" string.
+    The first matching rule wins.
+    """
+    vhr1 = mc["vegetation_hue_range_1"]
+    vhr2 = mc["vegetation_hue_range_2"]
+    bhr = mc["blue_hue_range"]
+    bshr = mc["brick_secondary_hue_range"]
+
+    return [
+        # Low-saturation early exit: gray/dark colors
+        {
+            "test": lambda hue, s, v, _mc=mc: (
+                s < _mc["saturation_gray_threshold"] and v < _mc["value_asphalt_threshold"]
+            ),
+            "name": "asphalt",
+        },
+        {
+            "test": lambda hue, s, v, _mc=mc: s < _mc["saturation_gray_threshold"],
+            "name": "concrete",
+        },
+        # Dark value: asphalt regardless of hue
+        {
+            "test": lambda hue, s, v, _mc=mc: v < _mc["value_dark_threshold"],
+            "name": "asphalt",
+        },
+        # Vegetation hue range 1
+        {
+            "test": lambda hue, s, v, _vhr1=vhr1, _mc=mc: (
+                _vhr1[0] < hue < _vhr1[1] and s > _mc["vegetation_sat_min_1"] and v > _mc["vegetation_val_min_1"]
+            ),
+            "name": "vegetation",
+        },
+        # Vegetation hue range 2
+        {
+            "test": lambda hue, s, v, _vhr2=vhr2, _mc=mc: (
+                _vhr2[0] < hue < _vhr2[1] and s > _mc["vegetation_sat_min_2"] and v > _mc["vegetation_val_min_2"]
+            ),
+            "name": "vegetation",
+        },
+        # Brick: outside the central hue band with enough saturation
+        {
+            "test": lambda hue, s, v, _mc=mc: (
+                (hue < _mc["brick_hue_low"] or hue > _mc["brick_hue_high"]) and s > _mc["brick_sat_min"]
+            ),
+            "name": "brick",
+        },
+        # Blue hue range: water, glass, or concrete sub-branches
+        {
+            "test": lambda hue, s, v, _bhr=bhr, _mc=mc: (
+                _bhr[0] < hue < _bhr[1] and s > _mc["water_sat_min"] and v > _mc["water_val_min"]
+            ),
+            "name": "water",
+        },
+        {
+            "test": lambda hue, s, v, _bhr=bhr, _mc=mc: (
+                _bhr[0] < hue < _bhr[1] and s > _mc["glass_sat_min"] and v > _mc["glass_val_min"]
+            ),
+            "name": "glass",
+        },
+        {
+            "test": lambda hue, s, v, _bhr=bhr: _bhr[0] < hue < _bhr[1],
+            "name": "concrete",
+        },
+        # Low saturation outside blue range: asphalt or concrete by value
+        {
+            "test": lambda hue, s, v, _mc=mc: s < _mc["brick_sat_min"] and v < _mc["value_asphalt_threshold"],
+            "name": "asphalt",
+        },
+        {
+            "test": lambda hue, s, v, _mc=mc: s < _mc["brick_sat_min"],
+            "name": "concrete",
+        },
+        # Brick secondary hue range
+        {
+            "test": lambda hue, s, v, _bshr=bshr, _mc=mc: (
+                _bshr[0] < hue < _bshr[1] and s < _mc["brick_secondary_sat_max"]
+            ),
+            "name": "brick",
+        },
+    ]
+
+
 def classify_material(r: int, g: int, b: int) -> str:
     mc = _config["material_classification"]
     rf, gf, bf = r / 255, g / 255, b / 255
     h, s, v = colorsys.rgb_to_hsv(rf, gf, bf)
     hue = h * 360
 
-    if s < mc["saturation_gray_threshold"]:
-        return "asphalt" if v < mc["value_asphalt_threshold"] else "concrete"
-    if v < mc["value_dark_threshold"]:
-        return "asphalt"
-    vhr1 = mc["vegetation_hue_range_1"]
-    if vhr1[0] < hue < vhr1[1] and s > mc["vegetation_sat_min_1"] and v > mc["vegetation_val_min_1"]:
-        return "vegetation"
-    vhr2 = mc["vegetation_hue_range_2"]
-    if vhr2[0] < hue < vhr2[1] and s > mc["vegetation_sat_min_2"] and v > mc["vegetation_val_min_2"]:
-        return "vegetation"
-    if (hue < mc["brick_hue_low"] or hue > mc["brick_hue_high"]) and s > mc["brick_sat_min"]:
-        return "brick"
-    bhr = mc["blue_hue_range"]
-    if bhr[0] < hue < bhr[1]:
-        if s > mc["water_sat_min"] and v > mc["water_val_min"]:
-            return "water"
-        if s > mc["glass_sat_min"] and v > mc["glass_val_min"]:
-            return "glass"
-        return "concrete"
-    if s < mc["brick_sat_min"]:
-        return "asphalt" if v < mc["value_asphalt_threshold"] else "concrete"
-    bshr = mc["brick_secondary_hue_range"]
-    if bshr[0] < hue < bshr[1] and s < mc["brick_secondary_sat_max"]:
-        return "brick"
+    for rule in _build_material_rules(mc):
+        if rule["test"](hue, s, v):
+            return rule["name"]
     return "concrete"
 
 
@@ -237,6 +301,49 @@ def _apply_filters(
     return grid_coords, positions, colors, materials
 
 
+def _ecef_to_local(positions: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Transform ECEF positions to ENU local coordinates.
+
+    Computes the reference lon/lat from the centroid of the provided positions.
+    Returns (transformed_positions, transform_4x4).
+    """
+    center_ecef = positions.mean(axis=0)
+    positions = positions - center_ecef
+    lon_rad = np.arctan2(center_ecef[1], center_ecef[0])
+    lat_rad = np.arctan2(
+        center_ecef[2],
+        np.sqrt(center_ecef[0] ** 2 + center_ecef[1] ** 2),
+    )
+    R = ecef_to_enu_matrix(np.degrees(lon_rad), np.degrees(lat_rad))
+    positions = positions @ R.T
+    M = np.eye(4)
+    M[:3, :3] = R
+    M[:3, 3] = -R @ center_ecef
+    return positions, M
+
+
+def _yup_to_zup(positions: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Convert Y-up positions to Z-up by remapping axes.
+
+    Y-up [x, y_up, z_horiz] -> Z-up [x, -z_horiz, y_up].
+    Returns (transformed_positions, transform_4x4).
+    """
+    center = positions.mean(axis=0)
+    positions = positions - center
+    positions = np.column_stack(
+        [
+            positions[:, 0],
+            -positions[:, 2],
+            positions[:, 1],
+        ]
+    )
+    R_swap = np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]], dtype=np.float64)
+    M = np.eye(4)
+    M[:3, :3] = R_swap
+    M[:3, 3] = -R_swap @ center
+    return positions, M
+
+
 def _transform_to_local(
     positions: np.ndarray,
     has_ecef: bool,
@@ -254,35 +361,8 @@ def _transform_to_local(
 
     max_coord = np.abs(positions).max()
     if has_ecef and max_coord > _config["ecef"]["detection_threshold"]:
-        center_ecef = positions.mean(axis=0)
-        positions = positions - center_ecef
-        lon_rad = np.arctan2(center_ecef[1], center_ecef[0])
-        lat_rad = np.arctan2(
-            center_ecef[2],
-            np.sqrt(center_ecef[0] ** 2 + center_ecef[1] ** 2),
-        )
-        R = ecef_to_enu_matrix(np.degrees(lon_rad), np.degrees(lat_rad))
-        positions = positions @ R.T
-        M = np.eye(4)
-        M[:3, :3] = R
-        M[:3, 3] = -R @ center_ecef
-    else:
-        # Y-up [x, y_up, z_horiz] -> Z-up [x, -z_horiz, y_up]
-        center = positions.mean(axis=0)
-        positions = positions - center
-        positions = np.column_stack(
-            [
-                positions[:, 0],
-                -positions[:, 2],
-                positions[:, 1],
-            ]
-        )
-        R_swap = np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]], dtype=np.float64)
-        M = np.eye(4)
-        M[:3, :3] = R_swap
-        M[:3, 3] = -R_swap @ center
-
-    return positions, M
+        return _ecef_to_local(positions)
+    return _yup_to_zup(positions)
 
 
 # ---------------------------------------------------------------------------
