@@ -170,18 +170,17 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             return jsonify({"error": "DiffeRT not installed"}), 501
 
         with cache_lock:
-            grid_coords = cache.get("voxel_grid_coords")
             voxel_positions = cache.get("voxel_positions")
-            voxel_meta = cache.get("voxel_meta")
-        if grid_coords is None or voxel_positions is None or len(grid_coords) == 0:
-            return jsonify({"error": "No voxel grid data"}), 400
+            voxel_sizes = cache.get("voxel_sizes")
+        if voxel_positions is None or len(voxel_positions) == 0:
+            return jsonify({"error": "No voxel data"}), 400
 
-        from aegis.viewer.scene_data import extract_exterior
+        from aegis.viewer.scene_data import extract_exterior, prepare_for_raytracing
 
+        z_up_pos, grid_coords, vs = prepare_for_raytracing(voxel_positions, voxel_sizes)
         ext_mask = extract_exterior(grid_coords)
         ext_grid = grid_coords[ext_mask]
-        ext_pos = voxel_positions[ext_mask]
-        vs = float(voxel_meta["voxel_size"]) if voxel_meta else 1.0
+        ext_pos = z_up_pos[ext_mask]
 
         try:
             scene = get_or_build_voxel_scene(ext_pos, ext_grid, voxel_size=vs)
@@ -295,19 +294,17 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             return jsonify({"error": "DiffeRT not installed"}), 501
 
         from aegis.viewer.compute import TISSUE_PRESETS
-        from aegis.viewer.scene_data import extract_exterior
 
         with cache_lock:
             body = cache.get("body")
-            grid_coords = cache.get("voxel_grid_coords")
             voxel_positions = cache.get("voxel_positions")
-            voxel_meta = cache.get("voxel_meta")
+            voxel_sizes = cache.get("voxel_sizes")
             cfg = cache["config"]
         if body is None:
             return jsonify({"error": "No body mesh loaded"}), 400
 
-        if grid_coords is None:
-            return jsonify({"error": "No voxel grid data available"}), 400
+        if voxel_positions is None or len(voxel_positions) == 0:
+            return jsonify({"error": "No voxel data available"}), 400
 
         params = request.get_json()
         antenna_pos = np.array(params.get("antenna_pos", [5, 0, 1]))
@@ -340,14 +337,12 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         # Build or get cached voxel DiffeRT scene
         max_rt_triangles = cfg["raytracer"]["max_rt_triangles"]
         try:
+            from aegis.viewer.scene_data import extract_exterior, prepare_for_raytracing
+
+            z_up_pos, grid_coords, vs = prepare_for_raytracing(voxel_positions, voxel_sizes)
             ext_mask = extract_exterior(grid_coords)
             ext_grid = grid_coords[ext_mask]
-            if voxel_positions is None or len(voxel_positions) != len(grid_coords):
-                ext_pos = ext_grid.astype(float)
-                vs = 1.0
-            else:
-                ext_pos = voxel_positions[ext_mask]
-                vs = float(voxel_meta["voxel_size"]) if voxel_meta else 1.0
+            ext_pos = z_up_pos[ext_mask]
 
             # Each exterior voxel face is 2 triangles, up to 6 faces per voxel
             est_triangles = len(ext_pos) * 12

@@ -96,36 +96,22 @@ FIDELITY_LEVELS_API = [
 ]
 
 
-def _load_grid_coords(voxel_json: str) -> np.ndarray | None:
-    """Load integer grid coordinates from voxel JSON (for RT mesh building)."""
-    import json as _json
-
-    try:
-        with open(voxel_json) as f:
-            data = _json.load(f)
-        voxels = data if isinstance(data, list) else data.get("voxels", [])
-        return np.array([[v.get("x", 0), v.get("y", 0), v.get("z", 0)] for v in voxels], dtype=np.int64)
-    except Exception:
-        return None
-
-
 def _load_and_cache_voxels_single(voxel_json: str, bbox_radius: float) -> None:
     """Load a single voxel JSON file into _cache."""
-    positions, colors, materials, grid_coords, voxel_size, transform = load_voxels(
+    positions, colors, materials, voxel_sizes = load_voxels(
         voxel_json,
         bbox_radius=bbox_radius,
     )
     with _cache_lock:
         _cache["voxel_positions"] = positions
         _cache["voxel_materials"] = materials
-        _cache["voxel_transform"] = transform
+        _cache["voxel_sizes"] = voxel_sizes
         _cache["voxel_binary"], _cache["voxel_meta"] = voxels_to_binary(
             positions,
             colors,
             materials,
-            voxel_size=voxel_size,
+            voxel_sizes=voxel_sizes,
         )
-        _cache["voxel_grid_coords"] = grid_coords if len(grid_coords) > 0 else _load_grid_coords(voxel_json)
         _cache["body_placement"] = find_body_placement(positions, materials)
     try:
         from aegis.viewer.raytracer import clear_voxel_scene_cache
@@ -133,27 +119,27 @@ def _load_and_cache_voxels_single(voxel_json: str, bbox_radius: float) -> None:
         clear_voxel_scene_cache()
     except ImportError:
         pass
-    print(f"  Voxels: {len(positions):,} loaded, voxel_size={voxel_size:.4f}")
+    vs = float(np.median(voxel_sizes)) if len(voxel_sizes) > 0 else 0
+    print(f"  Voxels: {len(positions):,} loaded, median_size={vs:.4f}")
     print(f"  Body placement: {_cache['body_placement']}")
 
 
 def _load_and_cache_voxels_dir(voxel_dir: str, bbox_radius: float) -> None:
     """Load all voxel JSONs from a directory into _cache."""
-    positions, colors, materials, grid_coords, voxel_size, transform = load_voxels_directory(
+    positions, colors, materials, voxel_sizes = load_voxels_directory(
         voxel_dir,
         bbox_radius=bbox_radius,
     )
     with _cache_lock:
         _cache["voxel_positions"] = positions
         _cache["voxel_materials"] = materials
-        _cache["voxel_transform"] = transform
+        _cache["voxel_sizes"] = voxel_sizes
         _cache["voxel_binary"], _cache["voxel_meta"] = voxels_to_binary(
             positions,
             colors,
             materials,
-            voxel_size=voxel_size,
+            voxel_sizes=voxel_sizes,
         )
-        _cache["voxel_grid_coords"] = grid_coords if len(grid_coords) > 0 else None
         _cache["body_placement"] = find_body_placement(positions, materials)
     try:
         from aegis.viewer.raytracer import clear_voxel_scene_cache
@@ -161,8 +147,9 @@ def _load_and_cache_voxels_dir(voxel_dir: str, bbox_radius: float) -> None:
         clear_voxel_scene_cache()
     except ImportError:
         pass
+    vs = float(np.median(voxel_sizes)) if len(voxel_sizes) > 0 else 0
     print(f"  Body placement: {_cache['body_placement']}")
-    print(f"  Voxels (directory): {len(positions):,} loaded, voxel_size={voxel_size:.4f}")
+    print(f"  Voxels (directory): {len(positions):,} loaded, median_size={vs:.4f}")
 
 
 def create_app(
@@ -234,7 +221,7 @@ def create_app(
                 print(f"  Warning: voxel directory load failed: {e}")
                 _cache["voxel_binary"] = None
                 _cache["voxel_meta"] = None
-                _cache["voxel_grid_coords"] = None
+                _cache["voxel_sizes"] = None
                 _cache["body_placement"] = None
                 _cache["voxel_positions"] = None
         elif voxel_json:
@@ -244,13 +231,13 @@ def create_app(
                 print(f"  Warning: voxel load failed: {e}")
                 _cache["voxel_binary"] = None
                 _cache["voxel_meta"] = None
-                _cache["voxel_grid_coords"] = None
+                _cache["voxel_sizes"] = None
                 _cache["body_placement"] = None
                 _cache["voxel_positions"] = None
         else:
             _cache["voxel_binary"] = None
             _cache["voxel_meta"] = None
-            _cache["voxel_grid_coords"] = None
+            _cache["voxel_sizes"] = None
             _cache["body_placement"] = None
             _cache["voxel_positions"] = None
 

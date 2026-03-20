@@ -123,25 +123,6 @@ def classify_material(r: int, g: int, b: int) -> str:
 
 
 # ---------------------------------------------------------------------------
-# ECEF to ENU (from spike_viewer.py)
-# ---------------------------------------------------------------------------
-
-
-def ecef_to_enu_matrix(lon_deg: float, lat_deg: float) -> np.ndarray:
-    lon = np.radians(lon_deg)
-    lat = np.radians(lat_deg)
-    sl, cl = np.sin(lon), np.cos(lon)
-    sp, cp = np.sin(lat), np.cos(lat)
-    return np.array(
-        [
-            [-sl, cl, 0],
-            [-sp * cl, -sp * sl, cp],
-            [cp * cl, cp * sl, sp],
-        ]
-    )
-
-
-# ---------------------------------------------------------------------------
 # Exterior voxel extraction
 # ---------------------------------------------------------------------------
 
@@ -188,16 +169,24 @@ def extract_exterior(grid_coords: np.ndarray) -> np.ndarray:
 
 def _parse_voxel_json(
     path: str | Path,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, list[str]]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, list[str], float | None]:
     """Parse a single voxel JSON file into arrays.
 
     Returns (grid_coords (N,3 int64), positions (N,3 float64),
-             colors (N,3 uint8), materials list[str]).
+             colors (N,3 uint8), materials list[str], tile_unit float | None).
+    tile_unit is read from the top-level "unit.x" field when present.
     """
     with open(str(path)) as f:
         data = json.load(f)
 
-    voxels = data if isinstance(data, list) else data.get("voxels", [])
+    tile_unit = None
+    if isinstance(data, dict):
+        unit_obj = data.get("unit")
+        if unit_obj is not None:
+            tile_unit = float(unit_obj["x"])
+        voxels = data.get("voxels", [])
+    else:
+        voxels = data
 
     n = len(voxels)
     grid_coords = np.zeros((n, 3), dtype=np.int64)
@@ -215,29 +204,7 @@ def _parse_voxel_json(
         colors[i] = [r, g, b]
         materials.append(classify_material(r, g, b))
 
-    return grid_coords, positions, colors, materials
-
-
-def _deduplicate(
-    grid_coords: np.ndarray,
-    positions: np.ndarray,
-    colors: np.ndarray,
-    materials: list[str],
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, list[str]]:
-    """Remove duplicate grid coordinates (from overlapping tiles)."""
-    n = len(grid_coords)
-    if n == 0:
-        return grid_coords, positions, colors, materials
-    _, unique_idx = np.unique(grid_coords, axis=0, return_index=True)
-    unique_idx.sort()
-    if len(unique_idx) < n:
-        n_dups = n - len(unique_idx)
-        print(f"  Dedup: {n:,} -> {len(unique_idx):,} ({n_dups:,} duplicates removed, {n_dups / n * 100:.1f}%)")
-        grid_coords = grid_coords[unique_idx]
-        positions = positions[unique_idx]
-        colors = colors[unique_idx]
-        materials = [materials[i] for i in unique_idx]
-    return grid_coords, positions, colors, materials
+    return grid_coords, positions, colors, materials, tile_unit
 
 
 def _crop_to_bbox(
@@ -247,25 +214,33 @@ def _crop_to_bbox(
     materials: list[str],
     center: np.ndarray,
     bbox_radius: float,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, list[str]]:
+    *,
+    voxel_sizes: np.ndarray | None = None,
+) -> tuple:
     """Crop to a horizontal square bbox around center. Keeps all heights.
 
     Positions are in Y-up format [x, y_up, z_horiz], so horizontal = axes 0 and 2.
-    For ECEF data the horizontal axes are still 0 and 2 before ENU transform.
     """
     n = len(positions)
     if n == 0:
-        return grid_coords, positions, colors, materials
+        result = (grid_coords, positions, colors, materials)
+        if voxel_sizes is not None:
+            return result + (voxel_sizes,)
+        return result
 
     mask = (np.abs(positions[:, 0] - center[0]) <= bbox_radius) & (np.abs(positions[:, 2] - center[2]) <= bbox_radius)
     n_kept = int(mask.sum())
     print(f"  Bbox crop ({bbox_radius * 2:.0f}m): {n:,} -> {n_kept:,} voxels")
 
-    grid_coords = grid_coords[mask]
-    positions = positions[mask]
-    colors = colors[mask]
-    materials = [m for m, k in zip(materials, mask, strict=True) if k]
-    return grid_coords, positions, colors, materials
+    result = (
+        grid_coords[mask],
+        positions[mask],
+        colors[mask],
+        [m for m, k in zip(materials, mask, strict=True) if k],
+    )
+    if voxel_sizes is not None:
+        return result + (voxel_sizes[mask],)
+    return result
 
 
 def _apply_filters(
@@ -273,19 +248,17 @@ def _apply_filters(
     positions: np.ndarray,
     colors: np.ndarray,
     materials: list[str],
-    exterior_only: bool = True,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, list[str]]:
-    """Deduplicate and optionally remove interior voxels."""
+    exterior_only: bool = False,
+    *,
+    voxel_sizes: np.ndarray | None = None,
+) -> tuple:
+    """Optionally remove interior voxels."""
     n = len(positions)
     if n == 0:
-        return grid_coords, positions, colors, materials
-
-    grid_coords, positions, colors, materials = _deduplicate(
-        grid_coords,
-        positions,
-        colors,
-        materials,
-    )
+        result = (grid_coords, positions, colors, materials)
+        if voxel_sizes is not None:
+            return result + (voxel_sizes,)
+        return result
 
     if exterior_only:
         ext_mask = extract_exterior(grid_coords)
@@ -297,72 +270,13 @@ def _apply_filters(
             positions = positions[ext_mask]
             colors = colors[ext_mask]
             materials = [m for m, keep in zip(materials, ext_mask, strict=True) if keep]
+            if voxel_sizes is not None:
+                voxel_sizes = voxel_sizes[ext_mask]
 
-    return grid_coords, positions, colors, materials
-
-
-def _ecef_to_local(positions: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """Transform ECEF positions to ENU local coordinates.
-
-    Computes the reference lon/lat from the centroid of the provided positions.
-    Returns (transformed_positions, transform_4x4).
-    """
-    center_ecef = positions.mean(axis=0)
-    positions = positions - center_ecef
-    lon_rad = np.arctan2(center_ecef[1], center_ecef[0])
-    lat_rad = np.arctan2(
-        center_ecef[2],
-        np.sqrt(center_ecef[0] ** 2 + center_ecef[1] ** 2),
-    )
-    R = ecef_to_enu_matrix(np.degrees(lon_rad), np.degrees(lat_rad))
-    positions = positions @ R.T
-    M = np.eye(4)
-    M[:3, :3] = R
-    M[:3, 3] = -R @ center_ecef
-    return positions, M
-
-
-def _yup_to_zup(positions: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """Convert Y-up positions to Z-up by remapping axes.
-
-    Y-up [x, y_up, z_horiz] -> Z-up [x, -z_horiz, y_up].
-    Returns (transformed_positions, transform_4x4).
-    """
-    center = positions.mean(axis=0)
-    positions = positions - center
-    positions = np.column_stack(
-        [
-            positions[:, 0],
-            -positions[:, 2],
-            positions[:, 1],
-        ]
-    )
-    R_swap = np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]], dtype=np.float64)
-    M = np.eye(4)
-    M[:3, :3] = R_swap
-    M[:3, 3] = -R_swap @ center
-    return positions, M
-
-
-def _transform_to_local(
-    positions: np.ndarray,
-    has_ecef: bool,
-) -> tuple[np.ndarray, np.ndarray]:
-    """Transform positions to local Z-up coordinates.
-
-    ECEF data gets rotated to ENU (already Z-up).
-    Local data (from voxelearth/glTF) is Y-up and gets converted to Z-up
-    so the JS Z-to-Y swap produces correct Three.js Y-up output.
-
-    Returns (transformed_positions, transform_4x4).
-    """
-    if len(positions) == 0:
-        return positions, np.eye(4)
-
-    max_coord = np.abs(positions).max()
-    if has_ecef and max_coord > _config["ecef"]["detection_threshold"]:
-        return _ecef_to_local(positions)
-    return _yup_to_zup(positions)
+    result = (grid_coords, positions, colors, materials)
+    if voxel_sizes is not None:
+        return result + (voxel_sizes,)
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -394,60 +308,94 @@ def compute_voxel_size(
 def load_voxels(
     path: str | Path,
     bbox_radius: float = 15.0,
-    exterior_only: bool = True,
-) -> tuple[np.ndarray, np.ndarray, list[str], np.ndarray, float, np.ndarray]:
-    """Load voxel JSON, crop to bbox, filter, transform to local Z-up.
+    exterior_only: bool = False,
+) -> tuple[np.ndarray, np.ndarray, list[str], np.ndarray]:
+    """Load voxel JSON, crop to bbox, filter.
 
-    Returns (positions, colors, materials, grid_coords, voxel_size).
+    Returns (positions, colors, materials, voxel_sizes).
+    Positions are in Y-up local frame (meters), unchanged from JSON.
+    voxel_sizes is a per-voxel float32 array.
     """
-    grid_coords, positions, colors, materials = _parse_voxel_json(path)
-    voxel_size = compute_voxel_size(grid_coords, positions)
+    grid_coords, positions, colors, materials, tile_unit = _parse_voxel_json(path)
 
-    # Crop to bbox around center
+    vs = tile_unit if tile_unit is not None else compute_voxel_size(grid_coords, positions)
+
+    voxel_sizes = np.full(len(positions), vs, dtype=np.float32)
+
     center = positions.mean(axis=0)
-    grid_coords, positions, colors, materials = _crop_to_bbox(
+    grid_coords, positions, colors, materials, voxel_sizes = _crop_to_bbox(
         grid_coords,
         positions,
         colors,
         materials,
         center,
         bbox_radius,
+        voxel_sizes=voxel_sizes,
     )
 
-    grid_coords, positions, colors, materials = _apply_filters(
+    grid_coords, positions, colors, materials, voxel_sizes = _apply_filters(
         grid_coords,
         positions,
         colors,
         materials,
         exterior_only,
+        voxel_sizes=voxel_sizes,
     )
 
-    has_ecef = np.abs(positions).max() > _config["ecef"]["detection_threshold"] if len(positions) > 0 else False
-    positions, transform = _transform_to_local(positions, has_ecef)
+    return positions, colors, materials, voxel_sizes
 
-    # Match grid_coords axes to the Z-up convention applied to positions.
-    # Y-up [gx, gy_up, gz_horiz] -> Z-up [gx, -gz_horiz, gy_up]
-    # Only for non-ECEF data (ECEF uses a rotation matrix).
-    if not has_ecef and len(grid_coords) > 0:
-        grid_coords = np.column_stack(
-            [
-                grid_coords[:, 0],
-                -grid_coords[:, 2],
-                grid_coords[:, 1],
-            ]
-        )
 
-    return positions, colors, materials, grid_coords, voxel_size, transform
+def _spatial_deduplicate(
+    positions: np.ndarray,
+    colors: np.ndarray,
+    materials: list[str],
+    voxel_sizes: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, list[str], np.ndarray]:
+    """Remove spatially overlapping voxels, keeping higher-resolution ones."""
+    from scipy.spatial import cKDTree
+
+    n = len(positions)
+    if n == 0:
+        return positions, colors, materials, voxel_sizes
+
+    tree = cKDTree(positions)
+    max_size = float(np.max(voxel_sizes))
+    candidate_pairs = tree.query_pairs(max_size * 0.5)
+
+    keep = np.ones(n, dtype=bool)
+    for i, j in candidate_pairs:
+        if not keep[i] or not keep[j]:
+            continue
+        threshold = min(voxel_sizes[i], voxel_sizes[j]) * 0.5
+        dist = np.linalg.norm(positions[i] - positions[j])
+        if dist > threshold:
+            continue
+        if voxel_sizes[i] <= voxel_sizes[j]:
+            keep[j] = False
+        else:
+            keep[i] = False
+
+    n_removed = n - keep.sum()
+    if n_removed > 0:
+        print(f"  Spatial dedup: {n:,} -> {keep.sum():,} ({n_removed:,} removed, {n_removed / n * 100:.1f}%)")
+
+    return (
+        positions[keep],
+        colors[keep],
+        [m for m, k in zip(materials, keep, strict=True) if k],
+        voxel_sizes[keep],
+    )
 
 
 def load_voxels_directory(
     dir_path: str | Path,
     bbox_radius: float = 15.0,
-    exterior_only: bool = True,
-) -> tuple[np.ndarray, np.ndarray, list[str], np.ndarray, float, np.ndarray]:
-    """Load all voxel JSONs from a directory, crop to bbox, filter, transform.
+    exterior_only: bool = False,
+) -> tuple[np.ndarray, np.ndarray, list[str], np.ndarray]:
+    """Load all voxel JSONs from a directory, crop, dedup, classify.
 
-    Returns (positions, colors, materials, grid_coords, voxel_size).
+    Returns (positions, colors, materials, voxel_sizes).
+    Positions are in Y-up local frame (meters).
     """
     dir_path = Path(dir_path)
     files = sorted(dir_path.glob("*_voxels.json"))
@@ -456,81 +404,65 @@ def load_voxels_directory(
     if not files:
         raise FileNotFoundError(f"No voxel JSON files found in {dir_path}")
 
-    all_grid = []
-    all_pos = []
-    all_colors = []
-    all_materials: list[str] = []
-    per_tile_sizes: list[float] = []
+    all_pos, all_colors, all_materials, all_sizes = [], [], [], []
 
     for f in files:
-        try:
-            gc, pos, col, mats = _parse_voxel_json(f)
-            if len(pos) > 0:
-                all_grid.append(gc)
-                all_pos.append(pos)
-                all_colors.append(col)
-                all_materials.extend(mats)
-                if len(gc) >= 2:
-                    tile_vs = compute_voxel_size(gc, pos)
-                    if 0 < tile_vs < 10:
-                        per_tile_sizes.append(tile_vs)
-                print(f"  Loaded {f.name}: {len(pos):,} voxels")
-        except Exception as e:
-            print(f"  Warning: skipping {f.name}: {e}")
+        gc, pos, col, mats, tile_unit = _parse_voxel_json(f)
+        if len(pos) == 0:
+            continue
+        vs = tile_unit if tile_unit is not None else compute_voxel_size(gc, pos)
+        all_pos.append(pos)
+        all_colors.append(col)
+        all_materials.extend(mats)
+        all_sizes.append(np.full(len(pos), vs, dtype=np.float32))
+        print(f"  Loaded {f.name}: {len(pos):,} voxels, unit={vs:.4f}")
 
     if not all_pos:
         raise ValueError(f"No valid voxel data found in {dir_path}")
 
     positions = np.concatenate(all_pos, axis=0)
     colors = np.concatenate(all_colors, axis=0)
-
-    # Use median per-tile voxel size for robustness across tiles with
-    # different resolutions (Google 3D Tiles LOD variation).
-    voxel_size = float(np.median(per_tile_sizes)) if per_tile_sizes else 1.0
-
-    # Recompute grid_coords globally from world positions so they form a
-    # single consistent grid. Tile-local grid coords are not aligned across
-    # tiles with different resolutions.
-    grid_coords = np.round(positions / voxel_size).astype(np.int64)
+    voxel_sizes = np.concatenate(all_sizes, axis=0)
 
     print(f"  Total merged: {len(positions):,} voxels from {len(files)} files")
-    print(f"  Voxel size: {voxel_size:.4f} world units (median of {len(per_tile_sizes)} tiles)")
 
-    # Crop to bbox BEFORE expensive dedup/exterior filter
+    # Crop to bbox
     center = positions.mean(axis=0)
-    grid_coords, positions, colors, all_materials = _crop_to_bbox(
-        grid_coords,
+    # _crop_to_bbox now accepts voxel_sizes keyword
+    result = _crop_to_bbox(
+        np.zeros((len(positions), 3), dtype=np.int64),  # dummy grid_coords (not used for rendering)
         positions,
         colors,
         all_materials,
         center,
         bbox_radius,
+        voxel_sizes=voxel_sizes,
     )
+    _, positions, colors, all_materials, voxel_sizes = result
 
-    grid_coords, positions, colors, all_materials = _apply_filters(
-        grid_coords,
+    # Spatial dedup
+    positions, colors, all_materials, voxel_sizes = _spatial_deduplicate(
         positions,
         colors,
         all_materials,
-        exterior_only,
+        voxel_sizes,
     )
 
-    has_ecef = np.abs(positions).max() > _config["ecef"]["detection_threshold"] if len(positions) > 0 else False
-    positions, transform = _transform_to_local(positions, has_ecef)
+    # Optional exterior filter (needs grid coords)
+    if exterior_only and len(positions) > 0:
+        dominant_size = float(np.median(voxel_sizes))
+        centered = positions - positions.mean(axis=0)
+        gc = np.round(centered / dominant_size).astype(np.int64)
+        ext_mask = extract_exterior(gc)
+        n_interior = len(positions) - int(ext_mask.sum())
+        if n_interior > 0:
+            print(f"  Exterior filter: {len(positions):,} -> {int(ext_mask.sum()):,} ({n_interior:,} interior removed)")
+            positions = positions[ext_mask]
+            colors = colors[ext_mask]
+            all_materials = [m for m, keep in zip(all_materials, ext_mask, strict=True) if keep]
+            voxel_sizes = voxel_sizes[ext_mask]
 
-    # Match grid_coords axes to the Z-up convention applied to positions.
-    # Y-up [gx, gy_up, gz_horiz] -> Z-up [gx, -gz_horiz, gy_up]
-    # Only for non-ECEF data (ECEF uses a rotation matrix).
-    if not has_ecef and len(grid_coords) > 0:
-        grid_coords = np.column_stack(
-            [
-                grid_coords[:, 0],
-                -grid_coords[:, 2],
-                grid_coords[:, 1],
-            ]
-        )
-
-    return positions, colors, all_materials, grid_coords, voxel_size, transform
+    return positions, colors, all_materials, voxel_sizes
 
 
 # ---------------------------------------------------------------------------
@@ -570,12 +502,18 @@ def voxels_to_binary(
     positions: np.ndarray,
     colors: np.ndarray,
     materials: list[str],
+    voxel_sizes: np.ndarray | None = None,
     voxel_size: float = 1.0,
 ) -> tuple[bytes, dict]:
     """Serialize voxels for Three.js InstancedMesh."""
     pos_bytes = positions.astype(np.float32).tobytes()
+
+    if voxel_sizes is not None:
+        size_bytes = voxel_sizes.astype(np.float32).tobytes()
+    else:
+        size_bytes = np.full(len(positions), voxel_size, dtype=np.float32).tobytes()
+
     col_bytes = colors.astype(np.uint8).tobytes()
-    data = pos_bytes + col_bytes
 
     from collections import Counter
 
@@ -585,27 +523,55 @@ def voxels_to_binary(
     mat_to_idx = {m: i for i, m in enumerate(unique_mats)}
     mat_indices = np.array([mat_to_idx[m] for m in materials], dtype=np.uint8)
 
-    data += mat_indices.tobytes()
+    data = pos_bytes + size_bytes + col_bytes + mat_indices.tobytes()
 
     meta = {
         "n_voxels": len(positions),
         "materials": unique_mats,
         "material_counts": {m: c for m, c in mat_counts.items()},
-        "voxel_size": voxel_size,
+        "voxel_size": float(np.median(voxel_sizes)) if voxel_sizes is not None else voxel_size,
+        "has_per_voxel_sizes": voxel_sizes is not None,
     }
     return data, meta
+
+
+def prepare_for_raytracing(
+    positions: np.ndarray,
+    voxel_sizes: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, float]:
+    """Convert Y-up positions to Z-up and compute grid coords for greedy meshing.
+
+    Y-up [x, y_up, z_horiz] -> Z-up [x, -z_horiz, y_up].
+
+    Returns (z_up_positions, grid_coords, dominant_voxel_size).
+    """
+    dominant_size = float(np.median(voxel_sizes))
+
+    z_up = np.column_stack(
+        [
+            positions[:, 0],
+            -positions[:, 2],
+            positions[:, 1],
+        ]
+    )
+
+    center = z_up.mean(axis=0)
+    centered = z_up - center
+    grid_coords = np.round(centered / dominant_size).astype(np.int64)
+
+    return z_up, grid_coords, dominant_size
 
 
 def find_body_placement(positions: np.ndarray, materials: list[str]) -> list[float]:
     """Find a good street-level position to place the body.
 
-    Returns [x, y, z] in Z-up coordinates (z = vertical).
+    Returns [x, y, z] in Y-up coordinates (y = vertical).
     """
     mc = _config["material_classification"]
     min_voxels = mc["min_voxels_for_material"]
     pct = mc["ground_height_percentile"]
     margin = mc["ground_height_margin"]
-    z_offset = mc["ground_center_z_offset"]
+    y_offset = mc["ground_center_vertical_offset"]
 
     mat_arr = np.array(materials)
 
@@ -614,20 +580,20 @@ def find_body_placement(positions: np.ndarray, materials: list[str]) -> list[flo
         if mask.sum() < min_voxels:
             continue
         subset = positions[mask]
-        z_vals = subset[:, 2]
-        z_low = np.percentile(z_vals, pct)
-        ground_mask = z_vals <= z_low + margin
+        y_vals = subset[:, 1]
+        y_low = np.percentile(y_vals, pct)
+        ground_mask = y_vals <= y_low + margin
         ground = subset[ground_mask]
         if len(ground) > 0:
             center = np.median(ground, axis=0)
-            center[2] = z_low + z_offset
+            center[1] = y_low + y_offset
             return center.tolist()
 
-    z_vals = positions[:, 2]
-    z_low = np.percentile(z_vals, pct)
-    ground = positions[z_vals <= z_low + margin]
+    y_vals = positions[:, 1]
+    y_low = np.percentile(y_vals, pct)
+    ground = positions[y_vals <= y_low + margin]
     center = np.median(ground, axis=0) if len(ground) > 0 else positions.mean(axis=0)
-    center[2] = z_low + z_offset
+    center[1] = y_low + y_offset
     return center.tolist()
 
 
