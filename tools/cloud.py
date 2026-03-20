@@ -11,6 +11,7 @@ Usage:
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import subprocess
@@ -265,3 +266,333 @@ def print_ssh_config(state: dict) -> None:
     print(f"    User {DEFAULT_SSH_USER}")
     print(f"    IdentityFile {key_path}")
     print("---")
+
+
+# ---------------------------------------------------------------------------
+# Provisioning
+# ---------------------------------------------------------------------------
+
+
+def provision() -> dict:
+    """Provision a new TensorDock VM. Returns state dict."""
+    pub_key = read_public_key()
+    loc_id, gpu_name, price = find_cheapest_location()
+    print(f"Provisioning: {gpu_name} @ ${price:.3f}/hr")
+
+    body = {
+        "data": {
+            "type": "virtualmachine",
+            "attributes": {
+                "name": "aegis-dev",
+                "type": "virtualmachine",
+                "image": DEFAULT_IMAGE,
+                "location_id": loc_id,
+                "resources": {
+                    "vcpu_count": DEFAULT_VCPUS,
+                    "ram_gb": DEFAULT_RAM_GB,
+                    "storage_gb": DEFAULT_STORAGE_GB,
+                    "gpus": {gpu_name: {"count": 1}},
+                },
+                "ssh_key": pub_key,
+                "port_forwards": [
+                    {"internal_port": 22, "external_port": 22},
+                    {"internal_port": 5000, "external_port": 5000},
+                ],
+            },
+        }
+    }
+
+    resp = api_request("POST", "/instances", body)
+    if resp is None or "data" not in resp or "id" not in resp["data"]:
+        print(f"Error: Unexpected API response during provisioning: {resp}")
+        sys.exit(1)
+    instance_id = resp["data"]["id"]
+    print(f"Instance created: {instance_id}")
+
+    # Fetch full details (IP, actual ports)
+    time.sleep(2)
+    details = get_instance(instance_id)
+    ports = {pf["internal_port"]: pf["external_port"] for pf in details.get("portForwards", [])}
+
+    state = {
+        "instance_id": instance_id,
+        "ip": details["ipAddress"],
+        "ssh_port": ports.get(22, 22),
+        "viewer_port": ports.get(5000, 5000),
+        "gpu": gpu_name,
+        "status": "running",
+        "rate_hourly": details.get("rateHourly", price),
+        "started_at": time.time(),
+    }
+    save_state(state)
+    return state
+
+
+def start_instance(state: dict) -> dict:
+    """Start a stopped instance and refresh state with new IP/ports."""
+    instance_id = state["instance_id"]
+    print(f"Starting instance {instance_id}...")
+    api_request("POST", f"/instances/{instance_id}/start")
+
+    # Wait a moment, then re-query for possibly changed IP/ports
+    time.sleep(5)
+    details = get_instance(instance_id)
+    if details is None:
+        print("Error: Instance not found after start. It may have been deleted.")
+        clear_state()
+        sys.exit(1)
+
+    ports = {pf["internal_port"]: pf["external_port"] for pf in details.get("portForwards", [])}
+    state["ip"] = details["ipAddress"]
+    state["ssh_port"] = ports.get(22, state["ssh_port"])
+    state["viewer_port"] = ports.get(5000, state["viewer_port"])
+    state["status"] = "running"
+    state["rate_hourly"] = details.get("rateHourly", state.get("rate_hourly", 0))
+    state["started_at"] = time.time()
+    save_state(state)
+    return state
+
+
+# ---------------------------------------------------------------------------
+# Commands
+# ---------------------------------------------------------------------------
+
+
+def cmd_up(args: argparse.Namespace) -> None:
+    """Provision new, wake stopped, or sync running machine."""
+    state = load_state()
+
+    if state is not None:
+        # Validate against API
+        details = get_instance(state["instance_id"])
+        if details is None:
+            print("Stored instance no longer exists. Provisioning new one.")
+            clear_state()
+            state = None
+        else:
+            state["status"] = details.get("status", "unknown").lower()
+            save_state(state)
+
+    if state is None:
+        # Provision new
+        state = provision()
+        if not wait_for_ssh(state):
+            return
+        run_bootstrap(state)
+        print_ssh_config(state)
+        cmd_status(args)
+        return
+
+    status = state["status"]
+    if status in ("stopped", "stoppeddisassociated"):
+        state = start_instance(state)
+        if not wait_for_ssh(state):
+            return
+        run_sync(state)
+        print_ssh_config(state)
+        cmd_status(args)
+        return
+
+    if status == "running":
+        print("Machine already running. Syncing...")
+        run_sync(state)
+        cmd_status(args)
+        return
+
+    print(f"Machine is in state '{status}'. Cannot bring up.")
+    print("Try: python tools/cloud.py destroy")
+
+
+def cmd_down(args: argparse.Namespace) -> None:
+    """Stop the machine (preserves disk)."""
+    state = load_state()
+    if state is None:
+        print("No machine tracked. Nothing to stop.")
+        return
+
+    instance_id = state["instance_id"]
+    print(f"Stopping instance {instance_id}...")
+    api_request("POST", f"/instances/{instance_id}/stop")
+    state["status"] = "stopped"
+    save_state(state)
+    print("Machine stopped. Disk preserved. Run 'up' to restart.")
+
+
+def cmd_destroy(args: argparse.Namespace) -> None:
+    """Delete the machine entirely."""
+    state = load_state()
+    if state is None:
+        print("No machine tracked. Nothing to destroy.")
+        return
+
+    instance_id = state["instance_id"]
+    print(f"Deleting instance {instance_id}...")
+    try:
+        api_request("DELETE", f"/instances/{instance_id}")
+    except Exception as e:
+        print(f"Warning: API delete failed ({e}). Clearing local state anyway.")
+    clear_state()
+    print("Machine destroyed.")
+
+
+def cmd_status(args: argparse.Namespace) -> None:
+    """Show current machine status."""
+    state = load_state()
+    if state is None:
+        print("No machine tracked.")
+        return
+
+    # Refresh from API
+    details = get_instance(state["instance_id"])
+    if details is None:
+        print("Stored instance no longer exists on TensorDock.")
+        clear_state()
+        return
+
+    status = details.get("status", "unknown")
+    rate = details.get("rateHourly", state.get("rate_hourly", 0))
+
+    print(f"  Instance:  {state['instance_id']}")
+    print(f"  Status:    {status}")
+    print(f"  IP:        {state['ip']}")
+    print(f"  SSH:       ssh -p {state['ssh_port']} {DEFAULT_SSH_USER}@{state['ip']}")
+    print(f"  Viewer:    http://{state['ip']}:{state['viewer_port']}")
+    print(f"  GPU:       {state['gpu']}")
+    print(f"  Rate:      ${rate:.3f}/hr")
+
+    if status.lower() == "running" and rate > 0:
+        started_at = state.get("started_at")
+        if started_at:
+            uptime_hrs = (time.time() - started_at) / 3600
+            cost_est = uptime_hrs * rate
+            print(f"  Uptime:    {uptime_hrs:.1f}h (est. ${cost_est:.2f})")
+            if uptime_hrs > 4:
+                print(f"\n  !! WARNING: Machine running for {uptime_hrs:.1f}h. Consider shutting down. !!")
+        print(f"\n  ** Machine is running at ${rate:.3f}/hr **")
+        print("  Run 'python tools/cloud.py down' when done.")
+
+
+# ---------------------------------------------------------------------------
+# Bootstrap and sync
+# ---------------------------------------------------------------------------
+
+
+def run_bootstrap(state: dict) -> None:
+    """Upload and run the bootstrap script on a fresh machine."""
+    bootstrap_script = TOOLS_DIR / "cloud-bootstrap.sh"
+    if not bootstrap_script.exists():
+        print(f"Error: {bootstrap_script} not found.")
+        sys.exit(1)
+
+    print("Running bootstrap on remote machine...")
+    scp_to_remote(state, str(bootstrap_script), "/tmp/cloud-bootstrap.sh")
+    result = ssh_command(state, "chmod +x /tmp/cloud-bootstrap.sh && sudo bash /tmp/cloud-bootstrap.sh", timeout=600)
+    if result.returncode != 0:
+        print(f"Bootstrap failed (exit code {result.returncode}):")
+        print(result.stderr)
+        print(result.stdout)
+        print("SSH in manually to debug: python tools/cloud.py ssh")
+    else:
+        print(result.stdout)
+        print("Bootstrap complete.")
+
+
+def run_sync(state: dict) -> None:
+    """Pull latest code and reinstall on the remote machine."""
+    # Check if repo exists; fall back to full bootstrap if not
+    result = ssh_command(state, "test -d ~/aegis/.git && echo exists", timeout=10)
+    if "exists" not in (result.stdout or ""):
+        print("Repo not found on remote. Running full bootstrap...")
+        run_bootstrap(state)
+        return
+
+    print("Syncing remote...")
+    sync_cmd = (
+        "cd ~/aegis && git pull --rebase origin master && source .venv/bin/activate && pip install -q -e '.[dev,gpu]'"
+    )
+    result = ssh_command(state, sync_cmd, timeout=300)
+    if result.returncode != 0:
+        print("Sync failed:")
+        print(result.stderr)
+    else:
+        print("Sync complete.")
+        if result.stdout.strip():
+            # Show only last few lines
+            lines = result.stdout.strip().splitlines()
+            for line in lines[-5:]:
+                print(f"  {line}")
+
+
+def cmd_sync(args: argparse.Namespace) -> None:
+    """Pull latest code on remote machine."""
+    state = load_state()
+    if state is None:
+        print("No machine tracked. Run 'up' first.")
+        return
+    run_sync(state)
+
+
+def cmd_ssh(args: argparse.Namespace) -> None:
+    """Open interactive SSH session."""
+    state = load_state()
+    if state is None:
+        print("No machine tracked. Run 'up' first.")
+        return
+    key_path = get_ssh_key_path()
+    print(f"Connecting to {state['ip']}:{state['ssh_port']}...")
+    # Replace process with SSH (interactive). Use subprocess.run on Windows.
+    ssh_args = [
+        "ssh",
+        "-o",
+        "StrictHostKeyChecking=no",
+        "-o",
+        "UserKnownHostsFile=/dev/null",
+        "-o",
+        "ServerAliveInterval=30",
+        "-i",
+        str(key_path),
+        "-p",
+        str(state["ssh_port"]),
+        f"{DEFAULT_SSH_USER}@{state['ip']}",
+    ]
+    if sys.platform == "win32":
+        result = subprocess.run(ssh_args)
+        sys.exit(result.returncode)
+    else:
+        os.execvp("ssh", ssh_args)
+
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="TensorDock dev machine manager for AEGIS",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=__doc__,
+    )
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    sub.add_parser("up", help="Provision, wake, or sync machine")
+    sub.add_parser("down", help="Stop machine (preserves disk)")
+    sub.add_parser("destroy", help="Delete machine entirely")
+    sub.add_parser("sync", help="Pull latest code on remote")
+    sub.add_parser("ssh", help="Open SSH session")
+    sub.add_parser("status", help="Show machine state")
+
+    args = parser.parse_args()
+    commands = {
+        "up": cmd_up,
+        "down": cmd_down,
+        "destroy": cmd_destroy,
+        "sync": cmd_sync,
+        "ssh": cmd_ssh,
+        "status": cmd_status,
+    }
+    commands[args.command](args)
+
+
+if __name__ == "__main__":
+    main()
