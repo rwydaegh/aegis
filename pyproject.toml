@@ -45,7 +45,8 @@ dev = [
     "codespell>=2.2",
     "miepython>=2.6",
 ]
-all = ["aegis[gpu,viz,rt,docs,dev]"]
+cloud = ["requests>=2.31"]
+all = ["aegis[gpu,viz,rt,docs,dev,cloud]"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/aegis"]

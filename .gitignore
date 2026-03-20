@@ -73,3 +73,6 @@ test_screenshots/
 
 # Local theory artifacts (not part of the repo)
 theory/summary_paper.pdf
+
+# Cloud dev machine state (local, auto-generated)
+tools/.cloud-state.json
