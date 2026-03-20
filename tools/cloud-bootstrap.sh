@@ -2,6 +2,7 @@
 # cloud-bootstrap.sh - First-time setup for AEGIS dev machine on TensorDock
 # Idempotent: safe to run multiple times.
 set -euo pipefail
+export DEBIAN_FRONTEND=noninteractive
 
 echo "=== AEGIS dev machine bootstrap ==="
 
@@ -14,15 +15,15 @@ else
     echo "System packages: OK"
 fi
 
-# --- Python 3.12 ---
+# --- Python 3.12 + venv ---
 if ! command -v python3.12 &>/dev/null; then
     echo "Installing Python 3.12..."
     add-apt-repository -y ppa:deadsnakes/ppa
     apt-get update -qq
-    apt-get install -y -qq python3.12 python3.12-venv python3.12-dev
-else
-    echo "Python 3.12: $(python3.12 --version)"
 fi
+# Always ensure venv and dev packages are present (system Python may lack them)
+dpkg -s python3.12-venv &>/dev/null || apt-get install -y -qq python3.12-venv python3.12-dev
+echo "Python 3.12: $(python3.12 --version)"
 
 # --- Node.js (for Claude Code) ---
 if ! command -v node &>/dev/null; then
