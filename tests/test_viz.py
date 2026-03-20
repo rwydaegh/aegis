@@ -72,6 +72,7 @@ class TestHeatmap:
         assert (tmp_path / "test.png").exists()
 
     def test_custom_sab_max(self, simple_mesh, simple_sab):
+        pytest.importorskip("plotly")
         from aegis.viz.heatmap import plot_heatmap
 
         fig = plot_heatmap(
@@ -84,6 +85,7 @@ class TestHeatmap:
         assert fig is not None
 
     def test_zero_sab(self, simple_mesh):
+        pytest.importorskip("plotly")
         from aegis.viz.heatmap import plot_heatmap
 
         sab = np.zeros(4)
@@ -213,6 +215,7 @@ class TestComparison:
         assert (tmp_path / "comp.html").exists()
 
     def test_shared_sab_max(self, simple_mesh):
+        pytest.importorskip("plotly")
         from aegis.viz.comparison import plot_level_comparison
 
         results = {
