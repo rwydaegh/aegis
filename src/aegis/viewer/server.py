@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import threading
 from pathlib import Path
 
@@ -188,6 +189,23 @@ def create_app(
 
     template_dir = str(Path(__file__).parent / "templates")
     app = Flask(__name__, template_folder=template_dir)
+
+    # Optional HTTP Basic Auth for remote access
+    _viewer_auth = os.environ.get("AEGIS_VIEWER_AUTH")
+    if _viewer_auth and ":" in _viewer_auth:
+        _auth_user, _, _auth_pass = _viewer_auth.partition(":")
+
+        @app.before_request
+        def _check_basic_auth():
+            from flask import Response, request
+
+            auth = request.authorization
+            if not auth or auth.username != _auth_user or auth.password != _auth_pass:
+                return Response(
+                    "Authentication required.",
+                    401,
+                    {"WWW-Authenticate": 'Basic realm="AEGIS Viewer"'},
+                )
 
     # Store pipeline config
     _cache["bbox_radius"] = bbox_radius
