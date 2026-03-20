@@ -773,83 +773,103 @@
         }
 
         async function loadScene() {
-            const config = await (await fetch('/api/config')).json();
+            try {
+                const config = await (await fetch('/api/config')).json();
 
-            if (config.body_meta) {
-                await loadBody();
-            }
-
-            if (config.has_voxels) {
-                await loadVoxels(config.voxel_meta);
-            }
-
-            // Load photorealistic GLB tiles if available
-            await loadGlbTiles();
-
-            const voxelRt = (config.voxel_rt_available !== false) && config.has_voxels;
-            const hasSionna = config.scenes && config.scenes.length > 0;
-
-            if (config.has_differt && (voxelRt || hasSionna)) {
-                hasDiffert = true;
-                document.getElementById('rt-section').style.display = 'block';
-                const rtSourceSelect = document.getElementById('rtSourceSelect');
-
-                if (!voxelRt) {
-                    const vo = document.getElementById('rtSourceVoxel');
-                    if (vo) vo.remove();
+                if (config.body_meta) {
+                    await loadBody();
                 }
 
-                if (hasSionna) {
-                    for (const s of config.scenes) {
-                        const opt = document.createElement('option');
-                        opt.value = 'sionna:' + s.path;
-                        opt.textContent = s.name + ' (Sionna)';
-                        rtSourceSelect.appendChild(opt);
+                if (config.has_voxels) {
+                    await loadVoxels(config.voxel_meta);
+                }
+
+                // Load photorealistic GLB tiles if available
+                await loadGlbTiles();
+
+                const voxelRt = (config.voxel_rt_available !== false) && config.has_voxels;
+                const hasSionna = config.scenes && config.scenes.length > 0;
+
+                if (config.has_differt && (voxelRt || hasSionna)) {
+                    hasDiffert = true;
+                    document.getElementById('rt-section').style.display = 'block';
+                    const rtSourceSelect = document.getElementById('rtSourceSelect');
+
+                    if (!voxelRt) {
+                        const vo = document.getElementById('rtSourceVoxel');
+                        if (vo) vo.remove();
                     }
+
+                    if (hasSionna) {
+                        for (const s of config.scenes) {
+                            const opt = document.createElement('option');
+                            opt.value = 'sionna:' + s.path;
+                            opt.textContent = s.name + ' (Sionna)';
+                            rtSourceSelect.appendChild(opt);
+                        }
+                    }
+
+                    rtSourceSelect.addEventListener('change', onRTSourceChange);
+                    document.getElementById('rtEnabled').addEventListener('change', (e) => {
+                        document.getElementById('rt-status').textContent = '';
+                        for (const line of pathLines) scene.remove(line);
+                        pathLines = [];
+                        if (!e.target.checked && antennaPos) drawPaths(antennaPos);
+                        if (antennaPos) computeDosimetry(antennaPos);
+                    });
+                    document.getElementById('maxOrderSelect').addEventListener('change', () => {
+                        if (antennaPos) computeDosimetry(antennaPos);
+                    });
                 }
 
-                rtSourceSelect.addEventListener('change', onRTSourceChange);
-                document.getElementById('rtEnabled').addEventListener('change', (e) => {
-                    document.getElementById('rt-status').textContent = '';
-                    for (const line of pathLines) scene.remove(line);
-                    pathLines = [];
-                    if (!e.target.checked && antennaPos) drawPaths(antennaPos);
-                    if (antennaPos) computeDosimetry(antennaPos);
-                });
-                document.getElementById('maxOrderSelect').addEventListener('change', () => {
-                    if (antennaPos) computeDosimetry(antennaPos);
-                });
-            }
+                // Show location loader
+                const locSection = document.getElementById('location-section');
+                locSection.style.display = 'block';
+                if (!config.has_api_key) {
+                    const logDiv = document.getElementById('location-log');
+                    logDiv.classList.add('visible');
+                    logDiv.textContent = 'Set GOOGLE_API_KEY env var to enable location loading.\nRestart the viewer after setting it.';
+                    document.getElementById('loadLocationBtn').disabled = true;
+                } else if (!config.has_location_loader) {
+                    const logDiv = document.getElementById('location-log');
+                    logDiv.classList.add('visible');
+                    logDiv.textContent = 'nodejs-voxelearth pipeline not found.\nSet VOXELEARTH_DIR or place it at ../nodejs-voxelearth/';
+                    document.getElementById('loadLocationBtn').disabled = true;
+                }
 
-            // Show location loader
-            const locSection = document.getElementById('location-section');
-            locSection.style.display = 'block';
-            if (!config.has_api_key) {
-                const logDiv = document.getElementById('location-log');
-                logDiv.classList.add('visible');
-                logDiv.textContent = 'Set GOOGLE_API_KEY env var to enable location loading.\nRestart the viewer after setting it.';
-                document.getElementById('loadLocationBtn').disabled = true;
-            } else if (!config.has_location_loader) {
-                const logDiv = document.getElementById('location-log');
-                logDiv.classList.add('visible');
-                logDiv.textContent = 'nodejs-voxelearth pipeline not found.\nSet VOXELEARTH_DIR or place it at ../nodejs-voxelearth/';
-                document.getElementById('loadLocationBtn').disabled = true;
-            }
+                buildLayerButtons();
+                await setupEnvDisplay(config);
 
-            buildLayerButtons();
-            await setupEnvDisplay(config);
+                if (config.body_placement && bodyMesh) {
+                    const bp = config.body_placement;
+                    bodyOffset.set(bp[0], bp[2], -bp[1]);
+                    bodyOffset.y = getGroundY(bodyOffset.x, bodyOffset.z);
+                    updateBodyTransform();
+                }
+
+                centerCamera();
+            } catch (err) {
+                console.error('loadScene failed:', err);
+                const loadingEl = document.getElementById('loading');
+                loadingEl.innerHTML = '';
+                const msg = document.createElement('div');
+                msg.textContent = 'Failed to load scene: ' + (err.message || err);
+                msg.style.color = '#e74c3c';
+                msg.style.marginBottom = '12px';
+                loadingEl.appendChild(msg);
+                const retryBtn = document.createElement('button');
+                retryBtn.textContent = 'Retry';
+                retryBtn.className = 'ctrl-btn';
+                retryBtn.addEventListener('click', () => {
+                    loadingEl.innerHTML = '<div class="spinner"></div>Loading scene...';
+                    loadScene();
+                });
+                loadingEl.appendChild(retryBtn);
+                return;
+            }
 
             document.getElementById('loading').style.display = 'none';
             document.getElementById('panel').style.display = 'block';
-
-            if (config.body_placement && bodyMesh) {
-                const bp = config.body_placement;
-                bodyOffset.set(bp[0], bp[2], -bp[1]);
-                bodyOffset.y = getGroundY(bodyOffset.x, bodyOffset.z);
-                updateBodyTransform();
-            }
-
-            centerCamera();
         }
 
         async function loadBody() {
@@ -1294,7 +1314,7 @@
                 activeLocationES.close();
                 activeLocationES = null;
             }
-            fetch('/api/location/cancel', { method: 'POST' });
+            fetch('/api/location/cancel', { method: 'POST' }).catch(() => {});
             const logDiv = document.getElementById('location-log');
             logDiv.textContent += 'Cancelled.\n';
             document.getElementById('loadLocationBtn').disabled = false;
