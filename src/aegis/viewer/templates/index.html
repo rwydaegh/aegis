@@ -2006,17 +2006,40 @@
                 }
             }
 
-            bodyOffset.x += bodyVelocity.x * dt;
-            bodyOffset.z += bodyVelocity.z * dt;
+            // Horizontal movement with collision
+            let nextX = bodyOffset.x + bodyVelocity.x * dt;
+            let nextZ = bodyOffset.z + bodyVelocity.z * dt;
+
+            if (onGround) {
+                // Test X axis independently (allows wall-sliding)
+                const testXGroundY = getGroundY(nextX, bodyOffset.z);
+                if (testXGroundY - bodyOffset.y > MAX_STEP) {
+                    nextX = bodyOffset.x;
+                    bodyVelocity.x = 0;
+                }
+
+                // Test Z axis independently (allows wall-sliding)
+                const testZGroundY = getGroundY(nextX, nextZ);
+                if (testZGroundY - bodyOffset.y > MAX_STEP) {
+                    nextZ = bodyOffset.z;
+                    bodyVelocity.z = 0;
+                }
+            }
+
+            bodyOffset.x = nextX;
+            bodyOffset.z = nextZ;
             if (!onGround) {
                 bodyOffset.y += bodyVelocity.y * dt;
             }
 
+            // Cliff and landing detection
             const newGroundY = getGroundY(bodyOffset.x, bodyOffset.z);
             if (onGround) {
-                bodyOffset.y = newGroundY;
-                if (Math.abs(newGroundY - groundY) > 1.0) {
+                if (bodyOffset.y - newGroundY > MAX_STEP) {
+                    // Walked off a cliff
                     onGround = false;
+                } else {
+                    bodyOffset.y = newGroundY;
                 }
             } else if (bodyOffset.y <= newGroundY + GROUND_SNAP) {
                 bodyOffset.y = newGroundY;
