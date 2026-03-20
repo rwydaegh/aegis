@@ -345,6 +345,18 @@ def load_voxels(
     has_ecef = np.abs(positions).max() > _config["ecef"]["detection_threshold"] if len(positions) > 0 else False
     positions, transform = _transform_to_local(positions, has_ecef)
 
+    # Match grid_coords axes to the Z-up convention applied to positions.
+    # Y-up [gx, gy_up, gz_horiz] -> Z-up [gx, -gz_horiz, gy_up]
+    # Only for non-ECEF data (ECEF uses a rotation matrix).
+    if not has_ecef and len(grid_coords) > 0:
+        grid_coords = np.column_stack(
+            [
+                grid_coords[:, 0],
+                -grid_coords[:, 2],
+                grid_coords[:, 1],
+            ]
+        )
+
     return positions, colors, materials, grid_coords, voxel_size, transform
 
 
@@ -414,6 +426,18 @@ def load_voxels_directory(
 
     has_ecef = np.abs(positions).max() > _config["ecef"]["detection_threshold"] if len(positions) > 0 else False
     positions, transform = _transform_to_local(positions, has_ecef)
+
+    # Match grid_coords axes to the Z-up convention applied to positions.
+    # Y-up [gx, gy_up, gz_horiz] -> Z-up [gx, -gz_horiz, gy_up]
+    # Only for non-ECEF data (ECEF uses a rotation matrix).
+    if not has_ecef and len(grid_coords) > 0:
+        grid_coords = np.column_stack(
+            [
+                grid_coords[:, 0],
+                -grid_coords[:, 2],
+                grid_coords[:, 1],
+            ]
+        )
 
     return positions, colors, all_materials, grid_coords, voxel_size, transform
 
