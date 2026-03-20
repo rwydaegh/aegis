@@ -234,7 +234,7 @@
         <div class="hint">
             Click ground, body, or voxels to place antenna<br>
             Arrow keys: nudge antenna<br>
-            WASD: walk body | QE: rotate | Space: jump | Shift: sprint<br>
+            WASD: walk | QE: rotate | Space: jump | Shift: sprint | T: teleport<br>
             Mouse: orbit | Scroll: zoom | Right-click: pan<br>
             Body has gravity (snaps to ground)
         </div>
@@ -750,7 +750,11 @@
                     debouncedRecompute();
                     e.preventDefault();
                 }
-                if ('KeyW KeyA KeyS KeyD KeyQ KeyE'.includes(e.code)) e.preventDefault();
+                if (e.code === 'KeyT') {
+                    teleportToTop();
+                    e.preventDefault();
+                }
+                if ('KeyW KeyA KeyS KeyD KeyQ KeyE KeyT'.includes(e.code)) e.preventDefault();
             });
             window.addEventListener('keyup', (e) => keysDown.delete(e.code));
             window.addEventListener('blur', () => keysDown.clear());
@@ -1881,6 +1885,32 @@
             const cz = Math.round(z / hmRes);
             const key = cx + ',' + cz;
             return key in voxelHeightmap ? voxelHeightmap[key] + voxelSize * 0.5 : bodyOffset.y;
+        }
+
+        function teleportToTop() {
+            if (usingSionnaScene()) {
+                bodyOffset.y = getGroundY(bodyOffset.x, bodyOffset.z);
+            } else if (voxelHeightmap) {
+                const hmRes = voxelSize * CFG.voxels.heightmap_resolution_factor;
+                const cx = Math.round(bodyOffset.x / hmRes);
+                const cz = Math.round(bodyOffset.z / hmRes);
+                const r = CFG.physics.teleport_radius;
+                let bestY = null;
+                for (let dx = -r; dx <= r; dx++) {
+                    for (let dz = -r; dz <= r; dz++) {
+                        const k = (cx + dx) + ',' + (cz + dz);
+                        if (k in voxelHeightmap) {
+                            const y = voxelHeightmap[k];
+                            if (bestY === null || y > bestY) bestY = y;
+                        }
+                    }
+                }
+                if (bestY !== null) bodyOffset.y = bestY + voxelSize * 0.5;
+            }
+            bodyVelocity.y = 0;
+            onGround = true;
+            updateBodyTransform();
+            debouncedRecompute();
         }
 
         function debouncedRecompute() {
