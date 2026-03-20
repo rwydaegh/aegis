@@ -131,6 +131,12 @@ def _load_and_cache_voxels_single(voxel_json: str, bbox_radius: float) -> None:
         )
         _cache["voxel_grid_coords"] = grid_coords if len(grid_coords) > 0 else _load_grid_coords(voxel_json)
         _cache["body_placement"] = find_body_placement(positions, materials)
+    try:
+        from aegis.viewer.raytracer import clear_voxel_scene_cache
+
+        clear_voxel_scene_cache()
+    except ImportError:
+        pass
     print(f"  Voxels: {len(positions):,} loaded, voxel_size={voxel_size:.4f}")
     print(f"  Body placement: {_cache['body_placement']}")
 
@@ -153,6 +159,12 @@ def _load_and_cache_voxels_dir(voxel_dir: str, bbox_radius: float) -> None:
         )
         _cache["voxel_grid_coords"] = grid_coords if len(grid_coords) > 0 else None
         _cache["body_placement"] = find_body_placement(positions, materials)
+    try:
+        from aegis.viewer.raytracer import clear_voxel_scene_cache
+
+        clear_voxel_scene_cache()
+    except ImportError:
+        pass
     print(f"  Body placement: {_cache['body_placement']}")
     print(f"  Voxels (directory): {len(positions):,} loaded, voxel_size={voxel_size:.4f}")
 

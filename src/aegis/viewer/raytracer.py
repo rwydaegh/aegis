@@ -276,6 +276,140 @@ def _emit_exposed_faces(
     return np.concatenate(all_face_verts, axis=0).astype(np.float32)
 
 
+# Mapping from face direction index to (u_axis, v_axis, fixed_axis) indices
+# and the sign of the fixed-axis offset (+hs or -hs).
+_FACE_UV_MAP = [
+    (1, 2, 0, +1),  # +X: u=y, v=z, fixed=x at +hs
+    (1, 2, 0, -1),  # -X: u=y, v=z, fixed=x at -hs
+    (0, 2, 1, +1),  # +Y: u=x, v=z, fixed=y at +hs
+    (0, 2, 1, -1),  # -Y: u=x, v=z, fixed=y at -hs
+    (0, 1, 2, +1),  # +Z: u=x, v=y, fixed=z at +hs
+    (0, 1, 2, -1),  # -Z: u=x, v=y, fixed=z at -hs
+]
+
+# Winding templates: 4 corners in (u, v) space producing outward-facing normals.
+_FACE_WINDING = [
+    [(0, 0), (1, 0), (1, 1), (0, 1)],  # +X
+    [(0, 1), (1, 1), (1, 0), (0, 0)],  # -X
+    [(0, 0), (0, 1), (1, 1), (1, 0)],  # +Y
+    [(1, 0), (1, 1), (0, 1), (0, 0)],  # -Y
+    [(0, 0), (1, 0), (1, 1), (0, 1)],  # +Z
+    [(0, 1), (1, 1), (1, 0), (0, 0)],  # -Z
+]
+
+
+def _greedy_mesh_faces(
+    grid_coords: np.ndarray,
+    positions: np.ndarray,
+    voxel_size: float,
+) -> np.ndarray:
+    """Emit greedy-merged quad vertices for all exposed voxel faces.
+
+    Returns (M, 3) float32 array of vertices, where every consecutive 4
+    vertices form one quad (to be triangulated as [0,1,2] + [0,2,3]).
+    """
+    hs = voxel_size / 2
+    face_dirs = np.array(
+        [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]],
+        dtype=np.int64,
+    )
+
+    gc = grid_coords.astype(np.int64)
+    offsets = gc.min(axis=0)
+    gc_shifted = gc - offsets
+    span = gc_shifted.max(axis=0) + 1
+    pad_shape = tuple(int(x) + 2 for x in span)
+    occ = np.zeros(pad_shape, dtype=bool)
+    ix = gc_shifted[:, 0].astype(np.intp) + 1
+    iy = gc_shifted[:, 1].astype(np.intp) + 1
+    iz = gc_shifted[:, 2].astype(np.intp) + 1
+    occ[ix, iy, iz] = True
+
+    # Grid-to-world: world = origin + grid_shifted * voxel_size
+    origin = positions[0] - gc_shifted[0].astype(np.float64) * voxel_size
+
+    all_face_verts: list[np.ndarray] = []
+
+    for d in range(6):
+        dx, dy, dz = int(face_dirs[d, 0]), int(face_dirs[d, 1]), int(face_dirs[d, 2])
+        ni = ix + dx
+        nj = iy + dy
+        nk = iz + dz
+        exposed_mask = ~occ[ni, nj, nk]
+        exposed_idx = np.where(exposed_mask)[0]
+        if len(exposed_idx) == 0:
+            continue
+
+        u_ax, v_ax, f_ax, f_sign = _FACE_UV_MAP[d]
+        winding = _FACE_WINDING[d]
+
+        exposed_gc = gc_shifted[exposed_idx]
+        fixed_vals = exposed_gc[:, f_ax]
+        unique_fixed = np.unique(fixed_vals)
+
+        for fv in unique_fixed:
+            slice_mask = fixed_vals == fv
+            slice_gc = exposed_gc[slice_mask]
+
+            u_coords = slice_gc[:, u_ax].astype(np.intp)
+            v_coords = slice_gc[:, v_ax].astype(np.intp)
+            u_min, u_max = int(u_coords.min()), int(u_coords.max())
+            v_min, v_max = int(v_coords.min()), int(v_coords.max())
+            u_span = u_max - u_min + 1
+            v_span = v_max - v_min + 1
+
+            grid_2d = np.zeros((u_span, v_span), dtype=bool)
+            grid_2d[u_coords - u_min, v_coords - v_min] = True
+            visited = np.zeros_like(grid_2d)
+
+            for u in range(u_span):
+                for v in range(v_span):
+                    if not grid_2d[u, v] or visited[u, v]:
+                        continue
+
+                    w = 1
+                    while u + w < u_span and grid_2d[u + w, v] and not visited[u + w, v]:
+                        w += 1
+
+                    h = 1
+                    while v + h < v_span:
+                        row_ok = True
+                        for du in range(w):
+                            if not grid_2d[u + du, v + h] or visited[u + du, v + h]:
+                                row_ok = False
+                                break
+                        if not row_ok:
+                            break
+                        h += 1
+
+                    visited[u : u + w, v : v + h] = True
+
+                    gu0 = u + u_min
+                    gv0 = v + v_min
+                    gf = int(fv)
+
+                    u_lo = origin[u_ax] + gu0 * voxel_size - hs
+                    u_hi = origin[u_ax] + (gu0 + w) * voxel_size - hs
+                    v_lo = origin[v_ax] + gv0 * voxel_size - hs
+                    v_hi = origin[v_ax] + (gv0 + h) * voxel_size - hs
+                    f_val = origin[f_ax] + gf * voxel_size + f_sign * hs
+
+                    u_vals = [u_lo, u_hi]
+                    v_vals = [v_lo, v_hi]
+                    quad = np.zeros((4, 3), dtype=np.float32)
+                    for ci, (ui, vi) in enumerate(winding):
+                        quad[ci, u_ax] = u_vals[ui]
+                        quad[ci, v_ax] = v_vals[vi]
+                        quad[ci, f_ax] = f_val
+
+                    all_face_verts.append(quad)
+
+    if not all_face_verts:
+        raise ValueError("No exterior faces found")
+
+    return np.concatenate(all_face_verts, axis=0).astype(np.float32)
+
+
 def round_triangle_scene(
     positions: np.ndarray,
     grid_coords: np.ndarray | None = None,
@@ -318,7 +452,7 @@ def round_triangle_scene(
     else:
         grid_coords = grid_coords.astype(np.int64)
 
-    vertices = _emit_exposed_faces(grid_coords, positions, voxel_size)
+    vertices = _greedy_mesh_faces(grid_coords, positions, voxel_size)
 
     # Build triangle indices: every 4 vertices form a quad -> 2 triangles
     n_quads = len(vertices) // 4

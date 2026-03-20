@@ -22,14 +22,15 @@ def test_single_voxel_is_six_quads():
 
 
 def test_two_adjacent_voxels_shares_one_face():
+    """2x1x1: greedy merges top/bottom/sides into 6 rectangles = 12 triangles."""
     gc = np.array([[0, 0, 0], [1, 0, 0]], dtype=np.int64)
-    assert _n_triangles(gc) == 20
+    assert _n_triangles(gc) == 12
 
 
 def test_two_by_two_by_one_tile_expected_hull():
-    """Flat 2x2 slab: convex hull has 16 exterior faces (16 quads)."""
+    """2x2x1 slab: greedy merges into 6 rectangles = 12 triangles."""
     gc = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0]], dtype=np.int64)
-    assert _n_triangles(gc) == 32
+    assert _n_triangles(gc) == 12
 
 
 def test_far_from_origin_same_hull_count():
@@ -37,7 +38,59 @@ def test_far_from_origin_same_hull_count():
     base = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0]], dtype=np.int64)
     shift = np.array([[100, 200, 300]], dtype=np.int64)
     gc = base + shift
-    assert _n_triangles(gc) == 32
+    assert _n_triangles(gc) == 12
+
+
+def test_greedy_flat_floor_4x4():
+    """4x4 flat floor: 6 merged rectangles = 12 triangles."""
+    gc = np.array([[x, y, 0] for x in range(4) for y in range(4)], dtype=np.int64)
+    assert _n_triangles(gc) == 12
+
+
+def test_greedy_l_shape():
+    """L-shape produces fewer triangles than unmerged."""
+    gc = np.array([[0, 0, 0], [1, 0, 0], [2, 0, 0], [0, 1, 0], [1, 1, 0]], dtype=np.int64)
+    n = _n_triangles(gc)
+    assert n < 40, f"Expected greedy to reduce triangles, got {n}"
+    assert n >= 12, f"L-shape needs at least 12 triangles, got {n}"
+
+
+def test_greedy_normals_point_outward():
+    """All face normals must point outward (away from the solid)."""
+    gc = np.array(
+        [[x, y, z] for x in range(3) for y in range(3) for z in range(2)],
+        dtype=np.int64,
+    )
+    pos = gc.astype(np.float64)
+    scene = round_triangle_scene(pos, grid_coords=gc, voxel_size=1.0)
+
+    verts = np.array(scene.mesh.vertices)
+    tris = np.array(scene.mesh.triangles)
+
+    v0 = verts[tris[:, 0]]
+    v1 = verts[tris[:, 1]]
+    v2 = verts[tris[:, 2]]
+    normals = np.cross(v1 - v0, v2 - v0)
+    norms = np.linalg.norm(normals, axis=1, keepdims=True)
+    normals = normals / np.where(norms > 0, norms, 1)
+
+    centers = (v0 + v1 + v2) / 3.0
+    solid_center = pos.mean(axis=0)
+    outward = centers - solid_center
+    dots = np.sum(normals * outward, axis=1)
+    assert np.all(dots >= -1e-6), f"Some normals point inward: min dot = {dots.min()}"
+
+
+def test_greedy_nonunit_voxel_size():
+    """Greedy meshing with voxel_size=0.5 produces correct world extents."""
+    gc = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0]], dtype=np.int64)
+    pos = gc.astype(np.float64) * 0.5
+    scene = round_triangle_scene(pos, grid_coords=gc, voxel_size=0.5)
+
+    verts = np.array(scene.mesh.vertices)
+    assert abs(verts[:, 0].max() - verts[:, 0].min() - 1.0) < 1e-5
+    assert abs(verts[:, 1].max() - verts[:, 1].min() - 1.0) < 1e-5
+    assert abs(verts[:, 2].max() - verts[:, 2].min() - 0.5) < 1e-5
 
 
 def test_flat_floor_normals_are_vertical():

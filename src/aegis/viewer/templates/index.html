@@ -1080,12 +1080,13 @@
                 color: hexToInt(sCfg.color),
                 roughness: sCfg.roughness,
                 metalness: sCfg.metalness,
-                side: sCfg.double_sided ? THREE.DoubleSide : THREE.FrontSide,
-                transparent: true,
-                opacity: sCfg.opacity,
+                side: THREE.DoubleSide,
+                transparent: !wireframe,
+                opacity: wireframe ? 1.0 : sCfg.opacity,
+                wireframe: wireframe,
             });
             const mesh = new THREE.Mesh(geom, mat);
-            mesh.castShadow = true;
+            mesh.castShadow = !wireframe;
             return mesh;
         }
 
@@ -1158,11 +1159,11 @@
                     const meta = JSON.parse(resp.headers.get('X-Meta'));
                     const buf = await resp.arrayBuffer();
                     disposeVoxelHullMesh();
-                    voxelHullMesh = meshFromSceneBinary(buf, meta);
+                    voxelHullMesh = meshFromSceneBinary(buf, meta, {wireframe: true});
                     scene.add(voxelHullMesh);
                     if (groundPlane) groundPlane.visible = true;
                     if (hint) {
-                        hint.textContent = `Triangle hull used for voxel DiffeRT (${meta.n_triangles.toLocaleString()} triangles).`;
+                        hint.textContent = `RT hull wireframe: ${meta.n_triangles.toLocaleString()} triangles (greedy-merged).`;
                     }
                 } catch (e) {
                     if (hint) hint.textContent = `Error: ${e.message}`;
@@ -1905,6 +1906,7 @@
             }
             if (bodyMesh) bodyMesh.material.wireframe = wireframe;
             if (groundPlane) groundPlane.material.wireframe = wireframe;
+            if (voxelHullMesh) voxelHullMesh.material.wireframe = wireframe;
             document.getElementById('wireframeBtn').classList.toggle('active', wireframe);
         };
 
