@@ -161,11 +161,9 @@ The config key `ground_center_z_offset` in `material_classification` refers to t
 
 ### 11. Binary serialization format
 
-The binary buffer layout extends to include per-voxel sizes. Current layout per voxel: `[x: f32, y: f32, z: f32, r: u8, g: u8, b: u8, material_idx: u8]` (16 bytes). New layout: `[x: f32, y: f32, z: f32, size: f32, r: u8, g: u8, b: u8, material_idx: u8]` (20 bytes). The `size` field is the voxel's native `unit` value.
+The binary buffer uses a block layout (matching the existing non-interleaved format): `positions(n*3 float32) + sizes(n float32) + colors(n*3 uint8) + material_indices(n uint8)`. No header. The `n_voxels` count and metadata (including median `voxel_size` for backward compat) are sent in the `X-Meta` JSON response header, same as today.
 
-The binary header (first 8 bytes: voxel count as uint32 + legacy voxel_size as float32) keeps the legacy `voxel_size` field for backward compatibility but the frontend uses per-voxel `size` when available.
-
-Frontend parsing in `index.html` reads the `size` field per voxel and groups voxels by (material, rounded size) for instanced mesh creation.
+Frontend parsing in `index.html` reads the `sizes` block and groups voxels by (material, rounded size) for multi-resolution instanced mesh creation.
 
 ## What stays the same
 
