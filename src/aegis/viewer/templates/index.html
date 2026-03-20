@@ -691,21 +691,25 @@
 
             // Ground grid from config
             const gridCfg = CFG.scene.grid;
-            const grid = new THREE.GridHelper(gridCfg.size, gridCfg.divisions, hexToInt(gridCfg.color), hexToInt(gridCfg.line_color));
-            grid.position.y = gridCfg.y_offset;
-            scene.add(grid);
+            if (gridCfg.enabled) {
+                const grid = new THREE.GridHelper(gridCfg.size, gridCfg.divisions, hexToInt(gridCfg.color), hexToInt(gridCfg.line_color));
+                grid.position.y = gridCfg.y_offset;
+                scene.add(grid);
+            }
 
             // Ground plane from config
             const gpCfg = CFG.scene.ground_plane;
-            const planeGeo = new THREE.PlaneGeometry(gpCfg.size, gpCfg.size);
-            planeGeo.rotateX(-Math.PI / 2);
-            const planeMat = new THREE.MeshStandardMaterial({
-                color: hexToInt(gpCfg.color), transparent: true, opacity: gpCfg.opacity,
-                roughness: gpCfg.roughness, metalness: gpCfg.metalness,
-            });
-            groundPlane = new THREE.Mesh(planeGeo, planeMat);
-            groundPlane.receiveShadow = true;
-            scene.add(groundPlane);
+            if (gpCfg.enabled) {
+                const planeGeo = new THREE.PlaneGeometry(gpCfg.size, gpCfg.size);
+                planeGeo.rotateX(-Math.PI / 2);
+                const planeMat = new THREE.MeshStandardMaterial({
+                    color: hexToInt(gpCfg.color), transparent: true, opacity: gpCfg.opacity,
+                    roughness: gpCfg.roughness, metalness: gpCfg.metalness,
+                });
+                groundPlane = new THREE.Mesh(planeGeo, planeMat);
+                groundPlane.receiveShadow = true;
+                scene.add(groundPlane);
+            }
 
             // Click handler for antenna placement
             let mouseDownPos = null;
@@ -1188,9 +1192,9 @@
                 const btn = document.createElement('button');
                 btn.className = 'layer-btn active';
                 btn.dataset.layer = mat;
+                btn.dataset.type = 'voxel';
                 btn.style.borderLeft = `4px solid rgb(${mc[0]},${mc[1]},${mc[2]})`;
                 btn.textContent = `${mat} (${count.toLocaleString()})`;
-                btn.addEventListener('click', () => toggleLayer(btn, mat));
                 container.appendChild(btn);
             }
 
@@ -1199,24 +1203,30 @@
                 const btn = document.createElement('button');
                 btn.className = 'layer-btn active';
                 btn.dataset.layer = 'body';
+                btn.dataset.type = 'body';
                 btn.style.borderLeft = `4px solid rgb(${bc[0]},${bc[1]},${bc[2]})`;
                 btn.textContent = `body (${bodyMeta ? bodyMeta.n_triangles.toLocaleString() + ' tri' : ''})`;
-                btn.addEventListener('click', () => {
-                    const active = btn.classList.toggle('active');
-                    btn.classList.toggle('inactive', !active);
-                    bodyMesh.visible = active;
-                });
                 container.appendChild(btn);
             }
         }
 
-        function toggleLayer(btn, matName) {
+        // One-time event delegation for layer buttons
+        document.getElementById('layers').addEventListener('click', (e) => {
+            const btn = e.target.closest('.layer-btn');
+            if (!btn) return;
+
             const active = btn.classList.toggle('active');
             btn.classList.toggle('inactive', !active);
-            if (voxelMeshes[matName]) {
-                voxelMeshes[matName].classified.visible = active;
+
+            if (btn.dataset.type === 'body') {
+                if (bodyMesh) bodyMesh.visible = active;
+            } else {
+                const matName = btn.dataset.layer;
+                if (voxelMeshes[matName]) {
+                    voxelMeshes[matName].classified.visible = active;
+                }
             }
-        }
+        });
 
         // --- Location loading ---
 
