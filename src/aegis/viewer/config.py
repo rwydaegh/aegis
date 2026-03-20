@@ -16,6 +16,7 @@ DEFAULTS: dict = {
     "scene": {
         "background_color": "#111115",
         "grid": {
+            "enabled": False,
             "size": 200,
             "divisions": 100,
             "color": "#444444",
@@ -23,6 +24,7 @@ DEFAULTS: dict = {
             "y_offset": -0.01,
         },
         "ground_plane": {
+            "enabled": False,
             "size": 500,
             "color": "#1a1a20",
             "opacity": 0.5,
@@ -98,7 +100,7 @@ DEFAULTS: dict = {
             "brick": [200, 80, 50],
             "glass": [150, 210, 240],
         },
-        "heightmap_resolution_factor": 2,
+        "heightmap_resolution_factor": 1,
     },
     "antenna": {
         "sphere_radius": 0.08,
@@ -157,6 +159,8 @@ DEFAULTS: dict = {
         "facing_smooth": 8.0,
         "ground_snap": 0.05,
         "dt_clamp": 0.1,
+        "max_step_height": 0.5,
+        "teleport_radius": 2,
     },
     "interaction": {
         "click_max_drag_px": 5,

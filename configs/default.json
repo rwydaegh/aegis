@@ -130,7 +130,7 @@
         240
       ]
     },
-    "heightmap_resolution_factor": 2
+    "heightmap_resolution_factor": 1
   },
   "antenna": {
     "sphere_radius": 0.08,
@@ -188,7 +188,9 @@
     "max_rotation_speed": 3.0,
     "facing_smooth": 8.0,
     "ground_snap": 0.05,
-    "dt_clamp": 0.1
+    "dt_clamp": 0.1,
+    "max_step_height": 0.5,
+    "teleport_radius": 2
   },
   "interaction": {
     "click_max_drag_px": 5,
