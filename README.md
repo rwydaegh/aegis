@@ -8,7 +8,7 @@
 
 [![CI](https://github.com/rwydaegh/aegis/actions/workflows/ci.yml/badge.svg)](https://github.com/rwydaegh/aegis/actions/workflows/ci.yml)
 [![Docs Deploy](https://github.com/rwydaegh/aegis/actions/workflows/docs.yml/badge.svg)](https://github.com/rwydaegh/aegis/actions/workflows/docs.yml)
-[![Maintainability](https://qlty.sh/gh/rwydaegh/projects/aegis/maintainability.svg)](https://qlty.sh/gh/rwydaegh/projects/aegis)
+[![Maintainability](https://qlty.sh/badges/ced2bc3a-cd77-426d-b62d-4d88304837d7/maintainability.svg)](https://qlty.sh/gh/rwydaegh/projects/aegis)
 [![Lines of code](https://img.shields.io/endpoint?url=https://ghloc.vercel.app/api/rwydaegh/aegis/badge)](https://ghloc.vercel.app/rwydaegh/aegis?branch=master)
 [![Code style: ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Python](https://img.shields.io/badge/python-3.11+-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
