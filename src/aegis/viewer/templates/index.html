@@ -845,7 +845,7 @@
             if (config.body_placement && bodyMesh) {
                 const bp = config.body_placement;
                 bodyOffset.set(bp[0], bp[2], -bp[1]);
-                bodyOffset.y = getGroundY(bodyOffset.x, bodyOffset.z, true);
+                bodyOffset.y = getGroundY(bodyOffset.x, bodyOffset.z);
                 updateBodyTransform();
             }
 
@@ -1317,7 +1317,7 @@
                 if (config.body_placement && bodyMesh) {
                     const bp = config.body_placement;
                     bodyOffset.set(bp[0], bp[2], -bp[1]);
-                    bodyOffset.y = getGroundY(bodyOffset.x, bodyOffset.z, true);
+                    bodyOffset.y = getGroundY(bodyOffset.x, bodyOffset.z);
                     updateBodyTransform();
                 }
                 centerCamera();
@@ -1515,7 +1515,7 @@
                 sceneMeshes.push(mesh);
 
                 if (groundPlane) groundPlane.visible = false;
-                bodyOffset.y = getGroundY(bodyOffset.x, bodyOffset.z, true);
+                bodyOffset.y = getGroundY(bodyOffset.x, bodyOffset.z);
                 updateBodyTransform();
 
                 statusEl.textContent = `Loaded: ${meta.n_triangles} tris`;
@@ -1860,53 +1860,27 @@
         const _sionnaGroundOrigin = new THREE.Vector3();
         const _sionnaGroundDir = new THREE.Vector3(0, -1, 0);
 
-        function getGroundYFromSionnaMeshes(x, z, wide) {
+        function getGroundYFromSionnaMeshes(x, z) {
             const sc = CFG.sionna_scene || {};
             const yTop = sc.ground_ray_height ?? 2000;
-            const step = sc.ground_sample_step_m ?? 0.35;
             const clearance = sc.feet_clearance_m ?? 0.05;
             _sionnaGroundOrigin.set(x, yTop, z);
             raycaster.set(_sionnaGroundOrigin, _sionnaGroundDir);
-            let hits = raycaster.intersectObjects(sceneMeshes, false);
-            let bestY = null;
-            if (hits.length > 0) bestY = hits[0].point.y;
-            if (wide && bestY !== null) {
-                const wr = 2;
-                for (let dx = -wr; dx <= wr; dx++) {
-                    for (let dz = -wr; dz <= wr; dz++) {
-                        if (dx === 0 && dz === 0) continue;
-                        _sionnaGroundOrigin.set(x + dx * step, yTop, z + dz * step);
-                        raycaster.set(_sionnaGroundOrigin, _sionnaGroundDir);
-                        hits = raycaster.intersectObjects(sceneMeshes, false);
-                        if (hits.length > 0 && (bestY === null || hits[0].point.y > bestY)) {
-                            bestY = hits[0].point.y;
-                        }
-                    }
-                }
-            }
-            return bestY !== null ? bestY + clearance : bodyOffset.y;
+            const hits = raycaster.intersectObjects(sceneMeshes, false);
+            if (hits.length > 0) return hits[0].point.y + clearance;
+            return bodyOffset.y;
         }
 
-        function getGroundY(x, z, wide) {
+        function getGroundY(x, z) {
             if (usingSionnaScene()) {
-                return getGroundYFromSionnaMeshes(x, z, wide);
+                return getGroundYFromSionnaMeshes(x, z);
             }
             if (!voxelHeightmap) return bodyOffset.y;
             const hmRes = voxelSize * CFG.voxels.heightmap_resolution_factor;
             const cx = Math.round(x / hmRes);
             const cz = Math.round(z / hmRes);
-            const r = wide ? 2 : 1;
-            let bestY = null;
-            for (let dx = -r; dx <= r; dx++) {
-                for (let dz = -r; dz <= r; dz++) {
-                    const k = (cx+dx) + ',' + (cz+dz);
-                    if (k in voxelHeightmap) {
-                        const y = voxelHeightmap[k];
-                        if (bestY === null || y > bestY) bestY = y;
-                    }
-                }
-            }
-            return bestY !== null ? bestY + voxelSize * 0.5 : bodyOffset.y;
+            const key = cx + ',' + cz;
+            return key in voxelHeightmap ? voxelHeightmap[key] + voxelSize * 0.5 : bodyOffset.y;
         }
 
         function debouncedRecompute() {
