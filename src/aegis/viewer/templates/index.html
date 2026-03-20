@@ -1145,15 +1145,22 @@
             }
         }
 
-        function meshFromSceneBinary(buf, meta) {
+        function meshFromSceneBinary(buf, meta, opts) {
+            const wf = opts && opts.wireframe;
             const nV = meta.n_vertices;
             const nT = meta.n_triangles;
             const vertices = new Float32Array(buf, 0, nV * 3);
             let off = nV * 3 * 4;
             const triangles = new Int32Array(buf, off, nT * 3);
+            off += nT * 3 * 4;
+
+            // Read per-face colors if available
+            let faceColors = null;
             if (meta.has_face_colors) {
+                faceColors = new Float32Array(buf, off, nT * 3);
                 off += nT * 3 * 4;
             }
+
             const geom = new THREE.BufferGeometry();
             const posSwapped = new Float32Array(nV * 3);
             for (let i = 0; i < nV; i++) {
@@ -1164,18 +1171,51 @@
             geom.setAttribute('position', new THREE.BufferAttribute(posSwapped, 3));
             geom.setIndex(new THREE.BufferAttribute(new Uint32Array(triangles), 1));
             geom.computeVertexNormals();
+
+            // Per-face vertex colors: un-index geometry and assign colors per triangle
+            if (faceColors && faceColors.length > 0) {
+                const nonIndexed = geom.toNonIndexed();
+                const vertCount = nonIndexed.getAttribute('position').count;
+                const colorAttr = new Float32Array(vertCount * 3);
+                for (let t = 0; t < nT; t++) {
+                    const r = faceColors[t * 3];
+                    const g = faceColors[t * 3 + 1];
+                    const b = faceColors[t * 3 + 2];
+                    for (let vi = 0; vi < 3; vi++) {
+                        colorAttr[(t * 3 + vi) * 3]     = r;
+                        colorAttr[(t * 3 + vi) * 3 + 1] = g;
+                        colorAttr[(t * 3 + vi) * 3 + 2] = b;
+                    }
+                }
+                nonIndexed.setAttribute('color', new THREE.BufferAttribute(colorAttr, 3));
+                const sCfg = CFG.sionna_scene;
+                const mat = new THREE.MeshStandardMaterial({
+                    vertexColors: true,
+                    roughness: sCfg.roughness,
+                    metalness: sCfg.metalness,
+                    side: THREE.DoubleSide,
+                    transparent: !wf,
+                    opacity: wf ? 1.0 : sCfg.opacity,
+                    wireframe: !!wf,
+                });
+                const mesh = new THREE.Mesh(nonIndexed, mat);
+                mesh.castShadow = !wf;
+                return mesh;
+            }
+
+            // Fallback: no face colors, use uniform color
             const sCfg = CFG.sionna_scene;
             const mat = new THREE.MeshStandardMaterial({
                 color: hexToInt(sCfg.color),
                 roughness: sCfg.roughness,
                 metalness: sCfg.metalness,
                 side: THREE.DoubleSide,
-                transparent: !wireframe,
-                opacity: wireframe ? 1.0 : sCfg.opacity,
-                wireframe: wireframe,
+                transparent: !wf,
+                opacity: wf ? 1.0 : sCfg.opacity,
+                wireframe: !!wf,
             });
             const mesh = new THREE.Mesh(geom, mat);
-            mesh.castShadow = !wireframe;
+            mesh.castShadow = !wf;
             return mesh;
         }
 
@@ -1252,7 +1292,9 @@
                     scene.add(voxelHullMesh);
                     if (groundPlane) groundPlane.visible = true;
                     if (hint) {
-                        hint.textContent = `RT hull wireframe: ${meta.n_triangles.toLocaleString()} triangles (greedy-merged).`;
+                        const matCount = (meta.material_names || []).length;
+                        const matText = matCount > 1 ? ` (${matCount} materials)` : '';
+                        hint.textContent = `RT hull wireframe: ${meta.n_triangles.toLocaleString()} triangles${matText}.`;
                     }
                 } catch (e) {
                     if (hint) hint.textContent = `Error: ${e.message}`;
