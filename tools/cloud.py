@@ -82,7 +82,7 @@ def get_ssh_key_path() -> Path:
 # ---------------------------------------------------------------------------
 
 
-def api_request(method: str, path: str, json_body: dict | None = None) -> dict | list | None:
+def api_request(method: str, path: str, json_body: dict | None = None, timeout: int = 30) -> dict | list | None:
     """Make an authenticated request to the TensorDock v2 API."""
     import requests
 
@@ -92,7 +92,7 @@ def api_request(method: str, path: str, json_body: dict | None = None) -> dict |
         "Content-Type": "application/json",
         "Accept": "application/json",
     }
-    resp = requests.request(method, url, headers=headers, json=json_body, timeout=30)
+    resp = requests.request(method, url, headers=headers, json=json_body, timeout=timeout)
     if resp.status_code == 404:
         return None
     resp.raise_for_status()
@@ -332,7 +332,7 @@ def start_instance(state: dict) -> dict:
     """Start a stopped instance and refresh state with new IP/ports."""
     instance_id = state["instance_id"]
     print(f"Starting instance {instance_id}...")
-    api_request("POST", f"/instances/{instance_id}/start")
+    api_request("POST", f"/instances/{instance_id}/start", timeout=120)
 
     # Wait a moment, then re-query for possibly changed IP/ports
     time.sleep(5)
