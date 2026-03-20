@@ -6,7 +6,9 @@ and converts them to AEGIS PropagationPaths.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -35,6 +37,14 @@ def _check_differt() -> None:
 
 # Cache loaded scenes (expensive to parse)
 _scene_cache: dict = {}
+
+
+_voxel_scene_cache: dict = {}
+
+
+def clear_voxel_scene_cache() -> None:
+    """Invalidate cached DiffeRT scenes built from voxels (call after reloading voxel data)."""
+    _voxel_scene_cache.clear()
 
 
 def list_available_scenes(scenes_dir: str | Path | None = None) -> list[dict]:
@@ -206,10 +216,13 @@ def compute_paths_differt(
     return paths, path_viz
 
 
-def voxels_to_triangle_scene(
+def round_triangle_scene(
     positions: np.ndarray,
     grid_coords: np.ndarray | None = None,
     voxel_size: float = 1.0,
+    *,
+    materials: Sequence[str] | None = None,
+    material_colors: dict[str, Any] | None = None,
 ):
     """Convert exterior voxels to a DiffeRT TriangleScene for ray tracing.
 
@@ -222,6 +235,8 @@ def voxels_to_triangle_scene(
     grid_coords : (N, 3) integer grid coords (for neighbor lookup). If None,
         positions are rounded to the nearest grid point.
     voxel_size : side length of each voxel [m]
+    materials : per-voxel material names (optional)
+    material_colors : mapping from material name to RGB color (optional)
 
     Returns
     -------
@@ -258,25 +273,27 @@ def voxels_to_triangle_scene(
         dtype=np.float32,
     )  # (6, 4, 3)
 
-    # Use a fast hash: encode (x,y,z) as a single int64 for set lookup
-    # Shift each coord into a unique range to avoid collisions
+    # Shift to a tight box, then use a padded 3D boolean grid so neighbor lookups
+    # outside the occupied bbox stay unambiguous (linear int keys collide there).
     gc = grid_coords
     offsets = gc.min(axis=0)
     gc_shifted = gc - offsets
     span = gc_shifted.max(axis=0) + 1
-    # Encode: x + y*spanX + z*spanX*spanY
-    keys = gc_shifted[:, 0] + gc_shifted[:, 1] * span[0] + gc_shifted[:, 2] * span[0] * span[1]
-    occupied_keys = set(keys.tolist())
+    pad_shape = tuple(int(x) + 2 for x in span)
+    occ = np.zeros(pad_shape, dtype=bool)
+    ix = gc_shifted[:, 0].astype(np.intp) + 1
+    iy = gc_shifted[:, 1].astype(np.intp) + 1
+    iz = gc_shifted[:, 2].astype(np.intp) + 1
+    occ[ix, iy, iz] = True
 
     # For each direction, find which voxels have an empty neighbor
     all_face_verts = []
     for d in range(6):
         dx, dy, dz = int(face_dirs[d, 0]), int(face_dirs[d, 1]), int(face_dirs[d, 2])
-        neighbor_keys = (
-            (gc_shifted[:, 0] + dx) + (gc_shifted[:, 1] + dy) * span[0] + (gc_shifted[:, 2] + dz) * span[0] * span[1]
-        )
-        # Vectorized check: which neighbors are NOT in occupied
-        exposed_mask = np.array([k not in occupied_keys for k in neighbor_keys.tolist()])
+        ni = gc_shifted[:, 0].astype(np.intp) + 1 + dx
+        nj = gc_shifted[:, 1].astype(np.intp) + 1 + dy
+        nk = gc_shifted[:, 2].astype(np.intp) + 1 + dz
+        exposed_mask = ~occ[ni, nj, nk]
         exposed_idx = np.where(exposed_mask)[0]
         if len(exposed_idx) == 0:
             continue
@@ -322,21 +339,25 @@ def voxels_to_triangle_scene(
     return scene
 
 
-# Cached voxel scene
-_voxel_scene_cache: dict = {}
-
-
 def get_or_build_voxel_scene(
     positions: np.ndarray,
     grid_coords: np.ndarray | None = None,
     voxel_size: float = 1.0,
     cache_key: str = "default",
+    materials: Sequence[str] | None = None,
+    material_colors: dict[str, Any] | None = None,
 ):
     """Get cached voxel TriangleScene or build one."""
     if cache_key in _voxel_scene_cache:
         return _voxel_scene_cache[cache_key]
 
-    scene = voxels_to_triangle_scene(positions, grid_coords, voxel_size)
+    scene = round_triangle_scene(
+        positions,
+        grid_coords,
+        voxel_size,
+        materials=materials,
+        material_colors=material_colors,
+    )
     _voxel_scene_cache[cache_key] = scene
     return scene
 

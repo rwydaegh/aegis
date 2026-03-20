@@ -208,6 +208,14 @@
             <div id="layers"></div>
         </div>
 
+        <div class="section" id="env-display-section" style="display:none;">
+            <div class="section-title">Environment view</div>
+            <label>Show environment as
+                <select id="envDisplaySelect"></select>
+            </label>
+            <div id="env-display-hint" class="hint" style="margin-top:6px;"> </div>
+        </div>
+
         <!-- Camera -->
         <div class="section">
             <div class="section-title">Camera</div>
@@ -261,7 +269,9 @@
         let pathLines = [];
         let voxelMeshes = {};
         let sceneMeshes = [];
+        let voxelHullMesh = null;
         let glbGroup = null;
+        let envDisplayChangeBound = false;
         let groundPlane = null;
         let wireframe = false;
         let bodyCenterWorld = new THREE.Vector3();
@@ -820,6 +830,7 @@
             }
 
             buildLayerButtons();
+            await setupEnvDisplay(config);
 
             document.getElementById('loading').style.display = 'none';
             document.getElementById('panel').style.display = 'block';
@@ -948,7 +959,36 @@
             try {
                 const resp = await fetch('/api/tiles');
                 const data = await resp.json();
-                if (!data.tiles || data.tiles.length === 0) return;
+                if (!data.tiles || data.tiles.length === 0) {
+                    if (glbGroup) {
+                        scene.remove(glbGroup);
+                        glbGroup.traverse((obj) => {
+                            if (obj.isMesh) {
+                                obj.geometry?.dispose();
+                                if (obj.material) {
+                                    const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+                                    for (const m of mats) m.dispose();
+                                }
+                            }
+                        });
+                        glbGroup = null;
+                    }
+                    return;
+                }
+
+                if (glbGroup) {
+                    scene.remove(glbGroup);
+                    glbGroup.traverse((obj) => {
+                        if (obj.isMesh) {
+                            obj.geometry?.dispose();
+                            if (obj.material) {
+                                const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+                                for (const m of mats) m.dispose();
+                            }
+                        }
+                    });
+                    glbGroup = null;
+                }
 
                 const loader = new GLTFLoader();
                 glbGroup = new THREE.Group();
@@ -980,6 +1020,164 @@
             }
         }
 
+        function meshFromSceneBinary(buf, meta) {
+            const nV = meta.n_vertices;
+            const nT = meta.n_triangles;
+            const vertices = new Float32Array(buf, 0, nV * 3);
+            let off = nV * 3 * 4;
+            const triangles = new Int32Array(buf, off, nT * 3);
+            if (meta.has_face_colors) {
+                off += nT * 3 * 4;
+            }
+            const geom = new THREE.BufferGeometry();
+            const posSwapped = new Float32Array(nV * 3);
+            for (let i = 0; i < nV; i++) {
+                posSwapped[i * 3] = vertices[i * 3];
+                posSwapped[i * 3 + 1] = vertices[i * 3 + 2];
+                posSwapped[i * 3 + 2] = -vertices[i * 3 + 1];
+            }
+            geom.setAttribute('position', new THREE.BufferAttribute(posSwapped, 3));
+            geom.setIndex(new THREE.BufferAttribute(new Uint32Array(triangles), 1));
+            geom.computeVertexNormals();
+            const sCfg = CFG.sionna_scene;
+            const mat = new THREE.MeshStandardMaterial({
+                color: hexToInt(sCfg.color),
+                roughness: sCfg.roughness,
+                metalness: sCfg.metalness,
+                side: sCfg.double_sided ? THREE.DoubleSide : THREE.FrontSide,
+                transparent: true,
+                opacity: sCfg.opacity,
+            });
+            const mesh = new THREE.Mesh(geom, mat);
+            mesh.castShadow = true;
+            return mesh;
+        }
+
+        function disposeVoxelHullMesh() {
+            if (!voxelHullMesh) return;
+            scene.remove(voxelHullMesh);
+            voxelHullMesh.geometry.dispose();
+            voxelHullMesh.material.dispose();
+            voxelHullMesh = null;
+        }
+
+        function setEnvDisplaySectionLocked(locked) {
+            const sec = document.getElementById('env-display-section');
+            const sel = document.getElementById('envDisplaySelect');
+            if (!sec || !sel) return;
+            sel.disabled = locked;
+            sec.style.opacity = locked ? '0.55' : '';
+            sec.title = locked
+                ? 'Not available while a Sionna scene mesh is loaded. Choose voxel environment as RT source.'
+                : '';
+        }
+
+        function refreshEnvDisplayAfterRT() {
+            const sec = document.getElementById('env-display-section');
+            const sel = document.getElementById('envDisplaySelect');
+            if (sec && sec.style.display !== 'none' && sel && sel.options.length) {
+                applyEnvDisplay(sel.value);
+            } else {
+                setVoxelVisibility(true);
+            }
+        }
+
+        async function applyEnvDisplay(mode) {
+            const hint = document.getElementById('env-display-hint');
+            if (glbGroup) glbGroup.visible = mode === 'tiles';
+
+            if (mode === 'cubes') {
+                setVoxelVisibility(true);
+                disposeVoxelHullMesh();
+                if (groundPlane) groundPlane.visible = true;
+                if (hint) {
+                    hint.textContent = 'Instanced cubes by material class.';
+                }
+                return;
+            }
+
+            setVoxelVisibility(false);
+
+            if (mode === 'tiles') {
+                disposeVoxelHullMesh();
+                if (groundPlane) groundPlane.visible = true;
+                if (hint) {
+                    hint.textContent =
+                        glbGroup && glbGroup.children.length
+                            ? 'Google Photorealistic 3D Tiles (raw GLB).'
+                            : 'No GLB tiles found next to the voxel export (tiles/*.glb).';
+                }
+                return;
+            }
+
+            if (mode === 'hull') {
+                if (hint) hint.textContent = 'Loading ray-tracing hull mesh...';
+                try {
+                    const resp = await fetch('/api/voxels/hull-mesh');
+                    if (!resp.ok) {
+                        const err = await resp.json().catch(() => ({}));
+                        if (hint) hint.textContent = err.error || `Hull mesh failed (${resp.status})`;
+                        return;
+                    }
+                    const meta = JSON.parse(resp.headers.get('X-Meta'));
+                    const buf = await resp.arrayBuffer();
+                    disposeVoxelHullMesh();
+                    voxelHullMesh = meshFromSceneBinary(buf, meta);
+                    scene.add(voxelHullMesh);
+                    if (groundPlane) groundPlane.visible = true;
+                    if (hint) {
+                        hint.textContent = `Triangle hull used for voxel DiffeRT (${meta.n_triangles.toLocaleString()} triangles).`;
+                    }
+                } catch (e) {
+                    if (hint) hint.textContent = `Error: ${e.message}`;
+                }
+                return;
+            }
+        }
+
+        async function setupEnvDisplay(config) {
+            const sec = document.getElementById('env-display-section');
+            const sel = document.getElementById('envDisplaySelect');
+            if (!sec || !sel) return;
+
+            const had = sel.value;
+            sel.innerHTML = '';
+
+            if (config.has_voxels) {
+                const o = document.createElement('option');
+                o.value = 'cubes';
+                o.textContent = 'Voxel cubes (class colors)';
+                sel.appendChild(o);
+                if (config.voxel_rt_available) {
+                    const h = document.createElement('option');
+                    h.value = 'hull';
+                    h.textContent = 'Ray-tracing hull mesh';
+                    sel.appendChild(h);
+                }
+            }
+            if (config.has_tiles) {
+                const t = document.createElement('option');
+                t.value = 'tiles';
+                t.textContent = `Photorealistic tiles (${config.n_tiles} GLB)`;
+                sel.appendChild(t);
+            }
+
+            if (sel.options.length < 2) {
+                sec.style.display = 'none';
+                return;
+            }
+
+            sec.style.display = 'block';
+            const ok = [...sel.options].some((o) => o.value === had);
+            sel.value = ok ? had : sel.options[0].value;
+
+            if (!envDisplayChangeBound) {
+                sel.addEventListener('change', () => applyEnvDisplay(sel.value));
+                envDisplayChangeBound = true;
+            }
+            await applyEnvDisplay(sel.value);
+        }
+
         function buildLayerButtons() {
             const container = document.getElementById('layers');
             container.innerHTML = '';
@@ -1007,21 +1205,6 @@
                     const active = btn.classList.toggle('active');
                     btn.classList.toggle('inactive', !active);
                     bodyMesh.visible = active;
-                });
-                container.appendChild(btn);
-            }
-
-            if (glbGroup) {
-                const btn = document.createElement('button');
-                btn.className = 'layer-btn inactive';
-                btn.dataset.layer = '3dtiles';
-                btn.style.borderLeft = '4px solid #4fc3f7';
-                const nTiles = glbGroup.children.length;
-                btn.textContent = `3D Tiles (${nTiles})`;
-                btn.addEventListener('click', () => {
-                    const active = btn.classList.toggle('active');
-                    btn.classList.toggle('inactive', !active);
-                    glbGroup.visible = active;
                 });
                 container.appendChild(btn);
             }
@@ -1092,15 +1275,19 @@
                 meshes.classified.material.dispose();
             }
             voxelMeshes = {};
+            disposeVoxelHullMesh();
+            setEnvDisplaySectionLocked(false);
 
             try {
                 const resp = await fetch('/api/voxels');
                 if (!resp.ok) return;
                 const meta = JSON.parse(resp.headers.get('X-Meta'));
                 await loadVoxels(meta);
+                await loadGlbTiles();
                 buildLayerButtons();
 
                 const config = await (await fetch('/api/config')).json();
+                await setupEnvDisplay(config);
                 if (config.body_placement && bodyMesh) {
                     const bp = config.body_placement;
                     bodyOffset.set(bp[0], bp[2], -bp[1]);
@@ -1253,19 +1440,26 @@
 
         async function onRTSourceChange() {
             const val = document.getElementById('rtSourceSelect').value;
+            const statusEl = document.getElementById('rt-status');
             if (!val || val === 'voxel') {
                 currentScenePath = null;
                 for (const m of sceneMeshes) scene.remove(m);
                 sceneMeshes = [];
+                setEnvDisplaySectionLocked(false);
+                disposeVoxelHullMesh();
+                if (glbGroup) glbGroup.visible = false;
                 if (groundPlane) groundPlane.visible = true;
-                setVoxelVisibility(true);
+                refreshEnvDisplayAfterRT();
                 return;
             }
+
+            setEnvDisplaySectionLocked(true);
+            disposeVoxelHullMesh();
+            if (glbGroup) glbGroup.visible = false;
             setVoxelVisibility(false);
+
             const path = val.replace('sionna:', '');
             currentScenePath = path;
-
-            const statusEl = document.getElementById('rt-status');
             statusEl.textContent = 'Loading scene...';
 
             try {
@@ -1278,7 +1472,8 @@
                 if (!resp.ok) {
                     statusEl.textContent = 'Failed to load scene';
                     if (groundPlane) groundPlane.visible = true;
-                    setVoxelVisibility(true);
+                    setEnvDisplaySectionLocked(false);
+                    refreshEnvDisplayAfterRT();
                     return;
                 }
 
@@ -1289,33 +1484,7 @@
                 for (const m of sceneMeshes) scene.remove(m);
                 sceneMeshes = [];
 
-                const nV = meta.n_vertices;
-                const nT = meta.n_triangles;
-                const vertices = new Float32Array(buf, 0, nV * 3);
-                const triangles = new Int32Array(buf, nV * 3 * 4, nT * 3);
-
-                const geom = new THREE.BufferGeometry();
-                const posSwapped = new Float32Array(nV * 3);
-                for (let i = 0; i < nV; i++) {
-                    posSwapped[i*3] = vertices[i*3];
-                    posSwapped[i*3+1] = vertices[i*3+2];
-                    posSwapped[i*3+2] = -vertices[i*3+1];
-                }
-                geom.setAttribute('position', new THREE.BufferAttribute(posSwapped, 3));
-                geom.setIndex(new THREE.BufferAttribute(new Uint32Array(triangles), 1));
-                geom.computeVertexNormals();
-
-                const sCfg = CFG.sionna_scene;
-                const mat = new THREE.MeshStandardMaterial({
-                    color: hexToInt(sCfg.color),
-                    roughness: sCfg.roughness,
-                    metalness: sCfg.metalness,
-                    side: sCfg.double_sided ? THREE.DoubleSide : THREE.FrontSide,
-                    transparent: true,
-                    opacity: sCfg.opacity,
-                });
-                const mesh = new THREE.Mesh(geom, mat);
-                mesh.castShadow = true;
+                const mesh = meshFromSceneBinary(buf, meta);
                 scene.add(mesh);
                 sceneMeshes.push(mesh);
 
@@ -1327,7 +1496,8 @@
             } catch (e) {
                 statusEl.textContent = `Error: ${e.message}`;
                 if (groundPlane) groundPlane.visible = true;
-                setVoxelVisibility(true);
+                setEnvDisplaySectionLocked(false);
+                refreshEnvDisplayAfterRT();
             }
         }
 
