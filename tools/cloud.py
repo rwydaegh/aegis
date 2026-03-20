@@ -13,7 +13,9 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 import sys
+import time
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
@@ -152,3 +154,114 @@ def find_cheapest_location() -> tuple[str, str, float]:
 
     _, price, loc_id, gpu_name = best
     return loc_id, gpu_name, price
+
+
+# ---------------------------------------------------------------------------
+# SSH helpers
+# ---------------------------------------------------------------------------
+
+
+def ensure_ssh_key() -> Path:
+    """Ensure SSH key exists, generate if missing. Return path to private key."""
+    key_path = get_ssh_key_path()
+    if not key_path.exists():
+        print(f"Generating SSH key at {key_path}...")
+        key_path.parent.mkdir(parents=True, exist_ok=True)
+        subprocess.run(
+            ["ssh-keygen", "-t", "ed25519", "-f", str(key_path), "-N", ""],
+            check=True,
+            capture_output=True,
+        )
+        print(f"  Created: {key_path}")
+    return key_path
+
+
+def read_public_key() -> str:
+    key_path = ensure_ssh_key()
+    pub_path = Path(f"{key_path}.pub")
+    return pub_path.read_text().strip()
+
+
+def ssh_command(state: dict, cmd: str | None = None, timeout: int = 30) -> subprocess.CompletedProcess:
+    """Run a command over SSH. If cmd is None, open interactive session."""
+    key_path = get_ssh_key_path()
+    base = [
+        "ssh",
+        "-o",
+        "StrictHostKeyChecking=no",
+        "-o",
+        "UserKnownHostsFile=/dev/null",
+        "-o",
+        "LogLevel=ERROR",
+        "-o",
+        "ServerAliveInterval=30",
+        "-i",
+        str(key_path),
+        "-p",
+        str(state["ssh_port"]),
+        f"{DEFAULT_SSH_USER}@{state['ip']}",
+    ]
+    if cmd is None:
+        return subprocess.run(base)
+    return subprocess.run(
+        base + [cmd],
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+    )
+
+
+def wait_for_ssh(state: dict) -> bool:
+    """Poll until SSH is reachable. Returns True on success, False on timeout."""
+    deadline = time.monotonic() + SSH_MAX_WAIT
+    print(f"Waiting for SSH at {state['ip']}:{state['ssh_port']}...", end="", flush=True)
+    while time.monotonic() < deadline:
+        try:
+            result = ssh_command(state, "echo ok", timeout=10)
+            if result.returncode == 0:
+                print(" ready!")
+                return True
+        except (subprocess.TimeoutExpired, Exception):
+            pass
+        print(".", end="", flush=True)
+        time.sleep(SSH_POLL_INTERVAL)
+    print(" timeout!")
+    print(f"Error: SSH not reachable after {SSH_MAX_WAIT}s.")
+    print(f"  Instance ID: {state.get('instance_id', '?')}")
+    print("  Try again or destroy: python tools/cloud.py destroy")
+    return False
+
+
+def scp_to_remote(state: dict, local_path: str, remote_path: str) -> None:
+    """Copy a file to the remote machine via SCP."""
+    key_path = get_ssh_key_path()
+    subprocess.run(
+        [
+            "scp",
+            "-o",
+            "StrictHostKeyChecking=no",
+            "-o",
+            "UserKnownHostsFile=/dev/null",
+            "-o",
+            "LogLevel=ERROR",
+            "-i",
+            str(key_path),
+            "-P",
+            str(state["ssh_port"]),
+            local_path,
+            f"{DEFAULT_SSH_USER}@{state['ip']}:{remote_path}",
+        ],
+        check=True,
+    )
+
+
+def print_ssh_config(state: dict) -> None:
+    """Print an SSH config block for easy VS Code Remote-SSH setup."""
+    key_path = get_ssh_key_path()
+    print("\n--- SSH config (append to ~/.ssh/config) ---")
+    print("Host aegis-dev")
+    print(f"    HostName {state['ip']}")
+    print(f"    Port {state['ssh_port']}")
+    print(f"    User {DEFAULT_SSH_USER}")
+    print(f"    IdentityFile {key_path}")
+    print("---")
