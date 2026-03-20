@@ -25,6 +25,10 @@ globs: src/aegis/viewer/**,configs/*.json,configs/README.md
 
 Only expose voxel ray tracing when voxels are loaded and DiffeRT is available (`voxel_rt_available` from `/api/config`). Sionna scenes use separate endpoints.
 
+## Environment view (appearance)
+
+The **Environment view** dropdown (`#envDisplaySelect`) switches how the scene environment is drawn: instanced voxel cubes, the DiffeRT triangle hull (`GET /api/voxels/hull-mesh`), or photorealistic GLB tiles when `has_tiles` is true from `/api/config`. This is separate from **RT scene source**, which chooses what geometry ray tracing uses (voxel vs Sionna XML). Loading a Sionna mesh for display locks Environment view until RT source is set back to voxels.
+
 ## Testing browser flows
 
 Prefer the Playwright CLI for screenshots (see `.claude/skills/qa/SKILL.md`). Save artifacts under `test_screenshots/` (gitignored).

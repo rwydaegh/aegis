@@ -259,6 +259,10 @@ def create_app(
         levels = [lv["value"] for lv in cfg["dosimetry"]["fidelity_levels"]]
 
         has_voxels = _cache.get("voxel_binary") is not None
+        tiles_dir = _cache.get("tiles_dir")
+        n_tiles = 0
+        if tiles_dir:
+            n_tiles = len(list(Path(tiles_dir).glob("*.glb")))
         return jsonify(
             {
                 "bodies": bodies,
@@ -267,6 +271,8 @@ def create_app(
                 "has_voxels": has_voxels,
                 "has_differt": has_differt,
                 "voxel_rt_available": has_voxels and has_differt,
+                "has_tiles": n_tiles > 0,
+                "n_tiles": n_tiles,
                 "scenes": scenes,
                 "body_meta": _cache.get("body_meta"),
                 "voxel_meta": _cache.get("voxel_meta"),
@@ -343,9 +349,54 @@ def create_app(
             data, meta = scene_geometry_to_binary(scene_data)
             resp = Response(data, mimetype="application/octet-stream")
             resp.headers["X-Meta"] = json.dumps(meta)
+            resp.headers["Access-Control-Expose-Headers"] = "X-Meta"
             return resp
         except Exception as e:
             return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/voxels/hull-mesh", methods=["GET"])
+    def api_voxels_hull_mesh():
+        """Exterior voxel hull as triangle soup (same geometry as voxel DiffeRT)."""
+        try:
+            from aegis.viewer.raytracer import get_or_build_voxel_scene, scene_geometry_to_binary
+        except ImportError:
+            return jsonify({"error": "DiffeRT not installed"}), 501
+
+        grid_coords = _cache.get("voxel_grid_coords")
+        voxel_positions = _cache.get("voxel_positions")
+        voxel_meta = _cache.get("voxel_meta")
+        if grid_coords is None or voxel_positions is None or len(grid_coords) == 0:
+            return jsonify({"error": "No voxel grid data"}), 400
+
+        from aegis.viewer.scene_data import extract_exterior
+
+        ext_mask = extract_exterior(grid_coords)
+        ext_grid = grid_coords[ext_mask]
+        ext_pos = voxel_positions[ext_mask]
+        vs = float(voxel_meta["voxel_size"]) if voxel_meta else 1.0
+
+        try:
+            scene = get_or_build_voxel_scene(ext_pos, ext_grid, voxel_size=vs)
+            mesh = scene.mesh
+            vertices = np.array(mesh.vertices)
+            triangles = np.array(mesh.triangles)
+            mnames = list(mesh.material_names) if mesh.material_names else []
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+        scene_data = {
+            "vertices": vertices,
+            "triangles": triangles,
+            "face_colors": None,
+            "n_vertices": int(len(vertices)),
+            "n_triangles": int(len(triangles)),
+            "material_names": mnames,
+        }
+        data, meta = scene_geometry_to_binary(scene_data)
+        resp = Response(data, mimetype="application/octet-stream")
+        resp.headers["X-Meta"] = json.dumps(meta)
+        resp.headers["Access-Control-Expose-Headers"] = "X-Meta"
+        return resp
 
     @app.route("/api/compute/rt", methods=["POST"])
     def api_compute_rt():
@@ -500,7 +551,13 @@ def create_app(
         try:
             ext_mask = extract_exterior(grid_coords)
             ext_grid = grid_coords[ext_mask]
-            ext_pos = ext_grid.astype(float)
+            voxel_positions = _cache.get("voxel_positions")
+            if voxel_positions is None or len(voxel_positions) != len(grid_coords):
+                ext_pos = ext_grid.astype(float)
+                vs = 1.0
+            else:
+                ext_pos = voxel_positions[ext_mask]
+                vs = float(_cache["voxel_meta"]["voxel_size"]) if _cache.get("voxel_meta") else 1.0
 
             # Each exterior voxel face is 2 triangles, up to 6 faces per voxel
             est_triangles = len(ext_pos) * 12
@@ -512,7 +569,7 @@ def create_app(
                     }
                 ), 400
 
-            scene = get_or_build_voxel_scene(ext_pos, ext_grid, voxel_size=1.0)
+            scene = get_or_build_voxel_scene(ext_pos, ext_grid, voxel_size=vs)
         except Exception as e:
             return jsonify({"error": f"Voxel mesh build failed: {e}"}), 500
 
@@ -683,6 +740,17 @@ def create_app(
                 yield "event: progress\ndata: Loading voxels into viewer...\n\n"
                 br = _cache.get("bbox_radius", 15.0)
                 _load_and_cache_voxels_dir(str(voxel_output), br)
+
+                # Refresh tiles_dir (tiles may now exist after pipeline run)
+                from aegis.viewer.raytracer import clear_voxel_scene_cache
+
+                clear_voxel_scene_cache()
+                _cache["tiles_dir"] = None
+                tiles_candidate = voxel_output.parent / "tiles"
+                if tiles_candidate.is_dir() and any(tiles_candidate.glob("*.glb")):
+                    _cache["tiles_dir"] = tiles_candidate
+                    yield f"event: progress\ndata: Found {len(list(tiles_candidate.glob('*.glb')))} GLB tiles\n\n"
+
                 meta = _cache.get("voxel_meta", {})
                 yield f"event: done\ndata: {json.dumps(meta)}\n\n"
             except Exception as e:
