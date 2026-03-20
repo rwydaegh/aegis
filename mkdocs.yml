@@ -61,6 +61,7 @@ nav:
     - Architecture: developer_guide/architecture.md
     - Adding a kernel: developer_guide/adding_a_kernel.md
     - Testing: developer_guide/testing.md
+    - Cloud GPU machine: developer_guide/cloud_machine.md
     - Agent workflow (Claude & Cursor): developer_guide/claude_code_workflow.md
   - Reference:
     - API reference: reference/api.md
