@@ -13,7 +13,7 @@ authors = [{name = "rwydaegh", email = "robin.wydaeghe@ugent.be"}]
 
 dependencies = [
     "numpy>=1.24",
-    "scipy>=1.10",
+    "scipy>=1.10,<2",
 ]
 
 [project.scripts]
