@@ -25,7 +25,7 @@ This is a vibe-coded project. Claude is often the only one making changes in a s
 
 ## When to push
 
-- After every commit, push to origin/master. This project has no CI gates or branch protection, so pushing is safe and ensures work is backed up.
+- After every commit, push to origin/master. GitHub Actions CI (lint + test matrix) runs on push but there is no branch protection, so pushing is safe and ensures work is backed up.
 - If the push fails (someone else pushed, or network issues), pull with rebase first: `git pull --rebase origin master`.
 
 ## Branching

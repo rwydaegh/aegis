@@ -6,7 +6,15 @@ Extracted from scripts/compute_body_directivity.py.
 from __future__ import annotations
 
 import numpy as np
-from scipy.special import sph_harm
+
+try:
+    from scipy.special import sph_harm_y  # SciPy >= 1.15
+
+    def _sph_harm(m, n, phi, theta):
+        return sph_harm_y(n, m, theta, phi)
+
+except ImportError:
+    from scipy.special import sph_harm as _sph_harm  # SciPy < 1.15
 
 
 def spherical_angles_from_k_hat(k_hat: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
@@ -70,7 +78,7 @@ def fit_sh(
     cols = []
     for ell in range(L + 1):
         for m in range(-ell, ell + 1):
-            cols.append(sph_harm(m, ell, phi_02pi, theta))
+            cols.append(_sph_harm(m, ell, phi_02pi, theta))
 
     Y = np.stack(cols, axis=1)
     c, *_ = np.linalg.lstsq(Y, D.astype(complex), rcond=None)
@@ -94,7 +102,7 @@ def eval_sh(
     idx = 0
     for ell in range(L + 1):
         for m in range(-ell, ell + 1):
-            cols.append(sph_harm(m, ell, phi_02pi, theta) * c[idx])
+            cols.append(_sph_harm(m, ell, phi_02pi, theta) * c[idx])
             idx += 1
     return np.real(np.sum(np.stack(cols, axis=1), axis=1))
 
