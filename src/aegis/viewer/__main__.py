@@ -95,74 +95,15 @@ def _fetch_location(location: str, radius: int, cache_dir: str | None) -> str | 
     return None
 
 
-def main() -> None:
-    from aegis import __version__
+def _resolve_config(args: argparse.Namespace) -> tuple[dict, dict]:
+    """Resolve final config and launch options from parsed CLI arguments.
+
+    Returns ``(cfg, opts)`` where ``cfg`` is the merged config dict and ``opts``
+    contains resolved scalar launch values: host, port, bbox, body_name,
+    no_open, data_dir, voxel_dir, voxel_json, scenario_name.
+    """
     from aegis.viewer.config import apply_scenario_to_config, load_config, scenario_launch
 
-    parser = argparse.ArgumentParser(description="AEGIS interactive 3D viewer")
-    parser.add_argument(
-        "--version",
-        action="version",
-        version=f"aegis-viewer {__version__}",
-    )
-    parser.add_argument(
-        "--config",
-        default=None,
-        help="Path to JSON config file (see configs/default.json for schema)",
-    )
-    parser.add_argument(
-        "--scenario",
-        default=None,
-        help="Named scenario from config JSON (overrides default_scenario).",
-    )
-    parser.add_argument(
-        "--port",
-        type=int,
-        default=None,
-        help="Server port (overrides config server.port)",
-    )
-    parser.add_argument("--host", default=None)
-    parser.add_argument(
-        "--location",
-        default=None,
-        help="Location to fetch voxels for (e.g. 'Ghent, Belgium')",
-    )
-    parser.add_argument("--voxel-json", default=None, help="Path to voxel JSON file")
-    parser.add_argument(
-        "--voxel-dir",
-        default=None,
-        help="Path to directory of voxel JSON files",
-    )
-    parser.add_argument(
-        "--bbox",
-        type=float,
-        default=None,
-        help="Scene bounding box size in meters (default: 30)",
-    )
-    parser.add_argument("--body", default=None, help="Body mesh name (without .stl)")
-    parser.add_argument("--data-dir", default=None, help="Path to data directory")
-    parser.add_argument(
-        "--pipeline-dir",
-        default=None,
-        help="Path to nodejs-voxelearth (default: auto-detect)",
-    )
-    parser.add_argument(
-        "--cache-dir",
-        default=None,
-        help="Pipeline output cache directory",
-    )
-    parser.add_argument("--no-open", action="store_true", help="Don't open browser")
-    parser.add_argument(
-        "--level",
-        type=int,
-        choices=range(9),
-        default=None,
-        metavar="N",
-        help="Default dosimetry fidelity level 0-8 (overrides config dosimetry.default_level)",
-    )
-    args = parser.parse_args()
-
-    # Load config (defaults merged with user overrides)
     cfg = load_config(args.config)
 
     scenario_name = args.scenario if args.scenario is not None else cfg.get("default_scenario")
@@ -210,13 +151,6 @@ def main() -> None:
     if args.voxel_json is not None:
         voxel_json = args.voxel_json
 
-    if not voxel_dir and not voxel_json and args.location:
-        voxel_dir = _fetch_location(
-            args.location,
-            int(bbox / 2),
-            args.cache_dir,
-        )
-
     if scenario_name:
         print(f"  Scenario: {scenario_name}")
         desc = (cfg.get("scenarios") or {}).get(scenario_name, {}).get("description")
@@ -228,28 +162,79 @@ def main() -> None:
     if args.level is not None:
         cfg["dosimetry"]["default_level"] = int(args.level)
 
-    _kill_previous_on_port(port)
+    opts = {
+        "host": host,
+        "port": port,
+        "bbox": bbox,
+        "body_name": body_name,
+        "no_open": no_open,
+        "data_dir": data_dir,
+        "voxel_dir": voxel_dir,
+        "voxel_json": voxel_json,
+        "scenario_name": scenario_name,
+    }
+    return cfg, opts
+
+
+def main() -> None:
+    from aegis import __version__
+
+    parser = argparse.ArgumentParser(description="AEGIS interactive 3D viewer")
+    parser.add_argument("--version", action="version", version=f"aegis-viewer {__version__}")
+    parser.add_argument("--config", default=None, help="Path to JSON config file (see configs/default.json for schema)")
+    parser.add_argument(
+        "--scenario",
+        default=None,
+        help="Named scenario from config JSON (overrides default_scenario).",
+    )
+    parser.add_argument("--port", type=int, default=None, help="Server port (overrides config server.port)")
+    parser.add_argument("--host", default=None)
+    parser.add_argument("--location", default=None, help="Location to fetch voxels for (e.g. 'Ghent, Belgium')")
+    parser.add_argument("--voxel-json", default=None, help="Path to voxel JSON file")
+    parser.add_argument("--voxel-dir", default=None, help="Path to directory of voxel JSON files")
+    parser.add_argument("--bbox", type=float, default=None, help="Scene bounding box size in meters (default: 30)")
+    parser.add_argument("--body", default=None, help="Body mesh name (without .stl)")
+    parser.add_argument("--data-dir", default=None, help="Path to data directory")
+    parser.add_argument("--pipeline-dir", default=None, help="Path to nodejs-voxelearth (default: auto-detect)")
+    parser.add_argument("--cache-dir", default=None, help="Pipeline output cache directory")
+    parser.add_argument("--no-open", action="store_true", help="Don't open browser")
+    parser.add_argument(
+        "--level",
+        type=int,
+        choices=range(9),
+        default=None,
+        metavar="N",
+        help="Default dosimetry fidelity level 0-8 (overrides config dosimetry.default_level)",
+    )
+    args = parser.parse_args()
+
+    cfg, opts = _resolve_config(args)
+
+    if not opts["voxel_dir"] and not opts["voxel_json"] and args.location:
+        opts["voxel_dir"] = _fetch_location(args.location, int(opts["bbox"] / 2), args.cache_dir)
+
+    _kill_previous_on_port(opts["port"])
 
     from aegis.viewer.server import create_app
 
     app = create_app(
-        data_dir=data_dir,
-        voxel_json=voxel_json,
-        voxel_dir=voxel_dir,
-        bbox_radius=bbox / 2.0,
-        body_name=body_name,
+        data_dir=opts["data_dir"],
+        voxel_json=opts["voxel_json"],
+        voxel_dir=opts["voxel_dir"],
+        bbox_radius=opts["bbox"] / 2.0,
+        body_name=opts["body_name"],
         pipeline_dir=args.pipeline_dir,
         cache_dir=args.cache_dir,
         config=cfg,
     )
 
-    url = f"http://{host}:{port}"
+    url = f"http://{opts['host']}:{opts['port']}"
     print(f"\n  AEGIS Viewer: {url}\n")
 
-    if not no_open:
+    if not opts["no_open"]:
         webbrowser.open(url)
 
-    app.run(host=host, port=port, debug=cfg["server"]["debug"], threaded=True)
+    app.run(host=opts["host"], port=opts["port"], debug=cfg["server"]["debug"], threaded=True)
 
 
 if __name__ == "__main__":
