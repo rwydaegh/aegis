@@ -87,6 +87,12 @@ def solve_ecbf(
     p_abs_min = P * float(eigenvalues[0])  # eigenvalues from eigh are ascending
     if p_abs_min > P_abs_max:
         # Infeasible: return smallest-eigenvalue direction
+        warnings.warn(
+            "ECBF constraint infeasible: minimum achievable P_abs "
+            f"({p_abs_min:.4g} W) exceeds P_abs_max ({P_abs_max:.4g} W); "
+            "returning minimum-absorption precoder",
+            stacklevel=2,
+        )
         x_min = np.sqrt(P) * V[:, 0]
         return x_min
 

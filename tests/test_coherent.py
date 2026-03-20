@@ -392,7 +392,7 @@ class TestIncoherentLimit:
         # Should converge to incoherent result within ~15%
         # (Monte Carlo variance + approximation errors)
         rel_err = abs(p_abs_avg - r3.p_abs) / max(r3.p_abs, 1e-20)
-        assert rel_err < 0.25, (
+        assert rel_err < 0.15, (
             f"Incoherent limit failed: avg coherent={p_abs_avg:.6f}, incoherent={r3.p_abs:.6f}, rel_err={rel_err:.2%}"
         )
 
@@ -462,7 +462,7 @@ class TestECBF:
         x_star = solve_ecbf(h, Q, P_abs_max, P)
         p_abs_ecbf = float(np.real(x_star.conj() @ Q @ x_star))
 
-        assert p_abs_ecbf <= P_abs_max * 1.01
+        assert p_abs_ecbf <= P_abs_max * 1.001
         assert p_abs_ecbf < p_abs_mrt
 
 

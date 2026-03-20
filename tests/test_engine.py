@@ -171,7 +171,7 @@ class TestLevel2:
         """P_abs <= S_inc * T_0 * A_total (energy conservation)."""
         result = engine.compute(ico_mesh, single_path_down, level=2)
         upper_bound = 1.0 * SKIN_28GHZ.T0 * ico_mesh.total_area
-        assert result.p_abs <= upper_bound * 1.001
+        assert result.p_abs <= upper_bound * 1.0001
 
     def test_p_abs_equals_T0_A_perp(self, engine, flat_mesh):
         """For flat plane at normal incidence: P_abs = S_inc * T_0 * A_total."""
@@ -198,7 +198,7 @@ class TestLevel3:
         )
         r2 = engine.compute(flat_mesh, paths, level=2)
         r3 = engine.compute(flat_mesh, paths, level=3)
-        np.testing.assert_allclose(r3.sab, r2.sab, rtol=1e-3)
+        np.testing.assert_allclose(r3.sab, r2.sab, rtol=1e-10)
 
     def test_sab_non_negative(self, engine, ico_mesh, multi_path):
         result = engine.compute(ico_mesh, multi_path, level=3)
@@ -266,7 +266,7 @@ class TestLevel6:
         r6 = engine.compute(ico_mesh, multi_path, level=6, curvature_H=curvature_H)
         # GELU with sigma->0 converges to ReLU, but not exactly at sigma=0
         # With sigma=1e-30, it should be very close
-        np.testing.assert_allclose(r6.sab, r3.sab, rtol=1e-3)
+        np.testing.assert_allclose(r6.sab, r3.sab, rtol=1e-6)
 
     def test_sab_non_negative(self, engine, ico_mesh, multi_path):
         curvature_H = np.full(ico_mesh.n_triangles, 10.0)

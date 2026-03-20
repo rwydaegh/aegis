@@ -91,7 +91,7 @@ def compute_rho(
 ) -> float:
     """Compute exposure-signal alignment rho.
 
-    rho = h^T @ Q @ h* / (||h||^2 * lambda_max(Q))
+    rho = h^H @ Q @ h / (||h||^2 * lambda_max(Q))
 
     Parameters
     ----------
@@ -124,4 +124,4 @@ def compute_rho(
     Qh = Q @ h
     numerator = float(np.real(np.vdot(h, Qh)))
 
-    return numerator / (h_norm_sq * lambda_max)
+    return float(np.clip(numerator / (h_norm_sq * lambda_max), 0.0, 1.0))
