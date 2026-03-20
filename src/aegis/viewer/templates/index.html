@@ -1421,12 +1421,31 @@
             drawPaths(pos);
         }
 
+        function disposeLine(obj) {
+            obj.geometry?.dispose();
+            if (obj.material) {
+                if (obj.material.map) obj.material.map.dispose();
+                obj.material.dispose();
+            }
+        }
+
         function drawPaths(antennaWorldPos) {
-            for (const line of pathLines) scene.remove(line);
+            for (const line of pathLines) {
+                scene.remove(line);
+                disposeLine(line);
+            }
             pathLines = [];
 
-            if (distanceLine) { scene.remove(distanceLine); distanceLine = null; }
-            if (distanceLabel) { scene.remove(distanceLabel); distanceLabel = null; }
+            if (distanceLine) {
+                scene.remove(distanceLine);
+                disposeLine(distanceLine);
+                distanceLine = null;
+            }
+            if (distanceLabel) {
+                scene.remove(distanceLabel);
+                disposeLine(distanceLabel);
+                distanceLabel = null;
+            }
 
             if (!bodyMesh) return;
 
@@ -1728,7 +1747,10 @@
         }
 
         function drawRTPaths(pathViz) {
-            for (const line of pathLines) scene.remove(line);
+            for (const line of pathLines) {
+                scene.remove(line);
+                disposeLine(line);
+            }
             pathLines = [];
 
             const rtCfg = CFG.rt_paths;
