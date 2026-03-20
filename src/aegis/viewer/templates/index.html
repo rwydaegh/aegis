@@ -309,6 +309,7 @@
         let computeDebounceTimer = null;
         let isComputing = false;
         let computeTimerInterval = null;
+        let computeAbortController = null;
         let lastRecomputeTime = 0;
         const RECOMPUTE_INTERVAL_MS = CFG.interaction.recompute_interval_ms;
 
@@ -1526,6 +1527,13 @@
         async function computeDosimetry(worldPos) {
             if (!bodyMesh) return;
 
+            // Abort any in-flight compute request
+            if (computeAbortController) {
+                computeAbortController.abort();
+            }
+            computeAbortController = new AbortController();
+            const signal = computeAbortController.signal;
+
             isComputing = true;
             setComputeError('');
             const computeStart = performance.now();
@@ -1568,6 +1576,7 @@
                             power_dbm: powerDbm,
                             max_order: maxOrder,
                         }),
+                        signal,
                     });
 
                     if (!resp.ok) {
@@ -1600,6 +1609,7 @@
                             power_dbm: powerDbm,
                             max_order: maxOrder,
                         }),
+                        signal,
                     });
 
                     if (!resp.ok) {
@@ -1629,6 +1639,7 @@
                             power_dbm: powerDbm,
                             n_paths: nPaths,
                         }),
+                        signal,
                     });
 
                     if (!resp.ok) {
@@ -1647,15 +1658,20 @@
                     updateDashboard(stats);
                 }
             } catch (err) {
+                if (err.name === 'AbortError') return;  // superseded by newer request
                 console.error('Dosimetry computation error:', err);
                 const errMsg = err instanceof Error ? err.message : String(err);
                 setComputeError(errMsg);
                 const statusEl = document.getElementById('rt-status');
                 if (statusEl) statusEl.textContent = `Error: ${errMsg}`;
             } finally {
-                isComputing = false;
-                clearInterval(computeTimerInterval);
-                document.getElementById('computing').style.display = 'none';
+                // Only clean up if we are still the active request
+                if (computeAbortController?.signal === signal) {
+                    computeAbortController = null;
+                    isComputing = false;
+                    clearInterval(computeTimerInterval);
+                    document.getElementById('computing').style.display = 'none';
+                }
             }
         }
 
