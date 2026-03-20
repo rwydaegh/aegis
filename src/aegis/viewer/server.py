@@ -11,6 +11,8 @@ import numpy as np
 from flask import Flask, Response, jsonify, render_template, request
 
 from aegis.compliance import ICNIRP_2020
+from aegis.tissue.dielectric import FAT_28GHZ, MUSCLE_28GHZ, SKIN_28GHZ, SKIN_60GHZ
+from aegis.viewer.compute import TISSUE_PRESETS
 from aegis.viewer.raytracer import isotropic_incident_power_density
 from aegis.viewer.scene_data import (
     body_to_binary,
@@ -24,6 +26,78 @@ from aegis.viewer.scene_data import (
 # Module-level cache
 _cache: dict = {}
 _cache_lock = threading.RLock()
+
+# Fidelity catalog for GET /api/levels (names and blurbs match kernel modules in src/aegis/kernels/).
+FIDELITY_LEVELS_API = [
+    {
+        "level": 0,
+        "name": "Bound",
+        "description": (
+            "Worst-case absorbed power bound: O(1) in mesh size. "
+            "Uniform per-triangle S_ab from a scalar bound, not a resolved hotspot map."
+        ),
+    },
+    {
+        "level": 1,
+        "name": "Aggregate",
+        "description": (
+            "Total absorbed power via spherical-harmonic absorption directivity per path, O(N) in paths. "
+            "Per-triangle S_ab is uniform because the spatial map is not resolved."
+        ),
+    },
+    {
+        "level": 2,
+        "name": "Geometric ReLU",
+        "description": (
+            "Incoherent spatial map S_ab = T_0 * ReLU(n_hat · (-k_hat)) weighted by path powers. "
+            "Standard level for compliance-style assessment."
+        ),
+    },
+    {
+        "level": 3,
+        "name": "Fresnel",
+        "description": (
+            "Like level 2 but with angle-dependent unpolarised Fresnel transmission T_avg(theta) instead of fixed T_0."
+        ),
+    },
+    {
+        "level": 4,
+        "name": "Polarisation",
+        "description": (
+            "Polarisation-aware Fresnel (TM/TE splitting). Collapses to level 3 for unpolarised or circular waves."
+        ),
+    },
+    {
+        "level": 5,
+        "name": "Curvature",
+        "description": (
+            "Adds a first-order physical optics curvature correction on top of the Fresnel map "
+            "(level 3 baseline with extra ReLU-squared term)."
+        ),
+    },
+    {
+        "level": 6,
+        "name": "Diffraction",
+        "description": (
+            "Smooths the shadow boundary by replacing sharp ReLU with a physical GELU kernel tied to local curvature."
+        ),
+    },
+    {
+        "level": 7,
+        "name": "Coherent MIMO",
+        "description": (
+            "Coherent absorption map from the body-surface channel and precoding vector x using path phasors psi."
+        ),
+    },
+    {
+        "level": 8,
+        "name": "ECBF",
+        "description": (
+            "Exposure-constrained beamforming: solves for the precoder that maximises signal power "
+            "subject to absorbed power and transmit power limits."
+        ),
+    },
+]
 
 
 def _load_grid_coords(voxel_json: str) -> np.ndarray | None:
@@ -165,6 +239,12 @@ def create_app(
 
     # --- Routes ---
 
+    @app.route("/api/health")
+    def api_health():
+        from aegis import __version__
+
+        return jsonify({"status": "ok", "version": __version__})
+
     @app.route("/")
     def index():
         return render_template("index.html", viewer_config=json.dumps(config))
@@ -173,6 +253,63 @@ def create_app(
     def api_viewer_config():
         """Return the full viewer configuration."""
         return jsonify(_cache["config"])
+
+    @app.route("/api/levels")
+    def api_levels():
+        """Fidelity levels 0-8 with short descriptions."""
+        return jsonify(FIDELITY_LEVELS_API)
+
+    @app.route("/api/tissues")
+    def api_tissues():
+        """Tissue presets from literature values (see tissue.dielectric)."""
+        presets = [
+            {
+                "id": "skin_28ghz",
+                "name": SKIN_28GHZ.name,
+                "eps_r": SKIN_28GHZ.eps_r,
+                "sigma": SKIN_28GHZ.sigma,
+                "freq_hz": SKIN_28GHZ.freq_hz,
+            },
+            {
+                "id": "skin_60ghz",
+                "name": SKIN_60GHZ.name,
+                "eps_r": SKIN_60GHZ.eps_r,
+                "sigma": SKIN_60GHZ.sigma,
+                "freq_hz": SKIN_60GHZ.freq_hz,
+            },
+            {
+                "id": "muscle_28ghz",
+                "name": MUSCLE_28GHZ.name,
+                "eps_r": MUSCLE_28GHZ.eps_r,
+                "sigma": MUSCLE_28GHZ.sigma,
+                "freq_hz": MUSCLE_28GHZ.freq_hz,
+            },
+            {
+                "id": "fat_28ghz",
+                "name": FAT_28GHZ.name,
+                "eps_r": FAT_28GHZ.eps_r,
+                "sigma": FAT_28GHZ.sigma,
+                "freq_hz": FAT_28GHZ.freq_hz,
+            },
+        ]
+        return jsonify(presets)
+
+    @app.route("/api/body/info")
+    def api_body_info():
+        """Body mesh metadata without binary geometry."""
+        body = _cache.get("body")
+        if body is None:
+            return jsonify({"error": "No body mesh loaded"}), 404
+
+        bmin, bmax = body.bounding_box
+        return jsonify(
+            {
+                "name": body.name,
+                "n_triangles": body.n_triangles,
+                "total_area": body.total_area,
+                "bounding_box": {"min": bmin.tolist(), "max": bmax.tolist()},
+            }
+        )
 
     @app.route("/api/body")
     def api_body():
@@ -271,7 +408,7 @@ def create_app(
         return jsonify(
             {
                 "bodies": bodies,
-                "tissues": ["skin_28ghz", "skin_60ghz"],
+                "tissues": sorted(TISSUE_PRESETS.keys()),
                 "levels": levels,
                 "has_voxels": has_voxels,
                 "has_differt": has_differt,
@@ -290,7 +427,7 @@ def create_app(
     @app.route("/api/compute", methods=["POST"])
     def api_compute():
         """Compute dosimetry for given antenna position."""
-        from aegis.viewer.compute import TISSUE_PRESETS, compute_dosimetry
+        from aegis.viewer.compute import compute_dosimetry
 
         with _cache_lock:
             body = _cache.get("body")
@@ -298,16 +435,48 @@ def create_app(
         if body is None:
             return jsonify({"error": "No body mesh loaded"}), 400
 
-        params = request.get_json()
+        params = request.get_json(silent=True)
+        if params is None:
+            if request.data:
+                return jsonify({"error": "Invalid JSON body"}), 400
+            params = {}
+        elif not isinstance(params, dict):
+            return jsonify({"error": "JSON body must be an object"}), 400
+
+        dcfg = cfg["dosimetry"]
+        pwr_cfg = dcfg["power_input"]
+        allowed_n_paths = {int(opt["value"]) for opt in dcfg["path_options"]}
+
+        try:
+            level = int(params.get("level", dcfg["default_level"]))
+        except (TypeError, ValueError):
+            return jsonify({"error": "level must be an integer"}), 400
+        if level not in range(0, 9):
+            return jsonify({"error": "level must be between 0 and 8"}), 400
+
+        try:
+            power_dbm = float(params.get("power_dbm", dcfg["default_power_dbm"]))
+        except (TypeError, ValueError):
+            return jsonify({"error": "power_dbm must be a number"}), 400
+        if not (pwr_cfg["min"] <= power_dbm <= pwr_cfg["max"]):
+            return jsonify({"error": f"power_dbm must be between {pwr_cfg['min']} and {pwr_cfg['max']} dBm"}), 400
+
+        try:
+            n_paths = int(params.get("n_paths", dcfg["default_n_paths"]))
+        except (TypeError, ValueError):
+            return jsonify({"error": "n_paths must be an integer"}), 400
+        if n_paths not in allowed_n_paths:
+            return jsonify({"error": f"n_paths must be one of {sorted(allowed_n_paths)}"}), 400
+
+        tissue_name = params.get("tissue", "skin_28ghz")
+        if tissue_name not in TISSUE_PRESETS:
+            return jsonify({"error": f"Unknown tissue preset: {tissue_name!r}"}), 400
+
         antenna_pos = params.get("antenna_pos", [5, 0, 1])
         body_offset = params.get("body_offset", [0, 0, 0])
         body_rotation_y = params.get("body_rotation_y", 0.0)
-        level = params.get("level", 2)
-        tissue_name = params.get("tissue", "skin_28ghz")
-        power_dbm = params.get("power_dbm", 30.0)
-        n_paths = params.get("n_paths", 1)
 
-        tissue = TISSUE_PRESETS.get(tissue_name)
+        tissue = TISSUE_PRESETS[tissue_name]
 
         result = compute_dosimetry(
             body,

@@ -216,6 +216,66 @@ def compute_paths_differt(
     return paths, path_viz
 
 
+def _emit_exposed_faces(
+    grid_coords: np.ndarray,
+    positions: np.ndarray,
+    voxel_size: float,
+) -> np.ndarray:
+    """Emit quad vertices for all exposed voxel faces.
+
+    Returns (M, 3) float32 array of vertices, where every consecutive 4
+    vertices form one quad (to be triangulated as [0,1,2] + [0,2,3]).
+    """
+    hs = voxel_size / 2
+    face_dirs = np.array(
+        [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]],
+        dtype=np.int64,
+    )
+    face_corners = np.array(
+        [
+            [[hs, -hs, -hs], [hs, hs, -hs], [hs, hs, hs], [hs, -hs, hs]],  # +X
+            [[-hs, -hs, hs], [-hs, hs, hs], [-hs, hs, -hs], [-hs, -hs, -hs]],  # -X
+            [[-hs, hs, -hs], [-hs, hs, hs], [hs, hs, hs], [hs, hs, -hs]],  # +Y
+            [[hs, -hs, -hs], [hs, -hs, hs], [-hs, -hs, hs], [-hs, -hs, -hs]],  # -Y
+            [[-hs, -hs, hs], [hs, -hs, hs], [hs, hs, hs], [-hs, hs, hs]],  # +Z
+            [[-hs, hs, -hs], [hs, hs, -hs], [hs, -hs, -hs], [-hs, -hs, -hs]],  # -Z
+        ],
+        dtype=np.float32,
+    )
+
+    gc = grid_coords.astype(np.int64)
+    offsets = gc.min(axis=0)
+    gc_shifted = gc - offsets
+    span = gc_shifted.max(axis=0) + 1
+    pad_shape = tuple(int(x) + 2 for x in span)
+    occ = np.zeros(pad_shape, dtype=bool)
+    ix = gc_shifted[:, 0].astype(np.intp) + 1
+    iy = gc_shifted[:, 1].astype(np.intp) + 1
+    iz = gc_shifted[:, 2].astype(np.intp) + 1
+    occ[ix, iy, iz] = True
+
+    all_face_verts: list[np.ndarray] = []
+    for d in range(6):
+        dx, dy, dz = int(face_dirs[d, 0]), int(face_dirs[d, 1]), int(face_dirs[d, 2])
+        ni = ix + dx
+        nj = iy + dy
+        nk = iz + dz
+        exposed_mask = ~occ[ni, nj, nk]
+        exposed_idx = np.where(exposed_mask)[0]
+        if len(exposed_idx) == 0:
+            continue
+
+        centers = positions[exposed_idx]
+        corners = face_corners[d]
+        verts = centers[:, np.newaxis, :] + corners[np.newaxis, :, :]
+        all_face_verts.append(verts.reshape(-1, 3))
+
+    if not all_face_verts:
+        raise ValueError("No exterior faces found")
+
+    return np.concatenate(all_face_verts, axis=0).astype(np.float32)
+
+
 def round_triangle_scene(
     positions: np.ndarray,
     grid_coords: np.ndarray | None = None,
@@ -258,56 +318,7 @@ def round_triangle_scene(
     else:
         grid_coords = grid_coords.astype(np.int64)
 
-    # 6 face directions and their 4 corner offsets (relative to center)
-    hs = voxel_size / 2
-    face_dirs = np.array([[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]], dtype=np.int64)
-    face_corners = np.array(
-        [
-            [[hs, -hs, -hs], [hs, hs, -hs], [hs, hs, hs], [hs, -hs, hs]],  # +X
-            [[-hs, -hs, hs], [-hs, hs, hs], [-hs, hs, -hs], [-hs, -hs, -hs]],  # -X
-            [[-hs, hs, -hs], [-hs, hs, hs], [hs, hs, hs], [hs, hs, -hs]],  # +Y
-            [[hs, -hs, -hs], [hs, -hs, hs], [-hs, -hs, hs], [-hs, -hs, -hs]],  # -Y
-            [[-hs, -hs, hs], [hs, -hs, hs], [hs, hs, hs], [-hs, hs, hs]],  # +Z
-            [[-hs, hs, -hs], [hs, hs, -hs], [hs, -hs, -hs], [-hs, -hs, -hs]],  # -Z
-        ],
-        dtype=np.float32,
-    )  # (6, 4, 3)
-
-    # Shift to a tight box, then use a padded 3D boolean grid so neighbor lookups
-    # outside the occupied bbox stay unambiguous (linear int keys collide there).
-    gc = grid_coords
-    offsets = gc.min(axis=0)
-    gc_shifted = gc - offsets
-    span = gc_shifted.max(axis=0) + 1
-    pad_shape = tuple(int(x) + 2 for x in span)
-    occ = np.zeros(pad_shape, dtype=bool)
-    ix = gc_shifted[:, 0].astype(np.intp) + 1
-    iy = gc_shifted[:, 1].astype(np.intp) + 1
-    iz = gc_shifted[:, 2].astype(np.intp) + 1
-    occ[ix, iy, iz] = True
-
-    # For each direction, find which voxels have an empty neighbor
-    all_face_verts = []
-    for d in range(6):
-        dx, dy, dz = int(face_dirs[d, 0]), int(face_dirs[d, 1]), int(face_dirs[d, 2])
-        ni = gc_shifted[:, 0].astype(np.intp) + 1 + dx
-        nj = gc_shifted[:, 1].astype(np.intp) + 1 + dy
-        nk = gc_shifted[:, 2].astype(np.intp) + 1 + dz
-        exposed_mask = ~occ[ni, nj, nk]
-        exposed_idx = np.where(exposed_mask)[0]
-        if len(exposed_idx) == 0:
-            continue
-
-        # Emit 4 vertices per exposed face: center + corner offsets
-        centers = positions[exposed_idx]  # (K, 3)
-        corners = face_corners[d]  # (4, 3)
-        verts = centers[:, np.newaxis, :] + corners[np.newaxis, :, :]
-        all_face_verts.append(verts.reshape(-1, 3))
-
-    if not all_face_verts:
-        raise ValueError("No exterior faces found")
-
-    vertices = np.concatenate(all_face_verts, axis=0).astype(np.float32)
+    vertices = _emit_exposed_faces(grid_coords, positions, voxel_size)
 
     # Build triangle indices: every 4 vertices form a quad -> 2 triangles
     n_quads = len(vertices) // 4

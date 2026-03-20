@@ -7,24 +7,14 @@ on:
     branches: [main, master]
 
 jobs:
-  qlty:
-    name: Qlty check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: qltysh/qlty-action/check@main
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-
   lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v4
-      - run: uv python install 3.12
-      - run: uv pip install --system ruff
-      - run: ruff check src/ tests/
-      - run: ruff format --check src/ tests/
+      - run: uv sync --python 3.12 --extra dev
+      - run: uv run ruff check src/ tests/
+      - run: uv run ruff format --check src/ tests/
 
   test:
     runs-on: ${{ matrix.os }}
@@ -35,9 +25,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v4
-      - run: uv python install ${{ matrix.python-version }}
-      - run: uv pip install --system -e ".[dev]"
-      - run: pytest tests/ -m "not slow" --cov=aegis --cov-report=xml -x
+      - run: uv sync --python ${{ matrix.python-version }} --extra dev
+      - run: uv run pytest tests/ -m "not slow" --cov=aegis --cov-report=xml -x
       - name: Upload coverage
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
         uses: codecov/codecov-action@v4

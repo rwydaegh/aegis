@@ -1,0 +1,15 @@
+{
+  "default_scenario": "mmwave_close",
+  "scenarios": {
+    "mmwave_close": {
+      "description": "Close-in 60 GHz link (10 dBm). Select skin_60ghz tissue in the panel.",
+      "launch": {
+        "voxel_dir": null,
+        "voxel_json": null
+      }
+    }
+  },
+  "dosimetry": {
+    "default_power_dbm": 10
+  }
+}

@@ -7,13 +7,15 @@ import numpy as np
 from aegis.engine import DosimetryEngine
 from aegis.geometry.mesh import BodyMesh
 from aegis.paths import PropagationPaths
-from aegis.tissue.dielectric import SKIN_28GHZ, TissueModel
+from aegis.tissue.dielectric import FAT_28GHZ, MUSCLE_28GHZ, SKIN_28GHZ, SKIN_60GHZ, TissueModel
 from aegis.viewer.config import DEFAULTS
 
-# Predefined tissue presets
+# Predefined tissue presets (aligned with dielectric.py literature values)
 TISSUE_PRESETS = {
     "skin_28ghz": SKIN_28GHZ,
-    "skin_60ghz": TissueModel("Skin 60 GHz", eps_r=7.9, sigma=36.4, freq_hz=60e9),
+    "skin_60ghz": SKIN_60GHZ,
+    "muscle_28ghz": MUSCLE_28GHZ,
+    "fat_28ghz": FAT_28GHZ,
 }
 
 

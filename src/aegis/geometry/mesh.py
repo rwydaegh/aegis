@@ -114,6 +114,16 @@ class BodyMesh:
         return np.min(flat, axis=0), np.max(flat, axis=0)
 
     @property
+    def center(self) -> np.ndarray:
+        bmin, bmax = self.bounding_box
+        return (bmin + bmax) / 2.0
+
+    @property
+    def height(self) -> float:
+        bmin, bmax = self.bounding_box
+        return float(bmax[2] - bmin[2])
+
+    @property
     def scale(self) -> float:
         """Bounding box diagonal length."""
         bmin, bmax = self.bounding_box

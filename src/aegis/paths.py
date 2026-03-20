@@ -7,6 +7,7 @@ paths.power (derived from |psi|^2). Coherent kernels use psi directly.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -51,6 +52,24 @@ class PropagationPaths:
     @property
     def n_paths(self) -> int:
         return self.k_hat.shape[0]
+
+    def __len__(self) -> int:
+        return self.n_paths
+
+    @property
+    def total_power(self) -> float:
+        return float(np.sum(self.power))
+
+    def subset(self, indices: np.ndarray | Sequence[int]) -> PropagationPaths:
+        """Return paths restricted to the given index array (e.g. LOS-only)."""
+        idx = np.asarray(indices, dtype=np.intp)
+        return PropagationPaths(
+            k_hat=self.k_hat[idx],
+            psi=self.psi[idx],
+            element_index=self.element_index[idx],
+            delay=self.delay[idx],
+            is_los=self.is_los[idx],
+        )
 
     @property
     def n_elements(self) -> int:

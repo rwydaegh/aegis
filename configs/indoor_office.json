@@ -1,0 +1,15 @@
+{
+  "default_scenario": "indoor_office",
+  "scenarios": {
+    "indoor_office": {
+      "description": "Indoor small-cell style preset at 28 GHz (23 dBm). Use skin_28ghz tissue in the panel.",
+      "launch": {
+        "voxel_dir": null,
+        "voxel_json": null
+      }
+    }
+  },
+  "dosimetry": {
+    "default_power_dbm": 23
+  }
+}

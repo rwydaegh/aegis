@@ -1,0 +1,15 @@
+{
+  "default_scenario": "outdoor_urban",
+  "scenarios": {
+    "outdoor_urban": {
+      "description": "Outdoor macro-style preset at about 3.5 GHz (43 dBm). Match tissue frequency to your carrier in the panel.",
+      "launch": {
+        "voxel_dir": null,
+        "voxel_json": null
+      }
+    }
+  },
+  "dosimetry": {
+    "default_power_dbm": 43
+  }
+}
