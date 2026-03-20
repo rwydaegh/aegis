@@ -172,6 +172,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         with cache_lock:
             voxel_positions = cache.get("voxel_positions")
             voxel_sizes = cache.get("voxel_sizes")
+            voxel_materials = cache.get("voxel_materials")
+            cfg = cache.get("config", {})
         if voxel_positions is None or len(voxel_positions) == 0:
             return jsonify({"error": "No voxel data"}), 400
 
@@ -182,8 +184,19 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         ext_grid = grid_coords[ext_mask]
         ext_pos = z_up_pos[ext_mask]
 
+        ext_materials = None
+        if voxel_materials is not None:
+            ext_materials = [voxel_materials[i] for i in np.where(ext_mask)[0]]
+        material_colors = cfg.get("voxels", {}).get("material_colors")
+
         try:
-            scene = get_or_build_voxel_scene(ext_pos, ext_grid, voxel_size=vs)
+            scene = get_or_build_voxel_scene(
+                ext_pos,
+                ext_grid,
+                voxel_size=vs,
+                materials=ext_materials,
+                material_colors=material_colors,
+            )
             mesh = scene.mesh
             vertices = np.array(mesh.vertices)
             triangles = np.array(mesh.triangles)
@@ -194,7 +207,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         scene_data = {
             "vertices": vertices,
             "triangles": triangles,
-            "face_colors": None,
+            "face_colors": np.array(mesh.face_colors),
             "n_vertices": int(len(vertices)),
             "n_triangles": int(len(triangles)),
             "material_names": mnames,
@@ -299,6 +312,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             body = cache.get("body")
             voxel_positions = cache.get("voxel_positions")
             voxel_sizes = cache.get("voxel_sizes")
+            voxel_materials = cache.get("voxel_materials")
             cfg = cache["config"]
         if body is None:
             return jsonify({"error": "No body mesh loaded"}), 400
@@ -354,7 +368,18 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                     }
                 ), 400
 
-            scene = get_or_build_voxel_scene(ext_pos, ext_grid, voxel_size=vs)
+            ext_materials = None
+            if voxel_materials is not None:
+                ext_materials = [voxel_materials[i] for i in np.where(ext_mask)[0]]
+            material_colors = cfg.get("voxels", {}).get("material_colors")
+
+            scene = get_or_build_voxel_scene(
+                ext_pos,
+                ext_grid,
+                voxel_size=vs,
+                materials=ext_materials,
+                material_colors=material_colors,
+            )
         except Exception as e:
             return jsonify({"error": f"Voxel mesh build failed: {e}"}), 500
 
