@@ -56,10 +56,10 @@ if [ ! -d "$VENV_DIR" ]; then
     echo "Creating Python venv and installing deps (this may take a few minutes)..."
     sudo -u user python3.12 -m venv "$VENV_DIR"
     sudo -u user "$VENV_DIR/bin/pip" install --upgrade pip
-    sudo -u user "$VENV_DIR/bin/pip" install -e "$AEGIS_DIR[dev,gpu]"
+    sudo -u user "$VENV_DIR/bin/pip" install -e "$AEGIS_DIR[dev,gpu,rt]"
 else
     echo "Venv: already exists, updating deps..."
-    sudo -u user "$VENV_DIR/bin/pip" install -q -e "$AEGIS_DIR[dev,gpu]"
+    sudo -u user "$VENV_DIR/bin/pip" install -q -e "$AEGIS_DIR[dev,gpu,rt]"
 fi
 
 # --- Voxelearth pipeline (location loading) ---
