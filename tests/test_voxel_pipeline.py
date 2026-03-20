@@ -45,7 +45,7 @@ def test_returns_per_voxel_sizes():
     assert isinstance(voxel_sizes, np.ndarray)
     assert voxel_sizes.dtype == np.float32
     assert len(voxel_sizes) == len(positions)
-    assert all(voxel_sizes == pytest.approx(0.5))
+    assert all(v == pytest.approx(0.5) for v in voxel_sizes)
 
 
 def test_old_format_without_metadata_still_loads():
