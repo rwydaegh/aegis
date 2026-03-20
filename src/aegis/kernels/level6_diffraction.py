@@ -95,4 +95,4 @@ def level6_diffraction(
     gelu_sq = mu_gelu**2
     sab_curvature = T0 * ((H_safe / k)[:, np.newaxis] * gelu_sq) @ power
 
-    return sab_base + sab_curvature
+    return np.maximum(sab_base + sab_curvature, 0.0)

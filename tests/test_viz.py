@@ -42,6 +42,7 @@ def simple_sab():
 
 class TestHeatmap:
     def test_plotly_returns_figure(self, simple_mesh, simple_sab, tmp_path):
+        pytest.importorskip("plotly")
         from aegis.viz.heatmap import plot_heatmap
 
         fig = plot_heatmap(
@@ -194,6 +195,7 @@ class TestComparison:
         assert (tmp_path / "comp.png").exists()
 
     def test_plotly_comparison(self, simple_mesh, tmp_path):
+        pytest.importorskip("plotly")
         from aegis.viz.comparison import plot_level_comparison
 
         results = {

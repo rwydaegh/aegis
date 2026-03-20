@@ -56,4 +56,4 @@ def level5_curvature(
     mu_plus_sq = mu_plus**2  # (M, N)
     sab_curvature = T0 * ((curvature_H / k)[:, np.newaxis] * mu_plus_sq) @ power
 
-    return sab_base + sab_curvature
+    return np.maximum(sab_base + sab_curvature, 0.0)

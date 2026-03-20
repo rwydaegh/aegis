@@ -47,12 +47,12 @@ ICNIRP_2020 = ICNIRPLimits(
 
 def is_compliant_sab(peak_sab_averaged: float, limits: ICNIRPLimits = ICNIRP_2020) -> bool:
     """Check if peak spatially averaged S_ab is below the ICNIRP limit."""
-    return peak_sab_averaged < limits.sab_peak
+    return peak_sab_averaged <= limits.sab_peak
 
 
 def is_compliant_sar(sar_wb: float, limits: ICNIRPLimits = ICNIRP_2020) -> bool:
     """Check if whole-body SAR is below the ICNIRP limit."""
-    return sar_wb < limits.sar_wb
+    return sar_wb <= limits.sar_wb
 
 
 def margin_db(peak_sab: float, limits: ICNIRPLimits = ICNIRP_2020) -> float:

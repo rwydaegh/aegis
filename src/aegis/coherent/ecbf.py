@@ -16,6 +16,8 @@ Monograph: sec:ecbf, eq:QCQP, eq:optimal-x.
 
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 from scipy.optimize import brentq
 
@@ -106,6 +108,10 @@ def solve_ecbf(
         )
     except ValueError:
         # Fallback: return minimum-absorption direction
+        warnings.warn(
+            "ECBF brentq solver failed; falling back to minimum-absorption direction",
+            stacklevel=2,
+        )
         x_min = np.sqrt(P) * V[:, 0]
         return x_min
 
