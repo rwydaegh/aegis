@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 from pathlib import Path
 
 import numpy as np
@@ -22,6 +23,7 @@ from aegis.viewer.scene_data import (
 
 # Module-level cache
 _cache: dict = {}
+_cache_lock = threading.RLock()
 
 
 def _load_grid_coords(voxel_json: str) -> np.ndarray | None:
@@ -43,17 +45,18 @@ def _load_and_cache_voxels_single(voxel_json: str, bbox_radius: float) -> None:
         voxel_json,
         bbox_radius=bbox_radius,
     )
-    _cache["voxel_positions"] = positions
-    _cache["voxel_materials"] = materials
-    _cache["voxel_transform"] = transform
-    _cache["voxel_binary"], _cache["voxel_meta"] = voxels_to_binary(
-        positions,
-        colors,
-        materials,
-        voxel_size=voxel_size,
-    )
-    _cache["voxel_grid_coords"] = grid_coords if len(grid_coords) > 0 else _load_grid_coords(voxel_json)
-    _cache["body_placement"] = find_body_placement(positions, materials)
+    with _cache_lock:
+        _cache["voxel_positions"] = positions
+        _cache["voxel_materials"] = materials
+        _cache["voxel_transform"] = transform
+        _cache["voxel_binary"], _cache["voxel_meta"] = voxels_to_binary(
+            positions,
+            colors,
+            materials,
+            voxel_size=voxel_size,
+        )
+        _cache["voxel_grid_coords"] = grid_coords if len(grid_coords) > 0 else _load_grid_coords(voxel_json)
+        _cache["body_placement"] = find_body_placement(positions, materials)
     print(f"  Voxels: {len(positions):,} loaded, voxel_size={voxel_size:.4f}")
     print(f"  Body placement: {_cache['body_placement']}")
 
@@ -64,17 +67,18 @@ def _load_and_cache_voxels_dir(voxel_dir: str, bbox_radius: float) -> None:
         voxel_dir,
         bbox_radius=bbox_radius,
     )
-    _cache["voxel_positions"] = positions
-    _cache["voxel_materials"] = materials
-    _cache["voxel_transform"] = transform
-    _cache["voxel_binary"], _cache["voxel_meta"] = voxels_to_binary(
-        positions,
-        colors,
-        materials,
-        voxel_size=voxel_size,
-    )
-    _cache["voxel_grid_coords"] = grid_coords if len(grid_coords) > 0 else None
-    _cache["body_placement"] = find_body_placement(positions, materials)
+    with _cache_lock:
+        _cache["voxel_positions"] = positions
+        _cache["voxel_materials"] = materials
+        _cache["voxel_transform"] = transform
+        _cache["voxel_binary"], _cache["voxel_meta"] = voxels_to_binary(
+            positions,
+            colors,
+            materials,
+            voxel_size=voxel_size,
+        )
+        _cache["voxel_grid_coords"] = grid_coords if len(grid_coords) > 0 else None
+        _cache["body_placement"] = find_body_placement(positions, materials)
     print(f"  Body placement: {_cache['body_placement']}")
     print(f"  Voxels (directory): {len(positions):,} loaded, voxel_size={voxel_size:.4f}")
 
@@ -112,51 +116,52 @@ def create_app(
     # Pre-load data
     print("Loading data...")
 
-    try:
-        body = load_body(body_name, data_dir)
-        _cache["body"] = body
-        _cache["body_binary"], _cache["body_meta"] = body_to_binary(body)
-        print(f"  Body: {body.name}, {body.n_triangles:,} triangles")
-    except FileNotFoundError as e:
-        print(f"  Warning: {e}")
-        _cache["body"] = None
-
-    _cache["voxel_json_path"] = voxel_json
-    if voxel_dir:
+    with _cache_lock:
         try:
-            _load_and_cache_voxels_dir(voxel_dir, bbox_radius)
-        except Exception as e:
-            print(f"  Warning: voxel directory load failed: {e}")
+            body = load_body(body_name, data_dir)
+            _cache["body"] = body
+            _cache["body_binary"], _cache["body_meta"] = body_to_binary(body)
+            print(f"  Body: {body.name}, {body.n_triangles:,} triangles")
+        except FileNotFoundError as e:
+            print(f"  Warning: {e}")
+            _cache["body"] = None
+
+        _cache["voxel_json_path"] = voxel_json
+        if voxel_dir:
+            try:
+                _load_and_cache_voxels_dir(voxel_dir, bbox_radius)
+            except Exception as e:
+                print(f"  Warning: voxel directory load failed: {e}")
+                _cache["voxel_binary"] = None
+                _cache["voxel_meta"] = None
+                _cache["voxel_grid_coords"] = None
+                _cache["body_placement"] = None
+                _cache["voxel_positions"] = None
+        elif voxel_json:
+            try:
+                _load_and_cache_voxels_single(voxel_json, bbox_radius)
+            except Exception as e:
+                print(f"  Warning: voxel load failed: {e}")
+                _cache["voxel_binary"] = None
+                _cache["voxel_meta"] = None
+                _cache["voxel_grid_coords"] = None
+                _cache["body_placement"] = None
+                _cache["voxel_positions"] = None
+        else:
             _cache["voxel_binary"] = None
             _cache["voxel_meta"] = None
             _cache["voxel_grid_coords"] = None
             _cache["body_placement"] = None
             _cache["voxel_positions"] = None
-    elif voxel_json:
-        try:
-            _load_and_cache_voxels_single(voxel_json, bbox_radius)
-        except Exception as e:
-            print(f"  Warning: voxel load failed: {e}")
-            _cache["voxel_binary"] = None
-            _cache["voxel_meta"] = None
-            _cache["voxel_grid_coords"] = None
-            _cache["body_placement"] = None
-            _cache["voxel_positions"] = None
-    else:
-        _cache["voxel_binary"] = None
-        _cache["voxel_meta"] = None
-        _cache["voxel_grid_coords"] = None
-        _cache["body_placement"] = None
-        _cache["voxel_positions"] = None
 
-    # Resolve tiles directory (sibling of voxels dir from pipeline)
-    _cache["tiles_dir"] = None
-    _vs = voxel_dir or (str(Path(voxel_json).parent) if voxel_json else None)
-    if _vs:
-        _tc = Path(_vs).parent / "tiles"
-        if _tc.is_dir() and any(_tc.glob("*.glb")):
-            _cache["tiles_dir"] = _tc
-            print(f"  Tiles: {len(list(_tc.glob('*.glb')))} GLB files")
+        # Resolve tiles directory (sibling of voxels dir from pipeline)
+        _cache["tiles_dir"] = None
+        _vs = voxel_dir or (str(Path(voxel_json).parent) if voxel_json else None)
+        if _vs:
+            _tc = Path(_vs).parent / "tiles"
+            if _tc.is_dir() and any(_tc.glob("*.glb")):
+                _cache["tiles_dir"] = _tc
+                print(f"  Tiles: {len(list(_tc.glob('*.glb')))} GLB files")
 
     # --- Routes ---
 
@@ -287,7 +292,9 @@ def create_app(
         """Compute dosimetry for given antenna position."""
         from aegis.viewer.compute import TISSUE_PRESETS, compute_dosimetry
 
-        body = _cache.get("body")
+        with _cache_lock:
+            body = _cache.get("body")
+            cfg = _cache["config"]
         if body is None:
             return jsonify({"error": "No body mesh loaded"}), 400
 
@@ -311,7 +318,7 @@ def create_app(
             tissue=tissue,
             power_dbm=power_dbm,
             n_paths=n_paths,
-            config=_cache["config"],
+            config=cfg,
         )
 
         # Return binary S_ab with JSON stats in header
@@ -362,9 +369,10 @@ def create_app(
         except ImportError:
             return jsonify({"error": "DiffeRT not installed"}), 501
 
-        grid_coords = _cache.get("voxel_grid_coords")
-        voxel_positions = _cache.get("voxel_positions")
-        voxel_meta = _cache.get("voxel_meta")
+        with _cache_lock:
+            grid_coords = _cache.get("voxel_grid_coords")
+            voxel_positions = _cache.get("voxel_positions")
+            voxel_meta = _cache.get("voxel_meta")
         if grid_coords is None or voxel_positions is None or len(grid_coords) == 0:
             return jsonify({"error": "No voxel grid data"}), 400
 
@@ -510,11 +518,15 @@ def create_app(
         from aegis.viewer.compute import TISSUE_PRESETS
         from aegis.viewer.scene_data import extract_exterior
 
-        body = _cache.get("body")
+        with _cache_lock:
+            body = _cache.get("body")
+            grid_coords = _cache.get("voxel_grid_coords")
+            voxel_positions = _cache.get("voxel_positions")
+            voxel_meta = _cache.get("voxel_meta")
+            cfg = _cache["config"]
         if body is None:
             return jsonify({"error": "No body mesh loaded"}), 400
 
-        grid_coords = _cache.get("voxel_grid_coords")
         if grid_coords is None:
             return jsonify({"error": "No voxel grid data available"}), 400
 
@@ -547,17 +559,16 @@ def create_app(
         body_center = rotated_centroids.mean(axis=0) + body_offset
 
         # Build or get cached voxel DiffeRT scene
-        max_rt_triangles = _cache["config"]["raytracer"]["max_rt_triangles"]
+        max_rt_triangles = cfg["raytracer"]["max_rt_triangles"]
         try:
             ext_mask = extract_exterior(grid_coords)
             ext_grid = grid_coords[ext_mask]
-            voxel_positions = _cache.get("voxel_positions")
             if voxel_positions is None or len(voxel_positions) != len(grid_coords):
                 ext_pos = ext_grid.astype(float)
                 vs = 1.0
             else:
                 ext_pos = voxel_positions[ext_mask]
-                vs = float(_cache["voxel_meta"]["voxel_size"]) if _cache.get("voxel_meta") else 1.0
+                vs = float(voxel_meta["voxel_size"]) if voxel_meta else 1.0
 
             # Each exterior voxel face is 2 triangles, up to 6 faces per voxel
             est_triangles = len(ext_pos) * 12
@@ -585,7 +596,7 @@ def create_app(
             all_power = []
             path_viz = []
 
-            rt_cfg = _cache["config"]["raytracer"]
+            rt_cfg = cfg["raytracer"]
             tx_power_w = 10 ** ((power_dbm - 30) / 10)
             d_clamp = float(rt_cfg["fspl_distance_clamp"])
 
@@ -745,10 +756,12 @@ def create_app(
                 from aegis.viewer.raytracer import clear_voxel_scene_cache
 
                 clear_voxel_scene_cache()
-                _cache["tiles_dir"] = None
-                tiles_candidate = voxel_output.parent / "tiles"
-                if tiles_candidate.is_dir() and any(tiles_candidate.glob("*.glb")):
-                    _cache["tiles_dir"] = tiles_candidate
+                with _cache_lock:
+                    _cache["tiles_dir"] = None
+                    tiles_candidate = voxel_output.parent / "tiles"
+                    if tiles_candidate.is_dir() and any(tiles_candidate.glob("*.glb")):
+                        _cache["tiles_dir"] = tiles_candidate
+                if _cache.get("tiles_dir") is not None:
                     yield f"event: progress\ndata: Found {len(list(tiles_candidate.glob('*.glb')))} GLB tiles\n\n"
 
                 meta = _cache.get("voxel_meta", {})
