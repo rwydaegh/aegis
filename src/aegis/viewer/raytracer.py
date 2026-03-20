@@ -306,11 +306,15 @@ def _greedy_mesh_faces(
     grid_coords: np.ndarray,
     positions: np.ndarray,
     voxel_size: float,
-) -> np.ndarray:
+    material_ids: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
     """Emit greedy-merged quad vertices for all exposed voxel faces.
 
-    Returns (M, 3) float32 array of vertices, where every consecutive 4
-    vertices form one quad (to be triangulated as [0,1,2] + [0,2,3]).
+    Only merges adjacent faces that share the same material.
+
+    Returns (vertices, quad_material_ids) where vertices is (M, 3) float32
+    (every 4 consecutive vertices form one quad) and quad_material_ids is
+    (M//4,) int32 with the material index for each quad.
     """
     hs = voxel_size / 2
     face_dirs = np.array(
@@ -329,10 +333,14 @@ def _greedy_mesh_faces(
     iz = gc_shifted[:, 2].astype(np.intp) + 1
     occ[ix, iy, iz] = True
 
+    mat_grid_3d = np.full(pad_shape, -1, dtype=np.int32)
+    mat_grid_3d[ix, iy, iz] = material_ids
+
     # Grid-to-world: world = origin + grid_shifted * voxel_size
     origin = positions[0] - gc_shifted[0].astype(np.float64) * voxel_size
 
     all_face_verts: list[np.ndarray] = []
+    all_face_mats: list[int] = []
 
     for d in range(6):
         dx, dy, dz = int(face_dirs[d, 0]), int(face_dirs[d, 1]), int(face_dirs[d, 2])
@@ -348,12 +356,14 @@ def _greedy_mesh_faces(
         winding = _FACE_WINDING[d]
 
         exposed_gc = gc_shifted[exposed_idx]
+        exposed_mat = mat_grid_3d[ix[exposed_idx], iy[exposed_idx], iz[exposed_idx]]
         fixed_vals = exposed_gc[:, f_ax]
         unique_fixed = np.unique(fixed_vals)
 
         for fv in unique_fixed:
             slice_mask = fixed_vals == fv
             slice_gc = exposed_gc[slice_mask]
+            slice_mat = exposed_mat[slice_mask]
 
             u_coords = slice_gc[:, u_ax].astype(np.intp)
             v_coords = slice_gc[:, v_ax].astype(np.intp)
@@ -362,24 +372,25 @@ def _greedy_mesh_faces(
             u_span = u_max - u_min + 1
             v_span = v_max - v_min + 1
 
-            grid_2d = np.zeros((u_span, v_span), dtype=bool)
-            grid_2d[u_coords - u_min, v_coords - v_min] = True
-            visited = np.zeros_like(grid_2d)
+            mat_grid = np.full((u_span, v_span), -1, dtype=np.int32)
+            mat_grid[u_coords - u_min, v_coords - v_min] = slice_mat
+            visited = np.zeros((u_span, v_span), dtype=bool)
 
             for u in range(u_span):
                 for v in range(v_span):
-                    if not grid_2d[u, v] or visited[u, v]:
+                    cur_mat = int(mat_grid[u, v])
+                    if cur_mat < 0 or visited[u, v]:
                         continue
 
                     w = 1
-                    while u + w < u_span and grid_2d[u + w, v] and not visited[u + w, v]:
+                    while u + w < u_span and mat_grid[u + w, v] == cur_mat and not visited[u + w, v]:
                         w += 1
 
                     h = 1
                     while v + h < v_span:
                         row_ok = True
                         for du in range(w):
-                            if not grid_2d[u + du, v + h] or visited[u + du, v + h]:
+                            if mat_grid[u + du, v + h] != cur_mat or visited[u + du, v + h]:
                                 row_ok = False
                                 break
                         if not row_ok:
@@ -407,11 +418,15 @@ def _greedy_mesh_faces(
                         quad[ci, f_ax] = f_val
 
                     all_face_verts.append(quad)
+                    all_face_mats.append(cur_mat)
 
     if not all_face_verts:
         raise ValueError("No exterior faces found")
 
-    return np.concatenate(all_face_verts, axis=0).astype(np.float32)
+    return (
+        np.concatenate(all_face_verts, axis=0).astype(np.float32),
+        np.array(all_face_mats, dtype=np.int32),
+    )
 
 
 def round_triangle_scene(
@@ -456,7 +471,16 @@ def round_triangle_scene(
     else:
         grid_coords = grid_coords.astype(np.int64)
 
-    vertices = _greedy_mesh_faces(grid_coords, positions, voxel_size)
+    # Convert material names to integer IDs
+    if materials is not None and len(materials) > 0:
+        unique_materials = sorted(set(materials))
+        mat_name_to_id = {name: i for i, name in enumerate(unique_materials)}
+        mat_ids = np.array([mat_name_to_id[m] for m in materials], dtype=np.int32)
+    else:
+        unique_materials = ["concrete"]
+        mat_ids = np.zeros(n, dtype=np.int32)
+
+    vertices, quad_mat_ids = _greedy_mesh_faces(grid_coords, positions, voxel_size, mat_ids)
 
     # Build triangle indices: every 4 vertices form a quad -> 2 triangles
     n_quads = len(vertices) // 4
@@ -467,15 +491,32 @@ def round_triangle_scene(
     triangles[0::2] = tri1
     triangles[1::2] = tri2
 
+    # Per-triangle material index (2 triangles per quad, same material)
+    face_materials = np.repeat(quad_mat_ids, 2)
+
+    # Per-triangle colors from material_colors config
+    _default_colors = {
+        "concrete": [180, 180, 180],
+        "asphalt": [80, 80, 80],
+        "vegetation": [40, 160, 40],
+        "brick": [200, 80, 50],
+    }
+    mc = material_colors if material_colors is not None else _default_colors
+    color_array = np.zeros((len(triangles), 3), dtype=np.float32)
+    for i, mat_name in enumerate(unique_materials):
+        rgb = mc.get(mat_name, [200, 200, 200])
+        mask = face_materials == i
+        color_array[mask] = [c / 255.0 for c in rgb]
+
     print(f"  Voxel mesh: {n:,} voxels -> {len(vertices):,} vertices, {len(triangles):,} triangles")
 
     # Build DiffeRT TriangleScene
     mesh = TriangleMesh(
         vertices=jnp.array(vertices),
         triangles=jnp.array(triangles),
-        face_colors=jnp.zeros((len(triangles), 3)),
-        face_materials=jnp.zeros(len(triangles), dtype=jnp.int32),
-        material_names=("concrete",),
+        face_colors=jnp.array(color_array),
+        face_materials=jnp.array(face_materials),
+        material_names=tuple(unique_materials),
         object_bounds=jnp.array([[0, len(triangles)]], dtype=jnp.int32),
     )
 

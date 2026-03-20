@@ -147,3 +147,96 @@ def test_grid_coords_swapped_to_zup():
 
     assert expected_gc_zup[0, 2] == 5
     assert expected_gc_zup[0, 1] == 0
+
+
+def test_material_boundary_prevents_merge():
+    """Adjacent voxels with different materials must not merge across boundary."""
+    gc = np.array([[0, 0, 0], [1, 0, 0], [2, 0, 0], [3, 0, 0]], dtype=np.int64)
+    pos = gc.astype(np.float64)
+    materials = ["concrete", "concrete", "brick", "brick"]
+
+    scene = round_triangle_scene(pos, grid_coords=gc, voxel_size=1.0, materials=materials)
+    mesh = scene.mesh
+    face_mats = np.array(mesh.face_materials)
+
+    unique_mats = set(face_mats.tolist())
+    assert len(unique_mats) == 2, f"Expected 2 materials, got {unique_mats}"
+
+    assert "brick" in mesh.material_names
+    assert "concrete" in mesh.material_names
+
+
+def test_no_materials_defaults_to_concrete():
+    """When materials=None, all faces get material 0 ('concrete')."""
+    gc = np.array([[0, 0, 0], [1, 0, 0]], dtype=np.int64)
+    pos = gc.astype(np.float64)
+    scene = round_triangle_scene(pos, grid_coords=gc, voxel_size=1.0)
+    mesh = scene.mesh
+    face_mats = np.array(mesh.face_materials)
+    assert set(face_mats.tolist()) == {0}
+    assert mesh.material_names == ("concrete",)
+
+
+def test_face_colors_match_material():
+    """face_colors should be set based on material_colors config."""
+    gc = np.array([[0, 0, 0], [1, 0, 0]], dtype=np.int64)
+    pos = gc.astype(np.float64)
+    materials = ["concrete", "brick"]
+    material_colors = {"concrete": [180, 180, 180], "brick": [200, 80, 50]}
+
+    scene = round_triangle_scene(
+        pos,
+        grid_coords=gc,
+        voxel_size=1.0,
+        materials=materials,
+        material_colors=material_colors,
+    )
+    colors = np.array(scene.mesh.face_colors)
+    assert colors.max() <= 1.0
+    assert colors.min() >= 0.0
+    assert colors.sum() > 0
+
+
+def test_hull_binary_round_trip_with_colors():
+    """Build hull, serialize to binary, verify face_colors present."""
+    from aegis.viewer.raytracer import scene_geometry_to_binary
+
+    gc = np.array([[0, 0, 0], [1, 0, 0]], dtype=np.int64)
+    pos = gc.astype(np.float64)
+    materials = ["concrete", "brick"]
+    material_colors = {"concrete": [180, 180, 180], "brick": [200, 80, 50]}
+
+    scene = round_triangle_scene(
+        pos,
+        grid_coords=gc,
+        voxel_size=1.0,
+        materials=materials,
+        material_colors=material_colors,
+    )
+    mesh = scene.mesh
+    vertices = np.array(mesh.vertices)
+    triangles = np.array(mesh.triangles)
+    colors = np.array(mesh.face_colors)
+
+    scene_data = {
+        "vertices": vertices,
+        "triangles": triangles,
+        "face_colors": colors,
+        "n_vertices": len(vertices),
+        "n_triangles": len(triangles),
+        "material_names": list(mesh.material_names),
+    }
+    data, meta = scene_geometry_to_binary(scene_data)
+
+    assert meta["has_face_colors"] is True
+    assert len(meta["material_names"]) == 2
+
+    nv = meta["n_vertices"]
+    nt = meta["n_triangles"]
+    v_end = nv * 3 * 4
+    t_end = v_end + nt * 3 * 4
+    c_end = t_end + nt * 3 * 4
+    assert len(data) == c_end
+
+    parsed_colors = np.frombuffer(data[t_end:c_end], dtype=np.float32).reshape(nt, 3)
+    assert parsed_colors.sum() > 0
