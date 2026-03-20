@@ -955,27 +955,36 @@
 
             const n = meta.n_voxels;
             const materials = meta.materials;
-            const positions = new Float32Array(buf, 0, n * 3);
-            const colors = new Uint8Array(buf, n * 3 * 4, n * 3);
-            const matIndices = new Uint8Array(buf, n * 3 * 4 + n * 3, n);
+            const defaultVs = meta.voxel_size || CFG.voxels.default_size_fallback;
+            voxelSize = defaultVs;
 
-            const vs = meta.voxel_size || CFG.voxels.default_size_fallback;
-            voxelSize = vs;
-            const cubeSize = vs * CFG.voxels.size_scale;
-            const geometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
+            // New binary layout: positions(n*3*f32) + sizes(n*f32) + colors(n*3*u8) + matIndices(n*u8)
+            let offset = 0;
+            const positions = new Float32Array(buf, offset, n * 3); offset += n * 3 * 4;
+            const sizes = new Float32Array(buf, offset, n); offset += n * 4;
+            const colors = new Uint8Array(buf, offset, n * 3); offset += n * 3;
+            const matIndices = new Uint8Array(buf, offset, n);
+
             const dummy = new THREE.Object3D();
 
+            // Group by (material, roundedSize) for multi-resolution instanced meshes
             const groups = {};
             for (let i = 0; i < n; i++) {
                 const matName = materials[matIndices[i]];
-                if (!groups[matName]) groups[matName] = [];
-                groups[matName].push(i);
+                const vs = sizes[i] || defaultVs;
+                const sizeKey = vs.toFixed(4);
+                const groupKey = matName + '|' + sizeKey;
+                if (!groups[groupKey]) groups[groupKey] = { matName, vs, indices: [] };
+                groups[groupKey].indices.push(i);
             }
 
             const voxMatCfg = CFG.voxels.material;
-            for (const [matName, indices] of Object.entries(groups)) {
+            for (const [groupKey, group] of Object.entries(groups)) {
+                const { matName, vs, indices } = group;
                 const count = indices.length;
                 const mc = MATERIAL_COLORS[matName] || [200, 200, 200];
+                const cubeSize = vs * CFG.voxels.size_scale;
+                const geometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
 
                 const matClass = new THREE.MeshStandardMaterial({
                     color: new THREE.Color(mc[0]/255, mc[1]/255, mc[2]/255),
@@ -989,23 +998,25 @@
 
                 for (let j = 0; j < count; j++) {
                     const i = indices[j];
-                    dummy.position.set(positions[i*3], positions[i*3+2], -positions[i*3+1]);
+                    dummy.position.set(positions[i*3], positions[i*3+1], positions[i*3+2]);
                     dummy.updateMatrix();
                     meshClass.setMatrixAt(j, dummy.matrix);
                 }
                 meshClass.instanceMatrix.needsUpdate = true;
 
                 scene.add(meshClass);
-                voxelMeshes[matName] = { classified: meshClass };
+                if (!voxelMeshes[matName]) voxelMeshes[matName] = { classified: [] };
+                voxelMeshes[matName].classified.push(meshClass);
             }
 
             // Build multi-level heightmap for gravity (stores all voxel Y tops per column)
-            const hmRes = vs * CFG.voxels.heightmap_resolution_factor;
+            const hmRes = defaultVs * CFG.voxels.heightmap_resolution_factor;
             voxelHeightmap = {};
             for (let i = 0; i < n; i++) {
                 const tx = positions[i*3];
-                const ty = positions[i*3+2];
-                const tz = -positions[i*3+1];
+                const ty = positions[i*3+1];
+                const tz = positions[i*3+2];
+                const vs = sizes[i] || defaultVs;
                 const key = Math.round(tx / hmRes) + ',' + Math.round(tz / hmRes);
                 const top = ty + vs * 0.5;
                 if (!(key in voxelHeightmap)) {
@@ -1250,7 +1261,7 @@
 
             for (const [mat, meshes] of Object.entries(voxelMeshes)) {
                 const mc = MATERIAL_COLORS[mat] || [200, 200, 200];
-                const count = meshes.classified.count;
+                const count = meshes.classified.reduce((s, m) => s + m.count, 0);
                 const btn = document.createElement('button');
                 btn.className = 'layer-btn active';
                 btn.dataset.layer = mat;
@@ -1285,7 +1296,7 @@
             } else {
                 const matName = btn.dataset.layer;
                 if (voxelMeshes[matName]) {
-                    voxelMeshes[matName].classified.visible = active;
+                    for (const m of voxelMeshes[matName].classified) m.visible = active;
                 }
             }
         });
@@ -1399,9 +1410,11 @@
             setComputeError('');
 
             for (const [matName, meshes] of Object.entries(voxelMeshes)) {
-                scene.remove(meshes.classified);
-                meshes.classified.geometry.dispose();
-                meshes.classified.material.dispose();
+                for (const m of meshes.classified) {
+                    scene.remove(m);
+                    m.geometry.dispose();
+                    m.material.dispose();
+                }
             }
             voxelMeshes = {};
             disposeVoxelHullMesh();
@@ -1466,7 +1479,7 @@
             if (bodyMesh) targets.push(bodyMesh);
             for (const m of sceneMeshes) targets.push(m);
             for (const meshes of Object.values(voxelMeshes)) {
-                targets.push(meshes.classified);
+                for (const m of meshes.classified) targets.push(m);
             }
 
             const hits = raycaster.intersectObjects(targets, false);
@@ -1576,7 +1589,7 @@
 
         function setVoxelVisibility(visible) {
             for (const [mat, meshes] of Object.entries(voxelMeshes)) {
-                meshes.classified.visible = visible;
+                for (const m of meshes.classified) m.visible = visible;
             }
             for (const btn of document.querySelectorAll('.layer-btn')) {
                 if (btn.dataset.layer && btn.dataset.layer !== 'body') {
@@ -1931,7 +1944,7 @@
         window.toggleWireframe = () => {
             wireframe = !wireframe;
             for (const meshes of Object.values(voxelMeshes)) {
-                meshes.classified.material.wireframe = wireframe;
+                for (const m of meshes.classified) m.material.wireframe = wireframe;
             }
             if (bodyMesh) bodyMesh.material.wireframe = wireframe;
             if (groundPlane) groundPlane.material.wireframe = wireframe;

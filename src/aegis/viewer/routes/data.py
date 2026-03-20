@@ -6,7 +6,6 @@ import json
 import os
 from pathlib import Path
 
-import numpy as np
 from flask import Flask, Response, jsonify, render_template, request
 
 
@@ -56,21 +55,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             return jsonify({"tiles": [], "transform": None})
 
         tile_names = sorted(p.name for p in Path(td).glob("*.glb"))
-
-        # Compose Python Z-up transform with Z-up -> Y-up swap for Three.js
-        transform = cache.get("voxel_transform")
-        if transform is not None:
-            z_to_y = np.array(
-                [[1, 0, 0, 0], [0, 0, 1, 0], [0, -1, 0, 0], [0, 0, 0, 1]],
-                dtype=np.float64,
-            )
-            combined = z_to_y @ transform
-            # Three.js Matrix4.fromArray expects column-major order
-            transform_list = combined.T.flatten().tolist()
-        else:
-            transform_list = None
-
-        return jsonify({"tiles": tile_names, "transform": transform_list})
+        return jsonify({"tiles": tile_names, "transform": None})
 
     @app.route("/api/tiles/<path:filename>")
     def api_tiles_file(filename: str):

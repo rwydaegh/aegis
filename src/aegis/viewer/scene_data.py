@@ -630,12 +630,18 @@ def voxels_to_binary(
     positions: np.ndarray,
     colors: np.ndarray,
     materials: list[str],
+    voxel_sizes: np.ndarray | None = None,
     voxel_size: float = 1.0,
 ) -> tuple[bytes, dict]:
     """Serialize voxels for Three.js InstancedMesh."""
     pos_bytes = positions.astype(np.float32).tobytes()
+
+    if voxel_sizes is not None:
+        size_bytes = voxel_sizes.astype(np.float32).tobytes()
+    else:
+        size_bytes = np.full(len(positions), voxel_size, dtype=np.float32).tobytes()
+
     col_bytes = colors.astype(np.uint8).tobytes()
-    data = pos_bytes + col_bytes
 
     from collections import Counter
 
@@ -645,13 +651,14 @@ def voxels_to_binary(
     mat_to_idx = {m: i for i, m in enumerate(unique_mats)}
     mat_indices = np.array([mat_to_idx[m] for m in materials], dtype=np.uint8)
 
-    data += mat_indices.tobytes()
+    data = pos_bytes + size_bytes + col_bytes + mat_indices.tobytes()
 
     meta = {
         "n_voxels": len(positions),
         "materials": unique_mats,
         "material_counts": {m: c for m, c in mat_counts.items()},
-        "voxel_size": voxel_size,
+        "voxel_size": float(np.median(voxel_sizes)) if voxel_sizes is not None else voxel_size,
+        "has_per_voxel_sizes": voxel_sizes is not None,
     }
     return data, meta
 
