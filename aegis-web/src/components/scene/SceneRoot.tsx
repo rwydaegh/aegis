@@ -9,6 +9,8 @@ import { useDosimetry } from '@/hooks/useDosimetry'
 import { usePhysics } from '@/hooks/usePhysics'
 import BodyMesh from './BodyMesh'
 import Antenna from './Antenna'
+import DistanceLine from './DistanceLine'
+import RayPaths from './RayPaths'
 
 function SceneLighting() {
   const config = useSceneStore(s => s.viewerConfig)
@@ -115,6 +117,8 @@ export default function SceneRoot() {
       <Ground />
       <BodyMesh />
       <Antenna />
+      <DistanceLine />
+      <RayPaths />
       <DosimetryController />
       <PhysicsController />
       <OrbitControls makeDefault enableDamping />
