@@ -1,6 +1,8 @@
 import Toolbar from './Toolbar'
 import Sidebar from './Sidebar'
 import HudOverlay from './HudOverlay'
+import { SceneErrorBoundary } from '@/components/scene/ErrorBoundary'
+import SceneRoot from '@/components/scene/SceneRoot'
 
 export default function AppShell() {
   return (
@@ -8,10 +10,9 @@ export default function AppShell() {
       <Toolbar />
       <div className="flex-1 relative overflow-hidden">
         <Sidebar />
-        {/* R3F Canvas will go here later */}
-        <div className="absolute inset-0 flex items-center justify-center text-muted-foreground text-sm">
-          3D Canvas placeholder
-        </div>
+        <SceneErrorBoundary>
+          <SceneRoot />
+        </SceneErrorBoundary>
         <HudOverlay />
       </div>
     </div>
