@@ -217,3 +217,60 @@ def test_coherent_sab_grad_matches_finite_diff():
         fd_grad[i] = (float(loss_real(p)) - float(loss_real(m))) / (2 * eps)
 
     np.testing.assert_allclose(np.asarray(jax_grad), fd_grad, rtol=1e-4)
+
+
+def test_end_to_end_antenna_placement():
+    """Gradient of exposure w.r.t. antenna position through synthetic trace."""
+    import jax
+    import jax.numpy as jnp
+
+    from aegis.kernels.level2_geometric import level2_geometric
+
+    normals = jnp.array([[0.0, 0.0, 1.0], [0.0, 1.0, 0.0]])
+    body_center = jnp.array([0.0, 0.0, 0.0])
+    T0 = 0.5
+
+    def loss(antenna_pos):
+        direction = body_center - antenna_pos
+        d = jnp.linalg.norm(direction)
+        k_hat = (direction / d)[None, :]
+        power = jnp.array([1.0 / (4 * jnp.pi * d**2)])
+        sab = level2_geometric(normals, k_hat, power, T0)
+        return jnp.sum(sab)
+
+    antenna_pos = jnp.array([0.0, 0.0, 2.0])
+    grad = jax.grad(loss)(antenna_pos)
+    assert jnp.all(jnp.isfinite(grad))
+    # Antenna is above body at z=2; moving it away (increasing z) decreases
+    # exposure, so gradient in z is negative.
+    assert float(grad[2]) < 0.0
+
+
+def test_end_to_end_grad_matches_finite_diff():
+    """End-to-end JAX grad matches finite difference for antenna placement."""
+    import jax
+    import jax.numpy as jnp
+
+    from aegis.kernels.level2_geometric import level2_geometric
+
+    normals = jnp.array([[0.0, 0.0, 1.0]])
+    T0 = 0.5
+
+    def loss(antenna_pos):
+        direction = jnp.array([0.0, 0.0, 0.0]) - antenna_pos
+        d = jnp.linalg.norm(direction)
+        k_hat = (direction / d)[None, :]
+        power = jnp.array([1.0 / (4 * jnp.pi * d**2)])
+        return jnp.sum(level2_geometric(normals, k_hat, power, T0))
+
+    pos = jnp.array([0.0, 0.0, -2.0])
+    jax_grad = jax.grad(loss)(pos)
+
+    eps = 1e-5
+    fd_grad = np.zeros(3)
+    for i in range(3):
+        p = pos.at[i].set(pos[i] + eps)
+        m = pos.at[i].set(pos[i] - eps)
+        fd_grad[i] = (float(loss(p)) - float(loss(m))) / (2 * eps)
+
+    np.testing.assert_allclose(np.asarray(jax_grad), fd_grad, rtol=1e-3)
