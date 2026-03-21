@@ -20,7 +20,7 @@
 | `src/aegis/run.py` (create) | CLI batch runner: argparse, config resolution, orchestration, result saving |
 | `src/aegis/integration/sionna.py` (create) | Sionna RT to PropagationPaths conversion (physics, unit scaling) |
 | `src/aegis/integration/__init__.py` (modify) | Add sionna exports |
-| `src/aegis/paths.py` (modify) | Fix psi docstring from `V/m / sqrt(W)` to `V/m` |
+| `src/aegis/paths.py` | No changes needed (docstring is correct) |
 | `pyproject.toml` (modify) | Add pyyaml dep, sionna optional dep, aegis-run script |
 | `tests/test_config.py` (create) | Config validation, round-trip, CLI override tests |
 | `tests/test_run.py` (create) | CLI smoke tests |
@@ -28,38 +28,9 @@
 
 ---
 
-## Task 1: Fix psi docstring in paths.py
+## ~~Task 1: Fix psi docstring~~ (REMOVED)
 
-**Files:**
-- Modify: `src/aegis/paths.py:25`
-
-- [ ] **Step 1: Fix the docstring**
-
-Change line 25 from:
-```python
-    psi : (N, 3) complex polarisation-amplitude vectors (V/m / sqrt(W))
-```
-to:
-```python
-    psi : (N, 3) complex polarisation-amplitude vectors (V/m)
-```
-
-The code stores absolute E-field with TX power included. The `power` property `|psi|^2 / (2*Z_0)` returns W/m^2 directly, confirming V/m units.
-
-- [ ] **Step 2: Run existing tests to confirm nothing breaks**
-
-Run: `py -3.12 -m pytest tests/ -m "not slow" -x`
-Expected: all pass (docstring-only change)
-
-- [ ] **Step 3: Commit**
-
-```bash
-git add src/aegis/paths.py
-git commit -m "Fix psi docstring: units are V/m, not V/m/sqrt(W)
-
-The code stores absolute E-field with TX power included. The monograph's
-per-sqrt(W) convention is for theoretical development only."
-```
+The psi docstring in `paths.py` correctly says V/m/sqrt(W), matching the monograph. No change needed.
 
 ---
 
@@ -1197,13 +1168,12 @@ git push origin master
 
 ## Execution order
 
-Tasks 1-2 are prerequisites (docstring fix, dependencies). Tasks 3-4 build the config system. Task 5 builds the CLI runner. Task 6 builds the Sionna integration. Task 7 wires it together. Task 8 validates everything.
+Task 1 was removed (docstring is correct). Task 2 is the prerequisite (dependencies). Tasks 3-4 build the config system. Task 5 builds the CLI runner. Task 6 builds the Sionna integration. Task 7 wires it together. Task 8 validates everything.
 
 Tasks 3-4 and 6 are independent of each other and could be parallelized.
 
 ```
-Task 1 (psi docstring) ──┐
-Task 2 (dependencies)  ──┼── Task 3-4 (config) ──┐
-                          │                       ├── Task 5 (CLI runner) ── Task 7 ── Task 8
-                          └── Task 6 (sionna)  ───┘
+Task 2 (dependencies) ──┬── Task 3-4 (config) ──┐
+                         │                       ├── Task 5 (CLI runner) ── Task 7 ── Task 8
+                         └── Task 6 (sionna)  ───┘
 ```

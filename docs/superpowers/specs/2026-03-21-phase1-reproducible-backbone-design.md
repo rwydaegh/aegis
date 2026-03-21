@@ -295,13 +295,9 @@ tests/test_sionna.py             # Sionna integration tests (slow, optional)
 5. **Integration test:** Full pipeline with Sionna backend, verify DosimetryResult fields are populated and sab >= 0.
 6. **Sionna tests** marked `@pytest.mark.slow` and skipped if `sionna-rt` is not installed.
 
-## Prerequisite fix: psi docstring in paths.py
+## Note on psi units
 
-The `PropagationPaths` docstring at `src/aegis/paths.py` line 25 says psi has units `V/m / sqrt(W)`. This is the monograph's per-sqrt(W) convention. The code actually stores the absolute E-field with P_T included (units: V/m). The `power` property confirms this: `S = |psi|^2 / (2*Z_0)` gives W/m^2 directly.
-
-Fix the docstring to say `V/m` during implementation. The monograph's per-sqrt(W) convention is for the theoretical development. The code convention is different and valid, but documentation must match reality.
-
-For coherent levels (7-8), the field channel `G(r) @ x` uses psi directly. If psi already includes P_T, the precoder x must account for this. This is an existing convention, not something introduced by this spec.
+The monograph defines psi in V/m/sqrt(W). This is the correct convention and the docstring in `paths.py` is accurate. The DiffeRT integration bakes sqrt(P_T) into psi when constructing paths, so the stored values carry power. The `power` property `|psi|^2 / (2*Z_0)` returns W/m^2 because P_T is already embedded. The Sionna integration should follow the same convention: embed P_T into psi so that the `power` property works consistently across backends.
 
 ## Open questions resolved
 
