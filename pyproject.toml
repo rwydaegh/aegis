@@ -83,7 +83,7 @@ addopts = "-ra --strict-markers --import-mode=prepend"
 ignore-words-list = "te,nd,ue,lod"
 
 [tool.coverage.run]
-source = ["aegis"]
+source = ["src/aegis"]
 
 [tool.coverage.report]
 exclude_lines = [
