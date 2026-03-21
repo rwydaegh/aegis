@@ -1,7 +1,44 @@
+import { useState, useEffect, useRef } from 'react'
 import { useSimulationStore } from '@/stores/simulation'
 import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
+import { fetchSystemInfo } from '@/api/client'
 import { formatSab, formatPower, formatDistance } from '@/lib/format'
+
+// ---------------------------------------------------------------------------
+// Server info hook
+// ---------------------------------------------------------------------------
+
+interface ServerInfo {
+  hostname: string
+  gpu?: string
+}
+
+function useServerInfo(): ServerInfo | null {
+  const [info, setInfo] = useState<ServerInfo | null>(null)
+
+  useEffect(() => {
+    const poll = () => {
+      fetchSystemInfo()
+        .then(data => {
+          setInfo({
+            hostname: data.hostname,
+            gpu: data.gpu ? (data.gpu as any).name : undefined,
+          })
+        })
+        .catch(() => {})
+    }
+    poll()
+    const interval = setInterval(poll, 30000)
+    return () => clearInterval(interval)
+  }, [])
+
+  return info
+}
+
+// ---------------------------------------------------------------------------
+// Stats card
+// ---------------------------------------------------------------------------
 
 function StatsCard() {
   const { stats } = useSimulationStore()
@@ -62,8 +99,30 @@ function StatsCard() {
   )
 }
 
+// ---------------------------------------------------------------------------
+// Status bar (computing spinner + elapsed timer)
+// ---------------------------------------------------------------------------
+
 function StatusBar() {
-  const { isComputing, computeElapsed, statusMessage } = useUIStore()
+  const { isComputing, statusMessage, setComputeElapsed } = useUIStore()
+  const [elapsed, setElapsed] = useState(0)
+  const startRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    if (isComputing) {
+      startRef.current = Date.now()
+      setElapsed(0)
+      setComputeElapsed(0)
+      const interval = setInterval(() => {
+        const ms = Date.now() - (startRef.current ?? Date.now())
+        setElapsed(ms)
+        setComputeElapsed(ms)
+      }, 100)
+      return () => clearInterval(interval)
+    } else {
+      startRef.current = null
+    }
+  }, [isComputing, setComputeElapsed])
 
   if (!isComputing && !statusMessage) return null
 
@@ -74,7 +133,7 @@ function StatusBar() {
         <>
           <div className="w-3 h-3 border-2 border-muted border-t-primary rounded-full animate-spin" />
           <span className="text-xs text-muted-foreground">
-            Computing{computeElapsed > 0 ? ` (${(computeElapsed / 1000).toFixed(1)}s)` : '...'}
+            Computing{elapsed > 0 ? ` (${(elapsed / 1000).toFixed(1)}s)` : '...'}
           </span>
         </>
       )}
@@ -84,6 +143,10 @@ function StatusBar() {
     </div>
   )
 }
+
+// ---------------------------------------------------------------------------
+// Color legend
+// ---------------------------------------------------------------------------
 
 function ColorLegend() {
   const stats = useSimulationStore(s => s.stats)
@@ -122,6 +185,29 @@ function ColorLegend() {
   )
 }
 
+// ---------------------------------------------------------------------------
+// Server info badge
+// ---------------------------------------------------------------------------
+
+function ServerInfoBadge() {
+  const info = useServerInfo()
+  if (!info) return null
+
+  const label = info.gpu ? `${info.hostname} | ${info.gpu}` : info.hostname
+
+  return (
+    <div className="absolute bottom-4 right-4 pointer-events-none">
+      <span className="text-[10px] text-muted-foreground/60 font-mono select-none">
+        {label}
+      </span>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Root overlay
+// ---------------------------------------------------------------------------
+
 export default function HudOverlay() {
   return (
     <div className="absolute inset-0 pointer-events-none z-10">
@@ -137,6 +223,9 @@ export default function HudOverlay() {
       <div className="pointer-events-auto">
         <StatusBar />
       </div>
+
+      {/* Server info - bottom right */}
+      <ServerInfoBadge />
     </div>
   )
 }
