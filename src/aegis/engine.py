@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from aegis._array_backend import JAX_AVAILABLE
 from aegis.geometry.mesh import BodyMesh
 from aegis.paths import PropagationPaths
 from aegis.result import DosimetryResult
@@ -17,6 +18,15 @@ from aegis.tissue.dielectric import TissueModel
 
 if TYPE_CHECKING:
     from aegis.precoder import Precoder
+
+
+def _to_numpy(arr):
+    """Convert JAX arrays to NumPy. No-op for NumPy arrays."""
+    if JAX_AVAILABLE:
+        import numpy as _np
+
+        return _np.asarray(arr)
+    return arr
 
 
 class DosimetryEngine:
@@ -112,6 +122,7 @@ class DosimetryEngine:
             q=q,
             curvature_H=curvature_H,
         )
+        sab = _to_numpy(sab)
 
         # Total absorbed power: integrate S_ab over surface
         p_abs = float(np.sum(sab * body.areas))
@@ -193,6 +204,12 @@ class DosimetryEngine:
         else:
             raise ValueError(f"Unknown coherent level {level}")
 
+        sab = _to_numpy(sab)
+        Q = _to_numpy(Q)
+        eigenvalues = _to_numpy(eigenvalues)
+        if x_star is not None:
+            x_star = _to_numpy(x_star)
+
         p_abs = float(np.sum(sab * body.areas))
         sar_wb = p_abs / body_mass if body_mass is not None else None
 
@@ -253,7 +270,7 @@ class DosimetryEngine:
             self.T0,
             body.n_triangles,
         )
-        return sab
+        return _to_numpy(sab)
 
     def _level1(self, body: BodyMesh, paths: PropagationPaths, **kwargs) -> np.ndarray:
         from aegis.kernels.level1_aggregate import level1_aggregate
