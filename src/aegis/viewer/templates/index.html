@@ -168,7 +168,7 @@
 
         <!-- Ray tracing (shown only if DiffeRT available) -->
         <div class="section" id="rt-section" style="display:none;">
-            <div class="section-title">Ray tracing (DiffeRT)</div>
+            <div class="section-title">Ray tracing</div>
             <label>
                 <input type="checkbox" id="rtEnabled"> Enable ray tracing
             </label>
@@ -831,9 +831,10 @@
                 await loadGlbTiles();
 
                 const voxelRt = (config.voxel_rt_available !== false) && config.has_voxels;
-                const hasSionna = config.scenes && config.scenes.length > 0;
+                const hasSionnaScenes = config.scenes && config.scenes.length > 0;
+                const hasAnyRT = config.has_differt || config.has_sionna;
 
-                if (config.has_differt && (voxelRt || hasSionna)) {
+                if (hasAnyRT && (voxelRt || hasSionnaScenes)) {
                     hasDiffert = true;
                     document.getElementById('rt-section').style.display = 'block';
                     const rtSourceSelect = document.getElementById('rtSourceSelect');
@@ -843,12 +844,23 @@
                         if (vo) vo.remove();
                     }
 
-                    if (hasSionna) {
-                        for (const s of config.scenes) {
-                            const opt = document.createElement('option');
-                            opt.value = 'sionna:' + s.path;
-                            opt.textContent = s.name + ' (Sionna)';
-                            rtSourceSelect.appendChild(opt);
+                    if (hasSionnaScenes) {
+                        // Add scenes for each available backend
+                        if (config.has_differt) {
+                            for (const s of config.scenes) {
+                                const opt = document.createElement('option');
+                                opt.value = 'differt:' + s.path;
+                                opt.textContent = s.name + ' (DiffeRT)';
+                                rtSourceSelect.appendChild(opt);
+                            }
+                        }
+                        if (config.has_sionna) {
+                            for (const s of config.scenes) {
+                                const opt = document.createElement('option');
+                                opt.value = 'sionna:' + s.path;
+                                opt.textContent = s.name + ' (Sionna RT)';
+                                rtSourceSelect.appendChild(opt);
+                            }
                         }
                     }
 
@@ -857,6 +869,8 @@
                     const initVal = rtSourceSelect.value;
                     if (initVal && initVal.startsWith('sionna:')) {
                         currentScenePath = initVal.replace('sionna:', '');
+                    } else if (initVal && initVal.startsWith('differt:')) {
+                        currentScenePath = initVal.replace('differt:', '');
                     }
                     document.getElementById('rtEnabled').addEventListener('change', (e) => {
                         document.getElementById('rt-status').textContent = '';
@@ -1710,7 +1724,7 @@
             if (glbGroup) glbGroup.visible = false;
             setVoxelVisibility(false);
 
-            const path = val.replace('sionna:', '');
+            const path = val.replace('sionna:', '').replace('differt:', '');
             currentScenePath = path;
             statusEl.textContent = 'Loading scene...';
 
@@ -1800,6 +1814,7 @@
                 const rtSource = document.getElementById('rtSourceSelect')?.value || '';
                 const useVoxelRT = rtEnabled && (rtSource === 'voxel');
                 const useSionnaRT = rtEnabled && rtSource.startsWith('sionna:');
+                const useDiffertRT = rtEnabled && rtSource.startsWith('differt:');
 
                 const scenePos = [worldPos.x, -worldPos.z, worldPos.y];
                 const bodyOff = [bodyOffset.x, -bodyOffset.z, bodyOffset.y];
@@ -1839,17 +1854,52 @@
                     if (stats.path_viz) drawRTPaths(stats.path_viz);
                     updateBodyColors(sabArray, stats);
                     updateDashboard(stats);
-                } else if (useSionnaRT) {
+                } else if (useDiffertRT) {
                     const maxOrder = parseInt(document.getElementById('maxOrderSelect').value);
                     const statusEl = document.getElementById('rt-status');
-                    statusEl.textContent = 'Ray tracing (Sionna scene)...';
+                    statusEl.textContent = 'Ray tracing (DiffeRT)...';
+                    const scenePath = rtSource.replace('differt:', '');
 
                     resp = await fetch('/api/compute/rt', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             antenna_pos: scenePos,
-                            scene_path: currentScenePath,
+                            scene_path: scenePath,
+                            level: level,
+                            power_dbm: powerDbm,
+                            max_order: maxOrder,
+                        }),
+                        signal,
+                    });
+
+                    if (!resp.ok) {
+                        const err = await resp.json().catch(() => ({ error: 'Unknown error' }));
+                        statusEl.textContent = `Error: ${err.error || resp.statusText}`;
+                        return;
+                    }
+
+                    const stats = JSON.parse(resp.headers.get('X-Stats'));
+                    statusEl.textContent = `${stats.n_rt_paths || 0} paths (DiffeRT)`;
+
+                    const sabBuf = await resp.arrayBuffer();
+                    const sabArray = new Float32Array(sabBuf);
+
+                    if (stats.path_viz) drawRTPaths(stats.path_viz);
+                    updateBodyColors(sabArray, stats);
+                    updateDashboard(stats);
+                } else if (useSionnaRT) {
+                    const maxOrder = parseInt(document.getElementById('maxOrderSelect').value);
+                    const statusEl = document.getElementById('rt-status');
+                    statusEl.textContent = 'Ray tracing (Sionna RT)...';
+                    const scenePath = rtSource.replace('sionna:', '');
+
+                    resp = await fetch('/api/compute/sionna-rt', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            antenna_pos: scenePos,
+                            scene_path: scenePath,
                             level: level,
                             power_dbm: powerDbm,
                             max_order: maxOrder,

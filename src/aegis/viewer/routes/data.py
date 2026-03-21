@@ -114,6 +114,16 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         except ImportError:
             pass
 
+        # Check for Sionna RT without importing it (avoids TF/NumPy crashes).
+        # Just check if the top-level 'sionna' package directory exists on disk.
+        has_sionna = False
+        try:
+            import importlib.util
+
+            has_sionna = importlib.util.find_spec("sionna") is not None
+        except Exception:
+            pass
+
         # Check location loader availability
         from aegis.viewer.pipeline import find_pipeline
 
@@ -135,6 +145,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                 "levels": levels,
                 "has_voxels": has_voxels,
                 "has_differt": has_differt,
+                "has_sionna": has_sionna,
                 "voxel_rt_available": has_voxels and has_differt,
                 "has_tiles": n_tiles > 0,
                 "n_tiles": n_tiles,

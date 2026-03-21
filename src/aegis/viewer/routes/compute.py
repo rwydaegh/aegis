@@ -298,6 +298,89 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         resp.headers["Access-Control-Expose-Headers"] = "X-Stats"
         return resp
 
+    @app.route("/api/compute/sionna-rt", methods=["POST"])
+    def api_compute_sionna_rt():
+        """Compute dosimetry using Sionna RT ray-traced paths."""
+        try:
+            from aegis.integration.sionna import paths_from_sionna_scene
+        except ImportError:
+            return jsonify({"error": "Sionna RT not installed. Install with: pip install aegis[sionna]"}), 501
+
+        from aegis.viewer.compute import TISSUE_PRESETS
+
+        body = cache.get("body")
+        if body is None:
+            return jsonify({"error": "No body mesh loaded"}), 400
+
+        params = request.get_json()
+        antenna_pos = np.array(params.get("antenna_pos", [5, 0, 1]))
+        scene_path = params.get("scene_path")
+        level = params.get("level", 2)
+        tissue_name = params.get("tissue", "skin_28ghz")
+        power_dbm = params.get("power_dbm", 30.0)
+        max_bounces = params.get("max_order", 5)
+
+        if not scene_path:
+            return jsonify({"error": "Missing 'scene_path'"}), 400
+
+        tissue = TISSUE_PRESETS.get(tissue_name)
+        if tissue is None:
+            from aegis.tissue.dielectric import SKIN_28GHZ
+
+            tissue = SKIN_28GHZ
+
+        default_bc = cache["config"]["raytracer"]["default_body_center"]
+        body_pos = params.get("body_pos")
+        body_center = np.array(body_pos) if body_pos is not None else np.array(default_bc)
+
+        try:
+            import sionna.rt
+
+            scene = sionna.rt.load_scene(scene_path)
+            paths = paths_from_sionna_scene(
+                scene,
+                tx_positions=antenna_pos[np.newaxis, :] if antenna_pos.ndim == 1 else antenna_pos,
+                rx_position=body_center,
+                freq_hz=tissue.freq_hz,
+                max_bounces=max_bounces,
+                tx_power_dbm=power_dbm,
+            )
+        except ImportError:
+            return jsonify({"error": "Sionna RT not installed"}), 501
+        except Exception as e:
+            return jsonify({"error": f"Sionna ray tracing failed: {e}"}), 500
+
+        if paths.n_paths == 0:
+            return _zero_paths_response(body, tissue, level)
+
+        from aegis.engine import DosimetryEngine
+
+        engine = DosimetryEngine(tissue)
+        result = engine.compute(body, paths, level=level)
+
+        sab_bytes = result.sab.astype(np.float32).tobytes()
+        dist = float(np.linalg.norm(antenna_pos - body_center))
+        total_power = float(np.sum(paths.power))
+
+        stats = _build_stats_response(
+            result,
+            body,
+            tissue,
+            level,
+            extra={
+                "S_inc": total_power,
+                "distance_m": dist,
+                "n_rt_paths": paths.n_paths,
+                "path_viz": [],  # Sionna does not provide path vertex visualization
+                "backend": "sionna",
+            },
+        )
+
+        resp = Response(sab_bytes, mimetype="application/octet-stream")
+        resp.headers["X-Stats"] = json.dumps(stats)
+        resp.headers["Access-Control-Expose-Headers"] = "X-Stats"
+        return resp
+
     @app.route("/api/compute/voxel-rt", methods=["POST"])
     def api_compute_voxel_rt():
         """Compute dosimetry using DiffeRT on the voxel environment geometry."""
