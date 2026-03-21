@@ -14,10 +14,12 @@ authors = [{name = "rwydaegh", email = "robin.wydaeghe@ugent.be"}]
 dependencies = [
     "numpy>=1.24",
     "scipy>=1.10,<2",
+    "pyyaml>=6.0",
 ]
 
 [project.scripts]
 aegis = "aegis.__main__:main"
+aegis-run = "aegis.run:main"
 
 [project.optional-dependencies]
 gpu = ["jax[cuda]>=0.4.20"]
@@ -29,6 +31,7 @@ viz = [
     "scienceplots>=2.1.0",
 ]
 rt = ["differt>=0.7.0"]
+sionna = ["sionna-rt>=1.0,<2.0"]
 docs = [
     "mkdocs>=1.5",
     "mkdocs-material>=9.5",
@@ -46,7 +49,7 @@ dev = [
     "miepython>=2.6",
 ]
 cloud = ["requests>=2.31"]
-all = ["aegis[gpu,viz,rt,docs,dev,cloud]"]
+all = ["aegis[gpu,viz,rt,sionna,docs,dev,cloud]"]
 
 [tool.hatch.version]
 source = "vcs"
