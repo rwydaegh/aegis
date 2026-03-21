@@ -22,7 +22,7 @@ class PropagationPaths:
     Attributes
     ----------
     k_hat : (N, 3) unit directions of arrival
-    psi : (N, 3) complex polarisation-amplitude vectors (V/m)
+    psi : (N, 3) complex polarisation-amplitude vectors (V/m / sqrt(W))
     element_index : (N,) originating antenna element index
     delay : (N,) propagation delay in seconds (optional metadata)
     is_los : (N,) line-of-sight flag (optional metadata)
