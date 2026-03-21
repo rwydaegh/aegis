@@ -22,7 +22,8 @@ aegis = "aegis.__main__:main"
 aegis-run = "aegis.run:main"
 
 [project.optional-dependencies]
-gpu = ["jax[cuda]>=0.4.20"]
+jax = ["jax>=0.4.20"]
+gpu = ["jax[cuda12]>=0.4.20"]
 viz = [
     "matplotlib>=3.7",
     "plotly>=5.18",
@@ -49,7 +50,7 @@ dev = [
     "miepython>=2.6",
 ]
 cloud = ["requests>=2.31"]
-all = ["aegis[gpu,viz,rt,sionna,docs,dev,cloud]"]
+all = ["aegis[jax,gpu,viz,rt,sionna,docs,dev,cloud]"]
 
 [tool.hatch.version]
 source = "vcs"
