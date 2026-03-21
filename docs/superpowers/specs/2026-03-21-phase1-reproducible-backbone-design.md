@@ -24,7 +24,7 @@ Frozen dataclasses that fully describe a simulation run:
 ```python
 @dataclass(frozen=True)
 class TissueConfig:
-    name: str = "skin"          # tissue name for database lookup
+    name: str = "Skin"          # tissue name for IT'IS database lookup
     frequency_hz: float = 28e9
 
 @dataclass(frozen=True)
