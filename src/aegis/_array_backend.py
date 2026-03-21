@@ -32,3 +32,11 @@ except ImportError:
         if fn is None:
             return lambda f: f
         return fn
+
+
+if JAX_AVAILABLE:
+    from jax.scipy.special import erf as _erf
+else:
+    from scipy.special import erf as _erf
+
+erf = _erf

@@ -35,3 +35,13 @@ def test_jit_identity_without_jax():
 
     result = add(np.array(1.0), np.array(2.0))
     assert float(result) == 3.0
+
+
+def test_erf_available():
+    import numpy as np
+
+    from aegis._array_backend import erf
+
+    result = erf(np.array([0.0, 1.0]))
+    assert abs(float(result[0])) < 1e-15
+    assert abs(float(result[1]) - 0.8427) < 0.001
