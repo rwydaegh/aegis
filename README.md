@@ -14,8 +14,8 @@
 [![Code style: ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Python](https://img.shields.io/badge/python-3.11+-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-Apache--2.0-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-207%20cases-brightgreen.svg?logo=pytest)](tests/)
-[![NumPy](https://img.shields.io/badge/core-NumPy-blue.svg?logo=numpy&logoColor=white)](https://numpy.org/)
+[![Tests](https://img.shields.io/badge/tests-250%2B%20cases-brightgreen.svg?logo=pytest)](tests/)
+[![JAX](https://img.shields.io/badge/core-JAX-blue.svg?logo=google&logoColor=white)](https://jax.readthedocs.io/)
 [![Viewer](https://img.shields.io/badge/viewer-Three.js-blue.svg?logo=threedotjs&logoColor=white)](https://threejs.org/)
 
 [Getting started](https://rwydaegh.github.io/aegis/getting_started/) | [Documentation](https://rwydaegh.github.io/aegis/) | [3D Viewer](https://rwydaegh.github.io/aegis/user_guide/viewer/)
@@ -57,7 +57,7 @@ Nine fidelity levels (0-8) provide a controlled accuracy-cost tradeoff, from O(1
 
 **Interactive 3D viewer** - Flask + Three.js viewer with config-driven scenes, body mesh rendering, voxel environments, and real-time absorbed power density visualization.
 
-**Clean path to GPU** - NumPy-only core today, designed for drop-in JAX acceleration. No framework lock-in.
+**Differentiable** - JAX backend with NumPy fallback. `jax.grad` flows through all incoherent levels and the coherent forward path. Optimize antenna placement or beamforming precoders with gradient descent.
 
 </td>
 </tr>
@@ -157,6 +157,7 @@ src/aegis/
     geometry/          Body mesh, ambient occlusion, directivity, spatial averaging
     kernels/           Fidelity levels 0-8, one file per level
     coherent/          Field channel, exposure operator Q, ECBF solver
+    optim.py           Differentiable loss functions for jax.grad
     compliance/        ICNIRP 2020 limits
     integration/       DiffeRT ray tracer bridge
     viewer/            Flask + Three.js 3D viewer
@@ -196,8 +197,8 @@ pip install -e ".[all]"      # everything
 ## Testing
 
 ```bash
-pytest tests/ -m "not slow" -x    # fast tests, ~5s (184 cases)
-pytest tests/                      # all tests, ~30s (207 cases)
+pytest tests/ -m "not slow" -x    # fast tests, ~30s (250+ cases)
+pytest tests/                      # all tests, ~2min (270+ cases)
 pytest tests/ --cov=aegis          # with coverage
 ```
 
@@ -215,7 +216,7 @@ The test suite includes:
 | Resource | Description |
 |----------|-------------|
 | [Getting started](https://rwydaegh.github.io/aegis/getting_started/) | Install and run your first computation |
-| [User guide](https://rwydaegh.github.io/aegis/user_guide/overview/) | Fidelity levels, tissue models, geometry, coherent MIMO |
+| [User guide](https://rwydaegh.github.io/aegis/user_guide/overview/) | Fidelity levels, tissue models, geometry, coherent MIMO, optimization |
 | [Interactive viewer](https://rwydaegh.github.io/aegis/user_guide/viewer/) | 3D visualization with config-driven scenes |
 | [Developer guide](https://rwydaegh.github.io/aegis/developer_guide/architecture/) | Architecture, data flow, testing strategy |
 | [API reference](https://rwydaegh.github.io/aegis/reference/api/) | Auto-generated class and function docs |
@@ -252,7 +253,7 @@ pytest tests/ -m "not slow"    # must pass before committing
   author  = {Wydaeghe, Robin},
   url     = {https://github.com/rwydaegh/aegis},
   license = {Apache-2.0},
-  version = {0.3.0}
+  version = {0.5.0}
 }
 ```
 
