@@ -8,21 +8,12 @@ from __future__ import annotations
 
 import numpy as np
 
+from aegis._array_backend import xp
 from aegis.constants import EPS_0
 
 
 def n_complex(eps_r: float, sigma: float, freq_hz: float) -> complex:
-    """Complex refractive index for a lossy non-magnetic medium.
-
-    Parameters
-    ----------
-    eps_r
-        Relative permittivity.
-    sigma
-        Conductivity (S/m).
-    freq_hz
-        Frequency (Hz).
-    """
+    """Complex refractive index. Scalar-only, not JIT-traced."""
     omega = 2 * np.pi * freq_hz
     eps_complex = eps_r - 1j * sigma / (omega * EPS_0)
     n_tilde = np.sqrt(eps_complex)
@@ -31,140 +22,108 @@ def n_complex(eps_r: float, sigma: float, freq_hz: float) -> complex:
     return n_tilde
 
 
-def fresnel_transmission(mu: np.ndarray, n_tilde: complex) -> tuple[np.ndarray, np.ndarray]:
-    """Fresnel power transmission for TE (s) and TM (p) polarizations.
-
-    Uses T = 1 - |r|^2 for numerical stability with lossy media.
+def _fresnel_core(mu, n_tilde):
+    """Core Fresnel computation on xp arrays. JIT-safe (no Python control flow).
 
     Parameters
     ----------
-    mu
-        cos(theta_i), the cosine of the incidence angle. Scalar or array.
-    n_tilde
-        Complex refractive index of the medium.
+    mu : xp array, shape (...), complex dtype
+        Cosine of incidence angle. Must already be an xp array.
 
     Returns
     -------
-    T_s, T_p
-        TE and TM power transmission coefficients (real-valued).
+    r_s, r_p : complex arrays (amplitude reflection)
+    T_s, T_p : real arrays (power transmission)
+    t_s, t_p : complex arrays (amplitude transmission)
+    """
+    n2 = n_tilde**2
+    xi = xp.sqrt(n2 - 1 + mu**2)
+    xi = xp.where(xp.real(xi) < 0, -xi, xi)
+
+    r_s = (mu - xi) / (mu + xi)
+    r_p = (n2 * mu - xi) / (n2 * mu + xi)
+
+    T_s = xp.real(1 - xp.abs(r_s) ** 2)
+    T_p = xp.real(1 - xp.abs(r_p) ** 2)
+
+    mu_real = xp.real(mu)
+    T_s = xp.where(mu_real < 1e-10, 0.0, T_s)
+    T_p = xp.where(mu_real < 1e-10, 0.0, T_p)
+
+    t_s = 2 * mu / (mu + xi)
+    t_p = 2 * n_tilde * mu / (n2 * mu + xi)
+
+    return r_s, r_p, T_s, T_p, t_s, t_p
+
+
+def fresnel_transmission(mu, n_tilde):
+    """Fresnel power transmission for TE and TM polarizations.
+
+    Convenience wrapper with scalar support. NOT called from JIT boundaries.
+    JIT'd kernels use _fresnel_core via _base.py::fresnel_weights instead.
     """
     mu = np.asarray(mu, dtype=complex)
     scalar_input = mu.ndim == 0
     mu = np.atleast_1d(mu)
 
-    n2 = n_tilde**2
-    xi = np.sqrt(n2 - 1 + mu**2)
-    xi = np.where(np.real(xi) < 0, -xi, xi)
+    _, _, T_s, T_p, _, _ = _fresnel_core(xp.asarray(mu), n_tilde)
 
-    r_s = (mu - xi) / (mu + xi)
-    r_p = (n2 * mu - xi) / (n2 * mu + xi)
-
-    T_s = np.real(1 - np.abs(r_s) ** 2)
-    T_p = np.real(1 - np.abs(r_p) ** 2)
-
-    # Grazing-incidence safeguard
-    mu_real = np.real(mu)
-    T_s = np.where(mu_real < 1e-10, 0.0, T_s)
-    T_p = np.where(mu_real < 1e-10, 0.0, T_p)
+    T_s = np.asarray(T_s)
+    T_p = np.asarray(T_p)
 
     if scalar_input:
         return float(T_s[0]), float(T_p[0])
     return T_s, T_p
 
 
-def fresnel_reflection(mu: np.ndarray, n_tilde: complex) -> tuple[np.ndarray, np.ndarray]:
-    """Fresnel amplitude reflection coefficients for TE (s) and TM (p).
+def fresnel_reflection(mu, n_tilde):
+    """Fresnel amplitude reflection coefficients.
 
-    Parameters
-    ----------
-    mu
-        cos(theta_i), the cosine of the incidence angle. Scalar or array.
-    n_tilde
-        Complex refractive index of the medium.
-
-    Returns
-    -------
-    r_s, r_p
-        Complex TE and TM amplitude reflection coefficients.
+    Convenience wrapper with scalar support. NOT called from JIT boundaries.
     """
     mu = np.asarray(mu, dtype=complex)
     scalar_input = mu.ndim == 0
     mu = np.atleast_1d(mu)
 
-    n2 = n_tilde**2
-    xi = np.sqrt(n2 - 1 + mu**2)
-    xi = np.where(np.real(xi) < 0, -xi, xi)
+    r_s, r_p, _, _, _, _ = _fresnel_core(xp.asarray(mu), n_tilde)
 
-    r_s = (mu - xi) / (mu + xi)
-    r_p = (n2 * mu - xi) / (n2 * mu + xi)
+    r_s = np.asarray(r_s)
+    r_p = np.asarray(r_p)
 
     if scalar_input:
         return complex(r_s[0]), complex(r_p[0])
     return r_s, r_p
 
 
-def fresnel_amplitude(mu: np.ndarray, n_tilde: complex) -> tuple[np.ndarray, np.ndarray]:
-    """Fresnel amplitude transmission coefficients for TE (s) and TM (p).
+def fresnel_amplitude(mu, n_tilde):
+    """Fresnel amplitude transmission coefficients.
 
-    Returns complex coefficients t_s and t_p (not power).
-    Used by the coherent dosimetry pipeline (Levels 7-8).
-
-    Parameters
-    ----------
-    mu
-        cos(theta_i), the cosine of the incidence angle. Scalar or array.
-    n_tilde
-        Complex refractive index of the medium.
-
-    Returns
-    -------
-    t_s, t_p
-        Complex TE and TM amplitude transmission coefficients.
+    Convenience wrapper with scalar support. NOT called from JIT boundaries.
+    JIT'd coherent kernels call _fresnel_core or use the fresnel_operator module.
     """
     mu = np.asarray(mu, dtype=complex)
     scalar_input = mu.ndim == 0
     mu = np.atleast_1d(mu)
 
-    n2 = n_tilde**2
-    xi = np.sqrt(n2 - 1 + mu**2)
-    xi = np.where(np.real(xi) < 0, -xi, xi)
+    _, _, _, _, t_s, t_p = _fresnel_core(xp.asarray(mu), n_tilde)
 
-    t_s = 2 * mu / (mu + xi)
-    t_p = 2 * n_tilde * mu / (n2 * mu + xi)
+    t_s = np.asarray(t_s)
+    t_p = np.asarray(t_p)
 
     if scalar_input:
         return complex(t_s[0]), complex(t_p[0])
     return t_s, t_p
 
 
-def xi_from_mu(mu: np.ndarray, n_tilde: complex) -> np.ndarray:
-    """Normal wave-vector component in tissue: xi = sqrt(n_tilde^2 - 1 + mu^2).
-
-    Branch selected so Re(xi) >= 0. Returns k0*xi = beta - i*alpha,
-    where alpha is the amplitude decay rate and beta the phase rate.
-
-    Parameters
-    ----------
-    mu
-        cos(theta_i). Scalar or array.
-    n_tilde
-        Complex refractive index.
-
-    Returns
-    -------
-    xi
-        Complex, same shape as mu.
-    """
-    mu = np.asarray(mu, dtype=complex)
+def xi_from_mu(mu, n_tilde):
+    """Normal wave-vector component in tissue. Uses xp, JIT-safe."""
+    mu = xp.asarray(mu, dtype=complex)
     n2 = n_tilde**2
-    xi = np.sqrt(n2 - 1 + mu**2)
-    xi = np.where(np.real(xi) < 0, -xi, xi)
+    xi = xp.sqrt(n2 - 1 + mu**2)
+    xi = xp.where(xp.real(xi) < 0, -xi, xi)
     return xi
 
 
 def T0(n_tilde: complex) -> float:
-    """Normal-incidence power transmission coefficient.
-
-    T_0 = 4 Re(n) / |1 + n|^2
-    """
+    """Normal-incidence power transmission."""
     return float(4 * np.real(n_tilde) / abs(1 + n_tilde) ** 2)
