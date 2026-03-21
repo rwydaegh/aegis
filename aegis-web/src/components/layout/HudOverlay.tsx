@@ -1,4 +1,5 @@
 import { useSimulationStore } from '@/stores/simulation'
+import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
 import { formatSab, formatPower, formatDistance } from '@/lib/format'
 
@@ -84,6 +85,43 @@ function StatusBar() {
   )
 }
 
+function ColorLegend() {
+  const stats = useSimulationStore(s => s.stats)
+  const config = useSceneStore(s => s.viewerConfig)
+  const sabArray = useSimulationStore(s => s.sabArray)
+
+  if (!sabArray || !stats || !config) return null
+
+  const maxSab = stats.peak_sab
+  const midSab = maxSab / 2
+  const gradientCss =
+    config.colormap.legend?.gradient_css ??
+    'linear-gradient(to bottom, rgb(252,255,164), rgb(249,142,9), rgb(188,55,84), rgb(87,16,110), rgb(0,4,18))'
+
+  return (
+    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-auto">
+      <div className="text-[10px] text-muted-foreground text-center mb-1 w-20">
+        S<sub>ab</sub> (W/m²)
+      </div>
+      <div className="relative">
+        <div
+          className="w-[18px] h-[200px] rounded-sm border border-border"
+          style={{ background: gradientCss }}
+        />
+        <span className="absolute -top-1.5 right-6 text-[10px] text-muted-foreground font-mono tabular-nums">
+          {maxSab.toFixed(2)}
+        </span>
+        <span className="absolute top-[93px] right-6 text-[10px] text-muted-foreground font-mono tabular-nums">
+          {midSab.toFixed(2)}
+        </span>
+        <span className="absolute bottom-[-6px] right-6 text-[10px] text-muted-foreground font-mono tabular-nums">
+          0
+        </span>
+      </div>
+    </div>
+  )
+}
+
 export default function HudOverlay() {
   return (
     <div className="absolute inset-0 pointer-events-none z-10">
@@ -92,10 +130,8 @@ export default function HudOverlay() {
         <StatsCard />
       </div>
 
-      {/* Color legend - right edge, vertically centered (placeholder for Task 14) */}
-      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-auto">
-        {/* Color legend will be implemented in Task 14 */}
-      </div>
+      {/* Color legend - right edge, vertically centered */}
+      <ColorLegend />
 
       {/* Status bar - bottom center */}
       <div className="pointer-events-auto">
