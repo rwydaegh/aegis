@@ -53,6 +53,7 @@ nav:
     - FAQ: user_guide/faq.md
     - Troubleshooting: user_guide/troubleshooting.md
     - Batch runner: user_guide/batch_runner.md
+    - Sionna RT integration: user_guide/sionna_integration.md
     - Interactive viewer: user_guide/viewer.md
     - Fidelity levels: user_guide/fidelity_levels.md
     - Tissue and Fresnel: user_guide/tissue.md
@@ -74,6 +75,7 @@ nav:
     - Phase 3 hand-off: internal/phase3_handoff.md
     - Phase 4 hand-off: internal/phase4_handoff.md
     - Phase 5 hand-off: internal/phase5_handoff.md
+    - Roadmap Phase 1 hand-off: internal/roadmap_phase1_handoff.md
     - Location loading plan: internal/plan_location_loading.md
     - Viewer bug report: internal/viewer_bug_report.md
     - Viewer feature backlog: internal/viewer_feature_backlog.md
