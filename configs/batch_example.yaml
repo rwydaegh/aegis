@@ -1,0 +1,26 @@
+# Example batch runner config for AEGIS
+# Usage: py -3.12 -m aegis.run --config configs/batch_example.yaml
+
+tissue:
+  name: Skin
+  frequency_hz: 28.0e+9
+
+body:
+  name: thelonious
+
+antenna:
+  positions:
+    - [5.0, 0.0, 1.0]
+  power_dbm: 30.0
+  polarisation: vertical
+  pattern: isotropic
+
+raytracer:
+  backend: synthetic
+  max_bounces: 3
+
+dosimetry:
+  level: 2
+  spatial_averaging: false
+
+output_dir: outputs

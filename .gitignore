@@ -53,6 +53,9 @@ site/
 # Logs
 *.log
 
+# Batch runner outputs
+outputs/
+
 # Spike / example outputs
 examples/_output/
 

@@ -52,6 +52,7 @@ nav:
     - Overview: user_guide/overview.md
     - FAQ: user_guide/faq.md
     - Troubleshooting: user_guide/troubleshooting.md
+    - Batch runner: user_guide/batch_runner.md
     - Interactive viewer: user_guide/viewer.md
     - Fidelity levels: user_guide/fidelity_levels.md
     - Tissue and Fresnel: user_guide/tissue.md
