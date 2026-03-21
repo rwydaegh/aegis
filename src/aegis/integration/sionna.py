@@ -115,6 +115,10 @@ def paths_from_sionna_scene(
     tx_power_w = 10 ** ((tx_power_dbm - 30) / 10)
     n_elements = tx_positions.shape[0]
 
+    # Map common pattern names to Sionna v2 registry names
+    _pattern_map = {"isotropic": "iso", "half_wave_dipole": "hw_dipole"}
+    sionna_tx_pattern = _pattern_map.get(tx_pattern, tx_pattern)
+
     # Configure dual-polarized isotropic RX to capture theta/phi field components
     scene.rx_array = PlanarArray(
         num_rows=1,
@@ -127,13 +131,15 @@ def paths_from_sionna_scene(
     scene.tx_array = PlanarArray(
         num_rows=1,
         num_cols=n_elements,
-        pattern=tx_pattern,
+        pattern=sionna_tx_pattern,
         polarization="V",
     )
 
-    # Set TX and RX positions
-    scene.add_transmitter("tx", position=tx_positions[0].tolist())
-    scene.add_receiver("rx", position=rx_position.tolist())
+    # Set TX and RX positions (Sionna v2 API)
+    from sionna.rt import Receiver, Transmitter
+
+    scene.add(Transmitter("tx", position=tx_positions[0].tolist()))
+    scene.add(Receiver("rx", position=rx_position.tolist()))
 
     # Compute paths
     solver = PathSolver()
@@ -147,13 +153,15 @@ def paths_from_sionna_scene(
     )
 
     # Extract data as numpy
+    # Sionna v2 cir() shape: a[num_rx, num_rx_ant, num_tx, num_tx_ant, num_paths, num_time_steps]
+    # With cross-pol RX: num_rx_ant=2 (pol 0=theta, pol 1=phi)
+    # tau shape: (num_rx, num_tx, num_paths)
     a_raw, tau_raw = paths.cir(out_type="numpy")
-    # a_raw shape: (1, 2, 1, n_elements, n_paths)  [rx, rx_pol, tx, tx_ant, paths]
-    # tau_raw shape: (1, 2, 1, n_elements, n_paths)
+    a_raw = a_raw[..., 0]  # drop time_steps dim -> (num_rx, num_rx_ant, num_tx, num_tx_ant, num_paths)
 
-    theta_r_raw = np.array(paths.theta_r)  # (1, 2, 1, n_elements, n_paths)
+    theta_r_raw = np.array(paths.theta_r)  # (num_rx, num_tx, num_paths)
     phi_r_raw = np.array(paths.phi_r)
-    valid = np.array(paths.valid)  # (1, 2, 1, n_elements, n_paths)
+    valid = np.array(paths.valid)  # (num_rx, num_tx, num_paths)
 
     all_k_hat = []
     all_psi = []
@@ -161,14 +169,16 @@ def paths_from_sionna_scene(
     all_delay = []
     all_is_los = []
 
+    rx_idx = 0  # single RX (body centroid)
+    tx_idx = 0  # single TX device
     for elem in range(n_elements):
-        # Extract per-element data. Use pol=0 (theta) and pol=1 (phi).
-        a_theta = a_raw[0, 0, 0, elem, :]  # (n_paths,) complex
-        a_phi = a_raw[0, 1, 0, elem, :]
-        theta_r = theta_r_raw[0, 0, 0, elem, :]
-        phi_r = phi_r_raw[0, 0, 0, elem, :]
-        tau = tau_raw[0, 0, 0, elem, :]
-        mask = valid[0, 0, 0, elem, :]
+        # Extract per-element data. rx_ant=0 is theta, rx_ant=1 is phi.
+        a_theta = a_raw[rx_idx, 0, tx_idx, elem, :]  # (n_paths,) complex
+        a_phi = a_raw[rx_idx, 1, tx_idx, elem, :]
+        theta_r = theta_r_raw[rx_idx, tx_idx, :]
+        phi_r = phi_r_raw[rx_idx, tx_idx, :]
+        tau = tau_raw[rx_idx, tx_idx, :]
+        mask = valid[rx_idx, tx_idx, :]
 
         # Filter valid paths
         idx = np.where(mask)[0]

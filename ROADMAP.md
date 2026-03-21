@@ -5,8 +5,17 @@
 ## Where we are
 
 Phases 0-4 of the original implementation plan are done. The dosimetry engine
-works: 9 fidelity levels, 200+ tests, Mie-validated physics, Flask+Three.js
-viewer, optional DiffeRT ray tracing. Total: ~8,200 lines of Python (NumPy/SciPy).
+works: 9 fidelity levels, 240+ tests, Mie-validated physics, Flask+Three.js
+viewer, DiffeRT and Sionna RT ray tracing backends, CLI batch runner.
+Total: ~9,000 lines of Python (NumPy/SciPy).
+
+Phase 1 (reproducible research backbone) is complete:
+
+- Dataclass config system (`src/aegis/config.py`) with YAML serialization
+- CLI batch runner (`python -m aegis.run --config runs/my.yaml`)
+- Sionna RT integration (`src/aegis/integration/sionna.py`)
+- Viewer backend dropdown (DiffeRT or Sionna RT per scene)
+- Batch runner docs and example configs
 
 The original plan (docs/internal/implementation_plan.md) ends at Phase 6.
 This document picks up from here with a revised direction.
@@ -32,70 +41,53 @@ resolved:
    React Three Fiber + TypeScript app. FastAPI replaces Flask (async,
    WebSocket, Pydantic validation).
 
-4. **Hydra for configuration and reproducibility.** Every simulation run is
-   defined by a YAML config, overridable from CLI, automatically logged.
-   This is the foundation for reproducible papers and HPC batch execution.
+4. **Dataclass configs for reproducibility.** Every simulation run is defined
+   by a frozen dataclass config (`SimulationConfig`), serialized to YAML,
+   overridable from CLI. Hydra was considered and deferred. The dataclass
+   approach gives reproducibility without the dependency. If sweeps or SLURM
+   submission become needed, Hydra can slot in later because the dataclasses
+   are already the right shape for hydra-zen.
 
 5. **Server-side compute.** The browser renders. The server computes. No
    WASM, no Pyodide, no browser-side physics.
 
 ## Phases
 
-### Phase 1: reproducible research backbone
+### Phase 1: reproducible research backbone (DONE)
 
-*Priority: highest. This is what lets us publish papers.*
+*Completed 2026-03-21.*
 
-**1a. Hydra config management**
+**1a. Dataclass config system**
 
-Replace the current JSON/argparse config system with hydra-zen.
-
-- Define dataclass configs for: simulation parameters (level, frequency,
-  tissue, power), scene selection, body model, ray tracer backend, output
-  format.
-- `python -m aegis.run level=3 body=duke frequency=28e9` runs a simulation.
-- `--multirun city=ghent,antwerp body=duke,ella level=2,3,6` runs 18 jobs.
-- Hydra auto-logs the resolved config alongside each run.
-- The viewer config (viewer/config.py) stays separate for now. Hydra is for
-  simulation runs, not the interactive viewer.
-
-Adversarial check: *Is Hydra overkill for a solo researcher?* No. The
-alternative is hand-rolled argparse + JSON, which is what we have now, and
-it doesn't compose, doesn't log, and doesn't support sweeps. Hydra is
-configure-once infrastructure. The learning curve is real but bounded.
+Frozen dataclass hierarchy in `src/aegis/config.py`: TissueConfig, BodyConfig,
+AntennaConfig, RayTracerConfig, DosimetryConfig, SimulationConfig. YAML
+serialization via `to_yaml()` / `from_yaml()`. Validation in `__post_init__`.
 
 **1b. CLI batch runner**
 
-`python -m aegis.run` as a Hydra-driven entry point.
+`python -m aegis.run --config runs/my.yaml` (also `aegis-run` console script).
 
-- Loads scene (voxel or Sionna XML)
-- Runs ray tracing (DiffeRT or Sionna RT, selected by config)
-- Computes dosimetry at specified level
-- Saves results: S_ab array, metadata, resolved config YAML
-- Output directory: `outputs/{date}/{run_id}/` (Hydra default)
-
-This is the script you run on HPC. No viewer, no web server. Pure batch.
+- Loads body mesh, tissue model, propagation paths (synthetic/DiffeRT/Sionna)
+- Runs `DosimetryEngine.compute()` at the specified fidelity level
+- Saves resolved config, result.npz, and summary.json to timestamped output dir
+- CLI overrides: `--level`, `--power-dbm`, `--backend`, `--body`, etc.
 
 **1c. Sionna RT integration**
 
-Write `src/aegis/integration/sionna.py`, mirroring the DiffeRT integration
-pattern.
+`src/aegis/integration/sionna.py` converts Sionna RT channel coefficients to
+PropagationPaths. Uses a dual-polarized isotropic RX probe to capture the full
+E-field polarisation state, then scales to absolute V/m:
 
-- Load Sionna scene (XML or programmatic)
-- Call Sionna RT path computation
-- Convert output to PropagationPaths (k_hat, psi, element_index)
-- Handle materials, reflection orders, diffraction paths
-- Support both CPU (Embree BVH) and GPU (OptiX) backends
+```
+psi = sqrt(8*pi*Z_0*P_T) / lambda * (a_theta * e_theta + a_phi * e_phi)
+```
 
-Adversarial check: *Is Sionna RT actually needed before the first paper?*
-Depends on the paper. If it's about the differentiable pipeline, DiffeRT
-alone is sufficient. If it's about city-scale exposure analysis, Sionna RT
-is required (DiffeRT's O(N^K) can't handle large scenes). Verdict: start
-the integration early because scene loading and path format conversion are
-non-trivial, and you don't want it blocking paper results.
+The (4*pi/lambda) factor corrects for the effective area difference between
+Sionna's channel coefficient convention and the monograph's field-at-surface
+convention. Verified numerically against the DiffeRT integration for LOS paths.
 
-Also: *Sionna RT's API may change.* It went through a major rewrite from
-v1 (TensorFlow) to v2 (Mitsuba 3/Dr.Jit). Pin the version and isolate
-the integration in one file, same as we did with DiffeRT.
+The viewer has a backend dropdown: scenes can be ray-traced with DiffeRT or
+Sionna RT. Sionna requires Linux + GPU (TensorDock cloud machine).
 
 ### Phase 2: JAX migration
 
@@ -125,18 +117,14 @@ Migration order (by complexity):
 8. Level 7 (coherent) -- complex field channel, einsum
 9. Level 8 (ECBF) -- needs differentiable eigendecomp + Brent solver
 
-Adversarial check: *Is "mostly mechanical" actually true?* For levels 0-6,
-yes. They are pure array operations (dot products, einsum, element-wise
-functions). JAX has all of these. For level 8, no. The ECBF solver uses
-scipy.optimize.brentq (not in JAX) and the eigendecomposition needs to be
-differentiable (jax.numpy.linalg.eigh works but has known numerical edge
-cases for degenerate eigenvalues). Level 8 is the hard one. Budget extra
-time for it.
+For levels 0-6, the migration is mechanical (pure array operations). Level 8
+is hard: the ECBF solver uses scipy.optimize.brentq (not in JAX) and the
+eigendecomposition needs to be differentiable (jax.numpy.linalg.eigh works
+but has edge cases for degenerate eigenvalues). Budget extra time for level 8.
 
-Also: *JAX on Windows.* The developer machine runs Windows 11. JAX CPU
-works on Windows. JAX GPU requires WSL2 or Linux. For local development
-this is fine (CPU is fast enough for testing). For HPC you're on Linux
-anyway.
+JAX CPU works on Windows. JAX GPU requires WSL2 or Linux. For local
+development, CPU is fast enough for testing. GPU runs happen on the
+TensorDock cloud machine.
 
 **2b. Differentiable optimization API**
 
@@ -151,19 +139,15 @@ def exposure_loss(antenna_pos, scene, body, level):
 grad_fn = jax.grad(exposure_loss)
 ```
 
-This works at any fidelity level, not just level 8. Level 2 with jax.grad
-gives you "cheap gradient of geometric absorption with respect to antenna
-position." Level 8 with jax.grad gives you "gradient of optimal ECBF
-exposure with respect to antenna position." Different costs, different
-fidelity, same API.
+This works at any fidelity level. Level 2 with jax.grad gives "cheap gradient
+of geometric absorption with respect to antenna position." Level 8 with
+jax.grad gives "gradient of optimal ECBF exposure with respect to antenna
+position." Different costs, different fidelity, same API.
 
-Adversarial check: *Can you actually differentiate through DiffeRT's
-compute_paths?* In principle yes (it's JAX). In practice, DiffeRT's
-exhaustive path enumeration has discrete topology changes (paths appear
-and disappear as geometry changes). Gradients through these discontinuities
-may be zero or undefined. This is a known challenge in differentiable
-rendering. DiffeRT may handle it (it's designed for this), but verify
-with a simple test case before building a paper around it.
+Open question: DiffeRT's exhaustive path enumeration has discrete topology
+changes (paths appear and disappear). Gradients through these discontinuities
+may be zero or undefined. Verify with a simple test case before building a
+paper around it.
 
 **2c. Spatial averaging boundary**
 
@@ -181,7 +165,7 @@ Do not do this preemptively.
 
 ### Phase 3: React frontend
 
-*Priority: medium. Independent of Phases 1-2. Can be done in parallel.*
+*Priority: medium. Independent of Phase 2. Can be done in parallel.*
 
 **3a. React + React Three Fiber + Vite scaffold**
 
@@ -210,18 +194,9 @@ Tech: React, TypeScript, React Three Fiber, Vite, Zustand (state), shadcn/ui
 aegis.viewer` launches the FastAPI server and opens the browser. Same
 user experience as today, but with a real frontend.
 
-Adversarial check: *Is React Three Fiber actually necessary?* R3F is a
-thin wrapper over Three.js. For our use case (one body mesh, a few ray
-paths, one antenna), raw Three.js would work fine. R3F's value is in
-state management (React reconciler batches updates) and the ecosystem
-(drei helpers for camera controls, instanced rendering, etc.). For a
-growing, component-based UI, R3F pays off. For a static visualization,
-it's overhead. Given we want controls, dashboards, and interactivity,
-R3F is justified.
-
-Also: *Two build systems (Python + Node).* This is annoying but standard.
-The React app builds to static files (one command: `npm run build`). The
-Python package includes these files. CI builds both. It's manageable.
+R3F is justified over raw Three.js because the UI has growing complexity
+(controls, dashboards, interactivity). Two build systems (Python + Node)
+is annoying but standard.
 
 ### Phase 4: scale and infrastructure
 
@@ -229,7 +204,7 @@ Python package includes these files. CI builds both. It's manageable.
 
 **4a. HPC/SLURM execution**
 
-- Hydra's submitit launcher plugin for SLURM job submission
+- Hydra (added at this point, not before) for sweep configs and SLURM submission
 - `python -m aegis.run --multirun city=ghent,antwerp hydra/launcher=submitit_slurm`
 - JAX's `jax.distributed.initialize()` for multi-GPU (auto-reads SLURM env)
 - Environment management: pixi or conda-lock for reproducible CUDA/JAX
@@ -240,12 +215,12 @@ Add when running enough experiments that filesystem-based tracking becomes
 unmanageable. Two-line integration:
 
 ```python
-wandb.init(project="aegis", config=resolved_hydra_config)
+wandb.init(project="aegis", config=cfg.to_dict())
 wandb.log({"sab_max": result.sab.max(), "p_abs": result.p_abs})
 ```
 
-Do not add preemptively. Hydra's auto-logged configs are sufficient for
-the first papers.
+Do not add preemptively. The batch runner's auto-saved configs are sufficient
+for the first papers.
 
 **4c. Data versioning (DVC)**
 
@@ -259,7 +234,7 @@ The long-term vision: ray tracing over many cities, statistical analysis
 of exposure patterns, MIMO with moving bodies.
 
 - Sionna RT for large scenes (O(log N) BVH, diffraction, scattering)
-- Batch Hydra configs per city/scenario
+- Batch configs per city/scenario
 - vmap over body positions for time-varying exposure
 - pmap across GPUs for parallel scenarios
 - Statistical post-processing: distributions, symmetry analysis
@@ -279,16 +254,18 @@ of exposure patterns, MIMO with moving bodies.
 - **wandb/DVC/pixi now.** Add when the need is real, not as preventive
   infrastructure.
 
-- **Rewriting tests.** The 200+ existing tests validate NumPy output. During
+- **Hydra now.** Deferred to Phase 4. Dataclass configs + argparse + YAML
+  are sufficient for reproducibility. Hydra adds value only when sweeps
+  or SLURM submission are needed.
+
+- **Rewriting tests.** The 240+ existing tests validate NumPy output. During
   JAX migration, these tests validate that JAX output matches. Do not
   rewrite tests in JAX. Keep them as NumPy-based golden checks.
 
 ## Sequencing and dependencies
 
 ```
-Phase 1a (Hydra) ─────────────────────────┐
-Phase 1b (CLI runner) ──── needs 1a ──────┤
-Phase 1c (Sionna RT) ──── independent ────┤
+Phase 1  (backbone) ──── DONE ────────────┐
                                           ├── paper-ready
 Phase 2a (JAX kernels) ── independent ────┤
 Phase 2b (differentiable opt) ── needs 2a ┤
@@ -298,17 +275,16 @@ Phase 3  (React frontend) ── independent ─┘ (parallel track)
 Phase 4  (HPC, wandb, DVC) ── when needed
 ```
 
-Phases 1a/1b, 1c, 2a, and 3 can all proceed in parallel. They touch
-different parts of the codebase with no conflicts. Phase 2b needs 2a
-(JAX kernels). Phase 1b needs 1a (Hydra config). Phase 4 waits until
-the need is clear.
+Phases 2a and 3 can proceed in parallel. They touch different parts of the
+codebase with no conflicts. Phase 2b needs 2a (JAX kernels). Phase 4 waits
+until the need is clear.
 
 ## Open questions
 
 1. **What is the first paper about?** The sequencing depends on this.
    If it's "differentiable dosimetry pipeline," JAX migration (Phase 2)
    is critical path. If it's "multi-level exposure analysis across cities,"
-   Sionna RT (Phase 1c) is critical path.
+   Sionna RT is already available.
 
 2. **How important is antenna placement optimization vs. beamforming
    optimization?** Antenna placement needs differentiable ray tracing
@@ -316,11 +292,7 @@ the need is clear.
    dosimetry but not differentiable ray tracing (works with Sionna RT
    too). The answer affects how much we invest in DiffeRT vs. Sionna.
 
-3. **Exposure-aware optimization at intermediate levels.** You noted that
-   optimization is not just a level-8 thing. What does optimization at
-   level 2 or 3 look like concretely? Minimizing peak S_ab over antenna
-   position? Optimizing a precoder with a simplified absorption model?
-   This shapes the JAX migration priority order.
-
-4. **HPC access.** Do you have access to a GPU cluster now? If yes,
-   Phase 4a moves up. If no, it stays deferred.
+3. **Exposure-aware optimization at intermediate levels.** What does
+   optimization at level 2 or 3 look like concretely? Minimizing peak
+   S_ab over antenna position? Optimizing a precoder with a simplified
+   absorption model? This shapes the JAX migration priority order.
