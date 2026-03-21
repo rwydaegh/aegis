@@ -9,9 +9,10 @@ Mie-validated physics, Flask+Three.js viewer, DiffeRT and Sionna RT ray
 tracing backends, dataclass configs, CLI batch runner. ~9,000 lines of
 Python.
 
-Everything through Phase 2a is done (v0.4.0). All kernels run on JAX.
-`jax.grad` flows through the incoherent pipeline (levels 0-6). Phase 2b
-(differentiable optimization API) is next.
+Everything through Phase 2b is done (v0.5.0). All kernels run on JAX.
+`jax.grad` flows through all incoherent levels (0-6) and the coherent
+forward path (level 7). `compute_sab()` exposes raw JAX arrays for
+optimization. Loss helpers and end-to-end gradient tests verified.
 
 ## Key architectural decisions (settled)
 
@@ -37,6 +38,10 @@ Everything through Phase 2a is done (v0.4.0). All kernels run on JAX.
   runner, Sionna RT integration, viewer backend dropdown. Done.
 - **Phase 2a** (JAX kernel migration): all 9 levels migrated. v0.4.0. Done.
   See handoff notes below.
+- **Phase 2b** (differentiable optimization API): `compute_sab()`, loss
+  helpers (`optim.py`), gradient tests for all differentiable levels,
+  coherent beamforming gradient (level 7), end-to-end antenna placement
+  gradient. v0.5.0. Done.
 
 ## Phase 2a handoff notes (for Phase 2b)
 
@@ -184,18 +189,35 @@ outside the jax.grad boundary.
 
 *Priority: medium. Independent of Phase 2. Can be done in parallel.*
 
+Full spec: `docs/superpowers/specs/2026-03-21-phase3-react-frontend-design.md`
+
 **3a. React + React Three Fiber + Vite scaffold**
 
-New `aegis-web/` directory. Components: scene view (R3F), control panel,
-compliance dashboard, optimization view (later).
+New `aegis-web/` directory. React + TypeScript + R3F + Zustand + shadcn/ui +
+Tailwind. Big-bang replacement: build to feature parity, then swap. Layout:
+top toolbar, collapsible sidebar (accordion sections), 3D canvas with HUD
+overlay (stats card + color legend), reserved bottom dock slot for future.
 
 **3b. FastAPI replaces Flask**
 
-Async, WebSocket for live dosimetry, Pydantic validation, auto OpenAPI docs.
+Decoupled from 3a. React app built against existing Flask API first.
+FastAPI + WebSocket added after React frontend is stable. Async request
+handling, live dosimetry streaming, Pydantic validation, auto OpenAPI docs.
 
 **3c. Bundle into pip install**
 
-Pre-built frontend assets served by FastAPI. Same UX as today.
+Pre-built frontend assets in `src/aegis/viewer/static/`. CI builds React,
+copies dist. Users never need Node. Same `python -m aegis.viewer` UX.
+
+**Deferred backlog (post Phase 3)**
+
+- Levels 7-8 MIMO/ECBF UI controls (needs precoder input design)
+- Optimization view / bottom dock (needs Phase 2b JAX pipeline)
+- Split-screen level comparison
+- Light theme (for paper screenshots)
+- SAR visualization mode
+- Antenna array visualization
+- Mobile/responsive layout
 
 ## Phase 4: scale and infrastructure
 
@@ -223,7 +245,7 @@ Phase 1  (backbone) ──── DONE ────────────┐
                                           │
 Phase 2a (JAX kernels) ── DONE (v0.4.0) ──┤
                                           ├── paper-ready
-Phase 2b (differentiable opt) ── NEXT ────┤
+Phase 2b (differentiable opt) ── DONE (v0.5.0) ──┤
                                           │
 Phase 3  (React frontend) ── independent ─┘ (parallel track)
 
