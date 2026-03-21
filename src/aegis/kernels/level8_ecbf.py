@@ -9,8 +9,7 @@ Monograph: sec:ecbf, eq:QCQP, eq:optimal-x.
 
 from __future__ import annotations
 
-import numpy as np
-
+from aegis._array_backend import xp
 from aegis.coherent.body_channel import compute_body_channel
 from aegis.coherent.ecbf import solve_ecbf
 from aegis.coherent.exposure_operator import (
@@ -21,20 +20,20 @@ from aegis.coherent.exposure_operator import (
 
 
 def level8_ecbf(
-    normals: np.ndarray,
-    centroids: np.ndarray,
-    areas: np.ndarray,
-    k_hat: np.ndarray,
-    psi: np.ndarray,
-    element_index: np.ndarray,
-    h: np.ndarray,
-    n_tilde: complex,
-    sigma: float,
-    freq_hz: float,
-    n_elements: int,
-    P: float = 1.0,
-    P_abs_max: float = 0.1,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, float]:
+    normals,
+    centroids,
+    areas,
+    k_hat,
+    psi,
+    element_index,
+    h,
+    n_tilde,
+    sigma,
+    freq_hz,
+    n_elements,
+    P=1.0,
+    P_abs_max=0.1,
+):
     """Compute ECBF-optimised absorbed power density map.
 
     Parameters
@@ -81,9 +80,9 @@ def level8_ecbf(
     x_star = solve_ecbf(h, Q, P_abs_max, P)
 
     # S_ab with optimal precoder
-    field = np.einsum("mia,a->mi", G_tilde, x_star)  # (M, 3)
-    sab = np.real(np.sum(field.conj() * field, axis=1))  # (M,)
-    sab = np.maximum(sab, 0.0)
+    field = xp.einsum("mia,a->mi", G_tilde, x_star)  # (M, 3)
+    sab = xp.real(xp.sum(xp.conj(field) * field, axis=1))  # (M,)
+    sab = xp.maximum(sab, 0.0)
 
     # Exposure-signal alignment
     rho = compute_rho(h, Q, lambda_max=float(eigenvalues[0]))

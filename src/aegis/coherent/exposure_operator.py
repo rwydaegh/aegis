@@ -10,13 +10,13 @@ Monograph: def:Q, sec:exposure-operator.
 
 from __future__ import annotations
 
-import numpy as np
+from aegis._array_backend import xp
 
 
 def compute_exposure_operator(
-    G_tilde: np.ndarray,
-    areas: np.ndarray,
-) -> np.ndarray:
+    G_tilde,
+    areas,
+):
     """Compute the exposure operator Q from the body-surface channel.
 
     Q = sum_m G_tilde[m]^H @ G_tilde[m] * area[m]
@@ -33,28 +33,25 @@ def compute_exposure_operator(
     Q : (M_ant, M_ant)
         Hermitian PSD exposure operator.
     """
-    M_tri, _, M_ant = G_tilde.shape
-
     # Q = sum_m area_m * G_tilde_m^H @ G_tilde_m
     # G_tilde_m is (3, M_ant), so G_tilde_m^H @ G_tilde_m is (M_ant, M_ant)
     # Vectorised: einsum over triangles
-    # G_tilde^H @ G_tilde per triangle: (M_ant, 3) @ (3, M_ant) = (M_ant, M_ant)
-    Q = np.einsum(
+    Q = xp.einsum(
         "m,mia,mib->ab",
         areas,
-        G_tilde.conj(),
+        xp.conj(G_tilde),
         G_tilde,
     )
 
     # Enforce exact Hermitian symmetry (numerical cleanup)
-    Q = (Q + Q.conj().T) / 2
+    Q = (Q + xp.conj(Q).T) / 2
 
     return Q
 
 
 def eigendecompose_Q(
-    Q: np.ndarray,
-) -> tuple[np.ndarray, np.ndarray]:
+    Q,
+):
     """Eigendecompose the exposure operator Q.
 
     Returns eigenvalues in descending order with corresponding eigenvectors.
@@ -71,24 +68,24 @@ def eigendecompose_Q(
     eigenvectors : (M_ant, M_ant)
         Columns are eigenvectors, sorted to match eigenvalues.
     """
-    eigenvalues, eigenvectors = np.linalg.eigh(Q)
+    eigenvalues, eigenvectors = xp.linalg.eigh(Q)
 
     # Reverse to descending order
-    idx = np.argsort(eigenvalues)[::-1]
+    idx = xp.argsort(eigenvalues)[::-1]
     eigenvalues = eigenvalues[idx]
     eigenvectors = eigenvectors[:, idx]
 
     # Clamp small negatives from numerical noise
-    eigenvalues = np.maximum(eigenvalues, 0.0)
+    eigenvalues = xp.maximum(eigenvalues, 0.0)
 
     return eigenvalues, eigenvectors
 
 
 def compute_rho(
-    h: np.ndarray,
-    Q: np.ndarray,
-    lambda_max: float | None = None,
-) -> float:
+    h,
+    Q,
+    lambda_max=None,
+):
     """Compute exposure-signal alignment rho.
 
     rho = h^H @ Q @ h / (||h||^2 * lambda_max(Q))
@@ -107,21 +104,21 @@ def compute_rho(
     rho : float
         Alignment metric in [0, 1].
     """
-    h = np.asarray(h, dtype=complex)
-    h_norm_sq = float(np.real(np.vdot(h, h)))
+    h = xp.asarray(h, dtype=complex)
+    h_norm_sq = float(xp.real(xp.vdot(h, h)))
 
     if h_norm_sq < 1e-30:
         return 0.0
 
     if lambda_max is None:
-        eigenvalues = np.linalg.eigvalsh(Q)
-        lambda_max = float(np.max(eigenvalues))
+        eigenvalues = xp.linalg.eigvalsh(Q)
+        lambda_max = float(xp.max(eigenvalues))
 
     if lambda_max < 1e-30:
         return 0.0
 
     # h^T @ Q @ h* = h.conj() @ Q @ h (using vdot convention)
     Qh = Q @ h
-    numerator = float(np.real(np.vdot(h, Qh)))
+    numerator = float(xp.real(xp.vdot(h, Qh)))
 
-    return float(np.clip(numerator / (h_norm_sq * lambda_max), 0.0, 1.0))
+    return float(xp.clip(numerator / (h_norm_sq * lambda_max), 0.0, 1.0))

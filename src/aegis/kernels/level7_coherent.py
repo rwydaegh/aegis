@@ -11,8 +11,7 @@ Monograph: thm:coherent-law (Theorem 4.1).
 
 from __future__ import annotations
 
-import numpy as np
-
+from aegis._array_backend import xp
 from aegis.coherent.body_channel import compute_body_channel
 from aegis.coherent.exposure_operator import (
     compute_exposure_operator,
@@ -22,19 +21,19 @@ from aegis.coherent.exposure_operator import (
 
 
 def level7_coherent(
-    normals: np.ndarray,
-    centroids: np.ndarray,
-    areas: np.ndarray,
-    k_hat: np.ndarray,
-    psi: np.ndarray,
-    element_index: np.ndarray,
-    x: np.ndarray,
-    n_tilde: complex,
-    sigma: float,
-    freq_hz: float,
-    n_elements: int,
-    h: np.ndarray | None = None,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray | None, float | None]:
+    normals,
+    centroids,
+    areas,
+    k_hat,
+    psi,
+    element_index,
+    x,
+    n_tilde,
+    sigma,
+    freq_hz,
+    n_elements,
+    h=None,
+):
     """Compute coherent absorbed power density map.
 
     Parameters
@@ -73,9 +72,9 @@ def level7_coherent(
 
     # S_ab(r) = ||G_tilde(r) @ x||^2
     # G_tilde: (M, 3, M_ant), x: (M_ant,)
-    field = np.einsum("mia,a->mi", G_tilde, x)  # (M, 3)
-    sab = np.real(np.sum(field.conj() * field, axis=1))  # (M,)
-    sab = np.maximum(sab, 0.0)
+    field = xp.einsum("mia,a->mi", G_tilde, x)  # (M, 3)
+    sab = xp.real(xp.sum(xp.conj(field) * field, axis=1))  # (M,)
+    sab = xp.maximum(sab, 0.0)
 
     # Exposure operator Q
     Q = compute_exposure_operator(G_tilde, areas)

@@ -14,13 +14,14 @@ from __future__ import annotations
 
 import numpy as np
 
-from aegis.tissue.fresnel import fresnel_amplitude
+from aegis._array_backend import JAX_AVAILABLE, xp
+from aegis.tissue.fresnel import _fresnel_core
 
 
 def te_tm_basis(
-    k_hat: np.ndarray,
-    normals: np.ndarray,
-) -> tuple[np.ndarray, np.ndarray]:
+    k_hat,
+    normals,
+):
     """Compute TE and TM basis vectors for each (path, triangle) pair.
 
     Parameters
@@ -42,42 +43,48 @@ def te_tm_basis(
 
     # e_s = k_hat x n / |k_hat x n|  for each (m, n) pair
     # normals: (M, 1, 3), k_hat: (1, N, 3) -> cross: (M, N, 3)
-    cross = np.cross(k_hat[np.newaxis, :, :], normals[:, np.newaxis, :])
-    cross_norm = np.linalg.norm(cross, axis=2, keepdims=True)
+    cross = xp.cross(k_hat[None, :, :], normals[:, None, :])
+    cross_norm = xp.linalg.norm(cross, axis=2, keepdims=True)
 
     # At normal incidence (k_hat parallel to n), cross product is zero.
     # Use an arbitrary perpendicular direction as fallback.
-    small = cross_norm < 1e-12
-    # Fallback: pick axis least aligned with k_hat
-    fallback = np.zeros((1, N, 3))
-    abs_k = np.abs(k_hat)
-    min_ax = np.argmin(abs_k, axis=1)
-    for i in range(N):
-        ref = np.zeros(3)
-        ref[min_ax[i]] = 1.0
-        fb = np.cross(k_hat[i], ref)
-        fb_norm = np.linalg.norm(fb)
-        if fb_norm > 0:
-            fb /= fb_norm
-        fallback[0, i, :] = fb
+    abs_k = xp.abs(k_hat)
+    min_ax = xp.argmin(abs_k, axis=1)
+    if JAX_AVAILABLE:
+        ref = xp.zeros((N, 3))
+        ref = ref.at[xp.arange(N), min_ax].set(1.0)
+    else:
+        ref = _set_ref_numpy(N, min_ax)
+    fb = xp.cross(k_hat, ref)
+    fb_norm = xp.linalg.norm(fb, axis=1, keepdims=True)
+    fb = fb / xp.where(fb_norm > 0, fb_norm, 1.0)
+    fallback = fb[None, :, :]
 
-    e_s = np.where(small, np.broadcast_to(fallback, (M, N, 3)), cross)
-    e_s_norm = np.linalg.norm(e_s, axis=2, keepdims=True)
-    e_s = e_s / np.where(e_s_norm > 0, e_s_norm, 1.0)
+    small = cross_norm < 1e-12
+    e_s = xp.where(small, xp.broadcast_to(fallback, (M, N, 3)), cross)
+    e_s_norm = xp.linalg.norm(e_s, axis=2, keepdims=True)
+    e_s = e_s / xp.where(e_s_norm > 0, e_s_norm, 1.0)
 
     # e_p = e_s x k_hat (incident TM direction, Approximation 1)
-    e_p = np.cross(e_s, k_hat[np.newaxis, :, :])
-    e_p_norm = np.linalg.norm(e_p, axis=2, keepdims=True)
-    e_p = e_p / np.where(e_p_norm > 0, e_p_norm, 1.0)
+    e_p = xp.cross(e_s, k_hat[None, :, :])
+    e_p_norm = xp.linalg.norm(e_p, axis=2, keepdims=True)
+    e_p = e_p / xp.where(e_p_norm > 0, e_p_norm, 1.0)
 
     return e_s, e_p
 
 
+def _set_ref_numpy(N, min_ax):
+    """NumPy fallback for building reference vectors."""
+    ref = np.zeros((N, 3))
+    ref[np.arange(N), min_ax] = 1.0
+    return ref
+
+
 def compute_fresnel_operator(
-    normals: np.ndarray,
-    k_hat: np.ndarray,
-    n_tilde: complex,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    normals,
+    k_hat,
+    n_tilde,
+):
     """Compute Fresnel operator components for each (triangle, path) pair.
 
     Returns the ingredients needed to build F_n(r) * psi_n for each pair.
@@ -108,15 +115,15 @@ def compute_fresnel_operator(
     mu = normals @ (-k_hat).T
 
     # Fresnel amplitude coefficients (vectorised over all M*N pairs)
-    mu_flat = mu.ravel()
-    t_s_flat, t_p_flat = fresnel_amplitude(mu_flat, n_tilde)
+    mu_complex = xp.asarray(mu.ravel(), dtype=complex)
+    _, _, _, _, t_s_flat, t_p_flat = _fresnel_core(mu_complex, n_tilde)
     t_s_out = t_s_flat.reshape(mu.shape)
     t_p_out = t_p_flat.reshape(mu.shape)
 
     # Heaviside gate: zero for back-facing paths
     mask = mu > 0
-    t_s_out = np.where(mask, t_s_out, 0.0)
-    t_p_out = np.where(mask, t_p_out, 0.0)
+    t_s_out = xp.where(mask, t_s_out, 0.0 + 0j)
+    t_p_out = xp.where(mask, t_p_out, 0.0 + 0j)
 
     # TE/TM basis vectors
     e_s, e_p = te_tm_basis(k_hat, normals)
@@ -125,12 +132,12 @@ def compute_fresnel_operator(
 
 
 def apply_fresnel_operator(
-    psi: np.ndarray,
-    t_s: np.ndarray,
-    t_p: np.ndarray,
-    e_s: np.ndarray,
-    e_p: np.ndarray,
-) -> np.ndarray:
+    psi,
+    t_s,
+    t_p,
+    e_s,
+    e_p,
+):
     """Apply Fresnel operator: F_n(r) @ psi_n for each (triangle, path) pair.
 
     F_n @ psi = t_s * (e_s . psi) * e_s + t_p * (e_p . psi) * e_p
@@ -155,10 +162,10 @@ def apply_fresnel_operator(
     """
     # psi_s = e_s . psi, psi_p = e_p . psi  (scalar projections)
     # psi: (1, N, 3), e_s: (M, N, 3) -> dot over axis 2
-    psi_s = np.sum(e_s * psi[np.newaxis, :, :], axis=2)  # (M, N)
-    psi_p = np.sum(e_p * psi[np.newaxis, :, :], axis=2)  # (M, N)
+    psi_s = xp.sum(e_s * psi[None, :, :], axis=2)  # (M, N)
+    psi_p = xp.sum(e_p * psi[None, :, :], axis=2)  # (M, N)
 
     # F @ psi = t_s * psi_s * e_s + t_p * psi_p * e_p
-    F_psi = (t_s * psi_s)[:, :, np.newaxis] * e_s + (t_p * psi_p)[:, :, np.newaxis] * e_p
+    F_psi = (t_s * psi_s)[:, :, None] * e_s + (t_p * psi_p)[:, :, None] * e_p
 
     return F_psi
