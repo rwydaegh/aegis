@@ -6,6 +6,8 @@ from pathlib import Path
 
 import pytest
 
+pytest.importorskip("flask")
+
 
 @pytest.fixture(autouse=True)
 def _clean_auth_env():
