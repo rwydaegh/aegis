@@ -76,7 +76,7 @@ testpaths = ["tests"]
 markers = [
     "slow: tests that need mesh data or take >10s",
 ]
-addopts = "-ra --strict-markers"
+addopts = "-ra --strict-markers --import-mode=prepend"
 
 [tool.codespell]
 ignore-words-list = "te,nd,ue,lod"
