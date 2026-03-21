@@ -1,8 +1,13 @@
+import { useRef } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
+import type { ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useSceneStore } from '@/stores/scene'
+import { useSimulationStore } from '@/stores/simulation'
+import { useDosimetry } from '@/hooks/useDosimetry'
 import BodyMesh from './BodyMesh'
+import Antenna from './Antenna'
 
 function SceneLighting() {
   const config = useSceneStore(s => s.viewerConfig)
@@ -37,12 +42,43 @@ function Ground() {
   const gp = (config?.scene?.ground_plane ?? {}) as any
   if (gp.visible === false) return null
 
+  const pointerDownPos = useRef<{ x: number; y: number } | null>(null)
+
+  const handlePointerDown = (e: ThreeEvent<PointerEvent>) => {
+    pointerDownPos.current = { x: e.clientX, y: e.clientY }
+  }
+
+  const handlePointerUp = (e: ThreeEvent<PointerEvent>) => {
+    if (!pointerDownPos.current || !config) return
+    const dx = e.clientX - pointerDownPos.current.x
+    const dy = e.clientY - pointerDownPos.current.y
+    const dist = Math.sqrt(dx * dx + dy * dy)
+    const threshold = config.interaction.click_max_drag_px ?? 5
+
+    if (dist <= threshold && e.intersections.length > 0) {
+      const point = e.intersections[0].point
+      useSimulationStore.getState().setAntennaPos([point.x, point.y, point.z])
+    }
+    pointerDownPos.current = null
+  }
+
   return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, gp.y ?? 0, 0]} receiveShadow>
+    <mesh
+      rotation={[-Math.PI / 2, 0, 0]}
+      position={[0, gp.y ?? 0, 0]}
+      receiveShadow
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+    >
       <planeGeometry args={[gp.size ?? 100, gp.size ?? 100]} />
       <meshStandardMaterial color={gp.color ?? '#1a1a1a'} roughness={gp.roughness ?? 0.9} />
     </mesh>
   )
+}
+
+function DosimetryController() {
+  useDosimetry()
+  return null
 }
 
 export default function SceneRoot() {
@@ -71,6 +107,8 @@ export default function SceneRoot() {
       <SceneLighting />
       <Ground />
       <BodyMesh />
+      <Antenna />
+      <DosimetryController />
       <OrbitControls makeDefault enableDamping />
     </Canvas>
   )

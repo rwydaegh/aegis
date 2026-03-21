@@ -5,14 +5,8 @@ import {
   AccordionTrigger,
   AccordionContent,
 } from '@/components/ui/accordion'
-
-const SECTIONS = [
-  { value: 'parameters', title: 'Parameters' },
-  { value: 'scene', title: 'Scene' },
-  { value: 'phantom', title: 'Phantom' },
-  { value: 'layers', title: 'Layers' },
-  { value: 'raytracing', title: 'Ray Tracing' },
-]
+import ParametersPanel from '@/components/panels/ParametersPanel'
+import PhantomPanel from '@/components/panels/PhantomPanel'
 
 export default function Sidebar() {
   const { sidebarOpen } = useUIStore()
@@ -32,17 +26,50 @@ export default function Sidebar() {
 
         <div className="flex-1 overflow-y-auto">
           <Accordion multiple defaultValue={['parameters']}>
-            {SECTIONS.map(({ value, title }) => (
-              <AccordionItem key={value} value={value} className="border-b border-border px-3">
-                <AccordionTrigger className="text-sm font-medium py-3">{title}</AccordionTrigger>
-                <AccordionContent>
-                  <div className="py-2 text-xs text-muted-foreground">
-                    {/* Content filled in later tasks */}
-                    {title} controls will appear here.
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            ))}
+            <AccordionItem value="parameters" className="border-b border-border px-3">
+              <AccordionTrigger className="text-sm font-medium py-3">Parameters</AccordionTrigger>
+              <AccordionContent>
+                <div className="py-2">
+                  <ParametersPanel />
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="scene" className="border-b border-border px-3">
+              <AccordionTrigger className="text-sm font-medium py-3">Scene</AccordionTrigger>
+              <AccordionContent>
+                <div className="py-2 text-xs text-muted-foreground">
+                  Scene controls will appear here.
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="phantom" className="border-b border-border px-3">
+              <AccordionTrigger className="text-sm font-medium py-3">Phantom</AccordionTrigger>
+              <AccordionContent>
+                <div className="py-2">
+                  <PhantomPanel />
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="layers" className="border-b border-border px-3">
+              <AccordionTrigger className="text-sm font-medium py-3">Layers</AccordionTrigger>
+              <AccordionContent>
+                <div className="py-2 text-xs text-muted-foreground">
+                  Layers controls will appear here.
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="raytracing" className="border-b border-border px-3">
+              <AccordionTrigger className="text-sm font-medium py-3">Ray Tracing</AccordionTrigger>
+              <AccordionContent>
+                <div className="py-2 text-xs text-muted-foreground">
+                  Ray Tracing controls will appear here.
+                </div>
+              </AccordionContent>
+            </AccordionItem>
           </Accordion>
         </div>
       </div>

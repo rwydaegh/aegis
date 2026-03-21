@@ -80,7 +80,7 @@ markers = [
 addopts = "-ra --strict-markers --import-mode=prepend"
 
 [tool.codespell]
-ignore-words-list = "te,nd,ue,lod"
+ignore-words-list = "te,nd,ue,lod,coner"
 
 [tool.coverage.run]
 source = ["aegis"]
