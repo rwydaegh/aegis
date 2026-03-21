@@ -41,13 +41,13 @@ describe('sampleInferno', () => {
 
 describe('jetColor', () => {
   it('returns blue at t=0', () => {
-    const [r, g, b] = jetColor(0)
+    const [r, , b] = jetColor(0)
     expect(b).toBeGreaterThan(0.4)
     expect(r).toBe(0)
   })
 
   it('returns red at t=1', () => {
-    const [r, g, b] = jetColor(1)
+    const [r, , b] = jetColor(1)
     expect(r).toBeGreaterThan(0.4)
     expect(b).toBe(0)
   })

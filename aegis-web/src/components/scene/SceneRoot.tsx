@@ -19,7 +19,6 @@ import Environment from './Environment'
 
 // Body is roughly 1.2 m tall, centered at origin, feet at y=0
 const BODY_TARGET = new THREE.Vector3(0, 0.6, 0)
-const BODY_RADIUS = 1.0 // rough half-height for focus zoom
 
 const PRESET_CAMERA: Record<string, { position: [number, number, number]; target: [number, number, number] }> = {
   front: { position: [0, 1, 4], target: [0, 0.6, 0] },

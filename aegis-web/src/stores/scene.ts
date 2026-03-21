@@ -59,7 +59,7 @@ interface SceneStore {
   setRtPaths: (paths: PathViz[] | null) => void
 }
 
-export const useSceneStore = create<SceneStore>((set, get) => ({
+export const useSceneStore = create<SceneStore>((set) => ({
   viewerConfig: null,
   capabilities: null,
   bodyName: '',

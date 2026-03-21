@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseBodyBinary, parseVoxelBinary, parseSabBinary } from '../binary'
+import { parseBodyBinary, parseSabBinary } from '../binary'
 
 describe('parseBodyBinary', () => {
   it('parses positions and normals with Z-up to Y-up swap', () => {

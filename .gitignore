@@ -81,3 +81,20 @@ theory/summary_paper.pdf
 # Cloud dev machine state (local, auto-generated)
 tools/.cloud-state.json
 .worktrees/
+
+# ── GSD baseline (auto-generated) ──
+*~
+*.code-workspace
+.env.*
+!.env.example
+node_modules/
+.next/
+
+# React frontend build outputs
+aegis-web/dist/
+src/aegis/viewer/static/
+target/
+vendor/
+coverage/
+.cache/
+tmp/

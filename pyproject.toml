@@ -60,6 +60,7 @@ version-file = "src/aegis/_version.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/aegis"]
+artifacts = ["src/aegis/viewer/static/**"]
 
 [tool.ruff]
 line-length = 120
