@@ -59,6 +59,7 @@ nav:
     - Tissue and Fresnel: user_guide/tissue.md
     - Geometry: user_guide/geometry.md
     - Coherent MIMO: user_guide/coherent.md
+    - Optimization: user_guide/optimization.md
   - Developer guide:
     - Architecture: developer_guide/architecture.md
     - Adding a kernel: developer_guide/adding_a_kernel.md
