@@ -14,7 +14,19 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
     @app.route("/")
     def index():
+        static_dir = Path(__file__).parent.parent / "static"
+        if (static_dir / "index.html").exists():
+            from flask import send_from_directory
+
+            return send_from_directory(str(static_dir), "index.html")
         return render_template("index.html", viewer_config=json.dumps(cache["config"]))
+
+    @app.route("/assets/<path:filename>")
+    def static_assets(filename):
+        from flask import send_from_directory
+
+        static_dir = Path(__file__).parent.parent / "static" / "assets"
+        return send_from_directory(str(static_dir), filename)
 
     @app.route("/api/viewer-config")
     def api_viewer_config():
