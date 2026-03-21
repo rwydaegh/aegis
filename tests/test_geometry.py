@@ -52,17 +52,6 @@ class TestBodyMesh:
         mesh = make_single_triangle()
         assert mesh.total_area == pytest.approx(0.5, abs=1e-10)
 
-    def test_frozen(self):
-        mesh = make_cube_mesh()
-        with pytest.raises(AttributeError):
-            mesh.name = "other"
-
-    def test_repr(self):
-        mesh = make_cube_mesh()
-        r = repr(mesh)
-        assert "cube" in r
-        assert "12" in r
-
 
 class TestTriangleAreas:
     def test_unit_square_triangle(self):

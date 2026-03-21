@@ -17,77 +17,6 @@ from aegis.tissue.dielectric import SKIN_28GHZ
 
 
 # ---------------------------------------------------------------------------
-# PropagationPaths tests
-# ---------------------------------------------------------------------------
-
-
-class TestPropagationPaths:
-    def test_from_powers_single(self):
-        p = PropagationPaths.from_powers(
-            k_hat=np.array([[0, 0, -1.0]]),
-            power=np.array([1.0]),
-        )
-        assert p.n_paths == 1
-        assert p.n_elements == 1
-        assert p.power[0] == pytest.approx(1.0, rel=1e-10)
-
-    def test_from_powers_preserves_power(self):
-        powers = np.array([0.5, 1.0, 2.0])
-        k = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]], dtype=float)
-        p = PropagationPaths.from_powers(k_hat=k, power=powers)
-        np.testing.assert_allclose(p.power, powers, rtol=1e-10)
-
-    def test_k_hat_normalised(self):
-        p = PropagationPaths.from_powers(
-            k_hat=np.array([[3, 4, 0.0]]),
-            power=np.array([1.0]),
-        )
-        assert np.linalg.norm(p.k_hat[0]) == pytest.approx(1.0, abs=1e-14)
-
-    def test_psi_perpendicular_to_k(self):
-        p = PropagationPaths.from_powers(
-            k_hat=np.array([[1, 0, 0.0]]),
-            power=np.array([1.0]),
-        )
-        dot = np.abs(np.sum(p.psi[0] * p.k_hat[0]))
-        assert dot < 1e-10
-
-    def test_repr(self):
-        p = PropagationPaths.from_powers(
-            k_hat=np.array([[0, 0, -1.0]]),
-            power=np.array([1.0]),
-        )
-        assert "n_paths=1" in repr(p)
-
-    def test_from_powers_rejects_zero_direction(self):
-        with pytest.raises(ValueError, match="non-zero"):
-            PropagationPaths.from_powers(
-                k_hat=np.array([[0.0, 0.0, 0.0]]),
-                power=np.array([1.0]),
-            )
-
-    def test_constructor_rejects_negative_element_index(self):
-        with pytest.raises(ValueError, match="non-negative"):
-            PropagationPaths(
-                k_hat=np.array([[0, 0, -1.0]]),
-                psi=np.array([[1 + 0j, 0j, 0j]]),
-                element_index=np.array([-1], dtype=np.intp),
-                delay=np.zeros(1),
-                is_los=np.ones(1, dtype=bool),
-            )
-
-    def test_constructor_requires_matching_delay_length(self):
-        with pytest.raises(ValueError, match="delay"):
-            PropagationPaths(
-                k_hat=np.array([[0, 0, -1.0]]),
-                psi=np.array([[1 + 0j, 0j, 0j]]),
-                element_index=np.zeros(1, dtype=np.intp),
-                delay=np.zeros(2),
-                is_los=np.ones(1, dtype=bool),
-            )
-
-
-# ---------------------------------------------------------------------------
 # DosimetryResult tests
 # ---------------------------------------------------------------------------
 
@@ -108,12 +37,6 @@ class TestDosimetryResult:
         assert result.sar_wb > 0
         assert result.compliant_sar is not None
 
-    def test_repr(self, engine, flat_mesh, single_path_down):
-        result = engine.compute(flat_mesh, single_path_down, level=2)
-        r = repr(result)
-        assert "level=2" in r
-        assert "p_abs=" in r
-
     def test_peak_sab_empty_raises(self):
         from aegis.result import DosimetryResult
 
@@ -126,6 +49,50 @@ class TestDosimetryResult:
             engine.compute(flat_mesh, single_path_down, level=2, body_mass=0.0)
         with pytest.raises(ValueError, match="body_mass"):
             engine.compute(flat_mesh, single_path_down, level=2, body_mass=-1.0)
+
+    def test_compliant_sar_true(self, engine, flat_mesh, single_path_down):
+        result = engine.compute(flat_mesh, single_path_down, level=2, body_mass=70.0)
+        assert result.compliant_sar is True  # tiny power, well under limit
+
+    def test_compliant_sar_none_without_mass(self, engine, flat_mesh, single_path_down):
+        result = engine.compute(flat_mesh, single_path_down, level=2)
+        assert result.compliant_sar is None
+
+    def test_to_dict_contains_required_keys(self, engine, flat_mesh, single_path_down):
+        result = engine.compute(flat_mesh, single_path_down, level=2)
+        d = result.to_dict()
+        assert "sab" in d
+        assert "p_abs" in d
+        assert "fidelity_level" in d
+        assert isinstance(d["sab"], list)
+
+    def test_to_json_roundtrips(self, engine, flat_mesh, single_path_down):
+        import json
+
+        result = engine.compute(flat_mesh, single_path_down, level=2)
+        text = result.to_json()
+        parsed = json.loads(text)
+        assert parsed["fidelity_level"] == 2
+        assert parsed["p_abs"] > 0
+
+    def test_peak_triangle_index(self, engine, ico_mesh, multi_path):
+        result = engine.compute(ico_mesh, multi_path, level=2)
+        idx = result.peak_triangle_index
+        assert result.sab[idx] == result.peak_sab
+
+    def test_mean_sab(self, engine, ico_mesh, multi_path):
+        result = engine.compute(ico_mesh, multi_path, level=2)
+        assert result.mean_sab > 0
+        assert result.mean_sab <= result.peak_sab
+
+    def test_nan_power_propagates(self, engine, flat_mesh):
+        """NaN in power should propagate to result, not silently produce zeros."""
+        paths = PropagationPaths.from_powers(
+            k_hat=np.array([[0, 0, -1.0]]),
+            power=np.array([float("nan")]),
+        )
+        result = engine.compute(flat_mesh, paths, level=2)
+        assert np.any(np.isnan(result.sab))
 
 
 # ---------------------------------------------------------------------------

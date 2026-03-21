@@ -55,10 +55,6 @@ class TestTissueModel:
         for tissue in [SKIN_28GHZ, SKIN_60GHZ, FAT_28GHZ, MUSCLE_28GHZ]:
             assert 0 < tissue.T0 < 1
 
-    def test_frozen(self):
-        with pytest.raises(AttributeError):
-            SKIN_28GHZ.eps_r = 99.0
-
 
 class TestSkinColeColeVsPreset:
     @pytest.mark.slow

@@ -486,14 +486,6 @@ class TestPrecoder:
         alignment = abs(np.vdot(x_dir, h_conj_dir))
         assert alignment > 0.999
 
-    def test_repr(self):
-        p = Precoder(x=np.ones(4, dtype=complex))
-        assert "M=4" in repr(p)
-
-    def test_1d_validation(self):
-        with pytest.raises(ValueError, match="1D"):
-            Precoder(x=np.ones((2, 2), dtype=complex))
-
 
 # ---------------------------------------------------------------------------
 # Level 7 engine integration

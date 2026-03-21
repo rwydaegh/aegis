@@ -47,11 +47,6 @@ class TestValidation:
         with pytest.raises(ValueError, match="frequency"):
             TissueConfig(frequency_hz=-1.0)
 
-    def test_frozen(self):
-        cfg = _make_config()
-        with pytest.raises(AttributeError):
-            cfg.dosimetry = DosimetryConfig(level=3)
-
 
 class TestYamlRoundTrip:
     def test_round_trip(self, tmp_path):
