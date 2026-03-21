@@ -263,7 +263,7 @@ def test_end_to_end_grad_matches_finite_diff():
         power = jnp.array([1.0 / (4 * jnp.pi * d**2)])
         return jnp.sum(level2_geometric(normals, k_hat, power, T0))
 
-    pos = jnp.array([0.0, 0.0, -2.0])
+    pos = jnp.array([0.0, 0.0, 2.0])
     jax_grad = jax.grad(loss)(pos)
 
     eps = 1e-5
