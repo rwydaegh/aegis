@@ -145,6 +145,103 @@ class DosimetryEngine:
             sar_wb=sar_wb,
         )
 
+    def compute_sab(
+        self,
+        body: BodyMesh,
+        paths: PropagationPaths,
+        level: int = 2,
+        *,
+        precoder_x=None,
+        precoder: Precoder | None = None,
+        h=None,
+        P_abs_max: float = 0.1,
+        A_ab: float | None = None,
+        D_max: float | None = None,
+        sh_coeffs=None,
+        sh_L: int = 4,
+        D_table=None,
+        D_dirs=None,
+        q: float = 0.0,
+        curvature_H=None,
+    ):
+        """Return per-triangle S_ab as a raw array (JAX or NumPy).
+
+        Unlike compute(), this does not convert to NumPy or wrap in
+        DosimetryResult. Use inside jax.grad boundaries for differentiable
+        optimization.
+        """
+        if level < 0 or level > 8:
+            raise ValueError(f"Fidelity level must be 0-8, got {level}")
+
+        if level <= 6:
+            return self._dispatch(
+                body,
+                paths,
+                level,
+                A_ab=A_ab,
+                D_max=D_max,
+                sh_coeffs=sh_coeffs,
+                sh_L=sh_L,
+                D_table=D_table,
+                D_dirs=D_dirs,
+                q=q,
+                curvature_H=curvature_H,
+            )
+
+        # Coherent levels 7-8
+        x = precoder_x
+        if x is None and precoder is not None:
+            x = precoder.x
+
+        sigma = self.tissue.sigma
+        n_elements = paths.n_elements
+
+        if level == 7:
+            if x is None:
+                raise ValueError("Level 7 requires precoder or precoder_x")
+            from aegis.kernels.level7_coherent import level7_coherent
+
+            sab, _, _, _ = level7_coherent(
+                body.normals,
+                body.centroids,
+                body.areas,
+                paths.k_hat,
+                paths.psi,
+                paths.element_index,
+                x,
+                self.n_tilde,
+                sigma,
+                self.freq_hz,
+                n_elements,
+                h=h,
+            )
+            return sab
+
+        if level == 8:
+            if h is None:
+                raise ValueError("Level 8 requires h")
+            from aegis.kernels.level8_ecbf import level8_ecbf
+
+            P = float(precoder.power) if precoder is not None else 1.0
+            sab, _, _, _, _ = level8_ecbf(
+                body.normals,
+                body.centroids,
+                body.areas,
+                paths.k_hat,
+                paths.psi,
+                paths.element_index,
+                h,
+                self.n_tilde,
+                sigma,
+                self.freq_hz,
+                n_elements,
+                P=P,
+                P_abs_max=P_abs_max,
+            )
+            return sab
+
+        raise ValueError(f"Unknown level {level}")
+
     def _compute_coherent(
         self,
         body: BodyMesh,
@@ -270,7 +367,7 @@ class DosimetryEngine:
             self.T0,
             body.n_triangles,
         )
-        return _to_numpy(sab)
+        return sab
 
     def _level1(self, body: BodyMesh, paths: PropagationPaths, **kwargs) -> np.ndarray:
         from aegis.kernels.level1_aggregate import level1_aggregate

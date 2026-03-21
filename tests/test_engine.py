@@ -366,3 +366,45 @@ class TestE2EThelonious:
 
         # Peak S_ab should be close to S_inc * T_0
         assert r2.peak_sab == pytest.approx(10.0 * skin.T0, rel=0.01)
+
+
+# ---------------------------------------------------------------------------
+# compute_sab: raw array API for differentiable optimization
+# ---------------------------------------------------------------------------
+
+
+class TestComputeSab:
+    def test_returns_array_not_result(self, engine, flat_mesh, single_path_down):
+        """compute_sab returns raw array, not DosimetryResult."""
+        sab = engine.compute_sab(flat_mesh, single_path_down, level=2)
+        assert hasattr(sab, "shape")
+        assert sab.shape == (flat_mesh.n_triangles,)
+        # Should NOT be a DosimetryResult
+        assert not hasattr(sab, "p_abs")
+
+    def test_matches_compute_values(self, engine, ico_mesh, multi_path):
+        """compute_sab values match compute().sab."""
+        result = engine.compute(ico_mesh, multi_path, level=2)
+        sab = engine.compute_sab(ico_mesh, multi_path, level=2)
+        np.testing.assert_allclose(np.asarray(sab), result.sab, rtol=1e-12)
+
+    def test_all_incoherent_levels(self, engine, ico_mesh, multi_path):
+        """compute_sab works for all incoherent levels."""
+        curvature_H = np.full(ico_mesh.n_triangles, 5.0)
+        A_ab = ico_mesh.total_area / 4.0
+
+        for level in range(7):
+            kwargs = {}
+            if level == 0:
+                kwargs = {"A_ab": A_ab, "D_max": 2.0}
+            elif level == 1:
+                kwargs = {"A_ab": A_ab}
+            elif level >= 5:
+                kwargs = {"curvature_H": curvature_H}
+
+            sab = engine.compute_sab(ico_mesh, multi_path, level=level, **kwargs)
+            assert sab.shape == (ico_mesh.n_triangles,), f"Level {level}"
+
+    def test_invalid_level(self, engine, ico_mesh, single_path_down):
+        with pytest.raises(ValueError, match="0-8"):
+            engine.compute_sab(ico_mesh, single_path_down, level=9)
