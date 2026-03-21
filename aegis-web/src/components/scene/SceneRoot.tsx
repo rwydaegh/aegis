@@ -6,6 +6,7 @@ import * as THREE from 'three'
 import { useSceneStore } from '@/stores/scene'
 import { useSimulationStore } from '@/stores/simulation'
 import { useDosimetry } from '@/hooks/useDosimetry'
+import { usePhysics } from '@/hooks/usePhysics'
 import BodyMesh from './BodyMesh'
 import Antenna from './Antenna'
 
@@ -81,6 +82,11 @@ function DosimetryController() {
   return null
 }
 
+function PhysicsController() {
+  usePhysics()
+  return null
+}
+
 export default function SceneRoot() {
   const config = useSceneStore(s => s.viewerConfig)
   if (!config) return null
@@ -102,6 +108,7 @@ export default function SceneRoot() {
         toneMapping: THREE.ACESFilmicToneMapping,
       }}
       style={{ position: 'absolute', inset: 0 }}
+      tabIndex={0}
     >
       <color attach="background" args={[config.scene.background_color ?? '#0a0a0f']} />
       <SceneLighting />
@@ -109,6 +116,7 @@ export default function SceneRoot() {
       <BodyMesh />
       <Antenna />
       <DosimetryController />
+      <PhysicsController />
       <OrbitControls makeDefault enableDamping />
     </Canvas>
   )
