@@ -11,6 +11,9 @@ import BodyMesh from './BodyMesh'
 import Antenna from './Antenna'
 import DistanceLine from './DistanceLine'
 import RayPaths from './RayPaths'
+import VoxelField from './VoxelField'
+import SceneGeometry from './SceneGeometry'
+import Environment from './Environment'
 
 function SceneLighting() {
   const config = useSceneStore(s => s.viewerConfig)
@@ -115,6 +118,9 @@ export default function SceneRoot() {
       <color attach="background" args={[config.scene.background_color ?? '#0a0a0f']} />
       <SceneLighting />
       <Ground />
+      <VoxelField />
+      <SceneGeometry />
+      <Environment />
       <BodyMesh />
       <Antenna />
       <DistanceLine />

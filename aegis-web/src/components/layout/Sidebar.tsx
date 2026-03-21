@@ -7,6 +7,9 @@ import {
 } from '@/components/ui/accordion'
 import ParametersPanel from '@/components/panels/ParametersPanel'
 import PhantomPanel from '@/components/panels/PhantomPanel'
+import LayersPanel from '@/components/panels/LayersPanel'
+import ScenePanel from '@/components/panels/ScenePanel'
+import RayTracingPanel from '@/components/panels/RayTracingPanel'
 
 export default function Sidebar() {
   const { sidebarOpen } = useUIStore()
@@ -38,8 +41,8 @@ export default function Sidebar() {
             <AccordionItem value="scene" className="border-b border-border px-3">
               <AccordionTrigger className="text-sm font-medium py-3">Scene</AccordionTrigger>
               <AccordionContent>
-                <div className="py-2 text-xs text-muted-foreground">
-                  Scene controls will appear here.
+                <div className="py-2">
+                  <ScenePanel />
                 </div>
               </AccordionContent>
             </AccordionItem>
@@ -56,8 +59,8 @@ export default function Sidebar() {
             <AccordionItem value="layers" className="border-b border-border px-3">
               <AccordionTrigger className="text-sm font-medium py-3">Layers</AccordionTrigger>
               <AccordionContent>
-                <div className="py-2 text-xs text-muted-foreground">
-                  Layers controls will appear here.
+                <div className="py-2">
+                  <LayersPanel />
                 </div>
               </AccordionContent>
             </AccordionItem>
@@ -65,8 +68,8 @@ export default function Sidebar() {
             <AccordionItem value="raytracing" className="border-b border-border px-3">
               <AccordionTrigger className="text-sm font-medium py-3">Ray Tracing</AccordionTrigger>
               <AccordionContent>
-                <div className="py-2 text-xs text-muted-foreground">
-                  Ray Tracing controls will appear here.
+                <div className="py-2">
+                  <RayTracingPanel />
                 </div>
               </AccordionContent>
             </AccordionItem>

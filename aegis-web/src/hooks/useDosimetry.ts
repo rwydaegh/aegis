@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback } from 'react'
 import { useSimulationStore } from '@/stores/simulation'
 import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
-import { computeDosimetry, computeVoxelRT } from '@/api/client'
+import { computeDosimetry, computeVoxelRT, computeRT, computeSionnaRT } from '@/api/client'
 
 export function useDosimetry() {
   const antennaPos = useSimulationStore(s => s.antennaPos)
@@ -14,9 +14,11 @@ export function useDosimetry() {
   const bodyRotationY = useSimulationStore(s => s.bodyRotationY)
 
   const config = useSceneStore(s => s.viewerConfig)
+  const caps = useSceneStore(s => s.capabilities)
   const rtEnabled = useSceneStore(s => s.rtEnabled)
   const rtSource = useSceneStore(s => s.rtSource)
   const rtMaxOrder = useSceneStore(s => s.rtMaxOrder)
+  const scenePaths = useSceneStore(s => s.scenePaths)
 
   const abortRef = useRef<AbortController | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -50,8 +52,13 @@ export function useDosimetry() {
 
     // Choose endpoint based on RT state
     let computeCall: Promise<{ sab: Float32Array; stats: import('@/api/types').DosimetryStats }>
+    const scenePath = scenePaths[0] ?? ''
     if (rtEnabled && rtSource === 'voxel') {
       computeCall = computeVoxelRT({ ...params, maxOrder: rtMaxOrder }, controller.signal)
+    } else if (rtEnabled && rtSource === 'sionna' && caps?.has_sionna && scenePath) {
+      computeCall = computeSionnaRT({ ...params, scenePath }, controller.signal)
+    } else if (rtEnabled && rtSource === 'sionna' && scenePath) {
+      computeCall = computeRT({ ...params, scenePath, maxOrder: rtMaxOrder }, controller.signal)
     } else {
       computeCall = computeDosimetry(params, controller.signal)
     }
@@ -72,7 +79,7 @@ export function useDosimetry() {
         clearTimeout(timeoutId)
         if (gen === generationRef.current) setComputing(false)
       })
-  }, [antennaPos, level, powerDbm, tissue, nPaths, bodyOffset, bodyRotationY, config, rtEnabled, rtSource, rtMaxOrder])
+  }, [antennaPos, level, powerDbm, tissue, nPaths, bodyOffset, bodyRotationY, config, caps, rtEnabled, rtSource, rtMaxOrder, scenePaths])
 
   // Debounced trigger on any dependency change
   useEffect(() => {
