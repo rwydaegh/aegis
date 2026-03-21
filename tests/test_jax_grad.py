@@ -166,3 +166,54 @@ def test_level6_grad_wrt_power():
     grad = jax.grad(loss)(power)
     assert jnp.all(jnp.isfinite(grad))
     assert float(grad[0]) > 0.0
+
+
+def test_coherent_sab_grad_wrt_x():
+    """Gradient of ||G_tilde @ x||^2 w.r.t. complex precoder x."""
+    import jax
+    import jax.numpy as jnp
+
+    from aegis.optim import coherent_sab
+
+    M, M_ant = 4, 3
+    rng = np.random.default_rng(42)
+    G_tilde = jnp.array(rng.standard_normal((M, 3, M_ant)) + 1j * rng.standard_normal((M, 3, M_ant)))
+
+    def loss(x):
+        return jnp.sum(coherent_sab(G_tilde, x))
+
+    x = jnp.array(rng.standard_normal(M_ant) + 1j * rng.standard_normal(M_ant))
+    grad = jax.grad(loss)(x)
+    assert grad.shape == (M_ant,)
+    assert jnp.all(jnp.isfinite(grad))
+    assert float(jnp.max(jnp.abs(grad))) > 0.0
+
+
+def test_coherent_sab_grad_matches_finite_diff():
+    """Coherent sab JAX grad matches finite-difference for real perturbations."""
+    import jax
+    import jax.numpy as jnp
+
+    from aegis.optim import coherent_sab
+
+    M, M_ant = 3, 2
+    rng = np.random.default_rng(123)
+    G_tilde = jnp.array(rng.standard_normal((M, 3, M_ant)) + 1j * rng.standard_normal((M, 3, M_ant)))
+    x0 = jnp.array([1.0 + 0.5j, 0.3 - 0.2j])
+
+    # Parameterise as real vector [re, im] for clean finite-diff
+    def loss_real(x_flat):
+        x = x_flat[:M_ant] + 1j * x_flat[M_ant:]
+        return jnp.sum(coherent_sab(G_tilde, x))
+
+    x_flat = jnp.concatenate([jnp.real(x0), jnp.imag(x0)])
+    jax_grad = jax.grad(loss_real)(x_flat)
+
+    eps = 1e-6
+    fd_grad = np.zeros(2 * M_ant)
+    for i in range(2 * M_ant):
+        p = x_flat.at[i].set(x_flat[i] + eps)
+        m = x_flat.at[i].set(x_flat[i] - eps)
+        fd_grad[i] = (float(loss_real(p)) - float(loss_real(m))) / (2 * eps)
+
+    np.testing.assert_allclose(np.asarray(jax_grad), fd_grad, rtol=1e-4)
