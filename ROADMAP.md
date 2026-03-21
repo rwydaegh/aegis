@@ -7,15 +7,10 @@
 Phases 0-4 of the original implementation plan are done. The dosimetry engine
 works: 9 fidelity levels, 240+ tests, Mie-validated physics, Flask+Three.js
 viewer, DiffeRT and Sionna RT ray tracing backends, CLI batch runner.
-Total: ~9,000 lines of Python (NumPy/SciPy).
+Total: ~9,000 lines of Python (NumPy/SciPy + JAX).
 
-Phase 1 (reproducible research backbone) is complete:
-
-- Dataclass config system (`src/aegis/config.py`) with YAML serialization
-- CLI batch runner (`python -m aegis.run --config runs/my.yaml`)
-- Sionna RT integration (`src/aegis/integration/sionna.py`)
-- Viewer backend dropdown (DiffeRT or Sionna RT per scene)
-- Batch runner docs and example configs
+Phase 1 (reproducible research backbone) is complete.
+Phase 2a (JAX kernel migration) is complete. Tagged v0.4.0.
 
 The original plan (docs/internal/implementation_plan.md) ends at Phase 6.
 This document picks up from here with a revised direction.
@@ -89,46 +84,96 @@ convention. Verified numerically against the DiffeRT integration for LOS paths.
 The viewer has a backend dropdown: scenes can be ray-traced with DiffeRT or
 Sionna RT. Sionna requires Linux + GPU (TensorDock cloud machine).
 
-### Phase 2: JAX migration
+### Phase 2a: JAX kernel migration (DONE)
 
-*Priority: high. This is the unique scientific contribution.*
+*Completed 2026-03-21. Tagged v0.4.0.*
 
-**2a. Kernel-by-kernel migration**
+All 9 fidelity levels migrated to JAX backend. 236 tests pass. 3 gradient
+smoke tests confirm `jax.grad` flows through levels 2 and 3.
 
-Migrate incoherent kernels (0-6) first, then coherent (7-8).
+**What was built:**
 
-- Replace `import numpy as np` with `import jax.numpy as jnp` in each
-  kernel file.
-- Add `@jax.jit` to the kernel entry point.
-- Run existing test suite after each kernel. Golden values must match
-  within float64 tolerance.
-- Keep a NumPy fallback: if JAX is not installed, the engine dispatches
-  to the original NumPy kernels. This preserves `pip install aegis` without
-  JAX as a core dependency.
+- `src/aegis/_array_backend.py` -- shim exporting `xp` (jax.numpy or numpy),
+  `jit` (jax.jit or identity), `erf`, `JAX_AVAILABLE`. Enables x64 mode.
+- `src/aegis/tissue/fresnel.py` -- full rewrite. Core computation in
+  `_fresnel_core()` (pure xp, JIT-safe). Public wrappers add scalar
+  convenience but are NOT called from inside JIT boundaries.
+- `src/aegis/kernels/_base.py` -- `incidence_geometry()` and
+  `fresnel_weights()` use xp. `fresnel_weights` calls `_fresnel_core`
+  directly (not `fresnel_transmission`, which has non-JIT-safe branching).
+- Levels 0, 2, 3, 4, 5, 6 have `@jit`. Level 1 stays non-JIT (scipy SH).
+- `src/aegis/coherent/` -- fresnel_operator calls `_fresnel_core`.
+  field_channel and body_channel have JAX scatter-add (`jnp.at[].add`)
+  with NumPy loop fallback, selected by `JAX_AVAILABLE` flag.
+- `src/aegis/coherent/ecbf.py` -- stays NumPy. Bisection solver is
+  inherently non-JIT-traceable. Returns `xp.asarray()` at the boundary.
+- `src/aegis/engine.py` -- `_to_numpy()` converts JAX arrays back to NumPy
+  at the engine output boundary before `DosimetryResult` construction.
+- `tests/test_jax_grad.py` -- 3 gradient smoke tests (skipif no JAX).
+- `pyproject.toml` -- `jax` optional dependency group added.
 
-Migration order (by complexity):
-1. Level 0 (bound) -- trivial, one scalar reduction
-2. Level 2 (geometric) -- the workhorse, matrix multiply
-3. Level 1 (aggregate) -- spherical harmonics
-4. Level 3 (Fresnel) -- complex Fresnel T(theta)
-5. Level 4 (polarisation) -- small extension of level 3
-6. Level 5 (curvature) -- adds curvature term
-7. Level 6 (diffraction) -- needs jax.scipy.special.erf
-8. Level 7 (coherent) -- complex field channel, einsum
-9. Level 8 (ECBF) -- needs differentiable eigendecomp + Brent solver
+**Architecture: two call paths through Fresnel**
 
-For levels 0-6, the migration is mechanical (pure array operations). Level 8
-is hard: the ECBF solver uses scipy.optimize.brentq (not in JAX) and the
-eigendecomposition needs to be differentiable (jax.numpy.linalg.eigh works
-but has edge cases for degenerate eigenvalues). Budget extra time for level 8.
+This is the most important thing to understand for Phase 2b:
 
-JAX CPU works on Windows. JAX GPU requires WSL2 or Linux. For local
-development, CPU is fast enough for testing. GPU runs happen on the
-TensorDock cloud machine.
+1. **JIT path** (levels 2-6 kernels): `_base.py::fresnel_weights` calls
+   `_fresnel_core` directly. Pure `xp`, no scalar checks, no `np.asarray`.
+   This path is fully JIT-traceable and differentiable.
+
+2. **Non-JIT path** (engine config, tests, scalar queries): public functions
+   `fresnel_transmission`, `fresnel_reflection`, `fresnel_amplitude` wrap
+   `_fresnel_core` with `np.asarray` input, scalar output, ndim branching.
+   These are NOT called from inside JIT boundaries.
+
+If you add a new kernel or optimization path, always use `_fresnel_core`
+or `fresnel_weights`, never the public wrappers.
+
+**What is NOT fully JIT'd (and why)**
+
+- Level 1: calls `scipy` spherical harmonics (`eval_sh`). Not JIT-traceable.
+  Low priority -- level 1 is a coarse aggregate, rarely used in optimization.
+- Levels 7-8: the coherent pipeline has `if JAX_AVAILABLE:` branching in
+  `field_channel.py` and `body_channel.py` to select between JAX scatter-add
+  and NumPy loop. The functions themselves are not `@jit` decorated. The
+  individual operations (einsum, phase computation) use `xp` and are
+  JIT-compatible, but the accumulate-by-element step uses different code
+  paths. To make this fully JIT'd, you would need to remove the branching
+  and always use JAX scatter-add (dropping the NumPy fallback).
+- ECBF solver (`ecbf.py`): bisection with Python while-loop. Not
+  JIT-traceable. To make this differentiable, you would need to replace
+  the bisection with a fixed-point iteration (e.g., `jax.lax.while_loop`)
+  or use implicit differentiation (`jax.custom_vjp`). This is the hardest
+  remaining task for full differentiability through level 8.
+- `exposure_operator.py::compute_rho` and `eigendecompose_Q`: use `xp`
+  throughout (einsum, eigh, argsort). These are JIT-compatible but not
+  `@jit` decorated because they are called from level7/level8 which have
+  non-JIT code paths. If you isolate them, they can be JIT'd.
+
+**Gotchas for future work**
+
+- JAX defaults to float32. The backend shim sets `jax_enable_x64 = True`
+  at import time. This is required for physics accuracy. Do not remove it.
+- `xp.asarray(mu, dtype=complex)` is used in `_fresnel_core` and
+  `fresnel_weights` to cast real incidence cosines to complex (Fresnel
+  needs complex arithmetic). If you see unexpected dtypes, check this cast.
+- `xp.full(n_triangles, value)` in level 0 needs `n_triangles` as a
+  concrete int (not a traced value). Hence `static_argnums=(0,1,2,4,5)`
+  on the `@jit` decorator. If you change the signature, update static_argnums.
+- The pre-existing `test_voxel_pipeline::test_parse_reads_unit_from_metadata`
+  test fails due to test-ordering pollution from `test_viewer_auth.py`
+  contaminating global config state. It passes in isolation. Not related
+  to JAX migration. Fix by adding proper test isolation (fixture teardown).
+
+**Test count:** 236 pass, 1 pre-existing failure, 25 skipped (slow/mesh).
+
+### Phase 2b: differentiable optimization API
+
+*Priority: high. Depends on 2a (done). This is the paper.*
 
 **2b. Differentiable optimization API**
 
-Once kernels are JAX, expose optimization as a first-class feature:
+The kernels are JAX. `jax.grad` flows through levels 2 and 3 (verified by
+smoke tests). Now expose optimization as a first-class feature:
 
 ```python
 def exposure_loss(antenna_pos, scene, body, level):
@@ -144,10 +189,27 @@ of geometric absorption with respect to antenna position." Level 8 with
 jax.grad gives "gradient of optimal ECBF exposure with respect to antenna
 position." Different costs, different fidelity, same API.
 
-Open question: DiffeRT's exhaustive path enumeration has discrete topology
-changes (paths appear and disappear). Gradients through these discontinuities
-may be zero or undefined. Verify with a simple test case before building a
-paper around it.
+**Remaining work for full differentiability:**
+
+1. **Beamforming optimization (levels 7-8):** gradient of S_ab w.r.t.
+   precoder x. The forward path (G_tilde @ x -> S_ab) is already xp-native.
+   But the engine wraps it in `_to_numpy()` and the coherent pipeline has
+   `JAX_AVAILABLE` branching. For optimization, call the kernel directly
+   (bypass the engine), or add a `jax_mode=True` flag that skips conversion.
+
+2. **ECBF differentiability (level 8):** The bisection solver in `ecbf.py`
+   is not differentiable. Two options:
+   - `jax.custom_vjp`: define the backward pass analytically using implicit
+     function theorem (the QCQP KKT conditions give dx*/dlambda).
+   - `jax.lax.while_loop`: rewrite bisection as a JAX-traceable loop.
+   The first option is cleaner and numerically stable.
+
+3. **DiffeRT end-to-end:** DiffeRT is JAX, so `jax.grad` should flow
+   from dosimetry back through the ray tracer to antenna position.
+   Open question: DiffeRT's exhaustive path enumeration has discrete
+   topology changes (paths appear/disappear). Gradients through these
+   discontinuities may be zero or undefined. Verify with a simple test
+   case before building a paper around it.
 
 **2c. Spatial averaging boundary**
 
@@ -258,26 +320,27 @@ of exposure patterns, MIMO with moving bodies.
   are sufficient for reproducibility. Hydra adds value only when sweeps
   or SLURM submission are needed.
 
-- **Rewriting tests.** The 240+ existing tests validate NumPy output. During
-  JAX migration, these tests validate that JAX output matches. Do not
-  rewrite tests in JAX. Keep them as NumPy-based golden checks.
+- **Rewriting tests.** The 240+ existing tests validate NumPy output. The
+  JAX migration preserved all golden values. Tests stay NumPy-based.
+  JAX-specific tests (gradient smoke tests) are in `tests/test_jax_grad.py`
+  and skip when JAX is not installed.
 
 ## Sequencing and dependencies
 
 ```
 Phase 1  (backbone) ──── DONE ────────────┐
+                                          │
+Phase 2a (JAX kernels) ── DONE (v0.4.0) ──┤
                                           ├── paper-ready
-Phase 2a (JAX kernels) ── independent ────┤
-Phase 2b (differentiable opt) ── needs 2a ┤
+Phase 2b (differentiable opt) ── NEXT ────┤
                                           │
 Phase 3  (React frontend) ── independent ─┘ (parallel track)
 
 Phase 4  (HPC, wandb, DVC) ── when needed
 ```
 
-Phases 2a and 3 can proceed in parallel. They touch different parts of the
-codebase with no conflicts. Phase 2b needs 2a (JAX kernels). Phase 4 waits
-until the need is clear.
+Phase 2b is unblocked. Phase 3 can proceed in parallel (different files).
+Phase 4 waits until the need is clear.
 
 ## Open questions
 
