@@ -1,21 +1,12 @@
-"""Shared geometric and Fresnel building blocks for incoherent kernels.
-
-Levels 2-6 all compute the same incidence geometry and (for 3-6) the same
-Fresnel weights. This module extracts that shared pattern so each level
-file only contains its unique correction.
-"""
+"""Shared geometric and Fresnel building blocks for incoherent kernels."""
 
 from __future__ import annotations
 
-import numpy as np
+from aegis._array_backend import xp
+from aegis.tissue.fresnel import _fresnel_core
 
-from aegis.tissue.fresnel import fresnel_transmission
 
-
-def incidence_geometry(
-    normals: np.ndarray,
-    k_hat: np.ndarray,
-) -> tuple[np.ndarray, np.ndarray]:
+def incidence_geometry(normals, k_hat):
     """Compute cosine of incidence and its ReLU.
 
     Parameters
@@ -28,16 +19,15 @@ def incidence_geometry(
     mu : (M, N) raw cosine of local incidence angle
     mu_plus : (M, N) ReLU(mu), zero for back-facing paths
     """
-    mu = normals @ (-k_hat).T  # (M, N)
-    mu_plus = np.maximum(mu, 0.0)  # (M, N)
+    mu = normals @ (-k_hat).T
+    mu_plus = xp.maximum(mu, 0.0)
     return mu, mu_plus
 
 
-def fresnel_weights(
-    mu: np.ndarray,
-    n_tilde: complex,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+def fresnel_weights(mu, n_tilde):
     """Compute Fresnel transmission weights at each (triangle, path) pair.
+
+    Calls _fresnel_core directly (not fresnel_transmission) to stay JIT-safe.
 
     Parameters
     ----------
@@ -50,7 +40,9 @@ def fresnel_weights(
     T_p : (M, N) TM power transmission
     T_avg : (M, N) unpolarised average (T_s + T_p) / 2
     """
-    mu_for_fresnel = np.clip(mu, 0.0, 1.0)
-    T_s, T_p = fresnel_transmission(mu_for_fresnel, n_tilde)
-    T_avg = 0.5 * (T_s + T_p)  # (M, N)
+    mu_for_fresnel = xp.clip(mu, 0.0, 1.0)
+    # Cast to complex for _fresnel_core (Fresnel needs complex arithmetic)
+    mu_complex = xp.asarray(mu_for_fresnel, dtype=complex)
+    _, _, T_s, T_p, _, _ = _fresnel_core(mu_complex, n_tilde)
+    T_avg = 0.5 * (T_s + T_p)
     return T_s, T_p, T_avg

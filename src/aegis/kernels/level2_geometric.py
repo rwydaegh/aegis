@@ -1,30 +1,13 @@
-"""Level 2: Geometric ReLU spatial map.
-
-The core incoherent dosimetry formula:
-    S_ab(r) = T_0 * ReLU(N @ (-K)^T) @ s
-
-where:
-    N: (M, 3) triangle normals
-    K: (N, 3) incident directions
-    s: (N,) per-path power densities [W/m^2]
-    T_0: normal-incidence power transmission coefficient
-
-Cost: O(M * N). This is the workhorse level for compliance assessment.
-"""
+"""Level 2: Geometric ReLU spatial map."""
 
 from __future__ import annotations
 
-import numpy as np
-
+from aegis._array_backend import jit
 from aegis.kernels._base import incidence_geometry
 
 
-def level2_geometric(
-    normals: np.ndarray,
-    k_hat: np.ndarray,
-    power: np.ndarray,
-    T0: float,
-) -> np.ndarray:
+@jit
+def level2_geometric(normals, k_hat, power, T0):
     """Compute per-triangle S_ab using the geometric absorption law.
 
     Parameters
@@ -39,5 +22,5 @@ def level2_geometric(
     sab : (M,) absorbed power density per triangle [W/m^2]
     """
     _mu, mu_plus = incidence_geometry(normals, k_hat)
-    sab = T0 * (mu_plus @ power)  # (M,)
+    sab = T0 * (mu_plus @ power)
     return sab
