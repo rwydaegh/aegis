@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 
+export type CameraPreset = 'front' | 'side' | 'top' | 'focus' | 'reset' | null
+
 interface UIStore {
   sidebarOpen: boolean
   wireframe: boolean
@@ -8,6 +10,7 @@ interface UIStore {
   locationLoading: boolean
   locationLog: string[]
   statusMessage: string | null
+  cameraPreset: CameraPreset
 
   toggleSidebar: () => void
   toggleWireframe: () => void
@@ -17,6 +20,7 @@ interface UIStore {
   appendLocationLog: (msg: string) => void
   clearLocationLog: () => void
   setStatusMessage: (msg: string | null) => void
+  setCameraPreset: (preset: CameraPreset) => void
 }
 
 export const useUIStore = create<UIStore>((set) => ({
@@ -27,6 +31,7 @@ export const useUIStore = create<UIStore>((set) => ({
   locationLoading: false,
   locationLog: [],
   statusMessage: null,
+  cameraPreset: null,
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
   toggleWireframe: () => set((state) => ({ wireframe: !state.wireframe })),
   setComputing: (computing) => set({ isComputing: computing }),
@@ -36,4 +41,5 @@ export const useUIStore = create<UIStore>((set) => ({
     set((state) => ({ locationLog: [...state.locationLog, msg] })),
   clearLocationLog: () => set({ locationLog: [] }),
   setStatusMessage: (msg) => set({ statusMessage: msg }),
+  setCameraPreset: (preset) => set({ cameraPreset: preset }),
 }))

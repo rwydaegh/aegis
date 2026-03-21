@@ -1,9 +1,10 @@
-import { PanelLeft, Box } from 'lucide-react'
+import { PanelLeft, Box, AlignCenter, AlignJustify, LayoutGrid, Focus, RotateCcw } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { useSimulationStore } from '@/stores/simulation'
 import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
+import type { CameraPreset } from '@/stores/ui'
 import { cn } from '@/lib/utils'
 import type { DosimetryStats } from '@/api/types'
 import type { ViewerConfig } from '@/api/types'
@@ -36,13 +37,27 @@ function LevelPill({ level, config }: { level: number; config: ViewerConfig | nu
   )
 }
 
+const CAMERA_PRESETS: Array<{ preset: CameraPreset & string; label: string; icon: React.ReactNode }> = [
+  { preset: 'front', label: 'Front view', icon: <AlignCenter className="size-4" /> },
+  { preset: 'side', label: 'Side view', icon: <AlignJustify className="size-4" /> },
+  { preset: 'top', label: 'Top view', icon: <LayoutGrid className="size-4" /> },
+  { preset: 'focus', label: 'Focus body', icon: <Focus className="size-4" /> },
+  { preset: 'reset', label: 'Reset camera', icon: <RotateCcw className="size-4" /> },
+]
+
 export default function Toolbar() {
   const { level, stats } = useSimulationStore()
   const { viewerConfig } = useSceneStore()
-  const { sidebarOpen, wireframe, toggleSidebar, toggleWireframe } = useUIStore()
+  const { sidebarOpen, wireframe, toggleSidebar, toggleWireframe, setCameraPreset } = useUIStore()
 
   const uiConfig = viewerConfig?.ui as Record<string, unknown> | undefined
   const scenario = typeof uiConfig?.scenario === 'string' ? uiConfig.scenario : null
+
+  function handleCameraPreset(preset: CameraPreset & string) {
+    setCameraPreset(preset)
+    // Clear after a tick so the controller fires on every click (even the same preset)
+    setTimeout(() => setCameraPreset(null), 50)
+  }
 
   return (
     <header className="h-11 flex items-center justify-between px-3 bg-card/80 backdrop-blur-sm border-b border-border shrink-0 gap-4">
@@ -58,6 +73,25 @@ export default function Toolbar() {
       <div className="flex items-center gap-2 shrink-0">
         <ComplianceBadge stats={stats} />
         <LevelPill level={level} config={viewerConfig} />
+      </div>
+
+      {/* Center: camera presets */}
+      <div className="flex items-center gap-0.5 shrink-0 border border-border rounded-md p-0.5">
+        {CAMERA_PRESETS.map(({ preset, label, icon }) => (
+          <Tooltip key={preset}>
+            <TooltipTrigger
+              onClick={() => handleCameraPreset(preset)}
+              className={cn(
+                'inline-flex items-center justify-center size-7 rounded transition-colors',
+                'hover:bg-muted text-muted-foreground hover:text-foreground',
+              )}
+              aria-label={label}
+            >
+              {icon}
+            </TooltipTrigger>
+            <TooltipContent>{label}</TooltipContent>
+          </Tooltip>
+        ))}
       </div>
 
       {/* Right: icon buttons */}

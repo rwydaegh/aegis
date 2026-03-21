@@ -1,10 +1,12 @@
 import { useRef } from 'react'
-import { Canvas } from '@react-three/fiber'
+import { Canvas, useThree, useFrame } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import type { ThreeEvent } from '@react-three/fiber'
+import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import * as THREE from 'three'
 import { useSceneStore } from '@/stores/scene'
 import { useSimulationStore } from '@/stores/simulation'
+import { useUIStore } from '@/stores/ui'
 import { useDosimetry } from '@/hooks/useDosimetry'
 import { usePhysics } from '@/hooks/usePhysics'
 import BodyMesh from './BodyMesh'
@@ -14,6 +16,82 @@ import RayPaths from './RayPaths'
 import VoxelField from './VoxelField'
 import SceneGeometry from './SceneGeometry'
 import Environment from './Environment'
+
+// Body is roughly 1.2 m tall, centered at origin, feet at y=0
+const BODY_TARGET = new THREE.Vector3(0, 0.6, 0)
+const BODY_RADIUS = 1.0 // rough half-height for focus zoom
+
+const PRESET_CAMERA: Record<string, { position: [number, number, number]; target: [number, number, number] }> = {
+  front: { position: [0, 1, 4], target: [0, 0.6, 0] },
+  side:  { position: [4, 1, 0], target: [0, 0.6, 0] },
+  top:   { position: [0, 6, 0.01], target: [0, 0, 0] },
+  focus: { position: [0, 0.6, 2.5], target: [0, 0.6, 0] },
+}
+
+/**
+ * Listens to ui.cameraPreset and smoothly transitions the camera + orbit target.
+ * Must live inside the R3F Canvas so it can access useThree.
+ */
+function CameraController({ controlsRef, initialPosition }: {
+  controlsRef: React.RefObject<OrbitControlsImpl | null>
+  initialPosition: [number, number, number]
+}) {
+  const { camera } = useThree()
+  const preset = useUIStore(s => s.cameraPreset)
+
+  // Animation state
+  const animating = useRef(false)
+  const fromPos = useRef(new THREE.Vector3())
+  const toPos = useRef(new THREE.Vector3())
+  const fromTarget = useRef(new THREE.Vector3())
+  const toTarget = useRef(new THREE.Vector3())
+  const progress = useRef(0)
+  const DURATION = 0.5 // seconds
+
+  // When preset changes, start animation
+  const lastPreset = useRef<string | null>(null)
+  if (preset && preset !== lastPreset.current) {
+    lastPreset.current = preset
+
+    const controls = controlsRef.current
+    fromPos.current.copy(camera.position)
+    fromTarget.current.copy(controls ? (controls.target as THREE.Vector3) : BODY_TARGET)
+
+    let dest: { position: [number, number, number]; target: [number, number, number] }
+    if (preset === 'reset') {
+      dest = { position: initialPosition, target: [0, 0.6, 0] }
+    } else {
+      dest = PRESET_CAMERA[preset] ?? PRESET_CAMERA.front
+    }
+
+    toPos.current.set(...dest.position)
+    toTarget.current.set(...dest.target)
+    progress.current = 0
+    animating.current = true
+  }
+
+  useFrame((_, delta) => {
+    if (!animating.current) return
+    const controls = controlsRef.current
+    progress.current = Math.min(1, progress.current + delta / DURATION)
+    // Smooth step easing
+    const t = progress.current * progress.current * (3 - 2 * progress.current)
+
+    camera.position.lerpVectors(fromPos.current, toPos.current, t)
+
+    if (controls) {
+      const target = controls.target as THREE.Vector3
+      target.lerpVectors(fromTarget.current, toTarget.current, t)
+      controls.update()
+    }
+
+    if (progress.current >= 1) {
+      animating.current = false
+    }
+  })
+
+  return null
+}
 
 function SceneLighting() {
   const config = useSceneStore(s => s.viewerConfig)
@@ -98,6 +176,9 @@ export default function SceneRoot() {
 
   const cam = config.camera
   const ren = config.renderer
+  const initialPosition = (cam.initial_position as [number, number, number]) ?? [0, 2, 5]
+
+  const controlsRef = useRef<OrbitControlsImpl | null>(null)
 
   return (
     <Canvas
@@ -105,7 +186,7 @@ export default function SceneRoot() {
         fov: cam.fov,
         near: cam.near,
         far: cam.far,
-        position: (cam.initial_position as [number, number, number]) ?? [0, 2, 5],
+        position: initialPosition,
       }}
       shadows={ren.shadows_enabled}
       gl={{
@@ -127,7 +208,8 @@ export default function SceneRoot() {
       <RayPaths />
       <DosimetryController />
       <PhysicsController />
-      <OrbitControls makeDefault enableDamping />
+      <OrbitControls ref={controlsRef} makeDefault enableDamping />
+      <CameraController controlsRef={controlsRef} initialPosition={initialPosition} />
     </Canvas>
   )
 }
