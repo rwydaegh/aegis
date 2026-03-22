@@ -230,6 +230,9 @@ function ColorLegend() {
   const toggleLegendScale = useUIStore(s => s.toggleLegendScale)
   const dynamicRangeDb = useUIStore(s => s.dynamicRangeDb)
   const setDynamicRangeDb = useUIStore(s => s.setDynamicRangeDb)
+  const colormapLocked = useUIStore(s => s.colormapLocked)
+  const colormapLockedMax = useUIStore(s => s.colormapLockedMax)
+  const toggleColormapLock = useUIStore(s => s.toggleColormapLock)
 
   // Compute smart default when sabArray first arrives
   const hasAutoSet = useRef(false)
@@ -243,7 +246,7 @@ function ColorLegend() {
 
   if (!sabArray || !stats || !config) return null
 
-  const maxSab = stats.peak_sab
+  const maxSab = (colormapLocked && colormapLockedMax != null) ? colormapLockedMax : stats.peak_sab
   // Jet colormap gradient: red (top/max) -> yellow -> green -> cyan -> blue (bottom/min)
   const gradientCss =
     'linear-gradient(to bottom, rgb(128,0,0), rgb(255,0,0), rgb(255,128,0), rgb(255,255,0), rgb(128,255,128), rgb(0,255,255), rgb(0,128,255), rgb(0,0,255), rgb(0,0,128))'
@@ -267,18 +270,31 @@ function ColorLegend() {
   return (
     <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-auto">
       <div className="bg-card/80 backdrop-blur-md rounded-lg border border-border px-3 py-2.5">
-        {/* Title and scale toggle */}
-        <div className="flex items-center justify-between gap-2 mb-2">
+        {/* Title, lock, and scale toggle */}
+        <div className="flex items-center justify-between gap-1.5 mb-2">
           <span className="text-xs font-medium text-foreground">
             S<sub>ab</sub>{legendScale === 'linear' ? ' (W/m\u00b2)' : ' (dB re peak)'}
           </span>
-          <button
-            onClick={toggleLegendScale}
-            className="text-[11px] px-2 py-0.5 rounded border border-border bg-muted/50 text-foreground hover:bg-muted transition-colors cursor-pointer"
-            title={legendScale === 'linear' ? 'Switch to dB scale' : 'Switch to linear scale'}
-          >
-            {legendScale === 'linear' ? 'dB' : 'Lin'}
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={toggleColormapLock}
+              className={`text-[11px] px-1.5 py-0.5 rounded border transition-colors cursor-pointer ${
+                colormapLocked
+                  ? 'border-primary/40 bg-primary/15 text-primary'
+                  : 'border-border bg-muted/50 text-foreground hover:bg-muted'
+              }`}
+              title={colormapLocked ? 'Unlock colormap (auto-normalize)' : 'Lock colormap to current max'}
+            >
+              {colormapLocked ? '\u{1F512}' : '\u{1F513}'}
+            </button>
+            <button
+              onClick={toggleLegendScale}
+              className="text-[11px] px-2 py-0.5 rounded border border-border bg-muted/50 text-foreground hover:bg-muted transition-colors cursor-pointer"
+              title={legendScale === 'linear' ? 'Switch to dB scale' : 'Switch to linear scale'}
+            >
+              {legendScale === 'linear' ? 'dB' : 'Lin'}
+            </button>
+          </div>
         </div>
 
         {/* Gradient bar with tick labels side by side */}

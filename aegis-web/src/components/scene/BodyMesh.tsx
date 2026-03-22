@@ -18,6 +18,8 @@ export default function BodyMesh() {
   const bodyRotationY = useSimulationStore(s => s.bodyRotationY)
   const legendScale = useUIStore(s => s.legendScale)
   const dynamicRangeDb = useUIStore(s => s.dynamicRangeDb)
+  const colormapLocked = useUIStore(s => s.colormapLocked)
+  const colormapLockedMax = useUIStore(s => s.colormapLockedMax)
 
   // Apply heatmap colors when sabArray, scale mode, or dynamic range changes
   useEffect(() => {
@@ -31,7 +33,14 @@ export default function BodyMesh() {
         colorAttr.setXYZ(i, 0.5, 0.5, 0.5)
       }
     } else {
-      const maxSab = Math.max(...Array.from(sabArray))
+      const currentMax = Math.max(...Array.from(sabArray))
+
+      // When lock is first activated, store the current max
+      if (colormapLocked && colormapLockedMax == null) {
+        useUIStore.getState().setColormapLockedMax(currentMax)
+      }
+
+      const maxSab = (colormapLocked && colormapLockedMax != null) ? colormapLockedMax : currentMax
       const nFaces = sabArray.length
       for (let f = 0; f < nFaces; f++) {
         let t: number
@@ -47,7 +56,7 @@ export default function BodyMesh() {
       }
     }
     colorAttr.needsUpdate = true
-  }, [sabArray, geometry, config, legendScale, dynamicRangeDb])
+  }, [sabArray, geometry, config, legendScale, dynamicRangeDb, colormapLocked, colormapLockedMax])
 
   if (!geometry) return null
 

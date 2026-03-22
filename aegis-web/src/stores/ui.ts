@@ -16,6 +16,8 @@ interface UIStore {
   cameraMode: CameraMode
   legendScale: LegendScale
   dynamicRangeDb: number
+  colormapLocked: boolean
+  colormapLockedMax: number | null
 
   toggleSidebar: () => void
   toggleWireframe: () => void
@@ -29,6 +31,8 @@ interface UIStore {
   setCameraMode: (mode: CameraMode) => void
   toggleLegendScale: () => void
   setDynamicRangeDb: (db: number) => void
+  toggleColormapLock: () => void
+  setColormapLockedMax: (max: number) => void
 }
 
 export const useUIStore = create<UIStore>((set) => ({
@@ -43,6 +47,8 @@ export const useUIStore = create<UIStore>((set) => ({
   cameraMode: 'orbit',
   legendScale: 'linear',
   dynamicRangeDb: 30,
+  colormapLocked: false,
+  colormapLockedMax: null,
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
   toggleWireframe: () => set((state) => ({ wireframe: !state.wireframe })),
   setComputing: (computing) => set({ isComputing: computing }),
@@ -58,4 +64,11 @@ export const useUIStore = create<UIStore>((set) => ({
     legendScale: state.legendScale === 'linear' ? 'dB' : 'linear',
   })),
   setDynamicRangeDb: (db) => set({ dynamicRangeDb: db }),
+  toggleColormapLock: () => set((state) => {
+    if (state.colormapLocked) {
+      return { colormapLocked: false, colormapLockedMax: null }
+    }
+    return { colormapLocked: true }
+  }),
+  setColormapLockedMax: (max) => set({ colormapLockedMax: max }),
 }))
