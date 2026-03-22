@@ -183,7 +183,7 @@ def compute_dosimetry(
     # Levels 0-1 need precomputed geometry parameters
     extra_kwargs: dict = {}
     if level <= 1:
-        # Cauchy formula: A_ab = A_total / 4 for convex bodies
+        # A_ab = total surface area for convex bodies (monograph eq. 2.23)
         extra_kwargs["A_ab"] = body.total_area * dos_cfg["convex_body_area_factor"]
     if level == 0:
         # D_max ~ 4 is a reasonable bound for human bodies (sphere = 4)

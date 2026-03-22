@@ -205,7 +205,7 @@ DEFAULTS: dict = {
             "scatter_power_range": [0.1, 0.5],
         },
         "level0_D_max": 4.0,
-        "convex_body_area_factor": 0.25,
+        "convex_body_area_factor": 1.0,
     },
     "colormap": {
         "name": "inferno",

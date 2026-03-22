@@ -270,7 +270,7 @@ class TestLevel1:
 
     def test_isotropic_D_matches_level2_total_power(self, engine, ico_mesh, multi_path):
         """With D=1 (isotropic fallback), Level 1 gives P_abs = T_0*A_ab/4*sum(S)."""
-        A_ab = ico_mesh.total_area / 4.0
+        A_ab = ico_mesh.total_area
         r1 = engine.compute(ico_mesh, multi_path, level=1, A_ab=A_ab)
         expected = SKIN_28GHZ.T0 * A_ab / 4.0 * float(np.sum(multi_path.power))
         assert r1.p_abs == pytest.approx(expected, rel=1e-10)
@@ -284,7 +284,7 @@ class TestLevel1:
 class TestLevelConsistency:
     def test_all_levels_return_correct_shape(self, engine, ico_mesh, multi_path):
         curvature_H = np.full(ico_mesh.n_triangles, 5.0)
-        A_ab = ico_mesh.total_area / 4.0
+        A_ab = ico_mesh.total_area
 
         for level in range(7):
             kwargs = {}
@@ -391,7 +391,7 @@ class TestComputeSab:
     def test_all_incoherent_levels(self, engine, ico_mesh, multi_path):
         """compute_sab works for all incoherent levels."""
         curvature_H = np.full(ico_mesh.n_triangles, 5.0)
-        A_ab = ico_mesh.total_area / 4.0
+        A_ab = ico_mesh.total_area
 
         for level in range(7):
             kwargs = {}
