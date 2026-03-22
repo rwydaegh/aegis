@@ -13,6 +13,7 @@ interface UIStore {
   statusMessage: string | null
   cameraPreset: CameraPreset
   legendScale: LegendScale
+  dynamicRangeDb: number
 
   toggleSidebar: () => void
   toggleWireframe: () => void
@@ -24,6 +25,7 @@ interface UIStore {
   setStatusMessage: (msg: string | null) => void
   setCameraPreset: (preset: CameraPreset) => void
   toggleLegendScale: () => void
+  setDynamicRangeDb: (db: number) => void
 }
 
 export const useUIStore = create<UIStore>((set) => ({
@@ -36,6 +38,7 @@ export const useUIStore = create<UIStore>((set) => ({
   statusMessage: null,
   cameraPreset: null,
   legendScale: 'linear',
+  dynamicRangeDb: 30,
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
   toggleWireframe: () => set((state) => ({ wireframe: !state.wireframe })),
   setComputing: (computing) => set({ isComputing: computing }),
@@ -49,4 +52,5 @@ export const useUIStore = create<UIStore>((set) => ({
   toggleLegendScale: () => set((state) => ({
     legendScale: state.legendScale === 'linear' ? 'dB' : 'linear',
   })),
+  setDynamicRangeDb: (db) => set({ dynamicRangeDb: db }),
 }))

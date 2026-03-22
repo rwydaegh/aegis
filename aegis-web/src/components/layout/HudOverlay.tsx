@@ -182,17 +182,57 @@ function formatLegendValue(value: number): string {
 const BAR_HEIGHT = 240
 const BAR_WIDTH = 16
 
+/**
+ * Compute a smart default dynamic range from the S_ab distribution.
+ * Finds the dB level at which ~95% of non-zero faces fall within range,
+ * then rounds to the nearest 5 dB. Clamped to [10, 60].
+ */
+function computeSmartDynamicRange(sabArray: Float32Array): number {
+  const max = Math.max(...Array.from(sabArray))
+  if (max <= 0) return 30
+
+  // Collect dB values for non-zero faces
+  const dbValues: number[] = []
+  for (let i = 0; i < sabArray.length; i++) {
+    if (sabArray[i] > 0) {
+      dbValues.push(10 * Math.log10(sabArray[i] / max))
+    }
+  }
+  if (dbValues.length === 0) return 30
+
+  dbValues.sort((a, b) => a - b)
+
+  // 5th percentile: the dB level below which only 5% of faces fall
+  const p5idx = Math.floor(dbValues.length * 0.05)
+  const p5 = Math.abs(dbValues[p5idx])
+
+  // Round up to nearest 5 dB, clamp to [10, 60]
+  const rounded = Math.ceil(p5 / 5) * 5
+  return Math.max(10, Math.min(60, rounded))
+}
+
 function ColorLegend() {
   const stats = useSimulationStore(s => s.stats)
   const config = useSceneStore(s => s.viewerConfig)
   const sabArray = useSimulationStore(s => s.sabArray)
   const legendScale = useUIStore(s => s.legendScale)
   const toggleLegendScale = useUIStore(s => s.toggleLegendScale)
+  const dynamicRangeDb = useUIStore(s => s.dynamicRangeDb)
+  const setDynamicRangeDb = useUIStore(s => s.setDynamicRangeDb)
+
+  // Compute smart default when sabArray first arrives
+  const hasAutoSet = useRef(false)
+  useEffect(() => {
+    if (sabArray && !hasAutoSet.current) {
+      hasAutoSet.current = true
+      const smart = computeSmartDynamicRange(sabArray)
+      setDynamicRangeDb(smart)
+    }
+  }, [sabArray, setDynamicRangeDb])
 
   if (!sabArray || !stats || !config) return null
 
   const maxSab = stats.peak_sab
-  const dynamicRangeDb = (config.colormap as any).dynamic_range_db ?? 40
   const gradientCss =
     config.colormap.legend?.gradient_css ??
     'linear-gradient(to bottom, rgb(252,255,164), rgb(249,142,9), rgb(188,55,84), rgb(87,16,110), rgb(0,4,18))'
@@ -208,7 +248,6 @@ function ColorLegend() {
       const value = maxSab * (1 - frac)
       ticks.push({ label: formatLegendValue(value), pct: frac })
     } else {
-      // Uniform in colormap space => uniform dB ticks
       const db = -dynamicRangeDb * frac
       ticks.push({ label: `${db.toFixed(0)} dB`, pct: frac })
     }
@@ -261,6 +300,26 @@ function ColorLegend() {
             ))}
           </div>
         </div>
+
+        {/* dB floor input (only in dB mode) */}
+        {legendScale === 'dB' && (
+          <div className="flex items-center gap-1.5 mt-2">
+            <span className="text-[10px] text-muted-foreground">Floor</span>
+            <input
+              type="number"
+              className="w-12 bg-background border border-border rounded px-1 py-0.5 text-[11px] font-mono text-foreground text-center"
+              value={-dynamicRangeDb}
+              step={5}
+              max={-5}
+              min={-80}
+              onChange={e => {
+                const v = Number(e.target.value)
+                if (v < 0 && v >= -80) setDynamicRangeDb(-v)
+              }}
+            />
+            <span className="text-[10px] text-muted-foreground">dB</span>
+          </div>
+        )}
       </div>
     </div>
   )

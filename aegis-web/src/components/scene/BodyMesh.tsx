@@ -17,8 +17,9 @@ export default function BodyMesh() {
   const bodyOffset = useSimulationStore(s => s.bodyOffset)
   const bodyRotationY = useSimulationStore(s => s.bodyRotationY)
   const legendScale = useUIStore(s => s.legendScale)
+  const dynamicRangeDb = useUIStore(s => s.dynamicRangeDb)
 
-  // Apply heatmap colors when sabArray or scale mode changes
+  // Apply heatmap colors when sabArray, scale mode, or dynamic range changes
   useEffect(() => {
     if (!geometry || !config) return
 
@@ -26,10 +27,8 @@ export default function BodyMesh() {
     if (!colorAttr) return
 
     const stops = config.colormap.stops
-    const dynamicRangeDb = (config.colormap as any).dynamic_range_db ?? 40
 
     if (!sabArray) {
-      // No results: neutral gray
       for (let i = 0; i < colorAttr.count; i++) {
         colorAttr.setXYZ(i, 0.5, 0.5, 0.5)
       }
@@ -50,7 +49,7 @@ export default function BodyMesh() {
       }
     }
     colorAttr.needsUpdate = true
-  }, [sabArray, geometry, config, legendScale])
+  }, [sabArray, geometry, config, legendScale, dynamicRangeDb])
 
   if (!geometry) return null
 
