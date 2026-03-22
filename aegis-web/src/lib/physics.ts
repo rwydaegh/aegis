@@ -253,15 +253,21 @@ export function buildHeightmap(
     const tops = grid.get(key)
     if (!tops || tops.length === 0) return -Infinity
 
-    // Find the highest top that is strictly below refY
+    // Find the highest voxel top at or below the body's feet.
+    // Using <= with a small epsilon handles floating-point imprecision
+    // and prevents the body from sinking through the surface it stands on.
+    // This also supports bridges: if the body is below a bridge, only
+    // surfaces at or below the body are considered.
+    const EPS = 0.01
     let best = -Infinity
     for (const top of tops) {
-      if (top < refY && top > best) {
+      if (top <= refY + EPS && top > best) {
         best = top
       }
     }
 
-    // If nothing is below refY, return the lowest top (body is below the stack)
+    // If nothing is at or below refY, body is below all voxels in this cell.
+    // Return the lowest top so the body gets pushed up onto the surface.
     if (best === -Infinity) {
       return tops[0]
     }

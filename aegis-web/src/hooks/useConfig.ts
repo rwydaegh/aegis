@@ -14,7 +14,11 @@ export function useConfig() {
   useEffect(() => {
     Promise.all([fetchViewerConfig(), fetchCapabilities()])
       .then(([config, caps]) => {
-        useSceneStore.setState({ viewerConfig: config, capabilities: caps })
+        useSceneStore.setState({
+          viewerConfig: config,
+          capabilities: caps,
+          bodyName: (caps as any).body_name ?? caps.bodies?.[0] ?? '',
+        })
 
         const defaultLevel = config.dosimetry?.fidelity_levels?.[2]?.value ?? 2
         const simState: Record<string, unknown> = {
@@ -33,9 +37,11 @@ export function useConfig() {
 
         useSimulationStore.setState(simState)
 
-        // Load available scene paths
-        if ((caps as any).scenes?.length > 0) {
-          useSceneStore.setState({ scenePaths: (caps as any).scenes })
+        // Load available scene paths (server returns {name, path} objects)
+        const rawScenes = (caps as any).scenes
+        if (rawScenes?.length > 0) {
+          const paths = rawScenes.map((s: any) => typeof s === 'string' ? s : s.path)
+          useSceneStore.setState({ scenePaths: paths })
         }
 
         setStatus('ready')

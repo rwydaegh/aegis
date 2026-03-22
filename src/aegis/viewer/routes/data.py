@@ -150,9 +150,14 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         n_tiles = 0
         if tiles_dir:
             n_tiles = len(list(Path(tiles_dir).glob("*.glb")))
+        # Report which body is currently loaded and sort body list
+        current_body = cache["body"].name if cache.get("body") else ""
+        bodies.sort()
+
         return jsonify(
             {
                 "bodies": bodies,
+                "body_name": current_body,
                 "tissues": sorted(TISSUE_PRESETS.keys()),
                 "levels": levels,
                 "has_voxels": has_voxels,

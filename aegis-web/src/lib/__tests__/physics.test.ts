@@ -267,8 +267,31 @@ describe('buildHeightmap', () => {
     // Query at y=2: should find highest top below 2 -> 1.5
     const y = lookup(0, 0, 2)
     expect(y).toBeCloseTo(1.5, 3)
-    // Query at y=1: should find top below 1 -> 0.5
+    // Query at y=1: should find top at or below 1 -> 0.5
     const y2 = lookup(0, 0, 1)
     expect(y2).toBeCloseTo(0.5, 3)
+  })
+
+  it('does not sink through surface when standing exactly on top', () => {
+    // 3-voxel thick ground: tops at 0.122, 0.366, 0.610
+    const positions = new Float32Array([0, 0, 0, 0, 0.244, 0, 0, 0.488, 0])
+    const sizes = new Float32Array([0.244, 0.244, 0.244])
+    const lookup = buildHeightmap(positions, sizes, 1)
+    // Standing exactly at the top surface (0.610) should return 0.610, not sink
+    const y = lookup(0, 0, 0.610)
+    expect(y).toBeCloseTo(0.610, 2)
+  })
+
+  it('supports bridge: returns ground under bridge, not bridge top', () => {
+    // Ground at y=0 (top=0.5), bridge at y=5 (top=5.5)
+    const positions = new Float32Array([0, 0, 0, 0, 5, 0])
+    const sizes = new Float32Array([1, 1])
+    const lookup = buildHeightmap(positions, sizes, 1)
+    // Body under bridge at y=1: should return ground (0.5), not bridge (5.5)
+    const y = lookup(0, 0, 1)
+    expect(y).toBeCloseTo(0.5, 3)
+    // Body on bridge at y=5.5: should return bridge top (5.5)
+    const y2 = lookup(0, 0, 5.5)
+    expect(y2).toBeCloseTo(5.5, 3)
   })
 })

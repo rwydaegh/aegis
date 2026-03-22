@@ -162,7 +162,7 @@ function ClickPlane() {
       onPointerUp={handlePointerUp}
     >
       <planeGeometry args={[500, 500]} />
-      <meshBasicMaterial visible={false} />
+      <meshBasicMaterial transparent opacity={0} side={THREE.DoubleSide} depthWrite={false} />
     </mesh>
   )
 }
