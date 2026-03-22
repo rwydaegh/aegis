@@ -40,7 +40,7 @@ antenna:
   pattern: isotropic
 
 raytracer:
-  backend: synthetic    # synthetic, differt, or sionna
+  backend: synthetic    # synthetic (default: differt), differt, or sionna
   max_bounces: 3
   scene_path: null      # required for differt/sionna
 

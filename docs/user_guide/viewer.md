@@ -1,41 +1,74 @@
 # Interactive 3D viewer
 
-The viewer is a Flask server plus a Three.js single-page app. It shows a body mesh, optional voxel environment, and real-time dosimetry after you place a transmit antenna.
+The viewer has two parts: a Flask REST backend that runs dosimetry computations and serves data, and a React + Three.js frontend that renders the scene. The frontend shows a body mesh with absorbed power density heatmap, optional voxel environments, antenna radiation patterns, and real-time dosimetry stats.
 
 ## Requirements
 
 - Python 3.12 with AEGIS installed (`pip install -e ".[dev]"`).
-- Body STL under your [data directory](../getting_started.md#loading-real-meshes) (default mesh name `thelonious` unless you override it).
-- Optional: `pip install -e ".[rt]"` for DiffeRT (voxel or Sionna ray tracing in the UI).
-- Optional: location pipeline and `GOOGLE_API_KEY` for geocoded voxel fetch (see [location loading plan](../internal/plan_location_loading.md)).
+- Node.js 18+ for the React frontend (development only, production builds are static).
+- Body STL under your [data directory](../getting_started.md#loading-real-meshes) (default mesh `thelonious` unless you override it).
+- Optional: `pip install -e ".[rt]"` for DiffeRT or Sionna ray tracing in the UI.
+- Optional: `GOOGLE_API_KEY` for geocoded voxel loading.
 
 ## Launch
 
-Default HTTP port is **5000** (from `configs/default.json` or `config.py` defaults).
+Start the Flask backend (port **5000** by default):
 
 ```bash
 py -3.12 -m aegis.viewer
+py -3.12 -m aegis.viewer --scenario open_ground
 ```
 
-Common flags:
+For development, run the React frontend separately (port **5173**, hot-reloads):
+
+```bash
+cd aegis-web
+npm install    # first time only
+npm run dev
+```
+
+Open `http://localhost:5173` in your browser. The frontend proxies API calls to the Flask backend on port 5000.
+
+For production, `npm run build` generates static files in `aegis-web/dist/` that the Flask server serves directly.
+
+Common backend flags:
 
 | Flag | Purpose |
 |------|---------|
 | `--config path.json` | Merge JSON over built-in defaults (see `configs/default.json`). |
-| `--scenario name` | Apply a named scenario from the config file (overrides `default_scenario`). |
+| `--scenario name` | Apply a named scenario from the config file. |
 | `--no-open` | Do not open a browser tab. |
+| `--port N` | HTTP port (default 5000). |
+| `--host addr` | Bind address (default 127.0.0.1). |
 | `--voxel-dir`, `--voxel-json` | Load voxel data from disk. |
-| `--location "City"` | Fetch voxels via the Node pipeline when configured. |
+| `--location "City"` | Fetch voxels via the geocoding pipeline. |
 | `--body name` | STL stem under the data directory. |
-| `--bbox meters` | Scene bounding box size (affects voxel loading radius). |
+| `--level N` | Default fidelity level for compute. |
+| `--bbox meters` | Scene bounding box diameter (default 30). |
+| `--data-dir path` | Override the data directory for STL meshes. |
 
-Example:
+## UI controls
 
-```bash
-py -3.12 -m aegis.viewer --config configs/default.json --scenario open_ground --no-open
-```
+**Scene interaction.** Click anywhere on the ground, voxel surfaces, or Sionna scene geometry to place a transmit antenna. The antenna shows a short dipole radiation pattern (sin^2 theta gain deformation) on a pole at the click point. Dosimetry computes automatically after placement.
 
-The console prints the URL (usually `http://127.0.0.1:5000`).
+**Camera.** Two modes, toggled from the toolbar:
+
+- Orbit mode (default): left-click drag to rotate, scroll to zoom, middle-click to pan. Camera presets (front, side, top, focus) are available in the toolbar.
+- Follow mode: third-person camera that tracks the phantom. Q/E keys or left-click drag to orbit around the body. Mouse wheel to zoom.
+
+**Phantom.** The sidebar phantom panel lets you switch between body meshes (Duke, Ella, Thelonious, Eartha) and move or rotate the phantom with WASD keys. The dropdown shows IT'IS metadata (age, sex, mass) for each phantom.
+
+**Dosimetry panel.** Choose fidelity level (0-6), tissue preset, transmit power, and number of synthetic paths. Levels 4-6 add polarization, curvature, and diffraction corrections that produce visibly different heatmaps.
+
+**Colormap.** Absorbed power density is rendered as a jet colormap on the body mesh. The legend on the right side supports:
+
+- Linear and dB scale (toggle button). The dB scale maps values logarithmically relative to peak S_ab.
+- Adjustable dynamic range floor in dB mode (default auto-detected from the S_ab distribution).
+- Lock/unlock button to freeze the colormap maximum for comparing across antenna placements or fidelity levels.
+
+**HUD overlay.** The top-right stats card shows whole-body SAR, total absorbed power, peak S_ab, distance, illuminated triangle count, and ICNIRP compliance status. Server resource usage (CPU, RAM, GPU) appears in the bottom-right corner.
+
+**Layers.** Toggle visibility of wireframe overlay, voxel environment, and Sionna scene geometry from the layers panel.
 
 ## Configuration and scenarios
 
@@ -46,30 +79,29 @@ Viewer constants are defined in `src/aegis/viewer/config.py` and merged with you
 - `default_scenario` in JSON selects a scenario when you do not pass `--scenario`.
 - Each scenario has a `description` and a `launch` object (`voxel_dir`, `voxel_json`, `body`, `bbox`, `data_dir`). CLI arguments override the scenario after merge.
 
-The built-in `open_ground` scenario clears voxel paths so you get the body on the ground plane only (synthetic multipath still works in the API).
-
-The UI shows the active scenario name and description when the server injects `active_scenario` (set automatically from the CLI resolution).
+The `open_ground` scenario clears voxel paths so you get the body on a flat surface only.
 
 ## API overview
 
-The browser calls REST endpoints such as:
+The React frontend calls REST endpoints on the Flask backend:
 
-- `GET /api/config` – bodies list, whether voxels and DiffeRT are available, Sionna scene list, compliance-related flags.
-- `GET /api/body`, `GET /api/voxels` – binary mesh and voxel payloads with metadata headers.
-- `POST /api/compute` – synthetic multipath dosimetry (levels 0–6 in the panel).
-- `POST /api/compute/voxel-rt`, `POST /api/compute/rt` – ray-traced paths when DiffeRT and data are available.
+- `GET /api/config` - bodies list, available backends (voxels, DiffeRT, Sionna), scene list, body metadata.
+- `GET /api/body/<name>`, `GET /api/voxels` - binary mesh and voxel payloads with metadata headers.
+- `GET /api/levels`, `GET /api/tissues` - fidelity level catalog and tissue presets.
+- `GET /api/health`, `GET /api/system` - server health check and system resource info.
+- `POST /api/compute` - synthetic multipath dosimetry.
+- `POST /api/compute/voxel-rt`, `POST /api/compute/rt` - DiffeRT ray-traced paths.
+- `POST /api/compute/sionna-rt` - Sionna RT ray-traced paths.
+- `POST /api/body/switch` - switch the active body mesh.
+- `GET /api/location/load` - SSE endpoint for geocoded location loading.
 
 `voxel_rt_available` in `/api/config` is true only when voxel grid data is loaded **and** DiffeRT is importable, so the UI does not offer voxel ray tracing when it would always fail.
 
 ## Coordinates
 
-AEGIS uses **Z-up** in Python; the Three.js client uses **Y-up**. Swaps are applied when serializing body and scene binaries. If you change transforms, verify both the Flask handlers and `index.html` stay consistent.
-
-## QA and known limitations
-
-Manual and automated checks are described in [viewer testing prompt](../internal/viewer_testing_prompt.md) and the [viewer bug report](../internal/viewer_bug_report.md). Treat internal notes as living documents: several older entries have been fixed in code. Prefer the current source for behavior.
+AEGIS uses **Z-up** in Python. The Three.js frontend uses **Y-up**. The Flask backend applies coordinate swaps when serializing body and scene binaries. The frontend applies the inverse when sending positions back (antenna placement, body offset).
 
 ## See also
 
-- [Architecture](../developer_guide/architecture.md) – module layout including `src/aegis/viewer/`.
-- [Testing](../developer_guide/testing.md) – pytest and marks.
+- [Architecture](../developer_guide/architecture.md) - module layout including `src/aegis/viewer/` and `aegis-web/`.
+- [Testing](../developer_guide/testing.md) - pytest and marks.

@@ -82,7 +82,7 @@ For a convex body, the mean projected area over all directions equals one-quarte
 
 $$\langle A_\perp \rangle = \frac{A_{total}}{4}$$
 
-This is the Cauchy formula. For non-convex bodies like a human, the mean projected area is slightly larger due to self-occlusion.
+This is the Cauchy formula. It holds for all closed surfaces, convex or not. The `compute_projected_area` function computes the sum without visibility testing, so it obeys Cauchy exactly. For the true silhouette area (with self-occlusion), the value would be smaller.
 
 ```python
 from aegis.geometry import cauchy_projected_area, mean_projected_area, cauchy_relative_error

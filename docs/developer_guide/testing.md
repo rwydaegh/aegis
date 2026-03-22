@@ -2,20 +2,22 @@
 
 ## Test categories
 
-AEGIS uses five categories of tests:
+AEGIS uses several categories of tests:
 
 - **Golden tests** reproduce monograph table values. Located in `tests/golden/`. These validate the Cole-Cole pipeline against published numerical data.
 - **Property tests** check physics invariants using Hypothesis. These hold for any valid input: T_0 in (0,1), |n| >= 1, T_s and T_p bounded.
 - **Regression tests** compare against the Mie theory analytical solution. The Mie test is the CI canary.
-- **Engine tests** validate the incoherent dosimetry pipeline (Levels 0-6) from PropagationPaths through DosimetryResult on synthetic meshes.
-- **Coherent tests** validate the MIMO pipeline (Levels 7-8), including Q properties, corollaries 4.1-4.2, ECBF constraint satisfaction, and the Precoder dataclass.
+- **Engine tests** validate the incoherent dosimetry pipeline (levels 0-6) from PropagationPaths through DosimetryResult on synthetic meshes.
+- **Coherent tests** validate the MIMO pipeline (levels 7-8), including Q properties, corollaries 4.1-4.2, ECBF constraint satisfaction, and the Precoder dataclass.
+- **Unit tests** cover individual modules: Cole-Cole, compliance, config, paths, backend, Cauchy, integration, Sionna.
+- **Viewer tests** cover config loading, authentication, compute endpoints, and E2E browser testing.
+- **Visualization tests** verify heatmap, dashboard, and comparison plot generation.
 - **E2E tests** (marked slow) run the full pipeline on the Thelonious mesh.
-- **Viewer E2E lab** uses `configs/e2e_lab.json` and a tracked icosahedron STL in `tests/fixtures/e2e_lab/` (no voxel data). Run `test_viewer_e2e.py --profile lab` against a server started with that config; see `configs/README.md`.
 
 ## Running tests
 
 ```bash
-# Fast tests only (~8s, no data dependencies)
+# Fast tests only (~7s, no data dependencies)
 py -3.12 -m pytest tests/ -m "not slow" -x
 
 # All tests including mesh-dependent tests (~30s)
@@ -23,7 +25,7 @@ py -3.12 -m pytest tests/
 
 # Specific subsystems
 py -3.12 -m pytest tests/test_engine.py -v       # Engine + incoherent kernels
-py -3.12 -m pytest tests/test_coherent.py -v      # Coherent MIMO pipeline (26 tests)
+py -3.12 -m pytest tests/test_coherent.py -v      # Coherent MIMO pipeline
 py -3.12 -m pytest tests/test_fresnel.py -v       # Fresnel golden + properties
 py -3.12 -m pytest tests/test_mie.py -v            # Mie regression canary
 py -3.12 -m pytest tests/golden/ -v                # Monograph table reproduction
@@ -31,22 +33,39 @@ py -3.12 -m pytest tests/test_properties.py -v     # Hypothesis property tests
 py -3.12 -m pytest tests/test_geometry.py -v       # Geometry operations
 ```
 
-## Current test inventory (Phase 4)
+## Current test inventory
 
 | File | Tests | Category | Slow |
 |------|-------|----------|------|
 | `test_smoke.py` | 3 | Smoke | No |
-| `test_fresnel.py` | 14 | Golden + property | No |
+| `test_fresnel.py` | 19 | Golden + property | No |
 | `test_tissue.py` | 10 | Unit | No |
+| `test_cole_cole.py` | 8 | Unit | No |
 | `test_properties.py` | 8 | Property (Hypothesis) | No |
-| `test_geometry.py` | 35+7 | Unit + mesh | Partially |
-| `test_engine.py` | 39 | Engine + incoherent kernels | 1 slow |
-| `test_coherent.py` | 26 | Coherent MIMO pipeline | No |
+| `test_geometry.py` | 42 | Unit + mesh | Partially |
+| `test_engine.py` | 35 | Engine + incoherent kernels | 1 slow |
+| `test_coherent.py` | 30 | Coherent MIMO pipeline | No |
+| `test_paths.py` | 4 | Unit | No |
+| `test_compliance.py` | 5 | Unit | No |
+| `test_config.py` | 8 | Unit | No |
+| `test_backend.py` | 5 | Unit | No |
+| `test_cauchy.py` | 1 | Unit | No |
+| `test_integration.py` | 13 | Integration | No |
+| `test_sionna.py` | 5 | Integration | No |
+| `test_run.py` | 4 | CLI | No |
+| `test_viz.py` | 13 | Visualization | No |
+| `test_viewer_config.py` | 7 | Viewer | No |
+| `test_viewer_auth.py` | 4 | Viewer | No |
+| `test_viewer_compute.py` | 2 | Viewer | No |
+| `test_voxel_pipeline.py` | 6 | Viewer | No |
+| `test_voxel_rt_mesh.py` | 14 | Viewer | No |
+| `test_jax_grad.py` | 3 | Unit | No |
+| `test_e2e_lab_fixture.py` | 3 | E2E | No |
 | `golden/test_tables.py` | 11 | Golden | Yes |
 | `test_mie.py` | 4 | Regression | Yes |
-| **Total** | **~150** | | |
+| **Total** | **267** | | |
 
-133 fast tests. 15+ slow/skipped (data-dependent).
+242 fast tests. 25 slow/skipped (data-dependent).
 
 ## Engine test structure
 

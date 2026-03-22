@@ -8,13 +8,13 @@ At mmWave frequencies, tissue behaves as a lossy dielectric characterized by two
 
 $$\tilde{n} = \sqrt{\varepsilon_r - j\frac{\sigma}{\omega \varepsilon_0}}$$
 
-For skin at 28 GHz: $\varepsilon_r = 17.0$, $\sigma = 25.0$ S/m, giving $|\tilde{n}| \approx 5.5$.
+For skin at 28 GHz: $\varepsilon_r = 17.0$, $\sigma = 25.0$ S/m, giving $|\tilde{n}| \approx 4.84$.
 
 ```python
 from aegis.tissue.fresnel import n_complex
 
 n = n_complex(eps_r=17.0, sigma=25.0, freq_hz=28e9)
-print(f"|n| = {abs(n):.2f}")  # 5.49
+print(f"|n| = {abs(n):.2f}")  # 4.84
 ```
 
 ## TissueModel
@@ -37,9 +37,9 @@ Four tissue types are hardcoded from published literature:
 | Tissue | Frequency | $\varepsilon_r$ | $\sigma$ (S/m) | $\mathcal{T}_0$ |
 |--------|-----------|-----------------|-----------------|------------------|
 | `SKIN_28GHZ` | 28 GHz | 17.0 | 25.0 | 0.539 |
-| `SKIN_60GHZ` | 60 GHz | 7.9 | 36.4 | 0.548 |
-| `MUSCLE_28GHZ` | 28 GHz | 25.0 | 30.0 | 0.483 |
-| `FAT_28GHZ` | 28 GHz | 4.0 | 2.0 | 0.822 |
+| `SKIN_60GHZ` | 60 GHz | 7.9 | 36.4 | 0.623 |
+| `MUSCLE_28GHZ` | 28 GHz | 25.0 | 30.0 | 0.493 |
+| `FAT_28GHZ` | 28 GHz | 4.0 | 2.0 | 0.876 |
 
 ```python
 from aegis.tissue import SKIN_28GHZ

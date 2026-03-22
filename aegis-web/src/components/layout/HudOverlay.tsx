@@ -72,31 +72,38 @@ function StatsCard() {
   const sarValue = (stats && massKg) ? (stats.p_abs_mw / 1000) / massKg : null
   const formatSar = (sar: number) => {
     if (sar >= 0.01) return `${sar.toFixed(3)} W/kg`
-    return `${sar.toExponential(1)} W/kg`
+    if (sar >= 1e-5) return `${(sar * 1e3).toFixed(3)} mW/kg`
+    return `${sar.toExponential(2)} W/kg`
   }
 
-  const rows: Array<{ label: string; value: string; highlight?: 'pass' | 'fail' }> = [
+  const rows: Array<{ key: string; label: React.ReactNode; value: string; highlight?: 'pass' | 'fail' }> = [
     {
-      label: 'SAR_wb',
+      key: 'sar_wb',
+      label: <>SAR<sub>wb</sub></>,
       value: sarValue != null ? formatSar(sarValue) : '--',
     },
     {
-      label: 'P_abs',
+      key: 'p_abs',
+      label: <>P<sub>abs</sub></>,
       value: stats ? formatPower(stats.p_abs_mw) : '--',
     },
     {
-      label: 'Peak S_ab',
+      key: 'peak_sab',
+      label: <>Peak S<sub>ab</sub></>,
       value: stats ? formatSab(stats.peak_sab) : '--',
     },
     {
+      key: 'distance',
       label: 'Distance',
       value: stats ? formatDistance(stats.distance_m) : '--',
     },
     {
+      key: 'illuminated',
       label: 'Illuminated',
       value: stats ? `${stats.n_illuminated} / ${stats.n_triangles}` : '--',
     },
     {
+      key: 'compliance',
       label: 'Compliance',
       value: stats ? (stats.compliant ? 'PASS' : 'FAIL') : '--',
       highlight: stats ? (stats.compliant ? 'pass' : 'fail') : undefined,
@@ -109,8 +116,8 @@ function StatsCard() {
         Dosimetry
       </p>
       <dl className="space-y-1">
-        {rows.map(({ label, value, highlight }) => (
-          <div key={label} className="flex items-baseline justify-between gap-3">
+        {rows.map(({ key, label, value, highlight }) => (
+          <div key={key} className="flex items-baseline justify-between gap-3">
             <dt className="text-xs text-muted-foreground shrink-0">{label}</dt>
             <dd
               className={

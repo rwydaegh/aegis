@@ -56,7 +56,7 @@ Nine fidelity levels (0-8) provide a controlled accuracy-cost tradeoff, from $O(
 
     ---
 
-    Golden tests, property tests, Mie regression, and 150+ test cases.
+    Golden tests, property tests, Mie regression, and 260+ test cases.
 
     [:octicons-arrow-right-24: Test guide](developer_guide/testing.md)
 
@@ -67,11 +67,11 @@ Nine fidelity levels (0-8) provide a controlled accuracy-cost tradeoff, from $O(
 ```python
 from aegis import DosimetryEngine, BodyMesh, TissueModel, PropagationPaths
 
-skin = TissueModel.from_database("Skin")
+skin = TissueModel.from_database("Skin", 28e9)
 body = BodyMesh.load("thelonious.stl")
 paths = PropagationPaths.from_powers(k_hat=[[0, 0, -1]], power=[1.0])
 
-engine = DosimetryEngine(skin, frequency=28e9)
+engine = DosimetryEngine(skin)
 result = engine.compute(body, paths, level=2)
 
 print(f"P_abs = {result.p_abs:.4f} W")

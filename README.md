@@ -15,8 +15,8 @@
 [![Python](https://img.shields.io/badge/python-3.11+-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-Apache--2.0-green.svg)](LICENSE)
 [![Tests](https://img.shields.io/badge/tests-250%2B%20cases-brightgreen.svg?logo=pytest)](tests/)
-[![JAX](https://img.shields.io/badge/core-JAX-blue.svg?logo=google&logoColor=white)](https://jax.readthedocs.io/)
-[![Viewer](https://img.shields.io/badge/viewer-Three.js-blue.svg?logo=threedotjs&logoColor=white)](https://threejs.org/)
+[![JAX](https://img.shields.io/badge/optional-JAX-blue.svg?logo=google&logoColor=white)](https://jax.readthedocs.io/)
+[![Viewer](https://img.shields.io/badge/viewer-React%20%2B%20Three.js-blue.svg?logo=react&logoColor=white)](https://react.dev/)
 
 [Getting started](https://rwydaegh.github.io/aegis/getting_started/) | [Documentation](https://rwydaegh.github.io/aegis/) | [3D Viewer](https://rwydaegh.github.io/aegis/user_guide/viewer/)
 
@@ -55,7 +55,7 @@ Nine fidelity levels (0-8) provide a controlled accuracy-cost tradeoff, from O(1
 
 **Coherent MIMO support** - Levels 7-8 handle complex field summation and exposure-constrained beamforming (ECBF) with a QCQP solver. Evaluate real antenna arrays, not just plane waves.
 
-**Interactive 3D viewer** - Flask + Three.js viewer with config-driven scenes, body mesh rendering, voxel environments, and real-time absorbed power density visualization.
+**Interactive 3D viewer** - React + Three.js frontend with a Flask REST backend. Config-driven scenes, body mesh heatmaps, voxel environments, follow camera, and real-time dosimetry visualization with jet colormap (linear/dB).
 
 **Differentiable** - JAX backend with NumPy fallback. `jax.grad` flows through all incoherent levels and the coherent forward path. Optimize antenna placement or beamforming precoders with gradient descent.
 
@@ -160,8 +160,9 @@ src/aegis/
     optim.py           Differentiable loss functions for jax.grad
     compliance/        ICNIRP 2020 limits
     integration/       DiffeRT ray tracer bridge
-    viewer/            Flask + Three.js 3D viewer
+    viewer/            Flask REST backend (compute, data, config APIs)
     viz/               Matplotlib/Plotly dashboards
+aegis-web/             React + Three.js frontend (Vite, R3F, Zustand)
 ```
 
 ---

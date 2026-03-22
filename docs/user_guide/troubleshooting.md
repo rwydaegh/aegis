@@ -8,9 +8,9 @@ Phantom meshes ship in `data/` inside the repo. If you moved them, set **`AEGIS_
 
 ## DiffeRT not installed
 
-Symptoms: `ImportError` when importing `aegis.integration` or running ray-tracer examples.
+Symptoms: `ImportError` when calling `paths_from_differt()` or running ray-tracer examples. The module imports fine, but functions raise at call time if the backend is missing.
 
-Install the extra: `pip install -e ".[rt]"`. The core library and most tests run without DiffeRT; integration tests and live tracing need it.
+Install the extra: `pip install -e ".[rt]"`. The core library and most tests run without DiffeRT. Integration tests and live tracing need it.
 
 ## Port already in use
 
@@ -22,7 +22,7 @@ Change the server port in your viewer config (`server.port` in JSON) or pass **`
 
 Symptoms: viewer loads but wrong scenario, missing keys, or merge behaviour surprises you.
 
-Use **`configs/default.json`** as the reference shape. Scenario blocks only override keys present in the file; unknown keys are not supported. For nested objects, deep merge replaces whole sibling branches where you specify overrides. See [Interactive viewer](viewer.md) and the files under `configs/`.
+Use **`configs/default.json`** as the reference shape. Scenario blocks only override keys present in the file. For nested objects, deep merge is recursive: it only replaces the specific keys you override, preserving sibling keys you did not mention. See [Interactive viewer](viewer.md) and the files under `configs/`.
 
 ## Wrong Python version
 
@@ -32,4 +32,4 @@ AEGIS targets **Python 3.12**. If imports or typing fail on older versions, swit
 
 Messages like “Level 0 requires `A_ab` and `D_max`” mean the kernel needs precomputed geometry. Either supply those arguments to `DosimetryEngine.compute` or use a level that matches your inputs (e.g. 2 or 3 with only mesh plus `PropagationPaths`).
 
-Coherent levels **7 and 8** need `Precoder` and, for level 8, the UE channel vector `h`. Scalar-power paths alone are not enough.
+Level **7** requires a `Precoder`. Level **8** requires the UE channel vector `h` (the precoder is optional, defaulting to unit power). Both need full complex `psi` paths, not scalar power.

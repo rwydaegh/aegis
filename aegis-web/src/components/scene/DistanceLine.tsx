@@ -2,20 +2,27 @@ import { useMemo } from 'react'
 import * as THREE from 'three'
 import { Line } from '@react-three/drei'
 import { useSimulationStore } from '@/stores/simulation'
+import { useSceneStore } from '@/stores/scene'
 import { formatDistance } from '@/lib/format'
 
 export default function DistanceLine() {
   const antennaPos = useSimulationStore(s => s.antennaPos)
   const bodyOffset = useSimulationStore(s => s.bodyOffset)
   const stats = useSimulationStore(s => s.stats)
+  const config = useSceneStore(s => s.viewerConfig)
+
+  const poleH = (config?.antenna as any)?.pole_height ?? 2
+  const antennaTip: [number, number, number] | null = antennaPos
+    ? [antennaPos[0], antennaPos[1] + poleH, antennaPos[2]]
+    : null
 
   const bodyCenter: [number, number, number] = [bodyOffset[0], bodyOffset[1] + 0.6, bodyOffset[2]]
 
-  const midpoint: [number, number, number] = antennaPos
+  const midpoint: [number, number, number] = antennaTip
     ? [
-        (antennaPos[0] + bodyCenter[0]) / 2,
-        (antennaPos[1] + bodyCenter[1]) / 2 + 0.2,
-        (antennaPos[2] + bodyCenter[2]) / 2,
+        (antennaTip[0] + bodyCenter[0]) / 2,
+        (antennaTip[1] + bodyCenter[1]) / 2 + 0.2,
+        (antennaTip[2] + bodyCenter[2]) / 2,
       ]
     : [0, 0, 0]
 
@@ -44,11 +51,11 @@ export default function DistanceLine() {
     return texture
   }, [label])
 
-  if (!antennaPos) return null
+  if (!antennaTip) return null
 
   const points: [number, number, number][] = [
-    [antennaPos[0], antennaPos[1], antennaPos[2]],
-    [bodyCenter[0], bodyCenter[1], bodyCenter[2]],
+    antennaTip,
+    bodyCenter,
   ]
 
   return (

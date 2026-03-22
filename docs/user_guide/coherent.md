@@ -129,13 +129,14 @@ Averaging Level 7 over many random phase realizations converges to the incoheren
 
 Level 8 solves a QCQP to find the precoder maximizing signal power subject to an absorption constraint:
 
-$$\max_{\mathbf{x}} |\mathbf{h}^T \mathbf{x}|^2 \quad \text{s.t.} \quad \mathbf{x}^H \mathbf{Q} \mathbf{x} \le P_{abs}^{max}, \quad \|\mathbf{x}\|^2 \le P$$
+$$\max_{\mathbf{x}} |\mathbf{h}^H \mathbf{x}|^2 \quad \text{s.t.} \quad \mathbf{x}^H \mathbf{Q} \mathbf{x} \le P_{abs}^{max}, \quad \|\mathbf{x}\|^2 \le P$$
 
 ```python
 result = engine.compute(body, paths, level=8, h=h, P_abs_max=0.05)
 
 print(f"P_abs = {result.p_abs:.4f} W")  # <= 0.05
+print(f"x_star = {result.x_star}")      # optimal precoder
 print(f"rho = {result.rho:.3f}")
 ```
 
-The solver works in the Q eigenbasis and finds the optimal Lagrange multiplier via Brent's bisection method. When the MRT precoder already satisfies the constraint, ECBF returns MRT (it is the unconstrained optimum).
+The solver works in the Q eigenbasis and finds the optimal Lagrange multiplier via bisection. When the MRT precoder already satisfies the constraint, ECBF returns MRT (it is the unconstrained optimum).

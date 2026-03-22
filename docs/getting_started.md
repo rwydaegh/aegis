@@ -137,7 +137,7 @@ Level 8 solves a QCQP to find the precoder that maximizes signal power while kee
 
 ```python
 for level in range(7):
-    r = engine.compute(body, paths, level=level, ...)
+    r = engine.compute(body, paths, level=level)
     print(f"Level {level}: P_abs = {r.p_abs:.4f} W, peak = {r.peak_sab:.2f} W/m²")
 ```
 
@@ -162,7 +162,7 @@ See [Interactive viewer](user_guide/viewer.md) for scenarios, ports, and API ove
 
 ## Where to go next
 
-- [Interactive viewer](user_guide/viewer.md) for the Flask + Three.js UI
+- [Interactive viewer](user_guide/viewer.md) for the 3D visualization UI
 - [Fidelity levels](user_guide/fidelity_levels.md) for detailed physics of each level
 - [Tissue and Fresnel](user_guide/tissue.md) for dielectric properties and transmission coefficients
 - [Geometry](user_guide/geometry.md) for mesh operations, occlusion, and spatial averaging

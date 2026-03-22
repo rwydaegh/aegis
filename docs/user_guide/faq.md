@@ -19,7 +19,7 @@ There is no separate plugin registry. Your code holds the `TissueModel` instance
 
 **Python and NumPy geometry in AEGIS use Z-up** (e.g. STL vertices, `BodyMesh`, ray directions in API examples).
 
-The **browser viewer uses Three.js**, which by convention is **Y-up** in the 3D view. Internal transforms bridge the two; when you compare numeric vectors from Python to what you see on screen, expect axes to be permuted in the visualiser.
+The **browser viewer uses Three.js**, which by convention is **Y-up** in the 3D view. Internal transforms bridge the two. When you compare numeric vectors from Python to what you see on screen, expect axes to be permuted in the visualiser.
 
 ## How do I export dosimetry results?
 

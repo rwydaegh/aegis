@@ -21,6 +21,8 @@ py -3.12 -m mkdocs serve                              # local docs preview
 py -3.12 -m aegis.viewer --location "Ghent, Belgium"   # launch 3D viewer
 py -3.12 -m aegis.viewer --config configs/my.json      # custom config JSON
 py -3.12 -m aegis.viewer --scenario open_ground        # named scenario from config
+cd aegis-web && npm run dev                            # React frontend dev server (localhost:5173)
+cd aegis-web && npm run build                          # production build -> aegis-web/dist/
 ```
 
 ## Architecture
@@ -37,7 +39,8 @@ The data flow is: ray tracer -> `PropagationPaths` -> `DosimetryEngine.compute(b
 - `src/aegis/coherent/` - field channel, exposure operator Q, ECBF solver
 - `src/aegis/compliance/` - ICNIRP 2020 limits
 - `src/aegis/integration/` - DiffeRT ray tracer bridge (requires `pip install aegis[rt]`)
-- `src/aegis/viewer/` - Flask + Three.js 3D viewer (config-driven, `configs/default.json`)
+- `src/aegis/viewer/` - Flask backend: REST API, config-driven (`configs/default.json`)
+- `aegis-web/` - React + Three.js frontend (Vite, R3F, Zustand). Dev: `npm run dev` from `aegis-web/`
 - `src/aegis/viz/` - matplotlib/plotly dashboards and comparison plots
 
 ## Theory (the monograph)
@@ -46,19 +49,6 @@ All theory lives in `../monograph/`. Read before implementing physics.
 
 - `../monograph/monograph_v2.tex` - the full monograph (~6000 lines LaTeX). Single source of truth for all equations, tables, proofs, and fidelity level definitions.
 - `../monograph/summary_paper.tex` - condensed version (~1100 lines), good for quick reference
-- `../monograph/factcheck_fixes.md` - corrections applied after fact-checking
-
-Design documents: `docs/internal/project_proposal.md`, `docs/internal/implementation_plan.md`, `docs/internal/plan.md`.
-
-## Ground truth (scripts)
-
-The `../scripts/` directory contains 40+ standalone research scripts that produce correct results. Every extraction into `src/aegis/` must be validated against the original script output. Key oracle scripts:
-
-- `../scripts/_fresnel.py` - Fresnel transmission (T0, Ts, Tp)
-- `../scripts/_geom.py` - STL loading, triangle areas
-- `../scripts/apd_pipeline.py` - full APD computation
-- `../scripts/mie_theory_corrected.py` - Mie validation + IT'IS database
-- `../scripts/verify_tables.py` - monograph table values
 
 ## Data
 
@@ -74,7 +64,7 @@ Phantom meshes (STL) and the IT'IS tissue database live in `data/` inside the re
 
 ## Style
 
-- NumPy-only core (no JAX yet). Clean path to JAX later.
+- NumPy + SciPy core, optional JAX backend (`_array_backend.py`). Frontend is TypeScript/React.
 - Type annotations on public API. No docstrings on private helpers unless non-obvious.
 - No em dashes, no semicolons. Sentence case for headings.
 - Writing tells to avoid: `.claude/ai_writing_tells.md`. Full doc style: `.claude/rules/docs-style.md`.
