@@ -10,7 +10,34 @@ from flask import Flask, Response, jsonify, request
 from aegis.compliance import ICNIRP_2020
 
 
-def _build_stats_response(result, body, tissue, level, extra=None):
+def _parse_mode_or_level(params: dict, default_level: int = 2) -> dict:
+    """Extract mode+corrections or level from request params.
+
+    Returns a dict with either {'level': int} or {'mode': str, ...corrections}.
+    """
+    mode = params.get("mode")
+    if mode is not None:
+        out: dict = {"mode": mode}
+        if mode == "spatial":
+            out["fresnel"] = bool(params.get("fresnel", True))
+            out["polarisation"] = bool(params.get("polarisation", False))
+            out["curvature"] = bool(params.get("curvature", False))
+            out["diffraction"] = bool(params.get("diffraction", False))
+        return out
+    level = params.get("level", default_level)
+    return {"level": int(level)}
+
+
+def _stats_label(engine_kwargs: dict) -> tuple:
+    """Return (level_int, mode_str, corrections_list) for stats response."""
+    if "mode" in engine_kwargs:
+        mode = engine_kwargs["mode"]
+        corrections = [k for k in ("fresnel", "polarisation", "curvature", "diffraction") if engine_kwargs.get(k)]
+        return (None, mode, corrections)
+    return (engine_kwargs.get("level", 2), None, [])
+
+
+def _build_stats_response(result, body, tissue, level, extra=None, mode=None, corrections=None):
     """Build the X-Stats JSON dict from a DosimetryResult."""
     stats = {
         "p_abs": float(result.p_abs),
@@ -19,9 +46,13 @@ def _build_stats_response(result, body, tissue, level, extra=None):
         "compliant": bool(result.peak_sab < ICNIRP_2020.sab_peak),
         "n_illuminated": int(np.sum(result.sab > 0)),
         "n_triangles": body.n_triangles,
-        "level": level,
+        "level": level if level is not None else 0,
         "T0": float(tissue.T0),
     }
+    if mode is not None:
+        stats["mode"] = mode
+    if corrections:
+        stats["corrections"] = corrections
     if extra:
         stats.update(extra)
     return stats
@@ -78,12 +109,27 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         pwr_cfg = dcfg["power_input"]
         allowed_n_paths = {int(opt["value"]) for opt in dcfg["path_options"]}
 
-        try:
-            level = int(params.get("level", dcfg["default_level"]))
-        except (TypeError, ValueError):
-            return jsonify({"error": "level must be an integer"}), 400
-        if level not in range(0, 9):
-            return jsonify({"error": "level must be between 0 and 8"}), 400
+        # Accept mode + correction flags (new API) or level (legacy)
+        mode = params.get("mode")
+        if mode is not None:
+            if mode not in ("bound", "aggregate", "spatial"):
+                return jsonify({"error": "mode must be one of: bound, aggregate, spatial"}), 400
+            corrections = {
+                "fresnel": bool(params.get("fresnel", True)),
+                "polarisation": bool(params.get("polarisation", False)),
+                "curvature": bool(params.get("curvature", False)),
+                "diffraction": bool(params.get("diffraction", False)),
+            }
+            level = None
+        else:
+            try:
+                level = int(params.get("level", dcfg["default_level"]))
+            except (TypeError, ValueError):
+                return jsonify({"error": "level must be an integer"}), 400
+            if level not in range(0, 9):
+                return jsonify({"error": "level must be between 0 and 8"}), 400
+            mode = None
+            corrections = None
 
         try:
             power_dbm = float(params.get("power_dbm", dcfg["default_power_dbm"]))
@@ -115,6 +161,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             body_offset=np.array(body_offset),
             body_rotation_y=float(body_rotation_y),
             level=level,
+            mode=mode,
+            corrections=corrections,
             tissue=tissue,
             power_dbm=power_dbm,
             n_paths=n_paths,
@@ -237,7 +285,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         params = request.get_json()
         antenna_pos = np.array(params.get("antenna_pos", [5, 0, 1]))
         scene_path = params.get("scene_path")
-        level = params.get("level", 2)
+        engine_kw = _parse_mode_or_level(params)
         tissue_name = params.get("tissue", "skin_28ghz")
         power_dbm = params.get("power_dbm", 30.0)
         max_order = params.get("max_order", 1)
@@ -253,9 +301,13 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
             tissue = SKIN_28GHZ
 
-        # Transform body mesh and compute center for ray tracing receiver
+        # RT receiver: use configured default center (z=1m) shifted by body offset
+        # (body centroid mean is ~z=-0.38, below floors of most Sionna scenes)
+        default_bc = np.array(cache["config"]["raytracer"]["default_body_center"])
+        body_center = default_bc + body_offset
+
+        # Transform body mesh for dosimetry engine
         transformed_body = _transform_body_for_viewer(body, body_offset, body_rotation_y)
-        body_center = transformed_body.centroids.mean(axis=0)
 
         # Run DiffeRT
         try:
@@ -270,14 +322,15 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         except Exception as e:
             return jsonify({"error": f"Ray tracing failed: {e}"}), 500
 
+        level_val, mode_val, corr_val = _stats_label(engine_kw)
         if paths.n_paths == 0:
-            return _zero_paths_response(body, tissue, level)
+            return _zero_paths_response(body, tissue, level_val or 0)
 
         # Run dosimetry engine on the transformed body
         from aegis.engine import DosimetryEngine
 
         engine = DosimetryEngine(tissue)
-        result = engine.compute(transformed_body, paths, level=level)
+        result = engine.compute(transformed_body, paths, **engine_kw)
 
         sab_bytes = result.sab.astype(np.float32).tobytes()
         dist = float(np.linalg.norm(antenna_pos - body_center))
@@ -287,7 +340,9 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             result,
             body,
             tissue,
-            level,
+            level_val,
+            mode=mode_val,
+            corrections=corr_val,
             extra={
                 "S_inc": total_power,
                 "distance_m": dist,
@@ -320,7 +375,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         params = request.get_json()
         antenna_pos = np.array(params.get("antenna_pos", [5, 0, 1]))
         scene_path = params.get("scene_path")
-        level = params.get("level", 2)
+        engine_kw = _parse_mode_or_level(params)
         tissue_name = params.get("tissue", "skin_28ghz")
         power_dbm = params.get("power_dbm", 30.0)
         max_bounces = params.get("max_order", 5)
@@ -336,9 +391,12 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
             tissue = SKIN_28GHZ
 
-        # Transform body and compute center for ray tracing receiver
+        # RT receiver: use configured default center (z=1m) shifted by body offset
+        default_bc = np.array(cache["config"]["raytracer"]["default_body_center"])
+        body_center = default_bc + body_offset
+
+        # Transform body mesh for dosimetry engine
         transformed_body = _transform_body_for_viewer(body, body_offset, body_rotation_y)
-        body_center = transformed_body.centroids.mean(axis=0)
 
         try:
             import sionna.rt
@@ -357,13 +415,14 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         except Exception as e:
             return jsonify({"error": f"Sionna ray tracing failed: {e}"}), 500
 
+        level_val, mode_val, corr_val = _stats_label(engine_kw)
         if paths.n_paths == 0:
-            return _zero_paths_response(body, tissue, level)
+            return _zero_paths_response(body, tissue, level_val or 0)
 
         from aegis.engine import DosimetryEngine
 
         engine = DosimetryEngine(tissue)
-        result = engine.compute(transformed_body, paths, level=level)
+        result = engine.compute(transformed_body, paths, **engine_kw)
 
         sab_bytes = result.sab.astype(np.float32).tobytes()
         dist = float(np.linalg.norm(antenna_pos - body_center))
@@ -373,12 +432,14 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             result,
             body,
             tissue,
-            level,
+            level_val,
+            mode=mode_val,
+            corrections=corr_val,
             extra={
                 "S_inc": total_power,
                 "distance_m": dist,
                 "n_rt_paths": paths.n_paths,
-                "path_viz": [],  # Sionna does not provide path vertex visualization
+                "path_viz": [],
                 "backend": "sionna",
             },
         )
@@ -414,7 +475,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         antenna_pos = np.array(params.get("antenna_pos", [5, 0, 1]))
         body_offset = np.array(params.get("body_offset", [0, 0, 0]), dtype=np.float64)
         body_rotation_y = float(params.get("body_rotation_y", 0.0))
-        level = params.get("level", 2)
+        engine_kw = _parse_mode_or_level(params)
         tissue_name = params.get("tissue", "skin_28ghz")
         power_dbm = params.get("power_dbm", 30.0)
         max_order = params.get("max_order", 0)
@@ -531,8 +592,9 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         except Exception as e:
             return jsonify({"error": f"Voxel RT failed: {e}"}), 500
 
+        level_val, mode_val, corr_val = _stats_label(engine_kw)
         if not all_k_hat:
-            return _zero_paths_response(body, tissue, level)
+            return _zero_paths_response(body, tissue, level_val or 0)
 
         from aegis.engine import DosimetryEngine
         from aegis.paths import PropagationPaths
@@ -554,7 +616,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         else:
             rt_body = body
 
-        result = engine.compute(rt_body, paths, level=level)
+        result = engine.compute(rt_body, paths, **engine_kw)
 
         sab_bytes = result.sab.astype(np.float32).tobytes()
         dist = float(np.linalg.norm(antenna_pos - body_center))
@@ -563,7 +625,9 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             result,
             body,
             tissue,
-            level,
+            level_val,
+            mode=mode_val,
+            corrections=corr_val,
             extra={
                 "S_inc": float(np.sum(all_power)),
                 "distance_m": dist,
