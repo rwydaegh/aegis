@@ -1,4 +1,4 @@
-import { PanelLeft, Box, AlignCenter, AlignJustify, LayoutGrid, Focus, RotateCcw } from 'lucide-react'
+import { PanelLeft, Box, AlignCenter, AlignJustify, LayoutGrid, Focus, RotateCcw, Video } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { useSimulationStore } from '@/stores/simulation'
@@ -48,7 +48,7 @@ const CAMERA_PRESETS: Array<{ preset: CameraPreset & string; label: string; icon
 export default function Toolbar() {
   const { level, stats } = useSimulationStore()
   const { viewerConfig } = useSceneStore()
-  const { sidebarOpen, wireframe, toggleSidebar, toggleWireframe, setCameraPreset } = useUIStore()
+  const { sidebarOpen, wireframe, cameraMode, toggleSidebar, toggleWireframe, setCameraPreset, setCameraMode } = useUIStore()
 
   const uiConfig = viewerConfig?.ui as Record<string, unknown> | undefined
   const scenario = typeof uiConfig?.scenario === 'string' ? uiConfig.scenario : null
@@ -75,23 +75,41 @@ export default function Toolbar() {
         <LevelPill level={level} config={viewerConfig} />
       </div>
 
-      {/* Center: camera presets */}
-      <div className="flex items-center gap-0.5 shrink-0 border border-border rounded-md p-0.5">
-        {CAMERA_PRESETS.map(({ preset, label, icon }) => (
-          <Tooltip key={preset}>
-            <TooltipTrigger
-              onClick={() => handleCameraPreset(preset)}
-              className={cn(
-                'inline-flex items-center justify-center size-7 rounded transition-colors',
-                'hover:bg-muted text-muted-foreground hover:text-foreground',
-              )}
-              aria-label={label}
-            >
-              {icon}
-            </TooltipTrigger>
-            <TooltipContent>{label}</TooltipContent>
-          </Tooltip>
-        ))}
+      {/* Center: camera mode + presets */}
+      <div className="flex items-center gap-1 shrink-0">
+        <Tooltip>
+          <TooltipTrigger
+            onClick={() => setCameraMode(cameraMode === 'orbit' ? 'follow' : 'orbit')}
+            className={cn(
+              'inline-flex items-center justify-center size-7 rounded-md border transition-colors',
+              cameraMode === 'follow'
+                ? 'bg-primary/15 border-primary/30 text-primary'
+                : 'border-border hover:bg-muted text-muted-foreground hover:text-foreground',
+            )}
+            aria-label="Toggle follow camera"
+          >
+            <Video className="size-4" />
+          </TooltipTrigger>
+          <TooltipContent>{cameraMode === 'follow' ? 'Free camera' : 'Follow camera'}</TooltipContent>
+        </Tooltip>
+
+        <div className="flex items-center gap-0.5 border border-border rounded-md p-0.5">
+          {CAMERA_PRESETS.map(({ preset, label, icon }) => (
+            <Tooltip key={preset}>
+              <TooltipTrigger
+                onClick={() => handleCameraPreset(preset)}
+                className={cn(
+                  'inline-flex items-center justify-center size-7 rounded transition-colors',
+                  'hover:bg-muted text-muted-foreground hover:text-foreground',
+                )}
+                aria-label={label}
+              >
+                {icon}
+              </TooltipTrigger>
+              <TooltipContent>{label}</TooltipContent>
+            </Tooltip>
+          ))}
+        </div>
       </div>
 
       {/* Right: icon buttons */}

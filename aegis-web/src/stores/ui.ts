@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 
 export type CameraPreset = 'front' | 'side' | 'top' | 'focus' | 'reset' | null
+export type CameraMode = 'orbit' | 'follow'
 export type LegendScale = 'linear' | 'dB'
 
 interface UIStore {
@@ -12,6 +13,7 @@ interface UIStore {
   locationLog: string[]
   statusMessage: string | null
   cameraPreset: CameraPreset
+  cameraMode: CameraMode
   legendScale: LegendScale
   dynamicRangeDb: number
 
@@ -24,6 +26,7 @@ interface UIStore {
   clearLocationLog: () => void
   setStatusMessage: (msg: string | null) => void
   setCameraPreset: (preset: CameraPreset) => void
+  setCameraMode: (mode: CameraMode) => void
   toggleLegendScale: () => void
   setDynamicRangeDb: (db: number) => void
 }
@@ -37,6 +40,7 @@ export const useUIStore = create<UIStore>((set) => ({
   locationLog: [],
   statusMessage: null,
   cameraPreset: null,
+  cameraMode: 'orbit',
   legendScale: 'linear',
   dynamicRangeDb: 30,
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
@@ -49,6 +53,7 @@ export const useUIStore = create<UIStore>((set) => ({
   clearLocationLog: () => set({ locationLog: [] }),
   setStatusMessage: (msg) => set({ statusMessage: msg }),
   setCameraPreset: (preset) => set({ cameraPreset: preset }),
+  setCameraMode: (mode) => set({ cameraMode: mode }),
   toggleLegendScale: () => set((state) => ({
     legendScale: state.legendScale === 'linear' ? 'dB' : 'linear',
   })),

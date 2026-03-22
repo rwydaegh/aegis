@@ -16,6 +16,7 @@ import RayPaths from './RayPaths'
 import VoxelField from './VoxelField'
 import SceneGeometry from './SceneGeometry'
 import Environment from './Environment'
+import FollowCamera from './FollowCamera'
 
 // Body is roughly 1.2 m tall, centered at origin, feet at y=0
 const BODY_TARGET = new THREE.Vector3(0, 0.6, 0)
@@ -185,6 +186,7 @@ function PhysicsController() {
 export default function SceneRoot() {
   const config = useSceneStore(s => s.viewerConfig)
   const bodyOffset = useSimulationStore(s => s.bodyOffset)
+  const cameraMode = useUIStore(s => s.cameraMode)
   if (!config) return null
 
   const cam = config.camera
@@ -221,9 +223,14 @@ export default function SceneRoot() {
       <RayPaths />
       <DosimetryController />
       <PhysicsController />
-      <OrbitControls ref={controlsRef} makeDefault enableDamping />
-      <CameraController controlsRef={controlsRef} initialPosition={initialPosition} />
-      <CameraInitializer controlsRef={controlsRef} initialOffset={bodyOffset} />
+      <FollowCamera />
+      {cameraMode === 'orbit' && (
+        <>
+          <OrbitControls ref={controlsRef} makeDefault enableDamping />
+          <CameraController controlsRef={controlsRef} initialPosition={initialPosition} />
+          <CameraInitializer controlsRef={controlsRef} initialOffset={bodyOffset} />
+        </>
+      )}
     </Canvas>
   )
 }
