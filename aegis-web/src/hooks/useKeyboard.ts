@@ -61,16 +61,15 @@ export function useKeyboard(): KeyState {
 
     function updateState() {
       const keys = keysRef.current
-      stateRef.current = {
-        forward: keys.has('KeyW'),
-        back: keys.has('KeyS'),
-        left: keys.has('KeyA'),
-        right: keys.has('KeyD'),
-        rotLeft: keys.has('KeyQ'),
-        rotRight: keys.has('KeyE'),
-        jump: keys.has('Space'),
-        sprint: keys.has('ShiftLeft') || keys.has('ShiftRight'),
-      }
+      const s = stateRef.current
+      s.forward = keys.has('KeyW')
+      s.back = keys.has('KeyS')
+      s.left = keys.has('KeyA')
+      s.right = keys.has('KeyD')
+      s.rotLeft = keys.has('KeyQ')
+      s.rotRight = keys.has('KeyE')
+      s.jump = keys.has('Space')
+      s.sprint = keys.has('ShiftLeft') || keys.has('ShiftRight')
     }
 
     window.addEventListener('keydown', handleKeyDown)

@@ -10,8 +10,9 @@ export function usePhysics() {
   const keys = useKeyboard()
   const { camera } = useThree()
 
+  const initialOffset = useSimulationStore(s => s.bodyOffset)
   const physicsState = useRef<PhysicsState>({
-    position: [0, 0, 0],
+    position: [...initialOffset],
     velocity: [0, 0, 0],
     rotationY: 0,
     angularVelocity: 0,
