@@ -1,6 +1,7 @@
 import { useRef } from 'react'
 import { Canvas, useThree, useFrame } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
+import type { ThreeEvent } from '@react-three/fiber'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import * as THREE from 'three'
 import { useSceneStore } from '@/stores/scene'
@@ -130,7 +131,41 @@ function SceneLighting() {
   )
 }
 
-// Ground plane removed - voxels and scene geometry provide their own ground.
+/** Invisible click plane for antenna placement. No visual rendering. */
+function ClickPlane() {
+  const config = useSceneStore(s => s.viewerConfig)
+  const pointerDownPos = useRef<{ x: number; y: number } | null>(null)
+
+  const handlePointerDown = (e: ThreeEvent<PointerEvent>) => {
+    pointerDownPos.current = { x: e.clientX, y: e.clientY }
+  }
+
+  const handlePointerUp = (e: ThreeEvent<PointerEvent>) => {
+    if (!pointerDownPos.current || !config) return
+    const dx = e.clientX - pointerDownPos.current.x
+    const dy = e.clientY - pointerDownPos.current.y
+    const dist = Math.sqrt(dx * dx + dy * dy)
+    const threshold = config.interaction.click_max_drag_px ?? 5
+
+    if (dist <= threshold && e.intersections.length > 0) {
+      const point = e.intersections[0].point
+      useSimulationStore.getState().setAntennaPos([point.x, point.y, point.z])
+    }
+    pointerDownPos.current = null
+  }
+
+  return (
+    <mesh
+      rotation={[-Math.PI / 2, 0, 0]}
+      position={[0, 0, 0]}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+    >
+      <planeGeometry args={[500, 500]} />
+      <meshBasicMaterial visible={false} />
+    </mesh>
+  )
+}
 
 /**
  * On mount, move the camera + orbit target to look at the body's actual position.
@@ -201,6 +236,7 @@ export default function SceneRoot() {
     >
       <color attach="background" args={[config.scene.background_color ?? '#0a0a0f']} />
       <SceneLighting />
+      <ClickPlane />
       <VoxelField />
       <SceneGeometry />
       <Environment />
