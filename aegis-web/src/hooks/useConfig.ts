@@ -37,11 +37,13 @@ export function useConfig() {
 
         useSimulationStore.setState(simState)
 
-        // Load available scene paths (server returns {name, path} objects)
+        // Load available scenes (server returns {name, path} objects)
         const rawScenes = (caps as any).scenes
         if (rawScenes?.length > 0) {
-          const paths = rawScenes.map((s: any) => typeof s === 'string' ? s : s.path)
-          useSceneStore.setState({ scenePaths: paths })
+          const scenes = rawScenes.map((s: any) =>
+            typeof s === 'string' ? { name: s.split(/[/\\]/).pop()?.replace('.xml', '') ?? s, path: s } : { name: s.name, path: s.path }
+          )
+          useSceneStore.setState({ scenes })
         }
 
         setStatus('ready')

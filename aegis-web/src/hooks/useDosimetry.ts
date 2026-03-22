@@ -18,7 +18,7 @@ export function useDosimetry() {
   const rtEnabled = useSceneStore(s => s.rtEnabled)
   const rtSource = useSceneStore(s => s.rtSource)
   const rtMaxOrder = useSceneStore(s => s.rtMaxOrder)
-  const scenePaths = useSceneStore(s => s.scenePaths)
+  const loadedScenePath = useSceneStore(s => s.loadedScenePath)
 
   const abortRef = useRef<AbortController | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -36,8 +36,12 @@ export function useDosimetry() {
     const setComputing = useUIStore.getState().setComputing
     setComputing(true)
 
+    // Send antenna tip position (not pole base) to the backend for physics
+    const poleH = (config.antenna as Record<string, unknown>)?.pole_height as number ?? 2
+    const antennaTip: typeof antennaPos = [antennaPos[0], antennaPos[1] + poleH, antennaPos[2]]
+
     const params = {
-      antennaPos,
+      antennaPos: antennaTip,
       bodyOffset,
       bodyRotationY,
       level,
@@ -52,13 +56,12 @@ export function useDosimetry() {
 
     // Choose endpoint based on RT state
     let computeCall: Promise<{ sab: Float32Array; stats: import('@/api/types').DosimetryStats }>
-    const scenePath = scenePaths[0] ?? ''
     if (rtEnabled && rtSource === 'voxel') {
       computeCall = computeVoxelRT({ ...params, maxOrder: rtMaxOrder }, controller.signal)
-    } else if (rtEnabled && rtSource === 'sionna' && caps?.has_sionna && scenePath) {
-      computeCall = computeSionnaRT({ ...params, scenePath }, controller.signal)
-    } else if (rtEnabled && rtSource === 'sionna' && scenePath) {
-      computeCall = computeRT({ ...params, scenePath, maxOrder: rtMaxOrder }, controller.signal)
+    } else if (rtEnabled && rtSource === 'differt' && loadedScenePath) {
+      computeCall = computeRT({ ...params, scenePath: loadedScenePath, maxOrder: rtMaxOrder }, controller.signal)
+    } else if (rtEnabled && rtSource === 'sionna' && loadedScenePath) {
+      computeCall = computeSionnaRT({ ...params, scenePath: loadedScenePath }, controller.signal)
     } else {
       computeCall = computeDosimetry(params, controller.signal)
     }
@@ -79,7 +82,7 @@ export function useDosimetry() {
         clearTimeout(timeoutId)
         if (gen === generationRef.current) setComputing(false)
       })
-  }, [antennaPos, level, powerDbm, tissue, nPaths, bodyOffset, bodyRotationY, config, caps, rtEnabled, rtSource, rtMaxOrder, scenePaths])
+  }, [antennaPos, level, powerDbm, tissue, nPaths, bodyOffset, bodyRotationY, config, caps, rtEnabled, rtSource, rtMaxOrder, loadedScenePath])
 
   // Debounced trigger on any dependency change
   useEffect(() => {

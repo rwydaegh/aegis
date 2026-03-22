@@ -4,11 +4,11 @@ import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
 
 function SionnaSceneSelector() {
-  const scenePaths = useSceneStore(s => s.scenePaths)
+  const scenes = useSceneStore(s => s.scenes)
   const [selected, setSelected] = useState('')
   const [loading, setLoading] = useState(false)
 
-  if (scenePaths.length === 0) return null
+  if (scenes.length === 0) return null
 
   const selectClass = "w-full bg-background border border-border rounded px-2 py-1.5 text-sm text-foreground"
   const labelClass = "text-xs text-muted-foreground block mb-1"
@@ -23,6 +23,7 @@ function SionnaSceneSelector() {
         indices: result.indices,
         faceColors: result.faceColors,
       })
+      useSceneStore.getState().setLoadedScenePath(selected)
     } catch (err) {
       console.error('Failed to load scene:', err)
     }
@@ -34,8 +35,8 @@ function SionnaSceneSelector() {
       <label className={labelClass}>Sionna scene</label>
       <select className={selectClass} value={selected} onChange={e => setSelected(e.target.value)}>
         <option value="">Select a scene...</option>
-        {scenePaths.map(p => (
-          <option key={p} value={p}>{p.split('/').pop()?.replace('.xml', '') ?? p}</option>
+        {scenes.map(s => (
+          <option key={s.path} value={s.path}>{s.name}</option>
         ))}
       </select>
       <button
@@ -51,7 +52,7 @@ function SionnaSceneSelector() {
 
 export default function ScenePanel() {
   const caps = useSceneStore(s => s.capabilities)
-  const scenePaths = useSceneStore(s => s.scenePaths)
+  const scenes = useSceneStore(s => s.scenes)
   const locationLoading = useUIStore(s => s.locationLoading)
   const locationLog = useUIStore(s => s.locationLog)
 
@@ -61,7 +62,7 @@ export default function ScenePanel() {
   const esRef = useRef<EventSource | null>(null)
 
   // Show Sionna scene selector even when location loading is unavailable
-  const hasScenes = scenePaths.length > 0
+  const hasScenes = scenes.length > 0
   const hasLocation = caps?.has_location_loader
 
   if (!hasScenes && !hasLocation) {

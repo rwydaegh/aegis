@@ -24,7 +24,7 @@ interface SceneStore {
   envDisplayMode: 'cubes' | 'hull' | 'tiles'
 
   // Sionna scenes
-  scenePaths: string[]
+  scenes: { name: string; path: string }[]
   sceneGeometry: {
     vertices: Float32Array
     indices: Int32Array
@@ -37,10 +37,11 @@ interface SceneStore {
 
   // Ray tracing
   rtEnabled: boolean
-  rtSource: 'voxel' | 'sionna'
+  rtSource: 'voxel' | 'differt' | 'sionna'
   rtMaxOrder: number
   rtPaths: PathViz[] | null
   hasDiffert: boolean
+  loadedScenePath: string
 
   // Actions
   setViewerConfig: (config: ViewerConfig) => void
@@ -51,7 +52,7 @@ interface SceneStore {
   setVoxelHeightmap: (fn: SceneStore['voxelHeightmap']) => void
   toggleLayer: (material: string) => void
   setEnvDisplayMode: (mode: SceneStore['envDisplayMode']) => void
-  setScenePaths: (paths: string[]) => void
+  setScenes: (scenes: SceneStore['scenes']) => void
   setSceneGeometry: (geom: SceneStore['sceneGeometry']) => void
   toggleSceneGeometryVisible: () => void
   setGlbTiles: (tiles: string[]) => void
@@ -59,6 +60,7 @@ interface SceneStore {
   setRtSource: (source: SceneStore['rtSource']) => void
   setRtMaxOrder: (order: number) => void
   setRtPaths: (paths: PathViz[] | null) => void
+  setLoadedScenePath: (path: string) => void
 }
 
 export const useSceneStore = create<SceneStore>((set) => ({
@@ -70,15 +72,16 @@ export const useSceneStore = create<SceneStore>((set) => ({
   voxelHeightmap: null,
   layerVisibility: {},
   envDisplayMode: 'cubes',
-  scenePaths: [],
+  scenes: [],
   sceneGeometry: null,
   sceneGeometryVisible: true,
   glbTiles: [],
   rtEnabled: false,
-  rtSource: 'voxel',
+  rtSource: 'differt',
   rtMaxOrder: 2,
   rtPaths: null,
   hasDiffert: false,
+  loadedScenePath: '',
   setViewerConfig: (config) => set({ viewerConfig: config }),
   setCapabilities: (caps) => set({ capabilities: caps }),
   setBodyName: (name) => set({ bodyName: name }),
@@ -93,7 +96,7 @@ export const useSceneStore = create<SceneStore>((set) => ({
       },
     })),
   setEnvDisplayMode: (mode) => set({ envDisplayMode: mode }),
-  setScenePaths: (paths) => set({ scenePaths: paths }),
+  setScenes: (scenes) => set({ scenes }),
   setSceneGeometry: (geom) => set({ sceneGeometry: geom }),
   toggleSceneGeometryVisible: () => set((state) => ({ sceneGeometryVisible: !state.sceneGeometryVisible })),
   setGlbTiles: (tiles) => set({ glbTiles: tiles }),
@@ -101,4 +104,5 @@ export const useSceneStore = create<SceneStore>((set) => ({
   setRtSource: (source) => set({ rtSource: source }),
   setRtMaxOrder: (order) => set({ rtMaxOrder: order }),
   setRtPaths: (paths) => set({ rtPaths: paths }),
+  setLoadedScenePath: (path) => set({ loadedScenePath: path }),
 }))

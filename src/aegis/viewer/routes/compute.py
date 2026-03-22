@@ -232,6 +232,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         if body is None:
             return jsonify({"error": "No body mesh loaded"}), 400
 
+        from aegis.viewer.compute import _transform_body_for_viewer
+
         params = request.get_json()
         antenna_pos = np.array(params.get("antenna_pos", [5, 0, 1]))
         scene_path = params.get("scene_path")
@@ -239,7 +241,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         tissue_name = params.get("tissue", "skin_28ghz")
         power_dbm = params.get("power_dbm", 30.0)
         max_order = params.get("max_order", 1)
-        body_pos = params.get("body_pos")
+        body_offset = np.array(params.get("body_offset", [0, 0, 0]))
+        body_rotation_y = float(params.get("body_rotation_y", 0.0))
 
         if not scene_path:
             return jsonify({"error": "Missing 'scene_path'"}), 400
@@ -250,9 +253,9 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
             tissue = SKIN_28GHZ
 
-        # Body position in scene coordinates (defaults to origin at height 1.0)
-        default_bc = cache["config"]["raytracer"]["default_body_center"]
-        body_center = np.array(body_pos) if body_pos is not None else np.array(default_bc)
+        # Transform body mesh and compute center for ray tracing receiver
+        transformed_body = _transform_body_for_viewer(body, body_offset, body_rotation_y)
+        body_center = transformed_body.centroids.mean(axis=0)
 
         # Run DiffeRT
         try:
@@ -270,11 +273,11 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         if paths.n_paths == 0:
             return _zero_paths_response(body, tissue, level)
 
-        # Run dosimetry engine
+        # Run dosimetry engine on the transformed body
         from aegis.engine import DosimetryEngine
 
         engine = DosimetryEngine(tissue)
-        result = engine.compute(body, paths, level=level)
+        result = engine.compute(transformed_body, paths, level=level)
 
         sab_bytes = result.sab.astype(np.float32).tobytes()
         dist = float(np.linalg.norm(antenna_pos - body_center))
@@ -312,6 +315,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         if body is None:
             return jsonify({"error": "No body mesh loaded"}), 400
 
+        from aegis.viewer.compute import _transform_body_for_viewer
+
         params = request.get_json()
         antenna_pos = np.array(params.get("antenna_pos", [5, 0, 1]))
         scene_path = params.get("scene_path")
@@ -319,6 +324,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         tissue_name = params.get("tissue", "skin_28ghz")
         power_dbm = params.get("power_dbm", 30.0)
         max_bounces = params.get("max_order", 5)
+        body_offset = np.array(params.get("body_offset", [0, 0, 0]))
+        body_rotation_y = float(params.get("body_rotation_y", 0.0))
 
         if not scene_path:
             return jsonify({"error": "Missing 'scene_path'"}), 400
@@ -329,9 +336,9 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
             tissue = SKIN_28GHZ
 
-        default_bc = cache["config"]["raytracer"]["default_body_center"]
-        body_pos = params.get("body_pos")
-        body_center = np.array(body_pos) if body_pos is not None else np.array(default_bc)
+        # Transform body and compute center for ray tracing receiver
+        transformed_body = _transform_body_for_viewer(body, body_offset, body_rotation_y)
+        body_center = transformed_body.centroids.mean(axis=0)
 
         try:
             import sionna.rt
@@ -356,7 +363,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         from aegis.engine import DosimetryEngine
 
         engine = DosimetryEngine(tissue)
-        result = engine.compute(body, paths, level=level)
+        result = engine.compute(transformed_body, paths, level=level)
 
         sab_bytes = result.sab.astype(np.float32).tobytes()
         dist = float(np.linalg.norm(antenna_pos - body_center))

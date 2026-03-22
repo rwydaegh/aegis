@@ -6,14 +6,23 @@ export default function RayTracingPanel() {
   const rtEnabled = useSceneStore(s => s.rtEnabled)
   const rtSource = useSceneStore(s => s.rtSource)
   const rtMaxOrder = useSceneStore(s => s.rtMaxOrder)
-  const scenePaths = useSceneStore(s => s.scenePaths)
+  const scenes = useSceneStore(s => s.scenes)
+  const loadedScenePath = useSceneStore(s => s.loadedScenePath)
 
-  if (!caps?.has_differt) {
-    return <p className="text-xs text-muted-foreground">DiffeRT not available</p>
+  const hasDiffert = caps?.has_differt ?? false
+  const hasSionna = caps?.has_sionna ?? false
+  const hasVoxels = caps?.has_voxels ?? false
+  const hasScenes = scenes.length > 0
+
+  if (!hasDiffert && !hasSionna) {
+    return <p className="text-xs text-muted-foreground">No ray tracing backend available</p>
   }
 
   const selectClass = "w-full bg-background border border-border rounded px-2 py-1.5 text-sm text-foreground"
   const labelClass = "text-xs text-muted-foreground block mt-2 mb-1"
+
+  const needsScene = rtSource === 'differt' || rtSource === 'sionna'
+  const sceneReady = needsScene ? !!loadedScenePath : true
 
   return (
     <div>
@@ -25,12 +34,17 @@ export default function RayTracingPanel() {
 
       {rtEnabled && (
         <>
-          <label className={labelClass}>RT scene source</label>
+          <label className={labelClass}>RT backend</label>
           <select className={selectClass} value={rtSource}
-            onChange={e => useSceneStore.setState({ rtSource: e.target.value as 'voxel' | 'sionna' })}>
-            {caps.has_voxels && <option value="voxel">Voxel environment</option>}
-            {scenePaths.length > 0 && <option value="sionna">Sionna scene</option>}
+            onChange={e => useSceneStore.setState({ rtSource: e.target.value as 'voxel' | 'differt' | 'sionna' })}>
+            {hasVoxels && <option value="voxel">Voxel environment</option>}
+            {hasDiffert && hasScenes && <option value="differt">Scene (DiffeRT)</option>}
+            {hasSionna && hasScenes && <option value="sionna">Scene (Sionna RT)</option>}
           </select>
+
+          {needsScene && !sceneReady && (
+            <p className="text-xs text-amber-400 mt-1">Load a scene first (Scene panel above)</p>
+          )}
 
           <label className={labelClass}>Max reflections</label>
           <select className={selectClass} value={rtMaxOrder}
