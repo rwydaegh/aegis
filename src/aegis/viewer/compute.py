@@ -180,24 +180,33 @@ def compute_dosimetry(
 
     engine = DosimetryEngine(tissue)
 
-    # Levels 0-1 need precomputed geometry parameters
+    # Levels 0-1: use legacy level= API (need precomputed geometry parameters)
+    # Levels 2-6: use mode-based API with correction flags
     extra_kwargs: dict = {}
     if level <= 1:
         # A_ab = total surface area for convex bodies (monograph eq. 2.23)
         extra_kwargs["A_ab"] = body.total_area * dos_cfg["convex_body_area_factor"]
-    if level == 0:
-        # D_max ~ 4 is a reasonable bound for human bodies (sphere = 4)
-        extra_kwargs["D_max"] = dos_cfg["level0_D_max"]
-
-    # Level 4: short dipole is TM-polarized (theta-hat), q = 1.0
-    if level == 4:
-        extra_kwargs["q"] = 1.0
-
-    # Levels 5-6: compute surface curvature from the mesh
-    if level >= 5:
-        extra_kwargs["curvature_H"] = _compute_face_curvature(rotated_body)
-
-    result = engine.compute(rotated_body, paths, level=level, **extra_kwargs)
+        if level == 0:
+            # D_max ~ 4 is a reasonable bound for human bodies (sphere = 4)
+            extra_kwargs["D_max"] = dos_cfg["level0_D_max"]
+        result = engine.compute(rotated_body, paths, level=level, **extra_kwargs)
+    elif level <= 6:
+        # Translate level 2-6 to mode="spatial" with correction flags
+        mode_kwargs: dict = {"mode": "spatial"}
+        if level == 2:
+            mode_kwargs["fresnel"] = False
+        # level 3: defaults (fresnel=True) are correct
+        if level >= 4:
+            mode_kwargs["polarisation"] = True
+            mode_kwargs["q"] = 1.0  # short dipole TM-polarized
+        if level >= 5:
+            mode_kwargs["curvature"] = True
+            mode_kwargs["curvature_H"] = _compute_face_curvature(rotated_body)
+        if level == 6:
+            mode_kwargs["diffraction"] = True
+        result = engine.compute(rotated_body, paths, **mode_kwargs)
+    else:
+        result = engine.compute(rotated_body, paths, level=level, **extra_kwargs)
 
     sab_bytes = result.sab.astype(np.float32).tobytes()
 
