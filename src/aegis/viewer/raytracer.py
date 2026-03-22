@@ -54,12 +54,24 @@ def list_available_scenes(scenes_dir: str | Path | None = None) -> list[dict]:
     Returns list of dicts with keys: name, path, n_vertices, n_triangles.
     """
     if scenes_dir is None:
-        # Use SIONNA_SCENES_DIR env var or return empty
+        # Use SIONNA_SCENES_DIR env var, or auto-detect from sionna package
         env_dir = os.environ.get("SIONNA_SCENES_DIR")
         if env_dir:
             scenes_dir = Path(env_dir)
         else:
-            return []
+            # Try to find bundled scenes in the sionna package
+            try:
+                import importlib.util
+
+                spec = importlib.util.find_spec("sionna.rt")
+                if spec and spec.origin:
+                    bundled = Path(spec.origin).parent / "scenes"
+                    if bundled.is_dir():
+                        scenes_dir = bundled
+            except Exception:
+                pass
+            if scenes_dir is None:
+                return []
 
     scenes_dir = Path(scenes_dir)
     if not scenes_dir.exists():
