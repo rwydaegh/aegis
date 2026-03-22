@@ -19,8 +19,9 @@ export default function Sidebar() {
       className="absolute top-0 left-0 h-full z-20 flex flex-col
         bg-card/90 backdrop-blur-xl border-r border-border
         transition-all duration-200 ease-in-out overflow-hidden"
-      style={{ width: sidebarOpen ? '320px' : '0px' }}
+      style={{ width: sidebarOpen ? '320px' : '0px', visibility: sidebarOpen ? 'visible' : 'hidden' }}
       aria-hidden={!sidebarOpen}
+      {...(!sidebarOpen && { inert: true as any })}
     >
       <div className="w-[320px] h-full flex flex-col overflow-y-auto overflow-x-hidden">
         <div className="p-3 border-b border-border shrink-0">

@@ -260,16 +260,34 @@ def create_app(
 
     @app.route("/api/system")
     def api_system():
-        """Host info and GPU status for the server info badge."""
+        """Host info, CPU/RAM/GPU utilization for the server info badge."""
         import platform
         import socket
         import subprocess as _sp
 
-        info = {
+        info: dict = {
             "hostname": socket.gethostname(),
             "platform": platform.system(),
+            "cpu_pct": None,
+            "ram_pct": None,
             "gpu": None,
         }
+
+        # CPU and RAM
+        try:
+            import os as _os
+
+            import psutil
+
+            info["cpu_pct"] = round(psutil.cpu_percent(interval=0.1))
+            info["cpu_cores"] = _os.cpu_count() or 0
+            mem = psutil.virtual_memory()
+            info["ram_pct"] = round(mem.percent)
+            info["ram_total_gb"] = round(mem.total / (1024**3))
+        except ImportError:
+            pass
+
+        # GPU
         try:
             out = _sp.check_output(
                 [

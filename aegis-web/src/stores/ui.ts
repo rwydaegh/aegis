@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 
 export type CameraPreset = 'front' | 'side' | 'top' | 'focus' | 'reset' | null
+export type LegendScale = 'linear' | 'dB'
 
 interface UIStore {
   sidebarOpen: boolean
@@ -11,6 +12,7 @@ interface UIStore {
   locationLog: string[]
   statusMessage: string | null
   cameraPreset: CameraPreset
+  legendScale: LegendScale
 
   toggleSidebar: () => void
   toggleWireframe: () => void
@@ -21,6 +23,7 @@ interface UIStore {
   clearLocationLog: () => void
   setStatusMessage: (msg: string | null) => void
   setCameraPreset: (preset: CameraPreset) => void
+  toggleLegendScale: () => void
 }
 
 export const useUIStore = create<UIStore>((set) => ({
@@ -32,6 +35,7 @@ export const useUIStore = create<UIStore>((set) => ({
   locationLog: [],
   statusMessage: null,
   cameraPreset: null,
+  legendScale: 'linear',
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
   toggleWireframe: () => set((state) => ({ wireframe: !state.wireframe })),
   setComputing: (computing) => set({ isComputing: computing }),
@@ -42,4 +46,7 @@ export const useUIStore = create<UIStore>((set) => ({
   clearLocationLog: () => set({ locationLog: [] }),
   setStatusMessage: (msg) => set({ statusMessage: msg }),
   setCameraPreset: (preset) => set({ cameraPreset: preset }),
+  toggleLegendScale: () => set((state) => ({
+    legendScale: state.legendScale === 'linear' ? 'dB' : 'linear',
+  })),
 }))

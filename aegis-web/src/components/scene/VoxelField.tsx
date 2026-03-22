@@ -4,6 +4,18 @@ import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
 import { useVoxelLoader } from '@/hooks/useVoxelLoader'
 
+// Default material colors matching the old viewer
+const DEFAULT_MATERIAL_COLORS: Record<string, [number, number, number]> = {
+  concrete: [180, 180, 180],
+  brick: [180, 100, 80],
+  asphalt: [100, 100, 100],
+  vegetation: [80, 140, 60],
+  glass: [160, 200, 220],
+  metal: [160, 160, 170],
+  wood: [160, 120, 80],
+  water: [60, 120, 180],
+}
+
 export default function VoxelField() {
   useVoxelLoader()
 
@@ -13,14 +25,11 @@ export default function VoxelField() {
   const wireframe = useUIStore(s => s.wireframe)
   const envMode = useSceneStore(s => s.envDisplayMode)
 
-  if (!voxelData || !config || envMode !== 'cubes') return null
-
-  const sizeScale = config.voxels?.size_scale ?? 0.95
-  const { positions, sizes, colors, materialIndices, meta } = voxelData
-  const nVoxels = positions.length / 3
-
-  // Group voxels by material
+  // Group voxels by material (hook must run unconditionally)
   const groups = useMemo(() => {
+    if (!voxelData) return null
+    const { materialIndices, meta } = voxelData
+    const nVoxels = voxelData.positions.length / 3
     const result: Record<string, { indices: number[] }> = {}
     for (const mat of meta.materials) {
       result[mat] = { indices: [] }
@@ -35,22 +44,28 @@ export default function VoxelField() {
     return result
   }, [voxelData])
 
+  if (!voxelData || !config || !groups || envMode !== 'cubes') return null
+
+  const sizeScale = config.voxels?.size_scale ?? 0.95
+  const configMatColors = (config.voxels as any)?.material_colors as Record<string, [number, number, number]> | undefined
+
   return (
     <group>
       {Object.entries(groups).map(([matName, group]) => {
         if (!layerVisibility[matName]) return null
         if (group.indices.length === 0) return null
 
+        const mc = configMatColors?.[matName] ?? DEFAULT_MATERIAL_COLORS[matName] ?? [200, 200, 200]
+
         return (
           <VoxelGroup
             key={matName}
             indices={group.indices}
-            positions={positions}
-            sizes={sizes}
-            colors={colors}
+            positions={voxelData.positions}
+            sizes={voxelData.sizes}
             sizeScale={sizeScale}
             wireframe={wireframe}
-            matColor={meta.material_colors?.[matName]}
+            materialColor={mc}
           />
         )
       })}
@@ -58,23 +73,25 @@ export default function VoxelField() {
   )
 }
 
-function VoxelGroup({ indices, positions, sizes, colors, sizeScale, wireframe, matColor }: {
+function VoxelGroup({ indices, positions, sizes, sizeScale, wireframe, materialColor }: {
   indices: number[]
   positions: Float32Array
   sizes: Float32Array
-  colors: Uint8Array
   sizeScale: number
   wireframe: boolean
-  matColor?: [number, number, number]
+  materialColor: [number, number, number]
 }) {
   const meshRef = useRef<THREE.InstancedMesh>(null)
   const count = indices.length
+  const color = useMemo(
+    () => new THREE.Color(materialColor[0] / 255, materialColor[1] / 255, materialColor[2] / 255),
+    [materialColor],
+  )
 
   useEffect(() => {
     if (!meshRef.current) return
 
     const dummy = new THREE.Object3D()
-    const color = new THREE.Color()
 
     for (let j = 0; j < count; j++) {
       const i = indices[j]
@@ -87,25 +104,14 @@ function VoxelGroup({ indices, positions, sizes, colors, sizeScale, wireframe, m
       dummy.scale.set(s, s, s)
       dummy.updateMatrix()
       meshRef.current.setMatrixAt(j, dummy.matrix)
-
-      // Use per-voxel color from binary data
-      const r = colors[i * 3] / 255
-      const g = colors[i * 3 + 1] / 255
-      const b = colors[i * 3 + 2] / 255
-      color.setRGB(r, g, b)
-      meshRef.current.setColorAt(j, color)
     }
     meshRef.current.instanceMatrix.needsUpdate = true
-    if (meshRef.current.instanceColor) meshRef.current.instanceColor.needsUpdate = true
-  }, [indices, positions, sizes, colors, sizeScale])
-
-  // matColor is available for future use (e.g., override per-material color)
-  void matColor
+  }, [indices, positions, sizes, sizeScale, count])
 
   return (
     <instancedMesh ref={meshRef} args={[undefined, undefined, count]} castShadow receiveShadow>
       <boxGeometry args={[1, 1, 1]} />
-      <meshStandardMaterial vertexColors wireframe={wireframe} roughness={0.8} />
+      <meshStandardMaterial color={color} wireframe={wireframe} roughness={0.8} flatShading />
     </instancedMesh>
   )
 }

@@ -1,10 +1,57 @@
 import { useState, useRef } from 'react'
-import { loadLocation, cancelLocation } from '@/api/client'
+import { loadLocation, cancelLocation, loadSceneGeometry } from '@/api/client'
 import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
 
+function SionnaSceneSelector() {
+  const scenePaths = useSceneStore(s => s.scenePaths)
+  const [selected, setSelected] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  if (scenePaths.length === 0) return null
+
+  const selectClass = "w-full bg-background border border-border rounded px-2 py-1.5 text-sm text-foreground"
+  const labelClass = "text-xs text-muted-foreground block mb-1"
+
+  const handleLoad = async () => {
+    if (!selected) return
+    setLoading(true)
+    try {
+      const result = await loadSceneGeometry(selected)
+      useSceneStore.getState().setSceneGeometry({
+        vertices: result.vertices,
+        indices: result.indices,
+        faceColors: result.faceColors,
+      })
+    } catch (err) {
+      console.error('Failed to load scene:', err)
+    }
+    setLoading(false)
+  }
+
+  return (
+    <div className="mb-3 pb-3 border-b border-border">
+      <label className={labelClass}>Sionna scene</label>
+      <select className={selectClass} value={selected} onChange={e => setSelected(e.target.value)}>
+        <option value="">Select a scene...</option>
+        {scenePaths.map(p => (
+          <option key={p} value={p}>{p.split('/').pop()?.replace('.xml', '') ?? p}</option>
+        ))}
+      </select>
+      <button
+        onClick={handleLoad}
+        disabled={!selected || loading}
+        className="mt-2 px-3 py-1.5 rounded text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+      >
+        {loading ? 'Loading...' : 'Load scene'}
+      </button>
+    </div>
+  )
+}
+
 export default function ScenePanel() {
   const caps = useSceneStore(s => s.capabilities)
+  const scenePaths = useSceneStore(s => s.scenePaths)
   const locationLoading = useUIStore(s => s.locationLoading)
   const locationLog = useUIStore(s => s.locationLog)
 
@@ -13,12 +60,16 @@ export default function ScenePanel() {
   const [force, setForce] = useState(false)
   const esRef = useRef<EventSource | null>(null)
 
-  if (!caps?.has_location_loader) {
+  // Show Sionna scene selector even when location loading is unavailable
+  const hasScenes = scenePaths.length > 0
+  const hasLocation = caps?.has_location_loader
+
+  if (!hasScenes && !hasLocation) {
     return (
       <p className="text-xs text-muted-foreground">
         {!caps?.has_api_key
           ? 'Set GOOGLE_API_KEY env var to enable location loading.'
-          : 'Location pipeline not found.'}
+          : 'No scenes or location loader available.'}
       </p>
     )
   }
@@ -67,38 +118,50 @@ export default function ScenePanel() {
 
   return (
     <div>
-      <label className={labelClass}>Location</label>
-      <input type="text" className={inputClass} value={location}
-        onChange={e => setLocation(e.target.value)}
-        placeholder="e.g. Ghent, Belgium" disabled={locationLoading} />
+      {hasScenes && <SionnaSceneSelector />}
 
-      <label className={labelClass}>Radius (m)</label>
-      <input type="number" className={inputClass} value={radius}
-        onChange={e => setRadius(Number(e.target.value))} disabled={locationLoading} />
+      {hasLocation && (
+        <>
+          <label className={labelClass}>Location</label>
+          <input type="text" className={inputClass} value={location}
+            onChange={e => setLocation(e.target.value)}
+            placeholder="e.g. Ghent, Belgium" disabled={locationLoading} />
 
-      <label className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
-        <input type="checkbox" checked={force} onChange={e => setForce(e.target.checked)} />
-        Force re-download
-      </label>
+          <label className={labelClass}>Radius (m)</label>
+          <input type="number" className={inputClass} value={radius}
+            onChange={e => setRadius(Number(e.target.value))} disabled={locationLoading} />
 
-      <div className="flex gap-2 mt-3">
-        {!locationLoading ? (
-          <button onClick={handleLoad}
-            className="px-3 py-1.5 rounded text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90">
-            Load
-          </button>
-        ) : (
-          <button onClick={handleCancel}
-            className="px-3 py-1.5 rounded text-xs font-medium bg-destructive text-white hover:bg-destructive/90">
-            Cancel
-          </button>
-        )}
-      </div>
+          <label className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
+            <input type="checkbox" checked={force} onChange={e => setForce(e.target.checked)} />
+            Force re-download
+          </label>
 
-      {locationLog.length > 0 && (
-        <div className="mt-3 max-h-[120px] overflow-y-auto bg-background rounded p-2 text-[10px] text-muted-foreground font-mono whitespace-pre-wrap">
-          {locationLog.join('\n')}
-        </div>
+          <div className="flex gap-2 mt-3">
+            {!locationLoading ? (
+              <button onClick={handleLoad}
+                className="px-3 py-1.5 rounded text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90">
+                Load
+              </button>
+            ) : (
+              <button onClick={handleCancel}
+                className="px-3 py-1.5 rounded text-xs font-medium bg-destructive text-white hover:bg-destructive/90">
+                Cancel
+              </button>
+            )}
+          </div>
+
+          {locationLog.length > 0 && (
+            <div className="mt-3 max-h-[120px] overflow-y-auto bg-background rounded p-2 text-[10px] text-muted-foreground font-mono whitespace-pre-wrap">
+              {locationLog.join('\n')}
+            </div>
+          )}
+        </>
+      )}
+
+      {!hasLocation && !hasScenes && (
+        <p className="text-xs text-muted-foreground">
+          Set GOOGLE_API_KEY env var to enable location loading.
+        </p>
       )}
     </div>
   )

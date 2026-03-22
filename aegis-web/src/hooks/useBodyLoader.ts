@@ -24,6 +24,14 @@ export function useBodyLoader() {
       geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
 
       geometry.computeBoundingBox()
+
+      // Shift body so feet (min Y) sit on ground plane at y=0
+      const bb = geometry.boundingBox!
+      if (bb.min.y < 0) {
+        geometry.translate(0, -bb.min.y, 0)
+        geometry.computeBoundingBox()
+      }
+
       setBodyGeometry(geometry)
     }).catch(err => {
       console.error('Failed to load body:', err)

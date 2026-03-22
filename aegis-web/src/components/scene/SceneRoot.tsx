@@ -159,6 +159,36 @@ function Ground() {
   )
 }
 
+/**
+ * On mount, move the camera + orbit target to look at the body's actual position.
+ * This handles the case where body_placement puts the body far from the origin.
+ */
+function CameraInitializer({ controlsRef, initialOffset }: {
+  controlsRef: React.RefObject<OrbitControlsImpl | null>
+  initialOffset: [number, number, number]
+}) {
+  const { camera } = useThree()
+  const initialized = useRef(false)
+
+  useFrame(() => {
+    if (initialized.current) return
+    const controls = controlsRef.current
+    if (!controls) return
+    initialized.current = true
+
+    const [bx, by, bz] = initialOffset
+    // Only relocate if body is significantly off-origin
+    if (Math.abs(bx) > 1 || Math.abs(bz) > 1) {
+      const target = controls.target as THREE.Vector3
+      target.set(bx, by + 0.6, bz)
+      camera.position.set(bx, by + 2, bz + 5)
+      controls.update()
+    }
+  })
+
+  return null
+}
+
 function DosimetryController() {
   useDosimetry()
   return null
@@ -171,6 +201,7 @@ function PhysicsController() {
 
 export default function SceneRoot() {
   const config = useSceneStore(s => s.viewerConfig)
+  const bodyOffset = useSimulationStore(s => s.bodyOffset)
   if (!config) return null
 
   const cam = config.camera
@@ -187,7 +218,7 @@ export default function SceneRoot() {
         far: cam.far,
         position: initialPosition,
       }}
-      shadows={ren.shadows_enabled}
+      shadows={ren.shadows_enabled ? { type: THREE.PCFShadowMap } : false}
       gl={{
         antialias: ren.antialias ?? true,
         toneMapping: THREE.ACESFilmicToneMapping,
@@ -209,6 +240,7 @@ export default function SceneRoot() {
       <PhysicsController />
       <OrbitControls ref={controlsRef} makeDefault enableDamping />
       <CameraController controlsRef={controlsRef} initialPosition={initialPosition} />
+      <CameraInitializer controlsRef={controlsRef} initialOffset={bodyOffset} />
     </Canvas>
   )
 }

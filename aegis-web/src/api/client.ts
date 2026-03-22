@@ -169,7 +169,7 @@ export async function loadSceneGeometry(scenePath: string): Promise<{
   const res = await fetch(`${BASE}/api/scene/load`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ scene_path: scenePath }),
+    body: JSON.stringify({ path: scenePath }),
   })
   if (!res.ok) throw new Error(`POST /api/scene/load failed: ${res.status} ${res.statusText}`)
 

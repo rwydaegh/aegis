@@ -28,20 +28,14 @@ export function parseVoxelBinary(buffer: ArrayBuffer, nVoxels: number) {
   const sizeBytes = nVoxels * 4
   const colorBytes = nVoxels * 3
 
-  const rawPositions = new Float32Array(buffer, 0, nVoxels * 3)
+  // Voxel positions are already in Y-up (scene) coordinates from the server.
+  // Do NOT apply toScene() conversion (unlike body/scene geometry which are Z-up).
+  const positions = new Float32Array(buffer.slice(0, posBytes))
   const sizes = new Float32Array(buffer, posBytes, nVoxels)
   const colors = new Uint8Array(buffer, posBytes + sizeBytes, colorBytes)
   const materialIndices = new Uint8Array(buffer, posBytes + sizeBytes + colorBytes)
 
-  const positions = new Float32Array(nVoxels * 3)
-  for (let i = 0; i < nVoxels; i++) {
-    const [x, y, z] = toScene([rawPositions[i * 3], rawPositions[i * 3 + 1], rawPositions[i * 3 + 2]])
-    positions[i * 3] = x
-    positions[i * 3 + 1] = y
-    positions[i * 3 + 2] = z
-  }
-
-  return { positions, sizes: new Float32Array(sizes), colors: new Uint8Array(colors), materialIndices: new Uint8Array(materialIndices) }
+  return { positions: new Float32Array(positions), sizes: new Float32Array(sizes), colors: new Uint8Array(colors), materialIndices: new Uint8Array(materialIndices) }
 }
 
 export function parseSceneBinary(buffer: ArrayBuffer, nVertices: number, nTriangles: number, hasFaceColors: boolean) {
