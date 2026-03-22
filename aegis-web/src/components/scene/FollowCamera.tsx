@@ -3,6 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useSimulationStore } from '@/stores/simulation'
 import { useUIStore } from '@/stores/ui'
+import { useKeyboard } from '@/hooks/useKeyboard'
 
 const DEFAULT_DISTANCE = 5
 const DEFAULT_PITCH = 0.3 // radians above horizontal
@@ -10,37 +11,36 @@ const MIN_DISTANCE = 2
 const MAX_DISTANCE = 30
 const SMOOTH_FACTOR = 6 // higher = snappier
 const HEIGHT_OFFSET = 1.2 // look at body center, not feet
+const ORBIT_SPEED = 2.0 // radians per second for Q/E keys
 
 /**
  * Third-person follow camera that orbits around the character.
- * - Mouse drag (right button or orbit) rotates around character
+ * - Q/E keys orbit camera around character
+ * - Left-click drag orbits camera around character
  * - Mouse wheel zooms in/out
  * - Camera smoothly follows character movement
- * - Basic collision: pulls camera forward if behind geometry
  */
 export default function FollowCamera() {
   const { camera, gl } = useThree()
   const mode = useUIStore(s => s.cameraMode)
+  const keys = useKeyboard()
 
-  // Spherical coordinates around the character
-  const yaw = useRef(0) // horizontal angle
-  const pitch = useRef(DEFAULT_PITCH) // vertical angle
+  const yaw = useRef(0)
+  const pitch = useRef(DEFAULT_PITCH)
   const distance = useRef(DEFAULT_DISTANCE)
   const isDragging = useRef(false)
   const lastMouse = useRef({ x: 0, y: 0 })
 
-  // Set up mouse handlers when in follow mode
   useEffect(() => {
     if (mode !== 'follow') return
 
     const canvas = gl.domElement
 
     const onMouseDown = (e: MouseEvent) => {
-      // Right-click or middle-click for camera rotation
-      if (e.button === 2 || e.button === 1) {
+      // Left-click or right-click for camera orbit
+      if (e.button === 0 || e.button === 2) {
         isDragging.current = true
         lastMouse.current = { x: e.clientX, y: e.clientY }
-        e.preventDefault()
       }
     }
 
@@ -86,10 +86,13 @@ export default function FollowCamera() {
   useFrame((_, dt) => {
     if (mode !== 'follow') return
 
+    // Q/E keys orbit the camera around the character
+    if (keys.rotLeft) yaw.current += ORBIT_SPEED * dt
+    if (keys.rotRight) yaw.current -= ORBIT_SPEED * dt
+
     const [bx, by, bz] = useSimulationStore.getState().bodyOffset
     const targetPos = new THREE.Vector3(bx, by + HEIGHT_OFFSET, bz)
 
-    // Compute desired camera position from spherical coords
     const d = distance.current
     const p = pitch.current
     const y = yaw.current
@@ -99,12 +102,7 @@ export default function FollowCamera() {
 
     const desiredPos = new THREE.Vector3(desiredX, desiredY, desiredZ)
 
-    // Basic collision: raycast from target to desired camera position
-    // If something is in the way, pull camera closer
-    const dir = desiredPos.clone().sub(targetPos).normalize()
-    const raycaster = new THREE.Raycaster(targetPos, dir, 0.5, d)
-    // We can't easily raycast against the scene here without a ref to it,
-    // but we ensure camera stays above ground at minimum
+    // Keep camera above ground
     const minY = by + 0.5
     if (desiredPos.y < minY) desiredPos.y = minY
 

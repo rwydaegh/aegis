@@ -10,6 +10,44 @@ from aegis.paths import PropagationPaths
 from aegis.tissue.dielectric import FAT_28GHZ, MUSCLE_28GHZ, SKIN_28GHZ, SKIN_60GHZ, TissueModel
 from aegis.viewer.config import DEFAULTS
 
+# Cache for curvature computation (expensive, only changes when body changes)
+_curvature_cache: dict = {}
+
+
+def _compute_face_curvature(body: BodyMesh) -> np.ndarray:
+    """Estimate per-face mean curvature from normal variation to neighbors.
+
+    Uses KD-tree for fast neighbor lookup: for each face, the curvature
+    is estimated as the average |delta_normal| / distance to its 6 nearest
+    neighbors. This gives a good proxy for the discrete mean curvature.
+    """
+    cache_key = id(body)
+    if cache_key in _curvature_cache:
+        return _curvature_cache[cache_key]
+
+    from scipy.spatial import cKDTree
+
+    centroids = body.centroids
+    normals = body.normals
+    M = body.n_triangles
+
+    k = min(7, M)
+    tree = cKDTree(centroids)
+    dists, indices = tree.query(centroids, k=k)
+
+    neighbor_normals = normals[indices]
+    face_normals = normals[:, np.newaxis, :]
+    delta_n = np.linalg.norm(neighbor_normals - face_normals, axis=2)
+    safe_dists = np.maximum(dists, 1e-12)
+    curvature_per_neighbor = delta_n / safe_dists
+
+    H = np.mean(curvature_per_neighbor[:, 1:], axis=1)
+
+    _curvature_cache.clear()
+    _curvature_cache[cache_key] = H
+    return H
+
+
 # Predefined tissue presets (aligned with dielectric.py literature values)
 TISSUE_PRESETS = {
     "skin_28ghz": SKIN_28GHZ,
@@ -150,6 +188,14 @@ def compute_dosimetry(
     if level == 0:
         # D_max ~ 4 is a reasonable bound for human bodies (sphere = 4)
         extra_kwargs["D_max"] = dos_cfg["level0_D_max"]
+
+    # Level 4: short dipole is TM-polarized (theta-hat), q = 1.0
+    if level == 4:
+        extra_kwargs["q"] = 1.0
+
+    # Levels 5-6: compute surface curvature from the mesh
+    if level >= 5:
+        extra_kwargs["curvature_H"] = _compute_face_curvature(rotated_body)
 
     result = engine.compute(rotated_body, paths, level=level, **extra_kwargs)
 
