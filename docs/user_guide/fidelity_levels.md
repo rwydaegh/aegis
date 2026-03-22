@@ -1,127 +1,179 @@
 # Fidelity levels
 
-AEGIS provides nine fidelity levels (0-8) for computing absorbed power density. Each level adds a physical correction, trading accuracy for computational cost.
+AEGIS uses a mode + corrections architecture for computing absorbed power density. You pick a computation mode, then toggle independent physics corrections on or off.
 
-## Incoherent levels (0-6)
+The integer `level=` API (0-8) still works and maps to specific mode + correction combinations. See the [quick reference](#quick-reference) below.
 
-These levels use scalar power per path. They compute `S_ab = T(theta) * ReLU(n_hat . (-k_hat)) @ power` with increasing physical detail.
+## Computation modes
 
-### Level 0: worst-case bound
+| Mode | Output | Cost | What it does |
+|------|--------|------|-------------|
+| `bound` | Scalar $P_{abs}$ upper bound, uniform $S_{ab}$ | O(1) | Worst-case bound using $A_{ab}$ and $D_{max}$. No spatial map. |
+| `aggregate` | Scalar $P_{abs}$ via directivity, uniform $S_{ab}$ | O(N) | Direction-weighted total power using SH coefficients or a directivity LUT. |
+| `spatial` | Per-triangle $S_{ab}(\mathbf{r})$ map | O(MN) | Full spatial map. Default mode. Supports composable physics corrections. |
+| `coherent` | Per-triangle $S_{ab}$ from MIMO field superposition | O(MN + M $\cdot$ M_ant) | Builds the body-surface channel $\tilde{\mathbf{G}}(\mathbf{r})$ and computes $\|\tilde{\mathbf{G}} \mathbf{x}\|^2$. Requires a `Precoder`. |
+| `ecbf` | Per-triangle $S_{ab}$ with optimal precoder $\mathbf{x}^*$ | O(MN + M $\cdot$ M_ant$^2$ + M_ant$^3$) | Solves the QCQP for max signal subject to absorption and power constraints. Requires channel vector $\mathbf{h}$. |
+
+Where M = number of body triangles, N = number of paths, M_ant = number of antenna elements.
+
+### Bound
 
 $$P_{abs} \le T_0 \cdot \frac{A_{ab} \cdot D_{max}}{4} \cdot \sum_i S_i$$
 
-Cost: O(1). Requires precomputed A_ab and D_max. Returns uniform S_ab = P_abs / A_total.
+Returns uniform $S_{ab} = P_{abs} / A_{total}$. Requires precomputed absorption area $A_{ab}$ and maximum directivity $D_{max}$. Useful for quick compliance screening when you do not need a spatial map.
 
-Use when: you need a quick upper bound without computing the spatial map.
-
-### Level 1: aggregate via directivity
+### Aggregate
 
 $$P_{abs} = T_0 \cdot \frac{A_{ab}}{4} \cdot \sum_i S_i \cdot D(\hat{k}_i)$$
 
-Cost: O(N). Uses SH coefficients or a directivity LUT. Returns uniform S_ab.
+Returns uniform $S_{ab}$. Uses spherical harmonic coefficients or a directivity look-up table to weight each path by its arrival direction. More accurate than the bound, but still no spatial resolution.
 
-Use when: you have precomputed directivity and need per-direction power without the spatial map.
+### Spatial
 
-### Level 2: geometric ReLU map (default)
+$$S_{ab}(\mathbf{r}) = T(\mu) \cdot [\hat{n}(\mathbf{r}) \cdot (-\hat{k})]_+ \cdot \mathbf{s}$$
 
-$$S_{ab}(\mathbf{r}) = T_0 \cdot \text{ReLU}[\hat{n}(\mathbf{r}) \cdot (-\hat{k})]^T \mathbf{s}$$
+The core formula. Produces a per-triangle absorption map. Physics corrections (Fresnel, polarisation, curvature, diffraction) compose independently on top of this base computation. See [physics corrections](#physics-corrections) below.
 
-Cost: O(MN). The core formula. Uses constant T_0 for all angles.
-
-Use when: you need the spatial map and can tolerate ~0.35% total power error.
-
-### Level 3: exact Fresnel
-
-$$S_{ab}(\mathbf{r}) = T_{avg}(\mu) \cdot \text{ReLU}(\mu) @ \mathbf{s}$$
-
-Cost: O(MN). Replaces constant T_0 with angle-dependent T_avg(theta). Matches Level 2 at normal incidence.
-
-Use when: you need accurate angular dependence of absorption.
-
-### Level 4: polarisation correction
-
-$$S_{ab} = [T_{avg} + \frac{q}{2} \Delta T] \cdot \text{ReLU}(\mu) @ \mathbf{s}$$
-
-Cost: O(MN). Adds TM excess q per path. With q=0 (unpolarised), equals Level 3 exactly.
-
-Use when: you know the polarisation state of each path and it matters (TM-dominant scenarios).
-
-### Level 5: curvature correction
-
-$$S_{ab} = S_{ab}^{(3)} + T_0 \cdot \frac{H}{k} \cdot \text{ReLU}(\mu)^2 @ \mathbf{s}$$
-
-Cost: O(MN). Adds physical optics curvature correction using twice mean curvature H per triangle. With H=0, equals Level 3.
-
-Use when: the body has regions of high curvature (nose, chin, fingers) and you need the correction.
-
-### Level 6: diffraction smoothing
-
-Same as Level 5 but replaces ReLU with a physical GELU at shadow boundaries. The GELU width sigma_j depends on the local radius of curvature.
-
-Cost: O(MN). Provides smooth transition at shadow boundaries instead of the sharp ReLU cutoff.
-
-Use when: you need physically accurate shadow-boundary diffraction effects.
-
-## Coherent levels (7-8)
-
-These levels use the full complex polarisation-amplitude vectors psi and antenna element structure. They require a `Precoder` object.
-
-### Level 7: coherent MIMO map
+### Coherent
 
 $$S_{ab}(\mathbf{r}) = \|\tilde{\mathbf{G}}(\mathbf{r}) \mathbf{x}\|^2$$
 
-Cost: O(M_tri * N + M_tri * M_ant). Builds the body-surface channel G_tilde(r) from Fresnel-filtered, depth-coupled path contributions, then computes the squared-norm field at each triangle.
+Builds the body-surface channel $\tilde{\mathbf{G}}(\mathbf{r})$ from Fresnel-filtered, depth-coupled path contributions, then computes the squared-norm field at each triangle. Also returns the exposure operator $\mathbf{Q}$, its eigendecomposition, and exposure-signal alignment $\rho$ (when $\mathbf{h}$ is provided).
 
-Also computes the exposure operator Q, its eigendecomposition, and the exposure-signal alignment rho (if h is provided).
+Uses Approximation 1 (TM direction, error at most 4%) and Approximation 2 (depth coupling, error at most 0.44%).
 
-Uses Approximation 1 (TM direction, error <= 4%) and Approximation 2 (depth coupling, error <= 0.44%).
+### ECBF
+
+Solves the exposure-constrained beamforming QCQP:
+
+$$\max_{\mathbf{x}} |\mathbf{h}^H \mathbf{x}|^2 \quad \text{s.t.} \quad \mathbf{x}^H \mathbf{Q} \mathbf{x} \le P_{abs}^{max}, \quad \|\mathbf{x}\|^2 \le P$$
+
+Finds the precoder $\mathbf{x}^*$ that maximizes signal power while keeping absorption below a specified limit. Returns the same outputs as coherent mode, plus the optimal precoder.
+
+## Physics corrections
+
+These corrections apply to `spatial` mode only. Each one is an independent boolean flag. You can combine them freely.
+
+### Fresnel
+
+Replaces the constant normal-incidence $T_0$ with angle-dependent $T_{\text{avg}}(\theta)$. Accounts for the pseudo-Brewster compensation where TM transmission peaks near the Brewster angle. On by default (`fresnel=True`).
+
+Error from using constant $T_0$ instead: about 5.6% for skin at 28 GHz (the exact figure depends on tissue and frequency). For most practical scenarios the Fresnel correction matters, so it stays on unless you explicitly disable it.
+
+No additional data required beyond what the engine already has (tissue model).
+
+### Polarisation
+
+Splits $T_{\text{avg}}$ into TE and TM components:
+
+$$T = T_{\text{avg}} + \frac{q}{2} \Delta T$$
+
+where $q \in [-1, 1]$ is the TM excess per path. With $q = 0$ (unpolarized), this reduces to the base Fresnel result. Worst-case polarisation error is 16%, but in typical multipath environments it stays below 2.5%.
+
+Requires per-path TM excess $q$ (scalar or array). Set `polarisation=True` and pass `q=...`.
+
+### Curvature
+
+Adds a first-order Physical Optics correction:
+
+$$S_{ab}^{curv} = S_{ab}^{base} + T_0 \cdot \frac{H}{k} \cdot g(\mu)^2 \cdot \mathbf{s}$$
+
+where $H$ is the twice-mean curvature per triangle and $k = 2\pi / \lambda$. With $H = 0$ (flat surface), the correction vanishes.
+
+Requires per-triangle curvature data. Set `curvature=True` and pass `curvature_H=H`.
+
+### Diffraction
+
+Replaces the sharp ReLU at shadow boundaries with a GELU:
+
+$$\text{GELU}(\mu, \sigma) = \mu \cdot \tfrac{1}{2}[1 + \text{erf}(\mu / \sigma)]$$
+
+The transition width $\sigma_j = \sqrt{\lambda H_j / (4\pi)}$ depends on local curvature. With $H = 0$, the GELU reduces to ReLU and you recover the base result.
+
+Requires per-triangle curvature data. Set `diffraction=True` and pass `curvature_H=H`. Automatically enables the curvature correction as well.
+
+## Quick reference
+
+Mapping from old integer levels to the mode API:
+
+| Old level | Mode | Corrections | Notes |
+|-----------|------|-------------|-------|
+| 0 | `bound` | - | Requires $A_{ab}$, $D_{max}$ |
+| 1 | `aggregate` | - | Requires $A_{ab}$, directivity data |
+| 2 | `spatial` | `fresnel=False` | Constant $T_0$ |
+| 3 | `spatial` | (default: `fresnel=True`) | Angle-dependent $T_{\text{avg}}$ |
+| 4 | `spatial` | `polarisation=True` | Requires TM excess $q$ |
+| 5 | `spatial` | `curvature=True` | Requires curvature $H$ |
+| 6 | `spatial` | `curvature=True, diffraction=True` | Requires curvature $H$ |
+| 7 | `coherent` | - | Requires `Precoder` |
+| 8 | `ecbf` | - | Requires channel $\mathbf{h}$ |
+
+## Code examples
+
+### Mode API (recommended)
 
 ```python
+from aegis import DosimetryEngine
+from aegis.tissue.dielectric import TissueModel
+
+tissue = TissueModel.from_name("skin", 28e9)
+engine = DosimetryEngine(tissue)
+
+# Basic spatial map with Fresnel (default)
+result = engine.compute(body, paths, mode="spatial")
+
+# Add polarisation correction
+result = engine.compute(body, paths, mode="spatial",
+                        polarisation=True, q=0.3)
+
+# Add curvature and diffraction
+result = engine.compute(body, paths, mode="spatial",
+                        curvature=True, diffraction=True,
+                        curvature_H=H)
+
+# Combine everything
+result = engine.compute(body, paths, mode="spatial",
+                        polarisation=True, q=q_per_path,
+                        curvature=True, diffraction=True,
+                        curvature_H=H)
+
+# Coherent MIMO
 precoder = aegis.Precoder.mrt(h, P=1.0)
-result = engine.compute(body, paths, level=7, precoder=precoder, h=h)
-result.sab           # per-triangle S_ab
+result = engine.compute(body, paths, mode="coherent",
+                        precoder=precoder, h=h)
 result.Q             # exposure operator
 result.eigenvalues   # Q eigenvalues (descending)
 result.rho           # exposure-signal alignment
+
+# ECBF
+result = engine.compute(body, paths, mode="ecbf",
+                        h=h, P_abs_max=0.1)
+result.x_star        # optimal precoder
 ```
 
-Use when: you have coherent MIMO paths and want to see the absorption pattern for a specific precoder.
+### Legacy level API
 
-### Level 8: exposure-constrained beamforming
-
-Solves the QCQP:
-
-$$\max_{\mathbf{x}} |\mathbf{h}^T \mathbf{x}|^2 \quad \text{s.t.} \quad \mathbf{x}^H \mathbf{Q} \mathbf{x} \le P_{abs}^{max}, \quad \|\mathbf{x}\|^2 \le P$$
-
-Cost: O(M_tri * N + M_tri * M_ant^2 + M_ant^3). Computes Q, solves for the optimal precoder x* via bisection in the Q eigenbasis, then computes S_ab with x*.
+The integer `level=` parameter still works. It maps to the corresponding mode + corrections internally.
 
 ```python
-result = engine.compute(body, paths, level=8, h=h, P_abs_max=0.1)
-result.sab           # S_ab with optimal precoder
-result.p_abs         # <= P_abs_max
-result.rho           # how aligned signal and exposure are
+# These two are equivalent
+result = engine.compute(body, paths, level=3)
+result = engine.compute(body, paths, mode="spatial")
+
+# These two are equivalent
+result = engine.compute(body, paths, level=4, q=0.3)
+result = engine.compute(body, paths, mode="spatial",
+                        polarisation=True, q=0.3)
 ```
 
-Use when: you want to find the precoder that maximises signal while keeping absorption below a limit.
+!!! note
+    When neither `mode` nor `level` is specified, AEGIS defaults to `level=2` (spatial with constant $T_0$, no Fresnel). To get angle-dependent Fresnel by default, use `mode="spatial"` explicitly.
 
-## Level comparison summary
+## Choosing a mode
 
-| Level | Cost | Key addition | Error vs full Fresnel |
-|-------|------|--------------|-----------------------|
-| 0 | O(1) | Upper bound only | Conservative bound |
-| 1 | O(N) | Directivity weighting | Direction-averaged |
-| 2 | O(MN) | Spatial map, constant T_0 | ~0.35% total power |
-| 3 | O(MN) | Angle-dependent T_avg | Reference |
-| 4 | O(MN) | Polarisation q | Level 3 + pol. correction |
-| 5 | O(MN) | Curvature H/k | Level 3 + PO correction |
-| 6 | O(MN) | GELU diffraction | Level 3 + shadow smoothing |
-| 7 | O(MN_ant) | Coherent phases | Approx 1+2: ~5% combined |
-| 8 | O(M_ant^3) | ECBF solver | Same as Level 7 |
-
-## Choosing a level
-
-- For quick compliance checks: Level 0 or Level 2
-- For accurate incoherent dosimetry: Level 3
-- For MIMO beamforming analysis: Level 7
-- For exposure-constrained precoder design: Level 8
-- For research/validation: compare multiple levels on the same data
+- For quick compliance screening: `bound` or `spatial` with `fresnel=False`
+- For accurate incoherent dosimetry: `spatial` (Fresnel on by default)
+- For polarisation-sensitive analysis: `spatial` with `polarisation=True`
+- For MIMO beamforming analysis: `coherent`
+- For exposure-constrained precoder design: `ecbf`
+- For research and validation: compare multiple configurations on the same data
