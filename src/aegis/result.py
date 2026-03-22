@@ -33,6 +33,10 @@ class DosimetryResult:
     sab_averaged: np.ndarray | None = field(default=None, repr=False)
     sar_wb: float | None = None
 
+    # Mode-based API (None when using legacy level= API)
+    mode: str | None = None
+    corrections: tuple[str, ...] = ()
+
     # Coherent-specific (None for incoherent levels 0-6)
     Q: np.ndarray | None = field(default=None, repr=False)
     rho: float | None = None

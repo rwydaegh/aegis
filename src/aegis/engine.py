@@ -48,7 +48,7 @@ class DosimetryEngine:
         self,
         body: BodyMesh,
         paths: PropagationPaths,
-        level: int = 2,
+        level: int | None = None,
         body_mass: float | None = None,
         spatial_averaging: bool = False,
         # Level 0/1 precomputed geometry (optional)
@@ -58,7 +58,7 @@ class DosimetryEngine:
         sh_L: int = 4,
         D_table: np.ndarray | None = None,
         D_dirs: np.ndarray | None = None,
-        # Level 4 polarisation
+        # Level 4 polarisation / mode-based corrections
         q: np.ndarray | float = 0.0,
         # Level 5/6 curvature
         curvature_H: np.ndarray | None = None,
@@ -66,14 +66,20 @@ class DosimetryEngine:
         precoder: Precoder | None = None,
         h: np.ndarray | None = None,
         P_abs_max: float = 0.1,
+        # Mode-based API
+        mode: str | None = None,
+        fresnel: bool = True,
+        polarisation: bool = False,
+        diffraction: bool = False,
+        curvature: bool = False,
     ) -> DosimetryResult:
-        """Compute dosimetry at the specified fidelity level.
+        """Compute dosimetry at the specified fidelity level or mode.
 
         Parameters
         ----------
         body : BodyMesh
         paths : PropagationPaths
-        level : fidelity level 0-8
+        level : fidelity level 0-8 (legacy API, mutually exclusive with mode)
         body_mass : body mass [kg] for SAR computation
         spatial_averaging : apply ICNIRP 4 cm^2 averaging
         A_ab : absorption area [m^2] (required for levels 0-1)
@@ -82,20 +88,59 @@ class DosimetryEngine:
         sh_L : SH degree (level 1)
         D_table : directivity LUT (level 1 alternative)
         D_dirs : directions for D_table (level 1 alternative)
-        q : TM excess (level 4)
-        curvature_H : (M,) twice mean curvature [1/m] (levels 5-6)
+        q : TM excess (level 4 or mode='spatial' with polarisation=True)
+        curvature_H : (M,) twice mean curvature [1/m] (levels 5-6 or curvature/diffraction flags)
         precoder : Precoder with precoding vector x (required for level 7)
         h : (M_ant,) UE channel vector (required for level 8, optional for 7)
         P_abs_max : maximum absorbed power [W] (level 8)
+        mode : one of 'bound', 'aggregate', 'spatial', 'coherent', 'ecbf'
+        fresnel : use angle-dependent Fresnel (spatial mode, default True)
+        polarisation : enable polarisation correction (spatial mode)
+        diffraction : enable diffraction smoothing (spatial mode)
+        curvature : enable curvature correction (spatial mode)
 
         Returns
         -------
         DosimetryResult
         """
-        if level < 0 or level > 8:
-            raise ValueError(f"Fidelity level must be 0-8, got {level}")
+        if level is not None and mode is not None:
+            raise ValueError("Cannot specify both level and mode")
+
+        # Default: neither given -> behave like old level=2
+        if level is None and mode is None:
+            level = 2
+
         if body_mass is not None and body_mass <= 0:
             raise ValueError("body_mass must be positive when provided")
+
+        # Mode-based path
+        if mode is not None:
+            return self._compute_mode(
+                body,
+                paths,
+                mode=mode,
+                fresnel=fresnel,
+                polarisation=polarisation,
+                diffraction=diffraction,
+                curvature=curvature,
+                q=q,
+                curvature_H=curvature_H,
+                body_mass=body_mass,
+                spatial_averaging=spatial_averaging,
+                A_ab=A_ab,
+                D_max=D_max,
+                sh_coeffs=sh_coeffs,
+                sh_L=sh_L,
+                D_table=D_table,
+                D_dirs=D_dirs,
+                precoder=precoder,
+                h=h,
+                P_abs_max=P_abs_max,
+            )
+
+        # Legacy level-based path
+        if level < 0 or level > 8:
+            raise ValueError(f"Fidelity level must be 0-8, got {level}")
 
         if level >= 7:
             return self._compute_coherent(
@@ -149,7 +194,7 @@ class DosimetryEngine:
         self,
         body: BodyMesh,
         paths: PropagationPaths,
-        level: int = 2,
+        level: int | None = None,
         *,
         precoder_x=None,
         precoder: Precoder | None = None,
@@ -163,6 +208,12 @@ class DosimetryEngine:
         D_dirs=None,
         q: float = 0.0,
         curvature_H=None,
+        # Mode-based API
+        mode: str | None = None,
+        fresnel: bool = True,
+        polarisation: bool = False,
+        diffraction: bool = False,
+        curvature: bool = False,
     ):
         """Return per-triangle S_ab as a raw array (JAX or NumPy).
 
@@ -170,6 +221,43 @@ class DosimetryEngine:
         DosimetryResult. Use inside jax.grad boundaries for differentiable
         optimization.
         """
+        if level is not None and mode is not None:
+            raise ValueError("Cannot specify both level and mode")
+
+        # Default: neither given -> behave like old level=2
+        if level is None and mode is None:
+            level = 2
+
+        # Mode-based path for spatial
+        if mode is not None:
+            if mode == "spatial":
+                from aegis.kernels.spatial import spatial_kernel
+
+                return spatial_kernel(
+                    body.normals,
+                    paths.k_hat,
+                    paths.power,
+                    self.n_tilde,
+                    self.T0,
+                    self.freq_hz,
+                    fresnel=fresnel,
+                    polarisation=polarisation,
+                    q=q,
+                    curvature=curvature,
+                    diffraction=diffraction,
+                    curvature_H=curvature_H,
+                )
+            # For non-spatial modes, map to the legacy dispatch
+            mode_to_level = {
+                "bound": 0,
+                "aggregate": 1,
+                "coherent": 7,
+                "ecbf": 8,
+            }
+            if mode not in mode_to_level:
+                raise ValueError(f"Unknown mode '{mode}'")
+            level = mode_to_level[mode]
+
         if level < 0 or level > 8:
             raise ValueError(f"Fidelity level must be 0-8, got {level}")
 
@@ -241,6 +329,136 @@ class DosimetryEngine:
             return sab
 
         raise ValueError(f"Unknown level {level}")
+
+    def _compute_mode(
+        self,
+        body: BodyMesh,
+        paths: PropagationPaths,
+        *,
+        mode: str,
+        fresnel: bool = True,
+        polarisation: bool = False,
+        diffraction: bool = False,
+        curvature: bool = False,
+        q: np.ndarray | float = 0.0,
+        curvature_H: np.ndarray | None = None,
+        body_mass: float | None = None,
+        spatial_averaging: bool = False,
+        A_ab: float | None = None,
+        D_max: float | None = None,
+        sh_coeffs: np.ndarray | None = None,
+        sh_L: int = 4,
+        D_table: np.ndarray | None = None,
+        D_dirs: np.ndarray | None = None,
+        precoder: Precoder | None = None,
+        h: np.ndarray | None = None,
+        P_abs_max: float = 0.1,
+    ) -> DosimetryResult:
+        """Dispatch based on mode string with composable correction flags."""
+        _valid_modes = ("bound", "aggregate", "spatial", "coherent", "ecbf")
+        if mode not in _valid_modes:
+            raise ValueError(f"Unknown mode '{mode}', expected one of {_valid_modes}")
+
+        # Build corrections tuple for result metadata
+        corrections: list[str] = []
+        if mode == "spatial":
+            if fresnel:
+                corrections.append("fresnel")
+            if polarisation:
+                corrections.append("polarisation")
+            if curvature:
+                corrections.append("curvature")
+            if diffraction:
+                corrections.append("diffraction")
+
+        # Map mode to level for fidelity_level field
+        mode_to_level = {
+            "bound": 0,
+            "aggregate": 1,
+            "spatial": 3,  # base spatial = level 3
+            "coherent": 7,
+            "ecbf": 8,
+        }
+        fidelity_level = mode_to_level[mode]
+
+        if mode == "spatial":
+            from aegis.kernels.spatial import spatial_kernel
+
+            sab = spatial_kernel(
+                body.normals,
+                paths.k_hat,
+                paths.power,
+                self.n_tilde,
+                self.T0,
+                self.freq_hz,
+                fresnel=fresnel,
+                polarisation=polarisation,
+                q=q,
+                curvature=curvature,
+                diffraction=diffraction,
+                curvature_H=curvature_H,
+            )
+            sab = _to_numpy(sab)
+        elif mode in ("coherent", "ecbf"):
+            result = self._compute_coherent(
+                body,
+                paths,
+                fidelity_level,
+                precoder=precoder,
+                h=h,
+                P_abs_max=P_abs_max,
+                body_mass=body_mass,
+                spatial_averaging=spatial_averaging,
+            )
+            # Re-wrap with mode/corrections metadata
+            return DosimetryResult(
+                sab=result.sab,
+                p_abs=result.p_abs,
+                fidelity_level=fidelity_level,
+                sab_averaged=result.sab_averaged,
+                sar_wb=result.sar_wb,
+                mode=mode,
+                corrections=tuple(corrections),
+                Q=result.Q,
+                rho=result.rho,
+                eigenvalues=result.eigenvalues,
+                x_star=result.x_star,
+            )
+        else:
+            # bound or aggregate: use legacy dispatch
+            sab = self._dispatch(
+                body,
+                paths,
+                fidelity_level,
+                A_ab=A_ab,
+                D_max=D_max,
+                sh_coeffs=sh_coeffs,
+                sh_L=sh_L,
+                D_table=D_table,
+                D_dirs=D_dirs,
+                q=q,
+                curvature_H=curvature_H,
+            )
+            sab = _to_numpy(sab)
+
+        p_abs = float(np.sum(sab * body.areas))
+        sar_wb = p_abs / body_mass if body_mass is not None else None
+
+        sab_averaged = None
+        if spatial_averaging:
+            from aegis.geometry.averaging import apply_spatial_averaging
+
+            sab_averaged = apply_spatial_averaging(sab, body.centroids, body.areas)
+
+        return DosimetryResult(
+            sab=sab,
+            p_abs=p_abs,
+            fidelity_level=fidelity_level,
+            sab_averaged=sab_averaged,
+            sar_wb=sar_wb,
+            mode=mode,
+            corrections=tuple(corrections),
+        )
 
     def _compute_coherent(
         self,
