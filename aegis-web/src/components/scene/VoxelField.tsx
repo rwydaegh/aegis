@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
 import { useVoxelLoader } from '@/hooks/useVoxelLoader'
+import { useClickToPlace } from '@/hooks/useClickToPlace'
 
 // Default material colors - must match configs/default.json voxels.material_colors
 const DEFAULT_MATERIAL_COLORS: Record<string, [number, number, number]> = {
@@ -44,13 +45,15 @@ export default function VoxelField() {
     return result
   }, [voxelData])
 
+  const clickHandlers = useClickToPlace()
+
   if (!voxelData || !config || !groups || envMode !== 'cubes') return null
 
   const sizeScale = config.voxels?.size_scale ?? 0.95
   const configMatColors = (config.voxels as any)?.material_colors as Record<string, [number, number, number]> | undefined
 
   return (
-    <group>
+    <group {...clickHandlers}>
       {Object.entries(groups).map(([matName, group]) => {
         if (!layerVisibility[matName]) return null
         if (group.indices.length === 0) return null

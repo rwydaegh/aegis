@@ -212,6 +212,34 @@ describe('stepPhysics - left/right direction', () => {
   })
 })
 
+describe('stepPhysics - ledge step-up', () => {
+  it('auto-climbs onto a raised platform within step height', () => {
+    // Two-level floor: lower at y=0 (top=0.12), upper at y=0.24 (top=0.36)
+    // Both exist in the same column (overlap region)
+    const twoLevel = (_x: number, _z: number, refY: number) => {
+      const lowerTop = 0.12
+      const upperTop = 0.36
+      // Simulate heightmap behavior: return highest at or below refY+eps
+      const eps = 0.01
+      if (upperTop <= refY + eps) return upperTop
+      if (lowerTop <= refY + eps) return lowerTop
+      return lowerTop // fallback
+    }
+    // Body starts on the lower floor
+    let state: PhysicsState = {
+      position: [0, 0.12, 0],
+      velocity: [0, 0, 0],
+      rotationY: 0,
+      angularVelocity: 0,
+      onGround: true,
+    }
+    // Step-up should happen immediately without walking input
+    state = stepPhysics(state, NO_INPUT, [0, -1], twoLevel, DEFAULT_CONFIG, 0.016)
+    // Body should have climbed to the upper level (0.36 - 0.12 = 0.24 < max_step_height 0.4)
+    expect(state.position[1]).toBeCloseTo(0.36, 2)
+  })
+})
+
 describe('stepPhysics - fall-through protection', () => {
   it('teleports to y=0 when falling below floor minimum', () => {
     const state: PhysicsState = {

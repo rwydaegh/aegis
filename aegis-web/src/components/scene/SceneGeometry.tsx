@@ -2,11 +2,13 @@ import { useMemo } from 'react'
 import * as THREE from 'three'
 import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
+import { useClickToPlace } from '@/hooks/useClickToPlace'
 
 export default function SceneGeometry() {
   const sceneGeometry = useSceneStore(s => s.sceneGeometry)
   const visible = useSceneStore(s => s.sceneGeometryVisible)
   const wireframe = useUIStore(s => s.wireframe)
+  const clickHandlers = useClickToPlace()
 
   const { geometry, hasVertexColors } = useMemo(() => {
     if (!sceneGeometry) return { geometry: null, hasVertexColors: false }
@@ -43,7 +45,7 @@ export default function SceneGeometry() {
   if (!geometry || !visible) return null
 
   return (
-    <mesh geometry={geometry}>
+    <mesh geometry={geometry} {...clickHandlers}>
       {hasVertexColors ? (
         <meshStandardMaterial vertexColors wireframe={wireframe} roughness={0.7} side={THREE.DoubleSide} />
       ) : (

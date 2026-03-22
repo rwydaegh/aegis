@@ -173,6 +173,18 @@ export function stepPhysics(
     onGround = false
   }
 
+  // --- Step-up: auto-climb small ledges when on ground ---
+  // Without this, the body stays on a lower floor when a higher surface
+  // exists within step height (e.g. walking onto a raised platform where
+  // the lower floor continues underneath).
+  if (onGround) {
+    const probeY = py + config.max_step_height + 0.02
+    const higherGround = getGroundY(px, pz, probeY)
+    if (higherGround > py + 0.01 && higherGround - py <= config.max_step_height) {
+      py = higherGround
+    }
+  }
+
   // --- Fall-through protection ---
   // If the player falls below a minimum Y (no voxels below), teleport to y=0
   const FLOOR_MIN = -20

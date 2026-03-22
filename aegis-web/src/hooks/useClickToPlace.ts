@@ -1,0 +1,35 @@
+import { useRef, useCallback } from 'react'
+import type { ThreeEvent } from '@react-three/fiber'
+import { useSceneStore } from '@/stores/scene'
+import { useSimulationStore } from '@/stores/simulation'
+
+/**
+ * Returns onPointerDown/onPointerUp handlers that place the antenna
+ * at the clicked 3D point (if the click wasn't a drag).
+ */
+export function useClickToPlace() {
+  const pointerDownPos = useRef<{ x: number; y: number } | null>(null)
+
+  const onPointerDown = useCallback((e: ThreeEvent<PointerEvent>) => {
+    pointerDownPos.current = { x: e.clientX, y: e.clientY }
+  }, [])
+
+  const onPointerUp = useCallback((e: ThreeEvent<PointerEvent>) => {
+    if (!pointerDownPos.current) return
+    const config = useSceneStore.getState().viewerConfig
+    if (!config) return
+
+    const dx = e.clientX - pointerDownPos.current.x
+    const dy = e.clientY - pointerDownPos.current.y
+    const dist = Math.sqrt(dx * dx + dy * dy)
+    const threshold = config.interaction.click_max_drag_px ?? 5
+
+    if (dist <= threshold && e.intersections.length > 0) {
+      const point = e.intersections[0].point
+      useSimulationStore.getState().setAntennaPos([point.x, point.y, point.z])
+    }
+    pointerDownPos.current = null
+  }, [])
+
+  return { onPointerDown, onPointerUp }
+}
