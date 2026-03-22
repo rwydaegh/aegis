@@ -233,9 +233,9 @@ function ColorLegend() {
   if (!sabArray || !stats || !config) return null
 
   const maxSab = stats.peak_sab
+  // Jet colormap gradient: red (top/max) -> yellow -> green -> cyan -> blue (bottom/min)
   const gradientCss =
-    config.colormap.legend?.gradient_css ??
-    'linear-gradient(to bottom, rgb(252,255,164), rgb(249,142,9), rgb(188,55,84), rgb(87,16,110), rgb(0,4,18))'
+    'linear-gradient(to bottom, rgb(128,0,0), rgb(255,0,0), rgb(255,128,0), rgb(255,255,0), rgb(128,255,128), rgb(0,255,255), rgb(0,128,255), rgb(0,0,255), rgb(0,0,128))'
 
   // Both scales use 5 uniformly spaced ticks (top to bottom)
   const N = 5

@@ -102,11 +102,20 @@ export default function Antenna() {
   const coneR = ant.cone_radius ?? 0.05
   const coneYOff = ant.cone_y_offset ?? -0.12
 
+  // Antenna tip height: top of the pole
+  const tipY = poleH
+
   return (
     <group position={pos}>
-      {/* Radiation pattern mesh */}
+      {/* Pole: base at y=0 (click point), extends upward */}
+      <mesh position={[0, poleH / 2, 0]}>
+        <cylinderGeometry args={[poleR, poleR, poleH, ant.pole_segments ?? 8]} />
+        <meshStandardMaterial color={ant.pole_color ?? '#888888'} />
+      </mesh>
+
+      {/* Radiation pattern mesh at top of pole */}
       {usePattern && patternGeo && (
-        <>
+        <group position={[0, tipY, 0]}>
           <mesh geometry={patternGeo}>
             <meshStandardMaterial
               vertexColors
@@ -129,12 +138,12 @@ export default function Antenna() {
               roughness={0.35}
             />
           </mesh>
-        </>
+        </group>
       )}
 
-      {/* Fallback: simple sphere + cone when pattern is disabled */}
+      {/* Fallback: simple sphere + cone at top of pole */}
       {!usePattern && (
-        <>
+        <group position={[0, tipY, 0]}>
           <mesh>
             <sphereGeometry args={[ant.sphere_radius ?? 0.08, ant.sphere_segments ?? 16, ant.sphere_segments ?? 16]} />
             <meshStandardMaterial color={ant.color ?? '#ff3333'} emissive={ant.emissive_color ?? '#881111'} />
@@ -143,14 +152,8 @@ export default function Antenna() {
             <coneGeometry args={[coneR, coneH, ant.cone_segments ?? 16]} />
             <meshStandardMaterial color={ant.color ?? '#ff3333'} emissive={ant.emissive_color ?? '#881111'} />
           </mesh>
-        </>
+        </group>
       )}
-
-      {/* Pole: extends downward from the pattern/antenna center */}
-      <mesh position={[0, -(poleH / 2 + coneH * 0.5), 0]}>
-        <cylinderGeometry args={[poleR, poleR, poleH, ant.pole_segments ?? 8]} />
-        <meshStandardMaterial color={ant.pole_color ?? '#888888'} />
-      </mesh>
     </group>
   )
 }

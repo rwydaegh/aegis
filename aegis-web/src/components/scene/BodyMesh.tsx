@@ -3,7 +3,7 @@ import * as THREE from 'three'
 import { useSceneStore } from '@/stores/scene'
 import { useSimulationStore } from '@/stores/simulation'
 import { useUIStore } from '@/stores/ui'
-import { sampleInferno, gainTFromLinear } from '@/lib/colormap'
+import { jetColor, gainTFromLinear } from '@/lib/colormap'
 import { useBodyLoader } from '@/hooks/useBodyLoader'
 
 export default function BodyMesh() {
@@ -26,8 +26,6 @@ export default function BodyMesh() {
     const colorAttr = geometry.getAttribute('color') as THREE.BufferAttribute
     if (!colorAttr) return
 
-    const stops = config.colormap.stops
-
     if (!sabArray) {
       for (let i = 0; i < colorAttr.count; i++) {
         colorAttr.setXYZ(i, 0.5, 0.5, 0.5)
@@ -42,7 +40,7 @@ export default function BodyMesh() {
         } else {
           t = maxSab > 0 ? sabArray[f] / maxSab : 0
         }
-        const [r, g, b] = sampleInferno(t, stops)
+        const [r, g, b] = jetColor(t)
         colorAttr.setXYZ(f * 3, r, g, b)
         colorAttr.setXYZ(f * 3 + 1, r, g, b)
         colorAttr.setXYZ(f * 3 + 2, r, g, b)
