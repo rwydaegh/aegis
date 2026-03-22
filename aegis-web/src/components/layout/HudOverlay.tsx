@@ -4,6 +4,7 @@ import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
 import { fetchSystemInfo } from '@/api/client'
 import { formatSab, formatPower, formatDistance } from '@/lib/format'
+import { PHANTOM_META } from '@/components/panels/PhantomPanel'
 
 // ---------------------------------------------------------------------------
 // Server info hook
@@ -63,8 +64,22 @@ function useServerInfo(): ServerInfo | null {
 
 function StatsCard() {
   const { stats } = useSimulationStore()
+  const bodyName = useSceneStore(s => s.bodyName)
+  const meta = PHANTOM_META[bodyName.toLowerCase()]
+  const massKg = meta?.mass_kg
+
+  // SAR = P_abs (W) / mass (kg)
+  const sarValue = (stats && massKg) ? (stats.p_abs_mw / 1000) / massKg : null
+  const formatSar = (sar: number) => {
+    if (sar >= 0.01) return `${sar.toFixed(3)} W/kg`
+    return `${sar.toExponential(1)} W/kg`
+  }
 
   const rows: Array<{ label: string; value: string; highlight?: 'pass' | 'fail' }> = [
+    {
+      label: 'SAR_wb',
+      value: sarValue != null ? formatSar(sarValue) : '--',
+    },
     {
       label: 'P_abs',
       value: stats ? formatPower(stats.p_abs_mw) : '--',
@@ -72,10 +87,6 @@ function StatsCard() {
     {
       label: 'Peak S_ab',
       value: stats ? formatSab(stats.peak_sab) : '--',
-    },
-    {
-      label: 'S_inc',
-      value: stats ? formatSab(stats.S_inc) : '--',
     },
     {
       label: 'Distance',
