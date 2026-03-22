@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from aegis._array_backend import xp
+from aegis._array_backend import erf, xp
 from aegis.tissue.fresnel import _fresnel_core
 
 
@@ -46,3 +46,14 @@ def fresnel_weights(mu, n_tilde):
     _, _, T_s, T_p, _, _ = _fresnel_core(mu_complex, n_tilde)
     T_avg = 0.5 * (T_s + T_p)
     return T_s, T_p, T_avg
+
+
+def physical_gelu(mu, sigma):
+    """Physical GELU: mu * (1/2)[1 + erf(mu / sigma)].
+
+    Replaces ReLU at the shadow boundary with a diffraction-smoothed
+    transition (monograph eq. 2.44). Width sigma = sqrt(lambda*H/(4*pi)).
+    """
+    sigma_safe = xp.where(sigma > 0, sigma, 1e-30)
+    z = mu / sigma_safe[:, None]
+    return mu * 0.5 * (1.0 + erf(z))

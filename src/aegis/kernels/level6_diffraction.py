@@ -2,16 +2,9 @@
 
 from __future__ import annotations
 
-from aegis._array_backend import erf, jit, xp
+from aegis._array_backend import jit, xp
 from aegis.constants import C_0
-from aegis.kernels._base import fresnel_weights
-
-
-def _physical_gelu(mu, sigma):
-    """Physical GELU: mu * (1/2)[1 + erf(mu / sigma)]."""
-    sigma_safe = xp.where(sigma > 0, sigma, 1e-30)
-    z = mu / sigma_safe[:, None]
-    return mu * 0.5 * (1.0 + erf(z))
+from aegis.kernels._base import fresnel_weights, physical_gelu
 
 
 @jit
@@ -25,7 +18,7 @@ def level6_diffraction(normals, k_hat, power, n_tilde, T0, curvature_H, freq_hz)
     H_safe = xp.maximum(curvature_H, 0.0)
     sigma = xp.sqrt(xp.maximum(wavelength * H_safe / (4.0 * xp.pi), 0.0))
 
-    mu_gelu = _physical_gelu(mu, sigma)
+    mu_gelu = physical_gelu(mu, sigma)
 
     _T_s, _T_p, T_avg = fresnel_weights(mu, n_tilde)
 

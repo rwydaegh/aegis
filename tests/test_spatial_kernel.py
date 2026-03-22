@@ -1,0 +1,259 @@
+"""Tests for the unified spatial kernel with composable corrections."""
+
+import numpy as np
+import pytest
+from conftest import make_icosahedron
+
+from aegis.tissue.dielectric import SKIN_28GHZ
+
+
+@pytest.fixture
+def setup():
+    body = make_icosahedron()
+    rng = np.random.default_rng(99)
+    N = 10
+    k_hat = rng.standard_normal((N, 3))
+    k_hat /= np.linalg.norm(k_hat, axis=1, keepdims=True)
+    power = rng.uniform(0.5, 3.0, size=N)
+    n_tilde = SKIN_28GHZ.n_complex
+    T0 = SKIN_28GHZ.T0
+    freq_hz = SKIN_28GHZ.freq_hz
+    curvature_H = np.full(body.n_triangles, 10.0)
+    return body, k_hat, power, n_tilde, T0, freq_hz, curvature_H
+
+
+class TestUnifiedSpatialMatchesOldLevels:
+    """Unified kernel with specific flags must match old per-level kernels."""
+
+    def test_fresnel_off_matches_level2(self, setup):
+        body, k_hat, power, n_tilde, T0, freq_hz, _ = setup
+        from aegis.kernels.level2_geometric import level2_geometric
+        from aegis.kernels.spatial import spatial_kernel
+
+        expected = level2_geometric(body.normals, k_hat, power, T0)
+        actual = spatial_kernel(
+            body.normals,
+            k_hat,
+            power,
+            n_tilde,
+            T0,
+            freq_hz,
+            fresnel=False,
+        )
+        np.testing.assert_allclose(actual, expected, rtol=1e-12)
+
+    def test_no_corrections_matches_level3(self, setup):
+        body, k_hat, power, n_tilde, T0, freq_hz, _ = setup
+        from aegis.kernels.level3_fresnel import level3_fresnel
+        from aegis.kernels.spatial import spatial_kernel
+
+        expected = level3_fresnel(body.normals, k_hat, power, n_tilde)
+        actual = spatial_kernel(body.normals, k_hat, power, n_tilde, T0, freq_hz)
+        np.testing.assert_allclose(actual, expected, rtol=1e-12)
+
+    def test_polarisation_matches_level4(self, setup):
+        body, k_hat, power, n_tilde, T0, freq_hz, _ = setup
+        from aegis.kernels.level4_polarisation import level4_polarisation
+        from aegis.kernels.spatial import spatial_kernel
+
+        q = 0.5
+        expected = level4_polarisation(body.normals, k_hat, power, n_tilde, q=q)
+        actual = spatial_kernel(
+            body.normals,
+            k_hat,
+            power,
+            n_tilde,
+            T0,
+            freq_hz,
+            polarisation=True,
+            q=q,
+        )
+        np.testing.assert_allclose(actual, expected, rtol=1e-12)
+
+    def test_curvature_matches_level5(self, setup):
+        body, k_hat, power, n_tilde, T0, freq_hz, curvature_H = setup
+        from aegis.kernels.level5_curvature import level5_curvature
+        from aegis.kernels.spatial import spatial_kernel
+
+        expected = level5_curvature(
+            body.normals,
+            k_hat,
+            power,
+            n_tilde,
+            T0,
+            curvature_H,
+            freq_hz,
+        )
+        actual = spatial_kernel(
+            body.normals,
+            k_hat,
+            power,
+            n_tilde,
+            T0,
+            freq_hz,
+            curvature=True,
+            curvature_H=curvature_H,
+        )
+        np.testing.assert_allclose(actual, expected, rtol=1e-12)
+
+    def test_curvature_diffraction_matches_level6(self, setup):
+        body, k_hat, power, n_tilde, T0, freq_hz, curvature_H = setup
+        from aegis.kernels.level6_diffraction import level6_diffraction
+        from aegis.kernels.spatial import spatial_kernel
+
+        expected = level6_diffraction(
+            body.normals,
+            k_hat,
+            power,
+            n_tilde,
+            T0,
+            curvature_H,
+            freq_hz,
+        )
+        actual = spatial_kernel(
+            body.normals,
+            k_hat,
+            power,
+            n_tilde,
+            T0,
+            freq_hz,
+            curvature=True,
+            diffraction=True,
+            curvature_H=curvature_H,
+        )
+        np.testing.assert_allclose(actual, expected, rtol=1e-12)
+
+
+class TestNewCombinations:
+    """Combinations the old level system could not express."""
+
+    def test_polarisation_curvature(self, setup):
+        body, k_hat, power, n_tilde, T0, freq_hz, curvature_H = setup
+        from aegis.kernels.spatial import spatial_kernel
+
+        sab = spatial_kernel(
+            body.normals,
+            k_hat,
+            power,
+            n_tilde,
+            T0,
+            freq_hz,
+            polarisation=True,
+            q=0.5,
+            curvature=True,
+            curvature_H=curvature_H,
+        )
+        assert sab.shape == (body.n_triangles,)
+        assert np.all(np.isfinite(sab))
+
+    def test_polarisation_diffraction_no_curvature(self, setup):
+        body, k_hat, power, n_tilde, T0, freq_hz, curvature_H = setup
+        from aegis.kernels.spatial import spatial_kernel
+
+        sab = spatial_kernel(
+            body.normals,
+            k_hat,
+            power,
+            n_tilde,
+            T0,
+            freq_hz,
+            polarisation=True,
+            q=0.5,
+            diffraction=True,
+            curvature_H=curvature_H,
+        )
+        assert sab.shape == (body.n_triangles,)
+        assert np.all(np.isfinite(sab))
+        # Without curvature term, should differ from with curvature
+        sab_with_curv = spatial_kernel(
+            body.normals,
+            k_hat,
+            power,
+            n_tilde,
+            T0,
+            freq_hz,
+            polarisation=True,
+            q=0.5,
+            curvature=True,
+            diffraction=True,
+            curvature_H=curvature_H,
+        )
+        assert float(np.sum(sab_with_curv * body.areas)) >= float(np.sum(sab * body.areas)) - 1e-10
+
+    def test_all_corrections_on(self, setup):
+        body, k_hat, power, n_tilde, T0, freq_hz, curvature_H = setup
+        from aegis.kernels.spatial import spatial_kernel
+
+        sab = spatial_kernel(
+            body.normals,
+            k_hat,
+            power,
+            n_tilde,
+            T0,
+            freq_hz,
+            polarisation=True,
+            q=0.3,
+            curvature=True,
+            diffraction=True,
+            curvature_H=curvature_H,
+        )
+        assert sab.shape == (body.n_triangles,)
+        assert np.all(np.isfinite(sab))
+        # With q=0 it should match level 6
+        sab_q0 = spatial_kernel(
+            body.normals,
+            k_hat,
+            power,
+            n_tilde,
+            T0,
+            freq_hz,
+            polarisation=True,
+            q=0.0,
+            curvature=True,
+            diffraction=True,
+            curvature_H=curvature_H,
+        )
+        from aegis.kernels.level6_diffraction import level6_diffraction
+
+        expected = level6_diffraction(
+            body.normals,
+            k_hat,
+            power,
+            n_tilde,
+            T0,
+            curvature_H,
+            freq_hz,
+        )
+        np.testing.assert_allclose(sab_q0, expected, rtol=1e-10)
+
+
+class TestValidation:
+    def test_diffraction_requires_curvature_H(self, setup):
+        body, k_hat, power, n_tilde, T0, freq_hz, _ = setup
+        from aegis.kernels.spatial import spatial_kernel
+
+        with pytest.raises(ValueError, match="curvature_H"):
+            spatial_kernel(
+                body.normals,
+                k_hat,
+                power,
+                n_tilde,
+                T0,
+                freq_hz,
+                diffraction=True,
+            )
+
+    def test_curvature_requires_curvature_H(self, setup):
+        body, k_hat, power, n_tilde, T0, freq_hz, _ = setup
+        from aegis.kernels.spatial import spatial_kernel
+
+        with pytest.raises(ValueError, match="curvature_H"):
+            spatial_kernel(
+                body.normals,
+                k_hat,
+                power,
+                n_tilde,
+                T0,
+                freq_hz,
+                curvature=True,
+            )
