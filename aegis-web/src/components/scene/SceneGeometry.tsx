@@ -5,6 +5,7 @@ import { useUIStore } from '@/stores/ui'
 
 export default function SceneGeometry() {
   const sceneGeometry = useSceneStore(s => s.sceneGeometry)
+  const visible = useSceneStore(s => s.sceneGeometryVisible)
   const wireframe = useUIStore(s => s.wireframe)
 
   const { geometry, hasVertexColors } = useMemo(() => {
@@ -39,7 +40,7 @@ export default function SceneGeometry() {
     return { geometry: geo, hasVertexColors: false }
   }, [sceneGeometry])
 
-  if (!geometry) return null
+  if (!geometry || !visible) return null
 
   return (
     <mesh geometry={geometry}>

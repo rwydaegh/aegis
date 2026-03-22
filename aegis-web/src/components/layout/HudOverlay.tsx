@@ -180,6 +180,7 @@ function formatLegendValue(value: number): string {
 }
 
 const BAR_HEIGHT = 240
+const BAR_WIDTH = 16
 
 function ColorLegend() {
   const stats = useSimulationStore(s => s.stats)
@@ -191,72 +192,75 @@ function ColorLegend() {
   if (!sabArray || !stats || !config) return null
 
   const maxSab = stats.peak_sab
+  const dynamicRangeDb = (config.colormap as any).dynamic_range_db ?? 40
   const gradientCss =
     config.colormap.legend?.gradient_css ??
     'linear-gradient(to bottom, rgb(252,255,164), rgb(249,142,9), rgb(188,55,84), rgb(87,16,110), rgb(0,4,18))'
 
-  // Generate tick labels and positions
-  type Tick = { label: string; pct: number } // pct: 0 = top, 1 = bottom
+  // Both scales use 5 uniformly spaced ticks (top to bottom)
+  const N = 5
+  type Tick = { label: string; pct: number }
   const ticks: Tick[] = []
 
-  if (legendScale === 'linear') {
-    // 5 evenly spaced ticks
-    const N = 5
-    for (let i = 0; i < N; i++) {
-      const frac = i / (N - 1) // 0 to 1 (top to bottom)
+  for (let i = 0; i < N; i++) {
+    const frac = i / (N - 1) // 0 = top (max), 1 = bottom (min)
+    if (legendScale === 'linear') {
       const value = maxSab * (1 - frac)
       ticks.push({ label: formatLegendValue(value), pct: frac })
-    }
-  } else {
-    // dB scale: 0 dB at top, then -10, -20, -30, -40 dB
-    ticks.push({ label: '0 dB', pct: 0 })
-    for (const db of [-10, -20, -30, -40]) {
-      // dB = 10*log10(value/maxSab), so value/maxSab = 10^(dB/10)
-      const ratio = Math.pow(10, db / 10)
-      // Map ratio (0..1) to position: log scale
-      // In a linear gradient, ratio maps to pct = 1 - ratio (but for log we need log mapping)
-      // Use pct = 1 - ratio for linear gradient position (approximate)
-      const pct = 1 - ratio
-      if (pct >= 0 && pct <= 1) {
-        ticks.push({ label: `${db} dB`, pct })
-      }
+    } else {
+      // Uniform in colormap space => uniform dB ticks
+      const db = -dynamicRangeDb * frac
+      ticks.push({ label: `${db.toFixed(0)} dB`, pct: frac })
     }
   }
 
   return (
     <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-auto">
-      {/* Title and scale toggle */}
-      <div className="flex items-center justify-center gap-1 mb-1.5">
-        <span className="text-[11px] text-muted-foreground">
-          S<sub>ab</sub>{legendScale === 'linear' ? ' (W/m\u00b2)' : ' (dB)'}
-        </span>
-        <button
-          onClick={toggleLegendScale}
-          className="text-[9px] px-1.5 py-0.5 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-          title={legendScale === 'linear' ? 'Switch to dB scale' : 'Switch to linear scale'}
-        >
-          {legendScale === 'linear' ? 'dB' : 'Lin'}
-        </button>
-      </div>
-
-      {/* Gradient bar with tick labels */}
-      <div className="relative" style={{ height: BAR_HEIGHT }}>
-        <div
-          className="w-[20px] rounded-sm border border-border"
-          style={{ background: gradientCss, height: BAR_HEIGHT }}
-        />
-        {ticks.map(({ label, pct }, i) => (
-          <div
-            key={i}
-            className="absolute flex items-center gap-1.5"
-            style={{ top: pct * BAR_HEIGHT - 6, right: 28 }}
+      <div className="bg-card/80 backdrop-blur-md rounded-lg border border-border px-3 py-2.5">
+        {/* Title and scale toggle */}
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <span className="text-xs font-medium text-foreground">
+            S<sub>ab</sub>{legendScale === 'linear' ? ' (W/m\u00b2)' : ' (dB re peak)'}
+          </span>
+          <button
+            onClick={toggleLegendScale}
+            className="text-[11px] px-2 py-0.5 rounded border border-border bg-muted/50 text-foreground hover:bg-muted transition-colors cursor-pointer"
+            title={legendScale === 'linear' ? 'Switch to dB scale' : 'Switch to linear scale'}
           >
-            <span className="text-[11px] text-muted-foreground font-mono tabular-nums whitespace-nowrap">
-              {label}
-            </span>
-            <div className="w-[6px] h-[1px] bg-muted-foreground/40" />
+            {legendScale === 'linear' ? 'dB' : 'Lin'}
+          </button>
+        </div>
+
+        {/* Gradient bar with tick labels side by side */}
+        <div className="flex gap-2">
+          {/* Labels column */}
+          <div className="relative" style={{ height: BAR_HEIGHT, width: 60 }}>
+            {ticks.map(({ label, pct }, i) => (
+              <span
+                key={i}
+                className="absolute right-0 text-xs font-mono tabular-nums text-foreground whitespace-nowrap"
+                style={{ top: pct * BAR_HEIGHT - 7 }}
+              >
+                {label}
+              </span>
+            ))}
           </div>
-        ))}
+
+          {/* Tick marks + gradient bar */}
+          <div className="relative" style={{ height: BAR_HEIGHT }}>
+            <div
+              className="rounded-sm border border-border/60"
+              style={{ background: gradientCss, height: BAR_HEIGHT, width: BAR_WIDTH }}
+            />
+            {ticks.map(({ pct }, i) => (
+              <div
+                key={i}
+                className="absolute bg-foreground/40"
+                style={{ top: pct * BAR_HEIGHT, left: -4, width: 4, height: 1 }}
+              />
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   )

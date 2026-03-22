@@ -3,7 +3,7 @@ import * as THREE from 'three'
 import { useSceneStore } from '@/stores/scene'
 import { useSimulationStore } from '@/stores/simulation'
 import { useUIStore } from '@/stores/ui'
-import { sampleInferno } from '@/lib/colormap'
+import { sampleInferno, gainTFromLinear } from '@/lib/colormap'
 import { useBodyLoader } from '@/hooks/useBodyLoader'
 
 export default function BodyMesh() {
@@ -16,8 +16,9 @@ export default function BodyMesh() {
   const wireframe = useUIStore(s => s.wireframe)
   const bodyOffset = useSimulationStore(s => s.bodyOffset)
   const bodyRotationY = useSimulationStore(s => s.bodyRotationY)
+  const legendScale = useUIStore(s => s.legendScale)
 
-  // Apply heatmap colors when sabArray changes
+  // Apply heatmap colors when sabArray or scale mode changes
   useEffect(() => {
     if (!geometry || !config) return
 
@@ -25,6 +26,7 @@ export default function BodyMesh() {
     if (!colorAttr) return
 
     const stops = config.colormap.stops
+    const dynamicRangeDb = (config.colormap as any).dynamic_range_db ?? 40
 
     if (!sabArray) {
       // No results: neutral gray
@@ -32,20 +34,23 @@ export default function BodyMesh() {
         colorAttr.setXYZ(i, 0.5, 0.5, 0.5)
       }
     } else {
-      // Apply Inferno colormap per face
       const maxSab = Math.max(...Array.from(sabArray))
       const nFaces = sabArray.length
       for (let f = 0; f < nFaces; f++) {
-        const t = maxSab > 0 ? sabArray[f] / maxSab : 0
+        let t: number
+        if (legendScale === 'dB') {
+          t = gainTFromLinear(sabArray[f], maxSab, dynamicRangeDb)
+        } else {
+          t = maxSab > 0 ? sabArray[f] / maxSab : 0
+        }
         const [r, g, b] = sampleInferno(t, stops)
-        // Each face = 3 vertices
         colorAttr.setXYZ(f * 3, r, g, b)
         colorAttr.setXYZ(f * 3 + 1, r, g, b)
         colorAttr.setXYZ(f * 3 + 2, r, g, b)
       }
     }
     colorAttr.needsUpdate = true
-  }, [sabArray, geometry, config])
+  }, [sabArray, geometry, config, legendScale])
 
   if (!geometry) return null
 

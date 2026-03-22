@@ -80,8 +80,9 @@ export function stepPhysics(
     fwdZ = camZ / camLen
   }
   // Right is perpendicular to forward (rotate 90 degrees CW in XZ plane)
-  const rightX = fwdZ
-  const rightZ = -fwdX
+  // For camera looking down -Z: fwd=(0,-1), right should be (+1,0) = positive X
+  const rightX = -fwdZ
+  const rightZ = fwdX
 
   let moveX = 0
   let moveZ = 0
@@ -170,6 +171,15 @@ export function stepPhysics(
     onGround = true
   } else if (py > groundY + config.ground_snap) {
     onGround = false
+  }
+
+  // --- Fall-through protection ---
+  // If the player falls below a minimum Y (no voxels below), teleport to y=0
+  const FLOOR_MIN = -20
+  if (py < FLOOR_MIN) {
+    py = 0
+    vy = 0
+    onGround = true
   }
 
   // --- Smooth facing ---

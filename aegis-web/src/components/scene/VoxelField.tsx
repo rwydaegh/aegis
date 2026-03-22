@@ -4,16 +4,16 @@ import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
 import { useVoxelLoader } from '@/hooks/useVoxelLoader'
 
-// Default material colors matching the old viewer
+// Default material colors - must match configs/default.json voxels.material_colors
 const DEFAULT_MATERIAL_COLORS: Record<string, [number, number, number]> = {
   concrete: [180, 180, 180],
-  brick: [180, 100, 80],
-  asphalt: [100, 100, 100],
-  vegetation: [80, 140, 60],
-  glass: [160, 200, 220],
+  asphalt: [80, 80, 80],
+  vegetation: [40, 160, 40],
+  water: [30, 100, 220],
+  brick: [200, 80, 50],
+  glass: [150, 210, 240],
   metal: [160, 160, 170],
   wood: [160, 120, 80],
-  water: [60, 120, 180],
 }
 
 export default function VoxelField() {

@@ -1,7 +1,6 @@
 import { useRef } from 'react'
 import { Canvas, useThree, useFrame } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
-import type { ThreeEvent } from '@react-three/fiber'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import * as THREE from 'three'
 import { useSceneStore } from '@/stores/scene'
@@ -20,16 +19,17 @@ import Environment from './Environment'
 // Body is roughly 1.2 m tall, centered at origin, feet at y=0
 const BODY_TARGET = new THREE.Vector3(0, 0.6, 0)
 
-const PRESET_CAMERA: Record<string, { position: [number, number, number]; target: [number, number, number] }> = {
-  front: { position: [0, 1, 4], target: [0, 0.6, 0] },
-  side:  { position: [4, 1, 0], target: [0, 0.6, 0] },
-  top:   { position: [0, 6, 0.01], target: [0, 0, 0] },
-  focus: { position: [0, 0.6, 2.5], target: [0, 0.6, 0] },
+// Camera preset offsets relative to body center (body center ~ 0.6m above feet)
+const PRESET_OFFSETS: Record<string, { posOffset: [number, number, number]; targetOffset: [number, number, number] }> = {
+  front: { posOffset: [0, 0.4, 4], targetOffset: [0, 0.6, 0] },
+  side:  { posOffset: [4, 0.4, 0], targetOffset: [0, 0.6, 0] },
+  top:   { posOffset: [0, 6, 0.01], targetOffset: [0, 0, 0] },
+  focus: { posOffset: [0, 0, 2.5], targetOffset: [0, 0.6, 0] },
 }
 
 /**
  * Listens to ui.cameraPreset and smoothly transitions the camera + orbit target.
- * Must live inside the R3F Canvas so it can access useThree.
+ * Presets are relative to the current body position.
  */
 function CameraController({ controlsRef, initialPosition }: {
   controlsRef: React.RefObject<OrbitControlsImpl | null>
@@ -56,11 +56,21 @@ function CameraController({ controlsRef, initialPosition }: {
     fromPos.current.copy(camera.position)
     fromTarget.current.copy(controls ? (controls.target as THREE.Vector3) : BODY_TARGET)
 
+    // Get current body position to offset presets
+    const [bx, by, bz] = useSimulationStore.getState().bodyOffset
+
     let dest: { position: [number, number, number]; target: [number, number, number] }
     if (preset === 'reset') {
-      dest = { position: initialPosition, target: [0, 0.6, 0] }
+      dest = {
+        position: [bx + initialPosition[0], by + initialPosition[1], bz + initialPosition[2]],
+        target: [bx, by + 0.6, bz],
+      }
     } else {
-      dest = PRESET_CAMERA[preset] ?? PRESET_CAMERA.front
+      const p = PRESET_OFFSETS[preset] ?? PRESET_OFFSETS.front
+      dest = {
+        position: [bx + p.posOffset[0], by + p.posOffset[1], bz + p.posOffset[2]],
+        target: [bx + p.targetOffset[0], by + p.targetOffset[1], bz + p.targetOffset[2]],
+      }
     }
 
     toPos.current.set(...dest.position)
@@ -120,44 +130,7 @@ function SceneLighting() {
   )
 }
 
-function Ground() {
-  const config = useSceneStore(s => s.viewerConfig)
-  const gp = (config?.scene?.ground_plane ?? {}) as any
-  if (gp.visible === false) return null
-
-  const pointerDownPos = useRef<{ x: number; y: number } | null>(null)
-
-  const handlePointerDown = (e: ThreeEvent<PointerEvent>) => {
-    pointerDownPos.current = { x: e.clientX, y: e.clientY }
-  }
-
-  const handlePointerUp = (e: ThreeEvent<PointerEvent>) => {
-    if (!pointerDownPos.current || !config) return
-    const dx = e.clientX - pointerDownPos.current.x
-    const dy = e.clientY - pointerDownPos.current.y
-    const dist = Math.sqrt(dx * dx + dy * dy)
-    const threshold = config.interaction.click_max_drag_px ?? 5
-
-    if (dist <= threshold && e.intersections.length > 0) {
-      const point = e.intersections[0].point
-      useSimulationStore.getState().setAntennaPos([point.x, point.y, point.z])
-    }
-    pointerDownPos.current = null
-  }
-
-  return (
-    <mesh
-      rotation={[-Math.PI / 2, 0, 0]}
-      position={[0, gp.y ?? 0, 0]}
-      receiveShadow
-      onPointerDown={handlePointerDown}
-      onPointerUp={handlePointerUp}
-    >
-      <planeGeometry args={[gp.size ?? 100, gp.size ?? 100]} />
-      <meshStandardMaterial color={gp.color ?? '#1a1a1a'} roughness={gp.roughness ?? 0.9} />
-    </mesh>
-  )
-}
+// Ground plane removed - voxels and scene geometry provide their own ground.
 
 /**
  * On mount, move the camera + orbit target to look at the body's actual position.
@@ -228,7 +201,6 @@ export default function SceneRoot() {
     >
       <color attach="background" args={[config.scene.background_color ?? '#0a0a0f']} />
       <SceneLighting />
-      <Ground />
       <VoxelField />
       <SceneGeometry />
       <Environment />

@@ -129,6 +129,7 @@ export default function ScenePanel() {
 
           <label className={labelClass}>Radius (m)</label>
           <input type="number" className={inputClass} value={radius}
+            min={10} max={500} step={10}
             onChange={e => setRadius(Number(e.target.value))} disabled={locationLoading} />
 
           <label className="flex items-center gap-2 text-xs text-muted-foreground mt-2">

@@ -177,6 +177,57 @@ describe('stepPhysics - step height', () => {
   })
 })
 
+describe('stepPhysics - left/right direction', () => {
+  it('D key moves in +X when camera looks down -Z', () => {
+    // Camera looking down -Z: cameraDirection = [0, -1]
+    // D (right) should move in +X direction
+    let state = groundedState()
+    const input: MovementInput = { ...NO_INPUT, right: true }
+    for (let i = 0; i < 30; i++) {
+      state = stepPhysics(state, input, [0, -1], FLAT_GROUND, DEFAULT_CONFIG, 0.016)
+    }
+    expect(state.position[0]).toBeGreaterThan(0) // moved in +X (right)
+  })
+
+  it('A key moves in -X when camera looks down -Z', () => {
+    // Camera looking down -Z: cameraDirection = [0, -1]
+    // A (left) should move in -X direction
+    let state = groundedState()
+    const input: MovementInput = { ...NO_INPUT, left: true }
+    for (let i = 0; i < 30; i++) {
+      state = stepPhysics(state, input, [0, -1], FLAT_GROUND, DEFAULT_CONFIG, 0.016)
+    }
+    expect(state.position[0]).toBeLessThan(0) // moved in -X (left)
+  })
+
+  it('D key moves in +Z when camera looks down +X', () => {
+    // Camera looking down +X: cameraDirection = [1, 0]
+    // D (right) should move in +Z direction
+    let state = groundedState()
+    const input: MovementInput = { ...NO_INPUT, right: true }
+    for (let i = 0; i < 30; i++) {
+      state = stepPhysics(state, input, [1, 0], FLAT_GROUND, DEFAULT_CONFIG, 0.016)
+    }
+    expect(state.position[2]).toBeGreaterThan(0) // moved in +Z
+  })
+})
+
+describe('stepPhysics - fall-through protection', () => {
+  it('teleports to y=0 when falling below floor minimum', () => {
+    const state: PhysicsState = {
+      position: [5, -25, 5],
+      velocity: [0, -10, 0],
+      rotationY: 0,
+      angularVelocity: 0,
+      onGround: false,
+    }
+    const noVoxels = (_x: number, _z: number, _y: number) => -Infinity
+    const next = stepPhysics(state, NO_INPUT, [0, -1], noVoxels, DEFAULT_CONFIG, 0.016)
+    expect(next.position[1]).toBe(0)
+    expect(next.onGround).toBe(true)
+  })
+})
+
 describe('stepPhysics - dt clamp', () => {
   it('clamps large dt values', () => {
     const state = groundedState()

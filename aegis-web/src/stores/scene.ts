@@ -30,6 +30,7 @@ interface SceneStore {
     indices: Int32Array
     faceColors: Float32Array | null
   } | null
+  sceneGeometryVisible: boolean
 
   // GLB tiles
   glbTiles: string[]
@@ -52,6 +53,7 @@ interface SceneStore {
   setEnvDisplayMode: (mode: SceneStore['envDisplayMode']) => void
   setScenePaths: (paths: string[]) => void
   setSceneGeometry: (geom: SceneStore['sceneGeometry']) => void
+  toggleSceneGeometryVisible: () => void
   setGlbTiles: (tiles: string[]) => void
   setRtEnabled: (enabled: boolean) => void
   setRtSource: (source: SceneStore['rtSource']) => void
@@ -70,6 +72,7 @@ export const useSceneStore = create<SceneStore>((set) => ({
   envDisplayMode: 'cubes',
   scenePaths: [],
   sceneGeometry: null,
+  sceneGeometryVisible: true,
   glbTiles: [],
   rtEnabled: false,
   rtSource: 'voxel',
@@ -92,6 +95,7 @@ export const useSceneStore = create<SceneStore>((set) => ({
   setEnvDisplayMode: (mode) => set({ envDisplayMode: mode }),
   setScenePaths: (paths) => set({ scenePaths: paths }),
   setSceneGeometry: (geom) => set({ sceneGeometry: geom }),
+  toggleSceneGeometryVisible: () => set((state) => ({ sceneGeometryVisible: !state.sceneGeometryVisible })),
   setGlbTiles: (tiles) => set({ glbTiles: tiles }),
   setRtEnabled: (enabled) => set({ rtEnabled: enabled }),
   setRtSource: (source) => set({ rtSource: source }),
