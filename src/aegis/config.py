@@ -39,7 +39,7 @@ class AntennaConfig:
     """Transmit antenna configuration."""
 
     positions: list[list[float]] = field(default_factory=lambda: [[5.0, 0.0, 1.0]])
-    power_dbm: float = 30.0
+    power_dbm: float = 60.0
     polarisation: str = "vertical"
     pattern: str = "isotropic"
 

@@ -202,7 +202,7 @@ def compute_dosimetry(
     mode: str | None = None,
     corrections: dict | None = None,
     tissue: TissueModel | None = None,
-    power_dbm: float = 30.0,
+    power_dbm: float = 60.0,
     n_paths: int = 1,
     config: dict | None = None,
     stochastic: dict | None = None,
@@ -252,10 +252,12 @@ def compute_dosimetry(
         dist = 1.0
     k_hat = direction / dist
 
-    # Power at body surface (free-space path loss)
+    # Power at body surface (free-space path loss, clamp distance for near-field)
     tx_power_w = 10 ** ((power_dbm - 30) / 10)
-    # Effective isotropic power density at distance
-    S_inc = tx_power_w / (4 * np.pi * dist**2) if dist > 0.1 else tx_power_w
+    from aegis.viewer.raytracer import _DEFAULT_FSPL_DISTANCE_CLAMP_M
+
+    d_clamped = max(dist, _DEFAULT_FSPL_DISTANCE_CLAMP_M)
+    S_inc = tx_power_w / (4 * np.pi * d_clamped**2)
 
     if stochastic:
         from pathlib import Path

@@ -1,10 +1,6 @@
 import { useState, useEffect } from 'react'
 import { fetchSystemInfo } from '@/api/client'
 
-// ---------------------------------------------------------------------------
-// Server info hook
-// ---------------------------------------------------------------------------
-
 interface ServerInfo {
   hostname: string
   cpuPct: number | null
@@ -16,7 +12,6 @@ interface ServerInfo {
 }
 
 function shortenGpuName(name: string): string {
-  // "NVIDIA RTX A4000" -> "A4000", "NVIDIA GeForce RTX 4090" -> "4090"
   return name
     .replace(/NVIDIA\s*/i, '')
     .replace(/GeForce\s*/i, '')
@@ -53,14 +48,11 @@ function useServerInfo(): ServerInfo | null {
   return info
 }
 
-// ---------------------------------------------------------------------------
-// Server info badge
-// ---------------------------------------------------------------------------
-
 export default function ServerInfoBadge() {
   const info = useServerInfo()
   if (!info) return null
 
+  const isCloud = info.gpuName != null
   const items: Array<{ label: string; pct: number; spec: string }> = []
 
   if (info.cpuPct != null) {
@@ -77,9 +69,13 @@ export default function ServerInfoBadge() {
 
   return (
     <div className="absolute bottom-3 right-3 pointer-events-none">
-      <div className="flex items-center gap-3">
+      <div className="bg-black/60 backdrop-blur-sm rounded-md border border-white/10 px-2.5 py-1.5 flex items-center gap-3">
+        <span className={`text-[10px] font-mono font-medium select-none ${isCloud ? 'text-emerald-400' : 'text-blue-400'}`}>
+          {isCloud ? 'CLOUD' : 'LOCAL'}
+        </span>
+        <span className="w-px h-3 bg-white/20" />
         {items.map(({ label, pct, spec }) => (
-          <span key={label} className="text-[10px] text-muted-foreground/70 font-mono select-none">
+          <span key={label} className="text-[10px] text-white/80 font-mono select-none">
             {label} {pct}%{spec && ` (${spec})`}
           </span>
         ))}

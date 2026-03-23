@@ -235,7 +235,7 @@ def paths_from_differt(
     path_vertices: np.ndarray,
     tx_positions: np.ndarray,
     freq_hz: float,
-    tx_power_dbm: float = 30.0,
+    tx_power_dbm: float = 60.0,
     element_indices: np.ndarray | None = None,
     object_indices: np.ndarray | None = None,
     material_indices: np.ndarray | None = None,
@@ -263,7 +263,7 @@ def paths_from_differt(
         First vertex is TX, last is the arrival point near the body.
     tx_positions : (M_ant, 3) transmitter antenna element positions
     freq_hz : operating frequency [Hz]
-    tx_power_dbm : transmit power per element [dBm], default 30 (1 W)
+    tx_power_dbm : transmit power per element [dBm], default 60 (1 kW)
     element_indices : (N_paths,) which TX element each path originates from.
         If None, inferred from nearest TX position.
     object_indices : (N_paths, path_length) triangle index at each path
@@ -459,7 +459,7 @@ def paths_from_differt_scene(
     rx_position: np.ndarray,
     freq_hz: float,
     max_bounces: int = 3,
-    tx_power_dbm: float = 30.0,
+    tx_power_dbm: float = 60.0,
     initial_polarisation: str = "vertical",
 ) -> PropagationPaths:
     """Run DiffeRT on a scene file and return PropagationPaths.

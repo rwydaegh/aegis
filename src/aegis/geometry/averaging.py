@@ -101,12 +101,15 @@ def precompute_averaging_matrix(
 
     r_est = np.sqrt(target_area_m2 / np.pi) * 2.5
 
+    # Batch query: get all neighbor lists at once (much faster than per-point)
+    all_neighbors = tree.query_ball_point(centroids, r_est)
+
     rows: list[int] = []
     cols: list[int] = []
     vals: list[float] = []
 
     for i in range(M):
-        idx = tree.query_ball_point(centroids[i], r_est)
+        idx = all_neighbors[i]
 
         if len(idx) == 0:
             rows.append(i)
@@ -114,10 +117,11 @@ def precompute_averaging_matrix(
             vals.append(1.0)
             continue
 
-        idx = np.array(idx)
+        idx = np.asarray(idx)
 
         # Sort by distance from centroid i
-        dists = np.linalg.norm(centroids[idx] - centroids[i], axis=1)
+        diffs = centroids[idx] - centroids[i]
+        dists = np.sqrt(np.einsum("ij,ij->i", diffs, diffs))
         order = np.argsort(dists)
         idx_sorted = idx[order]
 
@@ -131,10 +135,10 @@ def precompute_averaging_matrix(
         patch_areas = areas[patch_idx]
         weights = patch_areas / patch_areas.sum()
 
-        for j, w in zip(patch_idx, weights, strict=True):
-            rows.append(i)
-            cols.append(j)
-            vals.append(w)
+        n = len(patch_idx)
+        rows.extend([i] * n)
+        cols.extend(patch_idx.tolist())
+        vals.extend(weights.tolist())
 
     return sparse.csr_array(
         (np.array(vals), (np.array(rows), np.array(cols))),

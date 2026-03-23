@@ -135,7 +135,7 @@ def compute_paths_differt(
     rx_pos: np.ndarray,
     max_order: int = 1,
     freq_hz: float = 28e9,
-    tx_power_dbm: float = 30.0,
+    tx_power_dbm: float = 60.0,
     reflection_loss_per_order: float = 0.5,
     # NOTE: Uses from_powers() with scalar power only. Polarisation direction
     # is irrelevant here because the viewer runs incoherent levels (0-6) where

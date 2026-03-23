@@ -1,10 +1,11 @@
-import { useRef, useEffect, useMemo } from 'react'
+import { useRef, useEffect } from 'react'
 import * as THREE from 'three'
 import { useSceneStore } from '@/stores/scene'
 import { useSimulationStore } from '@/stores/simulation'
 import { useUIStore } from '@/stores/ui'
 import { jetColor, gainTFromLinear } from '@/lib/colormap'
 import { useBodyLoader } from '@/hooks/useBodyLoader'
+import PeakIndicator from './PeakIndicator'
 
 /** Compliance color: green -> yellow -> orange -> red at thresholds 0.5, 0.8, 1.0 */
 function complianceColor(ratio: number): [number, number, number] {
@@ -119,36 +120,6 @@ export default function BodyMesh() {
     colorAttr.needsUpdate = true
   }, [dataArray, isRatioMode, ratioLimit, geometry, config, legendScale, dynamicRangeDb, colormapLocked, colormapLockedMax])
 
-  // Find peak triangle index for the peak location indicator
-  const peakIdx = useMemo(() => {
-    const arr = sabAveragedArray ?? sabArray
-    if (!arr) return null
-    let maxVal = -Infinity
-    let maxIdx = 0
-    for (let i = 0; i < arr.length; i++) {
-      if (arr[i] > maxVal) { maxVal = arr[i]; maxIdx = i }
-    }
-    return maxIdx
-  }, [sabAveragedArray, sabArray])
-
-  // Compute peak centroid from geometry
-  const peakPosition = useMemo(() => {
-    if (peakIdx == null || !geometry) return null
-    const posAttr = geometry.getAttribute('position') as THREE.BufferAttribute
-    if (!posAttr) return null
-
-    const baseVertex = peakIdx * 3
-    if (baseVertex + 2 >= posAttr.count) return null
-
-    let cx = 0, cy = 0, cz = 0
-    for (let v = 0; v < 3; v++) {
-      cx += posAttr.getX(baseVertex + v)
-      cy += posAttr.getY(baseVertex + v)
-      cz += posAttr.getZ(baseVertex + v)
-    }
-    return new THREE.Vector3(cx / 3, cy / 3, cz / 3)
-  }, [peakIdx, geometry])
-
   if (!geometry) return null
 
   return (
@@ -166,13 +137,7 @@ export default function BodyMesh() {
         />
       </mesh>
 
-      {/* Peak location indicator */}
-      {peakPosition && (
-        <mesh position={peakPosition}>
-          <sphereGeometry args={[0.015, 12, 12]} />
-          <meshBasicMaterial color="#ff2222" />
-        </mesh>
-      )}
+      <PeakIndicator />
     </group>
   )
 }

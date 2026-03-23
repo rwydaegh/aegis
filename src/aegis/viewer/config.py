@@ -170,7 +170,7 @@ DEFAULTS: dict = {
     },
     "dosimetry": {
         "default_level": 2,
-        "default_power_dbm": 30,
+        "default_power_dbm": 60,
         "default_n_paths": 1,
         "default_max_order": 0,
         "freq_hz": 28.0e9,

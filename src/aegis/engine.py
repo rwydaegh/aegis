@@ -6,6 +6,7 @@ Levels 0-6 are incoherent. Levels 7-8 are coherent MIMO.
 
 from __future__ import annotations
 
+import time
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -18,6 +19,9 @@ from aegis.tissue.dielectric import TissueModel
 
 if TYPE_CHECKING:
     from aegis.precoder import Precoder
+
+# Module-level timing dict, populated by compute() for viewer profiling
+_last_timings: dict[str, float] = {}
 
 
 def _to_numpy(arr):
@@ -38,12 +42,15 @@ class DosimetryEngine:
         Tissue electromagnetic properties at the operating frequency.
     """
 
+    # Class-level cache for averaging matrices. Keyed by (id(body), n_tri, target_area).
+    # Shared across all engine instances so the expensive build persists across requests.
+    _G_cache: dict = {}
+
     def __init__(self, tissue: TissueModel) -> None:
         self.tissue = tissue
         self.T0 = tissue.T0
         self.n_tilde = tissue.n_complex
         self.freq_hz = tissue.freq_hz
-        self._G_cache: dict = {}
 
     def _get_G(self, body, target_area_m2):
         key = (id(body), body.n_triangles, target_area_m2)
@@ -80,13 +87,21 @@ class DosimetryEngine:
 
         sinc = np.full(body.n_triangles, float(np.sum(_to_numpy(paths.power))))
 
+        t0 = time.perf_counter()
         G_4cm2 = self._get_G(body, 4e-4)
+        t_build = time.perf_counter() - t0
+        t1 = time.perf_counter()
         sab_averaged = _to_numpy(G_4cm2 @ sab)
         sinc_averaged = _to_numpy(G_4cm2 @ sinc)
+        t_matvec = time.perf_counter() - t1
+        _last_timings["avg_build_G_4cm2_ms"] = t_build * 1e3
+        _last_timings["avg_matvec_4cm2_ms"] = t_matvec * 1e3
 
         sab_1cm2_averaged = None
         if effective_freq_hz is not None and effective_freq_hz > 30e9:
+            t2 = time.perf_counter()
             G_1cm2 = self._get_G(body, 1e-4)
+            _last_timings["avg_build_G_1cm2_ms"] = (time.perf_counter() - t2) * 1e3
             sab_1cm2_averaged = _to_numpy(G_1cm2 @ sab)
 
         return DosimetryResult(
@@ -448,6 +463,7 @@ class DosimetryEngine:
         if mode == "spatial":
             from aegis.kernels.spatial import spatial_kernel
 
+            t_kernel = time.perf_counter()
             sab = spatial_kernel(
                 body.normals,
                 paths.k_hat,
@@ -463,8 +479,9 @@ class DosimetryEngine:
                 curvature_H=curvature_H,
             )
             sab = _to_numpy(sab)
+            _last_timings["kernel_ms"] = (time.perf_counter() - t_kernel) * 1e3
         elif mode in ("coherent", "ecbf"):
-            result = self._compute_coherent(
+            return self._compute_coherent(
                 body,
                 paths,
                 fidelity_level,
@@ -474,24 +491,8 @@ class DosimetryEngine:
                 body_mass=body_mass,
                 spatial_averaging=spatial_averaging,
                 freq_hz=freq_hz,
-            )
-            # Re-wrap with mode/corrections metadata
-            return DosimetryResult(
-                sab=result.sab,
-                p_abs=result.p_abs,
-                fidelity_level=fidelity_level,
-                sab_averaged=result.sab_averaged,
-                sar_wb=result.sar_wb,
                 mode=mode,
                 corrections=tuple(corrections),
-                Q=result.Q,
-                rho=result.rho,
-                eigenvalues=result.eigenvalues,
-                x_star=result.x_star,
-                sinc=result.sinc,
-                sinc_averaged=result.sinc_averaged,
-                sab_1cm2_averaged=result.sab_1cm2_averaged,
-                freq_hz=result.freq_hz,
             )
         else:
             # bound or aggregate: use legacy dispatch
@@ -532,6 +533,8 @@ class DosimetryEngine:
         body_mass: float | None = None,
         spatial_averaging: bool = False,
         freq_hz: float | None = None,
+        mode: str | None = None,
+        corrections: tuple[str, ...] = (),
     ) -> DosimetryResult:
         """Dispatch coherent levels 7-8."""
         sigma = self.tissue.sigma
@@ -594,6 +597,8 @@ class DosimetryEngine:
             level,
             body_mass=body_mass,
             freq_hz=freq_hz,
+            mode=mode,
+            corrections=corrections,
             Q=Q,
             rho=rho,
             eigenvalues=eigenvalues,

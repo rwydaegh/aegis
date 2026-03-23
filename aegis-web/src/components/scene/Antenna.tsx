@@ -43,7 +43,7 @@ export default function Antenna() {
     const rp = (config.antenna as any).radiation_pattern
     if (!rp || rp.enabled === false) return null
 
-    const detail = rp.ico_detail ?? 4
+    const detail = rp.ico_detail ?? 8
     const base = new THREE.IcosahedronGeometry(1, detail)
     const posAttr = base.attributes.position as THREE.BufferAttribute
     const nV = posAttr.count

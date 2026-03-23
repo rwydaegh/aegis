@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useSimulationStore } from '@/stores/simulation'
 import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
+import Tex from '@/components/ui/Tex'
 
 /** Format a value for the legend: use scientific notation for very small/large values. */
 function formatLegendValue(value: number): string {
@@ -45,11 +46,17 @@ function computeSmartDynamicRange(sabArray: Float32Array): number {
   return Math.max(10, Math.min(60, rounded))
 }
 
-const QUANTITY_LABELS: Record<string, string> = {
-  sab: 'S_ab',
-  sab_4cm2: 'S_ab (4 cm\u00b2)',
-  sab_1cm2: 'S_ab (1 cm\u00b2)',
-  sinc_local: 'S_inc local',
+function legendLabel(qty: string, ratio: boolean, scale: string): string {
+  if (ratio && qty !== 'sab') return '\\text{Ratio to limit}'
+  const labels: Record<string, string> = {
+    sab: 'S_\\text{ab}',
+    sab_4cm2: 'S_\\text{ab}\\;(4\\,\\text{cm}^2)',
+    sab_1cm2: 'S_\\text{ab}\\;(1\\,\\text{cm}^2)',
+    sinc_local: 'S_\\text{inc}\\;\\text{local}',
+  }
+  const base = labels[qty] ?? 'S_\\text{ab}'
+  const unit = scale === 'linear' ? '\\;(\\text{W/m}^2)' : '\\;(\\text{dB re peak})'
+  return base + unit
 }
 
 export default function ColorLegend() {
@@ -106,10 +113,7 @@ export default function ColorLegend() {
         {/* Title, lock, and scale toggle */}
         <div className="flex items-center justify-between gap-1.5 mb-2">
           <span className="text-xs font-medium text-foreground">
-            {ratioMode && displayQuantity !== 'sab'
-              ? 'Ratio to limit'
-              : `${QUANTITY_LABELS[displayQuantity] ?? 'S_ab'}${legendScale === 'linear' ? ' (W/m\u00b2)' : ' (dB re peak)'}`
-            }
+            <Tex math={legendLabel(displayQuantity, ratioMode, legendScale)} />
           </span>
           <div className="flex items-center gap-1">
             <button

@@ -79,15 +79,72 @@ def _convert_a_to_psi(
     return psi.astype(complex)
 
 
+def _extract_path_viz(paths, valid: np.ndarray) -> list[dict]:
+    """Extract path visualization data from Sionna Paths object.
+
+    Parameters
+    ----------
+    paths : sionna.rt Paths object with vertices, sources, targets, interactions
+    valid : (num_rx, num_tx, num_paths) boolean mask
+
+    Returns
+    -------
+    List of dicts with keys 'vertices' (list of [x,y,z]), 'order' (int), 'length' (float)
+    """
+    try:
+        verts = np.array(paths.vertices)  # (max_depth, num_rx, num_tx, num_paths, 3)
+        interactions = np.array(paths.interactions)  # (max_depth, num_rx, num_tx, num_paths)
+        # mi.Point3f stores as (3, N), transpose to (N, 3)
+        sources = np.array(paths.sources).T  # (num_tx, 3)
+        targets = np.array(paths.targets).T  # (num_rx, 3)
+    except Exception:
+        return []
+
+    max_depth = verts.shape[0]
+    path_viz = []
+
+    rx_idx, tx_idx = 0, 0
+    src = sources[tx_idx]
+    tgt = targets[rx_idx]
+    n_paths = valid.shape[-1]
+
+    for p in range(n_paths):
+        if not valid[rx_idx, tx_idx, p]:
+            continue
+
+        # Build waypoints: TX -> interaction vertices -> RX
+        waypoints = [src.tolist()]
+        order = 0
+        for d in range(max_depth):
+            if interactions[d, rx_idx, tx_idx, p] == 0:  # NONE
+                break
+            waypoints.append(verts[d, rx_idx, tx_idx, p].tolist())
+            order += 1
+        waypoints.append(tgt.tolist())
+
+        # Compute total path length
+        pts = np.array(waypoints)
+        segments = np.diff(pts, axis=0)
+        length = float(np.sum(np.linalg.norm(segments, axis=1)))
+
+        if length < 1e-6:
+            continue
+
+        path_viz.append({"vertices": waypoints, "order": order, "length": length})
+
+    return path_viz
+
+
 def paths_from_sionna_scene(
     scene,
     tx_positions: np.ndarray,
     rx_position: np.ndarray,
     freq_hz: float,
     max_bounces: int = 5,
-    tx_power_dbm: float = 30.0,
+    tx_power_dbm: float = 60.0,
     tx_pattern: str = "isotropic",
-) -> PropagationPaths:
+    return_viz: bool = False,
+) -> PropagationPaths | tuple[PropagationPaths, list[dict]]:
     """Run Sionna RT and convert results to PropagationPaths.
 
     Parameters
@@ -99,10 +156,12 @@ def paths_from_sionna_scene(
     max_bounces : maximum number of ray interactions
     tx_power_dbm : transmit power in dBm
     tx_pattern : TX antenna pattern name
+    return_viz : if True, also return path visualization data
 
     Returns
     -------
-    PropagationPaths with k_hat, psi, element_index, delay, is_los
+    PropagationPaths with k_hat, psi, element_index, delay, is_los.
+    If return_viz is True, returns (PropagationPaths, path_viz_list).
     """
     _check_sionna()
     from sionna.rt import PathSolver, PlanarArray
@@ -152,6 +211,10 @@ def paths_from_sionna_scene(
         refraction=True,
     )
 
+    # Extract path visualization before CIR (vertices are lazily computed)
+    valid_raw = np.array(paths.valid)  # (num_rx, num_tx, num_paths)
+    path_viz = _extract_path_viz(paths, valid_raw) if return_viz else []
+
     # Extract data as numpy
     # Sionna v2 cir() shape: a[num_rx, num_rx_ant, num_tx, num_tx_ant, num_paths, num_time_steps]
     # With cross-pol RX: num_rx_ant=2 (pol 0=theta, pol 1=phi)
@@ -161,7 +224,7 @@ def paths_from_sionna_scene(
 
     theta_r_raw = np.array(paths.theta_r)  # (num_rx, num_tx, num_paths)
     phi_r_raw = np.array(paths.phi_r)
-    valid = np.array(paths.valid)  # (num_rx, num_tx, num_paths)
+    valid = valid_raw
 
     all_k_hat = []
     all_psi = []
@@ -217,12 +280,14 @@ def paths_from_sionna_scene(
         all_is_los.append(is_los)
 
     if not all_k_hat:
-        return PropagationPaths.from_powers(k_hat=np.zeros((0, 3)), power=np.zeros(0))
+        empty = PropagationPaths.from_powers(k_hat=np.zeros((0, 3)), power=np.zeros(0))
+        return (empty, []) if return_viz else empty
 
-    return PropagationPaths(
+    result = PropagationPaths(
         k_hat=np.vstack(all_k_hat),
         psi=np.vstack(all_psi),
         element_index=np.concatenate(all_element_index),
         delay=np.concatenate(all_delay),
         is_los=np.concatenate(all_is_los),
     )
+    return (result, path_viz) if return_viz else result

@@ -2,6 +2,7 @@ import { useSimulationStore } from '@/stores/simulation'
 import { useSceneStore } from '@/stores/scene'
 import { formatSab, formatPower, formatDistance } from '@/lib/format'
 import { PHANTOM_META } from '@/components/panels/PhantomPanel'
+import Tex from '@/components/ui/Tex'
 
 export default function StatsCard() {
   const { stats } = useSimulationStore()
@@ -9,7 +10,6 @@ export default function StatsCard() {
   const meta = PHANTOM_META[bodyName.toLowerCase()]
   const massKg = meta?.mass_kg
 
-  // SAR = P_abs (W) / mass (kg)
   const sarValue = (stats && massKg) ? (stats.p_abs_mw / 1000) / massKg : null
   const formatSar = (sar: number) => {
     if (sar >= 0.01) return `${sar.toFixed(3)} W/kg`
@@ -20,17 +20,17 @@ export default function StatsCard() {
   const rows: Array<{ key: string; label: React.ReactNode; value: string; highlight?: 'pass' | 'fail' }> = [
     {
       key: 'sar_wb',
-      label: <>SAR<sub>wb</sub></>,
+      label: <Tex math="\text{SAR}_\text{wb}" />,
       value: sarValue != null ? formatSar(sarValue) : '--',
     },
     {
       key: 'p_abs',
-      label: <>P<sub>abs</sub></>,
+      label: <Tex math="P_\text{abs}" />,
       value: stats ? formatPower(stats.p_abs_mw) : '--',
     },
     {
       key: 'peak_sab',
-      label: <>Peak S<sub>ab</sub></>,
+      label: <Tex math="\text{Peak}\;S_\text{ab}" />,
       value: stats ? formatSab(stats.peak_sab) : '--',
     },
     {

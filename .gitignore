@@ -80,6 +80,7 @@ theory/*.pdf
 
 # Superpowers plans/specs/prompts (local tooling, not part of docs)
 docs/superpowers/
+.superpowers/
 
 # Internal dev notes
 docs/internal/

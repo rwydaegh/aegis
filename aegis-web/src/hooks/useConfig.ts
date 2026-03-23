@@ -22,7 +22,7 @@ export function useConfig() {
         const simState: Record<string, unknown> = {
           mode: 'spatial',
           fresnel: true,
-          powerDbm: 30,
+          powerDbm: 60,
           skinModel: 'itis',
           nPaths: config.dosimetry?.path_options?.[0]?.value ?? 1,
         }

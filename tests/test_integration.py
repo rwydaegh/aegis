@@ -46,7 +46,7 @@ class TestPathsFromDiffert:
         np.testing.assert_allclose(paths.delay[0], dist / C_0, rtol=1e-10)
 
         assert bool(paths.is_los[0])
-        tx_power_w = 10 ** ((30.0 - 30) / 10)
+        tx_power_w = 10 ** ((60.0 - 30) / 10)
         expected_S = tx_power_w / (4.0 * np.pi * dist**2)
         np.testing.assert_allclose(paths.power[0], expected_S, rtol=1e-10)
 

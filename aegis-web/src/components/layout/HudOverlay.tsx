@@ -3,8 +3,11 @@ import StatusBar from '@/components/hud/StatusBar'
 import ColorLegend from '@/components/hud/ColorLegend'
 import ServerInfoBadge from '@/components/hud/ServerInfoBadge'
 import CompliancePanel from '@/components/hud/CompliancePanel'
+import { useUIStore } from '@/stores/ui'
 
 export default function HudOverlay() {
+  const sidebarOpen = useUIStore(s => s.sidebarOpen)
+
   return (
     <div className="absolute inset-0 pointer-events-none z-10">
       {/* Stats card - top right */}
@@ -12,8 +15,11 @@ export default function HudOverlay() {
         <StatsCard />
       </div>
 
-      {/* Compliance panel - top left below sidebar area */}
-      <div className="absolute top-3 left-3 pointer-events-auto" style={{ maxWidth: '320px' }}>
+      {/* Compliance panel - left side, offset past sidebar when open */}
+      <div
+        className="absolute top-3 pointer-events-auto transition-all duration-200"
+        style={{ left: sidebarOpen ? '332px' : '12px', maxWidth: '320px' }}
+      >
         <CompliancePanel />
       </div>
 
