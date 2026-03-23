@@ -37,12 +37,50 @@ def _stats_label(engine_kwargs: dict) -> tuple:
     return (engine_kwargs.get("level", 2), None, [])
 
 
-def _build_stats_response(result, body, tissue, level, extra=None, mode=None, corrections=None):
+def _build_binary_response(result, quantities):
+    """Assemble multi-array binary buffer from a DosimetryResult.
+
+    Returns (buf, arrays_meta) where arrays_meta is a list of
+    {"key": str, "offset": int, "length": int} dicts describing each array
+    in the buffer.
+    """
+    buf = bytearray()
+    arrays_meta = []
+
+    # sab is always included
+    sab_bytes = result.sab.astype(np.float32).tobytes()
+    arrays_meta.append({"key": "sab", "offset": 0, "length": len(sab_bytes)})
+    buf.extend(sab_bytes)
+
+    quantity_map = {
+        "sab_4cm2": lambda: result.sab_averaged,
+        "sab_1cm2": lambda: result.sab_1cm2_averaged,
+        "sinc_local": lambda: result.sinc,
+        "sinc_averaged": lambda: result.sinc_averaged,
+    }
+
+    for key in quantities:
+        if key == "sab":
+            continue  # already included
+        getter = quantity_map.get(key)
+        if getter is None:
+            continue
+        arr = getter()
+        if arr is None:
+            continue
+        arr_bytes = arr.astype(np.float32).tobytes()
+        arrays_meta.append({"key": key, "offset": len(buf), "length": len(arr_bytes)})
+        buf.extend(arr_bytes)
+
+    return buf, arrays_meta
+
+
+def _build_stats_response(result, body, tissue, level, extra=None, mode=None, corrections=None, scenario=None):
     """Build the X-Stats JSON dict from a DosimetryResult."""
     from flask import current_app
 
     freq_hz = result.freq_hz or tissue.freq_hz
-    scenario = ExposureScenario.GENERAL_PUBLIC
+    scenario = scenario or ExposureScenario.GENERAL_PUBLIC
 
     # S_inc whole-body average
     sinc_wb = None
@@ -90,6 +128,18 @@ def _build_stats_response(result, body, tissue, level, extra=None, mode=None, co
 
     # Store compliance result for the /api/compliance/report endpoint
     current_app.config["_last_compliance_result"] = stats["compliance"]
+
+    # Per-quantity peak values
+    peaks = {"sab": float(result.peak_sab)}
+    if result.sab_averaged is not None:
+        peaks["sab_4cm2"] = float(np.max(result.sab_averaged))
+    if result.sab_1cm2_averaged is not None:
+        peaks["sab_1cm2"] = float(np.max(result.sab_1cm2_averaged))
+    if result.sinc is not None:
+        peaks["sinc_local"] = float(np.max(result.sinc))
+    if result.sinc_averaged is not None:
+        peaks["sinc_averaged"] = float(np.max(result.sinc_averaged))
+    stats["peaks"] = peaks
 
     if mode is not None:
         stats["mode"] = mode
@@ -198,9 +248,17 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         body_offset = params.get("body_offset", [0, 0, 0])
         body_rotation_y = params.get("body_rotation_y", 0.0)
 
+        quantities = params.get("quantities", ["sab", "sab_4cm2"])
+        exposure_scenario_str = params.get("exposure_scenario", "general_public")
+        exposure_scenario = ExposureScenario(exposure_scenario_str)
+
         tissue = TISSUE_PRESETS[tissue_name]
 
-        result = compute_dosimetry(
+        import time as _time
+
+        t_route = _time.perf_counter()
+
+        result, res_body, res_tissue, res_level, res_mode, res_corr, extra = compute_dosimetry(
             body,
             antenna_pos=np.array(antenna_pos),
             body_offset=np.array(body_offset),
@@ -213,11 +271,31 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             n_paths=n_paths,
             config=cfg,
         )
+        t_compute = _time.perf_counter()
 
-        # Return binary S_ab with JSON stats in header
-        sab_bytes = result.pop("sab_bytes")
-        resp = Response(sab_bytes, mimetype="application/octet-stream")
-        resp.headers["X-Stats"] = json.dumps(result)
+        # Build multi-array binary response and stats header
+        buf, arrays_meta = _build_binary_response(result, quantities)
+        stats = _build_stats_response(
+            result,
+            res_body,
+            res_tissue,
+            res_level,
+            mode=res_mode,
+            corrections=res_corr,
+            extra=extra,
+            scenario=exposure_scenario,
+        )
+        t_stats = _time.perf_counter()
+
+        # Inject route-level timings
+        timings = extra.get("timings", {})
+        timings["compliance_stats_ms"] = (t_stats - t_compute) * 1e3
+        timings["route_total_ms"] = (t_stats - t_route) * 1e3
+        stats["timings"] = timings
+        stats["arrays"] = arrays_meta
+
+        resp = Response(bytes(buf), mimetype="application/octet-stream")
+        resp.headers["X-Stats"] = json.dumps(stats)
         resp.headers["Access-Control-Expose-Headers"] = "X-Stats"
         return resp
 
@@ -337,6 +415,10 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         body_offset = np.array(params.get("body_offset", [0, 0, 0]))
         body_rotation_y = float(params.get("body_rotation_y", 0.0))
 
+        quantities = params.get("quantities", ["sab", "sab_4cm2"])
+        exposure_scenario_str = params.get("exposure_scenario", "general_public")
+        exposure_scenario = ExposureScenario(exposure_scenario_str)
+
         if not scene_path:
             return jsonify({"error": "Missing 'scene_path'"}), 400
 
@@ -377,7 +459,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         engine = DosimetryEngine(tissue)
         result = engine.compute(transformed_body, paths, **engine_kw)
 
-        sab_bytes = result.sab.astype(np.float32).tobytes()
+        buf, arrays_meta = _build_binary_response(result, quantities)
         dist = float(np.linalg.norm(antenna_pos - body_center))
         total_power = float(np.sum(paths.power))
 
@@ -394,9 +476,11 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                 "n_rt_paths": paths.n_paths,
                 "path_viz": path_viz,
             },
+            scenario=exposure_scenario,
         )
+        stats["arrays"] = arrays_meta
 
-        resp = Response(sab_bytes, mimetype="application/octet-stream")
+        resp = Response(bytes(buf), mimetype="application/octet-stream")
         resp.headers["X-Stats"] = json.dumps(stats)
         resp.headers["Access-Control-Expose-Headers"] = "X-Stats"
         return resp
@@ -426,6 +510,10 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         max_bounces = params.get("max_order", 5)
         body_offset = np.array(params.get("body_offset", [0, 0, 0]))
         body_rotation_y = float(params.get("body_rotation_y", 0.0))
+
+        quantities = params.get("quantities", ["sab", "sab_4cm2"])
+        exposure_scenario_str = params.get("exposure_scenario", "general_public")
+        exposure_scenario = ExposureScenario(exposure_scenario_str)
 
         if not scene_path:
             return jsonify({"error": "Missing 'scene_path'"}), 400
@@ -469,7 +557,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         engine = DosimetryEngine(tissue)
         result = engine.compute(transformed_body, paths, **engine_kw)
 
-        sab_bytes = result.sab.astype(np.float32).tobytes()
+        buf, arrays_meta = _build_binary_response(result, quantities)
         dist = float(np.linalg.norm(antenna_pos - body_center))
         total_power = float(np.sum(paths.power))
 
@@ -487,9 +575,11 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                 "path_viz": [],
                 "backend": "sionna",
             },
+            scenario=exposure_scenario,
         )
+        stats["arrays"] = arrays_meta
 
-        resp = Response(sab_bytes, mimetype="application/octet-stream")
+        resp = Response(bytes(buf), mimetype="application/octet-stream")
         resp.headers["X-Stats"] = json.dumps(stats)
         resp.headers["Access-Control-Expose-Headers"] = "X-Stats"
         return resp
@@ -524,6 +614,10 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         tissue_name = params.get("tissue", "skin_28ghz")
         power_dbm = params.get("power_dbm", 30.0)
         max_order = params.get("max_order", 0)
+
+        quantities = params.get("quantities", ["sab", "sab_4cm2"])
+        exposure_scenario_str = params.get("exposure_scenario", "general_public")
+        exposure_scenario = ExposureScenario(exposure_scenario_str)
 
         tissue = TISSUE_PRESETS.get(tissue_name)
         if tissue is None:
@@ -663,7 +757,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
         result = engine.compute(rt_body, paths, **engine_kw)
 
-        sab_bytes = result.sab.astype(np.float32).tobytes()
+        buf, arrays_meta = _build_binary_response(result, quantities)
         dist = float(np.linalg.norm(antenna_pos - body_center))
 
         stats = _build_stats_response(
@@ -679,9 +773,11 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                 "n_rt_paths": len(all_k_hat),
                 "path_viz": path_viz,
             },
+            scenario=exposure_scenario,
         )
+        stats["arrays"] = arrays_meta
 
-        resp = Response(sab_bytes, mimetype="application/octet-stream")
+        resp = Response(bytes(buf), mimetype="application/octet-stream")
         resp.headers["X-Stats"] = json.dumps(stats)
         resp.headers["Access-Control-Expose-Headers"] = "X-Stats"
         return resp
