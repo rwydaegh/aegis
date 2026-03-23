@@ -150,25 +150,42 @@ A triangle on the top of the head has $\eta \approx 1.0$ (fully exposed). A tria
 
 ## Spatial averaging
 
-ICNIRP 2020 guidelines specify that absorbed power density must be averaged over 4 cm² for compliance assessment.
+ICNIRP 2020 Table 2 specifies that $S_{ab}$ must be averaged over a square 4 cm$^2$ surface area for compliance assessment. The basic restriction for general public exposure above 6 GHz is 20 W/m$^2$ (not 10, which is the $S_{inc}$ reference level from Table 5).
+
+The engine computes spatial averaging automatically using a precomputed sparse matrix $\mathbf{G}$:
+
+$$\bar{S}_{ab} = \mathbf{G} \cdot S_{ab}$$
+
+where $\mathbf{G}$ is a row-stochastic $(M \times M)$ matrix encoding the 4 cm$^2$ neighborhood structure. Each row $i$ contains area-weighted contributions from the triangles nearest to triangle $i$, accumulated until the total area reaches 4 cm$^2$.
 
 ```python
-from aegis.geometry import apply_spatial_averaging
+result = engine.compute(body, paths, mode="spatial")
 
-sab_avg = apply_spatial_averaging(
-    result.sab, body.centroids, body.areas,
-    target_area_m2=4e-4,  # 4 cm²
-)
-peak_avg = sab_avg.max()
-print(f"Peak averaged S_ab: {peak_avg:.2f} W/m²")
-compliant = peak_avg < 10.0  # ICNIRP limit
+# Spatial averaging is always-on. No flag needed.
+print(f"Peak raw S_ab: {result.peak_sab:.2f} W/m²")
+print(f"Peak averaged S_ab: {result.peak_sab_averaged:.2f} W/m²")
+print(f"Compliant: {result.compliant_sab}")
 ```
 
-The averaging algorithm finds, for each triangle, the minimal set of neighbors whose cumulative area reaches the target. It then computes the area-weighted mean $S_{ab}$ over that patch.
-
-You can also trigger spatial averaging through the engine:
+You can also use the averaging matrix directly:
 
 ```python
-result = engine.compute(body, paths, level=2, spatial_averaging=True)
-print(f"Compliant: {result.compliant_sab}")
+from aegis.geometry import precompute_averaging_matrix
+
+G = precompute_averaging_matrix(body.centroids, body.areas, target_area_m2=4e-4)
+sab_avg = G @ result.sab
+```
+
+The matrix $\mathbf{G}$ depends only on mesh geometry, not on $S_{ab}$. Precompute it once per body mesh and reuse across evaluations. The engine caches it internally.
+
+!!! note
+    The current implementation uses circular neighborhoods (KD-tree ball query) as an approximation. ICNIRP specifies square patches. This is flagged in the compliance report. Above 30 GHz, a second matrix for 1 cm$^2$ averaging is computed to check the additional constraint (2$\times$ the 4 cm$^2$ limit).
+
+For JAX-based optimization, convert $\mathbf{G}$ to a dense JAX array:
+
+```python
+from aegis.geometry.averaging import averaging_matrix_to_jax
+
+G_jax = averaging_matrix_to_jax(G)
+sab_avg = G_jax @ sab  # differentiable
 ```

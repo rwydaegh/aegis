@@ -58,6 +58,7 @@ nav:
     - Fidelity levels: user_guide/fidelity_levels.md
     - Tissue and Fresnel: user_guide/tissue.md
     - Geometry: user_guide/geometry.md
+    - Compliance: user_guide/compliance.md
     - Coherent MIMO: user_guide/coherent.md
     - Optimization: user_guide/optimization.md
   - Developer guide:
