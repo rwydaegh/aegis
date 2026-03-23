@@ -74,12 +74,9 @@ export default function StatusBar() {
         onClick={() => showTiming && setExpanded(e => !e)}
       >
         {isComputing && (
-          <>
-            <div className="w-3 h-3 border-2 border-muted border-t-primary rounded-full animate-spin" />
-            <span className="text-xs text-muted-foreground">
-              Computing{elapsed > 0 ? ` (${(elapsed / 1000).toFixed(1)}s)` : '...'}
-            </span>
-          </>
+          <span className="text-xs shimmer-text">
+            Computing... {elapsed > 0 ? `(${(elapsed / 1000).toFixed(1)}s)` : ''}
+          </span>
         )}
         {showTiming && (
           <>

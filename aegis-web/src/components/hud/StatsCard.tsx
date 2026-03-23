@@ -54,7 +54,7 @@ export default function StatsCard() {
   ]
 
   return (
-    <div className={`bg-card/80 backdrop-blur-md rounded-lg border border-border p-3 min-w-[180px] transition-all duration-300 ${isComputing ? 'shimmer-computing border-primary/30' : ''}`}>
+    <div className={`bg-card/80 backdrop-blur-md rounded-lg border border-border p-3 min-w-[180px] ${isComputing ? 'shimmer-panel' : ''}`}>
       <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
         Dosimetry
       </p>

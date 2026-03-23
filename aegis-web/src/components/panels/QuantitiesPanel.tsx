@@ -7,19 +7,18 @@ import type { ReactNode } from 'react'
 interface QtyRow {
   key: QuantityKey
   label: ReactNode
-  unit: string
   spatial: boolean
 }
 
 const BASIC_RESTRICTION: QtyRow[] = [
-  { key: 'sab_4cm2', label: <Tex math={'S_\\text{ab}\\;(4\\,\\text{cm}^2)'} />, unit: 'W/m²', spatial: true },
-  { key: 'sab_1cm2', label: <Tex math={'S_\\text{ab}\\;(1\\,\\text{cm}^2)'} />, unit: 'W/m²', spatial: true },
-  { key: 'sar_wb', label: <Tex math={'\\text{SAR}_\\text{wb}'} />, unit: 'W/kg', spatial: false },
+  { key: 'sab_4cm2', label: <Tex math={'S_{\\text{ab}}\\,(4\\,\\text{cm}^2)'} />, spatial: true },
+  { key: 'sab_1cm2', label: <Tex math={'S_{\\text{ab}}\\,(1\\,\\text{cm}^2)'} />, spatial: true },
+  { key: 'sar_wb', label: <Tex math={'\\text{SAR}_{\\text{wb}}'} />, spatial: false },
 ]
 
 const REFERENCE_LEVEL: QtyRow[] = [
-  { key: 'sinc_local', label: <Tex math={'S_\\text{inc}\\;(\\text{local})'} />, unit: 'W/m²', spatial: true },
-  { key: 'sinc_wb', label: <Tex math={'S_\\text{inc}\\;(\\text{wb})'} />, unit: 'W/m²', spatial: false },
+  { key: 'sinc_local', label: <Tex math={'S_{\\text{inc}}\\,(\\text{local})'} />, spatial: true },
+  { key: 'sinc_wb', label: <Tex math={'S_{\\text{inc}}\\,(\\text{wb})'} />, spatial: false },
 ]
 
 export default function QuantitiesPanel() {
@@ -30,36 +29,15 @@ export default function QuantitiesPanel() {
   const ratioMode = useUIStore(s => s.ratioMode)
   const setRatioMode = useUIStore(s => s.setRatioMode)
   const freqGhz = useSimulationStore(s => s.freqGhz)
-  const compliance = useSimulationStore(s => s.stats?.compliance)
 
   const isActive = (key: QuantityKey) => displayQuantity === key
   const isEnabled = (key: QuantityKey) => enabledQuantities.has(key)
-
-  // The store's setFreqGhz handles swapping 4cm²/1cm² at the 30 GHz boundary,
-  // including resetting displayQuantity if needed.
-
-  function getLimit(key: QuantityKey): string | null {
-    if (!compliance?.checks) return null
-    const labelMap: Record<string, string> = {
-      sab_4cm2: '4 cm',
-      sab_1cm2: '1 cm',
-      sar_wb: 'SAR',
-      sinc_local: 'S_inc',
-      sinc_wb: 'whole',
-    }
-    const search = labelMap[key]
-    if (!search) return null
-    const check = compliance.checks.find(c => c.label.includes(search))
-    if (!check) return null
-    return check.limit + ' ' + check.unit
-  }
 
   function renderRow(row: QtyRow) {
     const enabled = isEnabled(row.key)
     const active = isActive(row.key)
     const disabled = row.key === 'sab_1cm2' && freqGhz <= 30
     const canDisplay = row.spatial && enabled && !disabled
-    const limit = getLimit(row.key)
 
     const rowClass = 'flex items-center gap-1.5 py-1 px-1.5 rounded cursor-pointer transition-colors '
       + (active ? 'bg-primary/15 border-l-2 border-primary ' : 'border-l-2 border-transparent ')
@@ -79,8 +57,7 @@ export default function QuantitiesPanel() {
           onChange={(e) => { e.stopPropagation(); toggleQuantity(row.key) }}
           className="accent-primary w-3.5 h-3.5 cursor-pointer"
         />
-        <span className="text-xs flex-1 truncate">{row.label}</span>
-        {limit && <span className="text-[10px] text-muted-foreground ml-auto whitespace-nowrap">{limit}</span>}
+        <span className="flex-1">{row.label}</span>
         {active && <span className="text-[10px] text-primary">{'▸'}</span>}
       </div>
     )
@@ -103,7 +80,7 @@ export default function QuantitiesPanel() {
         className={sabCardClass}
         onClick={() => setDisplayQuantity('sab')}
       >
-        <span className="text-xs font-medium"><Tex math={'S_\\text{ab}'} /></span>
+        <span className="text-xs font-medium"><Tex math={'S_{\\text{ab}}'} /></span>
         {displayQuantity === 'sab' && <span className="text-[10px] text-primary">{'▸'} displayed</span>}
       </div>
 
@@ -128,7 +105,7 @@ export default function QuantitiesPanel() {
           onClick={() => setRatioMode(!ratioMode)}
           disabled={displayQuantity === 'sab'}
           className={ratioBtnClass}
-          title={displayQuantity === 'sab' ? 'Ratio mode not available for un-averaged S_ab' : 'Toggle ratio to ICNIRP limit'}
+          title={displayQuantity === 'sab' ? 'Ratio mode not available for un-averaged Sab' : 'Toggle ratio to ICNIRP limit'}
         >
           {ratioMode && displayQuantity !== 'sab' ? 'On' : 'Off'}
         </button>

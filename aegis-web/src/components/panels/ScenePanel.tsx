@@ -3,7 +3,6 @@ import { loadLocation, cancelLocation, loadSceneGeometry } from '@/api/client'
 import { useSceneStore } from '@/stores/scene'
 import { useSimulationStore } from '@/stores/simulation'
 import { useUIStore } from '@/stores/ui'
-import Tex from '@/components/ui/Tex'
 
 function SionnaSceneSelector() {
   const scenes = useSceneStore(s => s.scenes)
@@ -134,12 +133,12 @@ export default function ScenePanel() {
             onChange={e => setLocation(e.target.value)}
             placeholder="e.g. Ghent, Belgium" disabled={locationLoading} />
 
-          <label className={labelClass}><Tex math={'\\text{Radius}\\;(\\text{m})'} /></label>
+          <label className={labelClass}>Radius (m)</label>
           <input type="number" className={inputClass} value={radius}
             min={10} max={500} step={10}
             onChange={e => setRadius(Number(e.target.value))} disabled={locationLoading} />
 
-          <label className={labelClass}><Tex math={'\\text{Voxel size}\\;(\\text{m})'} /></label>
+          <label className={labelClass}>Voxel size (m)</label>
           <input type="number" className={inputClass} value={voxelSize}
             min={0.1} max={5} step={0.1}
             onChange={e => setVoxelSize(Number(e.target.value))} disabled={locationLoading} />

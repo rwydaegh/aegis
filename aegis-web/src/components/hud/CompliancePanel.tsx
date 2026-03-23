@@ -25,7 +25,7 @@ export default function CompliancePanel() {
 
   return (
     <div
-      className={isComputing ? 'shimmer-computing' : ''}
+      className={isComputing ? 'shimmer-panel' : ''}
       style={{
         background: 'rgba(0,0,0,0.7)',
         padding: '12px',
@@ -33,8 +33,6 @@ export default function CompliancePanel() {
         fontFamily: 'monospace',
         fontSize: '12px',
         minWidth: '280px',
-        transition: 'border-color 0.3s',
-        border: isComputing ? '1px solid rgba(100, 130, 200, 0.3)' : '1px solid transparent',
       }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
         <span style={{ color: '#888', fontSize: '10px', letterSpacing: '1px' }}>

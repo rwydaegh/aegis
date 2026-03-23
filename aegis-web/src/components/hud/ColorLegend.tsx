@@ -110,7 +110,7 @@ export default function ColorLegend() {
 
   return (
     <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-auto">
-      <div className={`bg-card/80 backdrop-blur-md rounded-lg border border-border px-3 py-2.5 transition-all duration-300 ${isComputing ? 'shimmer-computing border-primary/30' : ''}`}>
+      <div className={`bg-card/80 backdrop-blur-md rounded-lg border border-border px-3 py-2.5 ${isComputing ? 'shimmer-panel' : ''}`}>
         {/* Title, lock, and scale toggle */}
         <div className="flex items-center justify-between gap-1.5 mb-2">
           <span className="text-xs font-medium text-foreground">

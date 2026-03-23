@@ -81,18 +81,35 @@
   }
 }
 
-@keyframes shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+@keyframes shimmer-sweep {
+  0% { background-position: 200% center; }
+  100% { background-position: -200% center; }
 }
 
 @layer base {
-  .shimmer-computing {
-    position: relative !important;
-    overflow: hidden !important;
+  /* Text shimmer for the computing pill */
+  .shimmer-text {
+    background: linear-gradient(
+      90deg,
+      oklch(0.53 0 0) 0%,
+      oklch(0.53 0 0) 40%,
+      oklch(0.88 0.02 250) 50%,
+      oklch(0.53 0 0) 60%,
+      oklch(0.53 0 0) 100%
+    );
+    background-size: 300% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: shimmer-sweep 6s linear infinite;
   }
 
-  .shimmer-computing::after {
+  /* Overlay shimmer for HUD panels */
+  .shimmer-panel {
+    position: relative;
+    overflow: hidden;
+  }
+  .shimmer-panel::after {
     content: '';
     position: absolute;
     inset: 0;
@@ -100,13 +117,13 @@
     background: linear-gradient(
       90deg,
       transparent 0%,
-      rgba(148, 163, 184, 0.15) 20%,
-      rgba(226, 232, 240, 0.35) 50%,
-      rgba(148, 163, 184, 0.15) 80%,
+      transparent 40%,
+      rgba(203, 213, 225, 0.12) 50%,
+      transparent 60%,
       transparent 100%
     );
-    background-size: 200% 100%;
-    animation: shimmer 1.5s ease-in-out infinite;
+    background-size: 300% 100%;
+    animation: shimmer-sweep 10s linear infinite;
     pointer-events: none;
     z-index: 10;
   }
