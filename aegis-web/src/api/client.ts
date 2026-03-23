@@ -1,4 +1,4 @@
-import type { ViewerConfig, Capabilities, BodyMeta, VoxelMeta, DosimetryStats, LevelInfo, TissuePreset } from './types'
+import type { ViewerConfig, Capabilities, BodyMeta, VoxelMeta, DosimetryStats, LevelInfo } from './types'
 import { parseBodyBinary, parseVoxelBinary, parseSabBinary, parseSceneBinary } from './binary'
 import { toServer, type ScenePos } from './coordinates'
 
@@ -92,10 +92,6 @@ export async function fetchSystemInfo(): Promise<{ hostname: string; platform: s
 
 export async function fetchLevels(): Promise<LevelInfo[]> {
   return getJson<LevelInfo[]>('/api/levels')
-}
-
-export async function fetchTissues(): Promise<TissuePreset[]> {
-  return getJson<TissuePreset[]>('/api/tissues')
 }
 
 export async function fetchBodyInfo(): Promise<BodyMeta> {
@@ -218,13 +214,13 @@ export interface ComputeParams {
   curvature: boolean
   diffraction: boolean
   powerDbm: number
-  tissue: string
+  skinModel: string
+  freqGhz: number
   nPaths: number
   stochastic?: boolean
   stochasticPreset?: string
   stochasticOverrides?: Record<string, number>
   stochasticSeed?: number
-  freqGhz?: number
   quantities: string[]
   exposureScenario: string
 }
@@ -240,11 +236,11 @@ function computePayload(params: ComputeParams) {
     curvature: params.curvature,
     diffraction: params.diffraction,
     power_dbm: params.powerDbm,
-    tissue: params.tissue,
+    skin_model: params.skinModel,
+    freq_hz: params.freqGhz * 1e9,
     n_paths: params.nPaths,
     quantities: params.quantities,
     exposure_scenario: params.exposureScenario,
-    freq_ghz: params.freqGhz,
     ...(params.stochastic ? {
       stochastic: true,
       stochastic_preset: params.stochasticPreset,

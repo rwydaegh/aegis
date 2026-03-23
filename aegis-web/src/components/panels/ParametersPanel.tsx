@@ -53,8 +53,9 @@ export default function ParametersPanel() {
   const setDiffraction = useSimulationStore((s) => s.setDiffraction)
   const powerDbm = useSimulationStore((s) => s.powerDbm)
   const setPowerDbm = useSimulationStore((s) => s.setPowerDbm)
-  const tissue = useSimulationStore((s) => s.tissue)
-  const setTissue = useSimulationStore((s) => s.setTissue)
+  const skinModel = useSimulationStore((s) => s.skinModel)
+  const setSkinModel = useSimulationStore((s) => s.setSkinModel)
+  const stats = useSimulationStore((s) => s.stats)
   const nPaths = useSimulationStore((s) => s.nPaths)
   const setNPaths = useSimulationStore((s) => s.setNPaths)
   const freqGhz = useSimulationStore((s) => s.freqGhz)
@@ -148,18 +149,24 @@ export default function ParametersPanel() {
         </div>
       </div>
 
-      <label className={labelClass}>Tissue</label>
+      <label className={labelClass}>Skin model</label>
       <select
         className={selectClass}
-        value={tissue}
-        onChange={(e) => setTissue(e.target.value)}
+        value={skinModel}
+        onChange={(e) => setSkinModel(e.target.value)}
       >
-        {caps.tissues.map((t) => (
-          <option key={t} value={t}>
-            {t.replace(/_/g, ' ')}
+        {caps.skin_models.map((m) => (
+          <option key={m.id} value={m.id}>
+            {m.label}
           </option>
         ))}
       </select>
+      {stats?.tissue_eps_r != null && (
+        <div className="flex gap-3 mt-1 text-[10px] text-muted-foreground">
+          <span>εr = {stats.tissue_eps_r.toFixed(1)}</span>
+          <span>σ = {stats.tissue_sigma.toFixed(1)} S/m</span>
+        </div>
+      )}
 
       {pathSource !== 'stochastic' && (
         <>

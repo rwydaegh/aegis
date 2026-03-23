@@ -12,14 +12,14 @@ export function useDosimetry() {
   const curvature = useSimulationStore(s => s.curvature)
   const diffraction = useSimulationStore(s => s.diffraction)
   const powerDbm = useSimulationStore(s => s.powerDbm)
-  const tissue = useSimulationStore(s => s.tissue)
+  const skinModel = useSimulationStore(s => s.skinModel)
+  const freqGhz = useSimulationStore(s => s.freqGhz)
   const nPaths = useSimulationStore(s => s.nPaths)
   const bodyOffset = useSimulationStore(s => s.bodyOffset)
   const bodyRotationY = useSimulationStore(s => s.bodyRotationY)
   const stochasticPreset = useSimulationStore(s => s.stochasticPreset)
   const stochasticOverrides = useSimulationStore(s => s.stochasticOverrides)
   const stochasticSeed = useSimulationStore(s => s.stochasticSeed)
-  const freqGhz = useSimulationStore(s => s.freqGhz)
   const enabledQuantities = useSimulationStore(s => s.enabledQuantities)
 
   const exposureScenario = useUIStore(s => s.exposureScenario)
@@ -61,13 +61,13 @@ export function useDosimetry() {
       curvature,
       diffraction,
       powerDbm,
-      tissue,
+      skinModel,
+      freqGhz,
       nPaths,
       stochastic: pathSource === 'stochastic',
       stochasticPreset,
       stochasticOverrides,
       stochasticSeed,
-      freqGhz,
       quantities: Array.from(enabledQuantities) as string[],
       exposureScenario,
     }
@@ -123,9 +123,9 @@ export function useDosimetry() {
         clearTimeout(timeoutId)
         if (gen === generationRef.current) setComputing(false)
       })
-  }, [antennaPos, mode, fresnel, polarisation, curvature, diffraction, powerDbm, tissue, nPaths,
+  }, [antennaPos, mode, fresnel, polarisation, curvature, diffraction, powerDbm, skinModel, freqGhz, nPaths,
     bodyOffset, bodyRotationY, config, caps, pathSource, rtSource, rtMaxOrder, loadedScenePath,
-    stochasticPreset, stochasticOverrides, stochasticSeed, freqGhz, enabledQuantities, exposureScenario])
+    stochasticPreset, stochasticOverrides, stochasticSeed, enabledQuantities, exposureScenario])
 
   // Debounced trigger on any dependency change
   useEffect(() => {
@@ -138,9 +138,9 @@ export function useDosimetry() {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current)
     }
-  }, [antennaPos, mode, fresnel, polarisation, curvature, diffraction, powerDbm, tissue, nPaths,
+  }, [antennaPos, mode, fresnel, polarisation, curvature, diffraction, powerDbm, skinModel, freqGhz, nPaths,
     bodyOffset, bodyRotationY, triggerCompute, config, stochasticPreset, stochasticOverrides,
-    stochasticSeed, freqGhz, pathSource, enabledQuantities, exposureScenario])
+    stochasticSeed, pathSource, enabledQuantities, exposureScenario])
 
   // Cancel any in-flight request on unmount
   useEffect(() => {

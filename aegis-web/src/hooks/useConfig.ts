@@ -23,7 +23,7 @@ export function useConfig() {
           mode: 'spatial',
           fresnel: true,
           powerDbm: 30,
-          tissue: 'skin_28ghz',
+          skinModel: 'itis',
           nPaths: config.dosimetry?.path_options?.[0]?.value ?? 1,
         }
 

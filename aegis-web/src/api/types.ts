@@ -44,7 +44,7 @@ export interface ViewerConfig {
 
 export interface Capabilities {
   bodies: string[]
-  tissues: string[]
+  skin_models: { id: string; label: string }[]
   levels: number[]
   has_voxels: boolean
   has_differt: boolean
@@ -131,6 +131,8 @@ export interface DosimetryStats {
   timings?: ComputeTimings
   peaks?: Record<string, number>
   arrays?: ArrayMeta[]
+  tissue_eps_r: number
+  tissue_sigma: number
 }
 
 export interface PathViz {
@@ -142,14 +144,6 @@ export interface LevelInfo {
   level: number
   name: string
   description: string
-}
-
-export interface TissuePreset {
-  id: string
-  name: string
-  eps_r: number
-  sigma: number
-  freq_hz: number
 }
 
 export interface BodyBinary {
