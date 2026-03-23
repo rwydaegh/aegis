@@ -200,7 +200,7 @@
   },
   "dosimetry": {
     "default_level": 2,
-    "default_power_dbm": 30,
+    "default_power_dbm": 60,
     "default_n_paths": 1,
     "default_max_order": 0,
     "compliance_threshold": 10.0,
@@ -280,7 +280,24 @@
       ]
     },
     "level0_D_max": 4.0,
-    "convex_body_area_factor": 0.25
+    "convex_body_area_factor": 0.25,
+    "stochastic": {
+      "preset_dir": "data/channel_presets",
+      "default_preset": "3GPP_38.901_UMi_LOS",
+      "default_seed": 42,
+      "featured_presets": [
+        "Freespace",
+        "3GPP_38.901_UMi_LOS",
+        "3GPP_38.901_UMi_NLOS",
+        "3GPP_38.901_UMa_LOS",
+        "3GPP_38.901_UMa_NLOS",
+        "3GPP_38.901_Indoor_LOS",
+        "3GPP_38.901_Indoor_NLOS",
+        "3GPP_38.901_InF_LOS",
+        "3GPP_38.901_RMa_LOS",
+        "3GPP_38.901_RMa_NLOS"
+      ]
+    }
   },
   "colormap": {
     "name": "inferno",
