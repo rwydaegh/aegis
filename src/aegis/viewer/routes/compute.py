@@ -290,7 +290,6 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         exposure_scenario = ExposureScenario(exposure_scenario_str)
 
         import time as _time
-        import traceback as _tb
 
         t_route = _time.perf_counter()
 
@@ -311,7 +310,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             )
         except Exception as exc:
             logger.exception("compute_dosimetry failed")
-            return jsonify({"error": str(exc), "traceback": _tb.format_exc()}), 500
+            return jsonify({"error": str(exc)}), 500
 
         t_compute = _time.perf_counter()
 
@@ -330,7 +329,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             )
         except Exception as exc:
             logger.exception("response build failed")
-            return jsonify({"error": str(exc), "traceback": _tb.format_exc()}), 500
+            return jsonify({"error": str(exc)}), 500
 
         t_stats = _time.perf_counter()
 
