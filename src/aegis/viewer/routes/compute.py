@@ -7,7 +7,7 @@ import json
 import numpy as np
 from flask import Flask, Response, jsonify, request
 
-from aegis.compliance import ICNIRP_2020
+from aegis.compliance import ExposureScenario, evaluate_compliance
 
 
 def _parse_mode_or_level(params: dict, default_level: int = 2) -> dict:
@@ -39,16 +39,58 @@ def _stats_label(engine_kwargs: dict) -> tuple:
 
 def _build_stats_response(result, body, tissue, level, extra=None, mode=None, corrections=None):
     """Build the X-Stats JSON dict from a DosimetryResult."""
+    from flask import current_app
+
+    freq_hz = result.freq_hz or tissue.freq_hz
+    scenario = ExposureScenario.GENERAL_PUBLIC
+
+    # S_inc whole-body average
+    sinc_wb = None
+    if result.sinc is not None:
+        sinc_wb = float(np.sum(result.sinc * body.areas) / np.sum(body.areas))
+
+    compliance = evaluate_compliance(
+        scenario=scenario,
+        freq_hz=freq_hz,
+        sab_4cm2=float(np.max(result.sab_averaged)) if result.sab_averaged is not None else float(result.peak_sab),
+        sinc_local=float(np.max(result.sinc_averaged)) if result.sinc_averaged is not None else None,
+        sinc_whole_body=sinc_wb,
+        sar_wb=result.sar_wb,
+        sab_1cm2=float(np.max(result.sab_1cm2_averaged)) if result.sab_1cm2_averaged is not None else None,
+    )
+
     stats = {
         "p_abs": float(result.p_abs),
         "p_abs_mw": float(result.p_abs * 1e3),
         "peak_sab": float(result.peak_sab),
-        "compliant": bool(result.peak_sab < ICNIRP_2020.sab_peak),
+        "peak_sab_averaged": float(np.max(result.sab_averaged)) if result.sab_averaged is not None else None,
+        "compliance": {
+            "overall_pass": compliance.overall_pass,
+            "margin_db": compliance.margin_db if compliance.margin_db != float("inf") else None,
+            "scenario": scenario.value,
+            "freq_hz": freq_hz,
+            "checks": [
+                {
+                    "label": c.label,
+                    "value": round(c.value, 4),
+                    "limit": round(c.limit, 4),
+                    "unit": c.unit,
+                    "pass": c.compliant,
+                    "ratio": round(c.ratio, 4),
+                }
+                for c in compliance.all_checks
+            ],
+        },
+        "compliant": compliance.overall_pass,
         "n_illuminated": int(np.sum(result.sab > 0)),
         "n_triangles": body.n_triangles,
         "level": level if level is not None else 0,
         "T0": float(tissue.T0),
     }
+
+    # Store compliance result for the /api/compliance/report endpoint
+    current_app.config["_last_compliance_result"] = stats["compliance"]
+
     if mode is not None:
         stats["mode"] = mode
     if corrections:
@@ -643,3 +685,11 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         resp.headers["X-Stats"] = json.dumps(stats)
         resp.headers["Access-Control-Expose-Headers"] = "X-Stats"
         return resp
+
+    @app.route("/api/compliance/report", methods=["GET"])
+    def compliance_report():
+        """Return the last compliance result as JSON."""
+        last = app.config.get("_last_compliance_result")
+        if last is None:
+            return jsonify({"error": "No computation result available"}), 404
+        return jsonify(last)

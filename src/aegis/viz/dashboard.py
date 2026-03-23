@@ -10,7 +10,7 @@ from typing import Any
 
 import numpy as np
 
-from aegis.compliance import ICNIRP_2020
+from aegis.compliance import ExposureScenario, evaluate_compliance, icnirp_limits
 from aegis.result import DosimetryResult
 
 
@@ -77,7 +77,9 @@ def _draw_sab_histogram(ax: Any, result: DosimetryResult) -> None:
     """Draw S_ab histogram with ICNIRP limit line (panel 1)."""
     sab = result.sab
     ax.hist(sab[sab > 0], bins=50, color="#e74c3c", alpha=0.8, edgecolor="white")
-    limit = ICNIRP_2020.sab_peak
+    freq_hz = result.freq_hz or 28.0e9
+    limits = icnirp_limits(ExposureScenario.GENERAL_PUBLIC, freq_hz)
+    limit = limits.sab_4cm2
     ax.axvline(limit, color="gold", linewidth=2, linestyle="--", label=f"ICNIRP limit ({limit} W/m\u00b2)")
     ax.set_xlabel("S_ab (W/m\u00b2)")
     ax.set_ylabel("Triangle count")
@@ -98,22 +100,33 @@ def _draw_compliance_summary(ax: Any, result: DosimetryResult, body_mass: float 
     if result.peak_sab_averaged is not None:
         lines.append(f"Peak S_ab (4 cm\u00b2 avg): {result.peak_sab_averaged:.3f} W/m\u00b2")
 
-    if result.sar_wb is not None:
-        lines.append(f"SAR_wb: {result.sar_wb * 1e3:.2f} mW/kg")
+    sar_wb = result.sar_wb
+    if sar_wb is not None:
+        lines.append(f"SAR_wb: {sar_wb * 1e3:.2f} mW/kg")
     elif body_mass is not None:
         if body_mass <= 0:
             raise ValueError("body_mass must be positive when provided")
-        sar = result.p_abs / body_mass
-        lines.append(f"SAR_wb: {sar * 1e3:.2f} mW/kg")
+        sar_wb = result.p_abs / body_mass
+        lines.append(f"SAR_wb: {sar_wb * 1e3:.2f} mW/kg")
 
-    # Compliance status
-    sab_status = "PASS" if result.peak_sab < ICNIRP_2020.sab_peak else "FAIL"
+    # Compliance evaluation via the new module
+    freq_hz = result.freq_hz or 28.0e9
+    sab_4cm2_val = result.peak_sab_averaged if result.peak_sab_averaged is not None else result.peak_sab
+    compliance = evaluate_compliance(
+        scenario=ExposureScenario.GENERAL_PUBLIC,
+        freq_hz=freq_hz,
+        sab_4cm2=sab_4cm2_val,
+        sar_wb=sar_wb,
+    )
+
     lines.append("")
-    lines.append(f"S_ab compliance: {sab_status}")
+    for check in compliance.all_checks:
+        status = "PASS" if check.compliant else "FAIL"
+        lines.append(f"{check.label}: {status} (margin {check.margin_db:+.1f} dB)")
 
-    if result.sar_wb is not None:
-        sar_status = "PASS" if result.sar_wb < ICNIRP_2020.sar_wb else "FAIL"
-        lines.append(f"SAR compliance: {sar_status}")
+    lines.append("")
+    overall = "PASS" if compliance.overall_pass else "FAIL"
+    lines.append(f"Overall: {overall}")
 
     for i, line in enumerate(lines):
         color = "black"

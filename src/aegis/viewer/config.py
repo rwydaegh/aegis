@@ -173,7 +173,9 @@ DEFAULTS: dict = {
         "default_power_dbm": 30,
         "default_n_paths": 1,
         "default_max_order": 0,
-        "compliance_threshold": 10.0,
+        "freq_hz": 28.0e9,
+        "exposure_scenario": "general_public",
+        "display_mode": "raw_sab",
         "fidelity_levels": [
             {"value": 0, "label": "Level 0 - Bound"},
             {"value": 1, "label": "Level 1 - Aggregate"},

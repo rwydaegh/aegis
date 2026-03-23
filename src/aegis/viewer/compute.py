@@ -234,15 +234,20 @@ def compute_dosimetry(
             result = engine.compute(rotated_body, paths, level=level, **extra_kwargs)
 
     sab_bytes = result.sab.astype(np.float32).tobytes()
-
-    threshold = dos_cfg["compliance_threshold"]
+    sab_averaged_bytes = result.sab_averaged.astype(np.float32).tobytes() if result.sab_averaged is not None else None
+    sinc_bytes = result.sinc.astype(np.float32).tobytes() if result.sinc is not None else None
+    sinc_averaged_bytes = (
+        result.sinc_averaged.astype(np.float32).tobytes() if result.sinc_averaged is not None else None
+    )
 
     stats = {
         "sab_bytes": sab_bytes,
+        "sab_averaged_bytes": sab_averaged_bytes,
+        "sinc_bytes": sinc_bytes,
+        "sinc_averaged_bytes": sinc_averaged_bytes,
         "p_abs": float(result.p_abs),
         "p_abs_mw": float(result.p_abs * 1e3),
         "peak_sab": float(result.peak_sab),
-        "compliant": bool(result.peak_sab < threshold),
         "n_illuminated": int(np.sum(result.sab > 0)),
         "n_triangles": body.n_triangles,
         "level": level if level is not None else 0,
