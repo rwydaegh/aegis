@@ -53,7 +53,7 @@ export default function QuantitiesPanel() {
     if (!search) return null
     const check = compliance.checks.find(c => c.label.includes(search))
     if (!check) return null
-    return
+    return check.limit + ' ' + check.unit
   }
 
   function renderRow(row: QtyRow) {
@@ -63,10 +63,14 @@ export default function QuantitiesPanel() {
     const canDisplay = row.spatial && enabled && !disabled
     const limit = getLimit(row.key)
 
+    const rowClass = 'flex items-center gap-1.5 py-1 px-1.5 rounded cursor-pointer transition-colors '
+      + (active ? 'bg-primary/15 border-l-2 border-primary ' : 'border-l-2 border-transparent ')
+      + (disabled ? 'opacity-30 pointer-events-none' : !enabled ? 'opacity-50' : '')
+
     return (
       <div
         key={row.key}
-        className={}
+        className={rowClass}
         onClick={() => canDisplay && setDisplayQuantity(row.key)}
         title={disabled ? 'Only available above 30 GHz' : row.spatial ? 'Click to display on mesh' : 'Scalar quantity (no mesh display)'}
       >
@@ -84,10 +88,21 @@ export default function QuantitiesPanel() {
     )
   }
 
+  const sabCardClass = 'flex items-center justify-between px-2 py-1.5 rounded cursor-pointer transition-colors '
+    + (displayQuantity === 'sab'
+      ? 'bg-primary/15 border-l-2 border-primary'
+      : 'bg-muted/30 border-l-2 border-transparent hover:bg-muted/50')
+
+  const ratioBtnClass = 'text-[11px] px-2.5 py-0.5 rounded border transition-colors cursor-pointer '
+    + (ratioMode && displayQuantity !== 'sab'
+      ? 'border-primary/40 bg-primary/15 text-primary'
+      : 'border-border bg-muted/50 text-foreground hover:bg-muted')
+    + (displayQuantity === 'sab' ? ' opacity-40 cursor-not-allowed' : '')
+
   return (
     <div className="space-y-2">
       <div
-        className={}
+        className={sabCardClass}
         onClick={() => setDisplayQuantity('sab')}
       >
         <span className="text-xs font-medium">S<sub>ab</sub></span>
@@ -114,7 +129,7 @@ export default function QuantitiesPanel() {
         <button
           onClick={() => setRatioMode(!ratioMode)}
           disabled={displayQuantity === 'sab'}
-          className={}
+          className={ratioBtnClass}
           title={displayQuantity === 'sab' ? 'Ratio mode not available for un-averaged S_ab' : 'Toggle ratio to ICNIRP limit'}
         >
           {ratioMode && displayQuantity !== 'sab' ? 'On' : 'Off'}

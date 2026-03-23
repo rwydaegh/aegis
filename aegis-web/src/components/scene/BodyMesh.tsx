@@ -34,7 +34,6 @@ export default function BodyMesh() {
   const sabArray = useSimulationStore(s => s.sabArray)
   const sabAveragedArray = useSimulationStore(s => s.sabAveragedArray)
   const sincArray = useSimulationStore(s => s.sincArray)
-  const sincAveragedArray = useSimulationStore(s => s.sincAveragedArray)
   const compliance = useSimulationStore(s => s.stats?.compliance)
   const config = useSceneStore(s => s.viewerConfig)
   const wireframe = useUIStore(s => s.wireframe)

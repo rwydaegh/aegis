@@ -68,7 +68,7 @@ export function useDosimetry() {
       stochasticOverrides,
       stochasticSeed,
       freqGhz,
-      quantities: Array.from(enabledQuantities),
+      quantities: Array.from(enabledQuantities) as string[],
       exposureScenario,
     }
 
