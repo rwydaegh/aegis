@@ -1,6 +1,10 @@
 """Body geometry: mesh loading, occlusion, projected area, directivity."""
 
-from aegis.geometry.averaging import apply_spatial_averaging
+from aegis.geometry.averaging import (
+    apply_spatial_averaging,
+    averaging_matrix_to_jax,
+    precompute_averaging_matrix,
+)
 from aegis.geometry.cauchy import cauchy_projected_area, cauchy_relative_error, mean_projected_area
 from aegis.geometry.directivity import (
     compute_directivity,
@@ -16,6 +20,7 @@ from aegis.geometry.projected_area import compute_projected_area, fibonacci_sphe
 __all__ = [
     "BodyMesh",
     "apply_spatial_averaging",
+    "averaging_matrix_to_jax",
     "cauchy_projected_area",
     "cauchy_relative_error",
     "compute_ambient_occlusion",
@@ -26,6 +31,7 @@ __all__ = [
     "fit_sh",
     "load_stl_binary",
     "mean_projected_area",
+    "precompute_averaging_matrix",
     "sh_reconstruction_error",
     "spherical_angles_from_k_hat",
     "triangle_areas",
