@@ -257,35 +257,52 @@ export async function computeDosimetry(
   return computeEndpoint('/api/compute', computePayload(params), signal)
 }
 
+export interface RtConfig {
+  max_depth: number
+  method: string
+  rays_per_source: number
+  max_paths_per_source: number
+  los: boolean
+  specular_reflection: boolean
+  diffuse_reflection: boolean
+  refraction: boolean
+  diffraction: boolean
+  edge_diffraction: boolean
+  diffraction_lit_region: boolean
+  reflection_loss_per_order: number
+  synthetic_array: boolean
+  seed: number
+}
+
 export async function computeVoxelRT(
-  params: ComputeParams & { maxOrder: number },
+  params: ComputeParams & { rtConfig: RtConfig },
   signal?: AbortSignal,
 ): Promise<ComputeResult> {
   return computeEndpoint(
     '/api/compute/voxel-rt',
-    { ...computePayload(params), max_order: params.maxOrder },
+    { ...computePayload(params), rt_config: params.rtConfig },
     signal,
   )
 }
 
 export async function computeRT(
-  params: ComputeParams & { scenePath: string; maxOrder: number },
+  params: ComputeParams & { scenePath: string; rtConfig: RtConfig },
   signal?: AbortSignal,
 ): Promise<ComputeResult> {
   return computeEndpoint(
     '/api/compute/rt',
-    { ...computePayload(params), scene_path: params.scenePath, max_order: params.maxOrder },
+    { ...computePayload(params), scene_path: params.scenePath, rt_config: params.rtConfig },
     signal,
   )
 }
 
 export async function computeSionnaRT(
-  params: ComputeParams & { scenePath: string },
+  params: ComputeParams & { scenePath: string; rtConfig: RtConfig },
   signal?: AbortSignal,
 ): Promise<ComputeResult> {
   return computeEndpoint(
     '/api/compute/sionna-rt',
-    { ...computePayload(params), scene_path: params.scenePath },
+    { ...computePayload(params), scene_path: params.scenePath, rt_config: params.rtConfig },
     signal,
   )
 }

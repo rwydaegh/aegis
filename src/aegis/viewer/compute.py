@@ -274,7 +274,7 @@ def compute_dosimetry(
 
         preset_dir = Path(cfg.get("dosimetry", {}).get("stochastic", {}).get("preset_dir", "data/channel_presets"))
         if not preset_dir.is_absolute():
-            preset_dir = Path(__file__).resolve().parents[2] / preset_dir
+            preset_dir = Path(__file__).resolve().parents[3] / preset_dir
         preset = load_preset(stochastic["preset"], preset_dir)
         paths = generate_channel(
             preset["params"],

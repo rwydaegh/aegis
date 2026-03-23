@@ -144,6 +144,17 @@ def paths_from_sionna_scene(
     tx_power_dbm: float = 60.0,
     tx_pattern: str = "isotropic",
     return_viz: bool = False,
+    los: bool = True,
+    specular_reflection: bool = True,
+    diffuse_reflection: bool = False,
+    refraction: bool = True,
+    diffraction: bool = False,
+    edge_diffraction: bool = False,
+    diffraction_lit_region: bool = True,
+    samples_per_src: int = 1_000_000,
+    max_num_paths_per_src: int = 1_000_000,
+    synthetic_array: bool = True,
+    seed: int = 42,
 ) -> PropagationPaths | tuple[PropagationPaths, list[dict]]:
     """Run Sionna RT and convert results to PropagationPaths.
 
@@ -205,10 +216,17 @@ def paths_from_sionna_scene(
     paths = solver(
         scene=scene,
         max_depth=max_bounces,
-        los=True,
-        specular_reflection=True,
-        diffuse_reflection=False,
-        refraction=True,
+        los=los,
+        specular_reflection=specular_reflection,
+        diffuse_reflection=diffuse_reflection,
+        refraction=refraction,
+        diffraction=diffraction,
+        edge_diffraction=edge_diffraction,
+        diffraction_lit_region=diffraction_lit_region,
+        samples_per_src=samples_per_src,
+        max_num_paths_per_src=max_num_paths_per_src,
+        synthetic_array=synthetic_array,
+        seed=seed,
     )
 
     # Extract path visualization before CIR (vertices are lazily computed)
