@@ -31,7 +31,13 @@ Open `http://localhost:5173` in your browser. The frontend proxies API calls to 
 
 **Remote GPU (TensorDock):** If the backend runs on a cloud VM, see [Cloud GPU machine](../developer_guide/cloud_machine.md). Use `python tools/cloud.py status` for the correct URL or SSH tunnel. You usually open **`http://localhost:5000`** (or 5173 with `npm run dev` against a tunneled API) after port forwarding, not the raw instance IP unless TensorDock exposes port 5000.
 
-For production, `npm run build` generates static files in `aegis-web/dist/` that the Flask server serves directly.
+For production, Flask serves the React app from `src/aegis/viewer/static/` (gitignored). Build and copy in one step from the repo root:
+
+```bash
+cd aegis-web && npm ci && npm run build:copy
+```
+
+If that folder is missing, Flask falls back to a deprecated single-file HTML viewer (`templates/_legacy_index.html`) and shows a warning banner.
 
 Common backend flags:
 

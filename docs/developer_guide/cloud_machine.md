@@ -44,6 +44,7 @@ On a fresh machine, `up` runs `tools/cloud-bootstrap.sh` which installs:
 
 - Python 3.12 with venv
 - The AEGIS repo (cloned from GitHub) with `.[dev,gpu,rt]` extras
+- The React frontend (`cd aegis-web && npm ci && npm run build:copy`) so Flask serves the modern UI, not the legacy HTML fallback
 - JAX with CUDA support (2+ GB download, takes a few minutes)
 - Node.js and the `nodejs-voxelearth` pipeline (for location loading)
 - Claude Code CLI

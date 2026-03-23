@@ -527,9 +527,10 @@ def run_sync(state: dict) -> None:
     print("Syncing remote...")
     sync_cmd = (
         "cd ~/aegis && git pull --rebase origin master && "
-        "source .venv/bin/activate && pip install -q -e '.[dev,gpu,rt]'"
+        "source .venv/bin/activate && pip install -q -e '.[dev,gpu,rt]' && "
+        "cd ~/aegis/aegis-web && npm ci && npm run build:copy"
     )
-    result = ssh_command(state, sync_cmd, timeout=300)
+    result = ssh_command(state, sync_cmd, timeout=900)
     if result.returncode != 0:
         print("Sync failed:")
         print(result.stderr)

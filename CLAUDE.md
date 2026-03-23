@@ -12,8 +12,8 @@ This machine has Python 3.14 (system) and 3.12 (user). AEGIS is installed under 
 
 ```bash
 pip install -e ".[dev]"                              # install with dev deps (uses 3.12)
-py -3.12 -m pytest tests/ -m "not slow" -x           # fast tests (~5s)
-py -3.12 -m pytest tests/                             # all tests (~30s)
+py -3.12 -m pytest tests/ -m "not slow" -x           # excludes @slow; still minutes locally (coherent, Hypothesis, JAX)
+py -3.12 -m pytest tests/                             # full suite including @slow mesh/golden
 py -3.12 -m pytest tests/test_fresnel.py::test_name   # single test
 py -3.12 -m ruff check src/ tests/                    # lint
 py -3.12 -m ruff format src/ tests/                   # format
@@ -23,6 +23,7 @@ py -3.12 -m aegis.viewer --config configs/my.json      # custom config JSON
 py -3.12 -m aegis.viewer --scenario open_ground        # named scenario from config
 cd aegis-web && npm run dev                            # React frontend dev server (localhost:5173)
 cd aegis-web && npm run build                          # production build -> aegis-web/dist/
+cd aegis-web && npm run build:copy                    # copy dist -> src/aegis/viewer/static (Flask serves /)
 ```
 
 ## Architecture
@@ -39,7 +40,7 @@ The data flow is: ray tracer -> `PropagationPaths` -> `DosimetryEngine.compute(b
 - `src/aegis/coherent/` - field channel, exposure operator Q, ECBF solver
 - `src/aegis/compliance/` - ICNIRP 2020 limits
 - `src/aegis/integration/` - DiffeRT ray tracer bridge (requires `pip install aegis[rt]`)
-- `src/aegis/viewer/` - Flask backend: REST API, config-driven (`configs/default.json`)
+- `src/aegis/viewer/` - Flask backend: REST API, serves `static/` React build; legacy `_legacy_index.html` only if no build
 - `aegis-web/` - React + Three.js frontend (Vite, R3F, Zustand). Dev: `npm run dev` from `aegis-web/`
 - `src/aegis/viz/` - matplotlib/plotly dashboards and comparison plots
 
@@ -56,6 +57,7 @@ Phantom meshes (STL) and the IT'IS tissue database live in `data/` inside the re
 
 ## Testing rules
 
+- Pre-commit runs ruff and codespell only, not pytest. CI runs the **full** `pytest tests/` on push and PR. Locally, `pytest -m "not slow"` is a shorter slice. Default is **`-n 2`** (pytest-xdist); avoid **`-n auto`** (OOM risk); use **`pytest -n 0`** for sequential (debuggers, low RAM).
 - The Mie regression test is the CI canary. If it passes, physics are correct.
 - Every monograph table has a golden test in `tests/golden/`.
 - Property tests (Hypothesis) check physics invariants: Sab >= 0, energy conservation, ReLU bound.

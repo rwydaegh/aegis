@@ -62,6 +62,12 @@ else
     sudo -u user "$VENV_DIR/bin/pip" install -q -e "$AEGIS_DIR[dev,gpu,rt]"
 fi
 
+# --- React frontend (Flask serves src/aegis/viewer/static/; not in git) ---
+echo "Building React frontend for Flask..."
+cd "$AEGIS_DIR/aegis-web"
+sudo -u user npm ci
+sudo -u user npm run build:copy
+
 # --- Voxelearth pipeline (location loading) ---
 VOXELEARTH_DIR="/home/user/nodejs-voxelearth"
 if [ ! -d "$VOXELEARTH_DIR" ]; then

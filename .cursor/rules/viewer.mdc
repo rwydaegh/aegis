@@ -1,6 +1,6 @@
 ---
-description: Flask + Three.js viewer (coordinates, config, port)
-globs: src/aegis/viewer/**,configs/*.json,configs/README.md
+description: Flask + React viewer (coordinates, config, port)
+globs: src/aegis/viewer/**,aegis-web/**,configs/*.json,configs/README.md
 ---
 
 # Viewer (Cursor)
@@ -21,8 +21,10 @@ globs: src/aegis/viewer/**,configs/*.json,configs/README.md
 ## Architecture
 
 - Config: `src/aegis/viewer/config.py` (DEFAULTS dict, deep-merge loader)
-- Server: `src/aegis/viewer/server.py` (Flask, 13 endpoints incl `/api/viewer-config`)
-- Frontend: `src/aegis/viewer/templates/index.html` (Three.js SPA, reads `CFG` global)
+- Server: `src/aegis/viewer/server.py` (Flask; JSON APIs used by the client)
+- **Primary UI:** React + R3F in `aegis-web/`; run `npm run build:copy` to copy the Vite build to `src/aegis/viewer/static/` (`/` serves `static/index.html` when present)
+- **Fallback only:** `templates/_legacy_index.html` (deprecated single-file viewer) when no React build exists
+- Dev workflow: `cd aegis-web && npm run dev` (Vite), not the legacy template
 - Compute: `src/aegis/viewer/compute.py` (dosimetry wrapper, accepts `config` kwarg)
 - Scene data: `src/aegis/viewer/scene_data.py` (binary serialization, uses `set_config()`)
 - Ray tracer: `src/aegis/viewer/raytracer.py` (DiffeRT bridge)
@@ -34,13 +36,13 @@ globs: src/aegis/viewer/**,configs/*.json,configs/README.md
 - All viewer constants live in `config.py` DEFAULTS. No hardcoded values elsewhere.
 - User configs in `configs/` deep-merge over defaults (only override what you need).
 - Launch: `py -3.12 -m aegis.viewer --config configs/my_scene.json`
-- Frontend gets config as `CFG` global via Jinja2 template injection.
+- The React app loads config from `/api/viewer-config` and related endpoints.
 - When adding new values: add to DEFAULTS in config.py, regenerate default.json.
 - Never add hardcoded constants to other viewer files. Put them in config.py DEFAULTS.
 
 ## Known issues and QA
 
-Track viewer behavior against `docs/internal/viewer_bug_report.md` and `docs/internal/features.md`. Several older UI items there have been fixed (drag threshold, Sionna voxel hiding, RT teardown, favicon). Prefer exercising current `index.html` and server routes before copying bug text into new issues.
+Track viewer behaviour against `docs/internal/viewer_bug_report.md` and `docs/internal/features.md`. Several older UI items there have been fixed (drag threshold, Sionna voxel hiding, RT teardown, favicon). Prefer exercising the **React** app and Flask JSON routes before copying bug text into new issues.
 
 ## Environment view (appearance)
 
