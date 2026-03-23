@@ -103,7 +103,23 @@ export const useSimulationStore = create<SimulationStore>((set) => ({
   setStochasticSeed: (v) => set({ stochasticSeed: v }),
   setBodyOffset: (offset) => set({ bodyOffset: offset }),
   setBodyRotationY: (angle) => set({ bodyRotationY: angle }),
-  setFreqGhz: (v) => set({ freqGhz: v }),
+  setFreqGhz: (v) => set((state) => {
+    const wasAbove30 = state.freqGhz > 30
+    const nowAbove30 = v > 30
+    if (wasAbove30 === nowAbove30) return { freqGhz: v }
+
+    // Crossing the 30 GHz boundary: swap 4 cm² <-> 1 cm² defaults
+    const next = new Set(state.enabledQuantities)
+    let displayQuantity = state.displayQuantity
+    if (nowAbove30) {
+      if (next.has('sab_4cm2')) { next.delete('sab_4cm2'); next.add('sab_1cm2') }
+      if (displayQuantity === 'sab_4cm2') displayQuantity = 'sab_1cm2'
+    } else {
+      if (next.has('sab_1cm2')) { next.delete('sab_1cm2'); next.add('sab_4cm2') }
+      if (displayQuantity === 'sab_1cm2') displayQuantity = 'sab_4cm2'
+    }
+    return { freqGhz: v, enabledQuantities: next, displayQuantity }
+  }),
   setEnabledQuantities: (q) => set({ enabledQuantities: q }),
   toggleQuantity: (key) => set((state) => {
     const next = new Set(state.enabledQuantities)

@@ -23,7 +23,13 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
         location = request.args.get("location", "").strip()
         radius = int(request.args.get("radius", 30))
+        voxel_size = float(request.args.get("voxel_size", 0.5))
         force = request.args.get("force", "false").lower() == "true"
+
+        # Convert voxel size (meters) to resolution (voxels per dimension).
+        # The voxelizer divides the longest bounding-box dimension by resolution,
+        # so resolution = (2 * radius) / voxel_size is a good approximation.
+        resolution = max(10, round((2 * radius) / voxel_size))
 
         if not location:
             return jsonify({"error": "Missing location parameter"}), 400
@@ -53,7 +59,9 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                 yield "event: progress\ndata: Using cached data\n\n"
             else:
                 # Run pipeline
-                for line in run_pipeline(location, radius, api_key, pipeline_output, pipeline_dir=pipeline_dir):
+                for line in run_pipeline(
+                    location, radius, api_key, pipeline_output, resolution=resolution, pipeline_dir=pipeline_dir
+                ):
                     yield f"event: progress\ndata: {line}\n\n"
                     if line.startswith("ERROR:"):
                         yield f"event: error\ndata: {line}\n\n"

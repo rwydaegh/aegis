@@ -9,6 +9,7 @@ import numpy as np
 from flask import Flask, Response, jsonify, request
 
 from aegis.compliance import ExposureScenario, evaluate_compliance
+from aegis.viewer.compute import PHANTOM_MASS_KG
 
 logger = logging.getLogger(__name__)
 
@@ -499,6 +500,10 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         # Transform body mesh for dosimetry engine
         transformed_body = _transform_body_for_viewer(body, body_offset, body_rotation_y)
 
+        import time as _time
+
+        t_route = _time.perf_counter()
+
         # Run DiffeRT
         try:
             rt_cfg = cache["config"]["raytracer"]
@@ -514,6 +519,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         except Exception as e:
             return jsonify({"error": f"Ray tracing failed: {e}"}), 500
 
+        t_rt = _time.perf_counter()
+
         level_val, mode_val, corr_val = _stats_label(engine_kw)
         if paths.n_paths == 0:
             return _zero_paths_response(body, tissue, level_val or 0)
@@ -523,7 +530,10 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
         engine = DosimetryEngine(tissue)
         _inject_curvature_H(engine_kw, transformed_body)
-        result = engine.compute(transformed_body, paths, **engine_kw)
+        body_mass = PHANTOM_MASS_KG.get(body.name) if body.name else None
+        result = engine.compute(transformed_body, paths, body_mass=body_mass, **engine_kw)
+
+        t_compute = _time.perf_counter()
 
         buf, arrays_meta = _build_binary_response(result, quantities)
         dist = float(np.linalg.norm(antenna_pos - body_center))
@@ -544,6 +554,15 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             },
             scenario=exposure_scenario,
         )
+
+        t_stats = _time.perf_counter()
+
+        timings = stats.get("timings", {})
+        timings["rt_ms"] = (t_rt - t_route) * 1e3
+        timings["kernel_ms"] = (t_compute - t_rt) * 1e3
+        timings["compliance_stats_ms"] = (t_stats - t_compute) * 1e3
+        timings["route_total_ms"] = (t_stats - t_route) * 1e3
+        stats["timings"] = timings
         stats["arrays"] = arrays_meta
 
         resp = Response(bytes(buf), mimetype=_OCTET_STREAM)
@@ -600,6 +619,10 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         # Transform body mesh for dosimetry engine
         transformed_body = _transform_body_for_viewer(body, body_offset, body_rotation_y)
 
+        import time as _time
+
+        t_route = _time.perf_counter()
+
         try:
             import sionna.rt
 
@@ -618,6 +641,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         except Exception as e:
             return jsonify({"error": f"Sionna ray tracing failed: {e}"}), 500
 
+        t_rt = _time.perf_counter()
+
         level_val, mode_val, corr_val = _stats_label(engine_kw)
         if paths.n_paths == 0:
             return _zero_paths_response(body, tissue, level_val or 0)
@@ -626,7 +651,10 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
         engine = DosimetryEngine(tissue)
         _inject_curvature_H(engine_kw, transformed_body)
-        result = engine.compute(transformed_body, paths, **engine_kw)
+        body_mass = PHANTOM_MASS_KG.get(body.name) if body.name else None
+        result = engine.compute(transformed_body, paths, body_mass=body_mass, **engine_kw)
+
+        t_compute = _time.perf_counter()
 
         buf, arrays_meta = _build_binary_response(result, quantities)
         dist = float(np.linalg.norm(antenna_pos - body_center))
@@ -648,6 +676,15 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             },
             scenario=exposure_scenario,
         )
+
+        t_stats = _time.perf_counter()
+
+        timings = stats.get("timings", {})
+        timings["rt_ms"] = (t_rt - t_route) * 1e3
+        timings["kernel_ms"] = (t_compute - t_rt) * 1e3
+        timings["compliance_stats_ms"] = (t_stats - t_compute) * 1e3
+        timings["route_total_ms"] = (t_stats - t_route) * 1e3
+        stats["timings"] = timings
         stats["arrays"] = arrays_meta
 
         resp = Response(bytes(buf), mimetype=_OCTET_STREAM)
@@ -704,6 +741,10 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         # Transform body consistently (vertices, centroids, normals all rotated + offset)
         transformed_body = _transform_body_for_viewer(body, body_offset, body_rotation_y)
         body_center = transformed_body.centroids.mean(axis=0)
+
+        import time as _time
+
+        t_route = _time.perf_counter()
 
         # Build or get cached voxel DiffeRT scene
         max_rt_triangles = cfg["raytracer"]["max_rt_triangles"]
@@ -799,6 +840,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         except Exception as e:
             return jsonify({"error": f"Voxel RT failed: {e}"}), 500
 
+        t_rt = _time.perf_counter()
+
         level_val, mode_val, corr_val = _stats_label(engine_kw)
         if not all_k_hat:
             return _zero_paths_response(body, tissue, level_val or 0)
@@ -809,8 +852,11 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         paths = PropagationPaths.from_powers(k_hat=np.array(all_k_hat), power=np.array(all_power))
         engine = DosimetryEngine(tissue)
         _inject_curvature_H(engine_kw, transformed_body)
+        body_mass = PHANTOM_MASS_KG.get(body.name) if body.name else None
 
-        result = engine.compute(transformed_body, paths, **engine_kw)
+        result = engine.compute(transformed_body, paths, body_mass=body_mass, **engine_kw)
+
+        t_compute = _time.perf_counter()
 
         buf, arrays_meta = _build_binary_response(result, quantities)
         dist = float(np.linalg.norm(antenna_pos - body_center))
@@ -830,6 +876,15 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             },
             scenario=exposure_scenario,
         )
+
+        t_stats = _time.perf_counter()
+
+        timings = stats.get("timings", {})
+        timings["rt_ms"] = (t_rt - t_route) * 1e3
+        timings["kernel_ms"] = (t_compute - t_rt) * 1e3
+        timings["compliance_stats_ms"] = (t_stats - t_compute) * 1e3
+        timings["route_total_ms"] = (t_stats - t_route) * 1e3
+        stats["timings"] = timings
         stats["arrays"] = arrays_meta
 
         resp = Response(bytes(buf), mimetype=_OCTET_STREAM)

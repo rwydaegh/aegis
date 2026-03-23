@@ -8,6 +8,7 @@ export type ExposureScenario = 'general_public' | 'occupational'
 
 export interface LastComputeTiming {
   totalMs: number
+  rtMs: number | null
   kernelMs: number
   averagingMs: number
   complianceMs: number

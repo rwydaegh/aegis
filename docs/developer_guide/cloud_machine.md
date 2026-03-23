@@ -101,7 +101,7 @@ Open that URL. If bootstrap enabled HTTP Basic Auth, use the username `aegis` an
 
 ### When status says the viewer is not publicly forwarded (typical)
 
-The Flask app still listens on `0.0.0.0:5000` **inside** the VM. Reach it through a **local** port forward using the **same key as in `.env`**:
+The Flask app listens on `127.0.0.1:5000` inside the VM by default (`0.0.0.0` if launched with `--host 0.0.0.0`). Reach it through a **local** port forward using the **same key as in `.env`**:
 
 ```bash
 ssh -i ~/.ssh/tensordock_ed25519 \

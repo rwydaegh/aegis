@@ -294,10 +294,11 @@ export async function computeSionnaRT(
 // SSE endpoint
 // ---------------------------------------------------------------------------
 
-export function loadLocation(location: string, radius: number, force: boolean): EventSource {
+export function loadLocation(location: string, radius: number, voxelSize: number, force: boolean): EventSource {
   const params = new URLSearchParams({
     location,
     radius: String(radius),
+    voxel_size: String(voxelSize),
     force: String(force),
   })
   return new EventSource(`${BASE}/api/location/load?${params.toString()}`)

@@ -14,6 +14,14 @@ from aegis.tissue.cole_cole import debye_permittivity
 from aegis.tissue.dielectric import TissueModel
 from aegis.viewer.config import DEFAULTS
 
+# IT'IS Virtual Population phantom masses (kg) from the ViP database
+PHANTOM_MASS_KG: dict[str, float] = {
+    "thelonious": 17.4,
+    "duke": 72.4,
+    "eartha": 56.0,
+    "ella": 58.7,
+}
+
 # Cache for curvature computation (expensive, only changes when body changes)
 _curvature_cache: dict = {}
 
@@ -300,6 +308,9 @@ def compute_dosimetry(
 
         paths = PropagationPaths.from_powers(k_hat=k_hats, power=powers)
 
+    # Resolve body mass for SAR computation
+    body_mass = PHANTOM_MASS_KG.get(body.name) if body.name else None
+
     engine = DosimetryEngine(tissue)
     t0 = time.perf_counter()
 
@@ -309,10 +320,10 @@ def compute_dosimetry(
         if mode == "bound":
             A_ab = body.total_area * dos_cfg["convex_body_area_factor"]
             D_max = dos_cfg["level0_D_max"]
-            result = engine.compute(rotated_body, paths, mode="bound", A_ab=A_ab, D_max=D_max)
+            result = engine.compute(rotated_body, paths, mode="bound", A_ab=A_ab, D_max=D_max, body_mass=body_mass)
         elif mode == "aggregate":
             A_ab = body.total_area * dos_cfg["convex_body_area_factor"]
-            result = engine.compute(rotated_body, paths, mode="aggregate", A_ab=A_ab)
+            result = engine.compute(rotated_body, paths, mode="aggregate", A_ab=A_ab, body_mass=body_mass)
         else:
             # spatial mode with correction flags
             mode_kwargs: dict = {"mode": "spatial"}
@@ -325,7 +336,7 @@ def compute_dosimetry(
                 mode_kwargs["curvature_H"] = _compute_face_curvature(rotated_body)
             if corr.get("diffraction"):
                 mode_kwargs["diffraction"] = True
-            result = engine.compute(rotated_body, paths, **mode_kwargs)
+            result = engine.compute(rotated_body, paths, body_mass=body_mass, **mode_kwargs)
     else:
         # Legacy level-based API
         if level is None:
@@ -335,7 +346,7 @@ def compute_dosimetry(
             extra_kwargs["A_ab"] = body.total_area * dos_cfg["convex_body_area_factor"]
             if level == 0:
                 extra_kwargs["D_max"] = dos_cfg["level0_D_max"]
-            result = engine.compute(rotated_body, paths, level=level, **extra_kwargs)
+            result = engine.compute(rotated_body, paths, level=level, body_mass=body_mass, **extra_kwargs)
         elif level <= 6:
             mode_kwargs2: dict = {"mode": "spatial"}
             if level == 2:
@@ -348,16 +359,19 @@ def compute_dosimetry(
                 mode_kwargs2["curvature_H"] = _compute_face_curvature(rotated_body)
             if level == 6:
                 mode_kwargs2["diffraction"] = True
-            result = engine.compute(rotated_body, paths, **mode_kwargs2)
+            result = engine.compute(rotated_body, paths, body_mass=body_mass, **mode_kwargs2)
         else:
-            result = engine.compute(rotated_body, paths, level=level, **extra_kwargs)
+            result = engine.compute(rotated_body, paths, level=level, body_mass=body_mass, **extra_kwargs)
 
     timings["engine_compute_ms"] = (time.perf_counter() - t0) * 1e3
     timings["total_ms"] = (time.perf_counter() - t_total) * 1e3
 
-    # Pull fine-grained timings from engine
-    engine_timings = {}  # TODO: implement per-kernel timing in engine
-    timings.update(engine_timings)
+    # Pull fine-grained timings from engine's module-level dict
+    from aegis.engine import _last_timings
+
+    for key in ("kernel_ms", "avg_build_G_4cm2_ms", "avg_matvec_4cm2_ms", "avg_build_G_1cm2_ms"):
+        if key in _last_timings:
+            timings[key] = _last_timings[key]
 
     extra = {
         "S_inc": float(S_inc),
