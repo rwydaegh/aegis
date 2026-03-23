@@ -6,6 +6,7 @@ and converts them to AEGIS PropagationPaths.
 
 from __future__ import annotations
 
+import logging
 import os
 from collections.abc import Sequence
 from pathlib import Path
@@ -14,6 +15,8 @@ from typing import Any
 import numpy as np
 
 from aegis.paths import PropagationPaths
+
+logger = logging.getLogger(__name__)
 
 _DEFAULT_FSPL_DISTANCE_CLAMP_M = 0.01
 
@@ -133,6 +136,7 @@ def compute_paths_differt(
     max_order: int = 1,
     freq_hz: float = 28e9,
     tx_power_dbm: float = 30.0,
+    reflection_loss_per_order: float = 0.5,
     # NOTE: Uses from_powers() with scalar power only. Polarisation direction
     # is irrelevant here because the viewer runs incoherent levels (0-6) where
     # only |psi|^2 matters. For coherent levels (7-8) with proper TE/TM
@@ -178,7 +182,8 @@ def compute_paths_differt(
     for order in range(max_order + 1):
         try:
             paths = scene.compute_paths(order=order)
-        except Exception:
+        except Exception as e:
+            logger.warning("Bounce order %d failed, skipping: %s", order, e)
             continue
 
         verts = np.array(paths.vertices)
@@ -207,7 +212,7 @@ def compute_paths_differt(
             all_k_hat.append(k_hat)
 
             # Match paths_from_differt: S_inc = P_tx / (4 pi d^2) for isotropic spreading
-            reflection_loss = 0.5**order
+            reflection_loss = reflection_loss_per_order**order
             S_inc = isotropic_incident_power_density(tx_power_w, total_length) * reflection_loss
             all_power.append(S_inc)
 

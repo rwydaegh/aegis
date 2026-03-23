@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import json
+import logging
 
 import numpy as np
 from flask import Flask, Response, jsonify, request
 
 from aegis.compliance import ExposureScenario, evaluate_compliance
+
+logger = logging.getLogger(__name__)
 
 # String constants (avoid duplicate literals)
 _OCTET_STREAM = "application/octet-stream"
@@ -141,7 +144,9 @@ def _build_stats_response(result, body, tissue, level, extra=None, mode=None, co
         "tissue_sigma": tissue.sigma,
     }
 
-    # Store compliance result for the /api/compliance/report endpoint
+    # Store compliance result for the /api/compliance/report endpoint.
+    # NOTE: global app state, single-session assumption. Concurrent users
+    # may read each other's compliance results.
     current_app.config["_last_compliance_result"] = stats["compliance"]
 
     # Per-quantity peak values (reuse precomputed values)
@@ -467,6 +472,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
         # Run DiffeRT
         try:
+            rt_cfg = cache["config"]["raytracer"]
             paths, path_viz = compute_paths_differt(
                 scene_path,
                 tx_pos=antenna_pos,
@@ -474,6 +480,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                 max_order=max_order,
                 freq_hz=tissue.freq_hz,
                 tx_power_dbm=power_dbm,
+                reflection_loss_per_order=rt_cfg["reflection_loss_per_order"],
             )
         except Exception as e:
             return jsonify({"error": f"Ray tracing failed: {e}"}), 500
@@ -721,7 +728,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             for order in range(max_order + 1):
                 try:
                     paths_result = scene_with_tx_rx.compute_paths(order=order)
-                except Exception:
+                except Exception as e:
+                    logger.warning("Bounce order %d failed, skipping: %s", order, e)
                     continue
 
                 verts = np.array(paths_result.vertices)
@@ -812,6 +820,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
     @app.route("/api/compliance/report", methods=["GET"])
     def compliance_report():
         """Return the last compliance result as JSON."""
+        # NOTE: reads global app state (single-session assumption).
+        # Concurrent users may read another session's compliance result.
         last = app.config.get("_last_compliance_result")
         if last is None:
             return jsonify({"error": "No computation result available"}), 404

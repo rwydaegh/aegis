@@ -43,6 +43,7 @@ docs = [
 ]
 dev = [
     "pytest>=8.0",
+    "pytest-xdist>=3.5",
     "pytest-cov>=4.0",
     "hypothesis>=6.90",
     "ruff>=0.4",
@@ -79,13 +80,21 @@ testpaths = ["tests"]
 markers = [
     "slow: tests that need mesh data or take >10s",
 ]
-addopts = "-ra --strict-markers --import-mode=prepend"
+# pytest-xdist: two workers (balance of throughput vs RAM; avoid -n auto on dev machines)
+addopts = "-ra --strict-markers --import-mode=prepend -n 2"
 
 [tool.codespell]
 ignore-words-list = "te,nd,ue,lod,coner"
 
 [tool.coverage.run]
 source = ["aegis"]
+parallel = true
+# Omitted paths: optional Sionna bridge, viewer CLI, voxel pipeline glue
+omit = [
+    "*/viewer/__main__.py",
+    "*/viewer/pipeline.py",
+    "*/integration/sionna.py",
+]
 
 [tool.coverage.report]
 exclude_lines = [

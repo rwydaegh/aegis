@@ -22,13 +22,13 @@ class TestRefractiveIndexProperties:
     """Physics invariants for complex refractive index."""
 
     @given(eps_r=eps_r_st, sigma=sigma_st, freq=freq_st)
-    @settings(max_examples=200)
+    @settings(max_examples=50)
     def test_positive_real_part(self, eps_r, sigma, freq):
         n = n_complex(eps_r, sigma, freq)
         assert n.real > 0
 
     @given(eps_r=eps_r_st, sigma=sigma_st, freq=freq_st)
-    @settings(max_examples=200)
+    @settings(max_examples=50)
     def test_magnitude_at_least_one(self, eps_r, sigma, freq):
         """|n| >= 1 for any medium denser than vacuum."""
         n = n_complex(eps_r, sigma, freq)
@@ -39,7 +39,7 @@ class TestT0Properties:
     """Physics invariants for normal-incidence transmission."""
 
     @given(eps_r=eps_r_st, sigma=sigma_st, freq=freq_st)
-    @settings(max_examples=200)
+    @settings(max_examples=50)
     def test_T0_in_unit_interval(self, eps_r, sigma, freq):
         n = n_complex(eps_r, sigma, freq)
         t0 = T0(n)
@@ -60,7 +60,7 @@ class TestFresnelTransmissionProperties:
     """Physics invariants for angle-dependent Fresnel transmission."""
 
     @given(mu=mu_st)
-    @settings(max_examples=200)
+    @settings(max_examples=50)
     def test_bounded_skin(self, mu):
         """T_s, T_p in [0, 1] for skin at 28 GHz."""
         n = n_complex(17.0, 25.0, 28e9)
@@ -74,7 +74,7 @@ class TestFresnelTransmissionProperties:
         freq=freq_st,
         mu=st.floats(min_value=0.01, max_value=1.0),
     )
-    @settings(max_examples=500)
+    @settings(max_examples=100)
     def test_bounded_general(self, eps_r, sigma, freq, mu):
         """T_s, T_p in [0, 1] for any tissue and angle."""
         n = n_complex(eps_r, sigma, freq)

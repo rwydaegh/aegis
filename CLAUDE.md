@@ -57,7 +57,7 @@ Phantom meshes (STL) and the IT'IS tissue database live in `data/` inside the re
 
 ## Testing rules
 
-- Pre-commit runs ruff and codespell only, not pytest. CI runs the **full** `pytest tests/` on push and PR. Locally, `pytest -m "not slow"` is a shorter slice. Default is **`-n 2`** (pytest-xdist); avoid **`-n auto`** (OOM risk); use **`pytest -n 0`** for sequential (debuggers, low RAM).
+- Pre-commit runs ruff and codespell only, not pytest. CI runs `pytest tests/` on push and PR. Locally, `pytest -m "not slow"` skips slow-marked tests. Default pytest uses two workers (`-n 2` in `pyproject.toml`). Use `pytest -n 0` for a single process. Avoid `pytest -n auto` on typical laptops (memory scales with CPU count).
 - The Mie regression test is the CI canary. If it passes, physics are correct.
 - Every monograph table has a golden test in `tests/golden/`.
 - Property tests (Hypothesis) check physics invariants: Sab >= 0, energy conservation, ReLU bound.

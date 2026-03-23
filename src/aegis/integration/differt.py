@@ -8,6 +8,7 @@ Requires: pip install aegis[rt]  (installs differt>=0.7.0)
 
 from __future__ import annotations
 
+import logging
 import warnings
 from pathlib import Path
 
@@ -16,6 +17,8 @@ import numpy as np
 from aegis.constants import C_0, Z_0
 from aegis.paths import PropagationPaths
 from aegis.tissue.fresnel import fresnel_reflection, n_complex
+
+logger = logging.getLogger(__name__)
 
 
 def _check_differt() -> None:
@@ -405,7 +408,8 @@ def _compute_element_paths(
                 obj_idx_list.append(objs)
                 elem_idx_list.append(np.full(n, tx_element_idx, dtype=np.intp))
 
-        except Exception:
+        except Exception as e:
+            logger.warning("Bounce order %d failed, skipping: %s", n_bounces, e)
             continue
 
     return path_verts_list, obj_idx_list, elem_idx_list

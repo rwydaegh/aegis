@@ -354,8 +354,7 @@ def compute_dosimetry(
     timings["total_ms"] = (time.perf_counter() - t_total) * 1e3
 
     # Pull fine-grained timings from engine
-    from aegis.engine import _last_timings as engine_timings
-
+    engine_timings = {}  # TODO: implement per-kernel timing in engine
     timings.update(engine_timings)
 
     extra = {

@@ -1,23 +1,24 @@
-name: Full test suite
+# Optional manual run: full suite with verbose output and Git LFS checkout.
+# Every push/PR already runs the full suite in ci.yml (matrix: OS x Python).
+
+name: Full test suite (manual)
 
 on:
-  schedule:
-    - cron: '0 6 * * 1'  # Monday 6am UTC
   workflow_dispatch:
 
 jobs:
   test-all:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           lfs: true
-      - uses: astral-sh/setup-uv@v4
+      - uses: astral-sh/setup-uv@v7
       - run: uv sync --python 3.12 --extra dev
       - run: uv run pytest tests/ --cov=aegis --cov-report=xml -v
       - name: Upload coverage
         if: always()
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           file: coverage.xml
           flags: full

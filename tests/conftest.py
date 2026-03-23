@@ -1,9 +1,6 @@
 """Shared test fixtures for AEGIS."""
 
 # ruff: noqa: E402
-# test_viewer_e2e.py is a manual script (requires a running server, requests,
-# and playwright). Exclude it from pytest collection.
-collect_ignore = ["test_viewer_e2e.py"]
 
 import os
 from pathlib import Path

@@ -11,7 +11,7 @@ Read `CLAUDE.md` in the repo root for build commands, architecture, and data pat
 
 Use **Python 3.12** for this project: `py -3.12` on Windows, or the path called out in `CLAUDE.md`.
 
-Before committing Python changes: `py -3.12 -m ruff check src/ tests/` and `py -3.12 -m pytest tests/ -m "not slow" -x`.
+Before committing Python changes: `py -3.12 -m ruff check src/ tests/` and `py -3.12 -m ruff format src/ tests/`. Optionally run `py -3.12 -m pytest tests/ -m "not slow" -x` (two workers by default in `pyproject.toml`; use `pytest -n 0` for one process). CI runs `pytest tests/` on push and PR. Pre-commit does not run pytest.
 
 ## Shipping to GitHub
 

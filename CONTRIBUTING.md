@@ -14,11 +14,14 @@ On Windows: `py -3.12` instead of `python` if you have multiple versions.
 
 ```bash
 py -3.12 -m pytest tests/ -m "not slow" -x
+py -3.12 -m pytest tests/ -m "not slow" -n 0
 py -3.12 -m ruff check src/ tests/
 py -3.12 -m ruff format src/ tests/
 ```
 
-Full test suite: `py -3.12 -m pytest tests/` (includes slow tests and mesh-dependent cases).
+The first command uses two pytest-xdist workers by default (`pyproject.toml`). The second runs tests in one process (`-n 0`) for debuggers or low RAM.
+
+CI runs `py -3.12 -m pytest tests/` on every push and PR, including slow tests. Run the full suite locally when you touch physics or before a large merge.
 
 ## Scope and style
 
@@ -30,4 +33,4 @@ Physics changes should match the monograph under `../monograph/` and, where poss
 
 ## Pull requests
 
-Open an issue for non-trivial work. Run the fast tests and ruff before pushing. Reference issues in commit messages when applicable (`Closes #N`).
+Open an issue for non-trivial work. Run ruff and a pytest pass before pushing. CI runs the full suite on the remote. Reference issues in commit messages when applicable (`Closes #N`).

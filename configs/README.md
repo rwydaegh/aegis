@@ -43,13 +43,12 @@ The 3D viewer can draw a **jet-colored** radiation lobe around the hub (`antenna
 
 For future **MIMO / arrays**, use `elements`: each entry has `offset` [m], complex `weight` `[Re, Im]`, and dipole `axis` in scene coordinates. With more than one element, small markers appear at each offset; gain is an **incoherent sum** of element powers (not a phased array beam yet).
 
-## Automated E2E lab
+## E2E lab fixture
 
-`configs/e2e_lab.json` drives a **small tracked STL** under `tests/fixtures/e2e_lab/` (no voxels, deterministic multipath jitter). Use it for Playwright and `test_viewer_e2e.py` without Thelonious or voxel data.
+`configs/e2e_lab.json` drives a **small tracked STL** under `tests/fixtures/e2e_lab/` (no voxels, deterministic multipath jitter). Use it for manual browser QA or Playwright without Thelonious or voxel data.
 
 ```bash
 py -3.12 -m aegis.viewer --config configs/e2e_lab.json --no-open
-py -3.12 test_viewer_e2e.py --base http://127.0.0.1:5070 --profile lab
 ```
 
 Run the viewer from the **repository root** so `tests/fixtures/e2e_lab` resolves. See `tests/fixtures/e2e_lab/README.md` to regenerate the STL after changing `make_icosahedron()`.

@@ -14,7 +14,7 @@
 [![Code style: ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Python](https://img.shields.io/badge/python-3.11+-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-Apache--2.0-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-250%2B%20cases-brightgreen.svg?logo=pytest)](tests/)
+[![Tests](https://img.shields.io/badge/tests-441%20cases-brightgreen.svg?logo=pytest)](tests/)
 [![JAX](https://img.shields.io/badge/optional-JAX-blue.svg?logo=google&logoColor=white)](https://jax.readthedocs.io/)
 [![Viewer](https://img.shields.io/badge/viewer-React%20%2B%20Three.js-blue.svg?logo=react&logoColor=white)](https://react.dev/)
 
@@ -46,7 +46,7 @@ Nine fidelity levels (0-8) provide a controlled accuracy-cost tradeoff, from O(1
 
 **Multi-fidelity by design** - Nine levels let you trade off accuracy against compute cost. Pick the right level for your analysis, from O(1) screening to full coherent MIMO.
 
-**Physics-validated** - Every fidelity level is validated against Mie theory, monograph derivations, and the IT'IS tissue database. 207 tests including golden tests for every monograph table.
+**Physics-validated** - Every fidelity level is validated against Mie theory, monograph derivations, and the IT'IS tissue database. Hundreds of pytest cases (run `py -3.12 -m pytest tests/ --collect-only -q` for the current count), including golden tests for monograph tables.
 
 **Surface-based computation** - Treats the body as a triangle mesh. No volumetric grid, no FDTD overhead. The key insight that makes geometric dosimetry practical.
 
@@ -198,17 +198,13 @@ pip install -e ".[all]"      # everything
 ## Testing
 
 ```bash
-pytest tests/ -m "not slow" -x    # fast tests, ~30s (250+ cases)
-pytest tests/                      # all tests, ~2min (270+ cases)
-pytest tests/ --cov=aegis          # with coverage
+pytest tests/ -m "not slow" -x
+pytest tests/
+pytest tests/ --collect-only -q
+pytest tests/ --cov=aegis
 ```
 
-The test suite includes:
-
-- **Golden tests** for every table in the monograph
-- **Mie regression** as the CI canary (if it passes, physics are correct)
-- **Property tests** (Hypothesis) checking physical invariants: S_ab >= 0, energy conservation, ReLU bound
-- **E2E tests** running the full pipeline: mesh + tissue + paths to result
+The suite includes golden tests against monograph tables, Mie regression as the CI canary, Hypothesis property tests, engine and coherent pipeline tests, Flask viewer routes, and visualization smoke tests. See [docs/developer_guide/testing.md](docs/developer_guide/testing.md) for defaults (`-n 2` workers), CI, and coverage omissions.
 
 ---
 
@@ -239,9 +235,9 @@ mkdocs serve
 4. Submit a PR with a clear description
 
 ```bash
-ruff check src/ tests/        # lint
-ruff format src/ tests/        # format
-pytest tests/ -m "not slow"    # must pass before committing
+ruff check src/ tests/
+ruff format src/ tests/
+pytest tests/ -m "not slow"
 ```
 
 ---

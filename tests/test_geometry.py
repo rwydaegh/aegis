@@ -5,7 +5,7 @@ Unit tests use synthetic meshes. Slow tests need the Thelonious STL file.
 
 import numpy as np
 import pytest
-from conftest import make_cube_mesh, make_single_triangle
+from conftest import make_cube_mesh, make_icosahedron, make_single_triangle
 from scipy import stats
 
 from aegis.geometry.cauchy import cauchy_projected_area, cauchy_relative_error, mean_projected_area
@@ -298,6 +298,16 @@ class TestCosineHemisphere:
         samples = cosine_weighted_hemisphere_samples(1000, rng)
         norms = np.linalg.norm(samples, axis=1)
         np.testing.assert_allclose(norms, 1.0, atol=1e-10)
+
+
+def test_icosahedron_mean_projected_area_near_cauchy():
+    """Spherical icosahedron: mean A_perp over directions ~ A_total / 4."""
+    mesh = make_icosahedron()
+    k_hat = fibonacci_sphere(4096)
+    A_perp = compute_projected_area(mesh.normals, mesh.areas, k_hat)
+    cauchy = cauchy_projected_area(mesh.total_area)
+    mean_A = mean_projected_area(A_perp)
+    assert mean_A == pytest.approx(cauchy, rel=0.03)
 
 
 # ---------------------------------------------------------------------------

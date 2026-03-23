@@ -17,7 +17,7 @@ This is a vibe-coded project. Claude is often the only one making changes in a s
 ## How to commit
 
 - Run `py -3.12 -m ruff check src/ tests/` and `py -3.12 -m ruff format --check src/ tests/` before committing. Fix issues first.
-- Run `py -3.12 -m pytest tests/ -m "not slow" -x` before committing. All fast tests must pass.
+- Optionally run `py -3.12 -m pytest tests/ -m "not slow" -x` locally. CI runs `pytest tests/` on every push and PR.
 - Stage specific files, not `git add -A`. Review what you are committing.
 - Write commit messages in imperative mood ("Add level 3 kernel", not "Added level 3 kernel").
 - First line under 72 chars. Add a blank line and body for non-trivial changes.

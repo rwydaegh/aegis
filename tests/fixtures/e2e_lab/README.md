@@ -14,14 +14,8 @@ make_icosahedron().save_binary_stl(Path('tests/fixtures/e2e_lab/e2e_icosahedron.
 "
 ```
 
-Launch the viewer for Playwright against this data:
+Launch the viewer for manual checks or Playwright against this data:
 
 ```bash
 py -3.12 -m aegis.viewer --config configs/e2e_lab.json --no-open
-```
-
-Run the E2E script (default profile is `lab`):
-
-```bash
-py -3.12 test_viewer_e2e.py --base http://127.0.0.1:5070
 ```

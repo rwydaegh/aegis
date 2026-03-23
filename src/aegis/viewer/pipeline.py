@@ -103,8 +103,6 @@ def run_pipeline(
         str(resolution),
         "--out",
         str(output_dir),
-        "--key",
-        api_key,
     ]
 
     env = os.environ.copy()
@@ -112,6 +110,7 @@ def run_pipeline(
 
     yield f'Running: node run_pipeline.js --location "{location}" --radius {radius}'
 
+    proc: subprocess.Popen | None = None
     try:
         proc = subprocess.Popen(
             cmd,
@@ -129,7 +128,6 @@ def run_pipeline(
                 yield line
 
         proc.wait()
-        _active_process = None
 
         if proc.returncode != 0:
             yield f"ERROR: Pipeline exited with code {proc.returncode}"
@@ -137,8 +135,16 @@ def run_pipeline(
             yield "Pipeline completed successfully"
 
     except Exception as e:
-        _active_process = None
         yield f"ERROR: {e}"
+
+    finally:
+        _active_process = None
+        if proc is not None and proc.poll() is None:
+            proc.terminate()
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                proc.kill()
 
 
 def cancel_pipeline() -> bool:
