@@ -43,6 +43,19 @@ class DosimetryEngine:
         self.T0 = tissue.T0
         self.n_tilde = tissue.n_complex
         self.freq_hz = tissue.freq_hz
+        self._G_cache: dict = {}
+
+    def _get_G(self, body, target_area_m2):
+        key = (id(body), body.n_triangles, target_area_m2)
+        if key not in self._G_cache:
+            from aegis.geometry.averaging import precompute_averaging_matrix
+
+            self._G_cache[key] = precompute_averaging_matrix(
+                body.centroids,
+                body.areas,
+                target_area_m2,
+            )
+        return self._G_cache[key]
 
     def compute(
         self,
@@ -72,6 +85,7 @@ class DosimetryEngine:
         polarisation: bool = False,
         diffraction: bool = False,
         curvature: bool = False,
+        freq_hz: float | None = None,
     ) -> DosimetryResult:
         """Compute dosimetry at the specified fidelity level or mode.
 
@@ -136,6 +150,7 @@ class DosimetryEngine:
                 precoder=precoder,
                 h=h,
                 P_abs_max=P_abs_max,
+                freq_hz=freq_hz,
             )
 
         # Legacy level-based path
@@ -152,6 +167,7 @@ class DosimetryEngine:
                 P_abs_max=P_abs_max,
                 body_mass=body_mass,
                 spatial_averaging=spatial_averaging,
+                freq_hz=freq_hz,
             )
 
         sab = self._dispatch(
@@ -175,12 +191,20 @@ class DosimetryEngine:
         # Whole-body SAR
         sar_wb = p_abs / body_mass if body_mass is not None else None
 
-        # Spatial averaging
-        sab_averaged = None
-        if spatial_averaging:
-            from aegis.geometry.averaging import apply_spatial_averaging
+        effective_freq_hz = freq_hz if freq_hz is not None else self.freq_hz
 
-            sab_averaged = apply_spatial_averaging(sab, body.centroids, body.areas)
+        # S_inc: incident power density (no T0, no cosine projection)
+        sinc = np.full(body.n_triangles, float(np.sum(_to_numpy(paths.power))))
+
+        # Always compute spatial averaging
+        G_4cm2 = self._get_G(body, 4e-4)
+        sab_averaged = _to_numpy(G_4cm2 @ sab)
+        sinc_averaged = _to_numpy(G_4cm2 @ sinc)
+
+        sab_1cm2_averaged = None
+        if effective_freq_hz is not None and effective_freq_hz > 30e9:
+            G_1cm2 = self._get_G(body, 1e-4)
+            sab_1cm2_averaged = _to_numpy(G_1cm2 @ sab)
 
         return DosimetryResult(
             sab=sab,
@@ -188,6 +212,10 @@ class DosimetryEngine:
             fidelity_level=level,
             sab_averaged=sab_averaged,
             sar_wb=sar_wb,
+            sinc=sinc,
+            sinc_averaged=sinc_averaged,
+            sab_1cm2_averaged=sab_1cm2_averaged,
+            freq_hz=effective_freq_hz,
         )
 
     def compute_sab(
@@ -353,6 +381,7 @@ class DosimetryEngine:
         precoder: Precoder | None = None,
         h: np.ndarray | None = None,
         P_abs_max: float = 0.1,
+        freq_hz: float | None = None,
     ) -> DosimetryResult:
         """Dispatch based on mode string with composable correction flags."""
         _valid_modes = ("bound", "aggregate", "spatial", "coherent", "ecbf")
@@ -409,6 +438,7 @@ class DosimetryEngine:
                 P_abs_max=P_abs_max,
                 body_mass=body_mass,
                 spatial_averaging=spatial_averaging,
+                freq_hz=freq_hz,
             )
             # Re-wrap with mode/corrections metadata
             return DosimetryResult(
@@ -423,6 +453,10 @@ class DosimetryEngine:
                 rho=result.rho,
                 eigenvalues=result.eigenvalues,
                 x_star=result.x_star,
+                sinc=result.sinc,
+                sinc_averaged=result.sinc_averaged,
+                sab_1cm2_averaged=result.sab_1cm2_averaged,
+                freq_hz=result.freq_hz,
             )
         else:
             # bound or aggregate: use legacy dispatch
@@ -444,11 +478,20 @@ class DosimetryEngine:
         p_abs = float(np.sum(sab * body.areas))
         sar_wb = p_abs / body_mass if body_mass is not None else None
 
-        sab_averaged = None
-        if spatial_averaging:
-            from aegis.geometry.averaging import apply_spatial_averaging
+        effective_freq_hz = freq_hz if freq_hz is not None else self.freq_hz
 
-            sab_averaged = apply_spatial_averaging(sab, body.centroids, body.areas)
+        # S_inc: incident power density (no T0, no cosine projection)
+        sinc = np.full(body.n_triangles, float(np.sum(_to_numpy(paths.power))))
+
+        # Always compute spatial averaging
+        G_4cm2 = self._get_G(body, 4e-4)
+        sab_averaged = _to_numpy(G_4cm2 @ sab)
+        sinc_averaged = _to_numpy(G_4cm2 @ sinc)
+
+        sab_1cm2_averaged = None
+        if effective_freq_hz is not None and effective_freq_hz > 30e9:
+            G_1cm2 = self._get_G(body, 1e-4)
+            sab_1cm2_averaged = _to_numpy(G_1cm2 @ sab)
 
         return DosimetryResult(
             sab=sab,
@@ -458,6 +501,10 @@ class DosimetryEngine:
             sar_wb=sar_wb,
             mode=mode,
             corrections=tuple(corrections),
+            sinc=sinc,
+            sinc_averaged=sinc_averaged,
+            sab_1cm2_averaged=sab_1cm2_averaged,
+            freq_hz=effective_freq_hz,
         )
 
     def _compute_coherent(
@@ -470,6 +517,7 @@ class DosimetryEngine:
         P_abs_max: float = 0.1,
         body_mass: float | None = None,
         spatial_averaging: bool = False,
+        freq_hz: float | None = None,
     ) -> DosimetryResult:
         """Dispatch coherent levels 7-8."""
         sigma = self.tissue.sigma
@@ -528,11 +576,20 @@ class DosimetryEngine:
         p_abs = float(np.sum(sab * body.areas))
         sar_wb = p_abs / body_mass if body_mass is not None else None
 
-        sab_averaged = None
-        if spatial_averaging:
-            from aegis.geometry.averaging import apply_spatial_averaging
+        effective_freq_hz = freq_hz if freq_hz is not None else self.freq_hz
 
-            sab_averaged = apply_spatial_averaging(sab, body.centroids, body.areas)
+        # S_inc: incident power density (no T0, no cosine projection)
+        sinc = np.full(body.n_triangles, float(np.sum(_to_numpy(paths.power))))
+
+        # Always compute spatial averaging
+        G_4cm2 = self._get_G(body, 4e-4)
+        sab_averaged = _to_numpy(G_4cm2 @ sab)
+        sinc_averaged = _to_numpy(G_4cm2 @ sinc)
+
+        sab_1cm2_averaged = None
+        if effective_freq_hz is not None and effective_freq_hz > 30e9:
+            G_1cm2 = self._get_G(body, 1e-4)
+            sab_1cm2_averaged = _to_numpy(G_1cm2 @ sab)
 
         return DosimetryResult(
             sab=sab,
@@ -544,6 +601,10 @@ class DosimetryEngine:
             rho=rho,
             eigenvalues=eigenvalues,
             x_star=x_star,
+            sinc=sinc,
+            sinc_averaged=sinc_averaged,
+            sab_1cm2_averaged=sab_1cm2_averaged,
+            freq_hz=effective_freq_hz,
         )
 
     def _dispatch(
