@@ -2,7 +2,7 @@ import { useSimulationStore } from '@/stores/simulation'
 import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
 import type { DosimetryMode } from '@/stores/simulation'
-import type { DisplayMode } from '@/stores/ui'
+import QuantitiesPanel from './QuantitiesPanel'
 
 const MODES: { value: DosimetryMode; label: string }[] = [
   { value: 'bound', label: 'Bound' },
@@ -60,8 +60,6 @@ export default function ParametersPanel() {
   const freqGhz = useSimulationStore((s) => s.freqGhz)
   const setFreqGhz = useSimulationStore((s) => s.setFreqGhz)
 
-  const displayMode = useUIStore((s) => s.displayMode)
-  const setDisplayMode = useUIStore((s) => s.setDisplayMode)
   const scenario = useUIStore((s) => s.exposureScenario)
   const setScenario = useUIStore((s) => s.setExposureScenario)
 
@@ -247,18 +245,8 @@ export default function ParametersPanel() {
         </button>
       </div>
 
-      <label className={labelClass}>Display</label>
-      <select
-        className={selectClass}
-        value={displayMode}
-        onChange={(e) => setDisplayMode(e.target.value as DisplayMode)}
-      >
-        <option value="raw_sab">Raw S_ab</option>
-        <option value="avg_sab">Averaged S_ab (4 cm&#178;)</option>
-        <option value="sinc">S_inc (incident)</option>
-        <option value="ratio_sab">Compliance ratio (S_ab)</option>
-        <option value="ratio_sinc">Compliance ratio (S_inc)</option>
-      </select>
+      <label className={labelClass}>Quantities</label>
+      <QuantitiesPanel />
     </div>
   )
 }
