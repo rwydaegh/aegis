@@ -114,12 +114,15 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         if mode is not None:
             if mode not in ("bound", "aggregate", "spatial"):
                 return jsonify({"error": "mode must be one of: bound, aggregate, spatial"}), 400
-            corrections = {
-                "fresnel": bool(params.get("fresnel", True)),
-                "polarisation": bool(params.get("polarisation", False)),
-                "curvature": bool(params.get("curvature", False)),
-                "diffraction": bool(params.get("diffraction", False)),
-            }
+            if mode == "spatial":
+                corrections = {
+                    "fresnel": bool(params.get("fresnel", True)),
+                    "polarisation": bool(params.get("polarisation", False)),
+                    "curvature": bool(params.get("curvature", False)),
+                    "diffraction": bool(params.get("diffraction", False)),
+                }
+            else:
+                corrections = None
             level = None
         else:
             try:

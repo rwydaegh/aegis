@@ -82,6 +82,8 @@ export interface DosimetryStats {
   n_illuminated: number
   n_triangles: number
   level: number
+  mode?: string
+  corrections?: string[]
   S_inc: number
   distance_m: number
   T0: number

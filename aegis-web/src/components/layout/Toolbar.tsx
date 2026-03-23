@@ -7,7 +7,6 @@ import { useUIStore } from '@/stores/ui'
 import type { CameraPreset } from '@/stores/ui'
 import { cn } from '@/lib/utils'
 import type { DosimetryStats } from '@/api/types'
-import type { ViewerConfig } from '@/api/types'
 
 function ComplianceBadge({ stats }: { stats: DosimetryStats | null }) {
   if (!stats) {
@@ -28,11 +27,29 @@ function ComplianceBadge({ stats }: { stats: DosimetryStats | null }) {
   )
 }
 
-function LevelPill({ level, config }: { level: number; config: ViewerConfig | null }) {
-  const levelLabel = config?.dosimetry?.fidelity_levels?.find(l => l.value === level)?.label ?? `L${level}`
+function ModePill() {
+  const mode = useSimulationStore((s) => s.mode)
+  const fresnel = useSimulationStore((s) => s.fresnel)
+  const polarisation = useSimulationStore((s) => s.polarisation)
+  const curvature = useSimulationStore((s) => s.curvature)
+  const diffraction = useSimulationStore((s) => s.diffraction)
+
+  const corrections: string[] = []
+  if (mode === 'spatial') {
+    if (fresnel) corrections.push('F')
+    if (polarisation) corrections.push('P')
+    if (curvature) corrections.push('C')
+    if (diffraction) corrections.push('D')
+  }
+
+  const modeLabel = mode.charAt(0).toUpperCase() + mode.slice(1)
+  const label = corrections.length > 0
+    ? `${modeLabel} +${corrections.join('')}`
+    : modeLabel
+
   return (
     <span className="inline-flex items-center rounded-full bg-primary/15 border border-primary/20 px-2.5 py-0.5 text-xs font-medium text-primary font-mono">
-      {levelLabel}
+      {label}
     </span>
   )
 }
@@ -46,7 +63,7 @@ const CAMERA_PRESETS: Array<{ preset: CameraPreset & string; label: string; icon
 ]
 
 export default function Toolbar() {
-  const { level, stats } = useSimulationStore()
+  const { stats } = useSimulationStore()
   const { viewerConfig } = useSceneStore()
   const { sidebarOpen, wireframe, cameraMode, toggleSidebar, toggleWireframe, setCameraPreset, setCameraMode } = useUIStore()
 
@@ -72,7 +89,7 @@ export default function Toolbar() {
       {/* Center-left: compliance + level */}
       <div className="flex items-center gap-2 shrink-0">
         <ComplianceBadge stats={stats} />
-        <LevelPill level={level} config={viewerConfig} />
+        <ModePill />
       </div>
 
       {/* Center: camera mode + presets */}

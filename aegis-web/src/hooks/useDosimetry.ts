@@ -6,7 +6,11 @@ import { computeDosimetry, computeVoxelRT, computeRT, computeSionnaRT } from '@/
 
 export function useDosimetry() {
   const antennaPos = useSimulationStore(s => s.antennaPos)
-  const level = useSimulationStore(s => s.level)
+  const mode = useSimulationStore(s => s.mode)
+  const fresnel = useSimulationStore(s => s.fresnel)
+  const polarisation = useSimulationStore(s => s.polarisation)
+  const curvature = useSimulationStore(s => s.curvature)
+  const diffraction = useSimulationStore(s => s.diffraction)
   const powerDbm = useSimulationStore(s => s.powerDbm)
   const tissue = useSimulationStore(s => s.tissue)
   const nPaths = useSimulationStore(s => s.nPaths)
@@ -44,7 +48,11 @@ export function useDosimetry() {
       antennaPos: antennaTip,
       bodyOffset,
       bodyRotationY,
-      level,
+      mode,
+      fresnel,
+      polarisation,
+      curvature,
+      diffraction,
       powerDbm,
       tissue,
       nPaths,
@@ -82,7 +90,7 @@ export function useDosimetry() {
         clearTimeout(timeoutId)
         if (gen === generationRef.current) setComputing(false)
       })
-  }, [antennaPos, level, powerDbm, tissue, nPaths, bodyOffset, bodyRotationY, config, caps, rtEnabled, rtSource, rtMaxOrder, loadedScenePath])
+  }, [antennaPos, mode, fresnel, polarisation, curvature, diffraction, powerDbm, tissue, nPaths, bodyOffset, bodyRotationY, config, caps, rtEnabled, rtSource, rtMaxOrder, loadedScenePath])
 
   // Debounced trigger on any dependency change
   useEffect(() => {
@@ -95,7 +103,7 @@ export function useDosimetry() {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current)
     }
-  }, [antennaPos, level, powerDbm, tissue, nPaths, bodyOffset, bodyRotationY, triggerCompute, config])
+  }, [antennaPos, mode, fresnel, polarisation, curvature, diffraction, powerDbm, tissue, nPaths, bodyOffset, bodyRotationY, triggerCompute, config])
 
   // Cancel any in-flight request on unmount
   useEffect(() => {

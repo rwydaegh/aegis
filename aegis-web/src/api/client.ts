@@ -192,118 +192,72 @@ export async function loadSceneGeometry(scenePath: string): Promise<{
 // Compute endpoints
 // ---------------------------------------------------------------------------
 
+export interface ComputeParams {
+  antennaPos: ScenePos
+  bodyOffset: ScenePos
+  bodyRotationY: number
+  mode: string
+  fresnel: boolean
+  polarisation: boolean
+  curvature: boolean
+  diffraction: boolean
+  powerDbm: number
+  tissue: string
+  nPaths: number
+}
+
+function computePayload(params: ComputeParams) {
+  return {
+    antenna_pos: toServer(params.antennaPos),
+    body_offset: toServer(params.bodyOffset),
+    body_rotation_y: params.bodyRotationY,
+    mode: params.mode,
+    fresnel: params.fresnel,
+    polarisation: params.polarisation,
+    curvature: params.curvature,
+    diffraction: params.diffraction,
+    power_dbm: params.powerDbm,
+    tissue: params.tissue,
+    n_paths: params.nPaths,
+  }
+}
+
 export async function computeDosimetry(
-  params: {
-    antennaPos: ScenePos
-    bodyOffset: ScenePos
-    bodyRotationY: number
-    level: number
-    powerDbm: number
-    tissue: string
-    nPaths: number
-  },
+  params: ComputeParams,
   signal?: AbortSignal,
 ): Promise<{ sab: Float32Array; stats: DosimetryStats }> {
-  return computeEndpoint(
-    '/api/compute',
-    {
-      antenna_pos: toServer(params.antennaPos),
-      body_offset: toServer(params.bodyOffset),
-      body_rotation_y: params.bodyRotationY,
-      level: params.level,
-      power_dbm: params.powerDbm,
-      tissue: params.tissue,
-      n_paths: params.nPaths,
-    },
-    signal,
-  )
+  return computeEndpoint('/api/compute', computePayload(params), signal)
 }
 
 export async function computeVoxelRT(
-  params: {
-    antennaPos: ScenePos
-    bodyOffset: ScenePos
-    bodyRotationY: number
-    level: number
-    powerDbm: number
-    tissue: string
-    nPaths: number
-    maxOrder: number
-  },
+  params: ComputeParams & { maxOrder: number },
   signal?: AbortSignal,
 ): Promise<{ sab: Float32Array; stats: DosimetryStats }> {
   return computeEndpoint(
     '/api/compute/voxel-rt',
-    {
-      antenna_pos: toServer(params.antennaPos),
-      body_offset: toServer(params.bodyOffset),
-      body_rotation_y: params.bodyRotationY,
-      level: params.level,
-      power_dbm: params.powerDbm,
-      tissue: params.tissue,
-      n_paths: params.nPaths,
-      max_order: params.maxOrder,
-    },
+    { ...computePayload(params), max_order: params.maxOrder },
     signal,
   )
 }
 
 export async function computeRT(
-  params: {
-    antennaPos: ScenePos
-    bodyOffset: ScenePos
-    bodyRotationY: number
-    level: number
-    powerDbm: number
-    tissue: string
-    nPaths: number
-    scenePath: string
-    maxOrder: number
-  },
+  params: ComputeParams & { scenePath: string; maxOrder: number },
   signal?: AbortSignal,
 ): Promise<{ sab: Float32Array; stats: DosimetryStats }> {
   return computeEndpoint(
     '/api/compute/rt',
-    {
-      antenna_pos: toServer(params.antennaPos),
-      body_offset: toServer(params.bodyOffset),
-      body_rotation_y: params.bodyRotationY,
-      level: params.level,
-      power_dbm: params.powerDbm,
-      tissue: params.tissue,
-      n_paths: params.nPaths,
-      scene_path: params.scenePath,
-      max_order: params.maxOrder,
-    },
+    { ...computePayload(params), scene_path: params.scenePath, max_order: params.maxOrder },
     signal,
   )
 }
 
 export async function computeSionnaRT(
-  params: {
-    antennaPos: ScenePos
-    bodyOffset: ScenePos
-    bodyRotationY: number
-    level: number
-    powerDbm: number
-    tissue: string
-    nPaths: number
-    scenePath: string
-  },
+  params: ComputeParams & { scenePath: string },
   signal?: AbortSignal,
 ): Promise<{ sab: Float32Array; stats: DosimetryStats }> {
   return computeEndpoint(
     '/api/compute/sionna-rt',
-    {
-      antenna_pos: toServer(params.antennaPos),
-      body_offset: toServer(params.bodyOffset),
-      body_rotation_y: params.bodyRotationY,
-      level: params.level,
-      power_dbm: params.powerDbm,
-      tissue: params.tissue,
-      n_paths: params.nPaths,
-      scene_path: params.scenePath,
-    },
+    { ...computePayload(params), scene_path: params.scenePath },
     signal,
   )
 }

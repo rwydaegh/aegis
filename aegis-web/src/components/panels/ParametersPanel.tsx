@@ -1,9 +1,54 @@
 import { useSimulationStore } from '@/stores/simulation'
 import { useSceneStore } from '@/stores/scene'
+import type { DosimetryMode } from '@/stores/simulation'
+
+const MODES: { value: DosimetryMode; label: string }[] = [
+  { value: 'bound', label: 'Bound' },
+  { value: 'aggregate', label: 'Aggregate' },
+  { value: 'spatial', label: 'Spatial' },
+]
+
+function CorrectionToggle({
+  label,
+  checked,
+  onChange,
+  disabled,
+  title,
+}: {
+  label: string
+  checked: boolean
+  onChange: (on: boolean) => void
+  disabled?: boolean
+  title?: string
+}) {
+  return (
+    <label
+      className={`flex items-center gap-2 text-xs cursor-pointer select-none ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+      title={title}
+    >
+      <input
+        type="checkbox"
+        className="rounded border-border accent-primary h-3.5 w-3.5"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        disabled={disabled}
+      />
+      <span className="text-foreground">{label}</span>
+    </label>
+  )
+}
 
 export default function ParametersPanel() {
-  const level = useSimulationStore((s) => s.level)
-  const setLevel = useSimulationStore((s) => s.setLevel)
+  const mode = useSimulationStore((s) => s.mode)
+  const setMode = useSimulationStore((s) => s.setMode)
+  const fresnel = useSimulationStore((s) => s.fresnel)
+  const setFresnel = useSimulationStore((s) => s.setFresnel)
+  const polarisation = useSimulationStore((s) => s.polarisation)
+  const setPolarisation = useSimulationStore((s) => s.setPolarisation)
+  const curvature = useSimulationStore((s) => s.curvature)
+  const setCurvature = useSimulationStore((s) => s.setCurvature)
+  const diffraction = useSimulationStore((s) => s.diffraction)
+  const setDiffraction = useSimulationStore((s) => s.setDiffraction)
   const powerDbm = useSimulationStore((s) => s.powerDbm)
   const setPowerDbm = useSimulationStore((s) => s.setPowerDbm)
   const tissue = useSimulationStore((s) => s.tissue)
@@ -23,18 +68,48 @@ export default function ParametersPanel() {
 
   return (
     <div>
-      <label className={labelClass}>Fidelity level</label>
+      <label className={labelClass}>Computation mode</label>
       <select
         className={selectClass}
-        value={level}
-        onChange={(e) => setLevel(Number(e.target.value))}
+        value={mode}
+        onChange={(e) => setMode(e.target.value as DosimetryMode)}
       >
-        {config.dosimetry.fidelity_levels.map((l) => (
-          <option key={l.value} value={l.value}>
-            {l.label}
+        {MODES.map((m) => (
+          <option key={m.value} value={m.value}>
+            {m.label}
           </option>
         ))}
       </select>
+
+      {mode === 'spatial' && (
+        <>
+          <label className={labelClass}>Physics corrections</label>
+          <div className="flex flex-col gap-1.5 pl-0.5">
+            <CorrectionToggle
+              label="Fresnel"
+              checked={fresnel}
+              onChange={setFresnel}
+            />
+            <CorrectionToggle
+              label="Polarisation"
+              checked={polarisation}
+              onChange={setPolarisation}
+            />
+            <CorrectionToggle
+              label="Curvature"
+              checked={curvature}
+              onChange={setCurvature}
+              disabled={diffraction}
+              title={diffraction ? 'Required by diffraction' : undefined}
+            />
+            <CorrectionToggle
+              label="Diffraction"
+              checked={diffraction}
+              onChange={setDiffraction}
+            />
+          </div>
+        </>
+      )}
 
       <label className={labelClass}>TX power (dBm)</label>
       <input

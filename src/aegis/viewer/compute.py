@@ -106,7 +106,9 @@ def compute_dosimetry(
     antenna_pos: np.ndarray,
     body_offset: np.ndarray | None = None,
     body_rotation_y: float = 0.0,
-    level: int = 2,
+    level: int | None = 2,
+    mode: str | None = None,
+    corrections: dict | None = None,
     tissue: TissueModel | None = None,
     power_dbm: float = 30.0,
     n_paths: int = 1,
@@ -120,7 +122,9 @@ def compute_dosimetry(
     antenna_pos : (3,) antenna position in scene coordinates [meters]
     body_offset : (3,) translation applied to all triangle vertices [meters]
     body_rotation_y : yaw angle [radians], Three.js Y-rotation mapped to Z-rotation in Z-up
-    level : fidelity level 0-6
+    level : fidelity level 0-8 (legacy API, used when mode is None)
+    mode : computation mode (bound, aggregate, spatial)
+    corrections : dict of correction flags (fresnel, polarisation, curvature, diffraction)
     tissue : tissue model (defaults to skin at 28 GHz)
     power_dbm : transmit power [dBm]
     n_paths : number of synthetic paths (1 = single plane wave)
@@ -180,39 +184,60 @@ def compute_dosimetry(
 
     engine = DosimetryEngine(tissue)
 
-    # Levels 0-1: use legacy level= API (need precomputed geometry parameters)
-    # Levels 2-6: use mode-based API with correction flags
-    extra_kwargs: dict = {}
-    if level <= 1:
-        # A_ab = total surface area for convex bodies (monograph eq. 2.23)
-        extra_kwargs["A_ab"] = body.total_area * dos_cfg["convex_body_area_factor"]
-        if level == 0:
-            # D_max ~ 4 is a reasonable bound for human bodies (sphere = 4)
-            extra_kwargs["D_max"] = dos_cfg["level0_D_max"]
-        result = engine.compute(rotated_body, paths, level=level, **extra_kwargs)
-    elif level <= 6:
-        # Translate level 2-6 to mode="spatial" with correction flags
-        mode_kwargs: dict = {"mode": "spatial"}
-        if level == 2:
-            mode_kwargs["fresnel"] = False
-        # level 3: defaults (fresnel=True) are correct
-        if level >= 4:
-            mode_kwargs["polarisation"] = True
-            mode_kwargs["q"] = 1.0  # short dipole TM-polarized
-        if level >= 5:
-            mode_kwargs["curvature"] = True
-            mode_kwargs["curvature_H"] = _compute_face_curvature(rotated_body)
-        if level == 6:
-            mode_kwargs["diffraction"] = True
-        result = engine.compute(rotated_body, paths, **mode_kwargs)
+    if mode is not None:
+        # New mode-based API from frontend
+        corr = corrections or {}
+        if mode == "bound":
+            A_ab = body.total_area * dos_cfg["convex_body_area_factor"]
+            D_max = dos_cfg["level0_D_max"]
+            result = engine.compute(rotated_body, paths, mode="bound", A_ab=A_ab, D_max=D_max)
+        elif mode == "aggregate":
+            A_ab = body.total_area * dos_cfg["convex_body_area_factor"]
+            result = engine.compute(rotated_body, paths, mode="aggregate", A_ab=A_ab)
+        else:
+            # spatial mode with correction flags
+            mode_kwargs: dict = {"mode": "spatial"}
+            mode_kwargs["fresnel"] = corr.get("fresnel", True)
+            if corr.get("polarisation"):
+                mode_kwargs["polarisation"] = True
+                mode_kwargs["q"] = 1.0  # short dipole TM-polarized
+            if corr.get("curvature") or corr.get("diffraction"):
+                mode_kwargs["curvature"] = True
+                mode_kwargs["curvature_H"] = _compute_face_curvature(rotated_body)
+            if corr.get("diffraction"):
+                mode_kwargs["diffraction"] = True
+            result = engine.compute(rotated_body, paths, **mode_kwargs)
     else:
-        result = engine.compute(rotated_body, paths, level=level, **extra_kwargs)
+        # Legacy level-based API
+        if level is None:
+            level = 2
+        extra_kwargs: dict = {}
+        if level <= 1:
+            extra_kwargs["A_ab"] = body.total_area * dos_cfg["convex_body_area_factor"]
+            if level == 0:
+                extra_kwargs["D_max"] = dos_cfg["level0_D_max"]
+            result = engine.compute(rotated_body, paths, level=level, **extra_kwargs)
+        elif level <= 6:
+            mode_kwargs2: dict = {"mode": "spatial"}
+            if level == 2:
+                mode_kwargs2["fresnel"] = False
+            if level >= 4:
+                mode_kwargs2["polarisation"] = True
+                mode_kwargs2["q"] = 1.0
+            if level >= 5:
+                mode_kwargs2["curvature"] = True
+                mode_kwargs2["curvature_H"] = _compute_face_curvature(rotated_body)
+            if level == 6:
+                mode_kwargs2["diffraction"] = True
+            result = engine.compute(rotated_body, paths, **mode_kwargs2)
+        else:
+            result = engine.compute(rotated_body, paths, level=level, **extra_kwargs)
 
     sab_bytes = result.sab.astype(np.float32).tobytes()
 
     threshold = dos_cfg["compliance_threshold"]
 
-    return {
+    stats = {
         "sab_bytes": sab_bytes,
         "p_abs": float(result.p_abs),
         "p_abs_mw": float(result.p_abs * 1e3),
@@ -220,8 +245,13 @@ def compute_dosimetry(
         "compliant": bool(result.peak_sab < threshold),
         "n_illuminated": int(np.sum(result.sab > 0)),
         "n_triangles": body.n_triangles,
-        "level": level,
+        "level": level if level is not None else 0,
         "S_inc": float(S_inc),
         "distance_m": float(dist),
         "T0": float(tissue.T0),
     }
+    if mode is not None:
+        stats["mode"] = mode
+        corr = corrections or {}
+        stats["corrections"] = [k for k in ("fresnel", "polarisation", "curvature", "diffraction") if corr.get(k)]
+    return stats

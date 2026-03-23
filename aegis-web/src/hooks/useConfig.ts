@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { fetchViewerConfig, fetchCapabilities } from '@/api/client'
-import { toScene } from '@/api/coordinates'
 import { useSceneStore } from '@/stores/scene'
 import { useSimulationStore } from '@/stores/simulation'
 import type { ScenePos } from '@/api/coordinates'
@@ -20,9 +19,9 @@ export function useConfig() {
           bodyName: (caps as any).body_name ?? caps.bodies?.[0] ?? '',
         })
 
-        const defaultLevel = config.dosimetry?.fidelity_levels?.[2]?.value ?? 2
         const simState: Record<string, unknown> = {
-          level: defaultLevel,
+          mode: 'spatial',
+          fresnel: true,
           powerDbm: 30,
           tissue: 'skin_28ghz',
           nPaths: config.dosimetry?.path_options?.[0]?.value ?? 1,
