@@ -115,7 +115,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
     @app.route("/api/config")
     def api_config():
         """Return available configuration options."""
-        from aegis.viewer.compute import TISSUE_PRESETS
+        from aegis.viewer.compute import SKIN_MODELS
 
         bodies = []
         data_dir = cache.get("data_dir")
@@ -167,7 +167,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             {
                 "bodies": bodies,
                 "body_name": current_body,
-                "tissues": sorted(TISSUE_PRESETS.keys()),
+                "skin_models": SKIN_MODELS,
                 "levels": levels,
                 "has_voxels": has_voxels,
                 "has_differt": has_differt,

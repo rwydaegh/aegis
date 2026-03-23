@@ -9,7 +9,6 @@ from pathlib import Path
 import numpy as np
 from flask import Flask, jsonify
 
-from aegis.tissue.dielectric import FAT_28GHZ, MUSCLE_28GHZ, SKIN_28GHZ, SKIN_60GHZ
 from aegis.viewer.scene_data import (
     body_to_binary,
     find_body_placement,
@@ -315,41 +314,6 @@ def create_app(
     def api_levels():
         """Fidelity levels 0-8 with short descriptions."""
         return jsonify(FIDELITY_LEVELS_API)
-
-    @app.route("/api/tissues")
-    def api_tissues():
-        """Tissue presets from literature values (see tissue.dielectric)."""
-        presets = [
-            {
-                "id": "skin_28ghz",
-                "name": SKIN_28GHZ.name,
-                "eps_r": SKIN_28GHZ.eps_r,
-                "sigma": SKIN_28GHZ.sigma,
-                "freq_hz": SKIN_28GHZ.freq_hz,
-            },
-            {
-                "id": "skin_60ghz",
-                "name": SKIN_60GHZ.name,
-                "eps_r": SKIN_60GHZ.eps_r,
-                "sigma": SKIN_60GHZ.sigma,
-                "freq_hz": SKIN_60GHZ.freq_hz,
-            },
-            {
-                "id": "muscle_28ghz",
-                "name": MUSCLE_28GHZ.name,
-                "eps_r": MUSCLE_28GHZ.eps_r,
-                "sigma": MUSCLE_28GHZ.sigma,
-                "freq_hz": MUSCLE_28GHZ.freq_hz,
-            },
-            {
-                "id": "fat_28ghz",
-                "name": FAT_28GHZ.name,
-                "eps_r": FAT_28GHZ.eps_r,
-                "sigma": FAT_28GHZ.sigma,
-                "freq_hz": FAT_28GHZ.freq_hz,
-            },
-        ]
-        return jsonify(presets)
 
     @app.route("/api/body/info")
     def api_body_info():

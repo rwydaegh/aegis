@@ -132,6 +132,8 @@ def _build_stats_response(result, body, tissue, level, extra=None, mode=None, co
         "n_triangles": body.n_triangles,
         "level": level if level is not None else 0,
         "T0": float(tissue.T0),
+        "tissue_eps_r": tissue.eps_r,
+        "tissue_sigma": tissue.sigma,
     }
 
     # Store compliance result for the /api/compliance/report endpoint
@@ -192,7 +194,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
     @app.route("/api/compute", methods=["POST"])
     def api_compute():
         """Compute dosimetry for given antenna position."""
-        from aegis.viewer.compute import TISSUE_PRESETS, compute_dosimetry
+        from aegis.viewer.compute import compute_dosimetry, resolve_skin_model
 
         with cache_lock:
             body = cache.get("body")
@@ -262,9 +264,12 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                 "freq_ghz": float(params.get("freq_ghz", 28)),
             }
 
-        tissue_name = params.get("tissue", "skin_28ghz")
-        if tissue_name not in TISSUE_PRESETS:
-            return jsonify({"error": f"Unknown tissue preset: {tissue_name!r}"}), 400
+        freq_hz = float(params.get("freq_hz", 28e9))
+        skin_model_name = params.get("skin_model", "itis")
+        try:
+            tissue = resolve_skin_model(skin_model_name, freq_hz)
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
 
         antenna_pos = params.get("antenna_pos", [5, 0, 1])
         body_offset = params.get("body_offset", [0, 0, 0])
@@ -273,8 +278,6 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         quantities = params.get("quantities", ["sab", "sab_4cm2"])
         exposure_scenario_str = params.get("exposure_scenario", "general_public")
         exposure_scenario = ExposureScenario(exposure_scenario_str)
-
-        tissue = TISSUE_PRESETS[tissue_name]
 
         import time as _time
 
@@ -420,19 +423,16 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         except ImportError:
             return jsonify({"error": "DiffeRT not installed"}), 501
 
-        from aegis.viewer.compute import TISSUE_PRESETS
-
         body = cache.get("body")
         if body is None:
             return jsonify({"error": "No body mesh loaded"}), 400
 
-        from aegis.viewer.compute import _transform_body_for_viewer
+        from aegis.viewer.compute import _transform_body_for_viewer, resolve_skin_model
 
         params = request.get_json()
         antenna_pos = np.array(params.get("antenna_pos", [5, 0, 1]))
         scene_path = params.get("scene_path")
         engine_kw = _parse_mode_or_level(params)
-        tissue_name = params.get("tissue", "skin_28ghz")
         power_dbm = params.get("power_dbm", 30.0)
         max_order = params.get("max_order", 1)
         body_offset = np.array(params.get("body_offset", [0, 0, 0]))
@@ -445,11 +445,12 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         if not scene_path:
             return jsonify({"error": "Missing 'scene_path'"}), 400
 
-        tissue = TISSUE_PRESETS.get(tissue_name)
-        if tissue is None:
-            from aegis.tissue.dielectric import SKIN_28GHZ
-
-            tissue = SKIN_28GHZ
+        freq_hz = float(params.get("freq_hz", 28e9))
+        skin_model_name = params.get("skin_model", "itis")
+        try:
+            tissue = resolve_skin_model(skin_model_name, freq_hz)
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
 
         # RT receiver: use configured default center (z=1m) shifted by body offset
         # (body centroid mean is ~z=-0.38, below floors of most Sionna scenes)
@@ -516,19 +517,16 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         except ImportError:
             return jsonify({"error": "Sionna RT not installed. Install with: pip install aegis[sionna]"}), 501
 
-        from aegis.viewer.compute import TISSUE_PRESETS
-
         body = cache.get("body")
         if body is None:
             return jsonify({"error": "No body mesh loaded"}), 400
 
-        from aegis.viewer.compute import _transform_body_for_viewer
+        from aegis.viewer.compute import _transform_body_for_viewer, resolve_skin_model
 
         params = request.get_json()
         antenna_pos = np.array(params.get("antenna_pos", [5, 0, 1]))
         scene_path = params.get("scene_path")
         engine_kw = _parse_mode_or_level(params)
-        tissue_name = params.get("tissue", "skin_28ghz")
         power_dbm = params.get("power_dbm", 30.0)
         max_bounces = params.get("max_order", 5)
         body_offset = np.array(params.get("body_offset", [0, 0, 0]))
@@ -541,11 +539,12 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         if not scene_path:
             return jsonify({"error": "Missing 'scene_path'"}), 400
 
-        tissue = TISSUE_PRESETS.get(tissue_name)
-        if tissue is None:
-            from aegis.tissue.dielectric import SKIN_28GHZ
-
-            tissue = SKIN_28GHZ
+        freq_hz = float(params.get("freq_hz", 28e9))
+        skin_model_name = params.get("skin_model", "itis")
+        try:
+            tissue = resolve_skin_model(skin_model_name, freq_hz)
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
 
         # RT receiver: use configured default center (z=1m) shifted by body offset
         default_bc = np.array(cache["config"]["raytracer"]["default_body_center"])
@@ -615,7 +614,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         except ImportError:
             return jsonify({"error": "DiffeRT not installed"}), 501
 
-        from aegis.viewer.compute import TISSUE_PRESETS
+        from aegis.viewer.compute import resolve_skin_model
 
         with cache_lock:
             body = cache.get("body")
@@ -634,7 +633,6 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         body_offset = np.array(params.get("body_offset", [0, 0, 0]), dtype=np.float64)
         body_rotation_y = float(params.get("body_rotation_y", 0.0))
         engine_kw = _parse_mode_or_level(params)
-        tissue_name = params.get("tissue", "skin_28ghz")
         power_dbm = params.get("power_dbm", 30.0)
         max_order = params.get("max_order", 0)
 
@@ -642,11 +640,12 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         exposure_scenario_str = params.get("exposure_scenario", "general_public")
         exposure_scenario = ExposureScenario(exposure_scenario_str)
 
-        tissue = TISSUE_PRESETS.get(tissue_name)
-        if tissue is None:
-            from aegis.tissue.dielectric import SKIN_28GHZ
-
-            tissue = SKIN_28GHZ
+        freq_hz = float(params.get("freq_hz", 28e9))
+        skin_model_name = params.get("skin_model", "itis")
+        try:
+            tissue = resolve_skin_model(skin_model_name, freq_hz)
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
 
         # Apply yaw rotation to body centroids and normals only (not vertices)
         from aegis.viewer.compute import _rotation_matrix_z
