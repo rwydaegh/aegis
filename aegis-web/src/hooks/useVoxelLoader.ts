@@ -3,8 +3,6 @@ import { fetchVoxels } from '@/api/client'
 import { useSceneStore } from '@/stores/scene'
 import { useSimulationStore } from '@/stores/simulation'
 import { buildHeightmap } from '@/lib/physics'
-import { toScene } from '@/api/coordinates'
-
 export function useVoxelLoader() {
   const caps = useSceneStore(s => s.capabilities)
 
@@ -24,10 +22,10 @@ export function useVoxelLoader() {
       useSceneStore.setState({ voxelHeightmap: hmFn })
 
       // Auto-place body if body_placement available
+      // body_placement is already in Y-up (scene) coordinates from the server
       const bp = caps.body_placement
       if (bp) {
-        const [x, y, z] = toScene(bp)
-        useSimulationStore.getState().setBodyOffset([x, y, z])
+        useSimulationStore.getState().setBodyOffset(bp)
       }
     }).catch(err => {
       console.error('Failed to load voxels:', err)

@@ -154,7 +154,7 @@ def paths_from_sionna_scene(
     rx_position : (3,) body centroid position
     freq_hz : carrier frequency in Hz
     max_bounces : maximum number of ray interactions
-    tx_power_dbm : transmit power in dBm
+    tx_power_dbm : transmit power per element [dBm]
     tx_pattern : TX antenna pattern name
     return_viz : if True, also return path visualization data
 

@@ -337,8 +337,14 @@ def paths_from_differt(
         element_indices = np.argmin(dists, axis=1)
     element_indices = np.asarray(element_indices, dtype=np.intp)
 
-    # Propagation delay
+    # Propagation delay and phase
     delay = total_length / C_0
+
+    # Apply propagation phase exp(-j*k*d) for coherent levels (7-8).
+    # For incoherent levels only |psi|^2 is used, so phase does not matter,
+    # but coherent combination requires correct path-length-dependent phase.
+    k0 = 2 * np.pi * freq_hz / C_0
+    psi = psi * np.exp(-1j * k0 * total_length)[:, np.newaxis]
 
     # LOS: one non-degenerate segment (handles max-length padding / repeated RX verts)
     n_nonzero_segs = np.sum(seg_lengths > 1e-12, axis=1)

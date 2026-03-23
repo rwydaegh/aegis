@@ -18,6 +18,15 @@ _ERR_NO_BODY = "No body mesh loaded"
 _ERR_NO_DIFFERT = "DiffeRT not installed"
 
 
+def _inject_curvature_H(engine_kw: dict, body) -> dict:
+    """Add curvature_H to engine kwargs if curvature or diffraction is requested."""
+    if engine_kw.get("curvature") or engine_kw.get("diffraction"):
+        from aegis.viewer.compute import _compute_face_curvature
+
+        engine_kw["curvature_H"] = _compute_face_curvature(body)
+    return engine_kw
+
+
 def _parse_mode_or_level(params: dict, default_level: int = 2) -> dict:
     """Extract mode+corrections or level from request params.
 
@@ -271,7 +280,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                 "preset": params.get("stochastic_preset", stoch_cfg.get("default_preset", "3GPP_38.901_UMi_LOS")),
                 "seed": int(params.get("stochastic_seed", stoch_cfg.get("default_seed", 42))),
                 "overrides": params.get("stochastic_overrides", {}),
-                "freq_ghz": float(params.get("freq_ghz", 28)),
+                "freq_ghz": float(params.get("freq_hz", 28e9)) / 1e9,
             }
 
         freq_hz = float(params.get("freq_hz", 28e9))
@@ -513,6 +522,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         from aegis.engine import DosimetryEngine
 
         engine = DosimetryEngine(tissue)
+        _inject_curvature_H(engine_kw, transformed_body)
         result = engine.compute(transformed_body, paths, **engine_kw)
 
         buf, arrays_meta = _build_binary_response(result, quantities)
@@ -615,6 +625,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         from aegis.engine import DosimetryEngine
 
         engine = DosimetryEngine(tissue)
+        _inject_curvature_H(engine_kw, transformed_body)
         result = engine.compute(transformed_body, paths, **engine_kw)
 
         buf, arrays_meta = _build_binary_response(result, quantities)
@@ -797,6 +808,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
         paths = PropagationPaths.from_powers(k_hat=np.array(all_k_hat), power=np.array(all_power))
         engine = DosimetryEngine(tissue)
+        _inject_curvature_H(engine_kw, transformed_body)
 
         result = engine.compute(transformed_body, paths, **engine_kw)
 

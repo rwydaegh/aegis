@@ -85,7 +85,11 @@ class DosimetryEngine:
         sar_wb = p_abs / body_mass if body_mass is not None else None
         effective_freq_hz = freq_hz if freq_hz is not None else self.freq_hz
 
-        sinc = np.full(body.n_triangles, float(np.sum(_to_numpy(paths.power))))
+        # Per-triangle incident power density: S_inc_m = sum_n power_n * ReLU(n_hat_m . (-k_hat_n))
+        from aegis.kernels._base import incidence_geometry
+
+        _, mu_plus = incidence_geometry(body.normals, _to_numpy(paths.k_hat))
+        sinc = _to_numpy(mu_plus) @ _to_numpy(paths.power)
 
         t0 = time.perf_counter()
         G_4cm2 = self._get_G(body, 4e-4)
