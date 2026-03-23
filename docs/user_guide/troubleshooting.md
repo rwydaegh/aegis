@@ -33,3 +33,9 @@ AEGIS targets **Python 3.12**. If imports or typing fail on older versions, swit
 Messages like “Level 0 requires `A_ab` and `D_max`” mean the kernel needs precomputed geometry. Either supply those arguments to `DosimetryEngine.compute` or use a level that matches your inputs (e.g. 2 or 3 with only mesh plus `PropagationPaths`).
 
 Level **7** requires a `Precoder`. Level **8** requires the UE channel vector `h` (the precoder is optional, defaulting to unit power). Both need full complex `psi` paths, not scalar power.
+
+## TensorDock: connection refused or SSH permission denied
+
+Symptoms: browser cannot open `http://<instance-ip>:5000`, or `ssh user@<ip>` returns **`Permission denied (publickey)`**.
+
+See [Cloud GPU machine](../developer_guide/cloud_machine.md). Run **`python tools/cloud.py status`**: it shows whether port 5000 is public or you need a tunnel. For SSH, pass **`-i`** with the same path as **`TENSORDOCK_SSH_KEY_PATH`** in `.env`, or run **`python tools/cloud.py ssh`** from the repo so the key is picked up automatically.

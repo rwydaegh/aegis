@@ -458,12 +458,23 @@ def cmd_status(args: argparse.Namespace) -> None:
 
     status = details.get("status", "unknown")
     rate = details.get("rateHourly", state.get("rate_hourly", 0))
+    ip = details.get("ipAddress", state["ip"])
+    port_forwards = details.get("portForwards", [])
+    by_internal = {pf["internal_port"]: pf["external_port"] for pf in port_forwards}
+    ssh_ext = by_internal.get(22, state["ssh_port"])
+    viewer_ext = by_internal.get(5000)
+    key_path = get_ssh_key_path()
 
     print(f"  Instance:  {state['instance_id']}")
     print(f"  Status:    {status}")
-    print(f"  IP:        {state['ip']}")
-    print(f"  SSH:       ssh -p {state['ssh_port']} {DEFAULT_SSH_USER}@{state['ip']}")
-    print(f"  Viewer:    http://{state['ip']}:{state['viewer_port']}")
+    print(f"  IP:        {ip}")
+    print(f"  SSH:       ssh -i {key_path} -p {ssh_ext} {DEFAULT_SSH_USER}@{ip}")
+    if viewer_ext is not None:
+        print(f"  Viewer:    http://{ip}:{viewer_ext}")
+    else:
+        print("  Viewer:    not publicly port-forwarded (TensorDock API has no mapping for :5000)")
+        print(f"             Tunnel: ssh -i {key_path} -L 5000:127.0.0.1:5000 -p {ssh_ext} {DEFAULT_SSH_USER}@{ip}")
+        print("             Then open http://localhost:5000")
     print(f"  GPU:       {state['gpu']}")
     print(f"  Rate:      ${rate:.3f}/hr")
 
@@ -515,7 +526,8 @@ def run_sync(state: dict) -> None:
 
     print("Syncing remote...")
     sync_cmd = (
-        "cd ~/aegis && git pull --rebase origin master && source .venv/bin/activate && pip install -q -e '.[dev,gpu]'"
+        "cd ~/aegis && git pull --rebase origin master && "
+        "source .venv/bin/activate && pip install -q -e '.[dev,gpu,rt]'"
     )
     result = ssh_command(state, sync_cmd, timeout=300)
     if result.returncode != 0:

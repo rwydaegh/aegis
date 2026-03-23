@@ -13,6 +13,18 @@ TENSORDOCK_SSH_KEY_PATH=~/.ssh/tensordock_ed25519
 
 Generate a bearer token at Dashboard > Developer Settings on [TensorDock](https://dashboard.tensordock.com). The SSH key is created automatically on first use if it doesn't exist.
 
+### SSH identity (read this)
+
+TensorDock installs the **public** half of `TENSORDOCK_SSH_KEY_PATH` on the VM. Every manual `ssh` command must use the matching **private** key with **`-i`**, or you get `Permission denied (publickey)`:
+
+```bash
+ssh -i ~/.ssh/tensordock_ed25519 -p <ssh_port> user@<ip>
+```
+
+Use the path from `.env` if you changed it. On Windows (Git Bash), if `~` does not resolve, use `$USERPROFILE/.ssh/tensordock_ed25519`.
+
+**Easiest:** run `python tools/cloud.py ssh` from the repo. It loads `.env` and passes the key for you.
+
 ## Commands
 
 ```bash
@@ -48,9 +60,9 @@ python tools/cloud.py up         # ~30s to wake, ~5min to provision
 python tools/cloud.py down       # stop when done
 ```
 
-After `up`, the output includes an SSH config block you can paste into `~/.ssh/config` for VS Code Remote-SSH. Connect to host `aegis-dev`.
+After `up`, the output includes an SSH config block you can paste into `~/.ssh/config` for VS Code Remote-SSH. The block must include **`IdentityFile`** pointing at the same key as `TENSORDOCK_SSH_KEY_PATH`. Connect to host `aegis-dev`.
 
-VS Code tunnels ports automatically, so Flask on the remote machine appears at `localhost:5000` in your local browser.
+VS Code tunnels ports automatically, so Flask on the remote machine appears at `localhost:5000` in your local browser once you forward port 5000 (or use "Forward a Port" for 5000).
 
 ## Running tests on the remote
 
@@ -80,14 +92,28 @@ After that, `claude` works on the remote machine using your subscription.
 
 ## Viewer access
 
-The viewer runs on the remote GPU and is accessible two ways:
+**Always run** `python tools/cloud.py status` **first.** It asks the TensorDock API which ports are forwarded and prints either a public `http://` URL or an SSH tunnel command. Do not assume `http://<ip>:5000` works: many instances only forward **SSH**, not port 5000, so a direct browser request fails with connection refused.
 
-- Via VS Code port forwarding (automatic, no config needed)
-- Via SSH tunnel: `ssh -L 5000:localhost:5000 aegis-dev`
+### When status shows a public viewer URL
 
-Then open `http://localhost:5000`. The Server section at the bottom of the panel shows the hostname, GPU name, utilization, VRAM, and temperature. It updates every 5 seconds.
+Open that URL. If bootstrap enabled HTTP Basic Auth, use the username `aegis` and the password stored in `~/.aegis-viewer-auth` on the VM (printed once during first bootstrap).
 
-If the TensorDock instance has port 5000 forwarded publicly, the viewer is protected by HTTP Basic Auth (credentials generated during bootstrap).
+### When status says the viewer is not publicly forwarded (typical)
+
+The Flask app still listens on `0.0.0.0:5000` **inside** the VM. Reach it through a **local** port forward using the **same key as in `.env`**:
+
+```bash
+ssh -i ~/.ssh/tensordock_ed25519 \
+  -L 5000:127.0.0.1:5000 \
+  -p <ssh_port> \
+  user@<ip>
+```
+
+Copy `<ssh_port>` and `<ip>` from `status` output. Leave the session open, then open **`http://localhost:5000`** in your browser.
+
+Other options: VS Code Remote-SSH and forward port 5000, or add a port-5000 forward in the TensorDock dashboard if you need a public URL without a tunnel.
+
+The Server section at the bottom of the panel shows the hostname, GPU name, utilization, VRAM, and temperature. It updates every 5 seconds.
 
 ## Cost
 
