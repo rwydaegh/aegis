@@ -3,6 +3,8 @@ import { create } from 'zustand'
 export type CameraPreset = 'front' | 'side' | 'top' | 'focus' | 'reset' | null
 export type CameraMode = 'orbit' | 'follow'
 export type LegendScale = 'linear' | 'dB'
+export type DisplayMode = 'raw_sab' | 'avg_sab' | 'sinc' | 'ratio_sab' | 'ratio_sinc'
+export type ExposureScenario = 'general_public' | 'occupational'
 
 interface UIStore {
   sidebarOpen: boolean
@@ -18,6 +20,8 @@ interface UIStore {
   dynamicRangeDb: number
   colormapLocked: boolean
   colormapLockedMax: number | null
+  displayMode: DisplayMode
+  exposureScenario: ExposureScenario
 
   toggleSidebar: () => void
   toggleWireframe: () => void
@@ -33,6 +37,8 @@ interface UIStore {
   setDynamicRangeDb: (db: number) => void
   toggleColormapLock: () => void
   setColormapLockedMax: (max: number) => void
+  setDisplayMode: (mode: DisplayMode) => void
+  setExposureScenario: (s: ExposureScenario) => void
 }
 
 export const useUIStore = create<UIStore>((set) => ({
@@ -49,6 +55,8 @@ export const useUIStore = create<UIStore>((set) => ({
   dynamicRangeDb: 30,
   colormapLocked: false,
   colormapLockedMax: null,
+  displayMode: 'raw_sab',
+  exposureScenario: 'general_public',
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
   toggleWireframe: () => set((state) => ({ wireframe: !state.wireframe })),
   setComputing: (computing) => set({ isComputing: computing }),
@@ -71,4 +79,6 @@ export const useUIStore = create<UIStore>((set) => ({
     return { colormapLocked: true }
   }),
   setColormapLockedMax: (max) => set({ colormapLockedMax: max }),
+  setDisplayMode: (mode) => set({ displayMode: mode }),
+  setExposureScenario: (s) => set({ exposureScenario: s }),
 }))

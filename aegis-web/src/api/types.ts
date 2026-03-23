@@ -74,6 +74,23 @@ export interface VoxelMeta {
   voxel_size: number
 }
 
+export interface ComplianceCheck {
+  label: string
+  value: number
+  limit: number
+  unit: string
+  pass: boolean
+  ratio: number
+}
+
+export interface ComplianceInfo {
+  overall_pass: boolean
+  margin_db: number | null
+  scenario: 'general_public' | 'occupational'
+  freq_hz: number
+  checks: ComplianceCheck[]
+}
+
 export interface DosimetryStats {
   p_abs: number
   p_abs_mw: number
@@ -89,6 +106,8 @@ export interface DosimetryStats {
   T0: number
   n_rt_paths?: number
   path_viz?: PathViz[]
+  peak_sab_averaged: number | null
+  compliance: ComplianceInfo
 }
 
 export interface PathViz {

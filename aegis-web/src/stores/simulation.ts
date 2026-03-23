@@ -22,7 +22,13 @@ interface SimulationStore {
 
   // Results
   sabArray: Float32Array | null
+  sabAveragedArray: Float32Array | null
+  sincArray: Float32Array | null
+  sincAveragedArray: Float32Array | null
   stats: DosimetryStats | null
+
+  // Inputs (compliance)
+  freqGhz: number
 
   // Actions
   setAntennaPos: (pos: ScenePos | null) => void
@@ -36,7 +42,8 @@ interface SimulationStore {
   setNPaths: (n: number) => void
   setBodyOffset: (offset: ScenePos) => void
   setBodyRotationY: (angle: number) => void
-  setResults: (sab: Float32Array, stats: DosimetryStats) => void
+  setFreqGhz: (v: number) => void
+  setResults: (sab: Float32Array, stats: DosimetryStats, extras?: { sabAveraged?: Float32Array; sinc?: Float32Array; sincAveraged?: Float32Array }) => void
   clearResults: () => void
 }
 
@@ -53,7 +60,11 @@ export const useSimulationStore = create<SimulationStore>((set) => ({
   bodyOffset: [0, 0, 0],
   bodyRotationY: 0,
   sabArray: null,
+  sabAveragedArray: null,
+  sincArray: null,
+  sincAveragedArray: null,
   stats: null,
+  freqGhz: 28,
   setAntennaPos: (pos) => set({ antennaPos: pos }),
   setMode: (mode) => set({ mode }),
   setFresnel: (on) => set({ fresnel: on }),
@@ -69,6 +80,13 @@ export const useSimulationStore = create<SimulationStore>((set) => ({
   setNPaths: (n) => set({ nPaths: n }),
   setBodyOffset: (offset) => set({ bodyOffset: offset }),
   setBodyRotationY: (angle) => set({ bodyRotationY: angle }),
-  setResults: (sab, stats) => set({ sabArray: sab, stats }),
-  clearResults: () => set({ sabArray: null, stats: null }),
+  setFreqGhz: (v) => set({ freqGhz: v }),
+  setResults: (sab, stats, extras) => set({
+    sabArray: sab,
+    stats,
+    sabAveragedArray: extras?.sabAveraged ?? null,
+    sincArray: extras?.sinc ?? null,
+    sincAveragedArray: extras?.sincAveraged ?? null,
+  }),
+  clearResults: () => set({ sabArray: null, sabAveragedArray: null, sincArray: null, sincAveragedArray: null, stats: null }),
 }))
