@@ -36,7 +36,9 @@ function SionnaSceneSelector() {
       <select className={selectClass} value={selected} onChange={e => setSelected(e.target.value)}>
         <option value="">Select a scene...</option>
         {scenes.map(s => (
-          <option key={s.path} value={s.path}>{s.name}</option>
+          <option key={s.path} value={s.path}>
+            {s.name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+          </option>
         ))}
       </select>
       <button

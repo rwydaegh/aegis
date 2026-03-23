@@ -426,14 +426,24 @@ class DosimetryEngine:
                 corrections.append("diffraction")
 
         # Map mode to level for fidelity_level field
-        mode_to_level = {
-            "bound": 0,
-            "aggregate": 1,
-            "spatial": 3,  # base spatial = level 3
-            "coherent": 7,
-            "ecbf": 8,
-        }
-        fidelity_level = mode_to_level[mode]
+        if mode == "spatial":
+            fidelity_level = 2  # base spatial (geometric ReLU, no Fresnel)
+            if fresnel:
+                fidelity_level = 3
+            if polarisation:
+                fidelity_level = max(fidelity_level, 4)
+            if curvature:
+                fidelity_level = max(fidelity_level, 5)
+            if diffraction:
+                fidelity_level = max(fidelity_level, 6)
+        else:
+            mode_to_level = {
+                "bound": 0,
+                "aggregate": 1,
+                "coherent": 7,
+                "ecbf": 8,
+            }
+            fidelity_level = mode_to_level[mode]
 
         if mode == "spatial":
             from aegis.kernels.spatial import spatial_kernel

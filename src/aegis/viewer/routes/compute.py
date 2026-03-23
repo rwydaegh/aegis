@@ -287,7 +287,10 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
         quantities = params.get("quantities", ["sab", "sab_4cm2"])
         exposure_scenario_str = params.get("exposure_scenario", "general_public")
-        exposure_scenario = ExposureScenario(exposure_scenario_str)
+        try:
+            exposure_scenario = ExposureScenario(exposure_scenario_str)
+        except ValueError:
+            return jsonify({"error": f"Invalid exposure_scenario: {exposure_scenario_str}"}), 400
 
         import time as _time
 
@@ -363,7 +366,9 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         except ImportError:
             return jsonify({"error": _ERR_NO_DIFFERT}), 501
 
-        params = request.get_json()
+        params = request.get_json(silent=True)
+        if not isinstance(params, dict):
+            return jsonify({"error": "Invalid or missing JSON body"}), 400
         scene_path = params.get("path")
         if not scene_path:
             return jsonify({"error": "Missing 'path' parameter"}), 400
@@ -449,7 +454,9 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
         from aegis.viewer.compute import _transform_body_for_viewer, resolve_skin_model
 
-        params = request.get_json()
+        params = request.get_json(silent=True)
+        if not isinstance(params, dict):
+            return jsonify({"error": "Invalid or missing JSON body"}), 400
         antenna_pos = np.array(params.get("antenna_pos", [5, 0, 1]))
         scene_path = params.get("scene_path")
         engine_kw = _parse_mode_or_level(params)
@@ -460,7 +467,10 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
         quantities = params.get("quantities", ["sab", "sab_4cm2"])
         exposure_scenario_str = params.get("exposure_scenario", "general_public")
-        exposure_scenario = ExposureScenario(exposure_scenario_str)
+        try:
+            exposure_scenario = ExposureScenario(exposure_scenario_str)
+        except ValueError:
+            return jsonify({"error": f"Invalid exposure_scenario: {exposure_scenario_str}"}), 400
 
         if not scene_path:
             return jsonify({"error": "Missing 'scene_path'"}), 400
@@ -545,7 +555,9 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
         from aegis.viewer.compute import _transform_body_for_viewer, resolve_skin_model
 
-        params = request.get_json()
+        params = request.get_json(silent=True)
+        if not isinstance(params, dict):
+            return jsonify({"error": "Invalid or missing JSON body"}), 400
         antenna_pos = np.array(params.get("antenna_pos", [5, 0, 1]))
         scene_path = params.get("scene_path")
         engine_kw = _parse_mode_or_level(params)
@@ -556,7 +568,10 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
         quantities = params.get("quantities", ["sab", "sab_4cm2"])
         exposure_scenario_str = params.get("exposure_scenario", "general_public")
-        exposure_scenario = ExposureScenario(exposure_scenario_str)
+        try:
+            exposure_scenario = ExposureScenario(exposure_scenario_str)
+        except ValueError:
+            return jsonify({"error": f"Invalid exposure_scenario: {exposure_scenario_str}"}), 400
 
         if not scene_path:
             return jsonify({"error": "Missing 'scene_path'"}), 400
@@ -579,13 +594,14 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             import sionna.rt
 
             scene = sionna.rt.load_scene(scene_path)
-            paths = paths_from_sionna_scene(
+            paths, path_viz = paths_from_sionna_scene(
                 scene,
                 tx_positions=antenna_pos[np.newaxis, :] if antenna_pos.ndim == 1 else antenna_pos,
                 rx_position=body_center,
                 freq_hz=tissue.freq_hz,
                 max_bounces=max_bounces,
                 tx_power_dbm=power_dbm,
+                return_viz=True,
             )
         except ImportError:
             return jsonify({"error": "Sionna RT not installed"}), 501
@@ -616,7 +632,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                 "S_inc": total_power,
                 "distance_m": dist,
                 "n_rt_paths": paths.n_paths,
-                "path_viz": [],
+                "path_viz": path_viz,
                 "backend": "sionna",
             },
             scenario=exposure_scenario,
@@ -650,7 +666,9 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         if voxel_positions is None or len(voxel_positions) == 0:
             return jsonify({"error": "No voxel data available"}), 400
 
-        params = request.get_json()
+        params = request.get_json(silent=True)
+        if not isinstance(params, dict):
+            return jsonify({"error": "Invalid or missing JSON body"}), 400
         antenna_pos = np.array(params.get("antenna_pos", [5, 0, 1]))
         body_offset = np.array(params.get("body_offset", [0, 0, 0]), dtype=np.float64)
         body_rotation_y = float(params.get("body_rotation_y", 0.0))
@@ -660,7 +678,10 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
         quantities = params.get("quantities", ["sab", "sab_4cm2"])
         exposure_scenario_str = params.get("exposure_scenario", "general_public")
-        exposure_scenario = ExposureScenario(exposure_scenario_str)
+        try:
+            exposure_scenario = ExposureScenario(exposure_scenario_str)
+        except ValueError:
+            return jsonify({"error": f"Invalid exposure_scenario: {exposure_scenario_str}"}), 400
 
         freq_hz = float(params.get("freq_hz", 28e9))
         skin_model_name = params.get("skin_model", "itis")
