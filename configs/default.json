@@ -152,7 +152,7 @@
       "enabled": true,
       "match_physics": false,
       "type": "short_dipole",
-      "ico_detail": 4,
+      "ico_detail": 6,
       "radius": 0.9,
       "lobe_gamma": 0.42,
       "dynamic_range_db": 36,
@@ -237,19 +237,19 @@
     "path_options": [
       {
         "value": 1,
-        "label": "1 (single plane wave)"
+        "label": "1 (LOS only)"
       },
       {
         "value": 5,
-        "label": "5 (multipath)"
+        "label": "5 (light scatter)"
       },
       {
         "value": 10,
-        "label": "10 (multipath)"
+        "label": "10 (moderate scatter)"
       },
       {
         "value": 20,
-        "label": "20 (rich multipath)"
+        "label": "20 (rich scatter)"
       }
     ],
     "max_order_options": [

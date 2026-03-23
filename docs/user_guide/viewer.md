@@ -58,7 +58,7 @@ Common backend flags:
 
 **Phantom.** The sidebar phantom panel lets you switch between body meshes (Duke, Ella, Thelonious, Eartha) and move or rotate the phantom with WASD keys. The dropdown shows IT'IS metadata (age, sex, mass) for each phantom.
 
-**Dosimetry panel.** Choose fidelity level (0-6), tissue preset, transmit power, and number of synthetic paths. Levels 4-6 add polarization, curvature, and diffraction corrections that produce visibly different heatmaps.
+**Dosimetry panel.** Choose fidelity level (0-6), tissue preset, transmit power, frequency, and stochastic propagation config. The propagation dropdown controls how many synthetic plane waves illuminate the body when ray tracing is off: 1 gives a single LOS wave from antenna to body, while 5/10/20 add stochastic scattered paths with angular jitter and reduced power to approximate multipath without ray tracing. Levels 4-6 add polarization, curvature, and diffraction corrections that produce visibly different heatmaps.
 
 **Colormap.** Absorbed power density is rendered as a jet colormap on the body mesh. The legend on the right side supports:
 

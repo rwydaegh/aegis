@@ -120,13 +120,34 @@ export default function ParametersPanel() {
         </>
       )}
 
-      <label className={labelClass}>TX power (dBm)</label>
-      <input
-        type="number"
-        className={inputClass}
-        value={powerDbm}
-        onChange={(e) => setPowerDbm(Number(e.target.value))}
-      />
+      <label className={labelClass}>TX power</label>
+      <div className="flex gap-2 items-center">
+        <div className="flex-1">
+          <input
+            type="number"
+            className={inputClass + ' !w-full'}
+            value={powerDbm}
+            onChange={(e) => setPowerDbm(Number(e.target.value))}
+            step={1}
+          />
+          <span className="text-[10px] text-muted-foreground mt-0.5 block">dBm</span>
+        </div>
+        <span className="text-muted-foreground text-xs pb-3">=</span>
+        <div className="flex-1">
+          <input
+            type="number"
+            className={inputClass + ' !w-full'}
+            value={Number((10 ** ((powerDbm - 30) / 10)).toPrecision(4))}
+            onChange={(e) => {
+              const w = Number(e.target.value)
+              if (w > 0) setPowerDbm(Math.round((10 * Math.log10(w) + 30) * 100) / 100)
+            }}
+            step={0.1}
+            min={0}
+          />
+          <span className="text-[10px] text-muted-foreground mt-0.5 block">W</span>
+        </div>
+      </div>
 
       <label className={labelClass}>Tissue</label>
       <select
@@ -141,7 +162,7 @@ export default function ParametersPanel() {
         ))}
       </select>
 
-      <label className={labelClass}>Paths</label>
+      <label className={labelClass}>Stochastic propagation</label>
       <select
         className={selectClass}
         value={nPaths}
@@ -155,28 +176,45 @@ export default function ParametersPanel() {
       </select>
 
       <label className={labelClass}>Frequency (GHz)</label>
-      <div className="flex gap-1 items-center">
+      <div className="flex gap-1.5 items-center mb-2">
         <input
           type="number"
           className={inputClass + ' !w-[70px]'}
           value={freqGhz}
           onChange={(e) => setFreqGhz(parseFloat(e.target.value) || 28)}
-          min={6.1}
+          min={0.1}
           max={300}
-          step={0.1}
+          step={1}
         />
-        {[28, 39, 60].map((f) => (
-          <button
-            key={f}
-            onClick={() => setFreqGhz(f)}
-            className={`text-[11px] px-2 py-1 rounded border transition-colors cursor-pointer ${
-              freqGhz === f
-                ? 'border-primary/40 bg-primary/15 text-primary'
-                : 'border-border bg-muted/50 text-foreground hover:bg-muted'
-            }`}
-          >
-            {f}
-          </button>
+        <span className="text-[10px] text-muted-foreground">GHz</span>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        {([
+          { label: 'Sub-6', freqs: [0.9, 1.8, 2.1, 2.4, 3.5, 5, 5.8] },
+          { label: 'FR3 (6G)', freqs: [7, 10, 15] },
+          { label: 'FR2 (5G)', freqs: [26, 28, 39, 47] },
+          { label: '60+', freqs: [60, 77, 100] },
+        ] as const).map((group) => (
+          <div key={group.label} className="flex items-center gap-1">
+            <span className="text-[9px] text-muted-foreground w-[46px] shrink-0 text-right pr-1">
+              {group.label}
+            </span>
+            <div className="flex flex-wrap gap-0.5">
+              {group.freqs.map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setFreqGhz(f)}
+                  className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors cursor-pointer ${
+                    freqGhz === f
+                      ? 'border-primary/40 bg-primary/15 text-primary'
+                      : 'border-border bg-muted/50 text-foreground hover:bg-muted'
+                  }`}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
+          </div>
         ))}
       </div>
 

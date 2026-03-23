@@ -122,7 +122,7 @@ DEFAULTS: dict = {
             "enabled": True,
             "match_physics": False,
             "type": "short_dipole",
-            "ico_detail": 4,
+            "ico_detail": 6,
             "radius": 0.9,
             "lobe_gamma": 0.42,
             "dynamic_range_db": 36.0,
@@ -186,10 +186,10 @@ DEFAULTS: dict = {
             {"value": 6, "label": "Level 6 - Diffraction"},
         ],
         "path_options": [
-            {"value": 1, "label": "1 (single plane wave)"},
-            {"value": 5, "label": "5 (multipath)"},
-            {"value": 10, "label": "10 (multipath)"},
-            {"value": 20, "label": "20 (rich multipath)"},
+            {"value": 1, "label": "1 (LOS only)"},
+            {"value": 5, "label": "5 (light scatter)"},
+            {"value": 10, "label": "10 (moderate scatter)"},
+            {"value": 20, "label": "20 (rich scatter)"},
         ],
         "max_order_options": [
             {"value": 0, "label": "0 (LOS only)"},
