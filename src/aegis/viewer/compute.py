@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import time
+
 import numpy as np
 
 from aegis.engine import DosimetryEngine
@@ -113,6 +115,7 @@ def compute_dosimetry(
     power_dbm: float = 30.0,
     n_paths: int = 1,
     config: dict | None = None,
+    stochastic: dict | None = None,
 ) -> dict:
     """Run dosimetry from a single antenna position toward the body.
 
@@ -134,6 +137,9 @@ def compute_dosimetry(
     -------
     dict with keys: sab (float32 bytes), p_abs, peak_sab, compliant, n_illuminated
     """
+    timings: dict[str, float] = {}
+    t_total = time.perf_counter()
+
     cfg = config or DEFAULTS
     dos_cfg = cfg["dosimetry"]
     sp_cfg = dos_cfg["synthetic_paths"]
@@ -144,8 +150,10 @@ def compute_dosimetry(
     antenna_pos = np.asarray(antenna_pos, dtype=np.float64)
     body_offset = np.asarray(body_offset, dtype=np.float64) if body_offset is not None else np.zeros(3)
 
+    t0 = time.perf_counter()
     rotated_body = _transform_body_for_viewer(body, body_offset, body_rotation_y)
     body_center = rotated_body.centroids.mean(axis=0)
+    timings["body_transform_ms"] = (time.perf_counter() - t0) * 1e3
 
     # Direction from antenna to body
     direction = body_center - antenna_pos
@@ -159,7 +167,25 @@ def compute_dosimetry(
     # Effective isotropic power density at distance
     S_inc = tx_power_w / (4 * np.pi * dist**2) if dist > 0.1 else tx_power_w
 
-    if n_paths == 1:
+    if stochastic:
+        from pathlib import Path
+
+        from aegis.channel import generate_channel, load_preset
+
+        preset_dir = Path(cfg.get("dosimetry", {}).get("stochastic", {}).get("preset_dir", "data/channel_presets"))
+        if not preset_dir.is_absolute():
+            preset_dir = Path(__file__).resolve().parents[2] / preset_dir
+        preset = load_preset(stochastic["preset"], preset_dir)
+        paths = generate_channel(
+            preset["params"],
+            freq_ghz=stochastic.get("freq_ghz", 28),
+            antenna_pos=antenna_pos,
+            body_center=body_center,
+            power_dbm=power_dbm,
+            seed=stochastic.get("seed", 42),
+            overrides=stochastic.get("overrides"),
+        )
+    elif n_paths == 1:
         # Single plane wave
         paths = PropagationPaths.from_powers(
             k_hat=k_hat[np.newaxis, :],
@@ -183,6 +209,7 @@ def compute_dosimetry(
         paths = PropagationPaths.from_powers(k_hat=k_hats, power=powers)
 
     engine = DosimetryEngine(tissue)
+    t0 = time.perf_counter()
 
     if mode is not None:
         # New mode-based API from frontend
@@ -233,30 +260,23 @@ def compute_dosimetry(
         else:
             result = engine.compute(rotated_body, paths, level=level, **extra_kwargs)
 
-    sab_bytes = result.sab.astype(np.float32).tobytes()
-    sab_averaged_bytes = result.sab_averaged.astype(np.float32).tobytes() if result.sab_averaged is not None else None
-    sinc_bytes = result.sinc.astype(np.float32).tobytes() if result.sinc is not None else None
-    sinc_averaged_bytes = (
-        result.sinc_averaged.astype(np.float32).tobytes() if result.sinc_averaged is not None else None
-    )
+    timings["engine_compute_ms"] = (time.perf_counter() - t0) * 1e3
+    timings["total_ms"] = (time.perf_counter() - t_total) * 1e3
 
-    stats = {
-        "sab_bytes": sab_bytes,
-        "sab_averaged_bytes": sab_averaged_bytes,
-        "sinc_bytes": sinc_bytes,
-        "sinc_averaged_bytes": sinc_averaged_bytes,
-        "p_abs": float(result.p_abs),
-        "p_abs_mw": float(result.p_abs * 1e3),
-        "peak_sab": float(result.peak_sab),
-        "n_illuminated": int(np.sum(result.sab > 0)),
-        "n_triangles": body.n_triangles,
-        "level": level if level is not None else 0,
+    # Pull fine-grained timings from engine
+    from aegis.engine import _last_timings as engine_timings
+
+    timings.update(engine_timings)
+
+    extra = {
         "S_inc": float(S_inc),
         "distance_m": float(dist),
-        "T0": float(tissue.T0),
+        "timings": timings,
     }
+
+    corr_list = None
     if mode is not None:
-        stats["mode"] = mode
         corr = corrections or {}
-        stats["corrections"] = [k for k in ("fresnel", "polarisation", "curvature", "diffraction") if corr.get(k)]
-    return stats
+        corr_list = [k for k in ("fresnel", "polarisation", "curvature", "diffraction") if corr.get(k)]
+
+    return result, body, tissue, level, mode, corr_list, extra

@@ -48,8 +48,9 @@ def _build_binary_response(result, quantities):
     arrays_meta = []
 
     # sab is always included
-    sab_bytes = result.sab.astype(np.float32).tobytes()
-    arrays_meta.append({"key": "sab", "offset": 0, "length": len(sab_bytes)})
+    sab_arr = result.sab.astype(np.float32)
+    sab_bytes = sab_arr.tobytes()
+    arrays_meta.append({"key": "sab", "offset": 0, "length": sab_arr.shape[0]})
     buf.extend(sab_bytes)
 
     quantity_map = {
@@ -68,8 +69,9 @@ def _build_binary_response(result, quantities):
         arr = getter()
         if arr is None:
             continue
-        arr_bytes = arr.astype(np.float32).tobytes()
-        arrays_meta.append({"key": key, "offset": len(buf), "length": len(arr_bytes)})
+        arr_f32 = arr.astype(np.float32)
+        arr_bytes = arr_f32.tobytes()
+        arrays_meta.append({"key": key, "offset": len(buf), "length": arr_f32.shape[0]})
         buf.extend(arr_bytes)
 
     return buf, arrays_meta
@@ -82,6 +84,12 @@ def _build_stats_response(result, body, tissue, level, extra=None, mode=None, co
     freq_hz = result.freq_hz or tissue.freq_hz
     scenario = scenario or ExposureScenario.GENERAL_PUBLIC
 
+    # Precompute per-quantity peaks (each np.max called once)
+    peak_sab_averaged = float(np.max(result.sab_averaged)) if result.sab_averaged is not None else None
+    peak_sab_1cm2 = float(np.max(result.sab_1cm2_averaged)) if result.sab_1cm2_averaged is not None else None
+    peak_sinc_local = float(np.max(result.sinc)) if result.sinc is not None else None
+    peak_sinc_averaged = float(np.max(result.sinc_averaged)) if result.sinc_averaged is not None else None
+
     # S_inc whole-body average
     sinc_wb = None
     if result.sinc is not None:
@@ -90,18 +98,18 @@ def _build_stats_response(result, body, tissue, level, extra=None, mode=None, co
     compliance = evaluate_compliance(
         scenario=scenario,
         freq_hz=freq_hz,
-        sab_4cm2=float(np.max(result.sab_averaged)) if result.sab_averaged is not None else float(result.peak_sab),
-        sinc_local=float(np.max(result.sinc_averaged)) if result.sinc_averaged is not None else None,
+        sab_4cm2=peak_sab_averaged if peak_sab_averaged is not None else float(result.peak_sab),
+        sinc_local=peak_sinc_averaged,
         sinc_whole_body=sinc_wb,
         sar_wb=result.sar_wb,
-        sab_1cm2=float(np.max(result.sab_1cm2_averaged)) if result.sab_1cm2_averaged is not None else None,
+        sab_1cm2=peak_sab_1cm2,
     )
 
     stats = {
         "p_abs": float(result.p_abs),
         "p_abs_mw": float(result.p_abs * 1e3),
         "peak_sab": float(result.peak_sab),
-        "peak_sab_averaged": float(np.max(result.sab_averaged)) if result.sab_averaged is not None else None,
+        "peak_sab_averaged": peak_sab_averaged,
         "compliance": {
             "overall_pass": compliance.overall_pass,
             "margin_db": compliance.margin_db if compliance.margin_db != float("inf") else None,
@@ -129,16 +137,16 @@ def _build_stats_response(result, body, tissue, level, extra=None, mode=None, co
     # Store compliance result for the /api/compliance/report endpoint
     current_app.config["_last_compliance_result"] = stats["compliance"]
 
-    # Per-quantity peak values
+    # Per-quantity peak values (reuse precomputed values)
     peaks = {"sab": float(result.peak_sab)}
-    if result.sab_averaged is not None:
-        peaks["sab_4cm2"] = float(np.max(result.sab_averaged))
-    if result.sab_1cm2_averaged is not None:
-        peaks["sab_1cm2"] = float(np.max(result.sab_1cm2_averaged))
-    if result.sinc is not None:
-        peaks["sinc_local"] = float(np.max(result.sinc))
-    if result.sinc_averaged is not None:
-        peaks["sinc_averaged"] = float(np.max(result.sinc_averaged))
+    if peak_sab_averaged is not None:
+        peaks["sab_4cm2"] = peak_sab_averaged
+    if peak_sab_1cm2 is not None:
+        peaks["sab_1cm2"] = peak_sab_1cm2
+    if peak_sinc_local is not None:
+        peaks["sinc_local"] = peak_sinc_local
+    if peak_sinc_averaged is not None:
+        peaks["sinc_averaged"] = peak_sinc_averaged
     stats["peaks"] = peaks
 
     if mode is not None:
@@ -152,19 +160,22 @@ def _build_stats_response(result, body, tissue, level, extra=None, mode=None, co
 
 def _zero_paths_response(body, tissue, level, extra=None):
     """Build stats dict when zero paths are found."""
+    n_tri = body.n_triangles
     stats = {
         "p_abs": 0,
         "p_abs_mw": 0,
         "peak_sab": 0,
         "compliant": True,
         "n_illuminated": 0,
-        "n_triangles": body.n_triangles,
+        "n_triangles": n_tri,
         "level": level,
         "S_inc": 0,
         "distance_m": 0,
         "T0": tissue.T0,
         "n_rt_paths": 0,
         "path_viz": [],
+        "arrays": [{"key": "sab", "offset": 0, "length": n_tri}],
+        "peaks": {"sab": 0.0},
     }
     if extra:
         stats.update(extra)
@@ -240,6 +251,17 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         if n_paths not in allowed_n_paths:
             return jsonify({"error": f"n_paths must be one of {sorted(allowed_n_paths)}"}), 400
 
+        # Stochastic channel params (optional, overrides n_paths when present)
+        stochastic = None
+        if params.get("stochastic"):
+            stoch_cfg = cfg["dosimetry"].get("stochastic", {})
+            stochastic = {
+                "preset": params.get("stochastic_preset", stoch_cfg.get("default_preset", "3GPP_38.901_UMi_LOS")),
+                "seed": int(params.get("stochastic_seed", stoch_cfg.get("default_seed", 42))),
+                "overrides": params.get("stochastic_overrides", {}),
+                "freq_ghz": float(params.get("freq_ghz", 28)),
+            }
+
         tissue_name = params.get("tissue", "skin_28ghz")
         if tissue_name not in TISSUE_PRESETS:
             return jsonify({"error": f"Unknown tissue preset: {tissue_name!r}"}), 400
@@ -270,6 +292,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             power_dbm=power_dbm,
             n_paths=n_paths,
             config=cfg,
+            stochastic=stochastic,
         )
         t_compute = _time.perf_counter()
 
@@ -789,3 +812,33 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         if last is None:
             return jsonify({"error": "No computation result available"}), 404
         return jsonify(last)
+
+    @app.route("/api/channel-presets", methods=["GET"])
+    def channel_presets():
+        """List available 3GPP stochastic channel presets."""
+        from pathlib import Path
+
+        from aegis.channel import list_presets, load_preset
+
+        with cache_lock:
+            cfg = cache["config"]
+        stoch_cfg = cfg["dosimetry"].get("stochastic", {})
+        preset_dir = Path(stoch_cfg.get("preset_dir", "data/channel_presets"))
+        if not preset_dir.is_absolute():
+            preset_dir = Path(__file__).resolve().parents[3] / preset_dir
+        featured = stoch_cfg.get("featured_presets", [])
+        all_names = list_presets(preset_dir)
+        presets = []
+        for name in all_names:
+            try:
+                p = load_preset(name, preset_dir)
+                presets.append(
+                    {
+                        "name": name,
+                        "featured": name in featured,
+                        "params": p["params"],
+                    }
+                )
+            except Exception:
+                continue
+        return jsonify(presets)
