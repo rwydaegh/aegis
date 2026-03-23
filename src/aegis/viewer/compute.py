@@ -6,10 +6,12 @@ import time
 
 import numpy as np
 
+from aegis.constants import EPS_0
 from aegis.engine import DosimetryEngine
 from aegis.geometry.mesh import BodyMesh
 from aegis.paths import PropagationPaths
-from aegis.tissue.dielectric import FAT_28GHZ, MUSCLE_28GHZ, SKIN_28GHZ, SKIN_60GHZ, TissueModel
+from aegis.tissue.cole_cole import debye_permittivity
+from aegis.tissue.dielectric import TissueModel
 from aegis.viewer.config import DEFAULTS
 
 # Cache for curvature computation (expensive, only changes when body changes)
@@ -50,13 +52,101 @@ def _compute_face_curvature(body: BodyMesh) -> np.ndarray:
     return H
 
 
-# Predefined tissue presets (aligned with dielectric.py literature values)
-TISSUE_PRESETS = {
-    "skin_28ghz": SKIN_28GHZ,
-    "skin_60ghz": SKIN_60GHZ,
-    "muscle_28ghz": MUSCLE_28GHZ,
-    "fat_28ghz": FAT_28GHZ,
-}
+# ---------------------------------------------------------------------------
+# Skin model registry
+# ---------------------------------------------------------------------------
+
+SKIN_MODELS = [
+    {"id": "itis", "label": "IT’IS database (v5)"},
+    {"id": "christ2021", "label": "Gabriel × 1.2 (Christ 2021)"},
+    {"id": "christ2025", "label": "Christ 2025 Dermis"},
+    {"id": "nict", "label": "NICT Measurements"},
+]
+
+_nict_data: dict | None = None
+
+
+def _load_nict_data() -> dict:
+    """Load and cache NICT skin measurement CSV."""
+    global _nict_data
+    if _nict_data is not None:
+        return _nict_data
+
+    import csv
+    import re
+    from pathlib import Path
+
+    csv_path = Path(__file__).parent.parent.parent.parent / "data" / "measurements-Skin.csv"
+    freq_hz_list, eps_r_list, sigma_list = [], [], []
+
+    with open(csv_path) as f:
+        reader = csv.reader(f)
+        next(reader)  # skip header
+        for row in reader:
+            if len(row) >= 4 and row[0].strip():
+                try:
+
+                    def parse(s, _re=re):
+                        return float(_re.sub(r"\.E", "E", s.strip()))
+
+                    freq_hz_list.append(parse(row[0]))
+                    eps_r_list.append(parse(row[1]))
+                    sigma_list.append(parse(row[3]))
+                except ValueError:
+                    continue
+
+    _nict_data = {
+        "log_freq": np.log10(np.array(freq_hz_list)),
+        "log_eps_r": np.log10(np.array(eps_r_list)),
+        "log_sigma": np.log10(np.array(sigma_list)),
+    }
+    return _nict_data
+
+
+def resolve_skin_model(name: str, freq_hz: float) -> TissueModel:
+    """Compute skin TissueModel from a named data source at a given frequency."""
+    if name == "itis":
+        return TissueModel.from_database("Skin", freq_hz)
+
+    if name == "christ2021":
+        base = TissueModel.from_database("Skin", freq_hz)
+        return TissueModel(
+            name="Skin (Gabriel × 1.2)",
+            eps_r=base.eps_r * 1.2,
+            sigma=base.sigma * 1.2,
+            freq_hz=freq_hz,
+        )
+
+    if name == "christ2025":
+        eps = debye_permittivity(
+            freq_hz,
+            eps_inf=7.88,
+            eps_static=47.0,
+            sigma=5.19,
+            tau_s=8.35e-12,
+        )
+        omega = 2 * np.pi * freq_hz
+        return TissueModel(
+            name="Skin (Christ 2025 Dermis)",
+            eps_r=float(eps.real),
+            sigma=float(-eps.imag * omega * EPS_0),
+            freq_hz=freq_hz,
+        )
+
+    if name == "nict":
+        data = _load_nict_data()
+        log_f = np.log10(freq_hz)
+        log_f_clamped = np.clip(log_f, data["log_freq"][0], data["log_freq"][-1])
+        eps_r = 10 ** float(np.interp(log_f_clamped, data["log_freq"], data["log_eps_r"]))
+        sigma = 10 ** float(np.interp(log_f_clamped, data["log_freq"], data["log_sigma"]))
+        return TissueModel(
+            name="Skin (NICT)",
+            eps_r=eps_r,
+            sigma=sigma,
+            freq_hz=freq_hz,
+        )
+
+    raise ValueError(f"Unknown skin model: {name!r}")
 
 
 def _rotation_matrix_z(angle: float) -> np.ndarray:
@@ -145,7 +235,7 @@ def compute_dosimetry(
     sp_cfg = dos_cfg["synthetic_paths"]
 
     if tissue is None:
-        tissue = SKIN_28GHZ
+        tissue = resolve_skin_model("itis", 28e9)
 
     antenna_pos = np.asarray(antenna_pos, dtype=np.float64)
     body_offset = np.asarray(body_offset, dtype=np.float64) if body_offset is not None else np.zeros(3)
