@@ -9,6 +9,11 @@ from flask import Flask, Response, jsonify, request
 
 from aegis.compliance import ExposureScenario, evaluate_compliance
 
+# String constants (avoid duplicate literals)
+_OCTET_STREAM = "application/octet-stream"
+_ERR_NO_BODY = "No body mesh loaded"
+_ERR_NO_DIFFERT = "DiffeRT not installed"
+
 
 def _parse_mode_or_level(params: dict, default_level: int = 2) -> dict:
     """Extract mode+corrections or level from request params.
@@ -182,7 +187,7 @@ def _zero_paths_response(body, tissue, level, extra=None):
     if extra:
         stats.update(extra)
     sab_bytes = np.zeros(body.n_triangles, dtype=np.float32).tobytes()
-    resp = Response(sab_bytes, mimetype="application/octet-stream")
+    resp = Response(sab_bytes, mimetype=_OCTET_STREAM)
     resp.headers["X-Stats"] = json.dumps(stats)
     resp.headers["Access-Control-Expose-Headers"] = "X-Stats"
     return resp
@@ -200,7 +205,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             body = cache.get("body")
             cfg = cache["config"]
         if body is None:
-            return jsonify({"error": "No body mesh loaded"}), 400
+            return jsonify({"error": _ERR_NO_BODY}), 400
 
         params = request.get_json(silent=True)
         if params is None:
@@ -320,7 +325,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         stats["timings"] = timings
         stats["arrays"] = arrays_meta
 
-        resp = Response(bytes(buf), mimetype="application/octet-stream")
+        resp = Response(bytes(buf), mimetype=_OCTET_STREAM)
         resp.headers["X-Stats"] = json.dumps(stats)
         resp.headers["Access-Control-Expose-Headers"] = "X-Stats"
         return resp
@@ -333,7 +338,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
             return jsonify(list_available_scenes())
         except ImportError:
-            return jsonify({"error": "DiffeRT not installed"}), 501
+            return jsonify({"error": _ERR_NO_DIFFERT}), 501
 
     @app.route("/api/scene/load", methods=["POST"])
     def api_scene_load():
@@ -341,7 +346,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         try:
             from aegis.viewer.raytracer import load_scene, scene_geometry_to_binary
         except ImportError:
-            return jsonify({"error": "DiffeRT not installed"}), 501
+            return jsonify({"error": _ERR_NO_DIFFERT}), 501
 
         params = request.get_json()
         scene_path = params.get("path")
@@ -351,7 +356,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         try:
             scene_data = load_scene(scene_path)
             data, meta = scene_geometry_to_binary(scene_data)
-            resp = Response(data, mimetype="application/octet-stream")
+            resp = Response(data, mimetype=_OCTET_STREAM)
             resp.headers["X-Meta"] = json.dumps(meta)
             resp.headers["Access-Control-Expose-Headers"] = "X-Meta"
             return resp
@@ -364,7 +369,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         try:
             from aegis.viewer.raytracer import get_or_build_voxel_scene, scene_geometry_to_binary
         except ImportError:
-            return jsonify({"error": "DiffeRT not installed"}), 501
+            return jsonify({"error": _ERR_NO_DIFFERT}), 501
 
         with cache_lock:
             voxel_positions = cache.get("voxel_positions")
@@ -410,7 +415,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             "material_names": mnames,
         }
         data, meta = scene_geometry_to_binary(scene_data)
-        resp = Response(data, mimetype="application/octet-stream")
+        resp = Response(data, mimetype=_OCTET_STREAM)
         resp.headers["X-Meta"] = json.dumps(meta)
         resp.headers["Access-Control-Expose-Headers"] = "X-Meta"
         return resp
@@ -421,11 +426,11 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         try:
             from aegis.viewer.raytracer import compute_paths_differt
         except ImportError:
-            return jsonify({"error": "DiffeRT not installed"}), 501
+            return jsonify({"error": _ERR_NO_DIFFERT}), 501
 
         body = cache.get("body")
         if body is None:
-            return jsonify({"error": "No body mesh loaded"}), 400
+            return jsonify({"error": _ERR_NO_BODY}), 400
 
         from aegis.viewer.compute import _transform_body_for_viewer, resolve_skin_model
 
@@ -504,7 +509,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         )
         stats["arrays"] = arrays_meta
 
-        resp = Response(bytes(buf), mimetype="application/octet-stream")
+        resp = Response(bytes(buf), mimetype=_OCTET_STREAM)
         resp.headers["X-Stats"] = json.dumps(stats)
         resp.headers["Access-Control-Expose-Headers"] = "X-Stats"
         return resp
@@ -519,7 +524,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
         body = cache.get("body")
         if body is None:
-            return jsonify({"error": "No body mesh loaded"}), 400
+            return jsonify({"error": _ERR_NO_BODY}), 400
 
         from aegis.viewer.compute import _transform_body_for_viewer, resolve_skin_model
 
@@ -601,7 +606,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         )
         stats["arrays"] = arrays_meta
 
-        resp = Response(bytes(buf), mimetype="application/octet-stream")
+        resp = Response(bytes(buf), mimetype=_OCTET_STREAM)
         resp.headers["X-Stats"] = json.dumps(stats)
         resp.headers["Access-Control-Expose-Headers"] = "X-Stats"
         return resp
@@ -612,7 +617,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         try:
             from aegis.viewer.raytracer import get_or_build_voxel_scene
         except ImportError:
-            return jsonify({"error": "DiffeRT not installed"}), 501
+            return jsonify({"error": _ERR_NO_DIFFERT}), 501
 
         from aegis.viewer.compute import resolve_skin_model
 
@@ -623,7 +628,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             voxel_materials = cache.get("voxel_materials")
             cfg = cache["config"]
         if body is None:
-            return jsonify({"error": "No body mesh loaded"}), 400
+            return jsonify({"error": _ERR_NO_BODY}), 400
 
         if voxel_positions is None or len(voxel_positions) == 0:
             return jsonify({"error": "No voxel data available"}), 400
@@ -799,7 +804,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         )
         stats["arrays"] = arrays_meta
 
-        resp = Response(bytes(buf), mimetype="application/octet-stream")
+        resp = Response(bytes(buf), mimetype=_OCTET_STREAM)
         resp.headers["X-Stats"] = json.dumps(stats)
         resp.headers["Access-Control-Expose-Headers"] = "X-Stats"
         return resp

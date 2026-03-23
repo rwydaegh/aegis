@@ -73,7 +73,7 @@ def run_e2e(base_url: str, profile: str) -> int:
         print("FATAL: Server not responding")
         return 1
 
-    config = requests.get(f"{base}/api/config").json()
+    config = requests.get(f"{base}/api/config", timeout=10).json()
     check("Config returns JSON", isinstance(config, dict), errors=errors, counters=counters)
     check(
         "Config has bodies",
@@ -114,7 +114,7 @@ def run_e2e(base_url: str, profile: str) -> int:
 
     check("Config body_meta present", cfg_body_meta.get("n_triangles") is not None, errors=errors, counters=counters)
 
-    resp = requests.get(f"{base}/api/body")
+    resp = requests.get(f"{base}/api/body", timeout=10)
     check("Body returns 200", resp.status_code == 200, errors=errors, counters=counters)
     body_hdr_meta = json.loads(resp.headers.get("X-Meta", "{}"))
     hdr_nv = body_hdr_meta.get("n_vertices")
@@ -136,7 +136,7 @@ def run_e2e(base_url: str, profile: str) -> int:
     )
 
     if has_voxels:
-        resp = requests.get(f"{base}/api/voxels")
+        resp = requests.get(f"{base}/api/voxels", timeout=10)
         check("Voxels returns 200", resp.status_code == 200, errors=errors, counters=counters)
         voxel_meta = json.loads(resp.headers.get("X-Meta", "{}"))
         check(
@@ -153,7 +153,7 @@ def run_e2e(base_url: str, profile: str) -> int:
             counters=counters,
         )
     else:
-        resp = requests.get(f"{base}/api/voxels")
+        resp = requests.get(f"{base}/api/voxels", timeout=10)
         check(
             "Voxels absent returns 404",
             resp.status_code == 404,
@@ -170,6 +170,7 @@ def run_e2e(base_url: str, profile: str) -> int:
             "power_dbm": 30,
             "n_paths": 1,
         },
+        timeout=10,
     )
     check("Compute returns 200", resp.status_code == 200, errors=errors, counters=counters)
     stats = json.loads(resp.headers.get("X-Stats", "{}"))
@@ -196,6 +197,7 @@ def run_e2e(base_url: str, profile: str) -> int:
                 "power_dbm": 30,
                 "n_paths": 5,
             },
+            timeout=10,
         )
         s = json.loads(resp.headers.get("X-Stats", "{}"))
         check(
@@ -205,7 +207,7 @@ def run_e2e(base_url: str, profile: str) -> int:
             counters=counters,
         )
 
-    resp = requests.get(f"{base}/api/scenes")
+    resp = requests.get(f"{base}/api/scenes", timeout=10)
     check("Scenes returns 200", resp.status_code == 200, errors=errors, counters=counters)
     scenes_api = resp.json()
     check(
@@ -222,6 +224,7 @@ def run_e2e(base_url: str, profile: str) -> int:
             "power_dbm": 30,
             "max_order": 0,
         },
+        timeout=10,
     )
     if voxel_rt_available:
         check("Voxel RT returns 200", resp.status_code == 200, errors=errors, counters=counters)
@@ -254,6 +257,7 @@ def run_e2e(base_url: str, profile: str) -> int:
                 "power_dbm": 30,
                 "max_order": 1,
             },
+            timeout=10,
         )
         check("Sionna RT returns 200", resp.status_code == 200, errors=errors, counters=counters)
         rt_stats = json.loads(resp.headers.get("X-Stats", "{}"))

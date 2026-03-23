@@ -57,3 +57,38 @@ name = "trufflehog"
 
 [[plugin]]
 name = "actionlint"
+
+# --- Triage: suppress false positives ---
+
+# B101 (assert usage) is normal in pytest tests and examples
+[[triage]]
+match.rules = ["bandit:B101"]
+match.file_patterns = ["tests/**", "examples/**"]
+set.ignored = true
+
+# Subprocess usage is intentional for process management (nvidia-smi, node, kill)
+[[triage]]
+match.rules = ["bandit:B404", "bandit:B603", "bandit:B607", "bandit:B606"]
+set.ignored = true
+
+# Try/except/pass|continue is intentional for optional features (e.g. JAX, DiffeRT)
+[[triage]]
+match.rules = ["bandit:B110", "bandit:B112"]
+set.ignored = true
+
+# Temp file usage is intentional for cache directories
+[[triage]]
+match.rules = ["bandit:B108"]
+set.ignored = true
+
+# SQL injection false positive in examples (SQLite with f-strings for table names)
+[[triage]]
+match.rules = ["bandit:B608"]
+match.file_patterns = ["examples/**"]
+set.ignored = true
+
+# Complexity in examples, tools, and tests is acceptable (not production code)
+[[triage]]
+match.rules = ["radarlint-python:python:S3776", "radarlint-python:python:S1192"]
+match.file_patterns = ["examples/**", "tools/**", "tests/**"]
+set.ignored = true

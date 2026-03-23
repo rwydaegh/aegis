@@ -9,6 +9,9 @@ import subprocess
 from collections.abc import Generator
 from pathlib import Path
 
+# String constants (avoid duplicate literals)
+_PIPELINE_SCRIPT = "run_pipeline.js"
+
 # Module-level handle for cancellation
 _active_process: subprocess.Popen | None = None
 
@@ -22,19 +25,19 @@ def find_pipeline(pipeline_dir: str | None = None) -> Path | None:
     3. ``../nodejs-voxelearth/`` relative to the repo root
     """
     if pipeline_dir:
-        p = Path(pipeline_dir) / "run_pipeline.js"
+        p = Path(pipeline_dir) / _PIPELINE_SCRIPT
         if p.exists():
             return p
 
     env_dir = os.environ.get("VOXELEARTH_DIR")
     if env_dir:
-        p = Path(env_dir) / "run_pipeline.js"
+        p = Path(env_dir) / _PIPELINE_SCRIPT
         if p.exists():
             return p
 
     # Fallback: sibling directory of the repo root
     repo_root = Path(__file__).resolve().parents[3]  # src/aegis/viewer -> repo root
-    p = repo_root.parent / "nodejs-voxelearth" / "run_pipeline.js"
+    p = repo_root.parent / "nodejs-voxelearth" / _PIPELINE_SCRIPT
     if p.exists():
         return p
 

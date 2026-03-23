@@ -30,6 +30,12 @@ __all__ = [
 
 
 # ---------------------------------------------------------------------------
+# String constants (avoid duplicate literals)
+# ---------------------------------------------------------------------------
+
+_UNIT_WM2 = "W/m^2"
+
+# ---------------------------------------------------------------------------
 # Enums and dataclasses
 # ---------------------------------------------------------------------------
 
@@ -273,7 +279,7 @@ def evaluate_compliance(
         check_sab_4 = ComplianceCheck(
             value=sab_4cm2,
             limit=limits.sab_4cm2,
-            unit="W/m^2",
+            unit=_UNIT_WM2,
             label="S_ab (4 cm^2)",
         )
 
@@ -282,7 +288,7 @@ def evaluate_compliance(
         check_sab_1 = ComplianceCheck(
             value=sab_1cm2,
             limit=limits.sab_1cm2,
-            unit="W/m^2",
+            unit=_UNIT_WM2,
             label="S_ab (1 cm^2)",
         )
 
@@ -300,7 +306,7 @@ def evaluate_compliance(
         check_sinc_local = ComplianceCheck(
             value=sinc_local,
             limit=limits.sinc_local,
-            unit="W/m^2",
+            unit=_UNIT_WM2,
             label="S_inc (local)",
         )
 
@@ -309,7 +315,7 @@ def evaluate_compliance(
         check_sinc_wb = ComplianceCheck(
             value=sinc_whole_body,
             limit=limits.sinc_whole_body,
-            unit="W/m^2",
+            unit=_UNIT_WM2,
             label="S_inc (whole-body)",
         )
 

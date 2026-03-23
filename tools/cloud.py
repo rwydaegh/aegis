@@ -158,6 +158,13 @@ def find_cheapest_location() -> tuple[str, str, float]:
 
 
 # ---------------------------------------------------------------------------
+# SSH option constants (avoid duplicate literals)
+# ---------------------------------------------------------------------------
+
+_SSH_STRICT_HOST = "StrictHostKeyChecking=no"
+_SSH_KNOWN_HOSTS = "UserKnownHostsFile=/dev/null"
+
+# ---------------------------------------------------------------------------
 # SSH helpers
 # ---------------------------------------------------------------------------
 
@@ -189,9 +196,9 @@ def ssh_command(state: dict, cmd: str | None = None, timeout: int = 30) -> subpr
     base = [
         "ssh",
         "-o",
-        "StrictHostKeyChecking=no",
+        _SSH_STRICT_HOST,
         "-o",
-        "UserKnownHostsFile=/dev/null",
+        _SSH_KNOWN_HOSTS,
         "-o",
         "LogLevel=ERROR",
         "-o",
@@ -240,9 +247,9 @@ def scp_to_remote(state: dict, local_path: str, remote_path: str) -> None:
         [
             "scp",
             "-o",
-            "StrictHostKeyChecking=no",
+            _SSH_STRICT_HOST,
             "-o",
-            "UserKnownHostsFile=/dev/null",
+            _SSH_KNOWN_HOSTS,
             "-o",
             "LogLevel=ERROR",
             "-i",
@@ -544,9 +551,9 @@ def cmd_ssh(args: argparse.Namespace) -> None:
     ssh_args = [
         "ssh",
         "-o",
-        "StrictHostKeyChecking=no",
+        _SSH_STRICT_HOST,
         "-o",
-        "UserKnownHostsFile=/dev/null",
+        _SSH_KNOWN_HOSTS,
         "-o",
         "ServerAliveInterval=30",
         "-i",

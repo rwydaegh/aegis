@@ -57,6 +57,56 @@ class DosimetryEngine:
             )
         return self._G_cache[key]
 
+    def _build_result(
+        self,
+        body: BodyMesh,
+        paths: PropagationPaths,
+        sab: np.ndarray,
+        fidelity_level: int,
+        *,
+        body_mass: float | None = None,
+        freq_hz: float | None = None,
+        mode: str | None = None,
+        corrections: tuple[str, ...] = (),
+        Q: np.ndarray | None = None,
+        rho: np.ndarray | None = None,
+        eigenvalues: np.ndarray | None = None,
+        x_star: np.ndarray | None = None,
+    ) -> DosimetryResult:
+        """Build a DosimetryResult from raw sab with averaging and derived quantities."""
+        p_abs = float(np.sum(sab * body.areas))
+        sar_wb = p_abs / body_mass if body_mass is not None else None
+        effective_freq_hz = freq_hz if freq_hz is not None else self.freq_hz
+
+        sinc = np.full(body.n_triangles, float(np.sum(_to_numpy(paths.power))))
+
+        G_4cm2 = self._get_G(body, 4e-4)
+        sab_averaged = _to_numpy(G_4cm2 @ sab)
+        sinc_averaged = _to_numpy(G_4cm2 @ sinc)
+
+        sab_1cm2_averaged = None
+        if effective_freq_hz is not None and effective_freq_hz > 30e9:
+            G_1cm2 = self._get_G(body, 1e-4)
+            sab_1cm2_averaged = _to_numpy(G_1cm2 @ sab)
+
+        return DosimetryResult(
+            sab=sab,
+            p_abs=p_abs,
+            fidelity_level=fidelity_level,
+            sab_averaged=sab_averaged,
+            sar_wb=sar_wb,
+            sinc=sinc,
+            sinc_averaged=sinc_averaged,
+            sab_1cm2_averaged=sab_1cm2_averaged,
+            freq_hz=effective_freq_hz,
+            mode=mode,
+            corrections=corrections,
+            Q=Q,
+            rho=rho,
+            eigenvalues=eigenvalues,
+            x_star=x_star,
+        )
+
     def compute(
         self,
         body: BodyMesh,
@@ -184,38 +234,13 @@ class DosimetryEngine:
             curvature_H=curvature_H,
         )
         sab = _to_numpy(sab)
-
-        # Total absorbed power: integrate S_ab over surface
-        p_abs = float(np.sum(sab * body.areas))
-
-        # Whole-body SAR
-        sar_wb = p_abs / body_mass if body_mass is not None else None
-
-        effective_freq_hz = freq_hz if freq_hz is not None else self.freq_hz
-
-        # S_inc: incident power density (no T0, no cosine projection)
-        sinc = np.full(body.n_triangles, float(np.sum(_to_numpy(paths.power))))
-
-        # Always compute spatial averaging
-        G_4cm2 = self._get_G(body, 4e-4)
-        sab_averaged = _to_numpy(G_4cm2 @ sab)
-        sinc_averaged = _to_numpy(G_4cm2 @ sinc)
-
-        sab_1cm2_averaged = None
-        if effective_freq_hz is not None and effective_freq_hz > 30e9:
-            G_1cm2 = self._get_G(body, 1e-4)
-            sab_1cm2_averaged = _to_numpy(G_1cm2 @ sab)
-
-        return DosimetryResult(
-            sab=sab,
-            p_abs=p_abs,
-            fidelity_level=level,
-            sab_averaged=sab_averaged,
-            sar_wb=sar_wb,
-            sinc=sinc,
-            sinc_averaged=sinc_averaged,
-            sab_1cm2_averaged=sab_1cm2_averaged,
-            freq_hz=effective_freq_hz,
+        return self._build_result(
+            body,
+            paths,
+            sab,
+            level,
+            body_mass=body_mass,
+            freq_hz=freq_hz,
         )
 
     def compute_sab(
@@ -475,36 +500,15 @@ class DosimetryEngine:
             )
             sab = _to_numpy(sab)
 
-        p_abs = float(np.sum(sab * body.areas))
-        sar_wb = p_abs / body_mass if body_mass is not None else None
-
-        effective_freq_hz = freq_hz if freq_hz is not None else self.freq_hz
-
-        # S_inc: incident power density (no T0, no cosine projection)
-        sinc = np.full(body.n_triangles, float(np.sum(_to_numpy(paths.power))))
-
-        # Always compute spatial averaging
-        G_4cm2 = self._get_G(body, 4e-4)
-        sab_averaged = _to_numpy(G_4cm2 @ sab)
-        sinc_averaged = _to_numpy(G_4cm2 @ sinc)
-
-        sab_1cm2_averaged = None
-        if effective_freq_hz is not None and effective_freq_hz > 30e9:
-            G_1cm2 = self._get_G(body, 1e-4)
-            sab_1cm2_averaged = _to_numpy(G_1cm2 @ sab)
-
-        return DosimetryResult(
-            sab=sab,
-            p_abs=p_abs,
-            fidelity_level=fidelity_level,
-            sab_averaged=sab_averaged,
-            sar_wb=sar_wb,
+        return self._build_result(
+            body,
+            paths,
+            sab,
+            fidelity_level,
+            body_mass=body_mass,
+            freq_hz=freq_hz,
             mode=mode,
             corrections=tuple(corrections),
-            sinc=sinc,
-            sinc_averaged=sinc_averaged,
-            sab_1cm2_averaged=sab_1cm2_averaged,
-            freq_hz=effective_freq_hz,
         )
 
     def _compute_coherent(
@@ -573,38 +577,17 @@ class DosimetryEngine:
         if x_star is not None:
             x_star = _to_numpy(x_star)
 
-        p_abs = float(np.sum(sab * body.areas))
-        sar_wb = p_abs / body_mass if body_mass is not None else None
-
-        effective_freq_hz = freq_hz if freq_hz is not None else self.freq_hz
-
-        # S_inc: incident power density (no T0, no cosine projection)
-        sinc = np.full(body.n_triangles, float(np.sum(_to_numpy(paths.power))))
-
-        # Always compute spatial averaging
-        G_4cm2 = self._get_G(body, 4e-4)
-        sab_averaged = _to_numpy(G_4cm2 @ sab)
-        sinc_averaged = _to_numpy(G_4cm2 @ sinc)
-
-        sab_1cm2_averaged = None
-        if effective_freq_hz is not None and effective_freq_hz > 30e9:
-            G_1cm2 = self._get_G(body, 1e-4)
-            sab_1cm2_averaged = _to_numpy(G_1cm2 @ sab)
-
-        return DosimetryResult(
-            sab=sab,
-            p_abs=p_abs,
-            fidelity_level=level,
-            sab_averaged=sab_averaged,
-            sar_wb=sar_wb,
+        return self._build_result(
+            body,
+            paths,
+            sab,
+            level,
+            body_mass=body_mass,
+            freq_hz=freq_hz,
             Q=Q,
             rho=rho,
             eigenvalues=eigenvalues,
             x_star=x_star,
-            sinc=sinc,
-            sinc_averaged=sinc_averaged,
-            sab_1cm2_averaged=sab_1cm2_averaged,
-            freq_hz=effective_freq_hz,
         )
 
     def _dispatch(
