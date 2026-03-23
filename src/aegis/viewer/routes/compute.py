@@ -290,37 +290,48 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         exposure_scenario = ExposureScenario(exposure_scenario_str)
 
         import time as _time
+        import traceback as _tb
 
         t_route = _time.perf_counter()
 
-        result, res_body, res_tissue, res_level, res_mode, res_corr, extra = compute_dosimetry(
-            body,
-            antenna_pos=np.array(antenna_pos),
-            body_offset=np.array(body_offset),
-            body_rotation_y=float(body_rotation_y),
-            level=level,
-            mode=mode,
-            corrections=corrections,
-            tissue=tissue,
-            power_dbm=power_dbm,
-            n_paths=n_paths,
-            config=cfg,
-            stochastic=stochastic,
-        )
+        try:
+            result, res_body, res_tissue, res_level, res_mode, res_corr, extra = compute_dosimetry(
+                body,
+                antenna_pos=np.array(antenna_pos),
+                body_offset=np.array(body_offset),
+                body_rotation_y=float(body_rotation_y),
+                level=level,
+                mode=mode,
+                corrections=corrections,
+                tissue=tissue,
+                power_dbm=power_dbm,
+                n_paths=n_paths,
+                config=cfg,
+                stochastic=stochastic,
+            )
+        except Exception as exc:
+            logger.exception("compute_dosimetry failed")
+            return jsonify({"error": str(exc), "traceback": _tb.format_exc()}), 500
+
         t_compute = _time.perf_counter()
 
-        # Build multi-array binary response and stats header
-        buf, arrays_meta = _build_binary_response(result, quantities)
-        stats = _build_stats_response(
-            result,
-            res_body,
-            res_tissue,
-            res_level,
-            mode=res_mode,
-            corrections=res_corr,
-            extra=extra,
-            scenario=exposure_scenario,
-        )
+        try:
+            # Build multi-array binary response and stats header
+            buf, arrays_meta = _build_binary_response(result, quantities)
+            stats = _build_stats_response(
+                result,
+                res_body,
+                res_tissue,
+                res_level,
+                mode=res_mode,
+                corrections=res_corr,
+                extra=extra,
+                scenario=exposure_scenario,
+            )
+        except Exception as exc:
+            logger.exception("response build failed")
+            return jsonify({"error": str(exc), "traceback": _tb.format_exc()}), 500
+
         t_stats = _time.perf_counter()
 
         # Inject route-level timings
@@ -626,7 +637,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         except ImportError:
             return jsonify({"error": _ERR_NO_DIFFERT}), 501
 
-        from aegis.viewer.compute import resolve_skin_model
+        from aegis.viewer.compute import _transform_body_for_viewer, resolve_skin_model
 
         with cache_lock:
             body = cache.get("body")
@@ -659,18 +670,9 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         except ValueError as exc:
             return jsonify({"error": str(exc)}), 400
 
-        # Apply yaw rotation to body centroids and normals only (not vertices)
-        from aegis.viewer.compute import _rotation_matrix_z
-
-        if abs(body_rotation_y) > 1e-9:
-            R = _rotation_matrix_z(body_rotation_y)
-            rotated_centroids = body.centroids @ R.T
-            rotated_normals = body.normals @ R.T
-        else:
-            rotated_centroids = body.centroids
-            rotated_normals = body.normals
-
-        body_center = rotated_centroids.mean(axis=0) + body_offset
+        # Transform body consistently (vertices, centroids, normals all rotated + offset)
+        transformed_body = _transform_body_for_viewer(body, body_offset, body_rotation_y)
+        body_center = transformed_body.centroids.mean(axis=0)
 
         # Build or get cached voxel DiffeRT scene
         max_rt_triangles = cfg["raytracer"]["max_rt_triangles"]
@@ -776,21 +778,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         paths = PropagationPaths.from_powers(k_hat=np.array(all_k_hat), power=np.array(all_power))
         engine = DosimetryEngine(tissue)
 
-        # Use rotated body for correct normal-incidence geometry
-        if abs(body_rotation_y) > 1e-9:
-            from aegis.geometry.mesh import BodyMesh as _BM
-
-            rt_body = _BM(
-                vertices=body.vertices,
-                normals=rotated_normals,
-                centroids=rotated_centroids,
-                areas=body.areas,
-                name=body.name,
-            )
-        else:
-            rt_body = body
-
-        result = engine.compute(rt_body, paths, **engine_kw)
+        result = engine.compute(transformed_body, paths, **engine_kw)
 
         buf, arrays_meta = _build_binary_response(result, quantities)
         dist = float(np.linalg.norm(antenna_pos - body_center))
