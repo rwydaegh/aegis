@@ -9,15 +9,15 @@ from pathlib import Path
 import numpy as np
 
 from aegis.geometry.mesh import BodyMesh
-from aegis.viewer.config import DEFAULTS
+from aegis.viewer.config import DEFAULTS, _deep_merge
 
 _config: dict = DEFAULTS
 
 
 def set_config(config: dict) -> None:
-    """Set the active config for scene_data operations."""
+    """Set the active config for scene_data operations (merged over DEFAULTS)."""
     global _config
-    _config = config
+    _config = _deep_merge(DEFAULTS, config)
 
 
 # ---------------------------------------------------------------------------
