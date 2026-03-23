@@ -15,6 +15,9 @@ interface SimulationStore {
   powerDbm: number
   tissue: string
   nPaths: number
+  stochasticPreset: string
+  stochasticOverrides: Record<string, number>
+  stochasticSeed: number
 
   // Body physics state
   bodyOffset: ScenePos
@@ -40,6 +43,9 @@ interface SimulationStore {
   setPowerDbm: (power: number) => void
   setTissue: (tissue: string) => void
   setNPaths: (n: number) => void
+  setStochasticPreset: (v: string) => void
+  setStochasticOverrides: (v: Record<string, number>) => void
+  setStochasticSeed: (v: number) => void
   setBodyOffset: (offset: ScenePos) => void
   setBodyRotationY: (angle: number) => void
   setFreqGhz: (v: number) => void
@@ -54,9 +60,12 @@ export const useSimulationStore = create<SimulationStore>((set) => ({
   polarisation: false,
   curvature: false,
   diffraction: false,
-  powerDbm: 30,
+  powerDbm: 60,
   tissue: 'skin_28ghz',
   nPaths: 1,
+  stochasticPreset: '3GPP_38.901_UMi_LOS',
+  stochasticOverrides: {},
+  stochasticSeed: 42,
   bodyOffset: [0, 0, 0],
   bodyRotationY: 0,
   sabArray: null,
@@ -78,6 +87,9 @@ export const useSimulationStore = create<SimulationStore>((set) => ({
   setPowerDbm: (power) => set({ powerDbm: power }),
   setTissue: (tissue) => set({ tissue }),
   setNPaths: (n) => set({ nPaths: n }),
+  setStochasticPreset: (v) => set({ stochasticPreset: v }),
+  setStochasticOverrides: (v) => set({ stochasticOverrides: v }),
+  setStochasticSeed: (v) => set({ stochasticSeed: v }),
   setBodyOffset: (offset) => set({ bodyOffset: offset }),
   setBodyRotationY: (angle) => set({ bodyRotationY: angle }),
   setFreqGhz: (v) => set({ freqGhz: v }),

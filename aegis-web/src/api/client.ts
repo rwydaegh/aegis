@@ -204,6 +204,11 @@ export interface ComputeParams {
   powerDbm: number
   tissue: string
   nPaths: number
+  stochastic?: boolean
+  stochasticPreset?: string
+  stochasticOverrides?: Record<string, number>
+  stochasticSeed?: number
+  freqGhz?: number
 }
 
 function computePayload(params: ComputeParams) {
@@ -219,6 +224,13 @@ function computePayload(params: ComputeParams) {
     power_dbm: params.powerDbm,
     tissue: params.tissue,
     n_paths: params.nPaths,
+    ...(params.stochastic ? {
+      stochastic: true,
+      stochastic_preset: params.stochasticPreset,
+      stochastic_overrides: params.stochasticOverrides,
+      stochastic_seed: params.stochasticSeed,
+      freq_ghz: params.freqGhz,
+    } : {}),
   }
 }
 

@@ -3,7 +3,8 @@ import { useSceneStore } from '@/stores/scene'
 export default function RayTracingPanel() {
   const caps = useSceneStore(s => s.capabilities)
   const config = useSceneStore(s => s.viewerConfig)
-  const rtEnabled = useSceneStore(s => s.rtEnabled)
+  const pathSource = useSceneStore(s => s.pathSource)
+  const rtEnabled = pathSource === 'rt'
   const rtSource = useSceneStore(s => s.rtSource)
   const rtMaxOrder = useSceneStore(s => s.rtMaxOrder)
   const scenes = useSceneStore(s => s.scenes)
@@ -28,7 +29,7 @@ export default function RayTracingPanel() {
     <div>
       <label className="flex items-center gap-2 text-xs text-foreground">
         <input type="checkbox" checked={rtEnabled}
-          onChange={e => useSceneStore.setState({ rtEnabled: e.target.checked })} />
+          onChange={e => useSceneStore.getState().setPathSource(e.target.checked ? 'rt' : 'synthetic')} />
         Enable ray tracing
       </label>
 

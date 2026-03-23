@@ -36,7 +36,7 @@ interface SceneStore {
   glbTiles: string[]
 
   // Ray tracing
-  rtEnabled: boolean
+  pathSource: 'synthetic' | 'stochastic' | 'rt'
   rtSource: 'voxel' | 'differt' | 'sionna'
   rtMaxOrder: number
   rtPaths: PathViz[] | null
@@ -56,7 +56,7 @@ interface SceneStore {
   setSceneGeometry: (geom: SceneStore['sceneGeometry']) => void
   toggleSceneGeometryVisible: () => void
   setGlbTiles: (tiles: string[]) => void
-  setRtEnabled: (enabled: boolean) => void
+  setPathSource: (source: SceneStore['pathSource']) => void
   setRtSource: (source: SceneStore['rtSource']) => void
   setRtMaxOrder: (order: number) => void
   setRtPaths: (paths: PathViz[] | null) => void
@@ -76,7 +76,7 @@ export const useSceneStore = create<SceneStore>((set) => ({
   sceneGeometry: null,
   sceneGeometryVisible: true,
   glbTiles: [],
-  rtEnabled: false,
+  pathSource: 'synthetic',
   rtSource: 'differt',
   rtMaxOrder: 2,
   rtPaths: null,
@@ -100,7 +100,7 @@ export const useSceneStore = create<SceneStore>((set) => ({
   setSceneGeometry: (geom) => set({ sceneGeometry: geom }),
   toggleSceneGeometryVisible: () => set((state) => ({ sceneGeometryVisible: !state.sceneGeometryVisible })),
   setGlbTiles: (tiles) => set({ glbTiles: tiles }),
-  setRtEnabled: (enabled) => set({ rtEnabled: enabled }),
+  setPathSource: (source) => set({ pathSource: source }),
   setRtSource: (source) => set({ rtSource: source }),
   setRtMaxOrder: (order) => set({ rtMaxOrder: order }),
   setRtPaths: (paths) => set({ rtPaths: paths }),
