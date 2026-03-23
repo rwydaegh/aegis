@@ -67,6 +67,7 @@ export default function ParametersPanel() {
 
   const config = useSceneStore((s) => s.viewerConfig)
   const caps = useSceneStore((s) => s.capabilities)
+  const pathSource = useSceneStore((s) => s.pathSource)
 
   if (!config || !caps) return null
 
@@ -162,18 +163,22 @@ export default function ParametersPanel() {
         ))}
       </select>
 
-      <label className={labelClass}>Stochastic propagation</label>
-      <select
-        className={selectClass}
-        value={nPaths}
-        onChange={(e) => setNPaths(Number(e.target.value))}
-      >
-        {config.dosimetry.path_options.map((p) => (
-          <option key={p.value} value={p.value}>
-            {p.label}
-          </option>
-        ))}
-      </select>
+      {pathSource !== 'stochastic' && (
+        <>
+          <label className={labelClass}>Stochastic propagation</label>
+          <select
+            className={selectClass}
+            value={nPaths}
+            onChange={(e) => setNPaths(Number(e.target.value))}
+          >
+            {config.dosimetry.path_options.map((p) => (
+              <option key={p.value} value={p.value}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+        </>
+      )}
 
       <label className={labelClass}>Frequency (GHz)</label>
       <div className="flex gap-1.5 items-center mb-2">
