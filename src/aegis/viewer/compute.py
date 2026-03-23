@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import time
+
 import numpy as np
 
+from aegis.constants import EPS_0
 from aegis.engine import DosimetryEngine
 from aegis.geometry.mesh import BodyMesh
 from aegis.paths import PropagationPaths
-from aegis.tissue.dielectric import FAT_28GHZ, MUSCLE_28GHZ, SKIN_28GHZ, SKIN_60GHZ, TissueModel
+from aegis.tissue.cole_cole import debye_permittivity
+from aegis.tissue.dielectric import TissueModel
 from aegis.viewer.config import DEFAULTS
 
 # Cache for curvature computation (expensive, only changes when body changes)
@@ -48,13 +52,101 @@ def _compute_face_curvature(body: BodyMesh) -> np.ndarray:
     return H
 
 
-# Predefined tissue presets (aligned with dielectric.py literature values)
-TISSUE_PRESETS = {
-    "skin_28ghz": SKIN_28GHZ,
-    "skin_60ghz": SKIN_60GHZ,
-    "muscle_28ghz": MUSCLE_28GHZ,
-    "fat_28ghz": FAT_28GHZ,
-}
+# ---------------------------------------------------------------------------
+# Skin model registry
+# ---------------------------------------------------------------------------
+
+SKIN_MODELS = [
+    {"id": "itis", "label": "IT’IS database (v5)"},
+    {"id": "christ2021", "label": "Gabriel × 1.2 (Christ 2021)"},
+    {"id": "christ2025", "label": "Christ 2025 Dermis"},
+    {"id": "nict", "label": "NICT Measurements"},
+]
+
+_nict_data: dict | None = None
+
+
+def _load_nict_data() -> dict:
+    """Load and cache NICT skin measurement CSV."""
+    global _nict_data
+    if _nict_data is not None:
+        return _nict_data
+
+    import csv
+    import re
+    from pathlib import Path
+
+    csv_path = Path(__file__).parent.parent.parent.parent / "data" / "measurements-Skin.csv"
+    freq_hz_list, eps_r_list, sigma_list = [], [], []
+
+    with open(csv_path) as f:
+        reader = csv.reader(f)
+        next(reader)  # skip header
+        for row in reader:
+            if len(row) >= 4 and row[0].strip():
+                try:
+
+                    def parse(s, _re=re):
+                        return float(_re.sub(r"\.E", "E", s.strip()))
+
+                    freq_hz_list.append(parse(row[0]))
+                    eps_r_list.append(parse(row[1]))
+                    sigma_list.append(parse(row[3]))
+                except ValueError:
+                    continue
+
+    _nict_data = {
+        "log_freq": np.log10(np.array(freq_hz_list)),
+        "log_eps_r": np.log10(np.array(eps_r_list)),
+        "log_sigma": np.log10(np.array(sigma_list)),
+    }
+    return _nict_data
+
+
+def resolve_skin_model(name: str, freq_hz: float) -> TissueModel:
+    """Compute skin TissueModel from a named data source at a given frequency."""
+    if name == "itis":
+        return TissueModel.from_database("Skin", freq_hz)
+
+    if name == "christ2021":
+        base = TissueModel.from_database("Skin", freq_hz)
+        return TissueModel(
+            name="Skin (Gabriel × 1.2)",
+            eps_r=base.eps_r * 1.2,
+            sigma=base.sigma * 1.2,
+            freq_hz=freq_hz,
+        )
+
+    if name == "christ2025":
+        eps = debye_permittivity(
+            freq_hz,
+            eps_inf=7.88,
+            eps_static=47.0,
+            sigma=5.19,
+            tau_s=8.35e-12,
+        )
+        omega = 2 * np.pi * freq_hz
+        return TissueModel(
+            name="Skin (Christ 2025 Dermis)",
+            eps_r=float(eps.real),
+            sigma=float(-eps.imag * omega * EPS_0),
+            freq_hz=freq_hz,
+        )
+
+    if name == "nict":
+        data = _load_nict_data()
+        log_f = np.log10(freq_hz)
+        log_f_clamped = np.clip(log_f, data["log_freq"][0], data["log_freq"][-1])
+        eps_r = 10 ** float(np.interp(log_f_clamped, data["log_freq"], data["log_eps_r"]))
+        sigma = 10 ** float(np.interp(log_f_clamped, data["log_freq"], data["log_sigma"]))
+        return TissueModel(
+            name="Skin (NICT)",
+            eps_r=eps_r,
+            sigma=sigma,
+            freq_hz=freq_hz,
+        )
+
+    raise ValueError(f"Unknown skin model: {name!r}")
 
 
 def _rotation_matrix_z(angle: float) -> np.ndarray:
@@ -113,6 +205,7 @@ def compute_dosimetry(
     power_dbm: float = 30.0,
     n_paths: int = 1,
     config: dict | None = None,
+    stochastic: dict | None = None,
 ) -> dict:
     """Run dosimetry from a single antenna position toward the body.
 
@@ -134,18 +227,23 @@ def compute_dosimetry(
     -------
     dict with keys: sab (float32 bytes), p_abs, peak_sab, compliant, n_illuminated
     """
+    timings: dict[str, float] = {}
+    t_total = time.perf_counter()
+
     cfg = config or DEFAULTS
     dos_cfg = cfg["dosimetry"]
     sp_cfg = dos_cfg["synthetic_paths"]
 
     if tissue is None:
-        tissue = SKIN_28GHZ
+        tissue = resolve_skin_model("itis", 28e9)
 
     antenna_pos = np.asarray(antenna_pos, dtype=np.float64)
     body_offset = np.asarray(body_offset, dtype=np.float64) if body_offset is not None else np.zeros(3)
 
+    t0 = time.perf_counter()
     rotated_body = _transform_body_for_viewer(body, body_offset, body_rotation_y)
     body_center = rotated_body.centroids.mean(axis=0)
+    timings["body_transform_ms"] = (time.perf_counter() - t0) * 1e3
 
     # Direction from antenna to body
     direction = body_center - antenna_pos
@@ -159,7 +257,25 @@ def compute_dosimetry(
     # Effective isotropic power density at distance
     S_inc = tx_power_w / (4 * np.pi * dist**2) if dist > 0.1 else tx_power_w
 
-    if n_paths == 1:
+    if stochastic:
+        from pathlib import Path
+
+        from aegis.channel import generate_channel, load_preset
+
+        preset_dir = Path(cfg.get("dosimetry", {}).get("stochastic", {}).get("preset_dir", "data/channel_presets"))
+        if not preset_dir.is_absolute():
+            preset_dir = Path(__file__).resolve().parents[2] / preset_dir
+        preset = load_preset(stochastic["preset"], preset_dir)
+        paths = generate_channel(
+            preset["params"],
+            freq_ghz=stochastic.get("freq_ghz", 28),
+            antenna_pos=antenna_pos,
+            body_center=body_center,
+            power_dbm=power_dbm,
+            seed=stochastic.get("seed", 42),
+            overrides=stochastic.get("overrides"),
+        )
+    elif n_paths == 1:
         # Single plane wave
         paths = PropagationPaths.from_powers(
             k_hat=k_hat[np.newaxis, :],
@@ -183,6 +299,7 @@ def compute_dosimetry(
         paths = PropagationPaths.from_powers(k_hat=k_hats, power=powers)
 
     engine = DosimetryEngine(tissue)
+    t0 = time.perf_counter()
 
     if mode is not None:
         # New mode-based API from frontend
@@ -233,30 +350,23 @@ def compute_dosimetry(
         else:
             result = engine.compute(rotated_body, paths, level=level, **extra_kwargs)
 
-    sab_bytes = result.sab.astype(np.float32).tobytes()
-    sab_averaged_bytes = result.sab_averaged.astype(np.float32).tobytes() if result.sab_averaged is not None else None
-    sinc_bytes = result.sinc.astype(np.float32).tobytes() if result.sinc is not None else None
-    sinc_averaged_bytes = (
-        result.sinc_averaged.astype(np.float32).tobytes() if result.sinc_averaged is not None else None
-    )
+    timings["engine_compute_ms"] = (time.perf_counter() - t0) * 1e3
+    timings["total_ms"] = (time.perf_counter() - t_total) * 1e3
 
-    stats = {
-        "sab_bytes": sab_bytes,
-        "sab_averaged_bytes": sab_averaged_bytes,
-        "sinc_bytes": sinc_bytes,
-        "sinc_averaged_bytes": sinc_averaged_bytes,
-        "p_abs": float(result.p_abs),
-        "p_abs_mw": float(result.p_abs * 1e3),
-        "peak_sab": float(result.peak_sab),
-        "n_illuminated": int(np.sum(result.sab > 0)),
-        "n_triangles": body.n_triangles,
-        "level": level if level is not None else 0,
+    # Pull fine-grained timings from engine
+    from aegis.engine import _last_timings as engine_timings
+
+    timings.update(engine_timings)
+
+    extra = {
         "S_inc": float(S_inc),
         "distance_m": float(dist),
-        "T0": float(tissue.T0),
+        "timings": timings,
     }
+
+    corr_list = None
     if mode is not None:
-        stats["mode"] = mode
         corr = corrections or {}
-        stats["corrections"] = [k for k in ("fresnel", "polarisation", "curvature", "diffraction") if corr.get(k)]
-    return stats
+        corr_list = [k for k in ("fresnel", "polarisation", "curvature", "diffraction") if corr.get(k)]
+
+    return result, body, tissue, level, mode, corr_list, extra

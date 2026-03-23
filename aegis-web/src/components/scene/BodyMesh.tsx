@@ -44,31 +44,34 @@ export default function BodyMesh() {
   const dynamicRangeDb = useUIStore(s => s.dynamicRangeDb)
   const colormapLocked = useUIStore(s => s.colormapLocked)
   const colormapLockedMax = useUIStore(s => s.colormapLockedMax)
-  const displayMode = useUIStore(s => s.displayMode)
+  const sab1cm2AveragedArray = useSimulationStore(s => s.sab1cm2AveragedArray)
+  const displayQuantity = useSimulationStore(s => s.displayQuantity)
+  const ratioMode = useUIStore(s => s.ratioMode)
 
-  // Pick data array and ratio settings based on display mode
-  let activeArray: Float32Array | null = null
-  let isRatioMode = false
-  let ratioLimit = 1.0
-
-  switch (displayMode) {
-    case 'raw_sab': activeArray = sabArray; break
-    case 'avg_sab': activeArray = sabAveragedArray; break
-    case 'sinc': activeArray = sincArray; break
-    case 'ratio_sab':
-      activeArray = sabAveragedArray
-      isRatioMode = true
-      ratioLimit = compliance?.checks?.find(c => c.label.includes('4 cm'))?.limit ?? 20.0
-      break
-    case 'ratio_sinc':
-      activeArray = sincAveragedArray
-      isRatioMode = true
-      ratioLimit = compliance?.checks?.find(c => c.label.includes('S_inc') && c.label.includes('local'))?.limit ?? 10.0
-      break
+  // Pick data array based on display quantity
+  const arrayMap: Record<string, Float32Array | null> = {
+    sab: sabArray,
+    sab_4cm2: sabAveragedArray,
+    sab_1cm2: sab1cm2AveragedArray,
+    sinc_local: sincArray,
   }
-
-  // Fall back to sabArray if the selected mode's data is not available
+  let activeArray = arrayMap[displayQuantity] ?? null
   const dataArray = activeArray ?? sabArray
+
+  // Ratio mode: find limit from compliance checks
+  let isRatioMode = ratioMode && displayQuantity !== 'sab'
+  let ratioLimit = 1.0
+  if (isRatioMode && compliance?.checks) {
+    const limitMap: Record<string, (c: { label: string }) => boolean> = {
+      sab_4cm2: (c) => c.label.includes('4 cm'),
+      sab_1cm2: (c) => c.label.includes('1 cm'),
+      sinc_local: (c) => c.label.includes('S_inc') && c.label.includes('local'),
+    }
+    const finder = limitMap[displayQuantity]
+    if (finder) {
+      ratioLimit = compliance.checks.find(finder)?.limit ?? 20.0
+    }
+  }
 
   // Apply heatmap colors when data, scale mode, or dynamic range changes
   useEffect(() => {

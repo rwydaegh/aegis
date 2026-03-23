@@ -10,6 +10,7 @@ import PhantomPanel from '@/components/panels/PhantomPanel'
 import LayersPanel from '@/components/panels/LayersPanel'
 import ScenePanel from '@/components/panels/ScenePanel'
 import RayTracingPanel from '@/components/panels/RayTracingPanel'
+import StochasticPanel from '@/components/panels/StochasticPanel'
 
 export default function Sidebar() {
   const { sidebarOpen } = useUIStore()
@@ -71,6 +72,15 @@ export default function Sidebar() {
               <AccordionContent>
                 <div className="py-2">
                   <RayTracingPanel />
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="stochastic" className="border-b border-border px-3">
+              <AccordionTrigger className="text-sm font-medium py-3">Stochastic</AccordionTrigger>
+              <AccordionContent>
+                <div className="py-2">
+                  <StochasticPanel />
                 </div>
               </AccordionContent>
             </AccordionItem>

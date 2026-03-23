@@ -58,7 +58,9 @@ Common backend flags:
 
 **Phantom.** The sidebar phantom panel lets you switch between body meshes (Duke, Ella, Thelonious, Eartha) and move or rotate the phantom with WASD keys. The dropdown shows IT'IS metadata (age, sex, mass) for each phantom.
 
-**Dosimetry panel.** Choose fidelity level (0-6), tissue preset, transmit power, frequency, and stochastic propagation config. The propagation dropdown controls how many synthetic plane waves illuminate the body when ray tracing is off: 1 gives a single LOS wave from antenna to body, while 5/10/20 add stochastic scattered paths with angular jitter and reduced power to approximate multipath without ray tracing. Levels 4-6 add polarization, curvature, and diffraction corrections that produce visibly different heatmaps.
+**Dosimetry panel.** Choose fidelity level (0-6), tissue preset, transmit power, and frequency. Levels 4-6 add polarization, curvature, and diffraction corrections.
+
+**Stochastic panel.** When ray tracing is off, controls how multipath is modeled. Select a 3GPP TR 38.901 scenario preset (UMi, UMa, Indoor, InF, RMa, in LOS or NLOS variants) and the channel model generates cluster-based multipath with proper K-factor splitting, angular spreads, and sub-path structure. You can override individual parameters (K-factor, azimuth/elevation spread, number of clusters) or reset to the preset defaults. This is mutually exclusive with ray tracing: enabling one disables the other.
 
 **Colormap.** Absorbed power density is rendered as a jet colormap on the body mesh. The legend on the right side supports:
 

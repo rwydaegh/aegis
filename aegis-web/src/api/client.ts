@@ -30,12 +30,18 @@ async function getBinary(path: string): Promise<Response> {
   return res
 }
 
+export interface ComputeResult {
+  sab: Float32Array
+  stats: DosimetryStats
+  arrays: Record<string, Float32Array>
+}
+
 /** Shared logic for all compute endpoints: POST JSON, receive binary S_ab + X-Stats header. */
 async function computeEndpoint(
   path: string,
   params: Record<string, unknown>,
   signal?: AbortSignal,
-): Promise<{ sab: Float32Array; stats: DosimetryStats }> {
+): Promise<ComputeResult> {
   const res = await fetch(`${BASE}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -49,9 +55,19 @@ async function computeEndpoint(
   const stats: DosimetryStats = JSON.parse(statsHeader)
 
   const buffer = await res.arrayBuffer()
-  const sab = parseSabBinary(buffer)
 
-  return { sab, stats }
+  const arrays: Record<string, Float32Array> = {}
+  if (stats.arrays && stats.arrays.length > 0) {
+    for (const meta of stats.arrays) {
+      const byteOffset = meta.offset
+      const byteLength = meta.length * 4
+      arrays[meta.key] = new Float32Array(buffer.slice(byteOffset, byteOffset + byteLength))
+    }
+  } else {
+    arrays['sab'] = parseSabBinary(buffer)
+  }
+
+  return { sab: arrays['sab'] ?? parseSabBinary(buffer), stats, arrays }
 }
 
 // ---------------------------------------------------------------------------
@@ -204,6 +220,13 @@ export interface ComputeParams {
   powerDbm: number
   tissue: string
   nPaths: number
+  stochastic?: boolean
+  stochasticPreset?: string
+  stochasticOverrides?: Record<string, number>
+  stochasticSeed?: number
+  freqGhz?: number
+  quantities: string[]
+  exposureScenario: string
 }
 
 function computePayload(params: ComputeParams) {
@@ -219,20 +242,29 @@ function computePayload(params: ComputeParams) {
     power_dbm: params.powerDbm,
     tissue: params.tissue,
     n_paths: params.nPaths,
+    quantities: params.quantities,
+    exposure_scenario: params.exposureScenario,
+    freq_ghz: params.freqGhz,
+    ...(params.stochastic ? {
+      stochastic: true,
+      stochastic_preset: params.stochasticPreset,
+      stochastic_overrides: params.stochasticOverrides,
+      stochastic_seed: params.stochasticSeed,
+    } : {}),
   }
 }
 
 export async function computeDosimetry(
   params: ComputeParams,
   signal?: AbortSignal,
-): Promise<{ sab: Float32Array; stats: DosimetryStats }> {
+): Promise<ComputeResult> {
   return computeEndpoint('/api/compute', computePayload(params), signal)
 }
 
 export async function computeVoxelRT(
   params: ComputeParams & { maxOrder: number },
   signal?: AbortSignal,
-): Promise<{ sab: Float32Array; stats: DosimetryStats }> {
+): Promise<ComputeResult> {
   return computeEndpoint(
     '/api/compute/voxel-rt',
     { ...computePayload(params), max_order: params.maxOrder },
@@ -243,7 +275,7 @@ export async function computeVoxelRT(
 export async function computeRT(
   params: ComputeParams & { scenePath: string; maxOrder: number },
   signal?: AbortSignal,
-): Promise<{ sab: Float32Array; stats: DosimetryStats }> {
+): Promise<ComputeResult> {
   return computeEndpoint(
     '/api/compute/rt',
     { ...computePayload(params), scene_path: params.scenePath, max_order: params.maxOrder },
@@ -254,7 +286,7 @@ export async function computeRT(
 export async function computeSionnaRT(
   params: ComputeParams & { scenePath: string },
   signal?: AbortSignal,
-): Promise<{ sab: Float32Array; stats: DosimetryStats }> {
+): Promise<ComputeResult> {
   return computeEndpoint(
     '/api/compute/sionna-rt',
     { ...computePayload(params), scene_path: params.scenePath },
