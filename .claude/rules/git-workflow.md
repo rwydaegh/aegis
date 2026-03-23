@@ -30,9 +30,37 @@ This is a vibe-coded project. Claude is often the only one making changes in a s
 
 ## Branching
 
-- For now, work directly on master. The project is young and single-developer.
-- If a change is large or experimental (touching 5+ files across multiple modules), create a feature branch, commit there, then ask the user before merging to master.
+- For small changes, commit and push directly to master.
+- For large changes (new features, multi-file refactors, anything touching 5+ files), use the PR workflow below.
 - Branch naming: `feature/short-description`, `fix/short-description`, `refactor/short-description`.
+
+## PR workflow for large changes
+
+Use this instead of pushing directly to master when the change is significant. It creates a numbered PR on GitHub with a diff view, then merges immediately.
+
+```bash
+# 1. Create and switch to a feature branch
+git checkout -b feature/short-description
+
+# 2. Commit your work (one or more commits)
+git add <files>
+git commit -m "Add the thing"
+
+# 3. Push the branch
+git push -u origin feature/short-description
+
+# 4. Create the PR and merge it
+gh pr create --title "Add the thing" --body "## Summary\n- what changed\n- why" --base master
+gh pr merge --merge
+
+# 5. Return to master and pull
+git checkout master
+git pull origin master
+```
+
+GitHub will auto-delete the remote branch after merge (repo setting: delete-branch-on-merge is enabled). Clean up the local branch with `git branch -d feature/short-description`.
+
+When to use: new feature, new kernel, new module, large refactor, anything the user would want a PR diff view for. When in doubt, ask.
 
 ## Versioning
 
