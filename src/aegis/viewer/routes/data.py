@@ -14,12 +14,21 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
     @app.route("/")
     def index():
+        # Serve React build if available (primary frontend)
         static_dir = Path(__file__).parent.parent / "static"
         if (static_dir / "index.html").exists():
             from flask import send_from_directory
 
             return send_from_directory(str(static_dir), "index.html")
-        return render_template("index.html", viewer_config=json.dumps(cache["config"]))
+        # Fall back to legacy Jinja2 template (deprecated)
+        import warnings
+
+        warnings.warn(
+            "Serving legacy HTML viewer. Build the React frontend: cd aegis-web && npm run build",
+            DeprecationWarning,
+            stacklevel=1,
+        )
+        return render_template("_legacy_index.html", viewer_config=json.dumps(cache["config"]))
 
     @app.route("/assets/<path:filename>")
     def static_assets(filename):
