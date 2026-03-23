@@ -1,11 +1,9 @@
-window.MathJax = {
-  startup: {
-    typeset: false,
-    ready() {
-      MathJax.startup.defaultReady();
-      document$.subscribe(() => {
-        MathJax.typesetPromise()
-      })
-    }
+let firstLoad = true;
+document$.subscribe(() => {
+  if (firstLoad) {
+    firstLoad = false;
+    return;
   }
-};
+  MathJax.typesetClear();
+  MathJax.typesetPromise();
+})

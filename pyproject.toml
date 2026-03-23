@@ -31,6 +31,7 @@ viz = [
     "trame>=3.0",
     "scienceplots>=2.1.0",
 ]
+viewer = ["flask>=3.0"]
 rt = ["differt>=0.7.0"]
 sionna = ["sionna-rt>=1.0,<2.0"]
 docs = [
@@ -50,7 +51,7 @@ dev = [
     "miepython>=2.6",
 ]
 cloud = ["requests>=2.31"]
-all = ["aegis[jax,gpu,viz,rt,sionna,docs,dev,cloud]"]
+all = ["aegis[jax,gpu,viz,viewer,rt,sionna,docs,dev,cloud]"]
 
 [tool.hatch.version]
 source = "vcs"

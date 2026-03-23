@@ -76,7 +76,19 @@ test_screenshots/
 .mcp.json
 
 # Local theory artifacts (not part of the repo)
-theory/summary_paper.pdf
+theory/*.pdf
+
+# Superpowers plans/specs/prompts (local tooling, not part of docs)
+docs/superpowers/
+
+# Internal dev notes
+docs/internal/
+
+# Local task list
+TODO.txt
+
+# Frontend smoke test notes
+tests/frontend_smoke.md
 
 # Cloud dev machine state (local, auto-generated)
 tools/.cloud-state.json
