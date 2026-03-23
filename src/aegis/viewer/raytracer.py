@@ -137,6 +137,8 @@ def compute_paths_differt(
     freq_hz: float = 28e9,
     tx_power_dbm: float = 60.0,
     reflection_loss_per_order: float = 0.5,
+    method: str = "exhaustive",
+    num_rays: int = 1_000_000,
     # NOTE: Uses from_powers() with scalar power only. Polarisation direction
     # is irrelevant here because the viewer runs incoherent levels (0-6) where
     # only |psi|^2 matters. For coherent levels (7-8) with proper TE/TM
@@ -181,7 +183,7 @@ def compute_paths_differt(
 
     for order in range(max_order + 1):
         try:
-            paths = scene.compute_paths(order=order)
+            paths = scene.compute_paths(order=order, method=method, num_rays=num_rays)
         except Exception as e:
             logger.warning("Bounce order %d failed, skipping: %s", order, e)
             continue

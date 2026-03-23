@@ -191,11 +191,6 @@ DEFAULTS: dict = {
             {"value": 10, "label": "10 (moderate scatter)"},
             {"value": 20, "label": "20 (rich scatter)"},
         ],
-        "max_order_options": [
-            {"value": 0, "label": "0 (LOS only)"},
-            {"value": 1, "label": "1 (+ single reflection)"},
-            {"value": 2, "label": "2 (+ double reflection)"},
-        ],
         "power_input": {
             "min": 0,
             "max": 60,

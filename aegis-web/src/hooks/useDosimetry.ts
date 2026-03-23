@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback } from 'react'
 import { useSimulationStore } from '@/stores/simulation'
 import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
-import { computeDosimetry, computeVoxelRT, computeRT, computeSionnaRT } from '@/api/client'
+import { computeDosimetry, computeVoxelRT, computeRT, computeSionnaRT, type RtConfig } from '@/api/client'
 
 export function useDosimetry() {
   const antennaPos = useSimulationStore(s => s.antennaPos)
@@ -30,6 +30,19 @@ export function useDosimetry() {
   const rtSource = useSceneStore(s => s.rtSource)
   const rtMaxOrder = useSceneStore(s => s.rtMaxOrder)
   const loadedScenePath = useSceneStore(s => s.loadedScenePath)
+  const rtMethod = useSceneStore(s => s.rtMethod)
+  const rtRaysPerSource = useSceneStore(s => s.rtRaysPerSource)
+  const rtMaxPathsPerSource = useSceneStore(s => s.rtMaxPathsPerSource)
+  const rtLos = useSceneStore(s => s.rtLos)
+  const rtSpecularReflection = useSceneStore(s => s.rtSpecularReflection)
+  const rtDiffuseReflection = useSceneStore(s => s.rtDiffuseReflection)
+  const rtRefraction = useSceneStore(s => s.rtRefraction)
+  const rtDiffraction = useSceneStore(s => s.rtDiffraction)
+  const rtEdgeDiffraction = useSceneStore(s => s.rtEdgeDiffraction)
+  const rtDiffractionLitRegion = useSceneStore(s => s.rtDiffractionLitRegion)
+  const rtReflectionLoss = useSceneStore(s => s.rtReflectionLoss)
+  const rtSyntheticArray = useSceneStore(s => s.rtSyntheticArray)
+  const rtSeed = useSceneStore(s => s.rtSeed)
 
   const abortRef = useRef<AbortController | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -76,14 +89,32 @@ export function useDosimetry() {
     const timeoutMs = (config.interaction as Record<string, unknown> & { compute_timeout_ms?: number }).compute_timeout_ms ?? 60000
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 
+    // Build RT config from store state
+    const rtConfig: RtConfig = {
+      max_depth: rtMaxOrder,
+      method: rtMethod,
+      rays_per_source: rtRaysPerSource,
+      max_paths_per_source: rtMaxPathsPerSource,
+      los: rtLos,
+      specular_reflection: rtSpecularReflection,
+      diffuse_reflection: rtDiffuseReflection,
+      refraction: rtRefraction,
+      diffraction: rtDiffraction,
+      edge_diffraction: rtEdgeDiffraction,
+      diffraction_lit_region: rtDiffractionLitRegion,
+      reflection_loss_per_order: rtReflectionLoss,
+      synthetic_array: rtSyntheticArray,
+      seed: rtSeed,
+    }
+
     // Choose endpoint based on path source
     let computeCall: Promise<import('@/api/client').ComputeResult>
     if (pathSource === 'rt' && rtSource === 'voxel') {
-      computeCall = computeVoxelRT({ ...params, maxOrder: rtMaxOrder }, controller.signal)
+      computeCall = computeVoxelRT({ ...params, rtConfig }, controller.signal)
     } else if (pathSource === 'rt' && rtSource === 'differt' && loadedScenePath) {
-      computeCall = computeRT({ ...params, scenePath: loadedScenePath, maxOrder: rtMaxOrder }, controller.signal)
+      computeCall = computeRT({ ...params, scenePath: loadedScenePath, rtConfig }, controller.signal)
     } else if (pathSource === 'rt' && rtSource === 'sionna' && loadedScenePath) {
-      computeCall = computeSionnaRT({ ...params, scenePath: loadedScenePath }, controller.signal)
+      computeCall = computeSionnaRT({ ...params, scenePath: loadedScenePath, rtConfig }, controller.signal)
     } else {
       computeCall = computeDosimetry(params, controller.signal)
     }
@@ -126,7 +157,11 @@ export function useDosimetry() {
       })
   }, [antennaPos, mode, fresnel, polarisation, curvature, diffraction, powerDbm, skinModel, freqGhz, nPaths,
     bodyOffset, bodyRotationY, config, caps, pathSource, rtSource, rtMaxOrder, loadedScenePath,
-    stochasticPreset, stochasticOverrides, stochasticSeed, enabledQuantities, exposureScenario])
+    stochasticPreset, stochasticOverrides, stochasticSeed, enabledQuantities, exposureScenario,
+    rtMethod, rtRaysPerSource, rtMaxPathsPerSource,
+    rtLos, rtSpecularReflection, rtDiffuseReflection, rtRefraction,
+    rtDiffraction, rtEdgeDiffraction, rtDiffractionLitRegion,
+    rtReflectionLoss, rtSyntheticArray, rtSeed])
 
   // Debounced trigger on any dependency change
   useEffect(() => {
@@ -141,7 +176,11 @@ export function useDosimetry() {
     }
   }, [antennaPos, mode, fresnel, polarisation, curvature, diffraction, powerDbm, skinModel, freqGhz, nPaths,
     bodyOffset, bodyRotationY, triggerCompute, config, stochasticPreset, stochasticOverrides,
-    stochasticSeed, pathSource, enabledQuantities, exposureScenario])
+    stochasticSeed, pathSource, enabledQuantities, exposureScenario,
+    rtMethod, rtRaysPerSource, rtMaxPathsPerSource,
+    rtLos, rtSpecularReflection, rtDiffuseReflection, rtRefraction,
+    rtDiffraction, rtEdgeDiffraction, rtDiffractionLitRegion,
+    rtReflectionLoss, rtSyntheticArray, rtSeed])
 
   // Cancel any in-flight request on unmount
   useEffect(() => {

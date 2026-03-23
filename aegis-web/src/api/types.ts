@@ -21,7 +21,7 @@ export interface ViewerConfig {
   dosimetry: {
     fidelity_levels: { value: number; label: string }[]
     path_options: { value: number; label: string }[]
-    max_order_options: { value: number; label: string }[]
+    max_order_options?: { value: number; label: string }[]
     compliance_threshold: number
   }
   colormap: {

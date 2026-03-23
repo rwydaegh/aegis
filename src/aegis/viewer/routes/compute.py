@@ -914,7 +914,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         stoch_cfg = cfg["dosimetry"].get("stochastic", {})
         preset_dir = Path(stoch_cfg.get("preset_dir", "data/channel_presets"))
         if not preset_dir.is_absolute():
-            preset_dir = Path(__file__).resolve().parents[3] / preset_dir
+            preset_dir = Path(__file__).resolve().parents[4] / preset_dir
         featured = stoch_cfg.get("featured_presets", [])
         all_names = list_presets(preset_dir)
         presets = []

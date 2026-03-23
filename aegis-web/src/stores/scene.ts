@@ -43,6 +43,25 @@ interface SceneStore {
   hasDiffert: boolean
   loadedScenePath: string
 
+  // RT config - path solving
+  rtMethod: 'exhaustive' | 'sbr' | 'hybrid'
+  rtRaysPerSource: number
+  rtMaxPathsPerSource: number
+
+  // RT config - interactions
+  rtLos: boolean
+  rtSpecularReflection: boolean
+  rtDiffuseReflection: boolean
+  rtRefraction: boolean
+  rtDiffraction: boolean
+  rtEdgeDiffraction: boolean
+  rtDiffractionLitRegion: boolean
+
+  // RT config - solver-specific
+  rtReflectionLoss: number
+  rtSyntheticArray: boolean
+  rtSeed: number
+
   // Actions
   setViewerConfig: (config: ViewerConfig) => void
   setCapabilities: (caps: Capabilities) => void
@@ -79,10 +98,23 @@ export const useSceneStore = create<SceneStore>((set) => ({
   glbTiles: [],
   pathSource: 'synthetic',
   rtSource: 'differt',
-  rtMaxOrder: 2,
+  rtMaxOrder: 3,
   rtPaths: null,
   hasDiffert: false,
   loadedScenePath: '',
+  rtMethod: 'exhaustive',
+  rtRaysPerSource: 1_000_000,
+  rtMaxPathsPerSource: 1_000_000,
+  rtLos: true,
+  rtSpecularReflection: true,
+  rtDiffuseReflection: false,
+  rtRefraction: true,
+  rtDiffraction: false,
+  rtEdgeDiffraction: false,
+  rtDiffractionLitRegion: true,
+  rtReflectionLoss: 0.5,
+  rtSyntheticArray: true,
+  rtSeed: 42,
   setViewerConfig: (config) => set({ viewerConfig: config }),
   setCapabilities: (caps) => set({ capabilities: caps }),
   setBodyName: (name) => set({ bodyName: name }),
