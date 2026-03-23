@@ -91,6 +91,26 @@ export interface ComplianceInfo {
   checks: ComplianceCheck[]
 }
 
+export type QuantityKey = 'sab' | 'sab_4cm2' | 'sab_1cm2' | 'sar_wb' | 'sinc_local' | 'sinc_wb'
+
+export interface ArrayMeta {
+  key: string
+  offset: number
+  length: number
+}
+
+export interface ComputeTimings {
+  body_transform_ms: number
+  kernel_ms: number
+  avg_build_G_4cm2_ms: number
+  avg_matvec_4cm2_ms: number
+  engine_compute_ms: number
+  compliance_stats_ms: number
+  total_ms: number
+  route_total_ms: number
+  [key: string]: number
+}
+
 export interface DosimetryStats {
   p_abs: number
   p_abs_mw: number
@@ -108,6 +128,9 @@ export interface DosimetryStats {
   path_viz?: PathViz[]
   peak_sab_averaged: number | null
   compliance: ComplianceInfo
+  timings?: ComputeTimings
+  peaks?: Record<string, number>
+  arrays?: ArrayMeta[]
 }
 
 export interface PathViz {

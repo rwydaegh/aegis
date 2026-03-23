@@ -3,8 +3,17 @@ import { create } from 'zustand'
 export type CameraPreset = 'front' | 'side' | 'top' | 'focus' | 'reset' | null
 export type CameraMode = 'orbit' | 'follow'
 export type LegendScale = 'linear' | 'dB'
-export type DisplayMode = 'raw_sab' | 'avg_sab' | 'sinc' | 'ratio_sab' | 'ratio_sinc'
+export type { QuantityKey } from '@/api/types'
 export type ExposureScenario = 'general_public' | 'occupational'
+
+export interface LastComputeTiming {
+  totalMs: number
+  kernelMs: number
+  averagingMs: number
+  complianceMs: number
+  networkMs: number
+  avgCached: boolean
+}
 
 interface UIStore {
   sidebarOpen: boolean
@@ -20,8 +29,9 @@ interface UIStore {
   dynamicRangeDb: number
   colormapLocked: boolean
   colormapLockedMax: number | null
-  displayMode: DisplayMode
+  ratioMode: boolean
   exposureScenario: ExposureScenario
+  lastComputeTiming: LastComputeTiming | null
 
   toggleSidebar: () => void
   toggleWireframe: () => void
@@ -37,8 +47,9 @@ interface UIStore {
   setDynamicRangeDb: (db: number) => void
   toggleColormapLock: () => void
   setColormapLockedMax: (max: number) => void
-  setDisplayMode: (mode: DisplayMode) => void
+  setRatioMode: (on: boolean) => void
   setExposureScenario: (s: ExposureScenario) => void
+  setLastComputeTiming: (t: LastComputeTiming | null) => void
 }
 
 export const useUIStore = create<UIStore>((set) => ({
@@ -55,8 +66,9 @@ export const useUIStore = create<UIStore>((set) => ({
   dynamicRangeDb: 30,
   colormapLocked: false,
   colormapLockedMax: null,
-  displayMode: 'raw_sab',
+  ratioMode: false,
   exposureScenario: 'general_public',
+  lastComputeTiming: null,
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
   toggleWireframe: () => set((state) => ({ wireframe: !state.wireframe })),
   setComputing: (computing) => set({ isComputing: computing }),
@@ -79,6 +91,7 @@ export const useUIStore = create<UIStore>((set) => ({
     return { colormapLocked: true }
   }),
   setColormapLockedMax: (max) => set({ colormapLockedMax: max }),
-  setDisplayMode: (mode) => set({ displayMode: mode }),
+  setRatioMode: (on) => set({ ratioMode: on }),
   setExposureScenario: (s) => set({ exposureScenario: s }),
+  setLastComputeTiming: (t) => set({ lastComputeTiming: t }),
 }))

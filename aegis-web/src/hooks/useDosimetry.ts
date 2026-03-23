@@ -20,6 +20,9 @@ export function useDosimetry() {
   const stochasticOverrides = useSimulationStore(s => s.stochasticOverrides)
   const stochasticSeed = useSimulationStore(s => s.stochasticSeed)
   const freqGhz = useSimulationStore(s => s.freqGhz)
+  const enabledQuantities = useSimulationStore(s => s.enabledQuantities)
+
+  const exposureScenario = useUIStore(s => s.exposureScenario)
 
   const config = useSceneStore(s => s.viewerConfig)
   const caps = useSceneStore(s => s.capabilities)
@@ -65,6 +68,8 @@ export function useDosimetry() {
       stochasticOverrides,
       stochasticSeed,
       freqGhz,
+      quantities: Array.from(enabledQuantities),
+      exposureScenario,
     }
 
     // Timeout: abort after configured limit
@@ -72,7 +77,7 @@ export function useDosimetry() {
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 
     // Choose endpoint based on path source
-    let computeCall: Promise<{ sab: Float32Array; stats: import('@/api/types').DosimetryStats }>
+    let computeCall: Promise<import('@/api/client').ComputeResult>
     if (pathSource === 'rt' && rtSource === 'voxel') {
       computeCall = computeVoxelRT({ ...params, maxOrder: rtMaxOrder }, controller.signal)
     } else if (pathSource === 'rt' && rtSource === 'differt' && loadedScenePath) {
@@ -85,10 +90,15 @@ export function useDosimetry() {
 
     const t_request = performance.now()
     computeCall
-      .then(({ sab, stats }) => {
+      .then(({ sab, stats, arrays }) => {
         const t_response = performance.now()
         if (gen !== generationRef.current) return // stale response
-        useSimulationStore.getState().setResults(sab, stats)
+        useSimulationStore.getState().setResults(sab, stats, {
+          sabAveraged: arrays['sab_4cm2'],
+          sinc: arrays['sinc_local'],
+          sincAveraged: arrays['sinc_averaged'],
+          sab1cm2Averaged: arrays['sab_1cm2'],
+        })
         if (stats.path_viz) {
           useSceneStore.getState().setRtPaths(stats.path_viz)
         }
@@ -115,7 +125,7 @@ export function useDosimetry() {
       })
   }, [antennaPos, mode, fresnel, polarisation, curvature, diffraction, powerDbm, tissue, nPaths,
     bodyOffset, bodyRotationY, config, caps, pathSource, rtSource, rtMaxOrder, loadedScenePath,
-    stochasticPreset, stochasticOverrides, stochasticSeed, freqGhz])
+    stochasticPreset, stochasticOverrides, stochasticSeed, freqGhz, enabledQuantities, exposureScenario])
 
   // Debounced trigger on any dependency change
   useEffect(() => {
@@ -130,7 +140,7 @@ export function useDosimetry() {
     }
   }, [antennaPos, mode, fresnel, polarisation, curvature, diffraction, powerDbm, tissue, nPaths,
     bodyOffset, bodyRotationY, triggerCompute, config, stochasticPreset, stochasticOverrides,
-    stochasticSeed, freqGhz, pathSource])
+    stochasticSeed, freqGhz, pathSource, enabledQuantities, exposureScenario])
 
   // Cancel any in-flight request on unmount
   useEffect(() => {

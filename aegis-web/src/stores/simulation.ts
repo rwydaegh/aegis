@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { ScenePos } from '@/api/coordinates'
-import type { DosimetryStats } from '@/api/types'
+import type { DosimetryStats, QuantityKey } from '@/api/types'
 
 export type DosimetryMode = 'bound' | 'aggregate' | 'spatial'
 
@@ -28,10 +28,13 @@ interface SimulationStore {
   sabAveragedArray: Float32Array | null
   sincArray: Float32Array | null
   sincAveragedArray: Float32Array | null
+  sab1cm2AveragedArray: Float32Array | null
   stats: DosimetryStats | null
 
   // Inputs (compliance)
   freqGhz: number
+  enabledQuantities: Set<QuantityKey>
+  displayQuantity: QuantityKey
 
   // Actions
   setAntennaPos: (pos: ScenePos | null) => void
@@ -49,7 +52,12 @@ interface SimulationStore {
   setBodyOffset: (offset: ScenePos) => void
   setBodyRotationY: (angle: number) => void
   setFreqGhz: (v: number) => void
-  setResults: (sab: Float32Array, stats: DosimetryStats, extras?: { sabAveraged?: Float32Array; sinc?: Float32Array; sincAveraged?: Float32Array }) => void
+  setEnabledQuantities: (q: Set<QuantityKey>) => void
+  toggleQuantity: (key: QuantityKey) => void
+  setDisplayQuantity: (key: QuantityKey) => void
+  setResults: (sab: Float32Array, stats: DosimetryStats, extras?: {
+    sabAveraged?: Float32Array; sinc?: Float32Array; sincAveraged?: Float32Array; sab1cm2Averaged?: Float32Array
+  }) => void
   clearResults: () => void
 }
 
@@ -72,8 +80,11 @@ export const useSimulationStore = create<SimulationStore>((set) => ({
   sabAveragedArray: null,
   sincArray: null,
   sincAveragedArray: null,
+  sab1cm2AveragedArray: null,
   stats: null,
   freqGhz: 28,
+  enabledQuantities: new Set<QuantityKey>(['sab', 'sab_4cm2']),
+  displayQuantity: 'sab' as QuantityKey,
   setAntennaPos: (pos) => set({ antennaPos: pos }),
   setMode: (mode) => set({ mode }),
   setFresnel: (on) => set({ fresnel: on }),
@@ -93,12 +104,25 @@ export const useSimulationStore = create<SimulationStore>((set) => ({
   setBodyOffset: (offset) => set({ bodyOffset: offset }),
   setBodyRotationY: (angle) => set({ bodyRotationY: angle }),
   setFreqGhz: (v) => set({ freqGhz: v }),
+  setEnabledQuantities: (q) => set({ enabledQuantities: q }),
+  toggleQuantity: (key) => set((state) => {
+    const next = new Set(state.enabledQuantities)
+    if (next.has(key)) {
+      next.delete(key)
+      if (state.displayQuantity === key) return { enabledQuantities: next, displayQuantity: 'sab' as QuantityKey }
+    } else {
+      next.add(key)
+    }
+    return { enabledQuantities: next }
+  }),
+  setDisplayQuantity: (key) => set({ displayQuantity: key }),
   setResults: (sab, stats, extras) => set({
     sabArray: sab,
     stats,
     sabAveragedArray: extras?.sabAveraged ?? null,
     sincArray: extras?.sinc ?? null,
     sincAveragedArray: extras?.sincAveraged ?? null,
+    sab1cm2AveragedArray: extras?.sab1cm2Averaged ?? null,
   }),
-  clearResults: () => set({ sabArray: null, sabAveragedArray: null, sincArray: null, sincAveragedArray: null, stats: null }),
+  clearResults: () => set({ sabArray: null, sabAveragedArray: null, sincArray: null, sincAveragedArray: null, sab1cm2AveragedArray: null, stats: null }),
 }))
