@@ -47,3 +47,27 @@ def cole_cole_permittivity(freq_hz: float | np.ndarray, params: dict) -> complex
         eps -= 1j * params["sig"] / (omega * EPS_0)
 
     return eps
+
+
+def debye_permittivity(
+    freq_hz: float | np.ndarray,
+    eps_inf: float,
+    eps_static: float,
+    sigma: float,
+    tau_s: float,
+) -> complex | np.ndarray:
+    """Single-pole Debye permittivity model.
+
+    Parameters
+    ----------
+    freq_hz : frequency in Hz (scalar or array)
+    eps_inf : high-frequency permittivity limit
+    eps_static : static (DC) permittivity
+    sigma : static conductivity in S/m
+    tau_s : relaxation time in seconds
+    """
+    omega = 2 * np.pi * np.asarray(freq_hz, dtype=np.float64)
+    eps = eps_inf + (eps_static - eps_inf) / (1 + 1j * omega * tau_s)
+    if sigma != 0:
+        eps = eps - 1j * sigma / (omega * EPS_0)
+    return eps
