@@ -1,24 +1,25 @@
-import { useEffect } from 'react'
 import { useSimulationStore } from '@/stores/simulation'
 import { useUIStore } from '@/stores/ui'
 import type { QuantityKey } from '@/api/types'
+import Tex from '@/components/ui/Tex'
+import type { ReactNode } from 'react'
 
 interface QtyRow {
   key: QuantityKey
-  label: string
+  label: ReactNode
   unit: string
   spatial: boolean
 }
 
 const BASIC_RESTRICTION: QtyRow[] = [
-  { key: 'sab_4cm2', label: 'S_ab (4 cm²)', unit: 'W/m²', spatial: true },
-  { key: 'sab_1cm2', label: 'S_ab (1 cm²)', unit: 'W/m²', spatial: true },
-  { key: 'sar_wb', label: 'SAR_wb', unit: 'W/kg', spatial: false },
+  { key: 'sab_4cm2', label: <Tex math={'S_\\text{ab}\\;(4\\,\\text{cm}^2)'} />, unit: 'W/m²', spatial: true },
+  { key: 'sab_1cm2', label: <Tex math={'S_\\text{ab}\\;(1\\,\\text{cm}^2)'} />, unit: 'W/m²', spatial: true },
+  { key: 'sar_wb', label: <Tex math={'\\text{SAR}_\\text{wb}'} />, unit: 'W/kg', spatial: false },
 ]
 
 const REFERENCE_LEVEL: QtyRow[] = [
-  { key: 'sinc_local', label: 'S_inc local', unit: 'W/m²', spatial: true },
-  { key: 'sinc_wb', label: 'S_inc wb', unit: 'W/m²', spatial: false },
+  { key: 'sinc_local', label: <Tex math={'S_\\text{inc}\\;(\\text{local})'} />, unit: 'W/m²', spatial: true },
+  { key: 'sinc_wb', label: <Tex math={'S_\\text{inc}\\;(\\text{wb})'} />, unit: 'W/m²', spatial: false },
 ]
 
 export default function QuantitiesPanel() {
@@ -34,11 +35,8 @@ export default function QuantitiesPanel() {
   const isActive = (key: QuantityKey) => displayQuantity === key
   const isEnabled = (key: QuantityKey) => enabledQuantities.has(key)
 
-  useEffect(() => {
-    if (displayQuantity === 'sab_1cm2' && freqGhz <= 30) {
-      setDisplayQuantity('sab')
-    }
-  }, [freqGhz, displayQuantity, setDisplayQuantity])
+  // The store's setFreqGhz handles swapping 4cm²/1cm² at the 30 GHz boundary,
+  // including resetting displayQuantity if needed.
 
   function getLimit(key: QuantityKey): string | null {
     if (!compliance?.checks) return null
@@ -105,7 +103,7 @@ export default function QuantitiesPanel() {
         className={sabCardClass}
         onClick={() => setDisplayQuantity('sab')}
       >
-        <span className="text-xs font-medium">S<sub>ab</sub></span>
+        <span className="text-xs font-medium"><Tex math={'S_\\text{ab}'} /></span>
         {displayQuantity === 'sab' && <span className="text-[10px] text-primary">{'▸'} displayed</span>}
       </div>
 

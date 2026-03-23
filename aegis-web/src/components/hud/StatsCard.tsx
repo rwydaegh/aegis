@@ -1,5 +1,6 @@
 import { useSimulationStore } from '@/stores/simulation'
 import { useSceneStore } from '@/stores/scene'
+import { useUIStore } from '@/stores/ui'
 import { formatSab, formatPower, formatDistance } from '@/lib/format'
 import { PHANTOM_META } from '@/components/panels/PhantomPanel'
 import Tex from '@/components/ui/Tex'
@@ -7,6 +8,7 @@ import Tex from '@/components/ui/Tex'
 export default function StatsCard() {
   const { stats } = useSimulationStore()
   const bodyName = useSceneStore(s => s.bodyName)
+  const isComputing = useUIStore(s => s.isComputing)
   const meta = PHANTOM_META[bodyName.toLowerCase()]
   const massKg = meta?.mass_kg
 
@@ -20,17 +22,17 @@ export default function StatsCard() {
   const rows: Array<{ key: string; label: React.ReactNode; value: string; highlight?: 'pass' | 'fail' }> = [
     {
       key: 'sar_wb',
-      label: <Tex math="\text{SAR}_\text{wb}" />,
+      label: <Tex math={'\\text{SAR}_\\text{wb}'} />,
       value: sarValue != null ? formatSar(sarValue) : '--',
     },
     {
       key: 'p_abs',
-      label: <Tex math="P_\text{abs}" />,
+      label: <Tex math={'P_\\text{abs}'} />,
       value: stats ? formatPower(stats.p_abs_mw) : '--',
     },
     {
       key: 'peak_sab',
-      label: <Tex math="\text{Peak}\;S_\text{ab}" />,
+      label: <Tex math={'\\text{Peak}\\;S_\\text{ab}'} />,
       value: stats ? formatSab(stats.peak_sab) : '--',
     },
     {
@@ -52,7 +54,7 @@ export default function StatsCard() {
   ]
 
   return (
-    <div className="bg-card/80 backdrop-blur-md rounded-lg border border-border p-3 min-w-[180px]">
+    <div className={`bg-card/80 backdrop-blur-md rounded-lg border border-border p-3 min-w-[180px] transition-all duration-300 ${isComputing ? 'shimmer-computing border-primary/30' : ''}`}>
       <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
         Dosimetry
       </p>

@@ -3,6 +3,7 @@ import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
 import type { DosimetryMode } from '@/stores/simulation'
 import QuantitiesPanel from './QuantitiesPanel'
+import Tex from '@/components/ui/Tex'
 
 const MODES: { value: DosimetryMode; label: string }[] = [
   { value: 'bound', label: 'Bound' },
@@ -120,7 +121,7 @@ export default function ParametersPanel() {
         </>
       )}
 
-      <label className={labelClass}>TX power</label>
+      <label className={labelClass}><Tex math={'P_\\text{TX}'} /></label>
       <div className="flex gap-2 items-center">
         <div className="flex-1">
           <input
@@ -163,8 +164,8 @@ export default function ParametersPanel() {
       </select>
       {stats?.tissue_eps_r != null && (
         <div className="flex gap-3 mt-1 text-[10px] text-muted-foreground">
-          <span>εr = {stats.tissue_eps_r.toFixed(1)}</span>
-          <span>σ = {stats.tissue_sigma.toFixed(1)} S/m</span>
+          <span><Tex math={`\\varepsilon_r = ${stats.tissue_eps_r.toFixed(1)}`} /></span>
+          <span><Tex math={`\\sigma = ${stats.tissue_sigma.toFixed(1)}\\;\\text{S/m}`} /></span>
         </div>
       )}
 
@@ -185,14 +186,18 @@ export default function ParametersPanel() {
         </>
       )}
 
-      <label className={labelClass}>Frequency (GHz)</label>
+      <label className={labelClass}><Tex math={'f\\;(\\text{GHz})'} /></label>
       <div className="flex gap-1.5 items-center mb-2">
         <input
           type="number"
           className={inputClass + ' !w-[70px]'}
           value={freqGhz}
-          onChange={(e) => setFreqGhz(parseFloat(e.target.value) || 28)}
-          min={0.1}
+          onChange={(e) => {
+            const v = parseFloat(e.target.value)
+            if (!Number.isFinite(v)) return
+            setFreqGhz(Math.max(0.3, Math.min(300, v)))
+          }}
+          min={0.3}
           max={300}
           step={1}
         />

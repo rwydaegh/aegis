@@ -1,7 +1,9 @@
 import { useState, useRef } from 'react'
 import { loadLocation, cancelLocation, loadSceneGeometry } from '@/api/client'
 import { useSceneStore } from '@/stores/scene'
+import { useSimulationStore } from '@/stores/simulation'
 import { useUIStore } from '@/stores/ui'
+import Tex from '@/components/ui/Tex'
 
 function SionnaSceneSelector() {
   const scenes = useSceneStore(s => s.scenes)
@@ -55,11 +57,13 @@ function SionnaSceneSelector() {
 export default function ScenePanel() {
   const caps = useSceneStore(s => s.capabilities)
   const scenes = useSceneStore(s => s.scenes)
+  const actualVoxelSize = useSceneStore(s => s.voxelData?.meta?.voxel_size)
   const locationLoading = useUIStore(s => s.locationLoading)
   const locationLog = useUIStore(s => s.locationLog)
 
   const [location, setLocation] = useState('')
   const [radius, setRadius] = useState(30)
+  const [voxelSize, setVoxelSize] = useState(0.5)
   const [force, setForce] = useState(false)
   const esRef = useRef<EventSource | null>(null)
 
@@ -83,7 +87,7 @@ export default function ScenePanel() {
     useUIStore.getState().setLocationLoading(true)
     useUIStore.getState().clearLocationLog()
 
-    const es = loadLocation(location, radius, force)
+    const es = loadLocation(location, radius, voxelSize, force)
     esRef.current = es
 
     es.addEventListener('progress', (e: MessageEvent) => {
@@ -130,10 +134,20 @@ export default function ScenePanel() {
             onChange={e => setLocation(e.target.value)}
             placeholder="e.g. Ghent, Belgium" disabled={locationLoading} />
 
-          <label className={labelClass}>Radius (m)</label>
+          <label className={labelClass}><Tex math={'\\text{Radius}\\;(\\text{m})'} /></label>
           <input type="number" className={inputClass} value={radius}
             min={10} max={500} step={10}
             onChange={e => setRadius(Number(e.target.value))} disabled={locationLoading} />
+
+          <label className={labelClass}><Tex math={'\\text{Voxel size}\\;(\\text{m})'} /></label>
+          <input type="number" className={inputClass} value={voxelSize}
+            min={0.1} max={5} step={0.1}
+            onChange={e => setVoxelSize(Number(e.target.value))} disabled={locationLoading} />
+          {actualVoxelSize != null && (
+            <span className="text-[10px] text-muted-foreground mt-0.5 block">
+              Actual: {actualVoxelSize.toFixed(2)} m (median)
+            </span>
+          )}
 
           <label className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
             <input type="checkbox" checked={force} onChange={e => setForce(e.target.checked)} />
@@ -167,6 +181,18 @@ export default function ScenePanel() {
           Set GOOGLE_API_KEY env var to enable location loading.
         </p>
       )}
+
+      <div className="mt-4 pt-3 border-t border-border">
+        <button
+          onClick={() => {
+            useSceneStore.getState().clearScene()
+            useSimulationStore.getState().clearResults()
+          }}
+          className="w-full px-3 py-1.5 rounded text-xs font-medium bg-destructive text-white hover:bg-destructive/90"
+        >
+          Clear Scene
+        </button>
+      </div>
     </div>
   )
 }

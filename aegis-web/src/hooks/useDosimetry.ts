@@ -108,6 +108,7 @@ export function useDosimetry() {
         const t = stats.timings
         useUIStore.getState().setLastComputeTiming({
           totalMs: t_response - t_request,
+          rtMs: t?.rt_ms ?? null,
           kernelMs: t?.kernel_ms ?? 0,
           averagingMs: (t?.avg_build_G_4cm2_ms ?? 0) + (t?.avg_matvec_4cm2_ms ?? 0),
           complianceMs: t?.compliance_stats_ms ?? 0,

@@ -8,7 +8,7 @@ AEGIS computes absorbed power density on human bodies in wireless environments. 
 
 ## Build, test, lint
 
-This machine has Python 3.14 (system) and 3.12 (user). AEGIS is installed under 3.12. Always use the explicit path or `py -3.12` on Windows.
+AEGIS requires Python 3.12. Always use `py -3.12` on Windows.
 
 ```bash
 pip install -e ".[dev]"                              # install with dev deps (uses 3.12)
@@ -40,8 +40,8 @@ The data flow is: ray tracer -> `PropagationPaths` -> `DosimetryEngine.compute(b
 - `src/aegis/coherent/` - field channel, exposure operator Q, ECBF solver
 - `src/aegis/compliance/` - ICNIRP 2020 limits
 - `src/aegis/integration/` - DiffeRT ray tracer bridge (requires `pip install aegis[rt]`)
-- `src/aegis/viewer/` - Flask backend: REST API, serves `static/` React build; legacy `_legacy_index.html` only if no build
-- `aegis-web/` - React + Three.js frontend (Vite, R3F, Zustand). Dev: `npm run dev` from `aegis-web/`
+- `src/aegis/viewer/` - Flask backend: REST API (`routes/`), serves `static/` React build, config via `config.py`
+- `aegis-web/` - React + Three.js frontend (Vite, R3F, Zustand). State in Zustand store, 3D scene in `components/scene/`, HUD overlay in `components/hud/`. Dev: `npm run dev` (localhost:5173), proxies `/api` to Flask on port 5000
 - `src/aegis/viz/` - matplotlib/plotly dashboards and comparison plots
 
 ## Theory (the monograph)
@@ -57,7 +57,7 @@ Phantom meshes (STL) and the IT'IS tissue database live in `data/` inside the re
 
 ## Testing rules
 
-- Pre-commit runs ruff and codespell only, not pytest. CI runs `pytest tests/` on push and PR. Locally, `pytest -m "not slow"` skips slow-marked tests. Default pytest uses two workers (`-n 2` in `pyproject.toml`). Use `pytest -n 0` for a single process. Avoid `pytest -n auto` on typical laptops (memory scales with CPU count).
+- Pre-commit runs ruff, codespell, trailing-whitespace, end-of-file-fixer, YAML/TOML/JSON validators, and large-file checks. Not pytest. CI runs `pytest tests/` on push and PR. Locally, `pytest -m "not slow"` skips slow-marked tests. Default pytest uses two workers (`-n 2` in `pyproject.toml`). Use `pytest -n 0` for a single process. Avoid `pytest -n auto` on typical laptops (memory scales with CPU count).
 - The Mie regression test is the CI canary. If it passes, physics are correct.
 - Every monograph table has a golden test in `tests/golden/`.
 - Property tests (Hypothesis) check physics invariants: Sab >= 0, energy conservation, ReLU bound.
@@ -71,6 +71,10 @@ Phantom meshes (STL) and the IT'IS tissue database live in `data/` inside the re
 - No em dashes, no semicolons. Sentence case for headings.
 - Writing tells to avoid: `.claude/ai_writing_tells.md`. Full doc style: `.claude/rules/docs-style.md`.
 - Git workflow: `.claude/rules/git-workflow.md`.
+
+## Web search
+
+Reddit has honest, unfiltered opinions. Use the Reddit MCP (`reddit-mcp-server`) proactively for library comparisons, debugging, community opinions, and tool evaluations. Read threads one by one (the API is per-post). `WebFetch` cannot access Reddit or Twitter (bot-blocking).
 
 ## Self-evolution
 

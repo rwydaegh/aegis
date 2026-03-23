@@ -38,6 +38,12 @@ export default function StatusBar() {
       {expanded && showTiming && (
         <div className="bg-card/90 backdrop-blur-md rounded-lg border border-border px-3 py-2 mb-1
           text-[11px] font-mono text-muted-foreground min-w-[200px]">
+          {lastComputeTiming.rtMs != null && (
+            <div className="flex justify-between gap-4">
+              <span className="text-foreground/60">ray tracing</span>
+              <span>{formatMs(lastComputeTiming.rtMs)}</span>
+            </div>
+          )}
           <div className="flex justify-between gap-4">
             <span className="text-foreground/60">kernel</span>
             <span>{formatMs(lastComputeTiming.kernelMs)}</span>
@@ -56,7 +62,7 @@ export default function StatusBar() {
             <span>{formatMs(lastComputeTiming.complianceMs)}</span>
           </div>
           <div className="flex justify-between gap-4">
-            <span className="text-foreground/60">network</span>
+            <span className="text-foreground/60">transfer</span>
             <span>{formatMs(lastComputeTiming.networkMs)}</span>
           </div>
         </div>

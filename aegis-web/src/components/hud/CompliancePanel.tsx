@@ -10,39 +10,32 @@ const LABEL_TEX: Record<string, string> = {
   'S_inc (whole-body)': 'S_\\text{inc}\\;(\\text{wb})',
 }
 
-function checkToQuantityKey(label: string): string | null {
-  if (label.includes('4 cm')) return 'sab_4cm2'
-  if (label.includes('1 cm')) return 'sab_1cm2'
-  if (label.includes('SAR')) return 'sar_wb'
-  if (label.includes('S_inc') && label.includes('local')) return 'sinc_local'
-  if (label.includes('S_inc') && label.includes('whole')) return 'sinc_wb'
-  return null
-}
-
 export default function CompliancePanel() {
   const stats = useSimulationStore(s => s.stats)
   const scenario = useUIStore(s => s.exposureScenario)
-  const enabledQuantities = useSimulationStore(s => s.enabledQuantities)
-
+  const isComputing = useUIStore(s => s.isComputing)
   if (!stats?.compliance) return null
   const { compliance } = stats
 
-  const visibleChecks = compliance.checks.filter(check => {
-    const key = checkToQuantityKey(check.label)
-    return key === null || enabledQuantities.has(key as import('@/api/types').QuantityKey)
-  })
+  // Show ALL compliance checks regardless of which quantities are enabled
+  // for mesh display. Compliance is regulatory, not a display preference.
+  const visibleChecks = compliance.checks
 
   if (visibleChecks.length === 0) return null
 
   return (
-    <div style={{
-      background: 'rgba(0,0,0,0.7)',
-      padding: '12px',
-      borderRadius: '8px',
-      fontFamily: 'monospace',
-      fontSize: '12px',
-      minWidth: '280px',
-    }}>
+    <div
+      className={isComputing ? 'shimmer-computing' : ''}
+      style={{
+        background: 'rgba(0,0,0,0.7)',
+        padding: '12px',
+        borderRadius: '8px',
+        fontFamily: 'monospace',
+        fontSize: '12px',
+        minWidth: '280px',
+        transition: 'border-color 0.3s',
+        border: isComputing ? '1px solid rgba(100, 130, 200, 0.3)' : '1px solid transparent',
+      }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
         <span style={{ color: '#888', fontSize: '10px', letterSpacing: '1px' }}>
           COMPLIANCE (ICNIRP 2020)

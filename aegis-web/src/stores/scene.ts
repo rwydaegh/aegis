@@ -61,6 +61,7 @@ interface SceneStore {
   setRtMaxOrder: (order: number) => void
   setRtPaths: (paths: PathViz[] | null) => void
   setLoadedScenePath: (path: string) => void
+  clearScene: () => void
 }
 
 export const useSceneStore = create<SceneStore>((set) => ({
@@ -100,9 +101,19 @@ export const useSceneStore = create<SceneStore>((set) => ({
   setSceneGeometry: (geom) => set({ sceneGeometry: geom }),
   toggleSceneGeometryVisible: () => set((state) => ({ sceneGeometryVisible: !state.sceneGeometryVisible })),
   setGlbTiles: (tiles) => set({ glbTiles: tiles }),
-  setPathSource: (source) => set({ pathSource: source }),
+  setPathSource: (source) => set({ pathSource: source, ...(source !== 'rt' ? { rtPaths: null } : {}) }),
   setRtSource: (source) => set({ rtSource: source }),
   setRtMaxOrder: (order) => set({ rtMaxOrder: order }),
   setRtPaths: (paths) => set({ rtPaths: paths }),
   setLoadedScenePath: (path) => set({ loadedScenePath: path }),
+  clearScene: () => set({
+    voxelData: null,
+    voxelHeightmap: null,
+    layerVisibility: {},
+    sceneGeometry: null,
+    sceneGeometryVisible: true,
+    glbTiles: [],
+    rtPaths: null,
+    loadedScenePath: '',
+  }),
 }))
