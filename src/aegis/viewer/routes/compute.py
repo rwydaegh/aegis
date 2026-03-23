@@ -211,6 +211,31 @@ def _zero_paths_response(body, tissue, level, extra=None):
 def register(app: Flask, cache: dict, cache_lock) -> None:
     """Attach compute routes to *app*."""
 
+    def _parse_rt_config(params: dict) -> dict:
+        """Extract rt_config from request params, with backward-compatible fallbacks."""
+        rt = params.get("rt_config", {})
+        if not isinstance(rt, dict):
+            rt = {}
+        return {
+            "max_depth": rt.get("max_depth", params.get("max_order", 3)),
+            "method": rt.get("method", "exhaustive"),
+            "rays_per_source": rt.get("rays_per_source", 1_000_000),
+            "max_paths_per_source": rt.get("max_paths_per_source", 1_000_000),
+            "los": rt.get("los", True),
+            "specular_reflection": rt.get("specular_reflection", True),
+            "diffuse_reflection": rt.get("diffuse_reflection", False),
+            "refraction": rt.get("refraction", True),
+            "diffraction": rt.get("diffraction", False),
+            "edge_diffraction": rt.get("edge_diffraction", False),
+            "diffraction_lit_region": rt.get("diffraction_lit_region", True),
+            "reflection_loss_per_order": rt.get(
+                "reflection_loss_per_order",
+                cache["config"]["raytracer"]["reflection_loss_per_order"],
+            ),
+            "synthetic_array": rt.get("synthetic_array", True),
+            "seed": rt.get("seed", 42),
+        }
+
     @app.route("/api/compute", methods=["POST"])
     def api_compute():
         """Compute dosimetry for given antenna position."""
@@ -471,7 +496,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         scene_path = params.get("scene_path")
         engine_kw = _parse_mode_or_level(params)
         power_dbm = params.get("power_dbm", 60.0)
-        max_order = params.get("max_order", 1)
+        rt_cfg_parsed = _parse_rt_config(params)
+        max_order = rt_cfg_parsed["max_depth"]
         body_offset = np.array(params.get("body_offset", [0, 0, 0]))
         body_rotation_y = float(params.get("body_rotation_y", 0.0))
 
@@ -506,7 +532,6 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
         # Run DiffeRT
         try:
-            rt_cfg = cache["config"]["raytracer"]
             paths, path_viz = compute_paths_differt(
                 scene_path,
                 tx_pos=antenna_pos,
@@ -514,7 +539,9 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                 max_order=max_order,
                 freq_hz=tissue.freq_hz,
                 tx_power_dbm=power_dbm,
-                reflection_loss_per_order=rt_cfg["reflection_loss_per_order"],
+                reflection_loss_per_order=rt_cfg_parsed["reflection_loss_per_order"],
+                method=rt_cfg_parsed["method"],
+                num_rays=rt_cfg_parsed["rays_per_source"],
             )
         except Exception as e:
             return jsonify({"error": f"Ray tracing failed: {e}"}), 500
@@ -591,7 +618,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         scene_path = params.get("scene_path")
         engine_kw = _parse_mode_or_level(params)
         power_dbm = params.get("power_dbm", 60.0)
-        max_bounces = params.get("max_order", 5)
+        rt_cfg_parsed = _parse_rt_config(params)
+        max_bounces = rt_cfg_parsed["max_depth"]
         body_offset = np.array(params.get("body_offset", [0, 0, 0]))
         body_rotation_y = float(params.get("body_rotation_y", 0.0))
 
@@ -635,6 +663,17 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                 max_bounces=max_bounces,
                 tx_power_dbm=power_dbm,
                 return_viz=True,
+                los=rt_cfg_parsed["los"],
+                specular_reflection=rt_cfg_parsed["specular_reflection"],
+                diffuse_reflection=rt_cfg_parsed["diffuse_reflection"],
+                refraction=rt_cfg_parsed["refraction"],
+                diffraction=rt_cfg_parsed["diffraction"],
+                edge_diffraction=rt_cfg_parsed["edge_diffraction"],
+                diffraction_lit_region=rt_cfg_parsed["diffraction_lit_region"],
+                samples_per_src=rt_cfg_parsed["rays_per_source"],
+                max_num_paths_per_src=rt_cfg_parsed["max_paths_per_source"],
+                synthetic_array=rt_cfg_parsed["synthetic_array"],
+                seed=rt_cfg_parsed["seed"],
             )
         except ImportError:
             return jsonify({"error": "Sionna RT not installed"}), 501
@@ -722,7 +761,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         body_rotation_y = float(params.get("body_rotation_y", 0.0))
         engine_kw = _parse_mode_or_level(params)
         power_dbm = params.get("power_dbm", 60.0)
-        max_order = params.get("max_order", 0)
+        rt_cfg_parsed = _parse_rt_config(params)
+        max_order = rt_cfg_parsed["max_depth"]
 
         quantities = params.get("quantities", ["sab", "sab_4cm2"])
         exposure_scenario_str = params.get("exposure_scenario", "general_public")
@@ -825,7 +865,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                     all_k_hat.append(k_hat)
 
                     S_inc = isotropic_incident_power_density(tx_power_w, total_len, min_distance_m=d_clamp) * (
-                        rt_cfg["reflection_loss_per_order"] ** order
+                        rt_cfg_parsed["reflection_loss_per_order"] ** order
                     )
                     all_power.append(S_inc)
 
