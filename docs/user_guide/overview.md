@@ -1,6 +1,6 @@
 # Overview
 
-AEGIS computes absorbed power density on human body meshes. You choose a computation mode (`bound`, `aggregate`, `spatial`, `coherent`, or `ecbf`) and toggle independent physics corrections. The `mode=` parameter is the primary API. Integer `level=` (0-8) still works for backward compatibility and maps to specific mode + correction combinations. See [fidelity levels](fidelity_levels.md) for full details.
+AEGIS computes absorbed power density on human body meshes. Two APIs are available. Use `level=` (0-8) to select a predefined fidelity level by integer. Use `mode=` (`bound`, `aggregate`, `spatial`, `coherent`, `ecbf`) with optional correction flags when you need finer control over which physics are applied. Both call the same kernels. See [fidelity levels](fidelity_levels.md) for the full mapping.
 
 ## Typical workflow
 

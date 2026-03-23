@@ -9,7 +9,7 @@ Tests fall into these groups:
 - Regression tests compare against the Mie analytical solution. The Mie test is the CI canary.
 - Engine tests run `PropagationPaths` through `DosimetryResult` on synthetic meshes for incoherent levels 0-6.
 - Coherent tests cover levels 7-8 (Q matrix, ECBF, precoder).
-- Viewer tests hit Flask JSON routes, auth, config, compute helpers, and voxel fixtures. The React UI is under `aegis-web/`; full 3D interaction is left to manual QA or browser automation.
+- Viewer tests hit Flask JSON routes, auth, config, compute helpers, and voxel fixtures. The React UI is under `aegis-web/`. Full 3D interaction is left to manual QA or browser automation.
 - Visualization tests build heatmaps, dashboards, and comparison plots.
 
 `@pytest.mark.slow` marks tests that need mesh files, `itis_v5.db`, or similar. It does not label wall time. The filter `pytest -m "not slow"` still spends most time on coherent kernels, Hypothesis, optional JAX, and Plotly.

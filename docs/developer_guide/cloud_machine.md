@@ -61,7 +61,7 @@ python tools/cloud.py up         # ~30s to wake, ~5min to provision
 python tools/cloud.py down       # stop when done
 ```
 
-After `up`, the output includes an SSH config block you can paste into `~/.ssh/config` for VS Code Remote-SSH. The block must include **`IdentityFile`** pointing at the same key as `TENSORDOCK_SSH_KEY_PATH`. Connect to host `aegis-dev`.
+After `up`, the output includes an SSH config block you can paste into `~/.ssh/config` for VS Code Remote-SSH. Connect to host `aegis-dev`.
 
 VS Code tunnels ports automatically, so Flask on the remote machine appears at `localhost:5000` in your local browser once you forward port 5000 (or use "Forward a Port" for 5000).
 

@@ -116,7 +116,7 @@ Mapping from old integer levels to the mode API:
 from aegis import DosimetryEngine
 from aegis.tissue.dielectric import TissueModel
 
-tissue = TissueModel.from_name("skin", 28e9)
+tissue = TissueModel.from_database("Skin", 28e9)
 engine = DosimetryEngine(tissue)
 
 # Basic spatial map with Fresnel (default)

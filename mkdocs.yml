@@ -53,7 +53,9 @@ nav:
     - FAQ: user_guide/faq.md
     - Troubleshooting: user_guide/troubleshooting.md
     - Batch runner: user_guide/batch_runner.md
+    - DiffeRT integration: user_guide/differt_integration.md
     - Sionna RT integration: user_guide/sionna_integration.md
+    - Stochastic channel: user_guide/stochastic_channel.md
     - Interactive viewer: user_guide/viewer.md
     - Fidelity levels: user_guide/fidelity_levels.md
     - Tissue and Fresnel: user_guide/tissue.md

@@ -51,6 +51,9 @@ dosimetry:
 output_dir: outputs
 ```
 
+!!! note
+    The batch runner defaults to `spatial_averaging: false`. The [geometry](geometry.md) and [compliance](compliance.md) pages describe spatial averaging as always-on, which refers to the interactive viewer. In the batch runner, spatial averaging is opt-in to keep the default path conservative and fast.
+
 ### Backends
 
 Three ray tracer backends are available:
@@ -94,7 +97,7 @@ The `summary.json` looks like:
 }
 ```
 
-The compliance check compares the raw per-triangle peak against the ICNIRP 2020 limit of 10 W/m$^2$. This is conservative because the standard requires spatial averaging over 4 cm$^2$.
+The compliance check compares the raw per-triangle peak against the ICNIRP 2020 basic restriction of 20 W/m$^2$ (Table 2, averaged over 4 cm$^2$). This is conservative because no spatial averaging is applied.
 
 ## Relationship to the viewer
 

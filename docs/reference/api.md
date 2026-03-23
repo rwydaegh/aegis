@@ -292,9 +292,53 @@ Auto-generated from source code. See the [user guide](../user_guide/overview.md)
       filters:
         - '!^_'
 
+## Optimization
+
+### Loss functions
+
+::: aegis.optim
+    options:
+      show_root_heading: true
+      show_source: true
+      members_order: source
+      filters:
+        - '!^_'
+
 ## Constants
 
 ::: aegis.constants
     options:
       show_root_heading: true
       show_source: true
+
+## Compliance
+
+::: aegis.compliance
+    options:
+      show_root_heading: true
+      show_source: true
+      members_order: source
+      filters:
+        - '!^_'
+
+## Integration
+
+### DiffeRT bridge
+
+::: aegis.integration.differt
+    options:
+      show_root_heading: true
+      show_source: true
+      members_order: source
+      filters:
+        - '!^_'
+
+### Sionna RT bridge
+
+::: aegis.integration.sionna
+    options:
+      show_root_heading: true
+      show_source: true
+      members_order: source
+      filters:
+        - '!^_'

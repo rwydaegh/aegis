@@ -86,52 +86,7 @@ skin_db = TissueModel.from_database("Skin", 28e9)
 
 ## Coherent MIMO dosimetry
 
-Levels 7 and 8 use full complex amplitudes and antenna element structure for MIMO analysis.
-
-### Level 7: coherent map
-
-```python
-import numpy as np
-import aegis
-
-skin = aegis.TissueModel.from_params("Skin", 17.0, 25.0, 28e9)
-body = aegis.BodyMesh.load("thelonious.stl")
-
-# 20 paths from 4 antenna elements with complex amplitudes
-N, M_ant = 20, 4
-rng = np.random.default_rng(42)
-k_hat = rng.standard_normal((N, 3))
-k_hat /= np.linalg.norm(k_hat, axis=1, keepdims=True)
-psi = rng.standard_normal((N, 3)) + 1j * rng.standard_normal((N, 3))
-element_index = rng.integers(0, M_ant, size=N)
-
-paths = aegis.PropagationPaths(
-    k_hat=k_hat, psi=psi, element_index=element_index,
-    delay=np.zeros(N), is_los=np.ones(N, dtype=bool),
-)
-
-# MRT precoder from a channel vector
-h = rng.standard_normal(M_ant) + 1j * rng.standard_normal(M_ant)
-precoder = aegis.Precoder.mrt(h, P=1.0)
-
-engine = aegis.DosimetryEngine(skin)
-result = engine.compute(body, paths, level=7, precoder=precoder, h=h)
-
-print(f"P_abs: {result.p_abs:.4f} W")
-print(f"rho: {result.rho:.3f}")          # exposure-signal alignment
-print(f"Top eigenvalues: {result.eigenvalues[:3]}")
-```
-
-### Level 8: exposure-constrained beamforming
-
-```python
-result = engine.compute(body, paths, level=8, h=h, P_abs_max=0.05)
-
-print(f"P_abs: {result.p_abs:.4f} W (constrained to <= 0.05)")
-print(f"rho: {result.rho:.3f}")
-```
-
-Level 8 solves a QCQP to find the precoder that maximizes signal power while keeping absorbed power below `P_abs_max`.
+Levels 7 and 8 handle coherent multi-antenna systems with complex field amplitudes and precoding. See [Coherent MIMO](user_guide/coherent.md) for the full API and examples.
 
 ## Comparing fidelity levels
 
