@@ -11,8 +11,6 @@ from dataclasses import dataclass, field, fields
 
 import numpy as np
 
-from aegis.compliance import ICNIRP_2020
-
 
 @dataclass(frozen=True)
 class DosimetryResult:
@@ -42,6 +40,12 @@ class DosimetryResult:
     rho: float | None = None
     eigenvalues: np.ndarray | None = field(default=None, repr=False)
     x_star: np.ndarray | None = field(default=None, repr=False)
+
+    # Incident and averaged fields
+    sinc: np.ndarray | None = field(default=None, repr=False)
+    sinc_averaged: np.ndarray | None = field(default=None, repr=False)
+    sab_1cm2_averaged: np.ndarray | None = field(default=None, repr=False)
+    freq_hz: float | None = None
 
     def to_dict(self) -> dict:
         """Serialize fields to a JSON-friendly dict. Omits None values."""
@@ -89,24 +93,26 @@ class DosimetryResult:
 
     @property
     def compliant_sab(self) -> bool | None:
-        """ICNIRP compliance for S_ab: peak averaged < limit.
-
-        Returns None if spatial averaging was not performed.
-        """
+        """ICNIRP compliance: peak spatially averaged S_ab <= limit."""
         peak = self.peak_sab_averaged
-        if peak is None:
+        if peak is None or self.freq_hz is None:
             return None
-        return peak < ICNIRP_2020.sab_peak
+        from aegis.compliance import ExposureScenario, icnirp_limits
+
+        lim = icnirp_limits(ExposureScenario.GENERAL_PUBLIC, self.freq_hz)
+        return peak <= lim.sab_4cm2
 
     @property
     def compliant_sar(self) -> bool | None:
-        """ICNIRP compliance for whole-body SAR: < limit.
+        """ICNIRP compliance for whole-body SAR: <= limit.
 
         Returns None if SAR was not computed.
         """
         if self.sar_wb is None:
             return None
-        return self.sar_wb < ICNIRP_2020.sar_wb
+        from aegis.compliance import ICNIRP_2020
+
+        return self.sar_wb <= ICNIRP_2020.sar_wb
 
     def __repr__(self) -> str:
         parts = [
