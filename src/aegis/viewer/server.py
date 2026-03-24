@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import os
 import threading
+import uuid
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import numpy as np
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request, session
 
 from aegis.viewer.scene_data import (
     body_to_binary,
@@ -176,22 +178,45 @@ def create_app(
     template_dir = str(Path(__file__).parent / "templates")
     app = Flask(__name__, template_folder=template_dir)
 
-    # Optional HTTP Basic Auth for remote access
-    _viewer_auth = os.environ.get("AEGIS_VIEWER_AUTH")
-    if _viewer_auth and ":" in _viewer_auth:
-        _auth_user, _, _auth_pass = _viewer_auth.partition(":")
+    # Session-based password gate
+    app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-secret-key-change-me")
+    app.config["SESSION_COOKIE_HTTPONLY"] = True
+    app.config["SESSION_COOKIE_SECURE"] = os.environ.get("FLASK_ENV") != "development"
+    app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+    app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=2)
 
-        @app.before_request
-        def _check_basic_auth():
-            from flask import Response, request
+    _gate_password = os.environ.get("AEGIS_GATE_PASSWORD")
+    _exempt_paths = {"/api/auth", "/api/health"}
 
-            auth = request.authorization
-            if not auth or auth.username != _auth_user or auth.password != _auth_pass:
-                return Response(
-                    "Authentication required.",
-                    401,
-                    {"WWW-Authenticate": 'Basic realm="AEGIS Viewer"'},
-                )
+    @app.before_request
+    def check_auth():
+        if _gate_password is None:
+            return  # No password set, skip auth (local dev)
+        if request.path in _exempt_paths:
+            return
+        if request.path.startswith("/assets/") or request.path == "/":
+            return  # Serve React app and static assets without auth
+        if not session.get("authenticated"):
+            return jsonify({"error": "Authentication required"}), 401
+
+    @app.route("/api/auth", methods=["POST"])
+    def authenticate():
+        if _gate_password is None:
+            return jsonify({"error": "No password configured"}), 500
+        data = request.get_json(silent=True) or {}
+        if data.get("password") != _gate_password:
+            return jsonify({"error": "Wrong password"}), 401
+        session.permanent = True
+        session["authenticated"] = True
+        session["session_id"] = str(uuid.uuid4())
+        expires_at = datetime.now(UTC) + timedelta(hours=2)
+        return jsonify(
+            {
+                "ok": True,
+                "expires_at": expires_at.isoformat(),
+                "session_id": session["session_id"],
+            }
+        )
 
     # Store pipeline config
     _cache["bbox_radius"] = bbox_radius
