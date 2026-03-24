@@ -96,7 +96,7 @@ class DosimetryEngine:
         mode: str | None = None,
         corrections: tuple[str, ...] = (),
         Q: np.ndarray | None = None,
-        rho: np.ndarray | None = None,
+        rho: float | None = None,
         eigenvalues: np.ndarray | None = None,
         x_star: np.ndarray | None = None,
     ) -> DosimetryResult:

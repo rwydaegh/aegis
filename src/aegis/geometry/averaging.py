@@ -133,7 +133,8 @@ def precompute_averaging_matrix(
 
         patch_idx = idx_sorted[:cutoff]
         patch_areas = areas[patch_idx]
-        weights = patch_areas / patch_areas.sum()
+        total = patch_areas.sum()
+        weights = np.full(len(patch_idx), 1.0 / len(patch_idx)) if total <= 0 else patch_areas / total
 
         n = len(patch_idx)
         rows.extend([i] * n)
