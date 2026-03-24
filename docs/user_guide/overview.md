@@ -14,9 +14,9 @@ For coherent and ECBF modes, you also provide a precoding vector (via `Precoder.
 
 ## Key outputs
 
-- `result.sab` - per-triangle absorbed power density [W/m^2]
+- `result.sab` - per-triangle absorbed power density [W/m$^2$]
 - `result.p_abs` - total absorbed power [W]
-- `result.peak_sab` - maximum S_ab across all triangles
+- `result.peak_sab` - maximum $S_{ab}$ across all triangles
 - `result.sar_wb` - whole-body SAR [W/kg] (if body mass provided)
 - `result.compliant_sab` - True/False if spatial averaging was applied, None otherwise
 - `result.Q` - exposure operator (coherent and ECBF modes)
@@ -24,3 +24,57 @@ For coherent and ECBF modes, you also provide a precoding vector (via `Precoder.
 - `result.rho` - exposure-signal alignment (coherent and ECBF modes)
 
 See [fidelity levels](fidelity_levels.md) for details on each mode and correction.
+
+## Comparing fidelity levels
+
+`sweep_levels()` runs multiple fidelity levels in one call and returns a dict of results. Levels that need unavailable parameters (e.g. $A_{ab}$ for level 0) are silently skipped.
+
+```python
+results = engine.sweep_levels(body, paths)
+for level, r in results.items():
+    print(f"Level {level}: peak = {r.peak_sab:.2f} W/m², P_abs = {r.p_abs:.4f} W")
+```
+
+To quantify the differences between results, use `DosimetryResult.compare()`:
+
+```python
+from aegis import DosimetryResult
+
+comparison = DosimetryResult.compare(
+    {f"L{k}": v for k, v in results.items()}
+)
+print(f"Relative errors: {comparison['relative_error']}")
+```
+
+This returns peak $S_{ab}$, $P_{abs}$, pairwise RMSE, max absolute error, and relative error across all pairs.
+
+## Scaling and compliance shortcuts
+
+`DosimetryResult.scale(factor)` returns a new result with all power quantities scaled. Combined with `evaluate_compliance()`, this lets you sweep transmit power without rerunning the engine:
+
+```python
+result = engine.compute(body, paths, mode="spatial")
+
+# Scale to 2 W and check compliance
+scaled = result.scale(2.0)
+compliance = scaled.evaluate_compliance()
+print(f"Compliant at 2 W: {compliance.overall_pass}")
+```
+
+See [compliance](compliance.md) for the full compliance workflow including `max_compliant_power()`.
+
+## Serialization
+
+Both `PropagationPaths` and `DosimetryResult` support round-trip serialization:
+
+```python
+# Save
+d = result.to_dict()
+s = result.to_json(indent=2)
+
+# Load
+result2 = DosimetryResult.from_dict(d)
+result3 = DosimetryResult.from_json(s)
+```
+
+`PropagationPaths` has the same `to_dict()` / `from_dict()` pattern. Complex arrays (psi, Q, eigenvalues) are serialized as `{"real": [...], "imag": [...]}`.

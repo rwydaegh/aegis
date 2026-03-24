@@ -57,6 +57,71 @@ print(f"Margin: {result.margin_db:+.1f} dB")
 print(summary_text(result, tx_power_dbm=23.0))
 ```
 
+### Evaluating compliance from a dosimetry result
+
+If you already have a `DosimetryResult`, call `evaluate_compliance()` directly on it:
+
+```python
+result = engine.compute(body, paths, mode="spatial")
+compliance = result.evaluate_compliance()
+
+print(f"Overall: {'PASS' if compliance.overall_pass else 'FAIL'}")
+print(f"Margin: {compliance.margin_db:+.1f} dB")
+```
+
+This populates all available checks from the result fields automatically. Pass `ExposureScenario.OCCUPATIONAL` for occupational limits.
+
+### Maximum compliant power
+
+Given a compliance result computed at some reference transmit power, `max_compliant_power` finds the largest power that keeps all checks passing:
+
+```python
+from aegis.compliance import max_compliant_power
+
+compliance = result.evaluate_compliance()
+p_max = max_compliant_power(compliance, ref_power_w=1.0)
+print(f"Max compliant power: {p_max:.2f} W ({10 * np.log10(p_max * 1e3):.1f} dBm)")
+```
+
+$S_{ab}$ scales linearly with transmit power for all fidelity levels, so the calculation is exact: $P_{max} = P_{ref} \cdot \min_i(\text{limit}_i / \text{value}_i)$.
+
+Combined with `DosimetryResult.scale()`, this enables parameter sweeps without rerunning the engine:
+
+```python
+# Compute once at 1 W
+result_1w = engine.compute(body, paths, mode="spatial")
+
+# Scale to explore the compliance boundary
+for p_dbm in range(10, 40):
+    p_w = 10 ** ((p_dbm - 30) / 10)
+    scaled = result_1w.scale(p_w)
+    c = scaled.evaluate_compliance()
+    print(f"{p_dbm} dBm: {'PASS' if c.overall_pass else 'FAIL'} (margin {c.margin_db:+.1f} dB)")
+```
+
+## Command-line interface
+
+Quick ICNIRP checks from the terminal without writing Python:
+
+```bash
+# Check a measured S_ab value
+py -3.12 -m aegis.compliance --freq 28e9 --sab 15.0
+
+# Include transmit power for max compliant power calculation
+py -3.12 -m aegis.compliance --freq 28e9 --sab 15.0 --power 1.0
+
+# Print limits only
+py -3.12 -m aegis.compliance --freq 28e9 --limits
+
+# JSON output for scripting
+py -3.12 -m aegis.compliance --freq 28e9 --sab 15.0 --json
+
+# Occupational limits
+py -3.12 -m aegis.compliance --freq 60e9 --sab 80.0 --occupational
+```
+
+All quantities are optional. Pass any combination of `--sab`, `--sab-1cm2` (above 30 GHz), `--sar`, `--sinc`, `--sinc-wb`.
+
 ## Engine integration
 
 The engine computes all quantities needed for compliance automatically:

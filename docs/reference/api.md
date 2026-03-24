@@ -321,6 +321,18 @@ Auto-generated from source code. See the [user guide](../user_guide/overview.md)
       filters:
         - '!^_'
 
+## Analysis
+
+### Path contributions
+
+::: aegis.analysis
+    options:
+      show_root_heading: true
+      show_source: true
+      members_order: source
+      filters:
+        - '!^_'
+
 ## Integration
 
 ### DiffeRT bridge

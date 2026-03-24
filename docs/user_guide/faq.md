@@ -21,11 +21,74 @@ There is no separate plugin registry. Your code holds the `TissueModel` instance
 
 The **browser viewer uses Three.js**, which by convention is **Y-up** in the 3D view. Internal transforms bridge the two. When you compare numeric vectors from Python to what you see on screen, expect axes to be permuted in the visualiser.
 
-## How do I export dosimetry results?
+## How do I export and import dosimetry results?
 
-`DosimetryResult` serialises without NumPy types:
+Both `DosimetryResult` and `PropagationPaths` support round-trip serialization:
 
-- `result.to_dict()` returns plain Python types (`list` for arrays, skips `None` fields).
-- `result.to_json(indent=2)` writes a JSON string via `to_dict()`.
+```python
+# Export
+d = result.to_dict()    # plain Python types, skips None fields
+s = result.to_json(indent=2)
 
-For raw arrays you can still use `numpy.save`, `numpy.savetxt`, or your own dataframe pipeline from `result.sab` and `body.centroids` / triangle indices.
+# Import
+result2 = DosimetryResult.from_dict(d)
+result3 = DosimetryResult.from_json(s)
+
+# Same pattern for paths
+paths_dict = paths.to_dict()
+paths2 = PropagationPaths.from_dict(paths_dict)
+```
+
+Complex arrays (psi, Q, eigenvalues) are serialized as `{"real": [...], "imag": [...]}` and reconstructed automatically. For raw arrays you can still use `numpy.save`, `numpy.savetxt`, or your own dataframe pipeline from `result.sab` and `body.centroids`.
+
+## How do I construct paths from angles instead of Cartesian directions?
+
+Use `from_spherical()` when your paths are specified as arrival angles:
+
+```python
+paths = PropagationPaths.from_spherical(
+    theta=np.array([0.0, np.pi / 4]),   # zenith (0 = +z)
+    phi=np.array([0.0, np.pi / 2]),      # azimuth
+    power=np.array([1.0, 0.5]),
+)
+```
+
+For uniform illumination analysis, `uniform_sphere()` generates evenly distributed paths:
+
+```python
+paths = PropagationPaths.uniform_sphere(n_paths=256, total_power=1.0, seed=42)
+```
+
+## How do I combine paths from multiple sources?
+
+`PropagationPaths.concatenate()` merges paths from multiple ray tracers, antenna panels, or scenarios:
+
+```python
+combined = PropagationPaths.concatenate([paths_panel_1, paths_panel_2])
+```
+
+By default, `reindex_elements=True` keeps antenna element indices disjoint across inputs. Set it to `False` if all paths share a common indexing scheme.
+
+You can also filter by line-of-sight status:
+
+```python
+los_only = paths.los_paths
+nlos_only = paths.nlos_paths
+```
+
+## How do I find which paths dominate the exposure?
+
+The `aegis.analysis` module identifies per-path contributions:
+
+```python
+from aegis.analysis import path_contributions, path_importance
+
+# Top 5 paths contributing to peak S_ab
+info = path_contributions(body, paths, tissue, top_k=5)
+print(f"Top 5 paths account for {info['cumulative'][-1]:.0%} of peak exposure")
+
+# Per-path importance for total absorbed power
+importance = path_importance(body, paths, tissue)
+```
+
+This is useful for importance sampling in ray tracing and understanding which propagation paths drive the compliance result.

@@ -37,7 +37,7 @@ areas = triangle_areas(vertices)
 
 ### Synthetic meshes
 
-For testing or simple scenarios, construct a `BodyMesh` directly:
+`BodyMesh.from_arrays()` builds a mesh from raw vertex arrays, computing centroids, areas, and optionally normals automatically:
 
 ```python
 import numpy as np
@@ -47,6 +47,15 @@ vertices = np.array([
     [[0, 0, 0], [1, 0, 0], [1, 1, 0]],
     [[0, 0, 0], [1, 1, 0], [0, 1, 0]],
 ], dtype=float)
+
+body = aegis.BodyMesh.from_arrays(vertices, name="square")
+```
+
+If you need explicit control over normals, pass them as the second argument. Otherwise they are computed from the vertex cross product.
+
+For full manual construction (all four arrays):
+
+```python
 normals = np.array([[0, 0, 1], [0, 0, 1]], dtype=float)
 centroids = vertices.mean(axis=1)
 areas = triangle_areas(vertices)
@@ -134,7 +143,7 @@ For a typical human body mesh, $L = 4$ (25 coefficients) gives sub-1% RMS error.
 
 ## Ambient occlusion
 
-The exposure fraction $\eta(\mathbf{r})$ measures how much of the hemisphere above each triangle is visible (not blocked by other body parts). AEGIS computes this via BVH-accelerated cosine-weighted ray tracing.
+The exposure fraction $\eta(\mathbf{r})$ measures how much of the hemisphere above each triangle is visible (not blocked by other body parts). AEGIS computes this via BVH-accelerated cosine-weighted ray tracing. When Numba is installed, the BVH traversal and ray-triangle intersection are JIT-compiled for 50-100x speedup on large meshes.
 
 ```python
 from aegis.geometry import compute_ambient_occlusion

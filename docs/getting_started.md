@@ -90,13 +90,15 @@ Levels 7 and 8 handle coherent multi-antenna systems with complex field amplitud
 
 ## Comparing fidelity levels
 
+`sweep_levels()` runs all feasible incoherent levels in one call:
+
 ```python
-for level in range(7):
-    r = engine.compute(body, paths, level=level)
+results = engine.sweep_levels(body, paths)
+for level, r in results.items():
     print(f"Level {level}: P_abs = {r.p_abs:.4f} W, peak = {r.peak_sab:.2f} W/m²")
 ```
 
-Higher levels add physical corrections (Fresnel, polarisation, curvature, diffraction) that typically change total power by less than 5%. See [fidelity levels](user_guide/fidelity_levels.md) for when each correction matters.
+Higher levels add physical corrections (Fresnel, polarisation, curvature, diffraction) that typically change total power by less than 5%. Use `DosimetryResult.compare()` to quantify convergence across levels. See [fidelity levels](user_guide/fidelity_levels.md) for when each correction matters.
 
 ## Running tests
 
