@@ -5,6 +5,7 @@ on:
     branches: [main, master]
   pull_request:
     branches: [main, master]
+  workflow_call:  # allows deploy.yml to call this workflow
 
 jobs:
   lint:

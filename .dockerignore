@@ -1,0 +1,13 @@
+.git
+.github
+.claude
+__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache
+node_modules
+aegis-web/node_modules
+aegis-web/dist
+.env
+*.egg-info
+docs/superpowers

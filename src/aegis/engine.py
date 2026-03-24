@@ -99,6 +99,7 @@ class DosimetryEngine:
         rho: float | None = None,
         eigenvalues: np.ndarray | None = None,
         x_star: np.ndarray | None = None,
+        _timings: dict | None = None,
     ) -> DosimetryResult:
         """Build a DosimetryResult from raw sab with averaging and derived quantities."""
         p_abs = float(np.sum(sab * body.areas))
@@ -118,15 +119,24 @@ class DosimetryEngine:
         sab_averaged = _to_numpy(G_4cm2 @ sab)
         sinc_averaged = _to_numpy(G_4cm2 @ sinc)
         t_matvec = time.perf_counter() - t1
-        _last_timings["avg_build_G_4cm2_ms"] = t_build * 1e3
-        _last_timings["avg_matvec_4cm2_ms"] = t_matvec * 1e3
+
+        avg_timings: dict[str, float] = {
+            "avg_build_G_4cm2_ms": t_build * 1e3,
+            "avg_matvec_4cm2_ms": t_matvec * 1e3,
+        }
 
         sab_1cm2_averaged = None
         if effective_freq_hz is not None and effective_freq_hz > 30e9:
             t2 = time.perf_counter()
             G_1cm2 = self._get_G(body, 1e-4)
-            _last_timings["avg_build_G_1cm2_ms"] = (time.perf_counter() - t2) * 1e3
+            avg_timings["avg_build_G_1cm2_ms"] = (time.perf_counter() - t2) * 1e3
             sab_1cm2_averaged = _to_numpy(G_1cm2 @ sab)
+
+        # Propagate averaging timings to caller's dict if provided
+        if _timings is not None:
+            _timings.update(avg_timings)
+        # Keep module-level dict updated for backward compatibility
+        _last_timings.update(avg_timings)
 
         return DosimetryResult(
             sab=sab,
@@ -281,6 +291,119 @@ class DosimetryEngine:
             body_mass=body_mass,
             freq_hz=freq_hz,
         )
+
+    def compute_with_timings(
+        self,
+        body: BodyMesh,
+        paths: PropagationPaths,
+        level: int | None = None,
+        body_mass: float | None = None,
+        spatial_averaging: bool = False,
+        A_ab: float | None = None,
+        D_max: float | None = None,
+        sh_coeffs: np.ndarray | None = None,
+        sh_L: int = 4,
+        D_table: np.ndarray | None = None,
+        D_dirs: np.ndarray | None = None,
+        q: np.ndarray | float = 0.0,
+        curvature_H: np.ndarray | None = None,
+        precoder: Precoder | None = None,
+        h: np.ndarray | None = None,
+        P_abs_max: float = 0.1,
+        mode: str | None = None,
+        fresnel: bool = True,
+        polarisation: bool = False,
+        diffraction: bool = False,
+        curvature: bool = False,
+        freq_hz: float | None = None,
+    ) -> tuple[DosimetryResult, dict[str, float]]:
+        """Like compute(), but returns a (DosimetryResult, timings) tuple.
+
+        The timings dict is local to this call (thread-safe). Keys match those
+        in _last_timings: kernel_ms, avg_build_G_4cm2_ms, avg_matvec_4cm2_ms,
+        avg_build_G_1cm2_ms.
+
+        Parameters mirror compute() exactly.
+        """
+        if level is not None and mode is not None:
+            raise ValueError("Cannot specify both level and mode")
+
+        if level is None and mode is None:
+            level = 2
+
+        if body_mass is not None and body_mass <= 0:
+            raise ValueError("body_mass must be positive when provided")
+
+        timings: dict[str, float] = {}
+
+        if mode is not None:
+            result = self._compute_mode(
+                body,
+                paths,
+                mode=mode,
+                fresnel=fresnel,
+                polarisation=polarisation,
+                diffraction=diffraction,
+                curvature=curvature,
+                q=q,
+                curvature_H=curvature_H,
+                body_mass=body_mass,
+                spatial_averaging=spatial_averaging,
+                A_ab=A_ab,
+                D_max=D_max,
+                sh_coeffs=sh_coeffs,
+                sh_L=sh_L,
+                D_table=D_table,
+                D_dirs=D_dirs,
+                precoder=precoder,
+                h=h,
+                P_abs_max=P_abs_max,
+                freq_hz=freq_hz,
+                _timings=timings,
+            )
+            return result, timings
+
+        if level < 0 or level > 8:
+            raise ValueError(f"Fidelity level must be 0-8, got {level}")
+
+        if level >= 7:
+            result = self._compute_coherent(
+                body,
+                paths,
+                level,
+                precoder=precoder,
+                h=h,
+                P_abs_max=P_abs_max,
+                body_mass=body_mass,
+                spatial_averaging=spatial_averaging,
+                freq_hz=freq_hz,
+            )
+            return result, timings
+
+        sab = self._dispatch(
+            body,
+            paths,
+            level,
+            A_ab=A_ab,
+            D_max=D_max,
+            sh_coeffs=sh_coeffs,
+            sh_L=sh_L,
+            D_table=D_table,
+            D_dirs=D_dirs,
+            q=q,
+            curvature_H=curvature_H,
+        )
+        sab = _to_numpy(sab)
+        result = self._build_result(
+            body,
+            paths,
+            sab,
+            level,
+            body_mass=body_mass,
+            freq_hz=freq_hz,
+            _timings=timings,
+        )
+        return result, timings
 
     def compute_sab(
         self,
@@ -446,6 +569,7 @@ class DosimetryEngine:
         h: np.ndarray | None = None,
         P_abs_max: float = 0.1,
         freq_hz: float | None = None,
+        _timings: dict | None = None,
     ) -> DosimetryResult:
         """Dispatch based on mode string with composable correction flags."""
         _valid_modes = ("bound", "aggregate", "spatial", "coherent", "ecbf")
@@ -503,7 +627,10 @@ class DosimetryEngine:
                 curvature_H=curvature_H,
             )
             sab = _to_numpy(sab)
-            _last_timings["kernel_ms"] = (time.perf_counter() - t_kernel) * 1e3
+            kernel_ms = (time.perf_counter() - t_kernel) * 1e3
+            if _timings is not None:
+                _timings["kernel_ms"] = kernel_ms
+            _last_timings["kernel_ms"] = kernel_ms
         elif mode in ("coherent", "ecbf"):
             return self._compute_coherent(
                 body,
@@ -544,6 +671,7 @@ class DosimetryEngine:
             freq_hz=freq_hz,
             mode=mode,
             corrections=tuple(corrections),
+            _timings=_timings,
         )
 
     def _compute_coherent(

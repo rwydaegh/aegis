@@ -5,11 +5,26 @@ import { toServer, type ScenePos } from './coordinates'
 const BASE = ''
 
 // ---------------------------------------------------------------------------
+// 401 handling - imported lazily to avoid circular dependency
+// ---------------------------------------------------------------------------
+
+function handle401(): void {
+  // Lazy import to avoid circular dependency (useAuth imports from api/auth, not client.ts)
+  import('@/hooks/useAuth').then(({ useAuth }) => {
+    useAuth.getState().logout()
+  })
+}
+
+// ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
 
 async function getJson<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE}${path}`)
+  if (res.status === 401) {
+    handle401()
+    throw new Error(`GET ${path} failed: 401 Unauthorized`)
+  }
   if (!res.ok) throw new Error(`GET ${path} failed: ${res.status} ${res.statusText}`)
   return res.json() as Promise<T>
 }
@@ -20,12 +35,20 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
+  if (res.status === 401) {
+    handle401()
+    throw new Error(`POST ${path} failed: 401 Unauthorized`)
+  }
   if (!res.ok) throw new Error(`POST ${path} failed: ${res.status} ${res.statusText}`)
   return res.json() as Promise<T>
 }
 
 async function getBinary(path: string): Promise<Response> {
   const res = await fetch(`${BASE}${path}`)
+  if (res.status === 401) {
+    handle401()
+    throw new Error(`GET ${path} failed: 401 Unauthorized`)
+  }
   if (!res.ok) throw new Error(`GET ${path} failed: ${res.status} ${res.statusText}`)
   return res
 }
@@ -48,6 +71,10 @@ async function computeEndpoint(
     body: JSON.stringify(params),
     signal,
   })
+  if (res.status === 401) {
+    handle401()
+    throw new Error(`POST ${path} failed: 401 Unauthorized`)
+  }
   if (!res.ok) throw new Error(`POST ${path} failed: ${res.status} ${res.statusText}`)
 
   const statsHeader = res.headers.get('X-Stats')
@@ -160,10 +187,6 @@ export async function fetchTileFile(filename: string): Promise<ArrayBuffer> {
 // POST endpoints
 // ---------------------------------------------------------------------------
 
-export async function switchBody(name: string): Promise<{ ok: boolean; meta: BodyMeta }> {
-  return postJson<{ ok: boolean; meta: BodyMeta }>('/api/body/switch', { name })
-}
-
 export async function loadSceneGeometry(scenePath: string): Promise<{
   vertices: Float32Array
   indices: Int32Array
@@ -175,6 +198,10 @@ export async function loadSceneGeometry(scenePath: string): Promise<{
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ path: scenePath }),
   })
+  if (res.status === 401) {
+    handle401()
+    throw new Error('POST /api/scene/load failed: 401 Unauthorized')
+  }
   if (!res.ok) throw new Error(`POST /api/scene/load failed: ${res.status} ${res.statusText}`)
 
   const metaHeader = res.headers.get('X-Meta')
@@ -215,6 +242,7 @@ export interface ComputeParams {
   stochasticSeed?: number
   quantities: string[]
   exposureScenario: string
+  bodyName?: string
 }
 
 function computePayload(params: ComputeParams) {
@@ -233,6 +261,7 @@ function computePayload(params: ComputeParams) {
     n_paths: params.nPaths,
     quantities: params.quantities,
     exposure_scenario: params.exposureScenario,
+    ...(params.bodyName ? { body_name: params.bodyName } : {}),
     ...(params.stochastic ? {
       stochastic: true,
       stochastic_preset: params.stochasticPreset,

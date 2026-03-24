@@ -97,8 +97,6 @@ def _build_binary_response(result, quantities):
 
 def _build_stats_response(result, body, tissue, level, extra=None, mode=None, corrections=None, scenario=None):
     """Build the X-Stats JSON dict from a DosimetryResult."""
-    from flask import current_app
-
     freq_hz = result.freq_hz or tissue.freq_hz
     scenario = scenario or ExposureScenario.GENERAL_PUBLIC
 
@@ -153,11 +151,6 @@ def _build_stats_response(result, body, tissue, level, extra=None, mode=None, co
         "tissue_eps_r": tissue.eps_r,
         "tissue_sigma": tissue.sigma,
     }
-
-    # Store compliance result for the /api/compliance/report endpoint.
-    # NOTE: global app state, single-session assumption. Concurrent users
-    # may read each other's compliance results.
-    current_app.config["_last_compliance_result"] = stats["compliance"]
 
     # Per-quantity peak values (reuse precomputed values)
     peaks = {"sab": float(result.peak_sab)}
@@ -241,12 +234,6 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         """Compute dosimetry for given antenna position."""
         from aegis.viewer.compute import compute_dosimetry, resolve_skin_model
 
-        with cache_lock:
-            body = cache.get("body")
-            cfg = cache["config"]
-        if body is None:
-            return jsonify({"error": _ERR_NO_BODY}), 400
-
         params = request.get_json(silent=True)
         if params is None:
             if request.data:
@@ -254,6 +241,14 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             params = {}
         elif not isinstance(params, dict):
             return jsonify({"error": "JSON body must be an object"}), 400
+
+        body_name = params.get("body_name", cache.get("default_body"))
+        with cache_lock:
+            entry = cache.get("bodies", {}).get(body_name)
+            cfg = cache["config"]
+        if entry is None:
+            return jsonify({"error": f"Body '{body_name}' not found"}), 404
+        body = entry["body"]
 
         dcfg = cfg["dosimetry"]
         pwr_cfg = dcfg["power_input"]
@@ -509,15 +504,18 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         except ImportError:
             return jsonify({"error": _ERR_NO_DIFFERT}), 501
 
-        body = cache.get("body")
-        if body is None:
-            return jsonify({"error": _ERR_NO_BODY}), 400
-
         from aegis.viewer.compute import _transform_body_for_viewer, resolve_skin_model
 
         params = request.get_json(silent=True)
         if not isinstance(params, dict):
             return jsonify({"error": "Invalid or missing JSON body"}), 400
+
+        body_name = params.get("body_name", cache.get("default_body"))
+        with cache_lock:
+            entry = cache.get("bodies", {}).get(body_name)
+        if entry is None:
+            return jsonify({"error": f"Body '{body_name}' not found"}), 404
+        body = entry["body"]
 
         try:
             raw_pos = list(params.get("antenna_pos", [5, 0, 1]))
@@ -650,15 +648,18 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         except ImportError:
             return jsonify({"error": "Sionna RT not installed. Install with: pip install aegis[sionna]"}), 501
 
-        body = cache.get("body")
-        if body is None:
-            return jsonify({"error": _ERR_NO_BODY}), 400
-
         from aegis.viewer.compute import _transform_body_for_viewer, resolve_skin_model
 
         params = request.get_json(silent=True)
         if not isinstance(params, dict):
             return jsonify({"error": "Invalid or missing JSON body"}), 400
+
+        body_name = params.get("body_name", cache.get("default_body"))
+        with cache_lock:
+            entry = cache.get("bodies", {}).get(body_name)
+        if entry is None:
+            return jsonify({"error": f"Body '{body_name}' not found"}), 404
+        body = entry["body"]
 
         try:
             raw_pos = list(params.get("antenna_pos", [5, 0, 1]))
@@ -805,21 +806,23 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
         from aegis.viewer.compute import _transform_body_for_viewer, resolve_skin_model
 
+        params = request.get_json(silent=True)
+        if not isinstance(params, dict):
+            return jsonify({"error": "Invalid or missing JSON body"}), 400
+
+        body_name = params.get("body_name", cache.get("default_body"))
         with cache_lock:
-            body = cache.get("body")
+            entry = cache.get("bodies", {}).get(body_name)
             voxel_positions = cache.get("voxel_positions")
             voxel_sizes = cache.get("voxel_sizes")
             voxel_materials = cache.get("voxel_materials")
             cfg = cache["config"]
-        if body is None:
-            return jsonify({"error": _ERR_NO_BODY}), 400
+        if entry is None:
+            return jsonify({"error": f"Body '{body_name}' not found"}), 404
+        body = entry["body"]
 
         if voxel_positions is None or len(voxel_positions) == 0:
             return jsonify({"error": "No voxel data available"}), 400
-
-        params = request.get_json(silent=True)
-        if not isinstance(params, dict):
-            return jsonify({"error": "Invalid or missing JSON body"}), 400
 
         try:
             raw_pos = list(params.get("antenna_pos", [5, 0, 1]))
@@ -1022,13 +1025,12 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
     @app.route("/api/compliance/report", methods=["GET"])
     def compliance_report():
-        """Return the last compliance result as JSON."""
-        # NOTE: reads global app state (single-session assumption).
-        # Concurrent users may read another session's compliance result.
-        last = app.config.get("_last_compliance_result")
-        if last is None:
-            return jsonify({"error": "No computation result available"}), 404
-        return jsonify(last)
+        """Compliance data is returned inline in X-Stats from compute endpoints.
+
+        This endpoint is deprecated. Clients should read compliance from the
+        X-Stats header of /api/compute responses.
+        """
+        return jsonify({"error": "Compliance data is available in X-Stats from /api/compute"}), 410
 
     @app.route("/api/channel-presets", methods=["GET"])
     def channel_presets():

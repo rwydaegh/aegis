@@ -1,8 +1,22 @@
+import { useEffect } from 'react'
 import { useConfig } from '@/hooks/useConfig'
 import AppShell from '@/components/layout/AppShell'
+import LoginGate from '@/components/layout/LoginGate'
+import { deserializeShareLink, applyShareState } from '@/lib/shareLink'
 
 export default function App() {
   const { status, error } = useConfig()
+
+  // Hydrate from URL fragment once config has loaded (share link overrides server defaults)
+  useEffect(() => {
+    if (status !== 'ready') return
+    const hash = window.location.hash
+    if (hash.startsWith('#s=')) {
+      const state = deserializeShareLink(hash.slice(3))
+      applyShareState(state)
+      window.history.replaceState(null, '', window.location.pathname)
+    }
+  }, [status])
 
   if (status === 'loading') {
     return (
@@ -29,5 +43,9 @@ export default function App() {
     )
   }
 
-  return <AppShell />
+  return (
+    <LoginGate>
+      <AppShell />
+    </LoginGate>
+  )
 }

@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import os
 import threading
+import uuid
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import numpy as np
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request, session
 
 from aegis.viewer.scene_data import (
     body_to_binary,
@@ -151,6 +153,17 @@ def _load_and_cache_voxels_dir(voxel_dir: str, bbox_radius: float) -> None:
     print(f"  Voxels (directory): {len(positions):,} loaded, median_size={vs:.4f}")
 
 
+def create_app_from_env() -> Flask:
+    """Factory for Gunicorn: reads config from environment variables."""
+    from aegis.viewer.config import load_config
+
+    data_dir = os.environ.get("AEGIS_DATA_DIR", "data")
+    body_name = os.environ.get("AEGIS_BODY", "thelonious")
+    config_path = os.environ.get("AEGIS_CONFIG")
+    config = load_config(config_path) if config_path else None
+    return create_app(data_dir=data_dir, body_name=body_name, config=config)
+
+
 def create_app(
     data_dir: str,
     voxel_json: str | None = None,
@@ -176,22 +189,45 @@ def create_app(
     template_dir = str(Path(__file__).parent / "templates")
     app = Flask(__name__, template_folder=template_dir)
 
-    # Optional HTTP Basic Auth for remote access
-    _viewer_auth = os.environ.get("AEGIS_VIEWER_AUTH")
-    if _viewer_auth and ":" in _viewer_auth:
-        _auth_user, _, _auth_pass = _viewer_auth.partition(":")
+    # Session-based password gate
+    app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-secret-key-change-me")
+    app.config["SESSION_COOKIE_HTTPONLY"] = True
+    app.config["SESSION_COOKIE_SECURE"] = os.environ.get("FLASK_ENV") != "development"
+    app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+    app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=2)
 
-        @app.before_request
-        def _check_basic_auth():
-            from flask import Response, request
+    _gate_password = os.environ.get("AEGIS_GATE_PASSWORD")
+    _exempt_paths = {"/api/auth", "/api/health"}
 
-            auth = request.authorization
-            if not auth or auth.username != _auth_user or auth.password != _auth_pass:
-                return Response(
-                    "Authentication required.",
-                    401,
-                    {"WWW-Authenticate": 'Basic realm="AEGIS Viewer"'},
-                )
+    @app.before_request
+    def check_auth():
+        if _gate_password is None:
+            return  # No password set, skip auth (local dev)
+        if request.path in _exempt_paths:
+            return
+        if request.path.startswith("/assets/") or request.path == "/":
+            return  # Serve React app and static assets without auth
+        if not session.get("authenticated"):
+            return jsonify({"error": "Authentication required"}), 401
+
+    @app.route("/api/auth", methods=["POST"])
+    def authenticate():
+        if _gate_password is None:
+            return jsonify({"error": "No password configured"}), 500
+        data = request.get_json(silent=True) or {}
+        if data.get("password") != _gate_password:
+            return jsonify({"error": "Wrong password"}), 401
+        session.permanent = True
+        session["authenticated"] = True
+        session["session_id"] = str(uuid.uuid4())
+        expires_at = datetime.now(UTC) + timedelta(hours=2)
+        return jsonify(
+            {
+                "ok": True,
+                "expires_at": expires_at.isoformat(),
+                "session_id": session["session_id"],
+            }
+        )
 
     # Store pipeline config
     _cache["bbox_radius"] = bbox_radius
@@ -203,14 +239,40 @@ def create_app(
     print("Loading data...")
 
     with _cache_lock:
-        try:
-            body = load_body(body_name, data_dir)
-            _cache["body"] = body
-            _cache["body_binary"], _cache["body_meta"] = body_to_binary(body)
-            print(f"  Body: {body.name}, {body.n_triangles:,} triangles")
-        except FileNotFoundError as e:
-            print(f"  Warning: {e}")
-            _cache["body"] = None
+        # Preload all available bodies from data_dir
+        available_bodies = [p.stem for p in Path(data_dir).glob("*.stl")]
+        _cache["bodies"] = {}
+        _cache["default_body"] = body_name
+        for name in available_bodies:
+            try:
+                body = load_body(name, data_dir)
+                binary, meta = body_to_binary(body)
+                _cache["bodies"][name] = {"body": body, "binary": binary, "meta": meta}
+                print(f"  Body: {body.name}, {body.n_triangles:,} triangles")
+            except FileNotFoundError as e:
+                print(f"  Warning: {e}")
+
+        # Backward-compat aliases pointing at the default body
+        default_entry = _cache["bodies"].get(body_name)
+        if default_entry is not None:
+            _cache["body"] = default_entry["body"]
+            _cache["body_binary"] = default_entry["binary"]
+            _cache["body_meta"] = default_entry["meta"]
+        else:
+            # Fallback: try loading the requested body_name even if not in glob results
+            try:
+                body = load_body(body_name, data_dir)
+                binary, meta = body_to_binary(body)
+                _cache["bodies"][body_name] = {"body": body, "binary": binary, "meta": meta}
+                _cache["body"] = body
+                _cache["body_binary"] = binary
+                _cache["body_meta"] = meta
+                print(f"  Body (fallback): {body.name}, {body.n_triangles:,} triangles")
+            except FileNotFoundError as e:
+                print(f"  Warning: {e}")
+                _cache["body"] = None
+                _cache["body_binary"] = None
+                _cache["body_meta"] = None
 
         _cache["voxel_json_path"] = voxel_json
         if voxel_dir:

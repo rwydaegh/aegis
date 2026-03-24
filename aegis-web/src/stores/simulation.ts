@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { ScenePos } from '@/api/coordinates'
-import type { DosimetryStats, QuantityKey } from '@/api/types'
+import type { DosimetryStats, QuantityKey, ComplianceInfo } from '@/api/types'
 
 export type DosimetryMode = 'bound' | 'aggregate' | 'spatial'
 
@@ -30,6 +30,7 @@ interface SimulationStore {
   sincAveragedArray: Float32Array | null
   sab1cm2AveragedArray: Float32Array | null
   stats: DosimetryStats | null
+  compliance: ComplianceInfo | null
 
   // Inputs (compliance)
   freqGhz: number
@@ -55,6 +56,7 @@ interface SimulationStore {
   setEnabledQuantities: (q: Set<QuantityKey>) => void
   toggleQuantity: (key: QuantityKey) => void
   setDisplayQuantity: (key: QuantityKey) => void
+  setCompliance: (report: ComplianceInfo) => void
   setResults: (sab: Float32Array, stats: DosimetryStats, extras?: {
     sabAveraged?: Float32Array; sinc?: Float32Array; sincAveraged?: Float32Array; sab1cm2Averaged?: Float32Array
   }) => void
@@ -82,6 +84,7 @@ export const useSimulationStore = create<SimulationStore>((set) => ({
   sincAveragedArray: null,
   sab1cm2AveragedArray: null,
   stats: null,
+  compliance: null,
   freqGhz: 28,
   enabledQuantities: new Set<QuantityKey>(['sab', 'sab_4cm2']),
   displayQuantity: 'sab' as QuantityKey,
@@ -132,6 +135,7 @@ export const useSimulationStore = create<SimulationStore>((set) => ({
     return { enabledQuantities: next }
   }),
   setDisplayQuantity: (key) => set({ displayQuantity: key }),
+  setCompliance: (report) => set({ compliance: report }),
   setResults: (sab, stats, extras) => set({
     sabArray: sab,
     stats,
@@ -140,5 +144,5 @@ export const useSimulationStore = create<SimulationStore>((set) => ({
     sincAveragedArray: extras?.sincAveraged ?? null,
     sab1cm2AveragedArray: extras?.sab1cm2Averaged ?? null,
   }),
-  clearResults: () => set({ sabArray: null, sabAveragedArray: null, sincArray: null, sincAveragedArray: null, sab1cm2AveragedArray: null, stats: null }),
+  clearResults: () => set({ sabArray: null, sabAveragedArray: null, sincArray: null, sincAveragedArray: null, sab1cm2AveragedArray: null, stats: null, compliance: null }),
 }))

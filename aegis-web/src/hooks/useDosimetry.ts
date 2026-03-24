@@ -29,6 +29,7 @@ export function useDosimetry() {
   const exposureScenario = useUIStore(s => s.exposureScenario)
 
   const scene = useSceneStore(useShallow(s => ({
+    bodyName: s.bodyName,
     config: s.viewerConfig,
     caps: s.capabilities,
     pathSource: s.pathSource,
@@ -77,6 +78,7 @@ export function useDosimetry() {
       stochasticSeed: sim.stochasticSeed,
       quantities: Array.from(sim.enabledQuantities) as string[],
       exposureScenario,
+      bodyName: scene.bodyName || undefined,
     }
 
     // Timeout: abort after configured limit
@@ -125,6 +127,9 @@ export function useDosimetry() {
           sincAveraged: arrays['sinc_averaged'],
           sab1cm2Averaged: arrays['sab_1cm2'],
         })
+        if (stats.compliance) {
+          useSimulationStore.getState().setCompliance(stats.compliance)
+        }
         if (stats.path_viz) {
           useSceneStore.getState().setRtPaths(stats.path_viz)
         }

@@ -6,7 +6,7 @@ Levels 7 and 8 extend AEGIS to coherent multi-antenna systems. Instead of scalar
 
 Incoherent dosimetry (Levels 0-6) sums power contributions independently:
 
-$$S_{ab}(\mathbf{r}) = \sum_i \mathcal{T}(\theta_i) \cdot [\hat{n} \cdot (-\hat{k}_i)]_+ \cdot S_i$$
+$$S_{ab}(\mathbf{r}) = \sum_i T(\theta_i) \cdot [\hat{n} \cdot (-\hat{k}_i)]_+ \cdot S_i$$
 
 Coherent dosimetry (Level 7) sums complex field contributions, then takes the squared magnitude:
 

@@ -1,6 +1,11 @@
-"""Tests for viewer HTTP Basic Auth."""
+"""Tests confirming the old AEGIS_VIEWER_AUTH Basic Auth is removed.
 
-import base64
+The password gate is now session-based (AEGIS_GATE_PASSWORD). See
+tests/viewer/test_auth.py for the new auth tests.
+"""
+
+from __future__ import annotations
+
 import os
 from pathlib import Path
 
@@ -11,13 +16,14 @@ pytest.importorskip("flask")
 
 @pytest.fixture(autouse=True)
 def _clean_auth_env():
-    """Ensure AEGIS_VIEWER_AUTH is cleaned up after each test."""
+    """Ensure auth env vars are cleaned up after each test."""
     yield
     os.environ.pop("AEGIS_VIEWER_AUTH", None)
+    os.environ.pop("AEGIS_GATE_PASSWORD", None)
 
 
 def _make_app(auth_env: str | None = None):
-    """Create a minimal Flask test app with auth configured.
+    """Create a minimal Flask test app.
 
     Uses the e2e_lab fixture data dir so body loading succeeds.
     """
@@ -26,9 +32,9 @@ def _make_app(auth_env: str | None = None):
     else:
         os.environ.pop("AEGIS_VIEWER_AUTH", None)
 
-    from aegis.viewer.server import create_app
+    from aegis.viewer.server import _cache, create_app
 
-    # Use the test fixture directory which has a small STL
+    _cache.clear()
     data_dir = str(Path(__file__).parent / "fixtures" / "e2e_lab")
     app = create_app(
         data_dir=data_dir,
@@ -39,35 +45,18 @@ def _make_app(auth_env: str | None = None):
     return app
 
 
-def test_no_auth_when_unset():
-    """Without AEGIS_VIEWER_AUTH, all routes are open."""
+def test_no_auth_when_gate_password_unset():
+    """Without AEGIS_GATE_PASSWORD, all routes are open regardless of AEGIS_VIEWER_AUTH."""
     app = _make_app(auth_env=None)
     with app.test_client() as c:
         resp = c.get("/api/health")
         assert resp.status_code == 200
 
 
-def test_auth_rejects_without_credentials():
-    """With AEGIS_VIEWER_AUTH set, requests without credentials get 401."""
+def test_viewer_auth_env_has_no_effect():
+    """Setting AEGIS_VIEWER_AUTH no longer gates any route (Basic Auth is removed)."""
     app = _make_app(auth_env="aegis:testpass123")
     with app.test_client() as c:
+        # /api/health is always exempt, should return 200 regardless
         resp = c.get("/api/health")
-        assert resp.status_code == 401
-
-
-def test_auth_accepts_correct_credentials():
-    """Correct Basic Auth credentials pass through."""
-    app = _make_app(auth_env="aegis:testpass123")
-    creds = base64.b64encode(b"aegis:testpass123").decode()
-    with app.test_client() as c:
-        resp = c.get("/api/health", headers={"Authorization": f"Basic {creds}"})
         assert resp.status_code == 200
-
-
-def test_auth_rejects_wrong_credentials():
-    """Wrong credentials get 401."""
-    app = _make_app(auth_env="aegis:testpass123")
-    creds = base64.b64encode(b"aegis:wrongpass").decode()
-    with app.test_client() as c:
-        resp = c.get("/api/health", headers={"Authorization": f"Basic {creds}"})
-        assert resp.status_code == 401

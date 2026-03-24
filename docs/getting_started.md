@@ -53,7 +53,7 @@ print(f"S_ab: {result.sab[0]:.3f} W/m²")   # 0.539 (= T_0)
 print(f"P_abs: {result.p_abs:.4f} W")
 ```
 
-The absorbed power density equals $T_0 = 0.539$ because the wave arrives at normal incidence. The ReLU factor $[\hat{n} \cdot (-\hat{k})]_+ = 1$ and the normal-incidence Fresnel transmission $\mathcal{T}_0 = 0.539$ for skin at 28 GHz.
+The absorbed power density equals $T_0 = 0.539$ because the wave arrives at normal incidence. The ReLU factor $[\hat{n} \cdot (-\hat{k})]_+ = 1$ and the normal-incidence Fresnel transmission $T_0 = 0.539$ for skin at 28 GHz.
 
 ## Loading real meshes
 

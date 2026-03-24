@@ -1,4 +1,4 @@
-import { PanelLeft, Box, AlignCenter, AlignJustify, LayoutGrid, Focus, RotateCcw, Video } from 'lucide-react'
+import { PanelLeft, Box, AlignCenter, AlignJustify, LayoutGrid, Focus, RotateCcw, Video, Share2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { useSimulationStore } from '@/stores/simulation'
@@ -7,6 +7,8 @@ import { useUIStore } from '@/stores/ui'
 import type { CameraPreset } from '@/stores/ui'
 import { cn } from '@/lib/utils'
 import type { DosimetryStats } from '@/api/types'
+import SessionTimer from '@/components/layout/SessionTimer'
+import { generateShareUrl } from '@/lib/shareLink'
 
 function ComplianceBadge({ stats }: { stats: DosimetryStats | null }) {
   if (!stats) {
@@ -65,7 +67,7 @@ const CAMERA_PRESETS: Array<{ preset: CameraPreset & string; label: string; icon
 export default function Toolbar() {
   const { stats } = useSimulationStore()
   const { viewerConfig } = useSceneStore()
-  const { sidebarOpen, wireframe, cameraMode, toggleSidebar, toggleWireframe, setCameraPreset, setCameraMode } = useUIStore()
+  const { sidebarOpen, wireframe, cameraMode, toggleSidebar, toggleWireframe, setCameraPreset, setCameraMode, setStatusMessage } = useUIStore()
 
   const scenario = viewerConfig?.active_scenario_description ?? viewerConfig?.active_scenario ?? null
 
@@ -73,6 +75,13 @@ export default function Toolbar() {
     setCameraPreset(preset)
     // Clear after a tick so the controller fires on every click (even the same preset)
     setTimeout(() => setCameraPreset(null), 50)
+  }
+
+  async function handleShare() {
+    const url = generateShareUrl()
+    await navigator.clipboard.writeText(url)
+    setStatusMessage('Link copied to clipboard')
+    setTimeout(() => setStatusMessage(null), 3000)
   }
 
   return (
@@ -128,8 +137,24 @@ export default function Toolbar() {
         </div>
       </div>
 
-      {/* Right: icon buttons */}
+      {/* Right: session timer + icon buttons */}
       <div className="flex items-center gap-1 shrink-0">
+        <SessionTimer />
+
+        <Tooltip>
+          <TooltipTrigger
+            onClick={() => { void handleShare() }}
+            className={cn(
+              'inline-flex items-center justify-center size-7 rounded-md transition-colors',
+              'hover:bg-muted text-muted-foreground hover:text-foreground',
+            )}
+            aria-label="Share link"
+          >
+            <Share2 className="size-4" />
+          </TooltipTrigger>
+          <TooltipContent>Copy share link</TooltipContent>
+        </Tooltip>
+
         <Tooltip>
           <TooltipTrigger
             onClick={toggleWireframe}

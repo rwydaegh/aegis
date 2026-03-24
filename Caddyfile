@@ -1,0 +1,11 @@
+aegis.waves-ugent.be {
+    reverse_proxy flask:8000
+}
+
+docs.aegis.waves-ugent.be {
+    basic_auth {
+        aegis {env.DOCS_PASSWORD_HASH}
+    }
+    root * /srv/docs
+    file_server
+}

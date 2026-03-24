@@ -1,12 +1,8 @@
 name: Deploy docs
 
+# Docs are now served from docs.aegis.waves-ugent.be via Docker deployment.
+# This workflow is kept as a manual fallback for GitHub Pages if needed.
 on:
-  push:
-    branches: [master]
-    paths:
-      - 'docs/**'
-      - 'mkdocs.yml'
-      - 'src/aegis/**'
   workflow_dispatch:
 
 permissions:
