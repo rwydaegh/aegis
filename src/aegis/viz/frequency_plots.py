@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from aegis.compliance import ICNIRP_2020
-from aegis.tissue.database import get_tissue_properties
+from aegis.tissue.database import get_tissue_spectrum
 
 
 def plot_frequency_sweep(
@@ -64,12 +64,9 @@ def plot_tissue_spectrum(
         Number of samples along the frequency axis.
     """
     freqs = np.linspace(freq_min_hz, freq_max_hz, n_points, dtype=float)
-    eps_r = np.empty(n_points, dtype=float)
-    sigma = np.empty(n_points, dtype=float)
-    for i, f in enumerate(freqs):
-        props = get_tissue_properties(tissue_name, float(f))
-        eps_r[i] = float(props["eps_r"])
-        sigma[i] = float(props["sigma"])
+    spectrum = get_tissue_spectrum(tissue_name, freqs)
+    eps_r = spectrum["eps_r"]
+    sigma = spectrum["sigma"]
 
     fig, ax_left = plt.subplots(figsize=(8, 4.5))
     ax_left.plot(freqs * 1e-9, eps_r, color="C0", label=r"$\varepsilon_r'$")

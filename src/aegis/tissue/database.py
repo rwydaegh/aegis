@@ -157,3 +157,55 @@ def get_tissue_properties(tissue_name: str, freq_hz: float, db_path: Path | None
         "abs_m": abs(m),
         "T0": T0,
     }
+
+
+def get_tissue_spectrum(
+    tissue_name: str,
+    freqs_hz: np.ndarray,
+    db_path: Path | None = None,
+) -> dict:
+    """Vectorized tissue properties across a frequency array.
+
+    Single database lookup, then vectorized Cole-Cole evaluation. Much faster
+    than calling ``get_tissue_properties`` in a loop.
+
+    Parameters
+    ----------
+    tissue_name
+        Tissue name (e.g. "Skin").
+    freqs_hz
+        1D array of frequencies in Hz.
+    db_path
+        Explicit path to itis_v5.db. Auto-detected if None.
+
+    Returns
+    -------
+    Dict with keys: freqs_hz, eps_r, sigma, n, kappa, T0 (all 1D arrays).
+    """
+    params = get_gabriel_params(tissue_name, db_path=db_path)
+    if params is None:
+        raise ValueError(f"Could not load Gabriel parameters for '{tissue_name}'")
+
+    freqs_hz = np.asarray(freqs_hz, dtype=np.float64)
+    eps_complex = cole_cole_permittivity(freqs_hz, params)
+
+    m = np.sqrt(eps_complex)
+    m = np.where(np.real(m) < 0, -m, m)
+
+    n = np.real(m)
+    kappa = -np.imag(m)
+
+    T0 = 4 * n / ((1 + n) ** 2 + kappa**2)
+
+    omega = 2 * np.pi * freqs_hz
+    eps_r = np.real(eps_complex)
+    sigma = -np.imag(eps_complex) * omega * EPS_0
+
+    return {
+        "freqs_hz": freqs_hz,
+        "eps_r": eps_r,
+        "sigma": sigma,
+        "n": n,
+        "kappa": kappa,
+        "T0": T0,
+    }
