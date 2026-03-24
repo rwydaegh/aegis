@@ -40,7 +40,7 @@ export default function Antenna() {
 
   const patternGeo = useMemo(() => {
     if (!config) return null
-    const rp = (config.antenna as any).radiation_pattern
+    const rp = config.antenna.radiation_pattern
     if (!rp || rp.enabled === false) return null
 
     const detail = rp.ico_detail ?? 8
@@ -92,7 +92,7 @@ export default function Antenna() {
 
   if (!pos || !config) return null
 
-  const ant = config.antenna as any
+  const ant = config.antenna
   const rp = ant.radiation_pattern
   const usePattern = rp && rp.enabled !== false
 

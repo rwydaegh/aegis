@@ -1,23 +1,109 @@
 import type { ScenePos } from './coordinates'
 
+// -- ViewerConfig sub-types ---------------------------------------------------
+
+export interface LightingConfig {
+  ambient: { color: string; intensity: number }
+  sun: { color: string; intensity: number; position: [number, number, number]; cast_shadow: boolean }
+  fill?: { color: string; intensity: number; position: [number, number, number] }
+  hemisphere: { sky_color: string; ground_color: string; intensity: number }
+}
+
+export interface RadiationPatternConfig {
+  enabled: boolean
+  match_physics: boolean
+  type: string
+  ico_detail: number
+  radius: number
+  lobe_gamma: number
+  dynamic_range_db: number
+  opacity: number
+  metalness: number
+  roughness: number
+  wireframe: boolean
+  edge_lines: boolean
+  edge_color: string
+  hub_radius: number
+  hub_color: string
+  hub_emissive: string
+  show_legacy_cone: boolean
+  elements: Array<{ offset?: number[]; weight?: number[]; axis?: number[] }>
+}
+
+export interface AntennaConfig {
+  sphere_radius: number
+  sphere_segments: number
+  color: string
+  emissive_color: string
+  cone_radius: number
+  cone_height: number
+  cone_segments: number
+  cone_y_offset: number
+  pole_radius: number
+  pole_height: number
+  pole_segments: number
+  pole_color: string
+  placement_height_offset: number
+  nudge_step: number
+  nudge_step_shift: number
+  radiation_pattern: RadiationPatternConfig
+}
+
+export interface VoxelConfig {
+  size_scale: number
+  default_size_fallback: number
+  material: { roughness: number; metalness: number; flat_shading: boolean }
+  material_colors: Record<string, [number, number, number]>
+  heightmap_resolution_factor: number
+}
+
+export interface DistanceVizConfig {
+  line_color: string
+  dash_size: number
+  gap_size: number
+  line_opacity: number
+  label_canvas_width: number
+  label_canvas_height: number
+  label_bg_color: string
+  label_text_color: string
+  label_font: string
+  label_y_offset: number
+  label_scale: [number, number, number]
+  path_line_color: string
+  path_line_opacity: number
+}
+
+export interface UIConfig {
+  title: string
+  panel: Record<string, unknown>
+  colors: Record<string, string>
+  fonts: Record<string, unknown>
+  loading: Record<string, unknown>
+  computing: Record<string, unknown>
+  legend: Record<string, unknown>
+  scenario?: string
+}
+
+export interface SystemInfo {
+  hostname: string
+  platform: string
+  cpu_pct: number | null
+  cpu_cores: number | null
+  ram_pct: number | null
+  ram_total_gb: number | null
+  gpu: { name: string; vram_total_mb: number; vram_used_mb: number; utilization_pct: number; temperature_c: number } | null
+}
+
+// -- ViewerConfig -------------------------------------------------------------
+
 export interface ViewerConfig {
   server: { host: string; port: number; debug: boolean; open_browser: boolean }
   scene: { background_color: string; grid: Record<string, unknown>; ground_plane: Record<string, unknown> }
-  camera: { fov: number; near: number; far: number; initial_position: number[]; controls: Record<string, unknown> }
+  camera: { fov: number; near: number; far: number; initial_position: [number, number, number]; controls: Record<string, unknown> }
   renderer: { tone_mapping: string; shadows_enabled: boolean; antialias: boolean }
-  lighting: Record<string, unknown>
-  antenna: {
-    sphere_radius: number; cone_radius: number; cone_height: number
-    pole_radius: number; pole_height: number; nudge_step: number; nudge_step_shift: number
-    radiation_pattern: {
-      enabled: boolean; type: string; ico_detail: number; radius: number
-      lobe_gamma: number; dynamic_range_db: number; opacity: number
-      hub: { radius: number; color: string }
-      edges: { enabled: boolean; color: string; opacity: number }
-      elements: { enabled: boolean; radius: number }
-    }
-  }
-  voxels: { size_scale: number; heightmap_resolution_factor: number }
+  lighting: LightingConfig
+  antenna: AntennaConfig
+  voxels: VoxelConfig
   dosimetry: {
     fidelity_levels: { value: number; label: string }[]
     path_options: { value: number; label: string }[]
@@ -29,7 +115,7 @@ export interface ViewerConfig {
     stops: [number, number, number, number][]
     legend: { bar_width: number; bar_height: number; gradient_css: string }
   }
-  distance_viz: Record<string, unknown>
+  distance_viz: DistanceVizConfig
   interaction: { click_max_drag_px: number; debounce_ms: number; recompute_interval_ms: number }
   physics: {
     gravity: number; walk_accel: number; max_walk_speed: number
@@ -38,12 +124,14 @@ export interface ViewerConfig {
     sprint_multiplier: number; max_step_height: number; ground_snap: number; dt_clamp: number
     facing_smooth: number
   }
-  ui: Record<string, unknown>
-  [key: string]: unknown
+  ui: UIConfig
+  active_scenario?: string
+  active_scenario_description?: string
 }
 
 export interface Capabilities {
   bodies: string[]
+  body_name: string
   skin_models: { id: string; label: string }[]
   levels: number[]
   has_voxels: boolean
@@ -52,7 +140,7 @@ export interface Capabilities {
   voxel_rt_available: boolean
   has_tiles: boolean
   n_tiles: number
-  scenes: string[]
+  scenes: Array<string | { name: string; path: string }>
   body_meta: BodyMeta | null
   voxel_meta: VoxelMeta | null
   has_location_loader: boolean
@@ -157,6 +245,26 @@ export interface VoxelBinary {
   colors: Uint8Array
   materialIndices: Uint8Array
   meta: VoxelMeta
+}
+
+// -- Analysis types -------------------------------------------------------
+
+export interface ICNIRPLimits {
+  scenario: string
+  freq_hz: number
+  sab_4cm2: number
+  sab_1cm2: number | null
+  sar_wb: number
+  sinc_local: number
+  sinc_whole_body: number
+}
+
+export interface TissueSpectrum {
+  tissue: string
+  freqs_hz: number[]
+  eps_r: number[]
+  sigma: number[]
+  T0: number[]
 }
 
 // ScenePos is re-exported for convenience where types.ts is the single import point

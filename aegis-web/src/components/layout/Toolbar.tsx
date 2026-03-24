@@ -69,8 +69,7 @@ export default function Toolbar() {
   const { viewerConfig } = useSceneStore()
   const { sidebarOpen, wireframe, cameraMode, toggleSidebar, toggleWireframe, setCameraPreset, setCameraMode, setStatusMessage } = useUIStore()
 
-  const uiConfig = viewerConfig?.ui as Record<string, unknown> | undefined
-  const scenario = typeof uiConfig?.scenario === 'string' ? uiConfig.scenario : null
+  const scenario = viewerConfig?.active_scenario_description ?? viewerConfig?.active_scenario ?? null
 
   function handleCameraPreset(preset: CameraPreset & string) {
     setCameraPreset(preset)

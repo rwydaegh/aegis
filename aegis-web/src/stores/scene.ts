@@ -2,6 +2,38 @@ import { create } from 'zustand'
 import type { ViewerConfig, Capabilities, VoxelMeta, PathViz } from '@/api/types'
 import type { BufferGeometry } from 'three'
 
+export interface RtStoreConfig {
+  method: 'exhaustive' | 'sbr' | 'hybrid'
+  raysPerSource: number
+  maxPathsPerSource: number
+  los: boolean
+  specularReflection: boolean
+  diffuseReflection: boolean
+  refraction: boolean
+  diffraction: boolean
+  edgeDiffraction: boolean
+  diffractionLitRegion: boolean
+  reflectionLoss: number
+  syntheticArray: boolean
+  seed: number
+}
+
+const DEFAULT_RT_CONFIG: RtStoreConfig = {
+  method: 'exhaustive',
+  raysPerSource: 1_000_000,
+  maxPathsPerSource: 1_000_000,
+  los: true,
+  specularReflection: true,
+  diffuseReflection: false,
+  refraction: true,
+  diffraction: false,
+  edgeDiffraction: false,
+  diffractionLitRegion: true,
+  reflectionLoss: 0.5,
+  syntheticArray: true,
+  seed: 42,
+}
+
 interface SceneStore {
   // Config (loaded at startup)
   viewerConfig: ViewerConfig | null
@@ -42,25 +74,7 @@ interface SceneStore {
   rtPaths: PathViz[] | null
   hasDiffert: boolean
   loadedScenePath: string
-
-  // RT config - path solving
-  rtMethod: 'exhaustive' | 'sbr' | 'hybrid'
-  rtRaysPerSource: number
-  rtMaxPathsPerSource: number
-
-  // RT config - interactions
-  rtLos: boolean
-  rtSpecularReflection: boolean
-  rtDiffuseReflection: boolean
-  rtRefraction: boolean
-  rtDiffraction: boolean
-  rtEdgeDiffraction: boolean
-  rtDiffractionLitRegion: boolean
-
-  // RT config - solver-specific
-  rtReflectionLoss: number
-  rtSyntheticArray: boolean
-  rtSeed: number
+  rtConfig: RtStoreConfig
 
   // Actions
   setViewerConfig: (config: ViewerConfig) => void
@@ -80,6 +94,7 @@ interface SceneStore {
   setRtMaxOrder: (order: number) => void
   setRtPaths: (paths: PathViz[] | null) => void
   setLoadedScenePath: (path: string) => void
+  setRtConfig: (partial: Partial<RtStoreConfig>) => void
   clearScene: () => void
 }
 
@@ -102,19 +117,7 @@ export const useSceneStore = create<SceneStore>((set) => ({
   rtPaths: null,
   hasDiffert: false,
   loadedScenePath: '',
-  rtMethod: 'exhaustive',
-  rtRaysPerSource: 1_000_000,
-  rtMaxPathsPerSource: 1_000_000,
-  rtLos: true,
-  rtSpecularReflection: true,
-  rtDiffuseReflection: false,
-  rtRefraction: true,
-  rtDiffraction: false,
-  rtEdgeDiffraction: false,
-  rtDiffractionLitRegion: true,
-  rtReflectionLoss: 0.5,
-  rtSyntheticArray: true,
-  rtSeed: 42,
+  rtConfig: { ...DEFAULT_RT_CONFIG },
   setViewerConfig: (config) => set({ viewerConfig: config }),
   setCapabilities: (caps) => set({ capabilities: caps }),
   setBodyName: (name) => set({ bodyName: name }),
@@ -138,6 +141,7 @@ export const useSceneStore = create<SceneStore>((set) => ({
   setRtMaxOrder: (order) => set({ rtMaxOrder: order }),
   setRtPaths: (paths) => set({ rtPaths: paths }),
   setLoadedScenePath: (path) => set({ loadedScenePath: path }),
+  setRtConfig: (partial) => set((state) => ({ rtConfig: { ...state.rtConfig, ...partial } })),
   clearScene: () => set({
     voxelData: null,
     voxelHeightmap: null,

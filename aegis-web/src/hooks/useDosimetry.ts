@@ -1,56 +1,50 @@
 import { useEffect, useRef, useCallback } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { useSimulationStore } from '@/stores/simulation'
 import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
+import { useNotificationStore } from '@/stores/notifications'
 import { computeDosimetry, computeVoxelRT, computeRT, computeSionnaRT, type RtConfig } from '@/api/client'
 
 export function useDosimetry() {
-  const antennaPos = useSimulationStore(s => s.antennaPos)
-  const mode = useSimulationStore(s => s.mode)
-  const fresnel = useSimulationStore(s => s.fresnel)
-  const polarisation = useSimulationStore(s => s.polarisation)
-  const curvature = useSimulationStore(s => s.curvature)
-  const diffraction = useSimulationStore(s => s.diffraction)
-  const powerDbm = useSimulationStore(s => s.powerDbm)
-  const skinModel = useSimulationStore(s => s.skinModel)
-  const freqGhz = useSimulationStore(s => s.freqGhz)
-  const nPaths = useSimulationStore(s => s.nPaths)
-  const bodyOffset = useSimulationStore(s => s.bodyOffset)
-  const bodyRotationY = useSimulationStore(s => s.bodyRotationY)
-  const stochasticPreset = useSimulationStore(s => s.stochasticPreset)
-  const stochasticOverrides = useSimulationStore(s => s.stochasticOverrides)
-  const stochasticSeed = useSimulationStore(s => s.stochasticSeed)
-  const enabledQuantities = useSimulationStore(s => s.enabledQuantities)
+  const sim = useSimulationStore(useShallow(s => ({
+    antennaPos: s.antennaPos,
+    mode: s.mode,
+    fresnel: s.fresnel,
+    polarisation: s.polarisation,
+    curvature: s.curvature,
+    diffraction: s.diffraction,
+    powerDbm: s.powerDbm,
+    skinModel: s.skinModel,
+    freqGhz: s.freqGhz,
+    nPaths: s.nPaths,
+    bodyOffset: s.bodyOffset,
+    bodyRotationY: s.bodyRotationY,
+    stochasticPreset: s.stochasticPreset,
+    stochasticOverrides: s.stochasticOverrides,
+    stochasticSeed: s.stochasticSeed,
+    enabledQuantities: s.enabledQuantities,
+  })))
 
   const exposureScenario = useUIStore(s => s.exposureScenario)
 
-  const bodyName = useSceneStore(s => s.bodyName)
-  const config = useSceneStore(s => s.viewerConfig)
-  const caps = useSceneStore(s => s.capabilities)
-  const pathSource = useSceneStore(s => s.pathSource)
-  const rtSource = useSceneStore(s => s.rtSource)
-  const rtMaxOrder = useSceneStore(s => s.rtMaxOrder)
-  const loadedScenePath = useSceneStore(s => s.loadedScenePath)
-  const rtMethod = useSceneStore(s => s.rtMethod)
-  const rtRaysPerSource = useSceneStore(s => s.rtRaysPerSource)
-  const rtMaxPathsPerSource = useSceneStore(s => s.rtMaxPathsPerSource)
-  const rtLos = useSceneStore(s => s.rtLos)
-  const rtSpecularReflection = useSceneStore(s => s.rtSpecularReflection)
-  const rtDiffuseReflection = useSceneStore(s => s.rtDiffuseReflection)
-  const rtRefraction = useSceneStore(s => s.rtRefraction)
-  const rtDiffraction = useSceneStore(s => s.rtDiffraction)
-  const rtEdgeDiffraction = useSceneStore(s => s.rtEdgeDiffraction)
-  const rtDiffractionLitRegion = useSceneStore(s => s.rtDiffractionLitRegion)
-  const rtReflectionLoss = useSceneStore(s => s.rtReflectionLoss)
-  const rtSyntheticArray = useSceneStore(s => s.rtSyntheticArray)
-  const rtSeed = useSceneStore(s => s.rtSeed)
+  const scene = useSceneStore(useShallow(s => ({
+    bodyName: s.bodyName,
+    config: s.viewerConfig,
+    caps: s.capabilities,
+    pathSource: s.pathSource,
+    rtSource: s.rtSource,
+    rtMaxOrder: s.rtMaxOrder,
+    loadedScenePath: s.loadedScenePath,
+    rtConfig: s.rtConfig,
+  })))
 
   const abortRef = useRef<AbortController | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const generationRef = useRef(0)
 
   const triggerCompute = useCallback(() => {
-    if (!antennaPos || !config) return
+    if (!sim.antennaPos || !scene.config) return
 
     // Abort any in-flight request
     abortRef.current?.abort()
@@ -62,61 +56,62 @@ export function useDosimetry() {
     setComputing(true)
 
     // Send antenna tip position (not pole base) to the backend for physics
-    const poleH = (config.antenna as Record<string, unknown>)?.pole_height as number ?? 2
-    const antennaTip: typeof antennaPos = [antennaPos[0], antennaPos[1] + poleH, antennaPos[2]]
+    const poleH = scene.config.antenna.pole_height ?? 2
+    const antennaTip: typeof sim.antennaPos = [sim.antennaPos[0], sim.antennaPos[1] + poleH, sim.antennaPos[2]]
 
     const params = {
       antennaPos: antennaTip,
-      bodyOffset,
-      bodyRotationY,
-      mode,
-      fresnel,
-      polarisation,
-      curvature,
-      diffraction,
-      powerDbm,
-      skinModel,
-      freqGhz,
-      nPaths,
-      stochastic: pathSource === 'stochastic',
-      stochasticPreset,
-      stochasticOverrides,
-      stochasticSeed,
-      quantities: Array.from(enabledQuantities) as string[],
+      bodyOffset: sim.bodyOffset,
+      bodyRotationY: sim.bodyRotationY,
+      mode: sim.mode,
+      fresnel: sim.fresnel,
+      polarisation: sim.polarisation,
+      curvature: sim.curvature,
+      diffraction: sim.diffraction,
+      powerDbm: sim.powerDbm,
+      skinModel: sim.skinModel,
+      freqGhz: sim.freqGhz,
+      nPaths: sim.nPaths,
+      stochastic: scene.pathSource === 'stochastic',
+      stochasticPreset: sim.stochasticPreset,
+      stochasticOverrides: sim.stochasticOverrides,
+      stochasticSeed: sim.stochasticSeed,
+      quantities: Array.from(sim.enabledQuantities) as string[],
       exposureScenario,
-      bodyName: bodyName || undefined,
+      bodyName: scene.bodyName || undefined,
     }
 
     // Timeout: abort after configured limit
-    const timeoutMs = (config.interaction as Record<string, unknown> & { compute_timeout_ms?: number }).compute_timeout_ms ?? 60000
+    const timeoutMs = 60000
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 
     // Build RT config from store state
-    const rtConfig: RtConfig = {
-      max_depth: rtMaxOrder,
-      method: rtMethod,
-      rays_per_source: rtRaysPerSource,
-      max_paths_per_source: rtMaxPathsPerSource,
-      los: rtLos,
-      specular_reflection: rtSpecularReflection,
-      diffuse_reflection: rtDiffuseReflection,
-      refraction: rtRefraction,
-      diffraction: rtDiffraction,
-      edge_diffraction: rtEdgeDiffraction,
-      diffraction_lit_region: rtDiffractionLitRegion,
-      reflection_loss_per_order: rtReflectionLoss,
-      synthetic_array: rtSyntheticArray,
-      seed: rtSeed,
+    const rc = scene.rtConfig
+    const rtCfg: RtConfig = {
+      max_depth: scene.rtMaxOrder,
+      method: rc.method,
+      rays_per_source: rc.raysPerSource,
+      max_paths_per_source: rc.maxPathsPerSource,
+      los: rc.los,
+      specular_reflection: rc.specularReflection,
+      diffuse_reflection: rc.diffuseReflection,
+      refraction: rc.refraction,
+      diffraction: rc.diffraction,
+      edge_diffraction: rc.edgeDiffraction,
+      diffraction_lit_region: rc.diffractionLitRegion,
+      reflection_loss_per_order: rc.reflectionLoss,
+      synthetic_array: rc.syntheticArray,
+      seed: rc.seed,
     }
 
     // Choose endpoint based on path source
     let computeCall: Promise<import('@/api/client').ComputeResult>
-    if (pathSource === 'rt' && rtSource === 'voxel') {
-      computeCall = computeVoxelRT({ ...params, rtConfig }, controller.signal)
-    } else if (pathSource === 'rt' && rtSource === 'differt' && loadedScenePath) {
-      computeCall = computeRT({ ...params, scenePath: loadedScenePath, rtConfig }, controller.signal)
-    } else if (pathSource === 'rt' && rtSource === 'sionna' && loadedScenePath) {
-      computeCall = computeSionnaRT({ ...params, scenePath: loadedScenePath, rtConfig }, controller.signal)
+    if (scene.pathSource === 'rt' && scene.rtSource === 'voxel') {
+      computeCall = computeVoxelRT({ ...params, rtConfig: rtCfg }, controller.signal)
+    } else if (scene.pathSource === 'rt' && scene.rtSource === 'differt' && scene.loadedScenePath) {
+      computeCall = computeRT({ ...params, scenePath: scene.loadedScenePath, rtConfig: rtCfg }, controller.signal)
+    } else if (scene.pathSource === 'rt' && scene.rtSource === 'sionna' && scene.loadedScenePath) {
+      computeCall = computeSionnaRT({ ...params, scenePath: scene.loadedScenePath, rtConfig: rtCfg }, controller.signal)
     } else {
       computeCall = computeDosimetry(params, controller.signal)
     }
@@ -154,38 +149,26 @@ export function useDosimetry() {
       })
       .catch(err => {
         if ((err as Error).name === 'AbortError') return // expected cancellation
-        console.error('Dosimetry compute failed:', err)
+        useNotificationStore.getState().addNotification('error', `Compute failed: ${(err as Error).message ?? err}`)
       })
       .finally(() => {
         clearTimeout(timeoutId)
         if (gen === generationRef.current) setComputing(false)
       })
-  }, [antennaPos, mode, fresnel, polarisation, curvature, diffraction, powerDbm, skinModel, freqGhz, nPaths,
-    bodyOffset, bodyRotationY, config, caps, pathSource, rtSource, rtMaxOrder, loadedScenePath,
-    stochasticPreset, stochasticOverrides, stochasticSeed, enabledQuantities, exposureScenario, bodyName,
-    rtMethod, rtRaysPerSource, rtMaxPathsPerSource,
-    rtLos, rtSpecularReflection, rtDiffuseReflection, rtRefraction,
-    rtDiffraction, rtEdgeDiffraction, rtDiffractionLitRegion,
-    rtReflectionLoss, rtSyntheticArray, rtSeed])
+  }, [sim, scene, exposureScenario])
 
   // Debounced trigger on any dependency change
   useEffect(() => {
-    if (!antennaPos) return
+    if (!sim.antennaPos) return
 
     if (timerRef.current) clearTimeout(timerRef.current)
-    const debounceMs = config?.interaction?.debounce_ms ?? 200
+    const debounceMs = scene.config?.interaction?.debounce_ms ?? 200
     timerRef.current = setTimeout(triggerCompute, debounceMs)
 
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current)
     }
-  }, [antennaPos, mode, fresnel, polarisation, curvature, diffraction, powerDbm, skinModel, freqGhz, nPaths,
-    bodyOffset, bodyRotationY, triggerCompute, config, stochasticPreset, stochasticOverrides,
-    stochasticSeed, pathSource, enabledQuantities, exposureScenario, bodyName,
-    rtMethod, rtRaysPerSource, rtMaxPathsPerSource,
-    rtLos, rtSpecularReflection, rtDiffuseReflection, rtRefraction,
-    rtDiffraction, rtEdgeDiffraction, rtDiffractionLitRegion,
-    rtReflectionLoss, rtSyntheticArray, rtSeed])
+  }, [sim, scene, exposureScenario, triggerCompute])
 
   // Cancel any in-flight request on unmount
   useEffect(() => {

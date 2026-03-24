@@ -1,5 +1,23 @@
 export type ColorStops = [t: number, r: number, g: number, b: number][]
 
+/** Safe max for large typed arrays (avoids stack overflow from spread). */
+export function arrayMax(arr: Float32Array | number[]): number {
+  let max = -Infinity
+  for (let i = 0; i < arr.length; i++) {
+    if (arr[i] > max) max = arr[i]
+  }
+  return max
+}
+
+/** Safe min for large typed arrays. */
+export function arrayMin(arr: Float32Array | number[]): number {
+  let min = Infinity
+  for (let i = 0; i < arr.length; i++) {
+    if (arr[i] < min) min = arr[i]
+  }
+  return min
+}
+
 export function sampleInferno(t: number, stops: ColorStops): [number, number, number] {
   t = Math.max(0, Math.min(1, t))
   for (let i = 0; i < stops.length - 1; i++) {

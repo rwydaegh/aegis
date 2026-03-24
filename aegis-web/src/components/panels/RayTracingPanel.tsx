@@ -106,19 +106,8 @@ export default function RayTracingPanel() {
   // RT config state
   const rtSource = useSceneStore(s => s.rtSource)
   const rtMaxOrder = useSceneStore(s => s.rtMaxOrder)
-  const rtMethod = useSceneStore(s => s.rtMethod)
-  const rtRaysPerSource = useSceneStore(s => s.rtRaysPerSource)
-  const rtMaxPathsPerSource = useSceneStore(s => s.rtMaxPathsPerSource)
-  const rtLos = useSceneStore(s => s.rtLos)
-  const rtSpecularReflection = useSceneStore(s => s.rtSpecularReflection)
-  const rtDiffuseReflection = useSceneStore(s => s.rtDiffuseReflection)
-  const rtRefraction = useSceneStore(s => s.rtRefraction)
-  const rtDiffraction = useSceneStore(s => s.rtDiffraction)
-  const rtEdgeDiffraction = useSceneStore(s => s.rtEdgeDiffraction)
-  const rtDiffractionLitRegion = useSceneStore(s => s.rtDiffractionLitRegion)
-  const rtReflectionLoss = useSceneStore(s => s.rtReflectionLoss)
-  const rtSyntheticArray = useSceneStore(s => s.rtSyntheticArray)
-  const rtSeed = useSceneStore(s => s.rtSeed)
+  const rc = useSceneStore(s => s.rtConfig)
+  const setRtConfig = useSceneStore(s => s.setRtConfig)
 
   const hasDiffert = caps?.has_differt ?? false
   const hasSionna = caps?.has_sionna ?? false
@@ -140,7 +129,7 @@ export default function RayTracingPanel() {
   const backend: Backend = rtSource
 
   // Helper to get capability for a param
-  const cap = (param: string) => capFor(backend, param, { method: rtMethod, diffraction: rtDiffraction })
+  const cap = (param: string) => capFor(backend, param, { method: rc.method, diffraction: rc.diffraction })
 
   // Wrapper for disabled rows
   function Row({ param, children }: { param: string; children: React.ReactNode }) {
@@ -252,8 +241,8 @@ export default function RayTracingPanel() {
             </label>
             <select
               className={selectClass}
-              value={cap('method').kind === 'fixed' ? (cap('method') as { value: string }).value.toLowerCase() : rtMethod}
-              onChange={e => useSceneStore.setState({ rtMethod: e.target.value as 'exhaustive' | 'sbr' | 'hybrid' })}
+              value={cap('method').kind === 'fixed' ? (cap('method') as { value: string }).value.toLowerCase() : rc.method}
+              onChange={e => setRtConfig({ method: e.target.value as 'exhaustive' | 'sbr' | 'hybrid' })}
               disabled={isDisabled(cap('method'))}
             >
               {cap('method').kind === 'fixed' ? (
@@ -278,10 +267,10 @@ export default function RayTracingPanel() {
             <input
               type="number"
               className={selectClass}
-              value={rtRaysPerSource}
+              value={rc.raysPerSource}
               onChange={e => {
                 const v = Number(e.target.value)
-                if (v > 0) useSceneStore.setState({ rtRaysPerSource: v })
+                if (v > 0) setRtConfig({ raysPerSource: v })
               }}
               min={1}
               step={100000}
@@ -297,10 +286,10 @@ export default function RayTracingPanel() {
             <input
               type="number"
               className={selectClass}
-              value={rtMaxPathsPerSource}
+              value={rc.maxPathsPerSource}
               onChange={e => {
                 const v = Number(e.target.value)
-                if (v > 0) useSceneStore.setState({ rtMaxPathsPerSource: v })
+                if (v > 0) setRtConfig({ maxPathsPerSource: v })
               }}
               min={1}
               step={100000}
@@ -315,45 +304,45 @@ export default function RayTracingPanel() {
             <CheckboxRow
               param="los"
               label="LOS"
-              checked={rtLos}
-              onChange={v => useSceneStore.setState({ rtLos: v })}
+              checked={rc.los}
+              onChange={v => setRtConfig({ los: v })}
             />
             <CheckboxRow
               param="specularReflection"
               label="Specular reflection"
-              checked={rtSpecularReflection}
-              onChange={v => useSceneStore.setState({ rtSpecularReflection: v })}
+              checked={rc.specularReflection}
+              onChange={v => setRtConfig({ specularReflection: v })}
             />
             <CheckboxRow
               param="diffuseReflection"
               label="Diffuse reflection"
-              checked={rtDiffuseReflection}
-              onChange={v => useSceneStore.setState({ rtDiffuseReflection: v })}
+              checked={rc.diffuseReflection}
+              onChange={v => setRtConfig({ diffuseReflection: v })}
             />
             <CheckboxRow
               param="refraction"
               label="Refraction"
-              checked={rtRefraction}
-              onChange={v => useSceneStore.setState({ rtRefraction: v })}
+              checked={rc.refraction}
+              onChange={v => setRtConfig({ refraction: v })}
             />
             <CheckboxRow
               param="diffraction"
               label="Diffraction"
-              checked={rtDiffraction}
-              onChange={v => useSceneStore.setState({ rtDiffraction: v })}
+              checked={rc.diffraction}
+              onChange={v => setRtConfig({ diffraction: v })}
             />
             <CheckboxRow
               param="edgeDiffraction"
               label="Edge diffraction"
-              checked={rtEdgeDiffraction}
-              onChange={v => useSceneStore.setState({ rtEdgeDiffraction: v })}
+              checked={rc.edgeDiffraction}
+              onChange={v => setRtConfig({ edgeDiffraction: v })}
               indent
             />
             <CheckboxRow
               param="diffractionLitRegion"
               label="Diffraction lit region"
-              checked={rtDiffractionLitRegion}
-              onChange={v => useSceneStore.setState({ rtDiffractionLitRegion: v })}
+              checked={rc.diffractionLitRegion}
+              onChange={v => setRtConfig({ diffractionLitRegion: v })}
               indent
             />
           </div>
@@ -373,12 +362,12 @@ export default function RayTracingPanel() {
                 min={0}
                 max={1}
                 step={0.05}
-                value={rtReflectionLoss}
-                onChange={e => useSceneStore.setState({ rtReflectionLoss: Number(e.target.value) })}
+                value={rc.reflectionLoss}
+                onChange={e => setRtConfig({ reflectionLoss: Number(e.target.value) })}
                 disabled={isDisabled(cap('reflectionLoss'))}
               />
               <span className="text-xs text-muted-foreground tabular-nums w-8 text-right">
-                {rtReflectionLoss.toFixed(2)}
+                {rc.reflectionLoss.toFixed(2)}
               </span>
             </div>
           </Row>
@@ -387,8 +376,8 @@ export default function RayTracingPanel() {
             <CheckboxRow
               param="syntheticArray"
               label="Synthetic array"
-              checked={rtSyntheticArray}
-              onChange={v => useSceneStore.setState({ rtSyntheticArray: v })}
+              checked={rc.syntheticArray}
+              onChange={v => setRtConfig({ syntheticArray: v })}
             />
           </div>
 
@@ -400,10 +389,10 @@ export default function RayTracingPanel() {
             <input
               type="number"
               className={selectClass}
-              value={rtSeed}
+              value={rc.seed}
               onChange={e => {
                 const v = Number(e.target.value)
-                if (Number.isFinite(v)) useSceneStore.setState({ rtSeed: v })
+                if (Number.isFinite(v)) setRtConfig({ seed: v })
               }}
               min={0}
               step={1}

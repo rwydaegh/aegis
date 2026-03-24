@@ -11,6 +11,8 @@ import LayersPanel from '@/components/panels/LayersPanel'
 import ScenePanel from '@/components/panels/ScenePanel'
 import RayTracingPanel from '@/components/panels/RayTracingPanel'
 import StochasticPanel from '@/components/panels/StochasticPanel'
+import TissuePanel from '@/components/panels/TissuePanel'
+import ExportPanel from '@/components/panels/ExportPanel'
 
 export default function Sidebar() {
   const { sidebarOpen } = useUIStore()
@@ -81,6 +83,24 @@ export default function Sidebar() {
               <AccordionContent>
                 <div className="py-2">
                   <StochasticPanel />
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="tissue" className="border-b border-border px-3">
+              <AccordionTrigger className="text-sm font-medium py-3">Tissue</AccordionTrigger>
+              <AccordionContent>
+                <div className="py-2">
+                  <TissuePanel />
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="export" className="border-b border-border px-3">
+              <AccordionTrigger className="text-sm font-medium py-3">Export</AccordionTrigger>
+              <AccordionContent>
+                <div className="py-2">
+                  <ExportPanel />
                 </div>
               </AccordionContent>
             </AccordionItem>

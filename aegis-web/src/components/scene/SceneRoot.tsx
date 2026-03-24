@@ -107,7 +107,7 @@ function CameraController({ controlsRef, initialPosition }: {
 function SceneLighting() {
   const config = useSceneStore(s => s.viewerConfig)
   if (!config) return null
-  const light = config.lighting as any
+  const light = config.lighting
 
   return (
     <>
