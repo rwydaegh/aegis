@@ -116,7 +116,7 @@ def _build_stats_response(result, body, tissue, level, extra=None, mode=None, co
     compliance = evaluate_compliance(
         scenario=scenario,
         freq_hz=freq_hz,
-        sab_4cm2=peak_sab_averaged if peak_sab_averaged is not None else float(result.peak_sab),
+        sab_4cm2=peak_sab_averaged,
         sinc_local=peak_sinc_averaged,
         sinc_whole_body=sinc_wb,
         sar_wb=result.sar_wb,
