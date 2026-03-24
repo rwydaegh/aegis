@@ -1,4 +1,4 @@
-import type { ViewerConfig, Capabilities, BodyMeta, VoxelMeta, DosimetryStats, LevelInfo, SystemInfo } from './types'
+import type { ViewerConfig, Capabilities, BodyMeta, VoxelMeta, DosimetryStats, LevelInfo, SystemInfo, ICNIRPLimits, TissueSpectrum } from './types'
 import { parseBodyBinary, parseVoxelBinary, parseSabBinary, parseSceneBinary } from './binary'
 import { toServer, type ScenePos } from './coordinates'
 
@@ -100,6 +100,19 @@ export async function fetchScenes(): Promise<string[]> {
 
 export async function fetchTileList(): Promise<{ tiles: string[]; transform: number[] | null }> {
   return getJson<{ tiles: string[]; transform: number[] | null }>('/api/tiles')
+}
+
+export async function fetchComplianceLimits(freqHz: number, scenario: string = 'general_public'): Promise<ICNIRPLimits> {
+  return getJson<ICNIRPLimits>(`/api/compliance/limits?freq_hz=${freqHz}&scenario=${scenario}`)
+}
+
+export async function fetchComplianceSummary(txPowerDbm?: number): Promise<{ text: string }> {
+  const params = txPowerDbm != null ? `?tx_power_dbm=${txPowerDbm}` : ''
+  return getJson<{ text: string }>(`/api/compliance/summary${params}`)
+}
+
+export async function fetchTissueSpectrum(tissue: string, fMin: number, fMax: number, n: number = 100): Promise<TissueSpectrum> {
+  return getJson<TissueSpectrum>(`/api/tissue/spectrum?tissue=${encodeURIComponent(tissue)}&f_min=${fMin}&f_max=${fMax}&n=${n}`)
 }
 
 // ---------------------------------------------------------------------------

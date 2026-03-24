@@ -247,5 +247,25 @@ export interface VoxelBinary {
   meta: VoxelMeta
 }
 
+// -- Analysis types -------------------------------------------------------
+
+export interface ICNIRPLimits {
+  scenario: string
+  freq_hz: number
+  sab_4cm2: number
+  sab_1cm2: number | null
+  sar_wb: number
+  sinc_local: number
+  sinc_whole_body: number
+}
+
+export interface TissueSpectrum {
+  tissue: string
+  freqs_hz: number[]
+  eps_r: number[]
+  sigma: number[]
+  T0: number[]
+}
+
 // ScenePos is re-exported for convenience where types.ts is the single import point
 export type { ScenePos }
