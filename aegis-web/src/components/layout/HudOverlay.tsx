@@ -3,6 +3,7 @@ import StatusBar from '@/components/hud/StatusBar'
 import ColorLegend from '@/components/hud/ColorLegend'
 import ServerInfoBadge from '@/components/hud/ServerInfoBadge'
 import CompliancePanel from '@/components/hud/CompliancePanel'
+import NotificationToast from '@/components/hud/NotificationToast'
 import { useUIStore } from '@/stores/ui'
 
 export default function HudOverlay() {
@@ -33,6 +34,9 @@ export default function HudOverlay() {
 
       {/* Server info - bottom right */}
       <ServerInfoBadge />
+
+      {/* Notification toasts - bottom left */}
+      <NotificationToast />
     </div>
   )
 }

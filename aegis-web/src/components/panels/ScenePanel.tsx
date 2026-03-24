@@ -1,8 +1,9 @@
 import { useState, useRef } from 'react'
-import { loadLocation, cancelLocation, loadSceneGeometry } from '@/api/client'
+import { loadLocation, cancelLocation, loadSceneGeometry, fetchCapabilities } from '@/api/client'
 import { useSceneStore } from '@/stores/scene'
 import { useSimulationStore } from '@/stores/simulation'
 import { useUIStore } from '@/stores/ui'
+import { useNotificationStore } from '@/stores/notifications'
 
 function SionnaSceneSelector() {
   const scenes = useSceneStore(s => s.scenes)
@@ -26,7 +27,7 @@ function SionnaSceneSelector() {
       })
       useSceneStore.getState().setLoadedScenePath(selected)
     } catch (err) {
-      console.error('Failed to load scene:', err)
+      useNotificationStore.getState().addNotification('error', `Failed to load scene: ${(err as Error).message}`)
     }
     setLoading(false)
   }
@@ -97,10 +98,13 @@ export default function ScenePanel() {
       es.close()
       esRef.current = null
       useUIStore.getState().setLocationLoading(false)
-      useUIStore.getState().appendLocationLog('Done! Reloading voxels...')
-      // Trigger voxel reload by updating capabilities
-      // The useVoxelLoader hook will refetch when has_voxels changes
-      window.location.reload()  // simplest approach for now
+      useUIStore.getState().appendLocationLog('Done! Loading voxels...')
+      // Re-fetch capabilities so useVoxelLoader picks up the new voxels
+      fetchCapabilities().then(caps => {
+        useSceneStore.getState().setCapabilities(caps)
+      }).catch(() => {
+        useNotificationStore.getState().addNotification('error', 'Failed to refresh after location load')
+      })
     })
 
     es.addEventListener('error', () => {

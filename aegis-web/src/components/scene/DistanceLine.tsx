@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import { Line } from '@react-three/drei'
 import { useSimulationStore } from '@/stores/simulation'
@@ -11,7 +11,7 @@ export default function DistanceLine() {
   const stats = useSimulationStore(s => s.stats)
   const config = useSceneStore(s => s.viewerConfig)
 
-  const poleH = (config?.antenna as any)?.pole_height ?? 2
+  const poleH = config?.antenna?.pole_height ?? 2
   const antennaTip: [number, number, number] | null = antennaPos
     ? [antennaPos[0], antennaPos[1] + poleH, antennaPos[2]]
     : null
@@ -29,8 +29,16 @@ export default function DistanceLine() {
   const dist = stats?.distance_m
   const label = dist != null ? formatDistance(dist) : ''
 
+  const prevTextureRef = useRef<THREE.CanvasTexture | null>(null)
+
   const labelTexture = useMemo(() => {
-    if (!label) return null
+    // Dispose the previous texture to prevent GPU memory leaks
+    prevTextureRef.current?.dispose()
+
+    if (!label) {
+      prevTextureRef.current = null
+      return null
+    }
     const canvas = document.createElement('canvas')
     canvas.width = 128
     canvas.height = 32
@@ -48,8 +56,14 @@ export default function DistanceLine() {
     ctx.textBaseline = 'middle'
     ctx.fillText(label, 64, 16)
     const texture = new THREE.CanvasTexture(canvas)
+    prevTextureRef.current = texture
     return texture
   }, [label])
+
+  // Dispose texture on unmount
+  useEffect(() => {
+    return () => { prevTextureRef.current?.dispose() }
+  }, [])
 
   if (!antennaTip) return null
 

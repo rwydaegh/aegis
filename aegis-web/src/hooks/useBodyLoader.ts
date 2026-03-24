@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import * as THREE from 'three'
 import { fetchBody } from '@/api/client'
 import { useSceneStore } from '@/stores/scene'
+import { useNotificationStore } from '@/stores/notifications'
 
 export function useBodyLoader() {
   const bodyName = useSceneStore(s => s.bodyName)
@@ -34,7 +35,7 @@ export function useBodyLoader() {
 
       setBodyGeometry(geometry)
     }).catch(err => {
-      console.error('Failed to load body:', err)
+      useNotificationStore.getState().addNotification('error', `Failed to load body: ${(err as Error).message}`)
     })
 
     return () => { cancelled = true }

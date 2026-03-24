@@ -52,7 +52,7 @@ export function usePhysics() {
 
     if (!hasInput && !isMoving && physicsState.current.onGround) return
 
-    const physicsConfig = (config as any).physics as PhysicsConfig
+    const physicsConfig = config.physics as PhysicsConfig
 
     const newState = stepPhysics(
       physicsState.current,

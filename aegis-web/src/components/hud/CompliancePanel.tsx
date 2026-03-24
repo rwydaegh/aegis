@@ -2,6 +2,14 @@ import { useSimulationStore } from '@/stores/simulation'
 import { useUIStore } from '@/stores/ui'
 import Tex from '@/components/ui/Tex'
 
+function computeMaxPowerDbm(checks: Array<{ ratio: number }>, currentPowerDbm: number): number | null {
+  if (checks.length === 0) return null
+  const maxRatio = Math.max(...checks.map(c => c.ratio))
+  if (maxRatio <= 0) return null
+  // P_max = P_ref / maxRatio (linear), convert to dB offset
+  return currentPowerDbm - 10 * Math.log10(maxRatio)
+}
+
 const LABEL_TEX: Record<string, string> = {
   'S_ab (4 cm^2)': 'S_\\text{ab}\\;(4\\,\\text{cm}^2)',
   'S_ab (1 cm^2)': 'S_\\text{ab}\\;(1\\,\\text{cm}^2)',
@@ -66,20 +74,34 @@ export default function CompliancePanel() {
         )
       })}
 
-      {compliance.margin_db != null && (
-        <div style={{ borderTop: '1px solid #333', paddingTop: '8px', marginTop: '8px', color: '#888' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span>Margin</span>
-            <span style={{ color: compliance.margin_db >= 0 ? '#4ade80' : '#f87171' }}>
-              {compliance.margin_db > 0 ? '+' : ''}{compliance.margin_db.toFixed(1)} dB
-            </span>
+      {compliance.margin_db != null && (() => {
+        const powerDbm = useSimulationStore.getState().powerDbm
+        const maxPowerDbm = computeMaxPowerDbm(visibleChecks, powerDbm)
+        return (
+          <div style={{ borderTop: '1px solid #333', paddingTop: '8px', marginTop: '8px', color: '#888' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>Margin</span>
+              <span style={{ color: compliance.margin_db >= 0 ? '#4ade80' : '#f87171' }}>
+                {compliance.margin_db > 0 ? '+' : ''}{compliance.margin_db.toFixed(1)} dB
+              </span>
+            </div>
+            {maxPowerDbm != null && (
+              <div
+                style={{ display: 'flex', justifyContent: 'space-between', cursor: 'pointer' }}
+                title="Click to set TX power to max compliant value"
+                onClick={() => useSimulationStore.getState().setPowerDbm(Math.floor(maxPowerDbm * 10) / 10)}
+              >
+                <span>Max TX power</span>
+                <span style={{ color: '#93c5fd' }}>{maxPowerDbm.toFixed(1)} dBm</span>
+              </div>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>Frequency</span>
+              <span>{(compliance.freq_hz / 1e9).toFixed(1)} GHz</span>
+            </div>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span>Frequency</span>
-            <span>{(compliance.freq_hz / 1e9).toFixed(1)} GHz</span>
-          </div>
-        </div>
-      )}
+        )
+      })()}
     </div>
   )
 }

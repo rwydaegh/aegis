@@ -3,7 +3,7 @@ import * as THREE from 'three'
 import { useSceneStore } from '@/stores/scene'
 import { useSimulationStore } from '@/stores/simulation'
 import { useUIStore } from '@/stores/ui'
-import { jetColor, gainTFromLinear } from '@/lib/colormap'
+import { jetColor, gainTFromLinear, arrayMax } from '@/lib/colormap'
 import { useBodyLoader } from '@/hooks/useBodyLoader'
 import PeakIndicator from './PeakIndicator'
 
@@ -95,7 +95,7 @@ export default function BodyMesh() {
         colorAttr.setXYZ(f * 3 + 2, r, g, b)
       }
     } else {
-      const currentMax = Math.max(...Array.from(dataArray))
+      const currentMax = arrayMax(dataArray)
 
       // When lock is first activated, store the current max
       if (colormapLocked && colormapLockedMax == null) {

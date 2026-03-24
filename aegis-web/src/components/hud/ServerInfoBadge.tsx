@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { fetchSystemInfo } from '@/api/client'
+import type { SystemInfo } from '@/api/types'
 
 interface ServerInfo {
   hostname: string
@@ -26,19 +27,18 @@ function useServerInfo(): ServerInfo | null {
   useEffect(() => {
     const poll = () => {
       fetchSystemInfo()
-        .then(data => {
-          const d = data as any
+        .then((data: SystemInfo) => {
           setInfo({
             hostname: data.hostname,
-            cpuPct: d.cpu_pct ?? null,
-            cpuCores: d.cpu_cores ?? null,
-            ramPct: d.ram_pct ?? null,
-            ramTotalGb: d.ram_total_gb ?? null,
-            gpuPct: d.gpu?.utilization_pct ?? null,
-            gpuName: d.gpu?.name ? shortenGpuName(d.gpu.name) : null,
+            cpuPct: data.cpu_pct ?? null,
+            cpuCores: data.cpu_cores ?? null,
+            ramPct: data.ram_pct ?? null,
+            ramTotalGb: data.ram_total_gb ?? null,
+            gpuPct: data.gpu?.utilization_pct ?? null,
+            gpuName: data.gpu?.name ? shortenGpuName(data.gpu.name) : null,
           })
         })
-        .catch(() => {})
+        .catch(() => { /* server info is optional, silently ignore */ })
     }
     poll()
     const interval = setInterval(poll, 5000)
