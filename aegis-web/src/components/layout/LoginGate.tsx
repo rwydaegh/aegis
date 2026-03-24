@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useState, useEffect, type ReactNode } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 
 interface LoginGateProps {
@@ -6,30 +6,55 @@ interface LoginGateProps {
 }
 
 export default function LoginGate({ children }: LoginGateProps) {
-  const { authenticated, error, login } = useAuth()
+  const { authenticated, error, login, logout } = useAuth()
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+
+  // On mount, probe auth status with a lightweight API call
+  useEffect(() => {
+    if (authenticated !== null) return // already resolved
+    fetch('/api/health')
+      .then(res => {
+        if (res.status === 401) {
+          logout() // sets authenticated = false, shows login form
+        } else {
+          // Health is exempt from auth, so try a protected endpoint
+          return fetch('/api/config')
+        }
+      })
+      .then(res => {
+        if (!res) return
+        if (res.status === 401) {
+          logout()
+        } else {
+          // Already authenticated (has valid cookie)
+          useAuth.setState({ authenticated: true })
+        }
+      })
+      .catch(() => {
+        logout() // network error, show login form
+      })
+  }, [authenticated, logout])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
-    await login(password)
-    setLoading(false)
+    try {
+      await login(password)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  // null = unknown (waiting for first API call to resolve)
+  // null = unknown (probing auth status)
   if (authenticated === null) {
     return (
-      <>
-        <div className="h-screen w-screen bg-background flex items-center justify-center">
-          <div className="text-center">
-            <div className="w-8 h-8 border-2 border-muted border-t-primary rounded-full animate-spin mx-auto mb-3" />
-            <p className="text-muted-foreground text-sm">Connecting...</p>
-          </div>
+      <div className="h-screen w-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-muted border-t-primary rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-muted-foreground text-sm">Connecting...</p>
         </div>
-        {/* Render children hidden so hooks can run and trigger 401 detection */}
-        <div className="hidden">{children}</div>
-      </>
+      </div>
     )
   }
 
