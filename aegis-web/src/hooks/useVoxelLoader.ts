@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { fetchVoxels } from '@/api/client'
 import { useSceneStore } from '@/stores/scene'
 import { useSimulationStore } from '@/stores/simulation'
+import { useNotificationStore } from '@/stores/notifications'
 import { buildHeightmap } from '@/lib/physics'
 export function useVoxelLoader() {
   const caps = useSceneStore(s => s.capabilities)
@@ -28,7 +29,7 @@ export function useVoxelLoader() {
         useSimulationStore.getState().setBodyOffset(bp)
       }
     }).catch(err => {
-      console.error('Failed to load voxels:', err)
+      useNotificationStore.getState().addNotification('error', `Failed to load voxels: ${(err as Error).message}`)
     })
   }, [caps?.has_voxels])
 }

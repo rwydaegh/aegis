@@ -50,7 +50,7 @@ export default function VoxelField() {
   if (!voxelData || !config || !groups || envMode !== 'cubes') return null
 
   const sizeScale = config.voxels?.size_scale ?? 0.95
-  const configMatColors = (config.voxels as any)?.material_colors as Record<string, [number, number, number]> | undefined
+  const configMatColors = config.voxels?.material_colors
 
   return (
     <group {...clickHandlers}>

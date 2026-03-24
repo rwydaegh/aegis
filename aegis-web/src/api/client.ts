@@ -1,4 +1,4 @@
-import type { ViewerConfig, Capabilities, BodyMeta, VoxelMeta, DosimetryStats, LevelInfo } from './types'
+import type { ViewerConfig, Capabilities, BodyMeta, VoxelMeta, DosimetryStats, LevelInfo, SystemInfo } from './types'
 import { parseBodyBinary, parseVoxelBinary, parseSabBinary, parseSceneBinary } from './binary'
 import { toServer, type ScenePos } from './coordinates'
 
@@ -82,12 +82,8 @@ export async function fetchCapabilities(): Promise<Capabilities> {
   return getJson<Capabilities>('/api/config')
 }
 
-export async function fetchHealth(): Promise<{ status: string; version: string }> {
-  return getJson<{ status: string; version: string }>('/api/health')
-}
-
-export async function fetchSystemInfo(): Promise<{ hostname: string; platform: string; gpu: unknown }> {
-  return getJson<{ hostname: string; platform: string; gpu: unknown }>('/api/system')
+export async function fetchSystemInfo(): Promise<SystemInfo> {
+  return getJson<SystemInfo>('/api/system')
 }
 
 export async function fetchLevels(): Promise<LevelInfo[]> {
@@ -140,23 +136,6 @@ export async function fetchVoxels(): Promise<{
   const binary = parseVoxelBinary(buffer, meta.n_voxels)
 
   return { binary, meta }
-}
-
-export async function fetchHullMesh(): Promise<{
-  vertices: Float32Array
-  indices: Int32Array
-  meta: { n_vertices: number; n_triangles: number }
-}> {
-  const res = await getBinary('/api/voxels/hull-mesh')
-
-  const metaHeader = res.headers.get('X-Meta')
-  if (!metaHeader) throw new Error('GET /api/voxels/hull-mesh: missing X-Meta header')
-  const meta: { n_vertices: number; n_triangles: number } = JSON.parse(metaHeader)
-
-  const buffer = await res.arrayBuffer()
-  const { vertices, indices } = parseSceneBinary(buffer, meta.n_vertices, meta.n_triangles, false)
-
-  return { vertices, indices, meta }
 }
 
 export async function fetchTileFile(filename: string): Promise<ArrayBuffer> {

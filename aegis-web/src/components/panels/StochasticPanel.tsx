@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useSceneStore } from '@/stores/scene'
 import { useSimulationStore } from '@/stores/simulation'
+import { useNotificationStore } from '@/stores/notifications'
 
 interface PresetInfo {
   name: string
@@ -31,7 +32,7 @@ export default function StochasticPanel() {
         const current = data.find(p => p.name === preset)
         if (current) setPresetParams(current.params)
       })
-      .catch(() => {})
+      .catch(() => { useNotificationStore.getState().addNotification('warning', 'Failed to load channel presets') })
   }, [])
 
   useEffect(() => {

@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useSimulationStore } from '@/stores/simulation'
 import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
+import { arrayMax } from '@/lib/colormap'
 import Tex from '@/components/ui/Tex'
 
 /** Format a value for the legend: use scientific notation for very small/large values. */
@@ -23,7 +24,7 @@ const BAR_WIDTH = 16
  * then rounds to the nearest 5 dB. Clamped to [10, 60].
  */
 function computeSmartDynamicRange(sabArray: Float32Array): number {
-  const max = Math.max(...Array.from(sabArray))
+  const max = arrayMax(sabArray)
   if (max <= 0) return 30
 
   // Collect dB values for non-zero faces

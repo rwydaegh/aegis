@@ -42,8 +42,8 @@ export function useKeyboard(): KeyState {
         if (!config || !pos) return
 
         const step = e.shiftKey
-          ? ((config.antenna as any).nudge_step_shift ?? 3)
-          : ((config.antenna as any).nudge_step ?? 1)
+          ? (config.antenna.nudge_step_shift ?? 3)
+          : (config.antenna.nudge_step ?? 1)
         const [x, y, z] = pos
         let newPos: [number, number, number] = [x, y, z]
         if (e.code === 'ArrowUp') newPos = [x, y, z - step]
