@@ -256,3 +256,52 @@ class TestLevel1Directivity:
         )
         np.testing.assert_allclose(sab, 0.0)
         assert p_abs == pytest.approx(0.0)
+
+
+# ---------------------------------------------------------------------------
+# Spatial kernel validation
+# ---------------------------------------------------------------------------
+
+
+class TestSpatialKernelValidation:
+    def test_polarisation_requires_fresnel(self):
+        """polarisation=True with fresnel=False should raise ValueError."""
+        from aegis.kernels.spatial import spatial_kernel
+
+        normals = np.array([[0, 0, 1.0]])
+        k_hat = np.array([[0, 0, -1.0]])
+        power = np.array([1.0])
+
+        with pytest.raises(ValueError, match="polarisation.*requires.*fresnel"):
+            spatial_kernel(
+                normals,
+                k_hat,
+                power,
+                n_tilde=4 + 3j,
+                T0=0.5,
+                freq_hz=28e9,
+                fresnel=False,
+                polarisation=True,
+            )
+
+    def test_polarisation_with_fresnel_works(self):
+        """polarisation=True with fresnel=True should succeed."""
+        from aegis.kernels.spatial import spatial_kernel
+
+        normals = np.array([[0, 0, 1.0]])
+        k_hat = np.array([[0, 0, -1.0]])
+        power = np.array([1.0])
+
+        sab = spatial_kernel(
+            normals,
+            k_hat,
+            power,
+            n_tilde=4 + 3j,
+            T0=0.5,
+            freq_hz=28e9,
+            fresnel=True,
+            polarisation=True,
+            q=0.5,
+        )
+        assert sab.shape == (1,)
+        assert float(sab[0]) >= 0

@@ -56,6 +56,8 @@ def spatial_kernel(
     -------
     sab : (M,) absorbed power density per triangle [W/m^2]
     """
+    if polarisation and not fresnel:
+        raise ValueError("polarisation correction requires fresnel=True")
     if (curvature or diffraction) and curvature_H is None:
         raise ValueError("curvature_H is required when curvature=True or diffraction=True")
 
