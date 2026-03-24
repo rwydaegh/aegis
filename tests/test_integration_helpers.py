@@ -858,3 +858,46 @@ class TestLosNlosFiltering:
         )
         assert p.los_paths.n_paths == 1
         assert p.nlos_paths.n_paths == 0
+
+
+# ---------------------------------------------------------------------------
+# PropagationPaths serialization round-trip
+# ---------------------------------------------------------------------------
+class TestPathsSerialization:
+    def test_incoherent_round_trip(self):
+        p = PropagationPaths.from_powers(
+            k_hat=np.array([[1, 0, 0], [0, 1, 0]]),
+            power=np.array([1.0, 2.0]),
+        )
+        d = p.to_dict()
+        restored = PropagationPaths.from_dict(d)
+        np.testing.assert_allclose(restored.k_hat, p.k_hat)
+        np.testing.assert_allclose(restored.power, p.power, rtol=1e-10)
+        assert restored.n_paths == 2
+
+    def test_coherent_round_trip(self):
+        psi = np.array([[1 + 2j, 0, 3j], [0, 1 - 1j, 0]])
+        p = PropagationPaths(
+            k_hat=np.array([[1, 0, 0], [0, 0, -1.0]]),
+            psi=psi,
+            element_index=np.array([0, 1]),
+            delay=np.array([1e-9, 2e-9]),
+            is_los=np.array([True, False]),
+        )
+        d = p.to_dict()
+        restored = PropagationPaths.from_dict(d)
+        np.testing.assert_allclose(restored.psi, psi)
+        np.testing.assert_allclose(restored.delay, p.delay)
+        np.testing.assert_array_equal(restored.is_los, p.is_los)
+        np.testing.assert_array_equal(restored.element_index, p.element_index)
+
+    def test_json_round_trip(self):
+        import json
+
+        p = PropagationPaths.from_powers(
+            k_hat=np.array([[0, 0, -1.0]]),
+            power=np.array([5.0]),
+        )
+        json_str = json.dumps(p.to_dict())
+        restored = PropagationPaths.from_dict(json.loads(json_str))
+        np.testing.assert_allclose(restored.power, p.power, rtol=1e-10)

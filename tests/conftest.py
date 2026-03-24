@@ -48,14 +48,16 @@ def make_flat_mesh(n: int = 100) -> BodyMesh:
     """
     rng = np.random.default_rng(42)
     side = np.sqrt(n * 1e-4)
-    vertices = np.zeros((n, 3, 3))
     s = np.sqrt(1e-4 * 2)  # triangle side for area ~1e-4
-    for i in range(n):
-        cx = rng.uniform(0, side)
-        cy = rng.uniform(0, side)
-        vertices[i, 0] = [cx, cy, 0]
-        vertices[i, 1] = [cx + s, cy, 0]
-        vertices[i, 2] = [cx, cy + s, 0]
+
+    cx = rng.uniform(0, side, n)
+    cy = rng.uniform(0, side, n)
+    z = np.zeros(n)
+
+    vertices = np.zeros((n, 3, 3))
+    vertices[:, 0, :] = np.column_stack([cx, cy, z])
+    vertices[:, 1, :] = np.column_stack([cx + s, cy, z])
+    vertices[:, 2, :] = np.column_stack([cx, cy + s, z])
 
     normals = np.tile([0, 0, 1.0], (n, 1))
     centroids = np.mean(vertices, axis=1)

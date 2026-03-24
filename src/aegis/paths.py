@@ -275,5 +275,37 @@ class PropagationPaths:
             is_los=np.concatenate(is_loss, axis=0),
         )
 
+    def to_dict(self) -> dict:
+        """Serialize to a JSON-friendly dict.
+
+        Complex arrays (psi) are stored as {"real": [...], "imag": [...]}.
+        """
+        return {
+            "k_hat": self.k_hat.tolist(),
+            "psi": {
+                "real": self.psi.real.tolist(),
+                "imag": self.psi.imag.tolist(),
+            },
+            "element_index": self.element_index.tolist(),
+            "delay": self.delay.tolist(),
+            "is_los": self.is_los.tolist(),
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> PropagationPaths:
+        """Reconstruct from a dict (inverse of to_dict)."""
+        psi_raw = d["psi"]
+        if isinstance(psi_raw, dict) and "real" in psi_raw:
+            psi = np.array(psi_raw["real"]) + 1j * np.array(psi_raw["imag"])
+        else:
+            psi = np.array(psi_raw, dtype=complex)
+        return cls(
+            k_hat=np.array(d["k_hat"], dtype=np.float64),
+            psi=psi,
+            element_index=np.array(d["element_index"], dtype=np.intp),
+            delay=np.array(d["delay"], dtype=np.float64),
+            is_los=np.array(d["is_los"], dtype=bool),
+        )
+
     def __repr__(self) -> str:
         return f"PropagationPaths(n_paths={self.n_paths}, n_elements={self.n_elements})"
