@@ -139,5 +139,64 @@ class PropagationPaths:
             is_los=np.ones(n, dtype=bool),
         )
 
+    @classmethod
+    def concatenate(
+        cls,
+        paths_list: Sequence[PropagationPaths],
+        *,
+        reindex_elements: bool = True,
+    ) -> PropagationPaths:
+        """Concatenate multiple PropagationPaths into one.
+
+        Parameters
+        ----------
+        paths_list : sequence of PropagationPaths
+            Paths to concatenate. Empty entries are skipped.
+        reindex_elements : bool
+            If True (default), shift element_index so that each input's
+            elements are disjoint. If False, keep element indices as-is
+            (useful when paths already share a common antenna indexing).
+
+        Returns
+        -------
+        PropagationPaths
+            Combined paths with N = sum(N_i) total paths.
+        """
+        paths_list = [p for p in paths_list if p.n_paths > 0]
+        if len(paths_list) == 0:
+            empty = np.empty((0, 3), dtype=np.float64)
+            empty_1d = np.empty(0, dtype=np.float64)
+            return cls(
+                k_hat=empty,
+                psi=empty.astype(complex),
+                element_index=np.empty(0, dtype=np.intp),
+                delay=empty_1d,
+                is_los=np.empty(0, dtype=bool),
+            )
+        if len(paths_list) == 1:
+            return paths_list[0]
+
+        k_hats = [p.k_hat for p in paths_list]
+        psis = [p.psi for p in paths_list]
+        delays = [p.delay for p in paths_list]
+        is_loss = [p.is_los for p in paths_list]
+
+        if reindex_elements:
+            elem_indices = []
+            offset = 0
+            for p in paths_list:
+                elem_indices.append(p.element_index + offset)
+                offset += p.n_elements
+        else:
+            elem_indices = [p.element_index for p in paths_list]
+
+        return cls(
+            k_hat=np.concatenate(k_hats, axis=0),
+            psi=np.concatenate(psis, axis=0),
+            element_index=np.concatenate(elem_indices, axis=0),
+            delay=np.concatenate(delays, axis=0),
+            is_los=np.concatenate(is_loss, axis=0),
+        )
+
     def __repr__(self) -> str:
         return f"PropagationPaths(n_paths={self.n_paths}, n_elements={self.n_elements})"
