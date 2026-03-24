@@ -42,7 +42,8 @@ class DosimetryEngine:
         Tissue electromagnetic properties at the operating frequency.
     """
 
-    # Class-level cache for averaging matrices. Keyed by (id(body), n_tri, target_area).
+    # Class-level cache for averaging matrices. Keyed by a content hash of
+    # the body geometry (centroid checksum + n_triangles) and target area.
     # Shared across all engine instances so the expensive build persists across requests.
     _G_cache: dict = {}
 
@@ -52,8 +53,20 @@ class DosimetryEngine:
         self.n_tilde = tissue.n_complex
         self.freq_hz = tissue.freq_hz
 
+    @staticmethod
+    def _body_cache_key(body: BodyMesh) -> int:
+        """Content-based hash of body geometry for cache keying.
+
+        Uses a fast checksum of centroid bytes instead of id(body), which
+        can alias after garbage collection.
+        """
+        import hashlib
+
+        digest = hashlib.sha256(body.centroids.tobytes()).digest()[:8]
+        return hash((int.from_bytes(digest, "little"), body.n_triangles))
+
     def _get_G(self, body, target_area_m2):
-        key = (id(body), body.n_triangles, target_area_m2)
+        key = (self._body_cache_key(body), target_area_m2)
         if key not in self._G_cache:
             from aegis.geometry.averaging import precompute_averaging_matrix
 
