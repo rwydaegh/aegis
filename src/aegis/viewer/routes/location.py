@@ -6,7 +6,7 @@ import json
 import os
 from pathlib import Path
 
-from flask import Flask, Response, jsonify, request
+from flask import Flask, Response, jsonify, request, session
 
 
 def register(app: Flask, cache: dict, cache_lock) -> None:
@@ -52,6 +52,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         voxel_output = cache_dir_for(location, radius, base_cache)
         pipeline_output = voxel_output.parent
 
+        sid = session.get("session_id", "default")
+
         def generate():
             # Check cache
             cached = voxel_output.exists() and any(voxel_output.glob("*.json"))
@@ -60,7 +62,13 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             else:
                 # Run pipeline
                 for line in run_pipeline(
-                    location, radius, api_key, pipeline_output, resolution=resolution, pipeline_dir=pipeline_dir
+                    location,
+                    radius,
+                    api_key,
+                    pipeline_output,
+                    resolution=resolution,
+                    pipeline_dir=pipeline_dir,
+                    session_id=sid,
                 ):
                     yield f"event: progress\ndata: {line}\n\n"
                     if line.startswith("ERROR:"):
@@ -99,8 +107,9 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
     @app.route("/api/location/cancel", methods=["POST"])
     def api_location_cancel():
-        """Kill running pipeline subprocess."""
+        """Kill running pipeline subprocess for the current session."""
         from aegis.viewer.pipeline import cancel_pipeline
 
-        killed = cancel_pipeline()
+        sid = session.get("session_id", "default")
+        killed = cancel_pipeline(session_id=sid)
         return jsonify({"cancelled": killed})

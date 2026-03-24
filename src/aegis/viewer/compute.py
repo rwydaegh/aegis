@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 import time
 
 import numpy as np
@@ -24,6 +25,7 @@ PHANTOM_MASS_KG: dict[str, float] = {
 
 # Cache for curvature computation (expensive, only changes when body changes)
 _curvature_cache: dict = {}
+_curvature_cache_lock = threading.Lock()
 
 
 def _compute_face_curvature(body: BodyMesh) -> np.ndarray:
@@ -37,8 +39,10 @@ def _compute_face_curvature(body: BodyMesh) -> np.ndarray:
 
     digest = hashlib.sha256(body.centroids.tobytes()).digest()[:8]
     cache_key = hash((int.from_bytes(digest, "little"), body.n_triangles))
-    if cache_key in _curvature_cache:
-        return _curvature_cache[cache_key]
+
+    with _curvature_cache_lock:
+        if cache_key in _curvature_cache:
+            return _curvature_cache[cache_key]
 
     from scipy.spatial import cKDTree
 
@@ -58,8 +62,9 @@ def _compute_face_curvature(body: BodyMesh) -> np.ndarray:
 
     H = np.mean(curvature_per_neighbor[:, 1:], axis=1)
 
-    _curvature_cache.clear()
-    _curvature_cache[cache_key] = H
+    with _curvature_cache_lock:
+        _curvature_cache.clear()
+        _curvature_cache[cache_key] = H
     return H
 
 
@@ -323,10 +328,14 @@ def compute_dosimetry(
         if mode == "bound":
             A_ab = body.total_area * dos_cfg["convex_body_area_factor"]
             D_max = dos_cfg["level0_D_max"]
-            result = engine.compute(rotated_body, paths, mode="bound", A_ab=A_ab, D_max=D_max, body_mass=body_mass)
+            result, engine_timings = engine.compute_with_timings(
+                rotated_body, paths, mode="bound", A_ab=A_ab, D_max=D_max, body_mass=body_mass
+            )
         elif mode == "aggregate":
             A_ab = body.total_area * dos_cfg["convex_body_area_factor"]
-            result = engine.compute(rotated_body, paths, mode="aggregate", A_ab=A_ab, body_mass=body_mass)
+            result, engine_timings = engine.compute_with_timings(
+                rotated_body, paths, mode="aggregate", A_ab=A_ab, body_mass=body_mass
+            )
         else:
             # spatial mode with correction flags
             mode_kwargs: dict = {"mode": "spatial"}
@@ -339,7 +348,9 @@ def compute_dosimetry(
                 mode_kwargs["curvature_H"] = _compute_face_curvature(rotated_body)
             if corr.get("diffraction"):
                 mode_kwargs["diffraction"] = True
-            result = engine.compute(rotated_body, paths, body_mass=body_mass, **mode_kwargs)
+            result, engine_timings = engine.compute_with_timings(
+                rotated_body, paths, body_mass=body_mass, **mode_kwargs
+            )
     else:
         # Legacy level-based API
         if level is None:
@@ -349,7 +360,9 @@ def compute_dosimetry(
             extra_kwargs["A_ab"] = body.total_area * dos_cfg["convex_body_area_factor"]
             if level == 0:
                 extra_kwargs["D_max"] = dos_cfg["level0_D_max"]
-            result = engine.compute(rotated_body, paths, level=level, body_mass=body_mass, **extra_kwargs)
+            result, engine_timings = engine.compute_with_timings(
+                rotated_body, paths, level=level, body_mass=body_mass, **extra_kwargs
+            )
         elif level <= 6:
             mode_kwargs2: dict = {"mode": "spatial"}
             if level == 2:
@@ -362,19 +375,21 @@ def compute_dosimetry(
                 mode_kwargs2["curvature_H"] = _compute_face_curvature(rotated_body)
             if level == 6:
                 mode_kwargs2["diffraction"] = True
-            result = engine.compute(rotated_body, paths, body_mass=body_mass, **mode_kwargs2)
+            result, engine_timings = engine.compute_with_timings(
+                rotated_body, paths, body_mass=body_mass, **mode_kwargs2
+            )
         else:
-            result = engine.compute(rotated_body, paths, level=level, body_mass=body_mass, **extra_kwargs)
+            result, engine_timings = engine.compute_with_timings(
+                rotated_body, paths, level=level, body_mass=body_mass, **extra_kwargs
+            )
 
     timings["engine_compute_ms"] = (time.perf_counter() - t0) * 1e3
     timings["total_ms"] = (time.perf_counter() - t_total) * 1e3
 
-    # Pull fine-grained timings from engine's module-level dict
-    from aegis.engine import _last_timings
-
+    # Pull fine-grained timings from the call-local dict returned by compute_with_timings
     for key in ("kernel_ms", "avg_build_G_4cm2_ms", "avg_matvec_4cm2_ms", "avg_build_G_1cm2_ms"):
-        if key in _last_timings:
-            timings[key] = _last_timings[key]
+        if key in engine_timings:
+            timings[key] = engine_timings[key]
 
     extra = {
         "S_inc": float(S_inc),

@@ -6,14 +6,16 @@ import os
 import re
 import shutil
 import subprocess
+import threading
 from collections.abc import Generator
 from pathlib import Path
 
 # String constants (avoid duplicate literals)
 _PIPELINE_SCRIPT = "run_pipeline.js"
 
-# Module-level handle for cancellation
-_active_process: subprocess.Popen | None = None
+# Per-session process handles for cancellation
+_active_processes: dict[str, subprocess.Popen] = {}
+_pipeline_mutex = threading.Lock()
 
 
 def find_pipeline(pipeline_dir: str | None = None) -> Path | None:
@@ -65,6 +67,7 @@ def run_pipeline(
     output_dir: Path,
     resolution: int = 200,
     pipeline_dir: str | None = None,
+    session_id: str = "default",
 ) -> Generator[str]:
     """Run the Voxel Earth pipeline, yielding stdout lines for progress.
 
@@ -75,20 +78,25 @@ def run_pipeline(
     api_key : Google API key
     output_dir : directory for pipeline output (parent of voxels/)
     resolution : voxel resolution (default 200)
+    session_id : caller session identifier used to scope process ownership
 
     Yields
     ------
     str : each line of stdout/stderr from the pipeline process
     """
-    global _active_process
+    if not _pipeline_mutex.acquire(blocking=False):
+        yield "ERROR: pipeline busy"
+        return
 
     pipeline_js = find_pipeline(pipeline_dir)
     if pipeline_js is None:
+        _pipeline_mutex.release()
         yield "ERROR: run_pipeline.js not found"
         return
 
     node_bin = shutil.which("node")
     if node_bin is None:
+        _pipeline_mutex.release()
         yield "ERROR: node not found in PATH"
         return
 
@@ -120,7 +128,7 @@ def run_pipeline(
             cwd=str(pipeline_js.parent),
             env=env,
         )
-        _active_process = proc
+        _active_processes[session_id] = proc
 
         for line in proc.stdout:
             line = line.rstrip("\n\r")
@@ -138,7 +146,8 @@ def run_pipeline(
         yield f"ERROR: {e}"
 
     finally:
-        _active_process = None
+        _active_processes.pop(session_id, None)
+        _pipeline_mutex.release()
         if proc is not None and proc.poll() is None:
             proc.terminate()
             try:
@@ -147,15 +156,18 @@ def run_pipeline(
                 proc.kill()
 
 
-def cancel_pipeline() -> bool:
-    """Kill the running pipeline subprocess. Returns True if a process was killed."""
-    global _active_process
-    if _active_process is not None:
+def cancel_pipeline(session_id: str = "default") -> bool:
+    """Kill the running pipeline subprocess for the given session.
+
+    Returns True if a process was found and killed.
+    """
+    proc = _active_processes.get(session_id)
+    if proc is not None:
         try:
-            _active_process.terminate()
-            _active_process.wait(timeout=5)
+            proc.terminate()
+            proc.wait(timeout=5)
         except subprocess.TimeoutExpired:
-            _active_process.kill()
-        _active_process = None
+            proc.kill()
+        _active_processes.pop(session_id, None)
         return True
     return False

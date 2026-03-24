@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import os
+import threading
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
@@ -44,11 +45,13 @@ _scene_cache: dict = {}
 
 
 _voxel_scene_cache: dict = {}
+_voxel_scene_cache_lock = threading.Lock()
 
 
 def clear_voxel_scene_cache() -> None:
     """Invalidate cached DiffeRT scenes built from voxels (call after reloading voxel data)."""
-    _voxel_scene_cache.clear()
+    with _voxel_scene_cache_lock:
+        _voxel_scene_cache.clear()
 
 
 def list_available_scenes(scenes_dir: str | Path | None = None) -> list[dict]:
@@ -557,8 +560,9 @@ def get_or_build_voxel_scene(
     material_colors: dict[str, Any] | None = None,
 ):
     """Get cached voxel TriangleScene or build one."""
-    if cache_key in _voxel_scene_cache:
-        return _voxel_scene_cache[cache_key]
+    with _voxel_scene_cache_lock:
+        if cache_key in _voxel_scene_cache:
+            return _voxel_scene_cache[cache_key]
 
     scene = round_triangle_scene(
         positions,
@@ -567,7 +571,8 @@ def get_or_build_voxel_scene(
         materials=materials,
         material_colors=material_colors,
     )
-    _voxel_scene_cache[cache_key] = scene
+    with _voxel_scene_cache_lock:
+        _voxel_scene_cache[cache_key] = scene
     return scene
 
 
