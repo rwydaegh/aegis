@@ -40,7 +40,7 @@ export function useConfig() {
         const sim = useSimulationStore.getState()
         const ui = useUIStore.getState()
 
-        if (config.dosimetry?.freq_hz) {
+        if ((config.dosimetry as unknown as { freq_hz?: number }).freq_hz) {
           sim.setFreqGhz((config.dosimetry as unknown as { freq_hz: number }).freq_hz / 1e9)
         }
         if ((config.dosimetry as unknown as { default_power_dbm?: number }).default_power_dbm !== undefined) {
