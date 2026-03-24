@@ -6,8 +6,12 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 
 # Python deps + install package
-COPY pyproject.toml uv.lock ./
+COPY pyproject.toml uv.lock README.md ./
 COPY src/ src/
+
+# hatch-vcs needs git for versioning; use pretend version in Docker builds
+ARG SETUPTOOLS_SCM_PRETEND_VERSION=0.0.0
+ENV SETUPTOOLS_SCM_PRETEND_VERSION=${SETUPTOOLS_SCM_PRETEND_VERSION}
 RUN pip install uv && uv pip install --system ".[viewer]" gunicorn
 
 # Phantom mesh data (STL files + IT'IS database)
