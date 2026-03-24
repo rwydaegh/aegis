@@ -83,6 +83,43 @@ class BodyMesh:
     areas: np.ndarray = field(repr=False)
     name: str = ""
 
+    @classmethod
+    def from_arrays(
+        cls,
+        vertices: np.ndarray,
+        normals: np.ndarray | None = None,
+        name: str = "synthetic",
+    ) -> BodyMesh:
+        """Create a BodyMesh from raw vertex arrays.
+
+        Centroids and areas are computed automatically. If normals are not
+        provided, they are computed from the vertex cross product.
+
+        Parameters
+        ----------
+        vertices : (N, 3, 3) triangle vertices
+        normals : (N, 3) unit outward normals, or None to compute from vertices
+        name : mesh name
+        """
+        vertices = np.asarray(vertices, dtype=np.float64)
+        if vertices.ndim != 3 or vertices.shape[1:] != (3, 3):
+            raise ValueError(f"vertices must be (N, 3, 3), got {vertices.shape}")
+
+        centroids = np.mean(vertices, axis=1)
+        areas = triangle_areas(vertices)
+
+        if normals is None:
+            v0, v1, v2 = vertices[:, 0], vertices[:, 1], vertices[:, 2]
+            cross = np.cross(v1 - v0, v2 - v0)
+            norms = np.linalg.norm(cross, axis=1, keepdims=True)
+            normals = cross / np.where(norms > 0, norms, 1.0)
+        else:
+            normals = np.asarray(normals, dtype=np.float64)
+            if normals.shape != (vertices.shape[0], 3):
+                raise ValueError(f"normals must be ({vertices.shape[0]}, 3), got {normals.shape}")
+
+        return cls(vertices=vertices, normals=normals, centroids=centroids, areas=areas, name=name)
+
     @staticmethod
     def load(path: str | Path, name: str | None = None) -> BodyMesh:
         """Load a binary STL file and return a BodyMesh."""
