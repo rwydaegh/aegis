@@ -27,5 +27,5 @@ def level1_aggregate(
     p_abs = T0 * (A_ab / 4.0) * float(xp.sum(xp.asarray(power) * D))
 
     sab_uniform = p_abs / total_area if total_area > 0 else 0.0
-    sab = np.full(n_triangles, sab_uniform)
+    sab = xp.full(n_triangles, sab_uniform)
     return sab, p_abs

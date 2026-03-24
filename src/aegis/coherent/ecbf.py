@@ -50,8 +50,20 @@ def solve_ecbf(
     x_star : (M_ant,)
         Optimal precoding vector with ||x*||^2 = P.
     """
+    if P <= 0:
+        raise ValueError(f"Transmit power P must be positive, got {P}")
+    if P_abs_max <= 0:
+        raise ValueError(f"P_abs_max must be positive, got {P_abs_max}")
+
     h = np.asarray(h, dtype=complex)
     Q = np.asarray(Q)
+
+    if h.ndim != 1:
+        raise ValueError(f"Channel vector h must be 1D, got shape {h.shape}")
+    if Q.ndim != 2 or Q.shape[0] != Q.shape[1]:
+        raise ValueError(f"Exposure operator Q must be square, got shape {Q.shape}")
+    if h.shape[0] != Q.shape[0]:
+        raise ValueError(f"Dimension mismatch: h has {h.shape[0]} elements, Q is {Q.shape[0]}x{Q.shape[1]}")
 
     # First check if unconstrained MRT satisfies the exposure constraint
     x_mrt = _mrt_precoder(h, P)

@@ -30,9 +30,12 @@ def cole_cole_permittivity(freq_hz: float | np.ndarray, params: dict) -> complex
     -------
     Complex permittivity (eps_r - j*sigma/(omega*eps_0) combined).
     """
+    freq_hz = np.asarray(freq_hz)
+    scalar = freq_hz.ndim == 0
+    freq_hz = np.atleast_1d(freq_hz)
     omega = 2 * np.pi * freq_hz
 
-    eps = complex(params["ef"], 0)
+    eps = np.full_like(omega, params["ef"], dtype=complex)
 
     for i in range(4):
         delta = params[f"del{i + 1}"]
@@ -43,9 +46,13 @@ def cole_cole_permittivity(freq_hz: float | np.ndarray, params: dict) -> complex
             denom = 1 + (1j * omega * tau) ** (1 - alpha)
             eps += delta / denom
 
-    if params["sig"] != 0 and omega != 0:
-        eps -= 1j * params["sig"] / (omega * EPS_0)
+    if params["sig"] != 0:
+        safe_omega = np.where(omega != 0, omega, 1.0)
+        sig_term = 1j * params["sig"] / (safe_omega * EPS_0)
+        eps -= np.where(omega != 0, sig_term, 0.0)
 
+    if scalar:
+        return complex(eps[0])
     return eps
 
 
