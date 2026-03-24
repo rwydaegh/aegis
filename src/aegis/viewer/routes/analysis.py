@@ -52,16 +52,36 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
     # ------------------------------------------------------------------
     @app.route("/api/compliance/summary")
     def compliance_summary():
-        """Human-readable compliance summary text."""
-        from aegis.compliance import summary_text
-
-        last_compliance = app.config.get("_last_compliance_result")
-        if last_compliance is None:
+        """Human-readable compliance summary text from last compute."""
+        last = app.config.get("_last_compliance_result")
+        if last is None:
             return jsonify({"error": "No compliance result available. Run a compute first."}), 400
 
         tx_dbm = request.args.get("tx_power_dbm", type=float)
-        text = summary_text(last_compliance, tx_power_dbm=tx_dbm)
-        return jsonify({"text": text})
+
+        # Build a text summary from the stored compliance dict
+        lines = ["ICNIRP 2020 Compliance Summary", "=" * 40]
+        scenario = last.get("scenario", "general_public")
+        freq_hz = last.get("freq_hz", 0)
+        lines.append(f"Scenario: {scenario.replace('_', ' ').title()}")
+        lines.append(f"Frequency: {freq_hz / 1e9:.1f} GHz")
+        if tx_dbm is not None:
+            lines.append(f"TX power: {tx_dbm:.1f} dBm")
+        lines.append("")
+
+        checks = last.get("checks", [])
+        for c in checks:
+            status = "PASS" if c.get("pass") else "FAIL"
+            lines.append(f"  {c['label']}: {c['value']:.2f} / {c['limit']:.2f} {c['unit']}  [{status}]")
+
+        overall = last.get("overall_pass", True)
+        margin = last.get("margin_db")
+        lines.append("")
+        lines.append(f"Overall: {'PASS' if overall else 'FAIL'}")
+        if margin is not None:
+            lines.append(f"Margin: {margin:+.1f} dB")
+
+        return jsonify({"text": "\n".join(lines)})
 
     # ------------------------------------------------------------------
     # GET /api/tissue/spectrum
