@@ -7,6 +7,7 @@ import { useUIStore } from '@/stores/ui'
 import type { CameraPreset } from '@/stores/ui'
 import { cn } from '@/lib/utils'
 import type { DosimetryStats } from '@/api/types'
+import SessionTimer from '@/components/layout/SessionTimer'
 
 function ComplianceBadge({ stats }: { stats: DosimetryStats | null }) {
   if (!stats) {
@@ -129,8 +130,10 @@ export default function Toolbar() {
         </div>
       </div>
 
-      {/* Right: icon buttons */}
+      {/* Right: session timer + icon buttons */}
       <div className="flex items-center gap-1 shrink-0">
+        <SessionTimer />
+
         <Tooltip>
           <TooltipTrigger
             onClick={toggleWireframe}

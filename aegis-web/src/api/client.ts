@@ -5,11 +5,26 @@ import { toServer, type ScenePos } from './coordinates'
 const BASE = ''
 
 // ---------------------------------------------------------------------------
+// 401 handling - imported lazily to avoid circular dependency
+// ---------------------------------------------------------------------------
+
+function handle401(): void {
+  // Lazy import to avoid circular dependency (useAuth imports from api/auth, not client.ts)
+  import('@/hooks/useAuth').then(({ useAuth }) => {
+    useAuth.getState().logout()
+  })
+}
+
+// ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
 
 async function getJson<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE}${path}`)
+  if (res.status === 401) {
+    handle401()
+    throw new Error(`GET ${path} failed: 401 Unauthorized`)
+  }
   if (!res.ok) throw new Error(`GET ${path} failed: ${res.status} ${res.statusText}`)
   return res.json() as Promise<T>
 }
@@ -20,12 +35,20 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
+  if (res.status === 401) {
+    handle401()
+    throw new Error(`POST ${path} failed: 401 Unauthorized`)
+  }
   if (!res.ok) throw new Error(`POST ${path} failed: ${res.status} ${res.statusText}`)
   return res.json() as Promise<T>
 }
 
 async function getBinary(path: string): Promise<Response> {
   const res = await fetch(`${BASE}${path}`)
+  if (res.status === 401) {
+    handle401()
+    throw new Error(`GET ${path} failed: 401 Unauthorized`)
+  }
   if (!res.ok) throw new Error(`GET ${path} failed: ${res.status} ${res.statusText}`)
   return res
 }
@@ -48,6 +71,10 @@ async function computeEndpoint(
     body: JSON.stringify(params),
     signal,
   })
+  if (res.status === 401) {
+    handle401()
+    throw new Error(`POST ${path} failed: 401 Unauthorized`)
+  }
   if (!res.ok) throw new Error(`POST ${path} failed: ${res.status} ${res.statusText}`)
 
   const statsHeader = res.headers.get('X-Stats')
@@ -183,6 +210,10 @@ export async function loadSceneGeometry(scenePath: string): Promise<{
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ path: scenePath }),
   })
+  if (res.status === 401) {
+    handle401()
+    throw new Error('POST /api/scene/load failed: 401 Unauthorized')
+  }
   if (!res.ok) throw new Error(`POST /api/scene/load failed: ${res.status} ${res.statusText}`)
 
   const metaHeader = res.headers.get('X-Meta')

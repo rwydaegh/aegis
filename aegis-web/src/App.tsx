@@ -1,5 +1,6 @@
 import { useConfig } from '@/hooks/useConfig'
 import AppShell from '@/components/layout/AppShell'
+import LoginGate from '@/components/layout/LoginGate'
 
 export default function App() {
   const { status, error } = useConfig()
@@ -29,5 +30,9 @@ export default function App() {
     )
   }
 
-  return <AppShell />
+  return (
+    <LoginGate>
+      <AppShell />
+    </LoginGate>
+  )
 }
