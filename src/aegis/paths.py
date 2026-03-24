@@ -72,6 +72,16 @@ class PropagationPaths:
         )
 
     @property
+    def los_paths(self) -> PropagationPaths:
+        """Return only line-of-sight paths."""
+        return self.subset(np.where(self.is_los)[0])
+
+    @property
+    def nlos_paths(self) -> PropagationPaths:
+        """Return only non-line-of-sight paths."""
+        return self.subset(np.where(~self.is_los)[0])
+
+    @property
     def n_elements(self) -> int:
         return int(np.max(self.element_index)) + 1 if self.n_paths > 0 else 0
 
@@ -174,6 +184,37 @@ class PropagationPaths:
             ]
         )
         return cls.from_powers(k_hat=k_hat, power=np.asarray(power))
+
+    @classmethod
+    def uniform_sphere(
+        cls,
+        n_paths: int,
+        total_power: float = 1.0,
+        seed: int | None = None,
+    ) -> PropagationPaths:
+        """Generate paths uniformly distributed over the sphere.
+
+        Useful for worst-case analysis, Monte Carlo integration of the
+        exposure integral, and testing. Each path carries equal power
+        such that the total incident power density sums to ``total_power``.
+
+        Parameters
+        ----------
+        n_paths : int
+            Number of paths to generate.
+        total_power : float
+            Total incident power density [W/m^2], distributed equally.
+        seed : int or None
+            Random seed for reproducibility.
+        """
+        rng = np.random.default_rng(seed)
+        # Uniform on sphere via Gaussian normalization
+        raw = rng.standard_normal((n_paths, 3))
+        norms = np.linalg.norm(raw, axis=1, keepdims=True)
+        norms = np.where(norms > 0, norms, 1.0)
+        k_hat = raw / norms
+        power = np.full(n_paths, total_power / n_paths)
+        return cls.from_powers(k_hat=k_hat, power=power)
 
     @classmethod
     def concatenate(

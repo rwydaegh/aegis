@@ -803,3 +803,58 @@ class TestResultSerialization:
         result = DosimetryResult.from_dict(d)
         assert isinstance(result.corrections, tuple)
         assert result.corrections == ("fresnel", "polarisation")
+
+
+# ---------------------------------------------------------------------------
+# PropagationPaths.uniform_sphere
+# ---------------------------------------------------------------------------
+class TestUniformSphere:
+    def test_basic(self):
+        p = PropagationPaths.uniform_sphere(100, total_power=10.0, seed=42)
+        assert p.n_paths == 100
+        np.testing.assert_allclose(p.total_power, 10.0, rtol=1e-10)
+
+    def test_unit_vectors(self):
+        p = PropagationPaths.uniform_sphere(500, seed=0)
+        norms = np.linalg.norm(p.k_hat, axis=1)
+        np.testing.assert_allclose(norms, 1.0, atol=1e-12)
+
+    def test_reproducible(self):
+        p1 = PropagationPaths.uniform_sphere(50, seed=123)
+        p2 = PropagationPaths.uniform_sphere(50, seed=123)
+        np.testing.assert_array_equal(p1.k_hat, p2.k_hat)
+
+    def test_roughly_isotropic(self):
+        """Mean direction should be near zero for many uniform paths."""
+        p = PropagationPaths.uniform_sphere(10000, seed=42)
+        mean_dir = np.mean(p.k_hat, axis=0)
+        assert np.linalg.norm(mean_dir) < 0.1
+
+
+# ---------------------------------------------------------------------------
+# PropagationPaths.los_paths / nlos_paths
+# ---------------------------------------------------------------------------
+class TestLosNlosFiltering:
+    def test_los_nlos_split(self):
+        k = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1.0]])
+        psi = np.ones((3, 3), dtype=complex)
+        p = PropagationPaths(
+            k_hat=k,
+            psi=psi,
+            element_index=np.array([0, 0, 0]),
+            delay=np.zeros(3),
+            is_los=np.array([True, False, True]),
+        )
+        los = p.los_paths
+        nlos = p.nlos_paths
+        assert los.n_paths == 2
+        assert nlos.n_paths == 1
+        np.testing.assert_allclose(nlos.k_hat[0], [0, 1, 0])
+
+    def test_all_los(self):
+        p = PropagationPaths.from_powers(
+            k_hat=np.array([[1, 0, 0]]),
+            power=np.array([1.0]),
+        )
+        assert p.los_paths.n_paths == 1
+        assert p.nlos_paths.n_paths == 0

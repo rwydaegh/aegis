@@ -33,7 +33,10 @@ def _compute_face_curvature(body: BodyMesh) -> np.ndarray:
     is estimated as the average |delta_normal| / distance to its 6 nearest
     neighbors. This gives a good proxy for the discrete mean curvature.
     """
-    cache_key = id(body)
+    import hashlib
+
+    digest = hashlib.sha256(body.centroids.tobytes()).digest()[:8]
+    cache_key = hash((int.from_bytes(digest, "little"), body.n_triangles))
     if cache_key in _curvature_cache:
         return _curvature_cache[cache_key]
 
