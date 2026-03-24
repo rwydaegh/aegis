@@ -42,10 +42,13 @@ class DosimetryEngine:
         Tissue electromagnetic properties at the operating frequency.
     """
 
-    # Class-level cache for averaging matrices. Keyed by a content hash of
+    # Class-level LRU cache for averaging matrices. Keyed by a content hash of
     # the body geometry (centroid checksum + n_triangles) and target area.
     # Shared across all engine instances so the expensive build persists across requests.
+    # Bounded to _G_CACHE_MAX entries to prevent unbounded memory growth in
+    # long-running viewer sessions with many body switches.
     _G_cache: dict = {}
+    _G_CACHE_MAX: int = 16
 
     def __init__(self, tissue: TissueModel) -> None:
         self.tissue = tissue
@@ -69,6 +72,10 @@ class DosimetryEngine:
         key = (self._body_cache_key(body), target_area_m2)
         if key not in self._G_cache:
             from aegis.geometry.averaging import precompute_averaging_matrix
+
+            # Evict oldest entries if cache is full
+            while len(self._G_cache) >= self._G_CACHE_MAX:
+                self._G_cache.pop(next(iter(self._G_cache)))
 
             self._G_cache[key] = precompute_averaging_matrix(
                 body.centroids,

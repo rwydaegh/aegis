@@ -8,6 +8,7 @@ from __future__ import annotations
 import numpy as np
 
 _fibonacci_sphere_cache: dict[int, np.ndarray] = {}
+_FIBONACCI_CACHE_MAX: int = 32
 
 
 def fibonacci_sphere(n: int) -> np.ndarray:
@@ -35,6 +36,8 @@ def fibonacci_sphere(n: int) -> np.ndarray:
     k_hat /= np.linalg.norm(k_hat, axis=1, keepdims=True)
     out = np.array(k_hat, copy=True)
     out.flags.writeable = False
+    while len(_fibonacci_sphere_cache) >= _FIBONACCI_CACHE_MAX:
+        _fibonacci_sphere_cache.pop(next(iter(_fibonacci_sphere_cache)))
     _fibonacci_sphere_cache[n] = out
     return out
 
