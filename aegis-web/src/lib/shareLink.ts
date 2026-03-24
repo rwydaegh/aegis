@@ -1,0 +1,169 @@
+import { SHARE_DEFAULTS, type ShareState } from './shareDefaults'
+import { useSimulationStore } from '../stores/simulation'
+import { useSceneStore } from '../stores/scene'
+import { useUIStore } from '../stores/ui'
+import type { QuantityKey } from '../stores/ui'
+
+// Collect current shareable state from all three stores
+function collectState(): Record<string, unknown> {
+  const sim = useSimulationStore.getState()
+  const scene = useSceneStore.getState()
+  const ui = useUIStore.getState()
+
+  return {
+    // simulation store
+    antennaPos: sim.antennaPos,
+    mode: sim.mode,
+    fresnel: sim.fresnel,
+    polarisation: sim.polarisation,
+    curvature: sim.curvature,
+    diffraction: sim.diffraction,
+    powerDbm: sim.powerDbm,
+    skinModel: sim.skinModel,
+    nPaths: sim.nPaths,
+    freqGhz: sim.freqGhz,
+    stochasticPreset: sim.stochasticPreset,
+    stochasticSeed: sim.stochasticSeed,
+    stochasticOverrides: sim.stochasticOverrides,
+    bodyOffset: sim.bodyOffset,
+    bodyRotationY: sim.bodyRotationY,
+    // enabledQuantities is a Set; convert to sorted array for stable serialization
+    enabledQuantities: [...sim.enabledQuantities].sort(),
+    displayQuantity: sim.displayQuantity,
+    // scene store
+    bodyName: scene.bodyName,
+    pathSource: scene.pathSource,
+    rtSource: scene.rtSource,
+    rtMaxOrder: scene.rtMaxOrder,
+    rtMethod: scene.rtMethod,
+    rtRaysPerSource: scene.rtRaysPerSource,
+    rtMaxPathsPerSource: scene.rtMaxPathsPerSource,
+    rtLos: scene.rtLos,
+    rtSpecularReflection: scene.rtSpecularReflection,
+    rtDiffuseReflection: scene.rtDiffuseReflection,
+    rtRefraction: scene.rtRefraction,
+    rtDiffraction: scene.rtDiffraction,
+    rtEdgeDiffraction: scene.rtEdgeDiffraction,
+    rtDiffractionLitRegion: scene.rtDiffractionLitRegion,
+    rtReflectionLoss: scene.rtReflectionLoss,
+    rtSyntheticArray: scene.rtSyntheticArray,
+    rtSeed: scene.rtSeed,
+    envDisplayMode: scene.envDisplayMode,
+    // ui store
+    wireframe: ui.wireframe,
+    legendScale: ui.legendScale,
+    dynamicRangeDb: ui.dynamicRangeDb,
+    ratioMode: ui.ratioMode,
+    exposureScenario: ui.exposureScenario,
+  }
+}
+
+// Diff current state against defaults; return only changed fields
+function diffState(current: Record<string, unknown>): Record<string, unknown> {
+  const diff: Record<string, unknown> = {}
+  for (const [key, defaultVal] of Object.entries(SHARE_DEFAULTS)) {
+    const currentVal = current[key]
+    if (JSON.stringify(currentVal) !== JSON.stringify(defaultVal)) {
+      diff[key] = currentVal
+    }
+  }
+  return diff
+}
+
+export function serializeShareableState(): string {
+  const current = collectState()
+  const diff = diffState(current)
+  return btoa(JSON.stringify(diff))
+}
+
+export function deserializeShareLink(encoded: string): Partial<ShareState> {
+  try {
+    const json = atob(encoded)
+    const parsed = JSON.parse(json) as Record<string, unknown>
+    // Only keep known keys to avoid injecting arbitrary store state
+    const result: Record<string, unknown> = {}
+    for (const key of Object.keys(SHARE_DEFAULTS)) {
+      if (key in parsed) {
+        result[key] = parsed[key]
+      }
+    }
+    return result as Partial<ShareState>
+  } catch {
+    console.warn('Failed to parse share link')
+    return {}
+  }
+}
+
+export function applyShareState(state: Partial<ShareState>): void {
+  const sim = useSimulationStore.getState()
+  const scene = useSceneStore.getState()
+  const ui = useUIStore.getState()
+
+  // --- simulation store ---
+  if (state.antennaPos !== undefined) sim.setAntennaPos(state.antennaPos)
+  if (state.mode !== undefined) sim.setMode(state.mode as Parameters<typeof sim.setMode>[0])
+  if (state.fresnel !== undefined) sim.setFresnel(state.fresnel)
+  if (state.polarisation !== undefined) sim.setPolarisation(state.polarisation)
+  if (state.curvature !== undefined) sim.setCurvature(state.curvature)
+  if (state.diffraction !== undefined) sim.setDiffraction(state.diffraction)
+  if (state.powerDbm !== undefined) sim.setPowerDbm(state.powerDbm)
+  if (state.skinModel !== undefined) sim.setSkinModel(state.skinModel)
+  if (state.nPaths !== undefined) sim.setNPaths(state.nPaths)
+  if (state.freqGhz !== undefined) sim.setFreqGhz(state.freqGhz)
+  if (state.stochasticPreset !== undefined) sim.setStochasticPreset(state.stochasticPreset)
+  if (state.stochasticSeed !== undefined) sim.setStochasticSeed(state.stochasticSeed)
+  if (state.stochasticOverrides !== undefined) sim.setStochasticOverrides(state.stochasticOverrides)
+  if (state.bodyOffset !== undefined) sim.setBodyOffset(state.bodyOffset)
+  if (state.bodyRotationY !== undefined) sim.setBodyRotationY(state.bodyRotationY)
+  // enabledQuantities comes as array from JSON; convert back to Set
+  if (state.enabledQuantities !== undefined) {
+    sim.setEnabledQuantities(new Set(state.enabledQuantities as QuantityKey[]))
+  }
+  if (state.displayQuantity !== undefined) sim.setDisplayQuantity(state.displayQuantity as QuantityKey)
+
+  // --- scene store (fields with setters) ---
+  if (state.bodyName !== undefined) scene.setBodyName(state.bodyName)
+  if (state.pathSource !== undefined) scene.setPathSource(state.pathSource as Parameters<typeof scene.setPathSource>[0])
+  if (state.rtSource !== undefined) scene.setRtSource(state.rtSource as Parameters<typeof scene.setRtSource>[0])
+  if (state.rtMaxOrder !== undefined) scene.setRtMaxOrder(state.rtMaxOrder)
+  if (state.envDisplayMode !== undefined) scene.setEnvDisplayMode(state.envDisplayMode as Parameters<typeof scene.setEnvDisplayMode>[0])
+
+  // --- scene store (RT config fields without dedicated setters) ---
+  const rtUpdate: Record<string, unknown> = {}
+  if (state.rtMethod !== undefined) rtUpdate.rtMethod = state.rtMethod
+  if (state.rtRaysPerSource !== undefined) rtUpdate.rtRaysPerSource = state.rtRaysPerSource
+  if (state.rtMaxPathsPerSource !== undefined) rtUpdate.rtMaxPathsPerSource = state.rtMaxPathsPerSource
+  if (state.rtLos !== undefined) rtUpdate.rtLos = state.rtLos
+  if (state.rtSpecularReflection !== undefined) rtUpdate.rtSpecularReflection = state.rtSpecularReflection
+  if (state.rtDiffuseReflection !== undefined) rtUpdate.rtDiffuseReflection = state.rtDiffuseReflection
+  if (state.rtRefraction !== undefined) rtUpdate.rtRefraction = state.rtRefraction
+  if (state.rtDiffraction !== undefined) rtUpdate.rtDiffraction = state.rtDiffraction
+  if (state.rtEdgeDiffraction !== undefined) rtUpdate.rtEdgeDiffraction = state.rtEdgeDiffraction
+  if (state.rtDiffractionLitRegion !== undefined) rtUpdate.rtDiffractionLitRegion = state.rtDiffractionLitRegion
+  if (state.rtReflectionLoss !== undefined) rtUpdate.rtReflectionLoss = state.rtReflectionLoss
+  if (state.rtSyntheticArray !== undefined) rtUpdate.rtSyntheticArray = state.rtSyntheticArray
+  if (state.rtSeed !== undefined) rtUpdate.rtSeed = state.rtSeed
+  if (Object.keys(rtUpdate).length > 0) {
+    useSceneStore.setState(rtUpdate)
+  }
+
+  // --- ui store ---
+  if (state.dynamicRangeDb !== undefined) ui.setDynamicRangeDb(state.dynamicRangeDb)
+  if (state.ratioMode !== undefined) ui.setRatioMode(state.ratioMode)
+  if (state.exposureScenario !== undefined) {
+    ui.setExposureScenario(state.exposureScenario as Parameters<typeof ui.setExposureScenario>[0])
+  }
+  // wireframe uses toggleWireframe only; apply only if it differs from current
+  if (state.wireframe !== undefined && state.wireframe !== ui.wireframe) {
+    ui.toggleWireframe()
+  }
+  // legendScale uses toggleLegendScale only; apply only if it differs from current
+  if (state.legendScale !== undefined && state.legendScale !== ui.legendScale) {
+    ui.toggleLegendScale()
+  }
+}
+
+export function generateShareUrl(): string {
+  const encoded = serializeShareableState()
+  return `${window.location.origin}/#s=${encoded}`
+}

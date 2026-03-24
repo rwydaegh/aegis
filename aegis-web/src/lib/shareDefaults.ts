@@ -1,0 +1,48 @@
+// Default values for all shareable fields. Must match store defaults exactly.
+export const SHARE_DEFAULTS = {
+  // simulation store
+  antennaPos: null as [number, number, number] | null,
+  mode: 'spatial' as string,
+  fresnel: true,
+  polarisation: false,
+  curvature: false,
+  diffraction: false,
+  powerDbm: 60,
+  skinModel: 'itis',
+  nPaths: 1,
+  freqGhz: 28,
+  stochasticPreset: '3GPP_38.901_UMi_LOS',
+  stochasticSeed: 42,
+  stochasticOverrides: {} as Record<string, number>,
+  bodyOffset: [0, 0, 0] as [number, number, number],
+  bodyRotationY: 0,
+  enabledQuantities: ['sab', 'sab_4cm2'] as string[],
+  displayQuantity: 'sab' as string,
+  // scene store
+  bodyName: '' as string,
+  pathSource: 'synthetic' as string,
+  rtSource: 'differt' as string,
+  rtMaxOrder: 3,
+  rtMethod: 'exhaustive' as string,
+  rtRaysPerSource: 1_000_000,
+  rtMaxPathsPerSource: 1_000_000,
+  rtLos: true,
+  rtSpecularReflection: true,
+  rtDiffuseReflection: false,
+  rtRefraction: true,
+  rtDiffraction: false,
+  rtEdgeDiffraction: false,
+  rtDiffractionLitRegion: true,
+  rtReflectionLoss: 0.5,
+  rtSyntheticArray: true,
+  rtSeed: 42,
+  envDisplayMode: 'cubes' as string,
+  // ui store
+  wireframe: false,
+  legendScale: 'linear' as string,
+  dynamicRangeDb: 30,
+  ratioMode: false,
+  exposureScenario: 'general_public' as string,
+}
+
+export type ShareState = typeof SHARE_DEFAULTS
