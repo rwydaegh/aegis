@@ -140,6 +140,42 @@ class PropagationPaths:
         )
 
     @classmethod
+    def from_spherical(
+        cls,
+        theta: np.ndarray,
+        phi: np.ndarray,
+        power: np.ndarray,
+    ) -> PropagationPaths:
+        """Construct from spherical arrival angles and scalar powers.
+
+        Convenient for analytical scenarios (uniform illumination, sector
+        beams, stochastic channel models) where paths are specified as
+        (theta, phi) rather than Cartesian k_hat.
+
+        Parameters
+        ----------
+        theta : (N,) zenith angle of arrival in radians (0 = +z)
+        phi : (N,) azimuth angle of arrival in radians
+        power : (N,) incident power density per path [W/m^2]
+        """
+        theta = np.asarray(theta, dtype=np.float64)
+        phi = np.asarray(phi, dtype=np.float64)
+
+        if theta.ndim == 0:
+            theta = theta[np.newaxis]
+        if phi.ndim == 0:
+            phi = phi[np.newaxis]
+
+        k_hat = np.column_stack(
+            [
+                np.sin(theta) * np.cos(phi),
+                np.sin(theta) * np.sin(phi),
+                np.cos(theta),
+            ]
+        )
+        return cls.from_powers(k_hat=k_hat, power=np.asarray(power))
+
+    @classmethod
     def concatenate(
         cls,
         paths_list: Sequence[PropagationPaths],

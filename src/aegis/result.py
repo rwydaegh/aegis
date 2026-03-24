@@ -76,6 +76,52 @@ class DosimetryResult:
     def to_json(self, indent: int | None = 2) -> str:
         return json.dumps(self.to_dict(), indent=indent)
 
+    @classmethod
+    def from_dict(cls, d: dict) -> DosimetryResult:
+        """Reconstruct a DosimetryResult from a dict (inverse of to_dict).
+
+        Complex arrays serialized as {"real": [...], "imag": [...]} are
+        reconstructed as complex numpy arrays. Real lists become float64
+        arrays. Scalar fields are passed through.
+        """
+        # Fields that are numpy arrays
+        _array_fields = {
+            "sab",
+            "sab_averaged",
+            "Q",
+            "eigenvalues",
+            "x_star",
+            "sinc",
+            "sinc_averaged",
+            "sab_1cm2_averaged",
+        }
+        _field_names = {f.name for f in fields(cls)}
+
+        kwargs: dict = {}
+        for key, val in d.items():
+            if key not in _field_names:
+                continue
+            if key in _array_fields:
+                if val is None:
+                    kwargs[key] = None
+                elif isinstance(val, dict) and "real" in val and "imag" in val:
+                    kwargs[key] = np.array(val["real"]) + 1j * np.array(val["imag"])
+                elif isinstance(val, list):
+                    kwargs[key] = np.array(val, dtype=np.float64)
+                else:
+                    kwargs[key] = val
+            elif key == "corrections":
+                kwargs[key] = tuple(val) if isinstance(val, list) else val
+            else:
+                kwargs[key] = val
+
+        return cls(**kwargs)
+
+    @classmethod
+    def from_json(cls, s: str) -> DosimetryResult:
+        """Reconstruct from a JSON string (inverse of to_json)."""
+        return cls.from_dict(json.loads(s))
+
     @property
     def peak_sab(self) -> float:
         """Peak per-triangle S_ab [W/m^2]."""

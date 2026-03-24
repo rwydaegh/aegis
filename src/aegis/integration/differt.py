@@ -289,13 +289,20 @@ def paths_from_differt(
     segments = np.diff(path_vertices, axis=1)  # (N, n_segments, 3)
     seg_lengths = np.linalg.norm(segments, axis=2)  # (N, n_segments)
 
-    # For each path, find the last segment with nonzero length
-    k_hat = np.zeros((n_paths, 3))
-    for i in range(n_paths):
-        for s in range(segments.shape[1] - 1, -1, -1):
-            if seg_lengths[i, s] > 1e-12:
-                k_hat[i] = segments[i, s] / seg_lengths[i, s]
-                break
+    # For each path, find the last segment with nonzero length (vectorized)
+    nonzero_mask = seg_lengths > 1e-12  # (N, n_segments) bool
+    # Multiply column index by mask, take argmax to get last nonzero segment
+    col_indices = np.arange(segments.shape[1])[np.newaxis, :]  # (1, n_segments)
+    # Where no nonzero segment exists, masked_cols stays 0
+    masked_cols = np.where(nonzero_mask, col_indices, -1)
+    last_seg_idx = np.argmax(masked_cols, axis=1)  # (N,)
+    row_idx = np.arange(n_paths)
+    last_seg = segments[row_idx, last_seg_idx]  # (N, 3)
+    last_len = seg_lengths[row_idx, last_seg_idx]  # (N,)
+    safe_len = np.where(last_len > 1e-12, last_len, 1.0)
+    k_hat = last_seg / safe_len[:, np.newaxis]
+    # Zero out paths with no valid segments
+    k_hat[last_len <= 1e-12] = 0.0
 
     # Total path length (excluding zero-length padding segments)
     total_length = np.sum(seg_lengths, axis=1)  # (N,)
