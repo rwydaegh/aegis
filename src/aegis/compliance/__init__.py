@@ -20,6 +20,7 @@ __all__ = [
     "ComplianceResult",
     "icnirp_limits",
     "evaluate_compliance",
+    "max_compliant_power",
     "margin_db",
     "summary_text",
     # Backward-compat
@@ -344,6 +345,56 @@ def margin_db(value: float, limit: float) -> float:
     if value <= 0:
         raise ValueError("value must be positive")
     return float(10.0 * math.log10(limit / value))
+
+
+# ---------------------------------------------------------------------------
+# Maximum compliant power
+# ---------------------------------------------------------------------------
+
+
+def max_compliant_power(
+    result: ComplianceResult,
+    ref_power_w: float,
+) -> float:
+    """Compute the maximum transmit power that keeps all checks compliant.
+
+    For incoherent dosimetry (levels 0-6) and coherent (levels 7-8), S_ab
+    scales linearly with transmit power P. Given a ComplianceResult computed
+    at reference power ``ref_power_w``, this function finds the largest P
+    such that all measured quantities stay within their ICNIRP limits.
+
+    Parameters
+    ----------
+    result : ComplianceResult
+        A compliance evaluation from ``evaluate_compliance()``.
+    ref_power_w : float
+        The transmit power [W] at which the result was computed. Must be positive.
+
+    Returns
+    -------
+    float
+        Maximum compliant transmit power in watts. Returns ``inf`` if no
+        checks are present or all measured values are zero. Returns 0.0
+        if any check has a zero limit (should not happen for valid ICNIRP).
+    """
+    if ref_power_w <= 0:
+        raise ValueError("ref_power_w must be positive")
+
+    checks = result.all_checks
+    if not checks:
+        return float("inf")
+
+    min_ratio = float("inf")
+    for check in checks:
+        if check.value <= 0:
+            continue
+        ratio = check.limit / check.value
+        min_ratio = min(min_ratio, ratio)
+
+    if min_ratio == float("inf"):
+        return float("inf")
+
+    return ref_power_w * min_ratio
 
 
 # ---------------------------------------------------------------------------
