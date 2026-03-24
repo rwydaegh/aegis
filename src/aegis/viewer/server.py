@@ -153,6 +153,17 @@ def _load_and_cache_voxels_dir(voxel_dir: str, bbox_radius: float) -> None:
     print(f"  Voxels (directory): {len(positions):,} loaded, median_size={vs:.4f}")
 
 
+def create_app_from_env() -> Flask:
+    """Factory for Gunicorn: reads config from environment variables."""
+    from aegis.viewer.config import load_config
+
+    data_dir = os.environ.get("AEGIS_DATA_DIR", "data")
+    body_name = os.environ.get("AEGIS_BODY", "thelonious")
+    config_path = os.environ.get("AEGIS_CONFIG")
+    config = load_config(config_path) if config_path else None
+    return create_app(data_dir=data_dir, body_name=body_name, config=config)
+
+
 def create_app(
     data_dir: str,
     voxel_json: str | None = None,

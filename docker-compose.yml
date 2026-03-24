@@ -1,0 +1,37 @@
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+      - docs_site:/srv/docs:ro
+    depends_on:
+      flask:
+        condition: service_healthy
+
+  flask:
+    image: ghcr.io/rwydaegh/aegis:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    env_file: .env
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    volumes:
+      - docs_site:/srv/docs
+      - pipeline_cache:/app/pipeline_cache
+    mem_limit: 3g
+
+volumes:
+  caddy_data:
+  caddy_config:
+  docs_site:
+  pipeline_cache:
