@@ -103,16 +103,16 @@ Higher levels add physical corrections (Fresnel, polarisation, curvature, diffra
 ## Running tests
 
 ```bash
-py -3.12 -m pytest tests/ -m "not slow" -x   # fast tests (~8s)
-py -3.12 -m pytest tests/                     # all tests (~30s)
-py -3.12 -m ruff check src/ tests/            # lint
+python -m pytest tests/ -m "not slow" -x   # fast tests (~8s)
+python -m pytest tests/                     # all tests (~30s)
+python -m ruff check src/ tests/            # lint
 ```
 
 ## Interactive 3D viewer
 
 ```bash
-py -3.12 -m pip install -e ".[rt]"   # optional: ray tracing in the UI
-py -3.12 -m aegis.viewer --config configs/default.json
+python -m pip install -e ".[rt]"   # optional: ray tracing in the UI
+python -m aegis.viewer --config configs/default.json
 ```
 
 See [Interactive viewer](user_guide/viewer.md) for scenarios, ports, and API overview.

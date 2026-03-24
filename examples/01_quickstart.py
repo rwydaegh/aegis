@@ -6,8 +6,8 @@ power density at Level 2 (geometric ReLU), and renders an interactive
 
 Usage
 -----
-    py -3.12 examples/01_quickstart.py
-    py -3.12 examples/01_quickstart.py --no-show    # save HTML only
+    python examples/01_quickstart.py
+    python examples/01_quickstart.py --no-show    # save HTML only
 """
 
 from __future__ import annotations
@@ -98,8 +98,7 @@ def main() -> None:
             print("Thelonious mesh not found, using synthetic sphere.")
             body = make_sphere()
 
-    print(f"Body: {body.name}, {body.n_triangles:,} triangles, "
-          f"{body.total_area * 1e4:.0f} cm\u00b2")
+    print(f"Body: {body.name}, {body.n_triangles:,} triangles, {body.total_area * 1e4:.0f} cm\u00b2")
 
     # Tissue: skin at 28 GHz
     tissue = SKIN_28GHZ
@@ -129,7 +128,8 @@ def main() -> None:
 
     print(f"\nRendering heatmap ({args.backend})...")
     plot_heatmap(
-        body.vertices, result.sab,
+        body.vertices,
+        result.sab,
         title=f"Level 2: S_inc={S_inc} W/m\u00b2, T0={tissue.T0:.3f}",
         sab_max=S_inc * tissue.T0,
         out_path=out_path,

@@ -15,8 +15,8 @@ The viewer has two parts: a Flask REST backend that runs dosimetry computations 
 Start the Flask backend (port **5000** by default):
 
 ```bash
-py -3.12 -m aegis.viewer
-py -3.12 -m aegis.viewer --scenario open_ground
+python -m aegis.viewer
+python -m aegis.viewer --scenario open_ground
 ```
 
 For development, run the React frontend separately (port **5173**, hot-reloads):

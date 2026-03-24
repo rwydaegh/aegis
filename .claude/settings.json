@@ -1,12 +1,24 @@
 {
   "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/.claude/hooks/session-start.sh\"",
+            "async": false
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write",
         "hooks": [
           {
             "type": "command",
-            "command": "py -3.12 -c \"import sys,json,subprocess; d=json.load(sys.stdin); p=d.get('tool_input',{}).get('file_path',''); subprocess.run(['py','-3.12','-m','ruff','format','--quiet',p]) if p.endswith('.py') else None\" 2>/dev/null || true",
+            "command": "python -c \"import sys,json,subprocess; d=json.load(sys.stdin); p=d.get('tool_input',{}).get('file_path',''); subprocess.run(['python','-m','ruff','format','--quiet',p]) if p.endswith('.py') else None\" 2>/dev/null || true",
             "timeout": 10,
             "statusMessage": "Formatting with ruff..."
           }

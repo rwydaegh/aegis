@@ -6,7 +6,7 @@ Q eigenspectrum via the compliance dashboard.
 
 Usage
 -----
-    py -3.12 examples/03_coherent_mimo.py
+    python examples/03_coherent_mimo.py
 """
 
 from __future__ import annotations
@@ -44,11 +44,13 @@ def make_mimo_paths(
     # Random arrival directions (clustered around frontal)
     theta = rng.normal(0, 0.5, size=n_total)  # azimuth spread
     phi = rng.normal(np.pi / 2, 0.3, size=n_total)  # elevation spread
-    k_hat = np.column_stack([
-        np.sin(phi) * np.cos(theta),
-        -np.cos(phi),  # mostly frontal
-        np.sin(phi) * np.sin(theta),
-    ])
+    k_hat = np.column_stack(
+        [
+            np.sin(phi) * np.cos(theta),
+            -np.cos(phi),  # mostly frontal
+            np.sin(phi) * np.sin(theta),
+        ]
+    )
     # Normalise
     norms = np.linalg.norm(k_hat, axis=1, keepdims=True)
     k_hat = k_hat / norms
@@ -138,7 +140,8 @@ def main() -> None:
     # Heatmap
     print("\nRendering S_ab heatmap...")
     plot_heatmap(
-        body.vertices, result.sab,
+        body.vertices,
+        result.sab,
         title=f"Level 7 coherent MIMO ({args.n_elements} elements, MRT)",
         out_path=out_dir / "03_coherent_heatmap.html",
         show=not args.no_show,

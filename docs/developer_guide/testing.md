@@ -19,14 +19,14 @@ Tests fall into these groups:
 List what pytest will run:
 
 ```bash
-py -3.12 -m pytest tests/ --collect-only -q
+python -m pytest tests/ --collect-only -q
 ```
 
 Typical commands:
 
 ```bash
-py -3.12 -m pytest tests/ -m "not slow" -x
-py -3.12 -m pytest tests/
+python -m pytest tests/ -m "not slow" -x
+python -m pytest tests/
 ```
 
 `pyproject.toml` sets pytest-xdist to two workers (`-n 2`). That splits work across two processes without spawning one worker per CPU. For a single process (debuggers, tight RAM), run `pytest -n 0`. Avoid `pytest -n auto` on a workstation unless you know RAM headroom.

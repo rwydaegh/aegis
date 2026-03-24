@@ -25,7 +25,7 @@ What went wrong, in one short paragraph.
 ## Environment
 
 - OS and version:
-- Python version (`py -3.12 --version` or `python --version`):
+- Python version (`python --version` or `python --version`):
 - AEGIS version or git commit:
 
 Optional: minimal code, config JSON, or log snippet (no secrets).

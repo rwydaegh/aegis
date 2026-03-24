@@ -33,7 +33,7 @@ description: Viewer-specific rules for the Flask + Three.js 3D frontend
 
 - All viewer constants live in `config.py` DEFAULTS. No hardcoded values elsewhere.
 - User configs in `configs/` deep-merge over defaults (only override what you need).
-- Launch: `py -3.12 -m aegis.viewer --config configs/my_scene.json`
+- Launch: `python -m aegis.viewer --config configs/my_scene.json`
 - Frontend gets config as `CFG` global via Jinja2 template injection.
 - When adding new values: add to DEFAULTS in config.py, regenerate default.json.
 - Never add hardcoded constants to other viewer files. Put them in config.py DEFAULTS.

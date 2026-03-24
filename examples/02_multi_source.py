@@ -6,8 +6,8 @@ curvature, diffraction) to the base geometric ReLU formula.
 
 Usage
 -----
-    py -3.12 examples/02_multi_source.py
-    py -3.12 examples/02_multi_source.py --n-sources 50
+    python examples/02_multi_source.py
+    python examples/02_multi_source.py --n-sources 50
 """
 
 from __future__ import annotations
@@ -32,7 +32,7 @@ def random_directions(n: int, rng: np.random.Generator | None = None) -> np.ndar
     # Marsaglia method
     u = rng.uniform(-1, 1, size=n)
     phi = rng.uniform(0, 2 * np.pi, size=n)
-    r = np.sqrt(1 - u ** 2)
+    r = np.sqrt(1 - u**2)
     return np.column_stack([r * np.cos(phi), r * np.sin(phi), u])
 
 
@@ -55,6 +55,7 @@ def main() -> None:
         else:
             # Use the sphere from example 01
             from examples import _make_sphere  # noqa: this won't work standalone
+
             print("Thelonious mesh not found. Use --stl to specify a mesh file.")
             return
 
@@ -77,8 +78,7 @@ def main() -> None:
     for level in levels:
         result = engine.compute(body, paths, level=level)
         results[level] = result.sab
-        print(f"  Level {level}: P_abs = {result.p_abs * 1e3:.2f} mW, "
-              f"peak = {result.peak_sab:.3f} W/m\u00b2")
+        print(f"  Level {level}: P_abs = {result.p_abs * 1e3:.2f} mW, peak = {result.peak_sab:.3f} W/m\u00b2")
 
     # Comparison plot
     out_dir = Path(__file__).resolve().parent / "_output"
@@ -87,7 +87,8 @@ def main() -> None:
 
     print(f"\nRendering level comparison...")
     plot_level_comparison(
-        body.vertices, results,
+        body.vertices,
+        results,
         title=f"Level comparison: {args.n_sources} sources",
         out_path=out_path,
         show=not args.no_show,

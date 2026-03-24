@@ -7,8 +7,8 @@ that mimic what a ray tracer would produce.
 
 Usage
 -----
-    py -3.12 examples/05_differt_scene.py
-    py -3.12 examples/05_differt_scene.py --scene path/to/scene.xml
+    python examples/05_differt_scene.py
+    python examples/05_differt_scene.py --scene path/to/scene.xml
 """
 
 from __future__ import annotations
@@ -43,20 +43,24 @@ def synthetic_rt_paths(
     n_nlos = n_paths - n_los
 
     # LOS paths: direct, stronger, frontal
-    k_los = np.column_stack([
-        rng.normal(0, 0.1, n_los),
-        -np.ones(n_los),
-        rng.normal(0, 0.1, n_los),
-    ])
+    k_los = np.column_stack(
+        [
+            rng.normal(0, 0.1, n_los),
+            -np.ones(n_los),
+            rng.normal(0, 0.1, n_los),
+        ]
+    )
 
     # NLOS paths: scattered directions, weaker
     theta = rng.uniform(0, 2 * np.pi, n_nlos)
     phi = rng.uniform(0.3, np.pi - 0.3, n_nlos)
-    k_nlos = np.column_stack([
-        np.sin(phi) * np.cos(theta),
-        np.sin(phi) * np.sin(theta),
-        np.cos(phi),
-    ])
+    k_nlos = np.column_stack(
+        [
+            np.sin(phi) * np.cos(theta),
+            np.sin(phi) * np.sin(theta),
+            np.cos(phi),
+        ]
+    )
 
     k_hat = np.vstack([k_los, k_nlos])
     norms = np.linalg.norm(k_hat, axis=1, keepdims=True)
@@ -113,9 +117,11 @@ def main() -> None:
         try:
             from aegis.integration.differt import paths_from_differt_scene
 
-            tx_positions = np.array([
-                [5.0, 0.0, 3.0],  # base station position
-            ])
+            tx_positions = np.array(
+                [
+                    [5.0, 0.0, 3.0],  # base station position
+                ]
+            )
             # Repeat for array elements
             tx_positions = np.tile(tx_positions, (args.n_elements, 1))
             # Add small offsets for array spacing
@@ -141,8 +147,7 @@ def main() -> None:
         print("Using synthetic ray-traced paths (simulates indoor multipath).")
         paths = synthetic_rt_paths(n_elements=args.n_elements)
 
-    print(f"Paths: {paths.n_paths} ({int(np.sum(paths.is_los))} LOS, "
-          f"{int(np.sum(~paths.is_los))} NLOS)")
+    print(f"Paths: {paths.n_paths} ({int(np.sum(paths.is_los))} LOS, {int(np.sum(~paths.is_los))} NLOS)")
     print(f"Elements: {paths.n_elements}")
 
     # Load body
@@ -186,7 +191,8 @@ def main() -> None:
     # Heatmaps
     print("\nRendering heatmaps...")
     plot_heatmap(
-        body.vertices, result_l7.sab,
+        body.vertices,
+        result_l7.sab,
         title="Level 7: coherent MIMO with multipath",
         out_path=out_dir / "05_differt_heatmap.html",
         show=not args.no_show,

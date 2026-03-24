@@ -9,9 +9,9 @@ Generates a self-contained HTML file with:
 
 Usage
 -----
-    py -3.12 examples/spike_viewer.py
-    py -3.12 examples/spike_viewer.py --voxel-json path/to/merged.json
-    py -3.12 examples/spike_viewer.py --voxel-json path/to/merged.json --max-voxels 80000
+    python examples/spike_viewer.py
+    python examples/spike_viewer.py --voxel-json path/to/merged.json
+    python examples/spike_viewer.py --voxel-json path/to/merged.json --max-voxels 80000
 """
 
 from __future__ import annotations

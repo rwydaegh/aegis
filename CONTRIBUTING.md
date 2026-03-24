@@ -8,20 +8,20 @@ Use **Python 3.12**. From the repo root:
 pip install -e ".[dev]"
 ```
 
-On Windows: `py -3.12` instead of `python` if you have multiple versions.
+On Windows with multiple Python versions, use `py -3.12` instead of `python`.
 
 ## Test and lint
 
 ```bash
-py -3.12 -m pytest tests/ -m "not slow" -x
-py -3.12 -m pytest tests/ -m "not slow" -n 0
-py -3.12 -m ruff check src/ tests/
-py -3.12 -m ruff format src/ tests/
+python -m pytest tests/ -m "not slow" -x
+python -m pytest tests/ -m "not slow" -n 0
+python -m ruff check src/ tests/
+python -m ruff format src/ tests/
 ```
 
 The first command uses two pytest-xdist workers by default (`pyproject.toml`). The second runs tests in one process (`-n 0`) for debuggers or low RAM.
 
-CI runs `py -3.12 -m pytest tests/` on every push and PR, including slow tests. Run the full suite locally when you touch physics or before a large merge.
+CI runs `python -m pytest tests/` on every push and PR, including slow tests. Run the full suite locally when you touch physics or before a large merge.
 
 ## Scope and style
 

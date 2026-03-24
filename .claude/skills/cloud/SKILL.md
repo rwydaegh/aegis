@@ -10,9 +10,9 @@ Sync latest code to the TensorDock GPU machine, start the viewer, and provide ac
 
 ## Steps
 
-1. **Check status.** Run `py -3.12 tools/cloud.py status`. If stopped, run `py -3.12 tools/cloud.py up`. Note the IP and SSH port from the output.
+1. **Check status.** Run `python tools/cloud.py status`. If stopped, run `python tools/cloud.py up`. Note the IP and SSH port from the output.
 
-2. **Sync code.** Run `py -3.12 tools/cloud.py sync`. If npm fails (common after dependency upgrades due to cross-platform native bindings), SSH in and fix manually:
+2. **Sync code.** Run `python tools/cloud.py sync`. If npm fails (common after dependency upgrades due to cross-platform native bindings), SSH in and fix manually:
    ```bash
    ssh -i ~/.ssh/tensordock_ed25519 -p <ssh_port> user@<ip> \
      "cd ~/aegis/aegis-web && rm -rf node_modules package-lock.json && npm install && npm run build:copy"
@@ -41,4 +41,4 @@ Sync latest code to the TensorDock GPU machine, start the viewer, and provide ac
 - `npm ci` fails when `node_modules` has binaries from a different platform (Windows vs Linux). Fix: nuke `node_modules` and `package-lock.json`, then `npm install`.
 - The SSH tunnel command uses `-N -f` to background it. Multiple tunnel processes can pile up; check with `tasklist | grep ssh` on Windows.
 - Auth credentials (if enabled) are in `~/.aegis-viewer-auth` on the VM. The env var `AEGIS_VIEWER_AUTH` must be set for auth to activate.
-- `py -3.12 tools/cloud.py status` shows whether port 5000 is publicly forwarded. If it is, give the direct URL instead of tunneling.
+- `python tools/cloud.py status` shows whether port 5000 is publicly forwarded. If it is, give the direct URL instead of tunneling.

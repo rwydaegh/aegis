@@ -5,13 +5,13 @@ Run dosimetry simulations from the command line without the viewer. Each run sav
 ## Quick start
 
 ```bash
-py -3.12 -m aegis.run --config runs/my_scenario.yaml
+python -m aegis.run --config runs/my_scenario.yaml
 ```
 
 Or specify everything inline:
 
 ```bash
-py -3.12 -m aegis.run \
+python -m aegis.run \
     --body thelonious \
     --frequency 28e9 \
     --level 2 \
@@ -67,7 +67,7 @@ Three ray tracer backends are available:
 Any config field can be overridden from the command line. CLI flags take precedence over the YAML file.
 
 ```bash
-py -3.12 -m aegis.run --config base.yaml --level 6 --power-dbm 23
+python -m aegis.run --config base.yaml --level 6 --power-dbm 23
 ```
 
 Available flags: `--body`, `--frequency`, `--level`, `--power-dbm`, `--antenna-pos`, `--backend`, `--max-bounces`, `--scene-path`, `--output-dir`.

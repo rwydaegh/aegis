@@ -51,5 +51,5 @@ Use mkdocstrings directives. Organize by functional area.
 1. Check all headings are sentence case
 2. Grep for banned patterns (em dashes, semicolons, AI words)
 3. Verify MathJax renders (check for unescaped underscores in prose)
-4. Run `py -3.12 -m mkdocs serve` to preview if possible
+4. Run `python -m mkdocs serve` to preview if possible
 5. Update `mkdocs.yml` nav if you added new pages

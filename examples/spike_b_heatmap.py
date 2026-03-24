@@ -6,9 +6,9 @@ and renders an interactive 3D mesh with per-face color in Plotly.
 
 Usage
 -----
-    py -3.12 examples/spike_b_heatmap.py
-    py -3.12 examples/spike_b_heatmap.py --approach plotly
-    py -3.12 examples/spike_b_heatmap.py --approach pyvista
+    python examples/spike_b_heatmap.py
+    python examples/spike_b_heatmap.py --approach plotly
+    python examples/spike_b_heatmap.py --approach pyvista
 """
 
 from __future__ import annotations

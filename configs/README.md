@@ -33,7 +33,7 @@ Built-in default scenarios live in `config.py` (e.g. `open_ground`: body + groun
 }
 ```
 
-Run: `py -3.12 -m aegis.viewer --config configs/default.json --scenario my_site`.
+Run: `python -m aegis.viewer --config configs/default.json --scenario my_site`.
 
 `--location` / `--voxel-dir` on the CLI still win over the scenario after merge.
 
@@ -48,7 +48,7 @@ For future **MIMO / arrays**, use `elements`: each entry has `offset` [m], compl
 `configs/e2e_lab.json` drives a **small tracked STL** under `tests/fixtures/e2e_lab/` (no voxels, deterministic multipath jitter). Use it for manual browser QA or Playwright without Thelonious or voxel data.
 
 ```bash
-py -3.12 -m aegis.viewer --config configs/e2e_lab.json --no-open
+python -m aegis.viewer --config configs/e2e_lab.json --no-open
 ```
 
 Run the viewer from the **repository root** so `tests/fixtures/e2e_lab` resolves. See `tests/fixtures/e2e_lab/README.md` to regenerate the STL after changing `make_icosahedron()`.

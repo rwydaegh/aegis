@@ -26,7 +26,7 @@ Use **`configs/default.json`** as the reference shape. Scenario blocks only over
 
 ## Wrong Python version
 
-AEGIS targets **Python 3.12**. If imports or typing fail on older versions, switch interpreters or use `py -3.12` on Windows.
+AEGIS targets **Python 3.12**. Use a virtual environment or ensure `python` points to 3.12. On Windows with multiple versions, the `py -3.12` launcher also works.
 
 ## Level-specific errors
 

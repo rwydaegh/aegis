@@ -6,7 +6,7 @@ while maintaining communication performance.
 
 Usage
 -----
-    py -3.12 examples/04_ecbf.py
+    python examples/04_ecbf.py
 """
 
 from __future__ import annotations
@@ -40,11 +40,13 @@ def make_mimo_paths(
     # Arrival directions clustered in front
     theta = rng.normal(0, 0.4, size=n_total)
     phi = rng.normal(np.pi / 2, 0.25, size=n_total)
-    k_hat = np.column_stack([
-        np.sin(phi) * np.cos(theta),
-        -np.cos(phi),
-        np.sin(phi) * np.sin(theta),
-    ])
+    k_hat = np.column_stack(
+        [
+            np.sin(phi) * np.cos(theta),
+            -np.cos(phi),
+            np.sin(phi) * np.sin(theta),
+        ]
+    )
     norms = np.linalg.norm(k_hat, axis=1, keepdims=True)
     k_hat = k_hat / norms
 
@@ -117,20 +119,25 @@ def main() -> None:
     print(f"  P_abs:    {result_mrt.p_abs * 1e3:.2f} mW")
     print(f"  Peak Sab: {result_mrt.peak_sab:.3f} W/m\u00b2")
     print(f"  rho:      {result_mrt.rho:.4f}")
-    print(f"  |h^T x|^2 = {abs(h @ precoder_mrt.x)**2:.4f}")
+    print(f"  |h^T x|^2 = {abs(h @ precoder_mrt.x) ** 2:.4f}")
 
     # --- ECBF (Level 8) ---
     # Set P_abs_max to half of MRT's absorbed power
     P_abs_target = result_mrt.p_abs * 0.5
     result_ecbf = engine.compute(
-        body, paths, level=8, h=h, P_abs_max=P_abs_target, precoder=precoder_mrt,
+        body,
+        paths,
+        level=8,
+        h=h,
+        P_abs_max=P_abs_target,
+        precoder=precoder_mrt,
     )
 
     # Get the ECBF precoder for signal comparison
     precoder_ecbf = aegis.Precoder.ecbf(h, result_mrt.Q, P_abs_max=P_abs_target, P=1.0)
     signal_ecbf = abs(h @ precoder_ecbf.x) ** 2
 
-    print(f"\nECBF (Level 8, P_abs_max = {P_abs_target*1e3:.2f} mW):")
+    print(f"\nECBF (Level 8, P_abs_max = {P_abs_target * 1e3:.2f} mW):")
     print(f"  P_abs:    {result_ecbf.p_abs * 1e3:.2f} mW")
     print(f"  Peak Sab: {result_ecbf.peak_sab:.3f} W/m\u00b2")
     print(f"  rho:      {result_ecbf.rho:.4f}")

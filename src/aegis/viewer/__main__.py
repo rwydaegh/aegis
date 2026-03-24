@@ -2,11 +2,11 @@
 
 Usage
 -----
-    py -3.12 -m aegis.viewer                                 # uses default_scenario from config
-    py -3.12 -m aegis.viewer --scenario open_ground         # same if that is the default
-    py -3.12 -m aegis.viewer --location "Ghent, Belgium"     # fetch voxels (overrides scenario voxels)
-    py -3.12 -m aegis.viewer --voxel-dir path/to/voxels/     # use local data
-    py -3.12 -m aegis.viewer --bbox 40                       # 40 m scene box
+    python -m aegis.viewer                                 # uses default_scenario from config
+    python -m aegis.viewer --scenario open_ground         # same if that is the default
+    python -m aegis.viewer --location "Ghent, Belgium"     # fetch voxels (overrides scenario voxels)
+    python -m aegis.viewer --voxel-dir path/to/voxels/     # use local data
+    python -m aegis.viewer --bbox 40                       # 40 m scene box
 
 Named scenarios live under ``scenarios`` in the JSON config (see ``config.py`` defaults).
 """

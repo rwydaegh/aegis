@@ -19,7 +19,7 @@ The NVIDIA driver must be version 570 or newer. Versions 559-565 are blocked by 
 ### Batch runner
 
 ```bash
-py -3.12 -m aegis.run --config my_run.yaml --backend sionna --scene-path scene.xml
+python -m aegis.run --config my_run.yaml --backend sionna --scene-path scene.xml
 ```
 
 Or in the YAML config:

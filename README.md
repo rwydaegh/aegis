@@ -46,7 +46,7 @@ Nine fidelity levels (0-8) provide a controlled accuracy-cost tradeoff, from O(1
 
 **Multi-fidelity by design** - Nine levels let you trade off accuracy against compute cost. Pick the right level for your analysis, from O(1) screening to full coherent MIMO.
 
-**Physics-validated** - Every fidelity level is validated against Mie theory, monograph derivations, and the IT'IS tissue database. Hundreds of pytest cases (run `py -3.12 -m pytest tests/ --collect-only -q` for the current count), including golden tests for monograph tables.
+**Physics-validated** - Every fidelity level is validated against Mie theory, monograph derivations, and the IT'IS tissue database. Hundreds of pytest cases (run `python -m pytest tests/ --collect-only -q` for the current count), including golden tests for monograph tables.
 
 **Surface-based computation** - Treats the body as a triangle mesh. No volumetric grid, no FDTD overhead. The key insight that makes geometric dosimetry practical.
 

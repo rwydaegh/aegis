@@ -105,19 +105,19 @@ Quick ICNIRP checks from the terminal without writing Python:
 
 ```bash
 # Check a measured S_ab value
-py -3.12 -m aegis.compliance --freq 28e9 --sab 15.0
+python -m aegis.compliance --freq 28e9 --sab 15.0
 
 # Include transmit power for max compliant power calculation
-py -3.12 -m aegis.compliance --freq 28e9 --sab 15.0 --power 1.0
+python -m aegis.compliance --freq 28e9 --sab 15.0 --power 1.0
 
 # Print limits only
-py -3.12 -m aegis.compliance --freq 28e9 --limits
+python -m aegis.compliance --freq 28e9 --limits
 
 # JSON output for scripting
-py -3.12 -m aegis.compliance --freq 28e9 --sab 15.0 --json
+python -m aegis.compliance --freq 28e9 --sab 15.0 --json
 
 # Occupational limits
-py -3.12 -m aegis.compliance --freq 60e9 --sab 80.0 --occupational
+python -m aegis.compliance --freq 60e9 --sab 80.0 --occupational
 ```
 
 All quantities are optional. Pass any combination of `--sab`, `--sab-1cm2` (above 30 GHz), `--sar`, `--sinc`, `--sinc-wb`.

@@ -5,7 +5,7 @@
 Regenerate after changing the conftest geometry:
 
 ```bash
-py -3.12 -c "
+python -c "
 from pathlib import Path
 import sys
 sys.path.insert(0, str(Path('tests').resolve()))
@@ -17,5 +17,5 @@ make_icosahedron().save_binary_stl(Path('tests/fixtures/e2e_lab/e2e_icosahedron.
 Launch the viewer for manual checks or Playwright against this data:
 
 ```bash
-py -3.12 -m aegis.viewer --config configs/e2e_lab.json --no-open
+python -m aegis.viewer --config configs/e2e_lab.json --no-open
 ```

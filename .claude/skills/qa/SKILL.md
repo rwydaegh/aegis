@@ -11,7 +11,7 @@ Exercise the AEGIS viewer end-to-end with Playwright CLI. The goal is to test th
 ## Setup
 
 1. Kill stale processes on the viewer port (default 5000) and any Chrome instances.
-2. Start the viewer: `py -3.12 -m aegis.viewer` in background.
+2. Start the viewer: `python -m aegis.viewer` in background.
 3. Open the browser **headed** so the user can follow along:
 ```bash
 npx @playwright/cli open --headed http://127.0.0.1:5000

@@ -22,9 +22,9 @@ manage_gitignore: true
 
 # === Verification ===
 verification_commands:
-  - "py -3.12 -m ruff check src/ tests/"
-  - "py -3.12 -m ruff format --check src/ tests/"
-  - "py -3.12 -m pytest tests/ -m 'not slow' -x"
+  - "python -m ruff check src/ tests/"
+  - "python -m ruff format --check src/ tests/"
+  - "python -m pytest tests/ -m 'not slow' -x"
 verification_auto_fix: true
 verification_max_retries: 2
 
@@ -43,7 +43,7 @@ AEGIS computes absorbed power density on human bodies in wireless environments. 
 
 ## Python environment
 
-This machine has Python 3.14 (system) and 3.12 (user). AEGIS is installed under 3.12. Always use `py -3.12` on Windows. Never use bare `python` or `python3`.
+This machine has Python 3.14 (system) and 3.12 (user). AEGIS is installed under 3.12. Use `python` (with venv or PATH set to 3.12). On Windows with multiple versions, `py -3.12` also works.
 
 ## Custom instructions
 

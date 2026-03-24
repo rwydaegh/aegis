@@ -1,8 +1,8 @@
 """CLI batch runner for reproducible dosimetry simulations.
 
 Usage:
-    py -3.12 -m aegis.run --config config.yaml
-    py -3.12 -m aegis.run --body duke --level 3 --frequency 28e9
+    python -m aegis.run --config config.yaml
+    python -m aegis.run --body duke --level 3 --frequency 28e9
 """
 
 from __future__ import annotations

@@ -8,19 +8,19 @@ AEGIS computes absorbed power density on human bodies in wireless environments. 
 
 ## Build, test, lint
 
-AEGIS requires Python 3.12. Always use `py -3.12` on Windows.
+AEGIS requires Python 3.12. Use a virtualenv or ensure `python` resolves to 3.12. On Windows with multiple versions, `python` also works.
 
 ```bash
 pip install -e ".[dev]"                              # install with dev deps (uses 3.12)
-py -3.12 -m pytest tests/ -m "not slow" -x           # excludes @slow; still minutes locally (coherent, Hypothesis, JAX)
-py -3.12 -m pytest tests/                             # full suite including @slow mesh/golden
-py -3.12 -m pytest tests/test_fresnel.py::test_name   # single test
-py -3.12 -m ruff check src/ tests/                    # lint
-py -3.12 -m ruff format src/ tests/                   # format
-py -3.12 -m mkdocs serve                              # local docs preview
-py -3.12 -m aegis.viewer --location "Ghent, Belgium"   # launch 3D viewer
-py -3.12 -m aegis.viewer --config configs/my.json      # custom config JSON
-py -3.12 -m aegis.viewer --scenario open_ground        # named scenario from config
+python -m pytest tests/ -m "not slow" -x           # excludes @slow; still minutes locally (coherent, Hypothesis, JAX)
+python -m pytest tests/                             # full suite including @slow mesh/golden
+python -m pytest tests/test_fresnel.py::test_name   # single test
+python -m ruff check src/ tests/                    # lint
+python -m ruff format src/ tests/                   # format
+python -m mkdocs serve                              # local docs preview
+python -m aegis.viewer --location "Ghent, Belgium"   # launch 3D viewer
+python -m aegis.viewer --config configs/my.json      # custom config JSON
+python -m aegis.viewer --scenario open_ground        # named scenario from config
 cd aegis-web && npm run dev                            # React frontend dev server (localhost:5173)
 cd aegis-web && npm run build                          # production build -> aegis-web/dist/
 cd aegis-web && npm run build:copy                    # copy dist -> src/aegis/viewer/static (Flask serves /)

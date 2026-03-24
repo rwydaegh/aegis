@@ -42,4 +42,4 @@ Levels **7 and 8** must return extra arrays (`Q`, eigenvalues, optionally `x_sta
 
 Add or extend `tests/test_engine.py` (or a focused test file) to call the kernel directly with small synthetic `normals`, `k_hat`, and `power`. Assert shape `(M,)`, finite values, and $S_{ab} \geq 0$ where that invariant holds for your physics.
 
-Run `py -3.12 -m pytest tests/ -m "not slow" -x` before committing.
+Run `python -m pytest tests/ -m "not slow" -x` before committing.

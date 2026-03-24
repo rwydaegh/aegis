@@ -12,8 +12,8 @@ data with real voxel JSON files.
 
 Usage
 -----
-    py -3.12 examples/spike_a_voxel_env.py                    # synthetic scene
-    py -3.12 examples/spike_a_voxel_env.py --json voxels.json  # real data
+    python examples/spike_a_voxel_env.py                    # synthetic scene
+    python examples/spike_a_voxel_env.py --json voxels.json  # real data
 """
 
 from __future__ import annotations
@@ -434,7 +434,7 @@ def main() -> None:
     print(f"  1. Get Google Maps API key (3D Tiles API)")
     print(f"  2. Download tiles: python 3dtiles-dl/scripts/download_tiles.py ...")
     print(f"  3. Voxelize: node nodejs-voxelearth/voxelize_tiles.js tiles/ voxels/ 200")
-    print(f"  4. Re-run: py -3.12 examples/spike_a_voxel_env.py --json voxels/output.json")
+    print(f"  4. Re-run: python examples/spike_a_voxel_env.py --json voxels/output.json")
 
 
 if __name__ == "__main__":

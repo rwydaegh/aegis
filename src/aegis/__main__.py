@@ -8,7 +8,7 @@ def main() -> None:
 
     print(f"AEGIS {__version__}")
     print("Geometric dosimetry for wireless exposure.")
-    print("Run the 3D viewer with: py -3.12 -m aegis.viewer")
+    print("Run the 3D viewer with: python -m aegis.viewer")
 
 
 if __name__ == "__main__":

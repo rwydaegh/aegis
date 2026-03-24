@@ -8,8 +8,8 @@ This is the Phase -1 proof of concept showing the full AEGIS visualization:
 
 Usage
 -----
-    py -3.12 examples/spike_combined.py
-    py -3.12 examples/spike_combined.py --voxel-json path/to/voxels.json
+    python examples/spike_combined.py
+    python examples/spike_combined.py --voxel-json path/to/voxels.json
 """
 
 from __future__ import annotations
