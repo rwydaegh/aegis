@@ -76,5 +76,7 @@ def debye_permittivity(
     omega = 2 * np.pi * np.asarray(freq_hz, dtype=np.float64)
     eps = eps_inf + (eps_static - eps_inf) / (1 + 1j * omega * tau_s)
     if sigma != 0:
-        eps = eps - 1j * sigma / (omega * EPS_0)
+        safe_omega = np.where(omega != 0, omega, 1.0)
+        sig_term = 1j * sigma / (safe_omega * EPS_0)
+        eps = eps - np.where(omega != 0, sig_term, 0.0)
     return eps

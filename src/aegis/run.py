@@ -129,11 +129,23 @@ def _save_results(cfg: SimulationConfig, result, elapsed: float) -> Path:
     )
 
     peak_sab = float(np.max(result.sab)) if len(result.sab) > 0 else 0.0
+    peak_sab_avg = result.peak_sab_averaged
+
+    # Use spatially averaged S_ab if available (preferred for compliance).
+    # Fall back to per-triangle peak with a conservative note.
+    if peak_sab_avg is not None:
+        compliant = peak_sab_avg <= ICNIRP_2020.sab_peak
+        compliant_note = "spatially averaged over 4 cm^2"
+    else:
+        compliant = peak_sab <= ICNIRP_2020.sab_peak
+        compliant_note = "conservative (per-triangle peak, no spatial averaging)"
+
     summary = {
         "peak_sab": peak_sab,
+        "peak_sab_averaged": peak_sab_avg,
         "p_abs": float(result.p_abs),
-        "compliant": peak_sab < ICNIRP_2020.sab_peak,
-        "compliant_note": "conservative (no spatial averaging)",
+        "compliant": compliant,
+        "compliant_note": compliant_note,
         "level": cfg.dosimetry.level,
         "n_triangles": len(result.sab),
         "elapsed_s": round(elapsed, 3),

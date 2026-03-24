@@ -190,6 +190,71 @@ class DosimetryResult:
             sinc_local=sinc_peak,
         )
 
+    @staticmethod
+    def compare(results: dict[str, DosimetryResult]) -> dict:
+        """Compare multiple dosimetry results (e.g. across fidelity levels).
+
+        Produces a summary dict with per-result metrics and pairwise relative
+        errors. Useful for fidelity level convergence studies.
+
+        Parameters
+        ----------
+        results : dict mapping label -> DosimetryResult
+            At least two results required. Labels can be anything (e.g.
+            "level2", "level3", "spatial+fresnel+pol").
+
+        Returns
+        -------
+        dict with keys:
+            labels : list of result labels
+            peak_sab : dict of label -> peak S_ab [W/m^2]
+            p_abs : dict of label -> total absorbed power [W]
+            peak_sab_averaged : dict of label -> peak averaged S_ab or None
+            relative_error : dict of (label_i, label_j) -> relative error in peak S_ab
+            rmse : dict of (label_i, label_j) -> RMSE of per-triangle S_ab
+            max_abs_error : dict of (label_i, label_j) -> max absolute error
+        """
+        if len(results) < 2:
+            raise ValueError("compare() requires at least 2 results")
+
+        labels = list(results.keys())
+        peak_sab = {}
+        p_abs = {}
+        peak_sab_avg = {}
+
+        for label, r in results.items():
+            peak_sab[label] = r.peak_sab if r.sab.size > 0 else 0.0
+            p_abs[label] = r.p_abs
+            peak_sab_avg[label] = r.peak_sab_averaged
+
+        rel_err = {}
+        rmse = {}
+        max_abs = {}
+        for i, li in enumerate(labels):
+            for j, lj in enumerate(labels):
+                if j <= i:
+                    continue
+                ri = results[li]
+                rj = results[lj]
+                if ri.sab.shape != rj.sab.shape:
+                    continue
+                diff = ri.sab - rj.sab
+                pair = (li, lj)
+                ref = max(peak_sab[li], peak_sab[lj], 1e-30)
+                rel_err[pair] = float(np.abs(peak_sab[li] - peak_sab[lj]) / ref)
+                rmse[pair] = float(np.sqrt(np.mean(diff**2)))
+                max_abs[pair] = float(np.max(np.abs(diff)))
+
+        return {
+            "labels": labels,
+            "peak_sab": peak_sab,
+            "p_abs": p_abs,
+            "peak_sab_averaged": peak_sab_avg,
+            "relative_error": rel_err,
+            "rmse": rmse,
+            "max_abs_error": max_abs,
+        }
+
     def __repr__(self) -> str:
         parts = [
             f"DosimetryResult(level={self.fidelity_level}",

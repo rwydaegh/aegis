@@ -755,3 +755,61 @@ class DosimetryEngine:
             curvature_H,
             self.freq_hz,
         )
+
+    def sweep_levels(
+        self,
+        body: BodyMesh,
+        paths: PropagationPaths,
+        levels: list[int] | None = None,
+        *,
+        body_mass: float | None = None,
+        A_ab: float | None = None,
+        D_max: float | None = None,
+        q: np.ndarray | float = 0.0,
+        curvature_H: np.ndarray | None = None,
+        freq_hz: float | None = None,
+    ) -> dict[int, DosimetryResult]:
+        """Compute dosimetry at multiple fidelity levels for convergence analysis.
+
+        Runs each requested level and returns a dict mapping level -> result.
+        Levels that require unavailable parameters are silently skipped.
+
+        Parameters
+        ----------
+        body : BodyMesh
+        paths : PropagationPaths
+        levels : list of ints, or None for all feasible incoherent levels
+        body_mass : body mass [kg] for SAR (optional)
+        A_ab : absorption area for levels 0-1
+        D_max : max directivity for level 0
+        q : TM excess for level 4
+        curvature_H : mean curvature for levels 5-6
+        freq_hz : frequency override
+
+        Returns
+        -------
+        dict mapping int level -> DosimetryResult
+        """
+        if levels is None:
+            levels = list(range(7))  # 0-6, skip coherent
+
+        results: dict[int, DosimetryResult] = {}
+        for level in levels:
+            try:
+                result = self.compute(
+                    body,
+                    paths,
+                    level=level,
+                    body_mass=body_mass,
+                    A_ab=A_ab,
+                    D_max=D_max,
+                    q=q,
+                    curvature_H=curvature_H,
+                    freq_hz=freq_hz,
+                )
+                results[level] = result
+            except ValueError:
+                # Skip levels with missing required args (A_ab, D_max, etc.)
+                continue
+
+        return results
