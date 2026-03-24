@@ -15,7 +15,7 @@ try:
     from numba import njit
 
     NUMBA_AVAILABLE = True
-except ImportError:
+except (ImportError, OSError):
     NUMBA_AVAILABLE = False
 
     def njit(*args, **kwargs):

@@ -340,10 +340,11 @@ class TestDebyeOmegaZero:
 class TestSyntheticPipeline:
     def test_end_to_end_with_defaults(self, tmp_path):
         """Run the full batch runner pipeline with synthetic paths on a tiny mesh."""
+        from conftest import make_flat_mesh
+
         from aegis.engine import DosimetryEngine
         from aegis.run import _synthetic_paths
         from aegis.tissue.dielectric import SKIN_28GHZ
-        from tests.conftest import make_flat_mesh
 
         mesh = make_flat_mesh(n=50)
         engine = DosimetryEngine(SKIN_28GHZ)
@@ -357,10 +358,11 @@ class TestSyntheticPipeline:
 
     def test_multi_level_comparison(self):
         """Compare levels 2, 3, 4 on same mesh and paths."""
+        from conftest import make_flat_mesh
+
         from aegis.engine import DosimetryEngine
         from aegis.paths import PropagationPaths
         from aegis.tissue.dielectric import SKIN_28GHZ
-        from tests.conftest import make_flat_mesh
 
         mesh = make_flat_mesh(n=50)
         engine = DosimetryEngine(SKIN_28GHZ)
@@ -389,10 +391,11 @@ class TestSyntheticPipeline:
 
 class TestSweepLevels:
     def test_sweep_levels_2_to_4(self):
+        from conftest import make_flat_mesh
+
         from aegis.engine import DosimetryEngine
         from aegis.paths import PropagationPaths
         from aegis.tissue.dielectric import SKIN_28GHZ
-        from tests.conftest import make_flat_mesh
 
         mesh = make_flat_mesh(n=50)
         engine = DosimetryEngine(SKIN_28GHZ)
@@ -407,10 +410,11 @@ class TestSweepLevels:
             assert r.sab.shape == (50,)
 
     def test_sweep_skips_infeasible_levels(self):
+        from conftest import make_flat_mesh
+
         from aegis.engine import DosimetryEngine
         from aegis.paths import PropagationPaths
         from aegis.tissue.dielectric import SKIN_28GHZ
-        from tests.conftest import make_flat_mesh
 
         mesh = make_flat_mesh(n=20)
         engine = DosimetryEngine(SKIN_28GHZ)
@@ -427,10 +431,11 @@ class TestSweepLevels:
         assert 3 in results
 
     def test_sweep_default_levels(self):
+        from conftest import make_flat_mesh
+
         from aegis.engine import DosimetryEngine
         from aegis.paths import PropagationPaths
         from aegis.tissue.dielectric import SKIN_28GHZ
-        from tests.conftest import make_flat_mesh
 
         mesh = make_flat_mesh(n=20)
         engine = DosimetryEngine(SKIN_28GHZ)
@@ -445,10 +450,11 @@ class TestSweepLevels:
         assert 1 not in results
 
     def test_sweep_with_compare(self):
+        from conftest import make_flat_mesh
+
         from aegis.engine import DosimetryEngine
         from aegis.paths import PropagationPaths
         from aegis.tissue.dielectric import SKIN_28GHZ
-        from tests.conftest import make_flat_mesh
 
         mesh = make_flat_mesh(n=30)
         engine = DosimetryEngine(SKIN_28GHZ)
@@ -463,10 +469,11 @@ class TestSweepLevels:
         assert len(cmp["rmse"]) == 3  # (L2,L3), (L2,L4), (L3,L4)
 
     def test_sweep_with_level0_params(self):
+        from conftest import make_flat_mesh
+
         from aegis.engine import DosimetryEngine
         from aegis.paths import PropagationPaths
         from aegis.tissue.dielectric import SKIN_28GHZ
-        from tests.conftest import make_flat_mesh
 
         mesh = make_flat_mesh(n=20)
         engine = DosimetryEngine(SKIN_28GHZ)

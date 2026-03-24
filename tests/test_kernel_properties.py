@@ -227,7 +227,7 @@ class TestCoherentProperties:
         from aegis.precoder import Precoder
 
         rng = np.random.default_rng(42)
-        from tests.conftest import make_icosahedron
+        from conftest import make_icosahedron
 
         body = make_icosahedron()
         k = rng.standard_normal((5, 3))
@@ -252,7 +252,7 @@ class TestCoherentProperties:
 
     def test_ecbf_satisfies_constraint(self):
         """ECBF result must satisfy P_abs <= P_abs_max (within tolerance)."""
-        from tests.conftest import make_icosahedron
+        from conftest import make_icosahedron
 
         body = make_icosahedron()
         rng = np.random.default_rng(99)
@@ -349,7 +349,7 @@ class TestAveragingProperties:
 
     def test_averaging_reduces_peak(self):
         """Spatial averaging must not increase the maximum value (smoothing)."""
-        from tests.conftest import make_flat_mesh
+        from conftest import make_flat_mesh
 
         mesh = make_flat_mesh(200)
         engine = DosimetryEngine(SKIN_28GHZ)
@@ -365,7 +365,7 @@ class TestAveragingProperties:
 
     def test_averaging_preserves_total_power(self):
         """Area-weighted sum of averaged S_ab equals P_abs."""
-        from tests.conftest import make_flat_mesh
+        from conftest import make_flat_mesh
 
         mesh = make_flat_mesh(100)
         engine = DosimetryEngine(SKIN_28GHZ)

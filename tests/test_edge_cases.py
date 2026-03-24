@@ -86,7 +86,7 @@ class TestZeroPower:
 class TestManyPaths:
     def test_1000_paths(self):
         """Kernel should handle many paths without issues."""
-        from tests.conftest import make_icosahedron
+        from conftest import make_icosahedron
 
         body = make_icosahedron()
         rng = np.random.default_rng(42)
@@ -130,7 +130,7 @@ class TestAllBackFacing:
 class TestSuperposition:
     def test_two_identical_paths_double_power(self):
         """Two identical paths should give 2x the S_ab of one."""
-        from tests.conftest import make_icosahedron
+        from conftest import make_icosahedron
 
         body = make_icosahedron()
         k = np.array([[0, 0, -1.0]])
