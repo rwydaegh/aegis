@@ -24,6 +24,7 @@ export function useDosimetry() {
 
   const exposureScenario = useUIStore(s => s.exposureScenario)
 
+  const bodyName = useSceneStore(s => s.bodyName)
   const config = useSceneStore(s => s.viewerConfig)
   const caps = useSceneStore(s => s.capabilities)
   const pathSource = useSceneStore(s => s.pathSource)
@@ -83,6 +84,7 @@ export function useDosimetry() {
       stochasticSeed,
       quantities: Array.from(enabledQuantities) as string[],
       exposureScenario,
+      bodyName: bodyName || undefined,
     }
 
     // Timeout: abort after configured limit
@@ -130,6 +132,9 @@ export function useDosimetry() {
           sincAveraged: arrays['sinc_averaged'],
           sab1cm2Averaged: arrays['sab_1cm2'],
         })
+        if (stats.compliance) {
+          useSimulationStore.getState().setCompliance(stats.compliance)
+        }
         if (stats.path_viz) {
           useSceneStore.getState().setRtPaths(stats.path_viz)
         }
@@ -157,7 +162,7 @@ export function useDosimetry() {
       })
   }, [antennaPos, mode, fresnel, polarisation, curvature, diffraction, powerDbm, skinModel, freqGhz, nPaths,
     bodyOffset, bodyRotationY, config, caps, pathSource, rtSource, rtMaxOrder, loadedScenePath,
-    stochasticPreset, stochasticOverrides, stochasticSeed, enabledQuantities, exposureScenario,
+    stochasticPreset, stochasticOverrides, stochasticSeed, enabledQuantities, exposureScenario, bodyName,
     rtMethod, rtRaysPerSource, rtMaxPathsPerSource,
     rtLos, rtSpecularReflection, rtDiffuseReflection, rtRefraction,
     rtDiffraction, rtEdgeDiffraction, rtDiffractionLitRegion,
@@ -176,7 +181,7 @@ export function useDosimetry() {
     }
   }, [antennaPos, mode, fresnel, polarisation, curvature, diffraction, powerDbm, skinModel, freqGhz, nPaths,
     bodyOffset, bodyRotationY, triggerCompute, config, stochasticPreset, stochasticOverrides,
-    stochasticSeed, pathSource, enabledQuantities, exposureScenario,
+    stochasticSeed, pathSource, enabledQuantities, exposureScenario, bodyName,
     rtMethod, rtRaysPerSource, rtMaxPathsPerSource,
     rtLos, rtSpecularReflection, rtDiffuseReflection, rtRefraction,
     rtDiffraction, rtEdgeDiffraction, rtDiffractionLitRegion,

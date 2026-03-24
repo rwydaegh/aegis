@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { fetchViewerConfig, fetchCapabilities } from '@/api/client'
 import { useSceneStore } from '@/stores/scene'
 import { useSimulationStore } from '@/stores/simulation'
+import { useUIStore } from '@/stores/ui'
 import type { ScenePos } from '@/api/coordinates'
 
 type ConfigStatus = 'loading' | 'ready' | 'error'
@@ -35,6 +36,23 @@ export function useConfig() {
         }
 
         useSimulationStore.setState(simState)
+
+        // Wire config keys from DEFAULTS that are not already wired above
+        const sim = useSimulationStore.getState()
+        const ui = useUIStore.getState()
+
+        if (config.dosimetry?.freq_hz) {
+          sim.setFreqGhz((config.dosimetry as unknown as { freq_hz: number }).freq_hz / 1e9)
+        }
+        if ((config.dosimetry as unknown as { default_power_dbm?: number }).default_power_dbm !== undefined) {
+          sim.setPowerDbm((config.dosimetry as unknown as { default_power_dbm: number }).default_power_dbm)
+        }
+        if ((config.dosimetry as unknown as { exposure_scenario?: string }).exposure_scenario) {
+          const scenario = (config.dosimetry as unknown as { exposure_scenario: string }).exposure_scenario
+          if (scenario === 'general_public' || scenario === 'occupational') {
+            ui.setExposureScenario(scenario)
+          }
+        }
 
         // Load available scenes (server returns {name, path} objects)
         const rawScenes = (caps as any).scenes

@@ -195,10 +195,6 @@ export async function fetchTileFile(filename: string): Promise<ArrayBuffer> {
 // POST endpoints
 // ---------------------------------------------------------------------------
 
-export async function switchBody(name: string): Promise<{ ok: boolean; meta: BodyMeta }> {
-  return postJson<{ ok: boolean; meta: BodyMeta }>('/api/body/switch', { name })
-}
-
 export async function loadSceneGeometry(scenePath: string): Promise<{
   vertices: Float32Array
   indices: Int32Array
@@ -254,6 +250,7 @@ export interface ComputeParams {
   stochasticSeed?: number
   quantities: string[]
   exposureScenario: string
+  bodyName?: string
 }
 
 function computePayload(params: ComputeParams) {
@@ -272,6 +269,7 @@ function computePayload(params: ComputeParams) {
     n_paths: params.nPaths,
     quantities: params.quantities,
     exposure_scenario: params.exposureScenario,
+    ...(params.bodyName ? { body_name: params.bodyName } : {}),
     ...(params.stochastic ? {
       stochastic: true,
       stochastic_preset: params.stochasticPreset,
