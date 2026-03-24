@@ -25,12 +25,13 @@ from aegis.tissue.fresnel import xi_from_mu
 
 
 def _accumulate_by_element_numpy(weighted, element_index, M, n_elements):
-    """NumPy fallback: loop over elements."""
+    """NumPy: vectorized scatter-add using np.add.at."""
+    # weighted: (M, N, 3), element_index: (N,)
+    # Target: G_tilde (M, 3, n_elements) where G_tilde[:, :, j] = sum over n where element_index[n] == j
     G_tilde = np.zeros((M, 3, n_elements), dtype=complex)
-    for j in range(n_elements):
-        mask = element_index == j
-        if np.any(mask):
-            G_tilde[:, :, j] = np.sum(weighted[:, mask, :], axis=1)
+    # Transpose weighted to (M, 3, N) for scatter along last axis
+    weighted_t = np.transpose(weighted, (0, 2, 1))  # (M, 3, N)
+    np.add.at(G_tilde, (slice(None), slice(None), element_index), weighted_t)
     return G_tilde
 
 
