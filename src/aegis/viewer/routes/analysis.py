@@ -26,26 +26,24 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             return jsonify({"error": "freq_hz is required"}), 400
 
         scenario_str = request.args.get("scenario", "general_public")
-        scenario = (
-            ExposureScenario.OCCUPATIONAL
-            if scenario_str == "occupational"
-            else ExposureScenario.GENERAL_PUBLIC
-        )
+        scenario = ExposureScenario.OCCUPATIONAL if scenario_str == "occupational" else ExposureScenario.GENERAL_PUBLIC
 
         try:
             limits = icnirp_limits(scenario=scenario, freq_hz=freq_hz)
         except ValueError as e:
             return jsonify({"error": str(e)}), 400
 
-        return jsonify({
-            "scenario": scenario_str,
-            "freq_hz": freq_hz,
-            "sab_4cm2": limits.sab_4cm2,
-            "sab_1cm2": limits.sab_1cm2,
-            "sar_wb": limits.sar_wb,
-            "sinc_local": limits.sinc_local,
-            "sinc_whole_body": limits.sinc_whole_body,
-        })
+        return jsonify(
+            {
+                "scenario": scenario_str,
+                "freq_hz": freq_hz,
+                "sab_4cm2": limits.sab_4cm2,
+                "sab_1cm2": limits.sab_1cm2,
+                "sar_wb": limits.sar_wb,
+                "sinc_local": limits.sinc_local,
+                "sinc_whole_body": limits.sinc_whole_body,
+            }
+        )
 
     # ------------------------------------------------------------------
     # GET /api/compliance/summary
@@ -103,10 +101,12 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         except Exception as e:
             return jsonify({"error": str(e)}), 400
 
-        return jsonify({
-            "tissue": tissue,
-            "freqs_hz": result["freqs_hz"].tolist(),
-            "eps_r": result["eps_r"].tolist(),
-            "sigma": result["sigma"].tolist(),
-            "T0": result["T0"].tolist(),
-        })
+        return jsonify(
+            {
+                "tissue": tissue,
+                "freqs_hz": result["freqs_hz"].tolist(),
+                "eps_r": result["eps_r"].tolist(),
+                "sigma": result["sigma"].tolist(),
+                "T0": result["T0"].tolist(),
+            }
+        )
