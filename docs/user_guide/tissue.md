@@ -34,7 +34,7 @@ print(skin.n_complex)  # complex refractive index
 
 Four tissue types are hardcoded from published literature:
 
-| Tissue | Frequency | $\varepsilon_r$ | $\sigma$ (S/m) | $\mathcal{T}_0$ |
+| Tissue | Frequency | $\varepsilon_r$ | $\sigma$ (S/m) | $T_0$ |
 |--------|-----------|-----------------|-----------------|------------------|
 | `SKIN_28GHZ` | 28 GHz | 17.0 | 25.0 | 0.539 |
 | `SKIN_60GHZ` | 60 GHz | 7.9 | 36.4 | 0.623 |
@@ -67,9 +67,9 @@ The fraction of incident power that enters the tissue depends on the angle of in
 
 At normal incidence ($\theta_i = 0$), the transmission coefficient simplifies to:
 
-$$\mathcal{T}_0 = \frac{4 \, \text{Re}(\tilde{n})}{|1 + \tilde{n}|^2}$$
+$$T_0 = \frac{4 \, \text{Re}(\tilde{n})}{|1 + \tilde{n}|^2}$$
 
-This is the single most important tissue parameter. For skin at 28 GHz, $\mathcal{T}_0 = 0.539$, meaning 53.9% of incident power is absorbed.
+This is the single most important tissue parameter. For skin at 28 GHz, $T_0 = 0.539$, meaning 53.9% of incident power is absorbed.
 
 ### Angle-dependent transmission
 
@@ -90,7 +90,7 @@ TM polarization always transmits more than TE at oblique angles. This matters at
 
 The unpolarized (average) transmission is:
 
-$$\mathcal{T}_{avg}(\theta) = \frac{\mathcal{T}_s(\theta) + \mathcal{T}_p(\theta)}{2}$$
+$$T_{avg}(\theta) = \frac{T_s(\theta) + T_p(\theta)}{2}$$
 
 ### Amplitude coefficients
 
@@ -103,16 +103,16 @@ t_s, t_p = fresnel_amplitude(mu, n)
 print(f"t_s = {t_s:.3f}, t_p = {t_p:.3f}")  # complex values
 ```
 
-The power coefficient relates to the amplitude as $\mathcal{T} = \text{Re}(\xi) / \mu \cdot |t|^2$ where $\xi$ is the normal wave-vector component in tissue.
+The power coefficient relates to the amplitude as $T = \text{Re}(\xi) / \mu \cdot |t|^2$ where $\xi$ is the normal wave-vector component in tissue.
 
 ## How fidelity levels use tissue
 
 | Level | Tissue parameter | Notes |
 |-------|-----------------|-------|
-| 0-2 | $\mathcal{T}_0$ (scalar) | Same transmission for all angles |
-| 3 | $\mathcal{T}_{avg}(\theta)$ | Angle-dependent, unpolarized |
-| 4 | $\mathcal{T}_s, \mathcal{T}_p$ separately | Polarization-resolved |
-| 5-6 | $\mathcal{T}_{avg}(\theta)$ + curvature | Physical optics correction |
+| 0-2 | $T_0$ (scalar) | Same transmission for all angles |
+| 3 | $T_{avg}(\theta)$ | Angle-dependent, unpolarized |
+| 4 | $T_s, T_p$ separately | Polarization-resolved |
+| 5-6 | $T_{avg}(\theta)$ + curvature | Physical optics correction |
 | 7-8 | $t_s, t_p$ (complex amplitudes) | Full coherent Fresnel operator |
 
-The transition from Level 2 to Level 3 (replacing constant $\mathcal{T}_0$ with angle-dependent $\mathcal{T}_{avg}$) changes total absorbed power by about 0.35% on typical body meshes. The correction matters more for geometries with many grazing-incidence triangles.
+The transition from Level 2 to Level 3 (replacing constant $T_0$ with angle-dependent $T_{avg}$) changes total absorbed power by about 0.35% on typical body meshes. The correction matters more for geometries with many grazing-incidence triangles.
