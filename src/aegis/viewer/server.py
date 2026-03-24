@@ -203,14 +203,40 @@ def create_app(
     print("Loading data...")
 
     with _cache_lock:
-        try:
-            body = load_body(body_name, data_dir)
-            _cache["body"] = body
-            _cache["body_binary"], _cache["body_meta"] = body_to_binary(body)
-            print(f"  Body: {body.name}, {body.n_triangles:,} triangles")
-        except FileNotFoundError as e:
-            print(f"  Warning: {e}")
-            _cache["body"] = None
+        # Preload all available bodies from data_dir
+        available_bodies = [p.stem for p in Path(data_dir).glob("*.stl")]
+        _cache["bodies"] = {}
+        _cache["default_body"] = body_name
+        for name in available_bodies:
+            try:
+                body = load_body(name, data_dir)
+                binary, meta = body_to_binary(body)
+                _cache["bodies"][name] = {"body": body, "binary": binary, "meta": meta}
+                print(f"  Body: {body.name}, {body.n_triangles:,} triangles")
+            except FileNotFoundError as e:
+                print(f"  Warning: {e}")
+
+        # Backward-compat aliases pointing at the default body
+        default_entry = _cache["bodies"].get(body_name)
+        if default_entry is not None:
+            _cache["body"] = default_entry["body"]
+            _cache["body_binary"] = default_entry["binary"]
+            _cache["body_meta"] = default_entry["meta"]
+        else:
+            # Fallback: try loading the requested body_name even if not in glob results
+            try:
+                body = load_body(body_name, data_dir)
+                binary, meta = body_to_binary(body)
+                _cache["bodies"][body_name] = {"body": body, "binary": binary, "meta": meta}
+                _cache["body"] = body
+                _cache["body_binary"] = binary
+                _cache["body_meta"] = meta
+                print(f"  Body (fallback): {body.name}, {body.n_triangles:,} triangles")
+            except FileNotFoundError as e:
+                print(f"  Warning: {e}")
+                _cache["body"] = None
+                _cache["body_binary"] = None
+                _cache["body_meta"] = None
 
         _cache["voxel_json_path"] = voxel_json
         if voxel_dir:

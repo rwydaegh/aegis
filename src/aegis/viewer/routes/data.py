@@ -44,15 +44,26 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
     @app.route("/api/body")
     def api_body():
-        """Return body mesh as binary (positions + normals, float32)."""
-        if cache.get("body") is None:
-            return jsonify({"error": "No body mesh loaded"}), 404
+        """Return body mesh as binary (positions + normals, float32).
 
-        data = cache["body_binary"]
-        meta = cache["body_meta"]
+        Accepts optional ?name= query parameter to select a specific body.
+        Defaults to the default body loaded at startup.
+        """
+        name = request.args.get("name", cache.get("default_body"))
+        bodies = cache.get("bodies", {})
+        entry = bodies.get(name)
+        if entry is None:
+            # Fall back to legacy single-body cache for backward compat
+            if name == cache.get("default_body") and cache.get("body_binary") is not None:
+                data = cache["body_binary"]
+                meta = cache["body_meta"]
+                resp = Response(data, mimetype="application/octet-stream")
+                resp.headers["X-Meta"] = json.dumps(meta)
+                return resp
+            return jsonify({"error": f"Body '{name}' not found"}), 404
 
-        resp = Response(data, mimetype="application/octet-stream")
-        resp.headers["X-Meta"] = json.dumps(meta)
+        resp = Response(entry["binary"], mimetype="application/octet-stream")
+        resp.headers["X-Meta"] = json.dumps(entry["meta"])
         return resp
 
     @app.route("/api/voxels")
@@ -88,41 +99,23 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             return jsonify({"error": "No tiles directory"}), 404
         return send_from_directory(str(td), filename)
 
-    @app.route("/api/body/switch", methods=["POST"])
-    def api_body_switch():
-        """Switch the active body mesh at runtime."""
-        from aegis.viewer.scene_data import body_to_binary, load_body
-
-        body_name = request.json.get("name") if request.is_json else None
-        if not body_name:
-            return jsonify({"error": "Missing 'name' in request body"}), 400
-
-        data_dir = cache.get("data_dir")
-        if not data_dir:
-            return jsonify({"error": "No data directory configured"}), 500
-
-        try:
-            body = load_body(body_name, data_dir)
-        except FileNotFoundError:
-            return jsonify({"error": f"Body mesh '{body_name}' not found"}), 404
-
-        with cache_lock:
-            cache["body"] = body
-            cache["body_binary"], cache["body_meta"] = body_to_binary(body)
-
-        return jsonify({"ok": True, "meta": cache["body_meta"]})
-
     @app.route("/api/config")
     def api_config():
         """Return available configuration options."""
         from aegis.viewer.compute import SKIN_MODELS
 
-        bodies = []
-        data_dir = cache.get("data_dir")
-        if data_dir:
-            data_path = Path(data_dir)
-            if data_path.exists():
-                bodies = [p.stem for p in data_path.glob("*.stl")]
+        # Read bodies from the preloaded cache (populated at startup)
+        bodies_cache = cache.get("bodies", {})
+        if bodies_cache:
+            bodies = list(bodies_cache.keys())
+        else:
+            # Fallback: discover from data_dir if bodies cache is empty
+            bodies = []
+            data_dir = cache.get("data_dir")
+            if data_dir:
+                data_path = Path(data_dir)
+                if data_path.exists():
+                    bodies = [p.stem for p in data_path.glob("*.stl")]
 
         # Check for DiffeRT and available scenes
         has_differt = False
@@ -159,14 +152,17 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         n_tiles = 0
         if tiles_dir:
             n_tiles = len(list(Path(tiles_dir).glob("*.glb")))
-        # Report which body is currently loaded and sort body list
-        current_body = cache["body"].name if cache.get("body") else ""
+        # Report default body name and its meta from preloaded bodies cache
+        default_body_name = cache.get("default_body", "")
+        bodies_cache = cache.get("bodies", {})
+        default_entry = bodies_cache.get(default_body_name)
+        body_meta = default_entry["meta"] if default_entry is not None else cache.get("body_meta")
         bodies.sort()
 
         return jsonify(
             {
                 "bodies": bodies,
-                "body_name": current_body,
+                "body_name": default_body_name,
                 "skin_models": SKIN_MODELS,
                 "levels": levels,
                 "has_voxels": has_voxels,
@@ -176,7 +172,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                 "has_tiles": n_tiles > 0,
                 "n_tiles": n_tiles,
                 "scenes": scenes,
-                "body_meta": cache.get("body_meta"),
+                "body_meta": body_meta,
                 "voxel_meta": cache.get("voxel_meta"),
                 "has_location_loader": has_pipeline and has_api_key,
                 "has_api_key": has_api_key,

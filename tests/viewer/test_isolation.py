@@ -256,3 +256,191 @@ class TestPipelineIsolation:
             _pipeline_mutex.release()
 
         assert any("pipeline busy" in line for line in lines)
+
+
+# ---------------------------------------------------------------------------
+# Task 2: Multi-user body preloading (Flask integration tests)
+# ---------------------------------------------------------------------------
+
+
+def _make_minimal_stl_bytes(name: str = "test") -> bytes:
+    """Return a minimal valid binary STL with one triangle.
+
+    Binary STL layout: 80-byte header + uint32 n_triangles +
+    n_triangles * (12 bytes normal + 36 bytes vertices + 2 bytes attr).
+    """
+    import struct
+
+    header = name.encode("ascii")[:80].ljust(80, b"\x00")
+    n_triangles = 1
+    # One triangle: normal (0,0,1), vertices at (0,0,0), (1,0,0), (0,1,0)
+    triangle = struct.pack(
+        "<fff fff fff fff H",
+        0.0,
+        0.0,
+        1.0,  # normal
+        0.0,
+        0.0,
+        0.0,  # v0
+        1.0,
+        0.0,
+        0.0,  # v1
+        0.0,
+        1.0,
+        0.0,  # v2
+        0,  # attr byte count
+    )
+    return header + struct.pack("<I", n_triangles) + triangle
+
+
+@pytest.fixture
+def app_with_two_bodies(tmp_path):
+    """Flask test app with two preloaded body STLs in a temp data_dir."""
+    # Write two minimal STL files
+    for body_name in ("alpha", "beta"):
+        (tmp_path / f"{body_name}.stl").write_bytes(_make_minimal_stl_bytes(body_name))
+
+    from aegis.viewer.server import _cache, create_app
+
+    # Reset module-level cache between tests
+    _cache.clear()
+
+    app = create_app(
+        data_dir=str(tmp_path),
+        body_name="alpha",
+    )
+    app.config["TESTING"] = True
+    return app
+
+
+class TestBodyPreloading:
+    def test_bodies_cache_populated(self, app_with_two_bodies):
+        """cache['bodies'] must contain all STL files found at startup."""
+        from aegis.viewer.server import _cache
+
+        assert "bodies" in _cache
+        assert "alpha" in _cache["bodies"]
+        assert "beta" in _cache["bodies"]
+
+    def test_default_body_set(self, app_with_two_bodies):
+        """cache['default_body'] must match the body_name argument."""
+        from aegis.viewer.server import _cache
+
+        assert _cache["default_body"] == "alpha"
+
+    def test_backward_compat_keys(self, app_with_two_bodies):
+        """Legacy cache['body'], cache['body_binary'], cache['body_meta'] must exist."""
+        from aegis.viewer.server import _cache
+
+        assert _cache.get("body") is not None
+        assert _cache.get("body_binary") is not None
+        assert _cache.get("body_meta") is not None
+
+
+class TestBodyEndpoint:
+    def test_get_default_body(self, app_with_two_bodies):
+        """GET /api/body with no name returns the default body."""
+        with app_with_two_bodies.test_client() as client:
+            resp = client.get("/api/body")
+        assert resp.status_code == 200
+        assert resp.content_type == "application/octet-stream"
+        assert "X-Meta" in resp.headers
+
+    def test_get_named_body_alpha(self, app_with_two_bodies):
+        """GET /api/body?name=alpha returns alpha's binary."""
+        with app_with_two_bodies.test_client() as client:
+            resp = client.get("/api/body?name=alpha")
+        assert resp.status_code == 200
+
+    def test_get_named_body_beta(self, app_with_two_bodies):
+        """GET /api/body?name=beta returns beta's binary."""
+        with app_with_two_bodies.test_client() as client:
+            resp = client.get("/api/body?name=beta")
+        assert resp.status_code == 200
+
+    def test_get_unknown_body_returns_404(self, app_with_two_bodies):
+        """GET /api/body?name=nonexistent returns 404."""
+        with app_with_two_bodies.test_client() as client:
+            resp = client.get("/api/body?name=nonexistent")
+        assert resp.status_code == 404
+
+    def test_bodies_are_independent_objects(self, app_with_two_bodies):
+        """The binary payloads for two different bodies must not be identical."""
+        with app_with_two_bodies.test_client() as client:
+            r_alpha = client.get("/api/body?name=alpha")
+            r_beta = client.get("/api/body?name=beta")
+        # Both must succeed
+        assert r_alpha.status_code == 200
+        assert r_beta.status_code == 200
+        # They represent different meshes (different names -> different meta)
+        import json
+
+        meta_alpha = json.loads(r_alpha.headers["X-Meta"])
+        meta_beta = json.loads(r_beta.headers["X-Meta"])
+        assert meta_alpha["name"] == "alpha"
+        assert meta_beta["name"] == "beta"
+
+
+class TestBodySwitchRemoved:
+    def test_body_switch_endpoint_gone(self, app_with_two_bodies):
+        """POST /api/body/switch must return 404 or 405 (route is deleted)."""
+        with app_with_two_bodies.test_client() as client:
+            resp = client.post("/api/body/switch", json={"name": "beta"})
+        # Route is removed, so Flask returns 404
+        assert resp.status_code in (404, 405)
+
+
+class TestConfigEndpointBodies:
+    def test_config_lists_all_bodies(self, app_with_two_bodies):
+        """GET /api/config must list both preloaded bodies."""
+        with app_with_two_bodies.test_client() as client:
+            resp = client.get("/api/config")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert "bodies" in data
+        assert "alpha" in data["bodies"]
+        assert "beta" in data["bodies"]
+
+    def test_config_body_name_is_default(self, app_with_two_bodies):
+        """GET /api/config must report the default body name."""
+        with app_with_two_bodies.test_client() as client:
+            resp = client.get("/api/config")
+        data = resp.get_json()
+        assert data["body_name"] == "alpha"
+
+
+class TestComputeAcceptsBodyName:
+    def test_compute_accepts_body_name(self, app_with_two_bodies):
+        """POST /api/compute with body_name='beta' must succeed (not 404)."""
+        payload = {
+            "body_name": "beta",
+            "antenna_pos": [2, 0, 1],
+            "level": 2,
+            "power_dbm": 23,
+            "n_paths": 1,
+        }
+        with app_with_two_bodies.test_client() as client:
+            resp = client.post("/api/compute", json=payload)
+        # Should be 200 or 500 (physics error), not 404
+        assert resp.status_code != 404
+
+    def test_compute_unknown_body_returns_404(self, app_with_two_bodies):
+        """POST /api/compute with an unknown body_name must return 404."""
+        payload = {
+            "body_name": "does_not_exist",
+            "antenna_pos": [2, 0, 1],
+            "level": 2,
+            "power_dbm": 23,
+            "n_paths": 1,
+        }
+        with app_with_two_bodies.test_client() as client:
+            resp = client.post("/api/compute", json=payload)
+        assert resp.status_code == 404
+
+
+class TestComplianceReportDeprecated:
+    def test_compliance_report_returns_410(self, app_with_two_bodies):
+        """GET /api/compliance/report must return 410 Gone (deprecated endpoint)."""
+        with app_with_two_bodies.test_client() as client:
+            resp = client.get("/api/compliance/report")
+        assert resp.status_code == 410
