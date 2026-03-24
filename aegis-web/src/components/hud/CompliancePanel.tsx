@@ -51,7 +51,7 @@ export default function CompliancePanel() {
           <div key={i} style={{ marginBottom: '6px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', color: '#e0e0e0', gap: '8px', alignItems: 'baseline' }}>
               <span style={{ flex: 1 }}>{tex ? <Tex math={tex} /> : check.label}</span>
-              <span style={{ whiteSpace: 'nowrap' }}>{check.value.toFixed(1)} / {check.limit.toFixed(1)} {check.unit}</span>
+              <span style={{ whiteSpace: 'nowrap' }}>{check.value.toFixed(2)} / {check.limit.toFixed(2)} {check.unit}</span>
               <span style={{ color, fontWeight: 'bold', minWidth: '35px', textAlign: 'right' }}>{status}</span>
             </div>
             <div style={{ background: '#333', borderRadius: '2px', height: '3px', marginTop: '2px' }}>

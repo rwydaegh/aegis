@@ -793,23 +793,30 @@ class DosimetryEngine:
         if levels is None:
             levels = list(range(7))  # 0-6, skip coherent
 
+        # Determine which levels are feasible given the available parameters
+        _requires = {
+            0: ("A_ab", "D_max"),
+            1: ("A_ab",),
+        }
+
         results: dict[int, DosimetryResult] = {}
         for level in levels:
-            try:
-                result = self.compute(
-                    body,
-                    paths,
-                    level=level,
-                    body_mass=body_mass,
-                    A_ab=A_ab,
-                    D_max=D_max,
-                    q=q,
-                    curvature_H=curvature_H,
-                    freq_hz=freq_hz,
-                )
-                results[level] = result
-            except ValueError:
-                # Skip levels with missing required args (A_ab, D_max, etc.)
+            # Skip levels whose required params are missing
+            missing = [p for p in _requires.get(level, ()) if locals()[p] is None]
+            if missing:
                 continue
+
+            result = self.compute(
+                body,
+                paths,
+                level=level,
+                body_mass=body_mass,
+                A_ab=A_ab,
+                D_max=D_max,
+                q=q,
+                curvature_H=curvature_H,
+                freq_hz=freq_hz,
+            )
+            results[level] = result
 
         return results

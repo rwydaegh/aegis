@@ -21,7 +21,6 @@ __all__ = [
     "icnirp_limits",
     "evaluate_compliance",
     "max_compliant_power",
-    "power_sweep",
     "margin_db",
     "summary_text",
     # Backward-compat
@@ -396,92 +395,6 @@ def max_compliant_power(
         return float("inf")
 
     return ref_power_w * min_ratio
-
-
-# ---------------------------------------------------------------------------
-# Power sweep
-# ---------------------------------------------------------------------------
-
-
-def power_sweep(
-    result: ComplianceResult,
-    ref_power_w: float,
-    power_range_w: list[float] | None = None,
-    n_points: int = 50,
-) -> dict:
-    """Compute compliance margin versus transmit power.
-
-    Given a ComplianceResult at ``ref_power_w``, scales linearly to produce
-    a compliance-vs-power curve. Useful for finding the compliance boundary
-    and understanding headroom.
-
-    Parameters
-    ----------
-    result : ComplianceResult
-        Compliance evaluation at the reference power.
-    ref_power_w : float
-        Reference transmit power [W].
-    power_range_w : list of two floats, or None
-        [P_min, P_max] in watts. Defaults to [ref_power_w / 100, ref_power_w * 100].
-    n_points : int
-        Number of points in the sweep.
-
-    Returns
-    -------
-    dict with keys:
-        power_w : (n_points,) array of transmit powers [W]
-        power_dbm : (n_points,) array of transmit powers [dBm]
-        margin_db : (n_points,) tightest compliance margin [dB] at each power
-        compliant : (n_points,) boolean array, True where all checks pass
-        p_max_w : maximum compliant power [W]
-        p_max_dbm : maximum compliant power [dBm]
-    """
-    import numpy as np
-
-    if ref_power_w <= 0:
-        raise ValueError("ref_power_w must be positive")
-
-    if power_range_w is None:
-        power_range_w = [ref_power_w / 100, ref_power_w * 100]
-
-    p_min, p_max = power_range_w
-    powers = np.geomspace(p_min, p_max, n_points)
-
-    margins = np.empty(n_points)
-    compliant = np.empty(n_points, dtype=bool)
-
-    checks = result.all_checks
-    if not checks:
-        return {
-            "power_w": powers,
-            "power_dbm": 10 * np.log10(powers * 1e3),
-            "margin_db": np.full(n_points, float("inf")),
-            "compliant": np.ones(n_points, dtype=bool),
-            "p_max_w": float("inf"),
-            "p_max_dbm": float("inf"),
-        }
-
-    for i, p in enumerate(powers):
-        scale = p / ref_power_w
-        min_margin = float("inf")
-        for check in checks:
-            scaled_value = check.value * scale
-            m = 10 * math.log10(check.limit / scaled_value) if scaled_value > 0 else float("inf")
-            min_margin = min(min_margin, m)
-        margins[i] = min_margin
-        compliant[i] = min_margin >= 0
-
-    p_max_val = max_compliant_power(result, ref_power_w)
-    p_max_dbm = 10 * math.log10(p_max_val * 1e3) if p_max_val < float("inf") else float("inf")
-
-    return {
-        "power_w": powers,
-        "power_dbm": 10 * np.log10(powers * 1e3),
-        "margin_db": margins,
-        "compliant": compliant,
-        "p_max_w": p_max_val,
-        "p_max_dbm": p_max_dbm,
-    }
 
 
 # ---------------------------------------------------------------------------

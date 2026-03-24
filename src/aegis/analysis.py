@@ -138,5 +138,10 @@ def path_importance(
     -------
     importance : (N,) per-path importance [W], sums to P_abs
     """
-    C = exposure_heatmap(body, paths, tissue)
-    return np.asarray(body.areas) @ C
+    mu, mu_plus = incidence_geometry(body.normals, paths.k_hat)
+    _, _, T_avg = fresnel_weights(mu, tissue.n_complex)
+    # Contract areas with the (M, N) kernel without materializing it:
+    # importance_n = sum_m area_m * T_avg(m,n) * mu_plus(m,n) * power_n
+    #              = (areas @ (T_avg * mu_plus)) * power
+    weighted = np.asarray(body.areas) @ np.asarray(T_avg * mu_plus)
+    return weighted * np.asarray(paths.power)
