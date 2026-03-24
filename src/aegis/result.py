@@ -52,14 +52,21 @@ class DosimetryResult:
     freq_hz: float | None = None
 
     def to_dict(self) -> dict:
-        """Serialize fields to a JSON-friendly dict. Omits None values."""
+        """Serialize fields to a JSON-friendly dict. Omits None values.
+
+        Complex arrays (Q, eigenvalues, x_star) are serialized as
+        {"real": [...], "imag": [...]}.
+        """
         out: dict = {}
         for f in fields(self):
             val = getattr(self, f.name)
             if val is None:
                 continue
             if isinstance(val, np.ndarray):
-                out[f.name] = val.tolist()
+                if np.iscomplexobj(val):
+                    out[f.name] = {"real": val.real.tolist(), "imag": val.imag.tolist()}
+                else:
+                    out[f.name] = val.tolist()
             elif isinstance(val, np.generic):
                 out[f.name] = val.item()
             else:
