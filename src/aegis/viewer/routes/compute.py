@@ -302,23 +302,49 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         stochastic = None
         if params.get("stochastic"):
             stoch_cfg = cfg["dosimetry"].get("stochastic", {})
-            stochastic = {
-                "preset": params.get("stochastic_preset", stoch_cfg.get("default_preset", "3GPP_38.901_UMi_LOS")),
-                "seed": int(params.get("stochastic_seed", stoch_cfg.get("default_seed", 42))),
-                "overrides": params.get("stochastic_overrides", {}),
-                "freq_ghz": float(params.get("freq_hz", 28e9)) / 1e9,
-            }
+            try:
+                stochastic = {
+                    "preset": params.get("stochastic_preset", stoch_cfg.get("default_preset", "3GPP_38.901_UMi_LOS")),
+                    "seed": int(params.get("stochastic_seed", stoch_cfg.get("default_seed", 42))),
+                    "overrides": params.get("stochastic_overrides", {}),
+                    "freq_ghz": float(params.get("freq_hz", 28e9)) / 1e9,
+                }
+            except (TypeError, ValueError):
+                return jsonify({"error": "Invalid stochastic parameters (seed must be integer)"}), 400
 
-        freq_hz = float(params.get("freq_hz", 28e9))
+        try:
+            freq_hz = float(params.get("freq_hz", 28e9))
+        except (TypeError, ValueError):
+            return jsonify({"error": "freq_hz must be a number"}), 400
+        if freq_hz <= 0:
+            return jsonify({"error": "freq_hz must be positive"}), 400
+
         skin_model_name = params.get("skin_model", "itis")
         try:
             tissue = resolve_skin_model(skin_model_name, freq_hz)
         except ValueError as exc:
             return jsonify({"error": str(exc)}), 400
 
-        antenna_pos = params.get("antenna_pos", [5, 0, 1])
-        body_offset = params.get("body_offset", [0, 0, 0])
-        body_rotation_y = params.get("body_rotation_y", 0.0)
+        try:
+            antenna_pos = list(params.get("antenna_pos", [5, 0, 1]))
+            if len(antenna_pos) != 3:
+                return jsonify({"error": "antenna_pos must be a 3-element array [x, y, z]"}), 400
+            antenna_pos = [float(v) for v in antenna_pos]
+        except (TypeError, ValueError):
+            return jsonify({"error": "antenna_pos must be a 3-element numeric array"}), 400
+
+        try:
+            body_offset = list(params.get("body_offset", [0, 0, 0]))
+            if len(body_offset) != 3:
+                return jsonify({"error": "body_offset must be a 3-element array [x, y, z]"}), 400
+            body_offset = [float(v) for v in body_offset]
+        except (TypeError, ValueError):
+            return jsonify({"error": "body_offset must be a 3-element numeric array"}), 400
+
+        try:
+            body_rotation_y = float(params.get("body_rotation_y", 0.0))
+        except (TypeError, ValueError):
+            return jsonify({"error": "body_rotation_y must be a number"}), 400
 
         quantities = params.get("quantities", ["sab", "sab_4cm2"])
         exposure_scenario_str = params.get("exposure_scenario", "general_public")
@@ -492,14 +518,33 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         params = request.get_json(silent=True)
         if not isinstance(params, dict):
             return jsonify({"error": "Invalid or missing JSON body"}), 400
-        antenna_pos = np.array(params.get("antenna_pos", [5, 0, 1]))
+
+        try:
+            raw_pos = list(params.get("antenna_pos", [5, 0, 1]))
+            if len(raw_pos) != 3:
+                return jsonify({"error": "antenna_pos must be a 3-element array [x, y, z]"}), 400
+            antenna_pos = np.array([float(v) for v in raw_pos])
+        except (TypeError, ValueError):
+            return jsonify({"error": "antenna_pos must be a 3-element numeric array"}), 400
+
         scene_path = params.get("scene_path")
         engine_kw = _parse_mode_or_level(params)
         power_dbm = params.get("power_dbm", 60.0)
         rt_cfg_parsed = _parse_rt_config(params)
         max_order = rt_cfg_parsed["max_depth"]
-        body_offset = np.array(params.get("body_offset", [0, 0, 0]))
-        body_rotation_y = float(params.get("body_rotation_y", 0.0))
+
+        try:
+            raw_offset = list(params.get("body_offset", [0, 0, 0]))
+            if len(raw_offset) != 3:
+                return jsonify({"error": "body_offset must be a 3-element array [x, y, z]"}), 400
+            body_offset = np.array([float(v) for v in raw_offset])
+        except (TypeError, ValueError):
+            return jsonify({"error": "body_offset must be a 3-element numeric array"}), 400
+
+        try:
+            body_rotation_y = float(params.get("body_rotation_y", 0.0))
+        except (TypeError, ValueError):
+            return jsonify({"error": "body_rotation_y must be a number"}), 400
 
         quantities = params.get("quantities", ["sab", "sab_4cm2"])
         exposure_scenario_str = params.get("exposure_scenario", "general_public")
@@ -614,14 +659,33 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         params = request.get_json(silent=True)
         if not isinstance(params, dict):
             return jsonify({"error": "Invalid or missing JSON body"}), 400
-        antenna_pos = np.array(params.get("antenna_pos", [5, 0, 1]))
+
+        try:
+            raw_pos = list(params.get("antenna_pos", [5, 0, 1]))
+            if len(raw_pos) != 3:
+                return jsonify({"error": "antenna_pos must be a 3-element array [x, y, z]"}), 400
+            antenna_pos = np.array([float(v) for v in raw_pos])
+        except (TypeError, ValueError):
+            return jsonify({"error": "antenna_pos must be a 3-element numeric array"}), 400
+
         scene_path = params.get("scene_path")
         engine_kw = _parse_mode_or_level(params)
         power_dbm = params.get("power_dbm", 60.0)
         rt_cfg_parsed = _parse_rt_config(params)
         max_bounces = rt_cfg_parsed["max_depth"]
-        body_offset = np.array(params.get("body_offset", [0, 0, 0]))
-        body_rotation_y = float(params.get("body_rotation_y", 0.0))
+
+        try:
+            raw_offset = list(params.get("body_offset", [0, 0, 0]))
+            if len(raw_offset) != 3:
+                return jsonify({"error": "body_offset must be a 3-element array [x, y, z]"}), 400
+            body_offset = np.array([float(v) for v in raw_offset])
+        except (TypeError, ValueError):
+            return jsonify({"error": "body_offset must be a 3-element numeric array"}), 400
+
+        try:
+            body_rotation_y = float(params.get("body_rotation_y", 0.0))
+        except (TypeError, ValueError):
+            return jsonify({"error": "body_rotation_y must be a number"}), 400
 
         quantities = params.get("quantities", ["sab", "sab_4cm2"])
         exposure_scenario_str = params.get("exposure_scenario", "general_public")
@@ -756,9 +820,28 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         params = request.get_json(silent=True)
         if not isinstance(params, dict):
             return jsonify({"error": "Invalid or missing JSON body"}), 400
-        antenna_pos = np.array(params.get("antenna_pos", [5, 0, 1]))
-        body_offset = np.array(params.get("body_offset", [0, 0, 0]), dtype=np.float64)
-        body_rotation_y = float(params.get("body_rotation_y", 0.0))
+
+        try:
+            raw_pos = list(params.get("antenna_pos", [5, 0, 1]))
+            if len(raw_pos) != 3:
+                return jsonify({"error": "antenna_pos must be a 3-element array [x, y, z]"}), 400
+            antenna_pos = np.array([float(v) for v in raw_pos])
+        except (TypeError, ValueError):
+            return jsonify({"error": "antenna_pos must be a 3-element numeric array"}), 400
+
+        try:
+            raw_offset = list(params.get("body_offset", [0, 0, 0]))
+            if len(raw_offset) != 3:
+                return jsonify({"error": "body_offset must be a 3-element array [x, y, z]"}), 400
+            body_offset = np.array([float(v) for v in raw_offset], dtype=np.float64)
+        except (TypeError, ValueError):
+            return jsonify({"error": "body_offset must be a 3-element numeric array"}), 400
+
+        try:
+            body_rotation_y = float(params.get("body_rotation_y", 0.0))
+        except (TypeError, ValueError):
+            return jsonify({"error": "body_rotation_y must be a number"}), 400
+
         engine_kw = _parse_mode_or_level(params)
         power_dbm = params.get("power_dbm", 60.0)
         rt_cfg_parsed = _parse_rt_config(params)
@@ -771,7 +854,12 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         except ValueError:
             return jsonify({"error": f"Invalid exposure_scenario: {exposure_scenario_str}"}), 400
 
-        freq_hz = float(params.get("freq_hz", 28e9))
+        try:
+            freq_hz = float(params.get("freq_hz", 28e9))
+        except (TypeError, ValueError):
+            return jsonify({"error": "freq_hz must be a number"}), 400
+        if freq_hz <= 0:
+            return jsonify({"error": "freq_hz must be positive"}), 400
         skin_model_name = params.get("skin_model", "itis")
         try:
             tissue = resolve_skin_model(skin_model_name, freq_hz)
