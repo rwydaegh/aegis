@@ -121,6 +121,11 @@ class PropagationPaths:
         if power.shape != (n,):
             raise ValueError(f"power shape {power.shape} doesn't match k_hat ({n},)")
 
+        if n > 0 and not np.all(np.isfinite(power)):
+            raise ValueError("power must be finite (no NaN or inf)")
+        if n > 0 and not np.all(np.isfinite(k_hat)):
+            raise ValueError("k_hat must be finite (no NaN or inf)")
+
         # Normalise directions
         norms = np.linalg.norm(k_hat, axis=1, keepdims=True)
         if n > 0 and np.any(norms[:, 0] <= 0):

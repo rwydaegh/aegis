@@ -37,6 +37,10 @@ class TissueModel:
     sigma: float
     freq_hz: float
 
+    def __post_init__(self) -> None:
+        if self.freq_hz <= 0:
+            raise ValueError(f"Frequency must be positive, got {self.freq_hz} Hz")
+
     @property
     def n_complex(self) -> complex:
         """Complex refractive index."""

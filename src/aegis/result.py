@@ -187,6 +187,8 @@ class DosimetryResult:
         factor : float
             Multiplicative scaling factor. Must be non-negative.
         """
+        if not np.isfinite(factor):
+            raise ValueError("scale factor must be finite (no NaN or inf)")
         if factor < 0:
             raise ValueError("scale factor must be non-negative")
         return DosimetryResult(

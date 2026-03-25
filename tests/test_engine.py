@@ -85,14 +85,13 @@ class TestDosimetryResult:
         assert result.mean_sab > 0
         assert result.mean_sab <= result.peak_sab
 
-    def test_nan_power_propagates(self, engine, flat_mesh):
-        """NaN in power should propagate to result, not silently produce zeros."""
-        paths = PropagationPaths.from_powers(
-            k_hat=np.array([[0, 0, -1.0]]),
-            power=np.array([float("nan")]),
-        )
-        result = engine.compute(flat_mesh, paths, level=2)
-        assert np.any(np.isnan(result.sab))
+    def test_nan_power_rejected(self, engine, flat_mesh):
+        """NaN in power should be rejected at the input boundary."""
+        with pytest.raises(ValueError, match="finite"):
+            PropagationPaths.from_powers(
+                k_hat=np.array([[0, 0, -1.0]]),
+                power=np.array([float("nan")]),
+            )
 
 
 # ---------------------------------------------------------------------------
