@@ -78,7 +78,13 @@ export function useMIMODosimetry() {
       const response = await computeMIMO(req, controller.signal)
       if (gen !== generationRef.current) return
 
-      const { setUserResult, setSummaryStats } = useMIMOStore.getState()
+      const { setUserResult, setSummaryStats, setPrecoderWeights } = useMIMOStore.getState()
+
+      // Store precoder weights for antenna pattern visualization
+      if (response.weights_real && response.weights_imag) {
+        setPrecoderWeights({ real: response.weights_real, imag: response.weights_imag })
+      }
+
       await Promise.all(
         response.user_ids.map(async (uid) => {
           const { sab, stats } = await fetchMIMOResult(uid, controller.signal)

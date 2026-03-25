@@ -114,8 +114,11 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         bodies = {name: entry["body"] for name, entry in cache.get("bodies", {}).items()}
 
         level = int(params.get("level", 7))
+        precoder_type = str(params.get("precoder_type", "mrt"))
         try:
-            summary = compute_mimo_scene_with_bodies(scene, bodies, level=level)
+            summary = compute_mimo_scene_with_bodies(
+                scene, bodies, level=level, precoder_type=precoder_type,
+            )
         except Exception as exc:
             logger.exception("MIMO compute failed")
             return jsonify({"error": str(exc)}), 500

@@ -203,6 +203,7 @@ function MIMOScene() {
   const focusedUserId = useMIMOStore(s => s.focusedUserId)
   const showAllHeatmaps = useMIMOStore(s => s.showAllHeatmaps)
   const showArrayPattern = useMIMOStore(s => s.showArrayPattern)
+  const precoderWeights = useMIMOStore(s => s.precoderWeights)
   const arrayConfig = useMIMOStore(s => s.arrayConfig)
   const setFocusedUser = useMIMOStore(s => s.setFocusedUser)
   const freqGhz = useSimulationStore(s => s.freqGhz)
@@ -223,7 +224,7 @@ function MIMOScene() {
           onClick={() => setFocusedUser(user.userId)}
         />
       ))}
-      {arrayConfig && <AntennaArrayViz config={arrayConfig} freqHz={freqGhz * 1e9} showPattern={showArrayPattern} />}
+      {arrayConfig && <AntennaArrayViz config={arrayConfig} freqHz={freqGhz * 1e9} showPattern={showArrayPattern} weights={precoderWeights} />}
     </>
   )
 }
