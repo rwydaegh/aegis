@@ -86,3 +86,53 @@ class TestComplianceCLI:
         assert "SAR_wb" in out
         assert "S_inc (local)" in out
         assert "S_inc (whole-body)" in out
+
+    def test_link_budget_mode(self, capsys):
+        main(["--freq", "28e9", "--link-budget", "--tx-power", "1.0", "--distance", "10.0"])
+        out = capsys.readouterr().out
+        assert "Link budget" in out
+        assert "S_inc" in out
+        assert "S_ab estimate" in out
+        assert "Max compliant TX power" in out
+
+    def test_link_budget_json(self, capsys):
+        main(
+            [
+                "--freq",
+                "28e9",
+                "--link-budget",
+                "--tx-power",
+                "1.0",
+                "--gain",
+                "10",
+                "--distance",
+                "5.0",
+                "--json",
+            ]
+        )
+        d = json.loads(capsys.readouterr().out)
+        assert "sinc_wm2" in d
+        assert "sab_estimate_wm2" in d
+        assert d["compliant"] is True
+
+    def test_link_budget_missing_args(self):
+        import pytest
+
+        with pytest.raises(SystemExit):
+            main(["--freq", "28e9", "--link-budget"])
+
+    def test_link_budget_occupational(self, capsys):
+        main(
+            [
+                "--freq",
+                "28e9",
+                "--link-budget",
+                "--tx-power",
+                "1.0",
+                "--distance",
+                "10.0",
+                "--occupational",
+            ]
+        )
+        out = capsys.readouterr().out
+        assert "occupational" in out

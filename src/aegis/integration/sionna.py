@@ -97,7 +97,7 @@ def _extract_path_viz(paths, valid: np.ndarray) -> list[dict]:
         # mi.Point3f stores as (3, N), transpose to (N, 3)
         sources = np.array(paths.sources).T  # (num_tx, 3)
         targets = np.array(paths.targets).T  # (num_rx, 3)
-    except Exception:
+    except (AttributeError, TypeError, ValueError, IndexError):
         return []
 
     max_depth = verts.shape[0]

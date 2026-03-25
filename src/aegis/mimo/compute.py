@@ -121,6 +121,8 @@ def compute_mrt_precoder(
         and equal power per user: ||w_k||^2 = P/K.
     """
     K, M_ant = H.shape
+    if K == 0:
+        return np.zeros((M_ant, 0), dtype=complex)
     W = np.zeros((M_ant, K), dtype=complex)
     power_per_user = total_power / K
 
@@ -253,6 +255,9 @@ def compute_mimo_scene(
         precoder_type : str
         per_user_p_abs : list of float
     """
+    if not scene.users:
+        raise ValueError("Scene has no users")
+
     # Step 1: build channels
     build_user_channels(scene)
 

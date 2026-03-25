@@ -85,6 +85,14 @@ def compute_body_channel(
         Body-surface channel matrix at each triangle centroid.
     """
     M = normals.shape[0]
+
+    # Validate element_index bounds to prevent silent data loss
+    element_index = np.asarray(element_index)
+    if element_index.size > 0:
+        idx_min, idx_max = int(element_index.min()), int(element_index.max())
+        if idx_min < 0 or idx_max >= n_elements:
+            raise ValueError(f"element_index values must be in [0, {n_elements}), got range [{idx_min}, {idx_max}]")
+
     k0 = 2 * xp.pi * freq_hz / C_0
 
     # Fresnel operator components

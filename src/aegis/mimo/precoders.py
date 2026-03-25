@@ -41,7 +41,17 @@ def zf(H: np.ndarray, P: float = 1.0) -> np.ndarray:
         msg = f"M_ant ({M}) must be >= K ({K}) for ZF precoding"
         raise ValueError(msg)
     HHH = H @ H.conj().T
-    X = np.linalg.solve(HHH, H)  # (K, M), solves HHH @ X = H
+    try:
+        X = np.linalg.solve(HHH, H)  # (K, M), solves HHH @ X = H
+    except np.linalg.LinAlgError:
+        # Singular channel matrix: fall back to MRT
+        import warnings
+
+        warnings.warn(
+            "ZF precoder: H @ H^H is singular, falling back to MRT",
+            stacklevel=2,
+        )
+        return mrt(H, P=P)
     W_raw = X.conj().T  # (M, K)
     frob = np.sqrt(float(np.real(np.trace(W_raw.conj().T @ W_raw))))
     if frob < 1e-30:

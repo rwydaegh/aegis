@@ -30,7 +30,8 @@ COPY data/ data/
 # Pre-built React app (built in CI, copied into static/ before docker build)
 # Already at src/aegis/viewer/static/ from the build:copy step
 
-# Pre-built docs (built in CI)
+# Pre-built docs (built in CI) — CACHE_BUST ensures fresh copy each build
+ARG CACHE_BUST
 COPY site/ site/
 
 # Gunicorn config

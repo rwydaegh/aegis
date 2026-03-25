@@ -70,6 +70,14 @@ def compute_field_channel(
         Field channel matrix at each triangle centroid.
     """
     M = centroids.shape[0]
+
+    # Validate element_index bounds to prevent silent data loss
+    element_index = np.asarray(element_index)
+    if element_index.size > 0:
+        idx_min, idx_max = int(element_index.min()), int(element_index.max())
+        if idx_min < 0 or idx_max >= n_elements:
+            raise ValueError(f"element_index values must be in [0, {n_elements}), got range [{idx_min}, {idx_max}]")
+
     k0 = 2 * xp.pi * freq_hz / C_0
 
     # Phase: exp(-i*k0 * k_hat_n . r_m) for each (m, n)
