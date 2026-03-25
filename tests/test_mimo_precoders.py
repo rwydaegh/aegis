@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+from hypothesis import assume, given, settings
+from hypothesis import strategies as st
 from numpy.testing import assert_allclose
 
 from aegis.mimo.precoders import compute_precoder, mmse, mrt, zf, zf_exposure
@@ -340,3 +342,97 @@ class TestComputePrecoder:
         H = np.eye(2, dtype=complex)
         with pytest.raises(ValueError, match="zf_exposure requires"):
             compute_precoder(H, precoder_type="zf_exposure")
+
+
+def _random_H(K, M, seed):
+    rng = np.random.default_rng(seed)
+    return rng.standard_normal((K, M)) + 1j * rng.standard_normal((K, M))
+
+
+def _random_Q(M, seed):
+    rng = np.random.default_rng(seed)
+    A = rng.standard_normal((M, M)) + 1j * rng.standard_normal((M, M))
+    Q = A.conj().T @ A
+    return Q / max(np.linalg.norm(Q), 1e-10)
+
+
+class TestPrecoderInvariants:
+    """Property tests for precoder invariants (Hypothesis)."""
+
+    @given(
+        K=st.integers(min_value=1, max_value=4),
+        M=st.integers(min_value=4, max_value=16),
+        P=st.floats(min_value=0.1, max_value=10.0),
+        seed=st.integers(min_value=0, max_value=2**31),
+    )
+    @settings(max_examples=50, deadline=5000)
+    def test_mrt_total_power(self, K, M, P, seed):
+        assume(M >= K)
+        H = _random_H(K, M, seed)
+        W = mrt(H, P=P)
+        total = float(np.real(np.trace(W.conj().T @ W)))
+        np.testing.assert_allclose(total, P, rtol=1e-10)
+
+    @given(
+        K=st.integers(min_value=1, max_value=4),
+        M=st.integers(min_value=4, max_value=16),
+        P=st.floats(min_value=0.1, max_value=10.0),
+        seed=st.integers(min_value=0, max_value=2**31),
+    )
+    @settings(max_examples=50, deadline=5000)
+    def test_zf_zero_interference(self, K, M, P, seed):
+        assume(M >= K)
+        H = _random_H(K, M, seed)
+        W = zf(H, P=P)
+        HW = H @ W
+        off_diag = HW - np.diag(np.diag(HW))
+        np.testing.assert_allclose(np.abs(off_diag), 0, atol=1e-8)
+
+    @given(
+        K=st.integers(min_value=1, max_value=4),
+        M=st.integers(min_value=4, max_value=16),
+        P=st.floats(min_value=0.1, max_value=10.0),
+        seed=st.integers(min_value=0, max_value=2**31),
+    )
+    @settings(max_examples=50, deadline=5000)
+    def test_zf_total_power(self, K, M, P, seed):
+        assume(M >= K)
+        H = _random_H(K, M, seed)
+        W = zf(H, P=P)
+        total = float(np.real(np.trace(W.conj().T @ W)))
+        np.testing.assert_allclose(total, P, rtol=1e-10)
+
+    @given(
+        K=st.integers(min_value=1, max_value=4),
+        M=st.integers(min_value=4, max_value=16),
+        seed=st.integers(min_value=0, max_value=2**31),
+    )
+    @settings(max_examples=50, deadline=5000)
+    def test_exposure_constraint_satisfaction(self, K, M, seed):
+        assume(M >= K)
+        H = _random_H(K, M, seed)
+        Q_list = [_random_Q(M, seed + i) for i in range(K)]
+        P_abs_max = 0.05
+        W = zf_exposure(H, Q_list, P_abs_max=P_abs_max, P=1.0)
+        for Q_u in Q_list:
+            p_abs = float(np.real(np.trace(W.conj().T @ Q_u @ W)))
+            assert p_abs <= P_abs_max + 1e-8, f"P_abs={p_abs} > P_abs_max={P_abs_max}"
+
+    @given(
+        K=st.integers(min_value=1, max_value=4),
+        M=st.integers(min_value=4, max_value=16),
+        seed=st.integers(min_value=0, max_value=2**31),
+    )
+    @settings(max_examples=50, deadline=5000)
+    def test_sab_nonnegative(self, K, M, seed):
+        assume(M >= K)
+        rng = np.random.default_rng(seed)
+        H = _random_H(K, M, seed)
+        W = zf(H, P=1.0)
+        n_tri = 20
+        G_tilde = rng.standard_normal((n_tri, 3, M)) + 1j * rng.standard_normal((n_tri, 3, M))
+        G_tilde *= 0.01
+        from aegis.mimo.compute import compute_multistream_sab
+
+        sab = compute_multistream_sab(G_tilde, W)
+        assert np.all(sab >= -1e-15)
