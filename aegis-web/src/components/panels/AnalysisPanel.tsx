@@ -196,6 +196,11 @@ function MarginChart({
 // Power sweep section
 // ---------------------------------------------------------------------------
 
+/** Extract a compliance check value by label from stats. */
+function checkValue(stats: { compliance?: { checks: Array<{ label: string; value: number }> } } | null, label: string): number | undefined {
+  return stats?.compliance?.checks.find(c => c.label === label)?.value
+}
+
 function PowerSweepSection() {
   const { stats } = useActiveSimulation()
   const powerDbm = useSimulationStore((s) => s.powerDbm)
@@ -209,6 +214,8 @@ function PowerSweepSection() {
   const peakSab = stats?.peak_sab_averaged ?? stats?.peak_sab
   const sincLocal = stats?.peaks?.sinc_local
   const sab1cm2 = stats?.peaks?.sab_1cm2
+  const sarWb = checkValue(stats, 'SAR_wb')
+  const sincWb = checkValue(stats, 'S_inc (whole-body)')
 
   const canSweep = peakSab != null && peakSab > 0
 
@@ -223,6 +230,8 @@ function PowerSweepSection() {
         scenario,
         sinc_local: sincLocal,
         sab_1cm2: sab1cm2,
+        sar_wb: sarWb,
+        sinc_wb: sincWb,
       })
       setResult(data)
     } catch {
@@ -306,6 +315,8 @@ function FrequencySweepSection() {
   const peakSab = stats?.peak_sab_averaged ?? stats?.peak_sab
   const sincLocal = stats?.peaks?.sinc_local
   const sab1cm2 = stats?.peaks?.sab_1cm2
+  const sarWb = checkValue(stats, 'SAR_wb')
+  const sincWb = checkValue(stats, 'S_inc (whole-body)')
 
   const canSweep = peakSab != null && peakSab > 0
 
@@ -318,6 +329,8 @@ function FrequencySweepSection() {
         scenario,
         sinc_local: sincLocal,
         sab_1cm2: sab1cm2,
+        sar_wb: sarWb,
+        sinc_wb: sincWb,
       })
       setResult(data)
     } catch {

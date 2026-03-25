@@ -382,6 +382,8 @@ export async function fetchPowerSweep(params: {
   scenario?: string
   sinc_local?: number
   sab_1cm2?: number
+  sar_wb?: number
+  sinc_wb?: number
 }): Promise<PowerSweepResult> {
   const qs = new URLSearchParams({
     sab_4cm2: String(params.sab_4cm2),
@@ -391,6 +393,8 @@ export async function fetchPowerSweep(params: {
   })
   if (params.sinc_local != null) qs.set('sinc_local', String(params.sinc_local))
   if (params.sab_1cm2 != null) qs.set('sab_1cm2', String(params.sab_1cm2))
+  if (params.sar_wb != null) qs.set('sar_wb', String(params.sar_wb))
+  if (params.sinc_wb != null) qs.set('sinc_wb', String(params.sinc_wb))
   return getJson<PowerSweepResult>(`/api/compliance/power-sweep?${qs}`)
 }
 
@@ -399,6 +403,8 @@ export async function fetchFrequencySweep(params: {
   scenario?: string
   sinc_local?: number
   sab_1cm2?: number
+  sar_wb?: number
+  sinc_wb?: number
 }): Promise<FrequencySweepResult> {
   const qs = new URLSearchParams({
     sab_4cm2: String(params.sab_4cm2),
@@ -406,6 +412,8 @@ export async function fetchFrequencySweep(params: {
   })
   if (params.sinc_local != null) qs.set('sinc_local', String(params.sinc_local))
   if (params.sab_1cm2 != null) qs.set('sab_1cm2', String(params.sab_1cm2))
+  if (params.sar_wb != null) qs.set('sar_wb', String(params.sar_wb))
+  if (params.sinc_wb != null) qs.set('sinc_wb', String(params.sinc_wb))
   return getJson<FrequencySweepResult>(`/api/compliance/frequency-sweep?${qs}`)
 }
 
