@@ -7,6 +7,21 @@ import type { DosimetryStats, ArrayConfig, MIMOSummary } from '@/api/types'
 
 export type PrecoderType = 'mrt' | 'zf' | 'mmse' | 'zf_exposure'
 
+const DEFAULT_FOCUS_POINT: [number, number, number] = [0, 1.0, 0]
+
+/** Compute broadside = normalize(focusPoint - position), with safe fallback. */
+function deriveBroadside(
+  focusPoint: [number, number, number],
+  position: [number, number, number],
+): [number, number, number] {
+  const dx = focusPoint[0] - position[0]
+  const dy = focusPoint[1] - position[1]
+  const dz = focusPoint[2] - position[2]
+  const len = Math.sqrt(dx * dx + dy * dy + dz * dz)
+  if (len < 1e-6) return [-1, 0, 0]
+  return [dx / len, dy / len, dz / len]
+}
+
 export interface UserMIMOState {
   userId: string
   displayName: string
@@ -27,6 +42,7 @@ interface MIMOStore {
   controlledUserId: string | null
   precoderType: PrecoderType
   arrayConfig: ArrayConfig | null
+  focusPoint: [number, number, number]
   summaryStats: MIMOSummary | null
   precoderWeights: { real: number[][]; imag: number[][] } | null
   showAllHeatmaps: boolean
@@ -49,6 +65,7 @@ interface MIMOStore {
   setUserResult: (id: string, sab: Float32Array, stats: DosimetryStats) => void
   setPrecoderType: (type: PrecoderType) => void
   setArrayConfig: (config: ArrayConfig) => void
+  setFocusPoint: (p: [number, number, number]) => void
   setSummaryStats: (summary: MIMOSummary) => void
   setPrecoderWeights: (w: { real: number[][]; imag: number[][] } | null) => void
   setShowAllHeatmaps: (on: boolean) => void
@@ -64,6 +81,7 @@ const INITIAL_STATE = {
   controlledUserId: null as string | null,
   precoderType: 'zf' as PrecoderType,
   arrayConfig: null as ArrayConfig | null,
+  focusPoint: DEFAULT_FOCUS_POINT as [number, number, number],
   summaryStats: null as MIMOSummary | null,
   precoderWeights: null as { real: number[][]; imag: number[][] } | null,
   showAllHeatmaps: false,
@@ -89,14 +107,16 @@ export const useMIMOStore = create<MIMOStore>((set, get) => ({
 
     // Build array config if first time enabling
     let arrayConfig = get().arrayConfig
+    const fp = get().focusPoint
     if (!arrayConfig) {
       const antennaPos = useSimulationStore.getState().antennaPos
+      const pos: [number, number, number] = antennaPos ?? [5, 2, 3]
       arrayConfig = {
         type: 'upa' as const,
         n_h: 4, n_v: 4,
         d_h_wavelengths: 0.5, d_v_wavelengths: 0.5,
-        position: antennaPos ?? [5, 2, 3],
-        broadside: [-1, 0, 0] as [number, number, number],
+        position: pos,
+        broadside: deriveBroadside(fp, pos),
       }
     }
 
@@ -220,7 +240,17 @@ export const useMIMOStore = create<MIMOStore>((set, get) => ({
   },
 
   setPrecoderType: (type) => set({ precoderType: type }),
-  setArrayConfig: (config) => set({ arrayConfig: config, _configVersion: get()._configVersion + 1 }),
+  setArrayConfig: (config) => {
+    const fp = get().focusPoint
+    const broadside = deriveBroadside(fp, config.position)
+    set({ arrayConfig: { ...config, broadside }, _configVersion: get()._configVersion + 1 })
+  },
+  setFocusPoint: (fp) => {
+    const cfg = get().arrayConfig
+    if (!cfg) { set({ focusPoint: fp }); return }
+    const broadside = deriveBroadside(fp, cfg.position)
+    set({ focusPoint: fp, arrayConfig: { ...cfg, broadside }, _configVersion: get()._configVersion + 1 })
+  },
   setSummaryStats: (summary) => set({ summaryStats: summary }),
   setPrecoderWeights: (w) => set({ precoderWeights: w }),
   setShowAllHeatmaps: (on) => set({ showAllHeatmaps: on }),

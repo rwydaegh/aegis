@@ -29,11 +29,16 @@ export function useClickToPlace() {
       const point = e.intersections[0].point
       const mimoStore = useMIMOStore.getState()
       if (mimoStore.enabled && mimoStore.arrayConfig) {
-        // Preserve the array's current Y height (elevation) when clicking ground plane
-        mimoStore.setArrayConfig({
-          ...mimoStore.arrayConfig,
-          position: [point.x, mimoStore.arrayConfig.position[1], point.z],
-        })
+        if (e.nativeEvent.shiftKey) {
+          // Shift+click: place focus point (preserve current Y height)
+          mimoStore.setFocusPoint([point.x, mimoStore.focusPoint[1], point.z])
+        } else {
+          // Click: place array (preserve current Y height)
+          mimoStore.setArrayConfig({
+            ...mimoStore.arrayConfig,
+            position: [point.x, mimoStore.arrayConfig.position[1], point.z],
+          })
+        }
       } else {
         useSimulationStore.getState().setAntennaPos([point.x, point.y, point.z])
       }

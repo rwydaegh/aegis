@@ -1,4 +1,4 @@
-import { Eye, Gamepad2, X, Plus, Layers } from 'lucide-react'
+import { Eye, Gamepad2, X, Plus, Layers, Crosshair } from 'lucide-react'
 import { useMIMOStore, type PrecoderType } from '@/stores/mimo'
 import type { UserMIMOState } from '@/stores/mimo'
 import { formatSab } from '@/lib/format'
@@ -35,6 +35,8 @@ export default function MIMOPanel() {
   const removeUser = useMIMOStore(s => s.removeUser)
   const setFocusedUser = useMIMOStore(s => s.setFocusedUser)
   const setControlledUser = useMIMOStore(s => s.setControlledUser)
+  const focusPoint = useMIMOStore(s => s.focusPoint)
+  const setFocusPoint = useMIMOStore(s => s.setFocusPoint)
   const showArrayPattern = useMIMOStore(s => s.showArrayPattern)
   const setPrecoderType = useMIMOStore(s => s.setPrecoderType)
   const setShowAllHeatmaps = useMIMOStore(s => s.setShowAllHeatmaps)
@@ -112,6 +114,42 @@ export default function MIMOPanel() {
             />
             <span className="text-[10px] text-muted-foreground">Show array pattern</span>
           </label>
+
+          {/* Focus point */}
+          <div className="mb-2">
+            <div className="flex items-center gap-1 mb-1">
+              <Crosshair className="w-3 h-3 text-[#00e5ff]" />
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Focus point</span>
+              <button
+                onClick={() => setFocusPoint([0, 1.0, 0])}
+                className="ml-auto text-[9px] text-muted-foreground hover:text-foreground transition-colors"
+                title="Reset to origin"
+              >
+                reset
+              </button>
+            </div>
+            <div className="flex gap-1">
+              {(['X', 'Y', 'Z'] as const).map((axis, i) => (
+                <label key={axis} className="flex items-center gap-0.5 flex-1">
+                  <span className="text-[9px] text-muted-foreground">{axis}</span>
+                  <input
+                    type="number"
+                    step={0.5}
+                    value={focusPoint[i]}
+                    onChange={e => {
+                      const v = parseFloat(e.target.value)
+                      if (isNaN(v)) return
+                      const fp: [number, number, number] = [...focusPoint]
+                      fp[i] = i === 1 ? Math.max(0, v) : v
+                      setFocusPoint(fp)
+                    }}
+                    className="w-full bg-muted/50 border border-border rounded px-1 py-0.5 text-[10px] text-foreground font-mono"
+                  />
+                </label>
+              ))}
+            </div>
+            <p className="text-[9px] text-muted-foreground/60 mt-0.5">Shift+click to place</p>
+          </div>
 
           {/* User list */}
           <div className="space-y-1 mb-2">
