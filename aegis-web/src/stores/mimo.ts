@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { useSimulationStore } from './simulation'
 import type { BufferGeometry } from 'three'
 import type { ScenePos } from '@/api/coordinates'
 import type { DosimetryStats, ArrayConfig, MIMOSummary } from '@/api/types'
@@ -71,7 +72,22 @@ export const useMIMOStore = create<MIMOStore>((set, get) => ({
     return users.get(focusedUserId) ?? null
   },
 
-  setEnabled: (on) => set({ enabled: on }),
+  setEnabled: (on) => {
+    const updates: Partial<typeof INITIAL_STATE & { enabled: boolean }> = { enabled: on }
+    if (on && !get().arrayConfig) {
+      const antennaPos = useSimulationStore.getState().antennaPos
+      updates.arrayConfig = {
+        type: 'upa' as const,
+        n_h: 4,
+        n_v: 4,
+        d_h_wavelengths: 0.5,
+        d_v_wavelengths: 0.5,
+        position: antennaPos ?? [5, 0, 3],
+        broadside: [-1, 0, 0] as [number, number, number],
+      }
+    }
+    set(updates)
+  },
 
   addUser: (phantom, position) => {
     const id = crypto.randomUUID()
