@@ -361,7 +361,10 @@ class TestEdgeCases:
     def test_compute_zero_users_returns_empty(self):
         """K=0: compute_mimo_scene_with_bodies returns empty result."""
         array = AntennaArray.upa(
-            2, 2, 0.005, 0.005,
+            2,
+            2,
+            0.005,
+            0.005,
             np.array([5.0, 0.0, 3.0]),
             np.array([-1.0, 0.0, 0.0]),
         )
