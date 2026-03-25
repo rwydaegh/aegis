@@ -10,12 +10,13 @@ from aegis.mimo import AntennaArray, MIMOScene, UserConfig, UserState
 from aegis.mimo.compute import (
     build_user_channels,
     compute_mimo_scene,
+    compute_mimo_scene_with_bodies,
     compute_mrt_precoder,
     compute_multistream_sab,
     compute_total_exposure,
     compute_user_sab,
 )
-from aegis.mimo.precoders import compute_precoder
+from aegis.mimo.precoders import compute_precoder, mrt
 from aegis.paths import PropagationPaths
 from aegis.precoder import Precoder
 from aegis.tissue.dielectric import SKIN_28GHZ
@@ -349,3 +350,31 @@ class TestComputeExposureQuadratic:
         expected = np.real(np.trace(W.conj().T @ Q @ W))
         np.testing.assert_allclose(p_abs, expected, atol=1e-10)
         assert p_abs >= 0
+
+
+# ---------------------------------------------------------------------------
+# Edge cases: K=0, M<K
+# ---------------------------------------------------------------------------
+
+
+class TestEdgeCases:
+    def test_compute_zero_users_returns_empty(self):
+        """K=0: compute_mimo_scene_with_bodies returns empty result."""
+        array = AntennaArray.upa(
+            2, 2, 0.005, 0.005,
+            np.array([5.0, 0.0, 3.0]),
+            np.array([-1.0, 0.0, 0.0]),
+        )
+        scene = MIMOScene(array=array, users=[], freq_hz=28e9, total_power=1.0)
+        result = compute_mimo_scene_with_bodies(scene, bodies={})
+        assert result["user_ids"] == []
+        assert "total_ms" in result["timings"]
+        assert result["precoder_type"] == "mrt"
+
+    def test_mrt_works_with_m_less_than_k(self):
+        """MRT works even when M < K (unlike ZF)."""
+        rng = np.random.default_rng(42)
+        H = rng.standard_normal((5, 3)) + 1j * rng.standard_normal((5, 3))  # K=5, M=3
+        W = mrt(H, P=1.0)
+        assert W.shape == (3, 5)
+        np.testing.assert_allclose(np.linalg.norm(W, "fro") ** 2, 1.0, atol=1e-10)
