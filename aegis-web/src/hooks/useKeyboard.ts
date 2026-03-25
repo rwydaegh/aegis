@@ -32,14 +32,11 @@ export function useKeyboard(): KeyState {
       // Don't capture when typing in inputs
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return
 
-      // MIMO mode has its own keyboard controls (useMIMOKeyboard)
-      if (useMIMOStore.getState().enabled) return
-
       keysRef.current.add(e.code)
       updateState()
 
-      // Arrow key antenna nudging
-      if (e.code.startsWith('Arrow')) {
+      // Arrow key antenna nudging (single-user mode only)
+      if (e.code.startsWith('Arrow') && !useMIMOStore.getState().enabled) {
         e.preventDefault()
         const config = useSceneStore.getState().viewerConfig
         const pos = useSimulationStore.getState().antennaPos
