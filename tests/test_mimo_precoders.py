@@ -237,3 +237,83 @@ class TestMMSE:
         assert W.shape == (M, K)
         frob_sq = float(np.real(np.trace(W.conj().T @ W)))
         assert_allclose(frob_sq, 1.0, atol=1e-10)
+
+
+class TestZFExposure:
+    """Tests for ZF+exposure-scaling precoder."""
+
+    def _make_scenario(self, rng, K=2, M=8):
+        """Build H, Q_list, and return them."""
+        H = rng.standard_normal((K, M)) + 1j * rng.standard_normal((K, M))
+        # Build positive semidefinite Q matrices (one per user)
+        Q_list = []
+        for _ in range(K):
+            A = rng.standard_normal((M, M)) + 1j * rng.standard_normal((M, M))
+            Q_list.append(A.conj().T @ A / M)
+        return H, Q_list
+
+    def test_exposure_constraints_satisfied(self):
+        """trace(W^H Q_u W) <= P_abs_max for all u."""
+        rng = np.random.default_rng(70)
+        H, Q_list = self._make_scenario(rng, K=3, M=8)
+        P_abs_max = 0.05
+
+        from aegis.mimo.precoders import zf_exposure
+
+        W = zf_exposure(H, Q_list, P_abs_max=P_abs_max, P=1.0)
+        for Q_u in Q_list:
+            absorbed = float(np.real(np.trace(W.conj().T @ Q_u @ W)))
+            assert absorbed <= P_abs_max + 1e-10
+
+    def test_directions_match_zf(self):
+        """Column directions match ZF."""
+        rng = np.random.default_rng(71)
+        H, Q_list = self._make_scenario(rng, K=2, M=8)
+        P_abs_max = 100.0  # loose constraint
+
+        from aegis.mimo.precoders import zf, zf_exposure
+
+        W_zfe = zf_exposure(H, Q_list, P_abs_max=P_abs_max, P=1.0)
+        W_zf = zf(H, P=1.0)
+
+        for k in range(H.shape[0]):
+            d_zfe = W_zfe[:, k] / np.linalg.norm(W_zfe[:, k])
+            d_zf = W_zf[:, k] / np.linalg.norm(W_zf[:, k])
+            # Inner product magnitude should be ~1
+            assert_allclose(np.abs(np.vdot(d_zfe, d_zf)), 1.0, atol=1e-10)
+
+    def test_total_power_does_not_exceed_budget(self):
+        """||W||_F^2 <= P."""
+        rng = np.random.default_rng(72)
+        H, Q_list = self._make_scenario(rng, K=3, M=8)
+        P = 2.0
+        P_abs_max = 0.01
+
+        from aegis.mimo.precoders import zf_exposure
+
+        W = zf_exposure(H, Q_list, P_abs_max=P_abs_max, P=P)
+        frob_sq = float(np.real(np.trace(W.conj().T @ W)))
+        assert frob_sq <= P + 1e-10
+
+    def test_loose_constraint_recovers_zf(self):
+        """P_abs_max=1e6 recovers ZF exactly."""
+        rng = np.random.default_rng(73)
+        H, Q_list = self._make_scenario(rng, K=2, M=8)
+        P = 1.0
+
+        from aegis.mimo.precoders import zf, zf_exposure
+
+        W_zfe = zf_exposure(H, Q_list, P_abs_max=1e6, P=P)
+        W_zf = zf(H, P=P)
+        assert_allclose(W_zfe, W_zf, atol=1e-10)
+
+    def test_output_shape(self):
+        """Output shape is (M, K) complex."""
+        rng = np.random.default_rng(74)
+        H, Q_list = self._make_scenario(rng, K=4, M=16)
+
+        from aegis.mimo.precoders import zf_exposure
+
+        W = zf_exposure(H, Q_list, P_abs_max=1.0, P=1.0)
+        assert W.shape == (16, 4)
+        assert np.iscomplexobj(W)
