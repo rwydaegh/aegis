@@ -2,7 +2,23 @@
 
 Hands-on Python tutorials for the AEGIS dosimetry engine. Each tutorial is a self-contained script that runs after `pip install -e ".[viz]"` with no STL files or external data required. Synthetic meshes (spheres, cylinders) stand in for human body phantoms.
 
-The tutorials progress from the foundational absorption law through the full MIMO beamforming pipeline:
+## Formats
+
+Every tutorial is available in two formats:
+
+- **Documentation pages** (you are here) - read the tutorials with rendered equations and explanations
+- **Jupyter notebooks** in the [`notebooks/`](https://github.com/rwydaegh/aegis/tree/master/notebooks) directory - run the tutorials interactively, cell by cell
+
+The markdown files in `docs/tutorials/` are the source of truth. Notebooks are generated from them using [Jupytext](https://jupytext.readthedocs.io/). To regenerate after editing a tutorial:
+
+```bash
+pip install jupytext
+jupytext --sync docs/tutorials/*.md
+```
+
+Edits can flow in either direction. If you modify a notebook, `jupytext --sync` updates the markdown (and vice versa).
+
+## Contents
 
 1. **[The geometric absorption law](quickstart.md)** -- Core equation, single plane wave, ReLU projection, multipath superposition
 2. **[Fidelity levels and convergence](fidelity_levels.md)** -- The nine-level computational hierarchy, sweep_levels, level comparison plots
