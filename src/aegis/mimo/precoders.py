@@ -26,3 +26,23 @@ def mrt(H: np.ndarray, P: float = 1.0) -> np.ndarray:
     norms = np.linalg.norm(W_conj, axis=0, keepdims=True)  # (1, K)
     norms = np.maximum(norms, 1e-30)
     return np.sqrt(P / K) * W_conj / norms
+
+
+def zf(H: np.ndarray, P: float = 1.0) -> np.ndarray:
+    """Zero-forcing: W_raw = H^H @ inv(H @ H^H), normalized to ||W||_F^2 = P.
+
+    Requires M_ant >= K.
+    """
+    H = np.asarray(H, dtype=complex)
+    if H.ndim == 1:
+        H = H.reshape(1, -1)
+    K, M = H.shape
+    if M < K:
+        msg = f"M_ant ({M}) must be >= K ({K}) for ZF precoding"
+        raise ValueError(msg)
+    HHH = H @ H.conj().T
+    W_raw = H.conj().T @ np.linalg.inv(HHH)
+    frob = np.sqrt(float(np.real(np.trace(W_raw.conj().T @ W_raw))))
+    if frob < 1e-30:
+        return np.zeros((M, K), dtype=complex)
+    return W_raw * np.sqrt(P) / frob
