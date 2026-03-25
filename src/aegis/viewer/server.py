@@ -207,6 +207,10 @@ def create_app(
             return
         if request.path.startswith("/assets/") or request.path == "/":
             return  # Serve React app and static assets without auth
+        # Allow root-level static files (fonts, favicons) without auth
+        _static_extensions = {".woff2", ".woff", ".ttf", ".svg", ".png", ".ico"}
+        if not request.path.startswith("/api/") and Path(request.path).suffix in _static_extensions:
+            return
         if not session.get("authenticated"):
             return jsonify({"error": "Authentication required"}), 401
 

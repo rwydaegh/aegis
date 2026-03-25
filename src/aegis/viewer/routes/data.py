@@ -37,6 +37,17 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         static_dir = Path(__file__).parent.parent / "static" / "assets"
         return send_from_directory(str(static_dir), filename)
 
+    @app.route("/<path:filename>")
+    def static_root_files(filename):
+        """Serve root-level static files (fonts, favicons) from static/."""
+        from flask import abort, send_from_directory
+
+        static_dir = Path(__file__).parent.parent / "static"
+        # Only serve files that actually exist to avoid masking API routes
+        if (static_dir / filename).is_file():
+            return send_from_directory(str(static_dir), filename)
+        return abort(404)
+
     @app.route("/api/viewer-config")
     def api_viewer_config():
         """Return the full viewer configuration."""
