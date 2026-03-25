@@ -24,6 +24,7 @@ export function buildMIMOComputePayload(req: MIMOComputeRequest): MIMOServerPayl
     array: {
       ...req.array,
       position: toServer(req.array.position),
+      broadside: toServer(req.array.broadside),
     },
     users: req.users.map(u => ({
       ...u,
