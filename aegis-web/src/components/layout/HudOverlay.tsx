@@ -3,17 +3,22 @@ import ColorLegend from '@/components/hud/ColorLegend'
 import ServerInfoBadge from '@/components/hud/ServerInfoBadge'
 import CompliancePanel from '@/components/hud/CompliancePanel'
 import NotificationToast from '@/components/hud/NotificationToast'
+import TouchControls from '@/components/hud/TouchControls'
 import { useUIStore } from '@/stores/ui'
+import { useIsMobile } from '@/hooks/useIsMobile'
 
 export default function HudOverlay() {
   const sidebarOpen = useUIStore(s => s.sidebarOpen)
+  const isMobile = useIsMobile()
+
+  const complianceLeft = (sidebarOpen && !isMobile) ? '332px' : '12px'
 
   return (
     <div className="absolute inset-0 pointer-events-none z-10">
-      {/* Compliance panel - left side, offset past sidebar when open */}
+      {/* Compliance panel - left side, offset past sidebar when open (desktop only) */}
       <div
         className="absolute top-3 pointer-events-auto transition-all duration-200"
-        style={{ left: sidebarOpen ? '332px' : '12px', maxWidth: '320px' }}
+        style={{ left: complianceLeft, maxWidth: '320px' }}
       >
         <CompliancePanel />
       </div>
@@ -31,6 +36,9 @@ export default function HudOverlay() {
 
       {/* Notification toasts - bottom left */}
       <NotificationToast />
+
+      {/* Touch controls - mobile only, hidden when sidebar is open */}
+      {isMobile && !sidebarOpen && <TouchControls />}
     </div>
   )
 }

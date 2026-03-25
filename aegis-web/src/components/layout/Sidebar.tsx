@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useUIStore } from '@/stores/ui'
 import { useMIMOStore } from '@/stores/mimo'
+import { useIsMobile } from '@/hooks/useIsMobile'
 import {
   Accordion,
   AccordionItem,
@@ -22,6 +23,8 @@ import MIMOPanel from '@/components/hud/MIMOPanel'
 export default function Sidebar() {
   const { sidebarOpen } = useUIStore()
   const mimoEnabled = useMIMOStore(s => s.enabled)
+  const isMobile = useIsMobile()
+  const openWidth = isMobile ? '100vw' : '320px'
   const [openSections, setOpenSections] = useState<string[]>(['parameters'])
 
   // Auto-open MIMO accordion when MIMO mode is toggled on
@@ -38,11 +41,11 @@ export default function Sidebar() {
       className="absolute top-0 left-0 h-full z-20 flex flex-col
         bg-card/90 backdrop-blur-xl border-r border-border
         transition-all duration-200 ease-in-out overflow-hidden"
-      style={{ width: sidebarOpen ? '320px' : '0px', visibility: sidebarOpen ? 'visible' : 'hidden' }}
+      style={{ width: sidebarOpen ? openWidth : '0px', visibility: sidebarOpen ? 'visible' : 'hidden' }}
       aria-hidden={!sidebarOpen}
       {...(!sidebarOpen && { inert: true as any })}
     >
-      <div className="w-[320px] h-full flex flex-col overflow-y-auto overflow-x-hidden">
+      <div className={`${isMobile ? 'w-full' : 'w-[320px]'} h-full flex flex-col overflow-y-auto overflow-x-hidden`}>
         <div className="p-3 border-b border-border shrink-0">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Controls</p>
         </div>

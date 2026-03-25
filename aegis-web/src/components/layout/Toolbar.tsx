@@ -95,7 +95,7 @@ export default function Toolbar() {
           href="https://docs.aegis.waves-ugent.be"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 rounded-full bg-primary/10 border border-primary/20 px-2.5 py-0.5 text-xs font-medium text-primary hover:bg-primary/20 transition-colors shrink-0"
+          className="hidden md:inline-flex items-center gap-1 rounded-full bg-primary/10 border border-primary/20 px-2.5 py-0.5 text-xs font-medium text-primary hover:bg-primary/20 transition-colors shrink-0"
         >
           <BookOpen className="size-3" />
           Docs
@@ -111,8 +111,8 @@ export default function Toolbar() {
         <ModePill />
       </div>
 
-      {/* Center: camera presets + follow */}
-      <div className="flex items-center gap-1 shrink-0">
+      {/* Center: camera presets + follow (hidden on mobile) */}
+      <div className="hidden md:flex items-center gap-1 shrink-0">
         <div className="flex items-center gap-0.5 border border-border rounded-md p-0.5">
           {CAMERA_PRESETS.map(({ preset, label, icon }) => (
             <Tooltip key={preset}>
@@ -149,13 +149,13 @@ export default function Toolbar() {
 
       {/* Right: session timer + icon buttons */}
       <div className="flex items-center gap-1 shrink-0">
-        <SessionTimer />
+        <span className="hidden md:inline-flex"><SessionTimer /></span>
 
         <Tooltip>
           <TooltipTrigger
             onClick={() => { void handleShare() }}
             className={cn(
-              'inline-flex items-center justify-center size-7 rounded-md transition-colors',
+              'hidden md:inline-flex items-center justify-center size-7 rounded-md transition-colors',
               'hover:bg-muted text-muted-foreground hover:text-foreground',
             )}
             aria-label="Share link"
@@ -169,7 +169,7 @@ export default function Toolbar() {
           <TooltipTrigger
             onClick={toggleWireframe}
             className={cn(
-              'inline-flex items-center justify-center size-7 rounded-md transition-colors',
+              'hidden md:inline-flex items-center justify-center size-7 rounded-md transition-colors',
               'hover:bg-muted text-muted-foreground hover:text-foreground',
               wireframe && 'bg-muted text-foreground',
             )}

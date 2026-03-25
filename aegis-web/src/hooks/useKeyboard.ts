@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useSimulationStore } from '@/stores/simulation'
 import { useSceneStore } from '@/stores/scene'
 import { useMIMOStore } from '@/stores/mimo'
+import { touchKeys } from '@/lib/touchKeys'
 
 export interface KeyState {
   forward: boolean
@@ -62,14 +63,15 @@ export function useKeyboard(): KeyState {
 
     function updateState() {
       const keys = keysRef.current
+      const t = touchKeys
       const s = stateRef.current
-      s.forward = keys.has('KeyW')
-      s.back = keys.has('KeyS')
-      s.left = keys.has('KeyA')
-      s.right = keys.has('KeyD')
-      s.rotLeft = keys.has('KeyQ')
-      s.rotRight = keys.has('KeyE')
-      s.jump = keys.has('Space')
+      s.forward = keys.has('KeyW') || t.has('KeyW')
+      s.back = keys.has('KeyS') || t.has('KeyS')
+      s.left = keys.has('KeyA') || t.has('KeyA')
+      s.right = keys.has('KeyD') || t.has('KeyD')
+      s.rotLeft = keys.has('KeyQ') || t.has('KeyQ')
+      s.rotRight = keys.has('KeyE') || t.has('KeyE')
+      s.jump = keys.has('Space') || t.has('Space')
       s.sprint = keys.has('ShiftLeft') || keys.has('ShiftRight')
     }
 
