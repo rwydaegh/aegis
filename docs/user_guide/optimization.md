@@ -21,7 +21,7 @@ def loss(power):
 grad = jax.grad(loss)(power)
 ```
 
-`compute_sab()` returns the raw per-triangle $S_{ab}$ array without conversion. It accepts the same parameters as `compute()`, plus `precoder_x` for passing a raw JAX array instead of a `Precoder` object.
+`compute_sab()` returns the raw per-triangle $S_{\mathrm{ab}}$ array without conversion. It accepts the same parameters as `compute()`, plus `precoder_x` for passing a raw JAX array instead of a `Precoder` object.
 
 ## Which levels are differentiable
 
@@ -110,4 +110,4 @@ grad = jax.grad(loss)(x_init)
 
 ## Spatial averaging stays outside the gradient
 
-ICNIRP 4 cm$^2$ spatial averaging uses `scipy.spatial.cKDTree`, which is not JAX-traceable. This is intentional. Spatial averaging is a post-processing step for compliance reporting, not part of the optimization loss. Optimize raw $S_{ab}$, then check compliance on the result.
+ICNIRP 4 cm$^2$ spatial averaging uses `scipy.spatial.cKDTree`, which is not JAX-traceable. This is intentional. Spatial averaging is a post-processing step for compliance reporting, not part of the optimization loss. Optimize raw $S_{\mathrm{ab}}$, then check compliance on the result.

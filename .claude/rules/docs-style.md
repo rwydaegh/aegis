@@ -87,10 +87,12 @@ These are AI writing tells. Never use them.
 
 AEGIS documentation uses MathJax for LaTeX rendering.
 
-- Inline math: `$S_{ab}$`
-- Display math: `$$S_{ab}(\mathbf{r}) = T_0 \cdot [\hat{n} \cdot (-\hat{k})]_+$$`
+- Inline math: `$S_{\mathrm{ab}}$`
+- Display math: `$$S_{\mathrm{ab}}(\mathbf{r}) = S_{\mathrm{inc}} \cdot T_0 \cdot [\hat{n} \cdot (-\hat{k})]_+$$`
 - Use `\mathbf{}` for vectors, `\hat{}` for unit vectors
 - Use `\text{}` for operator names in equations (e.g., `\text{ReLU}`)
+- Non-variable subscripts and superscripts use `\mathrm{}`: `S_{\mathrm{ab}}`, `P_{\mathrm{abs}}`, `D_{\mathrm{max}}`, `M_{\mathrm{ant}}`, `T_{\mathrm{avg}}`, `P_{\mathrm{abs}}^{\mathrm{max}}`
+- Single-letter index variables stay italic: `S_i`, `a_m`, `\theta_i`, `T_s`, `T_p`
 - Keep equations close to the monograph notation
 
 ## Code and examples

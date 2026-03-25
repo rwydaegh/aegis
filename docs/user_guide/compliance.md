@@ -6,8 +6,8 @@ AEGIS evaluates exposure against ICNIRP 2020 basic restrictions and reference le
 
 ICNIRP defines two categories of exposure limits, and AEGIS checks both:
 
-- **Basic restrictions** limit the absorbed power density $S_{ab}$ on the body surface, averaged over 4 cm$^2$ and 6 minutes. This is the quantity AEGIS computes directly.
-- **Reference levels** limit the incident power density $S_{inc}$ in free space at the body location. These are derived from basic restrictions under worst-case assumptions and are more conservative.
+- **Basic restrictions** limit the absorbed power density $S_{\mathrm{ab}}$ on the body surface, averaged over 4 cm$^2$ and 6 minutes. This is the quantity AEGIS computes directly.
+- **Reference levels** limit the incident power density $S_{\mathrm{inc}}$ in free space at the body location. These are derived from basic restrictions under worst-case assumptions and are more conservative.
 
 Compliance with either set is sufficient. In practice, if the reference level check passes, the basic restriction check will too (but not the reverse).
 
@@ -17,13 +17,13 @@ All values from ICNIRP 2020 Tables 2, 5, and 6.
 
 | Check | General public | Occupational | Source |
 |-------|---------------|-------------|--------|
-| $S_{ab}$ over 4 cm$^2$ | 20 W/m$^2$ | 100 W/m$^2$ | Table 2 |
-| $S_{ab}$ over 1 cm$^2$ (>30 GHz) | 40 W/m$^2$ | 200 W/m$^2$ | Table 2, note 5 |
+| $S_{\mathrm{ab}}$ over 4 cm$^2$ | 20 W/m$^2$ | 100 W/m$^2$ | Table 2 |
+| $S_{\mathrm{ab}}$ over 1 cm$^2$ (>30 GHz) | 40 W/m$^2$ | 200 W/m$^2$ | Table 2, note 5 |
 | Whole-body SAR | 0.08 W/kg | 0.4 W/kg | Table 2 |
-| $S_{inc}$ local (4 cm$^2$) | $55/f_G^{0.177}$ W/m$^2$ | $275/f_G^{0.177}$ W/m$^2$ | Table 6 |
-| $S_{inc}$ whole-body | 10 W/m$^2$ | 50 W/m$^2$ | Table 5 |
+| $S_{\mathrm{inc}}$ local (4 cm$^2$) | $55/f_G^{0.177}$ W/m$^2$ | $275/f_G^{0.177}$ W/m$^2$ | Table 6 |
+| $S_{\mathrm{inc}}$ whole-body | 10 W/m$^2$ | 50 W/m$^2$ | Table 5 |
 
-The 1 cm$^2$ constraint is 2$\times$ the 4 cm$^2$ basic restriction, applied only above 30 GHz to account for focused beams at higher frequencies. The local $S_{inc}$ limit depends on frequency: at 28 GHz it is approximately 31 W/m$^2$ for general public.
+The 1 cm$^2$ constraint is 2$\times$ the 4 cm$^2$ basic restriction, applied only above 30 GHz to account for focused beams at higher frequencies. The local $S_{\mathrm{inc}}$ limit depends on frequency: at 28 GHz it is approximately 31 W/m$^2$ for general public.
 
 ## Using the compliance module
 
@@ -83,7 +83,7 @@ p_max = max_compliant_power(compliance, ref_power_w=1.0)
 print(f"Max compliant power: {p_max:.2f} W ({10 * np.log10(p_max * 1e3):.1f} dBm)")
 ```
 
-$S_{ab}$ scales linearly with transmit power for all fidelity levels, so the calculation is exact: $P_{max} = P_{ref} \cdot \min_i(\text{limit}_i / \text{value}_i)$.
+$S_{\mathrm{ab}}$ scales linearly with transmit power for all fidelity levels, so the calculation is exact: $P_{\mathrm{max}} = P_{\mathrm{ref}} \cdot \min_i(\text{limit}_i / \text{value}_i)$.
 
 Combined with `DosimetryResult.scale()`, this enables parameter sweeps without rerunning the engine:
 
@@ -143,9 +143,9 @@ Spatial averaging is always-on. The engine precomputes and caches the sparse ave
 
 ## Incident power density
 
-$S_{inc}$ is the power density of the incident electromagnetic field at the body location, measured as if the body were absent. It does not depend on surface orientation or tissue properties.
+$S_{\mathrm{inc}}$ is the power density of the incident electromagnetic field at the body location, measured as if the body were absent. It does not depend on surface orientation or tissue properties.
 
-In the AEGIS equation $S_{ab} = S_{inc} \cdot T_0 \cdot [\hat{n} \cdot (-\hat{k})]_+$, the $S_{inc}$ is the factor before tissue and geometry corrections. For the current kernel (far-field, broadcast), $S_{inc}$ equals the total path power and is spatially uniform across the body.
+In the AEGIS equation $S_{\mathrm{ab}} = S_{\mathrm{inc}} \cdot T_0 \cdot [\hat{n} \cdot (-\hat{k})]_+$, the $S_{\mathrm{inc}}$ is the factor before tissue and geometry corrections. For the current kernel (far-field, broadcast), $S_{\mathrm{inc}}$ equals the total path power and is spatially uniform across the body.
 
 ## Viewer
 
@@ -153,11 +153,11 @@ The 3D viewer includes a compliance panel showing all checks with margin bars, f
 
 | Mode | Quantity | Color scale |
 |------|----------|-------------|
-| Raw $S_{ab}$ | Per-triangle absorbed power density | Jet colormap |
-| Averaged $S_{ab}$ | 4 cm$^2$ spatially averaged | Jet colormap |
-| $S_{inc}$ | Incident power density | Jet colormap |
-| Compliance ratio ($S_{ab}$) | $\bar{S}_{ab} / S_{ab,limit}$ | Green-yellow-orange-red |
-| Compliance ratio ($S_{inc}$) | $\bar{S}_{inc} / S_{inc,limit}$ | Green-yellow-orange-red |
+| Raw $S_{\mathrm{ab}}$ | Per-triangle absorbed power density | Jet colormap |
+| Averaged $S_{\mathrm{ab}}$ | 4 cm$^2$ spatially averaged | Jet colormap |
+| $S_{\mathrm{inc}}$ | Incident power density | Jet colormap |
+| Compliance ratio ($S_{\mathrm{ab}}$) | $\bar{S}_{\mathrm{ab}} / S_{\mathrm{ab},\mathrm{limit}}$ | Green-yellow-orange-red |
+| Compliance ratio ($S_{\mathrm{inc}}$) | $\bar{S}_{\mathrm{inc}} / S_{\mathrm{inc},\mathrm{limit}}$ | Green-yellow-orange-red |
 
 The compliance ratio modes are dimensionless and independent of frequency. Values below 1.0 are compliant. A red sphere marks the peak exposure location on the body.
 

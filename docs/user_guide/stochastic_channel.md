@@ -71,7 +71,7 @@ The LOS cluster points toward the body by construction. The remaining clusters f
 The generator supports three path loss models selected by `PL_model` in the preset:
 
 - `logdist`: $\text{PL} = A \log_{10}(d) + B + C \log_{10}(f)$
-- `dual_slope`: two-segment LOS model with a breakpoint distance $d_\text{BP} = E(h_\text{BS} - h_E)(h_\text{MS} - h_E) f$
+- `dual_slope`: two-segment LOS model with a breakpoint distance $d_{\mathrm{BP}} = E(h_{\mathrm{BS}} - h_E)(h_{\mathrm{MS}} - h_E) f$
 - `nlos`: $\max(\text{dual\_slope}, A_n \log_{10}(d) + B_n + C_n \log_{10}(f))$
 
 Unknown models fall back to free-space path loss $20 \log_{10}(d) + 20 \log_{10}(f) + 32.45$ dB.

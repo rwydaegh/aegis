@@ -82,7 +82,7 @@ Verification: for a single LOS path at distance $d = 10$ m, frequency 28 GHz, TX
 - Sionna gives $|a| = \lambda/(4\pi d) = 8.53 \times 10^{-5}$
 - Scale factor: $\sqrt{8\pi Z_0}/\lambda = 9087$
 - $|\psi| = 9087 \times 8.53 \times 10^{-5} = 0.775$ V/m
-- $S_\text{inc} = |\psi|^2/(2Z_0) = 7.96 \times 10^{-4}$ W/m$^2$ = $P/(4\pi d^2)$
+- $S_{\mathrm{inc}} = |\psi|^2/(2Z_0) = 7.96 \times 10^{-4}$ W/m$^2$ = $P/(4\pi d^2)$
 
 All three columns agree to float64 precision.
 

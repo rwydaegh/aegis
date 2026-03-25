@@ -89,7 +89,7 @@ print(f"Max A_perp: {A_perp.max():.4f} m²")
 
 For a convex body, the mean projected area over all directions equals one-quarter of the total surface area:
 
-$$\langle A_\perp \rangle = \frac{A_{total}}{4}$$
+$$\langle A_\perp \rangle = \frac{A_{\mathrm{total}}}{4}$$
 
 This is the Cauchy formula. It holds for all closed surfaces, convex or not. The `compute_projected_area` function computes the sum without visibility testing, so it obeys Cauchy exactly. For the true silhouette area (with self-occlusion), the value would be smaller.
 
@@ -159,11 +159,11 @@ A triangle on the top of the head has $\eta \approx 1.0$ (fully exposed). A tria
 
 ## Spatial averaging
 
-ICNIRP 2020 Table 2 specifies that $S_{ab}$ must be averaged over a square 4 cm$^2$ surface area for compliance assessment. The basic restriction for general public exposure above 6 GHz is 20 W/m$^2$ (not 10, which is the $S_{inc}$ reference level from Table 5).
+ICNIRP 2020 Table 2 specifies that $S_{\mathrm{ab}}$ must be averaged over a square 4 cm$^2$ surface area for compliance assessment. The basic restriction for general public exposure above 6 GHz is 20 W/m$^2$ (not 10, which is the $S_{\mathrm{inc}}$ reference level from Table 5).
 
 The engine computes spatial averaging automatically using a precomputed sparse matrix $\mathbf{G}$:
 
-$$\bar{S}_{ab} = \mathbf{G} \cdot S_{ab}$$
+$$\bar{S}_{\mathrm{ab}} = \mathbf{G} \cdot S_{\mathrm{ab}}$$
 
 where $\mathbf{G}$ is a row-stochastic $(M \times M)$ matrix encoding the 4 cm$^2$ neighborhood structure. Each row $i$ contains area-weighted contributions from the triangles nearest to triangle $i$, accumulated until the total area reaches 4 cm$^2$.
 
@@ -185,7 +185,7 @@ G = precompute_averaging_matrix(body.centroids, body.areas, target_area_m2=4e-4)
 sab_avg = G @ result.sab
 ```
 
-The matrix $\mathbf{G}$ depends only on mesh geometry, not on $S_{ab}$. Precompute it once per body mesh and reuse across evaluations. The engine caches it internally.
+The matrix $\mathbf{G}$ depends only on mesh geometry, not on $S_{\mathrm{ab}}$. Precompute it once per body mesh and reuse across evaluations. The engine caches it internally.
 
 !!! note
     The current implementation uses circular neighborhoods (KD-tree ball query) as an approximation. ICNIRP specifies square patches. This is flagged in the compliance report. Above 30 GHz, a second matrix for 1 cm$^2$ averaging is computed to check the additional constraint (2$\times$ the 4 cm$^2$ limit).

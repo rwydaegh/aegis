@@ -90,7 +90,7 @@ TM polarization always transmits more than TE at oblique angles. This matters at
 
 The unpolarized (average) transmission is:
 
-$$T_{avg}(\theta) = \frac{T_s(\theta) + T_p(\theta)}{2}$$
+$$T_{\mathrm{avg}}(\theta) = \frac{T_s(\theta) + T_p(\theta)}{2}$$
 
 ### Amplitude coefficients
 
@@ -110,9 +110,9 @@ The power coefficient relates to the amplitude as $T = \text{Re}(\xi) / \mu \cdo
 | Level | Tissue parameter | Notes |
 |-------|-----------------|-------|
 | 0-2 | $T_0$ (scalar) | Same transmission for all angles |
-| 3 | $T_{avg}(\theta)$ | Angle-dependent, unpolarized |
+| 3 | $T_{\mathrm{avg}}(\theta)$ | Angle-dependent, unpolarized |
 | 4 | $T_s, T_p$ separately | Polarization-resolved |
-| 5-6 | $T_{avg}(\theta)$ + curvature | Physical optics correction |
+| 5-6 | $T_{\mathrm{avg}}(\theta)$ + curvature | Physical optics correction |
 | 7-8 | $t_s, t_p$ (complex amplitudes) | Full coherent Fresnel operator |
 
-The transition from Level 2 to Level 3 (replacing constant $T_0$ with angle-dependent $T_{avg}$) changes total absorbed power by about 0.35% on typical body meshes. The correction matters more for geometries with many grazing-incidence triangles.
+The transition from Level 2 to Level 3 (replacing constant $T_0$ with angle-dependent $T_{\mathrm{avg}}$) changes total absorbed power by about 0.35% on typical body meshes. The correction matters more for geometries with many grazing-incidence triangles.

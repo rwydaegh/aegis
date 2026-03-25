@@ -1,6 +1,6 @@
 # Quickstart
 
-Minimal library workflow: synthetic triangle, one plane wave, level 2, peak $S_{ab}$. See [Getting started](../getting_started.md) for install and STL loading.
+Minimal library workflow: synthetic triangle, one plane wave, level 2, peak $S_{\mathrm{ab}}$. See [Getting started](../getting_started.md) for install and STL loading.
 
 ```python
 import numpy as np

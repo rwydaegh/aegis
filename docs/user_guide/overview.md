@@ -16,7 +16,7 @@ For coherent and ECBF modes, you also provide a precoding vector (via `Precoder.
 
 - `result.sab` - per-triangle absorbed power density [W/m$^2$]
 - `result.p_abs` - total absorbed power [W]
-- `result.peak_sab` - maximum $S_{ab}$ across all triangles
+- `result.peak_sab` - maximum $S_{\mathrm{ab}}$ across all triangles
 - `result.sar_wb` - whole-body SAR [W/kg] (if body mass provided)
 - `result.compliant_sab` - True/False if spatial averaging was applied, None otherwise
 - `result.Q` - exposure operator (coherent and ECBF modes)
@@ -27,7 +27,7 @@ See [fidelity levels](fidelity_levels.md) for details on each mode and correctio
 
 ## Comparing fidelity levels
 
-`sweep_levels()` runs multiple fidelity levels in one call and returns a dict of results. Levels that need unavailable parameters (e.g. $A_{ab}$ for level 0) are silently skipped.
+`sweep_levels()` runs multiple fidelity levels in one call and returns a dict of results. Levels that need unavailable parameters (e.g. $A_{\mathrm{ab}}$ for level 0) are silently skipped.
 
 ```python
 results = engine.sweep_levels(body, paths)
@@ -46,7 +46,7 @@ comparison = DosimetryResult.compare(
 print(f"Relative errors: {comparison['relative_error']}")
 ```
 
-This returns peak $S_{ab}$, $P_{abs}$, pairwise RMSE, max absolute error, and relative error across all pairs.
+This returns peak $S_{\mathrm{ab}}$, $P_{\mathrm{abs}}$, pairwise RMSE, max absolute error, and relative error across all pairs.
 
 ## Scaling and compliance shortcuts
 

@@ -6,9 +6,9 @@ AEGIS computes absorbed power density on human body surfaces in wireless environ
 
 The core equation:
 
-$$S_{ab}(\mathbf{r}) = S_{inc} \cdot T_0 \cdot [\hat{n}(\mathbf{r}) \cdot (-\hat{k})]_+$$
+$$S_{\mathrm{ab}}(\mathbf{r}) = S_{\mathrm{inc}} \cdot T_0 \cdot [\hat{n}(\mathbf{r}) \cdot (-\hat{k})]_+$$
 
-Nine fidelity levels (0-8) provide a controlled accuracy-cost tradeoff, from $O(1)$ worst-case bounds to $O(M_{ant}^3)$ exposure-constrained beamforming.
+Nine fidelity levels (0-8) provide a controlled accuracy-cost tradeoff, from $O(1)$ worst-case bounds to $O(M_{\mathrm{ant}}^3)$ exposure-constrained beamforming.
 
 <div class="grid cards" markdown>
 
@@ -88,7 +88,7 @@ The key insight: at mmWave frequencies, the skin depth is so shallow (< 0.5 mm) 
 
 | Level | Name | What it adds | Cost |
 |-------|------|-------------|------|
-| 0 | Bound | Worst-case $P_{abs}$ | $O(1)$ |
+| 0 | Bound | Worst-case $P_{\mathrm{abs}}$ | $O(1)$ |
 | 1 | Aggregate | SH-compressed directivity | $O(L^2)$ |
 | 2 | Geometric | ReLU kernel on mesh | $O(MN)$ |
 | 3 | Fresnel | Angle-dependent $T(\theta)$ | $O(MN)$ |

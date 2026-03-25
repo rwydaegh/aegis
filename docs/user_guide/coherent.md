@@ -6,11 +6,11 @@ Levels 7 and 8 extend AEGIS to coherent multi-antenna systems. Instead of scalar
 
 Incoherent dosimetry (Levels 0-6) sums power contributions independently:
 
-$$S_{ab}(\mathbf{r}) = \sum_i T(\theta_i) \cdot [\hat{n} \cdot (-\hat{k}_i)]_+ \cdot S_i$$
+$$S_{\mathrm{ab}}(\mathbf{r}) = \sum_i T(\theta_i) \cdot [\hat{n} \cdot (-\hat{k}_i)]_+ \cdot S_i$$
 
 Coherent dosimetry (Level 7) sums complex field contributions, then takes the squared magnitude:
 
-$$S_{ab}(\mathbf{r}) = \|\tilde{\mathbf{G}}(\mathbf{r}) \, \mathbf{x}\|^2$$
+$$S_{\mathrm{ab}}(\mathbf{r}) = \|\tilde{\mathbf{G}}(\mathbf{r}) \, \mathbf{x}\|^2$$
 
 where $\tilde{\mathbf{G}}(\mathbf{r})$ is the body-surface channel matrix and $\mathbf{x}$ is the precoding vector.
 
@@ -52,7 +52,7 @@ The coherent pipeline builds $\tilde{\mathbf{G}}(\mathbf{r})$ in three steps:
 
 2. **Depth coupling** - Apply a factor $\sqrt{\sigma / 4\alpha}$ that accounts for the exponential decay of the field into tissue.
 
-3. **Element accumulation** - Sum path contributions by antenna element to produce a $(3 \times M_{ant})$ matrix at each triangle.
+3. **Element accumulation** - Sum path contributions by antenna element to produce a $(3 \times M_{\mathrm{ant}})$ matrix at each triangle.
 
 Two approximations make this tractable:
 
@@ -68,7 +68,7 @@ $$\mathbf{Q} = \sum_m a_m \, \tilde{\mathbf{G}}_m^H \tilde{\mathbf{G}}_m$$
 where $a_m$ is the area of triangle $m$. Key properties:
 
 - $\mathbf{Q}$ is Hermitian and positive semi-definite
-- $P_{abs} = \mathbf{x}^H \mathbf{Q} \mathbf{x}$ for any precoding vector $\mathbf{x}$
+- $P_{\mathrm{abs}} = \mathbf{x}^H \mathbf{Q} \mathbf{x}$ for any precoding vector $\mathbf{x}$
 - Its eigenvalues tell you the worst-case and best-case absorption for unit-power precoders
 
 ```python
@@ -85,7 +85,7 @@ print(f"Best-case P_abs: {evals[-1]:.6f} W")
 
 The metric $\rho$ quantifies how aligned the communication channel $\mathbf{h}$ is with the exposure eigenvectors:
 
-$$\rho = \frac{\mathbf{h}^H \mathbf{Q} \mathbf{h}}{\|\mathbf{h}\|^2 \cdot \lambda_{max}}$$
+$$\rho = \frac{\mathbf{h}^H \mathbf{Q} \mathbf{h}}{\|\mathbf{h}\|^2 \cdot \lambda_{\mathrm{max}}}$$
 
 $\rho = 1$ means MRT beamforming hits the worst-case exposure direction. $\rho \approx 0$ means the channel is nearly orthogonal to the dominant exposure mode, so MRT is already low-exposure.
 
@@ -104,7 +104,7 @@ precoder = aegis.Precoder.ecbf(h, Q=result.Q, P_abs_max=0.05, P=1.0)
 
 ## Level 7: coherent map
 
-Computes $S_{ab}(\mathbf{r})$, $\mathbf{Q}$, eigenvalues, and $\rho$ for a given precoder:
+Computes $S_{\mathrm{ab}}(\mathbf{r})$, $\mathbf{Q}$, eigenvalues, and $\rho$ for a given precoder:
 
 ```python
 skin = aegis.TissueModel.from_params("Skin", 17.0, 25.0, 28e9)
@@ -129,7 +129,7 @@ Averaging Level 7 over many random phase realizations converges to the incoheren
 
 Level 8 solves a QCQP to find the precoder maximizing signal power subject to an absorption constraint:
 
-$$\max_{\mathbf{x}} |\mathbf{h}^H \mathbf{x}|^2 \quad \text{s.t.} \quad \mathbf{x}^H \mathbf{Q} \mathbf{x} \le P_{abs}^{max}, \quad \|\mathbf{x}\|^2 \le P$$
+$$\max_{\mathbf{x}} |\mathbf{h}^H \mathbf{x}|^2 \quad \text{s.t.} \quad \mathbf{x}^H \mathbf{Q} \mathbf{x} \le P_{\mathrm{abs}}^{\mathrm{max}}, \quad \|\mathbf{x}\|^2 \le P$$
 
 ```python
 result = engine.compute(body, paths, level=8, h=h, P_abs_max=0.05)
