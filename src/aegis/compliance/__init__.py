@@ -623,6 +623,7 @@ def compliance_heatmap(
     p_max_w: float | None = None,
     n_freq: int = 50,
     n_power: int = 50,
+    sinc_local: float | None = None,
 ) -> dict:
     """2D compliance map over frequency and transmit power.
 
@@ -647,6 +648,11 @@ def compliance_heatmap(
         Power range. Defaults to ref_power_w / 100 .. ref_power_w * 100.
     n_freq, n_power : int
         Grid resolution.
+    sinc_local : float or None
+        Peak incident power density S_inc [W/m^2] at ref_power_w.
+        When provided, also checks the ICNIRP sinc_local limit
+        (55/f_GHz^0.177 for GP, 275/f_GHz^0.177 for occupational)
+        which varies with frequency, making the heatmap non-degenerate.
 
     Returns
     -------
@@ -671,26 +677,49 @@ def compliance_heatmap(
     power_w_arr = np.geomspace(p_min_w, p_max_w, n_power)
     power_dbm_arr = 10.0 * np.log10(power_w_arr * 1e3)
 
-    margin_grid = np.zeros((n_power, n_freq))
-    p_max_per_freq = np.zeros(n_freq)
+    # Vectorized: S_ab scales linearly with power
+    # scaled_sab shape: (n_power,)
+    scaled_sab = sab_4cm2 * (power_w_arr / ref_power_w)
 
-    for j, f in enumerate(freq_hz_arr):
-        limits = icnirp_limits(scenario, float(f))
-        sab_limit = limits.sab_4cm2
+    # S_ab limit is constant across frequency (20 or 100 W/m^2)
+    sab_limit = icnirp_limits(scenario, float(freq_hz_arr[0])).sab_4cm2
 
-        # At each power, S_ab scales linearly
-        for i, p in enumerate(power_w_arr):
-            scaled_sab = sab_4cm2 * (p / ref_power_w)
-            if scaled_sab <= 0:
-                margin_grid[i, j] = float("inf")
-            else:
-                margin_grid[i, j] = 10.0 * math.log10(sab_limit / scaled_sab)
+    # sab margin: (n_power,) broadcast to (n_power, n_freq)
+    with np.errstate(divide="ignore"):
+        sab_margin_1d = np.where(
+            scaled_sab <= 0,
+            np.inf,
+            10.0 * np.log10(sab_limit / scaled_sab),
+        )
+    # Broadcast to 2D: same margin at every frequency for sab
+    margin_grid = np.broadcast_to(sab_margin_1d[:, None], (len(power_w_arr), len(freq_hz_arr))).copy()
 
-        # Max compliant power: sab_4cm2 * (P/P_ref) <= sab_limit
-        if sab_4cm2 > 0:
-            p_max_per_freq[j] = ref_power_w * sab_limit / sab_4cm2
-        else:
-            p_max_per_freq[j] = float("inf")
+    # p_max from sab: constant across frequency
+    p_max_sab = ref_power_w * sab_limit / sab_4cm2 if sab_4cm2 > 0 else float("inf")
+    p_max_per_freq = np.full(len(freq_hz_arr), p_max_sab)
+
+    # If sinc_local provided, also check frequency-dependent sinc limit
+    if sinc_local is not None and sinc_local > 0:
+        # Get sinc limits at each frequency: shape (n_freq,)
+        sinc_limits = np.array([icnirp_limits(scenario, float(f)).sinc_local for f in freq_hz_arr])
+
+        # Scaled sinc: (n_power,)
+        scaled_sinc = sinc_local * (power_w_arr / ref_power_w)
+
+        # sinc margin: (n_power, 1) vs (1, n_freq) -> (n_power, n_freq)
+        with np.errstate(divide="ignore"):
+            sinc_margin = np.where(
+                scaled_sinc[:, None] <= 0,
+                np.inf,
+                10.0 * np.log10(sinc_limits[None, :] / scaled_sinc[:, None]),
+            )
+
+        # Take the tighter (minimum) margin
+        margin_grid = np.minimum(margin_grid, sinc_margin)
+
+        # p_max from sinc at each frequency
+        p_max_sinc = ref_power_w * sinc_limits / sinc_local
+        p_max_per_freq = np.minimum(p_max_per_freq, p_max_sinc)
 
     return {
         "freq_hz": freq_hz_arr,

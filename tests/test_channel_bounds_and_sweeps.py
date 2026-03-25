@@ -524,6 +524,78 @@ class TestComplianceHeatmap:
         with pytest.raises(ValueError, match="ref_power_w must be positive"):
             compliance_heatmap(sab_4cm2=10.0, ref_power_w=0.0)
 
+    def test_sinc_local_none_same_as_before(self):
+        """sinc_local=None should give identical results to omitting it."""
+        a = compliance_heatmap(sab_4cm2=10.0, n_freq=10, n_power=10)
+        b = compliance_heatmap(sab_4cm2=10.0, n_freq=10, n_power=10, sinc_local=None)
+        np.testing.assert_array_equal(a["margin_db"], b["margin_db"])
+        np.testing.assert_array_equal(a["p_max_per_freq"], b["p_max_per_freq"])
+
+    def test_sinc_local_varies_with_frequency(self):
+        """With sinc_local, p_max should vary across frequency."""
+        result = compliance_heatmap(sab_4cm2=10.0, sinc_local=30.0, n_freq=20, n_power=10)
+        p_max = result["p_max_per_freq"]
+        assert not np.allclose(p_max, p_max[0]), "p_max should vary with frequency"
+
+    def test_sinc_local_tightens_margin(self):
+        """Adding sinc_local should never loosen the margin."""
+        without = compliance_heatmap(sab_4cm2=10.0, n_freq=10, n_power=10)
+        with_sinc = compliance_heatmap(sab_4cm2=10.0, sinc_local=30.0, n_freq=10, n_power=10)
+        assert np.all(with_sinc["margin_db"] <= without["margin_db"] + 1e-10)
+
+    def test_sinc_local_p_max_correctness(self):
+        """Check p_max against manual calculation at 28 GHz."""
+        result = compliance_heatmap(
+            sab_4cm2=10.0,
+            sinc_local=30.0,
+            ref_power_w=1.0,
+            freq_min_hz=28e9,
+            freq_max_hz=28e9,
+            n_freq=1,
+            n_power=10,
+        )
+        # sinc limit at 28 GHz GP: 55 / (28)^0.177
+        f_ghz = 28.0
+        sinc_limit = 55.0 / f_ghz**0.177
+        p_max_sinc = 1.0 * sinc_limit / 30.0
+        p_max_sab = 1.0 * 20.0 / 10.0  # sab limit / sab_4cm2
+        expected = min(p_max_sab, p_max_sinc)
+        np.testing.assert_allclose(result["p_max_per_freq"][0], expected, rtol=1e-6)
+
+    def test_sinc_local_occupational(self):
+        """Occupational sinc limit uses 275/f^0.177 (5x GP)."""
+        gp = compliance_heatmap(
+            sab_4cm2=10.0,
+            sinc_local=30.0,
+            scenario=ExposureScenario.GENERAL_PUBLIC,
+            n_freq=5,
+            n_power=5,
+        )
+        occ = compliance_heatmap(
+            sab_4cm2=10.0,
+            sinc_local=30.0,
+            scenario=ExposureScenario.OCCUPATIONAL,
+            n_freq=5,
+            n_power=5,
+        )
+        assert np.all(occ["margin_db"] >= gp["margin_db"] - 1e-10)
+
+    def test_sinc_local_dominates_when_large(self):
+        """When sinc_local is very large, it becomes the binding constraint."""
+        result = compliance_heatmap(
+            sab_4cm2=1.0,  # small sab -> large sab margin
+            sinc_local=500.0,  # large sinc -> small sinc margin
+            n_freq=10,
+            n_power=10,
+        )
+        without_sinc = compliance_heatmap(
+            sab_4cm2=1.0,
+            n_freq=10,
+            n_power=10,
+        )
+        # At least some cells should have tighter margins
+        assert np.any(result["margin_db"] < without_sinc["margin_db"] - 0.1)
+
 
 # -----------------------------------------------------------------------
 # Link budget compliance
