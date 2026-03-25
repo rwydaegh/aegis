@@ -192,7 +192,7 @@ export const useMIMOStore = create<MIMOStore>((set, get) => ({
     const user = users.get(id)
     if (!user) return
     users.set(id, { ...user, orientation })
-    set({ users })
+    set({ users, _configVersion: get()._configVersion + 1 })
   },
 
   setUserBodyGeometry: (id, geometry) => {
