@@ -274,6 +274,28 @@ def create_app(
                 _cache["body_binary"] = None
                 _cache["body_meta"] = None
 
+    # Background-precompute averaging matrices so the first compute is fast
+    def _precompute_G():
+        from aegis.engine import DosimetryEngine
+        from aegis.geometry.averaging import precompute_averaging_matrix
+
+        for name, entry in list(_cache.get("bodies", {}).items()):
+            body = entry["body"]
+            for area in [4e-4, 1e-4]:
+                key = (DosimetryEngine._body_cache_key(body), area)
+                if key not in DosimetryEngine._G_cache:
+                    try:
+                        G = precompute_averaging_matrix(body.centroids, body.areas, area)
+                        DosimetryEngine._G_cache[key] = G
+                        print(f"  G({name}, {area*1e4:.0f}cm2) precomputed ({G.nnz:,} nnz)")
+                    except Exception as e:
+                        print(f"  G({name}) failed: {e}")
+
+    import threading
+
+    threading.Thread(target=_precompute_G, daemon=True, name="precompute-G").start()
+
+    with _cache_lock:
         _cache["voxel_json_path"] = voxel_json
         if voxel_dir:
             try:
@@ -395,11 +417,12 @@ def create_app(
         )
 
     # --- Register route modules ---
-    from aegis.viewer.routes import analysis, compute, data, location
+    from aegis.viewer.routes import analysis, compute, data, location, mimo
 
     data.register(app, _cache, _cache_lock)
     compute.register(app, _cache, _cache_lock)
     location.register(app, _cache, _cache_lock)
     analysis.register(app, _cache, _cache_lock)
+    mimo.register(app, _cache, _cache_lock)
 
     return app
