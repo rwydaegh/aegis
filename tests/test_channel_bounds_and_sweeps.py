@@ -21,6 +21,7 @@ from aegis.compliance import (
     compliance_heatmap,
     evaluate_compliance,
     frequency_sweep,
+    link_budget_compliance,
     max_compliant_power,
     power_sweep,
 )
@@ -522,3 +523,109 @@ class TestComplianceHeatmap:
     def test_invalid_ref_power(self):
         with pytest.raises(ValueError, match="ref_power_w must be positive"):
             compliance_heatmap(sab_4cm2=10.0, ref_power_w=0.0)
+
+
+# -----------------------------------------------------------------------
+# Link budget compliance
+# -----------------------------------------------------------------------
+
+
+class TestLinkBudgetCompliance:
+    def test_basic_isotropic(self):
+        """Isotropic antenna at 10m, 1W, 28 GHz."""
+        result = link_budget_compliance(
+            tx_power_w=1.0,
+            distance_m=10.0,
+            freq_hz=28e9,
+        )
+        assert "sinc" in result
+        assert "sab_estimate" in result
+        assert "compliance" in result
+        assert "compliant" in result
+        assert "max_tx_power_w" in result
+
+        # S_inc = P / (4*pi*d^2) = 1 / (4*pi*100) ~ 7.96e-4 W/m^2
+        expected_sinc = 1.0 / (4 * np.pi * 100)
+        assert result["sinc"] == pytest.approx(expected_sinc, rel=1e-10)
+
+    def test_high_power_non_compliant(self):
+        """Very high power at close range should fail compliance."""
+        result = link_budget_compliance(
+            tx_power_w=1000.0,
+            antenna_gain_dbi=30.0,  # 1000x gain
+            distance_m=0.5,
+            freq_hz=28e9,
+        )
+        # S_inc = 1000 * 1000 / (4*pi*0.25) ~ 318,310 W/m^2
+        assert not result["compliant"]
+        assert result["margin_db"] < 0
+
+    def test_low_power_compliant(self):
+        """Low power at large distance should be compliant."""
+        result = link_budget_compliance(
+            tx_power_w=0.001,
+            distance_m=100.0,
+            freq_hz=28e9,
+        )
+        assert result["compliant"]
+        assert result["margin_db"] > 0
+
+    def test_gain_increases_sinc(self):
+        """Higher antenna gain should increase incident power density."""
+        r0 = link_budget_compliance(tx_power_w=1.0, antenna_gain_dbi=0.0, distance_m=10.0, freq_hz=28e9)
+        r10 = link_budget_compliance(tx_power_w=1.0, antenna_gain_dbi=10.0, distance_m=10.0, freq_hz=28e9)
+        assert r10["sinc"] == pytest.approx(r0["sinc"] * 10.0, rel=1e-10)
+
+    def test_inverse_square_law(self):
+        """Double distance -> quarter power density."""
+        r1 = link_budget_compliance(tx_power_w=1.0, distance_m=10.0, freq_hz=28e9)
+        r2 = link_budget_compliance(tx_power_w=1.0, distance_m=20.0, freq_hz=28e9)
+        assert r2["sinc"] == pytest.approx(r1["sinc"] / 4.0, rel=1e-10)
+
+    def test_sab_proportional_to_sinc(self):
+        """S_ab = S_inc * T0."""
+        result = link_budget_compliance(tx_power_w=1.0, distance_m=10.0, freq_hz=28e9, T0=0.3)
+        assert result["sab_estimate"] == pytest.approx(result["sinc"] * 0.3, rel=1e-10)
+
+    def test_custom_T0(self):
+        """Custom T0 should override tissue lookup."""
+        r1 = link_budget_compliance(tx_power_w=1.0, distance_m=10.0, freq_hz=28e9, T0=0.5)
+        r2 = link_budget_compliance(tx_power_w=1.0, distance_m=10.0, freq_hz=28e9, T0=1.0)
+        assert r2["sab_estimate"] == pytest.approx(2.0 * r1["sab_estimate"], rel=1e-10)
+
+    def test_max_power_scales(self):
+        """Max compliant power should scale with distance^2."""
+        r1 = link_budget_compliance(tx_power_w=1.0, distance_m=10.0, freq_hz=28e9, T0=0.4)
+        r2 = link_budget_compliance(tx_power_w=1.0, distance_m=20.0, freq_hz=28e9, T0=0.4)
+        # At 2x distance, sinc is 4x lower, so max power is 4x higher
+        assert r2["max_tx_power_w"] == pytest.approx(r1["max_tx_power_w"] * 4.0, rel=1e-3)
+
+    def test_occupational_allows_more(self):
+        """Occupational scenario should allow higher power."""
+        gp = link_budget_compliance(
+            tx_power_w=1.0,
+            distance_m=10.0,
+            freq_hz=28e9,
+            scenario=ExposureScenario.GENERAL_PUBLIC,
+        )
+        occ = link_budget_compliance(
+            tx_power_w=1.0,
+            distance_m=10.0,
+            freq_hz=28e9,
+            scenario=ExposureScenario.OCCUPATIONAL,
+        )
+        assert occ["max_tx_power_w"] > gp["max_tx_power_w"]
+
+    def test_invalid_inputs(self):
+        with pytest.raises(ValueError, match="tx_power_w must be positive"):
+            link_budget_compliance(tx_power_w=0, distance_m=10, freq_hz=28e9)
+        with pytest.raises(ValueError, match="distance_m must be positive"):
+            link_budget_compliance(tx_power_w=1, distance_m=0, freq_hz=28e9)
+        with pytest.raises(ValueError, match="outside the supported"):
+            link_budget_compliance(tx_power_w=1, distance_m=10, freq_hz=1e9)
+
+    def test_dbm_conversion(self):
+        """max_tx_power_dbm should match W -> dBm conversion."""
+        result = link_budget_compliance(tx_power_w=1.0, distance_m=10.0, freq_hz=28e9, T0=0.4)
+        expected_dbm = 10 * np.log10(result["max_tx_power_w"] * 1e3)
+        assert result["max_tx_power_dbm"] == pytest.approx(expected_dbm, rel=1e-6)

@@ -26,6 +26,7 @@ __all__ = [
     "power_sweep",
     "frequency_sweep",
     "compliance_heatmap",
+    "link_budget_compliance",
     # Backward-compat
     "ICNIRP_2020",
     "is_compliant_sab",
@@ -698,6 +699,105 @@ def compliance_heatmap(
         "margin_db": margin_grid,
         "compliant": margin_grid >= 0,
         "p_max_per_freq": p_max_per_freq,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Link budget compliance
+# ---------------------------------------------------------------------------
+
+
+def link_budget_compliance(
+    *,
+    tx_power_w: float,
+    antenna_gain_dbi: float = 0.0,
+    distance_m: float,
+    freq_hz: float,
+    T0: float | None = None,
+    scenario: ExposureScenario = ExposureScenario.GENERAL_PUBLIC,
+) -> dict:
+    """Quick compliance check from RF link budget parameters.
+
+    Estimates incident power density from free-space path loss and
+    computes approximate S_ab using normal-incidence transmission.
+
+    This is a conservative (worst-case) estimate: it assumes the body
+    intercepts the full antenna beam at the given distance, with all
+    power arriving at normal incidence. Real dosimetry with mesh geometry
+    will give lower (more accurate) values.
+
+    Parameters
+    ----------
+    tx_power_w : float
+        Transmit power [W]. Must be positive.
+    antenna_gain_dbi : float
+        Antenna gain [dBi]. Default 0 (isotropic).
+    distance_m : float
+        Distance from antenna to body [m]. Must be positive.
+    freq_hz : float
+        Frequency [Hz]. Must be in ICNIRP range (>6 to 300 GHz).
+    T0 : float or None
+        Normal-incidence transmission coefficient. If None, estimated
+        from skin tissue at the given frequency.
+    scenario : ExposureScenario
+        General public or occupational.
+
+    Returns
+    -------
+    dict with keys:
+        sinc : float, incident power density [W/m^2]
+        sab_estimate : float, estimated S_ab [W/m^2]
+        T0 : float, transmission coefficient used
+        compliance : ComplianceResult
+        compliant : bool
+        margin_db : float
+        max_tx_power_w : float, max compliant TX power [W]
+        max_tx_power_dbm : float, max compliant TX power [dBm]
+    """
+    if tx_power_w <= 0:
+        raise ValueError("tx_power_w must be positive")
+    if distance_m <= 0:
+        raise ValueError("distance_m must be positive")
+    _validate_freq(freq_hz)
+
+    # Incident power density from free-space spreading + antenna gain
+    gain_linear = 10.0 ** (antenna_gain_dbi / 10.0)
+    sinc = tx_power_w * gain_linear / (4.0 * math.pi * distance_m**2)
+
+    # Estimate T0 from skin tissue if not provided
+    if T0 is None:
+        try:
+            from aegis.tissue.dielectric import TissueModel
+
+            tissue = TissueModel.from_database("Skin", freq_hz)
+            T0 = tissue.T0
+        except Exception:
+            # Fallback: use conservative T0 ~ 0.4 (typical for skin above 6 GHz)
+            T0 = 0.4
+
+    sab_estimate = sinc * T0
+
+    # Evaluate compliance
+    cr = evaluate_compliance(
+        freq_hz=freq_hz,
+        scenario=scenario,
+        sab_4cm2=sab_estimate,
+        sinc_local=sinc,
+    )
+
+    # Max compliant TX power: scale linearly
+    p_max_w = max_compliant_power(cr, tx_power_w) if cr.all_checks else float("inf")
+    p_max_dbm = 10.0 * math.log10(p_max_w * 1e3) if p_max_w < float("inf") else float("inf")
+
+    return {
+        "sinc": sinc,
+        "sab_estimate": sab_estimate,
+        "T0": T0,
+        "compliance": cr,
+        "compliant": cr.overall_pass,
+        "margin_db": cr.margin_db,
+        "max_tx_power_w": p_max_w,
+        "max_tx_power_dbm": p_max_dbm,
     }
 
 
