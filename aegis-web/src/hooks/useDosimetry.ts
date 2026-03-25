@@ -4,6 +4,7 @@ import { useSimulationStore } from '@/stores/simulation'
 import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
 import { useNotificationStore } from '@/stores/notifications'
+import { useMIMOStore } from '@/stores/mimo'
 import { computeDosimetry, computeVoxelRT, computeRT, computeSionnaRT, type RtConfig } from '@/api/client'
 
 export function useDosimetry() {
@@ -44,6 +45,8 @@ export function useDosimetry() {
   const generationRef = useRef(0)
 
   const triggerCompute = useCallback(() => {
+    // MIMO mode has its own compute pipeline (useMIMODosimetry)
+    if (useMIMOStore.getState().enabled) return
     if (!sim.antennaPos || !scene.config) return
 
     // Abort any in-flight request
