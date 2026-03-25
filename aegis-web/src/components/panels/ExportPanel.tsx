@@ -1,4 +1,5 @@
 import { useSimulationStore } from '@/stores/simulation'
+import { useSceneStore } from '@/stores/scene'
 import { fetchComplianceSummary } from '@/api/client'
 import { useNotificationStore } from '@/stores/notifications'
 
@@ -19,10 +20,22 @@ export default function ExportPanel() {
 
   const handleExportCsv = () => {
     if (!sabArray) return
-    const lines = ['triangle_index,sab_w_m2']
+    const geometry = useSceneStore.getState().bodyGeometry
+    const pos = geometry?.getAttribute('position')
+    const lines = ['x,y,z,sab_w_m2']
+
     for (let i = 0; i < sabArray.length; i++) {
-      lines.push(`${i},${sabArray[i]}`)
+      if (pos) {
+        const v0 = i * 3
+        const cx = (pos.getX(v0) + pos.getX(v0 + 1) + pos.getX(v0 + 2)) / 3
+        const cy = (pos.getY(v0) + pos.getY(v0 + 1) + pos.getY(v0 + 2)) / 3
+        const cz = (pos.getZ(v0) + pos.getZ(v0 + 1) + pos.getZ(v0 + 2)) / 3
+        lines.push(`${cx.toFixed(6)},${cy.toFixed(6)},${cz.toFixed(6)},${sabArray[i]}`)
+      } else {
+        lines.push(`,,,${sabArray[i]}`)
+      }
     }
+
     downloadBlob(new Blob([lines.join('\n')], { type: 'text/csv' }), 'aegis_sab.csv')
   }
 

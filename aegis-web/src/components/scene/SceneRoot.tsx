@@ -207,6 +207,7 @@ export default function SceneRoot() {
       gl={{
         antialias: ren.antialias ?? true,
         toneMapping: THREE.ACESFilmicToneMapping,
+        preserveDrawingBuffer: true,
       }}
       style={{ position: 'absolute', inset: 0 }}
       tabIndex={0}

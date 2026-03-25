@@ -53,6 +53,9 @@ export default function ServerInfoBadge() {
   if (!info) return null
 
   const isCloud = info.gpuName != null
+  const label = info.hostname === 'localhost' || info.hostname.startsWith('127.')
+    ? 'LOCAL'
+    : isCloud ? 'CLOUD' : info.hostname.split('.')[0].toUpperCase()
   const items: Array<{ label: string; pct: number; spec: string }> = []
 
   if (info.cpuPct != null) {
@@ -71,14 +74,18 @@ export default function ServerInfoBadge() {
     <div className="absolute bottom-3 right-3 pointer-events-none">
       <div className="bg-black/60 backdrop-blur-sm rounded-md border border-white/10 px-2.5 py-1.5 flex items-center gap-3">
         <span className={`text-[10px] font-mono font-medium select-none ${isCloud ? 'text-emerald-400' : 'text-blue-400'}`}>
-          {isCloud ? 'CLOUD' : 'LOCAL'}
+          {label}
         </span>
-        <span className="w-px h-3 bg-white/20" />
-        {items.map(({ label, pct, spec }) => (
-          <span key={label} className="text-[10px] text-white/80 font-mono select-none">
-            {label} {pct}%{spec && ` (${spec})`}
-          </span>
-        ))}
+        {items.length > 0 && (
+          <>
+            <span className="w-px h-3 bg-white/20" />
+            {items.map(({ label, pct, spec }) => (
+              <span key={label} className="text-[10px] text-white/80 font-mono select-none">
+                {label} {pct}%{spec && ` (${spec})`}
+              </span>
+            ))}
+          </>
+        )}
       </div>
     </div>
   )
