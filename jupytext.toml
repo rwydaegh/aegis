@@ -1,0 +1,9 @@
+# Jupytext configuration for AEGIS tutorials
+# Markdown tutorials in docs/tutorials/ are the source of truth.
+# Notebooks in notebooks/ are generated via the sync script below.
+#
+# To regenerate all notebooks:
+#   python tools/sync_notebooks.py
+#
+# To convert a single tutorial:
+#   jupytext --to notebook -o notebooks/01_quickstart.ipynb docs/tutorials/quickstart.md

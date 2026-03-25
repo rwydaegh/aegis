@@ -56,9 +56,6 @@ site/
 # Batch runner outputs
 outputs/
 
-# Spike / example outputs
-examples/_output/
-
 # QA screenshots
 test_screenshots/
 
@@ -114,3 +111,4 @@ coverage/
 .cache/
 tmp/
 tmux-cheatsheet.md
+.rm_confirmed

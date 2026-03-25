@@ -139,6 +139,170 @@ class BodyMesh:
 
         return cls(vertices=vertices, normals=normals, centroids=centroids, areas=areas, name=name)
 
+    @classmethod
+    def sphere(cls, radius: float = 1.0, n_subdivisions: int = 2) -> BodyMesh:
+        """Create a sphere mesh via icosphere subdivision.
+
+        Parameters
+        ----------
+        radius : float
+            Sphere radius. Must be positive.
+        n_subdivisions : int
+            Number of subdivision iterations. 0 gives a bare icosahedron (20
+            triangles). Each iteration multiplies the triangle count by 4.
+        """
+        if radius <= 0.0:
+            raise ValueError("radius must be positive")
+        if n_subdivisions < 0:
+            raise ValueError("n_subdivisions must be non-negative")
+
+        # Regular icosahedron vertices on unit sphere
+        phi = (1.0 + np.sqrt(5.0)) / 2.0
+        raw = np.array(
+            [
+                [-1, phi, 0],
+                [1, phi, 0],
+                [-1, -phi, 0],
+                [1, -phi, 0],
+                [0, -1, phi],
+                [0, 1, phi],
+                [0, -1, -phi],
+                [0, 1, -phi],
+                [phi, 0, -1],
+                [phi, 0, 1],
+                [-phi, 0, -1],
+                [-phi, 0, 1],
+            ],
+            dtype=np.float64,
+        )
+        verts = raw / np.linalg.norm(raw, axis=1, keepdims=True)
+
+        # 20 icosahedron faces (CCW outward winding)
+        faces = np.array(
+            [
+                [0, 11, 5],
+                [0, 5, 1],
+                [0, 1, 7],
+                [0, 7, 10],
+                [0, 10, 11],
+                [1, 5, 9],
+                [5, 11, 4],
+                [11, 10, 2],
+                [10, 7, 6],
+                [7, 1, 8],
+                [3, 9, 4],
+                [3, 4, 2],
+                [3, 2, 6],
+                [3, 6, 8],
+                [3, 8, 9],
+                [4, 9, 5],
+                [2, 4, 11],
+                [6, 2, 10],
+                [8, 6, 7],
+                [9, 8, 1],
+            ],
+            dtype=np.int64,
+        )
+
+        # Subdivide
+        for _ in range(n_subdivisions):
+            new_faces = []
+            midpoint_cache: dict[tuple[int, int], int] = {}
+            vert_list = list(verts)
+
+            def _get_midpoint(
+                a: int,
+                b: int,
+                cache: dict = midpoint_cache,
+                vl: list = vert_list,
+            ) -> int:
+                key = (min(a, b), max(a, b))
+                if key in cache:
+                    return cache[key]
+                mid = (np.array(vl[a]) + np.array(vl[b])) / 2.0
+                mid = mid / np.linalg.norm(mid)
+                idx = len(vl)
+                vl.append(mid)
+                cache[key] = idx
+                return idx
+
+            for f in faces:
+                a, b, c = int(f[0]), int(f[1]), int(f[2])
+                ab = _get_midpoint(a, b)
+                bc = _get_midpoint(b, c)
+                ca = _get_midpoint(c, a)
+                new_faces.extend([[a, ab, ca], [b, bc, ab], [c, ca, bc], [ab, bc, ca]])
+            faces = np.array(new_faces, dtype=np.int64)
+            verts = np.array(vert_list, dtype=np.float64)
+
+        # Scale and build (N, 3, 3) vertex array
+        verts = verts * radius
+        vertices = verts[faces]  # (N, 3, 3)
+        return cls.from_arrays(vertices, name="sphere")
+
+    @classmethod
+    def cylinder(
+        cls,
+        radius: float = 1.0,
+        height: float = 1.0,
+        n_segments: int = 32,
+    ) -> BodyMesh:
+        """Create a capped cylinder mesh aligned along the z-axis.
+
+        The cylinder spans from z = -height/2 to z = +height/2.
+
+        Parameters
+        ----------
+        radius : float
+            Cylinder radius. Must be positive.
+        height : float
+            Cylinder height. Must be positive.
+        n_segments : int
+            Number of azimuthal divisions. Must be >= 3.
+        """
+        if radius <= 0.0:
+            raise ValueError("radius must be positive")
+        if height <= 0.0:
+            raise ValueError("height must be positive")
+        if n_segments < 3:
+            raise ValueError("n_segments must be at least 3")
+
+        angles = np.linspace(0.0, 2.0 * np.pi, n_segments, endpoint=False)
+        cos_a = np.cos(angles)
+        sin_a = np.sin(angles)
+
+        z_top = height / 2.0
+        z_bot = -height / 2.0
+
+        # Ring vertices: top and bottom circles
+        top_ring = np.stack([radius * cos_a, radius * sin_a, np.full(n_segments, z_top)], axis=1)
+        bot_ring = np.stack([radius * cos_a, radius * sin_a, np.full(n_segments, z_bot)], axis=1)
+
+        n = n_segments
+        side_tris = np.empty((2 * n, 3, 3), dtype=np.float64)
+        for i in range(n):
+            j = (i + 1) % n
+            # Two triangles per quad, CCW outward winding
+            side_tris[2 * i] = [top_ring[i], bot_ring[i], bot_ring[j]]
+            side_tris[2 * i + 1] = [top_ring[i], bot_ring[j], top_ring[j]]
+
+        # Top cap: fan from center (0, 0, z_top), CCW when viewed from +z
+        top_center = np.array([0.0, 0.0, z_top])
+        top_tris = np.empty((n, 3, 3), dtype=np.float64)
+        for i in range(n):
+            j = (i + 1) % n
+            top_tris[i] = [top_center, top_ring[j], top_ring[i]]
+
+        # Bottom cap: fan from center (0, 0, z_bot), CCW when viewed from -z
+        bot_center = np.array([0.0, 0.0, z_bot])
+        bot_tris = np.empty((n, 3, 3), dtype=np.float64)
+        for i in range(n):
+            j = (i + 1) % n
+            bot_tris[i] = [bot_center, bot_ring[i], bot_ring[j]]
+
+        vertices = np.concatenate([side_tris, top_tris, bot_tris], axis=0)
+        return cls.from_arrays(vertices, name="cylinder")
+
     @staticmethod
     def load(path: str | Path, name: str | None = None) -> BodyMesh:
         """Load a binary STL file and return a BodyMesh."""

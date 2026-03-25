@@ -8,12 +8,13 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field, fields
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
 if TYPE_CHECKING:
     from aegis.compliance import ComplianceResult, ExposureScenario
+    from aegis.geometry.mesh import BodyMesh
 
 
 @dataclass(frozen=True)
@@ -320,6 +321,32 @@ class DosimetryResult:
             "rmse": rmse,
             "max_abs_error": max_abs,
         }
+
+    def show(
+        self,
+        body: BodyMesh,
+        *,
+        averaged: bool = False,
+        **kwargs,
+    ) -> Any:
+        """Render S_ab as a heatmap on the body mesh.
+
+        Convenience wrapper around ``aegis.viz.plot_heatmap``. Requires
+        ``aegis[viz]`` (matplotlib or plotly).
+
+        Parameters
+        ----------
+        body : BodyMesh
+            The body mesh used to compute this result.
+        averaged : bool
+            If True, plot spatially averaged S_ab instead of raw per-triangle values.
+        **kwargs
+            Forwarded to ``plot_heatmap`` (title, cmap, backend, show, out_path, etc.).
+        """
+        from aegis.viz import plot_heatmap
+
+        sab = self.sab_averaged if (averaged and self.sab_averaged is not None) else self.sab
+        return plot_heatmap(body.vertices, sab, **kwargs)
 
     def __repr__(self) -> str:
         parts = [
