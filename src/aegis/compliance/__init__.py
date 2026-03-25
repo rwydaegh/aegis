@@ -23,6 +23,9 @@ __all__ = [
     "max_compliant_power",
     "margin_db",
     "summary_text",
+    "power_sweep",
+    "frequency_sweep",
+    "compliance_heatmap",
     # Backward-compat
     "ICNIRP_2020",
     "is_compliant_sab",
@@ -441,6 +444,261 @@ def summary_text(
     lines.append(f"Overall: {overall} (tightest margin: {result.margin_db:+.1f} dB)")
 
     return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Power sweep
+# ---------------------------------------------------------------------------
+
+
+def power_sweep(
+    result: ComplianceResult,
+    ref_power_w: float,
+    p_min_w: float | None = None,
+    p_max_w: float | None = None,
+    n_points: int = 200,
+) -> dict:
+    """Compute compliance margin vs transmit power.
+
+    S_ab scales linearly with P, so all checks scale by P/P_ref. This
+    function evaluates compliance across a power range without re-running
+    the dosimetry engine.
+
+    Parameters
+    ----------
+    result : ComplianceResult
+        A compliance evaluation at reference power ref_power_w.
+    ref_power_w : float
+        Transmit power [W] at which result was computed.
+    p_min_w : float or None
+        Minimum power [W]. Defaults to ref_power_w / 100.
+    p_max_w : float or None
+        Maximum power [W]. Defaults to ref_power_w * 100.
+    n_points : int
+        Number of power samples.
+
+    Returns
+    -------
+    dict with keys:
+        power_w : (n_points,) power in watts
+        power_dbm : (n_points,) power in dBm
+        margin_db : (n_points,) tightest compliance margin in dB
+        compliant : (n_points,) boolean mask
+        p_max_compliant_w : float, maximum compliant power [W]
+    """
+    import numpy as np
+
+    if ref_power_w <= 0:
+        raise ValueError("ref_power_w must be positive")
+
+    if p_min_w is None:
+        p_min_w = ref_power_w / 100.0
+    if p_max_w is None:
+        p_max_w = ref_power_w * 100.0
+
+    power_w = np.geomspace(p_min_w, p_max_w, n_points)
+    power_dbm = 10.0 * np.log10(power_w * 1e3)  # W -> mW -> dBm
+
+    checks = result.all_checks
+    p_max_compliant = max_compliant_power(result, ref_power_w)
+
+    if not checks:
+        return {
+            "power_w": power_w,
+            "power_dbm": power_dbm,
+            "margin_db": np.full(n_points, float("inf")),
+            "compliant": np.ones(n_points, dtype=bool),
+            "p_max_compliant_w": float("inf"),
+        }
+
+    margin_db_arr = np.zeros(n_points)
+    for i, p in enumerate(power_w):
+        scale = p / ref_power_w
+        min_margin = float("inf")
+        for check in checks:
+            scaled_value = check.value * scale
+            if scaled_value <= 0:
+                continue
+            m = 10.0 * math.log10(check.limit / scaled_value)
+            min_margin = min(min_margin, m)
+        margin_db_arr[i] = min_margin
+
+    return {
+        "power_w": power_w,
+        "power_dbm": power_dbm,
+        "margin_db": margin_db_arr,
+        "compliant": margin_db_arr >= 0,
+        "p_max_compliant_w": p_max_compliant,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Frequency sweep
+# ---------------------------------------------------------------------------
+
+
+def frequency_sweep(
+    *,
+    sab_4cm2: float | None = None,
+    sab_1cm2: float | None = None,
+    sar_wb: float | None = None,
+    sinc_local: float | None = None,
+    sinc_whole_body: float | None = None,
+    scenario: ExposureScenario = ExposureScenario.GENERAL_PUBLIC,
+    freq_min_hz: float = 7e9,
+    freq_max_hz: float = 100e9,
+    n_points: int = 200,
+) -> dict:
+    """Evaluate compliance across a frequency range.
+
+    The measured values are assumed constant (worst-case: same exposure
+    level across frequency). The ICNIRP limits change with frequency
+    (especially sinc_local ~ 1/f^0.177), so compliance margin varies.
+
+    This answers: "At which frequencies is this exposure level compliant?"
+
+    Parameters
+    ----------
+    sab_4cm2, sab_1cm2, sar_wb, sinc_local, sinc_whole_body : float or None
+        Measured quantities (constant across frequency).
+    scenario : ExposureScenario
+    freq_min_hz, freq_max_hz : float
+        Frequency range (must be within >6 GHz to 300 GHz).
+    n_points : int
+        Number of frequency samples.
+
+    Returns
+    -------
+    dict with keys:
+        freq_hz : (n_points,) frequency array
+        freq_ghz : (n_points,) frequency in GHz
+        margin_db : (n_points,) tightest margin at each frequency
+        compliant : (n_points,) boolean mask
+        results : list of ComplianceResult at each frequency
+    """
+    import numpy as np
+
+    freq_hz_arr = np.geomspace(freq_min_hz, freq_max_hz, n_points)
+    margin_db_arr = np.zeros(n_points)
+    compliant_arr = np.ones(n_points, dtype=bool)
+    results_list = []
+
+    for i, f in enumerate(freq_hz_arr):
+        cr = evaluate_compliance(
+            freq_hz=float(f),
+            scenario=scenario,
+            sab_4cm2=sab_4cm2,
+            sab_1cm2=sab_1cm2,
+            sar_wb=sar_wb,
+            sinc_local=sinc_local,
+            sinc_whole_body=sinc_whole_body,
+        )
+        results_list.append(cr)
+        margin_db_arr[i] = cr.margin_db
+        compliant_arr[i] = cr.overall_pass
+
+    return {
+        "freq_hz": freq_hz_arr,
+        "freq_ghz": freq_hz_arr / 1e9,
+        "margin_db": margin_db_arr,
+        "compliant": compliant_arr,
+        "results": results_list,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Compliance heatmap (2D: power x frequency)
+# ---------------------------------------------------------------------------
+
+
+def compliance_heatmap(
+    *,
+    sab_4cm2: float,
+    ref_power_w: float = 1.0,
+    scenario: ExposureScenario = ExposureScenario.GENERAL_PUBLIC,
+    freq_min_hz: float = 7e9,
+    freq_max_hz: float = 100e9,
+    p_min_w: float | None = None,
+    p_max_w: float | None = None,
+    n_freq: int = 50,
+    n_power: int = 50,
+) -> dict:
+    """2D compliance map over frequency and transmit power.
+
+    Given an S_ab measurement at reference power, compute the compliance
+    margin across the (frequency, power) plane. S_ab scales linearly with
+    power. The ICNIRP S_ab limit is constant (20 or 100 W/m^2) but other
+    limits (sinc_local) vary with frequency.
+
+    This answers: "For what (frequency, power) combinations is this
+    exposure scenario compliant?"
+
+    Parameters
+    ----------
+    sab_4cm2 : float
+        Peak spatially averaged S_ab [W/m^2] at ref_power_w.
+    ref_power_w : float
+        Transmit power [W] at which sab_4cm2 was measured.
+    scenario : ExposureScenario
+    freq_min_hz, freq_max_hz : float
+        Frequency range.
+    p_min_w, p_max_w : float or None
+        Power range. Defaults to ref_power_w / 100 .. ref_power_w * 100.
+    n_freq, n_power : int
+        Grid resolution.
+
+    Returns
+    -------
+    dict with keys:
+        freq_hz : (n_freq,) frequency array
+        power_w : (n_power,) power array
+        power_dbm : (n_power,) power in dBm
+        margin_db : (n_power, n_freq) margin heatmap (positive = compliant)
+        compliant : (n_power, n_freq) boolean mask
+        p_max_per_freq : (n_freq,) max compliant power at each frequency
+    """
+    import numpy as np
+
+    if ref_power_w <= 0:
+        raise ValueError("ref_power_w must be positive")
+    if p_min_w is None:
+        p_min_w = ref_power_w / 100.0
+    if p_max_w is None:
+        p_max_w = ref_power_w * 100.0
+
+    freq_hz_arr = np.geomspace(freq_min_hz, freq_max_hz, n_freq)
+    power_w_arr = np.geomspace(p_min_w, p_max_w, n_power)
+    power_dbm_arr = 10.0 * np.log10(power_w_arr * 1e3)
+
+    margin_grid = np.zeros((n_power, n_freq))
+    p_max_per_freq = np.zeros(n_freq)
+
+    for j, f in enumerate(freq_hz_arr):
+        limits = icnirp_limits(scenario, float(f))
+        sab_limit = limits.sab_4cm2
+
+        # At each power, S_ab scales linearly
+        for i, p in enumerate(power_w_arr):
+            scaled_sab = sab_4cm2 * (p / ref_power_w)
+            if scaled_sab <= 0:
+                margin_grid[i, j] = float("inf")
+            else:
+                margin_grid[i, j] = 10.0 * math.log10(sab_limit / scaled_sab)
+
+        # Max compliant power: sab_4cm2 * (P/P_ref) <= sab_limit
+        if sab_4cm2 > 0:
+            p_max_per_freq[j] = ref_power_w * sab_limit / sab_4cm2
+        else:
+            p_max_per_freq[j] = float("inf")
+
+    return {
+        "freq_hz": freq_hz_arr,
+        "power_w": power_w_arr,
+        "power_dbm": power_dbm_arr,
+        "margin_db": margin_grid,
+        "compliant": margin_grid >= 0,
+        "p_max_per_freq": p_max_per_freq,
+    }
 
 
 # ---------------------------------------------------------------------------
