@@ -6,7 +6,7 @@ import time
 
 import modal
 
-from aegis.modal_rt.app import aegis_mount, app, scene_volume, sionna_image
+from aegis.modal_rt.app import app, scene_volume, sionna_image
 
 
 @app.cls(
@@ -14,7 +14,6 @@ from aegis.modal_rt.app import aegis_mount, app, scene_volume, sionna_image
     gpu="L4",
     container_idle_timeout=120,
     volumes={"/scenes": scene_volume},
-    mounts=[aegis_mount],
     timeout=120,
 )
 class SionnaTracer:

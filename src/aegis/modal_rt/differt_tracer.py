@@ -6,14 +6,13 @@ import time
 
 import modal
 
-from aegis.modal_rt.app import aegis_mount, app, differt_image
+from aegis.modal_rt.app import app, differt_image
 
 
 @app.cls(
     image=differt_image,
     gpu="T4",
     container_idle_timeout=120,
-    mounts=[aegis_mount],
     timeout=120,
 )
 class DiffeRTTracer:
