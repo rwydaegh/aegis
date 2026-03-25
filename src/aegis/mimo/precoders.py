@@ -98,3 +98,27 @@ def zf_exposure(
                 gamma_sq[k] = min(gamma_sq[k], max_gamma_sq)
 
     return directions * np.sqrt(gamma_sq)[np.newaxis, :]
+
+
+def compute_precoder(
+    H: np.ndarray,
+    precoder_type: str = "zf",
+    P: float = 1.0,
+    noise_power: float = 0.01,
+    Q_list: list[np.ndarray] | None = None,
+    P_abs_max: float | None = None,
+) -> np.ndarray:
+    """Dispatch to precoder by name. Returns W: (M_ant, K)."""
+    if precoder_type == "mrt":
+        return mrt(H, P=P)
+    if precoder_type == "zf":
+        return zf(H, P=P)
+    if precoder_type == "mmse":
+        return mmse(H, P=P, noise_power=noise_power)
+    if precoder_type == "zf_exposure":
+        if Q_list is None or P_abs_max is None:
+            msg = "zf_exposure requires Q_list and P_abs_max"
+            raise ValueError(msg)
+        return zf_exposure(H, Q_list, P_abs_max=P_abs_max, P=P)
+    msg = f"Unknown precoder type: {precoder_type!r}"
+    raise ValueError(msg)
