@@ -102,7 +102,7 @@ jobs:
       - name: Install AEGIS (for mount)
         run: pip install -e .
       - name: Deploy Modal app
-        run: modal deploy src/aegis/modal_rt/app.py
+        run: modal deploy src/aegis/modal_rt/__init__.py
         env:
           MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
           MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
