@@ -1,5 +1,8 @@
 """Tests for DosimetryResult.show() convenience method."""
 
+import matplotlib  # noqa: I001
+matplotlib.use("Agg")
+
 import numpy as np
 import pytest
 
