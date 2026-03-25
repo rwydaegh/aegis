@@ -16,6 +16,7 @@ services:
 
   flask:
     image: ghcr.io/rwydaegh/aegis:${IMAGE_TAG:-latest}
+    hostname: aegis-prod
     restart: unless-stopped
     env_file: .env
     expose:

@@ -210,8 +210,26 @@ def create_app(
         if not session.get("authenticated"):
             return jsonify({"error": "Authentication required"}), 401
 
-    @app.route("/api/auth", methods=["POST"])
+    @app.route("/api/auth", methods=["GET", "POST"])
     def authenticate():
+        if request.method == "GET":
+            # Probe: is the current session valid?
+            if _gate_password is None:
+                return jsonify({"authenticated": True, "gate_enabled": False})
+            if session.get("authenticated"):
+                # Estimate remaining time from cookie max-age
+                lifetime = app.config["PERMANENT_SESSION_LIFETIME"]
+                expires_at = datetime.now(UTC) + lifetime
+                return jsonify(
+                    {
+                        "authenticated": True,
+                        "expires_at": expires_at.isoformat(),
+                        "session_id": session.get("session_id", ""),
+                    }
+                )
+            return jsonify({"authenticated": False}), 401
+
+        # POST: login with password
         if _gate_password is None:
             return jsonify({"error": "No password configured"}), 500
         data = request.get_json(silent=True) or {}

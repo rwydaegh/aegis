@@ -72,22 +72,6 @@ nav:
     - Agent workflow (Claude & Cursor): developer_guide/claude_code_workflow.md
   - Reference:
     - API reference: reference/api.md
-  - Internal:
-    - Feature inventory: internal/features.md
-    - Phase -1 hand-off: internal/phase_minus1_handoff.md
-    - Phase 1 hand-off: internal/phase1_handoff.md
-    - Phase 2 hand-off: internal/phase2_handoff.md
-    - Phase 3 hand-off: internal/phase3_handoff.md
-    - Phase 4 hand-off: internal/phase4_handoff.md
-    - Phase 5 hand-off: internal/phase5_handoff.md
-    - Roadmap Phase 1 hand-off: internal/roadmap_phase1_handoff.md
-    - Location loading plan: internal/plan_location_loading.md
-    - Viewer bug report: internal/viewer_bug_report.md
-    - Viewer feature backlog: internal/viewer_feature_backlog.md
-    - Viewer testing prompt: internal/viewer_testing_prompt.md
-    - Implementation plan: internal/implementation_plan.md
-    - Execution plan: internal/plan.md
-    - Project proposal: internal/project_proposal.md
 
 plugins:
   - search:

@@ -18,7 +18,7 @@ function ToastItem({ notification }: { notification: Notification }) {
     <div
       className={cn(
         'rounded-md border px-3 py-2 text-xs font-mono shadow-lg backdrop-blur-sm cursor-pointer',
-        'animate-in slide-in-from-left-2 fade-in duration-200',
+        'animate-in slide-in-from-right-2 fade-in duration-200',
         notification.level === 'error' && 'bg-destructive/20 border-destructive/40 text-destructive',
         notification.level === 'warning' && 'bg-amber-500/15 border-amber-500/30 text-amber-400',
         notification.level === 'info' && 'bg-primary/15 border-primary/30 text-primary',
@@ -36,7 +36,7 @@ export default function NotificationToast() {
   if (notifications.length === 0) return null
 
   return (
-    <div className="absolute bottom-14 left-3 flex flex-col gap-2 max-w-xs z-50 pointer-events-auto">
+    <div className="absolute bottom-14 right-14 flex flex-col gap-2 max-w-xs z-50 pointer-events-auto">
       {notifications.slice(-3).map(n => (
         <ToastItem key={n.id} notification={n} />
       ))}

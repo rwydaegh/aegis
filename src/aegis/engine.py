@@ -930,12 +930,12 @@ class DosimetryEngine:
             1: ("A_ab",),
         }
 
-        _params = {"A_ab": A_ab, "D_max": D_max}
+        params = {"A_ab": A_ab, "D_max": D_max}
 
         results: dict[int, DosimetryResult] = {}
         for level in levels:
             # Skip levels whose required params are missing
-            missing = [p for p in _requires.get(level, ()) if _params[p] is None]
+            missing = [p for p in _requires.get(level, ()) if params.get(p) is None]
             if missing:
                 continue
 
