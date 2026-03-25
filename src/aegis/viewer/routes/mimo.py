@@ -56,7 +56,10 @@ def _build_scene(params: dict, cache: dict) -> tuple[MIMOScene | None, Response 
         if phantom not in bodies_cache:
             return None, (jsonify({"error": f"Unknown phantom: {phantom!r}"}), 404)
 
-        device_position = u.get("device_position", [0.25, 0.0, 1.4])
+        # device_offset is relative to user body; convert to absolute world position
+        user_pos = np.array(u.get("position", [0.0, 0.0, 0.0]), dtype=np.float64)
+        device_offset = u.get("device_offset", u.get("device_position", [0.25, 0.0, 1.4]))
+        device_position = user_pos + np.array(device_offset, dtype=np.float64)
         device_orientation = u.get("device_orientation", [0.0, 0.0, 1.0])
 
         try:

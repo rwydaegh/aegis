@@ -325,7 +325,6 @@ def compute_mimo_scene_with_bodies(
     """
     from aegis.engine import DosimetryEngine
     from aegis.geometry.mesh import BodyMesh as _BodyMesh
-    from aegis.precoder import Precoder
     from aegis.tissue.dielectric import TissueModel
 
     timings: dict[str, float] = {}
@@ -438,21 +437,17 @@ def compute_mimo_scene_with_bodies(
     engine = DosimetryEngine(tissue)
 
     for user in scene.users:
-        sab = compute_user_sab(user.G_tilde, W)
+        sab = compute_multistream_sab(user.G_tilde, W)
         user._sab_raw = sab
 
-        # Run engine for compliance stats (level 7 with precoder)
-        # Extract this user's column from W
-        user_idx = scene.users.index(user)
-        w_k = W[:, user_idx]
-        precoder = Precoder(x=w_k)
-
-        result = engine.compute(
-            body=user.body,
-            paths=user.paths,
-            level=level,
-            precoder=precoder,
-            h=user.h,
+        # Build result directly from multi-stream SAB (total exposure from all beams)
+        # This matches compute_mimo_scene and gives consistent heatmap + stats
+        result = engine._build_result(
+            user.body,
+            user.paths,
+            sab,
+            fidelity_level=level,
+            Q=user.Q,
             freq_hz=freq_hz,
         )
         user.result = result
