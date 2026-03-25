@@ -15,18 +15,12 @@ import { useActiveSimulation } from '@/hooks/useActiveSimulation'
 import {
   fetchPowerSweep,
   fetchFrequencySweep,
-  fetchLinkBudget,
 } from '@/api/client'
 import type {
   PowerSweepResult,
   FrequencySweepResult,
-  LinkBudgetResult,
 } from '@/api/client'
-import Tex from '@/components/ui/Tex'
 
-const labelClass = 'text-xs text-muted-foreground block mt-3 mb-1'
-const inputClass =
-  'w-full bg-background border border-border rounded px-2 py-1.5 text-sm text-foreground'
 const btnClass =
   'text-xs px-3 py-1.5 rounded border border-border transition-colors cursor-pointer hover:bg-muted'
 const btnPrimaryClass =
@@ -381,135 +375,6 @@ function FrequencySweepSection() {
 }
 
 // ---------------------------------------------------------------------------
-// Link budget section
-// ---------------------------------------------------------------------------
-
-function LinkBudgetSection() {
-  const powerDbm = useSimulationStore((s) => s.powerDbm)
-  const freqGhz = useSimulationStore((s) => s.freqGhz)
-  const scenario = useUIStore((s) => s.exposureScenario)
-
-  const [gainDbi, setGainDbi] = useState(15)
-  const [distanceM, setDistanceM] = useState(5)
-  const [result, setResult] = useState<LinkBudgetResult | null>(null)
-  const [loading, setLoading] = useState(false)
-
-  async function calculate() {
-    setLoading(true)
-    try {
-      const data = await fetchLinkBudget({
-        tx_power_dbm: powerDbm,
-        antenna_gain_dbi: gainDbi,
-        distance_m: distanceM,
-        freq_hz: freqGhz * 1e9,
-        scenario,
-      })
-      setResult(data)
-    } catch {
-      setResult(null)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  return (
-    <div>
-      <p className="text-[10px] text-muted-foreground/60 mb-2">
-        Quick compliance estimate from TX power, gain, and distance (free-space
-        path loss, normal incidence).
-      </p>
-
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <label className={labelClass}>Antenna gain (dBi)</label>
-          <input
-            type="number"
-            value={gainDbi}
-            onChange={(e) => setGainDbi(Number(e.target.value))}
-            className={inputClass}
-            step={1}
-          />
-        </div>
-        <div>
-          <label className={labelClass}>Distance (m)</label>
-          <input
-            type="number"
-            value={distanceM}
-            onChange={(e) => setDistanceM(Number(e.target.value))}
-            className={inputClass}
-            step={0.5}
-            min={0.1}
-          />
-        </div>
-      </div>
-
-      <div className="flex items-center gap-2 mt-3">
-        <button
-          onClick={calculate}
-          disabled={loading || distanceM <= 0}
-          className={!loading && distanceM > 0 ? btnPrimaryClass : `${btnClass} opacity-50 cursor-not-allowed`}
-        >
-          {loading ? 'Calculating...' : 'Calculate'}
-        </button>
-        <span className="text-[10px] text-muted-foreground/50">
-          {powerDbm.toFixed(1)} dBm @ {freqGhz.toFixed(1)} GHz
-        </span>
-      </div>
-
-      {result && (
-        <div className="mt-3 space-y-1.5 text-xs">
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">
-              <Tex math="S_\text{inc}" />
-            </span>
-            <span>{result.sinc.toFixed(2)} W/m²</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">
-              <Tex math="S_\text{ab}" /> (estimate)
-            </span>
-            <span>{result.sab_estimate.toFixed(2)} W/m²</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">
-              <Tex math="T_0" />
-            </span>
-            <span>{result.T0.toFixed(3)}</span>
-          </div>
-          <div className="flex justify-between border-t border-border/50 pt-1.5">
-            <span className="text-muted-foreground">Status</span>
-            <span
-              className={`font-medium ${result.compliant ? 'text-green-400' : 'text-red-400'}`}
-            >
-              {result.compliant ? 'COMPLIANT' : 'EXCEEDED'}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Margin</span>
-            <span
-              className={
-                result.margin_db >= 0 ? 'text-green-400' : 'text-red-400'
-              }
-            >
-              {result.margin_db > 0 ? '+' : ''}
-              {result.margin_db.toFixed(1)} dB
-            </span>
-          </div>
-          {result.max_tx_power_dbm != null && (
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Max TX power</span>
-              <span className="text-blue-300">
-                {result.max_tx_power_dbm.toFixed(1)} dBm
-              </span>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
 // Main panel
 // ---------------------------------------------------------------------------
 
@@ -535,13 +400,6 @@ export default function AnalysisPanel() {
         onToggle={() => toggle('freq')}
       >
         <FrequencySweepSection />
-      </Section>
-      <Section
-        title="Link budget"
-        open={openSection === 'link'}
-        onToggle={() => toggle('link')}
-      >
-        <LinkBudgetSection />
       </Section>
     </div>
   )

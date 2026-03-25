@@ -365,16 +365,6 @@ export interface FrequencySweepResult {
   compliant: boolean[]
 }
 
-export interface LinkBudgetResult {
-  sinc: number
-  sab_estimate: number
-  T0: number
-  compliant: boolean
-  margin_db: number
-  max_tx_power_w: number
-  max_tx_power_dbm: number | null
-}
-
 export async function fetchPowerSweep(params: {
   sab_4cm2: number
   freq_hz: number
@@ -417,19 +407,3 @@ export async function fetchFrequencySweep(params: {
   return getJson<FrequencySweepResult>(`/api/compliance/frequency-sweep?${qs}`)
 }
 
-export async function fetchLinkBudget(params: {
-  tx_power_dbm: number
-  antenna_gain_dbi: number
-  distance_m: number
-  freq_hz: number
-  scenario?: string
-}): Promise<LinkBudgetResult> {
-  const qs = new URLSearchParams({
-    tx_power_dbm: String(params.tx_power_dbm),
-    antenna_gain_dbi: String(params.antenna_gain_dbi),
-    distance_m: String(params.distance_m),
-    freq_hz: String(params.freq_hz),
-    scenario: params.scenario ?? 'general_public',
-  })
-  return getJson<LinkBudgetResult>(`/api/compliance/link-budget?${qs}`)
-}

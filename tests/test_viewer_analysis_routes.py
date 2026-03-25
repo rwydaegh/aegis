@@ -61,25 +61,3 @@ class TestFrequencySweep:
         assert resp.status_code == 400
 
 
-class TestLinkBudget:
-    def test_basic(self, client):
-        resp = client.get("/api/compliance/link-budget?tx_power_dbm=23&antenna_gain_dbi=15&distance_m=5&freq_hz=28e9")
-        assert resp.status_code == 200
-        data = resp.get_json()
-        assert "sinc" in data
-        assert "sab_estimate" in data
-        assert "compliant" in data
-        assert "margin_db" in data
-        assert "max_tx_power_dbm" in data
-
-    def test_missing_params(self, client):
-        resp = client.get("/api/compliance/link-budget?tx_power_dbm=23")
-        assert resp.status_code == 400
-
-    def test_inverse_square(self, client):
-        resp1 = client.get("/api/compliance/link-budget?tx_power_dbm=23&antenna_gain_dbi=0&distance_m=1&freq_hz=28e9")
-        resp2 = client.get("/api/compliance/link-budget?tx_power_dbm=23&antenna_gain_dbi=0&distance_m=2&freq_hz=28e9")
-        d1 = resp1.get_json()
-        d2 = resp2.get_json()
-        ratio = d1["sinc"] / d2["sinc"]
-        assert abs(ratio - 4.0) < 0.01
