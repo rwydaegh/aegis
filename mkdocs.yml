@@ -63,6 +63,7 @@ nav:
     - Geometry: user_guide/geometry.md
     - Compliance: user_guide/compliance.md
     - Coherent MIMO: user_guide/coherent.md
+    - Multi-user MIMO: user_guide/multi_user_mimo.md
     - Optimization: user_guide/optimization.md
   - Developer guide:
     - Architecture: developer_guide/architecture.md
