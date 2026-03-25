@@ -27,6 +27,7 @@ export default function BodyMeshInstance({
   sabAveragedArray,
   sincArray,
   sab1cm2AveragedArray,
+  stats,
   compliance,
   position,
   rotationY,
@@ -144,7 +145,12 @@ export default function BodyMeshInstance({
         />
       </mesh>
 
-      <PeakIndicator />
+      <PeakIndicator
+        geometryOverride={geometry}
+        sabOverride={sabArray}
+        peakValueOverride={stats?.peak_sab_averaged ?? stats?.peak_sab}
+        compliantOverride={stats?.compliant}
+      />
     </group>
   )
 }

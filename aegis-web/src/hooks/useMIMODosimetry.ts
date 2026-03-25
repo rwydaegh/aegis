@@ -33,9 +33,9 @@ async function loadMissingBodies() {
 
 export function useMIMODosimetry() {
   const enabled = useMIMOStore(s => s.enabled)
-  const users = useMIMOStore(s => s.users)
   const precoderType = useMIMOStore(s => s.precoderType)
   const arrayConfig = useMIMOStore(s => s.arrayConfig)
+  const configVersion = useMIMOStore(s => s._configVersion)
   const freqGhz = useSimulationStore(s => s.freqGhz)
   const powerDbm = useSimulationStore(s => s.powerDbm)
 
@@ -44,6 +44,7 @@ export function useMIMODosimetry() {
   const generationRef = useRef(0)
 
   const triggerCompute = useCallback(async () => {
+    const { users } = useMIMOStore.getState()
     if (!enabled || !arrayConfig || users.size === 0) return
 
     abortRef.current?.abort()
@@ -100,7 +101,7 @@ export function useMIMODosimetry() {
     } finally {
       if (gen === generationRef.current) setComputing(false)
     }
-  }, [enabled, users, precoderType, arrayConfig, freqGhz, powerDbm])
+  }, [enabled, precoderType, arrayConfig, freqGhz, powerDbm])
 
   useEffect(() => {
     if (!enabled || !arrayConfig) return
@@ -111,7 +112,8 @@ export function useMIMODosimetry() {
     timerRef.current = setTimeout(() => { void triggerCompute() }, debounceMs)
 
     return () => { if (timerRef.current) clearTimeout(timerRef.current) }
-  }, [enabled, users, precoderType, arrayConfig, freqGhz, powerDbm, triggerCompute])
+    // configVersion tracks user add/remove/move - NOT result writes
+  }, [enabled, precoderType, arrayConfig, freqGhz, powerDbm, configVersion, triggerCompute])
 
   useEffect(() => {
     return () => { abortRef.current?.abort() }

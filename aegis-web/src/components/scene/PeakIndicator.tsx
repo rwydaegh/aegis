@@ -16,27 +16,46 @@ interface PeakInfo {
   quaternion: THREE.Quaternion
 }
 
-export default function PeakIndicator() {
+interface PeakIndicatorProps {
+  /** Override geometry (MIMO per-user mode) */
+  geometryOverride?: THREE.BufferGeometry | null
+  /** Override sab array (MIMO per-user mode) */
+  sabOverride?: Float32Array | null
+  /** Override peak value label */
+  peakValueOverride?: number | null
+  /** Override compliance status */
+  compliantOverride?: boolean | null
+}
+
+export default function PeakIndicator({
+  geometryOverride,
+  sabOverride,
+  peakValueOverride,
+  compliantOverride,
+}: PeakIndicatorProps = {}) {
   const ringRef = useRef<THREE.Mesh>(null)
 
-  const geometry = useSceneStore(s => s.bodyGeometry)
-  const sabArray = useSimulationStore(s => s.sabArray)
-  const sabAveragedArray = useSimulationStore(s => s.sabAveragedArray)
-  const stats = useSimulationStore(s => s.stats)
+  // Global stores as fallback for single-user mode
+  const globalGeometry = useSceneStore(s => s.bodyGeometry)
+  const globalSabArray = useSimulationStore(s => s.sabArray)
+  const globalSabAveraged = useSimulationStore(s => s.sabAveragedArray)
+  const globalStats = useSimulationStore(s => s.stats)
 
-  const peakValue = stats?.peak_sab_averaged ?? stats?.peak_sab ?? null
-  const compliant = stats?.compliant ?? null
+  // Use overrides if provided, otherwise fall back to global stores
+  const geometry = geometryOverride ?? globalGeometry
+  const sabArray = sabOverride ?? globalSabAveraged ?? globalSabArray
+  const peakValue = peakValueOverride ?? globalStats?.peak_sab_averaged ?? globalStats?.peak_sab ?? null
+  const compliant = compliantOverride ?? globalStats?.compliant ?? null
 
   // Find peak triangle and compute position + normal
   const peak: PeakInfo | null = useMemo(() => {
-    const arr = sabAveragedArray ?? sabArray
-    if (!arr || !geometry) return null
+    if (!sabArray || !geometry) return null
 
     // Find peak triangle index
     let maxVal = -Infinity
     let maxIdx = 0
-    for (let i = 0; i < arr.length; i++) {
-      if (arr[i] > maxVal) { maxVal = arr[i]; maxIdx = i }
+    for (let i = 0; i < sabArray.length; i++) {
+      if (sabArray[i] > maxVal) { maxVal = sabArray[i]; maxIdx = i }
     }
 
     const posAttr = geometry.getAttribute('position') as THREE.BufferAttribute
@@ -65,7 +84,7 @@ export default function PeakIndicator() {
     )
 
     return { position, normal, quaternion }
-  }, [sabAveragedArray, sabArray, geometry])
+  }, [sabArray, geometry])
 
   // Breathing animation
   useFrame(({ clock }) => {

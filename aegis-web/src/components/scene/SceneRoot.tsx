@@ -215,6 +215,7 @@ function MIMOScene() {
           sabArray={showAllHeatmaps ? user.sabArray : (
             user.userId === focusedUserId ? user.sabArray : null
           )}
+          stats={user.stats}
           position={user.position}
           rotationY={user.orientation}
           opacity={user.userId === focusedUserId ? 1.0 : 0.7}

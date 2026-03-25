@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { useUIStore } from '@/stores/ui'
 import { useMIMOStore } from '@/stores/mimo'
 import {
@@ -19,6 +20,16 @@ import MIMOPanel from '@/components/hud/MIMOPanel'
 export default function Sidebar() {
   const { sidebarOpen } = useUIStore()
   const mimoEnabled = useMIMOStore(s => s.enabled)
+  const [openSections, setOpenSections] = useState<string[]>(['parameters'])
+
+  // Auto-open MIMO accordion when MIMO mode is toggled on
+  useEffect(() => {
+    if (mimoEnabled) {
+      setOpenSections(prev => prev.includes('mimo-users') ? prev : [...prev, 'mimo-users'])
+    } else {
+      setOpenSections(prev => prev.filter(s => s !== 'mimo-users'))
+    }
+  }, [mimoEnabled])
 
   return (
     <aside
@@ -35,7 +46,7 @@ export default function Sidebar() {
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          <Accordion multiple defaultValue={mimoEnabled ? ['parameters', 'mimo-users'] : ['parameters']}>
+          <Accordion multiple value={openSections} onValueChange={(v: string[]) => setOpenSections(v)}>
             <AccordionItem value="parameters" className="border-b border-border px-3">
               <AccordionTrigger className="text-sm font-medium py-3">Parameters</AccordionTrigger>
               <AccordionContent>

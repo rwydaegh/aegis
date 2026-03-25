@@ -29,6 +29,7 @@ interface MIMOStore {
   summaryStats: MIMOSummary | null
   showAllHeatmaps: boolean
   _nextUserNumber: number
+  _configVersion: number
 
   // Derived
   focusedUser: () => UserMIMOState | null
@@ -61,6 +62,7 @@ const INITIAL_STATE = {
   summaryStats: null as MIMOSummary | null,
   showAllHeatmaps: false,
   _nextUserNumber: 1,
+  _configVersion: 0,
 }
 
 export const useMIMOStore = create<MIMOStore>((set, get) => ({
@@ -110,6 +112,7 @@ export const useMIMOStore = create<MIMOStore>((set, get) => ({
     set({
       users,
       _nextUserNumber: num + 1,
+      _configVersion: get()._configVersion + 1,
       ...(isFirst ? { focusedUserId: id, controlledUserId: id } : {}),
     })
   },
@@ -126,6 +129,7 @@ export const useMIMOStore = create<MIMOStore>((set, get) => ({
     const needsFallback = precoderType !== 'mrt' && nElements > 0 && nElements < users.size
     set({
       users,
+      _configVersion: get()._configVersion + 1,
       focusedUserId: focusedUserId === id ? nextId : focusedUserId,
       controlledUserId: controlledUserId === id ? nextId : controlledUserId,
       ...(needsFallback ? { precoderType: 'mrt' as PrecoderType } : {}),
@@ -140,7 +144,7 @@ export const useMIMOStore = create<MIMOStore>((set, get) => ({
     const user = users.get(id)
     if (!user) return
     users.set(id, { ...user, position })
-    set({ users })
+    set({ users, _configVersion: get()._configVersion + 1 })
   },
 
   setUserOrientation: (id, orientation) => {
