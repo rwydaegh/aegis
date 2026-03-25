@@ -108,10 +108,7 @@ export default function MIMOPanel() {
               return (
                 <div
                   key={user.userId}
-                  className={cn(
-                    'flex items-center gap-1.5 px-1.5 py-1 rounded text-xs',
-                    isFocused && 'ring-1 ring-primary/50 bg-primary/5',
-                  )}
+                  className="flex items-center gap-1.5 px-1.5 py-1 rounded text-xs"
                 >
                   {/* Compliance dot */}
                   <span
