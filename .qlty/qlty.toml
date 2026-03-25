@@ -67,7 +67,7 @@ name = "actionlint"
 # B101 (assert usage) is normal in pytest tests and examples
 [[triage]]
 match.rules = ["bandit:B101"]
-match.file_patterns = ["tests/**"]
+match.file_patterns = ["tests/**", "examples/**"]
 set.ignored = true
 
 # Subprocess usage is intentional for process management (nvidia-smi, node, kill)
@@ -85,10 +85,28 @@ set.ignored = true
 match.rules = ["bandit:B108"]
 set.ignored = true
 
-# Complexity in tools and tests is acceptable (not production code)
+# Complexity in examples, tools, and tests is acceptable (not production code)
 [[triage]]
 match.rules = ["radarlint-python:python:S3776", "radarlint-python:python:S1192"]
-match.file_patterns = ["tools/**", "tests/**"]
+match.file_patterns = ["examples/**", "tools/**", "tests/**"]
+set.ignored = true
+
+# f-string without placeholders in examples (print section headers)
+[[triage]]
+match.rules = ["radarlint-python:python:S3457", "ruff:F541"]
+match.file_patterns = ["examples/**"]
+set.ignored = true
+
+# Unused imports in examples (kept for user convenience / copy-paste)
+[[triage]]
+match.rules = ["ruff:F401"]
+match.file_patterns = ["examples/**"]
+set.ignored = true
+
+# Import sorting in examples (not production code)
+[[triage]]
+match.rules = ["ruff:I001"]
+match.file_patterns = ["examples/**"]
 set.ignored = true
 
 # Physics naming conventions: A_ab, D_max, T0, G_4cm2, S_inc, etc. follow

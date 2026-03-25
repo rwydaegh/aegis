@@ -20,7 +20,7 @@ jobs:
         if: always()
         uses: codecov/codecov-action@v5
         with:
-          file: coverage.xml
+          files: coverage.xml
           flags: full
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

@@ -328,6 +328,13 @@ def create_app(
 
         threading.Thread(target=_do, daemon=True, name="precompute-G").start()
 
+    def _clear_voxel_cache():
+        _cache["voxel_binary"] = None
+        _cache["voxel_meta"] = None
+        _cache["voxel_sizes"] = None
+        _cache["body_placement"] = None
+        _cache["voxel_positions"] = None
+
     with _cache_lock:
         _cache["voxel_json_path"] = voxel_json
         if voxel_dir:
@@ -335,27 +342,15 @@ def create_app(
                 _load_and_cache_voxels_dir(voxel_dir, bbox_radius)
             except Exception as e:
                 print(f"  Warning: voxel directory load failed: {e}")
-                _cache["voxel_binary"] = None
-                _cache["voxel_meta"] = None
-                _cache["voxel_sizes"] = None
-                _cache["body_placement"] = None
-                _cache["voxel_positions"] = None
+                _clear_voxel_cache()
         elif voxel_json:
             try:
                 _load_and_cache_voxels_single(voxel_json, bbox_radius)
             except Exception as e:
                 print(f"  Warning: voxel load failed: {e}")
-                _cache["voxel_binary"] = None
-                _cache["voxel_meta"] = None
-                _cache["voxel_sizes"] = None
-                _cache["body_placement"] = None
-                _cache["voxel_positions"] = None
+                _clear_voxel_cache()
         else:
-            _cache["voxel_binary"] = None
-            _cache["voxel_meta"] = None
-            _cache["voxel_sizes"] = None
-            _cache["body_placement"] = None
-            _cache["voxel_positions"] = None
+            _clear_voxel_cache()
 
         # Resolve tiles directory (sibling of voxels dir from pipeline)
         _cache["tiles_dir"] = None

@@ -23,6 +23,8 @@ if TYPE_CHECKING:
 # Module-level timing dict, populated by compute() for viewer profiling
 _last_timings: dict[str, float] = {}
 
+_ERR_LEVEL_AND_MODE = "Cannot specify both level and mode"
+
 
 def _to_numpy(arr):
     """Convert JAX arrays to NumPy. No-op for NumPy arrays."""
@@ -194,6 +196,7 @@ class DosimetryEngine:
         diffraction: bool = False,
         curvature: bool = False,
         freq_hz: float | None = None,
+        _timings: dict[str, float] | None = None,
     ) -> DosimetryResult:
         """Compute dosimetry at the specified fidelity level or mode.
 
@@ -220,13 +223,14 @@ class DosimetryEngine:
         polarisation : enable polarisation correction (spatial mode)
         diffraction : enable diffraction smoothing (spatial mode)
         curvature : enable curvature correction (spatial mode)
+        _timings : if provided, fine-grained timing data is written into this dict
 
         Returns
         -------
         DosimetryResult
         """
         if level is not None and mode is not None:
-            raise ValueError("Cannot specify both level and mode")
+            raise ValueError(_ERR_LEVEL_AND_MODE)
 
         # Default: neither given -> behave like old level=2
         if level is None and mode is None:
@@ -259,6 +263,7 @@ class DosimetryEngine:
                 h=h,
                 P_abs_max=P_abs_max,
                 freq_hz=freq_hz,
+                _timings=_timings,
             )
 
         # Legacy level-based path
@@ -300,33 +305,10 @@ class DosimetryEngine:
             body_mass=body_mass,
             freq_hz=freq_hz,
             spatial_averaging=spatial_averaging,
+            _timings=_timings,
         )
 
-    def compute_with_timings(
-        self,
-        body: BodyMesh,
-        paths: PropagationPaths,
-        level: int | None = None,
-        body_mass: float | None = None,
-        spatial_averaging: bool = True,
-        A_ab: float | None = None,
-        D_max: float | None = None,
-        sh_coeffs: np.ndarray | None = None,
-        sh_L: int = 4,
-        D_table: np.ndarray | None = None,
-        D_dirs: np.ndarray | None = None,
-        q: np.ndarray | float = 0.0,
-        curvature_H: np.ndarray | None = None,
-        precoder: Precoder | None = None,
-        h: np.ndarray | None = None,
-        P_abs_max: float = 0.1,
-        mode: str | None = None,
-        fresnel: bool = True,
-        polarisation: bool = False,
-        diffraction: bool = False,
-        curvature: bool = False,
-        freq_hz: float | None = None,
-    ) -> tuple[DosimetryResult, dict[str, float]]:
+    def compute_with_timings(self, *args, **kwargs) -> tuple[DosimetryResult, dict[str, float]]:
         """Like compute(), but returns a (DosimetryResult, timings) tuple.
 
         The timings dict is local to this call (thread-safe). Keys match those
@@ -335,85 +317,8 @@ class DosimetryEngine:
 
         Parameters mirror compute() exactly.
         """
-        if level is not None and mode is not None:
-            raise ValueError("Cannot specify both level and mode")
-
-        if level is None and mode is None:
-            level = 2
-
-        if body_mass is not None and body_mass <= 0:
-            raise ValueError("body_mass must be positive when provided")
-
         timings: dict[str, float] = {}
-
-        if mode is not None:
-            result = self._compute_mode(
-                body,
-                paths,
-                mode=mode,
-                fresnel=fresnel,
-                polarisation=polarisation,
-                diffraction=diffraction,
-                curvature=curvature,
-                q=q,
-                curvature_H=curvature_H,
-                body_mass=body_mass,
-                spatial_averaging=spatial_averaging,
-                A_ab=A_ab,
-                D_max=D_max,
-                sh_coeffs=sh_coeffs,
-                sh_L=sh_L,
-                D_table=D_table,
-                D_dirs=D_dirs,
-                precoder=precoder,
-                h=h,
-                P_abs_max=P_abs_max,
-                freq_hz=freq_hz,
-                _timings=timings,
-            )
-            return result, timings
-
-        if level < 0 or level > 8:
-            raise ValueError(f"Fidelity level must be 0-8, got {level}")
-
-        if level >= 7:
-            result = self._compute_coherent(
-                body,
-                paths,
-                level,
-                precoder=precoder,
-                h=h,
-                P_abs_max=P_abs_max,
-                body_mass=body_mass,
-                spatial_averaging=spatial_averaging,
-                freq_hz=freq_hz,
-            )
-            return result, timings
-
-        sab = self._dispatch(
-            body,
-            paths,
-            level,
-            A_ab=A_ab,
-            D_max=D_max,
-            sh_coeffs=sh_coeffs,
-            sh_L=sh_L,
-            D_table=D_table,
-            D_dirs=D_dirs,
-            q=q,
-            curvature_H=curvature_H,
-        )
-        sab = _to_numpy(sab)
-        result = self._build_result(
-            body,
-            paths,
-            sab,
-            level,
-            body_mass=body_mass,
-            freq_hz=freq_hz,
-            spatial_averaging=spatial_averaging,
-            _timings=timings,
-        )
+        result = self.compute(*args, _timings=timings, **kwargs)
         return result, timings
 
     def compute_sab(
@@ -448,7 +353,7 @@ class DosimetryEngine:
         optimization.
         """
         if level is not None and mode is not None:
-            raise ValueError("Cannot specify both level and mode")
+            raise ValueError(_ERR_LEVEL_AND_MODE)
 
         # Default: neither given -> behave like old level=2
         if level is None and mode is None:

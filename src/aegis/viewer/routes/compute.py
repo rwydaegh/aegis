@@ -17,6 +17,10 @@ logger = logging.getLogger(__name__)
 _OCTET_STREAM = "application/octet-stream"
 _ERR_NO_BODY = "No body mesh loaded"
 _ERR_NO_DIFFERT = "DiffeRT not installed"
+_ERR_VEC3_LEN = "must be a 3-element array [x, y, z]"
+_ERR_VEC3_TYPE = "must be a 3-element numeric array"
+_ERR_INVALID_JSON = "Invalid or missing JSON body"
+_ERR_ROTATION_TYPE = "body_rotation_y must be a number"
 
 
 def _inject_curvature_H(engine_kw: dict, body) -> dict:
@@ -26,6 +30,107 @@ def _inject_curvature_H(engine_kw: dict, body) -> dict:
 
         engine_kw["curvature_H"] = _compute_face_curvature(body)
     return engine_kw
+
+
+def _parse_vec3(params: dict, key: str, default: list | None = None):
+    """Parse a 3-element numeric array from request params.
+
+    Returns (np.ndarray, None) on success or (None, error_response) on failure.
+    """
+    default = default or [0, 0, 0]
+    try:
+        raw = list(params.get(key, default))
+        if len(raw) != 3:
+            return None, (jsonify({"error": f"{key} {_ERR_VEC3_LEN}"}), 400)
+        return np.array([float(v) for v in raw], dtype=np.float64), None
+    except (TypeError, ValueError):
+        return None, (jsonify({"error": f"{key} {_ERR_VEC3_TYPE}"}), 400)
+
+
+def _parse_rotation_y(params: dict):
+    """Parse body_rotation_y from request params.
+
+    Returns (float, None) on success or (None, error_response) on failure.
+    """
+    try:
+        return float(params.get("body_rotation_y", 0.0)), None
+    except (TypeError, ValueError):
+        return None, (jsonify({"error": _ERR_ROTATION_TYPE}), 400)
+
+
+def _parse_freq_and_tissue(params: dict, default_freq: float = 28e9):
+    """Parse freq_hz and resolve tissue model from request params.
+
+    Returns (tissue, freq_hz, None) on success or (None, None, error_response) on failure.
+    """
+    from aegis.viewer.compute import resolve_skin_model
+
+    try:
+        freq_hz = float(params.get("freq_hz", default_freq))
+    except (TypeError, ValueError):
+        return None, None, (jsonify({"error": "freq_hz must be a number"}), 400)
+    if freq_hz <= 0:
+        return None, None, (jsonify({"error": "freq_hz must be positive"}), 400)
+
+    skin_model_name = params.get("skin_model", "itis")
+    try:
+        tissue = resolve_skin_model(skin_model_name, freq_hz)
+    except ValueError as exc:
+        return None, None, (jsonify({"error": str(exc)}), 400)
+
+    return tissue, freq_hz, None
+
+
+def _parse_quantities_and_scenario(params: dict):
+    """Parse display quantities and exposure scenario from request params.
+
+    Returns (quantities, scenario, None) on success or (None, None, error_response) on failure.
+    """
+    quantities = params.get("quantities", ["sab", "sab_4cm2"])
+    scenario_str = params.get("exposure_scenario", "general_public")
+    try:
+        scenario = ExposureScenario(scenario_str)
+    except ValueError:
+        return None, None, (jsonify({"error": f"Invalid exposure_scenario: {scenario_str}"}), 400)
+    return quantities, scenario, None
+
+
+def _run_dosimetry(tissue, body, paths, engine_kw):
+    """Instantiate engine, inject curvature, run compute, return result."""
+    from aegis.engine import DosimetryEngine
+
+    engine = DosimetryEngine(tissue)
+    _inject_curvature_H(engine_kw, body)
+    body_mass = PHANTOM_MASS_KG.get(body.name) if body.name else None
+    return engine.compute(body, paths, body_mass=body_mass, **engine_kw)
+
+
+def _make_rt_response(result, body, tissue, engine_kw, quantities, scenario, extra, timing_pairs):
+    """Build binary Response with X-Stats header for RT route handlers.
+
+    timing_pairs is a list of (key, value) timing entries to inject.
+    """
+    buf, arrays_meta = _build_binary_response(result, quantities)
+    level_val, mode_val, corr_val = _stats_label(engine_kw)
+    stats = _build_stats_response(
+        result,
+        body,
+        tissue,
+        level_val,
+        mode=mode_val,
+        corrections=corr_val,
+        extra=extra,
+        scenario=scenario,
+    )
+    timings = stats.get("timings", {})
+    for key, val in timing_pairs:
+        timings[key] = val
+    stats["timings"] = timings
+    stats["arrays"] = arrays_meta
+    resp = Response(bytes(buf), mimetype=_OCTET_STREAM)
+    resp.headers["X-Stats"] = json.dumps(stats)
+    resp.headers["Access-Control-Expose-Headers"] = "X-Stats"
+    return resp, stats
 
 
 def _parse_mode_or_level(params: dict, default_level: int = 2) -> dict:
@@ -241,7 +346,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
     @app.route("/api/compute", methods=["POST"])
     def api_compute():
         """Compute dosimetry for given antenna position."""
-        from aegis.viewer.compute import compute_dosimetry, resolve_skin_model
+        from aegis.viewer.compute import compute_dosimetry
 
         params = request.get_json(silent=True)
         if params is None:
@@ -316,46 +421,22 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             except (TypeError, ValueError):
                 return jsonify({"error": "Invalid stochastic parameters (seed must be integer)"}), 400
 
-        try:
-            freq_hz = float(params.get("freq_hz", 28e9))
-        except (TypeError, ValueError):
-            return jsonify({"error": "freq_hz must be a number"}), 400
-        if freq_hz <= 0:
-            return jsonify({"error": "freq_hz must be positive"}), 400
+        tissue, _, err = _parse_freq_and_tissue(params)
+        if err:
+            return err
 
-        skin_model_name = params.get("skin_model", "itis")
-        try:
-            tissue = resolve_skin_model(skin_model_name, freq_hz)
-        except ValueError as exc:
-            return jsonify({"error": str(exc)}), 400
-
-        try:
-            antenna_pos = list(params.get("antenna_pos", [5, 0, 1]))
-            if len(antenna_pos) != 3:
-                return jsonify({"error": "antenna_pos must be a 3-element array [x, y, z]"}), 400
-            antenna_pos = [float(v) for v in antenna_pos]
-        except (TypeError, ValueError):
-            return jsonify({"error": "antenna_pos must be a 3-element numeric array"}), 400
-
-        try:
-            body_offset = list(params.get("body_offset", [0, 0, 0]))
-            if len(body_offset) != 3:
-                return jsonify({"error": "body_offset must be a 3-element array [x, y, z]"}), 400
-            body_offset = [float(v) for v in body_offset]
-        except (TypeError, ValueError):
-            return jsonify({"error": "body_offset must be a 3-element numeric array"}), 400
-
-        try:
-            body_rotation_y = float(params.get("body_rotation_y", 0.0))
-        except (TypeError, ValueError):
-            return jsonify({"error": "body_rotation_y must be a number"}), 400
-
-        quantities = params.get("quantities", ["sab", "sab_4cm2"])
-        exposure_scenario_str = params.get("exposure_scenario", "general_public")
-        try:
-            exposure_scenario = ExposureScenario(exposure_scenario_str)
-        except ValueError:
-            return jsonify({"error": f"Invalid exposure_scenario: {exposure_scenario_str}"}), 400
+        antenna_pos, err = _parse_vec3(params, "antenna_pos", [5, 0, 1])
+        if err:
+            return err
+        body_offset, err = _parse_vec3(params, "body_offset")
+        if err:
+            return err
+        body_rotation_y, err = _parse_rotation_y(params)
+        if err:
+            return err
+        quantities, exposure_scenario, err = _parse_quantities_and_scenario(params)
+        if err:
+            return err
 
         import time as _time
 
@@ -364,9 +445,9 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         try:
             result, res_body, res_tissue, res_level, res_mode, res_corr, extra = compute_dosimetry(
                 body,
-                antenna_pos=np.array(antenna_pos),
-                body_offset=np.array(body_offset),
-                body_rotation_y=float(body_rotation_y),
+                antenna_pos=antenna_pos,
+                body_offset=body_offset,
+                body_rotation_y=body_rotation_y,
                 level=level,
                 mode=mode,
                 corrections=corrections,
@@ -476,7 +557,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
         ext_materials = None
         if voxel_materials is not None:
-            ext_materials = [voxel_materials[i] for i in np.where(ext_mask)[0]]
+            ext_materials = [voxel_materials[i] for i in np.nonzero(ext_mask)[0]]
         material_colors = cfg.get("voxels", {}).get("material_colors")
 
         try:
@@ -516,11 +597,11 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         except ImportError:
             return jsonify({"error": _ERR_NO_DIFFERT}), 501
 
-        from aegis.viewer.compute import _transform_body_for_viewer, resolve_skin_model
+        from aegis.viewer.compute import _transform_body_for_viewer
 
         params = request.get_json(silent=True)
         if not isinstance(params, dict):
-            return jsonify({"error": "Invalid or missing JSON body"}), 400
+            return jsonify({"error": _ERR_INVALID_JSON}), 400
 
         body_name = params.get("body_name", cache.get("default_body"))
         with cache_lock:
@@ -529,69 +610,48 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             return jsonify({"error": f"Body '{body_name}' not found"}), 404
         body = entry["body"]
 
-        try:
-            raw_pos = list(params.get("antenna_pos", [5, 0, 1]))
-            if len(raw_pos) != 3:
-                return jsonify({"error": "antenna_pos must be a 3-element array [x, y, z]"}), 400
-            antenna_pos = np.array([float(v) for v in raw_pos])
-        except (TypeError, ValueError):
-            return jsonify({"error": "antenna_pos must be a 3-element numeric array"}), 400
+        antenna_pos, err = _parse_vec3(params, "antenna_pos", [5, 0, 1])
+        if err:
+            return err
 
         scene_path = params.get("scene_path")
-        engine_kw = _parse_mode_or_level(params)
-        power_dbm = params.get("power_dbm", 60.0)
-        rt_cfg_parsed = _parse_rt_config(params)
-        max_order = rt_cfg_parsed["max_depth"]
-
-        try:
-            raw_offset = list(params.get("body_offset", [0, 0, 0]))
-            if len(raw_offset) != 3:
-                return jsonify({"error": "body_offset must be a 3-element array [x, y, z]"}), 400
-            body_offset = np.array([float(v) for v in raw_offset])
-        except (TypeError, ValueError):
-            return jsonify({"error": "body_offset must be a 3-element numeric array"}), 400
-
-        try:
-            body_rotation_y = float(params.get("body_rotation_y", 0.0))
-        except (TypeError, ValueError):
-            return jsonify({"error": "body_rotation_y must be a number"}), 400
-
-        quantities = params.get("quantities", ["sab", "sab_4cm2"])
-        exposure_scenario_str = params.get("exposure_scenario", "general_public")
-        try:
-            exposure_scenario = ExposureScenario(exposure_scenario_str)
-        except ValueError:
-            return jsonify({"error": f"Invalid exposure_scenario: {exposure_scenario_str}"}), 400
-
         if not scene_path:
             return jsonify({"error": "Missing 'scene_path'"}), 400
 
-        freq_hz = float(params.get("freq_hz", 28e9))
-        skin_model_name = params.get("skin_model", "itis")
-        try:
-            tissue = resolve_skin_model(skin_model_name, freq_hz)
-        except ValueError as exc:
-            return jsonify({"error": str(exc)}), 400
+        engine_kw = _parse_mode_or_level(params)
+        power_dbm = params.get("power_dbm", 60.0)
+        rt_cfg_parsed = _parse_rt_config(params)
+
+        body_offset, err = _parse_vec3(params, "body_offset")
+        if err:
+            return err
+        body_rotation_y, err = _parse_rotation_y(params)
+        if err:
+            return err
+        tissue, _, err = _parse_freq_and_tissue(params)
+        if err:
+            return err
+        quantities, exposure_scenario, err = _parse_quantities_and_scenario(params)
+        if err:
+            return err
 
         # RT receiver: use configured default center (z=1m) shifted by body offset
         # (body centroid mean is ~z=-0.38, below floors of most Sionna scenes)
         default_bc = np.array(cache["config"]["raytracer"]["default_body_center"])
         body_center = default_bc + body_offset
 
-        # Transform body mesh for dosimetry engine
         transformed_body = _transform_body_for_viewer(body, body_offset, body_rotation_y)
 
         import time as _time
 
         t_route = _time.perf_counter()
 
-        # Run DiffeRT
         try:
             paths, path_viz = compute_paths_differt(
                 scene_path,
                 tx_pos=antenna_pos,
                 rx_pos=body_center,
-                max_order=max_order,
+                max_order=rt_cfg_parsed["max_depth"],
                 freq_hz=tissue.freq_hz,
                 tx_power_dbm=power_dbm,
                 reflection_loss_per_order=rt_cfg_parsed["reflection_loss_per_order"],
@@ -603,56 +663,38 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
         t_rt = _time.perf_counter()
 
-        level_val, mode_val, corr_val = _stats_label(engine_kw)
+        level_val, _, _ = _stats_label(engine_kw)
         if paths.n_paths == 0:
             return _zero_paths_response(body, tissue, level_val or 0)
 
-        # Run dosimetry engine on the transformed body
-        from aegis.engine import DosimetryEngine
-
-        engine = DosimetryEngine(tissue)
-        _inject_curvature_H(engine_kw, transformed_body)
-        body_mass = PHANTOM_MASS_KG.get(body.name) if body.name else None
-        result = engine.compute(transformed_body, paths, body_mass=body_mass, **engine_kw)
-
+        result = _run_dosimetry(tissue, transformed_body, paths, engine_kw)
         t_compute = _time.perf_counter()
 
-        buf, arrays_meta = _build_binary_response(result, quantities)
         dist = float(np.linalg.norm(antenna_pos - body_center))
-        total_power = float(np.sum(paths.power))
+        extra = {
+            "S_inc": float(np.sum(paths.power)),
+            "distance_m": dist,
+            "n_rt_paths": paths.n_paths,
+            "path_viz": path_viz,
+        }
 
-        stats = _build_stats_response(
+        t_stats = _time.perf_counter()
+        resp, stats = _make_rt_response(
             result,
             body,
             tissue,
-            level_val,
-            mode=mode_val,
-            corrections=corr_val,
-            extra={
-                "S_inc": total_power,
-                "distance_m": dist,
-                "n_rt_paths": paths.n_paths,
-                "path_viz": path_viz,
-            },
-            scenario=exposure_scenario,
+            engine_kw,
+            quantities,
+            exposure_scenario,
+            extra,
+            [
+                ("rt_ms", (t_rt - t_route) * 1e3),
+                ("kernel_ms", (t_compute - t_rt) * 1e3),
+                ("compliance_stats_ms", (t_stats - t_compute) * 1e3),
+                ("route_total_ms", (t_stats - t_route) * 1e3),
+            ],
         )
-
-        t_stats = _time.perf_counter()
-
-        # Store compliance result for /api/compliance/summary export
         app.config["_last_compliance_result"] = stats.get("compliance")
-
-        timings = stats.get("timings", {})
-        timings["rt_ms"] = (t_rt - t_route) * 1e3
-        timings["kernel_ms"] = (t_compute - t_rt) * 1e3
-        timings["compliance_stats_ms"] = (t_stats - t_compute) * 1e3
-        timings["route_total_ms"] = (t_stats - t_route) * 1e3
-        stats["timings"] = timings
-        stats["arrays"] = arrays_meta
-
-        resp = Response(bytes(buf), mimetype=_OCTET_STREAM)
-        resp.headers["X-Stats"] = json.dumps(stats)
-        resp.headers["Access-Control-Expose-Headers"] = "X-Stats"
         return resp
 
     @app.route("/api/compute/sionna-rt", methods=["POST"])
@@ -663,11 +705,11 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         except ImportError:
             return jsonify({"error": "Sionna RT not installed. Install with: pip install aegis[sionna]"}), 501
 
-        from aegis.viewer.compute import _transform_body_for_viewer, resolve_skin_model
+        from aegis.viewer.compute import _transform_body_for_viewer
 
         params = request.get_json(silent=True)
         if not isinstance(params, dict):
-            return jsonify({"error": "Invalid or missing JSON body"}), 400
+            return jsonify({"error": _ERR_INVALID_JSON}), 400
 
         body_name = params.get("body_name", cache.get("default_body"))
         with cache_lock:
@@ -676,55 +718,35 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             return jsonify({"error": f"Body '{body_name}' not found"}), 404
         body = entry["body"]
 
-        try:
-            raw_pos = list(params.get("antenna_pos", [5, 0, 1]))
-            if len(raw_pos) != 3:
-                return jsonify({"error": "antenna_pos must be a 3-element array [x, y, z]"}), 400
-            antenna_pos = np.array([float(v) for v in raw_pos])
-        except (TypeError, ValueError):
-            return jsonify({"error": "antenna_pos must be a 3-element numeric array"}), 400
+        antenna_pos, err = _parse_vec3(params, "antenna_pos", [5, 0, 1])
+        if err:
+            return err
 
         scene_path = params.get("scene_path")
-        engine_kw = _parse_mode_or_level(params)
-        power_dbm = params.get("power_dbm", 60.0)
-        rt_cfg_parsed = _parse_rt_config(params)
-        max_bounces = rt_cfg_parsed["max_depth"]
-
-        try:
-            raw_offset = list(params.get("body_offset", [0, 0, 0]))
-            if len(raw_offset) != 3:
-                return jsonify({"error": "body_offset must be a 3-element array [x, y, z]"}), 400
-            body_offset = np.array([float(v) for v in raw_offset])
-        except (TypeError, ValueError):
-            return jsonify({"error": "body_offset must be a 3-element numeric array"}), 400
-
-        try:
-            body_rotation_y = float(params.get("body_rotation_y", 0.0))
-        except (TypeError, ValueError):
-            return jsonify({"error": "body_rotation_y must be a number"}), 400
-
-        quantities = params.get("quantities", ["sab", "sab_4cm2"])
-        exposure_scenario_str = params.get("exposure_scenario", "general_public")
-        try:
-            exposure_scenario = ExposureScenario(exposure_scenario_str)
-        except ValueError:
-            return jsonify({"error": f"Invalid exposure_scenario: {exposure_scenario_str}"}), 400
-
         if not scene_path:
             return jsonify({"error": "Missing 'scene_path'"}), 400
 
-        freq_hz = float(params.get("freq_hz", 28e9))
-        skin_model_name = params.get("skin_model", "itis")
-        try:
-            tissue = resolve_skin_model(skin_model_name, freq_hz)
-        except ValueError as exc:
-            return jsonify({"error": str(exc)}), 400
+        engine_kw = _parse_mode_or_level(params)
+        power_dbm = params.get("power_dbm", 60.0)
+        rt_cfg_parsed = _parse_rt_config(params)
+
+        body_offset, err = _parse_vec3(params, "body_offset")
+        if err:
+            return err
+        body_rotation_y, err = _parse_rotation_y(params)
+        if err:
+            return err
+        tissue, _, err = _parse_freq_and_tissue(params)
+        if err:
+            return err
+        quantities, exposure_scenario, err = _parse_quantities_and_scenario(params)
+        if err:
+            return err
 
         # RT receiver: use configured default center (z=1m) shifted by body offset
         default_bc = np.array(cache["config"]["raytracer"]["default_body_center"])
         body_center = default_bc + body_offset
 
-        # Transform body mesh for dosimetry engine
         transformed_body = _transform_body_for_viewer(body, body_offset, body_rotation_y)
 
         import time as _time
@@ -740,7 +762,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                 tx_positions=antenna_pos[np.newaxis, :] if antenna_pos.ndim == 1 else antenna_pos,
                 rx_position=body_center,
                 freq_hz=tissue.freq_hz,
-                max_bounces=max_bounces,
+                max_bounces=rt_cfg_parsed["max_depth"],
                 tx_power_dbm=power_dbm,
                 return_viz=True,
                 los=rt_cfg_parsed["los"],
@@ -762,56 +784,39 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
         t_rt = _time.perf_counter()
 
-        level_val, mode_val, corr_val = _stats_label(engine_kw)
+        level_val, _, _ = _stats_label(engine_kw)
         if paths.n_paths == 0:
             return _zero_paths_response(body, tissue, level_val or 0)
 
-        from aegis.engine import DosimetryEngine
-
-        engine = DosimetryEngine(tissue)
-        _inject_curvature_H(engine_kw, transformed_body)
-        body_mass = PHANTOM_MASS_KG.get(body.name) if body.name else None
-        result = engine.compute(transformed_body, paths, body_mass=body_mass, **engine_kw)
-
+        result = _run_dosimetry(tissue, transformed_body, paths, engine_kw)
         t_compute = _time.perf_counter()
 
-        buf, arrays_meta = _build_binary_response(result, quantities)
         dist = float(np.linalg.norm(antenna_pos - body_center))
-        total_power = float(np.sum(paths.power))
+        extra = {
+            "S_inc": float(np.sum(paths.power)),
+            "distance_m": dist,
+            "n_rt_paths": paths.n_paths,
+            "path_viz": path_viz,
+            "backend": "sionna",
+        }
 
-        stats = _build_stats_response(
+        t_stats = _time.perf_counter()
+        resp, stats = _make_rt_response(
             result,
             body,
             tissue,
-            level_val,
-            mode=mode_val,
-            corrections=corr_val,
-            extra={
-                "S_inc": total_power,
-                "distance_m": dist,
-                "n_rt_paths": paths.n_paths,
-                "path_viz": path_viz,
-                "backend": "sionna",
-            },
-            scenario=exposure_scenario,
+            engine_kw,
+            quantities,
+            exposure_scenario,
+            extra,
+            [
+                ("rt_ms", (t_rt - t_route) * 1e3),
+                ("kernel_ms", (t_compute - t_rt) * 1e3),
+                ("compliance_stats_ms", (t_stats - t_compute) * 1e3),
+                ("route_total_ms", (t_stats - t_route) * 1e3),
+            ],
         )
-
-        t_stats = _time.perf_counter()
-
-        # Store compliance result for /api/compliance/summary export
         app.config["_last_compliance_result"] = stats.get("compliance")
-
-        timings = stats.get("timings", {})
-        timings["rt_ms"] = (t_rt - t_route) * 1e3
-        timings["kernel_ms"] = (t_compute - t_rt) * 1e3
-        timings["compliance_stats_ms"] = (t_stats - t_compute) * 1e3
-        timings["route_total_ms"] = (t_stats - t_route) * 1e3
-        stats["timings"] = timings
-        stats["arrays"] = arrays_meta
-
-        resp = Response(bytes(buf), mimetype=_OCTET_STREAM)
-        resp.headers["X-Stats"] = json.dumps(stats)
-        resp.headers["Access-Control-Expose-Headers"] = "X-Stats"
         return resp
 
     @app.route("/api/compute/voxel-rt", methods=["POST"])
@@ -822,11 +827,11 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         except ImportError:
             return jsonify({"error": _ERR_NO_DIFFERT}), 501
 
-        from aegis.viewer.compute import _transform_body_for_viewer, resolve_skin_model
+        from aegis.viewer.compute import _transform_body_for_viewer
 
         params = request.get_json(silent=True)
         if not isinstance(params, dict):
-            return jsonify({"error": "Invalid or missing JSON body"}), 400
+            return jsonify({"error": _ERR_INVALID_JSON}), 400
 
         body_name = params.get("body_name", cache.get("default_body"))
         with cache_lock:
@@ -842,50 +847,27 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         if voxel_positions is None or len(voxel_positions) == 0:
             return jsonify({"error": "No voxel data available"}), 400
 
-        try:
-            raw_pos = list(params.get("antenna_pos", [5, 0, 1]))
-            if len(raw_pos) != 3:
-                return jsonify({"error": "antenna_pos must be a 3-element array [x, y, z]"}), 400
-            antenna_pos = np.array([float(v) for v in raw_pos])
-        except (TypeError, ValueError):
-            return jsonify({"error": "antenna_pos must be a 3-element numeric array"}), 400
-
-        try:
-            raw_offset = list(params.get("body_offset", [0, 0, 0]))
-            if len(raw_offset) != 3:
-                return jsonify({"error": "body_offset must be a 3-element array [x, y, z]"}), 400
-            body_offset = np.array([float(v) for v in raw_offset], dtype=np.float64)
-        except (TypeError, ValueError):
-            return jsonify({"error": "body_offset must be a 3-element numeric array"}), 400
-
-        try:
-            body_rotation_y = float(params.get("body_rotation_y", 0.0))
-        except (TypeError, ValueError):
-            return jsonify({"error": "body_rotation_y must be a number"}), 400
+        antenna_pos, err = _parse_vec3(params, "antenna_pos", [5, 0, 1])
+        if err:
+            return err
+        body_offset, err = _parse_vec3(params, "body_offset")
+        if err:
+            return err
+        body_rotation_y, err = _parse_rotation_y(params)
+        if err:
+            return err
 
         engine_kw = _parse_mode_or_level(params)
         power_dbm = params.get("power_dbm", 60.0)
         rt_cfg_parsed = _parse_rt_config(params)
         max_order = rt_cfg_parsed["max_depth"]
 
-        quantities = params.get("quantities", ["sab", "sab_4cm2"])
-        exposure_scenario_str = params.get("exposure_scenario", "general_public")
-        try:
-            exposure_scenario = ExposureScenario(exposure_scenario_str)
-        except ValueError:
-            return jsonify({"error": f"Invalid exposure_scenario: {exposure_scenario_str}"}), 400
-
-        try:
-            freq_hz = float(params.get("freq_hz", 28e9))
-        except (TypeError, ValueError):
-            return jsonify({"error": "freq_hz must be a number"}), 400
-        if freq_hz <= 0:
-            return jsonify({"error": "freq_hz must be positive"}), 400
-        skin_model_name = params.get("skin_model", "itis")
-        try:
-            tissue = resolve_skin_model(skin_model_name, freq_hz)
-        except ValueError as exc:
-            return jsonify({"error": str(exc)}), 400
+        quantities, exposure_scenario, err = _parse_quantities_and_scenario(params)
+        if err:
+            return err
+        tissue, _, err = _parse_freq_and_tissue(params)
+        if err:
+            return err
 
         # Transform body consistently (vertices, centroids, normals all rotated + offset)
         transformed_body = _transform_body_for_viewer(body, body_offset, body_rotation_y)
@@ -917,7 +899,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
             ext_materials = None
             if voxel_materials is not None:
-                ext_materials = [voxel_materials[i] for i in np.where(ext_mask)[0]]
+                ext_materials = [voxel_materials[i] for i in np.nonzero(ext_mask)[0]]
             material_colors = cfg.get("voxels", {}).get("material_colors")
 
             scene = get_or_build_voxel_scene(
@@ -991,57 +973,41 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
         t_rt = _time.perf_counter()
 
-        level_val, mode_val, corr_val = _stats_label(engine_kw)
+        level_val, _, _ = _stats_label(engine_kw)
         if not all_k_hat:
             return _zero_paths_response(body, tissue, level_val or 0)
 
-        from aegis.engine import DosimetryEngine
         from aegis.paths import PropagationPaths
 
         paths = PropagationPaths.from_powers(k_hat=np.array(all_k_hat), power=np.array(all_power))
-        engine = DosimetryEngine(tissue)
-        _inject_curvature_H(engine_kw, transformed_body)
-        body_mass = PHANTOM_MASS_KG.get(body.name) if body.name else None
-
-        result = engine.compute(transformed_body, paths, body_mass=body_mass, **engine_kw)
-
+        result = _run_dosimetry(tissue, transformed_body, paths, engine_kw)
         t_compute = _time.perf_counter()
 
-        buf, arrays_meta = _build_binary_response(result, quantities)
         dist = float(np.linalg.norm(antenna_pos - body_center))
+        extra = {
+            "S_inc": float(np.sum(paths.power)),
+            "distance_m": dist,
+            "n_rt_paths": paths.n_paths,
+            "path_viz": path_viz,
+        }
 
-        stats = _build_stats_response(
+        t_stats = _time.perf_counter()
+        resp, stats = _make_rt_response(
             result,
             body,
             tissue,
-            level_val,
-            mode=mode_val,
-            corrections=corr_val,
-            extra={
-                "S_inc": float(np.sum(all_power)),
-                "distance_m": dist,
-                "n_rt_paths": len(all_k_hat),
-                "path_viz": path_viz,
-            },
-            scenario=exposure_scenario,
+            engine_kw,
+            quantities,
+            exposure_scenario,
+            extra,
+            [
+                ("rt_ms", (t_rt - t_route) * 1e3),
+                ("kernel_ms", (t_compute - t_rt) * 1e3),
+                ("compliance_stats_ms", (t_stats - t_compute) * 1e3),
+                ("route_total_ms", (t_stats - t_route) * 1e3),
+            ],
         )
-
-        t_stats = _time.perf_counter()
-
-        # Store compliance result for /api/compliance/summary export
         app.config["_last_compliance_result"] = stats.get("compliance")
-
-        timings = stats.get("timings", {})
-        timings["rt_ms"] = (t_rt - t_route) * 1e3
-        timings["kernel_ms"] = (t_compute - t_rt) * 1e3
-        timings["compliance_stats_ms"] = (t_stats - t_compute) * 1e3
-        timings["route_total_ms"] = (t_stats - t_route) * 1e3
-        stats["timings"] = timings
-        stats["arrays"] = arrays_meta
-
-        resp = Response(bytes(buf), mimetype=_OCTET_STREAM)
-        resp.headers["X-Stats"] = json.dumps(stats)
-        resp.headers["Access-Control-Expose-Headers"] = "X-Stats"
         return resp
 
     @app.route("/api/compliance/report", methods=["GET"])
