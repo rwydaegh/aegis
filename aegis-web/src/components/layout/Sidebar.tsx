@@ -26,9 +26,9 @@ export default function Sidebar() {
   // Auto-open MIMO accordion when MIMO mode is toggled on
   useEffect(() => {
     if (mimoEnabled) {
-      setOpenSections(prev => prev.includes('mimo-users') ? prev : [...prev, 'mimo-users'])
+      setOpenSections(prev => prev.includes('mimo') ? prev : [...prev, 'mimo'])
     } else {
-      setOpenSections(prev => prev.filter(s => s !== 'mimo-users'))
+      setOpenSections(prev => prev.filter(s => s !== 'mimo'))
     }
   }, [mimoEnabled])
 
@@ -75,16 +75,14 @@ export default function Sidebar() {
               </AccordionContent>
             </AccordionItem>
 
-            {mimoEnabled && (
-              <AccordionItem value="mimo-users" className="border-b border-border px-3">
-                <AccordionTrigger className="text-sm font-medium py-3">MIMO Users</AccordionTrigger>
-                <AccordionContent>
-                  <div className="py-2">
-                    <MIMOPanel />
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            )}
+            <AccordionItem value="mimo" className="border-b border-border px-3">
+              <AccordionTrigger className="text-sm font-medium py-3">MIMO</AccordionTrigger>
+              <AccordionContent>
+                <div className="py-2">
+                  <MIMOPanel />
+                </div>
+              </AccordionContent>
+            </AccordionItem>
 
             {!mimoEnabled && (
               <AccordionItem value="phantom" className="border-b border-border px-3">

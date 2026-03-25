@@ -1,10 +1,6 @@
 import { useEffect } from 'react'
 import { useMIMOStore } from '@/stores/mimo'
 
-const MOVE_STEP = 0.2
-const MOVE_STEP_SHIFT = 1.0
-const ROTATION_STEP = Math.PI / 12
-
 export function useMIMOKeyboard() {
   const enabled = useMIMOStore(s => s.enabled)
 
@@ -18,23 +14,6 @@ export function useMIMOKeyboard() {
       if (!store.enabled) return
       const userId = store.controlledUserId
       if (!userId) return
-
-      const user = store.users.get(userId)
-      if (!user) return
-
-      const step = e.shiftKey ? MOVE_STEP_SHIFT : MOVE_STEP
-      const [x, y, z] = user.position
-
-      if (e.code === 'KeyW') { e.preventDefault(); store.moveUser(userId, [x, y, z - step]); return }
-      if (e.code === 'KeyS') { e.preventDefault(); store.moveUser(userId, [x, y, z + step]); return }
-      if (e.code === 'KeyA') { e.preventDefault(); store.moveUser(userId, [x - step, y, z]); return }
-      if (e.code === 'KeyD') { e.preventDefault(); store.moveUser(userId, [x + step, y, z]); return }
-
-      if (e.code === 'KeyR') {
-        e.preventDefault()
-        store.setUserOrientation(userId, user.orientation + ROTATION_STEP)
-        return
-      }
 
       if (e.code === 'Tab') {
         e.preventDefault()

@@ -1,10 +1,12 @@
 import { useMemo, useRef, useEffect } from 'react'
 import * as THREE from 'three'
 import type { ArrayConfig } from '@/api/types'
+import { jetColor, gainTFromLinear } from '@/lib/colormap'
 
 interface AntennaArrayProps {
   config: ArrayConfig
   freqHz: number
+  showPattern?: boolean
 }
 
 const ELEMENT_COLOR = new THREE.Color(0.8, 0.2, 0.2)
@@ -14,7 +16,7 @@ const ARROW_COLOR = new THREE.Color(1, 0.4, 0)
 const MIN_ELEMENT_RADIUS = 0.005
 const MAX_ELEMENT_RADIUS = 0.03
 
-export default function AntennaArray({ config, freqHz }: AntennaArrayProps) {
+export default function AntennaArray({ config, freqHz, showPattern }: AntennaArrayProps) {
   const meshRef = useRef<THREE.InstancedMesh>(null)
   const nElements = config.n_h * config.n_v
 
@@ -48,6 +50,67 @@ export default function AntennaArray({ config, freqHz }: AntennaArrayProps) {
     }
     return positions
   }, [config.n_h, config.n_v, config.d_h_wavelengths, config.d_v_wavelengths, config.broadside, freqHz])
+
+  const patternGeo = useMemo(() => {
+    if (localPositions.length === 0) return null
+
+    const k0 = 2 * Math.PI * freqHz / 3e8
+    const detail = 5
+    const base = new THREE.IcosahedronGeometry(1, detail)
+    const posAttr = base.attributes.position as THREE.BufferAttribute
+    const nV = posAttr.count
+
+    const gains = new Float32Array(nV)
+    const dirs: THREE.Vector3[] = []
+    let gMax = 0
+
+    for (let i = 0; i < nV; i++) {
+      const dir = new THREE.Vector3(
+        posAttr.getX(i), posAttr.getY(i), posAttr.getZ(i)
+      ).normalize()
+      dirs.push(dir)
+
+      // Array factor: AF = |sum_m exp(j * k0 * r_m . dir)|^2
+      let reSum = 0, imSum = 0
+      for (const pos of localPositions) {
+        const phase = k0 * pos.dot(dir)
+        reSum += Math.cos(phase)
+        imSum += Math.sin(phase)
+      }
+      const gain = reSum * reSum + imSum * imSum
+      gains[i] = gain
+      if (gain > gMax) gMax = gain
+    }
+    if (gMax < 1e-12) gMax = 1
+
+    const radius = 0.6
+    const lobeGamma = 0.42
+    const dynDb = 36
+    const colors = new Float32Array(nV * 3)
+
+    for (let i = 0; i < nV; i++) {
+      const gn = gains[i] / gMax
+      const rr = radius * Math.max(gn, 1e-9) ** lobeGamma
+      const d = dirs[i]
+      posAttr.setXYZ(i, d.x * rr, d.y * rr, d.z * rr)
+
+      const t = gainTFromLinear(gains[i], gMax, dynDb)
+      const [cr, cg, cb] = jetColor(t)
+      colors[i * 3] = cr
+      colors[i * 3 + 1] = cg
+      colors[i * 3 + 2] = cb
+    }
+
+    posAttr.needsUpdate = true
+    base.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+    base.computeVertexNormals()
+    return base
+  }, [localPositions, freqHz])
+
+  // Dispose old geometry on recompute to prevent GPU memory leak
+  useEffect(() => {
+    return () => { patternGeo?.dispose() }
+  }, [patternGeo])
 
   // Update instanced mesh transforms
   useEffect(() => {
@@ -122,6 +185,25 @@ export default function AntennaArray({ config, freqHz }: AntennaArrayProps) {
       <arrowHelper
         args={[arrowDir, new THREE.Vector3(0, 0, 0), 0.4, ARROW_COLOR.getHex(), 0.1, 0.06]}
       />
+
+      {showPattern && patternGeo && (
+        <group>
+          <mesh geometry={patternGeo}>
+            <meshStandardMaterial
+              vertexColors
+              transparent
+              opacity={0.85}
+              metalness={0.12}
+              roughness={0.5}
+              side={THREE.DoubleSide}
+            />
+          </mesh>
+          <mesh>
+            <sphereGeometry args={[0.04, 16, 16]} />
+            <meshStandardMaterial color="#aa2222" emissive="#441010" emissiveIntensity={0.6} />
+          </mesh>
+        </group>
+      )}
     </group>
   )
 }

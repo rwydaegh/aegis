@@ -1,10 +1,11 @@
-import { useRef } from 'react'
+import { useRef, useEffect } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useSimulationStore } from '@/stores/simulation'
 import { useSceneStore } from '@/stores/scene'
 import { stepPhysics, type PhysicsState, type PhysicsConfig } from '@/lib/physics'
 import { useKeyboard } from './useKeyboard'
+import { useMIMOStore } from '@/stores/mimo'
 
 export function usePhysics() {
   const keys = useKeyboard()
@@ -18,6 +19,22 @@ export function usePhysics() {
     angularVelocity: 0,
     onGround: true,
   })
+
+  const controlledUserId = useMIMOStore(s => s.controlledUserId)
+
+  useEffect(() => {
+    if (!controlledUserId) return
+    const user = useMIMOStore.getState().users.get(controlledUserId)
+    if (user) {
+      physicsState.current = {
+        position: [...user.position],
+        velocity: [0, 0, 0],
+        rotationY: user.orientation,
+        angularVelocity: 0,
+        onGround: true,
+      }
+    }
+  }, [controlledUserId])
 
   useFrame((_, dt) => {
     const config = useSceneStore.getState().viewerConfig
@@ -65,15 +82,30 @@ export function usePhysics() {
 
     physicsState.current = newState
 
-    // Update stores
-    const simStore = useSimulationStore.getState()
-    const [px, py, pz] = newState.position
-    const [ox, oy, oz] = simStore.bodyOffset
-    if (px !== ox || py !== oy || pz !== oz) {
-      simStore.setBodyOffset(newState.position)
-    }
-    if (newState.rotationY !== simStore.bodyRotationY) {
-      simStore.setBodyRotationY(newState.rotationY)
+    // Write to MIMO store or simulation store depending on mode
+    const mimoStore = useMIMOStore.getState()
+    if (mimoStore.enabled && mimoStore.controlledUserId) {
+      const user = mimoStore.users.get(mimoStore.controlledUserId)
+      if (user) {
+        const [px, py, pz] = newState.position
+        const [ox, oy, oz] = user.position
+        if (px !== ox || py !== oy || pz !== oz) {
+          mimoStore.moveUser(mimoStore.controlledUserId, newState.position)
+        }
+        if (newState.rotationY !== user.orientation) {
+          mimoStore.setUserOrientation(mimoStore.controlledUserId, newState.rotationY)
+        }
+      }
+    } else {
+      const simStore = useSimulationStore.getState()
+      const [px, py, pz] = newState.position
+      const [ox, oy, oz] = simStore.bodyOffset
+      if (px !== ox || py !== oy || pz !== oz) {
+        simStore.setBodyOffset(newState.position)
+      }
+      if (newState.rotationY !== simStore.bodyRotationY) {
+        simStore.setBodyRotationY(newState.rotationY)
+      }
     }
   })
 }
