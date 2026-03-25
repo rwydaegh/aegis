@@ -148,6 +148,7 @@ export function useDosimetry() {
           complianceMs: t?.compliance_stats_ms ?? 0,
           networkMs: Math.max(0, networkMs),
           avgCached: (t?.avg_build_G_4cm2_ms ?? 999) < 1,
+          gpuBackend: stats.gpu_backend ?? null,
         })
       })
       .catch(err => {

@@ -65,6 +65,15 @@ export default function StatusBar() {
             <span className="text-foreground/60">transfer</span>
             <span>{formatMs(lastComputeTiming.networkMs)}</span>
           </div>
+          {lastComputeTiming.gpuBackend && (
+            <div className="flex justify-between gap-4">
+              <span className="text-foreground/60">gpu</span>
+              <span className={lastComputeTiming.gpuBackend === 'cpu'
+                ? 'text-yellow-500' : 'text-green-500'}>
+                {lastComputeTiming.gpuBackend}
+              </span>
+            </div>
+          )}
         </div>
       )}
 
