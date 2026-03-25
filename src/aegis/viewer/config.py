@@ -192,8 +192,8 @@ DEFAULTS: dict = {
             {"value": 20, "label": "20 (rich scatter)"},
         ],
         "power_input": {
-            "min": 0,
-            "max": 60,
+            "min": -30,
+            "max": 80,
             "step": 1,
         },
         "synthetic_paths": {
