@@ -275,9 +275,19 @@ def compute_mimo_scene(
     )
 
     # Step 3: per-user dosimetry
+    from aegis.engine import coherent_sinc
+
     per_user_p_abs = []
     for user in scene.users:
         sab = compute_multistream_sab(user.G_tilde, W)
+        sinc = coherent_sinc(
+            user.body.centroids,
+            user.paths.k_hat,
+            user.paths.psi,
+            user.paths.element_index,
+            W,
+            scene.freq_hz,
+        )
 
         result = engine._build_result(
             user.body,
@@ -286,6 +296,7 @@ def compute_mimo_scene(
             fidelity_level=7,
             Q=user.Q,
             freq_hz=scene.freq_hz,
+            sinc=sinc,
         )
         user.result = result
         per_user_p_abs.append(result.p_abs)
@@ -433,12 +444,22 @@ def compute_mimo_scene_with_bodies(
     timings["precoder_ms"] = (time.perf_counter() - t_precoder_start) * 1e3
 
     # Phase 3: per-user Sab and engine compliance
+    from aegis.engine import coherent_sinc
+
     t_sab_start = time.perf_counter()
     engine = DosimetryEngine(tissue)
 
     for user in scene.users:
         sab = compute_multistream_sab(user.G_tilde, W)
         user._sab_raw = sab
+        sinc = coherent_sinc(
+            user.body.centroids,
+            user.paths.k_hat,
+            user.paths.psi,
+            user.paths.element_index,
+            W,
+            freq_hz,
+        )
 
         # Build result directly from multi-stream SAB (total exposure from all beams)
         # This matches compute_mimo_scene and gives consistent heatmap + stats
@@ -449,6 +470,7 @@ def compute_mimo_scene_with_bodies(
             fidelity_level=level,
             Q=user.Q,
             freq_hz=freq_hz,
+            sinc=sinc,
         )
         user.result = result
 

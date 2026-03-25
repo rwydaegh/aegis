@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from aegis._array_backend import JAX_AVAILABLE
+from aegis.constants import C_0, Z_0
 from aegis.geometry.mesh import BodyMesh
 from aegis.paths import PropagationPaths
 from aegis.result import DosimetryResult
@@ -33,6 +34,43 @@ def _to_numpy(arr):
 
         return _np.asarray(arr)
     return arr
+
+
+def coherent_sinc(centroids, k_hat, psi, element_index, x, freq_hz):
+    """Coherent incident power density from a beamformed field.
+
+    Computes |E(r)|^2 / (2*Z_0) where E = G(r) @ x is the coherent
+    free-space field at each triangle centroid. For multi-stream W,
+    sums power over streams (uncorrelated data symbols).
+
+    Parameters
+    ----------
+    centroids : (M, 3)
+    k_hat : (N, 3)
+    psi : (N, 3) complex, with element gain and steering phase baked in
+    element_index : (N,)
+    x : (M_ant,) single precoder or (M_ant, K) multi-stream precoding matrix
+    freq_hz : float
+
+    Returns
+    -------
+    sinc : (M,) incident power density [W/m^2]
+    """
+    k0 = 2 * np.pi * freq_hz / C_0
+    phase = np.exp(-1j * k0 * (centroids @ k_hat.T))  # (M, N)
+
+    if x.ndim == 1:
+        w_psi = psi * x[element_index][:, None]  # (N, 3)
+        E = phase @ w_psi  # (M, 3)
+        return np.sum(np.abs(E) ** 2, axis=1) / (2 * Z_0)
+
+    # Multi-stream: sum power over K streams (uncorrelated symbols)
+    sinc_out = np.zeros(centroids.shape[0])
+    for k in range(x.shape[1]):
+        w_psi = psi * x[element_index, k][:, None]  # (N, 3)
+        E = phase @ w_psi  # (M, 3)
+        sinc_out += np.sum(np.abs(E) ** 2, axis=1)
+    return sinc_out / (2 * Z_0)
 
 
 class DosimetryEngine:
@@ -106,17 +144,21 @@ class DosimetryEngine:
         x_star: np.ndarray | None = None,
         spatial_averaging: bool = True,
         _timings: dict | None = None,
+        sinc: np.ndarray | None = None,
     ) -> DosimetryResult:
         """Build a DosimetryResult from raw sab with averaging and derived quantities."""
         p_abs = float(np.sum(sab * body.areas))
         sar_wb = p_abs / body_mass if body_mass is not None else None
         effective_freq_hz = freq_hz if freq_hz is not None else self.freq_hz
 
-        # Per-triangle incident power density: S_inc_m = sum_n power_n * ReLU(n_hat_m . (-k_hat_n))
-        from aegis.kernels._base import incidence_geometry
+        # Per-triangle incident power density.
+        # For coherent levels the caller provides the coherent sinc directly;
+        # for incoherent levels we compute the standard incoherent sum.
+        if sinc is None:
+            from aegis.kernels._base import incidence_geometry
 
-        _, mu_plus = incidence_geometry(body.normals, _to_numpy(paths.k_hat))
-        sinc = _to_numpy(mu_plus) @ _to_numpy(paths.power)
+            _, mu_plus = incidence_geometry(body.normals, _to_numpy(paths.k_hat))
+            sinc = _to_numpy(mu_plus) @ _to_numpy(paths.power)
 
         sab_averaged = None
         sinc_averaged = None
@@ -659,6 +701,18 @@ class DosimetryEngine:
         if x_star is not None:
             x_star = _to_numpy(x_star)
 
+        # Coherent incident power density: use the actual precoder that
+        # produced sab, not the incoherent per-path power sum.
+        x_for_sinc = _to_numpy(x_star if x_star is not None else precoder.x)
+        sinc_coherent = coherent_sinc(
+            _to_numpy(body.centroids),
+            _to_numpy(paths.k_hat),
+            _to_numpy(paths.psi),
+            np.asarray(paths.element_index),
+            x_for_sinc,
+            self.freq_hz,
+        )
+
         return self._build_result(
             body,
             paths,
@@ -673,6 +727,7 @@ class DosimetryEngine:
             eigenvalues=eigenvalues,
             x_star=x_star,
             spatial_averaging=spatial_averaging,
+            sinc=sinc_coherent,
         )
 
     def _dispatch(
