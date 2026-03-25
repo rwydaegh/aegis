@@ -70,13 +70,12 @@ export default function ScenePanel() {
   // Show Sionna scene selector even when location loading is unavailable
   const hasScenes = scenes.length > 0
   const hasLocation = caps?.has_location_loader
+  const hasApiKey = caps?.has_api_key
 
-  if (!hasScenes && !hasLocation) {
+  if (!hasScenes && !hasLocation && !hasApiKey) {
     return (
       <p className="text-xs text-muted-foreground">
-        {!caps?.has_api_key
-          ? 'Set GOOGLE_API_KEY env var to enable location loading.'
-          : 'No scenes or location loader available.'}
+        Set GOOGLE_API_KEY env var to enable location loading.
       </p>
     )
   }
@@ -130,7 +129,7 @@ export default function ScenePanel() {
     <div>
       {hasScenes && <SionnaSceneSelector />}
 
-      {hasLocation && (
+      {(hasLocation || hasApiKey) && (
         <>
           <label className={labelClass}>Location</label>
           <input type="text" className={inputClass} value={location}
@@ -177,12 +176,6 @@ export default function ScenePanel() {
             </div>
           )}
         </>
-      )}
-
-      {!hasLocation && !hasScenes && (
-        <p className="text-xs text-muted-foreground">
-          Set GOOGLE_API_KEY env var to enable location loading.
-        </p>
       )}
 
       <div className="mt-4 pt-3 border-t border-border">

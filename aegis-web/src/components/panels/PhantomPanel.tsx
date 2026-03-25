@@ -16,6 +16,8 @@ function formatLabel(name: string): string {
   return `${cap} (${meta.age}y, ${meta.sex}, ${meta.mass_kg} kg)`
 }
 
+const PHANTOM_ORDER = ['duke', 'ella', 'eartha', 'thelonious']
+
 export default function PhantomPanel() {
   const bodyName = useSceneStore((s) => s.bodyName)
   const setBodyName = useSceneStore((s) => s.setBodyName)
@@ -30,6 +32,12 @@ export default function PhantomPanel() {
     setBodyName(name)
   }
 
+  const sortedBodies = [...(caps.bodies || [])].sort((a, b) => {
+    const ai = PHANTOM_ORDER.indexOf(a.toLowerCase())
+    const bi = PHANTOM_ORDER.indexOf(b.toLowerCase())
+    return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi)
+  })
+
   const selectClass =
     'w-full bg-background border border-border rounded px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring'
 
@@ -41,7 +49,7 @@ export default function PhantomPanel() {
         value={bodyName}
         onChange={(e) => handleChange(e.target.value)}
       >
-        {caps.bodies.map((b) => (
+        {sortedBodies.map((b) => (
           <option key={b} value={b}>
             {formatLabel(b)}
           </option>

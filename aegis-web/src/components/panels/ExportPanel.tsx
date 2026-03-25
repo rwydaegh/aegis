@@ -57,12 +57,25 @@ export default function ExportPanel() {
     }
   }
 
-  const handleScreenshot = () => {
-    const canvas = document.querySelector('canvas')
-    if (!canvas) return
-    canvas.toBlob(blob => {
-      if (blob) downloadBlob(blob, 'aegis_screenshot.png')
-    })
+  const handleScreenshot = async () => {
+    try {
+      const html2canvas = (await import('html2canvas')).default
+      const canvas = await html2canvas(document.body, {
+        useCORS: true,
+        scale: window.devicePixelRatio || 1,
+        backgroundColor: null,
+      })
+      canvas.toBlob(blob => {
+        if (blob) downloadBlob(blob, 'aegis_screenshot.png')
+      })
+    } catch {
+      // Fallback to canvas-only screenshot
+      const canvas = document.querySelector('canvas')
+      if (!canvas) return
+      canvas.toBlob(blob => {
+        if (blob) downloadBlob(blob, 'aegis_screenshot.png')
+      })
+    }
   }
 
   return (
