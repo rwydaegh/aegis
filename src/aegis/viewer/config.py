@@ -221,6 +221,30 @@ DEFAULTS: dict = {
         "level0_D_max": 4.0,
         "convex_body_area_factor": 1.0,
     },
+    "mimo": {
+        "enabled": False,
+        "array": {
+            "type": "upa",
+            "n_h": 4,
+            "n_v": 4,
+            "d_h_wavelengths": 0.5,
+            "d_v_wavelengths": 0.5,
+            "position": [5.0, 0.0, 3.0],
+            "broadside": [-1.0, 0.0, 0.0],
+        },
+        "users": [
+            {
+                "id": "user_0",
+                "phantom": "thelonious",
+                "position": [0.0, 0.0, 0.0],
+                "orientation": 0.0,
+                "device_offset": [0.25, 0.0, 1.4],
+            },
+        ],
+        "precoder": "mrt",
+        "exposure_budget_mw": 100,
+        "max_users": 8,
+    },
     "colormap": {
         "name": "inferno",
         "stops": [
