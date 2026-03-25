@@ -585,21 +585,53 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
         t_route = _time.perf_counter()
 
-        # Run DiffeRT
+        # Try Modal GPU first, fall back to local CPU
+        gpu_backend = None
+        modal_result = None
         try:
-            paths, path_viz = compute_paths_differt(
-                scene_path,
-                tx_pos=antenna_pos,
-                rx_pos=body_center,
+            from pathlib import Path as _Path
+
+            from aegis.viewer.modal_proxy import trace_differt as _modal_trace_differt
+
+            scene_xml = _Path(scene_path).read_text()
+            modal_result = _modal_trace_differt(
+                scene_xml=scene_xml,
+                tx_pos=antenna_pos.tolist(),
+                rx_pos=body_center.tolist(),
                 max_order=max_order,
-                freq_hz=tissue.freq_hz,
+                freq_hz=freq_hz,
                 tx_power_dbm=power_dbm,
                 reflection_loss_per_order=rt_cfg_parsed["reflection_loss_per_order"],
                 method=rt_cfg_parsed["method"],
                 num_rays=rt_cfg_parsed["rays_per_source"],
             )
         except Exception as e:
-            return jsonify({"error": f"Ray tracing failed: {e}"}), 500
+            logger.debug("Modal DiffeRT proxy attempt failed: %s", e)
+
+        if modal_result is not None:
+            from aegis.paths import PropagationPaths
+
+            paths = PropagationPaths.from_dict(modal_result["paths"])
+            path_viz = modal_result["path_viz"]
+            gpu_backend = modal_result.get("gpu_backend")
+            rt_ms = modal_result.get("timings", {}).get("trace_ms")
+        else:
+            # Local CPU fallback via DiffeRT
+            try:
+                paths, path_viz = compute_paths_differt(
+                    scene_path,
+                    tx_pos=antenna_pos,
+                    rx_pos=body_center,
+                    max_order=max_order,
+                    freq_hz=tissue.freq_hz,
+                    tx_power_dbm=power_dbm,
+                    reflection_loss_per_order=rt_cfg_parsed["reflection_loss_per_order"],
+                    method=rt_cfg_parsed["method"],
+                    num_rays=rt_cfg_parsed["rays_per_source"],
+                )
+            except Exception as e:
+                return jsonify({"error": f"Ray tracing failed: {e}"}), 500
+            rt_ms = None
 
         t_rt = _time.perf_counter()
 
@@ -621,6 +653,15 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         dist = float(np.linalg.norm(antenna_pos - body_center))
         total_power = float(np.sum(paths.power))
 
+        extra = {
+            "S_inc": total_power,
+            "distance_m": dist,
+            "n_rt_paths": paths.n_paths,
+            "path_viz": path_viz,
+        }
+        if gpu_backend is not None:
+            extra["gpu_backend"] = gpu_backend
+
         stats = _build_stats_response(
             result,
             body,
@@ -628,12 +669,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             level_val,
             mode=mode_val,
             corrections=corr_val,
-            extra={
-                "S_inc": total_power,
-                "distance_m": dist,
-                "n_rt_paths": paths.n_paths,
-                "path_viz": path_viz,
-            },
+            extra=extra,
             scenario=exposure_scenario,
         )
 
@@ -643,7 +679,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         app.config["_last_compliance_result"] = stats.get("compliance")
 
         timings = stats.get("timings", {})
-        timings["rt_ms"] = (t_rt - t_route) * 1e3
+        timings["rt_ms"] = rt_ms if rt_ms is not None else (t_rt - t_route) * 1e3
         timings["kernel_ms"] = (t_compute - t_rt) * 1e3
         timings["compliance_stats_ms"] = (t_stats - t_compute) * 1e3
         timings["route_total_ms"] = (t_stats - t_route) * 1e3
@@ -657,12 +693,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
     @app.route("/api/compute/sionna-rt", methods=["POST"])
     def api_compute_sionna_rt():
-        """Compute dosimetry using Sionna RT ray-traced paths."""
-        try:
-            from aegis.integration.sionna import paths_from_sionna_scene
-        except ImportError:
-            return jsonify({"error": "Sionna RT not installed. Install with: pip install aegis[sionna]"}), 501
-
+        """Compute dosimetry using Sionna RT ray-traced paths (via Modal GPU)."""
         from aegis.viewer.compute import _transform_body_for_viewer, resolve_skin_model
 
         params = request.get_json(silent=True)
@@ -731,34 +762,43 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
         t_route = _time.perf_counter()
 
-        try:
-            import sionna.rt
+        # Call Modal GPU for Sionna RT (no local CPU fallback)
+        from aegis.viewer.modal_proxy import trace_sionna_bundled as _modal_trace_sionna
 
-            scene = sionna.rt.load_scene(scene_path)
-            paths, path_viz = paths_from_sionna_scene(
-                scene,
-                tx_positions=antenna_pos[np.newaxis, :] if antenna_pos.ndim == 1 else antenna_pos,
-                rx_position=body_center,
-                freq_hz=tissue.freq_hz,
-                max_bounces=max_bounces,
-                tx_power_dbm=power_dbm,
-                return_viz=True,
-                los=rt_cfg_parsed["los"],
-                specular_reflection=rt_cfg_parsed["specular_reflection"],
-                diffuse_reflection=rt_cfg_parsed["diffuse_reflection"],
-                refraction=rt_cfg_parsed["refraction"],
-                diffraction=rt_cfg_parsed["diffraction"],
-                edge_diffraction=rt_cfg_parsed["edge_diffraction"],
-                diffraction_lit_region=rt_cfg_parsed["diffraction_lit_region"],
-                samples_per_src=rt_cfg_parsed["rays_per_source"],
-                max_num_paths_per_src=rt_cfg_parsed["max_paths_per_source"],
-                synthetic_array=rt_cfg_parsed["synthetic_array"],
-                seed=rt_cfg_parsed["seed"],
-            )
-        except ImportError:
-            return jsonify({"error": "Sionna RT not installed"}), 501
-        except Exception as e:
-            return jsonify({"error": f"Sionna ray tracing failed: {e}"}), 500
+        scene_name = scene_path.rsplit(".", 1)[-1]
+        rt_config_dict = {
+            "los": rt_cfg_parsed["los"],
+            "specular_reflection": rt_cfg_parsed["specular_reflection"],
+            "diffuse_reflection": rt_cfg_parsed["diffuse_reflection"],
+            "refraction": rt_cfg_parsed["refraction"],
+            "diffraction": rt_cfg_parsed["diffraction"],
+            "edge_diffraction": rt_cfg_parsed["edge_diffraction"],
+            "diffraction_lit_region": rt_cfg_parsed["diffraction_lit_region"],
+            "samples_per_src": rt_cfg_parsed["rays_per_source"],
+            "max_num_paths_per_src": rt_cfg_parsed["max_paths_per_source"],
+            "synthetic_array": rt_cfg_parsed["synthetic_array"],
+            "seed": rt_cfg_parsed["seed"],
+        }
+
+        modal_result = _modal_trace_sionna(
+            scene_name=scene_name,
+            tx_pos=antenna_pos.tolist(),
+            rx_pos=body_center.tolist(),
+            max_bounces=max_bounces,
+            freq_hz=freq_hz,
+            tx_power_dbm=power_dbm,
+            rt_config=rt_config_dict,
+        )
+
+        if modal_result is None:
+            return jsonify({"error": "Sionna RT requires GPU. Modal unavailable."}), 503
+
+        from aegis.paths import PropagationPaths
+
+        paths = PropagationPaths.from_dict(modal_result["paths"])
+        path_viz = modal_result["path_viz"]
+        gpu_backend = modal_result.get("gpu_backend")
+        rt_ms = modal_result.get("timings", {}).get("trace_ms")
 
         t_rt = _time.perf_counter()
 
@@ -779,6 +819,16 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         dist = float(np.linalg.norm(antenna_pos - body_center))
         total_power = float(np.sum(paths.power))
 
+        extra = {
+            "S_inc": total_power,
+            "distance_m": dist,
+            "n_rt_paths": paths.n_paths,
+            "path_viz": path_viz,
+            "backend": "sionna",
+        }
+        if gpu_backend is not None:
+            extra["gpu_backend"] = gpu_backend
+
         stats = _build_stats_response(
             result,
             body,
@@ -786,13 +836,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             level_val,
             mode=mode_val,
             corrections=corr_val,
-            extra={
-                "S_inc": total_power,
-                "distance_m": dist,
-                "n_rt_paths": paths.n_paths,
-                "path_viz": path_viz,
-                "backend": "sionna",
-            },
+            extra=extra,
             scenario=exposure_scenario,
         )
 
@@ -802,7 +846,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         app.config["_last_compliance_result"] = stats.get("compliance")
 
         timings = stats.get("timings", {})
-        timings["rt_ms"] = (t_rt - t_route) * 1e3
+        timings["rt_ms"] = rt_ms if rt_ms is not None else (t_rt - t_route) * 1e3
         timings["kernel_ms"] = (t_compute - t_rt) * 1e3
         timings["compliance_stats_ms"] = (t_stats - t_compute) * 1e3
         timings["route_total_ms"] = (t_stats - t_route) * 1e3
@@ -816,12 +860,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
     @app.route("/api/compute/voxel-rt", methods=["POST"])
     def api_compute_voxel_rt():
-        """Compute dosimetry using DiffeRT on the voxel environment geometry."""
-        try:
-            from aegis.viewer.raytracer import get_or_build_voxel_scene
-        except ImportError:
-            return jsonify({"error": _ERR_NO_DIFFERT}), 501
-
+        """Compute dosimetry using Sionna RT on the voxel environment geometry (via Modal GPU)."""
         from aegis.viewer.compute import _transform_body_for_viewer, resolve_skin_model
 
         params = request.get_json(silent=True)
@@ -895,14 +934,13 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
         t_route = _time.perf_counter()
 
-        # Build or get cached voxel DiffeRT scene
+        # Prepare voxel mesh data for Modal
         max_rt_triangles = cfg["raytracer"]["max_rt_triangles"]
         try:
             from aegis.viewer.scene_data import extract_exterior, prepare_for_raytracing
 
             z_up_pos, grid_coords, vs = prepare_for_raytracing(voxel_positions, voxel_sizes)
             ext_mask = extract_exterior(grid_coords)
-            ext_grid = grid_coords[ext_mask]
             ext_pos = z_up_pos[ext_mask]
 
             # Each exterior voxel face is 2 triangles, up to 6 faces per voxel
@@ -918,87 +956,66 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             ext_materials = None
             if voxel_materials is not None:
                 ext_materials = [voxel_materials[i] for i in np.where(ext_mask)[0]]
-            material_colors = cfg.get("voxels", {}).get("material_colors")
-
-            scene = get_or_build_voxel_scene(
-                ext_pos,
-                ext_grid,
-                voxel_size=vs,
-                materials=ext_materials,
-                material_colors=material_colors,
-            )
         except Exception as e:
             return jsonify({"error": f"Voxel mesh build failed: {e}"}), 500
 
-        # Run DiffeRT on the voxel scene
-        try:
-            import equinox as eqx
-            import jax.numpy as jnp
+        # Call Modal GPU for Sionna RT on voxel geometry
+        import hashlib
 
-            from aegis.viewer.raytracer import isotropic_incident_power_density
+        from aegis.viewer.modal_proxy import trace_sionna_voxel as _modal_trace_voxel
 
-            scene_with_tx_rx = eqx.tree_at(lambda s: s.transmitters, scene, jnp.array([antenna_pos.tolist()]))
-            scene_with_tx_rx = eqx.tree_at(lambda s: s.receivers, scene_with_tx_rx, jnp.array([body_center.tolist()]))
+        voxel_hash = hashlib.md5(np.asarray(voxel_positions).tobytes()).hexdigest()[:12]
+        scene_key = f"voxel_{voxel_hash}"
 
-            all_k_hat = []
-            all_power = []
-            path_viz = []
+        scene_data = {
+            "vertices": ext_pos.tolist(),
+            "triangles": [],  # triangulation handled on Modal side
+            "materials": ext_materials or [],
+        }
 
-            rt_cfg = cfg["raytracer"]
-            tx_power_w = 10 ** ((power_dbm - 30) / 10)
-            d_clamp = float(rt_cfg["fspl_distance_clamp"])
+        rt_config_dict = {
+            "los": rt_cfg_parsed["los"],
+            "specular_reflection": rt_cfg_parsed["specular_reflection"],
+            "diffuse_reflection": rt_cfg_parsed["diffuse_reflection"],
+            "refraction": rt_cfg_parsed["refraction"],
+            "diffraction": rt_cfg_parsed["diffraction"],
+            "edge_diffraction": rt_cfg_parsed["edge_diffraction"],
+            "diffraction_lit_region": rt_cfg_parsed["diffraction_lit_region"],
+            "samples_per_src": rt_cfg_parsed["rays_per_source"],
+            "max_num_paths_per_src": rt_cfg_parsed["max_paths_per_source"],
+            "synthetic_array": rt_cfg_parsed["synthetic_array"],
+            "seed": rt_cfg_parsed["seed"],
+        }
 
-            for order in range(max_order + 1):
-                try:
-                    paths_result = scene_with_tx_rx.compute_paths(order=order)
-                except Exception as e:
-                    logger.warning("Bounce order %d failed, skipping: %s", order, e)
-                    continue
+        modal_result = _modal_trace_voxel(
+            scene_key=scene_key,
+            scene_data=scene_data,
+            tx_pos=antenna_pos.tolist(),
+            rx_pos=body_center.tolist(),
+            max_bounces=max_order,
+            freq_hz=freq_hz,
+            tx_power_dbm=power_dbm,
+            rt_config=rt_config_dict,
+        )
 
-                verts = np.array(paths_result.vertices)
-                mask = np.array(paths_result.mask)
-                flat_v = verts.reshape(-1, verts.shape[-2], verts.shape[-1])
-                flat_m = mask.flatten()
+        if modal_result is None:
+            return jsonify({"error": "GPU unavailable for voxel ray tracing"}), 503
 
-                for i in range(len(flat_v)):
-                    if i >= len(flat_m) or not flat_m[i]:
-                        continue
-                    pv = flat_v[i]
-                    segments = np.diff(pv, axis=0)
-                    seg_lens = np.linalg.norm(segments, axis=1)
-                    total_len = float(np.sum(seg_lens))
-                    if total_len < 1e-6:
-                        continue
+        from aegis.paths import PropagationPaths
 
-                    k_hat = segments[-1] / np.linalg.norm(segments[-1])
-                    all_k_hat.append(k_hat)
-
-                    S_inc = isotropic_incident_power_density(tx_power_w, total_len, min_distance_m=d_clamp) * (
-                        rt_cfg_parsed["reflection_loss_per_order"] ** order
-                    )
-                    all_power.append(S_inc)
-
-                    path_viz.append(
-                        {
-                            "vertices": pv.tolist(),
-                            "order": order,
-                            "length": total_len,
-                        }
-                    )
-
-        except Exception as e:
-            return jsonify({"error": f"Voxel RT failed: {e}"}), 500
+        paths = PropagationPaths.from_dict(modal_result["paths"])
+        path_viz = modal_result["path_viz"]
+        gpu_backend = modal_result.get("gpu_backend")
+        rt_ms = modal_result.get("timings", {}).get("trace_ms")
 
         t_rt = _time.perf_counter()
 
         level_val, mode_val, corr_val = _stats_label(engine_kw)
-        if not all_k_hat:
+        if paths.n_paths == 0:
             return _zero_paths_response(body, tissue, level_val or 0)
 
         from aegis.engine import DosimetryEngine
-        from aegis.paths import PropagationPaths
 
-        paths = PropagationPaths.from_powers(k_hat=np.array(all_k_hat), power=np.array(all_power))
         engine = DosimetryEngine(tissue)
         _inject_curvature_H(engine_kw, transformed_body)
         body_mass = PHANTOM_MASS_KG.get(body.name) if body.name else None
@@ -1010,6 +1027,16 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         buf, arrays_meta = _build_binary_response(result, quantities)
         dist = float(np.linalg.norm(antenna_pos - body_center))
 
+        extra = {
+            "S_inc": float(np.sum(paths.power)),
+            "distance_m": dist,
+            "n_rt_paths": paths.n_paths,
+            "path_viz": path_viz,
+            "backend": "sionna-voxel",
+        }
+        if gpu_backend is not None:
+            extra["gpu_backend"] = gpu_backend
+
         stats = _build_stats_response(
             result,
             body,
@@ -1017,12 +1044,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             level_val,
             mode=mode_val,
             corrections=corr_val,
-            extra={
-                "S_inc": float(np.sum(all_power)),
-                "distance_m": dist,
-                "n_rt_paths": len(all_k_hat),
-                "path_viz": path_viz,
-            },
+            extra=extra,
             scenario=exposure_scenario,
         )
 
@@ -1032,7 +1054,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         app.config["_last_compliance_result"] = stats.get("compliance")
 
         timings = stats.get("timings", {})
-        timings["rt_ms"] = (t_rt - t_route) * 1e3
+        timings["rt_ms"] = rt_ms if rt_ms is not None else (t_rt - t_route) * 1e3
         timings["kernel_ms"] = (t_compute - t_rt) * 1e3
         timings["compliance_stats_ms"] = (t_stats - t_compute) * 1e3
         timings["route_total_ms"] = (t_stats - t_route) * 1e3
