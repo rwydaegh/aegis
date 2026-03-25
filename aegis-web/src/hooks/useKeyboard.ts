@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useSimulationStore } from '@/stores/simulation'
 import { useSceneStore } from '@/stores/scene'
+import { useMIMOStore } from '@/stores/mimo'
 
 export interface KeyState {
   forward: boolean
@@ -30,6 +31,9 @@ export function useKeyboard(): KeyState {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Don't capture when typing in inputs
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return
+
+      // MIMO mode has its own keyboard controls (useMIMOKeyboard)
+      if (useMIMOStore.getState().enabled) return
 
       keysRef.current.add(e.code)
       updateState()
