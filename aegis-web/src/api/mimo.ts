@@ -6,7 +6,7 @@ import type {
   MIMOSummary,
   DosimetryStats,
 } from './types'
-import { toServer, type ScenePos } from './coordinates'
+import { toServer } from './coordinates'
 
 /** Server-side payload (Z-up positions). */
 interface MIMOServerPayload {

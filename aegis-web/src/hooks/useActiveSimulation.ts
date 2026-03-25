@@ -19,7 +19,6 @@ export interface ActiveSimulation {
 
 export function useActiveSimulation(): ActiveSimulation {
   const mimoEnabled = useMIMOStore(s => s.enabled)
-  const focusedUserId = useMIMOStore(s => s.focusedUserId)
   const focusedUser = useMIMOStore(s =>
     s.focusedUserId ? s.users.get(s.focusedUserId) ?? null : null
   )
