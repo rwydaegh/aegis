@@ -317,3 +317,70 @@ class TestZFExposure:
         W = zf_exposure(H, Q_list, P_abs_max=1.0, P=1.0)
         assert W.shape == (16, 4)
         assert np.iscomplexobj(W)
+
+
+class TestComputePrecoder:
+    """Tests for the compute_precoder dispatcher."""
+
+    def test_dispatch_mrt(self):
+        rng = np.random.default_rng(80)
+        K, M = 2, 8
+        H = rng.standard_normal((K, M)) + 1j * rng.standard_normal((K, M))
+
+        from aegis.mimo.precoders import compute_precoder, mrt
+
+        W = compute_precoder(H, precoder_type="mrt", P=1.0)
+        W_ref = mrt(H, P=1.0)
+        assert_allclose(W, W_ref)
+
+    def test_dispatch_zf(self):
+        rng = np.random.default_rng(81)
+        K, M = 2, 8
+        H = rng.standard_normal((K, M)) + 1j * rng.standard_normal((K, M))
+
+        from aegis.mimo.precoders import compute_precoder, zf
+
+        W = compute_precoder(H, precoder_type="zf", P=2.0)
+        W_ref = zf(H, P=2.0)
+        assert_allclose(W, W_ref)
+
+    def test_dispatch_mmse(self):
+        rng = np.random.default_rng(82)
+        K, M = 3, 8
+        H = rng.standard_normal((K, M)) + 1j * rng.standard_normal((K, M))
+
+        from aegis.mimo.precoders import compute_precoder, mmse
+
+        W = compute_precoder(H, precoder_type="mmse", P=1.0, noise_power=0.05)
+        W_ref = mmse(H, P=1.0, noise_power=0.05)
+        assert_allclose(W, W_ref)
+
+    def test_dispatch_zf_exposure(self):
+        rng = np.random.default_rng(83)
+        K, M = 2, 8
+        H = rng.standard_normal((K, M)) + 1j * rng.standard_normal((K, M))
+        Q_list = []
+        for _ in range(K):
+            A = rng.standard_normal((M, M)) + 1j * rng.standard_normal((M, M))
+            Q_list.append(A.conj().T @ A / M)
+
+        from aegis.mimo.precoders import compute_precoder, zf_exposure
+
+        W = compute_precoder(
+            H,
+            precoder_type="zf_exposure",
+            P=1.0,
+            Q_list=Q_list,
+            P_abs_max=0.1,
+        )
+        W_ref = zf_exposure(H, Q_list, P_abs_max=0.1, P=1.0)
+        assert_allclose(W, W_ref)
+
+    def test_unknown_type_raises(self):
+        rng = np.random.default_rng(84)
+        H = rng.standard_normal((2, 8)) + 1j * rng.standard_normal((2, 8))
+
+        from aegis.mimo.precoders import compute_precoder
+
+        with pytest.raises(ValueError, match="Unknown precoder type"):
+            compute_precoder(H, precoder_type="banana")
