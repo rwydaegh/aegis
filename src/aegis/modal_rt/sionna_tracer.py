@@ -12,7 +12,7 @@ from aegis.modal_rt.app import app, scene_volume, sionna_image
 @app.cls(
     image=sionna_image,
     gpu="L4",
-    container_idle_timeout=120,
+    scaledown_window=120,
     volumes={"/scenes": scene_volume},
     timeout=120,
 )

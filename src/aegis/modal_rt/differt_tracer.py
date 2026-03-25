@@ -12,7 +12,7 @@ from aegis.modal_rt.app import app, differt_image
 @app.cls(
     image=differt_image,
     gpu="T4",
-    container_idle_timeout=120,
+    scaledown_window=120,
     timeout=120,
 )
 class DiffeRTTracer:

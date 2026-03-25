@@ -19,7 +19,7 @@ differt_image = (
 )
 
 sionna_image = (
-    modal.Image.from_registry("nvidia/cuda:12.8.0-runtime-ubuntu22.04")
+    modal.Image.debian_slim(python_version="3.12")
     .apt_install("libgl1", "libglib2.0-0")
     .pip_install("sionna-rt>=2.0,<3.0", "numpy", "scipy")
     .add_local_python_source("aegis")
