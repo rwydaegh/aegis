@@ -1,4 +1,5 @@
 import { useUIStore } from '@/stores/ui'
+import { useMIMOStore } from '@/stores/mimo'
 import {
   Accordion,
   AccordionItem,
@@ -13,9 +14,11 @@ import RayTracingPanel from '@/components/panels/RayTracingPanel'
 import StochasticPanel from '@/components/panels/StochasticPanel'
 import TissuePanel from '@/components/panels/TissuePanel'
 import ExportPanel from '@/components/panels/ExportPanel'
+import MIMOPanel from '@/components/hud/MIMOPanel'
 
 export default function Sidebar() {
   const { sidebarOpen } = useUIStore()
+  const mimoEnabled = useMIMOStore(s => s.enabled)
 
   return (
     <aside
@@ -32,7 +35,7 @@ export default function Sidebar() {
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          <Accordion multiple defaultValue={['parameters']}>
+          <Accordion multiple defaultValue={mimoEnabled ? ['parameters', 'mimo-users'] : ['parameters']}>
             <AccordionItem value="parameters" className="border-b border-border px-3">
               <AccordionTrigger className="text-sm font-medium py-3">Parameters</AccordionTrigger>
               <AccordionContent>
@@ -51,14 +54,27 @@ export default function Sidebar() {
               </AccordionContent>
             </AccordionItem>
 
-            <AccordionItem value="phantom" className="border-b border-border px-3">
-              <AccordionTrigger className="text-sm font-medium py-3">Phantom</AccordionTrigger>
-              <AccordionContent>
-                <div className="py-2">
-                  <PhantomPanel />
-                </div>
-              </AccordionContent>
-            </AccordionItem>
+            {mimoEnabled && (
+              <AccordionItem value="mimo-users" className="border-b border-border px-3">
+                <AccordionTrigger className="text-sm font-medium py-3">MIMO Users</AccordionTrigger>
+                <AccordionContent>
+                  <div className="py-2">
+                    <MIMOPanel />
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            )}
+
+            {!mimoEnabled && (
+              <AccordionItem value="phantom" className="border-b border-border px-3">
+                <AccordionTrigger className="text-sm font-medium py-3">Phantom</AccordionTrigger>
+                <AccordionContent>
+                  <div className="py-2">
+                    <PhantomPanel />
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            )}
 
             <AccordionItem value="layers" className="border-b border-border px-3">
               <AccordionTrigger className="text-sm font-medium py-3">Layers</AccordionTrigger>
