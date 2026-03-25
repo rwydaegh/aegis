@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 from pathlib import Path
 
 from flask import Flask, Response, jsonify, request, session
+
+logger = logging.getLogger(__name__)
 
 
 def register(app: Flask, cache: dict, cache_lock) -> None:
@@ -22,9 +25,17 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         )
 
         location = request.args.get("location", "").strip()
-        radius = int(request.args.get("radius", 30))
-        voxel_size = float(request.args.get("voxel_size", 0.5))
+        try:
+            radius = int(request.args.get("radius", 30))
+            voxel_size = float(request.args.get("voxel_size", 0.5))
+        except (TypeError, ValueError):
+            return jsonify({"error": "radius must be integer, voxel_size must be number"}), 400
         force = request.args.get("force", "false").lower() == "true"
+
+        if radius <= 0:
+            return jsonify({"error": "radius must be positive"}), 400
+        if voxel_size <= 0:
+            return jsonify({"error": "voxel_size must be positive"}), 400
 
         # Convert voxel size (meters) to resolution (voxels per dimension).
         # The voxelizer divides the longest bounding-box dimension by resolution,
@@ -86,17 +97,20 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
                 # Refresh tiles_dir (tiles may now exist after pipeline run)
                 clear_voxel_scene_cache()
+                tiles_candidate = voxel_output.parent / "tiles"
                 with cache_lock:
                     cache["tiles_dir"] = None
-                    tiles_candidate = voxel_output.parent / "tiles"
                     if tiles_candidate.is_dir() and any(tiles_candidate.glob("*.glb")):
                         cache["tiles_dir"] = tiles_candidate
-                if cache.get("tiles_dir") is not None:
-                    yield f"event: progress\ndata: Found {len(list(tiles_candidate.glob('*.glb')))} GLB tiles\n\n"
+                tiles_dir = cache.get("tiles_dir")
+                if tiles_dir is not None:
+                    n_tiles = len(list(tiles_dir.glob("*.glb")))
+                    yield f"event: progress\ndata: Found {n_tiles} GLB tiles\n\n"
 
                 meta = cache.get("voxel_meta", {})
                 yield f"event: done\ndata: {json.dumps(meta)}\n\n"
             except Exception as e:
+                logger.exception("Voxel loading failed in SSE stream")
                 yield f"event: error\ndata: Voxel load failed: {e}\n\n"
 
         return Response(
