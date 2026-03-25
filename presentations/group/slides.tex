@@ -1,5 +1,6 @@
 % ============================================================
-% GROUP TALK — 15 slides, ~12:30 content + 2:30 buffer = 15:00
+% GROUP TALK — 14 slides, ~12:30 content + 2:30 buffer = 15:00
+% Delivery: Beamer PDF + Manim PPTX, aggregated in PowerPoint
 % ============================================================
 
 % ----------------------------------------------------------
@@ -17,37 +18,54 @@
     {\footnotesize Ghent University \& imec}
   \end{center}
   \vfill
+  \begin{center}
+    \includegraphics[height=1.0cm]{figures/ugent.png}\hspace{18pt}
+    \includegraphics[height=1.0cm]{figures/imec.png}\hspace{18pt}
+    \includegraphics[height=1.0cm]{figures/waves.png}
+  \end{center}
+  \vspace{6pt}
 \end{frame}
 
 % ----------------------------------------------------------
-% SLIDE 2: The problem
-% SAY: "At 28 GHz the skin depth is 0.3 mm but the body spans
-%       a metre. To resolve absorption, FDTD needs 10^12 cells.
-%       A single simulation takes weeks. A parametric study: months."
+% SLIDE 2: Back-of-envelope calculation
+% SAY: "Quick back-of-envelope. The body spans a metre, the skin
+%       depth is 0.3 mm. That is a factor 3300, roughly four orders
+%       of magnitude per spatial dimension. In 3D, that means 10^12
+%       mesh cells. One simulation takes weeks.
+%       Our insight: absorption happens at the surface. If we solve
+%       the depth analytically, we only need a 2D surface mesh.
+%       That is 10^6 elements instead of 10^12. Six orders of
+%       magnitude, gone."
 % ----------------------------------------------------------
-\begin{frame}{The problem: FDTD at mmWave is intractable}
+\begin{frame}{Back-of-envelope calculation}
 
   \begin{columns}[T]
-    \begin{column}{0.58\textwidth}
-      The scale mismatch:
-      \begin{itemize}
-        \item Body span: ${\sim}\SI{1}{\metre}$
-        \item Skin depth at \SI{28}{\giga\hertz}: $\delta \approx \SI{0.3}{\milli\metre}$
-        \item Five orders of magnitude
-      \end{itemize}
+    \begin{column}{0.60\textwidth}
+      \onslide<1->{%
+      Per dimension: $\SI{1}{\metre}\,/\,\SI{0.3}{\milli\metre} \approx 3300 \approx 10^{3.5}$
+
+      \vspace{6pt}
+      Volumetric FDTD mesh (3D):
+      \[
+        (10^{3.5})^3 \;\approx\; 10^{10.5} \;\approx\; {\color{alertred}10^{12} \text{ cells}}
+      \]
+      One plane wave, one phantom, one frequency: \textbf{weeks}.
+      }
 
       \vspace{8pt}
-      FDTD consequence:
-      \begin{itemize}
-        \item Mesh: ${\sim}10^{12}$ cells per simulation
-        \item One plane wave, one phantom, one frequency: weeks
-        \item Parametric campaign (550 runs): months of GPU
-      \end{itemize}
+      \onslide<2->{%
+      Our formulation works on the body surface (2D):
+      \[
+        {\sim}\SI{1.7}{\metre^2}\text{ at mm resolution}
+        \;\approx\; {\color{resultgreen}10^{6} \text{ elements}}
+      \]
+      The depth direction is solved analytically (Fresnel).
+      }
     \end{column}
 
-    \begin{column}{0.38\textwidth}
+    \begin{column}{0.36\textwidth}
       \begin{center}
-        \begin{tikzpicture}[scale=0.8]
+        \begin{tikzpicture}[scale=0.75]
           \draw[thick, navyblue] (0,0) -- (0,4);
           \draw[<->] (0.3,0) -- (0.3,4)
             node[midway,right] {\footnotesize $\SI{1}{\metre}$};
@@ -57,17 +75,20 @@
             node[midway,right] {\footnotesize $\delta \approx \SI{0.3}{\milli\metre}$};
           \node at (0,-0.5) {\footnotesize body};
           \node[alertred] at (0.8,4.3) {\footnotesize skin depth};
-          \node[gray,rotate=90] at (-0.5,2) {\tiny not to scale ($3300{\times}$)};
+          \node[gray,rotate=90] at (-0.5,2) {\tiny not to scale};
         \end{tikzpicture}
       \end{center}
     \end{column}
   \end{columns}
 
-  \vspace{6pt}
+  \vspace{4pt}
+  \onslide<2->{%
   \begin{resultbox}
     \centering
-    We replace the volumetric simulation with surface-level geometric operations.
+    $10^{12} \;\to\; 10^{6}$: six orders of magnitude.\\
+    Replace the volumetric simulation with surface-level geometric operations.
   \end{resultbox}
+  }
 \end{frame}
 
 % ----------------------------------------------------------
@@ -96,6 +117,7 @@
   \vspace{10pt}
   \begin{columns}[T]
     \begin{column}{0.55\textwidth}
+      \onslide<2->{%
       \begin{itemize}
         \item {\color{colsinc}$\Sinc$}: incident power density
         \item {\color{coltransmission}$\Teff$}: Fresnel transmission, depends on\\
@@ -103,6 +125,7 @@
         \item {\color{colgeometry}$\ReLU$}: visibility gate (exact).
               Back-facing points absorb nothing.
       \end{itemize}
+      }
     \end{column}
 
     \begin{column}{0.4\textwidth}
@@ -113,12 +136,15 @@
   \end{columns}
 
   \vspace{6pt}
+  \onslide<3->{%
   \hfill{\color{coltransmission}\small\bfseries What happens to the material factor?\hspace{12pt}}
+  }
 \end{frame}
 
 % ----------------------------------------------------------
 % SLIDE 4: Pseudo-Brewster animation
 % SAY: nothing (the animation narrates itself visually)
+% NOTE: In PowerPoint, this is replaced by the Manim PPTX slides
 % ----------------------------------------------------------
 \begin{frame}[plain]
   \centering
@@ -130,18 +156,14 @@
 % ----------------------------------------------------------
 % SLIDE 5: The geometric absorption law
 % SAY: "The material factor collapses to a single number T_0.
-%       All spatial variation is body geometry. That is the
-%       geometric absorption law."
+%       The pseudo-Brewster effect makes T_avg nearly constant
+%       across all angles. T_0 for skin at 28 GHz is 0.54. It
+%       varies smoothly with frequency."
 % ----------------------------------------------------------
 \begin{frame}{The geometric absorption law}
 
+  \onslide<1->{%
   \begin{center}
-    \vspace{6pt}
-    Before: ${\color{coltransmission}\Teff(\theta, \mathrm{pol}, \mathrm{tissue}, f)}$
-    \hspace{24pt}$\longrightarrow$\hspace{24pt}
-    After: ${\color{coltransmission}T_0}$ (one number)
-
-    \vspace{16pt}
     \begin{resultbox}[Geometric absorption law]
       \vspace{-4pt}
       {\large\[
@@ -155,29 +177,43 @@
       \vspace{-6pt}
     \end{resultbox}
   \end{center}
+  }
 
-  \vspace{12pt}
+  \vspace{4pt}
   \begin{columns}[T]
     \begin{column}{0.48\textwidth}
+      \onslide<2->{%
+      The pseudo-Brewster effect makes the
+      Fresnel transmission nearly angle-independent.
+
+      \vspace{6pt}
+      $T_0$ for skin at \SI{28}{\giga\hertz}: \textbf{0.54}.
+
+      \vspace{4pt}
       {\small
-      \begin{tabular}{lccr}
+      \begin{tabular}{lcr}
         \toprule
-        Tissue & $|\ntilde|$ & $T_0$ & $\Tavg/T_0$ range \\
+        Frequency & $T_0$ (skin) & Error \\
         \midrule
-        Skin   & 4.84 & 0.54 & $\le 5.6\,\%$ \\
-        Muscle & 5.62 & 0.48 & $\le 4.8\,\%$ \\
-        Fat    & 2.05 & 0.77 & $\le 8.2\,\%$ \\
+        \SI{10}{\giga\hertz} & 0.47 & $\le 8\,\%$ \\
+        \SI{28}{\giga\hertz} & 0.54 & $\le 5.6\,\%$ \\
+        \SI{60}{\giga\hertz} & 0.57 & $\le 4.2\,\%$ \\
         \bottomrule
       \end{tabular}
+      }
       }
     \end{column}
 
     \begin{column}{0.48\textwidth}
+      \onslide<3->{%
       \begin{itemize}
         \item All spatial variation from body shape
+        \item Pseudo-Brewster: $T_s$ decreases, $T_p$ increases,
+              average stays flat
         \item Holds for $|\ntilde| > 2.5$ (Azzam, 2015)
         \item Biological tissue: $|\ntilde| \approx 3$--6 \checkmark
       \end{itemize}
+      }
     \end{column}
   \end{columns}
 \end{frame}
@@ -185,6 +221,7 @@
 % ----------------------------------------------------------
 % SLIDE 6: Geometry animation
 % SAY: nothing (the animation narrates itself visually)
+% NOTE: In PowerPoint, this is replaced by the Manim PPTX slides
 % ----------------------------------------------------------
 \begin{frame}[plain]
   \centering
@@ -204,6 +241,7 @@
 
   \begin{columns}[T]
     \begin{column}{0.48\textwidth}
+      \onslide<1->{%
       \textbf{Mie theory} (exact for lossy spheres):
       \begin{itemize}
         \item Tests Fresnel + geometric optics jointly
@@ -211,13 +249,16 @@
         \item Dominated by diffraction into shadow
         \item Conservative (underestimates absorption)
       \end{itemize}
+      }
 
       \vspace{6pt}
+      \onslide<2->{%
       \textbf{Thelonious phantom}:
       \begin{itemize}
         \item Total absorbed power error: $0.35\,\%$
         \item Local RMS: $3.2\,\%$
       \end{itemize}
+      }
     \end{column}
 
     \begin{column}{0.48\textwidth}
@@ -230,49 +271,17 @@
   \end{columns}
 
   \vspace{4pt}
+  \onslide<3->{%
   \begin{resultbox}
     \centering
     Framework error (5--15\,\%) $<$ tissue dielectric uncertainty (${\sim}20\,\%$).\\
     The data is less accurate than the model.
   \end{resultbox}
+  }
 \end{frame}
 
 % ----------------------------------------------------------
-% SLIDE 8: Speed and computation
-% SAY: "Six orders of magnitude. 550 parametric runs take
-%       milliseconds on a laptop. The dosimetry chain is a
-%       single-hidden-layer ReLU network, differentiable end to end."
-% ----------------------------------------------------------
-\begin{frame}{Speed}
-
-  \begin{center}
-    \vspace{12pt}
-    {\Huge\color{resultgreen}\bfseries $10^6\times$}\\[6pt]
-    {\large speedup over full-wave FDTD}
-
-    \vspace{16pt}
-    {\normalsize
-      550 parametric runs: milliseconds on a laptop.\\
-      Previously: months of GPU time.
-    }
-
-    \vspace{16pt}
-    \begin{resultbox}[Dosimetry as a ReLU network]
-      \vspace{-6pt}
-      \[
-        \mathbf{S}_{\mathrm{ab}} = {\color{coltransmission}T_0}
-        \;{\color{colgeometry}\ReLU(\NN\KK^\top)}\;
-        {\color{colsinc}\ssv}
-      \]
-      \vspace{-8pt}
-    \end{resultbox}
-    {\small Single hidden layer. Differentiable end to end.\\
-     Gradients of SAR w.r.t.\ antenna positions by backpropagation.}
-  \end{center}
-\end{frame}
-
-% ----------------------------------------------------------
-% SLIDE 9: Demo intro
+% SLIDE 8: Demo intro
 % SAY: "Let me show you."
 % ----------------------------------------------------------
 \begin{frame}[plain]
@@ -291,7 +300,7 @@
 \end{frame}
 
 % ----------------------------------------------------------
-% SLIDE 10: Live demo
+% SLIDE 9: Live demo
 % SAY: (live demo of AEGIS viewer, ~2 minutes)
 % ----------------------------------------------------------
 \begin{frame}[plain]
@@ -303,7 +312,7 @@
 \end{frame}
 
 % ----------------------------------------------------------
-% SLIDE 11: Bridge to coherent MIMO
+% SLIDE 10: Bridge to coherent MIMO
 % SAY: "Everything so far assumed incoherent illumination.
 %       Powers add. In MIMO, fields add. The coherent peak
 %       can exceed the incoherent sum by a factor N."
@@ -313,7 +322,7 @@
   \begin{columns}[c]
     \begin{column}{0.45\textwidth}
       \begin{center}
-        {\bfseries\color{navyblue} Parts I--II: incoherent}\\[6pt]
+        {\bfseries\color{navyblue} Incoherent}\\[6pt]
         Powers add.\\[4pt]
         $P_{\mathrm{abs}} = \sum_n P_n$\\[6pt]
         Cross-terms average to zero.
@@ -327,26 +336,31 @@
     \end{column}
 
     \begin{column}{0.45\textwidth}
+      \onslide<2->{%
       \begin{center}
-        {\bfseries\color{alertred} Part III: coherent MIMO}\\[6pt]
+        {\bfseries\color{alertred} Coherent MIMO}\\[6pt]
         Fields add.\\[4pt]
         $\EE_{\mathrm{tot}} = \sum_m x_m \EE_m$\\[6pt]
         Peak absorption: ${\color{alertred}N^2}$ vs $N$.
       \end{center}
+      }
     \end{column}
   \end{columns}
 
   \vspace{16pt}
+  \onslide<3->{%
   \begin{center}
     {\small $M$ antenna elements, precoding vector $\xx \in \Complex^M$.\\
      The signal branch collapses each path to a scalar at the UE.\\
      The exposure branch retains the full vector structure over the body surface.}
   \end{center}
+  }
 \end{frame}
 
 % ----------------------------------------------------------
-% SLIDE 12: Coherent phasor animation
+% SLIDE 11: Coherent phasor animation
 % SAY: nothing (the animation narrates itself visually)
+% NOTE: In PowerPoint, this is replaced by the Manim PPTX slides
 % ----------------------------------------------------------
 \begin{frame}[plain]
   \centering
@@ -356,7 +370,7 @@
 \end{frame}
 
 % ----------------------------------------------------------
-% SLIDE 13: Exposure operator and ECBF
+% SLIDE 12: Exposure operator and ECBF
 % SAY: "Integrate the squared norm over the body surface and
 %       you get a quadratic form. Q is Hermitian PSD, M by M.
 %       The optimization is a QCQP with a closed-form solution.
@@ -364,11 +378,14 @@
 % ----------------------------------------------------------
 \begin{frame}{Exposure-constrained beamforming}
 
+  \onslide<1->{%
   Coherent absorption law and exposure operator:
+  }
 
   \vspace{4pt}
   \begin{columns}[T]
     \begin{column}{0.48\textwidth}
+      \onslide<1->{%
       \begin{resultbox}[Coherent absorption law]
         \vspace{-6pt}
         \[
@@ -390,9 +407,11 @@
         \]
         \vspace{-8pt}
       \end{resultbox}
+      }
     \end{column}
 
     \begin{column}{0.48\textwidth}
+      \onslide<2->{%
       Maximise signal subject to absorption limit:
       \[
         \max_{\xx} \;|\hh^\top \xx|^2
@@ -407,19 +426,22 @@
         \frac{(\lambda\QQ + \nu\II)^{-1}\hh^*}
              {\|(\lambda\QQ + \nu\II)^{-1}\hh^*\|}
       \]
+      }
 
       \vspace{6pt}
+      \onslide<3->{%
       {\footnotesize
         $\lambda = 0$: MRT (unconstrained).\\
         $\lambda \gg \nu$: body-avoiding precoder.\\
         $\rho \ll 1$: natural geometric protection.
+      }
       }
     \end{column}
   \end{columns}
 \end{frame}
 
 % ----------------------------------------------------------
-% SLIDE 14: Summary
+% SLIDE 13: Summary
 % SAY: "Three results. Material physics makes dosimetry geometric.
 %       The geometry is fast. The fast computation enables
 %       exposure-aware network design."
@@ -453,7 +475,7 @@
         {\footnotesize
           $\Sab \propto \ReLU(\cos\theta)$\\
           Shadow area, Cauchy formula.\\
-          $10^6\times$ speedup.
+          $10^{12} \to 10^{6}$.
         }
       \end{center}
     \end{column}
@@ -479,7 +501,7 @@
 \end{frame}
 
 % ----------------------------------------------------------
-% SLIDE 15: Thank you
+% SLIDE 14: Thank you
 % ----------------------------------------------------------
 \begin{frame}[plain]
   \vfill

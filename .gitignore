@@ -133,5 +133,6 @@ presentation.zip
 # Allow presentation animation outputs and poster frames
 !presentations/group/animations/*.mp4
 !presentations/group/animations/*.png
+!presentations/group/figures/*.png
 !presentations/promotors/figures/*.png
 !presentations/promotors/figures/*.pdf

@@ -4,16 +4,18 @@ ValueTracker traces T_s, T_p, T_avg curves live.
 TransformMatchingTex morphs T_eff(theta) -> T_0.
 Flash at the collapse moment.
 
-Render: manim render -qh pseudo_brewster.py PseudoBrewster
+Render: manim-slides render animations/pseudo_brewster.py PseudoBrewster
 """
 
 import numpy as np
 from manim import *
+from manim_slides import Slide
 
 # ---------- semantic palette (matches Beamer) ----------
 SINC_BLUE = "#3264AA"
 T0_RED = "#B41E1E"
 GEOM_GREEN = "#006E37"
+WAVE_GOLD = "#DDAA22"
 DIM = "#555555"
 LABEL_GRAY = "#999999"
 
@@ -49,15 +51,22 @@ def fresnel_Tavg(theta_deg):
 
 T0 = fresnel_Tavg(0)  # ~0.5387
 
+# ---------- Pseudo-Brewster angle ----------
+_thetas = np.linspace(0, 90, 10000)
+_tp_vals = np.array([fresnel_Tp(t) for t in _thetas])
+PSEUDO_BREWSTER_DEG = float(_thetas[np.argmax(_tp_vals)])  # ~78.25
+PSEUDO_BREWSTER_TP = float(_tp_vals[np.argmax(_tp_vals)])  # ~0.9662
 
-class PseudoBrewster(Scene):
+
+class PseudoBrewster(Slide):
     def construct(self):
         # ---- title ----
         title = Tex(
             r"Pseudo-Brewster compensation",
-            font_size=40, color=WHITE,
+            font_size=38, color=WHITE,
         ).to_edge(UP, buff=0.4)
         self.play(Write(title), run_time=1.5)
+        self.wait(1.0)
 
         # ---- axes ----
         ax = Axes(
@@ -69,10 +78,11 @@ class PseudoBrewster(Scene):
             tips=False,
         ).shift(DOWN * 0.35)
 
-        x_label = ax.get_x_axis_label(
-            MathTex(r"\theta\;(^\circ)", font_size=24, color=LABEL_GRAY),
-            edge=DOWN, direction=DOWN,
-        )
+        # Position x-axis label at right end of axis to avoid tick overlap
+        x_label = MathTex(
+            r"\theta\;(^\circ)", font_size=24, color=LABEL_GRAY,
+        ).next_to(ax.c2p(90, 0), DOWN + RIGHT, buff=0.25)
+
         y_label = ax.get_y_axis_label(
             MathTex(r"T(\theta)", font_size=24, color=LABEL_GRAY),
             edge=LEFT, direction=LEFT,
@@ -81,7 +91,7 @@ class PseudoBrewster(Scene):
         # Tick labels
         x_ticks = VGroup(*[
             MathTex(str(v), font_size=18, color=LABEL_GRAY).next_to(
-                ax.c2p(v, 0), DOWN, buff=0.15
+                ax.c2p(v, 0), DOWN, buff=0.2
             )
             for v in range(0, 91, 15)
         ])
@@ -95,9 +105,10 @@ class PseudoBrewster(Scene):
         self.play(
             Create(ax), FadeIn(x_label), FadeIn(y_label),
             FadeIn(x_ticks), FadeIn(y_ticks),
-            run_time=1.0,
+            run_time=1.5,
         )
-        self.wait(0.3)
+        self.wait(1.0)
+        self.next_slide()  # --- SLIDE: axes visible ---
 
         # ---- Trace T_s with ValueTracker ----
         t_s = ValueTracker(0.5)
@@ -112,15 +123,15 @@ class PseudoBrewster(Scene):
             color=SINC_BLUE, radius=0.06,
         ))
 
-        ts_label = MathTex(r"T_s(\theta)", font_size=26, color=SINC_BLUE)
+        ts_label = MathTex(r"T_s(\theta)", font_size=28, color=SINC_BLUE)
         ts_label.next_to(ax.c2p(72, fresnel_Ts(72)), UP, buff=0.15)
 
         self.add(ts_curve, ts_dot)
         self.play(
             t_s.animate.set_value(85),
-            run_time=4, rate_func=smooth,
+            run_time=5, rate_func=smooth,
         )
-        self.play(FadeIn(ts_label, shift=UP * 0.1), run_time=0.4)
+        self.play(FadeIn(ts_label, shift=UP * 0.1), run_time=0.5)
         self.remove(ts_dot)
         # Replace with static curve
         ts_static = ax.plot(
@@ -129,7 +140,8 @@ class PseudoBrewster(Scene):
         )
         self.remove(ts_curve)
         self.add(ts_static)
-        self.wait(0.3)
+        self.wait(2.0)
+        self.next_slide()  # --- SLIDE: T_s traced ---
 
         # ---- Trace T_p ----
         t_p = ValueTracker(0.5)
@@ -144,15 +156,15 @@ class PseudoBrewster(Scene):
             color=T0_RED, radius=0.06,
         ))
 
-        tp_label = MathTex(r"T_p(\theta)", font_size=26, color=T0_RED)
+        tp_label = MathTex(r"T_p(\theta)", font_size=28, color=T0_RED)
         tp_label.next_to(ax.c2p(50, fresnel_Tp(50)), UP, buff=0.15)
 
         self.add(tp_curve, tp_dot)
         self.play(
             t_p.animate.set_value(85),
-            run_time=4, rate_func=smooth,
+            run_time=5, rate_func=smooth,
         )
-        self.play(FadeIn(tp_label, shift=UP * 0.1), run_time=0.4)
+        self.play(FadeIn(tp_label, shift=UP * 0.1), run_time=0.5)
         self.remove(tp_dot)
         tp_static = ax.plot(
             fresnel_Tp, x_range=[0.5, 85, 0.5],
@@ -160,7 +172,39 @@ class PseudoBrewster(Scene):
         )
         self.remove(tp_curve)
         self.add(tp_static)
-        self.wait(0.3)
+        self.wait(1.5)
+
+        # ---- Pseudo-Brewster marker ----
+        brewster_dot = Dot(
+            ax.c2p(PSEUDO_BREWSTER_DEG, PSEUDO_BREWSTER_TP),
+            color=YELLOW, radius=0.08,
+        )
+        brewster_star = Star(
+            n=5, outer_radius=0.15, inner_radius=0.07,
+            color=YELLOW, fill_opacity=1.0,
+        ).move_to(ax.c2p(PSEUDO_BREWSTER_DEG, PSEUDO_BREWSTER_TP))
+
+        brewster_annotation = Tex(
+            r"pseudo-Brewster angle",
+            font_size=20, color=YELLOW,
+        ).next_to(brewster_star, UP + LEFT, buff=0.12)
+
+        # Thin dashed vertical guide line from the star down to the x-axis
+        brewster_guide = DashedLine(
+            ax.c2p(PSEUDO_BREWSTER_DEG, 0),
+            ax.c2p(PSEUDO_BREWSTER_DEG, PSEUDO_BREWSTER_TP),
+            color=YELLOW, stroke_width=1.5, dash_length=0.08,
+            stroke_opacity=0.4,
+        )
+
+        self.play(
+            FadeIn(brewster_guide),
+            GrowFromCenter(brewster_star),
+            run_time=0.8,
+        )
+        self.play(FadeIn(brewster_annotation, shift=UP * 0.1), run_time=0.5)
+        self.wait(2.5)
+        self.next_slide()  # --- SLIDE: T_p traced with Brewster marker ---
 
         # ---- Trace T_avg ----
         t_avg = ValueTracker(0.5)
@@ -176,16 +220,16 @@ class PseudoBrewster(Scene):
         ))
 
         tavg_label = MathTex(
-            r"T_{\mathrm{avg}}(\theta)", font_size=26, color=GEOM_GREEN,
+            r"T_{\mathrm{avg}}(\theta)", font_size=28, color=GEOM_GREEN,
         )
         tavg_label.next_to(ax.c2p(35, fresnel_Tavg(35)), UP, buff=0.2)
 
         self.add(tavg_curve, tavg_dot)
         self.play(
             t_avg.animate.set_value(85),
-            run_time=4, rate_func=smooth,
+            run_time=5, rate_func=smooth,
         )
-        self.play(FadeIn(tavg_label, shift=UP * 0.1), run_time=0.4)
+        self.play(FadeIn(tavg_label, shift=UP * 0.1), run_time=0.5)
         self.remove(tavg_dot)
         tavg_static = ax.plot(
             fresnel_Tavg, x_range=[0.5, 85, 0.5],
@@ -193,7 +237,7 @@ class PseudoBrewster(Scene):
         )
         self.remove(tavg_curve)
         self.add(tavg_static)
-        self.wait(0.3)
+        self.wait(2.0)
 
         # ---- T_0 dashed line ----
         t0_line = DashedLine(
@@ -201,21 +245,23 @@ class PseudoBrewster(Scene):
             color=YELLOW, stroke_width=2, dash_length=0.12,
         )
         t0_val = MathTex(
-            rf"T_0 = {T0:.2f}", font_size=26, color=YELLOW,
+            rf"T_0 = {T0:.2f}", font_size=28, color=YELLOW,
         ).next_to(ax.c2p(87, T0), RIGHT, buff=0.15)
 
         self.play(Create(t0_line), Write(t0_val), run_time=1.0)
-        self.wait(0.3)
+        self.wait(2.0)
 
         # ---- Circumscribe the flat T_avg ----
         self.play(
             Circumscribe(tavg_static, color=YELLOW, buff=0.05, run_time=1.5),
         )
+        self.wait(1.5)
+        self.next_slide()  # --- SLIDE: T_avg traced + T_0 line ---
 
         # ---- Variation annotation ----
         var_text = Tex(
             r"Variation $< 6\%$ up to $75^\circ$",
-            font_size=24, color=LABEL_GRAY,
+            font_size=28, color=LABEL_GRAY,
         ).next_to(ax, DOWN, buff=0.35)
         azzam_text = Tex(
             r"Holds for $|\tilde{n}| > 2.5$ (Azzam, 2015). "
@@ -223,43 +269,54 @@ class PseudoBrewster(Scene):
             font_size=20, color=LABEL_GRAY,
         ).next_to(var_text, DOWN, buff=0.08)
 
-        self.play(FadeIn(var_text), FadeIn(azzam_text), run_time=0.8)
-        self.wait(1.5)
+        self.play(FadeIn(var_text), FadeIn(azzam_text), run_time=1.0)
+        self.wait(3.0)
+        self.next_slide()  # --- SLIDE: variation annotation ---
 
         # ---- THE COLLAPSE ----
         # Fade T_s and T_p to dim gray
+        self.wait(2.0)
         self.play(
             ts_static.animate.set_stroke(color=DIM, opacity=0.3),
             tp_static.animate.set_stroke(color=DIM, opacity=0.3),
             ts_label.animate.set_opacity(0.2),
             tp_label.animate.set_opacity(0.2),
+            brewster_star.animate.set_opacity(0.15),
+            brewster_annotation.animate.set_opacity(0.15),
+            brewster_guide.animate.set_opacity(0.1),
             run_time=1.5, rate_func=smooth,
         )
+        self.wait(2.0)
 
         # TransformMatchingTex: T_eff(theta) -> T_0
         eq_before = MathTex(
             r"T_{\mathrm{eff}}(\theta)",
-            font_size=42, color=WHITE,
+            font_size=36, color=WHITE,
         ).to_edge(UP, buff=0.5).shift(RIGHT * 0.5)
 
         eq_after = MathTex(
             r"T_0",
-            font_size=42, color=YELLOW,
+            font_size=36, color=YELLOW,
         ).move_to(eq_before)
 
         self.play(
             FadeOut(title),
             FadeOut(tavg_label),
             FadeOut(var_text), FadeOut(azzam_text),
-            run_time=0.5,
+            run_time=0.8,
         )
         self.play(Write(eq_before), run_time=1.0)
-        self.wait(0.5)
+        self.wait(1.5)
         self.play(
             FadeTransform(eq_before, eq_after),
             run_time=2.0, rate_func=smooth,
         )
-        self.play(Flash(eq_after, color=YELLOW, num_lines=12, flash_radius=0.8), run_time=0.8)
+        self.play(
+            Flash(eq_after, color=YELLOW, num_lines=12, flash_radius=0.8),
+            run_time=0.8,
+        )
+        self.wait(3.0)
+        self.next_slide()  # --- SLIDE: collapse moment ---
 
         # ---- Punchline ----
         punchline = Tex(
@@ -268,8 +325,9 @@ class PseudoBrewster(Scene):
         ).next_to(eq_after, DOWN, buff=0.6)
 
         self.play(Write(punchline), run_time=2.0)
-        self.wait(2.5)
+        self.wait(3.0)
+        self.next_slide()  # --- SLIDE: punchline ---
 
         # ---- Fade out ----
         self.play(FadeOut(*self.mobjects), run_time=1.0)
-        self.wait(0.3)
+        self.wait(0.5)

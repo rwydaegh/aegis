@@ -1,13 +1,15 @@
 """Animation 2: Geometry of absorption.
 
 Equation built term by term. Body cross-section with normals.
-Shadow projection. Wave direction rotation. Cauchy formula.
+Surface heatmap (arc segments). Shadow projection. Wave direction
+rotation. Cauchy formula.
 
-Render: manim render -qh geometry.py GeometryOfAbsorption
+Render: manim-slides render animations/geometry.py GeometryOfAbsorption
 """
 
 import numpy as np
 from manim import *
+from manim_slides import Slide
 
 # ---------- semantic palette (matches Beamer) ----------
 SINC_BLUE = "#3264AA"
@@ -18,45 +20,50 @@ DIM = "#555555"
 LABEL_GRAY = "#999999"
 
 
-class GeometryOfAbsorption(Scene):
+class GeometryOfAbsorption(Slide):
     def construct(self):
         # ============================================================
-        # PART 1: Build the equation term by term (0-5s)
+        # PART 1: Build the equation term by term
         # ============================================================
         eq_parts = [
-            MathTex(r"S_{\mathrm{ab}}(\mathbf{r})", font_size=40, color=WHITE),
-            MathTex(r"=", font_size=40, color=WHITE),
-            MathTex(r"S_{\mathrm{inc}}", font_size=40, color=SINC_BLUE),
-            MathTex(r"\cdot", font_size=40, color=WHITE),
-            MathTex(r"T_0", font_size=40, color=T0_RED),
-            MathTex(r"\cdot", font_size=40, color=WHITE),
+            MathTex(r"S_{\mathrm{ab}}(\mathbf{r})", font_size=36, color=WHITE),
+            MathTex(r"=", font_size=36, color=WHITE),
+            MathTex(r"S_{\mathrm{inc}}", font_size=36, color=SINC_BLUE),
+            MathTex(r"\cdot", font_size=36, color=WHITE),
+            MathTex(r"T_0", font_size=36, color=T0_RED),
+            MathTex(r"\cdot", font_size=36, color=WHITE),
             MathTex(
                 r"\mathrm{ReLU}\!\bigl[\hat{\mathbf{n}}\!\cdot\!(-\hat{\mathbf{k}})\bigr]",
-                font_size=40, color=GEOM_GREEN,
+                font_size=36, color=GEOM_GREEN,
             ),
         ]
 
         eq_group = VGroup(*eq_parts).arrange(RIGHT, buff=0.12)
         eq_group.to_edge(UP, buff=0.5)
 
-        # Write each piece sequentially
-        self.play(Write(eq_parts[0]), run_time=0.8)
-        self.play(Write(eq_parts[1]), run_time=0.3)
-        self.play(Write(eq_parts[2]), run_time=0.8)
-        self.play(Write(eq_parts[3]), run_time=0.2)
-        self.play(Write(eq_parts[4]), run_time=0.8)
-        self.play(Write(eq_parts[5]), run_time=0.2)
-        self.play(Write(eq_parts[6]), run_time=1.0)
+        # Write each piece sequentially with pauses
+        self.play(Write(eq_parts[0]), run_time=1.0)
+        self.play(Write(eq_parts[1]), run_time=0.4)
         self.wait(0.5)
+        self.play(Write(eq_parts[2]), run_time=1.0)
+        self.wait(1.0)
+        self.play(Write(eq_parts[3]), run_time=0.3)
+        self.play(Write(eq_parts[4]), run_time=1.0)
+        self.wait(1.0)
+        self.play(Write(eq_parts[5]), run_time=0.3)
+        self.play(Write(eq_parts[6]), run_time=1.2)
+        self.wait(3.0)
+        self.next_slide()  # --- SLIDE: equation built ---
 
         # Shrink equation and move to top-left corner
         self.play(
             eq_group.animate.scale(0.65).to_corner(UL, buff=0.3),
             run_time=1.0,
         )
+        self.wait(1.0)
 
         # ============================================================
-        # PART 2: Body cross-section + wave (5-12s)
+        # PART 2: Body cross-section + wave
         # ============================================================
         # Elliptical body cross-section
         body = Ellipse(
@@ -64,24 +71,26 @@ class GeometryOfAbsorption(Scene):
             color=WHITE, stroke_width=3,
         ).shift(DOWN * 0.3)
 
-        # Incoming wave arrow from the left
-        wave_start = LEFT * 5.5 + DOWN * 0.3
-        wave_end = LEFT * 2.2 + DOWN * 0.3
+        # Incoming wave arrow -- further left and shorter to avoid overlap
+        wave_start = LEFT * 6.5 + DOWN * 0.3
+        wave_end = LEFT * 4.0 + DOWN * 0.3
         wave_arrow = Arrow(
             wave_start, wave_end,
             color=WAVE_GOLD, stroke_width=4, buff=0,
-            max_tip_length_to_length_ratio=0.15,
+            max_tip_length_to_length_ratio=0.2,
         )
         k_label = MathTex(
-            r"\hat{\mathbf{k}}", font_size=30, color=WAVE_GOLD,
+            r"\hat{\mathbf{k}}", font_size=28, color=WAVE_GOLD,
         ).next_to(wave_arrow, UP, buff=0.1)
 
-        self.play(Create(body), run_time=1.2)
+        self.play(Create(body), run_time=1.5)
+        self.wait(1.0)
         self.play(GrowArrow(wave_arrow), Write(k_label), run_time=1.0)
-        self.wait(0.5)
+        self.wait(2.0)
+        self.next_slide()  # --- SLIDE: body + wave appear ---
 
         # ============================================================
-        # PART 3: Normal arrows grow from lit side (12-22s)
+        # PART 3: Normal arrows grow from lit side
         # ============================================================
         # Wave direction (unit vector pointing right, i.e. k_hat = (1, 0))
         k_hat = np.array([1.0, 0.0, 0.0])
@@ -129,6 +138,7 @@ class GeometryOfAbsorption(Scene):
                 run_time=4.0,
             ),
         )
+        self.wait(1.5)
 
         # Mark ReLU boundary
         if len(relu_dots) > 0:
@@ -144,25 +154,25 @@ class GeometryOfAbsorption(Scene):
             relu_boundary_label.next_to(relu_dots[0], RIGHT, buff=0.2)
         else:
             relu_boundary_label.next_to(body, RIGHT, buff=0.5)
-        self.play(FadeIn(relu_boundary_label), run_time=0.4)
-        self.wait(1.0)
+        self.play(FadeIn(relu_boundary_label), run_time=0.5)
+        self.wait(2.5)
+        self.next_slide()  # --- SLIDE: normals grown ---
 
         # ============================================================
-        # PART 4: Intensity gradient on lit side (22-28s)
+        # PART 4: Surface heatmap -- colored arc segments along surface
         # ============================================================
-        # Color the lit hemisphere with intensity proportional to cos
-        intensity_patches = VGroup()
-        n_patches = 40
-        for i in range(n_patches):
-            t1 = (i / n_patches) * TAU
-            t2 = ((i + 1) / n_patches) * TAU
+        # Color the lit hemisphere with arc segments on the ellipse surface.
+        # Color interpolates from bright green (facing the wave) to black
+        # (at the ReLU boundary), proportional to cos(theta).
+        n_segments = 40
+        surface_arcs = VGroup()
 
-            p1 = np.array([1.5 * np.cos(t1), 2.0 * np.sin(t1) - 0.3, 0])
-            p2 = np.array([1.5 * np.cos(t2), 2.0 * np.sin(t2) - 0.3, 0])
-            center = np.array([0, -0.3, 0])
+        for i in range(n_segments):
+            t1 = (i / n_segments) * TAU
+            t2 = ((i + 1) / n_segments) * TAU
+            t_mid = (t1 + t2) / 2
 
             # Normal at midpoint
-            t_mid = (t1 + t2) / 2
             nx = 2.0 * np.cos(t_mid)
             ny = 1.5 * np.sin(t_mid)
             n_len = np.sqrt(nx**2 + ny**2)
@@ -170,26 +180,40 @@ class GeometryOfAbsorption(Scene):
 
             cos_val = max(0, float(np.dot(n_unit, -k_hat)))
 
-            if cos_val > 0.01:
-                triangle = Polygon(
-                    center, p1, p2,
-                    fill_color=GEOM_GREEN,
-                    fill_opacity=cos_val * 0.5,
-                    stroke_width=0,
-                )
-                intensity_patches.add(triangle)
+            # Points on the ellipse for this segment
+            p1 = np.array([1.5 * np.cos(t1), 2.0 * np.sin(t1) - 0.3, 0])
+            p2 = np.array([1.5 * np.cos(t2), 2.0 * np.sin(t2) - 0.3, 0])
 
-        self.play(FadeIn(intensity_patches, run_time=2.0))
-        self.wait(1.0)
+            if cos_val > 0.01:
+                # Interpolate color from black to GEOM_GREEN based on cos_val
+                seg_color = interpolate_color(BLACK, ManimColor(GEOM_GREEN), cos_val)
+                segment = Line(
+                    p1, p2,
+                    color=seg_color,
+                    stroke_width=8,
+                    stroke_opacity=0.8 + 0.2 * cos_val,
+                )
+                surface_arcs.add(segment)
+
+        self.play(
+            LaggedStart(
+                *[Create(seg) for seg in surface_arcs],
+                lag_ratio=0.03,
+                run_time=2.5,
+            ),
+        )
+        self.wait(2.5)
+        self.next_slide()  # --- SLIDE: surface heatmap shown ---
 
         # ============================================================
-        # PART 5: Shadow projection (28-38s)
+        # PART 5: Shadow projection
         # ============================================================
         self.play(
             FadeOut(normal_arrows), FadeOut(relu_dots),
-            FadeOut(relu_boundary_label), FadeOut(intensity_patches),
+            FadeOut(relu_boundary_label), FadeOut(surface_arcs),
             run_time=0.8,
         )
+        self.wait(1.0)
 
         # Parallel rays from left
         ray_ys = np.linspace(-2.5, 2.0, 12)
@@ -205,12 +229,18 @@ class GeometryOfAbsorption(Scene):
                 # Hits the ellipse
                 x_hit = -1.5 * np.sqrt(1 - (y_ell / 2.0) ** 2)
                 end = np.array([x_hit, ry, 0])
-                ray = Line(start, end, color=T0_RED, stroke_width=1.5, stroke_opacity=0.6)
+                ray = Line(
+                    start, end,
+                    color=T0_RED, stroke_width=1.5, stroke_opacity=0.6,
+                )
                 rays_hit.add(ray)
             else:
                 # Misses
                 end = np.array([5.5, ry, 0])
-                ray = Line(start, end, color=DIM, stroke_width=1, stroke_opacity=0.3)
+                ray = Line(
+                    start, end,
+                    color=DIM, stroke_width=1, stroke_opacity=0.3,
+                )
                 rays_miss.add(ray)
 
         self.play(
@@ -220,6 +250,7 @@ class GeometryOfAbsorption(Scene):
                 lag_ratio=0.05, run_time=2.0,
             ),
         )
+        self.wait(1.5)
 
         # Shadow bar on the right
         shadow_top = body.get_top()[1]
@@ -240,7 +271,7 @@ class GeometryOfAbsorption(Scene):
             Write(shadow_label),
             run_time=1.2,
         )
-        self.wait(0.5)
+        self.wait(2.0)
 
         # Power equation
         power_eq = MathTex(
@@ -250,17 +281,18 @@ class GeometryOfAbsorption(Scene):
             r"T_0",
             r"\cdot",
             r"A_\perp(\hat{\mathbf{k}})",
-            font_size=34, color=WHITE,
+            font_size=36, color=WHITE,
         ).to_edge(DOWN, buff=0.6)
         power_eq[1].set_color(SINC_BLUE)
         power_eq[3].set_color(T0_RED)
         power_eq[5].set_color(WAVE_GOLD)
 
         self.play(Write(power_eq), run_time=1.5)
-        self.wait(1.5)
+        self.wait(3.0)
+        self.next_slide()  # --- SLIDE: shadow projection ---
 
         # ============================================================
-        # PART 6: Wave direction rotates (38-48s)
+        # PART 6: Wave direction rotates
         # ============================================================
         # Clean up rays for rotation
         self.play(
@@ -270,6 +302,7 @@ class GeometryOfAbsorption(Scene):
             FadeOut(power_eq),
             run_time=0.8,
         )
+        self.wait(1.0)
 
         # Rotating wave direction with updating normals
         angle_tracker = ValueTracker(0)  # radians, 0 = from left
@@ -294,10 +327,10 @@ class GeometryOfAbsorption(Scene):
                 px = 1.5 * np.cos(t)
                 py = 2.0 * np.sin(t)
                 point = np.array([px, py - 0.3, 0])
-                nx = 2.0 * np.cos(t)
-                ny = 1.5 * np.sin(t)
-                n_len = np.sqrt(nx**2 + ny**2)
-                n_unit = np.array([nx / n_len, ny / n_len, 0])
+                nx_val = 2.0 * np.cos(t)
+                ny_val = 1.5 * np.sin(t)
+                n_len = np.sqrt(nx_val**2 + ny_val**2)
+                n_unit = np.array([nx_val / n_len, ny_val / n_len, 0])
                 cos_val = max(0, float(np.dot(n_unit, -k)))
                 if cos_val > 0.05:
                     arr = Arrow(
@@ -318,18 +351,21 @@ class GeometryOfAbsorption(Scene):
             angle_tracker.animate.set_value(PI / 3),
             run_time=3.0, rate_func=smooth,
         )
+        self.wait(1.0)
         self.play(
             angle_tracker.animate.set_value(-PI / 4),
             run_time=3.0, rate_func=smooth,
         )
+        self.wait(1.0)
         self.play(
             angle_tracker.animate.set_value(0),
             run_time=2.0, rate_func=smooth,
         )
-        self.wait(0.5)
+        self.wait(2.0)
+        self.next_slide()  # --- SLIDE: wave rotation done ---
 
         # ============================================================
-        # PART 7: Direction averaging and Cauchy (48-58s)
+        # PART 7: Direction averaging and Cauchy
         # ============================================================
         self.remove(rotating_arrow, rotating_normals)
 
@@ -354,14 +390,15 @@ class GeometryOfAbsorption(Scene):
                 lag_ratio=0.05, run_time=1.5,
             ),
         )
-        self.wait(0.5)
+        self.wait(2.0)
 
         # Average annotation
         avg_text = Tex(
             r"Average over all directions:",
             font_size=28, color=LABEL_GRAY,
         ).to_edge(DOWN, buff=1.2)
-        self.play(FadeIn(avg_text), run_time=0.5)
+        self.play(FadeIn(avg_text), run_time=0.6)
+        self.wait(1.5)
 
         # Cauchy formula
         cauchy = MathTex(
@@ -371,28 +408,31 @@ class GeometryOfAbsorption(Scene):
             r"T_0",
             r"\cdot",
             r"\frac{A_{\mathrm{ab}}}{4}",
-            font_size=38, color=WHITE,
+            font_size=36, color=WHITE,
         ).next_to(avg_text, DOWN, buff=0.3)
         cauchy[1].set_color(SINC_BLUE)
         cauchy[3].set_color(T0_RED)
         cauchy[5].set_color(GEOM_GREEN)
 
         self.play(Write(cauchy), run_time=2.0)
+        self.wait(3.0)
 
         # Highlight result
         self.play(
             Circumscribe(cauchy, color=YELLOW, buff=0.1, run_time=1.5),
         )
+        self.wait(2.0)
 
         # Cauchy attribution
         cauchy_attr = Tex(
-            r"Cauchy, 1841.", font_size=22, color=DIM,
+            r"Cauchy, 1841.", font_size=20, color=DIM,
         ).next_to(cauchy, DOWN, buff=0.2)
-        self.play(FadeIn(cauchy_attr), run_time=0.4)
-        self.wait(2.0)
+        self.play(FadeIn(cauchy_attr), run_time=0.5)
+        self.wait(3.0)
+        self.next_slide()  # --- SLIDE: Cauchy formula ---
 
         # ============================================================
         # Fade out
         # ============================================================
         self.play(FadeOut(*self.mobjects), run_time=1.0)
-        self.wait(0.3)
+        self.wait(0.5)
