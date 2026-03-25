@@ -59,5 +59,3 @@ class TestFrequencySweep:
     def test_missing_params(self, client):
         resp = client.get("/api/compliance/frequency-sweep")
         assert resp.status_code == 400
-
-

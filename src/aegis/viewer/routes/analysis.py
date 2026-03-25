@@ -205,4 +205,3 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                 "compliant": sweep["compliant"].tolist(),
             }
         )
-
