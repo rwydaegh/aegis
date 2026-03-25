@@ -7,6 +7,12 @@ communication channel computation, and the scene data model.
 from aegis.mimo.array import AntennaArray
 from aegis.mimo.array_paths import expand_paths_to_array
 from aegis.mimo.channel import compute_channel_vector, dipole_effective_length
+from aegis.mimo.compute import (
+    compute_mimo_scene,
+    compute_mrt_precoder,
+    compute_total_exposure,
+    compute_user_sab,
+)
 from aegis.mimo.scene import MIMOScene
 from aegis.mimo.user import UserConfig, UserState
 
@@ -16,6 +22,10 @@ __all__ = [
     "UserConfig",
     "UserState",
     "compute_channel_vector",
+    "compute_mimo_scene",
+    "compute_mrt_precoder",
+    "compute_total_exposure",
+    "compute_user_sab",
     "dipole_effective_length",
     "expand_paths_to_array",
 ]

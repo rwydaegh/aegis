@@ -82,3 +82,4 @@ class UserState:
     G_tilde: np.ndarray | None = None
     Q: np.ndarray | None = None
     result: DosimetryResult | None = None
+    _sab_raw: np.ndarray | None = None
