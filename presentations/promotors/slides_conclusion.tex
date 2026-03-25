@@ -1,0 +1,149 @@
+% ============================================================
+% CONCLUSION — slides 27-29
+% ============================================================
+
+\section{Conclusion}
+
+% ----------------------------------------------------------
+% SLIDE 27: Summary of results
+% SAY: "Three parts, three levels of generality. Part I gives
+%       the geometric law: all spatial variation from body shape.
+%       Part II adds exact polarisation and frequency extension.
+%       Part III handles coherent MIMO with a closed-form
+%       exposure operator. The speedup is six orders of magnitude
+%       throughout. Five limitations are irreducible."
+% ----------------------------------------------------------
+\begin{frame}{Summary of results}
+
+  \begin{columns}[T]
+    \begin{column}{0.3\textwidth}
+      \begin{center}
+        {\small\bfseries\color{navyblue} Part I: mmWave}
+      \end{center}
+      {\footnotesize
+      \[
+        \Sab \approx \Sinc\, T_0\, \ReLU(\mu)
+      \]
+      $10^6\times$ speedup\\
+      5--15\,\% error\\
+      $\langle P_{\mathrm{abs}}\rangle = \Sinc T_0 \Aab/4$\\[2pt]
+      Compliance: $\Sinc < 0.16\,m/(T_0 \Aab)$\\[2pt]
+      ReLU network formulation
+      }
+    \end{column}
+
+    \begin{column}{0.3\textwidth}
+      \begin{center}
+        {\small\bfseries\color{navyblue} Part II: Generalisations}
+      \end{center}
+      {\footnotesize
+      \[
+        P_{\mathrm{abs}} = \mm(\khat) \cdot \ssv_{\mathrm{inc}}
+      \]
+      Polarisation: $\le 16\,\%$ on body\\
+      Multipath ($N\ge20$): $\le 2.5\,\%$\\[2pt]
+      $\langle P_{\mathrm{abs}}\rangle = \Sinc \Tbar \Aab/4$\\[2pt]
+      Exact \SI{100}{\mega\hertz}--\SI{100}{\giga\hertz}
+      }
+    \end{column}
+
+    \begin{column}{0.3\textwidth}
+      \begin{center}
+        {\small\bfseries\color{navyblue} Part III: Coherent MIMO}
+      \end{center}
+      {\footnotesize
+      \[
+        \Sab = \|\Gtilde\,\xx\|^2
+      \]
+      Exposure operator $\QQ = \int \Gtilde^H \Gtilde\,\diff A$\\[2pt]
+      Alignment $\rho \in [0,1]$\\[2pt]
+      QCQP: $\xx^\star \propto (\lambda\QQ+\nu\II)^{-1}\hh^*$\\[2pt]
+      Approx.\ error $\lesssim 5\,\%$
+      }
+    \end{column}
+  \end{columns}
+
+  \vspace{8pt}
+  Five irreducible limitations:
+  {\footnotesize
+  reactive near-field ($d < \lambda/2\pi$) \,$\mid$\,
+  coherent multi-bounce \,$\mid$\,
+  diffraction at edges \,$\mid$\,
+  volumetric SAR below \SI{6}{\giga\hertz} \,$\mid$\,
+  tissue dielectric uncertainy (${\sim}20\,\%$)
+  }
+\end{frame}
+
+% ----------------------------------------------------------
+% SLIDE 28: Outlook and dissemination
+% SAY: "ArXiv is the most important single action. It establishes
+%       priority on everything. Paper A targets TAP or T-EMC:
+%       the base framework. It is mostly a condensation exercise.
+%       Paper B targets TWC or JSAC: the coherent extension.
+%       It needs the simulation study with Sionna RT."
+% ----------------------------------------------------------
+\begin{frame}{Outlook and dissemination}
+
+  \begin{columns}[T]
+    \begin{column}{0.55\textwidth}
+      Publication plan:
+
+      \vspace{6pt}
+      \begin{enumerate}
+        \item \textbf{arXiv} (priority claim)\\
+              {\footnotesize Post full monograph. Establishes priority on all results.}
+
+        \vspace{4pt}
+        \item \textbf{Paper A} $\rightarrow$ IEEE TAP or T-EMC\\
+              {\footnotesize Base framework (Parts I--II).\\
+              Mostly condensation from the monograph.}
+
+        \vspace{4pt}
+        \item \textbf{Paper B} $\rightarrow$ IEEE TWC or JSAC\\
+              {\footnotesize Coherent extension (Part III).\\
+              Needs simulation study: Sionna RT + Thelonious phantom.}
+
+        \vspace{4pt}
+        \item \textbf{BioEM 2027} abstract\\
+              {\footnotesize Reuse existing draft. Part I focus.}
+      \end{enumerate}
+    \end{column}
+
+    \begin{column}{0.4\textwidth}
+      Framing strategy:
+
+      \vspace{6pt}
+      {\footnotesize
+      Paper A opening:\\
+      ``Kodera \textit{et al.}\ (2024) observed numerically that
+       ACS converges to projected area above \SI{10}{\giga\hertz}.
+       We derive this analytically, identify pseudo-Brewster as
+       the physical origin, and extend to local fields, arbitrary
+       polarisation, diffuse fields, and sub-GHz frequencies.''
+      }
+
+      \vspace{8pt}
+      Missing piece for Paper B:\\
+      {\footnotesize
+        Sionna RT simulation study:\\
+        64-element BS, \SI{28}{\giga\hertz},\\
+        MRT vs optimal QCQP,\\
+        hotspot intensity and SNR penalty.
+      }
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ----------------------------------------------------------
+% SLIDE 29: Thank you
+% ----------------------------------------------------------
+\begin{frame}
+
+  \vfill
+  \begin{center}
+    {\Large\color{navyblue}\bfseries Thank you}\\[12pt]
+    {\normalsize Questions and discussion}\\[16pt]
+    {\footnotesize Robin Wydaeghe \quad$\mid$\quad robin.wydaeghe@ugent.be}
+  \end{center}
+  \vfill
+\end{frame}

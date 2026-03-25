@@ -112,3 +112,13 @@ coverage/
 tmp/
 tmux-cheatsheet.md
 .rm_confirmed
+
+# Presentation build artifacts
+presentations/group/media/
+presentations/group/slides/
+presentations/group/preview*/
+presentations/group/__pycache__/
+presentations/group/talk.html
+presentations/group/talk*.pdf
+presentation_unzipped/
+presentation.zip

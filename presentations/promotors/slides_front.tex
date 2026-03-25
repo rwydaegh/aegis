@@ -1,0 +1,217 @@
+% ============================================================
+% FRONT MATTER — slides 1-5
+% ============================================================
+
+\section{Introduction}
+
+% ----------------------------------------------------------
+% SLIDE 1: Title
+% SAY: "Thanks for reading the monograph. This presentation
+%       summarises the key results and provides navigable
+%       detail slides for anything you want to discuss."
+% ----------------------------------------------------------
+\begin{frame}[plain]
+  \vfill
+  \begin{center}
+    {\Large\color{navyblue}\bfseries Geometric Dosimetry}\\[8pt]
+    {\normalsize Closed-form absorption laws\\
+     from \SI{100}{\mega\hertz} to \SI{100}{\giga\hertz}}\\[16pt]
+    {\small Robin Wydaeghe}\\[2pt]
+    {\footnotesize Ghent University \& imec}
+  \end{center}
+  \vfill
+\end{frame}
+
+% ----------------------------------------------------------
+% SLIDE 2: Problem statement
+% SAY: "The skin depth at 28 GHz is 0.3 mm. The body spans 1 m.
+%       To resolve absorption, FDTD needs 10^12 mesh cells.
+%       A single plane-wave run takes weeks of GPU time.
+%       A systematic study: 550 simulations, several weeks."
+% DONT SAY: detailed FDTD methodology, specific phantom names
+% ----------------------------------------------------------
+\begin{frame}{Problem: FDTD at mmWave is intractable}
+
+  \begin{columns}[T]
+    \begin{column}{0.55\textwidth}
+      The scale mismatch:
+      \begin{itemize}
+        \item Body span: ${\sim}\SI{1}{\metre}$
+        \item Skin depth at \SI{28}{\giga\hertz}: $\delta \approx \SI{0.3}{\milli\metre}$
+        \item Five orders of magnitude
+      \end{itemize}
+
+      \vspace{8pt}
+      FDTD consequence:
+      \begin{itemize}
+        \item Mesh: ${\sim}10^{12}$ cells per simulation
+        \item One plane wave, one phantom, one frequency: weeks
+        \item Systematic campaign (550 runs): months of GPU
+      \end{itemize}
+    \end{column}
+
+    \begin{column}{0.4\textwidth}
+      \begin{center}
+        % Schematic: body vs skin depth (not to scale)
+        \begin{tikzpicture}[scale=0.8]
+          \draw[thick, navyblue] (0,0) -- (0,4);
+          \draw[<->] (0.3,0) -- (0.3,4) node[midway,right] {\footnotesize $\SI{1}{\metre}$};
+          % Exaggerated skin depth (actual ratio ~3300:1)
+          \draw[thick, alertred, fill=alertred!20] (-0.04,3.94) rectangle (0.12,4);
+          \draw[<->] (0.5,3.94) -- (0.5,4) node[midway,right] {\footnotesize $\delta \approx \SI{0.3}{\milli\metre}$};
+          \node at (0,-0.5) {\footnotesize body};
+          \node[alertred] at (0.8,4.3) {\footnotesize skin depth};
+          \node[gray,rotate=90] at (-0.5,2) {\tiny not to scale ($3300{\times}$)};
+        \end{tikzpicture}
+      \end{center}
+    \end{column}
+  \end{columns}
+
+  \vspace{4pt}
+  \begin{resultbox}
+    \centering
+    We replace the volumetric simulation with surface-level geometric operations.
+  \end{resultbox}
+\end{frame}
+
+% ----------------------------------------------------------
+% SLIDE 3: Approach in one slide
+% SAY: "Three steps. First, Fresnel and Poynting give the exact
+%       absorption at any surface point. Second, pseudo-Brewster
+%       compensation collapses the material factor to a single
+%       number T_0. Third, all spatial variation is body geometry.
+%       The result: 10^6 speedup, 5-15% error."
+% ----------------------------------------------------------
+\begin{frame}{Approach in one slide}
+
+  \begin{enumerate}
+    \item Exact local law from Fresnel + Poynting at every surface point:
+    \[
+      \Sab(\rr) = \Sinc \;\Teff(\rr) \;\ReLU\!\bigl[\nhat(\rr)\cdot(-\khat)\bigr]
+    \]
+
+    \item Pseudo-Brewster compensation: for biological tissue,
+          the Fresnel transmission is nearly angle-independent.
+          Material collapses to a scalar~$T_0$:
+    \[
+      \Sab(\rr) \approx \Sinc \; T_0 \;\ReLU\!\bigl[\nhat(\rr)\cdot(-\khat)\bigr]
+    \]
+
+    \item All variation is geometry: projected area, ambient occlusion, Cauchy's formula.
+          Dosimetry chain = single-hidden-layer ReLU network. Differentiable.
+  \end{enumerate}
+
+  \vspace{6pt}
+  \begin{center}
+    \colorbox{lightblue}{\parbox{0.75\textwidth}{\centering
+      $10^6\times$ speedup \quad$\mid$\quad 5--15\,\% error \quad$\mid$\quad
+      within tissue data uncertainty (${\sim}20\,\%$)
+    }}
+  \end{center}
+\end{frame}
+
+% ----------------------------------------------------------
+% SLIDE 4: Structure of this talk
+% SAY: "Three parts, matching the tabs you see at the top.
+%       Each part ends with a detail index slide: buttons that
+%       jump to full derivations in the appendix."
+% ----------------------------------------------------------
+\begin{frame}{Structure}
+
+  \begin{columns}[T]
+    \begin{column}{0.3\textwidth}
+      \begin{center}
+        \colorbox{activetab}{\color{white}\small\strut\;\textbf{Part I}\;}\\[6pt]
+        {\small\bfseries mmWave Framework}\\[6pt]
+        {\footnotesize
+          Exact absorption law\\
+          Pseudo-Brewster\\
+          Geometric framework\\
+          Compliance\\
+          Computation\\
+          Validation
+        }
+      \end{center}
+    \end{column}
+
+    \begin{column}{0.3\textwidth}
+      \begin{center}
+        \colorbox{activetab}{\color{white}\small\strut\;\textbf{Part II}\;}\\[6pt]
+        {\small\bfseries Generalisations}\\[6pt]
+        {\footnotesize
+          Polarisation-aware\\
+          Stokes vector\\
+          Multipath convergence\\
+          Sub-\SI{6}{\giga\hertz} extension\\
+          Exact $\Tbar$
+        }
+      \end{center}
+    \end{column}
+
+    \begin{column}{0.3\textwidth}
+      \begin{center}
+        \colorbox{activetab}{\color{white}\small\strut\;\textbf{Part III}\;}\\[6pt]
+        {\small\bfseries Coherent MIMO}\\[6pt]
+        {\footnotesize
+          Coherent absorption law\\
+          Exposure operator $\QQ$\\
+          MRT analysis\\
+          Hotspot formation\\
+          Exposure-constrained BF\\
+          Multi-user MIMO
+        }
+      \end{center}
+    \end{column}
+  \end{columns}
+
+\end{frame}
+
+% ----------------------------------------------------------
+% SLIDE 5: Literature review
+% SAY: "Table 1 from the monograph. Every element has partial
+%       precursors in the literature. The last row is us: all
+%       bullets filled. Kodera observed the projected-area result
+%       numerically in 2024. We derive why. Azzam proved
+%       the pseudo-Brewster constancy in optics; nobody applied
+%       it to dosimetry."
+% DONT SAY: individual paper details (those are in the appendix)
+% ----------------------------------------------------------
+\begin{frame}{Literature review}
+\hypertarget{sum-lit}{}
+
+  {\small
+  \begin{tabular}{l cccccc}
+    \toprule
+    & \makecell{$\Tavg$\\[-2pt]${\approx}\,T_0$}
+    & \makecell{Local\\[-2pt]$\Sab(\rr)$}
+    & \makecell{Cauchy\\[-2pt]$\Aab/4$}
+    & \makecell{$\eta$\\[-2pt]$=$ AO}
+    & \makecell{Compl.\\[-2pt]formula}
+    & \makecell{Expos.\\[-2pt]op.\ $\QQ$} \\
+    \midrule
+    Kodera 2024      & $\circ$ & ---   & $\circ$ & ---   & ---   & --- \\
+    Funahashi 2018   & ---     & $\triangle$ & ---   & ---   & ---   & --- \\
+    Li 2019          & $\circ$ & $\triangle$ & ---   & ---   & ---   & --- \\
+    Flintoft 2014    & ---     & ---   & $\circ$ & ---   & ---   & --- \\
+    Zhang 2020       & $\circ$ & ---   & $\circ$ & ---   & ---   & --- \\
+    Azzam 2015       & $\bullet$ & ---   & ---   & ---   & ---   & --- \\
+    Ying 2015, 2017  & ---     & ---   & ---   & ---   & $\circ$ & $\bullet$ \\
+    Castellanos 2020 & ---     & $\triangle$ & ---   & ---   & ---   & $\triangle$ \\
+    \midrule
+    \textbf{This work} & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ & $\bullet$ \\
+    \bottomrule
+  \end{tabular}
+  }
+
+  \vspace{6pt}
+  {\footnotesize
+    $\bullet$ = derived analytically \quad
+    $\circ$ = observed empirically \quad
+    $\triangle$ = partial \quad
+    --- = not addressed
+  }
+
+  \vspace{4pt}
+  \hfill\gotodetail{app-lit-table}{Full literature tables}
+
+\end{frame}

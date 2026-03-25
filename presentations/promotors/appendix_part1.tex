@@ -1,0 +1,683 @@
+% ============================================================
+% APPENDIX: Part I details — 17 slides
+% ============================================================
+
+% ----------------------------------------------------------
+% A-P1-1: Setup and notation
+% ----------------------------------------------------------
+\begin{frame}[label=app-p1-setup]{Setup and notation}
+
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \textbf{Surface point} $\rr$ with outward normal $\nhat(\rr)$.
+      \vspace{2pt}
+      \textbf{Incident plane wave}: power density $\Sinc$, propagation direction $\khat$.
+      \vspace{2pt}
+      \textbf{Incidence cosine}:
+      \[
+        \mu(\rr) = \nhat(\rr) \cdot (-\khat)
+      \]
+
+      \textbf{Local incidence angle}: $\theta = \arccos(\mu)$.
+
+      \vspace{2pt}
+      The wave decomposes locally into:
+      \begin{itemize}\setlength\itemsep{0pt}
+        \item TE (s-polarisation): $\EE$ perpendicular to incidence plane
+        \item TM (p-polarisation): $\EE$ in the incidence plane
+      \end{itemize}
+      \vspace{1pt}
+      {\footnotesize Incidence plane defined by $\khat$ and $\nhat(\rr)$.\\
+       For $\mu < 0$: back-facing, no illumination.}
+    \end{column}
+
+    \begin{column}{0.44\textwidth}
+      \begin{center}
+        \includegraphics[width=\textwidth,height=0.45\textheight,keepaspectratio]{incidence_plane_fig.pdf}
+      \end{center}
+    \end{column}
+  \end{columns}
+  \vspace{-2pt}
+  \returntoindex{p1-index}{Part I index}
+\end{frame}
+
+% ----------------------------------------------------------
+% A-P1-2: Power flux and absorption
+% ----------------------------------------------------------
+\begin{frame}[label=app-p1-flux]{Power flux and absorption derivation}
+
+  \textbf{Starting point}: Poynting's theorem at a locally flat interface.
+
+  \vspace{4pt}
+  Absorbed power density = net inward Poynting flux at the surface:
+  \[
+    \Sab(\rr) = -\nhat(\rr) \cdot \frac{1}{2}\RE\!\bigl[\EE_t(\rr) \times \HH_t^*(\rr)\bigr]
+  \]
+
+  For a locally flat surface with Fresnel transmission:
+  \[
+    \Sab(\rr) = \Sinc \;\Teff(\rr)\; \cos\theta \cdot H(\mu)
+  \]
+  where $H(\mu)$ is the Heaviside step function (visibility gate).
+
+  \vspace{2pt}
+  Since $\cos\theta \cdot H(\mu) = \ReLU(\mu)$ exactly:
+
+  \begin{resultbox}[Exact absorption law]
+    \vspace{-6pt}
+    \[
+      \Sab(\rr) = \Sinc\;\Teff(\rr)\;\ReLU\!\bigl[\nhat(\rr)\cdot(-\khat)\bigr]
+    \]
+  \end{resultbox}
+
+  {\footnotesize The ReLU gate is exact: it encodes both the $\cos\theta$ projection and the
+   front/back-face selection in a single operation.}
+  \vspace{-4pt}
+  \returntoindex{p1-index}{Part I index}
+\end{frame}
+
+% ----------------------------------------------------------
+% A-P1-3: Fresnel coefficients
+% ----------------------------------------------------------
+\begin{frame}[label=app-p1-fresnel]{Fresnel coefficients for lossy half-space}
+
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \textbf{Complex refractive index}:
+      \[
+        \ntilde = \sqrt{\epstilde} = \sqrt{\varepsilon_r - j\frac{\sigma}{\omega\varepsilon_0}}
+      \]
+
+      \textbf{Complex Snell's law}: $\sin\theta_t = \sin\theta_i / \ntilde$
+
+      \vspace{4pt}
+      \textbf{Field transmission coefficients}:
+      \begin{align*}
+        t_s &= \frac{2\cos\theta_i}{\cos\theta_i + \ntilde\cos\theta_t} \\[4pt]
+        t_p &= \frac{2\ntilde\cos\theta_i}{\ntilde\cos\theta_i + \cos\theta_t}
+      \end{align*}
+    \end{column}
+
+    \begin{column}{0.48\textwidth}
+      \textbf{Power absorption coefficients}:
+      \[
+        T_{s,p}(\theta) = \RE\!\left[\frac{\ntilde\cos\theta_t}{\cos\theta_i}\right] |t_{s,p}|^2
+      \]
+
+      \vspace{4pt}
+      \textbf{At \SI{28}{\giga\hertz}}:
+
+      {\small
+      \begin{tabular}{lcc}
+        \toprule
+        Tissue & $|\ntilde|$ & $T_0$ \\
+        \midrule
+        Skin   & 4.84 & 0.54 \\
+        Muscle & 5.62 & 0.48 \\
+        Fat    & 2.05 & 0.77 \\
+        Water  & 6.62 & 0.45 \\
+        \bottomrule
+      \end{tabular}
+      }
+
+      \vspace{4pt}
+      {\footnotesize Tissue data: IT'IS v5.0 database.}
+    \end{column}
+  \end{columns}
+
+  \vspace{4pt}
+  \returntoindex{p1-index}{Part I index}\quad\returntosummary{sum-p1-exact-law}
+\end{frame}
+
+% ----------------------------------------------------------
+% A-P1-4: Exact polarisation-aware law
+% ----------------------------------------------------------
+\begin{frame}[label=app-p1-exact]{Exact polarisation-aware law}
+
+  The effective transmission decomposes as:
+  \[
+    \Teff(\rr) = |e_s|^2 T_s(\theta) + |e_p|^2 T_p(\theta)
+    = \Tavg\!\bigl(\theta(\rr)\bigr) + \frac{q(\rr)}{2}\,\Delta T\!\bigl(\theta(\rr)\bigr)
+  \]
+
+  \vspace{2pt}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \textbf{Unpolarised baseline}:
+      \[
+        \Tavg(\theta) = \frac{T_s(\theta) + T_p(\theta)}{2}
+      \]
+
+      \textbf{TM excess}:
+      \[
+        \Delta T(\theta) = T_p(\theta) - T_s(\theta)
+      \]
+
+      $\Delta T > 0$ below pseudo-Brewster angle;\\
+      $\Delta T < 0$ above it.
+    \end{column}
+
+    \begin{column}{0.48\textwidth}
+      \textbf{Local TM excess parameter}:
+      \[
+        q(\rr) = |e_p|^2 - |e_s|^2 \in [-1, 1]
+      \]
+
+      \begin{itemize}
+        \item $q = +1$: pure TM
+        \item $q = -1$: pure TE
+        \item $q = 0$: unpolarised or circular
+      \end{itemize}
+
+      \vspace{4pt}
+      Two routes to geometric law:
+      \begin{enumerate}
+        \item $q = 0$: correction vanishes
+        \item $\Tavg \approx T_0$: pseudo-Brewster
+      \end{enumerate}
+    \end{column}
+  \end{columns}
+
+  \vspace{2pt}
+  \returntoindex{p1-index}{Part I index}\quad\returntosummary{sum-p1-exact-law}
+\end{frame}
+
+% ----------------------------------------------------------
+% A-P1-5: Pseudo-Brewster mechanism and numerics
+% ----------------------------------------------------------
+\begin{frame}[label=app-p1-pB]{Pseudo-Brewster: mechanism and frequency dependence}
+
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{center}
+        \includegraphics[width=\textwidth]{fresnel_curves.png}
+      \end{center}
+      {\footnotesize $T_s$ decreases monotonically.\\
+       $T_p$ rises to pseudo-Brewster peak, then falls.\\
+       Average $\Tavg \approx T_0$.}
+    \end{column}
+
+    \begin{column}{0.48\textwidth}
+      Azzam (2015): for $|\ntilde| > 2.5$, unpolarised reflectance deviates $< 1\,\%$ from normal incidence over $0$--$60^\circ$.
+
+      \vspace{6pt}
+      {\small
+      \begin{tabular}{lccr}
+        \toprule
+        Tissue & $|\ntilde|$ & $T_0$ & Max var. \\
+        \midrule
+        Skin   & 4.84 & 0.54 & $\le 5.6\,\%$ \\
+        Muscle & 5.62 & 0.48 & $\le 4.8\,\%$ \\
+        Fat    & 2.05 & 0.77 & $\le 8.2\,\%$ \\
+        Water  & 6.62 & 0.45 & $\le 3.9\,\%$ \\
+        \bottomrule
+      \end{tabular}
+      }
+
+      \vspace{4pt}
+      {\footnotesize Variation of $\Tavg/T_0$ over $\theta \in [0^\circ, 75^\circ]$.\\
+       Exact at \SI{40}{\giga\hertz}; conservative below;\\
+       $3.5\,\%$ overestimate above \SI{80}{\giga\hertz}.}
+    \end{column}
+  \end{columns}
+
+  \vspace{4pt}
+  \returntoindex{p1-index}{Part I index}\quad\returntosummary{sum-p1-brewster}
+\end{frame}
+
+% ----------------------------------------------------------
+% A-P1-6: Projected area, occlusion, Cauchy
+% ----------------------------------------------------------
+\begin{frame}[label=app-p1-geometry]{Projected area, self-shadowing, and Cauchy}
+
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \textbf{Total absorbed power}:
+      \[
+        P_{\mathrm{abs}} = \Sinc\, T_0 \, \Aperp(\khat)
+      \]
+      $\Aperp(\khat) = \int_{\Sigma_+} \cos\theta\,\diff A$: shadow area.
+
+      \vspace{2pt}
+      \textbf{Exposure fraction} (self-shadowing):
+      \[
+        \eta(\rr) = \frac{1}{\pi}\int_{S^2} \ReLU[\nhat\cdot(-\khat)]\,O(\rr,\khat)\,\diff\Omega
+      \]
+      $O(\rr,\khat) \in \{0,1\}$: occlusion function.\\
+      $\eta \equiv 1$ convex; $\eta < 1$ concave.\\
+      $\equiv$ ambient occlusion (GPU graphics).
+
+      \vspace{2pt}
+      \textbf{Absorption area}: $\Aab = \int \eta(\rr)\,\diff A$\\
+      Thelonious: $\Aab/A \approx 0.87$.
+    \end{column}
+
+    \begin{column}{0.44\textwidth}
+      \begin{center}
+        \includegraphics[width=\textwidth,height=0.35\textheight,keepaspectratio]{eta_3d_phantom.png}
+      \end{center}
+
+      \vspace{1pt}
+      \begin{resultbox}[Generalised Cauchy]
+        \vspace{-6pt}
+        \[
+          \langle P_{\mathrm{abs}} \rangle = \Sinc\, T_0\, \frac{\Aab}{4}
+        \]
+      \end{resultbox}
+
+      {\footnotesize Classical Cauchy ($\langle\Aperp\rangle = A/4$ for convex) is special case $\eta \equiv 1$.}
+    \end{column}
+  \end{columns}
+  \vspace{-4pt}
+  \returntoindex{p1-index}{Part I index}\quad\returntosummary{sum-p1-geometry}
+\end{frame}
+
+% ----------------------------------------------------------
+% A-P1-7: Absorption directivity
+% ----------------------------------------------------------
+\begin{frame}[label=app-p1-directivity]{Absorption directivity: detailed analysis}
+
+  \begin{columns}[T]
+    \begin{column}{0.32\textwidth}
+      \begin{center}
+        \includegraphics[width=\textwidth,height=0.3\textheight,keepaspectratio]{body_directivity_thelonious.png}
+      \end{center}
+      {\tiny Mollweide projection}
+    \end{column}
+    \begin{column}{0.32\textwidth}
+      \begin{center}
+        \includegraphics[width=\textwidth,height=0.3\textheight,keepaspectratio]{body_directivity_hist_thelonious.png}
+      \end{center}
+      {\tiny Histogram of $D(\khat)$}
+    \end{column}
+    \begin{column}{0.32\textwidth}
+      \begin{center}
+        \includegraphics[width=\textwidth,height=0.3\textheight,keepaspectratio]{body_directivity_sh_fit_thelonious.png}
+      \end{center}
+      {\tiny SH fit error vs $L$}
+    \end{column}
+  \end{columns}
+
+  \vspace{2pt}
+  $D(\khat) = 4\Aperp(\khat)/\Aab$ \quad$\Rightarrow$\quad $P_{\mathrm{abs}}(\khat) = \Sinc\, T_0\, (\Aab/4)\, D(\khat)$
+
+  \vspace{2pt}
+  \begin{itemize}\setlength{\itemsep}{0pt}
+    \item Range on Thelonious: $D \in [0.8, 2.0]$. Front/back illumination highest; lateral lowest.
+    \item $D(\khat)$ smooth on $S^2$: SH expansion $L \le 6$ (49 coefficients) gives RMS $< 1\,\%$.
+    \item Hemisphere bound: $D \le 2$ (used for worst-case compliance).
+  \end{itemize}
+
+  \vspace{2pt}
+  \returntoindex{p1-index}{Part I index}
+\end{frame}
+
+% ----------------------------------------------------------
+% A-P1-8: Inter-body reflections
+% ----------------------------------------------------------
+\begin{frame}[label=app-p1-inter]{Inter-body reflections}
+
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{center}
+        \includegraphics[width=0.85\textwidth,height=0.4\textheight,keepaspectratio]{inter_body_summary.png}
+      \end{center}
+    \end{column}
+
+    \begin{column}{0.48\textwidth}
+      \begin{center}
+        \includegraphics[width=0.85\textwidth,height=0.4\textheight,keepaspectratio]{inter_body_self_compensation.png}
+      \end{center}
+    \end{column}
+  \end{columns}
+
+  \vspace{2pt}
+  \begin{itemize}\setlength{\itemsep}{0pt}
+    \item Reflected power from one body part illuminating another: sub-percent effect on body-averaged absorption
+    \item Self-compensation mechanism: high-reflectivity directions also have low incidence cosine
+    \item Justifies treating the body as a single-interaction absorber
+  \end{itemize}
+
+  \vspace{2pt}
+  \returntoindex{p1-index}{Part I index}
+\end{frame}
+
+% ----------------------------------------------------------
+% A-P1-9: Compliance
+% ----------------------------------------------------------
+\begin{frame}[label=app-p1-compliance]{Whole-body SAR compliance}
+
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \textbf{Whole-body SAR}:
+      \[
+        \SARwb = \frac{P_{\mathrm{abs}}}{m} = \frac{\Sinc\, T_0\, \Aperp}{m}
+      \]
+
+      Using hemisphere bound $D \le 2$:
+      \[
+        \Aperp \le \frac{\Aab}{4} \cdot 2 = \frac{\Aab}{2}
+      \]
+
+      \begin{resultbox}[Compliance criterion]
+        \vspace{-6pt}
+        \[
+          \Sinc < \frac{0.16\, m}{T_0\, \Aab}
+        \]
+      \end{resultbox}
+
+      {\footnotesize Factor 0.16 = $2 \times \mathrm{SAR}_{\mathrm{limit}} / 4$ where $\mathrm{SAR}_{\mathrm{limit}} = \SI{0.08}{\watt\per\kilo\gram}$ (ICNIRP).}
+    \end{column}
+
+    \begin{column}{0.48\textwidth}
+      \textbf{Body-size dependence}:
+
+      Du Bois formula:
+      \[
+        \mathrm{BSA} = 0.007184\, W^{0.425}\, H^{0.725}
+      \]
+
+      The ratio $m/\Aab$ scales as:
+      \[
+        \frac{m}{\Aab} \propto \mathrm{BMI}^{0.575}\, h^{0.425}
+      \]
+
+      \vspace{4pt}
+      Children are the binding case for population-level limits:
+      \begin{itemize}
+        \item Lower $m/\Aab$ ratio
+        \item Compliance threshold ${\sim}2\times$ lower than adults
+      \end{itemize}
+    \end{column}
+  \end{columns}
+
+  \vspace{2pt}
+  \returntoindex{p1-index}{Part I index}
+\end{frame}
+
+% ----------------------------------------------------------
+% A-P1-10: Computational framework
+% ----------------------------------------------------------
+\begin{frame}[label=app-p1-computation]{Computational framework: ReLU network}
+
+  \textbf{Multi-source matrix formulation}:
+
+  \begin{resultbox}
+    \vspace{-6pt}
+    \[
+      \mathbf{S}_{\mathrm{ab}} = T_0\;\ReLU(\NN\KK^\top)\;\ssv
+    \]
+  \end{resultbox}
+
+  \vspace{2pt}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \textbf{Neural network interpretation}:
+      \begin{itemize}
+        \item $\NN \in \Reals^{P \times 3}$: surface normals
+        \item $\KK \in \Reals^{N \times 3}$: path directions (negated)
+        \item $\ssv \in \Reals^N$: path power densities
+        \item $\NN\KK^\top$: ``weight matrix'' (dot products)
+        \item $\ReLU$: activation function (exact, not approximate)
+      \end{itemize}
+    \end{column}
+
+    \begin{column}{0.48\textwidth}
+      \textbf{Hierarchical computation}:
+      \begin{itemize}
+        \item Full spatial map: $O(P \times N)$
+        \item Total power: $O(N)$ (aggregate)
+        \item Mean SAR: $O(1)$ after precomputation
+      \end{itemize}
+
+      \vspace{4pt}
+      \textbf{Differentiable}:\\
+      Gradients of $\SARwb$ w.r.t.\ antenna positions propagate through the chain via backpropagation.
+    \end{column}
+  \end{columns}
+
+  \vspace{4pt}
+  \returntoindex{p1-index}{Part I index}
+\end{frame}
+
+% ----------------------------------------------------------
+% A-P1-11: Near-field extension
+% ----------------------------------------------------------
+\begin{frame}[label=app-p1-nearfield]{Near-field extension}
+
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      For a point source at distance $d > 3\lambda$:
+      \begin{itemize}
+        \item Law holds pointwise with spatially varying $\Sinc(\rr)$ and $\khat(\rr)$
+        \item Integrating over illuminated surface:
+      \end{itemize}
+
+      \begin{resultbox}[Solid-angle formula]
+        \vspace{-6pt}
+        \[
+          P_{\mathrm{abs}} = P_t\, T_0\, \frac{\Omega_{\mathrm{body}}}{4\pi}
+        \]
+      \end{resultbox}
+
+      {\footnotesize $\Omega_{\mathrm{body}}$: solid angle subtended by the visible body surface from the source.\\[4pt]
+       This is the emissive view-factor formula of radiative heat transfer, with $T_0$ replacing emissivity.}
+    \end{column}
+
+    \begin{column}{0.48\textwidth}
+      \begin{center}
+        \includegraphics[width=\textwidth]{near_field_distance_sweep.png}
+      \end{center}
+      {\footnotesize Top: near-field vs far-field ratio.\\
+       Bottom: error vs distance showing $(L_{\mathrm{eff}}/2d)^2$ scaling.}
+    \end{column}
+  \end{columns}
+
+  \vspace{4pt}
+  \returntoindex{p1-index}{Part I index}
+\end{frame}
+
+% ----------------------------------------------------------
+% A-P1-12: Higher-order corrections
+% ----------------------------------------------------------
+\begin{frame}[label=app-p1-corrections]{Higher-order corrections}
+
+  \textbf{Hierarchy of approximations}:
+
+  \vspace{4pt}
+  {\small
+  \begin{tabular}{lll}
+    \toprule
+    Level & Approximation & Error \\
+    \midrule
+    Exact law & $\Sab = \Sinc\,\Teff\,\ReLU(\mu)$ & 0 (by construction) \\
+    Geometric law & $\Sab \approx \Sinc\, T_0\, \ReLU(\mu)$ & $\le 8.2\,\%$ (Fresnel) \\
+    + Curvature & Physical optics correction & ${\sim}0.5\,\%$ extra \\
+    + Diffraction & Smooth activation (GELU-like) & ${\sim}10\,\%$ at shadow boundary \\
+    \bottomrule
+  \end{tabular}
+  }
+
+  \vspace{4pt}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \textbf{Curvature correction}:
+      \begin{itemize}
+        \item Physical optics (PO) accounts for surface curvature
+        \item Correction ${\sim}0.5\,\%$ for most body regions
+        \item Relevant only for small, highly curved features
+      \end{itemize}
+    \end{column}
+
+    \begin{column}{0.48\textwidth}
+      \textbf{Diffraction smoothing}:
+      \begin{itemize}
+        \item Sharp ReLU $\to$ smooth activation near shadow boundary
+        \item ${\sim}10\,\%$ error for torso at \SI{28}{\giga\hertz}
+        \item Dominated by diffraction into geometric shadow
+        \item Error is conservative (underestimates)
+      \end{itemize}
+    \end{column}
+  \end{columns}
+
+  \vspace{4pt}
+  \returntoindex{p1-index}{Part I index}
+\end{frame}
+
+% ----------------------------------------------------------
+% A-P1-13: Mie validation (full figure, height-constrained)
+% ----------------------------------------------------------
+\begin{frame}[label=app-p1-mie]{Mie theory validation: detailed analysis}
+
+  \begin{center}
+    \includegraphics[width=0.88\textwidth,height=0.6\textheight,keepaspectratio]{mie_validation_corrected.png}
+  \end{center}
+
+  \vspace{2pt}
+  {\footnotesize
+  Three panels: error vs size parameter (top), error vs frequency (middle), Fresnel asymptotic limit (bottom).\\
+  Error ${\sim}10\,\%$ at mmWave, dominated by diffraction.
+  Torso at \SI{28}{\giga\hertz}: ${\sim}5\,\%$ (within tissue uncertainty).
+  Conservative: underestimates absorption.
+  }
+
+  \vspace{2pt}
+  \returntoindex{p1-index}{Part I index}\quad\returntosummary{sum-p1-validation}
+\end{frame}
+
+% ----------------------------------------------------------
+% A-P1-14: Error budget
+% ----------------------------------------------------------
+\begin{frame}[label=app-p1-error]{Error budget: detailed breakdown}
+
+  \begin{center}
+    \includegraphics[width=0.75\textwidth,height=0.45\textheight,keepaspectratio]{error_budget_comprehensive.png}
+  \end{center}
+
+  \vspace{1pt}
+  {\footnotesize
+  Left: best case (\SI{28}{\giga\hertz}, multipath) --- Fresnel ${\sim}1\,\%$ integrated, diffraction averaged out.\\
+  Right: worst case (\SI{6}{\giga\hertz}, single-path LOS) --- up to $15\,\%$ for small body parts.\\
+  Tissue dielectric uncertainty: ${\sim}20\,\%$ (dominant). Framework error $<$ tissue data uncertainty. Blue bars conservative.
+  }
+
+  \vspace{2pt}
+  \returntoindex{p1-index}{Part I index}
+\end{frame}
+
+% ----------------------------------------------------------
+% A-P1-15: 3D absorbed power density
+% ----------------------------------------------------------
+\begin{frame}[label=app-p1-3d]{3D absorbed power density on Thelonious}
+
+  \begin{columns}[T]
+    \begin{column}{0.32\textwidth}
+      \begin{center}
+        \includegraphics[width=\textwidth,height=0.35\textheight,keepaspectratio]{sab_3d_front.png}
+      \end{center}
+      {\tiny Front view}
+    \end{column}
+    \begin{column}{0.32\textwidth}
+      \begin{center}
+        \includegraphics[width=\textwidth,height=0.35\textheight,keepaspectratio]{sab_3d_iso.png}
+      \end{center}
+      {\tiny Isometric view}
+    \end{column}
+    \begin{column}{0.32\textwidth}
+      \begin{center}
+        \includegraphics[width=\textwidth,height=0.35\textheight,keepaspectratio]{sab_3d_4cm2.png}
+      \end{center}
+      {\tiny $\SI{4}{\centi\metre\squared}$ averaged}
+    \end{column}
+  \end{columns}
+
+  \vspace{2pt}
+  {\small Thelonious phantom, \SI{28}{\giga\hertz}, frontal plane-wave illumination at ICNIRP reference level ($\SI{10}{\watt\per\metre\squared}$).}
+
+  \vspace{1pt}
+  \begin{itemize}\setlength{\itemsep}{0pt}
+    \item $\Sab$ peaks on front-facing surfaces with highest $\cos\theta$
+    \item Self-shadowed regions (armpits, inner legs): $\Sab \approx 0$
+    \item $\SI{4}{\centi\metre\squared}$ spatial averaging (regulatory standard) smooths local peaks
+  \end{itemize}
+
+  \vspace{1pt}
+  \returntoindex{p1-index}{Part I index}\quad\returntosummary{sum-p1-validation}
+\end{frame}
+
+% ----------------------------------------------------------
+% A-P1-16: Posture sensitivity
+% ----------------------------------------------------------
+\begin{frame}[label=app-p1-posture]{Posture sensitivity analysis}
+
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{center}
+        \includegraphics[width=\textwidth,height=0.28\textheight,keepaspectratio]{posture_sensitivity.png}
+      \end{center}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{center}
+        \includegraphics[width=\textwidth,height=0.28\textheight,keepaspectratio]{posture_sensitivity_summary.png}
+      \end{center}
+      \vspace{0pt}
+      {\small
+      \begin{itemize}\setlength{\itemsep}{0pt}
+        \item RMS variation across postures: $6.5\,\%$
+        \item $\Aab/A$ varies with arm position (changes self-shadowing)
+        \item Arms raised: less self-shadowing, more absorption
+        \item Arms at sides: armpits shadowed, less absorption
+      \end{itemize}
+      }
+    \end{column}
+  \end{columns}
+  \vspace{-2pt}
+  {\footnotesize Posture variation ($6.5\,\%$) comparable to pseudo-Brewster error ($5.6\,\%$). Both smaller than tissue dielectric uncertainty ($20\,\%$).}
+  \vspace{-4pt}
+  \returntoindex{p1-index}{Part I index}
+\end{frame}
+
+% ----------------------------------------------------------
+% A-P1-17: APD directional and angle analysis
+% ----------------------------------------------------------
+\begin{frame}[label=app-p1-apd]{APD directional analysis}
+
+  \begin{center}
+    \includegraphics[width=0.75\textwidth,height=0.62\textheight,keepaspectratio]{apd_direction_analysis.png}
+  \end{center}
+
+  {\footnotesize $\Sab$ by polarisation: TE, TM, and unpolarised illumination compared across directions.
+   Total absorbed power and directional variability metrics.}
+
+  \vspace{4pt}
+  \returntoindex{p1-index}{Part I index}
+\end{frame}
+
+\begin{frame}{APD angle dependence}
+
+  \begin{center}
+    \includegraphics[width=0.75\textwidth,height=0.62\textheight,keepaspectratio]{apd_angle_dependence.png}
+  \end{center}
+
+  {\footnotesize
+   TE: monotonically decreasing with angle (always $\le T_0$, conservative).
+   TM: rises to pseudo-Brewster peak, then falls.
+   Unpolarised average: near-constant (pseudo-Brewster compensation).}
+
+  \vspace{4pt}
+  \returntoindex{p1-index}{Part I index}
+\end{frame}
+
+\begin{frame}{Polarisation splitting $\Delta T$ vs angle}
+
+  \begin{center}
+    \includegraphics[width=0.75\textwidth,height=0.7\textheight,keepaspectratio]{delta_T_angle_dependence.png}
+  \end{center}
+
+  {\footnotesize
+   $\Delta T = T_p - T_s$: peaks at pseudo-Brewster angle, drives polarisation sensitivity.
+   For skin at \SI{28}{\giga\hertz}: peak $\Delta T \approx 0.3$ near $60^\circ$.}
+
+  \vspace{4pt}
+  \returntoindex{p1-index}{Part I index}
+\end{frame}
