@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 from numpy.testing import assert_allclose
 
+from aegis.mimo.precoders import compute_precoder, mmse, mrt, zf, zf_exposure
 from aegis.precoder import Precoder
 
 
@@ -17,8 +18,6 @@ class TestMRT:
         rng = np.random.default_rng(42)
         h = rng.standard_normal(8) + 1j * rng.standard_normal(8)
         P = 2.0
-
-        from aegis.mimo.precoders import mrt
 
         W = mrt(h.reshape(1, -1), P=P)
         x_old = Precoder.mrt(h, P=P).x
@@ -34,8 +33,6 @@ class TestMRT:
         H = rng.standard_normal((K, M)) + 1j * rng.standard_normal((K, M))
         P = 5.0
 
-        from aegis.mimo.precoders import mrt
-
         W = mrt(H, P=P)
         for k in range(K):
             col_power = float(np.real(np.vdot(W[:, k], W[:, k])))
@@ -48,8 +45,6 @@ class TestMRT:
         H = rng.standard_normal((K, M)) + 1j * rng.standard_normal((K, M))
         P = 3.0
 
-        from aegis.mimo.precoders import mrt
-
         W = mrt(H, P=P)
         frob_sq = float(np.real(np.trace(W.conj().T @ W)))
         assert_allclose(frob_sq, P, atol=1e-12)
@@ -59,8 +54,6 @@ class TestMRT:
         rng = np.random.default_rng(45)
         K, M = 2, 8
         H = rng.standard_normal((K, M)) + 1j * rng.standard_normal((K, M))
-
-        from aegis.mimo.precoders import mrt
 
         W = mrt(H, P=1.0)
         for k in range(K):
@@ -79,8 +72,6 @@ class TestMRT:
         K, M = 3, 12
         H = rng.standard_normal((K, M)) + 1j * rng.standard_normal((K, M))
 
-        from aegis.mimo.precoders import mrt
-
         W = mrt(H)
         assert W.shape == (M, K)
         assert np.iscomplexobj(W)
@@ -95,8 +86,6 @@ class TestZF:
         K, M = 3, 8
         H = rng.standard_normal((K, M)) + 1j * rng.standard_normal((K, M))
 
-        from aegis.mimo.precoders import zf
-
         W = zf(H, P=1.0)
         HW = H @ W
         # Off-diagonal elements should be near zero
@@ -110,8 +99,6 @@ class TestZF:
         H = rng.standard_normal((K, M)) + 1j * rng.standard_normal((K, M))
         P = 4.0
 
-        from aegis.mimo.precoders import zf
-
         W = zf(H, P=P)
         frob_sq = float(np.real(np.trace(W.conj().T @ W)))
         assert_allclose(frob_sq, P, atol=1e-10)
@@ -122,8 +109,6 @@ class TestZF:
         M = 8
         h = rng.standard_normal(M) + 1j * rng.standard_normal(M)
         H = h.reshape(1, -1)
-
-        from aegis.mimo.precoders import mrt, zf
 
         W_zf = zf(H, P=1.0)
         W_mrt = mrt(H, P=1.0)
@@ -139,8 +124,6 @@ class TestZF:
         K, M = 4, 16
         H = rng.standard_normal((K, M)) + 1j * rng.standard_normal((K, M))
 
-        from aegis.mimo.precoders import zf
-
         W = zf(H)
         assert W.shape == (M, K)
         assert np.iscomplexobj(W)
@@ -150,8 +133,6 @@ class TestZF:
         rng = np.random.default_rng(54)
         K, M = 8, 4  # M < K
         H = rng.standard_normal((K, M)) + 1j * rng.standard_normal((K, M))
-
-        from aegis.mimo.precoders import zf
 
         with pytest.raises(ValueError, match="M_ant.*must be >= K"):
             zf(H)
@@ -167,8 +148,6 @@ class TestMMSE:
         H = rng.standard_normal((K, M)) + 1j * rng.standard_normal((K, M))
         P = 2.0
 
-        from aegis.mimo.precoders import mmse, zf
-
         W_zf = zf(H, P=P)
         W_mmse = mmse(H, P=P, noise_power=1e-12)
         assert_allclose(W_mmse, W_zf, atol=1e-6)
@@ -179,8 +158,6 @@ class TestMMSE:
         K, M = 4, 16
         H = rng.standard_normal((K, M)) + 1j * rng.standard_normal((K, M))
         P = 3.0
-
-        from aegis.mimo.precoders import mmse
 
         W = mmse(H, P=P, noise_power=0.1)
         frob_sq = float(np.real(np.trace(W.conj().T @ W)))
@@ -200,8 +177,6 @@ class TestMMSE:
             ]
         )
 
-        from aegis.mimo.precoders import mmse, zf
-
         W_zf = zf(H, P=1.0)
         W_mmse = mmse(H, P=1.0, noise_power=0.1)
 
@@ -219,8 +194,6 @@ class TestMMSE:
         K, M = 3, 12
         H = rng.standard_normal((K, M)) + 1j * rng.standard_normal((K, M))
 
-        from aegis.mimo.precoders import mmse
-
         W = mmse(H)
         assert W.shape == (M, K)
         assert np.iscomplexobj(W)
@@ -230,8 +203,6 @@ class TestMMSE:
         rng = np.random.default_rng(64)
         K = M = 4
         H = rng.standard_normal((K, M)) + 1j * rng.standard_normal((K, M))
-
-        from aegis.mimo.precoders import mmse
 
         W = mmse(H, P=1.0, noise_power=0.01)
         assert W.shape == (M, K)
@@ -258,8 +229,6 @@ class TestZFExposure:
         H, Q_list = self._make_scenario(rng, K=3, M=8)
         P_abs_max = 0.05
 
-        from aegis.mimo.precoders import zf_exposure
-
         W = zf_exposure(H, Q_list, P_abs_max=P_abs_max, P=1.0)
         for Q_u in Q_list:
             absorbed = float(np.real(np.trace(W.conj().T @ Q_u @ W)))
@@ -270,8 +239,6 @@ class TestZFExposure:
         rng = np.random.default_rng(71)
         H, Q_list = self._make_scenario(rng, K=2, M=8)
         P_abs_max = 100.0  # loose constraint
-
-        from aegis.mimo.precoders import zf, zf_exposure
 
         W_zfe = zf_exposure(H, Q_list, P_abs_max=P_abs_max, P=1.0)
         W_zf = zf(H, P=1.0)
@@ -289,8 +256,6 @@ class TestZFExposure:
         P = 2.0
         P_abs_max = 0.01
 
-        from aegis.mimo.precoders import zf_exposure
-
         W = zf_exposure(H, Q_list, P_abs_max=P_abs_max, P=P)
         frob_sq = float(np.real(np.trace(W.conj().T @ W)))
         assert frob_sq <= P + 1e-10
@@ -301,8 +266,6 @@ class TestZFExposure:
         H, Q_list = self._make_scenario(rng, K=2, M=8)
         P = 1.0
 
-        from aegis.mimo.precoders import zf, zf_exposure
-
         W_zfe = zf_exposure(H, Q_list, P_abs_max=1e6, P=P)
         W_zf = zf(H, P=P)
         assert_allclose(W_zfe, W_zf, atol=1e-10)
@@ -311,8 +274,6 @@ class TestZFExposure:
         """Output shape is (M, K) complex."""
         rng = np.random.default_rng(74)
         H, Q_list = self._make_scenario(rng, K=4, M=16)
-
-        from aegis.mimo.precoders import zf_exposure
 
         W = zf_exposure(H, Q_list, P_abs_max=1.0, P=1.0)
         assert W.shape == (16, 4)
@@ -327,8 +288,6 @@ class TestComputePrecoder:
         K, M = 2, 8
         H = rng.standard_normal((K, M)) + 1j * rng.standard_normal((K, M))
 
-        from aegis.mimo.precoders import compute_precoder, mrt
-
         W = compute_precoder(H, precoder_type="mrt", P=1.0)
         W_ref = mrt(H, P=1.0)
         assert_allclose(W, W_ref)
@@ -338,8 +297,6 @@ class TestComputePrecoder:
         K, M = 2, 8
         H = rng.standard_normal((K, M)) + 1j * rng.standard_normal((K, M))
 
-        from aegis.mimo.precoders import compute_precoder, zf
-
         W = compute_precoder(H, precoder_type="zf", P=2.0)
         W_ref = zf(H, P=2.0)
         assert_allclose(W, W_ref)
@@ -348,8 +305,6 @@ class TestComputePrecoder:
         rng = np.random.default_rng(82)
         K, M = 3, 8
         H = rng.standard_normal((K, M)) + 1j * rng.standard_normal((K, M))
-
-        from aegis.mimo.precoders import compute_precoder, mmse
 
         W = compute_precoder(H, precoder_type="mmse", P=1.0, noise_power=0.05)
         W_ref = mmse(H, P=1.0, noise_power=0.05)
@@ -363,8 +318,6 @@ class TestComputePrecoder:
         for _ in range(K):
             A = rng.standard_normal((M, M)) + 1j * rng.standard_normal((M, M))
             Q_list.append(A.conj().T @ A / M)
-
-        from aegis.mimo.precoders import compute_precoder, zf_exposure
 
         W = compute_precoder(
             H,
@@ -380,7 +333,10 @@ class TestComputePrecoder:
         rng = np.random.default_rng(84)
         H = rng.standard_normal((2, 8)) + 1j * rng.standard_normal((2, 8))
 
-        from aegis.mimo.precoders import compute_precoder
-
         with pytest.raises(ValueError, match="Unknown precoder type"):
             compute_precoder(H, precoder_type="banana")
+
+    def test_zf_exposure_missing_args(self):
+        H = np.eye(2, dtype=complex)
+        with pytest.raises(ValueError, match="zf_exposure requires"):
+            compute_precoder(H, precoder_type="zf_exposure")

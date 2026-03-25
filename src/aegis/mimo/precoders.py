@@ -41,7 +41,8 @@ def zf(H: np.ndarray, P: float = 1.0) -> np.ndarray:
         msg = f"M_ant ({M}) must be >= K ({K}) for ZF precoding"
         raise ValueError(msg)
     HHH = H @ H.conj().T
-    W_raw = H.conj().T @ np.linalg.inv(HHH)
+    X = np.linalg.solve(HHH, H)  # (K, M), solves HHH @ X = H
+    W_raw = X.conj().T  # (M, K)
     frob = np.sqrt(float(np.real(np.trace(W_raw.conj().T @ W_raw))))
     if frob < 1e-30:
         return np.zeros((M, K), dtype=complex)
@@ -55,7 +56,8 @@ def mmse(H: np.ndarray, P: float = 1.0, noise_power: float = 0.01) -> np.ndarray
         H = H.reshape(1, -1)
     K, M = H.shape
     HHH = H @ H.conj().T
-    W_raw = H.conj().T @ np.linalg.inv(HHH + noise_power * np.eye(K))
+    X = np.linalg.solve(HHH + noise_power * np.eye(K), H)  # (K, M)
+    W_raw = X.conj().T  # (M, K)
     frob = np.sqrt(float(np.real(np.trace(W_raw.conj().T @ W_raw))))
     if frob < 1e-30:
         return np.zeros((M, K), dtype=complex)
@@ -70,7 +72,10 @@ def zf_exposure(
 ) -> np.ndarray:
     """ZF directions, per-column power scaled to satisfy exposure constraints.
 
-    For each user u: sum_k w_k^H Q_u w_k <= P_abs_max.
+    Uses a conservative per-column budget: each column k is scaled so that
+    w_k^H Q_u w_k <= P_abs_max / K for every user u. This guarantees the
+    joint constraint sum_k w_k^H Q_u w_k <= P_abs_max but may be overly
+    conservative when columns have unequal exposure contributions.
     """
     H = np.asarray(H, dtype=complex)
     if H.ndim == 1:
@@ -79,14 +84,12 @@ def zf_exposure(
     W_zf = zf(H, P=P)
 
     # Extract unit directions from ZF columns
-    directions = np.zeros_like(W_zf)
-    for k in range(K):
-        norm_k = np.linalg.norm(W_zf[:, k])
-        if norm_k > 1e-30:
-            directions[:, k] = W_zf[:, k] / norm_k
+    norms = np.linalg.norm(W_zf, axis=0, keepdims=True)
+    norms = np.maximum(norms, 1e-30)
+    directions = W_zf / norms
 
     # Start from ZF's per-column power allocation
-    gamma_sq = np.array([float(np.real(np.vdot(W_zf[:, k], W_zf[:, k]))) for k in range(K)])
+    gamma_sq = np.real(np.einsum("ij,ij->j", W_zf.conj(), W_zf))
 
     # Scale down per-column power to satisfy exposure constraints
     for k in range(K):
