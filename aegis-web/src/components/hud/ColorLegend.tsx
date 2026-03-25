@@ -93,6 +93,25 @@ export default function ColorLegend() {
   const gradientCss =
     'linear-gradient(to bottom, rgb(128,0,0), rgb(255,0,0), rgb(255,128,0), rgb(255,255,0), rgb(128,255,128), rgb(0,255,255), rgb(0,128,255), rgb(0,0,255), rgb(0,0,128))'
 
+  const isRatioMode = ratioMode && displayQuantity !== 'sab'
+
+  // Find ratio limit from compliance checks
+  let ratioLimit = 1.0
+  if (isRatioMode && stats.compliance?.checks) {
+    const limitMap: Record<string, (c: { label: string }) => boolean> = {
+      sab_4cm2: (c) => c.label.includes('4 cm'),
+      sab_1cm2: (c) => c.label.includes('1 cm'),
+      sinc_local: (c) => c.label.includes('S_inc') && c.label.includes('local'),
+    }
+    const finder = limitMap[displayQuantity]
+    if (finder) {
+      ratioLimit = (stats.compliance.checks as Array<{ label: string; limit: number }>).find(finder)?.limit ?? 20.0
+    }
+  }
+
+  // Compute max ratio for the legend
+  const maxRatio = isRatioMode && ratioLimit > 0 ? peakForQty / ratioLimit : 1.0
+
   // Both scales use 5 uniformly spaced ticks (top to bottom)
   const N = 5
   type Tick = { label: string; pct: number }
@@ -100,7 +119,10 @@ export default function ColorLegend() {
 
   for (let i = 0; i < N; i++) {
     const frac = i / (N - 1) // 0 = top (max), 1 = bottom (min)
-    if (legendScale === 'linear') {
+    if (isRatioMode) {
+      const value = maxRatio * (1 - frac)
+      ticks.push({ label: value.toFixed(2), pct: frac })
+    } else if (legendScale === 'linear') {
       const value = maxSab * (1 - frac)
       ticks.push({ label: formatLegendValue(value), pct: frac })
     } else {
@@ -117,26 +139,28 @@ export default function ColorLegend() {
           <span className="text-xs font-medium text-foreground">
             <Tex math={legendLabel(displayQuantity, ratioMode, legendScale)} />
           </span>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={toggleColormapLock}
-              className={`text-[11px] px-1.5 py-0.5 rounded border transition-colors cursor-pointer ${
-                colormapLocked
-                  ? 'border-primary/40 bg-primary/15 text-primary'
-                  : 'border-border bg-muted/50 text-foreground hover:bg-muted'
-              }`}
-              title={colormapLocked ? 'Unlock colormap (auto-normalize)' : 'Lock colormap to current max'}
-            >
-              {colormapLocked ? '\u{1F512}' : '\u{1F513}'}
-            </button>
-            <button
-              onClick={toggleLegendScale}
-              className="text-[11px] px-2 py-0.5 rounded border border-border bg-muted/50 text-foreground hover:bg-muted transition-colors cursor-pointer"
-              title={legendScale === 'linear' ? 'Switch to dB scale' : 'Switch to linear scale'}
-            >
-              {legendScale === 'linear' ? 'dB' : 'Lin'}
-            </button>
-          </div>
+          {!isRatioMode && (
+            <div className="flex items-center gap-1">
+              <button
+                onClick={toggleColormapLock}
+                className={`text-[11px] px-1.5 py-0.5 rounded border transition-colors cursor-pointer ${
+                  colormapLocked
+                    ? 'border-primary/40 bg-primary/15 text-primary'
+                    : 'border-border bg-muted/50 text-foreground hover:bg-muted'
+                }`}
+                title={colormapLocked ? 'Unlock colormap (auto-normalize)' : 'Lock colormap to current max'}
+              >
+                {colormapLocked ? '\u{1F512}' : '\u{1F513}'}
+              </button>
+              <button
+                onClick={toggleLegendScale}
+                className="text-[11px] px-2 py-0.5 rounded border border-border bg-muted/50 text-foreground hover:bg-muted transition-colors cursor-pointer"
+                title={legendScale === 'linear' ? 'Switch to dB scale' : 'Switch to linear scale'}
+              >
+                {legendScale === 'linear' ? 'dB' : 'Lin'}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Gradient bar with tick labels side by side */}
@@ -170,8 +194,8 @@ export default function ColorLegend() {
           </div>
         </div>
 
-        {/* dB floor input (only in dB mode) */}
-        {legendScale === 'dB' && (
+        {/* dB floor input (only in dB mode and not ratio mode) */}
+        {!isRatioMode && legendScale === 'dB' && (
           <div className="flex items-center gap-1.5 mt-2">
             <span className="text-[10px] text-muted-foreground">Floor</span>
             <input
