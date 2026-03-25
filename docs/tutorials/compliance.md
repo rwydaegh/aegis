@@ -31,6 +31,11 @@ The local $S_{\mathrm{inc}}$ limit decreases slowly with frequency. At 28 GHz it
 `icnirp_limits` returns an `ICNIRPLimits` dataclass with all applicable limits at a given scenario and frequency.
 
 ```python
+import matplotlib.pyplot as plt
+import scienceplots  # noqa: F401
+plt.style.use(["science", "ieee", "no-latex"])
+plt.rcParams.update({"figure.figsize": (3.5, 2.625)})
+
 from aegis.compliance import ExposureScenario, icnirp_limits
 
 lim = icnirp_limits(ExposureScenario.GENERAL_PUBLIC, freq_hz=28e9)
@@ -175,7 +180,6 @@ Rather than re-running the engine at every power level, compute once at a refere
 
 ```python
 import numpy as np
-import matplotlib.pyplot as plt
 
 # Compute once at 1 W
 result_1w = engine.compute(body, paths, mode="spatial")
@@ -191,15 +195,14 @@ for p_dbm in powers_dbm:
 
 margins = np.array(margins)
 
-plt.figure()
-plt.plot(powers_dbm, margins)
-plt.axhline(0, color="r", linestyle="--", label="Compliance boundary")
-plt.xlabel("TX power (dBm)")
-plt.ylabel("Compliance margin (dB)")
-plt.title("Margin vs transmit power")
-plt.legend()
-plt.grid(True)
-plt.tight_layout()
+fig, ax = plt.subplots()
+ax.plot(powers_dbm, margins)
+ax.axhline(0, color="r", linestyle="--", label="Compliance limit")
+ax.fill_between(powers_dbm, margins, 0, where=margins >= 0, alpha=0.15, color="g")
+ax.fill_between(powers_dbm, margins, 0, where=margins < 0, alpha=0.15, color="r")
+ax.set_xlabel("TX power (dBm)")
+ax.set_ylabel("Compliance margin (dB)")
+ax.legend(fontsize=6)
 plt.show()
 ```
 
@@ -223,7 +226,6 @@ print(f"Max compliant power: {sweep['p_max_compliant_w']:.3f} W")
 
 ```python
 from aegis.compliance import compliance_heatmap
-import matplotlib.pyplot as plt
 
 hm = compliance_heatmap(
     sab_4cm2=5.0,           # measured S_ab at 1 W reference
@@ -233,20 +235,28 @@ hm = compliance_heatmap(
     freq_max_hz=100e9,
 )
 
-plt.figure()
-plt.pcolormesh(
+fig, ax = plt.subplots(figsize=(3.5, 2.8))
+pcm = ax.pcolormesh(
     hm["freq_hz"] / 1e9,
     hm["power_dbm"],
     hm["margin_db"],
     cmap="RdYlGn",
     vmin=-10,
     vmax=10,
+    shading="auto",
+    rasterized=True,
 )
-plt.colorbar(label="Compliance margin (dB)")
-plt.xlabel("Frequency (GHz)")
-plt.ylabel("TX power (dBm)")
-plt.title("Compliance margin: frequency vs power")
-plt.tight_layout()
+ax.contour(
+    hm["freq_hz"] / 1e9,
+    hm["power_dbm"],
+    hm["margin_db"],
+    levels=[0],
+    colors="k",
+    linewidths=0.8,
+)
+fig.colorbar(pcm, ax=ax, label="Margin (dB)")
+ax.set_xlabel("Frequency (GHz)")
+ax.set_ylabel("TX power (dBm)")
 plt.show()
 ```
 

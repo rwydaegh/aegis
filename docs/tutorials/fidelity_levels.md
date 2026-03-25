@@ -47,6 +47,9 @@ These imports and helpers are shared across all code blocks in this tutorial.
 ```python
 import numpy as np
 import matplotlib.pyplot as plt
+import scienceplots  # noqa: F401
+plt.style.use(["science", "ieee", "no-latex"])
+plt.rcParams.update({"figure.figsize": (3.5, 2.625)})
 
 from aegis.engine import DosimetryEngine
 from aegis.geometry.mesh import BodyMesh
@@ -238,14 +241,10 @@ for n, p, e in zip(n_values, p_abs_values, errors):
 Plot the convergence curve:
 
 ```python
-fig, ax = plt.subplots(figsize=(6, 4))
-ax.loglog(n_values, errors, "o-", label="Level 3 error")
+fig, ax = plt.subplots()
+ax.loglog(n_values, errors, "o-", markersize=4)
 ax.set_xlabel("Number of paths $N$")
-ax.set_ylabel("Relative error vs $N=500$ (%)")
-ax.set_title("Multipath convergence of $P_{\\mathrm{abs}}$")
-ax.legend()
-ax.grid(True, which="both", alpha=0.4)
-fig.tight_layout()
+ax.set_ylabel(r"Relative error vs $N{=}500$ (%)")
 plt.show()
 ```
 

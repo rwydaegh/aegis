@@ -31,6 +31,11 @@ AEGIS uses $T_0$ as the scalar transmission factor in incoherent levels (0-6). C
 `TissueModel` is a frozen dataclass holding $\varepsilon_r$, $\sigma$, and frequency. Several presets are available:
 
 ```python
+import matplotlib.pyplot as plt
+import scienceplots  # noqa: F401
+plt.style.use(["science", "ieee", "no-latex"])
+plt.rcParams.update({"figure.figsize": (3.5, 2.625)})
+
 from aegis.tissue.dielectric import (
     SKIN_28GHZ,
     SKIN_60GHZ,
@@ -108,7 +113,6 @@ fig = SKIN_28GHZ.plot_spectrum(freq_min_hz=10e9, freq_max_hz=90e9)
 
 ```python
 import numpy as np
-import matplotlib.pyplot as plt
 from aegis.tissue.fresnel import fresnel_transmission
 from aegis.tissue.dielectric import SKIN_28GHZ
 
@@ -120,18 +124,18 @@ T_s, T_p = fresnel_transmission(mu, n)
 T_avg = 0.5 * (T_s + T_p)
 T0 = SKIN_28GHZ.T0
 
-fig, ax = plt.subplots(figsize=(7, 4))
+fig, ax = plt.subplots()
 theta_deg = np.degrees(theta)
-ax.plot(theta_deg, T_s, label=r"$T_s$ (TE)", color="C0")
-ax.plot(theta_deg, T_p, label=r"$T_p$ (TM)", color="C1")
-ax.plot(theta_deg, T_avg, label=r"$T_{\mathrm{avg}}$", color="C2", linewidth=2)
-ax.axhline(T0, color="gray", linestyle="--", linewidth=1, label=f"$T_0$ = {T0:.4f}")
+ax.plot(theta_deg, np.real(T_s), color="k", linestyle="-", label=r"$T_s$ (TE)")
+ax.plot(theta_deg, np.real(T_p), color="r", linestyle="--", label=r"$T_p$ (TM)")
+ax.plot(theta_deg, np.real(T_avg), color="b", linestyle="-.", label=r"$T_{\mathrm{avg}}$")
+ax.axhline(T0, color="0.5", linestyle=":", linewidth=0.6, label=f"$T_0 = {T0:.3f}$")
 ax.set_xlabel(r"Incidence angle $\theta_i$ (deg)")
-ax.set_ylabel("Power transmission")
-ax.set_title("Fresnel transmission: skin at 28 GHz")
-ax.legend()
-fig.tight_layout()
-fig.savefig("fresnel_skin_28ghz.png", dpi=150)
+ax.set_ylabel("Power transmission coefficient")
+ax.set_xlim(0, 90)
+ax.set_ylim(0, 1.0)
+ax.legend(fontsize=6)
+plt.show()
 ```
 
 Pass `mu` as a complex array; `fresnel_transmission` uses this internally for the branch-cut-safe square root. For real incidence angles from 0 to 90 degrees, `np.cos(theta).astype(complex)` is correct.

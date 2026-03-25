@@ -213,7 +213,7 @@ def _matplotlib_heatmap(
     polys = vertices[order][:, :, [0, 2]]  # take X, Z
     colors_arr = sab[order]
 
-    fig, ax = plt.subplots(1, 1, figsize=(8, 10))
+    fig, ax = plt.subplots(1, 1, figsize=(3.5, 3.5))
     pc = PolyCollection(
         polys,
         array=colors_arr,
@@ -224,10 +224,16 @@ def _matplotlib_heatmap(
     ax.add_collection(pc)
     ax.autoscale()
     ax.set_aspect("equal")
-    ax.set_xlabel("x (m)")
-    ax.set_ylabel("z (m)")
-    ax.set_title(title)
-    fig.colorbar(ScalarMappable(norm=norm, cmap=cmap), ax=ax, label="S_ab (W/m\u00b2)")
+    ax.set_xlabel("$x$ (m)")
+    ax.set_ylabel("$z$ (m)")
+    if title != "Absorbed power density":
+        ax.set_title(title)
+    fig.colorbar(
+        ScalarMappable(norm=norm, cmap=cmap),
+        ax=ax,
+        label=r"$S_{\mathrm{ab}}$ (W/m$^2$)",
+        shrink=0.8,
+    )
 
     if out_path is not None:
         out_path = Path(out_path)

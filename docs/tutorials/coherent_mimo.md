@@ -21,6 +21,9 @@ $Q \in \mathbb{C}^{M_{\mathrm{ant}} \times M_{\mathrm{ant}}}$ is Hermitian posit
 ```python
 import numpy as np
 import matplotlib.pyplot as plt
+import scienceplots  # noqa: F401
+plt.style.use(["science", "ieee", "no-latex"])
+plt.rcParams.update({"figure.figsize": (3.5, 2.625)})
 
 from aegis import DosimetryEngine
 from aegis.geometry.mesh import BodyMesh
@@ -178,15 +181,13 @@ print(f"rho from function: {rho_check:.4f}")
 The eigenspectrum shows how many effective spatial modes contribute to absorption. A fast-decaying spectrum means one or two array directions dominate exposure.
 
 ```python
-fig, ax = plt.subplots(figsize=(6, 3))
+fig, ax = plt.subplots(figsize=(3.5, 2.0))
 indices = np.arange(1, M_ant + 1)
-ax.bar(indices, np.real(eigenvalues))
+ax.bar(indices, np.real(eigenvalues), width=0.6)
 ax.set_xlabel("Eigenvalue index")
-ax.set_ylabel("Eigenvalue [W / (V/m)^2 * m^2]")
-ax.set_title("Exposure operator eigenspectrum")
+ax.set_ylabel(r"$\lambda_i$ (W$\cdot$m$^2$ / (V/m)$^2$)")
 ax.set_xticks(indices)
-plt.tight_layout()
-plt.savefig("eigenspectrum.png", dpi=120)
+plt.show()
 ```
 
 ## Level 8: ECBF

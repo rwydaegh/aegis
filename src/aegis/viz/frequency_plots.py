@@ -31,15 +31,13 @@ def plot_frequency_sweep(
     f_hz = np.asarray(freqs_hz, dtype=float)
     sab = np.asarray(peak_sab_values, dtype=float)
 
-    fig, ax = plt.subplots(figsize=(8, 4.5))
-    ax.plot(f_hz * 1e-9, sab, color="C0", marker="o", markersize=3, linewidth=1.2)
+    fig, ax = plt.subplots()
+    ax.plot(f_hz * 1e-9, sab, marker="o", markersize=3)
     ax.set_xlabel("Frequency (GHz)")
     ax.set_ylabel(r"Peak $S_{\mathrm{ab}}$ (W/m$^2$)")
     ax.set_yscale("log")
-    ax.axhline(limit, color="red", linestyle="--", linewidth=1.0, label=f"Limit ({limit:g} W/m²)")
-    ax.grid(True, which="both", alpha=0.3)
+    ax.axhline(limit, color="r", linestyle="--", label=f"Limit ({limit:g} W/m$^2$)")
     ax.legend(loc="best")
-    fig.tight_layout()
     return fig
 
 
@@ -68,17 +66,15 @@ def plot_tissue_spectrum(
     eps_r = spectrum["eps_r"]
     sigma = spectrum["sigma"]
 
-    fig, ax_left = plt.subplots(figsize=(8, 4.5))
-    ax_left.plot(freqs * 1e-9, eps_r, color="C0", label=r"$\varepsilon_r'$")
+    fig, ax_left = plt.subplots()
+    ln1 = ax_left.plot(freqs * 1e-9, eps_r, color="k", linestyle="-", label=r"$\varepsilon_r'$")
     ax_left.set_xlabel("Frequency (GHz)")
-    ax_left.set_ylabel(r"$\varepsilon_r'$", color="C0")
-    ax_left.tick_params(axis="y", labelcolor="C0")
+    ax_left.set_ylabel(r"$\varepsilon_r'$")
 
     ax_right = ax_left.twinx()
-    ax_right.plot(freqs * 1e-9, sigma, color="C1", label=r"$\sigma$ (S/m)")
-    ax_right.set_ylabel(r"$\sigma$ (S/m)", color="C1")
-    ax_right.tick_params(axis="y", labelcolor="C1")
+    ln2 = ax_right.plot(freqs * 1e-9, sigma, color="k", linestyle="--", label=r"$\sigma$ (S/m)")
+    ax_right.set_ylabel(r"$\sigma$ (S/m)")
 
-    fig.suptitle(f"{tissue_name}: dielectric spectrum")
-    fig.tight_layout()
+    lns = ln1 + ln2
+    ax_left.legend(lns, [line.get_label() for line in lns], loc="center right")
     return fig

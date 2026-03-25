@@ -22,6 +22,11 @@ Install AEGIS with visualization support (`pip install -e ".[viz]"`), then impor
 
 ```python
 import numpy as np
+import matplotlib.pyplot as plt
+import scienceplots  # noqa: F401
+plt.style.use(["science", "ieee", "no-latex"])
+plt.rcParams.update({"figure.figsize": (3.5, 2.625)})
+
 import aegis
 from aegis import DosimetryEngine
 from aegis.geometry.mesh import BodyMesh
