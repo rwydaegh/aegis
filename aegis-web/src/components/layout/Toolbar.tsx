@@ -1,4 +1,4 @@
-import { PanelLeft, Box, AlignCenter, AlignJustify, LayoutGrid, Focus, RotateCcw, Video, Share2 } from 'lucide-react'
+import { PanelLeft, Box, AlignCenter, AlignJustify, LayoutGrid, Focus, Video, Share2, BookOpen } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { useSimulationStore } from '@/stores/simulation'
@@ -61,7 +61,6 @@ const CAMERA_PRESETS: Array<{ preset: CameraPreset & string; label: string; icon
   { preset: 'side', label: 'Side view', icon: <AlignJustify className="size-4" /> },
   { preset: 'top', label: 'Top view', icon: <LayoutGrid className="size-4" /> },
   { preset: 'focus', label: 'Focus body', icon: <Focus className="size-4" /> },
-  { preset: 'reset', label: 'Reset camera', icon: <RotateCcw className="size-4" /> },
 ]
 
 export default function Toolbar() {
@@ -86,9 +85,18 @@ export default function Toolbar() {
 
   return (
     <header className="h-11 flex items-center justify-between px-3 bg-card/80 backdrop-blur-sm border-b border-border shrink-0 gap-4">
-      {/* Left: wordmark + scenario */}
+      {/* Left: wordmark + docs + scenario */}
       <div className="flex items-center gap-3 min-w-0">
         <span className="text-sm font-bold tracking-wider text-heading shrink-0">AEGIS</span>
+        <a
+          href="https://docs.aegis.waves-ugent.be"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 rounded-full bg-primary/10 border border-primary/20 px-2.5 py-0.5 text-xs font-medium text-primary hover:bg-primary/20 transition-colors shrink-0"
+        >
+          <BookOpen className="size-3" />
+          Docs
+        </a>
         {scenario && (
           <span className="text-xs text-muted-foreground truncate hidden sm:block">{scenario}</span>
         )}
@@ -100,24 +108,8 @@ export default function Toolbar() {
         <ModePill />
       </div>
 
-      {/* Center: camera mode + presets */}
+      {/* Center: camera presets + follow */}
       <div className="flex items-center gap-1 shrink-0">
-        <Tooltip>
-          <TooltipTrigger
-            onClick={() => setCameraMode(cameraMode === 'orbit' ? 'follow' : 'orbit')}
-            className={cn(
-              'inline-flex items-center justify-center size-7 rounded-md border transition-colors',
-              cameraMode === 'follow'
-                ? 'bg-primary/15 border-primary/30 text-primary'
-                : 'border-border hover:bg-muted text-muted-foreground hover:text-foreground',
-            )}
-            aria-label="Toggle follow camera"
-          >
-            <Video className="size-4" />
-          </TooltipTrigger>
-          <TooltipContent>{cameraMode === 'follow' ? 'Free camera' : 'Follow camera'}</TooltipContent>
-        </Tooltip>
-
         <div className="flex items-center gap-0.5 border border-border rounded-md p-0.5">
           {CAMERA_PRESETS.map(({ preset, label, icon }) => (
             <Tooltip key={preset}>
@@ -134,6 +126,21 @@ export default function Toolbar() {
               <TooltipContent>{label}</TooltipContent>
             </Tooltip>
           ))}
+          <Tooltip>
+            <TooltipTrigger
+              onClick={() => setCameraMode(cameraMode === 'orbit' ? 'follow' : 'orbit')}
+              className={cn(
+                'inline-flex items-center justify-center size-7 rounded transition-colors',
+                cameraMode === 'follow'
+                  ? 'bg-primary/15 text-primary'
+                  : 'hover:bg-muted text-muted-foreground hover:text-foreground',
+              )}
+              aria-label="Toggle follow camera"
+            >
+              <Video className="size-4" />
+            </TooltipTrigger>
+            <TooltipContent>{cameraMode === 'follow' ? 'Free camera' : 'Follow camera'}</TooltipContent>
+          </Tooltip>
         </div>
       </div>
 

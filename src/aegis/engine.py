@@ -60,12 +60,15 @@ class DosimetryEngine:
     def _body_cache_key(body: BodyMesh) -> int:
         """Content-based hash of body geometry for cache keying.
 
-        Uses a fast checksum of centroid bytes instead of id(body), which
-        can alias after garbage collection.
+        Uses a fast checksum of triangle areas instead of centroids. The
+        averaging matrix G depends only on inter-centroid distances and areas,
+        both of which are invariant to rigid transforms (translation and
+        rotation). Hashing areas means that moving the body with WASD in the
+        viewer does not invalidate the cache.
         """
         import hashlib
 
-        digest = hashlib.sha256(body.centroids.tobytes()).digest()[:8]
+        digest = hashlib.sha256(body.areas.tobytes()).digest()[:8]
         return hash((int.from_bytes(digest, "little"), body.n_triangles))
 
     def _get_G(self, body, target_area_m2):
