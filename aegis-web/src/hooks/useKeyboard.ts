@@ -28,13 +28,29 @@ export function useKeyboard(): KeyState {
     sprint: false,
   })
 
+  // Shared updater: merges physical keyboard keys + touch overlay keys
+  const updateRef = useRef<() => void>(() => {})
+  updateRef.current = () => {
+    const keys = keysRef.current
+    const t = touchKeys
+    const s = stateRef.current
+    s.forward = keys.has('KeyW') || t.has('KeyW')
+    s.back = keys.has('KeyS') || t.has('KeyS')
+    s.left = keys.has('KeyA') || t.has('KeyA')
+    s.right = keys.has('KeyD') || t.has('KeyD')
+    s.rotLeft = keys.has('KeyQ') || t.has('KeyQ')
+    s.rotRight = keys.has('KeyE') || t.has('KeyE')
+    s.jump = keys.has('Space') || t.has('Space')
+    s.sprint = keys.has('ShiftLeft') || keys.has('ShiftRight')
+  }
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Don't capture when typing in inputs
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return
 
       keysRef.current.add(e.code)
-      updateState()
+      updateRef.current()
 
       // Arrow key antenna nudging (single-user mode only)
       if (e.code.startsWith('Arrow') && !useMIMOStore.getState().enabled) {
@@ -58,26 +74,21 @@ export function useKeyboard(): KeyState {
 
     const handleKeyUp = (e: KeyboardEvent) => {
       keysRef.current.delete(e.code)
-      updateState()
+      updateRef.current()
     }
 
-    function updateState() {
-      const keys = keysRef.current
-      const t = touchKeys
-      const s = stateRef.current
-      s.forward = keys.has('KeyW') || t.has('KeyW')
-      s.back = keys.has('KeyS') || t.has('KeyS')
-      s.left = keys.has('KeyA') || t.has('KeyA')
-      s.right = keys.has('KeyD') || t.has('KeyD')
-      s.rotLeft = keys.has('KeyQ') || t.has('KeyQ')
-      s.rotRight = keys.has('KeyE') || t.has('KeyE')
-      s.jump = keys.has('Space') || t.has('Space')
-      s.sprint = keys.has('ShiftLeft') || keys.has('ShiftRight')
+    // Poll touchKeys every frame so mobile controls work without keyboard events
+    let raf = 0
+    const pollTouch = () => {
+      updateRef.current()
+      raf = requestAnimationFrame(pollTouch)
     }
+    raf = requestAnimationFrame(pollTouch)
 
     window.addEventListener('keydown', handleKeyDown)
     window.addEventListener('keyup', handleKeyUp)
     return () => {
+      cancelAnimationFrame(raf)
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('keyup', handleKeyUp)
     }
