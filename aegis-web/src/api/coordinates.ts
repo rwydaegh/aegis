@@ -6,7 +6,7 @@ export type ScenePos = [x: number, y: number, z: number]
 
 /** Convert Y-up (Three.js) to Z-up (server): [x, y, z] -> [x, -z, y] */
 export function toServer(p: ScenePos): ServerPos {
-  return [p[0], -p[2], p[1]]
+  return [p[0], -p[2] || 0, p[1]]
 }
 
 /** Convert Z-up (server) to Y-up (Three.js): [x, y, z] -> [x, z, -y] */
