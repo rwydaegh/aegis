@@ -54,10 +54,17 @@ def expand_paths_to_array(
     k0 = 2 * np.pi * freq_hz / C_0
     offsets = array.element_positions - array.reference_position
 
+    # Element gain is the same for all elements (same pattern and broadside),
+    # so compute once. This matches the gain baked into steering_matrix() for
+    # the communication channel h, keeping G_tilde and h consistent.
+    # Monograph eq. (4.4): psi_n includes the element pattern C_{T,j(n)}.
+    gain = array.element_gain(center_paths.k_hat)  # (N,)
+    psi_gained = center_paths.psi * gain[:, None]
+
     per_element = []
     for j in range(M):
         phase = np.exp(1j * k0 * (center_paths.k_hat @ offsets[j]))
-        psi_j = center_paths.psi * phase[:, None]
+        psi_j = psi_gained * phase[:, None]
 
         paths_j = PropagationPaths(
             k_hat=center_paths.k_hat.copy(),
