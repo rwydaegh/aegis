@@ -216,6 +216,10 @@ class DosimetryResult:
         Populates all available checks from the result fields. Requires
         ``freq_hz`` to be set. Uses general public scenario by default.
 
+        When spatial averaging was disabled (sab_averaged is None), falls back
+        to the raw per-triangle peak as a conservative upper bound for the
+        4 cm^2 check. Similarly uses raw sinc peak if sinc_averaged is None.
+
         Parameters
         ----------
         scenario : ExposureScenario or None
@@ -230,9 +234,16 @@ class DosimetryResult:
         if scenario is None:
             scenario = _ES.GENERAL_PUBLIC
 
+        # Prefer spatially averaged values, fall back to raw peaks (conservative)
         peak_4 = self.peak_sab_averaged
+        if peak_4 is None and self.sab.size > 0:
+            peak_4 = self.peak_sab
+
         peak_1 = float(np.max(self.sab_1cm2_averaged)) if self.sab_1cm2_averaged is not None else None
+
         sinc_peak = float(np.max(self.sinc_averaged)) if self.sinc_averaged is not None else None
+        if sinc_peak is None and self.sinc is not None and self.sinc.size > 0:
+            sinc_peak = float(np.max(self.sinc))
 
         return _eval(
             freq_hz=self.freq_hz,
