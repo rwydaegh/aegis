@@ -34,10 +34,15 @@ def _compute_face_curvature(body: BodyMesh) -> np.ndarray:
     Uses KD-tree for fast neighbor lookup: for each face, the curvature
     is estimated as the average |delta_normal| / distance to its 6 nearest
     neighbors. This gives a good proxy for the discrete mean curvature.
+
+    The result is invariant to rigid transforms: translation preserves all
+    inter-centroid distances and rotation preserves both distances and
+    |delta_normal| (since ||R n_i - R n_j|| = ||n_i - n_j||). We hash
+    on areas (transform-invariant) so the cache survives body movement.
     """
     import hashlib
 
-    digest = hashlib.sha256(body.centroids.tobytes()).digest()[:8]
+    digest = hashlib.sha256(body.areas.tobytes()).digest()[:8]
     cache_key = hash((int.from_bytes(digest, "little"), body.n_triangles))
 
     with _curvature_cache_lock:
@@ -73,10 +78,10 @@ def _compute_face_curvature(body: BodyMesh) -> np.ndarray:
 # ---------------------------------------------------------------------------
 
 SKIN_MODELS = [
-    {"id": "itis", "label": "IT’IS database (v5)"},
-    {"id": "christ2021", "label": "Gabriel × 1.2 (Christ 2021)"},
-    {"id": "christ2025", "label": "Christ 2025 Dermis"},
-    {"id": "nict", "label": "NICT Measurements"},
+    {"id": "itis", "label": "Homogeneous - IT’IS database (v5)"},
+    {"id": "christ2021", "label": "Homogeneous - Gabriel × 1.2 (Christ 2021)"},
+    {"id": "christ2025", "label": "Homogeneous - Christ 2025 Dermis"},
+    {"id": "nict", "label": "Homogeneous - NICT Measurements"},
 ]
 
 _nict_data: dict | None = None

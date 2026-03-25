@@ -111,6 +111,8 @@ def run_pipeline(
         str(resolution),
         "--out",
         str(output_dir),
+        "--key",
+        api_key,
     ]
 
     env = os.environ.copy()

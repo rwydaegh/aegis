@@ -111,15 +111,19 @@ def _build_stats_response(result, body, tissue, level, extra=None, mode=None, co
     if result.sinc is not None:
         sinc_wb = float(np.sum(result.sinc * body.areas) / np.sum(body.areas))
 
-    compliance = evaluate_compliance(
-        scenario=scenario,
-        freq_hz=freq_hz,
-        sab_4cm2=peak_sab_averaged,
-        sinc_local=peak_sinc_averaged,
-        sinc_whole_body=sinc_wb,
-        sar_wb=result.sar_wb,
-        sab_1cm2=peak_sab_1cm2,
-    )
+    try:
+        compliance = evaluate_compliance(
+            scenario=scenario,
+            freq_hz=freq_hz,
+            sab_4cm2=peak_sab_averaged,
+            sinc_local=peak_sinc_averaged,
+            sinc_whole_body=sinc_wb,
+            sar_wb=result.sar_wb,
+            sab_1cm2=peak_sab_1cm2,
+        )
+    except ValueError:
+        # Frequency outside ICNIRP 2020 range (>6 GHz to 300 GHz)
+        compliance = None
 
     stats = {
         "p_abs": float(result.p_abs),
@@ -142,8 +146,13 @@ def _build_stats_response(result, body, tissue, level, extra=None, mode=None, co
                 }
                 for c in compliance.all_checks
             ],
-        },
-        "compliant": compliance.overall_pass,
+        }
+        if compliance is not None
+        else None,
+        "compliant": compliance.overall_pass if compliance is not None else None,
+        "warning": "Frequency outside ICNIRP 2020 range (>6 GHz to 300 GHz); compliance not evaluated."
+        if compliance is None
+        else None,
         "n_illuminated": int(np.sum(result.sab > 0)),
         "n_triangles": body.n_triangles,
         "level": level if level is not None else 0,
@@ -392,6 +401,9 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
         t_stats = _time.perf_counter()
 
+        # Store compliance result for /api/compliance/summary export
+        app.config["_last_compliance_result"] = stats.get("compliance")
+
         # Inject route-level timings
         timings = extra.get("timings", {})
         timings["compliance_stats_ms"] = (t_stats - t_compute) * 1e3
@@ -627,6 +639,9 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
         t_stats = _time.perf_counter()
 
+        # Store compliance result for /api/compliance/summary export
+        app.config["_last_compliance_result"] = stats.get("compliance")
+
         timings = stats.get("timings", {})
         timings["rt_ms"] = (t_rt - t_route) * 1e3
         timings["kernel_ms"] = (t_compute - t_rt) * 1e3
@@ -782,6 +797,9 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         )
 
         t_stats = _time.perf_counter()
+
+        # Store compliance result for /api/compliance/summary export
+        app.config["_last_compliance_result"] = stats.get("compliance")
 
         timings = stats.get("timings", {})
         timings["rt_ms"] = (t_rt - t_route) * 1e3
@@ -1009,6 +1027,9 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         )
 
         t_stats = _time.perf_counter()
+
+        # Store compliance result for /api/compliance/summary export
+        app.config["_last_compliance_result"] = stats.get("compliance")
 
         timings = stats.get("timings", {})
         timings["rt_ms"] = (t_rt - t_route) * 1e3
