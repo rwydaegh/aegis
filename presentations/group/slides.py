@@ -38,7 +38,7 @@ def result_box(content: Mobject, title: str = None, width: float = 11) -> VGroup
     bg = box.copy().set_fill(LIGHTBLUE, opacity=0.3).set_stroke(width=0)
     group = VGroup(bg, box, content)
     if title:
-        label = Text(title, font_size=20, weight=BOLD, color=WHITE)
+        label = Tex(r"\textbf{" + title + "}", font_size=20, color=WHITE)
         label_bg = SurroundingRectangle(
             label, color=NAVY, buff=0.1,
             corner_radius=0.05, stroke_width=0,
@@ -49,14 +49,14 @@ def result_box(content: Mobject, title: str = None, width: float = 11) -> VGroup
     return group
 
 
-def slide_title(text: str) -> Text:
+def slide_title(text: str) -> Tex:
     """Standard slide title."""
-    return Text(text, font_size=36, weight=BOLD, color=NAVY).to_edge(UP, buff=0.4)
+    return Tex(r"\textbf{" + text + "}", font_size=36, color=NAVY).to_edge(UP, buff=0.4)
 
 
-def footer_text(text: str) -> Text:
+def footer_text(text: str) -> Tex:
     """Small footer."""
-    return Text(text, font_size=14, color=DIMGRAY).to_edge(DOWN, buff=0.15)
+    return Tex(text, font_size=14, color=DIMGRAY).to_edge(DOWN, buff=0.15)
 
 
 # ================================================================
@@ -86,17 +86,16 @@ class GroupTalk(Slide):
     # SLIDE 0: Title
     # ============================================================
     def slide_00_title(self):
-        title = Text(
-            "Geometric Dosimetry",
-            font_size=52, weight=BOLD, color=NAVY,
+        title = Tex(
+            r"\textbf{Geometric Dosimetry}",
+            font_size=52, color=NAVY,
         )
-        subtitle = Text(
-            "Closed-form absorption laws\nfrom 100 MHz to 100 GHz",
+        subtitle = Tex(
+            r"Closed-form absorption laws\\from 100 MHz to 100 GHz",
             font_size=28, color=DIMGRAY,
-            line_spacing=1.3,
         )
-        author = Text("Robin Wydaeghe", font_size=22, color=DIMGRAY)
-        affil = Text("Ghent University & imec", font_size=18, color=DIMGRAY)
+        author = Tex(r"Robin Wydaeghe", font_size=22, color=DIMGRAY)
+        affil = Tex(r"Ghent University \& imec", font_size=18, color=DIMGRAY)
 
         group = VGroup(title, subtitle, author, affil).arrange(DOWN, buff=0.4)
 
@@ -115,31 +114,31 @@ class GroupTalk(Slide):
 
         # Scale mismatch visual
         body_line = Line(DOWN * 2, UP * 2, color=NAVY, stroke_width=4)
-        body_label = Text("~1 m", font_size=18, color=NAVY).next_to(body_line, RIGHT, buff=0.15)
+        body_label = Tex(r"$\sim$1 m", font_size=18, color=NAVY).next_to(body_line, RIGHT, buff=0.15)
 
         skin_rect = Rectangle(
             width=0.08, height=0.06, color=ALERTRED,
             fill_color=ALERTRED, fill_opacity=0.4,
         ).move_to(body_line.get_top() + RIGHT * 0.04)
-        skin_label = Text("δ ≈ 0.3 mm", font_size=14, color=ALERTRED).next_to(skin_rect, RIGHT, buff=0.15)
-        ratio_text = Text("5 orders of magnitude", font_size=16, color=DIMGRAY).next_to(body_line, LEFT, buff=0.3)
+        skin_label = Tex(r"$\delta \approx 0.3$ mm", font_size=14, color=ALERTRED).next_to(skin_rect, RIGHT, buff=0.15)
+        ratio_text = Tex(r"5 orders of magnitude", font_size=16, color=DIMGRAY).next_to(body_line, LEFT, buff=0.3)
 
         figure = VGroup(body_line, body_label, skin_rect, skin_label, ratio_text)
         figure.move_to(RIGHT * 3.5 + DOWN * 0.2)
 
         # Bullets
         bullets = VGroup(
-            Text("Body: ~1 m.  Skin depth at 28 GHz: 0.3 mm.", font_size=22, color=BLACK),
-            Text("FDTD mesh: ~10¹² cells per simulation.", font_size=22, color=BLACK),
-            Text("One plane wave, one phantom: weeks of GPU.", font_size=22, color=BLACK),
-            Text("Parametric study (550 runs): months.", font_size=22, color=BLACK),
+            Tex(r"Body: $\sim$1 m.  Skin depth at 28 GHz: 0.3 mm.", font_size=22, color=BLACK),
+            Tex(r"FDTD mesh: $\sim 10^{12}$ cells per simulation.", font_size=22, color=BLACK),
+            Tex(r"One plane wave, one phantom: weeks of GPU.", font_size=22, color=BLACK),
+            Tex(r"Parametric study (550 runs): months.", font_size=22, color=BLACK),
         ).arrange(DOWN, aligned_edge=LEFT, buff=0.25)
         bullets.move_to(LEFT * 2.5 + DOWN * 0.2)
 
         # Result box
-        punch = Text(
-            "We replace the volumetric simulation\nwith surface-level geometric operations.",
-            font_size=20, color=BLACK, line_spacing=1.3,
+        punch = Tex(
+            r"We replace the volumetric simulation\\with surface-level geometric operations.",
+            font_size=20, color=BLACK,
         )
         box = result_box(punch)
         box.to_edge(DOWN, buff=0.6)
@@ -176,9 +175,9 @@ class GroupTalk(Slide):
         )
 
         # Labels for each factor
-        label_sinc = Text("Environment", font_size=18, color=MEDBLUE)
-        label_teff = Text("Material", font_size=18, color=ALERTRED)
-        label_relu = Text("Geometry", font_size=18, color=RESULTGREEN)
+        label_sinc = Tex(r"Environment", font_size=18, color=MEDBLUE)
+        label_teff = Tex(r"Material", font_size=18, color=ALERTRED)
+        label_relu = Tex(r"Geometry", font_size=18, color=RESULTGREEN)
 
         brace_sinc = Brace(eq[2], DOWN, color=MEDBLUE, buff=0.1)
         brace_teff = Brace(eq[4], DOWN, color=ALERTRED, buff=0.1)
@@ -191,8 +190,8 @@ class GroupTalk(Slide):
         eq_group = VGroup(eq, brace_sinc, label_sinc, brace_teff, label_teff, brace_relu, label_relu)
         eq_group.move_to(ORIGIN + UP * 0.3)
 
-        note = Text(
-            "Exact under locally flat surface assumption. Any polarisation, any frequency.",
+        note = Tex(
+            r"Exact under locally flat surface assumption. Any polarisation, any frequency.",
             font_size=16, color=DIMGRAY,
         ).to_edge(DOWN, buff=0.8)
 
@@ -214,9 +213,9 @@ class GroupTalk(Slide):
             VGroup(eq[4], brace_teff, label_teff),
             color=ALERTRED, buff=0.15, stroke_width=3,
         )
-        question = Text(
-            "What happens to this term?",
-            font_size=20, weight=BOLD, color=ALERTRED,
+        question = Tex(
+            r"\textbf{What happens to this term?}",
+            font_size=20, color=ALERTRED,
         ).next_to(highlight, RIGHT, buff=0.3)
 
         self.play(Create(highlight), FadeIn(question), run_time=0.6)
@@ -330,13 +329,13 @@ class GroupTalk(Slide):
         self.next_slide()
 
         # Annotation: variation < 6%
-        var_text = Text(
-            "Variation < 6% up to 75°",
+        var_text = Tex(
+            r"Variation $<$ 6\% up to $75^\circ$",
             font_size=18, color=DIMGRAY,
         ).next_to(ax, DOWN, buff=0.3)
 
-        azzam_text = Text(
-            "Holds for |ñ| > 2.5 (Azzam, 2015).  Biological tissue: |ñ| ≈ 3-6.",
+        azzam_text = Tex(
+            r"Holds for $|\tilde{n}| > 2.5$ (Azzam, 2015).  Biological tissue: $|\tilde{n}| \approx 3$--$6$.",
             font_size=16, color=DIMGRAY,
         ).next_to(var_text, DOWN, buff=0.1)
 
@@ -344,9 +343,9 @@ class GroupTalk(Slide):
         self.next_slide()
 
         # Collapse: fade T_s and T_p, morph T_avg to flat line
-        collapse_text = Text(
-            "Material collapses to one number: T₀",
-            font_size=26, weight=BOLD, color=NAVY,
+        collapse_text = Tex(
+            r"\textbf{Material collapses to one number: $T_0$}",
+            font_size=26, color=NAVY,
         ).move_to(UP * 2.7 + RIGHT * 1)
 
         self.play(
@@ -391,9 +390,9 @@ class GroupTalk(Slide):
         comparison = VGroup(label_before, label_after).arrange(DOWN, aligned_edge=LEFT, buff=0.2)
         comparison.next_to(eq, DOWN, buff=0.6)
 
-        keypoint = Text(
-            "All spatial variation is determined by the body's shape.",
-            font_size=22, weight=BOLD, color=NAVY,
+        keypoint = Tex(
+            r"\textbf{All spatial variation is determined by the body's shape.}",
+            font_size=22, color=NAVY,
         ).next_to(comparison, DOWN, buff=0.5)
 
         rbox = result_box(eq)
@@ -465,7 +464,7 @@ class GroupTalk(Slide):
         shadow_label = MathTex(
             r"A_\perp(\hat{\mathbf{k}})", font_size=22, color=DIMGRAY,
         ).next_to(shadow, RIGHT, buff=0.15)
-        shadow_text = Text("shadow area", font_size=16, color=DIMGRAY).next_to(shadow_label, DOWN, buff=0.05)
+        shadow_text = Tex(r"shadow area", font_size=16, color=DIMGRAY).next_to(shadow_label, DOWN, buff=0.05)
 
         # Equation
         eq_shadow = MathTex(
@@ -484,8 +483,8 @@ class GroupTalk(Slide):
             run_time=1.2,
         )
 
-        relu_note = Text(
-            "Front-facing: cos θ.  Back-facing: 0 (ReLU gate).",
+        relu_note = Tex(
+            r"Front-facing: $\cos \theta$.  Back-facing: 0 (ReLU gate).",
             font_size=18, color=DIMGRAY,
         ).move_to(DOWN * 2.2)
         self.play(FadeIn(relu_note), run_time=0.4)
@@ -517,9 +516,9 @@ class GroupTalk(Slide):
         cauchy_box.move_to(RIGHT * 2.5 + DOWN * 0.3)
 
         ao_text = VGroup(
-            Text("Self-shadowing correction η(r)", font_size=20, color=NAVY),
-            Text("≡ ambient occlusion (GPU graphics)", font_size=20, color=DIMGRAY),
-            Text("Thelonious: A_ab / A ≈ 0.87", font_size=18, color=DIMGRAY),
+            Tex(r"Self-shadowing correction $\eta(\mathbf{r})$", font_size=20, color=NAVY),
+            Tex(r"$\equiv$ ambient occlusion (GPU graphics)", font_size=20, color=DIMGRAY),
+            Tex(r"Thelonious: $A_{\mathrm{ab}} / A \approx 0.87$", font_size=18, color=DIMGRAY),
         ).arrange(DOWN, aligned_edge=LEFT, buff=0.1)
         ao_text.next_to(cauchy_box, DOWN, buff=0.4)
 
@@ -550,16 +549,16 @@ class GroupTalk(Slide):
                     font_size=20, color=BLACK),
             MathTex(r"\mathbf{s}", r"\in \mathbb{R}^{N}", r"\text{: path power densities}",
                     font_size=20, color=BLACK),
-            Text("ReLU: exact visibility gate", font_size=20, color=BLACK),
+            Tex(r"ReLU: exact visibility gate", font_size=20, color=BLACK),
         ).arrange(DOWN, aligned_edge=LEFT, buff=0.15)
         left_items.move_to(LEFT * 3 + DOWN * 1.2)
 
         right_items = VGroup(
-            Text("Differentiable end-to-end.", font_size=20, weight=BOLD, color=NAVY),
-            Text("Gradients of SAR w.r.t. antenna positions", font_size=18, color=BLACK),
-            Text("propagate by backpropagation.", font_size=18, color=BLACK),
-            Text("", font_size=8),
-            Text("10⁶× speedup over FDTD.", font_size=22, weight=BOLD, color=RESULTGREEN),
+            Tex(r"\textbf{Differentiable end-to-end.}", font_size=20, color=NAVY),
+            Tex(r"Gradients of SAR w.r.t.\ antenna positions", font_size=18, color=BLACK),
+            Tex(r"propagate by backpropagation.", font_size=18, color=BLACK),
+            Tex(r"\phantom{x}", font_size=8),
+            Tex(r"\textbf{$10^6\times$ speedup over FDTD.}", font_size=22, color=RESULTGREEN),
         ).arrange(DOWN, aligned_edge=LEFT, buff=0.1)
         right_items.move_to(RIGHT * 3 + DOWN * 1.2)
 
@@ -583,30 +582,29 @@ class GroupTalk(Slide):
         title = slide_title("Validation")
 
         # Two columns
-        col_left_title = Text("Mie theory (exact for lossy spheres)", font_size=20, weight=BOLD, color=NAVY)
+        col_left_title = Tex(r"\textbf{Mie theory (exact for lossy spheres)}", font_size=20, color=NAVY)
         col_left_items = VGroup(
-            Text("Tests Fresnel + geometric optics jointly", font_size=18, color=BLACK),
-            Text("Body-scale at 28 GHz: ~5-10% error", font_size=18, color=BLACK),
-            Text("Dominated by diffraction into shadow", font_size=18, color=BLACK),
-            Text("Error is conservative (underestimates)", font_size=18, color=BLACK),
+            Tex(r"Tests Fresnel + geometric optics jointly", font_size=18, color=BLACK),
+            Tex(r"Body-scale at 28 GHz: $\sim$5--10\% error", font_size=18, color=BLACK),
+            Tex(r"Dominated by diffraction into shadow", font_size=18, color=BLACK),
+            Tex(r"Error is conservative (underestimates)", font_size=18, color=BLACK),
         ).arrange(DOWN, aligned_edge=LEFT, buff=0.12)
         col_left = VGroup(col_left_title, col_left_items).arrange(DOWN, aligned_edge=LEFT, buff=0.2)
         col_left.move_to(LEFT * 3.2 + DOWN * 0.2)
 
-        col_right_title = Text("Anatomical phantom (Thelonious)", font_size=20, weight=BOLD, color=NAVY)
+        col_right_title = Tex(r"\textbf{Anatomical phantom (Thelonious)}", font_size=20, color=NAVY)
         col_right_items = VGroup(
-            Text("Total absorbed power error: 0.35%", font_size=18, color=BLACK),
-            Text("Local RMS error: 3.2%", font_size=18, color=BLACK),
-            Text("Isolates Fresnel from diffraction", font_size=18, color=BLACK),
+            Tex(r"Total absorbed power error: 0.35\%", font_size=18, color=BLACK),
+            Tex(r"Local RMS error: 3.2\%", font_size=18, color=BLACK),
+            Tex(r"Isolates Fresnel from diffraction", font_size=18, color=BLACK),
         ).arrange(DOWN, aligned_edge=LEFT, buff=0.12)
         col_right = VGroup(col_right_title, col_right_items).arrange(DOWN, aligned_edge=LEFT, buff=0.2)
         col_right.move_to(RIGHT * 3.2 + DOWN * 0.2)
 
         # Punchline
-        punch = Text(
-            "Framework error (5-15%) < tissue dielectric uncertainty (~20%).\n"
-            "The data is less accurate than the model.",
-            font_size=20, color=BLACK, line_spacing=1.3,
+        punch = Tex(
+            r"Framework error (5--15\%) $<$ tissue dielectric uncertainty ($\sim$20\%).\\The data is less accurate than the model.",
+            font_size=20, color=BLACK,
         )
         punch_box = result_box(punch)
         punch_box.to_edge(DOWN, buff=0.5)
@@ -624,13 +622,13 @@ class GroupTalk(Slide):
     # SLIDE 8: Demo title card
     # ============================================================
     def slide_08_demo_card(self):
-        aegis = Text("AEGIS", font_size=72, weight=BOLD, color=NAVY)
-        subtitle = Text(
-            "Real-time geometric dosimetry",
+        aegis = Tex(r"\textbf{AEGIS}", font_size=72, color=NAVY)
+        subtitle = Tex(
+            r"Real-time geometric dosimetry",
             font_size=28, color=DIMGRAY,
         )
-        features = Text(
-            "3D viewer  ·  9 fidelity levels  ·  ray tracing  ·  ICNIRP compliance",
+        features = Tex(
+            r"3D viewer  $\cdot$  9 fidelity levels  $\cdot$  ray tracing  $\cdot$  ICNIRP compliance",
             font_size=18, color=DIMGRAY,
         )
         group = VGroup(aegis, subtitle, features).arrange(DOWN, buff=0.4)
@@ -651,26 +649,26 @@ class GroupTalk(Slide):
         title = slide_title("From incoherent to coherent")
 
         # Two columns
-        left_title = Text("Parts I-II: powers add", font_size=22, weight=BOLD, color=NAVY)
+        left_title = Tex(r"\textbf{Parts I--II: powers add}", font_size=22, color=NAVY)
         left_eq = MathTex(
             r"S_{\mathrm{ab}} = T_0 \sum_i S_i \,\mathrm{ReLU}(\mu_i)",
             font_size=24, color=BLACK,
         )
         left_col = VGroup(left_title, left_eq).arrange(DOWN, buff=0.2)
 
-        right_title = Text("Part III: fields add", font_size=22, weight=BOLD, color=ALERTRED)
+        right_title = Tex(r"\textbf{Part III: fields add}", font_size=22, color=ALERTRED)
         right_eq = MathTex(
             r"\mathbf{E}_{\mathrm{total}} = \sum_m x_m \,\mathbf{E}_m",
             font_size=24, color=BLACK,
         )
-        right_note = Text("Coherent peak: N× incoherent", font_size=18, color=ALERTRED)
+        right_note = Tex(r"Coherent peak: $N\times$ incoherent", font_size=18, color=ALERTRED)
         right_col = VGroup(right_title, right_eq, right_note).arrange(DOWN, buff=0.15)
 
         cols = VGroup(left_col, right_col).arrange(RIGHT, buff=1.5)
         cols.move_to(UP * 1)
 
         # Branch diagram
-        branch_title = Text("Two branches diverge:", font_size=20, weight=BOLD, color=NAVY)
+        branch_title = Tex(r"\textbf{Two branches diverge:}", font_size=20, color=NAVY)
         signal = MathTex(
             r"\text{Signal at UE: } y = \mathbf{h}^\top \mathbf{x} \in \mathbb{C}",
             font_size=22, color=MEDBLUE,
@@ -679,8 +677,8 @@ class GroupTalk(Slide):
             r"\text{Exposure on body: } \tilde{\mathbf{G}}(\mathbf{r})\,\mathbf{x} \in \mathbb{C}^3",
             font_size=22, color=ALERTRED,
         )
-        signal_note = Text("scalars sum", font_size=16, color=MEDBLUE)
-        exposure_note = Text("vectors sum", font_size=16, color=ALERTRED)
+        signal_note = Tex(r"scalars sum", font_size=16, color=MEDBLUE)
+        exposure_note = Tex(r"vectors sum", font_size=16, color=ALERTRED)
 
         signal_row = VGroup(signal, signal_note).arrange(RIGHT, buff=0.3)
         exposure_row = VGroup(exposure, exposure_note).arrange(RIGHT, buff=0.3)
@@ -688,10 +686,9 @@ class GroupTalk(Slide):
         branch = VGroup(branch_title, signal_row, exposure_row).arrange(DOWN, aligned_edge=LEFT, buff=0.2)
         branch.move_to(DOWN * 1.2)
 
-        punchline = Text(
-            "Signal branch collapses to a scalar. Exposure branch retains the full vector structure.\n"
-            "This is why signal quality and body absorption can decouple.",
-            font_size=18, color=DIMGRAY, line_spacing=1.3,
+        punchline = Tex(
+            r"Signal branch collapses to a scalar. Exposure branch retains the full vector structure.\\This is why signal quality and body absorption can decouple.",
+            font_size=18, color=DIMGRAY,
         ).to_edge(DOWN, buff=0.4)
 
         self.play(FadeIn(title), run_time=0.3)
@@ -750,8 +747,8 @@ class GroupTalk(Slide):
         )
 
         # Labels
-        incoh_label = Text("Random phases", font_size=20, color=DIMGRAY).move_to(origin + UP * 2)
-        coh_label = Text("Aligned phases (beamforming)", font_size=20, color=ALERTRED).move_to(origin + UP * 2)
+        incoh_label = Tex(r"Random phases", font_size=20, color=DIMGRAY).move_to(origin + UP * 2)
+        coh_label = Tex(r"Aligned phases (beamforming)", font_size=20, color=ALERTRED).move_to(origin + UP * 2)
 
         scaling_incoh = MathTex(r"|E|^2 \sim N", font_size=28, color=DIMGRAY).move_to(RIGHT * 3.5 + UP * 1)
         scaling_coh = MathTex(r"|E|^2 \sim N^2", font_size=28, color=ALERTRED).move_to(RIGHT * 3.5 + UP * 1)
@@ -801,9 +798,9 @@ class GroupTalk(Slide):
         q_box.move_to(DOWN * 0.8)
 
         q_props = VGroup(
-            Text("Q is Hermitian PSD, M × M.", font_size=18, color=BLACK),
-            Text("Eigendecomposition: worst-case precoder = dominant eigenvector.", font_size=18, color=BLACK),
-            Text("tr(Q): isotropic-TX expected absorption.", font_size=18, color=BLACK),
+            Tex(r"$\mathbf{Q}$ is Hermitian PSD, $M \times M$.", font_size=18, color=BLACK),
+            Tex(r"Eigendecomposition: worst-case precoder = dominant eigenvector.", font_size=18, color=BLACK),
+            Tex(r"$\mathrm{tr}(\mathbf{Q})$: isotropic-TX expected absorption.", font_size=18, color=BLACK),
         ).arrange(DOWN, aligned_edge=LEFT, buff=0.1)
         q_props.next_to(q_box, DOWN, buff=0.3)
 
@@ -840,21 +837,21 @@ class GroupTalk(Slide):
         regimes = VGroup(
             VGroup(
                 MathTex(r"\lambda = 0", font_size=20, color=MEDBLUE),
-                Text("MRT (unconstrained)", font_size=16, color=BLACK),
+                Tex(r"MRT (unconstrained)", font_size=16, color=BLACK),
             ).arrange(DOWN, buff=0.08),
             VGroup(
                 MathTex(r"\lambda \gg \nu", font_size=20, color=ALERTRED),
-                Text("Body-avoiding precoder", font_size=16, color=BLACK),
+                Tex(r"Body-avoiding precoder", font_size=16, color=BLACK),
             ).arrange(DOWN, buff=0.08),
             VGroup(
                 MathTex(r"\rho \ll 1", font_size=20, color=RESULTGREEN),
-                Text("Natural protection", font_size=16, color=BLACK),
+                Tex(r"Natural protection", font_size=16, color=BLACK),
             ).arrange(DOWN, buff=0.08),
         ).arrange(RIGHT, buff=1.0)
         regimes.move_to(DOWN * 1.8)
 
-        note = Text(
-            "Same structure as Ying (2015), but Q derived analytically from Fresnel physics.",
+        note = Tex(
+            r"Same structure as Ying (2015), but $\mathbf{Q}$ derived analytically from Fresnel physics.",
             font_size=16, color=DIMGRAY,
         ).to_edge(DOWN, buff=0.4)
 
@@ -881,28 +878,26 @@ class GroupTalk(Slide):
         title = slide_title("Summary")
 
         # Three columns
-        col1_title = Text("Incoherent", font_size=22, weight=BOLD, color=NAVY)
+        col1_title = Tex(r"\textbf{Incoherent}", font_size=22, color=NAVY)
         col1_eq = MathTex(
             r"S_{\mathrm{ab}} = S_{\mathrm{inc}} \cdot T_0 \cdot \mathrm{ReLU}(\mu)",
             font_size=20, color=BLACK,
         )
-        col1_text = Text("Material collapses.\nDosimetry is geometry.", font_size=16, color=DIMGRAY,
-                         line_spacing=1.2)
+        col1_text = Tex(r"Material collapses.\\Dosimetry is geometry.", font_size=16, color=DIMGRAY)
         col1 = VGroup(col1_title, col1_eq, col1_text).arrange(DOWN, buff=0.2)
 
-        col2_title = Text("Coherent", font_size=22, weight=BOLD, color=NAVY)
+        col2_title = Tex(r"\textbf{Coherent}", font_size=22, color=NAVY)
         col2_eq = MathTex(
             r"S_{\mathrm{ab}} = \|\tilde{\mathbf{G}}\,\mathbf{x}\|^2",
             font_size=20, color=BLACK,
         )
         col2_eq2 = MathTex(r"P_{\mathrm{abs}} = \mathbf{x}^H \mathbf{Q}\,\mathbf{x}", font_size=20, color=BLACK)
-        col2_text = Text("Closed-form precoder.\nQ from Fresnel physics.", font_size=16, color=DIMGRAY,
-                         line_spacing=1.2)
+        col2_text = Tex(r"Closed-form precoder.\\$\mathbf{Q}$ from Fresnel physics.", font_size=16, color=DIMGRAY)
         col2 = VGroup(col2_title, col2_eq, col2_eq2, col2_text).arrange(DOWN, buff=0.15)
 
-        col3_title = Text("Speed", font_size=22, weight=BOLD, color=NAVY)
-        col3_big = Text("10⁶×", font_size=40, weight=BOLD, color=RESULTGREEN)
-        col3_text = Text("over FDTD.\nReal time on a laptop.", font_size=16, color=DIMGRAY, line_spacing=1.2)
+        col3_title = Tex(r"\textbf{Speed}", font_size=22, color=NAVY)
+        col3_big = Tex(r"\textbf{$10^6\times$}", font_size=40, color=RESULTGREEN)
+        col3_text = Tex(r"over FDTD.\\Real time on a laptop.", font_size=16, color=DIMGRAY)
         col3 = VGroup(col3_title, col3_big, col3_text).arrange(DOWN, buff=0.2)
 
         columns = VGroup(col1, col2, col3).arrange(RIGHT, buff=1.2, aligned_edge=UP)
@@ -920,10 +915,9 @@ class GroupTalk(Slide):
             color=DIMGRAY, stroke_width=0.5,
         )
 
-        punchline = Text(
-            "Tissue physics makes dosimetry geometric. The geometry is fast.\n"
-            "The fast computation enables exposure-aware network design.",
-            font_size=20, weight=BOLD, color=NAVY, line_spacing=1.3,
+        punchline = Tex(
+            r"\textbf{Tissue physics makes dosimetry geometric. The geometry is fast.\\The fast computation enables exposure-aware network design.}",
+            font_size=20, color=NAVY,
         ).to_edge(DOWN, buff=0.6)
 
         self.play(FadeIn(title), run_time=0.3)
@@ -945,10 +939,10 @@ class GroupTalk(Slide):
     # SLIDE 13: Thank you
     # ============================================================
     def slide_13_thankyou(self):
-        thanks = Text("Thank you", font_size=52, weight=BOLD, color=NAVY)
-        qa = Text("Questions and discussion", font_size=24, color=DIMGRAY)
-        contact = Text(
-            "Robin Wydaeghe  |  robin.wydaeghe@ugent.be",
+        thanks = Tex(r"\textbf{Thank you}", font_size=52, color=NAVY)
+        qa = Tex(r"Questions and discussion", font_size=24, color=DIMGRAY)
+        contact = Tex(
+            r"Robin Wydaeghe  $|$  robin.wydaeghe@ugent.be",
             font_size=18, color=DIMGRAY,
         )
         group = VGroup(thanks, qa, contact).arrange(DOWN, buff=0.5)
