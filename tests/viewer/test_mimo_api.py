@@ -57,7 +57,7 @@ def _mock_compute(scene, bodies, level=7, generate_paths_fn=None):
     }
 
 
-COMPUTE_PATCH = "aegis.viewer.routes.mimo.compute_mimo_scene"
+COMPUTE_PATCH = "aegis.viewer.routes.mimo.compute_mimo_scene_with_bodies"
 
 
 class TestMIMOCompute:
