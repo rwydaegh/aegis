@@ -267,5 +267,60 @@ export interface TissueSpectrum {
   T0: number[]
 }
 
+// --- MIMO types ---
+
+export interface ArrayConfig {
+  type: 'upa'
+  n_h: number
+  n_v: number
+  d_h_wavelengths: number
+  d_v_wavelengths: number
+  position: ScenePos
+  broadside: [number, number, number]
+}
+
+export interface MIMOUserConfig {
+  id: string
+  phantom: string
+  position: ScenePos
+  orientation: number
+  device_offset: [number, number, number]
+}
+
+export interface MIMOComputeRequest {
+  array: ArrayConfig
+  users: MIMOUserConfig[]
+  freq_hz: number
+  power_dbm: number
+  precoder_type: string
+  changed?: {
+    type: string
+    user_id?: string
+  }
+}
+
+export interface MIMOComputeResponse {
+  user_ids: string[]
+  compute_time_ms: number
+  precoder_type: string
+}
+
+export interface MIMOUserSummary {
+  id: string
+  p_abs: number
+  p_abs_mw: number
+  peak_sab: number
+  compliant: boolean
+  margin_db: number
+}
+
+export interface MIMOSummary {
+  users: MIMOUserSummary[]
+  precoder: {
+    type: string
+    power_total: number
+  }
+}
+
 // ScenePos is re-exported for convenience where types.ts is the single import point
 export type { ScenePos }
