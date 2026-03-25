@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { useSimulationStore } from './simulation'
 import type { BufferGeometry } from 'three'
 import type { ScenePos } from '@/api/coordinates'
 import type { DosimetryStats, ArrayConfig, MIMOSummary } from '@/api/types'
@@ -71,7 +72,22 @@ export const useMIMOStore = create<MIMOStore>((set, get) => ({
     return users.get(focusedUserId) ?? null
   },
 
-  setEnabled: (on) => set({ enabled: on }),
+  setEnabled: (on) => {
+    const updates: Partial<typeof INITIAL_STATE & { enabled: boolean }> = { enabled: on }
+    if (on && !get().arrayConfig) {
+      const antennaPos = useSimulationStore.getState().antennaPos
+      updates.arrayConfig = {
+        type: 'upa' as const,
+        n_h: 4,
+        n_v: 4,
+        d_h_wavelengths: 0.5,
+        d_v_wavelengths: 0.5,
+        position: antennaPos ?? [5, 0, 3],
+        broadside: [-1, 0, 0] as [number, number, number],
+      }
+    }
+    set(updates)
+  },
 
   addUser: (phantom, position) => {
     const id = crypto.randomUUID()
@@ -100,13 +116,19 @@ export const useMIMOStore = create<MIMOStore>((set, get) => ({
 
   removeUser: (id) => {
     const users = new Map(get().users)
+    const removed = users.get(id)
+    removed?.bodyGeometry?.dispose()
     users.delete(id)
-    const { focusedUserId, controlledUserId } = get()
+    const { focusedUserId, controlledUserId, precoderType, arrayConfig } = get()
     const nextId = users.size > 0 ? users.keys().next().value! : null
+    // Fall back to MRT if ZF/MMSE becomes infeasible (M < K)
+    const nElements = arrayConfig ? arrayConfig.n_h * arrayConfig.n_v : 0
+    const needsFallback = precoderType !== 'mrt' && nElements > 0 && nElements < users.size
     set({
       users,
       focusedUserId: focusedUserId === id ? nextId : focusedUserId,
       controlledUserId: controlledUserId === id ? nextId : controlledUserId,
+      ...(needsFallback ? { precoderType: 'mrt' as PrecoderType } : {}),
     })
   },
 
@@ -163,5 +185,11 @@ export const useMIMOStore = create<MIMOStore>((set, get) => ({
     set({ users, summaryStats: null })
   },
 
-  reset: () => set({ ...INITIAL_STATE, users: new Map() }),
+  reset: () => {
+    // Dispose all body geometries to free GPU memory
+    for (const user of get().users.values()) {
+      user.bodyGeometry?.dispose()
+    }
+    set({ ...INITIAL_STATE, users: new Map() })
+  },
 }))

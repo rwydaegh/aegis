@@ -1,4 +1,5 @@
-import { useSimulationStore } from '@/stores/simulation'
+import { useActiveSimulation } from '@/hooks/useActiveSimulation'
+import { useMIMOStore } from '@/stores/mimo'
 import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
 import { formatSab, formatPower, formatDistance } from '@/lib/format'
@@ -6,10 +7,15 @@ import { PHANTOM_META } from '@/components/panels/PhantomPanel'
 import Tex from '@/components/ui/Tex'
 
 export default function StatsCard() {
-  const { stats } = useSimulationStore()
+  const { stats } = useActiveSimulation()
   const bodyName = useSceneStore(s => s.bodyName)
+  const mimoEnabled = useMIMOStore(s => s.enabled)
+  const focusedUser = useMIMOStore(s =>
+    s.focusedUserId ? s.users.get(s.focusedUserId) ?? null : null
+  )
+  const phantomName = mimoEnabled && focusedUser ? focusedUser.phantomName : bodyName
   const isComputing = useUIStore(s => s.isComputing)
-  const meta = PHANTOM_META[bodyName.toLowerCase()]
+  const meta = PHANTOM_META[phantomName.toLowerCase()]
   const massKg = meta?.mass_kg
 
   const sarValue = (stats && massKg) ? (stats.p_abs_mw / 1000) / massKg : null

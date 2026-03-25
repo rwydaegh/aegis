@@ -1,4 +1,5 @@
 import { useSimulationStore } from '@/stores/simulation'
+import { useActiveSimulation } from '@/hooks/useActiveSimulation'
 import { useUIStore } from '@/stores/ui'
 import type { QuantityKey } from '@/api/types'
 import Tex from '@/components/ui/Tex'
@@ -28,7 +29,7 @@ const LABEL_TO_KEY: Record<string, QuantityKey> = {
 }
 
 export default function CompliancePanel() {
-  const stats = useSimulationStore(s => s.stats)
+  const { stats } = useActiveSimulation()
   const enabledQuantities = useSimulationStore(s => s.enabledQuantities)
   const scenario = useUIStore(s => s.exposureScenario)
   const isComputing = useUIStore(s => s.isComputing)

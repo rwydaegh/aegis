@@ -7,6 +7,8 @@ import { useSceneStore } from '@/stores/scene'
 import { useSimulationStore } from '@/stores/simulation'
 import { useUIStore } from '@/stores/ui'
 import { useDosimetry } from '@/hooks/useDosimetry'
+import { useMIMODosimetry } from '@/hooks/useMIMODosimetry'
+import { useMIMOKeyboard } from '@/hooks/useMIMOKeyboard'
 import { usePhysics } from '@/hooks/usePhysics'
 import { useClickToPlace } from '@/hooks/useClickToPlace'
 import BodyMesh from './BodyMesh'
@@ -181,6 +183,16 @@ function DosimetryController() {
   return null
 }
 
+function MIMODosimetryController() {
+  useMIMODosimetry()
+  return null
+}
+
+function MIMOKeyboardController() {
+  useMIMOKeyboard()
+  return null
+}
+
 function PhysicsController() {
   usePhysics()
   return null
@@ -261,6 +273,8 @@ export default function SceneRoot() {
       )}
       <RayPaths />
       <DosimetryController />
+      <MIMODosimetryController />
+      <MIMOKeyboardController />
       <PhysicsController />
       <FollowCamera />
       {cameraMode === 'orbit' && (
