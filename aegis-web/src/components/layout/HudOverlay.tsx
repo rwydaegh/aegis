@@ -1,4 +1,3 @@
-import StatsCard from '@/components/hud/StatsCard'
 import StatusBar from '@/components/hud/StatusBar'
 import ColorLegend from '@/components/hud/ColorLegend'
 import ServerInfoBadge from '@/components/hud/ServerInfoBadge'
@@ -11,11 +10,6 @@ export default function HudOverlay() {
 
   return (
     <div className="absolute inset-0 pointer-events-none z-10">
-      {/* Stats card - top right */}
-      <div className="absolute top-3 right-3 pointer-events-auto">
-        <StatsCard />
-      </div>
-
       {/* Compliance panel - left side, offset past sidebar when open */}
       <div
         className="absolute top-3 pointer-events-auto transition-all duration-200"
