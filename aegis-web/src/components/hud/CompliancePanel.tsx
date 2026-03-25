@@ -1,5 +1,6 @@
 import { useSimulationStore } from '@/stores/simulation'
 import { useUIStore } from '@/stores/ui'
+import type { QuantityKey } from '@/api/types'
 import Tex from '@/components/ui/Tex'
 
 function computeMaxPowerDbm(checks: Array<{ ratio: number }>, currentPowerDbm: number): number | null {
@@ -18,18 +19,26 @@ const LABEL_TEX: Record<string, string> = {
   'S_inc (whole-body)': 'S_\\text{inc}\\;(\\text{wb})',
 }
 
+const LABEL_TO_KEY: Record<string, QuantityKey> = {
+  'S_ab (4 cm^2)': 'sab_4cm2',
+  'S_ab (1 cm^2)': 'sab_1cm2',
+  'SAR_wb': 'sar_wb',
+  'S_inc (local)': 'sinc_local',
+  'S_inc (whole-body)': 'sinc_wb',
+}
+
 export default function CompliancePanel() {
   const stats = useSimulationStore(s => s.stats)
+  const enabledQuantities = useSimulationStore(s => s.enabledQuantities)
   const scenario = useUIStore(s => s.exposureScenario)
   const isComputing = useUIStore(s => s.isComputing)
   if (!stats?.compliance) return null
   const { compliance } = stats
 
-  // Show ALL compliance checks regardless of which quantities are enabled
-  // for mesh display. Compliance is regulatory, not a display preference.
-  const visibleChecks = compliance.checks
-
-  if (visibleChecks.length === 0) return null
+  const visibleChecks = compliance.checks.filter(check => {
+    const key = LABEL_TO_KEY[check.label]
+    return key ? enabledQuantities.has(key) : true
+  })
 
   return (
     <div
@@ -51,7 +60,11 @@ export default function CompliancePanel() {
         </span>
       </div>
 
-      {visibleChecks.map((check, i) => {
+      {visibleChecks.length === 0 ? (
+        <div style={{ color: '#666', fontSize: '11px', fontStyle: 'italic' }}>
+          Enable quantities to see compliance checks
+        </div>
+      ) : visibleChecks.map((check, i) => {
         const color = !check.pass ? '#f87171' : check.ratio > 0.8 ? '#fbbf24' : '#4ade80'
         const status = !check.pass ? 'FAIL' : check.ratio > 0.8 ? 'WARN' : 'PASS'
         const tex = LABEL_TEX[check.label]

@@ -7,25 +7,6 @@ import { jetColor, gainTFromLinear, arrayMax } from '@/lib/colormap'
 import { useBodyLoader } from '@/hooks/useBodyLoader'
 import PeakIndicator from './PeakIndicator'
 
-/** Compliance color: green -> yellow -> orange -> red at thresholds 0.5, 0.8, 1.0 */
-function complianceColor(ratio: number): [number, number, number] {
-  ratio = Math.max(0, Math.min(1.5, ratio))
-  if (ratio < 0.5) {
-    // green
-    return [0.29, 0.87, 0.50]
-  } else if (ratio < 0.8) {
-    // green -> yellow
-    const u = (ratio - 0.5) / 0.3
-    return [0.29 + u * (0.98 - 0.29), 0.87 + u * (0.75 - 0.87), 0.50 + u * (0.15 - 0.50)]
-  } else if (ratio < 1.0) {
-    // yellow -> orange/red
-    const u = (ratio - 0.8) / 0.2
-    return [0.98, 0.75 - u * 0.30, 0.15 - u * 0.10]
-  } else {
-    // red
-    return [0.97, 0.44, 0.44]
-  }
-}
 
 export default function BodyMesh() {
   useBodyLoader()  // triggers body fetch
@@ -85,11 +66,20 @@ export default function BodyMesh() {
         colorAttr.setXYZ(i, 0.5, 0.5, 0.5)
       }
     } else if (isRatioMode) {
-      // Compliance ratio coloring
+      // Ratio coloring: same jet colormap as normal mode, but values are ratio to ICNIRP limit.
+      // This preserves the spatial pattern while showing ratio units on the legend.
       const nFaces = dataArray.length
+      let maxRatio = 0
       for (let f = 0; f < nFaces; f++) {
         const ratio = ratioLimit > 0 ? dataArray[f] / ratioLimit : 0
-        const [r, g, b] = complianceColor(ratio)
+        if (ratio > maxRatio) maxRatio = ratio
+      }
+      if (maxRatio <= 0) maxRatio = 1
+
+      for (let f = 0; f < nFaces; f++) {
+        const ratio = ratioLimit > 0 ? dataArray[f] / ratioLimit : 0
+        const t = ratio / maxRatio
+        const [r, g, b] = jetColor(t)
         colorAttr.setXYZ(f * 3, r, g, b)
         colorAttr.setXYZ(f * 3 + 1, r, g, b)
         colorAttr.setXYZ(f * 3 + 2, r, g, b)

@@ -80,7 +80,7 @@ export default function QuantitiesPanel() {
         className={sabCardClass}
         onClick={() => setDisplayQuantity('sab')}
       >
-        <span className="text-xs font-medium"><Tex math={'S_{\\text{ab}}'} /></span>
+        <span className="text-xs font-medium"><Tex math={'S_{\\text{ab}}'} /> <span className="text-muted-foreground font-normal">(unaveraged)</span></span>
         {displayQuantity === 'sab' && <span className="text-[10px] text-primary">{'▸'} displayed</span>}
       </div>
 
