@@ -6,35 +6,28 @@ interface LoginGateProps {
 }
 
 export default function LoginGate({ children }: LoginGateProps) {
-  const { authenticated, error, login, logout } = useAuth()
+  const { authenticated, error, login } = useAuth()
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
 
-  // On mount, probe auth status with a lightweight API call
+  // Probe session on mount: GET /api/auth returns 200 if already authenticated
   useEffect(() => {
-    if (authenticated !== null) return // already resolved
-    fetch('/api/health')
-      .then(res => {
-        if (res.status === 401) {
-          logout() // sets authenticated = false, shows login form
+    fetch('/api/auth')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.authenticated) {
+          useAuth.setState({
+            authenticated: true,
+            expiresAt: data.expires_at ? new Date(data.expires_at) : null,
+          })
         } else {
-          // Health is exempt from auth, so try a protected endpoint
-          return fetch('/api/config')
-        }
-      })
-      .then(res => {
-        if (!res) return
-        if (res.status === 401) {
-          logout()
-        } else {
-          // Already authenticated (has valid cookie)
-          useAuth.setState({ authenticated: true })
+          useAuth.setState({ authenticated: false })
         }
       })
       .catch(() => {
-        logout() // network error, show login form
+        useAuth.setState({ authenticated: false })
       })
-  }, [authenticated, logout])
+  }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -46,7 +39,7 @@ export default function LoginGate({ children }: LoginGateProps) {
     }
   }
 
-  // null = unknown (probing auth status)
+  // null = unknown (waiting for probe to resolve)
   if (authenticated === null) {
     return (
       <div className="h-screen w-screen bg-background flex items-center justify-center">

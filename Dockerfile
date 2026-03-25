@@ -2,8 +2,18 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# System deps for health checks
-RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+# System deps for health checks + git (for voxelearth clone)
+RUN apt-get update && apt-get install -y --no-install-recommends curl git && rm -rf /var/lib/apt/lists/*
+
+# Node.js 22 for the voxelearth location pipeline
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# Clone and install voxelearth pipeline
+RUN git clone --depth 1 https://github.com/voxelearth/nodejs-voxelearth.git /opt/voxelearth \
+    && cd /opt/voxelearth && npm install --omit=dev
+ENV VOXELEARTH_DIR=/opt/voxelearth
 
 # Python deps + install package
 COPY pyproject.toml uv.lock README.md ./

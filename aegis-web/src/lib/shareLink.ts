@@ -35,19 +35,7 @@ function collectState(): Record<string, unknown> {
     pathSource: scene.pathSource,
     rtSource: scene.rtSource,
     rtMaxOrder: scene.rtMaxOrder,
-    rtMethod: scene.rtConfig.method,
-    rtRaysPerSource: scene.rtConfig.raysPerSource,
-    rtMaxPathsPerSource: scene.rtConfig.maxPathsPerSource,
-    rtLos: scene.rtConfig.los,
-    rtSpecularReflection: scene.rtConfig.specularReflection,
-    rtDiffuseReflection: scene.rtConfig.diffuseReflection,
-    rtRefraction: scene.rtConfig.refraction,
-    rtDiffraction: scene.rtConfig.diffraction,
-    rtEdgeDiffraction: scene.rtConfig.edgeDiffraction,
-    rtDiffractionLitRegion: scene.rtConfig.diffractionLitRegion,
-    rtReflectionLoss: scene.rtConfig.reflectionLoss,
-    rtSyntheticArray: scene.rtConfig.syntheticArray,
-    rtSeed: scene.rtConfig.seed,
+    rtConfig: { ...scene.rtConfig },
     envDisplayMode: scene.envDisplayMode,
     // ui store
     wireframe: ui.wireframe,
@@ -121,31 +109,13 @@ export function applyShareState(state: Partial<ShareState>): void {
   }
   if (state.displayQuantity !== undefined) sim.setDisplayQuantity(state.displayQuantity as QuantityKey)
 
-  // --- scene store (fields with setters) ---
+  // --- scene store ---
   if (state.bodyName !== undefined) scene.setBodyName(state.bodyName)
   if (state.pathSource !== undefined) scene.setPathSource(state.pathSource as Parameters<typeof scene.setPathSource>[0])
   if (state.rtSource !== undefined) scene.setRtSource(state.rtSource as Parameters<typeof scene.setRtSource>[0])
   if (state.rtMaxOrder !== undefined) scene.setRtMaxOrder(state.rtMaxOrder)
+  if (state.rtConfig !== undefined) scene.setRtConfig(state.rtConfig as Parameters<typeof scene.setRtConfig>[0])
   if (state.envDisplayMode !== undefined) scene.setEnvDisplayMode(state.envDisplayMode as Parameters<typeof scene.setEnvDisplayMode>[0])
-
-  // --- scene store (RT config via setRtConfig) ---
-  const rtUpdate: Record<string, unknown> = {}
-  if (state.rtMethod !== undefined) rtUpdate.method = state.rtMethod
-  if (state.rtRaysPerSource !== undefined) rtUpdate.raysPerSource = state.rtRaysPerSource
-  if (state.rtMaxPathsPerSource !== undefined) rtUpdate.maxPathsPerSource = state.rtMaxPathsPerSource
-  if (state.rtLos !== undefined) rtUpdate.los = state.rtLos
-  if (state.rtSpecularReflection !== undefined) rtUpdate.specularReflection = state.rtSpecularReflection
-  if (state.rtDiffuseReflection !== undefined) rtUpdate.diffuseReflection = state.rtDiffuseReflection
-  if (state.rtRefraction !== undefined) rtUpdate.refraction = state.rtRefraction
-  if (state.rtDiffraction !== undefined) rtUpdate.diffraction = state.rtDiffraction
-  if (state.rtEdgeDiffraction !== undefined) rtUpdate.edgeDiffraction = state.rtEdgeDiffraction
-  if (state.rtDiffractionLitRegion !== undefined) rtUpdate.diffractionLitRegion = state.rtDiffractionLitRegion
-  if (state.rtReflectionLoss !== undefined) rtUpdate.reflectionLoss = state.rtReflectionLoss
-  if (state.rtSyntheticArray !== undefined) rtUpdate.syntheticArray = state.rtSyntheticArray
-  if (state.rtSeed !== undefined) rtUpdate.seed = state.rtSeed
-  if (Object.keys(rtUpdate).length > 0) {
-    scene.setRtConfig(rtUpdate as Parameters<typeof scene.setRtConfig>[0])
-  }
 
   // --- ui store ---
   if (state.dynamicRangeDb !== undefined) ui.setDynamicRangeDb(state.dynamicRangeDb)
