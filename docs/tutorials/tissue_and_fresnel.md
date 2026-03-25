@@ -80,7 +80,7 @@ print(f"Database:  eps_r={skin_db.eps_r:.2f}  sigma={skin_db.sigma:.2f}  T0={ski
 print(f"Preset:    eps_r={SKIN_28GHZ.eps_r:.2f}  sigma={SKIN_28GHZ.sigma:.2f}  T0={SKIN_28GHZ.T0:.4f}")
 ```
 
-The Cole-Cole result should be close to the preset but not identical. The preset values are from an earlier literature fit; the database reflects the IT'IS v5.0 four-pole model. For compliance assessment, use the preset values to match the monograph reference results. For exploratory frequency sweeps, `from_database` is more convenient.
+The Cole-Cole result should be close to the preset but not identical. The preset values are from an earlier literature fit. The database reflects the IT'IS v5.0 four-pole model. For compliance assessment, use the preset values to match the monograph reference results. For exploratory frequency sweeps, `from_database` is more convenient.
 
 `from_database` accepts any tissue name in the IT'IS database, for example `"Muscle"`, `"Fat"`, `"Bone Cortical"`, `"Brain White Matter"`. The database requires `itis_v5.db` at runtime.
 
@@ -138,7 +138,7 @@ ax.legend(fontsize=6)
 plt.show()
 ```
 
-Pass `mu` as a complex array; `fresnel_transmission` uses this internally for the branch-cut-safe square root. For real incidence angles from 0 to 90 degrees, `np.cos(theta).astype(complex)` is correct.
+Pass `mu` as a complex array. `fresnel_transmission` uses this internally for the branch-cut-safe square root. For real incidence angles from 0 to 90 degrees, `np.cos(theta).astype(complex)` is correct.
 
 ---
 

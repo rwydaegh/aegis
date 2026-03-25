@@ -147,7 +147,7 @@ In scenarios with predominantly grazing arrivals it can exceed 10%.
 ## Sweep all incoherent levels
 
 `sweep_levels` runs all specified levels in one call and returns a dict mapping
-level to result. Levels 0 and 1 require `A_ab` and `D_max`; if those are not
+level to result. Levels 0 and 1 require `A_ab` and `D_max`. If those are not
 provided, `sweep_levels` silently skips those levels.
 
 ```python

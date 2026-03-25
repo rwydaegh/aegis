@@ -14,7 +14,7 @@ $T_0$ is the normal-incidence power transmission coefficient, derived from the t
 
 $$T_0 = \frac{4 \operatorname{Re}(\tilde{n})}{(1 + \operatorname{Re}(\tilde{n}))^2 + \operatorname{Im}(\tilde{n})^2}$$
 
-where $\tilde{n} = n' - jn''$ is the complex refractive index. At 28 GHz in skin, $T_0 \approx 0.52$. This constant enters at level 2; higher levels replace it with the full angle-dependent Fresnel coefficient.
+where $\tilde{n} = n' - jn''$ is the complex refractive index. At 28 GHz in skin, $T_0 \approx 0.52$. This constant enters at level 2. Higher levels replace it with the full angle-dependent Fresnel coefficient.
 
 ## Setup
 

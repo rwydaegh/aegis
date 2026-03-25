@@ -307,7 +307,7 @@ print("--- ECBF ---")
 print(summary_text(compliance_ecbf))
 ```
 
-`ComplianceResult.overall_pass` is `True` if every available check passes. `ComplianceResult.margin_db` gives the tightest margin across all checks. A positive margin means compliant; negative means exceeded.
+`ComplianceResult.overall_pass` is `True` if every available check passes. `ComplianceResult.margin_db` gives the tightest margin across all checks. A positive margin means compliant, negative means exceeded.
 
 ## Scaling and power sweeps
 
