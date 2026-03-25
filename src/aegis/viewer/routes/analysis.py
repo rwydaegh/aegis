@@ -110,3 +110,146 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                 "T0": result["T0"].tolist(),
             }
         )
+
+    # ------------------------------------------------------------------
+    # GET /api/compliance/power-sweep
+    # ------------------------------------------------------------------
+    @app.route("/api/compliance/power-sweep")
+    def compliance_power_sweep():
+        """Compliance margin vs transmit power at a fixed frequency."""
+        from aegis.compliance import ExposureScenario, evaluate_compliance, power_sweep
+
+        sab_4cm2 = request.args.get("sab_4cm2", type=float)
+        freq_hz = request.args.get("freq_hz", type=float)
+        ref_power_dbm = request.args.get("ref_power_dbm", type=float)
+
+        if sab_4cm2 is None or freq_hz is None or ref_power_dbm is None:
+            return jsonify({"error": "sab_4cm2, freq_hz, and ref_power_dbm are required"}), 400
+
+        scenario_str = request.args.get("scenario", "general_public")
+        scenario = ExposureScenario.OCCUPATIONAL if scenario_str == "occupational" else ExposureScenario.GENERAL_PUBLIC
+
+        sab_1cm2 = request.args.get("sab_1cm2", type=float)
+        sinc_local = request.args.get("sinc_local", type=float)
+        sinc_wb = request.args.get("sinc_wb", type=float)
+        sar_wb = request.args.get("sar_wb", type=float)
+        n_points = request.args.get("n_points", 50, type=int)
+
+        ref_power_w = 10.0 ** ((ref_power_dbm - 30) / 10.0)
+
+        try:
+            cr = evaluate_compliance(
+                freq_hz=freq_hz,
+                scenario=scenario,
+                sab_4cm2=sab_4cm2,
+                sab_1cm2=sab_1cm2,
+                sar_wb=sar_wb,
+                sinc_local=sinc_local,
+                sinc_whole_body=sinc_wb,
+            )
+            sweep = power_sweep(cr, ref_power_w, n_points=n_points)
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+
+        p_max_w = sweep["p_max_compliant_w"]
+        p_max_dbm = 10.0 * np.log10(p_max_w * 1e3) if p_max_w < float("inf") else None
+
+        return jsonify(
+            {
+                "power_dbm": sweep["power_dbm"].tolist(),
+                "margin_db": sweep["margin_db"].tolist(),
+                "compliant": sweep["compliant"].tolist(),
+                "p_max_compliant_w": p_max_w,
+                "p_max_compliant_dbm": p_max_dbm,
+            }
+        )
+
+    # ------------------------------------------------------------------
+    # GET /api/compliance/frequency-sweep
+    # ------------------------------------------------------------------
+    @app.route("/api/compliance/frequency-sweep")
+    def compliance_frequency_sweep():
+        """Compliance margin vs frequency at fixed exposure values."""
+        from aegis.compliance import ExposureScenario, frequency_sweep
+
+        sab_4cm2 = request.args.get("sab_4cm2", type=float)
+        if sab_4cm2 is None:
+            return jsonify({"error": "sab_4cm2 is required"}), 400
+
+        scenario_str = request.args.get("scenario", "general_public")
+        scenario = ExposureScenario.OCCUPATIONAL if scenario_str == "occupational" else ExposureScenario.GENERAL_PUBLIC
+
+        sinc_local = request.args.get("sinc_local", type=float)
+        sinc_wb = request.args.get("sinc_wb", type=float)
+        sab_1cm2 = request.args.get("sab_1cm2", type=float)
+        sar_wb = request.args.get("sar_wb", type=float)
+        n_points = request.args.get("n_points", 50, type=int)
+
+        try:
+            sweep = frequency_sweep(
+                sab_4cm2=sab_4cm2,
+                sab_1cm2=sab_1cm2,
+                sar_wb=sar_wb,
+                sinc_local=sinc_local,
+                sinc_whole_body=sinc_wb,
+                scenario=scenario,
+                n_points=n_points,
+            )
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+
+        return jsonify(
+            {
+                "freq_ghz": sweep["freq_ghz"].tolist(),
+                "margin_db": sweep["margin_db"].tolist(),
+                "compliant": sweep["compliant"].tolist(),
+            }
+        )
+
+    # ------------------------------------------------------------------
+    # GET /api/compliance/link-budget
+    # ------------------------------------------------------------------
+    @app.route("/api/compliance/link-budget")
+    def compliance_link_budget():
+        """Quick compliance estimate from RF link budget parameters."""
+        from aegis.compliance import ExposureScenario, link_budget_compliance
+
+        tx_power_dbm = request.args.get("tx_power_dbm", type=float)
+        distance_m = request.args.get("distance_m", type=float)
+        freq_hz = request.args.get("freq_hz", type=float)
+
+        if tx_power_dbm is None or distance_m is None or freq_hz is None:
+            return jsonify({"error": "tx_power_dbm, distance_m, and freq_hz are required"}), 400
+
+        antenna_gain_dbi = request.args.get("antenna_gain_dbi", 0.0, type=float)
+        scenario_str = request.args.get("scenario", "general_public")
+        scenario = ExposureScenario.OCCUPATIONAL if scenario_str == "occupational" else ExposureScenario.GENERAL_PUBLIC
+
+        tx_power_w = 10.0 ** ((tx_power_dbm - 30) / 10.0)
+
+        try:
+            result = link_budget_compliance(
+                tx_power_w=tx_power_w,
+                antenna_gain_dbi=antenna_gain_dbi,
+                distance_m=distance_m,
+                freq_hz=freq_hz,
+                scenario=scenario,
+            )
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+
+        max_tx_dbm = result["max_tx_power_dbm"]
+        if max_tx_dbm == float("inf"):
+            max_tx_dbm = None
+
+        return jsonify(
+            {
+                "sinc": result["sinc"],
+                "sab_estimate": result["sab_estimate"],
+                "T0": result["T0"],
+                "compliant": result["compliant"],
+                "margin_db": result["margin_db"],
+                "max_tx_power_w": result["max_tx_power_w"],
+                "max_tx_power_dbm": max_tx_dbm,
+            }
+        )
