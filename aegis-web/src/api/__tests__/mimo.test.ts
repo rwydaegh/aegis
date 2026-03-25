@@ -10,13 +10,13 @@ describe('MIMO API', () => {
     n_v: 4,
     d_h_wavelengths: 0.5,
     d_v_wavelengths: 0.5,
-    position: [5, 3, 0] as ScenePos,
+    position: [5, 3, 1] as ScenePos,
     broadside: [-1, 0, 0],
   }
 
   const users: MIMOUserConfig[] = [
-    { id: 'u1', phantom: 'thelonious', position: [0, 0, 0] as ScenePos, orientation: 0, device_offset: [0.25, 1.4, 0] },
-    { id: 'u2', phantom: 'duke', position: [2, 0, -1] as ScenePos, orientation: 0.5, device_offset: [0.25, 1.4, 0] },
+    { id: 'u1', phantom: 'thelonious', position: [1, 2, 3] as ScenePos, orientation: 0, device_offset: [0.25, 1.4, 0] },
+    { id: 'u2', phantom: 'duke', position: [2, 1, -1] as ScenePos, orientation: 0.5, device_offset: [0.25, 1.4, 0] },
   ]
 
   it('converts scene positions to server positions', () => {
@@ -28,9 +28,9 @@ describe('MIMO API', () => {
       precoder_type: 'zf',
     })
     // toServer swaps: [x, y, z] -> [x, -z, y]
-    expect(payload.array.position).toEqual([5, 0, 3])
-    expect(payload.users[0].position).toEqual([0, 0, 0])
-    expect(payload.users[1].position).toEqual([2, 1, 0])
+    expect(payload.array.position).toEqual([5, -1, 3])
+    expect(payload.users[0].position).toEqual([1, -3, 2])
+    expect(payload.users[1].position).toEqual([2, 1, 1])
   })
 
   it('preserves non-position fields', () => {
