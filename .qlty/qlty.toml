@@ -14,6 +14,10 @@ exclude_patterns = [
   "**/site/**",
   "**/__pycache__/**",
   "**/*.egg-info/**",
+  # React build artifacts (source is in aegis-web/)
+  "src/aegis/viewer/static/assets/**",
+  # Legacy HTML viewer (replaced by React app)
+  "src/aegis/viewer/templates/_legacy*",
 ]
 
 test_patterns = [
@@ -63,7 +67,7 @@ name = "actionlint"
 # B101 (assert usage) is normal in pytest tests and examples
 [[triage]]
 match.rules = ["bandit:B101"]
-match.file_patterns = ["tests/**", "examples/**"]
+match.file_patterns = ["tests/**"]
 set.ignored = true
 
 # Subprocess usage is intentional for process management (nvidia-smi, node, kill)
@@ -81,14 +85,23 @@ set.ignored = true
 match.rules = ["bandit:B108"]
 set.ignored = true
 
-# SQL injection false positive in examples (SQLite with f-strings for table names)
-[[triage]]
-match.rules = ["bandit:B608"]
-match.file_patterns = ["examples/**"]
-set.ignored = true
-
-# Complexity in examples, tools, and tests is acceptable (not production code)
+# Complexity in tools and tests is acceptable (not production code)
 [[triage]]
 match.rules = ["radarlint-python:python:S3776", "radarlint-python:python:S1192"]
-match.file_patterns = ["examples/**", "tools/**", "tests/**"]
+match.file_patterns = ["tools/**", "tests/**"]
 set.ignored = true
+
+# Physics naming conventions: A_ab, D_max, T0, G_4cm2, S_inc, etc. follow
+# standard electromagnetic/dosimetry notation, not Python naming style
+[[triage]]
+match.rules = [
+  "radarlint-python:python:S117",  # local/param naming
+  "radarlint-python:python:S116",  # field naming
+  "radarlint-python:python:S100",  # method naming (_get_G)
+  "radarlint-python:python:S1542", # function naming (_inject_curvature_H, tissue_T0)
+]
+match.file_patterns = [
+  "src/aegis/**",
+]
+set.ignored = true
+

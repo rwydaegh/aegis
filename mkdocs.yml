@@ -49,6 +49,13 @@ theme:
 nav:
   - Home: index.md
   - Getting started: getting_started.md
+  - Tutorials:
+    - Overview: tutorials/index.md
+    - The geometric absorption law: tutorials/quickstart.md
+    - Fidelity levels: tutorials/fidelity_levels.md
+    - Tissue and Fresnel: tutorials/tissue_and_fresnel.md
+    - ICNIRP 2020 compliance: tutorials/compliance.md
+    - Coherent MIMO and ECBF: tutorials/coherent_mimo.md
   - User guide:
     - Quickstart: user_guide/quickstart.md
     - Overview: user_guide/overview.md
