@@ -1,6 +1,7 @@
 """Tests for TissueModel.plot_spectrum() convenience method."""
 
 import matplotlib  # noqa: I001
+
 matplotlib.use("Agg")
 
 import pytest
