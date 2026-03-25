@@ -3,7 +3,9 @@
 import threading
 
 import pytest
-from flask import Flask
+
+pytest.importorskip("flask")
+from flask import Flask  # noqa: E402
 
 
 @pytest.fixture
