@@ -14,6 +14,7 @@ export interface LastComputeTiming {
   complianceMs: number
   networkMs: number
   avgCached: boolean
+  gpuBackend: string | null
 }
 
 interface UIStore {

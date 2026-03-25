@@ -85,3 +85,24 @@ jobs:
         run: |
           sleep 15
           curl -sf https://aegis.waves-ugent.be/api/health || echo "::warning::Health check failed - server may still be starting"
+
+  modal-deploy:
+    needs: ci
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Modal
+        run: pip install "modal>=0.73"
+      - name: Install AEGIS (for mount)
+        run: pip install -e .
+      - name: Deploy Modal app
+        run: modal deploy src/aegis/modal_rt/__init__.py
+        env:
+          MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
+          MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}

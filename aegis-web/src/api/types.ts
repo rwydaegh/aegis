@@ -221,6 +221,7 @@ export interface DosimetryStats {
   arrays?: ArrayMeta[]
   tissue_eps_r: number
   tissue_sigma: number
+  gpu_backend?: string | null
 }
 
 export interface PathViz {
