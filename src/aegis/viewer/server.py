@@ -293,31 +293,39 @@ def create_app(
                 _cache["body_meta"] = None
 
     # Background-precompute averaging matrices so the first compute is fast.
-    # Skip phantoms with >100k triangles to avoid OOM on small servers.
+    # Uses before_request hook to run once in the actual worker process
+    # (gunicorn's preload_app forks after create_app, so a thread started
+    # here would run in the master and its cache wouldn't be shared).
     _G_MAX_TRIANGLES = int(os.environ.get("AEGIS_G_MAX_TRIANGLES", 100_000))
+    _g_precompute_started = {"done": False}
 
-    def _precompute_G():
-        from aegis.engine import DosimetryEngine
-        from aegis.geometry.averaging import precompute_averaging_matrix
+    @app.before_request
+    def _maybe_precompute_G():
+        if _g_precompute_started["done"]:
+            return
+        _g_precompute_started["done"] = True
 
-        for name, entry in list(_cache.get("bodies", {}).items()):
-            body = entry["body"]
-            if body.n_triangles > _G_MAX_TRIANGLES:
-                print(f"  G({name}) skipped ({body.n_triangles:,} > {_G_MAX_TRIANGLES:,} triangles)")
-                continue
-            for area in [4e-4, 1e-4]:
-                key = (DosimetryEngine._body_cache_key(body), area)
-                if key not in DosimetryEngine._G_cache:
-                    try:
-                        G = precompute_averaging_matrix(body.centroids, body.areas, area)
-                        DosimetryEngine._G_cache[key] = G
-                        print(f"  G({name}, {area * 1e4:.0f}cm2) precomputed ({G.nnz:,} nnz)")
-                    except Exception as e:
-                        print(f"  G({name}) failed: {e}")
+        def _do():
+            from aegis.engine import DosimetryEngine
+            from aegis.geometry.averaging import precompute_averaging_matrix
 
-    import threading
+            for name, entry in list(_cache.get("bodies", {}).items()):
+                body = entry["body"]
+                if body.n_triangles > _G_MAX_TRIANGLES:
+                    app.logger.info("G(%s) skipped (%d > %d tri)", name, body.n_triangles, _G_MAX_TRIANGLES)
+                    continue
+                for area in [4e-4]:
+                    key = (DosimetryEngine._body_cache_key(body), area)
+                    if key not in DosimetryEngine._G_cache:
+                        try:
+                            G = precompute_averaging_matrix(body.centroids, body.areas, area)
+                            DosimetryEngine._G_cache[key] = G
+                            app.logger.info("G(%s, %dcm2) ready (%d nnz)", name, area * 1e4, G.nnz)
+                        except Exception as e:
+                            app.logger.warning("G(%s) failed: %s", name, e)
 
-    threading.Thread(target=_precompute_G, daemon=True, name="precompute-G").start()
+        import threading
+        threading.Thread(target=_do, daemon=True, name="precompute-G").start()
 
     with _cache_lock:
         _cache["voxel_json_path"] = voxel_json
