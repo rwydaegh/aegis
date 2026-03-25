@@ -44,18 +44,18 @@ export default function StatsCard() {
     {
       key: 'distance',
       label: 'Distance',
-      value: stats ? formatDistance(stats.distance_m) : '--',
+      value: stats?.distance_m != null ? formatDistance(stats.distance_m) : '--',
     },
     {
       key: 'illuminated',
       label: 'Illuminated',
-      value: stats ? `${stats.n_illuminated} / ${stats.n_triangles}` : '--',
+      value: stats?.n_illuminated != null ? `${stats.n_illuminated} / ${stats.n_triangles}` : '--',
     },
     {
       key: 'compliance',
       label: 'Compliance',
-      value: stats ? (stats.compliant ? 'PASS' : 'FAIL') : '--',
-      highlight: stats ? (stats.compliant ? 'pass' : 'fail') : undefined,
+      value: stats?.compliant != null ? (stats.compliant ? 'PASS' : 'FAIL') : '--',
+      highlight: stats?.compliant != null ? (stats.compliant ? 'pass' : 'fail') : undefined,
     },
   ]
 
