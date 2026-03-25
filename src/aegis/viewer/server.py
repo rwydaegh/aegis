@@ -293,7 +293,7 @@ def create_app(
                     try:
                         G = precompute_averaging_matrix(body.centroids, body.areas, area)
                         DosimetryEngine._G_cache[key] = G
-                        print(f"  G({name}, {area*1e4:.0f}cm2) precomputed ({G.nnz:,} nnz)")
+                        print(f"  G({name}, {area * 1e4:.0f}cm2) precomputed ({G.nnz:,} nnz)")
                     except Exception as e:
                         print(f"  G({name}) failed: {e}")
 

@@ -198,8 +198,14 @@ def _precompute_numba(centroids, areas, all_neighbors, target_area_m2, M):
     areas_c = np.ascontiguousarray(areas, dtype=np.float64)
 
     nnz = _build_coo_numba(
-        centroids_c, areas_c, nb_indices, nb_indptr,
-        target_area_m2, rows, cols, vals,
+        centroids_c,
+        areas_c,
+        nb_indices,
+        nb_indptr,
+        target_area_m2,
+        rows,
+        cols,
+        vals,
     )
 
     return sparse.csr_array(
