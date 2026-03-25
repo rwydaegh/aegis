@@ -97,7 +97,16 @@ def _load_nict_data() -> dict:
     import re
     from pathlib import Path
 
-    csv_path = Path(__file__).parent.parent.parent.parent / "data" / "measurements-Skin.csv"
+    # Search for CSV: AEGIS_DATA_DIR env var, then CWD/data, then relative to source
+    import os
+
+    candidates = []
+    env_dir = os.environ.get("AEGIS_DATA_DIR")
+    if env_dir:
+        candidates.append(Path(env_dir) / "measurements-Skin.csv")
+    candidates.append(Path("data") / "measurements-Skin.csv")
+    candidates.append(Path(__file__).parent.parent.parent.parent / "data" / "measurements-Skin.csv")
+    csv_path = next((p for p in candidates if p.exists()), candidates[-1])
     freq_hz_list, eps_r_list, sigma_list = [], [], []
 
     with open(csv_path) as f:
