@@ -111,3 +111,4 @@ vendor/
 coverage/
 .cache/
 tmp/
+tmux-cheatsheet.md

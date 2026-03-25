@@ -32,11 +32,8 @@ export default function LoginGate({ children }: LoginGateProps) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
-    try {
-      await login(password)
-    } finally {
-      setLoading(false)
-    }
+    await login(password)
+    setLoading(false)
   }
 
   // null = unknown (waiting for probe to resolve)
