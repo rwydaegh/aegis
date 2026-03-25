@@ -23,6 +23,7 @@ import { useMIMOStore } from '@/stores/mimo'
 import BodyMeshInstance from './BodyMeshInstance'
 import AntennaArrayViz from './AntennaArray'
 import FocusPointMarker from './FocusPointMarker'
+import SmartphoneModel from './SmartphoneModel'
 
 // Body is roughly 1.2 m tall, centered at origin, feet at y=0
 const BODY_TARGET = new THREE.Vector3(0, 0.6, 0)
@@ -220,18 +221,20 @@ function MIMOScene() {
   return (
     <>
       {[...users.values()].map(user => (
-        <BodyMeshInstance
-          key={user.userId}
-          geometry={user.bodyGeometry}
-          sabArray={showAllHeatmaps ? user.sabArray : (
-            user.userId === focusedUserId ? user.sabArray : null
-          )}
-          stats={user.stats}
-          position={user.position}
-          rotationY={user.orientation}
-          opacity={user.userId === focusedUserId ? 1.0 : 0.7}
-          onClick={() => setFocusedUser(user.userId)}
-        />
+        <group key={user.userId}>
+          <BodyMeshInstance
+            geometry={user.bodyGeometry}
+            sabArray={showAllHeatmaps ? user.sabArray : (
+              user.userId === focusedUserId ? user.sabArray : null
+            )}
+            stats={user.stats}
+            position={user.position}
+            rotationY={user.orientation}
+            opacity={user.userId === focusedUserId ? 1.0 : 0.7}
+            onClick={() => setFocusedUser(user.userId)}
+          />
+          <SmartphoneModel position={user.position} rotationY={user.orientation} />
+        </group>
       ))}
       {arrayConfig && <AntennaArrayViz config={arrayConfig} freqHz={freqGhz * 1e9} showPattern={showArrayPattern} weights={precoderWeights} />}
       {arrayConfig && <FocusPointMarker />}
