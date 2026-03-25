@@ -11,12 +11,14 @@ from aegis.kernels._base import fresnel_weights, physical_gelu
 def level6_diffraction(normals, k_hat, power, n_tilde, T0, curvature_H, freq_hz):
     """Compute per-triangle S_ab with Fresnel + curvature + diffraction."""
     wavelength = C_0 / freq_hz
-    k = 2.0 * xp.pi / wavelength
+    # Floor k to avoid division by near-zero at very low frequencies
+    k = xp.maximum(2.0 * xp.pi / wavelength, 1e-6)
 
     mu = normals @ (-k_hat).T
 
     H_safe = xp.maximum(curvature_H, 0.0)
-    sigma = xp.sqrt(xp.maximum(wavelength * H_safe / (4.0 * xp.pi), 0.0))
+    # Floor sigma to avoid derivative discontinuity at H=0 (for autodiff)
+    sigma = xp.sqrt(xp.maximum(wavelength * H_safe / (4.0 * xp.pi), 1e-20))
 
     mu_gelu = physical_gelu(mu, sigma)
 

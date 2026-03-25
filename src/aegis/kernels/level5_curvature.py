@@ -10,7 +10,8 @@ from aegis.kernels._base import fresnel_weights, incidence_geometry
 @jit
 def level5_curvature(normals, k_hat, power, n_tilde, T0, curvature_H, freq_hz):
     """Compute per-triangle S_ab with Fresnel + curvature correction."""
-    k = 2.0 * xp.pi * freq_hz / C_0
+    # Floor k to avoid division by near-zero at very low frequencies
+    k = xp.maximum(2.0 * xp.pi * freq_hz / C_0, 1e-6)
 
     mu, mu_plus = incidence_geometry(normals, k_hat)
     _T_s, _T_p, T_avg = fresnel_weights(mu, n_tilde)
