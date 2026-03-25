@@ -284,7 +284,7 @@ The transmission coefficient `T0` is estimated from the skin tissue dielectric m
 
 For quick spot checks without writing Python, use the `aegis.compliance` CLI:
 
-```bash
+```text
 # Check a measured S_ab value at 28 GHz
 python -m aegis.compliance --freq 28e9 --sab 15.0
 

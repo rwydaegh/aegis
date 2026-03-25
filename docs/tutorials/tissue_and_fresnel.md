@@ -165,11 +165,11 @@ To see how tissue choice affects the dosimetry result, run the same paths throug
 import numpy as np
 from aegis.engine import DosimetryEngine
 from aegis.paths import PropagationPaths
-from aegis.geometry.body import BodyMesh
+from aegis.geometry.mesh import BodyMesh
 from aegis.tissue.dielectric import SKIN_28GHZ, MUSCLE_28GHZ, FAT_28GHZ
 
 # Synthetic spherical mesh, 500 triangles
-body = BodyMesh.sphere(n_triangles=500)
+body = BodyMesh.sphere(radius=0.1, n_subdivisions=2)
 
 # Isotropic single-path: 10 W/m^2 from directly above
 rng = np.random.default_rng(42)
@@ -178,9 +178,9 @@ k_hat = np.tile([0.0, 0.0, -1.0], (N, 1))
 power = 10.0 * np.ones(N)
 paths = PropagationPaths.from_powers(k_hat=k_hat, power=power)
 
-engine = DosimetryEngine()
 for tissue in (SKIN_28GHZ, MUSCLE_28GHZ, FAT_28GHZ):
-    result = engine.compute(body, paths, level=3, tissue=tissue)
+    engine = DosimetryEngine(tissue)
+    result = engine.compute(body, paths, level=3)
     print(
         f"{tissue.name:20s}  T0={tissue.T0:.4f}"
         f"  peak_sab={result.peak_sab:.2f} W/m^2"
@@ -200,11 +200,11 @@ A common task is to evaluate peak $S_{\mathrm{ab}}$ across the 5G millimeter-wav
 import numpy as np
 from aegis.engine import DosimetryEngine
 from aegis.paths import PropagationPaths
-from aegis.geometry.body import BodyMesh
+from aegis.geometry.mesh import BodyMesh
 from aegis.tissue.dielectric import TissueModel
 from aegis.viz import plot_frequency_sweep
 
-body = BodyMesh.sphere(n_triangles=500)
+body = BodyMesh.sphere(radius=0.1, n_subdivisions=2)
 rng = np.random.default_rng(0)
 N = 300
 k_hat = np.tile([0.0, 0.0, -1.0], (N, 1))
@@ -213,11 +213,11 @@ paths = PropagationPaths.from_powers(k_hat=k_hat, power=power)
 
 freqs_hz = np.array([6e9, 10e9, 15e9, 24e9, 28e9, 39e9, 60e9])
 peak_sab = []
-engine = DosimetryEngine()
 
 for f in freqs_hz:
     tissue = TissueModel.from_database("Skin", freq_hz=f)
-    result = engine.compute(body, paths, level=3, tissue=tissue)
+    engine = DosimetryEngine(tissue)
+    result = engine.compute(body, paths, level=3)
     peak_sab.append(result.peak_sab)
 
 fig = plot_frequency_sweep(freqs_hz, peak_sab)

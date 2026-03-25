@@ -9,14 +9,13 @@ Every tutorial is available in two formats:
 - **Documentation pages** (you are here) - read the tutorials with rendered equations and explanations
 - **Jupyter notebooks** in the [`notebooks/`](https://github.com/rwydaegh/aegis/tree/master/notebooks) directory - run the tutorials interactively, cell by cell
 
-The markdown files in `docs/tutorials/` are the source of truth. Notebooks are generated from them using [Jupytext](https://jupytext.readthedocs.io/). To regenerate after editing a tutorial:
+The markdown files in `docs/tutorials/` are the source of truth. Notebooks are generated from them using [Jupytext](https://jupytext.readthedocs.io/) via a sync script. To regenerate after editing a tutorial:
 
 ```bash
-pip install jupytext
-jupytext --sync docs/tutorials/*.md
+python tools/sync_notebooks.py
 ```
 
-Edits can flow in either direction. If you modify a notebook, `jupytext --sync` updates the markdown (and vice versa).
+The notebooks are numbered (`01_quickstart.ipynb`, `02_fidelity_levels.ipynb`, ...) to reflect the recommended reading order.
 
 ## Contents
 

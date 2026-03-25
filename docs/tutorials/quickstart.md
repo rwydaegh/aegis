@@ -18,11 +18,7 @@ where $\tilde{n} = n' - jn''$ is the complex refractive index. At 28 GHz in skin
 
 ## Setup
 
-Install AEGIS with visualization support, then import:
-
-```bash
-pip install -e ".[viz]"
-```
+Install AEGIS with visualization support (`pip install -e ".[viz]"`), then import:
 
 ```python
 import numpy as np
