@@ -29,6 +29,7 @@ interface MIMOStore {
   arrayConfig: ArrayConfig | null
   summaryStats: MIMOSummary | null
   showAllHeatmaps: boolean
+  showArrayPattern: boolean
   _nextUserNumber: number
   _configVersion: number
 
@@ -49,6 +50,7 @@ interface MIMOStore {
   setArrayConfig: (config: ArrayConfig) => void
   setSummaryStats: (summary: MIMOSummary) => void
   setShowAllHeatmaps: (on: boolean) => void
+  setShowArrayPattern: (on: boolean) => void
   clearAllResults: () => void
   reset: () => void
 }
@@ -62,6 +64,7 @@ const INITIAL_STATE = {
   arrayConfig: null as ArrayConfig | null,
   summaryStats: null as MIMOSummary | null,
   showAllHeatmaps: false,
+  showArrayPattern: true,
   _nextUserNumber: 1,
   _configVersion: 0,
 }
@@ -217,6 +220,7 @@ export const useMIMOStore = create<MIMOStore>((set, get) => ({
   setArrayConfig: (config) => set({ arrayConfig: config, _configVersion: get()._configVersion + 1 }),
   setSummaryStats: (summary) => set({ summaryStats: summary }),
   setShowAllHeatmaps: (on) => set({ showAllHeatmaps: on }),
+  setShowArrayPattern: (on) => set({ showArrayPattern: on }),
 
   clearAllResults: () => {
     const users = new Map(get().users)

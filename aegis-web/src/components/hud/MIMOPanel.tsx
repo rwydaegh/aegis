@@ -35,8 +35,10 @@ export default function MIMOPanel() {
   const removeUser = useMIMOStore(s => s.removeUser)
   const setFocusedUser = useMIMOStore(s => s.setFocusedUser)
   const setControlledUser = useMIMOStore(s => s.setControlledUser)
+  const showArrayPattern = useMIMOStore(s => s.showArrayPattern)
   const setPrecoderType = useMIMOStore(s => s.setPrecoderType)
   const setShowAllHeatmaps = useMIMOStore(s => s.setShowAllHeatmaps)
+  const setShowArrayPattern = useMIMOStore(s => s.setShowArrayPattern)
 
   const userList = [...users.values()]
   const K = users.size
@@ -99,6 +101,17 @@ export default function MIMOPanel() {
               <Layers className="w-3.5 h-3.5" />
             </button>
           </div>
+
+          {/* Array pattern toggle */}
+          <label className="flex items-center gap-2 mb-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showArrayPattern}
+              onChange={e => setShowArrayPattern(e.target.checked)}
+              className="rounded border-border accent-primary h-3.5 w-3.5"
+            />
+            <span className="text-[10px] text-muted-foreground">Show array pattern</span>
+          </label>
 
           {/* User list */}
           <div className="space-y-1 mb-2">
