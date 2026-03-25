@@ -302,10 +302,11 @@ def compute_mimo_scene_with_bodies(
     bodies: dict[str, BodyMesh],
     level: int = 7,
     generate_paths_fn: Callable | None = None,
+    precoder_type: str = "mrt",
 ) -> dict:
     """Full multi-user MIMO compute pipeline with body positioning.
 
-    Orchestrates per-user body channel, MRT precoding, Sab computation,
+    Orchestrates per-user body channel, precoding, Sab computation,
     and engine-level compliance stats. Bodies are loaded from the provided
     dict and translated to each user's position.
 
@@ -316,10 +317,11 @@ def compute_mimo_scene_with_bodies(
     level : fidelity level for engine.compute (7 or 8).
     generate_paths_fn : optional callable(body, array_center, freq_hz) -> PropagationPaths.
         Defaults to _default_los_paths if None.
+    precoder_type : "mrt", "zf", "mmse", or "zf_exposure".
 
     Returns
     -------
-    dict with keys: user_ids, timings, precoder_type.
+    dict with keys: user_ids, timings, precoder_type, weights_real, weights_imag.
     """
     from aegis.engine import DosimetryEngine
     from aegis.geometry.mesh import BodyMesh as _BodyMesh
@@ -418,10 +420,17 @@ def compute_mimo_scene_with_bodies(
 
     timings["channels_ms"] = (time.perf_counter() - t_channels_start) * 1e3
 
-    # Phase 2: MRT precoder from stacked H
+    # Phase 2: precoder from stacked H
     t_precoder_start = time.perf_counter()
     H = scene.all_h()
-    W = compute_mrt_precoder(H, scene.total_power)
+    Q_list = [u.Q for u in scene.users] if precoder_type == "zf_exposure" else None
+    W = compute_precoder(
+        H,
+        precoder_type=precoder_type,
+        P=scene.total_power,
+        Q_list=Q_list,
+        P_abs_max=0.1 if Q_list else None,
+    )
     timings["precoder_ms"] = (time.perf_counter() - t_precoder_start) * 1e3
 
     # Phase 3: per-user Sab and engine compliance
@@ -454,5 +463,7 @@ def compute_mimo_scene_with_bodies(
     return {
         "user_ids": scene.user_ids,
         "timings": timings,
-        "precoder_type": "mrt",
+        "precoder_type": precoder_type,
+        "weights_real": W.real.tolist(),
+        "weights_imag": W.imag.tolist(),
     }

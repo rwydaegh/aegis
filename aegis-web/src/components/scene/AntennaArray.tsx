@@ -7,6 +7,7 @@ interface AntennaArrayProps {
   config: ArrayConfig
   freqHz: number
   showPattern?: boolean
+  weights?: { real: number[][]; imag: number[][] } | null
 }
 
 const ELEMENT_COLOR = new THREE.Color(0.8, 0.2, 0.2)
@@ -16,7 +17,7 @@ const ARROW_COLOR = new THREE.Color(1, 0.4, 0)
 const MIN_ELEMENT_RADIUS = 0.005
 const MAX_ELEMENT_RADIUS = 0.03
 
-export default function AntennaArray({ config, freqHz, showPattern }: AntennaArrayProps) {
+export default function AntennaArray({ config, freqHz, showPattern, weights }: AntennaArrayProps) {
   const meshRef = useRef<THREE.InstancedMesh>(null)
   const nElements = config.n_h * config.n_v
 
@@ -53,6 +54,24 @@ export default function AntennaArray({ config, freqHz, showPattern }: AntennaArr
 
   const patternGeo = useMemo(() => {
     if (localPositions.length === 0) return null
+    const M = localPositions.length
+
+    // Build per-element complex weights: sum all columns of W for total radiated pattern
+    // W is (M_ant, K) complex. w_total[m] = sum_k W[m,k]
+    const wRe = new Float64Array(M)
+    const wIm = new Float64Array(M)
+    if (weights && weights.real.length === M) {
+      const K = weights.real[0]?.length ?? 0
+      for (let m = 0; m < M; m++) {
+        for (let k = 0; k < K; k++) {
+          wRe[m] += weights.real[m][k]
+          wIm[m] += weights.imag[m][k]
+        }
+      }
+    } else {
+      // No weights available: equal weights (quiescent pattern)
+      for (let m = 0; m < M; m++) { wRe[m] = 1; wIm[m] = 0 }
+    }
 
     const k0 = 2 * Math.PI * freqHz / 3e8
     const detail = 5
@@ -70,12 +89,14 @@ export default function AntennaArray({ config, freqHz, showPattern }: AntennaArr
       ).normalize()
       dirs.push(dir)
 
-      // Array factor: AF = |sum_m exp(j * k0 * r_m . dir)|^2
+      // Weighted array factor: AF = |sum_m w_m * exp(j * k0 * r_m . dir)|^2
       let reSum = 0, imSum = 0
-      for (const pos of localPositions) {
-        const phase = k0 * pos.dot(dir)
-        reSum += Math.cos(phase)
-        imSum += Math.sin(phase)
+      for (let m = 0; m < M; m++) {
+        const phase = k0 * localPositions[m].dot(dir)
+        const cosP = Math.cos(phase), sinP = Math.sin(phase)
+        // (wRe + j*wIm) * (cosP + j*sinP)
+        reSum += wRe[m] * cosP - wIm[m] * sinP
+        imSum += wRe[m] * sinP + wIm[m] * cosP
       }
       const gain = reSum * reSum + imSum * imSum
       gains[i] = gain
@@ -105,7 +126,7 @@ export default function AntennaArray({ config, freqHz, showPattern }: AntennaArr
     base.setAttribute('color', new THREE.BufferAttribute(colors, 3))
     base.computeVertexNormals()
     return base
-  }, [localPositions, freqHz])
+  }, [localPositions, freqHz, weights])
 
   // Dispose old geometry on recompute to prevent GPU memory leak
   useEffect(() => {

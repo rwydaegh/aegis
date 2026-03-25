@@ -28,6 +28,7 @@ interface MIMOStore {
   precoderType: PrecoderType
   arrayConfig: ArrayConfig | null
   summaryStats: MIMOSummary | null
+  precoderWeights: { real: number[][]; imag: number[][] } | null
   showAllHeatmaps: boolean
   showArrayPattern: boolean
   _nextUserNumber: number
@@ -49,6 +50,7 @@ interface MIMOStore {
   setPrecoderType: (type: PrecoderType) => void
   setArrayConfig: (config: ArrayConfig) => void
   setSummaryStats: (summary: MIMOSummary) => void
+  setPrecoderWeights: (w: { real: number[][]; imag: number[][] } | null) => void
   setShowAllHeatmaps: (on: boolean) => void
   setShowArrayPattern: (on: boolean) => void
   clearAllResults: () => void
@@ -63,6 +65,7 @@ const INITIAL_STATE = {
   precoderType: 'zf' as PrecoderType,
   arrayConfig: null as ArrayConfig | null,
   summaryStats: null as MIMOSummary | null,
+  precoderWeights: null as { real: number[][]; imag: number[][] } | null,
   showAllHeatmaps: false,
   showArrayPattern: true,
   _nextUserNumber: 1,
@@ -219,6 +222,7 @@ export const useMIMOStore = create<MIMOStore>((set, get) => ({
   setPrecoderType: (type) => set({ precoderType: type }),
   setArrayConfig: (config) => set({ arrayConfig: config, _configVersion: get()._configVersion + 1 }),
   setSummaryStats: (summary) => set({ summaryStats: summary }),
+  setPrecoderWeights: (w) => set({ precoderWeights: w }),
   setShowAllHeatmaps: (on) => set({ showAllHeatmaps: on }),
   setShowArrayPattern: (on) => set({ showArrayPattern: on }),
 

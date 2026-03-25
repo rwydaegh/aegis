@@ -303,6 +303,8 @@ export interface MIMOComputeResponse {
   user_ids: string[]
   compute_time_ms: number
   precoder_type: string
+  weights_real?: number[][]
+  weights_imag?: number[][]
 }
 
 export interface MIMOUserSummary {
