@@ -17,6 +17,9 @@ import VoxelField from './VoxelField'
 import SceneGeometry from './SceneGeometry'
 import Environment from './Environment'
 import FollowCamera from './FollowCamera'
+import { useMIMOStore } from '@/stores/mimo'
+import BodyMeshInstance from './BodyMeshInstance'
+import AntennaArrayViz from './AntennaArray'
 
 // Body is roughly 1.2 m tall, centered at origin, feet at y=0
 const BODY_TARGET = new THREE.Vector3(0, 0.6, 0)
@@ -183,10 +186,39 @@ function PhysicsController() {
   return null
 }
 
+function MIMOScene() {
+  const users = useMIMOStore(s => s.users)
+  const focusedUserId = useMIMOStore(s => s.focusedUserId)
+  const showAllHeatmaps = useMIMOStore(s => s.showAllHeatmaps)
+  const arrayConfig = useMIMOStore(s => s.arrayConfig)
+  const setFocusedUser = useMIMOStore(s => s.setFocusedUser)
+  const freqGhz = useSimulationStore(s => s.freqGhz)
+
+  return (
+    <>
+      {[...users.values()].map(user => (
+        <BodyMeshInstance
+          key={user.userId}
+          geometry={user.bodyGeometry}
+          sabArray={showAllHeatmaps ? user.sabArray : (
+            user.userId === focusedUserId ? user.sabArray : null
+          )}
+          position={user.position}
+          rotationY={user.orientation}
+          opacity={user.userId === focusedUserId ? 1.0 : 0.7}
+          onClick={() => setFocusedUser(user.userId)}
+        />
+      ))}
+      {arrayConfig && <AntennaArrayViz config={arrayConfig} freqHz={freqGhz * 1e9} />}
+    </>
+  )
+}
+
 export default function SceneRoot() {
   const config = useSceneStore(s => s.viewerConfig)
   const bodyOffset = useSimulationStore(s => s.bodyOffset)
   const cameraMode = useUIStore(s => s.cameraMode)
+  const mimoEnabled = useMIMOStore(s => s.enabled)
   if (!config) return null
 
   const cam = config.camera
@@ -218,9 +250,15 @@ export default function SceneRoot() {
       <VoxelField />
       <SceneGeometry />
       <Environment />
-      <BodyMesh />
-      <Antenna />
-      <DistanceLine />
+      {mimoEnabled ? (
+        <MIMOScene />
+      ) : (
+        <>
+          <BodyMesh />
+          <Antenna />
+          <DistanceLine />
+        </>
+      )}
       <RayPaths />
       <DosimetryController />
       <PhysicsController />
