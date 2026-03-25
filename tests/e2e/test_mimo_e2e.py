@@ -1,15 +1,18 @@
 """End-to-end Playwright tests for MIMO multi-user workflow.
 
 Run with:
-    xvfb-run npx playwright test tests/e2e/test_mimo_e2e.py
-Or from Python:
     xvfb-run python -m pytest tests/e2e/test_mimo_e2e.py -x -v
+
+Requires: pip install pytest-playwright && playwright install chromium
+Skipped automatically in CI (no playwright installed).
 """
 
 import re
 
 import pytest
-from playwright.sync_api import Page, expect, sync_playwright
+
+playwright = pytest.importorskip("playwright")
+from playwright.sync_api import Page, expect, sync_playwright  # noqa: E402
 
 BASE_URL = "http://localhost:5173"
 TIMEOUT = 15_000  # ms
