@@ -5,6 +5,7 @@ Usage:
     python3 -m aegis.compliance --freq 28e9 --sab 15.0 --sar 0.05 --sinc 8.0
     python3 -m aegis.compliance --freq 60e9 --sab 15.0 --sab-1cm2 35.0 --occupational
     python3 -m aegis.compliance --freq 28e9 --limits
+    python3 -m aegis.compliance --freq 28e9 --link-budget --tx-power 1.0 --gain 15 --distance 5
 """
 
 from __future__ import annotations
@@ -83,6 +84,30 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Output as JSON instead of plain text",
     )
+    # Link budget mode
+    p.add_argument(
+        "--link-budget",
+        action="store_true",
+        help="Quick compliance check from RF link budget parameters",
+    )
+    p.add_argument(
+        "--tx-power",
+        type=float,
+        default=None,
+        help="Transmit power [W] (for --link-budget mode)",
+    )
+    p.add_argument(
+        "--gain",
+        type=float,
+        default=0.0,
+        help="Antenna gain [dBi] (for --link-budget mode, default 0)",
+    )
+    p.add_argument(
+        "--distance",
+        type=float,
+        default=None,
+        help="Distance from antenna to body [m] (for --link-budget mode)",
+    )
     return p
 
 
@@ -100,6 +125,13 @@ def main(argv: list[str] | None = None) -> None:
 
     if args.limits:
         _print_limits(limits, args.json)
+        return
+
+    if args.link_budget:
+        if args.tx_power is None or args.distance is None:
+            print("--link-budget requires --tx-power and --distance", file=sys.stderr)
+            sys.exit(1)
+        _link_budget_mode(args, scenario)
         return
 
     if all(v is None for v in [args.sab, args.sab_1cm2, args.sar, args.sinc, args.sinc_wb]):
@@ -182,6 +214,48 @@ def _print_json(result, ref_power: float | None) -> None:
         p_max = max_compliant_power(result, ref_power)
         d["max_compliant_power_w"] = p_max if p_max < float("inf") else None
     print(json.dumps(d, indent=2))
+
+
+def _link_budget_mode(args, scenario) -> None:
+    from aegis.compliance import link_budget_compliance
+
+    try:
+        result = link_budget_compliance(
+            tx_power_w=args.tx_power,
+            antenna_gain_dbi=args.gain,
+            distance_m=args.distance,
+            freq_hz=args.freq,
+            scenario=scenario,
+        )
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    if args.json:
+        import json
+
+        d = {
+            "sinc_wm2": result["sinc"],
+            "sab_estimate_wm2": result["sab_estimate"],
+            "T0": result["T0"],
+            "compliant": result["compliant"],
+            "margin_db": result["margin_db"] if result["margin_db"] != float("inf") else None,
+            "max_tx_power_w": result["max_tx_power_w"] if result["max_tx_power_w"] < float("inf") else None,
+            "max_tx_power_dbm": result["max_tx_power_dbm"] if result["max_tx_power_dbm"] < float("inf") else None,
+        }
+        print(json.dumps(d, indent=2))
+    else:
+        status = "PASS" if result["compliant"] else "FAIL"
+        print(f"Link budget compliance ({scenario.value})")
+        print(f"Frequency: {args.freq / 1e9:.3f} GHz")
+        print(f"TX power: {args.tx_power:.4g} W, Gain: {args.gain:.1f} dBi, Distance: {args.distance:.2f} m")
+        print()
+        print(f"  S_inc:         {result['sinc']:.6g} W/m^2")
+        print(f"  S_ab estimate: {result['sab_estimate']:.6g} W/m^2 (T0 = {result['T0']:.4f})")
+        print()
+        print(f"Overall: {status} (margin {result['margin_db']:+.1f} dB)")
+        if result["max_tx_power_w"] < float("inf"):
+            print(f"Max compliant TX power: {result['max_tx_power_w']:.4g} W ({result['max_tx_power_dbm']:.1f} dBm)")
 
 
 if __name__ == "__main__":
