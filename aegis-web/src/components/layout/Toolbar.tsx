@@ -1,4 +1,4 @@
-import { PanelLeft, Box, AlignCenter, AlignJustify, LayoutGrid, Focus, Video, Share2, BookOpen, Users } from 'lucide-react'
+import { PanelLeft, Box, AlignCenter, AlignJustify, LayoutGrid, Focus, Video, Share2, BookOpen } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { useSimulationStore } from '@/stores/simulation'
@@ -70,7 +70,6 @@ export default function Toolbar() {
   const { viewerConfig } = useSceneStore()
   const { sidebarOpen, wireframe, cameraMode, toggleSidebar, toggleWireframe, setCameraPreset, setCameraMode, setStatusMessage } = useUIStore()
   const mimoEnabled = useMIMOStore(s => s.enabled)
-  const setMIMOEnabled = useMIMOStore(s => s.setEnabled)
 
   const scenario = viewerConfig?.active_scenario_description ?? viewerConfig?.active_scenario ?? null
 
@@ -151,23 +150,6 @@ export default function Toolbar() {
       {/* Right: session timer + icon buttons */}
       <div className="flex items-center gap-1 shrink-0">
         <SessionTimer />
-
-        <Tooltip>
-          <TooltipTrigger
-            onClick={() => setMIMOEnabled(!mimoEnabled)}
-            className={cn(
-              'inline-flex items-center justify-center size-7 rounded-md transition-colors',
-              'hover:bg-muted text-muted-foreground hover:text-foreground',
-              mimoEnabled && 'bg-primary/15 text-primary',
-            )}
-            aria-label="Toggle MIMO mode"
-          >
-            <Users className="size-4" />
-          </TooltipTrigger>
-          <TooltipContent>
-            {mimoEnabled ? 'Disable MIMO mode' : 'Enable MIMO mode'}
-          </TooltipContent>
-        </Tooltip>
 
         <Tooltip>
           <TooltipTrigger
