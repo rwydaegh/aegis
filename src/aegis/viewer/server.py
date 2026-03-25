@@ -274,13 +274,19 @@ def create_app(
                 _cache["body_binary"] = None
                 _cache["body_meta"] = None
 
-    # Background-precompute averaging matrices so the first compute is fast
+    # Background-precompute averaging matrices so the first compute is fast.
+    # Skip phantoms with >100k triangles to avoid OOM on small servers.
+    _G_MAX_TRIANGLES = int(os.environ.get("AEGIS_G_MAX_TRIANGLES", 100_000))
+
     def _precompute_G():
         from aegis.engine import DosimetryEngine
         from aegis.geometry.averaging import precompute_averaging_matrix
 
         for name, entry in list(_cache.get("bodies", {}).items()):
             body = entry["body"]
+            if body.n_triangles > _G_MAX_TRIANGLES:
+                print(f"  G({name}) skipped ({body.n_triangles:,} > {_G_MAX_TRIANGLES:,} triangles)")
+                continue
             for area in [4e-4, 1e-4]:
                 key = (DosimetryEngine._body_cache_key(body), area)
                 if key not in DosimetryEngine._G_cache:
