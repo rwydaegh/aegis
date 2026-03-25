@@ -22,17 +22,38 @@ export default function AntennaArray({ config, freqHz, showPattern, weights }: A
   const nElements = config.n_h * config.n_v
 
   // Compute element positions in local coords (array-centered)
+  // Must match backend array.py axis construction so element indices align with precoder weights
   const localPositions = useMemo(() => {
     const positions: THREE.Vector3[] = []
     const broadside = new THREE.Vector3(...config.broadside).normalize()
 
-    // Build local coordinate frame
-    const up = new THREE.Vector3(0, 1, 0)
-    let hAxis = new THREE.Vector3().crossVectors(up, broadside).normalize()
-    if (hAxis.length() < 0.01) {
-      hAxis = new THREE.Vector3(1, 0, 0)
-    }
-    const vAxis = new THREE.Vector3().crossVectors(broadside, hAxis).normalize()
+    // Convert broadside to Z-up to match backend: [x, y, z] -> [x, -z, y]
+    const bZ = [broadside.x, -broadside.z, broadside.y] as const
+    const absB = [Math.abs(bZ[0]), Math.abs(bZ[1]), Math.abs(bZ[2])]
+    const minIdx = absB[0] <= absB[1] && absB[0] <= absB[2] ? 0
+                 : absB[1] <= absB[2] ? 1 : 2
+    const ref = [0, 0, 0]
+    ref[minIdx] = 1.0
+
+    // e_h = cross(broadside_zup, ref) -- matches backend array.py
+    const ehZ = [
+      bZ[1] * ref[2] - bZ[2] * ref[1],
+      bZ[2] * ref[0] - bZ[0] * ref[2],
+      bZ[0] * ref[1] - bZ[1] * ref[0],
+    ]
+    const ehLen = Math.sqrt(ehZ[0] ** 2 + ehZ[1] ** 2 + ehZ[2] ** 2)
+    if (ehLen > 1e-9) { ehZ[0] /= ehLen; ehZ[1] /= ehLen; ehZ[2] /= ehLen }
+
+    // e_v = cross(broadside_zup, e_h)
+    const evZ = [
+      bZ[1] * ehZ[2] - bZ[2] * ehZ[1],
+      bZ[2] * ehZ[0] - bZ[0] * ehZ[2],
+      bZ[0] * ehZ[1] - bZ[1] * ehZ[0],
+    ]
+
+    // Convert axes back to Y-up: [x, y, z] -> [x, z, -y]
+    const hAxis = new THREE.Vector3(ehZ[0], ehZ[2], -ehZ[1])
+    const vAxis = new THREE.Vector3(evZ[0], evZ[2], -evZ[1])
 
     const lambda = 3e8 / freqHz
     const dH = config.d_h_wavelengths * lambda
@@ -74,7 +95,7 @@ export default function AntennaArray({ config, freqHz, showPattern, weights }: A
     }
 
     const k0 = 2 * Math.PI * freqHz / 3e8
-    const detail = 5
+    const detail = 8
     const base = new THREE.IcosahedronGeometry(1, detail)
     const posAttr = base.attributes.position as THREE.BufferAttribute
     const nV = posAttr.count
@@ -83,22 +104,33 @@ export default function AntennaArray({ config, freqHz, showPattern, weights }: A
     const dirs: THREE.Vector3[] = []
     let gMax = 0
 
+    // Patch element gain: cos^q(theta) where theta = angle from broadside
+    const isPatch = config.element_pattern === 'patch'
+    const bsDir = new THREE.Vector3(...config.broadside).normalize()
+    const patchQ = 1.5
+
     for (let i = 0; i < nV; i++) {
       const dir = new THREE.Vector3(
         posAttr.getX(i), posAttr.getY(i), posAttr.getZ(i)
       ).normalize()
       dirs.push(dir)
 
+      // Element gain for this direction
+      let elementGain = 1.0
+      if (isPatch) {
+        const cosTheta = dir.dot(bsDir)
+        elementGain = cosTheta > 0 ? cosTheta ** patchQ : 0
+      }
+
       // Weighted array factor: AF = |sum_m w_m * exp(j * k0 * r_m . dir)|^2
       let reSum = 0, imSum = 0
       for (let m = 0; m < M; m++) {
         const phase = k0 * localPositions[m].dot(dir)
         const cosP = Math.cos(phase), sinP = Math.sin(phase)
-        // (wRe + j*wIm) * (cosP + j*sinP)
         reSum += wRe[m] * cosP - wIm[m] * sinP
         imSum += wRe[m] * sinP + wIm[m] * cosP
       }
-      const gain = reSum * reSum + imSum * imSum
+      const gain = (reSum * reSum + imSum * imSum) * elementGain * elementGain
       gains[i] = gain
       if (gain > gMax) gMax = gain
     }
@@ -126,7 +158,7 @@ export default function AntennaArray({ config, freqHz, showPattern, weights }: A
     base.setAttribute('color', new THREE.BufferAttribute(colors, 3))
     base.computeVertexNormals()
     return base
-  }, [localPositions, freqHz, weights])
+  }, [localPositions, freqHz, weights, config.element_pattern, config.broadside])
 
   // Dispose old geometry on recompute to prevent GPU memory leak
   useEffect(() => {

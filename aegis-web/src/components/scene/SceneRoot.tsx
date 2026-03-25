@@ -64,8 +64,16 @@ function CameraController({ controlsRef, initialPosition }: {
     fromPos.current.copy(camera.position)
     fromTarget.current.copy(controls ? (controls.target as THREE.Vector3) : BODY_TARGET)
 
-    // Get current body position to offset presets
-    const [bx, by, bz] = useSimulationStore.getState().bodyOffset
+    // Get current body position to offset presets (MIMO-aware)
+    const mimoState = useMIMOStore.getState()
+    let bodyPos: [number, number, number]
+    if (mimoState.enabled && mimoState.controlledUserId) {
+      const user = mimoState.users.get(mimoState.controlledUserId)
+      bodyPos = user?.position ?? useSimulationStore.getState().bodyOffset
+    } else {
+      bodyPos = useSimulationStore.getState().bodyOffset
+    }
+    const [bx, by, bz] = bodyPos
 
     let dest: { position: [number, number, number]; target: [number, number, number] }
     if (preset === 'reset') {

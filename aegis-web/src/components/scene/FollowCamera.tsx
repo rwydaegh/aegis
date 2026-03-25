@@ -2,6 +2,7 @@ import { useRef, useEffect } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useSimulationStore } from '@/stores/simulation'
+import { useMIMOStore } from '@/stores/mimo'
 import { useUIStore } from '@/stores/ui'
 import { useKeyboard } from '@/hooks/useKeyboard'
 
@@ -90,7 +91,16 @@ export default function FollowCamera() {
     if (keys.rotLeft) yaw.current += ORBIT_SPEED * dt
     if (keys.rotRight) yaw.current -= ORBIT_SPEED * dt
 
-    const [bx, by, bz] = useSimulationStore.getState().bodyOffset
+    // In MIMO mode, follow the controlled user's position
+    const mimoState = useMIMOStore.getState()
+    let bodyPos: [number, number, number]
+    if (mimoState.enabled && mimoState.controlledUserId) {
+      const user = mimoState.users.get(mimoState.controlledUserId)
+      bodyPos = user?.position ?? useSimulationStore.getState().bodyOffset
+    } else {
+      bodyPos = useSimulationStore.getState().bodyOffset
+    }
+    const [bx, by, bz] = bodyPos
     const targetPos = new THREE.Vector3(bx, by + HEIGHT_OFFSET, bz)
 
     const d = distance.current

@@ -23,12 +23,15 @@ class AntennaArray:
     Attributes
     ----------
     element_positions : (M, 3) element positions in world coordinates [m].
-    element_pattern : element radiation pattern type. Only "isotropic" for v1.
+    element_pattern : "isotropic" or "patch". Patch uses cos^q(theta) where
+        theta is the angle from broadside, giving a realistic directional element.
+    broadside : (3,) array normal direction, needed for patch pattern evaluation.
     reference_position : (3,) phase center / array center [m].
     """
 
     element_positions: np.ndarray = field(repr=False)
     element_pattern: str = "isotropic"
+    broadside: np.ndarray = field(repr=False, default=None)
     reference_position: np.ndarray = field(repr=False, default=None)
 
     def __post_init__(self) -> None:
@@ -45,6 +48,10 @@ class AntennaArray:
             if ref.shape != (3,):
                 raise ValueError(f"reference_position must be (3,), got {ref.shape}")
             object.__setattr__(self, "reference_position", ref)
+        if self.broadside is not None:
+            b = np.asarray(self.broadside, dtype=np.float64)
+            b = b / np.linalg.norm(b)
+            object.__setattr__(self, "broadside", b)
 
     @property
     def n_elements(self) -> int:
@@ -59,6 +66,7 @@ class AntennaArray:
         d_v: float,
         center: np.ndarray,
         broadside: np.ndarray,
+        element_pattern: str = "isotropic",
     ) -> AntennaArray:
         """Uniform Planar Array.
 
@@ -68,6 +76,7 @@ class AntennaArray:
         d_h, d_v : horizontal and vertical element spacings [m].
         center : (3,) array center position in world coordinates [m].
         broadside : (3,) unit vector for array normal (main beam direction).
+        element_pattern : "isotropic" or "patch". Default "patch".
         """
         center = np.asarray(center, dtype=np.float64)
         broadside = np.asarray(broadside, dtype=np.float64)
@@ -93,9 +102,34 @@ class AntennaArray:
 
         return cls(
             element_positions=positions,
-            element_pattern="isotropic",
+            element_pattern=element_pattern,
+            broadside=broadside,
             reference_position=center,
         )
+
+    def element_gain(self, k_hat: np.ndarray) -> np.ndarray:
+        """Per-element gain for a direction or set of directions.
+
+        For "patch": G(theta) = max(cos(theta), 0)^q where theta is the
+        angle between k_hat and broadside. q=1.5 gives ~6.6 dBi, typical
+        for a rectangular microstrip patch at 28 GHz.
+
+        Parameters
+        ----------
+        k_hat : (3,) or (N, 3) unit direction(s).
+
+        Returns
+        -------
+        gain : scalar or (N,) real gain values in [0, 1].
+        """
+        if self.element_pattern == "isotropic" or self.broadside is None:
+            if k_hat.ndim == 1:
+                return np.float64(1.0)
+            return np.ones(k_hat.shape[0])
+        # Patch: cos^q(theta) with backside suppression
+        q = 1.5
+        cos_theta = k_hat @ self.broadside
+        return np.maximum(cos_theta, 0.0) ** q
 
     def steering_vector(self, k_hat: np.ndarray, freq_hz: float) -> np.ndarray:
         """Transmit steering vector for a single direction.
@@ -107,11 +141,11 @@ class AntennaArray:
 
         Returns
         -------
-        a : (M,) complex steering vector.
+        a : (M,) complex steering vector, including element gain.
         """
         k0 = 2 * np.pi * freq_hz / C_0
         offsets = self.element_positions - self.reference_position
-        return np.exp(1j * k0 * (offsets @ k_hat))
+        return self.element_gain(k_hat) * np.exp(1j * k0 * (offsets @ k_hat))
 
     def steering_matrix(self, k_hat: np.ndarray, freq_hz: float) -> np.ndarray:
         """Transmit steering matrix for N directions.
@@ -128,7 +162,8 @@ class AntennaArray:
         """
         k0 = 2 * np.pi * freq_hz / C_0
         offsets = self.element_positions - self.reference_position
-        return np.exp(1j * k0 * (k_hat @ offsets.T))
+        gain = self.element_gain(k_hat)
+        return gain[:, None] * np.exp(1j * k0 * (k_hat @ offsets.T))
 
     def __repr__(self) -> str:
         return f"AntennaArray(M={self.n_elements}, pattern={self.element_pattern!r})"
