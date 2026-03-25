@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { useSimulationStore } from './simulation'
+import { useSceneStore } from './scene'
 import type { BufferGeometry } from 'three'
 import type { ScenePos } from '@/api/coordinates'
 import type { DosimetryStats, ArrayConfig, MIMOSummary } from '@/api/types'
@@ -75,20 +76,56 @@ export const useMIMOStore = create<MIMOStore>((set, get) => ({
   },
 
   setEnabled: (on) => {
-    const updates: Partial<typeof INITIAL_STATE & { enabled: boolean }> = { enabled: on }
-    if (on && !get().arrayConfig) {
+    if (!on) {
+      set({ enabled: false })
+      return
+    }
+
+    // Build array config if first time enabling
+    let arrayConfig = get().arrayConfig
+    if (!arrayConfig) {
       const antennaPos = useSimulationStore.getState().antennaPos
-      updates.arrayConfig = {
+      arrayConfig = {
         type: 'upa' as const,
-        n_h: 4,
-        n_v: 4,
-        d_h_wavelengths: 0.5,
-        d_v_wavelengths: 0.5,
-        position: antennaPos ?? [5, 0, 3],
+        n_h: 4, n_v: 4,
+        d_h_wavelengths: 0.5, d_v_wavelengths: 0.5,
+        position: antennaPos ?? [5, 2, 3],
         broadside: [-1, 0, 0] as [number, number, number],
       }
     }
-    set(updates)
+
+    // Auto-add current phantom as User 1 if no users exist
+    if (get().users.size === 0) {
+      const { bodyOffset, bodyRotationY } = useSimulationStore.getState()
+      const bodyName = useSceneStore.getState().bodyName || 'thelonious'
+      const id = crypto.randomUUID()
+      const num = get()._nextUserNumber
+      const user: UserMIMOState = {
+        userId: id,
+        displayName: `User ${num}`,
+        phantomName: bodyName,
+        position: bodyOffset,
+        orientation: bodyRotationY,
+        deviceOrientation: [0, 1, 0],
+        bodyGeometry: null,
+        sabArray: null,
+        stats: null,
+        compliant: null,
+      }
+      const users = new Map(get().users)
+      users.set(id, user)
+      set({
+        enabled: true,
+        arrayConfig,
+        users,
+        _nextUserNumber: num + 1,
+        _configVersion: get()._configVersion + 1,
+        focusedUserId: id,
+        controlledUserId: id,
+      })
+    } else {
+      set({ enabled: true, arrayConfig })
+    }
   },
 
   addUser: (phantom, position) => {
