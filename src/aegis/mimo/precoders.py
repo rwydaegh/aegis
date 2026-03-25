@@ -46,3 +46,17 @@ def zf(H: np.ndarray, P: float = 1.0) -> np.ndarray:
     if frob < 1e-30:
         return np.zeros((M, K), dtype=complex)
     return W_raw * np.sqrt(P) / frob
+
+
+def mmse(H: np.ndarray, P: float = 1.0, noise_power: float = 0.01) -> np.ndarray:
+    """MMSE: W_raw = H^H @ inv(H @ H^H + alpha * I), normalized to ||W||_F^2 = P."""
+    H = np.asarray(H, dtype=complex)
+    if H.ndim == 1:
+        H = H.reshape(1, -1)
+    K, M = H.shape
+    HHH = H @ H.conj().T
+    W_raw = H.conj().T @ np.linalg.inv(HHH + noise_power * np.eye(K))
+    frob = np.sqrt(float(np.real(np.trace(W_raw.conj().T @ W_raw))))
+    if frob < 1e-30:
+        return np.zeros((M, K), dtype=complex)
+    return W_raw * np.sqrt(P) / frob

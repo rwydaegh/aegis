@@ -155,3 +155,85 @@ class TestZF:
 
         with pytest.raises(ValueError, match="M_ant.*must be >= K"):
             zf(H)
+
+
+class TestMMSE:
+    """Tests for MMSE (regularized zero-forcing) precoder."""
+
+    def test_approaches_zf_at_low_noise(self):
+        """alpha -> 0 recovers ZF (atol 1e-6)."""
+        rng = np.random.default_rng(60)
+        K, M = 3, 8
+        H = rng.standard_normal((K, M)) + 1j * rng.standard_normal((K, M))
+        P = 2.0
+
+        from aegis.mimo.precoders import mmse, zf
+
+        W_zf = zf(H, P=P)
+        W_mmse = mmse(H, P=P, noise_power=1e-12)
+        assert_allclose(W_mmse, W_zf, atol=1e-6)
+
+    def test_total_power(self):
+        """||W||_F^2 = P."""
+        rng = np.random.default_rng(61)
+        K, M = 4, 16
+        H = rng.standard_normal((K, M)) + 1j * rng.standard_normal((K, M))
+        P = 3.0
+
+        from aegis.mimo.precoders import mmse
+
+        W = mmse(H, P=P, noise_power=0.1)
+        frob_sq = float(np.real(np.trace(W.conj().T @ W)))
+        assert_allclose(frob_sq, P, atol=1e-10)
+
+    def test_better_conditioned_than_zf(self):
+        """Near-singular H: MMSE column norms more balanced than ZF."""
+        rng = np.random.default_rng(62)
+        M = 8
+        # Create near-singular H by making rows nearly dependent
+        h0 = rng.standard_normal(M) + 1j * rng.standard_normal(M)
+        H = np.stack(
+            [
+                h0,
+                h0 + 1e-4 * (rng.standard_normal(M) + 1j * rng.standard_normal(M)),
+                rng.standard_normal(M) + 1j * rng.standard_normal(M),
+            ]
+        )
+
+        from aegis.mimo.precoders import mmse, zf
+
+        W_zf = zf(H, P=1.0)
+        W_mmse = mmse(H, P=1.0, noise_power=0.1)
+
+        norms_zf = np.linalg.norm(W_zf, axis=0)
+        norms_mmse = np.linalg.norm(W_mmse, axis=0)
+
+        # MMSE should have more balanced column norms (lower ratio max/min)
+        ratio_zf = norms_zf.max() / max(norms_zf.min(), 1e-30)
+        ratio_mmse = norms_mmse.max() / max(norms_mmse.min(), 1e-30)
+        assert ratio_mmse < ratio_zf
+
+    def test_output_shape(self):
+        """Output shape is (M, K) complex."""
+        rng = np.random.default_rng(63)
+        K, M = 3, 12
+        H = rng.standard_normal((K, M)) + 1j * rng.standard_normal((K, M))
+
+        from aegis.mimo.precoders import mmse
+
+        W = mmse(H)
+        assert W.shape == (M, K)
+        assert np.iscomplexobj(W)
+
+    def test_works_with_M_equal_K(self):
+        """M=K works with regularization."""
+        rng = np.random.default_rng(64)
+        K = M = 4
+        H = rng.standard_normal((K, M)) + 1j * rng.standard_normal((K, M))
+
+        from aegis.mimo.precoders import mmse
+
+        W = mmse(H, P=1.0, noise_power=0.01)
+        assert W.shape == (M, K)
+        frob_sq = float(np.real(np.trace(W.conj().T @ W)))
+        assert_allclose(frob_sq, 1.0, atol=1e-10)
