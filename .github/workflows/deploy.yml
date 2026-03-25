@@ -67,12 +67,16 @@ jobs:
         env:
           SSH_KEY: ${{ secrets.HETZNER_SSH_KEY }}
           HOST: ${{ vars.HETZNER_HOST }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p ~/.ssh
           echo "$SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key root@$HOST \
-            'cd /opt/aegis && docker compose pull && docker compose up -d && docker image prune -f'
+          SSH="ssh -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key root@$HOST"
+          scp -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key \
+            docker-compose.yml Caddyfile root@$HOST:/opt/aegis/
+          $SSH "echo '$GH_TOKEN' | docker login ghcr.io -u ${{ github.actor }} --password-stdin && \
+            cd /opt/aegis && docker compose pull && docker compose up -d && docker image prune -f"
 
       - name: Health check
         if: vars.HETZNER_HOST != ''
