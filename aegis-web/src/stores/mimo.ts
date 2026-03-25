@@ -116,13 +116,19 @@ export const useMIMOStore = create<MIMOStore>((set, get) => ({
 
   removeUser: (id) => {
     const users = new Map(get().users)
+    const removed = users.get(id)
+    removed?.bodyGeometry?.dispose()
     users.delete(id)
-    const { focusedUserId, controlledUserId } = get()
+    const { focusedUserId, controlledUserId, precoderType, arrayConfig } = get()
     const nextId = users.size > 0 ? users.keys().next().value! : null
+    // Fall back to MRT if ZF/MMSE becomes infeasible (M < K)
+    const nElements = arrayConfig ? arrayConfig.n_h * arrayConfig.n_v : 0
+    const needsFallback = precoderType !== 'mrt' && nElements > 0 && nElements < users.size
     set({
       users,
       focusedUserId: focusedUserId === id ? nextId : focusedUserId,
       controlledUserId: controlledUserId === id ? nextId : controlledUserId,
+      ...(needsFallback ? { precoderType: 'mrt' as PrecoderType } : {}),
     })
   },
 
@@ -179,5 +185,11 @@ export const useMIMOStore = create<MIMOStore>((set, get) => ({
     set({ users, summaryStats: null })
   },
 
-  reset: () => set({ ...INITIAL_STATE, users: new Map() }),
+  reset: () => {
+    // Dispose all body geometries to free GPU memory
+    for (const user of get().users.values()) {
+      user.bodyGeometry?.dispose()
+    }
+    set({ ...INITIAL_STATE, users: new Map() })
+  },
 }))
