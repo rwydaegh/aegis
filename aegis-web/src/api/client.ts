@@ -346,3 +346,82 @@ export async function cancelLocation(): Promise<void> {
   const res = await fetch(`${BASE}/api/location/cancel`, { method: 'POST' })
   if (!res.ok) throw new Error(`POST /api/location/cancel failed: ${res.status} ${res.statusText}`)
 }
+
+// ---------------------------------------------------------------------------
+// Compliance analysis endpoints
+// ---------------------------------------------------------------------------
+
+export interface PowerSweepResult {
+  power_dbm: number[]
+  margin_db: number[]
+  compliant: boolean[]
+  p_max_compliant_w: number
+  p_max_compliant_dbm: number | null
+}
+
+export interface FrequencySweepResult {
+  freq_ghz: number[]
+  margin_db: number[]
+  compliant: boolean[]
+}
+
+export interface LinkBudgetResult {
+  sinc: number
+  sab_estimate: number
+  T0: number
+  compliant: boolean
+  margin_db: number
+  max_tx_power_w: number
+  max_tx_power_dbm: number | null
+}
+
+export async function fetchPowerSweep(params: {
+  sab_4cm2: number
+  freq_hz: number
+  ref_power_dbm: number
+  scenario?: string
+  sinc_local?: number
+  sab_1cm2?: number
+}): Promise<PowerSweepResult> {
+  const qs = new URLSearchParams({
+    sab_4cm2: String(params.sab_4cm2),
+    freq_hz: String(params.freq_hz),
+    ref_power_dbm: String(params.ref_power_dbm),
+    scenario: params.scenario ?? 'general_public',
+  })
+  if (params.sinc_local != null) qs.set('sinc_local', String(params.sinc_local))
+  if (params.sab_1cm2 != null) qs.set('sab_1cm2', String(params.sab_1cm2))
+  return getJson<PowerSweepResult>(`/api/compliance/power-sweep?${qs}`)
+}
+
+export async function fetchFrequencySweep(params: {
+  sab_4cm2: number
+  scenario?: string
+  sinc_local?: number
+  sab_1cm2?: number
+}): Promise<FrequencySweepResult> {
+  const qs = new URLSearchParams({
+    sab_4cm2: String(params.sab_4cm2),
+    scenario: params.scenario ?? 'general_public',
+  })
+  if (params.sinc_local != null) qs.set('sinc_local', String(params.sinc_local))
+  if (params.sab_1cm2 != null) qs.set('sab_1cm2', String(params.sab_1cm2))
+  return getJson<FrequencySweepResult>(`/api/compliance/frequency-sweep?${qs}`)
+}
+
+export async function fetchLinkBudget(params: {
+  tx_power_dbm: number
+  antenna_gain_dbi: number
+  distance_m: number
+  freq_hz: number
+  scenario?: string
+}): Promise<LinkBudgetResult> {
+  const qs = new URLSearchParams({
+    tx_power_dbm: String(params.tx_power_dbm),
+    antenna_gain_dbi: String(params.antenna_gain_dbi),
+    distance_m: String(params.distance_m),
+    freq_hz: String(params.freq_hz),
+    scenario: params.scenario ?? 'general_public',
+  })
+  return getJson<LinkBudgetResult>(`/api/compliance/link-budget?${qs}`)
+}

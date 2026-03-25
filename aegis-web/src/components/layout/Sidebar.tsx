@@ -15,6 +15,7 @@ import RayTracingPanel from '@/components/panels/RayTracingPanel'
 import StochasticPanel from '@/components/panels/StochasticPanel'
 import TissuePanel from '@/components/panels/TissuePanel'
 import ExportPanel from '@/components/panels/ExportPanel'
+import AnalysisPanel from '@/components/panels/AnalysisPanel'
 import MIMOPanel from '@/components/hud/MIMOPanel'
 
 export default function Sidebar() {
@@ -52,6 +53,15 @@ export default function Sidebar() {
               <AccordionContent>
                 <div className="py-2">
                   <ParametersPanel />
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="analysis" className="border-b border-border px-3">
+              <AccordionTrigger className="text-sm font-medium py-3">Analysis</AccordionTrigger>
+              <AccordionContent>
+                <div className="py-2">
+                  <AnalysisPanel />
                 </div>
               </AccordionContent>
             </AccordionItem>
