@@ -94,11 +94,11 @@ def _load_nict_data() -> dict:
         return _nict_data
 
     import csv
-    import re
-    from pathlib import Path
 
     # Search for CSV: AEGIS_DATA_DIR env var, then CWD/data, then relative to source
     import os
+    import re
+    from pathlib import Path
 
     candidates = []
     env_dir = os.environ.get("AEGIS_DATA_DIR")
