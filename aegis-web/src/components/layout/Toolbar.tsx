@@ -1,13 +1,15 @@
-import { PanelLeft, Box, AlignCenter, AlignJustify, LayoutGrid, Focus, Video, Share2, BookOpen } from 'lucide-react'
+import { PanelLeft, Box, AlignCenter, AlignJustify, LayoutGrid, Focus, Video, Share2, BookOpen, Users } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { useSimulationStore } from '@/stores/simulation'
 import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
+import { useMIMOStore } from '@/stores/mimo'
 import type { CameraPreset } from '@/stores/ui'
 import { cn } from '@/lib/utils'
 import type { DosimetryStats } from '@/api/types'
 import SessionTimer from '@/components/layout/SessionTimer'
+import UserBadges from '@/components/hud/UserBadges'
 import { generateShareUrl } from '@/lib/shareLink'
 
 function ComplianceBadge({ stats }: { stats: DosimetryStats | null }) {
@@ -67,6 +69,8 @@ export default function Toolbar() {
   const { stats } = useSimulationStore()
   const { viewerConfig } = useSceneStore()
   const { sidebarOpen, wireframe, cameraMode, toggleSidebar, toggleWireframe, setCameraPreset, setCameraMode, setStatusMessage } = useUIStore()
+  const mimoEnabled = useMIMOStore(s => s.enabled)
+  const setMIMOEnabled = useMIMOStore(s => s.setEnabled)
 
   const scenario = viewerConfig?.active_scenario_description ?? viewerConfig?.active_scenario ?? null
 
@@ -104,7 +108,7 @@ export default function Toolbar() {
 
       {/* Center-left: compliance + level */}
       <div className="flex items-center gap-2 shrink-0">
-        <ComplianceBadge stats={stats} />
+        {mimoEnabled ? <UserBadges /> : <ComplianceBadge stats={stats} />}
         <ModePill />
       </div>
 
@@ -147,6 +151,23 @@ export default function Toolbar() {
       {/* Right: session timer + icon buttons */}
       <div className="flex items-center gap-1 shrink-0">
         <SessionTimer />
+
+        <Tooltip>
+          <TooltipTrigger
+            onClick={() => setMIMOEnabled(!mimoEnabled)}
+            className={cn(
+              'inline-flex items-center justify-center size-7 rounded-md transition-colors',
+              'hover:bg-muted text-muted-foreground hover:text-foreground',
+              mimoEnabled && 'bg-primary/15 text-primary',
+            )}
+            aria-label="Toggle MIMO mode"
+          >
+            <Users className="size-4" />
+          </TooltipTrigger>
+          <TooltipContent>
+            {mimoEnabled ? 'Disable MIMO mode' : 'Enable MIMO mode'}
+          </TooltipContent>
+        </Tooltip>
 
         <Tooltip>
           <TooltipTrigger
