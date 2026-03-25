@@ -58,6 +58,8 @@ jobs:
         with:
           context: .
           push: true
+          build-args: |
+            CACHE_BUST=${{ github.sha }}
           tags: |
             ghcr.io/${{ github.repository }}:${{ github.sha }}
             ghcr.io/${{ github.repository }}:latest
