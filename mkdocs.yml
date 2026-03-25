@@ -9,9 +9,11 @@ docs_dir: docs
 
 theme:
   name: material
+  custom_dir: docs/overrides
   language: en
+  logo: assets/aegis-logo.svg
+  favicon: assets/favicon.png
   icon:
-    logo: material/shield-sun
   features:
     - content.code.annotate
     - content.code.copy
@@ -29,20 +31,20 @@ theme:
     - toc.follow
   palette:
     - scheme: default
-      primary: deep purple
-      accent: amber
+      primary: custom
+      accent: indigo
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
     - scheme: slate
-      primary: deep purple
-      accent: amber
+      primary: custom
+      accent: indigo
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
   font:
-    text: Roboto
-    code: Roboto Mono
+    text: Geist
+    code: Geist Mono
 
 nav:
   - Home: index.md

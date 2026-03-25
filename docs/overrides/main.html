@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block footer %}
+  {{ super() }}
+  <div class="aegis-affiliations">
+    <a href="https://waves.intec.ugent.be/" title="WAVES Research Group">
+      <img src="{{ base_url }}/assets/waves.svg" alt="WAVES" loading="lazy">
+    </a>
+    <a href="https://www.ugent.be/" title="Ghent University">
+      <img src="{{ base_url }}/assets/ugent.png" alt="Ghent University" loading="lazy">
+    </a>
+    <a href="https://www.imec.be/" title="imec">
+      <img src="{{ base_url }}/assets/imec.png" alt="imec" loading="lazy">
+    </a>
+  </div>
+{% endblock %}

@@ -71,6 +71,8 @@ test_screenshots/
 
 # Debug screenshots
 *.png
+!docs/assets/*.png
+!aegis-web/public/*.png
 
 # MCP config (local)
 .mcp.json

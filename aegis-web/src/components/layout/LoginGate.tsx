@@ -54,7 +54,7 @@ export default function LoginGate({ children }: LoginGateProps) {
         <div className="w-full max-w-sm mx-4">
           <div className="bg-card border border-border rounded-xl p-8 shadow-lg">
             <div className="text-center mb-8">
-              <h1 className="text-2xl font-bold tracking-wider text-heading mb-1">AEGIS</h1>
+              <h1 className="text-2xl font-medium text-heading mb-1">aegis</h1>
               <p className="text-muted-foreground text-sm">Enter password to continue</p>
             </div>
 
