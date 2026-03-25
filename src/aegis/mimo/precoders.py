@@ -60,3 +60,41 @@ def mmse(H: np.ndarray, P: float = 1.0, noise_power: float = 0.01) -> np.ndarray
     if frob < 1e-30:
         return np.zeros((M, K), dtype=complex)
     return W_raw * np.sqrt(P) / frob
+
+
+def zf_exposure(
+    H: np.ndarray,
+    Q_list: list[np.ndarray],
+    P_abs_max: float,
+    P: float = 1.0,
+) -> np.ndarray:
+    """ZF directions, per-column power scaled to satisfy exposure constraints.
+
+    For each user u: sum_k w_k^H Q_u w_k <= P_abs_max.
+    """
+    H = np.asarray(H, dtype=complex)
+    if H.ndim == 1:
+        H = H.reshape(1, -1)
+    K, M = H.shape
+    W_zf = zf(H, P=P)
+
+    # Extract unit directions from ZF columns
+    directions = np.zeros_like(W_zf)
+    for k in range(K):
+        norm_k = np.linalg.norm(W_zf[:, k])
+        if norm_k > 1e-30:
+            directions[:, k] = W_zf[:, k] / norm_k
+
+    # Start from ZF's per-column power allocation
+    gamma_sq = np.array([float(np.real(np.vdot(W_zf[:, k], W_zf[:, k]))) for k in range(K)])
+
+    # Scale down per-column power to satisfy exposure constraints
+    for k in range(K):
+        d_k = directions[:, k]
+        for Q_u in Q_list:
+            dQd = float(np.real(np.vdot(d_k, Q_u @ d_k)))
+            if dQd > 1e-30:
+                max_gamma_sq = P_abs_max / (K * dQd)
+                gamma_sq[k] = min(gamma_sq[k], max_gamma_sq)
+
+    return directions * np.sqrt(gamma_sq)[np.newaxis, :]
