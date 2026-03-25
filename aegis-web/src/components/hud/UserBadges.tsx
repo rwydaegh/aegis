@@ -22,7 +22,7 @@ export default function UserBadges() {
   const allPass = compliant.length === computed.length
   return (
     <Tooltip>
-      <TooltipTrigger asChild>
+      <TooltipTrigger>
         <div className="flex items-center gap-1.5">
           <Badge
             className={
