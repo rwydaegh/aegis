@@ -120,5 +120,18 @@ presentations/group/preview*/
 presentations/group/__pycache__/
 presentations/group/talk.html
 presentations/group/talk*.pdf
+presentations/group/*.aux
+presentations/group/*.nav
+presentations/group/*.out
+presentations/group/*.snm
+presentations/group/*.toc
+presentations/group/*.vrb
+presentations/group/main.pdf
 presentation_unzipped/
 presentation.zip
+
+# Allow presentation animation outputs and poster frames
+!presentations/group/animations/*.mp4
+!presentations/group/animations/*.png
+!presentations/promotors/figures/*.png
+!presentations/promotors/figures/*.pdf
