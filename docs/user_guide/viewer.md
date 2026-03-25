@@ -2,15 +2,9 @@
 
 The viewer has two parts: a Flask REST backend that runs dosimetry computations and serves data, and a React + Three.js frontend that renders the scene. The frontend shows a body mesh with absorbed power density heatmap, optional voxel environments, antenna radiation patterns, and real-time dosimetry stats.
 
-## Requirements
+The production instance runs at [aegis.waves-ugent.be](https://aegis.waves-ugent.be) (password-protected). See [Deployment](deployment.md) for server details.
 
-- Python 3.12 with AEGIS installed (`pip install -e ".[dev]"`).
-- Node.js 18+ for the React frontend (development only, production builds are static).
-- Body STL under your [data directory](../getting_started.md#loading-real-meshes) (default mesh `thelonious` unless you override it).
-- Optional: `pip install -e ".[rt]"` for DiffeRT or Sionna ray tracing in the UI.
-- Optional: `GOOGLE_API_KEY` for geocoded voxel loading.
-
-## Launch
+## Running locally
 
 Start the Flask backend (port **5000** by default):
 
@@ -19,7 +13,9 @@ python -m aegis.viewer
 python -m aegis.viewer --scenario open_ground
 ```
 
-For development, run the React frontend separately (port **5173**, hot-reloads):
+Requirements: Python 3.12, `pip install -e ".[dev]"`, body STL in the [data directory](../getting_started.md#loading-real-meshes). Optional: `pip install -e ".[rt]"` for DiffeRT or Sionna ray tracing.
+
+For frontend development with hot reload, run the Vite dev server in a second terminal:
 
 ```bash
 cd aegis-web
@@ -27,17 +23,13 @@ npm install    # first time only
 npm run dev
 ```
 
-Open `http://localhost:5173` in your browser. The frontend proxies API calls to the Flask backend on port 5000.
+Open `http://localhost:5173`. The Vite dev server proxies `/api` calls to Flask on port 5000, so both must be running. Changes to React components reflect instantly without rebuilding.
 
-**Remote GPU (TensorDock):** If the backend runs on a cloud VM, see [Cloud GPU machine](../developer_guide/cloud_machine.md). Use `python tools/cloud.py status` for the correct URL or SSH tunnel. You usually open **`http://localhost:5000`** (or 5173 with `npm run dev` against a tunneled API) after port forwarding, not the raw instance IP unless TensorDock exposes port 5000.
-
-For production, Flask serves the React app from `src/aegis/viewer/static/` (gitignored). Build and copy in one step from the repo root:
+To build the production frontend (Flask serves it from `static/`):
 
 ```bash
 cd aegis-web && npm ci && npm run build:copy
 ```
-
-If that folder is missing, Flask falls back to a deprecated single-file HTML viewer (`templates/_legacy_index.html`) and shows a warning banner.
 
 Common backend flags:
 
@@ -100,13 +92,14 @@ The `open_ground` scenario clears voxel paths so you get the body on a flat surf
 The React frontend calls REST endpoints on the Flask backend:
 
 - `GET /api/config` - bodies list, available backends (voxels, DiffeRT, Sionna), scene list, body metadata.
-- `GET /api/body/<name>`, `GET /api/voxels` - binary mesh and voxel payloads with metadata headers.
-- `GET /api/levels`, `GET /api/tissues` - fidelity level catalog and tissue presets.
+- `GET /api/body?name=X` - binary mesh payload with metadata header. All bodies are preloaded at startup.
+- `GET /api/voxels` - binary voxel payload with metadata header.
+- `GET /api/levels` - fidelity level catalog.
 - `GET /api/health`, `GET /api/system` - server health check and system resource info.
-- `POST /api/compute` - synthetic multipath dosimetry.
+- `POST /api/compute` - dosimetry computation. Accepts `body_name` to select which body to use.
 - `POST /api/compute/voxel-rt`, `POST /api/compute/rt` - DiffeRT ray-traced paths.
 - `POST /api/compute/sionna-rt` - Sionna RT ray-traced paths.
-- `POST /api/body/switch` - switch the active body mesh.
+- `POST /api/auth` - password authentication, returns a signed session cookie.
 - `GET /api/location/load` - SSE endpoint for geocoded location loading.
 
 `voxel_rt_available` in `/api/config` is true only when voxel grid data is loaded **and** DiffeRT is importable, so the UI does not offer voxel ray tracing when it would always fail.

@@ -1,5 +1,5 @@
 site_name: AEGIS Documentation
-site_url: https://rwydaegh.github.io/aegis/
+site_url: https://docs.aegis.waves-ugent.be/
 site_description: Geometric dosimetry engine for wireless exposure assessment
 site_author: rwydaegh
 repo_url: https://github.com/rwydaegh/aegis
@@ -57,6 +57,7 @@ nav:
     - Sionna RT integration: user_guide/sionna_integration.md
     - Stochastic channel: user_guide/stochastic_channel.md
     - Interactive viewer: user_guide/viewer.md
+    - Deployment: user_guide/deployment.md
     - Fidelity levels: user_guide/fidelity_levels.md
     - Tissue and Fresnel: user_guide/tissue.md
     - Geometry: user_guide/geometry.md
@@ -67,7 +68,7 @@ nav:
     - Architecture: developer_guide/architecture.md
     - Adding a kernel: developer_guide/adding_a_kernel.md
     - Testing: developer_guide/testing.md
-    - Cloud GPU machine: developer_guide/cloud_machine.md
+    - Development machine: developer_guide/cloud_machine.md
     - Agent workflow (Claude & Cursor): developer_guide/claude_code_workflow.md
   - Reference:
     - API reference: reference/api.md
