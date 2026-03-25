@@ -329,6 +329,10 @@ def compute_mimo_scene_with_bodies(
     timings: dict[str, float] = {}
     t_total_start = time.perf_counter()
 
+    if not scene.users:
+        timings["total_ms"] = 0.0
+        return {"user_ids": [], "timings": timings, "precoder_type": "mrt"}
+
     if generate_paths_fn is None:
         generate_paths_fn = _default_los_paths
 

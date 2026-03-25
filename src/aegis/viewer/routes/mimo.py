@@ -10,7 +10,7 @@ from flask import Flask, Response, jsonify, request
 
 from aegis.constants import C_0
 from aegis.mimo.array import AntennaArray
-from aegis.mimo.compute import compute_mimo_scene
+from aegis.mimo.compute import compute_mimo_scene_with_bodies
 from aegis.mimo.scene import MIMOScene
 from aegis.mimo.user import UserConfig, UserState
 
@@ -115,7 +115,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
         level = int(params.get("level", 7))
         try:
-            summary = compute_mimo_scene(scene, bodies, level=level)
+            summary = compute_mimo_scene_with_bodies(scene, bodies, level=level)
         except Exception as exc:
             logger.exception("MIMO compute failed")
             return jsonify({"error": str(exc)}), 500

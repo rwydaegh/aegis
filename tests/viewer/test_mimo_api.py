@@ -57,7 +57,7 @@ def _mock_compute(scene, bodies, level=7, generate_paths_fn=None):
     }
 
 
-COMPUTE_PATCH = "aegis.viewer.routes.mimo.compute_mimo_scene"
+COMPUTE_PATCH = "aegis.viewer.routes.mimo.compute_mimo_scene_with_bodies"
 
 
 class TestMIMOCompute:
@@ -193,3 +193,140 @@ class TestMIMOSummary:
         assert "p_abs_mw" in u
         assert "compliant" in u
         assert data["precoder"] == "mrt"
+
+
+_ARRAY_CFG = {"type": "upa", "n_h": 4, "n_v": 4, "position": [5, 0, 3], "broadside": [-1, 0, 0]}
+
+
+def _mock_compute_varied_power(scene, bodies, level=7, generate_paths_fn=None):
+    """Mock compute that assigns different p_abs per user index."""
+    powers = [0.05, 0.15]
+    for i, user in enumerate(scene.users):
+        user._sab_raw = np.ones(10, dtype=np.float32)
+        result = MagicMock()
+        result.p_abs = powers[i] if i < len(powers) else 0.05
+        result.peak_sab = 10.0
+        result.sab = np.ones(10, dtype=np.float32) * 10.0
+        result.sab_averaged = None
+        user.result = result
+    return {
+        "user_ids": [u.config.user_id for u in scene.users],
+        "timings": {"total_ms": 1.0},
+        "precoder_type": "mrt",
+    }
+
+
+class TestMIMOMultiUser:
+    def _compute_two_users(self, client):
+        with patch(COMPUTE_PATCH, side_effect=_mock_compute):
+            return client.post(
+                "/api/mimo/compute",
+                json={
+                    "array": _ARRAY_CFG,
+                    "users": [
+                        {"id": "u1", "phantom": "thelonious", "position": [0, 0, 0]},
+                        {"id": "u2", "phantom": "thelonious", "position": [2, 0, 0]},
+                    ],
+                    "freq_hz": 28e9,
+                    "power_dbm": 60,
+                },
+            )
+
+    def test_two_user_compute(self, client):
+        resp = self._compute_two_users(client)
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert "u1" in data["user_ids"]
+        assert "u2" in data["user_ids"]
+
+    def test_two_user_individual_results(self, client):
+        self._compute_two_users(client)
+        resp_u1 = client.get("/api/mimo/result/u1")
+        resp_u2 = client.get("/api/mimo/result/u2")
+        assert resp_u1.status_code == 200
+        assert resp_u1.content_type == "application/octet-stream"
+        assert resp_u2.status_code == 200
+        assert resp_u2.content_type == "application/octet-stream"
+
+    def test_two_user_summary(self, client):
+        self._compute_two_users(client)
+        resp = client.get("/api/mimo/summary")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert len(data["users"]) == 2
+        ids = [u["id"] for u in data["users"]]
+        assert "u1" in ids
+        assert "u2" in ids
+
+    def test_duplicate_phantoms(self, client):
+        with patch(COMPUTE_PATCH, side_effect=_mock_compute):
+            resp = client.post(
+                "/api/mimo/compute",
+                json={
+                    "array": _ARRAY_CFG,
+                    "users": [
+                        {"id": "ua", "phantom": "thelonious", "position": [0, 0, 0]},
+                        {"id": "ub", "phantom": "thelonious", "position": [2, 0, 0]},
+                        {"id": "uc", "phantom": "thelonious", "position": [4, 0, 0]},
+                    ],
+                    "freq_hz": 28e9,
+                    "power_dbm": 60,
+                },
+            )
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert len(data["user_ids"]) == 3
+        assert "ua" in data["user_ids"]
+        assert "ub" in data["user_ids"]
+        assert "uc" in data["user_ids"]
+
+
+class TestMIMOCompliance:
+    def test_compliance_boundary(self, client):
+        with patch(COMPUTE_PATCH, side_effect=_mock_compute_varied_power):
+            client.post(
+                "/api/mimo/compute",
+                json={
+                    "array": _ARRAY_CFG,
+                    "users": [
+                        {"id": "low", "phantom": "thelonious", "position": [0, 0, 0]},
+                        {"id": "high", "phantom": "thelonious", "position": [2, 0, 0]},
+                    ],
+                    "freq_hz": 28e9,
+                    "power_dbm": 60,
+                },
+            )
+        resp = client.get("/api/mimo/summary")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        users_by_id = {u["id"]: u for u in data["users"]}
+        assert users_by_id["low"]["compliant"] is True
+        assert users_by_id["high"]["compliant"] is False
+
+
+class TestMIMOCacheReplacement:
+    def test_second_compute_replaces_first(self, client):
+        with patch(COMPUTE_PATCH, side_effect=_mock_compute):
+            client.post(
+                "/api/mimo/compute",
+                json={
+                    "array": _ARRAY_CFG,
+                    "users": [{"id": "u1", "phantom": "thelonious", "position": [0, 0, 0]}],
+                    "freq_hz": 28e9,
+                    "power_dbm": 60,
+                },
+            )
+        with patch(COMPUTE_PATCH, side_effect=_mock_compute):
+            client.post(
+                "/api/mimo/compute",
+                json={
+                    "array": _ARRAY_CFG,
+                    "users": [{"id": "u2", "phantom": "thelonious", "position": [2, 0, 0]}],
+                    "freq_hz": 28e9,
+                    "power_dbm": 60,
+                },
+            )
+        resp_u1 = client.get("/api/mimo/result/u1")
+        resp_u2 = client.get("/api/mimo/result/u2")
+        assert resp_u1.status_code == 404
+        assert resp_u2.status_code == 200
