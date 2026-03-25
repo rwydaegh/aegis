@@ -17,7 +17,7 @@ export function usePhysics() {
     velocity: [0, 0, 0],
     rotationY: 0,
     angularVelocity: 0,
-    onGround: true,
+    onGround: false,  // start false so first frame runs ground-snap
   })
 
   const controlledUserId = useMIMOStore(s => s.controlledUserId)
@@ -31,7 +31,7 @@ export function usePhysics() {
         velocity: [0, 0, 0],
         rotationY: user.orientation,
         angularVelocity: 0,
-        onGround: true,
+        onGround: false,  // let first frame ground-snap to correct height
       }
     }
   }, [controlledUserId])
