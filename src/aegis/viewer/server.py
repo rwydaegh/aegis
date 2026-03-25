@@ -325,6 +325,7 @@ def create_app(
                             app.logger.warning("G(%s) failed: %s", name, e)
 
         import threading
+
         threading.Thread(target=_do, daemon=True, name="precompute-G").start()
 
     with _cache_lock:
