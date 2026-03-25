@@ -2,6 +2,7 @@ import { useRef, useCallback } from 'react'
 import type { ThreeEvent } from '@react-three/fiber'
 import { useSceneStore } from '@/stores/scene'
 import { useSimulationStore } from '@/stores/simulation'
+import { useMIMOStore } from '@/stores/mimo'
 
 /**
  * Returns onPointerDown/onPointerUp handlers that place the antenna
@@ -26,7 +27,16 @@ export function useClickToPlace() {
 
     if (dist <= threshold && e.intersections.length > 0) {
       const point = e.intersections[0].point
-      useSimulationStore.getState().setAntennaPos([point.x, point.y, point.z])
+      const mimoStore = useMIMOStore.getState()
+      if (mimoStore.enabled && mimoStore.arrayConfig) {
+        // Preserve the array's current Y height (elevation) when clicking ground plane
+        mimoStore.setArrayConfig({
+          ...mimoStore.arrayConfig,
+          position: [point.x, mimoStore.arrayConfig.position[1], point.z],
+        })
+      } else {
+        useSimulationStore.getState().setAntennaPos([point.x, point.y, point.z])
+      }
     }
     pointerDownPos.current = null
   }, [])

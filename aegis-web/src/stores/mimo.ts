@@ -214,7 +214,7 @@ export const useMIMOStore = create<MIMOStore>((set, get) => ({
   },
 
   setPrecoderType: (type) => set({ precoderType: type }),
-  setArrayConfig: (config) => set({ arrayConfig: config }),
+  setArrayConfig: (config) => set({ arrayConfig: config, _configVersion: get()._configVersion + 1 }),
   setSummaryStats: (summary) => set({ summaryStats: summary }),
   setShowAllHeatmaps: (on) => set({ showAllHeatmaps: on }),
 
