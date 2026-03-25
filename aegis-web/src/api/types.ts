@@ -270,6 +270,8 @@ export interface TissueSpectrum {
 
 // --- MIMO types ---
 
+export type ElementPattern = 'isotropic' | 'patch'
+
 export interface ArrayConfig {
   type: 'upa'
   n_h: number
@@ -278,6 +280,7 @@ export interface ArrayConfig {
   d_v_wavelengths: number
   position: ScenePos
   broadside: [number, number, number]
+  element_pattern: ElementPattern
 }
 
 export interface MIMOUserConfig {

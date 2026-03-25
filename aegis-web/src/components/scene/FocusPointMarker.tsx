@@ -5,8 +5,8 @@ import { Line } from '@react-three/drei'
 import { useMIMOStore } from '@/stores/mimo'
 
 const MARKER_COLOR = '#00e5ff'
-const MARKER_RADIUS = 0.08
-const RING_RADIUS = 0.15
+const MARKER_RADIUS = 0.025
+const RING_RADIUS = 0.05
 
 export default function FocusPointMarker() {
   const focusPoint = useMIMOStore(s => s.focusPoint)

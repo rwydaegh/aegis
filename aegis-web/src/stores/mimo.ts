@@ -3,7 +3,7 @@ import { useSimulationStore } from './simulation'
 import { useSceneStore } from './scene'
 import type { BufferGeometry } from 'three'
 import type { ScenePos } from '@/api/coordinates'
-import type { DosimetryStats, ArrayConfig, MIMOSummary } from '@/api/types'
+import type { DosimetryStats, ArrayConfig, MIMOSummary, ElementPattern } from '@/api/types'
 
 export type PrecoderType = 'mrt' | 'zf' | 'mmse' | 'zf_exposure'
 
@@ -117,6 +117,7 @@ export const useMIMOStore = create<MIMOStore>((set, get) => ({
         d_h_wavelengths: 0.5, d_v_wavelengths: 0.5,
         position: pos,
         broadside: deriveBroadside(fp, pos),
+        element_pattern: 'patch' as ElementPattern,
       }
     }
 

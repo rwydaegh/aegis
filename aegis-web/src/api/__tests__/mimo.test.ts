@@ -12,6 +12,7 @@ describe('MIMO API', () => {
     d_v_wavelengths: 0.5,
     position: [5, 3, 1] as ScenePos,
     broadside: [-1, 0, 0],
+    element_pattern: 'patch',
   }
 
   const users: MIMOUserConfig[] = [

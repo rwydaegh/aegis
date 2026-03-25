@@ -57,27 +57,31 @@ def clear_voxel_scene_cache() -> None:
 def list_available_scenes(scenes_dir: str | Path | None = None) -> list[dict]:
     """List available Sionna XML scenes.
 
-    Returns list of dicts with keys: name, path, n_vertices, n_triangles.
+    Returns list of dicts with keys: name, path.
+    Checks: SIONNA_SCENES_DIR env var, sionna package, then bundled data/scenes/.
     """
     if scenes_dir is None:
-        # Use SIONNA_SCENES_DIR env var, or auto-detect from sionna package
+        # Try sources in priority order: env var, sionna package, bundled data/scenes/
+        candidates: list[Path] = []
         env_dir = os.environ.get("SIONNA_SCENES_DIR")
         if env_dir:
-            scenes_dir = Path(env_dir)
-        else:
-            # Try to find bundled scenes in the sionna package
-            try:
-                import importlib.util
+            candidates.append(Path(env_dir))
+        try:
+            import importlib.util
 
-                spec = importlib.util.find_spec("sionna.rt")
-                if spec and spec.origin:
-                    bundled = Path(spec.origin).parent / "scenes"
-                    if bundled.is_dir():
-                        scenes_dir = bundled
-            except Exception:
-                pass
-            if scenes_dir is None:
-                return []
+            spec = importlib.util.find_spec("sionna.rt")
+            if spec and spec.origin:
+                candidates.append(Path(spec.origin).parent / "scenes")
+        except Exception:
+            pass
+        candidates.append(Path(__file__).resolve().parents[3] / "data" / "scenes")
+
+        for candidate in candidates:
+            if candidate.is_dir():
+                scenes_dir = candidate
+                break
+        else:
+            return []
 
     scenes_dir = Path(scenes_dir)
     if not scenes_dir.exists():

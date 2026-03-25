@@ -16,6 +16,7 @@ import StochasticPanel from '@/components/panels/StochasticPanel'
 import TissuePanel from '@/components/panels/TissuePanel'
 import ExportPanel from '@/components/panels/ExportPanel'
 import AnalysisPanel from '@/components/panels/AnalysisPanel'
+import AntennaPanel from '@/components/panels/AntennaPanel'
 import MIMOPanel from '@/components/hud/MIMOPanel'
 
 export default function Sidebar() {
@@ -83,6 +84,17 @@ export default function Sidebar() {
                 </div>
               </AccordionContent>
             </AccordionItem>
+
+            {mimoEnabled && (
+              <AccordionItem value="antenna" className="border-b border-border px-3">
+                <AccordionTrigger className="text-sm font-medium py-3">Antenna</AccordionTrigger>
+                <AccordionContent>
+                  <div className="py-2">
+                    <AntennaPanel />
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            )}
 
             {!mimoEnabled && (
               <AccordionItem value="phantom" className="border-b border-border px-3">

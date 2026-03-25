@@ -45,6 +45,7 @@ def _build_scene(params: dict, cache: dict) -> tuple[MIMOScene | None, Response 
             d_v=d_v,
             center=np.array(array_cfg["position"], dtype=np.float64),
             broadside=np.array(array_cfg["broadside"], dtype=np.float64),
+            element_pattern=str(array_cfg.get("element_pattern", "patch")),
         )
     except (KeyError, ValueError) as exc:
         return None, (jsonify({"error": f"Invalid array config: {exc}"}), 400)
