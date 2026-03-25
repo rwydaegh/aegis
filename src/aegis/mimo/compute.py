@@ -354,11 +354,22 @@ def compute_mimo_scene_with_bodies(
             raise KeyError(f"No body mesh for phantom {cfg.phantom_name!r}")
         base_body = bodies[cfg.phantom_name]
 
-        # Translate body to user position
+        # Rotate and translate body to user position
         offset = cfg.position
-        vertices = base_body.vertices + offset[None, None, :]
-        normals = base_body.normals.copy()
-        centroids = base_body.centroids + offset[None, :]
+        theta = cfg.orientation
+        if abs(theta) > 1e-9:
+            c, s = np.cos(theta), np.sin(theta)
+            R = np.array([[c, -s, 0], [s, c, 0], [0, 0, 1]])  # z-axis rotation
+            # vertices: (N_tri, 3, 3) -> rotate each vertex
+            verts_flat = base_body.vertices.reshape(-1, 3) @ R.T
+            vertices = verts_flat.reshape(base_body.vertices.shape) + offset[None, None, :]
+            norms_flat = base_body.normals.reshape(-1, 3) @ R.T
+            normals = norms_flat.reshape(base_body.normals.shape)
+            centroids = (base_body.centroids @ R.T) + offset[None, :]
+        else:
+            vertices = base_body.vertices + offset[None, None, :]
+            normals = base_body.normals.copy()
+            centroids = base_body.centroids + offset[None, :]
         body = _BodyMesh(
             vertices=vertices,
             normals=normals,
