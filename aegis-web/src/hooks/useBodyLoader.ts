@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import * as THREE from 'three'
 import { fetchBody } from '@/api/client'
 import { useSceneStore } from '@/stores/scene'
+import { useSimulationStore } from '@/stores/simulation'
 import { useNotificationStore } from '@/stores/notifications'
 
 export function useBodyLoader() {
@@ -11,7 +12,10 @@ export function useBodyLoader() {
   useEffect(() => {
     let cancelled = false
 
-    fetchBody().then(({ binary }) => {
+    // Clear stale results from previous body (different triangle count would cause jumbled colors)
+    useSimulationStore.getState().clearResults()
+
+    fetchBody(bodyName).then(({ binary }) => {
       if (cancelled) return
 
       const geometry = new THREE.BufferGeometry()

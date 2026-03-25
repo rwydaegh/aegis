@@ -1,6 +1,4 @@
-import * as THREE from 'three'
 import { useSceneStore } from '@/stores/scene'
-import { fetchBody } from '@/api/client'
 
 // IT'IS Virtual Population v5 phantom metadata
 // Source: https://itis.swiss/virtual-population/virtual-population/vip3/
@@ -21,42 +19,15 @@ function formatLabel(name: string): string {
 export default function PhantomPanel() {
   const bodyName = useSceneStore((s) => s.bodyName)
   const setBodyName = useSceneStore((s) => s.setBodyName)
-  const setBodyGeometry = useSceneStore((s) => s.setBodyGeometry)
   const caps = useSceneStore((s) => s.capabilities)
 
   if (!caps) return null
 
-  const handleChange = async (name: string) => {
-    try {
-      const { binary, meta } = await fetchBody(name)
-
-      const geometry = new THREE.BufferGeometry()
-      geometry.setAttribute('position', new THREE.BufferAttribute(binary.positions, 3))
-      geometry.setAttribute('normal', new THREE.BufferAttribute(binary.normals, 3))
-
-      // Body mesh is triangle soup (3 vertices per triangle, no index buffer)
-      // Add a color attribute for heatmap (initialized to neutral gray)
-      const colors = new Float32Array(binary.positions.length)
-      colors.fill(0.5)
-      geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
-
-      geometry.computeBoundingBox()
-
-      // Shift body so feet (min Y) sit on ground plane at y=0
-      const bb = geometry.boundingBox!
-      if (bb.min.y < 0) {
-        geometry.translate(0, -bb.min.y, 0)
-        geometry.computeBoundingBox()
-      }
-
-      // Update store: set name first, then geometry
-      setBodyName(name)
-      setBodyGeometry(geometry)
-
-      void meta // meta available if needed later
-    } catch (err) {
-      console.error('Failed to load body:', err)
-    }
+  // Setting bodyName triggers useBodyLoader (via useEffect on bodyName) to fetch
+  // the new body geometry. Do not load geometry here to avoid a race condition
+  // where useBodyLoader fires on bodyName change and overwrites the correct body.
+  const handleChange = (name: string) => {
+    setBodyName(name)
   }
 
   const selectClass =
