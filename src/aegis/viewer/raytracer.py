@@ -75,6 +75,7 @@ def list_available_scenes(scenes_dir: str | Path | None = None) -> list[dict]:
         except Exception:
             pass
         candidates.append(Path(__file__).resolve().parents[3] / "data" / "scenes")
+        candidates.append(Path.cwd() / "data" / "scenes")
 
         for candidate in candidates:
             if candidate.is_dir():

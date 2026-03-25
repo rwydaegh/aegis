@@ -24,8 +24,9 @@ ARG SETUPTOOLS_SCM_PRETEND_VERSION=0.0.0
 ENV SETUPTOOLS_SCM_PRETEND_VERSION=${SETUPTOOLS_SCM_PRETEND_VERSION}
 RUN pip install uv && uv pip install --system ".[viewer]" gunicorn
 
-# Phantom mesh data (STL files + IT'IS database)
+# Phantom mesh data (STL files + IT'IS database) and Sionna XML scenes
 COPY data/ data/
+ENV SIONNA_SCENES_DIR=/app/data/scenes
 
 # Pre-built React app (built in CI, copied into static/ before docker build)
 # Already at src/aegis/viewer/static/ from the build:copy step
