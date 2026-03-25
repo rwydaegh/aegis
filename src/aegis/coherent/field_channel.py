@@ -17,12 +17,11 @@ from aegis.constants import C_0
 
 
 def _accumulate_by_element_numpy(weighted, element_index, M, n_elements):
-    """NumPy fallback: loop over elements."""
+    """NumPy: vectorized scatter-add using np.add.at."""
     G = np.zeros((M, 3, n_elements), dtype=complex)
-    for j in range(n_elements):
-        mask = element_index == j
-        if np.any(mask):
-            G[:, :, j] = np.sum(weighted[:, mask, :], axis=1)
+    # Transpose weighted to (M, 3, N) for scatter along last axis
+    weighted_t = np.transpose(weighted, (0, 2, 1))  # (M, 3, N)
+    np.add.at(G, (slice(None), slice(None), element_index), weighted_t)
     return G
 
 
