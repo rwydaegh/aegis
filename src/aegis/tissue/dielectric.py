@@ -56,6 +56,34 @@ class TissueModel:
         """Construct from explicit electromagnetic parameters."""
         return cls(name=name, eps_r=eps_r, sigma=sigma, freq_hz=freq_hz)
 
+    def plot_spectrum(
+        self,
+        freq_min_hz: float = 1e9,
+        freq_max_hz: float = 100e9,
+        *,
+        n_points: int = 200,
+    ):
+        """Plot permittivity and conductivity vs frequency for this tissue.
+
+        Uses the IT'IS Cole-Cole database. The tissue name (first word of
+        ``self.name``) is used as the database lookup key.
+
+        Requires ``aegis[viz]`` (matplotlib).
+
+        Parameters
+        ----------
+        freq_min_hz : float
+            Lower frequency bound [Hz].
+        freq_max_hz : float
+            Upper frequency bound [Hz].
+        n_points : int
+            Number of frequency samples.
+        """
+        from aegis.viz import plot_tissue_spectrum
+
+        tissue_name = self.name.split()[0]
+        return plot_tissue_spectrum(tissue_name, freq_min_hz, freq_max_hz, n_points=n_points)
+
     @classmethod
     def from_database(cls, tissue_name: str, freq_hz: float, db_path: Path | None = None) -> TissueModel:
         """Construct from the IT'IS v5.0 database using the Cole-Cole model.
