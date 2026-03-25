@@ -102,6 +102,7 @@ class DosimetryEngine:
         rho: float | None = None,
         eigenvalues: np.ndarray | None = None,
         x_star: np.ndarray | None = None,
+        spatial_averaging: bool = True,
         _timings: dict | None = None,
     ) -> DosimetryResult:
         """Build a DosimetryResult from raw sab with averaging and derived quantities."""
@@ -115,25 +116,30 @@ class DosimetryEngine:
         _, mu_plus = incidence_geometry(body.normals, _to_numpy(paths.k_hat))
         sinc = _to_numpy(mu_plus) @ _to_numpy(paths.power)
 
-        t0 = time.perf_counter()
-        G_4cm2 = self._get_G(body, 4e-4)
-        t_build = time.perf_counter() - t0
-        t1 = time.perf_counter()
-        sab_averaged = _to_numpy(G_4cm2 @ sab)
-        sinc_averaged = _to_numpy(G_4cm2 @ sinc)
-        t_matvec = time.perf_counter() - t1
-
-        avg_timings: dict[str, float] = {
-            "avg_build_G_4cm2_ms": t_build * 1e3,
-            "avg_matvec_4cm2_ms": t_matvec * 1e3,
-        }
-
+        sab_averaged = None
+        sinc_averaged = None
         sab_1cm2_averaged = None
-        if effective_freq_hz is not None and effective_freq_hz > 30e9:
-            t2 = time.perf_counter()
-            G_1cm2 = self._get_G(body, 1e-4)
-            avg_timings["avg_build_G_1cm2_ms"] = (time.perf_counter() - t2) * 1e3
-            sab_1cm2_averaged = _to_numpy(G_1cm2 @ sab)
+        avg_timings: dict[str, float] = {}
+
+        if spatial_averaging:
+            t0 = time.perf_counter()
+            G_4cm2 = self._get_G(body, 4e-4)
+            t_build = time.perf_counter() - t0
+            t1 = time.perf_counter()
+            sab_averaged = _to_numpy(G_4cm2 @ sab)
+            sinc_averaged = _to_numpy(G_4cm2 @ sinc)
+            t_matvec = time.perf_counter() - t1
+
+            avg_timings = {
+                "avg_build_G_4cm2_ms": t_build * 1e3,
+                "avg_matvec_4cm2_ms": t_matvec * 1e3,
+            }
+
+            if effective_freq_hz is not None and effective_freq_hz > 30e9:
+                t2 = time.perf_counter()
+                G_1cm2 = self._get_G(body, 1e-4)
+                avg_timings["avg_build_G_1cm2_ms"] = (time.perf_counter() - t2) * 1e3
+                sab_1cm2_averaged = _to_numpy(G_1cm2 @ sab)
 
         # Propagate averaging timings to caller's dict if provided
         if _timings is not None:
@@ -165,7 +171,7 @@ class DosimetryEngine:
         paths: PropagationPaths,
         level: int | None = None,
         body_mass: float | None = None,
-        spatial_averaging: bool = False,
+        spatial_averaging: bool = True,
         # Level 0/1 precomputed geometry (optional)
         A_ab: float | None = None,
         D_max: float | None = None,
@@ -197,7 +203,7 @@ class DosimetryEngine:
         paths : PropagationPaths
         level : fidelity level 0-8 (legacy API, mutually exclusive with mode)
         body_mass : body mass [kg] for SAR computation
-        spatial_averaging : apply ICNIRP 4 cm^2 averaging
+        spatial_averaging : compute ICNIRP 4 cm^2 spatial averaging (default True)
         A_ab : absorption area [m^2] (required for levels 0-1)
         D_max : max directivity (required for level 0)
         sh_coeffs : SH coefficients for D(k_hat) (level 1)
@@ -293,6 +299,7 @@ class DosimetryEngine:
             level,
             body_mass=body_mass,
             freq_hz=freq_hz,
+            spatial_averaging=spatial_averaging,
         )
 
     def compute_with_timings(
@@ -301,7 +308,7 @@ class DosimetryEngine:
         paths: PropagationPaths,
         level: int | None = None,
         body_mass: float | None = None,
-        spatial_averaging: bool = False,
+        spatial_averaging: bool = True,
         A_ab: float | None = None,
         D_max: float | None = None,
         sh_coeffs: np.ndarray | None = None,
@@ -404,6 +411,7 @@ class DosimetryEngine:
             level,
             body_mass=body_mass,
             freq_hz=freq_hz,
+            spatial_averaging=spatial_averaging,
             _timings=timings,
         )
         return result, timings
@@ -561,7 +569,7 @@ class DosimetryEngine:
         q: np.ndarray | float = 0.0,
         curvature_H: np.ndarray | None = None,
         body_mass: float | None = None,
-        spatial_averaging: bool = False,
+        spatial_averaging: bool = True,
         A_ab: float | None = None,
         D_max: float | None = None,
         sh_coeffs: np.ndarray | None = None,
@@ -674,6 +682,7 @@ class DosimetryEngine:
             freq_hz=freq_hz,
             mode=mode,
             corrections=tuple(corrections),
+            spatial_averaging=spatial_averaging,
             _timings=_timings,
         )
 
@@ -686,7 +695,7 @@ class DosimetryEngine:
         h: np.ndarray | None = None,
         P_abs_max: float = 0.1,
         body_mass: float | None = None,
-        spatial_averaging: bool = False,
+        spatial_averaging: bool = True,
         freq_hz: float | None = None,
         mode: str | None = None,
         corrections: tuple[str, ...] = (),
@@ -758,6 +767,7 @@ class DosimetryEngine:
             rho=rho,
             eigenvalues=eigenvalues,
             x_star=x_star,
+            spatial_averaging=spatial_averaging,
         )
 
     def _dispatch(
@@ -894,6 +904,7 @@ class DosimetryEngine:
         levels: list[int] | None = None,
         *,
         body_mass: float | None = None,
+        spatial_averaging: bool = True,
         A_ab: float | None = None,
         D_max: float | None = None,
         q: np.ndarray | float = 0.0,
@@ -944,6 +955,7 @@ class DosimetryEngine:
                 paths,
                 level=level,
                 body_mass=body_mass,
+                spatial_averaging=spatial_averaging,
                 A_ab=A_ab,
                 D_max=D_max,
                 q=q,

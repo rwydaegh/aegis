@@ -27,7 +27,7 @@ class TestDosimetryResult:
         assert result.fidelity_level == 2
         assert result.p_abs > 0
         assert result.peak_sab > 0
-        assert result.sab_averaged is not None  # always-on averaging
+        assert result.sab_averaged is not None  # spatial_averaging=True by default
         assert result.sar_wb is None
         assert result.compliant_sab is not None  # freq_hz always set from tissue
 
