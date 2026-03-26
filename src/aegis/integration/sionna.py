@@ -206,8 +206,14 @@ def paths_from_sionna_scene(
     )
 
     # Set TX and RX positions (Sionna v2 API)
+    # Remove stale TX/RX from cached scenes before adding new ones
+    import contextlib
+
     from sionna.rt import Receiver, Transmitter
 
+    for name in ("tx", "rx"):
+        with contextlib.suppress(ValueError, KeyError):
+            scene.remove(name)
     scene.add(Transmitter("tx", position=tx_positions[0].tolist()))
     scene.add(Receiver("rx", position=rx_position.tolist()))
 
