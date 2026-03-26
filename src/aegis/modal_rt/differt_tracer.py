@@ -35,12 +35,14 @@ class DiffeRTTracer:
         reflection_loss_per_order: float = 0.5,
         method: str = "exhaustive",
         num_rays: int = 1_000_000,
+        scene_files: dict[str, bytes] | None = None,
     ) -> dict:
         """Run DiffeRT ray tracing on GPU.
 
         Returns {"paths": PropagationPaths.to_dict(), "path_viz": [...],
                  "timings": {...}, "gpu_backend": "T4"}.
         """
+        import shutil
         import tempfile
         from pathlib import Path
 
@@ -50,14 +52,18 @@ class DiffeRTTracer:
 
         t0 = time.perf_counter()
 
-        # Write scene XML to a temp file (DiffeRT expects a file path)
-        with tempfile.NamedTemporaryFile(suffix=".xml", mode="w", delete=False) as f:
-            f.write(scene_xml)
-            scene_path = f.name
+        # Reconstruct scene directory (XML + mesh files)
+        tmpdir = tempfile.mkdtemp()
+        scene_path = Path(tmpdir) / "scene.xml"
+        scene_path.write_text(scene_xml)
+        for relpath, data in (scene_files or {}).items():
+            fpath = Path(tmpdir) / relpath
+            fpath.parent.mkdir(parents=True, exist_ok=True)
+            fpath.write_bytes(data)
 
         try:
             paths, path_viz = compute_paths_differt(
-                scene_path=Path(scene_path),
+                scene_path=scene_path,
                 tx_pos=np.array(tx_pos),
                 rx_pos=np.array(rx_pos),
                 max_order=max_order,
@@ -68,7 +74,7 @@ class DiffeRTTracer:
                 num_rays=num_rays,
             )
         finally:
-            Path(scene_path).unlink(missing_ok=True)
+            shutil.rmtree(tmpdir, ignore_errors=True)
 
         trace_ms = (time.perf_counter() - t0) * 1000
 

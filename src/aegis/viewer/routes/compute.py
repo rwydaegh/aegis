@@ -656,9 +656,16 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             from aegis.viewer.modal_proxy import _is_enabled as _modal_enabled
             from aegis.viewer.modal_proxy import trace_differt as _modal_trace_differt
 
+            scene_dir = _Path(scene_path).parent
             scene_xml = _Path(scene_path).read_text()
+            # Bundle mesh files so Modal has them
+            scene_files = {}
+            for f in scene_dir.rglob("*"):
+                if f.is_file() and f.name != _Path(scene_path).name:
+                    scene_files[str(f.relative_to(scene_dir))] = f.read_bytes()
             modal_result = _modal_trace_differt(
                 scene_xml=scene_xml,
+                scene_files=scene_files,
                 tx_pos=antenna_pos.tolist(),
                 rx_pos=body_center.tolist(),
                 max_order=rt_cfg_parsed["max_depth"],

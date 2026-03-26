@@ -92,6 +92,7 @@ def trace_differt(
     reflection_loss_per_order: float = 0.5,
     method: str = "exhaustive",
     num_rays: int = 1_000_000,
+    scene_files: dict[str, bytes] | None = None,
 ) -> dict | None:
     """Call Modal DiffeRTTracer. Returns result dict or None if unavailable."""
     if not _init_modal():
@@ -101,6 +102,7 @@ def trace_differt(
         tracer = _differt_cls()
         return tracer.trace.remote(
             scene_xml=scene_xml,
+            scene_files=scene_files or {},
             tx_pos=tx_pos,
             rx_pos=rx_pos,
             max_order=max_order,
