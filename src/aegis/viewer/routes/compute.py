@@ -646,12 +646,14 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
         t_route = _time.perf_counter()
 
-        # Try Modal GPU first, fall back to local CPU
+        # Try Modal GPU first, fall back to local CPU (only if Modal is not configured)
         gpu_backend = None
         modal_result = None
+        modal_error = None
         try:
             from pathlib import Path as _Path
 
+            from aegis.viewer.modal_proxy import _is_enabled as _modal_enabled
             from aegis.viewer.modal_proxy import trace_differt as _modal_trace_differt
 
             scene_xml = _Path(scene_path).read_text()
@@ -666,8 +668,14 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                 method=rt_cfg_parsed["method"],
                 num_rays=rt_cfg_parsed["rays_per_source"],
             )
+            if modal_result is None and _modal_enabled():
+                modal_error = "Modal DiffeRT returned no result"
         except Exception as e:
             logger.debug("Modal DiffeRT proxy attempt failed: %s", e)
+            from aegis.viewer.modal_proxy import _is_enabled as _modal_enabled
+
+            if _modal_enabled():
+                modal_error = str(e)
 
         if modal_result is not None:
             from aegis.paths import PropagationPaths
@@ -676,8 +684,11 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             path_viz = modal_result["path_viz"]
             gpu_backend = modal_result.get("gpu_backend")
             rt_ms = modal_result.get("timings", {}).get("trace_ms")
+        elif modal_error:
+            # Modal is configured but failed - don't fall back to local CPU (OOM risk)
+            return jsonify({"error": f"DiffeRT on Modal failed: {modal_error}"}), 503
         else:
-            # Local CPU fallback via DiffeRT
+            # No Modal configured - use local CPU (dev mode)
             try:
                 paths, path_viz = compute_paths_differt(
                     scene_path,
@@ -786,9 +797,12 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         t_route = _time.perf_counter()
 
         # Call Modal GPU for Sionna RT (no local CPU fallback)
+        # Extract scene name from path: .../simple_reflector/simple_reflector.xml -> simple_reflector
+        from pathlib import Path as _Path
+
         from aegis.viewer.modal_proxy import trace_sionna_bundled as _modal_trace_sionna
 
-        scene_name = scene_path.rsplit(".", 1)[-1]
+        scene_name = _Path(scene_path).parent.name
         rt_config_dict = {
             "los": rt_cfg_parsed["los"],
             "specular_reflection": rt_cfg_parsed["specular_reflection"],
