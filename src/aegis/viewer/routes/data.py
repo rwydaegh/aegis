@@ -139,15 +139,22 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         except ImportError:
             pass
 
-        # Check for Sionna RT without importing it (avoids TF/NumPy crashes).
-        # Just check if the top-level 'sionna' package directory exists on disk.
+        # Sionna RT runs on Modal GPU, not locally. Check if Modal proxy is
+        # configured (env vars present) OR if sionna is installed locally.
         has_sionna = False
         try:
-            import importlib.util
+            from aegis.viewer.modal_proxy import _is_enabled as _modal_enabled
 
-            has_sionna = importlib.util.find_spec("sionna") is not None
+            has_sionna = _modal_enabled()
         except Exception:
             pass
+        if not has_sionna:
+            try:
+                import importlib.util
+
+                has_sionna = importlib.util.find_spec("sionna") is not None
+            except Exception:
+                pass
 
         # Check location loader availability
         from aegis.viewer.pipeline import find_pipeline
