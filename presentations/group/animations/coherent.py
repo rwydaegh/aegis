@@ -78,8 +78,8 @@ class CoherentPhasors(Slide):
         sum_arrow_mob = make_sum_arrow()
 
         # Labels
-        incoherent_label = MathTex(
-            r"\text{Incoherent:}\;|E|^2 \sim N",
+        incoherent_label = Tex(
+            r"Random phases: fields partially cancel",
             font_size=28, color=LABEL_GRAY,
         ).shift(RIGHT * 3 + UP * 1.5)
 
@@ -117,7 +117,7 @@ class CoherentPhasors(Slide):
 
         # Alignment text -- positioned higher to avoid overlap with sum arrow
         aligning_text = Tex(
-            r"Beamforming aligns the phasors\ldots",
+            r"The precoder controls the phases\ldots",
             font_size=28, color=LABEL_GRAY,
         ).shift(RIGHT * 3 + UP * 1.0)
         self.play(FadeIn(aligning_text), run_time=0.6)
@@ -150,22 +150,16 @@ class CoherentPhasors(Slide):
         self.wait(2.0)
 
         # Morph the label
-        coherent_label = MathTex(
-            r"\text{Coherent:}\;|E|^2 \sim", r"N^2",
+        coherent_label = Tex(
+            r"Aligned: absorption concentrates",
             font_size=28, color=WHITE,
         ).move_to(incoherent_label)
-        coherent_label[1].set_color(T0_RED)
 
         self.play(
             FadeTransform(incoherent_label, coherent_label),
             run_time=1.5,
         )
-
-        # N^2 emphasis
-        self.play(
-            Indicate(coherent_label[1], color=YELLOW, scale_factor=1.5),
-            run_time=1.0,
-        )
+        self.wait(1.0)
         self.wait(2.5)
         self.next_slide()  # --- SLIDE: alignment complete + flash ---
 

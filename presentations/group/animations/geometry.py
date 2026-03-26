@@ -264,10 +264,8 @@ class GeometryOfAbsorption(Slide):
             r"A_\perp(\hat{\mathbf{k}})", font_size=28, color=WAVE_GOLD,
         ).next_to(shadow_bar, RIGHT, buff=0.2)
 
-        brace = Brace(shadow_bar, RIGHT, color=WAVE_GOLD, buff=0.05)
-
         self.play(
-            Create(shadow_bar), GrowFromCenter(brace),
+            Create(shadow_bar),
             Write(shadow_label),
             run_time=1.2,
         )
@@ -297,7 +295,7 @@ class GeometryOfAbsorption(Slide):
         # Clean up rays for rotation
         self.play(
             FadeOut(rays_hit), FadeOut(rays_miss),
-            FadeOut(shadow_bar), FadeOut(brace), FadeOut(shadow_label),
+            FadeOut(shadow_bar), FadeOut(shadow_label),
             FadeOut(wave_arrow), FadeOut(k_label),
             FadeOut(power_eq),
             run_time=0.8,
@@ -396,11 +394,21 @@ class GeometryOfAbsorption(Slide):
         avg_text = Tex(
             r"Average over all directions:",
             font_size=28, color=LABEL_GRAY,
-        ).to_edge(DOWN, buff=1.2)
+        ).to_edge(DOWN, buff=0.5)
         self.play(FadeIn(avg_text), run_time=0.6)
         self.wait(1.5)
+        self.next_slide()  # --- SLIDE: all directions shown ---
 
-        # Cauchy formula
+        # Slide body + arrows to the right to make room for formula
+        body_group = VGroup(body, dir_arrows, eq_group)
+        self.play(
+            body_group.animate.shift(RIGHT * 2.5),
+            FadeOut(avg_text),
+            run_time=1.5,
+        )
+        self.wait(1.0)
+
+        # Cauchy formula on the left side
         cauchy = MathTex(
             r"\langle P_{\mathrm{abs}} \rangle = ",
             r"S_{\mathrm{inc}}",
@@ -409,7 +417,7 @@ class GeometryOfAbsorption(Slide):
             r"\cdot",
             r"\frac{A_{\mathrm{ab}}}{4}",
             font_size=36, color=WHITE,
-        ).next_to(avg_text, DOWN, buff=0.3)
+        ).shift(LEFT * 3.5 + DOWN * 0.3)
         cauchy[1].set_color(SINC_BLUE)
         cauchy[3].set_color(T0_RED)
         cauchy[5].set_color(GEOM_GREEN)
@@ -423,16 +431,17 @@ class GeometryOfAbsorption(Slide):
         )
         self.wait(2.0)
 
-        # Cauchy attribution
+        # Cauchy attribution with portrait
+        cauchy_img = ImageMobject(
+            "figures/cauchy.jpg",
+        ).scale_to_fit_height(1.2).next_to(cauchy, DOWN, buff=0.3).shift(LEFT * 0.5)
         cauchy_attr = Tex(
             r"Cauchy, 1841.", font_size=20, color=DIM,
-        ).next_to(cauchy, DOWN, buff=0.2)
-        self.play(FadeIn(cauchy_attr), run_time=0.5)
+        ).next_to(cauchy_img, RIGHT, buff=0.2)
+        self.play(FadeIn(cauchy_img), FadeIn(cauchy_attr), run_time=0.8)
         self.wait(3.0)
-        self.next_slide()  # --- SLIDE: Cauchy formula ---
+        self.next_slide()  # --- SLIDE: Cauchy formula + body (FINAL) ---
 
-        # ============================================================
-        # Fade out
-        # ============================================================
-        self.play(FadeOut(*self.mobjects), run_time=1.0)
+        # This final state stays visible until the presenter clicks.
+        # The formula on the left, the body with all-direction arrows on the right.
         self.wait(0.5)

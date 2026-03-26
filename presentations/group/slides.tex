@@ -5,8 +5,6 @@
 
 % ----------------------------------------------------------
 % SLIDE 1: Title
-% SAY: "I will show you a new framework for computing absorbed
-%       power density on human bodies in wireless environments."
 % ----------------------------------------------------------
 \begin{frame}[plain]
   \vfill
@@ -28,26 +26,25 @@
 
 % ----------------------------------------------------------
 % SLIDE 2: Back-of-envelope calculation
-% SAY: "Quick back-of-envelope. The body spans a metre, the skin
-%       depth is 0.3 mm. That is a factor 3300, roughly four orders
-%       of magnitude per spatial dimension. In 3D, that means 10^12
-%       mesh cells. One simulation takes weeks.
-%       Our insight: absorption happens at the surface. If we solve
-%       the depth analytically, we only need a 2D surface mesh.
-%       That is 10^6 elements instead of 10^12. Six orders of
-%       magnitude, gone."
+% SAY: "EMF compliance for 5G deployments requires computing
+%       absorbed power density. The standard approach, FDTD,
+%       is too slow. Quick back of the envelope..."
 % ----------------------------------------------------------
 \begin{frame}{Back-of-envelope calculation}
 
   \begin{columns}[T]
     \begin{column}{0.60\textwidth}
       \onslide<1->{%
-      Per dimension: $\SI{1}{\metre}\,/\,\SI{0.3}{\milli\metre} \approx 3300 \approx 10^{3.5}$
+      EMF compliance assessment requires computing absorbed
+      power density. The standard approach is FDTD.
 
       \vspace{6pt}
+      Per dimension: $\SI{2}{\metre}\,/\,\SI{0.2}{\milli\metre} = 10^{4}$
+
+      \vspace{4pt}
       Volumetric FDTD mesh (3D):
       \[
-        (10^{3.5})^3 \;\approx\; 10^{10.5} \;\approx\; {\color{alertred}10^{12} \text{ cells}}
+        (10^{4})^3 \;=\; {\color{alertred}10^{12} \text{ cells}}
       \]
       One plane wave, one phantom, one frequency: \textbf{weeks}.
       }
@@ -68,11 +65,11 @@
         \begin{tikzpicture}[scale=0.75]
           \draw[thick, navyblue] (0,0) -- (0,4);
           \draw[<->] (0.3,0) -- (0.3,4)
-            node[midway,right] {\footnotesize $\SI{1}{\metre}$};
+            node[midway,right] {\footnotesize $\SI{2}{\metre}$};
           \draw[thick, alertred, fill=alertred!20]
-            (-0.04,3.94) rectangle (0.12,4);
-          \draw[<->] (0.5,3.94) -- (0.5,4)
-            node[midway,right] {\footnotesize $\delta \approx \SI{0.3}{\milli\metre}$};
+            (-0.04,3.96) rectangle (0.12,4);
+          \draw[<->] (0.5,3.96) -- (0.5,4)
+            node[midway,right] {\footnotesize $\delta \approx \SI{0.2}{\milli\metre}$};
           \node at (0,-0.5) {\footnotesize body};
           \node[alertred] at (0.8,4.3) {\footnotesize skin depth};
           \node[gray,rotate=90] at (-0.5,2) {\tiny not to scale};
@@ -85,66 +82,74 @@
   \onslide<2->{%
   \begin{resultbox}
     \centering
-    $10^{12} \;\to\; 10^{6}$: six orders of magnitude.\\
-    Replace the volumetric simulation with surface-level geometric operations.
+    $10^{12} \;\to\; 10^{6}$: six orders of magnitude.
   \end{resultbox}
   }
 \end{frame}
 
 % ----------------------------------------------------------
-% SLIDE 3: Exact absorption law
-% SAY: "Three factors. Illumination times material times geometry.
-%       The equation is exact under a locally flat surface assumption.
-%       The ReLU gate is exact: back-facing points absorb nothing.
-%       Now, the interesting question: what happens to the red term?"
+% SLIDE 3: Exact absorption law (factor by factor)
+% SAY: explain each factor as it appears
 % ----------------------------------------------------------
 \begin{frame}{Exact absorption law}
 
-  Three factors determine local absorption:
-
-  \vspace{8pt}
-  \begin{center}
-    {\large $\displaystyle
-      \Sab(\rr) \;=\;
-      \underbrace{{\color{colsinc}\Sinc}}_{\text{\scriptsize environment}}
-      \;\cdot\;
-      \underbrace{{\color{coltransmission}\Teff(\rr)}}_{\text{\scriptsize material}}
-      \;\cdot\;
-      \underbrace{{\color{colgeometry}\ReLU\!\bigl[\nhat(\rr)\cdot(-\khat)\bigr]}}_{\text{\scriptsize geometry}}
-    $}
-  \end{center}
-
-  \vspace{10pt}
+  \vspace{-2pt}
   \begin{columns}[T]
     \begin{column}{0.55\textwidth}
+      \onslide<1->{%
+      \vspace{6pt}
+      {\large $\displaystyle
+        \Sab(\rr) \;=\;
+        {\color{colsinc}\Sinc}
+        \onslide<2->{\;\cdot\; {\color{coltransmission}\Teff(\rr)}}
+        \onslide<3->{\;\cdot\; {\color{colgeometry}\ReLU\!\bigl[\nhat(\rr)\cdot(-\khat)\bigr]}}
+      $}
+      }
+
+      \vspace{12pt}
+      \onslide<1->{%
+      \begin{itemize}
+        \item {\color{colsinc}$\Sinc$}: incident power density.\\
+              Set by the environment.
+      \end{itemize}
+      }
+
+      \vspace{4pt}
       \onslide<2->{%
       \begin{itemize}
-        \item {\color{colsinc}$\Sinc$}: incident power density
-        \item {\color{coltransmission}$\Teff$}: Fresnel transmission, depends on\\
-              angle, polarisation, tissue, frequency
-        \item {\color{colgeometry}$\ReLU$}: visibility gate (exact).
+        \item {\color{coltransmission}$\Teff$}: Fresnel transmission.\\
+              Depends on angle, polarisation, tissue, frequency.
+      \end{itemize}
+      }
+
+      \vspace{4pt}
+      \onslide<3->{%
+      \begin{itemize}
+        \item {\color{colgeometry}$\ReLU$}: visibility gate (exact).\\
               Back-facing points absorb nothing.
       \end{itemize}
       }
+
+      \vspace{8pt}
+      \onslide<4->{%
+      {\small The material factor depends on four variables.\\
+       We will see that it simplifies to a single number.}
+      }
     \end{column}
 
-    \begin{column}{0.4\textwidth}
-      \begin{center}
-        \includegraphics[width=0.9\textwidth]{incidence_plane_fig.pdf}
-      \end{center}
+    \begin{column}{0.43\textwidth}
+      \vfill
+      \begin{flushright}
+        \includegraphics[width=\textwidth]{incidence_plane_fig.pdf}
+      \end{flushright}
+      \vfill
     \end{column}
   \end{columns}
-
-  \vspace{6pt}
-  \onslide<3->{%
-  \hfill{\color{coltransmission}\small\bfseries What happens to the material factor?\hspace{12pt}}
-  }
 \end{frame}
 
 % ----------------------------------------------------------
 % SLIDE 4: Pseudo-Brewster animation
-% SAY: nothing (the animation narrates itself visually)
-% NOTE: In PowerPoint, this is replaced by the Manim PPTX slides
+% NOTE: In PowerPoint, replaced by Manim PPTX slides
 % ----------------------------------------------------------
 \begin{frame}[plain]
   \centering
@@ -155,10 +160,8 @@
 
 % ----------------------------------------------------------
 % SLIDE 5: The geometric absorption law
-% SAY: "The material factor collapses to a single number T_0.
-%       The pseudo-Brewster effect makes T_avg nearly constant
-%       across all angles. T_0 for skin at 28 GHz is 0.54. It
-%       varies smoothly with frequency."
+% SAY: "The material factor collapses to T_0. All spatial
+%       variation is body geometry."
 % ----------------------------------------------------------
 \begin{frame}{The geometric absorption law}
 
@@ -179,10 +182,10 @@
   \end{center}
   }
 
-  \vspace{4pt}
+  \vspace{6pt}
+  \onslide<2->{%
   \begin{columns}[T]
     \begin{column}{0.48\textwidth}
-      \onslide<2->{%
       The pseudo-Brewster effect makes the
       Fresnel transmission nearly angle-independent.
 
@@ -201,27 +204,20 @@
         \bottomrule
       \end{tabular}
       }
-      }
     \end{column}
 
     \begin{column}{0.48\textwidth}
-      \onslide<3->{%
-      \begin{itemize}
-        \item All spatial variation from body shape
-        \item Pseudo-Brewster: $T_s$ decreases, $T_p$ increases,
-              average stays flat
-        \item Holds for $|\ntilde| > 2.5$ (Azzam, 2015)
-        \item Biological tissue: $|\ntilde| \approx 3$--6 \checkmark
-      \end{itemize}
-      }
+      All spatial variation from body shape.\\[6pt]
+      Holds for $|\ntilde| > 2.5$ (Azzam, 2015).\\[4pt]
+      Biological tissue: $|\ntilde| \approx 3$--6.
     \end{column}
   \end{columns}
+  }
 \end{frame}
 
 % ----------------------------------------------------------
 % SLIDE 6: Geometry animation
-% SAY: nothing (the animation narrates itself visually)
-% NOTE: In PowerPoint, this is replaced by the Manim PPTX slides
+% NOTE: In PowerPoint, replaced by Manim PPTX slides
 % ----------------------------------------------------------
 \begin{frame}[plain]
   \centering
@@ -232,10 +228,6 @@
 
 % ----------------------------------------------------------
 % SLIDE 7: Validation
-% SAY: "Mie theory tests both Fresnel and geometric optics.
-%       Error is 5-10%, dominated by diffraction. The phantom
-%       test isolates the Fresnel approximation: 0.35% error.
-%       The framework error is smaller than tissue data uncertainty."
 % ----------------------------------------------------------
 \begin{frame}{Validation}
 
@@ -275,14 +267,14 @@
   \begin{resultbox}
     \centering
     Framework error (5--15\,\%) $<$ tissue dielectric uncertainty (${\sim}20\,\%$).\\
-    The data is less accurate than the model.
+    Main limitation: diffraction at shadow boundaries.
   \end{resultbox}
   }
 \end{frame}
 
 % ----------------------------------------------------------
 % SLIDE 8: Demo intro
-% SAY: "Let me show you."
+% SAY: "Let me show you what this looks like in practice."
 % ----------------------------------------------------------
 \begin{frame}[plain]
   \vfill
@@ -301,7 +293,6 @@
 
 % ----------------------------------------------------------
 % SLIDE 9: Live demo
-% SAY: (live demo of AEGIS viewer, ~2 minutes)
 % ----------------------------------------------------------
 \begin{frame}[plain]
   \vfill
@@ -313,54 +304,40 @@
 
 % ----------------------------------------------------------
 % SLIDE 10: Bridge to coherent MIMO
-% SAY: "Everything so far assumed incoherent illumination.
-%       Powers add. In MIMO, fields add. The coherent peak
-%       can exceed the incoherent sum by a factor N."
+% SAY: "This incoherent framework is deployed in AEGIS.
+%       But 5G uses MIMO beamforming. The signal path and the
+%       exposure path are fundamentally different."
 % ----------------------------------------------------------
 \begin{frame}{From incoherent to coherent}
 
-  \begin{columns}[c]
-    \begin{column}{0.45\textwidth}
-      \begin{center}
-        {\bfseries\color{navyblue} Incoherent}\\[6pt]
-        Powers add.\\[4pt]
-        $P_{\mathrm{abs}} = \sum_n P_n$\\[6pt]
-        Cross-terms average to zero.
-      \end{center}
-    \end{column}
+  \onslide<1->{%
+  \begin{center}
+    \vspace{-4pt}
+    {\small The incoherent framework is deployed in AEGIS.
+     But 5G uses MIMO beamforming.}
+  \end{center}
+  }
 
-    \begin{column}{0.08\textwidth}
-      \begin{center}
-        {\Large$\longrightarrow$}
-      \end{center}
-    \end{column}
+  \vspace{4pt}
+  \onslide<2->{%
+  \begin{center}
+    \includegraphics[width=0.85\textwidth]{channel_block_panel_b.png}
+  \end{center}
+  }
 
-    \begin{column}{0.45\textwidth}
-      \onslide<2->{%
-      \begin{center}
-        {\bfseries\color{alertred} Coherent MIMO}\\[6pt]
-        Fields add.\\[4pt]
-        $\EE_{\mathrm{tot}} = \sum_m x_m \EE_m$\\[6pt]
-        Peak absorption: ${\color{alertred}N^2}$ vs $N$.
-      \end{center}
-      }
-    \end{column}
-  \end{columns}
-
-  \vspace{16pt}
+  \vspace{2pt}
   \onslide<3->{%
   \begin{center}
-    {\small $M$ antenna elements, precoding vector $\xx \in \Complex^M$.\\
-     The signal branch collapses each path to a scalar at the UE.\\
-     The exposure branch retains the full vector structure over the body surface.}
+    {\small The signal path collapses each path to a \textbf{scalar} at the UE.\\
+     The exposure path retains the full \textbf{vector field} over the body surface.\\[4pt]
+     These are different optimization targets.}
   \end{center}
   }
 \end{frame}
 
 % ----------------------------------------------------------
 % SLIDE 11: Coherent phasor animation
-% SAY: nothing (the animation narrates itself visually)
-% NOTE: In PowerPoint, this is replaced by the Manim PPTX slides
+% NOTE: In PowerPoint, replaced by Manim PPTX slides
 % ----------------------------------------------------------
 \begin{frame}[plain]
   \centering
@@ -371,21 +348,15 @@
 
 % ----------------------------------------------------------
 % SLIDE 12: Exposure operator and ECBF
-% SAY: "Integrate the squared norm over the body surface and
-%       you get a quadratic form. Q is Hermitian PSD, M by M.
-%       The optimization is a QCQP with a closed-form solution.
-%       The inverse suppresses high-absorption modes."
+% SAY: "Integrate over the body surface: you get Q.
+%       Q captures the body's complete absorption response
+%       to any precoder. It has a closed-form solution."
 % ----------------------------------------------------------
 \begin{frame}{Exposure-constrained beamforming}
 
   \onslide<1->{%
-  Coherent absorption law and exposure operator:
-  }
-
-  \vspace{4pt}
   \begin{columns}[T]
     \begin{column}{0.48\textwidth}
-      \onslide<1->{%
       \begin{resultbox}[Coherent absorption law]
         \vspace{-6pt}
         \[
@@ -407,10 +378,13 @@
         \]
         \vspace{-8pt}
       \end{resultbox}
-      }
     \end{column}
 
     \begin{column}{0.48\textwidth}
+      $\QQ$ captures the body's complete absorption\\
+      response to any precoder.
+
+      \vspace{6pt}
       \onslide<2->{%
       Maximise signal subject to absorption limit:
       \[
@@ -419,50 +393,42 @@
         \xx^H \QQ\, \xx \le P_{\mathrm{abs}}^{\max}
       \]
 
-      \vspace{2pt}
-      Closed-form solution (S-procedure):
+      Closed-form solution:
       \[
         \xx^\star = \sqrt{P}\;
         \frac{(\lambda\QQ + \nu\II)^{-1}\hh^*}
              {\|(\lambda\QQ + \nu\II)^{-1}\hh^*\|}
       \]
-      }
-
-      \vspace{6pt}
-      \onslide<3->{%
       {\footnotesize
-        $\lambda = 0$: MRT (unconstrained).\\
-        $\lambda \gg \nu$: body-avoiding precoder.\\
-        $\rho \ll 1$: natural geometric protection.
+        $\lambda\QQ$ suppresses high-absorption directions.\\
+        $\lambda = 0$: MRT. \quad $\lambda \gg \nu$: body-avoiding.
       }
       }
     \end{column}
   \end{columns}
+  }
 \end{frame}
 
 % ----------------------------------------------------------
 % SLIDE 13: Summary
-% SAY: "Three results. Material physics makes dosimetry geometric.
-%       The geometry is fast. The fast computation enables
-%       exposure-aware network design."
 % ----------------------------------------------------------
 \begin{frame}{Summary}
 
-  \vspace{4pt}
-  The equation chain:
-  \begin{align*}
-    \text{Exact:}\quad & \Sab = {\color{colsinc}\Sinc} \cdot {\color{coltransmission}\Teff(\theta)} \cdot {\color{colgeometry}\ReLU[\nhat\!\cdot\!(-\khat)]} \\[4pt]
-    \xrightarrow{\text{pseudo-Brewster}}\quad & \Sab \approx {\color{colsinc}\Sinc} \cdot {\color{coltransmission}T_0} \cdot {\color{colgeometry}\ReLU[\nhat\!\cdot\!(-\khat)]} \\[4pt]
-    \xrightarrow{\text{coherent}}\quad & \Sab = \|\Gtilde\,\xx\|^2, \qquad P_{\mathrm{abs}} = \xx^H\QQ\,\xx
-  \end{align*}
+  \vspace{6pt}
+  \begin{center}
+    {\normalsize
+    Pseudo-Brewster collapses the material to $T_0$.\\[4pt]
+    Dosimetry becomes geometry. \quad $10^{12} \to 10^{6}$.\\[4pt]
+    Coherent extension: exposure operator $\QQ$ with closed-form beamformer.
+    }
+  \end{center}
 
-  \vspace{4pt}
+  \vspace{12pt}
   \begin{columns}[T]
     \begin{column}{0.3\textwidth}
       \begin{center}
         {\small\bfseries\color{coltransmission} Material}\\[4pt]
         {\footnotesize
-          Pseudo-Brewster:\\
           $\Teff \to T_0$\\
           One number per tissue.
         }
@@ -474,8 +440,7 @@
         {\small\bfseries\color{colgeometry} Geometry}\\[4pt]
         {\footnotesize
           $\Sab \propto \ReLU(\cos\theta)$\\
-          Shadow area, Cauchy formula.\\
-          $10^{12} \to 10^{6}$.
+          Shadow area, Cauchy formula.
         }
       \end{center}
     \end{column}
@@ -484,18 +449,17 @@
       \begin{center}
         {\small\bfseries\color{navyblue} Coherent MIMO}\\[4pt]
         {\footnotesize
-          $\QQ = \int \Gtilde^H\Gtilde\,\diff A$\\
-          Closed-form ECBF.\\
-          Exposure-aware design.
+          $P_{\mathrm{abs}} = \xx^H \QQ\, \xx$\\
+          Closed-form ECBF.
         }
       \end{center}
     \end{column}
   \end{columns}
 
-  \vspace{10pt}
+  \vspace{14pt}
   \begin{center}
-    {\small Tissue physics makes dosimetry geometric.
-     The geometry is fast.\\
+    {\small Tissue physics makes dosimetry geometric.\\
+     The geometry is fast.
      The fast computation enables exposure-aware network design.}
   \end{center}
 \end{frame}
