@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+import functools
+import os
 import threading
 import time
+from pathlib import Path
 
 import numpy as np
+import yaml
 
 from aegis.constants import EPS_0
+from aegis.defaults import DEFAULT_FREQ_HZ, DEFAULT_POWER_DBM
 from aegis.engine import DosimetryEngine
 from aegis.geometry.mesh import BodyMesh
 from aegis.paths import PropagationPaths
@@ -15,13 +20,18 @@ from aegis.tissue.cole_cole import debye_permittivity
 from aegis.tissue.dielectric import TissueModel
 from aegis.viewer.config import DEFAULTS
 
-# IT'IS Virtual Population phantom masses (kg) from the ViP database
-PHANTOM_MASS_KG: dict[str, float] = {
-    "thelonious": 17.4,
-    "duke": 72.4,
-    "eartha": 56.0,
-    "ella": 58.7,
-}
+
+@functools.lru_cache(maxsize=1)
+def _load_phantom_masses() -> dict[str, float]:
+    """Load phantom masses from data/phantoms.yaml (cached)."""
+    data_dir = Path(os.environ.get("AEGIS_DATA_DIR", str(Path(__file__).resolve().parents[3] / "data")))
+    path = Path(data_dir) / "phantoms.yaml"
+    if not path.exists():
+        return {"thelonious": 17.4, "duke": 72.4, "eartha": 56.0, "ella": 58.7}
+    with open(path) as f:
+        data = yaml.safe_load(f)
+    return {name: info["mass_kg"] for name, info in data.items()}
+
 
 # Cache for curvature computation (expensive, only changes when body changes)
 _curvature_cache: dict = {}
@@ -232,7 +242,7 @@ def compute_dosimetry(
     mode: str | None = None,
     corrections: dict | None = None,
     tissue: TissueModel | None = None,
-    power_dbm: float = 60.0,
+    power_dbm: float = DEFAULT_POWER_DBM,
     n_paths: int = 1,
     config: dict | None = None,
     stochastic: dict | None = None,
@@ -265,7 +275,7 @@ def compute_dosimetry(
     sp_cfg = dos_cfg["synthetic_paths"]
 
     if tissue is None:
-        tissue = resolve_skin_model("itis", 28e9)
+        tissue = resolve_skin_model("itis", DEFAULT_FREQ_HZ)
 
     antenna_pos = np.asarray(antenna_pos, dtype=np.float64)
     body_offset = np.asarray(body_offset, dtype=np.float64) if body_offset is not None else np.zeros(3)
@@ -331,7 +341,7 @@ def compute_dosimetry(
         paths = PropagationPaths.from_powers(k_hat=k_hats, power=powers)
 
     # Resolve body mass for SAR computation
-    body_mass = PHANTOM_MASS_KG.get(body.name) if body.name else None
+    body_mass = _load_phantom_masses().get(body.name) if body.name else None
 
     engine = DosimetryEngine(tissue)
     t0 = time.perf_counter()
