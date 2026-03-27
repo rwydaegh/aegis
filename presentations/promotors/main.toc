@@ -1,5 +1,0 @@
-\beamer@sectionintoc {1}{Introduction}{1}{0}{1}
-\beamer@sectionintoc {2}{Part I: mmWave Framework}{6}{0}{2}
-\beamer@sectionintoc {3}{Part II: Generalisations}{17}{0}{3}
-\beamer@sectionintoc {4}{Part III: Coherent MIMO}{25}{0}{4}
-\beamer@sectionintoc {5}{Conclusion}{35}{0}{5}

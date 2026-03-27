@@ -37,12 +37,12 @@ HERE = Path(__file__).parent
 # Slide 2 has 2 overlays, slide 3 has 4, so:
 # page 1=title, 2-3=slide2, 4-7=slide3, 8=anim1 placeholder,
 # 9-10=slide5, 11=anim2 placeholder, 12-14=slide7,
-# 15=demo intro, 16=live demo, 17-19=slide10,
-# 20=anim3 placeholder, 21-22=slide12, 23=summary, 24=thankyou
+# 15=demo intro, 16=live demo, 17-20=slide10 (4 overlays: text, panel_a, panel_b, panel_c),
+# 21=anim3 placeholder, 22-23=slide12, 24-26=summary, 27=thankyou
 ANIMATION_PAGES = {
     8: HERE / "animations" / "PseudoBrewster.pptx",
     11: HERE / "animations" / "GeometryOfAbsorption.pptx",
-    20: HERE / "animations" / "CoherentPhasors.pptx",
+    21: HERE / "animations" / "CoherentPhasors.pptx",
 }
 
 
@@ -85,7 +85,7 @@ def build_simple():
             return
 
         print("Converting Beamer PDF to images...")
-        images = pdf_to_images(pdf_path, tmpdir, dpi=300)
+        images = pdf_to_images(pdf_path, tmpdir, dpi=600)
         print(f"  {len(images)} pages")
 
         prs = Presentation()
@@ -118,14 +118,17 @@ def build_simple():
                             img_tmp.write_bytes(blob)
                             new_slide.shapes.add_picture(
                                 str(img_tmp),
-                                Emu(0), Emu(0),
-                                SLIDE_WIDTH, SLIDE_HEIGHT,
+                                Emu(0),
+                                Emu(0),
+                                SLIDE_WIDTH,
+                                SLIDE_HEIGHT,
                             )
                             break
                     else:
                         # No image found, add a black slide
                         from pptx.util import Emu as E
                         from pptx.dml.color import RGBColor
+
                         bg = new_slide.background
                         fill = bg.fill
                         fill.solid()
@@ -138,8 +141,10 @@ def build_simple():
                 slide = prs.slides.add_slide(blank)
                 slide.shapes.add_picture(
                     str(img),
-                    Emu(0), Emu(0),
-                    SLIDE_WIDTH, SLIDE_HEIGHT,
+                    Emu(0),
+                    Emu(0),
+                    SLIDE_WIDTH,
+                    SLIDE_HEIGHT,
                 )
 
         output = HERE / "geometric_dosimetry.pptx"

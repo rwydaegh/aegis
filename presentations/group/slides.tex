@@ -186,7 +186,7 @@
   \onslide<2->{%
   \begin{columns}[T]
     \begin{column}{0.48\textwidth}
-      The pseudo-Brewster effect makes the
+      The Pseudo-Brewster effect makes the
       Fresnel transmission nearly angle-independent.
 
       \vspace{6pt}
@@ -310,28 +310,30 @@
 % ----------------------------------------------------------
 \begin{frame}{From incoherent to coherent}
 
+  \vspace{-6pt}
   \onslide<1->{%
-  \begin{center}
-    \vspace{-4pt}
-    {\small The incoherent framework is deployed in AEGIS.
-     But 5G uses MIMO beamforming.}
-  \end{center}
-  }
-
-  \vspace{4pt}
-  \onslide<2->{%
-  \begin{center}
-    \includegraphics[width=0.85\textwidth]{channel_block_panel_b.png}
-  \end{center}
+  {\small The incoherent framework is deployed in AEGIS.
+   But 5G uses MIMO beamforming.}
   }
 
   \vspace{2pt}
-  \onslide<3->{%
   \begin{center}
-    {\small The signal path collapses each path to a \textbf{scalar} at the UE.\\
-     The exposure path retains the full \textbf{vector field} over the body surface.\\[4pt]
-     These are different optimization targets.}
+    \only<2>{%
+      \includegraphics[width=\textwidth, trim=0 30 0 30, clip]{channel_block_panel_a.png}%
+    }%
+    \only<3>{%
+      \includegraphics[width=\textwidth, trim=0 30 0 30, clip]{channel_block_panel_b.png}%
+    }%
+    \only<4->{%
+      \includegraphics[width=\textwidth, trim=0 30 0 30, clip]{channel_block_panel_c.png}%
+    }%
   \end{center}
+
+  \vspace{-2pt}
+  \onslide<4->{%
+  {\small Signal path $\to$ \textbf{scalar} at UE. \quad
+   Exposure path $\to$ \textbf{vector field} over body surface.\\[2pt]
+   Different optimization targets.}
   }
 \end{frame}
 
@@ -415,6 +417,7 @@
 \begin{frame}{Summary}
 
   \vspace{6pt}
+  \onslide<1->{%
   \begin{center}
     {\normalsize
     Pseudo-Brewster collapses the material to $T_0$.\\[4pt]
@@ -422,8 +425,10 @@
     Coherent extension: exposure operator $\QQ$ with closed-form beamformer.
     }
   \end{center}
+  }
 
   \vspace{12pt}
+  \onslide<2->{%
   \begin{columns}[T]
     \begin{column}{0.3\textwidth}
       \begin{center}
@@ -455,13 +460,16 @@
       \end{center}
     \end{column}
   \end{columns}
+  }
 
   \vspace{14pt}
+  \onslide<3->{%
   \begin{center}
     {\small Tissue physics makes dosimetry geometric.\\
      The geometry is fast.
      The fast computation enables exposure-aware network design.}
   \end{center}
+  }
 \end{frame}
 
 % ----------------------------------------------------------

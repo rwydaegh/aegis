@@ -185,7 +185,7 @@ class PseudoBrewster(Slide):
         ).move_to(ax.c2p(PSEUDO_BREWSTER_DEG, PSEUDO_BREWSTER_TP))
 
         brewster_annotation = Tex(
-            r"pseudo-Brewster angle",
+            r"Pseudo-Brewster angle",
             font_size=20, color=YELLOW,
         ).next_to(brewster_star, UP + LEFT, buff=0.12)
 
@@ -222,7 +222,7 @@ class PseudoBrewster(Slide):
         tavg_label = MathTex(
             r"T_{\mathrm{avg}}(\theta)", font_size=28, color=GEOM_GREEN,
         )
-        tavg_label.next_to(ax.c2p(35, fresnel_Tavg(35)), UP, buff=0.2)
+        tavg_label.next_to(ax.c2p(55, fresnel_Tavg(55)), UP, buff=0.2)
 
         self.add(tavg_curve, tavg_dot)
         self.play(
