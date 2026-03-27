@@ -39,6 +39,11 @@ export const SHARE_DEFAULTS = {
     seed: 42,
   },
   envDisplayMode: 'cubes' as string,
+  // display config from scene store
+  colormapName: 'inferno' as string,
+  sunIntensity: 1.2,
+  ambientIntensity: 0.6,
+  cameraFov: 55,
   // ui store
   wireframe: false,
   legendScale: 'linear' as string,

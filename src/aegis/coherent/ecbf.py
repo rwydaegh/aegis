@@ -21,6 +21,7 @@ import warnings
 import numpy as np
 
 from aegis._array_backend import xp
+from aegis.defaults import NUMERICAL_FLOOR
 
 
 def solve_ecbf(
@@ -89,7 +90,7 @@ def solve_ecbf(
         weights = 1.0 / (lam * eigenvalues + 1.0)
         x_tilde = h_tilde * weights
         norm_sq = float(np.real(np.vdot(x_tilde, x_tilde)))
-        if norm_sq < 1e-30:
+        if norm_sq < NUMERICAL_FLOOR:
             return 0.0
         p_abs = P * float(np.real(np.sum(eigenvalues * np.abs(x_tilde) ** 2))) / norm_sq
         return p_abs
@@ -137,7 +138,7 @@ def solve_ecbf(
     x_tilde = h_tilde * weights
     x_conj = V @ x_tilde
     norm = np.sqrt(float(np.real(np.vdot(x_conj, x_conj))))
-    if norm < 1e-30:
+    if norm < NUMERICAL_FLOOR:
         return xp.asarray(x_mrt)
 
     x_star = np.sqrt(P) * x_conj / norm
@@ -166,7 +167,7 @@ def _mrt_precoder(h, P):
     """Maximum ratio transmission precoder: x = sqrt(P) * h* / ||h||."""
     h_conj = h.conj()
     norm = np.sqrt(float(np.real(np.vdot(h_conj, h_conj))))
-    if norm < 1e-30:
+    if norm < NUMERICAL_FLOOR:
         x = np.zeros_like(h)
         x[0] = np.sqrt(P)
         return x

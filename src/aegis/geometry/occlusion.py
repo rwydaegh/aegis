@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from aegis.defaults import NUMERICAL_FLOOR
 from aegis.geometry.mesh import BodyMesh
 
 try:
@@ -44,7 +45,7 @@ def cosine_weighted_hemisphere_samples(n: int, rng: np.random.Generator) -> np.n
     return np.stack([x, y, z], axis=1)
 
 
-def _normalize(v: np.ndarray, eps: float = 1e-30) -> np.ndarray:
+def _normalize(v: np.ndarray, eps: float = NUMERICAL_FLOOR) -> np.ndarray:
     n = np.linalg.norm(v)
     if n < eps:
         return v * 0.0

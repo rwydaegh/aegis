@@ -13,6 +13,7 @@ import numpy as np
 
 from aegis._array_backend import JAX_AVAILABLE
 from aegis.constants import C_0, Z_0
+from aegis.defaults import DEFAULT_P_ABS_MAX
 from aegis.geometry.mesh import BodyMesh
 from aegis.paths import PropagationPaths
 from aegis.result import DosimetryResult
@@ -230,7 +231,7 @@ class DosimetryEngine:
         # Level 7-8 coherent MIMO
         precoder: Precoder | None = None,
         h: np.ndarray | None = None,
-        P_abs_max: float = 0.1,
+        P_abs_max: float = DEFAULT_P_ABS_MAX,
         # Mode-based API
         mode: str | None = None,
         fresnel: bool = True,
@@ -372,7 +373,7 @@ class DosimetryEngine:
         precoder_x=None,
         precoder: Precoder | None = None,
         h=None,
-        P_abs_max: float = 0.1,
+        P_abs_max: float = DEFAULT_P_ABS_MAX,
         A_ab: float | None = None,
         D_max: float | None = None,
         sh_coeffs=None,
@@ -525,7 +526,7 @@ class DosimetryEngine:
         D_dirs: np.ndarray | None = None,
         precoder: Precoder | None = None,
         h: np.ndarray | None = None,
-        P_abs_max: float = 0.1,
+        P_abs_max: float = DEFAULT_P_ABS_MAX,
         freq_hz: float | None = None,
         _timings: dict | None = None,
     ) -> DosimetryResult:
@@ -640,7 +641,7 @@ class DosimetryEngine:
         level: int,
         precoder: Precoder | None = None,
         h: np.ndarray | None = None,
-        P_abs_max: float = 0.1,
+        P_abs_max: float = DEFAULT_P_ABS_MAX,
         body_mass: float | None = None,
         spatial_averaging: bool = True,
         freq_hz: float | None = None,

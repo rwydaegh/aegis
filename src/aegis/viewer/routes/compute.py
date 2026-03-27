@@ -9,7 +9,8 @@ import numpy as np
 from flask import Flask, Response, jsonify, request
 
 from aegis.compliance import ExposureScenario, evaluate_compliance
-from aegis.viewer.compute import PHANTOM_MASS_KG
+from aegis.defaults import DEFAULT_FREQ_HZ, DEFAULT_POWER_DBM
+from aegis.viewer.compute import _load_phantom_masses
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +59,7 @@ def _parse_rotation_y(params: dict):
         return None, (jsonify({"error": _ERR_ROTATION_TYPE}), 400)
 
 
-def _parse_freq_and_tissue(params: dict, default_freq: float = 28e9):
+def _parse_freq_and_tissue(params: dict, default_freq: float = DEFAULT_FREQ_HZ):
     """Parse freq_hz and resolve tissue model from request params.
 
     Returns (tissue, freq_hz, None) on success or (None, None, error_response) on failure.
@@ -101,7 +102,7 @@ def _run_dosimetry(tissue, body, paths, engine_kw):
 
     engine = DosimetryEngine(tissue)
     _inject_curvature_H(engine_kw, body)
-    body_mass = PHANTOM_MASS_KG.get(body.name) if body.name else None
+    body_mass = _load_phantom_masses().get(body.name) if body.name else None
     return engine.compute(body, paths, body_mass=body_mass, **engine_kw)
 
 
@@ -328,6 +329,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             "method": rt.get("method", "exhaustive"),
             "rays_per_source": rt.get("rays_per_source", 1_000_000),
             "max_paths_per_source": rt.get("max_paths_per_source", 1_000_000),
+            "chunk_size": rt.get("chunk_size"),
             "los": rt.get("los", True),
             "specular_reflection": rt.get("specular_reflection", True),
             "diffuse_reflection": rt.get("diffuse_reflection", False),
@@ -416,7 +418,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                     "preset": params.get("stochastic_preset", stoch_cfg.get("default_preset", "3GPP_38.901_UMi_LOS")),
                     "seed": int(params.get("stochastic_seed", stoch_cfg.get("default_seed", 42))),
                     "overrides": params.get("stochastic_overrides", {}),
-                    "freq_ghz": float(params.get("freq_hz", 28e9)) / 1e9,
+                    "freq_ghz": float(params.get("freq_hz", DEFAULT_FREQ_HZ)) / 1e9,
                 }
             except (TypeError, ValueError):
                 return jsonify({"error": "Invalid stochastic parameters (seed must be integer)"}), 400
@@ -619,7 +621,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             return jsonify({"error": "Missing 'scene_path'"}), 400
 
         engine_kw = _parse_mode_or_level(params)
-        power_dbm = params.get("power_dbm", 60.0)
+        power_dbm = params.get("power_dbm", DEFAULT_POWER_DBM)
         rt_cfg_parsed = _parse_rt_config(params)
 
         body_offset, err = _parse_vec3(params, "body_offset")
@@ -674,6 +676,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                 reflection_loss_per_order=rt_cfg_parsed["reflection_loss_per_order"],
                 method=rt_cfg_parsed["method"],
                 num_rays=rt_cfg_parsed["rays_per_source"],
+                chunk_size=rt_cfg_parsed["chunk_size"],
             )
             if modal_result is None and _modal_enabled():
                 modal_error = "Modal DiffeRT returned no result"
@@ -707,6 +710,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                     reflection_loss_per_order=rt_cfg_parsed["reflection_loss_per_order"],
                     method=rt_cfg_parsed["method"],
                     num_rays=rt_cfg_parsed["rays_per_source"],
+                    chunk_size=rt_cfg_parsed["chunk_size"],
                 )
             except Exception as e:
                 return jsonify({"error": f"Ray tracing failed: {e}"}), 500
@@ -777,7 +781,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             return jsonify({"error": "Missing 'scene_path'"}), 400
 
         engine_kw = _parse_mode_or_level(params)
-        power_dbm = params.get("power_dbm", 60.0)
+        power_dbm = params.get("power_dbm", DEFAULT_POWER_DBM)
         rt_cfg_parsed = _parse_rt_config(params)
 
         body_offset, err = _parse_vec3(params, "body_offset")
@@ -919,7 +923,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             return err
 
         engine_kw = _parse_mode_or_level(params)
-        power_dbm = params.get("power_dbm", 60.0)
+        power_dbm = params.get("power_dbm", DEFAULT_POWER_DBM)
         rt_cfg_parsed = _parse_rt_config(params)
         max_order = rt_cfg_parsed["max_depth"]
 

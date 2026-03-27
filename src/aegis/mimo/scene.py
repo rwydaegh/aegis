@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+from aegis.defaults import DEFAULT_FREQ_HZ
 from aegis.mimo.array import AntennaArray
 from aegis.mimo.user import UserState
 from aegis.tissue.dielectric import TissueModel
@@ -33,7 +34,7 @@ class MIMOScene:
 
     array: AntennaArray
     users: list[UserState] = field(default_factory=list)
-    freq_hz: float = 28e9
+    freq_hz: float = DEFAULT_FREQ_HZ
     total_power: float = 1.0
     tissue: TissueModel | None = None
 

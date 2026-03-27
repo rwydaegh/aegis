@@ -21,6 +21,7 @@ from aegis.coherent.fresnel_operator import (
     compute_fresnel_operator,
 )
 from aegis.constants import C_0
+from aegis.defaults import NUMERICAL_FLOOR
 from aegis.tissue.fresnel import xi_from_mu
 
 
@@ -107,7 +108,7 @@ def compute_body_channel(
     xi = xi_from_mu(xp.asarray(mu).ravel(), n_tilde).reshape(mu.shape)
     k0_xi = k0 * xi
     alpha = -xp.imag(k0_xi)  # (M, N), amplitude decay rate [1/m]
-    alpha = xp.maximum(alpha, 1e-30)  # avoid division by zero
+    alpha = xp.maximum(alpha, NUMERICAL_FLOOR)  # avoid division by zero
 
     depth_weight = xp.sqrt(sigma / (4 * alpha))  # (M, N)
 

@@ -12,6 +12,8 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from aegis.defaults import NUMERICAL_FLOOR
+
 if TYPE_CHECKING:
     from aegis.compliance import ComplianceResult, ExposureScenario
     from aegis.geometry.mesh import BodyMesh
@@ -307,7 +309,7 @@ class DosimetryResult:
                     continue
                 diff = ri.sab - rj.sab
                 pair = (li, lj)
-                ref = max(peak_sab[li], peak_sab[lj], 1e-30)
+                ref = max(peak_sab[li], peak_sab[lj], NUMERICAL_FLOOR)
                 rel_err[pair] = float(np.abs(peak_sab[li] - peak_sab[lj]) / ref)
                 rmse[pair] = float(np.sqrt(np.mean(diff**2)))
                 max_abs[pair] = float(np.max(np.abs(diff)))

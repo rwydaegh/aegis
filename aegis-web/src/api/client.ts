@@ -53,6 +53,14 @@ async function getBinary(path: string): Promise<Response> {
   return res
 }
 
+// ---------------------------------------------------------------------------
+// Config export
+// ---------------------------------------------------------------------------
+
+export function exportConfig(state: Record<string, unknown>): Promise<Record<string, unknown>> {
+  return postJson<Record<string, unknown>>('/api/export-config', state)
+}
+
 export interface ComputeResult {
   sab: Float32Array
   stats: DosimetryStats
@@ -283,6 +291,7 @@ export interface RtConfig {
   method: string
   rays_per_source: number
   max_paths_per_source: number
+  chunk_size: number | null
   los: boolean
   specular_reflection: boolean
   diffuse_reflection: boolean
