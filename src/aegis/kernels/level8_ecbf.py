@@ -17,6 +17,7 @@ from aegis.coherent.exposure_operator import (
     compute_rho,
     eigendecompose_Q,
 )
+from aegis.defaults import DEFAULT_P_ABS_MAX
 
 
 def level8_ecbf(
@@ -32,7 +33,7 @@ def level8_ecbf(
     freq_hz,
     n_elements,
     P=1.0,
-    P_abs_max=0.1,
+    P_abs_max=DEFAULT_P_ABS_MAX,
 ):
     """Compute ECBF-optimised absorbed power density map.
 

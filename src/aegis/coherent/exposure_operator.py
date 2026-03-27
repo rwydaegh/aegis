@@ -11,6 +11,7 @@ Monograph: def:Q, sec:exposure-operator.
 from __future__ import annotations
 
 from aegis._array_backend import xp
+from aegis.defaults import NUMERICAL_FLOOR
 
 
 def compute_exposure_operator(
@@ -107,14 +108,14 @@ def compute_rho(
     h = xp.asarray(h, dtype=complex)
     h_norm_sq = float(xp.real(xp.vdot(h, h)))
 
-    if h_norm_sq < 1e-30:
+    if h_norm_sq < NUMERICAL_FLOOR:
         return 0.0
 
     if lambda_max is None:
         eigenvalues = xp.linalg.eigvalsh(Q)
         lambda_max = float(xp.max(eigenvalues))
 
-    if lambda_max < 1e-30:
+    if lambda_max < NUMERICAL_FLOOR:
         return 0.0
 
     # h^T @ Q @ h* = h.conj() @ Q @ h (using vdot convention)
