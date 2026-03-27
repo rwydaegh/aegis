@@ -20,6 +20,7 @@ import numpy as np
 from aegis.coherent.body_channel import compute_body_channel
 from aegis.coherent.exposure_operator import compute_exposure_operator
 from aegis.constants import C_0
+from aegis.defaults import DEFAULT_NOISE_POWER, DEFAULT_P_ABS_MAX
 from aegis.mimo.array_paths import expand_paths_to_array
 from aegis.mimo.channel import compute_channel_vector
 from aegis.mimo.precoders import compute_precoder
@@ -226,8 +227,8 @@ def compute_mimo_scene(
     scene: MIMOScene,
     engine: DosimetryEngine,
     precoder_type: str = "zf",
-    noise_power: float = 0.01,
-    P_abs_max: float = 0.1,
+    noise_power: float = DEFAULT_NOISE_POWER,
+    P_abs_max: float = DEFAULT_P_ABS_MAX,
 ) -> dict:
     """Full multi-user MIMO dosimetry pipeline.
 
@@ -439,7 +440,7 @@ def compute_mimo_scene_with_bodies(
         precoder_type=precoder_type,
         P=scene.total_power,
         Q_list=Q_list,
-        P_abs_max=0.1 if Q_list else None,
+        P_abs_max=DEFAULT_P_ABS_MAX if Q_list else None,
     )
     timings["precoder_ms"] = (time.perf_counter() - t_precoder_start) * 1e3
 

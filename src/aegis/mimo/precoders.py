@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import numpy as np
 
+from aegis.defaults import DEFAULT_NOISE_POWER, NUMERICAL_FLOOR
+
 
 def mrt(H: np.ndarray, P: float = 1.0) -> np.ndarray:
     """Maximum ratio transmission (per-user matched filter).
@@ -24,7 +26,7 @@ def mrt(H: np.ndarray, P: float = 1.0) -> np.ndarray:
     K = H.shape[0]
     W_conj = H.conj().T  # (M, K)
     norms = np.linalg.norm(W_conj, axis=0, keepdims=True)  # (1, K)
-    norms = np.maximum(norms, 1e-30)
+    norms = np.maximum(norms, NUMERICAL_FLOOR)
     return np.sqrt(P / K) * W_conj / norms
 
 
@@ -54,12 +56,12 @@ def zf(H: np.ndarray, P: float = 1.0) -> np.ndarray:
         return mrt(H, P=P)
     W_raw = X.conj().T  # (M, K)
     frob = np.sqrt(float(np.real(np.trace(W_raw.conj().T @ W_raw))))
-    if frob < 1e-30:
+    if frob < NUMERICAL_FLOOR:
         return np.zeros((M, K), dtype=complex)
     return W_raw * np.sqrt(P) / frob
 
 
-def mmse(H: np.ndarray, P: float = 1.0, noise_power: float = 0.01) -> np.ndarray:
+def mmse(H: np.ndarray, P: float = 1.0, noise_power: float = DEFAULT_NOISE_POWER) -> np.ndarray:
     """MMSE: W_raw = H^H @ inv(H @ H^H + alpha * I), normalized to ||W||_F^2 = P."""
     H = np.asarray(H, dtype=complex)
     if H.ndim == 1:
@@ -69,7 +71,7 @@ def mmse(H: np.ndarray, P: float = 1.0, noise_power: float = 0.01) -> np.ndarray
     X = np.linalg.solve(HHH + noise_power * np.eye(K), H)  # (K, M)
     W_raw = X.conj().T  # (M, K)
     frob = np.sqrt(float(np.real(np.trace(W_raw.conj().T @ W_raw))))
-    if frob < 1e-30:
+    if frob < NUMERICAL_FLOOR:
         return np.zeros((M, K), dtype=complex)
     return W_raw * np.sqrt(P) / frob
 
@@ -95,7 +97,7 @@ def zf_exposure(
 
     # Extract unit directions from ZF columns
     norms = np.linalg.norm(W_zf, axis=0, keepdims=True)
-    norms = np.maximum(norms, 1e-30)
+    norms = np.maximum(norms, NUMERICAL_FLOOR)
     directions = W_zf / norms
 
     # Start from ZF's per-column power allocation
@@ -106,7 +108,7 @@ def zf_exposure(
         d_k = directions[:, k]
         for Q_u in Q_list:
             dQd = float(np.real(np.vdot(d_k, Q_u @ d_k)))
-            if dQd > 1e-30:
+            if dQd > NUMERICAL_FLOOR:
                 max_gamma_sq = P_abs_max / (K * dQd)
                 gamma_sq[k] = min(gamma_sq[k], max_gamma_sq)
 
@@ -117,7 +119,7 @@ def compute_precoder(
     H: np.ndarray,
     precoder_type: str = "zf",
     P: float = 1.0,
-    noise_power: float = 0.01,
+    noise_power: float = DEFAULT_NOISE_POWER,
     Q_list: list[np.ndarray] | None = None,
     P_abs_max: float | None = None,
 ) -> np.ndarray:
