@@ -13,13 +13,23 @@ from pathlib import Path
 
 import yaml
 
+from aegis.defaults import (
+    DEFAULT_FIDELITY_LEVEL,
+    DEFAULT_FREQ_HZ,
+    DEFAULT_MAX_BOUNCES,
+    DEFAULT_NOISE_POWER,
+    DEFAULT_P_ABS_MAX,
+    DEFAULT_POWER_DBM,
+    DEFAULT_SEED,
+)
+
 
 @dataclass(frozen=True)
 class TissueConfig:
     """Tissue properties for the simulation."""
 
     name: str = "Skin"  # IT'IS database uses capitalized names
-    frequency_hz: float = 28e9
+    frequency_hz: float = DEFAULT_FREQ_HZ
 
     def __post_init__(self) -> None:
         if self.frequency_hz <= 0:
@@ -39,7 +49,7 @@ class AntennaConfig:
     """Transmit antenna configuration."""
 
     positions: list[list[float]] = field(default_factory=lambda: [[5.0, 0.0, 1.0]])
-    power_dbm: float = 60.0
+    power_dbm: float = DEFAULT_POWER_DBM
     polarisation: str = "vertical"
     pattern: str = "isotropic"
 
@@ -49,7 +59,7 @@ class RayTracerConfig:
     """Ray tracer backend selection."""
 
     backend: str = "differt"
-    max_bounces: int = 3
+    max_bounces: int = DEFAULT_MAX_BOUNCES
     scene_path: str | None = None
 
     def __post_init__(self) -> None:
@@ -61,12 +71,34 @@ class RayTracerConfig:
 class DosimetryConfig:
     """Dosimetry computation parameters."""
 
-    level: int = 2
+    level: int = DEFAULT_FIDELITY_LEVEL
     spatial_averaging: bool = False
+    n_paths: int = 1
+    max_order: int = 0
+    p_abs_max: float = DEFAULT_P_ABS_MAX
 
     def __post_init__(self) -> None:
         if not 0 <= self.level <= 8:
             raise ValueError(f"level must be 0-8, got {self.level}")
+
+
+@dataclass(frozen=True)
+class ChannelConfig:
+    """Stochastic channel model parameters."""
+
+    preset: str = "3GPP_38.901_UMi_LOS"
+    seed: int = DEFAULT_SEED
+    overrides: dict = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class MIMOConfig:
+    """MIMO array and precoder parameters."""
+
+    precoder: str = "mrt"
+    noise_power: float = DEFAULT_NOISE_POWER
+    n_rows: int = 4
+    n_cols: int = 4
 
 
 @dataclass(frozen=True)
@@ -82,6 +114,8 @@ class SimulationConfig:
     antenna: AntennaConfig = field(default_factory=AntennaConfig)
     raytracer: RayTracerConfig = field(default_factory=RayTracerConfig)
     dosimetry: DosimetryConfig = field(default_factory=DosimetryConfig)
+    channel: ChannelConfig = field(default_factory=ChannelConfig)
+    mimo: MIMOConfig = field(default_factory=MIMOConfig)
     output_dir: str = "outputs"
 
     def to_yaml(self, path: str | Path) -> None:
@@ -120,4 +154,6 @@ _CONFIG_CLASSES: dict[str, type] = {
     "antenna": AntennaConfig,
     "raytracer": RayTracerConfig,
     "dosimetry": DosimetryConfig,
+    "channel": ChannelConfig,
+    "mimo": MIMOConfig,
 }
