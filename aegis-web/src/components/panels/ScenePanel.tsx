@@ -26,6 +26,7 @@ function SionnaSceneSelector() {
         faceColors: result.faceColors,
       })
       useSceneStore.getState().setLoadedScenePath(selected)
+      useSceneStore.getState().setVoxelData(null)
     } catch (err) {
       useNotificationStore.getState().addNotification('error', `Failed to load scene: ${(err as Error).message}`)
     }
@@ -181,8 +182,11 @@ export default function ScenePanel() {
       <div className="mt-4 pt-3 border-t border-border">
         <button
           onClick={() => {
+            fetch('/api/clear-cache', { method: 'POST' })
             useSceneStore.getState().clearScene()
             useSimulationStore.getState().clearResults()
+            useSimulationStore.getState().setBodyOffset([0, 0, 0])
+            useSimulationStore.getState().setBodyRotationY(0)
           }}
           className="w-full px-3 py-1.5 rounded text-xs font-medium bg-destructive text-white hover:bg-destructive/90"
         >

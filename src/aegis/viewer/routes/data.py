@@ -110,6 +110,35 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             return jsonify({"error": "No tiles directory"}), 404
         return send_from_directory(str(td), filename)
 
+    @app.route("/api/clear-cache", methods=["POST"])
+    def api_clear_cache():
+        """Clear all cached voxel, scene, and MIMO data."""
+        with cache_lock:
+            for key in (
+                "voxel_positions",
+                "voxel_materials",
+                "voxel_sizes",
+                "voxel_binary",
+                "voxel_meta",
+                "body_placement",
+                "tiles_dir",
+                "voxel_json_path",
+                "mimo_scene",
+                "mimo_summary",
+                "mimo_results_binary",
+                "mimo_results_stats",
+            ):
+                cache.pop(key, None)
+        try:
+            from aegis.viewer.raytracer import _scene_cache, clear_voxel_scene_cache
+
+            clear_voxel_scene_cache()
+            _scene_cache.clear()
+        except ImportError:
+            pass
+        app.config.pop("_last_compliance_result", None)
+        return jsonify({"ok": True})
+
     @app.route("/api/config")
     def api_config():
         """Return available configuration options."""

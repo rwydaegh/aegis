@@ -14,6 +14,8 @@ export function useVoxelLoader() {
       useSceneStore.setState({
         voxelData: { ...binary, meta },
         layerVisibility: Object.fromEntries(meta.materials.map(m => [m, true])),
+        sceneGeometry: null,
+        loadedScenePath: '',
       })
 
       // Build heightmap for physics collision
