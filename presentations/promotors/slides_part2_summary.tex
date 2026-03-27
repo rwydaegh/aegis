@@ -1,0 +1,237 @@
+% ============================================================
+% PART II: Generalisations — summary slides 14-18
+% ============================================================
+
+\section{Part II: Generalisations}
+
+% ----------------------------------------------------------
+% SLIDE 14: Part II opening
+% SAY: "Part I assumed unpolarised illumination and used T_0 as
+%       a constant. What happens when we relax these two
+%       assumptions? Arbitrary polarisation is handled by the
+%       absorption Stokes vector. Sub-6 GHz is handled by the
+%       exact flux-averaged transmission T-bar."
+% ----------------------------------------------------------
+\begin{frame}{Part II: relaxing two assumptions}
+\hypertarget{sec:part2}{}
+
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      Part I assumed:
+      \begin{enumerate}
+        \item Unpolarised or circular illumination ($q = 0$)
+        \item mmWave frequencies ($\Tavg \approx T_0$)
+      \end{enumerate}
+
+      \vspace{8pt}
+      Part II retains both exactly:
+      \begin{enumerate}
+        \item Arbitrary polarisation\\
+              $\rightarrow$ absorption Stokes vector
+        \item Any frequency above ${\sim}\SI{100}{\mega\hertz}$\\
+              $\rightarrow$ exact flux-averaged $\Tbar$
+      \end{enumerate}
+    \end{column}
+
+    \begin{column}{0.48\textwidth}
+      \vspace{12pt}
+      {\small
+      Key results:
+      \begin{itemize}
+        \item Worst-case polarisation correction on human body: $16\,\%$
+        \item Universal bound (cylinder): $27.9\,\%$
+        \item With $\ge 20$ multipath: $< 2.5\,\%$
+        \item $\Tbar$ makes Cauchy formula exact at any frequency
+      \end{itemize}
+      }
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ----------------------------------------------------------
+% SLIDE 15: Absorption Stokes vector
+% SAY: "Total absorbed power is an inner product of the incident
+%       Stokes vector with a body response vector. The body
+%       response is precomputed from the mesh. Fourth component
+%       is zero: circular handedness does not matter. Worst case
+%       on the body is 16%, bounded by the cylinder at 27.9%."
+% ----------------------------------------------------------
+\begin{frame}{Absorption Stokes vector}
+\hypertarget{sum-p2-stokes}{}
+
+  Retain polarisation exactly. Integrate over body surface:
+
+  \begin{resultbox}[Stokes vector representation]
+    \vspace{-6pt}
+    \[
+      P_{\mathrm{abs}} = \mm(\khat) \cdot \ssv_{\mathrm{inc}}
+    \]
+  \end{resultbox}
+
+  \vspace{2pt}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      $\ssv_{\mathrm{inc}} = (S_0, S_1, S_2, S_3)^\top$: incident Stokes vector
+
+      \vspace{4pt}
+      $\mm(\khat) = \bigl(\tilde{A}_\perp,\; -\tfrac{1}{2}B_c,\; -\tfrac{1}{2}B_s,\; 0\bigr)^\top$
+
+      \vspace{4pt}
+      \begin{itemize}
+        \item Both $\tilde{A}_\perp$ and $\tilde{B}$ precomputed from mesh
+        \item Fourth component $= 0$: circular handedness irrelevant
+      \end{itemize}
+      {\footnotesize \gotodetail{app-p2-stokes}{Stokes derivation}}
+    \end{column}
+
+    \begin{column}{0.44\textwidth}
+      Polarisation directivity $D_B$:
+      \begin{itemize}
+        \item Bounds fractional correction
+        \item Cylinder (worst case): $27.9\,\%$
+        \item Thelonious (max over $S^2$): $16.0\,\%$
+      \end{itemize}
+
+      \vspace{4pt}
+      {\footnotesize Unpolarised geometric law is conservative
+       for vertical polarisation: horizontal limbs are purely TE,
+       $T_s \le T_0$.\\
+       \gotodetail{app-p2-sensitivity}{$D_B$ bounds}\;
+       \gotodetail{app-p2-canonical}{Canonical shapes}}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ----------------------------------------------------------
+% SLIDE 16: Multipath convergence
+% SAY: "The standard deviation of the polarisation error scales
+%       as D_B over root 2N. With 20 paths, that is below 2.5%,
+%       comparable to the pseudo-Brewster approximation itself.
+%       In any realistic indoor environment, polarisation is
+%       a non-issue for total absorbed power."
+% ----------------------------------------------------------
+\begin{frame}{Multipath convergence}
+\hypertarget{sum-p2-multipath}{}
+
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      With $N$ independent paths, polarisation errors cancel:
+
+      \[
+        \frac{\sigma}{P_{\mathrm{abs}}} = \frac{D_B}{\sqrt{2N}}
+      \]
+
+      \vspace{6pt}
+      \begin{tabular}{rc}
+        \toprule
+        $N$ paths & Pol.\ error (std) \\
+        \midrule
+        1  & up to $16\,\%$ \\
+        10 & $\le 3.6\,\%$ \\
+        20 & $\le 2.5\,\%$ \\
+        50 & $\le 1.6\,\%$ \\
+        \bottomrule
+      \end{tabular}
+
+      \vspace{6pt}
+      {\footnotesize In realistic indoor mmWave channels ($N \ge 20$),
+       polarisation error is below the pseudo-Brewster error.\\
+       \gotodetail{app-p2-multipath}{Convergence details}}
+    \end{column}
+
+    \begin{column}{0.48\textwidth}
+      \begin{center}
+        \only<1>{%
+          \includegraphics[width=\textwidth]{multipath_panel_a.png}\\[2pt]
+          {\footnotesize (a) Convergence of polarisation error with $N$.\\
+           $D_B/\sqrt{2N}$ bound (dashed).}
+        }%
+        \only<2->{%
+          \includegraphics[width=\textwidth]{multipath_panel_b.png}\\[2pt]
+          {\footnotesize (b) Histogram of $D_B$ over directions.\\
+           Max $16\,\%$, mean $8\,\%$, cylinder bound $27.9\,\%$.}
+        }%
+      \end{center}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ----------------------------------------------------------
+% SLIDE 17: Sub-6 GHz extension
+% SAY: "T-bar is the flux-averaged transmission. It replaces T_0
+%       in the Cauchy formula and makes it exact from 100 MHz to
+%       100 GHz. Below 40 GHz, the T_0 formula underestimates
+%       (conservative). Below 6 GHz the local surface map loses
+%       physical meaning, but total power via T-bar remains valid."
+% ----------------------------------------------------------
+\begin{frame}{Sub-\SI{6}{\giga\hertz} extension}
+\hypertarget{sum-p2-sub6}{}
+
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      {\small $\Tavg(\theta) \approx T_0$ weakens below \SI{10}{\giga\hertz}.}
+      \vspace{0pt}
+      {\small Replace $T_0$ with the exact flux-averaged transmission:}
+      \vspace{-4pt}
+      \[
+        \Tbar(f) = 2\int_0^1 \Tavg(\mu, f)\;\mu\;\diff\mu
+      \]
+      \vspace{-6pt}
+      \begin{resultbox}[Exact at any frequency]
+        \vspace{-6pt}
+        \[
+          \langle P_{\mathrm{abs}} \rangle = \Sinc \, \Tbar \, \frac{\Aab}{4}
+        \]
+        \vspace{-6pt}
+      \end{resultbox}
+      \vspace{0pt}
+      {\footnotesize
+        Below \SI{40}{\giga\hertz}: $T_0$ underestimates (conservative).\\
+        Below \SI{6}{\giga\hertz}: local map loses meaning;
+        total power via $\Tbar$ remains valid.
+      }
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{center}
+        \only<1>{%
+          \includegraphics[width=\textwidth]{R_of_f_panel_a.png}\\[2pt]
+          {\footnotesize (a) Pseudo-Brewster ratio $R(f) = T_0/\Tbar$.\\
+           Conservative ($R < 1$) below \SI{40}{\giga\hertz}.}
+        }%
+        \only<2>{%
+          \includegraphics[width=\textwidth]{R_of_f_panel_b.png}\\[2pt]
+          {\footnotesize (b) $T_0$ vs $\Tbar$ across frequency.\\
+           Gap widens below \SI{6}{\giga\hertz}.}
+        }%
+        \only<3->{%
+          \includegraphics[width=\textwidth]{R_of_f_panel_c.png}\\[2pt]
+          {\footnotesize (c) $\Tavg(\theta)\cos\theta$ at representative frequencies.\\
+           \gotodetail{app-p2-tbar}{$\Tbar$ derivation}}
+        }%
+      \end{center}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ----------------------------------------------------------
+% SLIDE 18: Part II detail index
+% ----------------------------------------------------------
+\begin{frame}{Part II: detail index}
+  \label{p2-index}
+
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \gotodetail{app-p2-stokes}{Stokes vector derivation}\\[4pt]
+      \gotodetail{app-p2-sensitivity}{Polarisation sensitivity $D_B$}\\[4pt]
+      \gotodetail{app-p2-canonical}{Canonical shapes (sphere, cylinder)}\\[4pt]
+      \gotodetail{app-p2-body-pol}{Polarisation on human body}\\[4pt]
+    \end{column}
+
+    \begin{column}{0.48\textwidth}
+      \gotodetail{app-p2-multipath}{Multipath convergence details}\\[4pt]
+      \gotodetail{app-p2-sh}{SH compression of polarisation}\\[4pt]
+      \gotodetail{app-p2-tbar}{Exact averaged transmission $\Tbar$}\\[4pt]
+      \gotodetail{app-p2-validity}{Validity regimes}\\[4pt]
+    \end{column}
+  \end{columns}
+\end{frame}

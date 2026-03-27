@@ -1,0 +1,128 @@
+% ---------------------------------------------------------------
+% PREAMBLE — clean Beamer theme for 15-min group talk
+% ---------------------------------------------------------------
+
+% --- Encoding and fonts ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+
+% --- Serif math (Computer Modern, the classic LaTeX look) ---
+\usefonttheme[onlymath]{serif}
+
+% --- Mathematics ---
+\usepackage{amsmath,amssymb,mathtools}
+\usepackage{bm}
+
+% --- Figures and tables ---
+\usepackage{graphicx}
+\graphicspath{{figures/}{../promotors/figures/}}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{makecell}
+
+% --- SI units ---
+\usepackage{siunitx}
+\sisetup{
+  detect-all,
+  range-phrase = {--},
+  range-units  = single,
+  per-mode     = symbol,
+  inter-unit-product = {\,}
+}
+
+% --- tcolorbox for result boxes ---
+\usepackage[most]{tcolorbox}
+
+% --- Multimedia (for \movie with Pympress) ---
+\usepackage{multimedia}
+
+% --- Hyperlinks ---
+\hypersetup{
+  colorlinks = false,
+  pdfstartview = FitH
+}
+
+% ===============================================================
+% COLORS
+% ===============================================================
+\definecolor{navyblue}{RGB}{25, 55, 100}
+\definecolor{medblue}{RGB}{50, 100, 170}
+\definecolor{lightblue}{RGB}{220, 235, 250}
+\definecolor{alertred}{RGB}{180, 30, 30}
+\definecolor{resultgreen}{RGB}{0, 110, 55}
+\definecolor{darkgray}{RGB}{60, 60, 60}
+
+% --- Semantic color aliases (consistent with Manim animations) ---
+\colorlet{colsinc}{medblue}          % S_inc: environment
+\colorlet{coltransmission}{alertred} % T_0: material
+\colorlet{colgeometry}{resultgreen}  % ReLU, normals: geometry
+
+% ===============================================================
+% BEAMER STYLING
+% ===============================================================
+
+% --- Remove default navigation symbols ---
+\setbeamertemplate{navigation symbols}{}
+
+% --- Colors ---
+\setbeamercolor{frametitle}{fg=white, bg=navyblue}
+\setbeamercolor{title}{fg=navyblue}
+\setbeamercolor{subtitle}{fg=darkgray}
+\setbeamercolor{author}{fg=darkgray}
+\setbeamercolor{date}{fg=darkgray}
+\setbeamercolor{institute}{fg=darkgray}
+\setbeamercolor{normal text}{fg=black, bg=white}
+\setbeamercolor{itemize item}{fg=navyblue}
+\setbeamercolor{itemize subitem}{fg=medblue}
+\setbeamercolor{enumerate item}{fg=navyblue}
+\setbeamercolor{alerted text}{fg=alertred}
+\setbeamercolor{example text}{fg=resultgreen}
+
+% --- Fonts ---
+\setbeamerfont{frametitle}{size=\large, series=\bfseries}
+\setbeamerfont{title}{size=\Large, series=\bfseries}
+
+% --- Frame title template ---
+\setbeamertemplate{frametitle}{%
+  \vskip2pt%
+  \begin{beamercolorbox}[wd=\paperwidth, ht=2.8ex, dp=1.2ex, leftskip=10pt]{frametitle}%
+    \usebeamerfont{frametitle}\insertframetitle%
+  \end{beamercolorbox}%
+}
+
+% --- Itemize bullets ---
+\setbeamertemplate{itemize item}{\small\raise1pt\hbox{\textbullet}}
+\setbeamertemplate{itemize subitem}{\footnotesize\raise1pt\hbox{--}}
+
+% ===============================================================
+% FOOTER — minimal: slide number / total
+% ===============================================================
+\setbeamertemplate{footline}{%
+  \hbox to \paperwidth{%
+    \hfill%
+    \usebeamercolor[fg]{normal text}%
+    \footnotesize\insertframenumber\,/\,\inserttotalframenumber%
+    \hskip10pt%
+  }%
+  \vskip4pt%
+}
+
+% ===============================================================
+% RESULT BOX — for key equations
+% ===============================================================
+\newtcolorbox{resultbox}[1][]{%
+  colback=lightblue,
+  colframe=navyblue,
+  arc=3pt,
+  boxrule=0.8pt,
+  left=6pt, right=6pt,
+  top=4pt, bottom=4pt,
+  fonttitle=\bfseries\small,
+  title=#1
+}
+
+% ===============================================================
+% MATH COMMANDS
+% ===============================================================
+\input{math_commands}

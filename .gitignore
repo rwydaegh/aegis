@@ -71,6 +71,11 @@ test_screenshots/
 !docs/assets/*.png
 !aegis-web/public/*.png
 
+# Binary presentation artifacts (keep local copies, not in git)
+*.pptx
+*.mp4
+*.pdf
+
 # MCP config (local)
 .mcp.json
 
@@ -112,3 +117,30 @@ coverage/
 tmp/
 tmux-cheatsheet.md
 .rm_confirmed
+
+# Presentation build artifacts
+presentations/group/media/
+presentations/group/slides/
+presentations/group/preview*/
+presentations/group/__pycache__/
+presentations/group/talk.html
+presentations/group/talk*.pdf
+presentations/group/*.aux
+presentations/group/*.nav
+presentations/group/*.out
+presentations/group/*.snm
+presentations/group/*.toc
+presentations/group/*.vrb
+presentations/group/main.pdf
+presentations/promotors/*.aux
+presentations/promotors/*.nav
+presentations/promotors/*.out
+presentations/promotors/*.snm
+presentations/promotors/*.toc
+presentation_unzipped/
+presentation.zip
+
+# Allow presentation poster frames and figures (small PNGs)
+!presentations/group/animations/*.png
+!presentations/group/figures/*.png
+!presentations/promotors/figures/*.png

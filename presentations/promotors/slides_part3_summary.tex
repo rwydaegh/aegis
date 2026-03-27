@@ -1,0 +1,389 @@
+% ============================================================
+% PART III: Coherent MIMO — summary slides 19-26
+% ============================================================
+
+\section{Part III: Coherent MIMO}
+
+% ----------------------------------------------------------
+% SLIDE 19: Part III opening
+% SAY: "Parts I and II assume incoherent illumination: cross-terms
+%       average to zero. In coherent MIMO, fields add as complex
+%       amplitudes. The coherent peak can exceed the incoherent
+%       sum by a factor N. The signal branch collapses each path
+%       to a scalar at the UE. The exposure branch retains the
+%       full vector structure over the body surface."
+% ----------------------------------------------------------
+\begin{frame}{Part III: from incoherent to coherent}
+\hypertarget{sec:part3}{}
+\hypertarget{sum-p3-opening}{}
+
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      Parts I--II: incoherent. Powers add.\\
+      Part III: coherent MIMO. Fields add.
+
+      \vspace{6pt}
+      $M$ antenna elements, precoding vector $\xx \in \Complex^M$:
+      \begin{itemize}
+        \item Coherent peak can exceed incoherent sum by factor $N$
+        \item Part I--II framework cannot capture this
+      \end{itemize}
+
+      \vspace{6pt}
+      \textbf{Two branches diverge:}
+      \begin{itemize}
+        \item Signal at UE: sums \emph{scalars} $\rightarrow$ $\hh^\top \xx$
+        \item Exposure on body: sums \emph{vectors} $\rightarrow$ $\Gtilde(\rr)\,\xx$
+      \end{itemize}
+
+      \vspace{4pt}
+      {\footnotesize Exact complex Fresnel amplitudes $t_s, t_p$ must be
+       retained; replacing by $\sqrt{T_0}$ destroys cross-term phases.}
+    \end{column}
+
+    \begin{column}{0.44\textwidth}
+      \begin{center}
+        \only<1>{%
+          \includegraphics[width=\textwidth]{channel_block_panel_a.png}\\[2pt]
+          {\footnotesize (a) Propagation paths $\to$ field channel matrix $\to$ branch split.}
+        }%
+        \only<2>{%
+          \includegraphics[width=\textwidth]{channel_block_panel_b.png}\\[2pt]
+          {\footnotesize (b) Signal branch (scalar) vs exposure branch (vector).}
+        }%
+        \only<3->{%
+          \includegraphics[width=\textwidth]{channel_block_panel_c.png}\\[2pt]
+          {\footnotesize (c) Outputs $\to$ exposure-constrained precoder.\\
+           \gotodetail{app-p3-branches}{Full diagram}}
+        }%
+      \end{center}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ----------------------------------------------------------
+% SLIDE 20: Coherent absorption law
+% SAY: "Two approximations on the cross-terms. First, replace
+%       the refracted TM direction by the incident direction:
+%       at most 4% error, self-terms exact. Second, set
+%       normalised depth couplings to 1: exact to 0.44%.
+%       Combined error at most 5%. The double sum collapses
+%       to a squared norm."
+% ----------------------------------------------------------
+\begin{frame}{Coherent absorption law}
+\hypertarget{sum-p3-coherent-law}{}
+
+  Absorbed power density = Ohmic loss integrated over depth.\\
+  Cross-terms weighted by depth coupling factors $\Lambda_{nn'}$.
+
+  \vspace{6pt}
+  \textbf{Two approximations} collapse double sum to squared norm:
+
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{enumerate}
+        \item \textbf{TM direction}: replace refracted by incident.\\
+              Error: $O(1/|\ntilde|^2) \lesssim 4\,\%$ on cross-terms.\\
+              Self-terms: exact.
+        \item \textbf{Depth coupling}: set $\Gamma_{nn'} = 1$.\\
+              Exact to $0.44\,\%$ at \SI{28}{\giga\hertz}.
+      \end{enumerate}
+
+      \vspace{4pt}
+      {\footnotesize Both affect only cross-terms.\\Combined error $\lesssim 5\,\%$.\\
+       \gotodetail{app-p3-depth}{Depth integral}\;
+       \gotodetail{app-p3-approx2}{Approx.\ 2}}
+    \end{column}
+
+    \begin{column}{0.48\textwidth}
+      \begin{resultbox}[Coherent absorption law]
+        \vspace{-6pt}
+        \[
+          \Sab(\rr) = \bigl\|\Gtilde(\rr)\,\xx\bigr\|^2
+        \]
+      \end{resultbox}
+
+      \vspace{4pt}
+      $\Gtilde(\rr) \in \Complex^{3 \times M}$: exposure channel matrix.\\[2pt]
+      Collects Fresnel-filtered, depth-weighted field contributions.
+
+      \vspace{6pt}
+      {\footnotesize When phases are random, cross-terms average to zero
+       $\rightarrow$ reduces to Part I multi-source formula.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ----------------------------------------------------------
+% SLIDE 21: Exposure operator
+% SAY: "Integrate the squared norm over the body surface.
+%       You get a quadratic form x^H Q x. Q is Hermitian PSD,
+%       M by M. Its eigendecomposition defines exposure modes,
+%       analogous to the absorption directivity in Part I.
+%       The dominant eigenvector maximises body absorption.
+%       Trace of Q is the expected absorption under isotropic
+%       transmission."
+% ----------------------------------------------------------
+\begin{frame}{Exposure operator}
+
+  Integrate coherent law over body surface:
+
+  \begin{resultbox}[Exposure operator]
+    \vspace{-6pt}
+    \[
+      P_{\mathrm{abs}} = \xx^H \QQ\, \xx,
+      \qquad
+      \QQ \equiv \int_\Sigma \Gtilde(\rr)^H \Gtilde(\rr)\,\diff A
+      \;\in\; \Complex^{M \times M}
+    \]
+  \end{resultbox}
+
+  \vspace{6pt}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \textbf{Properties:}
+      \begin{itemize}
+        \item Hermitian positive-semidefinite
+        \item Eigendecomposition: $\QQ = \sum_k \lambda_k \vv_k \vv_k^H$
+        \item $\vv_1$ maximises body absorption
+        \item $\lambda_{\max}$: worst-case absorption per unit power
+        \item $\tr(\QQ)$: expected absorption under isotropic TX
+      \end{itemize}
+    \end{column}
+
+    \begin{column}{0.48\textwidth}
+      \textbf{Analogy with Part I:}
+
+      \vspace{4pt}
+      {\small
+      \begin{tabular}{ll}
+        \toprule
+        Part I & Part III \\
+        \midrule
+        $D(\khat)$ & $\lambda_k, \vv_k$ \\
+        Direction & Precoding vector \\
+        $D_{\max} = 2$ & $\lambda_{\max}$ \\
+        Precomputed & Precomputed \\
+        \bottomrule
+      \end{tabular}
+      }
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ----------------------------------------------------------
+% SLIDE 22: MRT and exposure-signal alignment
+% SAY: "Under MRT, the absorbed power is P times rho times
+%       lambda_max. Rho is the single number that tells you
+%       whether MRT is safe. Small rho means the dominant signal
+%       paths arrive at grazing incidence or from self-shadowed
+%       directions. Three structural reasons why signal and body
+%       hotspots diverge."
+% ----------------------------------------------------------
+\begin{frame}{MRT and exposure-signal alignment}
+
+  Under maximum-ratio transmission:
+  \[
+    P_{\mathrm{abs}}^{\mathrm{MRT}} = P \;\rho\; \lambda_{\max}(\QQ)
+  \]
+
+  \begin{resultbox}[Exposure-signal alignment]
+    \vspace{-6pt}
+    \[
+      \rho \equiv \frac{\hh^\top \QQ\, \hh^*}{\|\hh\|^2 \,\lambda_{\max}(\QQ)}
+      \;\in\; [0,1]
+    \]
+  \end{resultbox}
+
+  \vspace{4pt}
+  \textbf{Three reasons} signal focus $\neq$ body hotspot:
+
+  \begin{columns}[T]
+    \begin{column}{0.3\textwidth}
+      {\small \textbf{1. Polarisation}\\
+       Transmitted polarisations partially cancel at body surface.}
+    \end{column}
+
+    \begin{column}{0.3\textwidth}
+      {\small \textbf{2. Grazing paths}\\
+       Strong signal contribution, weak absorption ($\cos\theta \to 0$).}
+    \end{column}
+
+    \begin{column}{0.3\textwidth}
+      {\small \textbf{3. Phase divergence}\\
+       Extra per-path phases accumulate between UE and body surface.}
+    \end{column}
+  \end{columns}
+
+  \vspace{6pt}
+  {\footnotesize Small $\rho$: body geometry gives inherent protection under MRT.}
+\end{frame}
+
+% ----------------------------------------------------------
+% SLIDE 23: Coherent hotspot formation
+% SAY: "When many paths co-phase and co-polarise from similar
+%       directions, the coherent sum creates a focused hotspot.
+%       Hotspot size scales with wavelength over angular spread.
+%       The Fresnel filter acts as a spatial filter: grazing
+%       contributions suppressed by the cos theta gate."
+% ----------------------------------------------------------
+\begin{frame}{Coherent hotspot formation}
+
+  Hotspot forms when paths are:
+  \begin{itemize}
+    \item Co-phased at a body-surface point
+    \item Co-polarised after Fresnel filtering
+    \item Arriving from a narrow angular spread
+  \end{itemize}
+
+  \vspace{6pt}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \textbf{Hotspot size:}
+      \[
+        \Delta r \sim \frac{\lambda}{\Delta\theta}
+      \]
+      Scales with wavelength and inversely with angular spread of contributing paths.
+    \end{column}
+
+    \begin{column}{0.48\textwidth}
+      \textbf{Fresnel filtering:}
+      \begin{itemize}
+        \item Body's transmission operator acts as spatial filter
+        \item Grazing-incidence paths suppressed by $\cos\theta$ gate
+        \item $N^2$ peak scaling (coherent) vs $N$ (incoherent)
+      \end{itemize}
+    \end{column}
+  \end{columns}
+
+  \vspace{6pt}
+  {\footnotesize Rich scattering (many directions) $\rightarrow$ smaller hotspot.
+   Sparse channel (few directions) $\rightarrow$ broader, weaker hotspot.}
+\end{frame}
+
+% ----------------------------------------------------------
+% SLIDE 24: Exposure-constrained beamforming
+% SAY: "Maximise received signal power subject to a body
+%       absorption limit. This is a QCQP with two PSD
+%       constraints. The S-procedure guarantees a global
+%       closed-form solution. The matrix inverse suppresses
+%       high-absorption modes. Same structure as Ying 2015,
+%       but Q is derived analytically."
+% ----------------------------------------------------------
+\begin{frame}{Exposure-constrained beamforming}
+
+  \textbf{Problem}: maximise signal subject to absorption limit:
+  \[
+    \max_{\xx} \;|\hh^\top \xx|^2
+    \quad\text{s.t.}\quad
+    \xx^H \QQ\, \xx \le P_{\mathrm{abs}}^{\max},
+    \quad \|\xx\|^2 \le P
+  \]
+
+  \vspace{2pt}
+  S-procedure guarantees global closed-form solution:
+
+  \begin{resultbox}[Optimal precoder]
+    \vspace{-6pt}
+    \[
+      \xx^\star = \sqrt{P}\;
+      \frac{(\lambda\QQ + \nu\II)^{-1}\hh^*}
+           {\|(\lambda\QQ + \nu\II)^{-1}\hh^*\|}
+    \]
+  \end{resultbox}
+
+  \vspace{4pt}
+  \textbf{Three limiting regimes:}
+
+  \begin{columns}[T]
+    \begin{column}{0.3\textwidth}
+      {\small $\lambda = 0$:\\
+       MRT (unconstrained).\\
+       Full signal, no exposure limit.}
+    \end{column}
+    \begin{column}{0.3\textwidth}
+      {\small $\lambda \gg \nu$:\\
+       Body-avoiding precoder.\\
+       Suppresses $\vv_1$ direction.}
+    \end{column}
+    \begin{column}{0.3\textwidth}
+      {\small $\rho \ll 1$:\\
+       Natural protection.\\
+       Minimal signal loss.}
+    \end{column}
+  \end{columns}
+
+  \vspace{6pt}
+  {\footnotesize Same structure as Ying \textit{et al.}\ 2015, but $\QQ$ derived analytically
+   from Fresnel physics, not FDTD-calibrated.}
+
+\end{frame}
+
+% ----------------------------------------------------------
+% SLIDE 25: Multi-user MIMO
+% SAY: "Each user contributes an exposure operator built from the
+%       paths arriving at their body. Per-person constraints fit
+%       into standard WMMSE solvers. No new approximations."
+% ----------------------------------------------------------
+\begin{frame}{Multi-user MIMO}
+
+  $K$ users, each with their own body and exposure operator:
+
+  \vspace{6pt}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \textbf{Per-person exposure:}
+      \[
+        P_{\mathrm{abs}}^{(u)} = \xx^H \QQ^{(u)} \xx
+      \]
+
+      $\QQ^{(u)}$ built from paths arriving at user $u$'s body.
+
+      \vspace{8pt}
+      \textbf{Per-person constraints:}
+      \[
+        \xx^H \QQ^{(u)} \xx \le P_{\mathrm{abs}}^{\max},
+        \quad u = 1,\ldots,K
+      \]
+    \end{column}
+
+    \begin{column}{0.48\textwidth}
+      \textbf{Integration with standard solvers:}
+      \begin{itemize}
+        \item Additional quadratic constraints in WMMSE
+        \item No new approximations beyond single-user
+        \item Additive structure: $\QQ^{(u)}$ computed independently per user
+      \end{itemize}
+
+      \vspace{8pt}
+      {\footnotesize Same $10^6\times$ speedup preserved in the coherent pipeline.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ----------------------------------------------------------
+% SLIDE 26: Part III detail index
+% ----------------------------------------------------------
+\begin{frame}{Part III: detail index}
+  \label{p3-index}
+
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \gotodetail{app-p3-setup}{Setup and assumptions}\\[4pt]
+      \gotodetail{app-p3-paths}{Propagation paths}\\[4pt]
+      \gotodetail{app-p3-G}{Field channel matrix}\\[4pt]
+      \gotodetail{app-p3-branches}{Signal vs exposure branch}\\[4pt]
+      \gotodetail{app-p3-fresnel-op}{Fresnel transmission operator}\\[4pt]
+    \end{column}
+
+    \begin{column}{0.48\textwidth}
+      \gotodetail{app-p3-depth}{Depth integral and Approx.~1}\\[4pt]
+      \gotodetail{app-p3-approx2}{Depth coupling and Approx.~2}\\[4pt]
+      \gotodetail{app-p3-theorem}{Main theorem}\\[4pt]
+      \gotodetail{app-p3-Q-props}{Exposure operator properties}\\[4pt]
+      \gotodetail{app-p3-rho}{Exposure-signal alignment $\rho$}\\[4pt]
+      \gotodetail{app-p3-qcqp}{QCQP solution details}\\[4pt]
+      \gotodetail{app-p3-cost}{Computational cost}\\[4pt]
+    \end{column}
+  \end{columns}
+\end{frame}

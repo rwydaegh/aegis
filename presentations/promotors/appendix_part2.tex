@@ -1,0 +1,404 @@
+% ============================================================
+% APPENDIX: Part II details — 10 slides
+% ============================================================
+
+% ----------------------------------------------------------
+% A-P2-1: Absorption Stokes vector derivation
+% ----------------------------------------------------------
+\begin{frame}[label=app-p2-stokes]{Absorption Stokes vector derivation}
+
+  {\small Retain polarisation correction $q \neq 0$ in the exact law and integrate over the body:}
+  \vspace{0pt}
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      {\small Total absorbed power:}
+      \[
+        P_{\mathrm{abs}} = \int_{\Sigma_+} \Sinc\,\Teff(\rr)\,\cos\theta\,\diff A
+      \]
+      \vspace{-4pt}
+      {\small Substitute $\Teff = \Tavg + \tfrac{q}{2}\Delta T$:}
+      \begin{align*}
+        P_{\mathrm{abs}} &= \Sinc\!\int_{\Sigma_+}\!\Tavg\cos\theta\,\diff A \\
+        &\quad + \tfrac{\Sinc}{2}\!\int_{\Sigma_+}\! q(\rr)\,\Delta T\cos\theta\,\diff A
+      \end{align*}
+      \vspace{-4pt}
+      {\small The local TM excess $q(\rr)$ depends on the incident Stokes parameters via the local orientation of the incidence plane.}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \begin{resultbox}[Result]
+        \vspace{-4pt}
+        \[
+          P_{\mathrm{abs}} = \mm(\khat) \cdot \ssv_{\mathrm{inc}}
+        \]
+      \end{resultbox}
+      \vspace{1pt}
+      {\small $\ssv_{\mathrm{inc}} = (S_0, S_1, S_2, S_3)^\top$}
+      \vspace{1pt}
+      $\mm(\khat) = \begin{pmatrix} \tilde{A}_\perp \\ -\half B_c \\ -\half B_s \\ 0 \end{pmatrix}$
+      \vspace{1pt}
+      {\footnotesize $\tilde{A}_\perp = \int \Tavg\cos\theta\,\diff A$\\
+       $\tilde{B} = B_c + iB_s = \int \Delta T\cos\theta\, e^{2i\alpha}\,\diff A$\\
+       Both precomputed from mesh.}
+    \end{column}
+  \end{columns}
+  \vspace{-2pt}
+  \returntoindex{p2-index}{Part II index}\quad\returntosummary{sum-p2-stokes}
+\end{frame}
+
+% ----------------------------------------------------------
+% A-P2-2: Fractional polarisation sensitivity
+% ----------------------------------------------------------
+\begin{frame}[label=app-p2-sensitivity]{Polarisation directivity $D_B$}
+
+  The fractional polarisation correction is bounded by:
+  \[
+    D_B(\khat) \equiv \frac{|\tilde{B}|}{2\tilde{A}_\perp}
+  \]
+
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \textbf{Interpretation:}\\
+      Maximum fractional deviation of $P_{\mathrm{abs}}$ from the unpolarised value, over all possible incident polarisation states.
+
+      \vspace{3pt}
+      \textbf{Bounds:}
+      \begin{itemize}
+        \item Sphere: $D_B = 0$ (polarisation-independent; proved in monograph)
+        \item Cylinder at broadside: $D_B^{\mathrm{cyl}} = 27.9\,\%$ (skin, \SI{28}{\giga\hertz})
+        \item Thelonious (max over $S^2$): $16.0\,\%$
+      \end{itemize}
+    \end{column}
+
+    \begin{column}{0.48\textwidth}
+      \textbf{Why it matters for compliance:}\\[4pt]
+      The unpolarised geometric law is conservative for vertically polarised illumination:
+      \begin{itemize}
+        \item Horizontal limbs are purely TE
+        \item $T_s(\theta) \le T_0$ for all $\theta$
+        \item Simplified formula \emph{overestimates} limb absorption
+      \end{itemize}
+
+      \vspace{0pt}
+      {\footnotesize Worst-case (fully polarised, worst direction): $+16\,\%$ on Thelonious.}
+    \end{column}
+  \end{columns}
+  \vspace{-4pt}
+  \returntoindex{p2-index}{Part II index}\quad\returntosummary{sum-p2-stokes}
+\end{frame}
+
+% ----------------------------------------------------------
+% A-P2-3: Canonical shapes
+% ----------------------------------------------------------
+\begin{frame}[label=app-p2-canonical]{Canonical shapes: sphere and cylinder}
+
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \textbf{Sphere:}
+      \begin{itemize}
+        \item Every incidence plane orientation is equally represented
+        \item $\int e^{2i\alpha}\,\diff A = 0$ by symmetry
+        \item $\tilde{B} = 0$, so $D_B = 0$
+        \item Polarisation is \emph{exactly} irrelevant
+        \item Proof: rotational symmetry of the orientation integral
+      \end{itemize}
+
+      \vspace{4pt}
+      {\footnotesize This also implies: a body composed of many randomly oriented convex patches approaches $D_B \to 0$.}
+    \end{column}
+
+    \begin{column}{0.48\textwidth}
+      \textbf{Infinite cylinder at broadside:}
+      \begin{itemize}
+        \item All surface points share the same incidence plane
+        \item $e^{2i\alpha} = 1$ everywhere
+        \item $\tilde{B}$ is maximal relative to $\tilde{A}_\perp$
+        \item Universal worst case: $D_B^{\mathrm{cyl}} = 27.9\,\%$
+      \end{itemize}
+
+      \vspace{4pt}
+      {\footnotesize For skin at \SI{28}{\giga\hertz}. The cylinder bound is sharp: no body shape can exceed it (proved in monograph).}
+
+      \vspace{4pt}
+      Human limbs approximate cylinders but at various orientations $\Rightarrow$ partial cancellation $\Rightarrow$ $D_B < 27.9\,\%$ on full body.
+    \end{column}
+  \end{columns}
+
+  \vspace{4pt}
+  \returntoindex{p2-index}{Part II index}\quad\returntosummary{sum-p2-stokes}
+\end{frame}
+
+% ----------------------------------------------------------
+% A-P2-4: Polarisation response of human body
+% ----------------------------------------------------------
+\begin{frame}[label=app-p2-body-pol]{Polarisation response of Thelonious}
+
+  \begin{center}
+    \includegraphics[width=0.75\textwidth,height=0.55\textheight,keepaspectratio]{polarization_mollweide_thelonious.png}
+  \end{center}
+
+  \vspace{0pt}
+  {\footnotesize
+    Mollweide projection over all illumination directions.\\
+    Four panels: $\tilde{A}_\perp$ (Fresnel-weighted projected area),
+    $|B_c|$ and $|B_s|$ (polarisation correction components),
+    $D_B$ (fractional sensitivity).\\
+    Maximum $D_B = 16.0\,\%$ at broadside of torso (most cylinder-like direction).
+  }
+
+  \vspace{2pt}
+  \returntoindex{p2-index}{Part II index}
+\end{frame}
+
+% ----------------------------------------------------------
+% A-P2-5: Multipath convergence details
+% ----------------------------------------------------------
+\begin{frame}[label=app-p2-multipath]{Multipath convergence: detailed analysis}
+
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      With $N$ independent paths of random polarisation and direction:
+
+      \[
+        \frac{\sigma_{\mathrm{pol}}}{P_{\mathrm{abs}}} = \frac{D_B}{\sqrt{2N}}
+      \]
+
+      \vspace{4pt}
+      {\small
+      \begin{tabular}{rcc}
+        \toprule
+        $N$ & Std dev & vs pseudo-Brewster \\
+        \midrule
+        1  & up to 16\,\% & $3\times$ larger \\
+        5  & $\le 5.1\,\%$ & comparable \\
+        10 & $\le 3.6\,\%$ & smaller \\
+        20 & $\le 2.5\,\%$ & half \\
+        50 & $\le 1.6\,\%$ & $\ll$ \\
+        \bottomrule
+      \end{tabular}
+      }
+
+      \vspace{4pt}
+      {\footnotesize Pseudo-Brewster error: $\le 5.6\,\%$ for skin.\\
+       At $N = 10$: polarisation error already smaller.}
+    \end{column}
+
+    \begin{column}{0.48\textwidth}
+      \begin{center}
+        \includegraphics[width=\textwidth]{multipath_convergence.png}
+      \end{center}
+      {\footnotesize Left: convergence with $N$.\\
+       Right: histogram of $D_B$ over directions.}
+    \end{column}
+  \end{columns}
+
+  \vspace{4pt}
+  \returntoindex{p2-index}{Part II index}\quad\returntosummary{sum-p2-multipath}
+\end{frame}
+
+% ----------------------------------------------------------
+% A-P2-6: SH compression of polarisation response
+% ----------------------------------------------------------
+\begin{frame}[label=app-p2-sh]{Spherical harmonic compression}
+
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      {\small $\mm(\khat)$ varies smoothly over $S^2$. SH expansion:}
+      \begin{itemize}\setlength\itemsep{0pt}
+        \item {\small $L = 6$: 49 coefficients per component}
+        \item {\small $L = 9$: 100 coefficients}
+      \end{itemize}
+      \vspace{-2pt}
+      {\small \textbf{Compression:}
+      Full grid ($180\!\times\!360$) = 64\,800 values.
+      SH $L\!=\!9$: 100 coeff.\ $\Rightarrow$ $648\times$.}
+      \vspace{-2pt}
+      {\footnotesize Enables precomputation of full polarisation response.
+       With Stokes inner product: real-time dosimetry.}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{center}
+        \includegraphics[width=\textwidth,height=0.42\textheight,keepaspectratio]{sh_compression_polarization.png}
+      \end{center}
+      \vspace{-4pt}
+      {\footnotesize RMS error vs truncation order $L$.
+       $L = 9$: error $< 5\,\%$.}
+    \end{column}
+  \end{columns}
+  \vspace{-6pt}
+  \returntoindex{p2-index}{Part II index}
+\end{frame}
+
+% ----------------------------------------------------------
+% A-P2-7: Exact bounds
+% ----------------------------------------------------------
+\begin{frame}[label=app-p2-bounds]{Exact polarisation bounds}
+
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \textbf{TE one-sided bound:}
+      \vspace{2pt}
+      For TE (s-polarised) illumination:
+      \[
+        T_s(\theta) \le T_0 \quad \forall\;\theta \in [0, \pi/2]
+      \]
+      $T_s$ is monotonically decreasing.
+      \vspace{2pt}
+      $\Rightarrow$ The unpolarised geometric law \emph{overestimates} absorption for purely TE illumination.
+      \vspace{2pt}
+      This is the conservative direction for compliance.
+    \end{column}
+
+    \begin{column}{0.48\textwidth}
+      \textbf{Peak $\Sab$ is polarisation-universal:}
+      \vspace{2pt}
+      At normal incidence ($\theta = 0$):
+      \begin{itemize}\setlength\itemsep{0pt}
+        \item $T_s(0) = T_p(0) = T_0$
+        \item TE/TM distinction vanishes
+        \item $\Teff = T_0$ regardless of polarisation
+      \end{itemize}
+      \vspace{1pt}
+      The peak $\Sab$ (most directly facing point) is polarisation-independent.
+      \vspace{2pt}
+      {\footnotesize Polarisation matters only at oblique incidence, where
+       $\Sab$ is already reduced by $\cos\theta$.
+       Combined effect: correction is bounded
+       and conservative for compliance.}
+    \end{column}
+  \end{columns}
+  \vspace{-2pt}
+  \returntoindex{p2-index}{Part II index}
+\end{frame}
+
+% ----------------------------------------------------------
+% A-P2-8: Exact averaged transmission
+% ----------------------------------------------------------
+\begin{frame}[label=app-p2-tbar]{Exact averaged transmission $\Tbar$}
+
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      The flux-averaged transmission:
+      \[
+        \Tbar(f) = 2\int_0^1 \Tavg(\mu, f)\;\mu\;\diff\mu
+      \]
+
+      Computed once per frequency from Fresnel coefficients.
+
+      \vspace{2pt}
+      \begin{resultbox}[Exact at any frequency]
+        \vspace{-4pt}
+        \[
+          \langle P_{\mathrm{abs}} \rangle = \Sinc\,\Tbar\,\frac{\Aab}{4}
+        \]
+      \end{resultbox}
+
+      \vspace{2pt}
+      {\footnotesize
+        $\Tbar = T_0$ at \SI{40}{\giga\hertz} (exact match).\\
+        $\Tbar > T_0$ below \SI{40}{\giga\hertz}:\\
+        $T_0$-based formula underestimates (conservative).\\
+        $\Tbar < T_0$ above \SI{80}{\giga\hertz}:\\
+        overestimate reaches $3.5\,\%$.
+      }
+    \end{column}
+
+    \begin{column}{0.44\textwidth}
+      {\footnotesize
+      \begin{tabular}{rcc}
+        \toprule
+        $f$ (GHz) & $T_0$ & $\Tbar$ \\
+        \midrule
+        0.9  & 0.63 & 0.72 \\
+        2.4  & 0.57 & 0.61 \\
+        6    & 0.52 & 0.55 \\
+        10   & 0.53 & 0.54 \\
+        28   & 0.54 & 0.54 \\
+        40   & 0.53 & 0.53 \\
+        60   & 0.50 & 0.50 \\
+        100  & 0.45 & 0.43 \\
+        \bottomrule
+      \end{tabular}
+      }
+      \vspace{-1pt}
+      {\footnotesize Values for skin (IT'IS v5.0).\\
+       $T_0 \approx \Tbar$ from \SI{10}{\giga\hertz};\\
+       diverge below \SI{6}{\giga\hertz} (Fabry-P\'erot).}
+    \end{column}
+  \end{columns}
+  \vspace{-6pt}
+  \returntoindex{p2-index}{Part II index}\quad\returntosummary{sum-p2-sub6}
+\end{frame}
+
+% ----------------------------------------------------------
+% A-P2-9: Frequency overview
+% ----------------------------------------------------------
+\begin{frame}[label=app-p2-landscape]{Frequency overview: \SI{100}{\mega\hertz} to \SI{100}{\giga\hertz}}
+
+  \begin{center}
+    \includegraphics[height=0.6\textheight,keepaspectratio]{R_of_f_landscape.png}
+  \end{center}
+
+  \vspace{0pt}
+  {\footnotesize
+    Pseudo-Brewster accuracy as a function of frequency.\\
+    Green band (\SI{10}{\giga\hertz}--\SI{60}{\giga\hertz}): geometric absorption law optimal ($T_0$ approximation within $5\,\%$).\\
+    Below \SI{10}{\giga\hertz}: use $\Tbar$ for total power (local map loses physical meaning below \SI{6}{\giga\hertz}).\\
+    Above \SI{80}{\giga\hertz}: $T_0$ overestimates by up to $3.5\,\%$ (non-conservative).
+  }
+
+  \vspace{2pt}
+  \returntoindex{p2-index}{Part II index}
+\end{frame}
+
+% ----------------------------------------------------------
+% A-P2-10: Validity regimes
+% ----------------------------------------------------------
+\begin{frame}[label=app-p2-validity]{Validity regimes}
+
+  \begin{center}
+  {\small
+  \begin{tabular}{lcccc}
+    \toprule
+    & \SI{0.1}{\giga\hertz}--\SI{6}{\giga\hertz}
+    & \SI{6}{\giga\hertz}--\SI{10}{\giga\hertz}
+    & \SI{10}{\giga\hertz}--\SI{60}{\giga\hertz}
+    & \SI{60}{\giga\hertz}--\SI{100}{\giga\hertz} \\
+    \midrule
+    Local $\Sab(\rr)$ with $T_0$
+    & {\color{alertred}\textbf{No}}
+    & {\color{orange}\textbf{Approx}}
+    & {\color{resultgreen}\textbf{Yes}} ($\le 6\,\%$)
+    & {\color{resultgreen}\textbf{Yes}} ($\le 8\,\%$) \\[4pt]
+    %
+    Total $P_{\mathrm{abs}}$ with $T_0$
+    & {\color{orange}\textbf{Conservative}}
+    & {\color{resultgreen}\textbf{Yes}}
+    & {\color{resultgreen}\textbf{Yes}}
+    & {\color{resultgreen}\textbf{Yes}} \\[4pt]
+    %
+    Total $P_{\mathrm{abs}}$ with $\Tbar$
+    & {\color{resultgreen}\textbf{Exact}}
+    & {\color{resultgreen}\textbf{Exact}}
+    & {\color{resultgreen}\textbf{Exact}}
+    & {\color{resultgreen}\textbf{Exact}} \\[4pt]
+    %
+    Compliance formula
+    & {\color{resultgreen}\textbf{Conservative}}
+    & {\color{resultgreen}\textbf{Yes}}
+    & {\color{resultgreen}\textbf{Yes}}
+    & {\color{resultgreen}\textbf{Yes}} \\
+    \bottomrule
+  \end{tabular}
+  }
+  \end{center}
+
+  \vspace{6pt}
+  {\footnotesize
+    Below \SI{6}{\giga\hertz}: the local surface map $\Sab(\rr)$ loses physical meaning when
+    multi-layer tissue resonances (Fabry-P\'erot between skin, fat, muscle) dominate.
+    Total absorbed power and compliance criteria remain valid everywhere via $\Tbar$.
+  }
+
+  \vspace{4pt}
+  \returntoindex{p2-index}{Part II index}
+\end{frame}
