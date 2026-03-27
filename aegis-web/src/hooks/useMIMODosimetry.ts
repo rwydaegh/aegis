@@ -23,6 +23,12 @@ async function loadMissingBodies() {
         const colors = new Float32Array(positions.length)
         colors.fill(0.5)
         geo.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+        geo.computeBoundingBox()
+        const bb = geo.boundingBox!
+        if (bb.min.y < 0) {
+          geo.translate(0, -bb.min.y, 0)
+          geo.computeBoundingBox()
+        }
         geo.computeBoundingSphere()
         setUserBodyGeometry(id, geo)
       })
