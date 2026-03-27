@@ -1,11 +1,35 @@
+import pako from 'pako'
 import { SHARE_DEFAULTS, type ShareState } from './shareDefaults'
 import { useSimulationStore } from '../stores/simulation'
 import { useSceneStore } from '../stores/scene'
 import { useUIStore } from '../stores/ui'
 import type { QuantityKey } from '../stores/ui'
 
+// ---------------------------------------------------------------------------
+// Base64url helpers (RFC 4648 section 5)
+// ---------------------------------------------------------------------------
+
+function toBase64Url(bytes: Uint8Array): string {
+  let binary = ''
+  for (const b of bytes) binary += String.fromCharCode(b)
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+
+function fromBase64Url(str: string): Uint8Array {
+  const padded = str.replace(/-/g, '+').replace(/_/g, '/') +
+    '='.repeat((4 - str.length % 4) % 4)
+  const binary = atob(padded)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+  return bytes
+}
+
+// ---------------------------------------------------------------------------
+// State collection
+// ---------------------------------------------------------------------------
+
 // Collect current shareable state from all three stores
-function collectState(): Record<string, unknown> {
+export function collectState(): Record<string, unknown> {
   const sim = useSimulationStore.getState()
   const scene = useSceneStore.getState()
   const ui = useUIStore.getState()
@@ -37,6 +61,11 @@ function collectState(): Record<string, unknown> {
     rtMaxOrder: scene.rtMaxOrder,
     rtConfig: { ...scene.rtConfig },
     envDisplayMode: scene.envDisplayMode,
+    // display config from scene store
+    colormapName: scene.colormapName,
+    sunIntensity: scene.sunIntensity,
+    ambientIntensity: scene.ambientIntensity,
+    cameraFov: scene.cameraFov,
     // ui store
     wireframe: ui.wireframe,
     legendScale: ui.legendScale,
@@ -58,15 +87,29 @@ function diffState(current: Record<string, unknown>): Record<string, unknown> {
   return diff
 }
 
+// ---------------------------------------------------------------------------
+// Serialize / deserialize
+// ---------------------------------------------------------------------------
+
 export function serializeShareableState(): string {
   const current = collectState()
   const diff = diffState(current)
-  return btoa(JSON.stringify(diff))
+  const json = JSON.stringify(diff)
+  const compressed = pako.deflateRaw(new TextEncoder().encode(json))
+  return toBase64Url(compressed)
 }
 
 export function deserializeShareLink(encoded: string): Partial<ShareState> {
   try {
-    const json = atob(encoded)
+    let json: string
+    try {
+      // New format: deflated + base64url
+      const bytes = fromBase64Url(encoded)
+      json = new TextDecoder().decode(pako.inflateRaw(bytes))
+    } catch {
+      // Backwards compat: old plain base64 format
+      json = atob(encoded)
+    }
     const parsed = JSON.parse(json) as Record<string, unknown>
     // Only keep known keys to avoid injecting arbitrary store state
     const result: Record<string, unknown> = {}
@@ -81,6 +124,10 @@ export function deserializeShareLink(encoded: string): Partial<ShareState> {
     return {}
   }
 }
+
+// ---------------------------------------------------------------------------
+// Apply / generate
+// ---------------------------------------------------------------------------
 
 export function applyShareState(state: Partial<ShareState>): void {
   const sim = useSimulationStore.getState()
@@ -116,6 +163,11 @@ export function applyShareState(state: Partial<ShareState>): void {
   if (state.rtMaxOrder !== undefined) scene.setRtMaxOrder(state.rtMaxOrder)
   if (state.rtConfig !== undefined) scene.setRtConfig(state.rtConfig as Parameters<typeof scene.setRtConfig>[0])
   if (state.envDisplayMode !== undefined) scene.setEnvDisplayMode(state.envDisplayMode as Parameters<typeof scene.setEnvDisplayMode>[0])
+  // display config
+  if (state.colormapName !== undefined) scene.setColormapName(state.colormapName)
+  if (state.sunIntensity !== undefined) scene.setSunIntensity(state.sunIntensity)
+  if (state.ambientIntensity !== undefined) scene.setAmbientIntensity(state.ambientIntensity)
+  if (state.cameraFov !== undefined) scene.setCameraFov(state.cameraFov)
 
   // --- ui store ---
   if (state.dynamicRangeDb !== undefined) ui.setDynamicRangeDb(state.dynamicRangeDb)
