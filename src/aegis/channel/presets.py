@@ -7,6 +7,8 @@ import math
 import re
 from pathlib import Path
 
+from aegis.defaults import DEFAULT_FREQ_HZ
+
 KNOWN_PARAMS: dict[str, type] = {
     "DS_mu": float,
     "DS_sigma": float,
@@ -89,7 +91,7 @@ def scale_param(
     mu: float,
     omega: float = 1.0,
     gamma: float = 0.0,
-    freq_ghz: float = 28.0,
+    freq_ghz: float = DEFAULT_FREQ_HZ / 1e9,
 ) -> float:
     """Apply frequency-dependent scaling: mu + gamma * log10(omega + freq)."""
     return mu + gamma * math.log10(omega + freq_ghz)

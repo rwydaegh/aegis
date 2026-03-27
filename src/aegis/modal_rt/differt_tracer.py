@@ -6,6 +6,7 @@ import time
 
 import modal
 
+from aegis.defaults import DEFAULT_FREQ_HZ, DEFAULT_POWER_DBM
 from aegis.modal_rt.app import app, differt_image
 
 
@@ -30,8 +31,8 @@ class DiffeRTTracer:
         tx_pos: list[float],
         rx_pos: list[float],
         max_order: int = 1,
-        freq_hz: float = 28e9,
-        tx_power_dbm: float = 60.0,
+        freq_hz: float = DEFAULT_FREQ_HZ,
+        tx_power_dbm: float = DEFAULT_POWER_DBM,
         reflection_loss_per_order: float = 0.5,
         method: str = "exhaustive",
         num_rays: int = 1_000_000,

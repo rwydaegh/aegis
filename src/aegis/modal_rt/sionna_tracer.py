@@ -6,6 +6,7 @@ import time
 
 import modal
 
+from aegis.defaults import DEFAULT_FREQ_HZ, DEFAULT_POWER_DBM
 from aegis.modal_rt.app import app, scene_volume, sionna_image
 
 
@@ -30,8 +31,8 @@ class SionnaTracer:
         tx_pos: list[float],
         rx_pos: list[float],
         max_bounces: int = 5,
-        freq_hz: float = 28e9,
-        tx_power_dbm: float = 60.0,
+        freq_hz: float = DEFAULT_FREQ_HZ,
+        tx_power_dbm: float = DEFAULT_POWER_DBM,
         rt_config: dict | None = None,
     ) -> dict:
         """Load a bundled Sionna scene by name, trace, return paths.
@@ -105,8 +106,8 @@ class SionnaTracer:
         tx_pos: list[float],
         rx_pos: list[float],
         max_bounces: int = 5,
-        freq_hz: float = 28e9,
-        tx_power_dbm: float = 60.0,
+        freq_hz: float = DEFAULT_FREQ_HZ,
+        tx_power_dbm: float = DEFAULT_POWER_DBM,
         rt_config: dict | None = None,
     ) -> dict:
         """Trace on voxel geometry. scene_data sent on first call, cached after.

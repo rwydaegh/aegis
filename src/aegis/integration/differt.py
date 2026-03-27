@@ -15,6 +15,7 @@ from pathlib import Path
 import numpy as np
 
 from aegis.constants import C_0, Z_0
+from aegis.defaults import CONCRETE_EPS_R, CONCRETE_SIGMA, DEFAULT_POWER_DBM
 from aegis.paths import PropagationPaths
 from aegis.tissue.fresnel import fresnel_reflection, n_complex
 
@@ -235,7 +236,7 @@ def paths_from_differt(
     path_vertices: np.ndarray,
     tx_positions: np.ndarray,
     freq_hz: float,
-    tx_power_dbm: float = 60.0,
+    tx_power_dbm: float = DEFAULT_POWER_DBM,
     element_indices: np.ndarray | None = None,
     object_indices: np.ndarray | None = None,
     material_indices: np.ndarray | None = None,
@@ -472,7 +473,7 @@ def paths_from_differt_scene(
     rx_position: np.ndarray,
     freq_hz: float,
     max_bounces: int = 3,
-    tx_power_dbm: float = 60.0,
+    tx_power_dbm: float = DEFAULT_POWER_DBM,
     initial_polarisation: str = "vertical",
 ) -> PropagationPaths:
     """Run DiffeRT on a scene file and return PropagationPaths.
@@ -553,13 +554,13 @@ def _extract_material_properties(scene, freq_hz: float) -> list[complex]:
 
     if not material_names:
         # No materials defined, use concrete as default
-        return [n_complex(5.31, 0.0326, freq_hz)]
+        return [n_complex(CONCRETE_EPS_R, CONCRETE_SIGMA, freq_hz)]
 
     try:
         from differt.em import materials as differt_materials
     except ImportError:
         # Older DiffeRT without material database
-        return [n_complex(5.31, 0.0326, freq_hz) for _ in material_names]
+        return [n_complex(CONCRETE_EPS_R, CONCRETE_SIGMA, freq_hz) for _ in material_names]
 
     result = []
     for name in material_names:
@@ -573,6 +574,6 @@ def _extract_material_properties(scene, freq_hz: float) -> list[complex]:
                 f"Material '{name}' not found in DiffeRT database, using concrete",
                 stacklevel=2,
             )
-            result.append(n_complex(5.31, 0.0326, freq_hz))
+            result.append(n_complex(CONCRETE_EPS_R, CONCRETE_SIGMA, freq_hz))
 
     return result
