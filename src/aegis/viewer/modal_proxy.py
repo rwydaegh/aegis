@@ -12,6 +12,8 @@ import os
 
 import numpy as np
 
+from aegis.defaults import DEFAULT_FREQ_HZ, DEFAULT_POWER_DBM
+
 logger = logging.getLogger(__name__)
 
 _MODAL_AVAILABLE = False
@@ -87,11 +89,12 @@ def trace_differt(
     tx_pos: list[float],
     rx_pos: list[float],
     max_order: int = 1,
-    freq_hz: float = 28e9,
-    tx_power_dbm: float = 60.0,
+    freq_hz: float = DEFAULT_FREQ_HZ,
+    tx_power_dbm: float = DEFAULT_POWER_DBM,
     reflection_loss_per_order: float = 0.5,
     method: str = "exhaustive",
     num_rays: int = 1_000_000,
+    chunk_size: int | None = None,
     scene_files: dict[str, bytes] | None = None,
 ) -> dict | None:
     """Call Modal DiffeRTTracer. Returns result dict or None if unavailable."""
@@ -111,6 +114,7 @@ def trace_differt(
             reflection_loss_per_order=reflection_loss_per_order,
             method=method,
             num_rays=num_rays,
+            chunk_size=chunk_size,
         )
     except Exception as e:
         logger.error("Modal DiffeRT trace failed: %s", e)
@@ -122,8 +126,8 @@ def trace_sionna_bundled(
     tx_pos: list[float],
     rx_pos: list[float],
     max_bounces: int = 5,
-    freq_hz: float = 28e9,
-    tx_power_dbm: float = 60.0,
+    freq_hz: float = DEFAULT_FREQ_HZ,
+    tx_power_dbm: float = DEFAULT_POWER_DBM,
     rt_config: dict | None = None,
 ) -> dict | None:
     """Call Modal SionnaTracer for bundled scenes. Returns dict or None."""
@@ -152,8 +156,8 @@ def trace_sionna_voxel(
     tx_pos: list[float],
     rx_pos: list[float],
     max_bounces: int = 5,
-    freq_hz: float = 28e9,
-    tx_power_dbm: float = 60.0,
+    freq_hz: float = DEFAULT_FREQ_HZ,
+    tx_power_dbm: float = DEFAULT_POWER_DBM,
     rt_config: dict | None = None,
 ) -> dict | None:
     """Call Modal SionnaTracer for voxel geometry. Returns dict or None."""

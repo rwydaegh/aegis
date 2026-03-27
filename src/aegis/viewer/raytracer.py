@@ -15,6 +15,7 @@ from typing import Any
 
 import numpy as np
 
+from aegis.defaults import DEFAULT_FREQ_HZ, DEFAULT_POWER_DBM
 from aegis.paths import PropagationPaths
 
 logger = logging.getLogger(__name__)
@@ -142,11 +143,12 @@ def compute_paths_differt(
     tx_pos: np.ndarray,
     rx_pos: np.ndarray,
     max_order: int = 1,
-    freq_hz: float = 28e9,
-    tx_power_dbm: float = 60.0,
+    freq_hz: float = DEFAULT_FREQ_HZ,
+    tx_power_dbm: float = DEFAULT_POWER_DBM,
     reflection_loss_per_order: float = 0.5,
     method: str = "exhaustive",
     num_rays: int = 1_000_000,
+    chunk_size: int | None = None,
     # NOTE: Uses from_powers() with scalar power only. Polarisation direction
     # is irrelevant here because the viewer runs incoherent levels (0-6) where
     # only |psi|^2 matters. For coherent levels (7-8) with proper TE/TM
@@ -189,51 +191,58 @@ def compute_paths_differt(
 
     tx_power_w = 10 ** ((tx_power_dbm - 30) / 10)
 
+    # chunk_size only applies to exhaustive/hybrid; ignored for SBR
+    use_chunk_size = chunk_size if method in ("exhaustive", "hybrid") else None
+
     for order in range(max_order + 1):
         try:
-            paths = scene.compute_paths(order=order, method=method, num_rays=num_rays)
+            paths_result = scene.compute_paths(order=order, method=method, num_rays=num_rays, chunk_size=use_chunk_size)
         except Exception as e:
             logger.warning("Bounce order %d failed, skipping: %s", order, e)
             continue
 
-        verts = np.array(paths.vertices)
-        mask = np.array(paths.mask)
+        # When chunk_size is set, compute_paths returns an iterator of Paths
+        paths_iter = paths_result if use_chunk_size else [paths_result]
 
-        # Flatten batch dimensions
-        flat_v = verts.reshape(-1, verts.shape[-2], verts.shape[-1])
-        flat_m = mask.flatten()
+        for paths in paths_iter:
+            verts = np.array(paths.vertices)
+            mask = np.array(paths.mask)
 
-        for i in range(len(flat_v)):
-            if i >= len(flat_m) or not flat_m[i]:
-                continue
+            # Flatten batch dimensions
+            flat_v = verts.reshape(-1, verts.shape[-2], verts.shape[-1])
+            flat_m = mask.flatten()
 
-            path_verts = flat_v[i]  # (order+2, 3)
+            for i in range(len(flat_v)):
+                if i >= len(flat_m) or not flat_m[i]:
+                    continue
 
-            # Skip degenerate paths
-            segments = np.diff(path_verts, axis=0)
-            seg_lengths = np.linalg.norm(segments, axis=1)
-            total_length = float(np.sum(seg_lengths))
-            if total_length < 1e-6:
-                continue
+                path_verts = flat_v[i]  # (order+2, 3)
 
-            # k_hat: direction of last segment (arrival at RX)
-            last_seg = segments[-1]
-            k_hat = last_seg / np.linalg.norm(last_seg)
-            all_k_hat.append(k_hat)
+                # Skip degenerate paths
+                segments = np.diff(path_verts, axis=0)
+                seg_lengths = np.linalg.norm(segments, axis=1)
+                total_length = float(np.sum(seg_lengths))
+                if total_length < 1e-6:
+                    continue
 
-            # Match paths_from_differt: S_inc = P_tx / (4 pi d^2) for isotropic spreading
-            reflection_loss = reflection_loss_per_order**order
-            S_inc = isotropic_incident_power_density(tx_power_w, total_length) * reflection_loss
-            all_power.append(S_inc)
+                # k_hat: direction of last segment (arrival at RX)
+                last_seg = segments[-1]
+                k_hat = last_seg / np.linalg.norm(last_seg)
+                all_k_hat.append(k_hat)
 
-            # Visualization data
-            path_viz.append(
-                {
-                    "vertices": path_verts.tolist(),
-                    "order": order,
-                    "length": total_length,
-                }
-            )
+                # Match paths_from_differt: S_inc = P_tx / (4 pi d^2) for isotropic spreading
+                reflection_loss = reflection_loss_per_order**order
+                S_inc = isotropic_incident_power_density(tx_power_w, total_length) * reflection_loss
+                all_power.append(S_inc)
+
+                # Visualization data
+                path_viz.append(
+                    {
+                        "vertices": path_verts.tolist(),
+                        "order": order,
+                        "length": total_length,
+                    }
+                )
 
     if not all_k_hat:
         # No paths found, return empty

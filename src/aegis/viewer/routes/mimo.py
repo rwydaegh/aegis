@@ -9,6 +9,7 @@ import numpy as np
 from flask import Flask, Response, jsonify, request
 
 from aegis.constants import C_0
+from aegis.defaults import DEFAULT_FREQ_HZ
 from aegis.mimo.array import AntennaArray
 from aegis.mimo.compute import compute_mimo_scene_with_bodies
 from aegis.mimo.scene import MIMOScene
@@ -29,7 +30,7 @@ def _build_scene(params: dict, cache: dict) -> tuple[MIMOScene | None, Response 
     if not users_cfg:
         return None, (jsonify({"error": "Missing or empty 'users' in request"}), 400)
 
-    freq_hz = float(params.get("freq_hz", 28e9))
+    freq_hz = float(params.get("freq_hz", DEFAULT_FREQ_HZ))
     power_dbm = float(params.get("power_dbm", 30.0))
     total_power = 10 ** ((power_dbm - 30) / 10)
 
