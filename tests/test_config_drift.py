@@ -26,4 +26,4 @@ def test_defaults_match_merged():
     bare = load_config(None)
     merged = load_config(Path("configs/default.json"))
     diffs = _find_diffs(bare, merged)
-    assert not diffs, f"Config drift detected:\n" + "\n".join(diffs)
+    assert not diffs, "Config drift detected:\n" + "\n".join(diffs)
