@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import json
 import os
 from pathlib import Path
@@ -52,6 +53,76 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
     def api_viewer_config():
         """Return the full viewer configuration."""
         return jsonify(cache["config"])
+
+    @app.route("/api/export-config", methods=["POST"])
+    def api_export_config():
+        """Return full viewer config with interactive state overlaid."""
+        with cache_lock:
+            base = copy.deepcopy(cache["config"])
+        interactive = request.get_json(silent=True) or {}
+
+        # Map interactive state (camelCase) to config paths
+        if "freqGhz" in interactive:
+            base["dosimetry"]["freq_hz"] = interactive["freqGhz"] * 1e9
+        if "powerDbm" in interactive:
+            base["dosimetry"]["default_power_dbm"] = interactive["powerDbm"]
+        if "nPaths" in interactive:
+            base["dosimetry"]["default_n_paths"] = interactive["nPaths"]
+        if "bodyName" in interactive:
+            base["body"]["default_name"] = interactive["bodyName"]
+        if "antennaPos" in interactive and interactive["antennaPos"]:
+            base["antenna"]["default_position"] = interactive["antennaPos"]
+        if "skinModel" in interactive:
+            base["dosimetry"]["skin_model"] = interactive["skinModel"]
+        if "bodyOffset" in interactive:
+            base["body"]["default_offset"] = interactive["bodyOffset"]
+        if "bodyRotationY" in interactive:
+            base["body"]["default_rotation_y"] = interactive["bodyRotationY"]
+        if "wireframe" in interactive:
+            base["body"]["wireframe"] = interactive["wireframe"]
+
+        # Fidelity level from mode + toggles
+        if "mode" in interactive:
+            mode = interactive["mode"]
+            if mode == "bound":
+                base["dosimetry"]["default_level"] = 0
+            elif mode == "aggregate":
+                base["dosimetry"]["default_level"] = 1
+            else:
+                level = 2
+                if interactive.get("fresnel"):
+                    level = 3
+                if interactive.get("polarisation"):
+                    level = 4
+                if interactive.get("curvature"):
+                    level = 5
+                if interactive.get("diffraction"):
+                    level = 6
+                base["dosimetry"]["default_level"] = level
+
+        # RT config
+        if "rtSource" in interactive:
+            base["raytracer"]["default_source"] = interactive["rtSource"]
+        if "rtMaxOrder" in interactive:
+            base["dosimetry"]["default_max_order"] = interactive["rtMaxOrder"]
+        if "rtConfig" in interactive:
+            base["raytracer"].update(interactive["rtConfig"])
+
+        # Stochastic channel
+        if "stochasticPreset" in interactive:
+            base["dosimetry"]["stochastic"]["default_preset"] = interactive["stochasticPreset"]
+        if "stochasticSeed" in interactive:
+            base["dosimetry"]["stochastic"]["default_seed"] = interactive["stochasticSeed"]
+
+        # Display
+        if "exposureScenario" in interactive:
+            base["dosimetry"]["exposure_scenario"] = interactive["exposureScenario"]
+        if "legendScale" in interactive:
+            base["dosimetry"]["display_mode"] = interactive["legendScale"]
+        if "dynamicRangeDb" in interactive:
+            base["dosimetry"]["dynamic_range_db"] = interactive["dynamicRangeDb"]
+
+        return jsonify(base)
 
     @app.route("/api/body")
     def api_body():
