@@ -79,6 +79,9 @@ DEFAULTS: dict = {
     "body": {
         "default_name": "thelonious",
         "default_color": 0.5,
+        "default_offset": [0, 0, 0],
+        "default_rotation_y": 0,
+        "wireframe": False,
         "material": {
             "roughness": 0.6,
             "metalness": 0.1,
@@ -87,7 +90,7 @@ DEFAULTS: dict = {
         "layer_button_color": [255, 140, 0],
     },
     "voxels": {
-        "size_scale": 0.99,
+        "size_scale": 0.95,
         "default_size_fallback": 0.244,
         "material": {
             "roughness": 0.85,
@@ -105,6 +108,7 @@ DEFAULTS: dict = {
         "heightmap_resolution_factor": 1,
     },
     "antenna": {
+        "default_position": None,
         "sphere_radius": 0.08,
         "sphere_segments": 16,
         "color": "#ff3333",
@@ -194,8 +198,8 @@ DEFAULTS: dict = {
             {"value": 20, "label": "20 (rich scatter)"},
         ],
         "power_input": {
-            "min": -30,
-            "max": 80,
+            "min": 0,
+            "max": 60,
             "step": 1,
         },
         "synthetic_paths": {
@@ -221,7 +225,15 @@ DEFAULTS: dict = {
             ],
         },
         "level0_D_max": 4.0,
-        "convex_body_area_factor": 1.0,
+        "compliance_threshold": 10.0,
+        "max_order_options": [
+            {"value": 0, "label": "0 (LOS only)"},
+            {"value": 1, "label": "1 (+ single reflection)"},
+            {"value": 2, "label": "2 (+ double reflection)"},
+        ],
+        "convex_body_area_factor": 0.25,
+        "skin_model": "itis",
+        "dynamic_range_db": 30,
     },
     "mimo": {
         "enabled": False,
@@ -309,6 +321,7 @@ DEFAULTS: dict = {
         "reflection_loss_per_order": 0.5,
         "fspl_distance_clamp": 0.01,
         "default_body_center": [0.0, 0.0, 1.0],
+        "default_source": "differt",
     },
     "material_classification": {
         "saturation_gray_threshold": 0.08,
