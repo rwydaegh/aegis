@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<osm version="0.6">
+  <bounds minlat="51.049" minlon="3.719" maxlat="51.051" maxlon="3.721"/>
+
+  <!-- Nodes for building 1: concrete, gabled roof, ~12m height -->
+  <node id="101" lat="51.0495" lon="3.7195"/>
+  <node id="102" lat="51.0495" lon="3.7205"/>
+  <node id="103" lat="51.0497" lon="3.7205"/>
+  <node id="104" lat="51.0497" lon="3.7195"/>
+
+  <!-- Nodes for building 2: brick material, flat roof -->
+  <node id="201" lat="51.0503" lon="3.7195"/>
+  <node id="202" lat="51.0503" lon="3.7202"/>
+  <node id="203" lat="51.0505" lon="3.7202"/>
+  <node id="204" lat="51.0505" lon="3.7195"/>
+
+  <!-- Nodes for building 3: glass, hipped roof -->
+  <node id="301" lat="51.0498" lon="3.7207"/>
+  <node id="302" lat="51.0498" lon="3.7215"/>
+  <node id="303" lat="51.0501" lon="3.7215"/>
+  <node id="304" lat="51.0501" lon="3.7207"/>
+
+  <!-- Nodes for road (highway=residential) -->
+  <node id="401" lat="51.0490" lon="3.7200"/>
+  <node id="402" lat="51.0510" lon="3.7200"/>
+
+  <!-- Nodes for water polygon -->
+  <node id="501" lat="51.0493" lon="3.7208"/>
+  <node id="502" lat="51.0493" lon="3.7218"/>
+  <node id="503" lat="51.0496" lon="3.7218"/>
+  <node id="504" lat="51.0496" lon="3.7208"/>
+
+  <!-- Building 1: gabled roof, no explicit material (defaults to concrete) -->
+  <way id="1001">
+    <nd ref="101"/>
+    <nd ref="102"/>
+    <nd ref="103"/>
+    <nd ref="104"/>
+    <nd ref="101"/>
+    <tag k="building" v="yes"/>
+    <tag k="roof:shape" v="gabled"/>
+    <tag k="height" v="10"/>
+    <tag k="roof:height" v="3"/>
+  </way>
+
+  <!-- Building 2: brick material, flat roof -->
+  <way id="1002">
+    <nd ref="201"/>
+    <nd ref="202"/>
+    <nd ref="203"/>
+    <nd ref="204"/>
+    <nd ref="201"/>
+    <tag k="building" v="yes"/>
+    <tag k="building:material" v="brick"/>
+    <tag k="height" v="12"/>
+  </way>
+
+  <!-- Building 3: glass curtain wall, hipped roof -->
+  <way id="1003">
+    <nd ref="301"/>
+    <nd ref="302"/>
+    <nd ref="303"/>
+    <nd ref="304"/>
+    <nd ref="301"/>
+    <tag k="building" v="office"/>
+    <tag k="building:material" v="glass"/>
+    <tag k="roof:shape" v="hipped"/>
+    <tag k="height" v="20"/>
+    <tag k="roof:height" v="4"/>
+  </way>
+
+  <!-- Road: residential highway -->
+  <way id="2001">
+    <nd ref="401"/>
+    <nd ref="402"/>
+    <tag k="highway" v="residential"/>
+    <tag k="name" v="Teststraat"/>
+    <tag k="lanes" v="2"/>
+  </way>
+
+  <!-- Water polygon: small pond -->
+  <way id="3001">
+    <nd ref="501"/>
+    <nd ref="502"/>
+    <nd ref="503"/>
+    <nd ref="504"/>
+    <nd ref="501"/>
+    <tag k="natural" v="water"/>
+    <tag k="water" v="pond"/>
+  </way>
+
+</osm>
