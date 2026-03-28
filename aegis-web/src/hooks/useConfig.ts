@@ -55,8 +55,8 @@ export function useConfig() {
         }
 
         // Hydrate environment store from config
-        if ((config as Record<string, unknown>).environment) {
-          const env = (config as Record<string, unknown>).environment as Record<string, unknown>
+        if ((config as unknown as Record<string, unknown>).environment) {
+          const env = (config as unknown as Record<string, unknown>).environment as Record<string, unknown>
           const osmCfg = env.osm as Record<string, unknown> | undefined
           const tilesCfg = env.tiles as Record<string, unknown> | undefined
           useEnvironmentStore.setState({

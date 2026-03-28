@@ -31,7 +31,7 @@ export function Environment3DTiles({ children }: Props) {
 
   return (
     <TilesRenderer>
-      <TilesPlugin plugin={GoogleCloudAuthPlugin} args={pluginArgs} />
+      <TilesPlugin plugin={GoogleCloudAuthPlugin} args={pluginArgs as any} />
       <TilesAttributionOverlay
         style={{ position: 'absolute', right: 10, bottom: 10, left: 'auto' }}
       />
