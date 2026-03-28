@@ -75,3 +75,22 @@ class TestEnvironmentMesh:
     def test_combine_empty(self):
         with pytest.raises(ValueError):
             EnvironmentMesh.combine()
+
+
+class TestFromVoxels:
+    def test_produces_mesh(self):
+        positions = np.array([[0, 0, 0], [2, 0, 0]], dtype=np.float64)
+        materials = [MaterialType.CONCRETE, MaterialType.BRICK]
+        mesh = EnvironmentMesh.from_voxels(positions, materials, voxel_size=1.0)
+        assert mesh.vertices.shape[1] == 3
+        assert mesh.triangles.shape[1] == 3
+        assert len(mesh.materials) == len(mesh.triangles)
+        assert mesh.source == "voxels"
+        # 2 voxels * 12 triangles each
+        assert len(mesh.triangles) == 24
+
+    def test_material_assignment(self):
+        positions = np.array([[0, 0, 0]], dtype=np.float64)
+        materials = [MaterialType.GLASS]
+        mesh = EnvironmentMesh.from_voxels(positions, materials, voxel_size=1.0)
+        assert all(m == MaterialType.GLASS for m in mesh.materials)

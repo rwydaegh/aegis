@@ -65,6 +65,95 @@ class EnvironmentMesh:
         return to_binary(self)
 
     @classmethod
+    def from_voxels(cls, positions, materials, voxel_size):
+        """Convert voxel data to EnvironmentMesh by generating cube faces."""
+        from aegis.environment.osm import _compute_face_normals
+
+        n = len(positions)
+        half = voxel_size / 2
+        offsets = (
+            np.array(
+                [
+                    [-1, -1, -1],
+                    [-1, -1, 1],
+                    [-1, 1, -1],
+                    [-1, 1, 1],
+                    [1, -1, -1],
+                    [1, -1, 1],
+                    [1, 1, -1],
+                    [1, 1, 1],
+                ],
+                dtype=np.float64,
+            )
+            * half
+        )
+        cube_tris = np.array(
+            [
+                [0, 2, 6],
+                [0, 6, 4],
+                [1, 5, 7],
+                [1, 7, 3],
+                [0, 1, 3],
+                [0, 3, 2],
+                [4, 6, 7],
+                [4, 7, 5],
+                [0, 4, 5],
+                [0, 5, 1],
+                [2, 3, 7],
+                [2, 7, 6],
+            ],
+            dtype=np.uint32,
+        )
+
+        all_verts = np.repeat(np.asarray(positions, dtype=np.float64), 8, axis=0).reshape(n, 8, 3) + offsets
+        all_verts = all_verts.reshape(-1, 3)
+        all_tris = np.tile(cube_tris, (n, 1, 1))
+        for i in range(n):
+            all_tris[i] += i * 8
+        all_tris = all_tris.reshape(-1, 3)
+
+        mat_array = (
+            np.repeat(np.array(materials, dtype=np.uint8), 12)
+            if len(materials) == n
+            else np.full(n * 12, MaterialType.CONCRETE, dtype=np.uint8)
+        )
+
+        normals = _compute_face_normals(all_verts, all_tris)
+
+        return cls(
+            vertices=all_verts,
+            triangles=all_tris,
+            normals=normals,
+            materials=mat_array,
+            origin_lat=0.0,
+            origin_lon=0.0,
+            source="voxels",
+        )
+
+    @classmethod
+    def from_osm(cls, lat, lon, radius_m, **kwargs):
+        """Fetch OSM data and build environment mesh."""
+        from aegis.environment.osm import build_environment_from_osm, fetch_osm
+
+        xml = fetch_osm(lat, lon, radius_m)
+        return build_environment_from_osm(xml, origin_lat=lat, origin_lon=lon, **kwargs)
+
+    @classmethod
+    def from_3dtiles(cls, lat, lon, radius_m, geometric_error=30.0, api_key=None):
+        """Fetch 3D Tiles and build environment mesh."""
+        import os
+
+        from aegis.environment.tiles import TileTraverser
+
+        key = api_key or os.environ.get("GOOGLE_MAPS_API_KEY")
+        traverser = TileTraverser(
+            root_url="https://tile.googleapis.com/v1/3dtiles/root.json",
+            api_key=key,
+            geometric_error=geometric_error,
+        )
+        return traverser.traverse(lat, lon, radius_m)
+
+    @classmethod
     def combine(cls, *meshes: EnvironmentMesh) -> EnvironmentMesh:
         if not meshes:
             raise ValueError("At least one mesh required")
