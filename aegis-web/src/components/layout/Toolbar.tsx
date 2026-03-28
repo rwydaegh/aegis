@@ -1,4 +1,4 @@
-import { PanelLeft, Box, AlignCenter, AlignJustify, LayoutGrid, Focus, Video, Share2, BookOpen } from 'lucide-react'
+import { PanelLeft, Box, AlignCenter, AlignJustify, LayoutGrid, Focus, Video, Globe, Share2, BookOpen } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { useSimulationStore } from '@/stores/simulation'
@@ -74,6 +74,7 @@ export default function Toolbar() {
   const scenario = viewerConfig?.active_scenario_description ?? viewerConfig?.active_scenario ?? null
 
   function handleCameraPreset(preset: CameraPreset & string) {
+    setCameraMode('orbit')
     setCameraPreset(preset)
     // Clear after a tick so the controller fires on every click (even the same preset)
     setTimeout(() => setCameraPreset(null), 50)
@@ -143,6 +144,21 @@ export default function Toolbar() {
               <Video className="size-4" />
             </TooltipTrigger>
             <TooltipContent>{cameraMode === 'follow' ? 'Free camera' : 'Follow camera'}</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger
+              onClick={() => setCameraMode(cameraMode === 'globe' ? 'orbit' : 'globe')}
+              className={cn(
+                'inline-flex items-center justify-center size-7 rounded transition-colors',
+                cameraMode === 'globe'
+                  ? 'bg-primary/15 text-primary'
+                  : 'hover:bg-muted text-muted-foreground hover:text-foreground',
+              )}
+              aria-label="Toggle globe camera"
+            >
+              <Globe className="size-4" />
+            </TooltipTrigger>
+            <TooltipContent>{cameraMode === 'globe' ? 'Free camera' : 'Globe camera'}</TooltipContent>
           </Tooltip>
         </div>
       </div>

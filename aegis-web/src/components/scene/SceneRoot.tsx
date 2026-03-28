@@ -19,6 +19,9 @@ import VoxelField from './VoxelField'
 import SceneGeometry from './SceneGeometry'
 import Environment from './Environment'
 import FollowCamera from './FollowCamera'
+import { EnvironmentOSM } from './EnvironmentOSM'
+import { Environment3DTiles } from './Environment3DTiles'
+import { useEnvironmentStore } from '@/stores/environment'
 import { useMIMOStore } from '@/stores/mimo'
 import BodyMeshInstance from './BodyMeshInstance'
 import AntennaArrayViz from './AntennaArray'
@@ -247,6 +250,7 @@ export default function SceneRoot() {
   const bodyOffset = useSimulationStore(s => s.bodyOffset)
   const cameraMode = useUIStore(s => s.cameraMode)
   const mimoEnabled = useMIMOStore(s => s.enabled)
+  const envSource = useEnvironmentStore(s => s.source)
   if (!config) return null
 
   const cam = config.camera
@@ -255,29 +259,19 @@ export default function SceneRoot() {
 
   const controlsRef = useRef<OrbitControlsImpl | null>(null)
 
-  return (
-    <Canvas
-      camera={{
-        fov: cam.fov,
-        near: cam.near,
-        far: cam.far,
-        position: initialPosition,
-      }}
-      shadows={ren.shadows_enabled ? { type: THREE.PCFShadowMap } : false}
-      gl={{
-        antialias: ren.antialias ?? true,
-        toneMapping: THREE.ACESFilmicToneMapping,
-        preserveDrawingBuffer: true,
-      }}
-      style={{ position: 'absolute', inset: 0 }}
-      tabIndex={0}
-    >
+  const sceneContent = (
+    <>
       <color attach="background" args={[config.scene.background_color ?? '#0a0a0f']} />
       <SceneLighting />
       <ClickPlane />
-      <VoxelField />
-      <SceneGeometry />
-      <Environment />
+      {(envSource === 'none' || envSource === 'voxels') && (
+        <>
+          <VoxelField />
+          <SceneGeometry />
+          <Environment />
+        </>
+      )}
+      {envSource === 'osm' && <EnvironmentOSM />}
       {mimoEnabled ? (
         <MIMOScene />
       ) : (
@@ -299,6 +293,31 @@ export default function SceneRoot() {
           <CameraController controlsRef={controlsRef} initialPosition={initialPosition} />
           <CameraInitializer controlsRef={controlsRef} initialOffset={bodyOffset} />
         </>
+      )}
+    </>
+  )
+
+  return (
+    <Canvas
+      camera={{
+        fov: cam.fov,
+        near: cam.near,
+        far: cam.far,
+        position: initialPosition,
+      }}
+      shadows={ren.shadows_enabled ? { type: THREE.PCFShadowMap } : false}
+      gl={{
+        antialias: ren.antialias ?? true,
+        toneMapping: THREE.ACESFilmicToneMapping,
+        preserveDrawingBuffer: true,
+      }}
+      style={{ position: 'absolute', inset: 0 }}
+      tabIndex={0}
+    >
+      {envSource === '3dtiles' ? (
+        <Environment3DTiles>{sceneContent}</Environment3DTiles>
+      ) : (
+        sceneContent
       )}
     </Canvas>
   )
