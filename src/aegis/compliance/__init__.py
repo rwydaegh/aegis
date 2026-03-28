@@ -13,6 +13,8 @@ import enum
 import math
 from dataclasses import dataclass
 
+from aegis.defaults import DEFAULT_FREQ_HZ
+
 __all__ = [
     "ExposureScenario",
     "ICNIRPLimits",
@@ -191,7 +193,7 @@ def _validate_freq(freq_hz: float) -> None:
 
 def icnirp_limits(
     scenario: ExposureScenario = ExposureScenario.GENERAL_PUBLIC,
-    freq_hz: float = 28.0e9,
+    freq_hz: float = DEFAULT_FREQ_HZ,
 ) -> ICNIRPLimits:
     """Compute ICNIRP 2020 limits for a given scenario and frequency.
 

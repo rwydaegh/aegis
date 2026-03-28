@@ -8,6 +8,7 @@ import numpy as np
 
 from aegis.channel.path_loss import compute_path_loss
 from aegis.channel.presets import scale_param
+from aegis.defaults import DEFAULT_SEED, NUMERICAL_FLOOR
 from aegis.paths import PropagationPaths
 
 # 3GPP sub-path offset angles (Table 26 in QuaDRiGa v2.8.1 docs)
@@ -43,7 +44,7 @@ def generate_channel(
     antenna_pos: np.ndarray,
     body_center: np.ndarray,
     power_dbm: float,
-    seed: int = 42,
+    seed: int = DEFAULT_SEED,
     overrides: dict | None = None,
 ) -> PropagationPaths:
     """Generate stochastic multipath from a 3GPP/QuaDRiGa preset.
@@ -232,11 +233,11 @@ def _scale_angles(
     delta = np.angle(np.sum(np.exp(1j * angles) * powers))
     shifted = np.angle(np.exp(1j * (angles - delta)))
     p_total = powers.sum()
-    if p_total < 1e-30:
+    if p_total < NUMERICAL_FLOOR:
         return angles
     mean_sq = np.sum(powers * shifted**2) / p_total
     mean_val = np.sum(powers * shifted) / p_total
-    achieved_as = math.sqrt(max(mean_sq - mean_val**2, 1e-30))
+    achieved_as = math.sqrt(max(mean_sq - mean_val**2, NUMERICAL_FLOOR))
     s = target_as_rad / max(achieved_as, 1e-10)
     s = min(s, max_scale)
     return np.angle(np.exp(1j * angles * s))

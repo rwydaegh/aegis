@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from aegis._array_backend import erf, xp
+from aegis.defaults import NUMERICAL_FLOOR
 from aegis.tissue.fresnel import _fresnel_core
 
 
@@ -54,6 +55,6 @@ def physical_gelu(mu, sigma):
     Replaces ReLU at the shadow boundary with a diffraction-smoothed
     transition (monograph eq. 2.44). Width sigma = sqrt(lambda*H/(4*pi)).
     """
-    sigma_safe = xp.where(sigma > 0, sigma, 1e-30)
+    sigma_safe = xp.where(sigma > 0, sigma, NUMERICAL_FLOOR)
     z = mu / sigma_safe[:, None]
     return mu * 0.5 * (1.0 + erf(z))

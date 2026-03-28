@@ -20,6 +20,7 @@ import AnalysisPanel from '@/components/panels/AnalysisPanel'
 import AntennaPanel from '@/components/panels/AntennaPanel'
 import MIMOPanel from '@/components/hud/MIMOPanel'
 import EnvironmentPanel from '@/components/panels/EnvironmentPanel'
+import BaseStationsPanel from '@/components/panels/BaseStationsPanel'
 
 export default function Sidebar() {
   const { sidebarOpen } = useUIStore()
@@ -94,6 +95,15 @@ export default function Sidebar() {
               <AccordionContent>
                 <div className="py-2">
                   <MIMOPanel />
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="basestations" className="border-b border-border px-3">
+              <AccordionTrigger className="text-sm font-medium py-3">Base Stations</AccordionTrigger>
+              <AccordionContent>
+                <div className="py-2">
+                  <BaseStationsPanel />
                 </div>
               </AccordionContent>
             </AccordionItem>

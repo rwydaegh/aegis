@@ -14,6 +14,7 @@ from __future__ import annotations
 import numpy as np
 
 from aegis.constants import C_0, Z_0
+from aegis.defaults import DEFAULT_POWER_DBM, DEFAULT_SEED
 from aegis.paths import PropagationPaths
 
 
@@ -141,7 +142,7 @@ def paths_from_sionna_scene(
     rx_position: np.ndarray,
     freq_hz: float,
     max_bounces: int = 5,
-    tx_power_dbm: float = 60.0,
+    tx_power_dbm: float = DEFAULT_POWER_DBM,
     tx_pattern: str = "isotropic",
     return_viz: bool = False,
     los: bool = True,
@@ -154,7 +155,7 @@ def paths_from_sionna_scene(
     samples_per_src: int = 1_000_000,
     max_num_paths_per_src: int = 1_000_000,
     synthetic_array: bool = True,
-    seed: int = 42,
+    seed: int = DEFAULT_SEED,
 ) -> PropagationPaths | tuple[PropagationPaths, list[dict]]:
     """Run Sionna RT and convert results to PropagationPaths.
 

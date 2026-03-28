@@ -95,6 +95,7 @@ export function useDosimetry() {
       method: rc.method,
       rays_per_source: rc.raysPerSource,
       max_paths_per_source: rc.maxPathsPerSource,
+      chunk_size: rc.chunkSize,
       los: rc.los,
       specular_reflection: rc.specularReflection,
       diffuse_reflection: rc.diffuseReflection,

@@ -9,6 +9,8 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+from aegis.defaults import NUMERICAL_FLOOR
+
 
 @dataclass(frozen=True)
 class Precoder:
@@ -48,7 +50,7 @@ class Precoder:
         h = np.asarray(h, dtype=complex)
         h_conj = h.conj()
         norm = np.sqrt(float(np.real(np.vdot(h_conj, h_conj))))
-        if norm < 1e-30:
+        if norm < NUMERICAL_FLOOR:
             x = np.zeros_like(h)
             x[0] = np.sqrt(P)
             return cls(x=x)

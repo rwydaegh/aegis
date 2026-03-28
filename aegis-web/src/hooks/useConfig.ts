@@ -39,40 +39,76 @@ export function useConfig() {
 
         // Wire config keys from DEFAULTS that are not already wired above
         const sim = useSimulationStore.getState()
+        const scene = useSceneStore.getState()
         const ui = useUIStore.getState()
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const cfg = config as any
 
-        if ((config.dosimetry as Record<string, unknown>)?.freq_hz) {
-          sim.setFreqGhz((config.dosimetry as unknown as { freq_hz: number }).freq_hz / 1e9)
+        if (cfg.dosimetry?.freq_hz) {
+          sim.setFreqGhz(cfg.dosimetry.freq_hz / 1e9)
         }
-        if ((config.dosimetry as unknown as { default_power_dbm?: number }).default_power_dbm !== undefined) {
-          sim.setPowerDbm((config.dosimetry as unknown as { default_power_dbm: number }).default_power_dbm)
+        if (cfg.dosimetry?.default_power_dbm !== undefined) {
+          sim.setPowerDbm(cfg.dosimetry.default_power_dbm)
         }
-        if ((config.dosimetry as unknown as { exposure_scenario?: string }).exposure_scenario) {
-          const scenario = (config.dosimetry as unknown as { exposure_scenario: string }).exposure_scenario
+        if (cfg.dosimetry?.exposure_scenario) {
+          const scenario = cfg.dosimetry.exposure_scenario
           if (scenario === 'general_public' || scenario === 'occupational') {
             ui.setExposureScenario(scenario)
           }
         }
 
+        // Round-trip config keys for export/reload
+        if (cfg.antenna?.default_position) {
+          sim.setAntennaPos(cfg.antenna.default_position)
+        }
+        if (cfg.dosimetry?.skin_model) {
+          sim.setSkinModel(cfg.dosimetry.skin_model)
+        }
+        if (cfg.dosimetry?.dynamic_range_db !== undefined) {
+          ui.setDynamicRangeDb(cfg.dosimetry.dynamic_range_db)
+        }
+        if (cfg.dosimetry?.default_max_order !== undefined) {
+          scene.setRtMaxOrder(cfg.dosimetry.default_max_order)
+        }
+        if (cfg.body?.default_offset) {
+          sim.setBodyOffset(cfg.body.default_offset)
+        }
+        if (cfg.body?.default_rotation_y !== undefined) {
+          sim.setBodyRotationY(cfg.body.default_rotation_y)
+        }
+        if (cfg.body?.wireframe === true && !ui.wireframe) {
+          ui.toggleWireframe()
+        }
+        if (cfg.raytracer?.default_source) {
+          scene.setRtSource(cfg.raytracer.default_source)
+        }
+
+        // Display config
+        if (cfg.colormap?.name) scene.setColormapName(cfg.colormap.name)
+        if (cfg.lighting?.sun?.intensity !== undefined) scene.setSunIntensity(cfg.lighting.sun.intensity)
+        if (cfg.lighting?.ambient?.intensity !== undefined) scene.setAmbientIntensity(cfg.lighting.ambient.intensity)
+        if (cfg.camera?.fov !== undefined) scene.setCameraFov(cfg.camera.fov)
+
         // Hydrate environment store from config
-        if ((config as unknown as Record<string, unknown>).environment) {
-          const env = (config as unknown as Record<string, unknown>).environment as Record<string, unknown>
-          const osmCfg = env.osm as Record<string, unknown> | undefined
-          const tilesCfg = env.tiles as Record<string, unknown> | undefined
+        if (cfg.environment) {
+          const env = cfg.environment
+          const osmCfg = env.osm
+          const tilesCfg = env.tiles
           useEnvironmentStore.setState({
-            source: ((env.source as string) || 'none') as 'none' | 'voxels' | 'osm' | '3dtiles',
-            location: (env.location as { lat: number; lon: number }) || null,
-            radius: (env.radius as number) || 200,
-            geometricError: (tilesCfg?.geometric_error as number) || 30,
+            source: (env.source || 'none') as 'none' | 'voxels' | 'osm' | '3dtiles',
+            location: env.location || null,
+            radius: env.radius || 200,
+            geometricError: tilesCfg?.geometric_error || 30,
             osmOptions: {
-              defaultBuildingHeight: (osmCfg?.default_building_height as number) || 10,
-              levelHeight: (osmCfg?.level_height as number) || 3.0,
-              buildings: (osmCfg?.buildings as boolean) ?? true,
-              roads: (osmCfg?.roads as boolean) ?? true,
-              water: (osmCfg?.water as boolean) ?? true,
+              defaultBuildingHeight: osmCfg?.default_building_height || 10,
+              levelHeight: osmCfg?.level_height || 3.0,
+              buildings: osmCfg?.buildings ?? true,
+              roads: osmCfg?.roads ?? true,
+              water: osmCfg?.water ?? true,
             },
           })
         }
+
 
         // Load available scenes (server returns {name, path} objects)
         if (caps.scenes?.length > 0) {

@@ -1,15 +1,20 @@
 """Tests for SimulationConfig dataclass hierarchy."""
 
+import tempfile
+
 import pytest
 
 from aegis.config import (
     AntennaConfig,
     BodyConfig,
+    ChannelConfig,
     DosimetryConfig,
+    MIMOConfig,
     RayTracerConfig,
     SimulationConfig,
     TissueConfig,
 )
+from aegis.defaults import DEFAULT_NOISE_POWER, DEFAULT_P_ABS_MAX, DEFAULT_SEED
 
 
 def _make_config(**overrides):
@@ -77,3 +82,47 @@ class TestYamlRoundTrip:
         assert "tissue:" in text
         assert "frequency_hz:" in text
         assert "level: 2" in text
+
+
+def test_channel_config_defaults():
+    c = ChannelConfig()
+    assert c.preset == "3GPP_38.901_UMi_LOS"
+    assert c.seed == DEFAULT_SEED
+    assert c.overrides == {}
+
+
+def test_mimo_config_defaults():
+    m = MIMOConfig()
+    assert m.precoder == "mrt"
+    assert m.noise_power == DEFAULT_NOISE_POWER
+    assert m.n_rows == 4
+
+
+def test_dosimetry_config_expanded():
+    d = DosimetryConfig()
+    assert d.n_paths == 1
+    assert d.max_order == 0
+    assert d.p_abs_max == DEFAULT_P_ABS_MAX
+
+
+def test_simulation_config_backwards_compat():
+    """Old YAML without channel/mimo sections still loads."""
+    old_yaml = {
+        "tissue": {"name": "Skin", "frequency_hz": 28e9},
+        "body": {"name": "thelonious"},
+        "antenna": {"positions": [[5, 0, 1]], "power_dbm": 60},
+        "raytracer": {"backend": "differt", "max_bounces": 3},
+        "dosimetry": {"level": 2, "spatial_averaging": False},
+        "output_dir": "outputs",
+    }
+    cfg = SimulationConfig.from_dict(old_yaml)
+    assert cfg.channel.preset == "3GPP_38.901_UMi_LOS"
+    assert cfg.mimo.precoder == "mrt"
+
+
+def test_simulation_config_roundtrip():
+    cfg = SimulationConfig()
+    with tempfile.NamedTemporaryFile(suffix=".yaml", mode="w", delete=False) as f:
+        cfg.to_yaml(f.name)
+        loaded = SimulationConfig.from_yaml(f.name)
+    assert cfg == loaded

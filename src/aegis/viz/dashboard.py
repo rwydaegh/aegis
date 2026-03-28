@@ -11,6 +11,7 @@ from typing import Any
 import numpy as np
 
 from aegis.compliance import ExposureScenario, evaluate_compliance, icnirp_limits
+from aegis.defaults import DEFAULT_FREQ_HZ, NUMERICAL_FLOOR
 from aegis.result import DosimetryResult
 
 
@@ -77,7 +78,7 @@ def _draw_sab_histogram(ax: Any, result: DosimetryResult) -> None:
     """Draw S_ab histogram with ICNIRP limit line (panel 1)."""
     sab = result.sab
     ax.hist(sab[sab > 0], bins=50, color="#e74c3c", alpha=0.8, edgecolor="white")
-    freq_hz = result.freq_hz or 28.0e9
+    freq_hz = result.freq_hz or DEFAULT_FREQ_HZ
     limits = icnirp_limits(ExposureScenario.GENERAL_PUBLIC, freq_hz)
     limit = limits.sab_4cm2
     ax.axvline(limit, color="gold", linewidth=2, linestyle="--", label=f"ICNIRP limit ({limit} W/m\u00b2)")
@@ -110,7 +111,7 @@ def _draw_compliance_summary(ax: Any, result: DosimetryResult, body_mass: float 
         lines.append(f"SAR_wb: {sar_wb * 1e3:.2f} mW/kg")
 
     # Compliance evaluation via the new module
-    freq_hz = result.freq_hz or 28.0e9
+    freq_hz = result.freq_hz or DEFAULT_FREQ_HZ
     sab_4cm2_val = result.peak_sab_averaged if result.peak_sab_averaged is not None else result.peak_sab
     compliance = evaluate_compliance(
         scenario=ExposureScenario.GENERAL_PUBLIC,
@@ -159,7 +160,7 @@ def _draw_eigenspectrum(ax: Any, result: DosimetryResult) -> None:
         ax.set_xlabel("Eigenvalue index")
         ax.set_ylabel("Eigenvalue magnitude")
         ax.set_title("Q eigenspectrum")
-        ax.set_yscale("log" if np.max(eigs) / (np.min(eigs[eigs > 0]) + 1e-30) > 100 else "linear")
+        ax.set_yscale("log" if np.max(eigs) / (np.min(eigs[eigs > 0]) + NUMERICAL_FLOOR) > 100 else "linear")
 
 
 def _draw_rho_gauge(ax: Any, rho: float) -> None:

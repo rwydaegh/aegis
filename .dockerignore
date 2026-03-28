@@ -11,3 +11,7 @@ aegis-web/dist
 .env
 *.egg-info
 docs/superpowers
+basestations/.git
+basestations/output
+basestations/**/*.pkl
+basestations/**/*.mat

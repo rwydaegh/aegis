@@ -6,6 +6,7 @@ export interface RtStoreConfig {
   method: 'exhaustive' | 'sbr' | 'hybrid'
   raysPerSource: number
   maxPathsPerSource: number
+  chunkSize: number | null
   los: boolean
   specularReflection: boolean
   diffuseReflection: boolean
@@ -22,6 +23,7 @@ const DEFAULT_RT_CONFIG: RtStoreConfig = {
   method: 'exhaustive',
   raysPerSource: 1_000_000,
   maxPathsPerSource: 1_000_000,
+  chunkSize: null,
   los: true,
   specularReflection: true,
   diffuseReflection: false,
@@ -67,6 +69,12 @@ interface SceneStore {
   // GLB tiles
   glbTiles: string[]
 
+  // Display config (shareable)
+  colormapName: string
+  sunIntensity: number
+  ambientIntensity: number
+  cameraFov: number
+
   // Ray tracing
   pathSource: 'synthetic' | 'stochastic' | 'rt'
   rtSource: 'voxel' | 'differt' | 'sionna'
@@ -95,6 +103,10 @@ interface SceneStore {
   setRtPaths: (paths: PathViz[] | null) => void
   setLoadedScenePath: (path: string) => void
   setRtConfig: (partial: Partial<RtStoreConfig>) => void
+  setColormapName: (name: string) => void
+  setSunIntensity: (v: number) => void
+  setAmbientIntensity: (v: number) => void
+  setCameraFov: (v: number) => void
   clearScene: () => void
 }
 
@@ -106,6 +118,10 @@ export const useSceneStore = create<SceneStore>((set) => ({
   voxelData: null,
   voxelHeightmap: null,
   layerVisibility: {},
+  colormapName: 'inferno',
+  sunIntensity: 1.2,
+  ambientIntensity: 0.6,
+  cameraFov: 55,
   envDisplayMode: 'cubes',
   scenes: [],
   sceneGeometry: null,
@@ -142,6 +158,10 @@ export const useSceneStore = create<SceneStore>((set) => ({
   setRtPaths: (paths) => set({ rtPaths: paths }),
   setLoadedScenePath: (path) => set({ loadedScenePath: path }),
   setRtConfig: (partial) => set((state) => ({ rtConfig: { ...state.rtConfig, ...partial } })),
+  setColormapName: (name) => set({ colormapName: name }),
+  setSunIntensity: (v) => set({ sunIntensity: v }),
+  setAmbientIntensity: (v) => set({ ambientIntensity: v }),
+  setCameraFov: (v) => set({ cameraFov: v }),
   clearScene: () => set({
     voxelData: null,
     voxelHeightmap: null,
