@@ -155,10 +155,7 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             return err
 
         # Transform body by offset + rotation (same as /api/dosimetry)
-        logger.warning("BS compute: body_rotation_y=%s body_offset=%s", body_rotation_y, body_offset)
         transformed_body = _transform_body_for_viewer(body, body_offset, body_rotation_y)
-        normals_changed = not np.allclose(body.normals, transformed_body.normals)
-        logger.warning("BS compute: normals_changed=%s", normals_changed)
         body_center = np.mean(transformed_body.centroids, axis=0)
 
         # Compute paths
