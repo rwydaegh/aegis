@@ -19,6 +19,7 @@ import ExportPanel from '@/components/panels/ExportPanel'
 import AnalysisPanel from '@/components/panels/AnalysisPanel'
 import AntennaPanel from '@/components/panels/AntennaPanel'
 import MIMOPanel from '@/components/hud/MIMOPanel'
+import EnvironmentPanel from '@/components/panels/EnvironmentPanel'
 
 export default function Sidebar() {
   const { sidebarOpen } = useUIStore()
@@ -66,6 +67,15 @@ export default function Sidebar() {
               <AccordionContent>
                 <div className="py-2">
                   <AnalysisPanel />
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="environment" className="border-b border-border px-3">
+              <AccordionTrigger className="text-sm font-medium py-3">Environment</AccordionTrigger>
+              <AccordionContent>
+                <div className="py-2">
+                  <EnvironmentPanel />
                 </div>
               </AccordionContent>
             </AccordionItem>
