@@ -17,6 +17,7 @@
     "@fontsource-variable/geist": "^5.2.8",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
+    "3d-tiles-renderer": "^0.4.23",
     "@types/pako": "^2.0.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

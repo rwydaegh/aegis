@@ -309,6 +309,21 @@ DEFAULTS: dict = {
         "ground_sample_step_m": 0.35,
         "feet_clearance_m": 0.05,
     },
+    "environment": {
+        "source": "none",
+        "location": None,
+        "radius": 200,
+        "osm": {
+            "default_building_height": 10,
+            "level_height": 3.0,
+            "buildings": True,
+            "roads": True,
+            "water": True,
+        },
+        "tiles": {
+            "geometric_error": 30.0,
+        },
+    },
     "location": {
         "default_radius": 30,
         "radius_min": 10,

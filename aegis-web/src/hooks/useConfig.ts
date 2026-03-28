@@ -3,6 +3,7 @@ import { fetchViewerConfig, fetchCapabilities } from '@/api/client'
 import { useSceneStore } from '@/stores/scene'
 import { useSimulationStore } from '@/stores/simulation'
 import { useUIStore } from '@/stores/ui'
+import { useEnvironmentStore } from '@/stores/environment'
 import type { ScenePos } from '@/api/coordinates'
 
 type ConfigStatus = 'loading' | 'ready' | 'error'
@@ -87,6 +88,27 @@ export function useConfig() {
         if (cfg.lighting?.sun?.intensity !== undefined) scene.setSunIntensity(cfg.lighting.sun.intensity)
         if (cfg.lighting?.ambient?.intensity !== undefined) scene.setAmbientIntensity(cfg.lighting.ambient.intensity)
         if (cfg.camera?.fov !== undefined) scene.setCameraFov(cfg.camera.fov)
+
+        // Hydrate environment store from config
+        if (cfg.environment) {
+          const env = cfg.environment
+          const osmCfg = env.osm
+          const tilesCfg = env.tiles
+          useEnvironmentStore.setState({
+            source: (env.source || 'none') as 'none' | 'voxels' | 'osm' | '3dtiles',
+            location: env.location || null,
+            radius: env.radius || 200,
+            geometricError: tilesCfg?.geometric_error || 30,
+            osmOptions: {
+              defaultBuildingHeight: osmCfg?.default_building_height || 10,
+              levelHeight: osmCfg?.level_height || 3.0,
+              buildings: osmCfg?.buildings ?? true,
+              roads: osmCfg?.roads ?? true,
+              water: osmCfg?.water ?? true,
+            },
+          })
+        }
+
 
         // Load available scenes (server returns {name, path} objects)
         if (caps.scenes?.length > 0) {

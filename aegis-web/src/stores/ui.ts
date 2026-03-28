@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 
 export type CameraPreset = 'front' | 'side' | 'top' | 'focus' | 'reset' | null
-export type CameraMode = 'orbit' | 'follow'
+export type CameraMode = 'orbit' | 'follow' | 'globe'
 export type LegendScale = 'linear' | 'dB'
 export type { QuantityKey } from '@/api/types'
 export type ExposureScenario = 'general_public' | 'occupational'
