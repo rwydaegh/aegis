@@ -20,14 +20,9 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
     @app.route("/api/basestations/load", methods=["POST"])
     def api_basestations_load():
         """Load base stations from basestationLib for a given area."""
-        try:
-            from aegis.basestation.adapter import load_basestations
-        except ImportError as exc:
-            return jsonify({"error": str(exc)}), 500
+        from aegis.basestation.adapter import load_basestations_from_csv
 
         params = request.get_json(silent=True) or {}
-        country = params.get("country", "Belgium")
-        region = params.get("region", "brussels")
 
         # Build bbox from lat/lon/radius or use explicit bbox
         bbox = params.get("bbox")
@@ -39,15 +34,40 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             dlon = radius_m / (111_320.0 * np.cos(np.radians(lat)))
             bbox = [lon - dlon, lon + dlon, lat - dlat, lat + dlat]
 
+        # Try CSV first (fast, no external API), then basestationLib
+        csv_path = params.get("csv_path")
+        if csv_path is None:
+            # Look for bundled CSV data
+            import os
+
+            data_dir = os.environ.get("AEGIS_DATA_DIR", "data")
+            for candidate in [
+                os.path.join(data_dir, "basestations", "brussels.csv"),
+                "data/basestations/brussels.csv",
+            ]:
+                if os.path.exists(candidate):
+                    csv_path = candidate
+                    break
+
         try:
-            basestations = load_basestations(
-                country=country,
-                region=region,
-                bbox=bbox,
-                operator=params.get("operator"),
-                technology=params.get("technology"),
-                max_workers=int(params.get("max_workers", 4)),
-            )
+            if csv_path:
+                basestations = load_basestations_from_csv(
+                    csv_path,
+                    bbox=bbox,
+                    operator=params.get("operator"),
+                    technology=params.get("technology"),
+                )
+            else:
+                from aegis.basestation.adapter import load_basestations
+
+                basestations = load_basestations(
+                    country=params.get("country", "Belgium"),
+                    region=params.get("region", "brussels"),
+                    bbox=bbox,
+                    operator=params.get("operator"),
+                    technology=params.get("technology"),
+                    max_workers=int(params.get("max_workers", 4)),
+                )
         except Exception as exc:
             logger.exception("Failed to load basestations")
             return jsonify({"error": f"Loading failed: {exc}"}), 500

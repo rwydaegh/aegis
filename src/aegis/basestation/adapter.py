@@ -99,6 +99,37 @@ def load_basestations_from_df(
     return result
 
 
+def load_basestations_from_csv(
+    csv_path: str,
+    bbox: list[float] | None = None,
+    operator: str | None = None,
+    technology: str | None = None,
+) -> list[BaseStation]:
+    """Load base stations from a pre-extracted CSV file.
+
+    This avoids the basestationLib runtime dependency and OOM issues
+    from fetching all data from the API.
+    """
+    df = pd.read_csv(csv_path)
+
+    # Apply filters
+    if bbox and len(bbox) == 4:
+        min_lon, max_lon, min_lat, max_lat = bbox
+        df = df[
+            (df["Longitude"] >= min_lon)
+            & (df["Longitude"] <= max_lon)
+            & (df["Latitude"] >= min_lat)
+            & (df["Latitude"] <= max_lat)
+        ]
+    if operator:
+        df = df[df["Operator"].str.contains(operator, case=False, na=False)]
+    if technology:
+        df = df[df["Technology"].str.contains(technology, case=False, na=False)]
+
+    logger.info("Loaded %d antennas from CSV (after filters)", len(df))
+    return load_basestations_from_df(df)
+
+
 def load_basestations(
     country: str = "Belgium",
     region: str = "brussels",
