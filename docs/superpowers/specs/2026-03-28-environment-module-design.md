@@ -77,7 +77,7 @@ MATERIAL_EM_PROPERTIES = {
     MaterialType.UNKNOWN:    {"eps_r": 5.31, "sigma": 0.0326},  # default to concrete
 }
 
-@dataclass(frozen=True)
+@dataclass
 class EnvironmentMesh:
     vertices: np.ndarray       # (N, 3) float64, local ENU meters
     triangles: np.ndarray      # (M, 3) uint32, face indices
@@ -97,11 +97,13 @@ class EnvironmentMesh:
     def from_voxels(cls, positions, materials, voxel_size) -> "EnvironmentMesh": ...
 
     @classmethod
-    def combine(cls, *meshes) -> "EnvironmentMesh": ...
+    def combine(cls, *meshes) -> "EnvironmentMesh":
+        """Merge meshes. All inputs must share the same origin (lat/lon). Raises ValueError otherwise."""
+        ...
 
-    def to_differt_scene(self): ...        # returns DiffeRT TriangleScene
-    def to_sionna_xml(self, path): ...     # writes Sionna XML
-    def to_binary(self) -> bytes: ...      # wire format for frontend
+    def to_differt_scene(self): ...                    # returns DiffeRT TriangleScene
+    def to_sionna_xml(self, path): ...                 # writes Sionna XML
+    def to_binary(self) -> tuple[bytes, dict]: ...     # (binary_data, metadata_dict)
 ```
 
 ## geo.py: coordinate transforms
@@ -180,7 +182,7 @@ def generate_building(footprint: np.ndarray, height: float,
 
 - `triangulate_polygon(polygon: np.ndarray) -> np.ndarray` - ear-clipping or fan triangulation for convex/simple polygons
 - `extrude_walls(footprint: np.ndarray, base_height: float, top_height: float) -> tuple[np.ndarray, np.ndarray]` - wall quads from footprint edges, triangulated
-- Straight skeleton from `blosm/lib/bpypolyskel/` with ~5 `mathutils.Vector` calls replaced by numpy arrays
+- Straight skeleton: full numpy rewrite of `blosm/lib/bpypolyskel/bpyeuclid.py` (~150 lines of 2D point/line/ray geometry), then `bpypolyskel.py` adapted to use it
 
 ## tiles.py: 3D Tiles server-side pipeline
 
@@ -492,14 +494,14 @@ Scenarios can set `environment.*` keys to preconfigure city environments:
 
 ### Python (new)
 
-- `requests` (already in deps for other features, or add if missing)
+- `requests` (must be added to `viewer` optional extra in `pyproject.toml`)
 - No new compiled dependencies. All numpy/scipy.
 
 ### Python (used from blosm, imported)
 
 - `blosm.parse.osm` - OSM XML parser (pure Python)
 - `blosm.threed_tiles.py3dtiles` - B3DM/GLB parser (pure Python + numpy)
-- `blosm.lib.bpypolyskel` - straight skeleton (pure Python, ~5 mathutils.Vector calls adapted)
+- `blosm.lib.bpypolyskel` - straight skeleton (pure Python, requires full numpy rewrite of bpyeuclid.py)
 
 ### npm (new)
 
@@ -507,8 +509,160 @@ Scenarios can set `environment.*` keys to preconfigure city environments:
 
 ## Blosm code usage
 
-Blosm source lives at `blosm/` in the repo root (already copy-pasted by user). We import its pure Python modules but do not modify them. The import path is `blosm.parse.osm`, `blosm.threed_tiles.py3dtiles`, etc.
+Blosm source lives at `blosm/` in the repo root (already copy-pasted by user). We reference its pure Python modules as algorithm sources but cannot import the `blosm` package directly.
 
-For `blosm.lib.bpypolyskel`, we write a thin adapter in `roofs.py` that replaces the ~5 `mathutils.Vector` constructor calls with numpy array equivalents before calling the skeleton algorithm.
+### Import boundary (critical)
 
-For `blosm.threed_tiles.manager.BaseManager`, we do NOT import it directly (too many mathutils calls). Instead, we reimplement the traversal logic in `tiles.py` using numpy, referencing the original algorithm.
+`blosm/__init__.py` imports `bpy`, `bmesh`, `blf` at module load time. Any `from blosm.X import Y` will fail outside Blender. The safe import boundary:
+
+- **Safe to import directly**: `blosm.threed_tiles.py3dtiles.*` (pure Python + numpy, no blosm `__init__` in the import chain since `py3dtiles` has its own `__init__`)
+- **NOT safe to import**: anything that traverses `blosm/__init__.py`, including `blosm.parse.osm`, `blosm.threed_tiles.manager`, `blosm.lib.bpypolyskel`
+
+**Solution**: use `importlib` to load specific submodules without triggering the top-level `__init__.py`:
+
+```python
+import importlib.util
+
+def _import_blosm_submodule(dotted_path: str, file_path: str):
+    """Import a blosm submodule directly from its file, bypassing blosm/__init__.py."""
+    spec = importlib.util.spec_from_file_location(dotted_path, file_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+```
+
+Alternatively, for the OSM parser and py3dtiles, we can add `blosm/parse/` and `blosm/threed_tiles/` to `sys.path` and import directly as `parse.osm` and `py3dtiles`. The implementation will determine the cleanest approach.
+
+Within `blosm/threed_tiles/`, only `py3dtiles/` is safe. `blender.py`, `gltf_patch.py`, and `manager.py` all import `mathutils` or `bpy`. We do NOT import any of these.
+
+### bpypolyskel adaptation scope
+
+The straight skeleton library (`blosm/lib/bpypolyskel/`) has deeper mathutils usage than initially estimated. `bpyeuclid.py` contains 21 `mathutils` references including `mathutils.geometry.intersect_point_line` (a C extension method). We will write a complete numpy replacement for `bpyeuclid.py` (2D point/line/ray geometry, roughly 150 lines), then `bpypolyskel.py` can be used with minimal changes. This is a self-contained geometry module, not a thin adapter.
+
+### BaseManager reimplementation
+
+`blosm.threed_tiles.manager.BaseManager` uses `mathutils.Vector` and `mathutils.Matrix` throughout for ECEF coordinate math and bounding volume intersection. We reimplement the traversal logic in `tiles.py` using numpy, referencing the original algorithm. The key methods to port: `fromGeographic()`, bounding volume intersection (SAT for OBB-AABB, sphere-sphere, box-sphere), tile selection by geometric error.
+
+## Coordinate system conventions
+
+EnvironmentMesh stores vertices in **ENU (East-North-Up)** meters relative to `(origin_lat, origin_lon)`. All coordinate transforms happen at the boundaries:
+
+| Boundary | From | To | Where |
+|---|---|---|---|
+| OSM input | WGS84 lat/lon | ENU meters | `osm.py` via `geo.py` |
+| 3D Tiles input | ECEF | ENU meters | `tiles.py` via `geo.py` |
+| DiffeRT export | ENU `[e, n, u]` | Z-up `[e, n, u]` | `export.py` (ENU is already Z-up) |
+| Frontend binary | ENU `[e, n, u]` | Y-up `[e, u, -n]` | `export.py` via `geo.enu_to_yup()` |
+| 3DTilesRendererJS | ECEF (handled by lib) | Screen | Client-side, no conversion needed |
+
+The existing `scene_data.py` convention: Y-up `[x, y_up, z_horiz]` to Z-up `[x, -z_horiz, y_up]` in `prepare_for_raytracing()`. The environment module follows the same principle but with ENU as the canonical storage format. The swap to Y-up for frontend or Z-up for DiffeRT happens in `export.py`, never in the core dataclass.
+
+## Threading and cache safety
+
+All environment route handlers use `_cache_lock` (the existing `threading.RLock` from `server.py`) for cache mutations. Cache slots:
+
+- `_cache["environment_mesh_osm"]` - last OSM-generated mesh
+- `_cache["environment_mesh_tiles"]` - last 3D Tiles-generated mesh
+- `_cache["environment_mesh_combined"]` - last combined mesh
+- `_cache["environment_scene_path"]` - last exported DiffeRT/Sionna scene path
+
+Long-running operations (Overpass fetch, 3D Tiles traversal) release the lock during network I/O and only hold it for the final cache write. If a second request arrives while the first is in progress, it waits for the lock on cache write, then overwrites.
+
+`POST /api/environment/from-voxels` returns 404 with `{"error": "No voxels loaded"}` if `_cache["voxel_data"]` is absent.
+
+## Overpass API error handling
+
+`osm.py` sets a 60-second timeout on all Overpass requests. On failure:
+- HTTP 429 (rate limited): return 503 with `Retry-After` header
+- HTTP 504 or timeout: return 504 with message suggesting smaller radius
+- Malformed XML: return 422
+- Response size capped at 50MB (reject larger responses before parsing)
+
+## `requests` dependency
+
+`requests` must be added to the `viewer` optional extra in `pyproject.toml` (it is not currently in `[project.dependencies]` or the `viewer` extra).
+
+## Frontend: `EastNorthUpFrame` coordinate convention
+
+`EastNorthUpFrame` from `3d-tiles-renderer/r3f` takes lat/lon in **radians**, not degrees. The component must convert:
+
+```tsx
+<EastNorthUpFrame
+  lat={location.lat * Math.PI / 180}
+  lon={location.lon * Math.PI / 180}
+>
+```
+
+## Frontend: `TilesPlugin` args memoization
+
+The `args` object passed to `<TilesPlugin>` must be wrapped in `useMemo` to prevent plugin recreation on every render:
+
+```tsx
+const pluginArgs = useMemo(() => ({
+  apiToken: apiKey,
+  logoUrl: "/google-maps-logo.png",
+}), [apiKey]);
+
+<TilesPlugin plugin={GoogleCloudAuthPlugin} args={pluginArgs} />
+```
+
+## Frontend: camera mode interaction with follow mode
+
+The existing camera system has `'orbit'` and `'follow'` modes. Adding `'globe'` creates a three-way branch:
+
+- `'orbit'`: current OrbitControls + WASD physics (default)
+- `'follow'`: FollowCamera tracks body (existing)
+- `'globe'`: GlobeControls for earth-scale navigation (new)
+
+Globe mode disables both OrbitControls and FollowCamera. Clicking any camera preset (front/side/top/focus/reset) switches back to `'orbit'`. The FollowCamera component already checks `cameraMode === 'follow'` internally, so adding `'globe'` does not require changes to FollowCamera.
+
+## Frontend: Google Maps logo as bundled asset
+
+The Google Maps logo must be bundled as a static asset (not fetched from an external URL) since the viewer may run in air-gapped or firewalled environments. Download the outlined Google Maps logo from Google's Map Tiles API policies page and place it at `aegis-web/public/google-maps-logo.png`. Reference as `logoUrl: "/google-maps-logo.png"`.
+
+This is a **mandatory legal compliance requirement** per Google's Map Tiles API Terms of Service.
+
+## Frontend: environment store hydration from config
+
+On app load, the environment store initializes from `viewerConfig.environment`:
+
+```typescript
+// In useConfig.ts or equivalent initialization hook
+useEffect(() => {
+  if (viewerConfig?.environment) {
+    const env = viewerConfig.environment;
+    useEnvironmentStore.setState({
+      source: env.source,
+      location: env.location,
+      radius: env.radius,
+      geometricError: env.tiles.geometric_error,
+      osmOptions: {
+        defaultBuildingHeight: env.osm.default_building_height,
+        levelHeight: env.osm.level_height,
+        buildings: env.osm.buildings,
+        roads: env.osm.roads,
+        water: env.osm.water,
+      },
+    });
+  }
+}, [viewerConfig]);
+```
+
+This enables scenarios to preconfigure the environment source and location.
+
+## Binary wire format details
+
+All binary serialization uses **little-endian native byte order** via numpy `.tobytes()`, matching the existing pattern in `scene_data.py` and `raytracer.py`. The frontend reads with `new Float32Array(buffer)` etc. (also native LE on all target platforms).
+
+The `to_binary()` method signature is `-> tuple[bytes, dict]` (binary data + metadata dict), consistent with `body_to_binary()` and `voxels_to_binary()`. The metadata goes in the `X-Meta` response header as JSON. The dataclass method `EnvironmentMesh.to_binary()` delegates to `export.to_binary(self)`.
+
+## Material classification: relationship to existing system
+
+Two material classification systems coexist:
+
+- **Existing** (`scene_data.py`): `classify_material(r, g, b)` maps voxel RGB vertex colors to material names using HSV thresholds from `config.material_classification`. Output: string names ("concrete", "asphalt", etc.)
+- **New** (`materials.py`): `MaterialType` enum maps to ITU-R P.2040 EM properties from `config.environment.materials`. Used by the environment module.
+
+These are complementary. The existing system classifies voxel colors into material names. The new system maps material names to EM properties. When converting voxels to `EnvironmentMesh` via `from_voxels()`, the existing classification output feeds into the new `MaterialType` enum (string name lookup).
+
+The HSV thresholds in `config.material_classification` are NOT duplicated. The environment module's `materials.py` only contains the EM property mapping. For 3D Tiles vertex color classification, `materials.py` reuses the same HSV rules by calling the existing `classify_material()` function from `scene_data.py`.
