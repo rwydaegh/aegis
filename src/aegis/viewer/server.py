@@ -449,12 +449,13 @@ def create_app(
         )
 
     # --- Register route modules ---
-    from aegis.viewer.routes import analysis, compute, data, location, mimo
+    from aegis.viewer.routes import analysis, compute, data, environment, location, mimo
 
     data.register(app, _cache, _cache_lock)
     compute.register(app, _cache, _cache_lock)
     location.register(app, _cache, _cache_lock)
     analysis.register(app, _cache, _cache_lock)
     mimo.register(app, _cache, _cache_lock)
+    environment.register(app, _cache, _cache_lock)
 
     return app
