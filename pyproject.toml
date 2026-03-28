@@ -32,7 +32,7 @@ viz = [
     "trame>=3.0",
     "scienceplots>=2.1.0",
 ]
-viewer = ["flask>=3.0", "psutil>=5.9", "differt>=0.7.0", "modal>=0.73"]
+viewer = ["flask>=3.0", "psutil>=5.9", "differt>=0.7.0", "modal>=0.73", "pandas>=1.5"]
 rt = ["differt>=0.7.0"]
 sionna = ["sionna-rt>=2.0,<3.0"]
 modal = ["modal>=0.73"]
