@@ -53,6 +53,8 @@ dev = [
     "pre-commit>=3.5",
     "codespell>=2.2",
     "miepython>=2.6",
+    "requests>=2.31",
+    "pandas>=1.5",
 ]
 cloud = ["requests>=2.31"]
 all = ["aegis[jax,gpu,viz,viewer,rt,sionna,docs,dev,cloud,modal]"]
