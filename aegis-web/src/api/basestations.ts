@@ -46,6 +46,7 @@ interface ComputeParams {
   indices?: number[]
   mode?: string
   body_offset?: [number, number, number]
+  body_rotation_y?: number
   quantities?: string[]
   skin_model?: string
   freq_hz?: number

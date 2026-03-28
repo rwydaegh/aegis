@@ -115,11 +115,12 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
         """
         from aegis.basestation.adapter import paths_from_basestations
         from aegis.engine import DosimetryEngine
-        from aegis.viewer.compute import resolve_skin_model
+        from aegis.viewer.compute import _transform_body_for_viewer, resolve_skin_model
         from aegis.viewer.routes.compute import (
             _build_binary_response,
             _build_stats_response,
             _inject_curvature_H,
+            _parse_rotation_y,
             _parse_vec3,
         )
 
@@ -145,12 +146,17 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
         if not selected:
             return jsonify({"error": "No base stations selected"}), 400
 
-        # Body offset
+        # Body offset and rotation
         body_offset, err = _parse_vec3(params, "body_offset", [0, 0, 0])
         if err:
             return err
+        body_rotation_y, err = _parse_rotation_y(params)
+        if err:
+            return err
 
-        body_center = np.mean(body.centroids, axis=0) + body_offset
+        # Transform body by offset + rotation (same as /api/dosimetry)
+        transformed_body = _transform_body_for_viewer(body, body_offset, body_rotation_y)
+        body_center = np.mean(transformed_body.centroids, axis=0)
 
         # Compute paths
         paths = paths_from_basestations(
@@ -197,9 +203,9 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
         engine = DosimetryEngine(tissue)
         mode = params.get("mode", "spatial")
         engine_kw = {"mode": mode, "spatial_averaging": True}
-        engine_kw = _inject_curvature_H(engine_kw, body)
+        engine_kw = _inject_curvature_H(engine_kw, transformed_body)
 
-        result = engine.compute(body, paths, **engine_kw)
+        result = engine.compute(transformed_body, paths, **engine_kw)
 
         # Build response using existing format
         quantities = params.get("quantities", ["sab", "sab_4cm2"])
@@ -208,7 +214,7 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
         level, mode_str, corrections = None, mode, []
         stats = _build_stats_response(
             result,
-            body,
+            transformed_body,
             tissue,
             level,
             mode=mode_str,

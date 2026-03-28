@@ -27,6 +27,7 @@ export function useBaseStationsDosimetry() {
         indices,
         mode: 'spatial',
         body_offset: toServer(sim.bodyOffset),
+        body_rotation_y: sim.bodyRotationY,
         quantities: enabledQuantities,
         skin_model: sim.skinModel,
       },
