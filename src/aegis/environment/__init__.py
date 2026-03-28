@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import IntEnum
+from pathlib import Path
 
 import numpy as np
 
@@ -44,6 +45,24 @@ class EnvironmentMesh:
     origin_lat: float
     origin_lon: float
     source: str
+
+    def to_differt_scene(self):
+        """Return a DiffeRT TriangleScene. Requires ``pip install aegis[rt]``."""
+        from aegis.environment.export import to_differt_scene
+
+        return to_differt_scene(self)
+
+    def to_sionna_xml(self, path: Path | str) -> Path:
+        """Write a Mitsuba-format XML scene for Sionna RT and return the path."""
+        from aegis.environment.export import to_sionna_xml
+
+        return to_sionna_xml(self, Path(path))
+
+    def to_binary(self) -> tuple[bytes, dict]:
+        """Serialize to a compact binary blob and metadata dict."""
+        from aegis.environment.export import to_binary
+
+        return to_binary(self)
 
     @classmethod
     def combine(cls, *meshes: EnvironmentMesh) -> EnvironmentMesh:
