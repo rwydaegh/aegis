@@ -3,6 +3,7 @@ import { fetchViewerConfig, fetchCapabilities } from '@/api/client'
 import { useSceneStore } from '@/stores/scene'
 import { useSimulationStore } from '@/stores/simulation'
 import { useUIStore } from '@/stores/ui'
+import { useEnvironmentStore } from '@/stores/environment'
 import type { ScenePos } from '@/api/coordinates'
 
 type ConfigStatus = 'loading' | 'ready' | 'error'
@@ -51,6 +52,26 @@ export function useConfig() {
           if (scenario === 'general_public' || scenario === 'occupational') {
             ui.setExposureScenario(scenario)
           }
+        }
+
+        // Hydrate environment store from config
+        if ((config as Record<string, unknown>).environment) {
+          const env = (config as Record<string, unknown>).environment as Record<string, unknown>
+          const osmCfg = env.osm as Record<string, unknown> | undefined
+          const tilesCfg = env.tiles as Record<string, unknown> | undefined
+          useEnvironmentStore.setState({
+            source: ((env.source as string) || 'none') as 'none' | 'voxels' | 'osm' | '3dtiles',
+            location: (env.location as { lat: number; lon: number }) || null,
+            radius: (env.radius as number) || 200,
+            geometricError: (tilesCfg?.geometric_error as number) || 30,
+            osmOptions: {
+              defaultBuildingHeight: (osmCfg?.default_building_height as number) || 10,
+              levelHeight: (osmCfg?.level_height as number) || 3.0,
+              buildings: (osmCfg?.buildings as boolean) ?? true,
+              roads: (osmCfg?.roads as boolean) ?? true,
+              water: (osmCfg?.water as boolean) ?? true,
+            },
+          })
         }
 
         // Load available scenes (server returns {name, path} objects)
