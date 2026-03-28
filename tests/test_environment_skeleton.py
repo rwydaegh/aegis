@@ -1,7 +1,6 @@
 import numpy as np
-import pytest
 
-from aegis.environment.skeleton import Subtree, polygonize, skeletonize
+from aegis.environment.skeleton import polygonize, skeletonize
 
 
 class TestSkeletonize:
