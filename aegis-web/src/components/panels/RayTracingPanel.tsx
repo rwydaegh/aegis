@@ -76,6 +76,14 @@ function capFor(backend: Backend, param: string, extra?: { method?: string; diff
       if (b === 'sionna') return { kind: 'configurable' }
       return { kind: 'na', reason: `not available with ${b === 'differt' ? 'DiffeRT' : 'Voxel'}` }
 
+    case 'chunkSize':
+      if (b === 'differt') {
+        if (method === 'sbr')
+          return { kind: 'configurable-when', when: 'exhaustive/hybrid', reason: 'SBR does not use chunks' }
+        return { kind: 'configurable' }
+      }
+      return { kind: 'na', reason: `not available with ${b === 'sionna' ? 'Sionna' : 'Voxel'}` }
+
     case 'seed':
       if (b === 'sionna') return { kind: 'configurable' }
       return { kind: 'na', reason: `not available with ${b === 'differt' ? 'DiffeRT' : 'Voxel'}` }
@@ -295,6 +303,38 @@ export default function RayTracingPanel() {
               step={100000}
               disabled={isDisabled(cap('maxPathsPerSource'))}
             />
+          </Row>
+
+          <Row param="chunkSize">
+            <label className={labelClass}>
+              Chunk size
+              <Hint param="chunkSize" />
+            </label>
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-1 text-xs text-foreground cursor-pointer select-none shrink-0">
+                <input
+                  type="checkbox"
+                  className="rounded border-border accent-primary h-3.5 w-3.5"
+                  checked={rc.chunkSize !== null}
+                  onChange={e => setRtConfig({ chunkSize: e.target.checked ? 100_000 : null })}
+                  disabled={isDisabled(cap('chunkSize'))}
+                />
+                On
+              </label>
+              <input
+                type="number"
+                className={selectClass}
+                value={rc.chunkSize ?? ''}
+                placeholder="disabled"
+                onChange={e => {
+                  const v = Number(e.target.value)
+                  if (v > 0) setRtConfig({ chunkSize: v })
+                }}
+                min={1}
+                step={10000}
+                disabled={isDisabled(cap('chunkSize')) || rc.chunkSize === null}
+              />
+            </div>
           </Row>
 
           {/* ── Interactions ── */}
