@@ -1,6 +1,25 @@
 import numpy as np
+import pytest
 
-from aegis.environment.roofs import extrude_walls, triangulate_polygon
+from aegis.environment import MaterialType
+from aegis.environment.roofs import extrude_walls, generate_building, triangulate_polygon
+
+SQUARE = np.array([[0, 0], [10, 0], [10, 10], [0, 10]], dtype=np.float64)
+RECTANGLE = np.array([[0, 0], [20, 0], [20, 10], [0, 10]], dtype=np.float64)
+ROOF_TYPES = [
+    "flat",
+    "gabled",
+    "hipped",
+    "pyramidal",
+    "skillion",
+    "half_hipped",
+    "gambrel",
+    "saltbox",
+    "mansard",
+    "dome",
+    "onion",
+    "round",
+]
 
 
 class TestTriangulatePolygon:
@@ -48,3 +67,64 @@ class TestExtrudeWalls:
         verts, tris = extrude_walls(footprint, base_height=0.0, top_height=3.0)
         assert verts.shape[0] == 12  # 3 walls * 4 verts
         assert tris.shape[0] == 6  # 3 walls * 2 tris
+
+
+class TestGenerateBuilding:
+    @pytest.mark.parametrize("roof_shape", ROOF_TYPES)
+    def test_produces_valid_mesh(self, roof_shape):
+        footprint = RECTANGLE if roof_shape in ("gabled", "saltbox", "round") else SQUARE
+        verts, tris, mats = generate_building(
+            footprint=footprint,
+            height=10.0,
+            roof_shape=roof_shape,
+            roof_height=3.0,
+        )
+        assert verts.ndim == 2 and verts.shape[1] == 3
+        assert tris.ndim == 2 and tris.shape[1] == 3
+        assert mats.ndim == 1
+        assert len(mats) == len(tris)
+        assert tris.max() < len(verts)
+        assert tris.min() >= 0
+
+    @pytest.mark.parametrize("roof_shape", ROOF_TYPES)
+    def test_normals_nonzero(self, roof_shape):
+        footprint = RECTANGLE if roof_shape in ("gabled", "saltbox", "round") else SQUARE
+        verts, tris, mats = generate_building(
+            footprint=footprint,
+            height=10.0,
+            roof_shape=roof_shape,
+        )
+        v0 = verts[tris[:, 0]]
+        v1 = verts[tris[:, 1]]
+        v2 = verts[tris[:, 2]]
+        normals = np.cross(v1 - v0, v2 - v0)
+        areas = np.linalg.norm(normals, axis=1)
+        assert np.all(areas > 1e-10), f"Degenerate triangles in {roof_shape}"
+
+    def test_flat_roof_height(self):
+        verts, tris, mats = generate_building(
+            footprint=SQUARE,
+            height=10.0,
+            roof_shape="flat",
+        )
+        assert verts[:, 2].max() == pytest.approx(10.0)
+
+    def test_gabled_roof_ridge_above_eave(self):
+        verts, tris, mats = generate_building(
+            footprint=RECTANGLE,
+            height=10.0,
+            roof_shape="gabled",
+            roof_height=3.0,
+        )
+        assert verts[:, 2].max() == pytest.approx(13.0, abs=0.5)
+
+    def test_material_assignment(self):
+        verts, tris, mats = generate_building(
+            footprint=SQUARE,
+            height=10.0,
+            roof_shape="flat",
+            material=MaterialType.BRICK,
+            roof_material=MaterialType.CONCRETE,
+        )
+        assert MaterialType.BRICK in mats
+        assert MaterialType.CONCRETE in mats
