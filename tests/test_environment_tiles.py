@@ -1,11 +1,14 @@
 """Tests for 3D Tiles server-side traversal and mesh extraction."""
 
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import numpy as np
+import pytest
 
-from aegis.environment.tiles import TileTraverser
+requests = pytest.importorskip("requests", reason="requests not installed")
+
+from aegis.environment.tiles import TileTraverser  # noqa: E402
 
 
 class TestTileTraverser:
@@ -24,10 +27,8 @@ class TestTileTraverser:
         )
         assert t.api_key is None
 
-    @patch("aegis.environment.tiles.requests.Session")
-    def test_traverse_empty_tileset(self, mock_session_cls):
+    def test_traverse_empty_tileset(self):
         mock_session = MagicMock()
-        mock_session_cls.return_value = mock_session
 
         tileset = {
             "root": {
