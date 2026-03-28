@@ -13,7 +13,6 @@ import urllib.parse
 from typing import Any
 
 import numpy as np
-import requests
 
 from aegis.environment import EnvironmentMesh
 from aegis.environment.geo import ecef_to_enu, wgs84_to_ecef
@@ -73,6 +72,8 @@ class TileTraverser:
         self.root_url = root_url
         self.api_key = api_key
         self.geometric_error = geometric_error
+        import requests
+
         self.session = requests.Session()
         if api_key:
             self.session.headers.update({"X-GOOG-API-KEY": api_key})
