@@ -20,3 +20,8 @@
 *[FDTD]: Finite-Difference Time-Domain
 *[PO]: Physical Optics
 *[LUT]: Look-Up Table
+*[OSM]: OpenStreetMap
+*[ENU]: East-North-Up (local coordinate frame)
+*[ECEF]: Earth-Centered Earth-Fixed (Cartesian coordinate frame)
+*[GLB]: Binary glTF (3D model format)
+*[ITU]: International Telecommunication Union

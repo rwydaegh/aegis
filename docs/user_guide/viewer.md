@@ -51,10 +51,11 @@ Common backend flags:
 
 **Scene interaction.** Click anywhere on the ground, voxel surfaces, or Sionna scene geometry to place a transmit antenna. The antenna shows a short dipole radiation pattern (sin^2 theta gain deformation) on a pole at the click point. Dosimetry computes automatically after placement.
 
-**Camera.** Two modes, toggled from the toolbar:
+**Camera.** Three modes, toggled from the toolbar:
 
 - Orbit mode (default): left-click drag to rotate, scroll to zoom, middle-click to pan. Camera presets (front, side, top, focus) are available in the toolbar.
 - Follow mode: third-person camera that tracks the phantom. Q/E keys or left-click drag to orbit around the body. Mouse wheel to zoom.
+- Globe mode: a globe camera from 3DTilesRendererJS that lets you zoom out to see the full Earth when using Google 3D Tiles. Toggle via the globe icon in the toolbar. Clicking any camera preset resets back to orbit mode.
 
 **Phantom.** The sidebar phantom panel lets you switch between body meshes (Duke, Ella, Thelonious, Eartha) and move or rotate the phantom with WASD keys. The dropdown shows IT'IS metadata (age, sex, mass) for each phantom.
 
@@ -87,6 +88,21 @@ Viewer constants are defined in `src/aegis/viewer/config.py` and merged with you
 
 The `open_ground` scenario clears voxel paths so you get the body on a flat surface only.
 
+## Environment panel
+
+The environment panel (sidebar, first accordion section) controls how 3D city geometry is loaded. Four source modes are available:
+
+- **None** renders the legacy voxel environment and scene geometry. This is the default.
+- **Voxels** converts loaded voxel data into a triangle mesh.
+- **OpenStreetMap** fetches building footprints from the Overpass API and generates 3D geometry with roofs, roads, and water. Enter latitude/longitude and radius, then click Fetch.
+- **Google 3D Tiles** streams photorealistic tiles from Google's Map Tiles API. Requires a Google Maps API key (entered in the panel). Buildings and terrain render client-side via 3DTilesRendererJS.
+
+OSM-specific options: default building height, storey height, and toggles for buildings, roads, and water. 3D Tiles options: geometric error (LOD control) and API key.
+
+After fetching, click **Export for Ray Tracing** to convert the environment mesh into a DiffeRT scene for path computation.
+
+For the Python API and material properties, see [Environment module](environment.md).
+
 ## API overview
 
 The React frontend calls REST endpoints on the Flask backend:
@@ -101,6 +117,9 @@ The React frontend calls REST endpoints on the Flask backend:
 - `POST /api/compute/sionna-rt` - Sionna RT ray-traced paths.
 - `POST /api/auth` - password authentication, returns a signed session cookie.
 - `GET /api/location/load` - SSE endpoint for geocoded location loading.
+- `POST /api/environment/osm`, `POST /api/environment/3dtiles` - fetch environment meshes.
+- `GET /api/environment/mesh` - return cached environment mesh.
+- `POST /api/environment/export-scene` - export environment to DiffeRT or Sionna scene.
 
 `voxel_rt_available` in `/api/config` is true only when voxel grid data is loaded **and** DiffeRT is importable, so the UI does not offer voxel ray tracing when it would always fail.
 
