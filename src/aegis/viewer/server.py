@@ -153,6 +153,186 @@ def _load_and_cache_voxels_dir(voxel_dir: str, bbox_radius: float) -> None:
     print(f"  Voxels (directory): {len(positions):,} loaded, median_size={vs:.4f}")
 
 
+def _setup_auth(app: Flask, gate_password: str | None) -> None:
+    """Register the before_request auth check and /api/auth route."""
+    exempt_paths = {"/api/auth", "/api/health", "/api/sentry-webhook", "/robots.txt"}
+
+    @app.before_request
+    def check_auth():
+        if gate_password is None:
+            return  # No password set, skip auth (local dev)
+        if request.path in exempt_paths:
+            return
+        if request.path.startswith("/assets/") or request.path == "/":
+            return  # Serve React app and static assets without auth
+        # Allow root-level static files (fonts, favicons) without auth
+        _static_extensions = {".woff2", ".woff", ".ttf", ".svg", ".png", ".ico"}
+        if not request.path.startswith("/api/") and Path(request.path).suffix in _static_extensions:
+            return
+        if not session.get("authenticated"):
+            return jsonify({"error": "Authentication required"}), 401
+
+    @app.route("/api/auth", methods=["GET", "POST"])
+    def authenticate():
+        if request.method == "GET":
+            # Probe: is the current session valid?
+            if gate_password is None:
+                return jsonify({"authenticated": True, "gate_enabled": False})
+            if session.get("authenticated"):
+                # Estimate remaining time from cookie max-age
+                lifetime = app.config["PERMANENT_SESSION_LIFETIME"]
+                expires_at = datetime.now(UTC) + lifetime
+                return jsonify(
+                    {
+                        "authenticated": True,
+                        "expires_at": expires_at.isoformat(),
+                        "session_id": session.get("session_id", ""),
+                    }
+                )
+            return jsonify({"authenticated": False}), 401
+
+        # POST: login with password
+        if gate_password is None:
+            return jsonify({"error": "No password configured"}), 500
+        data = request.get_json(silent=True) or {}
+        if data.get("password") != gate_password:
+            return jsonify({"error": "Wrong password"}), 401
+        session.permanent = True
+        session["authenticated"] = True
+        session["session_id"] = str(uuid.uuid4())
+        expires_at = datetime.now(UTC) + timedelta(hours=2)
+        return jsonify(
+            {
+                "ok": True,
+                "expires_at": expires_at.isoformat(),
+                "session_id": session["session_id"],
+            }
+        )
+
+
+def _preload_bodies(
+    data_dir: str,
+    body_name: str,
+    cache: dict,
+    cache_lock: threading.RLock,
+) -> None:
+    """Load all available body meshes from data_dir into cache."""
+    with cache_lock:
+        available_bodies = [p.stem for p in Path(data_dir).glob("*.stl")]
+        cache["bodies"] = {}
+        cache["default_body"] = body_name
+        for name in available_bodies:
+            try:
+                body = load_body(name, data_dir)
+                binary, meta = body_to_binary(body)
+                cache["bodies"][name] = {"body": body, "binary": binary, "meta": meta}
+                print(f"  Body: {body.name}, {body.n_triangles:,} triangles")
+            except FileNotFoundError as e:
+                print(f"  Warning: {e}")
+
+        # Backward-compat aliases pointing at the default body
+        default_entry = cache["bodies"].get(body_name)
+        if default_entry is not None:
+            cache["body"] = default_entry["body"]
+            cache["body_binary"] = default_entry["binary"]
+            cache["body_meta"] = default_entry["meta"]
+        else:
+            # Fallback: try loading the requested body_name even if not in glob results
+            try:
+                body = load_body(body_name, data_dir)
+                binary, meta = body_to_binary(body)
+                cache["bodies"][body_name] = {"body": body, "binary": binary, "meta": meta}
+                cache["body"] = body
+                cache["body_binary"] = binary
+                cache["body_meta"] = meta
+                print(f"  Body (fallback): {body.name}, {body.n_triangles:,} triangles")
+            except FileNotFoundError as e:
+                print(f"  Warning: {e}")
+                cache["body"] = None
+                cache["body_binary"] = None
+                cache["body_meta"] = None
+
+
+def _preload_voxels(
+    voxel_json: str | None,
+    voxel_dir: str | None,
+    bbox_radius: float,
+    cache: dict,
+    cache_lock: threading.RLock,
+) -> None:
+    """Load voxels and tiles into cache from either a single JSON or a directory."""
+
+    def _clear_voxel_cache():
+        cache["voxel_binary"] = None
+        cache["voxel_meta"] = None
+        cache["voxel_sizes"] = None
+        cache["body_placement"] = None
+        cache["voxel_positions"] = None
+
+    with cache_lock:
+        cache["voxel_json_path"] = voxel_json
+        if voxel_dir:
+            try:
+                _load_and_cache_voxels_dir(voxel_dir, bbox_radius)
+            except Exception as e:
+                print(f"  Warning: voxel directory load failed: {e}")
+                _clear_voxel_cache()
+        elif voxel_json:
+            try:
+                _load_and_cache_voxels_single(voxel_json, bbox_radius)
+            except Exception as e:
+                print(f"  Warning: voxel load failed: {e}")
+                _clear_voxel_cache()
+        else:
+            _clear_voxel_cache()
+
+        # Resolve tiles directory (sibling of voxels dir from pipeline)
+        cache["tiles_dir"] = None
+        _vs = voxel_dir or (str(Path(voxel_json).parent) if voxel_json else None)
+        if _vs:
+            _tc = Path(_vs).parent / "tiles"
+            if _tc.is_dir() and any(_tc.glob("*.glb")):
+                cache["tiles_dir"] = _tc
+                print(f"  Tiles: {len(list(_tc.glob('*.glb')))} GLB files")
+
+
+def _setup_precompute_G(app: Flask, cache: dict) -> None:
+    """Register a before_request hook that background-precomputes averaging matrices."""
+    # Background-precompute averaging matrices so the first compute is fast.
+    # Uses before_request hook to run once in the actual worker process
+    # (gunicorn's preload_app forks after create_app, so a thread started
+    # here would run in the master and its cache wouldn't be shared).
+    _G_MAX_TRIANGLES = int(os.environ.get("AEGIS_G_MAX_TRIANGLES", 100_000))
+    _g_precompute_started = {"done": False}
+
+    @app.before_request
+    def _maybe_precompute_G():
+        if _g_precompute_started["done"]:
+            return
+        _g_precompute_started["done"] = True
+
+        def _do():
+            from aegis.engine import DosimetryEngine
+            from aegis.geometry.averaging import precompute_averaging_matrix
+
+            for name, entry in list(cache.get("bodies", {}).items()):
+                body = entry["body"]
+                if body.n_triangles > _G_MAX_TRIANGLES:
+                    app.logger.info("G(%s) skipped (%d > %d tri)", name, body.n_triangles, _G_MAX_TRIANGLES)
+                    continue
+                for area in [4e-4]:
+                    key = (DosimetryEngine._body_cache_key(body), area)
+                    if key not in DosimetryEngine._G_cache:
+                        try:
+                            G = precompute_averaging_matrix(body.centroids, body.areas, area)
+                            DosimetryEngine._G_cache[key] = G
+                            app.logger.info("G(%s, %dcm2) ready (%d nnz)", name, area * 1e4, G.nnz)
+                        except Exception as e:
+                            app.logger.warning("G(%s) failed: %s", name, e)
+
+        threading.Thread(target=_do, daemon=True, name="precompute-G").start()
+
+
 def create_app_from_env() -> Flask:
     """Factory for Gunicorn: reads config from environment variables."""
     from aegis.viewer.config import load_config
@@ -196,60 +376,7 @@ def create_app(
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
     app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=2)
 
-    _gate_password = os.environ.get("AEGIS_GATE_PASSWORD")
-    _exempt_paths = {"/api/auth", "/api/health", "/api/sentry-webhook"}
-
-    @app.before_request
-    def check_auth():
-        if _gate_password is None:
-            return  # No password set, skip auth (local dev)
-        if request.path in _exempt_paths:
-            return
-        if request.path.startswith("/assets/") or request.path == "/":
-            return  # Serve React app and static assets without auth
-        # Allow root-level static files (fonts, favicons) without auth
-        _static_extensions = {".woff2", ".woff", ".ttf", ".svg", ".png", ".ico"}
-        if not request.path.startswith("/api/") and Path(request.path).suffix in _static_extensions:
-            return
-        if not session.get("authenticated"):
-            return jsonify({"error": "Authentication required"}), 401
-
-    @app.route("/api/auth", methods=["GET", "POST"])
-    def authenticate():
-        if request.method == "GET":
-            # Probe: is the current session valid?
-            if _gate_password is None:
-                return jsonify({"authenticated": True, "gate_enabled": False})
-            if session.get("authenticated"):
-                # Estimate remaining time from cookie max-age
-                lifetime = app.config["PERMANENT_SESSION_LIFETIME"]
-                expires_at = datetime.now(UTC) + lifetime
-                return jsonify(
-                    {
-                        "authenticated": True,
-                        "expires_at": expires_at.isoformat(),
-                        "session_id": session.get("session_id", ""),
-                    }
-                )
-            return jsonify({"authenticated": False}), 401
-
-        # POST: login with password
-        if _gate_password is None:
-            return jsonify({"error": "No password configured"}), 500
-        data = request.get_json(silent=True) or {}
-        if data.get("password") != _gate_password:
-            return jsonify({"error": "Wrong password"}), 401
-        session.permanent = True
-        session["authenticated"] = True
-        session["session_id"] = str(uuid.uuid4())
-        expires_at = datetime.now(UTC) + timedelta(hours=2)
-        return jsonify(
-            {
-                "ok": True,
-                "expires_at": expires_at.isoformat(),
-                "session_id": session["session_id"],
-            }
-        )
+    _setup_auth(app, os.environ.get("AEGIS_GATE_PASSWORD"))
 
     # Store pipeline config
     _cache["bbox_radius"] = bbox_radius
@@ -260,112 +387,15 @@ def create_app(
     # Pre-load data
     print("Loading data...")
 
-    with _cache_lock:
-        # Preload all available bodies from data_dir
-        available_bodies = [p.stem for p in Path(data_dir).glob("*.stl")]
-        _cache["bodies"] = {}
-        _cache["default_body"] = body_name
-        for name in available_bodies:
-            try:
-                body = load_body(name, data_dir)
-                binary, meta = body_to_binary(body)
-                _cache["bodies"][name] = {"body": body, "binary": binary, "meta": meta}
-                print(f"  Body: {body.name}, {body.n_triangles:,} triangles")
-            except FileNotFoundError as e:
-                print(f"  Warning: {e}")
-
-        # Backward-compat aliases pointing at the default body
-        default_entry = _cache["bodies"].get(body_name)
-        if default_entry is not None:
-            _cache["body"] = default_entry["body"]
-            _cache["body_binary"] = default_entry["binary"]
-            _cache["body_meta"] = default_entry["meta"]
-        else:
-            # Fallback: try loading the requested body_name even if not in glob results
-            try:
-                body = load_body(body_name, data_dir)
-                binary, meta = body_to_binary(body)
-                _cache["bodies"][body_name] = {"body": body, "binary": binary, "meta": meta}
-                _cache["body"] = body
-                _cache["body_binary"] = binary
-                _cache["body_meta"] = meta
-                print(f"  Body (fallback): {body.name}, {body.n_triangles:,} triangles")
-            except FileNotFoundError as e:
-                print(f"  Warning: {e}")
-                _cache["body"] = None
-                _cache["body_binary"] = None
-                _cache["body_meta"] = None
-
-    # Background-precompute averaging matrices so the first compute is fast.
-    # Uses before_request hook to run once in the actual worker process
-    # (gunicorn's preload_app forks after create_app, so a thread started
-    # here would run in the master and its cache wouldn't be shared).
-    _G_MAX_TRIANGLES = int(os.environ.get("AEGIS_G_MAX_TRIANGLES", 100_000))
-    _g_precompute_started = {"done": False}
-
-    @app.before_request
-    def _maybe_precompute_G():
-        if _g_precompute_started["done"]:
-            return
-        _g_precompute_started["done"] = True
-
-        def _do():
-            from aegis.engine import DosimetryEngine
-            from aegis.geometry.averaging import precompute_averaging_matrix
-
-            for name, entry in list(_cache.get("bodies", {}).items()):
-                body = entry["body"]
-                if body.n_triangles > _G_MAX_TRIANGLES:
-                    app.logger.info("G(%s) skipped (%d > %d tri)", name, body.n_triangles, _G_MAX_TRIANGLES)
-                    continue
-                for area in [4e-4]:
-                    key = (DosimetryEngine._body_cache_key(body), area)
-                    if key not in DosimetryEngine._G_cache:
-                        try:
-                            G = precompute_averaging_matrix(body.centroids, body.areas, area)
-                            DosimetryEngine._G_cache[key] = G
-                            app.logger.info("G(%s, %dcm2) ready (%d nnz)", name, area * 1e4, G.nnz)
-                        except Exception as e:
-                            app.logger.warning("G(%s) failed: %s", name, e)
-
-        import threading
-
-        threading.Thread(target=_do, daemon=True, name="precompute-G").start()
-
-    def _clear_voxel_cache():
-        _cache["voxel_binary"] = None
-        _cache["voxel_meta"] = None
-        _cache["voxel_sizes"] = None
-        _cache["body_placement"] = None
-        _cache["voxel_positions"] = None
-
-    with _cache_lock:
-        _cache["voxel_json_path"] = voxel_json
-        if voxel_dir:
-            try:
-                _load_and_cache_voxels_dir(voxel_dir, bbox_radius)
-            except Exception as e:
-                print(f"  Warning: voxel directory load failed: {e}")
-                _clear_voxel_cache()
-        elif voxel_json:
-            try:
-                _load_and_cache_voxels_single(voxel_json, bbox_radius)
-            except Exception as e:
-                print(f"  Warning: voxel load failed: {e}")
-                _clear_voxel_cache()
-        else:
-            _clear_voxel_cache()
-
-        # Resolve tiles directory (sibling of voxels dir from pipeline)
-        _cache["tiles_dir"] = None
-        _vs = voxel_dir or (str(Path(voxel_json).parent) if voxel_json else None)
-        if _vs:
-            _tc = Path(_vs).parent / "tiles"
-            if _tc.is_dir() and any(_tc.glob("*.glb")):
-                _cache["tiles_dir"] = _tc
-                print(f"  Tiles: {len(list(_tc.glob('*.glb')))} GLB files")
+    _preload_bodies(data_dir, body_name, _cache, _cache_lock)
+    _preload_voxels(voxel_json, voxel_dir, bbox_radius, _cache, _cache_lock)
+    _setup_precompute_G(app, _cache)
 
     # --- Lightweight routes kept inline ---
+
+    @app.route("/robots.txt")
+    def robots_txt():
+        return app.send_static_file("robots.txt")
 
     @app.route("/api/health")
     def api_health():

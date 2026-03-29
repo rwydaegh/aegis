@@ -188,6 +188,55 @@ def _node_refs_from_way(way_elem: ET.Element) -> list[int]:
     return [int(nd.attrib["ref"]) for nd in way_elem.findall("nd")]
 
 
+def _parse_building_members(
+    members: list[dict],
+    ways: dict[int, list[int]],
+    way_elems: dict[int, ET.Element],
+    proj_nodes: dict[int, tuple[float, float]],
+) -> tuple[np.ndarray | None, list[Building]]:
+    """Extract outline footprint and part buildings from relation members."""
+    outline_fp: np.ndarray | None = None
+    parts: list[Building] = []
+
+    for m in members:
+        if m["type"] != "way":
+            continue
+        wid = m["ref"]
+        role = m["role"]
+
+        if wid not in ways:
+            continue
+
+        node_ids = ways[wid]
+        is_closed = len(node_ids) >= 4 and node_ids[0] == node_ids[-1]
+        if not is_closed:
+            continue
+
+        if role == "outline":
+            coords = [list(proj_nodes[nid]) for nid in node_ids[:-1] if nid in proj_nodes]
+            if len(coords) >= 3:
+                outline_fp = np.array(coords, dtype=np.float64)
+
+        elif role == "part" and wid in way_elems:
+            part_tags = _parse_tags_from_elem(way_elems[wid])
+            part_type = part_tags.get("building:part", "yes")
+            part_building_type = part_tags.get("building", part_type)
+
+            coords = [list(proj_nodes[nid]) for nid in node_ids[:-1] if nid in proj_nodes]
+            if len(coords) >= 3:
+                parts.append(
+                    Building(
+                        way_id=wid,
+                        footprint=np.array(coords, dtype=np.float64),
+                        height=_parse_height(part_tags, part_building_type),
+                        roof_shape=_parse_roof_shape(part_tags),
+                        material=_parse_building_material(part_tags),
+                    )
+                )
+
+    return outline_fp, parts
+
+
 def parse_relations(
     xml_str: str,
     origin_lat: float = 0.0,
@@ -277,50 +326,7 @@ def parse_relations(
             )
 
         elif rel_type == "building":
-            # Separate outline from parts
-            outline_fp: np.ndarray | None = None
-            parts: list[Building] = []
-
-            for m in members:
-                if m["type"] != "way":
-                    continue
-                wid = m["ref"]
-                role = m["role"]
-
-                if wid not in ways:
-                    continue
-
-                node_ids = ways[wid]
-                is_closed = len(node_ids) >= 4 and node_ids[0] == node_ids[-1]
-
-                if role == "outline" and is_closed:
-                    coords = [list(proj_nodes[nid]) for nid in node_ids[:-1] if nid in proj_nodes]
-                    if len(coords) >= 3:
-                        outline_fp = np.array(coords, dtype=np.float64)
-
-                elif role == "part" and is_closed and wid in way_elems:
-                    part_elem = way_elems[wid]
-                    part_tags = _parse_tags_from_elem(part_elem)
-                    part_type = part_tags.get("building:part", "yes")
-                    # Fallback to relation-level building type for height heuristic
-                    part_building_type = part_tags.get("building", part_type)
-                    part_height = _parse_height(part_tags, part_building_type)
-                    part_roof = _parse_roof_shape(part_tags)
-                    part_mat = _parse_building_material(part_tags)
-
-                    coords = [list(proj_nodes[nid]) for nid in node_ids[:-1] if nid in proj_nodes]
-                    if len(coords) >= 3:
-                        fp = np.array(coords, dtype=np.float64)
-                        parts.append(
-                            Building(
-                                way_id=wid,
-                                footprint=fp,
-                                height=part_height,
-                                roof_shape=part_roof,
-                                material=part_mat,
-                            )
-                        )
-
+            outline_fp, parts = _parse_building_members(members, ways, way_elems, proj_nodes)
             result.building_parts.append(
                 BuildingWithParts(
                     relation_id=rel_id,
