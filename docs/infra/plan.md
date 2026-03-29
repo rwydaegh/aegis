@@ -79,9 +79,7 @@
 ```python
 # tests/viewer/test_isolation.py
 import numpy as np
-from aegis.engine import DosimetryEngine
-from aegis.geometry.mesh import BodyMesh
-from aegis.paths import PropagationPaths
+from aegis import DosimetryEngine, BodyMesh, PropagationPaths
 
 def test_compute_returns_timings():
     """DosimetryEngine.compute() must return timings dict, not write to global."""

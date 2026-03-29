@@ -69,22 +69,101 @@ aegis-web/                    React + Three.js frontend (Vite, R3F, Zustand)
 
 ## Data flow
 
-```
-TissueModel  ──┐
-                ├──> DosimetryEngine.compute(level=N) ──> DosimetryResult
-BodyMesh     ──┤        │
-                │        ├── Level 0: O(1) bound
-PropagationPaths┤        ├── Level 1: O(N) aggregate
-                │        ├── Level 2: O(MN) ReLU map    <-- default
-Precoder ───────┘        ├── Level 3: O(MN) + Fresnel(theta)
-  (levels 7-8)           ├── Level 4: O(MN) + polarisation
-                         ├── Level 5: O(MN) + curvature
-                         ├── Level 6: O(MN) + diffraction
-                         ├── Level 7: O(MN + M*M_ant) coherent MIMO
-                         └── Level 8: O(MN + M*M_ant^2 + M_ant^3) ECBF solver
+```mermaid
+flowchart LR
+    TM[TissueModel] --> E[DosimetryEngine]
+    BM[BodyMesh] --> E
+    PP[PropagationPaths] --> E
+    P[Precoder] -.->|levels 7-8 only| E
+    E -->|level 0-6| IK[Incoherent kernels]
+    E -->|level 7-8| CK[Coherent kernels]
+    IK --> R[DosimetryResult]
+    CK --> R
+    style IK fill:#2d6a4f,color:#fff
+    style CK fill:#1d3557,color:#fff
+    style R fill:#e76f51,color:#fff
 ```
 
 Levels 0-6 are incoherent: they use `paths.power` (scalar per path). Levels 7-8 are coherent: they use `paths.psi` (complex vector per path) and a `Precoder` with precoding vector `x`.
+
+## Module dependencies
+
+```mermaid
+flowchart TB
+    subgraph Core
+        engine
+        paths
+        result
+    end
+
+    subgraph Physics
+        tissue
+        geometry
+        kernels
+        coherent
+    end
+
+    subgraph Applications
+        compliance
+        integration
+        viewer
+    end
+
+    engine --> kernels
+    engine --> coherent
+    engine --> paths
+    engine --> result
+    kernels --> tissue
+    kernels --> geometry
+    coherent --> tissue
+    coherent --> geometry
+    coherent --> paths
+    compliance --> result
+    integration --> paths
+    integration --> engine
+    viewer --> engine
+    viewer --> compliance
+    viewer --> integration
+```
+
+The `Core` group holds the engine entry point, path abstraction, and result container. `Physics` contains tissue properties, mesh geometry, and the fidelity kernels. `Applications` are consumer-facing: ICNIRP compliance checks, ray tracer bridges, and the interactive viewer.
+
+## Viewer architecture
+
+The viewer is a full-stack web application split between a Flask REST backend and a React + Three.js frontend.
+
+### Backend (Flask)
+
+The Flask app is created in `src/aegis/viewer/server.py` via `create_app()`. Routes are organized in separate modules under `src/aegis/viewer/routes/`, each exposing a `register(app, cache, cache_lock)` function that attaches endpoints to the app. Route modules:
+
+- `compute.py` handles `POST /api/compute`, plus ray-traced variants (`/api/compute/rt`, `/api/compute/voxel-rt`, `/api/compute/sionna-rt`). Each endpoint parses the request, runs `DosimetryEngine.compute()`, and returns binary S_ab arrays with JSON stats.
+- `data.py` serves body meshes (`GET /api/body`), voxels (`GET /api/voxels`), and config (`GET /api/config`).
+- `environment.py` handles OSM fetching, 3D Tiles proxy, and scene export for ray tracing.
+- `location.py` provides SSE-based geocoded location loading (`GET /api/location/load`).
+- `analysis.py` serves compliance limits, tissue spectra, and power/frequency sweep data.
+- `mimo.py` handles coherent MIMO compute and result retrieval.
+- `basestations.py` loads real base station antenna data.
+
+Supporting modules: `compute.py` wraps dosimetry calls, `scene_data.py` serializes meshes to binary (swapping Z-up to Y-up), `pipeline.py` manages the compute pipeline, `config.py` defines DEFAULTS and deep-merge logic.
+
+### Frontend (React + R3F + Zustand)
+
+The frontend lives in `aegis-web/` and uses Vite for bundling. Key directories:
+
+- `src/components/scene/` contains React Three Fiber components: `SceneRoot.tsx` (canvas and camera setup), `BodyMesh.tsx` (phantom with colormap), `Antenna.tsx` (radiation pattern visualization), `Environment.tsx` / `EnvironmentOSM.tsx` / `Environment3DTiles.tsx` (city geometry), `VoxelField.tsx`, `RayPaths.tsx`, and `DistanceLine.tsx`.
+- `src/components/hud/` renders the overlay on top of the 3D scene: `StatusBar.tsx` (dosimetry stats), `ColorLegend.tsx` (jet colormap with dB/linear toggle), `CompliancePanel.tsx`, `ServerInfoBadge.tsx` (CPU/RAM), and `MIMOPanel.tsx`.
+- `src/components/panels/` holds sidebar control panels. Each panel maps to a domain: `PhantomPanel.tsx` (body selection, WASD movement), `ParametersPanel.tsx` (fidelity level, power, frequency), `StochasticPanel.tsx` (3GPP channel model), `RayTracingPanel.tsx`, `EnvironmentPanel.tsx` (OSM/3D Tiles), `LayersPanel.tsx` (visibility toggles), `TissuePanel.tsx`, `AntennaPanel.tsx`, and `AnalysisPanel.tsx`.
+- `src/stores/` holds Zustand state. The main stores are `simulation.ts` (antenna position, dosimetry parameters, S_ab results, compliance), `scene.ts` (body name, viewer config, capabilities, path source), and `ui.ts` (sidebar state, camera mode, display options). Stores are plain objects with actions, consumed via `useShallow` selectors to avoid unnecessary re-renders.
+- `src/hooks/` contains React hooks that wire stores to side effects. `useDosimetry.ts` watches simulation parameters and triggers `POST /api/compute` when inputs change, writing results back to the simulation store. `useClickToPlace.ts` handles antenna placement on click. `useBodyLoader.ts` fetches binary mesh data. `useKeyboard.ts` binds WASD/QE keys for phantom control.
+- `src/api/client.ts` provides typed fetch wrappers for all Flask endpoints. Binary responses (body mesh, S_ab arrays) are decoded via `src/api/binary.ts`. Coordinate conversions between Y-up (Three.js) and Z-up (Python) happen in `src/api/coordinates.ts`.
+
+### Dev workflow
+
+Run the Flask backend and Vite dev server in parallel. The Vite config proxies `/api` requests to `http://localhost:5000`, so both servers must be running. Frontend changes hot-reload instantly. For production, `npm run build:copy` compiles the React app into `src/aegis/viewer/static/`, which Flask serves as static files.
+
+### Coordinate convention
+
+Python uses Z-up throughout (meshes, ray tracing, dosimetry). Three.js uses Y-up. The swap happens in two places: `src/aegis/viewer/scene_data.py` swaps axes when serializing body and voxel data for the frontend, and `aegis-web/src/api/coordinates.ts` swaps back when sending positions (antenna placement, body offset) to Python.
 
 ## Tissue module
 

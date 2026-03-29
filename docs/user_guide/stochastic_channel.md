@@ -82,7 +82,7 @@ Unknown models fall back to free-space path loss $20 \log_{10}(d) + 20 \log_{10}
 
 ```python
 from aegis.channel import generate_channel, load_preset
-from aegis.engine import DosimetryEngine
+from aegis import DosimetryEngine
 from aegis.tissue.dielectric import SKIN_28GHZ
 import numpy as np
 

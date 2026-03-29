@@ -69,6 +69,11 @@ Data ships in `data/` in the repo. Override with `AEGIS_DATA_DIR` if needed.
 
 ## Mie regression (the canary)
 
+<div class="fig-portrait" markdown>
+![Mie validation](../assets/diagrams/mie_validation.png)
+</div>
+<span class="fig-caption">Framework error vs Mie analytical solution. Top: error vs size parameter. Middle: error vs frequency. Bottom: Fresnel limit $R_{\mathrm{sphere}}(f)$.</span>
+
 The Mie test compares the framework to an independent analytical solution. It computes R_sphere = T_0 / Q_abs_GO for skin at 28 GHz and checks:
 
 - R_sphere ~ 0.988 (framework underestimates by ~1.2%)

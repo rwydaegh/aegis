@@ -1,6 +1,13 @@
 # Coherent MIMO dosimetry
 
+For a step-by-step walkthrough with code, see the [coherent MIMO tutorial](../tutorials/coherent_mimo.md).
+
 Levels 7 and 8 extend AEGIS to coherent multi-antenna systems. Instead of scalar power per path, these levels use complex polarization-amplitude vectors and antenna element structure to compute the interference pattern on the body surface.
+
+<div class="fig-wide" markdown>
+![Channel block diagram](../assets/diagrams/channel_block_diagram.png)
+</div>
+<span class="fig-caption">Signal branch (red) and exposure branch (blue) of the coherent MIMO pipeline.</span>
 
 ## From incoherent to coherent
 
@@ -18,31 +25,7 @@ The difference matters when paths from the same antenna element can interfere co
 
 ## PropagationPaths for coherent use
 
-Coherent levels need the full `PropagationPaths` object with complex amplitudes and element assignments:
-
-```python
-import numpy as np
-import aegis
-
-N, M_ant = 20, 4  # 20 paths from 4 elements
-rng = np.random.default_rng(42)
-
-k_hat = rng.standard_normal((N, 3))
-k_hat /= np.linalg.norm(k_hat, axis=1, keepdims=True)
-
-# Complex polarization-amplitude vectors
-psi = rng.standard_normal((N, 3)) + 1j * rng.standard_normal((N, 3))
-
-# Which antenna element each path came from
-element_index = rng.integers(0, M_ant, size=N)
-
-paths = aegis.PropagationPaths(
-    k_hat=k_hat, psi=psi, element_index=element_index,
-    delay=np.zeros(N), is_los=np.ones(N, dtype=bool),
-)
-```
-
-The `psi` vectors carry both polarization direction and amplitude. Their squared magnitude gives the per-path power density: $S_i = |\boldsymbol{\psi}_i|^2 / (2 Z_0)$.
+Coherent levels need the full `PropagationPaths` object with complex polarization-amplitude vectors `psi` and an `element_index` array mapping each path to its originating antenna element. The `psi` vectors carry both polarization direction and amplitude, with $S_i = |\boldsymbol{\psi}_i|^2 / (2 Z_0)$ giving the per-path power density. The [tutorial](../tutorials/coherent_mimo.md) shows how to construct these paths from scratch.
 
 ## The body-surface channel
 
@@ -91,31 +74,11 @@ $\rho = 1$ means MRT beamforming hits the worst-case exposure direction. $\rho \
 
 ## Precoders
 
-The `Precoder` class wraps a complex precoding vector $\mathbf{x}$:
-
-```python
-# Maximum ratio transmission
-precoder = aegis.Precoder.mrt(h, P=1.0)
-# x = sqrt(P) * h* / ||h||
-
-# Exposure-constrained beamforming (needs Q from Level 7)
-precoder = aegis.Precoder.ecbf(h, Q=result.Q, P_abs_max=0.05, P=1.0)
-```
+The `Precoder` class wraps a complex precoding vector $\mathbf{x}$. Use `Precoder.mrt(h, P=1.0)` for maximum ratio transmission ($\mathbf{x} = \sqrt{P}\,\mathbf{h}^* / \|\mathbf{h}\|$) or `Precoder.ecbf(h, Q, P_abs_max, P)` for exposure-constrained beamforming. The [tutorial](../tutorials/coherent_mimo.md) demonstrates both precoders with worked examples.
 
 ## Level 7: coherent map
 
-Computes $S_{\mathrm{ab}}(\mathbf{r})$, $\mathbf{Q}$, eigenvalues, and $\rho$ for a given precoder:
-
-```python
-skin = aegis.TissueModel.from_params("Skin", 17.0, 25.0, 28e9)
-engine = aegis.DosimetryEngine(skin)
-
-precoder = aegis.Precoder.mrt(h, P=1.0)
-result = engine.compute(body, paths, level=7, precoder=precoder, h=h)
-
-print(f"P_abs = {result.p_abs:.4f} W")
-print(f"rho = {result.rho:.3f}")
-```
+Computes $S_{\mathrm{ab}}(\mathbf{r})$, $\mathbf{Q}$, eigenvalues, and $\rho$ for a given precoder. Pass `level=7` with a `Precoder` and optionally `h` to get the exposure-signal alignment metric. See the [tutorial](../tutorials/coherent_mimo.md) for a full worked example.
 
 ### Corollary 4.1
 
@@ -131,12 +94,4 @@ Level 8 solves a QCQP to find the precoder maximizing signal power subject to an
 
 $$\max_{\mathbf{x}} |\mathbf{h}^H \mathbf{x}|^2 \quad \text{s.t.} \quad \mathbf{x}^H \mathbf{Q} \mathbf{x} \le P_{\mathrm{abs}}^{\mathrm{max}}, \quad \|\mathbf{x}\|^2 \le P$$
 
-```python
-result = engine.compute(body, paths, level=8, h=h, P_abs_max=0.05)
-
-print(f"P_abs = {result.p_abs:.4f} W")  # <= 0.05
-print(f"x_star = {result.x_star}")      # optimal precoder
-print(f"rho = {result.rho:.3f}")
-```
-
-The solver works in the Q eigenbasis and finds the optimal Lagrange multiplier via bisection. When the MRT precoder already satisfies the constraint, ECBF returns MRT (it is the unconstrained optimum).
+The solver works in the Q eigenbasis and finds the optimal Lagrange multiplier via bisection. When the MRT precoder already satisfies the constraint, ECBF returns MRT (it is the unconstrained optimum). The [tutorial](../tutorials/coherent_mimo.md) compares MRT and ECBF side by side with a worked example.

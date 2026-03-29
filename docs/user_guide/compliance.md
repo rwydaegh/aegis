@@ -1,5 +1,7 @@
 # Compliance assessment
 
+For a step-by-step walkthrough, see the [compliance tutorial](../tutorials/compliance.md).
+
 AEGIS evaluates exposure against ICNIRP 2020 basic restrictions and reference levels for frequencies above 6 GHz to 300 GHz. The source document is `theory/ICNIRPrfgdl2020.pdf`.
 
 ## Two types of compliance check
@@ -27,77 +29,15 @@ The 1 cm$^2$ constraint is 2$\times$ the 4 cm$^2$ basic restriction, applied onl
 
 ## Using the compliance module
 
-```python
-from aegis.compliance import (
-    ExposureScenario,
-    icnirp_limits,
-    evaluate_compliance,
-    summary_text,
-)
+The `aegis.compliance` module provides `icnirp_limits`, `evaluate_compliance`, `max_compliant_power`, and `summary_text`. The [compliance tutorial](../tutorials/compliance.md) walks through each function with full code examples, including limit lookups, evaluating results, computing maximum compliant power, and running power sweeps.
 
-# Get limits for a specific scenario and frequency
-lim = icnirp_limits(ExposureScenario.GENERAL_PUBLIC, 28e9)
-print(f"S_ab limit: {lim.sab_4cm2} W/m²")
-print(f"S_inc local limit: {lim.sinc_local:.1f} W/m²")
+### Key concepts
 
-# Evaluate compliance from computed quantities
-result = evaluate_compliance(
-    scenario=ExposureScenario.GENERAL_PUBLIC,
-    freq_hz=28e9,
-    peak_sab_4cm2=12.3,
-    peak_sinc_local=25.0,
-    sinc_whole_body=4.2,
-    sar_wb=0.012,
-)
+`evaluate_compliance()` can be called standalone with measured quantities or directly on a `DosimetryResult`. It populates all available checks from the result fields automatically. Pass `ExposureScenario.OCCUPATIONAL` for occupational limits.
 
-print(f"Overall: {'PASS' if result.overall_pass else 'FAIL'}")
-print(f"Margin: {result.margin_db:+.1f} dB")
+`max_compliant_power` finds the largest transmit power that keeps all checks passing. Because $S_{\mathrm{ab}}$ scales linearly with transmit power for all fidelity levels, the calculation is exact: $P_{\mathrm{max}} = P_{\mathrm{ref}} \cdot \min_i(\text{limit}_i / \text{value}_i)$.
 
-# Human-readable report
-print(summary_text(result, tx_power_dbm=23.0))
-```
-
-### Evaluating compliance from a dosimetry result
-
-If you already have a `DosimetryResult`, call `evaluate_compliance()` directly on it:
-
-```python
-result = engine.compute(body, paths, mode="spatial")
-compliance = result.evaluate_compliance()
-
-print(f"Overall: {'PASS' if compliance.overall_pass else 'FAIL'}")
-print(f"Margin: {compliance.margin_db:+.1f} dB")
-```
-
-This populates all available checks from the result fields automatically. Pass `ExposureScenario.OCCUPATIONAL` for occupational limits.
-
-### Maximum compliant power
-
-Given a compliance result computed at some reference transmit power, `max_compliant_power` finds the largest power that keeps all checks passing:
-
-```python
-from aegis.compliance import max_compliant_power
-
-compliance = result.evaluate_compliance()
-p_max = max_compliant_power(compliance, ref_power_w=1.0)
-print(f"Max compliant power: {p_max:.2f} W ({10 * np.log10(p_max * 1e3):.1f} dBm)")
-```
-
-$S_{\mathrm{ab}}$ scales linearly with transmit power for all fidelity levels, so the calculation is exact: $P_{\mathrm{max}} = P_{\mathrm{ref}} \cdot \min_i(\text{limit}_i / \text{value}_i)$.
-
-Combined with `DosimetryResult.scale()`, this enables parameter sweeps without rerunning the engine:
-
-```python
-# Compute once at 1 W
-result_1w = engine.compute(body, paths, mode="spatial")
-
-# Scale to explore the compliance boundary
-for p_dbm in range(10, 40):
-    p_w = 10 ** ((p_dbm - 30) / 10)
-    scaled = result_1w.scale(p_w)
-    c = scaled.evaluate_compliance()
-    print(f"{p_dbm} dBm: {'PASS' if c.overall_pass else 'FAIL'} (margin {c.margin_db:+.1f} dB)")
-```
+Combined with `DosimetryResult.scale()`, this enables parameter sweeps without rerunning the engine. See the tutorial for working examples of power sweeps and compliance heatmaps.
 
 ## Command-line interface
 
@@ -127,7 +67,7 @@ All quantities are optional. Pass any combination of `--sab`, `--sab-1cm2` (abov
 The engine computes all quantities needed for compliance automatically:
 
 ```python
-from aegis.engine import DosimetryEngine
+from aegis import DosimetryEngine
 from aegis.tissue.dielectric import SKIN_28GHZ
 
 engine = DosimetryEngine(SKIN_28GHZ)

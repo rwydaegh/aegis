@@ -7,7 +7,7 @@ how many paths you need for a stable estimate.
 
 ## The three-tier hierarchy
 
-The nine levels fall into three tiers based on what they compute and at what cost.
+The nine levels fall into three tiers based on what they compute. The cost column shows theoretical scaling, but all levels run in milliseconds for typical meshes. The real selection criterion is which physics corrections your scenario requires.
 
 | Tier | Levels | Cost | Output |
 |------|--------|------|--------|
@@ -51,9 +51,7 @@ import scienceplots  # noqa: F401
 plt.style.use(["science", "ieee", "no-latex"])
 plt.rcParams.update({"figure.figsize": (3.5, 2.625)})
 
-from aegis.engine import DosimetryEngine
-from aegis.geometry.mesh import BodyMesh
-from aegis.paths import PropagationPaths
+from aegis import DosimetryEngine, BodyMesh, PropagationPaths
 from aegis.tissue.dielectric import SKIN_28GHZ
 
 # Icosahedron: 20 triangles, 10 cm radius, outward normals
@@ -207,6 +205,11 @@ record what was actually computed.
 
 ## Multipath convergence
 
+<div class="fig-wide" markdown>
+![Multipath convergence](../assets/diagrams/multipath_convergence.png)
+</div>
+<span class="fig-caption">Convergence of $P_{\mathrm{abs}}$ error with number of paths $N$, with theoretical $O(1/\sqrt{N})$ bounds.</span>
+
 The incoherent absorbed power density converges as paths are added. For $N$
 independent paths the standard error of the mean decays as $1/\sqrt{N}$. The
 Cauchy convergence criterion compares consecutive estimates:
@@ -259,6 +262,6 @@ directional structure or when you compute higher-order statistics.
 
 ## Next steps
 
-- **Tutorial 3**: [Tissue physics and Fresnel transmission](tissue_and_fresnel.md) -- Cole-Cole model, pseudo-Brewster compensation, angle-dependent $T(\theta)$
-- **Tutorial 4**: [ICNIRP 2020 compliance](compliance.md) -- regulatory limits, power sweeps, how to get $A_{\mathrm{ab}}$ and $D_{\mathrm{max}}$
-- **Tutorial 5**: [Coherent MIMO and ECBF](coherent_mimo.md) -- complex amplitudes, exposure operator $\mathbf{Q}$, exposure-constrained beamforming
+- **Tutorial 3**: [Tissue physics and Fresnel transmission](tissue_and_fresnel.md): Cole-Cole model, pseudo-Brewster compensation, angle-dependent $T(\theta)$
+- **Tutorial 4**: [ICNIRP 2020 compliance](compliance.md): regulatory limits, power sweeps, how to get $A_{\mathrm{ab}}$ and $D_{\mathrm{max}}$
+- **Tutorial 5**: [Coherent MIMO and ECBF](coherent_mimo.md): complex amplitudes, exposure operator $\mathbf{Q}$, exposure-constrained beamforming
