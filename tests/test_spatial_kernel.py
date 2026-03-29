@@ -96,6 +96,34 @@ class TestUnifiedSpatialMatchesOldLevels:
         )
         np.testing.assert_allclose(actual, expected, rtol=1e-12)
 
+    def test_curvature_matches_level5_negative_H(self, setup):
+        """level5_curvature and spatial_kernel(curvature=True) must agree for negative curvature."""
+        body, k_hat, power, n_tilde, T0, freq_hz, _ = setup
+        curvature_H_mixed = np.linspace(-10.0, 10.0, body.n_triangles)
+        from aegis.kernels.level5_curvature import level5_curvature
+        from aegis.kernels.spatial import spatial_kernel
+
+        expected = level5_curvature(
+            body.normals,
+            k_hat,
+            power,
+            n_tilde,
+            T0,
+            curvature_H_mixed,
+            freq_hz,
+        )
+        actual = spatial_kernel(
+            body.normals,
+            k_hat,
+            power,
+            n_tilde,
+            T0,
+            freq_hz,
+            curvature=True,
+            curvature_H=curvature_H_mixed,
+        )
+        np.testing.assert_allclose(actual, expected, rtol=1e-12)
+
     def test_curvature_diffraction_matches_level6(self, setup):
         body, k_hat, power, n_tilde, T0, freq_hz, curvature_H = setup
         from aegis.kernels.level6_diffraction import level6_diffraction

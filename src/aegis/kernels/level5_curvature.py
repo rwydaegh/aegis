@@ -17,7 +17,8 @@ def level5_curvature(normals, k_hat, power, n_tilde, T0, curvature_H, freq_hz):
     _T_s, _T_p, T_avg = fresnel_weights(mu, n_tilde)
     sab_base = (T_avg * mu_plus) @ power
 
+    H_safe = xp.maximum(curvature_H, 0.0)
     mu_plus_sq = mu_plus**2
-    sab_curvature = T0 * ((curvature_H / k)[:, None] * mu_plus_sq) @ power
+    sab_curvature = T0 * ((H_safe / k)[:, None] * mu_plus_sq) @ power
 
     return xp.maximum(sab_base + sab_curvature, 0.0)
