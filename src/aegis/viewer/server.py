@@ -449,7 +449,17 @@ def create_app(
         )
 
     # --- Register route modules ---
-    from aegis.viewer.routes import analysis, basestations, compute, data, environment, location, mimo, sentry_webhook, terrain
+    from aegis.viewer.routes import (
+        analysis,
+        basestations,
+        compute,
+        data,
+        environment,
+        location,
+        mimo,
+        sentry_webhook,
+        terrain,
+    )
 
     data.register(app, _cache, _cache_lock)
     compute.register(app, _cache, _cache_lock)
