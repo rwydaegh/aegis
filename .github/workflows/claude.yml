@@ -48,6 +48,7 @@ jobs:
       github.event.action == 'labeled' &&
       github.event.label.name == 'qa-bot'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: write
       pull-requests: write
@@ -58,12 +59,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
-          fetch-depth: 1
+          fetch-depth: 0
 
       - name: Run Claude Code on QA issue
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          allowed_bots: "claude[bot]"
+          track_progress: true
           prompt: |
             Fix this bug. The issue body has reproduction steps from the automated QA agent.
             There are no Sentry breadcrumbs -- rely on the description and steps to reproduce.
@@ -78,6 +81,7 @@ jobs:
       github.event.label.name == 'sentry' &&
       !contains(github.event.issue.body, '@claude')
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: write
       pull-requests: write
@@ -88,12 +92,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
-          fetch-depth: 1
+          fetch-depth: 0
 
       - name: Run Claude Code on Sentry issue
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          track_progress: true
           prompt: |
             Fix this bug. The issue body has the stack trace from Sentry.
             Follow `.claude/rules/sentry-issues.md` for the workflow.
