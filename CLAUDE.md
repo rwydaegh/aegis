@@ -57,7 +57,7 @@ Phantom meshes (STL) and the IT'IS tissue database live in `data/` inside the re
 
 ## Testing rules
 
-- Pre-commit runs ruff, codespell, trailing-whitespace, end-of-file-fixer, YAML/TOML/JSON validators, and large-file checks. Not pytest. CI runs `pytest tests/` on push and PR. Locally, `pytest -m "not slow"` skips slow-marked tests. Default pytest uses two workers (`-n 2` in `pyproject.toml`). Use `pytest -n 0` for a single process. Avoid `pytest -n auto` on typical laptops (memory scales with CPU count).
+- Pre-commit runs ruff, codespell, trailing-whitespace, end-of-file-fixer, YAML/TOML/JSON validators, and large-file checks. Not pytest. CI runs a slim check (lint + ubuntu/3.12) on push and PR. Full matrix (Linux/Windows x 3.11-3.13) runs only on tag push via `release.yml`. Locally, `pytest -m "not slow"` skips slow-marked tests. Default pytest uses two workers (`-n 2` in `pyproject.toml`). Use `pytest -n 0` for a single process. Avoid `pytest -n auto` on typical laptops (memory scales with CPU count).
 - The Mie regression test is the CI canary. If it passes, physics are correct.
 - Every monograph table has a golden test in `tests/golden/`.
 - Property tests (Hypothesis) check physics invariants: Sab >= 0, energy conservation, ReLU bound.
@@ -70,7 +70,7 @@ Phantom meshes (STL) and the IT'IS tissue database live in `data/` inside the re
 - Type annotations on public API. No docstrings on private helpers unless non-obvious.
 - No em dashes, no semicolons. Sentence case for headings.
 - Writing tells to avoid: `.claude/ai_writing_tells.md`. Full doc style: `.claude/rules/docs-style.md`.
-- Git workflow: `.claude/rules/git-workflow.md`.
+- Git workflow: `.claude/rules/git-workflow.md`. Release cadence: `.claude/rules/release-cadence.md`.
 
 ## Web search
 
