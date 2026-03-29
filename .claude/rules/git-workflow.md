@@ -25,7 +25,7 @@ This is a vibe-coded project. Claude is often the only one making changes in a s
 
 ## When to push
 
-- After every commit, push to origin/master. GitHub Actions CI (lint + test matrix) runs on push but there is no branch protection, so pushing is safe and ensures work is backed up.
+- After every commit, push to origin/master. CI runs a slim check (lint + single test job) via deploy.yml on push. The full test matrix (Linux/Windows x 3.11/3.12/3.13) only runs on tag pushes via release.yml. No branch protection, so pushing is safe.
 - If the push fails (someone else pushed, or network issues), pull with rebase first: `git pull --rebase origin master`.
 
 ## Branching
@@ -79,10 +79,9 @@ Tag after merging or committing work that fits one of these categories. Do not t
 ```bash
 git tag v0.X.Y
 git push origin master --tags
-gh release create v0.X.Y --generate-notes
 ```
 
-`--generate-notes` auto-builds a changelog from commits since the last tag. If the auto-generated notes are poor (too many commits, unclear), write a short summary in the release body instead.
+The `release.yml` workflow handles the rest: runs the full test matrix (Linux/Windows x 3.11/3.12/3.13) and creates a GitHub release with auto-generated notes. Do NOT run `gh release create` manually as it would duplicate the release.
 
 ### Between tags
 
