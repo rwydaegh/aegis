@@ -190,10 +190,11 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             }
             users_out.append(entry)
 
-        return jsonify(
-            {
-                "users": users_out,
-                "precoder": summary.get("precoder_type", "mrt"),
-                "timings": summary.get("timings", {}),
-            }
-        )
+        out: dict = {
+            "users": users_out,
+            "precoder": summary.get("precoder_type", "mrt"),
+            "timings": summary.get("timings", {}),
+        }
+        if summary.get("warning"):
+            out["warning"] = summary["warning"]
+        return jsonify(out)

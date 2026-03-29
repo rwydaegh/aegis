@@ -20,7 +20,7 @@ import numpy as np
 from aegis.coherent.body_channel import compute_body_channel
 from aegis.coherent.exposure_operator import compute_exposure_operator
 from aegis.constants import C_0
-from aegis.defaults import DEFAULT_NOISE_POWER, DEFAULT_P_ABS_MAX
+from aegis.defaults import DEFAULT_NOISE_POWER, DEFAULT_P_ABS_MAX, NUMERICAL_FLOOR
 from aegis.mimo.array_paths import expand_paths_to_array
 from aegis.mimo.channel import compute_channel_vector
 from aegis.mimo.precoders import compute_precoder
@@ -431,6 +431,19 @@ def compute_mimo_scene_with_bodies(
 
     timings["channels_ms"] = (time.perf_counter() - t_channels_start) * 1e3
 
+    # Check for degenerate channel matrix (all user channels near-zero)
+    warning: str | None = None
+    H_check = np.array([u.h for u in scene.users])
+    h_norms = np.linalg.norm(H_check, axis=1)
+    n_degenerate = int(np.sum(h_norms < NUMERICAL_FLOOR))
+    if n_degenerate == len(scene.users):
+        warning = "All MIMO channels are degenerate (near-zero). Try elevating the antenna above ground level."
+    elif n_degenerate > 0:
+        warning = (
+            f"{n_degenerate} of {len(scene.users)} user channels are degenerate. "
+            "Some users may show 0 W/m\u00b2. Try repositioning the antenna."
+        )
+
     # Phase 2: precoder from stacked H
     t_precoder_start = time.perf_counter()
     H = scene.all_h()
@@ -478,10 +491,13 @@ def compute_mimo_scene_with_bodies(
     timings["sab_and_engine_ms"] = (time.perf_counter() - t_sab_start) * 1e3
     timings["total_ms"] = (time.perf_counter() - t_total_start) * 1e3
 
-    return {
+    result = {
         "user_ids": scene.user_ids,
         "timings": timings,
         "precoder_type": precoder_type,
         "weights_real": W.real.tolist(),
         "weights_imag": W.imag.tolist(),
     }
+    if warning is not None:
+        result["warning"] = warning
+    return result

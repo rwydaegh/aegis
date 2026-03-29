@@ -1,4 +1,4 @@
-import { Eye, Gamepad2, X, Plus, Layers, Crosshair } from 'lucide-react'
+import { Eye, Gamepad2, X, Plus, Layers, Crosshair, AlertTriangle } from 'lucide-react'
 import { useMIMOStore, type PrecoderType } from '@/stores/mimo'
 import type { UserMIMOState } from '@/stores/mimo'
 import { formatSab } from '@/lib/format'
@@ -41,6 +41,8 @@ export default function MIMOPanel() {
   const setPrecoderType = useMIMOStore(s => s.setPrecoderType)
   const setShowAllHeatmaps = useMIMOStore(s => s.setShowAllHeatmaps)
   const setShowArrayPattern = useMIMOStore(s => s.setShowArrayPattern)
+
+  const summaryStats = useMIMOStore(s => s.summaryStats)
 
   const userList = [...users.values()]
   const K = users.size
@@ -114,6 +116,14 @@ export default function MIMOPanel() {
             />
             <span className="text-[10px] text-muted-foreground">Show array pattern</span>
           </label>
+
+          {/* Degenerate channel warning */}
+          {summaryStats?.warning && (
+            <div className="flex items-start gap-1.5 mb-2 px-1.5 py-1.5 rounded bg-yellow-500/10 border border-yellow-500/30 text-yellow-400">
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+              <span className="text-[10px] leading-tight">{summaryStats.warning}</span>
+            </div>
+          )}
 
           {/* Focus point */}
           <div className="mb-2">
