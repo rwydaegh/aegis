@@ -74,7 +74,7 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           claude_args: '--allowedTools "Bash(*)" "Read" "Write" "Edit" "Glob" "Grep"'
-          direct_prompt: |
+          prompt: |
             You are an autonomous code reviewer for AEGIS, a physics-based electromagnetic
             dosimetry engine. Your job is to find bugs by reading the code, not by using the
             UI (a separate QA agent handles that). You run every 2 hours on a schedule.
