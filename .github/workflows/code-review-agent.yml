@@ -146,10 +146,11 @@ jobs:
             5. If you find multiple bugs, fix them all (separate commits per fix).
 
             6. If you find something suspicious but are not sure it is a bug, file a GitHub
-               issue with label "needs-investigation" instead of changing the code.
+               issue with labels "qa-bot,bug" instead of changing the code.
                Always end the issue body with:
                `---`
                `*Filed by code-review-agent.yml · run [${{ github.run_id }}](https://github.com/rwydaegh/aegis/actions/runs/${{ github.run_id }})*`
+               The `qa-bot` label triggers another agent to fix it automatically.
 
             ## After fixing bugs
 
