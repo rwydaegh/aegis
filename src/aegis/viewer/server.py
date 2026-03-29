@@ -449,7 +449,7 @@ def create_app(
         )
 
     # --- Register route modules ---
-    from aegis.viewer.routes import analysis, basestations, compute, data, environment, location, mimo
+    from aegis.viewer.routes import analysis, basestations, compute, data, environment, location, mimo, sentry_webhook
 
     data.register(app, _cache, _cache_lock)
     compute.register(app, _cache, _cache_lock)
@@ -458,5 +458,6 @@ def create_app(
     mimo.register(app, _cache, _cache_lock)
     environment.register(app, _cache, _cache_lock)
     basestations.register(app, _cache, _cache_lock)
+    sentry_webhook.register(app, _cache, _cache_lock)
 
     return app
