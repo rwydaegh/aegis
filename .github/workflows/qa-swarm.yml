@@ -101,32 +101,32 @@ jobs:
           else
             echo "Execution file: $EXEC_FILE ($(wc -c < "$EXEC_FILE") bytes)"
             # The execution file is JSON. Extract ASSIGNMENTS_JSON from any string value.
-            ASSIGNMENTS=$(python3 -c "
-import json, re, sys
-data = json.load(open(sys.argv[1]))
-def walk(obj):
-    if isinstance(obj, str):
-        m = re.search(r'ASSIGNMENTS_JSON:(\{.*\})', obj)
-        if m:
-            # Validate it's real JSON
-            try:
-                json.loads(m.group(1))
-                return m.group(1)
-            except json.JSONDecodeError:
-                pass
-    elif isinstance(obj, list):
-        for item in reversed(obj):
-            r = walk(item)
-            if r: return r
-    elif isinstance(obj, dict):
-        for v in obj.values():
-            r = walk(v)
-            if r: return r
-    return None
-result = walk(data)
-if result:
-    print(result)
-" "$EXEC_FILE" 2>/dev/null || true)
+            cat > /tmp/extract_assignments.py << 'PYEOF'
+          import json, re, sys
+          data = json.load(open(sys.argv[1]))
+          def walk(obj):
+              if isinstance(obj, str):
+                  m = re.search(r'ASSIGNMENTS_JSON:(\{.*\})', obj)
+                  if m:
+                      try:
+                          json.loads(m.group(1))
+                          return m.group(1)
+                      except json.JSONDecodeError:
+                          pass
+              elif isinstance(obj, list):
+                  for item in reversed(obj):
+                      r = walk(item)
+                      if r: return r
+              elif isinstance(obj, dict):
+                  for v in obj.values():
+                      r = walk(v)
+                      if r: return r
+              return None
+          result = walk(data)
+          if result:
+              print(result)
+          PYEOF
+            ASSIGNMENTS=$(python3 /tmp/extract_assignments.py "$EXEC_FILE" 2>/dev/null || true)
             echo "Extracted assignments length: ${#ASSIGNMENTS}"
           fi
           if [ -z "$ASSIGNMENTS" ]; then
