@@ -15,9 +15,10 @@ import pytest
 
 from aegis.basestation.adapter import paths_from_basestations
 from aegis.basestation.antenna import BaseStation
-from aegis.viewer.routes.basestations import geocode_location
 
 pytest.importorskip("flask")
+
+from aegis.viewer.routes.basestations import geocode_location  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Helpers
