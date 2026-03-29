@@ -9,7 +9,7 @@ def antenna_rotation_matrix(azimuth_deg: float, tilt_deg: float) -> np.ndarray:
     """Build rotation from world ENU frame to antenna-local frame.
 
     Convention (world): X=East, Y=North, Z=Up (ENU)
-    Convention (antenna-local): z=boresight, x=right, y=up (before tilt)
+    Convention (antenna-local): y=boresight, x=right, z=up (before tilt)
 
     The boresight direction in world frame points along azimuth (CW from
     North in horizontal plane), tilted below horizontal by tilt_deg.
@@ -22,24 +22,26 @@ def antenna_rotation_matrix(azimuth_deg: float, tilt_deg: float) -> np.ndarray:
     c_a, s_a = np.cos(az), np.sin(az)
     c_t, s_t = np.cos(tilt), np.sin(tilt)
 
-    # Step 1: rotate around Z by -azimuth (align boresight with +Y = North)
+    # Step 1: rotate around Z by +azimuth (align boresight with +Y)
     # In ENU, azimuth=0 means North (+Y), azimuth=90 means East (+X).
-    # We want the antenna's boresight (local z) to point along the azimuth.
+    # Boresight in world = [sin(az), cos(az), 0] (horizontal).
     # R_az rotates world vectors so that the azimuth direction maps to +Y.
     R_az = np.array(
         [
-            [c_a, s_a, 0.0],
-            [-s_a, c_a, 0.0],
+            [c_a, -s_a, 0.0],
+            [s_a, c_a, 0.0],
             [0.0, 0.0, 1.0],
         ]
     )
 
-    # Step 2: rotate around local X by tilt (positive tilt = boresight below horizontal)
+    # Step 2: rotate around local X by +tilt (positive tilt = boresight below horizontal)
+    # After R_az, tilted boresight is [0, cos(tilt), -sin(tilt)].
+    # R_tilt(+tilt) maps this to [0, 1, 0].
     R_tilt = np.array(
         [
             [1.0, 0.0, 0.0],
-            [0.0, c_t, s_t],
-            [0.0, -s_t, c_t],
+            [0.0, c_t, -s_t],
+            [0.0, s_t, c_t],
         ]
     )
 
