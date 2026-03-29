@@ -378,6 +378,24 @@ def create_app(
 
     _setup_auth(app, os.environ.get("AEGIS_GATE_PASSWORD"))
 
+    @app.after_request
+    def set_security_headers(response):
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        response.headers.setdefault(
+            "Content-Security-Policy",
+            "default-src 'self'; "
+            "script-src 'self' https://analytics.waves-ugent.be; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data: blob:; "
+            "font-src 'self' data:; "
+            "connect-src 'self' https://analytics.waves-ugent.be https://*.sentry.io; "
+            "worker-src 'self' blob:; "
+            "frame-ancestors 'none'",
+        )
+        return response
+
     # Store pipeline config
     _cache["bbox_radius"] = bbox_radius
     _cache["pipeline_dir"] = pipeline_dir

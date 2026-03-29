@@ -18,6 +18,10 @@ exclude_patterns = [
   "src/aegis/viewer/static/assets/**",
   # Legacy HTML viewer (replaced by React app)
   "src/aegis/viewer/templates/_legacy*",
+  # Private basestations library (separate project, not counted for tech debt)
+  "basestations/**",
+  # Presentations (one-off scripts, not production code)
+  "presentations/**",
 ]
 
 test_patterns = [

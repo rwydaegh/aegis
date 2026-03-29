@@ -6,14 +6,36 @@ aegis.waves-ugent.be {
         }
         format json
     }
+
+    header {
+        Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+        Content-Security-Policy "default-src 'self'; script-src 'self' https://analytics.waves-ugent.be; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://analytics.waves-ugent.be https://*.sentry.io; worker-src 'self' blob:; frame-ancestors 'none'"
+    }
+
     reverse_proxy flask:8000
 }
 
 analytics.waves-ugent.be {
+    header {
+        Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
     reverse_proxy umami:3000
 }
 
 docs.aegis.waves-ugent.be {
+    header {
+        Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
     basic_auth {
         aegis {env.DOCS_PASSWORD_HASH}
     }
