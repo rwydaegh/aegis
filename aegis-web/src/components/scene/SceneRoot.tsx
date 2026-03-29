@@ -31,6 +31,35 @@ import SmartphoneModel from './SmartphoneModel'
 import BaseStationMarkers from './BaseStationMarkers'
 import { EnvironmentTerrain } from './EnvironmentTerrain'
 
+function GroundPlane() {
+  const visible = useSceneStore(s => s.groundPlaneVisible)
+  const config = useSceneStore(s => s.viewerConfig)
+  if (!visible) return null
+  const gp = config?.scene?.ground_plane as Record<string, unknown> | undefined
+  const size = (gp?.size as number) ?? 500
+  const color = (gp?.color as string) ?? '#1a1a20'
+  const opacity = (gp?.opacity as number) ?? 0.5
+  return (
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
+      <planeGeometry args={[size, size]} />
+      <meshStandardMaterial color={color} transparent opacity={opacity} roughness={1} />
+    </mesh>
+  )
+}
+
+function SceneGrid() {
+  const visible = useSceneStore(s => s.gridVisible)
+  const config = useSceneStore(s => s.viewerConfig)
+  if (!visible) return null
+  const grid = config?.scene?.grid as Record<string, unknown> | undefined
+  const size = (grid?.size as number) ?? 200
+  const divisions = (grid?.divisions as number) ?? 100
+  const yOffset = (grid?.y_offset as number) ?? -0.01
+  return (
+    <gridHelper args={[size, divisions, '#444444', '#2a2a2a']} position={[0, yOffset, 0]} />
+  )
+}
+
 // Body is roughly 1.2 m tall, centered at origin, feet at y=0
 const BODY_TARGET = new THREE.Vector3(0, 0.6, 0)
 
@@ -251,6 +280,7 @@ function MIMOScene() {
 
 export default function SceneRoot() {
   const config = useSceneStore(s => s.viewerConfig)
+  const bodyMeshVisible = useSceneStore(s => s.bodyMeshVisible)
   const bodyOffset = useSimulationStore(s => s.bodyOffset)
   const cameraMode = useUIStore(s => s.cameraMode)
   const mimoEnabled = useMIMOStore(s => s.enabled)
@@ -275,7 +305,7 @@ export default function SceneRoot() {
         </>
       )}
       {envSource === 'osm' && <EnvironmentOSM />}
-      {mimoEnabled ? (
+      {bodyMeshVisible && (mimoEnabled ? (
         <MIMOScene />
       ) : (
         <>
@@ -283,8 +313,10 @@ export default function SceneRoot() {
           <Antenna />
           <DistanceLine />
         </>
-      )}
+      ))}
       <RayPaths />
+      <GroundPlane />
+      <SceneGrid />
       <EnvironmentTerrain />
       <BaseStationMarkers />
       <DosimetryController />
