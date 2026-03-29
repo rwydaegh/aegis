@@ -163,7 +163,7 @@ class EnvironmentMesh:
 
         from aegis.environment.tiles import TileTraverser
 
-        key = api_key or os.environ.get("GOOGLE_MAPS_API_KEY")
+        key = api_key or os.environ.get("GOOGLE_API_KEY")
         traverser = TileTraverser(
             root_url="https://tile.googleapis.com/v1/3dtiles/root.json",
             api_key=key,

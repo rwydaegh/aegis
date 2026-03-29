@@ -255,13 +255,12 @@ export default function SceneRoot() {
   const cameraMode = useUIStore(s => s.cameraMode)
   const mimoEnabled = useMIMOStore(s => s.enabled)
   const envSource = useEnvironmentStore(s => s.source)
+  const controlsRef = useRef<OrbitControlsImpl | null>(null)
   if (!config) return null
 
   const cam = config.camera
   const ren = config.renderer
   const initialPosition = (cam.initial_position as [number, number, number]) ?? [0, 2, 5]
-
-  const controlsRef = useRef<OrbitControlsImpl | null>(null)
 
   const sceneContent = (
     <>

@@ -91,7 +91,7 @@ export default function BaseStationMarkers() {
                   panelHeight={bs.panel_height_m ?? 1.0}
                   azimuthDeg={bs.azimuth_deg}
                   tiltDeg={bs.total_tilt_deg}
-                  position={[pos[0], pos[1] - verticalShift, pos[2]]}
+                  position={[pos[0], pos[1] + verticalShift, pos[2]]}
                   color={OPERATOR_COLORS[bs.operator] ?? DEFAULT_COLOR}
                   selected={selectedIndex === index}
                   onClick={() => selectAntenna(

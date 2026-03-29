@@ -195,6 +195,7 @@ def parse_osm_xml(
     xml_str: str,
     origin_lat: float = 0.0,
     origin_lon: float = 0.0,
+    default_building_height: float = 8.0,
 ) -> tuple[list[Building], list[Road], list[WaterBody]]:
     """Parse OSM XML string and return extracted features.
 
@@ -240,7 +241,7 @@ def parse_osm_xml(
             if footprint is None:
                 continue
             building_type = tags.get("building", "yes")
-            height = _parse_height(tags, building_type)
+            height = _parse_height(tags, building_type, default=default_building_height)
             roof_shape = _parse_roof_shape(tags)
             roof_height_str = tags.get("roof:height", None)
             if roof_height_str is not None:
@@ -475,7 +476,9 @@ def build_environment_from_osm(
     if detail:
         from aegis.environment.facades import generate_detailed_building
 
-    buildings, roads, water_bodies = parse_osm_xml(xml_str, origin_lat, origin_lon)
+    buildings, roads, water_bodies = parse_osm_xml(
+        xml_str, origin_lat, origin_lon, default_building_height=default_building_height
+    )
     relation_result = parse_relations(xml_str, origin_lat, origin_lon)
 
     all_verts: list[np.ndarray] = []

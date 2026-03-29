@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import { useEnvironmentStore } from '@/stores/environment'
 
@@ -51,6 +51,10 @@ export function EnvironmentOSM() {
 
     return geo
   }, [meshData])
+
+  useEffect(() => {
+    return () => { geometry?.dispose() }
+  }, [geometry])
 
   if (!geometry) return null
 

@@ -5,11 +5,15 @@ on:
     - cron: "0 */2 * * *"  # Every 2 hours
   workflow_dispatch: {}     # Manual trigger for testing
 
+concurrency:
+  group: qa-agent
+  cancel-in-progress: true
+
 jobs:
   qa:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
       pull-requests: write
       issues: write
       id-token: write

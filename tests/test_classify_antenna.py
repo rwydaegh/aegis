@@ -6,9 +6,6 @@ import pytest
 
 from aegis.basestation.classify import classify_antenna, infer_element_grid
 
-flask = pytest.importorskip("flask", reason="Flask not installed (viewer extra)")
-from aegis.viewer.routes.basestations import geocode_location  # noqa: E402
-
 
 class TestClassifyAntenna:
     """Archetype assignment from antenna metadata."""
@@ -139,22 +136,39 @@ class TestInferElementGrid:
         assert n_h_7 * n_v_7 <= n_h_5 * n_v_5
 
 
+_viewer_deps_missing = False
+try:
+    import flask as _flask  # noqa: F401
+    import geopy as _geopy  # noqa: F401
+except ImportError:
+    _viewer_deps_missing = True
+
+
+@pytest.mark.skipif(_viewer_deps_missing, reason="Flask/geopy not installed (viewer extra)")
 class TestGeocodeLocation:
+    @staticmethod
+    def _geocode(location: str):
+        from aegis.viewer.routes.basestations import geocode_location
+
+        return geocode_location(location)
+
     def test_raw_coordinates_comma(self):
-        lat, lon = geocode_location("50.85, 4.35")
+        lat, lon = self._geocode("50.85, 4.35")
         assert abs(lat - 50.85) < 0.001
         assert abs(lon - 4.35) < 0.001
 
     def test_raw_coordinates_space(self):
-        lat, lon = geocode_location("50.85 4.35")
+        lat, lon = self._geocode("50.85 4.35")
         assert abs(lat - 50.85) < 0.001
         assert abs(lon - 4.35) < 0.001
 
     def test_negative_coordinates(self):
-        lat, lon = geocode_location("-33.87, 151.21")
+        lat, lon = self._geocode("-33.87, 151.21")
         assert abs(lat - (-33.87)) < 0.001
 
     def test_nominatim_fallback(self):
+        from aegis.viewer.routes.basestations import geocode_location
+
         mock_location = MagicMock()
         mock_location.latitude = 50.85
         mock_location.longitude = 4.35
@@ -164,6 +178,8 @@ class TestGeocodeLocation:
             assert abs(lat - 50.85) < 0.01
 
     def test_unknown_location_raises(self):
+        from aegis.viewer.routes.basestations import geocode_location
+
         with patch("geopy.geocoders.Nominatim") as mock_nom:
             mock_nom.return_value.geocode.return_value = None
             with pytest.raises(ValueError, match="Could not geocode"):

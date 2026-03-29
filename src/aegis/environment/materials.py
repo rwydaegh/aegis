@@ -52,7 +52,7 @@ def classify_color(r: int, g: int, b: int) -> MaterialType:
         return MaterialType.VEGETATION
 
     # orange-brown -> brick
-    if 10 < h360 < 45 and s > 0.3:
+    if 10 < h360 < 35 and s > 0.3:
         return MaterialType.BRICK
 
     # yellow-ish -> wood

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import { useTerrainStore } from '@/stores/terrain'
 
@@ -16,6 +16,10 @@ export function EnvironmentTerrain() {
 
     return geo
   }, [meshData])
+
+  useEffect(() => {
+    return () => { geometry?.dispose() }
+  }, [geometry])
 
   if (!enabled || !geometry) return null
 

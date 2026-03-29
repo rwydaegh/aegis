@@ -46,7 +46,8 @@ jobs:
     if: |
       github.event_name == 'issues' &&
       github.event.action == 'labeled' &&
-      github.event.label.name == 'sentry'
+      github.event.label.name == 'sentry' &&
+      !contains(github.event.issue.body, '@claude')
     runs-on: ubuntu-latest
     permissions:
       contents: write

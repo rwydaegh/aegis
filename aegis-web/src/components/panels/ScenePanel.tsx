@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import * as Sentry from '@sentry/react'
 import { loadLocation, cancelLocation, loadSceneGeometry, fetchCapabilities } from '@/api/client'
 import { useSceneStore } from '@/stores/scene'
@@ -72,6 +72,10 @@ export default function ScenePanel() {
   const [force, setForce] = useState(false)
   const [alsoLoadBS, setAlsoLoadBS] = useState(false)
   const esRef = useRef<EventSource | null>(null)
+
+  useEffect(() => {
+    return () => { esRef.current?.close() }
+  }, [])
 
   // Show Sionna scene selector even when location loading is unavailable
   const hasScenes = scenes.length > 0
@@ -215,7 +219,7 @@ export default function ScenePanel() {
       <div className="mt-4 pt-3 border-t border-border">
         <button
           onClick={() => {
-            fetch('/api/clear-cache', { method: 'POST' })
+            fetch('/api/clear-cache', { method: 'POST' }).catch(() => {})
             useSceneStore.getState().clearScene()
             useSimulationStore.getState().clearResults()
             useSimulationStore.getState().setBodyOffset([0, 0, 0])

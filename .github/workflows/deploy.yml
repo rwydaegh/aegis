@@ -87,9 +87,20 @@ jobs:
 
       - name: Health check
         if: vars.HETZNER_HOST != ''
+        env:
+          HOST: ${{ vars.HETZNER_HOST }}
         run: |
           sleep 15
-          curl -sf https://aegis.waves-ugent.be/api/health || echo "::warning::Health check failed - server may still be starting"
+          for i in 1 2 3; do
+            if curl -sf --max-time 10 "https://$HOST/api/health"; then
+              echo "Health check passed"
+              exit 0
+            fi
+            echo "Health check attempt $i failed, retrying in 10s..."
+            sleep 10
+          done
+          echo "::error::Health check failed after 3 attempts"
+          exit 1
 
       - name: Sentry release tracking
         if: vars.HETZNER_HOST != ''
