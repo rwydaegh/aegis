@@ -136,7 +136,13 @@ class TestRelationsIntegration:
 def test_fetch_osm_includes_relations():
     """Real Overpass fetch should include relation elements."""
     pytest.importorskip("requests", reason="requests not installed")
-    xml = fetch_osm(51.0544, 3.7237, radius_m=100, timeout=60)
+
+    from aegis.environment.osm import OverpassRateLimitError, OverpassTimeoutError
+
+    try:
+        xml = fetch_osm(51.0544, 3.7237, radius_m=100, timeout=60)
+    except (OverpassTimeoutError, OverpassRateLimitError):
+        pytest.skip("Overpass API unavailable (timeout/rate limit)")
     assert "<node" in xml
     assert "<way" in xml
     # Relations may or may not exist in this area, but query should not error
