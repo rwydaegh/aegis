@@ -7,6 +7,7 @@ import { useSceneStore } from '@/stores/scene'
 import { useSimulationStore } from '@/stores/simulation'
 import { useUIStore } from '@/stores/ui'
 import { useDosimetry } from '@/hooks/useDosimetry'
+import { useGpuStatus } from '@/hooks/useGpuStatus'
 import { useMIMODosimetry } from '@/hooks/useMIMODosimetry'
 import { useMIMOKeyboard } from '@/hooks/useMIMOKeyboard'
 import { usePhysics } from '@/hooks/usePhysics'
@@ -194,6 +195,7 @@ function CameraInitializer({ controlsRef, initialOffset }: {
 
 function DosimetryController() {
   useDosimetry()
+  useGpuStatus()
   return null
 }
 

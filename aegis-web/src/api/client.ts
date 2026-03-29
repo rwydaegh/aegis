@@ -150,6 +150,16 @@ export async function fetchTissueSpectrum(tissue: string, fMin: number, fMax: nu
   return getJson<TissueSpectrum>(`/api/tissue/spectrum?tissue=${encodeURIComponent(tissue)}&f_min=${fMin}&f_max=${fMax}&n=${n}`)
 }
 
+export interface GpuStatus {
+  warm: boolean
+  enabled: boolean
+  seconds_remaining: number
+}
+
+export async function fetchGpuStatus(): Promise<GpuStatus> {
+  return getJson<GpuStatus>('/api/gpu/status')
+}
+
 // ---------------------------------------------------------------------------
 // Binary endpoints
 // ---------------------------------------------------------------------------

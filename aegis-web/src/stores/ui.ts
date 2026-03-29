@@ -34,6 +34,7 @@ interface UIStore {
   ratioMode: boolean
   exposureScenario: ExposureScenario
   lastComputeTiming: LastComputeTiming | null
+  gpuWarm: boolean | null
 
   toggleSidebar: () => void
   toggleWireframe: () => void
@@ -52,6 +53,7 @@ interface UIStore {
   setRatioMode: (on: boolean) => void
   setExposureScenario: (s: ExposureScenario) => void
   setLastComputeTiming: (t: LastComputeTiming | null) => void
+  setGpuWarm: (warm: boolean | null) => void
 }
 
 export const useUIStore = create<UIStore>((set) => ({
@@ -71,6 +73,7 @@ export const useUIStore = create<UIStore>((set) => ({
   ratioMode: false,
   exposureScenario: 'general_public',
   lastComputeTiming: null,
+  gpuWarm: null,
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
   toggleWireframe: () => set((state) => ({ wireframe: !state.wireframe })),
   setComputing: (computing) => set({ isComputing: computing }),
@@ -96,4 +99,5 @@ export const useUIStore = create<UIStore>((set) => ({
   setRatioMode: (on) => set({ ratioMode: on }),
   setExposureScenario: (s) => set({ exposureScenario: s }),
   setLastComputeTiming: (t) => set({ lastComputeTiming: t }),
+  setGpuWarm: (warm) => set({ gpuWarm: warm }),
 }))
