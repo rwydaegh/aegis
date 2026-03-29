@@ -101,6 +101,12 @@ tests/frontend_smoke.md
 tools/.cloud-state.json
 .worktrees/
 
+# blosm Blender add-on source (reference only, not part of AEGIS)
+blosm/
+
+# Roof visualization scripts (dev-only)
+scripts/
+
 # ── GSD baseline (auto-generated) ──
 *~
 *.code-workspace
