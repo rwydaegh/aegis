@@ -66,6 +66,7 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           allowed_bots: "claude[bot]"
+          include_comments_by_actor: "claude[bot]"
           track_progress: true
           prompt: |
             Fix this bug. The issue body has reproduction steps from the automated QA agent.
