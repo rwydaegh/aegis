@@ -1,4 +1,5 @@
 import { useCallback, useRef } from 'react'
+import * as Sentry from '@sentry/react'
 import { useBaseStationsStore } from '@/stores/basestations'
 import { useSimulationStore } from '@/stores/simulation'
 import { useNotificationStore } from '@/stores/notifications'
@@ -46,6 +47,7 @@ export function useBaseStationsDosimetry() {
       })
       .catch(err => {
         if ((err as Error).name === 'AbortError') return
+        Sentry.captureException(err)
         useNotificationStore.getState().addNotification(
           'error',
           `Base station compute failed: ${(err as Error).message ?? err}`,

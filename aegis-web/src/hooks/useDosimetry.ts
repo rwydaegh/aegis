@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { useShallow } from 'zustand/react/shallow'
+import * as Sentry from '@sentry/react'
 import { useSimulationStore } from '@/stores/simulation'
 import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
@@ -154,6 +155,7 @@ export function useDosimetry() {
       })
       .catch(err => {
         if ((err as Error).name === 'AbortError') return // expected cancellation
+        Sentry.captureException(err)
         useNotificationStore.getState().addNotification('error', `Compute failed: ${(err as Error).message ?? err}`)
       })
       .finally(() => {
