@@ -74,7 +74,8 @@ def _handle_new_issue(payload: dict) -> None:
 
 def _fetch_latest_event(org: str, project: str, issue_id: str, token: str) -> dict | None:
     """GET the latest event for a Sentry issue."""
-    url = f"https://sentry.io/api/0/issues/{issue_id}/events/latest/"
+    api_host = os.environ.get("SENTRY_API_HOST", "https://de.sentry.io")
+    url = f"{api_host}/api/0/issues/{issue_id}/events/latest/"
     req = Request(url, headers={"Authorization": f"Bearer {token}"})
     try:
         with urlopen(req, timeout=10) as resp:
