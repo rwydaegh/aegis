@@ -19,13 +19,25 @@ function handle401(): void {
 // Internal helpers
 // ---------------------------------------------------------------------------
 
+/** Try to extract a human-readable error from the response JSON body. */
+async function extractErrorMessage(res: Response, method: string, path: string): Promise<string> {
+  const fallback = `${method} ${path} failed: ${res.status} ${res.statusText}`
+  try {
+    const data = await res.json()
+    if (data && typeof data.error === 'string') return data.error
+  } catch {
+    // Response body is not JSON or is empty
+  }
+  return fallback
+}
+
 async function getJson<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE}${path}`)
   if (res.status === 401) {
     handle401()
     throw new Error(`GET ${path} failed: 401 Unauthorized`)
   }
-  if (!res.ok) throw new Error(`GET ${path} failed: ${res.status} ${res.statusText}`)
+  if (!res.ok) throw new Error(await extractErrorMessage(res, 'GET', path))
   return res.json() as Promise<T>
 }
 
@@ -39,7 +51,7 @@ export async function postJson<T>(path: string, body: unknown): Promise<T> {
     handle401()
     throw new Error(`POST ${path} failed: 401 Unauthorized`)
   }
-  if (!res.ok) throw new Error(`POST ${path} failed: ${res.status} ${res.statusText}`)
+  if (!res.ok) throw new Error(await extractErrorMessage(res, 'POST', path))
   return res.json() as Promise<T>
 }
 
@@ -49,7 +61,7 @@ async function getBinary(path: string): Promise<Response> {
     handle401()
     throw new Error(`GET ${path} failed: 401 Unauthorized`)
   }
-  if (!res.ok) throw new Error(`GET ${path} failed: ${res.status} ${res.statusText}`)
+  if (!res.ok) throw new Error(await extractErrorMessage(res, 'GET', path))
   return res
 }
 
@@ -83,7 +95,7 @@ async function computeEndpoint(
     handle401()
     throw new Error(`POST ${path} failed: 401 Unauthorized`)
   }
-  if (!res.ok) throw new Error(`POST ${path} failed: ${res.status} ${res.statusText}`)
+  if (!res.ok) throw new Error(await extractErrorMessage(res, 'POST', path))
 
   const statsHeader = res.headers.get('X-Stats')
   if (!statsHeader) throw new Error(`POST ${path}: missing X-Stats header`)
@@ -220,7 +232,7 @@ export async function loadSceneGeometry(scenePath: string): Promise<{
     handle401()
     throw new Error('POST /api/scene/load failed: 401 Unauthorized')
   }
-  if (!res.ok) throw new Error(`POST /api/scene/load failed: ${res.status} ${res.statusText}`)
+  if (!res.ok) throw new Error(await extractErrorMessage(res, 'POST', '/api/scene/load'))
 
   const metaHeader = res.headers.get('X-Meta')
   if (!metaHeader) throw new Error('POST /api/scene/load: missing X-Meta header')
@@ -363,7 +375,7 @@ export function loadLocation(location: string, radius: number, voxelSize: number
 
 export async function cancelLocation(): Promise<void> {
   const res = await fetch(`${BASE}/api/location/cancel`, { method: 'POST' })
-  if (!res.ok) throw new Error(`POST /api/location/cancel failed: ${res.status} ${res.statusText}`)
+  if (!res.ok) throw new Error(await extractErrorMessage(res, 'POST', '/api/location/cancel'))
 }
 
 // ---------------------------------------------------------------------------
