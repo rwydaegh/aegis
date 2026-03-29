@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
+pytest.importorskip("flask", reason="Flask not installed (viewer extra)")
 from aegis.viewer.config import DEFAULTS
 
 

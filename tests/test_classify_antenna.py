@@ -5,7 +5,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from aegis.basestation.classify import classify_antenna, infer_element_grid
-from aegis.viewer.routes.basestations import geocode_location
+
+flask = pytest.importorskip("flask", reason="Flask not installed (viewer extra)")
+from aegis.viewer.routes.basestations import geocode_location  # noqa: E402
 
 
 class TestClassifyAntenna:

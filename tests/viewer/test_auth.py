@@ -7,6 +7,8 @@ import struct
 
 import pytest
 
+pytest.importorskip("flask", reason="Flask not installed (viewer extra)")
+
 
 def _make_minimal_stl_bytes(name: str = "test") -> bytes:
     """Return a minimal valid binary STL with one triangle."""
