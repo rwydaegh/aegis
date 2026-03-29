@@ -270,6 +270,194 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
         resp.headers["Access-Control-Expose-Headers"] = "X-Stats"
         return resp
 
+    @app.route("/api/basestations/compute_mimo", methods=["POST"])
+    def api_basestations_compute_mimo():
+        """Compute coherent MIMO dosimetry for an mMIMO base station.
+
+        Builds an AntennaArray from the classified element grid, creates
+        a single-user MIMOScene, and runs compute_mimo_scene_with_bodies
+        with MRT precoding toward the body.
+
+        Returns binary SAB array with X-Stats JSON header.
+        """
+        from aegis.basestation.classify import classify_antenna, infer_element_grid
+        from aegis.basestation.coords import wgs84_to_enu
+        from aegis.constants import C_0
+        from aegis.mimo.array import AntennaArray
+        from aegis.mimo.compute import compute_mimo_scene_with_bodies
+        from aegis.mimo.scene import MIMOScene
+        from aegis.mimo.user import UserConfig, UserState
+        from aegis.viewer.routes.compute import _parse_rotation_y, _parse_vec3
+
+        params = request.get_json(silent=True) or {}
+
+        # Validate index
+        with cache_lock:
+            basestations = cache.get("basestations", [])
+            origin = cache.get("basestations_origin")
+            body = cache.get("body")
+            bodies_cache = cache.get("bodies", {})
+
+        index = params.get("index")
+        if index is None:
+            return jsonify({"error": "Missing 'index' in request"}), 400
+        try:
+            index = int(index)
+        except (TypeError, ValueError):
+            return jsonify({"error": "'index' must be an integer"}), 400
+        if index < 0 or index >= len(basestations):
+            return jsonify({"error": f"Index {index} out of range [0, {len(basestations)})"}), 400
+
+        bs = basestations[index]
+
+        # Classify and validate mMIMO
+        archetype = classify_antenna(
+            gain_dbi=bs.gain_dbi,
+            technology=bs.technology,
+            freq_mhz=bs.freq_mhz,
+            h_bw=bs.horizontal_beamwidth_deg or 0,
+            v_bw=bs.vertical_beamwidth_deg or 0,
+        )
+        if archetype != "mmimo":
+            return jsonify({"error": f"Base station {index} is classified as '{archetype}', not 'mmimo'"}), 400
+
+        if body is None:
+            return jsonify({"error": "No body mesh loaded"}), 404
+        if origin is None:
+            return jsonify({"error": "No scene origin set"}), 400
+
+        # Parse body transform
+        body_offset, err = _parse_vec3(params, "body_offset", [0, 0, 0])
+        if err:
+            return err
+        body_rotation_y, err = _parse_rotation_y(params)
+        if err:
+            return err
+
+        level = int(params.get("level", 7))
+        precoder_type = str(params.get("precoder_type", "mrt"))
+
+        # Infer element grid
+        n_h, n_v = infer_element_grid(archetype, bs.gain_dbi)
+
+        # Compute antenna position in ENU
+        lat0, lon0 = origin
+        ant_pos = wgs84_to_enu(bs.latitude, bs.longitude, 0.0, lat0, lon0)
+        ant_pos[2] = bs.height_m
+
+        # Compute broadside direction from azimuth and tilt in ENU
+        az_rad = np.deg2rad(bs.azimuth_deg)
+        tilt_rad = np.deg2rad(bs.total_tilt_deg)
+        broadside = np.array(
+            [
+                np.sin(az_rad) * np.cos(tilt_rad),
+                np.cos(az_rad) * np.cos(tilt_rad),
+                -np.sin(tilt_rad),
+            ],
+            dtype=np.float64,
+        )
+
+        # Half-wavelength spacing
+        freq_hz = bs.freq_hz
+        wavelength = C_0 / freq_hz
+        spacing = wavelength / 2.0
+
+        # Build AntennaArray
+        try:
+            array = AntennaArray.upa(
+                n_h=n_h,
+                n_v=n_v,
+                d_h=spacing,
+                d_v=spacing,
+                center=ant_pos,
+                broadside=broadside,
+                element_pattern="patch",
+            )
+        except (ValueError, TypeError) as exc:
+            return jsonify({"error": f"Failed to build antenna array: {exc}"}), 400
+
+        # Total power from EIRP (convert dBm to watts)
+        total_power = 10 ** ((bs.eirp_dbm - 30) / 10)
+
+        # Find phantom name from cache
+        phantom_name = cache.get("default_body", "thelonious")
+        if phantom_name not in bodies_cache:
+            # Try any available phantom
+            if bodies_cache:
+                phantom_name = next(iter(bodies_cache))
+            else:
+                return jsonify({"error": "No phantom loaded"}), 404
+
+        # Create user at body_offset with device near the body
+        user_cfg = UserConfig(
+            user_id="bs_mimo_user",
+            phantom_name=phantom_name,
+            position=body_offset,
+            device_position=body_offset + np.array([0.25, 0.0, 1.4]),
+            device_orientation=np.array([0.0, 0.0, 1.0]),
+            orientation=float(body_rotation_y),
+        )
+        user = UserState(config=user_cfg)
+
+        scene = MIMOScene(
+            array=array,
+            users=[user],
+            freq_hz=freq_hz,
+            total_power=total_power,
+        )
+
+        # Resolve body meshes
+        bodies = {name: entry["body"] for name, entry in bodies_cache.items()}
+
+        try:
+            summary = compute_mimo_scene_with_bodies(
+                scene,
+                bodies,
+                level=level,
+                precoder_type=precoder_type,
+            )
+        except Exception as exc:
+            logger.exception("mMIMO compute failed for base station %d", index)
+            return jsonify({"error": f"MIMO compute failed: {exc}"}), 500
+
+        # Build binary response from user result
+        sab_data = user._sab_raw
+        if sab_data is None:
+            n_tri = body.n_triangles
+            sab_bytes = np.zeros(n_tri, dtype=np.float32).tobytes()
+            peak_sab = 0.0
+            p_abs = 0.0
+        else:
+            sab_f32 = sab_data.astype(np.float32)
+            sab_bytes = sab_f32.tobytes()
+            peak_sab = float(np.max(sab_f32))
+            p_abs = float(user.result.p_abs) if user.result else 0.0
+
+        n_tri = len(sab_data) if sab_data is not None else body.n_triangles
+        stats = {
+            "p_abs": p_abs,
+            "p_abs_mw": p_abs * 1e3,
+            "peak_sab": peak_sab,
+            "n_triangles": n_tri,
+            "n_elements": array.n_elements,
+            "n_h": n_h,
+            "n_v": n_v,
+            "archetype": archetype,
+            "freq_hz": freq_hz,
+            "level": level,
+            "precoder_type": precoder_type,
+            "total_power_w": total_power,
+            "base_station_index": index,
+            "arrays": [{"key": "sab", "offset": 0, "length": n_tri}],
+            "peaks": {"sab": peak_sab},
+            "timings": summary.get("timings", {}),
+        }
+
+        resp = Response(sab_bytes, mimetype=_OCTET_STREAM)
+        resp.headers["X-Stats"] = json.dumps(stats)
+        resp.headers["Access-Control-Expose-Headers"] = "X-Stats"
+        return resp
+
 
 def _bs_summary(bs) -> dict:
     """Serialize a BaseStation to a JSON-safe dict with classification."""
