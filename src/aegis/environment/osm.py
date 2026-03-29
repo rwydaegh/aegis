@@ -94,13 +94,21 @@ def fetch_osm(
     query = (
         f"[out:xml][timeout:{timeout}];"
         f"("
-        f"  way['building'](around:{radius_m},{lat},{lon});"
-        f"  way['highway'](around:{radius_m},{lat},{lon});"
-        f"  way['natural'='water'](around:{radius_m},{lat},{lon});"
-        f"  way['waterway'](around:{radius_m},{lat},{lon});"
+        f'  way["building"](around:{radius_m},{lat},{lon});'
+        f'  way["highway"](around:{radius_m},{lat},{lon});'
+        f'  way["natural"="water"](around:{radius_m},{lat},{lon});'
+        f'  way["waterway"](around:{radius_m},{lat},{lon});'
+        f'  relation["building"](around:{radius_m},{lat},{lon});'
+        f'  relation["type"="multipolygon"]["building"](around:{radius_m},{lat},{lon});'
+        f'  way["natural"="wood"](around:{radius_m},{lat},{lon});'
+        f'  way["landuse"="forest"](around:{radius_m},{lat},{lon});'
+        f'  way["landuse"="grass"](around:{radius_m},{lat},{lon});'
+        f'  way["leisure"="park"](around:{radius_m},{lat},{lon});'
+        f'  way["barrier"="hedge"](around:{radius_m},{lat},{lon});'
         f");"
-        f"(._;>;);"
         f"out body;"
+        f">;"
+        f"out skel qt;"
     )
     try:
         resp = requests.post(

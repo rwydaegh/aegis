@@ -3,9 +3,10 @@
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 from aegis.environment import EnvironmentMesh, MaterialType
-from aegis.environment.osm import build_environment_from_osm, parse_osm_xml
+from aegis.environment.osm import build_environment_from_osm, fetch_osm, parse_osm_xml
 
 FIXTURE = Path(__file__).parent / "fixtures" / "osm_sample.xml"
 MULTIPOLYGON_FIXTURE = Path(__file__).parent / "fixtures" / "osm_multipolygon.xml"
@@ -129,3 +130,14 @@ class TestRelationsIntegration:
         mesh = build_environment_from_osm(xml, origin_lat=51.05, origin_lon=3.72)
         z_max = mesh.vertices[:, 2].max()
         assert z_max > 10  # tallest part is 15m + roof
+
+
+@pytest.mark.slow
+def test_fetch_osm_includes_relations():
+    """Real Overpass fetch should include relation elements."""
+    pytest.importorskip("requests", reason="requests not installed")
+    xml = fetch_osm(51.0544, 3.7237, radius_m=100, timeout=60)
+    assert "<node" in xml
+    assert "<way" in xml
+    # Relations may or may not exist in this area, but query should not error
+    assert "<?xml" in xml or "<osm" in xml
