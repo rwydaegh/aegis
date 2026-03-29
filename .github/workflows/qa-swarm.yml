@@ -92,11 +92,17 @@ jobs:
 
       - name: Extract assignments JSON
         id: extract
-        env:
-          CLAUDE_RESULT: ${{ steps.plan.outputs.result }}
         run: |
-          # Extract the JSON from Claude's response
-          ASSIGNMENTS=$(echo "$CLAUDE_RESULT" | grep -o 'ASSIGNMENTS_JSON:.*' | sed 's/ASSIGNMENTS_JSON://')
+          # Read Claude's response from the execution output file
+          EXEC_FILE="${{ steps.plan.outputs.execution_file }}"
+          if [ -z "$EXEC_FILE" ] || [ ! -f "$EXEC_FILE" ]; then
+            echo "::error::Claude execution file not found at: $EXEC_FILE"
+            ASSIGNMENTS=""
+          else
+            echo "Execution file: $EXEC_FILE ($(wc -c < "$EXEC_FILE") bytes)"
+            # Search the entire execution file for ASSIGNMENTS_JSON marker
+            ASSIGNMENTS=$(grep -o 'ASSIGNMENTS_JSON:{.*}' "$EXEC_FILE" | tail -1 | sed 's/ASSIGNMENTS_JSON://')
+          fi
           if [ -z "$ASSIGNMENTS" ]; then
             echo "::error::Manager did not produce ASSIGNMENTS_JSON output"
             # Fallback: static assignment
