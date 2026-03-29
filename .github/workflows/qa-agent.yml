@@ -176,6 +176,12 @@ jobs:
             Create a GitHub issue immediately, then keep exploring. You may create multiple
             issues per session, or zero if everything looks fine.
 
+            **Labeling:** Before filing your first issue, run `gh label list` to see all
+            available labels. Always include `qa-bot` and `bug`. Then add any other labels
+            that fit the issue (e.g., `viewer` for frontend bugs, `physics` for computation
+            errors, `frontend` for UI/layout issues). Use your judgment -- pick labels that
+            help a developer find the issue quickly.
+
             Save a screenshot showing the problem first:
             ```bash
             npx @playwright/cli screenshot /tmp/qa_screenshots/bug_description.png
@@ -185,7 +191,7 @@ jobs:
             ```bash
             ISSUE_URL=$(gh issue create \
               --title "Short description of the problem" \
-              --label "qa-bot,bug" \
+              --label "qa-bot,bug,<other relevant labels>" \
               --body "## What happened
 
             [2-4 sentences: what you were doing, what you expected, what you saw instead]
