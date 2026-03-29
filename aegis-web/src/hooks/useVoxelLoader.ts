@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import * as Sentry from '@sentry/react'
 import { fetchVoxels } from '@/api/client'
 import { useSceneStore } from '@/stores/scene'
 import { useSimulationStore } from '@/stores/simulation'
@@ -31,6 +32,7 @@ export function useVoxelLoader() {
         useSimulationStore.getState().setBodyOffset(bp)
       }
     }).catch(err => {
+      Sentry.captureException(err)
       useNotificationStore.getState().addNotification('error', `Failed to load voxels: ${(err as Error).message}`)
     })
   }, [caps?.has_voxels])

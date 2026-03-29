@@ -51,6 +51,7 @@ export function useBaseStationsDosimetry() {
         useNotificationStore.getState().addNotification(
           'error',
           `Base station compute failed: ${(err as Error).message ?? err}`,
+          'This error has been reported and will be fixed automatically. Please try again in about 30 minutes.',
         )
       })
       .finally(() => {

@@ -25,7 +25,10 @@ function ToastItem({ notification }: { notification: Notification }) {
       )}
       onClick={() => dismiss(notification.id)}
     >
-      {notification.message}
+      <div>{notification.message}</div>
+      {notification.detail && (
+        <div className="mt-1 text-[10px] opacity-70 font-sans leading-tight">{notification.detail}</div>
+      )}
     </div>
   )
 }

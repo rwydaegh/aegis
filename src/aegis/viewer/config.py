@@ -178,7 +178,7 @@ DEFAULTS: dict = {
         "default_level": DEFAULT_FIDELITY_LEVEL,
         "default_power_dbm": DEFAULT_POWER_DBM,
         "default_n_paths": 1,
-        "default_max_order": 1,
+        "default_max_order": 0,
         "freq_hz": DEFAULT_FREQ_HZ,
         "exposure_scenario": "general_public",
         "display_mode": "raw_sab",
