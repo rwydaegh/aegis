@@ -8,7 +8,7 @@ function formatMs(ms: number): string {
 }
 
 export default function StatusBar() {
-  const { isComputing, statusMessage, setComputeElapsed, lastComputeTiming } = useUIStore()
+  const { isComputing, statusMessage, setComputeElapsed, lastComputeTiming, computeColdStart } = useUIStore()
   const [elapsed, setElapsed] = useState(0)
   const [expanded, setExpanded] = useState(false)
   const startRef = useRef<number | null>(null)
@@ -74,6 +74,12 @@ export default function StatusBar() {
               </span>
             </div>
           )}
+          {lastComputeTiming.coldStart && (
+            <div className="flex justify-between gap-4">
+              <span className="text-foreground/60">cold start</span>
+              <span className="text-amber-400">yes</span>
+            </div>
+          )}
         </div>
       )}
 
@@ -84,7 +90,11 @@ export default function StatusBar() {
       >
         {isComputing && (
           <span className="text-xs shimmer-text">
-            Computing... {elapsed > 0 ? `(${(elapsed / 1000).toFixed(1)}s)` : ''}
+            {computeColdStart ? 'Waking up GPU' : 'Computing'}
+            {elapsed > 0 ? ` (${(elapsed / 1000).toFixed(1)}s)` : '...'}
+            {computeColdStart && elapsed < 1000 && (
+              <span className="text-[10px] opacity-60"> first run only</span>
+            )}
           </span>
         )}
         {showTiming && (

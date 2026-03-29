@@ -59,6 +59,11 @@ export function useDosimetry() {
     const setComputing = useUIStore.getState().setComputing
     setComputing(true)
 
+    // Flag cold-start for the StatusBar
+    const isRtCall = scene.pathSource === 'rt'
+    const gpuWarm = useUIStore.getState().gpuWarm
+    useUIStore.getState().setComputeColdStart(isRtCall && gpuWarm === false)
+
     // Send antenna tip position (not pole base) to the backend for physics
     const poleH = scene.config.antenna.pole_height ?? 2
     const antennaTip: typeof sim.antennaPos = [sim.antennaPos[0], sim.antennaPos[1] + poleH, sim.antennaPos[2]]
@@ -151,7 +156,12 @@ export function useDosimetry() {
           networkMs: Math.max(0, networkMs),
           avgCached: (t?.avg_build_G_4cm2_ms ?? 999) < 1,
           gpuBackend: stats.gpu_backend ?? null,
+          coldStart: stats.cold_start ?? false,
         })
+        // GPU is now warm after successful RT
+        if (isRtCall) {
+          useUIStore.getState().setGpuWarm(true)
+        }
       })
       .catch(err => {
         if ((err as Error).name === 'AbortError') return // expected cancellation

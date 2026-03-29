@@ -222,6 +222,7 @@ export interface DosimetryStats {
   tissue_eps_r: number
   tissue_sigma: number
   gpu_backend?: string | null
+  cold_start?: boolean
 }
 
 export interface PathViz {

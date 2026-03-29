@@ -15,6 +15,7 @@ export interface LastComputeTiming {
   networkMs: number
   avgCached: boolean
   gpuBackend: string | null
+  coldStart: boolean
 }
 
 interface UIStore {
@@ -35,6 +36,7 @@ interface UIStore {
   exposureScenario: ExposureScenario
   lastComputeTiming: LastComputeTiming | null
   gpuWarm: boolean | null
+  computeColdStart: boolean
 
   toggleSidebar: () => void
   toggleWireframe: () => void
@@ -54,6 +56,7 @@ interface UIStore {
   setExposureScenario: (s: ExposureScenario) => void
   setLastComputeTiming: (t: LastComputeTiming | null) => void
   setGpuWarm: (warm: boolean | null) => void
+  setComputeColdStart: (cold: boolean) => void
 }
 
 export const useUIStore = create<UIStore>((set) => ({
@@ -74,6 +77,7 @@ export const useUIStore = create<UIStore>((set) => ({
   exposureScenario: 'general_public',
   lastComputeTiming: null,
   gpuWarm: null,
+  computeColdStart: false,
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
   toggleWireframe: () => set((state) => ({ wireframe: !state.wireframe })),
   setComputing: (computing) => set({ isComputing: computing }),
@@ -100,4 +104,5 @@ export const useUIStore = create<UIStore>((set) => ({
   setExposureScenario: (s) => set({ exposureScenario: s }),
   setLastComputeTiming: (t) => set({ lastComputeTiming: t }),
   setGpuWarm: (warm) => set({ gpuWarm: warm }),
+  setComputeColdStart: (cold) => set({ computeColdStart: cold }),
 }))
