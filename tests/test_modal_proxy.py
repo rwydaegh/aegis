@@ -120,6 +120,49 @@ class TestModalProxyDispatch:
         np.testing.assert_array_equal(recovered.k_hat, fake_paths.k_hat)
 
 
+class TestCompressSceneData:
+    """Test scene data compression/decompression round-trip."""
+
+    def test_small_scene_not_compressed(self):
+        """Scene data below threshold passes through unchanged."""
+        from aegis.viewer.modal_proxy import _compress_scene_data
+
+        scene_data = {
+            "vertices": [[0, 0, 0], [1, 0, 0], [0, 1, 0]],
+            "triangles": [[0, 1, 2]],
+            "materials": ["concrete"],
+        }
+        result = _compress_scene_data(scene_data)
+        assert "vertices" in result
+        assert "_compressed" not in result
+
+    def test_large_scene_compressed_and_decompressible(self):
+        """Scene data above threshold is compressed and can be decompressed."""
+        import gzip
+        import pickle
+
+        from aegis.viewer.modal_proxy import _GZIP_THRESHOLD, _compress_scene_data
+
+        # Create scene data larger than threshold
+        n_verts = int(_GZIP_THRESHOLD / (3 * 8)) + 1000  # exceed 5 MB of float64
+        scene_data = {
+            "vertices": np.random.rand(n_verts, 3).tolist(),
+            "triangles": np.random.randint(0, n_verts, (n_verts // 3, 3)).tolist(),
+            "materials": ["concrete"],
+        }
+        result = _compress_scene_data(scene_data)
+        assert result.get("_compressed") is True
+        assert "_data" in result
+
+        # Decompress (same logic as sionna_tracer.py)
+        decompressed = pickle.loads(gzip.decompress(result["_data"]))
+        assert decompressed["materials"] == ["concrete"]
+        np.testing.assert_array_equal(
+            np.array(decompressed["vertices"]),
+            np.array(scene_data["vertices"]),
+        )
+
+
 class TestGpuStatus:
     """Test GPU warmth status tracking."""
 
