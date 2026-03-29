@@ -57,8 +57,9 @@ dev = [
     "requests>=2.31",
     "pandas>=1.5",
 ]
+benchmark = ["pytest-codspeed>=3.0"]
 cloud = ["requests>=2.31"]
-all = ["aegis[jax,gpu,viz,viewer,rt,sionna,docs,dev,cloud,modal]"]
+all = ["aegis[jax,gpu,viz,viewer,rt,sionna,docs,dev,cloud,modal,benchmark]"]
 
 [tool.hatch.metadata]
 allow-direct-references = true
@@ -85,7 +86,7 @@ select = ["E", "F", "W", "I", "UP", "B", "SIM"]
 quote-style = "double"
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "benchmarks"]
 pythonpath = [".", "src"]
 markers = [
     "slow: tests that need mesh data or take >10s",
