@@ -88,11 +88,11 @@ jobs:
       - name: Health check
         if: vars.HETZNER_HOST != ''
         env:
-          HOST: ${{ vars.HETZNER_HOST }}
+          DOMAIN: aegis.waves-ugent.be
         run: |
           sleep 15
           for i in 1 2 3; do
-            if curl -sf --max-time 10 "https://$HOST/api/health"; then
+            if curl -sf --max-time 10 "https://$DOMAIN/api/health"; then
               echo "Health check passed"
               exit 0
             fi
