@@ -398,14 +398,31 @@ def _roof_skillion(footprint: np.ndarray, height: float, roof_height: float) -> 
         # Both at wall height means no gap on this edge
         if abs(zi - height) < 1e-10 and abs(zj - height) < 1e-10:
             continue
-        # Quad from (pi, height) -> (pj, height) -> (pj, zj) -> (pi, zi)
+        # Fill gap with quad or triangle depending on which vertices are degenerate.
+        # zi == height means the roof vertex at i is at wall top, so collapse to triangle.
+        i_at_wall = abs(zi - height) < 1e-10
+        j_at_wall = abs(zj - height) < 1e-10
         base = len(roof_verts) + len(gap_verts)
-        gap_verts.append([footprint[i][0], footprint[i][1], height])
-        gap_verts.append([footprint[j][0], footprint[j][1], height])
-        gap_verts.append([footprint[j][0], footprint[j][1], zj])
-        gap_verts.append([footprint[i][0], footprint[i][1], zi])
-        gap_tris.append([base, base + 1, base + 2])
-        gap_tris.append([base, base + 2, base + 3])
+        if i_at_wall:
+            # Triangle: (pi, height) -> (pj, height) -> (pj, zj)
+            gap_verts.append([footprint[i][0], footprint[i][1], height])
+            gap_verts.append([footprint[j][0], footprint[j][1], height])
+            gap_verts.append([footprint[j][0], footprint[j][1], zj])
+            gap_tris.append([base, base + 1, base + 2])
+        elif j_at_wall:
+            # Triangle: (pi, height) -> (pj, height) -> (pi, zi)
+            gap_verts.append([footprint[i][0], footprint[i][1], height])
+            gap_verts.append([footprint[j][0], footprint[j][1], height])
+            gap_verts.append([footprint[i][0], footprint[i][1], zi])
+            gap_tris.append([base, base + 1, base + 2])
+        else:
+            # Full quad: (pi, height) -> (pj, height) -> (pj, zj) -> (pi, zi)
+            gap_verts.append([footprint[i][0], footprint[i][1], height])
+            gap_verts.append([footprint[j][0], footprint[j][1], height])
+            gap_verts.append([footprint[j][0], footprint[j][1], zj])
+            gap_verts.append([footprint[i][0], footprint[i][1], zi])
+            gap_tris.append([base, base + 1, base + 2])
+            gap_tris.append([base, base + 2, base + 3])
 
     if gap_verts:
         all_verts = np.vstack([roof_verts, np.array(gap_verts, dtype=np.float64)])
