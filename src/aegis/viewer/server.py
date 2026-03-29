@@ -197,7 +197,7 @@ def create_app(
     app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=2)
 
     _gate_password = os.environ.get("AEGIS_GATE_PASSWORD")
-    _exempt_paths = {"/api/auth", "/api/health"}
+    _exempt_paths = {"/api/auth", "/api/health", "/api/sentry-webhook"}
 
     @app.before_request
     def check_auth():
@@ -449,7 +449,7 @@ def create_app(
         )
 
     # --- Register route modules ---
-    from aegis.viewer.routes import analysis, basestations, compute, data, environment, location, mimo, terrain
+    from aegis.viewer.routes import analysis, basestations, compute, data, environment, location, mimo, sentry_webhook, terrain
 
     data.register(app, _cache, _cache_lock)
     compute.register(app, _cache, _cache_lock)
@@ -458,6 +458,7 @@ def create_app(
     mimo.register(app, _cache, _cache_lock)
     environment.register(app, _cache, _cache_lock)
     basestations.register(app, _cache, _cache_lock)
+    sentry_webhook.register(app, _cache, _cache_lock)
     terrain.register(app, _cache, _cache_lock)
 
     return app

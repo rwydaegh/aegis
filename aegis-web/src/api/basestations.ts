@@ -1,5 +1,6 @@
 import { postJson } from './client'
 import type { DosimetryStats } from './types'
+import type { Archetype } from '@/utils/classifyAntenna'
 
 export interface BaseStationData {
   site_code: string
@@ -17,6 +18,12 @@ export interface BaseStationData {
   has_pattern: boolean
   horizontal_beamwidth_deg: number
   vertical_beamwidth_deg: number
+  // Classification fields from backend
+  archetype: Archetype
+  n_h: number
+  n_v: number
+  panel_width_m: number
+  panel_height_m: number
 }
 
 interface LoadResponse {
@@ -25,8 +32,9 @@ interface LoadResponse {
 }
 
 interface LoadParams {
-  lat: number
-  lon: number
+  location?: string
+  lat?: number
+  lon?: number
   radius_m?: number
   operator?: string
   technology?: string
@@ -50,6 +58,7 @@ interface ComputeParams {
   quantities?: string[]
   skin_model?: string
   freq_hz?: number
+  use_beamforming?: boolean | 'auto'
 }
 
 export interface ComputeResult {

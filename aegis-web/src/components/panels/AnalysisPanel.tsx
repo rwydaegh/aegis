@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import * as Sentry from '@sentry/react'
 import {
   LineChart,
   Line,
@@ -11,6 +12,7 @@ import {
 } from 'recharts'
 import { useSimulationStore } from '@/stores/simulation'
 import { useUIStore } from '@/stores/ui'
+import { useNotificationStore } from '@/stores/notifications'
 import { useActiveSimulation } from '@/hooks/useActiveSimulation'
 import {
   fetchPowerSweep,
@@ -228,7 +230,9 @@ function PowerSweepSection() {
         sinc_wb: sincWb,
       })
       setResult(data)
-    } catch {
+    } catch (err) {
+      Sentry.captureException(err)
+      useNotificationStore.getState().addNotification('error', 'Power sweep failed')
       setResult(null)
     } finally {
       setLoading(false)
@@ -327,7 +331,9 @@ function FrequencySweepSection() {
         sinc_wb: sincWb,
       })
       setResult(data)
-    } catch {
+    } catch (err) {
+      Sentry.captureException(err)
+      useNotificationStore.getState().addNotification('error', 'Frequency sweep failed')
       setResult(null)
     } finally {
       setLoading(false)

@@ -6,7 +6,7 @@ Minimal library workflow: synthetic triangle, one plane wave, level 2, peak $S_{
 import numpy as np
 
 import aegis
-from aegis.paths import PropagationPaths
+from aegis import PropagationPaths
 
 # Tissue at 28 GHz (same numbers as the skin preset in the viewer)
 tissue = aegis.TissueModel.from_params("Skin 28 GHz", 17.0, 25.0, 28e9)

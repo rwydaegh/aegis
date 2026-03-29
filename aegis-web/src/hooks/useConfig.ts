@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import * as Sentry from '@sentry/react'
 import { fetchViewerConfig, fetchCapabilities } from '@/api/client'
 import { useSceneStore } from '@/stores/scene'
 import { useSimulationStore } from '@/stores/simulation'
@@ -122,6 +123,7 @@ export function useConfig() {
         setStatus('ready')
       })
       .catch((err: unknown) => {
+        Sentry.captureException(err)
         const message = err instanceof Error ? err.message : 'Unknown error'
         setError(message)
         setStatus('error')

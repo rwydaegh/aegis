@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import * as Sentry from '@sentry/react'
 import { useSceneStore } from '@/stores/scene'
 import { useSimulationStore } from '@/stores/simulation'
 import { useNotificationStore } from '@/stores/notifications'
@@ -32,7 +33,7 @@ export default function StochasticPanel() {
         const current = data.find(p => p.name === preset)
         if (current) setPresetParams(current.params)
       })
-      .catch(() => { useNotificationStore.getState().addNotification('warning', 'Failed to load channel presets') })
+      .catch((err) => { Sentry.captureException(err); useNotificationStore.getState().addNotification('warning', 'Failed to load channel presets') })
   }, [])
 
   useEffect(() => {

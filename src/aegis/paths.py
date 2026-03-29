@@ -304,8 +304,14 @@ class PropagationPaths:
             psi = np.array(psi_raw["real"]) + 1j * np.array(psi_raw["imag"])
         else:
             psi = np.array(psi_raw, dtype=complex)
+        k_hat = np.array(d["k_hat"], dtype=np.float64)
+        # np.array([]) gives shape (0,) for empty lists; restore the (N, 3) shape.
+        if k_hat.ndim == 1 and k_hat.shape[0] == 0:
+            k_hat = k_hat.reshape(0, 3)
+        if psi.ndim == 1 and psi.shape[0] == 0:
+            psi = psi.reshape(0, 3)
         return cls(
-            k_hat=np.array(d["k_hat"], dtype=np.float64),
+            k_hat=k_hat,
             psi=psi,
             element_index=np.array(d["element_index"], dtype=np.intp),
             delay=np.array(d["delay"], dtype=np.float64),

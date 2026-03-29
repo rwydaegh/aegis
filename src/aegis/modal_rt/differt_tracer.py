@@ -36,6 +36,7 @@ class DiffeRTTracer:
         reflection_loss_per_order: float = 0.5,
         method: str = "exhaustive",
         num_rays: int = 1_000_000,
+        chunk_size: int | None = None,
         scene_files: dict[str, bytes] | None = None,
     ) -> dict:
         """Run DiffeRT ray tracing on GPU.
@@ -73,6 +74,7 @@ class DiffeRTTracer:
                 reflection_loss_per_order=reflection_loss_per_order,
                 method=method,
                 num_rays=num_rays,
+                chunk_size=chunk_size,
             )
         finally:
             shutil.rmtree(tmpdir, ignore_errors=True)

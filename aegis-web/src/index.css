@@ -134,4 +134,13 @@
     pointer-events: none;
     z-index: 10;
   }
+
+  /* Pulsing dot for GPU cold indicator */
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  .gpu-dot-pulse {
+    animation: pulse-dot 2s ease-in-out infinite;
+  }
 }

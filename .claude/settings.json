@@ -12,6 +12,31 @@
         ]
       }
     ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/.claude/hooks/release-reminder.sh\"",
+            "timeout": 5,
+            "statusMessage": "Checking release cadence..."
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"${CLAUDE_PROJECT_DIR}\" && .venv/bin/ruff check src/ tests/ && .venv/bin/ruff format --check src/ tests/",
+            "if": "Bash(git commit:*)",
+            "timeout": 30,
+            "statusMessage": "Running ruff lint and format check..."
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write",

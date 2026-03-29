@@ -2,8 +2,8 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# System deps for health checks + git (for voxelearth clone)
-RUN apt-get update && apt-get install -y --no-install-recommends curl git && rm -rf /var/lib/apt/lists/*
+# System deps for health checks, git (for voxelearth clone), and C toolchain (for differt-core Rust build)
+RUN apt-get update && apt-get install -y --no-install-recommends curl git build-essential pkg-config && rm -rf /var/lib/apt/lists/*
 
 # Node.js 22 for the voxelearth location pipeline
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \

@@ -1,12 +1,12 @@
 import { useState } from 'react'
+import * as Sentry from '@sentry/react'
 import { useBaseStationsStore } from '@/stores/basestations'
 import { loadBasestations } from '@/api/basestations'
 import { useBaseStationsDosimetry } from '@/hooks/useBaseStationsDosimetry'
 import { useNotificationStore } from '@/stores/notifications'
 
 export default function BaseStationsPanel() {
-  const [lat, setLat] = useState(50.8503)
-  const [lon, setLon] = useState(4.3517)
+  const [location, setLocation] = useState('Brussels, Belgium')
   const [radius, setRadius] = useState(500)
 
   const basestations = useBaseStationsStore(s => s.basestations)
@@ -33,13 +33,17 @@ export default function BaseStationsPanel() {
   async function handleLoad() {
     setLoading(true)
     try {
-      const res = await loadBasestations({ lat, lon, radius_m: radius })
-      setBasestations(res.basestations, { lat, lon })
+      const res = await loadBasestations({ location, radius_m: radius })
+      if (res.basestations.length > 0) {
+        const first = res.basestations[0]
+        setBasestations(res.basestations, { lat: first.latitude, lon: first.longitude })
+      }
       useNotificationStore.getState().addNotification(
         'info',
         `Loaded ${res.count} antennas`,
       )
     } catch (err) {
+      Sentry.captureException(err)
       useNotificationStore.getState().addNotification(
         'error',
         `Load failed: ${(err as Error).message}`,
@@ -51,22 +55,14 @@ export default function BaseStationsPanel() {
 
   return (
     <div>
-      <label className={labelClass}>Latitude</label>
+      <label className={labelClass}>Location</label>
       <input
-        type="number"
+        type="text"
         className={inputClass}
-        value={lat}
-        onChange={e => setLat(Number(e.target.value))}
-        step={0.001}
-      />
-
-      <label className={labelClass}>Longitude</label>
-      <input
-        type="number"
-        className={inputClass}
-        value={lon}
-        onChange={e => setLon(Number(e.target.value))}
-        step={0.001}
+        value={location}
+        onChange={e => setLocation(e.target.value)}
+        placeholder="e.g. Brussels, Belgium or 50.85, 4.35"
+        onKeyDown={e => e.key === 'Enter' && !isLoading && handleLoad()}
       />
 
       <label className={labelClass}>Radius: {radius} m</label>

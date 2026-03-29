@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import * as Sentry from '@sentry/react'
 
 export type EnvironmentSource = 'none' | 'voxels' | 'osm' | '3dtiles'
 
@@ -128,6 +129,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
       const meshData = parseEnvironmentBinary(buf, meta)
       set({ osmMeshData: meshData, loading: false })
     } catch (e) {
+      Sentry.captureException(e)
       set({ error: (e as Error).message, loading: false })
     }
   },
@@ -153,6 +155,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
       }
       set({ loading: false })
     } catch (e) {
+      Sentry.captureException(e)
       set({ error: (e as Error).message, loading: false })
     }
   },

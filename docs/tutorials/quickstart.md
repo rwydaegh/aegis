@@ -29,9 +29,7 @@ plt.rcParams.update({"figure.figsize": (3.5, 2.625)})
 
 import aegis
 from aegis import DosimetryEngine
-from aegis.geometry.mesh import BodyMesh
-from aegis.paths import PropagationPaths
-from aegis.tissue.dielectric import TissueModel
+from aegis import BodyMesh, PropagationPaths, TissueModel
 ```
 
 ## Create a body mesh
@@ -46,10 +44,10 @@ print(f"Mesh: {body.n_triangles} triangles, total area = {body.total_area:.4f} m
 `n_subdivisions=3` starts from a 20-triangle icosahedron and subdivides four times (each pass multiplies the count by 4), yielding 1280 triangles. A finer mesh (more subdivisions) reduces discretization error but increases computation time. For a sphere of radius $r = 0.1$ m, the theoretical surface area is $4\pi r^2 \approx 0.1257$ m$^2$.
 
 The key mesh attributes are:
-- `body.normals` -- (M, 3) outward unit normals per triangle
-- `body.centroids` -- (M, 3) triangle centroids
-- `body.areas` -- (M,) triangle areas in m$^2$
-- `body.total_area` -- scalar sum of all areas
+- `body.normals`. (M, 3) outward unit normals per triangle
+- `body.centroids`. (M, 3) triangle centroids
+- `body.areas`. (M,) triangle areas in m$^2$
+- `body.total_area`. Scalar sum of all areas
 
 ## Define tissue
 
@@ -132,7 +130,7 @@ The total absorbed power $P_{\mathrm{abs}}$ is the surface integral of $S_{\math
 
 $$P_{\mathrm{abs}} = \int_{\partial V} S_{\mathrm{ab}}(\mathbf{r}) \, dA = S_{\mathrm{inc}} \cdot T_0 \cdot \int_{\partial V} [\hat{n}(\mathbf{r}) \cdot (-\hat{k})]_+ \, dA$$
 
-For a convex body and a single incident direction, the integral of $[\hat{n} \cdot (-\hat{k})]_+$ over the surface equals the projected area $A_\perp$ -- the shadow area of the body on a plane perpendicular to $\hat{k}$. This follows from the divergence theorem. The result is simply:
+For a convex body and a single incident direction, the integral of $[\hat{n} \cdot (-\hat{k})]_+$ over the surface equals the projected area $A_\perp$ (the shadow area of the body on a plane perpendicular to $\hat{k}$). This follows from the divergence theorem. The result is simply:
 
 $$P_{\mathrm{abs}} = S_{\mathrm{inc}} \cdot T_0 \cdot A_\perp$$
 
@@ -233,9 +231,14 @@ result_100W = result.scale(10.0)    # 10x more transmit power
 print(f"Scaled P_abs: {result_100W.p_abs:.4f} W")
 ```
 
+<div class="fig-portrait" markdown>
+![Absorbed power density on a body phantom](../assets/diagrams/sab_3d_front.png)
+</div>
+<span class="fig-caption">Absorbed power density $S_{\mathrm{ab}}$ rendered on the Thelonious phantom at 28 GHz.</span>
+
 ## Next steps
 
-- [Tutorial 2: Fidelity levels and convergence](fidelity_levels.md) -- the nine-level hierarchy, `sweep_levels`, comparison plots
-- [Tutorial 3: Tissue physics and Fresnel transmission](tissue_and_fresnel.md) -- Cole-Cole model, Fresnel transmission, level 3 vs level 2
-- [Tutorial 4: ICNIRP 2020 compliance](compliance.md) -- regulatory limits, compliance evaluation, power sweeps
-- [Tutorial 5: Coherent MIMO and ECBF](coherent_mimo.md) -- field channel, exposure operator, exposure-constrained beamforming
+- [Tutorial 2: Fidelity levels and convergence](fidelity_levels.md): the nine-level hierarchy, `sweep_levels`, comparison plots
+- [Tutorial 3: Tissue physics and Fresnel transmission](tissue_and_fresnel.md): Cole-Cole model, Fresnel transmission, level 3 vs level 2
+- [Tutorial 4: ICNIRP 2020 compliance](compliance.md): regulatory limits, compliance evaluation, power sweeps
+- [Tutorial 5: Coherent MIMO and ECBF](coherent_mimo.md): field channel, exposure operator, exposure-constrained beamforming

@@ -12,6 +12,9 @@ interface BaseStationsState {
   technologies: string[]
   activeCount: number
 
+  selectedIndex: number | null
+  selectAntenna: (index: number | null) => void
+
   setBasestations: (bs: BaseStationData[], origin: { lat: number; lon: number }) => void
   toggleOperator: (op: string) => void
   toggleTechnology: (tech: string) => void
@@ -45,6 +48,8 @@ export const useBaseStationsStore = create<BaseStationsState>((set, get) => ({
   operators: [],
   technologies: [],
   activeCount: 0,
+  selectedIndex: null,
+  selectAntenna: (index) => set({ selectedIndex: index }),
 
   setBasestations: (bs, origin) => {
     const { operators, technologies } = deriveFilters(bs)
@@ -92,6 +97,7 @@ export const useBaseStationsStore = create<BaseStationsState>((set, get) => ({
     operators: [],
     technologies: [],
     activeCount: 0,
+    selectedIndex: null,
   }),
 
   activeIndices: () => {

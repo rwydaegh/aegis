@@ -19,6 +19,7 @@ Adapted from Wikipedia's WP:AISIGNS. Use this as a checklist when writing docs.
 - "it's important to note", "it's worth mentioning"
 - "in order to" (just use "to")
 - "utilize" (just use "use")
+- Overusing "the" at the start of titles and section headings ("The deployment pipeline" -> "Deployment pipeline"). Sometimes "the" is grammatically needed, but AI defaults to it far too often. Tone it down.
 - Starting with "Certainly!", "Great question!", "Absolutely!"
 - "Let me explain...", "Let's dive in..."
 

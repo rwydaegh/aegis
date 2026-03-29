@@ -118,3 +118,43 @@ class TestModalProxyDispatch:
         # Verify round-trip
         recovered = PropagationPaths.from_dict(result["paths"])
         np.testing.assert_array_equal(recovered.k_hat, fake_paths.k_hat)
+
+
+class TestGpuStatus:
+    """Test GPU warmth status tracking."""
+
+    def test_gpu_status_cold_by_default(self, monkeypatch):
+        """GPU status reports cold when no RT calls have been made."""
+        from aegis.viewer import modal_proxy
+
+        monkeypatch.setattr(modal_proxy, "_last_rt_success", 0.0)
+        monkeypatch.setattr(modal_proxy, "_initialized", False)
+        monkeypatch.setattr(modal_proxy, "_MODAL_AVAILABLE", False)
+        status = modal_proxy.gpu_status()
+        assert status["warm"] is False
+        assert status["seconds_remaining"] == 0
+
+    def test_gpu_status_warm_after_mark(self, monkeypatch):
+        """GPU status reports warm after _mark_success() when Modal is available."""
+        from aegis.viewer import modal_proxy
+
+        monkeypatch.setattr(modal_proxy, "_initialized", True)
+        monkeypatch.setattr(modal_proxy, "_MODAL_AVAILABLE", True)
+        monkeypatch.setattr(modal_proxy, "_last_rt_success", 0.0)
+        modal_proxy._mark_success()
+        status = modal_proxy.gpu_status()
+        assert status["warm"] is True
+        assert status["enabled"] is True
+        assert status["seconds_remaining"] > 0
+
+    def test_gpu_status_cold_when_enabled_but_not_initialized(self, monkeypatch):
+        """GPU reports enabled=True, warm=False before first RT call."""
+        from aegis.viewer import modal_proxy
+
+        monkeypatch.setattr(modal_proxy, "_initialized", False)
+        monkeypatch.setattr(modal_proxy, "_MODAL_AVAILABLE", False)
+        monkeypatch.setenv("MODAL_TOKEN_ID", "fake")
+        monkeypatch.setenv("USE_MODAL_RT", "true")
+        status = modal_proxy.gpu_status()
+        assert status["enabled"] is True
+        assert status["warm"] is False

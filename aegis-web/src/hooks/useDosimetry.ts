@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { useShallow } from 'zustand/react/shallow'
+import * as Sentry from '@sentry/react'
 import { useSimulationStore } from '@/stores/simulation'
 import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
@@ -57,6 +58,11 @@ export function useDosimetry() {
     const gen = ++generationRef.current
     const setComputing = useUIStore.getState().setComputing
     setComputing(true)
+
+    // Flag cold-start for the StatusBar
+    const isRtCall = scene.pathSource === 'rt'
+    const gpuWarm = useUIStore.getState().gpuWarm
+    useUIStore.getState().setComputeColdStart(isRtCall && gpuWarm === false)
 
     // Send antenna tip position (not pole base) to the backend for physics
     const poleH = scene.config.antenna.pole_height ?? 2
@@ -150,11 +156,17 @@ export function useDosimetry() {
           networkMs: Math.max(0, networkMs),
           avgCached: (t?.avg_build_G_4cm2_ms ?? 999) < 1,
           gpuBackend: stats.gpu_backend ?? null,
+          coldStart: stats.cold_start ?? false,
         })
+        // GPU is now warm after successful RT
+        if (isRtCall) {
+          useUIStore.getState().setGpuWarm(true)
+        }
       })
       .catch(err => {
         if ((err as Error).name === 'AbortError') return // expected cancellation
-        useNotificationStore.getState().addNotification('error', `Compute failed: ${(err as Error).message ?? err}`)
+        Sentry.captureException(err)
+        useNotificationStore.getState().addNotification('error', `Compute failed: ${(err as Error).message ?? err}`, 'This error has been reported and will be fixed automatically using AI. Most issues are fixed in less than 30 minutes.')
       })
       .finally(() => {
         clearTimeout(timeoutId)

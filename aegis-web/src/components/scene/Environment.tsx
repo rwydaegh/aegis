@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import * as Sentry from '@sentry/react'
 import { useGLTF } from '@react-three/drei'
 import { useSceneStore } from '@/stores/scene'
 import { fetchTileList } from '@/api/client'
@@ -13,7 +14,7 @@ export default function Environment() {
     fetchTileList().then(data => {
       setTiles(data.tiles)
       useSceneStore.setState({ glbTiles: data.tiles })
-    }).catch(err => console.error('Failed to load tile list:', err))
+    }).catch(err => Sentry.captureException(err))
   }, [caps?.has_tiles])
 
   if (envMode !== 'tiles' || tiles.length === 0) return null

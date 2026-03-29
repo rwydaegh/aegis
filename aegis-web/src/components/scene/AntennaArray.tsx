@@ -1,7 +1,8 @@
-import { useMemo, useRef, useEffect } from 'react'
+import { useMemo, useEffect } from 'react'
 import * as THREE from 'three'
 import type { ArrayConfig } from '@/api/types'
 import { jetColor, gainTFromLinear } from '@/lib/colormap'
+import PanelAntenna from './PanelAntenna'
 
 interface AntennaArrayProps {
   config: ArrayConfig
@@ -10,17 +11,11 @@ interface AntennaArrayProps {
   weights?: { real: number[][]; imag: number[][] } | null
 }
 
-const ELEMENT_COLOR = new THREE.Color(0.8, 0.2, 0.2)
-const POLE_RADIUS = 0.04
-const POLE_COLOR = new THREE.Color(0.4, 0.4, 0.4)
 const ARROW_COLOR = new THREE.Color(1, 0.4, 0)
 const MIN_ELEMENT_RADIUS = 0.005
 const MAX_ELEMENT_RADIUS = 0.03
 
 export default function AntennaArray({ config, freqHz, showPattern, weights }: AntennaArrayProps) {
-  const meshRef = useRef<THREE.InstancedMesh>(null)
-  const nElements = config.n_h * config.n_v
-
   // Compute element positions in local coords (array-centered)
   // Must match backend array.py axis construction so element indices align with precoder weights
   const localPositions = useMemo(() => {
@@ -165,98 +160,76 @@ export default function AntennaArray({ config, freqHz, showPattern, weights }: A
     return () => { patternGeo?.dispose() }
   }, [patternGeo])
 
-  // Update instanced mesh transforms
-  useEffect(() => {
-    if (!meshRef.current) return
-    const dummy = new THREE.Object3D()
-    for (let i = 0; i < localPositions.length; i++) {
-      dummy.position.copy(localPositions[i])
-      dummy.updateMatrix()
-      meshRef.current.setMatrixAt(i, dummy.matrix)
-    }
-    meshRef.current.instanceMatrix.needsUpdate = true
-  }, [localPositions])
-
-  // Scale element radius to fit within spacing (don't overlap)
+  // Panel dimensions from wavelength spacing (covers full array extent plus margin)
   const lambda = 3e8 / freqHz
   const minSpacing = Math.min(config.d_h_wavelengths, config.d_v_wavelengths) * lambda
   const elementRadius = Math.max(MIN_ELEMENT_RADIUS, Math.min(MAX_ELEMENT_RADIUS, minSpacing * 0.35))
 
-  const sphereGeo = useMemo(
-    () => new THREE.SphereGeometry(elementRadius, 12, 12),
-    [elementRadius]
-  )
-
-  // Backplane dimensions: covers the full array extent plus a small margin
   const panelSize = useMemo(() => {
     const dH = config.d_h_wavelengths * lambda
     const dV = config.d_v_wavelengths * lambda
     const w = (config.n_h - 1) * dH + elementRadius * 4
     const h = (config.n_v - 1) * dV + elementRadius * 4
-    // Ensure a visible minimum size
     return { w: Math.max(w, 0.05), h: Math.max(h, 0.05) }
   }, [config.n_h, config.n_v, config.d_h_wavelengths, config.d_v_wavelengths, lambda, elementRadius])
 
-  const poleHeight = config.position[1]
+  // Convert broadside vector to azimuth and tilt for PanelAntenna
+  // In Three.js Y-up: broadside = [bx, by, bz], north = -Z
+  const { azimuthDeg, tiltDeg } = useMemo(() => {
+    const [bx, by, bz] = config.broadside
+    const horLen = Math.sqrt(bx * bx + bz * bz)
+    const az = Math.atan2(bx, -bz) * (180 / Math.PI)
+    const tilt = Math.atan2(-by, horLen) * (180 / Math.PI)
+    return { azimuthDeg: az, tiltDeg: tilt }
+  }, [config.broadside])
 
   const arrowDir = useMemo(
     () => new THREE.Vector3(...config.broadside).normalize(),
     [config.broadside],
   )
 
-  // Rotation to orient the backplane perpendicular to broadside
-  const panelRotation = useMemo(() => {
-    const q = new THREE.Quaternion()
-    // PlaneGeometry faces +Z by default; rotate so it faces along broadside
-    q.setFromUnitVectors(new THREE.Vector3(0, 0, 1), arrowDir)
-    const e = new THREE.Euler().setFromQuaternion(q)
-    return e
-  }, [arrowDir])
-
   return (
-    <group position={config.position}>
-      {/* Backplane panel */}
-      <mesh rotation={panelRotation}>
-        <planeGeometry args={[panelSize.w, panelSize.h]} />
-        <meshStandardMaterial color="#555555" side={THREE.DoubleSide} metalness={0.5} roughness={0.3} />
-      </mesh>
-
-      {/* Antenna elements */}
-      <instancedMesh ref={meshRef} args={[sphereGeo, undefined, nElements]}>
-        <meshStandardMaterial color={ELEMENT_COLOR} emissive={ELEMENT_COLOR} emissiveIntensity={0.3} />
-      </instancedMesh>
-
-      {/* Support pole */}
-      {poleHeight > 0 && (
-        <mesh position={[0, -poleHeight / 2, 0]}>
-          <cylinderGeometry args={[POLE_RADIUS, POLE_RADIUS, poleHeight, 8]} />
-          <meshStandardMaterial color={POLE_COLOR} />
-        </mesh>
-      )}
-
-      {/* Broadside direction arrow */}
-      <arrowHelper
-        args={[arrowDir, new THREE.Vector3(0, 0, 0), 0.4, ARROW_COLOR.getHex(), 0.1, 0.06]}
+    <>
+      {/* Panel body, element dots, and support pole via shared component */}
+      <PanelAntenna
+        nH={config.n_h}
+        nV={config.n_v}
+        panelWidth={panelSize.w}
+        panelHeight={panelSize.h}
+        azimuthDeg={azimuthDeg}
+        tiltDeg={tiltDeg}
+        position={config.position}
+        color="#555555"
+        showElements
+        elementDotRadius={elementRadius}
       />
 
-      {showPattern && patternGeo && (
-        <group>
-          <mesh geometry={patternGeo}>
-            <meshStandardMaterial
-              vertexColors
-              transparent
-              opacity={0.85}
-              metalness={0.12}
-              roughness={0.5}
-              side={THREE.DoubleSide}
-            />
-          </mesh>
-          <mesh>
-            <sphereGeometry args={[0.04, 16, 16]} />
-            <meshStandardMaterial color="#aa2222" emissive="#441010" emissiveIntensity={0.6} />
-          </mesh>
-        </group>
-      )}
-    </group>
+      {/* Arrow and radiation pattern remain at the array center */}
+      <group position={config.position}>
+        {/* Broadside direction arrow */}
+        <arrowHelper
+          args={[arrowDir, new THREE.Vector3(0, 0, 0), 0.4, ARROW_COLOR.getHex(), 0.1, 0.06]}
+        />
+
+        {showPattern && patternGeo && (
+          <group>
+            <mesh geometry={patternGeo}>
+              <meshStandardMaterial
+                vertexColors
+                transparent
+                opacity={0.85}
+                metalness={0.12}
+                roughness={0.5}
+                side={THREE.DoubleSide}
+              />
+            </mesh>
+            <mesh>
+              <sphereGeometry args={[0.04, 16, 16]} />
+              <meshStandardMaterial color="#aa2222" emissive="#441010" emissiveIntensity={0.6} />
+            </mesh>
+          </group>
+        )}
+      </group>
+    </>
   )
 }

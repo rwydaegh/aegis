@@ -649,6 +649,9 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         t_route = _time.perf_counter()
 
         # Try Modal GPU first, fall back to local CPU (only if Modal is not configured)
+        from aegis.viewer.modal_proxy import gpu_status as _gpu_status
+
+        _was_cold = not _gpu_status().get("warm", False)
         gpu_backend = None
         modal_result = None
         modal_error = None
@@ -681,7 +684,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             if modal_result is None and _modal_enabled():
                 modal_error = "Modal DiffeRT returned no result"
         except Exception as e:
-            logger.debug("Modal DiffeRT proxy attempt failed: %s", e)
+            logger.error("Modal DiffeRT proxy attempt failed: %s", e, exc_info=True)
             from aegis.viewer.modal_proxy import _is_enabled as _modal_enabled
 
             if _modal_enabled():
@@ -731,6 +734,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             "distance_m": dist,
             "n_rt_paths": paths.n_paths,
             "path_viz": path_viz,
+            "cold_start": _was_cold,
         }
 
         if gpu_backend is not None:
@@ -808,6 +812,10 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         t_route = _time.perf_counter()
 
         # Call Modal GPU for Sionna RT (no local CPU fallback)
+        from aegis.viewer.modal_proxy import gpu_status as _gpu_status
+
+        _was_cold = not _gpu_status().get("warm", False)
+
         # Extract scene name from path: .../simple_reflector/simple_reflector.xml -> simple_reflector
         from pathlib import Path as _Path
 
@@ -864,6 +872,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             "n_rt_paths": paths.n_paths,
             "path_viz": path_viz,
             "backend": "sionna",
+            "cold_start": _was_cold,
         }
 
         if gpu_backend is not None:
@@ -970,7 +979,10 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         # Call Modal GPU for Sionna RT on voxel geometry
         import hashlib
 
+        from aegis.viewer.modal_proxy import gpu_status as _gpu_status
         from aegis.viewer.modal_proxy import trace_sionna_voxel as _modal_trace_voxel
+
+        _was_cold = not _gpu_status().get("warm", False)
 
         voxel_hash = hashlib.md5(np.asarray(voxel_positions).tobytes()).hexdigest()[:12]
         scene_key = f"voxel_{voxel_hash}"
@@ -1034,6 +1046,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         }
 
         extra["backend"] = "sionna-voxel"
+        extra["cold_start"] = _was_cold
         if gpu_backend is not None:
             extra["gpu_backend"] = gpu_backend
 
@@ -1095,3 +1108,10 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             except Exception:
                 continue
         return jsonify(presets)
+
+    @app.route("/api/gpu/status")
+    def api_gpu_status():
+        """Return GPU container warmth status."""
+        from aegis.viewer.modal_proxy import gpu_status
+
+        return jsonify(gpu_status())

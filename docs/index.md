@@ -10,6 +10,10 @@ $$S_{\mathrm{ab}}(\mathbf{r}) = S_{\mathrm{inc}} \cdot T_0 \cdot [\hat{n}(\mathb
 
 Nine fidelity levels (0-8) provide a controlled accuracy-cost tradeoff, from $O(1)$ worst-case bounds to $O(M_{\mathrm{ant}}^3)$ exposure-constrained beamforming.
 
+<div class="fig-portrait" markdown>
+![Absorbed power density on a human body phantom](assets/diagrams/sab_3d_front.png)
+</div>
+
 <div class="grid cards" markdown>
 
 -   :material-download:{ .lg .middle } **Getting started**
@@ -97,3 +101,5 @@ The key insight: at mmWave frequencies, the skin depth is so shallow (< 0.5 mm) 
 | 6 | Diffraction | GELU shadow smoothing | $O(MN)$ |
 | 7 | Coherent | Complex field summation | $O(MNK)$ |
 | 8 | ECBF | Exposure-constrained beamforming | $O(K^3)$ |
+
+In practice, all nine levels complete in milliseconds for typical meshes. Pick the level that matches your physics requirements, not your performance budget.

@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
+pytest.importorskip("flask", reason="Flask not installed (viewer extra)")
 from aegis.viewer.config import DEFAULTS
 
 
@@ -40,7 +41,7 @@ def client(mimo_app):
     return app.test_client()
 
 
-def _mock_compute(scene, bodies, level=7, generate_paths_fn=None):
+def _mock_compute(scene, bodies, level=7, generate_paths_fn=None, precoder_type="mrt"):
     """Mock compute that populates user states."""
     for user in scene.users:
         user._sab_raw = np.ones(10, dtype=np.float32)
@@ -198,7 +199,7 @@ class TestMIMOSummary:
 _ARRAY_CFG = {"type": "upa", "n_h": 4, "n_v": 4, "position": [5, 0, 3], "broadside": [-1, 0, 0]}
 
 
-def _mock_compute_varied_power(scene, bodies, level=7, generate_paths_fn=None):
+def _mock_compute_varied_power(scene, bodies, level=7, generate_paths_fn=None, precoder_type="mrt"):
     """Mock compute that assigns different p_abs per user index."""
     powers = [0.05, 0.15]
     for i, user in enumerate(scene.users):

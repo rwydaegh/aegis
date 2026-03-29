@@ -61,9 +61,7 @@ The most direct path is to compute dosimetry with the engine and call `evaluate_
 
 ```python
 import numpy as np
-from aegis.engine import DosimetryEngine
-from aegis.geometry.mesh import BodyMesh
-from aegis.paths import PropagationPaths
+from aegis import DosimetryEngine, BodyMesh, PropagationPaths
 from aegis.tissue.dielectric import SKIN_28GHZ
 
 # Synthetic sphere mesh, radius 0.1 m

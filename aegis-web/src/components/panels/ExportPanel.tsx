@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/react'
 import { useSimulationStore } from '@/stores/simulation'
 import { useSceneStore } from '@/stores/scene'
 import { fetchComplianceSummary, exportConfig } from '@/api/client'
@@ -53,7 +54,8 @@ export default function ExportPanel() {
       const powerDbm = useSimulationStore.getState().powerDbm
       const { text } = await fetchComplianceSummary(powerDbm)
       downloadBlob(new Blob([text], { type: 'text/plain' }), 'aegis_compliance_report.txt')
-    } catch {
+    } catch (err) {
+      Sentry.captureException(err)
       useNotificationStore.getState().addNotification('error', 'Failed to fetch compliance report')
     }
   }
@@ -65,7 +67,8 @@ export default function ExportPanel() {
       const json = JSON.stringify(config, null, 2)
       const blob = new Blob([json], { type: 'application/json' })
       downloadBlob(blob, `aegis-config-${new Date().toISOString().slice(0, 10)}.json`)
-    } catch {
+    } catch (err) {
+      Sentry.captureException(err)
       useNotificationStore.getState().addNotification('error', 'Failed to export configuration')
     }
   }

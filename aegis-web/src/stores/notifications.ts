@@ -6,12 +6,13 @@ export interface Notification {
   id: string
   level: NotificationLevel
   message: string
+  detail?: string
   timestamp: number
 }
 
 interface NotificationStore {
   notifications: Notification[]
-  addNotification: (level: NotificationLevel, message: string) => void
+  addNotification: (level: NotificationLevel, message: string, detail?: string) => void
   dismiss: (id: string) => void
 }
 
@@ -19,10 +20,10 @@ let nextId = 0
 
 export const useNotificationStore = create<NotificationStore>((set) => ({
   notifications: [],
-  addNotification: (level, message) => {
+  addNotification: (level, message, detail) => {
     const id = String(++nextId)
     set((state) => ({
-      notifications: [...state.notifications.slice(-4), { id, level, message, timestamp: Date.now() }],
+      notifications: [...state.notifications.slice(-4), { id, level, message, detail, timestamp: Date.now() }],
     }))
   },
   dismiss: (id) =>

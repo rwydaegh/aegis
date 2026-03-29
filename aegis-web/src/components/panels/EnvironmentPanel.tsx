@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import * as Sentry from '@sentry/react'
 import { useEnvironmentStore } from '@/stores/environment'
 import type { EnvironmentSource } from '@/stores/environment'
 import { useTerrainStore } from '@/stores/terrain'
@@ -293,7 +294,7 @@ export default function EnvironmentPanel() {
             {source === 'osm' ? 'Fetch OSM' : 'Fetch tiles'}
           </button>
           <button
-            onClick={() => void exportForRT('differt')}
+            onClick={() => void exportForRT('differt').catch(err => Sentry.captureException(err))}
             disabled={loading}
             className="px-3 py-1.5 rounded text-xs font-medium bg-muted text-muted-foreground hover:text-foreground disabled:opacity-50"
           >

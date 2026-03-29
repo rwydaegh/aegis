@@ -1,8 +1,12 @@
 # Fidelity levels
 
+For a step-by-step convergence analysis, see the [fidelity levels tutorial](../tutorials/fidelity_levels.md).
+
 AEGIS uses a mode + corrections architecture for computing absorbed power density. You pick a computation mode, then toggle independent physics corrections on or off.
 
 The integer `level=` API (0-8) still works and maps to specific mode + correction combinations. See the [quick reference](#quick-reference) below.
+
+The cost column in the tables below ($O(1)$, $O(MN)$, etc.) describes theoretical scaling, not wall-clock time. All nine levels run in milliseconds on typical meshes. Choose based on which physics corrections matter for your scenario, not on computational budget.
 
 ## Computation modes
 
@@ -113,8 +117,7 @@ Mapping from old integer levels to the mode API:
 ### Mode API (recommended)
 
 ```python
-from aegis import DosimetryEngine
-from aegis.tissue.dielectric import TissueModel
+from aegis import DosimetryEngine, TissueModel
 
 tissue = TissueModel.from_database("Skin", 28e9)
 engine = DosimetryEngine(tissue)

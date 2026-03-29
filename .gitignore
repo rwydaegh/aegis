@@ -69,6 +69,7 @@ test_screenshots/
 # Debug screenshots
 *.png
 !docs/assets/*.png
+!docs/assets/diagrams/*.png
 !aegis-web/public/*.png
 
 # Binary presentation artifacts (keep local copies, not in git)

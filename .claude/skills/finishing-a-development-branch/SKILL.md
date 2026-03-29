@@ -53,8 +53,8 @@ Present exactly these 4 options:
 ```
 Implementation complete. What would you like to do?
 
-1. Merge back to <base-branch> locally
-2. Push and create a Pull Request
+1. Squash-merge via PR (recommended - clean single commit on master)
+2. Push and create PR (leave open for review)
 3. Keep the branch as-is (I'll handle it later)
 4. Discard this work
 
@@ -65,28 +65,31 @@ Which option?
 
 ### Step 4: Execute Choice
 
-#### Option 1: Merge Locally
+#### Option 1: Squash-merge via PR (recommended)
 
 ```bash
-# Switch to base branch
+# Push branch
+git push -u origin <feature-branch>
+
+# Create PR and squash-merge
+gh pr create --title "<title>" --body "$(cat <<'EOF'
+## Summary
+<2-3 bullets of what changed>
+
+## Test Plan
+- [ ] <verification steps>
+EOF
+)"
+gh pr merge --squash --delete-branch
+
+# Switch to base branch and pull
 git checkout <base-branch>
-
-# Pull latest
 git pull
-
-# Merge feature branch
-git merge <feature-branch>
-
-# Verify tests on merged result
-<test command>
-
-# If tests pass
-git branch -d <feature-branch>
 ```
 
 Then: Cleanup worktree (Step 5)
 
-#### Option 2: Push and Create PR
+#### Option 2: Push and Create PR (leave open for review)
 
 ```bash
 # Push branch
@@ -135,7 +138,7 @@ Then: Cleanup worktree (Step 5)
 
 ### Step 5: Cleanup Worktree
 
-**For Options 1, 2, 4:**
+**For Options 1, 4:**
 
 Check if in worktree:
 ```bash
@@ -151,10 +154,10 @@ git worktree remove <worktree-path>
 
 ## Quick Reference
 
-| Option | Merge | Push | Keep Worktree | Cleanup Branch |
-|--------|-------|------|---------------|----------------|
-| 1. Merge locally | ✓ | - | - | ✓ |
-| 2. Create PR | - | ✓ | ✓ | - |
+| Option | Squash | Push | Keep Worktree | Cleanup Branch |
+|--------|--------|------|---------------|----------------|
+| 1. Squash-merge PR | ✓ | ✓ | - | ✓ |
+| 2. Create PR (open) | - | ✓ | ✓ | - |
 | 3. Keep as-is | - | - | ✓ | - |
 | 4. Discard | - | - | - | ✓ (force) |
 

@@ -106,7 +106,7 @@ export default function TissuePanel() {
   useEffect(() => {
     fetchTissueSpectrum('Skin', 1e9, 100e9, 100)
       .then(setSpectrum)
-      .catch(() => {})
+      .catch(() => { /* tissue spectrum is supplementary, not critical */ })
   }, [skinModel])
 
   if (!spectrum) return null

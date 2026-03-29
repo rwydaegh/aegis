@@ -9,6 +9,7 @@ from __future__ import annotations
 import gzip
 import logging
 import os
+import time as _time
 
 import numpy as np
 
@@ -23,6 +24,29 @@ _sionna_cls = None
 
 # Payload size threshold for gzip compression (bytes)
 _GZIP_THRESHOLD = 5 * 1024 * 1024  # 5 MB
+
+_SCALEDOWN_WINDOW = 120  # seconds, must match Modal @app.cls config
+
+_last_rt_success: float = 0.0  # monotonic timestamp of last successful .remote() call
+
+
+def _mark_success() -> None:
+    """Record a successful RT call (updates warmth window)."""
+    global _last_rt_success
+    _last_rt_success = _time.monotonic()
+
+
+def gpu_status() -> dict:
+    """Return GPU warmth status based on last successful RT call timing."""
+    if not (_initialized and _MODAL_AVAILABLE):
+        if _is_enabled():
+            return {"warm": False, "enabled": True, "seconds_remaining": 0}
+        return {"warm": False, "enabled": False, "seconds_remaining": 0}
+    last = _last_rt_success
+    elapsed = _time.monotonic() - last
+    warm = last > 0 and elapsed < _SCALEDOWN_WINDOW
+    remaining = max(0, int(_SCALEDOWN_WINDOW - elapsed)) if warm else 0
+    return {"warm": warm, "enabled": True, "seconds_remaining": remaining}
 
 
 def _is_enabled() -> bool:
@@ -103,7 +127,7 @@ def trace_differt(
 
     try:
         tracer = _differt_cls()
-        return tracer.trace.remote(
+        result = tracer.trace.remote(
             scene_xml=scene_xml,
             scene_files=scene_files or {},
             tx_pos=tx_pos,
@@ -116,6 +140,8 @@ def trace_differt(
             num_rays=num_rays,
             chunk_size=chunk_size,
         )
+        _mark_success()
+        return result
     except Exception as e:
         logger.error("Modal DiffeRT trace failed: %s", e)
         return None
@@ -136,7 +162,7 @@ def trace_sionna_bundled(
 
     try:
         tracer = _sionna_cls()
-        return tracer.trace_bundled.remote(
+        result = tracer.trace_bundled.remote(
             scene_name=scene_name,
             tx_pos=tx_pos,
             rx_pos=rx_pos,
@@ -145,6 +171,8 @@ def trace_sionna_bundled(
             tx_power_dbm=tx_power_dbm,
             rt_config=rt_config,
         )
+        _mark_success()
+        return result
     except Exception as e:
         logger.error("Modal Sionna bundled trace failed: %s", e)
         return None
@@ -170,7 +198,7 @@ def trace_sionna_voxel(
 
     try:
         tracer = _sionna_cls()
-        return tracer.trace_voxel.remote(
+        result = tracer.trace_voxel.remote(
             scene_key=scene_key,
             scene_data=scene_data,
             tx_pos=tx_pos,
@@ -180,6 +208,8 @@ def trace_sionna_voxel(
             tx_power_dbm=tx_power_dbm,
             rt_config=rt_config,
         )
+        _mark_success()
+        return result
     except Exception as e:
         logger.error("Modal Sionna voxel trace failed: %s", e)
         return None

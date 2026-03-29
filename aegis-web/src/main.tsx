@@ -4,6 +4,9 @@ import 'katex/dist/katex.min.css'
 import './index.css'
 import App from './App.tsx'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { initSentry } from '@/lib/sentry'
+
+initSentry()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

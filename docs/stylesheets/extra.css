@@ -113,6 +113,40 @@
   filter: brightness(2);
 }
 
+/* Documentation figures */
+.md-typeset img[src*="diagrams/"] {
+  display: block;
+  margin: 1.5rem auto;
+  border-radius: 4px;
+  max-width: 100%;
+  height: auto;
+}
+
+/* Wide plots (landscape): full content width */
+.md-typeset .fig-wide img {
+  width: min(100%, 720px);
+}
+
+/* Medium figures: ~500px */
+.md-typeset .fig-medium img {
+  width: min(100%, 500px);
+}
+
+/* Portrait figures (3D renders): constrained width */
+.md-typeset .fig-portrait img {
+  width: min(100%, 380px);
+}
+
+/* Figure captions */
+.md-typeset .fig-caption {
+  display: block;
+  text-align: center;
+  font-size: 0.85em;
+  color: var(--md-default-fg-color--light);
+  margin-top: -0.75rem;
+  margin-bottom: 1.5rem;
+}
+
 /* Level comparison table highlighting */
 .md-typeset table tr:nth-child(3) {
   /* Level 2 (default) row - subtle highlight */

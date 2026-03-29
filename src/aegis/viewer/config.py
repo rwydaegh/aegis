@@ -431,6 +431,48 @@ DEFAULTS: dict = {
         "version": "0.160.0",
         "cdn": "https://unpkg.com/three@0.160.0",
     },
+    "basestations": {
+        "classification": {
+            "element_gain_dbi": 5.0,
+            "mmimo_gain_threshold": 20.0,
+            "small_cell_gain_threshold": 10.0,
+            "default_freq_mhz": 2100,
+            "standard_grids": {
+                "mmimo": [[4, 4], [4, 8], [8, 8], [8, 16]],
+                "sector": [[1, 2], [1, 4], [2, 4], [2, 8]],
+                "small_cell": [[1, 1], [2, 2]],
+            },
+        },
+        "panel": {
+            "depth": 0.05,
+            "pole_radius": 0.04,
+            "element_dot_radius": 0.008,
+            "show_elements": True,
+            "margin": 0.02,
+        },
+        "mmimo": {
+            "default_panel_width": 0.7,
+            "default_panel_height": 0.4,
+            "show_pattern": True,
+            "ico_detail": 6,
+            "pattern_opacity": 0.85,
+            "dynamic_range_db": 36,
+        },
+        "sector": {
+            "default_panel_width": 0.3,
+            "default_panel_height": 1.0,
+            "show_pattern": False,
+        },
+        "small_cell": {
+            "default_panel_width": 0.15,
+            "default_panel_height": 0.15,
+            "show_pattern": False,
+        },
+        "auto_load_with_scene": False,
+        "default_radius_m": 500,
+        "max_distance_m": 2000,
+        "site_vertical_gap": 0.1,
+    },
     "default_scenario": "open_ground",
     "scenarios": {
         "open_ground": {
