@@ -92,11 +92,11 @@ jobs:
 
       - name: Extract assignments JSON
         id: extract
+        env:
+          CLAUDE_RESULT: ${{ steps.plan.outputs.result }}
         run: |
           # Extract the JSON from Claude's response
-          RESPONSE='${{ steps.plan.outputs.result }}'
-          # Find the ASSIGNMENTS_JSON line and extract the JSON
-          ASSIGNMENTS=$(echo "$RESPONSE" | grep -o 'ASSIGNMENTS_JSON:.*' | sed 's/ASSIGNMENTS_JSON://')
+          ASSIGNMENTS=$(echo "$CLAUDE_RESULT" | grep -o 'ASSIGNMENTS_JSON:.*' | sed 's/ASSIGNMENTS_JSON://')
           if [ -z "$ASSIGNMENTS" ]; then
             echo "::error::Manager did not produce ASSIGNMENTS_JSON output"
             # Fallback: static assignment
