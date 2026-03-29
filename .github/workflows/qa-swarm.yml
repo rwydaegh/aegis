@@ -1,7 +1,7 @@
 name: QA swarm
 
 on:
-  workflow_dispatch: {}  # Manual trigger only
+  workflow_dispatch: {}   # Manual trigger only
 
 jobs:
   # Manager: analyzes recent changes and feature surface, assigns 5 non-overlapping scopes
