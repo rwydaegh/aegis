@@ -1,4 +1,4 @@
-<div align="center">
+h<div align="center">
 
 # AEGIS
 
@@ -11,7 +11,7 @@
 [![Docs Deploy](https://github.com/rwydaegh/aegis/actions/workflows/docs.yml/badge.svg)](https://github.com/rwydaegh/aegis/actions/workflows/docs.yml)
 [![codecov](https://codecov.io/gh/rwydaegh/aegis/graph/badge.svg)](https://codecov.io/gh/rwydaegh/aegis)
 [![Maintainability](https://qlty.sh/badges/ced2bc3a-cd77-426d-b62d-4d88304837d7/maintainability.svg)](https://qlty.sh/gh/rwydaegh/projects/aegis)
-[![Lines of code](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/rwydaegh/LOC_GIST_ID/raw/loc.json)](https://github.com/rwydaegh/aegis)
+[![Lines of code](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/rwydaegh/b0a80da23c17e3afdb6b8e2be66b54b8/raw/loc.json)](https://github.com/rwydaegh/aegis)
 [![Code style: ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Python](https://img.shields.io/badge/python-3.11+-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-Apache--2.0-green.svg)](LICENSE)
