@@ -52,6 +52,17 @@ export function useKeyboard(): KeyState {
       keysRef.current.add(e.code)
       updateRef.current()
 
+      // Delete/Backspace removes the antenna
+      if ((e.code === 'Delete' || e.code === 'Backspace') && !useMIMOStore.getState().enabled) {
+        e.preventDefault()
+        const sim = useSimulationStore.getState()
+        if (sim.antennaPos) {
+          sim.setAntennaPos(null)
+          sim.clearResults()
+        }
+        return
+      }
+
       // Arrow key antenna nudging (single-user mode only)
       if (e.code.startsWith('Arrow') && !useMIMOStore.getState().enabled) {
         e.preventDefault()
