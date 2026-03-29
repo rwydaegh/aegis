@@ -399,8 +399,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             power_dbm = float(params.get("power_dbm", dcfg["default_power_dbm"]))
         except (TypeError, ValueError):
             return jsonify({"error": "power_dbm must be a number"}), 400
-        if not (pwr_cfg["min"] <= power_dbm <= pwr_cfg["max"]):
-            return jsonify({"error": f"power_dbm must be between {pwr_cfg['min']} and {pwr_cfg['max']} dBm"}), 400
+        if power_dbm < pwr_cfg["min"]:
+            return jsonify({"error": f"power_dbm must be >= {pwr_cfg['min']} dBm"}), 400
 
         try:
             n_paths = int(params.get("n_paths", dcfg["default_n_paths"]))

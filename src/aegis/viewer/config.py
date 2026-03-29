@@ -199,7 +199,6 @@ DEFAULTS: dict = {
         ],
         "power_input": {
             "min": 0,
-            "max": 60,
             "step": 1,
         },
         "synthetic_paths": {
