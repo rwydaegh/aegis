@@ -30,7 +30,7 @@ jobs:
       - run: uv run pytest tests/ --cov=aegis --cov-report=xml -x
       - name: Upload coverage
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         with:
           files: coverage.xml
         env:
