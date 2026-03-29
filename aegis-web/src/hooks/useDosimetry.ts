@@ -166,7 +166,7 @@ export function useDosimetry() {
       .catch(err => {
         if ((err as Error).name === 'AbortError') return // expected cancellation
         Sentry.captureException(err)
-        useNotificationStore.getState().addNotification('error', `Compute failed: ${(err as Error).message ?? err}`, 'This error has been reported and will be fixed automatically using AI.')
+        useNotificationStore.getState().addNotification('error', `Compute failed: ${(err as Error).message ?? err}`, 'This error has been reported and will be fixed automatically using AI. Most issues are fixed in less than 30 minutes.')
       })
       .finally(() => {
         clearTimeout(timeoutId)
