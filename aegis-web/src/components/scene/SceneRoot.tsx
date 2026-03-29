@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useMemo } from 'react'
 import { Canvas, useThree, useFrame } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
@@ -279,7 +279,31 @@ function MIMOScene() {
   )
 }
 
+function hasWebGL(): boolean {
+  try {
+    const canvas = document.createElement('canvas')
+    return !!(canvas.getContext('webgl2') || canvas.getContext('webgl'))
+  } catch {
+    return false
+  }
+}
+
+function WebGLUnavailable() {
+  return (
+    <div className="absolute inset-0 flex items-center justify-center bg-background">
+      <div className="text-center max-w-md px-6">
+        <p className="text-destructive font-medium mb-2">WebGL is not available</p>
+        <p className="text-muted-foreground text-sm">
+          Your browser or device does not support WebGL, which is required for the 3D viewer.
+          Try using a different browser, enabling hardware acceleration, or updating your graphics drivers.
+        </p>
+      </div>
+    </div>
+  )
+}
+
 export default function SceneRoot() {
+  const webglAvailable = useMemo(() => hasWebGL(), [])
   const config = useSceneStore(s => s.viewerConfig)
   const bodyMeshVisible = useSceneStore(s => s.bodyMeshVisible)
   const bodyOffset = useSimulationStore(s => s.bodyOffset)
@@ -287,6 +311,7 @@ export default function SceneRoot() {
   const mimoEnabled = useMIMOStore(s => s.enabled)
   const envSource = useEnvironmentStore(s => s.source)
   const controlsRef = useRef<OrbitControlsImpl | null>(null)
+  if (!webglAvailable) return <WebGLUnavailable />
   if (!config) return null
 
   const cam = config.camera

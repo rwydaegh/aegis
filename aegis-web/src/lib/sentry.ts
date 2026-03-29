@@ -16,6 +16,12 @@ export function initSentry() {
     replaysSessionSampleRate: 0,
     replaysOnErrorSampleRate: 0,
 
+    ignoreErrors: [
+      // WebGL context failures are environmental (user GPU/browser), not actionable
+      /Error creating WebGL context/,
+      /WebGL context could not be created/,
+    ],
+
     beforeSend(event) {
       // Attach full simulation state as context on every error
       try {
