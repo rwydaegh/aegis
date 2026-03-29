@@ -106,6 +106,7 @@ export function useConfig() {
               buildings: osmCfg?.buildings ?? true,
               roads: osmCfg?.roads ?? true,
               water: osmCfg?.water ?? true,
+              detail: osmCfg?.detail ?? false,
             },
           })
         }

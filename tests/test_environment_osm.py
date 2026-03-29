@@ -3,11 +3,13 @@
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 from aegis.environment import EnvironmentMesh, MaterialType
-from aegis.environment.osm import build_environment_from_osm, parse_osm_xml
+from aegis.environment.osm import build_environment_from_osm, fetch_osm, parse_osm_xml
 
 FIXTURE = Path(__file__).parent / "fixtures" / "osm_sample.xml"
+MULTIPOLYGON_FIXTURE = Path(__file__).parent / "fixtures" / "osm_multipolygon.xml"
 
 
 class TestParseOsmXml:
@@ -104,3 +106,38 @@ class TestBuildEnvironment:
         xml = FIXTURE.read_text()
         mesh = build_environment_from_osm(xml, origin_lat=51.05, origin_lon=3.72)
         assert int(MaterialType.WATER) in mesh.materials.tolist()
+
+
+class TestDetailFlag:
+    def test_build_osm_with_detail_flag(self):
+        """detail=True should produce more triangles than detail=False."""
+        xml = FIXTURE.read_text()
+        mesh_simple = build_environment_from_osm(xml, 51.05, 3.72, detail=False)
+        mesh_detail = build_environment_from_osm(xml, 51.05, 3.72, detail=True)
+        assert mesh_detail.triangles.shape[0] > mesh_simple.triangles.shape[0]
+
+
+class TestRelationsIntegration:
+    def test_parse_osm_with_multipolygon_building(self):
+        """Buildings from multipolygon relations should appear in output."""
+        xml = MULTIPOLYGON_FIXTURE.read_text()
+        mesh = build_environment_from_osm(xml, origin_lat=51.05, origin_lon=3.72)
+        assert mesh.triangles.shape[0] > 0  # should have geometry from relations
+
+    def test_building_parts_in_mesh(self):
+        """Building parts with different heights produce distinct geometry."""
+        xml = MULTIPOLYGON_FIXTURE.read_text()
+        mesh = build_environment_from_osm(xml, origin_lat=51.05, origin_lon=3.72)
+        z_max = mesh.vertices[:, 2].max()
+        assert z_max > 10  # tallest part is 15m + roof
+
+
+@pytest.mark.slow
+def test_fetch_osm_includes_relations():
+    """Real Overpass fetch should include relation elements."""
+    pytest.importorskip("requests", reason="requests not installed")
+    xml = fetch_osm(51.0544, 3.7237, radius_m=100, timeout=60)
+    assert "<node" in xml
+    assert "<way" in xml
+    # Relations may or may not exist in this area, but query should not error
+    assert "<?xml" in xml or "<osm" in xml

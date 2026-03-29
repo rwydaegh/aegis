@@ -9,6 +9,7 @@ interface OsmOptions {
   buildings: boolean
   roads: boolean
   water: boolean
+  detail: boolean
 }
 
 interface EnvironmentMeshData {
@@ -37,6 +38,7 @@ interface EnvironmentState {
   setGoogleApiKey: (key: string) => void
   setOsmOptions: (opts: Partial<OsmOptions>) => void
   fetchOSM: () => Promise<void>
+  fetchGeoJSON: (geojsonStr: string) => Promise<void>
   fetchTilesForRT: () => Promise<void>
   exportForRT: (format: 'differt' | 'sionna') => Promise<string>
 }
@@ -56,6 +58,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
     buildings: true,
     roads: true,
     water: true,
+    detail: false,
   },
 
   setSource: (source) => set({ source }),
@@ -67,6 +70,33 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
     set((s) => ({
       osmOptions: { ...s.osmOptions, ...opts },
     })),
+
+  fetchGeoJSON: async (geojsonStr: string) => {
+    const { location, osmOptions } = get()
+    set({ loading: true, error: null })
+    try {
+      const resp = await fetch('/api/environment/geojson', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          geojson: geojsonStr,
+          lat: location?.lat ?? 0,
+          lon: location?.lon ?? 0,
+          detail: osmOptions.detail,
+        }),
+      })
+      if (!resp.ok) {
+        const err = await resp.json()
+        throw new Error(err.error || `HTTP ${resp.status}`)
+      }
+      const meta = JSON.parse(resp.headers.get('X-Meta') || '{}')
+      const buf = await resp.arrayBuffer()
+      const meshData = parseEnvironmentBinary(buf, meta)
+      set({ osmMeshData: meshData, loading: false })
+    } catch (e) {
+      set({ error: (e as Error).message, loading: false })
+    }
+  },
 
   fetchOSM: async () => {
     const { location, radius, osmOptions } = get()
@@ -80,6 +110,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
           lat: location.lat,
           lon: location.lon,
           radius,
+          detail: osmOptions.detail,
           options: {
             default_building_height: osmOptions.defaultBuildingHeight,
             level_height: osmOptions.levelHeight,

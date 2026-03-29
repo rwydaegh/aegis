@@ -29,6 +29,7 @@ import AntennaArrayViz from './AntennaArray'
 import FocusPointMarker from './FocusPointMarker'
 import SmartphoneModel from './SmartphoneModel'
 import BaseStationMarkers from './BaseStationMarkers'
+import { EnvironmentTerrain } from './EnvironmentTerrain'
 
 // Body is roughly 1.2 m tall, centered at origin, feet at y=0
 const BODY_TARGET = new THREE.Vector3(0, 0.6, 0)
@@ -285,6 +286,7 @@ export default function SceneRoot() {
         </>
       )}
       <RayPaths />
+      <EnvironmentTerrain />
       <BaseStationMarkers />
       <DosimetryController />
       <MIMODosimetryController />

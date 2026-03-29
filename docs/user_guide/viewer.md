@@ -122,9 +122,23 @@ The environment panel (sidebar, first accordion section) controls how 3D city ge
 - **OpenStreetMap** fetches building footprints from the Overpass API and generates 3D geometry with roofs, roads, and water. Enter latitude/longitude and radius, then click Fetch.
 - **Google 3D Tiles** streams photorealistic tiles from Google's Map Tiles API. Requires a Google Maps API key (entered in the panel). Buildings and terrain render client-side via 3DTilesRendererJS.
 
-OSM-specific options: default building height, storey height, and toggles for buildings, roads, and water. 3D Tiles options: geometric error (LOD control) and API key.
+OSM-specific options: default building height, storey height, and toggles for buildings, roads, and water. The **Detail** checkbox enables per-floor facade generation with window and door openings. This produces more triangles and is slower to fetch; keep the radius below 150 m when detail is on.
+
+3D Tiles options: geometric error (LOD control) and API key.
 
 After fetching, click **Export for Ray Tracing** to convert the environment mesh into a DiffeRT scene for path computation.
+
+### GeoJSON upload
+
+Instead of fetching from OSM, you can upload a `.geojson` file containing building footprints. Click **Upload GeoJSON** in the environment panel, select the file, and confirm. AEGIS reads the FeatureCollection, runs the same roof and material pipeline as OSM, and displays the result in the scene. The origin coordinates set in the latitude/longitude fields are used as the local ENU reference.
+
+GeoJSON coordinates must be `[longitude, latitude]` per the GeoJSON spec. Files with swapped coordinates will place buildings at the wrong location.
+
+### Terrain
+
+The terrain section sits below the source controls in the environment panel. Check **Enable terrain** to activate elevation-based ground geometry. Click **Fetch elevation** to download SRTM data for the current location from the server. The terrain appears as a mesh under the buildings, and building footprints are projected onto the terrain surface.
+
+The server caches the most recent terrain grid. Re-fetching with a different location or radius replaces it.
 
 For the Python API and material properties, see [Environment module](environment.md).
 
@@ -143,8 +157,10 @@ The React frontend calls REST endpoints on the Flask backend:
 - `POST /api/auth` - password authentication, returns a signed session cookie.
 - `GET /api/location/load` - SSE endpoint for geocoded location loading.
 - `POST /api/environment/osm`, `POST /api/environment/3dtiles` - fetch environment meshes.
+- `POST /api/environment/geojson` - import a GeoJSON FeatureCollection as an environment mesh.
 - `GET /api/environment/mesh` - return cached environment mesh.
 - `POST /api/environment/export-scene` - export environment to DiffeRT or Sionna scene.
+- `POST /api/terrain/elevation` - fetch or upload SRTM terrain data and return the terrain mesh.
 
 `voxel_rt_available` in `/api/config` is true only when voxel grid data is loaded **and** DiffeRT is importable, so the UI does not offer voxel ray tracing when it would always fail.
 

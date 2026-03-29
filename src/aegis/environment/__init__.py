@@ -20,6 +20,10 @@ class MaterialType(IntEnum):
     WOOD = 7
     GROUND = 8
     UNKNOWN = 9
+    ROOF_TILE = 10
+    SOIL = 11
+    VEGETATION_DENSE = 12
+    PLASTER = 13
 
 
 MATERIAL_EM_PROPERTIES: dict[MaterialType, dict[str, float]] = {
@@ -33,6 +37,10 @@ MATERIAL_EM_PROPERTIES: dict[MaterialType, dict[str, float]] = {
     MaterialType.WOOD: {"eps_r": 1.99, "sigma": 0.0047},
     MaterialType.GROUND: {"eps_r": 15.0, "sigma": 0.035},
     MaterialType.UNKNOWN: {"eps_r": 5.31, "sigma": 0.0326},
+    MaterialType.ROOF_TILE: {"eps_r": 3.5, "sigma": 0.02},
+    MaterialType.SOIL: {"eps_r": 12.0, "sigma": 0.02},
+    MaterialType.VEGETATION_DENSE: {"eps_r": 1.5, "sigma": 0.005},
+    MaterialType.PLASTER: {"eps_r": 2.94, "sigma": 0.024},
 }
 
 
@@ -131,12 +139,22 @@ class EnvironmentMesh:
         )
 
     @classmethod
-    def from_osm(cls, lat, lon, radius_m, **kwargs):
-        """Fetch OSM data and build environment mesh."""
+    def from_osm(cls, lat, lon, radius_m, detail: bool = False, **kwargs):
+        """Fetch OSM data and build environment mesh.
+
+        Args:
+            lat: Center latitude in degrees.
+            lon: Center longitude in degrees.
+            radius_m: Fetch radius in meters.
+            detail: When True, use facade-level building geometry with window
+                and door openings instead of plain extruded walls.
+            **kwargs: Additional keyword arguments forwarded to
+                ``build_environment_from_osm``.
+        """
         from aegis.environment.osm import build_environment_from_osm, fetch_osm
 
         xml = fetch_osm(lat, lon, radius_m)
-        return build_environment_from_osm(xml, origin_lat=lat, origin_lon=lon, **kwargs)
+        return build_environment_from_osm(xml, origin_lat=lat, origin_lon=lon, detail=detail, **kwargs)
 
     @classmethod
     def from_3dtiles(cls, lat, lon, radius_m, geometric_error=30.0, api_key=None):

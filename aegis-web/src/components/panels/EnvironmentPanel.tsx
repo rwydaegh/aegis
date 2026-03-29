@@ -1,6 +1,8 @@
+import { useRef, useState } from 'react'
 import * as Sentry from '@sentry/react'
 import { useEnvironmentStore } from '@/stores/environment'
 import type { EnvironmentSource } from '@/stores/environment'
+import { useTerrainStore } from '@/stores/terrain'
 import { Loader2 } from 'lucide-react'
 
 const SOURCE_OPTIONS: { value: EnvironmentSource; label: string }[] = [
@@ -15,6 +17,13 @@ const inputClass =
   'w-full bg-background border border-border rounded px-2 py-1.5 text-sm text-foreground'
 
 export default function EnvironmentPanel() {
+  const terrainEnabled = useTerrainStore((s) => s.enabled)
+  const terrainMeshData = useTerrainStore((s) => s.meshData)
+  const terrainLoading = useTerrainStore((s) => s.loading)
+  const terrainError = useTerrainStore((s) => s.error)
+  const setTerrainEnabled = useTerrainStore((s) => s.setEnabled)
+  const fetchTerrain = useTerrainStore((s) => s.fetchTerrain)
+
   const source = useEnvironmentStore((s) => s.source)
   const location = useEnvironmentStore((s) => s.location)
   const radius = useEnvironmentStore((s) => s.radius)
@@ -30,8 +39,12 @@ export default function EnvironmentPanel() {
   const setGoogleApiKey = useEnvironmentStore((s) => s.setGoogleApiKey)
   const setOsmOptions = useEnvironmentStore((s) => s.setOsmOptions)
   const fetchOSM = useEnvironmentStore((s) => s.fetchOSM)
+  const fetchGeoJSON = useEnvironmentStore((s) => s.fetchGeoJSON)
   const fetchTilesForRT = useEnvironmentStore((s) => s.fetchTilesForRT)
   const exportForRT = useEnvironmentStore((s) => s.exportForRT)
+
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [geojsonFileName, setGeoJsonFileName] = useState<string | null>(null)
 
   return (
     <div className="space-y-3 text-sm">
@@ -174,6 +187,62 @@ export default function EnvironmentPanel() {
               Water
             </label>
           </div>
+          <div>
+            <label className="flex items-center gap-1.5 text-xs">
+              <input
+                type="checkbox"
+                checked={osmOptions.detail}
+                onChange={(e) => setOsmOptions({ detail: e.target.checked })}
+              />
+              Detailed facades
+            </label>
+          </div>
+        </div>
+      )}
+
+      {/* GeoJSON upload */}
+      {source === 'osm' && (
+        <div className="space-y-2 pt-1 border-t border-border">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            GeoJSON
+          </p>
+          <div className="space-y-1">
+            <label className={labelClass}>Upload a .geojson or .json file</label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".geojson,.json"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (!file) return
+                setGeoJsonFileName(file.name)
+                const reader = new FileReader()
+                reader.onload = (evt) => {
+                  const text = evt.target?.result as string
+                  if (text) void fetchGeoJSON(text)
+                }
+                reader.readAsText(file)
+                // reset so the same file can be re-selected
+                e.target.value = ''
+              }}
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={loading}
+              className="w-full px-3 py-1.5 rounded text-xs font-medium bg-muted text-muted-foreground hover:text-foreground disabled:opacity-50 flex items-center justify-center gap-1.5"
+            >
+              {loading && geojsonFileName ? (
+                <Loader2 className="size-3 animate-spin" />
+              ) : null}
+              Choose file
+            </button>
+            {geojsonFileName && (
+              <p className="text-xs text-muted-foreground truncate">
+                {geojsonFileName}
+              </p>
+            )}
+          </div>
         </div>
       )}
 
@@ -240,6 +309,41 @@ export default function EnvironmentPanel() {
           {error}
         </p>
       )}
+
+      {/* Terrain section */}
+      <div className="space-y-2 pt-1 border-t border-border">
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          Terrain
+        </p>
+        <div className="flex items-center justify-between">
+          <label className="flex items-center gap-1.5 text-xs">
+            <input
+              type="checkbox"
+              checked={terrainEnabled}
+              onChange={(e) => setTerrainEnabled(e.target.checked)}
+              disabled={!terrainMeshData}
+            />
+            Show terrain
+          </label>
+          <button
+            onClick={() => {
+              if (location) {
+                void fetchTerrain(location.lat, location.lon, radius)
+              }
+            }}
+            disabled={terrainLoading || !location}
+            className="px-3 py-1.5 rounded text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 flex items-center gap-1.5"
+          >
+            {terrainLoading && <Loader2 className="size-3 animate-spin" />}
+            Fetch terrain
+          </button>
+        </div>
+        {terrainError && (
+          <p className="text-xs text-destructive bg-destructive/10 rounded px-2 py-1.5">
+            {terrainError}
+          </p>
+        )}
+      </div>
     </div>
   )
 }
