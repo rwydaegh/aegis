@@ -264,6 +264,7 @@ def _handle_environment_combine(cache: dict, cache_lock) -> Response:
 
     resp = Response(binary, mimetype="application/octet-stream")
     resp.headers["X-Meta"] = json.dumps(meta)
+    resp.headers["Access-Control-Expose-Headers"] = "X-Meta"
     return resp
 
 
@@ -276,6 +277,7 @@ def _handle_environment_mesh(cache: dict) -> Response:
     binary, meta = mesh.to_binary()
     resp = Response(binary, mimetype="application/octet-stream")
     resp.headers["X-Meta"] = json.dumps(meta)
+    resp.headers["Access-Control-Expose-Headers"] = "X-Meta"
     return resp
 
 
@@ -336,6 +338,7 @@ def _handle_environment_geojson(cache: dict, cache_lock) -> Response:
 
     resp = Response(binary, mimetype="application/octet-stream")
     resp.headers["X-Meta"] = json.dumps(meta)
+    resp.headers["Access-Control-Expose-Headers"] = "X-Meta"
     return resp
 
 

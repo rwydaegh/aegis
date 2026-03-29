@@ -79,4 +79,5 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
         resp = Response(blob, mimetype="application/octet-stream")
         resp.headers["X-Meta"] = json.dumps(meta)
+        resp.headers["Access-Control-Expose-Headers"] = "X-Meta"
         return resp

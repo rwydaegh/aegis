@@ -8,12 +8,12 @@ Public API:
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
 
 import numpy as np
 
 from aegis.environment import EnvironmentMesh
 from aegis.environment.geo import transverse_mercator_forward
+from aegis.environment.natural import NaturalFeature
 from aegis.environment.osm import (
     _HIGHWAY_WIDTH,
     Building,
@@ -27,20 +27,6 @@ from aegis.environment.osm import (
     _water_to_mesh,
 )
 from aegis.environment.roofs import generate_building
-
-# ---------------------------------------------------------------------------
-# NaturalFeature dataclass
-# ---------------------------------------------------------------------------
-
-
-@dataclass
-class NaturalFeature:
-    """A natural feature (park, forest, grass) extracted from GeoJSON."""
-
-    way_id: int
-    footprint: np.ndarray  # (N, 2) local XY coords in meters
-    feature_type: str
-
 
 # ---------------------------------------------------------------------------
 # Projection helpers

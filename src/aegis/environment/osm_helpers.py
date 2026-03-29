@@ -108,7 +108,7 @@ def _parse_tags(way_elem: object) -> dict[str, str]:
     return {tag.attrib["k"]: tag.attrib["v"] for tag in way_elem.findall("tag")}  # type: ignore[union-attr]
 
 
-def _parse_height(tags: dict[str, str], building_type: str) -> float:
+def _parse_height(tags: dict[str, str], building_type: str, default: float = 8.0) -> float:
     """Parse height from OSM tags, with fallback to building type defaults."""
     if "height" in tags:
         try:
@@ -120,7 +120,7 @@ def _parse_height(tags: dict[str, str], building_type: str) -> float:
             return float(tags["building:levels"]) * 3.0
         except ValueError:
             pass
-    return _BUILDING_TYPE_HEIGHT.get(building_type, 8.0)
+    return _BUILDING_TYPE_HEIGHT.get(building_type, default)
 
 
 def _parse_roof_shape(tags: dict[str, str]) -> str:

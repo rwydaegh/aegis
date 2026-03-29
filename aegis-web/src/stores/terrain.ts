@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import * as Sentry from '@sentry/react'
 
 interface TerrainMeshData {
   positions: Float32Array
@@ -54,14 +55,16 @@ export const useTerrainStore = create<TerrainState>((set) => ({
         body: JSON.stringify({ lat, lon, radius }),
       })
       if (!resp.ok) {
-        const err = await resp.json()
-        throw new Error((err as { error?: string }).error || `HTTP ${resp.status}`)
+        let msg = `HTTP ${resp.status}`
+        try { const err = await resp.json(); msg = (err as { error?: string }).error || msg } catch {}
+        throw new Error(msg)
       }
       const meta = JSON.parse(resp.headers.get('X-Meta') || '{}') as Record<string, unknown>
       const buf = await resp.arrayBuffer()
       const meshData = parseTerrainBinary(buf, meta)
       set({ meshData, loading: false, enabled: true })
     } catch (e) {
+      Sentry.captureException(e)
       set({ error: (e as Error).message, loading: false })
     }
   },

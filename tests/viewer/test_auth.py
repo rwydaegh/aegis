@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import struct
 
 import pytest
@@ -34,12 +33,12 @@ def _make_minimal_stl_bytes(name: str = "test") -> bytes:
 
 
 @pytest.fixture
-def client(tmp_path):
+def client(tmp_path, monkeypatch):
     """Flask test client with AEGIS_GATE_PASSWORD set."""
     (tmp_path / "test.stl").write_bytes(_make_minimal_stl_bytes("test"))
 
-    os.environ["AEGIS_GATE_PASSWORD"] = "test-password-123"
-    os.environ["FLASK_SECRET_KEY"] = "test-secret-key"
+    monkeypatch.setenv("AEGIS_GATE_PASSWORD", "test-password-123")
+    monkeypatch.setenv("FLASK_SECRET_KEY", "test-secret-key")
 
     from aegis.viewer.server import _cache, create_app
 
@@ -49,9 +48,6 @@ def client(tmp_path):
 
     with app.test_client() as c:
         yield c
-
-    os.environ.pop("AEGIS_GATE_PASSWORD", None)
-    os.environ.pop("FLASK_SECRET_KEY", None)
 
 
 def test_api_returns_401_without_auth(client):

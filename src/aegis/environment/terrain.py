@@ -54,7 +54,7 @@ def hgt_filename(lat: float, lon: float) -> str:
     #   S  : abs(ceil(lat))  -- tile covers [ceil(lat)-1, ceil(lat)], label = abs(ceil)
     #   W  : abs(floor(lon)) -- tile covers [floor(lon), floor(lon)+1], label = abs(floor)
     # Examples: lat=51.05 -> N51, lat=-33.8 -> S33, lon=3.72 -> E003, lon=-0.12 -> W001
-    lat_label = math.floor(lat) if lat >= 0 else abs(math.ceil(lat))
+    lat_label = math.floor(lat) if lat >= 0 else abs(math.floor(lat))
     lon_label = math.floor(lon) if lon >= 0 else abs(math.floor(lon))
     ns = "N" if lat >= 0 else "S"
     ew = "E" if lon >= 0 else "W"

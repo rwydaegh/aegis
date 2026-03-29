@@ -16,7 +16,7 @@ from aegis.environment.terrain import (
 
 def test_hgt_filename():
     assert hgt_filename(51.05, 3.72) == "N51E003.hgt"
-    assert hgt_filename(-33.8, 151.2) == "S33E151.hgt"
+    assert hgt_filename(-33.8, 151.2) == "S34E151.hgt"
     assert hgt_filename(51.05, -0.12) == "N51W001.hgt"
 
 

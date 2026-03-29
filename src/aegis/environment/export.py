@@ -49,7 +49,7 @@ def to_binary(mesh: EnvironmentMesh) -> tuple[bytes, dict]:
     # Transform vertices for the frontend (Three.js Y-up)
     verts_yup = enu_to_yup(mesh.vertices).astype(np.float32)
     tris = mesh.triangles.astype(np.uint32)
-    norms = mesh.normals.astype(np.float32)
+    norms = enu_to_yup(mesh.normals).astype(np.float32)
     mats = mesh.materials.astype(np.uint8)
 
     blob = verts_yup.tobytes() + tris.tobytes() + norms.tobytes() + mats.tobytes()

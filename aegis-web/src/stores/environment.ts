@@ -86,14 +86,16 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
         }),
       })
       if (!resp.ok) {
-        const err = await resp.json()
-        throw new Error(err.error || `HTTP ${resp.status}`)
+        let msg = `HTTP ${resp.status}`
+        try { const err = await resp.json(); msg = err.error || msg } catch {}
+        throw new Error(msg)
       }
       const meta = JSON.parse(resp.headers.get('X-Meta') || '{}')
       const buf = await resp.arrayBuffer()
       const meshData = parseEnvironmentBinary(buf, meta)
       set({ osmMeshData: meshData, loading: false })
     } catch (e) {
+      Sentry.captureException(e)
       set({ error: (e as Error).message, loading: false })
     }
   },
@@ -121,8 +123,9 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
         }),
       })
       if (!resp.ok) {
-        const err = await resp.json()
-        throw new Error(err.error || `HTTP ${resp.status}`)
+        let msg = `HTTP ${resp.status}`
+        try { const err = await resp.json(); msg = err.error || msg } catch {}
+        throw new Error(msg)
       }
       const meta = JSON.parse(resp.headers.get('X-Meta') || '{}')
       const buf = await resp.arrayBuffer()
@@ -150,8 +153,9 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
         }),
       })
       if (!resp.ok) {
-        const err = await resp.json()
-        throw new Error(err.error || `HTTP ${resp.status}`)
+        let msg = `HTTP ${resp.status}`
+        try { const err = await resp.json(); msg = err.error || msg } catch {}
+        throw new Error(msg)
       }
       set({ loading: false })
     } catch (e) {
@@ -161,17 +165,25 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
   },
 
   exportForRT: async (format) => {
-    const resp = await fetch('/api/environment/export-scene', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ format }),
-    })
-    if (!resp.ok) {
-      const err = await resp.json()
-      throw new Error(err.error || `HTTP ${resp.status}`)
+    set({ loading: true })
+    try {
+      const resp = await fetch('/api/environment/export-scene', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ format }),
+      })
+      if (!resp.ok) {
+        let msg = `HTTP ${resp.status}`
+        try { const err = await resp.json(); msg = err.error || msg } catch {}
+        throw new Error(msg)
+      }
+      const data = await resp.json()
+      set({ loading: false })
+      return data.scene_path
+    } catch (e) {
+      set({ loading: false })
+      throw e
     }
-    const data = await resp.json()
-    return data.scene_path
   },
 }))
 
