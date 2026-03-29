@@ -48,6 +48,50 @@ _TYPE_NUM_COMPONENTS = {
 }
 
 
+def _parse_glb_primitive(
+    prim: dict,
+    read_accessor,
+    vert_offset: int,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray] | None:
+    """Parse a single GLB mesh primitive into positions, indices, and colors.
+
+    Returns None if the primitive has no POSITION attribute.
+    """
+    attrs = prim.get("attributes", {})
+    if "POSITION" not in attrs:
+        return None
+
+    positions = read_accessor(attrs["POSITION"]).astype(np.float64)
+    n_verts = len(positions)
+
+    # Triangle indices
+    indices_acc = prim.get("indices")
+    if indices_acc is not None:
+        raw_idx = read_accessor(indices_acc).astype(np.int32).ravel()
+        n_tris = len(raw_idx) // 3
+        tri_indices = raw_idx[: n_tris * 3].reshape(n_tris, 3) + vert_offset
+    else:
+        n_tris = n_verts // 3
+        seq = np.arange(n_tris * 3, dtype=np.int32)
+        tri_indices = seq.reshape(n_tris, 3) + vert_offset
+
+    # Vertex colors
+    color_key = next((k for k in attrs if k.startswith("COLOR_")), None)
+    if color_key is not None:
+        raw_col = read_accessor(attrs[color_key])
+        if raw_col.shape[1] >= 3:
+            if raw_col.dtype in (np.float32, np.float64):
+                rgb = (np.clip(raw_col[:, :3], 0, 1) * 255).astype(np.uint8)
+            else:
+                rgb = raw_col[:, :3].astype(np.uint8)
+        else:
+            rgb = np.zeros((n_verts, 3), dtype=np.uint8)
+    else:
+        rgb = np.zeros((n_verts, 3), dtype=np.uint8)
+
+    return positions, tri_indices, rgb
+
+
 class TileTraverser:
     """Traverse a 3D Tiles tileset and extract geometry as an EnvironmentMesh.
 
@@ -348,48 +392,14 @@ class TileTraverser:
         vert_offset = 0
         for mesh in json_data.get("meshes", []):
             for prim in mesh.get("primitives", []):
-                attrs = prim.get("attributes", {})
-                if "POSITION" not in attrs:
+                result = _parse_glb_primitive(prim, _read_accessor, vert_offset)
+                if result is None:
                     continue
-
-                positions = _read_accessor(attrs["POSITION"]).astype(np.float64)
-                n_verts = len(positions)
-
-                # Indices
-                indices_acc = prim.get("indices")
-                if indices_acc is not None:
-                    raw_idx = _read_accessor(indices_acc).astype(np.int32).ravel()
-                    n_tris = len(raw_idx) // 3
-                    tri_indices = raw_idx[: n_tris * 3].reshape(n_tris, 3) + vert_offset
-                else:
-                    # No index buffer: vertices are in order
-                    n_tris = n_verts // 3
-                    seq = np.arange(n_tris * 3, dtype=np.int32)
-                    tri_indices = seq.reshape(n_tris, 3) + vert_offset
-
-                # Vertex colors
-                color_key = None
-                for k in attrs:
-                    if k.startswith("COLOR_"):
-                        color_key = k
-                        break
-                if color_key is not None:
-                    raw_col = _read_accessor(attrs[color_key])
-                    if raw_col.shape[1] >= 3:
-                        if raw_col.dtype in (np.float32, np.float64):
-                            # Normalize to 0-255
-                            rgb = (np.clip(raw_col[:, :3], 0, 1) * 255).astype(np.uint8)
-                        else:
-                            rgb = raw_col[:, :3].astype(np.uint8)
-                    else:
-                        rgb = np.zeros((n_verts, 3), dtype=np.uint8)
-                else:
-                    rgb = np.zeros((n_verts, 3), dtype=np.uint8)
-
+                positions, tri_indices, rgb = result
                 all_positions.append(positions)
                 all_indices.append(tri_indices)
                 all_colors.append(rgb)
-                vert_offset += n_verts
+                vert_offset += len(positions)
 
         if not all_positions:
             return (

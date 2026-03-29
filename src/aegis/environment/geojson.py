@@ -84,6 +84,174 @@ def _project_linestring(
 
 
 # ---------------------------------------------------------------------------
+# Per-geometry-type feature parsers
+# ---------------------------------------------------------------------------
+
+
+def _parse_building_feature(
+    way_id: int,
+    props: dict,
+    geom_type: str,
+    coords: list,
+    origin_lat: float,
+    origin_lon: float,
+) -> Building | None:
+    """Parse a GeoJSON feature with a 'building' property into a Building.
+
+    Returns None if the geometry is invalid or too small.
+    """
+    if geom_type != "Polygon" or not coords:
+        return None
+    footprint = _project_ring(coords[0], origin_lat, origin_lon)
+    if len(footprint) < 3:
+        return None
+
+    building_type = props.get("building", "yes")
+    height = _parse_height(props, building_type)
+    roof_shape = _parse_roof_shape(props)
+    roof_height_str = props.get("roof:height")
+    if roof_height_str is not None:
+        try:
+            roof_height = float(str(roof_height_str).split()[0])
+        except (ValueError, IndexError):
+            roof_height = max(2.0, height * 0.25)
+    else:
+        roof_height = max(2.0, height * 0.25)
+    material = _parse_building_material(props)
+    return Building(
+        way_id=way_id,
+        footprint=footprint,
+        height=height,
+        roof_shape=roof_shape,
+        roof_height=roof_height,
+        material=material,
+        roof_material=material,
+    )
+
+
+def _parse_highway_feature(
+    way_id: int,
+    props: dict,
+    geom_type: str,
+    coords: list,
+    origin_lat: float,
+    origin_lon: float,
+) -> Road | None:
+    """Parse a GeoJSON feature with a 'highway' property into a Road.
+
+    Returns None if the geometry is invalid or too short.
+    """
+    if geom_type != "LineString" or not coords:
+        return None
+    centerline = _project_linestring(coords, origin_lat, origin_lon)
+    if len(centerline) < 2:
+        return None
+
+    highway_type = props.get("highway", "unclassified")
+    width = _HIGHWAY_WIDTH.get(highway_type, 6.0)
+    lanes_str = props.get("lanes")
+    if lanes_str is not None:
+        try:
+            lanes = int(lanes_str)
+        except (ValueError, TypeError):
+            lanes = 1
+    else:
+        lanes = 1
+    return Road(
+        way_id=way_id,
+        centerline=centerline,
+        highway_type=highway_type,
+        width=width,
+        lanes=lanes,
+    )
+
+
+def _parse_water_feature(
+    way_id: int,
+    props: dict,
+    geom_type: str,
+    coords: list,
+    origin_lat: float,
+    origin_lon: float,
+) -> WaterBody | None:
+    """Parse a GeoJSON feature with a water/waterway property into a WaterBody.
+
+    Returns None if the geometry is invalid or too small.
+    """
+    if geom_type != "Polygon" or not coords:
+        return None
+    footprint = _project_ring(coords[0], origin_lat, origin_lon)
+    if len(footprint) < 3:
+        return None
+
+    water_type = props.get("water", props.get("waterway", "water"))
+    return WaterBody(
+        way_id=way_id,
+        footprint=footprint,
+        water_type=water_type,
+    )
+
+
+def _parse_natural_feature(
+    way_id: int,
+    props: dict,
+    geom_type: str,
+    coords: list,
+    origin_lat: float,
+    origin_lon: float,
+) -> NaturalFeature | None:
+    """Parse a GeoJSON feature for natural/landuse/leisure into a NaturalFeature.
+
+    Returns None if the geometry is invalid or too small.
+    """
+    if geom_type != "Polygon" or not coords:
+        return None
+    footprint = _project_ring(coords[0], origin_lat, origin_lon)
+    if len(footprint) < 3:
+        return None
+
+    feature_type = props.get("natural") or props.get("landuse") or props.get("leisure", "natural")
+    return NaturalFeature(
+        way_id=way_id,
+        footprint=footprint,
+        feature_type=feature_type,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Origin auto-derive helper
+# ---------------------------------------------------------------------------
+
+
+def _derive_origin(features: list) -> tuple[float, float]:
+    """Compute a centroid-based origin from a list of GeoJSON features.
+
+    Returns (origin_lat, origin_lon) derived from all coordinate positions, or
+    (0.0, 0.0) if no coordinates are found.
+    """
+    all_lons: list[float] = []
+    all_lats: list[float] = []
+    for feat in features:
+        geom = feat.get("geometry") or {}
+        geom_type = geom.get("type", "")
+        coords = geom.get("coordinates", [])
+        if geom_type == "Point":
+            all_lons.append(coords[0])
+            all_lats.append(coords[1])
+        elif geom_type == "LineString":
+            for lon, lat in coords:
+                all_lons.append(lon)
+                all_lats.append(lat)
+        elif geom_type == "Polygon" and coords:
+            for lon, lat in coords[0]:
+                all_lons.append(lon)
+                all_lats.append(lat)
+    if not all_lons:
+        return 0.0, 0.0
+    return float(np.mean(all_lats)), float(np.mean(all_lons))
+
+
+# ---------------------------------------------------------------------------
 # Public parse function
 # ---------------------------------------------------------------------------
 
@@ -107,31 +275,11 @@ def parse_geojson(
         Tuple of (buildings, roads, water_bodies, natural_features).
     """
     data = json.loads(geojson_str)
-
     features = data.get("features", [])
 
     # Auto-derive origin from feature centroids if not provided
     if origin_lat == 0.0 and origin_lon == 0.0 and features:
-        all_lons: list[float] = []
-        all_lats: list[float] = []
-        for feat in features:
-            geom = feat.get("geometry") or {}
-            geom_type = geom.get("type", "")
-            coords = geom.get("coordinates", [])
-            if geom_type == "Point":
-                all_lons.append(coords[0])
-                all_lats.append(coords[1])
-            elif geom_type == "LineString":
-                for lon, lat in coords:
-                    all_lons.append(lon)
-                    all_lats.append(lat)
-            elif geom_type == "Polygon" and coords:
-                for lon, lat in coords[0]:
-                    all_lons.append(lon)
-                    all_lats.append(lat)
-        if all_lons:
-            origin_lat = float(np.mean(all_lats))
-            origin_lon = float(np.mean(all_lons))
+        origin_lat, origin_lon = _derive_origin(features)
 
     buildings: list[Building] = []
     roads: list[Road] = []
@@ -143,7 +291,6 @@ def parse_geojson(
         geom = feat.get("geometry") or {}
         geom_type = geom.get("type", "")
         coords = geom.get("coordinates", [])
-        # Use feature id if present, otherwise fall back to index
         raw_id = feat.get("id", idx)
         try:
             way_id = int(raw_id)
@@ -151,94 +298,28 @@ def parse_geojson(
             way_id = idx
 
         if "building" in props:
-            if geom_type != "Polygon" or not coords:
-                continue
-            footprint = _project_ring(coords[0], origin_lat, origin_lon)
-            if len(footprint) < 3:
-                continue
-            building_type = props.get("building", "yes")
-            height = _parse_height(props, building_type)
-            roof_shape = _parse_roof_shape(props)
-            roof_height_str = props.get("roof:height", None)
-            if roof_height_str is not None:
-                try:
-                    roof_height = float(str(roof_height_str).split()[0])
-                except (ValueError, IndexError):
-                    roof_height = max(2.0, height * 0.25)
-            else:
-                roof_height = max(2.0, height * 0.25)
-            material = _parse_building_material(props)
-            buildings.append(
-                Building(
-                    way_id=way_id,
-                    footprint=footprint,
-                    height=height,
-                    roof_shape=roof_shape,
-                    roof_height=roof_height,
-                    material=material,
-                    roof_material=material,
-                )
-            )
+            result = _parse_building_feature(way_id, props, geom_type, coords, origin_lat, origin_lon)
+            if result is not None:
+                buildings.append(result)
 
         elif "highway" in props:
-            if geom_type != "LineString" or not coords:
-                continue
-            centerline = _project_linestring(coords, origin_lat, origin_lon)
-            if len(centerline) < 2:
-                continue
-            highway_type = props.get("highway", "unclassified")
-            width = _HIGHWAY_WIDTH.get(highway_type, 6.0)
-            lanes_str = props.get("lanes", None)
-            if lanes_str is not None:
-                try:
-                    lanes = int(lanes_str)
-                except (ValueError, TypeError):
-                    lanes = 1
-            else:
-                lanes = 1
-            roads.append(
-                Road(
-                    way_id=way_id,
-                    centerline=centerline,
-                    highway_type=highway_type,
-                    width=width,
-                    lanes=lanes,
-                )
-            )
+            result = _parse_highway_feature(way_id, props, geom_type, coords, origin_lat, origin_lon)
+            if result is not None:
+                roads.append(result)
 
         elif props.get("natural") == "water" or "waterway" in props:
-            if geom_type != "Polygon" or not coords:
-                continue
-            footprint = _project_ring(coords[0], origin_lat, origin_lon)
-            if len(footprint) < 3:
-                continue
-            water_type = props.get("water", props.get("waterway", "water"))
-            water.append(
-                WaterBody(
-                    way_id=way_id,
-                    footprint=footprint,
-                    water_type=water_type,
-                )
-            )
+            result = _parse_water_feature(way_id, props, geom_type, coords, origin_lat, origin_lon)
+            if result is not None:
+                water.append(result)
 
         elif (
             props.get("natural") in ("wood", "forest")
             or props.get("landuse") in ("forest", "grass")
             or props.get("leisure") == "park"
         ):
-            if geom_type != "Polygon" or not coords:
-                continue
-            footprint = _project_ring(coords[0], origin_lat, origin_lon)
-            if len(footprint) < 3:
-                continue
-            feature_type = props.get("natural") or props.get("landuse") or props.get("leisure", "natural")
-            natural_features.append(
-                NaturalFeature(
-                    way_id=way_id,
-                    footprint=footprint,
-                    feature_type=feature_type,
-                )
-            )
+            result = _parse_natural_feature(way_id, props, geom_type, coords, origin_lat, origin_lon)
+            if result is not None:
+                natural_features.append(result)
 
     return buildings, roads, water, natural_features
 

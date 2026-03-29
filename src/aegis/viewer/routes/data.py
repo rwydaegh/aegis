@@ -10,26 +10,250 @@ from pathlib import Path
 from flask import Flask, Response, jsonify, render_template, request
 
 
+def _handle_index(cache):
+    """Implementation for /."""
+    static_dir = Path(__file__).parent.parent / "static"
+    if (static_dir / "index.html").exists():
+        from flask import send_from_directory
+
+        return send_from_directory(str(static_dir), "index.html")
+    # Fall back to legacy Jinja2 template (deprecated)
+    import warnings
+
+    warnings.warn(
+        "Serving legacy HTML viewer. Build the React frontend: cd aegis-web && npm run build",
+        DeprecationWarning,
+        stacklevel=1,
+    )
+    return render_template("_legacy_index.html", viewer_config=json.dumps(cache["config"]))
+
+
+def _handle_export_config(cache, cache_lock):
+    """Implementation for /api/export-config."""
+    with cache_lock:
+        base = copy.deepcopy(cache["config"])
+    interactive = request.get_json(silent=True) or {}
+
+    # Map interactive state (camelCase) to config paths
+    if "freqGhz" in interactive:
+        base["dosimetry"]["freq_hz"] = interactive["freqGhz"] * 1e9
+    if "powerDbm" in interactive:
+        base["dosimetry"]["default_power_dbm"] = interactive["powerDbm"]
+    if "nPaths" in interactive:
+        base["dosimetry"]["default_n_paths"] = interactive["nPaths"]
+    if "bodyName" in interactive:
+        base["body"]["default_name"] = interactive["bodyName"]
+    if "antennaPos" in interactive and interactive["antennaPos"]:
+        base["antenna"]["default_position"] = interactive["antennaPos"]
+    if "skinModel" in interactive:
+        base["dosimetry"]["skin_model"] = interactive["skinModel"]
+    if "bodyOffset" in interactive:
+        base["body"]["default_offset"] = interactive["bodyOffset"]
+    if "bodyRotationY" in interactive:
+        base["body"]["default_rotation_y"] = interactive["bodyRotationY"]
+    if "wireframe" in interactive:
+        base["body"]["wireframe"] = interactive["wireframe"]
+
+    # Fidelity level from mode + toggles
+    if "mode" in interactive:
+        mode = interactive["mode"]
+        if mode == "bound":
+            base["dosimetry"]["default_level"] = 0
+        elif mode == "aggregate":
+            base["dosimetry"]["default_level"] = 1
+        else:
+            level = 2
+            if interactive.get("fresnel"):
+                level = 3
+            if interactive.get("polarisation"):
+                level = 4
+            if interactive.get("curvature"):
+                level = 5
+            if interactive.get("diffraction"):
+                level = 6
+            base["dosimetry"]["default_level"] = level
+
+    # RT config
+    if "rtSource" in interactive:
+        base["raytracer"]["default_source"] = interactive["rtSource"]
+    if "rtMaxOrder" in interactive:
+        base["dosimetry"]["default_max_order"] = interactive["rtMaxOrder"]
+    if "rtConfig" in interactive:
+        base["raytracer"].update(interactive["rtConfig"])
+
+    # Stochastic channel
+    if "stochasticPreset" in interactive:
+        base["dosimetry"]["stochastic"]["default_preset"] = interactive["stochasticPreset"]
+    if "stochasticSeed" in interactive:
+        base["dosimetry"]["stochastic"]["default_seed"] = interactive["stochasticSeed"]
+
+    # Display
+    if "exposureScenario" in interactive:
+        base["dosimetry"]["exposure_scenario"] = interactive["exposureScenario"]
+    if "legendScale" in interactive:
+        base["dosimetry"]["display_mode"] = interactive["legendScale"]
+    if "dynamicRangeDb" in interactive:
+        base["dosimetry"]["dynamic_range_db"] = interactive["dynamicRangeDb"]
+
+    return jsonify(base)
+
+
+def _handle_body(cache):
+    """Implementation for /api/body."""
+    name = request.args.get("name", cache.get("default_body"))
+    bodies = cache.get("bodies", {})
+    entry = bodies.get(name)
+    if entry is None:
+        # Fall back to legacy single-body cache for backward compat
+        if name == cache.get("default_body") and cache.get("body_binary") is not None:
+            data = cache["body_binary"]
+            meta = cache["body_meta"]
+            resp = Response(data, mimetype="application/octet-stream")
+            resp.headers["X-Meta"] = json.dumps(meta)
+            return resp
+        return jsonify({"error": f"Body '{name}' not found"}), 404
+
+    resp = Response(entry["binary"], mimetype="application/octet-stream")
+    resp.headers["X-Meta"] = json.dumps(entry["meta"])
+    return resp
+
+
+def _handle_voxels(cache):
+    """Implementation for /api/voxels."""
+    if cache.get("voxel_binary") is None:
+        return jsonify({"error": "No voxel data loaded"}), 404
+
+    data = cache["voxel_binary"]
+    meta = cache["voxel_meta"]
+
+    resp = Response(data, mimetype="application/octet-stream")
+    resp.headers["X-Meta"] = json.dumps(meta)
+    return resp
+
+
+def _handle_clear_cache(app, cache, cache_lock):
+    """Implementation for /api/clear-cache."""
+    with cache_lock:
+        for key in (
+            "voxel_positions",
+            "voxel_materials",
+            "voxel_sizes",
+            "voxel_binary",
+            "voxel_meta",
+            "body_placement",
+            "tiles_dir",
+            "voxel_json_path",
+            "mimo_scene",
+            "mimo_summary",
+            "mimo_results_binary",
+            "mimo_results_stats",
+        ):
+            cache.pop(key, None)
+    try:
+        from aegis.viewer.raytracer import _scene_cache, clear_voxel_scene_cache
+
+        clear_voxel_scene_cache()
+        _scene_cache.clear()
+    except ImportError:
+        pass
+    app.config.pop("_last_compliance_result", None)
+    return jsonify({"ok": True})
+
+
+def _handle_config(cache):
+    """Implementation for /api/config."""
+    from aegis.viewer.compute import SKIN_MODELS
+
+    # Read bodies from the preloaded cache (populated at startup)
+    bodies_cache = cache.get("bodies", {})
+    if bodies_cache:
+        bodies = list(bodies_cache.keys())
+    else:
+        # Fallback: discover from data_dir if bodies cache is empty
+        bodies = []
+        data_dir = cache.get("data_dir")
+        if data_dir:
+            data_path = Path(data_dir)
+            if data_path.exists():
+                bodies = [p.stem for p in data_path.glob("*.stl")]
+
+    # Check for DiffeRT and available scenes
+    has_differt = False
+    scenes = []
+    try:
+        from aegis.viewer.raytracer import list_available_scenes
+
+        has_differt = True
+        scenes = list_available_scenes()
+    except ImportError:
+        pass
+
+    # Sionna RT runs on Modal GPU, not locally. Check if Modal proxy is
+    # configured (env vars present) OR if sionna is installed locally.
+    has_sionna = False
+    try:
+        from aegis.viewer.modal_proxy import _is_enabled as _modal_enabled
+
+        has_sionna = _modal_enabled()
+    except Exception:
+        pass
+    if not has_sionna:
+        try:
+            import importlib.util
+
+            has_sionna = importlib.util.find_spec("sionna") is not None
+        except Exception:
+            pass
+
+    # Check location loader availability
+    from aegis.viewer.pipeline import find_pipeline
+
+    has_pipeline = find_pipeline(cache.get("pipeline_dir")) is not None
+    has_api_key = bool(os.environ.get("GOOGLE_API_KEY"))
+
+    cfg = cache["config"]
+    levels = [lv["value"] for lv in cfg["dosimetry"]["fidelity_levels"]]
+
+    has_voxels = cache.get("voxel_binary") is not None
+    tiles_dir = cache.get("tiles_dir")
+    n_tiles = 0
+    if tiles_dir:
+        n_tiles = len(list(Path(tiles_dir).glob("*.glb")))
+    # Report default body name and its meta from preloaded bodies cache
+    default_body_name = cache.get("default_body", "")
+    bodies_cache = cache.get("bodies", {})
+    default_entry = bodies_cache.get(default_body_name)
+    body_meta = default_entry["meta"] if default_entry is not None else cache.get("body_meta")
+    bodies.sort()
+
+    return jsonify(
+        {
+            "bodies": bodies,
+            "body_name": default_body_name,
+            "skin_models": SKIN_MODELS,
+            "levels": levels,
+            "has_voxels": has_voxels,
+            "has_differt": has_differt,
+            "has_sionna": has_sionna,
+            "voxel_rt_available": has_voxels and has_differt,
+            "has_tiles": n_tiles > 0,
+            "n_tiles": n_tiles,
+            "scenes": scenes,
+            "body_meta": body_meta,
+            "voxel_meta": cache.get("voxel_meta"),
+            "has_location_loader": has_pipeline and has_api_key,
+            "has_api_key": has_api_key,
+            "body_placement": cache.get("body_placement"),
+        }
+    )
+
+
 def register(app: Flask, cache: dict, cache_lock) -> None:
     """Attach data-serving routes to *app*."""
 
     @app.route("/")
     def index():
-        # Serve React build if available (primary frontend)
-        static_dir = Path(__file__).parent.parent / "static"
-        if (static_dir / "index.html").exists():
-            from flask import send_from_directory
-
-            return send_from_directory(str(static_dir), "index.html")
-        # Fall back to legacy Jinja2 template (deprecated)
-        import warnings
-
-        warnings.warn(
-            "Serving legacy HTML viewer. Build the React frontend: cd aegis-web && npm run build",
-            DeprecationWarning,
-            stacklevel=1,
-        )
-        return render_template("_legacy_index.html", viewer_config=json.dumps(cache["config"]))
+        return _handle_index(cache)
 
     @app.route("/assets/<path:filename>")
     def static_assets(filename):
@@ -57,72 +281,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
     @app.route("/api/export-config", methods=["POST"])
     def api_export_config():
         """Return full viewer config with interactive state overlaid."""
-        with cache_lock:
-            base = copy.deepcopy(cache["config"])
-        interactive = request.get_json(silent=True) or {}
-
-        # Map interactive state (camelCase) to config paths
-        if "freqGhz" in interactive:
-            base["dosimetry"]["freq_hz"] = interactive["freqGhz"] * 1e9
-        if "powerDbm" in interactive:
-            base["dosimetry"]["default_power_dbm"] = interactive["powerDbm"]
-        if "nPaths" in interactive:
-            base["dosimetry"]["default_n_paths"] = interactive["nPaths"]
-        if "bodyName" in interactive:
-            base["body"]["default_name"] = interactive["bodyName"]
-        if "antennaPos" in interactive and interactive["antennaPos"]:
-            base["antenna"]["default_position"] = interactive["antennaPos"]
-        if "skinModel" in interactive:
-            base["dosimetry"]["skin_model"] = interactive["skinModel"]
-        if "bodyOffset" in interactive:
-            base["body"]["default_offset"] = interactive["bodyOffset"]
-        if "bodyRotationY" in interactive:
-            base["body"]["default_rotation_y"] = interactive["bodyRotationY"]
-        if "wireframe" in interactive:
-            base["body"]["wireframe"] = interactive["wireframe"]
-
-        # Fidelity level from mode + toggles
-        if "mode" in interactive:
-            mode = interactive["mode"]
-            if mode == "bound":
-                base["dosimetry"]["default_level"] = 0
-            elif mode == "aggregate":
-                base["dosimetry"]["default_level"] = 1
-            else:
-                level = 2
-                if interactive.get("fresnel"):
-                    level = 3
-                if interactive.get("polarisation"):
-                    level = 4
-                if interactive.get("curvature"):
-                    level = 5
-                if interactive.get("diffraction"):
-                    level = 6
-                base["dosimetry"]["default_level"] = level
-
-        # RT config
-        if "rtSource" in interactive:
-            base["raytracer"]["default_source"] = interactive["rtSource"]
-        if "rtMaxOrder" in interactive:
-            base["dosimetry"]["default_max_order"] = interactive["rtMaxOrder"]
-        if "rtConfig" in interactive:
-            base["raytracer"].update(interactive["rtConfig"])
-
-        # Stochastic channel
-        if "stochasticPreset" in interactive:
-            base["dosimetry"]["stochastic"]["default_preset"] = interactive["stochasticPreset"]
-        if "stochasticSeed" in interactive:
-            base["dosimetry"]["stochastic"]["default_seed"] = interactive["stochasticSeed"]
-
-        # Display
-        if "exposureScenario" in interactive:
-            base["dosimetry"]["exposure_scenario"] = interactive["exposureScenario"]
-        if "legendScale" in interactive:
-            base["dosimetry"]["display_mode"] = interactive["legendScale"]
-        if "dynamicRangeDb" in interactive:
-            base["dosimetry"]["dynamic_range_db"] = interactive["dynamicRangeDb"]
-
-        return jsonify(base)
+        return _handle_export_config(cache, cache_lock)
 
     @app.route("/api/body")
     def api_body():
@@ -131,35 +290,12 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         Accepts optional ?name= query parameter to select a specific body.
         Defaults to the default body loaded at startup.
         """
-        name = request.args.get("name", cache.get("default_body"))
-        bodies = cache.get("bodies", {})
-        entry = bodies.get(name)
-        if entry is None:
-            # Fall back to legacy single-body cache for backward compat
-            if name == cache.get("default_body") and cache.get("body_binary") is not None:
-                data = cache["body_binary"]
-                meta = cache["body_meta"]
-                resp = Response(data, mimetype="application/octet-stream")
-                resp.headers["X-Meta"] = json.dumps(meta)
-                return resp
-            return jsonify({"error": f"Body '{name}' not found"}), 404
-
-        resp = Response(entry["binary"], mimetype="application/octet-stream")
-        resp.headers["X-Meta"] = json.dumps(entry["meta"])
-        return resp
+        return _handle_body(cache)
 
     @app.route("/api/voxels")
     def api_voxels():
         """Return voxel data as binary (positions float32 + colors uint8 + materials uint8)."""
-        if cache.get("voxel_binary") is None:
-            return jsonify({"error": "No voxel data loaded"}), 404
-
-        data = cache["voxel_binary"]
-        meta = cache["voxel_meta"]
-
-        resp = Response(data, mimetype="application/octet-stream")
-        resp.headers["X-Meta"] = json.dumps(meta)
-        return resp
+        return _handle_voxels(cache)
 
     @app.route("/api/tiles")
     def api_tiles_list():
@@ -184,116 +320,9 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
     @app.route("/api/clear-cache", methods=["POST"])
     def api_clear_cache():
         """Clear all cached voxel, scene, and MIMO data."""
-        with cache_lock:
-            for key in (
-                "voxel_positions",
-                "voxel_materials",
-                "voxel_sizes",
-                "voxel_binary",
-                "voxel_meta",
-                "body_placement",
-                "tiles_dir",
-                "voxel_json_path",
-                "mimo_scene",
-                "mimo_summary",
-                "mimo_results_binary",
-                "mimo_results_stats",
-            ):
-                cache.pop(key, None)
-        try:
-            from aegis.viewer.raytracer import _scene_cache, clear_voxel_scene_cache
-
-            clear_voxel_scene_cache()
-            _scene_cache.clear()
-        except ImportError:
-            pass
-        app.config.pop("_last_compliance_result", None)
-        return jsonify({"ok": True})
+        return _handle_clear_cache(app, cache, cache_lock)
 
     @app.route("/api/config")
     def api_config():
         """Return available configuration options."""
-        from aegis.viewer.compute import SKIN_MODELS
-
-        # Read bodies from the preloaded cache (populated at startup)
-        bodies_cache = cache.get("bodies", {})
-        if bodies_cache:
-            bodies = list(bodies_cache.keys())
-        else:
-            # Fallback: discover from data_dir if bodies cache is empty
-            bodies = []
-            data_dir = cache.get("data_dir")
-            if data_dir:
-                data_path = Path(data_dir)
-                if data_path.exists():
-                    bodies = [p.stem for p in data_path.glob("*.stl")]
-
-        # Check for DiffeRT and available scenes
-        has_differt = False
-        scenes = []
-        try:
-            from aegis.viewer.raytracer import list_available_scenes
-
-            has_differt = True
-            scenes = list_available_scenes()
-        except ImportError:
-            pass
-
-        # Sionna RT runs on Modal GPU, not locally. Check if Modal proxy is
-        # configured (env vars present) OR if sionna is installed locally.
-        has_sionna = False
-        try:
-            from aegis.viewer.modal_proxy import _is_enabled as _modal_enabled
-
-            has_sionna = _modal_enabled()
-        except Exception:
-            pass
-        if not has_sionna:
-            try:
-                import importlib.util
-
-                has_sionna = importlib.util.find_spec("sionna") is not None
-            except Exception:
-                pass
-
-        # Check location loader availability
-        from aegis.viewer.pipeline import find_pipeline
-
-        has_pipeline = find_pipeline(cache.get("pipeline_dir")) is not None
-        has_api_key = bool(os.environ.get("GOOGLE_API_KEY"))
-
-        cfg = cache["config"]
-        levels = [lv["value"] for lv in cfg["dosimetry"]["fidelity_levels"]]
-
-        has_voxels = cache.get("voxel_binary") is not None
-        tiles_dir = cache.get("tiles_dir")
-        n_tiles = 0
-        if tiles_dir:
-            n_tiles = len(list(Path(tiles_dir).glob("*.glb")))
-        # Report default body name and its meta from preloaded bodies cache
-        default_body_name = cache.get("default_body", "")
-        bodies_cache = cache.get("bodies", {})
-        default_entry = bodies_cache.get(default_body_name)
-        body_meta = default_entry["meta"] if default_entry is not None else cache.get("body_meta")
-        bodies.sort()
-
-        return jsonify(
-            {
-                "bodies": bodies,
-                "body_name": default_body_name,
-                "skin_models": SKIN_MODELS,
-                "levels": levels,
-                "has_voxels": has_voxels,
-                "has_differt": has_differt,
-                "has_sionna": has_sionna,
-                "voxel_rt_available": has_voxels and has_differt,
-                "has_tiles": n_tiles > 0,
-                "n_tiles": n_tiles,
-                "scenes": scenes,
-                "body_meta": body_meta,
-                "voxel_meta": cache.get("voxel_meta"),
-                "has_location_loader": has_pipeline and has_api_key,
-                "has_api_key": has_api_key,
-                "body_placement": cache.get("body_placement"),
-            }
-        )
+        return _handle_config(cache)
