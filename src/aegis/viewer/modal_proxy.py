@@ -42,8 +42,9 @@ def gpu_status() -> dict:
         if _is_enabled():
             return {"warm": False, "enabled": True, "seconds_remaining": 0}
         return {"warm": False, "enabled": False, "seconds_remaining": 0}
-    elapsed = _time.monotonic() - _last_rt_success
-    warm = _last_rt_success > 0 and elapsed < _SCALEDOWN_WINDOW
+    last = _last_rt_success
+    elapsed = _time.monotonic() - last
+    warm = last > 0 and elapsed < _SCALEDOWN_WINDOW
     remaining = max(0, int(_SCALEDOWN_WINDOW - elapsed)) if warm else 0
     return {"warm": warm, "enabled": True, "seconds_remaining": remaining}
 

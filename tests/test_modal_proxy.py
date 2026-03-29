@@ -140,7 +140,7 @@ class TestGpuStatus:
 
         monkeypatch.setattr(modal_proxy, "_initialized", True)
         monkeypatch.setattr(modal_proxy, "_MODAL_AVAILABLE", True)
-        modal_proxy._last_rt_success = 0.0
+        monkeypatch.setattr(modal_proxy, "_last_rt_success", 0.0)
         modal_proxy._mark_success()
         status = modal_proxy.gpu_status()
         assert status["warm"] is True
