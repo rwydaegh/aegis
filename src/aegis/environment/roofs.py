@@ -367,7 +367,6 @@ def _roof_skillion(footprint: np.ndarray, height: float, roof_height: float) -> 
     # Find longest edge, raise the opposite edge
     edge_lengths = np.array([np.linalg.norm(footprint[(i + 1) % n] - footprint[i]) for i in range(n)])
     longest = int(np.argmax(edge_lengths))
-    # Vertices on the longest edge stay at height, opposite side raised
     # Compute distance of each vertex from the longest edge line
     p0 = footprint[longest]
     p1 = footprint[(longest + 1) % n]
@@ -380,13 +379,42 @@ def _roof_skillion(footprint: np.ndarray, height: float, roof_height: float) -> 
     if max_dist < 1e-10:
         max_dist = 1.0
 
-    verts = np.zeros((n, 3), dtype=np.float64)
+    roof_z = np.array([height + roof_height * abs(dists[i]) / max_dist for i in range(n)])
+
+    # Roof surface vertices (at varying z)
+    roof_verts = np.zeros((n, 3), dtype=np.float64)
     for i in range(n):
-        z = height + roof_height * abs(dists[i]) / max_dist
-        verts[i] = [footprint[i][0], footprint[i][1], z]
+        roof_verts[i] = [footprint[i][0], footprint[i][1], roof_z[i]]
 
     tris_2d = triangulate_polygon(footprint)
-    return verts, tris_2d
+
+    # Fill the gap between wall top (height) and roof edge with triangulated
+    # strips on each wall segment where the roof is above the wall top.
+    gap_verts = []
+    gap_tris = []
+    for i in range(n):
+        j = (i + 1) % n
+        zi, zj = roof_z[i], roof_z[j]
+        # Both at wall height means no gap on this edge
+        if abs(zi - height) < 1e-10 and abs(zj - height) < 1e-10:
+            continue
+        # Quad from (pi, height) -> (pj, height) -> (pj, zj) -> (pi, zi)
+        base = len(roof_verts) + len(gap_verts)
+        gap_verts.append([footprint[i][0], footprint[i][1], height])
+        gap_verts.append([footprint[j][0], footprint[j][1], height])
+        gap_verts.append([footprint[j][0], footprint[j][1], zj])
+        gap_verts.append([footprint[i][0], footprint[i][1], zi])
+        gap_tris.append([base, base + 1, base + 2])
+        gap_tris.append([base, base + 2, base + 3])
+
+    if gap_verts:
+        all_verts = np.vstack([roof_verts, np.array(gap_verts, dtype=np.float64)])
+        all_tris = np.concatenate([tris_2d, np.array(gap_tris, dtype=np.uint32)])
+    else:
+        all_verts = roof_verts
+        all_tris = tris_2d
+
+    return all_verts, all_tris
 
 
 _ROOF_DISPATCH["skillion"] = _roof_skillion
@@ -812,3 +840,132 @@ def _roof_round(footprint: np.ndarray, height: float, roof_height: float) -> tup
 
 
 _ROOF_DISPATCH["round"] = _roof_round
+
+
+# ---------------------------------------------------------------------------
+# 13. Multi-flat roof
+# ---------------------------------------------------------------------------
+
+
+def _roof_multi_flat(footprint: np.ndarray, height: float, roof_height: float) -> tuple[np.ndarray, np.ndarray]:
+    """Stepped flat roof with two levels.
+
+    Lower ring is flat at `height`. Inner inset section rises to
+    `height + roof_height` with a vertical step wall at 60% of roof_height.
+    """
+    n = len(footprint)
+    centroid = footprint.mean(axis=0)
+    inset_frac = 0.3
+    inset_fp = footprint + inset_frac * (centroid - footprint)
+
+    step_h = height + roof_height * 0.6
+    top_h = height + roof_height
+
+    outer_base = _make_3d(footprint, height)
+    inner_base = _make_3d(inset_fp, height)
+    inner_step = _make_3d(inset_fp, step_h)
+    inner_top = _make_3d(inset_fp, top_h)
+
+    tris_list = []
+
+    # Outer flat ring: quad strip from outer footprint to inset footprint, both at height.
+    # Vertex layout: 0..n-1 = outer_base, n..2n-1 = inner_base
+    verts = np.vstack([outer_base, inner_base, inner_step, inner_top])
+    # Indices: outer=0..n-1, inner_base=n..2n-1, inner_step=2n..3n-1, inner_top=3n..4n-1
+
+    for i in range(n):
+        j = (i + 1) % n
+        oi, oj = i, j
+        ii, ij = n + i, n + j
+        # Outer flat ring quad (at height): outer[i] -> outer[j] -> inner[j] -> inner[i]
+        tris_list.append([oi, oj, ij])
+        tris_list.append([oi, ij, ii])
+
+    # Step walls: from inner_base to inner_step
+    for i in range(n):
+        j = (i + 1) % n
+        ii, ij = n + i, n + j
+        si, sj = 2 * n + i, 2 * n + j
+        tris_list.append([ii, ij, sj])
+        tris_list.append([ii, sj, si])
+
+    # Top cap: triangulate inset footprint at top_h (vertices 3n..4n-1)
+    top_tris = triangulate_polygon(inset_fp)
+    for tri in top_tris:
+        tris_list.append([3 * n + tri[0], 3 * n + tri[1], 3 * n + tri[2]])
+
+    return verts, np.array(tris_list, dtype=np.uint32)
+
+
+_ROOF_DISPATCH["multi_flat"] = _roof_multi_flat
+
+
+# ---------------------------------------------------------------------------
+# 14. Multi-hipped roof
+# ---------------------------------------------------------------------------
+
+
+def _roof_multi_hipped(footprint: np.ndarray, height: float, roof_height: float) -> tuple[np.ndarray, np.ndarray]:
+    """Hipped roof with a secondary smaller hipped roof on top.
+
+    Lower hip covers full footprint rising to `height + roof_height * 0.6`.
+    Upper hip covers an inset footprint (40% toward centroid) rising a further
+    `roof_height * 0.4`.
+    """
+    from aegis.environment.skeleton import polygonize
+
+    try:
+        # Lower hip
+        lower_h = roof_height * 0.6
+        fp_3d_lower = [_make_3d(footprint, height)[i] for i in range(len(footprint))]
+        lower_verts_list = list(fp_3d_lower)
+        lower_faces = polygonize(lower_verts_list, footprint, height=lower_h)
+        if not lower_faces:
+            raise ValueError("lower polygonize returned no faces")
+
+        lower_verts = np.array(lower_verts_list, dtype=np.float64)
+        lower_tris_list = []
+        for face in lower_faces:
+            if len(face) < 3:
+                continue
+            for k in range(1, len(face) - 1):
+                lower_tris_list.append([face[0], face[k], face[k + 1]])
+        if not lower_tris_list:
+            raise ValueError("lower hip has no triangles")
+
+        # Upper hip on inset footprint
+        centroid = footprint.mean(axis=0)
+        inset_frac = 0.4
+        inset_fp = footprint + inset_frac * (centroid - footprint)
+        upper_base_h = height + lower_h
+        upper_h = roof_height * 0.4
+
+        fp_3d_upper = [_make_3d(inset_fp, upper_base_h)[i] for i in range(len(inset_fp))]
+        upper_verts_list = list(fp_3d_upper)
+        upper_faces = polygonize(upper_verts_list, inset_fp, height=upper_h)
+        if not upper_faces:
+            raise ValueError("upper polygonize returned no faces")
+
+        upper_verts = np.array(upper_verts_list, dtype=np.float64)
+        upper_tris_list = []
+        for face in upper_faces:
+            if len(face) < 3:
+                continue
+            for k in range(1, len(face) - 1):
+                upper_tris_list.append([face[0], face[k], face[k + 1]])
+        if not upper_tris_list:
+            raise ValueError("upper hip has no triangles")
+
+        lower_tris = np.array(lower_tris_list, dtype=np.uint32)
+        upper_tris = np.array(upper_tris_list, dtype=np.uint32)
+        offset = len(lower_verts)
+        combined_verts = np.vstack([lower_verts, upper_verts])
+        combined_tris = np.concatenate([lower_tris, upper_tris + offset])
+        return combined_verts, combined_tris
+
+    except Exception:
+        # Fallback to plain hipped
+        return _roof_hipped(footprint, height, roof_height)
+
+
+_ROOF_DISPATCH["multi_hipped"] = _roof_multi_hipped

@@ -128,3 +128,38 @@ class TestGenerateBuilding:
         )
         assert MaterialType.BRICK in mats
         assert MaterialType.CONCRETE in mats
+
+
+def test_roof_multi_flat():
+    fp = np.array([[0, 0], [12, 0], [12, 8], [0, 8]], dtype=np.float64)
+    verts, tris, mats = generate_building(fp, 9.0, "multi_flat", 3.0)
+    assert verts.shape[0] > 0
+    assert tris.shape[0] > 0
+    # Should have vertices at multiple Z levels
+    z_vals = verts[:, 2]
+    assert z_vals.max() > 9.0  # roof extends above wall height
+
+
+def test_roof_multi_flat_pentagon():
+    angles = np.linspace(0, 2 * np.pi, 6)[:-1]
+    fp = np.column_stack([np.cos(angles) * 6, np.sin(angles) * 6])
+    verts, tris, mats = generate_building(fp, 9.0, "multi_flat", 3.0)
+    assert verts.shape[0] > 0
+    assert tris.shape[0] > 0
+    assert verts[:, 2].max() > 9.0
+
+
+def test_roof_multi_hipped():
+    fp = np.array([[0, 0], [12, 0], [12, 8], [0, 8]], dtype=np.float64)
+    verts, tris, mats = generate_building(fp, 9.0, "multi_hipped", 3.0)
+    assert verts.shape[0] > 0
+    assert tris.shape[0] > 0
+
+
+def test_roof_multi_hipped_pentagon():
+    """Pentagon footprint exercises fallback path."""
+    angles = np.linspace(0, 2 * np.pi, 6)[:-1]
+    fp = np.column_stack([np.cos(angles) * 6, np.sin(angles) * 6])
+    verts, tris, mats = generate_building(fp, 9.0, "multi_hipped", 3.0)
+    assert verts.shape[0] > 0
+    assert tris.shape[0] > 0
