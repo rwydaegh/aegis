@@ -5,6 +5,8 @@ import { useSceneStore } from '@/stores/scene'
 import { useSimulationStore } from '@/stores/simulation'
 import { useUIStore } from '@/stores/ui'
 import { useNotificationStore } from '@/stores/notifications'
+import { loadBasestations } from '@/api/basestations'
+import { useBaseStationsStore } from '@/stores/basestations'
 
 function SionnaSceneSelector() {
   const scenes = useSceneStore(s => s.scenes)
@@ -68,6 +70,7 @@ export default function ScenePanel() {
   const [radius, setRadius] = useState(30)
   const [voxelSize, setVoxelSize] = useState(0.5)
   const [force, setForce] = useState(false)
+  const [alsoLoadBS, setAlsoLoadBS] = useState(false)
   const esRef = useRef<EventSource | null>(null)
 
   // Show Sionna scene selector even when location loading is unavailable
@@ -108,6 +111,22 @@ export default function ScenePanel() {
         Sentry.captureException(err)
         useNotificationStore.getState().addNotification('error', 'Failed to refresh after location load')
       })
+      if (alsoLoadBS) {
+        ;(async () => {
+          try {
+            const bsRes = await loadBasestations({ location, radius_m: radius })
+            if (bsRes.basestations.length > 0) {
+              const first = bsRes.basestations[0]
+              useBaseStationsStore.getState().setBasestations(
+                bsRes.basestations,
+                { lat: first.latitude, lon: first.longitude },
+              )
+            }
+          } catch (err) {
+            console.warn('Auto-load base stations failed:', err)
+          }
+        })()
+      }
     })
 
     es.addEventListener('error', () => {
@@ -159,6 +178,16 @@ export default function ScenePanel() {
           <label className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
             <input type="checkbox" checked={force} onChange={e => setForce(e.target.checked)} />
             Force re-download
+          </label>
+
+          <label className="flex items-center gap-2 text-xs cursor-pointer select-none mt-2">
+            <input
+              type="checkbox"
+              className="rounded border-border accent-primary h-3.5 w-3.5"
+              checked={alsoLoadBS}
+              onChange={e => setAlsoLoadBS(e.target.checked)}
+            />
+            <span className="text-foreground/70">Also load base stations</span>
           </label>
 
           <div className="flex gap-2 mt-3">
