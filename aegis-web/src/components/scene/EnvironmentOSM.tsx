@@ -13,6 +13,10 @@ const MATERIAL_COLORS: Record<number, [number, number, number]> = {
   7: [0.6, 0.4, 0.2], // wood
   8: [0.5, 0.45, 0.35], // ground
   9: [0.5, 0.5, 0.5], // unknown
+  10: [0.65, 0.35, 0.25], // roof tile
+  11: [0.45, 0.35, 0.25], // soil
+  12: [0.15, 0.45, 0.1], // vegetation dense
+  13: [0.9, 0.87, 0.82], // plaster
 }
 
 export function EnvironmentOSM() {

@@ -39,3 +39,21 @@ class TestClassifyColor:
 
     def test_brown_is_brick(self):
         assert classify_color(160, 82, 45) == MaterialType.BRICK
+
+
+def test_new_material_types_exist():
+    from aegis.environment import MaterialType
+
+    assert hasattr(MaterialType, "ROOF_TILE")
+    assert hasattr(MaterialType, "SOIL")
+    assert hasattr(MaterialType, "VEGETATION_DENSE")
+    assert hasattr(MaterialType, "PLASTER")
+
+
+def test_new_materials_have_em_properties():
+    from aegis.environment import MATERIAL_EM_PROPERTIES, MaterialType
+
+    for mt in [MaterialType.ROOF_TILE, MaterialType.SOIL, MaterialType.VEGETATION_DENSE, MaterialType.PLASTER]:
+        props = MATERIAL_EM_PROPERTIES[mt]
+        assert "eps_r" in props
+        assert "sigma" in props

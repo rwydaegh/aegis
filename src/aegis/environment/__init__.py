@@ -20,6 +20,10 @@ class MaterialType(IntEnum):
     WOOD = 7
     GROUND = 8
     UNKNOWN = 9
+    ROOF_TILE = 10
+    SOIL = 11
+    VEGETATION_DENSE = 12
+    PLASTER = 13
 
 
 MATERIAL_EM_PROPERTIES: dict[MaterialType, dict[str, float]] = {
@@ -33,6 +37,10 @@ MATERIAL_EM_PROPERTIES: dict[MaterialType, dict[str, float]] = {
     MaterialType.WOOD: {"eps_r": 1.99, "sigma": 0.0047},
     MaterialType.GROUND: {"eps_r": 15.0, "sigma": 0.035},
     MaterialType.UNKNOWN: {"eps_r": 5.31, "sigma": 0.0326},
+    MaterialType.ROOF_TILE: {"eps_r": 3.5, "sigma": 0.02},
+    MaterialType.SOIL: {"eps_r": 12.0, "sigma": 0.02},
+    MaterialType.VEGETATION_DENSE: {"eps_r": 1.5, "sigma": 0.005},
+    MaterialType.PLASTER: {"eps_r": 2.94, "sigma": 0.024},
 }
 
 

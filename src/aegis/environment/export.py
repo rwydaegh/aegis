@@ -28,6 +28,10 @@ _MATERIAL_COLORS: dict[MaterialType, tuple[float, float, float]] = {
     MaterialType.WOOD: (0.55, 0.35, 0.15),
     MaterialType.GROUND: (0.5, 0.4, 0.3),
     MaterialType.UNKNOWN: (0.5, 0.5, 0.5),
+    MaterialType.ROOF_TILE: (0.65, 0.35, 0.25),
+    MaterialType.SOIL: (0.45, 0.35, 0.25),
+    MaterialType.VEGETATION_DENSE: (0.15, 0.45, 0.1),
+    MaterialType.PLASTER: (0.9, 0.87, 0.82),
 }
 
 
