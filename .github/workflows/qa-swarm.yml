@@ -60,8 +60,13 @@ jobs:
             - Areas touched by recent commits get MORE attention (assign a dedicated tester)
             - Cover the full feature surface across all 5 testers combined
             - No two testers should test the same feature -- be specific about boundaries
-            - Each assignment should be 3-6 bullet points of concrete things to test
-            - Include both happy-path and edge-case testing in each assignment
+            - Each assignment should be a starting area and a few suggestions, NOT an
+              exhaustive checklist. Write 2-3 sentences describing the area and what to
+              pay attention to, then 2-3 specific things worth trying. The tester will
+              explore freely from there.
+            - Testers are allowed to wander outside their scope if they stumble onto
+              something interesting. The scope prevents duplicate STARTING points, not
+              duplicate discovery.
 
             ## Feature areas to cover (divide these among testers)
 
@@ -199,10 +204,11 @@ jobs:
             AEGIS, a 3D electromagnetic dosimetry viewer at https://aegis.waves-ugent.be.
 
             A manager AI has analyzed recent changes and the full feature surface, and assigned
-            you a specific scope. Stay within your scope -- the other testers are covering the
-            rest. This prevents duplicate work and duplicate bug reports.
+            you a starting area. Begin there, but don't treat it as a rigid boundary. If
+            clicking around in your area leads you somewhere interesting, follow that thread.
+            A real user doesn't stay in one panel.
 
-            ## Your assignment
+            ## Your starting area
 
             **Focus: ${{ steps.assignment.outputs.focus }}**
 
@@ -281,9 +287,10 @@ jobs:
             Check the browser console periodically with `npx @playwright/cli console`.
             Warnings can be interesting clues even if they're not errors.
 
-            Explore for 8-12 meaningful interactions within your assigned scope. Don't rush
-            through a checklist -- actually look at each screen and think about whether what
-            you see makes sense.
+            Explore for 8-12 meaningful interactions. Start in your assigned area, but if
+            something catches your eye -- a weird value, an unexpected state after clicking
+            something -- follow it. The best bugs are found by curiosity, not checklists.
+            Actually look at each screen and think about whether what you see makes sense.
 
             ## When you find something wrong
 
