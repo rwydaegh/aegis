@@ -70,7 +70,10 @@ jobs:
           prompt: |
             Fix this bug. The issue body has reproduction steps from the automated QA agent.
             There are no Sentry breadcrumbs -- rely on the description and steps to reproduce.
-            You MUST create a PR with your fix. Do not just push a branch.
+
+            After committing and pushing your fix, you MUST run `gh pr create` yourself to open
+            a pull request, then immediately run `gh pr merge --squash --delete-branch` to merge it.
+            Do not stop at just pushing a branch. The full cycle is: fix -> commit -> push -> pr create -> pr merge.
             Add "Fixes #${{ github.event.issue.number }}" to the PR body so it auto-closes the issue on merge.
 
   # Triggered when the 'sentry' label is added to an issue
@@ -102,5 +105,8 @@ jobs:
           prompt: |
             Fix this bug. The issue body has the stack trace from Sentry.
             Follow `.claude/rules/sentry-issues.md` for the workflow.
-            You MUST create a PR with your fix. Do not just push a branch.
+
+            After committing and pushing your fix, you MUST run `gh pr create` yourself to open
+            a pull request, then immediately run `gh pr merge --squash --delete-branch` to merge it.
+            Do not stop at just pushing a branch. The full cycle is: fix -> commit -> push -> pr create -> pr merge.
             Add "Fixes #${{ github.event.issue.number }}" to the PR body so it auto-closes the issue on merge.
