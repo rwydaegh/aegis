@@ -91,6 +91,48 @@ jobs:
           sleep 15
           curl -sf https://aegis.waves-ugent.be/api/health || echo "::warning::Health check failed - server may still be starting"
 
+      - name: Sentry release tracking
+        if: vars.HETZNER_HOST != ''
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+        run: |
+          if [ -z "$SENTRY_AUTH_TOKEN" ]; then exit 0; fi
+          npm install -g @sentry/cli
+          export SENTRY_URL=https://de.sentry.io
+          sentry-cli releases new "${{ github.sha }}"
+          sentry-cli releases set-commits "${{ github.sha }}" --auto
+          sentry-cli releases finalize "${{ github.sha }}"
+          sentry-cli releases deploys "${{ github.sha }}" new -e production
+
+  loc-badge:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master'
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install scc
+        run: |
+          curl -sL https://github.com/boyter/scc/releases/download/v3.4.0/scc_Linux_x86_64.tar.gz | tar xz
+          sudo mv scc /usr/local/bin/
+
+      - name: Count lines of code
+        id: loc
+        run: |
+          LINES=$(scc --no-cocomo --no-complexity -f json src/ aegis-web/src/ tests/ | jq '[.[].Code] | add')
+          echo "lines=$LINES" >> "$GITHUB_OUTPUT"
+
+      - name: Update badge gist
+        uses: schneegans/dynamic-badges-action@v1.7.0
+        with:
+          auth: ${{ secrets.GIST_TOKEN }}
+          gistID: ${{ vars.LOC_GIST_ID }}
+          filename: loc.json
+          label: lines of code
+          message: ${{ steps.loc.outputs.lines }}
+          color: blue
+
   modal-deploy:
     needs: ci
     runs-on: ubuntu-latest
