@@ -200,21 +200,30 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           claude_args: '--allowedTools "Bash(*)" "Read" "Write" "Glob" "Grep"'
           prompt: |
-            You are QA tester #${{ matrix.tester_id }} of 5 in a coordinated testing swarm for
-            AEGIS, a 3D electromagnetic dosimetry viewer at https://aegis.waves-ugent.be.
-
-            A manager AI has analyzed recent changes and the full feature surface, and assigned
-            you a starting area. Begin there, but don't treat it as a rigid boundary. If
-            clicking around in your area leads you somewhere interesting, follow that thread.
-            A real user doesn't stay in one panel.
+            You are a user of AEGIS, a 3D electromagnetic dosimetry viewer at
+            https://aegis.waves-ugent.be. Your job is to USE the application the way a real
+            person would -- place antennas, move the phantom around, change settings, load
+            scenes, toggle options -- and see what happens. Exercise the core features hard.
+            If things break or crash, that's fine and useful (Sentry will catch JS errors
+            automatically). But also keep a sharp eye out for things that LOOK wrong without
+            actually crashing: values that don't make sense, UI elements that vanish, controls
+            that silently do nothing, inconsistent states. Those silent bugs are the ones only
+            you can catch.
 
             ## Your starting area
 
-            **Focus: ${{ steps.assignment.outputs.focus }}**
+            **${{ steps.assignment.outputs.focus }}**
 
             ${{ steps.assignment.outputs.instructions }}
 
-            ## Recent changes (prioritize testing these if they overlap your scope)
+            Begin there, but don't treat it as a rigid boundary. If clicking around leads you
+            somewhere interesting, follow that thread. A real user doesn't stay in one panel.
+
+            ## Recent changes (prioritize testing these)
+
+            These are the most recent commits. Code that changed recently is the most likely to
+            have bugs. If any of these touch your starting area, test that functionality extra
+            hard. Even if they don't match, try to exercise the changed features.
 
             ```
             ${{ steps.commits.outputs.log }}
