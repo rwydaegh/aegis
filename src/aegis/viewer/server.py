@@ -197,7 +197,7 @@ def create_app(
     app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=2)
 
     _gate_password = os.environ.get("AEGIS_GATE_PASSWORD")
-    _exempt_paths = {"/api/auth", "/api/health"}
+    _exempt_paths = {"/api/auth", "/api/health", "/api/sentry-webhook"}
 
     @app.before_request
     def check_auth():
