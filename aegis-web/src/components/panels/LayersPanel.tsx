@@ -11,12 +11,15 @@ export default function LayersPanel() {
   const sceneGeoVisible = useSceneStore(s => s.sceneGeometryVisible)
   const toggleSceneGeo = useSceneStore(s => s.toggleSceneGeometryVisible)
 
+  const bodyMeshVisible = useSceneStore(s => s.bodyMeshVisible)
+  const toggleBodyMesh = useSceneStore(s => s.toggleBodyMeshVisible)
+  const groundPlaneVisible = useSceneStore(s => s.groundPlaneVisible)
+  const toggleGroundPlane = useSceneStore(s => s.toggleGroundPlaneVisible)
+  const gridVisible = useSceneStore(s => s.gridVisible)
+  const toggleGrid = useSceneStore(s => s.toggleGridVisible)
+
   const hasVoxels = !!voxelData
   const hasSceneGeo = !!sceneGeometry
-
-  if (!hasVoxels && !hasSceneGeo) {
-    return <p className="text-xs text-muted-foreground">No environment data loaded. Load a scene or location first.</p>
-  }
 
   // Count voxels per material
   const counts: Record<string, number> = {}
@@ -36,6 +39,18 @@ export default function LayersPanel() {
 
   return (
     <div>
+      {/* Scene element toggles (always visible) */}
+      <label className="text-xs text-muted-foreground block mb-1">Scene elements</label>
+      <button onClick={toggleBodyMesh} className={toggleClass(bodyMeshVisible)}>
+        Body mesh
+      </button>
+      <button onClick={toggleGroundPlane} className={toggleClass(groundPlaneVisible)}>
+        Ground plane
+      </button>
+      <button onClick={toggleGrid} className={toggleClass(gridVisible)}>
+        Grid
+      </button>
+
       {/* Scene geometry toggle */}
       {hasSceneGeo && (
         <button onClick={toggleSceneGeo} className={toggleClass(sceneGeoVisible)}>
@@ -44,11 +59,16 @@ export default function LayersPanel() {
       )}
 
       {/* Voxel material toggles */}
-      {hasVoxels && voxelData!.meta.materials.map(mat => (
-        <button key={mat} onClick={() => toggleLayer(mat)} className={toggleClass(layerVisibility[mat])}>
-          {mat} ({(counts[mat] ?? 0).toLocaleString()})
-        </button>
-      ))}
+      {hasVoxels && (
+        <>
+          <label className="text-xs text-muted-foreground block mt-3 mb-1">Materials</label>
+          {voxelData!.meta.materials.map(mat => (
+            <button key={mat} onClick={() => toggleLayer(mat)} className={toggleClass(layerVisibility[mat])}>
+              {mat} ({(counts[mat] ?? 0).toLocaleString()})
+            </button>
+          ))}
+        </>
+      )}
 
       {/* Environment display mode */}
       {hasVoxels && (

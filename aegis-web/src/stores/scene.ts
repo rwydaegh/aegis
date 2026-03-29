@@ -66,6 +66,11 @@ interface SceneStore {
   } | null
   sceneGeometryVisible: boolean
 
+  // Scene element visibility
+  bodyMeshVisible: boolean
+  groundPlaneVisible: boolean
+  gridVisible: boolean
+
   // GLB tiles
   glbTiles: string[]
 
@@ -96,6 +101,9 @@ interface SceneStore {
   setScenes: (scenes: SceneStore['scenes']) => void
   setSceneGeometry: (geom: SceneStore['sceneGeometry']) => void
   toggleSceneGeometryVisible: () => void
+  toggleBodyMeshVisible: () => void
+  toggleGroundPlaneVisible: () => void
+  toggleGridVisible: () => void
   setGlbTiles: (tiles: string[]) => void
   setPathSource: (source: SceneStore['pathSource']) => void
   setRtSource: (source: SceneStore['rtSource']) => void
@@ -126,6 +134,9 @@ export const useSceneStore = create<SceneStore>((set) => ({
   scenes: [],
   sceneGeometry: null,
   sceneGeometryVisible: true,
+  bodyMeshVisible: true,
+  groundPlaneVisible: false,
+  gridVisible: false,
   glbTiles: [],
   pathSource: 'synthetic',
   rtSource: 'differt',
@@ -151,6 +162,9 @@ export const useSceneStore = create<SceneStore>((set) => ({
   setScenes: (scenes) => set({ scenes }),
   setSceneGeometry: (geom) => set({ sceneGeometry: geom }),
   toggleSceneGeometryVisible: () => set((state) => ({ sceneGeometryVisible: !state.sceneGeometryVisible })),
+  toggleBodyMeshVisible: () => set((state) => ({ bodyMeshVisible: !state.bodyMeshVisible })),
+  toggleGroundPlaneVisible: () => set((state) => ({ groundPlaneVisible: !state.groundPlaneVisible })),
+  toggleGridVisible: () => set((state) => ({ gridVisible: !state.gridVisible })),
   setGlbTiles: (tiles) => set({ glbTiles: tiles }),
   setPathSource: (source) => set({ pathSource: source, ...(source !== 'rt' ? { rtPaths: null } : {}) }),
   setRtSource: (source) => set({ rtSource: source }),
