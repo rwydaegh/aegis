@@ -70,7 +70,7 @@ Phantom meshes (STL) and the IT'IS tissue database live in `data/` inside the re
 - Type annotations on public API. No docstrings on private helpers unless non-obvious.
 - No em dashes, no semicolons. Sentence case for headings.
 - Writing tells to avoid: `.claude/ai_writing_tells.md`. Full doc style: `.claude/rules/docs-style.md`.
-- Git workflow: `.claude/rules/git-workflow.md`. Release cadence: `.claude/rules/release-cadence.md`.
+- Git workflow: `.claude/rules/git-workflow.md`. Release cadence enforced by PreToolUse hook on git commit/push.
 
 ## Web search
 
