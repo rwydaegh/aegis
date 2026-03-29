@@ -139,6 +139,8 @@ The Qlty Cloud dashboard updates after push. Tell the user to check the badge af
 
 ## Refactoring patterns that actually help
 
+**Split large files into packages:** Qlty heavily penalizes large files via "High total complexity" smells. A 1000+ line file with complexity 300 split into 5 files of ~200 lines each eliminates the "High total complexity" smell entirely and often drops the per-file complexity below the threshold. This is the single highest-impact refactor for the dashboard grade. Convert `module.py` to `module/__init__.py` (re-exports public API) + topic-specific submodules. Callers see the same import paths.
+
 **Extract-and-name:** Pull a block into a well-named helper. The function name replaces a comment.
 
 **Early return:** Replace nested if/else with guard clauses that return early.
