@@ -311,6 +311,7 @@ export interface MIMOComputeResponse {
   precoder_type: string
   weights_real?: number[][]
   weights_imag?: number[][]
+  warning?: string
 }
 
 export interface MIMOUserSummary {
@@ -328,6 +329,7 @@ export interface MIMOSummary {
     type: string
     power_total: number
   }
+  warning?: string
 }
 
 // ScenePos is re-exported for convenience where types.ts is the single import point
