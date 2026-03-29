@@ -109,14 +109,18 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                     sigma = result["sigma"] * 1.2
                 elif skin_model == "christ2025":
                     from aegis.viewer.compute import debye_permittivity
-                    eps_complex = np.array([
-                        debye_permittivity(f, eps_inf=7.88, eps_static=47.0, sigma=5.19, tau_s=8.35e-12)
-                        for f in freqs
-                    ])
+
+                    eps_complex = np.array(
+                        [
+                            debye_permittivity(f, eps_inf=7.88, eps_static=47.0, sigma=5.19, tau_s=8.35e-12)
+                            for f in freqs
+                        ]
+                    )
                     eps_r = np.real(eps_complex)
                     sigma = -np.imag(eps_complex) * omega * eps_0
                 elif skin_model == "nict":
                     from aegis.viewer.compute import _load_nict_data
+
                     data = _load_nict_data()
                     log_freqs = np.log10(freqs)
                     log_f_clamped = np.clip(log_freqs, data["log_freq"][0], data["log_freq"][-1])
