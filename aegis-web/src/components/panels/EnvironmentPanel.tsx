@@ -3,6 +3,7 @@ import * as Sentry from '@sentry/react'
 import { useEnvironmentStore } from '@/stores/environment'
 import type { EnvironmentSource } from '@/stores/environment'
 import { useTerrainStore } from '@/stores/terrain'
+import { useUIStore } from '@/stores/ui'
 import { Loader2 } from 'lucide-react'
 
 const SOURCE_OPTIONS: { value: EnvironmentSource; label: string }[] = [
@@ -41,6 +42,8 @@ export default function EnvironmentPanel() {
   const fetchTilesForRT = useEnvironmentStore((s) => s.fetchTilesForRT)
   const exportForRT = useEnvironmentStore((s) => s.exportForRT)
 
+  const setCameraMode = useUIStore((s) => s.setCameraMode)
+
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [geojsonFileName, setGeoJsonFileName] = useState<string | null>(null)
 
@@ -53,7 +56,11 @@ export default function EnvironmentPanel() {
           {SOURCE_OPTIONS.map((opt) => (
             <button
               key={opt.value}
-              onClick={() => setSource(opt.value)}
+              onClick={() => {
+                setSource(opt.value)
+                if (opt.value === '3dtiles') setCameraMode('globe')
+                else if (source === '3dtiles') setCameraMode('orbit')
+              }}
               className={`px-2 py-1.5 rounded text-xs font-medium transition-colors ${
                 source === opt.value
                   ? 'bg-primary text-primary-foreground'
