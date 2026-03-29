@@ -36,7 +36,7 @@ This is a vibe-coded project. Claude is often the only one making changes in a s
 
 ## PR workflow for large changes
 
-Use this instead of pushing directly to master when the change is significant. It creates a numbered PR on GitHub with a diff view, then merges immediately.
+Use this instead of pushing directly to master when the change is significant. It creates a numbered PR on GitHub with a diff view, then squash-merges immediately.
 
 ```bash
 # 1. Create and switch to a feature branch
@@ -49,9 +49,9 @@ git commit -m "Add the thing"
 # 3. Push the branch
 git push -u origin feature/short-description
 
-# 4. Create the PR and merge it
+# 4. Create the PR and squash-merge it
 gh pr create --title "Add the thing" --body "## Summary\n- what changed\n- why" --base master
-gh pr merge --merge
+gh pr merge --squash --delete-branch
 
 # 5. Return to master and pull
 git checkout master
@@ -59,6 +59,10 @@ git pull origin master
 ```
 
 GitHub will auto-delete the remote branch after merge (repo setting: delete-branch-on-merge is enabled). Clean up the local branch with `git branch -d feature/short-description`.
+
+**Always squash merge.** This collapses all intermediate commits into one clean commit on master. The full commit history is preserved on the PR page. Merge commits are disabled on this repo.
+
+**PR title format:** The squash commit title is the PR title with `(#N)` appended automatically by GitHub. Ensure the PR title is a clean, imperative summary (e.g. "Add base station integration").
 
 When to use: new feature, new kernel, new module, large refactor, anything the user would want a PR diff view for. When in doubt, ask.
 
