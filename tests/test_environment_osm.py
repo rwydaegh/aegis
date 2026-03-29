@@ -8,6 +8,7 @@ from aegis.environment import EnvironmentMesh, MaterialType
 from aegis.environment.osm import build_environment_from_osm, parse_osm_xml
 
 FIXTURE = Path(__file__).parent / "fixtures" / "osm_sample.xml"
+MULTIPOLYGON_FIXTURE = Path(__file__).parent / "fixtures" / "osm_multipolygon.xml"
 
 
 class TestParseOsmXml:
@@ -104,3 +105,18 @@ class TestBuildEnvironment:
         xml = FIXTURE.read_text()
         mesh = build_environment_from_osm(xml, origin_lat=51.05, origin_lon=3.72)
         assert int(MaterialType.WATER) in mesh.materials.tolist()
+
+
+class TestRelationsIntegration:
+    def test_parse_osm_with_multipolygon_building(self):
+        """Buildings from multipolygon relations should appear in output."""
+        xml = MULTIPOLYGON_FIXTURE.read_text()
+        mesh = build_environment_from_osm(xml, origin_lat=51.05, origin_lon=3.72)
+        assert mesh.triangles.shape[0] > 0  # should have geometry from relations
+
+    def test_building_parts_in_mesh(self):
+        """Building parts with different heights produce distinct geometry."""
+        xml = MULTIPOLYGON_FIXTURE.read_text()
+        mesh = build_environment_from_osm(xml, origin_lat=51.05, origin_lon=3.72)
+        z_max = mesh.vertices[:, 2].max()
+        assert z_max > 10  # tallest part is 15m + roof

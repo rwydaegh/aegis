@@ -12,6 +12,14 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+from aegis.environment.geo import transverse_mercator_forward
+from aegis.environment.osm_helpers import (
+    Building,
+    _parse_building_material,
+    _parse_height,
+    _parse_roof_shape,
+)
+
 # ---------------------------------------------------------------------------
 # Result dataclasses
 # ---------------------------------------------------------------------------
@@ -199,15 +207,6 @@ def parse_relations(
         :class:`RelationParseResult` with ``.multipolygons`` and
         ``.building_parts`` lists.
     """
-    # Lazy imports to avoid circular dependency (osm.py will later import us)
-    from aegis.environment.geo import transverse_mercator_forward
-    from aegis.environment.osm import (
-        Building,
-        _parse_building_material,
-        _parse_height,
-        _parse_roof_shape,
-    )
-
     root = ET.fromstring(xml_str)
 
     # Build node lookup: id -> (lat, lon)

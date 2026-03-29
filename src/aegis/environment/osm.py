@@ -9,13 +9,38 @@ Public API:
 from __future__ import annotations
 
 import xml.etree.ElementTree as ET
-from dataclasses import dataclass
 
 import numpy as np
 
 from aegis.environment import EnvironmentMesh, MaterialType
 from aegis.environment.geo import transverse_mercator_forward
+from aegis.environment.osm_helpers import (
+    _BUILDING_MATERIAL_MAP,
+    _BUILDING_TYPE_HEIGHT,
+    _HIGHWAY_WIDTH,
+    Building,
+    Road,
+    WaterBody,
+    _parse_building_material,
+    _parse_height,
+    _parse_roof_shape,
+    _parse_tags,
+)
 from aegis.environment.roofs import generate_building, triangulate_polygon
+
+# Re-export for backward compatibility (other modules import from osm.py)
+__all__ = [
+    "Building",
+    "Road",
+    "WaterBody",
+    "_BUILDING_MATERIAL_MAP",
+    "_BUILDING_TYPE_HEIGHT",
+    "_HIGHWAY_WIDTH",
+    "_parse_building_material",
+    "_parse_height",
+    "_parse_roof_shape",
+    "_parse_tags",
+]
 
 # ---------------------------------------------------------------------------
 # Errors
@@ -33,89 +58,6 @@ class OverpassTimeoutError(RuntimeError):
 class OverpassResponseTooLarge(RuntimeError):
     """Overpass API response exceeded size limit."""
 
-
-# ---------------------------------------------------------------------------
-# Data classes
-# ---------------------------------------------------------------------------
-
-
-@dataclass
-class Building:
-    """A building extracted from OSM."""
-
-    way_id: int
-    footprint: np.ndarray  # (N, 2) local XY coords in meters
-    height: float = 8.0
-    roof_shape: str = "flat"
-    roof_height: float = 2.0
-    material: MaterialType = MaterialType.CONCRETE
-    roof_material: MaterialType = MaterialType.CONCRETE
-
-
-@dataclass
-class Road:
-    """A road (highway) extracted from OSM."""
-
-    way_id: int
-    centerline: np.ndarray  # (N, 2) local XY coords in meters
-    highway_type: str = "residential"
-    width: float = 6.0  # meters
-    lanes: int = 1
-
-
-@dataclass
-class WaterBody:
-    """A water polygon extracted from OSM."""
-
-    way_id: int
-    footprint: np.ndarray  # (N, 2) local XY coords in meters
-    water_type: str = "water"
-
-
-# ---------------------------------------------------------------------------
-# Material tag mappings
-# ---------------------------------------------------------------------------
-
-_BUILDING_MATERIAL_MAP: dict[str, MaterialType] = {
-    "brick": MaterialType.BRICK,
-    "bricks": MaterialType.BRICK,
-    "concrete": MaterialType.CONCRETE,
-    "glass": MaterialType.GLASS,
-    "metal": MaterialType.METAL,
-    "steel": MaterialType.METAL,
-    "wood": MaterialType.WOOD,
-    "timber": MaterialType.WOOD,
-}
-
-_HIGHWAY_WIDTH: dict[str, float] = {
-    "motorway": 14.0,
-    "trunk": 12.0,
-    "primary": 10.0,
-    "secondary": 8.0,
-    "tertiary": 7.0,
-    "residential": 6.0,
-    "service": 4.0,
-    "footway": 2.0,
-    "cycleway": 2.0,
-    "path": 1.5,
-    "track": 3.0,
-    "unclassified": 6.0,
-}
-
-# Default building heights by type when no explicit height tag is present
-_BUILDING_TYPE_HEIGHT: dict[str, float] = {
-    "house": 7.0,
-    "detached": 7.0,
-    "residential": 9.0,
-    "apartments": 15.0,
-    "office": 20.0,
-    "commercial": 10.0,
-    "retail": 5.0,
-    "industrial": 8.0,
-    "warehouse": 8.0,
-    "garage": 3.0,
-    "yes": 8.0,
-}
 
 # ---------------------------------------------------------------------------
 # Overpass API fetch
@@ -189,11 +131,6 @@ def fetch_osm(
 # ---------------------------------------------------------------------------
 
 
-def _parse_tags(way_elem: ET.Element) -> dict[str, str]:
-    """Extract all <tag> elements from a way into a dict."""
-    return {tag.attrib["k"]: tag.attrib["v"] for tag in way_elem.findall("tag")}
-
-
 def _node_refs(way_elem: ET.Element) -> list[int]:
     """Extract ordered list of node IDs referenced by a way."""
     return [int(nd.attrib["ref"]) for nd in way_elem.findall("nd")]
@@ -239,55 +176,6 @@ def _footprint_from_way(
     if len(coords) < 3:
         return None
     return coords
-
-
-def _parse_height(tags: dict[str, str], building_type: str) -> float:
-    """Parse height from OSM tags, with fallback to building type defaults."""
-    if "height" in tags:
-        try:
-            return float(tags["height"].split()[0])
-        except (ValueError, IndexError):
-            pass
-    if "building:levels" in tags:
-        try:
-            return float(tags["building:levels"]) * 3.0
-        except ValueError:
-            pass
-    return _BUILDING_TYPE_HEIGHT.get(building_type, 8.0)
-
-
-def _parse_roof_shape(tags: dict[str, str]) -> str:
-    """Parse roof:shape tag to a supported shape string."""
-    shape = tags.get("roof:shape", "flat").lower()
-    supported = {
-        "flat",
-        "gabled",
-        "hipped",
-        "pyramidal",
-        "skillion",
-        "half_hipped",
-        "gambrel",
-        "saltbox",
-        "mansard",
-        "dome",
-        "onion",
-        "round",
-    }
-    if shape in supported:
-        return shape
-    # Map common aliases
-    aliases = {
-        "hip": "hipped",
-        "pyramid": "pyramidal",
-        "shed": "skillion",
-    }
-    return aliases.get(shape, "flat")
-
-
-def _parse_building_material(tags: dict[str, str]) -> MaterialType:
-    """Parse building:material tag to MaterialType."""
-    mat_str = tags.get("building:material", "").lower()
-    return _BUILDING_MATERIAL_MAP.get(mat_str, MaterialType.CONCRETE)
 
 
 # ---------------------------------------------------------------------------
@@ -570,15 +458,18 @@ def build_environment_from_osm(
     Returns:
         EnvironmentMesh with all features combined.
     """
+    from aegis.environment.relations import parse_relations
+
     buildings, roads, water_bodies = parse_osm_xml(xml_str, origin_lat, origin_lon)
+    relation_result = parse_relations(xml_str, origin_lat, origin_lon)
 
     all_verts: list[np.ndarray] = []
     all_tris: list[np.ndarray] = []
     all_mats: list[np.ndarray] = []
     vert_offset = 0
 
-    # Buildings
-    for bld in buildings:
+    def _add_building(bld: Building) -> None:
+        nonlocal vert_offset
         try:
             v, t, m = generate_building(
                 footprint=bld.footprint,
@@ -589,7 +480,6 @@ def build_environment_from_osm(
                 roof_material=bld.roof_material,
             )
         except Exception:
-            # Fallback: flat roof if roof generation fails
             try:
                 v, t, m = generate_building(
                     footprint=bld.footprint,
@@ -600,15 +490,17 @@ def build_environment_from_osm(
                     roof_material=bld.roof_material,
                 )
             except Exception:
-                continue
-
+                return
         if len(v) == 0 or len(t) == 0:
-            continue
-
+            return
         all_verts.append(v)
         all_tris.append(t + vert_offset)
         all_mats.append(m)
         vert_offset += len(v)
+
+    # Buildings from simple ways
+    for bld in buildings:
+        _add_building(bld)
 
     # Roads
     for road in roads:
@@ -629,6 +521,29 @@ def build_environment_from_osm(
         all_tris.append(t + vert_offset)
         all_mats.append(m)
         vert_offset += len(v)
+
+    # Multipolygon buildings from relations (use first outer ring as footprint)
+    for mp in relation_result.multipolygons:
+        if not mp.outer_rings:
+            continue
+        footprint = mp.outer_rings[0]
+        roof_height = max(2.0, mp.height * 0.25)
+        material = mp.material if mp.material is not None else MaterialType.CONCRETE
+        bld = Building(
+            way_id=-mp.relation_id,
+            footprint=footprint,
+            height=mp.height,
+            roof_shape=mp.roof_shape,
+            roof_height=roof_height,
+            material=material,
+            roof_material=material,
+        )
+        _add_building(bld)
+
+    # Building-with-parts relations: emit each part individually; skip outline
+    for bwp in relation_result.building_parts:
+        for part in bwp.parts:
+            _add_building(part)
 
     if not all_verts:
         # Return empty mesh if no geometry was generated
