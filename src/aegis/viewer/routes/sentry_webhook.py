@@ -53,7 +53,7 @@ def _handle_new_issue(payload: dict) -> None:
         return
 
     sentry_token = os.environ.get("SENTRY_API_TOKEN", "")
-    github_token = os.environ.get("GITHUB_ISSUES_TOKEN", "")
+    github_token = os.environ.get("GITHUB_ISSUES_TOKEN", "") or os.environ.get("GITHUB_TOKEN", "")
     sentry_org = os.environ.get("SENTRY_ORG", "")
     sentry_project = os.environ.get("SENTRY_PROJECT", "")
 
