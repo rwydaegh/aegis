@@ -143,6 +143,7 @@ export const useSimulationStore = create<SimulationStore>((set) => ({
     sincArray: extras?.sinc ?? null,
     sincAveragedArray: extras?.sincAveraged ?? null,
     sab1cm2AveragedArray: extras?.sab1cm2Averaged ?? null,
+    compliance: stats.compliance ?? null,
   }),
   clearResults: () => set({ sabArray: null, sabAveragedArray: null, sincArray: null, sincAveragedArray: null, sab1cm2AveragedArray: null, stats: null, compliance: null }),
 }))

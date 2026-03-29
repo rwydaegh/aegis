@@ -215,7 +215,7 @@ export interface DosimetryStats {
   n_rt_paths?: number
   path_viz?: PathViz[]
   peak_sab_averaged: number | null
-  compliance: ComplianceInfo
+  compliance: ComplianceInfo | null
   timings?: ComputeTimings
   peaks?: Record<string, number>
   arrays?: ArrayMeta[]

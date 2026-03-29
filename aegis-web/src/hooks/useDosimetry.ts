@@ -137,9 +137,6 @@ export function useDosimetry() {
           sincAveraged: arrays['sinc_averaged'],
           sab1cm2Averaged: arrays['sab_1cm2'],
         })
-        if (stats.compliance) {
-          useSimulationStore.getState().setCompliance(stats.compliance)
-        }
         if (stats.path_viz) {
           useSceneStore.getState().setRtPaths(stats.path_viz)
         }
