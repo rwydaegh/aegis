@@ -32,8 +32,43 @@ services:
       - pipeline_cache:/app/pipeline_cache
     mem_limit: 3g
 
+  umami:
+    image: docker.umami.is/umami-software/umami:postgresql-latest
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://umami:${UMAMI_DB_PASSWORD:-umami}@umami-db:5432/umami
+      APP_SECRET: ${UMAMI_APP_SECRET:-change-me-to-random-string}
+      CLIENT_IP_HEADER: X-Forwarded-For
+      DISABLE_TELEMETRY: "1"
+    depends_on:
+      umami-db:
+        condition: service_healthy
+    expose:
+      - "3000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/heartbeat || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  umami-db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: umami
+      POSTGRES_USER: umami
+      POSTGRES_PASSWORD: ${UMAMI_DB_PASSWORD:-umami}
+    volumes:
+      - umami_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U umami"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   caddy_data:
   caddy_config:
   docs_site:
   pipeline_cache:
+  umami_data:

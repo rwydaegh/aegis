@@ -1,5 +1,16 @@
 aegis.waves-ugent.be {
+    log {
+        output file /data/access.log {
+            roll_size 50MiB
+            roll_keep 5
+        }
+        format json
+    }
     reverse_proxy flask:8000
+}
+
+analytics.waves-ugent.be {
+    reverse_proxy umami:3000
 }
 
 docs.aegis.waves-ugent.be {
