@@ -224,6 +224,7 @@ function MIMOScene() {
   const arrayConfig = useMIMOStore(s => s.arrayConfig)
   const setFocusedUser = useMIMOStore(s => s.setFocusedUser)
   const freqGhz = useSimulationStore(s => s.freqGhz)
+  const cameraMode = useUIStore(s => s.cameraMode)
 
   return (
     <>
@@ -243,7 +244,7 @@ function MIMOScene() {
           <SmartphoneModel position={user.position} rotationY={user.orientation} />
         </group>
       ))}
-      {arrayConfig && <AntennaArrayViz config={arrayConfig} freqHz={freqGhz * 1e9} showPattern={showArrayPattern} weights={precoderWeights} />}
+      {arrayConfig && <AntennaArrayViz config={arrayConfig} freqHz={freqGhz * 1e9} showPattern={showArrayPattern && cameraMode === 'orbit'} weights={precoderWeights} />}
       {arrayConfig && <FocusPointMarker />}
     </>
   )
