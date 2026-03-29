@@ -173,6 +173,16 @@ export default function EnvironmentPanel() {
               Water
             </label>
           </div>
+          <div>
+            <label className="flex items-center gap-1.5 text-xs">
+              <input
+                type="checkbox"
+                checked={osmOptions.detail}
+                onChange={(e) => setOsmOptions({ detail: e.target.checked })}
+              />
+              Detailed facades
+            </label>
+          </div>
         </div>
       )}
 

@@ -8,6 +8,7 @@ interface OsmOptions {
   buildings: boolean
   roads: boolean
   water: boolean
+  detail: boolean
 }
 
 interface EnvironmentMeshData {
@@ -55,6 +56,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
     buildings: true,
     roads: true,
     water: true,
+    detail: false,
   },
 
   setSource: (source) => set({ source }),
@@ -79,6 +81,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
           lat: location.lat,
           lon: location.lon,
           radius,
+          detail: osmOptions.detail,
           options: {
             default_building_height: osmOptions.defaultBuildingHeight,
             level_height: osmOptions.levelHeight,

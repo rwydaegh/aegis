@@ -34,6 +34,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             "default_building_height",
             osm_cfg.get("default_building_height", 10),
         )
+        detail = bool(body.get("detail", False))
 
         try:
             xml_str = fetch_osm(lat, lon, radius_m=radius)
@@ -42,6 +43,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                 origin_lat=lat,
                 origin_lon=lon,
                 default_building_height=float(default_building_height),
+                detail=detail,
             )
         except OverpassRateLimitError:
             resp = jsonify({"error": "Overpass rate limit exceeded. Try again later."})
