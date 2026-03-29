@@ -1,4 +1,5 @@
 import { useSceneStore } from '@/stores/scene'
+import { useUIStore } from '@/stores/ui'
 
 type Backend = 'voxel' | 'differt' | 'sionna'
 
@@ -108,6 +109,7 @@ export default function RayTracingPanel() {
   const caps = useSceneStore(s => s.capabilities)
   const pathSource = useSceneStore(s => s.pathSource)
   const rtEnabled = pathSource === 'rt'
+  const gpuWarm = useUIStore(s => s.gpuWarm)
   const scenes = useSceneStore(s => s.scenes)
   const loadedScenePath = useSceneStore(s => s.loadedScenePath)
 
@@ -209,6 +211,32 @@ export default function RayTracingPanel() {
 
       {rtEnabled && (
         <>
+          {/* GPU status indicator */}
+          {gpuWarm !== null && (
+            <div className={`flex items-center gap-2 mt-2 px-2 py-1.5 rounded-md text-xs
+              ${gpuWarm
+                ? 'bg-green-500/10 text-green-400'
+                : 'bg-amber-500/10 text-amber-400'
+              }`}
+            >
+              <span className={`inline-block w-1.5 h-1.5 rounded-full
+                ${gpuWarm
+                  ? 'bg-green-400'
+                  : 'bg-amber-400 gpu-dot-pulse'
+                }`}
+              />
+              <span>
+                {gpuWarm
+                  ? 'GPU ready'
+                  : 'GPU asleep'
+                }
+              </span>
+              {!gpuWarm && (
+                <span className="text-[10px] text-amber-400/60 ml-auto">~30s first run</span>
+              )}
+            </div>
+          )}
+
           {/* Backend selector */}
           <label className={labelClass}>RT backend</label>
           <select
