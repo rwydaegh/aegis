@@ -255,8 +255,19 @@ def paths_from_basestation(
     direction = body_center - ant_pos
     dist = float(np.linalg.norm(direction))
     if dist < 0.1:
-        dist = 0.1  # avoid division by zero
-    k_hat = direction / dist  # arrival direction at body
+        # Body is at (or very near) the antenna. Use boresight as fallback direction
+        # and clamp distance to avoid division by zero.
+        az_r = np.deg2rad(bs.azimuth_deg)
+        tilt_r = np.deg2rad(bs.total_tilt_deg)
+        direction = np.array(
+            [
+                np.sin(az_r) * np.cos(tilt_r),
+                np.cos(az_r) * np.cos(tilt_r),
+                -np.sin(tilt_r),
+            ]
+        )
+        dist = 0.1
+    k_hat = direction / np.linalg.norm(direction)  # arrival direction at body
 
     # TX power from EIRP
     tx_power_w = eirp_to_tx_power_w(bs.eirp_dbm, bs.gain_dbi)
