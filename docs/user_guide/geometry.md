@@ -106,6 +106,11 @@ print(f"Relative error: {error:.2%}")
 
 ## Directivity
 
+<div class="fig-medium" markdown>
+![Absorption directivity](../assets/diagrams/body_directivity.png)
+</div>
+<span class="fig-caption">Absorption directivity $D(\hat{k})$ of the Thelonious phantom on a Mollweide projection.</span>
+
 Directivity $D(\hat{k})$ normalizes the projected area so that its mean over the sphere equals 1:
 
 $$D(\hat{k}) = \frac{A_\perp(\hat{k})}{\langle A_\perp \rangle}$$
@@ -142,6 +147,11 @@ print(f"Max error: {metrics['max_abs']:.4f}")
 For a typical human body mesh, $L = 4$ (25 coefficients) gives sub-1% RMS error. $L = 8$ is essentially exact.
 
 ## Ambient occlusion
+
+<div class="fig-portrait" markdown>
+![Ambient occlusion](../assets/diagrams/eta_3d_phantom.png)
+</div>
+<span class="fig-caption">Ambient occlusion factor $\eta$ on the Thelonious phantom. Red regions are fully exposed, blue regions are self-shadowed.</span>
 
 The exposure fraction $\eta(\mathbf{r})$ measures how much of the hemisphere above each triangle is visible (not blocked by other body parts). AEGIS computes this via BVH-accelerated cosine-weighted ray tracing. When Numba is installed, the BVH traversal and ray-triangle intersection are JIT-compiled for 50-100x speedup on large meshes.
 

@@ -73,7 +73,7 @@ print(f"T0      = {SKIN_28GHZ.T0:.4f}")
 The presets use hardcoded values matched to the monograph oracle scripts. For frequency-sweeping or less common tissues, use the IT'IS v5.0 database via the Cole-Cole model:
 
 ```python
-from aegis.tissue.dielectric import TissueModel
+from aegis import TissueModel
 
 skin_db = TissueModel.from_database("Skin", freq_hz=28e9)
 print(f"Database:  eps_r={skin_db.eps_r:.2f}  sigma={skin_db.sigma:.2f}  T0={skin_db.T0:.4f}")
@@ -108,6 +108,11 @@ fig = SKIN_28GHZ.plot_spectrum(freq_min_hz=10e9, freq_max_hz=90e9)
 ---
 
 ## Fresnel transmission vs incidence angle
+
+<div class="fig-wide" markdown>
+![Fresnel transmission coefficients](../assets/diagrams/fresnel_curves.png)
+</div>
+<span class="fig-caption">Power transmittance and amplitude coefficients for skin at 28 GHz.</span>
 
 `fresnel_transmission(mu, n_tilde)` returns the TE ($T_s$) and TM ($T_p$) power transmission coefficients as a function of $\mu = \cos\theta_i$:
 
@@ -144,6 +149,11 @@ Pass `mu` as a complex array. `fresnel_transmission` uses this internally for th
 
 ## Pseudo-Brewster compensation
 
+<div class="fig-wide" markdown>
+![Angle dependence of transmission correction](../assets/diagrams/delta_T_angle_dependence.png)
+</div>
+<span class="fig-caption">Transmission correction $\Delta T = T_{\mathrm{avg}}(\theta) - T_0$ showing pseudo-Brewster compensation across incidence angles.</span>
+
 The Fresnel plot reveals a key feature of the absorption law. As $\theta_i$ increases from 0 to 90 degrees:
 
 - $T_s$ (TE) decreases monotonically from $T_0$ toward 0.
@@ -167,9 +177,7 @@ To see how tissue choice affects the dosimetry result, run the same paths throug
 
 ```python
 import numpy as np
-from aegis.engine import DosimetryEngine
-from aegis.paths import PropagationPaths
-from aegis.geometry.mesh import BodyMesh
+from aegis import DosimetryEngine, PropagationPaths, BodyMesh
 from aegis.tissue.dielectric import SKIN_28GHZ, MUSCLE_28GHZ, FAT_28GHZ
 
 # Synthetic spherical mesh, 500 triangles
@@ -202,10 +210,7 @@ A common task is to evaluate peak $S_{\mathrm{ab}}$ across the 5G millimeter-wav
 
 ```python
 import numpy as np
-from aegis.engine import DosimetryEngine
-from aegis.paths import PropagationPaths
-from aegis.geometry.mesh import BodyMesh
-from aegis.tissue.dielectric import TissueModel
+from aegis import DosimetryEngine, PropagationPaths, BodyMesh, TissueModel
 from aegis.viz import plot_frequency_sweep
 
 body = BodyMesh.sphere(radius=0.1, n_subdivisions=2)

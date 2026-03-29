@@ -2,6 +2,27 @@
 
 AEGIS computes absorbed power density on human body meshes. Two APIs are available. Use `level=` (0-8) to select a predefined fidelity level by integer. Use `mode=` (`bound`, `aggregate`, `spatial`, `coherent`, `ecbf`) with optional correction flags when you need finer control over which physics are applied. Both call the same kernels. See [fidelity levels](fidelity_levels.md) for the full mapping.
 
+## Physical model
+
+At mmWave frequencies (above 6 GHz), the skin depth in human tissue is 0.3 to 0.5 mm. All incident power is absorbed in the outermost layer. Absorption is a surface phenomenon, not a volumetric one, which eliminates the need for full-wave simulation of the body interior.
+
+The core equation computes absorbed power density at each point $\mathbf{r}$ on the body surface:
+
+$$S_{\mathrm{ab}}(\mathbf{r}) = S_{\mathrm{inc}} \cdot T_0 \cdot [\hat{n}(\mathbf{r}) \cdot (-\hat{k})]_+$$
+
+$S_{\mathrm{inc}}$ is the incident power density of the incoming wave. $T_0$ is the normal-incidence Fresnel power transmission into tissue, a single scalar that captures the material response. $\hat{n}(\mathbf{r})$ is the outward surface normal at point $\mathbf{r}$, and $\hat{k}$ is the wave propagation direction. The $[\cdot]_+$ operator (ReLU) enforces that only illuminated surface patches absorb power: triangles facing away from the wave contribute zero.
+
+<div class="fig-wide" markdown>
+![Error budget](../assets/diagrams/error_budget.png)
+</div>
+<span class="fig-caption">Relative error contributions by source. Best case (28 GHz torso, multipath) vs worst case (6 GHz finger, single path).</span>
+
+The framework rests on three assumptions. Each incoming path is a plane wave at the body (far-field). Each mesh triangle is locally flat (flat-facet approximation). The tissue beneath each triangle behaves as a semi-infinite lossy dielectric (half-space Fresnel model).
+
+These assumptions break down in a few regimes. At near-field distances (less than a few wavelengths from the source), the plane-wave assumption fails. Below 6 GHz, skin depth grows and absorption becomes volumetric. On high-curvature regions like fingers and ears, the flat-facet approximation loses accuracy when triangle size approaches the wavelength.
+
+The geometric framework matches the full Fresnel solution to within 0.35% for typical body geometries. AEGIS validates this against the analytical Mie sphere solution across body part sizes and frequencies. For full derivations, see the monograph in `theory/`.
+
 ## Typical workflow
 
 1. Load a tissue model (skin properties at your frequency)

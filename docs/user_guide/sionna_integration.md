@@ -52,7 +52,7 @@ paths = paths_from_sionna_scene(
 )
 
 # Use with any fidelity level
-from aegis.engine import DosimetryEngine
+from aegis import DosimetryEngine
 from aegis.tissue.dielectric import SKIN_28GHZ
 
 engine = DosimetryEngine(SKIN_28GHZ)

@@ -2,6 +2,11 @@
 
 This tutorial covers fidelity levels 7 and 8: coherent MIMO dosimetry and exposure-constrained beamforming (ECBF). You will build a multi-element channel, compute absorbed power density with a matched beamformer, inspect the exposure operator $Q$, and then solve the QCQP to find the precoder that maximizes signal power while keeping absorbed power below an ICNIRP limit.
 
+<div class="fig-wide" markdown>
+![Channel block diagram](../assets/diagrams/channel_block_diagram.png)
+</div>
+<span class="fig-caption">Signal branch (red) and exposure branch (blue) of the coherent MIMO pipeline.</span>
+
 ## Why coherent matters
 
 Incoherent kernels (levels 0-6) treat each propagation path as an independent power contribution. They sum scalar powers and cannot represent the interference pattern produced by a phased array. Coherent kernels operate on complex polarisation-amplitude vectors $\boldsymbol{\psi}_n \in \mathbb{C}^3$ and a complex precoding vector $\mathbf{x} \in \mathbb{C}^{M_{\mathrm{ant}}}$.
@@ -26,9 +31,8 @@ plt.style.use(["science", "ieee", "no-latex"])
 plt.rcParams.update({"figure.figsize": (3.5, 2.625)})
 
 from aegis import DosimetryEngine
-from aegis.geometry.mesh import BodyMesh
-from aegis.paths import PropagationPaths
-from aegis.tissue.dielectric import TissueModel, SKIN_28GHZ
+from aegis import BodyMesh, PropagationPaths, TissueModel
+from aegis.tissue.dielectric import SKIN_28GHZ
 from aegis.precoder import Precoder
 from aegis.coherent import (
     compute_body_channel,

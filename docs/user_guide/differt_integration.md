@@ -17,7 +17,7 @@ DiffeRT runs on CPU by default. JAX GPU acceleration is supported if a CUDA-comp
 ```python
 import numpy as np
 from aegis.integration.differt import paths_from_differt_scene
-from aegis.engine import DosimetryEngine
+from aegis import DosimetryEngine
 from aegis.tissue.dielectric import SKIN_28GHZ
 
 paths = paths_from_differt_scene(
@@ -77,6 +77,6 @@ For multi-element TX arrays, each path is assigned to a TX element. If `element_
 
 ## Platform compatibility
 
-DiffeRT works on Linux, Windows, and macOS. It does not require a GPU. The JAX backend defaults to CPU; set `JAX_PLATFORM_NAME=gpu` or call `jax.config.update("jax_platform_name", "gpu")` before importing to use GPU acceleration.
+DiffeRT works on Linux, Windows, and macOS. It does not require a GPU. The JAX backend defaults to CPU. Set `JAX_PLATFORM_NAME=gpu` or call `jax.config.update("jax_platform_name", "gpu")` before importing to use GPU acceleration.
 
 For city-scale scenes where the O(N^K) enumeration becomes too slow, switch to Sionna RT. See [Sionna RT integration](sionna_integration.md) for details and a feature comparison table.

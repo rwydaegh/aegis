@@ -47,6 +47,31 @@ Common backend flags:
 | `--bbox meters` | Scene bounding box diameter (default 30). |
 | `--data-dir path` | Override the data directory for STL meshes. |
 
+## Request flow
+
+When you place an antenna or change a parameter, the frontend fires a compute request and updates the heatmap with the result.
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant R as React frontend
+    participant S as Zustand store
+    participant F as Flask backend
+    participant E as DosimetryEngine
+
+    U->>R: Place antenna / change parameter
+    R->>S: Update simulation store
+    S->>R: Trigger useDosimetry hook
+    R->>F: POST /api/compute
+    F->>E: engine.compute(body, paths, level)
+    E-->>F: DosimetryResult
+    F-->>R: Binary S_ab + JSON stats
+    R->>S: Write sabArray, stats, compliance
+    S->>R: Re-render BodyMesh heatmap
+```
+
+The hook debounces rapid parameter changes so only the latest input combination triggers a server call. Ray-traced variants (`/api/compute/rt`, `/api/compute/sionna-rt`) follow the same pattern but run the ray tracer before the engine.
+
 ## UI controls
 
 **Scene interaction.** Click anywhere on the ground, voxel surfaces, or Sionna scene geometry to place a transmit antenna. The antenna shows a short dipole radiation pattern (sin^2 theta gain deformation) on a pole at the click point. Dosimetry computes automatically after placement.
