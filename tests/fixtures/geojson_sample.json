@@ -1,0 +1,29 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {"building": "yes", "height": "10", "roof:shape": "gabled"},
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[3.720, 51.050], [3.721, 51.050], [3.721, 51.051], [3.720, 51.051], [3.720, 51.050]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {"highway": "residential"},
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [[3.720, 51.049], [3.722, 51.049]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {"natural": "water"},
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[3.722, 51.050], [3.723, 51.050], [3.723, 51.051], [3.722, 51.051], [3.722, 51.050]]]
+      }
+    }
+  ]
+}
