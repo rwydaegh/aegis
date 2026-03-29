@@ -193,7 +193,7 @@ function MarginChart({
 // ---------------------------------------------------------------------------
 
 /** Extract a compliance check value by label from stats. */
-function checkValue(stats: { compliance?: { checks: Array<{ label: string; value: number }> } } | null, label: string): number | undefined {
+function checkValue(stats: { compliance?: { checks: Array<{ label: string; value: number }> } | null } | null, label: string): number | undefined {
   return stats?.compliance?.checks.find(c => c.label === label)?.value
 }
 
