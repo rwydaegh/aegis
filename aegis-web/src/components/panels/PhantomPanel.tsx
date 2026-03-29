@@ -1,4 +1,5 @@
 import { useSceneStore } from '@/stores/scene'
+import { useUIStore } from '@/stores/ui'
 
 // IT'IS Virtual Population v5 phantom metadata
 // Source: https://itis.swiss/virtual-population/virtual-population/vip3/
@@ -22,6 +23,7 @@ export default function PhantomPanel() {
   const bodyName = useSceneStore((s) => s.bodyName)
   const setBodyName = useSceneStore((s) => s.setBodyName)
   const caps = useSceneStore((s) => s.capabilities)
+  const setCameraPreset = useUIStore((s) => s.setCameraPreset)
 
   if (!caps) return null
 
@@ -30,6 +32,8 @@ export default function PhantomPanel() {
   // where useBodyLoader fires on bodyName change and overwrites the correct body.
   const handleChange = (name: string) => {
     setBodyName(name)
+    setCameraPreset('focus')
+    setTimeout(() => setCameraPreset(null), 50)
   }
 
   const sortedBodies = [...(caps.bodies || [])].sort((a, b) => {
