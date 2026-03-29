@@ -18,7 +18,7 @@ jobs:
     steps:
       - name: Find and merge Claude PRs
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
           BRANCH="${{ github.event.workflow_run.head_branch }}"
           echo "Checking branch: $BRANCH"
