@@ -1,0 +1,28 @@
+output:
+  # identifier: ""
+  # folder: "output/{country}/{region/city}/"
+
+locationinfo:
+  country: "Hungary"
+  # region/city: "Amsterdam"
+  # bbox: [20.995217236147614, 21.023240952852188, 52.2236825, 52.23383] # [min_lon, max_lon, min_lat, max_lat]
+# antennafilters: #
+# technology: ""
+#   frequency_range: []
+#   frequencyband: ""
+# operator: "Sunrise"
+#   date: ""
+
+computation:
+  max_workers: 10
+  # max_batch_size: 50000  ~1MB per 10.000 antennas
+
+  estimations:
+    estimate_missing_data_based_on_existing: true # Enable smart data estimation for missing values
+    # csv_paths: ["output/belgium/brussels/2025-11-28_antennas.csv"] # Reference CSV paths for estimation; if empty, uses extracted data itself
+  #     # Example:
+  # - "output/belgium/brussels/antennas.csv"
+  #     # - "output/belgium/flanders/antennas.csv"
+
+opencellid:
+  api_key_path: "opencellid_api_key.txt"

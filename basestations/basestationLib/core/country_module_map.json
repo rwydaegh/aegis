@@ -1,0 +1,14 @@
+{
+  "poland": "basestationLib.Countries.Poland.basestations",
+  "belgium": {
+    "brussels": "basestationLib.Countries.Belgium.brussels.basestations",
+    "flanders": "basestationLib.Countries.Belgium.flanders.basestations"
+  },
+  "switzerland": "basestationLib.Countries.Switzerland.basestations",
+  "france": "basestationLib.Countries.France.basestations",
+  "spain": "basestationLib.Countries.Spain.basestations",
+  "netherlands": "basestationLib.Countries.Netherlands.basestations",
+  "hungary": "basestationLib.Countries.Hungary.basestations",
+  "austria": "basestationLib.Countries.Austria.basestations",
+  "other": "basestationLib.OpenCellID.basestations"
+}

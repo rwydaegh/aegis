@@ -1,0 +1,10 @@
+*test*
+*.pkl
+*.csv
+*.pdf
+*.mat
+output/
+*api_key*
+.github/
+*__pycache__*
+*old.py

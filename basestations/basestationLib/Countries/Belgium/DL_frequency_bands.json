@@ -1,0 +1,202 @@
+{
+  "Proximus": {
+    "700MHz": {
+      "downlink_range_MHz": [778.0, 788.0],
+      "centerfrequency_MHz": 783.0,
+      "technologies": ["4G_LTE-B28", "5G_NR-n28"],
+      "mode": "FDD"
+    },
+    "800MHz": {
+      "downlink_range_MHz": [801.0, 811.0],
+      "centerfrequency_MHz": 806.0,
+      "technologies": ["4G_LTE-B20"],
+      "mode": "FDD"
+    },
+    "900MHz": {
+      "downlink_range_MHz": [940.0, 950.0],
+      "centerfrequency_MHz": 945.0,
+      "technologies": ["2G_GSM-900", "3G_UMTS-900"],
+      "mode": "FDD"
+    },
+    "1400MHz": {
+      "downlink_range_MHz": [1472.0, 1517.0],
+      "centerfrequency_MHz": 1494.5,
+      "technologies": ["4G_LTE-B32", "5G_NR-n75"],
+      "mode": "SDL"
+    },
+    "1800MHz": {
+      "downlink_range_MHz": [1805.0, 1830.0],
+      "centerfrequency_MHz": 1817.5,
+      "technologies": ["2G_GSM-1800", "4G_LTE-B3"],
+      "mode": "FDD"
+    },
+    "2100MHz": {
+      "downlink_range_MHz": [2110.0, 2135.0],
+      "centerfrequency_MHz": 2122.5,
+      "technologies": ["3G_UMTS-B1", "4G_LTE-B1"],
+      "mode": "FDD"
+    },
+    "2600MHz": {
+      "downlink_range_MHz": [2620.0, 2640.0],
+      "centerfrequency_MHz": 2630.0,
+      "technologies": ["4G_LTE-B7"],
+      "mode": "FDD"
+    },
+    "3500MHz": {
+      "downlink_range_MHz": [3700.0, 3800.0],
+      "centerfrequency_MHz": 3750.0,
+      "technologies": ["5G_NR-n78"],
+      "mode": "TDD"
+    }
+  },
+
+  "Orange Belgium": {
+    "700MHz": {
+      "downlink_range_MHz": [768.0, 778.0],
+      "centerfrequency_MHz": 773.0,
+      "technologies": ["4G_LTE-B28", "5G_NR-n28"],
+      "mode": "FDD"
+    },
+    "800MHz": {
+      "downlink_range_MHz": [811.0, 821.0],
+      "centerfrequency_MHz": 816.0,
+      "technologies": ["4G_LTE-B20"],
+      "mode": "FDD"
+    },
+    "900MHz": {
+      "downlink_range_MHz": [950.0, 960.0],
+      "centerfrequency_MHz": 955.0,
+      "technologies": ["2G_GSM-900", "3G_UMTS-900"],
+      "mode": "FDD"
+    },
+    "1400MHz": {
+      "downlink_range_MHz": [1427.0, 1457.0],
+      "centerfrequency_MHz": 1442.0,
+      "technologies": ["4G_LTE-B32", "5G_NR-n75"],
+      "mode": "SDL"
+    },
+    "1800MHz": {
+      "downlink_range_MHz": [1830.0, 1845.0],
+      "centerfrequency_MHz": 1837.5,
+      "technologies": ["2G_GSM-1800", "4G_LTE-B3"],
+      "mode": "FDD"
+    },
+    "2100MHz": {
+      "downlink_range_MHz": [2155.0, 2170.0],
+      "centerfrequency_MHz": 2162.5,
+      "technologies": ["3G_UMTS-B1", "4G_LTE-B1"],
+      "mode": "FDD"
+    },
+    "2600MHz": {
+      "downlink_range_MHz": [2670.0, 2690.0],
+      "centerfrequency_MHz": 2680.0,
+      "technologies": ["4G_LTE-B7"],
+      "mode": "FDD"
+    },
+    "3500MHz": {
+      "downlink_range_MHz": [3600.0, 3700.0],
+      "centerfrequency_MHz": 3650.0,
+      "technologies": ["5G_NR-n78"],
+      "mode": "TDD"
+    }
+  },
+
+  "Telenet Group": {
+    "700MHz": {
+      "downlink_range_MHz": [763.0, 768.0],
+      "centerfrequency_MHz": 765.5,
+      "technologies": ["4G_LTE-B28", "5G_NR-n28"],
+      "mode": "FDD"
+    },
+    "800MHz": {
+      "downlink_range_MHz": [791.0, 801.0],
+      "centerfrequency_MHz": 796.0,
+      "technologies": ["4G_LTE-B20"],
+      "mode": "FDD"
+    },
+    "900MHz": {
+      "downlink_range_MHz": [925.0, 935.0],
+      "centerfrequency_MHz": 930.0,
+      "technologies": ["2G_GSM-900", "3G_UMTS-900"],
+      "mode": "FDD"
+    },
+    "1400MHz": {
+      "downlink_range_MHz": [1457.0, 1472.0],
+      "centerfrequency_MHz": 1464.5,
+      "technologies": ["4G_LTE-B32", "5G_NR-n75"],
+      "mode": "SDL"
+    },
+    "1800MHz": {
+      "downlink_range_MHz": [1860.0, 1880.0],
+      "centerfrequency_MHz": 1870.0,
+      "technologies": ["2G_GSM-1800", "4G_LTE-B3"],
+      "mode": "FDD"
+    },
+    "2100MHz": {
+      "downlink_range_MHz": [2135.0, 2150.0],
+      "centerfrequency_MHz": 2142.5,
+      "technologies": ["3G_UMTS-B1", "4G_LTE-B1"],
+      "mode": "FDD"
+    },
+    "2600MHz": {
+      "downlink_range_MHz": [2655.0, 2670.0],
+      "centerfrequency_MHz": 2662.5,
+      "technologies": ["4G_LTE-B7"],
+      "mode": "FDD"
+    },
+    "3500MHz": {
+      "downlink_range_MHz": [3480.0, 3580.0],
+      "centerfrequency_MHz": 3530.0,
+      "technologies": ["5G_NR-n78"],
+      "mode": "TDD"
+    }
+  },
+
+  "Citymesh Mobile": {
+    "700MHz": {
+      "downlink_range_MHz": [758.0, 763.0],
+      "centerfrequency_MHz": 760.5,
+      "technologies": ["4G_LTE-B28", "5G_NR-n28"],
+      "mode": "FDD"
+    },
+    "900MHz": {
+      "downlink_range_MHz": [935.0, 940.0],
+      "centerfrequency_MHz": 937.5,
+      "technologies": ["4G_LTE-B8"],
+      "mode": "FDD"
+    },
+    "1800MHz": {
+      "downlink_range_MHz": [1845.0, 1860.0],
+      "centerfrequency_MHz": 1852.5,
+      "technologies": ["4G_LTE-B3"],
+      "mode": "FDD"
+    },
+    "2100MHz": {
+      "downlink_range_MHz": [2150.0, 2155.0],
+      "centerfrequency_MHz": 2152.5,
+      "technologies": ["4G_LTE-B1"],
+      "mode": "FDD"
+    },
+    "2600MHz": {
+      "downlink_range_MHz": [2640.0, 2655.0],
+      "centerfrequency_MHz": 2647.5,
+      "technologies": ["4G_LTE-B7"],
+      "mode": "FDD"
+    },
+    "3500MHz": {
+      "downlink_range_MHz": [3430.0, 3480.0],
+      "centerfrequency_MHz": 3455.0,
+      "technologies": ["5G_NR-n78"],
+      "mode": "TDD"
+    }
+  },
+
+  "Network Research Belgium": {
+    "3500MHz": {
+      "downlink_range_MHz": [3580.0, 3600.0],
+      "centerfrequency_MHz": 3590.0,
+      "technologies": ["5G_NR-n78"],
+      "mode": "TDD"
+    }
+  }
+}
