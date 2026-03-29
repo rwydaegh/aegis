@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import * as Sentry from '@sentry/react'
 import { useBaseStationsStore } from '@/stores/basestations'
 import { loadBasestations } from '@/api/basestations'
@@ -8,6 +8,8 @@ import { useNotificationStore } from '@/stores/notifications'
 export default function BaseStationsPanel() {
   const [location, setLocation] = useState('Brussels, Belgium')
   const [radius, setRadius] = useState(500)
+  const [autoLoad, setAutoLoad] = useState(false)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const basestations = useBaseStationsStore(s => s.basestations)
   const isLoading = useBaseStationsStore(s => s.isLoading)
@@ -30,7 +32,7 @@ export default function BaseStationsPanel() {
   const inputClass = selectClass
   const labelClass = 'text-xs text-muted-foreground block mt-3 mb-1'
 
-  async function handleLoad() {
+  const handleLoad = useCallback(async () => {
     setLoading(true)
     try {
       const res = await loadBasestations({ location, radius_m: radius })
@@ -53,7 +55,19 @@ export default function BaseStationsPanel() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [location, radius, setLoading, setBasestations])
+
+  useEffect(() => {
+    if (!autoLoad) return
+    if (location.trim().length < 2) return
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      handleLoad()
+    }, 800)
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [autoLoad, location, radius, handleLoad])
 
   return (
     <div>
@@ -77,6 +91,16 @@ export default function BaseStationsPanel() {
         value={radius}
         onChange={e => setRadius(Number(e.target.value))}
       />
+
+      <label className="flex items-center gap-2 mt-3 text-xs cursor-pointer select-none">
+        <input
+          type="checkbox"
+          className="rounded border-border accent-primary h-3.5 w-3.5"
+          checked={autoLoad}
+          onChange={e => setAutoLoad(e.target.checked)}
+        />
+        <span className="text-foreground">Auto-load when location changes</span>
+      </label>
 
       <div className="flex gap-2 mt-3">
         <button
