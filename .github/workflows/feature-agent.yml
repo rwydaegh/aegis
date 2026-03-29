@@ -1,0 +1,167 @@
+name: Feature agent
+
+on:
+  schedule:
+    - cron: "15 */3 * * *"  # Every 3 hours, offset 15min from other agents
+  workflow_dispatch: {}
+
+concurrency:
+  group: feature-agent
+  cancel-in-progress: true
+
+jobs:
+  feature:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+      actions: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Get recent activity
+        id: context
+        run: |
+          RECENT=$(git log --oneline --since="3 days ago" --no-merges -50)
+          if [ -z "$RECENT" ]; then
+            RECENT=$(git log --oneline -20 --no-merges)
+          fi
+          {
+            echo "log<<COMMITS_EOF"
+            echo "$RECENT"
+            echo "COMMITS_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+          # Get open issues for context on what users want
+          ISSUES=$(gh issue list --state open --limit 10 --json number,title,labels --jq '.[] | "#\(.number) [\(.labels | map(.name) | join(","))] \(.title)"' 2>/dev/null || echo "")
+          {
+            echo "issues<<ISSUES_EOF"
+            echo "$ISSUES"
+            echo "ISSUES_EOF"
+          } >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Run feature agent
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: '--allowedTools "Bash(*)" "Read" "Write" "Edit" "Glob" "Grep"'
+          direct_prompt: |
+            You are an autonomous agent improving the AEGIS codebase. You run every 3 hours. Your job is to do the most valuable work you can: new tests, new
+            utilities, performance improvements, better error messages, developer experience,
+            or small features.
+
+            NEVER ask questions. NEVER wait for input. Be smart, opinionated, and ambitious.
+
+            ## What is AEGIS
+
+            AEGIS computes absorbed power density (Sab) on human body meshes from wireless
+            base station radiation. Core equation: Sab(r) = Sinc * T0 * ReLU[n_hat(r) * (-k_hat)].
+            Nine fidelity levels (0-8). Python physics stack (NumPy/SciPy, optional JAX).
+            Flask + React/Three.js viewer. Ray tracing via Sionna and DiffeRT.
+
+            This is a real research tool for a physics PhD. The summary paper
+            (../monograph/summary_paper.tex) is a condensed reference for the physics.
+            The code should match the math.
+
+            ## Your environment
+
+            - No GPU, no mesh STL data files, no Sionna/DiffeRT backends
+            - Python 3.x available (use python3)
+            - Node.js available but prefer Python-side work (frontend changes are risky
+              without the full dev setup and visual verification)
+            - `pytest -m 'not slow'` skips tests that need mesh data
+
+            ## Recent commits
+
+            ```
+            ${{ steps.context.outputs.log }}
+            ```
+
+            ## Open issues
+
+            These are open issues. If any are small enough to fix in this session, do it.
+            Prefer addressing real user needs over inventing improvements.
+
+            ```
+            ${{ steps.context.outputs.issues }}
+            ```
+
+            ## Setup
+
+            ```bash
+            python3 -m pip install -e '.[dev]' --quiet
+            ```
+
+            ## How to work
+
+            1. Install deps, run the test suite to establish a baseline:
+               ```bash
+               python3 -m pytest tests/ -m 'not slow' -x --tb=short -q
+               ```
+
+            2. Read the codebase. Check CLAUDE.md. Read the recent git history. Understand
+               where AEGIS is and what would make it better.
+
+            3. Decide what to work on. Pick ONE high-value thing. Prioritize:
+               - Fixing open issues (check the list above)
+               - Writing tests for untested or under-tested code paths
+               - Performance improvements in hot paths (kernels, geometry)
+               - Better error messages and input validation at API boundaries
+               - New analysis utilities that a researcher would find useful
+               - Code quality improvements that reduce real bug risk
+
+            4. Implement it. Test it. Lint it:
+               ```bash
+               python3 -m pytest tests/ -m 'not slow' -x
+               python3 -m ruff check src/ tests/ && python3 -m ruff format src/ tests/
+               ```
+
+            5. Create a PR:
+               ```bash
+               git checkout -b claude/DESCRIPTION
+               git add <specific files>
+               git commit -m "Imperative description of the change"
+               git push -u origin claude/DESCRIPTION
+               gh pr create \
+                 --title "Imperative description" \
+                 --body "## Summary
+               - What was added/changed
+               - Why it is valuable
+               - How it was tested
+
+               Built by scheduled feature agent." \
+                 --base master
+               gh pr merge --squash --delete-branch
+               git checkout master
+               git pull origin master
+               ```
+
+            6. If you addressed an open issue, add "Fixes #N" to the PR body.
+
+            7. You may do multiple changes per session if they are independent. One PR each.
+
+            ## What NOT to do
+
+            - Do not change core physics equations unless the code clearly contradicts the
+              math in ../monograph/summary_paper.tex
+            - Do not break existing tests (fix your change, not the test)
+            - Do not make changes you cannot verify with the available test suite
+            - Do not create documentation files or READMEs
+            - Do not do busywork (docstrings on obvious functions, comments on clear code)
+            - Do not add speculative abstractions or design for hypothetical futures
+            - Do not use superpowers skills (they are for interactive sessions)
+            - Do not touch the React frontend unless you can verify the change without a browser
+
+            ## Scope discipline
+
+            Focus on one thing per session. A clean, tested, merged PR for one improvement
+            is worth more than three half-finished changes. If your first idea turns out to
+            be too large, pick something smaller. Ship something.
