@@ -188,6 +188,9 @@ def _format_issue_body(issue_data: dict, event: dict | None) -> str:
 
     lines.append("---")
     lines.append("*Auto-generated from Sentry. Label: `sentry`*")
+    lines.append("")
+    lines.append("@claude Fix this bug. The stack trace, breadcrumbs, and simulation state are above.")
+    lines.append("Follow `.claude/rules/sentry-issues.md` for the workflow.")
 
     return "\n".join(lines)
 

@@ -1,12 +1,18 @@
 name: Auto-assign Claude to Sentry issues
 
+# Fallback: if a sentry-labeled issue was created without @claude in the body
+# (e.g., manually created), this workflow adds the tag via comment.
+# For webhook-created issues, @claude is already in the body.
+
 on:
   issues:
-    types: [opened, labeled]
+    types: [opened]
 
 jobs:
   tag-claude:
-    if: contains(github.event.issue.labels.*.name, 'sentry')
+    if: |
+      contains(github.event.issue.labels.*.name, 'sentry') &&
+      !contains(github.event.issue.body, '@claude')
     runs-on: ubuntu-latest
     permissions:
       issues: write
