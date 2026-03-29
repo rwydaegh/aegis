@@ -113,14 +113,21 @@ class SionnaTracer:
         """Trace on voxel geometry. scene_data sent on first call, cached after.
 
         scene_data format: {"vertices": list, "triangles": list, "materials": list}
+        May be gzip+pickle compressed: {"_compressed": True, "_data": bytes}
         If scene_key is already cached (memory or Volume), scene_data can be None.
         """
+        import gzip
         import json
+        import pickle
         from pathlib import Path
 
         import numpy as np
 
         from aegis.integration.sionna import paths_from_sionna_scene
+
+        # Decompress if the proxy gzip-compressed the payload
+        if scene_data is not None and scene_data.get("_compressed"):
+            scene_data = pickle.loads(gzip.decompress(scene_data["_data"]))
 
         rt_config = rt_config or {}
         t0 = time.perf_counter()
