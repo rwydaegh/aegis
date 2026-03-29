@@ -158,8 +158,10 @@ export async function fetchComplianceSummary(txPowerDbm?: number): Promise<{ tex
   return getJson<{ text: string }>(`/api/compliance/summary${params}`)
 }
 
-export async function fetchTissueSpectrum(tissue: string, fMin: number, fMax: number, n: number = 100): Promise<TissueSpectrum> {
-  return getJson<TissueSpectrum>(`/api/tissue/spectrum?tissue=${encodeURIComponent(tissue)}&f_min=${fMin}&f_max=${fMax}&n=${n}`)
+export async function fetchTissueSpectrum(tissue: string, fMin: number, fMax: number, n: number = 100, skinModel?: string): Promise<TissueSpectrum> {
+  const params = new URLSearchParams({ tissue, f_min: String(fMin), f_max: String(fMax), n: String(n) })
+  if (skinModel) params.set('skin_model', skinModel)
+  return getJson<TissueSpectrum>(`/api/tissue/spectrum?${params}`)
 }
 
 export interface GpuStatus {

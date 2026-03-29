@@ -90,6 +90,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         from aegis.tissue.database import get_tissue_spectrum
 
         tissue = request.args.get("tissue", "Skin")
+        skin_model = request.args.get("skin_model", "")
         f_min = request.args.get("f_min", 1e9, type=float)
         f_max = request.args.get("f_max", 100e9, type=float)
         n = request.args.get("n", 100, type=int)
@@ -97,7 +98,30 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
         try:
             freqs = np.linspace(f_min, f_max, n)
-            result = get_tissue_spectrum(tissue, freqs)
+            if skin_model and skin_model != "itis":
+                from aegis.constants import EPS_0
+                from aegis.viewer.compute import resolve_skin_model
+
+                eps_r_arr = np.empty(n)
+                sigma_arr = np.empty(n)
+                for i, f in enumerate(freqs):
+                    tm = resolve_skin_model(skin_model, float(f))
+                    eps_r_arr[i] = tm.eps_r
+                    sigma_arr[i] = tm.sigma
+                eps_complex = eps_r_arr - 1j * sigma_arr / (2 * np.pi * freqs * EPS_0)
+                m = np.sqrt(eps_complex)
+                m = np.where(np.real(m) < 0, -m, m)
+                n_ref = np.real(m)
+                kappa = -np.imag(m)
+                T0 = 4 * n_ref / ((1 + n_ref) ** 2 + kappa**2)
+                result = {
+                    "freqs_hz": freqs,
+                    "eps_r": eps_r_arr,
+                    "sigma": sigma_arr,
+                    "T0": T0,
+                }
+            else:
+                result = get_tissue_spectrum(tissue, freqs)
         except Exception as e:
             return jsonify({"error": str(e)}), 400
 
