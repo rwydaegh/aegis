@@ -739,7 +739,7 @@ def _roof_onion(footprint: np.ndarray, height: float, roof_height: float) -> tup
     verts = []
     tris = []
 
-    # Generate onion profile: r(t) = R * sin(t) * (1 + 0.3 * sin(3t))
+    # Generate onion profile: r(t) = R * sin(t) * (1 + 0.6 * sin(2t))
     for r in range(n_ring + 1):
         t = np.pi * r / n_ring  # 0 to pi
         if r == n_ring:
@@ -750,10 +750,10 @@ def _roof_onion(footprint: np.ndarray, height: float, roof_height: float) -> tup
             ring_r = radius
             ring_z = height
         else:
-            profile_r = np.sin(t) * (1 + 0.3 * np.sin(3 * t))
+            profile_r = np.sin(t) * (1.0 + 0.6 * np.sin(2 * t))
             # Normalize so max profile_r maps to radius
-            ring_r = radius * profile_r / 1.3  # approx max of sin(t)*(1+0.3*sin(3t))
-            ring_z = height + roof_height * (1 - np.cos(t)) / 2
+            ring_r = radius * profile_r / 1.3  # approx max of sin(t)*(1+0.6*sin(2t))
+            ring_z = height + roof_height * t / np.pi  # linear height progression
 
         if r == n_ring:
             apex_idx = len(verts)
