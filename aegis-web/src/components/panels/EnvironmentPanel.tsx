@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import * as Sentry from '@sentry/react'
 import { useEnvironmentStore } from '@/stores/environment'
 import type { EnvironmentSource } from '@/stores/environment'
+import { useSceneStore } from '@/stores/scene'
 import { useTerrainStore } from '@/stores/terrain'
 import { useUIStore } from '@/stores/ui'
 import { Loader2 } from 'lucide-react'
@@ -43,6 +44,7 @@ export default function EnvironmentPanel() {
   const exportForRT = useEnvironmentStore((s) => s.exportForRT)
 
   const setCameraMode = useUIStore((s) => s.setCameraMode)
+  const voxelData = useSceneStore((s) => s.voxelData)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [geojsonFileName, setGeoJsonFileName] = useState<string | null>(null)
@@ -72,6 +74,24 @@ export default function EnvironmentPanel() {
           ))}
         </div>
       </div>
+
+      {/* Voxels status */}
+      {source === 'voxels' && (
+        <div className="space-y-2 pt-1 border-t border-border">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            Voxels
+          </p>
+          {voxelData ? (
+            <p className="text-xs text-muted-foreground">
+              Voxels loaded. Use the Layers panel to toggle material visibility.
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              No voxels loaded. Go to <span className="font-medium text-foreground">Scene &gt; Location</span> to load a location and generate voxel data.
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Location */}
       {(source === 'osm' || source === '3dtiles') && (
