@@ -37,6 +37,8 @@ export default function BaseStationsPanel() {
       if (res.basestations.length > 0) {
         const first = res.basestations[0]
         setBasestations(res.basestations, { lat: first.latitude, lon: first.longitude })
+      } else {
+        clear()
       }
       useNotificationStore.getState().addNotification(
         'info',
