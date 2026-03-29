@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import threading
 
 import numpy as np
@@ -12,6 +13,33 @@ from flask import Flask, Response, jsonify, request
 logger = logging.getLogger(__name__)
 
 _OCTET_STREAM = "application/octet-stream"
+
+
+def geocode_location(location: str) -> tuple[float, float]:
+    """Geocode a location string to (latitude, longitude).
+
+    Tries parsing as "lat, lon" first, falls back to geopy Nominatim.
+    Raises ValueError on failure.
+    """
+    match = re.match(
+        r"^\s*(-?\d+\.?\d*)\s*[,\s]\s*(-?\d+\.?\d*)\s*$",
+        location,
+    )
+    if match:
+        return float(match.group(1)), float(match.group(2))
+
+    from geopy.exc import GeocoderTimedOut, GeocoderUnavailable
+    from geopy.geocoders import Nominatim
+
+    geolocator = Nominatim(user_agent="aegis-viewer", timeout=10)
+    try:
+        result = geolocator.geocode(location)
+    except (GeocoderTimedOut, GeocoderUnavailable) as e:
+        raise ValueError(f"Geocoding service unavailable: {e}") from e
+
+    if result is None:
+        raise ValueError(f"Could not geocode location: {location!r}")
+    return result.latitude, result.longitude
 
 
 def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
@@ -23,6 +51,15 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
         from aegis.basestation.adapter import load_basestations_from_csv
 
         params = request.get_json(silent=True) or {}
+
+        location_str = params.get("location")
+        if location_str and not params.get("bbox") and "lat" not in params:
+            try:
+                lat, lon = geocode_location(location_str)
+            except ValueError as e:
+                return jsonify({"error": str(e)}), 400
+            params["lat"] = lat
+            params["lon"] = lon
 
         # Build bbox from lat/lon/radius or use explicit bbox
         bbox = params.get("bbox")
@@ -235,7 +272,16 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
 
 
 def _bs_summary(bs) -> dict:
-    """Serialize a BaseStation to a JSON-safe dict."""
+    """Serialize a BaseStation to a JSON-safe dict with classification."""
+    from aegis.basestation.classify import classify_basestation
+
+    classification = classify_basestation(
+        gain_dbi=bs.gain_dbi,
+        technology=bs.technology,
+        freq_mhz=bs.freq_mhz,
+        h_bw=bs.horizontal_beamwidth_deg or 0,
+        v_bw=bs.vertical_beamwidth_deg or 0,
+    )
     return {
         "site_code": bs.site_code,
         "antenna_label": bs.antenna_label,
@@ -252,4 +298,5 @@ def _bs_summary(bs) -> dict:
         "has_pattern": bs.pattern is not None,
         "horizontal_beamwidth_deg": bs.horizontal_beamwidth_deg,
         "vertical_beamwidth_deg": bs.vertical_beamwidth_deg,
+        **classification,
     }

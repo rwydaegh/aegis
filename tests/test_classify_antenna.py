@@ -1,6 +1,11 @@
 """Tests for base station archetype classification."""
 
+from unittest.mock import MagicMock, patch
+
+import pytest
+
 from aegis.basestation.classify import classify_antenna, infer_element_grid
+from aegis.viewer.routes.basestations import geocode_location
 
 
 class TestClassifyAntenna:
@@ -130,3 +135,34 @@ class TestInferElementGrid:
         )
         # Higher element gain means fewer inferred elements
         assert n_h_7 * n_v_7 <= n_h_5 * n_v_5
+
+
+class TestGeocodeLocation:
+    def test_raw_coordinates_comma(self):
+        lat, lon = geocode_location("50.85, 4.35")
+        assert abs(lat - 50.85) < 0.001
+        assert abs(lon - 4.35) < 0.001
+
+    def test_raw_coordinates_space(self):
+        lat, lon = geocode_location("50.85 4.35")
+        assert abs(lat - 50.85) < 0.001
+        assert abs(lon - 4.35) < 0.001
+
+    def test_negative_coordinates(self):
+        lat, lon = geocode_location("-33.87, 151.21")
+        assert abs(lat - (-33.87)) < 0.001
+
+    def test_nominatim_fallback(self):
+        mock_location = MagicMock()
+        mock_location.latitude = 50.85
+        mock_location.longitude = 4.35
+        with patch("geopy.geocoders.Nominatim") as mock_nom:
+            mock_nom.return_value.geocode.return_value = mock_location
+            lat, lon = geocode_location("Brussels, Belgium")
+            assert abs(lat - 50.85) < 0.01
+
+    def test_unknown_location_raises(self):
+        with patch("geopy.geocoders.Nominatim") as mock_nom:
+            mock_nom.return_value.geocode.return_value = None
+            with pytest.raises(ValueError, match="Could not geocode"):
+                geocode_location("xyznonexistent12345")
