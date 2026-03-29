@@ -255,6 +255,7 @@ def parse_osm_xml(
                     roof_height=roof_height,
                     material=material,
                     roof_material=roof_material,
+                    tags=tags,
                 )
             )
 
@@ -439,6 +440,7 @@ def build_environment_from_osm(
     default_building_height: float = 8.0,
     road_z: float = 0.0,
     water_z: float = -0.1,
+    detail: bool = False,
 ) -> EnvironmentMesh:
     """Build an EnvironmentMesh from an OSM XML string.
 
@@ -454,11 +456,16 @@ def build_environment_from_osm(
         default_building_height: Fallback height when no height tag is present.
         road_z: Z coordinate for road surfaces.
         water_z: Z coordinate for water surfaces (slightly below ground).
+        detail: When True, use facade-level building geometry with window and
+            door openings instead of plain extruded walls.
 
     Returns:
         EnvironmentMesh with all features combined.
     """
     from aegis.environment.relations import parse_relations
+
+    if detail:
+        from aegis.environment.facades import generate_detailed_building
 
     buildings, roads, water_bodies = parse_osm_xml(xml_str, origin_lat, origin_lon)
     relation_result = parse_relations(xml_str, origin_lat, origin_lon)
@@ -471,14 +478,26 @@ def build_environment_from_osm(
     def _add_building(bld: Building) -> None:
         nonlocal vert_offset
         try:
-            v, t, m = generate_building(
-                footprint=bld.footprint,
-                height=bld.height,
-                roof_shape=bld.roof_shape,
-                roof_height=bld.roof_height,
-                material=bld.material,
-                roof_material=bld.roof_material,
-            )
+            if detail:
+                v, t, m = generate_detailed_building(
+                    footprint=bld.footprint,
+                    height=bld.height,
+                    roof_shape=bld.roof_shape,
+                    roof_height=bld.roof_height,
+                    material=bld.material,
+                    roof_material=bld.roof_material,
+                    tags=bld.tags if bld.tags else None,
+                    seed=bld.way_id,
+                )
+            else:
+                v, t, m = generate_building(
+                    footprint=bld.footprint,
+                    height=bld.height,
+                    roof_shape=bld.roof_shape,
+                    roof_height=bld.roof_height,
+                    material=bld.material,
+                    roof_material=bld.roof_material,
+                )
         except Exception:
             try:
                 v, t, m = generate_building(

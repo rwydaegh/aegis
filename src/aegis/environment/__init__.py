@@ -139,12 +139,22 @@ class EnvironmentMesh:
         )
 
     @classmethod
-    def from_osm(cls, lat, lon, radius_m, **kwargs):
-        """Fetch OSM data and build environment mesh."""
+    def from_osm(cls, lat, lon, radius_m, detail: bool = False, **kwargs):
+        """Fetch OSM data and build environment mesh.
+
+        Args:
+            lat: Center latitude in degrees.
+            lon: Center longitude in degrees.
+            radius_m: Fetch radius in meters.
+            detail: When True, use facade-level building geometry with window
+                and door openings instead of plain extruded walls.
+            **kwargs: Additional keyword arguments forwarded to
+                ``build_environment_from_osm``.
+        """
         from aegis.environment.osm import build_environment_from_osm, fetch_osm
 
         xml = fetch_osm(lat, lon, radius_m)
-        return build_environment_from_osm(xml, origin_lat=lat, origin_lon=lon, **kwargs)
+        return build_environment_from_osm(xml, origin_lat=lat, origin_lon=lon, detail=detail, **kwargs)
 
     @classmethod
     def from_3dtiles(cls, lat, lon, radius_m, geometric_error=30.0, api_key=None):

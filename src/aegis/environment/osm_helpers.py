@@ -7,7 +7,7 @@ Public names re-exported from osm.py for backward compatibility.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 
@@ -29,6 +29,7 @@ class Building:
     roof_height: float = 2.0
     material: MaterialType = MaterialType.CONCRETE
     roof_material: MaterialType = MaterialType.CONCRETE
+    tags: dict = field(default_factory=dict)
 
 
 @dataclass

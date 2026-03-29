@@ -107,6 +107,15 @@ class TestBuildEnvironment:
         assert int(MaterialType.WATER) in mesh.materials.tolist()
 
 
+class TestDetailFlag:
+    def test_build_osm_with_detail_flag(self):
+        """detail=True should produce more triangles than detail=False."""
+        xml = FIXTURE.read_text()
+        mesh_simple = build_environment_from_osm(xml, 51.05, 3.72, detail=False)
+        mesh_detail = build_environment_from_osm(xml, 51.05, 3.72, detail=True)
+        assert mesh_detail.triangles.shape[0] > mesh_simple.triangles.shape[0]
+
+
 class TestRelationsIntegration:
     def test_parse_osm_with_multipolygon_building(self):
         """Buildings from multipolygon relations should appear in output."""
