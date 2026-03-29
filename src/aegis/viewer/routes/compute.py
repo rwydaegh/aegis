@@ -684,7 +684,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             if modal_result is None and _modal_enabled():
                 modal_error = "Modal DiffeRT returned no result"
         except Exception as e:
-            logger.debug("Modal DiffeRT proxy attempt failed: %s", e)
+            logger.error("Modal DiffeRT proxy attempt failed: %s", e, exc_info=True)
             from aegis.viewer.modal_proxy import _is_enabled as _modal_enabled
 
             if _modal_enabled():
