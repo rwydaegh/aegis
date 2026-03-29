@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import * as Sentry from '@sentry/react'
 import { useBaseStationsStore } from '@/stores/basestations'
 import { loadBasestations } from '@/api/basestations'
 import { useBaseStationsDosimetry } from '@/hooks/useBaseStationsDosimetry'
@@ -40,6 +41,7 @@ export default function BaseStationsPanel() {
         `Loaded ${res.count} antennas`,
       )
     } catch (err) {
+      Sentry.captureException(err)
       useNotificationStore.getState().addNotification(
         'error',
         `Load failed: ${(err as Error).message}`,

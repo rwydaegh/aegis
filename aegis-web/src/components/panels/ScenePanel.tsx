@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import * as Sentry from '@sentry/react'
 import { loadLocation, cancelLocation, loadSceneGeometry, fetchCapabilities } from '@/api/client'
 import { useSceneStore } from '@/stores/scene'
 import { useSimulationStore } from '@/stores/simulation'
@@ -28,6 +29,7 @@ function SionnaSceneSelector() {
       useSceneStore.getState().setLoadedScenePath(selected)
       useSceneStore.getState().setVoxelData(null)
     } catch (err) {
+      Sentry.captureException(err)
       useNotificationStore.getState().addNotification('error', `Failed to load scene: ${(err as Error).message}`)
     }
     setLoading(false)
@@ -102,12 +104,14 @@ export default function ScenePanel() {
       // Re-fetch capabilities so useVoxelLoader picks up the new voxels
       fetchCapabilities().then(caps => {
         useSceneStore.getState().setCapabilities(caps)
-      }).catch(() => {
+      }).catch((err) => {
+        Sentry.captureException(err)
         useNotificationStore.getState().addNotification('error', 'Failed to refresh after location load')
       })
     })
 
     es.addEventListener('error', () => {
+      Sentry.captureException(new Error('Location load SSE connection lost'))
       es.close()
       esRef.current = null
       useUIStore.getState().setLocationLoading(false)

@@ -6,6 +6,7 @@ import { useUIStore } from '@/stores/ui'
 import { useNotificationStore } from '@/stores/notifications'
 import { computeMIMO, fetchMIMOResult, fetchMIMOSummary } from '@/api/mimo'
 import { fetchBody } from '@/api/client'
+import * as Sentry from '@sentry/react'
 import * as THREE from 'three'
 import type { MIMOComputeRequest, MIMOUserConfig } from '@/api/types'
 
@@ -106,9 +107,11 @@ export function useMIMODosimetry() {
       }
     } catch (err) {
       if ((err as Error).name === 'AbortError') return
+      Sentry.captureException(err)
       useNotificationStore.getState().addNotification(
         'error',
-        `MIMO compute failed: ${(err as Error).message ?? err}`
+        `MIMO compute failed: ${(err as Error).message ?? err}`,
+        'This error has been reported and will be fixed automatically using AI. Most issues are fixed in less than 30 minutes.'
       )
     } finally {
       if (gen === generationRef.current) setComputing(false)
