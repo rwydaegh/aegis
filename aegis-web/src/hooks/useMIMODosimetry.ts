@@ -104,6 +104,14 @@ export function useMIMODosimetry() {
       const summary = await fetchMIMOSummary(controller.signal)
       if (gen === generationRef.current) {
         setSummaryStats(summary)
+        const allZero = summary.users.every((u: { p_abs_mw: number }) => u.p_abs_mw === 0)
+        if (allZero && summary.users.length > 0) {
+          useNotificationStore.getState().addNotification(
+            'warning',
+            'MIMO channel is degenerate — all users show 0 W/m². Try elevating the antenna (arrow keys or drag).',
+            'The antenna may be too close to the ground. A height of at least 0.5 m above the phantom improves channel conditioning.'
+          )
+        }
       }
     } catch (err) {
       if ((err as Error).name === 'AbortError') return

@@ -93,17 +93,56 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         f_min = request.args.get("f_min", 1e9, type=float)
         f_max = request.args.get("f_max", 100e9, type=float)
         n = request.args.get("n", 100, type=int)
+        skin_model = request.args.get("skin_model", "itis")
         n = min(max(n, 10), 1000)
 
         try:
             freqs = np.linspace(f_min, f_max, n)
             result = get_tissue_spectrum(tissue, freqs)
+
+            # Apply skin model adjustments when tissue is Skin
+            if tissue == "Skin" and skin_model != "itis":
+                eps_0 = 8.8541878128e-12
+                omega = 2 * np.pi * freqs
+                if skin_model == "christ2021":
+                    eps_r = result["eps_r"] * 1.2
+                    sigma = result["sigma"] * 1.2
+                elif skin_model == "christ2025":
+                    from aegis.viewer.compute import debye_permittivity
+                    eps_complex = np.array([
+                        debye_permittivity(f, eps_inf=7.88, eps_static=47.0, sigma=5.19, tau_s=8.35e-12)
+                        for f in freqs
+                    ])
+                    eps_r = np.real(eps_complex)
+                    sigma = -np.imag(eps_complex) * omega * eps_0
+                elif skin_model == "nict":
+                    from aegis.viewer.compute import _load_nict_data
+                    data = _load_nict_data()
+                    log_freqs = np.log10(freqs)
+                    log_f_clamped = np.clip(log_freqs, data["log_freq"][0], data["log_freq"][-1])
+                    eps_r = 10 ** np.interp(log_f_clamped, data["log_freq"], data["log_eps_r"])
+                    sigma = 10 ** np.interp(log_f_clamped, data["log_freq"], data["log_sigma"])
+                else:
+                    eps_r = result["eps_r"]
+                    sigma = result["sigma"]
+                eps_complex = eps_r - 1j * sigma / (omega * eps_0)
+                m = np.sqrt(eps_complex)
+                m = np.where(np.real(m) < 0, -m, m)
+                n_ri = np.real(m)
+                kappa = -np.imag(m)
+                result = {
+                    "freqs_hz": freqs,
+                    "eps_r": eps_r,
+                    "sigma": sigma,
+                    "T0": 4 * n_ri / ((1 + n_ri) ** 2 + kappa**2),
+                }
         except Exception as e:
             return jsonify({"error": str(e)}), 400
 
         return jsonify(
             {
                 "tissue": tissue,
+                "skin_model": skin_model,
                 "freqs_hz": result["freqs_hz"].tolist(),
                 "eps_r": result["eps_r"].tolist(),
                 "sigma": result["sigma"].tolist(),
