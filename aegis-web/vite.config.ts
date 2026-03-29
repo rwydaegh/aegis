@@ -17,6 +17,9 @@ export default defineConfig({
       project: process.env.SENTRY_PROJECT,
       authToken: process.env.SENTRY_AUTH_TOKEN,
       disable: !process.env.SENTRY_AUTH_TOKEN,
+      errorHandler: (err) => {
+        console.warn('[sentry-vite-plugin] Source map upload failed (non-fatal):', err.message)
+      },
     }),
   ],
   resolve: {

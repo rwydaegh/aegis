@@ -93,6 +93,7 @@ jobs:
 
       - name: Sentry release tracking
         if: vars.HETZNER_HOST != ''
+        continue-on-error: true
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
