@@ -71,7 +71,8 @@ def fetch_osm(
     lat: float,
     lon: float,
     radius_m: float = 500.0,
-    timeout: int = 30,
+    timeout: int = 60,
+    retries: int = 1,
 ) -> str:
     """Fetch OSM data from Overpass API for a circular area.
 
@@ -80,15 +81,18 @@ def fetch_osm(
         lon: Center longitude in degrees.
         radius_m: Radius in meters.
         timeout: HTTP request timeout in seconds.
+        retries: Number of retry attempts on timeout (default 1).
 
     Returns:
         OSM XML string.
 
     Raises:
         OverpassRateLimitError: If the API returns 429 or indicates rate limiting.
-        OverpassTimeoutError: If the query times out.
+        OverpassTimeoutError: If the query times out after all retries.
         OverpassResponseTooLarge: If the response exceeds the size limit.
     """
+    import time
+
     import requests
 
     query = (
@@ -110,28 +114,39 @@ def fetch_osm(
         f">;"
         f"out skel qt;"
     )
-    try:
-        resp = requests.post(
-            _OVERPASS_URL,
-            data={"data": query},
-            timeout=timeout,
-        )
-    except requests.exceptions.Timeout as exc:
-        raise OverpassTimeoutError(f"Overpass request timed out after {timeout}s") from exc
 
-    if resp.status_code == 429:
-        raise OverpassRateLimitError("Overpass rate limit exceeded (HTTP 429)")
-    if resp.status_code == 504:
-        raise OverpassTimeoutError("Overpass gateway timeout (HTTP 504)")
-    resp.raise_for_status()
+    last_exc: Exception | None = None
+    for attempt in range(1 + retries):
+        if attempt > 0:
+            time.sleep(2 * attempt)
+        try:
+            resp = requests.post(
+                _OVERPASS_URL,
+                data={"data": query},
+                timeout=timeout,
+            )
+        except requests.exceptions.Timeout as exc:
+            last_exc = exc
+            continue
 
-    content = resp.content
-    if len(content) > _MAX_RESPONSE_BYTES:
-        raise OverpassResponseTooLarge(
-            f"Response size {len(content) / 1e6:.1f} MB exceeds limit {_MAX_RESPONSE_BYTES / 1e6:.0f} MB"
-        )
+        if resp.status_code == 429:
+            raise OverpassRateLimitError("Overpass rate limit exceeded (HTTP 429)")
+        if resp.status_code == 504:
+            last_exc = OverpassTimeoutError("Overpass gateway timeout (HTTP 504)")
+            continue
+        resp.raise_for_status()
 
-    return resp.text
+        content = resp.content
+        if len(content) > _MAX_RESPONSE_BYTES:
+            raise OverpassResponseTooLarge(
+                f"Response size {len(content) / 1e6:.1f} MB exceeds limit {_MAX_RESPONSE_BYTES / 1e6:.0f} MB"
+            )
+
+        return resp.text
+
+    raise OverpassTimeoutError(
+        f"Overpass request timed out after {1 + retries} attempts ({timeout}s each)"
+    ) from last_exc
 
 
 # ---------------------------------------------------------------------------

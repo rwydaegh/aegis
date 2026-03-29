@@ -47,7 +47,7 @@ def _handle_environment_osm(cache: dict, cache_lock) -> Response:
         resp.headers["Retry-After"] = "60"
         return resp
     except OverpassTimeoutError:
-        return jsonify({"error": "Overpass query timed out."}), 504
+        return jsonify({"error": "Overpass query timed out. Try a smaller radius or try again later."}), 504
     except OverpassResponseTooLarge:
         return jsonify({"error": "Overpass response too large. Reduce the radius."}), 413
 
