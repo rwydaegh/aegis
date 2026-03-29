@@ -313,6 +313,33 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
         return jsonify({"error": f"Unknown format '{fmt}'. Use 'differt' or 'sionna'."}), 400
 
+    @app.route("/api/environment/geojson", methods=["POST"])
+    def api_environment_geojson():
+        """Parse a GeoJSON string, build mesh, cache it, return binary."""
+        from aegis.environment.geojson import build_environment_from_geojson
+
+        body = request.get_json(silent=True) or {}
+        geojson_str = body.get("geojson", "")
+        if not geojson_str:
+            return jsonify({"error": "geojson field is required"}), 400
+
+        lat = float(body.get("lat", 0))
+        lon = float(body.get("lon", 0))
+
+        try:
+            mesh = build_environment_from_geojson(geojson_str, lat, lon)
+        except Exception as exc:
+            return jsonify({"error": str(exc)}), 400
+
+        binary, meta = mesh.to_binary()
+        with cache_lock:
+            cache["env_mesh_osm"] = mesh
+            cache["env_mesh"] = mesh
+
+        resp = Response(binary, mimetype="application/octet-stream")
+        resp.headers["X-Meta"] = json.dumps(meta)
+        return resp
+
     @app.route("/api/environment/materials", methods=["GET"])
     def api_environment_materials():
         """Return the material catalog with EM properties."""
