@@ -145,6 +145,7 @@ export interface Capabilities {
   voxel_meta: VoxelMeta | null
   has_location_loader: boolean
   has_api_key: boolean
+  google_api_key: string
   body_placement: [number, number, number] | null
 }
 

@@ -28,14 +28,12 @@ interface EnvironmentState {
   osmMeshData: EnvironmentMeshData | null
   loading: boolean
   error: string | null
-  googleApiKey: string
   osmOptions: OsmOptions
 
   setSource: (s: EnvironmentSource) => void
   setLocation: (lat: number, lon: number) => void
   setRadius: (r: number) => void
   setGeometricError: (ge: number) => void
-  setGoogleApiKey: (key: string) => void
   setOsmOptions: (opts: Partial<OsmOptions>) => void
   fetchOSM: () => Promise<void>
   fetchGeoJSON: (geojsonStr: string) => Promise<void>
@@ -51,7 +49,6 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
   osmMeshData: null,
   loading: false,
   error: null,
-  googleApiKey: '',
   osmOptions: {
     defaultBuildingHeight: 10,
     levelHeight: 3.0,
@@ -65,7 +62,6 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
   setLocation: (lat, lon) => set({ location: { lat, lon } }),
   setRadius: (radius) => set({ radius }),
   setGeometricError: (geometricError) => set({ geometricError }),
-  setGoogleApiKey: (googleApiKey) => set({ googleApiKey }),
   setOsmOptions: (opts) =>
     set((s) => ({
       osmOptions: { ...s.osmOptions, ...opts },

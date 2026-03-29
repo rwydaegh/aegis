@@ -243,6 +243,7 @@ def _handle_config(cache):
             "voxel_meta": cache.get("voxel_meta"),
             "has_location_loader": has_pipeline and has_api_key,
             "has_api_key": has_api_key,
+            "google_api_key": os.environ.get("GOOGLE_API_KEY", ""),
             "body_placement": cache.get("body_placement"),
         }
     )

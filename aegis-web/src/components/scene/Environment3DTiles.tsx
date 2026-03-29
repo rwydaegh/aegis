@@ -8,6 +8,7 @@ import {
 } from '3d-tiles-renderer/r3f'
 import { GoogleCloudAuthPlugin } from '3d-tiles-renderer/plugins'
 import { useEnvironmentStore } from '@/stores/environment'
+import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
 
 interface Props {
@@ -16,7 +17,7 @@ interface Props {
 
 export function Environment3DTiles({ children }: Props) {
   const location = useEnvironmentStore((s) => s.location)
-  const apiKey = useEnvironmentStore((s) => s.googleApiKey)
+  const apiKey = useSceneStore((s) => s.capabilities?.google_api_key ?? '')
   const cameraMode = useUIStore((s) => s.cameraMode)
 
   const pluginArgs = useMemo(

@@ -28,7 +28,6 @@ export default function EnvironmentPanel() {
   const location = useEnvironmentStore((s) => s.location)
   const radius = useEnvironmentStore((s) => s.radius)
   const geometricError = useEnvironmentStore((s) => s.geometricError)
-  const googleApiKey = useEnvironmentStore((s) => s.googleApiKey)
   const osmOptions = useEnvironmentStore((s) => s.osmOptions)
   const loading = useEnvironmentStore((s) => s.loading)
   const error = useEnvironmentStore((s) => s.error)
@@ -36,7 +35,6 @@ export default function EnvironmentPanel() {
   const setLocation = useEnvironmentStore((s) => s.setLocation)
   const setRadius = useEnvironmentStore((s) => s.setRadius)
   const setGeometricError = useEnvironmentStore((s) => s.setGeometricError)
-  const setGoogleApiKey = useEnvironmentStore((s) => s.setGoogleApiKey)
   const setOsmOptions = useEnvironmentStore((s) => s.setOsmOptions)
   const fetchOSM = useEnvironmentStore((s) => s.fetchOSM)
   const fetchGeoJSON = useEnvironmentStore((s) => s.fetchGeoJSON)
@@ -264,16 +262,6 @@ export default function EnvironmentPanel() {
               value={geometricError}
               onChange={(e) => setGeometricError(parseInt(e.target.value))}
               className="w-full"
-            />
-          </div>
-          <div>
-            <label className={labelClass}>Google API key</label>
-            <input
-              type="password"
-              value={googleApiKey}
-              onChange={(e) => setGoogleApiKey(e.target.value)}
-              placeholder="AIza..."
-              className={inputClass}
             />
           </div>
         </div>
