@@ -10,6 +10,10 @@ on:
   pull_request_review:
     types: [submitted]
 
+concurrency:
+  group: claude-${{ github.event.issue.number || github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: false
+
 jobs:
   # Responds to @claude mentions in issues, comments, and PR reviews
   claude:
@@ -63,3 +67,5 @@ jobs:
           prompt: |
             Fix this bug. The issue body has the stack trace from Sentry.
             Follow `.claude/rules/sentry-issues.md` for the workflow.
+            You MUST create a PR with your fix. Do not just push a branch.
+            Add "Fixes #${{ github.event.issue.number }}" to the PR body so it auto-closes the issue on merge.
