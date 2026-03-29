@@ -41,6 +41,35 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
+  # Triggered when the 'qa-bot' label is added to an issue (from QA swarm/agent)
+  qa-fix:
+    if: |
+      github.event_name == 'issues' &&
+      github.event.action == 'labeled' &&
+      github.event.label.name == 'qa-bot'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+      actions: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Code on QA issue
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            Fix this bug. The issue body has reproduction steps from the automated QA agent.
+            There are no Sentry breadcrumbs -- rely on the description and steps to reproduce.
+            You MUST create a PR with your fix. Do not just push a branch.
+            Add "Fixes #${{ github.event.issue.number }}" to the PR body so it auto-closes the issue on merge.
+
   # Triggered when the 'sentry' label is added to an issue
   sentry-fix:
     if: |

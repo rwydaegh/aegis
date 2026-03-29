@@ -295,10 +295,8 @@ jobs:
             - **Browser:** Chromium (Playwright)
 
             ---
-            @claude Investigate and fix this visual/behavioral bug. The issue was found by the
-            automated QA agent -- there are no Sentry breadcrumbs. Rely on the description and
-            reproduction steps above. Follow .claude/rules/sentry-issues.md for the fix workflow
-            (branch, PR, squash merge)." 2>&1)
+            *This issue was filed by the automated QA swarm. The `qa-bot` label triggers
+            an autofix workflow.*" 2>&1)
             echo "$ISSUE_URL"
             ```
 
