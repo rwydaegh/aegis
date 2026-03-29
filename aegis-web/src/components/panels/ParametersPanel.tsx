@@ -42,6 +42,9 @@ function CorrectionToggle({
 }
 
 export default function ParametersPanel() {
+  const antennaPos = useSimulationStore((s) => s.antennaPos)
+  const setAntennaPos = useSimulationStore((s) => s.setAntennaPos)
+  const clearResults = useSimulationStore((s) => s.clearResults)
   const mode = useSimulationStore((s) => s.mode)
   const setMode = useSimulationStore((s) => s.setMode)
   const fresnel = useSimulationStore((s) => s.fresnel)
@@ -78,6 +81,14 @@ export default function ParametersPanel() {
 
   return (
     <div>
+      {antennaPos && (
+        <button
+          className="w-full mb-3 px-3 py-1.5 text-xs rounded border border-destructive/40 bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors cursor-pointer"
+          onClick={() => { setAntennaPos(null); clearResults() }}
+        >
+          Remove antenna
+        </button>
+      )}
       <label className={labelClass}>Computation mode</label>
       <select
         className={selectClass}
