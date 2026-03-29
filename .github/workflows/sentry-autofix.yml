@@ -25,5 +25,5 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: '@claude Fix this bug. The issue body has the stack trace, breadcrumbs, and simulation state from Sentry. Follow `.claude/rules/sentry-issues.md` for the workflow.'
+              body: '@claude Fix this bug. The issue body has the stack trace, breadcrumbs, and simulation state from Sentry. Follow `.claude/rules/sentry-issues.md` for the workflow.\n\n---\n*Filed by [`sentry-autofix.yml`](https://github.com/rwydaegh/aegis/actions/workflows/sentry-autofix.yml) · triggered by Sentry webhook · the `sentry` label triggers the fix workflow.*'
             });

@@ -147,6 +147,9 @@ jobs:
 
             6. If you find something suspicious but are not sure it is a bug, file a GitHub
                issue with label "needs-investigation" instead of changing the code.
+               Always end the issue body with:
+               `---`
+               `*Filed by code-review-agent.yml · run [${{ github.run_id }}](https://github.com/rwydaegh/aegis/actions/runs/${{ github.run_id }})*`
 
             ## After fixing bugs
 
@@ -164,7 +167,8 @@ jobs:
             - How it was fixed
             - Test added/updated
 
-            Found by scheduled code review agent." \
+            ---
+            *Fixed by [`code-review-agent.yml`](https://github.com/rwydaegh/aegis/actions/workflows/code-review-agent.yml) · run [${{ github.run_id }}](https://github.com/rwydaegh/aegis/actions/runs/${{ github.run_id }})*" \
               --base master
             gh pr merge --squash --delete-branch
             git checkout master

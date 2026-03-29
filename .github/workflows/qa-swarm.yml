@@ -343,8 +343,7 @@ jobs:
             - **Browser:** Chromium (Playwright)
 
             ---
-            *This issue was filed by the automated QA swarm. The `qa-bot` label triggers
-            an autofix workflow.*" 2>&1)
+            *Filed by [`qa-swarm.yml`](https://github.com/rwydaegh/aegis/actions/workflows/qa-swarm.yml) tester #${{ matrix.tester_id }} · run [${{ github.run_id }}](https://github.com/rwydaegh/aegis/actions/runs/${{ github.run_id }}) · the `qa-bot` label triggers an autofix workflow.*" 2>&1)
             echo "$ISSUE_URL"
             ```
 

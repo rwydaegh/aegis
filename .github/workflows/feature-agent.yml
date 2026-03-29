@@ -137,7 +137,8 @@ jobs:
                - Why it is valuable
                - How it was tested
 
-               Built by scheduled feature agent." \
+               ---
+            *Built by [`feature-agent.yml`](https://github.com/rwydaegh/aegis/actions/workflows/feature-agent.yml) · run [${{ github.run_id }}](https://github.com/rwydaegh/aegis/actions/runs/${{ github.run_id }})*" \
                  --base master
                gh pr merge --squash --delete-branch
                git checkout master
