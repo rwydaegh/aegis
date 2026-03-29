@@ -75,7 +75,6 @@ nav:
     - Stochastic channel: user_guide/stochastic_channel.md
     - Environment: user_guide/environment.md
     - Interactive viewer: user_guide/viewer.md
-    - Deployment: user_guide/deployment.md
   - Developer guide:
     - Architecture: developer_guide/architecture.md
     - Adding a kernel: developer_guide/adding_a_kernel.md
