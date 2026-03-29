@@ -1,0 +1,81 @@
+# Configuration for actions/labeler
+# Maps labels to file path patterns (glob)
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - docs/**
+          - mkdocs.yml
+          - "*.md"
+          - .github/ISSUE_TEMPLATE/**
+
+frontend:
+  - changed-files:
+      - any-glob-to-any-file:
+          - aegis-web/**
+          - src/aegis/viewer/static/**
+
+viewer:
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/aegis/viewer/**
+
+physics:
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/aegis/kernels/**
+          - src/aegis/tissue/**
+          - src/aegis/coherent/**
+          - src/aegis/compliance/**
+
+geometry:
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/aegis/geometry/**
+
+ray-tracing:
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/aegis/integration/**
+          - src/aegis/modal_rt/**
+
+MIMO:
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/aegis/mimo/**
+          - src/aegis/precoder.py
+          - src/aegis/coherent/**
+
+tests:
+  - changed-files:
+      - any-glob-to-any-file:
+          - tests/**
+
+CI:
+  - changed-files:
+      - any-glob-to-any-file:
+          - .github/workflows/**
+          - .github/dependabot.yml
+          - .github/labeler.yml
+
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file:
+          - pyproject.toml
+          - aegis-web/package.json
+          - aegis-web/package-lock.json
+
+infrastructure:
+  - changed-files:
+      - any-glob-to-any-file:
+          - Dockerfile*
+          - docker-compose*.yml
+          - deploy/**
+          - src/aegis/infra/**
+
+config:
+  - changed-files:
+      - any-glob-to-any-file:
+          - configs/**
+          - src/aegis/config.py
+          - src/aegis/defaults.py

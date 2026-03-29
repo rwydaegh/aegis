@@ -1,0 +1,29 @@
+# Configuration for github/issue-labeler
+# Maps labels to regex patterns matched against issue title + body
+
+documentation:
+  - "(docs|documentation|mkdocs|readme|tutorial|guide)"
+frontend:
+  - "(frontend|react|vite|three\\.?js|r3f|aegis-web|UI|HUD|zustand)"
+viewer:
+  - "(viewer|3D view|flask|web app|dashboard)"
+physics:
+  - "(physics|kernel|tissue|fresnel|cole.cole|Sab|absorbed power|SAR|ICNIRP|compliance|fidelity level)"
+geometry:
+  - "(geometry|mesh|STL|phantom|ambient occlusion|spatial averaging|body model)"
+ray-tracing:
+  - "(ray.?trac|differt|sionna|propagation|BVH|modal)"
+MIMO:
+  - "(MIMO|beamform|precod|coherent|ECBF|exposure operator)"
+tests:
+  - "(test|pytest|hypothesis|golden|coverage|CI failure)"
+CI:
+  - "(CI|GitHub Actions|workflow|pipeline|linter|ruff)"
+dependencies:
+  - "(dependency|dependencies|bump|upgrade|package|pyproject)"
+infrastructure:
+  - "(docker|deploy|server|hetzner|tensordock|cloud|infra)"
+bug:
+  - "bug_report"
+enhancement:
+  - "feature_request"
