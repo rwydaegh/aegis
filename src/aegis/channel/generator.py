@@ -106,11 +106,13 @@ def generate_channel(
     # Step 6: convert to k_hat and power
     k_hats = _angles_to_khats(az, el)
 
-    # Compute S_inc: free-space spreading + shadow fading, path loss via model
+    # Compute S_inc: path loss gives received power; convert to power density
     tx_w = 10 ** ((power_dbm - 30) / 10)
     pl_db = compute_path_loss(p, dist, freq_ghz)
     sf_db = lsp["SF_dB"]
-    s_inc = tx_w * 10 ** ((sf_db - pl_db) / 10)
+    p_rx = tx_w * 10 ** ((sf_db - pl_db) / 10)  # received power [W]
+    wavelength = 0.3 / freq_ghz
+    s_inc = p_rx * 4 * np.pi / wavelength**2  # power density [W/m²]
 
     path_powers = powers * s_inc
 
