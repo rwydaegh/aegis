@@ -35,13 +35,16 @@ export function useActiveSimulation(): ActiveSimulation {
   const singleRotation = useSimulationStore(s => s.bodyRotationY)
 
   if (mimoEnabled && focusedUser) {
+    // Use focused user's stats when available, fall back to single-user stats
+    // so the compliance panel remains visible before MIMO results are computed
+    const stats = focusedUser.stats ?? singleStats
     return {
       sabArray: focusedUser.sabArray,
       sabAveragedArray: null,
       sincArray: null,
       sab1cm2AveragedArray: null,
-      stats: focusedUser.stats,
-      compliance: focusedUser.stats?.compliance ?? null,
+      stats,
+      compliance: stats?.compliance ?? null,
       bodyGeometry: focusedUser.bodyGeometry,
       bodyOffset: focusedUser.position,
       bodyRotationY: focusedUser.orientation,
