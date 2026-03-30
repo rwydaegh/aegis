@@ -69,35 +69,44 @@ jobs:
           INDEX=$((RANDOM % ${#AREAS[@]}))
           echo "area=${AREAS[$INDEX]}" >> "$GITHUB_OUTPUT"
 
+      - name: Load prompt
+        id: load_prompt
+        run: |
+          {
+            echo "content<<PROMPT_EOF"
+            cat agent_hq/prompts/code-reviewer.md
+            echo ""
+            echo "---"
+            echo ""
+            cat agent_hq/context/aegis-overview.md
+            echo ""
+            echo "---"
+            echo ""
+            cat agent_hq/context/environment.md
+            echo ""
+            echo "---"
+            echo ""
+            cat agent_hq/context/how-to-ship.md
+            echo ""
+            echo "---"
+            echo ""
+            cat agent_hq/context/not-bugs.md
+            echo "PROMPT_EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Run code review agent
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          claude_args: '--model claude-opus-4-6'
+          claude_args: '--model claude-opus-4-6 --allowedTools "Edit,Read,Write,Glob,Grep,Bash(*),WebSearch,WebFetch,Agent"'
           prompt: |
-            You are an autonomous code reviewer for AEGIS, a physics-based electromagnetic
-            dosimetry engine. Your job is to find bugs by reading the code, not by using the
-            UI (a separate QA agent handles that). You run every 2 hours on a schedule.
-
-            NEVER ask questions. NEVER wait for input. Work autonomously.
-
-            ## What is AEGIS
-
-            AEGIS computes absorbed power density (Sab) on human body meshes from wireless
-            base station radiation. Core equation: Sab(r) = Sinc * T0 * ReLU[n_hat(r) * (-k_hat)].
-            Nine fidelity levels (0-8). Python physics stack (NumPy/SciPy, optional JAX).
-            Flask + React/Three.js viewer. Ray tracing via Sionna and DiffeRT.
+            ${{ steps.load_prompt.outputs.content }}
 
             ## Your focus this session
 
             **${{ steps.focus.outputs.area }}**
 
-            Start here but follow any thread that looks suspicious.
-
-            ## Recent changes (highest priority)
-
-            Recently changed code is the most likely to have bugs. Read the diffs carefully.
-
+            ## Recent changes
             ```
             ${{ steps.commits.outputs.log }}
             ```
@@ -106,90 +115,3 @@ jobs:
             ```
             ${{ steps.commits.outputs.diff }}
             ```
-
-            ## Setup
-
-            ```bash
-            python3 -m pip install -e '.[dev]' --quiet
-            ```
-
-            ## How to work
-
-            1. Install deps and run the existing test suite to establish a baseline:
-               ```bash
-               python3 -m pytest tests/ -m 'not slow' -x --tb=short -q
-               ```
-               If tests fail, that is a bug worth fixing.
-
-            2. Read the recently changed files in detail. For each change, ask:
-               - Could this produce wrong results for edge cases?
-               - Are there off-by-one errors, sign errors, or unit mismatches?
-               - Does this handle None/empty/NaN inputs correctly at API boundaries?
-               - Is there a code path that silently produces wrong results?
-               - Does this match the physics (check ../monograph/summary_paper.tex if unsure)?
-
-            3. Read around your focus area. Look for:
-               - Logic errors and incorrect conditionals
-               - Missing bounds checks on user-facing inputs
-               - Race conditions or state inconsistencies in the viewer
-               - Dead code paths that indicate incomplete refactors
-               - Inconsistencies between similar functions (copy-paste bugs)
-               - Array shape mismatches or broadcasting bugs
-               - Floating point issues (division by zero, log of zero, etc.)
-
-            4. If you find a real bug:
-               - Fix it
-               - Write or update a test that catches it
-               - Run the test suite to verify: `python3 -m pytest tests/ -m 'not slow' -x`
-               - Lint: `python3 -m ruff check src/ tests/ && python3 -m ruff format src/ tests/`
-
-            5. If you find multiple bugs, fix them all (separate commits per fix).
-
-            6. If you find something suspicious but are not sure it is a bug, file a GitHub
-               issue with labels "qa-bot,bug" instead of changing the code.
-               Always end the issue body with:
-               `---`
-               `*Filed by code-review-agent.yml · run [${{ github.run_id }}](https://github.com/rwydaegh/aegis/actions/runs/${{ github.run_id }})*`
-               The `qa-bot` label triggers another agent to fix it automatically.
-
-            ## After fixing bugs
-
-            Use the PR workflow. For each logical fix:
-
-            ```bash
-            git checkout -b claude/fix-SHORT-DESCRIPTION
-            git add <specific files>
-            git commit -m "Fix description of the bug"
-            git push -u origin claude/fix-SHORT-DESCRIPTION
-            gh pr create \
-              --title "Fix description of the bug" \
-              --body "## Summary
-            - What was wrong
-            - How it was fixed
-            - Test added/updated
-
-            ---
-            *Fixed by [`code-review-agent.yml`](https://github.com/rwydaegh/aegis/actions/workflows/code-review-agent.yml) · run [${{ github.run_id }}](https://github.com/rwydaegh/aegis/actions/runs/${{ github.run_id }})*" \
-              --base master
-            gh pr merge --squash --delete-branch
-            git checkout master
-            git pull origin master
-            ```
-
-            Create one PR per logical fix. Do not bundle unrelated fixes.
-
-            ## What NOT to do
-
-            - Do not change physics equations unless the code clearly contradicts the math
-            - Do not weaken assertions or tests to make them pass
-            - Do not add features (that is a different agent's job)
-            - Do not refactor working code for style
-            - Do not add docstrings, comments, or type annotations to code you did not change
-            - Do not create documentation files
-            - Do not use superpowers skills (they are for interactive sessions)
-            - Do not report JavaScript errors (Sentry catches those)
-
-            ## When you find nothing
-
-            If the code looks clean and tests pass, that is a fine outcome. Write a brief
-            summary of what you reviewed and finish. Not every run needs to produce a fix.
