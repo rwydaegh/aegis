@@ -88,15 +88,20 @@ export default function CompliancePanel() {
         )
       })}
 
-      {compliance.margin_db != null && (() => {
+      {visibleChecks.length > 0 && (() => {
         const powerDbm = useSimulationStore.getState().powerDbm
-        const maxPowerDbm = computeMaxPowerDbm(compliance.checks, powerDbm)
+        const maxPowerDbm = computeMaxPowerDbm(visibleChecks, powerDbm)
+        // Compute margin from visible checks only (consistent with PASS/FAIL badge)
+        const visibleMarginDb = visibleChecks.length > 0
+          ? Math.min(...visibleChecks.map(c => c.ratio > 0 ? 10 * Math.log10(1 / c.ratio) : Infinity))
+          : null
+        if (visibleMarginDb == null || !isFinite(visibleMarginDb)) return null
         return (
           <div style={{ borderTop: '1px solid #333', paddingTop: '8px', marginTop: '8px', color: '#888' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span>Margin</span>
-              <span style={{ color: compliance.margin_db >= 0 ? '#4ade80' : '#f87171' }}>
-                {compliance.margin_db > 0 ? '+' : ''}{compliance.margin_db.toFixed(1)} dB
+              <span style={{ color: visibleMarginDb >= 0 ? '#4ade80' : '#f87171' }}>
+                {visibleMarginDb > 0 ? '+' : ''}{visibleMarginDb.toFixed(1)} dB
               </span>
             </div>
             {maxPowerDbm != null && (
