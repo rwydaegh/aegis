@@ -143,22 +143,35 @@ def _make_rt_response(result, body, tissue, engine_kw, quantities, scenario, ext
     return resp, stats
 
 
-def _parse_mode_or_level(params: dict, default_level: int = 2) -> dict:
+_VALID_INCOHERENT_MODES = {"bound", "aggregate", "spatial"}
+
+
+def _parse_mode_or_level(params: dict, default_level: int = 2):
     """Extract mode+corrections or level from request params.
 
-    Returns a dict with either {'level': int} or {'mode': str, ...corrections}.
+    Returns (engine_kw, None) on success or (None, error_response) on failure.
     """
     mode = params.get("mode")
     if mode is not None:
+        if mode not in _VALID_INCOHERENT_MODES:
+            return None, (
+                jsonify({"error": f"mode must be one of: {', '.join(sorted(_VALID_INCOHERENT_MODES))}"}),
+                400,
+            )
         out: dict = {"mode": mode}
         if mode == "spatial":
             out["fresnel"] = bool(params.get("fresnel", True))
             out["polarisation"] = bool(params.get("polarisation", False))
             out["curvature"] = bool(params.get("curvature", False))
             out["diffraction"] = bool(params.get("diffraction", False))
-        return out
-    level = params.get("level", default_level)
-    return {"level": int(level)}
+        return out, None
+    try:
+        level = int(params.get("level", default_level))
+    except (TypeError, ValueError):
+        return None, (jsonify({"error": "level must be an integer"}), 400)
+    if level < 0 or level > 6:
+        return None, (jsonify({"error": "level must be between 0 and 6"}), 400)
+    return {"level": level}, None
 
 
 def _stats_label(engine_kwargs: dict) -> tuple:
@@ -629,7 +642,9 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         if not scene_path:
             return jsonify({"error": "Missing 'scene_path'"}), 400
 
-        engine_kw = _parse_mode_or_level(params)
+        engine_kw, err = _parse_mode_or_level(params)
+        if err:
+            return err
         power_dbm = params.get("power_dbm", DEFAULT_POWER_DBM)
         rt_cfg_parsed = _parse_rt_config(params)
 
@@ -793,7 +808,9 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         if not scene_path:
             return jsonify({"error": "Missing 'scene_path'"}), 400
 
-        engine_kw = _parse_mode_or_level(params)
+        engine_kw, err = _parse_mode_or_level(params)
+        if err:
+            return err
         power_dbm = params.get("power_dbm", DEFAULT_POWER_DBM)
         rt_cfg_parsed = _parse_rt_config(params)
 
@@ -940,7 +957,9 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         if err:
             return err
 
-        engine_kw = _parse_mode_or_level(params)
+        engine_kw, err = _parse_mode_or_level(params)
+        if err:
+            return err
         power_dbm = params.get("power_dbm", DEFAULT_POWER_DBM)
         rt_cfg_parsed = _parse_rt_config(params)
         max_order = rt_cfg_parsed["max_depth"]
