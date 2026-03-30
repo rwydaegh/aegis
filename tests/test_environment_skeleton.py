@@ -38,6 +38,55 @@ class TestSkeletonize:
             assert arc.height >= 0
 
 
+class TestBuildSkeletonGraph:
+    def test_unmatched_sink_skipped(self):
+        """Regression #162: unmatched skeleton sink should be skipped, not index -1."""
+        from aegis.environment.skeleton.api import _build_skeleton_graph
+        from aegis.environment.skeleton.events import Subtree
+        from aegis.environment.skeleton.geometry import _vec2
+
+        # Create a skeleton with a sink that matches neither an edge nor another source
+        arc = Subtree(source=_vec2(5.0, 5.0), height=1.0, sinks=[_vec2(99.0, 99.0)])
+        skeleton = [arc]
+
+        # Minimal edge and vertex setup
+        center = np.array([5.0, 5.0])
+        verts_out = [
+            np.array([0.0, 0.0, 0.0]),
+            np.array([10.0, 0.0, 0.0]),
+            np.array([10.0, 10.0, 0.0]),
+            np.array([0.0, 10.0, 0.0]),
+        ]
+        from aegis.environment.skeleton.geometry import Edge2
+
+        edges2d = []
+        fp2d = np.array([[0, 0], [10, 0], [10, 10], [0, 10]], dtype=np.float64)
+        for i in range(4):
+            p1 = fp2d[i] - center
+            p2 = fp2d[(i + 1) % 4] - center
+            e = Edge2(p1, p2)
+            e.i1 = i
+            e.i2 = (i + 1) % 4
+            edges2d.append(e)
+
+        faces, first_skel = _build_skeleton_graph(
+            skeleton,
+            edges2d,
+            verts_out,
+            center,
+            z_base=0.0,
+            tan_alpha=1.0,
+            first_vert_index=0,
+            num_poly_verts=4,
+            hole_infos=[],
+        )
+        # All face indices must be non-negative and in range
+        n = len(verts_out)
+        for face in faces:
+            for idx in face:
+                assert 0 <= idx < n, f"vertex index {idx} out of range [0, {n})"
+
+
 class TestPolygonize:
     def test_square_produces_faces(self):
         """Polygonize a square at height 5 should produce triangular roof faces."""

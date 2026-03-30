@@ -181,8 +181,9 @@ def _build_skeleton_graph(
                 s_index = edge_match[0].i1
             else:
                 skel_match = [idx for idx, a in enumerate(skeleton) if _vec_eq(a.source, sink)]
-                s_index = skel_match[0] + first_skel_index if skel_match else -1
-            graph.add_edge((a_index, s_index))
+                s_index = skel_match[0] + first_skel_index if skel_match else None
+            if s_index is not None:
+                graph.add_edge((a_index, s_index))
 
     # Build 2D verts lookup for angle computation
     max_idx = max(max(graph.g_dict), first_skel_index + len(skeleton) - 1) if graph.g_dict else 0
