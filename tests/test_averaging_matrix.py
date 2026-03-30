@@ -5,7 +5,10 @@ from __future__ import annotations
 import numpy as np
 from scipy import sparse
 
-from aegis.geometry.averaging import precompute_averaging_matrix
+from aegis.geometry.averaging import (
+    _precompute_numpy,
+    precompute_averaging_matrix,
+)
 
 
 def _make_flat_grid(n: int = 10, spacing: float = 0.005):
@@ -94,3 +97,44 @@ class TestPrecomputeAveragingMatrix:
         G_small = precompute_averaging_matrix(centroids, areas, target_area_m2=1e-4)
         G_large = precompute_averaging_matrix(centroids, areas, target_area_m2=4e-4)
         assert G_small.nnz < G_large.nnz
+
+    def test_numpy_path_matches_default(self):
+        """The pure-NumPy fallback must produce similar averages to the Numba path.
+
+        Exact matrix equality may differ at patch boundaries due to distance
+        tiebreaking, so we verify that the averaged output is close for random
+        input vectors and that both matrices are row-stochastic.
+        """
+        from scipy.spatial import cKDTree
+
+        centroids, areas = _make_flat_grid(n=8, spacing=0.004)
+        M = len(areas)
+        target = 4e-4
+        r_est = np.sqrt(target / np.pi) * 2.5
+        tree = cKDTree(centroids)
+        all_neighbors = tree.query_ball_point(centroids, r_est)
+
+        G_numpy = _precompute_numpy(centroids, areas, all_neighbors, target, M)
+        G_default = precompute_averaging_matrix(centroids, areas, target)
+
+        # Both must be row-stochastic
+        np.testing.assert_allclose(
+            np.array(G_numpy.sum(axis=1)).ravel(),
+            1.0,
+            atol=1e-12,
+        )
+        np.testing.assert_allclose(
+            np.array(G_default.sum(axis=1)).ravel(),
+            1.0,
+            atol=1e-12,
+        )
+
+        # Both must produce similar averaged output
+        rng = np.random.default_rng(42)
+        sab = rng.uniform(0, 10, size=M)
+        np.testing.assert_allclose(
+            G_numpy @ sab,
+            G_default @ sab,
+            rtol=0.05,
+            err_msg="NumPy fallback path diverges from default (Numba) path",
+        )
