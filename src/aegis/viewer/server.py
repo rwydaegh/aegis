@@ -388,9 +388,11 @@ def create_app(
             "default-src 'self'; "
             "script-src 'self' 'wasm-unsafe-eval' https://analytics.waves-ugent.be; "
             "style-src 'self' 'unsafe-inline'; "
-            "img-src 'self' data: blob:; "
+            "img-src 'self' data: blob: https://tile.googleapis.com https://*.gstatic.com; "
             "font-src 'self' data:; "
-            "connect-src 'self' https://analytics.waves-ugent.be https://*.sentry.io; "
+            "connect-src 'self' https://analytics.waves-ugent.be "
+            "https://*.sentry.io https://tile.googleapis.com "
+            "https://*.googleapis.com; "
             "worker-src 'self' blob:; "
             "frame-ancestors 'none'",
         )
