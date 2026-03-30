@@ -306,7 +306,8 @@ def compute_dosimetry(
 
         preset_dir = Path(cfg.get("dosimetry", {}).get("stochastic", {}).get("preset_dir", "data/channel_presets"))
         if not preset_dir.is_absolute():
-            preset_dir = Path(__file__).resolve().parents[3] / preset_dir
+            data_root = Path(os.environ.get("AEGIS_DATA_DIR", str(Path(__file__).resolve().parents[3] / "data")))
+            preset_dir = data_root / "channel_presets"
         preset = load_preset(stochastic["preset"], preset_dir)
         paths = generate_channel(
             preset["params"],

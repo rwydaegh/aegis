@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 
 import numpy as np
 from flask import Flask, Response, jsonify, request
@@ -1091,7 +1092,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         stoch_cfg = cfg["dosimetry"].get("stochastic", {})
         preset_dir = Path(stoch_cfg.get("preset_dir", "data/channel_presets"))
         if not preset_dir.is_absolute():
-            preset_dir = Path(__file__).resolve().parents[4] / preset_dir
+            data_root = Path(os.environ.get("AEGIS_DATA_DIR", str(Path(__file__).resolve().parents[4] / "data")))
+            preset_dir = data_root / "channel_presets"
         featured = stoch_cfg.get("featured_presets", [])
         all_names = list_presets(preset_dir)
         presets = []
