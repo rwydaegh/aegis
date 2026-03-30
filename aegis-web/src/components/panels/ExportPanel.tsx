@@ -16,6 +16,7 @@ function downloadBlob(blob: Blob, filename: string) {
 
 export default function ExportPanel() {
   const stats = useSimulationStore(s => s.stats)
+  const compliance = useSimulationStore(s => s.compliance)
   const sabArray = useSimulationStore(s => s.sabArray)
 
   const btnClass = "w-full px-3 py-1.5 rounded text-xs font-medium bg-muted hover:bg-muted/80 text-foreground disabled:opacity-40"
@@ -105,7 +106,7 @@ export default function ExportPanel() {
       <button className={btnClass} onClick={handleExportJson} disabled={!stats}>
         Export stats (JSON)
       </button>
-      <button className={btnClass} onClick={handleExportReport} disabled={!stats}>
+      <button className={btnClass} onClick={handleExportReport} disabled={!stats || !compliance}>
         Compliance report (TXT)
       </button>
       <hr className="border-border" />
