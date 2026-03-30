@@ -14,7 +14,7 @@ export default function UserBadges() {
   if (!allComputed) {
     return (
       <Badge variant="outline" className="text-muted-foreground border-muted-foreground/30 font-mono text-xs">
-        {userList.length} users
+        {userList.length} {userList.length === 1 ? 'user' : 'users'}
       </Badge>
     )
   }
@@ -48,7 +48,7 @@ export default function UserBadges() {
         </div>
       </TooltipTrigger>
       <TooltipContent>
-        {compliant.length} of {computed.length} users compliant
+        {compliant.length} of {computed.length} {computed.length === 1 ? 'user' : 'users'} compliant
       </TooltipContent>
     </Tooltip>
   )
