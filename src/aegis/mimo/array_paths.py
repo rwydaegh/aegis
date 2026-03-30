@@ -64,16 +64,14 @@ def expand_paths_to_array(
     # Phase advance for all elements at once: (N, M)
     phase_all = np.exp(1j * k0 * (center_paths.k_hat @ offsets.T))
 
-    # Build psi for all N*M paths: broadcast psi_gained (N,1,3) * phase (N,M,1) -> (N,M,3)
-    psi_all = (psi_gained[:, np.newaxis, :] * phase_all[:, :, np.newaxis]).reshape(N * M, 3)
-
     # Tile shared arrays: repeat each path M times (element-major ordering)
+    # Layout: [elem0_path0, elem0_path1, ..., elem0_pathN, elem1_path0, ...]
     k_hat_all = np.tile(center_paths.k_hat, (M, 1)) if M > 1 else center_paths.k_hat.copy()
     delay_all = np.tile(center_paths.delay, M) if M > 1 else center_paths.delay.copy()
     is_los_all = np.tile(center_paths.is_los, M) if M > 1 else center_paths.is_los.copy()
 
-    # Reorder psi to match tile ordering (tile repeats block-wise: [all N for elem 0, all N for elem 1, ...])
-    # Our broadcast gives (N, M, 3), but tile gives [elem0*N, elem1*N, ...], so transpose before reshape
+    # Build psi for all N*M paths in element-major order to match tile layout
+    # broadcast (N,1,3) * (N,M,1) -> (N,M,3), then transpose to (M,N,3) -> reshape
     psi_all = (psi_gained[:, np.newaxis, :] * phase_all[:, :, np.newaxis]).transpose(1, 0, 2).reshape(N * M, 3)
 
     # Element indices: [0,0,...,0, 1,1,...,1, ..., M-1,M-1,...,M-1]
