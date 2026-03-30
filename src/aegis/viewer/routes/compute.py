@@ -23,6 +23,14 @@ _ERR_VEC3_LEN = "must be a 3-element array [x, y, z]"
 _ERR_VEC3_TYPE = "must be a 3-element numeric array"
 _ERR_INVALID_JSON = "Invalid or missing JSON body"
 _ERR_ROTATION_TYPE = "body_rotation_y must be a number"
+_ERR_NO_EXPORT_DATA = "No dosimetry result available. Run a compute first."
+
+
+def _cache_dosimetry_for_export(app: Flask, result, body, stats: dict) -> None:
+    """Cache the last dosimetry result and body for CSV export."""
+    app.config["_last_dosimetry_result"] = result
+    app.config["_last_dosimetry_body"] = body
+    app.config["_last_compliance_result"] = stats.get("compliance")
 
 
 def _inject_curvature_H(engine_kw: dict, body) -> dict:
@@ -485,8 +493,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
         t_stats = _time.perf_counter()
 
-        # Store compliance result for /api/compliance/summary export
-        app.config["_last_compliance_result"] = stats.get("compliance")
+        # Cache result and body for export and compliance summary
+        _cache_dosimetry_for_export(app, result, res_body, stats)
 
         # Inject route-level timings
         timings = extra.get("timings", {})
@@ -758,7 +766,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             extra,
             timing_pairs,
         )
-        app.config["_last_compliance_result"] = stats.get("compliance")
+        _cache_dosimetry_for_export(app, result, body, stats)
         return resp
 
     @app.route("/api/compute/sionna-rt", methods=["POST"])
@@ -896,7 +904,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             extra,
             timing_pairs,
         )
-        app.config["_last_compliance_result"] = stats.get("compliance")
+        _cache_dosimetry_for_export(app, result, body, stats)
         return resp
 
     @app.route("/api/compute/voxel-rt", methods=["POST"])
@@ -1068,7 +1076,76 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             extra,
             timing_pairs,
         )
-        app.config["_last_compliance_result"] = stats.get("compliance")
+        _cache_dosimetry_for_export(app, result, body, stats)
+        return resp
+
+    @app.route("/api/export/dosimetry-csv", methods=["GET"])
+    def export_dosimetry_csv():
+        """Export last dosimetry result as a comprehensive CSV.
+
+        Includes per-triangle centroids, areas, normals, and all computed
+        quantities (sab, sab_4cm2, sinc, sinc_4cm2, sab_1cm2).
+        """
+        import io
+
+        result = app.config.get("_last_dosimetry_result")
+        body = app.config.get("_last_dosimetry_body")
+        if result is None or body is None:
+            return jsonify({"error": _ERR_NO_EXPORT_DATA}), 404
+
+        out = io.StringIO()
+
+        # Header
+        columns = ["cx", "cy", "cz", "area_m2", "nx", "ny", "nz", "sab_w_m2"]
+        has_sab_avg = result.sab_averaged is not None
+        has_sinc = result.sinc is not None
+        has_sinc_avg = result.sinc_averaged is not None
+        has_sab_1cm2 = result.sab_1cm2_averaged is not None
+        if has_sab_avg:
+            columns.append("sab_4cm2_w_m2")
+        if has_sinc:
+            columns.append("sinc_w_m2")
+        if has_sinc_avg:
+            columns.append("sinc_4cm2_w_m2")
+        if has_sab_1cm2:
+            columns.append("sab_1cm2_w_m2")
+
+        out.write(",".join(columns) + "\n")
+
+        # Data rows
+        centroids = body.centroids
+        areas = body.areas
+        normals = body.normals
+        sab = result.sab
+        sab_avg = result.sab_averaged
+        sinc = result.sinc
+        sinc_avg = result.sinc_averaged
+        sab_1cm2 = result.sab_1cm2_averaged
+
+        for i in range(body.n_triangles):
+            row = [
+                f"{centroids[i, 0]:.6f}",
+                f"{centroids[i, 1]:.6f}",
+                f"{centroids[i, 2]:.6f}",
+                f"{areas[i]:.8e}",
+                f"{normals[i, 0]:.6f}",
+                f"{normals[i, 1]:.6f}",
+                f"{normals[i, 2]:.6f}",
+                f"{sab[i]:.8e}",
+            ]
+            if has_sab_avg:
+                row.append(f"{sab_avg[i]:.8e}")
+            if has_sinc:
+                row.append(f"{sinc[i]:.8e}")
+            if has_sinc_avg:
+                row.append(f"{sinc_avg[i]:.8e}")
+            if has_sab_1cm2:
+                row.append(f"{sab_1cm2[i]:.8e}")
+            out.write(",".join(row) + "\n")
+
+        csv_bytes = out.getvalue().encode("utf-8")
+        resp = Response(csv_bytes, mimetype="text/csv")
+        resp.headers["Content-Disposition"] = "attachment; filename=aegis_dosimetry.csv"
         return resp
 
     @app.route("/api/compliance/report", methods=["GET"])

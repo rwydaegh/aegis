@@ -1,7 +1,6 @@
 import * as Sentry from '@sentry/react'
 import { useSimulationStore } from '@/stores/simulation'
-import { useSceneStore } from '@/stores/scene'
-import { fetchComplianceSummary, exportConfig } from '@/api/client'
+import { fetchComplianceSummary, fetchDosimetryCsv, exportConfig } from '@/api/client'
 import { useNotificationStore } from '@/stores/notifications'
 import { collectState } from '@/lib/shareLink'
 
@@ -21,25 +20,15 @@ export default function ExportPanel() {
 
   const btnClass = "w-full px-3 py-1.5 rounded text-xs font-medium bg-muted hover:bg-muted/80 text-foreground disabled:opacity-40"
 
-  const handleExportCsv = () => {
+  const handleExportCsv = async () => {
     if (!sabArray) return
-    const geometry = useSceneStore.getState().bodyGeometry
-    const pos = geometry?.getAttribute('position')
-    const lines = ['x,y,z,sab_w_m2']
-
-    for (let i = 0; i < sabArray.length; i++) {
-      if (pos) {
-        const v0 = i * 3
-        const cx = (pos.getX(v0) + pos.getX(v0 + 1) + pos.getX(v0 + 2)) / 3
-        const cy = (pos.getY(v0) + pos.getY(v0 + 1) + pos.getY(v0 + 2)) / 3
-        const cz = (pos.getZ(v0) + pos.getZ(v0 + 1) + pos.getZ(v0 + 2)) / 3
-        lines.push(`${cx.toFixed(6)},${cy.toFixed(6)},${cz.toFixed(6)},${sabArray[i]}`)
-      } else {
-        lines.push(`,,,${sabArray[i]}`)
-      }
+    try {
+      const blob = await fetchDosimetryCsv()
+      downloadBlob(blob, 'aegis_dosimetry.csv')
+    } catch (err) {
+      Sentry.captureException(err)
+      useNotificationStore.getState().addNotification('error', 'Failed to export dosimetry CSV')
     }
-
-    downloadBlob(new Blob([lines.join('\n')], { type: 'text/csv' }), 'aegis_sab.csv')
   }
 
   const handleExportJson = () => {
@@ -101,7 +90,7 @@ export default function ExportPanel() {
         Screenshot (PNG)
       </button>
       <button className={btnClass} onClick={handleExportCsv} disabled={!sabArray}>
-        Export Sab (CSV)
+        Export dosimetry (CSV)
       </button>
       <button className={btnClass} onClick={handleExportJson} disabled={!stats}>
         Export stats (JSON)
