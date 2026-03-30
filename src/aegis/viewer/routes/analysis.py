@@ -53,7 +53,18 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         """Human-readable compliance summary text from last compute."""
         last = app.config.get("_last_compliance_result")
         if last is None:
-            return jsonify({"error": "No compliance result available. Run a compute first."}), 400
+            return jsonify(
+                {
+                    "text": (
+                        "ICNIRP 2020 Compliance Summary\n"
+                        "=" * 40 + "\n\n"
+                        "Compliance not evaluated.\n"
+                        "Frequency outside ICNIRP 2020 absorbed power density range "
+                        "(applicable from 6 GHz to 300 GHz).\n\n"
+                        "Run a simulation at a frequency >= 6 GHz to generate a compliance report."
+                    )
+                }
+            )
 
         tx_dbm = request.args.get("tx_power_dbm", type=float)
 
