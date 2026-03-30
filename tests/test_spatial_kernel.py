@@ -285,3 +285,25 @@ class TestValidation:
                 freq_hz,
                 curvature=True,
             )
+
+    def test_curvature_low_freq_finite(self, setup):
+        """Curvature correction must stay finite at very low frequencies.
+
+        Regression: spatial_kernel was missing the k floor (1e-6) that
+        level5_curvature and level6_diffraction both apply, causing
+        H/k to blow up when freq_hz is small.
+        """
+        body, k_hat, power, n_tilde, T0, _, curvature_H = setup
+        from aegis.kernels.spatial import spatial_kernel
+
+        sab = spatial_kernel(
+            body.normals,
+            k_hat,
+            power,
+            n_tilde,
+            T0,
+            1.0,  # 1 Hz: k ≈ 2e-8, would blow up without floor
+            curvature=True,
+            curvature_H=curvature_H,
+        )
+        assert np.all(np.isfinite(sab)), "sab must be finite at very low frequencies"

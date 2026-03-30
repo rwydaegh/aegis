@@ -87,7 +87,7 @@ def spatial_kernel(
 
     # Curvature correction: additive perturbative term
     if curvature:
-        k = 2.0 * xp.pi * freq_hz / C_0
+        k = xp.maximum(2.0 * xp.pi * freq_hz / C_0, 1e-6)
         H_for_curv = xp.maximum(curvature_H, 0.0) if not diffraction else H_safe
         g_sq = g**2
         sab_curvature = T0 * ((H_for_curv / k)[:, None] * g_sq) @ power
