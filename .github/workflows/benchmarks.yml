@@ -25,4 +25,4 @@ jobs:
         uses: CodSpeedHQ/action@v4
         with:
           mode: walltime
-          run: uv run pytest benchmarks/ --codspeed
+          run: uv run pytest benchmarks/ --codspeed -n 0
