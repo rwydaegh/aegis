@@ -90,7 +90,7 @@ export default function CompliancePanel() {
 
       {compliance.margin_db != null && (() => {
         const powerDbm = useSimulationStore.getState().powerDbm
-        const maxPowerDbm = computeMaxPowerDbm(visibleChecks, powerDbm)
+        const maxPowerDbm = computeMaxPowerDbm(compliance.checks, powerDbm)
         return (
           <div style={{ borderTop: '1px solid #333', paddingTop: '8px', marginTop: '8px', color: '#888' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
