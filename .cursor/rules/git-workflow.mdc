@@ -1,0 +1,96 @@
+---
+description: Git commit, push, branch, and release workflow
+---
+
+# Git Workflow (Cursor)
+
+This is a vibe-coded project. Claude is often the only one making changes in a session, so committing and pushing is Claude's responsibility. Treat it as a reflex, not an afterthought.
+
+## When to commit
+
+- After completing a logical unit of work (new feature, bug fix, test suite, refactor).
+- Before switching to a different area of the codebase.
+- Before any risky or experimental change, so there is a clean rollback point.
+- At the end of every session, commit any uncommitted work. Do not leave the repo dirty.
+- Do NOT commit after every tiny edit. One commit per logical change, not per file touched.
+
+## How to commit
+
+- Run `py -3.12 -m ruff check src/ tests/` and `py -3.12 -m ruff format --check src/ tests/` before committing. Fix issues first.
+- Optionally run `py -3.12 -m pytest tests/ -m "not slow" -x` locally. CI runs `pytest tests/` on every push and PR.
+- Stage specific files, not `git add -A`. Review what you are committing.
+- Write commit messages in imperative mood ("Add level 3 kernel", not "Added level 3 kernel").
+- First line under 72 chars. Add a blank line and body for non-trivial changes.
+- No fixup/wip commits on master. Every commit on master should be a clean, passing state.
+
+## When to push
+
+- After every commit, push to origin/master. CI runs a slim check (lint + single test job) via deploy.yml on push. The full test matrix (Linux/Windows x 3.11/3.12/3.13) only runs on tag pushes via release.yml. No branch protection, so pushing is safe.
+- If the push fails (someone else pushed, or network issues), pull with rebase first: `git pull --rebase origin master`.
+
+## Branching
+
+- For small changes, commit and push directly to master.
+- For large changes (new features, multi-file refactors, anything touching 5+ files), use the PR workflow below.
+- Branch naming: `feature/short-description`, `fix/short-description`, `refactor/short-description`.
+
+## PR workflow for large changes
+
+Use this instead of pushing directly to master when the change is significant. It creates a numbered PR on GitHub with a diff view, then squash-merges immediately.
+
+```bash
+# 1. Create and switch to a feature branch
+git checkout -b feature/short-description
+
+# 2. Commit your work (one or more commits)
+git add <files>
+git commit -m "Add the thing"
+
+# 3. Push the branch
+git push -u origin feature/short-description
+
+# 4. Create the PR and squash-merge it
+gh pr create --title "Add the thing" --body "## Summary\n- what changed\n- why" --base master
+gh pr merge --squash --delete-branch
+
+# 5. Return to master and pull
+git checkout master
+git pull origin master
+```
+
+GitHub will auto-delete the remote branch after merge (repo setting: delete-branch-on-merge is enabled). Clean up the local branch with `git branch -d feature/short-description`.
+
+**Always squash merge.** This collapses all intermediate commits into one clean commit on master. The full commit history is preserved on the PR page. Merge commits are disabled on this repo.
+
+**PR title format:** The squash commit title is the PR title with `(#N)` appended automatically by GitHub. Ensure the PR title is a clean, imperative summary (e.g. "Add base station integration").
+
+When to use: new feature, new kernel, new module, large refactor, anything the user would want a PR diff view for. When in doubt, ask.
+
+## Versioning
+
+Version is automatic via `hatch-vcs` (derived from git tags). Claude is responsible for tagging releases.
+
+### When to tag
+
+- **Patch** (`v0.3.0` -> `v0.3.1`): bug fix, test fix, doc fix, small correction.
+- **Minor** (`v0.3.x` -> `v0.4.0`): new feature, new kernel, new module, meaningful capability added.
+- **Major** (`v0.x` -> `v1.0.0`): only when the user says so (paper submission, stable API).
+
+Tag after merging or committing work that fits one of these categories. Do not tag after pure refactors, CI changes, or config tweaks unless they fix a bug.
+
+### How to tag
+
+```bash
+git tag v0.X.Y
+git push origin master --tags
+```
+
+The `release.yml` workflow handles the rest: runs the full test matrix (Linux/Windows x 3.11/3.12/3.13) and creates a GitHub release with auto-generated notes. Do NOT run `gh release create` manually as it would duplicate the release.
+
+### Between tags
+
+Dev installs automatically show `0.X.Y.dev3+g<hash>`. No manual version bumps needed.
+
+## What not to commit
+
+No `.env`/credentials, no large binaries (STL), no generated files (`site/`, `__pycache__/`, `_version.py`, coverage). All covered by `.gitignore`.

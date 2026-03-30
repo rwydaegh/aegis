@@ -5,31 +5,77 @@ alwaysApply: true
 
 # AEGIS (Cursor)
 
-Read `CLAUDE.md` in the repo root for build commands, architecture, and data paths.
+## What this project is
 
-## Python
+AEGIS computes absorbed power density on human bodies in wireless environments. The core equation is `Sab(r) = Sinc * T0 * ReLU[n_hat(r) * (-k_hat)]`. Nine fidelity levels (0-8), from O(1) bounds to coherent MIMO beamforming.
 
-Use **Python 3.12** for this project: `py -3.12` on Windows, or the path called out in `CLAUDE.md`.
 
-Before committing Python changes: `py -3.12 -m ruff check src/ tests/` and `py -3.12 -m ruff format src/ tests/`. Optionally run `py -3.12 -m pytest tests/ -m "not slow" -x` (two workers by default in `pyproject.toml`; use `pytest -n 0` for one process). CI runs `pytest tests/` on push and PR. Pre-commit does not run pytest.
+## Build, test, lint
 
-## Shipping to GitHub
+AEGIS requires Python 3.12. Use a virtualenv or ensure `python` resolves to 3.12. On Windows with multiple versions, `python` also works.
 
-When asked to ship or open a PR:
+```bash
+pip install -e ".[dev]"                              # install with dev deps (uses 3.12)
+py -3.12 -m pytest tests/ -m "not slow" -x           # excludes @slow; still minutes locally (coherent, Hypothesis, JAX)
+py -3.12 -m pytest tests/                             # full suite including @slow mesh/golden
+py -3.12 -m pytest tests/test_fresnel.py::test_name   # single test
+py -3.12 -m ruff check src/ tests/                    # lint
+py -3.12 -m ruff format src/ tests/                   # format
+py -3.12 -m mkdocs serve                              # local docs preview
+py -3.12 -m aegis.viewer --location "Ghent, Belgium"   # launch 3D viewer
+py -3.12 -m aegis.viewer --config configs/my.json      # custom config JSON
+py -3.12 -m aegis.viewer --scenario open_ground        # named scenario from config
+cd aegis-web && npm run dev                            # React frontend dev server (localhost:5173)
+cd aegis-web && npm run build                          # production build -> aegis-web/dist/
+cd aegis-web && npm run build:copy                    # copy dist -> src/aegis/viewer/static (Flask serves /)
+```
 
-1. Run the same pre-flight checks as above.
-2. Create a **GitHub issue** with labels (`gh issue create --label ...`).
-3. Branch from `master`: `feature/...`, `fix/...`, or `docs/...`.
-4. Commit a logical change (imperative subject, optional body). Reference the issue: `Closes #N` when appropriate.
-5. Push and open a PR with `gh pr create` and matching labels.
-6. Prefer **squash merge** and delete the branch when done (`gh pr merge --squash --delete-branch`).
 
-Do not stage secrets (`.env`), large binaries, or paths ignored by `.gitignore`. Use `git add` on specific paths, not blind `git add -A`.
+## Architecture
 
-## Documentation
+The data flow is: ray tracer -> `PropagationPaths` -> `DosimetryEngine.compute(body, paths, level)` -> `DosimetryResult`. Incoherent levels (0-6) use `paths.power`. Coherent levels (7-8) use `paths.psi` directly.
 
-User-facing docs live under `docs/` and are built with MkDocs (`py -3.12 -m mkdocs serve`). Follow sentence case headings and the style in `.claude/rules/docs-style.md` when editing documentation.
+- `src/aegis/engine.py` - main entry point, dispatches to kernel by level
+- `src/aegis/paths.py` - PropagationPaths (k_hat, psi, element_index). Use `.from_powers()` for incoherent-only paths.
+- `src/aegis/result.py` - DosimetryResult (sab, p_abs, sar_wb, Q, rho)
+- `src/aegis/precoder.py` - Precoder dataclass for MIMO beamforming vector x
+- `src/aegis/tissue/` - tissue EM properties, Fresnel coefficients, Cole-Cole model
+- `src/aegis/geometry/` - body mesh, ambient occlusion, directivity, spatial averaging
+- `src/aegis/kernels/` - fidelity levels 0-8, each file is one level
+- `src/aegis/coherent/` - field channel, exposure operator Q, ECBF solver
+- `src/aegis/compliance/` - ICNIRP 2020 limits
+- `src/aegis/integration/` - DiffeRT ray tracer bridge (requires `pip install aegis[rt]`)
+- `src/aegis/viewer/` - Flask backend: REST API (`routes/`), serves `static/` React build, config via `config.py`
+- `aegis-web/` - React + Three.js frontend (Vite, R3F, Zustand). State in Zustand store, 3D scene in `components/scene/`, HUD overlay in `components/hud/`. Dev: `npm run dev` (localhost:5173), proxies `/api` to Flask on port 5000
+- `src/aegis/viz/` - matplotlib/plotly dashboards and comparison plots
+
+
+## Data
+
+Phantom meshes (STL) and the IT'IS tissue database live in `data/` inside the repo. Available phantoms: thelonious, duke, eartha, ella. Override with `AEGIS_DATA_DIR` env var. Tests needing mesh data are marked `@pytest.mark.slow` and skipped if data is absent.
+
+
+## Testing rules
+
+- Pre-commit runs ruff, codespell, trailing-whitespace, end-of-file-fixer, YAML/TOML/JSON validators, and large-file checks. Not pytest. CI runs a slim check (lint + ubuntu/3.12) on push and PR. Full matrix (Linux/Windows x 3.11-3.13) runs only on tag push via `release.yml`. Locally, `pytest -m "not slow"` skips slow-marked tests. Default pytest uses two workers (`-n 2` in `pyproject.toml`). Use `pytest -n 0` for a single process. Avoid `pytest -n auto` on typical laptops (memory scales with CPU count).
+- The Mie regression test is the CI canary. If it passes, physics are correct.
+- Every monograph table has a golden test in `tests/golden/`.
+- Property tests (Hypothesis) check physics invariants: Sab >= 0, energy conservation, ReLU bound.
+- E2E tests run the full pipeline: mesh + tissue + paths -> result.
+- Never weaken assertions to make tests pass. Fix the code, not the test.
+
+
+## Style
+
+- NumPy + SciPy core, optional JAX backend (`_array_backend.py`). Frontend is TypeScript/React.
+- Type annotations on public API. No docstrings on private helpers unless non-obvious.
+- No em dashes, no semicolons. Sentence case for headings.
+- Writing tells to avoid: `.claude/ai_writing_tells.md`. Full doc style: `.claude/rules/docs-style.md`.
+- Git workflow: `.claude/rules/git-workflow.md`. Release cadence enforced by PreToolUse hook on git commit/push.
+
 
 ## Parity with Claude Code
 
-Rules under `.claude/rules/` and skills under `.claude/skills/` are the canonical automation for Claude Code. This file summarizes what Cursor agents should do the same; path-scoped detail is in sibling `.mdc` rules where useful.
+Rules under `.claude/rules/` and skills under `.claude/skills/` are the canonical
+automation for Claude Code. This file summarizes what Cursor agents should do the
+same. Path-scoped detail is in sibling `.mdc` rules where useful.
