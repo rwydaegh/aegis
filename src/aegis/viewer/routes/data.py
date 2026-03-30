@@ -111,7 +111,8 @@ def _handle_body(cache):
             resp = Response(data, mimetype="application/octet-stream")
             resp.headers["X-Meta"] = json.dumps(meta)
             return resp
-        return jsonify({"error": f"Body '{name}' not found"}), 404
+        available = sorted(bodies.keys()) if bodies else []
+        return jsonify({"error": f"Body '{name}' not found", "available": available}), 404
 
     resp = Response(entry["binary"], mimetype="application/octet-stream")
     resp.headers["X-Meta"] = json.dumps(entry["meta"])

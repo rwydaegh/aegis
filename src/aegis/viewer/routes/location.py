@@ -32,10 +32,12 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             return jsonify({"error": "radius must be integer, voxel_size must be number"}), 400
         force = request.args.get("force", "false").lower() == "true"
 
-        if radius <= 0:
-            return jsonify({"error": "radius must be positive"}), 400
-        if voxel_size <= 0:
-            return jsonify({"error": "voxel_size must be positive"}), 400
+        if radius <= 0 or radius > 500:
+            return jsonify({"error": "radius must be between 1 and 500 meters"}), 400
+        if voxel_size <= 0 or voxel_size > 10:
+            return jsonify({"error": "voxel_size must be between 0 (exclusive) and 10 meters"}), 400
+        if voxel_size < 0.1:
+            return jsonify({"error": "voxel_size below 0.1m would produce too many voxels"}), 400
 
         # Convert voxel size (meters) to resolution (voxels per dimension).
         # The voxelizer divides the longest bounding-box dimension by resolution,

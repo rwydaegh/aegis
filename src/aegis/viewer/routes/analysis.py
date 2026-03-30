@@ -24,6 +24,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         freq_hz = request.args.get("freq_hz", type=float)
         if freq_hz is None:
             return jsonify({"error": "freq_hz is required"}), 400
+        if freq_hz <= 0:
+            return jsonify({"error": "freq_hz must be positive"}), 400
 
         scenario_str = request.args.get("scenario", "general_public")
         scenario = ExposureScenario.OCCUPATIONAL if scenario_str == "occupational" else ExposureScenario.GENERAL_PUBLIC
@@ -108,6 +110,11 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         skin_model = request.args.get("skin_model", "itis")
         n = min(max(n, 10), 1000)
 
+        if f_min <= 0 or f_max <= 0:
+            return jsonify({"error": "f_min and f_max must be positive"}), 400
+        if f_min >= f_max:
+            return jsonify({"error": "f_min must be less than f_max"}), 400
+
         try:
             freqs = np.linspace(f_min, f_max, n)
             result = get_tissue_spectrum(tissue, freqs)
@@ -180,6 +187,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
         if sab_4cm2 is None or freq_hz is None or ref_power_dbm is None:
             return jsonify({"error": "sab_4cm2, freq_hz, and ref_power_dbm are required"}), 400
+        if freq_hz <= 0:
+            return jsonify({"error": "freq_hz must be positive"}), 400
 
         scenario_str = request.args.get("scenario", "general_public")
         scenario = ExposureScenario.OCCUPATIONAL if scenario_str == "occupational" else ExposureScenario.GENERAL_PUBLIC
@@ -189,6 +198,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         sinc_wb = request.args.get("sinc_wb", type=float)
         sar_wb = request.args.get("sar_wb", type=float)
         n_points = request.args.get("n_points", 50, type=int)
+        n_points = min(max(n_points, 10), 500)
 
         ref_power_w = 10.0 ** ((ref_power_dbm - 30) / 10.0)
 
@@ -207,7 +217,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             return jsonify({"error": str(e)}), 400
 
         p_max_w = sweep["p_max_compliant_w"]
-        p_max_dbm = 10.0 * np.log10(p_max_w * 1e3) if p_max_w < float("inf") else None
+        p_max_dbm = 10.0 * np.log10(p_max_w * 1e3) if 0 < p_max_w < float("inf") else None
 
         return jsonify(
             {
@@ -239,6 +249,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         sab_1cm2 = request.args.get("sab_1cm2", type=float)
         sar_wb = request.args.get("sar_wb", type=float)
         n_points = request.args.get("n_points", 50, type=int)
+        n_points = min(max(n_points, 10), 500)
 
         try:
             sweep = frequency_sweep(

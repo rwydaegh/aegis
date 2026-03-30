@@ -23,6 +23,16 @@ def _handle_environment_osm(cache: dict, cache_lock) -> Response:
     radius = body.get("radius", 200)
     if lat is None or lon is None:
         return jsonify({"error": "lat and lon are required"}), 400
+    try:
+        lat, lon, radius = float(lat), float(lon), float(radius)
+    except (TypeError, ValueError):
+        return jsonify({"error": "lat, lon, and radius must be numbers"}), 400
+    if not (-90 <= lat <= 90):
+        return jsonify({"error": "lat must be between -90 and 90"}), 400
+    if not (-180 <= lon <= 180):
+        return jsonify({"error": "lon must be between -180 and 180"}), 400
+    if radius <= 0 or radius > 5000:
+        return jsonify({"error": "radius must be between 0 and 5000 meters"}), 400
 
     cfg_env = cache.get("config", {}).get("environment", {})
     osm_cfg = cfg_env.get("osm", {})
@@ -72,6 +82,16 @@ def _handle_environment_3dtiles(cache: dict, cache_lock) -> Response:
     radius = body.get("radius", 200)
     if lat is None or lon is None:
         return jsonify({"error": "lat and lon are required"}), 400
+    try:
+        lat, lon, radius = float(lat), float(lon), float(radius)
+    except (TypeError, ValueError):
+        return jsonify({"error": "lat, lon, and radius must be numbers"}), 400
+    if not (-90 <= lat <= 90):
+        return jsonify({"error": "lat must be between -90 and 90"}), 400
+    if not (-180 <= lon <= 180):
+        return jsonify({"error": "lon must be between -180 and 180"}), 400
+    if radius <= 0 or radius > 5000:
+        return jsonify({"error": "radius must be between 0 and 5000 meters"}), 400
 
     api_key = body.get("api_key")
     if not api_key:
