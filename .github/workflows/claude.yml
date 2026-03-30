@@ -40,7 +40,7 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          claude_args: '--model claude-opus-4-6'
+          claude_args: '--model claude-opus-4-6 --allowedTools "Edit,Read,Write,Glob,Grep,Bash(*),WebSearch,WebFetch,Agent"'
 
   # Triggered when a qa-bot issue is opened or labeled
   qa-fix:
@@ -63,19 +63,33 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.PAT_TOKEN || github.token }}
 
+      - name: Load prompt
+        id: load_prompt
+        run: |
+          {
+            echo 'content<<PROMPT_EOF'
+            cat agent_hq/prompts/qa-fixer.md
+            echo ''
+            cat agent_hq/context/aegis-overview.md
+            echo ''
+            cat agent_hq/context/environment.md
+            echo ''
+            cat agent_hq/context/how-to-ship.md
+            echo 'PROMPT_EOF'
+          } >> "$GITHUB_OUTPUT"
+
       - name: Run Claude Code on QA issue
         uses: anthropics/claude-code-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || github.token }}
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          claude_args: '--model claude-opus-4-6'
+          claude_args: '--model claude-opus-4-6 --allowedTools "Edit,Read,Write,Glob,Grep,Bash(*),WebSearch,WebFetch,Agent"'
           allowed_bots: "claude[bot]"
           include_comments_by_actor: "claude[bot]"
           track_progress: true
           prompt: |
-            Fix this bug. The issue body has reproduction steps from the automated QA agent.
-            There are no Sentry breadcrumbs -- rely on the description and steps to reproduce.
+            ${{ steps.load_prompt.outputs.content }}
 
             After committing and pushing your fix, you MUST run `gh pr create` yourself to open
             a pull request, then immediately run `gh pr merge --squash --delete-branch` to merge it.
@@ -103,17 +117,31 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.PAT_TOKEN || github.token }}
 
+      - name: Load prompt
+        id: load_prompt
+        run: |
+          {
+            echo 'content<<PROMPT_EOF'
+            cat agent_hq/prompts/sentry-fixer.md
+            echo ''
+            cat agent_hq/context/aegis-overview.md
+            echo ''
+            cat agent_hq/context/environment.md
+            echo ''
+            cat agent_hq/context/how-to-ship.md
+            echo 'PROMPT_EOF'
+          } >> "$GITHUB_OUTPUT"
+
       - name: Run Claude Code on Sentry issue
         uses: anthropics/claude-code-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || github.token }}
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          claude_args: '--model claude-opus-4-6'
+          claude_args: '--model claude-opus-4-6 --allowedTools "Edit,Read,Write,Glob,Grep,Bash(*),WebSearch,WebFetch,Agent"'
           track_progress: true
           prompt: |
-            Fix this bug. The issue body has the stack trace from Sentry.
-            Follow `.claude/rules/sentry-issues.md` for the workflow.
+            ${{ steps.load_prompt.outputs.content }}
 
             After committing and pushing your fix, you MUST run `gh pr create` yourself to open
             a pull request, then immediately run `gh pr merge --squash --delete-branch` to merge it.
