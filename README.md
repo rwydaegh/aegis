@@ -18,6 +18,7 @@
 [![Tests](https://img.shields.io/badge/tests-1522%20cases-brightgreen.svg?logo=pytest)](tests/)
 [![JAX](https://img.shields.io/badge/optional-JAX-blue.svg?logo=google&logoColor=white)](https://jax.readthedocs.io/)
 [![Viewer](https://img.shields.io/badge/viewer-React%20%2B%20Three.js-blue.svg?logo=react&logoColor=white)](https://react.dev/)
+[![CodSpeed](https://img.shields.io/endpoint?url=https://codspeed.io/badge.json)](https://codspeed.io/rwydaegh/aegis?utm_source=badge)
 
 [Getting started](https://rwydaegh.github.io/aegis/getting_started/) | [Documentation](https://rwydaegh.github.io/aegis/) | [3D Viewer](https://rwydaegh.github.io/aegis/user_guide/viewer/)
 
