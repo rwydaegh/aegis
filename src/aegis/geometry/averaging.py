@@ -187,9 +187,9 @@ def _precompute_numba(centroids, areas, all_neighbors, target_area_m2, M):
     """Numba-accelerated path: ~15-30x faster than pure Python."""
     nb_indices, nb_indptr = _flatten_neighbor_lists(all_neighbors)
 
-    # Estimate max nnz (avg neighbors per triangle, capped generously)
-    avg_k = len(nb_indices) / M if M > 0 else 50
-    nnz_est = int(M * min(avg_k, 300) * 1.1)
+    # Upper bound on nnz: each row writes at most k_i entries (cutoff <= k_i),
+    # plus one self-entry for rows with no neighbors.
+    nnz_est = len(nb_indices) + M
     rows = np.empty(nnz_est, dtype=np.int64)
     cols = np.empty(nnz_est, dtype=np.int64)
     vals = np.empty(nnz_est, dtype=np.float64)
@@ -239,7 +239,7 @@ def _precompute_numpy(centroids, areas, all_neighbors, target_area_m2, M):
 
         # Accumulate area until target
         cum_area = np.cumsum(areas[idx_sorted])
-        cutoff = np.searchsorted(cum_area, target_area_m2, side="right")
+        cutoff = np.searchsorted(cum_area, target_area_m2, side="left") + 1
         cutoff = max(cutoff, 1)
         cutoff = min(cutoff, len(idx_sorted))
 
