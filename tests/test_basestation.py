@@ -463,6 +463,46 @@ class TestPathsFromBasestation:
         assert paths.n_paths == 1
         assert paths.power[0] > 0.0
 
+    def test_on_boresight_power_exceeds_back_lobe(self):
+        """Body on boresight should get main-lobe gain, not back-lobe gain.
+
+        Regression test: departure_dir sign was inverted, causing the
+        antenna pattern to be evaluated 180 degrees off, yielding back-lobe
+        gain instead of the main-lobe peak.
+        """
+        pat = synthetic_pattern_from_beamwidth(65.0, 10.0, 17.0)
+        # Antenna at origin, boresight north (azimuth=0), no tilt
+        bs_north = BaseStation(
+            site_code="DIR001",
+            antenna_label="directed",
+            operator="TestOp",
+            technology="5G NR",
+            latitude=51.050,
+            longitude=3.720,
+            height_m=10.0,
+            eirp_dbm=50.0,
+            gain_dbi=17.0,
+            freq_mhz=3500.0,
+            azimuth_deg=0.0,
+            electrical_tilt_deg=0.0,
+            mechanical_tilt_deg=0.0,
+            horizontal_beamwidth_deg=65.0,
+            vertical_beamwidth_deg=10.0,
+            pattern=pat,
+        )
+        origin = (51.050, 3.720)
+        # Body directly north (on boresight), same height as antenna
+        body_north = np.array([0.0, 50.0, 10.0])
+        # Body directly south (behind antenna)
+        body_south = np.array([0.0, -50.0, 10.0])
+
+        paths_north = paths_from_basestation(bs_north, body_north, origin)
+        paths_south = paths_from_basestation(bs_north, body_south, origin)
+
+        # On boresight power must exceed back-lobe power by at least 10 dB
+        ratio_db = 10 * np.log10(paths_north.power[0] / paths_south.power[0])
+        assert ratio_db > 10.0, f"On-boresight power should be >10 dB above back-lobe, got {ratio_db:.1f} dB"
+
     def test_body_at_antenna_position_clamps_distance(self, bs):
         # When body is at antenna position, distance gets clamped to 0.1 m.
         ant_enu = wgs84_to_enu(bs.latitude, bs.longitude, 0.0, 51.050, 3.720)
