@@ -37,6 +37,7 @@ export default function Antenna() {
   const pos = useSimulationStore(s => s.antennaPos)
   const config = useSceneStore(s => s.viewerConfig)
   const wireframe = useUIStore(s => s.wireframe)
+  const cameraMode = useUIStore(s => s.cameraMode)
 
   const patternGeo = useMemo(() => {
     if (!config) return null
@@ -94,7 +95,7 @@ export default function Antenna() {
 
   const ant = config.antenna
   const rp = ant.radiation_pattern
-  const usePattern = rp && rp.enabled !== false
+  const usePattern = rp && rp.enabled !== false && cameraMode === 'orbit'
 
   const poleH = ant.pole_height ?? 2
   const poleR = ant.pole_radius ?? 0.015
