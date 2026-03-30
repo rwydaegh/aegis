@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 import threading
 
@@ -15,10 +16,18 @@ logger = logging.getLogger(__name__)
 _OCTET_STREAM = "application/octet-stream"
 
 
-def geocode_location(location: str) -> tuple[float, float]:
-    """Geocode a location string to (latitude, longitude).
+_ISO3166_TO_REGION = {
+    "BE-VLG": "flanders",
+    "BE-BRU": "brussels",
+    "BE-WAL": "wallonia",
+}
 
-    Tries parsing as "lat, lon" first, falls back to geopy Nominatim.
+
+def geocode_location(location: str) -> tuple[float, float, dict]:
+    """Geocode a location string to (latitude, longitude, address_details).
+
+    Tries parsing as "lat, lon" first (returns empty address dict),
+    falls back to geopy Nominatim with address details.
     Raises ValueError on failure.
     """
     match = re.match(
@@ -26,20 +35,40 @@ def geocode_location(location: str) -> tuple[float, float]:
         location,
     )
     if match:
-        return float(match.group(1)), float(match.group(2))
+        return float(match.group(1)), float(match.group(2)), {}
 
     from geopy.exc import GeocoderTimedOut, GeocoderUnavailable
     from geopy.geocoders import Nominatim
 
     geolocator = Nominatim(user_agent="aegis-viewer", timeout=10)
     try:
-        result = geolocator.geocode(location)
+        result = geolocator.geocode(location, addressdetails=True)
     except (GeocoderTimedOut, GeocoderUnavailable) as e:
         raise ValueError(f"Geocoding service unavailable: {e}") from e
 
     if result is None:
         raise ValueError(f"Could not geocode location: {location!r}")
-    return result.latitude, result.longitude
+    address = result.raw.get("address", {})
+    return result.latitude, result.longitude, address
+
+
+def _resolve_belgian_region(address: dict, lat: float, lon: float) -> str:
+    """Determine the Belgian region from Nominatim address or coordinates.
+
+    Uses ISO 3166-2 level 4 code from Nominatim (authoritative), with a
+    coordinate-based fallback for raw lat/lon input without address data.
+    """
+    iso_code = address.get("ISO3166-2-lvl4", "")
+    region = _ISO3166_TO_REGION.get(iso_code)
+    if region:
+        return region
+
+    # Fallback: coordinate heuristic for raw lat/lon input
+    if 50.79 <= lat <= 50.92 and 4.24 <= lon <= 4.49:
+        return "brussels"
+    if lat >= 50.75:
+        return "flanders"
+    return "wallonia"
 
 
 def _handle_basestations_load(cache: dict, cache_lock: threading.RLock):
@@ -48,10 +77,11 @@ def _handle_basestations_load(cache: dict, cache_lock: threading.RLock):
 
     params = request.get_json(silent=True) or {}
 
+    address = {}
     location_str = params.get("location")
     if location_str and not params.get("bbox") and "lat" not in params:
         try:
-            lat, lon = geocode_location(location_str)
+            lat, lon, address = geocode_location(location_str)
         except ValueError as e:
             return jsonify({"error": str(e)}), 400
         params["lat"] = lat
@@ -67,20 +97,29 @@ def _handle_basestations_load(cache: dict, cache_lock: threading.RLock):
         dlon = radius_m / (111_320.0 * np.cos(np.radians(lat)))
         bbox = [lon - dlon, lon + dlon, lat - dlat, lat + dlat]
 
+    # Resolve region for Belgium based on Nominatim address or coordinates
+    country = params.get("country", "Belgium")
+    region = params.get("region")
+    if region is None and country.strip().lower() == "belgium":
+        if "lat" in params and "lon" in params:
+            region = _resolve_belgian_region(address, float(params["lat"]), float(params["lon"]))
+            logger.info("Resolved Belgian region: %s", region)
+        else:
+            region = "brussels"
+    elif region is None:
+        region = ""
+
     # Try CSV first (fast, no external API), then basestationLib
     csv_path = None
-    if csv_path is None:
-        # Look for bundled CSV data
-        import os
-
-        data_dir = os.environ.get("AEGIS_DATA_DIR", "data")
-        for candidate in [
-            os.path.join(data_dir, "basestations", "brussels.csv"),
-            "data/basestations/brussels.csv",
-        ]:
-            if os.path.exists(candidate):
-                csv_path = candidate
-                break
+    data_dir = os.environ.get("AEGIS_DATA_DIR", "data")
+    csv_name = f"{region}.csv" if region else "brussels.csv"
+    for candidate in [
+        os.path.join(data_dir, "basestations", csv_name),
+        f"data/basestations/{csv_name}",
+    ]:
+        if os.path.exists(candidate):
+            csv_path = candidate
+            break
 
     try:
         if csv_path:
@@ -94,8 +133,8 @@ def _handle_basestations_load(cache: dict, cache_lock: threading.RLock):
             from aegis.basestation.adapter import load_basestations
 
             basestations = load_basestations(
-                country=params.get("country", "Belgium"),
-                region=params.get("region", "brussels"),
+                country=country,
+                region=region,
                 bbox=bbox,
                 operator=params.get("operator"),
                 technology=params.get("technology"),

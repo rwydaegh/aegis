@@ -153,17 +153,19 @@ class TestGeocodeLocation:
         return geocode_location(location)
 
     def test_raw_coordinates_comma(self):
-        lat, lon = self._geocode("50.85, 4.35")
+        lat, lon, addr = self._geocode("50.85, 4.35")
         assert abs(lat - 50.85) < 0.001
         assert abs(lon - 4.35) < 0.001
+        assert addr == {}
 
     def test_raw_coordinates_space(self):
-        lat, lon = self._geocode("50.85 4.35")
+        lat, lon, addr = self._geocode("50.85 4.35")
         assert abs(lat - 50.85) < 0.001
         assert abs(lon - 4.35) < 0.001
+        assert addr == {}
 
     def test_negative_coordinates(self):
-        lat, lon = self._geocode("-33.87, 151.21")
+        lat, lon, _addr = self._geocode("-33.87, 151.21")
         assert abs(lat - (-33.87)) < 0.001
 
     def test_nominatim_fallback(self):
@@ -172,10 +174,12 @@ class TestGeocodeLocation:
         mock_location = MagicMock()
         mock_location.latitude = 50.85
         mock_location.longitude = 4.35
+        mock_location.raw = {"address": {"ISO3166-2-lvl4": "BE-BRU"}}
         with patch("geopy.geocoders.Nominatim") as mock_nom:
             mock_nom.return_value.geocode.return_value = mock_location
-            lat, lon = geocode_location("Brussels, Belgium")
+            lat, lon, addr = geocode_location("Brussels, Belgium")
             assert abs(lat - 50.85) < 0.01
+            assert addr.get("ISO3166-2-lvl4") == "BE-BRU"
 
     def test_unknown_location_raises(self):
         from aegis.viewer.routes.basestations import geocode_location
