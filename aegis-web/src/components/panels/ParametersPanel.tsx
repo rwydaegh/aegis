@@ -1,6 +1,7 @@
 import { useSimulationStore } from '@/stores/simulation'
 import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
+import { useMIMOStore } from '@/stores/mimo'
 import type { DosimetryMode } from '@/stores/simulation'
 import QuantitiesPanel from './QuantitiesPanel'
 import Tex from '@/components/ui/Tex'
@@ -84,7 +85,16 @@ export default function ParametersPanel() {
       {antennaPos && (
         <button
           className="w-full mb-3 px-3 py-1.5 text-xs rounded border border-destructive/40 bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors cursor-pointer"
-          onClick={() => { setAntennaPos(null); clearResults() }}
+          onClick={() => {
+            setAntennaPos(null)
+            clearResults()
+            const mimo = useMIMOStore.getState()
+            if (mimo.enabled) {
+              mimo.clearAllResults()
+              mimo.setPrecoderWeights(null)
+              useMIMOStore.setState({ arrayConfig: null })
+            }
+          }}
         >
           Remove antenna
         </button>
