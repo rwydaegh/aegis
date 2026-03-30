@@ -261,7 +261,7 @@ def _remove_spikes(faces3d, verts_out, first_skel_index):
 
             merged_face = right_face + left_face[1:]
 
-            orig_indices = [x[0] for x in enumerate(merged_face) if x[0] < first_skel_index and x[1] < first_skel_index]
+            orig_indices = [x[0] for x in enumerate(merged_face) if x[1] < first_skel_index]
             if orig_indices:
                 next_orig_index = orig_indices[0]
                 merged_face = merged_face[next_orig_index:] + merged_face[:next_orig_index]
