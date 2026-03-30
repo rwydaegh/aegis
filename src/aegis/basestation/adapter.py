@@ -276,7 +276,7 @@ def paths_from_basestation(
     s_iso = tx_power_w / (4.0 * np.pi * dist**2)
 
     # Pattern gain in departure direction
-    departure_dir = -k_hat  # from antenna toward body (outgoing from antenna)
+    departure_dir = k_hat  # from antenna toward body (outgoing from antenna)
 
     if bs.pattern is not None:
         elev, azim = departure_to_antenna_local(
