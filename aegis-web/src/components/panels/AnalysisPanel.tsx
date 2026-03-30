@@ -213,7 +213,8 @@ function PowerSweepSection() {
   const sarWb = checkValue(stats, 'SAR_wb')
   const sincWb = checkValue(stats, 'S_inc (whole-body)')
 
-  const canSweep = peakSab != null && peakSab > 0
+  const isAbove6GHz = freqGhz > 6
+  const canSweep = peakSab != null && peakSab > 0 && isAbove6GHz
 
   async function runSweep() {
     if (!canSweep) return
@@ -261,7 +262,7 @@ function PowerSweepSection() {
       </button>
       {!canSweep && (
         <span className="text-[10px] text-muted-foreground/50 ml-2">
-          Run a compute first
+          {!isAbove6GHz ? 'Compliance sweep requires frequency > 6 GHz' : 'Run a compute first'}
         </span>
       )}
 
@@ -316,7 +317,8 @@ function FrequencySweepSection() {
   const sarWb = checkValue(stats, 'SAR_wb')
   const sincWb = checkValue(stats, 'S_inc (whole-body)')
 
-  const canSweep = peakSab != null && peakSab > 0
+  const isAbove6GHz = freqGhz > 6
+  const canSweep = peakSab != null && peakSab > 0 && isAbove6GHz
 
   async function runSweep() {
     if (!canSweep) return
@@ -363,7 +365,7 @@ function FrequencySweepSection() {
       </button>
       {!canSweep && (
         <span className="text-[10px] text-muted-foreground/50 ml-2">
-          Run a compute first
+          {!isAbove6GHz ? 'Compliance sweep requires frequency > 6 GHz' : 'Run a compute first'}
         </span>
       )}
 
