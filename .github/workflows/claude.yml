@@ -69,7 +69,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || github.token }}
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          claude_args: '--model claude-opus-4-6 --allowedTools "Bash(*)"'
+          claude_args: '--model claude-opus-4-6'
           allowed_bots: "claude[bot]"
           include_comments_by_actor: "claude[bot]"
           track_progress: true
@@ -109,7 +109,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || github.token }}
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          claude_args: '--model claude-opus-4-6 --allowedTools "Bash(*)"'
+          claude_args: '--model claude-opus-4-6'
           track_progress: true
           prompt: |
             Fix this bug. The issue body has the stack trace from Sentry.
