@@ -212,20 +212,28 @@ def _handle_environment_from_voxels(cache: dict, cache_lock) -> Response:
     total_verts = n_vox * n_vert
     total_tris = n_vox * n_face
 
-    all_v = np.zeros((total_verts, 3), dtype=np.float32)
-    all_t = np.zeros((total_tris, 3), dtype=np.uint32)
-    all_n = np.zeros((total_tris, 3), dtype=np.float32)
-    all_m = np.zeros(total_tris, dtype=np.uint8)
+    positions = np.asarray(positions, dtype=np.float32)
+    sizes = np.asarray(sizes, dtype=np.float32)
 
-    for i in range(n_vox):
-        s = float(sizes[i]) if i < len(sizes) else 0.244
-        v_off = i * n_vert
-        t_off = i * n_face
-        all_v[v_off : v_off + n_vert] = _cube_verts * s + positions[i]
-        all_t[t_off : t_off + n_face] = _cube_faces + v_off
-        all_n[t_off : t_off + n_face] = _face_normals
-        mat_id = int(materials[i]) if materials is not None and i < len(materials) else MaterialType.UNKNOWN
-        all_m[t_off : t_off + n_face] = mat_id
+    # Vectorized vertex construction: scale cube template per voxel and translate
+    # all_v shape: (n_vox, n_vert, 3)
+    all_v = (_cube_verts[np.newaxis, :, :] * sizes[:, np.newaxis, np.newaxis] + positions[:, np.newaxis, :]).reshape(
+        total_verts, 3
+    )
+
+    # Vectorized triangle indices: offset cube faces per voxel
+    v_offsets = (np.arange(n_vox) * n_vert).astype(np.uint32)
+    all_t = (_cube_faces[np.newaxis, :, :] + v_offsets[:, np.newaxis, np.newaxis]).reshape(total_tris, 3)
+
+    # Tile normals for all voxels
+    all_n = np.tile(_face_normals, (n_vox, 1))
+
+    # Vectorized material assignment
+    if materials is not None:
+        mat_ids = np.asarray(materials[:n_vox], dtype=np.uint8)
+    else:
+        mat_ids = np.full(n_vox, MaterialType.UNKNOWN, dtype=np.uint8)
+    all_m = np.repeat(mat_ids, n_face)
 
     mesh = EnvironmentMesh(
         vertices=all_v,
