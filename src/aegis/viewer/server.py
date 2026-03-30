@@ -386,7 +386,7 @@ def create_app(
         response.headers.setdefault(
             "Content-Security-Policy",
             "default-src 'self'; "
-            "script-src 'self' https://analytics.waves-ugent.be; "
+            "script-src 'self' 'wasm-unsafe-eval' https://analytics.waves-ugent.be; "
             "style-src 'self' 'unsafe-inline'; "
             "img-src 'self' data: blob:; "
             "font-src 'self' data:; "
