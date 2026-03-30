@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils'
 import type { DosimetryStats, QuantityKey } from '@/api/types'
 import SessionTimer from '@/components/layout/SessionTimer'
 import UserBadges from '@/components/hud/UserBadges'
+import { useActiveSimulation } from '@/hooks/useActiveSimulation'
 import { generateShareUrl } from '@/lib/shareLink'
 
 const COMPLIANCE_LABEL_TO_KEY: Record<string, QuantityKey> = {
@@ -94,7 +95,7 @@ const CAMERA_PRESETS: Array<{ preset: CameraPreset & string; label: string; icon
 ]
 
 export default function Toolbar() {
-  const { stats } = useSimulationStore()
+  const { stats } = useActiveSimulation()
   const { viewerConfig } = useSceneStore()
   const { sidebarOpen, wireframe, cameraMode, toggleSidebar, toggleWireframe, setCameraPreset, setCameraMode, setStatusMessage } = useUIStore()
   const mimoEnabled = useMIMOStore(s => s.enabled)
@@ -136,7 +137,8 @@ export default function Toolbar() {
 
       {/* Center-left: compliance + level */}
       <div className="flex items-center gap-2 shrink-0">
-        {mimoEnabled ? <UserBadges /> : <ComplianceBadge stats={stats} />}
+        {mimoEnabled && <UserBadges />}
+        <ComplianceBadge stats={stats} />
         <ModePill />
       </div>
 
