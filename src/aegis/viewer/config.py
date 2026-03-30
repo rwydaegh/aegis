@@ -21,8 +21,8 @@ DEFAULTS: dict = {
             "enabled": False,
             "size": 200,
             "divisions": 100,
-            "color": "#444444",
-            "line_color": "#2a2a2a",
+            "color": "#666666",
+            "line_color": "#444444",
             "y_offset": -0.01,
         },
         "ground_plane": {

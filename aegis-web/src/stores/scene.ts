@@ -135,7 +135,7 @@ export const useSceneStore = create<SceneStore>((set) => ({
   sceneGeometry: null,
   sceneGeometryVisible: true,
   bodyMeshVisible: true,
-  groundPlaneVisible: false,
+  groundPlaneVisible: true,
   gridVisible: false,
   glbTiles: [],
   pathSource: 'synthetic',

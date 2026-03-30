@@ -55,8 +55,10 @@ function SceneGrid() {
   const size = (grid?.size as number) ?? 200
   const divisions = (grid?.divisions as number) ?? 100
   const yOffset = (grid?.y_offset as number) ?? -0.01
+  const color = (grid?.color as string) ?? '#666666'
+  const lineColor = (grid?.line_color as string) ?? '#444444'
   return (
-    <gridHelper args={[size, divisions, '#444444', '#2a2a2a']} position={[0, yOffset, 0]} />
+    <gridHelper args={[size, divisions, color, lineColor]} position={[0, yOffset, 0]} />
   )
 }
 
