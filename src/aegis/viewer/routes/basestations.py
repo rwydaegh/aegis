@@ -93,6 +93,8 @@ def _handle_basestations_load(cache: dict, cache_lock: threading.RLock):
         lat = float(params["lat"])
         lon = float(params["lon"])
         radius_m = float(params.get("radius_m", 500))
+        if radius_m <= 0 or radius_m > 50_000:
+            return jsonify({"error": "radius_m must be between 0 and 50000"}), 400
         dlat = radius_m / 111_320.0
         dlon = radius_m / (111_320.0 * np.cos(np.radians(lat)))
         bbox = [lon - dlon, lon + dlon, lat - dlat, lat + dlat]
@@ -197,6 +199,12 @@ def _handle_basestations_compute(cache: dict, cache_lock: threading.RLock):
     indices = params.get("indices")
     selected = basestations
     if indices is not None:
+        if not isinstance(indices, list):
+            return jsonify({"error": "'indices' must be a list of integers"}), 400
+        try:
+            indices = [int(i) for i in indices]
+        except (TypeError, ValueError):
+            return jsonify({"error": "'indices' must contain only integers"}), 400
         selected = [basestations[i] for i in indices if 0 <= i < len(basestations)]
     if not selected:
         return jsonify({"error": "No base stations selected"}), 400
@@ -214,11 +222,14 @@ def _handle_basestations_compute(cache: dict, cache_lock: threading.RLock):
     body_center = np.mean(transformed_body.centroids, axis=0)
 
     # Compute paths
+    max_distance_m = float(params.get("max_distance_m", 2000))
+    if max_distance_m <= 0:
+        return jsonify({"error": "max_distance_m must be positive"}), 400
     paths = paths_from_basestations(
         selected,
         body_center,
         origin,
-        max_distance_m=float(params.get("max_distance_m", 2000)),
+        max_distance_m=max_distance_m,
     )
 
     if paths.n_paths == 0 or paths.total_power <= 0:
