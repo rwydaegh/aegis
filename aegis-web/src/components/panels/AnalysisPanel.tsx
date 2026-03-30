@@ -283,7 +283,7 @@ function PowerSweepSection() {
               <button
                 onClick={() =>
                   setPowerDbm(
-                    Math.floor(result.p_max_compliant_dbm! * 10) / 10,
+                    parseFloat(result.p_max_compliant_dbm!.toFixed(1)),
                   )
                 }
                 className={btnClass}
