@@ -420,6 +420,16 @@ export async function fetchPowerSweep(params: {
   return getJson<PowerSweepResult>(`/api/compliance/power-sweep?${qs}`)
 }
 
+export async function fetchDosimetryCsv(): Promise<Blob> {
+  const res = await fetch(`${BASE}/api/export/dosimetry-csv`)
+  if (res.status === 401) {
+    handle401()
+    throw new Error('GET /api/export/dosimetry-csv failed: 401 Unauthorized')
+  }
+  if (!res.ok) throw new Error(await extractErrorMessage(res, 'GET', '/api/export/dosimetry-csv'))
+  return res.blob()
+}
+
 export async function fetchFrequencySweep(params: {
   sab_4cm2: number
   scenario?: string

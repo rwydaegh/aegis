@@ -514,17 +514,28 @@ def power_sweep(
             "p_max_compliant_w": float("inf"),
         }
 
-    margin_db_arr = np.zeros(n_points)
-    for i, p in enumerate(power_w):
-        scale = p / ref_power_w
-        min_margin = float("inf")
-        for check in checks:
-            scaled_value = check.value * scale
-            if scaled_value <= 0:
-                continue
-            m = 10.0 * math.log10(check.limit / scaled_value)
-            min_margin = min(min_margin, m)
-        margin_db_arr[i] = min_margin
+    # Vectorized: compute margin for all power levels and checks at once.
+    values = np.array([c.value for c in checks])
+    limits = np.array([c.limit for c in checks])
+
+    # Filter out checks with non-positive values (cannot compute log)
+    valid = values > 0
+    if not np.any(valid):
+        return {
+            "power_w": power_w,
+            "power_dbm": power_dbm,
+            "margin_db": np.full(n_points, float("inf")),
+            "compliant": np.ones(n_points, dtype=bool),
+            "p_max_compliant_w": p_max_compliant,
+        }
+
+    values = values[valid]
+    limits = limits[valid]
+    scales = power_w / ref_power_w  # (n_points,)
+    # margins shape: (n_checks_valid, n_points)
+    scaled_values = values[:, None] * scales[None, :]
+    margins = 10.0 * np.log10(limits[:, None] / scaled_values)
+    margin_db_arr = np.min(margins, axis=0)  # tightest check at each power
 
     return {
         "power_w": power_w,

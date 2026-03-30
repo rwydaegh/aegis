@@ -65,27 +65,27 @@ class TestGeocodeLocation:
     """Tests for the geocode_location coordinate parser."""
 
     def test_parse_comma_separated(self):
-        lat, lon = geocode_location("51.05, 3.72")
+        lat, lon, _addr = geocode_location("51.05, 3.72")
         assert lat == pytest.approx(51.05)
         assert lon == pytest.approx(3.72)
 
     def test_parse_space_separated(self):
-        lat, lon = geocode_location("51.05 3.72")
+        lat, lon, _addr = geocode_location("51.05 3.72")
         assert lat == pytest.approx(51.05)
         assert lon == pytest.approx(3.72)
 
     def test_parse_negative_coordinates(self):
-        lat, lon = geocode_location("-33.8688, 151.2093")
+        lat, lon, _addr = geocode_location("-33.8688, 151.2093")
         assert lat == pytest.approx(-33.8688)
         assert lon == pytest.approx(151.2093)
 
     def test_parse_integer_coordinates(self):
-        lat, lon = geocode_location("51, 4")
+        lat, lon, _addr = geocode_location("51, 4")
         assert lat == pytest.approx(51.0)
         assert lon == pytest.approx(4.0)
 
     def test_parse_with_extra_whitespace(self):
-        lat, lon = geocode_location("  51.05 ,  3.72  ")
+        lat, lon, _addr = geocode_location("  51.05 ,  3.72  ")
         assert lat == pytest.approx(51.05)
         assert lon == pytest.approx(3.72)
 

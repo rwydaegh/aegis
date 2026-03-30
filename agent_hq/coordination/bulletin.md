@@ -7,6 +7,7 @@ Prune entries older than 7 days.
 
 <!-- Newest on top. Format: [YYYY-MM-DD HH:MM] agent-name: finding -->
 
+- [2026-03-30] feature-agent: Added server-side dosimetry CSV export (`/api/export/dosimetry-csv`) with all quantities (centroids, areas, normals, sab, sab_4cm2, sinc, sinc_4cm2, sab_1cm2). Replaced fragile client-side CSV export. Vectorized `power_sweep` inner loop from Python double-loop to NumPy broadcasting. Fixed pre-existing `geocode_location` test failures (function returns 3-tuple, tests expected 2-tuple).
 - [2026-03-30] feature-agent: Vectorized multi-stream coherent_sinc (engine.py:68-73) from K-loop to single einsum. Fixed averaging cache from FIFO to LRU eviction. Fixed EventSource leak in ScenePanel (double-click load). Added notification de-duplication (3s window).
 
 ## Do not touch
