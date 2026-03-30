@@ -103,7 +103,7 @@ export default function CompliancePanel() {
               <div
                 style={{ display: 'flex', justifyContent: 'space-between', cursor: 'pointer' }}
                 title="Click to set TX power to max compliant value"
-                onClick={() => useSimulationStore.getState().setPowerDbm(Math.floor(maxPowerDbm * 10) / 10)}
+                onClick={() => useSimulationStore.getState().setPowerDbm(parseFloat(maxPowerDbm.toFixed(1)))}
               >
                 <span>Max TX power</span>
                 <span style={{ color: '#93c5fd' }}>{maxPowerDbm.toFixed(1)} dBm</span>
