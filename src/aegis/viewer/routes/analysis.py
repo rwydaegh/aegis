@@ -57,11 +57,12 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                 {
                     "text": (
                         "ICNIRP 2020 Compliance Summary\n"
-                        "=" * 40 + "\n\n"
-                        "Compliance not evaluated.\n"
-                        "Frequency outside ICNIRP 2020 absorbed power density range "
+                        + "=" * 40
+                        + "\n\n"
+                        + "Compliance not evaluated.\n"
+                        + "Frequency outside ICNIRP 2020 absorbed power density range "
                         "(applicable from 6 GHz to 300 GHz).\n\n"
-                        "Run a simulation at a frequency >= 6 GHz to generate a compliance report."
+                        + "Run a simulation at a frequency >= 6 GHz to generate a compliance report."
                     )
                 }
             )
