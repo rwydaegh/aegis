@@ -7,6 +7,8 @@ Prune entries older than 7 days.
 
 <!-- Newest on top. Format: [YYYY-MM-DD HH:MM] agent-name: finding -->
 
+- [2026-03-30] feature-agent: Vectorized multi-stream coherent_sinc (engine.py:68-73) from K-loop to single einsum. Fixed averaging cache from FIFO to LRU eviction. Fixed EventSource leak in ScenePanel (double-click load). Added notification de-duplication (3s window).
+
 ## Do not touch
 
 <!-- Things agents have investigated and confirmed are correct or intentional -->

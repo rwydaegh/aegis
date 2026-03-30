@@ -96,6 +96,9 @@ export default function ScenePanel() {
     useUIStore.getState().setLocationLoading(true)
     useUIStore.getState().clearLocationLog()
 
+    // Close any previous EventSource to prevent leaked connections
+    esRef.current?.close()
+
     const es = loadLocation(location, radius, voxelSize, force)
     esRef.current = es
 

@@ -7,6 +7,7 @@ Levels 0-6 are incoherent. Levels 7-8 are coherent MIMO.
 from __future__ import annotations
 
 import time
+from collections import OrderedDict
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -65,13 +66,11 @@ def coherent_sinc(centroids, k_hat, psi, element_index, x, freq_hz):
         E = phase @ w_psi  # (M, 3)
         return np.sum(np.abs(E) ** 2, axis=1) / (2 * Z_0)
 
-    # Multi-stream: sum power over K streams (uncorrelated symbols)
-    sinc_out = np.zeros(centroids.shape[0])
-    for k in range(x.shape[1]):
-        w_psi = psi * x[element_index, k][:, None]  # (N, 3)
-        E = phase @ w_psi  # (M, 3)
-        sinc_out += np.sum(np.abs(E) ** 2, axis=1)
-    return sinc_out / (2 * Z_0)
+    # Multi-stream: sum power over K streams (uncorrelated symbols).
+    # Vectorized: compute all K streams in one batched matmul instead of looping.
+    w_psi_all = psi[:, :, None] * x[element_index, :][:, None, :]  # (N, 3, K)
+    E_all = np.einsum("mn,npk->mpk", phase, w_psi_all)  # (M, 3, K)
+    return np.sum(np.abs(E_all) ** 2, axis=(1, 2)) / (2 * Z_0)
 
 
 class DosimetryEngine:
@@ -88,7 +87,7 @@ class DosimetryEngine:
     # Shared across all engine instances so the expensive build persists across requests.
     # Bounded to _G_CACHE_MAX entries to prevent unbounded memory growth in
     # long-running viewer sessions with many body switches.
-    _G_cache: dict = {}
+    _G_cache: OrderedDict = OrderedDict()
     _G_CACHE_MAX: int = 16
 
     def __init__(self, tissue: TissueModel) -> None:
@@ -114,18 +113,21 @@ class DosimetryEngine:
 
     def _get_G(self, body, target_area_m2):
         key = (self._body_cache_key(body), target_area_m2)
-        if key not in self._G_cache:
-            from aegis.geometry.averaging import precompute_averaging_matrix
+        if key in self._G_cache:
+            self._G_cache.move_to_end(key)
+            return self._G_cache[key]
 
-            # Evict oldest entries if cache is full
-            while len(self._G_cache) >= self._G_CACHE_MAX:
-                self._G_cache.pop(next(iter(self._G_cache)))
+        from aegis.geometry.averaging import precompute_averaging_matrix
 
-            self._G_cache[key] = precompute_averaging_matrix(
-                body.centroids,
-                body.areas,
-                target_area_m2,
-            )
+        # Evict least-recently-used entries if cache is full
+        while len(self._G_cache) >= self._G_CACHE_MAX:
+            self._G_cache.popitem(last=False)
+
+        self._G_cache[key] = precompute_averaging_matrix(
+            body.centroids,
+            body.areas,
+            target_area_m2,
+        )
         return self._G_cache[key]
 
     def _build_result(
