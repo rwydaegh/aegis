@@ -210,6 +210,8 @@ def trace_sionna_voxel(
         )
         _mark_success()
         return result
+    except NotImplementedError:
+        raise
     except Exception as e:
         logger.error("Modal Sionna voxel trace failed: %s", e)
         return None

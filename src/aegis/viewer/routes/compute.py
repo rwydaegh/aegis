@@ -1035,16 +1035,21 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             "seed": rt_cfg_parsed["seed"],
         }
 
-        modal_result = _modal_trace_voxel(
-            scene_key=scene_key,
-            scene_data=scene_data,
-            tx_pos=antenna_pos.tolist(),
-            rx_pos=body_center.tolist(),
-            max_bounces=max_order,
-            freq_hz=tissue.freq_hz,
-            tx_power_dbm=power_dbm,
-            rt_config=rt_config_dict,
-        )
+        try:
+            modal_result = _modal_trace_voxel(
+                scene_key=scene_key,
+                scene_data=scene_data,
+                tx_pos=antenna_pos.tolist(),
+                rx_pos=body_center.tolist(),
+                max_bounces=max_order,
+                freq_hz=tissue.freq_hz,
+                tx_power_dbm=power_dbm,
+                rt_config=rt_config_dict,
+            )
+        except NotImplementedError:
+            return jsonify(
+                {"error": "Voxel ray tracing with Sionna is not yet implemented. Mesh-to-scene conversion is pending."}
+            ), 501
 
         if modal_result is None:
             return jsonify({"error": "GPU unavailable for voxel ray tracing"}), 503
