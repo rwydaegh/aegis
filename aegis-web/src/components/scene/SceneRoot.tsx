@@ -34,7 +34,8 @@ import { EnvironmentTerrain } from './EnvironmentTerrain'
 function GroundPlane() {
   const visible = useSceneStore(s => s.groundPlaneVisible)
   const config = useSceneStore(s => s.viewerConfig)
-  if (!visible) return null
+  const envSource = useEnvironmentStore(s => s.source)
+  if (!visible || envSource !== 'none') return null
   const gp = config?.scene?.ground_plane as Record<string, unknown> | undefined
   const size = (gp?.size as number) ?? 500
   const color = (gp?.color as string) ?? '#1a1a20'
