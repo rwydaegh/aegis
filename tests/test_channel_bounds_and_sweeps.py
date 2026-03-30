@@ -701,3 +701,56 @@ class TestLinkBudgetCompliance:
         result = link_budget_compliance(tx_power_w=1.0, distance_m=10.0, freq_hz=28e9, T0=0.4)
         expected_dbm = 10 * np.log10(result["max_tx_power_w"] * 1e3)
         assert result["max_tx_power_dbm"] == pytest.approx(expected_dbm, rel=1e-6)
+
+
+# ---------------------------------------------------------------------------
+# Stochastic channel generator
+# ---------------------------------------------------------------------------
+
+
+class TestExpandSubpaths:
+    """Regression tests for _expand_subpaths with varying NumSubPaths."""
+
+    def test_n_subpaths_exceeding_offset_table(self):
+        """NumSubPaths > 20 must not cause array length mismatch.
+
+        The mmMAGIC_UMi_NLOS preset has NumSubPaths=26, but the 3GPP
+        sub-path offset table only has 20 entries. Before the fix,
+        this produced mismatched az/power arrays and crashed.
+        """
+        from pathlib import Path
+
+        from aegis.channel.generator import generate_channel
+        from aegis.channel.presets import load_preset
+
+        preset = load_preset("mmMAGIC_UMi_NLOS", Path("data/channel_presets"))
+        paths = generate_channel(
+            preset["params"],
+            freq_ghz=28,
+            antenna_pos=np.array([5.0, 0.0, 1.0]),
+            body_center=np.array([0.0, 0.0, 0.0]),
+            power_dbm=60,
+            seed=42,
+        )
+        assert paths.n_paths > 0
+        assert np.all(np.isfinite(paths.power))
+        assert paths.total_power > 0
+
+    def test_n_subpaths_10(self):
+        """NumSubPaths=10 (fewer than 20) should work correctly."""
+        from pathlib import Path
+
+        from aegis.channel.generator import generate_channel
+        from aegis.channel.presets import load_preset
+
+        preset = load_preset("mmMAGIC_Indoor_LOS", Path("data/channel_presets"))
+        paths = generate_channel(
+            preset["params"],
+            freq_ghz=28,
+            antenna_pos=np.array([5.0, 0.0, 1.0]),
+            body_center=np.array([0.0, 0.0, 0.0]),
+            power_dbm=60,
+            seed=42,
+        )
+        assert paths.n_paths > 0
+        assert np.all(np.isfinite(paths.power))
