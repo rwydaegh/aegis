@@ -8,6 +8,15 @@ import type {
 } from './types'
 import { toServer } from './coordinates'
 
+async function extractError(res: Response, label: string): Promise<string> {
+  const fallback = `${label}: ${res.status} ${res.statusText}`
+  try {
+    const data = await res.json()
+    if (data && typeof data.error === 'string') return data.error
+  } catch { /* not JSON */ }
+  return fallback
+}
+
 /** Server-side payload (Z-up positions). */
 interface MIMOServerPayload {
   array: Omit<ArrayConfig, 'position'> & { position: [number, number, number] }
@@ -49,7 +58,7 @@ export async function computeMIMO(
     body: JSON.stringify(payload),
     signal,
   })
-  if (!res.ok) throw new Error(`MIMO compute failed: ${res.status}`)
+  if (!res.ok) throw new Error(await extractError(res, 'MIMO compute failed'))
   return res.json()
 }
 
@@ -59,7 +68,7 @@ export async function fetchMIMOResult(
   signal?: AbortSignal,
 ): Promise<{ sab: Float32Array; stats: DosimetryStats }> {
   const resp = await fetch(`/api/mimo/result/${userId}`, { signal })
-  if (!resp.ok) throw new Error(`MIMO result fetch failed: ${resp.status}`)
+  if (!resp.ok) throw new Error(await extractError(resp, 'MIMO result fetch failed'))
   const statsHeader = resp.headers.get('X-Stats')
   const stats: DosimetryStats = statsHeader ? JSON.parse(statsHeader) : {}
   const buf = await resp.arrayBuffer()
@@ -72,6 +81,6 @@ export async function fetchMIMOSummary(
   signal?: AbortSignal,
 ): Promise<MIMOSummary> {
   const resp = await fetch('/api/mimo/summary', { signal })
-  if (!resp.ok) throw new Error(`MIMO summary fetch failed: ${resp.status}`)
+  if (!resp.ok) throw new Error(await extractError(resp, 'MIMO summary fetch failed'))
   return resp.json()
 }
