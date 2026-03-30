@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import * as Sentry from '@sentry/react'
 import { fetchBody } from '@/api/client'
@@ -9,12 +9,17 @@ import { useNotificationStore } from '@/stores/notifications'
 export function useBodyLoader() {
   const bodyName = useSceneStore(s => s.bodyName)
   const setBodyGeometry = useSceneStore(s => s.setBodyGeometry)
+  const prevBodyRef = useRef(bodyName)
 
   useEffect(() => {
     let cancelled = false
 
-    // Clear stale results from previous body (different triangle count would cause jumbled colors)
-    useSimulationStore.getState().clearResults()
+    // Clear stale results only when body actually changes (different triangle count would cause jumbled colors).
+    // Skip on re-mount with the same body (e.g. visibility toggle) to preserve dosimetry heatmap.
+    if (prevBodyRef.current !== bodyName) {
+      useSimulationStore.getState().clearResults()
+      prevBodyRef.current = bodyName
+    }
 
     fetchBody(bodyName).then(({ binary }) => {
       if (cancelled) return
