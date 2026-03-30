@@ -287,6 +287,7 @@ def _expand_subpaths(
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Expand NLOS clusters into sub-paths using fixed offset table."""
     offsets_rad = np.radians(_SUBPATH_OFFSETS_DEG[:n_subpaths])
+    n_actual = len(offsets_rad)
 
     all_az, all_el, all_pow = [], [], []
 
@@ -298,7 +299,7 @@ def _expand_subpaths(
         else:
             sub_az = az[i] + c_asa * offsets_rad
             sub_el = el[i] + c_esa * offsets_rad
-            sub_pow = np.full(n_subpaths, powers[i] / n_subpaths)
+            sub_pow = np.full(n_actual, powers[i] / n_actual)
             all_az.extend(sub_az)
             all_el.extend(sub_el)
             all_pow.extend(sub_pow)
