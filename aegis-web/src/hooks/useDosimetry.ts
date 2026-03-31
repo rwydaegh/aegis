@@ -131,6 +131,7 @@ export function useDosimetry() {
       .then(({ sab, stats, arrays }) => {
         const t_response = performance.now()
         if (gen !== generationRef.current) return // stale response
+        useNotificationStore.getState().dismissByLevel('error')
         useSimulationStore.getState().setResults(sab, stats, {
           sabAveraged: arrays['sab_4cm2'],
           sinc: arrays['sinc_local'],

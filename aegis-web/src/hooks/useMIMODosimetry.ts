@@ -84,6 +84,7 @@ export function useMIMODosimetry() {
 
       const response = await computeMIMO(req, controller.signal)
       if (gen !== generationRef.current) return
+      useNotificationStore.getState().dismissByLevel('error')
 
       const { setUserResult, setSummaryStats, setPrecoderWeights } = useMIMOStore.getState()
 
