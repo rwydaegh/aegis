@@ -24,18 +24,23 @@ interface EnvironmentMeshData {
 interface EnvironmentState {
   source: EnvironmentSource
   location: { lat: number; lon: number } | null
+  locationQuery: string
+  locationFormatted: string
   radius: number
   geometricError: number
   osmMeshData: EnvironmentMeshData | null
   loading: boolean
+  geocoding: boolean
   error: string | null
   osmOptions: OsmOptions
 
   setSource: (s: EnvironmentSource) => void
   setLocation: (lat: number, lon: number) => void
+  setLocationQuery: (q: string) => void
   setRadius: (r: number) => void
   setGeometricError: (ge: number) => void
   setOsmOptions: (opts: Partial<OsmOptions>) => void
+  geocodeAndFetch: (query?: string) => Promise<void>
   fetchOSM: () => Promise<void>
   fetchGeoJSON: (geojsonStr: string) => Promise<void>
   fetchTilesForRT: () => Promise<void>
@@ -45,10 +50,13 @@ interface EnvironmentState {
 export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
   source: 'none',
   location: null,
+  locationQuery: '',
+  locationFormatted: '',
   radius: 200,
   geometricError: 30,
   osmMeshData: null,
   loading: false,
+  geocoding: false,
   error: null,
   osmOptions: {
     defaultBuildingHeight: 10,
@@ -61,12 +69,45 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
 
   setSource: (source) => set({ source }),
   setLocation: (lat, lon) => set({ location: { lat, lon } }),
+  setLocationQuery: (q) => set({ locationQuery: q }),
   setRadius: (radius) => set({ radius }),
   setGeometricError: (geometricError) => set({ geometricError }),
   setOsmOptions: (opts) =>
     set((s) => ({
       osmOptions: { ...s.osmOptions, ...opts },
     })),
+
+  geocodeAndFetch: async (query?: string) => {
+    const { source, locationQuery } = get()
+    const q = (query ?? locationQuery).trim()
+    if (!q) return
+    if (source !== 'osm' && source !== '3dtiles') return
+
+    set({ geocoding: true, error: null })
+    try {
+      const resp = await fetch(`/api/geocode?q=${encodeURIComponent(q)}`)
+      if (!resp.ok) {
+        const data = await resp.json().catch(() => ({}))
+        throw new Error(data.error || `Geocoding failed: ${resp.status}`)
+      }
+      const { lat, lon, formatted } = await resp.json()
+      set({
+        location: { lat, lon },
+        locationFormatted: formatted,
+        geocoding: false,
+      })
+
+      // Auto-fetch environment after geocoding
+      if (source === 'osm') {
+        await get().fetchOSM()
+      } else if (source === '3dtiles') {
+        await get().fetchTilesForRT()
+      }
+    } catch (e) {
+      Sentry.captureException(e)
+      set({ error: (e as Error).message, geocoding: false })
+    }
+  },
 
   fetchGeoJSON: async (geojsonStr: string) => {
     const { location, osmOptions } = get()

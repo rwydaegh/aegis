@@ -1,4 +1,4 @@
-"""Location loading routes: SSE pipeline streaming and cancellation."""
+"""Location loading routes: SSE pipeline streaming, cancellation, and geocoding."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import logging
 import os
 from pathlib import Path
 
+import requests as http_requests
 from flask import Flask, Response, jsonify, request, session
 
 logger = logging.getLogger(__name__)
@@ -83,6 +84,9 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                     pipeline_dir=pipeline_dir,
                     session_id=sid,
                 ):
+                    # Filter noisy THREE.js warnings from Node.js pipeline
+                    if "Couldn't load texture blob:" in line:
+                        continue
                     yield f"event: progress\ndata: {line}\n\n"
                     if line.startswith("ERROR:"):
                         yield f"event: error\ndata: {line}\n\n"
@@ -106,6 +110,12 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                         cache["tiles_dir"] = tiles_candidate
                 tiles_dir = cache.get("tiles_dir")
                 if tiles_dir is not None:
+                    # Fix invalid blob:nodedata: URIs in GLB textures
+                    from aegis.viewer.pipeline import fix_glb_tiles_dir
+
+                    n_fixed = fix_glb_tiles_dir(tiles_dir)
+                    if n_fixed:
+                        yield f"event: progress\ndata: Fixed blob URIs in {n_fixed} GLB file(s)\n\n"
                     n_tiles = len(list(tiles_dir.glob("*.glb")))
                     yield f"event: progress\ndata: Found {n_tiles} GLB tiles\n\n"
 
@@ -119,6 +129,42 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             generate(),
             mimetype="text/event-stream",
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
+
+    @app.route("/api/geocode")
+    def api_geocode():
+        """Resolve a text location to lat/lon using Google Geocoding API."""
+        q = request.args.get("q", "").strip()
+        if not q:
+            return jsonify({"error": "Missing q parameter"}), 400
+
+        api_key = os.environ.get("GOOGLE_API_KEY", "")
+        if not api_key:
+            return jsonify({"error": "GOOGLE_API_KEY not set"}), 400
+
+        try:
+            resp = http_requests.get(
+                "https://maps.googleapis.com/maps/api/geocode/json",
+                params={"address": q, "key": api_key},
+                timeout=10,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+        except Exception as exc:
+            logger.exception("Geocoding request failed")
+            return jsonify({"error": f"Geocoding failed: {exc}"}), 502
+
+        results = data.get("results", [])
+        if not results:
+            return jsonify({"error": f"No results for '{q}'"}), 404
+
+        loc = results[0]["geometry"]["location"]
+        return jsonify(
+            {
+                "lat": loc["lat"],
+                "lon": loc["lng"],
+                "formatted": results[0].get("formatted_address", q),
+            }
         )
 
     @app.route("/api/location/cancel", methods=["POST"])
