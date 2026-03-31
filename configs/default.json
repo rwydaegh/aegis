@@ -538,5 +538,72 @@
     "max_distance_m": 2000,
     "site_vertical_gap": 0.1
   },
-  "default_scenario": "open_ground"
+  "default_scenario": "open_ground",
+  "scenarios": {
+    "open_ground": {
+      "description": "Body in free space, single antenna at 28 GHz",
+      "launch": {"voxel_dir": null, "voxel_json": null},
+      "label": "Open ground",
+      "icon": "radio",
+      "instant": true,
+      "autoCompute": true,
+      "webState": {
+        "freqGhz": 28,
+        "powerDbm": 60,
+        "mode": "spatial",
+        "antennaPos": [0, 1.5, -0.8],
+        "environment": {"source": "none"}
+      }
+    },
+    "mmwave_close": {
+      "description": "60 GHz antenna 10 cm from skin surface",
+      "launch": {"voxel_dir": null},
+      "label": "Close-range mmWave",
+      "icon": "zap",
+      "instant": true,
+      "autoCompute": true,
+      "webState": {
+        "freqGhz": 60,
+        "powerDbm": 40,
+        "mode": "spatial",
+        "antennaPos": [0, 0.15, -0.5],
+        "environment": {"source": "none"}
+      }
+    },
+    "urban_ghent": {
+      "description": "28 GHz outdoor with OpenStreetMap buildings",
+      "launch": {},
+      "label": "Urban Ghent",
+      "icon": "building",
+      "instant": false,
+      "autoCompute": true,
+      "webState": {
+        "freqGhz": 28,
+        "powerDbm": 60,
+        "mode": "spatial",
+        "antennaPos": [0, 2.0, -0.8],
+        "environment": {
+          "source": "osm",
+          "lat": 51.0447,
+          "lon": 3.7268,
+          "locationQuery": "Ghent, Belgium"
+        }
+      }
+    },
+    "empty": {
+      "description": "Clear everything and start fresh",
+      "launch": {},
+      "label": "Empty scene",
+      "icon": "refresh-cw",
+      "instant": true,
+      "autoCompute": false,
+      "hidden": true,
+      "webState": {
+        "antennaPos": null,
+        "environment": {"source": "none"},
+        "clearResults": true,
+        "clearScene": true
+      }
+    }
+  }
 }

@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import * as Sentry from '@sentry/react'
+import { AnalysisEmptyState } from './AnalysisEmptyState'
 import {
   LineChart,
   Line,
@@ -409,6 +410,7 @@ export default function AnalysisPanel() {
 
   return (
     <div>
+      <AnalysisEmptyState />
       <Section
         title="Power sweep"
         open={openSection === 'power'}

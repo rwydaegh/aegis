@@ -63,7 +63,11 @@ class OverpassResponseTooLarge(RuntimeError):
 # Overpass API fetch
 # ---------------------------------------------------------------------------
 
-_OVERPASS_URL = "https://overpass-api.de/api/interpreter"
+_OVERPASS_URLS = [
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.openstreetmap.fr/api/interpreter",
+    "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+]
 _MAX_RESPONSE_BYTES = 50 * 1024 * 1024  # 50 MB
 
 
@@ -116,37 +120,40 @@ def fetch_osm(
     )
 
     last_exc: Exception | None = None
-    for attempt in range(1 + retries):
-        if attempt > 0:
-            time.sleep(2 * attempt)
-        try:
-            resp = requests.post(
-                _OVERPASS_URL,
-                data={"data": query},
-                timeout=timeout,
-            )
-        except requests.exceptions.Timeout as exc:
-            last_exc = exc
-            continue
+    for url in _OVERPASS_URLS:
+        for attempt in range(1 + retries):
+            if attempt > 0:
+                time.sleep(2 * attempt)
+            try:
+                resp = requests.post(
+                    url,
+                    data={"data": query},
+                    timeout=timeout,
+                )
+            except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as exc:
+                last_exc = exc
+                continue
 
-        if resp.status_code == 429:
-            raise OverpassRateLimitError("Overpass rate limit exceeded (HTTP 429)")
-        if resp.status_code == 504:
-            last_exc = OverpassTimeoutError("Overpass gateway timeout (HTTP 504)")
-            continue
-        resp.raise_for_status()
+            if resp.status_code == 429:
+                raise OverpassRateLimitError("Overpass rate limit exceeded (HTTP 429)")
+            if resp.status_code in (502, 503, 504):
+                last_exc = OverpassTimeoutError(f"Overpass gateway error (HTTP {resp.status_code}) from {url}")
+                continue
+            if resp.status_code == 403:
+                # Mirror rejected the request, try next mirror
+                last_exc = OverpassTimeoutError(f"Overpass mirror {url} returned 403")
+                break
+            resp.raise_for_status()
 
-        content = resp.content
-        if len(content) > _MAX_RESPONSE_BYTES:
-            raise OverpassResponseTooLarge(
-                f"Response size {len(content) / 1e6:.1f} MB exceeds limit {_MAX_RESPONSE_BYTES / 1e6:.0f} MB"
-            )
+            content = resp.content
+            if len(content) > _MAX_RESPONSE_BYTES:
+                raise OverpassResponseTooLarge(
+                    f"Response size {len(content) / 1e6:.1f} MB exceeds limit {_MAX_RESPONSE_BYTES / 1e6:.0f} MB"
+                )
 
-        return resp.text
+            return resp.text
 
-    raise OverpassTimeoutError(
-        f"Overpass request timed out after {1 + retries} attempts ({timeout}s each)"
-    ) from last_exc
+    raise OverpassTimeoutError(f"All Overpass mirrors failed after retries ({timeout}s each)") from last_exc
 
 
 # ---------------------------------------------------------------------------

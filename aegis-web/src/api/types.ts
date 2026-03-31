@@ -95,6 +95,33 @@ export interface SystemInfo {
   git_commit?: string | null
 }
 
+// -- Scenario types -----------------------------------------------------------
+
+export interface ScenarioWebState {
+  freqGhz?: number;
+  powerDbm?: number;
+  mode?: string;
+  antennaPos?: [number, number, number] | null;
+  environment?: {
+    source: string;
+    lat?: number;
+    lon?: number;
+    locationQuery?: string;
+  };
+  clearResults?: boolean;
+  clearScene?: boolean;
+}
+
+export interface ScenarioEntry {
+  label: string;
+  description: string;
+  icon: string;
+  instant: boolean;
+  autoCompute: boolean;
+  hidden?: boolean;
+  webState: ScenarioWebState;
+}
+
 // -- ViewerConfig -------------------------------------------------------------
 
 export interface ViewerConfig {
@@ -128,6 +155,7 @@ export interface ViewerConfig {
   ui: UIConfig
   active_scenario?: string
   active_scenario_description?: string
+  scenarios?: Record<string, ScenarioEntry>
 }
 
 export interface Capabilities {

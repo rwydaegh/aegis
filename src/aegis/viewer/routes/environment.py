@@ -6,6 +6,10 @@ import json
 
 from flask import Flask, Response, jsonify, request
 
+from aegis.viewer.cache import EnvironmentCache
+
+_env_cache = EnvironmentCache()
+
 
 def _handle_environment_osm(cache: dict, cache_lock) -> Response:
     """Implementation for POST /api/environment/osm."""
@@ -36,11 +40,28 @@ def _handle_environment_osm(cache: dict, cache_lock) -> Response:
 
     cfg_env = cache.get("config", {}).get("environment", {})
     osm_cfg = cfg_env.get("osm", {})
-    default_building_height = body.get(
-        "default_building_height",
-        osm_cfg.get("default_building_height", 10),
+    # Frontend sends options nested under "options" key
+    options = body.get("options", {})
+    default_building_height = (
+        options.get("default_building_height")
+        or body.get("default_building_height")
+        or osm_cfg.get("default_building_height", 10)
     )
     detail = bool(body.get("detail", False))
+
+    cache_opts = {
+        "default_building_height": float(default_building_height),
+        "detail": detail,
+    }
+
+    # Check the file-based cache first
+    cached = _env_cache.get_binary("osm", lat, lon, radius, cache_opts)
+    if cached is not None:
+        binary, meta = cached
+        resp = Response(binary, mimetype="application/octet-stream")
+        resp.headers["X-Meta"] = json.dumps(meta)
+        resp.headers["Access-Control-Expose-Headers"] = "X-Meta"
+        return resp
 
     try:
         xml_str = fetch_osm(lat, lon, radius_m=radius)
@@ -57,7 +78,10 @@ def _handle_environment_osm(cache: dict, cache_lock) -> Response:
         resp.headers["Retry-After"] = "60"
         return resp
     except OverpassTimeoutError:
-        return jsonify({"error": "Overpass query timed out. Try a smaller radius or try again later."}), 504
+        return (
+            jsonify({"error": "Overpass query timed out. Try a smaller radius or try again later."}),
+            504,
+        )
     except OverpassResponseTooLarge:
         return jsonify({"error": "Overpass response too large. Reduce the radius."}), 413
 
@@ -65,6 +89,9 @@ def _handle_environment_osm(cache: dict, cache_lock) -> Response:
     with cache_lock:
         cache["env_mesh_osm"] = mesh
         cache["env_mesh"] = mesh
+
+    # Persist to file-based cache
+    _env_cache.put_binary("osm", lat, lon, radius, cache_opts, binary, meta)
 
     resp = Response(binary, mimetype="application/octet-stream")
     resp.headers["X-Meta"] = json.dumps(meta)
@@ -436,3 +463,9 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
     def api_environment_materials():
         """Return the material catalog with EM properties."""
         return _handle_environment_materials()
+
+    @app.route("/api/cache/environments", methods=["DELETE"])
+    def api_clear_environment_cache():
+        """Clear the file-based environment cache."""
+        _env_cache.clear()
+        return jsonify({"ok": True})
