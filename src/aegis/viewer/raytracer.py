@@ -138,10 +138,13 @@ def load_scene(scene_path: str | Path) -> dict:
     return result
 
 
+_ZERO3 = np.zeros(3)
+
+
 def compute_paths_differt(
-    scene_path: str | Path,
-    tx_pos: np.ndarray,
-    rx_pos: np.ndarray,
+    scene_path: str | Path | None = None,
+    tx_pos: np.ndarray = _ZERO3,
+    rx_pos: np.ndarray = _ZERO3,
     max_order: int = 1,
     freq_hz: float = DEFAULT_FREQ_HZ,
     tx_power_dbm: float = DEFAULT_POWER_DBM,
@@ -149,6 +152,8 @@ def compute_paths_differt(
     method: str = "exhaustive",
     num_rays: int = 1_000_000,
     chunk_size: int | None = None,
+    *,
+    scene: Any | None = None,
     # NOTE: Uses from_powers() with scalar power only. Polarisation direction
     # is irrelevant here because the viewer runs incoherent levels (0-6) where
     # only |psi|^2 matters. For coherent levels (7-8) with proper TE/TM
@@ -158,12 +163,13 @@ def compute_paths_differt(
 
     Parameters
     ----------
-    scene_path : path to Sionna XML scene
+    scene_path : path to Sionna XML scene (mutually exclusive with scene)
     tx_pos : (3,) transmitter position [m]
     rx_pos : (3,) receiver (body center) position [m]
     max_order : max number of reflections (0=LOS only, 1=+single reflection, etc.)
     freq_hz : frequency [Hz]
     tx_power_dbm : transmit power [dBm]
+    scene : pre-built DiffeRT TriangleScene (alternative to scene_path)
 
     Returns
     -------
@@ -175,14 +181,19 @@ def compute_paths_differt(
     import equinox as eqx
     import jax.numpy as jnp
 
-    scene_data = load_scene(scene_path)
-    scene = scene_data["scene"]
+    if scene is not None:
+        scene_obj = scene
+    elif scene_path is not None:
+        scene_data = load_scene(scene_path)
+        scene_obj = scene_data["scene"]
+    else:
+        raise ValueError("Either scene_path or scene must be provided")
 
     tx = jnp.array([tx_pos.tolist()])
     rx = jnp.array([rx_pos.tolist()])
 
-    scene = eqx.tree_at(lambda s: s.transmitters, scene, tx)
-    scene = eqx.tree_at(lambda s: s.receivers, scene, rx)
+    scene_obj = eqx.tree_at(lambda s: s.transmitters, scene_obj, tx)
+    scene_obj = eqx.tree_at(lambda s: s.receivers, scene_obj, rx)
 
     # Collect paths from all orders
     all_k_hat = []
@@ -196,7 +207,12 @@ def compute_paths_differt(
 
     for order in range(max_order + 1):
         try:
-            paths_result = scene.compute_paths(order=order, method=method, num_rays=num_rays, chunk_size=use_chunk_size)
+            paths_result = scene_obj.compute_paths(
+                order=order,
+                method=method,
+                num_rays=num_rays,
+                chunk_size=use_chunk_size,
+            )
         except Exception as e:
             logger.warning("Bounce order %d failed, skipping: %s", order, e)
             continue
@@ -254,66 +270,6 @@ def compute_paths_differt(
     paths = PropagationPaths.from_powers(k_hat=k_hat, power=power)
 
     return paths, path_viz
-
-
-def _emit_exposed_faces(
-    grid_coords: np.ndarray,
-    positions: np.ndarray,
-    voxel_size: float,
-) -> np.ndarray:
-    """Emit quad vertices for all exposed voxel faces.
-
-    Returns (M, 3) float32 array of vertices, where every consecutive 4
-    vertices form one quad (to be triangulated as [0,1,2] + [0,2,3]).
-    """
-    hs = voxel_size / 2
-    face_dirs = np.array(
-        [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]],
-        dtype=np.int64,
-    )
-    face_corners = np.array(
-        [
-            [[hs, -hs, -hs], [hs, hs, -hs], [hs, hs, hs], [hs, -hs, hs]],  # +X
-            [[-hs, -hs, hs], [-hs, hs, hs], [-hs, hs, -hs], [-hs, -hs, -hs]],  # -X
-            [[-hs, hs, -hs], [-hs, hs, hs], [hs, hs, hs], [hs, hs, -hs]],  # +Y
-            [[hs, -hs, -hs], [hs, -hs, hs], [-hs, -hs, hs], [-hs, -hs, -hs]],  # -Y
-            [[-hs, -hs, hs], [hs, -hs, hs], [hs, hs, hs], [-hs, hs, hs]],  # +Z
-            [[-hs, hs, -hs], [hs, hs, -hs], [hs, -hs, -hs], [-hs, -hs, -hs]],  # -Z
-        ],
-        dtype=np.float32,
-    )
-
-    gc = grid_coords.astype(np.int64)
-    offsets = gc.min(axis=0)
-    gc_shifted = gc - offsets
-    span = gc_shifted.max(axis=0) + 1
-    pad_shape = tuple(int(x) + 2 for x in span)
-    occ = np.zeros(pad_shape, dtype=bool)
-    ix = gc_shifted[:, 0].astype(np.intp) + 1
-    iy = gc_shifted[:, 1].astype(np.intp) + 1
-    iz = gc_shifted[:, 2].astype(np.intp) + 1
-    occ[ix, iy, iz] = True
-
-    all_face_verts: list[np.ndarray] = []
-    for d in range(6):
-        dx, dy, dz = int(face_dirs[d, 0]), int(face_dirs[d, 1]), int(face_dirs[d, 2])
-        ni = ix + dx
-        nj = iy + dy
-        nk = iz + dz
-        exposed_mask = ~occ[ni, nj, nk]
-        exposed_idx = np.where(exposed_mask)[0]
-        if len(exposed_idx) == 0:
-            continue
-
-        centers = positions[exposed_idx]
-        corners = face_corners[d]
-        verts = centers[:, np.newaxis, :] + corners[np.newaxis, :, :]
-        all_face_verts.append(verts.reshape(-1, 3))
-
-    if not all_face_verts:
-        raise ValueError("No exterior faces found")
-
-    return np.concatenate(all_face_verts, axis=0).astype(np.float32)
 
 
 # Mapping from face direction index to (u_axis, v_axis, fixed_axis) indices

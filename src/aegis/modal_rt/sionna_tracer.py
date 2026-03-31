@@ -217,20 +217,89 @@ class SionnaTracer:
         materials: list[str],
         freq_hz: float,
     ):
-        """Build a Sionna Scene from raw mesh data.
+        """Build a Sionna Scene from pre-triangulated mesh data.
 
-        This is the key function that converts voxel geometry into a
-        Sionna-compatible scene. Implementation note: Sionna's Scene API
-        requires loading from an XML file or using its programmatic API.
-        The exact approach depends on which Sionna v2 APIs are available
-        for mesh-based scene construction.
-
-        TODO: Implement during task execution. Check Sionna v2 docs for
-        Scene.from_mesh() or similar API. If no direct API exists, write
-        the mesh to a temporary Mitsuba XML file and load via
-        sionna.rt.load_scene().
+        Writes temporary Mitsuba XML + PLY files per material group,
+        then loads via sionna.rt.load_scene(). Mirrors the approach in
+        aegis.environment.export.to_sionna_xml().
         """
-        raise NotImplementedError(
-            "_build_scene_from_mesh: resolve during implementation. "
-            "Check Sionna v2 API for mesh-based scene construction."
-        )
+        import struct
+        import tempfile
+        from pathlib import Path
+
+        import numpy as np
+        import sionna.rt
+
+        vertices = np.asarray(vertices, dtype=np.float32)
+        triangles = np.asarray(triangles, dtype=np.int32)
+
+        mat_colors = {
+            "concrete": (0.6, 0.6, 0.6),
+            "brick": (0.7, 0.3, 0.2),
+            "asphalt": (0.3, 0.3, 0.3),
+            "vegetation": (0.2, 0.6, 0.2),
+            "glass": (0.5, 0.7, 0.9),
+            "metal": (0.7, 0.7, 0.8),
+            "wood": (0.6, 0.4, 0.2),
+            "water": (0.2, 0.3, 0.7),
+            "ground": (0.5, 0.4, 0.3),
+            "default": (0.5, 0.5, 0.5),
+        }
+
+        tmpdir = Path(tempfile.mkdtemp(prefix="sionna_voxel_"))
+
+        # Group triangles by per-face material name
+        if materials and len(materials) == len(triangles):
+            # Per-face material names
+            groups: dict[str, list[int]] = {}
+            for i, m in enumerate(materials):
+                groups.setdefault(m, []).append(i)
+        elif materials and len(materials) == 1:
+            groups = {materials[0]: list(range(len(triangles)))}
+        else:
+            groups = {"concrete": list(range(len(triangles)))}
+
+        import xml.etree.ElementTree as ET
+
+        root = ET.Element("scene", version="2.1.0")
+
+        for mat_name, face_indices in groups.items():
+            mat_tris = triangles[face_indices]
+
+            # Compact vertex subset
+            unique_idx, inverse = np.unique(mat_tris.ravel(), return_inverse=True)
+            local_verts = vertices[unique_idx].astype(np.float32)
+            local_faces = inverse.reshape(-1, 3).astype(np.uint32)
+
+            # Write PLY (binary little-endian)
+            ply_name = f"{mat_name}.ply"
+            ply_path = tmpdir / ply_name
+            n_v, n_f = len(local_verts), len(local_faces)
+            header = (
+                f"ply\nformat binary_little_endian 1.0\n"
+                f"element vertex {n_v}\n"
+                f"property float x\nproperty float y\nproperty float z\n"
+                f"element face {n_f}\n"
+                f"property list uchar uint vertex_indices\n"
+                f"end_header\n"
+            )
+            face_parts = []
+            for tri in local_faces:
+                face_parts.append(struct.pack("<B", 3))
+                face_parts.append(struct.pack("<III", int(tri[0]), int(tri[1]), int(tri[2])))
+            ply_path.write_bytes(header.encode("ascii") + local_verts.tobytes() + b"".join(face_parts))
+
+            # XML shape element
+            shape = ET.SubElement(root, "shape", type="ply", id=f"mesh_{mat_name}")
+            ET.SubElement(shape, "string", name="filename", value=ply_name)
+            bsdf = ET.SubElement(shape, "bsdf", type="diffuse", id=f"bsdf_{mat_name}")
+            r, g, b = mat_colors.get(mat_name, mat_colors["default"])
+            ET.SubElement(bsdf, "rgb", name="reflectance", value=f"{r:.3f} {g:.3f} {b:.3f}")
+
+        xml_path = tmpdir / "scene.xml"
+        xml_bytes = ET.tostring(root, encoding="unicode", xml_declaration=False)
+        xml_path.write_text('<?xml version="1.0" encoding="utf-8"?>\n' + xml_bytes + "\n")
+
+        scene = sionna.rt.load_scene(str(xml_path))
+        scene.frequency = freq_hz
+        return scene

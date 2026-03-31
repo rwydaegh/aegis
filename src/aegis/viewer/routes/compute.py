@@ -668,9 +668,21 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         if err:
             return err
 
-        scene_path = params.get("scene_path")
+        scene_path = params.get("scene_path") or None
+
+        # Determine RT source: scene file, voxel hull, or environment mesh
+        use_voxel_scene = False
+        use_env_mesh = False
         if not scene_path:
-            return jsonify({"error": "Missing 'scene_path'"}), 400
+            with cache_lock:
+                has_voxels = cache.get("voxel_positions") is not None and len(cache.get("voxel_positions", [])) > 0
+                has_env = cache.get("env_mesh") is not None
+            if has_voxels:
+                use_voxel_scene = True
+            elif has_env:
+                use_env_mesh = True
+            else:
+                return jsonify({"error": "No scene, voxels, or environment loaded for ray tracing"}), 400
 
         engine_kw, err = _parse_mode_or_level(params)
         if err:
@@ -712,40 +724,42 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         gpu_backend = None
         modal_result = None
         modal_error = None
-        try:
-            from pathlib import Path as _Path
 
-            from aegis.viewer.modal_proxy import _is_enabled as _modal_enabled
-            from aegis.viewer.modal_proxy import trace_differt as _modal_trace_differt
+        if not use_voxel_scene and not use_env_mesh:
+            try:
+                from pathlib import Path as _Path
 
-            scene_dir = _Path(scene_path).parent
-            scene_xml = _Path(scene_path).read_text()
-            # Bundle mesh files so Modal has them
-            scene_files = {}
-            for f in scene_dir.rglob("*"):
-                if f.is_file() and f.name != _Path(scene_path).name:
-                    scene_files[str(f.relative_to(scene_dir))] = f.read_bytes()
-            modal_result = _modal_trace_differt(
-                scene_xml=scene_xml,
-                scene_files=scene_files,
-                tx_pos=antenna_pos.tolist(),
-                rx_pos=body_center.tolist(),
-                max_order=rt_cfg_parsed["max_depth"],
-                freq_hz=tissue.freq_hz,
-                tx_power_dbm=power_dbm,
-                reflection_loss_per_order=rt_cfg_parsed["reflection_loss_per_order"],
-                method=rt_cfg_parsed["method"],
-                num_rays=rt_cfg_parsed["rays_per_source"],
-                chunk_size=rt_cfg_parsed["chunk_size"],
-            )
-            if modal_result is None and _modal_enabled():
-                modal_error = "Modal DiffeRT returned no result"
-        except Exception as e:
-            logger.error("Modal DiffeRT proxy attempt failed: %s", e, exc_info=True)
-            from aegis.viewer.modal_proxy import _is_enabled as _modal_enabled
+                from aegis.viewer.modal_proxy import _is_enabled as _modal_enabled
+                from aegis.viewer.modal_proxy import trace_differt as _modal_trace_differt
 
-            if _modal_enabled():
-                modal_error = str(e)
+                scene_dir = _Path(scene_path).parent
+                scene_xml = _Path(scene_path).read_text()
+                # Bundle mesh files so Modal has them
+                scene_files = {}
+                for f in scene_dir.rglob("*"):
+                    if f.is_file() and f.name != _Path(scene_path).name:
+                        scene_files[str(f.relative_to(scene_dir))] = f.read_bytes()
+                modal_result = _modal_trace_differt(
+                    scene_xml=scene_xml,
+                    scene_files=scene_files,
+                    tx_pos=antenna_pos.tolist(),
+                    rx_pos=body_center.tolist(),
+                    max_order=rt_cfg_parsed["max_depth"],
+                    freq_hz=tissue.freq_hz,
+                    tx_power_dbm=power_dbm,
+                    reflection_loss_per_order=rt_cfg_parsed["reflection_loss_per_order"],
+                    method=rt_cfg_parsed["method"],
+                    num_rays=rt_cfg_parsed["rays_per_source"],
+                    chunk_size=rt_cfg_parsed["chunk_size"],
+                )
+                if modal_result is None and _modal_enabled():
+                    modal_error = "Modal DiffeRT returned no result"
+            except Exception as e:
+                logger.error("Modal DiffeRT proxy attempt failed: %s", e, exc_info=True)
+                from aegis.viewer.modal_proxy import _is_enabled as _modal_enabled
+
+                if _modal_enabled():
+                    modal_error = str(e)
 
         if modal_result is not None:
             from aegis.paths import PropagationPaths
@@ -758,10 +772,9 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             # Modal is configured but failed - don't fall back to local CPU (OOM risk)
             return jsonify({"error": f"DiffeRT on Modal failed: {modal_error}"}), 503
         else:
-            # No Modal configured - use local CPU (dev mode)
+            # Local DiffeRT: scene file, voxel hull, or environment mesh
             try:
-                paths, path_viz = compute_paths_differt(
-                    scene_path,
+                rt_kwargs = dict(
                     tx_pos=antenna_pos,
                     rx_pos=body_center,
                     max_order=rt_cfg_parsed["max_depth"],
@@ -772,6 +785,40 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                     num_rays=rt_cfg_parsed["rays_per_source"],
                     chunk_size=rt_cfg_parsed["chunk_size"],
                 )
+                if use_voxel_scene:
+                    from aegis.viewer.raytracer import get_or_build_voxel_scene
+                    from aegis.viewer.scene_data import extract_exterior, prepare_for_raytracing
+
+                    with cache_lock:
+                        vp = cache["voxel_positions"]
+                        vs = cache.get("voxel_sizes")
+                        vm = cache.get("voxel_materials")
+                        cfg = cache.get("config", {})
+
+                    z_up_pos, gc, dominant_size = prepare_for_raytracing(vp, vs)
+                    ext_mask = extract_exterior(gc)
+                    ext_pos = z_up_pos[ext_mask]
+                    ext_grid = gc[ext_mask]
+                    ext_mats = [vm[i] for i in np.nonzero(ext_mask)[0]] if vm is not None else None
+                    material_colors = cfg.get("voxels", {}).get("material_colors")
+
+                    voxel_scene = get_or_build_voxel_scene(
+                        ext_pos,
+                        ext_grid,
+                        voxel_size=dominant_size,
+                        materials=ext_mats,
+                        material_colors=material_colors,
+                    )
+                    paths, path_viz = compute_paths_differt(**rt_kwargs, scene=voxel_scene)
+                elif use_env_mesh:
+                    from aegis.environment.export import to_differt_scene
+
+                    with cache_lock:
+                        env_mesh = cache["env_mesh"]
+                    env_scene = to_differt_scene(env_mesh)
+                    paths, path_viz = compute_paths_differt(**rt_kwargs, scene=env_scene)
+                else:
+                    paths, path_viz = compute_paths_differt(scene_path, **rt_kwargs)
             except Exception as e:
                 return jsonify({"error": f"Ray tracing failed: {e}"}), 500
             rt_ms = None
@@ -1027,19 +1074,38 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             ext_mask = extract_exterior(grid_coords)
             ext_pos = z_up_pos[ext_mask]
 
-            # Each exterior voxel face is 2 triangles, up to 6 faces per voxel
-            est_triangles = len(ext_pos) * 12
-            if est_triangles > max_rt_triangles and max_order > 0:
+            ext_materials = None
+            if voxel_materials is not None:
+                ext_materials = [voxel_materials[i] for i in np.nonzero(ext_mask)[0]]
+
+            # Pre-triangulate using greedy mesher (sends ~8x fewer triangles)
+            from aegis.viewer.raytracer import get_or_build_voxel_scene
+
+            ext_grid = grid_coords[ext_mask]
+            material_colors = cfg.get("voxels", {}).get("material_colors")
+            voxel_scene = get_or_build_voxel_scene(
+                ext_pos,
+                ext_grid,
+                voxel_size=vs,
+                materials=ext_materials,
+                material_colors=material_colors,
+            )
+            hull_verts = np.array(voxel_scene.mesh.vertices)
+            hull_tris = np.array(voxel_scene.mesh.triangles)
+
+            actual_triangles = len(hull_tris)
+            if actual_triangles > max_rt_triangles and max_order > 0:
                 return jsonify(
                     {
-                        "error": f"Scene too large for reflections ({est_triangles:,} triangles, "
+                        "error": f"Scene too large for reflections ({actual_triangles:,} triangles, "
                         f"limit {max_rt_triangles:,}). Use LOS only (order 0) or reduce scene size."
                     }
                 ), 400
 
-            ext_materials = None
-            if voxel_materials is not None:
-                ext_materials = [voxel_materials[i] for i in np.nonzero(ext_mask)[0]]
+            # Build per-face material names for Sionna BSDF assignment
+            face_mats_idx = np.array(voxel_scene.mesh.face_materials)
+            mat_names_tuple = voxel_scene.mesh.material_names
+            per_face_mats = [mat_names_tuple[int(i)] for i in face_mats_idx]
         except Exception as e:
             return jsonify({"error": f"Voxel mesh build failed: {e}"}), 500
 
@@ -1055,9 +1121,9 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         scene_key = f"voxel_{voxel_hash}"
 
         scene_data = {
-            "vertices": ext_pos.tolist(),
-            "triangles": [],  # triangulation handled on Modal side
-            "materials": ext_materials or [],
+            "vertices": hull_verts.tolist(),
+            "triangles": hull_tris.tolist(),
+            "materials": per_face_mats,
         }
 
         rt_config_dict = {

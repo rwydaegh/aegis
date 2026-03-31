@@ -118,8 +118,10 @@ export function useDosimetry() {
     let computeCall: Promise<import('@/api/client').ComputeResult>
     if (scene.pathSource === 'rt' && scene.rtSource === 'voxel') {
       computeCall = computeVoxelRT({ ...params, rtConfig: rtCfg }, controller.signal)
-    } else if (scene.pathSource === 'rt' && scene.rtSource === 'differt' && scene.loadedScenePath) {
-      computeCall = computeRT({ ...params, scenePath: scene.loadedScenePath, rtConfig: rtCfg }, controller.signal)
+    } else if (scene.pathSource === 'rt' && scene.rtSource === 'differt') {
+      // DiffeRT works with scene files, voxel hull, or environment meshes.
+      // Backend falls through: scene_path -> voxels -> env_mesh
+      computeCall = computeRT({ ...params, scenePath: scene.loadedScenePath || '', rtConfig: rtCfg }, controller.signal)
     } else if (scene.pathSource === 'rt' && scene.rtSource === 'sionna' && scene.loadedScenePath) {
       computeCall = computeSionnaRT({ ...params, scenePath: scene.loadedScenePath, rtConfig: rtCfg }, controller.signal)
     } else {
