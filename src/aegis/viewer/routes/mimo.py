@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import logging
 
 import numpy as np
@@ -14,6 +13,7 @@ from aegis.mimo.array import AntennaArray
 from aegis.mimo.compute import compute_mimo_scene_with_bodies
 from aegis.mimo.scene import MIMOScene
 from aegis.mimo.user import UserConfig, UserState
+from aegis.viewer.routes.compute import _json_dumps_safe
 
 logger = logging.getLogger(__name__)
 
@@ -165,7 +165,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         stats = (cache.get("mimo_results_stats") or {}).get(user_id, {})
 
         resp = Response(data_bytes, mimetype=_OCTET_STREAM)
-        resp.headers["X-Stats"] = json.dumps(stats)
+        resp.headers["X-Stats"] = _json_dumps_safe(stats)
         resp.headers["Access-Control-Expose-Headers"] = "X-Stats"
         return resp
 

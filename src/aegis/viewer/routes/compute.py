@@ -26,6 +26,28 @@ _ERR_ROTATION_TYPE = "body_rotation_y must be a number"
 _ERR_NO_EXPORT_DATA = "No dosimetry result available. Run a compute first."
 
 
+def _sanitize_for_json(obj):
+    """Recursively replace float inf/nan with None for valid JSON output."""
+    import math
+
+    if isinstance(obj, float):
+        return None if not math.isfinite(obj) else obj
+    if isinstance(obj, dict):
+        return {k: _sanitize_for_json(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_sanitize_for_json(v) for v in obj]
+    return obj
+
+
+def _json_dumps_safe(obj: object) -> str:
+    """Serialize to valid JSON, replacing inf/nan with null.
+
+    Python's json.dumps outputs non-standard ``Infinity``/``NaN`` tokens that
+    JavaScript's ``JSON.parse`` rejects.
+    """
+    return json.dumps(_sanitize_for_json(obj))
+
+
 def _cache_dosimetry_for_export(app: Flask, result, body, stats: dict) -> None:
     """Cache the last dosimetry result and body for CSV export."""
     app.config["_last_dosimetry_result"] = result
@@ -138,7 +160,7 @@ def _make_rt_response(result, body, tissue, engine_kw, quantities, scenario, ext
     stats["timings"] = timings
     stats["arrays"] = arrays_meta
     resp = Response(bytes(buf), mimetype=_OCTET_STREAM)
-    resp.headers["X-Stats"] = json.dumps(stats)
+    resp.headers["X-Stats"] = _json_dumps_safe(stats)
     resp.headers["Access-Control-Expose-Headers"] = "X-Stats"
     return resp, stats
 
@@ -333,7 +355,7 @@ def _zero_paths_response(body, tissue, level, extra=None):
         stats.update(extra)
     sab_bytes = np.zeros(body.n_triangles, dtype=np.float32).tobytes()
     resp = Response(sab_bytes, mimetype=_OCTET_STREAM)
-    resp.headers["X-Stats"] = json.dumps(stats)
+    resp.headers["X-Stats"] = _json_dumps_safe(stats)
     resp.headers["Access-Control-Expose-Headers"] = "X-Stats"
     return resp
 
@@ -517,7 +539,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         stats["arrays"] = arrays_meta
 
         resp = Response(bytes(buf), mimetype=_OCTET_STREAM)
-        resp.headers["X-Stats"] = json.dumps(stats)
+        resp.headers["X-Stats"] = _json_dumps_safe(stats)
         resp.headers["Access-Control-Expose-Headers"] = "X-Stats"
         return resp
 

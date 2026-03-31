@@ -150,6 +150,13 @@ class DosimetryEngine:
         sinc: np.ndarray | None = None,
     ) -> DosimetryResult:
         """Build a DosimetryResult from raw sab with averaging and derived quantities."""
+        if not np.all(np.isfinite(sab)):
+            n_nan = int(np.sum(np.isnan(sab)))
+            n_inf = int(np.sum(np.isinf(sab)))
+            raise ValueError(
+                f"Kernel produced non-finite sab values ({n_nan} NaN, {n_inf} Inf). "
+                f"This indicates a numerical issue in the level {fidelity_level} kernel."
+            )
         p_abs = float(np.sum(sab * body.areas))
         sar_wb = p_abs / body_mass if body_mass is not None else None
         effective_freq_hz = freq_hz if freq_hz is not None else self.freq_hz

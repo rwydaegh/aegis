@@ -90,9 +90,9 @@ export function useDosimetry() {
       bodyName: scene.bodyName || undefined,
     }
 
-    // Timeout: abort after configured limit
+    // Timeout: abort after configured limit, with a distinct reason
     const timeoutMs = 60000
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+    const timeoutId = setTimeout(() => controller.abort('timeout'), timeoutMs)
 
     // Build RT config from store state
     const rc = scene.rtConfig
@@ -161,7 +161,16 @@ export function useDosimetry() {
         }
       })
       .catch(err => {
-        if ((err as Error).name === 'AbortError') return // expected cancellation
+        if ((err as Error).name === 'AbortError') {
+          // Distinguish user-initiated abort from timeout
+          if (controller.signal.reason === 'timeout') {
+            useNotificationStore.getState().addNotification(
+              'warning',
+              `Compute timed out after ${timeoutMs / 1000}s. Try reducing path count or using a lower fidelity level.`,
+            )
+          }
+          return
+        }
         Sentry.captureException(err)
         useNotificationStore.getState().addNotification('error', `Compute failed: ${(err as Error).message ?? err}`, 'This error has been reported and will be fixed automatically using AI. Most issues are fixed in less than 30 minutes.')
       })

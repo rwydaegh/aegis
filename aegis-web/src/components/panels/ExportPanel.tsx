@@ -73,13 +73,18 @@ export default function ExportPanel() {
       })
       canvas.toBlob(blob => {
         if (blob) downloadBlob(blob, 'aegis_screenshot.png')
+        else useNotificationStore.getState().addNotification('error', 'Screenshot capture returned empty image')
       })
     } catch {
-      // Fallback to canvas-only screenshot
+      // Fallback to canvas-only screenshot (captures 3D viewport only)
       const canvas = document.querySelector('canvas')
-      if (!canvas) return
+      if (!canvas) {
+        useNotificationStore.getState().addNotification('error', 'No canvas element found for screenshot')
+        return
+      }
       canvas.toBlob(blob => {
         if (blob) downloadBlob(blob, 'aegis_screenshot.png')
+        else useNotificationStore.getState().addNotification('error', 'Screenshot capture returned empty image')
       })
     }
   }

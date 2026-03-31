@@ -51,6 +51,8 @@ def generate_channel(
 
     Returns PropagationPaths suitable for incoherent dosimetry (levels 0-6).
     """
+    if freq_ghz <= 0:
+        raise ValueError(f"freq_ghz must be positive, got {freq_ghz}")
     rng = np.random.default_rng(seed)
     ov = overrides or {}
 
@@ -114,7 +116,7 @@ def generate_channel(
     wavelength = 0.3 / freq_ghz
     s_inc = p_rx * 4 * np.pi / wavelength**2  # power density [W/m²]
 
-    path_powers = powers * s_inc
+    path_powers = np.maximum(powers * s_inc, 0.0)
 
     return PropagationPaths.from_powers(k_hat=k_hats, power=path_powers)
 
