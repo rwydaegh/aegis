@@ -111,7 +111,12 @@ export const useMIMOStore = create<MIMOStore>((set, get) => ({
     const fp = get().focusPoint
     if (!arrayConfig) {
       const antennaPos = useSimulationStore.getState().antennaPos
-      const pos: [number, number, number] = antennaPos ?? [5, 2, 3]
+      // Single-antenna antennaPos is the click point (ground level).
+      // The MIMO panel position is the antenna center, so add pole height.
+      const poleH = useSceneStore.getState().viewerConfig?.antenna?.pole_height ?? 2
+      const pos: [number, number, number] = antennaPos
+        ? [antennaPos[0], antennaPos[1] + poleH, antennaPos[2]]
+        : [5, 2, 3]
       arrayConfig = {
         type: 'upa' as const,
         n_h: 4, n_v: 4,

@@ -293,7 +293,12 @@ def _preload_voxels(
             _tc = Path(_vs).parent / "tiles"
             if _tc.is_dir() and any(_tc.glob("*.glb")):
                 cache["tiles_dir"] = _tc
-                print(f"  Tiles: {len(list(_tc.glob('*.glb')))} GLB files")
+                from aegis.viewer.pipeline import fix_glb_tiles_dir
+
+                n_fixed = fix_glb_tiles_dir(_tc)
+                n_total = len(list(_tc.glob("*.glb")))
+                suffix = f" ({n_fixed} fixed)" if n_fixed else ""
+                print(f"  Tiles: {n_total} GLB files{suffix}")
 
 
 def _setup_precompute_G(app: Flask, cache: dict) -> None:
