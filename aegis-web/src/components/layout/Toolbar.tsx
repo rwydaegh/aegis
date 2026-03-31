@@ -7,23 +7,13 @@ import { useUIStore } from '@/stores/ui'
 import { useMIMOStore } from '@/stores/mimo'
 import type { CameraPreset } from '@/stores/ui'
 import { cn } from '@/lib/utils'
-import type { DosimetryStats, QuantityKey } from '@/api/types'
+import type { DosimetryStats } from '@/api/types'
 import SessionTimer from '@/components/layout/SessionTimer'
 import UserBadges from '@/components/hud/UserBadges'
 import { useActiveSimulation } from '@/hooks/useActiveSimulation'
 import { generateShareUrl } from '@/lib/shareLink'
 
-const COMPLIANCE_LABEL_TO_KEY: Record<string, QuantityKey> = {
-  'S_ab (4 cm^2)': 'sab_4cm2',
-  'S_ab (1 cm^2)': 'sab_1cm2',
-  'SAR_wb': 'sar_wb',
-  'S_inc (local)': 'sinc_local',
-  'S_inc (whole-body)': 'sinc_wb',
-}
-
 function ComplianceBadge({ stats }: { stats: DosimetryStats | null }) {
-  const enabledQuantities = useSimulationStore(s => s.enabledQuantities)
-
   if (!stats) {
     return (
       <Badge variant="outline" className="text-muted-foreground border-muted-foreground/30 font-mono text-xs">
@@ -39,14 +29,9 @@ function ComplianceBadge({ stats }: { stats: DosimetryStats | null }) {
     )
   }
 
-  // Derive pass/fail from visible checks only (same filter as CompliancePanel)
+  // Derive pass/fail from ALL checks, not just visible ones
   const visiblePass = stats.compliance
-    ? stats.compliance.checks
-        .filter(check => {
-          const key = COMPLIANCE_LABEL_TO_KEY[check.label]
-          return key ? enabledQuantities.has(key) : true
-        })
-        .every(check => check.pass)
+    ? stats.compliance.checks.every(check => check.pass)
     : stats.compliant
 
   return visiblePass ? (

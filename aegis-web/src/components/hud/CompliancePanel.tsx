@@ -91,8 +91,10 @@ export default function CompliancePanel() {
       })}
 
       {visibleChecks.length > 0 && (() => {
-        const maxPowerDbm = computeMaxPowerDbm(visibleChecks, powerDbm)
-        const visibleMarginDb = Math.min(...visibleChecks.map(c => c.ratio > 0 ? 10 * Math.log10(1 / c.ratio) : Infinity))
+        // Use ALL checks for overall compliance determination, not just visible ones
+        const allChecks = compliance.checks
+        const maxPowerDbm = computeMaxPowerDbm(allChecks, powerDbm)
+        const visibleMarginDb = Math.min(...allChecks.map(c => c.ratio > 0 ? 10 * Math.log10(1 / c.ratio) : Infinity))
         if (!isFinite(visibleMarginDb)) return null
         return (
           <div style={{ borderTop: '1px solid #333', paddingTop: '8px', marginTop: '8px', color: '#888' }}>
