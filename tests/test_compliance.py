@@ -2,17 +2,23 @@
 
 import math
 
+import numpy as np
 import pytest
 
 from aegis.compliance import (
     ICNIRP_2020,
     ComplianceCheck,
+    ComplianceResult,
     ExposureScenario,
+    compliance_heatmap,
     evaluate_compliance,
     icnirp_limits,
     is_compliant_sab,
     is_compliant_sar,
+    link_budget_compliance,
     margin_db,
+    max_compliant_power,
+    power_sweep,
     summary_text,
 )
 
@@ -400,3 +406,432 @@ class TestBackwardCompat:
 
     def test_is_compliant_sar_fail(self) -> None:
         assert is_compliant_sar(0.09) is False
+
+
+# -----------------------------------------------------------------------
+# Helpers for ComplianceResult construction
+# -----------------------------------------------------------------------
+
+_GP = ExposureScenario.GENERAL_PUBLIC
+_VALID_FREQ = 10e9  # 10 GHz - always valid
+
+
+def _make_check(value: float, limit: float) -> ComplianceCheck:
+    return ComplianceCheck(value=value, limit=limit, unit="W/m^2", label="test")
+
+
+def _make_result(checks: list[ComplianceCheck | None]) -> ComplianceResult:
+    """Build a ComplianceResult with up to 5 checks (any excess discarded)."""
+    padded = (list(checks) + [None] * 5)[:5]
+    return ComplianceResult(
+        scenario=_GP,
+        freq_hz=_VALID_FREQ,
+        sab_4cm2=padded[0],
+        sab_1cm2=padded[1],
+        sar_wb=padded[2],
+        sinc_local=padded[3],
+        sinc_whole_body=padded[4],
+    )
+
+
+def _empty_result() -> ComplianceResult:
+    return _make_result([])
+
+
+# -----------------------------------------------------------------------
+# ComplianceResult aggregation
+# -----------------------------------------------------------------------
+
+
+class TestComplianceResult:
+    def test_no_checks_overall_pass_true(self) -> None:
+        result = _empty_result()
+        assert result.overall_pass is True
+
+    def test_no_checks_margin_db_inf(self) -> None:
+        result = _empty_result()
+        assert math.isinf(result.margin_db)
+        assert result.margin_db > 0
+
+    def test_all_passing_overall_pass_true(self) -> None:
+        checks = [_make_check(v, 20.0) for v in (1.0, 5.0, 10.0)]
+        result = _make_result(checks)
+        assert result.overall_pass is True
+
+    def test_one_failing_overall_pass_false(self) -> None:
+        """A single exceedance flips overall_pass to False."""
+        checks = [
+            _make_check(5.0, 20.0),  # passes
+            _make_check(25.0, 20.0),  # fails
+            _make_check(10.0, 20.0),  # passes
+        ]
+        result = _make_result(checks)
+        assert result.overall_pass is False
+
+    def test_margin_db_is_tightest(self) -> None:
+        """margin_db on ComplianceResult should equal the minimum margin."""
+        checks = [
+            _make_check(10.0, 20.0),  # margin = 10*log10(2) ~ 3.01 dB
+            _make_check(18.0, 20.0),  # margin = 10*log10(20/18) ~ 0.46 dB  <- tightest
+            _make_check(2.0, 20.0),  # margin = 10 dB
+        ]
+        result = _make_result(checks)
+        expected_tightest = 10.0 * math.log10(20.0 / 18.0)
+        assert result.margin_db == pytest.approx(expected_tightest, rel=1e-6)
+
+
+# -----------------------------------------------------------------------
+# max_compliant_power
+# -----------------------------------------------------------------------
+
+
+class TestMaxCompliantPower:
+    """Test max_compliant_power()."""
+
+    def test_half_limit_doubles_power(self) -> None:
+        """If measured Sab is half the limit, max power is 2x reference."""
+        r = evaluate_compliance(freq_hz=28e9, sab_4cm2=10.0)  # limit 20
+        p_max = max_compliant_power(r, ref_power_w=1.0)
+        assert p_max == pytest.approx(2.0)
+
+    def test_at_limit_returns_ref(self) -> None:
+        """If measured equals limit, max power equals reference."""
+        r = evaluate_compliance(freq_hz=28e9, sab_4cm2=20.0)
+        p_max = max_compliant_power(r, ref_power_w=1.0)
+        assert p_max == pytest.approx(1.0)
+
+    def test_over_limit_returns_less(self) -> None:
+        """If measured exceeds limit, max power < reference."""
+        r = evaluate_compliance(freq_hz=28e9, sab_4cm2=40.0)  # 2x limit
+        p_max = max_compliant_power(r, ref_power_w=1.0)
+        assert p_max == pytest.approx(0.5)
+
+    def test_tightest_constraint_wins(self) -> None:
+        """Max power is limited by the tightest check."""
+        r = evaluate_compliance(
+            freq_hz=28e9,
+            sab_4cm2=10.0,  # 10/20 = 0.5x -> can 2x
+            sar_wb=0.04,  # 0.04/0.08 = 0.5x -> can 2x
+            sinc_whole_body=8.0,  # 8/10 = 0.8x -> can 1.25x (tightest)
+        )
+        p_max = max_compliant_power(r, ref_power_w=1.0)
+        assert p_max == pytest.approx(10.0 / 8.0)
+
+    def test_zero_measured_returns_inf(self) -> None:
+        """If all measured values are zero, no constraint binds."""
+        r = evaluate_compliance(freq_hz=28e9, sab_4cm2=0.0)
+        p_max = max_compliant_power(r, ref_power_w=1.0)
+        assert p_max == float("inf")
+
+    def test_no_checks_returns_inf(self) -> None:
+        """If no values provided, max power is unconstrained."""
+        r = evaluate_compliance(freq_hz=28e9)
+        p_max = max_compliant_power(r, ref_power_w=1.0)
+        assert p_max == float("inf")
+
+    def test_ref_power_scales(self) -> None:
+        """Max power scales linearly with reference power."""
+        r = evaluate_compliance(freq_hz=28e9, sab_4cm2=10.0)
+        p1 = max_compliant_power(r, ref_power_w=1.0)
+        p2 = max_compliant_power(r, ref_power_w=2.0)
+        assert p2 == pytest.approx(2 * p1)
+
+    def test_occupational_allows_more(self) -> None:
+        """Occupational limits are 5x higher, so max power is 5x higher."""
+        r_gp = evaluate_compliance(
+            freq_hz=28e9,
+            scenario=ExposureScenario.GENERAL_PUBLIC,
+            sab_4cm2=10.0,
+        )
+        r_oc = evaluate_compliance(
+            freq_hz=28e9,
+            scenario=ExposureScenario.OCCUPATIONAL,
+            sab_4cm2=10.0,
+        )
+        p_gp = max_compliant_power(r_gp, ref_power_w=1.0)
+        p_oc = max_compliant_power(r_oc, ref_power_w=1.0)
+        assert p_oc == pytest.approx(5 * p_gp)
+
+    def test_negative_ref_power_raises(self) -> None:
+        r = evaluate_compliance(freq_hz=28e9, sab_4cm2=10.0)
+        with pytest.raises(ValueError, match="positive"):
+            max_compliant_power(r, ref_power_w=-1.0)
+
+    def test_zero_ref_power_raises(self) -> None:
+        r = evaluate_compliance(freq_hz=28e9, sab_4cm2=10.0)
+        with pytest.raises(ValueError, match="positive"):
+            max_compliant_power(r, ref_power_w=0.0)
+
+    def test_above_30ghz_includes_1cm2(self) -> None:
+        """Above 30 GHz, 1 cm^2 limit (40 W/m^2) may be the binding constraint."""
+        r = evaluate_compliance(
+            freq_hz=60e9,
+            sab_4cm2=10.0,  # limit 20 -> can 2x
+            sab_1cm2=30.0,  # limit 40 -> can 1.33x (tighter)
+        )
+        p_max = max_compliant_power(r, ref_power_w=1.0)
+        assert p_max == pytest.approx(40.0 / 30.0)
+
+    def test_converts_to_dbm(self) -> None:
+        """Verify the max power in dBm makes sense."""
+        r = evaluate_compliance(freq_hz=28e9, sab_4cm2=10.0)
+        p_max_w = max_compliant_power(r, ref_power_w=0.2)  # 200 mW = 23 dBm
+        p_max_dbm = 10 * math.log10(p_max_w * 1000)
+        # 2x ref -> 0.4 W = 400 mW -> ~26 dBm
+        assert p_max_dbm == pytest.approx(10 * math.log10(400), rel=1e-6)
+
+    def test_binding_check_is_smallest_ratio(self) -> None:
+        """With two checks, the tighter one governs."""
+        checks = [
+            _make_check(value=10.0, limit=20.0),  # ratio limit/value = 2.0
+            _make_check(value=18.0, limit=20.0),  # ratio limit/value = 1.111... <- tighter
+        ]
+        result = _make_result(checks)
+        p = max_compliant_power(result, ref_power_w=1.0)
+        assert p == pytest.approx(20.0 / 18.0)
+
+    def test_all_zero_values_returns_inf(self) -> None:
+        """If every check value is zero, there is no binding constraint."""
+        checks = [_make_check(0.0, 20.0), _make_check(0.0, 10.0)]
+        result = _make_result(checks)
+        p = max_compliant_power(result, ref_power_w=1.0)
+        assert math.isinf(p)
+
+
+# -----------------------------------------------------------------------
+# power_sweep
+# -----------------------------------------------------------------------
+
+
+class TestPowerSweep:
+    def _single_check_result(self, value: float = 10.0, limit: float = 20.0) -> ComplianceResult:
+        return _make_result([_make_check(value, limit)])
+
+    def test_ref_power_zero_raises(self) -> None:
+        with pytest.raises(ValueError, match="ref_power_w must be positive"):
+            power_sweep(self._single_check_result(), ref_power_w=0.0)
+
+    def test_ref_power_negative_raises(self) -> None:
+        with pytest.raises(ValueError, match="ref_power_w must be positive"):
+            power_sweep(self._single_check_result(), ref_power_w=-1.0)
+
+    def test_default_bounds_shape(self) -> None:
+        sweep = power_sweep(self._single_check_result(), ref_power_w=1.0, n_points=50)
+        assert sweep["power_w"].shape == (50,)
+        assert sweep["power_dbm"].shape == (50,)
+        assert sweep["margin_db"].shape == (50,)
+        assert sweep["compliant"].shape == (50,)
+
+    def test_default_bounds_range(self) -> None:
+        """Default: p_min = ref/100, p_max = ref*100."""
+        sweep = power_sweep(self._single_check_result(), ref_power_w=1.0)
+        assert sweep["power_w"][0] == pytest.approx(0.01)
+        assert sweep["power_w"][-1] == pytest.approx(100.0)
+
+    def test_custom_bounds(self) -> None:
+        sweep = power_sweep(
+            self._single_check_result(),
+            ref_power_w=1.0,
+            p_min_w=0.5,
+            p_max_w=5.0,
+            n_points=20,
+        )
+        assert sweep["power_w"][0] == pytest.approx(0.5)
+        assert sweep["power_w"][-1] == pytest.approx(5.0)
+        assert sweep["power_w"].shape == (20,)
+
+    def test_no_checks_all_inf_and_compliant(self) -> None:
+        sweep = power_sweep(_empty_result(), ref_power_w=1.0, n_points=10)
+        assert np.all(np.isinf(sweep["margin_db"]))
+        assert np.all(sweep["compliant"])
+        assert math.isinf(sweep["p_max_compliant_w"])
+
+    def test_margin_decreases_with_power(self) -> None:
+        """Higher power -> larger S_ab -> smaller compliance margin."""
+        sweep = power_sweep(self._single_check_result(), ref_power_w=1.0)
+        m = sweep["margin_db"]
+        assert np.all(np.diff(m) <= 0), "Margin should be monotonically non-increasing."
+
+    def test_p_max_compliant_consistent(self) -> None:
+        """p_max_compliant_w should match the transition point in compliant array."""
+        sweep = power_sweep(self._single_check_result(value=10.0, limit=20.0), ref_power_w=1.0)
+        # Theoretical max = 2.0 W (limit/value * ref_power)
+        assert sweep["p_max_compliant_w"] == pytest.approx(2.0)
+
+
+# -----------------------------------------------------------------------
+# link_budget_compliance
+# -----------------------------------------------------------------------
+
+
+class TestLinkBudgetCompliance:
+    def test_tx_power_zero_raises(self) -> None:
+        with pytest.raises(ValueError, match="tx_power_w must be positive"):
+            link_budget_compliance(tx_power_w=0.0, distance_m=1.0, freq_hz=_VALID_FREQ)
+
+    def test_tx_power_negative_raises(self) -> None:
+        with pytest.raises(ValueError, match="tx_power_w must be positive"):
+            link_budget_compliance(tx_power_w=-0.001, distance_m=1.0, freq_hz=_VALID_FREQ)
+
+    def test_distance_zero_raises(self) -> None:
+        with pytest.raises(ValueError, match="distance_m must be positive"):
+            link_budget_compliance(tx_power_w=0.001, distance_m=0.0, freq_hz=_VALID_FREQ)
+
+    def test_distance_negative_raises(self) -> None:
+        with pytest.raises(ValueError, match="distance_m must be positive"):
+            link_budget_compliance(tx_power_w=0.001, distance_m=-1.0, freq_hz=_VALID_FREQ)
+
+    def test_invalid_frequency_raises(self) -> None:
+        with pytest.raises(ValueError, match="outside the supported"):
+            link_budget_compliance(tx_power_w=0.001, distance_m=1.0, freq_hz=6e9)
+
+    def test_returns_expected_keys(self) -> None:
+        result = link_budget_compliance(tx_power_w=0.001, distance_m=1.0, freq_hz=_VALID_FREQ)
+        for key in (
+            "sinc",
+            "sab_estimate",
+            "T0",
+            "compliance",
+            "compliant",
+            "margin_db",
+            "max_tx_power_w",
+            "max_tx_power_dbm",
+        ):
+            assert key in result
+
+    def test_sinc_formula(self) -> None:
+        """sinc = P * gain / (4 * pi * d^2), gain=1 for 0 dBi."""
+        tx_power_w = 0.01
+        distance_m = 2.0
+        result = link_budget_compliance(tx_power_w=tx_power_w, distance_m=distance_m, freq_hz=_VALID_FREQ)
+        expected_sinc = tx_power_w / (4.0 * math.pi * distance_m**2)
+        assert result["sinc"] == pytest.approx(expected_sinc, rel=1e-6)
+
+    def test_explicit_T0(self) -> None:
+        """When T0 is provided explicitly, sab_estimate == sinc * T0."""
+        T0 = 0.5
+        tx_power_w = 0.01
+        distance_m = 2.0
+        result = link_budget_compliance(tx_power_w=tx_power_w, distance_m=distance_m, freq_hz=_VALID_FREQ, T0=T0)
+        assert result["T0"] == pytest.approx(T0)
+        assert result["sab_estimate"] == pytest.approx(result["sinc"] * T0)
+
+    def test_compliance_result_is_ComplianceResult(self) -> None:
+        result = link_budget_compliance(tx_power_w=0.001, distance_m=1.0, freq_hz=_VALID_FREQ)
+        assert isinstance(result["compliance"], ComplianceResult)
+
+    def test_compliant_bool_consistent_with_margin(self) -> None:
+        """compliant should be True iff margin_db >= 0."""
+        result = link_budget_compliance(tx_power_w=0.001, distance_m=1.0, freq_hz=_VALID_FREQ)
+        if result["margin_db"] >= 0:
+            assert result["compliant"] is True
+        else:
+            assert result["compliant"] is False
+
+    def test_very_high_power_non_compliant(self) -> None:
+        """A megawatt at 1 m should certainly fail ICNIRP limits."""
+        result = link_budget_compliance(tx_power_w=1e6, distance_m=1.0, freq_hz=_VALID_FREQ)
+        assert result["compliant"] is False
+        assert result["margin_db"] < 0
+
+    def test_very_low_power_compliant(self) -> None:
+        """A nanowatt at 100 m should be well within limits."""
+        result = link_budget_compliance(tx_power_w=1e-9, distance_m=100.0, freq_hz=_VALID_FREQ)
+        assert result["compliant"] is True
+        assert result["margin_db"] > 0
+
+    def test_antenna_gain_increases_sinc(self) -> None:
+        """Adding positive antenna gain must increase sinc."""
+        base = link_budget_compliance(tx_power_w=0.001, distance_m=1.0, freq_hz=_VALID_FREQ, antenna_gain_dbi=0.0)
+        high_gain = link_budget_compliance(tx_power_w=0.001, distance_m=1.0, freq_hz=_VALID_FREQ, antenna_gain_dbi=10.0)
+        assert high_gain["sinc"] > base["sinc"]
+
+
+# -----------------------------------------------------------------------
+# compliance_heatmap
+# -----------------------------------------------------------------------
+
+
+class TestComplianceHeatmap:
+    def test_ref_power_zero_raises(self) -> None:
+        with pytest.raises(ValueError, match="ref_power_w must be positive"):
+            compliance_heatmap(sab_4cm2=5.0, ref_power_w=0.0)
+
+    def test_ref_power_negative_raises(self) -> None:
+        with pytest.raises(ValueError, match="ref_power_w must be positive"):
+            compliance_heatmap(sab_4cm2=5.0, ref_power_w=-1.0)
+
+    def test_output_keys_present(self) -> None:
+        hm = compliance_heatmap(sab_4cm2=5.0, n_freq=5, n_power=5)
+        for key in ("freq_hz", "power_w", "power_dbm", "margin_db", "compliant", "p_max_per_freq"):
+            assert key in hm
+
+    def test_output_shapes_without_sinc(self) -> None:
+        n_freq, n_power = 8, 10
+        hm = compliance_heatmap(sab_4cm2=5.0, n_freq=n_freq, n_power=n_power)
+        assert hm["freq_hz"].shape == (n_freq,)
+        assert hm["power_w"].shape == (n_power,)
+        assert hm["power_dbm"].shape == (n_power,)
+        assert hm["margin_db"].shape == (n_power, n_freq)
+        assert hm["compliant"].shape == (n_power, n_freq)
+        assert hm["p_max_per_freq"].shape == (n_freq,)
+
+    def test_output_shapes_with_sinc(self) -> None:
+        n_freq, n_power = 8, 10
+        hm = compliance_heatmap(sab_4cm2=5.0, sinc_local=10.0, n_freq=n_freq, n_power=n_power)
+        assert hm["margin_db"].shape == (n_power, n_freq)
+        assert hm["compliant"].shape == (n_power, n_freq)
+
+    def test_without_sinc_margin_constant_across_freq(self) -> None:
+        """Without sinc_local, S_ab limit is frequency-independent; margin must be same at all freq."""
+        hm = compliance_heatmap(
+            sab_4cm2=5.0,
+            ref_power_w=1.0,
+            n_freq=6,
+            n_power=4,
+        )
+        # For each power row, all frequency columns should be equal
+        for row in hm["margin_db"]:
+            assert np.allclose(row, row[0]), "Without sinc_local, margin must be uniform across frequency."
+
+    def test_with_sinc_margin_varies_across_freq(self) -> None:
+        """With sinc_local provided, the sinc limit 55/f^0.177 varies; margin must not be uniform."""
+        hm = compliance_heatmap(
+            sab_4cm2=5.0,
+            sinc_local=30.0,
+            ref_power_w=1.0,
+            n_freq=10,
+            n_power=5,
+        )
+        # At least one row should have non-uniform margins across frequency
+        has_variation = False
+        for row in hm["margin_db"]:
+            if not np.allclose(row, row[0]):
+                has_variation = True
+                break
+        assert has_variation, "With sinc_local, margin should vary across frequency."
+
+    def test_compliant_bool_consistent_with_margin(self) -> None:
+        hm = compliance_heatmap(sab_4cm2=5.0, n_freq=4, n_power=4)
+        assert np.array_equal(hm["compliant"], hm["margin_db"] >= 0)
+
+    def test_p_max_per_freq_all_positive(self) -> None:
+        hm = compliance_heatmap(sab_4cm2=5.0, n_freq=5, n_power=5)
+        assert np.all(hm["p_max_per_freq"] > 0)
+
+    def test_custom_power_bounds(self) -> None:
+        hm = compliance_heatmap(
+            sab_4cm2=5.0,
+            ref_power_w=1.0,
+            p_min_w=0.1,
+            p_max_w=10.0,
+            n_freq=3,
+            n_power=5,
+        )
+        assert hm["power_w"][0] == pytest.approx(0.1)
+        assert hm["power_w"][-1] == pytest.approx(10.0)
+
+    def test_zero_sab_gives_inf_p_max(self) -> None:
+        """sab_4cm2=0 means no S_ab constraint -> p_max_per_freq should be inf."""
+        hm = compliance_heatmap(sab_4cm2=0.0, n_freq=4, n_power=4)
+        assert np.all(np.isinf(hm["p_max_per_freq"]))

@@ -6,11 +6,17 @@ compliance edge cases, and coherent-specific behavior.
 
 from __future__ import annotations
 
+import json
+
 import numpy as np
 import pytest
 
+from aegis.compliance import ExposureScenario
 from aegis.engine import DosimetryEngine, coherent_sinc
+from aegis.geometry.mesh import BodyMesh
+from aegis.paths import PropagationPaths
 from aegis.result import DosimetryResult
+from aegis.tissue.dielectric import SKIN_28GHZ
 
 # Fixtures (flat_mesh, ico_mesh, engine, single_path_down, multi_path)
 # are provided by conftest.py.
@@ -500,32 +506,522 @@ class TestCompliantProperties:
 
 
 # ===========================================================================
-# Result: __repr__
+# BodyMesh.from_arrays
 # ===========================================================================
 
 
-class TestResultRepr:
-    def test_repr_includes_level(self):
-        r = DosimetryResult(sab=np.array([5.0]), p_abs=0.1, fidelity_level=3)
-        text = repr(r)
-        assert "level=3" in text
+class TestBodyMeshFromArrays:
+    """Test BodyMesh.from_arrays()."""
 
-    def test_repr_includes_p_abs(self):
-        r = DosimetryResult(sab=np.array([5.0]), p_abs=0.1, fidelity_level=3)
-        text = repr(r)
-        assert "p_abs=" in text
+    def test_basic(self) -> None:
+        vertices = np.array([[[0, 0, 0], [1, 0, 0], [0, 1, 0]]], dtype=np.float64)
+        body = BodyMesh.from_arrays(vertices)
+        assert body.n_triangles == 1
+        assert body.name == "synthetic"
+        assert body.areas[0] == pytest.approx(0.5)
+        np.testing.assert_allclose(body.normals[0], [0, 0, 1])
 
-    def test_repr_includes_peak_sab(self):
-        r = DosimetryResult(sab=np.array([5.0]), p_abs=0.1, fidelity_level=3)
-        text = repr(r)
-        assert "peak_sab=" in text
+    def test_custom_normals(self) -> None:
+        vertices = np.array([[[0, 0, 0], [1, 0, 0], [0, 1, 0]]], dtype=np.float64)
+        normals = np.array([[0, 0, -1.0]])  # intentionally flipped
+        body = BodyMesh.from_arrays(vertices, normals=normals)
+        np.testing.assert_allclose(body.normals[0], [0, 0, -1])
 
-    def test_repr_includes_sar_when_present(self):
-        r = DosimetryResult(sab=np.array([5.0]), p_abs=0.1, fidelity_level=3, sar_wb=0.01)
-        text = repr(r)
-        assert "sar_wb=" in text
+    def test_multiple_triangles(self) -> None:
+        vertices = np.array(
+            [
+                [[0, 0, 0], [1, 0, 0], [0, 1, 0]],
+                [[0, 0, 0], [0, 1, 0], [0, 0, 1]],
+                [[0, 0, 0], [1, 0, 0], [0, 0, 1]],
+            ],
+            dtype=np.float64,
+        )
+        body = BodyMesh.from_arrays(vertices)
+        assert body.n_triangles == 3
+        assert body.centroids.shape == (3, 3)
 
-    def test_repr_omits_sar_when_none(self):
-        r = DosimetryResult(sab=np.array([5.0]), p_abs=0.1, fidelity_level=3)
-        text = repr(r)
-        assert "sar_wb" not in text
+    def test_computed_normals_are_unit(self) -> None:
+        rng = np.random.default_rng(42)
+        vertices = rng.standard_normal((10, 3, 3))
+        body = BodyMesh.from_arrays(vertices)
+        norms = np.linalg.norm(body.normals, axis=1)
+        np.testing.assert_allclose(norms, 1.0, atol=1e-12)
+
+    def test_custom_name(self) -> None:
+        vertices = np.array([[[0, 0, 0], [1, 0, 0], [0, 1, 0]]], dtype=np.float64)
+        body = BodyMesh.from_arrays(vertices, name="test_mesh")
+        assert body.name == "test_mesh"
+
+    def test_wrong_shape_raises(self) -> None:
+        with pytest.raises(ValueError, match="\\(N, 3, 3\\)"):
+            BodyMesh.from_arrays(np.zeros((5, 3)))
+
+    def test_normals_shape_mismatch_raises(self) -> None:
+        vertices = np.array([[[0, 0, 0], [1, 0, 0], [0, 1, 0]]], dtype=np.float64)
+        with pytest.raises(ValueError, match="normals"):
+            BodyMesh.from_arrays(vertices, normals=np.zeros((2, 3)))
+
+    def test_compatible_with_engine(self) -> None:
+        """from_arrays mesh works with DosimetryEngine."""
+        vertices = np.array(
+            [
+                [[0, 0, 0], [0.01, 0, 0], [0, 0.01, 0]],
+                [[0.01, 0, 0], [0.01, 0.01, 0], [0, 0.01, 0]],
+            ],
+            dtype=np.float64,
+        )
+        body = BodyMesh.from_arrays(vertices)
+        paths = PropagationPaths.from_powers(
+            k_hat=np.array([[0, 0, -1.0]]),
+            power=np.array([1.0]),
+        )
+        engine = DosimetryEngine(SKIN_28GHZ)
+        result = engine.compute(body, paths, level=3)
+        assert result.peak_sab > 0
+
+
+# ===========================================================================
+# LRU cache eviction
+# ===========================================================================
+
+
+class TestCacheEviction:
+    """Test that caches are bounded and evict old entries."""
+
+    def test_G_cache_bounded(self) -> None:
+        """_G_cache never exceeds _G_CACHE_MAX entries."""
+        engine = DosimetryEngine(SKIN_28GHZ)
+        paths = PropagationPaths.from_powers(
+            k_hat=np.array([[0, 0, -1.0]]),
+            power=np.array([1.0]),
+        )
+
+        old_max = DosimetryEngine._G_CACHE_MAX
+        DosimetryEngine._G_CACHE_MAX = 4
+        DosimetryEngine._G_cache.clear()
+
+        try:
+            for i in range(10):
+                rng = np.random.default_rng(i)
+                vertices = np.zeros((5, 3, 3))
+                s = 0.01
+                for j in range(5):
+                    cx, cy = rng.uniform(0, 0.1, 2)
+                    vertices[j] = [[cx, cy, 0], [cx + s, cy, 0], [cx, cy + s, 0]]
+                body = BodyMesh.from_arrays(vertices)
+                engine.compute(body, paths, level=3)
+                assert len(DosimetryEngine._G_cache) <= DosimetryEngine._G_CACHE_MAX
+        finally:
+            DosimetryEngine._G_CACHE_MAX = old_max
+            DosimetryEngine._G_cache.clear()
+
+    def test_fibonacci_cache_bounded(self) -> None:
+        """_fibonacci_sphere_cache never exceeds limit."""
+        from aegis.geometry.projected_area import (
+            _FIBONACCI_CACHE_MAX,
+            _fibonacci_sphere_cache,
+            fibonacci_sphere,
+        )
+
+        _fibonacci_sphere_cache.clear()
+        try:
+            for n in range(1, _FIBONACCI_CACHE_MAX + 20):
+                fibonacci_sphere(n)
+                assert len(_fibonacci_sphere_cache) <= _FIBONACCI_CACHE_MAX
+        finally:
+            _fibonacci_sphere_cache.clear()
+
+
+# ===========================================================================
+# Integration: scale + max_compliant_power end-to-end
+# ===========================================================================
+
+
+class TestScaleComplianceIntegration:
+    """End-to-end: compute at ref power, scale, find max compliant power."""
+
+    def test_round_trip(self) -> None:
+        """Compute at P_ref, find P_max, scale to P_max, verify compliance."""
+        from aegis.compliance import max_compliant_power
+
+        vertices = np.zeros((20, 3, 3))
+        rng = np.random.default_rng(99)
+        s = 0.01
+        for i in range(20):
+            cx, cy = rng.uniform(0, 0.1, 2)
+            vertices[i] = [[cx, cy, 0], [cx + s, cy, 0], [cx, cy + s, 0]]
+        body = BodyMesh.from_arrays(vertices)
+
+        paths = PropagationPaths.from_powers(
+            k_hat=np.array([[0, 0, -1.0]]),
+            power=np.array([10.0]),  # high power -> likely over limit
+        )
+        engine = DosimetryEngine(SKIN_28GHZ)
+        result = engine.compute(body, paths, level=3, freq_hz=28e9)
+
+        # Evaluate compliance at reference
+        cr_ref = result.evaluate_compliance()
+
+        # Find max compliant power
+        P_ref = 1.0  # 1 W reference
+        p_max = max_compliant_power(cr_ref, ref_power_w=P_ref)
+
+        # Scale result to max compliant power
+        scale_factor = p_max / P_ref
+        scaled = result.scale(scale_factor)
+
+        # At exactly P_max, the tightest check should be at the limit
+        cr_scaled = scaled.evaluate_compliance()
+        assert cr_scaled.overall_pass is True
+
+        # Slightly over should fail
+        over = result.scale(scale_factor * 1.01)
+        cr_over = over.evaluate_compliance()
+        # The tightest check should now fail (unless rounding)
+        tightest = min(c.margin_db for c in cr_over.all_checks)
+        assert tightest < 0.1  # very close to or below limit
+
+    def test_already_compliant(self) -> None:
+        """If already compliant, P_max >= P_ref."""
+        from aegis.compliance import max_compliant_power
+
+        body = BodyMesh.from_arrays(np.array([[[0, 0, 0], [0.01, 0, 0], [0, 0.01, 0]]], dtype=np.float64))
+        paths = PropagationPaths.from_powers(
+            k_hat=np.array([[0, 0, -1.0]]),
+            power=np.array([0.001]),  # very low power
+        )
+        engine = DosimetryEngine(SKIN_28GHZ)
+        result = engine.compute(body, paths, level=3, freq_hz=28e9)
+        cr = result.evaluate_compliance()
+        assert cr.overall_pass is True
+
+        p_max = max_compliant_power(cr, ref_power_w=1.0)
+        assert p_max >= 1.0
+
+
+# ===========================================================================
+# evaluate_compliance fallback paths
+# ===========================================================================
+
+
+class TestEvaluateComplianceFallbacks:
+    """Test DosimetryResult.evaluate_compliance() when optional fields are None."""
+
+    def test_fallback_to_raw_sab_when_averaged_none(self):
+        """When sab_averaged is None, should use raw peak_sab (conservative)."""
+        r = DosimetryResult(
+            sab=np.array([15.0, 5.0, 10.0]),
+            p_abs=0.5,
+            fidelity_level=2,
+            sab_averaged=None,
+            freq_hz=28e9,
+        )
+        cr = r.evaluate_compliance()
+        assert cr.sab_4cm2 is not None
+        assert cr.sab_4cm2.value == pytest.approx(15.0)
+        assert cr.overall_pass is True  # 15 < 20 limit
+
+    def test_fallback_to_raw_sinc_when_averaged_none(self):
+        """When sinc_averaged is None but sinc exists, should use raw sinc peak."""
+        r = DosimetryResult(
+            sab=np.array([1.0]),
+            p_abs=0.001,
+            fidelity_level=2,
+            sinc=np.array([30.0]),
+            sinc_averaged=None,
+            freq_hz=28e9,
+        )
+        cr = r.evaluate_compliance()
+        assert cr.sinc_local is not None
+        assert cr.sinc_local.value == pytest.approx(30.0)
+
+    def test_no_sinc_check_when_both_none(self):
+        """When both sinc and sinc_averaged are None, sinc_local check is skipped."""
+        r = DosimetryResult(
+            sab=np.array([1.0]),
+            p_abs=0.001,
+            fidelity_level=2,
+            sinc=None,
+            sinc_averaged=None,
+            freq_hz=28e9,
+        )
+        cr = r.evaluate_compliance()
+        assert cr.sinc_local is None
+
+    def test_sab_1cm2_included_above_30ghz(self):
+        """sab_1cm2 check should be included for freq > 30 GHz."""
+        r = DosimetryResult(
+            sab=np.array([1.0]),
+            p_abs=0.001,
+            fidelity_level=2,
+            sab_1cm2_averaged=np.array([5.0]),
+            freq_hz=60e9,
+        )
+        cr = r.evaluate_compliance()
+        assert cr.sab_1cm2 is not None
+        assert cr.sab_1cm2.value == pytest.approx(5.0)
+
+    def test_sab_1cm2_skipped_below_30ghz(self):
+        """sab_1cm2 check should be skipped for freq <= 30 GHz."""
+        r = DosimetryResult(
+            sab=np.array([1.0]),
+            p_abs=0.001,
+            fidelity_level=2,
+            sab_1cm2_averaged=np.array([5.0]),
+            freq_hz=28e9,
+        )
+        cr = r.evaluate_compliance()
+        assert cr.sab_1cm2 is None
+
+    def test_occupational_scenario(self):
+        """evaluate_compliance should accept occupational scenario."""
+        r = DosimetryResult(
+            sab=np.array([50.0]),
+            p_abs=1.0,
+            fidelity_level=2,
+            sab_averaged=np.array([50.0]),
+            freq_hz=28e9,
+        )
+        cr = r.evaluate_compliance(scenario=ExposureScenario.OCCUPATIONAL)
+        assert cr.scenario == ExposureScenario.OCCUPATIONAL
+        assert cr.sab_4cm2.compliant is True
+
+
+# ===========================================================================
+# Serialization edge cases
+# ===========================================================================
+
+
+class TestSerializationEdgeCases:
+    def test_from_dict_ignores_unknown_keys(self):
+        """Unknown keys in the dict should be silently ignored."""
+        d = {
+            "sab": [1.0, 2.0],
+            "p_abs": 1.5,
+            "fidelity_level": 2,
+            "unknown_field": "should_be_ignored",
+            "another_unknown": 42,
+        }
+        r = DosimetryResult.from_dict(d)
+        assert r.p_abs == pytest.approx(1.5)
+        assert r.fidelity_level == 2
+
+    def test_from_dict_with_none_array_field(self):
+        """None values for array fields should be preserved."""
+        d = {
+            "sab": [1.0],
+            "p_abs": 1.0,
+            "fidelity_level": 2,
+            "sab_averaged": None,
+        }
+        r = DosimetryResult.from_dict(d)
+        assert r.sab_averaged is None
+
+    def test_roundtrip_with_empty_corrections(self):
+        """Empty corrections tuple should roundtrip correctly."""
+        r = DosimetryResult(
+            sab=np.array([1.0]),
+            p_abs=1.0,
+            fidelity_level=2,
+            corrections=(),
+        )
+        d = r.to_dict()
+        restored = DosimetryResult.from_dict(d)
+        assert restored.corrections == ()
+
+    def test_to_json_produces_valid_json(self):
+        """to_json output should parse as valid JSON."""
+        r = DosimetryResult(
+            sab=np.array([1.0, 2.0]),
+            p_abs=1.5,
+            fidelity_level=3,
+            sab_averaged=np.array([0.8, 1.5]),
+            sinc=np.array([5.0, 6.0]),
+            freq_hz=28e9,
+        )
+        json_str = r.to_json()
+        parsed = json.loads(json_str)
+        assert "sab" in parsed
+        assert "freq_hz" in parsed
+
+    def test_to_dict_complex_eigenvalues(self):
+        """Complex eigenvalues should serialize as {real, imag}."""
+        eigenvalues = np.array([1.0 + 0.5j, 0.5 + 0.1j])
+        r = DosimetryResult(
+            sab=np.array([1.0]),
+            p_abs=1.0,
+            fidelity_level=7,
+            eigenvalues=eigenvalues,
+        )
+        d = r.to_dict()
+        assert "real" in d["eigenvalues"]
+        assert "imag" in d["eigenvalues"]
+        np.testing.assert_allclose(d["eigenvalues"]["real"], [1.0, 0.5])
+        np.testing.assert_allclose(d["eigenvalues"]["imag"], [0.5, 0.1])
+
+
+# ===========================================================================
+# _body_cache_key translation invariance
+# ===========================================================================
+
+
+class TestBodyCacheKeyInvariance:
+    def test_translation_invariant(self, flat_mesh):
+        """Cache key should be the same for translated copies of the same mesh."""
+        key_original = DosimetryEngine._body_cache_key(flat_mesh)
+
+        offset = np.array([100.0, 200.0, 50.0])
+        translated = BodyMesh(
+            vertices=flat_mesh.vertices + offset,
+            normals=flat_mesh.normals.copy(),
+            centroids=flat_mesh.centroids + offset,
+            areas=flat_mesh.areas.copy(),
+            name="flat_plane_translated",
+        )
+        key_translated = DosimetryEngine._body_cache_key(translated)
+        assert key_original == key_translated
+
+    def test_rotation_not_invariant(self, flat_mesh):
+        """Cache key should differ for rotated meshes (different centroid layout)."""
+        key_original = DosimetryEngine._body_cache_key(flat_mesh)
+
+        R = np.array([[0, -1, 0], [1, 0, 0], [0, 0, 1]], dtype=np.float64)
+        rotated_centroids = (R @ flat_mesh.centroids.T).T
+        rotated = BodyMesh(
+            vertices=flat_mesh.vertices,
+            normals=flat_mesh.normals.copy(),
+            centroids=rotated_centroids,
+            areas=flat_mesh.areas.copy(),
+            name="flat_plane_rotated",
+        )
+        key_rotated = DosimetryEngine._body_cache_key(rotated)
+        assert key_original != key_rotated
+
+
+# ===========================================================================
+# _build_result NaN/Inf rejection
+# ===========================================================================
+
+
+class TestBuildResultValidation:
+    def test_nan_sab_raises(self, engine, flat_mesh, single_path_down):
+        """_build_result should reject sab arrays containing NaN."""
+        sab = np.ones(flat_mesh.n_triangles)
+        sab[5] = np.nan
+        with pytest.raises(ValueError, match="non-finite"):
+            engine._build_result(flat_mesh, single_path_down, sab, fidelity_level=2)
+
+    def test_inf_sab_raises(self, engine, flat_mesh, single_path_down):
+        """_build_result should reject sab arrays containing Inf."""
+        sab = np.ones(flat_mesh.n_triangles)
+        sab[10] = np.inf
+        with pytest.raises(ValueError, match="non-finite"):
+            engine._build_result(flat_mesh, single_path_down, sab, fidelity_level=2)
+
+    def test_negative_inf_sab_raises(self, engine, flat_mesh, single_path_down):
+        """_build_result should reject sab arrays containing -Inf."""
+        sab = np.ones(flat_mesh.n_triangles)
+        sab[0] = -np.inf
+        with pytest.raises(ValueError, match="non-finite"):
+            engine._build_result(flat_mesh, single_path_down, sab, fidelity_level=2)
+
+    def test_valid_sab_passes(self, engine, flat_mesh, single_path_down):
+        """_build_result should accept a valid sab array."""
+        sab = np.ones(flat_mesh.n_triangles) * 5.0
+        result = engine._build_result(flat_mesh, single_path_down, sab, fidelity_level=2)
+        assert result.peak_sab == pytest.approx(5.0)
+
+
+# ===========================================================================
+# _sanitize_for_json
+# ===========================================================================
+
+
+try:
+    import flask as _flask  # noqa: F401
+
+    _HAS_FLASK = True
+except ImportError:
+    _HAS_FLASK = False
+
+
+@pytest.mark.skipif(not _HAS_FLASK, reason="flask not installed")
+class TestSanitizeForJson:
+    def test_nan_replaced_with_none(self):
+        from aegis.viewer.routes.compute import _sanitize_for_json
+
+        assert _sanitize_for_json(float("nan")) is None
+
+    def test_inf_replaced_with_none(self):
+        from aegis.viewer.routes.compute import _sanitize_for_json
+
+        assert _sanitize_for_json(float("inf")) is None
+
+    def test_neg_inf_replaced_with_none(self):
+        from aegis.viewer.routes.compute import _sanitize_for_json
+
+        assert _sanitize_for_json(float("-inf")) is None
+
+    def test_normal_float_unchanged(self):
+        from aegis.viewer.routes.compute import _sanitize_for_json
+
+        assert _sanitize_for_json(3.14) == pytest.approx(3.14)
+
+    def test_nested_dict(self):
+        from aegis.viewer.routes.compute import _sanitize_for_json
+
+        obj = {"a": float("inf"), "b": {"c": float("nan"), "d": 42}}
+        result = _sanitize_for_json(obj)
+        assert result["a"] is None
+        assert result["b"]["c"] is None
+        assert result["b"]["d"] == 42
+
+    def test_nested_list(self):
+        from aegis.viewer.routes.compute import _sanitize_for_json
+
+        obj = [1.0, float("inf"), [float("nan"), 2.0]]
+        result = _sanitize_for_json(obj)
+        assert result[0] == 1.0
+        assert result[1] is None
+        assert result[2][0] is None
+        assert result[2][1] == 2.0
+
+    def test_json_dumps_safe_produces_valid_json(self):
+        from aegis.viewer.routes.compute import _json_dumps_safe
+
+        obj = {"value": float("inf"), "margin": float("nan"), "ok": 3.14}
+        json_str = _json_dumps_safe(obj)
+        parsed = json.loads(json_str)
+        assert parsed["value"] is None
+        assert parsed["margin"] is None
+        assert parsed["ok"] == pytest.approx(3.14)
+
+
+# ===========================================================================
+# scale() with sab_1cm2_averaged
+# ===========================================================================
+
+
+class TestScaleWith1cm2:
+    def test_scale_includes_sab_1cm2_averaged(self):
+        """scale() should also scale sab_1cm2_averaged."""
+        r = DosimetryResult(
+            sab=np.array([10.0, 20.0]),
+            p_abs=1.0,
+            fidelity_level=2,
+            sab_1cm2_averaged=np.array([12.0, 22.0]),
+            freq_hz=60e9,
+        )
+        scaled = r.scale(2.0)
+        np.testing.assert_allclose(scaled.sab_1cm2_averaged, [24.0, 44.0])
+
+    def test_scale_sab_1cm2_averaged_none(self):
+        """scale() with sab_1cm2_averaged=None should keep it None."""
+        r = DosimetryResult(
+            sab=np.array([10.0]),
+            p_abs=1.0,
+            fidelity_level=2,
+            sab_1cm2_averaged=None,
+        )
+        scaled = r.scale(2.0)
+        assert scaled.sab_1cm2_averaged is None

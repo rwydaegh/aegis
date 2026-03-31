@@ -16,7 +16,7 @@ from aegis.mimo.scene import MIMOScene
 from aegis.mimo.user import UserConfig, UserState
 from aegis.paths import PropagationPaths
 from aegis.tissue.dielectric import SKIN_28GHZ
-from tests.conftest import make_flat_mesh, make_icosahedron
+from tests.conftest import NUMERICAL_FLOOR, make_flat_mesh, make_icosahedron
 
 
 class TestSingleElementEquivalence:
@@ -169,7 +169,7 @@ class TestMultiElementPipeline:
         assert Q.shape == (16, 16)
         np.testing.assert_allclose(Q, Q.conj().T, atol=1e-12)
         eigenvalues = np.linalg.eigvalsh(Q)
-        assert np.all(eigenvalues >= -1e-12)
+        assert np.all(eigenvalues >= NUMERICAL_FLOOR)
 
     def test_channel_vector_with_expanded_paths(self):
         """Channel vector has correct shape and is nonzero."""

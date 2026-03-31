@@ -61,3 +61,11 @@ def test_debye_array_input():
     eps = debye_permittivity(freqs, eps_inf=7.88, eps_static=47.0, sigma=5.19, tau_s=8.35e-12)
     assert eps.shape == (5,)
     assert np.all(np.diff(eps.real) < 0)
+
+
+def test_debye_conductivity_contribution():
+    """Adding conductivity makes imaginary part more negative."""
+    f = 28e9
+    eps_no_sig = debye_permittivity(f, 4.0, 40.0, sigma=0.0, tau_s=1e-11)
+    eps_with_sig = debye_permittivity(f, 4.0, 40.0, sigma=1.0, tau_s=1e-11)
+    assert eps_with_sig.imag < eps_no_sig.imag

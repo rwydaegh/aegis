@@ -24,6 +24,7 @@ from aegis.paths import PropagationPaths
 from aegis.precoder import Precoder
 from aegis.tissue.dielectric import SKIN_28GHZ
 from aegis.tissue.fresnel import fresnel_amplitude, fresnel_transmission
+from tests.conftest import NUMERICAL_FLOOR
 
 # Fixtures (flat_mesh, ico_mesh, engine, single_path_down, multi_path)
 # are provided by conftest.py.
@@ -228,7 +229,7 @@ class TestExposureOperator:
         areas = np.ones(20) * 0.01
         Q = compute_exposure_operator(G_tilde, areas)
         eigenvalues = np.linalg.eigvalsh(Q)
-        assert np.all(eigenvalues >= -1e-12)
+        assert np.all(eigenvalues >= NUMERICAL_FLOOR)
 
     def test_total_power_via_Q(self, ico_mesh, engine):
         """P_abs = x^H Q x should match sum(sab * areas)."""

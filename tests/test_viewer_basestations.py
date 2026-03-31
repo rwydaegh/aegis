@@ -7,7 +7,6 @@ at /api/basestations/list, /api/basestations/load, /api/basestations/compute.
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from unittest.mock import patch
 
 import numpy as np
@@ -183,33 +182,18 @@ class TestPathsFromBasestations:
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture()
-def app():
-    """Create a test Flask app with basestations routes registered."""
-    from aegis.viewer.server import create_app
-
-    data_dir = str(Path(__file__).parent / "fixtures" / "e2e_lab")
-    app = create_app(
-        data_dir=data_dir,
-        body_name="e2e_icosahedron",
-        config={"server": {"host": "127.0.0.1", "port": 5098}},
-    )
-    app.config["TESTING"] = True
-    return app
-
-
 class TestBasestationsListRoute:
     """GET /api/basestations/list"""
 
-    def test_empty_list_on_startup(self, app):
-        with app.test_client() as c:
+    def test_empty_list_on_startup(self, viewer_app):
+        with viewer_app.test_client() as c:
             resp = c.get("/api/basestations/list")
             assert resp.status_code == 200
             data = resp.get_json()
             assert data["count"] == 0
             assert data["basestations"] == []
 
-    def test_list_after_populating_cache(self, app):
+    def test_list_after_populating_cache(self, viewer_app):
         """Manually inject stations into cache, verify list returns them."""
         from aegis.viewer.server import _cache, _cache_lock
 
@@ -217,7 +201,7 @@ class TestBasestationsListRoute:
         with _cache_lock:
             _cache["basestations"] = [bs]
 
-        with app.test_client() as c:
+        with viewer_app.test_client() as c:
             resp = c.get("/api/basestations/list")
             assert resp.status_code == 200
             data = resp.get_json()
@@ -236,9 +220,9 @@ class TestBasestationsListRoute:
 class TestBasestationsLoadRoute:
     """POST /api/basestations/load"""
 
-    def test_load_with_lat_lon(self, app):
+    def test_load_with_lat_lon(self, viewer_app):
         """Loading with explicit lat/lon and no CSV file returns an error or empty."""
-        with app.test_client() as c:
+        with viewer_app.test_client() as c:
             resp = c.post(
                 "/api/basestations/load",
                 json={"lat": 51.05, "lon": 3.72, "radius_m": 100},
@@ -247,10 +231,10 @@ class TestBasestationsLoadRoute:
             # or 200 with count=0. Both are acceptable.
             assert resp.status_code in (200, 500)
 
-    def test_load_with_invalid_location_string(self, app):
+    def test_load_with_invalid_location_string(self, viewer_app):
         """Non-geocodable location string returns 400."""
         with (
-            app.test_client() as c,
+            viewer_app.test_client() as c,
             patch(
                 "aegis.viewer.routes.basestations.geocode_location",
                 side_effect=ValueError("Could not geocode"),
@@ -264,9 +248,9 @@ class TestBasestationsLoadRoute:
             data = resp.get_json()
             assert "error" in data
 
-    def test_load_with_bbox(self, app):
+    def test_load_with_bbox(self, viewer_app):
         """Loading with explicit bbox parameter."""
-        with app.test_client() as c:
+        with viewer_app.test_client() as c:
             resp = c.post(
                 "/api/basestations/load",
                 json={"bbox": [3.71, 3.73, 51.04, 51.06]},
@@ -274,10 +258,10 @@ class TestBasestationsLoadRoute:
             # Without data, either 500 or 200 with empty results
             assert resp.status_code in (200, 500)
 
-    def test_load_with_comma_separated_coords(self, app):
+    def test_load_with_comma_separated_coords(self, viewer_app):
         """Location string in 'lat, lon' format gets parsed correctly."""
         with (
-            app.test_client() as c,
+            viewer_app.test_client() as c,
             patch(
                 "aegis.basestation.adapter.load_basestations_from_csv",
                 return_value=[],
@@ -295,14 +279,14 @@ class TestBasestationsLoadRoute:
 class TestBasestationsComputeRoute:
     """POST /api/basestations/compute"""
 
-    def test_compute_without_basestations_returns_400(self, app):
-        with app.test_client() as c:
+    def test_compute_without_basestations_returns_400(self, viewer_app):
+        with viewer_app.test_client() as c:
             resp = c.post("/api/basestations/compute", json={})
             assert resp.status_code == 400
             data = resp.get_json()
             assert "No base stations loaded" in data["error"]
 
-    def test_compute_without_body_returns_400(self, app):
+    def test_compute_without_body_returns_400(self, viewer_app):
         from aegis.viewer.server import _cache, _cache_lock
 
         bs = _make_bs()
@@ -311,7 +295,7 @@ class TestBasestationsComputeRoute:
             _cache.pop("body", None)
             _cache.pop("bodies", None)
 
-        with app.test_client() as c:
+        with viewer_app.test_client() as c:
             resp = c.post("/api/basestations/compute", json={})
             # "No body mesh loaded" because body may not be set
             # In test fixture with e2e_icosahedron, body is loaded
@@ -321,7 +305,7 @@ class TestBasestationsComputeRoute:
         with _cache_lock:
             _cache.pop("basestations", None)
 
-    def test_compute_without_origin_returns_400(self, app):
+    def test_compute_without_origin_returns_400(self, viewer_app):
         from aegis.viewer.server import _cache, _cache_lock
 
         bs = _make_bs()
@@ -332,7 +316,7 @@ class TestBasestationsComputeRoute:
 
         # If body is loaded but no origin, should get 400
         if saved_body is not None:
-            with app.test_client() as c:
+            with viewer_app.test_client() as c:
                 resp = c.post("/api/basestations/compute", json={})
                 assert resp.status_code == 400
                 data = resp.get_json()
@@ -341,7 +325,7 @@ class TestBasestationsComputeRoute:
         with _cache_lock:
             _cache.pop("basestations", None)
 
-    def test_compute_with_valid_data_returns_binary(self, app):
+    def test_compute_with_valid_data_returns_binary(self, viewer_app):
         """Full compute with injected cache data returns binary response."""
         from aegis.viewer.server import _cache, _cache_lock
 
@@ -354,7 +338,7 @@ class TestBasestationsComputeRoute:
         if body is None:
             pytest.skip("No body mesh loaded in test fixture")
 
-        with app.test_client() as c:
+        with viewer_app.test_client() as c:
             resp = c.post(
                 "/api/basestations/compute",
                 json={"freq_hz": 3.5e9, "skin_model": "itis"},
@@ -380,7 +364,7 @@ class TestBasestationsComputeRoute:
             _cache.pop("basestations", None)
             _cache.pop("basestations_origin", None)
 
-    def test_compute_with_index_filter(self, app):
+    def test_compute_with_index_filter(self, viewer_app):
         """Filtering by indices selects only those stations."""
         from aegis.viewer.server import _cache, _cache_lock
 
@@ -397,7 +381,7 @@ class TestBasestationsComputeRoute:
         if body is None:
             pytest.skip("No body mesh loaded in test fixture")
 
-        with app.test_client() as c:
+        with viewer_app.test_client() as c:
             resp = c.post(
                 "/api/basestations/compute",
                 json={"indices": [0, 2]},
@@ -410,7 +394,7 @@ class TestBasestationsComputeRoute:
             _cache.pop("basestations", None)
             _cache.pop("basestations_origin", None)
 
-    def test_compute_with_empty_indices_returns_400(self, app):
+    def test_compute_with_empty_indices_returns_400(self, viewer_app):
         """Empty indices list means no stations selected."""
         from aegis.viewer.server import _cache, _cache_lock
 
@@ -423,7 +407,7 @@ class TestBasestationsComputeRoute:
         if body is None:
             pytest.skip("No body mesh loaded in test fixture")
 
-        with app.test_client() as c:
+        with viewer_app.test_client() as c:
             resp = c.post(
                 "/api/basestations/compute",
                 json={"indices": [5, 10]},  # out of range
@@ -440,15 +424,15 @@ class TestBasestationsComputeRoute:
 class TestBasestationsComputeMimoRoute:
     """POST /api/basestations/compute_mimo"""
 
-    def test_missing_index_returns_400(self, app):
-        with app.test_client() as c:
+    def test_missing_index_returns_400(self, viewer_app):
+        with viewer_app.test_client() as c:
             resp = c.post("/api/basestations/compute_mimo", json={})
             assert resp.status_code == 400
             data = resp.get_json()
             assert "Missing 'index'" in data["error"]
 
-    def test_invalid_index_type_returns_400(self, app):
-        with app.test_client() as c:
+    def test_invalid_index_type_returns_400(self, viewer_app):
+        with viewer_app.test_client() as c:
             resp = c.post(
                 "/api/basestations/compute_mimo",
                 json={"index": "abc"},
@@ -457,14 +441,14 @@ class TestBasestationsComputeMimoRoute:
             data = resp.get_json()
             assert "'index' must be an integer" in data["error"]
 
-    def test_out_of_range_index_returns_400(self, app):
+    def test_out_of_range_index_returns_400(self, viewer_app):
         from aegis.viewer.server import _cache, _cache_lock
 
         bs = _make_bs()
         with _cache_lock:
             _cache["basestations"] = [bs]
 
-        with app.test_client() as c:
+        with viewer_app.test_client() as c:
             resp = c.post(
                 "/api/basestations/compute_mimo",
                 json={"index": 5},
@@ -475,7 +459,7 @@ class TestBasestationsComputeMimoRoute:
         with _cache_lock:
             _cache.pop("basestations", None)
 
-    def test_non_mmimo_station_returns_400(self, app):
+    def test_non_mmimo_station_returns_400(self, viewer_app):
         """A regular macro station (not mMIMO) should be rejected."""
         from aegis.viewer.server import _cache, _cache_lock
 
@@ -484,7 +468,7 @@ class TestBasestationsComputeMimoRoute:
         with _cache_lock:
             _cache["basestations"] = [bs]
 
-        with app.test_client() as c:
+        with viewer_app.test_client() as c:
             resp = c.post(
                 "/api/basestations/compute_mimo",
                 json={"index": 0},
@@ -553,8 +537,8 @@ class TestBsSummary:
 class TestBasestationsLoadPolarLatitude:
     """Test that bbox computation handles polar latitudes safely."""
 
-    def test_load_with_polar_latitude_returns_400(self, app):
-        with app.test_client() as c:
+    def test_load_with_polar_latitude_returns_400(self, viewer_app):
+        with viewer_app.test_client() as c:
             resp = c.post(
                 "/api/basestations/load",
                 json={"lat": 90.0, "lon": 0.0, "radius_m": 100},
@@ -562,25 +546,25 @@ class TestBasestationsLoadPolarLatitude:
             assert resp.status_code == 400
             assert "poles" in resp.get_json()["error"].lower()
 
-    def test_load_with_negative_polar_latitude_returns_400(self, app):
-        with app.test_client() as c:
+    def test_load_with_negative_polar_latitude_returns_400(self, viewer_app):
+        with viewer_app.test_client() as c:
             resp = c.post(
                 "/api/basestations/load",
                 json={"lat": -90.0, "lon": 0.0, "radius_m": 100},
             )
             assert resp.status_code == 400
 
-    def test_load_with_near_polar_latitude_returns_400(self, app):
-        with app.test_client() as c:
+    def test_load_with_near_polar_latitude_returns_400(self, viewer_app):
+        with viewer_app.test_client() as c:
             resp = c.post(
                 "/api/basestations/load",
                 json={"lat": 89.95, "lon": 0.0, "radius_m": 100},
             )
             assert resp.status_code == 400
 
-    def test_load_with_high_but_valid_latitude(self, app):
+    def test_load_with_high_but_valid_latitude(self, viewer_app):
         """Latitude 85 is extreme but cos(85) ~ 0.087, so bbox is valid."""
-        with app.test_client() as c:
+        with viewer_app.test_client() as c:
             resp = c.post(
                 "/api/basestations/load",
                 json={"lat": 85.0, "lon": 0.0, "radius_m": 100},
@@ -588,24 +572,24 @@ class TestBasestationsLoadPolarLatitude:
             # Should not 400 for poles; may 500 for other reasons (no data)
             assert resp.status_code != 400 or "poles" not in resp.get_json().get("error", "").lower()
 
-    def test_load_with_invalid_radius_returns_400(self, app):
-        with app.test_client() as c:
+    def test_load_with_invalid_radius_returns_400(self, viewer_app):
+        with viewer_app.test_client() as c:
             resp = c.post(
                 "/api/basestations/load",
                 json={"lat": 51.0, "lon": 3.7, "radius_m": -100},
             )
             assert resp.status_code == 400
 
-    def test_load_with_zero_radius_returns_400(self, app):
-        with app.test_client() as c:
+    def test_load_with_zero_radius_returns_400(self, viewer_app):
+        with viewer_app.test_client() as c:
             resp = c.post(
                 "/api/basestations/load",
                 json={"lat": 51.0, "lon": 3.7, "radius_m": 0},
             )
             assert resp.status_code == 400
 
-    def test_load_with_excessive_radius_returns_400(self, app):
-        with app.test_client() as c:
+    def test_load_with_excessive_radius_returns_400(self, viewer_app):
+        with viewer_app.test_client() as c:
             resp = c.post(
                 "/api/basestations/load",
                 json={"lat": 51.0, "lon": 3.7, "radius_m": 60000},

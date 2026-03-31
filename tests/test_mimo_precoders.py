@@ -10,6 +10,7 @@ from numpy.testing import assert_allclose
 
 from aegis.mimo.precoders import compute_precoder, mmse, mrt, zf, zf_exposure
 from aegis.precoder import Precoder
+from tests.conftest import NUMERICAL_FLOOR
 
 
 class TestMRT:
@@ -435,4 +436,4 @@ class TestPrecoderInvariants:
         from aegis.mimo.compute import compute_multistream_sab
 
         sab = compute_multistream_sab(G_tilde, W)
-        assert np.all(sab >= -1e-15)
+        assert np.all(sab >= NUMERICAL_FLOOR)

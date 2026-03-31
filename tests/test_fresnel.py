@@ -6,8 +6,18 @@ Tissue: eps_r=17.0, sigma=25.0 S/m, freq=28 GHz.
 
 import numpy as np
 import pytest
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
-from aegis.tissue.fresnel import T0, fresnel_reflection, fresnel_transmission, n_complex
+from aegis.tissue.fresnel import (
+    T0,
+    fresnel_amplitude,
+    fresnel_reflection,
+    fresnel_transmission,
+    n_complex,
+    xi_from_mu,
+)
+from tests.conftest import NUMERICAL_FLOOR
 
 # Skin at 28 GHz
 N_SKIN_28 = n_complex(17.0, 25.0, 28e9)
@@ -143,3 +153,71 @@ class TestFresnelReflection:
             r_s_s, r_p_s = fresnel_reflection(float(mu), N_SKIN_28)
             assert r_s_vec[i] == pytest.approx(r_s_s, abs=1e-12)
             assert r_p_vec[i] == pytest.approx(r_p_s, abs=1e-12)
+
+
+class TestFresnelEdgeCases:
+    """Edge case tests for Fresnel transmission and reflection."""
+
+    def test_energy_conservation(self):
+        """T + R <= 1 for all angles (energy conservation)."""
+        n_tilde = n_complex(17.0, 25.0, 28e9)
+        mu_values = np.linspace(0.01, 1.0, 100)
+        for mu in mu_values:
+            T_s, T_p = fresnel_transmission(mu, n_tilde)
+            r_s, r_p = fresnel_reflection(mu, n_tilde)
+            R_s = abs(r_s) ** 2
+            R_p = abs(r_p) ** 2
+            assert T_s + R_s <= 1.0 + 1e-10, f"T_s + R_s > 1 at mu={mu}"
+            assert T_p + R_p <= 1.0 + 1e-10, f"T_p + R_p > 1 at mu={mu}"
+
+    def test_T0_bounds(self):
+        """T0 should be in (0, 1] for physical materials."""
+        for eps_r, sigma, freq in [(17.0, 25.0, 28e9), (7.9, 36.4, 60e9), (4.0, 2.0, 28e9)]:
+            n = n_complex(eps_r, sigma, freq)
+            t0 = T0(n)
+            assert 0 < t0 <= 1.0, f"T0={t0} out of bounds for eps_r={eps_r}"
+
+    def test_xi_branch_selection(self):
+        """xi = sqrt(n^2 - 1 + mu^2) should always have Re(xi) >= 0."""
+        from aegis._array_backend import xp
+
+        n_tilde = n_complex(17.0, 25.0, 28e9)
+        mu_values = xp.linspace(0.0, 1.0, 200)
+        xi = xi_from_mu(mu_values, n_tilde)
+        xi_np = np.asarray(xi)
+        assert np.all(np.real(xi_np) >= NUMERICAL_FLOOR), "Re(xi) must be >= 0"
+
+    def test_vectorized_fresnel_transmission(self):
+        """Fresnel should work with array mu inputs."""
+        n_tilde = n_complex(17.0, 25.0, 28e9)
+        mu = np.linspace(0.01, 1.0, 50)
+        T_s, T_p = fresnel_transmission(mu, n_tilde)
+        assert T_s.shape == (50,)
+        assert T_p.shape == (50,)
+        assert np.all(T_s >= 0)
+        assert np.all(T_p >= 0)
+
+    def test_amplitude_transmission_nonzero_at_normal(self):
+        """Amplitude transmission should be nonzero at normal incidence."""
+        n_tilde = n_complex(17.0, 25.0, 28e9)
+        t_s, t_p = fresnel_amplitude(1.0, n_tilde)
+        assert abs(t_s) > 0
+        assert abs(t_p) > 0
+
+    def test_n_complex_positive_real_multiple_materials(self):
+        """Complex refractive index should have Re(n) > 0."""
+        for eps_r, sigma, freq in [(17.0, 25.0, 28e9), (7.9, 36.4, 60e9), (80.0, 0.5, 1e9)]:
+            n = n_complex(eps_r, sigma, freq)
+            assert n.real > 0, f"Re(n) should be > 0, got {n}"
+
+    @given(
+        eps_r=st.floats(min_value=1.0, max_value=100.0),
+        sigma=st.floats(min_value=0.01, max_value=100.0),
+    )
+    @settings(max_examples=50)
+    def test_T0_positive_hypothesis(self, eps_r, sigma):
+        """T0 is positive for any reasonable tissue."""
+        n = n_complex(eps_r, sigma, 28e9)
+        t0 = T0(n)
+        assert t0 > 0
+        assert t0 <= 1.0

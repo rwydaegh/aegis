@@ -17,6 +17,7 @@ from aegis.kernels.level4_polarisation import level4_polarisation
 from aegis.kernels.level5_curvature import level5_curvature
 from aegis.kernels.level6_diffraction import level6_diffraction
 from aegis.tissue.dielectric import SKIN_28GHZ
+from tests.conftest import NUMERICAL_FLOOR
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -114,8 +115,8 @@ class TestFresnelWeights:
         """Fresnel transmission must be in [0, 1]."""
         mu = np.linspace(0, 1, 50).reshape(1, -1)
         T_s, T_p, T_avg = fresnel_weights(mu, N_TILDE)
-        assert np.all(T_s >= -1e-15)
-        assert np.all(T_p >= -1e-15)
+        assert np.all(T_s >= NUMERICAL_FLOOR)
+        assert np.all(T_p >= NUMERICAL_FLOOR)
         assert np.all(T_s <= 1.0 + 1e-15)
         assert np.all(T_p <= 1.0 + 1e-15)
 
@@ -168,7 +169,7 @@ class TestPhysicalGelu:
         sigma = np.array([0.5])
         result = physical_gelu(mu_vals, sigma)
         diffs = np.diff(result[0])
-        assert np.all(diffs >= -1e-14)
+        assert np.all(diffs >= NUMERICAL_FLOOR)
 
 
 # ---------------------------------------------------------------------------
@@ -310,7 +311,7 @@ class TestLevel3Fresnel:
         k_hat /= np.linalg.norm(k_hat, axis=1, keepdims=True)
         power = rng.uniform(0.1, 5.0, size=20)
         sab = level3_fresnel(two_tris, k_hat, power, N_TILDE)
-        assert np.all(sab >= -1e-14)
+        assert np.all(sab >= NUMERICAL_FLOOR)
 
 
 # ---------------------------------------------------------------------------
@@ -345,7 +346,7 @@ class TestLevel4Polarisation:
         k_hat /= np.linalg.norm(k_hat, axis=1, keepdims=True)
         power = rng.uniform(0.1, 5.0, size=N)
         sab = level4_polarisation(normals, k_hat, power, N_TILDE, q=0.0)
-        assert np.all(sab >= -1e-14)
+        assert np.all(sab >= NUMERICAL_FLOOR)
 
 
 # ---------------------------------------------------------------------------
@@ -393,7 +394,7 @@ class TestLevel5Curvature:
         power = rng.uniform(0.1, 5.0, size=N)
         H = rng.uniform(-10, 50, size=M)
         sab = level5_curvature(normals, k_hat, power, N_TILDE, T0, H, FREQ)
-        assert np.all(sab >= -1e-14)
+        assert np.all(sab >= NUMERICAL_FLOOR)
 
 
 # ---------------------------------------------------------------------------
@@ -432,7 +433,7 @@ class TestLevel6Diffraction:
         power = rng.uniform(0.1, 5.0, size=N)
         H = rng.uniform(0, 50, size=M)
         sab = level6_diffraction(normals, k_hat, power, N_TILDE, T0, H, FREQ)
-        assert np.all(sab >= -1e-14)
+        assert np.all(sab >= NUMERICAL_FLOOR)
 
     def test_diffraction_smooths_shadow_boundary(self, single_tri_z):
         """Level 6 should give nonzero sab near grazing incidence where
@@ -567,3 +568,47 @@ class TestEdgeCases:
         sab3 = level3_fresnel(single_tri_z, k_hat, power, N_TILDE)
         # At 300 GHz, k is large so H/k is tiny -> nearly equal to level 3
         np.testing.assert_allclose(sab5, sab3, rtol=0.01)
+
+
+# ---------------------------------------------------------------------------
+# Level 1 array backend fix verification
+# ---------------------------------------------------------------------------
+
+
+class TestLevel1ArrayBackend:
+    """Verify the np.full -> xp.full fix in level1_aggregate."""
+
+    def test_level1_returns_correct_type(self):
+        """level1_aggregate should return xp arrays, not NumPy arrays when using xp backend."""
+        k_hat = np.array([[0, 0, -1.0]])
+        power = np.array([1.0])
+        sab, p_abs = level1_aggregate(
+            total_area=0.1,
+            A_ab=0.01,
+            k_hat=k_hat,
+            power=power,
+            T0=T0,
+            n_triangles=10,
+        )
+        assert sab.shape == (10,)
+        assert np.all(np.isfinite(np.asarray(sab)))
+
+    def test_level1_uniform_distribution(self):
+        """Level 1 should distribute power uniformly across all triangles."""
+        k_hat = np.array([[0, 0, -1.0], [1, 0, 0.0]])
+        power = np.array([1.0, 0.5])
+        n_tri = 20
+
+        sab, p_abs = level1_aggregate(
+            total_area=0.5,
+            A_ab=0.02,
+            k_hat=k_hat,
+            power=power,
+            T0=T0,
+            n_triangles=n_tri,
+        )
+        sab_np = np.asarray(sab)
+        # All values should be identical (uniform)
+        assert np.allclose(sab_np, sab_np[0])
+        # sab * total_area should equal p_abs
+        assert abs(sab_np[0] * 0.5 - p_abs) < 1e-12

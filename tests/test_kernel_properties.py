@@ -17,6 +17,7 @@ from aegis.engine import DosimetryEngine
 from aegis.geometry.mesh import BodyMesh
 from aegis.paths import PropagationPaths
 from aegis.tissue.dielectric import SKIN_28GHZ
+from tests.conftest import NUMERICAL_FLOOR
 
 # ---------------------------------------------------------------------------
 # Strategies for random but valid inputs
@@ -90,21 +91,21 @@ class TestSabNonNegative:
     def test_level2_sab_non_negative(self, mesh, paths):
         engine = DosimetryEngine(SKIN_28GHZ)
         result = engine.compute(mesh, paths, level=2)
-        assert np.all(result.sab >= -1e-14), f"min sab = {result.sab.min()}"
+        assert np.all(result.sab >= NUMERICAL_FLOOR), f"min sab = {result.sab.min()}"
 
     @given(mesh=random_mesh(), paths=random_paths())
     @settings(max_examples=30, deadline=5000)
     def test_level3_sab_non_negative(self, mesh, paths):
         engine = DosimetryEngine(SKIN_28GHZ)
         result = engine.compute(mesh, paths, level=3)
-        assert np.all(result.sab >= -1e-14), f"min sab = {result.sab.min()}"
+        assert np.all(result.sab >= NUMERICAL_FLOOR), f"min sab = {result.sab.min()}"
 
     @given(mesh=random_mesh(), paths=random_paths())
     @settings(max_examples=30, deadline=5000)
     def test_level4_sab_non_negative(self, mesh, paths):
         engine = DosimetryEngine(SKIN_28GHZ)
         result = engine.compute(mesh, paths, level=4, q=0.0)
-        assert np.all(result.sab >= -1e-14)
+        assert np.all(result.sab >= NUMERICAL_FLOOR)
 
     @given(mesh=random_mesh(), paths=random_paths())
     @settings(max_examples=30, deadline=5000)
@@ -112,7 +113,7 @@ class TestSabNonNegative:
         engine = DosimetryEngine(SKIN_28GHZ)
         H = np.full(mesh.n_triangles, 10.0)
         result = engine.compute(mesh, paths, level=5, curvature_H=H)
-        assert np.all(result.sab >= -1e-14)
+        assert np.all(result.sab >= NUMERICAL_FLOOR)
 
     @given(mesh=random_mesh(), paths=random_paths())
     @settings(max_examples=30, deadline=5000)
@@ -120,7 +121,7 @@ class TestSabNonNegative:
         engine = DosimetryEngine(SKIN_28GHZ)
         H = np.full(mesh.n_triangles, 10.0)
         result = engine.compute(mesh, paths, level=6, curvature_H=H)
-        assert np.all(result.sab >= -1e-14)
+        assert np.all(result.sab >= NUMERICAL_FLOOR)
 
 
 class TestEnergyConservation:
@@ -248,7 +249,7 @@ class TestCoherentProperties:
 
         # PSD: all eigenvalues >= 0
         eigvals = np.linalg.eigvalsh(Q)
-        assert np.all(eigvals >= -1e-12), f"Negative eigenvalue: {eigvals.min()}"
+        assert np.all(eigvals >= NUMERICAL_FLOOR), f"Negative eigenvalue: {eigvals.min()}"
 
     def test_ecbf_satisfies_constraint(self):
         """ECBF result must satisfy P_abs <= P_abs_max (within tolerance)."""

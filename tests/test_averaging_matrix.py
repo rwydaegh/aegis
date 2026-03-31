@@ -138,3 +138,54 @@ class TestPrecomputeAveragingMatrix:
             rtol=0.05,
             err_msg="NumPy fallback path diverges from default (Numba) path",
         )
+
+
+class TestAveragingMatrixProperties:
+    """Property tests for the spatial averaging matrix."""
+
+    def test_averaging_reduces_peak(self):
+        """Spatial averaging should not increase the peak value for positive sab."""
+        rng = np.random.default_rng(42)
+        M = 80
+        centroids = rng.uniform(0, 0.05, (M, 3))
+        areas = np.full(M, 5e-5)
+
+        sab = rng.uniform(0, 10, M)
+        G = precompute_averaging_matrix(centroids, areas, target_area_m2=4e-4)
+        sab_avg = np.asarray(G @ sab).ravel()
+
+        # Peak of averaged <= peak of raw (convexity of weighted average)
+        assert np.max(sab_avg) <= np.max(sab) + 1e-10
+
+    def test_total_power_preserved(self):
+        """Total absorbed power P_abs = sum(sab * area) should be approximately preserved."""
+        rng = np.random.default_rng(42)
+        M = 60
+        centroids = rng.uniform(0, 0.05, (M, 3))
+        areas = rng.uniform(5e-5, 2e-4, M)
+
+        sab = rng.uniform(0, 10, M)
+        G = precompute_averaging_matrix(centroids, areas, target_area_m2=4e-4)
+        sab_avg = np.asarray(G @ sab).ravel()
+
+        p_abs_raw = np.sum(sab * areas)
+        p_abs_avg = np.sum(sab_avg * areas)
+
+        assert abs(p_abs_avg - p_abs_raw) / p_abs_raw < 0.10
+
+    def test_single_triangle(self):
+        """Single triangle: G should be [1]."""
+        centroids = np.array([[0, 0, 0]])
+        areas = np.array([1e-4])
+        G = precompute_averaging_matrix(centroids, areas, target_area_m2=4e-4)
+        assert G.toarray().shape == (1, 1)
+        assert abs(G.toarray()[0, 0] - 1.0) < 1e-12
+
+    def test_widely_separated_triangles(self):
+        """Triangles far apart should only average with themselves."""
+        centroids = np.array([[0, 0, 0], [100, 0, 0], [0, 100, 0]], dtype=float)
+        areas = np.array([1e-4, 1e-4, 1e-4])
+        G = precompute_averaging_matrix(centroids, areas, target_area_m2=4e-4)
+        # Each row should be a one-hot (self-averaging only)
+        G_dense = G.toarray()
+        np.testing.assert_allclose(G_dense, np.eye(3), atol=1e-12)
