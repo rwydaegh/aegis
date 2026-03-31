@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useMemo } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import { Line } from '@react-three/drei'
@@ -26,16 +26,19 @@ export default function FocusPointMarker() {
   const fp = focusPoint
 
   // Build ring geometry (a circle in the XZ plane at focus point)
-  const ringPoints: [number, number, number][] = []
-  const segments = 32
-  for (let i = 0; i <= segments; i++) {
-    const angle = (i / segments) * Math.PI * 2
-    ringPoints.push([
-      fp[0] + RING_RADIUS * Math.cos(angle),
-      fp[1],
-      fp[2] + RING_RADIUS * Math.sin(angle),
-    ])
-  }
+  const ringPoints = useMemo(() => {
+    const pts: [number, number, number][] = []
+    const segments = 32
+    for (let i = 0; i <= segments; i++) {
+      const angle = (i / segments) * Math.PI * 2
+      pts.push([
+        fp[0] + RING_RADIUS * Math.cos(angle),
+        fp[1],
+        fp[2] + RING_RADIUS * Math.sin(angle),
+      ])
+    }
+    return pts
+  }, [fp[0], fp[1], fp[2]])
 
   return (
     <group>
