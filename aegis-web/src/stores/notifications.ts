@@ -14,6 +14,7 @@ interface NotificationStore {
   notifications: Notification[]
   addNotification: (level: NotificationLevel, message: string, detail?: string) => void
   dismiss: (id: string) => void
+  dismissByLevel: (level: NotificationLevel) => void
 }
 
 let nextId = 0
@@ -37,5 +38,9 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
   dismiss: (id) =>
     set((state) => ({
       notifications: state.notifications.filter((n) => n.id !== id),
+    })),
+  dismissByLevel: (level) =>
+    set((state) => ({
+      notifications: state.notifications.filter((n) => n.level !== level),
     })),
 }))
