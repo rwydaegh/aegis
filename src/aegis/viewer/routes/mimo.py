@@ -30,6 +30,11 @@ def _build_scene(params: dict, cache: dict) -> tuple[MIMOScene | None, Response 
     if not users_cfg:
         return None, (jsonify({"error": "Missing or empty 'users' in request"}), 400)
 
+    user_ids = [u.get("id") for u in users_cfg if "id" in u]
+    if len(user_ids) != len(set(user_ids)):
+        dupes = [uid for uid in set(user_ids) if user_ids.count(uid) > 1]
+        return None, (jsonify({"error": f"Duplicate user IDs: {dupes}"}), 400)
+
     freq_hz = float(params.get("freq_hz", DEFAULT_FREQ_HZ))
     power_dbm = float(params.get("power_dbm", 30.0))
     total_power = 10 ** ((power_dbm - 30) / 10)
