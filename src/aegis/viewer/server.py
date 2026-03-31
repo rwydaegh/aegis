@@ -217,16 +217,43 @@ def _preload_bodies(
     cache_lock: threading.RLock,
 ) -> None:
     """Load all available body meshes from data_dir into cache."""
+    import yaml
+
+    from aegis.geometry.device_offset import estimate_device_offset
+
+    # Load phantoms.yaml for manual overrides
+    phantoms_path = Path(data_dir) / "phantoms.yaml"
+    phantom_overrides: dict = {}
+    if phantoms_path.exists():
+        with open(phantoms_path) as f:
+            phantom_data = yaml.safe_load(f) or {}
+        for name, info in phantom_data.items():
+            if "device_offset" in info:
+                phantom_overrides[name] = info["device_offset"]
+
+    # Forward distance from config
+    cfg = cache.get("config", {})
+    fwd = cfg.get("body", {}).get("smartphone", {}).get("forward_distance", 0.30)
+
     with cache_lock:
         available_bodies = [p.stem for p in Path(data_dir).glob("*.stl")]
         cache["bodies"] = {}
+        cache["body_device_offsets"] = {}
         cache["default_body"] = body_name
         for name in available_bodies:
             try:
                 body = load_body(name, data_dir)
                 binary, meta = body_to_binary(body)
                 cache["bodies"][name] = {"body": body, "binary": binary, "meta": meta}
-                print(f"  Body: {body.name}, {body.n_triangles:,} triangles")
+
+                # Compute device offset: manual override or auto-detect
+                if name in phantom_overrides:
+                    offset = [float(v) for v in phantom_overrides[name]]
+                else:
+                    offset = estimate_device_offset(body.vertices, forward_distance=fwd)
+                cache["body_device_offsets"][name] = offset
+
+                print(f"  Body: {body.name}, {body.n_triangles:,} triangles, device_offset={offset}")
             except FileNotFoundError as e:
                 print(f"  Warning: {e}")
 
@@ -237,7 +264,6 @@ def _preload_bodies(
             cache["body_binary"] = default_entry["binary"]
             cache["body_meta"] = default_entry["meta"]
         else:
-            # Fallback: try loading the requested body_name even if not in glob results
             try:
                 body = load_body(body_name, data_dir)
                 binary, meta = body_to_binary(body)
@@ -245,7 +271,14 @@ def _preload_bodies(
                 cache["body"] = body
                 cache["body_binary"] = binary
                 cache["body_meta"] = meta
-                print(f"  Body (fallback): {body.name}, {body.n_triangles:,} triangles")
+
+                if body_name in phantom_overrides:
+                    offset = [float(v) for v in phantom_overrides[body_name]]
+                else:
+                    offset = estimate_device_offset(body.vertices, forward_distance=fwd)
+                cache["body_device_offsets"][body_name] = offset
+
+                print(f"  Body (fallback): {body.name}, {body.n_triangles:,} triangles, device_offset={offset}")
             except FileNotFoundError as e:
                 print(f"  Warning: {e}")
                 cache["body"] = None

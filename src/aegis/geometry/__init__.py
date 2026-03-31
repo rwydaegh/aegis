@@ -6,6 +6,7 @@ from aegis.geometry.averaging import (
     precompute_averaging_matrix,
 )
 from aegis.geometry.cauchy import cauchy_projected_area, cauchy_relative_error, mean_projected_area
+from aegis.geometry.device_offset import estimate_device_offset
 from aegis.geometry.directivity import (
     compute_directivity,
     eval_sh,
@@ -26,6 +27,7 @@ __all__ = [
     "compute_ambient_occlusion",
     "compute_directivity",
     "compute_projected_area",
+    "estimate_device_offset",
     "eval_sh",
     "fibonacci_sphere",
     "fit_sh",
