@@ -5,7 +5,7 @@ import type { EnvironmentSource } from '@/stores/environment'
 import { useSceneStore } from '@/stores/scene'
 import { useTerrainStore } from '@/stores/terrain'
 import { useUIStore } from '@/stores/ui'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Search } from 'lucide-react'
 
 const SOURCE_OPTIONS: { value: EnvironmentSource; label: string }[] = [
   { value: 'none', label: 'None' },
@@ -28,26 +28,31 @@ export default function EnvironmentPanel() {
 
   const source = useEnvironmentStore((s) => s.source)
   const location = useEnvironmentStore((s) => s.location)
+  const locationQuery = useEnvironmentStore((s) => s.locationQuery)
+  const locationFormatted = useEnvironmentStore((s) => s.locationFormatted)
   const radius = useEnvironmentStore((s) => s.radius)
   const geometricError = useEnvironmentStore((s) => s.geometricError)
   const osmOptions = useEnvironmentStore((s) => s.osmOptions)
   const loading = useEnvironmentStore((s) => s.loading)
+  const geocoding = useEnvironmentStore((s) => s.geocoding)
   const error = useEnvironmentStore((s) => s.error)
   const setSource = useEnvironmentStore((s) => s.setSource)
-  const setLocation = useEnvironmentStore((s) => s.setLocation)
+  const setLocationQuery = useEnvironmentStore((s) => s.setLocationQuery)
   const setRadius = useEnvironmentStore((s) => s.setRadius)
   const setGeometricError = useEnvironmentStore((s) => s.setGeometricError)
   const setOsmOptions = useEnvironmentStore((s) => s.setOsmOptions)
-  const fetchOSM = useEnvironmentStore((s) => s.fetchOSM)
+  const geocodeAndFetch = useEnvironmentStore((s) => s.geocodeAndFetch)
   const fetchGeoJSON = useEnvironmentStore((s) => s.fetchGeoJSON)
-  const fetchTilesForRT = useEnvironmentStore((s) => s.fetchTilesForRT)
   const exportForRT = useEnvironmentStore((s) => s.exportForRT)
 
   const setCameraMode = useUIStore((s) => s.setCameraMode)
+  const setCameraPreset = useUIStore((s) => s.setCameraPreset)
   const voxelData = useSceneStore((s) => s.voxelData)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [geojsonFileName, setGeoJsonFileName] = useState<string | null>(null)
+
+  const busy = loading || geocoding
 
   return (
     <div className="space-y-3 text-sm">
@@ -60,8 +65,13 @@ export default function EnvironmentPanel() {
               key={opt.value}
               onClick={() => {
                 setSource(opt.value)
-                if (opt.value === '3dtiles') setCameraMode('globe')
-                else if (source === '3dtiles') setCameraMode('orbit')
+                if (opt.value === '3dtiles') {
+                  setCameraMode('globe')
+                } else if (source === '3dtiles') {
+                  setCameraMode('orbit')
+                  // Reset camera from globe-scale ECEF back to local scene
+                  setCameraPreset('reset')
+                }
               }}
               className={`px-2 py-1.5 rounded text-xs font-medium transition-colors ${
                 source === opt.value
@@ -93,38 +103,41 @@ export default function EnvironmentPanel() {
         </div>
       )}
 
-      {/* Location */}
+      {/* Location text field */}
       {(source === 'osm' || source === '3dtiles') && (
         <div>
           <label className={labelClass}>Location</label>
-          <div className="grid grid-cols-2 gap-2">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              void geocodeAndFetch()
+            }}
+            className="flex gap-1.5"
+          >
             <input
-              type="number"
-              step="0.0001"
-              placeholder="Latitude"
-              value={location?.lat ?? ''}
-              onChange={(e) =>
-                setLocation(
-                  parseFloat(e.target.value) || 0,
-                  location?.lon ?? 0,
-                )
-              }
+              type="text"
+              placeholder="e.g. Ghent, Belgium"
+              value={locationQuery}
+              onChange={(e) => setLocationQuery(e.target.value)}
               className={inputClass}
             />
-            <input
-              type="number"
-              step="0.0001"
-              placeholder="Longitude"
-              value={location?.lon ?? ''}
-              onChange={(e) =>
-                setLocation(
-                  location?.lat ?? 0,
-                  parseFloat(e.target.value) || 0,
-                )
-              }
-              className={inputClass}
-            />
-          </div>
+            <button
+              type="submit"
+              disabled={busy || !locationQuery.trim()}
+              className="px-2.5 py-1.5 rounded bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 flex items-center justify-center shrink-0"
+            >
+              {geocoding ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <Search className="size-3.5" />
+              )}
+            </button>
+          </form>
+          {locationFormatted && location && (
+            <p className="text-xs text-muted-foreground mt-1">
+              {locationFormatted} ({location.lat.toFixed(4)}, {location.lon.toFixed(4)})
+            </p>
+          )}
         </div>
       )}
 
@@ -254,7 +267,7 @@ export default function EnvironmentPanel() {
             />
             <button
               onClick={() => fileInputRef.current?.click()}
-              disabled={loading}
+              disabled={busy}
               className="w-full px-3 py-1.5 rounded text-xs font-medium bg-muted text-muted-foreground hover:text-foreground disabled:opacity-50 flex items-center justify-center gap-1.5"
             >
               {loading && geojsonFileName ? (
@@ -294,23 +307,20 @@ export default function EnvironmentPanel() {
         </div>
       )}
 
-      {/* Action buttons */}
-      {(source === 'osm' || source === '3dtiles') && (
+      {/* Loading indicator */}
+      {loading && (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Loader2 className="size-3 animate-spin" />
+          {source === 'osm' ? 'Fetching OSM data...' : 'Fetching tiles...'}
+        </div>
+      )}
+
+      {/* Export button */}
+      {(source === 'osm' || source === '3dtiles') && location && (
         <div className="flex gap-2 pt-1">
           <button
-            onClick={() => {
-              if (source === 'osm') void fetchOSM()
-              else void fetchTilesForRT()
-            }}
-            disabled={loading || !location}
-            className="flex-1 px-3 py-1.5 rounded text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 flex items-center justify-center gap-1.5"
-          >
-            {loading && <Loader2 className="size-3 animate-spin" />}
-            {source === 'osm' ? 'Fetch OSM' : 'Fetch tiles'}
-          </button>
-          <button
             onClick={() => void exportForRT('differt').catch(err => Sentry.captureException(err))}
-            disabled={loading}
+            disabled={busy}
             className="px-3 py-1.5 rounded text-xs font-medium bg-muted text-muted-foreground hover:text-foreground disabled:opacity-50"
           >
             Export
