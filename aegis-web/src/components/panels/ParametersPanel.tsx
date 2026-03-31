@@ -125,6 +125,8 @@ export default function ParametersPanel() {
               label="Polarisation"
               checked={polarisation}
               onChange={setPolarisation}
+              disabled={!fresnel}
+              title={!fresnel ? 'Requires Fresnel' : undefined}
             />
             <CorrectionToggle
               label="Curvature"
