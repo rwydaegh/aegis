@@ -62,6 +62,45 @@ class EnvironmentCache:
         with open(path, "w") as f:
             json.dump({"data": data, "meta": meta}, f)
 
+    def get_binary(
+        self,
+        source: str,
+        lat: float,
+        lon: float,
+        radius: float,
+        options: dict,
+    ) -> tuple[bytes, dict] | None:
+        """Return cached (binary_blob, meta) or None if not cached."""
+        key = self._key(source, lat, lon, radius, options)
+        bin_path = self._dir / f"{key}.bin"
+        meta_path = self._dir / f"{key}.meta.json"
+        if not bin_path.exists() or not meta_path.exists():
+            return None
+        with open(meta_path) as f:
+            meta = json.load(f)
+        with open(bin_path, "rb") as f:
+            blob = f.read()
+        return blob, meta
+
+    def put_binary(
+        self,
+        source: str,
+        lat: float,
+        lon: float,
+        radius: float,
+        options: dict,
+        blob: bytes,
+        meta: dict,
+    ) -> None:
+        """Cache a binary blob with its metadata."""
+        key = self._key(source, lat, lon, radius, options)
+        bin_path = self._dir / f"{key}.bin"
+        meta_path = self._dir / f"{key}.meta.json"
+        with open(bin_path, "wb") as f:
+            f.write(blob)
+        with open(meta_path, "w") as f:
+            json.dump(meta, f)
+
     def clear(self) -> None:
         if self._dir.exists():
             shutil.rmtree(self._dir)
