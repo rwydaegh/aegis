@@ -31,7 +31,8 @@ export async function fetchWithRetry(
     }
     if (attempt < MAX_RETRIES) {
       const retryAfter = lastResponse?.headers.get('Retry-After')
-      const delayMs = retryAfter ? Math.min(parseInt(retryAfter, 10) * 1000, 5000) : (attempt + 1) * 1000
+      const parsed = retryAfter ? parseInt(retryAfter, 10) : NaN
+      const delayMs = Number.isFinite(parsed) ? Math.min(parsed * 1000, 5000) : (attempt + 1) * 1000
       await new Promise((r) => setTimeout(r, delayMs))
     }
   }
@@ -231,9 +232,7 @@ export async function fetchBody(
   const url = name ? `/api/body?name=${encodeURIComponent(name)}` : '/api/body'
   const res = await getBinary(url)
 
-  const metaHeader = res.headers.get('X-Meta')
-  if (!metaHeader) throw new Error('GET /api/body: missing X-Meta header')
-  const meta: BodyMeta = JSON.parse(metaHeader)
+  const meta = parseJsonHeader<BodyMeta>(res.headers.get('X-Meta'), 'X-Meta')
 
   const buffer = await res.arrayBuffer()
   const binary = parseBodyBinary(buffer, meta.n_vertices)
@@ -247,9 +246,7 @@ export async function fetchVoxels(): Promise<{
 }> {
   const res = await getBinary('/api/voxels')
 
-  const metaHeader = res.headers.get('X-Meta')
-  if (!metaHeader) throw new Error('GET /api/voxels: missing X-Meta header')
-  const meta: VoxelMeta = JSON.parse(metaHeader)
+  const meta = parseJsonHeader<VoxelMeta>(res.headers.get('X-Meta'), 'X-Meta')
 
   const buffer = await res.arrayBuffer()
   const binary = parseVoxelBinary(buffer, meta.n_voxels)
@@ -283,9 +280,7 @@ export async function loadSceneGeometry(scenePath: string): Promise<{
   }
   if (!res.ok) throw new Error(await extractErrorMessage(res, 'POST', '/api/scene/load'))
 
-  const metaHeader = res.headers.get('X-Meta')
-  if (!metaHeader) throw new Error('POST /api/scene/load: missing X-Meta header')
-  const meta: { n_vertices: number; n_triangles: number; has_face_colors: boolean } = JSON.parse(metaHeader)
+  const meta = parseJsonHeader<{ n_vertices: number; n_triangles: number; has_face_colors: boolean }>(res.headers.get('X-Meta'), 'X-Meta')
 
   const buffer = await res.arrayBuffer()
   const { vertices, indices, faceColors } = parseSceneBinary(
@@ -305,7 +300,7 @@ export async function fetchHullMesh(): Promise<{
 }> {
   const res = await fetchWithRetry(`${BASE}/api/voxels/hull-mesh`)
   if (!res.ok) throw new Error(`Hull mesh fetch failed: ${res.status}`)
-  const meta = JSON.parse(res.headers.get('X-Meta') || '{}')
+  const meta = parseJsonHeader<{ n_vertices: number; n_triangles: number; has_face_colors: boolean }>(res.headers.get('X-Meta'), 'X-Meta')
   const buffer = await res.arrayBuffer()
   const { vertices, indices, faceColors } = parseSceneBinary(
     buffer, meta.n_vertices, meta.n_triangles, meta.has_face_colors

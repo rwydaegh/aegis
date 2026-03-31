@@ -251,10 +251,20 @@ def _build_stats_response(result, body, tissue, level, extra=None, mode=None, co
     scenario = scenario or ExposureScenario.GENERAL_PUBLIC
 
     # Precompute per-quantity peaks (each np.max called once)
-    peak_sab_averaged = float(np.max(result.sab_averaged)) if result.sab_averaged is not None else None
-    peak_sab_1cm2 = float(np.max(result.sab_1cm2_averaged)) if result.sab_1cm2_averaged is not None else None
-    peak_sinc_local = float(np.max(result.sinc)) if result.sinc is not None else None
-    peak_sinc_averaged = float(np.max(result.sinc_averaged)) if result.sinc_averaged is not None else None
+    peak_sab_averaged = (
+        float(np.max(result.sab_averaged)) if result.sab_averaged is not None and result.sab_averaged.size > 0 else None
+    )
+    peak_sab_1cm2 = (
+        float(np.max(result.sab_1cm2_averaged))
+        if result.sab_1cm2_averaged is not None and result.sab_1cm2_averaged.size > 0
+        else None
+    )
+    peak_sinc_local = float(np.max(result.sinc)) if result.sinc is not None and result.sinc.size > 0 else None
+    peak_sinc_averaged = (
+        float(np.max(result.sinc_averaged))
+        if result.sinc_averaged is not None and result.sinc_averaged.size > 0
+        else None
+    )
 
     # S_inc whole-body average
     sinc_wb = None
