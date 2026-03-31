@@ -276,16 +276,17 @@ class TestComputeSabCoherent:
         sab_raw = engine.compute_sab(ico_mesh, paths, level=7, precoder=precoder)
         result = engine.compute(ico_mesh, paths, level=7, precoder=precoder)
 
-        assert isinstance(sab_raw, np.ndarray)
-        assert sab_raw.shape == (ico_mesh.n_triangles,)
-        np.testing.assert_allclose(sab_raw, result.sab, rtol=1e-12)
+        # compute_sab returns the backend's native array type (JAX or NumPy)
+        sab_np = np.asarray(sab_raw)
+        assert sab_np.shape == (ico_mesh.n_triangles,)
+        np.testing.assert_allclose(sab_np, result.sab, rtol=1e-12)
 
     def test_compute_sab_level7_precoder_x(self, engine, ico_mesh, coherent_paths):
         """compute_sab at level 7 accepts precoder_x directly."""
         paths, M_ant = coherent_paths
         x = np.ones(M_ant, dtype=complex)
         sab = engine.compute_sab(ico_mesh, paths, level=7, precoder_x=x)
-        assert sab.shape == (ico_mesh.n_triangles,)
+        assert np.asarray(sab).shape == (ico_mesh.n_triangles,)
         assert np.all(sab >= 0)
 
     def test_compute_sab_level7_requires_precoder(self, engine, ico_mesh, coherent_paths):
@@ -303,9 +304,10 @@ class TestComputeSabCoherent:
 
         sab_raw = engine.compute_sab(ico_mesh, paths, level=8, precoder=precoder, h=h)
 
-        assert isinstance(sab_raw, np.ndarray)
-        assert sab_raw.shape == (ico_mesh.n_triangles,)
-        assert np.all(sab_raw >= 0)
+        # compute_sab returns the backend's native array type (JAX or NumPy)
+        sab_np = np.asarray(sab_raw)
+        assert sab_np.shape == (ico_mesh.n_triangles,)
+        assert np.all(sab_np >= 0)
 
     def test_compute_sab_level8_requires_h(self, engine, ico_mesh, coherent_paths):
         """Level 8 without h must raise."""

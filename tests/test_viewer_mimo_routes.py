@@ -298,6 +298,22 @@ class TestMIMOCompute:
         assert resp.status_code == 400
         assert "duplicate" in resp.get_json()["error"].lower()
 
+    def test_invalid_level_string_returns_400(self, client):
+        resp = client.post(
+            "/api/mimo/compute",
+            json={"array": VALID_ARRAY, "users": [_make_user_cfg()], "level": "abc"},
+        )
+        assert resp.status_code == 400
+        assert "integer" in resp.get_json()["error"].lower()
+
+    def test_incoherent_level_returns_400(self, client):
+        resp = client.post(
+            "/api/mimo/compute",
+            json={"array": VALID_ARRAY, "users": [_make_user_cfg()], "level": 2},
+        )
+        assert resp.status_code == 400
+        assert "7 or 8" in resp.get_json()["error"]
+
     @patch("aegis.viewer.routes.mimo.compute_mimo_scene_with_bodies")
     def test_compute_exception_returns_500(self, mock_compute, client):
         mock_compute.side_effect = RuntimeError("Channel matrix is singular")

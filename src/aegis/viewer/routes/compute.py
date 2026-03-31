@@ -667,7 +667,10 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         engine_kw, err = _parse_mode_or_level(params)
         if err:
             return err
-        power_dbm = params.get("power_dbm", DEFAULT_POWER_DBM)
+        try:
+            power_dbm = float(params.get("power_dbm", DEFAULT_POWER_DBM))
+        except (TypeError, ValueError):
+            return jsonify({"error": "power_dbm must be a number"}), 400
         rt_cfg_parsed = _parse_rt_config(params)
 
         body_offset, err = _parse_vec3(params, "body_offset")
@@ -833,7 +836,10 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         engine_kw, err = _parse_mode_or_level(params)
         if err:
             return err
-        power_dbm = params.get("power_dbm", DEFAULT_POWER_DBM)
+        try:
+            power_dbm = float(params.get("power_dbm", DEFAULT_POWER_DBM))
+        except (TypeError, ValueError):
+            return jsonify({"error": "power_dbm must be a number"}), 400
         rt_cfg_parsed = _parse_rt_config(params)
 
         body_offset, err = _parse_vec3(params, "body_offset")
@@ -982,7 +988,10 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         engine_kw, err = _parse_mode_or_level(params)
         if err:
             return err
-        power_dbm = params.get("power_dbm", DEFAULT_POWER_DBM)
+        try:
+            power_dbm = float(params.get("power_dbm", DEFAULT_POWER_DBM))
+        except (TypeError, ValueError):
+            return jsonify({"error": "power_dbm must be a number"}), 400
         rt_cfg_parsed = _parse_rt_config(params)
         max_order = rt_cfg_parsed["max_depth"]
 
