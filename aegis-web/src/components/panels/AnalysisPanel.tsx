@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import * as Sentry from '@sentry/react'
 import {
   LineChart,
@@ -207,6 +207,13 @@ function PowerSweepSection() {
   const [result, setResult] = useState<PowerSweepResult | null>(null)
   const [loading, setLoading] = useState(false)
 
+  // Clear stale sweep results when underlying dosimetry stats change
+  const statsRef = useRef(stats)
+  if (stats !== statsRef.current) {
+    statsRef.current = stats
+    if (result) setResult(null)
+  }
+
   const peakSab = stats?.peak_sab_averaged ?? stats?.peak_sab
   const sincLocal = stats?.peaks?.sinc_local
   const sab1cm2 = stats?.peaks?.sab_1cm2
@@ -310,6 +317,13 @@ function FrequencySweepSection() {
 
   const [result, setResult] = useState<FrequencySweepResult | null>(null)
   const [loading, setLoading] = useState(false)
+
+  // Clear stale sweep results when underlying dosimetry stats change
+  const statsRef = useRef(stats)
+  if (stats !== statsRef.current) {
+    statsRef.current = stats
+    if (result) setResult(null)
+  }
 
   const peakSab = stats?.peak_sab_averaged ?? stats?.peak_sab
   const sincLocal = stats?.peaks?.sinc_local

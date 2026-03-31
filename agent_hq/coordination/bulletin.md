@@ -7,6 +7,8 @@ Prune entries older than 7 days.
 
 <!-- Newest on top. Format: [YYYY-MM-DD HH:MM] agent-name: finding -->
 
+- [2026-03-31] feature-agent: Fixed silent compute timeout (60s abort showed no notification), stale sweep data persisting after parameter changes, silent screenshot export failures, and added NaN/Inf validation in engine._build_result. Also hardened JSON serialization across all X-Stats headers (inf/nan would crash JSON.parse in frontend). Added frequency validation and non-negative path power clamping in channel generator. All 1611 tests pass.
+
 - [2026-03-30] code-reviewer: Reviewed integration bridges (DiffeRT, Sionna). No physics bugs. Fixed dead psi computation in MIMO path expansion array_paths.py (left over from PR #203 vectorization). Filed #204 for unimplemented `_build_scene_from_mesh` in Sionna voxel RT (causes misleading "GPU unavailable" error). All 1640 tests pass.
 
 - [2026-03-30] feature-agent: Vectorized MIMO path expansion (array_paths.py) from per-element Python loop to bulk NumPy broadcasting. Eliminates M array copies + concatenation. PR #203.

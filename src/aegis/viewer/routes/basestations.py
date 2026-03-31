@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import logging
 import os
 import re
@@ -177,6 +176,7 @@ def _handle_basestations_compute(cache: dict, cache_lock: threading.RLock):
         _build_binary_response,
         _build_stats_response,
         _inject_curvature_H,
+        _json_dumps_safe,
         _parse_rotation_y,
         _parse_vec3,
     )
@@ -248,7 +248,7 @@ def _handle_basestations_compute(cache: dict, cache_lock: threading.RLock):
             "peaks": {"sab": 0.0},
         }
         resp = Response(sab_bytes, mimetype=_OCTET_STREAM)
-        resp.headers["X-Stats"] = json.dumps(stats)
+        resp.headers["X-Stats"] = _json_dumps_safe(stats)
         resp.headers["Access-Control-Expose-Headers"] = "X-Stats"
         return resp
 
@@ -295,7 +295,7 @@ def _handle_basestations_compute(cache: dict, cache_lock: threading.RLock):
     )
 
     resp = Response(bytes(buf), mimetype=_OCTET_STREAM)
-    resp.headers["X-Stats"] = json.dumps(stats)
+    resp.headers["X-Stats"] = _json_dumps_safe(stats)
     resp.headers["Access-Control-Expose-Headers"] = "X-Stats"
     return resp
 
@@ -309,7 +309,7 @@ def _handle_basestations_compute_mimo(cache: dict, cache_lock: threading.RLock):
     from aegis.mimo.compute import compute_mimo_scene_with_bodies
     from aegis.mimo.scene import MIMOScene
     from aegis.mimo.user import UserConfig, UserState
-    from aegis.viewer.routes.compute import _parse_rotation_y, _parse_vec3
+    from aegis.viewer.routes.compute import _json_dumps_safe, _parse_rotation_y, _parse_vec3
 
     params = request.get_json(silent=True) or {}
 
@@ -476,7 +476,7 @@ def _handle_basestations_compute_mimo(cache: dict, cache_lock: threading.RLock):
     }
 
     resp = Response(sab_bytes, mimetype=_OCTET_STREAM)
-    resp.headers["X-Stats"] = json.dumps(stats)
+    resp.headers["X-Stats"] = _json_dumps_safe(stats)
     resp.headers["Access-Control-Expose-Headers"] = "X-Stats"
     return resp
 
