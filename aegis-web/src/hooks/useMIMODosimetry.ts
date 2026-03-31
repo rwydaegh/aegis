@@ -66,12 +66,16 @@ export function useMIMODosimetry() {
       await loadMissingBodies()
       if (gen !== generationRef.current) return
 
+      const caps = useSceneStore.getState().capabilities
+      const deviceOffsets = caps?.body_device_offsets ?? {}
+      const fallbackOffset: [number, number, number] = [0, 0.30, 1.4]
+
       const mimoUsers: MIMOUserConfig[] = [...useMIMOStore.getState().users.values()].map(u => ({
         id: u.userId,
         phantom: u.phantomName,
         position: u.position,
         orientation: u.orientation,
-        device_offset: [0.25, 0, 1.4] as [number, number, number],
+        device_offset: (deviceOffsets[u.phantomName] as [number, number, number]) ?? fallbackOffset,
       }))
 
       const req: MIMOComputeRequest = {

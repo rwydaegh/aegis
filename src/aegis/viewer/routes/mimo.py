@@ -65,7 +65,8 @@ def _build_scene(params: dict, cache: dict) -> tuple[MIMOScene | None, Response 
 
         # device_offset is relative to user body; convert to absolute world position
         user_pos = np.array(u.get("position", [0.0, 0.0, 0.0]), dtype=np.float64)
-        device_offset = u.get("device_offset", u.get("device_position", [0.25, 0.0, 1.4]))
+        default_offset = cache.get("body_device_offsets", {}).get(phantom, [0.0, 0.30, 1.4])
+        device_offset = u.get("device_offset", u.get("device_position", default_offset))
         device_position = user_pos + np.array(device_offset, dtype=np.float64)
         device_orientation = u.get("device_orientation", [0.0, 0.0, 1.0])
 

@@ -16,8 +16,8 @@ describe('MIMO API', () => {
   }
 
   const users: MIMOUserConfig[] = [
-    { id: 'u1', phantom: 'thelonious', position: [1, 2, 3] as ScenePos, orientation: 0, device_offset: [0.25, 1.4, 0] },
-    { id: 'u2', phantom: 'duke', position: [2, 1, -1] as ScenePos, orientation: 0.5, device_offset: [0.25, 1.4, 0] },
+    { id: 'u1', phantom: 'thelonious', position: [1, 2, 3] as ScenePos, orientation: 0, device_offset: [0, 0.33, 1.12] },
+    { id: 'u2', phantom: 'duke', position: [2, 1, -1] as ScenePos, orientation: 0.5, device_offset: [0, 0.41, 1.71] },
   ]
 
   it('converts scene positions to server positions', () => {

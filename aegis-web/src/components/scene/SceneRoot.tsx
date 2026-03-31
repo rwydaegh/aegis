@@ -259,6 +259,9 @@ function MIMOScene() {
   const setFocusedUser = useMIMOStore(s => s.setFocusedUser)
   const freqGhz = useSimulationStore(s => s.freqGhz)
   const cameraMode = useUIStore(s => s.cameraMode)
+  const caps = useSceneStore(s => s.capabilities)
+  const deviceOffsets = caps?.body_device_offsets ?? {}
+  const fallbackOffset: [number, number, number] = [0, 0.30, 1.4]
 
   return (
     <>
@@ -275,7 +278,11 @@ function MIMOScene() {
             opacity={user.userId === focusedUserId ? 1.0 : 0.7}
             onClick={() => setFocusedUser(user.userId)}
           />
-          <SmartphoneModel position={user.position} rotationY={user.orientation} />
+          <SmartphoneModel
+            position={user.position}
+            rotationY={user.orientation}
+            deviceOffset={deviceOffsets[user.phantomName] as [number, number, number] ?? fallbackOffset}
+          />
         </group>
       ))}
       {arrayConfig && <AntennaArrayViz config={arrayConfig} freqHz={freqGhz * 1e9} showPattern={showArrayPattern && cameraMode === 'orbit'} weights={precoderWeights} />}

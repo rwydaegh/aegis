@@ -8,31 +8,22 @@ const PHONE_H = 0.155 // height (long edge)
 const PHONE_D = 0.008 // depth (thickness)
 const BEZEL = 0.004
 
-// Device offset from user body origin, in Z-up [x, y, z] = [right, forward, up].
-// Must match the device_offset sent to the backend in useMIMODosimetry.ts.
-const DEVICE_OFFSET_ZUP: [number, number, number] = [0.25, 0.0, 1.4]
-
 interface SmartphoneModelProps {
   /** User body position in scene (Y-up) coords */
   position: [number, number, number]
   /** User body Y-rotation in radians */
   rotationY: number
+  /** Device offset in Z-up [right, forward, up] from body origin */
+  deviceOffset: [number, number, number]
 }
 
-export default function SmartphoneModel({ position, rotationY }: SmartphoneModelProps) {
+export default function SmartphoneModel({ position, rotationY, deviceOffset }: SmartphoneModelProps) {
   const groupRef = useRef<THREE.Group>(null)
 
-  // Subtle hover animation
-  useFrame(({ clock }) => {
-    if (!groupRef.current) return
-    groupRef.current.position.y =
-      baseY + 0.003 * Math.sin(clock.elapsedTime * 1.5)
-  })
-
-  // Convert Z-up device offset to Y-up scene coords: [x, z, -y]
-  const localX = DEVICE_OFFSET_ZUP[0]
-  const localY = DEVICE_OFFSET_ZUP[2] // z-up height -> y-up height
-  const localZ = -DEVICE_OFFSET_ZUP[1] // z-up forward -> -scene z
+  // Convert Z-up device offset to Y-up scene coords: [x, z_up, -y_fwd]
+  const localX = deviceOffset[0]
+  const localY = deviceOffset[2] // z-up height -> y-up height
+  const localZ = -deviceOffset[1] // z-up forward -> -scene z
 
   // Rotate local offset by user body orientation around Y
   const cos = Math.cos(rotationY)
@@ -40,6 +31,13 @@ export default function SmartphoneModel({ position, rotationY }: SmartphoneModel
   const worldX = position[0] + cos * localX + sin * localZ
   const worldZ = position[2] - sin * localX + cos * localZ
   const baseY = position[1] + localY
+
+  // Subtle hover animation
+  useFrame(({ clock }) => {
+    if (!groupRef.current) return
+    groupRef.current.position.y =
+      baseY + 0.003 * Math.sin(clock.elapsedTime * 1.5)
+  })
 
   return (
     <group
