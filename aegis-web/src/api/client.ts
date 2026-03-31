@@ -11,24 +11,32 @@ const BASE = ''
 const TRANSIENT_STATUSES = new Set([429, 502, 503, 504])
 const MAX_RETRIES = 2
 
-/** Wrap fetch with automatic retry on transient HTTP errors (502/503/504). */
+/** Wrap fetch with automatic retry on transient HTTP errors and network failures. */
 export async function fetchWithRetry(
   input: RequestInfo | URL,
   init?: RequestInit,
 ): Promise<Response> {
   let lastResponse: Response | undefined
+  let lastError: unknown
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     if (attempt > 0 && init?.signal?.aborted) break
-    const res = await fetch(input, init)
-    if (!TRANSIENT_STATUSES.has(res.status)) return res
-    lastResponse = res
+    try {
+      const res = await fetch(input, init)
+      if (!TRANSIENT_STATUSES.has(res.status)) return res
+      lastResponse = res
+    } catch (err) {
+      // Network error (server unreachable, connection reset, etc.)
+      lastError = err
+      if (attempt >= MAX_RETRIES) break
+    }
     if (attempt < MAX_RETRIES) {
-      const retryAfter = res.headers.get('Retry-After')
+      const retryAfter = lastResponse?.headers.get('Retry-After')
       const delayMs = retryAfter ? Math.min(parseInt(retryAfter, 10) * 1000, 5000) : (attempt + 1) * 1000
       await new Promise((r) => setTimeout(r, delayMs))
     }
   }
-  return lastResponse!
+  if (lastResponse) return lastResponse
+  throw lastError
 }
 
 // ---------------------------------------------------------------------------
