@@ -1187,7 +1187,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         fmt_fixed = ["%.6f"] * 3  # centroids
         fmt_sci = ["%.8e"]  # area
         fmt_fixed2 = ["%.6f"] * 3  # normals
-        fmt_sci2 = ["%.8e"] * (sci_block.shape[1])  # sab + optional extras
+        fmt_sci2 = ["%.8e"] * (sci_block.shape[1] - 1)  # sab + optional extras
         fmt = fmt_fixed + fmt_sci + fmt_fixed2 + fmt_sci2
 
         # Assemble in column order matching the header
