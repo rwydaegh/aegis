@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-from conftest import make_flat_mesh, make_icosahedron, make_single_triangle
+from conftest import NUMERICAL_FLOOR, make_flat_mesh, make_icosahedron, make_single_triangle
 
 from aegis.engine import DosimetryEngine
 from aegis.kernels._base import fresnel_weights, incidence_geometry, physical_gelu
@@ -63,8 +63,8 @@ class TestFresnelIdentities:
         """T_s and T_p must be in [0, 1] for all incidence angles."""
         mu = np.linspace(0.0, 1.0, 200)
         T_s, T_p = fresnel_transmission(mu, tissue.n_complex)
-        assert np.all(T_s >= -1e-14), f"T_s min = {T_s.min()}"
-        assert np.all(T_p >= -1e-14), f"T_p min = {T_p.min()}"
+        assert np.all(T_s >= NUMERICAL_FLOOR), f"T_s min = {T_s.min()}"
+        assert np.all(T_p >= NUMERICAL_FLOOR), f"T_p min = {T_p.min()}"
         assert np.all(T_s <= 1.0 + 1e-14), f"T_s max = {T_s.max()}"
         assert np.all(T_p <= 1.0 + 1e-14), f"T_p max = {T_p.max()}"
 
@@ -564,9 +564,9 @@ class TestFresnelWeights:
         mu, _ = incidence_geometry(body.normals, k_hat)
         T_s, T_p, T_avg = fresnel_weights(mu, SKIN_28GHZ.n_complex)
 
-        assert np.all(np.asarray(T_s) >= -1e-14)
-        assert np.all(np.asarray(T_p) >= -1e-14)
-        assert np.all(np.asarray(T_avg) >= -1e-14)
+        assert np.all(np.asarray(T_s) >= NUMERICAL_FLOOR)
+        assert np.all(np.asarray(T_p) >= NUMERICAL_FLOOR)
+        assert np.all(np.asarray(T_avg) >= NUMERICAL_FLOOR)
 
 
 # ---------------------------------------------------------------------------

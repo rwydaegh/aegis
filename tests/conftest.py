@@ -13,6 +13,11 @@ from aegis.geometry.mesh import BodyMesh
 from aegis.paths import PropagationPaths
 from aegis.tissue.dielectric import SKIN_28GHZ
 
+# Floating-point floor for non-negativity checks. Expressions that are
+# mathematically non-negative can produce values like -1e-16 due to
+# IEEE 754 arithmetic. We allow this small negative margin.
+NUMERICAL_FLOOR = -1e-12
+
 
 def pytest_configure(config):
     """Register custom markers."""
@@ -231,3 +236,35 @@ def multi_path():
     k_hat /= np.linalg.norm(k_hat, axis=1, keepdims=True)
     power = rng.uniform(0.1, 2.0, size=N)
     return PropagationPaths.from_powers(k_hat=k_hat, power=power)
+
+
+# ---------------------------------------------------------------------------
+# Shared Flask viewer app fixture
+# ---------------------------------------------------------------------------
+
+_E2E_LAB_DIR = str(Path(__file__).parent / "fixtures" / "e2e_lab")
+
+
+@pytest.fixture()
+def viewer_app():
+    """Flask test app with the e2e_icosahedron body, shared across viewer tests.
+
+    Requires Flask (viewer extra). Tests using this fixture are auto-skipped
+    when Flask is not installed.
+    """
+    pytest.importorskip("flask", reason="viewer tests require flask (pip install aegis[viewer])")
+
+    from aegis.viewer.config import load_config
+    from aegis.viewer.server import _cache, create_app
+
+    _cache.clear()
+    cfg = load_config()
+    cfg["server"]["host"] = "127.0.0.1"
+    cfg["server"]["port"] = 5099
+    app = create_app(
+        data_dir=_E2E_LAB_DIR,
+        body_name="e2e_icosahedron",
+        config=cfg,
+    )
+    app.config["TESTING"] = True
+    return app

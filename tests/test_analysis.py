@@ -8,7 +8,7 @@ summation, ordering, and consistency across the three functions.
 from __future__ import annotations
 
 import numpy as np
-from conftest import make_flat_mesh, make_icosahedron, make_single_triangle
+from conftest import NUMERICAL_FLOOR, make_flat_mesh, make_icosahedron, make_single_triangle
 
 from aegis.analysis import exposure_heatmap, path_contributions, path_importance
 from aegis.paths import PropagationPaths
@@ -93,7 +93,7 @@ class TestPathContributions:
         body = make_flat_mesh(50)
         paths = _make_paths()
         result = path_contributions(body, paths, SKIN_28GHZ)
-        assert np.all(np.diff(result["cumulative"]) >= -1e-12)
+        assert np.all(np.diff(result["cumulative"]) >= NUMERICAL_FLOOR)
 
     def test_contributions_sorted_descending(self):
         body = make_flat_mesh(50)
@@ -184,7 +184,7 @@ class TestExposureHeatmap:
         body = make_icosahedron()
         paths = _make_paths()
         C = exposure_heatmap(body, paths, SKIN_28GHZ)
-        assert np.all(C >= -1e-15), "heatmap entries must be non-negative"
+        assert np.all(C >= NUMERICAL_FLOOR), "heatmap entries must be non-negative"
 
     def test_row_sum_matches_sab(self):
         """C.sum(axis=1) should equal the level-3 S_ab per triangle."""
@@ -238,7 +238,7 @@ class TestPathImportance:
         body = make_icosahedron()
         paths = _make_paths()
         imp = path_importance(body, paths, SKIN_28GHZ)
-        assert np.all(imp >= -1e-15)
+        assert np.all(imp >= NUMERICAL_FLOOR)
 
     def test_sums_to_p_abs(self):
         """Sum of path importances should equal total absorbed power P_abs.

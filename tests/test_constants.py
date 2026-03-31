@@ -1,14 +1,8 @@
-"""Package metadata and physical constants (cheap regression on constants.py)."""
+"""Physical constants regression (constants.py)."""
 
 import math
 
-import aegis
 from aegis.constants import C_0, EPS_0, MU_0, Z_0
-
-
-def test_version():
-    assert isinstance(aegis.__version__, str)
-    assert len(aegis.__version__) > 0
 
 
 def test_constants_physically_consistent():

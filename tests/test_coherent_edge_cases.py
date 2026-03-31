@@ -20,6 +20,7 @@ from aegis.coherent.exposure_operator import (
 )
 from aegis.coherent.field_channel import compute_field_channel
 from aegis.precoder import Precoder
+from tests.conftest import NUMERICAL_FLOOR
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
@@ -181,7 +182,7 @@ class TestExposureOperatorEdgeCases:
         areas = np.array([0.01, 0.02, 0.03])
         Q = compute_exposure_operator(G, areas)
         eigenvalues = np.linalg.eigvalsh(Q)
-        assert np.all(eigenvalues >= -1e-12)
+        assert np.all(eigenvalues >= NUMERICAL_FLOOR)
 
     def test_hermitian_rank1_G(self):
         """With rank-1 G at each triangle, Q is still Hermitian PSD."""
@@ -196,7 +197,7 @@ class TestExposureOperatorEdgeCases:
         # Hermitian
         np.testing.assert_allclose(Q, Q.conj().T, atol=1e-12)
         # PSD
-        assert np.all(np.linalg.eigvalsh(Q) >= -1e-12)
+        assert np.all(np.linalg.eigvalsh(Q) >= NUMERICAL_FLOOR)
 
     # --- eigendecompose_Q ---
 
@@ -354,3 +355,76 @@ class TestFieldChannelEdgeCases:
         G = compute_field_channel(centroids, k_hat, psi, element_index, freq_hz=28e9, n_elements=2)
         assert G.shape == (1, 3, 2)
         np.testing.assert_allclose(G[0, :, 1], 0.0, atol=1e-30)
+
+    def test_out_of_range_element_index_raises(self):
+        """element_index values >= n_elements should raise."""
+        centroids = np.array([[0.0, 0.0, 0.0]])
+        k_hat = np.array([[0.0, 0.0, -1.0]])
+        psi = np.array([[1.0 + 0j, 0.0, 0.0]])
+        element_index = np.array([5])  # out of range
+        with pytest.raises(ValueError, match="element_index"):
+            compute_field_channel(centroids, k_hat, psi, element_index, 28e9, n_elements=4)
+
+    def test_negative_element_index_raises(self):
+        """Negative element_index values should raise."""
+        centroids = np.array([[0.0, 0.0, 0.0]])
+        k_hat = np.array([[0.0, 0.0, -1.0]])
+        psi = np.array([[1.0 + 0j, 0.0, 0.0]])
+        element_index = np.array([-1])
+        with pytest.raises(ValueError, match="element_index"):
+            compute_field_channel(centroids, k_hat, psi, element_index, 28e9, n_elements=4)
+
+    def test_valid_element_index_accepted(self):
+        """Valid element_index should not raise."""
+        centroids = np.array([[0.0, 0.0, 0.0]])
+        k_hat = np.array([[0.0, 0.0, -1.0]])
+        psi = np.array([[1.0 + 0j, 0.0, 0.0]])
+        element_index = np.array([0])
+        G = compute_field_channel(centroids, k_hat, psi, element_index, 28e9, n_elements=1)
+        assert G.shape == (1, 3, 1)
+
+
+# ---------------------------------------------------------------------------
+# accumulate_by_element edge cases
+# ---------------------------------------------------------------------------
+
+
+class TestAccumulateByElement:
+    def test_empty_paths(self):
+        """Should produce zero G when no paths are given."""
+        from aegis.coherent._accumulate import accumulate_by_element
+
+        weighted = np.zeros((5, 0, 3), dtype=complex)
+        element_index = np.array([], dtype=int)
+        G = accumulate_by_element(weighted, element_index, M=5, n_elements=4)
+        assert G.shape == (5, 3, 4)
+        np.testing.assert_array_equal(G, 0)
+
+    def test_single_element_single_path(self):
+        """Single path to single element should accumulate correctly."""
+        from aegis.coherent._accumulate import accumulate_by_element
+
+        weighted = np.array([[[1.0 + 2j, 0.5 + 0j, 0.0 + 1j]]], dtype=complex)  # (1, 1, 3)
+        element_index = np.array([0])
+        G = accumulate_by_element(weighted, element_index, M=1, n_elements=1)
+        assert G.shape == (1, 3, 1)
+        np.testing.assert_allclose(G[0, :, 0], [1.0 + 2j, 0.5 + 0j, 0.0 + 1j])
+
+    def test_duplicate_element_indices_accumulate(self):
+        """Multiple paths to same element should be summed."""
+        from aegis.coherent._accumulate import accumulate_by_element
+
+        # Two paths both to element 0, at one triangle
+        weighted = np.array(
+            [
+                [
+                    [1.0 + 0j, 0.0, 0.0],
+                    [0.0 + 0j, 1.0 + 0j, 0.0],
+                ]
+            ],
+            dtype=complex,
+        )  # (1, 2, 3)
+        element_index = np.array([0, 0])
+        G = accumulate_by_element(weighted, element_index, M=1, n_elements=1)
+        assert G.shape == (1, 3, 1)
+        np.testing.assert_allclose(G[0, :, 0], [1.0, 1.0, 0.0])

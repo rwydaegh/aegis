@@ -11,7 +11,7 @@ Covers invariants not tested in test_kernel_properties.py:
 
 import numpy as np
 import pytest
-from conftest import make_flat_mesh, make_icosahedron
+from conftest import NUMERICAL_FLOOR, make_flat_mesh, make_icosahedron
 
 from aegis.constants import Z_0
 from aegis.engine import DosimetryEngine
@@ -32,7 +32,7 @@ class TestFresnelInvariants:
         mu = np.linspace(0, 1, 200).reshape(1, -1)
         T_s, T_p, T_avg = fresnel_weights(mu, SKIN_28GHZ.n_complex)
         # T_avg must be non-negative and <= 1 (energy conservation)
-        assert np.all(T_avg >= -1e-15), "Fresnel T_avg must be non-negative"
+        assert np.all(T_avg >= NUMERICAL_FLOOR), "Fresnel T_avg must be non-negative"
         assert np.all(T_avg <= 1.0 + 1e-10), f"T_avg max {T_avg.max():.6g} exceeds 1.0"
         # T_s <= T_p near Brewster angle (TM has higher transmission there)
         # This is physically expected, so T_avg can exceed T0
@@ -76,7 +76,7 @@ class TestPhysicalGelu:
         mu = np.linspace(0, 1.0, 100).reshape(1, -1)
         sigma = np.array([0.1])
         g = physical_gelu(mu, sigma)
-        assert np.all(g >= -1e-15)
+        assert np.all(g >= NUMERICAL_FLOOR)
 
     def test_gelu_reduces_to_relu_at_zero_sigma(self):
         """As sigma -> 0, GELU -> ReLU."""

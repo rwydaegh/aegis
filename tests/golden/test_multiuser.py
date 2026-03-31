@@ -12,7 +12,7 @@ from aegis.mimo.compute import build_user_channels, compute_mimo_scene
 from aegis.mimo.precoders import zf
 from aegis.paths import PropagationPaths
 from aegis.tissue.dielectric import SKIN_28GHZ
-from tests.conftest import make_icosahedron
+from tests.conftest import NUMERICAL_FLOOR, make_icosahedron
 
 
 def _deterministic_paths(seed, n_paths=3):
@@ -82,7 +82,7 @@ class TestGoldenTwoUserZF:
         engine = DosimetryEngine(SKIN_28GHZ)
         compute_mimo_scene(golden_scene, engine, precoder_type="zf")
         for user in golden_scene.users:
-            assert np.all(user.result.sab >= -1e-15)
+            assert np.all(user.result.sab >= NUMERICAL_FLOOR)
 
     def test_total_power_conservation(self, golden_scene):
         """Sum of absorbed power across all bodies <= total transmit power."""

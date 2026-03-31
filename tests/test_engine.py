@@ -11,6 +11,7 @@ from aegis.engine import DosimetryEngine
 from aegis.geometry.mesh import BodyMesh
 from aegis.paths import PropagationPaths
 from aegis.tissue.dielectric import SKIN_28GHZ
+from tests.conftest import NUMERICAL_FLOOR
 
 # Fixtures (flat_mesh, ico_mesh, engine, single_path_down, multi_path)
 # are provided by conftest.py.
@@ -239,7 +240,7 @@ class TestLevel6:
         result = engine.compute(ico_mesh, multi_path, level=6, curvature_H=curvature_H)
         # GELU can produce small negative values at mu < 0, but S_ab
         # should still be non-negative (because T_avg >= 0 and power >= 0)
-        assert np.all(result.sab >= -1e-10)
+        assert np.all(result.sab >= NUMERICAL_FLOOR)
 
 
 # ---------------------------------------------------------------------------

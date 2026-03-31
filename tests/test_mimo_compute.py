@@ -20,7 +20,7 @@ from aegis.mimo.precoders import compute_precoder, mrt
 from aegis.paths import PropagationPaths
 from aegis.precoder import Precoder
 from aegis.tissue.dielectric import SKIN_28GHZ
-from tests.conftest import make_icosahedron
+from tests.conftest import NUMERICAL_FLOOR, make_icosahedron
 
 # ---------------------------------------------------------------------------
 # Test helpers
@@ -113,7 +113,7 @@ class TestBuildUserChannels:
             np.testing.assert_allclose(Q, Q.conj().T, atol=1e-12)
             # Positive semidefinite
             eigvals = np.linalg.eigvalsh(Q)
-            assert np.all(eigvals >= -1e-12)
+            assert np.all(eigvals >= NUMERICAL_FLOOR)
 
 
 # ---------------------------------------------------------------------------
