@@ -103,7 +103,7 @@ export default function Toolbar() {
   }
 
   return (
-    <header className="h-11 flex items-center justify-between px-3 bg-card/80 backdrop-blur-sm border-b border-border shrink-0 gap-4">
+    <header className="h-11 flex items-center justify-between px-3 bg-card/80 backdrop-blur-sm border-b border-border shrink-0 gap-4 relative z-20">
       {/* Left: wordmark + docs + scenario */}
       <div className="flex items-center gap-3 min-w-0">
         <span className="text-sm font-medium text-heading shrink-0">aegis</span>
