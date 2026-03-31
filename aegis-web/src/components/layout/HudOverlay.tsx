@@ -6,6 +6,7 @@ import NotificationToast from '@/components/hud/NotificationToast'
 import TouchControls from '@/components/hud/TouchControls'
 import KeyboardHelp from '@/components/hud/KeyboardHelp'
 import { AntennaHint } from '@/components/hud/AntennaHint'
+import { WelcomeOverlay } from '@/components/hud/WelcomeOverlay'
 import { useUIStore } from '@/stores/ui'
 import { useIsMobile } from '@/hooks/useIsMobile'
 
@@ -17,6 +18,9 @@ export default function HudOverlay() {
 
   return (
     <div className="absolute inset-0 pointer-events-none z-10">
+      {/* Welcome overlay - shown on first load before antenna placed */}
+      <WelcomeOverlay />
+
       {/* Compliance panel - left side, offset past sidebar when open (desktop only) */}
       <div
         className="absolute top-3 pointer-events-auto transition-all duration-200"
