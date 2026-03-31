@@ -4,6 +4,16 @@ import { toServer, type ScenePos } from './coordinates'
 
 const BASE = ''
 
+/** Error subclass that carries the HTTP status code from a failed API call. */
+export class ApiError extends Error {
+  status: number
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Transient error retry
 // ---------------------------------------------------------------------------
@@ -74,7 +84,7 @@ async function getJson<T>(path: string): Promise<T> {
     handle401()
     throw new Error(`GET ${path} failed: 401 Unauthorized`)
   }
-  if (!res.ok) throw new Error(await extractErrorMessage(res, 'GET', path))
+  if (!res.ok) throw new ApiError(await extractErrorMessage(res, 'GET', path), res.status)
   return res.json() as Promise<T>
 }
 
@@ -86,9 +96,9 @@ export async function postJson<T>(path: string, body: unknown): Promise<T> {
   })
   if (res.status === 401) {
     handle401()
-    throw new Error(`POST ${path} failed: 401 Unauthorized`)
+    throw new ApiError(`POST ${path} failed: 401 Unauthorized`, 401)
   }
-  if (!res.ok) throw new Error(await extractErrorMessage(res, 'POST', path))
+  if (!res.ok) throw new ApiError(await extractErrorMessage(res, 'POST', path), res.status)
   return res.json() as Promise<T>
 }
 

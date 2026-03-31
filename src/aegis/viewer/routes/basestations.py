@@ -70,6 +70,19 @@ def _resolve_belgian_region(address: dict, lat: float, lon: float) -> str:
     return "wallonia"
 
 
+def _list_available_regions() -> list[str]:
+    """Return region names that have pre-extracted CSV data."""
+    data_dir = os.environ.get("AEGIS_DATA_DIR", "data")
+    bs_dir = os.path.join(data_dir, "basestations")
+    if not os.path.isdir(bs_dir):
+        return []
+    return sorted(
+        os.path.splitext(f)[0]
+        for f in os.listdir(bs_dir)
+        if f.endswith(".csv")
+    )
+
+
 def _handle_basestations_load(cache: dict, cache_lock: threading.RLock):
     """Implementation for POST /api/basestations/load."""
     from aegis.basestation.adapter import load_basestations_from_csv
@@ -144,6 +157,14 @@ def _handle_basestations_load(cache: dict, cache_lock: threading.RLock):
                 technology=params.get("technology"),
                 max_workers=int(params.get("max_workers", 4)),
             )
+    except ImportError:
+        available = _list_available_regions()
+        if available:
+            msg = f"No base station data available for region '{region}'. Available regions: {', '.join(available)}"
+        else:
+            msg = f"No base station data available for region '{region}'"
+        logger.warning("No CSV data for region %r and basestationLib not installed", region)
+        return jsonify({"error": msg}), 400
     except Exception as exc:
         logger.exception("Failed to load basestations")
         return jsonify({"error": f"Loading failed: {exc}"}), 500

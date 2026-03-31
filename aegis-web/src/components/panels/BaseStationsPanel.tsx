@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import * as Sentry from '@sentry/react'
 import { useBaseStationsStore } from '@/stores/basestations'
 import { loadBasestations } from '@/api/basestations'
+import { ApiError } from '@/api/client'
 import { useBaseStationsDosimetry } from '@/hooks/useBaseStationsDosimetry'
 import { useNotificationStore } from '@/stores/notifications'
 
@@ -47,7 +48,8 @@ export default function BaseStationsPanel() {
         `Loaded ${res.count} antennas`,
       )
     } catch (err) {
-      Sentry.captureException(err)
+      const isServerError = !(err instanceof ApiError) || err.status >= 500
+      if (isServerError) Sentry.captureException(err)
       useNotificationStore.getState().addNotification(
         'error',
         `Load failed: ${(err as Error).message}`,
