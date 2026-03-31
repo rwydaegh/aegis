@@ -2,9 +2,11 @@ import { useEffect } from 'react'
 import { useConfig } from '@/hooks/useConfig'
 import AppShell from '@/components/layout/AppShell'
 import { deserializeShareLink, applyShareState } from '@/lib/shareLink'
+import { useScenario } from '@/hooks/useScenario'
 
 export default function AppInner() {
   const { status, error } = useConfig()
+  const { loadScenario } = useScenario()
 
   // Hydrate from URL fragment once config has loaded (share link overrides server defaults)
   useEffect(() => {
@@ -16,6 +18,18 @@ export default function AppInner() {
       window.history.replaceState(null, '', window.location.pathname)
     }
   }, [status])
+
+  // Load scenario from URL param once config is ready (share links take precedence)
+  useEffect(() => {
+    if (status !== 'ready') return
+    if (window.location.hash.startsWith('#s=')) return
+
+    const params = new URLSearchParams(window.location.search)
+    const scenarioName = params.get('scenario')
+    if (scenarioName) {
+      loadScenario(scenarioName)
+    }
+  }, [status, loadScenario])
 
   if (status === 'loading') {
     return (
