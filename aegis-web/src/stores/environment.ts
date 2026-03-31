@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import * as Sentry from '@sentry/react'
 import { fetchWithRetry } from '@/api/client'
+import type { ScenePos } from '@/api/coordinates'
 
 export type EnvironmentSource = 'none' | 'voxels' | 'osm' | '3dtiles'
 
@@ -42,6 +43,7 @@ interface EnvironmentState {
   setGeometricError: (ge: number) => void
   setOsmOptions: (opts: Partial<OsmOptions>) => void
   geocodeAndFetch: (query?: string) => Promise<void>
+  reloadAroundPositions: (positions: ScenePos[]) => Promise<void>
   fetchOSM: () => Promise<void>
   fetchGeoJSON: (geojsonStr: string) => Promise<void>
   fetchTilesForRT: () => Promise<void>
@@ -109,6 +111,44 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
       Sentry.captureException(e)
       set({ error: (e as Error).message, geocoding: false })
     }
+  },
+
+  reloadAroundPositions: async (positions: ScenePos[]) => {
+    const { location, source } = get()
+    if (!location || positions.length === 0) return
+    if (source !== 'osm') return
+
+    // Compute centroid of all positions in scene space
+    let cx = 0, cz = 0
+    for (const [x, , z] of positions) {
+      cx += x
+      cz += z
+    }
+    cx /= positions.length
+    cz /= positions.length
+
+    // Compute radius to cover all positions + 100m padding
+    let maxDist = 0
+    for (const [x, , z] of positions) {
+      const d = Math.sqrt((x - cx) ** 2 + (z - cz) ** 2)
+      if (d > maxDist) maxDist = d
+    }
+    const newRadius = Math.max(200, Math.min(1000, Math.ceil(maxDist + 100)))
+
+    // Convert scene centroid to lat/lon offset from current origin
+    // Scene X = easting (meters), scene Z = -northing (Y-up swap)
+    const METERS_PER_DEG_LAT = 111320
+    const metersPerDegLon = 111320 * Math.cos((location.lat * Math.PI) / 180)
+    const newLat = location.lat + (-cz) / METERS_PER_DEG_LAT
+    const newLon = location.lon + cx / metersPerDegLon
+
+    set({
+      location: { lat: newLat, lon: newLon },
+      locationFormatted: `${newLat.toFixed(4)}, ${newLon.toFixed(4)}`,
+      radius: newRadius,
+    })
+
+    await get().fetchOSM()
   },
 
   fetchGeoJSON: async (geojsonStr: string) => {

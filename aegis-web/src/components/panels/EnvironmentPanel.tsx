@@ -6,7 +6,9 @@ import type { EnvironmentSource } from '@/stores/environment'
 import { useSceneStore } from '@/stores/scene'
 import { useTerrainStore } from '@/stores/terrain'
 import { useUIStore } from '@/stores/ui'
-import { Loader2, Search } from 'lucide-react'
+import { useSimulationStore } from '@/stores/simulation'
+import { useMIMOStore } from '@/stores/mimo'
+import { Loader2, Search, RotateCw } from 'lucide-react'
 
 const SOURCE_OPTIONS: { value: EnvironmentSource; label: string }[] = [
   { value: 'none', label: 'None' },
@@ -46,14 +48,28 @@ export default function EnvironmentPanel() {
   const fetchGeoJSON = useEnvironmentStore((s) => s.fetchGeoJSON)
   const exportForRT = useEnvironmentStore((s) => s.exportForRT)
 
+  const reloadAroundPositions = useEnvironmentStore((s) => s.reloadAroundPositions)
+
   const setCameraMode = useUIStore((s) => s.setCameraMode)
   const setCameraPreset = useUIStore((s) => s.setCameraPreset)
   const voxelData = useSceneStore((s) => s.voxelData)
+  const bodyOffset = useSimulationStore((s) => s.bodyOffset)
+  const mimoEnabled = useMIMOStore((s) => s.enabled)
+  const mimoUsers = useMIMOStore((s) => s.users)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [geojsonFileName, setGeoJsonFileName] = useState<string | null>(null)
 
   const busy = loading || geocoding
+
+  const handleReload = () => {
+    if (mimoEnabled && mimoUsers.size > 0) {
+      const positions = [...mimoUsers.values()].map((u) => u.position)
+      void reloadAroundPositions(positions)
+    } else {
+      void reloadAroundPositions([bodyOffset])
+    }
+  }
 
   return (
     <div className="space-y-3 text-sm">
@@ -152,13 +168,29 @@ export default function EnvironmentPanel() {
           <input
             type="range"
             min={50}
-            max={500}
+            max={1000}
             step={10}
             value={radius}
             onChange={(e) => setRadius(parseInt(e.target.value))}
             className="w-full"
           />
         </div>
+      )}
+
+      {/* Reload around users/body */}
+      {source === 'osm' && location && (
+        <button
+          onClick={handleReload}
+          disabled={busy}
+          className="w-full px-3 py-1.5 rounded text-xs font-medium bg-muted text-muted-foreground hover:text-foreground disabled:opacity-50 flex items-center justify-center gap-1.5"
+        >
+          {loading ? (
+            <Loader2 className="size-3 animate-spin" />
+          ) : (
+            <RotateCw className="size-3" />
+          )}
+          {mimoEnabled ? 'Reload around all users' : 'Reload around body'}
+        </button>
       )}
 
       {/* OSM options */}
