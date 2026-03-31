@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import * as Sentry from '@sentry/react'
 import { useEnvironmentStore } from '@/stores/environment'
+import { EnvironmentEmptyState } from './EnvironmentEmptyState'
 import type { EnvironmentSource } from '@/stores/environment'
 import { useSceneStore } from '@/stores/scene'
 import { useTerrainStore } from '@/stores/terrain'
@@ -84,6 +85,9 @@ export default function EnvironmentPanel() {
           ))}
         </div>
       </div>
+
+      {/* Empty state CTA - shown when source is 'none' */}
+      <EnvironmentEmptyState />
 
       {/* Voxels status */}
       {source === 'voxels' && (
