@@ -184,6 +184,8 @@ def _handle_config(cache):
     has_differt = False
     scenes = []
     try:
+        import differt  # noqa: F401
+
         from aegis.viewer.raytracer import list_available_scenes
 
         has_differt = True
