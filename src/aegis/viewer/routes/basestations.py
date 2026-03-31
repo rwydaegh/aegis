@@ -44,13 +44,13 @@ def geocode_location(location: str) -> tuple[float, float, dict]:
     if match:
         return float(match.group(1)), float(match.group(2)), {}
 
-    from geopy.exc import GeocoderTimedOut, GeocoderUnavailable
+    from geopy.exc import GeopyError
     from geopy.geocoders import Nominatim
 
     geolocator = Nominatim(user_agent="aegis-viewer", timeout=10)
     try:
         result = geolocator.geocode(location, addressdetails=True)
-    except (GeocoderTimedOut, GeocoderUnavailable) as e:
+    except GeopyError as e:
         raise ValueError(f"Geocoding service unavailable: {e}") from e
 
     if result is None:
@@ -91,6 +91,9 @@ def _handle_basestations_load(cache: dict, cache_lock: threading.RLock):
             lat, lon, address = geocode_location(location_str)
         except ValueError as e:
             return jsonify({"error": str(e)}), 400
+        except Exception as e:
+            logger.exception("Geocoding failed for %r", location_str)
+            return jsonify({"error": f"Geocoding failed: {e}"}), 502
         params["lat"] = lat
         params["lon"] = lon
 
