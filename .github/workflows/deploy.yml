@@ -83,7 +83,9 @@ jobs:
           scp -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key \
             docker-compose.yml Caddyfile root@$HOST:/opt/aegis/
           $SSH "echo '$GH_TOKEN' | docker login ghcr.io -u ${{ github.actor }} --password-stdin && \
-            cd /opt/aegis && docker compose pull && docker compose up -d && docker image prune -f"
+            cd /opt/aegis && \
+            grep -q AEGIS_GIT_COMMIT app.env && sed -i 's/^AEGIS_GIT_COMMIT=.*/AEGIS_GIT_COMMIT=${{ github.sha }}/' app.env || echo 'AEGIS_GIT_COMMIT=${{ github.sha }}' >> app.env && \
+            docker compose pull && docker compose up -d && docker image prune -f"
 
       - name: Health check
         if: vars.HETZNER_HOST != ''

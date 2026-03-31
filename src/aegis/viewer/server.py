@@ -436,6 +436,7 @@ def create_app(
             "cpu_pct": None,
             "ram_pct": None,
             "gpu": None,
+            "git_commit": os.environ.get("AEGIS_GIT_COMMIT"),
         }
 
         # CPU and RAM
