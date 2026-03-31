@@ -121,7 +121,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
             # Apply skin model adjustments when tissue is Skin
             if tissue == "Skin" and skin_model != "itis":
-                eps_0 = 8.8541878128e-12
+                from aegis.constants import EPS_0 as eps_0
+
                 omega = 2 * np.pi * freqs
                 if skin_model == "christ2021":
                     eps_r = result["eps_r"] * 1.2
