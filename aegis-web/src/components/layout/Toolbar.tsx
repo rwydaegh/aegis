@@ -1,4 +1,4 @@
-import { PanelLeft, Box, AlignCenter, AlignJustify, LayoutGrid, Focus, Video, Globe, Share2, BookOpen } from 'lucide-react'
+import { PanelLeft, Box, AlignCenter, AlignJustify, LayoutGrid, Focus, Video, Globe, Share2, BookOpen, Keyboard } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { useSimulationStore } from '@/stores/simulation'
@@ -97,7 +97,7 @@ const CAMERA_PRESETS: Array<{ preset: CameraPreset & string; label: string; icon
 export default function Toolbar() {
   const { stats } = useActiveSimulation()
   const { viewerConfig } = useSceneStore()
-  const { sidebarOpen, wireframe, cameraMode, toggleSidebar, toggleWireframe, setCameraPreset, setCameraMode, setStatusMessage } = useUIStore()
+  const { sidebarOpen, wireframe, cameraMode, toggleSidebar, toggleWireframe, setCameraPreset, setCameraMode, setStatusMessage, toggleHelp } = useUIStore()
   const mimoEnabled = useMIMOStore(s => s.enabled)
 
   const scenario = viewerConfig?.active_scenario_description ?? viewerConfig?.active_scenario ?? null
@@ -224,6 +224,20 @@ export default function Toolbar() {
             <Box className="size-4" />
           </TooltipTrigger>
           <TooltipContent>Wireframe</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger
+            onClick={toggleHelp}
+            className={cn(
+              'hidden md:inline-flex items-center justify-center size-7 rounded-md transition-colors',
+              'hover:bg-muted text-muted-foreground hover:text-foreground',
+            )}
+            aria-label="Keyboard shortcuts (?)"
+          >
+            <Keyboard className="size-4" />
+          </TooltipTrigger>
+          <TooltipContent>Keyboard shortcuts (?)</TooltipContent>
         </Tooltip>
 
         <Tooltip>

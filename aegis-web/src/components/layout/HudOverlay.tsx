@@ -4,6 +4,7 @@ import ServerInfoBadge from '@/components/hud/ServerInfoBadge'
 import CompliancePanel from '@/components/hud/CompliancePanel'
 import NotificationToast from '@/components/hud/NotificationToast'
 import TouchControls from '@/components/hud/TouchControls'
+import KeyboardHelp from '@/components/hud/KeyboardHelp'
 import { useUIStore } from '@/stores/ui'
 import { useIsMobile } from '@/hooks/useIsMobile'
 
@@ -39,6 +40,9 @@ export default function HudOverlay() {
 
       {/* Touch controls - mobile only, hidden when sidebar is open */}
       {isMobile && !sidebarOpen && <TouchControls />}
+
+      {/* Keyboard shortcut help modal */}
+      <KeyboardHelp />
     </div>
   )
 }
