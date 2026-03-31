@@ -518,7 +518,7 @@ DEFAULTS: dict = {
                 "freqGhz": 28,
                 "powerDbm": 60,
                 "mode": "spatial",
-                "antennaPos": [0, 2.0, -0.8],
+                "antennaPos": [0, 10.0, -3.0],
                 "environment": {
                     "source": "osm",
                     "lat": 51.0447,
