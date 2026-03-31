@@ -38,6 +38,9 @@ interface UIStore {
   gpuWarm: boolean | null
   computeColdStart: boolean
   helpOpen: boolean
+  welcomeDismissed: boolean
+  activeScenario: string | null
+  scenarioLoading: boolean
 
   toggleSidebar: () => void
   toggleWireframe: () => void
@@ -59,6 +62,9 @@ interface UIStore {
   setGpuWarm: (warm: boolean | null) => void
   setComputeColdStart: (cold: boolean) => void
   toggleHelp: () => void
+  setWelcomeDismissed: (v: boolean) => void
+  setActiveScenario: (v: string | null) => void
+  setScenarioLoading: (v: boolean) => void
 }
 
 export const useUIStore = create<UIStore>((set) => ({
@@ -81,6 +87,9 @@ export const useUIStore = create<UIStore>((set) => ({
   gpuWarm: null,
   computeColdStart: false,
   helpOpen: false,
+  welcomeDismissed: false,
+  activeScenario: null as string | null,
+  scenarioLoading: false,
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
   toggleWireframe: () => set((state) => ({ wireframe: !state.wireframe })),
   setComputing: (computing) => set({ isComputing: computing }),
@@ -109,4 +118,7 @@ export const useUIStore = create<UIStore>((set) => ({
   setGpuWarm: (warm) => set({ gpuWarm: warm }),
   setComputeColdStart: (cold) => set({ computeColdStart: cold }),
   toggleHelp: () => set((state) => ({ helpOpen: !state.helpOpen })),
+  setWelcomeDismissed: (v) => set({ welcomeDismissed: v }),
+  setActiveScenario: (v) => set({ activeScenario: v }),
+  setScenarioLoading: (v) => set({ scenarioLoading: v }),
 }))

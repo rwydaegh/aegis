@@ -37,6 +37,7 @@ interface EnvironmentState {
   setSource: (s: EnvironmentSource) => void
   setLocation: (lat: number, lon: number) => void
   setLocationQuery: (q: string) => void
+  setLocationFormatted: (s: string) => void
   setRadius: (r: number) => void
   setGeometricError: (ge: number) => void
   setOsmOptions: (opts: Partial<OsmOptions>) => void
@@ -70,6 +71,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
   setSource: (source) => set({ source }),
   setLocation: (lat, lon) => set({ location: { lat, lon } }),
   setLocationQuery: (q) => set({ locationQuery: q }),
+  setLocationFormatted: (s) => set({ locationFormatted: s }),
   setRadius: (radius) => set({ radius }),
   setGeometricError: (geometricError) => set({ geometricError }),
   setOsmOptions: (opts) =>
