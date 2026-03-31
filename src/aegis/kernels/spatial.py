@@ -78,7 +78,7 @@ def spatial_kernel(
     if diffraction:
         wavelength = C_0 / freq_hz
         H_safe = xp.maximum(curvature_H, 0.0)
-        sigma = xp.sqrt(xp.maximum(wavelength * H_safe / (4.0 * xp.pi), 0.0))
+        sigma = xp.sqrt(xp.maximum(wavelength * H_safe / (4.0 * xp.pi), 1e-20))
         g = physical_gelu(mu, sigma)
     else:
         g = mu_plus

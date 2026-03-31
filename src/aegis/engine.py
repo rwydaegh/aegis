@@ -6,6 +6,7 @@ Levels 0-6 are incoherent. Levels 7-8 are coherent MIMO.
 
 from __future__ import annotations
 
+import threading
 import time
 from collections import OrderedDict
 from typing import TYPE_CHECKING
@@ -87,7 +88,9 @@ class DosimetryEngine:
     # Shared across all engine instances so the expensive build persists across requests.
     # Bounded to _G_CACHE_MAX entries to prevent unbounded memory growth in
     # long-running viewer sessions with many body switches.
+    # Protected by _G_lock for thread safety (Flask serves concurrent requests).
     _G_cache: OrderedDict = OrderedDict()
+    _G_lock: threading.Lock = threading.Lock()
     _G_CACHE_MAX: int = 16
 
     def __init__(self, tissue: TissueModel) -> None:
@@ -114,22 +117,26 @@ class DosimetryEngine:
 
     def _get_G(self, body, target_area_m2):
         key = (self._body_cache_key(body), target_area_m2)
-        if key in self._G_cache:
-            self._G_cache.move_to_end(key)
-            return self._G_cache[key]
+        with self._G_lock:
+            if key in self._G_cache:
+                self._G_cache.move_to_end(key)
+                return self._G_cache[key]
 
         from aegis.geometry.averaging import precompute_averaging_matrix
 
-        # Evict least-recently-used entries if cache is full
-        while len(self._G_cache) >= self._G_CACHE_MAX:
-            self._G_cache.popitem(last=False)
-
-        self._G_cache[key] = precompute_averaging_matrix(
+        G = precompute_averaging_matrix(
             body.centroids,
             body.areas,
             target_area_m2,
         )
-        return self._G_cache[key]
+
+        with self._G_lock:
+            # Evict least-recently-used entries if cache is full
+            while len(self._G_cache) >= self._G_CACHE_MAX:
+                self._G_cache.popitem(last=False)
+            self._G_cache[key] = G
+
+        return G
 
     def _build_result(
         self,
