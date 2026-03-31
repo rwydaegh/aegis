@@ -179,6 +179,15 @@ class TestBuildScene:
         assert err is None
         np.testing.assert_allclose(scene.users[0].config.position, [0.0, 0.0, 0.0])
 
+    def test_duplicate_user_ids_returns_400(self):
+        cache = _make_cache_with_body()
+        users = [_make_user_cfg("same"), _make_user_cfg("same")]
+        scene, err = _build_scene({"array": VALID_ARRAY, "users": users}, cache)
+        assert scene is None
+        resp, status = err
+        assert status == 400
+        assert "duplicate" in resp.get_json()["error"].lower()
+
 
 # ---------------------------------------------------------------------------
 # _user_stats unit tests
@@ -279,6 +288,15 @@ class TestMIMOCompute:
         call_kwargs = mock_compute.call_args
         assert call_kwargs[1]["level"] == 7
         assert call_kwargs[1]["precoder_type"] == "mrt"
+
+    def test_duplicate_user_ids_returns_400(self, client):
+        users = [_make_user_cfg("same"), _make_user_cfg("same")]
+        resp = client.post(
+            "/api/mimo/compute",
+            json={"array": VALID_ARRAY, "users": users},
+        )
+        assert resp.status_code == 400
+        assert "duplicate" in resp.get_json()["error"].lower()
 
     @patch("aegis.viewer.routes.mimo.compute_mimo_scene_with_bodies")
     def test_compute_exception_returns_500(self, mock_compute, client):
