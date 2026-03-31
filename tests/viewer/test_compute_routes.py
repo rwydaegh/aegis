@@ -336,6 +336,7 @@ class TestSceneLoadRoute:
     def test_scene_load_returns_binary(self, viewer_app):
         mock_data = b"\x00" * 100
         mock_meta = {"n_vertices": 10, "n_triangles": 5}
+        valid_path = "/opt/scenes/test/test.xml"
         with (
             viewer_app.test_client() as c,
             patch("aegis.viewer.raytracer.load_scene", return_value={}),
@@ -343,12 +344,35 @@ class TestSceneLoadRoute:
                 "aegis.viewer.raytracer.scene_geometry_to_binary",
                 return_value=(mock_data, mock_meta),
             ),
+            patch(
+                "aegis.viewer.routes.compute._validate_scene_path",
+                return_value=True,
+            ),
         ):
-            resp = c.post("/api/scene/load", json={"path": "/tmp/test.xml"})
+            resp = c.post("/api/scene/load", json={"path": valid_path})
         if resp.status_code == 200:
             assert resp.content_type == "application/octet-stream"
             meta = json.loads(resp.headers["X-Meta"])
             assert meta["n_triangles"] == 5
+
+    def test_scene_load_rejects_path_traversal(self, viewer_app):
+        """Path traversal attempts must be rejected."""
+        with (
+            viewer_app.test_client() as c,
+            patch(
+                "aegis.viewer.routes.compute._validate_scene_path",
+                return_value=False,
+            ),
+        ):
+            resp = c.post(
+                "/api/scene/load",
+                json={"path": "/etc/passwd"},
+            )
+        # 400 (invalid scene) or 501 (no DiffeRT)
+        assert resp.status_code in (400, 501)
+        if resp.status_code == 400:
+            data = resp.get_json()
+            assert "Invalid scene path" in data["error"]
 
 
 # ---------------------------------------------------------------------------
@@ -399,7 +423,10 @@ class TestComputeRtRoute:
         assert resp.status_code in (404, 501)
 
     def test_invalid_mode_returns_400(self, viewer_app):
-        with viewer_app.test_client() as c:
+        with (
+            viewer_app.test_client() as c,
+            patch("aegis.viewer.routes.compute._validate_scene_path", return_value=True),
+        ):
             resp = c.post(
                 "/api/compute/rt",
                 json={
@@ -440,9 +467,25 @@ class TestComputeSionnaRtRoute:
             )
         assert resp.status_code == 404
 
+    def test_invalid_scene_path_returns_400(self, viewer_app):
+        with (
+            viewer_app.test_client() as c,
+            patch("aegis.viewer.routes.compute._validate_scene_path", return_value=False),
+        ):
+            resp = c.post(
+                "/api/compute/sionna-rt",
+                json={
+                    "scene_path": "/etc/passwd",
+                    "antenna_pos": [5, 0, 1],
+                },
+            )
+        assert resp.status_code == 400
+        assert "Invalid scene path" in resp.get_json()["error"]
+
     def test_gpu_unavailable_returns_503(self, viewer_app):
         with (
             viewer_app.test_client() as c,
+            patch("aegis.viewer.routes.compute._validate_scene_path", return_value=True),
             patch("aegis.viewer.modal_proxy.gpu_status", return_value={"warm": False, "enabled": False}),
             patch("aegis.viewer.modal_proxy.trace_sionna_bundled", return_value=None),
         ):
@@ -841,7 +884,10 @@ class TestComputeSionnaRtExtended:
     """Additional edge cases for Sionna RT."""
 
     def test_invalid_power_dbm_returns_400(self, viewer_app):
-        with viewer_app.test_client() as c:
+        with (
+            viewer_app.test_client() as c,
+            patch("aegis.viewer.routes.compute._validate_scene_path", return_value=True),
+        ):
             resp = c.post(
                 "/api/compute/sionna-rt",
                 json={"scene_path": "/tmp/s.xml", "power_dbm": "loud"},
@@ -849,7 +895,10 @@ class TestComputeSionnaRtExtended:
         assert resp.status_code == 400
 
     def test_invalid_mode_returns_400(self, viewer_app):
-        with viewer_app.test_client() as c:
+        with (
+            viewer_app.test_client() as c,
+            patch("aegis.viewer.routes.compute._validate_scene_path", return_value=True),
+        ):
             resp = c.post(
                 "/api/compute/sionna-rt",
                 json={"scene_path": "/tmp/s.xml", "mode": "turbo"},
@@ -857,7 +906,10 @@ class TestComputeSionnaRtExtended:
         assert resp.status_code == 400
 
     def test_invalid_freq_hz_returns_400(self, viewer_app):
-        with viewer_app.test_client() as c:
+        with (
+            viewer_app.test_client() as c,
+            patch("aegis.viewer.routes.compute._validate_scene_path", return_value=True),
+        ):
             resp = c.post(
                 "/api/compute/sionna-rt",
                 json={"scene_path": "/tmp/s.xml", "freq_hz": -100},
@@ -865,7 +917,10 @@ class TestComputeSionnaRtExtended:
         assert resp.status_code == 400
 
     def test_invalid_body_offset_returns_400(self, viewer_app):
-        with viewer_app.test_client() as c:
+        with (
+            viewer_app.test_client() as c,
+            patch("aegis.viewer.routes.compute._validate_scene_path", return_value=True),
+        ):
             resp = c.post(
                 "/api/compute/sionna-rt",
                 json={"scene_path": "/tmp/s.xml", "body_offset": [1, 2]},
@@ -873,7 +928,10 @@ class TestComputeSionnaRtExtended:
         assert resp.status_code == 400
 
     def test_invalid_exposure_scenario_returns_400(self, viewer_app):
-        with viewer_app.test_client() as c:
+        with (
+            viewer_app.test_client() as c,
+            patch("aegis.viewer.routes.compute._validate_scene_path", return_value=True),
+        ):
             resp = c.post(
                 "/api/compute/sionna-rt",
                 json={

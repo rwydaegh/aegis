@@ -24,6 +24,25 @@ _ERR_VEC3_TYPE = "must be a 3-element numeric array"
 _ERR_INVALID_JSON = "Invalid or missing JSON body"
 _ERR_ROTATION_TYPE = "body_rotation_y must be a number"
 _ERR_NO_EXPORT_DATA = "No dosimetry result available. Run a compute first."
+_ERR_INVALID_SCENE = "Invalid scene path. Use /api/scenes to list available scenes."
+
+
+def _validate_scene_path(scene_path: str) -> bool:
+    """Check that scene_path matches a known scene from list_available_scenes.
+
+    Prevents path traversal attacks where a user-supplied path could read
+    arbitrary files from the server filesystem.
+    """
+    from pathlib import Path as _Path
+
+    try:
+        from aegis.viewer.raytracer import list_available_scenes
+
+        allowed = {s["path"] for s in list_available_scenes()}
+    except ImportError:
+        return False
+    resolved = str(_Path(scene_path).resolve())
+    return resolved in {str(_Path(p).resolve()) for p in allowed}
 
 
 def _sanitize_for_json(obj):
@@ -585,6 +604,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         scene_path = params.get("path")
         if not scene_path:
             return jsonify({"error": "Missing 'path' parameter"}), 400
+        if not _validate_scene_path(scene_path):
+            return jsonify({"error": _ERR_INVALID_SCENE}), 400
 
         try:
             scene_data = load_scene(scene_path)
@@ -679,6 +700,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             return err
 
         scene_path = params.get("scene_path") or None
+        if scene_path and not _validate_scene_path(scene_path):
+            return jsonify({"error": _ERR_INVALID_SCENE}), 400
 
         # Determine RT source: scene file, voxel hull, or environment mesh
         use_voxel_scene = False
@@ -897,6 +920,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         scene_path = params.get("scene_path")
         if not scene_path:
             return jsonify({"error": "Missing 'scene_path'"}), 400
+        if not _validate_scene_path(scene_path):
+            return jsonify({"error": _ERR_INVALID_SCENE}), 400
 
         engine_kw, err = _parse_mode_or_level(params)
         if err:
