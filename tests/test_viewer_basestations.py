@@ -543,3 +543,111 @@ class TestBsSummary:
         )
         summary = _bs_summary(bs)
         assert summary["has_pattern"] is True
+
+
+# ---------------------------------------------------------------------------
+# Edge cases: bbox computation at extreme latitudes
+# ---------------------------------------------------------------------------
+
+
+class TestBasestationsLoadPolarLatitude:
+    """Test that bbox computation handles polar latitudes safely."""
+
+    def test_load_with_polar_latitude_returns_400(self, app):
+        with app.test_client() as c:
+            resp = c.post(
+                "/api/basestations/load",
+                json={"lat": 90.0, "lon": 0.0, "radius_m": 100},
+            )
+            assert resp.status_code == 400
+            assert "poles" in resp.get_json()["error"].lower()
+
+    def test_load_with_negative_polar_latitude_returns_400(self, app):
+        with app.test_client() as c:
+            resp = c.post(
+                "/api/basestations/load",
+                json={"lat": -90.0, "lon": 0.0, "radius_m": 100},
+            )
+            assert resp.status_code == 400
+
+    def test_load_with_near_polar_latitude_returns_400(self, app):
+        with app.test_client() as c:
+            resp = c.post(
+                "/api/basestations/load",
+                json={"lat": 89.95, "lon": 0.0, "radius_m": 100},
+            )
+            assert resp.status_code == 400
+
+    def test_load_with_high_but_valid_latitude(self, app):
+        """Latitude 85 is extreme but cos(85) ~ 0.087, so bbox is valid."""
+        with app.test_client() as c:
+            resp = c.post(
+                "/api/basestations/load",
+                json={"lat": 85.0, "lon": 0.0, "radius_m": 100},
+            )
+            # Should not 400 for poles; may 500 for other reasons (no data)
+            assert resp.status_code != 400 or "poles" not in resp.get_json().get("error", "").lower()
+
+    def test_load_with_invalid_radius_returns_400(self, app):
+        with app.test_client() as c:
+            resp = c.post(
+                "/api/basestations/load",
+                json={"lat": 51.0, "lon": 3.7, "radius_m": -100},
+            )
+            assert resp.status_code == 400
+
+    def test_load_with_zero_radius_returns_400(self, app):
+        with app.test_client() as c:
+            resp = c.post(
+                "/api/basestations/load",
+                json={"lat": 51.0, "lon": 3.7, "radius_m": 0},
+            )
+            assert resp.status_code == 400
+
+    def test_load_with_excessive_radius_returns_400(self, app):
+        with app.test_client() as c:
+            resp = c.post(
+                "/api/basestations/load",
+                json={"lat": 51.0, "lon": 3.7, "radius_m": 60000},
+            )
+            assert resp.status_code == 400
+
+
+class TestResolveBelgianRegion:
+    """Test _resolve_belgian_region fallback logic."""
+
+    def test_iso_code_flanders(self):
+        from aegis.viewer.routes.basestations import _resolve_belgian_region
+
+        region = _resolve_belgian_region({"ISO3166-2-lvl4": "BE-VLG"}, 51.0, 3.7)
+        assert region == "flanders"
+
+    def test_iso_code_wallonia(self):
+        from aegis.viewer.routes.basestations import _resolve_belgian_region
+
+        region = _resolve_belgian_region({"ISO3166-2-lvl4": "BE-WAL"}, 50.0, 4.5)
+        assert region == "wallonia"
+
+    def test_iso_code_brussels(self):
+        from aegis.viewer.routes.basestations import _resolve_belgian_region
+
+        region = _resolve_belgian_region({"ISO3166-2-lvl4": "BE-BRU"}, 50.85, 4.35)
+        assert region == "brussels"
+
+    def test_coordinate_fallback_brussels(self):
+        from aegis.viewer.routes.basestations import _resolve_belgian_region
+
+        region = _resolve_belgian_region({}, 50.85, 4.35)
+        assert region == "brussels"
+
+    def test_coordinate_fallback_flanders(self):
+        from aegis.viewer.routes.basestations import _resolve_belgian_region
+
+        region = _resolve_belgian_region({}, 51.05, 3.72)
+        assert region == "flanders"
+
+    def test_coordinate_fallback_wallonia(self):
+        from aegis.viewer.routes.basestations import _resolve_belgian_region
+
+        region = _resolve_belgian_region({}, 50.0, 4.5)
+        assert region == "wallonia"

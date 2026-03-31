@@ -96,7 +96,10 @@ def _handle_basestations_load(cache: dict, cache_lock: threading.RLock):
         if radius_m <= 0 or radius_m > 50_000:
             return jsonify({"error": "radius_m must be between 0 and 50000"}), 400
         dlat = radius_m / 111_320.0
-        dlon = radius_m / (111_320.0 * np.cos(np.radians(lat)))
+        cos_lat = np.cos(np.radians(lat))
+        if cos_lat < 1e-3:
+            return jsonify({"error": "lat too close to poles for bbox computation"}), 400
+        dlon = radius_m / (111_320.0 * cos_lat)
         bbox = [lon - dlon, lon + dlon, lat - dlat, lat + dlat]
 
     # Resolve region for Belgium based on Nominatim address or coordinates
