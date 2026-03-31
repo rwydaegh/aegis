@@ -1,5 +1,6 @@
 thelonious:
   mass_kg: 17.4
+  # device_offset: [x, y, z]  # optional Z-up override; auto-detected from mesh if absent
 duke:
   mass_kg: 72.4
 eartha:

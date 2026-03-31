@@ -88,6 +88,9 @@ DEFAULTS: dict = {
             "double_sided": True,
         },
         "layer_button_color": [255, 140, 0],
+        "smartphone": {
+            "forward_distance": 0.30,
+        },
     },
     "voxels": {
         "size_scale": 0.95,
