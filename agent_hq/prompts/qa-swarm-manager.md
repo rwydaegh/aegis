@@ -20,6 +20,10 @@ for 5 parallel QA testers. You do NOT test the app yourself.
 - Each assignment: 2-3 sentences describing the area, 2-3 specific things to try.
   Testers explore freely from there.
 - Testers may wander outside their scope if they find something interesting.
+- **ALWAYS assign at least one tester to environment loading** (OSM buildings
+  and 3D tiles). This feature is known to be buggy and needs testing every run.
+  Give them specific coordinates to try: lat=40.748, lon=-73.986 (New York),
+  lat=51.054, lon=3.725 (Ghent), lat=48.858, lon=2.294 (Paris).
 
 ## Feature areas to divide
 
