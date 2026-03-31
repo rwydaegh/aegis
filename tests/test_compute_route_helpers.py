@@ -320,3 +320,43 @@ class TestBuildBinaryResponse:
         buf, meta = _build_binary_response(r, ["sab", "sab"])
         keys = [m["key"] for m in meta]
         assert keys.count("sab") == 1
+
+
+# ---------------------------------------------------------------------------
+# _build_stats_response
+# ---------------------------------------------------------------------------
+
+
+class TestBuildStatsResponse:
+    """Tests for _build_stats_response compliance fallback paths."""
+
+    def test_sab_averaged_none_falls_back_to_raw_peak(self):
+        """When sab_averaged is None, compliance should use raw sab peak."""
+        from types import SimpleNamespace
+
+        from aegis.viewer.routes.compute import _build_stats_response
+
+        sab = np.array([5.0, 10.0, 15.0])
+        result = SimpleNamespace(
+            freq_hz=28e9,
+            sab=sab,
+            sab_averaged=None,
+            sab_1cm2_averaged=None,
+            sinc=None,
+            sinc_averaged=None,
+            sar_wb=None,
+            p_abs=0.01,
+            peak_sab=float(np.max(sab)),
+        )
+        body = SimpleNamespace(areas=np.array([1e-4, 1e-4, 1e-4]), n_triangles=3)
+        tissue = SimpleNamespace(freq_hz=28e9, T0=0.4, eps_r=10.0, sigma=20.0)
+
+        stats = _build_stats_response(result, body, tissue, level=2)
+
+        # Compliance must be evaluated (not None) even though sab_averaged is None
+        assert stats["compliance"] is not None
+        checks = stats["compliance"]["checks"]
+        sab_check = [c for c in checks if "4 cm" in c["label"]]
+        assert len(sab_check) == 1
+        # The fallback value should be the raw sab peak (15.0)
+        assert sab_check[0]["value"] == round(15.0, 4)
