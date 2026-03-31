@@ -31,6 +31,8 @@ const LABEL_TO_KEY: Record<string, QuantityKey> = {
 export default function CompliancePanel() {
   const { stats } = useActiveSimulation()
   const enabledQuantities = useSimulationStore(s => s.enabledQuantities)
+  const powerDbm = useSimulationStore(s => s.powerDbm)
+  const setPowerDbm = useSimulationStore(s => s.setPowerDbm)
   const scenario = useUIStore(s => s.exposureScenario)
   const isComputing = useUIStore(s => s.isComputing)
   if (!stats?.compliance) return null
@@ -89,13 +91,9 @@ export default function CompliancePanel() {
       })}
 
       {visibleChecks.length > 0 && (() => {
-        const powerDbm = useSimulationStore.getState().powerDbm
         const maxPowerDbm = computeMaxPowerDbm(visibleChecks, powerDbm)
-        // Compute margin from visible checks only (consistent with PASS/FAIL badge)
-        const visibleMarginDb = visibleChecks.length > 0
-          ? Math.min(...visibleChecks.map(c => c.ratio > 0 ? 10 * Math.log10(1 / c.ratio) : Infinity))
-          : null
-        if (visibleMarginDb == null || !isFinite(visibleMarginDb)) return null
+        const visibleMarginDb = Math.min(...visibleChecks.map(c => c.ratio > 0 ? 10 * Math.log10(1 / c.ratio) : Infinity))
+        if (!isFinite(visibleMarginDb)) return null
         return (
           <div style={{ borderTop: '1px solid #333', paddingTop: '8px', marginTop: '8px', color: '#888' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -108,7 +106,7 @@ export default function CompliancePanel() {
               <div
                 style={{ display: 'flex', justifyContent: 'space-between', cursor: 'pointer' }}
                 title="Click to set TX power to max compliant value"
-                onClick={() => useSimulationStore.getState().setPowerDbm(parseFloat(maxPowerDbm.toFixed(1)))}
+                onClick={() => setPowerDbm(parseFloat(maxPowerDbm.toFixed(1)))}
               >
                 <span>Max TX power</span>
                 <span style={{ color: '#93c5fd' }}>{maxPowerDbm.toFixed(1)} dBm</span>

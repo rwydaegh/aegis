@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import struct
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -101,6 +102,27 @@ class BodyMesh:
     centroids: np.ndarray = field(repr=False)
     areas: np.ndarray = field(repr=False)
     name: str = ""
+    _geometry_hash: int = field(default=0, repr=False, compare=False)
+
+    def __post_init__(self) -> None:
+        if self._geometry_hash == 0:
+            object.__setattr__(self, "_geometry_hash", self._compute_geometry_hash())
+
+    def _compute_geometry_hash(self) -> int:
+        """Content-based hash of geometry for cache keying.
+
+        Uses centered centroids (translation-invariant) and areas.
+        Computed once at construction time and reused for all cache lookups.
+        """
+        centered = self.centroids - self.centroids.mean(axis=0)
+        h = hashlib.sha256(self.areas.tobytes())
+        h.update(centered.astype("float32").tobytes())
+        digest = h.digest()[:8]
+        return hash((int.from_bytes(digest, "little"), self.n_triangles))
+
+    @property
+    def geometry_hash(self) -> int:
+        return self._geometry_hash
 
     @classmethod
     def from_arrays(

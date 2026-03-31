@@ -103,17 +103,10 @@ class DosimetryEngine:
     def _body_cache_key(body: BodyMesh) -> int:
         """Content-based hash of body geometry for cache keying.
 
-        The averaging matrix G depends on inter-centroid distances and areas.
-        We hash both, using centered centroids (subtract mean) so the key
-        is translation-invariant (WASD movement does not invalidate cache).
+        Delegates to BodyMesh.geometry_hash which is computed once at
+        construction time and cached, avoiding O(M) SHA256 on every call.
         """
-        import hashlib
-
-        centered = body.centroids - body.centroids.mean(axis=0)
-        h = hashlib.sha256(body.areas.tobytes())
-        h.update(centered.astype("float32").tobytes())
-        digest = h.digest()[:8]
-        return hash((int.from_bytes(digest, "little"), body.n_triangles))
+        return body.geometry_hash
 
     def _get_G(self, body, target_area_m2):
         key = (self._body_cache_key(body), target_area_m2)
