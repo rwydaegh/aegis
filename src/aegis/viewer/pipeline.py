@@ -2,13 +2,18 @@
 
 from __future__ import annotations
 
+import json
+import logging
 import os
 import re
 import shutil
+import struct
 import subprocess
 import threading
 from collections.abc import Generator
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 # String constants (avoid duplicate literals)
 _PIPELINE_SCRIPT = "run_pipeline.js"
