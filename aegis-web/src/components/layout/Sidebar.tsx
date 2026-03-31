@@ -24,7 +24,7 @@ import EnvironmentPanel from '@/components/panels/EnvironmentPanel'
 import BaseStationsPanel from '@/components/panels/BaseStationsPanel'
 
 export default function Sidebar() {
-  const { sidebarOpen } = useUIStore()
+  const sidebarOpen = useUIStore(s => s.sidebarOpen)
   const mimoEnabled = useMIMOStore(s => s.enabled)
   const isMobile = useIsMobile()
   const openWidth = isMobile ? '100vw' : '320px'

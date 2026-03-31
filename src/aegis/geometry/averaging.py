@@ -231,10 +231,10 @@ def _precompute_numpy(centroids, areas, all_neighbors, target_area_m2, M):
 
         idx = np.asarray(idx)
 
-        # Sort by distance from centroid i
+        # Sort by squared distance (sqrt unnecessary for ordering)
         diffs = centroids[idx] - centroids[i]
-        dists = np.sqrt(np.einsum("ij,ij->i", diffs, diffs))
-        order = np.argsort(dists)
+        dist_sq = np.einsum("ij,ij->i", diffs, diffs)
+        order = np.argsort(dist_sq)
         idx_sorted = idx[order]
 
         # Accumulate area until target
