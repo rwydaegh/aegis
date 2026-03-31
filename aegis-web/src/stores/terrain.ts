@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import * as Sentry from '@sentry/react'
+import { fetchWithRetry } from '@/api/client'
 
 interface TerrainMeshData {
   positions: Float32Array
@@ -49,7 +50,7 @@ export const useTerrainStore = create<TerrainState>((set) => ({
   fetchTerrain: async (lat, lon, radius) => {
     set({ loading: true, error: null })
     try {
-      const resp = await fetch('/api/terrain/elevation', {
+      const resp = await fetchWithRetry('/api/terrain/elevation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ lat, lon, radius }),
