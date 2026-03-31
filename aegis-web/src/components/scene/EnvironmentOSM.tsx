@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import { useEnvironmentStore } from '@/stores/environment'
+import { useClickToPlace } from '@/hooks/useClickToPlace'
 
 const MATERIAL_COLORS: Record<number, [number, number, number]> = {
   0: [0.7, 0.7, 0.7], // concrete
@@ -21,6 +22,7 @@ const MATERIAL_COLORS: Record<number, [number, number, number]> = {
 
 export function EnvironmentOSM() {
   const meshData = useEnvironmentStore((s) => s.osmMeshData)
+  const clickHandlers = useClickToPlace()
 
   const geometry = useMemo(() => {
     if (!meshData) return null
@@ -59,7 +61,7 @@ export function EnvironmentOSM() {
   if (!geometry) return null
 
   return (
-    <mesh geometry={geometry} receiveShadow castShadow>
+    <mesh geometry={geometry} receiveShadow castShadow {...clickHandlers}>
       <meshStandardMaterial vertexColors side={THREE.DoubleSide} />
     </mesh>
   )
