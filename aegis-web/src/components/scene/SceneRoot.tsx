@@ -17,6 +17,7 @@ import Antenna from './Antenna'
 import DistanceLine from './DistanceLine'
 import RayPaths from './RayPaths'
 import VoxelField from './VoxelField'
+import HullMesh from './HullMesh'
 import SceneGeometry from './SceneGeometry'
 import Environment from './Environment'
 import FollowCamera from './FollowCamera'
@@ -329,6 +330,7 @@ export default function SceneRoot() {
       {(envSource === 'none' || envSource === 'voxels') && (
         <>
           <VoxelField />
+          <HullMesh />
           <SceneGeometry />
           <Environment />
         </>

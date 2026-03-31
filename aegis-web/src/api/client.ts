@@ -250,6 +250,21 @@ export async function loadSceneGeometry(scenePath: string): Promise<{
   return { vertices, indices, faceColors, meta }
 }
 
+export async function fetchHullMesh(): Promise<{
+  vertices: Float32Array
+  indices: Int32Array
+  faceColors: Float32Array | null
+}> {
+  const res = await fetch(`${BASE}/api/voxels/hull-mesh`)
+  if (!res.ok) throw new Error(`Hull mesh fetch failed: ${res.status}`)
+  const meta = JSON.parse(res.headers.get('X-Meta') || '{}')
+  const buffer = await res.arrayBuffer()
+  const { vertices, indices, faceColors } = parseSceneBinary(
+    buffer, meta.n_vertices, meta.n_triangles, meta.has_face_colors
+  )
+  return { vertices, indices, faceColors }
+}
+
 // ---------------------------------------------------------------------------
 // Compute endpoints
 // ---------------------------------------------------------------------------
