@@ -264,11 +264,16 @@ def _build_stats_response(result, body, tissue, level, extra=None, mode=None, co
     # Prefer spatially averaged sinc for compliance; fall back to raw peak
     sinc_for_compliance = peak_sinc_averaged if peak_sinc_averaged is not None else peak_sinc_local
 
+    # Prefer spatially averaged sab for compliance; fall back to raw peak (conservative)
+    sab_for_compliance = peak_sab_averaged
+    if sab_for_compliance is None and result.sab.size > 0:
+        sab_for_compliance = float(np.max(result.sab))
+
     try:
         compliance = evaluate_compliance(
             scenario=scenario,
             freq_hz=freq_hz,
-            sab_4cm2=peak_sab_averaged,
+            sab_4cm2=sab_for_compliance,
             sinc_local=sinc_for_compliance,
             sinc_whole_body=sinc_wb,
             sar_wb=result.sar_wb,
