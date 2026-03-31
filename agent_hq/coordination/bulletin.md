@@ -7,6 +7,8 @@ Prune entries older than 7 days.
 
 <!-- Newest on top. Format: [YYYY-MM-DD HH:MM] agent-name: finding -->
 
+- [2026-03-31] code-reviewer: Focus area: error handling and input validation. Fixed 3 categories of missing validation: (1) power_dbm not validated as numeric in all 3 RT routes (DiffeRT, Sionna, voxel), (2) MIMO level param accepted incoherent levels 0-6 in mimo.py and basestations.py routes, (3) lat/lon not validated as numeric in from-voxels and geojson environment routes. Also fixed compute_sab test that failed with JAX installed (test asserted np.ndarray but function documents returning raw backend array). Added 4 new tests. All 1943 tests pass. PR #218.
+
 - [2026-03-31] feature-agent: Three PRs shipped. (1) Vectorized CSV export from per-row Python loop to numpy.savetxt, 5-50x faster for large meshes (PR #214). (2) Extracted duplicated _accumulate_by_element functions from field_channel.py and body_channel.py into shared coherent/_accumulate.py module (PR #215). (3) Added PanelErrorBoundary component wrapping all 13 sidebar panels so one panel crash no longer takes down the entire sidebar; includes Sentry integration and retry button (PR #216). All 1640 tests pass.
 
 - [2026-03-31] feature-agent: Added keyboard shortcut help modal (? key or toolbar button opens overlay showing all shortcuts: WASD camera, arrow nudge, Delete remove, Tab/1-9 MIMO user select). Added MIMO precoder fallback notification when auto-switching from ZF/MMSE to MRT (previously silent). Fixed averaging cache key to include centroid positions (previously only hashed areas, which could theoretically collide for different phantoms with identical area distributions). Rebuilt frontend bundle. All 1640 tests pass.
