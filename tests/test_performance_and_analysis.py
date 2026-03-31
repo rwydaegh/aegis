@@ -17,7 +17,7 @@ import pytest
 from conftest import make_flat_mesh, make_icosahedron, make_single_triangle
 
 from aegis.analysis import exposure_heatmap, path_contributions, path_importance
-from aegis.coherent.body_channel import _accumulate_by_element_numpy
+from aegis.coherent._accumulate import _accumulate_by_element_numpy
 from aegis.geometry.mesh import BodyMesh, load_stl_binary
 from aegis.paths import PropagationPaths
 from aegis.tissue.dielectric import SKIN_28GHZ

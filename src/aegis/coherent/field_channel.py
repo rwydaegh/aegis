@@ -12,30 +12,9 @@ from __future__ import annotations
 
 import numpy as np
 
-from aegis._array_backend import JAX_AVAILABLE, xp
+from aegis._array_backend import xp
+from aegis.coherent._accumulate import accumulate_by_element
 from aegis.constants import C_0
-
-
-def _accumulate_by_element_numpy(weighted, element_index, M, n_elements):
-    """NumPy: vectorized scatter-add using np.add.at."""
-    G = np.zeros((M, 3, n_elements), dtype=complex)
-    # Transpose weighted to (M, 3, N) for scatter along last axis
-    weighted_t = np.transpose(weighted, (0, 2, 1))  # (M, 3, N)
-    np.add.at(G, (slice(None), slice(None), element_index), weighted_t)
-    return G
-
-
-def _accumulate_by_element_jax(weighted, element_index, M, n_elements):
-    """JAX: use scatter-add for JIT compatibility."""
-    import jax.numpy as jnp
-
-    # weighted: (M, N, 3), element_index: (N,)
-    # We want G[:, :, j] = sum over n where element_index[n]==j of weighted[:, n, :]
-    G = jnp.zeros((M, 3, n_elements), dtype=complex)
-    # Transpose to (M, 3, N) for scatter along last axis
-    weighted_t = jnp.transpose(weighted, (0, 2, 1))  # (M, 3, N)
-    G = G.at[:, :, element_index].add(weighted_t)
-    return G
 
 
 def compute_field_channel(
@@ -87,10 +66,4 @@ def compute_field_channel(
     weighted = phase[:, :, None] * psi[None, :, :]  # (M, N, 3)
 
     # Accumulate by element: g_j(r_m) = sum_{n: j(n)=j} weighted[m, n, :]
-    if JAX_AVAILABLE:
-        G = _accumulate_by_element_jax(weighted, element_index, M, n_elements)
-    else:
-        G = _accumulate_by_element_numpy(np.asarray(weighted), np.asarray(element_index), M, n_elements)
-        G = xp.asarray(G)
-
-    return G
+    return accumulate_by_element(weighted, element_index, M, n_elements)

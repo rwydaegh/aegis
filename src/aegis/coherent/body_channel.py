@@ -15,7 +15,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from aegis._array_backend import JAX_AVAILABLE, xp
+from aegis._array_backend import xp
+from aegis.coherent._accumulate import accumulate_by_element
 from aegis.coherent.fresnel_operator import (
     apply_fresnel_operator,
     compute_fresnel_operator,
@@ -23,27 +24,6 @@ from aegis.coherent.fresnel_operator import (
 from aegis.constants import C_0
 from aegis.defaults import NUMERICAL_FLOOR
 from aegis.tissue.fresnel import xi_from_mu
-
-
-def _accumulate_by_element_numpy(weighted, element_index, M, n_elements):
-    """NumPy: vectorized scatter-add using np.add.at."""
-    # weighted: (M, N, 3), element_index: (N,)
-    # Target: G_tilde (M, 3, n_elements) where G_tilde[:, :, j] = sum over n where element_index[n] == j
-    G_tilde = np.zeros((M, 3, n_elements), dtype=complex)
-    # Transpose weighted to (M, 3, N) for scatter along last axis
-    weighted_t = np.transpose(weighted, (0, 2, 1))  # (M, 3, N)
-    np.add.at(G_tilde, (slice(None), slice(None), element_index), weighted_t)
-    return G_tilde
-
-
-def _accumulate_by_element_jax(weighted, element_index, M, n_elements):
-    """JAX: scatter-add for JIT compatibility."""
-    import jax.numpy as jnp
-
-    G_tilde = jnp.zeros((M, 3, n_elements), dtype=complex)
-    weighted_t = jnp.transpose(weighted, (0, 2, 1))
-    G_tilde = G_tilde.at[:, :, element_index].add(weighted_t)
-    return G_tilde
 
 
 def compute_body_channel(
@@ -122,10 +102,4 @@ def compute_body_channel(
     # weighted: (M, N, 3) complex
 
     # Accumulate by element
-    if JAX_AVAILABLE:
-        G_tilde = _accumulate_by_element_jax(weighted, element_index, M, n_elements)
-    else:
-        G_tilde = _accumulate_by_element_numpy(np.asarray(weighted), np.asarray(element_index), M, n_elements)
-        G_tilde = xp.asarray(G_tilde)
-
-    return G_tilde
+    return accumulate_by_element(weighted, element_index, M, n_elements)

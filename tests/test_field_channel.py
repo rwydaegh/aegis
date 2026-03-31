@@ -13,10 +13,8 @@ import json
 import numpy as np
 import pytest
 
-from aegis.coherent.field_channel import (
-    _accumulate_by_element_numpy,
-    compute_field_channel,
-)
+from aegis.coherent._accumulate import _accumulate_by_element_numpy
+from aegis.coherent.field_channel import compute_field_channel
 from aegis.result import DosimetryResult
 
 # ---------------------------------------------------------------------------
