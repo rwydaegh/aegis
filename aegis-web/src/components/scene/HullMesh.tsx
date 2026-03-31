@@ -24,45 +24,45 @@ export default function HullMesh() {
     return () => { cancelled = true }
   }, [envMode])
 
-  const geometry = useMemo(() => {
-    if (!data) return null
+  const { geometry, hasVertexColors } = useMemo(() => {
+    if (!data) return { geometry: null, hasVertexColors: false }
+
     const geo = new THREE.BufferGeometry()
-    geo.setAttribute('position', new THREE.Float32BufferAttribute(data.vertices, 3))
-    geo.setIndex(new THREE.BufferAttribute(data.indices, 1))
+    geo.setAttribute('position', new THREE.BufferAttribute(data.vertices, 3))
+    geo.setIndex(new THREE.BufferAttribute(new Uint32Array(data.indices), 1))
 
     if (data.faceColors) {
       const nonIndexed = geo.toNonIndexed()
-      const faceCount = data.faceColors.length / 3
-      const vertexColors = new Float32Array(faceCount * 3 * 3)
-      for (let f = 0; f < faceCount; f++) {
+      nonIndexed.computeVertexNormals()
+      const nFaces = data.faceColors.length / 3
+      const colorAttr = new Float32Array(nFaces * 9)
+      for (let f = 0; f < nFaces; f++) {
         const r = data.faceColors[f * 3]
         const g = data.faceColors[f * 3 + 1]
         const b = data.faceColors[f * 3 + 2]
         for (let v = 0; v < 3; v++) {
-          vertexColors[(f * 3 + v) * 3] = r
-          vertexColors[(f * 3 + v) * 3 + 1] = g
-          vertexColors[(f * 3 + v) * 3 + 2] = b
+          colorAttr[(f * 3 + v) * 3] = r
+          colorAttr[(f * 3 + v) * 3 + 1] = g
+          colorAttr[(f * 3 + v) * 3 + 2] = b
         }
       }
-      nonIndexed.setAttribute('color', new THREE.Float32BufferAttribute(vertexColors, 3))
-      nonIndexed.computeVertexNormals()
-      return nonIndexed
+      nonIndexed.setAttribute('color', new THREE.BufferAttribute(colorAttr, 3))
+      return { geometry: nonIndexed, hasVertexColors: true }
     }
 
     geo.computeVertexNormals()
-    return geo
+    return { geometry: geo, hasVertexColors: false }
   }, [data])
 
   if (envMode !== 'hull' || !geometry) return null
 
   return (
     <mesh geometry={geometry}>
-      <meshStandardMaterial
-        vertexColors={!!data?.faceColors}
-        color={data?.faceColors ? undefined : '#888888'}
-        wireframe={wireframe}
-        side={THREE.DoubleSide}
-      />
+      {hasVertexColors ? (
+        <meshStandardMaterial vertexColors wireframe={wireframe} roughness={0.7} side={THREE.DoubleSide} />
+      ) : (
+        <meshStandardMaterial color="#888" wireframe={wireframe} roughness={0.7} side={THREE.DoubleSide} />
+      )}
     </mesh>
   )
 }

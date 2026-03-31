@@ -21,8 +21,8 @@ function shortenGpuName(name: string): string {
     .trim()
 }
 
-function useServerInfo(): ServerInfo | null {
-  const [info, setInfo] = useState<ServerInfo | null>(null)
+function useServerInfo(): (ServerInfo & { gitCommit: string | null }) | null {
+  const [info, setInfo] = useState<(ServerInfo & { gitCommit: string | null }) | null>(null)
 
   useEffect(() => {
     const poll = () => {
@@ -36,6 +36,7 @@ function useServerInfo(): ServerInfo | null {
             ramTotalGb: data.ram_total_gb ?? null,
             gpuPct: data.gpu?.utilization_pct ?? null,
             gpuName: data.gpu?.name ? shortenGpuName(data.gpu.name) : null,
+            gitCommit: data.git_commit ?? null,
           })
         })
         .catch(() => { /* server info is optional, silently ignore */ })
@@ -74,7 +75,7 @@ export default function ServerInfoBadge() {
     <div className="absolute bottom-3 right-3 pointer-events-none">
       <div className="bg-black/60 backdrop-blur-sm rounded-md border border-white/10 px-2.5 py-1.5 flex items-center gap-3">
         <span className={`text-[10px] font-mono font-medium select-none ${isCloud ? 'text-emerald-400' : 'text-blue-400'}`}>
-          {label}
+          {label}{info.gitCommit ? ` ${info.gitCommit.slice(0, 7)}` : ''}
         </span>
         {items.length > 0 && (
           <>

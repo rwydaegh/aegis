@@ -92,6 +92,7 @@ export interface SystemInfo {
   ram_pct: number | null
   ram_total_gb: number | null
   gpu: { name: string; vram_total_mb: number; vram_used_mb: number; utilization_pct: number; temperature_c: number } | null
+  git_commit?: string | null
 }
 
 // -- ViewerConfig -------------------------------------------------------------
