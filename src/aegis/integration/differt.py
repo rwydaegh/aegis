@@ -308,6 +308,30 @@ def paths_from_differt(
     # Total path length (excluding zero-length padding segments)
     total_length = np.sum(seg_lengths, axis=1)  # (N,)
 
+    # Filter out degenerate paths (zero total length means TX=RX coincidence
+    # or fully padded geometry). These produce undefined k_hat and spurious
+    # amplitude from division by ~0 distance.
+    valid = total_length > 1e-10
+    if not np.all(valid):
+        keep = np.where(valid)[0]
+        if len(keep) == 0:
+            return PropagationPaths.from_powers(k_hat=np.zeros((0, 3)), power=np.zeros(0))
+        path_vertices = path_vertices[keep]
+        segments = segments[keep]
+        seg_lengths = seg_lengths[keep]
+        k_hat = k_hat[keep]
+        total_length = total_length[keep]
+        n_paths = len(keep)
+        row_idx = np.arange(n_paths)
+        if object_indices is not None:
+            object_indices = np.asarray(object_indices, dtype=np.intp)[keep]
+        if material_indices is not None:
+            material_indices = np.asarray(material_indices, dtype=np.intp)[keep]
+        if normals is not None:
+            normals = np.asarray(normals, dtype=np.float64)[keep]
+        if element_indices is not None:
+            element_indices = np.asarray(element_indices, dtype=np.intp)[keep]
+
     # TX power in watts
     tx_power_w = 10 ** ((tx_power_dbm - 30) / 10)
 

@@ -46,6 +46,16 @@ function handle401(): void {
 // Internal helpers
 // ---------------------------------------------------------------------------
 
+/** Safely parse a JSON header value, throwing a readable error on failure. */
+export function parseJsonHeader<T>(header: string | null, name: string): T {
+  if (!header) throw new Error(`Missing ${name} header`)
+  try {
+    return JSON.parse(header) as T
+  } catch {
+    throw new Error(`Malformed ${name} header: not valid JSON`)
+  }
+}
+
 /** Try to extract a human-readable error from the response JSON body. */
 async function extractErrorMessage(res: Response, method: string, path: string): Promise<string> {
   const fallback = `${method} ${path} failed: ${res.status} ${res.statusText}`
@@ -124,9 +134,7 @@ async function computeEndpoint(
   }
   if (!res.ok) throw new Error(await extractErrorMessage(res, 'POST', path))
 
-  const statsHeader = res.headers.get('X-Stats')
-  if (!statsHeader) throw new Error(`POST ${path}: missing X-Stats header`)
-  const stats: DosimetryStats = JSON.parse(statsHeader)
+  const stats = parseJsonHeader<DosimetryStats>(res.headers.get('X-Stats'), 'X-Stats')
 
   const buffer = await res.arrayBuffer()
 

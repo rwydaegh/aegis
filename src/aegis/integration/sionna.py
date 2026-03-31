@@ -293,10 +293,10 @@ def paths_from_sionna_scene(
             ]
         )
 
-        # Detect LOS paths (first path in each element is typically LOS)
+        # Detect LOS: shortest-delay path per element (lowest tau = closest to LOS)
         is_los = np.zeros(len(idx), dtype=bool)
         if len(idx) > 0:
-            is_los[0] = True  # Conservative: mark shortest-delay path as LOS
+            is_los[np.argmin(tau)] = True
 
         all_k_hat.append(k_hat)
         all_psi.append(psi)

@@ -7,7 +7,7 @@ import type {
   DosimetryStats,
 } from './types'
 import { toServer } from './coordinates'
-import { fetchWithRetry } from './client'
+import { fetchWithRetry, parseJsonHeader } from './client'
 
 async function extractError(res: Response, label: string): Promise<string> {
   const fallback = `${label}: ${res.status} ${res.statusText}`
@@ -70,8 +70,7 @@ export async function fetchMIMOResult(
 ): Promise<{ sab: Float32Array; stats: DosimetryStats }> {
   const resp = await fetchWithRetry(`/api/mimo/result/${userId}`, { signal })
   if (!resp.ok) throw new Error(await extractError(resp, 'MIMO result fetch failed'))
-  const statsHeader = resp.headers.get('X-Stats')
-  const stats: DosimetryStats = statsHeader ? JSON.parse(statsHeader) : {}
+  const stats = parseJsonHeader<DosimetryStats>(resp.headers.get('X-Stats'), 'X-Stats')
   const buf = await resp.arrayBuffer()
   const sab = new Float32Array(buf)
   return { sab, stats }

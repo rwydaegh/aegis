@@ -1,4 +1,4 @@
-import { postJson, fetchWithRetry } from './client'
+import { postJson, fetchWithRetry, parseJsonHeader } from './client'
 import type { DosimetryStats } from './types'
 import type { Archetype } from '@/utils/classifyAntenna'
 
@@ -87,9 +87,7 @@ export async function computeBasestations(
     throw new Error(msg)
   }
 
-  const statsHeader = res.headers.get('X-Stats')
-  if (!statsHeader) throw new Error('POST /api/basestations/compute: missing X-Stats header')
-  const stats: DosimetryStats = JSON.parse(statsHeader)
+  const stats = parseJsonHeader<DosimetryStats>(res.headers.get('X-Stats'), 'X-Stats')
 
   const buffer = await res.arrayBuffer()
 

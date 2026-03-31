@@ -24,8 +24,10 @@ from aegis.tissue.dielectric import TissueModel
 if TYPE_CHECKING:
     from aegis.precoder import Precoder
 
-# Module-level timing dict, populated by compute() for viewer profiling
+# Module-level timing dict, populated by compute() for viewer profiling.
+# Protected by _timings_lock for thread safety under concurrent Flask requests.
 _last_timings: dict[str, float] = {}
+_timings_lock = threading.Lock()
 
 _ERR_LEVEL_AND_MODE = "Cannot specify both level and mode"
 
@@ -200,7 +202,8 @@ class DosimetryEngine:
         if _timings is not None:
             _timings.update(avg_timings)
         # Keep module-level dict updated for backward compatibility
-        _last_timings.update(avg_timings)
+        with _timings_lock:
+            _last_timings.update(avg_timings)
 
         return DosimetryResult(
             sab=sab,
@@ -599,7 +602,8 @@ class DosimetryEngine:
             kernel_ms = (time.perf_counter() - t_kernel) * 1e3
             if _timings is not None:
                 _timings["kernel_ms"] = kernel_ms
-            _last_timings["kernel_ms"] = kernel_ms
+            with _timings_lock:
+                _last_timings["kernel_ms"] = kernel_ms
         elif mode in ("coherent", "ecbf"):
             return self._compute_coherent(
                 body,
