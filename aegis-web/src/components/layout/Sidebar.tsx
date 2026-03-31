@@ -8,6 +8,7 @@ import {
   AccordionTrigger,
   AccordionContent,
 } from '@/components/ui/accordion'
+import { PanelErrorBoundary } from '@/components/layout/PanelErrorBoundary'
 import ParametersPanel from '@/components/panels/ParametersPanel'
 import PhantomPanel from '@/components/panels/PhantomPanel'
 import LayersPanel from '@/components/panels/LayersPanel'
@@ -58,7 +59,9 @@ export default function Sidebar() {
               <AccordionTrigger className="text-sm font-medium py-3">Parameters</AccordionTrigger>
               <AccordionContent>
                 <div className="py-2">
-                  <ParametersPanel />
+                  <PanelErrorBoundary name="Parameters">
+                    <ParametersPanel />
+                  </PanelErrorBoundary>
                 </div>
               </AccordionContent>
             </AccordionItem>
@@ -67,7 +70,9 @@ export default function Sidebar() {
               <AccordionTrigger className="text-sm font-medium py-3">Analysis</AccordionTrigger>
               <AccordionContent>
                 <div className="py-2">
-                  <AnalysisPanel />
+                  <PanelErrorBoundary name="Analysis">
+                    <AnalysisPanel />
+                  </PanelErrorBoundary>
                 </div>
               </AccordionContent>
             </AccordionItem>
@@ -76,7 +81,9 @@ export default function Sidebar() {
               <AccordionTrigger className="text-sm font-medium py-3">Environment</AccordionTrigger>
               <AccordionContent>
                 <div className="py-2">
-                  <EnvironmentPanel />
+                  <PanelErrorBoundary name="Environment">
+                    <EnvironmentPanel />
+                  </PanelErrorBoundary>
                 </div>
               </AccordionContent>
             </AccordionItem>
@@ -85,7 +92,9 @@ export default function Sidebar() {
               <AccordionTrigger className="text-sm font-medium py-3">Scene</AccordionTrigger>
               <AccordionContent>
                 <div className="py-2">
-                  <ScenePanel />
+                  <PanelErrorBoundary name="Scene">
+                    <ScenePanel />
+                  </PanelErrorBoundary>
                 </div>
               </AccordionContent>
             </AccordionItem>
@@ -94,7 +103,9 @@ export default function Sidebar() {
               <AccordionTrigger className="text-sm font-medium py-3">MIMO</AccordionTrigger>
               <AccordionContent>
                 <div className="py-2">
-                  <MIMOPanel />
+                  <PanelErrorBoundary name="MIMO">
+                    <MIMOPanel />
+                  </PanelErrorBoundary>
                 </div>
               </AccordionContent>
             </AccordionItem>
@@ -103,7 +114,9 @@ export default function Sidebar() {
               <AccordionTrigger className="text-sm font-medium py-3">Base Stations</AccordionTrigger>
               <AccordionContent>
                 <div className="py-2">
-                  <BaseStationsPanel />
+                  <PanelErrorBoundary name="Base Stations">
+                    <BaseStationsPanel />
+                  </PanelErrorBoundary>
                 </div>
               </AccordionContent>
             </AccordionItem>
@@ -113,7 +126,9 @@ export default function Sidebar() {
                 <AccordionTrigger className="text-sm font-medium py-3">Antenna</AccordionTrigger>
                 <AccordionContent>
                   <div className="py-2">
-                    <AntennaPanel />
+                    <PanelErrorBoundary name="Antenna">
+                      <AntennaPanel />
+                    </PanelErrorBoundary>
                   </div>
                 </AccordionContent>
               </AccordionItem>
@@ -124,7 +139,9 @@ export default function Sidebar() {
                 <AccordionTrigger className="text-sm font-medium py-3">Phantom</AccordionTrigger>
                 <AccordionContent>
                   <div className="py-2">
-                    <PhantomPanel />
+                    <PanelErrorBoundary name="Phantom">
+                      <PhantomPanel />
+                    </PanelErrorBoundary>
                   </div>
                 </AccordionContent>
               </AccordionItem>
@@ -134,7 +151,9 @@ export default function Sidebar() {
               <AccordionTrigger className="text-sm font-medium py-3">Layers</AccordionTrigger>
               <AccordionContent>
                 <div className="py-2">
-                  <LayersPanel />
+                  <PanelErrorBoundary name="Layers">
+                    <LayersPanel />
+                  </PanelErrorBoundary>
                 </div>
               </AccordionContent>
             </AccordionItem>
@@ -143,7 +162,9 @@ export default function Sidebar() {
               <AccordionTrigger className="text-sm font-medium py-3">Ray Tracing</AccordionTrigger>
               <AccordionContent>
                 <div className="py-2">
-                  <RayTracingPanel />
+                  <PanelErrorBoundary name="Ray Tracing">
+                    <RayTracingPanel />
+                  </PanelErrorBoundary>
                 </div>
               </AccordionContent>
             </AccordionItem>
@@ -152,7 +173,9 @@ export default function Sidebar() {
               <AccordionTrigger className="text-sm font-medium py-3">Stochastic</AccordionTrigger>
               <AccordionContent>
                 <div className="py-2">
-                  <StochasticPanel />
+                  <PanelErrorBoundary name="Stochastic">
+                    <StochasticPanel />
+                  </PanelErrorBoundary>
                 </div>
               </AccordionContent>
             </AccordionItem>
@@ -161,7 +184,9 @@ export default function Sidebar() {
               <AccordionTrigger className="text-sm font-medium py-3">Tissue</AccordionTrigger>
               <AccordionContent>
                 <div className="py-2">
-                  <TissuePanel />
+                  <PanelErrorBoundary name="Tissue">
+                    <TissuePanel />
+                  </PanelErrorBoundary>
                 </div>
               </AccordionContent>
             </AccordionItem>
@@ -170,7 +195,9 @@ export default function Sidebar() {
               <AccordionTrigger className="text-sm font-medium py-3">Export</AccordionTrigger>
               <AccordionContent>
                 <div className="py-2">
-                  <ExportPanel />
+                  <PanelErrorBoundary name="Export">
+                    <ExportPanel />
+                  </PanelErrorBoundary>
                 </div>
               </AccordionContent>
             </AccordionItem>
