@@ -153,13 +153,20 @@ class DosimetryResult:
 
     @property
     def compliant_sab(self) -> bool | None:
-        """ICNIRP compliance: peak spatially averaged S_ab <= limit."""
+        """ICNIRP compliance: peak spatially averaged S_ab <= limit.
+
+        Returns None if freq_hz is not set or outside the ICNIRP 2020
+        range (>6 GHz to 300 GHz).
+        """
         peak = self.peak_sab_averaged
         if peak is None or self.freq_hz is None:
             return None
         from aegis.compliance import ExposureScenario, icnirp_limits
 
-        lim = icnirp_limits(ExposureScenario.GENERAL_PUBLIC, self.freq_hz)
+        try:
+            lim = icnirp_limits(ExposureScenario.GENERAL_PUBLIC, self.freq_hz)
+        except ValueError:
+            return None
         return peak <= lim.sab_4cm2
 
     @property

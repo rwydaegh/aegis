@@ -261,12 +261,15 @@ def _build_stats_response(result, body, tissue, level, extra=None, mode=None, co
     if result.sinc is not None:
         sinc_wb = float(np.sum(result.sinc * body.areas) / np.sum(body.areas))
 
+    # Prefer spatially averaged sinc for compliance; fall back to raw peak
+    sinc_for_compliance = peak_sinc_averaged if peak_sinc_averaged is not None else peak_sinc_local
+
     try:
         compliance = evaluate_compliance(
             scenario=scenario,
             freq_hz=freq_hz,
             sab_4cm2=peak_sab_averaged,
-            sinc_local=peak_sinc_averaged,
+            sinc_local=sinc_for_compliance,
             sinc_whole_body=sinc_wb,
             sar_wb=result.sar_wb,
             sab_1cm2=peak_sab_1cm2,
