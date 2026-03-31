@@ -251,9 +251,17 @@ class DosimetryResult:
         if peak_4 is None and self.sab.size > 0:
             peak_4 = self.peak_sab
 
-        peak_1 = float(np.max(self.sab_1cm2_averaged)) if self.sab_1cm2_averaged is not None else None
+        peak_1 = (
+            float(np.max(self.sab_1cm2_averaged))
+            if self.sab_1cm2_averaged is not None and self.sab_1cm2_averaged.size > 0
+            else None
+        )
 
-        sinc_peak = float(np.max(self.sinc_averaged)) if self.sinc_averaged is not None else None
+        sinc_peak = (
+            float(np.max(self.sinc_averaged))
+            if self.sinc_averaged is not None and self.sinc_averaged.size > 0
+            else None
+        )
         if sinc_peak is None and self.sinc is not None and self.sinc.size > 0:
             sinc_peak = float(np.max(self.sinc))
 

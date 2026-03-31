@@ -96,6 +96,11 @@ export async function computeBasestations(
     for (const meta of stats.arrays) {
       const byteOffset = meta.offset
       const byteLength = meta.length * 4
+      if (byteOffset < 0 || byteLength < 0 || byteOffset + byteLength > buffer.byteLength) {
+        throw new Error(
+          `Invalid array metadata for "${meta.key}": offset=${byteOffset}, length=${meta.length}, buffer=${buffer.byteLength} bytes`,
+        )
+      }
       arrays[meta.key] = new Float32Array(buffer.slice(byteOffset, byteOffset + byteLength))
     }
   } else {

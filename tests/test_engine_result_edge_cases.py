@@ -1025,3 +1025,40 @@ class TestScaleWith1cm2:
         )
         scaled = r.scale(2.0)
         assert scaled.sab_1cm2_averaged is None
+
+
+# ===========================================================================
+# Result: evaluate_compliance with empty averaged arrays
+# ===========================================================================
+
+
+class TestEvaluateComplianceEmptyArrays:
+    """Regression: np.max on empty array raises ValueError.
+
+    evaluate_compliance must handle empty averaged arrays the same as None.
+    """
+
+    def test_empty_sab_1cm2_averaged(self):
+        """Empty sab_1cm2_averaged should not raise."""
+        r = DosimetryResult(
+            sab=np.array([5.0]),
+            p_abs=1.0,
+            fidelity_level=2,
+            sab_1cm2_averaged=np.array([]),
+            freq_hz=30e9,
+        )
+        result = r.evaluate_compliance()
+        assert result is not None
+
+    def test_empty_sinc_averaged(self):
+        """Empty sinc_averaged should not raise."""
+        r = DosimetryResult(
+            sab=np.array([5.0]),
+            p_abs=1.0,
+            fidelity_level=2,
+            sinc_averaged=np.array([]),
+            sinc=np.array([10.0]),
+            freq_hz=30e9,
+        )
+        result = r.evaluate_compliance()
+        assert result is not None

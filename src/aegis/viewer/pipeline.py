@@ -222,7 +222,10 @@ def fix_glb_blob_uris(glb_path: Path) -> bool:
     if json_end > len(data):
         return False
 
-    gltf = json.loads(data[json_start:json_end].rstrip(b" "))
+    try:
+        gltf = json.loads(data[json_start:json_end].rstrip(b" "))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return False
 
     # 1x1 white PNG as data URI fallback for images without bufferView
     _WHITE_1X1 = (
