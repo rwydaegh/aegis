@@ -465,6 +465,182 @@ def _greedy_mesh_faces(
     )
 
 
+def _greedy_mesh_faces_v2(
+    grid_coords: np.ndarray,
+    positions: np.ndarray,
+    voxel_size: float,
+    material_ids: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Emit greedy-merged quad vertices using maximal-area rectangle heuristic.
+
+    Improvement over _greedy_mesh_faces: instead of extending greedily in the
+    u-direction first (which creates elongated horizontal rectangles), this
+    version finds the largest-area rectangle at each seed cell by sweeping
+    all possible widths and tracking the maximum height for each. This
+    produces squarer, larger quads and fewer total quads/triangles.
+
+    Returns (vertices, quad_material_ids) where vertices is (M, 3) float32
+    (every 4 consecutive vertices form one quad) and quad_material_ids is
+    (M//4,) int32 with the material index for each quad.
+    """
+    hs = voxel_size / 2
+    face_dirs = np.array(
+        [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]],
+        dtype=np.int64,
+    )
+
+    gc = grid_coords.astype(np.int64)
+    offsets = gc.min(axis=0)
+    gc_shifted = gc - offsets
+    span = gc_shifted.max(axis=0) + 1
+    pad_shape = tuple(int(x) + 2 for x in span)
+    occ = np.zeros(pad_shape, dtype=bool)
+    ix = gc_shifted[:, 0].astype(np.intp) + 1
+    iy = gc_shifted[:, 1].astype(np.intp) + 1
+    iz = gc_shifted[:, 2].astype(np.intp) + 1
+    occ[ix, iy, iz] = True
+
+    mat_grid_3d = np.full(pad_shape, -1, dtype=np.int32)
+    mat_grid_3d[ix, iy, iz] = material_ids
+
+    # Grid-to-world: world = origin + grid_shifted * voxel_size
+    origin = positions[0] - gc_shifted[0].astype(np.float64) * voxel_size
+
+    all_face_verts: list[np.ndarray] = []
+    all_face_mats: list[int] = []
+
+    for d in range(6):
+        dx, dy, dz = int(face_dirs[d, 0]), int(face_dirs[d, 1]), int(face_dirs[d, 2])
+        ni = ix + dx
+        nj = iy + dy
+        nk = iz + dz
+        exposed_mask = ~occ[ni, nj, nk]
+        exposed_idx = np.where(exposed_mask)[0]
+        if len(exposed_idx) == 0:
+            continue
+
+        u_ax, v_ax, f_ax, f_sign = _FACE_UV_MAP[d]
+        winding = _FACE_WINDING[d]
+
+        exposed_gc = gc_shifted[exposed_idx]
+        exposed_mat = mat_grid_3d[ix[exposed_idx], iy[exposed_idx], iz[exposed_idx]]
+        fixed_vals = exposed_gc[:, f_ax]
+        unique_fixed = np.unique(fixed_vals)
+
+        for fv in unique_fixed:
+            slice_mask = fixed_vals == fv
+            slice_gc = exposed_gc[slice_mask]
+            slice_mat = exposed_mat[slice_mask]
+
+            u_coords = slice_gc[:, u_ax].astype(np.intp)
+            v_coords = slice_gc[:, v_ax].astype(np.intp)
+            u_min, u_max = int(u_coords.min()), int(u_coords.max())
+            v_min, v_max = int(v_coords.min()), int(v_coords.max())
+            u_span = u_max - u_min + 1
+            v_span = v_max - v_min + 1
+
+            mat_grid = np.full((u_span, v_span), -1, dtype=np.int32)
+            mat_grid[u_coords - u_min, v_coords - v_min] = slice_mat
+            visited = np.zeros((u_span, v_span), dtype=bool)
+
+            for u in range(u_span):
+                for v in range(v_span):
+                    cur_mat = int(mat_grid[u, v])
+                    if cur_mat < 0 or visited[u, v]:
+                        continue
+
+                    # Find max extent in u-direction from this cell
+                    max_u = 1
+                    while u + max_u < u_span and mat_grid[u + max_u, v] == cur_mat and not visited[u + max_u, v]:
+                        max_u += 1
+
+                    # Find max extent in v-direction from this cell
+                    max_v = 1
+                    while v + max_v < v_span and mat_grid[u, v + max_v] == cur_mat and not visited[u, v + max_v]:
+                        max_v += 1
+
+                    # Sweep widths from 1..max_u, for each compute max
+                    # height where all cells match. Track best area.
+                    best_w, best_h, best_area = 1, 1, 1
+
+                    # Start with full width, then narrow. For each width,
+                    # the achievable height can only increase or stay same,
+                    # so we track it incrementally.
+                    cur_h = max_v  # height achievable at width=1
+                    for cw in range(1, max_u + 1):
+                        # For column cw-1 (0-indexed), find how far down
+                        # it extends with same material and unvisited.
+                        col_h = 0
+                        while (
+                            v + col_h < v_span
+                            and mat_grid[u + cw - 1, v + col_h] == cur_mat
+                            and not visited[u + cw - 1, v + col_h]
+                        ):
+                            col_h += 1
+                        # The rectangle of width cw can only be as tall as
+                        # the shortest column so far.
+                        cur_h = min(cur_h, col_h)
+                        if cur_h == 0:
+                            break
+                        area = cw * cur_h
+                        if area > best_area:
+                            best_area = area
+                            best_w = cw
+                            best_h = cur_h
+
+                    # Also sweep heights from 1..max_v (v-first), to avoid
+                    # bias toward u-direction.
+                    cur_w = max_u
+                    for ch in range(1, max_v + 1):
+                        row_w = 0
+                        while (
+                            u + row_w < u_span
+                            and mat_grid[u + row_w, v + ch - 1] == cur_mat
+                            and not visited[u + row_w, v + ch - 1]
+                        ):
+                            row_w += 1
+                        cur_w = min(cur_w, row_w)
+                        if cur_w == 0:
+                            break
+                        area = cur_w * ch
+                        if area > best_area:
+                            best_area = area
+                            best_w = cur_w
+                            best_h = ch
+
+                    w, h = best_w, best_h
+                    visited[u : u + w, v : v + h] = True
+
+                    gu0 = u + u_min
+                    gv0 = v + v_min
+                    gf = int(fv)
+
+                    u_lo = origin[u_ax] + gu0 * voxel_size - hs
+                    u_hi = origin[u_ax] + (gu0 + w) * voxel_size - hs
+                    v_lo = origin[v_ax] + gv0 * voxel_size - hs
+                    v_hi = origin[v_ax] + (gv0 + h) * voxel_size - hs
+                    f_val = origin[f_ax] + gf * voxel_size + f_sign * hs
+
+                    u_vals = [u_lo, u_hi]
+                    v_vals = [v_lo, v_hi]
+                    quad = np.zeros((4, 3), dtype=np.float32)
+                    for ci, (ui, vi) in enumerate(winding):
+                        quad[ci, u_ax] = u_vals[ui]
+                        quad[ci, v_ax] = v_vals[vi]
+                        quad[ci, f_ax] = f_val
+
+                    all_face_verts.append(quad)
+                    all_face_mats.append(cur_mat)
+
+    if not all_face_verts:
+        raise ValueError("No exterior faces found")
+
+    return (
+        np.concatenate(all_face_verts, axis=0).astype(np.float32),
+        np.array(all_face_mats, dtype=np.int32),
+    )
+
+
 def round_triangle_scene(
     positions: np.ndarray,
     grid_coords: np.ndarray | None = None,
@@ -516,7 +692,7 @@ def round_triangle_scene(
         unique_materials = ["concrete"]
         mat_ids = np.zeros(n, dtype=np.int32)
 
-    vertices, quad_mat_ids = _greedy_mesh_faces(grid_coords, positions, voxel_size, mat_ids)
+    vertices, quad_mat_ids = _greedy_mesh_faces_v2(grid_coords, positions, voxel_size, mat_ids)
 
     # Build triangle indices: every 4 vertices form a quad -> 2 triangles
     n_quads = len(vertices) // 4
