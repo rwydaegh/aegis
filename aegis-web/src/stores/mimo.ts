@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { useSimulationStore } from './simulation'
 import { useSceneStore } from './scene'
+import { useNotificationStore } from './notifications'
 import type { BufferGeometry } from 'three'
 import type { ScenePos } from '@/api/coordinates'
 import type { DosimetryStats, ArrayConfig, MIMOSummary, ElementPattern } from '@/api/types'
@@ -191,6 +192,12 @@ export const useMIMOStore = create<MIMOStore>((set, get) => ({
     // Fall back to MRT if ZF/MMSE becomes infeasible (M < K)
     const nElements = arrayConfig ? arrayConfig.n_h * arrayConfig.n_v : 0
     const needsFallback = precoderType !== 'mrt' && nElements > 0 && nElements < users.size
+    if (needsFallback) {
+      useNotificationStore.getState().addNotification(
+        'warning',
+        `Switched to MRT precoder (${precoderType.toUpperCase()} requires M \u2265 K)`,
+      )
+    }
     set({
       users,
       _configVersion: get()._configVersion + 1,
