@@ -1131,6 +1131,9 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
         Includes per-triangle centroids, areas, normals, and all computed
         quantities (sab, sab_4cm2, sinc, sinc_4cm2, sab_1cm2).
+
+        Uses vectorized numpy formatting instead of per-row Python loops.
+        Streams the response to avoid buffering large meshes in memory.
         """
         import io
 
@@ -1139,58 +1142,58 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         if result is None or body is None:
             return jsonify({"error": _ERR_NO_EXPORT_DATA}), 404
 
-        out = io.StringIO()
-
-        # Header
+        # Build column list and collect arrays
         columns = ["cx", "cy", "cz", "area_m2", "nx", "ny", "nz", "sab_w_m2"]
-        has_sab_avg = result.sab_averaged is not None
-        has_sinc = result.sinc is not None
-        has_sinc_avg = result.sinc_averaged is not None
-        has_sab_1cm2 = result.sab_1cm2_averaged is not None
-        if has_sab_avg:
-            columns.append("sab_4cm2_w_m2")
-        if has_sinc:
-            columns.append("sinc_w_m2")
-        if has_sinc_avg:
-            columns.append("sinc_4cm2_w_m2")
-        if has_sab_1cm2:
-            columns.append("sab_1cm2_w_m2")
+        # Fixed-point columns: centroids (3) + normals (3) = 6 cols
+        # Scientific columns: areas (1) + sab (1) + optional extras
+        fixed_arrays = [body.centroids, body.normals]  # (N,3) each
+        sci_arrays = [body.areas[:, None], result.sab[:, None]]  # (N,1) each
 
-        out.write(",".join(columns) + "\n")
+        for arr, name in [
+            (result.sab_averaged, "sab_4cm2_w_m2"),
+            (result.sinc, "sinc_w_m2"),
+            (result.sinc_averaged, "sinc_4cm2_w_m2"),
+            (result.sab_1cm2_averaged, "sab_1cm2_w_m2"),
+        ]:
+            if arr is not None:
+                columns.append(name)
+                sci_arrays.append(np.asarray(arr)[:, None])
 
-        # Data rows
-        centroids = body.centroids
-        areas = body.areas
-        normals = body.normals
-        sab = result.sab
-        sab_avg = result.sab_averaged
-        sinc = result.sinc
-        sinc_avg = result.sinc_averaged
-        sab_1cm2 = result.sab_1cm2_averaged
+        header = ",".join(columns) + "\n"
 
-        for i in range(body.n_triangles):
-            row = [
-                f"{centroids[i, 0]:.6f}",
-                f"{centroids[i, 1]:.6f}",
-                f"{centroids[i, 2]:.6f}",
-                f"{areas[i]:.8e}",
-                f"{normals[i, 0]:.6f}",
-                f"{normals[i, 1]:.6f}",
-                f"{normals[i, 2]:.6f}",
-                f"{sab[i]:.8e}",
+        # Vectorized formatting: build fixed-point and scientific blocks
+        fixed_block = np.column_stack(fixed_arrays)  # (N, 6)
+        sci_block = np.column_stack(sci_arrays)  # (N, 2+)
+
+        # Format each block using numpy's vectorized string conversion
+        out = io.StringIO()
+        out.write(header)
+
+        # Use savetxt into the StringIO for each row as a combined array
+        # Interleave format: cx,cy,cz | area | nx,ny,nz | sab | [extras]
+        # Order: centroids(3), area(1), normals(3), sab(1), [sab_avg, sinc, sinc_avg, sab_1cm2]
+        fmt_fixed = ["%.6f"] * 3  # centroids
+        fmt_sci = ["%.8e"]  # area
+        fmt_fixed2 = ["%.6f"] * 3  # normals
+        fmt_sci2 = ["%.8e"] * (sci_block.shape[1])  # sab + optional extras
+        fmt = fmt_fixed + fmt_sci + fmt_fixed2 + fmt_sci2
+
+        # Assemble in column order matching the header
+        data = np.column_stack(
+            [
+                fixed_block[:, :3],  # cx, cy, cz
+                sci_block[:, :1],  # area
+                fixed_block[:, 3:],  # nx, ny, nz
+                sci_block[:, 1:],  # sab + optional extras
             ]
-            if has_sab_avg:
-                row.append(f"{sab_avg[i]:.8e}")
-            if has_sinc:
-                row.append(f"{sinc[i]:.8e}")
-            if has_sinc_avg:
-                row.append(f"{sinc_avg[i]:.8e}")
-            if has_sab_1cm2:
-                row.append(f"{sab_1cm2[i]:.8e}")
-            out.write(",".join(row) + "\n")
+        )
 
-        csv_bytes = out.getvalue().encode("utf-8")
-        resp = Response(csv_bytes, mimetype="text/csv")
+        np.savetxt(out, data, delimiter=",", fmt=fmt)
+
+        def generate():
+            yield out.getvalue().encode("utf-8")
+
+        resp = Response(generate(), mimetype="text/csv")
         resp.headers["Content-Disposition"] = "attachment; filename=aegis_dosimetry.csv"
         return resp
 
