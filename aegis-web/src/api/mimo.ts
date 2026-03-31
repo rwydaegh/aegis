@@ -7,6 +7,7 @@ import type {
   DosimetryStats,
 } from './types'
 import { toServer } from './coordinates'
+import { fetchWithRetry } from './client'
 
 async function extractError(res: Response, label: string): Promise<string> {
   const fallback = `${label}: ${res.status} ${res.statusText}`
@@ -52,7 +53,7 @@ export async function computeMIMO(
   signal?: AbortSignal,
 ): Promise<MIMOComputeResponse> {
   const payload = buildMIMOComputePayload(req)
-  const res = await fetch('/api/mimo/compute', {
+  const res = await fetchWithRetry('/api/mimo/compute', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -67,7 +68,7 @@ export async function fetchMIMOResult(
   userId: string,
   signal?: AbortSignal,
 ): Promise<{ sab: Float32Array; stats: DosimetryStats }> {
-  const resp = await fetch(`/api/mimo/result/${userId}`, { signal })
+  const resp = await fetchWithRetry(`/api/mimo/result/${userId}`, { signal })
   if (!resp.ok) throw new Error(await extractError(resp, 'MIMO result fetch failed'))
   const statsHeader = resp.headers.get('X-Stats')
   const stats: DosimetryStats = statsHeader ? JSON.parse(statsHeader) : {}
@@ -80,7 +81,7 @@ export async function fetchMIMOResult(
 export async function fetchMIMOSummary(
   signal?: AbortSignal,
 ): Promise<MIMOSummary> {
-  const resp = await fetch('/api/mimo/summary', { signal })
+  const resp = await fetchWithRetry('/api/mimo/summary', { signal })
   if (!resp.ok) throw new Error(await extractError(resp, 'MIMO summary fetch failed'))
   return resp.json()
 }

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import * as Sentry from '@sentry/react'
+import { fetchWithRetry } from '@/api/client'
 
 export type EnvironmentSource = 'none' | 'voxels' | 'osm' | '3dtiles'
 
@@ -71,7 +72,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
     const { location, osmOptions } = get()
     set({ loading: true, error: null })
     try {
-      const resp = await fetch('/api/environment/geojson', {
+      const resp = await fetchWithRetry('/api/environment/geojson', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -101,7 +102,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
     if (!location) return
     set({ loading: true, error: null })
     try {
-      const resp = await fetch('/api/environment/osm', {
+      const resp = await fetchWithRetry('/api/environment/osm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -138,7 +139,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
     if (!location) return
     set({ loading: true, error: null })
     try {
-      const resp = await fetch('/api/environment/3dtiles', {
+      const resp = await fetchWithRetry('/api/environment/3dtiles', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -163,7 +164,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
   exportForRT: async (format) => {
     set({ loading: true })
     try {
-      const resp = await fetch('/api/environment/export-scene', {
+      const resp = await fetchWithRetry('/api/environment/export-scene', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ format }),

@@ -1,4 +1,4 @@
-import { postJson } from './client'
+import { postJson, fetchWithRetry } from './client'
 import type { DosimetryStats } from './types'
 import type { Archetype } from '@/utils/classifyAntenna'
 
@@ -45,8 +45,12 @@ export async function loadBasestations(params: LoadParams): Promise<LoadResponse
 }
 
 export async function listBasestations(): Promise<LoadResponse> {
-  const res = await fetch('/api/basestations/list')
-  if (!res.ok) throw new Error(`GET /api/basestations/list failed: ${res.status} ${res.statusText}`)
+  const res = await fetchWithRetry('/api/basestations/list')
+  if (!res.ok) {
+    let msg = `GET /api/basestations/list failed: ${res.status} ${res.statusText}`
+    try { const data = await res.json(); if (data?.error) msg = data.error } catch {}
+    throw new Error(msg)
+  }
   return res.json() as Promise<LoadResponse>
 }
 
@@ -71,13 +75,17 @@ export async function computeBasestations(
   params: ComputeParams,
   signal?: AbortSignal,
 ): Promise<ComputeResult> {
-  const res = await fetch('/api/basestations/compute', {
+  const res = await fetchWithRetry('/api/basestations/compute', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
     signal,
   })
-  if (!res.ok) throw new Error(`POST /api/basestations/compute failed: ${res.status} ${res.statusText}`)
+  if (!res.ok) {
+    let msg = `POST /api/basestations/compute failed: ${res.status} ${res.statusText}`
+    try { const data = await res.json(); if (data?.error) msg = data.error } catch {}
+    throw new Error(msg)
+  }
 
   const statsHeader = res.headers.get('X-Stats')
   if (!statsHeader) throw new Error('POST /api/basestations/compute: missing X-Stats header')

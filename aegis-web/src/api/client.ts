@@ -5,6 +5,33 @@ import { toServer, type ScenePos } from './coordinates'
 const BASE = ''
 
 // ---------------------------------------------------------------------------
+// Transient error retry
+// ---------------------------------------------------------------------------
+
+const TRANSIENT_STATUSES = new Set([502, 503, 504])
+const MAX_RETRIES = 2
+
+/** Wrap fetch with automatic retry on transient HTTP errors (502/503/504). */
+export async function fetchWithRetry(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+): Promise<Response> {
+  let lastResponse: Response | undefined
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    if (attempt > 0 && init?.signal?.aborted) break
+    const res = await fetch(input, init)
+    if (!TRANSIENT_STATUSES.has(res.status)) return res
+    lastResponse = res
+    if (attempt < MAX_RETRIES) {
+      const retryAfter = res.headers.get('Retry-After')
+      const delayMs = retryAfter ? Math.min(parseInt(retryAfter, 10) * 1000, 5000) : (attempt + 1) * 1000
+      await new Promise((r) => setTimeout(r, delayMs))
+    }
+  }
+  return lastResponse!
+}
+
+// ---------------------------------------------------------------------------
 // 401 handling - imported lazily to avoid circular dependency
 // ---------------------------------------------------------------------------
 
@@ -32,7 +59,7 @@ async function extractErrorMessage(res: Response, method: string, path: string):
 }
 
 async function getJson<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE}${path}`)
+  const res = await fetchWithRetry(`${BASE}${path}`)
   if (res.status === 401) {
     handle401()
     throw new Error(`GET ${path} failed: 401 Unauthorized`)
@@ -42,7 +69,7 @@ async function getJson<T>(path: string): Promise<T> {
 }
 
 export async function postJson<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetchWithRetry(`${BASE}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -56,7 +83,7 @@ export async function postJson<T>(path: string, body: unknown): Promise<T> {
 }
 
 async function getBinary(path: string): Promise<Response> {
-  const res = await fetch(`${BASE}${path}`)
+  const res = await fetchWithRetry(`${BASE}${path}`)
   if (res.status === 401) {
     handle401()
     throw new Error(`GET ${path} failed: 401 Unauthorized`)
@@ -85,7 +112,7 @@ async function computeEndpoint(
   params: Record<string, unknown>,
   signal?: AbortSignal,
 ): Promise<ComputeResult> {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetchWithRetry(`${BASE}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
@@ -224,7 +251,7 @@ export async function loadSceneGeometry(scenePath: string): Promise<{
   faceColors: Float32Array | null
   meta: { n_vertices: number; n_triangles: number; has_face_colors: boolean }
 }> {
-  const res = await fetch(`${BASE}/api/scene/load`, {
+  const res = await fetchWithRetry(`${BASE}/api/scene/load`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ path: scenePath }),
@@ -255,7 +282,7 @@ export async function fetchHullMesh(): Promise<{
   indices: Int32Array
   faceColors: Float32Array | null
 }> {
-  const res = await fetch(`${BASE}/api/voxels/hull-mesh`)
+  const res = await fetchWithRetry(`${BASE}/api/voxels/hull-mesh`)
   if (!res.ok) throw new Error(`Hull mesh fetch failed: ${res.status}`)
   const meta = JSON.parse(res.headers.get('X-Meta') || '{}')
   const buffer = await res.arrayBuffer()
@@ -390,7 +417,7 @@ export function loadLocation(location: string, radius: number, voxelSize: number
 }
 
 export async function cancelLocation(): Promise<void> {
-  const res = await fetch(`${BASE}/api/location/cancel`, { method: 'POST' })
+  const res = await fetchWithRetry(`${BASE}/api/location/cancel`, { method: 'POST' })
   if (!res.ok) throw new Error(await extractErrorMessage(res, 'POST', '/api/location/cancel'))
 }
 
@@ -436,7 +463,7 @@ export async function fetchPowerSweep(params: {
 }
 
 export async function fetchDosimetryCsv(): Promise<Blob> {
-  const res = await fetch(`${BASE}/api/export/dosimetry-csv`)
+  const res = await fetchWithRetry(`${BASE}/api/export/dosimetry-csv`)
   if (res.status === 401) {
     handle401()
     throw new Error('GET /api/export/dosimetry-csv failed: 401 Unauthorized')
