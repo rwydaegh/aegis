@@ -52,7 +52,8 @@ function GroundPlane() {
 function SceneGrid() {
   const visible = useSceneStore(s => s.gridVisible)
   const config = useSceneStore(s => s.viewerConfig)
-  if (!visible) return null
+  const envSource = useEnvironmentStore(s => s.source)
+  if (!visible || envSource !== 'none') return null
   const grid = config?.scene?.grid as Record<string, unknown> | undefined
   const size = (grid?.size as number) ?? 200
   const divisions = (grid?.divisions as number) ?? 100
