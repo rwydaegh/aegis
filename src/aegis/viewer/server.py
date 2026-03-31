@@ -322,10 +322,13 @@ def _setup_precompute_G(app: Flask, cache: dict) -> None:
                     continue
                 for area in [4e-4]:
                     key = (DosimetryEngine._body_cache_key(body), area)
-                    if key not in DosimetryEngine._G_cache:
+                    with DosimetryEngine._G_lock:
+                        already_cached = key in DosimetryEngine._G_cache
+                    if not already_cached:
                         try:
                             G = precompute_averaging_matrix(body.centroids, body.areas, area)
-                            DosimetryEngine._G_cache[key] = G
+                            with DosimetryEngine._G_lock:
+                                DosimetryEngine._G_cache[key] = G
                             app.logger.info("G(%s, %dcm2) ready (%d nnz)", name, area * 1e4, G.nnz)
                         except Exception as e:
                             app.logger.warning("G(%s) failed: %s", name, e)
@@ -445,7 +448,7 @@ def create_app(
 
             import psutil
 
-            info["cpu_pct"] = round(psutil.cpu_percent(interval=0.1))
+            info["cpu_pct"] = round(psutil.cpu_percent(interval=None))
             info["cpu_cores"] = _os.cpu_count() or 0
             mem = psutil.virtual_memory()
             info["ram_pct"] = round(mem.percent)

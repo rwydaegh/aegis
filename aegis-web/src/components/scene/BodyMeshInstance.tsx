@@ -69,57 +69,58 @@ export default function BodyMeshInstance({
     }
   }
 
-  // Apply heatmap colors when data, scale mode, or dynamic range changes
+  // Apply heatmap colors when data, scale mode, or dynamic range changes.
+  // Writes directly to the typed array backing the BufferAttribute for
+  // performance (avoids per-vertex setXYZ overhead for large meshes).
   useEffect(() => {
     if (!geometry) return
 
     const colorAttr = geometry.getAttribute('color') as THREE.BufferAttribute
     if (!colorAttr) return
+    const buf = colorAttr.array as Float32Array
 
     if (!dataArray) {
-      for (let i = 0; i < colorAttr.count; i++) {
-        colorAttr.setXYZ(i, 0.5, 0.5, 0.5)
-      }
+      buf.fill(0.5)
     } else if (isRatioMode) {
-      // Ratio coloring: same jet colormap as normal mode, but values are ratio to ICNIRP limit.
-      // This preserves the spatial pattern while showing ratio units on the legend.
       const nFaces = dataArray.length
+      const invLimit = ratioLimit > 0 ? 1 / ratioLimit : 0
       let maxRatio = 0
       for (let f = 0; f < nFaces; f++) {
-        const ratio = ratioLimit > 0 ? dataArray[f] / ratioLimit : 0
+        const ratio = dataArray[f] * invLimit
         if (ratio > maxRatio) maxRatio = ratio
       }
       if (maxRatio <= 0) maxRatio = 1
+      const invMax = 1 / maxRatio
 
       for (let f = 0; f < nFaces; f++) {
-        const ratio = ratioLimit > 0 ? dataArray[f] / ratioLimit : 0
-        const t = ratio / maxRatio
+        const t = dataArray[f] * invLimit * invMax
         const [r, g, b] = jetColor(t)
-        colorAttr.setXYZ(f * 3, r, g, b)
-        colorAttr.setXYZ(f * 3 + 1, r, g, b)
-        colorAttr.setXYZ(f * 3 + 2, r, g, b)
+        const base = f * 9
+        buf[base] = r; buf[base + 1] = g; buf[base + 2] = b
+        buf[base + 3] = r; buf[base + 4] = g; buf[base + 5] = b
+        buf[base + 6] = r; buf[base + 7] = g; buf[base + 8] = b
       }
     } else {
       const currentMax = arrayMax(dataArray)
 
-      // When lock is first activated, store the current max
       if (colormapLocked && colormapLockedMax == null) {
         useUIStore.getState().setColormapLockedMax(currentMax)
       }
 
       const maxSab = (colormapLocked && colormapLockedMax != null) ? colormapLockedMax : currentMax
       const nFaces = dataArray.length
+      const invMax = maxSab > 0 ? 1 / maxSab : 0
+      const isDb = legendScale === 'dB'
+
       for (let f = 0; f < nFaces; f++) {
-        let t: number
-        if (legendScale === 'dB') {
-          t = gainTFromLinear(dataArray[f], maxSab, dynamicRangeDb)
-        } else {
-          t = maxSab > 0 ? dataArray[f] / maxSab : 0
-        }
+        const t = isDb
+          ? gainTFromLinear(dataArray[f], maxSab, dynamicRangeDb)
+          : dataArray[f] * invMax
         const [r, g, b] = jetColor(t)
-        colorAttr.setXYZ(f * 3, r, g, b)
-        colorAttr.setXYZ(f * 3 + 1, r, g, b)
-        colorAttr.setXYZ(f * 3 + 2, r, g, b)
+        const base = f * 9
+        buf[base] = r; buf[base + 1] = g; buf[base + 2] = b
+        buf[base + 3] = r; buf[base + 4] = g; buf[base + 5] = b
+        buf[base + 6] = r; buf[base + 7] = g; buf[base + 8] = b
       }
     }
     colorAttr.needsUpdate = true
