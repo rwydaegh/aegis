@@ -1,5 +1,6 @@
 import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
+import { useEnvironmentStore } from '@/stores/environment'
 
 type Backend = 'voxel' | 'differt' | 'sionna'
 
@@ -123,6 +124,8 @@ export default function RayTracingPanel() {
   const hasSionna = caps?.has_sionna ?? false
   const hasVoxels = caps?.has_voxels ?? false
   const hasScenes = scenes.length > 0
+  const envSource = useEnvironmentStore(s => s.source)
+  const hasEnv = envSource === 'osm' || envSource === '3dtiles'
 
   if (!hasDiffert && !hasSionna) {
     return <p className="text-xs text-muted-foreground">No ray tracing backend available</p>
@@ -133,8 +136,10 @@ export default function RayTracingPanel() {
   const sectionClass = "text-[10px] uppercase tracking-wider text-muted-foreground/50 mt-3 mb-1 border-b border-border/30 pb-1"
   const hintClass = "text-[10px] text-muted-foreground/60 ml-1"
 
-  const needsScene = rtSource === 'differt' || rtSource === 'sionna'
-  const sceneReady = needsScene ? !!loadedScenePath : true
+  // DiffeRT works with scene files, voxels, or environment meshes
+  const differtReady = rtSource === 'differt' ? !!(loadedScenePath || hasVoxels || hasEnv) : true
+  const needsScene = rtSource === 'sionna'
+  const sceneReady = needsScene ? !!loadedScenePath : differtReady
 
   const backend: Backend = rtSource
 
@@ -244,13 +249,19 @@ export default function RayTracingPanel() {
             value={rtSource}
             onChange={e => useSceneStore.setState({ rtSource: e.target.value as Backend })}
           >
-            {hasVoxels && <option value="voxel">Voxel environment</option>}
-            {hasDiffert && hasScenes && <option value="differt">Scene (DiffeRT)</option>}
+            {hasVoxels && <option value="voxel">Voxel (Sionna RT)</option>}
+            {hasDiffert && (hasScenes || hasVoxels || hasEnv) && (
+              <option value="differt">
+                {hasScenes ? 'Scene (DiffeRT)' : hasEnv ? 'Environment (DiffeRT)' : 'Voxel (DiffeRT)'}
+              </option>
+            )}
             {hasSionna && hasScenes && <option value="sionna">Scene (Sionna RT)</option>}
           </select>
 
-          {needsScene && !sceneReady && (
-            <p className="text-xs text-amber-400 mt-1">Load a scene first (Scene panel above)</p>
+          {!sceneReady && (
+            <p className="text-xs text-amber-400 mt-1">
+              {needsScene ? 'Load a scene first (Scene panel above)' : 'Load a scene, voxels, or environment first'}
+            </p>
           )}
 
           {/* ── Path solving ── */}
