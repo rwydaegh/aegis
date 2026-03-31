@@ -15,6 +15,14 @@ logger = logging.getLogger(__name__)
 _OCTET_STREAM = "application/octet-stream"
 
 
+def _list_available_regions(data_dir: str) -> list[str]:
+    """Return region names that have CSV data files."""
+    bs_dir = os.path.join(data_dir, "basestations")
+    if not os.path.isdir(bs_dir):
+        return []
+    return [f[:-4] for f in os.listdir(bs_dir) if f.endswith(".csv")]
+
+
 _ISO3166_TO_REGION = {
     "BE-VLG": "flanders",
     "BE-BRU": "brussels",
@@ -144,6 +152,10 @@ def _handle_basestations_load(cache: dict, cache_lock: threading.RLock):
                 technology=params.get("technology"),
                 max_workers=int(params.get("max_workers", 4)),
             )
+    except ImportError:
+        available = _list_available_regions(data_dir)
+        hint = f"Available regions: {', '.join(sorted(available))}" if available else "No base station data files found"
+        return jsonify({"error": f"No base station data for region '{region}'. {hint}"}), 400
     except Exception as exc:
         logger.exception("Failed to load basestations")
         return jsonify({"error": f"Loading failed: {exc}"}), 500
