@@ -90,8 +90,16 @@ export const useSimulationStore = create<SimulationStore>((set) => ({
   displayQuantity: 'sab' as QuantityKey,
   setAntennaPos: (pos) => set({ antennaPos: pos }),
   setMode: (mode) => set({ mode }),
-  setFresnel: (on) => set({ fresnel: on }),
-  setPolarisation: (on) => set({ polarisation: on }),
+  setFresnel: (on) => set(() => {
+    // Polarisation requires Fresnel, so auto-disable it
+    if (!on) return { fresnel: false, polarisation: false }
+    return { fresnel: true }
+  }),
+  setPolarisation: (on) => set(() => {
+    // Polarisation requires Fresnel, so auto-enable it
+    if (on) return { polarisation: true, fresnel: true }
+    return { polarisation: false }
+  }),
   setCurvature: (on) => set({ curvature: on }),
   setDiffraction: (on) => set(() => {
     // Diffraction requires curvature data, so auto-enable it
