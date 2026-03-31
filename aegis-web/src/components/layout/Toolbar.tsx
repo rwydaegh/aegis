@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils'
 import type { DosimetryStats } from '@/api/types'
 import SessionTimer from '@/components/layout/SessionTimer'
 import UserBadges from '@/components/hud/UserBadges'
+import { ScenarioDropdown } from '@/components/hud/ScenarioDropdown'
 import { useActiveSimulation } from '@/hooks/useActiveSimulation'
 import { generateShareUrl } from '@/lib/shareLink'
 
@@ -115,6 +116,7 @@ export default function Toolbar() {
           <BookOpen className="size-3" />
           Docs
         </a>
+        <ScenarioDropdown />
         {scenario && (
           <span className="text-xs text-muted-foreground truncate hidden sm:block">{scenario}</span>
         )}
