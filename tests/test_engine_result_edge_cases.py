@@ -450,6 +450,27 @@ class TestCompliantProperties:
         # peak_sab_averaged returns None when sab_averaged is None
         assert r.compliant_sab is None
 
+    def test_compliant_sab_none_when_freq_out_of_icnirp_range(self):
+        """Sub-6 GHz frequencies are outside the ICNIRP 2020 Sab range."""
+        r = DosimetryResult(
+            sab=np.array([1.0]),
+            p_abs=1.0,
+            fidelity_level=2,
+            sab_averaged=np.array([10.0]),
+            freq_hz=3.5e9,
+        )
+        assert r.compliant_sab is None
+
+    def test_compliant_sab_none_when_freq_above_300ghz(self):
+        r = DosimetryResult(
+            sab=np.array([1.0]),
+            p_abs=1.0,
+            fidelity_level=2,
+            sab_averaged=np.array([10.0]),
+            freq_hz=400e9,
+        )
+        assert r.compliant_sab is None
+
     def test_compliant_sar_none_when_sar_none(self):
         r = DosimetryResult(
             sab=np.array([1.0]),
