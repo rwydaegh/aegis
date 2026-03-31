@@ -27,8 +27,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             expected = hmac.new(client_secret.encode("utf-8"), body, hashlib.sha256).hexdigest()
             if not hmac.compare_digest(signature, expected):
                 log.warning("Sentry webhook signature mismatch: got=%s expected=%s", signature[:8], expected[:8])
-                # Allow through for now - signature verification TBD
-                # return Response("Invalid signature", status=401)
+                return Response("Invalid signature", status=401)
 
         resource = request.headers.get("Sentry-Hook-Resource", "")
         if resource != "issue":

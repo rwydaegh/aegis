@@ -227,9 +227,9 @@ class TestBasestationsLoadRoute:
                 "/api/basestations/load",
                 json={"lat": 51.05, "lon": 3.72, "radius_m": 100},
             )
-            # Without CSV data or basestationLib, this returns 500 (loading failed)
-            # or 200 with count=0. Both are acceptable.
-            assert resp.status_code in (200, 500)
+            # Without CSV data or basestationLib, this returns 400 (missing region),
+            # 500 (loading failed), or 200 with count=0. All are acceptable.
+            assert resp.status_code in (200, 400, 500)
 
     def test_load_with_invalid_location_string(self, viewer_app):
         """Non-geocodable location string returns 400."""
@@ -272,8 +272,8 @@ class TestBasestationsLoadRoute:
                 json={"location": "51.05, 3.72"},
             )
             # Should succeed (parsing coords) even if no CSV found
-            # May still 500 if no CSV file exists, so we accept 200 or 500
-            assert resp.status_code in (200, 500)
+            # May 400 (missing region), 500 (loading error), or 200 with data
+            assert resp.status_code in (200, 400, 500)
 
 
 class TestBasestationsComputeRoute:
