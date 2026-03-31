@@ -236,6 +236,25 @@ class TestEnvironmentFromVoxels:
             resp = c.post("/api/environment/from-voxels", json={})
             assert resp.status_code == 404
 
+    def test_non_numeric_lat_returns_400(self, app):
+        from aegis.viewer.server import _cache, _cache_lock
+
+        positions = np.array([[0, 0, 0]], dtype=np.float32)
+        with _cache_lock:
+            _cache["voxel_positions"] = positions
+            _cache["voxel_materials"] = np.array([1], dtype=np.uint8)
+            _cache["voxel_sizes"] = np.array([0.5], dtype=np.float32)
+
+        with app.test_client() as c:
+            resp = c.post("/api/environment/from-voxels", json={"lat": "abc"})
+            assert resp.status_code == 400
+            assert "numbers" in resp.get_json()["error"]
+
+        with _cache_lock:
+            _cache.pop("voxel_positions", None)
+            _cache.pop("voxel_materials", None)
+            _cache.pop("voxel_sizes", None)
+
     def test_voxels_to_mesh_returns_binary(self, app):
         from aegis.viewer.server import _cache, _cache_lock
 
@@ -323,6 +342,12 @@ class TestEnvironmentGeoJson:
         with app.test_client() as c:
             resp = c.post("/api/environment/geojson", json={"geojson": "not valid json"})
             assert resp.status_code == 400
+
+    def test_non_numeric_lat_returns_400(self, app):
+        with app.test_client() as c:
+            resp = c.post("/api/environment/geojson", json={"geojson": "{}", "lat": "abc"})
+            assert resp.status_code == 400
+            assert "numbers" in resp.get_json()["error"]
 
 
 # ---------------------------------------------------------------------------

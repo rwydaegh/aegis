@@ -142,8 +142,11 @@ def _handle_environment_from_voxels(cache: dict, cache_lock) -> Response:
         return jsonify({"error": "No voxel data in cache"}), 404
 
     body_data = request.get_json(silent=True) or {}
-    lat = float(body_data.get("lat", 0.0))
-    lon = float(body_data.get("lon", 0.0))
+    try:
+        lat = float(body_data.get("lat", 0.0))
+        lon = float(body_data.get("lon", 0.0))
+    except (TypeError, ValueError):
+        return jsonify({"error": "lat and lon must be numbers"}), 400
 
     if sizes is None or len(sizes) == 0:
         cfg_vox = cache.get("config", {}).get("voxels", {})
@@ -351,8 +354,11 @@ def _handle_environment_geojson(cache: dict, cache_lock) -> Response:
     if not geojson_str:
         return jsonify({"error": "geojson field is required"}), 400
 
-    lat = float(body.get("lat", 0))
-    lon = float(body.get("lon", 0))
+    try:
+        lat = float(body.get("lat", 0))
+        lon = float(body.get("lon", 0))
+    except (TypeError, ValueError):
+        return jsonify({"error": "lat and lon must be numbers"}), 400
 
     try:
         mesh = build_environment_from_geojson(geojson_str, lat, lon)

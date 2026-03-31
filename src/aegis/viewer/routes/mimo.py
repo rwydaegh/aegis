@@ -123,7 +123,12 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         # Resolve body meshes (only base bodies needed; compute translates them)
         bodies = {name: entry["body"] for name, entry in cache.get("bodies", {}).items()}
 
-        level = int(params.get("level", 7))
+        try:
+            level = int(params.get("level", 7))
+        except (TypeError, ValueError):
+            return jsonify({"error": "level must be an integer"}), 400
+        if level not in (7, 8):
+            return jsonify({"error": "level must be 7 or 8 for MIMO"}), 400
         precoder_type = str(params.get("precoder_type", "mrt"))
         try:
             summary = compute_mimo_scene_with_bodies(

@@ -359,7 +359,12 @@ def _handle_basestations_compute_mimo(cache: dict, cache_lock: threading.RLock):
     if err:
         return err
 
-    level = int(params.get("level", 7))
+    try:
+        level = int(params.get("level", 7))
+    except (TypeError, ValueError):
+        return jsonify({"error": "level must be an integer"}), 400
+    if level not in (7, 8):
+        return jsonify({"error": "level must be 7 or 8 for MIMO"}), 400
     precoder_type = str(params.get("precoder_type", "mrt"))
 
     # Infer element grid
