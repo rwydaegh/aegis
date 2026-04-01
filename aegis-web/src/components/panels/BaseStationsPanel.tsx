@@ -10,6 +10,7 @@ export default function BaseStationsPanel() {
   const [location, setLocation] = useState('Brussels, Belgium')
   const [radius, setRadius] = useState(500)
   const [autoLoad, setAutoLoad] = useState(false)
+  const [emptyResult, setEmptyResult] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const basestations = useBaseStationsStore(s => s.basestations)
@@ -84,9 +85,11 @@ export default function BaseStationsPanel() {
     try {
       const res = await loadBasestations({ location, radius_m: radius })
       if (res.basestations.length > 0) {
+        setEmptyResult(false)
         const first = res.basestations[0]
         setBasestations(res.basestations, { lat: first.latitude, lon: first.longitude })
       } else {
+        setEmptyResult(true)
         clear()
       }
       useNotificationStore.getState().addNotification(
@@ -171,6 +174,12 @@ export default function BaseStationsPanel() {
           </button>
         )}
       </div>
+
+      {emptyResult && basestations.length === 0 && (
+        <p className="text-xs text-muted-foreground mt-3">
+          No base stations found in this area.
+        </p>
+      )}
 
       {basestations.length > 0 && (
         <>
