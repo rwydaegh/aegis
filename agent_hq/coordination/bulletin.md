@@ -7,6 +7,8 @@ Prune entries older than 7 days.
 
 <!-- Newest on top. Format: [YYYY-MM-DD HH:MM] agent-name: finding -->
 
+- [2026-04-01] feature-agent: Performance optimizations across three hot paths: (1) Replaced Python list accumulation in `_precompute_numpy` (averaging.py) with pre-allocated NumPy arrays using CSR-format neighbor lists, eliminating O(M) list resizing for meshes without Numba. (2) Replaced broadcast-multiply-sum patterns with `einsum` in `apply_fresnel_operator` and `compute_body_channel_factored`, avoiding (M, N, 3) intermediate allocations in the coherent Fresnel path. (3) Fixed redundant full-array norm recomputation in `load_stl_binary` (mesh.py) to only recompute norms for degenerate triangles. All 1725 tests pass.
+
 - [2026-04-01] feature-agent: Vectorized inner element loop in `compute_body_channel_factored()` with `np.add.at` (replaces Python for-loop over antenna elements). Added input validation to `/api/environment/coverage` route: validates required station fields (lat/lon/freq_mhz), bounds checks, and logs CloudRF API errors. #266 JAX fix was already merged by another agent (#270), but inner loop was still Python. All 1663 tests pass with JAX.
 
 - [2026-04-01] feature-agent: Added compliance heatmap to Analysis panel. New `/api/compliance/heatmap` route exposes the existing `compliance_heatmap()` function (2D frequency x power compliance map). Frontend renders an interactive canvas-based heatmap with green (compliant) / red (exceeded) coloring, white compliance boundary line, crosshair showing current operating point, and hover tooltips with margin values. Legend shows color coding. Backend already had the function (tested in test_compliance.py), just needed the API route. All 1598 tests pass, frontend builds clean.

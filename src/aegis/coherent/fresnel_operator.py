@@ -161,9 +161,9 @@ def apply_fresnel_operator(
         Fresnel-transmitted field component per (triangle, path).
     """
     # psi_s = e_s . psi, psi_p = e_p . psi  (scalar projections)
-    # psi: (1, N, 3), e_s: (M, N, 3) -> dot over axis 2
-    psi_s = xp.sum(e_s * psi[None, :, :], axis=2)  # (M, N)
-    psi_p = xp.sum(e_p * psi[None, :, :], axis=2)  # (M, N)
+    # einsum avoids creating (M, N, 3) broadcast intermediate
+    psi_s = xp.einsum("mnj,nj->mn", e_s, psi)  # (M, N)
+    psi_p = xp.einsum("mnj,nj->mn", e_p, psi)  # (M, N)
 
     # F @ psi = t_s * psi_s * e_s + t_p * psi_p * e_p
     F_psi = (t_s * psi_s)[:, :, None] * e_s + (t_p * psi_p)[:, :, None] * e_p

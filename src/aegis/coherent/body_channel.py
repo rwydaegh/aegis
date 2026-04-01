@@ -193,12 +193,13 @@ def compute_body_channel_factored(
         # element_psi layout is element-major: elem j has indices [j*N_center : (j+1)*N_center]
         elem_psi_c = element_psi[c::N_center]  # (M_elem, 3) - psi for each element at direction c
 
-        # Project each element's psi onto TE/TM basis
-        # e_s_c: (M,3), elem_psi_c: (M_elem,3) -> dot products
-        proj_s = xp.sum(e_s_c[None, :, :] * elem_psi_c[:, None, :], axis=2)  # (M_elem, M)
-        proj_p = xp.sum(e_p_c[None, :, :] * elem_psi_c[:, None, :], axis=2)  # (M_elem, M)
+        # Project each element's psi onto TE/TM basis using einsum
+        # Avoids creating (M_elem, M, 3) broadcast intermediate for the dot product
+        proj_s = xp.einsum("mj,ej->em", e_s_c, elem_psi_c)  # (M_elem, M)
+        proj_p = xp.einsum("mj,ej->em", e_p_c, elem_psi_c)  # (M_elem, M)
 
         # F @ psi for each element: (M_elem, M, 3)
+        # t_s_c * proj_s: (M_elem, M), broadcast with e_s_c: (M, 3)
         F_psi_elems = (t_s_c[None, :] * proj_s)[:, :, None] * e_s_c[None, :, :] + (t_p_c[None, :] * proj_p)[
             :, :, None
         ] * e_p_c[None, :, :]  # (M_elem, M, 3)

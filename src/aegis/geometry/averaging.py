@@ -215,21 +215,34 @@ def _precompute_numba(centroids, areas, all_neighbors, target_area_m2, M):
 
 
 def _precompute_numpy(centroids, areas, all_neighbors, target_area_m2, M):
-    """Pure-NumPy fallback (original algorithm)."""
-    rows: list[int] = []
-    cols: list[int] = []
-    vals: list[float] = []
+    """Pure-NumPy fallback with pre-allocated COO arrays.
+
+    Uses the same pre-allocation strategy as the Numba path to avoid
+    expensive Python list accumulation and repeated memory allocation.
+    """
+    nb_indices, nb_indptr = _flatten_neighbor_lists(all_neighbors)
+
+    # Upper bound on nnz: each row writes at most k_i entries (cutoff <= k_i),
+    # plus one self-entry for rows with no neighbors.
+    nnz_est = len(nb_indices) + M
+    rows = np.empty(nnz_est, dtype=np.int64)
+    cols = np.empty(nnz_est, dtype=np.int64)
+    vals = np.empty(nnz_est, dtype=np.float64)
+    pos = 0
 
     for i in range(M):
-        idx = all_neighbors[i]
+        start = nb_indptr[i]
+        end = nb_indptr[i + 1]
+        k = end - start
 
-        if len(idx) == 0:
-            rows.append(i)
-            cols.append(i)
-            vals.append(1.0)
+        if k == 0:
+            rows[pos] = i
+            cols[pos] = i
+            vals[pos] = 1.0
+            pos += 1
             continue
 
-        idx = np.asarray(idx)
+        idx = nb_indices[start:end]
 
         # Sort by squared distance (sqrt unnecessary for ordering)
         diffs = centroids[idx] - centroids[i]
@@ -246,15 +259,16 @@ def _precompute_numpy(centroids, areas, all_neighbors, target_area_m2, M):
         patch_idx = idx_sorted[:cutoff]
         patch_areas = areas[patch_idx]
         total = patch_areas.sum()
-        weights = np.full(len(patch_idx), 1.0 / len(patch_idx)) if total <= 0 else patch_areas / total
+        weights = patch_areas / total if total > 0 else np.full(cutoff, 1.0 / cutoff)
 
         n = len(patch_idx)
-        rows.extend([i] * n)
-        cols.extend(patch_idx.tolist())
-        vals.extend(weights.tolist())
+        rows[pos : pos + n] = i
+        cols[pos : pos + n] = patch_idx
+        vals[pos : pos + n] = weights
+        pos += n
 
     return sparse.csr_array(
-        (np.array(vals), (np.array(rows), np.array(cols))),
+        (vals[:pos], (rows[:pos], cols[:pos])),
         shape=(M, M),
     )
 
