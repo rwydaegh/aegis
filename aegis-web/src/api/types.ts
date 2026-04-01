@@ -230,6 +230,17 @@ export interface ComputeTimings {
   [key: string]: number
 }
 
+export interface ExposureDistribution {
+  mean: number
+  median: number
+  p95: number
+  p99: number
+  illuminated_fraction: number
+  illuminated_area_cm2: number | null
+  illuminated_mean: number
+  illuminated_p50: number
+}
+
 export interface DosimetryStats {
   p_abs: number
   p_abs_mw: number
@@ -255,6 +266,7 @@ export interface DosimetryStats {
   tissue_sigma: number
   gpu_backend?: string | null
   cold_start?: boolean
+  distribution?: ExposureDistribution
 }
 
 export interface PathViz {

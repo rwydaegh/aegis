@@ -1,7 +1,9 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import * as Sentry from '@sentry/react'
 import { AnalysisEmptyState } from './AnalysisEmptyState'
 import {
+  BarChart,
+  Bar,
   LineChart,
   Line,
   XAxis,
@@ -10,6 +12,7 @@ import {
   ResponsiveContainer,
   Tooltip,
   Area,
+  Cell,
 } from 'recharts'
 import { useSimulationStore } from '@/stores/simulation'
 import { useUIStore } from '@/stores/ui'
@@ -733,11 +736,262 @@ function ComplianceHeatmapSection() {
 }
 
 // ---------------------------------------------------------------------------
+// Exposure distribution section
+// ---------------------------------------------------------------------------
+
+function formatSab(v: number): string {
+  if (v === 0) return '0'
+  if (v < 0.01) return v.toExponential(1)
+  if (v < 1) return v.toFixed(3)
+  if (v < 100) return v.toFixed(2)
+  return v.toFixed(1)
+}
+
+function ExposureDistributionSection() {
+  const { stats, sabArray } = useActiveSimulation()
+  const dist = stats?.distribution
+
+  if (!dist || !sabArray || sabArray.length === 0) {
+    return (
+      <span className="text-[10px] text-muted-foreground/50">
+        Run a compute first
+      </span>
+    )
+  }
+
+  const illumPct = (dist.illuminated_fraction * 100).toFixed(1)
+
+  return (
+    <div className="space-y-2">
+      <p className="text-[10px] text-muted-foreground/60 mb-2">
+        Distribution of absorbed power density across the body mesh.
+      </p>
+
+      {/* Illumination coverage */}
+      <div className="space-y-1">
+        <div className="flex items-center justify-between text-[11px]">
+          <span className="text-muted-foreground">Illuminated</span>
+          <span className="font-mono text-foreground">
+            {illumPct}%
+            <span className="text-muted-foreground ml-1">
+              ({stats.n_illuminated.toLocaleString()} / {stats.n_triangles.toLocaleString()})
+            </span>
+          </span>
+        </div>
+        <div className="h-1.5 bg-muted/50 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-primary/70 rounded-full transition-all"
+            style={{ width: `${Math.min(dist.illuminated_fraction * 100, 100)}%` }}
+          />
+        </div>
+      </div>
+
+      {dist.illuminated_area_cm2 != null && (
+        <div className="flex items-center justify-between text-[11px]">
+          <span className="text-muted-foreground">Illuminated area</span>
+          <span className="font-mono text-foreground">{dist.illuminated_area_cm2.toFixed(1)} cm&sup2;</span>
+        </div>
+      )}
+
+      {/* Distribution table */}
+      <div className="border border-border/40 rounded overflow-hidden">
+        <table className="w-full text-[11px]">
+          <thead>
+            <tr className="bg-muted/30 text-muted-foreground">
+              <th className="text-left py-1 px-2 font-medium">Statistic</th>
+              <th className="text-right py-1 px-2 font-medium">W/m&sup2;</th>
+            </tr>
+          </thead>
+          <tbody className="font-mono">
+            <tr className="border-t border-border/20">
+              <td className="py-0.5 px-2 text-muted-foreground">Peak</td>
+              <td className="py-0.5 px-2 text-right text-foreground">{formatSab(stats.peak_sab)}</td>
+            </tr>
+            <tr className="border-t border-border/20">
+              <td className="py-0.5 px-2 text-muted-foreground">P99</td>
+              <td className="py-0.5 px-2 text-right text-foreground">{formatSab(dist.p99)}</td>
+            </tr>
+            <tr className="border-t border-border/20">
+              <td className="py-0.5 px-2 text-muted-foreground">P95</td>
+              <td className="py-0.5 px-2 text-right text-foreground">{formatSab(dist.p95)}</td>
+            </tr>
+            <tr className="border-t border-border/20">
+              <td className="py-0.5 px-2 text-muted-foreground">Mean (all)</td>
+              <td className="py-0.5 px-2 text-right text-foreground">{formatSab(dist.mean)}</td>
+            </tr>
+            <tr className="border-t border-border/20">
+              <td className="py-0.5 px-2 text-muted-foreground">Mean (illuminated)</td>
+              <td className="py-0.5 px-2 text-right text-foreground">{formatSab(dist.illuminated_mean)}</td>
+            </tr>
+            <tr className="border-t border-border/20">
+              <td className="py-0.5 px-2 text-muted-foreground">Median (illuminated)</td>
+              <td className="py-0.5 px-2 text-right text-foreground">{formatSab(dist.illuminated_p50)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// SAB histogram section (client-side)
+// ---------------------------------------------------------------------------
+
+function computeHistogram(arr: Float32Array, nBins: number): { bins: { x0: number; x1: number; count: number; label: string }[]; maxCount: number } {
+  // Only histogram positive values (exposed triangles)
+  const positive: number[] = []
+  for (let i = 0; i < arr.length; i++) {
+    if (arr[i] > 0) positive.push(arr[i])
+  }
+  if (positive.length === 0) return { bins: [], maxCount: 0 }
+
+  // Use log-scale bins for better visualization of power density distributions
+  const minVal = Math.min(...positive)
+  const maxVal = Math.max(...positive)
+
+  if (minVal === maxVal) {
+    return {
+      bins: [{ x0: minVal * 0.9, x1: maxVal * 1.1, count: positive.length, label: formatSab(minVal) }],
+      maxCount: positive.length,
+    }
+  }
+
+  const logMin = Math.log10(Math.max(minVal, 1e-12))
+  const logMax = Math.log10(maxVal)
+  const binWidth = (logMax - logMin) / nBins
+
+  const bins: { x0: number; x1: number; count: number; label: string }[] = []
+  for (let i = 0; i < nBins; i++) {
+    const x0 = Math.pow(10, logMin + i * binWidth)
+    const x1 = Math.pow(10, logMin + (i + 1) * binWidth)
+    bins.push({ x0, x1, count: 0, label: formatSab(x0) })
+  }
+
+  for (const v of positive) {
+    let idx = Math.floor((Math.log10(v) - logMin) / binWidth)
+    if (idx < 0) idx = 0
+    if (idx >= nBins) idx = nBins - 1
+    bins[idx].count++
+  }
+
+  const maxCount = Math.max(...bins.map(b => b.count))
+  return { bins, maxCount }
+}
+
+function SabHistogramSection() {
+  const { sabArray, stats } = useActiveSimulation()
+
+  const histogram = useMemo(() => {
+    if (!sabArray || sabArray.length === 0) return null
+    return computeHistogram(sabArray, 24)
+  }, [sabArray])
+
+  if (!histogram || histogram.bins.length === 0 || !stats) {
+    return (
+      <span className="text-[10px] text-muted-foreground/50">
+        Run a compute first
+      </span>
+    )
+  }
+
+  const limit = stats.compliance?.checks.find(c => c.label.includes('4 cm'))?.limit
+  const chartData = histogram.bins.map((b, i) => ({
+    idx: i,
+    count: b.count,
+    label: b.label,
+    x0: b.x0,
+    x1: b.x1,
+    aboveLimit: limit != null && b.x0 >= limit,
+  }))
+
+  return (
+    <div>
+      <p className="text-[10px] text-muted-foreground/60 mb-2">
+        Distribution of S_ab across illuminated triangles (log-scale bins).
+      </p>
+      <ResponsiveContainer width="100%" height={130}>
+        <BarChart data={chartData} margin={{ top: 4, right: 8, bottom: 16, left: 0 }}>
+          <XAxis
+            dataKey="label"
+            tick={{ fontSize: 8, fill: '#888' }}
+            interval={Math.max(0, Math.floor(chartData.length / 5) - 1)}
+            label={{
+              value: 'S_ab (W/m\u00B2)',
+              position: 'bottom',
+              fontSize: 9,
+              fill: '#666',
+              offset: 0,
+            }}
+          />
+          <YAxis
+            tick={{ fontSize: 9, fill: '#888' }}
+            width={35}
+            label={{
+              value: 'triangles',
+              angle: -90,
+              position: 'insideLeft',
+              fontSize: 9,
+              fill: '#666',
+              offset: 10,
+            }}
+          />
+          <Tooltip
+            contentStyle={{
+              background: 'rgba(0,0,0,0.85)',
+              border: '1px solid #333',
+              borderRadius: 4,
+              fontSize: 11,
+            }}
+            formatter={(value) => [Number(value).toLocaleString(), 'Triangles']}
+            labelFormatter={(_label, payload) => {
+              const d = (payload as unknown as Array<{ payload?: { x0: number; x1: number } }>)?.[0]?.payload
+              if (!d) return ''
+              return `${formatSab(d.x0)} - ${formatSab(d.x1)} W/m\u00B2`
+            }}
+          />
+          {limit != null && (
+            <ReferenceLine
+              x={chartData.findIndex(d => d.x0 >= limit)}
+              stroke="#f87171"
+              strokeDasharray="4 2"
+              strokeWidth={1.5}
+              label={{ value: 'limit', position: 'top', fontSize: 8, fill: '#f87171' }}
+            />
+          )}
+          <Bar dataKey="count" radius={[2, 2, 0, 0]}>
+            {chartData.map((entry, idx) => (
+              <Cell
+                key={idx}
+                fill={entry.aboveLimit ? '#f87171' : '#4ade80'}
+                fillOpacity={0.7}
+              />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+      <div className="mt-1 flex items-center gap-3 text-[10px] text-muted-foreground">
+        <span className="flex items-center gap-1">
+          <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: 'rgba(74,222,128,0.7)' }} />
+          Below limit
+        </span>
+        {limit != null && (
+          <span className="flex items-center gap-1">
+            <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: 'rgba(248,113,113,0.7)' }} />
+            Above limit
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Main panel
 // ---------------------------------------------------------------------------
 
 export default function AnalysisPanel() {
-  const [openSection, setOpenSection] = useState<string | null>('power')
+  const [openSection, setOpenSection] = useState<string | null>('distribution')
 
   function toggle(key: string) {
     setOpenSection((prev) => (prev === key ? null : key))
@@ -746,6 +1000,20 @@ export default function AnalysisPanel() {
   return (
     <div>
       <AnalysisEmptyState />
+      <Section
+        title="Exposure distribution"
+        open={openSection === 'distribution'}
+        onToggle={() => toggle('distribution')}
+      >
+        <ExposureDistributionSection />
+      </Section>
+      <Section
+        title="SAB histogram"
+        open={openSection === 'histogram'}
+        onToggle={() => toggle('histogram')}
+      >
+        <SabHistogramSection />
+      </Section>
       <Section
         title="Power sweep"
         open={openSection === 'power'}
