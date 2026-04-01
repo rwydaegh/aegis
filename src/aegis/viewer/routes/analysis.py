@@ -231,6 +231,65 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         )
 
     # ------------------------------------------------------------------
+    # GET /api/compliance/heatmap
+    # ------------------------------------------------------------------
+    @app.route("/api/compliance/heatmap")
+    def compliance_heatmap_route():
+        """2D compliance margin over (frequency, power) plane."""
+        from aegis.compliance import ExposureScenario, compliance_heatmap
+
+        sab_4cm2 = request.args.get("sab_4cm2", type=float)
+        freq_hz = request.args.get("freq_hz", type=float)
+        ref_power_dbm = request.args.get("ref_power_dbm", type=float)
+
+        if sab_4cm2 is None or freq_hz is None or ref_power_dbm is None:
+            return jsonify({"error": "sab_4cm2, freq_hz, and ref_power_dbm are required"}), 400
+        if freq_hz <= 0:
+            return jsonify({"error": "freq_hz must be positive"}), 400
+
+        scenario_str = request.args.get("scenario", "general_public")
+        scenario = ExposureScenario.OCCUPATIONAL if scenario_str == "occupational" else ExposureScenario.GENERAL_PUBLIC
+
+        sinc_local = request.args.get("sinc_local", type=float)
+        n_freq = request.args.get("n_freq", 40, type=int)
+        n_power = request.args.get("n_power", 40, type=int)
+        n_freq = min(max(n_freq, 10), 100)
+        n_power = min(max(n_power, 10), 100)
+
+        ref_power_w = 10.0 ** ((ref_power_dbm - 30) / 10.0)
+
+        try:
+            result = compliance_heatmap(
+                sab_4cm2=sab_4cm2,
+                ref_power_w=ref_power_w,
+                scenario=scenario,
+                n_freq=n_freq,
+                n_power=n_power,
+                sinc_local=sinc_local,
+            )
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+
+        # Flatten 2D arrays for JSON transport (row-major: power varies fastest)
+        margin_flat = result["margin_db"].tolist()
+        compliant_flat = result["compliant"].tolist()
+
+        p_max_per_freq = result["p_max_per_freq"]
+        p_max_dbm_per_freq = (10.0 * np.log10(np.clip(p_max_per_freq, 1e-30, None) * 1e3)).tolist()
+
+        return jsonify(
+            {
+                "freq_ghz": (result["freq_hz"] / 1e9).tolist(),
+                "power_dbm": result["power_dbm"].tolist(),
+                "margin_db": margin_flat,
+                "compliant": compliant_flat,
+                "p_max_dbm_per_freq": p_max_dbm_per_freq,
+                "n_freq": n_freq,
+                "n_power": n_power,
+            }
+        )
+
+    # ------------------------------------------------------------------
     # GET /api/compliance/frequency-sweep
     # ------------------------------------------------------------------
     @app.route("/api/compliance/frequency-sweep")
