@@ -74,7 +74,6 @@ export default function ParametersPanel() {
 
   const config = useSceneStore((s) => s.viewerConfig)
   const caps = useSceneStore((s) => s.capabilities)
-  const pathSource = useSceneStore((s) => s.pathSource)
 
   if (!config || !caps) return null
 

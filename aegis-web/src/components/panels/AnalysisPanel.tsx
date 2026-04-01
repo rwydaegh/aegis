@@ -408,7 +408,6 @@ function FrequencySweepSection() {
 
 function DistanceSweepSection() {
   const { stats } = useActiveSimulation()
-  const freqGhz = useSimulationStore((s) => s.freqGhz)
 
   const marginDb = stats?.compliance?.margin_db
   const distanceM = stats?.distance_m
