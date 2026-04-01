@@ -43,6 +43,8 @@ desktop.ini
 !data/*.stl
 !data/*.db
 !data/*.csv
+!data/antenna_patterns/index.sqlite.gz
+data/antenna_patterns/msi_raw/
 !tests/fixtures/e2e_lab/e2e_icosahedron.stl
 
 # MkDocs build
