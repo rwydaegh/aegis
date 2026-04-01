@@ -137,7 +137,7 @@ def test_terrain_grid_for_location_with_tile(monkeypatch):
     assert elev_range > 0.0
 
 
-def test_fetch_hgt_404(monkeypatch):
+def test_fetch_hgt_404(monkeypatch, tmp_path):
     """fetch_hgt returns None for 404 (ocean tile)."""
     from urllib.error import HTTPError
 
@@ -145,5 +145,6 @@ def test_fetch_hgt_404(monkeypatch):
         raise HTTPError(url="", code=404, msg="Not Found", hdrs=None, fp=None)
 
     monkeypatch.setattr("aegis.environment.terrain.urlopen", mock_urlopen)
+    monkeypatch.setattr("aegis.environment.terrain._srtm_cache_dir", lambda: tmp_path)
     result = fetch_hgt(0.0, 0.0)
     assert result is None
