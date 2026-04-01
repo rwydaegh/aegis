@@ -196,6 +196,46 @@ class TestMIMOSummary:
         assert data["precoder"] == "mrt"
 
 
+class TestMIMOInputValidation:
+    """Regression tests for freq_hz/power_dbm validation in _build_scene."""
+
+    def test_non_numeric_freq_hz_returns_400(self, client):
+        resp = client.post(
+            "/api/mimo/compute",
+            json={
+                "array": {"type": "upa", "n_h": 2, "n_v": 1, "position": [5, 0, 3], "broadside": [-1, 0, 0]},
+                "users": [{"id": "u1", "phantom": "thelonious", "position": [0, 0, 0]}],
+                "freq_hz": "not_a_number",
+            },
+        )
+        assert resp.status_code == 400
+        assert "freq_hz" in resp.get_json()["error"]
+
+    def test_zero_freq_hz_returns_400(self, client):
+        resp = client.post(
+            "/api/mimo/compute",
+            json={
+                "array": {"type": "upa", "n_h": 2, "n_v": 1, "position": [5, 0, 3], "broadside": [-1, 0, 0]},
+                "users": [{"id": "u1", "phantom": "thelonious", "position": [0, 0, 0]}],
+                "freq_hz": 0,
+            },
+        )
+        assert resp.status_code == 400
+        assert "freq_hz" in resp.get_json()["error"]
+
+    def test_non_numeric_power_dbm_returns_400(self, client):
+        resp = client.post(
+            "/api/mimo/compute",
+            json={
+                "array": {"type": "upa", "n_h": 2, "n_v": 1, "position": [5, 0, 3], "broadside": [-1, 0, 0]},
+                "users": [{"id": "u1", "phantom": "thelonious", "position": [0, 0, 0]}],
+                "power_dbm": "abc",
+            },
+        )
+        assert resp.status_code == 400
+        assert "power_dbm" in resp.get_json()["error"]
+
+
 _ARRAY_CFG = {"type": "upa", "n_h": 4, "n_v": 4, "position": [5, 0, 3], "broadside": [-1, 0, 0]}
 
 

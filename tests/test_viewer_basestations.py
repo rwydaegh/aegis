@@ -420,6 +420,31 @@ class TestBasestationsComputeRoute:
             _cache.pop("basestations", None)
             _cache.pop("basestations_origin", None)
 
+    def test_non_numeric_max_distance_returns_400(self, viewer_app):
+        """Non-numeric max_distance_m should return 400 not 500."""
+        from aegis.viewer.server import _cache, _cache_lock
+
+        bs = _make_bs()
+        with _cache_lock:
+            body = _cache.get("body")
+            _cache["basestations"] = [bs]
+            _cache["basestations_origin"] = (51.050, 3.720)
+
+        if body is None:
+            pytest.skip("No body mesh loaded in test fixture")
+
+        with viewer_app.test_client() as c:
+            resp = c.post(
+                "/api/basestations/compute",
+                json={"max_distance_m": "not_a_number"},
+            )
+            assert resp.status_code == 400
+            assert "max_distance_m" in resp.get_json()["error"]
+
+        with _cache_lock:
+            _cache.pop("basestations", None)
+            _cache.pop("basestations_origin", None)
+
 
 class TestBasestationsComputeMimoRoute:
     """POST /api/basestations/compute_mimo"""

@@ -452,3 +452,27 @@ class TestTerrainElevation:
         assert "vertices" in cached
         assert "triangles" in cached
         assert "meta" in cached
+
+    def test_non_numeric_lat_returns_400(self, app):
+        with app.test_client() as c:
+            resp = c.post("/api/terrain/elevation", json={"lat": "abc", "lon": 3.72})
+            assert resp.status_code == 400
+            assert "must be numbers" in resp.get_json()["error"]
+
+    def test_non_numeric_radius_returns_400(self, app):
+        with app.test_client() as c:
+            resp = c.post("/api/terrain/elevation", json={"lat": 51.0, "lon": 3.7, "radius": "xyz"})
+            assert resp.status_code == 400
+            assert "must be numbers" in resp.get_json()["error"]
+
+    def test_lat_out_of_range_returns_400(self, app):
+        with app.test_client() as c:
+            resp = c.post("/api/terrain/elevation", json={"lat": 95.0, "lon": 3.72})
+            assert resp.status_code == 400
+            assert "lat" in resp.get_json()["error"]
+
+    def test_radius_out_of_range_returns_400(self, app):
+        with app.test_client() as c:
+            resp = c.post("/api/terrain/elevation", json={"lat": 51.0, "lon": 3.7, "radius": 10000})
+            assert resp.status_code == 400
+            assert "radius" in resp.get_json()["error"]

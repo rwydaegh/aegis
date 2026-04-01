@@ -35,8 +35,16 @@ def _build_scene(params: dict, cache: dict) -> tuple[MIMOScene | None, Response 
         dupes = [uid for uid in set(user_ids) if user_ids.count(uid) > 1]
         return None, (jsonify({"error": f"Duplicate user IDs: {dupes}"}), 400)
 
-    freq_hz = float(params.get("freq_hz", DEFAULT_FREQ_HZ))
-    power_dbm = float(params.get("power_dbm", 30.0))
+    try:
+        freq_hz = float(params.get("freq_hz", DEFAULT_FREQ_HZ))
+    except (TypeError, ValueError):
+        return None, (jsonify({"error": "freq_hz must be a number"}), 400)
+    if freq_hz <= 0:
+        return None, (jsonify({"error": "freq_hz must be positive"}), 400)
+    try:
+        power_dbm = float(params.get("power_dbm", 30.0))
+    except (TypeError, ValueError):
+        return None, (jsonify({"error": "power_dbm must be a number"}), 400)
     total_power = 10 ** ((power_dbm - 30) / 10)
 
     wavelength = C_0 / freq_hz
