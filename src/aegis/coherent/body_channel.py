@@ -176,7 +176,9 @@ def compute_body_channel_factored(
     # For each expanded path, apply F @ psi_n using precomputed Fresnel components
     # element_psi is laid out as [elem0_path0..N, elem1_path0..N, ...] (element-major)
     # so expanded path (j * N_center + c) maps to center path c
-    G = xp.zeros((M, 3, n_elements), dtype=complex)
+    # Accumulate in numpy (mutable) then convert to xp at the end.
+    # JAX arrays are immutable and do not support in-place +=.
+    G = np.zeros((M, 3, n_elements), dtype=complex)
 
     for c in range(N_center):
         # Fresnel-filtered psi for each element at center direction c
@@ -209,6 +211,7 @@ def compute_body_channel_factored(
         # Each element's index for this center path
         elem_indices = element_index[c::N_center]  # (M_elem,)
         for j_local in range(M_elem):
-            G[:, :, elem_indices[j_local]] += weighted_elems[j_local]
+            idx = int(elem_indices[j_local])
+            G[:, :, idx] += np.asarray(weighted_elems[j_local])
 
-    return G
+    return xp.asarray(G)
