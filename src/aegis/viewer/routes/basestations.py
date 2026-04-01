@@ -122,9 +122,36 @@ def _handle_basestations_load(cache: dict, cache_lock: threading.RLock):
         dlon = radius_m / (111_320.0 * cos_lat)
         bbox = [lon - dlon, lon + dlon, lat - dlat, lat + dlat]
 
-    # Resolve region for Belgium based on Nominatim address or coordinates
-    country = params.get("country", "Belgium")
+    # Resolve country from geocoded address if not explicitly provided
+    country = params.get("country")
+    if country is None:
+        country = address.get("country", "Belgium")
     region = params.get("region")
+
+    # Map country name or code to region name for Parquet lookup
+    _COUNTRY_TO_REGION: dict[str, str] = {
+        "netherlands": "netherlands",
+        "nederland": "netherlands",
+        "nl": "netherlands",
+        "germany": "germany",
+        "deutschland": "germany",
+        "de": "germany",
+        "austria": "austria",
+        "österreich": "austria",
+        "at": "austria",
+        "australia": "australia",
+        "au": "australia",
+        "france": "france",
+        "fr": "france",
+        "denmark": "denmark",
+        "danmark": "denmark",
+        "dk": "denmark",
+    }
+    # Also resolve from country_code if available
+    country_code = address.get("country_code", "").lower()
+    if country_code in _COUNTRY_TO_REGION:
+        country = country_code
+
     if region is None and country.strip().lower() == "belgium":
         if "lat" in params and "lon" in params:
             region = _resolve_belgian_region(address, float(params["lat"]), float(params["lon"]))
@@ -132,7 +159,7 @@ def _handle_basestations_load(cache: dict, cache_lock: threading.RLock):
         else:
             region = "brussels"
     elif region is None:
-        region = ""
+        region = _COUNTRY_TO_REGION.get(country.strip().lower(), "")
 
     # Try merged Parquet first (fast, with provenance), then CSV, then API
     data_dir = os.environ.get("AEGIS_DATA_DIR", "data")
