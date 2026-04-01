@@ -86,7 +86,10 @@ export default function Toolbar() {
   const { sidebarOpen, wireframe, cameraMode, toggleSidebar, toggleWireframe, setCameraPreset, setCameraMode, setStatusMessage, toggleHelp } = useUIStore()
   const mimoEnabled = useMIMOStore(s => s.enabled)
 
-  const scenario = viewerConfig?.active_scenario_description ?? viewerConfig?.active_scenario ?? null
+  const activeScenario = useUIStore(s => s.activeScenario)
+  const scenario = activeScenario
+    ? (viewerConfig?.scenarios?.[activeScenario]?.description ?? activeScenario)
+    : (viewerConfig?.active_scenario_description ?? viewerConfig?.active_scenario ?? null)
 
   function handleCameraPreset(preset: CameraPreset & string) {
     setCameraMode('orbit')
