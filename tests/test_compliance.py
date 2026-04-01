@@ -285,10 +285,10 @@ class TestEvaluateCompliance:
         assert r.sinc_whole_body is None
         assert len(r.all_checks) == 1
 
-    def test_no_checks_overall_pass(self) -> None:
-        """With no values, overall_pass is vacuously True."""
+    def test_no_checks_overall_pass_none(self) -> None:
+        """With no values, overall_pass is None (indeterminate)."""
         r = evaluate_compliance(freq_hz=28.0e9)
-        assert r.overall_pass is True
+        assert r.overall_pass is None
         assert r.margin_db == float("inf")
 
     def test_occupational_scenario(self) -> None:
@@ -460,9 +460,9 @@ def _empty_result() -> ComplianceResult:
 
 
 class TestComplianceResult:
-    def test_no_checks_overall_pass_true(self) -> None:
+    def test_no_checks_overall_pass_none(self) -> None:
         result = _empty_result()
-        assert result.overall_pass is True
+        assert result.overall_pass is None
 
     def test_no_checks_margin_db_inf(self) -> None:
         result = _empty_result()

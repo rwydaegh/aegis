@@ -159,9 +159,12 @@ class ComplianceResult:
         return checks
 
     @property
-    def overall_pass(self) -> bool:
-        """True if all checks pass. True vacuously if no checks present."""
-        return all(c.compliant for c in self.all_checks)
+    def overall_pass(self) -> bool | None:
+        """True if all checks pass, False if any fail, None if no checks present."""
+        checks = self.all_checks
+        if not checks:
+            return None
+        return all(c.compliant for c in checks)
 
     @property
     def margin_db(self) -> float:
