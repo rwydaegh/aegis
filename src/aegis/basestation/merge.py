@@ -141,6 +141,10 @@ def estimate_with_provenance(
                         if src_col in df.columns:
                             df.at[idx, src_col] = "est:tech+band"
     if reference_df is not None:
+        reference_df = reference_df.copy()
+        for col in NUMERIC_COLS:
+            if col in reference_df.columns:
+                reference_df[col] = pd.to_numeric(reference_df[col], errors="coerce")
         ref_has_fb = "FrequencyBand" in reference_df.columns and reference_df["FrequencyBand"].notna().any()
         if ref_has_fb:
             ref_means = reference_df.groupby(["Technology", "FrequencyBand"])[NUMERIC_COLS].median()

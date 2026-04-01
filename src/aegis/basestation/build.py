@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import multiprocessing
 import os
 import sys
 from pathlib import Path
@@ -142,17 +143,69 @@ def _extract_opencellid(source: dict, region_name: str, force: bool = False) -> 
     return df
 
 
-def _extract_region(region_name: str, region_cfg: dict, force: bool = False) -> None:
+def _extract_source_worker(args: tuple) -> None:
+    """Top-level worker for multiprocessing (must be picklable)."""
+    src_type, source, region_name, force = args
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+    if src_type == "basestationlib":
+        _extract_basestationlib(source, region_name, force=force)
+    elif src_type == "mastedatabasen":
+        _extract_mastedatabasen(source, region_name, force=force)
+    elif src_type == "opencellid":
+        _extract_opencellid(source, region_name, force=force)
+    else:
+        logging.warning("Unknown source type: %s", src_type)
+
+
+def _extract_region(region_name: str, region_cfg: dict, force: bool = False, timeout_s: int = 0) -> None:
+    """Extract all sources for a region.
+
+    Args:
+        timeout_s: Per-source timeout in seconds. 0 means no timeout (default).
+                   Uses a subprocess for isolation so stuck downloads can be killed.
+    """
     for source in region_cfg.get("sources", []):
         src_type = source.get("type", "")
-        if src_type == "basestationlib":
-            _extract_basestationlib(source, region_name, force=force)
-        elif src_type == "mastedatabasen":
-            _extract_mastedatabasen(source, region_name, force=force)
-        elif src_type == "opencellid":
-            _extract_opencellid(source, region_name, force=force)
+        # Use per-source timeout from config, falling back to argument, falling back to 0 (none)
+        src_timeout = source.get("timeout_s", timeout_s)
+
+        if src_timeout > 0:
+            ctx = multiprocessing.get_context("fork")
+            proc = ctx.Process(
+                target=_extract_source_worker,
+                args=((src_type, source, region_name, force),),
+                daemon=True,
+            )
+            proc.start()
+            proc.join(timeout=src_timeout)
+            if proc.is_alive():
+                logger.warning(
+                    "Extraction for %s (%s) timed out after %ds, killing",
+                    region_name,
+                    src_type,
+                    src_timeout,
+                )
+                proc.kill()
+                proc.join()
+            elif proc.exitcode != 0:
+                logger.error(
+                    "Extraction for %s (%s) exited with code %d",
+                    region_name,
+                    src_type,
+                    proc.exitcode,
+                )
         else:
-            logger.warning("Unknown source type: %s", src_type)
+            try:
+                if src_type == "basestationlib":
+                    _extract_basestationlib(source, region_name, force=force)
+                elif src_type == "mastedatabasen":
+                    _extract_mastedatabasen(source, region_name, force=force)
+                elif src_type == "opencellid":
+                    _extract_opencellid(source, region_name, force=force)
+                else:
+                    logger.warning("Unknown source type: %s", src_type)
+            except Exception as exc:
+                logger.error("Extraction for %s (%s) failed: %s", region_name, src_type, exc)
 
 
 def _merge_region(region_name: str, region_cfg: dict) -> None:
@@ -270,6 +323,12 @@ def main() -> None:
     p_extract.add_argument("--region", required=True)
     p_extract.add_argument("--force", action="store_true")
     p_extract.add_argument("--config", default=DEFAULT_CONFIG)
+    p_extract.add_argument(
+        "--timeout",
+        type=int,
+        default=0,
+        help="Per-source extraction timeout in seconds (default: 0 = no limit)",
+    )
     p_merge = sub.add_parser("merge", help="Merge and estimate")
     p_merge.add_argument("--region", required=True)
     p_merge.add_argument("--config", default=DEFAULT_CONFIG)
@@ -280,6 +339,12 @@ def main() -> None:
     p_all = sub.add_parser("all", help="Extract, merge, validate all regions")
     p_all.add_argument("--force", action="store_true")
     p_all.add_argument("--config", default=DEFAULT_CONFIG)
+    p_all.add_argument(
+        "--timeout",
+        type=int,
+        default=240,
+        help="Per-source extraction timeout in seconds (default: 240, 0 = no limit)",
+    )
     args = parser.parse_args()
     if args.command is None:
         parser.print_help()
@@ -291,7 +356,7 @@ def main() -> None:
         if args.region not in regions:
             print(f"Unknown region: {args.region}. Available: {', '.join(sorted(regions))}")
             sys.exit(1)
-        _extract_region(args.region, regions[args.region], force=args.force)
+        _extract_region(args.region, regions[args.region], force=args.force, timeout_s=args.timeout)
     elif args.command == "merge":
         regions = cfg.get("regions", {})
         if args.region not in regions:
@@ -307,7 +372,7 @@ def main() -> None:
         regions = cfg.get("regions", {})
         for name, rcfg in sorted(regions.items()):
             print(f"\n=== {name} ===")
-            _extract_region(name, rcfg, force=args.force)
+            _extract_region(name, rcfg, force=args.force, timeout_s=args.timeout)
             _merge_region(name, rcfg)
             _validate_region(name)
         _report(cfg)

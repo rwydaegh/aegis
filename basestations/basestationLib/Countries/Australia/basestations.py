@@ -100,9 +100,13 @@ class BaseStations:
             return CACHE_PATH.read_bytes()
 
         logger.info("Downloading ACMA RRL data from %s", DOWNLOAD_URL)
-        resp = requests.get(DOWNLOAD_URL, timeout=120, stream=True)
+        resp = requests.get(DOWNLOAD_URL, timeout=300, stream=True)
         resp.raise_for_status()
-        data = resp.content
+        chunks = []
+        for chunk in resp.iter_content(chunk_size=1024 * 1024):
+            if chunk:
+                chunks.append(chunk)
+        data = b"".join(chunks)
 
         CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
         CACHE_PATH.write_bytes(data)
@@ -121,126 +125,144 @@ class BaseStations:
     # ------------------------------------------------------------------
 
     def _parse_zip(self, zip_bytes: bytes) -> list[dict]:
-        """Join RRL tables and return standardised rows."""
+        """Join RRL tables and return standardised rows.
+
+        The ACMA RRL ZIP uses comma-delimited CSV files with UPPERCASE column names.
+        Key tables: site.csv, device_details.csv, licence.csv, client.csv.
+        Note: antenna.csv contains only antenna specs (gain, beamwidth) - height,
+        azimuth, tilt, and frequency are in device_details.csv.
+        """
         with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:
             names = {n.lower(): n for n in zf.namelist()}
 
             def read_csv(key: str) -> pd.DataFrame:
-                match = next((v for k, v in names.items() if key in k), None)
+                match = next((v for k, v in names.items() if key in k and k.endswith(".csv")), None)
                 if match is None:
                     logger.warning("File containing '%s' not found in ZIP", key)
                     return pd.DataFrame()
                 with zf.open(match) as f:
-                    return pd.read_csv(f, sep="|", dtype=str, low_memory=False)
+                    return pd.read_csv(f, sep=",", dtype=str, low_memory=False)
 
-            site_df = read_csv("site")
-            antenna_df = read_csv("antenna")
+            site_df = read_csv("site.csv")
             device_df = read_csv("device_details")
-            licence_df = read_csv("licence")
+            licence_df = read_csv("licence.csv")
+            client_df = read_csv("client.csv")
 
-        if any(df.empty for df in [site_df, antenna_df, device_df, licence_df]):
+        if any(df.empty for df in [site_df, device_df, licence_df]):
             logger.warning("One or more required RRL tables are missing or empty")
             return []
 
-        # Normalise column names to lowercase/stripped
-        for df in [site_df, antenna_df, device_df, licence_df]:
+        # Normalise column names to lowercase
+        for df in [site_df, device_df, licence_df, client_df]:
             df.columns = [c.strip().lower() for c in df.columns]
 
-        # Filter to active licences
+        # Filter licence to active status (STATUS=1 means active in ACMA data)
         if "status" in licence_df.columns:
-            licence_df = licence_df[licence_df["status"].str.upper().str.strip() == "ACTIVE"]
+            active = licence_df[licence_df["status"].isin(["1", "ACTIVE"])]
+            if not active.empty:
+                licence_df = active
 
-        # Join: device_details -> licence (to get licensee / type)
-        licence_key = self._find_col(licence_df, "licence_no", "licenceno", "licence_number")
-        device_lic_key = self._find_col(device_df, "licence_no", "licenceno", "licence_number")
-        if licence_key and device_lic_key:
-            device_df = device_df.merge(
-                licence_df[[licence_key, "licensee", "licence_type_name"]],
-                left_on=device_lic_key,
-                right_on=licence_key,
-                how="left",
-            )
+        # Filter to "Land Mobile" licence type (mobile base stations in Australia)
+        if "licence_type_name" in licence_df.columns:
+            mobile_pattern = "LAND MOBILE|MOBILE CARRIER|PUBLIC MOBILE"
+            mobile = licence_df[
+                licence_df["licence_type_name"].str.upper().str.contains(mobile_pattern, na=False)
+            ]
+            if not mobile.empty:
+                licence_df = mobile
+            else:
+                logger.warning("No mobile licences found; using all active licences")
 
-        # Filter to mobile cellular licences
-        if "licence_type_name" in device_df.columns:
-            mask = (
-                device_df["licence_type_name"]
-                .fillna("")
-                .str.upper()
-                .apply(lambda t: any(kw in t for kw in MOBILE_LICENCE_TYPES))
-            )
-            device_df = device_df[mask]
-            if device_df.empty:
-                logger.warning(
-                    "No mobile carrier licences found after filtering; relaxing filter to all active licences"
+        # Join client info (licensee name) onto licence
+        if not client_df.empty and "client_no" in licence_df.columns and "client_no" in client_df.columns:
+            licensee_col = "licencee" if "licencee" in client_df.columns else "client_name"
+            if licensee_col in client_df.columns:
+                licence_df = licence_df.merge(
+                    client_df[["client_no", licensee_col]],
+                    on="client_no",
+                    how="left",
                 )
-                # fall through with unfiltered device_df for bbox filter at least
-
-        # Join: device_details -> antenna
-        ant_key = self._find_col(antenna_df, "antenna_id")
-        dev_ant_key = self._find_col(device_df, "antenna_id")
-        if ant_key and dev_ant_key:
-            merged = device_df.merge(
-                antenna_df,
-                left_on=dev_ant_key,
-                right_on=ant_key,
-                how="left",
-                suffixes=("_dev", "_ant"),
-            )
         else:
-            merged = device_df
+            licence_df["licencee"] = None
 
-        # Join: -> site
-        site_key = self._find_col(site_df, "site_id")
-        merged_site_key = self._find_col(merged, "site_id")
-        if site_key and merged_site_key:
-            merged = merged.merge(
-                site_df,
-                left_on=merged_site_key,
-                right_on=site_key,
-                how="left",
-                suffixes=("", "_site"),
+        # Join device_details -> licence
+        if "licence_no" in device_df.columns and "licence_no" in licence_df.columns:
+            keep_cols = ["licence_no", "licence_type_name"]
+            if "licencee" in licence_df.columns:
+                keep_cols.append("licencee")
+            device_df = device_df.merge(
+                licence_df[keep_cols].drop_duplicates("licence_no"),
+                on="licence_no",
+                how="inner",
             )
 
-        # Resolve lat/lon columns
-        lat_col = self._find_col(merged, "latitude", "lat")
-        lon_col = self._find_col(merged, "longitude", "lon", "lng")
+        if device_df.empty:
+            logger.warning("No device records after joining with licence table")
+            return []
+
+        # Join device_details -> site (for lat/lon)
+        if "site_id" in device_df.columns and "site_id" in site_df.columns:
+            device_df = device_df.merge(
+                site_df[["site_id", "latitude", "longitude"]],
+                on="site_id",
+                how="left",
+            )
+
+        # Resolve lat/lon
+        lat_col = self._find_col(device_df, "latitude", "lat")
+        lon_col = self._find_col(device_df, "longitude", "lon", "lng")
         if lat_col is None or lon_col is None:
             logger.warning("Latitude/longitude columns not found in merged RRL data")
             return []
 
-        merged[lat_col] = pd.to_numeric(merged[lat_col], errors="coerce")
-        merged[lon_col] = pd.to_numeric(merged[lon_col], errors="coerce")
-        merged = merged.dropna(subset=[lat_col, lon_col])
+        device_df[lat_col] = pd.to_numeric(device_df[lat_col], errors="coerce")
+        device_df[lon_col] = pd.to_numeric(device_df[lon_col], errors="coerce")
+        device_df = device_df.dropna(subset=[lat_col, lon_col])
 
         # Bounding box filter
         if self.bounding_box:
             min_lon, max_lon, min_lat, max_lat = self.bounding_box
-            merged = merged[
-                (merged[lon_col] >= min_lon)
-                & (merged[lon_col] <= max_lon)
-                & (merged[lat_col] >= min_lat)
-                & (merged[lat_col] <= max_lat)
+            device_df = device_df[
+                (device_df[lon_col] >= min_lon)
+                & (device_df[lon_col] <= max_lon)
+                & (device_df[lat_col] >= min_lat)
+                & (device_df[lat_col] <= max_lat)
             ]
 
-        if merged.empty:
+        if device_df.empty:
+            logger.warning("No records in bounding box %s", self.bounding_box)
             return []
 
+        logger.info("Parsing %d device records in bbox", len(device_df))
+
         rows = []
-        for _, row in merged.iterrows():
-            freq_mhz = self._to_float(row, "frequency", "freq")
-            eirp_dbw = self._to_float(row, "eirp", "tx_eirp", "power")
+        for _, row in device_df.iterrows():
+            freq_mhz = self._to_float(row, "frequency", "freq", "carrier_freq")
+            # EIRP is stored in dBW in ACMA data; convert to dBm
+            eirp_str = row.get("eirp") or row.get("transmitter_power")
+            eirp_dbw = None
+            if eirp_str and str(eirp_str).strip() not in ("", "nan", "None"):
+                try:
+                    eirp_dbw = float(eirp_str)
+                    # Check unit: if EIRP_UNIT is 'W', convert watts to dBW first
+                    unit = str(row.get("eirp_unit", "") or "").strip().upper()
+                    if unit == "W":
+                        import math
+                        eirp_dbw = 10 * math.log10(max(eirp_dbw, 1e-9))
+                    elif unit == "DBM":
+                        eirp_dbw = eirp_dbw - 30.0  # convert to dBW for consistency
+                except (ValueError, TypeError):
+                    pass
             power_dbm = (eirp_dbw + 30.0) if eirp_dbw is not None else None
 
-            height = self._to_float(row, "height", "antenna_height", "height_amsl")
-            azimuth = self._to_float(row, "azimuth", "azi")
-            elec_tilt = self._to_float(row, "electrical_tilt", "elec_tilt", "etilt")
-            mech_tilt = self._to_float(row, "mechanical_tilt", "mech_tilt", "mtilt")
-            gain = self._to_float(row, "gain", "antenna_gain")
+            height = self._to_float(row, "height")
+            azimuth = self._to_float(row, "azimuth")
+            tilt = self._to_float(row, "tilt")
+            gain = self._to_float(row, "gain")
 
             site_id = self._str(row, "site_id")
             antenna_id = self._str(row, "antenna_id")
-            operator = self._str(row, "licensee")
+            operator = self._str(row, "licencee")
             tech = self._guess_technology(freq_mhz)
             freq_band = self._freq_to_band(freq_mhz)
 
@@ -256,8 +278,8 @@ class BaseStations:
                     "Power": power_dbm,
                     "Frequency": freq_mhz,
                     "FrequencyBand": freq_band,
-                    "Electrical_Tilt": elec_tilt,
-                    "Mechanical_Tilt": mech_tilt,
+                    "Electrical_Tilt": tilt,
+                    "Mechanical_Tilt": None,
                     "Azimuth": azimuth,
                     "Gain": gain,
                     "Horizontal_Beamwidth": None,

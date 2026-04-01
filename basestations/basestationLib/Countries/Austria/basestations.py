@@ -1,18 +1,16 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import sys
-import math
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import pandas as pd
-import requests
-import json
 from pyproj import Transformer
+
+logger = logging.getLogger(__name__)
 
 # Optional progress bar
 try:
@@ -73,14 +71,20 @@ def get_antennas(session, sites):
         
         response = session.get(detail_url, params=params)
         response.raise_for_status()
-        data = response.json()
+        try:
+            data = response.json()
+        except Exception:
+            logger.debug("Empty or invalid JSON for site %s, skipping", site.get("sender_id"))
+            continue
+        if not data:
+            continue
         x = float(site["x"])
         y = float(site["y"])
         # convert to lat/lon
         lon, lat = transformer.transform(x, y)
         
         for antenna in data:
-            technologies = antenna.get("system", "").split("\/")
+            technologies = antenna.get("system", "").split("/")  # API returns "/" as separator
             power = antenna.get("leistung", np.nan)
             antenna_structure = antenna.get("struktur", "")
             is_sharing = antenna.get("sharing", False)
