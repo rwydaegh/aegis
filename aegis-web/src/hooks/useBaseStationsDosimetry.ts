@@ -31,6 +31,7 @@ export function useBaseStationsDosimetry() {
         body_rotation_y: sim.bodyRotationY,
         quantities: enabledQuantities,
         skin_model: sim.skinModel,
+        exposure_mode: sim.exposureMode,
       },
       controller.signal,
     )

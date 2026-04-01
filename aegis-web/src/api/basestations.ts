@@ -63,6 +63,7 @@ interface ComputeParams {
   skin_model?: string
   freq_hz?: number
   use_beamforming?: boolean | 'auto'
+  exposure_mode?: string
 }
 
 export interface ComputeResult {

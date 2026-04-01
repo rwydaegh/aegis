@@ -3,11 +3,13 @@ import type { ScenePos } from '@/api/coordinates'
 import type { DosimetryStats, QuantityKey, ComplianceInfo } from '@/api/types'
 
 export type DosimetryMode = 'bound' | 'aggregate' | 'spatial'
+export type ExposureMode = 'theoretical' | 'actual_max' | 'typical'
 
 interface SimulationStore {
   // Inputs
   antennaPos: ScenePos | null
   mode: DosimetryMode
+  exposureMode: ExposureMode
   fresnel: boolean
   polarisation: boolean
   curvature: boolean
@@ -40,6 +42,7 @@ interface SimulationStore {
   // Actions
   setAntennaPos: (pos: ScenePos | null) => void
   setMode: (mode: DosimetryMode) => void
+  setExposureMode: (mode: ExposureMode) => void
   setFresnel: (on: boolean) => void
   setPolarisation: (on: boolean) => void
   setCurvature: (on: boolean) => void
@@ -66,6 +69,7 @@ interface SimulationStore {
 export const useSimulationStore = create<SimulationStore>((set) => ({
   antennaPos: null,
   mode: 'spatial',
+  exposureMode: 'theoretical',
   fresnel: true,
   polarisation: false,
   curvature: false,
@@ -90,6 +94,7 @@ export const useSimulationStore = create<SimulationStore>((set) => ({
   displayQuantity: 'sab' as QuantityKey,
   setAntennaPos: (pos) => set({ antennaPos: pos }),
   setMode: (mode) => set({ mode }),
+  setExposureMode: (exposureMode) => set({ exposureMode }),
   setFresnel: (on) => set(() => {
     // Polarisation requires Fresnel, so auto-disable it
     if (!on) return { fresnel: false, polarisation: false }

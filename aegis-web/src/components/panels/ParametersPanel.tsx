@@ -2,7 +2,8 @@ import { useSimulationStore } from '@/stores/simulation'
 import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
 import { useMIMOStore } from '@/stores/mimo'
-import type { DosimetryMode } from '@/stores/simulation'
+import { useBaseStationsStore } from '@/stores/basestations'
+import type { DosimetryMode, ExposureMode } from '@/stores/simulation'
 import QuantitiesPanel from './QuantitiesPanel'
 import Tex from '@/components/ui/Tex'
 
@@ -65,6 +66,10 @@ export default function ParametersPanel() {
   const setNPaths = useSimulationStore((s) => s.setNPaths)
   const freqGhz = useSimulationStore((s) => s.freqGhz)
   const setFreqGhz = useSimulationStore((s) => s.setFreqGhz)
+  const exposureMode = useSimulationStore((s) => s.exposureMode)
+  const setExposureMode = useSimulationStore((s) => s.setExposureMode)
+
+  const bsCount = useBaseStationsStore((s) => s.basestations.length)
 
   const scenario = useUIStore((s) => s.exposureScenario)
   const setScenario = useUIStore((s) => s.setExposureScenario)
@@ -172,6 +177,34 @@ export default function ParametersPanel() {
           <span className="text-[10px] text-muted-foreground mt-0.5 block">W</span>
         </div>
       </div>
+
+      {bsCount > 0 && (
+        <>
+          <label className={labelClass}>Exposure mode</label>
+          <div className="flex gap-0">
+            {([
+              { value: 'theoretical' as ExposureMode, label: 'Theoretical', title: 'Full EIRP, no reduction' },
+              { value: 'actual_max' as ExposureMode, label: 'Actual max', title: 'TDD duty cycle + power reduction factor' },
+              { value: 'typical' as ExposureMode, label: 'Typical', title: 'TDD + PRF + traffic load (~50%)' },
+            ]).map(({ value, label, title }, i) => (
+              <button
+                key={value}
+                title={title}
+                className={`text-xs px-3 py-1.5 border transition-colors cursor-pointer ${
+                  i === 0 ? 'rounded-l' : i === 2 ? 'rounded-r border-l-0' : 'border-l-0'
+                } ${
+                  exposureMode === value
+                    ? 'border-primary/40 bg-primary/15 text-primary'
+                    : 'border-border bg-muted/50 text-foreground hover:bg-muted'
+                }`}
+                onClick={() => setExposureMode(value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
 
       <label className={labelClass}>Skin model</label>
       <select
