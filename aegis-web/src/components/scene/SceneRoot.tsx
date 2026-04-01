@@ -386,6 +386,7 @@ export default function SceneRoot() {
         antialias: ren.antialias ?? true,
         toneMapping: THREE.ACESFilmicToneMapping,
         preserveDrawingBuffer: true,
+        logarithmicDepthBuffer: true,
       }}
       style={{ position: 'absolute', inset: 0 }}
       tabIndex={0}
