@@ -1429,7 +1429,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                         "params": p["params"],
                     }
                 )
-            except Exception:
+            except Exception as exc:
+                logger.warning("Failed to load channel preset %r: %s", name, exc)
                 continue
         return jsonify(presets)
 

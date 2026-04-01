@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import * as Sentry from '@sentry/react'
-import { fetchWithRetry } from '@/api/client'
+import { fetchWithRetry, parseJsonHeader } from '@/api/client'
 
 interface TerrainMeshData {
   positions: Float32Array
@@ -64,7 +64,7 @@ export const useTerrainStore = create<TerrainState>((set) => ({
         try { const err = await resp.json(); msg = (err as { error?: string }).error || msg } catch {}
         throw new Error(msg)
       }
-      const meta = JSON.parse(resp.headers.get('X-Meta') || '{}') as Record<string, unknown>
+      const meta = parseJsonHeader<Record<string, unknown>>(resp.headers.get('X-Meta'), 'X-Meta')
       const buf = await resp.arrayBuffer()
       const meshData = parseTerrainBinary(buf, meta)
       set({ meshData, loading: false, enabled: true })
