@@ -62,6 +62,30 @@ class AntennaPattern:
 
 
 @dataclass(frozen=True)
+class ExposureConfig:
+    """Exposure reduction parameters for realistic modeling."""
+
+    duplex_mode: str = "fdd"
+    tdd_dl_ratio: float = 1.0
+    power_reduction_factor: float = 1.0
+    traffic_load_factor: float = 0.5
+
+
+@dataclass(frozen=True)
+class BeamConfig:
+    """mMIMO broadcast/traffic beam separation for realistic exposure."""
+
+    broadcast_gain_dbi: float = 18.0
+    broadcast_hbw_deg: float = 65.0
+    broadcast_vbw_deg: float = 10.0
+    traffic_gain_dbi: float = 25.0
+    traffic_hbw_deg: float = 12.0
+    traffic_vbw_deg: float = 8.0
+    sweep_h_range_deg: float = 60.0
+    sweep_v_range_deg: float = 15.0
+
+
+@dataclass(frozen=True)
 class BaseStation:
     """A single physical antenna panel from a cell tower database."""
 
