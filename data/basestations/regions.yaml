@@ -39,3 +39,21 @@ regions:
         bbox: [12.4, 12.7, 55.6, 55.8]
         priority: 3
     reference: data/basestations/raw/brussels_gov.parquet
+
+  netherlands:
+    sources:
+      - type: basestationlib
+        country: Netherlands
+        bbox: [4.7, 5.1, 52.2, 52.5]
+        priority: 1
+        source_tag: gov:antenneregister
+    reference: data/basestations/raw/brussels_gov.parquet
+
+  austria:
+    sources:
+      - type: basestationlib
+        country: Austria
+        bbox: [16.2, 16.6, 48.1, 48.35]
+        priority: 1
+        source_tag: gov:rtr
+    reference: data/basestations/raw/brussels_gov.parquet

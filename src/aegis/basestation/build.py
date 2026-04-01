@@ -59,15 +59,98 @@ def _extract_basestationlib(source: dict, region_name: str, force: bool = False)
     return df
 
 
+def _extract_mastedatabasen(source: dict, region_name: str, force: bool = False) -> pd.DataFrame | None:
+    outdir = Path("data/basestations/raw")
+    outdir.mkdir(parents=True, exist_ok=True)
+    outfile = outdir / f"{region_name}_mastedatabasen.parquet"
+    if outfile.exists() and not force:
+        logger.info("Raw file %s exists, skipping (use --force to re-extract)", outfile)
+        return pd.read_parquet(str(outfile))
+    try:
+        from basestationLib.Countries.Denmark.basestations import BaseStations
+    except ImportError:
+        logger.error("basestationLib not installed. pip install -e basestations/")
+        return None
+    instance = BaseStations(
+        bounding_box=source.get("bbox"),
+        output_folder=f"/tmp/aegis_build/{region_name}/",
+    )
+    config = {
+        "computation": {
+            "max_workers": 4,
+            "estimations": {"estimate_missing_data_based_on_existing": False},
+        }
+    }
+    try:
+        df = instance.extract_antennas(config=config)
+    except Exception as exc:
+        logger.error("Mastedatabasen extraction failed for %s: %s", region_name, exc)
+        return None
+    if df is None or len(df) == 0:
+        logger.warning("No antennas extracted for %s via mastedatabasen", region_name)
+        return None
+    write_raw_parquet(df, str(outfile))
+    return df
+
+
+def _extract_opencellid(source: dict, region_name: str, force: bool = False) -> pd.DataFrame | None:
+    outdir = Path("data/basestations/raw")
+    outdir.mkdir(parents=True, exist_ok=True)
+    outfile = outdir / f"{region_name}_opencellid.parquet"
+    if outfile.exists() and not force:
+        logger.info("Raw file %s exists, skipping (use --force to re-extract)", outfile)
+        return pd.read_parquet(str(outfile))
+    # Resolve API key: env var takes precedence, then well-known file
+    api_key_env = os.environ.get("OPENCELLID_API_KEY", "")
+    default_key_path = Path("basestations/basestationLib/OpenCellID/opencellid_api_key.txt")
+    if api_key_env:
+        import tempfile
+
+        fd, api_key_path = tempfile.mkstemp(suffix=".txt")
+        with os.fdopen(fd, "w") as tmp:
+            tmp.write(api_key_env)
+    elif default_key_path.exists():
+        api_key_path = str(default_key_path)
+    else:
+        logger.warning(
+            "No OpenCellID API key found. Set OPENCELLID_API_KEY env var or create %s",
+            default_key_path,
+        )
+        return None
+    try:
+        from basestationLib.OpenCellID.basestations import BaseStations
+    except ImportError:
+        logger.error("basestationLib not installed. pip install -e basestations/")
+        return None
+    try:
+        instance = BaseStations(
+            bounding_box=source.get("bbox"),
+            output_folder=f"/tmp/aegis_build/{region_name}/",
+            api_key_path=api_key_path,
+        )
+        df = instance.extract_antennas(config={})
+    except Exception as exc:
+        logger.error("OpenCellID extraction failed for %s: %s", region_name, exc)
+        return None
+    finally:
+        if api_key_env:
+            Path(api_key_path).unlink(missing_ok=True)
+    if df is None or len(df) == 0:
+        logger.warning("No antennas extracted for %s via opencellid", region_name)
+        return None
+    write_raw_parquet(df, str(outfile))
+    return df
+
+
 def _extract_region(region_name: str, region_cfg: dict, force: bool = False) -> None:
     for source in region_cfg.get("sources", []):
         src_type = source.get("type", "")
         if src_type == "basestationlib":
             _extract_basestationlib(source, region_name, force=force)
         elif src_type == "mastedatabasen":
-            logger.info("Denmark adapter not yet available, skipping mastedatabasen extraction")
+            _extract_mastedatabasen(source, region_name, force=force)
         elif src_type == "opencellid":
-            logger.info("OpenCellID extraction not yet implemented, skipping")
+            _extract_opencellid(source, region_name, force=force)
         else:
             logger.warning("Unknown source type: %s", src_type)
 
