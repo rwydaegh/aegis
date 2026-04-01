@@ -59,6 +59,10 @@ export function useMIMODosimetry() {
     abortRef.current = controller
     const gen = ++generationRef.current
 
+    // MIMO computes are heavier than single-user (scales with user count)
+    const timeoutMs = 120_000
+    const timeoutId = setTimeout(() => controller.abort('timeout'), timeoutMs)
+
     const setComputing = useUIStore.getState().setComputing
     setComputing(true)
 
@@ -132,7 +136,15 @@ export function useMIMODosimetry() {
         }
       }
     } catch (err) {
-      if ((err as Error).name === 'AbortError') return
+      if ((err as Error).name === 'AbortError') {
+        if (controller.signal.reason === 'timeout') {
+          useNotificationStore.getState().addNotification(
+            'warning',
+            `MIMO compute timed out after ${timeoutMs / 1000}s. Try reducing the number of users or using MRT precoder.`,
+          )
+        }
+        return
+      }
       Sentry.captureException(err)
       useNotificationStore.getState().addNotification(
         'error',
@@ -140,6 +152,7 @@ export function useMIMODosimetry() {
         'This error has been reported and will be fixed automatically using AI. Most issues are fixed in less than 30 minutes.'
       )
     } finally {
+      clearTimeout(timeoutId)
       if (gen === generationRef.current) setComputing(false)
     }
   }, [enabled, precoderType, arrayConfig, freqGhz, powerDbm])
