@@ -431,7 +431,7 @@ def create_app(
             "style-src 'self' 'unsafe-inline'; "
             "img-src 'self' data: blob: https://tile.googleapis.com https://*.gstatic.com; "
             "font-src 'self' data:; "
-            "connect-src 'self' https://analytics.waves-ugent.be "
+            "connect-src 'self' blob: https://analytics.waves-ugent.be "
             "https://*.sentry.io https://tile.googleapis.com "
             "https://*.googleapis.com; "
             "worker-src 'self' blob:; "
