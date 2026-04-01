@@ -599,3 +599,81 @@ class TestLevel8Engine:
         assert r8.Q is not None
         assert r8.rho is not None
         assert 0.0 <= r8.rho <= 1.0 + 1e-10
+
+
+# ---------------------------------------------------------------------------
+# Factored body channel equivalence
+# ---------------------------------------------------------------------------
+
+
+class TestFactoredBodyChannel:
+    """Verify compute_body_channel_factored matches compute_body_channel."""
+
+    def test_factored_matches_original(self, flat_mesh):
+        """Factored Fresnel must produce the same G_tilde as the original."""
+        from aegis.coherent.body_channel import compute_body_channel_factored
+        from aegis.mimo.array import AntennaArray
+        from aegis.mimo.array_paths import expand_paths_to_array
+
+        freq_hz = 28e9
+        tissue = SKIN_28GHZ
+        n_tilde = tissue.n_complex
+        sigma = tissue.sigma
+
+        # 2-element array with offset
+        positions = np.array([[0.0, 0.0, 1.0], [0.05, 0.0, 1.0]])
+        array = AntennaArray(element_positions=positions)
+
+        # Center paths: 3 paths from above
+        rng = np.random.default_rng(42)
+        N_center = 3
+        k_raw = rng.standard_normal((N_center, 3))
+        k_raw[:, 2] = -np.abs(k_raw[:, 2])  # downward
+        k_hat = k_raw / np.linalg.norm(k_raw, axis=1, keepdims=True)
+        psi = (rng.standard_normal((N_center, 3)) + 1j * rng.standard_normal((N_center, 3))) * 0.01
+
+        center_paths = PropagationPaths(
+            k_hat=k_hat,
+            psi=psi,
+            element_index=np.zeros(N_center, dtype=np.intp),
+            delay=np.zeros(N_center),
+            is_los=np.array([True, False, False]),
+        )
+
+        # Expand to per-element paths
+        expanded = expand_paths_to_array(center_paths, array, freq_hz)
+
+        # Original: compute with expanded paths
+        G_original = compute_body_channel(
+            normals=flat_mesh.normals,
+            centroids=flat_mesh.centroids,
+            k_hat=expanded.k_hat,
+            psi=expanded.psi,
+            element_index=expanded.element_index,
+            n_tilde=n_tilde,
+            sigma=sigma,
+            freq_hz=freq_hz,
+            n_elements=array.n_elements,
+        )
+
+        # Factored: compute with center + element psi
+        G_factored = compute_body_channel_factored(
+            normals=flat_mesh.normals,
+            centroids=flat_mesh.centroids,
+            center_k_hat=center_paths.k_hat,
+            center_psi=center_paths.psi,
+            element_psi=expanded.psi,
+            element_index=expanded.element_index,
+            n_tilde=n_tilde,
+            sigma=sigma,
+            freq_hz=freq_hz,
+            n_elements=array.n_elements,
+        )
+
+        np.testing.assert_allclose(
+            G_factored,
+            G_original,
+            rtol=1e-10,
+            atol=1e-15,
+            err_msg="Factored body channel must match original",
+        )
