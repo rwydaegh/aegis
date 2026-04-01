@@ -33,6 +33,14 @@ def test_extract_opencellid_function_exists():
     assert callable(_extract_opencellid)
 
 
+def test_australia_adapter_importable():
+    """Verify Australia adapter can be imported."""
+    from basestationLib.Countries.Australia.basestations import BaseStations
+
+    bs = BaseStations(bounding_box=[150.9, 151.4, -34.0, -33.7])
+    assert hasattr(bs, "extract_antennas")
+
+
 def test_germany_adapter_importable():
     """Verify Germany adapter can be imported."""
     from basestationLib.Countries.Germany.basestations import BaseStations
