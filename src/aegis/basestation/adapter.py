@@ -10,6 +10,12 @@ import pandas as pd
 
 from aegis.basestation.antenna import AntennaPattern, BaseStation
 from aegis.basestation.coords import wgs84_to_enu
+from aegis.basestation.exposure import (
+    ExposureMode,
+    lookup_mimo_beam_params,
+    lookup_tdd_dl_ratio,
+    power_reduction_factor,
+)
 from aegis.basestation.orientation import departure_to_antenna_local
 from aegis.basestation.pattern import synthetic_pattern_from_beamwidth
 from aegis.basestation.power import eirp_to_tx_power_w
@@ -73,23 +79,33 @@ def load_basestations_from_df(
             if hbw > 0 and vbw > 0 and gain > 0:
                 pattern = synthetic_pattern_from_beamwidth(hbw, vbw, gain)
 
+        technology = str(row.get("Technology", ""))
+        freq_mhz = _safe_float(row.get("Frequency"), 2100.0)
+
+        # Auto-infer exposure parameters
+        tdd_dl_ratio = lookup_tdd_dl_ratio(technology, freq_mhz)
+        beam_params = lookup_mimo_beam_params(technology, freq_mhz, gain)
+        sidelobe_suppression_db = beam_params.sidelobe_suppression_db if beam_params else None
+
         result.append(
             BaseStation(
                 site_code=site,
                 antenna_label=label,
                 operator=str(row.get("Operator", "")),
-                technology=str(row.get("Technology", "")),
+                technology=technology,
                 latitude=float(row["Latitude"]),
                 longitude=float(row["Longitude"]),
                 height_m=_safe_float(row.get("CenterHeight"), 10.0),
                 eirp_dbm=_safe_float(row.get("Power"), 30.0),
                 gain_dbi=gain,
-                freq_mhz=_safe_float(row.get("Frequency"), 2100.0),
+                freq_mhz=freq_mhz,
                 azimuth_deg=_safe_float(row.get("Azimuth"), 0.0),
                 electrical_tilt_deg=_safe_float(row.get("Electrical_Tilt"), 0.0),
                 mechanical_tilt_deg=_safe_float(row.get("Mechanical_Tilt"), 0.0),
                 horizontal_beamwidth_deg=_safe_float(row.get("Horizontal_Beamwidth"), 65.0),
                 vertical_beamwidth_deg=_safe_float(row.get("Vertical_Beamwidth"), 10.0),
+                tdd_dl_ratio=tdd_dl_ratio,
+                sidelobe_suppression_db=sidelobe_suppression_db,
                 pattern=pattern,
             )
         )
@@ -225,6 +241,7 @@ def paths_from_basestation(
     body_center: np.ndarray,
     scene_origin: tuple[float, float],
     ground_height: float = 0.0,
+    exposure_mode: ExposureMode | None = None,
 ) -> PropagationPaths:
     """Create a LOS path from a base station to the body center.
 
@@ -291,6 +308,11 @@ def paths_from_basestation(
 
     s_modulated = s_iso * g_linear
 
+    # Apply exposure mode power reduction
+    if exposure_mode is not None:
+        reduction = power_reduction_factor(exposure_mode, bs.technology, bs.freq_mhz, gain_dbi=bs.gain_dbi)
+        s_modulated *= reduction
+
     return PropagationPaths.from_powers(
         k_hat=k_hat[np.newaxis, :],
         power=np.array([max(s_modulated, 0.0)]),
@@ -302,6 +324,7 @@ def paths_from_basestations(
     body_center: np.ndarray,
     scene_origin: tuple[float, float],
     max_distance_m: float = 2000.0,
+    exposure_mode: ExposureMode | None = None,
 ) -> PropagationPaths:
     """Create LOS paths from multiple base stations to the body.
 
@@ -320,7 +343,7 @@ def paths_from_basestations(
         dist = float(np.linalg.norm(body_center - ant_pos))
         if dist > max_distance_m:
             continue
-        paths = paths_from_basestation(bs, body_center, scene_origin)
+        paths = paths_from_basestation(bs, body_center, scene_origin, exposure_mode=exposure_mode)
         all_paths.append(paths)
 
     if not all_paths:

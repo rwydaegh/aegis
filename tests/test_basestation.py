@@ -13,6 +13,7 @@ import pytest
 from aegis.basestation.adapter import _safe_float, _sanitize_label, paths_from_basestation
 from aegis.basestation.antenna import AntennaPattern, BaseStation
 from aegis.basestation.coords import enu_to_wgs84, wgs84_to_enu
+from aegis.basestation.exposure import ExposureMode
 from aegis.basestation.orientation import (
     antenna_rotation_matrix,
     departure_to_antenna_local,
@@ -359,6 +360,67 @@ class TestBaseStation:
         with pytest.raises(AttributeError):
             bs.height_m = 50.0  # type: ignore[misc]
 
+    def test_tdd_dl_ratio_default(self):
+        bs = BaseStation(
+            site_code="S1",
+            antenna_label="A1",
+            operator="Op",
+            technology="5G",
+            latitude=0,
+            longitude=0,
+            height_m=30,
+            eirp_dbm=60,
+            gain_dbi=25,
+            freq_mhz=3500,
+            azimuth_deg=0,
+            electrical_tilt_deg=6,
+            mechanical_tilt_deg=0,
+            horizontal_beamwidth_deg=12,
+            vertical_beamwidth_deg=10,
+        )
+        assert bs.tdd_dl_ratio == 1.0
+
+    def test_tdd_dl_ratio_custom(self):
+        bs = BaseStation(
+            site_code="S1",
+            antenna_label="A1",
+            operator="Op",
+            technology="5G",
+            latitude=0,
+            longitude=0,
+            height_m=30,
+            eirp_dbm=60,
+            gain_dbi=25,
+            freq_mhz=3500,
+            azimuth_deg=0,
+            electrical_tilt_deg=6,
+            mechanical_tilt_deg=0,
+            horizontal_beamwidth_deg=12,
+            vertical_beamwidth_deg=10,
+            tdd_dl_ratio=0.75,
+        )
+        assert bs.tdd_dl_ratio == 0.75
+
+    def test_sidelobe_suppression_db_default(self):
+        bs = BaseStation(
+            site_code="S1",
+            antenna_label="A1",
+            operator="Op",
+            technology="5G",
+            latitude=0,
+            longitude=0,
+            height_m=30,
+            eirp_dbm=60,
+            gain_dbi=25,
+            freq_mhz=3500,
+            azimuth_deg=0,
+            electrical_tilt_deg=6,
+            mechanical_tilt_deg=0,
+            horizontal_beamwidth_deg=12,
+            vertical_beamwidth_deg=10,
+        )
+        assert bs.sidelobe_suppression_db is None
+
 
 # ---------------------------------------------------------------------------
 # adapter
@@ -532,3 +594,196 @@ class TestPathsFromBasestation:
         # Should not crash, power should be finite
         assert paths.n_paths == 1
         assert np.isfinite(paths.power[0])
+
+    def test_theoretical_max_unchanged(self):
+        bs = BaseStation(
+            site_code="S1",
+            antenna_label="A1",
+            operator="Op",
+            technology="5G",
+            latitude=50.85,
+            longitude=4.35,
+            height_m=30,
+            eirp_dbm=60,
+            gain_dbi=25,
+            freq_mhz=3500,
+            azimuth_deg=0,
+            electrical_tilt_deg=6,
+            mechanical_tilt_deg=0,
+            horizontal_beamwidth_deg=12,
+            vertical_beamwidth_deg=10,
+        )
+        body = np.array([0.0, 0.0, 1.5])
+        origin = (50.85, 4.35)
+        paths_default = paths_from_basestation(bs, body, origin)
+        paths_theo = paths_from_basestation(bs, body, origin, exposure_mode=ExposureMode.THEORETICAL_MAX)
+        assert paths_theo.total_power == pytest.approx(paths_default.total_power, rel=1e-6)
+
+    def test_actual_max_reduces_power(self):
+        bs = BaseStation(
+            site_code="S1",
+            antenna_label="A1",
+            operator="Op",
+            technology="5G",
+            latitude=50.85,
+            longitude=4.35,
+            height_m=30,
+            eirp_dbm=60,
+            gain_dbi=25,
+            freq_mhz=3500,
+            azimuth_deg=0,
+            electrical_tilt_deg=6,
+            mechanical_tilt_deg=0,
+            horizontal_beamwidth_deg=12,
+            vertical_beamwidth_deg=10,
+        )
+        body = np.array([0.0, 0.0, 1.5])
+        origin = (50.85, 4.35)
+        paths_theo = paths_from_basestation(bs, body, origin)
+        paths_actual = paths_from_basestation(bs, body, origin, exposure_mode=ExposureMode.ACTUAL_MAX)
+        assert paths_actual.total_power < paths_theo.total_power
+        ratio = paths_actual.total_power / paths_theo.total_power
+        assert ratio == pytest.approx(0.24, abs=0.05)
+
+    def test_typical_reduces_more(self):
+        bs = BaseStation(
+            site_code="S1",
+            antenna_label="A1",
+            operator="Op",
+            technology="5G",
+            latitude=50.85,
+            longitude=4.35,
+            height_m=30,
+            eirp_dbm=60,
+            gain_dbi=25,
+            freq_mhz=3500,
+            azimuth_deg=0,
+            electrical_tilt_deg=6,
+            mechanical_tilt_deg=0,
+            horizontal_beamwidth_deg=12,
+            vertical_beamwidth_deg=10,
+        )
+        body = np.array([0.0, 0.0, 1.5])
+        origin = (50.85, 4.35)
+        paths_actual = paths_from_basestation(bs, body, origin, exposure_mode=ExposureMode.ACTUAL_MAX)
+        paths_typical = paths_from_basestation(bs, body, origin, exposure_mode=ExposureMode.TYPICAL)
+        assert paths_typical.total_power < paths_actual.total_power
+
+    def test_4g_fdd_no_reduction(self):
+        bs = BaseStation(
+            site_code="S1",
+            antenna_label="A1",
+            operator="Op",
+            technology="4G",
+            latitude=50.85,
+            longitude=4.35,
+            height_m=30,
+            eirp_dbm=50,
+            gain_dbi=17,
+            freq_mhz=1800,
+            azimuth_deg=0,
+            electrical_tilt_deg=6,
+            mechanical_tilt_deg=0,
+            horizontal_beamwidth_deg=65,
+            vertical_beamwidth_deg=10,
+        )
+        body = np.array([0.0, 0.0, 1.5])
+        origin = (50.85, 4.35)
+        paths_theo = paths_from_basestation(bs, body, origin)
+        paths_actual = paths_from_basestation(bs, body, origin, exposure_mode=ExposureMode.ACTUAL_MAX)
+        assert paths_actual.total_power == pytest.approx(paths_theo.total_power, rel=1e-6)
+
+
+# ---------------------------------------------------------------------------
+# load_basestations_from_df inference
+# ---------------------------------------------------------------------------
+
+
+class TestLoadBasestationsInference:
+    def test_5g_tdd_ratio_auto_inferred(self):
+        import pandas as pd
+
+        from aegis.basestation.adapter import load_basestations_from_df
+
+        df = pd.DataFrame(
+            [
+                {
+                    "SiteCode": "S1",
+                    "AntennaLabel": "A1",
+                    "Operator": "Op",
+                    "Technology": "5G NR",
+                    "Latitude": 50.85,
+                    "Longitude": 4.35,
+                    "CenterHeight": 30,
+                    "Power": 60,
+                    "Gain": 25,
+                    "Frequency": 3500,
+                    "Azimuth": 0,
+                    "Electrical_Tilt": 6,
+                    "Mechanical_Tilt": 0,
+                    "Horizontal_Beamwidth": 12,
+                    "Vertical_Beamwidth": 10,
+                }
+            ]
+        )
+        stations = load_basestations_from_df(df)
+        assert stations[0].tdd_dl_ratio == pytest.approx(0.75, abs=0.01)
+
+    def test_4g_fdd_ratio_is_one(self):
+        import pandas as pd
+
+        from aegis.basestation.adapter import load_basestations_from_df
+
+        df = pd.DataFrame(
+            [
+                {
+                    "SiteCode": "S1",
+                    "AntennaLabel": "A1",
+                    "Operator": "Op",
+                    "Technology": "4G LTE",
+                    "Latitude": 50.85,
+                    "Longitude": 4.35,
+                    "CenterHeight": 30,
+                    "Power": 50,
+                    "Gain": 17,
+                    "Frequency": 1800,
+                    "Azimuth": 0,
+                    "Electrical_Tilt": 6,
+                    "Mechanical_Tilt": 0,
+                    "Horizontal_Beamwidth": 65,
+                    "Vertical_Beamwidth": 10,
+                }
+            ]
+        )
+        stations = load_basestations_from_df(df)
+        assert stations[0].tdd_dl_ratio == 1.0
+
+    def test_5g_mmimo_gets_sidelobe(self):
+        import pandas as pd
+
+        from aegis.basestation.adapter import load_basestations_from_df
+
+        df = pd.DataFrame(
+            [
+                {
+                    "SiteCode": "S1",
+                    "AntennaLabel": "A1",
+                    "Operator": "Op",
+                    "Technology": "5G NR",
+                    "Latitude": 50.85,
+                    "Longitude": 4.35,
+                    "CenterHeight": 30,
+                    "Power": 60,
+                    "Gain": 25,
+                    "Frequency": 3500,
+                    "Azimuth": 0,
+                    "Electrical_Tilt": 6,
+                    "Mechanical_Tilt": 0,
+                    "Horizontal_Beamwidth": 12,
+                    "Vertical_Beamwidth": 10,
+                }
+            ]
+        )
+        stations = load_basestations_from_df(df)
+        assert stations[0].sidelobe_suppression_db is not None
+        assert stations[0].sidelobe_suppression_db >= 12.0
