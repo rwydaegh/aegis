@@ -145,8 +145,6 @@ def compute_body_channel_factored(
     """
     M = normals.shape[0]
     N_center = center_k_hat.shape[0]
-    N_total = element_psi.shape[0]
-    M_elem = N_total // N_center  # paths per center direction
 
     element_index = np.asarray(element_index)
     if element_index.size > 0:
@@ -206,12 +204,10 @@ def compute_body_channel_factored(
         ] * e_p_c[None, :, :]  # (M_elem, M, 3)
 
         # Apply depth*phase weight and accumulate into G
-        weighted_elems = sc[None, :, None] * F_psi_elems  # (M_elem, M, 3)
+        weighted_elems = np.asarray(sc[None, :, None] * F_psi_elems)  # (M_elem, M, 3)
 
-        # Each element's index for this center path
+        # Scatter-add all elements at once (vectorized, no Python for-loop)
         elem_indices = element_index[c::N_center]  # (M_elem,)
-        for j_local in range(M_elem):
-            idx = int(elem_indices[j_local])
-            G[:, :, idx] += np.asarray(weighted_elems[j_local])
+        np.add.at(G, (slice(None), slice(None), elem_indices), weighted_elems.transpose(1, 2, 0))
 
     return xp.asarray(G)

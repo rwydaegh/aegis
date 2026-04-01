@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import json
+import logging
 
 from flask import Flask, Response, jsonify, request
 
 from aegis.viewer.cache import EnvironmentCache
+
+logger = logging.getLogger(__name__)
 
 _env_cache = EnvironmentCache()
 
@@ -436,18 +439,45 @@ def _handle_environment_coverage(cache: dict, cache_lock) -> Response:
         return jsonify({"error": "stations list is required and must not be empty"}), 400
 
     station = stations[0]
-    radius_km = float(body.get("radius_km", 1.0))
-    resolution_m = int(body.get("resolution_m", 10))
-    propagation_model = int(body.get("propagation_model", 1))
+
+    try:
+        radius_km = float(body.get("radius_km", 1.0))
+        resolution_m = int(body.get("resolution_m", 10))
+        propagation_model = int(body.get("propagation_model", 1))
+    except (TypeError, ValueError) as exc:
+        return jsonify({"error": f"Invalid parameter: {exc}"}), 400
+
+    if not (0.1 <= radius_km <= 50):
+        return jsonify({"error": "radius_km must be between 0.1 and 50"}), 400
+    if not (1 <= resolution_m <= 1000):
+        return jsonify({"error": "resolution_m must be between 1 and 1000"}), 400
+
+    for required_key in ("lat", "lon", "freq_mhz"):
+        if required_key not in station:
+            return jsonify({"error": f"station must contain '{required_key}'"}), 400
+
+    try:
+        lat = float(station["lat"])
+        lon = float(station["lon"])
+        freq_mhz = float(station["freq_mhz"])
+    except (TypeError, ValueError) as exc:
+        return jsonify({"error": f"Invalid station parameter: {exc}"}), 400
+
+    if not (-90 <= lat <= 90):
+        return jsonify({"error": "lat must be between -90 and 90"}), 400
+    if not (-180 <= lon <= 180):
+        return jsonify({"error": "lon must be between -180 and 180"}), 400
+    if freq_mhz <= 0:
+        return jsonify({"error": "freq_mhz must be positive"}), 400
 
     try:
         from aegis.integration.cloudrf import CloudRFClient
 
         tiff_bytes = CloudRFClient(api_key).area(
-            lat=float(station["lat"]),
-            lon=float(station["lon"]),
+            lat=lat,
+            lon=lon,
             alt=float(station.get("alt", 10)),
-            freq_mhz=float(station["freq_mhz"]),
+            freq_mhz=freq_mhz,
             power_w=float(station.get("power_w", 2.0)),
             gain_dbi=float(station.get("gain_dbi", 0)),
             azimuth=float(station.get("azimuth", 0)),
@@ -459,6 +489,7 @@ def _handle_environment_coverage(cache: dict, cache_lock) -> Response:
             propagation_model=propagation_model,
         )
     except Exception as exc:
+        logger.exception("CloudRF API area call failed")
         return jsonify({"error": f"CloudRF API error: {exc}"}), 502
 
     try:
@@ -469,6 +500,7 @@ def _handle_environment_coverage(cache: dict, cache_lock) -> Response:
         img.save(buf, "PNG")
         png_bytes = buf.getvalue()
     except Exception as exc:
+        logger.exception("Coverage image conversion failed")
         return jsonify({"error": f"Image conversion error: {exc}"}), 500
 
     resp = Response(png_bytes, mimetype="image/png")
