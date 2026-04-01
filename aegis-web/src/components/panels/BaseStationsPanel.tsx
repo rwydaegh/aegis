@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import * as Sentry from '@sentry/react'
 import { useBaseStationsStore } from '@/stores/basestations'
 import { loadBasestations } from '@/api/basestations'
+import { searchPatterns } from '@/api/patterns'
+import type { PatternSearchResult } from '@/api/patterns'
 import { useBaseStationsDosimetry } from '@/hooks/useBaseStationsDosimetry'
 import { useNotificationStore } from '@/stores/notifications'
 
@@ -10,6 +12,14 @@ export default function BaseStationsPanel() {
   const [radius, setRadius] = useState(500)
   const [autoLoad, setAutoLoad] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const [patternQuery, setPatternQuery] = useState('')
+  const [patternResults, setPatternResults] = useState<PatternSearchResult[]>([])
+  const [patternTotal, setPatternTotal] = useState(0)
+  const [showPatterns, setShowPatterns] = useState(false)
+
+  const exposureMode = useBaseStationsStore(s => s.exposureMode)
+  const setExposureMode = useBaseStationsStore(s => s.setExposureMode)
 
   const basestations = useBaseStationsStore(s => s.basestations)
   const isLoading = useBaseStationsStore(s => s.isLoading)
@@ -56,6 +66,15 @@ export default function BaseStationsPanel() {
       setLoading(false)
     }
   }, [location, radius, setLoading, setBasestations])
+
+  const handlePatternSearch = useCallback(async () => {
+    if (!patternQuery.trim()) return
+    try {
+      const res = await searchPatterns(patternQuery)
+      setPatternResults(res.results)
+      setPatternTotal(res.total)
+    } catch { /* silent */ }
+  }, [patternQuery])
 
   useEffect(() => {
     if (!autoLoad) return
@@ -167,6 +186,58 @@ export default function BaseStationsPanel() {
                 ))}
               </div>
             </>
+          )}
+
+          <label className={labelClass}>Exposure mode</label>
+          <select
+            className={selectClass}
+            value={exposureMode}
+            onChange={e => setExposureMode(e.target.value as typeof exposureMode)}
+          >
+            <option value="theoretical_max">Theoretical maximum (IEC 62232)</option>
+            <option value="actual_max">Actual maximum (IEC TR 62669)</option>
+            <option value="typical">Typical (50% traffic load)</option>
+          </select>
+
+          <button
+            className="w-full mt-3 px-2 py-1 text-xs text-left text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            onClick={() => setShowPatterns(!showPatterns)}
+          >
+            {showPatterns ? '- ' : '+ '}Antenna pattern library
+          </button>
+
+          {showPatterns && (
+            <div className="mt-1 space-y-1">
+              <div className="flex gap-1">
+                <input
+                  type="text"
+                  className={inputClass}
+                  value={patternQuery}
+                  onChange={e => setPatternQuery(e.target.value)}
+                  placeholder="Search model (e.g. 742215)"
+                  onKeyDown={e => e.key === 'Enter' && handlePatternSearch()}
+                />
+                <button
+                  className="px-2 py-1 text-xs rounded border border-border bg-muted/50 hover:bg-muted transition-colors cursor-pointer whitespace-nowrap"
+                  onClick={handlePatternSearch}
+                >
+                  Search
+                </button>
+              </div>
+              {patternResults.length > 0 && (
+                <div className="max-h-32 overflow-y-auto text-xs space-y-0.5">
+                  <p className="text-muted-foreground">{patternTotal} results</p>
+                  {patternResults.map((r, i) => (
+                    <div key={i} className="flex justify-between px-1 py-0.5 rounded hover:bg-muted/50">
+                      <span className="text-foreground truncate">{r.model}</span>
+                      <span className="text-muted-foreground ml-2 shrink-0">
+                        {r.frequency_mhz > 0 ? `${r.frequency_mhz} MHz` : ''} {r.manufacturer}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
 
           <button

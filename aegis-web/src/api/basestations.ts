@@ -24,6 +24,8 @@ export interface BaseStationData {
   n_v: number
   panel_width_m: number
   panel_height_m: number
+  tdd_dl_ratio: number
+  sidelobe_suppression_db: number | null
 }
 
 interface LoadResponse {
@@ -63,6 +65,7 @@ interface ComputeParams {
   skin_model?: string
   freq_hz?: number
   use_beamforming?: boolean | 'auto'
+  exposure_mode?: 'theoretical_max' | 'actual_max' | 'typical'
 }
 
 export interface ComputeResult {

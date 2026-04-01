@@ -11,6 +11,8 @@ interface BaseStationsState {
   operators: string[]
   technologies: string[]
   activeCount: number
+  exposureMode: 'theoretical_max' | 'actual_max' | 'typical'
+  setExposureMode: (mode: 'theoretical_max' | 'actual_max' | 'typical') => void
 
   selectedIndex: number | null
   selectAntenna: (index: number | null) => void
@@ -48,6 +50,8 @@ export const useBaseStationsStore = create<BaseStationsState>((set, get) => ({
   operators: [],
   technologies: [],
   activeCount: 0,
+  exposureMode: 'theoretical_max',
+  setExposureMode: (mode) => set({ exposureMode: mode }),
   selectedIndex: null,
   selectAntenna: (index) => set({ selectedIndex: index }),
 
@@ -98,6 +102,7 @@ export const useBaseStationsStore = create<BaseStationsState>((set, get) => ({
     technologies: [],
     activeCount: 0,
     selectedIndex: null,
+    exposureMode: 'theoretical_max',
   }),
 
   activeIndices: () => {

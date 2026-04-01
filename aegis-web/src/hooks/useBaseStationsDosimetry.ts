@@ -21,6 +21,7 @@ export function useBaseStationsDosimetry() {
     store.setComputing(true)
 
     const sim = useSimulationStore.getState()
+    const bsStore = useBaseStationsStore.getState()
     const enabledQuantities = Array.from(sim.enabledQuantities) as string[]
 
     computeBasestations(
@@ -31,6 +32,7 @@ export function useBaseStationsDosimetry() {
         body_rotation_y: sim.bodyRotationY,
         quantities: enabledQuantities,
         skin_model: sim.skinModel,
+        exposure_mode: bsStore.exposureMode,
       },
       controller.signal,
     )
