@@ -5,6 +5,7 @@ import { useSceneStore } from '@/stores/scene'
 import { useSimulationStore } from '@/stores/simulation'
 import { useUIStore } from '@/stores/ui'
 import { useNotificationStore } from '@/stores/notifications'
+import { useEnvironmentStore } from '@/stores/environment'
 import { loadBasestations } from '@/api/basestations'
 import { useBaseStationsStore } from '@/stores/basestations'
 
@@ -30,6 +31,7 @@ function SionnaSceneSelector() {
       })
       useSceneStore.getState().setLoadedScenePath(selected)
       useSceneStore.getState().setVoxelData(null)
+      useEnvironmentStore.getState().setSource('none')
     } catch (err) {
       Sentry.captureException(err)
       useNotificationStore.getState().addNotification('error', `Failed to load scene: ${(err as Error).message}`)
@@ -111,6 +113,9 @@ export default function ScenePanel() {
       esRef.current = null
       useUIStore.getState().setLocationLoading(false)
       useUIStore.getState().appendLocationLog('Done! Loading voxels...')
+      useEnvironmentStore.getState().setSource('none')
+      useSceneStore.getState().setSceneGeometry(null)
+      useSceneStore.getState().setLoadedScenePath('')
       // Re-fetch capabilities so useVoxelLoader picks up the new voxels
       fetchCapabilities().then(caps => {
         useSceneStore.getState().setCapabilities(caps)

@@ -210,6 +210,10 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
     if (!location) return
     const controller = freshAbort(get, set)
     set({ loading: true, error: null })
+    const { useSceneStore } = await import('@/stores/scene')
+    useSceneStore.getState().setSceneGeometry(null)
+    useSceneStore.getState().setLoadedScenePath('')
+    useSceneStore.getState().setVoxelData(null)
     try {
       const resp = await fetchWithRetry('/api/environment/osm', {
         method: 'POST',
@@ -250,6 +254,10 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
     if (!location) return
     const controller = freshAbort(get, set)
     set({ loading: true, error: null })
+    const { useSceneStore } = await import('@/stores/scene')
+    useSceneStore.getState().setSceneGeometry(null)
+    useSceneStore.getState().setLoadedScenePath('')
+    useSceneStore.getState().setVoxelData(null)
     try {
       const resp = await fetchWithRetry('/api/environment/3dtiles', {
         method: 'POST',

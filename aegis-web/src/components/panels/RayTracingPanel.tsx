@@ -1,8 +1,7 @@
 import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
-import { useEnvironmentStore } from '@/stores/environment'
 
-type Backend = 'voxel' | 'differt' | 'sionna'
+type Backend = 'sionna' | 'differt'
 
 /** Whether a parameter is configurable, fixed to a value, or not available. */
 type ParamCap =
@@ -19,8 +18,7 @@ function capFor(backend: Backend, param: string, extra?: { method?: string; diff
   switch (param) {
     case 'method':
       if (b === 'differt') return { kind: 'configurable' }
-      if (b === 'sionna') return { kind: 'fixed', value: 'SBR', reason: 'fixed for Sionna RT' }
-      return { kind: 'fixed', value: 'exhaustive', reason: 'fixed for Voxel' }
+      return { kind: 'fixed', value: 'SBR', reason: 'fixed for Sionna RT' }
 
     case 'raysPerSource':
       if (b === 'differt') {
@@ -28,12 +26,11 @@ function capFor(backend: Backend, param: string, extra?: { method?: string; diff
           return { kind: 'configurable-when', when: 'sbr', reason: 'exhaustive does not use rays' }
         return { kind: 'configurable' }
       }
-      if (b === 'sionna') return { kind: 'configurable' }
-      return { kind: 'na', reason: 'not available with Voxel' }
+      return { kind: 'configurable' }
 
     case 'maxPathsPerSource':
       if (b === 'sionna') return { kind: 'configurable' }
-      return { kind: 'na', reason: `not available with ${b === 'differt' ? 'DiffeRT' : 'Voxel'}` }
+      return { kind: 'na', reason: 'not available with DiffeRT' }
 
     case 'los':
       if (b === 'sionna') return { kind: 'configurable' }
@@ -45,38 +42,37 @@ function capFor(backend: Backend, param: string, extra?: { method?: string; diff
 
     case 'diffuseReflection':
       if (b === 'sionna') return { kind: 'configurable' }
-      return { kind: 'na', reason: `not available with ${b === 'differt' ? 'DiffeRT' : 'Voxel'}` }
+      return { kind: 'na', reason: 'not available with DiffeRT' }
 
     case 'refraction':
       if (b === 'sionna') return { kind: 'configurable' }
-      return { kind: 'na', reason: `not available with ${b === 'differt' ? 'DiffeRT' : 'Voxel'}` }
+      return { kind: 'na', reason: 'not available with DiffeRT' }
 
     case 'diffraction':
       if (b === 'sionna') return { kind: 'configurable' }
-      return { kind: 'na', reason: `not available with ${b === 'differt' ? 'DiffeRT' : 'Voxel'}` }
+      return { kind: 'na', reason: 'not available with DiffeRT' }
 
     case 'edgeDiffraction':
       if (b === 'sionna') {
         if (!diffOn) return { kind: 'configurable-when', when: 'diffraction', reason: 'requires diffraction' }
         return { kind: 'configurable' }
       }
-      return { kind: 'na', reason: `not available with ${b === 'differt' ? 'DiffeRT' : 'Voxel'}` }
+      return { kind: 'na', reason: 'not available with DiffeRT' }
 
     case 'diffractionLitRegion':
       if (b === 'sionna') {
         if (!diffOn) return { kind: 'configurable-when', when: 'diffraction', reason: 'requires diffraction' }
         return { kind: 'configurable' }
       }
-      return { kind: 'na', reason: `not available with ${b === 'differt' ? 'DiffeRT' : 'Voxel'}` }
+      return { kind: 'na', reason: 'not available with DiffeRT' }
 
     case 'reflectionLoss':
       if (b === 'differt') return { kind: 'configurable' }
-      if (b === 'voxel') return { kind: 'configurable' }
       return { kind: 'na', reason: 'physics-based in Sionna RT' }
 
     case 'syntheticArray':
       if (b === 'sionna') return { kind: 'configurable' }
-      return { kind: 'na', reason: `not available with ${b === 'differt' ? 'DiffeRT' : 'Voxel'}` }
+      return { kind: 'na', reason: 'not available with DiffeRT' }
 
     case 'chunkSize':
       if (b === 'differt') {
@@ -84,11 +80,11 @@ function capFor(backend: Backend, param: string, extra?: { method?: string; diff
           return { kind: 'configurable-when', when: 'exhaustive/hybrid', reason: 'SBR does not use chunks' }
         return { kind: 'configurable' }
       }
-      return { kind: 'na', reason: `not available with ${b === 'sionna' ? 'Sionna' : 'Voxel'}` }
+      return { kind: 'na', reason: 'not available with Sionna' }
 
     case 'seed':
       if (b === 'sionna') return { kind: 'configurable' }
-      return { kind: 'na', reason: `not available with ${b === 'differt' ? 'DiffeRT' : 'Voxel'}` }
+      return { kind: 'na', reason: 'not available with DiffeRT' }
 
     default:
       return { kind: 'configurable' }
@@ -111,8 +107,6 @@ export default function RayTracingPanel() {
   const pathSource = useSceneStore(s => s.pathSource)
   const rtEnabled = pathSource === 'rt'
   const gpuWarm = useUIStore(s => s.gpuWarm)
-  const scenes = useSceneStore(s => s.scenes)
-  const loadedScenePath = useSceneStore(s => s.loadedScenePath)
 
   // RT config state
   const rtSource = useSceneStore(s => s.rtSource)
@@ -122,10 +116,6 @@ export default function RayTracingPanel() {
 
   const hasDiffert = caps?.has_differt ?? false
   const hasSionna = caps?.has_sionna ?? false
-  const hasVoxels = caps?.has_voxels ?? false
-  const hasScenes = scenes.length > 0
-  const envSource = useEnvironmentStore(s => s.source)
-  const hasEnv = envSource === 'osm' || envSource === '3dtiles'
 
   if (!hasDiffert && !hasSionna) {
     return <p className="text-xs text-muted-foreground">No ray tracing backend available</p>
@@ -135,11 +125,6 @@ export default function RayTracingPanel() {
   const labelClass = "text-xs text-muted-foreground block mt-2 mb-1"
   const sectionClass = "text-[10px] uppercase tracking-wider text-muted-foreground/50 mt-3 mb-1 border-b border-border/30 pb-1"
   const hintClass = "text-[10px] text-muted-foreground/60 ml-1"
-
-  // DiffeRT works with scene files, voxels, or environment meshes
-  const differtReady = rtSource === 'differt' ? !!(loadedScenePath || hasVoxels || hasEnv) : true
-  const needsScene = rtSource === 'sionna'
-  const sceneReady = needsScene ? !!loadedScenePath : differtReady
 
   const backend: Backend = rtSource
 
@@ -249,20 +234,9 @@ export default function RayTracingPanel() {
             value={rtSource}
             onChange={e => useSceneStore.setState({ rtSource: e.target.value as Backend })}
           >
-            {hasVoxels && <option value="voxel">Voxel (Sionna RT)</option>}
-            {hasDiffert && (hasScenes || hasVoxels || hasEnv) && (
-              <option value="differt">
-                {hasScenes ? 'Scene (DiffeRT)' : hasEnv ? 'Environment (DiffeRT)' : 'Voxel (DiffeRT)'}
-              </option>
-            )}
-            {hasSionna && hasScenes && <option value="sionna">Scene (Sionna RT)</option>}
+            {hasSionna && <option value="sionna">Sionna RT</option>}
+            {hasDiffert && <option value="differt">DiffeRT</option>}
           </select>
-
-          {!sceneReady && (
-            <p className="text-xs text-amber-400 mt-1">
-              {needsScene ? 'Load a scene first (Scene panel above)' : 'Load a scene, voxels, or environment first'}
-            </p>
-          )}
 
           {/* ── Path solving ── */}
           <div className={sectionClass}>Path solving</div>

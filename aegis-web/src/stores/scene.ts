@@ -82,7 +82,7 @@ interface SceneStore {
 
   // Ray tracing
   pathSource: 'synthetic' | 'stochastic' | 'rt'
-  rtSource: 'voxel' | 'differt' | 'sionna'
+  rtSource: 'sionna' | 'differt'
   rtMaxOrder: number
   rtPaths: PathViz[] | null
   hasDiffert: boolean
@@ -106,7 +106,7 @@ interface SceneStore {
   toggleGridVisible: () => void
   setGlbTiles: (tiles: string[]) => void
   setPathSource: (source: SceneStore['pathSource']) => void
-  setRtSource: (source: SceneStore['rtSource']) => void
+  setRtSource: (source: 'sionna' | 'differt') => void
   setRtMaxOrder: (order: number) => void
   setRtPaths: (paths: PathViz[] | null) => void
   setLoadedScenePath: (path: string) => void
@@ -139,7 +139,7 @@ export const useSceneStore = create<SceneStore>((set) => ({
   gridVisible: false,
   glbTiles: [],
   pathSource: 'synthetic',
-  rtSource: 'differt',
+  rtSource: 'sionna',
   rtMaxOrder: 3,
   rtPaths: null,
   hasDiffert: false,

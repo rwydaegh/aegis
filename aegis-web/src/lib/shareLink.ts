@@ -157,7 +157,10 @@ export function applyShareState(state: Partial<ShareState>): void {
   // --- scene store ---
   if (state.bodyName !== undefined) scene.setBodyName(state.bodyName)
   if (state.pathSource !== undefined) scene.setPathSource(state.pathSource as Parameters<typeof scene.setPathSource>[0])
-  if (state.rtSource !== undefined) scene.setRtSource(state.rtSource as Parameters<typeof scene.setRtSource>[0])
+  if (state.rtSource !== undefined) {
+    const mapped = state.rtSource === 'voxel' ? 'sionna' : state.rtSource
+    scene.setRtSource(mapped as Parameters<typeof scene.setRtSource>[0])
+  }
   if (state.rtMaxOrder !== undefined) scene.setRtMaxOrder(state.rtMaxOrder)
   if (state.rtConfig !== undefined) scene.setRtConfig(state.rtConfig as Parameters<typeof scene.setRtConfig>[0])
   if (state.envDisplayMode !== undefined) scene.setEnvDisplayMode(state.envDisplayMode as Parameters<typeof scene.setEnvDisplayMode>[0])
