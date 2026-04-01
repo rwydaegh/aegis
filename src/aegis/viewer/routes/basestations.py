@@ -16,11 +16,21 @@ _OCTET_STREAM = "application/octet-stream"
 
 
 def _list_available_regions(data_dir: str) -> list[str]:
-    """Return region names that have CSV data files."""
+    """Return region names that have Parquet or CSV data files."""
+    regions: set[str] = set()
+    # Check merged Parquet files
+    merged_dir = os.path.join(data_dir, "basestations", "merged")
+    if os.path.isdir(merged_dir):
+        for f in os.listdir(merged_dir):
+            if f.endswith(".parquet"):
+                regions.add(f[:-8])  # strip .parquet
+    # Check CSV files (backwards compat)
     bs_dir = os.path.join(data_dir, "basestations")
-    if not os.path.isdir(bs_dir):
-        return []
-    return [f[:-4] for f in os.listdir(bs_dir) if f.endswith(".csv")]
+    if os.path.isdir(bs_dir):
+        for f in os.listdir(bs_dir):
+            if f.endswith(".csv"):
+                regions.add(f[:-4])
+    return sorted(regions)
 
 
 _ISO3166_TO_REGION = {
@@ -124,9 +134,18 @@ def _handle_basestations_load(cache: dict, cache_lock: threading.RLock):
     elif region is None:
         region = ""
 
-    # Try CSV first (fast, no external API), then basestationLib
-    csv_path = None
+    # Try merged Parquet first (fast, with provenance), then CSV, then API
     data_dir = os.environ.get("AEGIS_DATA_DIR", "data")
+    parquet_path = None
+    parquet_name = f"{region}.parquet" if region else "brussels.parquet"
+    for candidate in [
+        os.path.join(data_dir, "basestations", "merged", parquet_name),
+    ]:
+        if os.path.exists(candidate):
+            parquet_path = candidate
+            break
+
+    csv_path = None
     csv_name = f"{region}.csv" if region else "brussels.csv"
     for candidate in [
         os.path.join(data_dir, "basestations", csv_name),
@@ -137,7 +156,17 @@ def _handle_basestations_load(cache: dict, cache_lock: threading.RLock):
             break
 
     try:
-        if csv_path:
+        if parquet_path:
+            from aegis.basestation.adapter import load_basestations_from_parquet
+
+            basestations = load_basestations_from_parquet(
+                parquet_path,
+                bbox=bbox,
+                operator=params.get("operator"),
+                technology=params.get("technology"),
+                frequency_band=params.get("frequency_band"),
+            )
+        elif csv_path:
             basestations = load_basestations_from_csv(
                 csv_path,
                 bbox=bbox,
@@ -576,6 +605,7 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
 def _bs_summary(bs) -> dict:
     """Serialize a BaseStation to a JSON-safe dict with classification."""
     from aegis.basestation.classify import classify_basestation
+    from aegis.basestation.provenance import aggregate_confidence
 
     classification = classify_basestation(
         gain_dbi=bs.gain_dbi,
@@ -593,6 +623,7 @@ def _bs_summary(bs) -> dict:
     # Remove beam_config (not JSON-serializable as-is)
     classification.pop("beam_config", None)
 
+    prov_dict = bs.provenance_dict
     return {
         "site_code": bs.site_code,
         "antenna_label": bs.antenna_label,
@@ -609,5 +640,9 @@ def _bs_summary(bs) -> dict:
         "has_pattern": bs.pattern is not None,
         "horizontal_beamwidth_deg": bs.horizontal_beamwidth_deg,
         "vertical_beamwidth_deg": bs.vertical_beamwidth_deg,
+        "frequency_band": bs.frequency_band,
+        "pattern_source": bs.pattern_source,
+        "confidence": aggregate_confidence(bs.provenance),
+        "provenance": {k: {"origin": v.origin, "confidence": v.confidence} for k, v in prov_dict.items()},
         **classification,
     }

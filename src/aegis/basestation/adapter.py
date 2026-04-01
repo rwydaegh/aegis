@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import re
 
 import numpy as np
 import pandas as pd
@@ -13,23 +12,10 @@ from aegis.basestation.coords import wgs84_to_enu
 from aegis.basestation.orientation import departure_to_antenna_local
 from aegis.basestation.pattern import synthetic_pattern_from_beamwidth
 from aegis.basestation.power import ExposureMode, effective_eirp_dbm, eirp_to_tx_power_w
+from aegis.basestation.utils import _safe_float, _sanitize_label
 from aegis.paths import PropagationPaths
 
 logger = logging.getLogger(__name__)
-
-
-def _sanitize_label(label: str) -> str:
-    """Match basestationLib's label sanitization for pattern key lookup."""
-    return re.sub(r"[() .&/\\-]", "_", label)
-
-
-def _safe_float(val, default: float = 0.0) -> float:
-    """Convert to float, returning default for NaN/None."""
-    try:
-        f = float(val)
-        return default if np.isnan(f) else f
-    except (TypeError, ValueError):
-        return default
 
 
 def load_basestations_from_df(
@@ -65,6 +51,11 @@ def load_basestations_from_df(
                     max_gain_dbi=float(np.nanmax(matrix)),
                 )
 
+        # Frequency band
+        fb = str(row.get("FrequencyBand", ""))
+        if fb == "nan" or pd.isna(row.get("FrequencyBand")):
+            fb = ""
+
         # If no measured pattern, synthesize from beamwidth
         gain = _safe_float(row.get("Gain"), 0.0)
         if pattern is None:
@@ -91,6 +82,7 @@ def load_basestations_from_df(
                 horizontal_beamwidth_deg=_safe_float(row.get("Horizontal_Beamwidth"), 65.0),
                 vertical_beamwidth_deg=_safe_float(row.get("Vertical_Beamwidth"), 10.0),
                 pattern=pattern,
+                frequency_band=fb,
             )
         )
 
@@ -127,7 +119,60 @@ def load_basestations_from_csv(
         df = df[df["Technology"].str.contains(technology, case=False, na=False)]
 
     logger.info("Loaded %d antennas from CSV (after filters)", len(df))
-    return load_basestations_from_df(df)
+
+    # Auto-discover patterns
+    from pathlib import Path
+
+    patterns = {}
+    csv_dir = Path(csv_path).parent
+    region_name = Path(csv_path).stem
+    for patterns_dir in [csv_dir / "patterns", csv_dir.parent / "patterns"]:
+        mat_path = patterns_dir / f"{region_name}.mat"
+        if mat_path.exists():
+            import scipy.io
+
+            mat = scipy.io.loadmat(str(mat_path))
+            patterns = {k: v for k, v in mat.items() if not k.startswith("_")}
+            logger.info("Auto-discovered %d patterns from %s", len(patterns), mat_path)
+            break
+
+    return load_basestations_from_df(df, patterns)
+
+
+def load_basestations_from_parquet(
+    path: str,
+    bbox: list[float] | None = None,
+    operator: str | None = None,
+    technology: str | None = None,
+    frequency_band: str | None = None,
+) -> list[BaseStation]:
+    """Load base stations from a merged Parquet file with provenance."""
+    from pathlib import Path
+
+    from aegis.basestation.parquet_io import read_merged_parquet
+
+    # Auto-discover patterns
+    patterns: dict = {}
+    parquet_dir = Path(path).parent
+    region_name = Path(path).stem
+    for patterns_dir in [parquet_dir / "patterns", parquet_dir.parent / "patterns"]:
+        mat_path = patterns_dir / f"{region_name}.mat"
+        if mat_path.exists():
+            import scipy.io
+
+            mat = scipy.io.loadmat(str(mat_path))
+            patterns = {k: v for k, v in mat.items() if not k.startswith("_")}
+            logger.info("Auto-discovered %d patterns from %s", len(patterns), mat_path)
+            break
+
+    return read_merged_parquet(
+        path,
+        bbox=bbox,
+        operator=operator,
+        technology=technology,
+        frequency_band=frequency_band,
+        patterns=patterns,
+    )
 
 
 def load_basestations(
