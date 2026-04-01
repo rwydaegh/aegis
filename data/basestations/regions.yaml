@@ -1,0 +1,41 @@
+# Base station data pipeline configuration
+# bbox format: [min_lon, max_lon, min_lat, max_lat] (lon-first, matching basestationLib convention)
+regions:
+  brussels:
+    sources:
+      - type: basestationlib
+        country: Belgium
+        region: brussels
+        priority: 1
+    reference: data/basestations/raw/brussels_gov.parquet
+
+  flanders:
+    sources:
+      - type: basestationlib
+        country: Belgium
+        region: flanders
+        priority: 1
+    reference: data/basestations/raw/brussels_gov.parquet
+
+  france:
+    sources:
+      - type: basestationlib
+        country: France
+        bbox: [1.5, 3.0, 48.5, 49.2]
+        priority: 1
+      - type: opencellid
+        country_code: 208
+        bbox: [1.5, 3.0, 48.5, 49.2]
+        priority: 3
+    reference: data/basestations/raw/brussels_gov.parquet
+
+  denmark:
+    sources:
+      - type: mastedatabasen
+        bbox: [12.4, 12.7, 55.6, 55.8]
+        priority: 1
+      - type: opencellid
+        country_code: 238
+        bbox: [12.4, 12.7, 55.6, 55.8]
+        priority: 3
+    reference: data/basestations/raw/brussels_gov.parquet
