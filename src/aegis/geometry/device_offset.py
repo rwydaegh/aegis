@@ -9,6 +9,57 @@ from __future__ import annotations
 import numpy as np
 
 
+def _face_direction_y(triangles: np.ndarray, eye_z: float, band: float = 0.03) -> float:
+    """Determine whether the face points toward +Y or -Y using outward normals.
+
+    At eye level, face-side triangles (nose, eyes, cheeks) have outward normals
+    with a strong Y-component in the face direction.  The back of the head is
+    smoother and its normals point the opposite way.
+
+    Outward direction is determined per-triangle by checking whether the cross
+    product points away from the band centroid (center of head), making this
+    independent of triangle winding order.
+
+    Parameters
+    ----------
+    triangles : (N, 3, 3)
+        Triangle vertices in Z-up coordinates.
+    eye_z : float
+        Absolute Z coordinate of the eye band center.
+    band : float
+        Half-width of the Z band around eye_z.
+
+    Returns
+    -------
+    float
+        +1.0 if the face points toward +Y, -1.0 if toward -Y.
+    """
+    centroids = triangles.mean(axis=1)  # (N, 3)
+    mask = np.abs(centroids[:, 2] - eye_z) < band
+    if mask.sum() < 5:
+        mask = np.abs(centroids[:, 2] - eye_z) < band * 3
+    if mask.sum() < 3:
+        return 1.0  # degenerate: assume +Y
+
+    band_tris = triangles[mask]
+    band_cents = centroids[mask]
+    head_center = band_cents.mean(axis=0)  # approximate center of head slice
+
+    v0, v1, v2 = band_tris[:, 0], band_tris[:, 1], band_tris[:, 2]
+    cross = np.cross(v1 - v0, v2 - v0)  # (M, 3), magnitude = 2 * area
+
+    # Determine outward direction: cross product should point away from head center
+    outward_vec = band_cents - head_center  # centroid-to-triangle direction
+    dot = np.sum(cross * outward_vec, axis=1)
+    # Flip cross products that point inward (negative dot = cross points toward center)
+    flip = dot < 0
+    cross[flip] *= -1
+
+    # Area-weighted Y-component of outward normals
+    net_y = cross[:, 1].sum()
+    return 1.0 if net_y >= 0 else -1.0
+
+
 def estimate_device_offset(
     vertices: np.ndarray,
     forward_distance: float = 0.30,
@@ -17,6 +68,9 @@ def estimate_device_offset(
 
     Finds the eye position from the mesh and places the device
     *forward_distance* meters in front of the face at eye height.
+
+    The face direction (+Y or -Y) is auto-detected from triangle normals,
+    so this works regardless of which way the STL phantom faces.
 
     Parameters
     ----------
@@ -53,15 +107,21 @@ def estimate_device_offset(
         # Degenerate mesh: place at eye height, centered
         return [0.0, forward_distance, float(eye_z - z_min)]
 
-    # Face surface: 97th percentile of Y (forward) at eye level
-    face_y = float(np.percentile(eye_band[:, 1], 97))
+    # Detect face direction from triangle normals at eye level
+    face_sign = _face_direction_y(vertices, eye_z)
 
-    # Face center X: median of points near the face surface
-    face_pts = eye_band[eye_band[:, 1] > face_y - 0.03]
+    # Face surface: extreme Y in the face direction
+    if face_sign > 0:
+        face_y = float(np.percentile(eye_band[:, 1], 97))
+        face_pts = eye_band[eye_band[:, 1] > face_y - 0.03]
+    else:
+        face_y = float(np.percentile(eye_band[:, 1], 3))
+        face_pts = eye_band[eye_band[:, 1] < face_y + 0.03]
+
     face_x = float(np.median(face_pts[:, 0])) if len(face_pts) > 0 else 0.0
 
     return [
         round(face_x, 4),
-        round(face_y + forward_distance, 4),
+        round(face_y + face_sign * forward_distance, 4),
         round(eye_z - z_min, 4),
     ]

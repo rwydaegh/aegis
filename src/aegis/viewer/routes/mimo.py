@@ -71,11 +71,24 @@ def _build_scene(params: dict, cache: dict) -> tuple[MIMOScene | None, Response 
         if phantom not in bodies_cache:
             return None, (jsonify({"error": f"Unknown phantom: {phantom!r}"}), 404)
 
-        # device_offset is relative to user body; convert to absolute world position
+        # device_offset is relative to user body; rotate by orientation
+        # then add to world position (matches frontend SmartphoneModel.tsx)
         user_pos = np.array(u.get("position", [0.0, 0.0, 0.0]), dtype=np.float64)
         default_offset = cache.get("body_device_offsets", {}).get(phantom, [0.0, 0.30, 1.4])
-        device_offset = u.get("device_offset", u.get("device_position", default_offset))
-        device_position = user_pos + np.array(device_offset, dtype=np.float64)
+        device_offset = np.array(
+            u.get("device_offset", u.get("device_position", default_offset)),
+            dtype=np.float64,
+        )
+        orientation = float(u.get("orientation", 0.0))
+        cos_o, sin_o = np.cos(orientation), np.sin(orientation)
+        rotated_offset = np.array(
+            [
+                cos_o * device_offset[0] - sin_o * device_offset[1],
+                sin_o * device_offset[0] + cos_o * device_offset[1],
+                device_offset[2],
+            ]
+        )
+        device_position = user_pos + rotated_offset
         device_orientation = u.get("device_orientation", [0.0, 0.0, 1.0])
 
         try:
