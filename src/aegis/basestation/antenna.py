@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from aegis.basestation.provenance import FieldSource
 
 import numpy as np
 
@@ -115,6 +119,16 @@ class BaseStation:
 
     # Pattern (optional)
     pattern: AntennaPattern | None = None
+
+    # Provenance
+    frequency_band: str = ""
+    provenance: tuple[tuple[str, FieldSource], ...] = ()
+    pattern_source: str = ""
+
+    @property
+    def provenance_dict(self) -> dict[str, FieldSource]:
+        """Dict access to provenance tuple."""
+        return dict(self.provenance)
 
     @property
     def total_tilt_deg(self) -> float:
