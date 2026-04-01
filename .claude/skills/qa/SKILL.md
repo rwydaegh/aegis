@@ -10,14 +10,31 @@ Exercise the AEGIS viewer end-to-end with Playwright CLI. The goal is to test th
 
 ## Setup
 
-1. Kill stale processes on the viewer port (default 5000) and any Chrome instances.
-2. Start the viewer: `python -m aegis.viewer` in background.
-3. Open the browser **headed** so the user can follow along:
-```bash
-npx @playwright/cli open --headed http://127.0.0.1:5000
-npx @playwright/cli resize 1920 1080
-```
+1. Kill stale processes on the viewer port (default 5000).
+2. Start the viewer: `.venv/bin/python -m aegis.viewer` in background.
+3. Wait for "Running on http://127.0.0.1:5000" in output.
 4. Save screenshots to `test_screenshots/`. Read every screenshot with the Read tool.
+
+## Tooling
+
+Use these approaches (NOT `npx @playwright/cli` which does not exist):
+
+- **Static screenshots**: `npx playwright screenshot --wait-for-timeout 5000 --viewport-size "1920,1080" URL output.png`
+- **API checks**: `curl -s http://127.0.0.1:5000/api/endpoint`
+- **Interactive testing** (clicks, keyboard, JS eval): Write a short Node.js script using the `playwright` library. Keep scripts minimal and focused. Example pattern:
+
+```js
+const { chromium } = require('playwright');
+(async () => {
+  const browser = await chromium.launch({ headless: true });
+  const page = await (await browser.newContext({ viewport: { width: 1920, height: 1080 } })).newPage();
+  await page.goto('http://127.0.0.1:5000', { waitUntil: 'networkidle' });
+  // ... interactions, screenshots ...
+  await browser.close();
+})();
+```
+
+Run with `node test_screenshots/script.js`.
 
 ## How to interact with the 3D scene
 
@@ -108,23 +125,19 @@ Always dispatch both `keydown` and `keyup` with a short sleep between. For WASD 
 - Skin model dropdown
 - Computation mode (Bound/Aggregate/Spatial)
 
-## Reading element refs
+## Reading elements
 
-Use `npx @playwright/cli snapshot` before clicking UI elements. The snapshot gives `[ref=eNN]` identifiers for buttons, dropdowns, checkboxes. Use `npx @playwright/cli click eNN` or `select eNN "value"`.
+In Node.js scripts, use Playwright locators: `page.locator('text=Button')`, `page.locator('select')`, `page.locator('canvas')`. Use `page.evaluate()` for JS execution in the browser context.
 
 After actions that change the scene, wait 2-3 seconds before screenshotting.
 
 ## Console errors
 
-Run `npx @playwright/cli console` periodically. Report all errors and warnings found.
+In Node.js scripts, collect errors via `page.on('console', msg => ...)` and `page.on('pageerror', ...)`. Report all errors found.
 
 ## Cleanup
 
-Close the browser and kill the server when done:
-```bash
-npx @playwright/cli close
-taskkill /F /PID <server_pid>
-```
+Kill the server process when done: `kill $(lsof -t -i:5000) 2>/dev/null`
 
 ## Report format
 
