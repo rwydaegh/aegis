@@ -273,6 +273,16 @@ def paths_from_basestation(
         dist = 0.1
     k_hat = direction / np.linalg.norm(direction)  # arrival direction at body
 
+    # --- mMIMO beam decomposition path ---
+    if (
+        archetype == "mmimo"
+        and exposure_mode in (ExposureMode.ACTUAL_MAX, ExposureMode.TYPICAL)
+        and exposure_config is not None
+        and beam_config is not None
+    ):
+        return _mmimo_beam_decomposition(bs, k_hat, dist, exposure_mode, exposure_config, beam_config)
+
+    # --- Standard (non-mMIMO) path ---
     # TX power from EIRP (apply exposure reduction if configured)
     if exposure_mode is not None and exposure_config is not None:
         eff_eirp = effective_eirp_dbm(bs, exposure_config, exposure_mode)
@@ -302,6 +312,73 @@ def paths_from_basestation(
     return PropagationPaths.from_powers(
         k_hat=k_hat[np.newaxis, :],
         power=np.array([max(s_modulated, 0.0)]),
+    )
+
+
+def _mmimo_beam_decomposition(
+    bs: BaseStation,
+    k_hat: np.ndarray,
+    dist: float,
+    exposure_mode: ExposureMode,
+    exposure_config: ExposureConfig,
+    beam_config: BeamConfig,
+) -> PropagationPaths:
+    """Compute mMIMO exposure as broadcast + traffic beam combination.
+
+    For ACTUAL_MAX: power = max(broadcast, traffic)
+    For TYPICAL: power = broadcast + traffic * traffic_load_factor
+    """
+    # TX power from EIRP (strip peak antenna gain)
+    tx_power_w = eirp_to_tx_power_w(bs.eirp_dbm, bs.gain_dbi)
+
+    # Isotropic power density from TX power at distance d
+    s_iso = tx_power_w / (4.0 * np.pi * dist**2)
+
+    # Antenna-local angles for the body direction
+    elev_local, azim_local = departure_to_antenna_local(
+        k_hat[np.newaxis, :],
+        bs.azimuth_deg,
+        bs.total_tilt_deg,
+    )
+    elev_deg = float(elev_local[0])
+    azim_deg = float(azim_local[0])
+
+    tdd_dl = exposure_config.tdd_dl_ratio
+    prf = exposure_config.power_reduction_factor
+
+    # --- Broadcast beam ---
+    bc_pattern = synthetic_pattern_from_beamwidth(
+        beam_config.broadcast_hbw_deg,
+        beam_config.broadcast_vbw_deg,
+        beam_config.broadcast_gain_dbi,
+        sidelobe_suppression_db=15.0,
+    )
+    bc_gain = float(bc_pattern.evaluate(elev_local, azim_local)[0])
+    # Broadcast is always-on during DL, no PRF reduction
+    s_broadcast = s_iso * bc_gain * tdd_dl
+
+    # --- Traffic beam ---
+    in_sweep = abs(azim_deg) < beam_config.sweep_h_range_deg and abs(elev_deg) < beam_config.sweep_v_range_deg
+    if in_sweep:
+        tr_pattern = synthetic_pattern_from_beamwidth(
+            beam_config.traffic_hbw_deg,
+            beam_config.traffic_vbw_deg,
+            beam_config.traffic_gain_dbi,
+            sidelobe_suppression_db=15.0,
+        )
+        tr_gain = float(tr_pattern.evaluate(elev_local, azim_local)[0])
+        s_traffic = s_iso * tr_gain * tdd_dl * prf
+        if exposure_mode == ExposureMode.TYPICAL:
+            s_traffic *= exposure_config.traffic_load_factor
+    else:
+        s_traffic = 0.0
+
+    # --- Combine: ACTUAL_MAX takes envelope, TYPICAL sums ---
+    power = max(s_broadcast, s_traffic) if exposure_mode == ExposureMode.ACTUAL_MAX else s_broadcast + s_traffic
+
+    return PropagationPaths.from_powers(
+        k_hat=k_hat[np.newaxis, :],
+        power=np.array([max(power, 0.0)]),
     )
 
 

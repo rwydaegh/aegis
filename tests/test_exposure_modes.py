@@ -201,3 +201,159 @@ def test_paths_from_basestation_backward_compatible():
     paths1 = paths_from_basestation(bs, body, origin)
     paths2 = paths_from_basestation(bs, body, origin)
     assert abs(paths1.total_power - paths2.total_power) < 1e-12
+
+
+def test_beam_decomposition_actual_max():
+    """actual_max uses max(broadcast, traffic) for mMIMO in sweep range."""
+    import numpy as np
+
+    from aegis.basestation import BaseStation
+    from aegis.basestation.adapter import paths_from_basestation
+    from aegis.basestation.antenna import BeamConfig, ExposureConfig
+    from aegis.basestation.power import ExposureMode
+
+    bs = BaseStation(
+        site_code="T",
+        antenna_label="A",
+        operator="Op",
+        technology="5G",
+        latitude=50.85,
+        longitude=4.35,
+        height_m=30,
+        eirp_dbm=50.0,
+        gain_dbi=25.0,
+        freq_mhz=3500,
+        azimuth_deg=0,
+        electrical_tilt_deg=6,
+        mechanical_tilt_deg=0,
+        horizontal_beamwidth_deg=65,
+        vertical_beamwidth_deg=10,
+    )
+    body = np.array([0.0, 50.0, 1.5])  # on boresight, within sweep range
+    origin = (50.85, 4.35)
+    exp = ExposureConfig(duplex_mode="tdd", tdd_dl_ratio=0.75, power_reduction_factor=0.32)
+    beam = BeamConfig()
+
+    paths = paths_from_basestation(
+        bs,
+        body,
+        origin,
+        exposure_mode=ExposureMode.ACTUAL_MAX,
+        exposure_config=exp,
+        beam_config=beam,
+        archetype="mmimo",
+    )
+    assert paths.total_power > 0
+
+
+def test_beam_decomposition_outside_sweep():
+    """Outside sweep range, only broadcast beam contributes."""
+    import numpy as np
+
+    from aegis.basestation import BaseStation
+    from aegis.basestation.adapter import paths_from_basestation
+    from aegis.basestation.antenna import BeamConfig, ExposureConfig
+    from aegis.basestation.power import ExposureMode
+
+    bs = BaseStation(
+        site_code="T",
+        antenna_label="A",
+        operator="Op",
+        technology="5G",
+        latitude=50.85,
+        longitude=4.35,
+        height_m=30,
+        eirp_dbm=50.0,
+        gain_dbi=25.0,
+        freq_mhz=3500,
+        azimuth_deg=0,
+        electrical_tilt_deg=6,
+        mechanical_tilt_deg=0,
+        horizontal_beamwidth_deg=65,
+        vertical_beamwidth_deg=10,
+    )
+    # Body at ~90 degrees azimuth -- outside +/-60 sweep
+    body = np.array([200.0, 0.0, 1.5])
+    origin = (50.85, 4.35)
+    exp = ExposureConfig(duplex_mode="tdd", tdd_dl_ratio=0.75, power_reduction_factor=0.32)
+    beam = BeamConfig(sweep_h_range_deg=60.0)
+
+    paths_outside = paths_from_basestation(
+        bs,
+        body,
+        origin,
+        exposure_mode=ExposureMode.ACTUAL_MAX,
+        exposure_config=exp,
+        beam_config=beam,
+        archetype="mmimo",
+    )
+
+    # On boresight for comparison
+    body_boresight = np.array([0.0, 50.0, 1.5])
+    paths_boresight = paths_from_basestation(
+        bs,
+        body_boresight,
+        origin,
+        exposure_mode=ExposureMode.ACTUAL_MAX,
+        exposure_config=exp,
+        beam_config=beam,
+        archetype="mmimo",
+    )
+
+    # Outside sweep should have less power than boresight (no traffic beam)
+    assert paths_outside.total_power < paths_boresight.total_power
+
+
+def test_beam_typical_mode_lower_than_actual_max():
+    """Typical mode produces lower power than actual_max."""
+    import numpy as np
+
+    from aegis.basestation import BaseStation
+    from aegis.basestation.adapter import paths_from_basestation
+    from aegis.basestation.antenna import BeamConfig, ExposureConfig
+    from aegis.basestation.power import ExposureMode
+
+    bs = BaseStation(
+        site_code="T",
+        antenna_label="A",
+        operator="Op",
+        technology="5G",
+        latitude=50.85,
+        longitude=4.35,
+        height_m=30,
+        eirp_dbm=50.0,
+        gain_dbi=25.0,
+        freq_mhz=3500,
+        azimuth_deg=0,
+        electrical_tilt_deg=6,
+        mechanical_tilt_deg=0,
+        horizontal_beamwidth_deg=65,
+        vertical_beamwidth_deg=10,
+    )
+    body = np.array([0.0, 50.0, 1.5])
+    origin = (50.85, 4.35)
+    exp = ExposureConfig(duplex_mode="tdd", tdd_dl_ratio=0.75, power_reduction_factor=0.32, traffic_load_factor=0.5)
+    beam = BeamConfig()
+
+    paths_actual = paths_from_basestation(
+        bs,
+        body,
+        origin,
+        exposure_mode=ExposureMode.ACTUAL_MAX,
+        exposure_config=exp,
+        beam_config=beam,
+        archetype="mmimo",
+    )
+    paths_typical = paths_from_basestation(
+        bs,
+        body,
+        origin,
+        exposure_mode=ExposureMode.TYPICAL,
+        exposure_config=exp,
+        beam_config=beam,
+        archetype="mmimo",
+    )
+
+    # typical should be lower because traffic beam is scaled by traffic_load_factor
+    # and typical uses sum (broadcast + traffic*load) vs actual_max uses max(broadcast, traffic)
+    assert paths_typical.total_power <= paths_actual.total_power
