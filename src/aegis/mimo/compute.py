@@ -181,24 +181,29 @@ def _default_los_paths(
     body: BodyMesh,
     array_center: np.ndarray,
     freq_hz: float,
+    device_position: np.ndarray | None = None,
 ) -> PropagationPaths:
-    """Create a single LOS path from the array center toward the body centroid.
+    """Create a single LOS path from the array toward the device (or body centroid).
 
-    The path direction is from the array toward the body. The psi vector is
-    set to a unit-amplitude x-polarised plane wave.
+    When *device_position* is given the path points from the array toward the
+    device, which is the physically correct target for MRT beamforming. The
+    body is in the near-field path of this beam, so the same k_hat also drives
+    the body-surface exposure channel.
 
     Parameters
     ----------
     body : BodyMesh
     array_center : (3,) array phase center position [m].
     freq_hz : carrier frequency [Hz].
+    device_position : (3,) optional device location in world coords [m].
+        Falls back to the body centroid when not provided.
 
     Returns
     -------
     PropagationPaths with a single LOS path.
     """
-    centroid = body.centroids.mean(axis=0)
-    direction = centroid - array_center
+    target = device_position if device_position is not None else body.centroids.mean(axis=0)
+    direction = target - array_center
     dist = np.linalg.norm(direction)
     k_hat = np.array([[0.0, 0.0, -1.0]]) if dist < 1e-15 else (direction / dist).reshape(1, 3)
 
@@ -328,7 +333,7 @@ def compute_mimo_scene_with_bodies(
     scene : MIMOScene with users, array, freq_hz, total_power.
     bodies : dict mapping phantom_name -> BodyMesh (canonical, at origin).
     level : fidelity level for engine.compute (7 or 8).
-    generate_paths_fn : optional callable(body, array_center, freq_hz) -> PropagationPaths.
+    generate_paths_fn : optional callable(body, array_center, freq_hz, device_position) -> PropagationPaths.
         Defaults to _default_los_paths if None.
     precoder_type : "mrt", "zf", "mmse", or "zf_exposure".
 
@@ -393,8 +398,8 @@ def compute_mimo_scene_with_bodies(
         )
         user.body = body
 
-        # Generate center paths
-        center_paths = generate_paths_fn(body, array.reference_position, freq_hz)
+        # Generate center paths toward the device (beam target)
+        center_paths = generate_paths_fn(body, array.reference_position, freq_hz, cfg.device_position)
         user.center_paths = center_paths
 
         # Expand to per-element paths
