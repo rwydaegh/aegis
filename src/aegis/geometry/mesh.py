@@ -69,7 +69,8 @@ def load_stl_binary(path: str | Path) -> tuple[np.ndarray, np.ndarray, np.ndarra
         nn_norm = np.linalg.norm(nn, axis=1, keepdims=True)
         nn = nn / np.where(nn_norm > 0, nn_norm, 1.0)
         normals[bad] = nn
-        n_norm = np.linalg.norm(normals, axis=1, keepdims=True)
+        # Only recompute norms for the fixed subset
+        n_norm[bad] = np.linalg.norm(normals[bad], axis=1, keepdims=True)
 
     normals = normals / np.where(n_norm > 0, n_norm, 1.0)
 
