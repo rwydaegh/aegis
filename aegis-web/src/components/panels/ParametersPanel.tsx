@@ -62,8 +62,6 @@ export default function ParametersPanel() {
   const skinModel = useSimulationStore((s) => s.skinModel)
   const setSkinModel = useSimulationStore((s) => s.setSkinModel)
   const stats = useSimulationStore((s) => s.stats)
-  const nPaths = useSimulationStore((s) => s.nPaths)
-  const setNPaths = useSimulationStore((s) => s.setNPaths)
   const freqGhz = useSimulationStore((s) => s.freqGhz)
   const setFreqGhz = useSimulationStore((s) => s.setFreqGhz)
   const exposureMode = useSimulationStore((s) => s.exposureMode)
@@ -223,23 +221,6 @@ export default function ParametersPanel() {
           <span><Tex math={`\\varepsilon_r = ${stats.tissue_eps_r.toFixed(1)}`} /></span>
           <span><Tex math={`\\sigma = ${stats.tissue_sigma.toFixed(1)}\\;\\text{S/m}`} /></span>
         </div>
-      )}
-
-      {pathSource !== 'stochastic' && (
-        <>
-          <label className={labelClass}>Stochastic propagation</label>
-          <select
-            className={selectClass}
-            value={nPaths}
-            onChange={(e) => setNPaths(Number(e.target.value))}
-          >
-            {config.dosimetry.path_options.map((p) => (
-              <option key={p.value} value={p.value}>
-                {p.label}
-              </option>
-            ))}
-          </select>
-        </>
       )}
 
       <label className={labelClass}><Tex math={'f\\;(\\text{GHz})'} /></label>

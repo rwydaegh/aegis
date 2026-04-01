@@ -9,7 +9,6 @@ export const SHARE_DEFAULTS = {
   diffraction: false,
   powerDbm: 60,
   skinModel: 'itis',
-  nPaths: 1,
   freqGhz: 28,
   stochasticPreset: '3GPP_38.901_UMi_LOS',
   stochasticSeed: 42,

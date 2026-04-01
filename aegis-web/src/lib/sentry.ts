@@ -36,7 +36,6 @@ export function initSentry() {
             mode: sim.mode,
             freqGhz: sim.freqGhz,
             powerDbm: sim.powerDbm,
-            nPaths: sim.nPaths,
             fresnel: sim.fresnel,
             polarisation: sim.polarisation,
             curvature: sim.curvature,

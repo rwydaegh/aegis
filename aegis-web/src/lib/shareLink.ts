@@ -44,7 +44,6 @@ export function collectState(): Record<string, unknown> {
     diffraction: sim.diffraction,
     powerDbm: sim.powerDbm,
     skinModel: sim.skinModel,
-    nPaths: sim.nPaths,
     freqGhz: sim.freqGhz,
     stochasticPreset: sim.stochasticPreset,
     stochasticSeed: sim.stochasticSeed,
@@ -143,7 +142,6 @@ export function applyShareState(state: Partial<ShareState>): void {
   if (state.diffraction !== undefined) sim.setDiffraction(state.diffraction)
   if (state.powerDbm !== undefined) sim.setPowerDbm(state.powerDbm)
   if (state.skinModel !== undefined) sim.setSkinModel(state.skinModel)
-  if (state.nPaths !== undefined) sim.setNPaths(state.nPaths)
   if (state.freqGhz !== undefined) sim.setFreqGhz(state.freqGhz)
   if (state.stochasticPreset !== undefined) sim.setStochasticPreset(state.stochasticPreset)
   if (state.stochasticSeed !== undefined) sim.setStochasticSeed(state.stochasticSeed)

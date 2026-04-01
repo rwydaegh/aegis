@@ -137,18 +137,6 @@ class TestComputeRoute:
         assert resp.status_code == 400
         assert "power_dbm" in resp.get_json()["error"]
 
-    def test_invalid_n_paths(self, viewer_app):
-        with viewer_app.test_client() as c:
-            resp = c.post("/api/compute", json={"n_paths": "many"})
-        assert resp.status_code == 400
-        assert "n_paths" in resp.get_json()["error"]
-
-    def test_disallowed_n_paths_value(self, viewer_app):
-        with viewer_app.test_client() as c:
-            resp = c.post("/api/compute", json={"n_paths": 7})
-        assert resp.status_code == 400
-        assert "n_paths" in resp.get_json()["error"]
-
     def test_unknown_body_returns_404(self, viewer_app):
         with viewer_app.test_client() as c:
             resp = c.post("/api/compute", json={"body_name": "ghost_phantom"})
@@ -609,16 +597,6 @@ class TestChannelPresetsRoute:
             entry = data[0]
             assert "name" in entry
             assert "params" in entry
-            assert "featured" in entry
-
-    def test_featured_presets_flagged(self, viewer_app):
-        with viewer_app.test_client() as c:
-            resp = c.get("/api/channel-presets")
-        data = resp.get_json()
-        featured = [p for p in data if p.get("featured")]
-        # The default config defines several featured presets
-        if len(data) > 0:
-            assert len(featured) > 0
 
 
 # ---------------------------------------------------------------------------

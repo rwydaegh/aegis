@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import * as Sentry from '@sentry/react'
 import { useSceneStore } from '@/stores/scene'
 import { useSimulationStore } from '@/stores/simulation'
@@ -6,8 +6,49 @@ import { useNotificationStore } from '@/stores/notifications'
 
 interface PresetInfo {
   name: string
-  featured: boolean
   params: Record<string, number | string>
+}
+
+const CANONICAL = ['Freespace', 'LOSonly', 'TwoRayGR', 'Null']
+
+const FAMILY_ORDER = [
+  'Canonical',
+  '3GPP 38.901',
+  '3GPP 37.885',
+  '3GPP 3D',
+  'QuaDRiGa',
+  'WINNER',
+  'mmMAGIC',
+  '5G-ALLSTAR',
+  'MIMOSA',
+  'BERLIN',
+  'DRESDEN',
+]
+
+function getFamily(name: string): string {
+  if (CANONICAL.includes(name)) return 'Canonical'
+  const prefixes = [
+    '3GPP_38.901_',
+    '3GPP_37.885_',
+    '3GPP_3D_',
+    'QuaDRiGa_',
+    'WINNER_',
+    'mmMAGIC_',
+    '5G-ALLSTAR_',
+    'MIMOSA_',
+    'BERLIN_',
+    'DRESDEN_',
+  ]
+  for (const p of prefixes) {
+    if (name.startsWith(p)) return p.replace(/_$/, '').replace(/_/g, ' ')
+  }
+  return 'Other'
+}
+
+function getScenarioLabel(name: string, family: string): string {
+  if (CANONICAL.includes(name)) return name
+  const prefix = family.replace(/ /g, '_') + '_'
+  return name.replace(prefix, '').replace(/_/g, ' ')
 }
 
 export default function StochasticPanel() {
@@ -20,7 +61,7 @@ export default function StochasticPanel() {
   const seed = useSimulationStore(s => s.stochasticSeed)
   const setSeed = useSimulationStore(s => s.setStochasticSeed)
 
-  const [presets, setPresets] = useState<PresetInfo[]>([])
+  const [allPresets, setAllPresets] = useState<PresetInfo[]>([])
   const [presetParams, setPresetParams] = useState<Record<string, number | string>>({})
 
   const enabled = pathSource === 'stochastic'
@@ -29,17 +70,37 @@ export default function StochasticPanel() {
     fetch('/api/channel-presets')
       .then(r => r.json())
       .then((data: PresetInfo[]) => {
-        setPresets(data.filter(p => p.featured))
+        setAllPresets(data)
         const current = data.find(p => p.name === preset)
         if (current) setPresetParams(current.params)
       })
       .catch((err) => { Sentry.captureException(err); useNotificationStore.getState().addNotification('warning', 'Failed to load channel presets') })
   }, [])
 
+  const grouped = useMemo(() => {
+    const map = new Map<string, PresetInfo[]>()
+    for (const p of allPresets) {
+      const fam = getFamily(p.name)
+      if (!map.has(fam)) map.set(fam, [])
+      map.get(fam)!.push(p)
+    }
+    return map
+  }, [allPresets])
+
+  const families = useMemo(() => {
+    return FAMILY_ORDER.filter(f => grouped.has(f))
+  }, [grouped])
+
+  const selectedFamily = getFamily(preset)
+
+  const scenarios = useMemo(() => {
+    return grouped.get(selectedFamily) ?? []
+  }, [grouped, selectedFamily])
+
   useEffect(() => {
-    const p = presets.find(p => p.name === preset)
+    const p = allPresets.find(p => p.name === preset)
     if (p) setPresetParams(p.params)
-  }, [preset, presets])
+  }, [preset, allPresets])
 
   const selectClass = "w-full bg-background border border-border rounded px-2 py-1.5 text-sm text-foreground"
   const inputClass = selectClass
@@ -51,6 +112,14 @@ export default function StochasticPanel() {
   const setOverride = (key: string, val: number) =>
     setOverrides({ ...overrides, [key]: val })
 
+  const handleFamilyChange = (newFamily: string) => {
+    const familyPresets = grouped.get(newFamily) ?? []
+    if (familyPresets.length > 0) {
+      setPreset(familyPresets[0].name)
+      setOverrides({})
+    }
+  }
+
   return (
     <div>
       <label className="flex items-center gap-2 text-xs text-foreground">
@@ -61,12 +130,20 @@ export default function StochasticPanel() {
 
       {enabled && (
         <>
+          <label className={labelClass}>Standard</label>
+          <select className={selectClass} value={selectedFamily}
+            onChange={e => handleFamilyChange(e.target.value)}>
+            {families.map(f => (
+              <option key={f} value={f}>{f}</option>
+            ))}
+          </select>
+
           <label className={labelClass}>Scenario</label>
           <select className={selectClass} value={preset}
             onChange={e => { setPreset(e.target.value); setOverrides({}) }}>
-            {presets.map(p => (
+            {scenarios.map(p => (
               <option key={p.name} value={p.name}>
-                {p.name.replace(/_/g, ' ').replace('3GPP ', '')}
+                {getScenarioLabel(p.name, selectedFamily)}
               </option>
             ))}
           </select>

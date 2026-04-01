@@ -35,7 +35,6 @@ def test_e2e_lab_config_loads():
     assert "data_dir" in launch
     out = apply_scenario_to_config(cfg, "e2e_lab")
     assert out["active_scenario"] == "e2e_lab"
-    assert out["dosimetry"]["synthetic_paths"]["angular_jitter_std"] == 0.0
 
 
 def test_apply_scenario_to_config_sets_active_fields():

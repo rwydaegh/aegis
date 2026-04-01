@@ -243,7 +243,6 @@ def compute_dosimetry(
     corrections: dict | None = None,
     tissue: TissueModel | None = None,
     power_dbm: float = DEFAULT_POWER_DBM,
-    n_paths: int = 1,
     config: dict | None = None,
     stochastic: dict | None = None,
 ) -> dict:
@@ -260,7 +259,6 @@ def compute_dosimetry(
     corrections : dict of correction flags (fresnel, polarisation, curvature, diffraction)
     tissue : tissue model (defaults to skin at 28 GHz)
     power_dbm : transmit power [dBm]
-    n_paths : number of synthetic paths (1 = single plane wave)
     config : viewer config dict
 
     Returns
@@ -272,7 +270,6 @@ def compute_dosimetry(
 
     cfg = config or DEFAULTS
     dos_cfg = cfg["dosimetry"]
-    sp_cfg = dos_cfg["synthetic_paths"]
 
     if tissue is None:
         tissue = resolve_skin_model("itis", DEFAULT_FREQ_HZ)
@@ -318,28 +315,12 @@ def compute_dosimetry(
             seed=stochastic.get("seed", 42),
             overrides=stochastic.get("overrides"),
         )
-    elif n_paths == 1:
+    else:
         # Single plane wave
         paths = PropagationPaths.from_powers(
             k_hat=k_hat[np.newaxis, :],
             power=np.array([S_inc]),
         )
-    else:
-        # Multiple synthetic paths with some angular spread
-        rng = np.random.default_rng(sp_cfg["seed"])
-        k_hats = np.tile(k_hat, (n_paths, 1))
-        # Add angular jitter
-        jitter = rng.normal(0, sp_cfg["angular_jitter_std"], size=(n_paths, 3))
-        k_hats += jitter
-        norms = np.linalg.norm(k_hats, axis=1, keepdims=True)
-        k_hats = k_hats / np.where(norms > 0, norms, 1.0)
-
-        # Power decreases for scattered paths
-        powers = np.full(n_paths, S_inc)
-        lo, hi = sp_cfg["scatter_power_range"]
-        powers[1:] *= rng.uniform(lo, hi, size=n_paths - 1)
-
-        paths = PropagationPaths.from_powers(k_hat=k_hats, power=powers)
 
     # Resolve body mass for SAR computation
     body_mass = _load_phantom_masses().get(body.name) if body.name else None

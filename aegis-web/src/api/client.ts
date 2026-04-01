@@ -324,7 +324,6 @@ export interface ComputeParams {
   powerDbm: number
   skinModel: string
   freqGhz: number
-  nPaths: number
   stochastic?: boolean
   stochasticPreset?: string
   stochasticOverrides?: Record<string, number>
@@ -347,7 +346,6 @@ function computePayload(params: ComputeParams) {
     power_dbm: params.powerDbm,
     skin_model: params.skinModel,
     freq_hz: params.freqGhz * 1e9,
-    n_paths: params.nPaths,
     quantities: params.quantities,
     exposure_scenario: params.exposureScenario,
     ...(params.bodyName ? { body_name: params.bodyName } : {}),
