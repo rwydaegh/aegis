@@ -474,6 +474,14 @@ DEFAULTS: dict = {
         "default_radius_m": 500,
         "max_distance_m": 2000,
         "site_vertical_gap": 0.1,
+        "exposure": {
+            "default_mode": "theoretical_max",
+            "typical_traffic_load": 0.50,
+        },
+        "patterns": {
+            "directory": "data/antenna_patterns/msi_raw",
+            "max_search_results": 100,
+        },
     },
     "default_scenario": "open_ground",
     "scenarios": {
