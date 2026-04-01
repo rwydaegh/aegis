@@ -421,6 +421,62 @@ def _handle_environment_materials() -> Response:
     return jsonify({"materials": catalog})
 
 
+def _handle_environment_coverage(cache: dict, cache_lock) -> Response:
+    """Implementation for POST /api/environment/coverage."""
+    import os
+    from io import BytesIO
+
+    api_key = os.environ.get("CLOUDRF_API_KEY")
+    if not api_key:
+        return jsonify({"error": "CLOUDRF_API_KEY not configured"}), 501
+
+    body = request.get_json(silent=True) or {}
+    stations = body.get("stations", [])
+    if not stations:
+        return jsonify({"error": "stations list is required and must not be empty"}), 400
+
+    station = stations[0]
+    radius_km = float(body.get("radius_km", 1.0))
+    resolution_m = int(body.get("resolution_m", 10))
+    propagation_model = int(body.get("propagation_model", 1))
+
+    try:
+        from aegis.integration.cloudrf import CloudRFClient
+
+        tiff_bytes = CloudRFClient(api_key).area(
+            lat=float(station["lat"]),
+            lon=float(station["lon"]),
+            alt=float(station.get("alt", 10)),
+            freq_mhz=float(station["freq_mhz"]),
+            power_w=float(station.get("power_w", 2.0)),
+            gain_dbi=float(station.get("gain_dbi", 0)),
+            azimuth=float(station.get("azimuth", 0)),
+            tilt=float(station.get("tilt", 0)),
+            hbw=float(station.get("hbw", 65)),
+            vbw=float(station.get("vbw", 10)),
+            radius_km=radius_km,
+            res_m=resolution_m,
+            propagation_model=propagation_model,
+        )
+    except Exception as exc:
+        return jsonify({"error": f"CloudRF API error: {exc}"}), 502
+
+    try:
+        from PIL import Image
+
+        img = Image.open(BytesIO(tiff_bytes))
+        buf = BytesIO()
+        img.save(buf, "PNG")
+        png_bytes = buf.getvalue()
+    except Exception as exc:
+        return jsonify({"error": f"Image conversion error: {exc}"}), 500
+
+    resp = Response(png_bytes, mimetype="image/png")
+    resp.headers["X-Bounds"] = json.dumps({"note": "bounds extraction from GeoTIFF requires rasterio, deferred to V2"})
+    resp.headers["Access-Control-Expose-Headers"] = "X-Bounds"
+    return resp
+
+
 def register(app: Flask, cache: dict, cache_lock) -> None:
     """Attach environment routes to *app*."""
 
@@ -463,6 +519,11 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
     def api_environment_materials():
         """Return the material catalog with EM properties."""
         return _handle_environment_materials()
+
+    @app.route("/api/environment/coverage", methods=["POST"])
+    def api_environment_coverage():
+        """Call CloudRF to generate a coverage heatmap, return PNG."""
+        return _handle_environment_coverage(cache, cache_lock)
 
     @app.route("/api/cache/environments", methods=["DELETE"])
     def api_clear_environment_cache():

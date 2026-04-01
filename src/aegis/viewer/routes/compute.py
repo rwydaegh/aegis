@@ -397,6 +397,67 @@ def _zero_paths_response(body, tissue, level, extra=None):
     return resp
 
 
+def _handle_validate_sinc(cache: dict, cache_lock) -> Response:
+    """Implementation for POST /api/validate/sinc."""
+    api_key = os.environ.get("CLOUDRF_API_KEY")
+    if not api_key:
+        return jsonify({"error": "CLOUDRF_API_KEY not configured"}), 501
+
+    body = request.get_json(silent=True) or {}
+    try:
+        tx_lat = float(body["tx_lat"])
+        tx_lon = float(body["tx_lon"])
+        tx_alt = float(body["tx_alt"])
+        rx_lat = float(body["rx_lat"])
+        rx_lon = float(body["rx_lon"])
+        rx_alt = float(body["rx_alt"])
+        freq_mhz = float(body["freq_mhz"])
+        power_w = float(body["power_w"])
+        gain_dbi = float(body["gain_dbi"])
+    except (KeyError, TypeError, ValueError) as exc:
+        return jsonify({"error": f"Missing or invalid parameter: {exc}"}), 400
+
+    R = 6_371_000.0
+    dlat = np.radians(rx_lat - tx_lat)
+    dlon = np.radians(rx_lon - tx_lon)
+    dist = R * np.sqrt(dlat**2 + (dlon * np.cos(np.radians(tx_lat))) ** 2)
+    dist = max(dist, 0.1)
+    dist_3d = np.sqrt(dist**2 + (tx_alt - rx_alt) ** 2)
+    eirp_w = power_w * 10 ** (gain_dbi / 10)
+    sinc_wm2 = eirp_w / (4 * np.pi * dist_3d**2)
+    sinc_dbm = 10 * np.log10(sinc_wm2 * 1000) if sinc_wm2 > 0 else -200.0
+
+    try:
+        from aegis.integration.cloudrf import CloudRFClient
+
+        path_result = CloudRFClient(api_key).path(
+            tx_lat=tx_lat,
+            tx_lon=tx_lon,
+            tx_alt=tx_alt,
+            rx_lat=rx_lat,
+            rx_lon=rx_lon,
+            rx_alt=rx_alt,
+            freq_mhz=freq_mhz,
+            power_w=power_w,
+            gain_dbi=gain_dbi,
+        )
+    except Exception as exc:
+        return jsonify({"error": f"CloudRF API error: {exc}"}), 502
+
+    cloudrf_sinc_dbm = float(path_result.get("rxPower", path_result.get("rx_power", -200)))
+    delta_db = float(sinc_dbm - cloudrf_sinc_dbm)
+
+    return jsonify(
+        {
+            "aegis_sinc_wm2": float(sinc_wm2),
+            "aegis_sinc_dbm": float(sinc_dbm),
+            "cloudrf_sinc_dbm": cloudrf_sinc_dbm,
+            "delta_db": delta_db,
+            "distance_m": float(dist_3d),
+        }
+    )
+
+
 def register(app: Flask, cache: dict, cache_lock) -> None:
     """Attach compute routes to *app*."""
 
@@ -1361,3 +1422,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         from aegis.viewer.modal_proxy import gpu_status
 
         return jsonify(gpu_status())
+
+    @app.route("/api/validate/sinc", methods=["POST"])
+    def api_validate_sinc():
+        """Compare AEGIS free-space S_inc against CloudRF link budget."""
+        return _handle_validate_sinc(cache, cache_lock)
