@@ -474,6 +474,40 @@ DEFAULTS: dict = {
         "default_radius_m": 500,
         "max_distance_m": 2000,
         "site_vertical_gap": 0.1,
+        "exposure": {
+            "default_mode": "theoretical",
+            "defaults_by_archetype": {
+                "sector": {
+                    "duplex_mode": "fdd",
+                    "tdd_dl_ratio": 1.0,
+                    "power_reduction_factor": 1.0,
+                    "traffic_load_factor": 0.5,
+                },
+                "mmimo": {
+                    "duplex_mode": "tdd",
+                    "tdd_dl_ratio": 0.75,
+                    "power_reduction_factor": 0.32,
+                    "traffic_load_factor": 0.5,
+                },
+                "small_cell": {
+                    "duplex_mode": "fdd",
+                    "tdd_dl_ratio": 1.0,
+                    "power_reduction_factor": 1.0,
+                    "traffic_load_factor": 0.3,
+                },
+            },
+            "sidelobe_suppression_db": 15.0,
+            "beam_config": {
+                "broadcast_gain_dbi": 18.0,
+                "broadcast_hbw_deg": 65.0,
+                "broadcast_vbw_deg": 10.0,
+                "traffic_gain_dbi": 25.0,
+                "traffic_hbw_deg": 12.0,
+                "traffic_vbw_deg": 8.0,
+                "sweep_h_range_deg": 60.0,
+                "sweep_v_range_deg": 15.0,
+            },
+        },
     },
     "default_scenario": "open_ground",
     "scenarios": {

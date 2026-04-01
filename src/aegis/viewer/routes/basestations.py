@@ -188,6 +188,8 @@ def _handle_basestations_load(cache: dict, cache_lock: threading.RLock):
 def _handle_basestations_compute(cache: dict, cache_lock: threading.RLock):
     """Implementation for POST /api/basestations/compute."""
     from aegis.basestation.adapter import paths_from_basestations
+    from aegis.basestation.classify import classify_basestation
+    from aegis.basestation.power import ExposureMode
     from aegis.engine import DosimetryEngine
     from aegis.viewer.compute import _transform_body_for_viewer, resolve_skin_model
     from aegis.viewer.routes.compute import (
@@ -239,6 +241,25 @@ def _handle_basestations_compute(cache: dict, cache_lock: threading.RLock):
     transformed_body = _transform_body_for_viewer(body, body_offset, body_rotation_y)
     body_center = np.mean(transformed_body.centroids, axis=0)
 
+    # Exposure mode
+    exposure_mode_str = params.get("exposure_mode", "theoretical")
+    try:
+        exposure_mode = ExposureMode(exposure_mode_str)
+    except ValueError:
+        return jsonify({"error": f"Invalid exposure_mode: {exposure_mode_str!r}"}), 400
+
+    # Build per-station ExposureConfig from classification
+    exposure_configs = []
+    for bs in selected:
+        cls = classify_basestation(
+            gain_dbi=bs.gain_dbi,
+            technology=bs.technology,
+            freq_mhz=bs.freq_mhz,
+            h_bw=bs.horizontal_beamwidth_deg or 0,
+            v_bw=bs.vertical_beamwidth_deg or 0,
+        )
+        exposure_configs.append(cls["exposure_config"])
+
     # Compute paths
     try:
         max_distance_m = float(params.get("max_distance_m", 2000))
@@ -251,6 +272,8 @@ def _handle_basestations_compute(cache: dict, cache_lock: threading.RLock):
         body_center,
         origin,
         max_distance_m=max_distance_m,
+        exposure_mode=exposure_mode,
+        exposure_configs=exposure_configs,
     )
 
     if paths.n_paths == 0 or paths.total_power <= 0:
@@ -550,6 +573,15 @@ def _bs_summary(bs) -> dict:
         h_bw=bs.horizontal_beamwidth_deg or 0,
         v_bw=bs.vertical_beamwidth_deg or 0,
     )
+    # Serialize ExposureConfig fields (dataclass, not JSON-serializable)
+    exp = classification.pop("exposure_config")
+    classification["duplex_mode"] = exp.duplex_mode
+    classification["tdd_dl_ratio"] = exp.tdd_dl_ratio
+    classification["power_reduction_factor"] = exp.power_reduction_factor
+    classification["traffic_load_factor"] = exp.traffic_load_factor
+    # Remove beam_config (not JSON-serializable as-is)
+    classification.pop("beam_config", None)
+
     return {
         "site_code": bs.site_code,
         "antenna_label": bs.antenna_label,

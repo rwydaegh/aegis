@@ -8,11 +8,11 @@ import re
 import numpy as np
 import pandas as pd
 
-from aegis.basestation.antenna import AntennaPattern, BaseStation
+from aegis.basestation.antenna import AntennaPattern, BaseStation, BeamConfig, ExposureConfig
 from aegis.basestation.coords import wgs84_to_enu
 from aegis.basestation.orientation import departure_to_antenna_local
 from aegis.basestation.pattern import synthetic_pattern_from_beamwidth
-from aegis.basestation.power import eirp_to_tx_power_w
+from aegis.basestation.power import ExposureMode, effective_eirp_dbm, eirp_to_tx_power_w
 from aegis.paths import PropagationPaths
 
 logger = logging.getLogger(__name__)
@@ -225,6 +225,10 @@ def paths_from_basestation(
     body_center: np.ndarray,
     scene_origin: tuple[float, float],
     ground_height: float = 0.0,
+    exposure_mode: ExposureMode | None = None,
+    exposure_config: ExposureConfig | None = None,
+    beam_config: BeamConfig | None = None,
+    archetype: str | None = None,
 ) -> PropagationPaths:
     """Create a LOS path from a base station to the body center.
 
@@ -269,8 +273,12 @@ def paths_from_basestation(
         dist = 0.1
     k_hat = direction / np.linalg.norm(direction)  # arrival direction at body
 
-    # TX power from EIRP
-    tx_power_w = eirp_to_tx_power_w(bs.eirp_dbm, bs.gain_dbi)
+    # TX power from EIRP (apply exposure reduction if configured)
+    if exposure_mode is not None and exposure_config is not None:
+        eff_eirp = effective_eirp_dbm(bs, exposure_config, exposure_mode)
+    else:
+        eff_eirp = bs.eirp_dbm
+    tx_power_w = eirp_to_tx_power_w(eff_eirp, bs.gain_dbi)
 
     # Isotropic power density at distance d
     s_iso = tx_power_w / (4.0 * np.pi * dist**2)
@@ -302,13 +310,15 @@ def paths_from_basestations(
     body_center: np.ndarray,
     scene_origin: tuple[float, float],
     max_distance_m: float = 2000.0,
+    exposure_mode: ExposureMode | None = None,
+    exposure_configs: list[ExposureConfig] | None = None,
 ) -> PropagationPaths:
     """Create LOS paths from multiple base stations to the body.
 
     Filters by distance, concatenates all paths.
     """
     all_paths = []
-    for bs in basestations:
+    for i, bs in enumerate(basestations):
         ant_pos = wgs84_to_enu(
             bs.latitude,
             bs.longitude,
@@ -320,7 +330,14 @@ def paths_from_basestations(
         dist = float(np.linalg.norm(body_center - ant_pos))
         if dist > max_distance_m:
             continue
-        paths = paths_from_basestation(bs, body_center, scene_origin)
+        exp_cfg = exposure_configs[i] if exposure_configs else None
+        paths = paths_from_basestation(
+            bs,
+            body_center,
+            scene_origin,
+            exposure_mode=exposure_mode,
+            exposure_config=exp_cfg,
+        )
         all_paths.append(paths)
 
     if not all_paths:
