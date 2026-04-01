@@ -24,9 +24,16 @@ function ComplianceBadge({ stats }: { stats: DosimetryStats | null }) {
   }
   if (stats.compliant == null) {
     return (
-      <Badge variant="outline" className="text-muted-foreground border-muted-foreground/30 font-mono text-xs">
-        --
-      </Badge>
+      <Tooltip>
+        <TooltipTrigger className="cursor-help">
+          <Badge variant="outline" className="text-amber-400/80 border-amber-400/30 font-mono text-xs">
+            N/A
+          </Badge>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">
+          {stats.warning ?? 'Compliance check not available at this frequency'}
+        </TooltipContent>
+      </Tooltip>
     )
   }
 

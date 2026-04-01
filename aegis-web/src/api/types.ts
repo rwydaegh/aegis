@@ -234,7 +234,8 @@ export interface DosimetryStats {
   p_abs: number
   p_abs_mw: number
   peak_sab: number
-  compliant: boolean
+  compliant: boolean | null
+  warning?: string | null
   n_illuminated: number
   n_triangles: number
   level: number

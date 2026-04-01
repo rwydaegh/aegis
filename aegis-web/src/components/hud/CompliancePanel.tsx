@@ -35,7 +35,36 @@ export default function CompliancePanel() {
   const setPowerDbm = useSimulationStore(s => s.setPowerDbm)
   const scenario = useUIStore(s => s.exposureScenario)
   const isComputing = useUIStore(s => s.isComputing)
-  if (!stats?.compliance) return null
+  if (!stats) return null
+  if (!stats.compliance) {
+    if (stats.warning) {
+      return (
+        <div
+          style={{
+            background: 'rgba(0,0,0,0.7)',
+            padding: '12px',
+            borderRadius: '8px',
+            fontFamily: 'monospace',
+            fontSize: '12px',
+            minWidth: '280px',
+          }}>
+          <div style={{ marginBottom: '8px' }}>
+            <span style={{ color: '#888', fontSize: '10px', letterSpacing: '1px' }}>
+              COMPLIANCE (ICNIRP 2020)
+            </span>
+          </div>
+          <div style={{ color: '#fbbf24', fontSize: '11px' }}>
+            Compliance check not available below 6 GHz.
+          </div>
+          <div style={{ color: '#888', fontSize: '11px', marginTop: '4px' }}>
+            ICNIRP 2020 absorbed power density limits apply from 6 to 300 GHz.
+            SAR-based limits for lower frequencies are not yet implemented.
+          </div>
+        </div>
+      )
+    }
+    return null
+  }
   const { compliance } = stats
 
   const visibleChecks = compliance.checks.filter(check => {
