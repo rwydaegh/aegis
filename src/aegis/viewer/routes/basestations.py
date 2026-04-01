@@ -240,7 +240,10 @@ def _handle_basestations_compute(cache: dict, cache_lock: threading.RLock):
     body_center = np.mean(transformed_body.centroids, axis=0)
 
     # Compute paths
-    max_distance_m = float(params.get("max_distance_m", 2000))
+    try:
+        max_distance_m = float(params.get("max_distance_m", 2000))
+    except (TypeError, ValueError):
+        return jsonify({"error": "max_distance_m must be a number"}), 400
     if max_distance_m <= 0:
         return jsonify({"error": "max_distance_m must be positive"}), 400
     paths = paths_from_basestations(
