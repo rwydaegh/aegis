@@ -3,6 +3,7 @@ import { useConfig } from '@/hooks/useConfig'
 import AppShell from '@/components/layout/AppShell'
 import { deserializeShareLink, applyShareState } from '@/lib/shareLink'
 import { useScenario } from '@/hooks/useScenario'
+import { useNotificationStore } from '@/stores/notifications'
 
 export default function AppInner() {
   const { status, error } = useConfig()
@@ -14,7 +15,14 @@ export default function AppInner() {
     const hash = window.location.hash
     if (hash.startsWith('#s=')) {
       const state = deserializeShareLink(hash.slice(3))
-      applyShareState(state)
+      if (Object.keys(state).length === 0) {
+        useNotificationStore.getState().addNotification(
+          'warning',
+          'Could not restore settings from share link. The link may be corrupted or from an older version.',
+        )
+      } else {
+        applyShareState(state)
+      }
       window.history.replaceState(null, '', window.location.pathname)
     }
   }, [status])
