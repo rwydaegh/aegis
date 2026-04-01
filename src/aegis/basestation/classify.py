@@ -10,6 +10,38 @@ from __future__ import annotations
 
 from aegis.basestation.antenna import BeamConfig, ExposureConfig
 
+# TDD band definitions for accurate duplex mode detection.
+# 5G NR TDD: (low_mhz, high_mhz, dl_ratio)
+_NR_TDD_BANDS: list[tuple[float, float, float]] = [
+    (2496.0, 2690.0, 0.75),  # n41
+    (3300.0, 4200.0, 0.75),  # n77/n78
+    (24000.0, 40000.0, 0.72),  # mmWave n257/n258/n261
+]
+# 4G LTE TDD: (low_mhz, high_mhz)
+_LTE_TDD_BANDS: list[tuple[float, float]] = [
+    (2300.0, 2400.0),  # B38
+    (2570.0, 2620.0),  # B40
+    (3400.0, 3600.0),  # B42/B43
+]
+
+
+def _lookup_tdd(technology: str | None, freq_mhz: float) -> tuple[bool, float]:
+    """Determine TDD mode and downlink duty cycle from technology and frequency.
+
+    Returns (is_tdd, dl_ratio). FDD bands return (False, 1.0).
+    """
+    tech = (technology or "").upper()
+    if "5G" in tech:
+        for low, high, ratio in _NR_TDD_BANDS:
+            if low <= freq_mhz <= high:
+                return True, ratio
+    if "LTE" in tech or "4G" in tech:
+        for low, high in _LTE_TDD_BANDS:
+            if low <= freq_mhz <= high:
+                return True, 0.60
+    return False, 1.0
+
+
 # Default standard grids [n_h, n_v] per archetype. Configurable via config.
 DEFAULT_GRIDS: dict[str, list[tuple[int, int]]] = {
     "mmimo": [(4, 4), (4, 8), (8, 8), (8, 16)],
@@ -141,28 +173,30 @@ def classify_basestation(
         margin=margin,
         default_freq_mhz=default_freq_mhz,
     )
-    # Determine duplex mode from frequency and technology
-    is_tdd = freq_mhz >= 2500 and technology and "5G" in str(technology).upper()
+    # Determine duplex mode and TDD ratio from actual band definitions
+    is_tdd, tdd_dl_ratio = _lookup_tdd(technology, freq_mhz)
+    duplex = "tdd" if is_tdd else "fdd"
 
     if archetype == "mmimo":
+        prf = 0.30 if freq_mhz >= 24000 else 0.32
         exposure_config = ExposureConfig(
-            duplex_mode="tdd" if is_tdd else "fdd",
-            tdd_dl_ratio=0.75 if is_tdd else 1.0,
-            power_reduction_factor=0.32,
+            duplex_mode=duplex,
+            tdd_dl_ratio=tdd_dl_ratio,
+            power_reduction_factor=prf,
             traffic_load_factor=0.5,
         )
         beam_config: BeamConfig | None = BeamConfig()
     elif archetype == "small_cell":
         exposure_config = ExposureConfig(
-            duplex_mode="tdd" if is_tdd else "fdd",
-            tdd_dl_ratio=0.75 if is_tdd else 1.0,
+            duplex_mode=duplex,
+            tdd_dl_ratio=tdd_dl_ratio,
             traffic_load_factor=0.3,
         )
         beam_config = None
     else:  # sector
         exposure_config = ExposureConfig(
-            duplex_mode="tdd" if is_tdd else "fdd",
-            tdd_dl_ratio=0.75 if is_tdd else 1.0,
+            duplex_mode=duplex,
+            tdd_dl_ratio=tdd_dl_ratio,
         )
         beam_config = None
 

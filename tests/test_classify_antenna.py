@@ -186,6 +186,61 @@ def test_classify_no_beam_config_for_sector():
     assert result["beam_config"] is None
 
 
+def test_tdd_lookup_5g_n78():
+    """5G at 3.5 GHz (n78) is TDD with 75% DL."""
+    from aegis.basestation.classify import _lookup_tdd
+
+    is_tdd, ratio = _lookup_tdd("5G", 3500)
+    assert is_tdd is True
+    assert ratio == 0.75
+
+
+def test_tdd_lookup_5g_mmwave():
+    """5G mmWave has slightly lower DL duty (72%)."""
+    from aegis.basestation.classify import _lookup_tdd
+
+    is_tdd, ratio = _lookup_tdd("5G", 28000)
+    assert is_tdd is True
+    assert ratio == 0.72
+
+
+def test_tdd_lookup_5g_fdd_band():
+    """5G at 1800 MHz (n3, FDD) should NOT be TDD."""
+    from aegis.basestation.classify import _lookup_tdd
+
+    is_tdd, ratio = _lookup_tdd("5G", 1800)
+    assert is_tdd is False
+    assert ratio == 1.0
+
+
+def test_tdd_lookup_4g_fdd():
+    """4G at 1800 MHz (FDD) is not TDD."""
+    from aegis.basestation.classify import _lookup_tdd
+
+    is_tdd, ratio = _lookup_tdd("4G", 1800)
+    assert is_tdd is False
+    assert ratio == 1.0
+
+
+def test_tdd_lookup_lte_tdd_b42():
+    """LTE at 3500 MHz (B42) is TDD with 60% DL."""
+    from aegis.basestation.classify import _lookup_tdd
+
+    is_tdd, ratio = _lookup_tdd("4G LTE", 3500)
+    assert is_tdd is True
+    assert ratio == 0.60
+
+
+def test_mmimo_mmwave_prf():
+    """mMIMO at mmWave gets lower PRF (0.30 vs 0.32)."""
+    from aegis.basestation.classify import classify_basestation
+
+    result = classify_basestation(gain_dbi=27.0, technology="5G", freq_mhz=28000)
+    exp = result["exposure_config"]
+    assert exp.power_reduction_factor == 0.30
+    assert exp.tdd_dl_ratio == 0.72
+
+
 _viewer_deps_missing = False
 try:
     import flask as _flask  # noqa: F401
