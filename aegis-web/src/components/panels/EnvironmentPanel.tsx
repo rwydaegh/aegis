@@ -344,7 +344,7 @@ export default function EnvironmentPanel() {
       )}
 
       {/* Loading indicator */}
-      {loading && (
+      {loading && (source === 'osm' || source === '3dtiles') && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Loader2 className="size-3 animate-spin" />
           {source === 'osm' ? 'Fetching OSM data...' : 'Fetching tiles...'}
