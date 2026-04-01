@@ -456,7 +456,7 @@ export interface FrequencySweepResult {
 }
 
 export async function fetchPowerSweep(params: {
-  sab_4cm2: number
+  sab_4cm2?: number
   freq_hz: number
   ref_power_dbm: number
   scenario?: string
@@ -466,11 +466,11 @@ export async function fetchPowerSweep(params: {
   sinc_wb?: number
 }): Promise<PowerSweepResult> {
   const qs = new URLSearchParams({
-    sab_4cm2: String(params.sab_4cm2),
     freq_hz: String(params.freq_hz),
     ref_power_dbm: String(params.ref_power_dbm),
     scenario: params.scenario ?? 'general_public',
   })
+  if (params.sab_4cm2 != null) qs.set('sab_4cm2', String(params.sab_4cm2))
   if (params.sinc_local != null) qs.set('sinc_local', String(params.sinc_local))
   if (params.sab_1cm2 != null) qs.set('sab_1cm2', String(params.sab_1cm2))
   if (params.sar_wb != null) qs.set('sar_wb', String(params.sar_wb))
@@ -499,24 +499,24 @@ export interface HeatmapResult {
 }
 
 export async function fetchComplianceHeatmap(params: {
-  sab_4cm2: number
+  sab_4cm2?: number
   freq_hz: number
   ref_power_dbm: number
   scenario?: string
   sinc_local?: number
 }): Promise<HeatmapResult> {
   const qs = new URLSearchParams({
-    sab_4cm2: String(params.sab_4cm2),
     freq_hz: String(params.freq_hz),
     ref_power_dbm: String(params.ref_power_dbm),
     scenario: params.scenario ?? 'general_public',
   })
+  if (params.sab_4cm2 != null) qs.set('sab_4cm2', String(params.sab_4cm2))
   if (params.sinc_local != null) qs.set('sinc_local', String(params.sinc_local))
   return getJson<HeatmapResult>(`/api/compliance/heatmap?${qs}`)
 }
 
 export async function fetchFrequencySweep(params: {
-  sab_4cm2: number
+  sab_4cm2?: number
   scenario?: string
   sinc_local?: number
   sab_1cm2?: number
@@ -524,9 +524,9 @@ export async function fetchFrequencySweep(params: {
   sinc_wb?: number
 }): Promise<FrequencySweepResult> {
   const qs = new URLSearchParams({
-    sab_4cm2: String(params.sab_4cm2),
     scenario: params.scenario ?? 'general_public',
   })
+  if (params.sab_4cm2 != null) qs.set('sab_4cm2', String(params.sab_4cm2))
   if (params.sinc_local != null) qs.set('sinc_local', String(params.sinc_local))
   if (params.sab_1cm2 != null) qs.set('sab_1cm2', String(params.sab_1cm2))
   if (params.sar_wb != null) qs.set('sar_wb', String(params.sar_wb))

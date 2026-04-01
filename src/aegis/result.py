@@ -167,6 +167,8 @@ class DosimetryResult:
             lim = icnirp_limits(ExposureScenario.GENERAL_PUBLIC, self.freq_hz)
         except ValueError:
             return None
+        if lim.sab_4cm2 is None:
+            return None
         return peak <= lim.sab_4cm2
 
     @property

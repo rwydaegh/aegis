@@ -226,15 +226,15 @@ function PowerSweepSection() {
   const sarWb = checkValue(stats, 'SAR_wb')
   const sincWb = checkValue(stats, 'S_inc (whole-body)')
 
-  const isAbove6GHz = freqGhz > 6
-  const canSweep = peakSab != null && peakSab > 0 && isAbove6GHz
+  const hasComplianceData = stats?.compliance != null
+  const canSweep = hasComplianceData && (peakSab != null && peakSab > 0 || sarWb != null)
 
   async function runSweep() {
     if (!canSweep) return
     setLoading(true)
     try {
       const data = await fetchPowerSweep({
-        sab_4cm2: peakSab!,
+        sab_4cm2: peakSab ?? undefined,
         freq_hz: freqGhz * 1e9,
         ref_power_dbm: powerDbm,
         scenario,
@@ -275,7 +275,7 @@ function PowerSweepSection() {
       </button>
       {!canSweep && (
         <span className="text-[10px] text-muted-foreground/50 ml-2">
-          {!isAbove6GHz ? 'Compliance sweep requires frequency > 6 GHz' : 'Run a compute first'}
+          Run a compute first
         </span>
       )}
 
@@ -337,15 +337,15 @@ function FrequencySweepSection() {
   const sarWb = checkValue(stats, 'SAR_wb')
   const sincWb = checkValue(stats, 'S_inc (whole-body)')
 
-  const isAbove6GHz = freqGhz > 6
-  const canSweep = peakSab != null && peakSab > 0 && isAbove6GHz
+  const hasComplianceData = stats?.compliance != null
+  const canSweep = hasComplianceData && (peakSab != null && peakSab > 0 || sarWb != null)
 
   async function runSweep() {
     if (!canSweep) return
     setLoading(true)
     try {
       const data = await fetchFrequencySweep({
-        sab_4cm2: peakSab!,
+        sab_4cm2: peakSab ?? undefined,
         scenario,
         sinc_local: sincLocal,
         sab_1cm2: sab1cm2,
@@ -385,7 +385,7 @@ function FrequencySweepSection() {
       </button>
       {!canSweep && (
         <span className="text-[10px] text-muted-foreground/50 ml-2">
-          {!isAbove6GHz ? 'Compliance sweep requires frequency > 6 GHz' : 'Run a compute first'}
+          Run a compute first
         </span>
       )}
 
@@ -410,10 +410,9 @@ function DistanceSweepSection() {
   const { stats } = useActiveSimulation()
   const freqGhz = useSimulationStore((s) => s.freqGhz)
 
-  const isAbove6GHz = freqGhz > 6
   const marginDb = stats?.compliance?.margin_db
   const distanceM = stats?.distance_m
-  const canSweep = marginDb != null && distanceM != null && distanceM > 0 && isAbove6GHz
+  const canSweep = marginDb != null && distanceM != null && distanceM > 0
 
   // Compute distance sweep data from current compliance margin
   // using far-field 1/r^2 scaling: margin(d) = margin(d0) + 20*log10(d/d0)
@@ -458,7 +457,7 @@ function DistanceSweepSection() {
       </p>
       {!canSweep && (
         <span className="text-[10px] text-muted-foreground/50">
-          {!isAbove6GHz ? 'Compliance sweep requires frequency > 6 GHz' : 'Run a compute first'}
+          Run a compute first
         </span>
       )}
       {canSweep && chartData.length > 0 && (
@@ -670,15 +669,15 @@ function ComplianceHeatmapSection() {
 
   const peakSab = stats?.peak_sab_averaged ?? stats?.peak_sab
   const sincLocal = stats?.peaks?.sinc_local
-  const isAbove6GHz = freqGhz > 6
-  const canSweep = peakSab != null && peakSab > 0 && isAbove6GHz
+  const hasComplianceData = stats?.compliance != null
+  const canSweep = hasComplianceData && (peakSab != null && peakSab > 0)
 
   async function runHeatmap() {
     if (!canSweep) return
     setLoading(true)
     try {
       const data = await fetchComplianceHeatmap({
-        sab_4cm2: peakSab!,
+        sab_4cm2: peakSab ?? undefined,
         freq_hz: freqGhz * 1e9,
         ref_power_dbm: powerDbm,
         scenario,
@@ -709,7 +708,7 @@ function ComplianceHeatmapSection() {
       </button>
       {!canSweep && (
         <span className="text-[10px] text-muted-foreground/50 ml-2">
-          {!isAbove6GHz ? 'Requires frequency > 6 GHz' : 'Run a compute first'}
+          Run a compute first
         </span>
       )}
       {result && (

@@ -321,7 +321,7 @@ python -m aegis.compliance --freq 28e9 --link-budget --tx-power 1.0 --gain 15 --
 
 - **Spatial averaging shape.** AEGIS uses circular neighborhoods (KD-tree ball query) to approximate the 4 cm$^2$ patch. ICNIRP specifies a square patch. The approximation is conservative for smooth surfaces and is noted in compliance reports.
 - **Temporal averaging.** AEGIS computes steady-state exposure. The 6-minute temporal average is not modeled. For continuous sources this is exact. For pulsed sources the result is conservative.
-- **Frequency range.** The compliance module covers frequencies above 6 GHz to 300 GHz only. Below 6 GHz, SAR over a 10 g cubic mass applies and is not yet implemented. Passing an out-of-range frequency raises `ValueError`.
+- **Frequency range.** The compliance module covers 100 kHz to 300 GHz. Above 6 GHz, all ICNIRP 2020 limits are evaluated (S_ab, S_inc, SAR_wb). Below 6 GHz, only whole-body SAR is checked. Local SAR over a 10 g cubic mass is not yet implemented.
 - **Multi-frequency exposure.** ICNIRP equation 2 defines a sum rule for simultaneous exposure at multiple frequencies. This is not yet implemented.
 
 ---

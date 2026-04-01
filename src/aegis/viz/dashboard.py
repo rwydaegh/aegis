@@ -81,7 +81,8 @@ def _draw_sab_histogram(ax: Any, result: DosimetryResult) -> None:
     freq_hz = result.freq_hz or DEFAULT_FREQ_HZ
     limits = icnirp_limits(ExposureScenario.GENERAL_PUBLIC, freq_hz)
     limit = limits.sab_4cm2
-    ax.axvline(limit, color="gold", linewidth=2, linestyle="--", label=f"ICNIRP limit ({limit} W/m\u00b2)")
+    if limit is not None:
+        ax.axvline(limit, color="gold", linewidth=2, linestyle="--", label=f"ICNIRP limit ({limit} W/m\u00b2)")
     ax.set_xlabel("S_ab (W/m\u00b2)")
     ax.set_ylabel("Triangle count")
     ax.set_title("S_ab distribution")
