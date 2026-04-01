@@ -82,7 +82,20 @@ Check the browser console periodically with `npx @playwright/cli console`.
 Explore for 8-12 meaningful interactions. Do not rush through a checklist. Actually
 look at each screen and think about whether what you see makes sense.
 
-## When you find something wrong
+## Judgment calls
+
+Not every oddity is a bug. Use your judgment:
+
+- If you are not sure whether something is wrong, **do not file it**. Move on.
+- If the app works but something is slightly ugly or mildly confusing, that is not
+  a bug. Only file issues for things that are clearly broken, produce wrong results,
+  or would genuinely block a user.
+- If everything looks fine, say "LGTM" and close the browser. A clean session with
+  no bugs found is a perfectly valid outcome. Do not invent problems.
+- Do not file issues about edge cases that no real user would hit.
+- Do not file issues about cosmetic details (alignment, spacing, font size).
+
+## When you find something clearly wrong
 
 Only file an issue if the problem is NOT a JavaScript error (Sentry handles those).
 Check `agent_hq/context/not-bugs.md` before filing.

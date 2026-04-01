@@ -16,6 +16,7 @@ LOG_DIR="${REPO_DIR}/agent_hq/local/logs"
 LOCK_FILE="/tmp/aegis-agent.lock"
 TIMESTAMP=$(date +%Y-%m-%d_%H-%M)
 LOG_FILE="${LOG_DIR}/${AGENT_NAME}_${TIMESTAMP}.log"
+WORKTREE_DIR="/tmp/aegis-agent-${AGENT_NAME}-$$"
 
 mkdir -p "$LOG_DIR"
 
@@ -26,14 +27,16 @@ if ! flock -n 200; then
     exit 0
 fi
 
-# Clean up dirty working directory on exit (timeout kills can leave uncommitted edits)
+# Clean up worktree on exit
 cleanup() {
-    cd "$REPO_DIR"
-    if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
-        echo "[$(date +%Y-%m-%d_%H-%M)] Cleaning dirty working directory" >> "$LOG_FILE"
-        git checkout -- . 2>/dev/null || true
-        git clean -fd 2>/dev/null || true
+    if [ -d "$WORKTREE_DIR" ]; then
+        echo "[$(date +%Y-%m-%d_%H-%M)] Removing worktree ${WORKTREE_DIR}" >> "$LOG_FILE"
+        cd "$REPO_DIR"
+        git worktree remove --force "$WORKTREE_DIR" 2>/dev/null || rm -rf "$WORKTREE_DIR"
+        # Clean up the temp branch
+        git branch -D "agent/${AGENT_NAME}-$$" 2>/dev/null || true
     fi
+    rm -f "$PROMPT_TMPFILE" 2>/dev/null || true
 }
 trap cleanup EXIT
 
@@ -41,16 +44,18 @@ echo "[${TIMESTAMP}] Starting ${AGENT_NAME}" | tee "$LOG_FILE"
 
 cd "$REPO_DIR"
 
-# Clean any leftover dirty state from a previous killed run
-cleanup
-
-# Pull latest (fail gracefully if network issues)
+# Pull latest on main repo (fail gracefully if network issues)
 git pull --rebase origin master >> "$LOG_FILE" 2>&1 || echo "Warning: git pull failed, continuing with current state" >> "$LOG_FILE"
 
+# Create isolated worktree so agents don't conflict with Robin's working directory
+git worktree add "$WORKTREE_DIR" -b "agent/${AGENT_NAME}-$$" HEAD >> "$LOG_FILE" 2>&1
+echo "[${TIMESTAMP}] Created worktree at ${WORKTREE_DIR}" >> "$LOG_FILE"
+
+cd "$WORKTREE_DIR"
+
 # Assemble prompt from agent-specific file + context files
-PROMPT_FILE_PATH="${REPO_DIR}/${PROMPT_FILE}"
 PROMPT=""
-PROMPT+="$(cat "$PROMPT_FILE_PATH")"
+PROMPT+="$(cat "${REPO_DIR}/${PROMPT_FILE}")"
 PROMPT+=$'\n\n---\n\n'
 PROMPT+="$(cat "${REPO_DIR}/agent_hq/context/aegis-overview.md")"
 
@@ -65,17 +70,13 @@ PROMPT_TMPFILE=$(mktemp /tmp/aegis-agent-prompt.XXXXXX)
 echo "$PROMPT" > "$PROMPT_TMPFILE"
 
 # Run Claude in print mode with timeout
-# Pipe prompt via stdin to avoid shell injection from git log messages
 EXIT_CODE=0
 timeout $((TIMEOUT_MIN * 60)) claude -p \
     --model claude-opus-4-6 \
     --allowedTools "Edit,Read,Write,Glob,Grep,Bash(*),WebSearch,WebFetch,Agent" \
     --dangerously-skip-permissions \
-    --max-budget-usd 5 \
     < "$PROMPT_TMPFILE" \
     >> "$LOG_FILE" 2>&1 || EXIT_CODE=$?
-
-rm -f "$PROMPT_TMPFILE"
 
 if [ "$EXIT_CODE" -eq 124 ]; then
     echo "[$(date +%Y-%m-%d_%H-%M)] ${AGENT_NAME} TIMED OUT after ${TIMEOUT_MIN}m" | tee -a "$LOG_FILE"

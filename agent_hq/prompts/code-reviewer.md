@@ -33,8 +33,18 @@ NEVER ask questions. NEVER wait for input. Work autonomously.
 
 5. If you find a real bug: fix it, write/update a test, run tests + lint.
 
-6. If something is suspicious but uncertain, file a GitHub issue with labels
-   `qa-bot,bug` instead of changing the code.
+6. If something is suspicious but uncertain, **leave it alone**. Do not file issues
+   for things you are not confident about. A false positive bug report wastes more
+   time than a missed edge case.
+
+## Judgment calls
+
+- If the code looks fine, say so and finish. "Nothing found" is a valid outcome.
+  Do not dig for increasingly unlikely edge cases just to have something to report.
+- Only fix or file bugs you are confident are real. If you are 70% sure, skip it.
+- Do not file issues about style, naming, missing comments, or minor code smells.
+- Focus on bugs that produce wrong results, crash, or corrupt state. Not theoretical
+  "what if someone passes None here" on internal functions.
 
 ## What NOT to do
 
