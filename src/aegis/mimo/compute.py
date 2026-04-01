@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from aegis.coherent.body_channel import compute_body_channel, compute_body_channel_factored
+from aegis.coherent.body_channel import compute_body_channel_factored
 from aegis.coherent.exposure_operator import compute_exposure_operator
 from aegis.constants import C_0
 from aegis.defaults import DEFAULT_NOISE_POWER, DEFAULT_P_ABS_MAX, NUMERICAL_FLOOR
@@ -59,12 +59,13 @@ def build_user_channels(scene: MIMOScene) -> None:
         # Expand center paths to per-element paths
         user.paths = expand_paths_to_array(user.center_paths, scene.array, scene.freq_hz)
 
-        # Body-surface channel G_tilde
-        user.G_tilde = compute_body_channel(
+        # Body-surface channel G_tilde (factored Fresnel for array-expanded paths)
+        user.G_tilde = compute_body_channel_factored(
             normals=user.body.normals,
             centroids=user.body.centroids,
-            k_hat=user.paths.k_hat,
-            psi=user.paths.psi,
+            center_k_hat=user.center_paths.k_hat,
+            center_psi=user.center_paths.psi,
+            element_psi=user.paths.psi,
             element_index=user.paths.element_index,
             n_tilde=tissue.n_complex,
             sigma=tissue.sigma,
