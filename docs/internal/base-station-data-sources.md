@@ -143,13 +143,17 @@ Wrapper around FCC ASR + local zoning/permit data. Web-only, no API. Same limita
 
 ### MapRad.io
 
-Built by Open Spectrum Pty Ltd (Australia). Free web tool that provides a unified view of radiocommunications register data. Covers US (FCC ULS) and Australia (ACMA RRL). Map + satellite imagery interface with faceted search, proximity queries, and filtering by radio operating parameters. Exports to Excel and Google Earth. Has "integrable services" (API) but documentation is JS-rendered and hard to scrape.
+Built by Open Spectrum Pty Ltd (Australia). Web tool providing a unified map interface over radiocommunications register data. Covers US (FCC ULS) and Australia (ACMA RRL). No other countries confirmed. Map + satellite imagery interface with faceted search, proximity queries, and filtering by radio operating parameters. Exports to Excel and Google Earth.
 
-**Strengths:** For Australia, it wraps ACMA RRL which is one of the richest public databases globally (frequency, EIRP, azimuth, tilt, polarisation, antenna ID per licence). The faceted search and map UI are polished. Free.
+**API:** A documented REST API exists at `maprad.io/us/api/guide`, described as "integrable services for an organisation's software." The documentation page is fully JS-rendered and returns only the GTM bootstrap tag to crawlers, so the actual endpoint list is not inspectable without a browser session. No public OpenAPI spec or SDK has been found.
 
-**Limitations:** For US cellular, hits the same FCC ULS wall: geographic area licenses mean no per-site data for Verizon/AT&T/T-Mobile. The US data is excellent for microwave, land mobile, and broadcast services but not macro cellular. Does not appear to cover European registers.
+**Pricing (as of early 2025):** Originally fully free with 1,000 records exported per day. Transitioned to a credit-based model in February 2024. Basic (free): 100 credits/month after a further reduction in October 2024, down from 1,000 credits/month at launch of the new tier. Professional: approximately $15-20 USD/month for 5 million credits. Organisation: approximately $150-200 USD/month for 50 million credits. The free tier is now essentially token-only for occasional lookups; any programmatic use requires a paid plan.
 
-**Verdict:** Not a new data source, but a well-built aggregator UI over FCC + ACMA. If we build an ACMA adapter for basestationLib, we'd be pulling the same underlying data. The UI/UX is worth studying as inspiration for what "beautiful base station visualization" looks like.
+**Strengths:** For Australia, it wraps ACMA RRL which is one of the richest public databases globally (frequency, EIRP, azimuth, tilt, polarisation, antenna ID per licence). The faceted search and map UI are polished.
+
+**Limitations:** For US cellular, hits the same FCC ULS wall: geographic area licenses mean no per-site data for Verizon/AT&T/T-Mobile. The US data is useful for microwave, land mobile, and broadcast but not macro cellular. No European coverage. Pricing changes have frustrated the hobbyist community; the free tier is now marginal for research use.
+
+**Verdict:** Not a new data source. A well-built aggregator UI over FCC + ACMA that has moved toward a paid model. For AEGIS, direct pulls from FCC ULS and ACMA RRL are both free and unrestricted. Going through MapRad.io's API would add cost and a rate limit on top of data we can already access natively. The UI/UX remains worth studying as inspiration for visualization design.
 
 ### TowerSource
 
