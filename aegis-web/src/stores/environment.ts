@@ -81,7 +81,10 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
   },
   _abortController: null,
 
-  setSource: (source) => set({ source }),
+  setSource: (source) => {
+    get()._abortController?.abort()
+    set({ source, loading: false, error: null, _abortController: null })
+  },
   setLocation: (lat, lon) => set({ location: { lat, lon } }),
   setLocationQuery: (q) => set({ locationQuery: q }),
   setLocationFormatted: (s) => set({ locationFormatted: s }),
