@@ -22,6 +22,7 @@ import AntennaPanel from '@/components/panels/AntennaPanel'
 import MIMOPanel from '@/components/hud/MIMOPanel'
 import EnvironmentPanel from '@/components/panels/EnvironmentPanel'
 import BaseStationsPanel from '@/components/panels/BaseStationsPanel'
+import PatternBrowserPanel from '@/components/panels/PatternBrowserPanel'
 
 export default function Sidebar() {
   const sidebarOpen = useUIStore(s => s.sidebarOpen)
@@ -186,6 +187,17 @@ export default function Sidebar() {
                 <div className="py-2">
                   <PanelErrorBoundary name="Tissue">
                     <TissuePanel />
+                  </PanelErrorBoundary>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="patterns" className="border-b border-border px-3">
+              <AccordionTrigger className="text-sm font-medium py-3">Antenna Patterns</AccordionTrigger>
+              <AccordionContent>
+                <div className="py-2">
+                  <PanelErrorBoundary name="Antenna Patterns">
+                    <PatternBrowserPanel />
                   </PanelErrorBoundary>
                 </div>
               </AccordionContent>

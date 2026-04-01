@@ -8,6 +8,13 @@ export type ExposureMode = 'theoretical' | 'actual_max' | 'typical'
 interface SimulationStore {
   // Inputs
   antennaPos: ScenePos | null
+  selectedPattern: {
+    source: string
+    id: string
+    manufacturer: string
+    model: string
+    gain_dbi: number
+  } | null
   mode: DosimetryMode
   exposureMode: ExposureMode
   fresnel: boolean
@@ -41,6 +48,7 @@ interface SimulationStore {
 
   // Actions
   setAntennaPos: (pos: ScenePos | null) => void
+  setSelectedPattern: (p: { source: string; id: string; manufacturer: string; model: string; gain_dbi: number } | null) => void
   setMode: (mode: DosimetryMode) => void
   setExposureMode: (mode: ExposureMode) => void
   setFresnel: (on: boolean) => void
@@ -68,6 +76,7 @@ interface SimulationStore {
 
 export const useSimulationStore = create<SimulationStore>((set) => ({
   antennaPos: null,
+  selectedPattern: null,
   mode: 'spatial',
   exposureMode: 'theoretical',
   fresnel: true,
@@ -93,6 +102,7 @@ export const useSimulationStore = create<SimulationStore>((set) => ({
   enabledQuantities: new Set<QuantityKey>(['sab', 'sab_4cm2']),
   displayQuantity: 'sab' as QuantityKey,
   setAntennaPos: (pos) => set({ antennaPos: pos }),
+  setSelectedPattern: (p) => set({ selectedPattern: p }),
   setMode: (mode) => set({ mode }),
   setExposureMode: (exposureMode) => set({ exposureMode }),
   setFresnel: (on) => set(() => {
