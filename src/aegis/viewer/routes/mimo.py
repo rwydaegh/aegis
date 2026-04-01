@@ -7,6 +7,7 @@ import logging
 import numpy as np
 from flask import Flask, Response, jsonify, request
 
+from aegis.compliance import ExposureScenario, evaluate_compliance
 from aegis.constants import C_0
 from aegis.defaults import DEFAULT_FREQ_HZ
 from aegis.mimo.array import AntennaArray
@@ -126,8 +127,48 @@ def _user_stats(user: UserState, scene: MIMOScene) -> dict:
         stats["p_abs"] = p_abs
         stats["p_abs_mw"] = p_abs * 1e3
         stats["peak_sab"] = float(result.peak_sab)
+        peak_sab_averaged = None
         if hasattr(result, "sab_averaged") and result.sab_averaged is not None:
-            stats["peak_sab_averaged"] = float(np.max(result.sab_averaged))
+            peak_sab_averaged = float(np.max(result.sab_averaged))
+            stats["peak_sab_averaged"] = peak_sab_averaged
+
+        # ICNIRP compliance (matches single-user compute route)
+        freq_hz = scene.freq_hz
+        sab_for_compliance = peak_sab_averaged
+        if sab_for_compliance is None and result.sab.size > 0:
+            sab_for_compliance = float(np.max(result.sab))
+        scenario = ExposureScenario.GENERAL_PUBLIC
+        try:
+            compliance = evaluate_compliance(
+                scenario=scenario,
+                freq_hz=freq_hz,
+                sab_4cm2=sab_for_compliance,
+            )
+        except (ValueError, TypeError):
+            compliance = None
+
+        stats["compliance"] = (
+            {
+                "overall_pass": compliance.overall_pass,
+                "margin_db": compliance.margin_db if compliance.margin_db != float("inf") else None,
+                "scenario": scenario.value,
+                "freq_hz": freq_hz,
+                "checks": [
+                    {
+                        "label": c.label,
+                        "value": round(c.value, 4),
+                        "limit": round(c.limit, 4),
+                        "unit": c.unit,
+                        "pass": c.compliant,
+                        "ratio": round(c.ratio, 4),
+                    }
+                    for c in compliance.all_checks
+                ],
+            }
+            if compliance is not None
+            else None
+        )
+        stats["compliant"] = compliance.overall_pass if compliance is not None else None
     return stats
 
 

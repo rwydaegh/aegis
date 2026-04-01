@@ -22,7 +22,7 @@ function ComplianceBadge({ stats }: { stats: DosimetryStats | null }) {
       </Badge>
     )
   }
-  if (stats.compliant === null) {
+  if (stats.compliant == null) {
     return (
       <Badge variant="outline" className="text-muted-foreground border-muted-foreground/30 font-mono text-xs">
         --
