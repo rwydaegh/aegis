@@ -30,6 +30,7 @@
 *.ttf binary
 *.stl binary
 *.ply binary
+*.sqlite.gz binary
 
 # ── GitHub Linguist ──────────────────────────────────────────
 # Notebooks are generated (hide from diffs and language stats)

@@ -108,16 +108,30 @@ def parse_msi(
         if upper.startswith("FREQUENCY"):
             parts = line.split()
             if len(parts) >= 2:
-                frequency_mhz = float(parts[1])
+                freq_str = parts[1]
+                # Handle ranges like "1.88-1.93" by taking the midpoint
+                if "-" in freq_str and not freq_str.startswith("-"):
+                    lo, hi = freq_str.split("-", 1)
+                    frequency_mhz = (float(lo) + float(hi)) / 2
+                else:
+                    frequency_mhz = float(freq_str)
+                # Convert GHz to MHz if unit is specified
+                if "GHZ" in upper:
+                    frequency_mhz *= 1000
 
         elif upper.startswith("GAIN"):
-            # "GAIN (dBi) 8.15" or "GAIN 8.15"
+            # "GAIN (dBi) 8.15" or "GAIN 8.15" or "GAIN 12.86 dBd"
             parts = line.split()
-            if len(parts) >= 3:
-                # Try last token as float (handles "GAIN (dBi) 8.15")
-                gain_dbi = float(parts[-1])
-            elif len(parts) == 2:
-                gain_dbi = float(parts[1])
+            is_dbd = "DBD" in upper
+            # Extract numeric gain value
+            for token in reversed(parts[1:]):
+                try:
+                    gain_dbi = float(token)
+                    break
+                except ValueError:
+                    continue
+            if is_dbd:
+                gain_dbi += 2.15  # dBd -> dBi conversion
 
         elif upper.startswith("TILT"):
             parts = line.split()

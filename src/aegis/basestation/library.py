@@ -12,8 +12,10 @@ Handles two layouts found in the wild:
 
 from __future__ import annotations
 
+import gzip
 import io
 import logging
+import shutil
 import sqlite3
 import zipfile
 from dataclasses import dataclass
@@ -167,9 +169,30 @@ class AntennaPatternLibrary:
     # ------------------------------------------------------------------
 
     def _ensure_index(self) -> None:
-        """Build the index automatically on first access if it does not exist."""
-        if not self._db_path.exists():
+        """Build the index automatically on first access if it does not exist.
+
+        Priority:
+        1. Use existing index.sqlite if present.
+        2. Decompress shipped index.sqlite.gz (committed to git).
+        3. Build from MSI zip archives if available.
+        4. Log a warning and return (search will return empty results).
+        """
+        if self._db_path.exists():
+            return
+        gz_path = self._db_path.with_suffix(".sqlite.gz")
+        if gz_path.exists():
+            logger.info("Decompressing shipped antenna pattern index from %s", gz_path)
+            self._db_path.parent.mkdir(parents=True, exist_ok=True)
+            with gzip.open(gz_path, "rb") as f_in, open(self._db_path, "wb") as f_out:
+                shutil.copyfileobj(f_in, f_out)
+            return
+        if self._msi_dir.exists() and any(self._msi_dir.glob("*.zip")):
             self.build_index()
+        else:
+            logger.warning(
+                "No antenna pattern index and no MSI zips at %s. Pattern search will return empty results.",
+                self._msi_dir,
+            )
 
     # ------------------------------------------------------------------
     # Search
@@ -191,6 +214,8 @@ class AntennaPatternLibrary:
         Returns up to *limit* matching ``PatternSearchResult`` rows.
         """
         self._ensure_index()
+        if not self._db_path.exists():
+            return []
         conn = sqlite3.connect(str(self._db_path))
         conditions: list[str] = []
         params: list[object] = []
