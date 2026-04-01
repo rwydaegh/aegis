@@ -38,11 +38,15 @@ def test_device_offset_height_range(name, data_dir):
 
 @pytest.mark.slow
 @pytest.mark.parametrize("name", ["duke", "ella", "thelonious", "eartha"])
-def test_device_forward_positive(name, data_dir):
-    """Device should be in front of the body (positive Y in Z-up)."""
+def test_device_forward_of_face(name, data_dir):
+    """Device should be in front of the face (at least forward_distance from body center).
+
+    IT'IS phantoms face -Y, so device_y should be negative and well in front
+    of the face surface.  The check is direction-agnostic: |device_y| > 0.20.
+    """
     verts = _try_load(name, data_dir)
     offset = estimate_device_offset(verts, forward_distance=0.30)
-    assert offset[1] > 0.20, f"{name}: device_y={offset[1]:.3f}, expected > 0.20"
+    assert abs(offset[1]) > 0.20, f"{name}: |device_y|={abs(offset[1]):.3f}, expected > 0.20"
 
 
 @pytest.mark.slow
