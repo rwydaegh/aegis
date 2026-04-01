@@ -37,12 +37,25 @@ function ComplianceBadge({ stats }: { stats: DosimetryStats | null }) {
     )
   }
 
-  // Derive pass/fail from ALL checks, not just visible ones
-  const visiblePass = stats.compliance
-    ? stats.compliance.checks.every(check => check.pass)
-    : stats.compliant
+  // Use backend compliant field (null when no checks apply)
+  const compliant = stats.compliant
 
-  return visiblePass ? (
+  if (compliant == null) {
+    return (
+      <Tooltip>
+        <TooltipTrigger className="cursor-help">
+          <Badge variant="outline" className="text-amber-400/80 border-amber-400/30 font-mono text-xs">
+            N/A
+          </Badge>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">
+          No compliance checks available at this frequency
+        </TooltipContent>
+      </Tooltip>
+    )
+  }
+
+  return compliant ? (
     <Badge className="bg-success/20 text-success border-success/30 font-mono text-xs">
       PASS
     </Badge>

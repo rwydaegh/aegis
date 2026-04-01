@@ -218,7 +218,8 @@ class TestFrequencySweep:
         for cr in out["results"]:
             assert isinstance(cr, ComplianceResult)
 
-    def test_no_values_all_compliant(self) -> None:
+    def test_no_values_all_indeterminate(self) -> None:
         out = frequency_sweep(n_points=5)
-        assert np.all(out["compliant"])
+        # No quantities provided means no checks, so compliant is False (indeterminate)
+        assert not np.any(out["compliant"])
         assert np.all(out["margin_db"] == float("inf"))
