@@ -73,12 +73,14 @@ function MarginChart({
   xUnit,
   currentX,
   maxCompliantX,
+  onChartClick,
 }: {
   data: { x: number; margin: number; compliant: boolean }[]
   xLabel: string
   xUnit: string
   currentX?: number
   maxCompliantX?: number | null
+  onChartClick?: (xValue: number) => void
 }) {
   if (data.length === 0) return null
 
@@ -93,6 +95,13 @@ function MarginChart({
         <LineChart
           data={data}
           margin={{ top: 4, right: 8, bottom: 16, left: 0 }}
+          onClick={onChartClick ? (state) => {
+            const idx = typeof state.activeTooltipIndex === 'number' ? state.activeTooltipIndex : -1
+            if (idx >= 0 && idx < data.length) {
+              onChartClick(data[idx].x)
+            }
+          } : undefined}
+          style={onChartClick ? { cursor: 'pointer' } : undefined}
         >
           <defs>
             <linearGradient id="marginFill" x1="0" y1="0" x2="0" y2="1">
@@ -283,11 +292,11 @@ function PowerSweepSection() {
         <>
           <MarginChart
             data={chartData}
-
             xLabel="TX Power"
             xUnit="dBm"
             currentX={powerDbm}
             maxCompliantX={result.p_max_compliant_dbm}
+            onChartClick={(v) => setPowerDbm(parseFloat(v.toFixed(1)))}
           />
           {result.p_max_compliant_dbm != null && (
             <div className="flex items-center justify-between mt-2 text-xs">
@@ -392,10 +401,10 @@ function FrequencySweepSection() {
       {result && (
         <MarginChart
           data={chartData}
-
           xLabel="Frequency"
           xUnit="GHz"
           currentX={freqGhz}
+          onChartClick={(v) => useSimulationStore.getState().setFreqGhz(parseFloat(v.toFixed(1)))}
         />
       )}
     </div>
@@ -508,10 +517,12 @@ function HeatmapCanvas({
   result,
   currentFreqGhz,
   currentPowerDbm,
+  onCellClick,
 }: {
   result: HeatmapResult
   currentFreqGhz: number
   currentPowerDbm: number
+  onCellClick?: (freqGhz: number, powerDbm: number) => void
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const tooltipRef = useRef<HTMLDivElement>(null)
@@ -629,8 +640,26 @@ function HeatmapCanvas({
     tip.style.display = 'block'
     tip.style.left = `${mx + 12}px`
     tip.style.top = `${my - 10}px`
-    tip.textContent = `${freq_ghz[fi].toFixed(1)} GHz, ${power_dbm[pi].toFixed(0)} dBm: ${m > 0 ? '+' : ''}${m.toFixed(1)} dB`
-  }, [result, n_freq, n_power, freq_ghz, power_dbm, margin_db])
+    const clickHint = onCellClick ? '  (click to apply)' : ''
+    tip.textContent = `${freq_ghz[fi].toFixed(1)} GHz, ${power_dbm[pi].toFixed(0)} dBm: ${m > 0 ? '+' : ''}${m.toFixed(1)} dB${clickHint}`
+  }, [result, n_freq, n_power, freq_ghz, power_dbm, margin_db, onCellClick])
+
+  const handleClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!onCellClick) return
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const rect = canvas.getBoundingClientRect()
+    const mx = (e.clientX - rect.left) * (canvas.width / rect.width)
+    const my = (e.clientY - rect.top) * (canvas.height / rect.height)
+    const W = canvas.width, H = canvas.height
+    const ml = 40, mr = 10, mt = 10, mb = 28
+    const pw = (W - ml - mr) / n_freq
+    const ph = (H - mt - mb) / n_power
+    const fi = Math.floor((mx - ml) / pw)
+    const pi = n_power - 1 - Math.floor((my - mt) / ph)
+    if (fi < 0 || fi >= n_freq || pi < 0 || pi >= n_power) return
+    onCellClick(freq_ghz[fi], power_dbm[pi])
+  }, [onCellClick, n_freq, n_power, freq_ghz, power_dbm])
 
   return (
     <div className="relative mt-2">
@@ -642,6 +671,7 @@ function HeatmapCanvas({
         style={{ imageRendering: 'pixelated' }}
         onMouseMove={handleMouseMove}
         onMouseLeave={() => { if (tooltipRef.current) tooltipRef.current.style.display = 'none' }}
+        onClick={handleClick}
       />
       <div
         ref={tooltipRef}
@@ -695,8 +725,8 @@ function ComplianceHeatmapSection() {
   return (
     <div>
       <p className="text-[10px] text-muted-foreground/60 mb-2">
-        2D map showing compliant (green) and non-compliant (red) regions across
-        frequency and TX power. White line marks the compliance boundary.
+        2D map of compliance margin across frequency and TX power. Click any cell
+        to jump to that operating point. White line marks the compliance boundary.
       </p>
       <button
         onClick={runHeatmap}
@@ -712,7 +742,15 @@ function ComplianceHeatmapSection() {
       )}
       {result && (
         <>
-          <HeatmapCanvas result={result} currentFreqGhz={freqGhz} currentPowerDbm={powerDbm} />
+          <HeatmapCanvas
+            result={result}
+            currentFreqGhz={freqGhz}
+            currentPowerDbm={powerDbm}
+            onCellClick={(f, p) => {
+              useSimulationStore.getState().setFreqGhz(f)
+              useSimulationStore.getState().setPowerDbm(parseFloat(p.toFixed(1)))
+            }}
+          />
           <div className="mt-1 flex items-center gap-3 text-[10px] text-muted-foreground">
             <span className="flex items-center gap-1">
               <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ background: 'rgb(70,240,100)' }} />
