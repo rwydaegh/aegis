@@ -10,5 +10,6 @@
   "netherlands": "basestationLib.Countries.Netherlands.basestations",
   "hungary": "basestationLib.Countries.Hungary.basestations",
   "austria": "basestationLib.Countries.Austria.basestations",
+  "denmark": "basestationLib.Countries.Denmark.basestations",
   "other": "basestationLib.OpenCellID.basestations"
 }
