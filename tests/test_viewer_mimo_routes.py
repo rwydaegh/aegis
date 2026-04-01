@@ -188,6 +188,35 @@ class TestBuildScene:
         assert status == 400
         assert "duplicate" in resp.get_json()["error"].lower()
 
+    def test_users_not_a_list_returns_400(self):
+        """Regression: users_cfg as string passed truthiness check but crashed on iteration."""
+        cache = _make_cache_with_body()
+        scene, err = _build_scene({"array": VALID_ARRAY, "users": "invalid"}, cache)
+        assert scene is None
+        resp, status = err
+        assert status == 400
+        assert "array" in resp.get_json()["error"].lower()
+
+    def test_device_offset_null_uses_default(self):
+        """Regression: device_offset: null crashed np.array(None) before try/except."""
+        cache = _make_cache_with_body()
+        user = _make_user_cfg()
+        user["device_offset"] = None
+        scene, err = _build_scene({"array": VALID_ARRAY, "users": [user]}, cache)
+        assert err is None
+        # Should fall back to device_position or default offset, not crash
+        assert scene is not None
+
+    def test_device_position_null_uses_default(self):
+        """Both device_offset and device_position null should fall back to default."""
+        cache = _make_cache_with_body()
+        user = _make_user_cfg()
+        user["device_offset"] = None
+        user["device_position"] = None
+        scene, err = _build_scene({"array": VALID_ARRAY, "users": [user]}, cache)
+        assert err is None
+        assert scene is not None
+
 
 # ---------------------------------------------------------------------------
 # _user_stats unit tests
