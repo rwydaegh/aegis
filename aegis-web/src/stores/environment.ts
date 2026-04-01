@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import * as Sentry from '@sentry/react'
-import { fetchWithRetry } from '@/api/client'
+import { fetchWithRetry, parseJsonHeader } from '@/api/client'
 import type { ScenePos } from '@/api/coordinates'
 
 export type EnvironmentSource = 'none' | 'voxels' | 'osm' | '3dtiles'
@@ -194,7 +194,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
         try { const err = await resp.json(); msg = err.error || msg } catch {}
         throw new Error(msg)
       }
-      const meta = JSON.parse(resp.headers.get('X-Meta') || '{}')
+      const meta = parseJsonHeader<Record<string, unknown>>(resp.headers.get('X-Meta'), 'X-Meta')
       const buf = await resp.arrayBuffer()
       const meshData = parseEnvironmentBinary(buf, meta)
       set({ osmMeshData: meshData, loading: false })
@@ -234,7 +234,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
         try { const err = await resp.json(); msg = err.error || msg } catch {}
         throw new Error(msg)
       }
-      const meta = JSON.parse(resp.headers.get('X-Meta') || '{}')
+      const meta = parseJsonHeader<Record<string, unknown>>(resp.headers.get('X-Meta'), 'X-Meta')
       const buf = await resp.arrayBuffer()
       const meshData = parseEnvironmentBinary(buf, meta)
       set({ osmMeshData: meshData, loading: false })

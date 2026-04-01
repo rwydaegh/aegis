@@ -6,8 +6,9 @@ import { useSimulationStore } from '@/stores/simulation'
 import { useSceneStore } from '@/stores/scene'
 import { formatSab } from '@/lib/format'
 
-/** 4 cm² averaging circle radius in meters: r = sqrt(4e-4 / pi) ≈ 0.01128 */
-const AVG_RADIUS = Math.sqrt(4e-4 / Math.PI)
+/** Averaging circle radii in meters: r = sqrt(A / pi) */
+const AVG_RADIUS_4CM2 = Math.sqrt(4e-4 / Math.PI) // ~0.01128
+const AVG_RADIUS_1CM2 = Math.sqrt(1e-4 / Math.PI) // ~0.00564
 const TUBE_RADIUS = 0.0015
 
 interface PeakInfo {
@@ -39,13 +40,30 @@ export default function PeakIndicator({
   const globalGeometry = useSceneStore(s => s.bodyGeometry)
   const globalSabArray = useSimulationStore(s => s.sabArray)
   const globalSabAveraged = useSimulationStore(s => s.sabAveragedArray)
+  const globalSincArray = useSimulationStore(s => s.sincArray)
+  const globalSab1cm2Averaged = useSimulationStore(s => s.sab1cm2AveragedArray)
   const globalStats = useSimulationStore(s => s.stats)
+  const displayQuantity = useSimulationStore(s => s.displayQuantity)
 
-  // Use overrides if provided, otherwise fall back to global stores
+  // Use overrides if provided, otherwise pick array matching displayed quantity
   const geometry = geometryOverride ?? globalGeometry
-  const sabArray = sabOverride ?? globalSabAveraged ?? globalSabArray
-  const peakValue = peakValueOverride ?? globalStats?.peak_sab_averaged ?? globalStats?.peak_sab ?? null
+
+  const arrayForQuantity: Record<string, Float32Array | null | undefined> = {
+    sab: globalSabArray,
+    sab_4cm2: globalSabAveraged ?? globalSabArray,
+    sab_1cm2: globalSab1cm2Averaged ?? globalSabArray,
+    sinc_local: globalSincArray ?? globalSabArray,
+  }
+  const sabArray = sabOverride ?? arrayForQuantity[displayQuantity] ?? globalSabAveraged ?? globalSabArray
+
+  // Peak value and compliance from stats, respecting displayed quantity
+  const peakForQty = globalStats?.peaks?.[displayQuantity]
+  const defaultPeak = globalStats?.peak_sab_averaged ?? globalStats?.peak_sab
+  const peakValue = peakValueOverride ?? peakForQty ?? defaultPeak ?? null
   const compliant = compliantOverride ?? globalStats?.compliant ?? null
+
+  // Ring radius depends on which averaging area is being shown
+  const avgRadius = displayQuantity === 'sab_1cm2' ? AVG_RADIUS_1CM2 : AVG_RADIUS_4CM2
 
   // Find peak triangle and compute position + normal
   const peak: PeakInfo | null = useMemo(() => {
@@ -99,7 +117,7 @@ export default function PeakIndicator({
     <group position={peak.position} quaternion={peak.quaternion}>
       {/* Averaging area ring (4 cm²) */}
       <mesh ref={ringRef}>
-        <torusGeometry args={[AVG_RADIUS, TUBE_RADIUS, 8, 48]} />
+        <torusGeometry args={[avgRadius, TUBE_RADIUS, 8, 48]} />
         <meshBasicMaterial
           color="#ffffff"
           transparent
