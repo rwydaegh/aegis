@@ -197,3 +197,39 @@ def test_msi_to_pattern_hpbw():
             found = True
             break
     assert found, "3dB point not found within 90 degrees"
+
+
+# ---------------------------------------------------------------------------
+# Regression: truncated MSI files and oversized counts
+# ---------------------------------------------------------------------------
+
+
+def test_parse_msi_truncated_file_no_crash():
+    """Truncated MSI file (file ends mid-section) must not crash with IndexError."""
+    from aegis.basestation.msi import parse_msi
+
+    text = "TruncatedAntenna\nFREQUENCY 900\nGAIN 10.0\nHORIZONTAL 360\n"
+    # Only 5 data rows then file ends (no VERTICAL section at all)
+    for deg in range(5):
+        text += f"{deg} 1.5\n"
+
+    meta, h_atten, v_atten = parse_msi(text)
+    assert meta.name == "TruncatedAntenna"
+    assert h_atten[0] == pytest.approx(1.5)
+    assert h_atten[4] == pytest.approx(1.5)
+
+
+def test_parse_msi_count_exceeds_360():
+    """MSI file declaring >360 rows must not overflow the pre-allocated array."""
+    from aegis.basestation.msi import parse_msi
+
+    text = "BigAntenna\nFREQUENCY 2100\nGAIN 15.0\nHORIZONTAL 720\n"
+    for deg in range(720):
+        text += f"{deg % 360} 3.0\n"
+    text += "VERTICAL 360\n"
+    for deg in range(360):
+        text += f"{deg} 2.0\n"
+
+    meta, h_atten, v_atten = parse_msi(text)
+    assert h_atten.shape == (360,)
+    assert h_atten[0] == pytest.approx(3.0)

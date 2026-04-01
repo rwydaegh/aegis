@@ -200,7 +200,7 @@ def _handle_basestations_load(cache: dict, cache_lock: threading.RLock):
                 (bbox[2] + bbox[3]) / 2,
                 (bbox[0] + bbox[1]) / 2,
             )
-        elif "lat" in params:
+        elif "lat" in params and "lon" in params:
             cache["basestations_origin"] = (
                 float(params["lat"]),
                 float(params["lon"]),
