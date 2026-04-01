@@ -34,6 +34,8 @@ interface EnvironmentState {
   geocoding: boolean
   error: string | null
   osmOptions: OsmOptions
+  /** @internal AbortController for in-flight environment fetches */
+  _abortController: AbortController | null
 
   setSource: (s: EnvironmentSource) => void
   setLocation: (lat: number, lon: number) => void
@@ -48,6 +50,14 @@ interface EnvironmentState {
   fetchGeoJSON: (geojsonStr: string) => Promise<void>
   fetchTilesForRT: () => Promise<void>
   exportForRT: (format: 'differt' | 'sionna') => Promise<string>
+}
+
+/** Abort any in-flight environment fetch and return a fresh AbortController. */
+function freshAbort(get: () => EnvironmentState, set: (s: Partial<EnvironmentState>) => void): AbortController {
+  get()._abortController?.abort()
+  const controller = new AbortController()
+  set({ _abortController: controller })
+  return controller
 }
 
 export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
@@ -69,6 +79,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
     water: true,
     detail: false,
   },
+  _abortController: null,
 
   setSource: (source) => set({ source }),
   setLocation: (lat, lon) => set({ location: { lat, lon } }),
@@ -87,9 +98,12 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
     if (!q) return
     if (source !== 'osm' && source !== '3dtiles') return
 
+    const controller = freshAbort(get, set)
     set({ geocoding: true, error: null })
     try {
-      const resp = await fetchWithRetry(`/api/geocode?q=${encodeURIComponent(q)}`)
+      const resp = await fetchWithRetry(`/api/geocode?q=${encodeURIComponent(q)}`, {
+        signal: controller.signal,
+      })
       if (!resp.ok) {
         const data = await resp.json().catch(() => ({}))
         throw new Error(data.error || `Geocoding failed: ${resp.status}`)
@@ -108,6 +122,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
         await get().fetchTilesForRT()
       }
     } catch (e) {
+      if ((e as Error).name === 'AbortError') return
       Sentry.captureException(e)
       set({ error: (e as Error).message, geocoding: false })
     }
@@ -153,6 +168,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
 
   fetchGeoJSON: async (geojsonStr: string) => {
     const { location, osmOptions } = get()
+    const controller = freshAbort(get, set)
     set({ loading: true, error: null })
     try {
       const resp = await fetchWithRetry('/api/environment/geojson', {
@@ -164,6 +180,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
           lon: location?.lon ?? 0,
           detail: osmOptions.detail,
         }),
+        signal: controller.signal,
       })
       if (!resp.ok) {
         let msg = `HTTP ${resp.status}`
@@ -175,6 +192,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
       const meshData = parseEnvironmentBinary(buf, meta)
       set({ osmMeshData: meshData, loading: false })
     } catch (e) {
+      if ((e as Error).name === 'AbortError') return
       Sentry.captureException(e)
       set({ error: (e as Error).message, loading: false })
     }
@@ -183,6 +201,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
   fetchOSM: async () => {
     const { location, radius, osmOptions } = get()
     if (!location) return
+    const controller = freshAbort(get, set)
     set({ loading: true, error: null })
     try {
       const resp = await fetchWithRetry('/api/environment/osm', {
@@ -201,6 +220,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
             water: osmOptions.water,
           },
         }),
+        signal: controller.signal,
       })
       if (!resp.ok) {
         let msg = `HTTP ${resp.status}`
@@ -212,6 +232,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
       const meshData = parseEnvironmentBinary(buf, meta)
       set({ osmMeshData: meshData, loading: false })
     } catch (e) {
+      if ((e as Error).name === 'AbortError') return
       Sentry.captureException(e)
       set({ error: (e as Error).message, loading: false })
     }
@@ -220,6 +241,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
   fetchTilesForRT: async () => {
     const { location, radius, geometricError } = get()
     if (!location) return
+    const controller = freshAbort(get, set)
     set({ loading: true, error: null })
     try {
       const resp = await fetchWithRetry('/api/environment/3dtiles', {
@@ -231,6 +253,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
           radius,
           geometric_error: geometricError,
         }),
+        signal: controller.signal,
       })
       if (!resp.ok) {
         let msg = `HTTP ${resp.status}`
@@ -239,6 +262,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
       }
       set({ loading: false })
     } catch (e) {
+      if ((e as Error).name === 'AbortError') return
       Sentry.captureException(e)
       set({ error: (e as Error).message, loading: false })
     }
