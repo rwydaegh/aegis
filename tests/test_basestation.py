@@ -341,11 +341,21 @@ class TestBaseStation:
 
     def test_frequency_band_field(self):
         bs = BaseStation(
-            site_code="TEST001", antenna_label="test", operator="TestOp",
-            technology="5G NR", latitude=51.05, longitude=3.72, height_m=30.0,
-            eirp_dbm=50.0, gain_dbi=17.0, freq_mhz=3500.0, azimuth_deg=120.0,
-            electrical_tilt_deg=6.0, mechanical_tilt_deg=2.0,
-            horizontal_beamwidth_deg=65.0, vertical_beamwidth_deg=10.0,
+            site_code="TEST001",
+            antenna_label="test",
+            operator="TestOp",
+            technology="5G NR",
+            latitude=51.05,
+            longitude=3.72,
+            height_m=30.0,
+            eirp_dbm=50.0,
+            gain_dbi=17.0,
+            freq_mhz=3500.0,
+            azimuth_deg=120.0,
+            electrical_tilt_deg=6.0,
+            mechanical_tilt_deg=2.0,
+            horizontal_beamwidth_deg=65.0,
+            vertical_beamwidth_deg=10.0,
             frequency_band="Band3600MHz",
         )
         assert bs.frequency_band == "Band3600MHz"
@@ -355,22 +365,42 @@ class TestBaseStation:
 
         prov = (("eirp_dbm", FieldSource("gov:brussels", 1.0)),)
         bs = BaseStation(
-            site_code="TEST001", antenna_label="test", operator="TestOp",
-            technology="5G NR", latitude=51.05, longitude=3.72, height_m=30.0,
-            eirp_dbm=50.0, gain_dbi=17.0, freq_mhz=3500.0, azimuth_deg=120.0,
-            electrical_tilt_deg=6.0, mechanical_tilt_deg=2.0,
-            horizontal_beamwidth_deg=65.0, vertical_beamwidth_deg=10.0,
+            site_code="TEST001",
+            antenna_label="test",
+            operator="TestOp",
+            technology="5G NR",
+            latitude=51.05,
+            longitude=3.72,
+            height_m=30.0,
+            eirp_dbm=50.0,
+            gain_dbi=17.0,
+            freq_mhz=3500.0,
+            azimuth_deg=120.0,
+            electrical_tilt_deg=6.0,
+            mechanical_tilt_deg=2.0,
+            horizontal_beamwidth_deg=65.0,
+            vertical_beamwidth_deg=10.0,
             provenance=prov,
         )
         assert bs.provenance_dict["eirp_dbm"].confidence == 1.0
 
     def test_pattern_source_field(self):
         bs = BaseStation(
-            site_code="TEST001", antenna_label="test", operator="TestOp",
-            technology="5G NR", latitude=51.05, longitude=3.72, height_m=30.0,
-            eirp_dbm=50.0, gain_dbi=17.0, freq_mhz=3500.0, azimuth_deg=120.0,
-            electrical_tilt_deg=6.0, mechanical_tilt_deg=2.0,
-            horizontal_beamwidth_deg=65.0, vertical_beamwidth_deg=10.0,
+            site_code="TEST001",
+            antenna_label="test",
+            operator="TestOp",
+            technology="5G NR",
+            latitude=51.05,
+            longitude=3.72,
+            height_m=30.0,
+            eirp_dbm=50.0,
+            gain_dbi=17.0,
+            freq_mhz=3500.0,
+            azimuth_deg=120.0,
+            electrical_tilt_deg=6.0,
+            mechanical_tilt_deg=2.0,
+            horizontal_beamwidth_deg=65.0,
+            vertical_beamwidth_deg=10.0,
             pattern_source="synthetic:gaussian",
         )
         assert bs.pattern_source == "synthetic:gaussian"

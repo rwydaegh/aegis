@@ -47,17 +47,11 @@ class TestDosimetricWeights:
 
 class TestAggregateConfidence:
     def test_all_government_gives_one(self):
-        prov = tuple(
-            (field, FieldSource(origin="gov:brussels", confidence=1.0))
-            for field in DOSIMETRIC_WEIGHTS
-        )
+        prov = tuple((field, FieldSource(origin="gov:brussels", confidence=1.0)) for field in DOSIMETRIC_WEIGHTS)
         assert aggregate_confidence(prov) == pytest.approx(1.0)
 
     def test_all_missing_gives_zero(self):
-        prov = tuple(
-            (field, FieldSource(origin="missing", confidence=0.0))
-            for field in DOSIMETRIC_WEIGHTS
-        )
+        prov = tuple((field, FieldSource(origin="missing", confidence=0.0)) for field in DOSIMETRIC_WEIGHTS)
         assert aggregate_confidence(prov) == pytest.approx(0.0)
 
     def test_mixed_provenance(self):
