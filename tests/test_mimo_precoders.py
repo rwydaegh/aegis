@@ -212,6 +212,19 @@ class TestMMSE:
         frob_sq = float(np.real(np.trace(W.conj().T @ W)))
         assert_allclose(frob_sq, 1.0, atol=1e-10)
 
+    def test_singular_gram_falls_back_to_mrt(self):
+        """MMSE with singular regularized Gram matrix falls back to MRT."""
+        # All-zero H produces singular HHH + 0*I
+        H = np.zeros((2, 4), dtype=complex)
+        import warnings
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            W = mmse(H, P=1.0, noise_power=0.0)
+            # Should fall back to MRT (which returns zeros for all-zero H)
+            assert W.shape == (4, 2)
+            assert any("singular" in str(wi.message).lower() for wi in w)
+
 
 class TestZFExposure:
     """Tests for ZF+exposure-scaling precoder."""

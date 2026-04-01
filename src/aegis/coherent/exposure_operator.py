@@ -118,7 +118,7 @@ def compute_rho(
     if lambda_max < NUMERICAL_FLOOR:
         return 0.0
 
-    # h^T @ Q @ h* = h.conj() @ Q @ h (using vdot convention)
+    # h^H @ Q @ h (Hermitian quadratic form, Q is Hermitian PSD)
     Qh = Q @ h
     numerator = float(xp.real(xp.vdot(h, Qh)))
 

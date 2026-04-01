@@ -64,7 +64,7 @@ class TestComplianceCLI:
         import pytest
 
         with pytest.raises(SystemExit):
-            main(["--freq", "1e9", "--sab", "10.0"])
+            main(["--freq", "50e3", "--sab", "10.0"])
 
     def test_all_quantities(self, capsys):
         main(

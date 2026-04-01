@@ -693,8 +693,8 @@ class TestLinkBudgetCompliance:
             link_budget_compliance(tx_power_w=0, distance_m=10, freq_hz=28e9)
         with pytest.raises(ValueError, match="distance_m must be positive"):
             link_budget_compliance(tx_power_w=1, distance_m=0, freq_hz=28e9)
-        with pytest.raises(ValueError, match="outside the supported"):
-            link_budget_compliance(tx_power_w=1, distance_m=10, freq_hz=1e9)
+        with pytest.raises(ValueError, match="outside the ICNIRP 2020 range"):
+            link_budget_compliance(tx_power_w=1, distance_m=10, freq_hz=50e3)
 
     def test_dbm_conversion(self):
         """max_tx_power_dbm should match W -> dBm conversion."""
