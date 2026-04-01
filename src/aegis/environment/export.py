@@ -115,6 +115,18 @@ def to_differt_scene(mesh: EnvironmentMesh):
     return scene
 
 
+def to_sionna_mesh_data(mesh: EnvironmentMesh) -> tuple[np.ndarray, np.ndarray, list[str]]:
+    """Extract (vertices, triangles, per_face_material_names) for Sionna RT.
+
+    Returns vertices in ENU (Z-up), triangles as int indices, and a list of
+    material name strings (one per face) matching Sionna BSDF names.
+    """
+    verts = mesh.vertices.astype(np.float32)
+    tris = mesh.triangles.astype(np.int32)
+    per_face_mats = [MaterialType(int(m)).name.lower() for m in mesh.materials]
+    return verts, tris, per_face_mats
+
+
 def _compute_object_bounds(materials: np.ndarray) -> np.ndarray:
     """Compute [start, end) face index ranges per contiguous material block."""
     if len(materials) == 0:

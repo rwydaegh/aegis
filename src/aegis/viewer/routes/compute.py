@@ -1323,6 +1323,177 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         _cache_dosimetry_for_export(app, result, body, stats)
         return resp
 
+    @app.route("/api/compute/sionna-env-rt", methods=["POST"])
+    def api_compute_sionna_env_rt():
+        """Compute dosimetry using Sionna RT on the environment mesh (via Modal GPU)."""
+        from aegis.viewer.compute import _transform_body_for_viewer
+
+        params = request.get_json(silent=True)
+        if not isinstance(params, dict):
+            return jsonify({"error": _ERR_INVALID_JSON}), 400
+
+        body_name = params.get("body_name", cache.get("default_body"))
+        with cache_lock:
+            entry = cache.get("bodies", {}).get(body_name)
+            env_mesh = cache.get("env_mesh")
+            cfg = cache["config"]
+        if entry is None:
+            return jsonify({"error": f"Body '{body_name}' not found"}), 404
+        body = entry["body"]
+
+        if env_mesh is None:
+            return jsonify({"error": "No environment mesh available"}), 400
+
+        antenna_pos, err = _parse_vec3(params, "antenna_pos", [5, 0, 1])
+        if err:
+            return err
+        body_offset, err = _parse_vec3(params, "body_offset")
+        if err:
+            return err
+        body_rotation_y, err = _parse_rotation_y(params)
+        if err:
+            return err
+
+        engine_kw, err = _parse_mode_or_level(params)
+        if err:
+            return err
+        try:
+            power_dbm = float(params.get("power_dbm", DEFAULT_POWER_DBM))
+        except (TypeError, ValueError):
+            return jsonify({"error": "power_dbm must be a number"}), 400
+        rt_cfg_parsed = _parse_rt_config(params)
+        max_order = rt_cfg_parsed["max_depth"]
+
+        quantities, exposure_scenario, err = _parse_quantities_and_scenario(params)
+        if err:
+            return err
+        tissue, _, err = _parse_freq_and_tissue(params)
+        if err:
+            return err
+
+        # Transform body consistently (vertices, centroids, normals all rotated + offset)
+        transformed_body = _transform_body_for_viewer(body, body_offset, body_rotation_y)
+        body_center = transformed_body.centroids.mean(axis=0)
+
+        import time as _time
+
+        t_route = _time.perf_counter()
+
+        # Extract mesh data for Modal
+        max_rt_triangles = cfg["raytracer"]["max_rt_triangles"]
+        try:
+            from aegis.environment.export import to_sionna_mesh_data
+
+            hull_verts, hull_tris, per_face_mats = to_sionna_mesh_data(env_mesh)
+
+            actual_triangles = len(hull_tris)
+            if actual_triangles > max_rt_triangles and max_order > 0:
+                return jsonify(
+                    {
+                        "error": f"Scene too large for reflections ({actual_triangles:,} triangles, "
+                        f"limit {max_rt_triangles:,}). Use LOS only (order 0) or reduce scene size."
+                    }
+                ), 400
+        except Exception as e:
+            return jsonify({"error": f"Environment mesh build failed: {e}"}), 500
+
+        # Call Modal GPU for Sionna RT on environment mesh geometry
+        import hashlib
+
+        from aegis.viewer.modal_proxy import gpu_status as _gpu_status
+        from aegis.viewer.modal_proxy import trace_sionna_voxel as _modal_trace_voxel
+
+        _was_cold = not _gpu_status().get("warm", False)
+
+        env_hash = hashlib.md5(np.asarray(env_mesh.vertices).tobytes()).hexdigest()[:12]
+        scene_key = f"env_{env_hash}"
+
+        scene_data = {
+            "vertices": hull_verts.tolist(),
+            "triangles": hull_tris.tolist(),
+            "materials": per_face_mats,
+        }
+
+        rt_config_dict = {
+            "los": rt_cfg_parsed["los"],
+            "specular_reflection": rt_cfg_parsed["specular_reflection"],
+            "diffuse_reflection": rt_cfg_parsed["diffuse_reflection"],
+            "refraction": rt_cfg_parsed["refraction"],
+            "diffraction": rt_cfg_parsed["diffraction"],
+            "edge_diffraction": rt_cfg_parsed["edge_diffraction"],
+            "diffraction_lit_region": rt_cfg_parsed["diffraction_lit_region"],
+            "samples_per_src": rt_cfg_parsed["rays_per_source"],
+            "max_num_paths_per_src": rt_cfg_parsed["max_paths_per_source"],
+            "synthetic_array": rt_cfg_parsed["synthetic_array"],
+            "seed": rt_cfg_parsed["seed"],
+        }
+
+        try:
+            modal_result = _modal_trace_voxel(
+                scene_key=scene_key,
+                scene_data=scene_data,
+                tx_pos=antenna_pos.tolist(),
+                rx_pos=body_center.tolist(),
+                max_bounces=max_order,
+                freq_hz=tissue.freq_hz,
+                tx_power_dbm=power_dbm,
+                rt_config=rt_config_dict,
+            )
+        except NotImplementedError:
+            return jsonify({"error": "Environment mesh ray tracing with Sionna is not yet implemented."}), 501
+
+        if modal_result is None:
+            return jsonify({"error": "GPU unavailable for environment mesh ray tracing"}), 503
+
+        from aegis.paths import PropagationPaths
+
+        paths = PropagationPaths.from_dict(modal_result["paths"])
+        path_viz = modal_result["path_viz"]
+        gpu_backend = modal_result.get("gpu_backend")
+        rt_ms = modal_result.get("timings", {}).get("trace_ms")
+
+        t_rt = _time.perf_counter()
+
+        level_val, _, _ = _stats_label(engine_kw)
+        if paths.n_paths == 0:
+            return _zero_paths_response(body, tissue, level_val or 0)
+
+        result = _run_dosimetry(tissue, transformed_body, paths, engine_kw)
+        t_compute = _time.perf_counter()
+
+        dist = float(np.linalg.norm(antenna_pos - body_center))
+        extra = {
+            "S_inc": float(np.sum(paths.power)),
+            "distance_m": dist,
+            "n_rt_paths": paths.n_paths,
+            "path_viz": path_viz,
+        }
+
+        extra["backend"] = "sionna-env"
+        extra["cold_start"] = _was_cold
+        if gpu_backend is not None:
+            extra["gpu_backend"] = gpu_backend
+
+        t_stats = _time.perf_counter()
+        timing_pairs = [
+            ("rt_ms", rt_ms if rt_ms is not None else (t_rt - t_route) * 1e3),
+            ("kernel_ms", (t_compute - t_rt) * 1e3),
+            ("compliance_stats_ms", (t_stats - t_compute) * 1e3),
+            ("route_total_ms", (t_stats - t_route) * 1e3),
+        ]
+        resp, stats = _make_rt_response(
+            result,
+            body,
+            tissue,
+            engine_kw,
+            quantities,
+            exposure_scenario,
+            extra,
+            timing_pairs,
+        )
+        _cache_dosimetry_for_export(app, result, body, stats)
+        return resp
+
     @app.route("/api/export/dosimetry-csv", methods=["GET"])
     def export_dosimetry_csv():
         """Export last dosimetry result as a comprehensive CSV.
