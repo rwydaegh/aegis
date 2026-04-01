@@ -325,10 +325,9 @@ def paths_from_differt(
         row_idx = np.arange(n_paths)
         if object_indices is not None:
             object_indices = np.asarray(object_indices, dtype=np.intp)[keep]
-        if material_indices is not None:
-            material_indices = np.asarray(material_indices, dtype=np.intp)[keep]
-        if normals is not None:
-            normals = np.asarray(normals, dtype=np.float64)[keep]
+        # NOTE: material_indices and normals are per-scene-triangle, not per-path.
+        # They must NOT be filtered by path index -- they are used for lookup
+        # by triangle index inside _track_polarisation.
         if element_indices is not None:
             element_indices = np.asarray(element_indices, dtype=np.intp)[keep]
 
