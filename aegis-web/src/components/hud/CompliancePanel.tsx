@@ -39,6 +39,7 @@ export default function CompliancePanel() {
   const { compliance } = stats
 
   const visibleChecks = compliance.checks.filter(check => {
+    if (!check.pass) return true // Always show failing checks
     const key = LABEL_TO_KEY[check.label]
     return key ? enabledQuantities.has(key) : true
   })
