@@ -200,6 +200,7 @@ class BaseStations:
         # If no cache or cache load failed, extract
         if self.antennas is None or self.antennas.empty:
             session = create_session()
+            session.headers.update({"Referer": "https://www.senderkataster.at/"})
             sites = get_sites(session)
             self.antennas = get_antennas(session, sites)
             session.close()

@@ -12,6 +12,29 @@ logger = logging.getLogger(__name__)
 API_BASE = "https://dk-api.mastdatabase.co.uk"
 PAGE_SIZE = 5000
 
+# Lookup tables (pre-fetched from /operators and /technologies)
+_OPERATORS: dict[str, str] = {}
+_TECHNOLOGIES: dict[str, str] = {}
+
+
+def _fetch_lookups(session: requests.Session) -> None:
+    """Pre-fetch operator and technology name maps."""
+    global _OPERATORS, _TECHNOLOGIES
+    if _OPERATORS and _TECHNOLOGIES:
+        return
+    for endpoint, target in [("/operators", "_OPERATORS"), ("/technologies", "_TECHNOLOGIES")]:
+        resp = session.get(f"{API_BASE}{endpoint}", timeout=30)
+        resp.raise_for_status()
+        mapping = {}
+        for item in resp.json().get("data", []):
+            name_key = "operatorName" if "operator" in endpoint else "technologyName"
+            mapping[item["id"]] = item.get("attributes", {}).get(name_key, "")
+        if target == "_OPERATORS":
+            _OPERATORS = mapping
+        else:
+            _TECHNOLOGIES = mapping
+    logger.info("Loaded %d operators, %d technologies", len(_OPERATORS), len(_TECHNOLOGIES))
+
 
 class BaseStations:
     """Extract antenna data from the Danish Mastedatabasen."""
@@ -62,20 +85,16 @@ class BaseStations:
         return create_output_df(df, config or {}, {})
 
     def _fetch_sites(self) -> list[dict]:
-        """Fetch all sites from the API, paginated."""
+        """Fetch all sites from the API using offset pagination."""
         all_sites = []
-        page = 1
         session = requests.Session()
         session.headers.update({"Accept": "application/vnd.api+json"})
 
-        while True:
-            params: dict = {"page[number]": page, "page[size]": PAGE_SIZE}
-            if self.bounding_box:
-                # bbox: [min_lon, max_lon, min_lat, max_lat]
-                # API expects: lat1,lon1,lat2,lon2 (SW corner, NE corner)
-                min_lon, max_lon, min_lat, max_lat = self.bounding_box
-                params["filter[bounds]"] = f"{min_lat},{min_lon},{max_lat},{max_lon}"
+        _fetch_lookups(session)
 
+        offset = 0
+        while True:
+            params: dict = {"page[offset]": offset, "page[limit]": PAGE_SIZE}
             resp = session.get(f"{API_BASE}/sites", params=params, timeout=30)
             resp.raise_for_status()
             data = resp.json()
@@ -85,13 +104,27 @@ class BaseStations:
                 break
 
             all_sites.extend(sites)
-            logger.info("Fetched page %d: %d sites (total: %d)", page, len(sites), len(all_sites))
+            offset += len(sites)
+            logger.info("Fetched offset %d: %d sites (total: %d)", offset, len(sites), len(all_sites))
 
             # Check if there are more pages
             links = data.get("links", {})
             if not links.get("next"):
                 break
-            page += 1
+
+        # Apply bbox filter client-side (API does not filter server-side)
+        if self.bounding_box:
+            min_lon, max_lon, min_lat, max_lat = self.bounding_box
+            filtered = []
+            for site in all_sites:
+                attrs = site.get("attributes", {})
+                lat = attrs.get("lat")
+                lon = attrs.get("lon")
+                if lat is not None and lon is not None:
+                    if min_lat <= lat <= max_lat and min_lon <= lon <= max_lon:
+                        filtered.append(site)
+            logger.info("Bbox filter: %d -> %d sites", len(all_sites), len(filtered))
+            all_sites = filtered
 
         return all_sites
 
@@ -100,14 +133,23 @@ class BaseStations:
         rows = []
         for site in sites:
             attrs = site.get("attributes", {})
-            lat = attrs.get("latitude") or attrs.get("lat")
-            lon = attrs.get("longitude") or attrs.get("lon") or attrs.get("lng")
+            lat = attrs.get("lat")
+            lon = attrs.get("lon")
             if lat is None or lon is None:
                 continue
 
-            operator = attrs.get("operator", attrs.get("owner", ""))
-            technology = self._map_technology(attrs.get("technology", attrs.get("service_type", "")))
-            freq_band = attrs.get("frequency_band", attrs.get("frequencyBand", ""))
+            # Resolve operator and technology from relationships
+            rels = site.get("relationships", {})
+            op_data = (rels.get("Operator") or {}).get("data") or {}
+            tech_data = (rels.get("Technology") or {}).get("data") or {}
+            operator = _OPERATORS.get(op_data.get("id", ""), "")
+            raw_tech = _TECHNOLOGIES.get(tech_data.get("id", ""), "")
+            technology = self._map_technology(raw_tech)
+
+            freq_data = (rels.get("FrequencyBand") or {}).get("data")
+            freq_band = ""
+            if freq_data and isinstance(freq_data, dict):
+                freq_band = freq_data.get("id", "")
 
             rows.append(
                 {
@@ -117,8 +159,8 @@ class BaseStations:
                     "Technology": technology,
                     "Latitude": float(lat),
                     "Longitude": float(lon),
-                    "CenterHeight": None,  # not available
-                    "Power": None,  # not available
+                    "CenterHeight": None,
+                    "Power": None,
                     "Frequency": self._band_to_freq(freq_band),
                     "FrequencyBand": freq_band,
                     "Electrical_Tilt": None,
@@ -135,12 +177,14 @@ class BaseStations:
     def _map_technology(tech: str) -> str:
         """Normalize technology strings to standard format."""
         tech_upper = str(tech).upper()
-        if "NR" in tech_upper or "5G" in tech_upper:
+        if "NR" == tech_upper or "5G" in tech_upper:
             return "5G"
         if "LTE" in tech_upper or "4G" in tech_upper:
             return "4G"
         if "UMTS" in tech_upper or "3G" in tech_upper:
             return "3G"
+        if "GSM-R" in tech_upper:
+            return "GSM-R"
         if "GSM" in tech_upper or "2G" in tech_upper:
             return "2G"
         return tech

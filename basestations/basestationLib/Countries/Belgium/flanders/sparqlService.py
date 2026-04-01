@@ -100,33 +100,23 @@ class SparqlService:
         PREFIX dossier: <https://data.omgeving.vlaanderen.be/ns/dossier#>
         PREFIX dcterms: <http://purl.org/dc/terms/>
         PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+        PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
         PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
         PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
         PREFIX waarde: <https://data.omgeving.vlaanderen.be/ns/waarde#>
-        SELECT ?antenne ?label ?geometry ?azimut ?tech ?operator ?dossiertype ?dossiertype_label ?dossier ?dossier_label ?goedkeuring_tijdstip ?intrekking_tijdstip ?site ?site_label
+        SELECT ?antenne ?label ?geometry ?azimut ?tech ?operator ?site ?site_label
         WHERE {{
-            ?goedkeuring a <https://data.omgeving.vlaanderen.be/ns/dossier#Goedkeuren> .
-            ?goedkeuring prov:generated ?conformiteitsattest .
-            ?goedkeuring prov:endedAtTime ?goedkeuring_tijdstip .
-            ?conformiteitsattest dossier:certifieert ?antenne .
-            ?conformiteitsattest dossier:behoortTotProcedurestap ?procedurestap .
-            ?procedurestap dossier:behoortTotDossier ?dossier .
-            ?dossier dcterms:type ?dossiertype .
-            ?dossier rdfs:label ?dossier_label .
-            ?dossiertype skos:inScheme <https://data.zendantennes.omgeving.vlaanderen.be/id/conceptscheme/antenne_dossier_type> .
-            ?dossiertype skos:prefLabel ?dossiertype_label .
-            {tech_filter}
+            ?antenne a antenne:Zendantenne .
             ?antenne rdfs:label ?label .
             ?antenne locn:geometry ?geometry .
             ?antenne antenne:antennetechnologie ?tech .
             ?antenne prov:actedOnBehalfOf ?operator .
             ?antenne prov:atLocation ?site .
             ?site rdfs:label ?site_label .
-            ?antenne waarde:azimut ?t_azimut .
-            ?t_azimut rdf:value ?azimut .
+            {tech_filter}
             OPTIONAL {{
-                ?conformiteitsattest prov:wasInvalidatedBy ?intrekking .
-                ?intrekking prov:endedAtTime ?intrekking_tijdstip .
+                ?antenne waarde:azimut ?t_azimut .
+                ?t_azimut rdf:value ?azimut .
             }}
         }}
         {limit_offset}
@@ -201,39 +191,29 @@ class SparqlService:
                 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
                 PREFIX prov: <http://www.w3.org/ns/prov#>
                 PREFIX waarde: <https://data.omgeving.vlaanderen.be/ns/waarde#>
-                SELECT ?antenne ?label ?type ?azimut ?vermogen ?hoogte ?frequentie ?geometry ?site ?site_label ?tech ?operator
+                SELECT ?antenne ?label ?type ?azimut ?vermogen ?hoogte ?geometry ?site ?site_label ?tech ?operator
                 WHERE
                 {
-                    ?stralen a antenne:Stralen .
-                    ?stralen prov:generated ?straling .
-                    ?stralen prov:wasAssociatedWith ?antenne .
+                    ?antenne a antenne:Zendantenne .
+                    ?antenne antenne:antennetype ?type .
+                    ?antenne antenne:antennetechnologie ?tech .
+                    ?antenne rdfs:label ?label .
+                    ?antenne locn:geometry ?geometry .
+                    ?antenne prov:atLocation ?site .
+                    ?site rdfs:label ?site_label .
+                    ?antenne prov:actedOnBehalfOf ?operator .
                     %s
-                    {
-                        SELECT *
-                        WHERE
-                        {
-                            ?antenne antenne:antennetype ?type .
-                            ?antenne antenne:antennetechnologie ?tech .
-                            ?antenne rdfs:label ?label .
-                            ?antenne locn:geometry ?geometry .
-                            ?antenne prov:atLocation ?site .
-                            ?site rdfs:label ?site_label .
-                            ?antenne prov:actedOnBehalfOf ?operator .
-                        }
+                    OPTIONAL {
+                        ?antenne waarde:vermogen ?t_vermogen .
+                        ?t_vermogen rdf:value ?vermogen .
                     }
-                    {
-                        SELECT *
-                        WHERE
-                        {
-                            ?antenne waarde:vermogen ?t_vermogen .
-                            ?antenne waarde:azimut ?t_azimut .
-                            ?antenne waarde:ophangingshoogte ?t_ophangingshoogte .
-                            ?straling waarde:frequentie ?t_frequentie .
-                            ?t_azimut rdf:value ?azimut .
-                            ?t_vermogen rdf:value ?vermogen .
-                            ?t_ophangingshoogte rdf:value ?hoogte .
-                            ?t_frequentie rdf:value ?frequentie .
-                        }
+                    OPTIONAL {
+                        ?antenne waarde:azimut ?t_azimut .
+                        ?t_azimut rdf:value ?azimut .
+                    }
+                    OPTIONAL {
+                        ?antenne waarde:ophangingshoogte ?t_ophangingshoogte .
+                        ?t_ophangingshoogte rdf:value ?hoogte .
                     }
                 }
                 %s
