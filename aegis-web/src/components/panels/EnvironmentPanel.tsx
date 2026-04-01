@@ -34,7 +34,6 @@ export default function EnvironmentPanel() {
   const locationQuery = useEnvironmentStore((s) => s.locationQuery)
   const locationFormatted = useEnvironmentStore((s) => s.locationFormatted)
   const radius = useEnvironmentStore((s) => s.radius)
-  const geometricError = useEnvironmentStore((s) => s.geometricError)
   const osmOptions = useEnvironmentStore((s) => s.osmOptions)
   const loading = useEnvironmentStore((s) => s.loading)
   const geocoding = useEnvironmentStore((s) => s.geocoding)
@@ -42,7 +41,6 @@ export default function EnvironmentPanel() {
   const setSource = useEnvironmentStore((s) => s.setSource)
   const setLocationQuery = useEnvironmentStore((s) => s.setLocationQuery)
   const setRadius = useEnvironmentStore((s) => s.setRadius)
-  const setGeometricError = useEnvironmentStore((s) => s.setGeometricError)
   const setOsmOptions = useEnvironmentStore((s) => s.setOsmOptions)
   const geocodeAndFetch = useEnvironmentStore((s) => s.geocodeAndFetch)
   const fetchGeoJSON = useEnvironmentStore((s) => s.fetchGeoJSON)
@@ -320,28 +318,7 @@ export default function EnvironmentPanel() {
         </div>
       )}
 
-      {/* 3D Tiles options */}
-      {source === '3dtiles' && (
-        <div className="space-y-2 pt-1 border-t border-border">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-            3D Tiles options
-          </p>
-          <div>
-            <label className={labelClass}>
-              Geometric error: {geometricError}
-            </label>
-            <input
-              type="range"
-              min={5}
-              max={100}
-              step={5}
-              value={geometricError}
-              onChange={(e) => setGeometricError(parseInt(e.target.value))}
-              className="w-full"
-            />
-          </div>
-        </div>
-      )}
+      {/* 3D Tiles options - geometric error only affects backend RT mesh, hidden from globe view */}
 
       {/* Loading indicator */}
       {loading && (source === 'osm' || source === '3dtiles') && (

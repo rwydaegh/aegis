@@ -31,25 +31,48 @@ interface Props {
   children: ReactNode
 }
 
-/** Position the camera above the given lat/lon on mount. */
+/** Position the camera above the given lat/lon. Re-centers every time location changes. */
 function GlobeCameraInit({ latRad, lonRad }: { latRad: number; lonRad: number }) {
   const { camera } = useThree()
-  const lastLocation = useRef('')
+  const lastKey = useRef('')
 
   useEffect(() => {
     const key = `${latRad},${lonRad}`
-    if (key === lastLocation.current) return
-    lastLocation.current = key
+    if (key === lastKey.current) return
+    lastKey.current = key
 
-    const pos = latLonToECEF(latRad, lonRad, 800)
-    camera.position.copy(pos)
-    // Look toward the center of the Earth
-    camera.lookAt(0, 0, 0)
-    // Widen clipping planes for globe scale - GlobeControls will refine these
+    const surfacePos = latLonToECEF(latRad, lonRad, 0)
+    const cameraPos = latLonToECEF(latRad, lonRad, 800)
+    camera.position.copy(cameraPos)
+    // Look at the surface point directly below, not Earth's center
+    camera.lookAt(surfacePos)
     camera.near = 1
     camera.far = WGS84_A * 4
     camera.updateProjectionMatrix()
   }, [camera, latRad, lonRad])
+
+  return null
+}
+
+/**
+ * Re-center camera when user clicks search again (even for the same query).
+ * The environment store bumps a counter each geocode; we watch it here.
+ */
+function GlobeCameraRecenter({ latRad, lonRad }: { latRad: number; lonRad: number }) {
+  const { camera } = useThree()
+  const geocodeCount = useEnvironmentStore((s) => s.geocodeCount)
+  const lastCount = useRef(geocodeCount)
+
+  useEffect(() => {
+    if (geocodeCount === lastCount.current) return
+    lastCount.current = geocodeCount
+
+    const surfacePos = latLonToECEF(latRad, lonRad, 0)
+    const cameraPos = latLonToECEF(latRad, lonRad, 800)
+    camera.position.copy(cameraPos)
+    camera.lookAt(surfacePos)
+    camera.updateProjectionMatrix()
+  }, [camera, latRad, lonRad, geocodeCount])
 
   return null
 }
@@ -80,8 +103,12 @@ export function Environment3DTiles({ children }: Props) {
       />
       {cameraMode === 'globe' && <GlobeControls />}
       <GlobeCameraInit latRad={latRad} lonRad={lonRad} />
+      <GlobeCameraRecenter latRad={latRad} lonRad={lonRad} />
       <EastNorthUpFrame lat={latRad} lon={lonRad}>
-        {children}
+        {/* Rotate children from Three.js Y-up to ENU Z-up so bodies stand upright */}
+        <group rotation={[-Math.PI / 2, 0, 0]}>
+          {children}
+        </group>
       </EastNorthUpFrame>
     </TilesRenderer>
   )

@@ -34,6 +34,8 @@ interface EnvironmentState {
   geocoding: boolean
   error: string | null
   osmOptions: OsmOptions
+  /** Bumped on every geocode to allow camera re-center on repeated searches */
+  geocodeCount: number
   /** @internal AbortController for in-flight environment fetches */
   _abortController: AbortController | null
 
@@ -79,6 +81,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
     water: true,
     detail: false,
   },
+  geocodeCount: 0,
   _abortController: null,
 
   setSource: (source) => {
@@ -112,11 +115,12 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
         throw new Error(data.error || `Geocoding failed: ${resp.status}`)
       }
       const { lat, lon, formatted } = await resp.json()
-      set({
+      set((s) => ({
         location: { lat, lon },
         locationFormatted: formatted,
         geocoding: false,
-      })
+        geocodeCount: s.geocodeCount + 1,
+      }))
 
       // Auto-fetch environment after geocoding
       if (source === 'osm') {
