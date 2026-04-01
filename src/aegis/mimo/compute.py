@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from aegis.coherent.body_channel import compute_body_channel
+from aegis.coherent.body_channel import compute_body_channel, compute_body_channel_factored
 from aegis.coherent.exposure_operator import compute_exposure_operator
 from aegis.constants import C_0
 from aegis.defaults import DEFAULT_NOISE_POWER, DEFAULT_P_ABS_MAX, NUMERICAL_FLOOR
@@ -400,13 +400,16 @@ def compute_mimo_scene_with_bodies(
         paths = expand_paths_to_array(center_paths, array, freq_hz)
         user.paths = paths
 
-        # Compute body channel G_tilde
+        # Compute body channel G_tilde using factored Fresnel
+        # This computes Fresnel for N_center directions instead of N_center*M_elements,
+        # giving ~M_elements speedup (e.g. 16x for 4x4 UPA)
         n_tilde = tissue.n_complex
-        G_tilde = compute_body_channel(
+        G_tilde = compute_body_channel_factored(
             normals=body.normals,
             centroids=body.centroids,
-            k_hat=paths.k_hat,
-            psi=paths.psi,
+            center_k_hat=center_paths.k_hat,
+            center_psi=center_paths.psi,
+            element_psi=paths.psi,
             element_index=paths.element_index,
             n_tilde=n_tilde,
             sigma=tissue.sigma,

@@ -158,11 +158,17 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         if not results:
             return jsonify({"error": f"No results for '{q}'"}), 404
 
-        loc = results[0]["geometry"]["location"]
+        try:
+            loc = results[0]["geometry"]["location"]
+            lat, lng = loc["lat"], loc["lng"]
+        except (KeyError, IndexError, TypeError) as exc:
+            logger.warning("Malformed geocode response for %r: %s", q, exc)
+            return jsonify({"error": "Geocoding returned an unexpected response format"}), 502
+
         return jsonify(
             {
-                "lat": loc["lat"],
-                "lon": loc["lng"],
+                "lat": lat,
+                "lon": lng,
                 "formatted": results[0].get("formatted_address", q),
             }
         )
