@@ -693,8 +693,9 @@ class TestLinkBudgetCompliance:
             link_budget_compliance(tx_power_w=0, distance_m=10, freq_hz=28e9)
         with pytest.raises(ValueError, match="distance_m must be positive"):
             link_budget_compliance(tx_power_w=1, distance_m=0, freq_hz=28e9)
-        with pytest.raises(ValueError, match="outside the supported"):
-            link_budget_compliance(tx_power_w=1, distance_m=10, freq_hz=1e9)
+        # Sub-6 GHz is now supported; test a truly out-of-range frequency
+        with pytest.raises(ValueError, match="outside the ICNIRP"):
+            link_budget_compliance(tx_power_w=1, distance_m=10, freq_hz=1e3)  # 1 kHz < 100 kHz
 
     def test_dbm_conversion(self):
         """max_tx_power_dbm should match W -> dBm conversion."""

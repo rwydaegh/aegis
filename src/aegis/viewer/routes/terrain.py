@@ -12,21 +12,20 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
     @app.route("/api/terrain/elevation", methods=["POST"])
     def api_terrain_elevation():
-        """Generate a terrain mesh and return binary.
+        """Generate a terrain mesh from SRTM elevation data and return binary.
 
-        For now this generates a flat grid at z=0 (SRTM download not yet
-        implemented).  The grid is ``radius_m * 2`` square with 10 m cell
-        spacing.
+        Downloads SRTM1 tiles from AWS open data on first access (cached
+        locally). Falls back to flat terrain for ocean/polar areas.
 
         Binary layout (same as environment meshes):
             float32 vertices (N*3) | uint32 triangles (M*3)
 
         Response header ``X-Meta`` carries JSON with ``n_vertices``,
-        ``n_triangles``, ``width``, and ``height``.
+        ``n_triangles``, ``width``, ``height``, and ``has_elevation``.
         """
         import numpy as np
 
-        from aegis.environment.terrain import TerrainGrid, generate_terrain_mesh
+        from aegis.environment.terrain import generate_terrain_mesh, terrain_grid_for_location
 
         body = request.get_json(silent=True) or {}
         lat = body.get("lat")
@@ -47,18 +46,15 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             return jsonify({"error": "radius must be between 0 and 5000 meters"}), 400
 
         cell_size = 10.0  # metres between grid points
-        side = radius * 2.0
-        n_cells = max(2, int(side / cell_size) + 1)
 
-        elevations = np.zeros((n_cells, n_cells), dtype=np.float64)
-
-        grid = TerrainGrid(
-            elevations=elevations,
-            origin_lat=float(lat),
-            origin_lon=float(lon),
+        grid = terrain_grid_for_location(
+            lat=lat,
+            lon=lon,
+            radius_m=radius,
             cell_size_m=cell_size,
         )
 
+        n_cells = grid.elevations.shape[0]
         vertices, triangles = generate_terrain_mesh(grid)
 
         # Centre the mesh on (0, 0) in the XZ plane (Three.js Y-up).
@@ -74,6 +70,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
         blob = verts_yup.tobytes() + tris.tobytes()
 
+        elev_range = float(vy.max() - vy.min())
         meta = {
             "n_vertices": len(verts_yup),
             "n_triangles": len(tris),
@@ -82,6 +79,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             "cell_size_m": cell_size,
             "origin_lat": float(lat),
             "origin_lon": float(lon),
+            "has_elevation": elev_range > 0.1,
+            "elevation_range_m": round(elev_range, 1),
         }
 
         with cache_lock:
