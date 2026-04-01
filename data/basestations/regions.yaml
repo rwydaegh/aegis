@@ -57,3 +57,21 @@ regions:
         priority: 1
         source_tag: gov:rtr
     reference: data/basestations/raw/brussels_gov.parquet
+
+  germany:
+    sources:
+      - type: basestationlib
+        country: Germany
+        bbox: [13.2, 13.6, 52.4, 52.6]
+        priority: 1
+        source_tag: gov:bnetza
+    reference: data/basestations/raw/brussels_gov.parquet
+
+  australia:
+    sources:
+      - type: basestationlib
+        country: Australia
+        bbox: [150.9, 151.4, -34.0, -33.7]
+        priority: 1
+        source_tag: gov:acma
+    reference: data/basestations/raw/brussels_gov.parquet
