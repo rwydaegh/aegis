@@ -15,6 +15,11 @@ interface BaseStationsState {
   selectedIndex: number | null
   selectAntenna: (index: number | null) => void
 
+  showCoverage: boolean
+  coverageUrl: string | null
+  setShowCoverage: (show: boolean) => void
+  setCoverageUrl: (url: string | null) => void
+
   setBasestations: (bs: BaseStationData[], origin: { lat: number; lon: number }) => void
   toggleOperator: (op: string) => void
   toggleTechnology: (tech: string) => void
@@ -50,6 +55,10 @@ export const useBaseStationsStore = create<BaseStationsState>((set, get) => ({
   activeCount: 0,
   selectedIndex: null,
   selectAntenna: (index) => set({ selectedIndex: index }),
+  showCoverage: false,
+  coverageUrl: null,
+  setShowCoverage: (show) => set({ showCoverage: show }),
+  setCoverageUrl: (url) => set({ coverageUrl: url }),
 
   setBasestations: (bs, origin) => {
     const { operators, technologies } = deriveFilters(bs)
@@ -98,6 +107,8 @@ export const useBaseStationsStore = create<BaseStationsState>((set, get) => ({
     technologies: [],
     activeCount: 0,
     selectedIndex: null,
+    showCoverage: false,
+    coverageUrl: null,
   }),
 
   activeIndices: () => {

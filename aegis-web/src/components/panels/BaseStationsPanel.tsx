@@ -25,7 +25,50 @@ export default function BaseStationsPanel() {
   const setLoading = useBaseStationsStore(s => s.setLoading)
   const clear = useBaseStationsStore(s => s.clear)
 
+  const showCoverage = useBaseStationsStore(s => s.showCoverage)
+  const setShowCoverage = useBaseStationsStore(s => s.setShowCoverage)
+  const setCoverageUrl = useBaseStationsStore(s => s.setCoverageUrl)
+
   const computeExposure = useBaseStationsDosimetry()
+
+  const fetchCoverage = useCallback(async () => {
+    if (basestations.length === 0) return
+    const bs = basestations[0]
+    try {
+      const resp = await fetch('/api/environment/coverage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          stations: [{
+            lat: bs.latitude,
+            lon: bs.longitude,
+            alt: bs.height_m,
+            freq_mhz: bs.freq_mhz,
+            power_w: Math.pow(10, (bs.eirp_dbm - bs.gain_dbi) / 10) / 1000,
+            gain_dbi: bs.gain_dbi,
+            azimuth: bs.azimuth_deg,
+            tilt: bs.total_tilt_deg,
+            hbw: bs.horizontal_beamwidth_deg,
+            vbw: bs.vertical_beamwidth_deg,
+          }],
+          radius_km: 1,
+        }),
+      })
+      if (resp.ok) {
+        const blob = await resp.blob()
+        setCoverageUrl(URL.createObjectURL(blob))
+      }
+    } catch {
+      // Coverage fetch failed silently -- not critical
+    }
+  }, [basestations, setCoverageUrl])
+
+  const handleCoverageToggle = useCallback((checked: boolean) => {
+    setShowCoverage(checked)
+    if (checked && basestations.length > 0) {
+      void fetchCoverage()
+    }
+  }, [setShowCoverage, basestations.length, fetchCoverage])
 
   const selectClass =
     'w-full bg-background border border-border rounded px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring'
@@ -181,6 +224,16 @@ export default function BaseStationsPanel() {
               </span>
             ) : 'Compute exposure'}
           </button>
+
+          <label className="flex items-center gap-2 mt-3 text-xs cursor-pointer select-none">
+            <input
+              type="checkbox"
+              className="rounded border-border accent-primary h-3.5 w-3.5"
+              checked={showCoverage}
+              onChange={e => handleCoverageToggle(e.target.checked)}
+            />
+            <span className="text-foreground">Show coverage map (CloudRF)</span>
+          </label>
         </>
       )}
     </div>

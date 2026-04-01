@@ -31,6 +31,7 @@ import FocusPointMarker from './FocusPointMarker'
 import SmartphoneModel from './SmartphoneModel'
 import BaseStationMarkers from './BaseStationMarkers'
 import { EnvironmentTerrain } from './EnvironmentTerrain'
+import { CoverageOverlay } from './CoverageOverlay'
 
 function GroundPlane() {
   const visible = useSceneStore(s => s.groundPlaneVisible)
@@ -358,6 +359,7 @@ export default function SceneRoot() {
       <SceneGrid />
       <EnvironmentTerrain />
       <BaseStationMarkers />
+      <CoverageOverlay />
       <DosimetryController />
       <MIMODosimetryController />
       <MIMOKeyboardController />
