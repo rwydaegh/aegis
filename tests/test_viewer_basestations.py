@@ -275,6 +275,16 @@ class TestBasestationsLoadRoute:
             # May 400 (missing region), 500 (loading error), or 200 with data
             assert resp.status_code in (200, 400, 500)
 
+    def test_load_with_lat_but_no_lon(self, viewer_app):
+        """Regression: sending lat without lon must not KeyError on 'lon'."""
+        with viewer_app.test_client() as c:
+            resp = c.post(
+                "/api/basestations/load",
+                json={"lat": 51.05, "radius_m": 100},
+            )
+            # Should not be a 500 (KeyError). 400 or other handled error is fine.
+            assert resp.status_code != 500
+
 
 class TestBasestationsComputeRoute:
     """POST /api/basestations/compute"""

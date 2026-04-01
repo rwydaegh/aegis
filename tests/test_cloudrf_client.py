@@ -35,6 +35,38 @@ def test_antenna_to_pattern():
     assert pattern.max_gain_dbi == pytest.approx(12.15, abs=0.5)
 
 
+def test_antenna_to_pattern_null_gain():
+    """Regression: CloudRF API may return null for gain fields."""
+    from aegis.integration.cloudrf import CloudRFClient
+
+    client = CloudRFClient.__new__(CloudRFClient)
+    flat_pattern = [list(range(360)), [0.0] * 360]
+
+    # gain_dbd is None
+    data_null_dbd = {
+        "gain_dbd": None,
+        "pattern_data": {"horizontal": flat_pattern, "vertical": flat_pattern},
+    }
+    pattern = client.antenna_to_pattern(data_null_dbd)
+    assert pattern.gain_dbi.shape == (181, 360)
+
+    # gain_dbi is None, falls through to default
+    data_null_dbi = {
+        "gain_dbi": None,
+        "pattern_data": {"horizontal": flat_pattern, "vertical": flat_pattern},
+    }
+    pattern = client.antenna_to_pattern(data_null_dbi)
+    assert pattern.gain_dbi.shape == (181, 360)
+
+    # Both missing, gain also None
+    data_no_gain = {
+        "gain": None,
+        "pattern_data": {"horizontal": flat_pattern, "vertical": flat_pattern},
+    }
+    pattern = client.antenna_to_pattern(data_no_gain)
+    assert pattern.gain_dbi.shape == (181, 360)
+
+
 def test_path_returns_signal():
     from aegis.integration.cloudrf import CloudRFClient
 

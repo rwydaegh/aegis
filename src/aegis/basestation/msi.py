@@ -115,7 +115,6 @@ def parse_msi(
             parts = line.split()
             if len(parts) >= 3:
                 # Try last token as float (handles "GAIN (dBi) 8.15")
-                frequency_mhz  # noqa: B018  -- just referencing to avoid lint
                 gain_dbi = float(parts[-1])
             elif len(parts) == 2:
                 gain_dbi = float(parts[1])
@@ -131,18 +130,26 @@ def parse_msi(
         elif upper.startswith("HORIZONTAL"):
             parts = line.split()
             count = int(parts[1]) if len(parts) >= 2 else 360
+            count = min(count, 360)
             for j in range(count):
                 i += 1
+                if i >= n:
+                    break
                 row = lines[i].strip().split()
-                h_atten[j] = float(row[1])
+                if len(row) >= 2:
+                    h_atten[j] = float(row[1])
 
         elif upper.startswith("VERTICAL"):
             parts = line.split()
             count = int(parts[1]) if len(parts) >= 2 else 360
+            count = min(count, 360)
             for j in range(count):
                 i += 1
+                if i >= n:
+                    break
                 row = lines[i].strip().split()
-                v_atten[j] = float(row[1])
+                if len(row) >= 2:
+                    v_atten[j] = float(row[1])
 
         i += 1
 

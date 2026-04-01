@@ -66,12 +66,12 @@ class CloudRFClient:
         v_atten = -v_gains
 
         # Peak gain: CloudRF may provide gain_dbd or gain_dbi.
-        if "gain_dbd" in antenna_data:
-            gain_dbi = antenna_data["gain_dbd"] + 2.15
-        elif "gain_dbi" in antenna_data:
+        if "gain_dbd" in antenna_data and antenna_data["gain_dbd"] is not None:
+            gain_dbi = float(antenna_data["gain_dbd"]) + 2.15
+        elif "gain_dbi" in antenna_data and antenna_data["gain_dbi"] is not None:
             gain_dbi = float(antenna_data["gain_dbi"])
         else:
-            gain_dbi = float(antenna_data.get("gain", 0)) + 2.15
+            gain_dbi = float(antenna_data.get("gain") or 0) + 2.15
 
         return msi_to_antenna_pattern(h_atten, v_atten, gain_dbi)
 
