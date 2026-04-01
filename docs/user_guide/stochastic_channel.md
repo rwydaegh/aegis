@@ -12,24 +12,20 @@ The two modes are mutually exclusive in the viewer. Enabling stochastic channel 
 
 ## Presets
 
-Presets are QuaDRiGa-format `.conf` files in `data/channel_presets/`. The viewer exposes a curated set of featured presets. The full library contains over 80 entries from 3GPP TR 38.901, WINNER II, mmMAGIC, Berlin measurements, and QuaDRiGa NTN models.
+Presets are QuaDRiGa-format `.conf` files in `data/channel_presets/`. The library contains over 80 entries organized by standard:
 
-Featured presets (configured in `dosimetry.stochastic.featured_presets`):
+- **3GPP 38.901** (14 presets): UMi, UMa, Indoor, InF, RMa with LOS/NLOS/O2I variants. 0.5-100 GHz.
+- **3GPP 37.885** (5 presets): V2X highway and urban scenarios.
+- **3GPP 3D** (8 presets): 3D channel models for UMa/UMi.
+- **QuaDRiGa** (12 presets): Industrial, NTN (satellite), and urban device-to-device.
+- **WINNER** (12 presets): Indoor A1, SMa C1, UMa C2, UMi B1, and indoor-to-outdoor transitions.
+- **mmMAGIC** (6 presets): Millimeter-wave indoor and UMi, including O2I.
+- **5G-ALLSTAR** (8 presets): Rural, suburban, urban, and dense urban.
+- **MIMOSA** (8 presets): Frequency-banded (10-45 GHz range).
+- **BERLIN/DRESDEN** (8 presets): Measurement-based UMa and UMi campus/square.
+- **Canonical** (4 presets): Freespace, LOSonly, TwoRayGR, Null.
 
-| Preset | Scenario | Valid range |
-|--------|----------|-------------|
-| `Freespace` | Free-space reference (single LOS path) | any |
-| `3GPP_38.901_UMi_LOS` | Urban micro, line-of-sight | 0.5-100 GHz, 10-5000 m |
-| `3GPP_38.901_UMi_NLOS` | Urban micro, non-line-of-sight | 0.5-100 GHz, 10-5000 m |
-| `3GPP_38.901_UMa_LOS` | Urban macro, line-of-sight | 0.5-100 GHz, 10-5000 m |
-| `3GPP_38.901_UMa_NLOS` | Urban macro, non-line-of-sight | 0.5-100 GHz, 10-5000 m |
-| `3GPP_38.901_Indoor_LOS` | Indoor factory/office, LOS | 0.5-100 GHz, 1-150 m |
-| `3GPP_38.901_Indoor_NLOS` | Indoor factory/office, NLOS | 0.5-100 GHz, 1-150 m |
-| `3GPP_38.901_InF_LOS` | Indoor factory, LOS | 0.5-100 GHz |
-| `3GPP_38.901_RMa_LOS` | Rural macro, LOS | 0.5-7 GHz, 10-10000 m |
-| `3GPP_38.901_RMa_NLOS` | Rural macro, NLOS | 0.5-7 GHz, 10-10000 m |
-
-The default preset is `3GPP_38.901_UMi_LOS`. To list all installed presets programmatically:
+The viewer groups presets by standard in two dropdowns: pick the standard first, then the scenario. The default preset is `3GPP_38.901_UMi_LOS`. To list all installed presets programmatically:
 
 ```python
 from aegis.channel import list_presets
@@ -143,18 +139,13 @@ The stochastic channel is controlled by the `dosimetry.stochastic` block in the 
     "stochastic": {
       "preset_dir": "data/channel_presets",
       "default_preset": "3GPP_38.901_UMi_LOS",
-      "default_seed": 42,
-      "featured_presets": [
-        "Freespace",
-        "3GPP_38.901_UMi_LOS",
-        "3GPP_38.901_UMi_NLOS"
-      ]
+      "default_seed": 42
     }
   }
 }
 ```
 
-The `featured_presets` list controls which presets appear in the viewer dropdown. The full preset library is still accessible via the REST endpoint `GET /api/channel-presets`. The viewer UI also exposes K-factor, azimuth/elevation spread, and number of clusters as overridable fields per realization.
+All presets in the preset directory are available in the viewer, grouped by standard. The viewer UI also exposes K-factor, azimuth/elevation spread, and number of clusters as overridable fields per realization.
 
 ## Comparison with ray tracing
 

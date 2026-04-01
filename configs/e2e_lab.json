@@ -19,13 +19,6 @@
   "body": {
     "default_name": "e2e_icosahedron"
   },
-  "dosimetry": {
-    "synthetic_paths": {
-      "angular_jitter_std": 0.0,
-      "seed": 42,
-      "scatter_power_range": [0.25, 0.25]
-    }
-  },
   "raytracer": {
     "default_body_center": [0.0, 0.0, 0.0]
   }

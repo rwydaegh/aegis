@@ -27,7 +27,6 @@ export function useConfig() {
           fresnel: true,
           powerDbm: 60,
           skinModel: 'itis',
-          nPaths: config.dosimetry?.path_options?.[0]?.value ?? 1,
         }
 
         // Auto-place body at the recommended position (if location was loaded)

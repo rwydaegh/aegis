@@ -538,7 +538,6 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
         dcfg = cfg["dosimetry"]
         pwr_cfg = dcfg["power_input"]
-        allowed_n_paths = {int(opt["value"]) for opt in dcfg["path_options"]}
 
         # Accept mode + correction flags (new API) or level (legacy)
         mode = params.get("mode")
@@ -572,14 +571,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         if power_dbm < pwr_cfg["min"]:
             return jsonify({"error": f"power_dbm must be >= {pwr_cfg['min']} dBm"}), 400
 
-        try:
-            n_paths = int(params.get("n_paths", dcfg["default_n_paths"]))
-        except (TypeError, ValueError):
-            return jsonify({"error": "n_paths must be an integer"}), 400
-        if n_paths not in allowed_n_paths:
-            return jsonify({"error": f"n_paths must be one of {sorted(allowed_n_paths)}"}), 400
-
-        # Stochastic channel params (optional, overrides n_paths when present)
+        # Stochastic channel params
         stochastic = None
         if params.get("stochastic"):
             stoch_cfg = cfg["dosimetry"].get("stochastic", {})
@@ -625,7 +617,6 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                 corrections=corrections,
                 tissue=tissue,
                 power_dbm=power_dbm,
-                n_paths=n_paths,
                 config=cfg,
                 stochastic=stochastic,
             )
@@ -1427,7 +1418,6 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         if not preset_dir.is_absolute():
             data_root = Path(os.environ.get("AEGIS_DATA_DIR", str(Path(__file__).resolve().parents[4] / "data")))
             preset_dir = data_root / "channel_presets"
-        featured = stoch_cfg.get("featured_presets", [])
         all_names = list_presets(preset_dir)
         presets = []
         for name in all_names:
@@ -1436,7 +1426,6 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                 presets.append(
                     {
                         "name": name,
-                        "featured": name in featured,
                         "params": p["params"],
                     }
                 )

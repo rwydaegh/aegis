@@ -23,7 +23,6 @@ interface SimulationStore {
   diffraction: boolean
   powerDbm: number
   skinModel: string
-  nPaths: number
   stochasticPreset: string
   stochasticOverrides: Record<string, number>
   stochasticSeed: number
@@ -57,7 +56,6 @@ interface SimulationStore {
   setDiffraction: (on: boolean) => void
   setPowerDbm: (power: number) => void
   setSkinModel: (model: string) => void
-  setNPaths: (n: number) => void
   setStochasticPreset: (v: string) => void
   setStochasticOverrides: (v: Record<string, number>) => void
   setStochasticSeed: (v: number) => void
@@ -85,7 +83,6 @@ export const useSimulationStore = create<SimulationStore>((set) => ({
   diffraction: false,
   powerDbm: 60,
   skinModel: 'itis',
-  nPaths: 1,
   stochasticPreset: '3GPP_38.901_UMi_LOS',
   stochasticOverrides: {},
   stochasticSeed: 42,
@@ -123,7 +120,6 @@ export const useSimulationStore = create<SimulationStore>((set) => ({
   }),
   setPowerDbm: (power) => set({ powerDbm: power }),
   setSkinModel: (skinModel) => set({ skinModel }),
-  setNPaths: (n) => set({ nPaths: n }),
   setStochasticPreset: (v) => set({ stochasticPreset: v }),
   setStochasticOverrides: (v) => set({ stochasticOverrides: v }),
   setStochasticSeed: (v) => set({ stochasticSeed: v }),

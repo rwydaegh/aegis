@@ -39,8 +39,6 @@ def _handle_export_config(cache, cache_lock):
         base["dosimetry"]["freq_hz"] = interactive["freqGhz"] * 1e9
     if "powerDbm" in interactive:
         base["dosimetry"]["default_power_dbm"] = interactive["powerDbm"]
-    if "nPaths" in interactive:
-        base["dosimetry"]["default_n_paths"] = interactive["nPaths"]
     if "bodyName" in interactive:
         base["body"]["default_name"] = interactive["bodyName"]
     if "antennaPos" in interactive and interactive["antennaPos"]:
