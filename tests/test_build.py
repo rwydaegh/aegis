@@ -3,6 +3,8 @@
 import subprocess
 import sys
 
+import pytest
+
 
 def test_build_cli_help():
     """Verify the build CLI is importable and has expected subcommands."""
@@ -35,6 +37,7 @@ def test_extract_opencellid_function_exists():
 
 def test_australia_adapter_importable():
     """Verify Australia adapter can be imported."""
+    pytest.importorskip("basestationLib")
     from basestationLib.Countries.Australia.basestations import BaseStations
 
     bs = BaseStations(bounding_box=[150.9, 151.4, -34.0, -33.7])
@@ -43,6 +46,7 @@ def test_australia_adapter_importable():
 
 def test_germany_adapter_importable():
     """Verify Germany adapter can be imported."""
+    pytest.importorskip("basestationLib")
     from basestationLib.Countries.Germany.basestations import BaseStations
 
     bs = BaseStations(bounding_box=[13.38, 13.42, 52.50, 52.52])
