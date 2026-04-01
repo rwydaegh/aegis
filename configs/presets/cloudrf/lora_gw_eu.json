@@ -1,0 +1,18 @@
+{
+  "default_scenario": null,
+  "scenarios": {
+    "lora_gw_eu": {
+      "description": "LoRa GW EU (868 MHz, 2 dBi, 22.0 dBm EIRP)",
+      "label": "LoRa GW EU",
+      "icon": "radio",
+      "instant": true,
+      "autoCompute": true,
+      "hidden": false,
+      "webState": {
+        "freqGhz": 0.868,
+        "powerDbm": 22.0,
+        "mode": "spatial"
+      }
+    }
+  }
+}

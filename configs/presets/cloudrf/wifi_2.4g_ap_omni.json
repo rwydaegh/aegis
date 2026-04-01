@@ -1,0 +1,18 @@
+{
+  "default_scenario": null,
+  "scenarios": {
+    "wifi_2.4g_ap_omni": {
+      "description": "WiFi 2.4G AP Omni (2450 MHz, 2 dBi, 22.0 dBm EIRP)",
+      "label": "WiFi 2.4G AP Omni",
+      "icon": "radio",
+      "instant": true,
+      "autoCompute": true,
+      "hidden": false,
+      "webState": {
+        "freqGhz": 2.45,
+        "powerDbm": 22.0,
+        "mode": "spatial"
+      }
+    }
+  }
+}

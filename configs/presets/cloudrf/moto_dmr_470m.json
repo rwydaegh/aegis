@@ -1,0 +1,18 @@
+{
+  "default_scenario": null,
+  "scenarios": {
+    "moto_dmr_470m": {
+      "description": "MOTO DMR 470M (470 MHz, 2 dBi, 38.0 dBm EIRP)",
+      "label": "MOTO DMR 470M",
+      "icon": "radio",
+      "instant": true,
+      "autoCompute": true,
+      "hidden": false,
+      "webState": {
+        "freqGhz": 0.47,
+        "powerDbm": 38.0,
+        "mode": "spatial"
+      }
+    }
+  }
+}

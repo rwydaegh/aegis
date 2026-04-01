@@ -1,0 +1,18 @@
+{
+  "default_scenario": null,
+  "scenarios": {
+    "pmr446_mobile": {
+      "description": "PMR446 Mobile (446 MHz, 2 dBi, 35.0 dBm EIRP)",
+      "label": "PMR446 Mobile",
+      "icon": "radio",
+      "instant": true,
+      "autoCompute": true,
+      "hidden": false,
+      "webState": {
+        "freqGhz": 0.446,
+        "powerDbm": 35.0,
+        "mode": "spatial"
+      }
+    }
+  }
+}

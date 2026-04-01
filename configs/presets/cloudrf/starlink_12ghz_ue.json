@@ -1,0 +1,18 @@
+{
+  "default_scenario": null,
+  "scenarios": {
+    "starlink_12ghz_ue": {
+      "description": "Starlink (12000 MHz, 18 dBi, 58.0 dBm EIRP)",
+      "label": "Starlink",
+      "icon": "radio",
+      "instant": true,
+      "autoCompute": true,
+      "hidden": false,
+      "webState": {
+        "freqGhz": 12.0,
+        "powerDbm": 58.0,
+        "mode": "spatial"
+      }
+    }
+  }
+}

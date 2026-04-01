@@ -1,0 +1,18 @@
+{
+  "default_scenario": null,
+  "scenarios": {
+    "5g_cband_sector": {
+      "description": "5G CBand sector (3500 MHz, 12 dBi, 42.0 dBm EIRP)",
+      "label": "5G CBand sector",
+      "icon": "radio",
+      "instant": true,
+      "autoCompute": true,
+      "hidden": false,
+      "webState": {
+        "freqGhz": 3.5,
+        "powerDbm": 42.0,
+        "mode": "spatial"
+      }
+    }
+  }
+}
