@@ -298,11 +298,11 @@ export interface VoxelBinary {
 export interface ICNIRPLimits {
   scenario: string
   freq_hz: number
-  sab_4cm2: number
+  sab_4cm2: number | null
   sab_1cm2: number | null
   sar_wb: number
-  sinc_local: number
-  sinc_whole_body: number
+  sinc_local: number | null
+  sinc_whole_body: number | null
 }
 
 export interface TissueSpectrum {

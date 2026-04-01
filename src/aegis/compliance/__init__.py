@@ -1,10 +1,12 @@
-"""ICNIRP 2020 compliance limits for EMF exposure above 6 GHz.
+"""ICNIRP 2020 compliance limits for EMF exposure (100 kHz to 300 GHz).
 
 Reference: ICNIRP, "Guidelines for Limiting Exposure to Electromagnetic
 Fields (100 kHz to 300 GHz)," Health Physics, vol. 118, no. 5, 2020.
 
-Covers both general public and occupational scenarios. Frequency range: >6 GHz
-to 300 GHz. Tables 2, 5, and 6 are implemented.
+Covers both general public and occupational scenarios. Above 6 GHz, absorbed
+power density (S_ab), incident power density (S_inc), and whole-body SAR limits
+are evaluated. Below 6 GHz, only whole-body SAR is checked (local SAR over
+10 g cubic mass is not yet implemented).
 """
 
 from __future__ import annotations
@@ -62,20 +64,20 @@ class ICNIRPLimits:
     ----------
     scenario : ExposureScenario
     freq_hz : float
-    sab_4cm2 : absorbed power density limit over 4 cm^2 [W/m^2]
+    sab_4cm2 : absorbed power density limit over 4 cm^2 [W/m^2], None if <= 6 GHz
     sab_1cm2 : absorbed power density limit over 1 cm^2 [W/m^2], None if <= 30 GHz
     sar_wb : whole-body SAR [W/kg]
-    sinc_local : local incident power density limit [W/m^2] (Table 6)
-    sinc_whole_body : whole-body incident power density limit [W/m^2] (Table 5)
+    sinc_local : local incident power density limit [W/m^2] (Table 6), None if <= 6 GHz
+    sinc_whole_body : whole-body incident power density limit [W/m^2] (Table 5), None if <= 6 GHz
     """
 
     scenario: ExposureScenario
     freq_hz: float
-    sab_4cm2: float
+    sab_4cm2: float | None
     sab_1cm2: float | None
     sar_wb: float
-    sinc_local: float
-    sinc_whole_body: float
+    sinc_local: float | None
+    sinc_whole_body: float | None
 
 
 @dataclass(frozen=True)
@@ -178,17 +180,16 @@ class ComplianceResult:
 # ---------------------------------------------------------------------------
 
 # Frequency bounds (Hz)
-_FREQ_MIN_HZ = 6.0e9  # exclusive lower bound: > 6 GHz
+_FREQ_MIN_HZ = 100.0e3  # 100 kHz (ICNIRP 2020 lower bound)
 _FREQ_MAX_HZ = 300.0e9  # inclusive upper bound: 300 GHz
+_FREQ_SAB_THRESHOLD_HZ = 6.0e9  # S_ab limits apply above 6 GHz
 _FREQ_1CM2_THRESHOLD_HZ = 30.0e9  # 1 cm^2 limit only above 30 GHz
 
 
 def _validate_freq(freq_hz: float) -> None:
-    """Raise ValueError if freq outside the supported range (>6 to 300 GHz)."""
-    if freq_hz <= _FREQ_MIN_HZ or freq_hz > _FREQ_MAX_HZ:
-        raise ValueError(
-            f"Frequency {freq_hz / 1e9:.3f} GHz is outside the supported ICNIRP 2020 range (>6 GHz to 300 GHz)"
-        )
+    """Raise ValueError if freq outside the ICNIRP 2020 range (100 kHz to 300 GHz)."""
+    if freq_hz < _FREQ_MIN_HZ or freq_hz > _FREQ_MAX_HZ:
+        raise ValueError(f"Frequency {freq_hz / 1e9:.6g} GHz is outside the ICNIRP 2020 range (100 kHz to 300 GHz)")
 
 
 def icnirp_limits(
@@ -202,7 +203,9 @@ def icnirp_limits(
     scenario : ExposureScenario
         General public or occupational.
     freq_hz : float
-        Frequency in Hz. Must be > 6 GHz and <= 300 GHz.
+        Frequency in Hz. Must be >= 100 kHz and <= 300 GHz.
+        Above 6 GHz all limits are returned. Below 6 GHz only SAR_wb
+        is returned (S_ab and S_inc are set to None).
 
     Returns
     -------
@@ -213,17 +216,29 @@ def icnirp_limits(
 
     freq_ghz = freq_hz / 1e9
 
+    sar_wb = 0.08 if scenario == ExposureScenario.GENERAL_PUBLIC else 0.4
+
+    # Below 6 GHz: only SAR_wb applies. S_ab and S_inc limits are for >6 GHz.
+    if freq_hz <= _FREQ_SAB_THRESHOLD_HZ:
+        return ICNIRPLimits(
+            scenario=scenario,
+            freq_hz=freq_hz,
+            sab_4cm2=None,
+            sab_1cm2=None,
+            sar_wb=sar_wb,
+            sinc_local=None,
+            sinc_whole_body=None,
+        )
+
     if scenario == ExposureScenario.GENERAL_PUBLIC:
         sab_4cm2 = 20.0
         sab_1cm2 = 40.0 if freq_hz > _FREQ_1CM2_THRESHOLD_HZ else None
-        sar_wb = 0.08
         sinc_local = 55.0 / freq_ghz**0.177
         sinc_whole_body = 10.0
     else:
         # Occupational
         sab_4cm2 = 100.0
         sab_1cm2 = 200.0 if freq_hz > _FREQ_1CM2_THRESHOLD_HZ else None
-        sar_wb = 0.4
         sinc_local = 275.0 / freq_ghz**0.177
         sinc_whole_body = 50.0
 
@@ -255,13 +270,13 @@ def evaluate_compliance(
 ) -> ComplianceResult:
     """Evaluate ICNIRP 2020 compliance for measured/computed quantities.
 
-    Only checks for which values are provided will be included. Pass None
-    for quantities that are not available.
+    Only checks for which both a value and a limit are available will be
+    included. Below 6 GHz, only SAR_wb is checked.
 
     Parameters
     ----------
     freq_hz : float
-        Frequency in Hz. Must be > 6 GHz and <= 300 GHz.
+        Frequency in Hz. Must be >= 100 kHz and <= 300 GHz.
     scenario : ExposureScenario
         General public or occupational.
     sab_4cm2 : float or None
@@ -282,7 +297,7 @@ def evaluate_compliance(
     limits = icnirp_limits(scenario, freq_hz)
 
     check_sab_4 = None
-    if sab_4cm2 is not None:
+    if sab_4cm2 is not None and limits.sab_4cm2 is not None:
         check_sab_4 = ComplianceCheck(
             value=sab_4cm2,
             limit=limits.sab_4cm2,
@@ -309,7 +324,7 @@ def evaluate_compliance(
         )
 
     check_sinc_local = None
-    if sinc_local is not None:
+    if sinc_local is not None and limits.sinc_local is not None:
         check_sinc_local = ComplianceCheck(
             value=sinc_local,
             limit=limits.sinc_local,
@@ -318,7 +333,7 @@ def evaluate_compliance(
         )
 
     check_sinc_wb = None
-    if sinc_whole_body is not None:
+    if sinc_whole_body is not None and limits.sinc_whole_body is not None:
         check_sinc_wb = ComplianceCheck(
             value=sinc_whole_body,
             limit=limits.sinc_whole_body,
@@ -577,7 +592,7 @@ def frequency_sweep(
         Measured quantities (constant across frequency).
     scenario : ExposureScenario
     freq_min_hz, freq_max_hz : float
-        Frequency range (must be within >6 GHz to 300 GHz).
+        Frequency range (must be within 100 kHz to 300 GHz).
     n_points : int
         Number of frequency samples.
 
@@ -694,27 +709,32 @@ def compliance_heatmap(
     # scaled_sab shape: (n_power,)
     scaled_sab = sab_4cm2 * (power_w_arr / ref_power_w)
 
-    # S_ab limit is constant across frequency (20 or 100 W/m^2)
-    sab_limit = icnirp_limits(scenario, float(freq_hz_arr[0])).sab_4cm2
+    # S_ab limit is constant across frequency (20 or 100 W/m^2) when available
+    sab_limit_obj = icnirp_limits(scenario, float(freq_hz_arr[0])).sab_4cm2
+    has_sab_limit = sab_limit_obj is not None and sab_4cm2 > 0
 
-    # sab margin: (n_power,) broadcast to (n_power, n_freq)
-    with np.errstate(divide="ignore"):
-        sab_margin_1d = np.where(
-            scaled_sab <= 0,
-            np.inf,
-            10.0 * np.log10(sab_limit / scaled_sab),
-        )
-    # Broadcast to 2D: same margin at every frequency for sab
-    margin_grid = np.broadcast_to(sab_margin_1d[:, None], (len(power_w_arr), len(freq_hz_arr))).copy()
+    if has_sab_limit:
+        sab_limit = sab_limit_obj
+        # sab margin: (n_power,) broadcast to (n_power, n_freq)
+        with np.errstate(divide="ignore"):
+            sab_margin_1d = np.where(
+                scaled_sab <= 0,
+                np.inf,
+                10.0 * np.log10(sab_limit / scaled_sab),
+            )
+        margin_grid = np.broadcast_to(sab_margin_1d[:, None], (len(power_w_arr), len(freq_hz_arr))).copy()
+        p_max_sab = ref_power_w * sab_limit / sab_4cm2
+    else:
+        margin_grid = np.full((len(power_w_arr), len(freq_hz_arr)), np.inf)
+        p_max_sab = float("inf")
 
-    # p_max from sab: constant across frequency
-    p_max_sab = ref_power_w * sab_limit / sab_4cm2 if sab_4cm2 > 0 else float("inf")
     p_max_per_freq = np.full(len(freq_hz_arr), p_max_sab)
 
     # If sinc_local provided, also check frequency-dependent sinc limit
     if sinc_local is not None and sinc_local > 0:
         # Get sinc limits at each frequency: shape (n_freq,)
-        sinc_limits = np.array([icnirp_limits(scenario, float(f)).sinc_local for f in freq_hz_arr])
+        sinc_limit_vals = [icnirp_limits(scenario, float(f)).sinc_local for f in freq_hz_arr]
+        sinc_limits = np.array([v if v is not None else np.inf for v in sinc_limit_vals])
 
         # Scaled sinc: (n_power,)
         scaled_sinc = sinc_local * (power_w_arr / ref_power_w)
@@ -777,7 +797,7 @@ def link_budget_compliance(
     distance_m : float
         Distance from antenna to body [m]. Must be positive.
     freq_hz : float
-        Frequency [Hz]. Must be in ICNIRP range (>6 to 300 GHz).
+        Frequency [Hz]. Must be in ICNIRP range (100 kHz to 300 GHz).
     T0 : float or None
         Normal-incidence transmission coefficient. If None, estimated
         from skin tissue at the given frequency.

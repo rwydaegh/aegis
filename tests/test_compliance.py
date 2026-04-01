@@ -128,18 +128,27 @@ class TestICNIRPLimitsOccupational:
 
 
 class TestFrequencyValidation:
-    """Frequency must be > 6 GHz and <= 300 GHz."""
+    """Frequency must be >= 100 kHz and <= 300 GHz."""
 
-    def test_at_6ghz_raises(self) -> None:
-        with pytest.raises(ValueError, match="outside"):
-            icnirp_limits(freq_hz=6.0e9)
+    def test_at_6ghz_returns_sar_only(self) -> None:
+        lim = icnirp_limits(freq_hz=6.0e9)
+        assert lim.sar_wb == 0.08
+        assert lim.sab_4cm2 is None
+        assert lim.sinc_local is None
 
-    def test_below_6ghz_raises(self) -> None:
-        with pytest.raises(ValueError, match="outside"):
-            icnirp_limits(freq_hz=5.0e9)
+    def test_sub6ghz_returns_sar_only(self) -> None:
+        lim = icnirp_limits(freq_hz=3.5e9)
+        assert lim.sar_wb == 0.08
+        assert lim.sab_4cm2 is None
+        assert lim.sinc_local is None
+        assert lim.sinc_whole_body is None
+
+    def test_below_100khz_raises(self) -> None:
+        with pytest.raises(ValueError):
+            icnirp_limits(freq_hz=50.0e3)
 
     def test_above_300ghz_raises(self) -> None:
-        with pytest.raises(ValueError, match="outside"):
+        with pytest.raises(ValueError):
             icnirp_limits(freq_hz=301.0e9)
 
     def test_at_300ghz_ok(self) -> None:
@@ -296,9 +305,16 @@ class TestEvaluateCompliance:
         r = evaluate_compliance(freq_hz=28.0e9, sab_4cm2=10.0)
         assert r.freq_hz == 28.0e9
 
+    def test_sub6ghz_sar_only(self) -> None:
+        r = evaluate_compliance(freq_hz=3.5e9, sab_4cm2=10.0, sar_wb=0.05)
+        assert r.sar_wb is not None
+        assert r.sar_wb.compliant
+        assert r.sab_4cm2 is None
+        assert r.sinc_local is None
+
     def test_invalid_freq_raises(self) -> None:
         with pytest.raises(ValueError):
-            evaluate_compliance(freq_hz=5.0e9, sab_4cm2=10.0)
+            evaluate_compliance(freq_hz=50.0e3, sab_4cm2=10.0)
 
 
 # -----------------------------------------------------------------------
@@ -682,8 +698,8 @@ class TestLinkBudgetCompliance:
             link_budget_compliance(tx_power_w=0.001, distance_m=-1.0, freq_hz=_VALID_FREQ)
 
     def test_invalid_frequency_raises(self) -> None:
-        with pytest.raises(ValueError, match="outside the supported"):
-            link_budget_compliance(tx_power_w=0.001, distance_m=1.0, freq_hz=6e9)
+        with pytest.raises(ValueError, match="outside"):
+            link_budget_compliance(tx_power_w=0.001, distance_m=1.0, freq_hz=50e3)
 
     def test_returns_expected_keys(self) -> None:
         result = link_budget_compliance(tx_power_w=0.001, distance_m=1.0, freq_hz=_VALID_FREQ)

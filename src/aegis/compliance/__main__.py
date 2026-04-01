@@ -25,7 +25,7 @@ from aegis.compliance import (
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="python -m aegis.compliance",
-        description="ICNIRP 2020 compliance evaluation (> 6 GHz to 300 GHz)",
+        description="ICNIRP 2020 compliance evaluation (100 kHz to 300 GHz)",
     )
     p.add_argument(
         "--freq",
@@ -182,12 +182,15 @@ def _print_limits(limits, as_json: bool) -> None:
         print(f"ICNIRP 2020 limits ({limits.scenario.value})")
         print(f"Frequency: {limits.freq_hz / 1e9:.3f} GHz")
         print()
-        print(f"  S_ab (4 cm^2):      {limits.sab_4cm2:g} W/m^2")
+        if limits.sab_4cm2 is not None:
+            print(f"  S_ab (4 cm^2):      {limits.sab_4cm2:g} W/m^2")
         if limits.sab_1cm2 is not None:
             print(f"  S_ab (1 cm^2):      {limits.sab_1cm2:g} W/m^2")
         print(f"  SAR_wb:             {limits.sar_wb:g} W/kg")
-        print(f"  S_inc (local):      {limits.sinc_local:.4f} W/m^2")
-        print(f"  S_inc (whole-body): {limits.sinc_whole_body:g} W/m^2")
+        if limits.sinc_local is not None:
+            print(f"  S_inc (local):      {limits.sinc_local:.4f} W/m^2")
+        if limits.sinc_whole_body is not None:
+            print(f"  S_inc (whole-body): {limits.sinc_whole_body:g} W/m^2")
 
 
 def _print_json(result, ref_power: float | None) -> None:

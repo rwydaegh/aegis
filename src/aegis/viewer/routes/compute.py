@@ -309,7 +309,7 @@ def _build_stats_response(result, body, tissue, level, extra=None, mode=None, co
             sab_1cm2=peak_sab_1cm2,
         )
     except ValueError:
-        # Frequency outside ICNIRP 2020 range (>6 GHz to 300 GHz)
+        # Frequency outside ICNIRP 2020 range (100 kHz to 300 GHz)
         compliance = None
 
     stats = {
@@ -337,7 +337,7 @@ def _build_stats_response(result, body, tissue, level, extra=None, mode=None, co
         if compliance is not None
         else None,
         "compliant": compliance.overall_pass if compliance is not None else None,
-        "warning": "Frequency outside ICNIRP 2020 range (>6 GHz to 300 GHz); compliance not evaluated."
+        "warning": "Frequency outside ICNIRP 2020 range (100 kHz to 300 GHz); compliance not evaluated."
         if compliance is None
         else None,
         "n_illuminated": int(np.sum(result.sab > 0)),

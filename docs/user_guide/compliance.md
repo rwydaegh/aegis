@@ -109,5 +109,5 @@ The viewer exposes a `/api/compliance/report` endpoint returning the full assess
 
 - Spatial averaging uses circular neighborhoods (KD-tree ball query). ICNIRP specifies square 4 cm$^2$ patches. The circular approximation is flagged in reports.
 - Temporal averaging (6 minutes) is not modeled. AEGIS computes steady-state exposure, which is conservative for continuous sources.
-- Below 6 GHz, different quantities apply (SAR over 10-g cubic mass). The compliance module raises `ValueError` for out-of-range frequencies.
+- Below 6 GHz, only whole-body SAR is checked. Local SAR over a 10 g cubic mass is not yet implemented.
 - Multi-frequency compliance (ICNIRP equation 2) is not yet supported.
