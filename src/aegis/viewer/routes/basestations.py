@@ -460,11 +460,22 @@ def _handle_basestations_compute_mimo(cache: dict, cache_lock: threading.RLock):
             return jsonify({"error": "No phantom loaded"}), 404
 
     # Create user at body_offset with device near the body
+    default_offset = cache.get("body_device_offsets", {}).get(phantom_name, [0.0, 0.30, 1.4])
+    device_offset = np.array(default_offset, dtype=np.float64)
+    # Rotate device offset by body orientation (Z-axis rotation)
+    cos_o, sin_o = np.cos(body_rotation_y), np.sin(body_rotation_y)
+    rotated_offset = np.array(
+        [
+            cos_o * device_offset[0] - sin_o * device_offset[1],
+            sin_o * device_offset[0] + cos_o * device_offset[1],
+            device_offset[2],
+        ]
+    )
     user_cfg = UserConfig(
         user_id="bs_mimo_user",
         phantom_name=phantom_name,
         position=body_offset,
-        device_position=body_offset + np.array([0.25, 0.0, 1.4]),
+        device_position=body_offset + rotated_offset,
         device_orientation=np.array([0.0, 0.0, 1.0]),
         orientation=float(body_rotation_y),
     )
