@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from aegis._array_backend import xp
+from aegis._array_backend import JAX_AVAILABLE, xp
 from aegis.coherent._accumulate import accumulate_by_element
 from aegis.coherent.fresnel_operator import (
     apply_fresnel_operator,
@@ -208,7 +208,13 @@ def compute_body_channel_factored(
 
         # Each element's index for this center path
         elem_indices = element_index[c::N_center]  # (M_elem,)
-        for j_local in range(M_elem):
-            G[:, :, elem_indices[j_local]] += weighted_elems[j_local]
+        # weighted_elems is (M_elem, M, 3); transpose to (M, 3, M_elem) for scatter-add
+        we_t = xp.transpose(weighted_elems, (1, 2, 0))  # (M, 3, M_elem)
+        if JAX_AVAILABLE:
+            G = G.at[:, :, elem_indices].add(we_t)
+        else:
+            import numpy as _np
+
+            _np.add.at(G, (slice(None), slice(None), elem_indices), we_t)
 
     return G
