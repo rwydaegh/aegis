@@ -145,8 +145,6 @@ def compute_body_channel_factored(
     """
     M = normals.shape[0]
     N_center = center_k_hat.shape[0]
-    N_total = element_psi.shape[0]
-    M_elem = N_total // N_center  # paths per center direction
 
     element_index = np.asarray(element_index)
     if element_index.size > 0:
@@ -176,7 +174,9 @@ def compute_body_channel_factored(
     # For each expanded path, apply F @ psi_n using precomputed Fresnel components
     # element_psi is laid out as [elem0_path0..N, elem1_path0..N, ...] (element-major)
     # so expanded path (j * N_center + c) maps to center path c
-    G = xp.zeros((M, 3, n_elements), dtype=complex)
+    # Accumulate into a NumPy array (this loop is inherently imperative,
+    # not JIT-able, and JAX arrays forbid in-place mutation).
+    G = np.zeros((M, 3, n_elements), dtype=complex)
 
     for c in range(N_center):
         # Fresnel-filtered psi for each element at center direction c
@@ -204,11 +204,10 @@ def compute_body_channel_factored(
         ] * e_p_c[None, :, :]  # (M_elem, M, 3)
 
         # Apply depth*phase weight and accumulate into G
-        weighted_elems = sc[None, :, None] * F_psi_elems  # (M_elem, M, 3)
+        weighted_elems = np.asarray(sc[None, :, None] * F_psi_elems)  # (M_elem, M, 3)
 
-        # Each element's index for this center path
+        # Scatter-add all elements at once (eliminates Python for-loop over elements)
         elem_indices = element_index[c::N_center]  # (M_elem,)
-        for j_local in range(M_elem):
-            G[:, :, elem_indices[j_local]] += weighted_elems[j_local]
+        np.add.at(G, (slice(None), slice(None), elem_indices), weighted_elems.transpose(1, 2, 0))
 
-    return G
+    return xp.asarray(G)
