@@ -8,6 +8,8 @@ Three archetypes:
 
 from __future__ import annotations
 
+from aegis.basestation.antenna import BeamConfig, ExposureConfig
+
 # Default standard grids [n_h, n_v] per archetype. Configurable via config.
 DEFAULT_GRIDS: dict[str, list[tuple[int, int]]] = {
     "mmimo": [(4, 4), (4, 8), (8, 8), (8, 16)],
@@ -139,10 +141,37 @@ def classify_basestation(
         margin=margin,
         default_freq_mhz=default_freq_mhz,
     )
+    # Determine duplex mode from frequency and technology
+    is_tdd = freq_mhz >= 2500 and technology and "5G" in str(technology).upper()
+
+    if archetype == "mmimo":
+        exposure_config = ExposureConfig(
+            duplex_mode="tdd" if is_tdd else "fdd",
+            tdd_dl_ratio=0.75 if is_tdd else 1.0,
+            power_reduction_factor=0.32,
+            traffic_load_factor=0.5,
+        )
+        beam_config: BeamConfig | None = BeamConfig()
+    elif archetype == "small_cell":
+        exposure_config = ExposureConfig(
+            duplex_mode="tdd" if is_tdd else "fdd",
+            tdd_dl_ratio=0.75 if is_tdd else 1.0,
+            traffic_load_factor=0.3,
+        )
+        beam_config = None
+    else:  # sector
+        exposure_config = ExposureConfig(
+            duplex_mode="tdd" if is_tdd else "fdd",
+            tdd_dl_ratio=0.75 if is_tdd else 1.0,
+        )
+        beam_config = None
+
     return {
         "archetype": archetype,
         "n_h": n_h,
         "n_v": n_v,
         "panel_width_m": round(width, 4),
         "panel_height_m": round(height, 4),
+        "exposure_config": exposure_config,
+        "beam_config": beam_config,
     }

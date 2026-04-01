@@ -136,6 +136,56 @@ class TestInferElementGrid:
         assert n_h_7 * n_v_7 <= n_h_5 * n_v_5
 
 
+def test_classify_returns_exposure_config():
+    from aegis.basestation.classify import classify_basestation
+
+    result = classify_basestation(gain_dbi=24.8, technology="5G", freq_mhz=3500)
+    assert "exposure_config" in result
+    exp = result["exposure_config"]
+    assert exp.duplex_mode == "tdd"
+    assert exp.tdd_dl_ratio == 0.75
+    assert exp.power_reduction_factor == 0.32
+
+
+def test_classify_sector_fdd():
+    from aegis.basestation.classify import classify_basestation
+
+    result = classify_basestation(gain_dbi=15.0, technology="4G", freq_mhz=1800)
+    exp = result["exposure_config"]
+    assert exp.duplex_mode == "fdd"
+    assert exp.tdd_dl_ratio == 1.0
+    assert exp.power_reduction_factor == 1.0  # sector default
+
+
+def test_classify_5g_sector_tdd():
+    """5G sector at 3.5 GHz gets TDD ratio but no PRF reduction."""
+    from aegis.basestation.classify import classify_basestation
+
+    result = classify_basestation(gain_dbi=15.0, technology="5G", freq_mhz=3500)
+    assert result["archetype"] == "sector"
+    exp = result["exposure_config"]
+    assert exp.duplex_mode == "tdd"
+    assert exp.tdd_dl_ratio == 0.75
+    assert exp.power_reduction_factor == 1.0  # sector, not mMIMO
+
+
+def test_classify_returns_beam_config_for_mmimo():
+    from aegis.basestation.classify import classify_basestation
+
+    result = classify_basestation(gain_dbi=24.8, technology="5G", freq_mhz=3500)
+    assert "beam_config" in result
+    bc = result["beam_config"]
+    assert bc.broadcast_gain_dbi == 18.0
+    assert bc.traffic_hbw_deg == 12.0
+
+
+def test_classify_no_beam_config_for_sector():
+    from aegis.basestation.classify import classify_basestation
+
+    result = classify_basestation(gain_dbi=15.0, technology="4G", freq_mhz=1800)
+    assert result["beam_config"] is None
+
+
 _viewer_deps_missing = False
 try:
     import flask as _flask  # noqa: F401
