@@ -10,10 +10,17 @@ Exercise the AEGIS viewer end-to-end with Playwright CLI. The goal is to test th
 
 ## Setup
 
+### Local
 1. Kill stale processes on the viewer port (default 5000).
 2. Start the viewer: `.venv/bin/python -m aegis.viewer` in background.
 3. Wait for "Running on http://127.0.0.1:5000" in output.
 4. Save screenshots to `test_screenshots/`. Read every screenshot with the Read tool.
+
+### Production
+- **URL**: `https://aegis.waves-ugent.be`
+- **Auth**: POST `{"password":"WiCa2026#"}` to `/api/auth` first, then use the session cookie for all subsequent requests.
+- For Playwright scripts, authenticate by navigating to the URL, filling the password gate, then proceeding with tests.
+- For curl, use `-c cookies.txt` to save and `-b cookies.txt` to send cookies.
 
 ## Tooling
 
