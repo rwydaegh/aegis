@@ -488,6 +488,33 @@ export async function fetchDosimetryCsv(): Promise<Blob> {
   return res.blob()
 }
 
+export interface HeatmapResult {
+  freq_ghz: number[]
+  power_dbm: number[]
+  margin_db: number[][]
+  compliant: boolean[][]
+  p_max_dbm_per_freq: number[]
+  n_freq: number
+  n_power: number
+}
+
+export async function fetchComplianceHeatmap(params: {
+  sab_4cm2: number
+  freq_hz: number
+  ref_power_dbm: number
+  scenario?: string
+  sinc_local?: number
+}): Promise<HeatmapResult> {
+  const qs = new URLSearchParams({
+    sab_4cm2: String(params.sab_4cm2),
+    freq_hz: String(params.freq_hz),
+    ref_power_dbm: String(params.ref_power_dbm),
+    scenario: params.scenario ?? 'general_public',
+  })
+  if (params.sinc_local != null) qs.set('sinc_local', String(params.sinc_local))
+  return getJson<HeatmapResult>(`/api/compliance/heatmap?${qs}`)
+}
+
 export async function fetchFrequencySweep(params: {
   sab_4cm2: number
   scenario?: string
