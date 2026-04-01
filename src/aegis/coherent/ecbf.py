@@ -168,7 +168,7 @@ def _mrt_precoder(h, P):
     h_conj = h.conj()
     norm = np.sqrt(float(np.real(np.vdot(h_conj, h_conj))))
     if norm < NUMERICAL_FLOOR:
-        x = np.zeros_like(h)
+        x = np.zeros(h.shape, dtype=h.dtype)
         x[0] = np.sqrt(P)
         return x
     return np.sqrt(P) * h_conj / norm
