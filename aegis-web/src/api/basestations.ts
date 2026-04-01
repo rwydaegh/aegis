@@ -24,6 +24,11 @@ export interface BaseStationData {
   n_v: number
   panel_width_m: number
   panel_height_m: number
+  // Provenance fields (optional, absent for CSV-backed data)
+  frequency_band?: string
+  confidence?: number
+  pattern_source?: string
+  provenance?: Record<string, { origin: string; confidence: number }>
 }
 
 interface LoadResponse {

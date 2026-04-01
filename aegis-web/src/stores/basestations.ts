@@ -8,8 +8,10 @@ interface BaseStationsState {
   isComputing: boolean
   enabledOperators: Set<string>
   enabledTechnologies: Set<string>
+  enabledFrequencyBands: Set<string>
   operators: string[]
   technologies: string[]
+  frequencyBands: string[]
   activeCount: number
 
   selectedIndex: number | null
@@ -23,6 +25,7 @@ interface BaseStationsState {
   setBasestations: (bs: BaseStationData[], origin: { lat: number; lon: number }) => void
   toggleOperator: (op: string) => void
   toggleTechnology: (tech: string) => void
+  toggleFrequencyBand: (band: string) => void
   setLoading: (v: boolean) => void
   setComputing: (v: boolean) => void
   clear: () => void
@@ -32,15 +35,22 @@ interface BaseStationsState {
 function deriveFilters(bs: BaseStationData[]) {
   const operators = [...new Set(bs.map(b => b.operator))].sort()
   const technologies = [...new Set(bs.map(b => b.technology))].sort()
-  return { operators, technologies }
+  const frequencyBands = [...new Set(bs.map(b => b.frequency_band).filter((v): v is string => !!v))].sort()
+  return { operators, technologies, frequencyBands }
 }
 
 function computeActiveCount(
   bs: BaseStationData[],
   enabledOps: Set<string>,
   enabledTechs: Set<string>,
+  enabledBands: Set<string>,
 ): number {
-  return bs.filter(b => enabledOps.has(b.operator) && enabledTechs.has(b.technology)).length
+  return bs.filter(b => {
+    if (!enabledOps.has(b.operator)) return false
+    if (!enabledTechs.has(b.technology)) return false
+    if (b.frequency_band && enabledBands.size > 0 && !enabledBands.has(b.frequency_band)) return false
+    return true
+  }).length
 }
 
 export const useBaseStationsStore = create<BaseStationsState>((set, get) => ({
@@ -50,8 +60,10 @@ export const useBaseStationsStore = create<BaseStationsState>((set, get) => ({
   isComputing: false,
   enabledOperators: new Set<string>(),
   enabledTechnologies: new Set<string>(),
+  enabledFrequencyBands: new Set<string>(),
   operators: [],
   technologies: [],
+  frequencyBands: [],
   activeCount: 0,
   selectedIndex: null,
   selectAntenna: (index) => set({ selectedIndex: index }),
@@ -61,16 +73,19 @@ export const useBaseStationsStore = create<BaseStationsState>((set, get) => ({
   setCoverageUrl: (url) => set({ coverageUrl: url }),
 
   setBasestations: (bs, origin) => {
-    const { operators, technologies } = deriveFilters(bs)
+    const { operators, technologies, frequencyBands } = deriveFilters(bs)
     const enabledOperators = new Set(operators)
     const enabledTechnologies = new Set(technologies)
+    const enabledFrequencyBands = new Set(frequencyBands)
     set({
       basestations: bs,
       origin,
       operators,
       technologies,
+      frequencyBands,
       enabledOperators,
       enabledTechnologies,
+      enabledFrequencyBands,
       activeCount: bs.length,
     })
   },
@@ -81,7 +96,7 @@ export const useBaseStationsStore = create<BaseStationsState>((set, get) => ({
     else next.add(op)
     return {
       enabledOperators: next,
-      activeCount: computeActiveCount(state.basestations, next, state.enabledTechnologies),
+      activeCount: computeActiveCount(state.basestations, next, state.enabledTechnologies, state.enabledFrequencyBands),
     }
   }),
 
@@ -91,7 +106,17 @@ export const useBaseStationsStore = create<BaseStationsState>((set, get) => ({
     else next.add(tech)
     return {
       enabledTechnologies: next,
-      activeCount: computeActiveCount(state.basestations, state.enabledOperators, next),
+      activeCount: computeActiveCount(state.basestations, state.enabledOperators, next, state.enabledFrequencyBands),
+    }
+  }),
+
+  toggleFrequencyBand: (band) => set(state => {
+    const next = new Set(state.enabledFrequencyBands)
+    if (next.has(band)) next.delete(band)
+    else next.add(band)
+    return {
+      enabledFrequencyBands: next,
+      activeCount: computeActiveCount(state.basestations, state.enabledOperators, state.enabledTechnologies, next),
     }
   }),
 
@@ -103,8 +128,10 @@ export const useBaseStationsStore = create<BaseStationsState>((set, get) => ({
     origin: null,
     enabledOperators: new Set(),
     enabledTechnologies: new Set(),
+    enabledFrequencyBands: new Set(),
     operators: [],
     technologies: [],
+    frequencyBands: [],
     activeCount: 0,
     selectedIndex: null,
     showCoverage: false,
@@ -112,13 +139,14 @@ export const useBaseStationsStore = create<BaseStationsState>((set, get) => ({
   }),
 
   activeIndices: () => {
-    const { basestations, enabledOperators, enabledTechnologies } = get()
+    const { basestations, enabledOperators, enabledTechnologies, enabledFrequencyBands } = get()
     const indices: number[] = []
     for (let i = 0; i < basestations.length; i++) {
       const b = basestations[i]
-      if (enabledOperators.has(b.operator) && enabledTechnologies.has(b.technology)) {
-        indices.push(i)
-      }
+      if (!enabledOperators.has(b.operator)) continue
+      if (!enabledTechnologies.has(b.technology)) continue
+      if (b.frequency_band && enabledFrequencyBands.size > 0 && !enabledFrequencyBands.has(b.frequency_band)) continue
+      indices.push(i)
     }
     return indices
   },

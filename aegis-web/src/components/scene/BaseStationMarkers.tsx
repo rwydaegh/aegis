@@ -10,6 +10,13 @@ const OPERATOR_COLORS: Record<string, string> = {
   'Citymesh Mobile (Insky)': '#e879f9',
 }
 const DEFAULT_COLOR = '#a855f7'
+
+function confidenceColor(c: number): string {
+  if (c > 0.7) return '#22c55e'
+  if (c > 0.4) return '#eab308'
+  if (c > 0.2) return '#f97316'
+  return '#ef4444'
+}
 const R = 6_371_000
 
 function bsToScenePos(
@@ -34,6 +41,7 @@ export default function BaseStationMarkers() {
   const origin = useBaseStationsStore(s => s.origin)
   const enabledOperators = useBaseStationsStore(s => s.enabledOperators)
   const enabledTechnologies = useBaseStationsStore(s => s.enabledTechnologies)
+  const enabledFrequencyBands = useBaseStationsStore(s => s.enabledFrequencyBands)
   const selectedIndex = useBaseStationsStore(s => s.selectedIndex)
   const selectAntenna = useBaseStationsStore(s => s.selectAntenna)
 
@@ -45,6 +53,7 @@ export default function BaseStationMarkers() {
     basestations.forEach((bs, index) => {
       if (!enabledOperators.has(bs.operator)) return
       if (!enabledTechnologies.has(bs.technology)) return
+      if (bs.frequency_band && enabledFrequencyBands.size > 0 && !enabledFrequencyBands.has(bs.frequency_band)) return
 
       const key = bs.site_code
       if (!groups.has(key)) {
@@ -62,7 +71,7 @@ export default function BaseStationMarkers() {
     }
 
     return Array.from(groups.values())
-  }, [basestations, origin, enabledOperators, enabledTechnologies])
+  }, [basestations, origin, enabledOperators, enabledTechnologies, enabledFrequencyBands])
 
   if (!origin) return null
 
@@ -92,7 +101,11 @@ export default function BaseStationMarkers() {
                   azimuthDeg={bs.azimuth_deg}
                   tiltDeg={bs.total_tilt_deg}
                   position={[pos[0], pos[1] + verticalShift, pos[2]]}
-                  color={OPERATOR_COLORS[bs.operator] ?? DEFAULT_COLOR}
+                  color={
+                    (bs.confidence !== undefined && bs.confidence > 0)
+                      ? confidenceColor(bs.confidence)
+                      : (OPERATOR_COLORS[bs.operator] ?? DEFAULT_COLOR)
+                  }
                   selected={selectedIndex === index}
                   onClick={() => selectAntenna(
                     selectedIndex === index ? null : index,

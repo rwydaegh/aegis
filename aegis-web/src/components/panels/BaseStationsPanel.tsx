@@ -4,6 +4,7 @@ import { useBaseStationsStore } from '@/stores/basestations'
 import { loadBasestations } from '@/api/basestations'
 import { useBaseStationsDosimetry } from '@/hooks/useBaseStationsDosimetry'
 import { useNotificationStore } from '@/stores/notifications'
+import AntennaDetailPanel from './AntennaDetailPanel'
 
 export default function BaseStationsPanel() {
   const [location, setLocation] = useState('Brussels, Belgium')
@@ -16,11 +17,14 @@ export default function BaseStationsPanel() {
   const isComputing = useBaseStationsStore(s => s.isComputing)
   const operators = useBaseStationsStore(s => s.operators)
   const technologies = useBaseStationsStore(s => s.technologies)
+  const frequencyBands = useBaseStationsStore(s => s.frequencyBands)
   const enabledOperators = useBaseStationsStore(s => s.enabledOperators)
   const enabledTechnologies = useBaseStationsStore(s => s.enabledTechnologies)
+  const enabledFrequencyBands = useBaseStationsStore(s => s.enabledFrequencyBands)
   const activeCount = useBaseStationsStore(s => s.activeCount)
   const toggleOperator = useBaseStationsStore(s => s.toggleOperator)
   const toggleTechnology = useBaseStationsStore(s => s.toggleTechnology)
+  const toggleFrequencyBand = useBaseStationsStore(s => s.toggleFrequencyBand)
   const setBasestations = useBaseStationsStore(s => s.setBasestations)
   const setLoading = useBaseStationsStore(s => s.setLoading)
   const clear = useBaseStationsStore(s => s.clear)
@@ -212,6 +216,32 @@ export default function BaseStationsPanel() {
             </>
           )}
 
+          {frequencyBands.length > 0 && (
+            <>
+              <label className={labelClass}>Frequency bands</label>
+              <div className="flex flex-col gap-1 pl-0.5">
+                {frequencyBands.map(band => (
+                  <label key={band} className="flex items-center gap-2 text-xs cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      className="rounded border-border accent-primary h-3.5 w-3.5"
+                      checked={enabledFrequencyBands.has(band)}
+                      onChange={() => toggleFrequencyBand(band)}
+                    />
+                    <span className="text-foreground">{band}</span>
+                  </label>
+                ))}
+              </div>
+            </>
+          )}
+
+          <div className="mt-3 flex items-center gap-2 text-[10px] text-muted-foreground">
+            <span className="w-2 h-2 rounded-full bg-[#22c55e] inline-block" /> Gov
+            <span className="w-2 h-2 rounded-full bg-[#eab308] inline-block" /> Mixed
+            <span className="w-2 h-2 rounded-full bg-[#f97316] inline-block" /> Est.
+            <span className="w-2 h-2 rounded-full bg-[#ef4444] inline-block" /> Low
+          </div>
+
           <button
             className="w-full mt-3 px-3 py-1.5 text-xs rounded border border-primary/40 bg-primary/15 text-primary hover:bg-primary/25 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
             onClick={computeExposure}
@@ -234,6 +264,8 @@ export default function BaseStationsPanel() {
             />
             <span className="text-foreground">Show coverage map (CloudRF)</span>
           </label>
+
+          <AntennaDetailPanel />
         </>
       )}
     </div>
