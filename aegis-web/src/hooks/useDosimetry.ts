@@ -6,7 +6,7 @@ import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
 import { useNotificationStore } from '@/stores/notifications'
 import { useMIMOStore } from '@/stores/mimo'
-import { computeDosimetry, computeVoxelRT, computeRT, computeSionnaRT, type RtConfig } from '@/api/client'
+import { computeDosimetry, computeVoxelRT, computeRT, computeSionnaRT, computeSionnaEnvRT, type RtConfig } from '@/api/client'
 
 export function useDosimetry() {
   const sim = useSimulationStore(useShallow(s => ({
@@ -114,14 +114,20 @@ export function useDosimetry() {
 
     // Choose endpoint based on path source
     let computeCall: Promise<import('@/api/client').ComputeResult>
-    if (scene.pathSource === 'rt' && scene.rtSource === 'voxel') {
-      computeCall = computeVoxelRT({ ...params, rtConfig: rtCfg }, controller.signal)
-    } else if (scene.pathSource === 'rt' && scene.rtSource === 'differt') {
-      // DiffeRT works with scene files, voxel hull, or environment meshes.
-      // Backend falls through: scene_path -> voxels -> env_mesh
-      computeCall = computeRT({ ...params, scenePath: scene.loadedScenePath || '', rtConfig: rtCfg }, controller.signal)
-    } else if (scene.pathSource === 'rt' && scene.rtSource === 'sionna' && scene.loadedScenePath) {
-      computeCall = computeSionnaRT({ ...params, scenePath: scene.loadedScenePath, rtConfig: rtCfg }, controller.signal)
+    if (scene.pathSource === 'rt') {
+      if (scene.rtSource === 'sionna') {
+        // Sionna RT: route based on available geometry
+        if (scene.loadedScenePath) {
+          computeCall = computeSionnaRT({ ...params, scenePath: scene.loadedScenePath, rtConfig: rtCfg }, controller.signal)
+        } else if (scene.caps?.has_voxels) {
+          computeCall = computeVoxelRT({ ...params, rtConfig: rtCfg }, controller.signal)
+        } else {
+          computeCall = computeSionnaEnvRT({ ...params, rtConfig: rtCfg }, controller.signal)
+        }
+      } else {
+        // DiffeRT: backend auto-detects geometry
+        computeCall = computeRT({ ...params, scenePath: scene.loadedScenePath || '', rtConfig: rtCfg }, controller.signal)
+      }
     } else {
       computeCall = computeDosimetry(params, controller.signal)
     }

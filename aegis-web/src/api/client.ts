@@ -416,6 +416,17 @@ export async function computeSionnaRT(
   )
 }
 
+export async function computeSionnaEnvRT(
+  params: ComputeParams & { rtConfig: RtConfig },
+  signal?: AbortSignal,
+): Promise<ComputeResult> {
+  return computeEndpoint(
+    '/api/compute/sionna-env-rt',
+    { ...computePayload(params), rt_config: params.rtConfig },
+    signal,
+  )
+}
+
 // ---------------------------------------------------------------------------
 // SSE endpoint
 // ---------------------------------------------------------------------------

@@ -20,7 +20,7 @@ export const SHARE_DEFAULTS = {
   // scene store
   bodyName: '' as string,
   pathSource: 'synthetic' as string,
-  rtSource: 'differt' as string,
+  rtSource: 'sionna' as string,
   rtMaxOrder: 3,
   rtConfig: {
     method: 'exhaustive' as string,

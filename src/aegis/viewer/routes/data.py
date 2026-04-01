@@ -146,6 +146,10 @@ def _handle_clear_cache(app, cache, cache_lock):
             "mimo_summary",
             "mimo_results_binary",
             "mimo_results_stats",
+            "env_mesh",
+            "env_mesh_osm",
+            "env_mesh_tiles",
+            "env_mesh_voxels",
         ):
             cache.pop(key, None)
     try:
