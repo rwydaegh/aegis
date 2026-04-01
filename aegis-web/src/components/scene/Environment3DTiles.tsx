@@ -105,8 +105,10 @@ export function Environment3DTiles({ children }: Props) {
       <GlobeCameraInit latRad={latRad} lonRad={lonRad} />
       <GlobeCameraRecenter latRad={latRad} lonRad={lonRad} />
       <EastNorthUpFrame lat={latRad} lon={lonRad}>
-        {/* Rotate children from Three.js Y-up to ENU Z-up so bodies stand upright */}
-        <group rotation={[-Math.PI / 2, 0, 0]}>
+        {/* ENU frame has Z-up but Three.js scene assumes Y-up.
+            Rotate +90deg around X so Y-up children stand upright and
+            XZ-plane physics operate on the ENU ground plane (XY). */}
+        <group rotation={[Math.PI / 2, 0, 0]}>
           {children}
         </group>
       </EastNorthUpFrame>
