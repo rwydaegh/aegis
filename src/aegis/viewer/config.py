@@ -470,6 +470,10 @@ DEFAULTS: dict = {
             "default_panel_height": 0.15,
             "show_pattern": False,
         },
+        "pattern_library": {
+            "cloudrf_api_key_env": "CLOUDRF_API_KEY",
+            "auto_build_index": True,
+        },
         "auto_load_with_scene": False,
         "default_radius_m": 500,
         "max_distance_m": 2000,

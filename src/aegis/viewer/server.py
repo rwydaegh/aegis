@@ -549,6 +549,7 @@ def create_app(
         environment,
         location,
         mimo,
+        patterns,
         sentry_webhook,
         terrain,
     )
@@ -560,6 +561,7 @@ def create_app(
     mimo.register(app, _cache, _cache_lock)
     environment.register(app, _cache, _cache_lock)
     basestations.register(app, _cache, _cache_lock)
+    patterns.register(app, _cache, _cache_lock)
     sentry_webhook.register(app, _cache, _cache_lock)
     terrain.register(app, _cache, _cache_lock)
 
