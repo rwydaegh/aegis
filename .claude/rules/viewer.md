@@ -44,4 +44,4 @@ Track viewer behavior against `docs/internal/viewer_bug_report.md` and `docs/int
 
 ## Testing
 
-Use `npx @playwright/cli` for all browser interaction, NOT the Playwright MCP server. Save screenshots to `test_screenshots/`. Read every screenshot with the Read tool.
+For QA browser testing, use `npx playwright screenshot` for static captures and `curl` for API checks. Save screenshots to `test_screenshots/`. Read every screenshot with the Read tool. For interactive testing that needs clicks, keyboard input, or JS evaluation, write a short Node.js script using the `playwright` library (already installed). Do NOT use `npx @playwright/cli` - that package does not exist. The interactive Playwright CLI (`npx playwright open`) requires a headed display and does not work in headless environments.
