@@ -11,6 +11,7 @@ def synthetic_pattern_from_beamwidth(
     hpbw_h_deg: float,
     hpbw_v_deg: float,
     gain_dbi: float,
+    sidelobe_suppression_db: float | None = None,
 ) -> AntennaPattern:
     """Create a Gaussian-approximation pattern from beamwidth specs.
 
@@ -33,5 +34,7 @@ def synthetic_pattern_from_beamwidth(
     k = 4.0 * np.log(2.0)  # 2.7726
     g_linear = np.exp(-k * (el_grid / hpbw_v_deg) ** 2) * np.exp(-k * (az_grid / hpbw_h_deg) ** 2)
     g_dbi = 10.0 * np.log10(np.maximum(g_linear, 1e-20)) + gain_dbi
+    if sidelobe_suppression_db is not None:
+        g_dbi = np.maximum(g_dbi, gain_dbi - abs(sidelobe_suppression_db))
 
     return AntennaPattern(gain_dbi=g_dbi.astype(np.float32), max_gain_dbi=gain_dbi)

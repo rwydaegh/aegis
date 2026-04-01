@@ -258,6 +258,26 @@ class TestSyntheticPattern:
         drop = boresight - at_half
         assert drop == pytest.approx(3.01, abs=0.05)
 
+    def test_sidelobe_floor_applied(self):
+        """Gain never drops more than sidelobe_suppression_db below peak."""
+        pat = synthetic_pattern_from_beamwidth(12.0, 10.0, 25.0, sidelobe_suppression_db=15.0)
+        min_gain = np.nanmin(pat.gain_dbi)
+        assert min_gain >= 25.0 - 15.0 - 0.1  # 10 dBi floor
+
+    def test_sidelobe_floor_default_none(self):
+        """Without sidelobe param, gain can drop far below peak."""
+        pat = synthetic_pattern_from_beamwidth(12.0, 10.0, 25.0)
+        min_gain = np.nanmin(pat.gain_dbi)
+        assert min_gain < 25.0 - 30.0
+
+    def test_sidelobe_floor_does_not_affect_peak(self):
+        """Peak gain is unchanged by sidelobe floor."""
+        pat = synthetic_pattern_from_beamwidth(65.0, 10.0, 17.0, sidelobe_suppression_db=15.0)
+        assert pat.max_gain_dbi == 17.0
+        boresight_gain = pat.evaluate(np.array([0.0]), np.array([0.0]))[0]
+        peak_linear = 10.0 ** (17.0 / 10.0)
+        assert boresight_gain == pytest.approx(peak_linear, rel=0.01)
+
 
 # ---------------------------------------------------------------------------
 # antenna
