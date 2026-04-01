@@ -417,3 +417,65 @@ class TestPolarisationTracking:
         psi_real = np.real(psi)
         psi_norm = psi_real / np.linalg.norm(psi_real)
         assert abs(psi_norm[2]) < 0.1
+
+    def test_degenerate_paths_do_not_corrupt_scene_normals(self):
+        """Filtering degenerate paths must not slice scene-level normals/materials.
+
+        Regression: material_indices (N_triangles) and normals (N_triangles, 3)
+        were incorrectly filtered with the per-path keep mask, corrupting
+        Fresnel reflection lookups when degenerate paths were present.
+        """
+        tx = np.array([5.0, 0.0, 3.0])
+        wall = np.array([2.5, 0.0, 0.0])
+        body = np.array([0.0, 0.0, 3.0])
+
+        # Path 0: valid reflected path via triangle 1 (second scene triangle)
+        # Path 1: degenerate (TX=RX coincidence, zero length)
+        path_vertices = np.array(
+            [
+                [tx, wall, body],
+                [[1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0]],  # degenerate
+            ]
+        )
+        # Two scene triangles with different materials
+        scene_normals = np.array(
+            [
+                [1.0, 0.0, 0.0],  # triangle 0: not used by any path
+                [0.0, 0.0, 1.0],  # triangle 1: used by path 0's bounce
+            ]
+        )
+        obj_idx = np.array(
+            [
+                [-1, 1, -1],  # path 0 bounces off triangle 1
+                [-1, -1, -1],  # path 1 (degenerate)
+            ]
+        )
+        # Two materials: concrete (idx 0) and metal (idx 1)
+        material_indices = np.array([0, 1])  # triangle 0 -> concrete, triangle 1 -> metal
+
+        # Before fix: material_indices[keep] would slice [0,1] to [0] (keep=[0]),
+        # then _track_polarisation would look up material_indices[tri_idx=1] and
+        # crash with IndexError (or silently get wrong material).
+        paths = paths_from_differt(
+            vertices=np.zeros((2, 3)),
+            normals=scene_normals,
+            path_vertices=path_vertices,
+            tx_positions=tx[np.newaxis],
+            freq_hz=28e9,
+            object_indices=obj_idx,
+            material_indices=material_indices,
+            material_n_tilde=[N_CONCRETE, N_METAL],
+        )
+
+        # Degenerate path filtered, only 1 valid path remains
+        assert paths.n_paths == 1
+        # Metal reflection preserves nearly all power
+        paths_no_pol = paths_from_differt(
+            vertices=np.zeros((2, 3)),
+            normals=scene_normals,
+            path_vertices=path_vertices[:1],  # only the valid path
+            tx_positions=tx[np.newaxis],
+            freq_hz=28e9,
+        )
+        ratio = paths.power[0] / paths_no_pol.power[0]
+        assert ratio > 0.99, f"Metal reflection should preserve >99% power, got {ratio:.4f}"
