@@ -29,7 +29,7 @@ def estimate_device_offset(
     -------
     list[float]
         Device offset [x, y, z] in Z-up coords (right, forward, up),
-        relative to the mesh origin.
+        relative to the body with feet at ground (z=0).
     """
     pts = vertices.reshape(-1, 3)
     z_min = float(pts[:, 2].min())
@@ -51,7 +51,7 @@ def estimate_device_offset(
 
     if len(eye_band) < 3:
         # Degenerate mesh: place at eye height, centered
-        return [0.0, forward_distance, float(eye_z)]
+        return [0.0, forward_distance, float(eye_z - z_min)]
 
     # Face surface: 97th percentile of Y (forward) at eye level
     face_y = float(np.percentile(eye_band[:, 1], 97))
@@ -63,5 +63,5 @@ def estimate_device_offset(
     return [
         round(face_x, 4),
         round(face_y + forward_distance, 4),
-        round(eye_z, 4),
+        round(eye_z - z_min, 4),
     ]

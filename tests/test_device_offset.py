@@ -75,12 +75,15 @@ class TestEstimateDeviceOffset:
         assert abs((far[1] - close[1]) - 0.20) < 0.02
 
     def test_offset_below_body_origin(self):
-        """Works when mesh origin is not at the feet (z_min < 0)."""
+        """Works when mesh origin is not at the feet (z_min < 0).
+
+        The offset Z is always ground-relative (feet at z=0), regardless
+        of where the mesh origin sits.
+        """
         verts = self._body_vertices((-0.2, 0.2), (-0.1, 0.1), (-0.9, 0.9))
         offset = estimate_device_offset(verts, forward_distance=0.30)
         # Height is 1.8m, eye_z from ground ~ 1.8 * 0.96 - 0.02 = 1.708
-        # But feet are at z=-0.9, so absolute eye_z = -0.9 + 1.708 = 0.808
-        expected_eye_z = -0.9 + 1.8 * 0.96 - 0.02
+        expected_eye_z = 1.8 * 0.96 - 0.02
         assert abs(offset[2] - expected_eye_z) < 0.05
 
     def test_returns_list_of_three_floats(self):

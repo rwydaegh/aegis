@@ -28,8 +28,8 @@ def test_device_offset_height_range(name, data_dir):
     """Device Z (from ground) should be near known eye height for each phantom."""
     verts = _try_load(name, data_dir)
     offset = estimate_device_offset(verts, forward_distance=0.30)
-    z_min = float(verts.reshape(-1, 3)[:, 2].min())
-    eye_z_from_ground = offset[2] - z_min
+    # offset[2] is already ground-relative (feet at z=0)
+    eye_z_from_ground = offset[2]
     exp = EXPECTED[name]
     assert exp["eye_z_min"] < eye_z_from_ground < exp["eye_z_max"], (
         f"{name}: eye_z_from_ground={eye_z_from_ground:.3f}, expected [{exp['eye_z_min']}, {exp['eye_z_max']}]"
