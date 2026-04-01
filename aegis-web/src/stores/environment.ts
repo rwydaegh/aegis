@@ -89,7 +89,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
 
     set({ geocoding: true, error: null })
     try {
-      const resp = await fetch(`/api/geocode?q=${encodeURIComponent(q)}`)
+      const resp = await fetchWithRetry(`/api/geocode?q=${encodeURIComponent(q)}`)
       if (!resp.ok) {
         const data = await resp.json().catch(() => ({}))
         throw new Error(data.error || `Geocoding failed: ${resp.status}`)
