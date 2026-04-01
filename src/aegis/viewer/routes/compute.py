@@ -348,6 +348,24 @@ def _build_stats_response(result, body, tissue, level, extra=None, mode=None, co
         "tissue_sigma": tissue.sigma,
     }
 
+    # Exposure distribution statistics
+    if result.sab.size > 0:
+        sab_arr = result.sab
+        n_illum = int(np.sum(sab_arr > 0))
+        sab_nonzero = sab_arr[sab_arr > 0]
+        stats["distribution"] = {
+            "mean": float(np.mean(sab_arr)),
+            "median": float(np.median(sab_arr)),
+            "p95": float(np.percentile(sab_arr, 95)),
+            "p99": float(np.percentile(sab_arr, 99)),
+            "illuminated_fraction": n_illum / sab_arr.size,
+            "illuminated_area_cm2": float(np.sum(body.areas[sab_arr > 0]) * 1e4)
+            if hasattr(body, "areas") and body.areas is not None
+            else None,
+            "illuminated_mean": float(np.mean(sab_nonzero)) if sab_nonzero.size > 0 else 0.0,
+            "illuminated_p50": float(np.median(sab_nonzero)) if sab_nonzero.size > 0 else 0.0,
+        }
+
     # Per-quantity peak values (reuse precomputed values)
     peaks = {"sab": float(result.peak_sab)}
     if peak_sab_averaged is not None:
@@ -387,6 +405,16 @@ def _zero_paths_response(body, tissue, level, extra=None):
         "path_viz": [],
         "arrays": [{"key": "sab", "offset": 0, "length": n_tri}],
         "peaks": {"sab": 0.0},
+        "distribution": {
+            "mean": 0.0,
+            "median": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "illuminated_fraction": 0.0,
+            "illuminated_area_cm2": 0.0,
+            "illuminated_mean": 0.0,
+            "illuminated_p50": 0.0,
+        },
     }
     if extra:
         stats.update(extra)
