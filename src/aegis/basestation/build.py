@@ -166,13 +166,13 @@ def _merge_region(region_name: str, region_cfg: dict) -> None:
         priority = source.get("priority", 5)
         if src_type == "basestationlib":
             raw_file = raw_dir / f"{region_name}_gov.parquet"
-            source_tag = f"gov:{source.get('region', region_name)}"
+            source_tag = source.get("source_tag", f"gov:{source.get('region', region_name)}")
         elif src_type == "mastedatabasen":
             raw_file = raw_dir / f"{region_name}_mastedatabasen.parquet"
-            source_tag = "gov:mastedatabasen"
+            source_tag = source.get("source_tag", "gov:mastedatabasen")
         elif src_type == "opencellid":
             raw_file = raw_dir / f"{region_name}_opencellid.parquet"
-            source_tag = "ocid"
+            source_tag = source.get("source_tag", "ocid")
         else:
             continue
         if not raw_file.exists():

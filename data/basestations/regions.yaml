@@ -7,6 +7,7 @@ regions:
         country: Belgium
         region: brussels
         priority: 1
+        source_tag: gov:brussels
     reference: data/basestations/raw/brussels_gov.parquet
 
   flanders:
@@ -15,6 +16,7 @@ regions:
         country: Belgium
         region: flanders
         priority: 1
+        source_tag: gov:flanders
     reference: data/basestations/raw/brussels_gov.parquet
 
   france:
@@ -23,10 +25,12 @@ regions:
         country: France
         bbox: [1.5, 3.0, 48.5, 49.2]
         priority: 1
+        source_tag: gov:anfr
       - type: opencellid
         country_code: 208
         bbox: [1.5, 3.0, 48.5, 49.2]
         priority: 3
+        source_tag: ocid
     reference: data/basestations/raw/brussels_gov.parquet
 
   denmark:
@@ -34,10 +38,12 @@ regions:
       - type: mastedatabasen
         bbox: [12.4, 12.7, 55.6, 55.8]
         priority: 1
+        source_tag: gov:mastedatabasen
       - type: opencellid
         country_code: 238
         bbox: [12.4, 12.7, 55.6, 55.8]
         priority: 3
+        source_tag: ocid
     reference: data/basestations/raw/brussels_gov.parquet
 
   netherlands:

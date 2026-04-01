@@ -38,6 +38,8 @@ _SOURCE_CONFIDENCE: dict[str, float] = {
     "gov:antenneregister": CONFIDENCE_SCORES["gov_direct"],
     "gov:mastedatabasen": CONFIDENCE_SCORES["gov_report"],
     "gov:bnetza": CONFIDENCE_SCORES["gov_report"],
+    "gov:rtr": CONFIDENCE_SCORES["gov_report"],
+    "gov:acma": CONFIDENCE_SCORES["gov_report"],
     "ocid": CONFIDENCE_SCORES["crowdsourced"],
     "est:tech+band": CONFIDENCE_SCORES["est_same_dataset"],
     "est:ref": CONFIDENCE_SCORES["est_reference"],
