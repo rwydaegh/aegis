@@ -68,7 +68,16 @@ def mmse(H: np.ndarray, P: float = 1.0, noise_power: float = DEFAULT_NOISE_POWER
         H = H.reshape(1, -1)
     K, M = H.shape
     HHH = H @ H.conj().T
-    X = np.linalg.solve(HHH + noise_power * np.eye(K), H)  # (K, M)
+    try:
+        X = np.linalg.solve(HHH + noise_power * np.eye(K), H)  # (K, M)
+    except np.linalg.LinAlgError:
+        import warnings
+
+        warnings.warn(
+            "MMSE precoder: regularized Gram matrix is singular, falling back to MRT",
+            stacklevel=2,
+        )
+        return mrt(H, P=P)
     W_raw = X.conj().T  # (M, K)
     frob = np.sqrt(float(np.real(np.trace(W_raw.conj().T @ W_raw))))
     if frob < NUMERICAL_FLOOR:
