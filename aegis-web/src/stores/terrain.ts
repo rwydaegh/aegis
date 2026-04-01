@@ -7,6 +7,8 @@ interface TerrainMeshData {
   indices: Uint32Array
   width: number
   height: number
+  hasElevation: boolean
+  elevationRangeM: number
 }
 
 interface TerrainState {
@@ -36,6 +38,8 @@ function parseTerrainBinary(
     indices,
     width: meta.width as number,
     height: meta.height as number,
+    hasElevation: (meta.has_elevation as boolean) ?? false,
+    elevationRangeM: (meta.elevation_range_m as number) ?? 0,
   }
 }
 

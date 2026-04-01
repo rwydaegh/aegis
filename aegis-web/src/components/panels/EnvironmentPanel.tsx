@@ -376,6 +376,13 @@ export default function EnvironmentPanel() {
             Fetch terrain
           </button>
         </div>
+        {terrainMeshData && (
+          <p className="text-xs text-muted-foreground">
+            {terrainMeshData.hasElevation
+              ? `SRTM elevation loaded (${terrainMeshData.elevationRangeM.toFixed(0)} m range)`
+              : 'Flat terrain (no SRTM data for this area)'}
+          </p>
+        )}
         {terrainError && (
           <p className="text-xs text-destructive bg-destructive/10 rounded px-2 py-1.5">
             {terrainError}

@@ -63,8 +63,9 @@ class TestComplianceCLI:
     def test_invalid_freq_exits(self):
         import pytest
 
+        # 1 kHz is below ICNIRP range (100 kHz to 300 GHz)
         with pytest.raises(SystemExit):
-            main(["--freq", "1e9", "--sab", "10.0"])
+            main(["--freq", "1e3", "--sab", "10.0"])
 
     def test_all_quantities(self, capsys):
         main(
