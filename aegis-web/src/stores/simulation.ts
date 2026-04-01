@@ -128,17 +128,31 @@ export const useSimulationStore = create<SimulationStore>((set) => ({
   setFreqGhz: (v) => set((state) => {
     const wasAbove30 = state.freqGhz > 30
     const nowAbove30 = v > 30
-    if (wasAbove30 === nowAbove30) return { freqGhz: v }
+    const wasAbove6 = state.freqGhz > 6
+    const nowAbove6 = v > 6
 
-    // Crossing the 30 GHz boundary: swap 4 cm² <-> 1 cm² defaults
+    if (wasAbove30 === nowAbove30 && wasAbove6 === nowAbove6) return { freqGhz: v }
+
     const next = new Set(state.enabledQuantities)
     let displayQuantity = state.displayQuantity
-    if (nowAbove30) {
-      if (next.has('sab_4cm2')) { next.delete('sab_4cm2'); next.add('sab_1cm2') }
-      if (displayQuantity === 'sab_4cm2') displayQuantity = 'sab_1cm2'
-    } else {
-      if (next.has('sab_1cm2')) { next.delete('sab_1cm2'); next.add('sab_4cm2') }
-      if (displayQuantity === 'sab_1cm2') displayQuantity = 'sab_4cm2'
+
+    // Crossing the 6 GHz boundary: S_ab does not apply below 6 GHz, auto-enable SAR_wb
+    if (wasAbove6 !== nowAbove6) {
+      if (!nowAbove6) {
+        // Going below 6 GHz: enable SAR_wb so compliance panel stays useful
+        next.add('sar_wb')
+      }
+    }
+
+    // Crossing the 30 GHz boundary: swap 4 cm² <-> 1 cm² defaults
+    if (wasAbove30 !== nowAbove30) {
+      if (nowAbove30) {
+        if (next.has('sab_4cm2')) { next.delete('sab_4cm2'); next.add('sab_1cm2') }
+        if (displayQuantity === 'sab_4cm2') displayQuantity = 'sab_1cm2'
+      } else {
+        if (next.has('sab_1cm2')) { next.delete('sab_1cm2'); next.add('sab_4cm2') }
+        if (displayQuantity === 'sab_1cm2') displayQuantity = 'sab_4cm2'
+      }
     }
     return { freqGhz: v, enabledQuantities: next, displayQuantity }
   }),

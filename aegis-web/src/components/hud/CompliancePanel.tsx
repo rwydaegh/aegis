@@ -95,7 +95,9 @@ export default function CompliancePanel() {
 
       {visibleChecks.length === 0 ? (
         <div style={{ color: '#666', fontSize: '11px', fontStyle: 'italic' }}>
-          Enable quantities to see compliance checks
+          {compliance.checks.length > 0 && compliance.freq_hz < 6e9
+            ? 'S_ab limits do not apply below 6 GHz. Enable SAR_wb for compliance.'
+            : 'Enable quantities to see compliance checks'}
         </div>
       ) : visibleChecks.map((check, i) => {
         const color = !check.pass ? '#f87171' : check.ratio > 0.8 ? '#fbbf24' : '#4ade80'
