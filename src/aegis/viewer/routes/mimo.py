@@ -30,6 +30,8 @@ def _build_scene(params: dict, cache: dict) -> tuple[MIMOScene | None, Response 
     users_cfg = params.get("users")
     if not users_cfg:
         return None, (jsonify({"error": "Missing or empty 'users' in request"}), 400)
+    if not isinstance(users_cfg, list):
+        return None, (jsonify({"error": "'users' must be an array"}), 400)
 
     user_ids = [u.get("id") for u in users_cfg if "id" in u]
     if len(user_ids) != len(set(user_ids)):
@@ -76,10 +78,8 @@ def _build_scene(params: dict, cache: dict) -> tuple[MIMOScene | None, Response 
         # then add to world position (matches frontend SmartphoneModel.tsx)
         user_pos = np.array(u.get("position", [0.0, 0.0, 0.0]), dtype=np.float64)
         default_offset = cache.get("body_device_offsets", {}).get(phantom, [0.0, 0.30, 1.4])
-        device_offset = np.array(
-            u.get("device_offset", u.get("device_position", default_offset)),
-            dtype=np.float64,
-        )
+        raw_offset = u.get("device_offset") or u.get("device_position") or default_offset
+        device_offset = np.array(raw_offset, dtype=np.float64)
         orientation = float(u.get("orientation", 0.0))
         cos_o, sin_o = np.cos(orientation), np.sin(orientation)
         rotated_offset = np.array(
