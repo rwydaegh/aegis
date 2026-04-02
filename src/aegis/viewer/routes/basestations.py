@@ -371,7 +371,11 @@ def _handle_basestations_compute(cache: dict, cache_lock: threading.RLock):
     engine_kw = {"mode": mode, "spatial_averaging": True}
     engine_kw = _inject_curvature_H(engine_kw, transformed_body)
 
-    result = engine.compute(transformed_body, paths, **engine_kw)
+    try:
+        result = engine.compute(transformed_body, paths, **engine_kw)
+    except Exception as exc:
+        logger.exception("Basestations dosimetry compute failed")
+        return jsonify({"error": f"Dosimetry compute failed: {exc}"}), 500
 
     # Build response using existing format
     quantities = params.get("quantities", ["sab", "sab_4cm2"])

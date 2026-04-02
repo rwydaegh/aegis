@@ -31,6 +31,11 @@ function SionnaSceneSelector() {
       })
       useSceneStore.getState().setLoadedScenePath(selected)
       useSceneStore.getState().setVoxelData(null)
+      // Clear has_voxels so useVoxelLoader does not re-fetch stale voxel data
+      const prev = useSceneStore.getState().capabilities
+      if (prev) {
+        useSceneStore.setState({ capabilities: { ...prev, has_voxels: false } })
+      }
       useEnvironmentStore.getState().setSource('none')
     } catch (err) {
       Sentry.captureException(err)

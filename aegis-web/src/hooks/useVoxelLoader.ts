@@ -32,8 +32,18 @@ export function useVoxelLoader() {
         useSimulationStore.getState().setBodyOffset(bp)
       }
     }).catch(err => {
+      const msg = (err as Error).message ?? ''
+      // 404 means voxels were cleared from the backend (cache clear, server restart,
+      // worker mismatch). This is expected during scene transitions, not a real error.
+      if (msg.includes('No voxel data loaded')) {
+        const prev = useSceneStore.getState().capabilities
+        if (prev) {
+          useSceneStore.setState({ capabilities: { ...prev, has_voxels: false } })
+        }
+        return
+      }
       Sentry.captureException(err)
-      useNotificationStore.getState().addNotification('error', `Failed to load voxels: ${(err as Error).message}`)
+      useNotificationStore.getState().addNotification('error', `Failed to load voxels: ${msg}`)
     })
   }, [caps?.has_voxels])
 }

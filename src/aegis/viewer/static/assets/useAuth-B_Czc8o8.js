@@ -1,0 +1,1 @@
+import{n as e}from"./index-C59hWnzC.js";export{e as useAuth};

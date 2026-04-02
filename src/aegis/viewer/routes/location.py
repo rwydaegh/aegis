@@ -53,11 +53,11 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             return jsonify({"error": "GOOGLE_API_KEY not set"}), 400
 
         pipeline_dir = cache.get("pipeline_dir")
-        if find_pipeline(pipeline_dir) is None:
+        pipeline_js = find_pipeline(pipeline_dir)
+        if pipeline_js is None:
             return jsonify({"error": "Pipeline not found. Set VOXELEARTH_DIR or use --pipeline-dir"}), 404
 
         # Determine cache/output directory
-        pipeline_js = find_pipeline(pipeline_dir)
         base_cache = Path(
             cache.get("cache_dir")
             or os.environ.get("VOXELEARTH_CACHE_DIR")
@@ -75,22 +75,27 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                 yield "event: progress\ndata: Using cached data\n\n"
             else:
                 # Run pipeline
-                for line in run_pipeline(
-                    location,
-                    radius,
-                    api_key,
-                    pipeline_output,
-                    resolution=resolution,
-                    pipeline_dir=pipeline_dir,
-                    session_id=sid,
-                ):
-                    # Filter noisy THREE.js warnings from Node.js pipeline
-                    if "Couldn't load texture blob:" in line:
-                        continue
-                    yield f"event: progress\ndata: {line}\n\n"
-                    if line.startswith("ERROR:"):
-                        yield f"event: error\ndata: {line}\n\n"
-                        return
+                try:
+                    for line in run_pipeline(
+                        location,
+                        radius,
+                        api_key,
+                        pipeline_output,
+                        resolution=resolution,
+                        pipeline_dir=pipeline_dir,
+                        session_id=sid,
+                    ):
+                        # Filter noisy THREE.js warnings from Node.js pipeline
+                        if "Couldn't load texture blob:" in line:
+                            continue
+                        yield f"event: progress\ndata: {line}\n\n"
+                        if line.startswith("ERROR:"):
+                            yield f"event: error\ndata: {line}\n\n"
+                            return
+                except Exception as e:
+                    logger.exception("Pipeline execution failed")
+                    yield f"event: error\ndata: ERROR: Pipeline failed: {e}\n\n"
+                    return
 
             # Load voxels from output directory
             try:
@@ -108,7 +113,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                     cache["tiles_dir"] = None
                     if tiles_candidate.is_dir() and any(tiles_candidate.glob("*.glb")):
                         cache["tiles_dir"] = tiles_candidate
-                tiles_dir = cache.get("tiles_dir")
+                    tiles_dir = cache.get("tiles_dir")
                 if tiles_dir is not None:
                     # Fix invalid blob:nodedata: URIs in GLB textures
                     from aegis.viewer.pipeline import fix_glb_tiles_dir

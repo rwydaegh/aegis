@@ -147,41 +147,54 @@ def _parse_quantities_and_scenario(params: dict):
 
 
 def _run_dosimetry(tissue, body, paths, engine_kw):
-    """Instantiate engine, inject curvature, run compute, return result."""
+    """Instantiate engine, inject curvature, run compute, return result.
+
+    Returns (result, None) on success, or (None, error_response) on failure.
+    """
     from aegis.engine import DosimetryEngine
 
     engine = DosimetryEngine(tissue)
     _inject_curvature_H(engine_kw, body)
     body_mass = _load_phantom_masses().get(body.name) if body.name else None
-    return engine.compute(body, paths, body_mass=body_mass, **engine_kw)
+    try:
+        result = engine.compute(body, paths, body_mass=body_mass, **engine_kw)
+    except Exception as exc:
+        logger.exception("Dosimetry compute failed")
+        return None, (jsonify({"error": f"Dosimetry compute failed: {exc}"}), 500)
+    return result, None
 
 
 def _make_rt_response(result, body, tissue, engine_kw, quantities, scenario, extra, timing_pairs):
     """Build binary Response with X-Stats header for RT route handlers.
 
     timing_pairs is a list of (key, value) timing entries to inject.
+    Returns (response, stats, None) on success, or (None, None, error_response) on failure.
     """
-    buf, arrays_meta = _build_binary_response(result, quantities)
-    level_val, mode_val, corr_val = _stats_label(engine_kw)
-    stats = _build_stats_response(
-        result,
-        body,
-        tissue,
-        level_val,
-        mode=mode_val,
-        corrections=corr_val,
-        extra=extra,
-        scenario=scenario,
-    )
-    timings = stats.get("timings", {})
-    for key, val in timing_pairs:
-        timings[key] = val
-    stats["timings"] = timings
-    stats["arrays"] = arrays_meta
-    resp = Response(bytes(buf), mimetype=_OCTET_STREAM)
-    resp.headers["X-Stats"] = _json_dumps_safe(stats)
-    resp.headers["Access-Control-Expose-Headers"] = "X-Stats"
-    return resp, stats
+    try:
+        buf, arrays_meta = _build_binary_response(result, quantities)
+        level_val, mode_val, corr_val = _stats_label(engine_kw)
+        stats = _build_stats_response(
+            result,
+            body,
+            tissue,
+            level_val,
+            mode=mode_val,
+            corrections=corr_val,
+            extra=extra,
+            scenario=scenario,
+        )
+        timings = stats.get("timings", {})
+        for key, val in timing_pairs:
+            timings[key] = val
+        stats["timings"] = timings
+        stats["arrays"] = arrays_meta
+        resp = Response(bytes(buf), mimetype=_OCTET_STREAM)
+        resp.headers["X-Stats"] = _json_dumps_safe(stats)
+        resp.headers["Access-Control-Expose-Headers"] = "X-Stats"
+        return resp, stats, None
+    except Exception as exc:
+        logger.exception("Response build failed")
+        return None, None, (jsonify({"error": f"Response build failed: {exc}"}), 500)
 
 
 _VALID_INCOHERENT_MODES = {"bound", "aggregate", "spatial"}
@@ -942,7 +955,9 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         if paths.n_paths == 0:
             return _zero_paths_response(body, tissue, level_val or 0)
 
-        result = _run_dosimetry(tissue, transformed_body, paths, engine_kw)
+        result, err = _run_dosimetry(tissue, transformed_body, paths, engine_kw)
+        if err:
+            return err
         t_compute = _time.perf_counter()
 
         dist = float(np.linalg.norm(antenna_pos - body_center))
@@ -964,7 +979,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             ("compliance_stats_ms", (t_stats - t_compute) * 1e3),
             ("route_total_ms", (t_stats - t_route) * 1e3),
         ]
-        resp, stats = _make_rt_response(
+        resp, stats, err = _make_rt_response(
             result,
             body,
             tissue,
@@ -974,6 +989,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             extra,
             timing_pairs,
         )
+        if err:
+            return err
         _cache_dosimetry_for_export(app, result, body, stats)
         return resp
 
@@ -1086,7 +1103,9 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         if paths.n_paths == 0:
             return _zero_paths_response(body, tissue, level_val or 0)
 
-        result = _run_dosimetry(tissue, transformed_body, paths, engine_kw)
+        result, err = _run_dosimetry(tissue, transformed_body, paths, engine_kw)
+        if err:
+            return err
         t_compute = _time.perf_counter()
 
         dist = float(np.linalg.norm(antenna_pos - body_center))
@@ -1109,7 +1128,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             ("compliance_stats_ms", (t_stats - t_compute) * 1e3),
             ("route_total_ms", (t_stats - t_route) * 1e3),
         ]
-        resp, stats = _make_rt_response(
+        resp, stats, err = _make_rt_response(
             result,
             body,
             tissue,
@@ -1119,6 +1138,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             extra,
             timing_pairs,
         )
+        if err:
+            return err
         _cache_dosimetry_for_export(app, result, body, stats)
         return resp
 
@@ -1287,7 +1308,9 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         if paths.n_paths == 0:
             return _zero_paths_response(body, tissue, level_val or 0)
 
-        result = _run_dosimetry(tissue, transformed_body, paths, engine_kw)
+        result, err = _run_dosimetry(tissue, transformed_body, paths, engine_kw)
+        if err:
+            return err
         t_compute = _time.perf_counter()
 
         dist = float(np.linalg.norm(antenna_pos - body_center))
@@ -1310,7 +1333,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             ("compliance_stats_ms", (t_stats - t_compute) * 1e3),
             ("route_total_ms", (t_stats - t_route) * 1e3),
         ]
-        resp, stats = _make_rt_response(
+        resp, stats, err = _make_rt_response(
             result,
             body,
             tissue,
@@ -1320,6 +1343,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             extra,
             timing_pairs,
         )
+        if err:
+            return err
         _cache_dosimetry_for_export(app, result, body, stats)
         return resp
 
@@ -1458,7 +1483,9 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         if paths.n_paths == 0:
             return _zero_paths_response(body, tissue, level_val or 0)
 
-        result = _run_dosimetry(tissue, transformed_body, paths, engine_kw)
+        result, err = _run_dosimetry(tissue, transformed_body, paths, engine_kw)
+        if err:
+            return err
         t_compute = _time.perf_counter()
 
         dist = float(np.linalg.norm(antenna_pos - body_center))
@@ -1481,7 +1508,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             ("compliance_stats_ms", (t_stats - t_compute) * 1e3),
             ("route_total_ms", (t_stats - t_route) * 1e3),
         ]
-        resp, stats = _make_rt_response(
+        resp, stats, err = _make_rt_response(
             result,
             body,
             tissue,
@@ -1491,6 +1518,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             extra,
             timing_pairs,
         )
+        if err:
+            return err
         _cache_dosimetry_for_export(app, result, body, stats)
         return resp
 
