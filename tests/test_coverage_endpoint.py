@@ -146,3 +146,35 @@ def test_empty_merged_dir(tmp_path):
     assert result["regions"] == []
     assert result["clusters"] == []
     assert result["sites_meta"]["count"] == 0
+
+
+def test_parquet_missing_operator_technology_columns(tmp_path):
+    """Parquet without Operator/Technology columns should not crash."""
+    from aegis.viewer.routes.coverage import _compute_coverage
+
+    merged_dir = tmp_path / "merged"
+    merged_dir.mkdir(parents=True)
+    rng = np.random.default_rng(99)
+    n = 20
+    df = pd.DataFrame(
+        {
+            "SiteCode": [f"S{i}" for i in range(n)],
+            "Latitude": rng.uniform(50.0, 51.0, n),
+            "Longitude": rng.uniform(3.0, 4.0, n),
+        }
+    )
+    (merged_dir / "minimal.parquet").parent.mkdir(parents=True, exist_ok=True)
+    df.to_parquet(str(merged_dir / "minimal.parquet"))
+
+    regions_cfg = {"minimal": {"sources": [{"bbox": [3.0, 4.0, 50.0, 51.0]}]}}
+    yaml_path = _make_test_regions_yaml(tmp_path, regions_cfg)
+
+    result = _compute_coverage(merged_dir, yaml_path)
+
+    assert len(result["regions"]) == 1
+    assert result["regions"][0]["count"] == n
+    assert len(result["clusters"]) > 0
+    for c in result["clusters"]:
+        assert c["operator"] in ("", "Unknown")
+        assert c["technology"] in ("", "Unknown")
+    assert result["sites_meta"]["count"] > 0

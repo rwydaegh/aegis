@@ -349,7 +349,7 @@ export interface MIMOComputeRequest {
 
 export interface MIMOComputeResponse {
   user_ids: string[]
-  compute_time_ms: number
+  timings: Record<string, number>
   precoder_type: string
   weights_real?: number[][]
   weights_imag?: number[][]
@@ -358,19 +358,17 @@ export interface MIMOComputeResponse {
 
 export interface MIMOUserSummary {
   id: string
-  p_abs: number
+  phantom: string
+  position: [number, number, number]
   p_abs_mw: number
   peak_sab: number
   compliant: boolean
-  margin_db: number
 }
 
 export interface MIMOSummary {
   users: MIMOUserSummary[]
-  precoder: {
-    type: string
-    power_total: number
-  }
+  precoder: string
+  timings: Record<string, number>
   warning?: string
 }
 
@@ -382,7 +380,7 @@ export type { ScenePos }
 export interface RegionSummary {
   name: string
   label: string
-  bbox: [number, number, number, number]  // [min_lon, max_lon, min_lat, max_lat]
+  bbox: [number, number, number, number] | null  // [min_lon, max_lon, min_lat, max_lat]
   count: number
   completeness: number
 }
