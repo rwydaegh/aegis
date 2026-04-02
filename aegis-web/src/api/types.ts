@@ -143,7 +143,7 @@ export interface ViewerConfig {
     legend: { bar_width: number; bar_height: number; gradient_css: string }
   }
   distance_viz: DistanceVizConfig
-  interaction: { click_max_drag_px: number; debounce_ms: number; recompute_interval_ms: number }
+  interaction: { click_max_drag_px: number; debounce_ms: number; recompute_interval_ms: number; compute_timeout_ms?: number }
   physics: {
     gravity: number; walk_accel: number; max_walk_speed: number
     ground_friction: number; air_friction: number; jump_impulse: number
