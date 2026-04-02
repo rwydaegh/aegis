@@ -7,7 +7,7 @@ import json
 import os
 from pathlib import Path
 
-from flask import Flask, Response, jsonify, render_template, request
+from flask import Flask, Response, abort, jsonify, render_template, request, send_file
 
 
 def _handle_index(cache):
@@ -326,6 +326,19 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         if td is None:
             return jsonify({"error": "No tiles directory"}), 404
         return send_from_directory(str(td), filename)
+
+    @app.route("/api/phantom/<name>.glb")
+    def serve_phantom_glb(name):
+        """Serve a GLB phantom file."""
+        import re
+
+        if not re.match(r"^[a-zA-Z0-9_-]+$", name):
+            abort(400, "Invalid phantom name")
+        phantom_dir = Path(cache["config"]["body"].get("phantom_dir", "data/phantoms"))
+        path = phantom_dir / f"{name}.glb"
+        if not path.is_file():
+            abort(404)
+        return send_file(path, mimetype="model/gltf-binary")
 
     @app.route("/api/clear-cache", methods=["POST"])
     def api_clear_cache():

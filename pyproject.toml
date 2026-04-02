@@ -58,6 +58,7 @@ dev = [
     "pandas>=1.5",
     "pyarrow>=14.0",
 ]
+body = ["smplx>=0.1.28", "torch>=2.0", "pygltflib>=1.16"]
 benchmark = ["pytest-codspeed>=3.0"]
 cloud = ["requests>=2.31"]
 all = ["aegis[jax,gpu,viz,viewer,rt,sionna,docs,dev,cloud,modal,benchmark]"]

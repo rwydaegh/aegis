@@ -91,6 +91,11 @@ DEFAULTS: dict = {
         "smartphone": {
             "forward_distance": 0.30,
         },
+        "phantom_type": "stl",
+        "phantom_dir": "data/phantoms",
+        "default_phantom": "adult_male",
+        "default_pose": "idle",
+        "animation_speed": 1.0,
     },
     "voxels": {
         "size_scale": 0.95,

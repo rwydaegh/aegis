@@ -412,6 +412,7 @@ def create_app(
 
     # Session-based password gate
     app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-secret-key-change-me")
+    app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB upload limit
     app.config["SESSION_COOKIE_HTTPONLY"] = True
     app.config["SESSION_COOKIE_SECURE"] = os.environ.get("FLASK_ENV") != "development"
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
@@ -550,6 +551,7 @@ def create_app(
         environment,
         location,
         mimo,
+        parametric,
         patterns,
         sentry_webhook,
         terrain,
@@ -563,6 +565,7 @@ def create_app(
     environment.register(app, _cache, _cache_lock)
     basestations.register(app, _cache, _cache_lock)
     coverage.register(app, _cache, _cache_lock)
+    parametric.register(app, _cache, _cache_lock)
     patterns.register(app, _cache, _cache_lock)
     sentry_webhook.register(app, _cache, _cache_lock)
     terrain.register(app, _cache, _cache_lock)

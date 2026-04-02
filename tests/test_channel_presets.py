@@ -70,3 +70,48 @@ def test_list_presets():
     assert "Freespace" in names
     assert "3GPP_38.901_UMi_LOS" in names
     assert len(names) >= 91
+
+
+def test_parse_decorrelation_distances():
+    from aegis.channel.presets import parse_conf
+
+    params = parse_conf(DATA_DIR / "3GPP_38.901_UMi_LOS.conf")
+    lambda_keys = [
+        "DS_lambda",
+        "KF_lambda",
+        "SF_lambda",
+        "AS_D_lambda",
+        "AS_A_lambda",
+        "ES_D_lambda",
+        "ES_A_lambda",
+        "XPR_lambda",
+    ]
+    for key in lambda_keys:
+        assert key in params, f"Missing key: {key}"
+        assert isinstance(params[key], float), f"{key} should be float"
+        assert params[key] > 0, f"{key} should be positive"
+
+
+def test_parse_cross_correlations():
+    from aegis.channel.presets import parse_conf
+
+    params = parse_conf(DATA_DIR / "3GPP_38.901_UMi_LOS.conf")
+    assert params["ds_kf"] == pytest.approx(-0.7)
+    assert params["sf_kf"] == pytest.approx(0.5)
+    assert params["asD_ds"] == pytest.approx(0.5)
+    assert params["asA_ds"] == pytest.approx(0.8)
+
+
+def test_parse_subpath_method():
+    from aegis.channel.presets import parse_conf
+
+    params = parse_conf(DATA_DIR / "3GPP_38.901_UMi_LOS.conf")
+    assert params["SubpathMethod"] == "legacy"
+
+
+def test_parse_esd_distance_params():
+    from aegis.channel.presets import parse_conf
+
+    params = parse_conf(DATA_DIR / "3GPP_38.901_UMi_LOS.conf")
+    assert "ES_D_mu_min" in params
+    assert "ES_D_mu_A" in params
