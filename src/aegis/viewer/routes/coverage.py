@@ -163,7 +163,11 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             if not regions_yaml.exists():
                 return jsonify({"error": "regions.yaml not found"}), 500
 
-            result = _compute_coverage(merged_dir, regions_yaml)
+            try:
+                result = _compute_coverage(merged_dir, regions_yaml)
+            except Exception:
+                logger.exception("Failed to compute coverage")
+                return jsonify({"error": "Failed to compute coverage data"}), 500
             cache["coverage_response"] = result
 
         return jsonify(result)

@@ -275,7 +275,10 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
         try { const err = await resp.json(); msg = err.error || msg } catch {}
         throw new Error(msg)
       }
-      set({ loading: false })
+      const meta = parseJsonHeader<Record<string, unknown>>(resp.headers.get('X-Meta'), 'X-Meta')
+      const buf = await resp.arrayBuffer()
+      const meshData = parseEnvironmentBinary(buf, meta)
+      set({ osmMeshData: meshData, loading: false })
     } catch (e) {
       if ((e as Error).name === 'AbortError') return
       Sentry.captureException(e)

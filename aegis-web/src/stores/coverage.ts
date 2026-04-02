@@ -27,6 +27,7 @@ interface CoverageState {
   enabled: boolean
   loaded: boolean
   loading: boolean
+  error: string | null
   regions: RegionSummary[]
   clusters: ClusterPoint[]
   sitePositions: Float32Array | null
@@ -51,6 +52,7 @@ export const useCoverageStore = create<CoverageState>((set, get) => ({
   enabled: false,
   loaded: false,
   loading: false,
+  error: null,
   regions: [],
   clusters: [],
   sitePositions: null,
@@ -65,7 +67,7 @@ export const useCoverageStore = create<CoverageState>((set, get) => ({
 
   fetch: async () => {
     if (get().loaded || get().loading) return
-    set({ loading: true })
+    set({ loading: true, error: null })
     try {
       const data = await fetchCoverage()
 
@@ -103,7 +105,7 @@ export const useCoverageStore = create<CoverageState>((set, get) => ({
       })
     } catch (err) {
       console.error('Failed to fetch coverage data:', err)
-      set({ loading: false })
+      set({ error: (err as Error).message, loading: false })
     }
   },
 

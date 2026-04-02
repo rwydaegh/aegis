@@ -274,7 +274,10 @@ def _precompute_numpy(centroids, areas, all_neighbors, target_area_m2, M):
 
 
 def averaging_matrix_to_jax(G: sparse.csr_array):
-    """Convert a scipy sparse averaging matrix to a dense JAX array.
+    """Convert a scipy sparse averaging matrix to a JAX BCOO sparse array.
+
+    Uses JAX experimental sparse BCOO format instead of materializing a
+    dense (M, M) matrix, which would OOM for meshes with >10k triangles.
 
     Parameters
     ----------
@@ -282,10 +285,16 @@ def averaging_matrix_to_jax(G: sparse.csr_array):
 
     Returns
     -------
-    jnp.ndarray : dense (M, M) JAX array suitable for ``jnp.dot(G, sab)``
+    jax.experimental.sparse.BCOO : sparse JAX array supporting ``G_jax @ sab``
+        and automatic differentiation through the averaging step.
     """
     try:
         import jax.numpy as jnp
+        from jax.experimental.sparse import BCOO
     except ImportError as err:
         raise ImportError("JAX required for differentiable averaging") from err
-    return jnp.array(G.toarray())
+
+    coo = G.tocoo()
+    indices = jnp.column_stack([jnp.array(coo.row), jnp.array(coo.col)])
+    data = jnp.array(coo.data)
+    return BCOO((data, indices), shape=G.shape)

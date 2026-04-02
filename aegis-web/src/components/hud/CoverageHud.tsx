@@ -13,6 +13,8 @@ function CoverageHudInner() {
   const cameraAltitude = useCoverageStore(s => s.cameraAltitude)
   const cameraLatLon = useCoverageStore(s => s.cameraLatLon)
   const regions = useCoverageStore(s => s.regions)
+  const loading = useCoverageStore(s => s.loading)
+  const error = useCoverageStore(s => s.error)
 
   const isCoverageScenario = activeScenario === 'coverage_globe'
   if (!isCoverageScenario) return null
@@ -43,23 +45,33 @@ function CoverageHudInner() {
             <Globe size={14} />
             Coverage
           </div>
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#22c55e' }} />
-              <span className="text-zinc-300">Rich data (&gt;80%)</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#f59e0b' }} />
-              <span className="text-zinc-300">Partial (40-80%)</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#ef4444' }} />
-              <span className="text-zinc-300">Location only (&lt;40%)</span>
-            </div>
-          </div>
-          <div className="mt-2 text-zinc-400">
-            {regions.length} regions, {regions.reduce((s, r) => s + r.count, 0).toLocaleString()} antennas
-          </div>
+          {loading && (
+            <div className="text-zinc-400">Loading coverage data...</div>
+          )}
+          {error && (
+            <div className="text-red-400">Failed to load coverage: {error}</div>
+          )}
+          {!loading && !error && (
+            <>
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#22c55e' }} />
+                  <span className="text-zinc-300">Rich data (&gt;80%)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#f59e0b' }} />
+                  <span className="text-zinc-300">Partial (40-80%)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#ef4444' }} />
+                  <span className="text-zinc-300">Location only (&lt;40%)</span>
+                </div>
+              </div>
+              <div className="mt-2 text-zinc-400">
+                {regions.length} regions, {regions.reduce((s, r) => s + r.count, 0).toLocaleString()} antennas
+              </div>
+            </>
+          )}
         </div>
       )}
 
