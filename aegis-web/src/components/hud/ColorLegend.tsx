@@ -75,11 +75,11 @@ export default function ColorLegend() {
   const ratioMode = useUIStore(s => s.ratioMode)
   const isComputing = useUIStore(s => s.isComputing)
 
-  // Compute smart default when sabArray first arrives
-  const hasAutoSet = useRef(false)
+  // Recompute smart dynamic range on every new simulation result
+  const prevArrayRef = useRef<Float32Array | null>(null)
   useEffect(() => {
-    if (sabArray && !hasAutoSet.current) {
-      hasAutoSet.current = true
+    if (sabArray && sabArray !== prevArrayRef.current) {
+      prevArrayRef.current = sabArray
       const smart = computeSmartDynamicRange(sabArray)
       setDynamicRangeDb(smart)
     }

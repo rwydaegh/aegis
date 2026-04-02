@@ -176,6 +176,7 @@ DEFAULTS: dict = {
         "debounce_ms": 200,
         "focus_hint_timeout_ms": 3000,
         "recompute_interval_ms": 500,
+        "compute_timeout_ms": 60000,
     },
     "dosimetry": {
         "default_level": DEFAULT_FIDELITY_LEVEL,
@@ -195,6 +196,7 @@ DEFAULTS: dict = {
         ],
         "power_input": {
             "min": 0,
+            "max": 100,
             "step": 1,
         },
         "stochastic": {

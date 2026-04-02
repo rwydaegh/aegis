@@ -89,7 +89,7 @@ export function useDosimetry() {
     }
 
     // Timeout: abort after configured limit, with a distinct reason
-    const timeoutMs = 60000
+    const timeoutMs = scene.config?.interaction?.compute_timeout_ms ?? 60000
     const timeoutId = setTimeout(() => controller.abort('timeout'), timeoutMs)
 
     // Build RT config from store state

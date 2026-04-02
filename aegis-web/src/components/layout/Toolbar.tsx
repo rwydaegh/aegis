@@ -55,13 +55,34 @@ function ComplianceBadge({ stats }: { stats: DosimetryStats | null }) {
     )
   }
 
-  return compliant ? (
+  if (!compliant) {
+    return (
+      <Badge className="bg-destructive/20 text-destructive border-destructive/30 font-mono text-xs">
+        FAIL
+      </Badge>
+    )
+  }
+
+  // WARN when any check exceeds 80% of the limit but still passes
+  const isWarn = stats.compliance?.checks?.some(c => c.pass && c.ratio > 0.8)
+  if (isWarn) {
+    return (
+      <Tooltip>
+        <TooltipTrigger className="cursor-help">
+          <Badge className="bg-amber-400/20 text-amber-400 border-amber-400/30 font-mono text-xs">
+            WARN
+          </Badge>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">
+          Compliant but within 20% of ICNIRP limit
+        </TooltipContent>
+      </Tooltip>
+    )
+  }
+
+  return (
     <Badge className="bg-success/20 text-success border-success/30 font-mono text-xs">
       PASS
-    </Badge>
-  ) : (
-    <Badge className="bg-destructive/20 text-destructive border-destructive/30 font-mono text-xs">
-      FAIL
     </Badge>
   )
 }
@@ -86,10 +107,25 @@ function ModePill() {
     ? `${modeLabel} +${corrections.join('')}`
     : modeLabel
 
-  return (
+  const tooltipLines = corrections.length > 0
+    ? corrections.map(c => ({ F: 'Fresnel', P: 'Polarisation', C: 'Curvature', D: 'Diffraction' })[c] ?? c)
+    : null
+
+  const pill = (
     <span className="inline-flex items-center rounded-full bg-primary/15 border border-primary/20 px-2.5 py-0.5 text-xs font-medium text-primary font-mono">
       {label}
     </span>
+  )
+
+  if (!tooltipLines) return pill
+
+  return (
+    <Tooltip>
+      <TooltipTrigger className="cursor-help">{pill}</TooltipTrigger>
+      <TooltipContent side="bottom">
+        Active corrections: {tooltipLines.join(', ')}
+      </TooltipContent>
+    </Tooltip>
   )
 }
 

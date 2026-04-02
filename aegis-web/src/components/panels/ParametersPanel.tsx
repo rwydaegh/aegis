@@ -154,7 +154,9 @@ export default function ParametersPanel() {
             className={inputClass + ' !w-full'}
             value={powerDbm}
             onChange={(e) => setPowerDbm(Number(e.target.value))}
-            step={1}
+            step={((config as unknown as Record<string, Record<string, Record<string, number>>>)?.dosimetry?.power_input?.step) ?? 1}
+            min={((config as unknown as Record<string, Record<string, Record<string, number>>>)?.dosimetry?.power_input?.min) ?? 0}
+            max={((config as unknown as Record<string, Record<string, Record<string, number>>>)?.dosimetry?.power_input?.max) ?? 100}
           />
           <span className="text-[10px] text-muted-foreground mt-0.5 block">dBm</span>
         </div>
