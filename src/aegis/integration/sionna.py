@@ -11,11 +11,25 @@ Requires: pip install aegis[sionna]  (installs sionna-rt>=1.0)
 
 from __future__ import annotations
 
+import logging
+
 import numpy as np
 
+from aegis._array_backend import JAX_AVAILABLE
 from aegis.constants import C_0, Z_0
 from aegis.defaults import DEFAULT_POWER_DBM, DEFAULT_SEED
 from aegis.paths import PropagationPaths
+
+logger = logging.getLogger(__name__)
+
+
+def _is_jax_array(arr) -> bool:
+    """Return True if *arr* is a JAX array."""
+    if not JAX_AVAILABLE:
+        return False
+    import jax
+
+    return isinstance(arr, jax.Array)
 
 
 def _check_sionna() -> None:
@@ -28,8 +42,10 @@ def _check_sionna() -> None:
         ) from exc
 
 
-def _spherical_basis(theta: np.ndarray, phi: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+def _spherical_basis(theta, phi):
     """Spherical basis vectors e_theta, e_phi at given angles.
+
+    Works with both NumPy and JAX arrays. Detects backend from input type.
 
     Parameters
     ----------
@@ -41,22 +57,24 @@ def _spherical_basis(theta: np.ndarray, phi: np.ndarray) -> tuple[np.ndarray, np
     e_theta : (N, 3) theta basis vectors
     e_phi : (N, 3) phi basis vectors
     """
-    ct, st = np.cos(theta), np.sin(theta)
-    cp, sp = np.cos(phi), np.sin(phi)
-    e_theta = np.column_stack([ct * cp, ct * sp, -st])
-    e_phi = np.column_stack([-sp, cp, np.zeros_like(theta)])
+    if _is_jax_array(theta):
+        import jax.numpy as jnp
+
+        _xp = jnp
+    else:
+        _xp = np
+
+    ct, st = _xp.cos(theta), _xp.sin(theta)
+    cp, sp = _xp.cos(phi), _xp.sin(phi)
+    e_theta = _xp.column_stack([ct * cp, ct * sp, -st])
+    e_phi = _xp.column_stack([-sp, cp, _xp.zeros_like(theta)])
     return e_theta, e_phi
 
 
-def _convert_a_to_psi(
-    a_theta: np.ndarray,
-    a_phi: np.ndarray,
-    theta_r: np.ndarray,
-    phi_r: np.ndarray,
-    freq_hz: float,
-    tx_power_w: float,
-) -> np.ndarray:
+def _convert_a_to_psi(a_theta, a_phi, theta_r, phi_r, freq_hz, tx_power_w):
     """Convert Sionna channel coefficients to AEGIS psi vectors.
+
+    Works with both NumPy and JAX arrays.
 
     Parameters
     ----------
@@ -71,12 +89,19 @@ def _convert_a_to_psi(
     -------
     psi : (N, 3) complex polarisation-amplitude vectors in V/m
     """
+    if _is_jax_array(a_theta):
+        import jax.numpy as jnp
+
+        _xp = jnp
+    else:
+        _xp = np
+
     lambda_ = C_0 / freq_hz
-    scale = np.sqrt(8 * np.pi * Z_0 * tx_power_w) / lambda_
+    scale = _xp.sqrt(8 * _xp.pi * Z_0 * tx_power_w) / lambda_
 
     e_theta, e_phi = _spherical_basis(theta_r, phi_r)
 
-    psi = scale * (a_theta[:, np.newaxis] * e_theta + a_phi[:, np.newaxis] * e_phi)
+    psi = scale * (a_theta[:, None] * e_theta + a_phi[:, None] * e_phi)
     return psi.astype(complex)
 
 
@@ -136,6 +161,91 @@ def _extract_path_viz(paths, valid: np.ndarray) -> list[dict]:
     return path_viz
 
 
+def _paths_from_sionna_jax(paths, valid_np, n_elements, freq_hz, tx_power_w):
+    """JAX-preserving extraction from Sionna Paths object.
+
+    Uses ``paths.cir(out_type="jax")`` to get JAX arrays with Dr.Jit
+    gradient tracking via ``dr.wrap()``.  Invalid paths are masked to
+    zero (static shapes) rather than filtered.
+
+    Parameters
+    ----------
+    paths : sionna.rt Paths object (from PathSolver)
+    valid_np : (num_rx, num_tx, num_paths) bool mask (NumPy)
+    n_elements : number of TX antenna elements
+    freq_hz : carrier frequency [Hz]
+    tx_power_w : TX power per element [W]
+
+    Returns
+    -------
+    PropagationPaths with JAX arrays
+    """
+    import jax.numpy as jnp
+
+    # Get CIR as JAX arrays (gradient-tracked via dr.wrap)
+    a_raw, tau_raw = paths.cir(out_type="jax")
+    a_raw = a_raw[..., 0]  # drop time_steps -> (num_rx, num_rx_ant, num_tx, num_tx_ant, num_paths)
+
+    # Angles as JAX arrays
+    theta_r_raw = jnp.asarray(paths.theta_r)  # (num_rx, num_tx, num_paths)
+    phi_r_raw = jnp.asarray(paths.phi_r)
+
+    rx_idx, tx_idx = 0, 0
+    n_paths_per_elem = a_raw.shape[-1]
+
+    # Flatten across all elements: (n_elements * n_paths_per_elem,)
+    a_theta_all = a_raw[rx_idx, 0, tx_idx, :, :].reshape(-1)  # (M*N,)
+    a_phi_all = a_raw[rx_idx, 1, tx_idx, :, :].reshape(-1)  # (M*N,)
+
+    # Angles are shared across elements (synthetic array), tile them
+    theta_r = jnp.tile(theta_r_raw[rx_idx, tx_idx, :], n_elements)  # (M*N,)
+    phi_r = jnp.tile(phi_r_raw[rx_idx, tx_idx, :], n_elements)
+
+    # Delays (metadata, not gradient-tracked)
+    tau_all = jnp.tile(jnp.asarray(tau_raw[rx_idx, tx_idx, :]), n_elements)
+
+    # Valid mask: tile across elements
+    valid_elem = jnp.asarray(valid_np[rx_idx, tx_idx, :])  # (N,)
+    valid_all = jnp.tile(valid_elem, n_elements)  # (M*N,)
+    valid_f = valid_all.astype(jnp.float64)  # 1.0 or 0.0
+
+    # Convert to psi (JAX path, gradient flows through)
+    psi = _convert_a_to_psi(a_theta_all, a_phi_all, theta_r, phi_r, freq_hz, tx_power_w)
+    psi = psi * valid_f[:, None]  # zero invalid paths
+
+    # k_hat from arrival angles (negate: Sionna body->source, AEGIS source->body)
+    st, ct = jnp.sin(theta_r), jnp.cos(theta_r)
+    sp, cp = jnp.sin(phi_r), jnp.cos(phi_r)
+    k_hat_raw = -jnp.column_stack([st * cp, st * sp, ct])
+    # Safe default for invalid paths: [0, 0, -1] instead of zero vector
+    default_k = jnp.array([0.0, 0.0, -1.0])
+    k_hat = jnp.where(valid_all[:, None], k_hat_raw, default_k[None, :])
+
+    # Element indices: [0,0,...,0, 1,1,...,1, ..., M-1,...,M-1]
+    element_index = jnp.repeat(jnp.arange(n_elements, dtype=jnp.int32), n_paths_per_elem)
+
+    # LOS: shortest delay per element (metadata, not in gradient path)
+    tau_per_elem = tau_all.reshape(n_elements, n_paths_per_elem)
+    # Set invalid paths to large tau so they never win argmin
+    large_tau = jnp.finfo(jnp.float64).max
+    valid_2d = jnp.broadcast_to(valid_elem[None, :], tau_per_elem.shape)
+    tau_masked = jnp.where(valid_2d, tau_per_elem, large_tau)
+    min_idx = jnp.argmin(tau_masked, axis=1)  # (M,)
+    is_los_2d = jnp.zeros((n_elements, n_paths_per_elem), dtype=bool)
+    is_los_2d = is_los_2d.at[jnp.arange(n_elements), min_idx].set(True)
+    # Only mark as LOS if the element has any valid paths
+    has_valid = jnp.any(valid_elem)  # shared across elements for synthetic array
+    is_los = (is_los_2d & has_valid).reshape(-1)
+
+    return PropagationPaths(
+        k_hat=k_hat,
+        psi=psi,
+        element_index=element_index,
+        delay=tau_all,
+        is_los=is_los,
+    )
+
+
 def paths_from_sionna_scene(
     scene,
     tx_positions: np.ndarray,
@@ -156,6 +266,7 @@ def paths_from_sionna_scene(
     max_num_paths_per_src: int = 1_000_000,
     synthetic_array: bool = True,
     seed: int = DEFAULT_SEED,
+    differentiable: bool = False,
 ) -> PropagationPaths | tuple[PropagationPaths, list[dict]]:
     """Run Sionna RT and convert results to PropagationPaths.
 
@@ -169,6 +280,10 @@ def paths_from_sionna_scene(
     tx_power_dbm : transmit power per element [dBm]
     tx_pattern : TX antenna pattern name
     return_viz : if True, also return path visualization data
+    differentiable : if True, return JAX arrays with Dr.Jit gradient
+        tracking via ``paths.cir(out_type="jax")``. Requires JAX.
+        Invalid paths are masked to zero (static shapes) instead of
+        filtered, enabling ``jax.grad`` through the conversion.
 
     Returns
     -------
@@ -240,6 +355,14 @@ def paths_from_sionna_scene(
     valid_raw = np.array(paths.valid)  # (num_rx, num_tx, num_paths)
     path_viz = _extract_path_viz(paths, valid_raw) if return_viz else []
 
+    # --- Differentiable JAX path ---
+    if differentiable:
+        if not JAX_AVAILABLE:
+            raise RuntimeError("differentiable=True requires JAX. Install with: pip install jax")
+        result = _paths_from_sionna_jax(paths, valid_raw, n_elements, freq_hz, tx_power_w)
+        return (result, path_viz) if return_viz else result
+
+    # --- Original NumPy path (unchanged) ---
     # Extract data as numpy
     # Sionna v2 cir() shape: a[num_rx, num_rx_ant, num_tx, num_tx_ant, num_paths, num_time_steps]
     # With cross-pol RX: num_rx_ant=2 (pol 0=theta, pol 1=phi)
