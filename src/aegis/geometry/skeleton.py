@@ -10,6 +10,26 @@ from scipy.spatial.transform import Rotation
 from aegis.geometry.mesh import BodyMesh
 
 
+def _topological_order(parents: np.ndarray) -> list[int]:
+    """Return joint indices in topological order (roots first, leaves last)."""
+    n = len(parents)
+    children: dict[int, list[int]] = {i: [] for i in range(n)}
+    roots: list[int] = []
+    for i, p in enumerate(parents):
+        if p < 0:
+            roots.append(i)
+        else:
+            children[int(p)].append(i)
+    order: list[int] = []
+    stack = list(reversed(roots))
+    while stack:
+        j = stack.pop()
+        order.append(j)
+        for c in reversed(children[j]):
+            stack.append(c)
+    return order
+
+
 def _read_accessor(gltf, accessor_index: int, blob: bytes) -> np.ndarray:
     """Read a glTF accessor into a numpy array."""
     accessor = gltf.accessors[accessor_index]
@@ -215,9 +235,13 @@ class GltfSkeleton:
                 if angle_mag > 1e-8:
                     local_rots[j, :3, :3] = Rotation.from_rotvec(angles[j]).as_matrix()
 
-        # FK: compute global transforms
+        # FK: compute global transforms in topological order (parents before children).
+        # glTF does not guarantee joint indices are in topological order,
+        # so we sort explicitly to avoid reading uninitialized parent transforms.
+        order = _topological_order(self.joint_parents)
+
         global_transforms = np.zeros((J, 4, 4))
-        for j in range(J):
+        for j in order:
             local = self.joint_local_transforms[j] @ local_rots[j]
             parent = self.joint_parents[j]
             if parent < 0:

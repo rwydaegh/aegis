@@ -105,6 +105,17 @@ class TestCylinder:
         with pytest.raises(ValueError, match="positive"):
             BodyMesh.cylinder(radius=0.1, height=0.0)
 
+    def test_cap_normals_point_outward(self):
+        """Top cap normals must point +Z, bottom cap normals must point -Z."""
+        n = 16
+        body = BodyMesh.cylinder(radius=0.1, height=0.5, n_segments=n)
+        top_start = 2 * n
+        bot_start = 3 * n
+        top_normals = body.normals[top_start:bot_start]
+        bot_normals = body.normals[bot_start:]
+        assert np.all(top_normals[:, 2] > 0.99), "Top cap normals should point +Z"
+        assert np.all(bot_normals[:, 2] < -0.99), "Bottom cap normals should point -Z"
+
     def test_segments_minimum(self):
         with pytest.raises(ValueError, match="at least 3"):
             BodyMesh.cylinder(radius=0.1, height=0.5, n_segments=2)

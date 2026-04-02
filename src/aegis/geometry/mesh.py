@@ -314,14 +314,14 @@ class BodyMesh:
         top_tris = np.empty((n, 3, 3), dtype=np.float64)
         for i in range(n):
             j = (i + 1) % n
-            top_tris[i] = [top_center, top_ring[j], top_ring[i]]
+            top_tris[i] = [top_center, top_ring[i], top_ring[j]]
 
         # Bottom cap: fan from center (0, 0, z_bot), CCW when viewed from -z
         bot_center = np.array([0.0, 0.0, z_bot])
         bot_tris = np.empty((n, 3, 3), dtype=np.float64)
         for i in range(n):
             j = (i + 1) % n
-            bot_tris[i] = [bot_center, bot_ring[i], bot_ring[j]]
+            bot_tris[i] = [bot_center, bot_ring[j], bot_ring[i]]
 
         vertices = np.concatenate([side_tris, top_tris, bot_tris], axis=0)
         return cls.from_arrays(vertices, name="cylinder")
