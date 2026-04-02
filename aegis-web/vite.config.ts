@@ -2,6 +2,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { sentryVitePlugin } from '@sentry/vite-plugin'
+import cesium from 'vite-plugin-cesium'
 import path from 'path'
 
 export default defineConfig({
@@ -11,6 +12,7 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
+    cesium(),
     // Upload source maps to Sentry during production builds (requires SENTRY_AUTH_TOKEN env var)
     sentryVitePlugin({
       org: process.env.SENTRY_ORG,
