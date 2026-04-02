@@ -376,3 +376,34 @@ export interface MIMOSummary {
 
 // ScenePos is re-exported for convenience where types.ts is the single import point
 export type { ScenePos }
+
+// Coverage globe types
+
+export interface RegionSummary {
+  name: string
+  label: string
+  bbox: [number, number, number, number]  // [min_lon, max_lon, min_lat, max_lat]
+  count: number
+  completeness: number
+}
+
+export interface ClusterPoint {
+  lat: number
+  lon: number
+  count: number
+  operator: string
+  technology: string
+}
+
+export interface CoverageSitesMeta {
+  count: number
+  operators: string[]
+  technologies: string[]
+}
+
+export interface CoverageResponse {
+  regions: RegionSummary[]
+  clusters: ClusterPoint[]
+  sites_meta: CoverageSitesMeta
+  sites_b64: string
+}
