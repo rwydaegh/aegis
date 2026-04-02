@@ -161,7 +161,10 @@ export const useSimulationStore = create<SimulationStore>((set) => ({
     const next = new Set(state.enabledQuantities)
     if (next.has(key)) {
       next.delete(key)
-      if (state.displayQuantity === key) return { enabledQuantities: next, displayQuantity: 'sab' as QuantityKey }
+      if (state.displayQuantity === key) {
+        const fallback = next.size > 0 ? [...next][0] : ('sab' as QuantityKey)
+        return { enabledQuantities: next, displayQuantity: fallback }
+      }
     } else {
       next.add(key)
     }
