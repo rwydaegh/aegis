@@ -80,6 +80,12 @@ def _compute_coverage(
 
     combined = pd.concat(all_dfs, ignore_index=True)
 
+    # Guard missing Operator/Technology columns before clustering
+    if "Operator" not in combined.columns:
+        combined["Operator"] = "Unknown"
+    if "Technology" not in combined.columns:
+        combined["Technology"] = "Unknown"
+
     # Tier 2: clusters (0.1-degree grid)
     combined["_cell_lat"] = np.floor(combined["Latitude"] / 0.1) * 0.1 + 0.05
     combined["_cell_lon"] = np.floor(combined["Longitude"] / 0.1) * 0.1 + 0.05
