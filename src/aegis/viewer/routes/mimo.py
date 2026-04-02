@@ -161,11 +161,34 @@ def _user_stats(user: UserState, scene: MIMOScene) -> dict:
         if sab_for_compliance is None and result.sab.size > 0:
             sab_for_compliance = float(np.max(result.sab))
         scenario = ExposureScenario.GENERAL_PUBLIC
+
+        # Extract sinc and sab_1cm2 from result (available from engine._build_result)
+        peak_sinc_averaged = (
+            float(np.max(result.sinc_averaged))
+            if result.sinc_averaged is not None and result.sinc_averaged.size > 0
+            else None
+        )
+        peak_sinc_local = (
+            float(np.max(result.sinc))
+            if result.sinc is not None and result.sinc.size > 0
+            else None
+        )
+        sinc_for_compliance = peak_sinc_averaged if peak_sinc_averaged is not None else peak_sinc_local
+
+        peak_sab_1cm2 = (
+            float(np.max(result.sab_1cm2_averaged))
+            if result.sab_1cm2_averaged is not None and result.sab_1cm2_averaged.size > 0
+            else None
+        )
+
         try:
             compliance = evaluate_compliance(
                 scenario=scenario,
                 freq_hz=freq_hz,
                 sab_4cm2=sab_for_compliance,
+                sinc_local=sinc_for_compliance,
+                sab_1cm2=peak_sab_1cm2,
+                sar_wb=result.sar_wb,
             )
         except (ValueError, TypeError):
             compliance = None

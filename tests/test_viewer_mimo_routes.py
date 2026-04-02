@@ -303,6 +303,10 @@ class TestUserStats:
         result.peak_sab = 12.3
         result.sab = np.array([0.0, 5.0, 12.3])
         result.sab_averaged = np.array([1.0, 2.0, 3.0])
+        result.sinc = None
+        result.sinc_averaged = None
+        result.sab_1cm2_averaged = None
+        result.sar_wb = None
         user.result = result
         scene = MagicMock()
         scene.freq_hz = 28e9
@@ -325,6 +329,10 @@ class TestUserStats:
         result.peak_sab = 5.0
         result.sab = np.array([0.0, 5.0, 3.0, 0.0])
         result.sab_averaged = np.array([0.0, 4.0, 2.5, 0.0])
+        result.sinc = None
+        result.sinc_averaged = None
+        result.sab_1cm2_averaged = None
+        result.sar_wb = None
         user.result = result
         body = MagicMock()
         body.n_triangles = 4
@@ -346,6 +354,10 @@ class TestUserStats:
         result.peak_sab = 0.0
         result.sab = np.array([0.0, 0.0, 0.0])
         result.sab_averaged = None
+        result.sinc = None
+        result.sinc_averaged = None
+        result.sab_1cm2_averaged = None
+        result.sar_wb = None
         user.result = result
         scene = MagicMock()
         scene.freq_hz = 28e9
@@ -364,6 +376,10 @@ class TestUserStats:
         result.peak_sab = 10.0
         result.sab = np.array([0.0, 5.0, 10.0])
         result.sab_averaged = np.array([1.0, 3.0, 8.0])
+        result.sinc = None
+        result.sinc_averaged = None
+        result.sab_1cm2_averaged = None
+        result.sar_wb = None
         user.result = result
         scene = MagicMock()
         scene.freq_hz = 3.5e9  # sub-6 GHz
@@ -381,6 +397,10 @@ class TestUserStats:
         result.peak_sab = 15.0
         result.sab = np.array([0.0, 15.0, 5.0])
         result.sab_averaged = None
+        result.sinc = None
+        result.sinc_averaged = None
+        result.sab_1cm2_averaged = None
+        result.sar_wb = None
         user.result = result
         scene = MagicMock()
         scene.freq_hz = 28e9
@@ -402,12 +422,41 @@ class TestUserStats:
         result.peak_sab = 25.0
         result.sab = np.array([0.0, 25.0, 10.0])
         result.sab_averaged = None
+        result.sinc = None
+        result.sinc_averaged = None
+        result.sab_1cm2_averaged = None
+        result.sar_wb = None
         user.result = result
         scene = MagicMock()
         scene.freq_hz = 28e9
         stats = _user_stats(user, scene)
         # 25 > 20 W/m^2 GP limit
         assert stats["compliant"] is False
+        assert stats["compliance"]["overall_pass"] is False
+
+    def test_sinc_local_included_in_compliance(self):
+        """MIMO compliance should check sinc_local, not just sab_4cm2."""
+        user = self._make_user_state()
+        result = MagicMock()
+        result.p_abs = 0.01
+        result.peak_sab = 10.0
+        result.sab = np.array([0.0, 5.0, 10.0])
+        result.sab_averaged = np.array([1.0, 3.0, 8.0])
+        # sinc_averaged exceeds ICNIRP sinc_local limit (~31.5 W/m^2 at 28 GHz GP)
+        result.sinc_averaged = np.array([10.0, 20.0, 50.0])
+        result.sinc = np.array([15.0, 25.0, 60.0])
+        result.sab_1cm2_averaged = None
+        result.sar_wb = None
+        user.result = result
+        scene = MagicMock()
+        scene.freq_hz = 28e9
+        stats = _user_stats(user, scene)
+        # sinc_local check should be present and should fail (50 > ~31.5)
+        sinc_checks = [c for c in stats["compliance"]["checks"] if "S_inc" in c["label"]]
+        assert len(sinc_checks) >= 1, "sinc_local check missing from MIMO compliance"
+        sinc_local_check = [c for c in sinc_checks if "local" in c["label"]]
+        assert len(sinc_local_check) == 1
+        assert sinc_local_check[0]["pass"] is False
         assert stats["compliance"]["overall_pass"] is False
 
     def test_distribution_stats_without_body(self):
@@ -418,6 +467,10 @@ class TestUserStats:
         result.peak_sab = 8.0
         result.sab = np.array([0.0, 8.0, 3.0, 0.0, 1.0])
         result.sab_averaged = None
+        result.sinc = None
+        result.sinc_averaged = None
+        result.sab_1cm2_averaged = None
+        result.sar_wb = None
         user.result = result
         # body remains None (default)
         scene = MagicMock()
