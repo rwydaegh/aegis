@@ -3,6 +3,7 @@ import { useSimulationStore } from '../stores/simulation';
 import { useSceneStore } from '../stores/scene';
 import { useEnvironmentStore } from '../stores/environment';
 import { useUIStore } from '../stores/ui';
+import { useCoverageStore } from '../stores/coverage';
 import type { ScenarioEntry } from '../api/types';
 
 export function useScenario() {
@@ -41,7 +42,15 @@ export function useScenario() {
         }
       }
 
-      // 3. Set UI state
+      // 3. Coverage globe: enable overlay and fetch data
+      if (name === 'coverage_globe') {
+        useCoverageStore.getState().setEnabled(true)
+        useCoverageStore.getState().fetch()
+      } else {
+        useCoverageStore.getState().setEnabled(false)
+      }
+
+      // 4. Set UI state
       ui.setActiveScenario(name);
       ui.setWelcomeDismissed(true);
 
