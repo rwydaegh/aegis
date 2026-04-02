@@ -1631,11 +1631,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                 data[key] = np.asarray(arr).tolist()
 
         if stats:
-            data["stats"] = {
-                k: v
-                for k, v in stats.items()
-                if k not in ("arrays", "path_viz")
-            }
+            data["stats"] = {k: v for k, v in stats.items() if k not in ("arrays", "path_viz")}
 
         resp = Response(
             json.dumps(data, allow_nan=False, default=str),
