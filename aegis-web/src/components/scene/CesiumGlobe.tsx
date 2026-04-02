@@ -12,10 +12,12 @@ import {
 import { useSceneStore } from '@/stores/scene'
 import { useEnvironmentStore } from '@/stores/environment'
 import { useCoverageStore } from '@/stores/coverage'
+import { addCoverageOverlay, type CoverageOverlayHandle } from './CoverageOverlay3D'
 
 export function CesiumGlobe() {
   const viewerRef = useRef<Viewer | null>(null)
   const tickListenerRef = useRef<(() => void) | null>(null)
+  const overlayRef = useRef<CoverageOverlayHandle | null>(null)
   const capabilities = useSceneStore(s => s.capabilities)
   const envSource = useEnvironmentStore(s => s.source)
 
@@ -85,6 +87,55 @@ export function CesiumGlobe() {
       }
     }
   }, [])
+
+  // Subscribe to coverage store and add/update primitives
+  useEffect(() => {
+    if (envSource !== 'cesium') return
+
+    const unsub = useCoverageStore.subscribe((state, prevState) => {
+      const viewer = viewerRef.current
+      if (!viewer || viewer.isDestroyed()) return
+
+      // Coverage data just loaded
+      if (state.loaded && !prevState.loaded && state.siteLats && state.siteLons && state.siteOpIndices) {
+        if (overlayRef.current) overlayRef.current.destroy()
+        overlayRef.current = addCoverageOverlay(
+          viewer,
+          state.siteLats,
+          state.siteLons,
+          state.siteOpIndices,
+          state.siteCount,
+          state.regions,
+        )
+      }
+
+      // Visibility toggled
+      if (state.enabled !== prevState.enabled && overlayRef.current) {
+        overlayRef.current.setVisible(state.enabled)
+      }
+    })
+
+    // If data is already loaded when we mount, add overlay immediately
+    const state = useCoverageStore.getState()
+    if (state.loaded && state.siteLats && state.siteLons && state.siteOpIndices && viewerRef.current) {
+      overlayRef.current = addCoverageOverlay(
+        viewerRef.current,
+        state.siteLats,
+        state.siteLons,
+        state.siteOpIndices,
+        state.siteCount,
+        state.regions,
+      )
+    }
+
+    return () => {
+      unsub()
+      if (overlayRef.current) {
+        overlayRef.current.destroy()
+        overlayRef.current = null
+      }
+    }
+  }, [envSource])
 
   // Only render for cesium source
   if (envSource !== 'cesium') return null
