@@ -31,6 +31,13 @@ interface SimulationStore {
   bodyOffset: ScenePos
   bodyRotationY: number
 
+  // LSP heatmap
+  lspHeatmapVisible: boolean
+  lspHeatmapParam: string
+  lspHeatmapData: number[][] | null
+  lspHeatmapBounds: [number, number, number, number]
+  lspHeatmapRange: [number, number]
+
   // Results
   sabArray: Float32Array | null
   sabAveragedArray: Float32Array | null
@@ -65,6 +72,9 @@ interface SimulationStore {
   setEnabledQuantities: (q: Set<QuantityKey>) => void
   toggleQuantity: (key: QuantityKey) => void
   setDisplayQuantity: (key: QuantityKey) => void
+  setLSPHeatmapVisible: (v: boolean) => void
+  setLSPHeatmapParam: (p: string) => void
+  setLSPHeatmapData: (data: number[][] | null, bounds: [number, number, number, number], range: [number, number]) => void
   setCompliance: (report: ComplianceInfo) => void
   setResults: (sab: Float32Array, stats: DosimetryStats, extras?: {
     sabAveraged?: Float32Array; sinc?: Float32Array; sincAveraged?: Float32Array; sab1cm2Averaged?: Float32Array
@@ -88,6 +98,11 @@ export const useSimulationStore = create<SimulationStore>((set) => ({
   stochasticSeed: 42,
   bodyOffset: [0, 0, 0],
   bodyRotationY: 0,
+  lspHeatmapVisible: false,
+  lspHeatmapParam: 'SF_dB',
+  lspHeatmapData: null,
+  lspHeatmapBounds: [-100, 100, -100, 100],
+  lspHeatmapRange: [0, 1],
   sabArray: null,
   sabAveragedArray: null,
   sincArray: null,
@@ -171,6 +186,9 @@ export const useSimulationStore = create<SimulationStore>((set) => ({
     return { enabledQuantities: next }
   }),
   setDisplayQuantity: (key) => set({ displayQuantity: key }),
+  setLSPHeatmapVisible: (v) => set({ lspHeatmapVisible: v }),
+  setLSPHeatmapParam: (p) => set({ lspHeatmapParam: p }),
+  setLSPHeatmapData: (data, bounds, range) => set({ lspHeatmapData: data, lspHeatmapBounds: bounds, lspHeatmapRange: range }),
   setCompliance: (report) => set({ compliance: report }),
   setResults: (sab, stats, extras) => set({
     sabArray: sab,

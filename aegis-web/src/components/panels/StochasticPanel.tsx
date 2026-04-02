@@ -60,6 +60,10 @@ export default function StochasticPanel() {
   const setOverrides = useSimulationStore(s => s.setStochasticOverrides)
   const seed = useSimulationStore(s => s.stochasticSeed)
   const setSeed = useSimulationStore(s => s.setStochasticSeed)
+  const lspHeatmapVisible = useSimulationStore(s => s.lspHeatmapVisible)
+  const setLSPHeatmapVisible = useSimulationStore(s => s.setLSPHeatmapVisible)
+  const lspHeatmapParam = useSimulationStore(s => s.lspHeatmapParam)
+  const setLSPHeatmapParam = useSimulationStore(s => s.setLSPHeatmapParam)
 
   const [allPresets, setAllPresets] = useState<PresetInfo[]>([])
   const [presetParams, setPresetParams] = useState<Record<string, number | string>>({})
@@ -189,6 +193,26 @@ export default function StochasticPanel() {
           >
             Reset to preset defaults
           </button>
+
+          <hr className="my-3 border-border" />
+
+          <label className="flex items-center gap-2 text-xs text-foreground">
+            <input type="checkbox" checked={lspHeatmapVisible}
+              onChange={e => setLSPHeatmapVisible(e.target.checked)} />
+            Show LSP heatmap
+          </label>
+
+          {lspHeatmapVisible && (
+            <>
+              <label className={labelClass}>LSP parameter</label>
+              <select className={selectClass} value={lspHeatmapParam}
+                onChange={e => setLSPHeatmapParam(e.target.value)}>
+                {['SF_dB', 'KF_dB', 'DS', 'ASA_deg', 'ASD_deg', 'ESA_deg', 'ESD_deg', 'XPR_dB'].map(p => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+            </>
+          )}
         </>
       )}
     </div>

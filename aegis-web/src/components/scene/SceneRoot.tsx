@@ -32,6 +32,7 @@ import SmartphoneModel from './SmartphoneModel'
 import BaseStationMarkers from './BaseStationMarkers'
 import { EnvironmentTerrain } from './EnvironmentTerrain'
 import { CoverageOverlay } from './CoverageOverlay'
+import { LSPHeatmap } from './LSPHeatmap'
 import { CoverageGlobe } from './CoverageGlobe'
 import { cameraState } from '@/lib/cameraState'
 
@@ -391,6 +392,7 @@ export default function SceneRoot() {
       <EnvironmentTerrain />
       <BaseStationMarkers />
       <CoverageOverlay />
+      <LSPHeatmap />
       <CoverageGlobe />
       <DosimetryController />
       <MIMODosimetryController />
