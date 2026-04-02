@@ -216,7 +216,7 @@ class BaseStations:
     
     def _apply_date_filter(self, df: pd.DataFrame) -> pd.DataFrame:
         """Filter antennas by approval date. Keeps records with approvaldate <= self.date."""
-        if 'approvaldate' not in df.columns or self.date is None:
+        if 'approvaldate' not in df.columns or self.date is None or df['approvaldate'].isna().all():
             return df
         df['approvaldate'] = pd.to_datetime(df['approvaldate'], format='ISO8601', errors='coerce', utc=True)
         cutoff_date = pd.to_datetime(self.date, format='ISO8601', errors='coerce', utc=True)
@@ -227,11 +227,14 @@ class BaseStations:
         if 'site' not in df.columns or 'wkt' not in df.columns:
             print("Warning: Cannot perform duplicate removal as 'site' or 'wkt' column is missing.")
             return df
-        
+
         def get_site_label(site_dict):
             return f"SITE({site_dict['label']})" if isinstance(site_dict, dict) and 'label' in site_dict else None
-        
+
         df["SiteCode"] = df["site"].apply(get_site_label)
+        if 'approvaldate' not in df.columns or df['approvaldate'].isna().all():
+            print("No approval dates available, skipping site dedup by date.")
+            return df
         latest_dates = df.groupby('SiteCode')['approvaldate'].transform('max')
         original_count = len(df)
         df = df[df['approvaldate'] == latest_dates]

@@ -11,7 +11,9 @@
   "hungary": "basestationLib.Countries.Hungary.basestations",
   "austria": "basestationLib.Countries.Austria.basestations",
   "denmark": "basestationLib.Countries.Denmark.basestations",
+  "canada": "basestationLib.Countries.Canada.basestations",
   "germany": "basestationLib.Countries.Germany.basestations",
   "australia": "basestationLib.Countries.Australia.basestations",
+  "new_zealand": "basestationLib.Countries.NewZealand.basestations",
   "other": "basestationLib.OpenCellID.basestations"
 }
