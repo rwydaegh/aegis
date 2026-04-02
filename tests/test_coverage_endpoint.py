@@ -6,6 +6,9 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import pytest
+
+pytest.importorskip("flask")
 
 
 def _make_test_parquet(tmp_path: Path, region: str, n: int = 100) -> Path:
