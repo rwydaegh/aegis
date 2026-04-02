@@ -91,7 +91,12 @@ export default function ExportPanel() {
       })
     } catch {
       // Fallback to canvas-only screenshot (captures 3D viewport only)
-      const canvas = document.querySelector('canvas')
+      // Select the largest canvas to avoid capturing small chart canvases (e.g. compliance heatmap)
+      const allCanvases = Array.from(document.querySelectorAll('canvas'))
+      const canvas = allCanvases.reduce<HTMLCanvasElement | null>((best, c) => {
+        if (!best) return c
+        return (c.width * c.height > best.width * best.height) ? c : best
+      }, null)
       if (!canvas) {
         useNotificationStore.getState().addNotification('error', 'No canvas element found for screenshot')
         return
