@@ -32,6 +32,7 @@ import SmartphoneModel from './SmartphoneModel'
 import BaseStationMarkers from './BaseStationMarkers'
 import { EnvironmentTerrain } from './EnvironmentTerrain'
 import { CoverageOverlay } from './CoverageOverlay'
+import { CoverageGlobe } from './CoverageGlobe'
 import { cameraState } from '@/lib/cameraState'
 
 function GroundPlane() {
@@ -390,6 +391,7 @@ export default function SceneRoot() {
       <EnvironmentTerrain />
       <BaseStationMarkers />
       <CoverageOverlay />
+      <CoverageGlobe />
       <DosimetryController />
       <MIMODosimetryController />
       <MIMOKeyboardController />
