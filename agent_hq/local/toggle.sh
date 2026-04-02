@@ -32,8 +32,8 @@ enable_local() {
     # Remove existing aegis-agent entries, then add fresh ones
     (crontab -l 2>/dev/null | grep -v "$CRON_MARKER" || true; cat <<CRON
 0 */2 * * * ${REPO_DIR}/agent_hq/local/qa-agent.sh ${CRON_MARKER}-qa
-15 */3 * * * ${REPO_DIR}/agent_hq/local/feature-agent.sh ${CRON_MARKER}-feature
 30 */2 * * * ${REPO_DIR}/agent_hq/local/code-review-agent.sh ${CRON_MARKER}-code-review
+45 */3 * * * ${REPO_DIR}/agent_hq/local/feature-agent.sh ${CRON_MARKER}-feature
 CRON
     ) | crontab -
     echo "Local cron: ENABLED"

@@ -2,7 +2,7 @@ name: Feature agent
 
 on:
   schedule:
-    - cron: "15 */3 * * *"  # Every 3 hours, offset 15min from other agents
+    - cron: "45 */3 * * *"  # Every 3 hours, offset 45min so QA+review finish first
   workflow_dispatch: {}
 
 concurrency:
