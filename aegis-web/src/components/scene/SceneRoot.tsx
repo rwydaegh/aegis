@@ -433,12 +433,11 @@ export default function SceneRoot() {
             toneMapping: THREE.ACESFilmicToneMapping,
             preserveDrawingBuffer: true,
             logarithmicDepthBuffer: true,
-            alpha: isCesiumMode,
+            alpha: true,
           }}
           style={{
             position: 'absolute',
             inset: 0,
-            background: isCesiumMode ? 'transparent' : undefined,
           }}
           tabIndex={0}
         >
