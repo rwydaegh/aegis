@@ -3,7 +3,7 @@ import * as Sentry from '@sentry/react'
 import { fetchWithRetry, parseJsonHeader } from '@/api/client'
 import type { ScenePos } from '@/api/coordinates'
 
-export type EnvironmentSource = 'none' | 'voxels' | 'osm' | '3dtiles'
+export type EnvironmentSource = 'none' | 'voxels' | 'osm' | '3dtiles' | 'cesium'
 
 interface OsmOptions {
   defaultBuildingHeight: number

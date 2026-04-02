@@ -558,7 +558,7 @@ DEFAULTS: dict = {
             "webState": {
                 "antennaPos": None,
                 "environment": {
-                    "source": "3dtiles",
+                    "source": "cesium",
                     "lat": 0,
                     "lon": 0,
                 },
