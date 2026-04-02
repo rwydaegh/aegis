@@ -50,6 +50,10 @@ def _mock_compute(scene, bodies, level=7, generate_paths_fn=None, precoder_type=
         result.peak_sab = 10.0
         result.sab = np.ones(10, dtype=np.float32) * 10.0
         result.sab_averaged = np.ones(10, dtype=np.float32) * 8.0
+        result.sinc = None
+        result.sinc_averaged = None
+        result.sab_1cm2_averaged = None
+        result.sar_wb = None
         user.result = result
     return {
         "user_ids": [u.config.user_id for u in scene.users],
@@ -249,6 +253,10 @@ def _mock_compute_varied_power(scene, bodies, level=7, generate_paths_fn=None, p
         result.peak_sab = 10.0
         result.sab = np.ones(10, dtype=np.float32) * 10.0
         result.sab_averaged = None
+        result.sinc = None
+        result.sinc_averaged = None
+        result.sab_1cm2_averaged = None
+        result.sar_wb = None
         user.result = result
     return {
         "user_ids": [u.config.user_id for u in scene.users],
