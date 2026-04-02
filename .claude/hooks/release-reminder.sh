@@ -16,7 +16,7 @@ if [[ "$CMD" == *"git commit"* ]] || [[ "$CMD" == *"git push"* ]]; then
 {
   "hookSpecificOutput": {
     "hookEventName": "PreToolUse",
-    "additionalContext": "RELEASE REMINDER: ${COUNT} commits since ${LAST_TAG}. Consider suggesting a patch release to the user. Patch releases (e.g. v0.7.1) should happen after bug fixes, small features, or meaningful corrections. Do not let commits pile up."
+    "additionalContext": "RELEASE REMINDER: ${COUNT} commits since ${LAST_TAG}. Consider suggesting a patch release to the user. Patch releases (e.g. v0.7.1) should happen after bug fixes, small features, or meaningful corrections. Do not let commits pile up. IMPORTANT: When tagging a release, also run 'bash .claude/hooks/update-release-metadata.sh' to update README.md (bibtex version, test count badge) and CITATION.cff (version, date-released). Commit these metadata updates before or alongside the tag."
   }
 }
 ENDJSON
