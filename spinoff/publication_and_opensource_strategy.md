@@ -106,11 +106,12 @@ AEGIS generates at least 5-6 distinct publishable contributions. Each serves a d
 
 **Content:** The core theory. Pseudo-Brewster compensation, the geometric absorption law (Sab = Sinc * T0 * ReLU[...]), the Cauchy formula generalization, validation against Mie theory and published FDTD data. The monograph sections 4-8 condensed into 12-15 pages.
 
-**Target venue:** IEEE Transactions on Antennas and Propagation (TAP)
+**Target venue:** Physics in Medicine and Biology (PMB) or IEEE Trans. Electromagn. Compat. (EMC)
 
-**Why TAP:** TAP is the most respected journal in the antenna/propagation community (IF ~4.5-5.0) and the venue the standards community reads. Note: the key dosimetry papers Robin cites actually landed elsewhere: Kodera (2024) in IEEE Trans. Microwave Theory and Techniques, Li (2019) in Physics in Medicine and Biology, Flintoft (2014) in IEEE Trans. Electromagnetic Compatibility. This means TAP is actually an open lane for geometric dosimetry, no direct competition in-venue. A TAP paper becomes the citation that everyone in IEC TC 106 and IEEE C95 references.
+**Why PMB/EMC:** The monograph bibliography tells the real story. The dosimetry community publishes in PMB (7 refs), EMC (7 refs), and Bioelectromagnetics (3 refs), not in TAP (4 refs, mostly antenna-side). Kodera 2024 is in MTT, Li 2019 is in PMB, Flintoft 2014 is in EMC. The reviewers and readers who matter for dosimetry are in PMB and EMC. TAP is an option but less natural.
 
-**Alternative:** Physical Medicine and Biology (where Kodera 2024 appeared). More medically oriented readership, but strong in dosimetry.
+**Alternative 1:** IEEE TAP. Less dosimetry traffic, but prestigious and standards-adjacent. An open lane with no direct competition in-venue.
+**Alternative 2:** IEEE Trans. Microw. Theory Tech. (MTT). Where Kodera 2024 landed. Higher IF than EMC.
 
 **Review timeline:** TAP typically takes 3-6 months for first decision. Plan accordingly.
 
@@ -128,7 +129,7 @@ AEGIS generates at least 5-6 distinct publishable contributions. Each serves a d
 
 **Why TWC/JSAC:** The MIMO/beamforming community reads TWC, not TAP. Hochwald (2014) and Ying (2015-2017) published their SAR matrix work in TWC. Robin's exposure operator Q is a direct advance on their work. It needs to be in the same venue.
 
-**The JSAC Special Issue angle:** The current JSAC SI on "Digital Twins for Wireless Networks" has a May 1, 2026, submission deadline. This is too soon given the patent timing constraint (unless the patent is filed in the next 4 weeks, which is unlikely). However, JSAC regularly runs SIs on related topics (MIMO, 6G, network optimization). The AEGIS digital-twin exposure monitoring story fits naturally. Watch for future SIs with deadlines in late 2026 or 2027.
+**The JSAC Special Issue angle:** The JSAC SI on "Digital Twins for Wireless Networks" has a May 1, 2026, submission deadline. This IS viable despite the patent not being filed yet. Submitting to a journal is confidential peer review, NOT a public disclosure. The paper only becomes prior art when published (~September 2026). The patent application can be filed June-July, before publication. Timeline: submit May 1 (confidential) -> patent filed June/July (priority date) -> paper published ~September (after priority date, safe). This is the highest-impact venue option and should be seriously considered. JSAC IF is ~13-16, far above TAP/PMB/EMC. The digital twin framing fits AEGIS naturally: real-time exposure digital twin for wireless networks.
 
 **Strategic value:** This paper positions AEGIS in the wireless communications community, not just the dosimetry community. It opens doors to Ericsson, Nokia, and Qualcomm researchers who work on beamforming. It directly supports the "exposure-aware beamforming" product pitch.
 
@@ -578,16 +579,19 @@ BioEM 2027 / EuCAP 2027 presentations
 - If the terms are unacceptable, the alternative is declining the patent and relying on trade secrets + speed of execution. Not ideal, but not fatal.
 - The IDF states "no external funding" for the invention. This simplifies the IP ownership question (no grant conditions to navigate).
 
-### Risk 6: The JSAC SI deadline (May 1, 2026) is too soon
+### Risk 6: The JSAC SI deadline (May 1, 2026) is tight
 
-**Severity:** Low (it is one venue among many)
-**Probability:** Certain (the patent will not be filed by May 1)
+**Severity:** Medium (JSAC SI is the highest-impact option, IF ~13-16)
+**Probability:** Low-Medium (29 days to write, but monograph has the content)
 
-**The scenario:** The current JSAC SI on "Digital Twins for Wireless Networks" has a May 1, 2026, submission deadline. Submitting before the patent is filed would destroy novelty.
+**The scenario:** The JSAC SI on "Digital Twins for Wireless Networks" has a May 1, 2026, deadline. The patent will not be filed by May 1. However, journal submission is confidential peer review, NOT a public disclosure. The paper only becomes public upon publication (~September). The patent can be filed June-July, before publication.
 
-**Mitigation:**
-- Skip this specific SI. JSAC runs multiple SIs per year. Watch for future SIs on MIMO, 6G exposure, network optimization. The coherent MIMO paper (Paper 2) can target a future JSAC SI or go to TWC instead.
-- The JSAC SI topic (digital twins) is only tangentially related to AEGIS anyway. TWC or TAP are better homes for the core contributions.
+**The real risk:** Writing a JSAC-quality paper in 29 days. The monograph contains the theory and the validation data exists, but condensing it into a focused 12-15 page JSAC paper with the right "digital twin" framing is still significant work.
+
+**Recommendation:**
+- Seriously consider submitting. JSAC IF (~13-16) dwarfs TAP (~4.5), PMB (~3.5), and EMC (~2.0). A JSAC publication would be the strongest possible line on any grant application or investor deck.
+- The digital twin angle is a natural fit: AEGIS as real-time exposure digital twin for wireless network planning.
+- If the May 1 deadline is too tight, watch for the next relevant JSAC SI (they run multiple per year).
 
 ### Risk matrix summary
 
@@ -596,6 +600,7 @@ BioEM 2027 / EuCAP 2027 presentations
 | Patent filed after thesis | Critical | Medium-High | Push TechTransfer NOW. Set July 1 internal deadline. Delay defense if needed. |
 | Competitor reimplements after publication | Medium | Medium | Patent + trade secrets on implementation + speed of execution + standards influence |
 | No publications, no credibility | High | Low | Submit Paper 1 immediately after patent filing |
+| JSAC SI deadline tight (May 1) | Medium | Low-Medium | Submit if feasible. Journal submission is confidential, patent can be filed before publication. |
 | Wrong open-source license | Medium-High | Low | Stay closed. Revisit at year 2 with data. |
 | TechTransfer takes bad terms | Medium | Medium | Ask about Fast Lane. Decline and use trade secrets if terms are unacceptable. |
 | JSAC SI missed | Low | Certain | Skip it. Target TWC or future JSAC SI. |
