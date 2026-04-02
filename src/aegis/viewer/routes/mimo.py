@@ -118,19 +118,42 @@ def _build_scene(params: dict, cache: dict) -> tuple[MIMOScene | None, Response 
 def _user_stats(user: UserState, scene: MIMOScene) -> dict:
     """Build per-user stats dict from a computed UserState."""
     result = user.result
+    body = user.body
     stats: dict = {
         "user_id": user.config.user_id,
         "phantom": user.config.phantom_name,
     }
     if result is not None:
+        sab_arr = result.sab
         p_abs = float(result.p_abs)
         stats["p_abs"] = p_abs
         stats["p_abs_mw"] = p_abs * 1e3
         stats["peak_sab"] = float(result.peak_sab)
+        stats["n_illuminated"] = int(np.sum(sab_arr > 0))
+        stats["n_triangles"] = int(sab_arr.size)
+        if body is not None:
+            stats["n_triangles"] = body.n_triangles
         peak_sab_averaged = None
         if hasattr(result, "sab_averaged") and result.sab_averaged is not None:
             peak_sab_averaged = float(np.max(result.sab_averaged))
             stats["peak_sab_averaged"] = peak_sab_averaged
+
+        # Exposure distribution statistics (matches single-user compute route)
+        if sab_arr.size > 0:
+            n_illum = int(np.sum(sab_arr > 0))
+            sab_nonzero = sab_arr[sab_arr > 0]
+            stats["distribution"] = {
+                "mean": float(np.mean(sab_arr)),
+                "median": float(np.median(sab_arr)),
+                "p95": float(np.percentile(sab_arr, 95)),
+                "p99": float(np.percentile(sab_arr, 99)),
+                "illuminated_fraction": n_illum / sab_arr.size,
+                "illuminated_area_cm2": float(np.sum(body.areas[sab_arr > 0]) * 1e4)
+                if body is not None and hasattr(body, "areas") and body.areas is not None
+                else None,
+                "illuminated_mean": float(np.mean(sab_nonzero)) if sab_nonzero.size > 0 else 0.0,
+                "illuminated_p50": float(np.median(sab_nonzero)) if sab_nonzero.size > 0 else 0.0,
+            }
 
         # ICNIRP compliance (matches single-user compute route)
         freq_hz = scene.freq_hz
