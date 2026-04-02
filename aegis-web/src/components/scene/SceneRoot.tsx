@@ -22,7 +22,6 @@ import SceneGeometry from './SceneGeometry'
 import Environment from './Environment'
 import FollowCamera from './FollowCamera'
 import { EnvironmentOSM } from './EnvironmentOSM'
-import { Environment3DTiles } from './Environment3DTiles'
 import { CesiumGlobe } from './CesiumGlobe'
 import { useEnvironmentStore } from '@/stores/environment'
 import { useMIMOStore } from '@/stores/mimo'
@@ -377,7 +376,6 @@ export default function SceneRoot() {
         </>
       )}
       {envSource === 'osm' && <EnvironmentOSM />}
-      {envSource === '3dtiles' && <Environment3DTiles><></></Environment3DTiles>}
       {bodyMeshVisible && (mimoEnabled ? (
         <MIMOScene />
       ) : (
