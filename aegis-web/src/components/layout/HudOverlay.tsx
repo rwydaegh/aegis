@@ -6,6 +6,7 @@ import NotificationToast from '@/components/hud/NotificationToast'
 import TouchControls from '@/components/hud/TouchControls'
 import KeyboardHelp from '@/components/hud/KeyboardHelp'
 import { AntennaHint } from '@/components/hud/AntennaHint'
+import { CoverageHud } from '@/components/hud/CoverageHud'
 import { WelcomeOverlay } from '@/components/hud/WelcomeOverlay'
 import { useUIStore } from '@/stores/ui'
 import { useIsMobile } from '@/hooks/useIsMobile'
@@ -51,6 +52,7 @@ export default function HudOverlay() {
 
       {/* Antenna placement hint - shown after welcome dismissed, before antenna placed */}
       <AntennaHint />
+      <CoverageHud />
     </div>
   )
 }
