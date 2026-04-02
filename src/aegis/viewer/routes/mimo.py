@@ -155,47 +155,13 @@ def _user_stats(user: UserState, scene: MIMOScene) -> dict:
                 "illuminated_p50": float(np.median(sab_nonzero)) if sab_nonzero.size > 0 else 0.0,
             }
 
-        # ICNIRP compliance (matches single-user compute route)
+        # ICNIRP compliance via centralized kwargs (prevents forgetting params)
         freq_hz = scene.freq_hz
-        sab_for_compliance = peak_sab_averaged
-        if sab_for_compliance is None and result.sab.size > 0:
-            sab_for_compliance = float(np.max(result.sab))
         scenario = ExposureScenario.GENERAL_PUBLIC
-
-        # Extract sinc and sab_1cm2 from result (available from engine._build_result)
-        peak_sinc_averaged = (
-            float(np.max(result.sinc_averaged))
-            if result.sinc_averaged is not None and result.sinc_averaged.size > 0
-            else None
-        )
-        peak_sinc_local = (
-            float(np.max(result.sinc))
-            if result.sinc is not None and result.sinc.size > 0
-            else None
-        )
-        sinc_for_compliance = peak_sinc_averaged if peak_sinc_averaged is not None else peak_sinc_local
-
-        # Whole-body average S_inc (matches single-user compute route)
-        sinc_wb = None
-        if result.sinc is not None and body is not None and hasattr(body, "areas") and body.areas is not None:
-            sinc_wb = float(np.sum(result.sinc * body.areas) / np.sum(body.areas))
-
-        peak_sab_1cm2 = (
-            float(np.max(result.sab_1cm2_averaged))
-            if result.sab_1cm2_averaged is not None and result.sab_1cm2_averaged.size > 0
-            else None
-        )
+        ckw = result.compliance_kwargs(body=body)
 
         try:
-            compliance = evaluate_compliance(
-                scenario=scenario,
-                freq_hz=freq_hz,
-                sab_4cm2=sab_for_compliance,
-                sinc_local=sinc_for_compliance,
-                sinc_whole_body=sinc_wb,
-                sab_1cm2=peak_sab_1cm2,
-                sar_wb=result.sar_wb,
-            )
+            compliance = evaluate_compliance(scenario=scenario, freq_hz=freq_hz, **ckw)
         except (ValueError, TypeError):
             compliance = None
 

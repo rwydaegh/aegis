@@ -111,14 +111,15 @@ def _draw_compliance_summary(ax: Any, result: DosimetryResult, body_mass: float 
         sar_wb = result.p_abs / body_mass
         lines.append(f"SAR_wb: {sar_wb * 1e3:.2f} mW/kg")
 
-    # Compliance evaluation via the new module
+    # Compliance evaluation via centralized kwargs
     freq_hz = result.freq_hz or DEFAULT_FREQ_HZ
-    sab_4cm2_val = result.peak_sab_averaged if result.peak_sab_averaged is not None else result.peak_sab
+    ckw = result.compliance_kwargs()
+    if sar_wb is not None:
+        ckw["sar_wb"] = sar_wb  # Override with body_mass-derived SAR if available
     compliance = evaluate_compliance(
         scenario=ExposureScenario.GENERAL_PUBLIC,
         freq_hz=freq_hz,
-        sab_4cm2=sab_4cm2_val,
-        sar_wb=sar_wb,
+        **ckw,
     )
 
     lines.append("")

@@ -277,6 +277,34 @@ class TestBuildScene:
 # ---------------------------------------------------------------------------
 
 
+def _add_compliance_kwargs(mock_result):
+    """Add a working compliance_kwargs method to a MagicMock result."""
+    def _ckw(*, body=None):
+        r = mock_result
+        peak_4 = None
+        if r.sab_averaged is not None and hasattr(r.sab_averaged, "size") and r.sab_averaged.size > 0:
+            peak_4 = float(np.max(r.sab_averaged))
+        elif r.sab is not None and hasattr(r.sab, "size") and r.sab.size > 0:
+            peak_4 = float(np.max(r.sab))
+        peak_1 = None
+        if r.sab_1cm2_averaged is not None and hasattr(r.sab_1cm2_averaged, "size") and r.sab_1cm2_averaged.size > 0:
+            peak_1 = float(np.max(r.sab_1cm2_averaged))
+        sinc_peak = None
+        if r.sinc_averaged is not None and hasattr(r.sinc_averaged, "size") and r.sinc_averaged.size > 0:
+            sinc_peak = float(np.max(r.sinc_averaged))
+        elif r.sinc is not None and hasattr(r.sinc, "size") and r.sinc.size > 0:
+            sinc_peak = float(np.max(r.sinc))
+        sinc_wb = None
+        if body is not None and r.sinc is not None and hasattr(r.sinc, "size") and r.sinc.size > 0:
+            sinc_wb = float(np.sum(r.sinc * body.areas) / np.sum(body.areas))
+        return {
+            "sab_4cm2": peak_4, "sab_1cm2": peak_1, "sar_wb": r.sar_wb,
+            "sinc_local": sinc_peak, "sinc_whole_body": sinc_wb,
+        }
+    mock_result.compliance_kwargs = _ckw
+    return mock_result
+
+
 class TestUserStats:
     def _make_user_state(self, uid="u1", phantom="thelonious"):
         cfg = UserConfig(
@@ -298,7 +326,7 @@ class TestUserStats:
 
     def test_with_result(self):
         user = self._make_user_state()
-        result = MagicMock()
+        result = _add_compliance_kwargs(MagicMock())
         result.p_abs = 0.005
         result.peak_sab = 12.3
         result.sab = np.array([0.0, 5.0, 12.3])
@@ -324,7 +352,7 @@ class TestUserStats:
     def test_with_result_and_body(self):
         """When body is present, illuminated_area_cm2 should be computed."""
         user = self._make_user_state()
-        result = MagicMock()
+        result = _add_compliance_kwargs(MagicMock())
         result.p_abs = 0.01
         result.peak_sab = 5.0
         result.sab = np.array([0.0, 5.0, 3.0, 0.0])
@@ -349,7 +377,7 @@ class TestUserStats:
     def test_all_zero_sab(self):
         """When all sab values are zero, illuminated stats should handle it."""
         user = self._make_user_state()
-        result = MagicMock()
+        result = _add_compliance_kwargs(MagicMock())
         result.p_abs = 0.0
         result.peak_sab = 0.0
         result.sab = np.array([0.0, 0.0, 0.0])
@@ -371,7 +399,7 @@ class TestUserStats:
     def test_sub_6ghz_compliance_vacuously_none(self):
         """At sub-6 GHz, sab_4cm2 has no ICNIRP limit, so compliance has no checks."""
         user = self._make_user_state()
-        result = MagicMock()
+        result = _add_compliance_kwargs(MagicMock())
         result.p_abs = 0.005
         result.peak_sab = 10.0
         result.sab = np.array([0.0, 5.0, 10.0])
@@ -392,7 +420,7 @@ class TestUserStats:
     def test_sab_averaged_none_falls_back_to_raw_peak(self):
         """When sab_averaged is None, compliance uses raw sab peak."""
         user = self._make_user_state()
-        result = MagicMock()
+        result = _add_compliance_kwargs(MagicMock())
         result.p_abs = 0.01
         result.peak_sab = 15.0
         result.sab = np.array([0.0, 15.0, 5.0])
@@ -417,7 +445,7 @@ class TestUserStats:
     def test_sab_averaged_none_exceeding_limit_fails(self):
         """Raw sab peak exceeding ICNIRP limit should fail compliance."""
         user = self._make_user_state()
-        result = MagicMock()
+        result = _add_compliance_kwargs(MagicMock())
         result.p_abs = 0.05
         result.peak_sab = 25.0
         result.sab = np.array([0.0, 25.0, 10.0])
@@ -437,7 +465,7 @@ class TestUserStats:
     def test_sinc_local_included_in_compliance(self):
         """MIMO compliance should check sinc_local, not just sab_4cm2."""
         user = self._make_user_state()
-        result = MagicMock()
+        result = _add_compliance_kwargs(MagicMock())
         result.p_abs = 0.01
         result.peak_sab = 10.0
         result.sab = np.array([0.0, 5.0, 10.0])
@@ -462,7 +490,7 @@ class TestUserStats:
     def test_sinc_whole_body_included_in_compliance(self):
         """MIMO compliance should check sinc_whole_body, matching single-user route."""
         user = self._make_user_state()
-        result = MagicMock()
+        result = _add_compliance_kwargs(MagicMock())
         result.p_abs = 0.01
         result.peak_sab = 10.0
         result.sab = np.array([0.0, 5.0, 10.0])
@@ -491,7 +519,7 @@ class TestUserStats:
     def test_distribution_stats_without_body(self):
         """Distribution stats should work when body is None (no illuminated_area_cm2)."""
         user = self._make_user_state()
-        result = MagicMock()
+        result = _add_compliance_kwargs(MagicMock())
         result.p_abs = 0.01
         result.peak_sab = 8.0
         result.sab = np.array([0.0, 8.0, 3.0, 0.0, 1.0])

@@ -15,7 +15,6 @@ import numpy as np
 from aegis.defaults import NUMERICAL_FLOOR
 
 if TYPE_CHECKING:
-    from aegis.compliance import ComplianceResult, ExposureScenario
     from aegis.geometry.mesh import BodyMesh
 
 
@@ -221,34 +220,14 @@ class DosimetryResult:
             freq_hz=self.freq_hz,
         )
 
-    def evaluate_compliance(
-        self,
-        scenario: ExposureScenario | None = None,
-    ) -> ComplianceResult:
-        """Run a full ICNIRP 2020 compliance evaluation on this result.
-
-        Populates all available checks from the result fields. Requires
-        ``freq_hz`` to be set. Uses general public scenario by default.
-
-        When spatial averaging was disabled (sab_averaged is None), falls back
-        to the raw per-triangle peak as a conservative upper bound for the
-        4 cm^2 check. Similarly uses raw sinc peak if sinc_averaged is None.
+    def compliance_kwargs(self, *, body=None) -> dict:
+        """Extract all compliance quantities as kwargs for evaluate_compliance.
 
         Parameters
         ----------
-        scenario : ExposureScenario or None
-            Defaults to general public.
+        body : BodyMesh or None
+            If provided, computes sinc_whole_body (area-weighted mean S_inc).
         """
-        from aegis.compliance import ExposureScenario as _ES
-        from aegis.compliance import evaluate_compliance as _eval
-
-        if self.freq_hz is None:
-            raise ValueError("freq_hz must be set on DosimetryResult for compliance evaluation")
-
-        if scenario is None:
-            scenario = _ES.GENERAL_PUBLIC
-
-        # Prefer spatially averaged values, fall back to raw peaks (conservative)
         peak_4 = self.peak_sab_averaged
         if peak_4 is None and self.sab.size > 0:
             peak_4 = self.peak_sab
@@ -267,14 +246,30 @@ class DosimetryResult:
         if sinc_peak is None and self.sinc is not None and self.sinc.size > 0:
             sinc_peak = float(np.max(self.sinc))
 
-        return _eval(
-            freq_hz=self.freq_hz,
-            scenario=scenario,
-            sab_4cm2=peak_4,
-            sab_1cm2=peak_1,
-            sar_wb=self.sar_wb,
-            sinc_local=sinc_peak,
-        )
+        sinc_wb = None
+        if body is not None and self.sinc is not None and self.sinc.size > 0:
+            sinc_wb = float(np.sum(self.sinc * body.areas) / np.sum(body.areas))
+
+        return {
+            "sab_4cm2": peak_4,
+            "sab_1cm2": peak_1,
+            "sar_wb": self.sar_wb,
+            "sinc_local": sinc_peak,
+            "sinc_whole_body": sinc_wb,
+        }
+
+    def evaluate_compliance(self, scenario=None):
+        """Run a full ICNIRP 2020 compliance evaluation on this result."""
+        from aegis.compliance import ExposureScenario as _ES
+        from aegis.compliance import evaluate_compliance as _eval
+
+        if self.freq_hz is None:
+            raise ValueError("freq_hz must be set on DosimetryResult for compliance evaluation")
+
+        if scenario is None:
+            scenario = _ES.GENERAL_PUBLIC
+
+        return _eval(freq_hz=self.freq_hz, scenario=scenario, **self.compliance_kwargs())
 
     @staticmethod
     def compare(results: dict[str, DosimetryResult]) -> dict:

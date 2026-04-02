@@ -28,7 +28,7 @@ pytest.importorskip("flask", reason="Flask not installed (viewer extra)")
 def _mock_dosimetry_result(n_triangles: int = 20):
     """Return a mock DosimetryResult with plausible values."""
     sab = np.random.default_rng(0).uniform(0, 20, n_triangles).astype(np.float64)
-    return SimpleNamespace(
+    ns = SimpleNamespace(
         sab=sab,
         sab_averaged=sab * 0.8,
         sab_1cm2_averaged=None,
@@ -36,10 +36,26 @@ def _mock_dosimetry_result(n_triangles: int = 20):
         sinc_averaged=sab * 1.5,
         p_abs=float(np.sum(sab * 1e-4)),
         peak_sab=float(np.max(sab)),
+        peak_sab_averaged=float(np.max(sab * 0.8)),
         sar_wb=0.001,
         fidelity_level=2,
         freq_hz=28e9,
     )
+
+    def _ckw(*, body=None):
+        sinc_wb = None
+        if body is not None and ns.sinc is not None:
+            sinc_wb = float(np.sum(ns.sinc * body.areas) / np.sum(body.areas))
+        return {
+            "sab_4cm2": ns.peak_sab_averaged,
+            "sab_1cm2": None,
+            "sar_wb": ns.sar_wb,
+            "sinc_local": float(np.max(ns.sinc_averaged)),
+            "sinc_whole_body": sinc_wb,
+        }
+
+    ns.compliance_kwargs = _ckw
+    return ns
 
 
 def _mock_compute_dosimetry(body, **kwargs):

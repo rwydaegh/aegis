@@ -283,49 +283,23 @@ def _build_stats_response(result, body, tissue, level, extra=None, mode=None, co
     freq_hz = result.freq_hz or tissue.freq_hz
     scenario = scenario or ExposureScenario.GENERAL_PUBLIC
 
-    # Precompute per-quantity peaks (each np.max called once)
-    peak_sab_averaged = (
-        float(np.max(result.sab_averaged)) if result.sab_averaged is not None and result.sab_averaged.size > 0 else None
-    )
-    peak_sab_1cm2 = (
-        float(np.max(result.sab_1cm2_averaged))
-        if result.sab_1cm2_averaged is not None and result.sab_1cm2_averaged.size > 0
-        else None
-    )
+    # Centralized compliance kwargs extraction (prevents callers forgetting params)
+    ckw = result.compliance_kwargs(body=body)
+
+    try:
+        compliance = evaluate_compliance(scenario=scenario, freq_hz=freq_hz, **ckw)
+    except (ValueError, TypeError):
+        compliance = None
+
+    # Per-quantity peaks for the stats response (reuse from compliance_kwargs where possible)
+    peak_sab_averaged = ckw["sab_4cm2"]
+    peak_sab_1cm2 = ckw["sab_1cm2"]
     peak_sinc_local = float(np.max(result.sinc)) if result.sinc is not None and result.sinc.size > 0 else None
     peak_sinc_averaged = (
         float(np.max(result.sinc_averaged))
         if result.sinc_averaged is not None and result.sinc_averaged.size > 0
         else None
     )
-
-    # S_inc whole-body average
-    sinc_wb = None
-    if result.sinc is not None:
-        sinc_wb = float(np.sum(result.sinc * body.areas) / np.sum(body.areas))
-
-    # Prefer spatially averaged sinc for compliance; fall back to raw peak
-    sinc_for_compliance = peak_sinc_averaged if peak_sinc_averaged is not None else peak_sinc_local
-
-    # Prefer spatially averaged sab for compliance; fall back to raw peak (conservative)
-    sab_for_compliance = peak_sab_averaged
-    if sab_for_compliance is None and result.sab.size > 0:
-        sab_for_compliance = float(np.max(result.sab))
-
-    try:
-        compliance = evaluate_compliance(
-            scenario=scenario,
-            freq_hz=freq_hz,
-            sab_4cm2=sab_for_compliance,
-            sinc_local=sinc_for_compliance,
-            sinc_whole_body=sinc_wb,
-            sar_wb=result.sar_wb,
-            sab_1cm2=peak_sab_1cm2,
-        )
-    except (ValueError, TypeError):
-        # ValueError: frequency outside ICNIRP 2020 range (100 kHz to 300 GHz)
-        # TypeError: unexpected None or non-numeric input to compliance checker
-        compliance = None
 
     stats = {
         "p_abs": float(result.p_abs),

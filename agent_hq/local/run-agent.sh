@@ -13,17 +13,17 @@ EXTRA_CONTEXT="${4:-}"
 
 REPO_DIR="/home/user/aegis"
 LOG_DIR="${REPO_DIR}/agent_hq/local/logs"
-LOCK_FILE="/tmp/aegis-agent.lock"
+LOCK_FILE="/tmp/aegis-agent-${AGENT_NAME}.lock"
 TIMESTAMP=$(date +%Y-%m-%d_%H-%M)
 LOG_FILE="${LOG_DIR}/${AGENT_NAME}_${TIMESTAMP}.log"
 WORKTREE_DIR="/tmp/aegis-agent-${AGENT_NAME}-$$"
 
 mkdir -p "$LOG_DIR"
 
-# Mutual exclusion - only one agent at a time
+# Per-agent lock - only prevents the same agent from running twice
 exec 200>"$LOCK_FILE"
 if ! flock -n 200; then
-    echo "[${TIMESTAMP}] ${AGENT_NAME}: another agent is running, skipping" >> "${LOG_DIR}/skipped.log"
+    echo "[${TIMESTAMP}] ${AGENT_NAME}: same agent already running, skipping" >> "${LOG_DIR}/skipped.log"
     exit 0
 fi
 
@@ -33,7 +33,6 @@ cleanup() {
         echo "[$(date +%Y-%m-%d_%H-%M)] Removing worktree ${WORKTREE_DIR}" >> "$LOG_FILE"
         cd "$REPO_DIR"
         git worktree remove --force "$WORKTREE_DIR" 2>/dev/null || rm -rf "$WORKTREE_DIR"
-        # Clean up the temp branch
         git branch -D "agent/${AGENT_NAME}-$$" 2>/dev/null || true
     fi
     rm -f "$PROMPT_TMPFILE" 2>/dev/null || true
@@ -46,6 +45,28 @@ cd "$REPO_DIR"
 
 # Pull latest on main repo (fail gracefully if network issues)
 git pull --rebase origin master >> "$LOG_FILE" 2>&1 || echo "Warning: git pull failed, continuing with current state" >> "$LOG_FILE"
+
+# Auto-truncate bulletin board to last 20 entries, archive the rest
+BULLETIN="${REPO_DIR}/agent_hq/coordination/bulletin.md"
+ARCHIVE="${REPO_DIR}/agent_hq/coordination/bulletin-archive.md"
+if [ -f "$BULLETIN" ]; then
+    LINE_COUNT=$(wc -l < "$BULLETIN")
+    if [ "$LINE_COUNT" -gt 40 ]; then
+        HEADER=$(head -5 "$BULLETIN")
+        MIDDLE_END=$((LINE_COUNT - 20))
+        if [ "$MIDDLE_END" -gt 5 ]; then
+            sed -n "6,${MIDDLE_END}p" "$BULLETIN" >> "$ARCHIVE"
+            {
+                echo "$HEADER"
+                echo ""
+                tail -20 "$BULLETIN"
+            } > "${BULLETIN}.tmp"
+            mv "${BULLETIN}.tmp" "$BULLETIN"
+            cd "$REPO_DIR" && git add "$BULLETIN" "$ARCHIVE" && \
+                git commit -m "Auto-truncate bulletin board (archived $(( MIDDLE_END - 5 )) lines)" --no-verify 2>/dev/null || true
+        fi
+    fi
+fi
 
 # Create isolated worktree so agents don't conflict with Robin's working directory
 git worktree add "$WORKTREE_DIR" -b "agent/${AGENT_NAME}-$$" HEAD >> "$LOG_FILE" 2>&1

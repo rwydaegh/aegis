@@ -1,6 +1,6 @@
-# Agent environment (GitHub Actions ubuntu-latest)
+# Agent environment
 
-## What you have
+## Common (all execution modes)
 
 - Python 3.x (use python3). Full scientific stack after `pip install -e '.[dev]'`.
 - Node.js and npm (for frontend work: `cd aegis-web && npm install && npm run build`).
@@ -11,10 +11,20 @@
 - Playwright for E2E testing against production (`npx playwright open`).
 - gh CLI for GitHub API (issues, PRs, labels).
 - Full internet access (Overpass API, npm registry, PyPI, etc.).
-
-## What you do NOT have
-
 - No GPU. Sionna RT runs on CPU (slower but works). JAX runs on CPU.
+
+## When running locally (cron on the dev machine)
+
+- You run in an isolated git worktree at `/tmp/aegis-agent-<name>-<pid>`.
+- Per-agent lock files prevent the same agent from running twice. Different agents
+  can run in parallel.
+- The main repo at `/home/user/aegis` is Robin's working directory. Do not touch it
+  directly. Your worktree is your workspace.
+- gh CLI is authenticated as `rwydaegh`.
+
+## When running on GitHub Actions
+
+- Fresh ubuntu-latest checkout each run.
 - No display server. Cannot visually verify frontend changes, but can lint
   (`npx tsc --noEmit`), build (`npm run build`), and reason from code.
 - No access to the production server (deploy is automatic on push to master).
