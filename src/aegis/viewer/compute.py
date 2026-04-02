@@ -409,3 +409,41 @@ def compute_dosimetry(
         corr_list = [k for k in ("fresnel", "polarisation", "curvature", "diffraction") if corr.get(k)]
 
     return result, body, tissue, level, mode, corr_list, extra
+
+
+def generate_lsp_heatmap(
+    preset_name: str,
+    freq_ghz: float,
+    antenna_pos: tuple[float, float, float],
+    lsp_name: str = "SF_dB",
+    bounds: tuple[float, float, float, float] = (-100, 100, -100, 100),
+    resolution: int = 128,
+    seed: int = 42,
+    preset_dir: str | None = None,
+) -> dict:
+    """Generate an LSP heatmap for the frontend."""
+    from aegis.channel.lsf import LSFModel
+    from aegis.channel.presets import load_preset
+
+    if preset_dir is None:
+        from aegis.viewer.config import get_config
+        cfg = get_config()
+        preset_dir = cfg.get("stochastic", {}).get("preset_dir", "data/channel_presets")
+
+    preset = load_preset(preset_name, preset_dir)
+    model = LSFModel(preset["params"], freq_ghz, seed=seed)
+    grid = model.generate_map(
+        bounds=bounds,
+        resolution=resolution,
+        height=1.5,
+        lsp_name=lsp_name,
+    )
+
+    return {
+        "data": grid.tolist(),
+        "bounds": list(bounds),
+        "lsp_name": lsp_name,
+        "vmin": float(grid.min()),
+        "vmax": float(grid.max()),
+        "resolution": resolution,
+    }
