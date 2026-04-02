@@ -108,7 +108,7 @@ AEGIS generates at least 5-6 distinct publishable contributions. Each serves a d
 
 **Target venue:** IEEE Transactions on Antennas and Propagation (TAP)
 
-**Why TAP:** This is where Kodera (2024), Li (2019), Flintoft (2014), and every dosimetry paper Robin cites landed. It is the venue the standards community reads. A TAP paper on geometric dosimetry becomes the citation that everyone in IEC TC 106 and IEEE C95 references. TAP has an impact factor around 4.5-5.0 and is the most respected journal in the antenna/propagation community.
+**Why TAP:** TAP is the most respected journal in the antenna/propagation community (IF ~4.5-5.0) and the venue the standards community reads. Note: the key dosimetry papers Robin cites actually landed elsewhere: Kodera (2024) in IEEE Trans. Microwave Theory and Techniques, Li (2019) in Physics in Medicine and Biology, Flintoft (2014) in IEEE Trans. Electromagnetic Compatibility. This means TAP is actually an open lane for geometric dosimetry, no direct competition in-venue. A TAP paper becomes the citation that everyone in IEC TC 106 and IEEE C95 references.
 
 **Alternative:** Physical Medicine and Biology (where Kodera 2024 appeared). More medically oriented readership, but strong in dosimetry.
 
