@@ -334,10 +334,11 @@ class TestBuildStatsResponse:
         """When sab_averaged is None, compliance should use raw sab peak."""
         from types import SimpleNamespace
 
+        from aegis.result import DosimetryResult
         from aegis.viewer.routes.compute import _build_stats_response
 
         sab = np.array([5.0, 10.0, 15.0])
-        result = SimpleNamespace(
+        result = DosimetryResult(
             freq_hz=28e9,
             sab=sab,
             sab_averaged=None,
@@ -346,7 +347,7 @@ class TestBuildStatsResponse:
             sinc_averaged=None,
             sar_wb=None,
             p_abs=0.01,
-            peak_sab=float(np.max(sab)),
+            fidelity_level=2,
         )
         body = SimpleNamespace(areas=np.array([1e-4, 1e-4, 1e-4]), n_triangles=3)
         tissue = SimpleNamespace(freq_hz=28e9, T0=0.4, eps_r=10.0, sigma=20.0)

@@ -3,15 +3,13 @@
 Agents: read this at the start of your run. Append findings at the end.
 Prune entries older than 7 days.
 
+- [2026-04-02] feature-agent: Fixed 4 bugs across backend and frontend. (1) `averaging_matrix_to_jax` now returns JAX sparse BCOO instead of materializing a dense M*M matrix (would OOM for >10k triangles). (2) `fetchTilesForRT` in environment store was discarding the binary response body, so Google 3D Tiles geometry was never rendered. Now parses binary+X-Meta like the OSM and GeoJSON paths. (3) Added `error` state to coverage store and CoverageHud (was silently swallowing fetch errors). (4) Added try/except to coverage route `_compute_coverage` call (was returning raw HTML 500 on exception). Also fixed pre-existing test failure in `test_sab_averaged_none_falls_back_to_raw_peak` (was using SimpleNamespace without `compliance_kwargs` method). All 2189 tests pass.
+
 - [2026-03-31] code-reviewer: Focus area: test coverage gaps and edge cases. Fixed division by zero in basestations.py bbox computation at polar latitudes (cos(90)=0). Added 265 new tests: compliance sweep functions (power_sweep, frequency_sweep, max_compliant_power), compute route parsing helpers (_parse_vec3, _parse_rotation_y, _parse_mode_or_level, _build_binary_response), basestations edge cases (polar lat, radius validation, _resolve_belgian_region). Total tests: 1905 pass. PR #209.
 
-- [2026-03-30] code-reviewer: Reviewed integration bridges (DiffeRT, Sionna). No physics bugs. Fixed dead psi computation in MIMO path expansion array_paths.py (left over from PR #203 vectorization). Filed #204 for unimplemented `_build_scene_from_mesh` in Sionna voxel RT (causes misleading "GPU unavailable" error). All 1640 tests pass.
+- [2026-03-30] code-reviewer: Reviewed integration bridges (DiffeRT, Sionna). No physics bugs. Fixed dead psi computation in MIMO path expansion array_paths.py. Filed #204 for unimplemented `_build_scene_from_mesh` in Sionna voxel RT.
 
-- [2026-03-30] feature-agent: Vectorized MIMO path expansion (array_paths.py) from per-element Python loop to bulk NumPy broadcasting. Eliminates M array copies + concatenation. PR #203.
-- [2026-03-30] feature-agent: Fixed MIMO API error extraction in frontend (mimo.ts). Users now see server error messages instead of raw HTTP status codes. Rebuilt frontend bundle. PR #202.
-- [2026-03-30] feature-agent: Vectorized voxel-to-mesh construction in environment route. Replaced per-voxel Python loop with NumPy broadcasting for vertices, triangles, normals, and materials. PR #201.
-- [2026-03-30] feature-agent: Hardened input validation across 5 route files (analysis, environment, basestations, data, location). Added: freq_hz > 0 checks, f_min < f_max in tissue spectrum, n_points clamping in sweeps, log10(0) guard in power sweep, lat/lon range validation (-90/90, -180/180), radius upper bounds (5km env, 50km BS, 500m location), voxel_size floor (0.1m), indices type validation, body-not-found lists available bodies. Tagged v0.8.8. PR #200.
-- [2026-03-30] feature-agent: Vectorized multi-stream coherent_sinc, fixed averaging cache (FIFO->LRU), EventSource leak, notification dedup. Added server-side CSV export, vectorized power_sweep. Fixed input validation in RT routes (_parse_mode_or_level).
+- [2026-03-30] feature-agent: Vectorized MIMO path expansion, voxel-to-mesh, coherent_sinc. Hardened input validation across 5 route files. PRs #200-203.
 
 ## Do not touch
 
