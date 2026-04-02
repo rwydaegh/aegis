@@ -162,6 +162,7 @@ def _handle_clear_cache(app, cache, cache_lock):
     app.config.pop("_last_compliance_result", None)
     app.config.pop("_last_dosimetry_result", None)
     app.config.pop("_last_dosimetry_body", None)
+    app.config.pop("_last_dosimetry_stats", None)
     return jsonify({"ok": True})
 
 

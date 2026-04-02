@@ -459,6 +459,35 @@ class TestUserStats:
         assert sinc_local_check[0]["pass"] is False
         assert stats["compliance"]["overall_pass"] is False
 
+    def test_sinc_whole_body_included_in_compliance(self):
+        """MIMO compliance should check sinc_whole_body, matching single-user route."""
+        user = self._make_user_state()
+        result = MagicMock()
+        result.p_abs = 0.01
+        result.peak_sab = 10.0
+        result.sab = np.array([0.0, 5.0, 10.0])
+        result.sab_averaged = np.array([1.0, 3.0, 8.0])
+        # sinc values that produce a whole-body average exceeding the ICNIRP
+        # whole-body limit (10 W/m^2 for general public above 6 GHz)
+        result.sinc = np.array([12.0, 12.0, 12.0])
+        result.sinc_averaged = None
+        result.sab_1cm2_averaged = None
+        result.sar_wb = None
+        user.result = result
+        body = MagicMock()
+        body.n_triangles = 3
+        body.areas = np.array([1e-4, 1e-4, 1e-4])
+        user.body = body
+        scene = MagicMock()
+        scene.freq_hz = 28e9
+        stats = _user_stats(user, scene)
+        # sinc_whole_body check should be present
+        wb_checks = [c for c in stats["compliance"]["checks"] if "whole-body" in c["label"]]
+        assert len(wb_checks) == 1, "sinc_whole_body check missing from MIMO compliance"
+        # whole-body avg = 12.0 W/m^2 > 10.0 W/m^2 limit -> FAIL
+        assert wb_checks[0]["pass"] is False
+        assert stats["compliance"]["overall_pass"] is False
+
     def test_distribution_stats_without_body(self):
         """Distribution stats should work when body is None (no illuminated_area_cm2)."""
         user = self._make_user_state()

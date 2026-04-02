@@ -175,6 +175,11 @@ def _user_stats(user: UserState, scene: MIMOScene) -> dict:
         )
         sinc_for_compliance = peak_sinc_averaged if peak_sinc_averaged is not None else peak_sinc_local
 
+        # Whole-body average S_inc (matches single-user compute route)
+        sinc_wb = None
+        if result.sinc is not None and body is not None and hasattr(body, "areas") and body.areas is not None:
+            sinc_wb = float(np.sum(result.sinc * body.areas) / np.sum(body.areas))
+
         peak_sab_1cm2 = (
             float(np.max(result.sab_1cm2_averaged))
             if result.sab_1cm2_averaged is not None and result.sab_1cm2_averaged.size > 0
@@ -187,6 +192,7 @@ def _user_stats(user: UserState, scene: MIMOScene) -> dict:
                 freq_hz=freq_hz,
                 sab_4cm2=sab_for_compliance,
                 sinc_local=sinc_for_compliance,
+                sinc_whole_body=sinc_wb,
                 sab_1cm2=peak_sab_1cm2,
                 sar_wb=result.sar_wb,
             )
