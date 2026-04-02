@@ -14,7 +14,7 @@
 
 ## Task 1: Install dependencies and configure Vite
 
-Remove `3d-tiles-renderer` and add CesiumJS with its Vite plugin. The `vite-plugin-cesium` package handles static asset copying (Workers, Assets, Widgets, ThirdParty) automatically during dev and build.
+Add CesiumJS with its Vite plugin. Keep `3d-tiles-renderer` installed for now (old code still imports it). It gets removed in Task 8 along with the old files.
 
 **Files:**
 - Modify: `aegis-web/package.json`
@@ -25,12 +25,11 @@ Remove `3d-tiles-renderer` and add CesiumJS with its Vite plugin. The `vite-plug
 
 ```bash
 cd aegis-web
-npm uninstall 3d-tiles-renderer
 npm install cesium resium
 npm install --save-dev vite-plugin-cesium
 ```
 
-This removes `3d-tiles-renderer` (v0.4.23) and installs:
+This installs:
 - `cesium` (latest 1.x, peer dep of resium)
 - `resium` (v1.20.0, React component wrappers for Cesium)
 - `vite-plugin-cesium` (v1.2.23, handles Cesium static asset serving)
@@ -231,7 +230,7 @@ import {
   Viewer,
   Cartographic,
   Math as CesiumMath,
-  createWorldTerrainAsync,
+  Terrain,
   Cesium3DTileset,
 } from 'cesium'
 import { useSceneStore } from '@/stores/scene'
@@ -262,12 +261,14 @@ export function CesiumGlobe() {
   const handleViewerReady = useCallback(async (viewer: Viewer) => {
     viewerRef.current = viewer
 
-    // Disable default UI elements that Resium props don't cover
-    viewer.cesiumWidget.creditContainer.setAttribute('style', 'display: none !important')
+    // Style credits to be subtle but visible (required by Cesium ion ToS)
+    const creditEl = viewer.cesiumWidget.creditContainer as HTMLElement
+    creditEl.style.fontSize = '10px'
+    creditEl.style.opacity = '0.7'
 
     // Load terrain
     try {
-      viewer.terrainProvider = await createWorldTerrainAsync()
+      viewer.scene.setTerrain(Terrain.fromWorldTerrain())
     } catch (e) {
       console.warn('Failed to load Cesium World Terrain:', e)
     }
@@ -362,7 +363,7 @@ import {
   Cartographic,
   Cartesian3,
   Math as CesiumMath,
-  createWorldTerrainAsync,
+  Terrain,
   Cesium3DTileset,
 } from 'cesium'
 ```
@@ -753,6 +754,8 @@ export function addCoverageOverlay(
   }
 
   // Region boundary polylines
+  // NOTE: PolylineCollection API may differ in Cesium v1.139+. If Material.fromType
+  // does not work on individual polylines, use viewer.entities.add({ polyline: {...} }) instead.
   const lines = viewer.scene.primitives.add(new PolylineCollection())
   for (const region of regions) {
     if (!region.bbox) continue
@@ -946,20 +949,22 @@ git commit -m "Allow cesium source in geocodeAndFetch guard"
 
 ## Task 8: Cleanup old files
 
-Delete the old R3F-based globe and coverage overlay components that are replaced by Cesium. Fix any broken imports.
+Delete the old R3F-based globe and coverage overlay components that are replaced by Cesium. Remove `3d-tiles-renderer` package. Fix any broken imports.
 
 **Files:**
 - Delete: `aegis-web/src/components/scene/Environment3DTiles.tsx`
 - Delete: `aegis-web/src/components/scene/CoverageGlobe.tsx`
 - Delete: `aegis-web/src/components/scene/CoverageOverlay.tsx`
+- Modify: `aegis-web/package.json` (remove 3d-tiles-renderer)
 - Modify: `aegis-web/src/components/scene/SceneRoot.tsx` (remove imports)
 
 - [ ] **Step 1: Delete old files**
 
 ```bash
-rm aegis-web/src/components/scene/Environment3DTiles.tsx
-rm aegis-web/src/components/scene/CoverageGlobe.tsx
-rm aegis-web/src/components/scene/CoverageOverlay.tsx
+cd aegis-web && npm uninstall 3d-tiles-renderer
+rm src/components/scene/Environment3DTiles.tsx
+rm src/components/scene/CoverageGlobe.tsx
+rm src/components/scene/CoverageOverlay.tsx
 ```
 
 - [ ] **Step 2: Remove imports and usages from SceneRoot.tsx**
@@ -1022,7 +1027,7 @@ Deploy the Cesium globe to the Hetzner production server. The Cesium Ion token m
 SSH to the Hetzner server and add the token to the app environment file:
 
 ```bash
-ssh root@<HETZNER_HOST> "grep -q CESIUM_ION_TOKEN /opt/aegis/app.env || echo 'CESIUM_ION_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJkYmM4NWM1YS1jZDhjLTQxOTctODI3My03ZGQ1MjM1NDY5NzAiLCJpZCI6NDEyOTU1LCJpYXQiOjE3NzUxNDg3Mzh9._0QXdOiwatLjXe95Qdke9a7vDIllWpFUx1Hg52z1Yvg' >> /opt/aegis/app.env"
+ssh root@<HETZNER_HOST> "grep -q CESIUM_ION_TOKEN /opt/aegis/app.env || echo 'CESIUM_ION_TOKEN=<token-from-ion.cesium.com>' >> /opt/aegis/app.env"
 ```
 
 The Docker Compose file already passes `app.env` to the container, so the token will be available via `os.environ.get("CESIUM_ION_TOKEN")` in the Flask backend.
