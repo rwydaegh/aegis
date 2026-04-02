@@ -461,7 +461,7 @@ def summary_text(
         )
 
     lines.append("")
-    overall = "PASS" if result.overall_pass else "FAIL"
+    overall = "N/A" if result.overall_pass is None else "PASS" if result.overall_pass else "FAIL"
     lines.append(f"Overall: {overall} (tightest margin: {result.margin_db:+.1f} dB)")
 
     return "\n".join(lines)
@@ -713,26 +713,24 @@ def compliance_heatmap(
     # scaled_sab shape: (n_power,)
     scaled_sab = sab_4cm2 * (power_w_arr / ref_power_w)
 
-    # S_ab limit is constant across frequency (20 or 100 W/m^2) when available
-    sab_limit_obj = icnirp_limits(scenario, float(freq_hz_arr[0])).sab_4cm2
-    has_sab_limit = sab_limit_obj is not None and sab_4cm2 > 0
+    # S_ab limit per frequency (None below 6 GHz, constant above)
+    sab_limit_vals = [icnirp_limits(scenario, float(f)).sab_4cm2 for f in freq_hz_arr]
+    sab_limits = np.array([v if v is not None else np.inf for v in sab_limit_vals])
+    has_any_sab_limit = any(v is not None for v in sab_limit_vals) and sab_4cm2 > 0
 
-    if has_sab_limit:
-        sab_limit = sab_limit_obj
-        # sab margin: (n_power,) broadcast to (n_power, n_freq)
+    if has_any_sab_limit:
+        # sab margin: (n_power, 1) vs (1, n_freq) -> (n_power, n_freq)
         with np.errstate(divide="ignore"):
-            sab_margin_1d = np.where(
-                scaled_sab <= 0,
+            sab_margin = np.where(
+                scaled_sab[:, None] <= 0,
                 np.inf,
-                10.0 * np.log10(sab_limit / scaled_sab),
+                10.0 * np.log10(sab_limits[None, :] / scaled_sab[:, None]),
             )
-        margin_grid = np.broadcast_to(sab_margin_1d[:, None], (len(power_w_arr), len(freq_hz_arr))).copy()
-        p_max_sab = ref_power_w * sab_limit / sab_4cm2
+        margin_grid = sab_margin
+        p_max_per_freq = ref_power_w * sab_limits / sab_4cm2
     else:
         margin_grid = np.full((len(power_w_arr), len(freq_hz_arr)), np.inf)
-        p_max_sab = float("inf")
-
-    p_max_per_freq = np.full(len(freq_hz_arr), p_max_sab)
+        p_max_per_freq = np.full(len(freq_hz_arr), float("inf"))
 
     # If sinc_local provided, also check frequency-dependent sinc limit
     if sinc_local is not None and sinc_local > 0:
