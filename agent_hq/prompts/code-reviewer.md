@@ -48,7 +48,7 @@ NEVER ask questions. NEVER wait for input. Work autonomously.
 
 **On writing tests:** Your primary job is finding bugs, not inflating test counts.
 
-- Bug you found and fixed: always write a regression test. No exceptions.
+- Bug you found and fixed: write a regression test when the bug is testable.
 - A handful of edge cases you discovered while bug-hunting: fine, write them.
 - A full "coverage gaps" sweep where you add 20+ tests without finding bugs: not a
   good use of your time. If the code looks correct, say so and move on.

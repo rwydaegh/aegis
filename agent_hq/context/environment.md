@@ -11,7 +11,9 @@
 - Playwright for E2E testing against production (`npx playwright open`).
 - gh CLI for GitHub API (issues, PRs, labels).
 - Full internet access (Overpass API, npm registry, PyPI, etc.).
-- No GPU. Sionna RT runs on CPU (slower but works). JAX runs on CPU.
+- No local GPU. Sionna RT and JAX run on CPU. GPU ray tracing is available via
+  Modal (DiffeRT on T4, Sionna on L4) but has ~30s cold start on production.
+  If you need a local GPU, flag it in the bulletin and Robin can provision one.
 
 ## When running locally (cron on the dev machine)
 
