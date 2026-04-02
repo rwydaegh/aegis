@@ -4,6 +4,7 @@ import { useSimulationStore } from '../stores/simulation'
 import { useSceneStore } from '../stores/scene'
 import { useUIStore } from '../stores/ui'
 import type { QuantityKey } from '../stores/ui'
+import { cameraState } from './cameraState'
 
 // ---------------------------------------------------------------------------
 // Base64url helpers (RFC 4648 section 5)
@@ -65,6 +66,14 @@ export function collectState(): Record<string, unknown> {
     sunIntensity: scene.sunIntensity,
     ambientIntensity: scene.ambientIntensity,
     cameraFov: scene.cameraFov,
+    // scene visibility
+    bodyMeshVisible: scene.bodyMeshVisible,
+    groundPlaneVisible: scene.groundPlaneVisible,
+    gridVisible: scene.gridVisible,
+    sceneGeometryVisible: scene.sceneGeometryVisible,
+    // camera position (rounded to 3 decimals for compact URLs)
+    cameraPosition: cameraState.position.map(v => Math.round(v * 1000) / 1000) as [number, number, number],
+    cameraTarget: cameraState.target.map(v => Math.round(v * 1000) / 1000) as [number, number, number],
     // ui store
     wireframe: ui.wireframe,
     legendScale: ui.legendScale,
@@ -169,6 +178,20 @@ export function applyShareState(state: Partial<ShareState>): void {
   if (state.sunIntensity !== undefined) scene.setSunIntensity(state.sunIntensity)
   if (state.ambientIntensity !== undefined) scene.setAmbientIntensity(state.ambientIntensity)
   if (state.cameraFov !== undefined) scene.setCameraFov(state.cameraFov)
+
+  // --- scene visibility ---
+  if (state.bodyMeshVisible !== undefined) scene.setBodyMeshVisible(state.bodyMeshVisible)
+  if (state.groundPlaneVisible !== undefined) scene.setGroundPlaneVisible(state.groundPlaneVisible)
+  if (state.gridVisible !== undefined) scene.setGridVisible(state.gridVisible)
+  if (state.sceneGeometryVisible !== undefined) scene.setSceneGeometryVisible(state.sceneGeometryVisible)
+
+  // --- camera override (applied by CameraController on mount) ---
+  if (state.cameraPosition !== undefined && state.cameraTarget !== undefined) {
+    ui.setCameraOverride({
+      position: state.cameraPosition as [number, number, number],
+      target: state.cameraTarget as [number, number, number],
+    })
+  }
 
   // --- ui store ---
   if (state.dynamicRangeDb !== undefined) ui.setDynamicRangeDb(state.dynamicRangeDb)
