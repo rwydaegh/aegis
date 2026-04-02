@@ -322,8 +322,9 @@ def _build_stats_response(result, body, tissue, level, extra=None, mode=None, co
             sar_wb=result.sar_wb,
             sab_1cm2=peak_sab_1cm2,
         )
-    except ValueError:
-        # Frequency outside ICNIRP 2020 range (100 kHz to 300 GHz)
+    except (ValueError, TypeError):
+        # ValueError: frequency outside ICNIRP 2020 range (100 kHz to 300 GHz)
+        # TypeError: unexpected None or non-numeric input to compliance checker
         compliance = None
 
     stats = {

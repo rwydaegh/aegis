@@ -851,3 +851,62 @@ class TestComplianceHeatmap:
         """sab_4cm2=0 means no S_ab constraint -> p_max_per_freq should be inf."""
         hm = compliance_heatmap(sab_4cm2=0.0, n_freq=4, n_power=4)
         assert np.all(np.isinf(hm["p_max_per_freq"]))
+
+    def test_cross_6ghz_sab_limit_applied_above(self) -> None:
+        """Regression: S_ab limit must be enforced at above-6-GHz frequencies
+        even when the sweep starts below 6 GHz."""
+        hm = compliance_heatmap(
+            sab_4cm2=25.0,  # exceeds GP limit of 20 W/m^2
+            freq_min_hz=3e9,
+            freq_max_hz=60e9,
+            n_freq=20,
+            n_power=5,
+        )
+        # Frequencies above 6 GHz should have finite (negative) margin
+        above_6ghz = hm["freq_hz"] > 6e9
+        assert np.any(above_6ghz), "Test needs frequencies above 6 GHz"
+        # At reference power, margin should be negative (25 > 20 limit)
+        ref_idx = np.argmin(np.abs(hm["power_w"] - 1.0))
+        margins_above = hm["margin_db"][ref_idx, above_6ghz]
+        assert np.all(np.isfinite(margins_above)), "S_ab margin must be finite above 6 GHz"
+        assert np.all(margins_above < 0), "S_ab=25 exceeds limit=20, margin should be negative"
+
+    def test_cross_6ghz_below_has_no_sab_limit(self) -> None:
+        """Below 6 GHz, S_ab limit is None, so margin should be inf (no check)."""
+        hm = compliance_heatmap(
+            sab_4cm2=25.0,
+            freq_min_hz=3e9,
+            freq_max_hz=60e9,
+            n_freq=20,
+            n_power=5,
+        )
+        below_6ghz = hm["freq_hz"] < 6e9
+        assert np.any(below_6ghz), "Test needs frequencies below 6 GHz"
+        # Below 6 GHz, S_ab is not checked -> margin should be inf
+        ref_idx = np.argmin(np.abs(hm["power_w"] - 1.0))
+        margins_below = hm["margin_db"][ref_idx, below_6ghz]
+        assert np.all(np.isinf(margins_below))
+
+
+# -----------------------------------------------------------------------
+# summary_text edge cases
+# -----------------------------------------------------------------------
+
+
+class TestSummaryTextEdgeCases:
+    def test_no_checks_reports_na_not_fail(self) -> None:
+        """Regression: summary_text should report N/A (not FAIL) when no
+        compliance checks are present."""
+        r = ComplianceResult(
+            scenario=ExposureScenario.GENERAL_PUBLIC,
+            freq_hz=3e9,
+            sab_4cm2=None,
+            sab_1cm2=None,
+            sar_wb=None,
+            sinc_local=None,
+            sinc_whole_body=None,
+        )
+        assert r.overall_pass is None
+        text = summary_text(r)
+        assert "N/A" in text
+        assert "FAIL" not in text
