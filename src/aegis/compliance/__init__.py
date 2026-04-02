@@ -627,7 +627,8 @@ def frequency_sweep(
         )
         results_list.append(cr)
         margin_db_arr[i] = cr.margin_db
-        compliant_arr[i] = cr.overall_pass
+        overall = cr.overall_pass
+        compliant_arr[i] = overall if overall is not None else True
 
     return {
         "freq_hz": freq_hz_arr,

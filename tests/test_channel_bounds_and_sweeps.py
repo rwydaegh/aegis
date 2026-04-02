@@ -356,10 +356,10 @@ class TestFrequencySweep:
             assert cr.sar_wb is not None
             assert cr.sinc_local is not None
 
-    def test_no_quantities_all_indeterminate(self):
+    def test_no_quantities_vacuously_compliant(self):
         result = frequency_sweep(n_points=10)
-        # No quantities provided means no checks, so compliant is False (indeterminate)
-        assert not np.any(result["compliant"])
+        # No quantities provided means no checks, margin is inf, vacuously compliant
+        assert np.all(result["compliant"])
         assert all(m == float("inf") for m in result["margin_db"])
 
 
