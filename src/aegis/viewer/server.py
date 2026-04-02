@@ -551,6 +551,7 @@ def create_app(
         environment,
         location,
         mimo,
+        optimize,
         parametric,
         patterns,
         sentry_webhook,
@@ -569,5 +570,6 @@ def create_app(
     patterns.register(app, _cache, _cache_lock)
     sentry_webhook.register(app, _cache, _cache_lock)
     terrain.register(app, _cache, _cache_lock)
+    optimize.register(app, _cache, _cache_lock)
 
     return app
