@@ -910,3 +910,75 @@ class TestSummaryTextEdgeCases:
         text = summary_text(r)
         assert "N/A" in text
         assert "FAIL" not in text
+
+    def test_summary_text_with_tx_power_none(self) -> None:
+        """summary_text should not include TX power line when tx_power_dbm is None."""
+        r = evaluate_compliance(freq_hz=28e9, sab_4cm2=10.0)
+        text = summary_text(r, tx_power_dbm=None)
+        assert "TX power" not in text
+
+    def test_summary_text_with_tx_power_value(self) -> None:
+        """summary_text should include TX power line when tx_power_dbm is given."""
+        r = evaluate_compliance(freq_hz=28e9, sab_4cm2=10.0)
+        text = summary_text(r, tx_power_dbm=30.0)
+        assert "30.0" in text
+
+
+# -----------------------------------------------------------------------
+# ComplianceCheck edge cases
+# -----------------------------------------------------------------------
+
+
+class TestComplianceCheckEdgeCases:
+    def test_ratio_with_zero_limit(self) -> None:
+        """ComplianceCheck.ratio returns inf when limit is zero."""
+        c = ComplianceCheck(value=5.0, limit=0.0, unit="W/m^2", label="test")
+        assert c.ratio == float("inf")
+
+    def test_margin_db_with_zero_value(self) -> None:
+        """Zero measured value should return infinite margin (fully compliant)."""
+        c = ComplianceCheck(value=0.0, limit=20.0, unit="W/m^2", label="test")
+        assert c.margin_db == float("inf")
+
+    def test_compliant_at_exact_limit(self) -> None:
+        """Value exactly at the limit should be compliant (ICNIRP uses <=)."""
+        c = ComplianceCheck(value=20.0, limit=20.0, unit="W/m^2", label="test")
+        assert c.compliant is True
+        assert c.margin_db == pytest.approx(0.0)
+
+    def test_margin_db_negative_when_exceeded(self) -> None:
+        """Value exceeding limit should produce negative margin."""
+        c = ComplianceCheck(value=40.0, limit=20.0, unit="W/m^2", label="test")
+        assert c.compliant is False
+        assert c.margin_db < 0
+        assert c.margin_db == pytest.approx(10.0 * math.log10(20.0 / 40.0))
+
+
+# -----------------------------------------------------------------------
+# evaluate_compliance sub-6 GHz edge cases
+# -----------------------------------------------------------------------
+
+
+class TestEvaluateComplianceSub6GHz:
+    def test_sub_6ghz_sab_only_returns_no_sab_check(self) -> None:
+        """Below 6 GHz, sab_4cm2 has no ICNIRP limit, so no check is created."""
+        r = evaluate_compliance(freq_hz=3.5e9, sab_4cm2=10.0)
+        assert r.sab_4cm2 is None
+        # Only SAR_wb could apply but was not provided
+        assert r.sar_wb is None
+        assert r.overall_pass is None
+
+    def test_sub_6ghz_with_sar_creates_check(self) -> None:
+        """Below 6 GHz with SAR_wb provided, the SAR check should be created."""
+        r = evaluate_compliance(freq_hz=3.5e9, sab_4cm2=10.0, sar_wb=0.05)
+        assert r.sab_4cm2 is None  # no sab check below 6 GHz
+        assert r.sar_wb is not None  # SAR check exists
+        assert r.sar_wb.value == pytest.approx(0.05)
+        assert r.sar_wb.limit == pytest.approx(0.08)
+        assert r.overall_pass is True
+
+    def test_sub_6ghz_sar_exceeding_limit_fails(self) -> None:
+        """Below 6 GHz, SAR exceeding limit should fail compliance."""
+        r = evaluate_compliance(freq_hz=3.5e9, sar_wb=0.1)
+        assert r.overall_pass is False
+        assert r.sar_wb.compliant is False
