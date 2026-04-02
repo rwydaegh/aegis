@@ -1,168 +1,191 @@
-import os
-import pandas as pd
-import numpy as np
+"""Switzerland adapter: BAKOM mobile antenna register via api3.geo.admin.ch."""
 
+from __future__ import annotations
+
+import logging
+import math
+import os
 from datetime import datetime, timezone
-from tqdm import tqdm
-from concurrent.futures import ThreadPoolExecutor, as_completed
+
+import numpy as np
+import pandas as pd
+import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
-from ...utils import create_unique_file_identifier, format_date_only, create_output_df
-import requests
+
+from ...utils import create_unique_file_identifier, create_output_df, format_date_only
+
+logger = logging.getLogger(__name__)
 
 current_folder = os.path.dirname(os.path.abspath(__file__))
 
-# URL for Swiss MAST data (BAKOM)
-MAST_DATA_URL = (
-    "https://data.geo.admin.ch/ch.bakom.standorte-mobilfunkanlagen/standorte-mobilfunkanlagen/standorte-mobilfunkanlagen_2056.json"
-)
+# Swisstopo identify endpoint for mobile antenna layer
+_API_URL = "https://api3.geo.admin.ch/rest/services/all/MapServer/identify"
+_LAYER = "all:ch.bakom.standorte-mobilfunkanlagen"
 
-# Lazy-loaded global cache; fetched once when needed
-MAST_DATA = None
+# Tile step in degrees (~2 km) to stay under 200-result cap per tile
+_TILE_DEG = 0.02
+
+# Power class -> Watts, then converted to dBm
+_POWER_CLASS_W = {
+    "very low": 6.0,       # up to 6 W  -> 37.8 dBm
+    "low": 500.0,          # up to 500 W -> 57 dBm
+    "medium": 5000.0,      # up to 5000 W -> 67 dBm
+    "high": 5000.0,        # over 5000 W -> use 5000 W as estimate -> 67 dBm
+}
+
+# Known Swiss MNO names (first word of station field)
+_KNOWN_OPERATORS = {"Swisscom", "Sunrise", "Salt", "SBB"}
+
+# Technology priority for picking highest when multiple are listed
+_TECH_PRIORITY = {"5G": 3, "4G": 2, "3G": 1, "2G": 0}
 
 
-def ensure_mast_data_loaded(session):
-    """
-    Ensure that MAST_DATA is loaded once.
-
-    This can be called before starting any parallel loops so that
-    the HTTP request never happens inside worker threads.
-    """
-    print(f"Extracting MAST data from {MAST_DATA_URL} for Swisscom antennatypes.")
-    global MAST_DATA
-    if MAST_DATA is None:
-        MAST_DATA = session.get(MAST_DATA_URL).json()
-
-
-def create_session(timeout=10, retries=3):
-    """Create a requests session with connection pooling and automatic retries."""
+def _create_session(timeout: int = 15, retries: int = 3) -> requests.Session:
     session = requests.Session()
-    retry_strategy = Retry(
+    retry = Retry(
         total=retries,
         status_forcelist=[429, 500, 502, 503, 504],
         allowed_methods=["GET"],
         backoff_factor=1,
     )
-    adapter = HTTPAdapter(max_retries=retry_strategy)
-    session.mount("http://", adapter)
+    adapter = HTTPAdapter(max_retries=retry)
     session.mount("https://", adapter)
+    session.mount("http://", adapter)
     return session
 
 
-def find_antennatype_in_json(data, station_name):
-    """Return the first feature whose 'station' property matches station_name."""
-    global MAST_DATA
-
-    # If no data passed (None), make sure global MAST_DATA is loaded.
-    if data is None:
-        ensure_mast_data_loaded()
-        data = MAST_DATA
-
-    for feature in data["features"]:
-        props = feature.get("properties", {})
-        if props.get("station") == station_name:
-            typ = props.get("typ_en")
-            typelabel = typ.split(" ")[0]
-            pow = props.get("power_en")
-            if "very low" in pow:
-                return typelabel, 6
-            elif "low" in pow:
-                return typelabel, 500
-            # NOTE: keep original logic (even though the condition is odd)
-            # to preserve behaviour/output.
-            elif "high" or "medium" in pow:  # medium is < 5000, high >5000, but no other info is given
-                return "Outdoor (High Power)", 5000
-            else:
-                raise ValueError(f"Power label {pow} not recognized in json data")
-
-    return "Unknown type", np.nan
+def _tile_bbox(bbox: list[float]) -> list[tuple[float, float, float, float]]:
+    """Split a [min_lon, max_lon, min_lat, max_lat] bbox into 0.02-degree tiles."""
+    min_lon, max_lon, min_lat, max_lat = bbox
+    tiles = []
+    lat = min_lat
+    while lat < max_lat:
+        lon = min_lon
+        lat_end = min(lat + _TILE_DEG, max_lat)
+        while lon < max_lon:
+            lon_end = min(lon + _TILE_DEG, max_lon)
+            tiles.append((lon, lat, lon_end, lat_end))
+            lon = lon_end
+        lat = lat_end
+    return tiles
 
 
-def get_info_antennatype(numberstring, operator, sitecode):
-    if not isinstance(numberstring, str):
-        raise TypeError("Antenna type number must be a string")
+def _fetch_tile(session: requests.Session, tile: tuple[float, float, float, float]) -> list[dict]:
+    """Fetch results for a single tile from the identify endpoint."""
+    min_lon, min_lat, max_lon, max_lat = tile
+    geometry = f"{min_lon},{min_lat},{max_lon},{max_lat}"
+    params = {
+        "geometry": geometry,
+        "geometryType": "esriGeometryEnvelope",
+        "mapExtent": geometry,
+        "imageDisplay": "1000,1000,96",
+        "tolerance": "0",
+        "layers": _LAYER,
+        "returnGeometry": "true",
+        "sr": "4326",
+        "limit": "200",
+    }
+    resp = session.get(_API_URL, params=params, timeout=15)
+    resp.raise_for_status()
+    return resp.json().get("results", [])
 
-    # Try converting to int
-    if not numberstring:
-        # Swisscom: use MAST_DATA via JSON lookup.
-        # We ensure it is loaded before any parallel loop in extract_antennas.
-        return find_antennatype_in_json(MAST_DATA, f"{operator} {sitecode}")
+
+def _parse_power(power_en: str) -> float:
+    """Convert power_en string to dBm. Returns NaN if unrecognized."""
+    if not power_en:
+        return np.nan
+    low = power_en.lower()
+    for key, watts in _POWER_CLASS_W.items():
+        if key in low:
+            return round(10 * math.log10(watts) + 30, 1)
+    return np.nan
+
+
+def _parse_operator(station: str) -> str:
+    """Extract operator from the first word of the station field."""
+    if not station:
+        return "Unknown"
+    first = station.split()[0] if station.split() else ""
+    return first if first in _KNOWN_OPERATORS else first or "Unknown"
+
+
+def _parse_technology(techno_en: str) -> str:
+    """Pick the highest-generation technology listed in techno_en."""
+    if not techno_en:
+        return ""
+    # e.g. "Technology 3G,4G,5G" or "Technology 4G"
+    text = techno_en.upper()
+    best = ""
+    best_priority = -1
+    for tech, priority in _TECH_PRIORITY.items():
+        if tech in text and priority > best_priority:
+            best = tech
+            best_priority = priority
+    return best or techno_en
+
+
+def _result_to_row(result: dict) -> dict | None:
+    """Convert a single API result feature to a standardized row dict."""
+    attrs = result.get("attributes", {})
+    geom = result.get("geometry", {})
+
+    points = geom.get("points")
+    if points:
+        lon, lat = points[0][0], points[0][1]
     else:
-        try:
-            numberint = int(float(numberstring))
-        except Exception:
-            print(f"Failed to convert {numberstring} ({type(numberstring)}) to int for antennatype allocation")
-            return "Unknown type", np.nan
+        lon = geom.get("x")
+        lat = geom.get("y")
 
-    # Mapping of antenna types
-    if numberint == 1:
-        # Femtozelle – small indoor cell
-        return "Femtocell", 6
-    elif numberint == 2:
-        # Innen – indoor antenna
-        return "Indoor", 6
-    elif numberint == 3:
-        # Aussen – outdoor macro/micro
-        return "Outdoor", 6
-    elif numberint == 4:
-        # Tunnel antenna / leaky feeder
-        return "Tunnel", 500
-    elif numberint == 5:
-        # High-power outdoor
-        return "Outdoor (High Power)", 5000
-    else:
-        return "Unknown type", np.nan
-
-
-def _process_antennadata(antennadata, operator, technology):
-    """Process a single antenna data point. Returns a dict for efficient bulk concatenation."""
-    longitude = antennadata[0]
-    latitude = antennadata[1]
-    station = antennadata[2]
-    sitecode = station.split(" ")[0]
-    typelabel, power = get_info_antennatype(antennadata[3], operator, sitecode)
-
-    if typelabel == "Femtocell" or typelabel == "Indoor" or typelabel == "Tunnel" or typelabel == "Unknown type":
+    if lon is None or lat is None:
         return None
-    power_dbm = 10 * np.log10(power) + 30
-    frequency = antennadata[4]
-    adaptive = antennadata[5]
-    centerheight = antennadata[6]
-    pci = antennadata[7]
-    azimuth = antennadata[8]
-    date = antennadata[9]
+
+    station = attrs.get("station", "")
+    operator = _parse_operator(station)
+    technology = _parse_technology(attrs.get("techno_en", ""))
+    power_dbm = _parse_power(attrs.get("power_en", ""))
+
+    # Derive site code and antenna label from station string
+    parts = station.split()
+    site_code = parts[1] if len(parts) > 1 else station
+    antenna_label = f"ANT({' '.join(parts[2:]) if len(parts) > 2 else site_code})"
 
     return {
-        "Latitude": latitude,
-        "Longitude": longitude,
-        "AntennaLabel": f"ANT({station.replace(sitecode, '').strip(' _-.')})",
+        "SiteCode": f"SITE({site_code})",
+        "AntennaLabel": antenna_label,
         "Operator": operator,
-        "SiteCode": f"SITE({sitecode})",
         "Technology": technology,
+        "Latitude": float(lat),
+        "Longitude": float(lon),
+        "CenterHeight": None,
         "Power": power_dbm,
-        "Date": date,
-        "Azimuth": azimuth,
-        "AntennaType": typelabel,
-        "CenterHeight": centerheight,
-        "Frequency": frequency,
-        "adaptive": adaptive,
+        "Frequency": None,
+        "FrequencyBand": None,
+        "Electrical_Tilt": None,
+        "Mechanical_Tilt": None,
+        "Azimuth": None,
+        "Gain": None,
+        "Horizontal_Beamwidth": None,
+        "Vertical_Beamwidth": None,
     }
 
 
 class BaseStations:
+    """Extract Swiss mobile antenna data from the BAKOM register via api3.geo.admin.ch."""
+
     def __init__(
         self,
-        operator=None,
-        technology=None,
-        bounding_box=None,
-        frequency_range=[0, np.inf],
-        frequency_band=None,
-        date=datetime.now(timezone.utc),
+        operator: str | None = None,
+        technology: str | None = None,
+        bounding_box: list[float] | None = None,
+        frequency_range: list[float] = [0, np.inf],
+        frequency_band: str | None = None,
+        date: datetime = datetime.now(timezone.utc),
         raw_antenna_cache_file: str = os.path.join(current_folder, "all.pkl"),
-        pattern_file: str = None,
+        pattern_file: str | None = None,
         output_folder: str = "output/switzerland/",
         max_workers: int = 1,
-        file_identifier=None,
+        file_identifier: str | None = None,
     ):
         os.makedirs(output_folder, exist_ok=True)
         self.operator = operator
@@ -171,135 +194,58 @@ class BaseStations:
         self.frequency_range = frequency_range
         self.frequency_band = frequency_band
         self.date = format_date_only(date)
-        if int(self.date.split("-")[0]) < 2023:
-            print("$$$$$$$$$ WARNING $$$$$$$$$$")
-            print(f"You have selected date: {self.date}")
-            print("2G antennas were removed in 2023. The old 2G antenna (from before 2023) data will not be included in the output")
-
         self.raw_antenna_cache_file = raw_antenna_cache_file
         self.pattern_file = pattern_file
         self.output_folder = output_folder
         self.max_workers = max_workers
         self.antennas = pd.DataFrame()
         self.count = 0
-        self.make_op_tech_pairs()
 
-        # Create unique file identifier if not provided
         if file_identifier is None:
             self.file_identifier = create_unique_file_identifier(self)
         else:
             self.file_identifier = file_identifier
 
-    def make_op_tech_pairs(self):
-        all_operators = ["Swisscom", "Salt", "Sunrise"]
-        all_technologies = ["3G", "4G", "5G"]
-        # Case 1: Neither operator nor technology specified → all combinations
-        if self.operator is None and self.technology is None:
-            self.op_tech_pairs = [
-                (op, tech) for op in all_operators for tech in all_technologies
-            ]
+    def _default_bbox(self) -> list[float]:
+        """Return a bounding box covering Switzerland when none is provided."""
+        # [min_lon, max_lon, min_lat, max_lat]
+        return [5.96, 10.49, 45.82, 47.81]
 
-        # Case 2: Only operator specified → all technologies for this operator
-        elif self.operator is not None and self.technology is None:
-            if self.operator not in all_operators:
-                raise ValueError(f"Unknown operator: {self.operator}")
-            self.op_tech_pairs = [(self.operator, tech) for tech in all_technologies]
+    def _fetch_all_results(self) -> list[dict]:
+        """Tile the bbox and fetch all results, deduplicating by featureId."""
+        bbox = self.bounding_box if self.bounding_box else self._default_bbox()
+        tiles = _tile_bbox(bbox)
+        logger.info("Querying %d tiles over bbox %s", len(tiles), bbox)
 
-        # Case 3: Only technology specified → all operators for this technology
-        elif self.operator is None and self.technology is not None:
-            if self.technology not in all_technologies:
-                raise ValueError(f"Unknown technology: {self.technology}")
-            self.op_tech_pairs = [(op, self.technology) for op in all_operators]
+        session = _create_session()
+        seen_ids: set[str | int] = set()
+        all_results: list[dict] = []
 
-        # Case 4: Both operator and technology specified → single pair
-        else:
-            if self.operator not in all_operators:
-                raise ValueError(f"Unknown operator: {self.operator}")
-            if self.technology not in all_technologies:
-                raise ValueError(f"Unknown technology: {self.technology}")
-            self.op_tech_pairs = [(self.operator, self.technology)]
+        for i, tile in enumerate(tiles):
+            try:
+                results = _fetch_tile(session, tile)
+            except Exception as exc:
+                logger.warning("Tile %d/%d failed: %s", i + 1, len(tiles), exc)
+                continue
 
+            for r in results:
+                fid = r.get("featureId")
+                if fid is None or fid not in seen_ids:
+                    if fid is not None:
+                        seen_ids.add(fid)
+                    all_results.append(r)
 
+            if (i + 1) % 50 == 0 or (i + 1) == len(tiles):
+                logger.info(
+                    "Progress: %d/%d tiles, %d unique features",
+                    i + 1, len(tiles), len(all_results),
+                )
 
-    def _process_operator_technology(self, op_tech_pair, session):
-        """Process a single Swiss operator/technology pair and return antenna rows."""
-        rows = []
-        operator, technology = op_tech_pair
-        filename = f"{operator}_{technology}.min1.json"
-        url = f"https://carteantennesuisse.ch/serve_geojson_min.php?file={filename}"
+        session.close()
+        return all_results
 
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-            "Referer": "https://carteantennesuisse.ch/de/interaktive-karte-antennen-schweiz/",
-            "Accept": "application/json,text/html,application/xhtml+xml",
-        }
-
-        try:
-            r = session.get(url, headers=headers, timeout=10)
-            while r.status_code == 400: # MAKE ROBUST FOR FUTURE FILE VERSIONS
-                index = 2
-                filename = f"{operator}_{technology}.min{index}.json"
-                url = f"https://carteantennesuisse.ch/serve_geojson_min.php?file={filename}"
-                r = session.get(url, headers=headers, timeout=10)
-                index += 1 
-                
-            if r.status_code != 200:
-                print(f"ERROR for url {url}: {r.status_code}")
-                return pd.DataFrame()
-
-            data = r.json()
-            # Process antenna data in parallel
-            if self.max_workers > 1:
-                with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-                    futures = {
-                        executor.submit(
-                            _process_antennadata, antennadata, operator, technology
-                        ): antennadata
-                        for antennadata in data
-                    }
-                    for future in tqdm(
-                        as_completed(futures),
-                        total=len(futures),
-                        desc=f"{operator}_{technology}",
-                        leave=False,
-                    ):
-                        row_dict = future.result()
-                        if row_dict is not None:
-                            rows.append(row_dict)
-                     
-            else:
-                # Sequential processing
-                for antennadata in tqdm(data, total=len(data), desc=f"{operator}_{technology}", leave=False):
-                    row_dict = _process_antennadata(antennadata, operator, technology)
-                    if row_dict is not None:
-                        rows.append(row_dict)
-            # Create DataFrame once from all rows
-            if rows:
-                return pd.DataFrame(rows)
-            else:
-                return pd.DataFrame()
-
-        except Exception as e:
-            raise RuntimeError(f"Error processing {operator}_{technology}: {e}")
-
-    def extract_antennas(self, config=None):
-        """Extract antennas from Swiss JSON data, apply filters, and save CSV.
-
-        Notes:
-        - If all filter inputs are standard (None, default range, etc.), antennas
-          are auto-saved to raw_antenna_cache_file for later reuse.
-        - Uses parallel processing with self.max_workers.
-        - Uses connection pooling for efficient HTTP requests.
-        """
-        print("####### WARNING ########")
-        print(
-            "Swiss antennatypes are labeled by Femtocell, Indoor, Outdoor or Outdoor (High Power). "
-            "Only Outdoor and Outdoor (High Power) antennas are added."
-        )
-        print("########################")
-
-
-        # Check if we should use/save the cache (only for standard parameters)
+    def extract_antennas(self, config: dict | None = None) -> pd.DataFrame:
+        """Extract antennas from BAKOM via api3.geo.admin.ch, apply filters, and save CSV."""
         save_cache = (
             self.operator is None
             and self.technology is None
@@ -311,101 +257,75 @@ class BaseStations:
             )
         )
 
-        # Try loading cached combined raw data
+        # Try loading cached raw data
         if self.raw_antenna_cache_file and os.path.exists(self.raw_antenna_cache_file):
             try:
                 self.antennas = pd.read_pickle(self.raw_antenna_cache_file)
-                print(f"Loaded cached antenna data from {self.raw_antenna_cache_file}")
+                logger.info("Loaded cached antenna data from %s", self.raw_antenna_cache_file)
                 self.count = len(self.antennas)
+            except Exception as exc:
+                logger.warning("Failed to load cache %s: %s", self.raw_antenna_cache_file, exc)
+                self.antennas = pd.DataFrame()
 
-            except Exception as e:
-                raise RuntimeError(
-                    f"Warning: failed to load cache {self.raw_antenna_cache_file}: {e}"
-                )
-
-        # If no cache or cache load failed, extract
         if self.antennas is None or self.antennas.empty:
-            # Create shared session for connection pooling
-            session = create_session()
-            # Ensure MAST_DATA is loaded BEFORE any parallel loops start.
-            # This guarantees the HTTP request is done once, in the main thread.
-            if self.operator is None or self.operator == "Swisscom":
-                ensure_mast_data_loaded(session)
-                
-            df = pd.DataFrame()
-            if self.max_workers > 1:
-                print(
-                    f"Extracting antennas for different operator/technology pairs in parallel ({self.max_workers} workers)"
-                )
-                with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-                    futures = {
-                        executor.submit(
-                            self._process_operator_technology, pair, session
-                        ): pair
-                        for pair in self.op_tech_pairs
-                    }
-                    for future in tqdm(
-                        as_completed(futures),
-                        total=len(futures),
-                        desc="operator/technology pairs",
-                    ):
-                        rows_results = future.result()
-                        df = pd.concat([df, rows_results], ignore_index=True)
-            else:
-                print(
-                    "Extracting antennas for different operator/technology pairs sequentially"
-                )
-                for pair in tqdm(
-                    self.op_tech_pairs, desc="operator/technology pairs"
-                ):
-                    rows_results = self._process_operator_technology(pair, session)
-                    df = pd.concat([df, rows_results], ignore_index=True)
+            print(f"Fetching Swiss antenna data from {_API_URL} ...")
+            results = self._fetch_all_results()
 
-            session.close()
+            rows = []
+            for r in results:
+                row = _result_to_row(r)
+                if row is not None:
+                    rows.append(row)
 
-            if not df.empty:
-                self.antennas = df
-            else:
-                print("Result is empty")
+            if not rows:
+                logger.warning("No antenna records returned")
                 return pd.DataFrame()
 
-        # Save output CSV into output_folder/{file_identifier}_antennas.csv
-        out_csv = (
-            os.path.join(self.output_folder, f"{self.file_identifier}_antennas.csv")
-            if self.output_folder
-            else None
-        )
-        if out_csv:
-            try:
-                # Apply data estimation if enabled in config
-                filter_args = {"operator": self.operator, "technology": self.technology, "bounding_box": self.bounding_box, "frequency_range": self.frequency_range, "frequency_band": self.frequency_band, "date": self.date}
-                df = self.antennas.copy()
-                self.antennas = create_output_df(df, config, filter_args = filter_args).copy()
-                self.antennas.to_csv(out_csv, index=False)
+            self.antennas = pd.DataFrame(rows)
+            self.count = len(self.antennas)
+            print(f"Fetched {self.count} antenna records from BAKOM.")
 
-                print(f"Saved output CSV to {out_csv}")
-            except Exception as e:
-                raise RuntimeError(f"Warning: failed to save output CSV: {e}")
-
-        # Save cache if requested and using standard parameters
+        # Optionally save the raw cache
         if save_cache and self.raw_antenna_cache_file:
             try:
                 os.makedirs(os.path.dirname(self.raw_antenna_cache_file), exist_ok=True)
                 pd.to_pickle(self.antennas, self.raw_antenna_cache_file)
-                print(f"Saved raw antenna cache to {self.raw_antenna_cache_file}")
-            except Exception as e:
-                raise RuntimeError(f"Warning: failed to save cache: {e}")
-        return self.antennas
+                logger.info("Saved raw antenna cache to %s", self.raw_antenna_cache_file)
+            except Exception as exc:
+                logger.warning("Failed to save cache: %s", exc)
+
+        # Apply filters and produce standardized output
+        filter_args = {
+            "operator": self.operator,
+            "technology": self.technology,
+            "bounding_box": self.bounding_box,
+            "frequency_range": self.frequency_range,
+            "frequency_band": self.frequency_band,
+            "date": self.date,
+        }
+        df_out = create_output_df(self.antennas.copy(), config, filter_args=filter_args)
+
+        # Save CSV
+        if self.output_folder:
+            out_csv = os.path.join(self.output_folder, f"{self.file_identifier}_antennas.csv")
+            try:
+                df_out.to_csv(out_csv, index=False)
+                print(f"Saved output CSV to {out_csv}")
+            except Exception as exc:
+                logger.warning("Failed to save output CSV: %s", exc)
+
+        return df_out
 
     def extract_patterns(self, *args, **kwargs):
         """Switzerland extractor does not support antenna pattern reconstruction.
 
         This method is provided for API compatibility and will return None.
         """
-        print("Pattern extraction is not supported for Switzerland (no SPARQL pattern data).")
+        print("Pattern extraction is not supported for Switzerland (no pattern data available).")
         return None
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     BS = BaseStations()
     BS.extract_antennas()

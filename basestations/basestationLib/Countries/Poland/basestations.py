@@ -39,6 +39,7 @@ def create_session(retries=3, pool_maxsize=64):
     )
     session.mount("http://", adapter)
     session.mount("https://", adapter)
+    session.verify = False  # BTSearch SSL cert missing intermediate CA
     return session
 
 
