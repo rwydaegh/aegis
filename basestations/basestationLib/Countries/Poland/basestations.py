@@ -1,29 +1,22 @@
+import contextlib
 import os
-import pickle
+import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import UTC, datetime
+
 import numpy as np
 import pandas as pd
 import requests
 from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
-from io import StringIO
 from tqdm import tqdm
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from ...utils import create_unique_file_identifier, create_output_df
-from bs4 import BeautifulSoup
-import re
-from datetime import datetime, timezone
+from urllib3.util.retry import Retry
+
+from ...utils import create_output_df, create_unique_file_identifier
 
 current_folder = os.path.dirname(os.path.abspath(__file__))
 
 
-# ----------------------------
-# Session and HTTP helpers
-# ----------------------------
 def create_session(retries=3, pool_maxsize=64):
-    """
-    Requests session with retries and a larger connection pool.
-    pool_maxsize should be >= total parallel GETs you expect.
-    """
     session = requests.Session()
     retry_strategy = Retry(
         total=retries,
@@ -43,311 +36,156 @@ def create_session(retries=3, pool_maxsize=64):
     return session
 
 
-def http_get_json(session: requests.Session, url: str, timeout=10):
-    r = session.get(url, timeout=timeout)
-    if r.status_code != 200:
-        return None
-    try:
-        return r.json()
-    except Exception:
-        return None
+def fetch_bbox_objects(session, bbox, timeout=10):
+    """Fetch location IDs and coords from one bbox tile.
 
-
-def http_get_text(session: requests.Session, url: str, timeout=10):
-    r = session.get(url, timeout=timeout)
-    if r.status_code != 200:
-        return None
-    return r.text
-
-
-# ----------------------------
-# HTML parsing helpers
-# ----------------------------
-def find_hrefs(htmlstring: str):
-    soup = BeautifulSoup(htmlstring, "html.parser")
-    return [a["href"] for a in soup.find_all("a", href=True) if a.get("href")]
-
-
-def parse_site_ids(html: str):
-    """
-    Returns (operator_name, location_record_id_in_parentheses, operator_internal_site_label)
-    Example:
-      operator = "Plus"
-      location_record_id = "26001"
-      operator_internal_site_label = "BT31999"
-    """
-    # lxml is faster if installed, fallback to html.parser if not
-    try:
-        soup = BeautifulSoup(html, "lxml")
-    except Exception:
-        soup = BeautifulSoup(html, "html.parser")
-
-    header = soup.select_one("#location-info-container-extended .location-address")
-    if not header:
-        return None, None, None
-
-    strong = header.find("strong")
-    operator = strong.get_text(strip=True) if strong else None
-
-    header_text = header.get_text(" ", strip=True)
-    m = re.search(r"\((\d+)\)", header_text)
-    location_record_id = m.group(1) if m else None
-
-    abbr = header.find("abbr", attrs={"title": re.compile(r"Identyfikator wewnętrzny operatora", re.I)})
-    operator_internal_id = abbr.get_text(strip=True) if abbr else None
-
-    return operator, location_record_id, operator_internal_id
-
-
-def read_location_info_tables(html: str):
-    """
-    Faster than generic read_html because it restricts to the tables you care about.
-    """
-    try:
-        dfs = pd.read_html(StringIO(html), attrs={"class": "location-info"})
-        return dfs
-    except Exception:
-        return None
-
-
-def split_technology(table: pd.DataFrame):
-    """
-    btsearch tables often come in a MultiIndex column format where top level is technology (LTE, GSM, UMTS).
-    Returns (technology, flattened_table).
-    """
-    if isinstance(table.columns, pd.MultiIndex):
-        tech = str(table.columns.get_level_values(0)[0])
-        t = table.copy()
-        t.columns = t.columns.droplevel(0)
-        return tech, t
-    else:
-        return "UNKNOWN", table.copy()
-
-
-def normalize_table(
-    table: pd.DataFrame,
-    operator: str,
-    sitelabel: str,
-    latitude: float,
-    longitude: float,
-    location_id: int,
-):
-    """
-    Produces a standardized dataframe for one technology table.
-    """
-    technology, t = split_technology(table)
-
-    if "UKE" in str(technology):
-        return None
-
-    # Basic expected rename
-    map_cols = {"Pasmo": "Frequency"}
-    t = t.rename(columns=map_cols)
-
-    if "Frequency" not in t.columns:
-        return None
-
-    t["Frequency"] = t["Frequency"].astype(str)
-    # FrequencyBand can be inferred from Frequency if needed "Band{f}MHz"
-    t["FrequencyBand"] = t["Frequency"].map(lambda f: f"Band{f}MHz")
-    if 'Band3500MHz' in t['FrequencyBand'].values:
-        t.loc[t['FrequencyBand'] == 'Band3500MHz', 'FrequencyBand'] = 'Band3600MHz'
-    # Vectorized counts and labels
-    t["Nantennas"] = t.groupby("Frequency")["Frequency"].transform("size")
-
-    # Metadata
-    t["Operator"] = operator
-    t["Technology"] = technology
-    t["Latitude"] = float(latitude)
-    t["Longitude"] = float(longitude)
-    t["LocationID"] = location_id
-
-    # Prefer stable station label for site code if present
-    site_code = sitelabel if sitelabel else str(location_id)
-    t["SiteCode"] = f"SITE({site_code})"
-
-    # One AntennaLabel per frequency for this site and tech
-    t["AntennaLabel"] = t["Frequency"].map(lambda f: f"ANT({site_code}_{technology}_{f})")
-
-    # Current pipeline uses isotropic azimuth
-    t["Azimuth"] = "isotropic"
-
-    # Drop fully identical rows (safe)
-    t = t.drop_duplicates()
-    # convert "Frequency" to numeric 
-    t["Frequency"] = pd.to_numeric(t["Frequency"], errors='coerce')
-
-    return t
-
-
-# ----------------------------
-# Core optimized crawler
-# ----------------------------
-def fetch_bbox_objects(session: requests.Session, bbox, timeout=10):
-    """
-    One bbox request to get objects.
     bbox = [min_lon, max_lon, min_lat, max_lat]
-    API expects bounds = min_lat,min_lon,max_lat,max_lon (as in your code)
+    API expects bounds = min_lat,min_lon,max_lat,max_lon
     """
     api_url = f"https://beta.btsearch.pl/map/locations/?bounds={bbox[2]},{bbox[0]},{bbox[3]},{bbox[1]}"
-    data = http_get_json(session, api_url, timeout=timeout)
-    if not data:
+    try:
+        r = session.get(api_url, timeout=timeout)
+        if r.status_code != 200:
+            return []
+        data = r.json()
+    except Exception:
         return []
-    objs = data.get("objects", [])
     out = []
-    for d in objs:
-        out.append(
-            (
-                int(d.get("id")) if d.get("id") is not None else None,
-                d.get("latitude", np.nan),
-                d.get("longitude", np.nan),
+    for d in data.get("objects", []):
+        loc_id = d.get("id")
+        if loc_id is not None:
+            out.append((int(loc_id), float(d.get("latitude", 0)), float(d.get("longitude", 0))))
+    return out
+
+
+def parse_location_info(info_html, lat, lon, location_id):
+    """Parse operator + technology entries from location JSON info HTML.
+
+    Returns list of dicts, one per (operator, technology, frequency) combo.
+    """
+    from bs4 import BeautifulSoup
+
+    soup = BeautifulSoup(info_html, "html.parser")
+    items = soup.select(".location-item")
+    rows = []
+
+    for item in items:
+        strong = item.find("strong")
+        operator = strong.get_text(strip=True) if strong else "Unknown"
+
+        abbr = item.find("abbr", attrs={"title": re.compile(r"Identyfikator", re.I)})
+        internal_id = abbr.get_text(strip=True) if abbr else str(location_id)
+
+        # Technologies are listed in a <small> tag that also contains a detail link
+        tech_text = ""
+        for s in item.find_all("small"):
+            if s.find("a"):
+                text = s.get_text(" ", strip=True)
+                text = re.sub(r"Szczeg.*", "", text).strip()
+                tech_text = text
+                break
+
+        # Parse e.g. "GSM900", "LTE1800", "5G3500", "UMTS2100"
+        tech_entries = re.findall(r"([A-Z0-9]+?)(\d+)", tech_text)
+        for tech_name, freq_str in tech_entries:
+            frequency = int(freq_str)
+            # Normalize 3500 -> 3600 (n78 band)
+            freq_band = f"Band{frequency}MHz"
+            if frequency == 3500:
+                freq_band = "Band3600MHz"
+
+            site_code = f"SITE({internal_id})"
+            rows.append(
+                {
+                    "SiteCode": site_code,
+                    "AntennaLabel": f"ANT({internal_id}_{tech_name}_{frequency})",
+                    "Operator": operator,
+                    "Technology": tech_name,
+                    "Latitude": lat,
+                    "Longitude": lon,
+                    "CenterHeight": np.nan,
+                    "Power": np.nan,
+                    "Frequency": float(frequency),
+                    "FrequencyBand": freq_band,
+                    "Electrical_Tilt": np.nan,
+                    "Mechanical_Tilt": np.nan,
+                    "Azimuth": np.nan,
+                    "Gain": np.nan,
+                    "Horizontal_Beamwidth": np.nan,
+                    "Vertical_Beamwidth": np.nan,
+                }
             )
-        )
-    return [x for x in out if x[0] is not None]
+
+    return rows
 
 
-def fetch_location_page_info(session: requests.Session, location_id: int, timeout=10):
+def fetch_and_parse_location(session, location_id, lat, lon, timeout=10):
+    """Fetch location JSON and parse antennas from it."""
     url = f"https://beta.btsearch.pl/map/locations/{location_id}/?"
-    return http_get_json(session, url, timeout=timeout)
-
-
-def extract_detail_urls_from_location_json(location_json):
-    """
-    location_json has "info" which is HTML containing <a href="..."> links to detail pages.
-    Returns list of absolute urls.
-    """
-    if not location_json or "info" not in location_json:
+    try:
+        r = session.get(url, timeout=timeout)
+        if r.status_code != 200:
+            return []
+        data = r.json()
+    except Exception:
         return []
-    info = location_json.get("info") or ""
-    hrefs = find_hrefs(info)
-    # Make absolute and keep only those that look like location detail endpoints
-    urls = []
-    for h in hrefs:
-        if not h:
-            continue
-        if h.startswith("http"):
-            urls.append(h)
-        else:
-            urls.append(f"https://beta.btsearch.pl{h}")
-    return urls
+    info_html = data.get("info", "")
+    if not info_html:
+        return []
+    return parse_location_info(info_html, lat, lon, location_id)
 
 
-def get_antennas_in_multiple_bboxes_optimized(
-    bboxes,
-    session=None,
-    max_workers_bbox=16,
-    max_workers_locations=32,
-    max_workers_details=32,
-    timeout=10,
-):
-    """
-    Optimized approach:
-      1) Fetch all bbox objects (ids, lat, lon) and deduplicate by location_id.
-      2) Fetch each location json once and extract detail urls.
-      3) Deduplicate detail urls and fetch each html once.
-      4) Parse and normalize tables into one dataframe.
-    This avoids nested thread pools and avoids repeated GETs across tiles.
-    """
-    should_close_session = False
-    if session is None:
-        session = create_session(pool_maxsize=max(max_workers_bbox, max_workers_locations, max_workers_details) + 8)
-        should_close_session = True
+def extract_all_antennas(bboxes, session=None, max_workers_bbox=16, max_workers_locations=32, timeout=10):
+    """Two-stage extraction: bbox tiles -> location JSONs -> parsed antennas."""
+    own_session = session is None
+    if own_session:
+        session = create_session(pool_maxsize=max(max_workers_bbox, max_workers_locations) + 8)
 
-    # 1) Collect location ids across all bboxes
+    # Stage 1: collect unique location IDs from all bbox tiles
     location_map = {}  # location_id -> (lat, lon)
     with ThreadPoolExecutor(max_workers=max_workers_bbox) as ex:
         futs = {ex.submit(fetch_bbox_objects, session, bbox, timeout): bbox for bbox in bboxes}
-        for fut in tqdm(as_completed(futs), total=len(futs), desc="Fetching bbox objects"):
+        for fut in tqdm(as_completed(futs), total=len(futs), desc="Bbox tiles"):
             try:
-                objs = fut.result()
-                for location_id, lat, lon in objs:
-                    if location_id not in location_map:
-                        location_map[location_id] = (lat, lon)
-            except Exception as e:
-                bbox = futs[fut]
-                print(f"Error fetching bbox {bbox}: {e}")
+                for loc_id, lat, lon in fut.result():
+                    if loc_id not in location_map:
+                        location_map[loc_id] = (lat, lon)
+            except Exception:
+                pass
 
     if not location_map:
-        if should_close_session:
+        if own_session:
             session.close()
         return pd.DataFrame()
 
-    location_ids = list(location_map.keys())
+    print(f"Found {len(location_map)} unique locations, fetching details...")
 
-    # 2) Fetch location pages and build detail urls
-    detail_url_to_location = {}  # detail_url -> location_id
+    # Stage 2: fetch each location JSON and parse antennas
+    all_rows = []
     with ThreadPoolExecutor(max_workers=max_workers_locations) as ex:
-        futs = {ex.submit(fetch_location_page_info, session, lid, timeout): lid for lid in location_ids}
-        for fut in tqdm(as_completed(futs), total=len(futs), desc="Fetching location JSON"):
-            lid = futs[fut]
-            try:
-                loc_json = fut.result()
-                urls = extract_detail_urls_from_location_json(loc_json)
-                for u in urls:
-                    # Dedup detail page fetches globally
-                    if u not in detail_url_to_location:
-                        detail_url_to_location[u] = lid
-            except Exception as e:
-                print(f"Error fetching location {lid}: {e}")
+        futs = {
+            ex.submit(fetch_and_parse_location, session, lid, lat, lon, timeout): lid
+            for lid, (lat, lon) in location_map.items()
+        }
+        for fut in tqdm(as_completed(futs), total=len(futs), desc="Location details"):
+            with contextlib.suppress(Exception):
+                all_rows.extend(fut.result())
 
-    detail_urls = list(detail_url_to_location.keys())
-    if not detail_urls:
-        if should_close_session:
-            session.close()
-        return pd.DataFrame()
-
-    # 3) Fetch detail pages and parse
-    frames = []
-    with ThreadPoolExecutor(max_workers=max_workers_details) as ex:
-        futs = {ex.submit(http_get_text, session, url, timeout): url for url in detail_urls}
-        for fut in tqdm(as_completed(futs), total=len(futs), desc="Fetching detail HTML"):
-            url = futs[fut]
-            lid = detail_url_to_location.get(url)
-            lat, lon = location_map.get(lid, (np.nan, np.nan))
-            try:
-                html = fut.result()
-                if not html:
-                    continue
-
-                operator, _loc_paren, sitelabel = parse_site_ids(html)
-                dfs = read_location_info_tables(html)
-                if not dfs:
-                    continue
-
-                # Normalize each table
-                for table in dfs:
-                    t = normalize_table(
-                        table=table,
-                        operator=operator,
-                        sitelabel=sitelabel,
-                        latitude=lat,
-                        longitude=lon,
-                        location_id=lid,
-                    )
-                    if t is not None and not t.empty:
-                        frames.append(t)
-            except Exception as e:
-                print(f"Error parsing detail page {url} for location {lid}: {e}")
-
-    if should_close_session:
+    if own_session:
         session.close()
 
-    if not frames:
+    if not all_rows:
         return pd.DataFrame()
 
-    all_antennas = pd.concat(frames, ignore_index=True).drop_duplicates()
-    return all_antennas
+    return pd.DataFrame(all_rows).drop_duplicates()
 
 
-# ----------------------------
-# Subbox helper (keep your logic)
-# ----------------------------
 def create_subboxes(bbox):
-    sample_bbox = [18.247381, 18.398271, 52.72217, 52.811494]  # target tile size
+    sample_bbox = [18.247381, 18.398271, 52.72217, 52.811494]
     tile_w = sample_bbox[1] - sample_bbox[0]
     tile_h = sample_bbox[3] - sample_bbox[2]
 
-    min_lon, max_lon, min_lat, max_lat = bbox[0], bbox[1], bbox[2], bbox[3]
+    min_lon, max_lon, min_lat, max_lat = bbox
 
     cols = int(np.ceil((max_lon - min_lon) / tile_w))
     rows = int(np.ceil((max_lat - min_lat) / tile_h))
@@ -363,34 +201,36 @@ def create_subboxes(bbox):
     return subboxes
 
 
-# ----------------------------
-# Class wrapper
-# ----------------------------
 class BaseStations:
-    """Poland base station extractor (optimized crawler wrapped in a class)."""
+    """Poland base station extractor using BTSearch map API."""
 
     def __init__(
         self,
         operator=None,
         technology=None,
         bounding_box=None,
-        frequency_range=[0, np.inf],
+        frequency_range=None,
         frequency_band=None,
-        date=datetime.now(timezone.utc),
-        raw_antenna_cache_file: str = os.path.join(current_folder, "all.pkl"),
-        pattern_file: str = None,
-        output_folder: str = "output/poland/",
-        max_workers: int = 16,
+        date=None,
+        raw_antenna_cache_file=None,
+        pattern_file=None,
+        output_folder="output/poland/",
+        max_workers=16,
         file_identifier=None,
     ):
         os.makedirs(output_folder, exist_ok=True)
+        if frequency_range is None:
+            frequency_range = [0, np.inf]
+        if date is None:
+            date = datetime.now(UTC)
+
         self.operator = operator
         self.technology = technology
         self.bounding_box = bounding_box
         self.frequency_range = frequency_range
         self.frequency_band = frequency_band
         self.date = date
-        self.raw_antenna_cache_file = raw_antenna_cache_file
+        self.raw_antenna_cache_file = raw_antenna_cache_file or os.path.join(current_folder, "all.pkl")
         self.pattern_file = pattern_file
         self.output_folder = output_folder
         self.max_workers = max(1, int(max_workers))
@@ -402,9 +242,6 @@ class BaseStations:
             self.file_identifier = file_identifier
 
     def extract_antennas(self, config=None):
-        """
-        Fetch antennas (or load from cache), apply filters via create_output_df, save CSV.
-        """
         save_cache = (
             self.operator is None
             and self.technology is None
@@ -413,41 +250,34 @@ class BaseStations:
             and (self.frequency_range == [0, np.inf] or np.array_equal(self.frequency_range, [0, np.inf]))
         )
 
-        # Load cache if exists
+        # Try cache first
         if self.raw_antenna_cache_file and os.path.exists(self.raw_antenna_cache_file):
             try:
                 self.antennas = pd.read_pickle(self.raw_antenna_cache_file)
                 print(f"Loaded cached antenna data from {self.raw_antenna_cache_file}")
             except Exception as e:
-                print(f"Warning: failed to load cache {self.raw_antenna_cache_file}: {e}")
+                print(f"Warning: failed to load cache: {e}")
 
         if self.antennas is None or self.antennas.empty:
-            if not self.bounding_box:
-                self.bounding_box = [14.12298, 24.14578, 49.00205, 54.83578]
-
-            subboxes = create_subboxes(self.bounding_box)
+            bbox = self.bounding_box or [14.12298, 24.14578, 49.00205, 54.83578]
+            subboxes = create_subboxes(bbox)
             print(f"Querying {len(subboxes)} tiles...")
 
-            # One shared session with pool sized for concurrency
             pool_size = max(self.max_workers * 2, 32)
             session = create_session(pool_maxsize=pool_size)
 
-            # Use one concurrency layer, split workers across stages
-            # You can tune these, but these defaults work well in practice
-            w_bbox = max(1, min(self.max_workers, 16))
-            w_loc = max(1, min(self.max_workers * 2, 32))
-            w_det = max(1, min(self.max_workers * 2, 32))
-
-            self.antennas = get_antennas_in_multiple_bboxes_optimized(
+            self.antennas = extract_all_antennas(
                 subboxes,
                 session=session,
-                max_workers_bbox=w_bbox,
-                max_workers_locations=w_loc,
-                max_workers_details=w_det,
+                max_workers_bbox=min(self.max_workers, 16),
+                max_workers_locations=min(self.max_workers * 2, 32),
                 timeout=10,
             )
-
             session.close()
+
+        if self.antennas.empty:
+            print("Result is empty")
+            return pd.DataFrame()
 
         df = self.antennas.copy()
         filter_args = {
@@ -463,14 +293,15 @@ class BaseStations:
         # Save cache
         if save_cache and self.raw_antenna_cache_file:
             try:
-                os.makedirs(os.path.dirname(self.raw_antenna_cache_file), exist_ok=True)
+                os.makedirs(os.path.dirname(self.raw_antenna_cache_file) or ".", exist_ok=True)
                 pd.to_pickle(self.antennas, self.raw_antenna_cache_file)
                 print(f"Saved raw antenna cache to {self.raw_antenna_cache_file}")
             except Exception as e:
                 print(f"Warning: failed to save cache: {e}")
 
-        # Save output CSV
-        out_csv = os.path.join(self.output_folder, f"{self.file_identifier}_antennas.csv") if self.output_folder else None
+        out_csv = (
+            os.path.join(self.output_folder, f"{self.file_identifier}_antennas.csv") if self.output_folder else None
+        )
         if out_csv:
             try:
                 os.makedirs(os.path.dirname(out_csv), exist_ok=True)
@@ -481,6 +312,10 @@ class BaseStations:
 
         return self.antennas
 
+    def extract_patterns(self, *args, **kwargs):
+        print("Pattern extraction is not supported for Poland.")
+        return None
+
 
 if __name__ == "__main__":
     poland_bbox = [14.12298, 24.14578, 49.00205, 54.83578]
@@ -488,15 +323,16 @@ if __name__ == "__main__":
     print(f"Created {len(subboxes)} subboxes")
 
     session = create_session(pool_maxsize=96)
-    antennas = get_antennas_in_multiple_bboxes_optimized(
+    antennas = extract_all_antennas(
         subboxes,
         session=session,
         max_workers_bbox=16,
         max_workers_locations=32,
-        max_workers_details=32,
         timeout=10,
     )
     session.close()
 
     print(f"Extracted {len(antennas)} antennas")
-    antennas.to_csv("Countries/Poland/antennas.csv", index=False)
+    if not antennas.empty:
+        print(f"Operators: {antennas['Operator'].value_counts().to_dict()}")
+        print(f"Technologies: {antennas['Technology'].value_counts().to_dict()}")
