@@ -45,6 +45,11 @@ interface SceneStore {
   bodyName: string
   bodyGeometry: BufferGeometry | null
 
+  // Animation state (for glTF phantoms)
+  animationClip: string
+  animationPlaying: boolean
+  phantomType: 'stl' | 'gltf'
+
   // Voxels
   voxelData: {
     positions: Float32Array
@@ -94,6 +99,9 @@ interface SceneStore {
   setCapabilities: (caps: Capabilities) => void
   setBodyName: (name: string) => void
   setBodyGeometry: (geom: BufferGeometry | null) => void
+  setAnimationClip: (clip: string) => void
+  setAnimationPlaying: (playing: boolean) => void
+  setPhantomType: (type: 'stl' | 'gltf') => void
   setVoxelData: (data: SceneStore['voxelData']) => void
   setVoxelHeightmap: (fn: SceneStore['voxelHeightmap']) => void
   toggleLayer: (material: string) => void
@@ -127,6 +135,9 @@ export const useSceneStore = create<SceneStore>((set) => ({
   capabilities: null,
   bodyName: '',
   bodyGeometry: null,
+  animationClip: 'idle',
+  animationPlaying: false,
+  phantomType: 'stl',
   voxelData: null,
   voxelHeightmap: null,
   layerVisibility: {},
@@ -153,6 +164,9 @@ export const useSceneStore = create<SceneStore>((set) => ({
   setCapabilities: (caps) => set({ capabilities: caps }),
   setBodyName: (name) => set({ bodyName: name }),
   setBodyGeometry: (geom) => set({ bodyGeometry: geom }),
+  setAnimationClip: (clip) => set({ animationClip: clip }),
+  setAnimationPlaying: (playing) => set({ animationPlaying: playing }),
+  setPhantomType: (type) => set({ phantomType: type }),
   setVoxelData: (data) => set({ voxelData: data }),
   setVoxelHeightmap: (fn) => set({ voxelHeightmap: fn }),
   toggleLayer: (material) =>
