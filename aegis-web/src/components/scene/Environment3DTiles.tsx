@@ -12,20 +12,7 @@ import { GoogleCloudAuthPlugin } from '3d-tiles-renderer/plugins'
 import { useEnvironmentStore } from '@/stores/environment'
 import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
-
-// WGS84 semi-major axis in meters
-const WGS84_A = 6378137.0
-
-/** Convert lat/lon (radians) + altitude (meters) to ECEF position. */
-function latLonToECEF(latRad: number, lonRad: number, altitude: number): THREE.Vector3 {
-  const r = WGS84_A + altitude
-  const cosLat = Math.cos(latRad)
-  return new THREE.Vector3(
-    r * cosLat * Math.cos(lonRad),
-    r * cosLat * Math.sin(lonRad),
-    r * Math.sin(latRad),
-  )
-}
+import { WGS84_A, latLonRadToECEF } from '@/lib/geo'
 
 interface Props {
   children: ReactNode
@@ -41,8 +28,8 @@ function GlobeCameraInit({ latRad, lonRad }: { latRad: number; lonRad: number })
     if (key === lastKey.current) return
     lastKey.current = key
 
-    const surfacePos = latLonToECEF(latRad, lonRad, 0)
-    const cameraPos = latLonToECEF(latRad, lonRad, 800)
+    const surfacePos = latLonRadToECEF(latRad, lonRad, 0)
+    const cameraPos = latLonRadToECEF(latRad, lonRad, 800)
     camera.position.copy(cameraPos)
     // Look at the surface point directly below, not Earth's center
     camera.lookAt(surfacePos)
@@ -67,8 +54,8 @@ function GlobeCameraRecenter({ latRad, lonRad }: { latRad: number; lonRad: numbe
     if (geocodeCount === lastCount.current) return
     lastCount.current = geocodeCount
 
-    const surfacePos = latLonToECEF(latRad, lonRad, 0)
-    const cameraPos = latLonToECEF(latRad, lonRad, 800)
+    const surfacePos = latLonRadToECEF(latRad, lonRad, 0)
+    const cameraPos = latLonRadToECEF(latRad, lonRad, 800)
     camera.position.copy(cameraPos)
     camera.lookAt(surfacePos)
     camera.updateProjectionMatrix()
