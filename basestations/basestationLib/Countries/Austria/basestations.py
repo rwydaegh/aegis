@@ -85,7 +85,8 @@ def get_antennas(session, sites):
         
         for antenna in data:
             technologies = antenna.get("system", "").split("/")  # API returns "/" as separator
-            power = antenna.get("leistung", np.nan)
+            power_w = antenna.get("leistung", np.nan)
+            power = 10 * np.log10(power_w) + 30 if power_w and power_w > 0 else np.nan
             antenna_structure = antenna.get("struktur", "")
             is_sharing = antenna.get("sharing", False)
             # TODO: Implement check with OpenCellID MNC to identify operators

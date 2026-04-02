@@ -155,7 +155,7 @@ class BaseStations:
     def _query_sparql_batches(self, s) -> tuple:
         """Query SPARQL endpoint in batches and combine results."""
         offset = 0
-        limit = 10000
+        limit = 5000
         raw_antennas_list, raw_infos_list = [], []
         
         pbar_sparql = tqdm(desc="Querying SPARQL batches", unit=" batch")
