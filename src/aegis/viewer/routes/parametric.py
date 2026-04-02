@@ -1,4 +1,5 @@
 """Routes for parametric body generation (SMPL-X, Anny)."""
+
 import json
 
 import numpy as np

@@ -47,6 +47,8 @@ export function useDosimetry() {
   const triggerCompute = useCallback(() => {
     // MIMO mode has its own compute pipeline (useMIMODosimetry)
     if (useMIMOStore.getState().enabled) return
+    // Skip compute if glTF animation is playing (posed mesh changes every frame)
+    if (useSceneStore.getState().animationPlaying) return
     if (!sim.antennaPos || !scene.config) return
 
     // Abort any in-flight request

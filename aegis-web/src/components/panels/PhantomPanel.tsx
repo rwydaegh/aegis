@@ -24,6 +24,11 @@ export default function PhantomPanel() {
   const setBodyName = useSceneStore((s) => s.setBodyName)
   const caps = useSceneStore((s) => s.capabilities)
   const setCameraPreset = useUIStore((s) => s.setCameraPreset)
+  const animationClip = useSceneStore((s) => s.animationClip)
+  const setAnimationClip = useSceneStore((s) => s.setAnimationClip)
+  const animationPlaying = useSceneStore((s) => s.animationPlaying)
+  const setAnimationPlaying = useSceneStore((s) => s.setAnimationPlaying)
+  const phantomType = useSceneStore((s) => s.phantomType)
 
   if (!caps) return null
 
@@ -59,6 +64,28 @@ export default function PhantomPanel() {
           </option>
         ))}
       </select>
+
+      {phantomType === 'gltf' && (
+        <>
+          <label className="text-xs text-muted-foreground block mb-1 mt-3">Pose</label>
+          <select
+            className={selectClass}
+            value={animationClip}
+            onChange={(e) => setAnimationClip(e.target.value)}
+          >
+            {['idle', 'walking', 'phone_ear_r', 'phone_ear_l', 'sitting'].map((p) => (
+              <option key={p} value={p}>{p.replace(/_/g, ' ')}</option>
+            ))}
+          </select>
+
+          <button
+            className="mt-2 w-full bg-background border border-border rounded px-2 py-1.5 text-sm text-foreground hover:bg-accent"
+            onClick={() => setAnimationPlaying(!animationPlaying)}
+          >
+            {animationPlaying ? '⏸ Pause' : '▶ Play'}
+          </button>
+        </>
+      )}
     </div>
   )
 }
