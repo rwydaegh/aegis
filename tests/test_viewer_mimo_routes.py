@@ -279,6 +279,7 @@ class TestBuildScene:
 
 def _add_compliance_kwargs(mock_result):
     """Add a working compliance_kwargs method to a MagicMock result."""
+
     def _ckw(*, body=None):
         r = mock_result
         peak_4 = None
@@ -298,9 +299,13 @@ def _add_compliance_kwargs(mock_result):
         if body is not None and r.sinc is not None and hasattr(r.sinc, "size") and r.sinc.size > 0:
             sinc_wb = float(np.sum(r.sinc * body.areas) / np.sum(body.areas))
         return {
-            "sab_4cm2": peak_4, "sab_1cm2": peak_1, "sar_wb": r.sar_wb,
-            "sinc_local": sinc_peak, "sinc_whole_body": sinc_wb,
+            "sab_4cm2": peak_4,
+            "sab_1cm2": peak_1,
+            "sar_wb": r.sar_wb,
+            "sinc_local": sinc_peak,
+            "sinc_whole_body": sinc_wb,
         }
+
     mock_result.compliance_kwargs = _ckw
     return mock_result
 
