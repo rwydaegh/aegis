@@ -6,7 +6,8 @@ import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
 import { useNotificationStore } from '@/stores/notifications'
 import { useMIMOStore } from '@/stores/mimo'
-import { computeDosimetry, computeVoxelRT, computeRT, computeSionnaRT, computeSionnaEnvRT, type RtConfig } from '@/api/client'
+import { computeDosimetry, computeVoxelRT, computeRT, computeSionnaRT, computeSionnaEnvRT, fetchLSPHeatmap, type RtConfig } from '@/api/client'
+import { toServer } from '@/api/coordinates'
 
 export function useDosimetry() {
   const sim = useSimulationStore(useShallow(s => ({
@@ -201,6 +202,38 @@ export function useDosimetry() {
       if (timerRef.current) clearTimeout(timerRef.current)
     }
   }, [sim, scene, exposureScenario, triggerCompute])
+
+  // LSP heatmap fetch
+  const lspHeatmapVisible = useSimulationStore(s => s.lspHeatmapVisible)
+  const lspHeatmapParam = useSimulationStore(s => s.lspHeatmapParam)
+
+  useEffect(() => {
+    if (scene.pathSource !== 'stochastic' || !lspHeatmapVisible || !sim.antennaPos) return
+
+    const controller = new AbortController()
+    const poleH = scene.config?.antenna?.pole_height ?? 2
+    const antennaTip: [number, number, number] = [sim.antennaPos[0], sim.antennaPos[1] + poleH, sim.antennaPos[2]]
+
+    fetchLSPHeatmap({
+      preset: sim.stochasticPreset,
+      freq_ghz: sim.freqGhz,
+      antenna_pos: toServer(antennaTip),
+      lsp_name: lspHeatmapParam,
+      bounds: [-100, 100, -100, 100],
+      resolution: 1.0,
+      seed: sim.stochasticSeed,
+    })
+      .then(result => {
+        if (controller.signal.aborted) return
+        useSimulationStore.getState().setLSPHeatmapData(result.data, result.bounds, [result.vmin, result.vmax])
+      })
+      .catch(err => {
+        if ((err as Error).name === 'AbortError') return
+        Sentry.captureException(err)
+      })
+
+    return () => { controller.abort() }
+  }, [scene.pathSource, lspHeatmapVisible, lspHeatmapParam, sim.stochasticPreset, sim.stochasticSeed, sim.freqGhz, sim.antennaPos, scene.config])
 
   // Cancel any in-flight request on unmount
   useEffect(() => {

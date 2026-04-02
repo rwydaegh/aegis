@@ -5,9 +5,12 @@ from __future__ import annotations
 import math
 
 import numpy as np
+from scipy.special import erfc
 
+from aegis.channel.lsf import LSFModel
 from aegis.channel.path_loss import compute_path_loss
 from aegis.channel.presets import scale_param
+from aegis.channel.sos import SumOfSinusoids
 from aegis.defaults import DEFAULT_SEED, NUMERICAL_FLOOR
 from aegis.paths import PropagationPaths
 
@@ -60,28 +63,55 @@ def generate_channel(
 
     n_clusters = int(p.get("NumClusters", 12))
     n_subpaths = int(p.get("NumSubPaths", 20))
+    sc_lambda = float(p.get("SC_lambda", 0))
 
     # Step 1: large-scale parameters
-    lsp = _draw_large_scale(p, freq_ghz, rng, ov)
+    if sc_lambda > 0:
+        lsp = _draw_large_scale_sc(p, freq_ghz, body_center, seed, ov)
+    else:
+        lsp = _draw_large_scale(p, freq_ghz, rng, ov)
 
     # Step 2: cluster delays and powers
-    powers = _generate_cluster_powers(
-        n_clusters,
-        p.get("r_DS", 2.5),
-        lsp["DS"],
-        lsp["KF_dB"],
-        p.get("LNS_ksi", 3),
-        rng,
-    )
+    if sc_lambda > 0:
+        powers = _generate_cluster_powers_sc(
+            n_clusters,
+            p.get("r_DS", 2.5),
+            lsp["DS"],
+            lsp["KF_dB"],
+            p.get("LNS_ksi", 3),
+            body_center,
+            sc_lambda,
+            seed,
+        )
+    else:
+        powers = _generate_cluster_powers(
+            n_clusters,
+            p.get("r_DS", 2.5),
+            lsp["DS"],
+            lsp["KF_dB"],
+            p.get("LNS_ksi", 3),
+            rng,
+        )
 
     # Step 3: cluster arrival angles
-    az, el = _generate_cluster_angles(
-        n_clusters,
-        powers,
-        lsp["ASA_deg"],
-        lsp["ESA_deg"],
-        rng,
-    )
+    if sc_lambda > 0:
+        az, el = _generate_cluster_angles_sc(
+            n_clusters,
+            powers,
+            lsp["ASA_deg"],
+            lsp["ESA_deg"],
+            body_center,
+            sc_lambda,
+            seed,
+        )
+    else:
+        az, el = _generate_cluster_angles(
+            n_clusters,
+            powers,
+            lsp["ASA_deg"],
+            lsp["ESA_deg"],
+            rng,
+        )
 
     # Step 4: LOS rotation
     direction = body_center - antenna_pos
@@ -119,6 +149,117 @@ def generate_channel(
     path_powers = np.maximum(powers * s_inc, 0.0)
 
     return PropagationPaths.from_powers(k_hat=k_hats, power=path_powers)
+
+
+def _draw_large_scale_sc(
+    params: dict,
+    freq_ghz: float,
+    position: np.ndarray,
+    seed: int,
+    overrides: dict,
+) -> dict:
+    """Draw large-scale parameters using spatially consistent LSF model."""
+    lsf = LSFModel(params, freq_ghz, seed=seed)
+    pos = np.asarray(position, dtype=float).reshape(1, 3)
+    raw = lsf.evaluate(pos)
+
+    # Apply overrides: if an override is present, use the override value directly
+    kf_db = float(overrides.get("KF_mu", raw["KF_dB"][0]))
+    sf_db = float(raw["SF_dB"][0])
+    asa_deg = max(float(raw["ASA_deg"][0]), 0.1)
+    esa_deg = max(float(raw["ESA_deg"][0]), 0.1)
+    ds = max(float(raw["DS"][0]), 1e-12)
+
+    return {
+        "KF_dB": kf_db,
+        "SF_dB": sf_db,
+        "ASA_deg": asa_deg,
+        "ESA_deg": esa_deg,
+        "DS": ds,
+    }
+
+
+def _generate_cluster_powers_sc(
+    n_clusters: int,
+    r_ds: float,
+    ds: float,
+    kf_db: float,
+    lns_ksi: float,
+    position: np.ndarray,
+    sc_lambda: float,
+    seed: int,
+) -> np.ndarray:
+    """Generate cluster powers with spatially consistent delays via SOS."""
+    pos = np.asarray(position, dtype=float).reshape(1, 3)
+    delays = np.zeros(n_clusters)
+    delays[0] = 0
+
+    for ci in range(1, n_clusters):
+        sos = SumOfSinusoids(d_lambda=sc_lambda, seed=seed + 2000 + ci)
+        z = sos.evaluate(pos)[0]
+        # Transform N(0,1) -> U(0,1) via erfc: Phi(z) = erfc(-z/sqrt(2))/2
+        u = float(erfc(-z / math.sqrt(2)) / 2.0)
+        u = np.clip(u, 1e-12, 1.0 - 1e-12)
+        delays[ci] = -math.log(u)
+
+    delays = np.sort(delays)
+
+    if r_ds > 1:
+        delays = delays * ds * r_ds / max(delays.max(), 1e-12)
+
+    powers = np.exp(-delays * (r_ds - 1) / (r_ds * ds)) if r_ds > 1 and ds > 0 else np.ones(n_clusters)
+
+    if lns_ksi > 0:
+        # SOS-based shadow fading per cluster
+        for ci in range(n_clusters):
+            sos_sh = SumOfSinusoids(d_lambda=sc_lambda, seed=seed + 3000 + ci)
+            z_sh = sos_sh.evaluate(pos)[0]
+            powers[ci] *= 10 ** (-lns_ksi * z_sh / 10)
+
+    k_linear = 10 ** (kf_db / 10)
+    if n_clusters > 1 and k_linear > 1e-10:
+        nlos_sum = powers[1:].sum()
+        if nlos_sum > 0:
+            powers[0] = k_linear * nlos_sum
+    elif k_linear <= 1e-10:
+        pass
+
+    total = powers.sum()
+    if total > 0:
+        powers /= total
+
+    return powers
+
+
+def _generate_cluster_angles_sc(
+    n_clusters: int,
+    powers: np.ndarray,
+    asa_deg: float,
+    esa_deg: float,
+    position: np.ndarray,
+    sc_lambda: float,
+    seed: int,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Generate cluster angles with spatially consistent random values via SOS."""
+    pos = np.asarray(position, dtype=float).reshape(1, 3)
+    az_init = np.zeros(n_clusters)
+    el_init = np.zeros(n_clusters)
+
+    for ci in range(1, n_clusters):
+        sos_az = SumOfSinusoids(d_lambda=sc_lambda, seed=seed + 4000 + ci)
+        sos_el = SumOfSinusoids(d_lambda=sc_lambda, seed=seed + 5000 + ci)
+        z_az = sos_az.evaluate(pos)[0]
+        z_el = sos_el.evaluate(pos)[0]
+        # Transform N(0,1) -> U(-pi/2, pi/2) via erfc
+        u_az = float(erfc(-z_az / math.sqrt(2)) / 2.0)
+        u_el = float(erfc(-z_el / math.sqrt(2)) / 2.0)
+        az_init[ci] = -math.pi / 2 + math.pi * u_az
+        el_init[ci] = -math.pi / 2 + math.pi * u_el
+
+    az = _scale_angles(az_init, powers, math.radians(asa_deg), max_scale=3.0)
+    el = _scale_angles(el_init, powers, math.radians(esa_deg), max_scale=1.5)
+
+    return az, el
 
 
 def _draw_large_scale(

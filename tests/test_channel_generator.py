@@ -195,3 +195,44 @@ def test_reproducible_with_seed():
     p2 = generate_channel(preset["params"], **kwargs)
     np.testing.assert_array_equal(p1.k_hat, p2.k_hat)
     np.testing.assert_array_equal(p1.power, p2.power)
+
+
+def test_spatial_consistency_nearby_positions():
+    """Nearby body positions should produce similar channel powers."""
+    from aegis.channel import generate_channel, load_preset
+
+    preset = load_preset("3GPP_38.901_UMi_LOS", DATA_DIR)
+    params = preset["params"]
+    antenna = np.array([0.0, 0.0, 10.0])
+    body_a = np.array([50.0, 0.0, 1.5])
+    body_b = np.array([51.0, 0.0, 1.5])
+    paths_a = generate_channel(params, 28.0, antenna, body_a, 40.0, seed=42)
+    paths_b = generate_channel(params, 28.0, antenna, body_b, 40.0, seed=42)
+    power_a = np.sum(paths_a.power)
+    power_b = np.sum(paths_b.power)
+    ratio_db = 10 * np.log10(power_a / power_b)
+    assert abs(ratio_db) < 3.0, f"Power difference {ratio_db} dB too large for 1m move"
+
+
+def test_sc_disabled_when_sc_lambda_zero():
+    """Presets without SC_lambda should use i.i.d. path."""
+    from aegis.channel import generate_channel, load_preset
+
+    preset = load_preset("Freespace", DATA_DIR)
+    params = preset["params"]
+    antenna = np.array([0.0, 0.0, 10.0])
+    body = np.array([50.0, 0.0, 1.5])
+    paths = generate_channel(params, 28.0, antenna, body, 40.0, seed=42)
+    assert len(paths.k_hat) >= 1
+
+
+def test_sc_path_count_unchanged():
+    """SC mode should produce same number of paths as non-SC."""
+    from aegis.channel import generate_channel, load_preset
+
+    preset = load_preset("3GPP_38.901_UMi_LOS", DATA_DIR)
+    params = preset["params"]
+    antenna = np.array([0.0, 0.0, 10.0])
+    body = np.array([50.0, 0.0, 1.5])
+    paths = generate_channel(params, 28.0, antenna, body, 40.0, seed=42)
+    assert len(paths.k_hat) == 221  # 1 LOS + 11*20 NLOS

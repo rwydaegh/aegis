@@ -447,6 +447,33 @@ export async function cancelLocation(): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// LSP heatmap
+// ---------------------------------------------------------------------------
+
+export interface LSPHeatmapParams {
+  preset: string
+  freq_ghz: number
+  antenna_pos: [number, number, number]
+  lsp_name: string
+  bounds: [number, number, number, number]
+  resolution: number
+  seed: number
+}
+
+export interface LSPHeatmapResult {
+  data: number[][]
+  bounds: [number, number, number, number]
+  lsp_name: string
+  vmin: number
+  vmax: number
+  resolution: number
+}
+
+export async function fetchLSPHeatmap(params: LSPHeatmapParams): Promise<LSPHeatmapResult> {
+  return postJson<LSPHeatmapResult>('/api/lsp-heatmap', params)
+}
+
+// ---------------------------------------------------------------------------
 // Compliance analysis endpoints
 // ---------------------------------------------------------------------------
 

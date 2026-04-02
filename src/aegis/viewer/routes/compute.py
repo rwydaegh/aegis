@@ -1731,6 +1731,34 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                 continue
         return jsonify(presets)
 
+    @app.route("/api/lsp-heatmap", methods=["POST"])
+    def lsp_heatmap():
+        """Generate an LSP spatial map for the frontend heatmap overlay."""
+        from aegis.viewer.compute import generate_lsp_heatmap
+
+        data = request.get_json(silent=True) or {}
+        preset_name = data.get("preset", "3GPP_38.901_UMi_LOS")
+        freq_ghz = data.get("freq_ghz", 28.0)
+        antenna_pos = data.get("antenna_pos", [0, 0, 10])
+        lsp_name = data.get("lsp_name", "SF_dB")
+        bounds = tuple(data.get("bounds", [-100, 100, -100, 100]))
+        resolution = min(int(data.get("resolution", 128)), 256)
+        seed = int(data.get("seed", 42))
+
+        try:
+            result = generate_lsp_heatmap(
+                preset_name=preset_name,
+                freq_ghz=freq_ghz,
+                antenna_pos=tuple(antenna_pos),
+                lsp_name=lsp_name,
+                bounds=bounds,
+                resolution=resolution,
+                seed=seed,
+            )
+            return jsonify(result)
+        except Exception as e:
+            return jsonify({"error": str(e)}), 400
+
     @app.route("/api/gpu/status")
     def api_gpu_status():
         """Return GPU container warmth status."""
