@@ -497,6 +497,26 @@ export async function fetchDosimetryCsv(): Promise<Blob> {
   return res.blob()
 }
 
+export async function fetchDosimetryJson(): Promise<Blob> {
+  const res = await fetchWithRetry(`${BASE}/api/export/dosimetry-json`)
+  if (res.status === 401) {
+    handle401()
+    throw new Error('GET /api/export/dosimetry-json failed: 401 Unauthorized')
+  }
+  if (!res.ok) throw new Error(await extractErrorMessage(res, 'GET', '/api/export/dosimetry-json'))
+  return res.blob()
+}
+
+export async function fetchDosimetryNpz(): Promise<Blob> {
+  const res = await fetchWithRetry(`${BASE}/api/export/dosimetry-npz`)
+  if (res.status === 401) {
+    handle401()
+    throw new Error('GET /api/export/dosimetry-npz failed: 401 Unauthorized')
+  }
+  if (!res.ok) throw new Error(await extractErrorMessage(res, 'GET', '/api/export/dosimetry-npz'))
+  return res.blob()
+}
+
 export interface HeatmapResult {
   freq_ghz: number[]
   power_dbm: number[]

@@ -68,9 +68,10 @@ def _json_dumps_safe(obj: object) -> str:
 
 
 def _cache_dosimetry_for_export(app: Flask, result, body, stats: dict) -> None:
-    """Cache the last dosimetry result and body for CSV export."""
+    """Cache the last dosimetry result, body, and stats for export."""
     app.config["_last_dosimetry_result"] = result
     app.config["_last_dosimetry_body"] = body
+    app.config["_last_dosimetry_stats"] = stats
     app.config["_last_compliance_result"] = stats.get("compliance")
 
 
@@ -1593,6 +1594,92 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
         resp = Response(generate(), mimetype="text/csv")
         resp.headers["Content-Disposition"] = "attachment; filename=aegis_dosimetry.csv"
+        return resp
+
+    @app.route("/api/export/dosimetry-json", methods=["GET"])
+    def export_dosimetry_json():
+        """Export last dosimetry result as a self-describing JSON file.
+
+        Includes per-triangle data, compliance verdict, and peak statistics.
+        """
+        result = app.config.get("_last_dosimetry_result")
+        body = app.config.get("_last_dosimetry_body")
+        stats = app.config.get("_last_dosimetry_stats")
+        if result is None or body is None:
+            return jsonify({"error": _ERR_NO_EXPORT_DATA}), 404
+
+        n = body.n_triangles
+        data: dict = {
+            "meta": {
+                "generator": "AEGIS dosimetry engine",
+                "body": body.name,
+                "n_triangles": n,
+            },
+            "centroids": body.centroids.tolist(),
+            "normals": body.normals.tolist(),
+            "areas": body.areas.tolist(),
+            "sab": result.sab.tolist(),
+        }
+
+        for arr, key in [
+            (result.sab_averaged, "sab_4cm2"),
+            (result.sinc, "sinc"),
+            (result.sinc_averaged, "sinc_4cm2"),
+            (result.sab_1cm2_averaged, "sab_1cm2"),
+        ]:
+            if arr is not None:
+                data[key] = np.asarray(arr).tolist()
+
+        if stats:
+            data["stats"] = {
+                k: v
+                for k, v in stats.items()
+                if k not in ("arrays", "path_viz")
+            }
+
+        resp = Response(
+            json.dumps(data, allow_nan=False, default=str),
+            mimetype="application/json",
+        )
+        resp.headers["Content-Disposition"] = "attachment; filename=aegis_dosimetry.json"
+        return resp
+
+    @app.route("/api/export/dosimetry-npz", methods=["GET"])
+    def export_dosimetry_npz():
+        """Export last dosimetry result as a NumPy .npz archive.
+
+        Preserves full float64 precision and is much smaller than CSV for
+        large meshes.
+        """
+        import io
+
+        result = app.config.get("_last_dosimetry_result")
+        body = app.config.get("_last_dosimetry_body")
+        if result is None or body is None:
+            return jsonify({"error": _ERR_NO_EXPORT_DATA}), 404
+
+        arrays: dict = {
+            "centroids": body.centroids,
+            "normals": body.normals,
+            "areas": body.areas,
+            "sab": result.sab,
+        }
+
+        for arr, key in [
+            (result.sab_averaged, "sab_4cm2"),
+            (result.sinc, "sinc"),
+            (result.sinc_averaged, "sinc_4cm2"),
+            (result.sab_1cm2_averaged, "sab_1cm2"),
+        ]:
+            if arr is not None:
+                arrays[key] = np.asarray(arr)
+
+        buf = io.BytesIO()
+        np.savez_compressed(buf, **arrays)
+        buf.seek(0)
+
+        resp = Response(buf.getvalue(), mimetype="application/octet-stream")
+        resp.headers["Content-Disposition"] = "attachment; filename=aegis_dosimetry.npz"
         return resp
 
     @app.route("/api/compliance/report", methods=["GET"])
