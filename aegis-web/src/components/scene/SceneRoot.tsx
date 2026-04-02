@@ -32,6 +32,7 @@ import SmartphoneModel from './SmartphoneModel'
 import BaseStationMarkers from './BaseStationMarkers'
 import { EnvironmentTerrain } from './EnvironmentTerrain'
 import { CoverageOverlay } from './CoverageOverlay'
+import { cameraState } from '@/lib/cameraState'
 
 function GroundPlane() {
   const visible = useSceneStore(s => s.groundPlaneVisible)
@@ -64,6 +65,23 @@ function SceneGrid() {
   return (
     <gridHelper args={[size, divisions, color, lineColor]} position={[0, yOffset, 0]} />
   )
+}
+
+/**
+ * Syncs Three.js camera position/target to the module-level cameraState
+ * every frame, so share links can read it without triggering React re-renders.
+ */
+function CameraSyncer({ controlsRef }: { controlsRef: React.RefObject<OrbitControlsImpl | null> }) {
+  const { camera } = useThree()
+  useFrame(() => {
+    cameraState.position = camera.position.toArray() as [number, number, number]
+    const controls = controlsRef.current
+    if (controls) {
+      const t = controls.target as THREE.Vector3
+      cameraState.target = t.toArray() as [number, number, number]
+    }
+  })
+  return null
 }
 
 // Body is roughly 1.2 m tall, centered at origin, feet at y=0
@@ -202,6 +220,7 @@ function ClickPlane() {
 /**
  * On mount, move the camera + orbit target to look at the body's actual position.
  * This handles the case where body_placement puts the body far from the origin.
+ * Also applies a camera override from share links if one is pending.
  */
 function CameraInitializer({ controlsRef, initialOffset }: {
   controlsRef: React.RefObject<OrbitControlsImpl | null>
@@ -215,6 +234,17 @@ function CameraInitializer({ controlsRef, initialOffset }: {
     const controls = controlsRef.current
     if (!controls) return
     initialized.current = true
+
+    // Check for a share link camera override first (takes priority)
+    const override = useUIStore.getState().cameraOverride
+    if (override) {
+      camera.position.set(...override.position)
+      const target = controls.target as THREE.Vector3
+      target.set(...override.target)
+      controls.update()
+      useUIStore.getState().setCameraOverride(null)
+      return
+    }
 
     const [bx, by, bz] = initialOffset
     // Only relocate if body is significantly off-origin
@@ -370,6 +400,7 @@ export default function SceneRoot() {
           <OrbitControls ref={controlsRef} makeDefault enableDamping />
           <CameraController controlsRef={controlsRef} initialPosition={initialPosition} />
           <CameraInitializer controlsRef={controlsRef} initialOffset={bodyOffset} />
+          <CameraSyncer controlsRef={controlsRef} />
         </>
       )}
     </>

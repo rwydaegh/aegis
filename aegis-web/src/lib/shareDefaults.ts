@@ -43,6 +43,14 @@ export const SHARE_DEFAULTS = {
   sunIntensity: 1.2,
   ambientIntensity: 0.6,
   cameraFov: 55,
+  // scene visibility
+  bodyMeshVisible: true,
+  groundPlaneVisible: true,
+  gridVisible: false,
+  sceneGeometryVisible: true,
+  // camera (null = use default, not from share link)
+  cameraPosition: null as [number, number, number] | null,
+  cameraTarget: null as [number, number, number] | null,
   // ui store
   wireframe: false,
   legendScale: 'linear' as string,

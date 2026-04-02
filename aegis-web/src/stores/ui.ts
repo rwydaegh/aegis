@@ -41,6 +41,7 @@ interface UIStore {
   welcomeDismissed: boolean
   activeScenario: string | null
   scenarioLoading: boolean
+  cameraOverride: { position: [number, number, number]; target: [number, number, number] } | null
 
   toggleSidebar: () => void
   toggleWireframe: () => void
@@ -65,6 +66,7 @@ interface UIStore {
   setWelcomeDismissed: (v: boolean) => void
   setActiveScenario: (v: string | null) => void
   setScenarioLoading: (v: boolean) => void
+  setCameraOverride: (v: UIStore['cameraOverride']) => void
 }
 
 export const useUIStore = create<UIStore>((set) => ({
@@ -90,6 +92,7 @@ export const useUIStore = create<UIStore>((set) => ({
   welcomeDismissed: false,
   activeScenario: null as string | null,
   scenarioLoading: false,
+  cameraOverride: null,
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
   toggleWireframe: () => set((state) => ({ wireframe: !state.wireframe })),
   setComputing: (computing) => set({ isComputing: computing }),
@@ -121,4 +124,5 @@ export const useUIStore = create<UIStore>((set) => ({
   setWelcomeDismissed: (v) => set({ welcomeDismissed: v }),
   setActiveScenario: (v) => set({ activeScenario: v }),
   setScenarioLoading: (v) => set({ scenarioLoading: v }),
+  setCameraOverride: (v) => set({ cameraOverride: v }),
 }))
