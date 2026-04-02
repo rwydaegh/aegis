@@ -17,6 +17,7 @@ import { addCoverageOverlay, type CoverageOverlayHandle } from './CoverageOverla
 export function CesiumGlobe() {
   const viewerRef = useRef<Viewer | null>(null)
   const tickListenerRef = useRef<(() => void) | null>(null)
+  const mountedRef = useRef(true)
   const overlayRef = useRef<CoverageOverlayHandle | null>(null)
   const capabilities = useSceneStore(s => s.capabilities)
   const envSource = useEnvironmentStore(s => s.source)
@@ -31,8 +32,31 @@ export function CesiumGlobe() {
     }
   }, [cesiumToken])
 
-  // Handle viewer ready
-  const handleViewerReady = useCallback(async (viewer: Viewer) => {
+  // Track mount state for async safety
+  useEffect(() => {
+    mountedRef.current = true
+    return () => { mountedRef.current = false }
+  }, [])
+
+  // Add overlay from current coverage state if viewer is ready
+  const tryAddOverlay = useCallback(() => {
+    const viewer = viewerRef.current
+    if (!viewer || viewer.isDestroyed()) return
+    const state = useCoverageStore.getState()
+    if (!state.loaded || !state.siteLats || !state.siteLons || !state.siteOpIndices) return
+    if (overlayRef.current) overlayRef.current.destroy()
+    overlayRef.current = addCoverageOverlay(
+      viewer,
+      state.siteLats,
+      state.siteLons,
+      state.siteOpIndices,
+      state.siteCount,
+      state.regions,
+    )
+  }, [])
+
+  // Handle viewer ready (sync init, async Google Tiles loaded separately)
+  const handleViewerReady = useCallback((viewer: Viewer) => {
     viewerRef.current = viewer
 
     // Style credits to be subtle but visible (required by Cesium ion ToS)
@@ -45,18 +69,6 @@ export function CesiumGlobe() {
       viewer.scene.setTerrain(Terrain.fromWorldTerrain())
     } catch (e) {
       console.warn('Failed to load Cesium World Terrain:', e)
-    }
-
-    // Optionally load Google Photorealistic 3D Tiles
-    if (googleApiKey) {
-      try {
-        const tileset = await Cesium3DTileset.fromUrl(
-          `https://tile.googleapis.com/v1/3dtiles/root.json?key=${googleApiKey}`,
-        )
-        viewer.scene.primitives.add(tileset)
-      } catch (e) {
-        console.warn('Failed to load Google 3D Tiles:', e)
-      }
     }
 
     // Initial camera: high altitude for globe view
@@ -77,6 +89,27 @@ export function CesiumGlobe() {
     }
     viewer.clock.onTick.addEventListener(onTick)
     tickListenerRef.current = onTick
+
+    // If coverage data was loaded before the viewer was ready, add overlay now
+    tryAddOverlay()
+  }, [tryAddOverlay])
+
+  // Load Google 3D Tiles as a separate effect so it does not race with unmount
+  useEffect(() => {
+    const viewer = viewerRef.current
+    if (!googleApiKey || !viewer || viewer.isDestroyed()) return
+
+    let cancelled = false
+    Cesium3DTileset.fromUrl(
+      `https://tile.googleapis.com/v1/3dtiles/root.json?key=${googleApiKey}`,
+    ).then(tileset => {
+      if (cancelled || !mountedRef.current || viewer.isDestroyed()) return
+      viewer.scene.primitives.add(tileset)
+    }).catch(e => {
+      console.warn('Failed to load Google 3D Tiles:', e)
+    })
+
+    return () => { cancelled = true }
   }, [googleApiKey])
 
   // Cleanup tick listener on unmount
@@ -97,16 +130,8 @@ export function CesiumGlobe() {
       if (!viewer || viewer.isDestroyed()) return
 
       // Coverage data just loaded
-      if (state.loaded && !prevState.loaded && state.siteLats && state.siteLons && state.siteOpIndices) {
-        if (overlayRef.current) overlayRef.current.destroy()
-        overlayRef.current = addCoverageOverlay(
-          viewer,
-          state.siteLats,
-          state.siteLons,
-          state.siteOpIndices,
-          state.siteCount,
-          state.regions,
-        )
+      if (state.loaded && !prevState.loaded) {
+        tryAddOverlay()
       }
 
       // Visibility toggled
@@ -115,18 +140,9 @@ export function CesiumGlobe() {
       }
     })
 
-    // If data is already loaded when we mount, add overlay immediately
-    const state = useCoverageStore.getState()
-    if (state.loaded && state.siteLats && state.siteLons && state.siteOpIndices && viewerRef.current) {
-      overlayRef.current = addCoverageOverlay(
-        viewerRef.current,
-        state.siteLats,
-        state.siteLons,
-        state.siteOpIndices,
-        state.siteCount,
-        state.regions,
-      )
-    }
+    // If data is already loaded when we mount, try immediately
+    // (viewer may not be ready yet, so viewerReadyRef handles the deferred case)
+    tryAddOverlay()
 
     return () => {
       unsub()
@@ -135,7 +151,7 @@ export function CesiumGlobe() {
         overlayRef.current = null
       }
     }
-  }, [envSource])
+  }, [envSource, tryAddOverlay])
 
   // Only render for cesium source
   if (envSource !== 'cesium') return null

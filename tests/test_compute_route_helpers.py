@@ -197,9 +197,19 @@ class TestParseModeOrLevel:
         assert err is None
         assert kw == {"level": 6}
 
-    def test_level_7_rejected(self, app) -> None:
+    def test_level_7_valid(self) -> None:
+        kw, err = _parse_mode_or_level({"level": 7})
+        assert err is None
+        assert kw == {"level": 7}
+
+    def test_level_8_valid(self) -> None:
+        kw, err = _parse_mode_or_level({"level": 8})
+        assert err is None
+        assert kw == {"level": 8}
+
+    def test_level_9_rejected(self, app) -> None:
         with app.app_context():
-            kw, err = _parse_mode_or_level({"level": 7})
+            kw, err = _parse_mode_or_level({"level": 9})
             assert kw is None
             assert err[1] == 400
 
