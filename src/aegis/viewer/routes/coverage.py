@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import base64
 import logging
-import struct
 import threading
 from pathlib import Path
 
@@ -105,19 +104,36 @@ def _compute_coverage(
     else:
         sites = combined.drop_duplicates(subset=["Latitude", "Longitude"], keep="first")
 
-    op_col = sites["Operator"].fillna("Unknown")
-    tech_col = sites["Technology"].fillna("Unknown")
+    # Guard missing Operator/Technology columns
+    if "Operator" not in sites.columns:
+        sites = sites.copy()
+        sites["Operator"] = "Unknown"
+    if "Technology" not in sites.columns:
+        sites = sites.copy()
+        sites["Technology"] = "Unknown"
+
+    op_col = sites["Operator"].fillna("Unknown").astype(str)
+    tech_col = sites["Technology"].fillna("Unknown").astype(str)
     operators = sorted(op_col.unique().tolist())
     technologies = sorted(tech_col.unique().tolist())
     op_map = {o: i for i, o in enumerate(operators)}
     tech_map = {t: i for i, t in enumerate(technologies)}
 
     # Pack binary: float32 lat, float32 lon, uint8 op_idx, uint8 tech_idx
-    buf = bytearray()
-    for _, row in sites.iterrows():
-        buf.extend(struct.pack("<ff", float(row["Latitude"]), float(row["Longitude"])))
-        buf.append(op_map.get(str(row.get("Operator", "Unknown")), 0))
-        buf.append(tech_map.get(str(row.get("Technology", "Unknown")), 0))
+    lats = sites["Latitude"].to_numpy(dtype=np.float32)
+    lons = sites["Longitude"].to_numpy(dtype=np.float32)
+    op_indices = op_col.map(op_map).fillna(0).to_numpy(dtype=np.uint8)
+    tech_indices = tech_col.map(tech_map).fillna(0).to_numpy(dtype=np.uint8)
+
+    record = np.empty(
+        len(sites),
+        dtype=np.dtype([("lat", "<f4"), ("lon", "<f4"), ("op", "u1"), ("tech", "u1")]),
+    )
+    record["lat"] = lats
+    record["lon"] = lons
+    record["op"] = op_indices
+    record["tech"] = tech_indices
+    buf = record.tobytes()
 
     return {
         "regions": regions_out,
@@ -127,7 +143,7 @@ def _compute_coverage(
             "operators": operators,
             "technologies": technologies,
         },
-        "sites_b64": base64.b64encode(bytes(buf)).decode("ascii"),
+        "sites_b64": base64.b64encode(buf).decode("ascii"),
     }
 
 
@@ -140,16 +156,14 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             if "coverage_response" in cache:
                 return jsonify(cache["coverage_response"])
 
-        data_dir = cache.get("data_dir", "data")
-        merged_dir = Path(data_dir) / "basestations" / "merged"
-        regions_yaml = Path(data_dir) / "basestations" / "regions.yaml"
+            data_dir = cache.get("data_dir", "data")
+            merged_dir = Path(data_dir) / "basestations" / "merged"
+            regions_yaml = Path(data_dir) / "basestations" / "regions.yaml"
 
-        if not regions_yaml.exists():
-            return jsonify({"error": "regions.yaml not found"}), 500
+            if not regions_yaml.exists():
+                return jsonify({"error": "regions.yaml not found"}), 500
 
-        result = _compute_coverage(merged_dir, regions_yaml)
-
-        with cache_lock:
+            result = _compute_coverage(merged_dir, regions_yaml)
             cache["coverage_response"] = result
 
         return jsonify(result)
