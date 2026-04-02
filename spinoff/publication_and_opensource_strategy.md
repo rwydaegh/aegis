@@ -224,6 +224,31 @@ These come after the first paying customer, not before.
 | Full framework + validation | Definitive reference | PhD thesis (Paper 6) | Mandatory |
 | Screening method for IEC 63195 | Standards influence | IEC TC 106 contribution | Strategic (long-term) |
 
+### ArXiv preprints: the "takes forever" fix
+
+Journal review cycles are 6-14 months. ArXiv is instant. A preprint is timestamped, citable (DOI via arXiv), and can be listed on grant applications immediately. Almost all IEEE journals (TAP, TWC, PMB, JSAC) accept papers previously posted on arXiv.
+
+**ArXiv IS a public disclosure**, so the patent must be filed first. But once it is, the sequence is:
+
+```
+Patent filed (priority date)
+    |
+    v
+ArXiv preprint posted (public, citable, same week)
+    |
+    v  (same day or whenever)
+Submit to journal (slow peer review begins)
+    |
+    v  (6-14 months later)
+Journal publication (the "official" version)
+```
+
+This turns "zero publications" into "two arXiv preprints + JSAC under review + conference submission" in one week. That is a very different VLAIO/IOF application than "papers in preparation."
+
+**Note:** Wout is not a fan of arXiv. In electrical engineering it is less standard than in physics/CS. The pragmatic answer: a VLAIO jury will be more impressed by "preprint available at arXiv:2607.xxxxx, submitted to JSAC" than by "paper in preparation." But this should be discussed with Wout before posting.
+
+**Competitive risk of preprints:** Low. A competitor reading a 15-page preprint still needs months of engineering to match a 28K-line validated implementation. The realistic scenario is that Kuster's group reads it, thinks "interesting," and maybe adds something to their roadmap for 2028. Nobody drops everything to reimplement a niche dosimetry method from a preprint.
+
 ---
 
 ## 3. What NOT to publish
@@ -434,15 +459,26 @@ The playbook is the same. The execution speed is different.
 
 **If TechTransfer is slow:** Escalate through Luc. If they will not file by July, ask about filing personally. The thesis defense cannot wait for TechTransfer bureaucracy.
 
-### Phase 2: Publish (August 2026 - March 2027)
+### Phase 1b: JSAC SI (April - May 2026, parallel with patent)
 
 | Date | Action | Notes |
 |------|--------|-------|
-| **August 2026** | Submit Paper 1 (core theory) to IEEE TAP | Priority date established, safe to publish |
-| **August 2026** | Submit Paper 3 (speed benchmark) to PIMRC 2026 or VTC 2026-Fall (if deadlines permit) OR prepare for EuCAP 2027 (deadline ~Oct 2026) | Conference paper, faster review |
-| **September 2026** | VLAIO Innovation Mandate application. List Paper 1 as "submitted" and thesis as "defended." | Papers strengthen grant application |
-| **October 2026** | Submit Paper 3 to EuCAP 2027 (if not already submitted to PIMRC/VTC). Deadline likely mid-October. | EuCAP 2027: April 18-23, Dusseldorf |
+| **April** | Draft JSAC SI paper: AEGIS as exposure digital twin for wireless networks | Monograph has the content. AI-assisted writing. |
+| **May 1** | Submit to JSAC SI "Digital Twins for Wireless Networks" | Confidential peer review, NOT a public disclosure |
+| **~September** | Paper published (after patent priority date) | Highest-impact venue (IF ~13-16) |
+
+This is safe: journal submission is confidential. The patent is filed June-July, before the paper is published.
+
+### Phase 2: Publish (after patent filing, June-July 2026)
+
+| Date | Action | Notes |
+|------|--------|-------|
+| **Same week as patent** | Post arXiv preprints (core theory + MIMO exposure operator) | Instant citable output. Discuss with Wout first. |
+| **July-August 2026** | Submit Paper 1 (core theory) to PMB or MTT | Priority date established, safe to publish |
+| **July-August 2026** | Submit Paper 3 (speed benchmark) to PIMRC 2026 or EuCAP 2027 | Conference paper, faster review |
+| **September 2026** | VLAIO Innovation Mandate application. List: JSAC SI under review, arXiv preprints live, thesis defended. | Much stronger than "papers in preparation" |
 | **October 2026** | imec.istart application. Reference papers, thesis, patent filing. | istart deadline: October 1 |
+| **October 2026** | Submit Paper 3 to EuCAP 2027 if not already submitted to PIMRC. Deadline likely mid-October. | EuCAP 2027: April 18-23, Dusseldorf |
 | **November 2026** | Submit Paper 2 (coherent MIMO) to IEEE TWC | After Paper 1 is under review |
 | **Q1 2027** | Paper 1 first review decision expected | TAP ~3-6 months |
 | **Q1 2027** | BioEM 2027 abstract deadline (for Paper 5, sub-6 GHz extension) | BioEM 2027: June 13-18, Gdansk |
