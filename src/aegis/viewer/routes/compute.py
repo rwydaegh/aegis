@@ -509,21 +509,60 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         """Compute dosimetry for given antenna position."""
         from aegis.viewer.compute import compute_dosimetry
 
-        params = request.get_json(silent=True)
-        if params is None:
-            if request.data:
-                return jsonify({"error": "Invalid JSON body"}), 400
-            params = {}
-        elif not isinstance(params, dict):
-            return jsonify({"error": "JSON body must be an object"}), 400
+        if request.content_type == _OCTET_STREAM:
+            raw_params = request.headers.get("X-Compute-Params")
+            if not raw_params:
+                return jsonify({"error": "X-Compute-Params header required for inline mesh"}), 400
+            try:
+                params = json.loads(raw_params)
+            except (ValueError, TypeError):
+                return jsonify({"error": "Invalid JSON in X-Compute-Params header"}), 400
+            if not isinstance(params, dict):
+                return jsonify({"error": "X-Compute-Params must be a JSON object"}), 400
+            n_tri = params.get("n_triangles")
+            if n_tri is None or not isinstance(n_tri, int):
+                return jsonify({"error": "n_triangles required in X-Compute-Params"}), 400
 
-        body_name = params.get("body_name", cache.get("default_body"))
-        with cache_lock:
-            entry = cache.get("bodies", {}).get(body_name)
-            cfg = cache["config"]
-        if entry is None:
-            return jsonify({"error": f"Body '{body_name}' not found"}), 404
-        body = entry["body"]
+            mesh_data = request.get_data()
+            max_size = 5 * 1024 * 1024
+            if len(mesh_data) > max_size:
+                return jsonify({"error": f"Mesh binary exceeds {max_size} bytes"}), 413
+
+            n_verts = n_tri * 3
+            expected_size = n_verts * 3 * 4 * 2  # positions + normals, float32
+            if len(mesh_data) != expected_size:
+                return jsonify({"error": f"Expected {expected_size} bytes, got {len(mesh_data)}"}), 400
+
+            from aegis.geometry.mesh import BodyMesh
+
+            floats = np.frombuffer(mesh_data, dtype=np.float32)
+            positions = floats[: n_verts * 3].reshape(n_tri, 3, 3)
+            normals_flat = floats[n_verts * 3 :].reshape(n_verts, 3)
+            normals = normals_flat[::3]  # take every 3rd (face normal repeated 3x per vertex)
+
+            try:
+                body = BodyMesh.from_arrays(positions, normals, name="inline_posed")
+            except ValueError as exc:
+                return jsonify({"error": f"Invalid mesh arrays: {exc}"}), 400
+
+            with cache_lock:
+                cfg = cache["config"]
+        else:
+            params = request.get_json(silent=True)
+            if params is None:
+                if request.data:
+                    return jsonify({"error": "Invalid JSON body"}), 400
+                params = {}
+            elif not isinstance(params, dict):
+                return jsonify({"error": "JSON body must be an object"}), 400
+
+            body_name = params.get("body_name", cache.get("default_body"))
+            with cache_lock:
+                entry = cache.get("bodies", {}).get(body_name)
+                cfg = cache["config"]
+            if entry is None:
+                return jsonify({"error": f"Body '{body_name}' not found"}), 404
+            body = entry["body"]
 
         dcfg = cfg["dosimetry"]
         pwr_cfg = dcfg["power_input"]
