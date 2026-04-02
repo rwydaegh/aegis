@@ -23,6 +23,7 @@ import Environment from './Environment'
 import FollowCamera from './FollowCamera'
 import { EnvironmentOSM } from './EnvironmentOSM'
 import { Environment3DTiles } from './Environment3DTiles'
+import { CesiumGlobe } from './CesiumGlobe'
 import { useEnvironmentStore } from '@/stores/environment'
 import { useMIMOStore } from '@/stores/mimo'
 import BodyMeshInstance from './BodyMeshInstance'
@@ -31,9 +32,7 @@ import FocusPointMarker from './FocusPointMarker'
 import SmartphoneModel from './SmartphoneModel'
 import BaseStationMarkers from './BaseStationMarkers'
 import { EnvironmentTerrain } from './EnvironmentTerrain'
-import { CoverageOverlay } from './CoverageOverlay'
 import { LSPHeatmap } from './LSPHeatmap'
-import { CoverageGlobe } from './CoverageGlobe'
 import { cameraState } from '@/lib/cameraState'
 
 function GroundPlane() {
@@ -362,10 +361,11 @@ export default function SceneRoot() {
   const cam = config.camera
   const ren = config.renderer
   const initialPosition = (cam.initial_position as [number, number, number]) ?? [0, 2, 5]
+  const isCesiumMode = envSource === 'cesium'
 
   const sceneContent = (
     <>
-      <color attach="background" args={[config.scene.background_color ?? '#0a0a0f']} />
+      {!isCesiumMode && <color attach="background" args={[config.scene.background_color ?? '#0a0a0f']} />}
       <SceneLighting />
       <ClickPlane />
       {(envSource === 'none' || envSource === 'voxels') && (
@@ -377,6 +377,7 @@ export default function SceneRoot() {
         </>
       )}
       {envSource === 'osm' && <EnvironmentOSM />}
+      {envSource === '3dtiles' && <Environment3DTiles><></></Environment3DTiles>}
       {bodyMeshVisible && (mimoEnabled ? (
         <MIMOScene />
       ) : (
@@ -391,9 +392,7 @@ export default function SceneRoot() {
       <SceneGrid />
       <EnvironmentTerrain />
       <BaseStationMarkers />
-      <CoverageOverlay />
       <LSPHeatmap />
-      <CoverageGlobe />
       <DosimetryController />
       <MIMODosimetryController />
       <MIMOKeyboardController />
@@ -411,28 +410,43 @@ export default function SceneRoot() {
   )
 
   return (
-    <Canvas
-      camera={{
-        fov: cam.fov,
-        near: cam.near,
-        far: cam.far,
-        position: initialPosition,
-      }}
-      shadows={ren.shadows_enabled ? { type: THREE.PCFShadowMap } : false}
-      gl={{
-        antialias: ren.antialias ?? true,
-        toneMapping: THREE.ACESFilmicToneMapping,
-        preserveDrawingBuffer: true,
-        logarithmicDepthBuffer: true,
-      }}
-      style={{ position: 'absolute', inset: 0 }}
-      tabIndex={0}
-    >
-      {envSource === '3dtiles' ? (
-        <Environment3DTiles>{sceneContent}</Environment3DTiles>
-      ) : (
-        sceneContent
+    <div style={{ position: 'absolute', inset: 0 }}>
+      {isCesiumMode && (
+        <div style={{ position: 'absolute', inset: 0, zIndex: 1 }}>
+          <CesiumGlobe />
+        </div>
       )}
-    </Canvas>
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        zIndex: 2,
+        pointerEvents: isCesiumMode ? 'none' : 'auto',
+      }}>
+        <Canvas
+          camera={{
+            fov: cam.fov,
+            near: cam.near,
+            far: cam.far,
+            position: initialPosition,
+          }}
+          shadows={ren.shadows_enabled ? { type: THREE.PCFShadowMap } : false}
+          gl={{
+            antialias: ren.antialias ?? true,
+            toneMapping: THREE.ACESFilmicToneMapping,
+            preserveDrawingBuffer: true,
+            logarithmicDepthBuffer: true,
+            alpha: isCesiumMode,
+          }}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: isCesiumMode ? 'transparent' : undefined,
+          }}
+          tabIndex={0}
+        >
+          {sceneContent}
+        </Canvas>
+      </div>
+    </div>
   )
 }
