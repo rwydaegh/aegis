@@ -247,14 +247,60 @@ class TestUserStats:
         result = MagicMock()
         result.p_abs = 0.005
         result.peak_sab = 12.3
+        result.sab = np.array([0.0, 5.0, 12.3])
         result.sab_averaged = np.array([1.0, 2.0, 3.0])
         user.result = result
         scene = MagicMock()
+        scene.freq_hz = 28e9
         stats = _user_stats(user, scene)
         assert stats["p_abs"] == pytest.approx(0.005)
         assert stats["p_abs_mw"] == pytest.approx(5.0)
         assert stats["peak_sab"] == pytest.approx(12.3)
         assert stats["peak_sab_averaged"] == pytest.approx(3.0)
+        assert stats["n_illuminated"] == 2
+        assert stats["n_triangles"] == 3
+        # Distribution stats should be present
+        assert "distribution" in stats
+        assert stats["distribution"]["illuminated_fraction"] == pytest.approx(2 / 3)
+
+    def test_with_result_and_body(self):
+        """When body is present, illuminated_area_cm2 should be computed."""
+        user = self._make_user_state()
+        result = MagicMock()
+        result.p_abs = 0.01
+        result.peak_sab = 5.0
+        result.sab = np.array([0.0, 5.0, 3.0, 0.0])
+        result.sab_averaged = np.array([0.0, 4.0, 2.5, 0.0])
+        user.result = result
+        body = MagicMock()
+        body.n_triangles = 4
+        body.areas = np.array([1e-4, 2e-4, 3e-4, 4e-4])
+        user.body = body
+        scene = MagicMock()
+        scene.freq_hz = 28e9
+        stats = _user_stats(user, scene)
+        assert stats["n_triangles"] == 4
+        # illuminated_area_cm2: sum of areas where sab > 0 (indices 1,2) * 1e4
+        expected_area_cm2 = (2e-4 + 3e-4) * 1e4
+        assert stats["distribution"]["illuminated_area_cm2"] == pytest.approx(expected_area_cm2)
+
+    def test_all_zero_sab(self):
+        """When all sab values are zero, illuminated stats should handle it."""
+        user = self._make_user_state()
+        result = MagicMock()
+        result.p_abs = 0.0
+        result.peak_sab = 0.0
+        result.sab = np.array([0.0, 0.0, 0.0])
+        result.sab_averaged = None
+        user.result = result
+        scene = MagicMock()
+        scene.freq_hz = 28e9
+        stats = _user_stats(user, scene)
+        assert stats["n_illuminated"] == 0
+        dist = stats["distribution"]
+        assert dist["illuminated_fraction"] == 0.0
+        assert dist["illuminated_mean"] == 0.0
+        assert dist["illuminated_p50"] == 0.0
 
 
 # ---------------------------------------------------------------------------

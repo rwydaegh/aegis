@@ -947,3 +947,212 @@ class TestComputeVoxelRtExtended:
                 json={"exposure_scenario": "zombie_apocalypse"},
             )
         assert resp.status_code in (400, 404)
+
+
+# ---------------------------------------------------------------------------
+# GET /api/export/dosimetry-json
+# ---------------------------------------------------------------------------
+
+
+class TestExportDosimetryJsonRoute:
+    def test_no_result_returns_404(self, viewer_app):
+        with viewer_app.test_client() as c:
+            resp = c.get("/api/export/dosimetry-json")
+        assert resp.status_code == 404
+        assert "No dosimetry result" in resp.get_json()["error"]
+
+    def test_json_export_after_compute(self, viewer_app):
+        """Inject a mock result, verify JSON export structure."""
+        n_tri = 5
+        result = _mock_dosimetry_result(n_tri)
+        body = MagicMock()
+        body.n_triangles = n_tri
+        body.name = "thelonious"
+        body.centroids = np.random.default_rng(3).uniform(-1, 1, (n_tri, 3))
+        body.normals = np.tile([0, 0, 1.0], (n_tri, 1))
+        body.areas = np.full(n_tri, 1e-4)
+
+        viewer_app.config["_last_dosimetry_result"] = result
+        viewer_app.config["_last_dosimetry_body"] = body
+        viewer_app.config["_last_dosimetry_stats"] = None
+
+        with viewer_app.test_client() as c:
+            resp = c.get("/api/export/dosimetry-json")
+        assert resp.status_code == 200
+        assert "application/json" in resp.content_type
+        assert "attachment" in resp.headers.get("Content-Disposition", "")
+
+        data = json.loads(resp.data)
+        assert data["meta"]["body"] == "thelonious"
+        assert data["meta"]["n_triangles"] == n_tri
+        assert len(data["sab"]) == n_tri
+        assert len(data["centroids"]) == n_tri
+        assert len(data["normals"]) == n_tri
+        assert len(data["areas"]) == n_tri
+        # Optional arrays present when populated
+        assert "sab_4cm2" in data
+        assert "sinc" in data
+
+        viewer_app.config.pop("_last_dosimetry_result", None)
+        viewer_app.config.pop("_last_dosimetry_body", None)
+        viewer_app.config.pop("_last_dosimetry_stats", None)
+
+    def test_json_export_includes_stats(self, viewer_app):
+        """Stats dict should be included but without 'arrays' or 'path_viz' keys."""
+        n_tri = 3
+        result = _mock_dosimetry_result(n_tri)
+        body = MagicMock()
+        body.n_triangles = n_tri
+        body.name = "test"
+        body.centroids = np.zeros((n_tri, 3))
+        body.normals = np.tile([0, 0, 1.0], (n_tri, 1))
+        body.areas = np.full(n_tri, 1e-4)
+
+        stats = {
+            "peak_sab": 12.0,
+            "p_abs_mw": 5.0,
+            "arrays": {"should_be_excluded": True},
+            "path_viz": {"also_excluded": True},
+        }
+
+        viewer_app.config["_last_dosimetry_result"] = result
+        viewer_app.config["_last_dosimetry_body"] = body
+        viewer_app.config["_last_dosimetry_stats"] = stats
+
+        with viewer_app.test_client() as c:
+            resp = c.get("/api/export/dosimetry-json")
+        data = json.loads(resp.data)
+        assert "stats" in data
+        assert "peak_sab" in data["stats"]
+        assert "arrays" not in data["stats"]
+        assert "path_viz" not in data["stats"]
+
+        viewer_app.config.pop("_last_dosimetry_result", None)
+        viewer_app.config.pop("_last_dosimetry_body", None)
+        viewer_app.config.pop("_last_dosimetry_stats", None)
+
+    def test_json_export_optional_arrays_absent(self, viewer_app):
+        """Optional arrays that are None should not appear in JSON."""
+        n_tri = 3
+        result = SimpleNamespace(
+            sab=np.array([1.0, 2.0, 3.0]),
+            sab_averaged=None,
+            sab_1cm2_averaged=None,
+            sinc=None,
+            sinc_averaged=None,
+            p_abs=0.001,
+            peak_sab=3.0,
+            sar_wb=0.0001,
+            fidelity_level=0,
+            freq_hz=28e9,
+        )
+        body = MagicMock()
+        body.n_triangles = n_tri
+        body.name = "test"
+        body.centroids = np.zeros((n_tri, 3))
+        body.normals = np.tile([0, 0, 1.0], (n_tri, 1))
+        body.areas = np.full(n_tri, 1e-4)
+
+        viewer_app.config["_last_dosimetry_result"] = result
+        viewer_app.config["_last_dosimetry_body"] = body
+        viewer_app.config["_last_dosimetry_stats"] = None
+
+        with viewer_app.test_client() as c:
+            resp = c.get("/api/export/dosimetry-json")
+        data = json.loads(resp.data)
+        assert "sab" in data
+        assert "sab_4cm2" not in data
+        assert "sinc" not in data
+        assert "sinc_4cm2" not in data
+        assert "sab_1cm2" not in data
+
+        viewer_app.config.pop("_last_dosimetry_result", None)
+        viewer_app.config.pop("_last_dosimetry_body", None)
+        viewer_app.config.pop("_last_dosimetry_stats", None)
+
+
+# ---------------------------------------------------------------------------
+# GET /api/export/dosimetry-npz
+# ---------------------------------------------------------------------------
+
+
+class TestExportDosimetryNpzRoute:
+    def test_no_result_returns_404(self, viewer_app):
+        with viewer_app.test_client() as c:
+            resp = c.get("/api/export/dosimetry-npz")
+        assert resp.status_code == 404
+        assert "No dosimetry result" in resp.get_json()["error"]
+
+    def test_npz_export_after_compute(self, viewer_app):
+        """Inject a mock result, verify NPZ export contains expected arrays."""
+        import io
+
+        n_tri = 5
+        result = _mock_dosimetry_result(n_tri)
+        body = MagicMock()
+        body.n_triangles = n_tri
+        body.centroids = np.random.default_rng(4).uniform(-1, 1, (n_tri, 3))
+        body.normals = np.tile([0, 0, 1.0], (n_tri, 1))
+        body.areas = np.full(n_tri, 1e-4)
+
+        viewer_app.config["_last_dosimetry_result"] = result
+        viewer_app.config["_last_dosimetry_body"] = body
+
+        with viewer_app.test_client() as c:
+            resp = c.get("/api/export/dosimetry-npz")
+        assert resp.status_code == 200
+        assert "application/octet-stream" in resp.content_type
+        assert "attachment" in resp.headers.get("Content-Disposition", "")
+
+        # Parse NPZ and verify arrays
+        npz = np.load(io.BytesIO(resp.data))
+        assert "centroids" in npz
+        assert "normals" in npz
+        assert "areas" in npz
+        assert "sab" in npz
+        assert npz["sab"].shape == (n_tri,)
+        assert npz["centroids"].shape == (n_tri, 3)
+        # Optional arrays present when populated
+        assert "sab_4cm2" in npz
+        assert "sinc" in npz
+
+        viewer_app.config.pop("_last_dosimetry_result", None)
+        viewer_app.config.pop("_last_dosimetry_body", None)
+
+    def test_npz_export_optional_arrays_absent(self, viewer_app):
+        """Optional arrays that are None should not appear in NPZ."""
+        import io
+
+        n_tri = 3
+        result = SimpleNamespace(
+            sab=np.array([1.0, 2.0, 3.0]),
+            sab_averaged=None,
+            sab_1cm2_averaged=None,
+            sinc=None,
+            sinc_averaged=None,
+            p_abs=0.001,
+            peak_sab=3.0,
+            sar_wb=0.0001,
+            fidelity_level=0,
+            freq_hz=28e9,
+        )
+        body = MagicMock()
+        body.n_triangles = n_tri
+        body.centroids = np.zeros((n_tri, 3))
+        body.normals = np.tile([0, 0, 1.0], (n_tri, 1))
+        body.areas = np.full(n_tri, 1e-4)
+
+        viewer_app.config["_last_dosimetry_result"] = result
+        viewer_app.config["_last_dosimetry_body"] = body
+
+        with viewer_app.test_client() as c:
+            resp = c.get("/api/export/dosimetry-npz")
+        npz = np.load(io.BytesIO(resp.data))
+        assert "sab" in npz
+        assert "sab_4cm2" not in npz
+        assert "sinc" not in npz
+        assert "sinc_4cm2" not in npz
+        assert "sab_1cm2" not in npz
+
+        viewer_app.config.pop("_last_dosimetry_result", None)
+        viewer_app.config.pop("_last_dosimetry_body", None)

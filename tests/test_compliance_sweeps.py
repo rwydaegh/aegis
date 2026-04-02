@@ -240,3 +240,46 @@ class TestFrequencySweep:
         # Above 6 GHz: sab check applies, 10 < 20 -> compliant
         above6 = ~sub6
         assert np.all(out["compliant"][above6])
+
+    def test_sub_6ghz_mixed_checks_with_sinc(self) -> None:
+        """frequency_sweep across 6 GHz boundary with sinc_local + sab_4cm2.
+
+        sinc_local applies above 6 GHz, sab_4cm2 applies above 6 GHz.
+        Both should be vacuously compliant below 6 GHz. Above 6 GHz
+        the tightest of the two constraints should determine margin.
+        """
+        out = frequency_sweep(
+            sab_4cm2=10.0,
+            sinc_local=30.0,
+            freq_min_hz=1e9,
+            freq_max_hz=100e9,
+            n_points=30,
+        )
+        sub6 = out["freq_hz"] <= 6e9
+        above6 = ~sub6
+        assert np.any(sub6)
+        assert np.any(above6)
+        # Sub-6 GHz: vacuously compliant (no applicable limits)
+        assert np.all(out["compliant"][sub6])
+        assert np.all(np.isinf(out["margin_db"][sub6]))
+        # Above 6 GHz: at least one check applies, margin is finite
+        assert np.all(np.isfinite(out["margin_db"][above6]))
+
+    def test_frequency_sweep_single_point(self) -> None:
+        """frequency_sweep with n_points=1 should return scalar-like arrays."""
+        out = frequency_sweep(sab_4cm2=10.0, n_points=1)
+        assert out["freq_hz"].shape == (1,)
+        assert out["margin_db"].shape == (1,)
+        assert len(out["results"]) == 1
+
+    def test_frequency_sweep_non_compliant_sinc_at_high_freq(self) -> None:
+        """sinc_local limit decreases with frequency. Verify non-compliance at top."""
+        out = frequency_sweep(
+            sinc_local=100.0,
+            freq_min_hz=10e9,
+            freq_max_hz=300e9,
+            n_points=50,
+        )
+        # At 300 GHz the sinc limit is lower, so high sinc should fail
+        assert not out["compliant"][-1]
+        assert out["margin_db"][-1] < 0
