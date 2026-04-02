@@ -102,7 +102,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
     const { source, locationQuery } = get()
     const q = (query ?? locationQuery).trim()
     if (!q) return
-    if (source !== 'osm' && source !== '3dtiles') return
+    if (source !== 'osm' && source !== '3dtiles' && source !== 'cesium') return
 
     const controller = freshAbort(get, set)
     set({ geocoding: true, error: null })
