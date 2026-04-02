@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Radio, Zap, Building2 } from 'lucide-react';
+import { Radio, Zap, Building2, Globe } from 'lucide-react';
 import { useSimulationStore } from '../../stores/simulation';
 import { useUIStore } from '../../stores/ui';
 import { useScenario } from '../../hooks/useScenario';
@@ -8,6 +8,7 @@ const ICON_MAP: Record<string, React.FC<{ size?: number; className?: string }>> 
   radio: Radio,
   zap: Zap,
   building: Building2,
+  globe: Globe,
 };
 
 export function WelcomeOverlay() {
@@ -56,7 +57,7 @@ export function WelcomeOverlay() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 w-full">
           {visibleScenarios.map(([key, scenario]) => {
             const Icon = ICON_MAP[scenario.icon];
             return (

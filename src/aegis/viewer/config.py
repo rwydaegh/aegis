@@ -543,6 +543,22 @@ DEFAULTS: dict = {
                 },
             },
         },
+        "coverage_globe": {
+            "description": "Browse base station coverage worldwide",
+            "launch": {},
+            "label": "Coverage globe",
+            "icon": "globe",
+            "instant": True,
+            "autoCompute": False,
+            "webState": {
+                "antennaPos": None,
+                "environment": {
+                    "source": "3dtiles",
+                    "lat": 0,
+                    "lon": 0,
+                },
+            },
+        },
         "empty": {
             "description": "Clear everything and start fresh",
             "launch": {},
