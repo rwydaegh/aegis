@@ -252,6 +252,7 @@ def _handle_config(cache):
             "has_location_loader": has_pipeline and has_api_key,
             "has_api_key": has_api_key,
             "google_api_key": os.environ.get("GOOGLE_API_KEY", ""),
+            "cesium_ion_token": os.environ.get("CESIUM_ION_TOKEN", ""),
             "body_placement": cache.get("body_placement"),
             "body_device_offsets": cache.get("body_device_offsets", {}),
         }

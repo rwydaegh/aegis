@@ -33,6 +33,7 @@ function CoverageHudInner() {
   }
 
   const handleBackToGlobe = () => {
+    useEnvironmentStore.getState().setSource('cesium')
     useCoverageStore.getState().setEnabled(true)
     useBaseStationsStore.getState().clear()
   }

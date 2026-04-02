@@ -32,7 +32,7 @@ export function extractPosedMesh(skinnedMesh: THREE.SkinnedMesh): PosedMeshData 
   const deformed = new Float32Array(uniqueCount * 3)
   const target = new THREE.Vector3()
   for (let i = 0; i < uniqueCount; i++) {
-    skinnedMesh.boneTransform(i, target)
+    ;(skinnedMesh as any).boneTransform(i, target)
     deformed[i * 3] = target.x
     deformed[i * 3 + 1] = target.y
     deformed[i * 3 + 2] = target.z
