@@ -217,6 +217,60 @@ class TestBuildScene:
         assert err is None
         assert scene is not None
 
+    def test_invalid_freq_hz_string_returns_400(self):
+        """Non-numeric freq_hz should return 400."""
+        cache = _make_cache_with_body()
+        params = {"array": VALID_ARRAY, "users": [_make_user_cfg()], "freq_hz": "not_a_number"}
+        scene, err = _build_scene(params, cache)
+        assert scene is None
+        resp, status = err
+        assert status == 400
+        assert "freq_hz" in resp.get_json()["error"]
+
+    def test_negative_freq_hz_returns_400(self):
+        """Negative freq_hz should return 400."""
+        cache = _make_cache_with_body()
+        params = {"array": VALID_ARRAY, "users": [_make_user_cfg()], "freq_hz": -100.0}
+        scene, err = _build_scene(params, cache)
+        assert scene is None
+        resp, status = err
+        assert status == 400
+        assert "positive" in resp.get_json()["error"]
+
+    def test_zero_freq_hz_returns_400(self):
+        """Zero freq_hz should return 400."""
+        cache = _make_cache_with_body()
+        params = {"array": VALID_ARRAY, "users": [_make_user_cfg()], "freq_hz": 0}
+        scene, err = _build_scene(params, cache)
+        assert scene is None
+        resp, status = err
+        assert status == 400
+
+    def test_invalid_power_dbm_string_returns_400(self):
+        """Non-numeric power_dbm should return 400."""
+        cache = _make_cache_with_body()
+        params = {"array": VALID_ARRAY, "users": [_make_user_cfg()], "power_dbm": "loud"}
+        scene, err = _build_scene(params, cache)
+        assert scene is None
+        resp, status = err
+        assert status == 400
+        assert "power_dbm" in resp.get_json()["error"]
+
+    def test_orientation_rotation_applied_to_device_offset(self):
+        """Device offset should be rotated by user orientation."""
+        cache = _make_cache_with_body()
+        user = _make_user_cfg()
+        user["position"] = [5.0, 0.0, 0.0]
+        user["device_offset"] = [1.0, 0.0, 1.4]
+        user["orientation"] = np.pi / 2  # 90 degrees
+        scene, err = _build_scene({"array": VALID_ARRAY, "users": [user]}, cache)
+        assert err is None
+        # After 90-degree rotation: [1,0] -> [0,1]
+        dev_pos = scene.users[0].config.device_position
+        np.testing.assert_allclose(dev_pos[0], 5.0, atol=1e-10)  # x: 5 + 0
+        np.testing.assert_allclose(dev_pos[1], 1.0, atol=1e-10)  # y: 0 + 1
+        np.testing.assert_allclose(dev_pos[2], 1.4, atol=1e-10)  # z unchanged
+
 
 # ---------------------------------------------------------------------------
 # _user_stats unit tests
@@ -301,6 +355,79 @@ class TestUserStats:
         assert dist["illuminated_fraction"] == 0.0
         assert dist["illuminated_mean"] == 0.0
         assert dist["illuminated_p50"] == 0.0
+
+    def test_sub_6ghz_compliance_vacuously_none(self):
+        """At sub-6 GHz, sab_4cm2 has no ICNIRP limit, so compliance has no checks."""
+        user = self._make_user_state()
+        result = MagicMock()
+        result.p_abs = 0.005
+        result.peak_sab = 10.0
+        result.sab = np.array([0.0, 5.0, 10.0])
+        result.sab_averaged = np.array([1.0, 3.0, 8.0])
+        user.result = result
+        scene = MagicMock()
+        scene.freq_hz = 3.5e9  # sub-6 GHz
+        stats = _user_stats(user, scene)
+        # No applicable ICNIRP checks for sab at sub-6 GHz
+        assert stats["compliant"] is None
+        assert stats["compliance"]["overall_pass"] is None
+        assert stats["compliance"]["checks"] == []
+
+    def test_sab_averaged_none_falls_back_to_raw_peak(self):
+        """When sab_averaged is None, compliance uses raw sab peak."""
+        user = self._make_user_state()
+        result = MagicMock()
+        result.p_abs = 0.01
+        result.peak_sab = 15.0
+        result.sab = np.array([0.0, 15.0, 5.0])
+        result.sab_averaged = None
+        user.result = result
+        scene = MagicMock()
+        scene.freq_hz = 28e9
+        stats = _user_stats(user, scene)
+        # Should use raw sab peak (15.0) for compliance against 20 W/m^2 limit
+        assert stats["compliant"] is True
+        assert stats["compliance"] is not None
+        assert stats["compliance"]["overall_pass"] is True
+        # Verify the sab check used the raw peak
+        sab_check = [c for c in stats["compliance"]["checks"] if "S_ab" in c["label"]]
+        assert len(sab_check) == 1
+        assert sab_check[0]["value"] == pytest.approx(15.0)
+
+    def test_sab_averaged_none_exceeding_limit_fails(self):
+        """Raw sab peak exceeding ICNIRP limit should fail compliance."""
+        user = self._make_user_state()
+        result = MagicMock()
+        result.p_abs = 0.05
+        result.peak_sab = 25.0
+        result.sab = np.array([0.0, 25.0, 10.0])
+        result.sab_averaged = None
+        user.result = result
+        scene = MagicMock()
+        scene.freq_hz = 28e9
+        stats = _user_stats(user, scene)
+        # 25 > 20 W/m^2 GP limit
+        assert stats["compliant"] is False
+        assert stats["compliance"]["overall_pass"] is False
+
+    def test_distribution_stats_without_body(self):
+        """Distribution stats should work when body is None (no illuminated_area_cm2)."""
+        user = self._make_user_state()
+        result = MagicMock()
+        result.p_abs = 0.01
+        result.peak_sab = 8.0
+        result.sab = np.array([0.0, 8.0, 3.0, 0.0, 1.0])
+        result.sab_averaged = None
+        user.result = result
+        # body remains None (default)
+        scene = MagicMock()
+        scene.freq_hz = 28e9
+        stats = _user_stats(user, scene)
+        dist = stats["distribution"]
+        assert dist["illuminated_area_cm2"] is None
+        assert dist["illuminated_fraction"] == pytest.approx(3 / 5)
+        assert dist["p95"] > 0
+        assert dist["p99"] > 0
 
 
 # ---------------------------------------------------------------------------
@@ -554,6 +681,16 @@ class TestMIMOSummary:
         resp = client.get("/api/mimo/summary")
         data = resp.get_json()
         assert "warning" not in data
+
+    def test_compliance_at_exact_budget_boundary(self, app, client):
+        """User at exact budget boundary is non-compliant (strict less-than check)."""
+        self._populate_cache(app, n_users=1)
+        # Set budget exactly equal to user's p_abs_mw (1.0)
+        app._test_cache["config"] = {"mimo": {"exposure_budget_mw": 1.0}}
+        resp = client.get("/api/mimo/summary")
+        data = resp.get_json()
+        # p_abs_mw=1.0, budget=1.0: 1.0 < 1.0 is False -> non-compliant
+        assert data["users"][0]["compliant"] is False
 
     def test_timings_included(self, app, client):
         self._populate_cache(app, n_users=1)
