@@ -218,8 +218,25 @@ class TestFrequencySweep:
         for cr in out["results"]:
             assert isinstance(cr, ComplianceResult)
 
-    def test_no_values_all_indeterminate(self) -> None:
+    def test_no_values_vacuously_compliant(self) -> None:
         out = frequency_sweep(n_points=5)
-        # No quantities provided means no checks, so compliant is False (indeterminate)
-        assert not np.any(out["compliant"])
+        # No quantities provided means no checks, margin is inf, vacuously compliant
+        assert np.all(out["compliant"])
         assert np.all(out["margin_db"] == float("inf"))
+
+    def test_sub_6ghz_sab_only_vacuously_compliant(self) -> None:
+        """Regression: frequency_sweep across sub-6 GHz with sab_4cm2 only.
+
+        Below 6 GHz the S_ab limit does not apply (ICNIRP 2020), so those
+        points have no applicable checks. They must be marked compliant
+        (vacuously: no limit exceeded) with margin=inf, not False.
+        """
+        out = frequency_sweep(sab_4cm2=10.0, freq_min_hz=1e9, freq_max_hz=100e9, n_points=20)
+        sub6 = out["freq_hz"] <= 6e9
+        assert np.any(sub6), "Expected some sub-6 GHz points"
+        # Sub-6 GHz: no sab limit, no sar data -> vacuously compliant
+        assert np.all(out["compliant"][sub6])
+        assert np.all(np.isinf(out["margin_db"][sub6]))
+        # Above 6 GHz: sab check applies, 10 < 20 -> compliant
+        above6 = ~sub6
+        assert np.all(out["compliant"][above6])
