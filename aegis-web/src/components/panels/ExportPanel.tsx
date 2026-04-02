@@ -1,6 +1,6 @@
 import * as Sentry from '@sentry/react'
 import { useSimulationStore } from '@/stores/simulation'
-import { fetchComplianceSummary, fetchDosimetryCsv, exportConfig } from '@/api/client'
+import { fetchComplianceSummary, fetchDosimetryCsv, fetchDosimetryJson, fetchDosimetryNpz, exportConfig } from '@/api/client'
 import { useNotificationStore } from '@/stores/notifications'
 import { collectState } from '@/lib/shareLink'
 
@@ -31,12 +31,26 @@ export default function ExportPanel() {
     }
   }
 
-  const handleExportJson = () => {
-    if (!stats) return
-    downloadBlob(
-      new Blob([JSON.stringify(stats, null, 2)], { type: 'application/json' }),
-      'aegis_stats.json',
-    )
+  const handleExportJson = async () => {
+    if (!sabArray) return
+    try {
+      const blob = await fetchDosimetryJson()
+      downloadBlob(blob, 'aegis_dosimetry.json')
+    } catch (err) {
+      Sentry.captureException(err)
+      useNotificationStore.getState().addNotification('error', 'Failed to export dosimetry JSON')
+    }
+  }
+
+  const handleExportNpz = async () => {
+    if (!sabArray) return
+    try {
+      const blob = await fetchDosimetryNpz()
+      downloadBlob(blob, 'aegis_dosimetry.npz')
+    } catch (err) {
+      Sentry.captureException(err)
+      useNotificationStore.getState().addNotification('error', 'Failed to export dosimetry NPZ')
+    }
   }
 
   const handleExportReport = async () => {
@@ -97,8 +111,11 @@ export default function ExportPanel() {
       <button className={btnClass} onClick={handleExportCsv} disabled={!sabArray}>
         Export dosimetry (CSV)
       </button>
-      <button className={btnClass} onClick={handleExportJson} disabled={!stats}>
-        Export stats (JSON)
+      <button className={btnClass} onClick={handleExportJson} disabled={!sabArray}>
+        Export dosimetry (JSON)
+      </button>
+      <button className={btnClass} onClick={handleExportNpz} disabled={!sabArray}>
+        Export dosimetry (NPZ)
       </button>
       <button className={btnClass} onClick={handleExportReport} disabled={!stats || !compliance}>
         Compliance report (TXT)
