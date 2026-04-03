@@ -1,4 +1,5 @@
 """Test GLB phantom serving route."""
+
 import struct
 
 import pytest
@@ -8,9 +9,7 @@ def _make_minimal_glb(path):
     """Write a minimal valid GLB (empty scene)."""
     import json
 
-    gltf_json = json.dumps(
-        {"asset": {"version": "2.0"}, "scene": 0, "scenes": [{"nodes": []}]}
-    ).encode()
+    gltf_json = json.dumps({"asset": {"version": "2.0"}, "scene": 0, "scenes": [{"nodes": []}]}).encode()
     while len(gltf_json) % 4 != 0:
         gltf_json += b" "
     json_chunk = struct.pack("<II", len(gltf_json), 0x4E4F534A) + gltf_json

@@ -1,4 +1,5 @@
 """Test /api/parametric-body route."""
+
 import json
 from pathlib import Path
 
