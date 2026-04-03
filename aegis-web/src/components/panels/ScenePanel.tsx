@@ -147,11 +147,17 @@ export default function ScenePanel() {
     })
 
     es.addEventListener('error', () => {
-      Sentry.captureException(new Error('Location load SSE connection lost'))
+      // EventSource fires 'error' for benign reasons: idle tab backgrounded,
+      // proxy timeout, browser killing inactive connections. Only treat it as
+      // a real failure if a location load was actively in progress.
+      const wasLoading = useUIStore.getState().locationLoading
       es.close()
       esRef.current = null
-      useUIStore.getState().setLocationLoading(false)
-      useUIStore.getState().appendLocationLog('Error: connection lost')
+      if (wasLoading) {
+        Sentry.captureException(new Error('Location load SSE connection lost'))
+        useUIStore.getState().setLocationLoading(false)
+        useUIStore.getState().appendLocationLog('Error: connection lost')
+      }
     })
   }
 
