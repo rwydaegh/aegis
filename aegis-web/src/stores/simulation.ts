@@ -15,6 +15,24 @@ interface SimulationStore {
     model: string
     gain_dbi: number
   } | null
+
+  // Loaded pattern data (for preview)
+  patternData: Float32Array | null
+  patternMeta: { max_gain_dbi: number; shape: [number, number] } | null
+  patternLoading: boolean
+
+  // Applied pattern (used by 3D scene)
+  appliedPattern: Float32Array | null
+  appliedPatternMeta: {
+    source: string
+    id: string
+    manufacturer: string
+    model: string
+    gain_dbi: number
+    max_gain_dbi: number
+    shape: [number, number]
+  } | null
+
   mode: DosimetryMode
   exposureMode: ExposureMode
   fresnel: boolean
@@ -55,6 +73,10 @@ interface SimulationStore {
   // Actions
   setAntennaPos: (pos: ScenePos | null) => void
   setSelectedPattern: (p: { source: string; id: string; manufacturer: string; model: string; gain_dbi: number } | null) => void
+  setPatternData: (data: Float32Array | null, meta: { max_gain_dbi: number; shape: [number, number] } | null) => void
+  setPatternLoading: (v: boolean) => void
+  applyPattern: () => void
+  clearAppliedPattern: () => void
   setMode: (mode: DosimetryMode) => void
   setExposureMode: (mode: ExposureMode) => void
   setFresnel: (on: boolean) => void
@@ -85,6 +107,11 @@ interface SimulationStore {
 export const useSimulationStore = create<SimulationStore>((set) => ({
   antennaPos: null,
   selectedPattern: null,
+  patternData: null,
+  patternMeta: null,
+  patternLoading: false,
+  appliedPattern: null,
+  appliedPatternMeta: null,
   mode: 'spatial',
   exposureMode: 'theoretical',
   fresnel: true,
@@ -115,6 +142,24 @@ export const useSimulationStore = create<SimulationStore>((set) => ({
   displayQuantity: 'sab' as QuantityKey,
   setAntennaPos: (pos) => set({ antennaPos: pos }),
   setSelectedPattern: (p) => set({ selectedPattern: p }),
+  setPatternData: (data, meta) => set({ patternData: data, patternMeta: meta }),
+  setPatternLoading: (v) => set({ patternLoading: v }),
+  applyPattern: () => set((state) => {
+    if (!state.patternData || !state.patternMeta || !state.selectedPattern) return {}
+    return {
+      appliedPattern: state.patternData,
+      appliedPatternMeta: {
+        source: state.selectedPattern.source,
+        id: state.selectedPattern.id,
+        manufacturer: state.selectedPattern.manufacturer,
+        model: state.selectedPattern.model,
+        gain_dbi: state.selectedPattern.gain_dbi,
+        max_gain_dbi: state.patternMeta.max_gain_dbi,
+        shape: state.patternMeta.shape,
+      },
+    }
+  }),
+  clearAppliedPattern: () => set({ appliedPattern: null, appliedPatternMeta: null }),
   setMode: (mode) => set({ mode }),
   setExposureMode: (exposureMode) => set({ exposureMode }),
   setFresnel: (on) => set(() => {
