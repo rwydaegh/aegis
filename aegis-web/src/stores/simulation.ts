@@ -127,7 +127,11 @@ export const useSimulationStore = create<SimulationStore>((set) => ({
     if (on) return { polarisation: true, fresnel: true }
     return { polarisation: false }
   }),
-  setCurvature: (on) => set({ curvature: on }),
+  setCurvature: (on) => set(() => {
+    // Diffraction requires curvature, so auto-disable it
+    if (!on) return { curvature: false, diffraction: false }
+    return { curvature: true }
+  }),
   setDiffraction: (on) => set(() => {
     // Diffraction requires curvature data, so auto-enable it
     if (on) return { diffraction: true, curvature: true }

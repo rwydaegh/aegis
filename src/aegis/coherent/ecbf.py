@@ -116,7 +116,12 @@ def solve_ecbf(
     while p_abs_at_lambda(lam_high) > P_abs_max:
         lam_high *= 10.0
         if lam_high > 1e20:
-            break
+            warnings.warn(
+                "ECBF lambda bracket expansion exceeded 1e20 without "
+                "satisfying absorption constraint; returning minimum-absorption direction",
+                stacklevel=2,
+            )
+            return xp.asarray(np.sqrt(P) * V[:, 0])
 
     lam_star = _bisect(
         lambda lam: p_abs_at_lambda(lam) - P_abs_max,
@@ -152,7 +157,8 @@ def _bisect(f, a, b, tol=1e-10, maxiter=200):
         return None
     for _ in range(maxiter):
         mid = 0.5 * (a + b)
-        if b - a < tol:
+        scale = max(abs(a), abs(b), 1.0)
+        if (b - a) / scale < tol:
             return mid
         fm = f(mid)
         if fa * fm <= 0:
