@@ -24,7 +24,11 @@ jobs:
 
       - name: Derive version from git tags
         id: version
-        run: echo "value=$(git describe --tags --always | sed 's/^v//')" >> "$GITHUB_OUTPUT"
+        run: |
+          RAW=$(git describe --tags --always | sed 's/^v//')
+          # Convert git describe format (0.16.1-4-gabcdef) to PEP 440 (0.16.1.dev4+gabcdef)
+          PEP440=$(echo "$RAW" | sed -E 's/^([0-9]+\.[0-9]+\.[0-9]+)-([0-9]+)-g(.+)$/\1.dev\2+g\3/')
+          echo "value=$PEP440" >> "$GITHUB_OUTPUT"
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
