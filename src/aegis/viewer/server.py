@@ -428,7 +428,7 @@ def create_app(
         response.headers.setdefault(
             "Content-Security-Policy",
             "default-src 'self'; "
-            "script-src 'self' 'wasm-unsafe-eval' https://analytics.waves-ugent.be; "
+            "script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' https://analytics.waves-ugent.be; "
             "style-src 'self' 'unsafe-inline'; "
             "img-src 'self' data: blob: https://tile.googleapis.com https://*.gstatic.com "
             "https://*.cesium.com https://*.cesium.org; "
