@@ -66,7 +66,7 @@ export const useOptimizeStore = create<OptimizeStore>((set) => ({
   onIteration: (result) =>
     set((s) => ({
       currentIter: result.iter,
-      history: [...s.history, result],
+      history: [...s.history, result].slice(-200),
     })),
 
   onDone: (summary) => set({ running: false, summary }),

@@ -124,8 +124,15 @@ export function useDosimetry() {
           computeCall = computeSionnaRT({ ...params, scenePath: scene.loadedScenePath, rtConfig: rtCfg }, controller.signal)
         } else if (scene.caps?.has_voxels) {
           computeCall = computeVoxelRT({ ...params, rtConfig: rtCfg }, controller.signal)
-        } else {
+        } else if (scene.caps?.has_env_mesh) {
           computeCall = computeSionnaEnvRT({ ...params, rtConfig: rtCfg }, controller.signal)
+        } else {
+          setComputing(false)
+          useNotificationStore.getState().addNotification(
+            'warning',
+            'No environment mesh available. Load an environment (OSM buildings, 3D Tiles, or a scene file) before using Sionna RT.',
+          )
+          return
         }
       } else {
         // DiffeRT: backend auto-detects geometry
