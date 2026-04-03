@@ -446,8 +446,10 @@ class TileTraverser:
         # Transform ECEF -> local ENU
         verts_enu = ecef_to_enu(verts_ecef, origin_ecef, lat, lon)
 
-        # Compute per-triangle normals and broadcast to per-vertex
-        normals = _compute_normals(verts_enu, tris)
+        # Compute per-face normals (n_triangles, 3) to match binary protocol
+        from aegis.environment.osm import _compute_face_normals
+
+        normals = _compute_face_normals(verts_enu, tris)
 
         # Classify materials from vertex colors
         materials = np.array(
@@ -483,20 +485,3 @@ class TileTraverser:
 # ---------------------------------------------------------------------------
 # Geometry helpers
 # ---------------------------------------------------------------------------
-
-
-def _compute_normals(verts: np.ndarray, tris: np.ndarray) -> np.ndarray:
-    """Compute smooth vertex normals from triangle soup."""
-    normals = np.zeros_like(verts)
-    if len(tris) == 0:
-        return normals
-    v0 = verts[tris[:, 0]]
-    v1 = verts[tris[:, 1]]
-    v2 = verts[tris[:, 2]]
-    face_normals = np.cross(v1 - v0, v2 - v0)
-    # Accumulate face normals onto vertices
-    for i in range(3):
-        np.add.at(normals, tris[:, i], face_normals)
-    norms = np.linalg.norm(normals, axis=1, keepdims=True)
-    norms = np.where(norms < 1e-12, 1.0, norms)
-    return normals / norms
