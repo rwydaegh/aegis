@@ -39,6 +39,7 @@ function completenessColor(c: number): Color {
 export interface CoverageOverlayHandle {
   points: PointPrimitiveCollection
   labels: LabelCollection
+  entities: ReturnType<Viewer['entities']['add']>[]
   destroy: () => void
   setVisible: (v: boolean) => void
 }
@@ -64,10 +65,11 @@ export function addCoverageOverlay(
   }
 
   // Region boundary lines via entities (more reliable API than PolylineCollection)
+  const regionEntities: ReturnType<typeof viewer.entities.add>[] = []
   for (const region of regions) {
     if (!region.bbox) continue
     const [minLon, maxLon, minLat, maxLat] = region.bbox
-    viewer.entities.add({
+    const entity = viewer.entities.add({
       polyline: {
         positions: Cartesian3.fromDegreesArray([
           minLon, minLat,
@@ -78,9 +80,10 @@ export function addCoverageOverlay(
         ]),
         width: 2,
         material: completenessColor(region.completeness),
-        distanceDisplayCondition: new DistanceDisplayCondition(2e5, Infinity),
+        distanceDisplayCondition: new DistanceDisplayCondition(0, 2e6),
       },
     })
+    regionEntities.push(entity)
   }
 
   // Region labels
@@ -100,7 +103,7 @@ export function addCoverageOverlay(
       outlineColor: Color.BLACK,
       outlineWidth: 2,
       style: LabelStyle.FILL_AND_OUTLINE,
-      distanceDisplayCondition: new DistanceDisplayCondition(5e5, Infinity),
+      distanceDisplayCondition: new DistanceDisplayCondition(0, 5e6),
       scaleByDistance: new NearFarScalar(5e5, 1.0, 5e6, 0.3),
     })
   }
@@ -108,14 +111,20 @@ export function addCoverageOverlay(
   return {
     points,
     labels,
+    entities: regionEntities,
     destroy: () => {
       viewer.scene.primitives.remove(points)
       viewer.scene.primitives.remove(labels)
-      // Entities for polylines are removed when viewer is destroyed
+      for (const entity of regionEntities) {
+        viewer.entities.remove(entity)
+      }
     },
     setVisible: (v: boolean) => {
       points.show = v
       labels.show = v
+      for (const entity of regionEntities) {
+        entity.show = v
+      }
     },
   }
 }

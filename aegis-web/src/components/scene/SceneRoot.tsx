@@ -280,7 +280,7 @@ function PhysicsController() {
   return null
 }
 
-function MIMOScene() {
+function MIMOScene({ bodyMeshVisible }: { bodyMeshVisible: boolean }) {
   const users = useMIMOStore(s => s.users)
   const focusedUserId = useMIMOStore(s => s.focusedUserId)
   const showAllHeatmaps = useMIMOStore(s => s.showAllHeatmaps)
@@ -298,7 +298,7 @@ function MIMOScene() {
     <>
       {[...users.values()].map(user => (
         <group key={user.userId}>
-          <BodyMeshInstance
+          {bodyMeshVisible && <BodyMeshInstance
             geometry={user.bodyGeometry}
             sabArray={showAllHeatmaps ? user.sabArray : (
               user.userId === focusedUserId ? user.sabArray : null
@@ -308,7 +308,7 @@ function MIMOScene() {
             rotationY={user.orientation}
             opacity={user.userId === focusedUserId ? 1.0 : 0.7}
             onClick={() => setFocusedUser(user.userId)}
-          />
+          />}
           <SmartphoneModel
             position={user.position}
             rotationY={user.orientation}
@@ -376,15 +376,15 @@ export default function SceneRoot() {
         </>
       )}
       {envSource === 'osm' && <EnvironmentOSM />}
-      {bodyMeshVisible && (mimoEnabled ? (
-        <MIMOScene />
+      {mimoEnabled ? (
+        <MIMOScene bodyMeshVisible={bodyMeshVisible} />
       ) : (
         <>
-          <BodyMesh />
+          {bodyMeshVisible && <BodyMesh />}
           <Antenna />
           <DistanceLine />
         </>
-      ))}
+      )}
       <RayPaths />
       <GroundPlane />
       <SceneGrid />
@@ -433,12 +433,11 @@ export default function SceneRoot() {
             toneMapping: THREE.ACESFilmicToneMapping,
             preserveDrawingBuffer: true,
             logarithmicDepthBuffer: true,
-            alpha: isCesiumMode,
+            alpha: true,
           }}
           style={{
             position: 'absolute',
             inset: 0,
-            background: isCesiumMode ? 'transparent' : undefined,
           }}
           tabIndex={0}
         >

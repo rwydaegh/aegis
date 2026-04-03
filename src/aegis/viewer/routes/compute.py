@@ -224,8 +224,8 @@ def _parse_mode_or_level(params: dict, default_level: int = 2):
         level = int(params.get("level", default_level))
     except (TypeError, ValueError):
         return None, (jsonify({"error": "level must be an integer"}), 400)
-    if level < 0 or level > 6:
-        return None, (jsonify({"error": "level must be between 0 and 6"}), 400)
+    if level < 0 or level > 8:
+        return None, (jsonify({"error": "level must be between 0 and 8"}), 400)
     return {"level": level}, None
 
 
@@ -522,6 +522,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             n_tri = params.get("n_triangles")
             if n_tri is None or not isinstance(n_tri, int):
                 return jsonify({"error": "n_triangles required in X-Compute-Params"}), 400
+            if n_tri <= 0 or n_tri > 500_000:
+                return jsonify({"error": "n_triangles must be between 1 and 500000"}), 400
 
             mesh_data = request.get_data()
             max_size = 5 * 1024 * 1024

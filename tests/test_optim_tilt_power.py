@@ -101,3 +101,28 @@ class TestTiltPowerStep:
             state, result = step(state)
 
         assert result["params"]["power_dbm"] > initial_pwr
+
+    def test_T0_scales_sab(self):
+        """T0 factor must scale S_ab: lower T0 should yield lower peak S_ab."""
+        from aegis.optim.tilt_power import _evaluate, setup
+
+        paths = _make_synthetic_paths()
+        normals = np.tile([0, 0, 1], (100, 1)).astype(np.float64)
+
+        state_no_T0 = setup(
+            paths=paths,
+            normals=normals,
+            antenna_direction=np.array([0.0, 0.0, -1.0]),
+            T0=1.0,
+        )
+        state_skin = setup(
+            paths=paths,
+            normals=normals,
+            antenna_direction=np.array([0.0, 0.0, -1.0]),
+            T0=0.44,
+        )
+
+        _, peak_1 = _evaluate(state_no_T0, 0.0, 60.0)
+        _, peak_skin = _evaluate(state_skin, 0.0, 60.0)
+
+        assert peak_skin == pytest.approx(0.44 * peak_1, rel=1e-10)
