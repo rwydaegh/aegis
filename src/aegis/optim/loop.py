@@ -45,6 +45,7 @@ def run_optimization(
             tilt_init_deg=config.get("tilt_init_deg", 0.0),
             power_init_dbm=config.get("power_init_dbm", 60.0),
             icnirp_limit=config.get("icnirp_limit", 20.0),
+            T0=config.get("T0", 1.0),
         )
     elif mode == "placement":
         from aegis.optim.placement import setup, step
