@@ -3,7 +3,7 @@ import { useUIStore } from '@/stores/ui'
 import { useEnvironmentStore } from '@/stores/environment'
 import { useBaseStationsStore } from '@/stores/basestations'
 import { loadBasestations } from '@/api/basestations'
-import { Globe, MapPin, ArrowLeft } from 'lucide-react'
+import { Globe, MapPin, ArrowLeft, RefreshCw } from 'lucide-react'
 
 const TRANSITION_ALTITUDE_M = 5_000
 
@@ -49,7 +49,16 @@ function CoverageHudInner() {
             <div className="text-zinc-400">Loading coverage data...</div>
           )}
           {error && (
-            <div className="text-red-400">Failed to load coverage: {error}</div>
+            <div className="text-red-400">
+              <div>Failed to load coverage: {error}</div>
+              <button
+                onClick={() => useCoverageStore.getState().retry()}
+                className="mt-1 flex items-center gap-1 text-zinc-300 hover:text-white transition-colors"
+              >
+                <RefreshCw size={12} />
+                Retry
+              </button>
+            </div>
           )}
           {!loading && !error && (
             <>

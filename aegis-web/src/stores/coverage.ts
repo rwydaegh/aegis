@@ -19,6 +19,7 @@ interface CoverageState {
   cameraAltitude: number
 
   fetch: () => Promise<void>
+  retry: () => Promise<void>
   setEnabled: (v: boolean) => void
   setCameraLatLon: (ll: { lat: number; lon: number }) => void
   setCameraAltitude: (alt: number) => void
@@ -41,7 +42,8 @@ export const useCoverageStore = create<CoverageState>((set, get) => ({
   cameraAltitude: Infinity,
 
   fetch: async () => {
-    if (get().loaded || get().loading) return
+    const { loaded, loading } = get()
+    if (loaded || loading) return
     set({ loading: true, error: null })
     try {
       const data = await fetchCoverage()
@@ -66,6 +68,11 @@ export const useCoverageStore = create<CoverageState>((set, get) => ({
       console.error('Failed to fetch coverage data:', err)
       set({ error: (err as Error).message, loading: false })
     }
+  },
+
+  retry: async () => {
+    set({ loaded: false, loading: false, error: null })
+    await get().fetch()
   },
 
   setEnabled: (v) => set({ enabled: v }),

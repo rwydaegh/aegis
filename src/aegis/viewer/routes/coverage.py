@@ -161,19 +161,22 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
         with cache_lock:
             if "coverage_response" in cache:
                 return jsonify(cache["coverage_response"])
-
             data_dir = cache.get("data_dir", "data")
-            merged_dir = Path(data_dir) / "basestations" / "merged"
-            regions_yaml = Path(data_dir) / "basestations" / "regions.yaml"
 
-            if not regions_yaml.exists():
-                return jsonify({"error": "regions.yaml not found"}), 500
+        merged_dir = Path(data_dir) / "basestations" / "merged"
+        regions_yaml = Path(data_dir) / "basestations" / "regions.yaml"
 
-            try:
-                result = _compute_coverage(merged_dir, regions_yaml)
-            except Exception:
-                logger.exception("Failed to compute coverage")
-                return jsonify({"error": "Failed to compute coverage data"}), 500
-            cache["coverage_response"] = result
+        if not regions_yaml.exists():
+            return jsonify({"error": "regions.yaml not found"}), 500
+
+        try:
+            result = _compute_coverage(merged_dir, regions_yaml)
+        except Exception:
+            logger.exception("Failed to compute coverage")
+            return jsonify({"error": "Failed to compute coverage data"}), 500
+
+        with cache_lock:
+            cache.setdefault("coverage_response", result)
+            result = cache["coverage_response"]
 
         return jsonify(result)
