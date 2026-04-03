@@ -13,6 +13,18 @@ from aegis.compliance import ExposureScenario, evaluate_compliance
 from aegis.defaults import DEFAULT_FREQ_HZ, DEFAULT_POWER_DBM
 from aegis.viewer.compute import _load_phantom_masses
 
+
+def _parse_bool(value, default: bool) -> bool:
+    """Parse a boolean from JSON params, handling string 'false'/'true'."""
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.lower() not in ("false", "0", "no", "")
+    return bool(value)
+
+
 logger = logging.getLogger(__name__)
 
 # String constants (avoid duplicate literals)
@@ -215,10 +227,10 @@ def _parse_mode_or_level(params: dict, default_level: int = 2):
             )
         out: dict = {"mode": mode}
         if mode == "spatial":
-            out["fresnel"] = bool(params.get("fresnel", True))
-            out["polarisation"] = bool(params.get("polarisation", False))
-            out["curvature"] = bool(params.get("curvature", False))
-            out["diffraction"] = bool(params.get("diffraction", False))
+            out["fresnel"] = _parse_bool(params.get("fresnel"), True)
+            out["polarisation"] = _parse_bool(params.get("polarisation"), False)
+            out["curvature"] = _parse_bool(params.get("curvature"), False)
+            out["diffraction"] = _parse_bool(params.get("diffraction"), False)
         return out, None
     try:
         level = int(params.get("level", default_level))
@@ -576,10 +588,10 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                 return jsonify({"error": "mode must be one of: bound, aggregate, spatial"}), 400
             if mode == "spatial":
                 corrections = {
-                    "fresnel": bool(params.get("fresnel", True)),
-                    "polarisation": bool(params.get("polarisation", False)),
-                    "curvature": bool(params.get("curvature", False)),
-                    "diffraction": bool(params.get("diffraction", False)),
+                    "fresnel": _parse_bool(params.get("fresnel"), True),
+                    "polarisation": _parse_bool(params.get("polarisation"), False),
+                    "curvature": _parse_bool(params.get("curvature"), False),
+                    "diffraction": _parse_bool(params.get("diffraction"), False),
                 }
             else:
                 corrections = None
