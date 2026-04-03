@@ -15,6 +15,7 @@ from flask import Flask  # noqa: E402
 
 from aegis.viewer.routes.compute import (  # noqa: E402
     _build_binary_response,
+    _parse_bool,
     _parse_mode_or_level,
     _parse_quantities_and_scenario,
     _parse_rotation_y,
@@ -197,9 +198,19 @@ class TestParseModeOrLevel:
         assert err is None
         assert kw == {"level": 6}
 
-    def test_level_7_rejected(self, app) -> None:
+    def test_level_7_accepted(self) -> None:
+        kw, err = _parse_mode_or_level({"level": 7})
+        assert err is None
+        assert kw == {"level": 7}
+
+    def test_level_8_accepted(self) -> None:
+        kw, err = _parse_mode_or_level({"level": 8})
+        assert err is None
+        assert kw == {"level": 8}
+
+    def test_level_9_rejected(self, app) -> None:
         with app.app_context():
-            kw, err = _parse_mode_or_level({"level": 7})
+            kw, err = _parse_mode_or_level({"level": 9})
             assert kw is None
             assert err[1] == 400
 
@@ -361,3 +372,30 @@ class TestBuildStatsResponse:
         assert len(sab_check) == 1
         # The fallback value should be the raw sab peak (15.0)
         assert sab_check[0]["value"] == round(15.0, 4)
+
+
+class TestParseBool:
+    def test_none_returns_default(self) -> None:
+        assert _parse_bool(None, True) is True
+        assert _parse_bool(None, False) is False
+
+    def test_bool_passthrough(self) -> None:
+        assert _parse_bool(True, False) is True
+        assert _parse_bool(False, True) is False
+
+    def test_string_false(self) -> None:
+        assert _parse_bool("false", True) is False
+        assert _parse_bool("False", True) is False
+        assert _parse_bool("0", True) is False
+        assert _parse_bool("no", True) is False
+        assert _parse_bool("off", True) is False
+        assert _parse_bool("", True) is False
+
+    def test_string_true(self) -> None:
+        assert _parse_bool("true", False) is True
+        assert _parse_bool("1", False) is True
+        assert _parse_bool("yes", False) is True
+
+    def test_int(self) -> None:
+        assert _parse_bool(0, True) is False
+        assert _parse_bool(1, False) is True

@@ -200,6 +200,19 @@ def _make_rt_response(result, body, tissue, engine_kw, quantities, scenario, ext
 
 _VALID_INCOHERENT_MODES = {"bound", "aggregate", "spatial"}
 
+_FALSY = {False, "false", "0", "no", "off", ""}
+
+
+def _parse_bool(value, default: bool) -> bool:
+    """Parse a boolean from JSON params, handling string 'false'/'true'."""
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.lower() not in _FALSY
+    return bool(value)
+
 
 def _parse_mode_or_level(params: dict, default_level: int = 2):
     """Extract mode+corrections or level from request params.
@@ -215,17 +228,17 @@ def _parse_mode_or_level(params: dict, default_level: int = 2):
             )
         out: dict = {"mode": mode}
         if mode == "spatial":
-            out["fresnel"] = bool(params.get("fresnel", True))
-            out["polarisation"] = bool(params.get("polarisation", False))
-            out["curvature"] = bool(params.get("curvature", False))
-            out["diffraction"] = bool(params.get("diffraction", False))
+            out["fresnel"] = _parse_bool(params.get("fresnel"), True)
+            out["polarisation"] = _parse_bool(params.get("polarisation"), False)
+            out["curvature"] = _parse_bool(params.get("curvature"), False)
+            out["diffraction"] = _parse_bool(params.get("diffraction"), False)
         return out, None
     try:
         level = int(params.get("level", default_level))
     except (TypeError, ValueError):
         return None, (jsonify({"error": "level must be an integer"}), 400)
-    if level < 0 or level > 6:
-        return None, (jsonify({"error": "level must be between 0 and 6"}), 400)
+    if level < 0 or level > 8:
+        return None, (jsonify({"error": "level must be between 0 and 8"}), 400)
     return {"level": level}, None
 
 
@@ -574,10 +587,10 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                 return jsonify({"error": "mode must be one of: bound, aggregate, spatial"}), 400
             if mode == "spatial":
                 corrections = {
-                    "fresnel": bool(params.get("fresnel", True)),
-                    "polarisation": bool(params.get("polarisation", False)),
-                    "curvature": bool(params.get("curvature", False)),
-                    "diffraction": bool(params.get("diffraction", False)),
+                    "fresnel": _parse_bool(params.get("fresnel"), True),
+                    "polarisation": _parse_bool(params.get("polarisation"), False),
+                    "curvature": _parse_bool(params.get("curvature"), False),
+                    "diffraction": _parse_bool(params.get("diffraction"), False),
                 }
             else:
                 corrections = None

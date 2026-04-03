@@ -49,7 +49,18 @@ function CoverageHudInner() {
             <div className="text-zinc-400">Loading coverage data...</div>
           )}
           {error && (
-            <div className="text-red-400">Failed to load coverage: {error}</div>
+            <div className="text-red-400">
+              Failed to load coverage: {error}
+              <button
+                onClick={() => {
+                  useCoverageStore.setState({ error: null })
+                  useCoverageStore.getState().fetch()
+                }}
+                className="ml-2 underline text-red-300 hover:text-white"
+              >
+                Retry
+              </button>
+            </div>
           )}
           {!loading && !error && (
             <>

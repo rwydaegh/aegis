@@ -71,10 +71,9 @@ def eigendecompose_Q(
     """
     eigenvalues, eigenvectors = xp.linalg.eigh(Q)
 
-    # Reverse to descending order
-    idx = xp.argsort(eigenvalues)[::-1]
-    eigenvalues = eigenvalues[idx]
-    eigenvectors = eigenvectors[:, idx]
+    # Reverse to descending order (use flip instead of [::-1] for JAX compatibility)
+    eigenvalues = xp.flip(eigenvalues)
+    eigenvectors = xp.flip(eigenvectors, axis=1)
 
     # Clamp small negatives from numerical noise
     eigenvalues = xp.maximum(eigenvalues, 0.0)
