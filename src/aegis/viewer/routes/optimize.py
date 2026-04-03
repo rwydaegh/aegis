@@ -160,6 +160,10 @@ def _build_config(params: dict, app: Flask, cache: dict, cache_lock) -> dict:
         config["power_init_dbm"] = params.get("power_init_dbm", 60.0)
         config["icnirp_limit"] = params.get("icnirp_limit", 20.0)
 
+        # Pass T0 from last dosimetry stats (falls back to 1.0 if unavailable)
+        last_stats = app.config.get("_last_dosimetry_stats", {}) or {}
+        config["T0"] = params.get("T0", last_stats.get("T0", 1.0))
+
     elif mode == "placement":
         config["center"] = np.array(params.get("center", [5, 0, 3]))
         config["grid_size"] = params.get("grid_size", 5)

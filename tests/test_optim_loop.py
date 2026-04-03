@@ -59,3 +59,34 @@ def test_unknown_mode_raises():
 
     with pytest.raises(ValueError, match="Unknown optimization mode"):
         list(run_optimization({"mode": "bogus"}, cancel_event=threading.Event()))
+
+
+def test_tilt_power_T0_passthrough():
+    """T0 must flow from config through loop to the optimizer state."""
+    from aegis.optim.loop import run_optimization
+    from aegis.paths import PropagationPaths
+
+    rng = np.random.default_rng(42)
+    k_hat = rng.standard_normal((20, 3))
+    k_hat /= np.linalg.norm(k_hat, axis=1, keepdims=True)
+    paths = PropagationPaths.from_powers(k_hat=k_hat, power=rng.uniform(0.1, 1.0, 20))
+
+    config = {
+        "mode": "tilt_power",
+        "paths": paths,
+        "normals": np.tile([0, 0, 1], (50, 1)).astype(np.float64),
+        "antenna_direction": np.array([0.0, 0.0, -1.0]),
+        "T0": 0.44,
+        "max_iters": 3,
+    }
+
+    results = list(run_optimization(config, cancel_event=threading.Event()))
+    assert len(results) >= 1
+
+    # Verify T0 was applied: run again with T0=1.0 and compare
+    config_no_T0 = {**config, "T0": 1.0}
+    results_no_T0 = list(run_optimization(config_no_T0, cancel_event=threading.Event()))
+
+    peak_with_T0 = results[0]["stats"]["peak_sab"]
+    peak_without_T0 = results_no_T0[0]["stats"]["peak_sab"]
+    assert peak_with_T0 < peak_without_T0 * 0.5  # T0=0.44 should give ~44% of T0=1.0
