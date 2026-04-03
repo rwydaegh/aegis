@@ -297,16 +297,35 @@ class TestRho:
         assert 0.0 <= rho <= 1.0 + 1e-10
 
     def test_rho_one_for_dominant_eigenvector(self):
-        """When h aligns with the dominant eigenvector, rho = 1."""
+        """When h = conj(v_1), MRT produces the worst-case precoder, so rho = 1."""
         rng = np.random.default_rng(99)
         M_ant = 4
         G_tilde = rng.standard_normal((20, 3, M_ant)) + 1j * rng.standard_normal((20, 3, M_ant))
         areas = np.ones(20) * 0.01
         Q = compute_exposure_operator(G_tilde, areas)
         eigenvalues, eigenvectors = eigendecompose_Q(Q)
-        h = eigenvectors[:, 0]  # dominant eigenvector
+        # MRT with h = conj(v_1) gives x = sqrt(P)*v_1/||v_1||, the worst-case precoder
+        h = np.conj(eigenvectors[:, 0])
         rho = compute_rho(h, Q, lambda_max=float(eigenvalues[0]))
         assert rho == pytest.approx(1.0, abs=1e-8)
+
+    def test_rho_matches_mrt_pabs(self):
+        """rho must equal P_abs_MRT / (P * lambda_max) exactly (monograph eq:rho-def)."""
+        rng = np.random.default_rng(77)
+        M_ant = 4
+        G_tilde = rng.standard_normal((20, 3, M_ant)) + 1j * rng.standard_normal((20, 3, M_ant))
+        areas = np.ones(20) * 0.01
+        Q = np.asarray(compute_exposure_operator(G_tilde, areas))
+        eigenvalues, _ = eigendecompose_Q(Q)
+        lam_max = float(eigenvalues[0])
+        h = rng.standard_normal(M_ant) + 1j * rng.standard_normal(M_ant)
+        P = 2.0
+        # MRT precoder: x = sqrt(P) * h* / ||h||
+        x_mrt = np.sqrt(P) * h.conj() / np.linalg.norm(h)
+        p_abs_mrt = float(np.real(x_mrt.conj() @ Q @ x_mrt))
+        rho_from_pabs = p_abs_mrt / (P * lam_max)
+        rho = compute_rho(h, Q, lambda_max=lam_max)
+        assert rho == pytest.approx(rho_from_pabs, abs=1e-10)
 
 
 # ---------------------------------------------------------------------------

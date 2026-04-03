@@ -245,11 +245,12 @@ class TestExposureOperatorEdgeCases:
         assert 0.0 <= rho <= 1.0 + 1e-10
 
     def test_rho_eigenvector_of_max_gives_one(self, rng):
-        """rho == 1 when h equals the eigenvector of the largest eigenvalue."""
+        """rho == 1 when h = conj(v_1), making MRT produce worst-case precoder."""
         M_ant = 4
         Q = _random_hermitian_psd(M_ant, rng, scale=0.5)
         eigenvalues, eigenvectors = eigendecompose_Q(Q)
-        h_dominant = eigenvectors[:, 0]  # column of max eigenvalue
+        # MRT with h = conj(v_1) gives x = sqrt(P)*v_1/||v_1||
+        h_dominant = np.conj(eigenvectors[:, 0])
         rho = compute_rho(h_dominant, Q, lambda_max=float(eigenvalues[0]))
         assert rho == pytest.approx(1.0, abs=1e-8)
 
