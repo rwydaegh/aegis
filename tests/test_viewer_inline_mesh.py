@@ -6,7 +6,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from aegis.geometry.mesh import BodyMesh
+pytest.importorskip("flask")
+
+from aegis.geometry.mesh import BodyMesh  # noqa: E402
 
 
 @pytest.fixture

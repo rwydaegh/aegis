@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from aegis.viewer.config import (
+import pytest
+
+pytest.importorskip("flask")
+
+from aegis.viewer.config import (  # noqa: E402
     _deep_merge,
     apply_scenario_to_config,
     load_config,

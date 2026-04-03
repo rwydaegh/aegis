@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
-import numpy as np
-from conftest import make_single_triangle
+import pytest
 
-from aegis.viewer.compute import _transform_body_for_viewer
+pytest.importorskip("flask")
+
+import numpy as np  # noqa: E402
+from conftest import make_single_triangle  # noqa: E402
+
+from aegis.viewer.compute import _transform_body_for_viewer  # noqa: E402
 
 
 def test_transform_preserves_centroid_vertex_consistency():
