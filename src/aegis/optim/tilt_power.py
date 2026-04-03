@@ -53,7 +53,7 @@ def _evaluate(state: dict, tilt_deg: float, power_dbm: float):
     power_linear = 10 ** ((power_dbm - 60) / 10)
     weighted = state["base_power"] * gain * power_linear
     cos_inc = np.maximum((-state["k_hat"]) @ state["normals"].T, 0)
-    sab = weighted @ cos_inc
+    sab = state["T0"] * (weighted @ cos_inc)
     return sab, float(np.max(sab))
 
 
@@ -68,6 +68,7 @@ def setup(
     lr: float = 0.1,
     penalty_lambda: float = 10.0,
     pattern_exponent: float = 3.0,
+    T0: float = 1.0,
 ) -> dict[str, Any]:
     """Initialize tilt/power optimizer state.
 
@@ -82,6 +83,7 @@ def setup(
     lr : learning rate
     penalty_lambda : penalty weight for ICNIRP violation
     pattern_exponent : exponent n for cos^n radiation pattern
+    T0 : normal-incidence Fresnel transmission coefficient
     """
     base_power = np.array(paths.power, dtype=np.float64)
     k_hat = np.array(paths.k_hat, dtype=np.float64)
@@ -91,6 +93,7 @@ def setup(
         "k_hat": k_hat,
         "normals": normals,
         "antenna_direction": np.asarray(antenna_direction, dtype=np.float64),
+        "T0": T0,
         "tilt_deg": tilt_init_deg,
         "power_dbm": power_init_dbm,
         "icnirp_limit": icnirp_limit,
