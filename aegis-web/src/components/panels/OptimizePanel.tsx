@@ -173,6 +173,7 @@ export default function OptimizePanel() {
                 stroke="hsl(var(--primary))"
                 strokeWidth={1.5}
                 dot={false}
+                isAnimationActive={false}
               />
             </LineChart>
           </ResponsiveContainer>
