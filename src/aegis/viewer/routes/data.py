@@ -163,6 +163,7 @@ def _handle_clear_cache(app, cache, cache_lock):
     app.config.pop("_last_dosimetry_result", None)
     app.config.pop("_last_dosimetry_body", None)
     app.config.pop("_last_dosimetry_stats", None)
+    app.config.pop("_last_rt_paths", None)
     return jsonify({"ok": True})
 
 
@@ -223,6 +224,7 @@ def _handle_config(cache):
     levels = [lv["value"] for lv in cfg["dosimetry"]["fidelity_levels"]]
 
     has_voxels = cache.get("voxel_binary") is not None
+    has_env_mesh = cache.get("env_mesh") is not None
     tiles_dir = cache.get("tiles_dir")
     n_tiles = 0
     if tiles_dir:
@@ -241,6 +243,7 @@ def _handle_config(cache):
             "skin_models": SKIN_MODELS,
             "levels": levels,
             "has_voxels": has_voxels,
+            "has_env_mesh": has_env_mesh,
             "has_differt": has_differt,
             "has_sionna": has_sionna,
             "voxel_rt_available": has_voxels and has_differt,

@@ -52,8 +52,7 @@ def _evaluate(state: dict, tilt_deg: float, power_dbm: float):
     gain = _cos_n_pattern(state["k_hat"], boresight, state["pattern_exponent"])
     power_linear = 10 ** ((power_dbm - 60) / 10)
     weighted = state["base_power"] * gain * power_linear
-    cos_inc = np.maximum((-state["k_hat"]) @ state["normals"].T, 0)
-    sab = state["T0"] * (weighted @ cos_inc)
+    sab = state["T0"] * (weighted @ state["cos_inc"])
     return sab, float(np.max(sab))
 
 
@@ -88,10 +87,14 @@ def setup(
     base_power = np.array(paths.power, dtype=np.float64)
     k_hat = np.array(paths.k_hat, dtype=np.float64)
 
+    # Pre-compute cos_inc: (N_paths, M_triangles), constant across iterations
+    cos_inc = np.maximum((-k_hat) @ normals.T, 0)
+
     state = {
         "base_power": base_power,
         "k_hat": k_hat,
         "normals": normals,
+        "cos_inc": cos_inc,
         "antenna_direction": np.asarray(antenna_direction, dtype=np.float64),
         "T0": T0,
         "tilt_deg": tilt_init_deg,
@@ -140,7 +143,7 @@ def step(state: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
     pwr = pwr - lr * grad_pwr
 
     tilt = float(np.clip(tilt, 0, 90))
-    pwr = float(np.clip(pwr, 0, 90))
+    pwr = float(np.clip(pwr, 0, 100))
 
     sab, peak = _evaluate(state, tilt, pwr)
     obj = loss(peak, pwr)

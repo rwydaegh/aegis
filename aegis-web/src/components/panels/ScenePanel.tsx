@@ -238,7 +238,10 @@ export default function ScenePanel() {
       <div className="mt-4 pt-3 border-t border-border">
         <button
           onClick={() => {
-            fetch('/api/clear-cache', { method: 'POST' }).catch(() => {})
+            fetch('/api/clear-cache', { method: 'POST' })
+              .then(() => fetchCapabilities())
+              .then(caps => useSceneStore.getState().setCapabilities(caps))
+              .catch(() => {})
             useSceneStore.getState().clearScene()
             useSimulationStore.getState().clearResults()
             useSimulationStore.getState().setBodyOffset([0, 0, 0])

@@ -37,6 +37,7 @@ _ERR_INVALID_JSON = "Invalid or missing JSON body"
 _ERR_ROTATION_TYPE = "body_rotation_y must be a number"
 _ERR_NO_EXPORT_DATA = "No dosimetry result available. Run a compute first."
 _ERR_INVALID_SCENE = "Invalid scene path. Use /api/scenes to list available scenes."
+_MAX_POWER_DBM = 100  # must match config.py dosimetry.power_input.max
 
 
 def _validate_scene_path(scene_path: str) -> bool:
@@ -612,8 +613,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             power_dbm = float(params.get("power_dbm", dcfg["default_power_dbm"]))
         except (TypeError, ValueError):
             return jsonify({"error": "power_dbm must be a number"}), 400
-        if power_dbm < pwr_cfg["min"]:
-            return jsonify({"error": f"power_dbm must be >= {pwr_cfg['min']} dBm"}), 400
+        if power_dbm < pwr_cfg["min"] or power_dbm > pwr_cfg["max"]:
+            return jsonify({"error": f"power_dbm must be between {pwr_cfg['min']} and {pwr_cfg['max']} dBm"}), 400
 
         # Stochastic channel params
         stochastic = None
@@ -848,6 +849,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             power_dbm = float(params.get("power_dbm", DEFAULT_POWER_DBM))
         except (TypeError, ValueError):
             return jsonify({"error": "power_dbm must be a number"}), 400
+        if power_dbm < 0 or power_dbm > _MAX_POWER_DBM:
+            return jsonify({"error": f"power_dbm must be between 0 and {_MAX_POWER_DBM} dBm"}), 400
         rt_cfg_parsed = _parse_rt_config(params)
 
         body_offset, err = _parse_vec3(params, "body_offset")
@@ -1058,6 +1061,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             power_dbm = float(params.get("power_dbm", DEFAULT_POWER_DBM))
         except (TypeError, ValueError):
             return jsonify({"error": "power_dbm must be a number"}), 400
+        if power_dbm < 0 or power_dbm > _MAX_POWER_DBM:
+            return jsonify({"error": f"power_dbm must be between 0 and {_MAX_POWER_DBM} dBm"}), 400
         rt_cfg_parsed = _parse_rt_config(params)
 
         body_offset, err = _parse_vec3(params, "body_offset")
@@ -1214,6 +1219,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             power_dbm = float(params.get("power_dbm", DEFAULT_POWER_DBM))
         except (TypeError, ValueError):
             return jsonify({"error": "power_dbm must be a number"}), 400
+        if power_dbm < 0 or power_dbm > _MAX_POWER_DBM:
+            return jsonify({"error": f"power_dbm must be between 0 and {_MAX_POWER_DBM} dBm"}), 400
         rt_cfg_parsed = _parse_rt_config(params)
         max_order = rt_cfg_parsed["max_depth"]
 
@@ -1417,6 +1424,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             power_dbm = float(params.get("power_dbm", DEFAULT_POWER_DBM))
         except (TypeError, ValueError):
             return jsonify({"error": "power_dbm must be a number"}), 400
+        if power_dbm < 0 or power_dbm > _MAX_POWER_DBM:
+            return jsonify({"error": f"power_dbm must be between 0 and {_MAX_POWER_DBM} dBm"}), 400
         rt_cfg_parsed = _parse_rt_config(params)
         max_order = rt_cfg_parsed["max_depth"]
 
@@ -1758,7 +1767,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         antenna_pos = data.get("antenna_pos", [0, 0, 10])
         lsp_name = data.get("lsp_name", "SF_dB")
         bounds = tuple(data.get("bounds", [-100, 100, -100, 100]))
-        resolution = min(int(data.get("resolution", 128)), 256)
+        resolution = max(1, min(int(data.get("resolution", 128)), 256))
         seed = int(data.get("seed", 42))
 
         try:

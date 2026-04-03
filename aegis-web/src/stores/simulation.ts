@@ -200,11 +200,15 @@ export const useSimulationStore = create<SimulationStore>((set) => ({
     const next = new Set(state.enabledQuantities)
     let displayQuantity = state.displayQuantity
 
-    // Crossing the 6 GHz boundary: S_ab does not apply below 6 GHz, auto-enable SAR_wb
+    // Crossing the 6 GHz boundary: swap SAR_wb availability
     if (wasAbove6 !== nowAbove6) {
       if (!nowAbove6) {
         // Going below 6 GHz: enable SAR_wb so compliance panel stays useful
         next.add('sar_wb')
+      } else {
+        // Going above 6 GHz: remove SAR_wb (not applicable at mmWave)
+        next.delete('sar_wb')
+        if (displayQuantity === 'sar_wb') displayQuantity = 'sab'
       }
     }
 
@@ -222,6 +226,8 @@ export const useSimulationStore = create<SimulationStore>((set) => ({
   }),
   setEnabledQuantities: (q) => set({ enabledQuantities: q }),
   toggleQuantity: (key) => set((state) => {
+    // sab is always required (backend always returns it)
+    if (key === 'sab') return {}
     const next = new Set(state.enabledQuantities)
     if (next.has(key)) {
       next.delete(key)

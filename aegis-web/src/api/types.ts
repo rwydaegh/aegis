@@ -163,6 +163,7 @@ export interface Capabilities {
   skin_models: { id: string; label: string }[]
   levels: number[]
   has_voxels: boolean
+  has_env_mesh: boolean
   has_differt: boolean
   has_sionna: boolean
   voxel_rt_available: boolean
