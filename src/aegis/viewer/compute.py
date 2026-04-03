@@ -426,9 +426,7 @@ def generate_lsp_heatmap(
     from aegis.channel.presets import load_preset
 
     if preset_dir is None:
-        from aegis.viewer.config import get_config
-        cfg = get_config()
-        preset_dir = cfg.get("stochastic", {}).get("preset_dir", "data/channel_presets")
+        preset_dir = DEFAULTS.get("dosimetry", {}).get("stochastic", {}).get("preset_dir", "data/channel_presets")
 
     preset = load_preset(preset_name, preset_dir)
     model = LSFModel(preset["params"], freq_ghz, seed=seed)
