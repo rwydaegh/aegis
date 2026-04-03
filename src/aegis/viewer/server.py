@@ -163,10 +163,10 @@ def _setup_auth(app: Flask, gate_password: str | None) -> None:
             return  # No password set, skip auth (local dev)
         if request.path in exempt_paths:
             return
-        if request.path.startswith("/assets/") or request.path == "/":
+        if request.path.startswith(("/assets/", "/cesium/")) or request.path == "/":
             return  # Serve React app and static assets without auth
-        # Allow root-level static files (fonts, favicons) without auth
-        _static_extensions = {".woff2", ".woff", ".ttf", ".svg", ".png", ".ico"}
+        # Allow root-level static files (fonts, favicons, JS, CSS) without auth
+        _static_extensions = {".woff2", ".woff", ".ttf", ".svg", ".png", ".ico", ".js", ".css", ".json", ".wasm"}
         if not request.path.startswith("/api/") and Path(request.path).suffix in _static_extensions:
             return
         if not session.get("authenticated"):
