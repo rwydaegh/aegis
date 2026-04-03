@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { searchPatterns } from '@/api/patterns'
+import { searchPatterns, loadPattern } from '@/api/patterns'
 import type { PatternSearchResult } from '@/api/patterns'
 import { useSimulationStore } from '@/stores/simulation'
+import PatternPolarPlot from '@/components/panels/PatternPolarPlot'
 
 type SourceFilter = 'all' | 'local' | 'cloudrf'
 
@@ -15,6 +16,14 @@ export default function PatternBrowserPanel() {
 
   const selectedPattern = useSimulationStore(s => s.selectedPattern)
   const setSelectedPattern = useSimulationStore(s => s.setSelectedPattern)
+  const patternData = useSimulationStore(s => s.patternData)
+  const patternMeta = useSimulationStore(s => s.patternMeta)
+  const patternLoading = useSimulationStore(s => s.patternLoading)
+  const setPatternData = useSimulationStore(s => s.setPatternData)
+  const setPatternLoading = useSimulationStore(s => s.setPatternLoading)
+  const applyPattern = useSimulationStore(s => s.applyPattern)
+  const appliedPatternMeta = useSimulationStore(s => s.appliedPatternMeta)
+  const clearAppliedPattern = useSimulationStore(s => s.clearAppliedPattern)
 
   const labelClass = 'text-xs text-muted-foreground block mt-3 mb-1'
   const inputClass =
@@ -43,7 +52,7 @@ export default function PatternBrowserPanel() {
     }
   }, [query, sourceFilter])
 
-  const handleSelect = (r: PatternSearchResult) => {
+  const handleSelect = async (r: PatternSearchResult) => {
     setSelectedPattern({
       source: r.source,
       id: r.id,
@@ -51,9 +60,23 @@ export default function PatternBrowserPanel() {
       model: r.model,
       gain_dbi: r.gain_dbi,
     })
+    setPatternLoading(true)
+    try {
+      const { data, meta } = await loadPattern(r.source, r.id)
+      setPatternData(data, meta)
+    } catch (err) {
+      console.error('Failed to load pattern:', err)
+      setPatternData(null, null)
+    } finally {
+      setPatternLoading(false)
+    }
   }
 
-  const handleClear = () => setSelectedPattern(null)
+  const handleClear = () => {
+    setSelectedPattern(null)
+    setPatternData(null, null)
+    clearAppliedPattern()
+  }
 
   const sourceButtons: { label: string; value: SourceFilter }[] = [
     { label: 'All', value: 'all' },
@@ -78,6 +101,28 @@ export default function PatternBrowserPanel() {
               Clear
             </button>
           </div>
+          {patternLoading && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+              <span className="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+              Loading pattern...
+            </div>
+          )}
+          {patternData && patternMeta && !patternLoading && (
+            <>
+              <PatternPolarPlot
+                data={patternData}
+                maxGainDbi={patternMeta.max_gain_dbi}
+              />
+              <button
+                className="w-full mt-2 px-3 py-1.5 text-xs font-medium rounded border border-primary/60 bg-primary/20 text-primary hover:bg-primary/30 transition-colors cursor-pointer"
+                onClick={applyPattern}
+              >
+                {appliedPatternMeta?.id === selectedPattern.id
+                  ? 'Applied'
+                  : 'Apply to antenna'}
+              </button>
+            </>
+          )}
         </div>
       )}
 
