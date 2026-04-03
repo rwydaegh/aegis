@@ -7,6 +7,7 @@ import {
   LabelStyle,
   PointPrimitiveCollection,
   LabelCollection,
+  Entity,
 } from 'cesium'
 import type { RegionSummary } from '@/api/types'
 
@@ -64,10 +65,11 @@ export function addCoverageOverlay(
   }
 
   // Region boundary lines via entities (more reliable API than PolylineCollection)
+  const polylineEntities: Entity[] = []
   for (const region of regions) {
     if (!region.bbox) continue
     const [minLon, maxLon, minLat, maxLat] = region.bbox
-    viewer.entities.add({
+    polylineEntities.push(viewer.entities.add({
       polyline: {
         positions: Cartesian3.fromDegreesArray([
           minLon, minLat,
@@ -80,7 +82,7 @@ export function addCoverageOverlay(
         material: completenessColor(region.completeness),
         distanceDisplayCondition: new DistanceDisplayCondition(2e5, Infinity),
       },
-    })
+    }))
   }
 
   // Region labels
@@ -111,11 +113,16 @@ export function addCoverageOverlay(
     destroy: () => {
       viewer.scene.primitives.remove(points)
       viewer.scene.primitives.remove(labels)
-      // Entities for polylines are removed when viewer is destroyed
+      for (const entity of polylineEntities) {
+        viewer.entities.remove(entity)
+      }
     },
     setVisible: (v: boolean) => {
       points.show = v
       labels.show = v
+      for (const entity of polylineEntities) {
+        entity.show = v
+      }
     },
   }
 }

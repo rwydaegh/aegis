@@ -59,6 +59,9 @@ export function CesiumGlobe() {
       }
     }
 
+    // Guard against component unmounting during the async gap above
+    if (viewer.isDestroyed()) return
+
     // Initial camera: high altitude for globe view
     viewer.camera.flyTo({
       destination: Cartesian3.fromDegrees(10, 20, 20_000_000),
