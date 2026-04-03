@@ -88,7 +88,10 @@ def compute_rho(
 ):
     """Compute exposure-signal alignment rho.
 
-    rho = h^H @ Q @ h / (||h||^2 * lambda_max(Q))
+    rho = h^T @ Q @ h* / (||h||^2 * lambda_max(Q))
+
+    This is the fraction of worst-case absorption achieved by MRT, where
+    x_MRT = sqrt(P) * h* / ||h||.  Monograph: eq:rho-def.
 
     Parameters
     ----------
@@ -117,8 +120,10 @@ def compute_rho(
     if lambda_max < NUMERICAL_FLOOR:
         return 0.0
 
-    # h^H @ Q @ h (Hermitian quadratic form, Q is Hermitian PSD)
-    Qh = Q @ h
-    numerator = float(xp.real(xp.vdot(h, Qh)))
+    # h^T @ Q @ h* (MRT quadratic form, monograph eq:rho-def)
+    # P_abs_MRT = x^H Q x = P/||h||^2 * h^T Q h*, so rho = h^T Q h* / (||h||^2 * lam_max)
+    h_conj = xp.conj(h)
+    Qh_conj = Q @ h_conj
+    numerator = float(xp.real(xp.sum(h * Qh_conj)))
 
     return float(xp.clip(numerator / (h_norm_sq * lambda_max), 0.0, 1.0))
