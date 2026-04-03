@@ -59,7 +59,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             return jsonify({"error": "mode is required"}), 400
 
         try:
-            config = _build_config(params, cache, cache_lock)
+            config = _build_config(params, app, cache, cache_lock)
         except (ValueError, KeyError) as e:
             return jsonify({"error": str(e)}), 400
 
@@ -102,7 +102,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         return jsonify({"cancelled": False})
 
 
-def _build_config(params: dict, cache: dict, cache_lock) -> dict:
+def _build_config(params: dict, app: Flask, cache: dict, cache_lock) -> dict:
     """Parse request params into optimizer config dict."""
     mode = params["mode"]
     config: dict[str, Any] = {"mode": mode, "max_iters": params.get("max_iters", 50)}
@@ -135,8 +135,8 @@ def _build_config(params: dict, cache: dict, cache_lock) -> dict:
 
     elif mode == "tilt_power":
         with cache_lock:
-            last_result = cache.get("_last_dosimetry_result")
-            last_body = cache.get("_last_dosimetry_body")
+            last_result = app.config.get("_last_dosimetry_result")
+            last_body = app.config.get("_last_dosimetry_body")
         if last_result is None or last_body is None:
             raise ValueError("No dosimetry result cached. Run /api/compute first.")
 

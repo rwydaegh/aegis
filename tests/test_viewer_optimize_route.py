@@ -71,6 +71,46 @@ class TestOptimizeEndpoint:
         assert resp.status_code == 400
 
 
+class TestTiltPowerMode:
+    """Regression: tilt_power used to read cache instead of app.config for dosimetry results."""
+
+    def test_tilt_power_reads_from_app_config(self, app):
+        """Verify tilt_power finds cached result in app.config, not cache dict."""
+        from types import SimpleNamespace
+
+        from aegis.paths import PropagationPaths
+
+        # Create a mock result with _paths attribute
+        k_hat = np.array([[0.0, 0.0, -1.0]])
+        paths = PropagationPaths.from_powers(k_hat=k_hat, power=np.array([1.0]))
+        mock_result = SimpleNamespace(_paths=paths)
+        mock_body = SimpleNamespace(normals=np.array([[0.0, 0.0, 1.0]]))
+
+        # Store in app.config (where compute route actually puts them)
+        app.config["_last_dosimetry_result"] = mock_result
+        app.config["_last_dosimetry_body"] = mock_body
+
+        client = app.test_client()
+        resp = client.post(
+            "/api/optimize",
+            json={
+                "mode": "tilt_power",
+                "max_iters": 2,
+                "antenna_direction": [0, 0, -1],
+            },
+        )
+        assert resp.status_code == 200
+        assert "text/event-stream" in resp.content_type
+
+        events = []
+        for line in resp.data.decode().split("\n"):
+            if line.startswith("data: "):
+                events.append(json.loads(line[6:]))
+        assert len(events) >= 1
+        # Should not contain an error about missing cached result
+        assert not any(e.get("error") for e in events if "No dosimetry result" in e.get("message", ""))
+
+
 class TestCancelEndpoint:
     def test_cancel_returns_json(self, client):
         resp = client.post("/api/optimize/cancel")
