@@ -1,7 +1,8 @@
 import type { CoverageResponse } from './types'
+import { fetchWithRetry } from './client'
 
 export async function fetchCoverage(): Promise<CoverageResponse> {
-  const resp = await fetch('/api/basestations/coverage')
+  const resp = await fetchWithRetry('/api/basestations/coverage')
   if (!resp.ok) {
     throw new Error(`Coverage fetch failed: ${resp.status}`)
   }
