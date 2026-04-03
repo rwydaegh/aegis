@@ -33,11 +33,47 @@ function scalarRadiationGain(
   return Math.max(gsum, 1e-12)
 }
 
+/**
+ * Bilinear interpolation of gain from a (181, 360) dBi grid.
+ * Direction vector is in Y-up scene coords (Three.js convention).
+ * Grid layout: row 0 = elevation -90° (nadir), row 180 = +90° (zenith).
+ * Col 0 = azimuth -180°, col 180 = azimuth 0° (boresight).
+ */
+function interpolatePatternGain(dir: THREE.Vector3, data: Float32Array): number {
+  const elevDeg = Math.asin(Math.max(-1, Math.min(1, dir.y))) * (180 / Math.PI)
+  const azimDeg = Math.atan2(dir.x, dir.z) * (180 / Math.PI)
+
+  const row = elevDeg + 90
+  const col = ((azimDeg + 180) % 360 + 360) % 360
+
+  const r0 = Math.floor(row)
+  const r1 = Math.min(r0 + 1, 180)
+  const c0 = Math.floor(col)
+  const c1 = c0 + 1 >= 360 ? 0 : c0 + 1
+  const fr = row - r0
+  const fc = col - c0
+
+  const g00 = data[r0 * 360 + c0]
+  const g01 = data[r0 * 360 + c1]
+  const g10 = data[r1 * 360 + c0]
+  const g11 = data[r1 * 360 + c1]
+
+  const dbi = g00 * (1 - fr) * (1 - fc)
+    + g01 * (1 - fr) * fc
+    + g10 * fr * (1 - fc)
+    + g11 * fr * fc
+
+  if (dbi <= -199) return 1e-20
+  return Math.pow(10, dbi / 10)
+}
+
 export default function Antenna() {
   const pos = useSimulationStore(s => s.antennaPos)
   const config = useSceneStore(s => s.viewerConfig)
   const wireframe = useUIStore(s => s.wireframe)
   const cameraMode = useUIStore(s => s.cameraMode)
+  const appliedPattern = useSimulationStore(s => s.appliedPattern)
+  const appliedPatternMeta = useSimulationStore(s => s.appliedPatternMeta)
 
   const prevGeoRef = useRef<THREE.BufferGeometry | null>(null)
 
@@ -61,6 +97,7 @@ export default function Antenna() {
     const lobeG = rp.lobe_gamma ?? 0.42
     const rad = rp.radius ?? 0.9
 
+    const useLoadedPattern = appliedPattern && appliedPatternMeta
     const gains = new Float32Array(nV)
     const dirs: THREE.Vector3[] = []
     let gMax = 0
@@ -70,7 +107,9 @@ export default function Antenna() {
       const z = posAttr.getZ(i)
       const dir = new THREE.Vector3(x, y, z).normalize()
       dirs.push(dir)
-      const g = scalarRadiationGain(dir, type, elements)
+      const g = useLoadedPattern
+        ? interpolatePatternGain(dir, appliedPattern)
+        : scalarRadiationGain(dir, type, elements)
       gains[i] = g
       if (g > gMax) gMax = g
     }
@@ -94,7 +133,7 @@ export default function Antenna() {
 
     prevGeoRef.current = base
     return base
-  }, [config])
+  }, [config, appliedPattern, appliedPatternMeta])
 
   useEffect(() => () => { prevGeoRef.current?.dispose() }, [])
 
