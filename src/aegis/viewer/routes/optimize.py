@@ -11,6 +11,7 @@ import base64
 import json
 import logging
 import threading
+import uuid
 from typing import Any
 
 import numpy as np
@@ -25,7 +26,16 @@ _cancel_lock = threading.Lock()
 
 
 def _get_session_id() -> str:
-    return session.get("session_id", "default")
+    """Return a stable session ID for the current request.
+
+    Uses Flask session if available, otherwise generates a UUID and stores it
+    so subsequent requests from the same client can cancel a running optimization.
+    """
+    sid = session.get("session_id")
+    if sid is None:
+        sid = uuid.uuid4().hex
+        session["session_id"] = sid
+    return sid
 
 
 def _json_safe(obj: Any) -> Any:

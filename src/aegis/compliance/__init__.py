@@ -12,10 +12,13 @@ are evaluated. Below 6 GHz, only whole-body SAR is checked (local SAR over
 from __future__ import annotations
 
 import enum
+import logging
 import math
 from dataclasses import dataclass
 
 from aegis.defaults import DEFAULT_FREQ_HZ
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "ExposureScenario",
@@ -835,8 +838,14 @@ def link_budget_compliance(
 
             tissue = TissueModel.from_database("Skin", freq_hz)
             T0 = tissue.T0
+        except ImportError:
+            T0 = 0.4
         except Exception:
-            # Fallback: use conservative T0 ~ 0.4 (typical for skin above 6 GHz)
+            logger.warning(
+                "Failed to load tissue T0 for %.1f MHz, using fallback T0=0.4",
+                freq_hz / 1e6,
+                exc_info=True,
+            )
             T0 = 0.4
 
     sab_estimate = sinc * T0
