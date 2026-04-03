@@ -4,6 +4,8 @@ import struct
 
 import pytest
 
+pytest.importorskip("flask")
+
 
 def _make_minimal_glb(path):
     """Write a minimal valid GLB (empty scene)."""

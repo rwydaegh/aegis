@@ -5,6 +5,8 @@ from pathlib import Path
 
 import pytest
 
+pytest.importorskip("flask")
+
 
 @pytest.fixture
 def app_client(tmp_path):
