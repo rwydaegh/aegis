@@ -97,11 +97,11 @@ export default function PatternPolarPlot({ data, maxGainDbi, dynamicRangeDb = 30
       vGains.push(data[el * nAz + boresightCol])
       vAngles.push(plotAngle)
     }
-    // Back half: nadir (row 0) -> zenith (row 180), plotAngle PI -> 2*PI
+    // Back half: nadir (row 0) -> zenith (row 180), plotAngle PI -> ~2*PI
+    // Include zenith point so Z closure meets the front-half start cleanly
     for (let el = 1; el <= 180; el++) {
       const elDeg = el - 90
       const plotAngle = Math.PI + ((90 + elDeg) * Math.PI) / 180
-      if (plotAngle >= 2 * Math.PI - 0.001) continue
       vGains.push(data[el * nAz + backCol])
       vAngles.push(plotAngle)
     }

@@ -53,18 +53,13 @@ function interpolatePatternGain(dir: THREE.Vector3, data: Float32Array): number 
   const fr = row - r0
   const fc = col - c0
 
-  const g00 = data[r0 * 360 + c0]
-  const g01 = data[r0 * 360 + c1]
-  const g10 = data[r1 * 360 + c0]
-  const g11 = data[r1 * 360 + c1]
-
-  const dbi = g00 * (1 - fr) * (1 - fc)
-    + g01 * (1 - fr) * fc
-    + g10 * fr * (1 - fc)
-    + g11 * fr * fc
-
-  if (dbi <= -199) return 1e-20
-  return Math.pow(10, dbi / 10)
+  // Interpolate in linear domain (not dB) to avoid bias near nulls
+  const toLinear = (dbi: number) => dbi <= -199 ? 1e-20 : Math.pow(10, dbi / 10)
+  const g = toLinear(data[r0 * 360 + c0]) * (1 - fr) * (1 - fc)
+    + toLinear(data[r0 * 360 + c1]) * (1 - fr) * fc
+    + toLinear(data[r1 * 360 + c0]) * fr * (1 - fc)
+    + toLinear(data[r1 * 360 + c1]) * fr * fc
+  return Math.max(g, 1e-20)
 }
 
 export default function Antenna() {
