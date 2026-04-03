@@ -54,6 +54,8 @@ export default function HullMesh() {
     return { geometry: geo, hasVertexColors: false }
   }, [data])
 
+  useEffect(() => () => { geometry?.dispose() }, [geometry])
+
   if (envMode !== 'hull' || !geometry) return null
 
   return (

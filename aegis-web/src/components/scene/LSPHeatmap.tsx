@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import { useSimulationStore } from '../../stores/simulation'
 
@@ -58,6 +58,8 @@ export function LSPHeatmap() {
     tex.magFilter = THREE.LinearFilter
     return tex
   }, [data, range])
+
+  useEffect(() => () => { texture?.dispose() }, [texture])
 
   if (!visible || !texture || !data) return null
 

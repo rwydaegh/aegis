@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
@@ -41,6 +41,8 @@ export default function SceneGeometry() {
     geo.computeVertexNormals()
     return { geometry: geo, hasVertexColors: false }
   }, [sceneGeometry])
+
+  useEffect(() => () => { geometry?.dispose() }, [geometry])
 
   if (!geometry || !visible) return null
 

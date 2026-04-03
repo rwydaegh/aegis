@@ -95,6 +95,8 @@ export function useOptimization() {
       if ((err as Error).name === 'AbortError') return
       useOptimizeStore.getState().onError((err as Error).message)
       addNotification('error', `Optimization error: ${(err as Error).message}`)
+    } finally {
+      useOptimizeStore.getState().setRunning(false)
     }
   }, [])
 

@@ -1,4 +1,5 @@
 import type { ComputeResult } from './client'
+import { fetchWithRetry } from './client'
 import type { PosedMeshData } from '@/hooks/usePoseExtract'
 import { packMeshBinary } from '@/hooks/usePoseExtract'
 import { parseSabBinary } from './binary'
@@ -15,7 +16,7 @@ export async function computeWithInlineMesh(
   const binary = packMeshBinary(meshData)
   const allParams = { ...params, n_triangles: meshData.nTriangles }
 
-  const res = await fetch('/api/compute', {
+  const res = await fetchWithRetry('/api/compute', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/octet-stream',

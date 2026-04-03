@@ -235,6 +235,7 @@ export const useMIMOStore = create<MIMOStore>((set, get) => ({
     const users = new Map(get().users)
     const user = users.get(id)
     if (!user) return
+    user.bodyGeometry?.dispose()
     users.set(id, { ...user, bodyGeometry: geometry })
     set({ users })
   },

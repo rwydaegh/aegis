@@ -130,7 +130,7 @@ interface SceneStore {
   clearScene: () => void
 }
 
-export const useSceneStore = create<SceneStore>((set) => ({
+export const useSceneStore = create<SceneStore>((set, get) => ({
   viewerConfig: null,
   capabilities: null,
   bodyName: '',
@@ -163,7 +163,10 @@ export const useSceneStore = create<SceneStore>((set) => ({
   setViewerConfig: (config) => set({ viewerConfig: config }),
   setCapabilities: (caps) => set({ capabilities: caps }),
   setBodyName: (name) => set({ bodyName: name }),
-  setBodyGeometry: (geom) => set({ bodyGeometry: geom }),
+  setBodyGeometry: (geom) => {
+    get().bodyGeometry?.dispose()
+    set({ bodyGeometry: geom })
+  },
   setAnimationClip: (clip) => set({ animationClip: clip }),
   setAnimationPlaying: (playing) => set({ animationPlaying: playing }),
   setPhantomType: (type) => set({ phantomType: type }),
