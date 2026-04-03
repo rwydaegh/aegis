@@ -12,6 +12,7 @@ interface CoverageState {
   siteLats: Float32Array | null
   siteLons: Float32Array | null
   siteOpIndices: Uint8Array | null
+  siteTechIndices: Uint8Array | null
   siteCount: number
   operatorNames: string[]
   technologyNames: string[]
@@ -34,6 +35,7 @@ export const useCoverageStore = create<CoverageState>((set, get) => ({
   siteLats: null,
   siteLons: null,
   siteOpIndices: null,
+  siteTechIndices: null,
   siteCount: 0,
   operatorNames: [],
   technologyNames: [],
@@ -45,7 +47,7 @@ export const useCoverageStore = create<CoverageState>((set, get) => ({
     set({ loading: true, error: null })
     try {
       const data = await fetchCoverage()
-      const { latitudes, longitudes, opIndices } = decodeSitesBinary(
+      const { latitudes, longitudes, opIndices, techIndices } = decodeSitesBinary(
         data.sites_b64,
         data.sites_meta.count,
       )
@@ -56,6 +58,7 @@ export const useCoverageStore = create<CoverageState>((set, get) => ({
         siteLats: latitudes,
         siteLons: longitudes,
         siteOpIndices: opIndices,
+        siteTechIndices: techIndices,
         siteCount: data.sites_meta.count,
         operatorNames: data.sites_meta.operators,
         technologyNames: data.sites_meta.technologies,

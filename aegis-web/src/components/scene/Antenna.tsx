@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useSimulationStore } from '@/stores/simulation'
 import { useSceneStore } from '@/stores/scene'
@@ -39,7 +39,11 @@ export default function Antenna() {
   const wireframe = useUIStore(s => s.wireframe)
   const cameraMode = useUIStore(s => s.cameraMode)
 
+  const prevGeoRef = useRef<THREE.BufferGeometry | null>(null)
+
   const patternGeo = useMemo(() => {
+    prevGeoRef.current?.dispose()
+    prevGeoRef.current = null
     if (!config) return null
     const rp = config.antenna.radiation_pattern
     if (!rp || rp.enabled === false) return null
@@ -88,8 +92,11 @@ export default function Antenna() {
     base.setAttribute('color', new THREE.BufferAttribute(colors, 3))
     base.computeVertexNormals()
 
+    prevGeoRef.current = base
     return base
   }, [config])
+
+  useEffect(() => () => { prevGeoRef.current?.dispose() }, [])
 
   if (!pos || !config) return null
 
