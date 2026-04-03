@@ -53,7 +53,7 @@ def _evaluate(state: dict, tilt_deg: float, power_dbm: float):
     power_linear = 10 ** ((power_dbm - 60) / 10)
     weighted = state["base_power"] * gain * power_linear
     cos_inc = np.maximum((-state["k_hat"]) @ state["normals"].T, 0)
-    sab = weighted @ cos_inc
+    sab = state["T0"] * (weighted @ cos_inc)
     return sab, float(np.max(sab))
 
 
@@ -65,6 +65,7 @@ def setup(
     tilt_init_deg: float = 0.0,
     power_init_dbm: float = 60.0,
     icnirp_limit: float = 20.0,
+    T0: float = 1.0,
     lr: float = 0.1,
     penalty_lambda: float = 10.0,
     pattern_exponent: float = 3.0,
@@ -79,6 +80,7 @@ def setup(
     tilt_init_deg : initial downtilt in degrees
     power_init_dbm : initial TX power in dBm
     icnirp_limit : S_ab limit in W/m^2
+    T0 : normal-incidence power transmission coefficient (Sab = Sinc * T0 * cos)
     lr : learning rate
     penalty_lambda : penalty weight for ICNIRP violation
     pattern_exponent : exponent n for cos^n radiation pattern
@@ -94,6 +96,7 @@ def setup(
         "tilt_deg": tilt_init_deg,
         "power_dbm": power_init_dbm,
         "icnirp_limit": icnirp_limit,
+        "T0": T0,
         "lr": lr,
         "penalty_lambda": penalty_lambda,
         "pattern_exponent": pattern_exponent,

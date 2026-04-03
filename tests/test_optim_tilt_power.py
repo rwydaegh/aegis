@@ -101,3 +101,26 @@ class TestTiltPowerStep:
             state, result = step(state)
 
         assert result["params"]["power_dbm"] > initial_pwr
+
+    def test_T0_scales_sab(self):
+        """T0 transmission coefficient must scale the computed S_ab."""
+        from aegis.optim.tilt_power import setup, step
+
+        paths = _make_synthetic_paths()
+        normals = np.tile([0, 0, 1], (100, 1)).astype(np.float64)
+        common = dict(
+            paths=paths,
+            normals=normals,
+            antenna_direction=np.array([0.0, 0.0, -1.0]),
+            tilt_init_deg=5.0,
+            power_init_dbm=60.0,
+            icnirp_limit=20.0,
+        )
+
+        state_full, result_full = step(setup(**common, T0=1.0))
+        state_half, result_half = step(setup(**common, T0=0.5))
+
+        # S_ab should scale linearly with T0
+        assert result_half["stats"]["peak_sab"] == pytest.approx(
+            result_full["stats"]["peak_sab"] * 0.5, rel=0.05
+        )

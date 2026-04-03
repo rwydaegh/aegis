@@ -59,7 +59,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             return jsonify({"error": "mode is required"}), 400
 
         try:
-            config = _build_config(params, cache, cache_lock)
+            config = _build_config(params, app, cache, cache_lock)
         except (ValueError, KeyError) as e:
             return jsonify({"error": str(e)}), 400
 
@@ -102,7 +102,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         return jsonify({"cancelled": False})
 
 
-def _build_config(params: dict, cache: dict, cache_lock) -> dict:
+def _build_config(params: dict, app: Flask, cache: dict, cache_lock) -> dict:
     """Parse request params into optimizer config dict."""
     mode = params["mode"]
     config: dict[str, Any] = {"mode": mode, "max_iters": params.get("max_iters", 50)}
@@ -134,9 +134,8 @@ def _build_config(params: dict, cache: dict, cache_lock) -> dict:
         config["signal_threshold"] = params.get("signal_threshold", 0.0)
 
     elif mode == "tilt_power":
-        with cache_lock:
-            last_result = cache.get("_last_dosimetry_result")
-            last_body = cache.get("_last_dosimetry_body")
+        last_result = app.config.get("_last_dosimetry_result")
+        last_body = app.config.get("_last_dosimetry_body")
         if last_result is None or last_body is None:
             raise ValueError("No dosimetry result cached. Run /api/compute first.")
 
@@ -149,6 +148,11 @@ def _build_config(params: dict, cache: dict, cache_lock) -> dict:
         config["tilt_init_deg"] = params.get("tilt_init_deg", 0.0)
         config["power_init_dbm"] = params.get("power_init_dbm", 60.0)
         config["icnirp_limit"] = params.get("icnirp_limit", 20.0)
+
+        # Read T0 from last dosimetry stats or user params
+        last_stats = app.config.get("_last_dosimetry_stats", {})
+        default_T0 = last_stats.get("T0", 1.0)
+        config["T0"] = params.get("T0", default_T0)
 
     elif mode == "placement":
         config["center"] = np.array(params.get("center", [5, 0, 3]))
