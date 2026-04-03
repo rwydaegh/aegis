@@ -153,27 +153,41 @@ def _compute_coverage(
     }
 
 
+_coverage_compute_lock = threading.Lock()
+
+
 def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
     """Register coverage routes."""
 
     @app.route("/api/basestations/coverage")
     def api_coverage():
+        # Fast path: return cached result without blocking other routes
         with cache_lock:
             if "coverage_response" in cache:
                 return jsonify(cache["coverage_response"])
-
             data_dir = cache.get("data_dir", "data")
-            merged_dir = Path(data_dir) / "basestations" / "merged"
-            regions_yaml = Path(data_dir) / "basestations" / "regions.yaml"
 
-            if not regions_yaml.exists():
-                return jsonify({"error": "regions.yaml not found"}), 500
+        merged_dir = Path(data_dir) / "basestations" / "merged"
+        regions_yaml = Path(data_dir) / "basestations" / "regions.yaml"
+
+        if not regions_yaml.exists():
+            return jsonify({"error": "regions.yaml not found"}), 500
+
+        # Serialize coverage computation to avoid thundering herd,
+        # but do NOT hold cache_lock during the expensive work.
+        with _coverage_compute_lock:
+            # Re-check: another thread may have populated the cache
+            with cache_lock:
+                if "coverage_response" in cache:
+                    return jsonify(cache["coverage_response"])
 
             try:
                 result = _compute_coverage(merged_dir, regions_yaml)
             except Exception:
                 logger.exception("Failed to compute coverage")
                 return jsonify({"error": "Failed to compute coverage data"}), 500
-            cache["coverage_response"] = result
+
+            with cache_lock:
+                cache["coverage_response"] = result
 
         return jsonify(result)

@@ -77,6 +77,22 @@ export function CesiumGlobe() {
     }
     viewer.clock.onTick.addEventListener(onTick)
     tickListenerRef.current = onTick
+
+    // If coverage data was already loaded before the viewer was ready,
+    // add the overlay now (the useEffect fast-path would have missed it
+    // because viewerRef.current was still null at that point).
+    const coverageState = useCoverageStore.getState()
+    if (coverageState.loaded && coverageState.siteLats && coverageState.siteLons && coverageState.siteOpIndices) {
+      if (overlayRef.current) overlayRef.current.destroy()
+      overlayRef.current = addCoverageOverlay(
+        viewer,
+        coverageState.siteLats,
+        coverageState.siteLons,
+        coverageState.siteOpIndices,
+        coverageState.siteCount,
+        coverageState.regions,
+      )
+    }
   }, [googleApiKey])
 
   // Cleanup tick listener on unmount
