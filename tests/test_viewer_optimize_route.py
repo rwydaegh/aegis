@@ -91,6 +91,7 @@ class TestTiltPowerMode:
         # Store in app.config (where compute route actually puts them)
         app.config["_last_dosimetry_result"] = mock_result
         app.config["_last_dosimetry_body"] = mock_body
+        app.config["_last_rt_paths"] = paths
 
         client = app.test_client()
         resp = client.post(

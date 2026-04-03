@@ -79,12 +79,16 @@ def _json_dumps_safe(obj: object) -> str:
     return json.dumps(_sanitize_for_json(obj))
 
 
-def _cache_dosimetry_for_export(app: Flask, result, body, stats: dict) -> None:
+def _cache_dosimetry_for_export(
+    app: Flask, result, body, stats: dict, paths=None
+) -> None:
     """Cache the last dosimetry result, body, and stats for export."""
     app.config["_last_dosimetry_result"] = result
     app.config["_last_dosimetry_body"] = body
     app.config["_last_dosimetry_stats"] = stats
     app.config["_last_compliance_result"] = stats.get("compliance")
+    if paths is not None:
+        app.config["_last_rt_paths"] = paths
 
 
 def _inject_curvature_H(engine_kw: dict, body) -> dict:
@@ -1020,7 +1024,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         )
         if err:
             return err
-        _cache_dosimetry_for_export(app, result, body, stats)
+        _cache_dosimetry_for_export(app, result, body, stats, paths=paths)
         return resp
 
     @app.route("/api/compute/sionna-rt", methods=["POST"])
@@ -1169,7 +1173,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         )
         if err:
             return err
-        _cache_dosimetry_for_export(app, result, body, stats)
+        _cache_dosimetry_for_export(app, result, body, stats, paths=paths)
         return resp
 
     @app.route("/api/compute/voxel-rt", methods=["POST"])
@@ -1374,7 +1378,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         )
         if err:
             return err
-        _cache_dosimetry_for_export(app, result, body, stats)
+        _cache_dosimetry_for_export(app, result, body, stats, paths=paths)
         return resp
 
     @app.route("/api/compute/sionna-env-rt", methods=["POST"])
@@ -1549,7 +1553,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         )
         if err:
             return err
-        _cache_dosimetry_for_export(app, result, body, stats)
+        _cache_dosimetry_for_export(app, result, body, stats, paths=paths)
         return resp
 
     @app.route("/api/export/dosimetry-csv", methods=["GET"])

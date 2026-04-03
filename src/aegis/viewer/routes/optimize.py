@@ -127,7 +127,19 @@ def _build_config(params: dict, app: Flask, cache: dict, cache_lock) -> dict:
                 scene = cache.get("mimo_scene")
             if scene is None:
                 raise ValueError("No MIMO scene cached. Run /api/mimo/compute first.")
-            config["G_tilde"] = scene.G_tilde
+            # G_tilde lives on each UserState, not on the scene itself.
+            # Use the focused user's G_tilde (or first user with one).
+            user_id = params.get("user_id")
+            G_tilde = None
+            for u in scene.users:
+                if user_id and u.config.user_id != user_id:
+                    continue
+                if u.G_tilde is not None:
+                    G_tilde = u.G_tilde
+                    break
+            if G_tilde is None:
+                raise ValueError("No body channel (G_tilde) cached. Run /api/mimo/compute first.")
+            config["G_tilde"] = G_tilde
 
         x_real = np.array(params.get("x_init_real", []))
         x_imag = np.array(params.get("x_init_imag", []))
@@ -144,23 +156,20 @@ def _build_config(params: dict, app: Flask, cache: dict, cache_lock) -> dict:
         config["signal_threshold"] = params.get("signal_threshold", 0.0)
 
     elif mode == "tilt_power":
-        with cache_lock:
-            last_result = app.config.get("_last_dosimetry_result")
-            last_body = app.config.get("_last_dosimetry_body")
+        last_result = app.config.get("_last_dosimetry_result")
+        last_body = app.config.get("_last_dosimetry_body")
+        last_paths = app.config.get("_last_rt_paths")
         if last_result is None or last_body is None:
             raise ValueError("No dosimetry result cached. Run /api/compute first.")
-
-        paths = getattr(last_result, "_paths", None)
-        if paths is None:
-            raise ValueError("Cached result has no paths. Use RT compute first.")
-        config["paths"] = paths
+        if last_paths is None:
+            raise ValueError("No RT paths cached. Run an RT compute (/api/compute/rt) first.")
+        config["paths"] = last_paths
         config["normals"] = np.array(last_body.normals)
         config["antenna_direction"] = np.array(params.get("antenna_direction", [0, 0, -1]))
         config["tilt_init_deg"] = params.get("tilt_init_deg", 0.0)
         config["power_init_dbm"] = params.get("power_init_dbm", 60.0)
         config["icnirp_limit"] = params.get("icnirp_limit", 20.0)
 
-        # Pass T0 from last dosimetry stats (falls back to 1.0 if unavailable)
         last_stats = app.config.get("_last_dosimetry_stats", {}) or {}
         config["T0"] = params.get("T0", last_stats.get("T0", 1.0))
 
