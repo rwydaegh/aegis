@@ -277,7 +277,10 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                 "position": user.config.position.tolist(),
                 "p_abs_mw": p_abs_mw,
                 "peak_sab": stats.get("peak_sab", 0.0),
-                "compliant": p_abs_mw < exposure_budget_mw,
+                "compliant": (
+                    stats["compliant"] if stats.get("compliant") is not None
+                    else p_abs_mw < exposure_budget_mw
+                ),
             }
             users_out.append(entry)
 
