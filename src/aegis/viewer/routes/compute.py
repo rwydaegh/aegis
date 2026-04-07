@@ -1015,7 +1015,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         ]
         resp, stats, err = _make_rt_response(
             result,
-            body,
+            transformed_body,
             tissue,
             engine_kw,
             quantities,
@@ -1025,7 +1025,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         )
         if err:
             return err
-        _cache_dosimetry_for_export(app, result, body, stats, paths=paths)
+        _cache_dosimetry_for_export(app, result, transformed_body, stats, paths=paths)
         return resp
 
     @app.route("/api/compute/sionna-rt", methods=["POST"])
@@ -1166,7 +1166,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         ]
         resp, stats, err = _make_rt_response(
             result,
-            body,
+            transformed_body,
             tissue,
             engine_kw,
             quantities,
@@ -1176,7 +1176,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         )
         if err:
             return err
-        _cache_dosimetry_for_export(app, result, body, stats, paths=paths)
+        _cache_dosimetry_for_export(app, result, transformed_body, stats, paths=paths)
         return resp
 
     @app.route("/api/compute/voxel-rt", methods=["POST"])
@@ -1373,7 +1373,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         ]
         resp, stats, err = _make_rt_response(
             result,
-            body,
+            transformed_body,
             tissue,
             engine_kw,
             quantities,
@@ -1383,7 +1383,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         )
         if err:
             return err
-        _cache_dosimetry_for_export(app, result, body, stats, paths=paths)
+        _cache_dosimetry_for_export(app, result, transformed_body, stats, paths=paths)
         return resp
 
     @app.route("/api/compute/sionna-env-rt", methods=["POST"])
@@ -1550,7 +1550,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         ]
         resp, stats, err = _make_rt_response(
             result,
-            body,
+            transformed_body,
             tissue,
             engine_kw,
             quantities,
@@ -1560,7 +1560,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         )
         if err:
             return err
-        _cache_dosimetry_for_export(app, result, body, stats, paths=paths)
+        _cache_dosimetry_for_export(app, result, transformed_body, stats, paths=paths)
         return resp
 
     @app.route("/api/export/dosimetry-csv", methods=["GET"])

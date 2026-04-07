@@ -197,6 +197,33 @@ class TestModeCoherent:
         assert r.rho is not None
         assert 0.0 <= r.rho <= 1.0 + 1e-10
 
+    def test_coherent_freq_override_changes_output(self, engine, ico_mesh, coherent_paths):
+        """freq_hz override must change coherent SAB and S_inc."""
+        paths, M_ant = coherent_paths
+        precoder = Precoder(x=np.ones(M_ant, dtype=complex))
+
+        low = engine.compute(
+            ico_mesh,
+            paths,
+            mode="coherent",
+            precoder=precoder,
+            freq_hz=28e9,
+            spatial_averaging=False,
+        )
+        high = engine.compute(
+            ico_mesh,
+            paths,
+            mode="coherent",
+            precoder=precoder,
+            freq_hz=60e9,
+            spatial_averaging=False,
+        )
+
+        assert not np.allclose(low.sab, high.sab, rtol=1e-6, atol=1e-12)
+        assert low.sinc is not None
+        assert high.sinc is not None
+        assert not np.allclose(low.sinc, high.sinc, rtol=1e-6, atol=1e-12)
+
 
 # ---------------------------------------------------------------------------
 # mode="ecbf" (level 8)

@@ -33,6 +33,9 @@ def setup(
     constraint_value : value for the constrained axis
     evaluate_fn : callback(pos) -> {"peak_sab": float, "sab": array, "stats": dict}
     """
+    if grid_size < 1:
+        raise ValueError("grid_size must be at least 1")
+
     half = (grid_size - 1) / 2
     offsets = (np.arange(grid_size) - half) * grid_spacing
 
@@ -72,6 +75,10 @@ def step(state: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
     idx = state["current_idx"]
     grid = state["grid_points"]
     it = state["iter"] + 1
+    evaluate_fn = state.get("evaluate_fn")
+
+    if evaluate_fn is None:
+        raise ValueError("evaluate_fn is required for placement optimization")
 
     if idx >= len(grid):
         return state, {
@@ -88,7 +95,7 @@ def step(state: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
         }
 
     pos = grid[idx]
-    eval_result = state["evaluate_fn"](pos)
+    eval_result = evaluate_fn(pos)
 
     peak = eval_result["peak_sab"]
     is_best = peak < state["best_peak"]
@@ -112,10 +119,14 @@ def step(state: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
         "progress": (idx + 1) / len(grid),
     }
     if done:
+        best_pos = grid[new_state["best_idx"]].tolist()
         result["best"] = {
-            "antenna_pos": grid[new_state["best_idx"]].tolist(),
+            "antenna_pos": best_pos,
             "peak_sab": new_state["best_peak"],
         }
+        result["sab"] = new_state["best_result"]["sab"]
+        result["params"] = {"antenna_pos": best_pos}
+        result["stats"] = new_state["best_result"]["stats"]
         result["converged"] = True
 
     return new_state, result

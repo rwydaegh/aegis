@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import functools
+import hashlib
 import os
 import threading
 import time
@@ -36,6 +37,23 @@ def _load_phantom_masses() -> dict[str, float]:
 # Cache for curvature computation (expensive, only changes when body changes)
 _curvature_cache: dict = {}
 _curvature_cache_lock = threading.Lock()
+_CURVATURE_CACHE_MAX = 8
+
+
+def _curvature_cache_key(body: BodyMesh) -> int:
+    """Rigid-transform-invariant cache key for viewer curvature estimates."""
+    edge_vecs = np.roll(body.vertices, -1, axis=1) - body.vertices
+    edge_lengths = np.sort(np.linalg.norm(edge_vecs, axis=2), axis=1)
+    centered = body.centroids - body.centroids.mean(axis=0, keepdims=True)
+    radii = np.sort(np.linalg.norm(centered, axis=1))
+    normal_svals = np.linalg.svd(body.normals, compute_uv=False)
+
+    h = hashlib.sha256(body.areas.astype(np.float32).tobytes())
+    h.update(edge_lengths.astype(np.float32).tobytes())
+    h.update(radii.astype(np.float32).tobytes())
+    h.update(normal_svals.astype(np.float32).tobytes())
+    digest = h.digest()[:8]
+    return hash((int.from_bytes(digest, "little"), body.n_triangles))
 
 
 def _compute_face_curvature(body: BodyMesh) -> np.ndarray:
@@ -47,13 +65,11 @@ def _compute_face_curvature(body: BodyMesh) -> np.ndarray:
 
     The result is invariant to rigid transforms: translation preserves all
     inter-centroid distances and rotation preserves both distances and
-    |delta_normal| (since ||R n_i - R n_j|| = ||n_i - n_j||). We hash
-    on areas (transform-invariant) so the cache survives body movement.
+    |delta_normal| (since ||R n_i - R n_j|| = ||n_i - n_j||). Cache using a
+    rigid-transform-invariant key so translated/rotated bodies hit the cache
+    without letting unrelated meshes collide.
     """
-    import hashlib
-
-    digest = hashlib.sha256(body.areas.tobytes()).digest()[:8]
-    cache_key = hash((int.from_bytes(digest, "little"), body.n_triangles))
+    cache_key = _curvature_cache_key(body)
 
     with _curvature_cache_lock:
         if cache_key in _curvature_cache:
@@ -64,6 +80,8 @@ def _compute_face_curvature(body: BodyMesh) -> np.ndarray:
     centroids = body.centroids
     normals = body.normals
     M = body.n_triangles
+    if M <= 1:
+        return np.zeros(M, dtype=np.float64)
 
     k = min(7, M)
     tree = cKDTree(centroids)
@@ -78,7 +96,8 @@ def _compute_face_curvature(body: BodyMesh) -> np.ndarray:
     H = np.mean(curvature_per_neighbor[:, 1:], axis=1)
 
     with _curvature_cache_lock:
-        _curvature_cache.clear()
+        while len(_curvature_cache) >= _CURVATURE_CACHE_MAX:
+            _curvature_cache.pop(next(iter(_curvature_cache)))
         _curvature_cache[cache_key] = H
     return H
 
@@ -189,6 +208,20 @@ def resolve_skin_model(name: str, freq_hz: float) -> TissueModel:
     raise ValueError(f"Unknown skin model: {name!r}")
 
 
+def _resolve_channel_preset_dir(config: dict | None = None, preset_dir: str | Path | None = None) -> Path:
+    """Resolve channel preset directories against AEGIS data roots."""
+    if preset_dir is None:
+        cfg = config or DEFAULTS
+        preset_dir = cfg.get("dosimetry", {}).get("stochastic", {}).get("preset_dir", "data/channel_presets")
+
+    preset_path = Path(preset_dir)
+    if preset_path.is_absolute():
+        return preset_path
+
+    data_root = Path(os.environ.get("AEGIS_DATA_DIR", str(Path(__file__).resolve().parents[3] / "data")))
+    return data_root / preset_path
+
+
 def _rotation_matrix_z(angle: float) -> np.ndarray:
     """Build a rotation matrix around the Z axis (yaw in Z-up coords)."""
     c, s = np.cos(angle), np.sin(angle)
@@ -245,7 +278,7 @@ def compute_dosimetry(
     power_dbm: float = DEFAULT_POWER_DBM,
     config: dict | None = None,
     stochastic: dict | None = None,
-) -> dict:
+) -> tuple:
     """Run dosimetry from a single antenna position toward the body.
 
     Parameters
@@ -263,7 +296,7 @@ def compute_dosimetry(
 
     Returns
     -------
-    dict with keys: sab (float32 bytes), p_abs, peak_sab, compliant, n_illuminated
+    Tuple of ``(result, transformed_body, tissue, level, mode, corrections, extra)``.
     """
     timings: dict[str, float] = {}
     t_total = time.perf_counter()
@@ -297,14 +330,9 @@ def compute_dosimetry(
     S_inc = tx_power_w / (4 * np.pi * d_clamped**2)
 
     if stochastic:
-        from pathlib import Path
-
         from aegis.channel import generate_channel, load_preset
 
-        preset_dir = Path(cfg.get("dosimetry", {}).get("stochastic", {}).get("preset_dir", "data/channel_presets"))
-        if not preset_dir.is_absolute():
-            data_root = Path(os.environ.get("AEGIS_DATA_DIR", str(Path(__file__).resolve().parents[3] / "data")))
-            preset_dir = data_root / "channel_presets"
+        preset_dir = _resolve_channel_preset_dir(cfg)
         preset = load_preset(stochastic["preset"], preset_dir)
         paths = generate_channel(
             preset["params"],
@@ -349,11 +377,13 @@ def compute_dosimetry(
             if corr.get("polarisation"):
                 mode_kwargs["polarisation"] = True
                 mode_kwargs["q"] = 1.0  # short dipole TM-polarized
-            if corr.get("curvature") or corr.get("diffraction"):
+            if corr.get("curvature"):
                 mode_kwargs["curvature"] = True
                 mode_kwargs["curvature_H"] = _compute_face_curvature(rotated_body)
             if corr.get("diffraction"):
                 mode_kwargs["diffraction"] = True
+                if "curvature_H" not in mode_kwargs:
+                    mode_kwargs["curvature_H"] = _compute_face_curvature(rotated_body)
             result, engine_timings = engine.compute_with_timings(
                 rotated_body, paths, body_mass=body_mass, **mode_kwargs
             )
@@ -408,7 +438,7 @@ def compute_dosimetry(
         corr = corrections or {}
         corr_list = [k for k in ("fresnel", "polarisation", "curvature", "diffraction") if corr.get(k)]
 
-    return result, body, tissue, level, mode, corr_list, extra
+    return result, rotated_body, tissue, level, mode, corr_list, extra
 
 
 def generate_lsp_heatmap(
@@ -425,10 +455,7 @@ def generate_lsp_heatmap(
     from aegis.channel.lsf import LSFModel
     from aegis.channel.presets import load_preset
 
-    if preset_dir is None:
-        preset_dir = DEFAULTS.get("dosimetry", {}).get("stochastic", {}).get("preset_dir", "data/channel_presets")
-
-    preset = load_preset(preset_name, preset_dir)
+    preset = load_preset(preset_name, _resolve_channel_preset_dir(DEFAULTS, preset_dir))
     model = LSFModel(preset["params"], freq_ghz, seed=seed)
     grid = model.generate_map(
         bounds=bounds,

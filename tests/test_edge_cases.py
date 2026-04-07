@@ -168,6 +168,22 @@ class TestFrequencyEdgeCases:
         result = engine.compute(body, paths, level=2)
         assert result.sab_1cm2_averaged is None
 
+    def test_freq_override_changes_level6_physics(self):
+        """freq_hz override must affect kernel output, not just result metadata."""
+        from aegis.tissue.dielectric import TissueModel
+
+        tissue = TissueModel(name="test_skin", eps_r=17.0, sigma=25.0, freq_hz=28e9)
+        body = _single_tri_mesh()
+        k_hat = np.array([[1.0, 0.0, -1.0]]) / np.sqrt(2.0)
+        paths = PropagationPaths.from_powers(k_hat=k_hat, power=np.array([1.0]))
+        curvature_H = np.array([5.0])
+
+        engine = DosimetryEngine(tissue)
+        low = engine.compute(body, paths, level=6, curvature_H=curvature_H, freq_hz=28e9, spatial_averaging=False)
+        high = engine.compute(body, paths, level=6, curvature_H=curvature_H, freq_hz=60e9, spatial_averaging=False)
+
+        assert not np.allclose(low.sab, high.sab, rtol=1e-6, atol=1e-12)
+
 
 # ---------------------------------------------------------------------------
 # PropagationPaths validation

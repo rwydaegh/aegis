@@ -106,6 +106,14 @@ class BodyMesh:
     _geometry_hash: int = field(default=0, repr=False, compare=False)
 
     def __post_init__(self) -> None:
+        normals = np.asarray(self.normals, dtype=np.float64)
+        if normals.shape != (self.vertices.shape[0], 3):
+            raise ValueError(f"normals must be ({self.vertices.shape[0]}, 3), got {normals.shape}")
+        norms = np.linalg.norm(normals, axis=1, keepdims=True)
+        if normals.shape[0] > 0 and np.any(norms[:, 0] <= 0):
+            raise ValueError("normals must have positive norm")
+        normalized = normals / np.where(norms > 0, norms, 1.0)
+        object.__setattr__(self, "normals", normalized)
         if self._geometry_hash == 0:
             object.__setattr__(self, "_geometry_hash", self._compute_geometry_hash())
 

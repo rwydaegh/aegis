@@ -1,6 +1,7 @@
 import { useCallback, useRef } from 'react'
 import { useOptimizeStore, type OptimizeConstraints } from '@/stores/optimize'
 import { useSimulationStore } from '@/stores/simulation'
+import { useSceneStore } from '@/stores/scene'
 import { useNotificationStore } from '@/stores/notifications'
 import { toServer } from '@/api/coordinates'
 import {
@@ -46,20 +47,6 @@ export function useOptimization() {
           return
         }
 
-        if (event.done) {
-          const reduction =
-            firstPeak && lastPeak
-              ? `${((1 - lastPeak / firstPeak) * 100).toFixed(0)}% reduction`
-              : ''
-          const reason = event.cancelled
-            ? 'Cancelled'
-            : event.reason ?? 'Converged'
-          useOptimizeStore.getState().onDone(
-            `${reason} after ${event.total_iters ?? event.iter ?? '?'} iterations. ${reduction}`,
-          )
-          return
-        }
-
         if (event.objective !== undefined) {
           if (firstPeak === null) firstPeak = event.objective
           lastPeak = event.objective
@@ -82,13 +69,34 @@ export function useOptimization() {
           const sab = decodeSabB64(event.sab_b64)
           const stats = (event.stats ?? {}) as unknown as DosimetryStats
           useSimulationStore.getState().setResults(sab, stats, {})
+          if (stats.path_viz) {
+            useSceneStore.getState().setRtPaths(stats.path_viz)
+          }
         }
 
         // Placement mode: move antenna (server Z-up to scene Y-up)
-        if (mode === 'placement' && event.params?.antenna_pos) {
-          const [sx, sy, sz] = event.params.antenna_pos as number[]
+        const placementPos =
+          mode === 'placement' && event.done && Array.isArray(event.best?.antenna_pos)
+            ? (event.best.antenna_pos as number[])
+            : (event.params?.antenna_pos as number[] | undefined)
+        if (mode === 'placement' && placementPos) {
+          const [sx, sy, sz] = placementPos
           // Server [x, y, z] -> Scene [x, z, -y]
           useSimulationStore.getState().setAntennaPos([sx, sz, -sy])
+        }
+
+        if (event.done) {
+          const reduction =
+            firstPeak !== null && lastPeak !== null
+              ? `${((1 - lastPeak / firstPeak) * 100).toFixed(0)}% reduction`
+              : ''
+          const reason = event.cancelled
+            ? 'Cancelled'
+            : event.reason ?? 'Converged'
+          useOptimizeStore.getState().onDone(
+            `${reason} after ${event.total_iters ?? event.iter ?? '?'} iterations. ${reduction}`,
+          )
+          return
         }
       }
     } catch (err) {
@@ -128,6 +136,7 @@ function buildRequest(
     base.tilt_init_deg = 0
   } else if (mode === 'placement') {
     const sim = useSimulationStore.getState()
+    const scene = useSceneStore.getState()
     const pos = sim.antennaPos
     if (pos) {
       base.center = toServer(pos) as number[]
@@ -136,6 +145,35 @@ function buildRequest(
     base.grid_spacing = constraints.gridSpacing ?? 2.0
     base.constraint_axis = constraints.constraintAxis
     base.constraint_value = constraints.constraintValue
+    base.body_name = scene.bodyName || undefined
+    base.body_offset = toServer(sim.bodyOffset)
+    base.body_rotation_y = sim.bodyRotationY
+    base.power_dbm = sim.powerDbm
+    base.skin_model = sim.skinModel
+    base.freq_hz = sim.freqGhz * 1e9
+    base.dosimetry_mode = sim.mode
+    base.fresnel = sim.fresnel
+    base.polarisation = sim.polarisation
+    base.curvature = sim.curvature
+    base.diffraction = sim.diffraction
+    base.scene_path = scene.loadedScenePath || undefined
+    base.rt_config = {
+      max_depth: scene.rtMaxOrder,
+      method: scene.rtConfig.method,
+      rays_per_source: scene.rtConfig.raysPerSource,
+      max_paths_per_source: scene.rtConfig.maxPathsPerSource,
+      chunk_size: scene.rtConfig.chunkSize,
+      los: scene.rtConfig.los,
+      specular_reflection: scene.rtConfig.specularReflection,
+      diffuse_reflection: scene.rtConfig.diffuseReflection,
+      refraction: scene.rtConfig.refraction,
+      diffraction: scene.rtConfig.diffraction,
+      edge_diffraction: scene.rtConfig.edgeDiffraction,
+      diffraction_lit_region: scene.rtConfig.diffractionLitRegion,
+      reflection_loss_per_order: scene.rtConfig.reflectionLoss,
+      synthetic_array: scene.rtConfig.syntheticArray,
+      seed: scene.rtConfig.seed,
+    }
   }
 
   return base
