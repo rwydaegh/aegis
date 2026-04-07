@@ -1,0 +1,6 @@
+interface:
+  display_name: "Using Superpowers"
+  short_description: "Use when starting any conversation and you need to decide which repo-scoped workflow skill applies, before substantial work or clarifying questions"
+  default_prompt: "$using-superpowers "
+policy:
+  allow_implicit_invocation: false

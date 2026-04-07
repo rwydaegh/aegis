@@ -1,0 +1,6 @@
+interface:
+  display_name: "Using Git Worktrees"
+  short_description: "Use when starting feature work that needs isolation from current workspace or before executing implementation plans - creates isolated git worktrees with smart directory selection and safety verification"
+  default_prompt: "$using-git-worktrees "
+policy:
+  allow_implicit_invocation: false

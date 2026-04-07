@@ -127,6 +127,7 @@ coverage/
 tmp/
 tmux-cheatsheet.md
 .rm_confirmed
+.git_destructive_confirmed
 
 # Presentation build artifacts
 presentations/group/media/

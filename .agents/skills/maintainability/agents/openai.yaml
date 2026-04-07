@@ -1,0 +1,6 @@
+interface:
+  display_name: "Maintainability"
+  short_description: "Use when the qlty maintainability badge drops below A, when asked to reduce technical debt, or when refactoring for code quality. Runs qlty CLI to find hotspots, triages with judgment, and fixes what matters."
+  default_prompt: "$maintainability "
+policy:
+  allow_implicit_invocation: false

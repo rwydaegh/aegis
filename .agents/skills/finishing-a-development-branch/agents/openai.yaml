@@ -1,0 +1,6 @@
+interface:
+  display_name: "Finishing A Development Branch"
+  short_description: "Use when implementation is complete, all tests pass, and you need to decide how to integrate the work - guides completion of development work by presenting structured options for merge, PR, or cleanup"
+  default_prompt: "$finishing-a-development-branch "
+policy:
+  allow_implicit_invocation: false

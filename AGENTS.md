@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Codex CLI when working with code in this repository. It mirrors CLAUDE.md for Claude Code compatibility.
 
 ## What this project is
 
@@ -8,11 +8,11 @@ AEGIS computes absorbed power density on human bodies in wireless environments. 
 
 ## Build, test, lint
 
-AEGIS requires Python 3.12. Use a virtualenv or ensure `python` resolves to 3.12. On Windows with multiple versions, `python` also works.
+AEGIS requires Python 3.12. Use a virtualenv or ensure `python` resolves to 3.12.
 
 ```bash
-pip install -e ".[dev]"                              # install with dev deps (uses 3.12)
-python -m pytest tests/ -m "not slow" -x           # excludes @slow; still minutes locally (coherent, Hypothesis, JAX)
+pip install -e ".[dev]"                              # install with dev deps
+python -m pytest tests/ -m "not slow" -x           # excludes @slow
 python -m pytest tests/                             # full suite including @slow mesh/golden
 python -m pytest tests/test_fresnel.py::test_name   # single test
 python -m ruff check src/ tests/                    # lint
@@ -23,7 +23,7 @@ python -m aegis.viewer --config configs/my.json      # custom config JSON
 python -m aegis.viewer --scenario open_ground        # named scenario from config
 cd aegis-web && npm run dev                            # React frontend dev server (localhost:5173)
 cd aegis-web && npm run build                          # production build -> aegis-web/dist/
-cd aegis-web && npm run build:copy                    # copy dist -> src/aegis/viewer/static (Flask serves /)
+cd aegis-web && npm run build:copy                    # copy dist -> src/aegis/viewer/static
 ```
 
 ## Architecture
@@ -41,7 +41,7 @@ The data flow is: ray tracer -> `PropagationPaths` -> `DosimetryEngine.compute(b
 - `src/aegis/compliance/` - ICNIRP 2020 limits
 - `src/aegis/integration/` - DiffeRT ray tracer bridge (requires `pip install aegis[rt]`)
 - `src/aegis/viewer/` - Flask backend: REST API (`routes/`), serves `static/` React build, config via `config.py`
-- `aegis-web/` - React + Three.js frontend (Vite, R3F, Zustand). State in Zustand store, 3D scene in `components/scene/`, HUD overlay in `components/hud/`. Dev: `npm run dev` (localhost:5173), proxies `/api` to Flask on port 5000
+- `aegis-web/` - React + Three.js frontend (Vite, R3F, Zustand). State in Zustand store, 3D scene in `components/scene/`, HUD overlay in `components/hud/`
 - `src/aegis/viz/` - matplotlib/plotly dashboards and comparison plots
 
 ## Theory (the monograph)
@@ -57,7 +57,7 @@ Phantom meshes (STL) and the IT'IS tissue database live in `data/` inside the re
 
 ## Testing rules
 
-- Pre-commit runs ruff, codespell, trailing-whitespace, end-of-file-fixer, YAML/TOML/JSON validators, and large-file checks. Not pytest. CI runs a slim check (lint + ubuntu/3.12) on push and PR. Full matrix (Linux/Windows x 3.11-3.13) runs only on tag push via `release.yml`. Locally, `pytest -m "not slow"` skips slow-marked tests. Default pytest uses two workers (`-n 2` in `pyproject.toml`). Use `pytest -n 0` for a single process. Avoid `pytest -n auto` on typical laptops (memory scales with CPU count).
+- Pre-commit runs ruff, codespell, trailing-whitespace, end-of-file-fixer, YAML/TOML/JSON validators, and large-file checks. Not pytest. CI runs a slim check (lint + ubuntu/3.12) on push and PR. Full matrix (Linux/Windows x 3.11-3.13) runs only on tag push via `release.yml`.
 - The Mie regression test is the CI canary. If it passes, physics are correct.
 - Every monograph table has a golden test in `tests/golden/`.
 - Property tests (Hypothesis) check physics invariants: Sab >= 0, energy conservation, ReLU bound.
@@ -69,20 +69,35 @@ Phantom meshes (STL) and the IT'IS tissue database live in `data/` inside the re
 - NumPy + SciPy core, optional JAX backend (`_array_backend.py`). Frontend is TypeScript/React.
 - Type annotations on public API. No docstrings on private helpers unless non-obvious.
 - No em dashes, no semicolons. Sentence case for headings.
-- Writing tells to avoid: `.claude/ai_writing_tells.md`. Full doc style: `.claude/rules/docs-style.md`.
-- Git workflow: `.claude/rules/git-workflow.md`. Release cadence enforced by PreToolUse hook on git commit/push.
+- Run `python -m ruff check src/ tests/` and `python -m ruff format src/ tests/` before committing.
+- Stage specific files, not `git add -A`.
+- Imperative mood for commit messages. First line under 72 chars.
 
-## Web search
+## Git workflow
 
-Reddit has honest, unfiltered opinions. Use the Reddit MCP (`reddit-mcp-server`) proactively for library comparisons, debugging, community opinions, and tool evaluations. Read threads one by one (the API is per-post). `WebFetch` cannot access Reddit or Twitter (bot-blocking).
+- For small changes, commit and push directly to master.
+- For large changes (5+ files), use feature branches with squash-merge PRs via `gh pr create` + `gh pr merge --squash --delete-branch`.
+- Branch naming: `feature/short-description`, `fix/short-description`, `refactor/short-description`.
+- Version is automatic via `hatch-vcs` from git tags. Tag releases with `git tag v0.X.Y && git push origin master --tags`.
+
+## Rules reference
+
+Detailed rules live in `.claude/rules/` (shared between Claude Code and Codex):
+- `docs-style.md` - documentation writing guide (sentence case, no em dashes, no semicolons, MathJax)
+- `git-workflow.md` - full commit, branch, PR, and versioning conventions
+- `sentry-issues.md` - handling Sentry bug reports
+- `viewer.md` - Flask + Three.js viewer coordinate systems, architecture, testing
+
+Read the relevant rule file before working in that area.
+
+## Codex migration assets
+
+- Repo-scoped Codex skills live in `.agents/skills/`. These are ported from `.claude/skills/`.
+- Most ported skills have `allow_implicit_invocation: false` in `agents/openai.yaml` to avoid surprise activation. Invoke them explicitly with `/skills` or `$skill-name`.
+- Project-scoped Codex custom agents live in `.codex/agents/` (`code-reviewer`, `deep-think`, `max-think`).
+- Project-scoped Codex hooks live in `.codex/hooks.json`.
+- Supplemental project memory still lives outside the repo at `~/.claude/projects/-home-user-aegis/memory/`. Use the `$aegis-memory` skill when a task depends on long-lived context such as commercialization, deployment history, local agents, DiffeRT collaboration, or Robin-specific preferences.
 
 ## When you're stuck, ask Robin
 
-If you or a subagent hits a tooling blocker (missing API keys, can't access a website, need browser interaction, need an MCP server installed, need a manual download), STOP and ask. Do not silently fall back to an inferior approach. Robin can provide API keys, run browser steps, install tools, download files, or grant permissions. He wants the most ambitious result, not the fastest fallback. This applies to subagent prompts too: always include instructions to report NEEDS_CONTEXT instead of downgrading quality.
-
-## Self-evolution
-
-- If you correct the same mistake twice, add a rule here.
-- If you repeat a multi-step workflow 3+ times, create a skill for it.
-- If you discover a gotcha, document it here immediately.
-- Keep this file under 80 lines. Move details to `.claude/rules/`, skills, or docs.
+If you hit a tooling blocker (missing API keys, can't access a website, need browser interaction, need an MCP server installed, need a manual download), STOP and ask. Do not silently fall back to an inferior approach. Robin can provide API keys, run browser steps, install tools, download files, or grant permissions. He wants the most ambitious result, not the fastest fallback.

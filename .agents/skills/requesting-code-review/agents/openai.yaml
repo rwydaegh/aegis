@@ -1,0 +1,6 @@
+interface:
+  display_name: "Requesting Code Review"
+  short_description: "Use when completing tasks, implementing major features, or before merging to verify work meets requirements"
+  default_prompt: "$requesting-code-review "
+policy:
+  allow_implicit_invocation: false
