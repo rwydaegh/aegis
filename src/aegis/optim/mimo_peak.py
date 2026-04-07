@@ -12,14 +12,15 @@ from typing import Any
 
 import numpy as np
 
+from aegis._array_backend import JAX_AVAILABLE
 from aegis.optim import coherent_sab, soft_peak_exposure
 
-try:
+if JAX_AVAILABLE:
     import jax
     import jax.numpy as jnp
 
     _JAX = True
-except ImportError:
+else:
     _JAX = False
 
 
@@ -71,12 +72,18 @@ def _project_power(x: np.ndarray, p_max: float) -> np.ndarray:
 def _compute_gradient(G_tilde, x, temperature):
     """Gradient of soft_peak_exposure(coherent_sab(G_tilde, x)) w.r.t. x."""
     if _JAX:
-        G_j = jnp.array(G_tilde)
-        x_j = jnp.array(x)
+        G_j = jnp.asarray(G_tilde)
+        x_j = jnp.asarray(x)
 
         def loss_fn(x_var):
-            sab = coherent_sab(G_j, x_var)
-            return soft_peak_exposure(sab, temperature=temperature)
+            # Keep the differentiated path fully in JAX. The generic helpers
+            # use the repository backend shim, which may still point at NumPy
+            # even when JAX is installed.
+            field = jnp.einsum("mia,a->mi", G_j, x_var)
+            sab = jnp.maximum(jnp.real(jnp.sum(jnp.conj(field) * field, axis=1)), 0.0)
+            sab_max = jnp.max(sab)
+            shifted = temperature * (sab - sab_max)
+            return sab_max + jnp.log(jnp.sum(jnp.exp(shifted))) / temperature
 
         grad = jax.grad(loss_fn)(x_j)
         return np.array(grad)
