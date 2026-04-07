@@ -221,7 +221,7 @@ def _resolve_channel_preset_dir(config: dict | None = None, preset_dir: str | Pa
     """Resolve channel preset directories against AEGIS data roots."""
     if preset_dir is None:
         cfg = config or DEFAULTS
-        preset_dir = cfg.get("dosimetry", {}).get("stochastic", {}).get("preset_dir", "data/channel_presets")
+        preset_dir = cfg.get("dosimetry", {}).get("stochastic", {}).get("preset_dir", "channel_presets")
 
     preset_path = Path(preset_dir)
     if preset_path.is_absolute():

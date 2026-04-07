@@ -137,3 +137,9 @@ def test_resolve_channel_preset_dir_keeps_relative_subpath(monkeypatch, tmp_path
     cfg = {"dosimetry": {"stochastic": {"preset_dir": "custom/channel_presets"}}}
 
     assert _resolve_channel_preset_dir(cfg) == data_root / "custom/channel_presets"
+
+
+def test_resolve_channel_preset_dir_default_config_exists():
+    """Default preset_dir from DEFAULTS config resolves to an existing directory."""
+    resolved = _resolve_channel_preset_dir()
+    assert resolved.is_dir(), f"Default preset dir does not exist: {resolved}"

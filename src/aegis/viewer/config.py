@@ -205,7 +205,7 @@ DEFAULTS: dict = {
             "step": 1,
         },
         "stochastic": {
-            "preset_dir": "data/channel_presets",
+            "preset_dir": "channel_presets",
             "default_preset": "3GPP_38.901_UMi_LOS",
             "default_seed": 42,
         },
