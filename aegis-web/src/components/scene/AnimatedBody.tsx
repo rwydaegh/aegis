@@ -100,7 +100,7 @@ function AnimatedBodyInner() {
         useSimulationStore.getState().setResults(sab, stats, {
           sabAveraged: arrays['sab_4cm2'],
           sinc: arrays['sinc_local'],
-          sincAveraged: arrays['sinc_averaged'],
+          sincAveraged: arrays['sinc_wb'],
           sab1cm2Averaged: arrays['sab_1cm2'],
         })
       })

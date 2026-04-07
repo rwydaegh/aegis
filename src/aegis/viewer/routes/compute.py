@@ -273,7 +273,7 @@ def _build_binary_response(result, quantities):
         "sab_4cm2": lambda: result.sab_averaged,
         "sab_1cm2": lambda: result.sab_1cm2_averaged,
         "sinc_local": lambda: result.sinc,
-        "sinc_averaged": lambda: result.sinc_averaged,
+        "sinc_wb": lambda: result.sinc_averaged,
     }
 
     for key in quantities:
@@ -379,7 +379,7 @@ def _build_stats_response(result, body, tissue, level, extra=None, mode=None, co
     if peak_sinc_local is not None:
         peaks["sinc_local"] = peak_sinc_local
     if peak_sinc_averaged is not None:
-        peaks["sinc_averaged"] = peak_sinc_averaged
+        peaks["sinc_wb"] = peak_sinc_averaged
     stats["peaks"] = peaks
 
     if mode is not None:

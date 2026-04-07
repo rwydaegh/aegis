@@ -300,6 +300,10 @@ export async function fetchHullMesh(): Promise<{
   faceColors: Float32Array | null
 }> {
   const res = await fetchWithRetry(`${BASE}/api/voxels/hull-mesh`)
+  if (res.status === 401) {
+    handle401()
+    throw new Error('GET /api/voxels/hull-mesh failed: 401 Unauthorized')
+  }
   if (!res.ok) throw new Error(`Hull mesh fetch failed: ${res.status}`)
   const meta = parseJsonHeader<{ n_vertices: number; n_triangles: number; has_face_colors: boolean }>(res.headers.get('X-Meta'), 'X-Meta')
   const buffer = await res.arrayBuffer()
@@ -557,6 +561,7 @@ export interface HeatmapResult {
 
 export async function fetchComplianceHeatmap(params: {
   sab_4cm2?: number
+  sab_1cm2?: number
   freq_hz: number
   ref_power_dbm: number
   scenario?: string
@@ -568,6 +573,7 @@ export async function fetchComplianceHeatmap(params: {
     scenario: params.scenario ?? 'general_public',
   })
   if (params.sab_4cm2 != null) qs.set('sab_4cm2', String(params.sab_4cm2))
+  if (params.sab_1cm2 != null) qs.set('sab_1cm2', String(params.sab_1cm2))
   if (params.sinc_local != null) qs.set('sinc_local', String(params.sinc_local))
   return getJson<HeatmapResult>(`/api/compliance/heatmap?${qs}`)
 }

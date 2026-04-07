@@ -102,6 +102,7 @@ export default function ColorLegend() {
       sab_4cm2: (c) => c.label.includes('4 cm'),
       sab_1cm2: (c) => c.label.includes('1 cm'),
       sinc_local: (c) => c.label.includes('S_inc') && c.label.includes('local'),
+      sinc_wb: (c) => c.label.includes('S_inc') && c.label.includes('whole-body'),
     }
     const finder = limitMap[displayQuantity]
     if (finder) {

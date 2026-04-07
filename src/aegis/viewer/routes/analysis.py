@@ -185,19 +185,21 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         sab_4cm2 = request.args.get("sab_4cm2", type=float)
         freq_hz = request.args.get("freq_hz", type=float)
         ref_power_dbm = request.args.get("ref_power_dbm", type=float)
+        sab_1cm2 = request.args.get("sab_1cm2", type=float)
+        sinc_local = request.args.get("sinc_local", type=float)
+        sinc_wb = request.args.get("sinc_wb", type=float)
+        sar_wb = request.args.get("sar_wb", type=float)
 
-        if sab_4cm2 is None or freq_hz is None or ref_power_dbm is None:
-            return jsonify({"error": "sab_4cm2, freq_hz, and ref_power_dbm are required"}), 400
+        if freq_hz is None or ref_power_dbm is None:
+            return jsonify({"error": "freq_hz and ref_power_dbm are required"}), 400
+        if sab_4cm2 is None and sab_1cm2 is None and sar_wb is None:
+            return jsonify({"error": "At least one of sab_4cm2, sab_1cm2, or sar_wb is required"}), 400
         if freq_hz <= 0:
             return jsonify({"error": "freq_hz must be positive"}), 400
 
         scenario_str = request.args.get("scenario", "general_public")
         scenario = ExposureScenario.OCCUPATIONAL if scenario_str == "occupational" else ExposureScenario.GENERAL_PUBLIC
 
-        sab_1cm2 = request.args.get("sab_1cm2", type=float)
-        sinc_local = request.args.get("sinc_local", type=float)
-        sinc_wb = request.args.get("sinc_wb", type=float)
-        sar_wb = request.args.get("sar_wb", type=float)
         n_points = request.args.get("n_points", 50, type=int)
         n_points = min(max(n_points, 10), 500)
 
@@ -239,11 +241,14 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         from aegis.compliance import ExposureScenario, compliance_heatmap
 
         sab_4cm2 = request.args.get("sab_4cm2", type=float)
+        sab_1cm2 = request.args.get("sab_1cm2", type=float)
         freq_hz = request.args.get("freq_hz", type=float)
         ref_power_dbm = request.args.get("ref_power_dbm", type=float)
 
-        if sab_4cm2 is None or freq_hz is None or ref_power_dbm is None:
-            return jsonify({"error": "sab_4cm2, freq_hz, and ref_power_dbm are required"}), 400
+        if freq_hz is None or ref_power_dbm is None:
+            return jsonify({"error": "freq_hz and ref_power_dbm are required"}), 400
+        if sab_4cm2 is None and sab_1cm2 is None:
+            return jsonify({"error": "At least one of sab_4cm2 or sab_1cm2 is required"}), 400
         if freq_hz <= 0:
             return jsonify({"error": "freq_hz must be positive"}), 400
 
@@ -258,9 +263,12 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
         ref_power_w = 10.0 ** ((ref_power_dbm - 30) / 10.0)
 
+        # Use sab_4cm2 if available, fall back to sab_1cm2 as reference
+        ref_sab = sab_4cm2 if sab_4cm2 is not None else sab_1cm2
+
         try:
             result = compliance_heatmap(
-                sab_4cm2=sab_4cm2,
+                sab_4cm2=ref_sab,
                 ref_power_w=ref_power_w,
                 scenario=scenario,
                 n_freq=n_freq,
@@ -298,16 +306,16 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         from aegis.compliance import ExposureScenario, frequency_sweep
 
         sab_4cm2 = request.args.get("sab_4cm2", type=float)
-        if sab_4cm2 is None:
-            return jsonify({"error": "sab_4cm2 is required"}), 400
+        sab_1cm2 = request.args.get("sab_1cm2", type=float)
+        sar_wb = request.args.get("sar_wb", type=float)
+        if sab_4cm2 is None and sab_1cm2 is None and sar_wb is None:
+            return jsonify({"error": "At least one of sab_4cm2, sab_1cm2, or sar_wb is required"}), 400
 
         scenario_str = request.args.get("scenario", "general_public")
         scenario = ExposureScenario.OCCUPATIONAL if scenario_str == "occupational" else ExposureScenario.GENERAL_PUBLIC
 
         sinc_local = request.args.get("sinc_local", type=float)
         sinc_wb = request.args.get("sinc_wb", type=float)
-        sab_1cm2 = request.args.get("sab_1cm2", type=float)
-        sar_wb = request.args.get("sar_wb", type=float)
         n_points = request.args.get("n_points", 50, type=int)
         n_points = min(max(n_points, 10), 500)
 

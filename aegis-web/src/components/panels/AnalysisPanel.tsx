@@ -698,8 +698,9 @@ function ComplianceHeatmapSection() {
 
   const peakSab = stats?.peak_sab_averaged ?? stats?.peak_sab
   const sincLocal = stats?.peaks?.sinc_local
+  const sab1cm2 = stats?.peaks?.sab_1cm2
   const hasComplianceData = stats?.compliance != null
-  const canSweep = hasComplianceData && (peakSab != null && peakSab > 0)
+  const canSweep = hasComplianceData && (peakSab != null && peakSab > 0 || sab1cm2 != null && sab1cm2 > 0)
 
   async function runHeatmap() {
     if (!canSweep) return
@@ -707,6 +708,7 @@ function ComplianceHeatmapSection() {
     try {
       const data = await fetchComplianceHeatmap({
         sab_4cm2: peakSab ?? undefined,
+        sab_1cm2: sab1cm2,
         freq_hz: freqGhz * 1e9,
         ref_power_dbm: powerDbm,
         scenario,
