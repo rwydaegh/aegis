@@ -12,6 +12,7 @@ export interface BodyMeshInstanceProps {
   sabArray: Float32Array | null
   sabAveragedArray?: Float32Array | null
   sincArray?: Float32Array | null
+  sincAveragedArray?: Float32Array | null
   sab1cm2AveragedArray?: Float32Array | null
   stats?: DosimetryStats | null
   compliance?: ComplianceInfo | null
@@ -26,6 +27,7 @@ export default function BodyMeshInstance({
   sabArray,
   sabAveragedArray,
   sincArray,
+  sincAveragedArray,
   sab1cm2AveragedArray,
   stats,
   compliance,
@@ -50,6 +52,7 @@ export default function BodyMeshInstance({
     sab_4cm2: sabAveragedArray,
     sab_1cm2: sab1cm2AveragedArray,
     sinc_local: sincArray,
+    sinc_wb: sincAveragedArray,
   }
   const activeArray = arrayMap[displayQuantity] ?? null
   const dataArray = activeArray ?? sabArray
@@ -62,6 +65,7 @@ export default function BodyMeshInstance({
       sab_4cm2: (c) => c.label.includes('4 cm'),
       sab_1cm2: (c) => c.label.includes('1 cm'),
       sinc_local: (c) => c.label.includes('S_inc') && c.label.includes('local'),
+      sinc_wb: (c) => c.label.includes('S_inc') && c.label.includes('whole-body'),
     }
     const finder = limitMap[displayQuantity]
     if (finder) {

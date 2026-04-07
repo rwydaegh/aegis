@@ -41,6 +41,7 @@ export default function PeakIndicator({
   const globalSabArray = useSimulationStore(s => s.sabArray)
   const globalSabAveraged = useSimulationStore(s => s.sabAveragedArray)
   const globalSincArray = useSimulationStore(s => s.sincArray)
+  const globalSincAveraged = useSimulationStore(s => s.sincAveragedArray)
   const globalSab1cm2Averaged = useSimulationStore(s => s.sab1cm2AveragedArray)
   const globalStats = useSimulationStore(s => s.stats)
   const displayQuantity = useSimulationStore(s => s.displayQuantity)
@@ -53,6 +54,7 @@ export default function PeakIndicator({
     sab_4cm2: globalSabAveraged ?? globalSabArray,
     sab_1cm2: globalSab1cm2Averaged ?? globalSabArray,
     sinc_local: globalSincArray ?? globalSabArray,
+    sinc_wb: globalSincAveraged ?? globalSabArray,
   }
   const sabArray = sabOverride ?? arrayForQuantity[displayQuantity] ?? globalSabAveraged ?? globalSabArray
 
