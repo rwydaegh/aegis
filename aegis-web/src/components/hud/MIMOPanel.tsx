@@ -1,5 +1,6 @@
 import { Eye, Gamepad2, X, Plus, Layers, Crosshair, AlertTriangle } from 'lucide-react'
 import { useMIMOStore, type PrecoderType } from '@/stores/mimo'
+import { useSceneStore } from '@/stores/scene'
 import type { UserMIMOState } from '@/stores/mimo'
 import { formatSab } from '@/lib/format'
 import { cn } from '@/lib/utils'
@@ -10,8 +11,6 @@ const PRECODER_OPTIONS: { value: PrecoderType; label: string }[] = [
   { value: 'mmse', label: 'MMSE' },
   { value: 'zf_exposure', label: 'ZF+Exp' },
 ]
-
-const PHANTOMS = ['duke', 'ella', 'eartha', 'thelonious'] as const
 
 function complianceColor(user: UserMIMOState): string {
   if (user.compliant === null) return '#666'
@@ -41,12 +40,14 @@ export default function MIMOPanel() {
   const setPrecoderType = useMIMOStore(s => s.setPrecoderType)
   const setShowAllHeatmaps = useMIMOStore(s => s.setShowAllHeatmaps)
   const setShowArrayPattern = useMIMOStore(s => s.setShowArrayPattern)
+  const caps = useSceneStore(s => s.capabilities)
 
   const summaryStats = useMIMOStore(s => s.summaryStats)
 
   const userList = [...users.values()]
   const K = users.size
   const M = arrayConfig ? arrayConfig.n_h * arrayConfig.n_v : 0
+  const availablePhantoms = caps?.bodies ?? []
 
   return (
     <div className="bg-card/80 backdrop-blur-md rounded-lg border border-border p-3 min-w-[220px]">
@@ -244,7 +245,7 @@ export default function MIMOPanel() {
           <div className="border-t border-border pt-2">
             <p className="text-[10px] text-muted-foreground mb-1">Add user</p>
             <div className="flex flex-wrap gap-1">
-              {PHANTOMS.map(phantom => (
+              {availablePhantoms.map(phantom => (
                 <button
                   key={phantom}
                   disabled={K >= 8}

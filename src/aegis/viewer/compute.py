@@ -28,7 +28,16 @@ def _load_phantom_masses() -> dict[str, float]:
     data_dir = Path(os.environ.get("AEGIS_DATA_DIR", str(Path(__file__).resolve().parents[3] / "data")))
     path = Path(data_dir) / "phantoms.yaml"
     if not path.exists():
-        return {"thelonious": 17.4, "duke": 72.4, "eartha": 56.0, "ella": 58.7}
+        return {
+            "thelonious": 17.4,
+            "duke": 72.4,
+            "eartha": 56.0,
+            "ella": 58.7,
+            "adult_male": 73.0,
+            "adult_female": 60.0,
+            "boy_6y": 19.0,
+            "girl_8y": 30.0,
+        }
     with open(path) as f:
         data = yaml.safe_load(f)
     return {name: info["mass_kg"] for name, info in data.items()}

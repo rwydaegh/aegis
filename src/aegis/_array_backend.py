@@ -19,10 +19,7 @@ import numpy as np
 _BACKEND = os.environ.get("AEGIS_ARRAY_BACKEND", "numpy").strip().lower()
 
 if _BACKEND not in {"numpy", "jax", "auto"}:
-    raise ValueError(
-        "AEGIS_ARRAY_BACKEND must be one of 'numpy', 'jax', or 'auto', "
-        f"got {_BACKEND!r}"
-    )
+    raise ValueError(f"AEGIS_ARRAY_BACKEND must be one of 'numpy', 'jax', or 'auto', got {_BACKEND!r}")
 
 if _BACKEND in {"jax", "auto"}:
     try:

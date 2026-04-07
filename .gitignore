@@ -109,7 +109,8 @@ tools/.cloud-state.json
 blosm/
 
 # Roof visualization scripts (dev-only)
-scripts/
+scripts/*
+!scripts/build_phantoms.py
 
 # ── GSD baseline (auto-generated) ──
 *~

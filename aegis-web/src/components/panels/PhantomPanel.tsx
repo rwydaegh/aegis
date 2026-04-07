@@ -1,13 +1,15 @@
 import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
 
-// IT'IS Virtual Population v5 phantom metadata
-// Source: https://itis.swiss/virtual-population/virtual-population/vip3/
 export const PHANTOM_META: Record<string, { sex: string; age: number; mass_kg: number; height_m: number }> = {
-  duke:       { sex: 'male',   age: 34, mass_kg: 70.3, height_m: 1.77 },
-  ella:       { sex: 'female', age: 26, mass_kg: 57.3, height_m: 1.63 },
-  thelonious: { sex: 'male',   age: 6,  mass_kg: 18.6, height_m: 1.15 },
-  eartha:     { sex: 'female', age: 8,  mass_kg: 29.9, height_m: 1.36 },
+  adult_male:   { sex: 'male',   age: 34, mass_kg: 73.0, height_m: 1.76 },
+  adult_female: { sex: 'female', age: 26, mass_kg: 60.0, height_m: 1.63 },
+  boy_6y:       { sex: 'male',   age: 6,  mass_kg: 19.0, height_m: 1.15 },
+  girl_8y:      { sex: 'female', age: 8,  mass_kg: 30.0, height_m: 1.36 },
+  duke:         { sex: 'male',   age: 34, mass_kg: 70.3, height_m: 1.77 },
+  ella:         { sex: 'female', age: 26, mass_kg: 57.3, height_m: 1.63 },
+  thelonious:   { sex: 'male',   age: 6,  mass_kg: 18.6, height_m: 1.15 },
+  eartha:       { sex: 'female', age: 8,  mass_kg: 29.9, height_m: 1.36 },
 }
 
 function formatLabel(name: string): string {
@@ -17,7 +19,16 @@ function formatLabel(name: string): string {
   return `${cap} (${meta.age}y, ${meta.sex}, ${meta.mass_kg} kg)`
 }
 
-const PHANTOM_ORDER = ['duke', 'ella', 'eartha', 'thelonious']
+const PHANTOM_ORDER = [
+  'adult_male',
+  'adult_female',
+  'boy_6y',
+  'girl_8y',
+  'duke',
+  'ella',
+  'eartha',
+  'thelonious',
+]
 
 export default function PhantomPanel() {
   const bodyName = useSceneStore((s) => s.bodyName)
