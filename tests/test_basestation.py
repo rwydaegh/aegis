@@ -179,6 +179,11 @@ class TestPowerConversions:
         result = w_to_dbm(-1.0)
         assert np.isnan(result)
 
+    def test_w_to_dbm_special_values_do_not_emit_runtime_warnings(self):
+        with np.errstate(all="raise"):
+            assert w_to_dbm(0.0) == float("-inf")
+            assert np.isnan(w_to_dbm(-1.0))
+
     def test_eirp_with_zero_gain_returns_eirp(self):
         # Zero gain_dbi is treated as isotropic, returns EIRP unchanged.
         assert eirp_to_tx_power_dbm(50.0, 0.0) == 50.0

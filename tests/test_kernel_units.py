@@ -197,6 +197,12 @@ class TestLevel0Bound:
     def test_zero_area(self):
         sab, p_abs = level0_bound(0.0, 0.5, 2.0, np.array([1.0]), T0, 3)
         np.testing.assert_allclose(sab, 0.0)
+        assert float(p_abs) > 0.0
+
+    def test_zero_area_no_runtime_warning(self):
+        with np.errstate(all="raise"):
+            sab, _ = level0_bound(0.0, 0.5, 2.0, np.array([1.0]), T0, 3)
+        np.testing.assert_allclose(sab, 0.0)
 
     def test_uniform_output(self):
         """Level 0 produces uniform sab across all triangles."""
