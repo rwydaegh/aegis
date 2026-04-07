@@ -1,0 +1,1 @@
+import{n as e}from"./index-BSd_BVPP.js";export{e as useAuth};
