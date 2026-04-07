@@ -176,8 +176,12 @@ aegis-web/             React + Three.js frontend (Vite, R3F, Zustand)
 ```bash
 git clone https://github.com/rwydaegh/aegis.git
 cd aegis
+git lfs install
+git lfs pull
 pip install -e ".[dev]"
 ```
+
+If `git-lfs` is not installed yet, install it before `git lfs pull`. The deploy and full-test workflows already check out with `lfs: true`, and the Docker image copies `data/` into the backend image, so local clones need the same data present if you want parity with deploys.
 
 ### Optional extras
 
@@ -193,7 +197,9 @@ pip install -e ".[all]"      # everything
 
 - Python 3.11+
 - NumPy >= 1.24, SciPy >= 1.10
-- Body mesh STL files (set `AEGIS_DATA_DIR` or place in `../../data/`)
+- Data assets under `data/` (set `AEGIS_DATA_DIR` if you keep them elsewhere)
+
+The animated phantom viewer assets live in `data/phantoms/`. The committed runtime payload is the `.glb` outputs plus preview renders. Large FBX build inputs are intentionally kept local.
 
 ---
 

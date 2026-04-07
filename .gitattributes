@@ -30,6 +30,8 @@
 *.ttf binary
 *.stl binary
 *.ply binary
+*.fbx binary
+*.glb binary
 *.sqlite.gz binary
 
 # ── GitHub Linguist ──────────────────────────────────────────

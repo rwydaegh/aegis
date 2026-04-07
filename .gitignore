@@ -39,6 +39,7 @@ desktop.ini
 *.obj
 *.db
 *.sqlite
+data/phantoms/*.fbx
 !data/
 !data/*.stl
 !data/*.db
@@ -74,6 +75,7 @@ test_screenshots/
 !docs/assets/*.png
 !docs/assets/diagrams/*.png
 !aegis-web/public/*.png
+!data/phantoms/renders/*.png
 
 # Binary presentation artifacts (keep local copies, not in git)
 *.pptx

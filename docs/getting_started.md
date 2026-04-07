@@ -5,8 +5,12 @@
 ```bash
 git clone https://github.com/rwydaegh/aegis.git
 cd aegis
+git lfs install
+git lfs pull
 pip install -e ".[dev]"
 ```
+
+If you plan to run the viewer, slow tests, or Docker builds, keep the `data/` directory complete locally. CI deploys already check out with `lfs: true`, and the backend Docker image copies `data/` into the image.
 
 ### Optional dependency groups
 
@@ -64,7 +68,7 @@ body = aegis.BodyMesh.load("thelonious.stl")
 print(f"{body.n_triangles} triangles, area = {body.total_area:.4f} m²")
 ```
 
-Phantom meshes live in `data/` inside the repo (thelonious, duke, eartha, ella). Override with `AEGIS_DATA_DIR` if needed.
+Phantom meshes live in `data/` inside the repo (thelonious, duke, eartha, ella). Animated viewer phantoms live in `data/phantoms/` as GLB files. Override with `AEGIS_DATA_DIR` if needed.
 
 ## Tissue model
 
