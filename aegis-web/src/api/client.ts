@@ -101,8 +101,8 @@ export async function postJson<T>(path: string, body: unknown): Promise<T> {
   return res.json() as Promise<T>
 }
 
-async function getBinary(path: string): Promise<Response> {
-  const res = await fetchWithRetry(`${BASE}${path}`)
+async function getBinary(path: string, signal?: AbortSignal): Promise<Response> {
+  const res = await fetchWithRetry(`${BASE}${path}`, signal ? { signal } : undefined)
   if (res.status === 401) {
     handle401()
     throw new Error(`GET ${path} failed: 401 Unauthorized`)
@@ -228,9 +228,10 @@ export async function fetchGpuStatus(): Promise<GpuStatus> {
 
 export async function fetchBody(
   name?: string,
+  signal?: AbortSignal,
 ): Promise<{ binary: { positions: Float32Array; normals: Float32Array }; meta: BodyMeta }> {
   const url = name ? `/api/body?name=${encodeURIComponent(name)}` : '/api/body'
-  const res = await getBinary(url)
+  const res = await getBinary(url, signal)
 
   const meta = parseJsonHeader<BodyMeta>(res.headers.get('X-Meta'), 'X-Meta')
 

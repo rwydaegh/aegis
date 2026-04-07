@@ -12,7 +12,7 @@ export function useBodyLoader() {
   const prevBodyRef = useRef(bodyName)
 
   useEffect(() => {
-    let cancelled = false
+    const controller = new AbortController()
 
     // Clear stale results only when body actually changes (different triangle count would cause jumbled colors).
     // Skip on re-mount with the same body (e.g. visibility toggle) to preserve dosimetry heatmap.
@@ -21,8 +21,8 @@ export function useBodyLoader() {
       prevBodyRef.current = bodyName
     }
 
-    fetchBody(bodyName).then(({ binary }) => {
-      if (cancelled) return
+    fetchBody(bodyName, controller.signal).then(({ binary }) => {
+      if (controller.signal.aborted) return
 
       const geometry = new THREE.BufferGeometry()
       geometry.setAttribute('position', new THREE.BufferAttribute(binary.positions, 3))
@@ -45,10 +45,11 @@ export function useBodyLoader() {
 
       setBodyGeometry(geometry)
     }).catch(err => {
+      if ((err as Error).name === 'AbortError') return
       Sentry.captureException(err)
       useNotificationStore.getState().addNotification('error', `Failed to load body: ${(err as Error).message}`)
     })
 
-    return () => { cancelled = true }
+    return () => { controller.abort() }
   }, [bodyName, setBodyGeometry])
 }
