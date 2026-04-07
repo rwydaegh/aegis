@@ -10,14 +10,14 @@ import * as Sentry from '@sentry/react'
 import * as THREE from 'three'
 import type { MIMOComputeRequest, MIMOUserConfig } from '@/api/types'
 
-async function loadMissingBodies() {
+async function loadMissingBodies(signal?: AbortSignal) {
   const { users, setUserBodyGeometry } = useMIMOStore.getState()
   const promises: Promise<void>[] = []
 
   for (const [id, user] of users) {
     if (user.bodyGeometry) continue
     promises.push(
-      fetchBody(user.phantomName).then(({ binary: { positions, normals } }) => {
+      fetchBody(user.phantomName, signal).then(({ binary: { positions, normals } }) => {
         const geo = new THREE.BufferGeometry()
         geo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
         geo.setAttribute('normal', new THREE.BufferAttribute(normals, 3))
@@ -67,7 +67,7 @@ export function useMIMODosimetry() {
     setComputing(true)
 
     try {
-      await loadMissingBodies()
+      await loadMissingBodies(controller.signal)
       if (gen !== generationRef.current) return
 
       const caps = useSceneStore.getState().capabilities
