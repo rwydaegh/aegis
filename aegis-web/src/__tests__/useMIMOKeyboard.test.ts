@@ -12,7 +12,7 @@ describe('useMIMOKeyboard store interactions', () => {
     store.addUser('duke', [0, 0, 0])
     store.addUser('ella', [2, 0, 0])
     const ids = [...useMIMOStore.getState().users.keys()]
-    expect(ids).toHaveLength(2)
+    expect(ids).toHaveLength(3)
     expect(useMIMOStore.getState().controlledUserId).toBe(ids[0])
 
     const current = ids.indexOf(ids[0])

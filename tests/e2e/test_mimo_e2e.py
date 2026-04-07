@@ -7,15 +7,28 @@ Requires: pip install pytest-playwright && playwright install chromium
 Skipped automatically in CI (no playwright installed).
 """
 
+import os
 import re
+from urllib.error import URLError
+from urllib.request import urlopen
 
 import pytest
 
 playwright = pytest.importorskip("playwright")
 from playwright.sync_api import Page, expect, sync_playwright  # noqa: E402
 
-BASE_URL = "http://localhost:5173"
+BASE_URL = os.environ.get("AEGIS_E2E_BASE_URL", "http://localhost:5173")
 TIMEOUT = 15_000  # ms
+
+
+@pytest.fixture(scope="module")
+def base_url():
+    try:
+        with urlopen(BASE_URL, timeout=2):
+            pass
+    except URLError:
+        pytest.skip(f"E2E frontend not available at {BASE_URL}")
+    return BASE_URL
 
 
 @pytest.fixture(scope="module")
@@ -27,11 +40,11 @@ def browser():
 
 
 @pytest.fixture
-def page(browser):
+def page(browser, base_url):
     context = browser.new_context(viewport={"width": 1280, "height": 720})
     pg = context.new_page()
     pg.set_default_timeout(TIMEOUT)
-    pg.goto(BASE_URL, wait_until="domcontentloaded", timeout=30_000)
+    pg.goto(base_url, wait_until="domcontentloaded", timeout=30_000)
     # Wait for the app to load (AEGIS header visible)
     pg.wait_for_selector("text=AEGIS", timeout=TIMEOUT)
     # Give Three.js a moment to initialize
