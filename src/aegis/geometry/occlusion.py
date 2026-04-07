@@ -526,6 +526,26 @@ def _sample_and_test(
     return vis / float(n_rays)
 
 
+def _make_tangent_frames_batch(normals: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Vectorized tangent frame construction for all normals at once.
+
+    Returns (t, b) each of shape (N, 3).
+    """
+    n = normals.shape[0]
+    a = np.empty((n, 3), dtype=np.float64)
+    near_z = np.abs(normals[:, 2]) >= 0.999
+    a[~near_z] = [0.0, 0.0, 1.0]
+    a[near_z] = [1.0, 0.0, 0.0]
+
+    t = np.cross(a, normals)
+    t_norm = np.linalg.norm(t, axis=1, keepdims=True)
+    t_norm = np.where(t_norm > NUMERICAL_FLOOR, t_norm, 1.0)
+    t /= t_norm
+
+    b = np.cross(normals, t)
+    return t, b
+
+
 def compute_ambient_occlusion(
     mesh: BodyMesh,
     n_rays: int = 64,
@@ -561,19 +581,68 @@ def compute_ambient_occlusion(
     rng = np.random.default_rng(seed)
     base_dirs = cosine_weighted_hemisphere_samples(n_rays, rng=rng)
 
-    eta = np.zeros(n_tri, dtype=np.float64)
-    for i in range(n_tri):
-        eta[i] = _sample_and_test(
-            i,
-            centroids[i],
-            normals[i],
-            base_dirs,
+    # Vectorized tangent frame + direction rotation for all triangles
+    t_frames, b_frames = _make_tangent_frames_batch(normals)
+    origins = centroids + origin_eps * normals
+
+    # Pre-rotate base_dirs into world space for each triangle: (n_tri, n_rays, 3)
+    # dirs[i] = base_dirs[:, 0:1] * t[i] + base_dirs[:, 1:2] * b[i] + base_dirs[:, 2:3] * n[i]
+    all_dirs = (
+        np.einsum("r,id->ird", base_dirs[:, 0], t_frames)
+        + np.einsum("r,id->ird", base_dirs[:, 1], b_frames)
+        + np.einsum("r,id->ird", base_dirs[:, 2], normals)
+    )
+
+    # Extract BVH arrays once
+    bvh_bmin = bvh["bmin"]
+    bvh_bmax = bvh["bmax"]
+    bvh_left = bvh["left"]
+    bvh_right = bvh["right"]
+    bvh_start = bvh["start"]
+    bvh_count = bvh["count"]
+    tv0x, tv0y, tv0z = tri_data["tri_v0x"], tri_data["tri_v0y"], tri_data["tri_v0z"]
+    te1x, te1y, te1z = tri_data["tri_e1x"], tri_data["tri_e1y"], tri_data["tri_e1z"]
+    te2x, te2y, te2z = tri_data["tri_e2x"], tri_data["tri_e2y"], tri_data["tri_e2z"]
+
+    def _process(i):
+        return _fire_rays_numba(
+            float(origins[i, 0]),
+            float(origins[i, 1]),
+            float(origins[i, 2]),
+            all_dirs[i],
             n_rays,
-            origin_eps,
+            i,
             t_min,
-            bvh,
+            bvh_bmin,
+            bvh_bmax,
+            bvh_left,
+            bvh_right,
+            bvh_start,
+            bvh_count,
             tri_order,
-            tri_data,
-        )
+            tv0x,
+            tv0y,
+            tv0z,
+            te1x,
+            te1y,
+            te1z,
+            te2x,
+            te2y,
+            te2z,
+        ) / float(n_rays)
+
+    # Use ThreadPoolExecutor for parallelism (Numba releases the GIL)
+    if NUMBA_AVAILABLE and n_tri > 100:
+        import os
+        from concurrent.futures import ThreadPoolExecutor
+
+        n_workers = min(os.cpu_count() or 1, 8)
+        eta = np.zeros(n_tri, dtype=np.float64)
+        with ThreadPoolExecutor(max_workers=n_workers) as pool:
+            results = pool.map(_process, range(n_tri))
+            for i, val in enumerate(results):
+                eta[i] = val
+    else:
+        eta = np.array([_process(i) for i in range(n_tri)], dtype=np.float64)
 
     return np.clip(eta, 0.0, 1.0)

@@ -83,9 +83,10 @@ export default function OptimizePanel() {
           <input
             type="number"
             value={constraints.icnirpLimit ?? 20}
-            onChange={(e) =>
-              setConstraints({ icnirpLimit: parseFloat(e.target.value) })
-            }
+            onChange={(e) => {
+              const v = parseFloat(e.target.value)
+              if (!isNaN(v)) setConstraints({ icnirpLimit: v })
+            }}
             disabled={running}
             className="w-full px-2 py-1 bg-muted border border-border rounded text-xs"
           />
@@ -100,9 +101,10 @@ export default function OptimizePanel() {
           <input
             type="number"
             value={constraints.pMax ?? 1}
-            onChange={(e) =>
-              setConstraints({ pMax: parseFloat(e.target.value) })
-            }
+            onChange={(e) => {
+              const v = parseFloat(e.target.value)
+              if (!isNaN(v)) setConstraints({ pMax: v })
+            }}
             disabled={running}
             className="w-full px-2 py-1 bg-muted border border-border rounded text-xs"
             step={0.1}
@@ -117,9 +119,10 @@ export default function OptimizePanel() {
             <input
               type="number"
               value={constraints.gridSize ?? 5}
-              onChange={(e) =>
-                setConstraints({ gridSize: parseInt(e.target.value) })
-              }
+              onChange={(e) => {
+                const v = parseInt(e.target.value)
+                if (!isNaN(v)) setConstraints({ gridSize: v })
+              }}
               disabled={running}
               className="w-full px-2 py-1 bg-muted border border-border rounded text-xs"
               min={3}
@@ -134,9 +137,10 @@ export default function OptimizePanel() {
             <input
               type="number"
               value={constraints.gridSpacing ?? 2}
-              onChange={(e) =>
-                setConstraints({ gridSpacing: parseFloat(e.target.value) })
-              }
+              onChange={(e) => {
+                const v = parseFloat(e.target.value)
+                if (!isNaN(v)) setConstraints({ gridSpacing: v })
+              }}
               disabled={running}
               className="w-full px-2 py-1 bg-muted border border-border rounded text-xs"
               step={0.5}

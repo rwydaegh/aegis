@@ -104,6 +104,12 @@ class BodyMesh:
     areas: np.ndarray = field(repr=False)
     name: str = ""
     _geometry_hash: int = field(default=0, repr=False, compare=False)
+    _bbox_cache: tuple[np.ndarray, np.ndarray] | None = field(
+        default=None,
+        repr=False,
+        compare=False,
+        hash=False,
+    )
 
     def __post_init__(self) -> None:
         normals = np.asarray(self.normals, dtype=np.float64)
@@ -360,9 +366,11 @@ class BodyMesh:
 
     @property
     def bounding_box(self) -> tuple[np.ndarray, np.ndarray]:
-        """Return (bmin, bmax) of the mesh."""
-        flat = self.vertices.reshape(-1, 3)
-        return np.min(flat, axis=0), np.max(flat, axis=0)
+        """Return (bmin, bmax) of the mesh, cached after first access."""
+        if self._bbox_cache is None:
+            flat = self.vertices.reshape(-1, 3)
+            object.__setattr__(self, "_bbox_cache", (np.min(flat, axis=0), np.max(flat, axis=0)))
+        return self._bbox_cache
 
     @property
     def center(self) -> np.ndarray:

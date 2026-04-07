@@ -13,10 +13,12 @@ from aegis._array_backend import JAX_AVAILABLE, xp
 
 
 def _accumulate_by_element_numpy(weighted, element_index, M, n_elements):
-    """NumPy: vectorized scatter-add using np.add.at."""
+    """NumPy: loop over elements with boolean masking (faster than np.add.at)."""
     G = np.zeros((M, 3, n_elements), dtype=complex)
-    weighted_t = np.transpose(weighted, (0, 2, 1))  # (M, 3, N)
-    np.add.at(G, (slice(None), slice(None), element_index), weighted_t)
+    for e in range(n_elements):
+        mask = element_index == e
+        if np.any(mask):
+            G[:, :, e] = weighted[:, mask, :].sum(axis=1)
     return G
 
 
