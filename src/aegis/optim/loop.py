@@ -75,6 +75,8 @@ def run_optimization(
             return
 
         result["mode"] = mode
+        if result.get("converged") and not result.get("done"):
+            result["done"] = True
         yield result
 
         if result.get("converged") or result.get("done"):

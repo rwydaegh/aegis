@@ -1,0 +1,6 @@
+interface:
+  display_name: "Systematic Debugging"
+  short_description: "Use when encountering any bug, test failure, or unexpected behavior, before proposing fixes"
+  default_prompt: "$systematic-debugging "
+policy:
+  allow_implicit_invocation: false

@@ -114,6 +114,114 @@ class TestTiltPowerMode:
         assert not any(e.get("error") for e in events if "No dosimetry result" in e.get("message", ""))
 
 
+class TestPlacementMode:
+    """Test placement mode with mocked RT."""
+
+    def test_placement_streams_grid_search(self, app):
+        """Verify placement mode calls evaluate_fn and streams results."""
+        from unittest.mock import patch
+
+        n_tri = 50
+        mock_sab = np.random.default_rng(42).random(n_tri).astype(np.float32) * 10
+
+        def fake_evaluate_fn(pos):
+            # Return lower peak_sab for positions closer to origin
+            dist = float(np.linalg.norm(pos))
+            return {
+                "peak_sab": dist * 2.0,
+                "sab": mock_sab * dist,
+                "stats": {"peak_sab": dist * 2.0},
+            }
+
+        def fake_build_fn(*args, **kwargs):
+            return fake_evaluate_fn
+
+        with patch(
+            "aegis.viewer.routes.optimize._build_placement_evaluate_fn",
+            fake_build_fn,
+        ):
+            client = app.test_client()
+            resp = client.post(
+                "/api/optimize",
+                json={
+                    "mode": "placement",
+                    "center": [5, 0, 3],
+                    "grid_size": 3,
+                    "grid_spacing": 2.0,
+                    "max_iters": 20,
+                },
+            )
+            assert resp.status_code == 200
+            assert "text/event-stream" in resp.content_type
+
+            events = []
+            for line in resp.data.decode().split("\n"):
+                if line.startswith("data: "):
+                    events.append(json.loads(line[6:]))
+
+            # 3x3 grid = 9 evaluations, last one has done=True
+            assert len(events) == 9
+            assert events[-1]["done"] is True
+            assert "best" in events[-1]
+            assert events[-1]["params"]["antenna_pos"] == events[-1]["best"]["antenna_pos"]
+            # All events should have antenna_pos in params
+            for e in events:
+                assert "antenna_pos" in e.get("params", {})
+
+    def test_build_placement_evaluate_fn_accepts_dosimetry_mode(self, app):
+        """Placement should parse dosimetry_mode, not confuse it with optimizer mode."""
+        from types import SimpleNamespace
+        from unittest.mock import patch
+
+        from aegis.geometry.mesh import BodyMesh
+        from aegis.viewer.routes.optimize import _build_placement_evaluate_fn
+
+        vertices = np.array([[[0.0, 0.0, 0.0], [0.1, 0.0, 0.0], [0.0, 0.1, 0.0]]])
+        body = BodyMesh.from_arrays(vertices, name="test_body")
+        cache = {
+            "default_body": "test_body",
+            "bodies": {"test_body": {"body": body}},
+            "config": {
+                "raytracer": {
+                    "default_body_center": [0.0, 0.0, 1.0],
+                    "reflection_loss_per_order": 0.5,
+                },
+                "antenna": {"pole_height": 2.0},
+            },
+        }
+        fake_result = SimpleNamespace(
+            peak_sab=1.25,
+            sab=np.array([1.25], dtype=np.float32),
+        )
+
+        with (
+            patch(
+                "aegis.viewer.routes.compute._run_dosimetry",
+                return_value=(fake_result, None),
+            ),
+            patch(
+                "aegis.viewer.routes.compute._build_stats_response",
+                return_value={"peak_sab": 1.25},
+            ),
+        ):
+            evaluate_fn = _build_placement_evaluate_fn(
+                {
+                    "mode": "placement",
+                    "dosimetry_mode": "spatial",
+                    "fresnel": True,
+                },
+                app,
+                cache,
+                threading.RLock(),
+            )
+
+            result = evaluate_fn(np.array([1.0, 0.0, 1.0]))
+
+        assert result["peak_sab"] == 1.25
+        assert np.allclose(result["sab"], np.array([1.25], dtype=np.float32))
+        assert result["stats"]["peak_sab"] == 1.25
+
+
 class TestCancelEndpoint:
     def test_cancel_returns_json(self, client):
         resp = client.post("/api/optimize/cancel")

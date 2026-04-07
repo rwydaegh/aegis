@@ -873,6 +873,41 @@ class TestComputeRtExtended:
             )
         assert resp.status_code in (400, 501)
 
+    def test_rt_caches_transformed_body_for_export(self, viewer_app):
+        from aegis.paths import PropagationPaths
+        from aegis.viewer.server import _cache
+
+        base_body = _cache["body"]
+        fake_result = _mock_dosimetry_result(base_body.n_triangles)
+        paths = PropagationPaths.from_powers(
+            k_hat=np.array([[0.0, 0.0, -1.0]]),
+            power=np.array([1.0]),
+        )
+
+        with (
+            viewer_app.test_client() as c,
+            patch("aegis.viewer.routes.compute._validate_scene_path", return_value=True),
+            patch("aegis.viewer.modal_proxy.gpu_status", return_value={"warm": True}),
+            patch("aegis.viewer.modal_proxy._is_enabled", return_value=False),
+            patch("aegis.viewer.raytracer.compute_paths_differt", return_value=(paths, [])),
+            patch("aegis.viewer.routes.compute._run_dosimetry", return_value=(fake_result, None)),
+        ):
+            resp = c.post(
+                "/api/compute/rt",
+                json={
+                    "scene_path": "/tmp/fake_scene.xml",
+                    "antenna_pos": [5, 0, 1],
+                    "body_offset": [0.25, -0.1, 0.0],
+                    "body_rotation_y": 0.3,
+                },
+            )
+
+        assert resp.status_code == 200
+        exported_body = viewer_app.config["_last_dosimetry_body"]
+        assert exported_body is not base_body
+        assert exported_body.n_triangles == base_body.n_triangles
+        assert not np.allclose(exported_body.centroids, base_body.centroids)
+
 
 class TestComputeSionnaRtExtended:
     """Additional edge cases for Sionna RT."""

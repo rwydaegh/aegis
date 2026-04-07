@@ -1,0 +1,6 @@
+interface:
+  display_name: "Test Driven Development"
+  short_description: "Use when implementing any feature or bugfix, before writing implementation code"
+  default_prompt: "$test-driven-development "
+policy:
+  allow_implicit_invocation: false

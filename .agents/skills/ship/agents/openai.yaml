@@ -1,0 +1,6 @@
+interface:
+  display_name: "Ship"
+  short_description: "Full DevOps workflow - create issue, branch, commit, PR, and merge using gh CLI"
+  default_prompt: "$ship "
+policy:
+  allow_implicit_invocation: false

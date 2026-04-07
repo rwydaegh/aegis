@@ -31,7 +31,8 @@ def dbm_to_w(dbm: float) -> float:
 
 def w_to_dbm(w: float) -> float:
     """Convert watts to dBm."""
-    return 10.0 * np.log10(w) + 30.0
+    with np.errstate(divide="ignore", invalid="ignore"):
+        return 10.0 * np.log10(w) + 30.0
 
 
 class ExposureMode(StrEnum):

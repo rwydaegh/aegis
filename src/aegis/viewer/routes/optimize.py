@@ -58,6 +58,23 @@ def _encode_sab(sab: np.ndarray) -> str:
     return base64.b64encode(np.asarray(sab, dtype=np.float32).tobytes()).decode()
 
 
+def _parse_rt_config(params: dict, cache: dict) -> dict[str, Any]:
+    """Extract RT config for placement evaluation."""
+    rt = params.get("rt_config", {})
+    if not isinstance(rt, dict):
+        rt = {}
+    return {
+        "max_depth": rt.get("max_depth", params.get("max_order", 3)),
+        "method": rt.get("method", "exhaustive"),
+        "rays_per_source": rt.get("rays_per_source", 1_000_000),
+        "chunk_size": rt.get("chunk_size"),
+        "reflection_loss_per_order": rt.get(
+            "reflection_loss_per_order",
+            cache["config"]["raytracer"]["reflection_loss_per_order"],
+        ),
+    }
+
+
 def register(app: Flask, cache: dict, cache_lock) -> None:
     """Attach optimization routes to app."""
 
@@ -179,10 +196,187 @@ def _build_config(params: dict, app: Flask, cache: dict, cache_lock) -> dict:
         config["grid_spacing"] = params.get("grid_spacing", 2.0)
         config["constraint_axis"] = params.get("constraint_axis")
         config["constraint_value"] = params.get("constraint_value")
-        if "evaluate_fn" not in params:
-            raise ValueError("Placement mode requires RT integration (not yet available via API)")
+        config["evaluate_fn"] = _build_placement_evaluate_fn(
+            params,
+            app,
+            cache,
+            cache_lock,
+        )
 
     else:
         raise ValueError(f"Unknown mode: {mode!r}")
 
     return config
+
+
+def _build_placement_evaluate_fn(
+    params: dict,
+    app: Flask,
+    cache: dict,
+    cache_lock,
+):
+    """Build evaluate_fn closure for placement grid search.
+
+    Each call runs RT + dosimetry for a candidate antenna position and returns
+    {"peak_sab": float, "sab": array, "stats": dict}.
+    """
+    from aegis.viewer.compute import _transform_body_for_viewer
+    from aegis.viewer.routes.compute import (
+        _build_stats_response,
+        _parse_freq_and_tissue,
+        _parse_mode_or_level,
+        _run_dosimetry,
+        _stats_label,
+        _validate_scene_path,
+    )
+
+    body_name = params.get("body_name", cache.get("default_body"))
+    with cache_lock:
+        entry = cache.get("bodies", {}).get(body_name)
+    if entry is None:
+        raise ValueError(f"Body '{body_name}' not found. Load a body first.")
+    body = entry["body"]
+
+    tissue, _, err = _parse_freq_and_tissue(params)
+    if err:
+        raise ValueError("Invalid tissue/frequency parameters")
+    engine_params = {
+        "mode": params.get("dosimetry_mode"),
+        "level": params.get("level"),
+        "fresnel": params.get("fresnel"),
+        "polarisation": params.get("polarisation"),
+        "curvature": params.get("curvature"),
+        "diffraction": params.get("diffraction"),
+    }
+    engine_kw, err = _parse_mode_or_level(engine_params)
+    if err:
+        raise ValueError("Invalid mode/level parameters")
+
+    body_offset = np.array(params.get("body_offset", [0, 0, 0]), dtype=np.float64)
+    body_rotation_y = float(params.get("body_rotation_y", 0.0))
+    transformed_body = _transform_body_for_viewer(body, body_offset, body_rotation_y)
+
+    default_bc = np.array(cache["config"]["raytracer"]["default_body_center"], dtype=np.float64)
+    body_center = default_bc + body_offset
+
+    power_dbm = float(params.get("power_dbm", 60.0))
+    pole_height = float(cache["config"]["antenna"].get("pole_height", 2.0))
+
+    rt_cfg = _parse_rt_config(params, cache)
+    max_order = rt_cfg["max_depth"]
+    num_rays = rt_cfg["rays_per_source"]
+    method = rt_cfg["method"]
+    reflection_loss = rt_cfg["reflection_loss_per_order"]
+    chunk_size = rt_cfg["chunk_size"]
+
+    # Resolve RT scene once (not per eval)
+    scene_path = params.get("scene_path") or None
+    if scene_path and not _validate_scene_path(scene_path):
+        raise ValueError("Invalid scene path. Use /api/scenes to list available scenes.")
+
+    use_voxel_scene = False
+    use_env_mesh = False
+    rt_scene = None
+    with cache_lock:
+        has_voxels = cache.get("voxel_positions") is not None and len(cache.get("voxel_positions", [])) > 0
+        has_env = cache.get("env_mesh") is not None
+    if not scene_path:
+        if has_voxels:
+            use_voxel_scene = True
+        elif has_env:
+            use_env_mesh = True
+
+    if use_voxel_scene:
+        from aegis.viewer.raytracer import get_or_build_voxel_scene
+        from aegis.viewer.scene_data import extract_exterior, prepare_for_raytracing
+
+        with cache_lock:
+            vp = cache["voxel_positions"]
+            vs = cache.get("voxel_sizes")
+            vm = cache.get("voxel_materials")
+            cfg = cache.get("config", {})
+
+        z_up_pos, gc, dominant_size = prepare_for_raytracing(vp, vs)
+        ext_mask = extract_exterior(gc)
+        ext_pos = z_up_pos[ext_mask]
+        ext_grid = gc[ext_mask]
+        ext_mats = [vm[i] for i in np.nonzero(ext_mask)[0]] if vm is not None else None
+        material_colors = cfg.get("voxels", {}).get("material_colors")
+        rt_scene = get_or_build_voxel_scene(
+            ext_pos,
+            ext_grid,
+            voxel_size=dominant_size,
+            materials=ext_mats,
+            material_colors=material_colors,
+        )
+    elif use_env_mesh:
+        from aegis.environment.export import to_differt_scene
+
+        with cache_lock:
+            env_mesh = cache["env_mesh"]
+        rt_scene = to_differt_scene(env_mesh)
+
+    def evaluate_fn(pos: np.ndarray) -> dict:
+        from aegis.viewer.raytracer import (
+            compute_paths_differt,
+            isotropic_incident_power_density,
+        )
+
+        tx_pos = np.asarray(pos, dtype=np.float64).reshape(3).copy()
+        tx_pos[2] += pole_height
+        rt_kwargs = dict(
+            tx_pos=tx_pos,
+            rx_pos=body_center,
+            max_order=max_order,
+            freq_hz=tissue.freq_hz,
+            tx_power_dbm=power_dbm,
+            reflection_loss_per_order=reflection_loss,
+            method=method,
+            num_rays=num_rays,
+            chunk_size=chunk_size,
+        )
+        if rt_scene is not None:
+            paths, path_viz = compute_paths_differt(**rt_kwargs, scene=rt_scene)
+        elif scene_path:
+            paths, path_viz = compute_paths_differt(scene_path, **rt_kwargs)
+        else:
+            from aegis.paths import PropagationPaths
+
+            direction = body_center - tx_pos
+            dist = float(np.linalg.norm(direction))
+            k_hat = direction / dist if dist > 1e-12 else np.array([0.0, 0.0, -1.0], dtype=np.float64)
+            tx_power_w = 10 ** ((power_dbm - 30) / 10)
+            paths = PropagationPaths.from_powers(
+                k_hat=k_hat.reshape(1, 3),
+                power=np.array([isotropic_incident_power_density(tx_power_w, dist)], dtype=np.float64),
+            )
+            path_viz = [{"vertices": [tx_pos.tolist(), body_center.tolist()], "order": 0, "length": dist}]
+
+        result, run_err = _run_dosimetry(tissue, transformed_body, paths, engine_kw)
+        if run_err:
+            raise RuntimeError(f"Dosimetry failed at pos {pos}")
+
+        dist = float(np.linalg.norm(tx_pos - body_center))
+        extra = {
+            "S_inc": float(np.sum(paths.power)),
+            "distance_m": dist,
+            "n_rt_paths": paths.n_paths,
+            "path_viz": path_viz,
+        }
+        level_val, mode_val, corr_val = _stats_label(engine_kw)
+        stats = _build_stats_response(
+            result,
+            body,
+            tissue,
+            level_val or 0,
+            extra=extra,
+            mode=mode_val,
+            corrections=corr_val,
+        )
+        return {
+            "peak_sab": float(result.peak_sab),
+            "sab": result.sab,
+            "stats": stats,
+        }
+
+    return evaluate_fn

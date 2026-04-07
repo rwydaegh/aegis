@@ -1,0 +1,6 @@
+interface:
+  display_name: "Cloud"
+  short_description: "Use when launching, syncing, or troubleshooting the AEGIS viewer on TensorDock cloud GPU machine"
+  default_prompt: "$cloud "
+policy:
+  allow_implicit_invocation: false

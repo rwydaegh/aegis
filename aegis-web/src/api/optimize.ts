@@ -1,3 +1,5 @@
+import type { RtConfig } from '@/api/client'
+
 const BASE = ''
 
 export interface OptimizeRequest {
@@ -21,6 +23,19 @@ export interface OptimizeRequest {
   grid_spacing?: number
   constraint_axis?: string
   constraint_value?: number
+  body_name?: string
+  body_offset?: number[]
+  body_rotation_y?: number
+  power_dbm?: number
+  skin_model?: string
+  freq_hz?: number
+  dosimetry_mode?: string
+  fresnel?: boolean
+  polarisation?: boolean
+  curvature?: boolean
+  diffraction?: boolean
+  scene_path?: string
+  rt_config?: RtConfig
 }
 
 export interface SSEEvent {

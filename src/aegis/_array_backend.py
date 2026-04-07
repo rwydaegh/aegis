@@ -1,4 +1,4 @@
-"""Array backend shim: JAX when available, NumPy fallback.
+"""Array backend shim: explicit JAX opt-in, NumPy fallback.
 
 Usage in kernel files:
     from aegis._array_backend import xp, jit
@@ -12,18 +12,40 @@ Usage in kernel files:
 
 from __future__ import annotations
 
+import os
+
 import numpy as np
 
-try:
-    import jax
+_BACKEND = os.environ.get("AEGIS_ARRAY_BACKEND", "numpy").strip().lower()
 
-    jax.config.update("jax_enable_x64", True)
-    import jax.numpy as jnp
+if _BACKEND not in {"numpy", "jax", "auto"}:
+    raise ValueError(
+        "AEGIS_ARRAY_BACKEND must be one of 'numpy', 'jax', or 'auto', "
+        f"got {_BACKEND!r}"
+    )
 
-    JAX_AVAILABLE = True
-    xp = jnp
-    jit = jax.jit
-except ImportError:
+if _BACKEND in {"jax", "auto"}:
+    try:
+        import jax
+
+        jax.config.update("jax_enable_x64", True)
+        import jax.numpy as jnp
+
+        JAX_AVAILABLE = True
+        xp = jnp
+        jit = jax.jit
+    except ImportError:
+        if _BACKEND == "jax":
+            raise
+        JAX_AVAILABLE = False
+        xp = np
+
+        def jit(fn=None, **kwargs):
+            """No-op jit decorator when JAX is unavailable."""
+            if fn is None:
+                return lambda f: f
+            return fn
+else:
     JAX_AVAILABLE = False
     xp = np
 

@@ -1,0 +1,6 @@
+interface:
+  display_name: "Dispatching Parallel Agents"
+  short_description: "Use when facing 2+ independent tasks that can be worked on without shared state or sequential dependencies"
+  default_prompt: "$dispatching-parallel-agents "
+policy:
+  allow_implicit_invocation: false

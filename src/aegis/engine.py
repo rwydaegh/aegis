@@ -20,6 +20,8 @@ from aegis.geometry.mesh import BodyMesh
 from aegis.paths import PropagationPaths
 from aegis.result import DosimetryResult
 from aegis.tissue.dielectric import TissueModel
+from aegis.tissue.fresnel import T0 as fresnel_T0
+from aegis.tissue.fresnel import n_complex as fresnel_n_complex
 
 if TYPE_CHECKING:
     from aegis.precoder import Precoder
@@ -100,6 +102,17 @@ class DosimetryEngine:
         self.T0 = tissue.T0
         self.n_tilde = tissue.n_complex
         self.freq_hz = tissue.freq_hz
+
+    def _active_em_params(self, freq_hz: float | None) -> tuple[float, complex, float, float]:
+        """Resolve per-call EM parameters, honoring an optional frequency override."""
+        if freq_hz is None:
+            return self.freq_hz, self.n_tilde, self.T0, self.tissue.sigma
+        if freq_hz <= 0:
+            raise ValueError(f"freq_hz must be positive, got {freq_hz}")
+
+        active_n_tilde = fresnel_n_complex(self.tissue.eps_r, self.tissue.sigma, freq_hz)
+        active_T0 = fresnel_T0(active_n_tilde)
+        return float(freq_hz), active_n_tilde, active_T0, self.tissue.sigma
 
     @staticmethod
     def _body_cache_key(body: BodyMesh) -> int:
@@ -295,6 +308,8 @@ class DosimetryEngine:
         if body_mass is not None and body_mass <= 0:
             raise ValueError("body_mass must be positive when provided")
 
+        active_freq_hz, active_n_tilde, active_T0, active_sigma = self._active_em_params(freq_hz)
+
         # Mode-based path
         if mode is not None:
             return self._compute_mode(
@@ -318,7 +333,10 @@ class DosimetryEngine:
                 precoder=precoder,
                 h=h,
                 P_abs_max=P_abs_max,
-                freq_hz=freq_hz,
+                freq_hz=active_freq_hz,
+                n_tilde=active_n_tilde,
+                T0=active_T0,
+                sigma=active_sigma,
                 _timings=_timings,
             )
 
@@ -336,7 +354,9 @@ class DosimetryEngine:
                 P_abs_max=P_abs_max,
                 body_mass=body_mass,
                 spatial_averaging=spatial_averaging,
-                freq_hz=freq_hz,
+                freq_hz=active_freq_hz,
+                n_tilde=active_n_tilde,
+                sigma=active_sigma,
             )
 
         sab = self._dispatch(
@@ -351,6 +371,9 @@ class DosimetryEngine:
             D_dirs=D_dirs,
             q=q,
             curvature_H=curvature_H,
+            freq_hz=active_freq_hz,
+            n_tilde=active_n_tilde,
+            T0=active_T0,
         )
         sab = _to_numpy(sab)
         return self._build_result(
@@ -359,7 +382,7 @@ class DosimetryEngine:
             sab,
             level,
             body_mass=body_mass,
-            freq_hz=freq_hz,
+            freq_hz=active_freq_hz,
             spatial_averaging=spatial_averaging,
             _timings=_timings,
         )
@@ -401,6 +424,7 @@ class DosimetryEngine:
         polarisation: bool = False,
         diffraction: bool = False,
         curvature: bool = False,
+        freq_hz: float | None = None,
     ):
         """Return per-triangle S_ab as a raw array (JAX or NumPy).
 
@@ -415,6 +439,8 @@ class DosimetryEngine:
         if level is None and mode is None:
             level = 2
 
+        active_freq_hz, active_n_tilde, active_T0, active_sigma = self._active_em_params(freq_hz)
+
         # Mode-based path for spatial
         if mode is not None:
             if mode == "spatial":
@@ -424,9 +450,9 @@ class DosimetryEngine:
                     body.normals,
                     paths.k_hat,
                     paths.power,
-                    self.n_tilde,
-                    self.T0,
-                    self.freq_hz,
+                    active_n_tilde,
+                    active_T0,
+                    active_freq_hz,
                     fresnel=fresnel,
                     polarisation=polarisation,
                     q=q,
@@ -461,6 +487,9 @@ class DosimetryEngine:
                 D_dirs=D_dirs,
                 q=q,
                 curvature_H=curvature_H,
+                freq_hz=active_freq_hz,
+                n_tilde=active_n_tilde,
+                T0=active_T0,
             )
 
         # Coherent levels 7-8
@@ -468,7 +497,6 @@ class DosimetryEngine:
         if x is None and precoder is not None:
             x = precoder.x
 
-        sigma = self.tissue.sigma
         n_elements = paths.n_elements
 
         if level == 7:
@@ -484,9 +512,9 @@ class DosimetryEngine:
                 paths.psi,
                 paths.element_index,
                 x,
-                self.n_tilde,
-                sigma,
-                self.freq_hz,
+                active_n_tilde,
+                active_sigma,
+                active_freq_hz,
                 n_elements,
                 h=h,
             )
@@ -506,9 +534,9 @@ class DosimetryEngine:
                 paths.psi,
                 paths.element_index,
                 h,
-                self.n_tilde,
-                sigma,
-                self.freq_hz,
+                active_n_tilde,
+                active_sigma,
+                active_freq_hz,
                 n_elements,
                 P=P,
                 P_abs_max=P_abs_max,
@@ -541,6 +569,9 @@ class DosimetryEngine:
         h: np.ndarray | None = None,
         P_abs_max: float = DEFAULT_P_ABS_MAX,
         freq_hz: float | None = None,
+        n_tilde: complex | None = None,
+        T0: float | None = None,
+        sigma: float | None = None,
         _timings: dict | None = None,
     ) -> DosimetryResult:
         """Dispatch based on mode string with composable correction flags."""
@@ -588,9 +619,9 @@ class DosimetryEngine:
                 body.normals,
                 paths.k_hat,
                 paths.power,
-                self.n_tilde,
-                self.T0,
-                self.freq_hz,
+                n_tilde if n_tilde is not None else self.n_tilde,
+                T0 if T0 is not None else self.T0,
+                freq_hz if freq_hz is not None else self.freq_hz,
                 fresnel=fresnel,
                 polarisation=polarisation,
                 q=q,
@@ -615,6 +646,8 @@ class DosimetryEngine:
                 body_mass=body_mass,
                 spatial_averaging=spatial_averaging,
                 freq_hz=freq_hz,
+                n_tilde=n_tilde,
+                sigma=sigma,
                 mode=mode,
                 corrections=tuple(corrections),
             )
@@ -632,6 +665,9 @@ class DosimetryEngine:
                 D_dirs=D_dirs,
                 q=q,
                 curvature_H=curvature_H,
+                freq_hz=freq_hz,
+                n_tilde=n_tilde,
+                T0=T0,
             )
             sab = _to_numpy(sab)
 
@@ -659,13 +695,17 @@ class DosimetryEngine:
         body_mass: float | None = None,
         spatial_averaging: bool = True,
         freq_hz: float | None = None,
+        n_tilde: complex | None = None,
+        sigma: float | None = None,
         mode: str | None = None,
         corrections: tuple[str, ...] = (),
     ) -> DosimetryResult:
         """Dispatch coherent levels 7-8."""
-        sigma = self.tissue.sigma
         n_elements = paths.n_elements
         x_star = None
+        active_freq_hz = freq_hz if freq_hz is not None else self.freq_hz
+        active_n_tilde = n_tilde if n_tilde is not None else self.n_tilde
+        active_sigma = sigma if sigma is not None else self.tissue.sigma
 
         if level == 7:
             if precoder is None:
@@ -680,9 +720,9 @@ class DosimetryEngine:
                 paths.psi,
                 paths.element_index,
                 precoder.x,
-                self.n_tilde,
-                sigma,
-                self.freq_hz,
+                active_n_tilde,
+                active_sigma,
+                active_freq_hz,
                 n_elements,
                 h=h,
             )
@@ -700,9 +740,9 @@ class DosimetryEngine:
                 paths.psi,
                 paths.element_index,
                 h,
-                self.n_tilde,
-                sigma,
-                self.freq_hz,
+                active_n_tilde,
+                active_sigma,
+                active_freq_hz,
                 n_elements,
                 P=P,
                 P_abs_max=P_abs_max,
@@ -725,7 +765,7 @@ class DosimetryEngine:
             _to_numpy(paths.psi),
             np.asarray(paths.element_index),
             x_for_sinc,
-            self.freq_hz,
+            active_freq_hz,
         )
 
         return self._build_result(
@@ -734,7 +774,7 @@ class DosimetryEngine:
             sab,
             level,
             body_mass=body_mass,
-            freq_hz=freq_hz,
+            freq_hz=active_freq_hz,
             mode=mode,
             corrections=corrections,
             Q=Q,
@@ -758,15 +798,15 @@ class DosimetryEngine:
         elif level == 1:
             return self._level1(body, paths, **kwargs)
         elif level == 2:
-            return self._level2(body, paths)
+            return self._level2(body, paths, **kwargs)
         elif level == 3:
-            return self._level3(body, paths)
+            return self._level3(body, paths, **kwargs)
         elif level == 4:
-            return self._level4(body, paths, q=kwargs.get("q", 0.0))
+            return self._level4(body, paths, **kwargs)
         elif level == 5:
-            return self._level5(body, paths, curvature_H=kwargs.get("curvature_H"))
+            return self._level5(body, paths, **kwargs)
         elif level == 6:
-            return self._level6(body, paths, curvature_H=kwargs.get("curvature_H"))
+            return self._level6(body, paths, **kwargs)
         raise ValueError(f"Unknown level {level}")
 
     def _level0(self, body: BodyMesh, paths: PropagationPaths, **kwargs) -> np.ndarray:
@@ -774,6 +814,7 @@ class DosimetryEngine:
 
         A_ab = kwargs.get("A_ab")
         D_max = kwargs.get("D_max")
+        T0 = kwargs.get("T0", self.T0)
         if A_ab is None or D_max is None:
             raise ValueError("Level 0 requires A_ab and D_max")
         sab, _ = level0_bound(
@@ -781,7 +822,7 @@ class DosimetryEngine:
             A_ab,
             D_max,
             paths.power,
-            self.T0,
+            T0,
             body.n_triangles,
         )
         return sab
@@ -790,6 +831,7 @@ class DosimetryEngine:
         from aegis.kernels.level1_aggregate import level1_aggregate
 
         A_ab = kwargs.get("A_ab")
+        T0 = kwargs.get("T0", self.T0)
         if A_ab is None:
             raise ValueError("Level 1 requires A_ab")
         sab, _ = level1_aggregate(
@@ -797,7 +839,7 @@ class DosimetryEngine:
             A_ab,
             paths.k_hat,
             paths.power,
-            self.T0,
+            T0,
             body.n_triangles,
             sh_coeffs=kwargs.get("sh_coeffs"),
             sh_L=kwargs.get("sh_L", 4),
@@ -806,21 +848,22 @@ class DosimetryEngine:
         )
         return sab
 
-    def _level2(self, body: BodyMesh, paths: PropagationPaths) -> np.ndarray:
+    def _level2(self, body: BodyMesh, paths: PropagationPaths, **kwargs) -> np.ndarray:
         from aegis.kernels.level2_geometric import level2_geometric
 
-        return level2_geometric(body.normals, paths.k_hat, paths.power, self.T0)
+        return level2_geometric(body.normals, paths.k_hat, paths.power, kwargs.get("T0", self.T0))
 
-    def _level3(self, body: BodyMesh, paths: PropagationPaths) -> np.ndarray:
+    def _level3(self, body: BodyMesh, paths: PropagationPaths, **kwargs) -> np.ndarray:
         from aegis.kernels.level3_fresnel import level3_fresnel
 
-        return level3_fresnel(body.normals, paths.k_hat, paths.power, self.n_tilde)
+        return level3_fresnel(body.normals, paths.k_hat, paths.power, kwargs.get("n_tilde", self.n_tilde))
 
     def _level4(
         self,
         body: BodyMesh,
         paths: PropagationPaths,
         q: np.ndarray | float = 0.0,
+        **kwargs,
     ) -> np.ndarray:
         from aegis.kernels.level4_polarisation import level4_polarisation
 
@@ -828,7 +871,7 @@ class DosimetryEngine:
             body.normals,
             paths.k_hat,
             paths.power,
-            self.n_tilde,
+            kwargs.get("n_tilde", self.n_tilde),
             q=q,
         )
 
@@ -837,6 +880,7 @@ class DosimetryEngine:
         body: BodyMesh,
         paths: PropagationPaths,
         curvature_H: np.ndarray | None = None,
+        **kwargs,
     ) -> np.ndarray:
         from aegis.kernels.level5_curvature import level5_curvature
 
@@ -846,10 +890,10 @@ class DosimetryEngine:
             body.normals,
             paths.k_hat,
             paths.power,
-            self.n_tilde,
-            self.T0,
+            kwargs.get("n_tilde", self.n_tilde),
+            kwargs.get("T0", self.T0),
             curvature_H,
-            self.freq_hz,
+            kwargs.get("freq_hz", self.freq_hz),
         )
 
     def _level6(
@@ -857,6 +901,7 @@ class DosimetryEngine:
         body: BodyMesh,
         paths: PropagationPaths,
         curvature_H: np.ndarray | None = None,
+        **kwargs,
     ) -> np.ndarray:
         from aegis.kernels.level6_diffraction import level6_diffraction
 
@@ -866,10 +911,10 @@ class DosimetryEngine:
             body.normals,
             paths.k_hat,
             paths.power,
-            self.n_tilde,
-            self.T0,
+            kwargs.get("n_tilde", self.n_tilde),
+            kwargs.get("T0", self.T0),
             curvature_H,
-            self.freq_hz,
+            kwargs.get("freq_hz", self.freq_hz),
         )
 
     def sweep_levels(

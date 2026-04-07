@@ -212,6 +212,14 @@ class PropagationPaths:
         seed : int or None
             Random seed for reproducibility.
         """
+        if n_paths < 0:
+            raise ValueError(f"n_paths must be non-negative, got {n_paths}")
+        if n_paths == 0:
+            return cls.from_powers(
+                k_hat=np.empty((0, 3), dtype=np.float64),
+                power=np.empty(0, dtype=np.float64),
+            )
+
         rng = np.random.default_rng(seed)
         # Uniform on sphere via Gaussian normalization
         raw = rng.standard_normal((n_paths, 3))

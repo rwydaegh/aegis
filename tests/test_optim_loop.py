@@ -1,6 +1,7 @@
 """Tests for optimization loop dispatcher."""
 
 import threading
+from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -28,6 +29,35 @@ def test_run_mimo_peak():
     assert len(results) >= 2
     assert all("sab" in r for r in results if not r.get("done"))
     assert all("iter" in r for r in results)
+    assert results[-1].get("done") is True
+    assert results[-1].get("converged") is True or results[-1].get("reason") == "max_iters"
+
+
+def test_converged_result_is_marked_done():
+    from aegis.optim.loop import run_optimization
+
+    def fake_setup(**kwargs):
+        return {"iter": 0}
+
+    def fake_step(state):
+        next_state = {**state, "iter": 1}
+        return next_state, {"iter": 1, "converged": True, "sab": np.ones(1)}
+
+    with patch("aegis.optim.mimo_peak.setup", fake_setup), patch("aegis.optim.mimo_peak.step", fake_step):
+        results = list(
+            run_optimization(
+                {
+                    "mode": "mimo_peak",
+                    "G_tilde": np.zeros((1, 3, 1), dtype=np.complex128),
+                    "x_init": np.zeros(1, dtype=np.complex128),
+                },
+                cancel_event=threading.Event(),
+            ),
+        )
+
+    assert len(results) == 1
+    assert results[0]["converged"] is True
+    assert results[0]["done"] is True
 
 
 def test_cancellation():

@@ -1,0 +1,6 @@
+interface:
+  display_name: "Qa"
+  short_description: "Open the AEGIS viewer and investigate it for bugs"
+  default_prompt: "$qa "
+policy:
+  allow_implicit_invocation: false

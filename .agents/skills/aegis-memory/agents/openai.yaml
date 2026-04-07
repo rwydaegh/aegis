@@ -1,0 +1,6 @@
+interface:
+  display_name: "AEGIS Memory"
+  short_description: "Load the historical AEGIS Claude memory bank when long-lived project or Robin-specific context matters"
+  default_prompt: "$aegis-memory "
+policy:
+  allow_implicit_invocation: false

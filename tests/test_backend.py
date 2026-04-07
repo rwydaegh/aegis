@@ -1,5 +1,11 @@
 """Tests for the array backend shim."""
 
+from __future__ import annotations
+
+import os
+import subprocess
+import sys
+
 
 def test_backend_provides_xp():
     from aegis._array_backend import xp
@@ -14,6 +20,37 @@ def test_backend_reports_jax_available():
     from aegis._array_backend import JAX_AVAILABLE
 
     assert isinstance(JAX_AVAILABLE, bool)
+
+
+def test_backend_defaults_to_numpy_without_env_override():
+    env = os.environ.copy()
+    env.pop("AEGIS_ARRAY_BACKEND", None)
+    proc = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "from aegis._array_backend import JAX_AVAILABLE, xp; print(JAX_AVAILABLE); print(xp.__name__)",
+        ],
+        capture_output=True,
+        text=True,
+        env=env,
+        check=True,
+    )
+    lines = proc.stdout.strip().splitlines()
+    assert lines == ["False", "numpy"]
+
+
+def test_backend_rejects_invalid_override():
+    env = os.environ.copy()
+    env["AEGIS_ARRAY_BACKEND"] = "invalid-backend"
+    proc = subprocess.run(
+        [sys.executable, "-c", "import aegis._array_backend"],
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+    assert proc.returncode != 0
+    assert "AEGIS_ARRAY_BACKEND" in proc.stderr
 
 
 def test_jit_is_callable():

@@ -270,10 +270,20 @@ class TestFromSpherical:
 
 
 class TestUniformSphere:
+    def test_zero_paths_returns_empty(self):
+        paths = PropagationPaths.uniform_sphere(n_paths=0)
+        assert paths.n_paths == 0
+        assert paths.k_hat.shape == (0, 3)
+        assert paths.power.shape == (0,)
+
     def test_n_paths_1_works(self):
         paths = PropagationPaths.uniform_sphere(n_paths=1, total_power=2.0)
         assert paths.n_paths == 1
         assert paths.total_power == pytest.approx(2.0, rel=1e-12)
+
+    def test_negative_n_paths_raises(self):
+        with pytest.raises(ValueError, match="n_paths must be non-negative"):
+            PropagationPaths.uniform_sphere(n_paths=-1)
 
     def test_total_power_distributed_equally(self):
         total = 3.0

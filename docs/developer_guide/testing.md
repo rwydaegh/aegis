@@ -57,7 +57,7 @@ Slow tests may require:
 - `test_geometry.py` (slow cases): `thelonious.stl`
 - `test_engine.py::TestE2EThelonious`: `thelonious.stl`
 
-Data ships in `data/` in the repo. Override with `AEGIS_DATA_DIR` if needed.
+Data ships in `data/` in the repo. Override with `AEGIS_DATA_DIR` if needed. For local parity with CI and Docker builds, install Git LFS and run `git lfs pull` after cloning so any LFS-backed assets in `data/` are present before slow tests or image builds.
 
 ## Golden test values
 
