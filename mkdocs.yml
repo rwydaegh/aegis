@@ -81,6 +81,7 @@ nav:
     - Testing: developer_guide/testing.md
     - Development machine: developer_guide/cloud_machine.md
     - Agent workflow (Claude & Cursor): developer_guide/claude_code_workflow.md
+    - Phantom pipeline: developer_guide/phantom_pipeline.md
     - AI automation: developer_guide/ai_automation.md
   - Reference:
     - API reference: reference/api.md
