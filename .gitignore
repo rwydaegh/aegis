@@ -105,8 +105,9 @@ tests/frontend_smoke.md
 tools/.cloud-state.json
 .worktrees/
 
-# blosm Blender add-on source (reference only, not part of AEGIS)
+# Blender add-ons (local installs, not part of AEGIS)
 blosm/
+tools/mpfb2/
 
 # Roof visualization scripts (dev-only)
 scripts/*
