@@ -20,13 +20,9 @@ export default function LSPLegend() {
   const param = useSimulationStore(s => s.lspHeatmapParam)
   const data = useSimulationStore(s => s.lspHeatmapData)
   const range = useSimulationStore(s => s.lspHeatmapRange)
-  const stats = useSimulationStore(s => s.stats)
   const lspHeatmapLoading = useSimulationStore(s => s.lspHeatmapLoading)
 
-  // Only show when stochastic mode is active, heatmap is visible, and dosimetry legend is not competing
   if (pathSource !== 'stochastic' || !visible || !data) return null
-  // If dosimetry results exist, the dosimetry ColorLegend takes this position
-  if (stats) return null
 
   const [vmin, vmax] = range
   const meta = getLSPMeta(param)

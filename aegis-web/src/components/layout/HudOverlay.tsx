@@ -31,9 +31,11 @@ export default function HudOverlay() {
         <CompliancePanel />
       </div>
 
-      {/* Color legend - right edge, vertically centered (dosimetry or LSP, never both) */}
-      <ColorLegend />
-      <LSPLegend />
+      {/* Color legends - right edge, vertically centered, stacked */}
+      <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-auto flex flex-col gap-2">
+        <ColorLegend />
+        <LSPLegend />
+      </div>
 
       {/* Status bar - bottom center */}
       <div className="pointer-events-auto">

@@ -18,7 +18,6 @@ interface GradientBarProps {
 
 export default function GradientBar({ gradient, ticks, title, shimmer, footer }: GradientBarProps) {
   return (
-    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-auto">
       <div className={`bg-card/80 backdrop-blur-md rounded-lg border border-border px-3 py-2.5 ${shimmer ? 'shimmer-panel' : ''}`}>
         {/* Title row */}
         <div className="flex items-center justify-between gap-1.5 mb-2">
@@ -58,6 +57,5 @@ export default function GradientBar({ gradient, ticks, title, shimmer, footer }:
 
         {footer}
       </div>
-    </div>
   )
 }
