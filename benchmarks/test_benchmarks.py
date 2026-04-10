@@ -216,6 +216,79 @@ def test_averaging_matrix_precompute(benchmark: BenchmarkFixture, bench_mesh) ->
 
 
 # ---------------------------------------------------------------------------
+# Stochastic channel generation
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.benchmark(group="channel_non_sc")
+def test_channel_generate_non_sc(benchmark: BenchmarkFixture, bench_channel_preset) -> None:
+    from aegis.channel import generate_channel
+
+    params = bench_channel_preset["params"]
+    antenna_pos = np.array([10.0, 0.0, 2.0])
+    body_center = np.array([0.0, 0.0, 1.5])
+
+    def run():
+        return generate_channel(
+            params,
+            freq_ghz=28,
+            antenna_pos=antenna_pos,
+            body_center=body_center,
+            power_dbm=30,
+            seed=42,
+            overrides={"SC_lambda": 0},
+        )
+
+    run()
+    benchmark(run)
+
+
+@pytest.mark.benchmark(group="channel_sc")
+def test_channel_generate_sc(benchmark: BenchmarkFixture, bench_channel_preset) -> None:
+    from aegis.channel import generate_channel
+
+    params = bench_channel_preset["params"]
+    antenna_pos = np.array([10.0, 0.0, 2.0])
+    body_center = np.array([0.0, 0.0, 1.5])
+
+    def run():
+        return generate_channel(
+            params,
+            freq_ghz=28,
+            antenna_pos=antenna_pos,
+            body_center=body_center,
+            power_dbm=30,
+            seed=42,
+        )
+
+    run()
+    benchmark(run)
+
+
+@pytest.mark.benchmark(group="channel_sc_viz")
+def test_channel_generate_sc_viz(benchmark: BenchmarkFixture, bench_channel_preset) -> None:
+    from aegis.channel import generate_channel
+
+    params = bench_channel_preset["params"]
+    antenna_pos = np.array([10.0, 0.0, 2.0])
+    body_center = np.array([0.0, 0.0, 1.5])
+
+    def run():
+        return generate_channel(
+            params,
+            freq_ghz=28,
+            antenna_pos=antenna_pos,
+            body_center=body_center,
+            power_dbm=30,
+            seed=42,
+            viz_out={},
+        )
+
+    run()
+    benchmark(run)
+
+
+# ---------------------------------------------------------------------------
 # Analysis: exposure heatmap
 # ---------------------------------------------------------------------------
 
