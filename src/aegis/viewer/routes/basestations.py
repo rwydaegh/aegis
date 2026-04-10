@@ -10,6 +10,8 @@ import threading
 import numpy as np
 from flask import Flask, Response, jsonify, request
 
+from aegis.viewer.server import scoped_cache_get, scoped_cache_set
+
 logger = logging.getLogger(__name__)
 
 _OCTET_STREAM = "application/octet-stream"
@@ -219,18 +221,26 @@ def _handle_basestations_load(cache: dict, cache_lock: threading.RLock):
         logger.exception("Failed to load basestations")
         return jsonify({"error": f"Loading failed: {exc}"}), 500
 
-    # Store in cache
+    # Store in cache (session-scoped)
     with cache_lock:
-        cache["basestations"] = basestations
+        scoped_cache_set(cache, "basestations", basestations)
         if bbox and len(bbox) == 4:
-            cache["basestations_origin"] = (
-                (bbox[2] + bbox[3]) / 2,
-                (bbox[0] + bbox[1]) / 2,
+            scoped_cache_set(
+                cache,
+                "basestations_origin",
+                (
+                    (bbox[2] + bbox[3]) / 2,
+                    (bbox[0] + bbox[1]) / 2,
+                ),
             )
         elif "lat" in params and "lon" in params:
-            cache["basestations_origin"] = (
-                float(params["lat"]),
-                float(params["lon"]),
+            scoped_cache_set(
+                cache,
+                "basestations_origin",
+                (
+                    float(params["lat"]),
+                    float(params["lon"]),
+                ),
             )
 
     return jsonify(
@@ -258,8 +268,8 @@ def _handle_basestations_compute(cache: dict, cache_lock: threading.RLock):
     )
 
     with cache_lock:
-        basestations = cache.get("basestations", [])
-        origin = cache.get("basestations_origin")
+        basestations = scoped_cache_get(cache, "basestations", [])
+        origin = scoped_cache_get(cache, "basestations_origin")
         body = cache.get("body")
 
     if not basestations:
@@ -419,8 +429,8 @@ def _handle_basestations_compute_mimo(cache: dict, cache_lock: threading.RLock):
 
     # Validate index
     with cache_lock:
-        basestations = cache.get("basestations", [])
-        origin = cache.get("basestations_origin")
+        basestations = scoped_cache_get(cache, "basestations", [])
+        origin = scoped_cache_get(cache, "basestations_origin")
         body = cache.get("body")
         bodies_cache = cache.get("bodies", {})
 
@@ -613,7 +623,7 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
     def api_basestations_list():
         """List currently loaded base stations."""
         with cache_lock:
-            basestations = cache.get("basestations", [])
+            basestations = scoped_cache_get(cache, "basestations", [])
 
         return jsonify(
             {

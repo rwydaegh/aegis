@@ -8,6 +8,7 @@ import logging
 from flask import Flask, Response, jsonify, request
 
 from aegis.viewer.cache import EnvironmentCache
+from aegis.viewer.server import scoped_cache_get, scoped_cache_set
 
 logger = logging.getLogger(__name__)
 
@@ -90,8 +91,8 @@ def _handle_environment_osm(cache: dict, cache_lock) -> Response:
 
     binary, meta = mesh.to_binary()
     with cache_lock:
-        cache["env_mesh_osm"] = mesh
-        cache["env_mesh"] = mesh
+        scoped_cache_set(cache, "env_mesh_osm", mesh)
+        scoped_cache_set(cache, "env_mesh", mesh)
 
     # Persist to file-based cache
     _env_cache.put_binary("osm", lat, lon, radius, cache_opts, binary, meta)
@@ -149,8 +150,8 @@ def _handle_environment_3dtiles(cache: dict, cache_lock) -> Response:
 
     binary, meta = mesh.to_binary()
     with cache_lock:
-        cache["env_mesh_tiles"] = mesh
-        cache["env_mesh"] = mesh
+        scoped_cache_set(cache, "env_mesh_tiles", mesh)
+        scoped_cache_set(cache, "env_mesh", mesh)
 
     resp = Response(binary, mimetype="application/octet-stream")
     resp.headers["X-Meta"] = json.dumps(meta)
@@ -280,8 +281,8 @@ def _handle_environment_from_voxels(cache: dict, cache_lock) -> Response:
 
     binary, meta = mesh.to_binary()
     with cache_lock:
-        cache["env_mesh_voxels"] = mesh
-        cache["env_mesh"] = mesh
+        scoped_cache_set(cache, "env_mesh_voxels", mesh)
+        scoped_cache_set(cache, "env_mesh", mesh)
 
     resp = Response(binary, mimetype="application/octet-stream")
     resp.headers["X-Meta"] = json.dumps(meta)
@@ -305,8 +306,10 @@ def _handle_environment_combine(cache: dict, cache_lock) -> Response:
     meshes = []
     for src in sources:
         key = source_map.get(src)
-        if key and cache.get(key) is not None:
-            meshes.append(cache[key])
+        if key:
+            m = scoped_cache_get(cache, key)
+            if m is not None:
+                meshes.append(m)
 
     if not meshes:
         return jsonify({"error": "No cached environment meshes to combine"}), 404
@@ -321,7 +324,7 @@ def _handle_environment_combine(cache: dict, cache_lock) -> Response:
 
     binary, meta = mesh.to_binary()
     with cache_lock:
-        cache["env_mesh"] = mesh
+        scoped_cache_set(cache, "env_mesh", mesh)
 
     resp = Response(binary, mimetype="application/octet-stream")
     resp.headers["X-Meta"] = json.dumps(meta)
@@ -331,7 +334,7 @@ def _handle_environment_combine(cache: dict, cache_lock) -> Response:
 
 def _handle_environment_mesh(cache: dict) -> Response:
     """Implementation for GET /api/environment/mesh."""
-    mesh = cache.get("env_mesh")
+    mesh = scoped_cache_get(cache, "env_mesh")
     if mesh is None:
         return jsonify({"error": "No environment mesh cached"}), 404
 
@@ -347,7 +350,7 @@ def _handle_environment_export_scene(cache: dict) -> Response:
     import tempfile
     from pathlib import Path
 
-    mesh = cache.get("env_mesh")
+    mesh = scoped_cache_get(cache, "env_mesh")
     if mesh is None:
         return jsonify({"error": "No environment mesh cached"}), 404
 
@@ -397,8 +400,8 @@ def _handle_environment_geojson(cache: dict, cache_lock) -> Response:
 
     binary, meta = mesh.to_binary()
     with cache_lock:
-        cache["env_mesh_osm"] = mesh
-        cache["env_mesh"] = mesh
+        scoped_cache_set(cache, "env_mesh_osm", mesh)
+        scoped_cache_set(cache, "env_mesh", mesh)
 
     resp = Response(binary, mimetype="application/octet-stream")
     resp.headers["X-Meta"] = json.dumps(meta)

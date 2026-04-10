@@ -19,6 +19,7 @@ def mimo_app():
 
     app = Flask(__name__)
     app.config["TESTING"] = True
+    app.secret_key = "test"
 
     cache = {
         "config": DEFAULTS,

@@ -549,7 +549,9 @@ class TestExportDosimetryCsvRoute:
         assert "No dosimetry result" in resp.get_json()["error"]
 
     def test_csv_export_after_compute(self, viewer_app):
-        """Inject a mock result into app.config, verify CSV export."""
+        """Inject a mock result into session cache, verify CSV export."""
+        from aegis.viewer.server import _cache, _cache_lock
+
         n_tri = 5
         result = _mock_dosimetry_result(n_tri)
 
@@ -559,11 +561,16 @@ class TestExportDosimetryCsvRoute:
         body.normals = np.tile([0, 0, 1.0], (n_tri, 1))
         body.areas = np.full(n_tri, 1e-4)
 
-        viewer_app.config["_last_dosimetry_result"] = result
-        viewer_app.config["_last_dosimetry_body"] = body
-
         with viewer_app.test_client() as c:
+            with c.session_transaction() as sess:
+                sess["session_id"] = "test-session"
+            with _cache_lock:
+                _cache["test-session:_last_dosimetry_result"] = result
+                _cache["test-session:_last_dosimetry_body"] = body
             resp = c.get("/api/export/dosimetry-csv")
+            with _cache_lock:
+                _cache.pop("test-session:_last_dosimetry_result", None)
+                _cache.pop("test-session:_last_dosimetry_body", None)
         assert resp.status_code == 200
         assert "text/csv" in resp.content_type
         assert "attachment" in resp.headers.get("Content-Disposition", "")
@@ -576,10 +583,6 @@ class TestExportDosimetryCsvRoute:
         assert "sab_w_m2" in header
         # One header + n_tri data rows
         assert len(lines) == n_tri + 1
-
-        # Clean up
-        viewer_app.config.pop("_last_dosimetry_result", None)
-        viewer_app.config.pop("_last_dosimetry_body", None)
 
 
 # ---------------------------------------------------------------------------
@@ -819,6 +822,8 @@ class TestExportDosimetryCsvExtended:
 
     def test_csv_contains_all_optional_columns(self, viewer_app):
         """When sinc and sab_1cm2 are present, CSV should include them."""
+        from aegis.viewer.server import _cache, _cache_lock
+
         n_tri = 5
         result = _mock_dosimetry_result(n_tri)
         # Ensure sab_1cm2_averaged is populated
@@ -830,20 +835,22 @@ class TestExportDosimetryCsvExtended:
         body.normals = np.tile([0, 0, 1.0], (n_tri, 1))
         body.areas = np.full(n_tri, 1e-4)
 
-        viewer_app.config["_last_dosimetry_result"] = result
-        viewer_app.config["_last_dosimetry_body"] = body
-
         with viewer_app.test_client() as c:
+            with c.session_transaction() as sess:
+                sess["session_id"] = "test-session"
+            with _cache_lock:
+                _cache["test-session:_last_dosimetry_result"] = result
+                _cache["test-session:_last_dosimetry_body"] = body
             resp = c.get("/api/export/dosimetry-csv")
+            with _cache_lock:
+                _cache.pop("test-session:_last_dosimetry_result", None)
+                _cache.pop("test-session:_last_dosimetry_body", None)
         assert resp.status_code == 200
         text = resp.data.decode("utf-8")
         header = text.split("\n")[0]
         assert "sab_4cm2_w_m2" in header
         assert "sinc_w_m2" in header
         assert "sab_1cm2_w_m2" in header
-
-        viewer_app.config.pop("_last_dosimetry_result", None)
-        viewer_app.config.pop("_last_dosimetry_body", None)
 
 
 class TestComputeRtExtended:
@@ -875,7 +882,7 @@ class TestComputeRtExtended:
 
     def test_rt_caches_transformed_body_for_export(self, viewer_app):
         from aegis.paths import PropagationPaths
-        from aegis.viewer.server import _cache
+        from aegis.viewer.server import _cache, _cache_lock
 
         base_body = _cache["body"]
         fake_result = _mock_dosimetry_result(base_body.n_triangles)
@@ -892,6 +899,8 @@ class TestComputeRtExtended:
             patch("aegis.viewer.raytracer.compute_paths_differt", return_value=(paths, [])),
             patch("aegis.viewer.routes.compute._run_dosimetry", return_value=(fake_result, None)),
         ):
+            with c.session_transaction() as sess:
+                sess["session_id"] = "test-session"
             resp = c.post(
                 "/api/compute/rt",
                 json={
@@ -903,7 +912,8 @@ class TestComputeRtExtended:
             )
 
         assert resp.status_code == 200
-        exported_body = viewer_app.config["_last_dosimetry_body"]
+        with _cache_lock:
+            exported_body = _cache["test-session:_last_dosimetry_body"]
         assert exported_body is not base_body
         assert exported_body.n_triangles == base_body.n_triangles
         assert not np.allclose(exported_body.centroids, base_body.centroids)
@@ -1014,6 +1024,8 @@ class TestExportDosimetryJsonRoute:
 
     def test_json_export_after_compute(self, viewer_app):
         """Inject a mock result, verify JSON export structure."""
+        from aegis.viewer.server import _cache, _cache_lock
+
         n_tri = 5
         result = _mock_dosimetry_result(n_tri)
         body = MagicMock()
@@ -1023,12 +1035,18 @@ class TestExportDosimetryJsonRoute:
         body.normals = np.tile([0, 0, 1.0], (n_tri, 1))
         body.areas = np.full(n_tri, 1e-4)
 
-        viewer_app.config["_last_dosimetry_result"] = result
-        viewer_app.config["_last_dosimetry_body"] = body
-        viewer_app.config["_last_dosimetry_stats"] = None
-
         with viewer_app.test_client() as c:
+            with c.session_transaction() as sess:
+                sess["session_id"] = "test-session"
+            with _cache_lock:
+                _cache["test-session:_last_dosimetry_result"] = result
+                _cache["test-session:_last_dosimetry_body"] = body
+                _cache["test-session:_last_dosimetry_stats"] = None
             resp = c.get("/api/export/dosimetry-json")
+            with _cache_lock:
+                _cache.pop("test-session:_last_dosimetry_result", None)
+                _cache.pop("test-session:_last_dosimetry_body", None)
+                _cache.pop("test-session:_last_dosimetry_stats", None)
         assert resp.status_code == 200
         assert "application/json" in resp.content_type
         assert "attachment" in resp.headers.get("Content-Disposition", "")
@@ -1044,12 +1062,10 @@ class TestExportDosimetryJsonRoute:
         assert "sab_4cm2" in data
         assert "sinc" in data
 
-        viewer_app.config.pop("_last_dosimetry_result", None)
-        viewer_app.config.pop("_last_dosimetry_body", None)
-        viewer_app.config.pop("_last_dosimetry_stats", None)
-
     def test_json_export_includes_stats(self, viewer_app):
         """Stats dict should be included but without 'arrays' or 'path_viz' keys."""
+        from aegis.viewer.server import _cache, _cache_lock
+
         n_tri = 3
         result = _mock_dosimetry_result(n_tri)
         body = MagicMock()
@@ -1066,24 +1082,28 @@ class TestExportDosimetryJsonRoute:
             "path_viz": {"also_excluded": True},
         }
 
-        viewer_app.config["_last_dosimetry_result"] = result
-        viewer_app.config["_last_dosimetry_body"] = body
-        viewer_app.config["_last_dosimetry_stats"] = stats
-
         with viewer_app.test_client() as c:
+            with c.session_transaction() as sess:
+                sess["session_id"] = "test-session"
+            with _cache_lock:
+                _cache["test-session:_last_dosimetry_result"] = result
+                _cache["test-session:_last_dosimetry_body"] = body
+                _cache["test-session:_last_dosimetry_stats"] = stats
             resp = c.get("/api/export/dosimetry-json")
+            with _cache_lock:
+                _cache.pop("test-session:_last_dosimetry_result", None)
+                _cache.pop("test-session:_last_dosimetry_body", None)
+                _cache.pop("test-session:_last_dosimetry_stats", None)
         data = json.loads(resp.data)
         assert "stats" in data
         assert "peak_sab" in data["stats"]
         assert "arrays" not in data["stats"]
         assert "path_viz" not in data["stats"]
 
-        viewer_app.config.pop("_last_dosimetry_result", None)
-        viewer_app.config.pop("_last_dosimetry_body", None)
-        viewer_app.config.pop("_last_dosimetry_stats", None)
-
     def test_json_export_optional_arrays_absent(self, viewer_app):
         """Optional arrays that are None should not appear in JSON."""
+        from aegis.viewer.server import _cache, _cache_lock
+
         n_tri = 3
         result = SimpleNamespace(
             sab=np.array([1.0, 2.0, 3.0]),
@@ -1104,22 +1124,24 @@ class TestExportDosimetryJsonRoute:
         body.normals = np.tile([0, 0, 1.0], (n_tri, 1))
         body.areas = np.full(n_tri, 1e-4)
 
-        viewer_app.config["_last_dosimetry_result"] = result
-        viewer_app.config["_last_dosimetry_body"] = body
-        viewer_app.config["_last_dosimetry_stats"] = None
-
         with viewer_app.test_client() as c:
+            with c.session_transaction() as sess:
+                sess["session_id"] = "test-session"
+            with _cache_lock:
+                _cache["test-session:_last_dosimetry_result"] = result
+                _cache["test-session:_last_dosimetry_body"] = body
+                _cache["test-session:_last_dosimetry_stats"] = None
             resp = c.get("/api/export/dosimetry-json")
+            with _cache_lock:
+                _cache.pop("test-session:_last_dosimetry_result", None)
+                _cache.pop("test-session:_last_dosimetry_body", None)
+                _cache.pop("test-session:_last_dosimetry_stats", None)
         data = json.loads(resp.data)
         assert "sab" in data
         assert "sab_4cm2" not in data
         assert "sinc" not in data
         assert "sinc_4cm2" not in data
         assert "sab_1cm2" not in data
-
-        viewer_app.config.pop("_last_dosimetry_result", None)
-        viewer_app.config.pop("_last_dosimetry_body", None)
-        viewer_app.config.pop("_last_dosimetry_stats", None)
 
 
 # ---------------------------------------------------------------------------
@@ -1138,6 +1160,8 @@ class TestExportDosimetryNpzRoute:
         """Inject a mock result, verify NPZ export contains expected arrays."""
         import io
 
+        from aegis.viewer.server import _cache, _cache_lock
+
         n_tri = 5
         result = _mock_dosimetry_result(n_tri)
         body = MagicMock()
@@ -1146,11 +1170,16 @@ class TestExportDosimetryNpzRoute:
         body.normals = np.tile([0, 0, 1.0], (n_tri, 1))
         body.areas = np.full(n_tri, 1e-4)
 
-        viewer_app.config["_last_dosimetry_result"] = result
-        viewer_app.config["_last_dosimetry_body"] = body
-
         with viewer_app.test_client() as c:
+            with c.session_transaction() as sess:
+                sess["session_id"] = "test-session"
+            with _cache_lock:
+                _cache["test-session:_last_dosimetry_result"] = result
+                _cache["test-session:_last_dosimetry_body"] = body
             resp = c.get("/api/export/dosimetry-npz")
+            with _cache_lock:
+                _cache.pop("test-session:_last_dosimetry_result", None)
+                _cache.pop("test-session:_last_dosimetry_body", None)
         assert resp.status_code == 200
         assert "application/octet-stream" in resp.content_type
         assert "attachment" in resp.headers.get("Content-Disposition", "")
@@ -1167,12 +1196,11 @@ class TestExportDosimetryNpzRoute:
         assert "sab_4cm2" in npz
         assert "sinc" in npz
 
-        viewer_app.config.pop("_last_dosimetry_result", None)
-        viewer_app.config.pop("_last_dosimetry_body", None)
-
     def test_npz_export_optional_arrays_absent(self, viewer_app):
         """Optional arrays that are None should not appear in NPZ."""
         import io
+
+        from aegis.viewer.server import _cache, _cache_lock
 
         n_tri = 3
         result = SimpleNamespace(
@@ -1193,17 +1221,19 @@ class TestExportDosimetryNpzRoute:
         body.normals = np.tile([0, 0, 1.0], (n_tri, 1))
         body.areas = np.full(n_tri, 1e-4)
 
-        viewer_app.config["_last_dosimetry_result"] = result
-        viewer_app.config["_last_dosimetry_body"] = body
-
         with viewer_app.test_client() as c:
+            with c.session_transaction() as sess:
+                sess["session_id"] = "test-session"
+            with _cache_lock:
+                _cache["test-session:_last_dosimetry_result"] = result
+                _cache["test-session:_last_dosimetry_body"] = body
             resp = c.get("/api/export/dosimetry-npz")
+            with _cache_lock:
+                _cache.pop("test-session:_last_dosimetry_result", None)
+                _cache.pop("test-session:_last_dosimetry_body", None)
         npz = np.load(io.BytesIO(resp.data))
         assert "sab" in npz
         assert "sab_4cm2" not in npz
         assert "sinc" not in npz
         assert "sinc_4cm2" not in npz
         assert "sab_1cm2" not in npz
-
-        viewer_app.config.pop("_last_dosimetry_result", None)
-        viewer_app.config.pop("_last_dosimetry_body", None)

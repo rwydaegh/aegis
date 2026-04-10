@@ -217,14 +217,26 @@ class TestClearCacheRoute:
         with _cache_lock:
             _cache["voxel_binary"] = b"\x00"
             _cache["voxel_meta"] = {"test": True}
-            _cache["mimo_scene"] = "dummy"
 
         with app.test_client() as c:
+            # Make a request that triggers _sid() to create a session_id
+            c.post("/api/clear-cache")
+            # Now read back the session_id that was assigned
+            with c.session_transaction() as sess:
+                sid = sess.get("session_id")
+            assert sid is not None, "session_id should have been created by _sid()"
+
+            # Re-inject data using the real session id, then clear again
+            with _cache_lock:
+                _cache[f"{sid}:mimo_scene"] = "dummy"
             c.post("/api/clear-cache")
 
+            # Session-scoped entries cleared
+            assert _cache.get(f"{sid}:mimo_scene") is None
+
+        # Shared entries cleared
         assert _cache.get("voxel_binary") is None
         assert _cache.get("voxel_meta") is None
-        assert _cache.get("mimo_scene") is None
 
 
 # ---------------------------------------------------------------------------

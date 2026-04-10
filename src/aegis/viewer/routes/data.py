@@ -9,6 +9,8 @@ from pathlib import Path
 
 from flask import Flask, Response, abort, jsonify, render_template, request, send_file
 
+from aegis.viewer.server import scoped_cache_get
+
 
 def _handle_index(cache):
     """Implementation for /."""
@@ -132,6 +134,9 @@ def _handle_voxels(cache):
 
 def _handle_clear_cache(app, cache, cache_lock):
     """Implementation for /api/clear-cache."""
+    from aegis.viewer.server import scoped_cache_clear_session
+
+    # Clear shared (non-session-scoped) voxel/tile data
     with cache_lock:
         for key in (
             "voxel_positions",
@@ -142,16 +147,10 @@ def _handle_clear_cache(app, cache, cache_lock):
             "body_placement",
             "tiles_dir",
             "voxel_json_path",
-            "mimo_scene",
-            "mimo_summary",
-            "mimo_results_binary",
-            "mimo_results_stats",
-            "env_mesh",
-            "env_mesh_osm",
-            "env_mesh_tiles",
-            "env_mesh_voxels",
         ):
             cache.pop(key, None)
+        # Clear all session-scoped cache entries for this user
+        scoped_cache_clear_session(cache)
     try:
         from aegis.viewer.raytracer import _scene_cache, clear_voxel_scene_cache
 
@@ -159,11 +158,6 @@ def _handle_clear_cache(app, cache, cache_lock):
         _scene_cache.clear()
     except ImportError:
         pass
-    app.config.pop("_last_compliance_result", None)
-    app.config.pop("_last_dosimetry_result", None)
-    app.config.pop("_last_dosimetry_body", None)
-    app.config.pop("_last_dosimetry_stats", None)
-    app.config.pop("_last_rt_paths", None)
     return jsonify({"ok": True})
 
 
@@ -224,7 +218,7 @@ def _handle_config(cache):
     levels = [lv["value"] for lv in cfg["dosimetry"]["fidelity_levels"]]
 
     has_voxels = cache.get("voxel_binary") is not None
-    has_env_mesh = cache.get("env_mesh") is not None
+    has_env_mesh = scoped_cache_get(cache, "env_mesh") is not None
     tiles_dir = cache.get("tiles_dir")
     n_tiles = 0
     if tiles_dir:
