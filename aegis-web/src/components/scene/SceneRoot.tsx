@@ -365,8 +365,8 @@ export default function SceneRoot() {
   const sceneContent = (
     <>
       {!isCesiumMode && <color attach="background" args={[config.scene.background_color ?? '#0a0a0f']} />}
-      <SceneLighting />
-      <ClickPlane />
+      {!isCesiumMode && <SceneLighting />}
+      {!isCesiumMode && <ClickPlane />}
       {(envSource === 'none' || envSource === 'voxels') && (
         <>
           <VoxelField />
@@ -376,7 +376,7 @@ export default function SceneRoot() {
         </>
       )}
       {envSource === 'osm' && <EnvironmentOSM />}
-      {mimoEnabled ? (
+      {!isCesiumMode && (mimoEnabled ? (
         <MIMOScene bodyMeshVisible={bodyMeshVisible} />
       ) : (
         <>
@@ -384,13 +384,13 @@ export default function SceneRoot() {
           <Antenna />
           <DistanceLine />
         </>
-      )}
-      <RayPaths />
+      ))}
+      {!isCesiumMode && <RayPaths />}
       <GroundPlane />
       <SceneGrid />
-      <EnvironmentTerrain />
-      <BaseStationMarkers />
-      <LSPHeatmap />
+      {!isCesiumMode && <EnvironmentTerrain />}
+      {!isCesiumMode && <BaseStationMarkers />}
+      {!isCesiumMode && <LSPHeatmap />}
       <DosimetryController />
       <MIMODosimetryController />
       <MIMOKeyboardController />
