@@ -108,6 +108,22 @@ def _handle_basestations_load(cache: dict, cache_lock: threading.RLock):
             return jsonify({"error": f"Geocoding failed: {e}"}), 502
         params["lat"] = lat
         params["lon"] = lon
+    elif "lat" in params and "lon" in params and not params.get("country"):
+        # Reverse-geocode to determine country when only lat/lon provided
+        try:
+            from geopy.exc import GeopyError
+            from geopy.geocoders import Nominatim
+
+            geolocator = Nominatim(user_agent="aegis-viewer", timeout=10)
+            result = geolocator.reverse(
+                (float(params["lat"]), float(params["lon"])),
+                addressdetails=True,
+                language="en",
+            )
+            if result:
+                address = result.raw.get("address", {})
+        except (GeopyError, Exception) as e:
+            logger.warning("Reverse geocoding failed for (%s, %s): %s", params["lat"], params["lon"], e)
 
     # Build bbox from lat/lon/radius or use explicit bbox
     bbox = params.get("bbox")
