@@ -21,6 +21,8 @@ def app():
     from aegis.viewer.routes.optimize import register
 
     register(app, cache, cache_lock)
+    app._optimize_cache = cache
+    app._optimize_cache_lock = cache_lock
     return app
 
 
@@ -88,12 +90,19 @@ class TestTiltPowerMode:
         mock_result = SimpleNamespace(_paths=paths)
         mock_body = SimpleNamespace(normals=np.array([[0.0, 0.0, 1.0]]))
 
-        # Store in app.config (where compute route actually puts them)
-        app.config["_last_dosimetry_result"] = mock_result
-        app.config["_last_dosimetry_body"] = mock_body
-        app.config["_last_rt_paths"] = paths
-
         client = app.test_client()
+        # Establish a session and inject session-scoped cache data
+        with client.session_transaction() as sess:
+            sess["session_id"] = "test-session"
+
+        # The optimize route reads from the cache dict passed at register time;
+        # retrieve it via the closure (the app fixture passes an empty dict).
+        # We need to inject into the same cache dict the route uses.
+        cache = app._optimize_cache
+        cache["test-session:_last_dosimetry_result"] = mock_result
+        cache["test-session:_last_dosimetry_body"] = mock_body
+        cache["test-session:_last_rt_paths"] = paths
+
         resp = client.post(
             "/api/optimize",
             json={
@@ -203,7 +212,12 @@ class TestPlacementMode:
                 "aegis.viewer.routes.compute._build_stats_response",
                 return_value={"peak_sab": 1.25},
             ),
+            app.test_request_context(),
         ):
+            from flask import session as _sess
+
+            _sess["session_id"] = "test-session"
+
             evaluate_fn = _build_placement_evaluate_fn(
                 {
                     "mode": "placement",

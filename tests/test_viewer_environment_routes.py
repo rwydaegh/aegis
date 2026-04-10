@@ -97,10 +97,12 @@ class TestEnvironmentMesh:
             source="test",
         )
 
-        with _cache_lock:
-            _cache["env_mesh"] = mesh
-
         with app.test_client() as c:
+            with c.session_transaction() as sess:
+                sess["session_id"] = "test-session"
+            with _cache_lock:
+                _cache["test-session:env_mesh"] = mesh
+
             resp = c.get("/api/environment/mesh")
             assert resp.status_code == 200
             assert resp.content_type == "application/octet-stream"
@@ -108,8 +110,8 @@ class TestEnvironmentMesh:
             meta = json.loads(resp.headers["X-Meta"])
             assert "n_triangles" in meta
 
-        with _cache_lock:
-            _cache.pop("env_mesh", None)
+            with _cache_lock:
+                _cache.pop("test-session:env_mesh", None)
 
 
 # ---------------------------------------------------------------------------
@@ -268,6 +270,8 @@ class TestEnvironmentFromVoxels:
             _cache["voxel_sizes"] = sizes
 
         with app.test_client() as c:
+            with c.session_transaction() as sess:
+                sess["session_id"] = "test-session"
             resp = c.post("/api/environment/from-voxels", json={"lat": 51.05, "lon": 3.72})
             assert resp.status_code == 200
             assert resp.content_type == "application/octet-stream"
@@ -279,8 +283,8 @@ class TestEnvironmentFromVoxels:
             _cache.pop("voxel_positions", None)
             _cache.pop("voxel_materials", None)
             _cache.pop("voxel_sizes", None)
-            _cache.pop("env_mesh_voxels", None)
-            _cache.pop("env_mesh", None)
+            _cache.pop("test-session:env_mesh_voxels", None)
+            _cache.pop("test-session:env_mesh", None)
 
 
 # ---------------------------------------------------------------------------
@@ -313,17 +317,23 @@ class TestEnvironmentCombine:
             origin_lon=3.72,
             source="osm",
         )
-        with _cache_lock:
-            _cache["env_mesh_osm"] = mesh
 
         with app.test_client() as c:
+            # Trigger session creation
+            c.post("/api/environment/combine", json={})
+            with c.session_transaction() as sess:
+                sid = sess.get("session_id")
+            assert sid is not None
+            with _cache_lock:
+                _cache[f"{sid}:env_mesh_osm"] = mesh
+
             resp = c.post("/api/environment/combine", json={"sources": ["osm"]})
             assert resp.status_code == 200
             assert resp.content_type == "application/octet-stream"
 
-        with _cache_lock:
-            _cache.pop("env_mesh_osm", None)
-            _cache.pop("env_mesh", None)
+            with _cache_lock:
+                _cache.pop(f"{sid}:env_mesh_osm", None)
+                _cache.pop(f"{sid}:env_mesh", None)
 
 
 # ---------------------------------------------------------------------------
@@ -359,10 +369,12 @@ class TestEnvironmentExportScene:
     def test_no_mesh_returns_404(self, app):
         from aegis.viewer.server import _cache, _cache_lock
 
-        with _cache_lock:
-            _cache.pop("env_mesh", None)
-
         with app.test_client() as c:
+            with c.session_transaction() as sess:
+                sess["session_id"] = "test-session"
+            with _cache_lock:
+                _cache.pop("test-session:env_mesh", None)
+
             resp = c.post("/api/environment/export-scene", json={})
             assert resp.status_code == 404
 
@@ -384,16 +396,19 @@ class TestEnvironmentExportScene:
             origin_lon=3.72,
             source="test",
         )
-        with _cache_lock:
-            _cache["env_mesh"] = mesh
 
         with app.test_client() as c:
+            with c.session_transaction() as sess:
+                sess["session_id"] = "test-session"
+            with _cache_lock:
+                _cache["test-session:env_mesh"] = mesh
+
             resp = c.post("/api/environment/export-scene", json={"format": "obj"})
             assert resp.status_code == 400
             assert "Unknown format" in resp.get_json()["error"]
 
-        with _cache_lock:
-            _cache.pop("env_mesh", None)
+            with _cache_lock:
+                _cache.pop("test-session:env_mesh", None)
 
 
 # ---------------------------------------------------------------------------
@@ -445,9 +460,11 @@ class TestTerrainElevation:
         from aegis.viewer.server import _cache
 
         with app.test_client() as c:
+            with c.session_transaction() as sess:
+                sess["session_id"] = "test-session"
             c.post("/api/terrain/elevation", json={"lat": 1.0, "lon": 2.0})
 
-        cached = _cache.get("terrain_mesh")
+        cached = _cache.get("test-session:terrain_mesh")
         assert cached is not None
         assert "vertices" in cached
         assert "triangles" in cached

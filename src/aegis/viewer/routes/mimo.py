@@ -15,6 +15,7 @@ from aegis.mimo.compute import compute_mimo_scene_with_bodies
 from aegis.mimo.scene import MIMOScene
 from aegis.mimo.user import UserConfig, UserState
 from aegis.viewer.routes.compute import _json_dumps_safe
+from aegis.viewer.server import scoped_cache_get, scoped_cache_set
 
 logger = logging.getLogger(__name__)
 
@@ -222,10 +223,10 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             logger.exception("MIMO compute failed")
             return jsonify({"error": str(exc)}), 500
 
-        # Cache scene and per-user results
+        # Cache scene and per-user results (session-scoped)
         with cache_lock:
-            cache["mimo_scene"] = scene
-            cache["mimo_summary"] = summary
+            scoped_cache_set(cache, "mimo_scene", scene)
+            scoped_cache_set(cache, "mimo_summary", summary)
 
             results_binary: dict[str, bytes] = {}
             results_stats: dict[str, dict] = {}
@@ -236,19 +237,19 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                 stats = _user_stats(user, scene)
                 results_stats[uid] = stats
 
-            cache["mimo_results_binary"] = results_binary
-            cache["mimo_results_stats"] = results_stats
+            scoped_cache_set(cache, "mimo_results_binary", results_binary)
+            scoped_cache_set(cache, "mimo_results_stats", results_stats)
 
         return jsonify(summary)
 
     @app.route("/api/mimo/result/<user_id>", methods=["GET"])
     def api_mimo_result(user_id: str):
-        results_binary = cache.get("mimo_results_binary")
+        results_binary = scoped_cache_get(cache, "mimo_results_binary")
         if not results_binary or user_id not in results_binary:
             return jsonify({"error": f"No result for user {user_id!r}"}), 404
 
         data_bytes = results_binary[user_id]
-        stats = (cache.get("mimo_results_stats") or {}).get(user_id, {})
+        stats = (scoped_cache_get(cache, "mimo_results_stats") or {}).get(user_id, {})
 
         resp = Response(data_bytes, mimetype=_OCTET_STREAM)
         resp.headers["X-Stats"] = _json_dumps_safe(stats)
@@ -257,8 +258,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
     @app.route("/api/mimo/summary", methods=["GET"])
     def api_mimo_summary():
-        summary = cache.get("mimo_summary")
-        scene = cache.get("mimo_scene")
+        summary = scoped_cache_get(cache, "mimo_summary")
+        scene = scoped_cache_get(cache, "mimo_scene")
         if summary is None or scene is None:
             return jsonify({"error": "No MIMO results computed yet"}), 404
 
@@ -266,7 +267,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         exposure_budget_mw = float(config.get("mimo", {}).get("exposure_budget_mw", 100.0))
 
         users_out = []
-        results_stats = cache.get("mimo_results_stats", {})
+        results_stats = scoped_cache_get(cache, "mimo_results_stats", {})
         for user in scene.users:
             uid = user.config.user_id
             stats = results_stats.get(uid, {})

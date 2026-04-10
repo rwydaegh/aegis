@@ -91,8 +91,10 @@ class TestComplianceSummary:
         assert "not evaluated" in data["text"].lower() or "outside" in data["text"].lower()
 
     def test_summary_with_cached_compliance(self, viewer_app):
-        """Inject a compliance result into app.config, verify summary text."""
-        viewer_app.config["_last_compliance_result"] = {
+        """Inject a compliance result into session-scoped cache, verify summary text."""
+        from aegis.viewer.server import _cache, _cache_lock
+
+        compliance = {
             "overall_pass": True,
             "margin_db": 5.3,
             "scenario": "general_public",
@@ -110,17 +112,23 @@ class TestComplianceSummary:
         }
 
         with viewer_app.test_client() as c:
+            with c.session_transaction() as sess:
+                sess["session_id"] = "test-session"
+            with _cache_lock:
+                _cache["test-session:_last_compliance_result"] = compliance
             resp = c.get("/api/compliance/summary")
-        assert resp.status_code == 200
-        data = resp.get_json()
-        assert "PASS" in data["text"]
-        assert "28.0 GHz" in data["text"]
-        assert "General Public" in data["text"]
-
-        viewer_app.config.pop("_last_compliance_result", None)
+            assert resp.status_code == 200
+            data = resp.get_json()
+            assert "PASS" in data["text"]
+            assert "28.0 GHz" in data["text"]
+            assert "General Public" in data["text"]
+            with _cache_lock:
+                _cache.pop("test-session:_last_compliance_result", None)
 
     def test_summary_with_tx_power_param(self, viewer_app):
-        viewer_app.config["_last_compliance_result"] = {
+        from aegis.viewer.server import _cache, _cache_lock
+
+        compliance = {
             "overall_pass": False,
             "margin_db": -2.0,
             "scenario": "occupational",
@@ -138,15 +146,21 @@ class TestComplianceSummary:
         }
 
         with viewer_app.test_client() as c:
+            with c.session_transaction() as sess:
+                sess["session_id"] = "test-session"
+            with _cache_lock:
+                _cache["test-session:_last_compliance_result"] = compliance
             resp = c.get("/api/compliance/summary?tx_power_dbm=40")
-        data = resp.get_json()
-        assert "TX power: 40.0 dBm" in data["text"]
-        assert "FAIL" in data["text"]
-
-        viewer_app.config.pop("_last_compliance_result", None)
+            data = resp.get_json()
+            assert "TX power: 40.0 dBm" in data["text"]
+            assert "FAIL" in data["text"]
+            with _cache_lock:
+                _cache.pop("test-session:_last_compliance_result", None)
 
     def test_summary_fail_result(self, viewer_app):
-        viewer_app.config["_last_compliance_result"] = {
+        from aegis.viewer.server import _cache, _cache_lock
+
+        compliance = {
             "overall_pass": False,
             "margin_db": -3.0,
             "scenario": "general_public",
@@ -164,12 +178,16 @@ class TestComplianceSummary:
         }
 
         with viewer_app.test_client() as c:
+            with c.session_transaction() as sess:
+                sess["session_id"] = "test-session"
+            with _cache_lock:
+                _cache["test-session:_last_compliance_result"] = compliance
             resp = c.get("/api/compliance/summary")
-        data = resp.get_json()
-        assert "FAIL" in data["text"]
-        assert "Overall: FAIL" in data["text"]
-
-        viewer_app.config.pop("_last_compliance_result", None)
+            data = resp.get_json()
+            assert "FAIL" in data["text"]
+            assert "Overall: FAIL" in data["text"]
+            with _cache_lock:
+                _cache.pop("test-session:_last_compliance_result", None)
 
 
 # ---------------------------------------------------------------------------
@@ -352,7 +370,9 @@ class TestComplianceLimitsExtended:
 class TestComplianceSummaryExtended:
     def test_summary_with_multiple_checks(self, viewer_app):
         """Summary with multiple compliance checks renders all of them."""
-        viewer_app.config["_last_compliance_result"] = {
+        from aegis.viewer.server import _cache, _cache_lock
+
+        compliance = {
             "overall_pass": True,
             "margin_db": 3.0,
             "scenario": "general_public",
@@ -378,18 +398,24 @@ class TestComplianceSummaryExtended:
         }
 
         with viewer_app.test_client() as c:
+            with c.session_transaction() as sess:
+                sess["session_id"] = "test-session"
+            with _cache_lock:
+                _cache["test-session:_last_compliance_result"] = compliance
             resp = c.get("/api/compliance/summary")
-        data = resp.get_json()
-        assert "S_ab 4 cm2" in data["text"]
-        assert "S_ab 1 cm2" in data["text"]
-        assert "PASS" in data["text"]
-        assert "Margin: +3.0 dB" in data["text"]
-
-        viewer_app.config.pop("_last_compliance_result", None)
+            data = resp.get_json()
+            assert "S_ab 4 cm2" in data["text"]
+            assert "S_ab 1 cm2" in data["text"]
+            assert "PASS" in data["text"]
+            assert "Margin: +3.0 dB" in data["text"]
+            with _cache_lock:
+                _cache.pop("test-session:_last_compliance_result", None)
 
     def test_summary_no_margin(self, viewer_app):
         """Summary when margin_db is None."""
-        viewer_app.config["_last_compliance_result"] = {
+        from aegis.viewer.server import _cache, _cache_lock
+
+        compliance = {
             "overall_pass": True,
             "margin_db": None,
             "scenario": "general_public",
@@ -398,12 +424,15 @@ class TestComplianceSummaryExtended:
         }
 
         with viewer_app.test_client() as c:
+            with c.session_transaction() as sess:
+                sess["session_id"] = "test-session"
+            with _cache_lock:
+                _cache["test-session:_last_compliance_result"] = compliance
             resp = c.get("/api/compliance/summary")
-        data = resp.get_json()
-        # Should not contain "Margin:" since margin_db is None
-        assert "Margin:" not in data["text"]
-
-        viewer_app.config.pop("_last_compliance_result", None)
+            data = resp.get_json()
+            assert "Margin:" not in data["text"]
+            with _cache_lock:
+                _cache.pop("test-session:_last_compliance_result", None)
 
 
 # ---------------------------------------------------------------------------

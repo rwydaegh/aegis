@@ -198,10 +198,13 @@ class TestBasestationsListRoute:
         from aegis.viewer.server import _cache, _cache_lock
 
         bs = _make_bs(site_code="LIST01", label="test_ant")
-        with _cache_lock:
-            _cache["basestations"] = [bs]
 
         with viewer_app.test_client() as c:
+            with c.session_transaction() as sess:
+                sess["session_id"] = "test-session"
+            with _cache_lock:
+                _cache["test-session:basestations"] = [bs]
+
             resp = c.get("/api/basestations/list")
             assert resp.status_code == 200
             data = resp.get_json()
@@ -212,9 +215,9 @@ class TestBasestationsListRoute:
             assert entry["eirp_dbm"] == 50.0
             assert "archetype" in entry  # from classify_basestation
 
-        # Clean up
-        with _cache_lock:
-            _cache.pop("basestations", None)
+            # Clean up
+            with _cache_lock:
+                _cache.pop("test-session:basestations", None)
 
 
 class TestBasestationsLoadRoute:
@@ -300,55 +303,62 @@ class TestBasestationsComputeRoute:
         from aegis.viewer.server import _cache, _cache_lock
 
         bs = _make_bs()
-        with _cache_lock:
-            _cache["basestations"] = [bs]
-            _cache.pop("body", None)
-            _cache.pop("bodies", None)
-
         with viewer_app.test_client() as c:
+            with c.session_transaction() as sess:
+                sess["session_id"] = "test-session"
+            with _cache_lock:
+                _cache["test-session:basestations"] = [bs]
+                _cache.pop("body", None)
+                _cache.pop("bodies", None)
+
             resp = c.post("/api/basestations/compute", json={})
             # "No body mesh loaded" because body may not be set
             # In test fixture with e2e_icosahedron, body is loaded
             # so this may actually proceed. Check status code is valid.
             assert resp.status_code in (200, 400)
 
-        with _cache_lock:
-            _cache.pop("basestations", None)
+            with _cache_lock:
+                _cache.pop("test-session:basestations", None)
 
     def test_compute_without_origin_returns_400(self, viewer_app):
         from aegis.viewer.server import _cache, _cache_lock
 
-        bs = _make_bs()
-        with _cache_lock:
-            _cache["basestations"] = [bs]
-            _cache.pop("basestations_origin", None)
-            saved_body = _cache.get("body")
+        saved_body = _cache.get("body")
 
         # If body is loaded but no origin, should get 400
         if saved_body is not None:
+            bs = _make_bs()
             with viewer_app.test_client() as c:
+                with c.session_transaction() as sess:
+                    sess["session_id"] = "test-session"
+                with _cache_lock:
+                    _cache["test-session:basestations"] = [bs]
+                    _cache.pop("test-session:basestations_origin", None)
+
                 resp = c.post("/api/basestations/compute", json={})
                 assert resp.status_code == 400
                 data = resp.get_json()
                 assert "No scene origin" in data["error"]
 
-        with _cache_lock:
-            _cache.pop("basestations", None)
+                with _cache_lock:
+                    _cache.pop("test-session:basestations", None)
 
     def test_compute_with_valid_data_returns_binary(self, viewer_app):
         """Full compute with injected cache data returns binary response."""
         from aegis.viewer.server import _cache, _cache_lock
 
-        bs = _make_bs()
-        with _cache_lock:
-            body = _cache.get("body")
-            _cache["basestations"] = [bs]
-            _cache["basestations_origin"] = (51.050, 3.720)
-
+        body = _cache.get("body")
         if body is None:
             pytest.skip("No body mesh loaded in test fixture")
 
+        bs = _make_bs()
         with viewer_app.test_client() as c:
+            with c.session_transaction() as sess:
+                sess["session_id"] = "test-session"
+            with _cache_lock:
+                _cache["test-session:basestations"] = [bs]
+                _cache["test-session:basestations_origin"] = (51.050, 3.720)
+
             resp = c.post(
                 "/api/basestations/compute",
                 json={"freq_hz": 3.5e9, "skin_model": "itis"},
@@ -370,28 +380,30 @@ class TestBasestationsComputeRoute:
             n_tri = body.n_triangles
             assert len(data) >= n_tri * 4  # at least sab array
 
-        with _cache_lock:
-            _cache.pop("basestations", None)
-            _cache.pop("basestations_origin", None)
+            with _cache_lock:
+                _cache.pop("test-session:basestations", None)
+                _cache.pop("test-session:basestations_origin", None)
 
     def test_compute_with_index_filter(self, viewer_app):
         """Filtering by indices selects only those stations."""
         from aegis.viewer.server import _cache, _cache_lock
+
+        body = _cache.get("body")
+        if body is None:
+            pytest.skip("No body mesh loaded in test fixture")
 
         stations = [
             _make_bs(azimuth_deg=0.0, site_code="A"),
             _make_bs(azimuth_deg=90.0, site_code="B"),
             _make_bs(azimuth_deg=180.0, site_code="C"),
         ]
-        with _cache_lock:
-            body = _cache.get("body")
-            _cache["basestations"] = stations
-            _cache["basestations_origin"] = (51.050, 3.720)
-
-        if body is None:
-            pytest.skip("No body mesh loaded in test fixture")
-
         with viewer_app.test_client() as c:
+            with c.session_transaction() as sess:
+                sess["session_id"] = "test-session"
+            with _cache_lock:
+                _cache["test-session:basestations"] = stations
+                _cache["test-session:basestations_origin"] = (51.050, 3.720)
+
             resp = c.post(
                 "/api/basestations/compute",
                 json={"indices": [0, 2]},
@@ -400,24 +412,26 @@ class TestBasestationsComputeRoute:
             stats = json.loads(resp.headers["X-Stats"])
             assert stats["n_basestations"] == 2
 
-        with _cache_lock:
-            _cache.pop("basestations", None)
-            _cache.pop("basestations_origin", None)
+            with _cache_lock:
+                _cache.pop("test-session:basestations", None)
+                _cache.pop("test-session:basestations_origin", None)
 
     def test_compute_with_empty_indices_returns_400(self, viewer_app):
         """Empty indices list means no stations selected."""
         from aegis.viewer.server import _cache, _cache_lock
 
-        bs = _make_bs()
-        with _cache_lock:
-            body = _cache.get("body")
-            _cache["basestations"] = [bs]
-            _cache["basestations_origin"] = (51.050, 3.720)
-
+        body = _cache.get("body")
         if body is None:
             pytest.skip("No body mesh loaded in test fixture")
 
+        bs = _make_bs()
         with viewer_app.test_client() as c:
+            with c.session_transaction() as sess:
+                sess["session_id"] = "test-session"
+            with _cache_lock:
+                _cache["test-session:basestations"] = [bs]
+                _cache["test-session:basestations_origin"] = (51.050, 3.720)
+
             resp = c.post(
                 "/api/basestations/compute",
                 json={"indices": [5, 10]},  # out of range
@@ -426,24 +440,26 @@ class TestBasestationsComputeRoute:
             data = resp.get_json()
             assert "No base stations selected" in data["error"]
 
-        with _cache_lock:
-            _cache.pop("basestations", None)
-            _cache.pop("basestations_origin", None)
+            with _cache_lock:
+                _cache.pop("test-session:basestations", None)
+                _cache.pop("test-session:basestations_origin", None)
 
     def test_non_numeric_max_distance_returns_400(self, viewer_app):
         """Non-numeric max_distance_m should return 400 not 500."""
         from aegis.viewer.server import _cache, _cache_lock
 
-        bs = _make_bs()
-        with _cache_lock:
-            body = _cache.get("body")
-            _cache["basestations"] = [bs]
-            _cache["basestations_origin"] = (51.050, 3.720)
-
+        body = _cache.get("body")
         if body is None:
             pytest.skip("No body mesh loaded in test fixture")
 
+        bs = _make_bs()
         with viewer_app.test_client() as c:
+            with c.session_transaction() as sess:
+                sess["session_id"] = "test-session"
+            with _cache_lock:
+                _cache["test-session:basestations"] = [bs]
+                _cache["test-session:basestations_origin"] = (51.050, 3.720)
+
             resp = c.post(
                 "/api/basestations/compute",
                 json={"max_distance_m": "not_a_number"},
@@ -451,9 +467,9 @@ class TestBasestationsComputeRoute:
             assert resp.status_code == 400
             assert "max_distance_m" in resp.get_json()["error"]
 
-        with _cache_lock:
-            _cache.pop("basestations", None)
-            _cache.pop("basestations_origin", None)
+            with _cache_lock:
+                _cache.pop("test-session:basestations", None)
+                _cache.pop("test-session:basestations_origin", None)
 
 
 class TestBasestationsComputeMimoRoute:
@@ -480,10 +496,12 @@ class TestBasestationsComputeMimoRoute:
         from aegis.viewer.server import _cache, _cache_lock
 
         bs = _make_bs()
-        with _cache_lock:
-            _cache["basestations"] = [bs]
-
         with viewer_app.test_client() as c:
+            with c.session_transaction() as sess:
+                sess["session_id"] = "test-session"
+            with _cache_lock:
+                _cache["test-session:basestations"] = [bs]
+
             resp = c.post(
                 "/api/basestations/compute_mimo",
                 json={"index": 5},
@@ -491,8 +509,8 @@ class TestBasestationsComputeMimoRoute:
             assert resp.status_code == 400
             assert "out of range" in resp.get_json()["error"]
 
-        with _cache_lock:
-            _cache.pop("basestations", None)
+            with _cache_lock:
+                _cache.pop("test-session:basestations", None)
 
     def test_non_mmimo_station_returns_400(self, viewer_app):
         """A regular macro station (not mMIMO) should be rejected."""
@@ -500,10 +518,12 @@ class TestBasestationsComputeMimoRoute:
 
         # Low gain, wide beamwidth = macro, not mmimo
         bs = _make_bs(gain_dbi=12.0, technology="LTE")
-        with _cache_lock:
-            _cache["basestations"] = [bs]
-
         with viewer_app.test_client() as c:
+            with c.session_transaction() as sess:
+                sess["session_id"] = "test-session"
+            with _cache_lock:
+                _cache["test-session:basestations"] = [bs]
+
             resp = c.post(
                 "/api/basestations/compute_mimo",
                 json={"index": 0},
@@ -511,8 +531,8 @@ class TestBasestationsComputeMimoRoute:
             assert resp.status_code == 400
             assert "not 'mmimo'" in resp.get_json()["error"]
 
-        with _cache_lock:
-            _cache.pop("basestations", None)
+            with _cache_lock:
+                _cache.pop("test-session:basestations", None)
 
 
 class TestBsSummary:

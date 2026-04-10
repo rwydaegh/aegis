@@ -6,6 +6,8 @@ import json
 
 from flask import Flask, Response, jsonify, request
 
+from aegis.viewer.server import scoped_cache_set
+
 
 def register(app: Flask, cache: dict, cache_lock) -> None:
     """Attach terrain routes to *app*."""
@@ -84,7 +86,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         }
 
         with cache_lock:
-            cache["terrain_mesh"] = {"vertices": verts_yup, "triangles": tris, "meta": meta}
+            scoped_cache_set(cache, "terrain_mesh", {"vertices": verts_yup, "triangles": tris, "meta": meta})
 
         resp = Response(blob, mimetype="application/octet-stream")
         resp.headers["X-Meta"] = json.dumps(meta)

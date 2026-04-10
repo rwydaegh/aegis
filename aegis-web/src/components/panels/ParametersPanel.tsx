@@ -85,21 +85,29 @@ export default function ParametersPanel() {
   return (
     <div>
       {antennaPos && (
-        <button
-          className="w-full mb-3 px-3 py-1.5 text-xs rounded border border-destructive/40 bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors cursor-pointer"
-          onClick={() => {
-            setAntennaPos(null)
-            clearResults()
-            const mimo = useMIMOStore.getState()
-            if (mimo.enabled) {
-              mimo.clearAllResults()
-              mimo.setPrecoderWeights(null)
-              useMIMOStore.setState({ arrayConfig: null })
-            }
-          }}
-        >
-          Remove antenna
-        </button>
+        <div className="flex items-center justify-between mb-3 px-1 py-1 rounded bg-muted/50 border border-border">
+          <span className="text-[10px] text-muted-foreground truncate pl-1">
+            Antenna ({antennaPos[0].toFixed(1)}, {antennaPos[1].toFixed(1)}, {antennaPos[2].toFixed(1)})
+          </span>
+          <button
+            className="ml-2 shrink-0 w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+            title="Remove antenna"
+            onClick={() => {
+              setAntennaPos(null)
+              clearResults()
+              const mimo = useMIMOStore.getState()
+              if (mimo.enabled) {
+                mimo.clearAllResults()
+                mimo.setPrecoderWeights(null)
+                useMIMOStore.setState({ arrayConfig: null })
+              }
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+              <path d="M3 3l6 6M9 3l-6 6" />
+            </svg>
+          </button>
+        </div>
       )}
       <label className={labelClass}>Computation mode</label>
       <select

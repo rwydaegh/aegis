@@ -7,6 +7,8 @@ import logging
 import numpy as np
 from flask import Flask, jsonify, request
 
+from aegis.viewer.server import scoped_cache_get
+
 logger = logging.getLogger(__name__)
 
 
@@ -53,7 +55,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
     @app.route("/api/compliance/summary")
     def compliance_summary():
         """Human-readable compliance summary text from last compute."""
-        last = app.config.get("_last_compliance_result")
+        last = scoped_cache_get(cache, "_last_compliance_result")
         if last is None:
             return jsonify(
                 {

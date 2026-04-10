@@ -18,6 +18,7 @@ import numpy as np
 from flask import Flask, Response, jsonify, request, session
 
 from aegis.optim.loop import run_optimization
+from aegis.viewer.server import scoped_cache_get
 
 logger = logging.getLogger(__name__)
 
@@ -141,7 +142,7 @@ def _build_config(params: dict, app: Flask, cache: dict, cache_lock) -> dict:
             config["G_tilde"] = G_real + 1j * G_imag
         else:
             with cache_lock:
-                scene = cache.get("mimo_scene")
+                scene = scoped_cache_get(cache, "mimo_scene")
             if scene is None:
                 raise ValueError("No MIMO scene cached. Run /api/mimo/compute first.")
             # G_tilde lives on each UserState, not on the scene itself.
@@ -173,9 +174,9 @@ def _build_config(params: dict, app: Flask, cache: dict, cache_lock) -> dict:
         config["signal_threshold"] = params.get("signal_threshold", 0.0)
 
     elif mode == "tilt_power":
-        last_result = app.config.get("_last_dosimetry_result")
-        last_body = app.config.get("_last_dosimetry_body")
-        last_paths = app.config.get("_last_rt_paths")
+        last_result = scoped_cache_get(cache, "_last_dosimetry_result")
+        last_body = scoped_cache_get(cache, "_last_dosimetry_body")
+        last_paths = scoped_cache_get(cache, "_last_rt_paths")
         if last_result is None or last_body is None:
             raise ValueError("No dosimetry result cached. Run /api/compute first.")
         if last_paths is None:
@@ -187,7 +188,7 @@ def _build_config(params: dict, app: Flask, cache: dict, cache_lock) -> dict:
         config["power_init_dbm"] = params.get("power_init_dbm", 60.0)
         config["icnirp_limit"] = params.get("icnirp_limit", 20.0)
 
-        last_stats = app.config.get("_last_dosimetry_stats", {}) or {}
+        last_stats = scoped_cache_get(cache, "_last_dosimetry_stats", {}) or {}
         config["T0"] = params.get("T0", last_stats.get("T0", 1.0))
 
     elif mode == "placement":
@@ -279,7 +280,7 @@ def _build_placement_evaluate_fn(
     rt_scene = None
     with cache_lock:
         has_voxels = cache.get("voxel_positions") is not None and len(cache.get("voxel_positions", [])) > 0
-        has_env = cache.get("env_mesh") is not None
+        has_env = scoped_cache_get(cache, "env_mesh") is not None
     if not scene_path:
         if has_voxels:
             use_voxel_scene = True
@@ -313,7 +314,7 @@ def _build_placement_evaluate_fn(
         from aegis.environment.export import to_differt_scene
 
         with cache_lock:
-            env_mesh = cache["env_mesh"]
+            env_mesh = scoped_cache_get(cache, "env_mesh")
         rt_scene = to_differt_scene(env_mesh)
 
     def evaluate_fn(pos: np.ndarray) -> dict:

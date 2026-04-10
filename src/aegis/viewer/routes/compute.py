@@ -12,6 +12,7 @@ from flask import Flask, Response, jsonify, request
 from aegis.compliance import ExposureScenario, evaluate_compliance
 from aegis.defaults import DEFAULT_FREQ_HZ, DEFAULT_POWER_DBM
 from aegis.viewer.compute import _load_phantom_masses
+from aegis.viewer.server import scoped_cache_get, scoped_cache_set
 
 
 def _parse_bool(value, default: bool) -> bool:
@@ -80,14 +81,14 @@ def _json_dumps_safe(obj: object) -> str:
     return json.dumps(_sanitize_for_json(obj))
 
 
-def _cache_dosimetry_for_export(app: Flask, result, body, stats: dict, paths=None) -> None:
-    """Cache the last dosimetry result, body, and stats for export."""
-    app.config["_last_dosimetry_result"] = result
-    app.config["_last_dosimetry_body"] = body
-    app.config["_last_dosimetry_stats"] = stats
-    app.config["_last_compliance_result"] = stats.get("compliance")
+def _cache_dosimetry_for_export(cache: dict, result, body, stats: dict, paths=None) -> None:
+    """Cache the last dosimetry result, body, and stats for export (session-scoped)."""
+    scoped_cache_set(cache, "_last_dosimetry_result", result)
+    scoped_cache_set(cache, "_last_dosimetry_body", body)
+    scoped_cache_set(cache, "_last_dosimetry_stats", stats)
+    scoped_cache_set(cache, "_last_compliance_result", stats.get("compliance"))
     if paths is not None:
-        app.config["_last_rt_paths"] = paths
+        scoped_cache_set(cache, "_last_rt_paths", paths)
 
 
 def _inject_curvature_H(engine_kw: dict, body) -> dict:
@@ -691,7 +692,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         t_stats = _time.perf_counter()
 
         # Cache result and body for export and compliance summary
-        _cache_dosimetry_for_export(app, result, res_body, stats)
+        _cache_dosimetry_for_export(cache, result, res_body, stats)
 
         # Inject route-level timings
         timings = extra.get("timings", {})
@@ -834,7 +835,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         if not scene_path:
             with cache_lock:
                 has_voxels = cache.get("voxel_positions") is not None and len(cache.get("voxel_positions", [])) > 0
-                has_env = cache.get("env_mesh") is not None
+                has_env = scoped_cache_get(cache, "env_mesh") is not None
             if has_voxels:
                 use_voxel_scene = True
             elif has_env:
@@ -974,7 +975,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                     from aegis.environment.export import to_differt_scene
 
                     with cache_lock:
-                        env_mesh = cache["env_mesh"]
+                        env_mesh = scoped_cache_get(cache, "env_mesh")
                     env_scene = to_differt_scene(env_mesh)
                     paths, path_viz = compute_paths_differt(**rt_kwargs, scene=env_scene)
                 else:
@@ -1025,7 +1026,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         )
         if err:
             return err
-        _cache_dosimetry_for_export(app, result, transformed_body, stats, paths=paths)
+        _cache_dosimetry_for_export(cache, result, transformed_body, stats, paths=paths)
         return resp
 
     @app.route("/api/compute/sionna-rt", methods=["POST"])
@@ -1176,7 +1177,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         )
         if err:
             return err
-        _cache_dosimetry_for_export(app, result, transformed_body, stats, paths=paths)
+        _cache_dosimetry_for_export(cache, result, transformed_body, stats, paths=paths)
         return resp
 
     @app.route("/api/compute/voxel-rt", methods=["POST"])
@@ -1383,7 +1384,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         )
         if err:
             return err
-        _cache_dosimetry_for_export(app, result, transformed_body, stats, paths=paths)
+        _cache_dosimetry_for_export(cache, result, transformed_body, stats, paths=paths)
         return resp
 
     @app.route("/api/compute/sionna-env-rt", methods=["POST"])
@@ -1398,7 +1399,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         body_name = params.get("body_name", cache.get("default_body"))
         with cache_lock:
             entry = cache.get("bodies", {}).get(body_name)
-            env_mesh = cache.get("env_mesh")
+            env_mesh = scoped_cache_get(cache, "env_mesh")
             cfg = cache["config"]
         if entry is None:
             return jsonify({"error": f"Body '{body_name}' not found"}), 404
@@ -1560,7 +1561,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         )
         if err:
             return err
-        _cache_dosimetry_for_export(app, result, transformed_body, stats, paths=paths)
+        _cache_dosimetry_for_export(cache, result, transformed_body, stats, paths=paths)
         return resp
 
     @app.route("/api/export/dosimetry-csv", methods=["GET"])
@@ -1575,8 +1576,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         """
         import io
 
-        result = app.config.get("_last_dosimetry_result")
-        body = app.config.get("_last_dosimetry_body")
+        result = scoped_cache_get(cache, "_last_dosimetry_result")
+        body = scoped_cache_get(cache, "_last_dosimetry_body")
         if result is None or body is None:
             return jsonify({"error": _ERR_NO_EXPORT_DATA}), 404
 
@@ -1641,9 +1642,9 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
         Includes per-triangle data, compliance verdict, and peak statistics.
         """
-        result = app.config.get("_last_dosimetry_result")
-        body = app.config.get("_last_dosimetry_body")
-        stats = app.config.get("_last_dosimetry_stats")
+        result = scoped_cache_get(cache, "_last_dosimetry_result")
+        body = scoped_cache_get(cache, "_last_dosimetry_body")
+        stats = scoped_cache_get(cache, "_last_dosimetry_stats")
         if result is None or body is None:
             return jsonify({"error": _ERR_NO_EXPORT_DATA}), 404
 
@@ -1688,8 +1689,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         """
         import io
 
-        result = app.config.get("_last_dosimetry_result")
-        body = app.config.get("_last_dosimetry_body")
+        result = scoped_cache_get(cache, "_last_dosimetry_result")
+        body = scoped_cache_get(cache, "_last_dosimetry_body")
         if result is None or body is None:
             return jsonify({"error": _ERR_NO_EXPORT_DATA}), 404
 

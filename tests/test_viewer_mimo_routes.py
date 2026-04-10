@@ -65,6 +65,7 @@ def app():
     """Flask app with MIMO routes registered."""
     app = Flask(__name__)
     app.config["TESTING"] = True
+    app.secret_key = "test"
     cache = _make_cache_with_body()
     cache_lock = threading.Lock()
     from aegis.viewer.routes.mimo import register
@@ -78,7 +79,10 @@ def app():
 
 @pytest.fixture
 def client(app):
-    return app.test_client()
+    c = app.test_client()
+    with c.session_transaction() as sess:
+        sess["session_id"] = "test-session"
+    return c
 
 
 @pytest.fixture
@@ -652,8 +656,8 @@ class TestMIMOCompute:
             json={"array": VALID_ARRAY, "users": [_make_user_cfg()]},
         )
         cache = app._test_cache
-        assert "mimo_scene" in cache
-        assert "mimo_summary" in cache
+        assert "test-session:mimo_scene" in cache
+        assert "test-session:mimo_summary" in cache
 
 
 # ---------------------------------------------------------------------------
@@ -667,15 +671,15 @@ class TestMIMOResult:
         assert resp.status_code == 404
 
     def test_unknown_user_returns_404(self, app, client):
-        app._test_cache["mimo_results_binary"] = {"u2": b"\x00" * 4}
+        app._test_cache["test-session:mimo_results_binary"] = {"u2": b"\x00" * 4}
         resp = client.get("/api/mimo/result/u1")
         assert resp.status_code == 404
 
     def test_returns_binary_with_stats(self, app, client):
         sab = np.array([1.0, 2.0, 3.0], dtype=np.float32)
         stats = {"user_id": "u1", "p_abs": 0.01, "peak_sab": 3.0}
-        app._test_cache["mimo_results_binary"] = {"u1": sab.tobytes()}
-        app._test_cache["mimo_results_stats"] = {"u1": stats}
+        app._test_cache["test-session:mimo_results_binary"] = {"u1": sab.tobytes()}
+        app._test_cache["test-session:mimo_results_stats"] = {"u1": stats}
         resp = client.get("/api/mimo/result/u1")
         assert resp.status_code == 200
         assert resp.content_type == "application/octet-stream"
@@ -686,7 +690,7 @@ class TestMIMOResult:
         assert header_stats["peak_sab"] == 3.0
 
     def test_missing_stats_returns_empty_dict(self, app, client):
-        app._test_cache["mimo_results_binary"] = {"u1": b"\x00" * 4}
+        app._test_cache["test-session:mimo_results_binary"] = {"u1": b"\x00" * 4}
         resp = client.get("/api/mimo/result/u1")
         assert resp.status_code == 200
         header_stats = json.loads(resp.headers["X-Stats"])
@@ -743,9 +747,9 @@ class TestMIMOSummary:
             summary["warning"] = warning
 
         cache = app._test_cache
-        cache["mimo_scene"] = scene
-        cache["mimo_summary"] = summary
-        cache["mimo_results_stats"] = results_stats
+        cache["test-session:mimo_scene"] = scene
+        cache["test-session:mimo_summary"] = summary
+        cache["test-session:mimo_results_stats"] = results_stats
 
     def test_no_results_returns_404(self, client):
         resp = client.get("/api/mimo/summary")
