@@ -32,6 +32,51 @@ if TYPE_CHECKING:
     from aegis.mimo.scene import MIMOScene
 
 
+def make_stochastic_paths_fn(
+    params: dict,
+    freq_ghz: float,
+    power_dbm: float,
+    base_seed: int,
+    viz_collector: list[dict] | None = None,
+) -> Callable:
+    """Factory for a stochastic path generator compatible with compute_mimo_scene_with_bodies.
+
+    Returns a callable with signature
+    ``fn(body, array_center, freq_hz, device_position) -> PropagationPaths``
+    that generates 3GPP cluster-based multipath using ``generate_channel``.
+
+    Each call increments the seed so successive users get independent channels.
+    If *viz_collector* is provided, per-call cluster metadata dicts are appended.
+    """
+    from aegis.channel.generator import generate_channel
+
+    call_count = [0]  # mutable counter for closure
+
+    def _generate(body, array_center, freq_hz, device_position):
+        seed = base_seed + call_count[0]
+        call_count[0] += 1
+
+        body_center = device_position if device_position is not None else body.centroids.mean(axis=0)
+
+        viz_out = {} if viz_collector is not None else None
+        paths = generate_channel(
+            params=params,
+            freq_ghz=freq_ghz,
+            antenna_pos=array_center,
+            body_center=body_center,
+            power_dbm=power_dbm,
+            seed=seed,
+            viz_out=viz_out,
+        )
+
+        if viz_collector is not None:
+            viz_collector.append(viz_out)
+
+        return paths
+
+    return _generate
+
+
 def build_user_channels(scene: MIMOScene) -> None:
     """Expand paths and build per-user channels, G_tilde, Q, and h.
 
