@@ -13,7 +13,6 @@ const CLUSTER_COLORS = [
 ]
 
 const SCATTERER_RADIUS = 0.08
-const LOS_COLOR = '#ffffff'
 
 function ScattererSphere({ position, color }: { position: [number, number, number]; color: string }) {
   return (
@@ -30,20 +29,12 @@ function ClusterRay({ cluster, index, antennaScene, bodyScene }: {
   antennaScene: [number, number, number]
   bodyScene: [number, number, number]
 }) {
-  const color = cluster.is_los ? LOS_COLOR : CLUSTER_COLORS[index % CLUSTER_COLORS.length]
+  const color = CLUSTER_COLORS[index % CLUSTER_COLORS.length]
   const opacity = Math.max(0.3, Math.min(1.0, cluster.power * 4))
 
   if (cluster.is_los) {
-    // LOS: single line from antenna to body
-    return (
-      <Line
-        points={[antennaScene, bodyScene]}
-        color={color}
-        lineWidth={2.5}
-        transparent
-        opacity={opacity}
-      />
-    )
+    // LOS path already shown by DistanceLine, skip to avoid overlap
+    return null
   }
 
   // NLOS: antenna -> FBS, FBS -> LBS (dashed), LBS -> body
