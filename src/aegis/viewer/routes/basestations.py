@@ -177,7 +177,12 @@ def _handle_basestations_load(cache: dict, cache_lock: threading.RLock):
         else:
             region = "brussels"
     elif region is None:
-        region = _COUNTRY_TO_REGION.get(country.strip().lower(), "")
+        region = _COUNTRY_TO_REGION.get(country.strip().lower())
+        if region is None:
+            # Unknown country with no data - return empty results gracefully
+            with cache_lock:
+                scoped_cache_set(cache, "basestations", [])
+            return jsonify({"count": 0, "basestations": []})
 
     # Try merged Parquet first (fast, with provenance), then CSV, then API
     data_dir = os.environ.get("AEGIS_DATA_DIR", "data")
