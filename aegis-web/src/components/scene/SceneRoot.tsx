@@ -33,6 +33,7 @@ import SmartphoneModel from './SmartphoneModel'
 import BaseStationMarkers from './BaseStationMarkers'
 import { EnvironmentTerrain } from './EnvironmentTerrain'
 import { LSPHeatmap } from './LSPHeatmap'
+import ClusterPaths from './ClusterPaths'
 import { cameraState } from '@/lib/cameraState'
 
 function GroundPlane() {
@@ -393,6 +394,7 @@ export default function SceneRoot() {
       {!isCesiumMode && <EnvironmentTerrain />}
       {!isCesiumMode && <BaseStationMarkers />}
       {!isCesiumMode && <LSPHeatmap />}
+      {!isCesiumMode && <ClusterPaths />}
       <DosimetryController />
       <MIMODosimetryController />
       <MIMOKeyboardController />
