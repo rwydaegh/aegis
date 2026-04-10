@@ -28,8 +28,13 @@ function CoverageHudInner() {
     if (!ll) return
 
     useCoverageStore.getState().setEnabled(false)
-    useEnvironmentStore.getState().setSource('osm')
-    useEnvironmentStore.getState().setLocation(ll.lat, ll.lon)
+    const env = useEnvironmentStore.getState()
+    env.setSource('osm')
+    env.setLocation(ll.lat, ll.lon)
+    env.fetchOSM().catch(err => {
+      Sentry.captureException(err)
+      useNotificationStore.getState().addNotification('error', `Failed to load environment: ${(err as Error).message}`)
+    })
     loadBasestations({ lat: ll.lat, lon: ll.lon, radius_m: 500 }).then(resp => {
       useBaseStationsStore.getState().setBasestations(resp.basestations, ll)
     }).catch(err => {
@@ -68,25 +73,9 @@ function CoverageHudInner() {
             </div>
           )}
           {!loading && !error && (
-            <>
-              <div className="flex flex-col gap-1">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#22c55e' }} />
-                  <span className="text-zinc-300">Rich data (&gt;80%)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#f59e0b' }} />
-                  <span className="text-zinc-300">Partial (40-80%)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#ef4444' }} />
-                  <span className="text-zinc-300">Location only (&lt;40%)</span>
-                </div>
-              </div>
-              <div className="mt-2 text-zinc-400">
-                {regions.length} regions, {regions.reduce((s, r) => s + r.count, 0).toLocaleString()} antennas
-              </div>
-            </>
+            <div className="text-zinc-400">
+              {regions.length} regions, {regions.reduce((s, r) => s + r.count, 0).toLocaleString()} antennas
+            </div>
           )}
         </div>
       )}
