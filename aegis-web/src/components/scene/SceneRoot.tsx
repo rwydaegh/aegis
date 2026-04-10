@@ -16,6 +16,7 @@ import BodyMesh from './BodyMesh'
 import Antenna from './Antenna'
 import DistanceLine from './DistanceLine'
 import RayPaths from './RayPaths'
+import ClusterPaths from './ClusterPaths'
 import VoxelField from './VoxelField'
 import HullMesh from './HullMesh'
 import SceneGeometry from './SceneGeometry'
@@ -386,6 +387,7 @@ export default function SceneRoot() {
         </>
       ))}
       {!isCesiumMode && <RayPaths />}
+      {!isCesiumMode && <ClusterPaths />}
       <GroundPlane />
       <SceneGrid />
       {!isCesiumMode && <EnvironmentTerrain />}
@@ -438,8 +440,9 @@ export default function SceneRoot() {
           style={{
             position: 'absolute',
             inset: 0,
+            pointerEvents: isCesiumMode ? 'none' : 'auto',
           }}
-          tabIndex={0}
+          tabIndex={isCesiumMode ? -1 : 0}
         >
           {sceneContent}
         </Canvas>

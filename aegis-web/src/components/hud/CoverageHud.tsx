@@ -26,6 +26,7 @@ function CoverageHudInner() {
     if (!ll) return
 
     useCoverageStore.getState().setEnabled(false)
+    useEnvironmentStore.getState().setSource('osm')
     useEnvironmentStore.getState().setLocation(ll.lat, ll.lon)
     loadBasestations({ lat: ll.lat, lon: ll.lon, radius_m: 500 }).then(resp => {
       useBaseStationsStore.getState().setBasestations(resp.basestations, ll)
