@@ -49,10 +49,14 @@ def generate_channel(
     power_dbm: float,
     seed: int = DEFAULT_SEED,
     overrides: dict | None = None,
+    viz_out: dict | None = None,
 ) -> PropagationPaths:
     """Generate stochastic multipath from a 3GPP/QuaDRiGa preset.
 
     Returns PropagationPaths suitable for incoherent dosimetry (levels 0-6).
+
+    If *viz_out* is a dict, it is populated with cluster-level metadata for
+    visualization (center angles, powers, delays, departure angles).
     """
     if freq_ghz <= 0:
         raise ValueError(f"freq_ghz must be positive, got {freq_ghz}")
@@ -73,7 +77,7 @@ def generate_channel(
 
     # Step 2: cluster delays and powers
     if sc_lambda > 0:
-        powers = _generate_cluster_powers_sc(
+        powers, delays = _generate_cluster_powers_sc(
             n_clusters,
             p.get("r_DS", 2.5),
             lsp["DS"],
@@ -84,7 +88,7 @@ def generate_channel(
             seed,
         )
     else:
-        powers = _generate_cluster_powers(
+        powers, delays = _generate_cluster_powers(
             n_clusters,
             p.get("r_DS", 2.5),
             lsp["DS"],
@@ -113,6 +117,30 @@ def generate_channel(
             rng,
         )
 
+    # Step 3b: cluster departure angles (for visualization)
+    if viz_out is not None:
+        asd_deg = lsp.get("ASD_deg", 10.0)
+        esd_deg = lsp.get("ESD_deg", 5.0)
+        if sc_lambda > 0:
+            dep_az, dep_el = _generate_cluster_angles_sc(
+                n_clusters,
+                powers,
+                asd_deg,
+                esd_deg,
+                body_center,
+                sc_lambda,
+                seed + 9000,
+            )
+        else:
+            dep_rng = np.random.default_rng(seed + 9000)
+            dep_az, dep_el = _generate_cluster_angles(
+                n_clusters,
+                powers,
+                asd_deg,
+                esd_deg,
+                dep_rng,
+            )
+
     # Step 4: LOS rotation
     direction = body_center - antenna_pos
     dist = np.linalg.norm(direction)
@@ -123,8 +151,25 @@ def generate_channel(
     los_el = math.atan2(direction[2], math.sqrt(direction[0] ** 2 + direction[1] ** 2))
     az, el = _rotate_to_los(az, el, los_az, los_el)
 
-    # Step 5: sub-paths
+    if viz_out is not None:
+        # Rotate departure angles to point from antenna toward body (same LOS)
+        dep_az, dep_el = _rotate_to_los(dep_az, dep_el, los_az, los_el)
+
+    # Populate viz_out before sub-path expansion (cluster-level data)
     is_los_scenario = lsp["KF_dB"] > -50  # NLOS presets have KF = -100
+    if viz_out is not None:
+        viz_out["n_clusters"] = n_clusters
+        viz_out["is_los"] = is_los_scenario
+        viz_out["cluster_az"] = az.tolist()
+        viz_out["cluster_el"] = el.tolist()
+        viz_out["cluster_dep_az"] = dep_az.tolist()
+        viz_out["cluster_dep_el"] = dep_el.tolist()
+        viz_out["cluster_power"] = powers.tolist()
+        viz_out["cluster_delay"] = delays.tolist()
+        viz_out["antenna_pos"] = np.asarray(antenna_pos).tolist()
+        viz_out["body_center"] = body_center.tolist() if hasattr(body_center, "tolist") else list(body_center)
+
+    # Step 5: sub-paths
     az, el, powers = _expand_subpaths(
         az,
         el,
@@ -170,11 +215,16 @@ def _draw_large_scale_sc(
     esa_deg = max(float(raw["ESA_deg"][0]), 0.1)
     ds = max(float(raw["DS"][0]), 1e-12)
 
+    asd_deg = max(float(raw["ASD_deg"][0]), 0.1)
+    esd_deg = max(float(raw["ESD_deg"][0]), 0.1)
+
     return {
         "KF_dB": kf_db,
         "SF_dB": sf_db,
         "ASA_deg": asa_deg,
         "ESA_deg": esa_deg,
+        "ASD_deg": asd_deg,
+        "ESD_deg": esd_deg,
         "DS": ds,
     }
 
@@ -188,8 +238,11 @@ def _generate_cluster_powers_sc(
     position: np.ndarray,
     sc_lambda: float,
     seed: int,
-) -> np.ndarray:
-    """Generate cluster powers with spatially consistent delays via SOS."""
+) -> tuple[np.ndarray, np.ndarray]:
+    """Generate cluster powers with spatially consistent delays via SOS.
+
+    Returns (powers, delays) where delays are in seconds.
+    """
     pos = np.asarray(position, dtype=float).reshape(1, 3)
     delays = np.zeros(n_clusters)
     delays[0] = 0
@@ -228,7 +281,7 @@ def _generate_cluster_powers_sc(
     if total > 0:
         powers /= total
 
-    return powers
+    return powers, delays
 
 
 def _generate_cluster_angles_sc(
@@ -301,6 +354,8 @@ def _draw_large_scale(
 
     asa_deg = _draw("AS_A", is_log10=True)
     esa_deg = _draw("ES_A", is_log10=True)
+    asd_deg = _draw("AS_D", is_log10=True)
+    esd_deg = _draw("ES_D", is_log10=True)
     ds = _draw("DS", is_log10=True)
 
     return {
@@ -308,6 +363,8 @@ def _draw_large_scale(
         "SF_dB": sf_db,
         "ASA_deg": max(asa_deg, 0.1),
         "ESA_deg": max(esa_deg, 0.1),
+        "ASD_deg": max(asd_deg, 0.1),
+        "ESD_deg": max(esd_deg, 0.1),
         "DS": max(ds, 1e-12),
     }
 
@@ -319,8 +376,11 @@ def _generate_cluster_powers(
     kf_db: float,
     lns_ksi: float,
     rng: np.random.Generator,
-) -> np.ndarray:
-    """Generate normalized cluster powers using exponential PDP + K-factor."""
+) -> tuple[np.ndarray, np.ndarray]:
+    """Generate normalized cluster powers using exponential PDP + K-factor.
+
+    Returns (powers, delays) where delays are in seconds.
+    """
     delays = -np.log(rng.uniform(1e-12, 1, size=n_clusters))
     delays[0] = 0
     delays = np.sort(delays)
@@ -346,7 +406,7 @@ def _generate_cluster_powers(
     if total > 0:
         powers /= total
 
-    return powers
+    return powers, delays
 
 
 def _generate_cluster_angles(

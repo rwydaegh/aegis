@@ -268,11 +268,19 @@ export interface DosimetryStats {
   gpu_backend?: string | null
   cold_start?: boolean
   distribution?: ExposureDistribution
+  cluster_viz?: ClusterVizItem[]
 }
 
 export interface PathViz {
   vertices: number[][]
   order: number
+}
+
+export interface ClusterVizItem {
+  fbs: [number, number, number] | null  // FBS position (Z-up server coords)
+  lbs: [number, number, number] | null  // LBS position (Z-up server coords)
+  power: number                          // normalized cluster power
+  is_los: boolean
 }
 
 export interface LevelInfo {

@@ -86,7 +86,7 @@ def test_cluster_powers_normalize_to_one():
 
     rng = np.random.default_rng(42)
     for _ in range(50):
-        powers = _generate_cluster_powers(
+        powers, delays = _generate_cluster_powers(
             n_clusters=12,
             r_ds=3,
             ds=1e-7,
@@ -96,6 +96,8 @@ def test_cluster_powers_normalize_to_one():
         )
         assert powers.sum() == pytest.approx(1.0, abs=1e-10)
         assert np.all(powers >= 0)
+        assert delays.shape == powers.shape
+        assert delays[0] == 0.0
 
 
 def test_power_positive_and_finite():
