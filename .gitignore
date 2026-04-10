@@ -95,8 +95,14 @@ docs/superpowers/
 # Internal dev notes
 docs/internal/
 
+# Personal spinoff notes
+spinoff/personal/
+
 # Local task list
 TODO.txt
+
+# Pre-commit last run state
+.last_run.json
 
 # Frontend smoke test notes
 tests/frontend_smoke.md
