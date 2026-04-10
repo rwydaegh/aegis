@@ -8,13 +8,15 @@ import TouchControls from '@/components/hud/TouchControls'
 import KeyboardHelp from '@/components/hud/KeyboardHelp'
 import { AntennaHint } from '@/components/hud/AntennaHint'
 import { CoverageHud } from '@/components/hud/CoverageHud'
+import CameraWidget from '@/components/hud/CameraWidget'
 import { WelcomeOverlay } from '@/components/hud/WelcomeOverlay'
 import { useUIStore } from '@/stores/ui'
-import { useIsMobile } from '@/hooks/useIsMobile'
+import { useIsMobile, useIsTouchDevice } from '@/hooks/useIsMobile'
 
 export default function HudOverlay() {
   const sidebarOpen = useUIStore(s => s.sidebarOpen)
   const isMobile = useIsMobile()
+  const isTouchDevice = useIsTouchDevice()
 
   const complianceLeft = (sidebarOpen && !isMobile) ? '332px' : '12px'
 
@@ -49,10 +51,13 @@ export default function HudOverlay() {
       <NotificationToast />
 
       {/* Touch controls - mobile only, hidden when sidebar is open */}
-      {isMobile && !sidebarOpen && <TouchControls />}
+      {isTouchDevice && !sidebarOpen && <TouchControls />}
 
       {/* Keyboard shortcut help modal */}
       <KeyboardHelp />
+
+      {/* Camera viewport controls - desktop only */}
+      <CameraWidget />
 
       {/* Antenna placement hint - shown after welcome dismissed, before antenna placed */}
       <AntennaHint />

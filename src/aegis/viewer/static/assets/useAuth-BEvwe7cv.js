@@ -1,0 +1,1 @@
+import{n as e}from"./index-CalkmCAz.js";export{e as useAuth};
