@@ -26,6 +26,7 @@ import { EnvironmentOSM } from './EnvironmentOSM'
 import { CesiumGlobe } from './CesiumGlobe'
 import { useEnvironmentStore } from '@/stores/environment'
 import { useMIMOStore } from '@/stores/mimo'
+import { useAntennaStore } from '@/stores/antenna'
 import BodyMeshInstance from './BodyMeshInstance'
 import AntennaArrayViz from './AntennaArray'
 import FocusPointMarker from './FocusPointMarker'
@@ -356,6 +357,8 @@ export default function SceneRoot() {
   const cameraMode = useUIStore(s => s.cameraMode)
   const mimoEnabled = useMIMOStore(s => s.enabled)
   const envSource = useEnvironmentStore(s => s.source)
+  const antennaEntries = useAntennaStore(s => [...s.antennas.values()])
+  const selectedAntennaId = useAntennaStore(s => s.selectedId)
   const controlsRef = useRef<OrbitControlsImpl | null>(null)
   if (!webglAvailable) return <WebGLUnavailable />
   if (!config) return null
@@ -384,7 +387,13 @@ export default function SceneRoot() {
       ) : (
         <>
           {bodyMeshVisible && (phantomType === 'gltf' ? <AnimatedBody /> : <BodyMesh />)}
-          <Antenna />
+          {antennaEntries.map(ant => (
+            <Antenna
+              key={ant.id}
+              position={ant.position}
+              selected={ant.id === selectedAntennaId}
+            />
+          ))}
           <DistanceLine />
         </>
       ))}

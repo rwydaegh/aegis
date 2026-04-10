@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { ScenePos } from '@/api/coordinates'
 import type { DosimetryStats, QuantityKey, ComplianceInfo, ClusterVizItem, SubpathVizItem } from '@/api/types'
+import { useAntennaStore } from '@/stores/antenna'
 
 export type DosimetryMode = 'bound' | 'aggregate' | 'spatial'
 export type ExposureMode = 'theoretical' | 'actual_max' | 'typical'
@@ -156,7 +157,17 @@ export const useSimulationStore = create<SimulationStore>((set) => ({
   freqGhz: 28,
   enabledQuantities: new Set<QuantityKey>(['sab', 'sab_4cm2']),
   displayQuantity: 'sab' as QuantityKey,
-  setAntennaPos: (pos) => set({ antennaPos: pos }),
+  setAntennaPos: (pos) => {
+    set({ antennaPos: pos })
+    const antStore = useAntennaStore.getState()
+    if (pos && antStore.antennas.size === 0) {
+      antStore.addAntenna(pos)
+    } else if (pos && antStore.selectedId) {
+      antStore.moveAntenna(antStore.selectedId, pos)
+    } else if (!pos) {
+      antStore.selectAntenna(null)
+    }
+  },
   setSelectedPattern: (p) => set({ selectedPattern: p }),
   setPatternData: (data, meta) => set({ patternData: data, patternMeta: meta }),
   setPatternLoading: (v) => set({ patternLoading: v }),
@@ -198,7 +209,13 @@ export const useSimulationStore = create<SimulationStore>((set) => ({
     if (on) return { diffraction: true, curvature: true }
     return { diffraction: false }
   }),
-  setPowerDbm: (power) => set({ powerDbm: power }),
+  setPowerDbm: (power) => {
+    set({ powerDbm: power })
+    const antStore = useAntennaStore.getState()
+    if (antStore.selectedId) {
+      antStore.updateAntenna(antStore.selectedId, { powerDbm: power })
+    }
+  },
   setSkinModel: (skinModel) => set({ skinModel }),
   setStochasticPreset: (v) => set({ stochasticPreset: v }),
   setStochasticOverrides: (v) => set({ stochasticOverrides: v }),
@@ -276,3 +293,27 @@ export const useSimulationStore = create<SimulationStore>((set) => ({
   }),
   clearResults: () => set({ sabArray: null, sabAveragedArray: null, sincArray: null, sincAveragedArray: null, sab1cm2AveragedArray: null, stats: null, compliance: null }),
 }))
+
+// Bootstrap antenna store from existing antennaPos (config, share link, scenario)
+const initialPos = useSimulationStore.getState().antennaPos
+if (initialPos && useAntennaStore.getState().antennas.size === 0) {
+  useAntennaStore.getState().addAntenna(initialPos)
+}
+
+// Sync antenna store -> simulation store (selected antenna's pos/power)
+useAntennaStore.subscribe((state) => {
+  const selected = state.selectedId ? state.antennas.get(state.selectedId) : null
+  const sim = useSimulationStore.getState()
+  if (selected) {
+    if (sim.antennaPos?.[0] !== selected.position[0] ||
+        sim.antennaPos?.[1] !== selected.position[1] ||
+        sim.antennaPos?.[2] !== selected.position[2]) {
+      useSimulationStore.setState({ antennaPos: selected.position })
+    }
+    if (sim.powerDbm !== selected.powerDbm) {
+      useSimulationStore.setState({ powerDbm: selected.powerDbm })
+    }
+  } else if (state.antennas.size === 0 && sim.antennaPos !== null) {
+    useSimulationStore.setState({ antennaPos: null })
+  }
+})

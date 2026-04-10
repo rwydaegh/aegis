@@ -1,8 +1,8 @@
 import { useRef, useCallback } from 'react'
 import type { ThreeEvent } from '@react-three/fiber'
 import { useSceneStore } from '@/stores/scene'
-import { useSimulationStore } from '@/stores/simulation'
 import { useMIMOStore } from '@/stores/mimo'
+import { useAntennaStore } from '@/stores/antenna'
 
 /**
  * Returns onPointerDown/onPointerUp handlers that place the antenna
@@ -40,7 +40,18 @@ export function useClickToPlace() {
           })
         }
       } else {
-        useSimulationStore.getState().setAntennaPos([point.x, point.y, point.z])
+        // Multi-antenna mode
+        const antStore = useAntennaStore.getState()
+        if (e.nativeEvent.ctrlKey || e.nativeEvent.metaKey) {
+          // Ctrl+click: add new antenna at click point
+          antStore.addAntenna([point.x, point.y, point.z])
+        } else if (antStore.selectedId) {
+          // Click: move selected antenna
+          antStore.moveAntenna(antStore.selectedId, [point.x, point.y, point.z])
+        } else {
+          // No antenna exists yet: create one
+          antStore.addAntenna([point.x, point.y, point.z])
+        }
       }
     }
     pointerDownPos.current = null

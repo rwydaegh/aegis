@@ -1,7 +1,6 @@
 import { useSimulationStore } from '@/stores/simulation'
 import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
-import { useMIMOStore } from '@/stores/mimo'
 import { useBaseStationsStore } from '@/stores/basestations'
 import type { DosimetryMode, ExposureMode } from '@/stores/simulation'
 import QuantitiesPanel from './QuantitiesPanel'
@@ -44,9 +43,6 @@ function CorrectionToggle({
 }
 
 export default function ParametersPanel() {
-  const antennaPos = useSimulationStore((s) => s.antennaPos)
-  const setAntennaPos = useSimulationStore((s) => s.setAntennaPos)
-  const clearResults = useSimulationStore((s) => s.clearResults)
   const mode = useSimulationStore((s) => s.mode)
   const setMode = useSimulationStore((s) => s.setMode)
   const fresnel = useSimulationStore((s) => s.fresnel)
@@ -57,8 +53,6 @@ export default function ParametersPanel() {
   const setCurvature = useSimulationStore((s) => s.setCurvature)
   const diffraction = useSimulationStore((s) => s.diffraction)
   const setDiffraction = useSimulationStore((s) => s.setDiffraction)
-  const powerDbm = useSimulationStore((s) => s.powerDbm)
-  const setPowerDbm = useSimulationStore((s) => s.setPowerDbm)
   const skinModel = useSimulationStore((s) => s.skinModel)
   const setSkinModel = useSimulationStore((s) => s.setSkinModel)
   const stats = useSimulationStore((s) => s.stats)
@@ -84,31 +78,6 @@ export default function ParametersPanel() {
 
   return (
     <div>
-      {antennaPos && (
-        <div className="flex items-center justify-between mb-3 px-1 py-1 rounded bg-muted/50 border border-border">
-          <span className="text-[10px] text-muted-foreground truncate pl-1">
-            Antenna ({antennaPos[0].toFixed(1)}, {antennaPos[1].toFixed(1)}, {antennaPos[2].toFixed(1)})
-          </span>
-          <button
-            className="ml-2 shrink-0 w-5 h-5 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
-            title="Remove antenna"
-            onClick={() => {
-              setAntennaPos(null)
-              clearResults()
-              const mimo = useMIMOStore.getState()
-              if (mimo.enabled) {
-                mimo.clearAllResults()
-                mimo.setPrecoderWeights(null)
-                useMIMOStore.setState({ arrayConfig: null })
-              }
-            }}
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-              <path d="M3 3l6 6M9 3l-6 6" />
-            </svg>
-          </button>
-        </div>
-      )}
       <label className={labelClass}>Computation mode</label>
       <select
         className={selectClass}
@@ -153,37 +122,6 @@ export default function ParametersPanel() {
           </div>
         </>
       )}
-
-      <label className={labelClass}><Tex math={'P_\\text{TX}'} /></label>
-      <div className="flex gap-2 items-center">
-        <div className="flex-1">
-          <input
-            type="number"
-            className={inputClass + ' !w-full'}
-            value={powerDbm}
-            onChange={(e) => setPowerDbm(Number(e.target.value))}
-            step={((config as unknown as Record<string, Record<string, Record<string, number>>>)?.dosimetry?.power_input?.step) ?? 1}
-            min={((config as unknown as Record<string, Record<string, Record<string, number>>>)?.dosimetry?.power_input?.min) ?? 0}
-            max={((config as unknown as Record<string, Record<string, Record<string, number>>>)?.dosimetry?.power_input?.max) ?? 100}
-          />
-          <span className="text-[10px] text-muted-foreground mt-0.5 block">dBm</span>
-        </div>
-        <span className="text-muted-foreground text-xs pb-3">=</span>
-        <div className="flex-1">
-          <input
-            type="number"
-            className={inputClass + ' !w-full'}
-            value={Number((10 ** ((powerDbm - 30) / 10)).toPrecision(4))}
-            onChange={(e) => {
-              const w = Number(e.target.value)
-              if (w > 0) setPowerDbm(Math.round((10 * Math.log10(w) + 30) * 100) / 100)
-            }}
-            step={0.1}
-            min={0}
-          />
-          <span className="text-[10px] text-muted-foreground mt-0.5 block">W</span>
-        </div>
-      </div>
 
       {bsCount > 0 && (
         <>

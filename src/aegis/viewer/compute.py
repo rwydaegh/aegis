@@ -13,7 +13,7 @@ from pathlib import Path
 import numpy as np
 import yaml
 
-from aegis.constants import EPS_0
+from aegis.constants import C_0, EPS_0
 from aegis.defaults import DEFAULT_FREQ_HZ, DEFAULT_POWER_DBM
 from aegis.engine import DosimetryEngine
 from aegis.geometry.mesh import BodyMesh
@@ -279,6 +279,88 @@ def _transform_body_for_viewer(
 _SPEED_OF_LIGHT = 299_792_458.0  # m/s
 
 
+def array_factor_gain(
+    k_hat: np.ndarray,
+    n_h: int,
+    n_v: int,
+    d_h: float,
+    d_v: float,
+    broadside: np.ndarray,
+    element_pattern: str,
+    freq_hz: float,
+) -> float:
+    """Compute |AF(k_hat)|^2 * G_element(k_hat) for a Uniform Planar Array.
+
+    For a 1x1 array the array factor is 1.0, so the result is just the
+    element gain.
+
+    Parameters
+    ----------
+    k_hat : (3,) unit direction from antenna toward body.
+    n_h, n_v : horizontal and vertical element counts.
+    d_h, d_v : element spacings in wavelengths.
+    broadside : (3,) unit vector for array normal (main beam direction).
+    element_pattern : "isotropic", "patch", or "short_dipole".
+    freq_hz : carrier frequency [Hz].
+
+    Returns
+    -------
+    float : |AF|^2 * G_element >= 0.
+    """
+    k_hat = np.asarray(k_hat, dtype=np.float64)
+    broadside = np.asarray(broadside, dtype=np.float64)
+    broadside = broadside / np.linalg.norm(broadside)
+
+    # --- Element gain ---
+    if element_pattern == "isotropic":
+        g_elem = 1.0
+    elif element_pattern == "patch":
+        cos_theta = float(k_hat @ broadside)
+        g_elem = max(cos_theta, 0.0) ** 1.5
+    elif element_pattern == "short_dipole":
+        # Dipole axis: perpendicular to broadside, using least-aligned canonical axis
+        abs_b = np.abs(broadside)
+        ref = np.zeros(3)
+        ref[int(np.argmin(abs_b))] = 1.0
+        dipole_axis = np.cross(broadside, ref)
+        dipole_axis /= np.linalg.norm(dipole_axis)
+        # alpha = angle between k_hat and dipole axis
+        cos_alpha = float(k_hat @ dipole_axis)
+        sin2_alpha = max(1.0 - cos_alpha**2, 0.0)
+        g_elem = 1.5 * sin2_alpha
+    else:
+        raise ValueError(f"Unknown element_pattern: {element_pattern!r}")
+
+    # --- Array factor ---
+    if n_h == 1 and n_v == 1:
+        return float(g_elem)
+
+    wavelength = C_0 / freq_hz
+    d_h_m = d_h * wavelength
+    d_v_m = d_v * wavelength
+    k0 = 2.0 * np.pi / wavelength
+
+    # Build broadside-perpendicular axes (same as AntennaArray.upa)
+    abs_b = np.abs(broadside)
+    ref = np.zeros(3)
+    ref[int(np.argmin(abs_b))] = 1.0
+    e_h = np.cross(broadside, ref)
+    e_h /= np.linalg.norm(e_h)
+    e_v = np.cross(broadside, e_h)
+
+    # Element offsets relative to array center
+    h_idx = np.arange(n_h) - (n_h - 1) / 2.0
+    v_idx = np.arange(n_v) - (n_v - 1) / 2.0
+    hh, vv = np.meshgrid(h_idx, v_idx)  # (n_v, n_h)
+    offsets = (hh.ravel()[:, None] * d_h_m * e_h) + (vv.ravel()[:, None] * d_v_m * e_v)  # (M, 3)
+
+    phases = k0 * (offsets @ k_hat)  # (M,)
+    af = np.sum(np.exp(1j * phases))
+    af2 = float(np.abs(af) ** 2)
+
+    return af2 * g_elem
+
+
 def _build_cluster_viz(viz_out: dict) -> dict:
     """Compute FBS/LBS positions for clusters and sub-paths.
 
@@ -359,6 +441,7 @@ def compute_dosimetry(
     power_dbm: float = DEFAULT_POWER_DBM,
     config: dict | None = None,
     stochastic: dict | None = None,
+    antennas: list[dict] | None = None,
 ) -> tuple:
     """Run dosimetry from a single antenna position toward the body.
 
@@ -374,6 +457,9 @@ def compute_dosimetry(
     tissue : tissue model (defaults to skin at 28 GHz)
     power_dbm : transmit power [dBm]
     config : viewer config dict
+    antennas : list of antenna dicts, each with keys ``position``, ``power_dbm`` (optional),
+        and ``array_config`` (optional). When provided, one PropagationPaths is built per
+        antenna and they are merged via ``PropagationPaths.concatenate``.
 
     Returns
     -------
@@ -428,6 +514,50 @@ def compute_dosimetry(
             viz_out=viz_out,
         )
         cluster_viz = _build_cluster_viz(viz_out)
+    elif antennas is not None:
+        if len(antennas) == 0:
+            # Zero antennas: zero-power single path
+            paths = PropagationPaths.from_powers(k_hat=k_hat[np.newaxis, :], power=np.array([0.0]))
+            S_inc = 0.0
+        else:
+            per_antenna_paths = []
+            total_S_inc = 0.0
+            for ant in antennas:
+                ant_pos = np.asarray(ant["position"], dtype=np.float64)
+                ant_power_dbm = float(ant.get("power_dbm", power_dbm))
+                ant_tx_w = 10 ** ((ant_power_dbm - 30) / 10)
+                acfg = ant.get("array_config", {})
+
+                a_dir = body_center - ant_pos
+                a_dist = np.linalg.norm(a_dir)
+                if a_dist < 1e-6:
+                    a_dist = 1.0
+                a_k_hat = a_dir / a_dist
+                a_d_clamped = max(a_dist, _DEFAULT_FSPL_DISTANCE_CLAMP_M)
+                a_S_inc = ant_tx_w / (4 * np.pi * a_d_clamped**2)
+
+                a_gain = array_factor_gain(
+                    k_hat=a_k_hat,
+                    n_h=int(acfg.get("n_h", 1)),
+                    n_v=int(acfg.get("n_v", 1)),
+                    d_h=float(acfg.get("d_h_wavelengths", 0.5)),
+                    d_v=float(acfg.get("d_v_wavelengths", 0.5)),
+                    broadside=np.asarray(acfg.get("broadside", [0, 0, -1]), dtype=np.float64),
+                    element_pattern=acfg.get("element_pattern", "short_dipole"),
+                    freq_hz=tissue.freq_hz if tissue else DEFAULT_FREQ_HZ,
+                )
+
+                a_S_eff = a_S_inc * a_gain
+                total_S_inc += a_S_eff
+                per_antenna_paths.append(
+                    PropagationPaths.from_powers(
+                        k_hat=a_k_hat[np.newaxis, :],
+                        power=np.array([a_S_eff]),
+                    )
+                )
+
+            paths = PropagationPaths.concatenate(per_antenna_paths, reindex_elements=True)
+            S_inc = total_S_inc
     else:
         # Single plane wave
         paths = PropagationPaths.from_powers(
@@ -515,6 +645,8 @@ def compute_dosimetry(
     extra = {
         "S_inc": float(S_inc),
         "distance_m": float(dist),
+        "n_paths": paths.n_paths,
+        "n_antennas": len(antennas) if antennas is not None else 1,
         "timings": timings,
     }
     if cluster_viz is not None:

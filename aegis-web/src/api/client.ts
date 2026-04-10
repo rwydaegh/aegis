@@ -317,6 +317,19 @@ export async function fetchHullMesh(): Promise<{
 // Compute endpoints
 // ---------------------------------------------------------------------------
 
+export interface AntennaParam {
+  position: ScenePos
+  power_dbm: number
+  array_config: {
+    n_h: number
+    n_v: number
+    d_h_wavelengths: number
+    d_v_wavelengths: number
+    broadside: [number, number, number]
+    element_pattern: string
+  }
+}
+
 export interface ComputeParams {
   antennaPos: ScenePos
   bodyOffset: ScenePos
@@ -336,6 +349,7 @@ export interface ComputeParams {
   quantities: string[]
   exposureScenario: string
   bodyName?: string
+  antennas?: AntennaParam[]
 }
 
 function computePayload(params: ComputeParams) {
@@ -359,6 +373,12 @@ function computePayload(params: ComputeParams) {
       stochastic_preset: params.stochasticPreset,
       stochastic_overrides: params.stochasticOverrides,
       stochastic_seed: params.stochasticSeed,
+    } : {}),
+    ...(params.antennas && params.antennas.length > 0 ? {
+      antennas: params.antennas.map(a => ({
+        ...a,
+        position: toServer(a.position),
+      })),
     } : {}),
   }
 }

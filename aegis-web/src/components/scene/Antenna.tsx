@@ -62,8 +62,12 @@ function interpolatePatternGain(dir: THREE.Vector3, data: Float32Array): number 
   return Math.max(g, 1e-20)
 }
 
-export default function Antenna() {
-  const pos = useSimulationStore(s => s.antennaPos)
+interface AntennaProps {
+  position: [number, number, number]
+  selected?: boolean
+}
+
+export default function Antenna({ position, selected = true }: AntennaProps) {
   const config = useSceneStore(s => s.viewerConfig)
   const wireframe = useUIStore(s => s.wireframe)
   const cameraMode = useUIStore(s => s.cameraMode)
@@ -132,7 +136,7 @@ export default function Antenna() {
 
   useEffect(() => () => { prevGeoRef.current?.dispose() }, [])
 
-  if (!pos || !config) return null
+  if (!config) return null
 
   const ant = config.antenna
   const rp = ant.radiation_pattern
@@ -148,11 +152,11 @@ export default function Antenna() {
   const tipY = poleH
 
   return (
-    <group position={pos}>
+    <group position={position}>
       {/* Pole: base at y=0 (click point), extends upward */}
       <mesh position={[0, poleH / 2, 0]}>
         <cylinderGeometry args={[poleR, poleR, poleH, ant.pole_segments ?? 8]} />
-        <meshStandardMaterial color={ant.pole_color ?? '#888888'} />
+        <meshStandardMaterial color={selected ? (ant.color ?? '#ff3333') : (ant.pole_color ?? '#888888')} />
       </mesh>
 
       {/* Radiation pattern mesh at top of pole */}
@@ -162,7 +166,7 @@ export default function Antenna() {
             <meshStandardMaterial
               vertexColors
               transparent
-              opacity={rp.opacity ?? 0.94}
+              opacity={(rp.opacity ?? 0.94) * (selected ? 1.0 : 0.5)}
               metalness={rp.metalness ?? 0.12}
               roughness={rp.roughness ?? 0.5}
               side={THREE.DoubleSide}

@@ -6,6 +6,7 @@ import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
 import { useNotificationStore } from '@/stores/notifications'
 import { useMIMOStore } from '@/stores/mimo'
+import { useAntennaStore } from '@/stores/antenna'
 import { computeDosimetry, computeVoxelRT, computeRT, computeSionnaRT, computeSionnaEnvRT, fetchLSPHeatmap, type RtConfig } from '@/api/client'
 import { toServer } from '@/api/coordinates'
 
@@ -26,6 +27,11 @@ export function useDosimetry() {
     stochasticOverrides: s.stochasticOverrides,
     stochasticSeed: s.stochasticSeed,
     enabledQuantities: s.enabledQuantities,
+  })))
+
+  const antennaStoreState = useAntennaStore(useShallow(s => ({
+    antennas: s.antennas,
+    selectedId: s.selectedId,
   })))
 
   const exposureScenario = useUIStore(s => s.exposureScenario)
@@ -72,6 +78,22 @@ export function useDosimetry() {
     const poleH = scene.config.antenna.pole_height ?? 2
     const antennaTip: typeof sim.antennaPos = [sim.antennaPos[0], sim.antennaPos[1] + poleH, sim.antennaPos[2]]
 
+    // Build multi-antenna array from antenna store
+    const antStore = useAntennaStore.getState()
+    const enabledAntennas = [...antStore.antennas.values()].filter(a => a.enabled)
+    const antennasParam = enabledAntennas.length > 0 ? enabledAntennas.map(a => ({
+      position: [a.position[0], a.position[1] + poleH, a.position[2]] as [number, number, number],
+      power_dbm: a.powerDbm,
+      array_config: {
+        n_h: a.arrayConfig.n_h,
+        n_v: a.arrayConfig.n_v,
+        d_h_wavelengths: a.arrayConfig.d_h_wavelengths,
+        d_v_wavelengths: a.arrayConfig.d_v_wavelengths,
+        broadside: a.arrayConfig.broadside,
+        element_pattern: a.arrayConfig.element_pattern,
+      },
+    })) : undefined
+
     const params = {
       antennaPos: antennaTip,
       bodyOffset: sim.bodyOffset,
@@ -91,6 +113,7 @@ export function useDosimetry() {
       quantities: Array.from(sim.enabledQuantities) as string[],
       exposureScenario,
       bodyName: scene.bodyName || undefined,
+      antennas: antennasParam,
     }
 
     // Timeout: abort after configured limit, with a distinct reason
@@ -203,7 +226,7 @@ export function useDosimetry() {
         clearTimeout(timeoutId)
         if (gen === generationRef.current) setComputing(false)
       })
-  }, [sim, scene, exposureScenario])
+  }, [sim, scene, exposureScenario, antennaStoreState])
 
   // Debounced trigger on any dependency change
   useEffect(() => {
@@ -216,7 +239,7 @@ export function useDosimetry() {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current)
     }
-  }, [sim, scene, exposureScenario, triggerCompute])
+  }, [sim, scene, exposureScenario, antennaStoreState, triggerCompute])
 
   // LSP heatmap fetch
   const lspHeatmapVisible = useSimulationStore(s => s.lspHeatmapVisible)

@@ -29,6 +29,7 @@ import MIMOPanel from '@/components/hud/MIMOPanel'
 import OptimizePanel from '@/components/panels/OptimizePanel'
 import BaseStationsPanel from '@/components/panels/BaseStationsPanel'
 import AntennaPanel from '@/components/panels/AntennaPanel'
+import AntennasPanel from '@/components/panels/AntennasPanel'
 import PhantomPanel from '@/components/panels/PhantomPanel'
 import LayersPanel from '@/components/panels/LayersPanel'
 import RayTracingPanel from '@/components/panels/RayTracingPanel'
@@ -72,7 +73,8 @@ export const SIDEBAR_GROUPS: GroupDef[] = [
     icon: Radio,
     sections: [
       { value: 'parameters', label: 'Parameters', icon: SlidersHorizontal, component: ParametersPanel },
-      { value: 'antenna', label: 'Antenna', icon: Antenna, component: AntennaPanel, conditionalOn: (ctx) => ctx.mimoEnabled },
+      { value: 'antennas', label: 'Antennas', icon: Antenna, component: AntennasPanel },
+      { value: 'antenna', label: 'Antenna', icon: Grid3X3, component: AntennaPanel, conditionalOn: (ctx) => ctx.mimoEnabled },
       { value: 'mimo', label: 'MIMO', icon: Grid3X3, component: MIMOPanel },
       { value: 'patterns', label: 'Antenna Patterns', icon: Target, component: PatternBrowserPanel },
     ],
