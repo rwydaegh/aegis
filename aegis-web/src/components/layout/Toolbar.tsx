@@ -5,6 +5,7 @@ import { useSimulationStore } from '@/stores/simulation'
 import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
 import { useMIMOStore } from '@/stores/mimo'
+import { useCoverageStore } from '@/stores/coverage'
 import type { CameraPreset } from '@/stores/ui'
 import { cn } from '@/lib/utils'
 import type { DosimetryStats } from '@/api/types'
@@ -165,7 +166,22 @@ export default function Toolbar() {
     <header className="h-11 flex items-center justify-between px-3 bg-card/80 backdrop-blur-sm border-b border-border shrink-0 gap-4 relative z-30">
       {/* Left: wordmark + docs + scenario */}
       <div className="flex items-center gap-3 min-w-0">
-        <span className="text-sm font-medium text-heading shrink-0">aegis</span>
+        <button
+          onClick={() => {
+            // Reset scene state
+            useSimulationStore.getState().clearResults()
+            useSimulationStore.getState().setAntennaPos(null)
+            useSceneStore.getState().clearScene()
+            useUIStore.getState().setActiveScenario(null)
+            useUIStore.getState().setWelcomeDismissed(false)
+            useCoverageStore.getState().setEnabled(false)
+            // Strip URL params and hash
+            history.replaceState(null, '', window.location.pathname)
+          }}
+          className="text-base font-semibold text-heading shrink-0 hover:text-primary transition-colors cursor-pointer"
+        >
+          aegis
+        </button>
         <a
           href="https://docs.aegis.waves-ugent.be"
           target="_blank"
