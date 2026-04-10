@@ -663,11 +663,13 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                     return err
                 ant_power = float(raw_ant.get("power_dbm", power_dbm))
                 acfg = raw_ant.get("array_config", {})
-                antennas.append({
-                    "position": ant_pos.tolist(),
-                    "power_dbm": ant_power,
-                    "array_config": acfg,
-                })
+                antennas.append(
+                    {
+                        "position": ant_pos.tolist(),
+                        "power_dbm": ant_power,
+                        "array_config": acfg,
+                    }
+                )
 
         import time as _time
 
