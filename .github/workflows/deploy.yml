@@ -10,7 +10,7 @@ jobs:
 
   deploy:
     needs: ci
-    runs-on: ubuntu-latest
+    runs-on: ubicloud-standard-2
     if: github.ref == 'refs/heads/master'
     permissions:
       contents: read
@@ -136,7 +136,7 @@ jobs:
           sentry-cli releases deploys "${{ github.sha }}" new -e production
 
   loc-badge:
-    runs-on: ubuntu-latest
+    runs-on: ubicloud-standard-2
     if: github.ref == 'refs/heads/master'
     steps:
       - uses: actions/checkout@v6
@@ -164,7 +164,7 @@ jobs:
 
   modal-deploy:
     needs: ci
-    runs-on: ubuntu-latest
+    runs-on: ubicloud-standard-2
     if: github.ref == 'refs/heads/master'
     steps:
       - uses: actions/checkout@v6

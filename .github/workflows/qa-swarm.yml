@@ -6,7 +6,7 @@ on:
 jobs:
   # Manager: analyzes recent changes and feature surface, assigns 5 non-overlapping scopes
   manager:
-    runs-on: ubuntu-latest
+    runs-on: ubicloud-standard-2
     permissions:
       contents: read
       id-token: write
@@ -107,7 +107,7 @@ jobs:
   # Fan out: 5 parallel QA testers, each with their specific assignment
   tester:
     needs: manager
-    runs-on: ubuntu-latest
+    runs-on: ubicloud-standard-2
     permissions:
       contents: write
       pull-requests: write

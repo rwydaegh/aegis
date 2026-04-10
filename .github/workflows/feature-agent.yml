@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   feature:
-    runs-on: ubuntu-latest
+    runs-on: ubicloud-standard-2
     timeout-minutes: 45
     permissions:
       contents: write

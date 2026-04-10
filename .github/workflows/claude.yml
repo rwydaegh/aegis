@@ -22,7 +22,7 @@ jobs:
       (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
       (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
       (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')) && !contains(join(github.event.issue.labels.*.name, ','), 'sentry') && !contains(join(github.event.issue.labels.*.name, ','), 'qa-bot'))
-    runs-on: ubuntu-latest
+    runs-on: ubicloud-standard-2
     permissions:
       contents: write
       pull-requests: write
@@ -48,7 +48,7 @@ jobs:
       github.event_name == 'issues' &&
       (github.event.action == 'labeled' || github.event.action == 'opened') &&
       contains(join(github.event.issue.labels.*.name, ','), 'qa-bot')
-    runs-on: ubuntu-latest
+    runs-on: ubicloud-standard-2
     timeout-minutes: 30
     permissions:
       contents: write
@@ -102,7 +102,7 @@ jobs:
       github.event_name == 'issues' &&
       (github.event.action == 'labeled' || github.event.action == 'opened') &&
       contains(join(github.event.issue.labels.*.name, ','), 'sentry')
-    runs-on: ubuntu-latest
+    runs-on: ubicloud-standard-2
     timeout-minutes: 30
     permissions:
       contents: write

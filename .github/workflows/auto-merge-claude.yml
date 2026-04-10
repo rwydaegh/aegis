@@ -10,7 +10,7 @@ jobs:
     if: |
       github.event.pull_request.user.login == 'claude[bot]' &&
       startsWith(github.event.pull_request.head.ref, 'claude/')
-    runs-on: ubuntu-latest
+    runs-on: ubicloud-standard-2
     permissions:
       contents: write
       pull-requests: write
