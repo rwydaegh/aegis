@@ -1,7 +1,9 @@
+import * as Sentry from '@sentry/react'
 import { useCoverageStore } from '@/stores/coverage'
 import { useUIStore } from '@/stores/ui'
 import { useEnvironmentStore } from '@/stores/environment'
 import { useBaseStationsStore } from '@/stores/basestations'
+import { useNotificationStore } from '@/stores/notifications'
 import { loadBasestations } from '@/api/basestations'
 import { Globe, MapPin, ArrowLeft, RefreshCw } from 'lucide-react'
 
@@ -30,6 +32,9 @@ function CoverageHudInner() {
     useEnvironmentStore.getState().setLocation(ll.lat, ll.lon)
     loadBasestations({ lat: ll.lat, lon: ll.lon, radius_m: 500 }).then(resp => {
       useBaseStationsStore.getState().setBasestations(resp.basestations, ll)
+    }).catch(err => {
+      Sentry.captureException(err)
+      useNotificationStore.getState().addNotification('error', `Failed to load base stations: ${(err as Error).message}`)
     })
   }
 
