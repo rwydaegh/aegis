@@ -47,7 +47,7 @@ export function initSentry() {
             stochasticSeed: sim.stochasticSeed,
           },
           ui: {
-            sidebarOpen: ui.sidebarOpen,
+            sidebarMode: ui.sidebarMode,
             cameraMode: ui.cameraMode,
             legendScale: ui.legendScale,
             wireframe: ui.wireframe,

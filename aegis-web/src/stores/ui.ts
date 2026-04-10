@@ -1,10 +1,12 @@
 import { create } from 'zustand'
+import type { GroupId } from '@/components/layout/sidebar-config'
 
 export type CameraPreset = 'front' | 'side' | 'top' | 'focus' | 'reset' | null
 export type CameraMode = 'orbit' | 'follow' | 'globe'
 export type LegendScale = 'linear' | 'dB'
 export type { QuantityKey } from '@/api/types'
 export type ExposureScenario = 'general_public' | 'occupational'
+export type SidebarMode = 'hidden' | 'rail' | 'expanded'
 
 export interface LastComputeTiming {
   totalMs: number
@@ -19,7 +21,9 @@ export interface LastComputeTiming {
 }
 
 interface UIStore {
-  sidebarOpen: boolean
+  sidebarMode: SidebarMode
+  activeGroup: GroupId
+  openSectionsByGroup: Record<GroupId, string[]>
   wireframe: boolean
   isComputing: boolean
   computeElapsed: number
@@ -44,6 +48,9 @@ interface UIStore {
   cameraOverride: { position: [number, number, number]; target: [number, number, number] } | null
 
   toggleSidebar: () => void
+  setSidebarMode: (mode: SidebarMode) => void
+  setActiveGroup: (group: GroupId) => void
+  setGroupOpenSections: (group: GroupId, sections: string[]) => void
   toggleWireframe: () => void
   setComputing: (computing: boolean) => void
   setComputeElapsed: (ms: number) => void
@@ -69,8 +76,24 @@ interface UIStore {
   setCameraOverride: (v: UIStore['cameraOverride']) => void
 }
 
+/** Derived selector: true when sidebar is visible (rail or expanded) */
+export const selectSidebarOpen = (s: UIStore) => s.sidebarMode !== 'hidden'
+
+/** Derived selector: true when sidebar panel is fully expanded */
+export const selectSidebarExpanded = (s: UIStore) => s.sidebarMode === 'expanded'
+
+// Track last visible mode so toggleSidebar can restore it
+let _lastVisibleMode: SidebarMode = 'expanded'
+
 export const useUIStore = create<UIStore>((set) => ({
-  sidebarOpen: true,
+  sidebarMode: 'expanded',
+  activeGroup: 'source',
+  openSectionsByGroup: {
+    world: [],
+    source: ['parameters'],
+    exposure: [],
+    analysis: [],
+  },
   wireframe: false,
   isComputing: false,
   computeElapsed: 0,
@@ -93,7 +116,21 @@ export const useUIStore = create<UIStore>((set) => ({
   activeScenario: null as string | null,
   scenarioLoading: false,
   cameraOverride: null,
-  toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
+  toggleSidebar: () => set((state) => {
+    if (state.sidebarMode === 'hidden') {
+      return { sidebarMode: _lastVisibleMode }
+    }
+    _lastVisibleMode = state.sidebarMode
+    return { sidebarMode: 'hidden' }
+  }),
+  setSidebarMode: (mode) => {
+    if (mode !== 'hidden') _lastVisibleMode = mode
+    set({ sidebarMode: mode })
+  },
+  setActiveGroup: (group) => set({ activeGroup: group }),
+  setGroupOpenSections: (group, sections) => set((state) => ({
+    openSectionsByGroup: { ...state.openSectionsByGroup, [group]: sections },
+  })),
   toggleWireframe: () => set((state) => ({ wireframe: !state.wireframe })),
   setComputing: (computing) => set({ isComputing: computing }),
   setComputeElapsed: (ms) => set({ computeElapsed: ms }),
