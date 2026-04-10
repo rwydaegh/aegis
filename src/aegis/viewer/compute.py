@@ -441,6 +441,7 @@ def compute_dosimetry(
     power_dbm: float = DEFAULT_POWER_DBM,
     config: dict | None = None,
     stochastic: dict | None = None,
+    antennas: list[dict] | None = None,
 ) -> tuple:
     """Run dosimetry from a single antenna position toward the body.
 
@@ -456,6 +457,9 @@ def compute_dosimetry(
     tissue : tissue model (defaults to skin at 28 GHz)
     power_dbm : transmit power [dBm]
     config : viewer config dict
+    antennas : list of antenna dicts, each with keys ``position``, ``power_dbm`` (optional),
+        and ``array_config`` (optional). When provided, one PropagationPaths is built per
+        antenna and they are merged via ``PropagationPaths.concatenate``.
 
     Returns
     -------
@@ -510,6 +514,50 @@ def compute_dosimetry(
             viz_out=viz_out,
         )
         cluster_viz = _build_cluster_viz(viz_out)
+    elif antennas is not None:
+        if len(antennas) == 0:
+            # Zero antennas: zero-power single path
+            paths = PropagationPaths.from_powers(k_hat=k_hat[np.newaxis, :], power=np.array([0.0]))
+            S_inc = 0.0
+        else:
+            per_antenna_paths = []
+            total_S_inc = 0.0
+            for ant in antennas:
+                ant_pos = np.asarray(ant["position"], dtype=np.float64)
+                ant_power_dbm = float(ant.get("power_dbm", power_dbm))
+                ant_tx_w = 10 ** ((ant_power_dbm - 30) / 10)
+                acfg = ant.get("array_config", {})
+
+                a_dir = body_center - ant_pos
+                a_dist = np.linalg.norm(a_dir)
+                if a_dist < 1e-6:
+                    a_dist = 1.0
+                a_k_hat = a_dir / a_dist
+                a_d_clamped = max(a_dist, _DEFAULT_FSPL_DISTANCE_CLAMP_M)
+                a_S_inc = ant_tx_w / (4 * np.pi * a_d_clamped**2)
+
+                a_gain = array_factor_gain(
+                    k_hat=a_k_hat,
+                    n_h=int(acfg.get("n_h", 1)),
+                    n_v=int(acfg.get("n_v", 1)),
+                    d_h=float(acfg.get("d_h_wavelengths", 0.5)),
+                    d_v=float(acfg.get("d_v_wavelengths", 0.5)),
+                    broadside=np.asarray(acfg.get("broadside", [0, 0, -1]), dtype=np.float64),
+                    element_pattern=acfg.get("element_pattern", "short_dipole"),
+                    freq_hz=tissue.freq_hz if tissue else DEFAULT_FREQ_HZ,
+                )
+
+                a_S_eff = a_S_inc * a_gain
+                total_S_inc += a_S_eff
+                per_antenna_paths.append(
+                    PropagationPaths.from_powers(
+                        k_hat=a_k_hat[np.newaxis, :],
+                        power=np.array([a_S_eff]),
+                    )
+                )
+
+            paths = PropagationPaths.concatenate(per_antenna_paths, reindex_elements=True)
+            S_inc = total_S_inc
     else:
         # Single plane wave
         paths = PropagationPaths.from_powers(
@@ -597,6 +645,8 @@ def compute_dosimetry(
     extra = {
         "S_inc": float(S_inc),
         "distance_m": float(dist),
+        "n_paths": paths.n_paths,
+        "n_antennas": len(antennas) if antennas is not None else 1,
         "timings": timings,
     }
     if cluster_viz is not None:

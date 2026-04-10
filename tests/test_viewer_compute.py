@@ -143,3 +143,101 @@ def test_resolve_channel_preset_dir_default_config_exists():
     """Default preset_dir from DEFAULTS config resolves to an existing directory."""
     resolved = _resolve_channel_preset_dir()
     assert resolved.is_dir(), f"Default preset dir does not exist: {resolved}"
+
+
+def test_compute_dosimetry_multi_antenna_higher_power():
+    """Two co-located antennas produce more total path power than one, and n_paths == 2."""
+    body = make_flat_mesh(8)
+
+    single_antenna = [{"position": [0.0, 0.0, 2.0], "power_dbm": 23.0}]
+    two_antennas = [
+        {"position": [0.0, 0.0, 2.0], "power_dbm": 23.0},
+        {"position": [0.1, 0.0, 2.0], "power_dbm": 23.0},
+    ]
+
+    with patch(
+        "aegis.viewer.compute.DosimetryEngine.compute_with_timings",
+        return_value=(_fake_result(body.n_triangles), {}),
+    ):
+        *_, extra_single = compute_dosimetry(
+            body,
+            antenna_pos=np.array([0.0, 0.0, 2.0]),
+            antennas=single_antenna,
+        )
+        *_, extra_two = compute_dosimetry(
+            body,
+            antenna_pos=np.array([0.0, 0.0, 2.0]),
+            antennas=two_antennas,
+        )
+
+    assert extra_two["n_paths"] == 2
+    assert extra_two["S_inc"] > extra_single["S_inc"]
+
+
+def test_compute_dosimetry_empty_antennas_returns_zero():
+    """Empty antennas list produces one zero-power path and S_inc == 0."""
+    body = make_flat_mesh(8)
+
+    with patch(
+        "aegis.viewer.compute.DosimetryEngine.compute_with_timings",
+        return_value=(_fake_result(body.n_triangles), {}),
+    ):
+        *_, extra = compute_dosimetry(
+            body,
+            antenna_pos=np.array([0.0, 0.0, 2.0]),
+            antennas=[],
+        )
+
+    assert extra["n_paths"] == 1
+    assert extra["S_inc"] == 0.0
+    assert extra["n_antennas"] == 0
+
+
+def test_compute_dosimetry_antennas_with_array_gain():
+    """A 4x4 isotropic array at broadside provides 256x gain over a 1x1 isotropic element."""
+    body = make_flat_mesh(8)
+
+    antenna_1x1 = [
+        {
+            "position": [0.0, 0.0, 2.0],
+            "power_dbm": 0.0,
+            "array_config": {
+                "n_h": 1,
+                "n_v": 1,
+                "element_pattern": "isotropic",
+                "broadside": [0.0, 0.0, -1.0],
+            },
+        }
+    ]
+    antenna_4x4 = [
+        {
+            "position": [0.0, 0.0, 2.0],
+            "power_dbm": 0.0,
+            "array_config": {
+                "n_h": 4,
+                "n_v": 4,
+                "element_pattern": "isotropic",
+                "broadside": [0.0, 0.0, -1.0],
+            },
+        }
+    ]
+
+    with patch(
+        "aegis.viewer.compute.DosimetryEngine.compute_with_timings",
+        return_value=(_fake_result(body.n_triangles), {}),
+    ):
+        *_, extra_1x1 = compute_dosimetry(
+            body,
+            antenna_pos=np.array([0.0, 0.0, 2.0]),
+            antennas=antenna_1x1,
+        )
+        *_, extra_4x4 = compute_dosimetry(
+            body,
+            antenna_pos=np.array([0.0, 0.0, 2.0]),
+            antennas=antenna_4x4,
+        )
+
+    # 4x4 = 16 elements, |AF|^2 = 16^2 = 256 at exact broadside.
+    # Body center is slightly off-axis so ratio may be ~255; allow 1% tolerance.
+    ratio = extra_4x4["S_inc"] / extra_1x1["S_inc"]
+    np.testing.assert_allclose(ratio, 256.0, rtol=1e-2)
