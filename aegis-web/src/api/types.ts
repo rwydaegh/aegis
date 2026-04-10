@@ -334,7 +334,7 @@ export interface TissueSpectrum {
 
 // --- MIMO types ---
 
-export type ElementPattern = 'isotropic' | 'patch'
+export type ElementPattern = 'isotropic' | 'patch' | 'short_dipole'
 
 export interface ArrayConfig {
   type: 'upa'
