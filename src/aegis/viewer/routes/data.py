@@ -238,11 +238,7 @@ def _handle_config(cache):
         phantom_dir = Path(phantom_dir_cfg)
     else:
         phantom_dir = data_dir_path / "phantoms"
-    gltf_bodies = (
-        sorted(p.stem for p in phantom_dir.glob("*.glb") if p.is_file())
-        if phantom_dir.is_dir()
-        else []
-    )
+    gltf_bodies = sorted(p.stem for p in phantom_dir.glob("*.glb") if p.is_file()) if phantom_dir.is_dir() else []
 
     # Merge GLB names into the bodies list so they appear in the dropdown
     all_bodies = sorted(set(bodies) | set(gltf_bodies))
