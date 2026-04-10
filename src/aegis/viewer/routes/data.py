@@ -231,8 +231,18 @@ def _handle_config(cache):
     bodies.sort()
 
     # Discover GLB (animated) phantoms from phantom_dir
-    phantom_dir = Path(cfg.get("body", {}).get("phantom_dir", "data/phantoms"))
-    gltf_bodies = sorted(p.stem for p in phantom_dir.glob("*.glb") if p.is_file())
+    # Resolve relative to data_dir so CWD doesn't matter
+    data_dir_path = Path(cache.get("data_dir", "data"))
+    phantom_dir_cfg = cfg.get("body", {}).get("phantom_dir", "")
+    if phantom_dir_cfg and Path(phantom_dir_cfg).is_absolute():
+        phantom_dir = Path(phantom_dir_cfg)
+    else:
+        phantom_dir = data_dir_path / "phantoms"
+    gltf_bodies = (
+        sorted(p.stem for p in phantom_dir.glob("*.glb") if p.is_file())
+        if phantom_dir.is_dir()
+        else []
+    )
 
     # Merge GLB names into the bodies list so they appear in the dropdown
     all_bodies = sorted(set(bodies) | set(gltf_bodies))
@@ -340,8 +350,13 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
         if not re.match(r"^[a-zA-Z0-9_-]+$", name):
             abort(400, "Invalid phantom name")
-        phantom_dir = Path(cache["config"]["body"].get("phantom_dir", "data/phantoms"))
-        path = phantom_dir / f"{name}.glb"
+        data_dir_path = Path(cache.get("data_dir", "data"))
+        phantom_dir_cfg = cache["config"]["body"].get("phantom_dir", "")
+        if phantom_dir_cfg and Path(phantom_dir_cfg).is_absolute():
+            phantom_dir = Path(phantom_dir_cfg)
+        else:
+            phantom_dir = data_dir_path / "phantoms"
+        path = (phantom_dir / f"{name}.glb").resolve()
         if not path.is_file():
             abort(404)
         return send_file(path, mimetype="model/gltf-binary")
