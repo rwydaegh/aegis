@@ -170,7 +170,7 @@ def generate_channel(
         viz_out["body_center"] = body_center.tolist() if hasattr(body_center, "tolist") else list(body_center)
 
     # Step 5: sub-paths
-    az, el, powers = _expand_subpaths(
+    sub_az, sub_el, sub_powers = _expand_subpaths(
         az,
         el,
         powers,
@@ -179,6 +179,14 @@ def generate_channel(
         p.get("PerClusterES_A", 7),
         is_los_scenario,
     )
+
+    if viz_out is not None:
+        viz_out["sub_az"] = sub_az.tolist()
+        viz_out["sub_el"] = sub_el.tolist()
+        viz_out["sub_power"] = sub_powers.tolist()
+        viz_out["n_subpaths"] = n_subpaths
+
+    az, el, powers = sub_az, sub_el, sub_powers
 
     # Step 6: convert to k_hat and power
     k_hats = _angles_to_khats(az, el)

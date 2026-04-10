@@ -160,7 +160,11 @@ export function useDosimetry() {
           useSceneStore.getState().setRtPaths(stats.path_viz)
         }
         // Store cluster visualization data from stochastic channel
-        useSimulationStore.getState().setClusterVizData(stats.cluster_viz ?? null)
+        const cviz = stats.cluster_viz
+        useSimulationStore.getState().setClusterVizData(
+          cviz?.clusters ?? null,
+          cviz?.subpaths ?? null,
+        )
 
         // Compute timing breakdown for the UI
         const networkMs = (t_response - t_request) - (stats.timings?.route_total_ms ?? 0)

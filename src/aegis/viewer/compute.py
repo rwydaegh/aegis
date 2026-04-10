@@ -279,72 +279,72 @@ def _transform_body_for_viewer(
 _SPEED_OF_LIGHT = 299_792_458.0  # m/s
 
 
-def _build_cluster_viz(viz_out: dict) -> list[dict]:
-    """Compute FBS/LBS positions for each cluster and return visualization data.
+def _build_cluster_viz(viz_out: dict) -> dict:
+    """Compute FBS/LBS positions for clusters and sub-paths.
 
-    Each cluster becomes a dict with keys: fbs, lbs, power, is_los.
-    Positions are in Z-up server coordinates.
+    Returns a dict with:
+      clusters: list of {fbs, lbs, power, is_los} at cluster level
+      subpaths: list of {fbs, lbs, power, is_los, cluster} at sub-path level
     """
     n = viz_out["n_clusters"]
     is_los = viz_out["is_los"]
     antenna = np.array(viz_out["antenna_pos"])
     body_c = np.array(viz_out["body_center"])
     dist = np.linalg.norm(body_c - antenna)
+    n_sub = viz_out.get("n_subpaths", 20)
+    sub_az_all = viz_out.get("sub_az", [])
+    sub_el_all = viz_out.get("sub_el", [])
+    sub_pow_all = viz_out.get("sub_power", [])
 
     clusters = []
+    subpaths = []
+
     for i in range(n):
         power = viz_out["cluster_power"][i]
 
         if is_los and i == 0:
-            # LOS cluster: direct path, no scatterers
-            clusters.append(
-                {
-                    "fbs": None,
-                    "lbs": None,
-                    "power": power,
-                    "is_los": True,
-                }
-            )
+            clusters.append({"fbs": None, "lbs": None, "power": power, "is_los": True})
+            if sub_pow_all:
+                subpaths.append({"fbs": None, "lbs": None, "power": sub_pow_all[0], "is_los": True, "cluster": 0})
             continue
 
-        # Arrival direction at body (propagation direction, Z-up)
-        arr_az = viz_out["cluster_az"][i]
-        arr_el = viz_out["cluster_el"][i]
-        cos_el = math.cos(arr_el)
-        arr_dir = np.array([cos_el * math.cos(arr_az), cos_el * math.sin(arr_az), math.sin(arr_el)])
-
-        # Departure direction from antenna (propagation direction, Z-up)
+        # Departure direction from antenna (same for cluster and its sub-paths)
         dep_az = viz_out["cluster_dep_az"][i]
         dep_el = viz_out["cluster_dep_el"][i]
         cos_dep_el = math.cos(dep_el)
         dep_dir = np.array([cos_dep_el * math.cos(dep_az), cos_dep_el * math.sin(dep_az), math.sin(dep_el)])
 
-        # Excess path length from cluster delay
         delay_s = viz_out["cluster_delay"][i]
-        d_excess = delay_s * _SPEED_OF_LIGHT
-        # Clamp excess to something visually reasonable (at most 2x the direct distance)
-        d_excess = min(d_excess, dist * 2.0)
-
-        # Split excess equally between FBS and LBS legs
-        r_fbs = max(d_excess * 0.5, dist * 0.15)
-        r_lbs = max(d_excess * 0.5, dist * 0.15)
-        # Clamp so scatterers stay between antenna and body
-        r_fbs = min(r_fbs, dist * 0.8)
-        r_lbs = min(r_lbs, dist * 0.8)
+        d_excess = min(delay_s * _SPEED_OF_LIGHT, dist * 2.0)
+        r_fbs = min(max(d_excess * 0.5, dist * 0.15), dist * 0.8)
+        r_lbs = min(max(d_excess * 0.5, dist * 0.15), dist * 0.8)
 
         fbs = (antenna + dep_dir * r_fbs).tolist()
+
+        # Cluster-level LBS from center arrival angle
+        arr_az = viz_out["cluster_az"][i]
+        arr_el = viz_out["cluster_el"][i]
+        cos_el = math.cos(arr_el)
+        arr_dir = np.array([cos_el * math.cos(arr_az), cos_el * math.sin(arr_az), math.sin(arr_el)])
         lbs = (body_c - arr_dir * r_lbs).tolist()
 
-        clusters.append(
-            {
-                "fbs": fbs,
-                "lbs": lbs,
-                "power": power,
-                "is_los": False,
-            }
-        )
+        clusters.append({"fbs": fbs, "lbs": lbs, "power": power, "is_los": False})
 
-    return clusters
+        # Sub-path level: each has its own arrival angle -> own LBS
+        nlos_idx = i - 1 if is_los else i
+        base = (1 if is_los else 0) + nlos_idx * n_sub
+        for j in range(n_sub):
+            idx = base + j
+            if idx >= len(sub_az_all):
+                break
+            s_az = sub_az_all[idx]
+            s_el = sub_el_all[idx]
+            cos_s_el = math.cos(s_el)
+            s_dir = np.array([cos_s_el * math.cos(s_az), cos_s_el * math.sin(s_az), math.sin(s_el)])
+            s_lbs = (body_c - s_dir * r_lbs).tolist()
+            subpaths.append({"fbs": fbs, "lbs": s_lbs, "power": sub_pow_all[idx], "is_los": False, "cluster": i})
+
+    return {"clusters": clusters, "subpaths": subpaths}
 
 
 def compute_dosimetry(

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { ScenePos } from '@/api/coordinates'
-import type { DosimetryStats, QuantityKey, ComplianceInfo, ClusterVizItem } from '@/api/types'
+import type { DosimetryStats, QuantityKey, ComplianceInfo, ClusterVizItem, SubpathVizItem } from '@/api/types'
 
 export type DosimetryMode = 'bound' | 'aggregate' | 'spatial'
 export type ExposureMode = 'theoretical' | 'actual_max' | 'typical'
@@ -51,7 +51,9 @@ interface SimulationStore {
 
   // Cluster visualization
   clusterVizVisible: boolean
+  clusterVizDetail: 'clusters' | 'subpaths'
   clusterVizData: ClusterVizItem[] | null
+  subpathVizData: SubpathVizItem[] | null
 
   // LSP heatmap
   lspHeatmapVisible: boolean
@@ -100,7 +102,8 @@ interface SimulationStore {
   toggleQuantity: (key: QuantityKey) => void
   setDisplayQuantity: (key: QuantityKey) => void
   setClusterVizVisible: (v: boolean) => void
-  setClusterVizData: (data: ClusterVizItem[] | null) => void
+  setClusterVizDetail: (v: 'clusters' | 'subpaths') => void
+  setClusterVizData: (data: ClusterVizItem[] | null, subpaths?: SubpathVizItem[] | null) => void
   setLSPHeatmapVisible: (v: boolean) => void
   setLSPHeatmapParam: (p: string) => void
   setLSPHeatmapData: (data: number[][] | null, bounds: [number, number, number, number], range: [number, number]) => void
@@ -134,7 +137,9 @@ export const useSimulationStore = create<SimulationStore>((set) => ({
   bodyOffset: [0, 0, 0],
   bodyRotationY: 0,
   clusterVizVisible: true,
+  clusterVizDetail: 'clusters',
   clusterVizData: null,
+  subpathVizData: null,
   lspHeatmapVisible: true,
   lspHeatmapParam: 'SF_dB',
   lspHeatmapData: null,
@@ -253,7 +258,8 @@ export const useSimulationStore = create<SimulationStore>((set) => ({
   }),
   setDisplayQuantity: (key) => set({ displayQuantity: key }),
   setClusterVizVisible: (v) => set({ clusterVizVisible: v }),
-  setClusterVizData: (data) => set({ clusterVizData: data }),
+  setClusterVizDetail: (v) => set({ clusterVizDetail: v }),
+  setClusterVizData: (data, subpaths) => set({ clusterVizData: data, subpathVizData: subpaths ?? null }),
   setLSPHeatmapVisible: (v) => set({ lspHeatmapVisible: v }),
   setLSPHeatmapParam: (p) => set({ lspHeatmapParam: p }),
   setLSPHeatmapData: (data, bounds, range) => set({ lspHeatmapData: data, lspHeatmapBounds: bounds, lspHeatmapRange: range }),

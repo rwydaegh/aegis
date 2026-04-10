@@ -63,6 +63,8 @@ export default function StochasticPanel() {
   const setSeed = useSimulationStore(s => s.setStochasticSeed)
   const clusterVizVisible = useSimulationStore(s => s.clusterVizVisible)
   const setClusterVizVisible = useSimulationStore(s => s.setClusterVizVisible)
+  const clusterVizDetail = useSimulationStore(s => s.clusterVizDetail)
+  const setClusterVizDetail = useSimulationStore(s => s.setClusterVizDetail)
   const lspHeatmapVisible = useSimulationStore(s => s.lspHeatmapVisible)
   const setLSPHeatmapVisible = useSimulationStore(s => s.setLSPHeatmapVisible)
   const lspHeatmapParam = useSimulationStore(s => s.lspHeatmapParam)
@@ -213,6 +215,21 @@ export default function StochasticPanel() {
               onChange={e => setClusterVizVisible(e.target.checked)} />
             Show cluster rays (FBS/LBS)
           </label>
+
+          {clusterVizVisible && (
+            <div className="flex items-center gap-2 mt-1 ml-5">
+              <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+                <input type="radio" name="clusterDetail" checked={clusterVizDetail === 'clusters'}
+                  onChange={() => setClusterVizDetail('clusters')} />
+                Clusters
+              </label>
+              <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+                <input type="radio" name="clusterDetail" checked={clusterVizDetail === 'subpaths'}
+                  onChange={() => setClusterVizDetail('subpaths')} />
+                All sub-paths
+              </label>
+            </div>
+          )}
 
           <label className="flex items-center gap-2 text-xs text-foreground mt-1">
             <input type="checkbox" checked={lspHeatmapVisible}
