@@ -36,9 +36,9 @@ function Btn({ code, label, className = '' }: BtnProps) {
 
 export default function TouchControls() {
   return (
-    <div className="absolute bottom-0 left-0 right-0 h-[200px] pointer-events-none z-20">
+    <div className="absolute bottom-[calc(16dvh+env(safe-area-inset-bottom,0px))] left-0 right-0 pointer-events-none z-20">
       {/* D-pad: left side */}
-      <div className="absolute bottom-8 left-5 pointer-events-auto grid grid-cols-3 gap-1.5 w-[148px]">
+      <div className="absolute bottom-0 left-5 pointer-events-auto grid grid-cols-3 gap-1.5 w-[148px]">
         {/* Row 1: _ W _ */}
         <div />
         <Btn code="KeyW" label="W" className="h-11 w-11" />
@@ -50,7 +50,7 @@ export default function TouchControls() {
       </div>
 
       {/* Actions: right side */}
-      <div className="absolute bottom-8 right-5 pointer-events-auto flex flex-col items-center gap-2.5">
+      <div className="absolute bottom-0 right-5 pointer-events-auto flex flex-col items-center gap-2.5">
         {/* Q / E row */}
         <div className="flex gap-2.5">
           <Btn code="KeyQ" label="Q" className="h-12 w-12" />
