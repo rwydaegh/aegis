@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import functools
+
 import numpy as np
 import scipy.linalg
 
@@ -42,14 +44,11 @@ _CORR_KEY_MAP: dict[str, tuple[int, int]] = {
 }
 
 
-def build_correlation_matrix(params: dict) -> tuple[np.ndarray, np.ndarray]:
-    """Build 8x8 inter-parameter correlation matrix and Cholesky factor.
-
-    Returns (R, L) where R is the correlation matrix and L is lower-triangular
-    Cholesky factor such that L @ L.T = R.
-    """
+@functools.lru_cache(maxsize=16)
+def _build_cached(corr_key: tuple) -> tuple[np.ndarray, np.ndarray]:
+    """Build from a hashable key of (key, value) pairs."""
+    params = dict(corr_key)
     R = np.eye(_N)
-
     for key, (i, j) in _CORR_KEY_MAP.items():
         if key in params:
             val = float(params[key])
@@ -68,3 +67,13 @@ def build_correlation_matrix(params: dict) -> tuple[np.ndarray, np.ndarray]:
     L = scipy.linalg.cholesky(R, lower=True)
 
     return R, L
+
+
+def build_correlation_matrix(params: dict) -> tuple[np.ndarray, np.ndarray]:
+    """Build 8x8 inter-parameter correlation matrix and Cholesky factor.
+
+    Returns (R, L) where R is the correlation matrix and L is lower-triangular
+    Cholesky factor such that L @ L.T = R.
+    """
+    corr_key = tuple(sorted((k, float(params[k])) for k in _CORR_KEY_MAP if k in params))
+    return _build_cached(corr_key)

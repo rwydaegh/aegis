@@ -493,22 +493,27 @@ def _expand_subpaths(
     offsets_rad = np.radians(_SUBPATH_OFFSETS_DEG[:n_subpaths])
     n_actual = len(offsets_rad)
 
-    all_az, all_el, all_pow = [], [], []
+    if is_los:
+        nlos_az = az[1:]
+        nlos_el = el[1:]
+        nlos_pow = powers[1:]
+    else:
+        nlos_az = az
+        nlos_el = el
+        nlos_pow = powers
 
-    for i in range(len(az)):
-        if is_los and i == 0:
-            all_az.append(az[i])
-            all_el.append(el[i])
-            all_pow.append(powers[i])
-        else:
-            sub_az = az[i] + c_asa * offsets_rad
-            sub_el = el[i] + c_esa * offsets_rad
-            sub_pow = np.full(n_actual, powers[i] / n_actual)
-            all_az.extend(sub_az)
-            all_el.extend(sub_el)
-            all_pow.extend(sub_pow)
+    # Broadcast: (n_nlos, 1) + (1, n_actual) -> (n_nlos, n_actual)
+    sub_az = nlos_az[:, np.newaxis] + c_asa * offsets_rad[np.newaxis, :]
+    sub_el = nlos_el[:, np.newaxis] + c_esa * offsets_rad[np.newaxis, :]
+    sub_pow = np.broadcast_to((nlos_pow / n_actual)[:, np.newaxis], sub_az.shape).ravel()
 
-    return np.array(all_az), np.array(all_el), np.array(all_pow)
+    if is_los:
+        return (
+            np.concatenate([[az[0]], sub_az.ravel()]),
+            np.concatenate([[el[0]], sub_el.ravel()]),
+            np.concatenate([[powers[0]], sub_pow]),
+        )
+    return sub_az.ravel(), sub_el.ravel(), sub_pow
 
 
 def _angles_to_khats(az: np.ndarray, el: np.ndarray) -> np.ndarray:
