@@ -51,6 +51,31 @@ export function jetColor(t: number): [number, number, number] {
   return [r, g, b]
 }
 
+// Viridis colormap: 11 perceptually uniform stops (dark purple -> yellow)
+const VIRIDIS: [number, number, number][] = [
+  [68, 1, 84], [72, 35, 116], [64, 67, 135], [52, 94, 141],
+  [41, 120, 142], [32, 144, 140], [34, 167, 132], [68, 190, 112],
+  [121, 209, 81], [189, 222, 38], [253, 231, 37],
+]
+
+/** Interpolate the viridis colormap at parameter t in [0, 1]. Returns [r, g, b] in [0, 255]. */
+export function viridisColor(t: number): [number, number, number] {
+  t = Math.max(0, Math.min(1, t))
+  const idx = Math.min(t * (VIRIDIS.length - 1), VIRIDIS.length - 1.001)
+  const lo = Math.floor(idx)
+  const hi = Math.ceil(idx)
+  const f = idx - lo
+  return [
+    Math.round(VIRIDIS[lo][0] * (1 - f) + VIRIDIS[hi][0] * f),
+    Math.round(VIRIDIS[lo][1] * (1 - f) + VIRIDIS[hi][1] * f),
+    Math.round(VIRIDIS[lo][2] * (1 - f) + VIRIDIS[hi][2] * f),
+  ]
+}
+
+/** CSS linear-gradient string for viridis (top = max/yellow, bottom = min/purple). */
+export const VIRIDIS_GRADIENT_CSS =
+  `linear-gradient(to bottom, ${[...VIRIDIS].reverse().map(([r, g, b]) => `rgb(${r},${g},${b})`).join(', ')})`
+
 /** Log-scale gain mapping with dynamic range. */
 export function gainTFromLinear(g: number, gMax: number, dynamicRangeDb: number): number {
   if (gMax <= 0) return 0.5

@@ -157,6 +157,8 @@ export function useDosimetry() {
         if (stats.path_viz) {
           useSceneStore.getState().setRtPaths(stats.path_viz)
         }
+        // Store cluster visualization data from stochastic channel
+        useSimulationStore.getState().setClusterVizData(stats.cluster_viz ?? null)
 
         // Compute timing breakdown for the UI
         const networkMs = (t_response - t_request) - (stats.timings?.route_total_ms ?? 0)
@@ -221,6 +223,7 @@ export function useDosimetry() {
     const poleH = scene.config?.antenna?.pole_height ?? 2
     const antennaTip: [number, number, number] = [sim.antennaPos[0], sim.antennaPos[1] + poleH, sim.antennaPos[2]]
 
+    useSimulationStore.getState().setLSPHeatmapLoading(true)
     fetchLSPHeatmap({
       preset: sim.stochasticPreset,
       freq_ghz: sim.freqGhz,
@@ -237,6 +240,11 @@ export function useDosimetry() {
       .catch(err => {
         if ((err as Error).name === 'AbortError') return
         Sentry.captureException(err)
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          useSimulationStore.getState().setLSPHeatmapLoading(false)
+        }
       })
 
     return () => { controller.abort() }

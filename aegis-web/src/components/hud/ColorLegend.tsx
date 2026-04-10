@@ -4,6 +4,7 @@ import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
 import { arrayMax } from '@/lib/colormap'
 import Tex from '@/components/ui/Tex'
+import GradientBar from '@/components/hud/GradientBar'
 
 /** Format a value for the legend: use scientific notation for very small/large values. */
 function formatLegendValue(value: number): string {
@@ -14,9 +15,6 @@ function formatLegendValue(value: number): string {
   if (abs >= 0.01) return value.toFixed(3)
   return value.toExponential(1)
 }
-
-const BAR_HEIGHT = 240
-const BAR_WIDTH = 16
 
 /**
  * Compute a smart default dynamic range from the S_ab distribution.
@@ -60,6 +58,9 @@ function legendLabel(qty: string, ratio: boolean, scale: string): string {
   return base + unit
 }
 
+const JET_GRADIENT_CSS =
+  'linear-gradient(to bottom, rgb(128,0,0), rgb(255,0,0), rgb(255,128,0), rgb(255,255,0), rgb(128,255,128), rgb(0,255,255), rgb(0,128,255), rgb(0,0,255), rgb(0,0,128))'
+
 export default function ColorLegend() {
   const stats = useSimulationStore(s => s.stats)
   const config = useSceneStore(s => s.viewerConfig)
@@ -89,10 +90,6 @@ export default function ColorLegend() {
 
   const peakForQty = stats.peaks?.[displayQuantity] ?? stats.peak_sab
   const maxSab = (colormapLocked && colormapLockedMax != null) ? colormapLockedMax : peakForQty
-  // Jet colormap gradient: red (top/max) -> yellow -> green -> cyan -> blue (bottom/min)
-  const gradientCss =
-    'linear-gradient(to bottom, rgb(128,0,0), rgb(255,0,0), rgb(255,128,0), rgb(255,255,0), rgb(128,255,128), rgb(0,255,255), rgb(0,128,255), rgb(0,0,255), rgb(0,0,128))'
-
   const isRatioMode = ratioMode && displayQuantity !== 'sab'
 
   // Find ratio limit from compliance checks
@@ -110,111 +107,80 @@ export default function ColorLegend() {
     }
   }
 
-  // Compute max ratio for the legend
   const maxRatio = isRatioMode && ratioLimit > 0 ? peakForQty / ratioLimit : 1.0
 
   // Both scales use 5 uniformly spaced ticks (top to bottom)
   const N = 5
-  type Tick = { label: string; pct: number }
-  const ticks: Tick[] = []
-
-  for (let i = 0; i < N; i++) {
-    const frac = i / (N - 1) // 0 = top (max), 1 = bottom (min)
+  const ticks = Array.from({ length: N }, (_, i) => {
+    const frac = i / (N - 1)
     if (isRatioMode) {
       const value = maxRatio * (1 - frac)
-      ticks.push({ label: value.toFixed(2), pct: frac })
+      return { label: value.toFixed(2), pct: frac }
     } else if (legendScale === 'linear') {
       const value = maxSab * (1 - frac)
-      ticks.push({ label: formatLegendValue(value), pct: frac })
+      return { label: formatLegendValue(value), pct: frac }
     } else {
       const db = -dynamicRangeDb * frac
-      ticks.push({ label: `${db.toFixed(0)} dB`, pct: frac })
+      return { label: `${db.toFixed(0)} dB`, pct: frac }
     }
-  }
+  })
+
+  const titleNode = (
+    <>
+      <span className="text-xs font-medium text-foreground">
+        <Tex math={legendLabel(displayQuantity, ratioMode, legendScale)} />
+      </span>
+      {!isRatioMode && (
+        <div className="flex items-center gap-1">
+          <button
+            onClick={toggleColormapLock}
+            className={`text-[11px] px-1.5 py-0.5 rounded border transition-colors cursor-pointer ${
+              colormapLocked
+                ? 'border-primary/40 bg-primary/15 text-primary'
+                : 'border-border bg-muted/50 text-foreground hover:bg-muted'
+            }`}
+            title={colormapLocked ? 'Unlock colormap (auto-normalize)' : 'Lock colormap to current max'}
+          >
+            {colormapLocked ? '\u{1F512}' : '\u{1F513}'}
+          </button>
+          <button
+            onClick={toggleLegendScale}
+            className="text-[11px] px-2 py-0.5 rounded border border-border bg-muted/50 text-foreground hover:bg-muted transition-colors cursor-pointer"
+            title={legendScale === 'linear' ? 'Switch to dB scale' : 'Switch to linear scale'}
+          >
+            {legendScale === 'linear' ? 'dB' : 'Lin'}
+          </button>
+        </div>
+      )}
+    </>
+  )
+
+  const footerNode = (!isRatioMode && legendScale === 'dB') ? (
+    <div className="flex items-center gap-1.5 mt-2">
+      <span className="text-[10px] text-muted-foreground">Floor</span>
+      <input
+        type="number"
+        className="w-12 bg-background border border-border rounded px-1 py-0.5 text-[11px] font-mono text-foreground text-center"
+        value={-dynamicRangeDb}
+        step={5}
+        max={-5}
+        min={-80}
+        onChange={e => {
+          const v = Number(e.target.value)
+          if (v < 0 && v >= -80) setDynamicRangeDb(-v)
+        }}
+      />
+      <span className="text-[10px] text-muted-foreground">dB</span>
+    </div>
+  ) : undefined
 
   return (
-    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-auto">
-      <div className={`bg-card/80 backdrop-blur-md rounded-lg border border-border px-3 py-2.5 ${isComputing ? 'shimmer-panel' : ''}`}>
-        {/* Title, lock, and scale toggle */}
-        <div className="flex items-center justify-between gap-1.5 mb-2">
-          <span className="text-xs font-medium text-foreground">
-            <Tex math={legendLabel(displayQuantity, ratioMode, legendScale)} />
-          </span>
-          {!isRatioMode && (
-            <div className="flex items-center gap-1">
-              <button
-                onClick={toggleColormapLock}
-                className={`text-[11px] px-1.5 py-0.5 rounded border transition-colors cursor-pointer ${
-                  colormapLocked
-                    ? 'border-primary/40 bg-primary/15 text-primary'
-                    : 'border-border bg-muted/50 text-foreground hover:bg-muted'
-                }`}
-                title={colormapLocked ? 'Unlock colormap (auto-normalize)' : 'Lock colormap to current max'}
-              >
-                {colormapLocked ? '\u{1F512}' : '\u{1F513}'}
-              </button>
-              <button
-                onClick={toggleLegendScale}
-                className="text-[11px] px-2 py-0.5 rounded border border-border bg-muted/50 text-foreground hover:bg-muted transition-colors cursor-pointer"
-                title={legendScale === 'linear' ? 'Switch to dB scale' : 'Switch to linear scale'}
-              >
-                {legendScale === 'linear' ? 'dB' : 'Lin'}
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Gradient bar with tick labels side by side */}
-        <div className="flex gap-2">
-          {/* Labels column */}
-          <div className="relative" style={{ height: BAR_HEIGHT, width: 60 }}>
-            {ticks.map(({ label, pct }, i) => (
-              <span
-                key={i}
-                className="absolute right-0 text-xs font-mono tabular-nums text-foreground whitespace-nowrap"
-                style={{ top: pct * BAR_HEIGHT - 7 }}
-              >
-                {label}
-              </span>
-            ))}
-          </div>
-
-          {/* Tick marks + gradient bar */}
-          <div className="relative" style={{ height: BAR_HEIGHT }}>
-            <div
-              className="rounded-sm border border-border/60"
-              style={{ background: gradientCss, height: BAR_HEIGHT, width: BAR_WIDTH }}
-            />
-            {ticks.map(({ pct }, i) => (
-              <div
-                key={i}
-                className="absolute bg-foreground/40"
-                style={{ top: pct * BAR_HEIGHT, left: -4, width: 4, height: 1 }}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* dB floor input (only in dB mode and not ratio mode) */}
-        {!isRatioMode && legendScale === 'dB' && (
-          <div className="flex items-center gap-1.5 mt-2">
-            <span className="text-[10px] text-muted-foreground">Floor</span>
-            <input
-              type="number"
-              className="w-12 bg-background border border-border rounded px-1 py-0.5 text-[11px] font-mono text-foreground text-center"
-              value={-dynamicRangeDb}
-              step={5}
-              max={-5}
-              min={-80}
-              onChange={e => {
-                const v = Number(e.target.value)
-                if (v < 0 && v >= -80) setDynamicRangeDb(-v)
-              }}
-            />
-            <span className="text-[10px] text-muted-foreground">dB</span>
-          </div>
-        )}
-      </div>
-    </div>
+    <GradientBar
+      gradient={JET_GRADIENT_CSS}
+      ticks={ticks}
+      title={titleNode}
+      shimmer={isComputing}
+      footer={footerNode}
+    />
   )
 }

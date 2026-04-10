@@ -1,27 +1,11 @@
 import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import { useSimulationStore } from '../../stores/simulation'
-
-// Viridis-inspired colormap
-const COLORMAP: [number, number, number][] = [
-  [68, 1, 84], [72, 35, 116], [64, 67, 135], [52, 94, 141],
-  [41, 120, 142], [32, 144, 140], [34, 167, 132], [68, 190, 112],
-  [121, 209, 81], [189, 222, 38], [253, 231, 37],
-]
-
-function interpolateColor(t: number): [number, number, number] {
-  const idx = Math.min(t * (COLORMAP.length - 1), COLORMAP.length - 1.001)
-  const lo = Math.floor(idx)
-  const hi = Math.ceil(idx)
-  const f = idx - lo
-  return [
-    Math.round(COLORMAP[lo][0] * (1 - f) + COLORMAP[hi][0] * f),
-    Math.round(COLORMAP[lo][1] * (1 - f) + COLORMAP[hi][1] * f),
-    Math.round(COLORMAP[lo][2] * (1 - f) + COLORMAP[hi][2] * f),
-  ]
-}
+import { useSceneStore } from '../../stores/scene'
+import { viridisColor } from '../../lib/colormap'
 
 export function LSPHeatmap() {
+  const pathSource = useSceneStore((s) => s.pathSource)
   const visible = useSimulationStore((s) => s.lspHeatmapVisible)
   const data = useSimulationStore((s) => s.lspHeatmapData)
   const bounds = useSimulationStore((s) => s.lspHeatmapBounds)
@@ -43,7 +27,7 @@ export function LSPHeatmap() {
     for (let row = 0; row < h; row++) {
       for (let col = 0; col < w; col++) {
         const t = Math.max(0, Math.min(1, (data[h - 1 - row][col] - vmin) / span))
-        const [r, g, b] = interpolateColor(t)
+        const [r, g, b] = viridisColor(t)
         const idx = (row * w + col) * 4
         imageData.data[idx] = r
         imageData.data[idx + 1] = g
@@ -61,7 +45,7 @@ export function LSPHeatmap() {
 
   useEffect(() => () => { texture?.dispose() }, [texture])
 
-  if (!visible || !texture || !data) return null
+  if (pathSource !== 'stochastic' || !visible || !texture || !data) return null
 
   const [xMin, xMax, yMin, yMax] = bounds
   const width = xMax - xMin

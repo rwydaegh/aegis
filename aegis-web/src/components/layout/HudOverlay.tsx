@@ -1,5 +1,6 @@
 import StatusBar from '@/components/hud/StatusBar'
 import ColorLegend from '@/components/hud/ColorLegend'
+import LSPLegend from '@/components/hud/LSPLegend'
 import ServerInfoBadge from '@/components/hud/ServerInfoBadge'
 import CompliancePanel from '@/components/hud/CompliancePanel'
 import NotificationToast from '@/components/hud/NotificationToast'
@@ -30,8 +31,9 @@ export default function HudOverlay() {
         <CompliancePanel />
       </div>
 
-      {/* Color legend - right edge, vertically centered */}
+      {/* Color legend - right edge, vertically centered (dosimetry or LSP, never both) */}
       <ColorLegend />
+      <LSPLegend />
 
       {/* Status bar - bottom center */}
       <div className="pointer-events-auto">

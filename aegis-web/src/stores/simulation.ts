@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { ScenePos } from '@/api/coordinates'
-import type { DosimetryStats, QuantityKey, ComplianceInfo } from '@/api/types'
+import type { DosimetryStats, QuantityKey, ComplianceInfo, ClusterVizItem } from '@/api/types'
 
 export type DosimetryMode = 'bound' | 'aggregate' | 'spatial'
 export type ExposureMode = 'theoretical' | 'actual_max' | 'typical'
@@ -49,12 +49,17 @@ interface SimulationStore {
   bodyOffset: ScenePos
   bodyRotationY: number
 
+  // Cluster visualization
+  clusterVizVisible: boolean
+  clusterVizData: ClusterVizItem[] | null
+
   // LSP heatmap
   lspHeatmapVisible: boolean
   lspHeatmapParam: string
   lspHeatmapData: number[][] | null
   lspHeatmapBounds: [number, number, number, number]
   lspHeatmapRange: [number, number]
+  lspHeatmapLoading: boolean
 
   // Results
   sabArray: Float32Array | null
@@ -94,9 +99,12 @@ interface SimulationStore {
   setEnabledQuantities: (q: Set<QuantityKey>) => void
   toggleQuantity: (key: QuantityKey) => void
   setDisplayQuantity: (key: QuantityKey) => void
+  setClusterVizVisible: (v: boolean) => void
+  setClusterVizData: (data: ClusterVizItem[] | null) => void
   setLSPHeatmapVisible: (v: boolean) => void
   setLSPHeatmapParam: (p: string) => void
   setLSPHeatmapData: (data: number[][] | null, bounds: [number, number, number, number], range: [number, number]) => void
+  setLSPHeatmapLoading: (v: boolean) => void
   setCompliance: (report: ComplianceInfo) => void
   setResults: (sab: Float32Array, stats: DosimetryStats, extras?: {
     sabAveraged?: Float32Array; sinc?: Float32Array; sincAveraged?: Float32Array; sab1cm2Averaged?: Float32Array
@@ -125,11 +133,14 @@ export const useSimulationStore = create<SimulationStore>((set) => ({
   stochasticSeed: 42,
   bodyOffset: [0, 0, 0],
   bodyRotationY: 0,
-  lspHeatmapVisible: false,
+  clusterVizVisible: true,
+  clusterVizData: null,
+  lspHeatmapVisible: true,
   lspHeatmapParam: 'SF_dB',
   lspHeatmapData: null,
   lspHeatmapBounds: [-100, 100, -100, 100],
   lspHeatmapRange: [0, 1],
+  lspHeatmapLoading: false,
   sabArray: null,
   sabAveragedArray: null,
   sincArray: null,
@@ -241,9 +252,12 @@ export const useSimulationStore = create<SimulationStore>((set) => ({
     return { enabledQuantities: next }
   }),
   setDisplayQuantity: (key) => set({ displayQuantity: key }),
+  setClusterVizVisible: (v) => set({ clusterVizVisible: v }),
+  setClusterVizData: (data) => set({ clusterVizData: data }),
   setLSPHeatmapVisible: (v) => set({ lspHeatmapVisible: v }),
   setLSPHeatmapParam: (p) => set({ lspHeatmapParam: p }),
   setLSPHeatmapData: (data, bounds, range) => set({ lspHeatmapData: data, lspHeatmapBounds: bounds, lspHeatmapRange: range }),
+  setLSPHeatmapLoading: (v) => set({ lspHeatmapLoading: v }),
   setCompliance: (report) => set({ compliance: report }),
   setResults: (sab, stats, extras) => set({
     sabArray: sab,

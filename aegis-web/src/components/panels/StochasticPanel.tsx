@@ -3,6 +3,7 @@ import * as Sentry from '@sentry/react'
 import { useSceneStore } from '@/stores/scene'
 import { useSimulationStore } from '@/stores/simulation'
 import { useNotificationStore } from '@/stores/notifications'
+import { LSP_KEYS, getLSPMeta } from '@/lib/lsp-labels'
 
 interface PresetInfo {
   name: string
@@ -60,6 +61,8 @@ export default function StochasticPanel() {
   const setOverrides = useSimulationStore(s => s.setStochasticOverrides)
   const seed = useSimulationStore(s => s.stochasticSeed)
   const setSeed = useSimulationStore(s => s.setStochasticSeed)
+  const clusterVizVisible = useSimulationStore(s => s.clusterVizVisible)
+  const setClusterVizVisible = useSimulationStore(s => s.setClusterVizVisible)
   const lspHeatmapVisible = useSimulationStore(s => s.lspHeatmapVisible)
   const setLSPHeatmapVisible = useSimulationStore(s => s.setLSPHeatmapVisible)
   const lspHeatmapParam = useSimulationStore(s => s.lspHeatmapParam)
@@ -184,8 +187,17 @@ export default function StochasticPanel() {
             onChange={e => setOverride('NumSubPaths', Number(e.target.value))} />
 
           <label className={labelClass}>Seed</label>
-          <input type="number" className={inputClass}
-            value={seed} onChange={e => setSeed(Number(e.target.value))} />
+          <div className="flex gap-1.5">
+            <input type="number" className={inputClass + ' flex-1'}
+              value={seed} onChange={e => setSeed(Number(e.target.value))} />
+            <button
+              className="px-2 py-1.5 rounded border border-border bg-muted/50 text-foreground hover:bg-muted transition-colors cursor-pointer text-sm"
+              title="New channel realization (random seed)"
+              onClick={() => setSeed(Math.floor(Math.random() * 2 ** 31))}
+            >
+              &#x21BB;
+            </button>
+          </div>
 
           <button
             className="mt-2 text-xs text-primary hover:underline cursor-pointer"
@@ -197,6 +209,12 @@ export default function StochasticPanel() {
           <hr className="my-3 border-border" />
 
           <label className="flex items-center gap-2 text-xs text-foreground">
+            <input type="checkbox" checked={clusterVizVisible}
+              onChange={e => setClusterVizVisible(e.target.checked)} />
+            Show cluster rays (FBS/LBS)
+          </label>
+
+          <label className="flex items-center gap-2 text-xs text-foreground mt-1">
             <input type="checkbox" checked={lspHeatmapVisible}
               onChange={e => setLSPHeatmapVisible(e.target.checked)} />
             Show LSP heatmap
@@ -207,8 +225,8 @@ export default function StochasticPanel() {
               <label className={labelClass}>LSP parameter</label>
               <select className={selectClass} value={lspHeatmapParam}
                 onChange={e => setLSPHeatmapParam(e.target.value)}>
-                {['SF_dB', 'KF_dB', 'DS', 'ASA_deg', 'ASD_deg', 'ESA_deg', 'ESD_deg', 'XPR_dB'].map(p => (
-                  <option key={p} value={p}>{p}</option>
+                {LSP_KEYS.map(k => (
+                  <option key={k} value={k}>{getLSPMeta(k).label}</option>
                 ))}
               </select>
             </>
