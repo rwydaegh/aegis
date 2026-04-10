@@ -182,3 +182,33 @@ class TestLSFModelHeatmap:
 
         assert grid.shape == (10, 10), f"Expected (10, 10), got {grid.shape}"
         assert np.all(np.isfinite(grid)), "Grid contains non-finite values"
+
+    def test_generate_map_has_spatial_variation(self):
+        from aegis.channel.lsf import LSFModel
+
+        model = LSFModel(_umi_los_params(), freq_ghz=3.5)
+        grid = model.generate_map(bounds=(-100, 100, -100, 100), resolution=128, height=1.5, lsp_name="SF_dB")
+
+        assert grid.shape == (128, 128)
+        assert grid.std() > 0, "LSP map has no spatial variation (all identical values)"
+
+
+class TestGenerateLSPHeatmapE2E:
+    def test_viewer_heatmap_returns_varied_data(self):
+        from aegis.viewer.compute import generate_lsp_heatmap
+
+        result = generate_lsp_heatmap(
+            preset_name="3GPP_38.901_UMi_LOS",
+            freq_ghz=3.5,
+            antenna_pos=(0.0, 0.0, 10.0),
+            lsp_name="SF_dB",
+            bounds=(-100, 100, -100, 100),
+            resolution=128,
+            seed=42,
+        )
+
+        assert result["resolution"] == 128
+        data = np.array(result["data"])
+        assert data.shape == (128, 128)
+        assert data.std() > 0, "Heatmap has no spatial variation"
+        assert result["vmin"] < result["vmax"], "vmin must be less than vmax for colormap"

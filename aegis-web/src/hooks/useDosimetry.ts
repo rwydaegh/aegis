@@ -227,7 +227,7 @@ export function useDosimetry() {
       antenna_pos: toServer(antennaTip),
       lsp_name: lspHeatmapParam,
       bounds: [-100, 100, -100, 100],
-      resolution: 1.0,
+      resolution: 128,
       seed: sim.stochasticSeed,
     })
       .then(result => {
