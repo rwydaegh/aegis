@@ -10,7 +10,7 @@ from scipy.special import erfc
 from aegis.channel.lsf import LSFModel
 from aegis.channel.path_loss import compute_path_loss
 from aegis.channel.presets import scale_param
-from aegis.channel.sos import SumOfSinusoids
+from aegis.channel.sos import batch_evaluate_sos
 from aegis.defaults import DEFAULT_SEED, NUMERICAL_FLOOR
 from aegis.paths import PropagationPaths
 
@@ -247,13 +247,13 @@ def _generate_cluster_powers_sc(
     delays = np.zeros(n_clusters)
     delays[0] = 0
 
-    for ci in range(1, n_clusters):
-        sos = SumOfSinusoids(d_lambda=sc_lambda, seed=seed + 2000 + ci)
-        z = sos.evaluate(pos)[0]
-        # Transform N(0,1) -> U(0,1) via erfc: Phi(z) = erfc(-z/sqrt(2))/2
-        u = float(erfc(-z / math.sqrt(2)) / 2.0)
-        u = np.clip(u, 1e-12, 1.0 - 1e-12)
-        delays[ci] = -math.log(u)
+    # Batch delay SOS: seeds for clusters 1..n_clusters-1
+    if n_clusters > 1:
+        delay_seeds = np.arange(1, n_clusters) + seed + 2000
+        z_delay = batch_evaluate_sos(delay_seeds, sc_lambda, pos)[:, 0]  # (n_clusters-1,)
+        u_delay = erfc(-z_delay / math.sqrt(2)) / 2.0
+        u_delay = np.clip(u_delay, 1e-12, 1.0 - 1e-12)
+        delays[1:] = -np.log(u_delay)
 
     delays = np.sort(delays)
 
@@ -262,12 +262,11 @@ def _generate_cluster_powers_sc(
 
     powers = np.exp(-delays * (r_ds - 1) / (r_ds * ds)) if r_ds > 1 and ds > 0 else np.ones(n_clusters)
 
+    # Batch shadow fading SOS
     if lns_ksi > 0:
-        # SOS-based shadow fading per cluster
-        for ci in range(n_clusters):
-            sos_sh = SumOfSinusoids(d_lambda=sc_lambda, seed=seed + 3000 + ci)
-            z_sh = sos_sh.evaluate(pos)[0]
-            powers[ci] *= 10 ** (-lns_ksi * z_sh / 10)
+        shadow_seeds = np.arange(n_clusters) + seed + 3000
+        z_shadow = batch_evaluate_sos(shadow_seeds, sc_lambda, pos)[:, 0]  # (n_clusters,)
+        powers *= 10 ** (-lns_ksi * z_shadow / 10)
 
     k_linear = 10 ** (kf_db / 10)
     if n_clusters > 1 and k_linear > 1e-10:
@@ -298,16 +297,18 @@ def _generate_cluster_angles_sc(
     az_init = np.zeros(n_clusters)
     el_init = np.zeros(n_clusters)
 
-    for ci in range(1, n_clusters):
-        sos_az = SumOfSinusoids(d_lambda=sc_lambda, seed=seed + 4000 + ci)
-        sos_el = SumOfSinusoids(d_lambda=sc_lambda, seed=seed + 5000 + ci)
-        z_az = sos_az.evaluate(pos)[0]
-        z_el = sos_el.evaluate(pos)[0]
-        # Transform N(0,1) -> U(-pi/2, pi/2) via erfc
-        u_az = float(erfc(-z_az / math.sqrt(2)) / 2.0)
-        u_el = float(erfc(-z_el / math.sqrt(2)) / 2.0)
-        az_init[ci] = -math.pi / 2 + math.pi * u_az
-        el_init[ci] = -math.pi / 2 + math.pi * u_el
+    if n_clusters > 1:
+        az_seeds = np.arange(1, n_clusters) + seed + 4000
+        el_seeds = np.arange(1, n_clusters) + seed + 5000
+        all_seeds = np.concatenate([az_seeds, el_seeds])
+        z_all = batch_evaluate_sos(all_seeds, sc_lambda, pos)[:, 0]
+        n_nlos = n_clusters - 1
+        z_az = z_all[:n_nlos]
+        z_el = z_all[n_nlos:]
+        u_az = erfc(-z_az / math.sqrt(2)) / 2.0
+        u_el = erfc(-z_el / math.sqrt(2)) / 2.0
+        az_init[1:] = -math.pi / 2 + math.pi * u_az
+        el_init[1:] = -math.pi / 2 + math.pi * u_el
 
     az = _scale_angles(az_init, powers, math.radians(asa_deg), max_scale=3.0)
     el = _scale_angles(el_init, powers, math.radians(esa_deg), max_scale=1.5)
