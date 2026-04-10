@@ -1,4 +1,4 @@
-"""AEGIS - Adaptive Electromagnetic Geometric Illumination and Safety."""
+"""AEGIS - Adaptive Electromagnetic Geometric Illumination & Safety."""
 
 from __future__ import annotations
 
