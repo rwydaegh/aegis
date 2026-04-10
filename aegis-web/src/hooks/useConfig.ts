@@ -16,10 +16,13 @@ export function useConfig() {
   useEffect(() => {
     Promise.all([fetchViewerConfig(), fetchCapabilities()])
       .then(([config, caps]) => {
+        const initialBody = caps.body_name ?? caps.bodies?.[0] ?? ''
+        const gltfSet = new Set(caps.gltf_bodies ?? [])
         useSceneStore.setState({
           viewerConfig: config,
           capabilities: caps,
-          bodyName: caps.body_name ?? caps.bodies?.[0] ?? '',
+          bodyName: initialBody,
+          phantomType: gltfSet.has(initialBody) ? 'gltf' : 'stl',
         })
 
         const simState: Record<string, unknown> = {

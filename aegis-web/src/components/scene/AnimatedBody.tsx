@@ -9,6 +9,7 @@ import { useNotificationStore } from '@/stores/notifications'
 import { useGltfBody } from '@/hooks/useGltfBody'
 import { extractPosedMesh } from '@/hooks/usePoseExtract'
 import { computeWithInlineMesh } from '@/api/computeInline'
+import BodyMeshInstance from './BodyMeshInstance'
 
 function AnimatedBodyInner() {
   const groupRef = useRef<THREE.Group>(null!)
@@ -17,10 +18,24 @@ function AnimatedBodyInner() {
 
   const bodyName = useSceneStore(s => s.bodyName)
   const animationPlaying = useSceneStore(s => s.animationPlaying)
+  const bodyGeometry = useSceneStore(s => s.bodyGeometry)
   const bodyOffset = useSimulationStore(s => s.bodyOffset)
   const bodyRotationY = useSimulationStore(s => s.bodyRotationY)
+  const sabArray = useSimulationStore(s => s.sabArray)
+  const sabAveragedArray = useSimulationStore(s => s.sabAveragedArray)
+  const sincArray = useSimulationStore(s => s.sincArray)
+  const sincAveragedArray = useSimulationStore(s => s.sincAveragedArray)
+  const sab1cm2AveragedArray = useSimulationStore(s => s.sab1cm2AveragedArray)
+  const stats = useSimulationStore(s => s.stats)
+  const compliance = useSimulationStore(s => s.compliance)
 
   const { scene } = useGltfBody(bodyName, groupRef)
+
+  // Clear stale STL dosimetry results on mount / body change
+  useEffect(() => {
+    useSimulationStore.getState().clearResults()
+    useSceneStore.getState().setBodyGeometry(null)
+  }, [bodyName])
 
   // Find the SkinnedMesh in the loaded scene
   const skinnedMeshRef = useRef<THREE.SkinnedMesh | null>(null)
@@ -125,10 +140,30 @@ function AnimatedBodyInner() {
     }
   }, [])
 
+  // When paused and heatmap geometry is ready, show the colored heatmap mesh
+  // instead of the GLB model. While animating (or before first pause), show the GLB.
+  const showHeatmap = !animationPlaying && bodyGeometry !== null
+
   return (
-    <group ref={groupRef} position={bodyOffset} rotation={[0, bodyRotationY, 0]}>
-      <primitive object={scene} />
-    </group>
+    <>
+      <group ref={groupRef} position={bodyOffset} rotation={[0, bodyRotationY, 0]} visible={!showHeatmap}>
+        <primitive object={scene} />
+      </group>
+      {showHeatmap && (
+        <BodyMeshInstance
+          geometry={bodyGeometry}
+          sabArray={sabArray}
+          sabAveragedArray={sabAveragedArray}
+          sincArray={sincArray}
+          sincAveragedArray={sincAveragedArray}
+          sab1cm2AveragedArray={sab1cm2AveragedArray}
+          stats={stats}
+          compliance={compliance}
+          position={bodyOffset}
+          rotationY={bodyRotationY}
+        />
+      )}
+    </>
   )
 }
 

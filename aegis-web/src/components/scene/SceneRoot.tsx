@@ -13,6 +13,7 @@ import { useMIMOKeyboard } from '@/hooks/useMIMOKeyboard'
 import { usePhysics } from '@/hooks/usePhysics'
 import { useClickToPlace } from '@/hooks/useClickToPlace'
 import BodyMesh from './BodyMesh'
+import { AnimatedBody } from './AnimatedBody'
 import Antenna from './Antenna'
 import DistanceLine from './DistanceLine'
 import RayPaths from './RayPaths'
@@ -349,6 +350,7 @@ export default function SceneRoot() {
   const webglAvailable = useMemo(() => hasWebGL(), [])
   const config = useSceneStore(s => s.viewerConfig)
   const bodyMeshVisible = useSceneStore(s => s.bodyMeshVisible)
+  const phantomType = useSceneStore(s => s.phantomType)
   const bodyOffset = useSimulationStore(s => s.bodyOffset)
   const cameraMode = useUIStore(s => s.cameraMode)
   const mimoEnabled = useMIMOStore(s => s.enabled)
@@ -380,7 +382,7 @@ export default function SceneRoot() {
         <MIMOScene bodyMeshVisible={bodyMeshVisible} />
       ) : (
         <>
-          {bodyMeshVisible && <BodyMesh />}
+          {bodyMeshVisible && (phantomType === 'gltf' ? <AnimatedBody /> : <BodyMesh />)}
           <Antenna />
           <DistanceLine />
         </>

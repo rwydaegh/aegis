@@ -8,10 +8,14 @@ import { useNotificationStore } from '@/stores/notifications'
 
 export function useBodyLoader() {
   const bodyName = useSceneStore(s => s.bodyName)
+  const phantomType = useSceneStore(s => s.phantomType)
   const setBodyGeometry = useSceneStore(s => s.setBodyGeometry)
   const prevBodyRef = useRef(bodyName)
 
   useEffect(() => {
+    // GLB phantoms are loaded by AnimatedBody via useGltfBody, not here
+    if (phantomType === 'gltf') return
+
     const controller = new AbortController()
 
     // Clear stale results only when body actually changes (different triangle count would cause jumbled colors).
@@ -51,5 +55,5 @@ export function useBodyLoader() {
     })
 
     return () => { controller.abort() }
-  }, [bodyName, setBodyGeometry])
+  }, [bodyName, phantomType, setBodyGeometry])
 }
