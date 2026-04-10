@@ -40,13 +40,17 @@ export default function PhantomPanel() {
   const animationPlaying = useSceneStore((s) => s.animationPlaying)
   const setAnimationPlaying = useSceneStore((s) => s.setAnimationPlaying)
   const phantomType = useSceneStore((s) => s.phantomType)
+  const setPhantomType = useSceneStore((s) => s.setPhantomType)
 
   if (!caps) return null
+
+  const gltfSet = new Set(caps.gltf_bodies ?? [])
 
   // Setting bodyName triggers useBodyLoader (via useEffect on bodyName) to fetch
   // the new body geometry. Do not load geometry here to avoid a race condition
   // where useBodyLoader fires on bodyName change and overwrites the correct body.
   const handleChange = (name: string) => {
+    setPhantomType(gltfSet.has(name) ? 'gltf' : 'stl')
     setBodyName(name)
     setCameraPreset('focus')
     setTimeout(() => setCameraPreset(null), 50)

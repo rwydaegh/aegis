@@ -14,7 +14,7 @@ import numpy as np
 
 from aegis.channel.correlation import LSP_NAMES, build_correlation_matrix
 from aegis.channel.presets import scale_param
-from aegis.channel.sos import SumOfSinusoids
+from aegis.channel.sos import batch_evaluate_sos
 
 # Map LSP short name -> preset key for decorrelation distance
 _LAMBDA_KEYS: dict[str, str] = {
@@ -52,11 +52,9 @@ class LSFModel:
         # Build cross-correlation Cholesky factor (8x8)
         _, self._L = build_correlation_matrix(params)
 
-        # Create one SOS generator per LSP
-        self._sos: list[SumOfSinusoids] = []
-        for i, lsp in enumerate(LSP_NAMES):
-            d_lambda = float(params.get(_LAMBDA_KEYS[lsp], _DEFAULT_LAMBDA))
-            self._sos.append(SumOfSinusoids(d_lambda=d_lambda, seed=seed + i * 1000))
+        # Pre-compute batch SOS parameters for vectorized evaluation
+        self._batch_seeds = np.array([seed + i * 1000 for i in range(len(LSP_NAMES))])
+        self._batch_d_lambdas = np.array([float(params.get(_LAMBDA_KEYS[lsp], _DEFAULT_LAMBDA)) for lsp in LSP_NAMES])
 
         # Pre-compute frequency-scaled mu and sigma for each LSP
         self._mu, self._sigma = self._compute_mu_sigma(params, freq_ghz)
@@ -161,7 +159,7 @@ class LSFModel:
             raise ValueError(f"positions must have shape (M, 3), got {positions.shape}")
 
         # Step 1: generate 8 uncorrelated N(0,1) SOS values -> (8, M)
-        uncorrelated = np.stack([sos.evaluate(positions) for sos in self._sos], axis=0)
+        uncorrelated = batch_evaluate_sos(self._batch_seeds, self._batch_d_lambdas, positions)
 
         # Step 2: apply cross-correlations via Cholesky factor (eq 50)
         # correlated shape: (8, M)

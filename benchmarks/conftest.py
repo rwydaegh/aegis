@@ -63,3 +63,12 @@ def bench_engine():
 @pytest.fixture
 def bench_tissue():
     return SKIN_28GHZ
+
+
+@pytest.fixture
+def bench_channel_preset():
+    from pathlib import Path
+
+    from aegis.channel.presets import load_preset
+
+    return load_preset("3GPP_38.901_UMa_LOS", Path(__file__).resolve().parents[1] / "data" / "channel_presets")

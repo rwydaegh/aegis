@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import contextlib
+import functools
 import math
 import re
 from pathlib import Path
@@ -146,14 +147,18 @@ def scale_param(
     return mu + gamma * math.log10(omega + freq_ghz)
 
 
-def load_preset(name: str, preset_dir: Path | str) -> dict:
-    """Load a named preset from the preset directory."""
-    preset_dir = Path(preset_dir)
-    path = preset_dir / f"{name}.conf"
+@functools.lru_cache(maxsize=32)
+def _load_preset_cached(name: str, preset_path: str) -> dict:
+    path = Path(preset_path) / f"{name}.conf"
     if not path.exists():
         raise FileNotFoundError(f"Preset not found: {path}")
     params = parse_conf(path)
     return {"name": name, "params": params}
+
+
+def load_preset(name: str, preset_dir: Path | str) -> dict:
+    """Load a named preset from the preset directory."""
+    return _load_preset_cached(name, str(preset_dir))
 
 
 def list_presets(preset_dir: Path | str) -> list[str]:

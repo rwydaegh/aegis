@@ -146,3 +146,62 @@ class TestSumOfSinusoidsEdgeCases:
         result = sos.evaluate(np.array([[0.0, 0.0, 0.0], [1e-5, 0.0, 0.0]]))
         assert result.shape == (2,)
         assert np.all(np.isfinite(result))
+
+
+class TestBatchEvaluateSos:
+    """Verify batch_evaluate_sos produces identical results to individual SOS."""
+
+    def test_matches_individual_sos(self):
+        """Batch output must be bitwise identical to individual SOS objects."""
+        from aegis.channel.sos import SumOfSinusoids, batch_evaluate_sos
+
+        seeds = np.array([42, 100, 7777, 0])
+        d_lambda = 40.0
+        positions = np.array([[10.0, 20.0, 1.5], [50.0, 0.0, 3.0]])
+
+        # Individual
+        expected = np.array([SumOfSinusoids(d_lambda, seed=s).evaluate(positions) for s in seeds])
+
+        # Batch
+        result = batch_evaluate_sos(seeds, d_lambda, positions)
+
+        np.testing.assert_array_equal(result, expected)
+
+    def test_matches_with_per_seed_d_lambda(self):
+        """Array d_lambda must produce same results as individual SOS with different d_lambda."""
+        from aegis.channel.sos import SumOfSinusoids, batch_evaluate_sos
+
+        seeds = np.array([10, 20, 30])
+        d_lambdas = np.array([12.0, 37.0, 40.0])
+        positions = np.array([[5.0, 5.0, 1.0]])
+
+        expected = np.array([SumOfSinusoids(d_lambdas[i], seed=s).evaluate(positions) for i, s in enumerate(seeds)])
+
+        result = batch_evaluate_sos(seeds, d_lambdas, positions)
+        np.testing.assert_array_equal(result, expected)
+
+    def test_empty_seeds(self):
+        """Empty seed array returns empty (0, M) array."""
+        from aegis.channel.sos import batch_evaluate_sos
+
+        result = batch_evaluate_sos(np.array([], dtype=int), 40.0, np.array([[0.0, 0.0, 0.0]]))
+        assert result.shape == (0, 1)
+
+    def test_single_seed_matches(self):
+        """Single seed must match individual SOS."""
+        from aegis.channel.sos import SumOfSinusoids, batch_evaluate_sos
+
+        pos = np.array([[1.0, 2.0, 3.0]])
+        expected = SumOfSinusoids(30.0, seed=42).evaluate(pos)
+        result = batch_evaluate_sos(np.array([42]), 30.0, pos)
+        np.testing.assert_array_equal(result[0], expected)
+
+    def test_output_shape(self):
+        """Output shape must be (K, M)."""
+        from aegis.channel.sos import batch_evaluate_sos
+
+        K, M = 5, 10
+        seeds = np.arange(K)
+        positions = np.random.default_rng(0).standard_normal((M, 3))
+        result = batch_evaluate_sos(seeds, 40.0, positions)
+        assert result.shape == (K, M)

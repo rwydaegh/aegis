@@ -230,9 +230,17 @@ def _handle_config(cache):
     body_meta = default_entry["meta"] if default_entry is not None else cache.get("body_meta")
     bodies.sort()
 
+    # Discover GLB (animated) phantoms from phantom_dir
+    phantom_dir = Path(cfg.get("body", {}).get("phantom_dir", "data/phantoms"))
+    gltf_bodies = sorted(p.stem for p in phantom_dir.glob("*.glb") if p.is_file())
+
+    # Merge GLB names into the bodies list so they appear in the dropdown
+    all_bodies = sorted(set(bodies) | set(gltf_bodies))
+
     return jsonify(
         {
-            "bodies": bodies,
+            "bodies": all_bodies,
+            "gltf_bodies": gltf_bodies,
             "body_name": default_body_name,
             "skin_models": SKIN_MODELS,
             "levels": levels,

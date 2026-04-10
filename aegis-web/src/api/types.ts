@@ -159,6 +159,7 @@ export interface ViewerConfig {
 
 export interface Capabilities {
   bodies: string[]
+  gltf_bodies: string[]
   body_name: string
   skin_models: { id: string; label: string }[]
   levels: number[]
