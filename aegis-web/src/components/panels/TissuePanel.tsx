@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSimulationStore } from '@/stores/simulation'
 import { fetchTissueSpectrum } from '@/api/client'
 import type { TissueSpectrum } from '@/api/types'
 
-/** Tiny SVG sparkline for a data series. */
+/** Tiny SVG sparkline for a data series. Responsive width via container measurement. */
 function Sparkline({ data, freqs, currentFreqHz, color, label, unit }: {
   data: number[]
   freqs: number[]
@@ -12,9 +12,23 @@ function Sparkline({ data, freqs, currentFreqHz, color, label, unit }: {
   label: string
   unit: string
 }) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [measuredWidth, setMeasuredWidth] = useState(260)
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const observer = new ResizeObserver(entries => {
+      const entry = entries[0]
+      if (entry) setMeasuredWidth(Math.floor(entry.contentRect.width))
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
   if (data.length === 0) return null
 
-  const w = 260
+  const w = measuredWidth
   const h = 56
   const padL = 36  // space for y-axis labels
   const padR = 4
@@ -62,12 +76,12 @@ function Sparkline({ data, freqs, currentFreqHz, color, label, unit }: {
   }
 
   return (
-    <div className="mb-2">
+    <div className="mb-2" ref={containerRef}>
       <div className="flex justify-between text-[10px] text-muted-foreground mb-0.5">
         <span>{label}</span>
         <span className="tabular-nums font-medium text-foreground">{fmt(curVal)} {unit}</span>
       </div>
-      <svg width={w} height={h} className="block">
+      <svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} className="block">
         {/* Y-axis labels */}
         <text x={padL - 3} y={padT + 3} textAnchor="end" fontSize={7} fill="rgba(255,255,255,0.3)">{fmt(max)}</text>
         <text x={padL - 3} y={h - padB} textAnchor="end" fontSize={7} fill="rgba(255,255,255,0.3)">{fmt(min)}</text>

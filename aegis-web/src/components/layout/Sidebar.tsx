@@ -1,233 +1,120 @@
-import { useState, useEffect } from 'react'
-import { useUIStore } from '@/stores/ui'
+import { useEffect } from 'react'
+import { useUIStore, selectSidebarOpen } from '@/stores/ui'
 import { useMIMOStore } from '@/stores/mimo'
 import { useIsMobile } from '@/hooks/useIsMobile'
-import {
-  Accordion,
-  AccordionItem,
-  AccordionTrigger,
-  AccordionContent,
-} from '@/components/ui/accordion'
-import { PanelErrorBoundary } from '@/components/layout/PanelErrorBoundary'
-import ParametersPanel from '@/components/panels/ParametersPanel'
-import PhantomPanel from '@/components/panels/PhantomPanel'
-import LayersPanel from '@/components/panels/LayersPanel'
-import ScenePanel from '@/components/panels/ScenePanel'
-import RayTracingPanel from '@/components/panels/RayTracingPanel'
-import StochasticPanel from '@/components/panels/StochasticPanel'
-import TissuePanel from '@/components/panels/TissuePanel'
-import ExportPanel from '@/components/panels/ExportPanel'
-import AnalysisPanel from '@/components/panels/AnalysisPanel'
-import AntennaPanel from '@/components/panels/AntennaPanel'
-import MIMOPanel from '@/components/hud/MIMOPanel'
-import EnvironmentPanel from '@/components/panels/EnvironmentPanel'
-import BaseStationsPanel from '@/components/panels/BaseStationsPanel'
-import PatternBrowserPanel from '@/components/panels/PatternBrowserPanel'
-import OptimizePanel from '@/components/panels/OptimizePanel'
+import { SIDEBAR_GROUPS } from '@/components/layout/sidebar-config'
+import IconRail from '@/components/layout/IconRail'
+import SidebarPanel from '@/components/layout/SidebarPanel'
+import { cn } from '@/lib/utils'
+
+function MobileTabBar() {
+  const activeGroup = useUIStore(s => s.activeGroup)
+  const setActiveGroup = useUIStore(s => s.setActiveGroup)
+
+  return (
+    <div
+      className="flex border-b border-border shrink-0"
+      role="tablist"
+      aria-label="Sidebar groups"
+    >
+      {SIDEBAR_GROUPS.map(group => {
+        const Icon = group.icon
+        const isActive = activeGroup === group.id
+        return (
+          <button
+            key={group.id}
+            role="tab"
+            aria-selected={isActive}
+            onClick={() => setActiveGroup(group.id)}
+            className={cn(
+              'flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium transition-colors',
+              isActive
+                ? 'text-primary border-b-2 border-primary'
+                : 'text-muted-foreground hover:text-foreground',
+            )}
+          >
+            <Icon className="size-4" />
+            <span>{group.label}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
 
 export default function Sidebar() {
-  const sidebarOpen = useUIStore(s => s.sidebarOpen)
+  const sidebarMode = useUIStore(s => s.sidebarMode)
+  const activeGroup = useUIStore(s => s.activeGroup)
+  const setActiveGroup = useUIStore(s => s.setActiveGroup)
+  const setGroupOpenSections = useUIStore(s => s.setGroupOpenSections)
+  const sidebarOpen = useUIStore(selectSidebarOpen)
   const mimoEnabled = useMIMOStore(s => s.enabled)
   const isMobile = useIsMobile()
-  const openWidth = isMobile ? '100vw' : '320px'
-  const [openSections, setOpenSections] = useState<string[]>(['parameters'])
 
-  // Auto-open MIMO accordion when MIMO mode is toggled on
+  const activeGroupDef = SIDEBAR_GROUPS.find(g => g.id === activeGroup)!
+
+  // Auto-open MIMO section and switch to Source group when MIMO is toggled on
   useEffect(() => {
+    const store = useUIStore.getState()
+    const sourceSections = store.openSectionsByGroup.source
     if (mimoEnabled) {
-      setOpenSections(prev => prev.includes('mimo') ? prev : [...prev, 'mimo'])
+      if (!sourceSections.includes('mimo')) {
+        setGroupOpenSections('source', [...sourceSections, 'mimo'])
+      }
+      setActiveGroup('source')
     } else {
-      setOpenSections(prev => prev.filter(s => s !== 'mimo'))
+      setGroupOpenSections('source', sourceSections.filter(s => s !== 'mimo'))
     }
-  }, [mimoEnabled])
+  }, [mimoEnabled, setActiveGroup, setGroupOpenSections])
+
+  // Compute sidebar width
+  let width: string
+  if (!sidebarOpen) {
+    width = '0px'
+  } else if (isMobile) {
+    width = '100vw'
+  } else if (sidebarMode === 'rail') {
+    width = '48px'
+  } else {
+    width = '320px'
+  }
+
+  // Panel width (desktop only, inside the flex container)
+  const panelWidth = sidebarMode === 'expanded' ? '272px' : '0px'
 
   return (
     <aside
       className="absolute top-0 left-0 h-full z-20 flex flex-col
         bg-card/90 backdrop-blur-xl border-r border-border
         transition-all duration-200 ease-in-out overflow-hidden"
-      style={{ width: sidebarOpen ? openWidth : '0px', visibility: sidebarOpen ? 'visible' : 'hidden' }}
+      style={{ width }}
       aria-hidden={!sidebarOpen}
       {...(!sidebarOpen && { inert: true as any })}
     >
-      <div className={`${isMobile ? 'w-full' : 'w-[320px]'} h-full flex flex-col overflow-y-auto overflow-x-hidden`}>
-        <div className="p-3 border-b border-border shrink-0">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Controls</p>
+      {isMobile ? (
+        /* Mobile: horizontal tabs + panel content, no rail */
+        <div className="w-screen h-full flex flex-col">
+          <MobileTabBar />
+          <div className="flex-1 overflow-hidden">
+            <SidebarPanel group={activeGroupDef} />
+          </div>
         </div>
-
-        <div className="flex-1 overflow-y-auto">
-          <Accordion multiple value={openSections} onValueChange={(v: string[]) => setOpenSections(v)}>
-            <AccordionItem value="parameters" className="border-b border-border px-3">
-              <AccordionTrigger className="text-sm font-medium py-3">Parameters</AccordionTrigger>
-              <AccordionContent>
-                <div className="py-2">
-                  <PanelErrorBoundary name="Parameters">
-                    <ParametersPanel />
-                  </PanelErrorBoundary>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="analysis" className="border-b border-border px-3">
-              <AccordionTrigger className="text-sm font-medium py-3">Analysis</AccordionTrigger>
-              <AccordionContent>
-                <div className="py-2">
-                  <PanelErrorBoundary name="Analysis">
-                    <AnalysisPanel />
-                  </PanelErrorBoundary>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="environment" className="border-b border-border px-3">
-              <AccordionTrigger className="text-sm font-medium py-3">Environment</AccordionTrigger>
-              <AccordionContent>
-                <div className="py-2">
-                  <PanelErrorBoundary name="Environment">
-                    <EnvironmentPanel />
-                  </PanelErrorBoundary>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="scene" className="border-b border-border px-3">
-              <AccordionTrigger className="text-sm font-medium py-3">Scene</AccordionTrigger>
-              <AccordionContent>
-                <div className="py-2">
-                  <PanelErrorBoundary name="Scene">
-                    <ScenePanel />
-                  </PanelErrorBoundary>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="mimo" className="border-b border-border px-3">
-              <AccordionTrigger className="text-sm font-medium py-3">MIMO</AccordionTrigger>
-              <AccordionContent>
-                <div className="py-2">
-                  <PanelErrorBoundary name="MIMO">
-                    <MIMOPanel />
-                  </PanelErrorBoundary>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="optimize" className="border-b border-border px-3">
-              <AccordionTrigger className="text-sm font-medium py-3">Optimize</AccordionTrigger>
-              <AccordionContent>
-                <div className="py-2">
-                  <PanelErrorBoundary name="Optimize">
-                    <OptimizePanel />
-                  </PanelErrorBoundary>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="basestations" className="border-b border-border px-3">
-              <AccordionTrigger className="text-sm font-medium py-3">Base Stations</AccordionTrigger>
-              <AccordionContent>
-                <div className="py-2">
-                  <PanelErrorBoundary name="Base Stations">
-                    <BaseStationsPanel />
-                  </PanelErrorBoundary>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-
-            {mimoEnabled && (
-              <AccordionItem value="antenna" className="border-b border-border px-3">
-                <AccordionTrigger className="text-sm font-medium py-3">Antenna</AccordionTrigger>
-                <AccordionContent>
-                  <div className="py-2">
-                    <PanelErrorBoundary name="Antenna">
-                      <AntennaPanel />
-                    </PanelErrorBoundary>
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            )}
-
-            {!mimoEnabled && (
-              <AccordionItem value="phantom" className="border-b border-border px-3">
-                <AccordionTrigger className="text-sm font-medium py-3">Phantom</AccordionTrigger>
-                <AccordionContent>
-                  <div className="py-2">
-                    <PanelErrorBoundary name="Phantom">
-                      <PhantomPanel />
-                    </PanelErrorBoundary>
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            )}
-
-            <AccordionItem value="layers" className="border-b border-border px-3">
-              <AccordionTrigger className="text-sm font-medium py-3">Layers</AccordionTrigger>
-              <AccordionContent>
-                <div className="py-2">
-                  <PanelErrorBoundary name="Layers">
-                    <LayersPanel />
-                  </PanelErrorBoundary>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="raytracing" className="border-b border-border px-3">
-              <AccordionTrigger className="text-sm font-medium py-3">Ray Tracing</AccordionTrigger>
-              <AccordionContent>
-                <div className="py-2">
-                  <PanelErrorBoundary name="Ray Tracing">
-                    <RayTracingPanel />
-                  </PanelErrorBoundary>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="stochastic" className="border-b border-border px-3">
-              <AccordionTrigger className="text-sm font-medium py-3">Stochastic</AccordionTrigger>
-              <AccordionContent>
-                <div className="py-2">
-                  <PanelErrorBoundary name="Stochastic">
-                    <StochasticPanel />
-                  </PanelErrorBoundary>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="tissue" className="border-b border-border px-3">
-              <AccordionTrigger className="text-sm font-medium py-3">Tissue</AccordionTrigger>
-              <AccordionContent>
-                <div className="py-2">
-                  <PanelErrorBoundary name="Tissue">
-                    <TissuePanel />
-                  </PanelErrorBoundary>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="patterns" className="border-b border-border px-3">
-              <AccordionTrigger className="text-sm font-medium py-3">Antenna Patterns</AccordionTrigger>
-              <AccordionContent>
-                <div className="py-2">
-                  <PanelErrorBoundary name="Antenna Patterns">
-                    <PatternBrowserPanel />
-                  </PanelErrorBoundary>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="export" className="border-b border-border px-3">
-              <AccordionTrigger className="text-sm font-medium py-3">Export</AccordionTrigger>
-              <AccordionContent>
-                <div className="py-2">
-                  <PanelErrorBoundary name="Export">
-                    <ExportPanel />
-                  </PanelErrorBoundary>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
+      ) : (
+        /* Desktop: icon rail + expandable panel */
+        <div className="flex h-full">
+          <IconRail />
+          <div
+            className="overflow-hidden transition-all duration-200 ease-in-out"
+            style={{ width: panelWidth }}
+            {...(sidebarMode !== 'expanded' && { inert: true as any })}
+            aria-hidden={sidebarMode !== 'expanded'}
+          >
+            <div className="w-[272px] h-full">
+              <SidebarPanel group={activeGroupDef} />
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </aside>
   )
 }

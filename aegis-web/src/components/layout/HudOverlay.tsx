@@ -10,15 +10,22 @@ import { AntennaHint } from '@/components/hud/AntennaHint'
 import { CoverageHud } from '@/components/hud/CoverageHud'
 import CameraWidget from '@/components/hud/CameraWidget'
 import { WelcomeOverlay } from '@/components/hud/WelcomeOverlay'
-import { useUIStore } from '@/stores/ui'
+import { useUIStore, selectSidebarOpen } from '@/stores/ui'
 import { useIsMobile, useIsTouchDevice } from '@/hooks/useIsMobile'
 
 export default function HudOverlay() {
-  const sidebarOpen = useUIStore(s => s.sidebarOpen)
+  const sidebarMode = useUIStore(s => s.sidebarMode)
+  const sidebarOpen = useUIStore(selectSidebarOpen)
   const isMobile = useIsMobile()
   const isTouchDevice = useIsTouchDevice()
 
-  const complianceLeft = (sidebarOpen && !isMobile) ? '332px' : '12px'
+  const complianceLeft = isMobile
+    ? '12px'
+    : sidebarMode === 'expanded'
+      ? '332px'
+      : sidebarMode === 'rail'
+        ? '60px'
+        : '12px'
 
   return (
     <div className="absolute inset-0 pointer-events-none z-10">
