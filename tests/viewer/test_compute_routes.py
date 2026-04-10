@@ -981,6 +981,61 @@ class TestComputeSionnaRtExtended:
         assert resp.status_code == 400
 
 
+# ---------------------------------------------------------------------------
+# Multi-antenna array parsing
+# ---------------------------------------------------------------------------
+
+
+class TestComputeAntennasArray:
+    def test_compute_with_antennas_array(self, viewer_app):
+        """POST /api/compute with a multi-antenna array returns 200."""
+        with (
+            viewer_app.test_client() as c,
+            patch(
+                "aegis.viewer.compute.compute_dosimetry",
+                side_effect=_mock_compute_dosimetry,
+            ),
+        ):
+            resp = c.post(
+                "/api/compute",
+                json={
+                    "antennas": [
+                        {
+                            "position": [5, 0, 1],
+                            "power_dbm": 23,
+                            "array_config": {"n_elements": 4},
+                        },
+                        {
+                            "position": [10, 2, 1.5],
+                            "power_dbm": 20,
+                            "array_config": {"n_elements": 2},
+                        },
+                    ],
+                    "level": 2,
+                },
+            )
+        assert resp.status_code == 200
+
+    def test_compute_legacy_antenna_pos_still_works(self, viewer_app):
+        """POST /api/compute with old-style antenna_pos and power_dbm (no antennas key) returns 200."""
+        with (
+            viewer_app.test_client() as c,
+            patch(
+                "aegis.viewer.compute.compute_dosimetry",
+                side_effect=_mock_compute_dosimetry,
+            ),
+        ):
+            resp = c.post(
+                "/api/compute",
+                json={
+                    "antenna_pos": [5, 0, 1],
+                    "power_dbm": 23,
+                    "level": 2,
+                },
+            )
+        assert resp.status_code == 200
+
+
 class TestComputeVoxelRtExtended:
     """Additional edge cases for voxel RT."""
 

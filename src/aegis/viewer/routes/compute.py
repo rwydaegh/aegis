@@ -648,6 +648,27 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         if err:
             return err
 
+        # Parse multi-antenna array (new API)
+        antennas = None
+        raw_antennas = params.get("antennas")
+        if raw_antennas is not None:
+            if not isinstance(raw_antennas, list):
+                return jsonify({"error": "antennas must be a list"}), 400
+            antennas = []
+            for i, raw_ant in enumerate(raw_antennas):
+                if not isinstance(raw_ant, dict):
+                    return jsonify({"error": f"antennas[{i}] must be an object"}), 400
+                ant_pos, err = _parse_vec3(raw_ant, "position", [5, 0, 1])
+                if err:
+                    return err
+                ant_power = float(raw_ant.get("power_dbm", power_dbm))
+                acfg = raw_ant.get("array_config", {})
+                antennas.append({
+                    "position": ant_pos.tolist(),
+                    "power_dbm": ant_power,
+                    "array_config": acfg,
+                })
+
         import time as _time
 
         t_route = _time.perf_counter()
@@ -665,6 +686,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                 power_dbm=power_dbm,
                 config=cfg,
                 stochastic=stochastic,
+                antennas=antennas,
             )
         except Exception as exc:
             logger.exception("compute_dosimetry failed")
