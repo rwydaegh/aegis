@@ -8,7 +8,7 @@ import {
   PointPrimitiveCollection,
   LabelCollection,
 } from 'cesium'
-import type { RegionSummary } from '@/api/types'
+import type { RegionSummary, ClusterPoint } from '@/api/types'
 
 // 16-color operator palette
 const OP_COLORS: Color[] = [
@@ -30,16 +30,10 @@ const OP_COLORS: Color[] = [
   new Color(0.60, 0.60, 0.20, 1),
 ]
 
-function completenessColor(c: number): Color {
-  if (c > 0.8) return Color.fromCssColorString('#22c55e')
-  if (c > 0.4) return Color.fromCssColorString('#f59e0b')
-  return Color.fromCssColorString('#ef4444')
-}
-
 export interface CoverageOverlayHandle {
-  points: PointPrimitiveCollection
   labels: LabelCollection
-  entities: ReturnType<Viewer['entities']['add']>[]
+  clusters: PointPrimitiveCollection
+  points: PointPrimitiveCollection
   destroy: () => void
   setVisible: (v: boolean) => void
 }
@@ -51,42 +45,9 @@ export function addCoverageOverlay(
   siteOpIndices: Uint8Array,
   siteCount: number,
   regions: RegionSummary[],
+  clusters: ClusterPoint[],
 ): CoverageOverlayHandle {
-  // Site points
-  const points = viewer.scene.primitives.add(new PointPrimitiveCollection())
-  for (let i = 0; i < siteCount; i++) {
-    points.add({
-      position: Cartesian3.fromDegrees(siteLons[i], siteLats[i], 100),
-      pixelSize: 6,
-      color: OP_COLORS[siteOpIndices[i] % OP_COLORS.length],
-      scaleByDistance: new NearFarScalar(1e3, 2.0, 1e7, 0.5),
-      translucencyByDistance: new NearFarScalar(1e3, 1.0, 1e7, 0.3),
-    })
-  }
-
-  // Region boundary lines via entities (more reliable API than PolylineCollection)
-  const regionEntities: ReturnType<typeof viewer.entities.add>[] = []
-  for (const region of regions) {
-    if (!region.bbox) continue
-    const [minLon, maxLon, minLat, maxLat] = region.bbox
-    const entity = viewer.entities.add({
-      polyline: {
-        positions: Cartesian3.fromDegreesArray([
-          minLon, minLat,
-          maxLon, minLat,
-          maxLon, maxLat,
-          minLon, maxLat,
-          minLon, minLat,
-        ]),
-        width: 2,
-        material: completenessColor(region.completeness),
-        distanceDisplayCondition: new DistanceDisplayCondition(0, 2e6),
-      },
-    })
-    regionEntities.push(entity)
-  }
-
-  // Region labels
+  // --- Tier 1: Region labels (global zoom, 400km-20,000km) ---
   const labels = viewer.scene.primitives.add(new LabelCollection())
   for (const region of regions) {
     if (!region.bbox) continue
@@ -95,36 +56,64 @@ export function addCoverageOverlay(
       position: Cartesian3.fromDegrees(
         (minLon + maxLon) / 2,
         (minLat + maxLat) / 2,
-        5000,
+        50_000,
       ),
-      text: `${region.label}\n${region.count.toLocaleString()} antennas`,
-      font: '14px sans-serif',
+      text: `${region.label}\n${region.count.toLocaleString()}`,
+      font: 'bold 15px sans-serif',
       fillColor: Color.WHITE,
       outlineColor: Color.BLACK,
       outlineWidth: 2,
       style: LabelStyle.FILL_AND_OUTLINE,
-      distanceDisplayCondition: new DistanceDisplayCondition(0, 5e6),
-      scaleByDistance: new NearFarScalar(5e5, 1.0, 5e6, 0.3),
+      distanceDisplayCondition: new DistanceDisplayCondition(4e5, 2e7),
+      scaleByDistance: new NearFarScalar(5e5, 1.0, 8e6, 0.4),
+    })
+  }
+
+  // --- Tier 2: Cluster points (continental zoom, 40km-600km) ---
+  const clusterPoints = viewer.scene.primitives.add(new PointPrimitiveCollection())
+  const clusterOps = new Map<string, number>()
+  let opIdx = 0
+  for (const c of clusters) {
+    if (!clusterOps.has(c.operator)) clusterOps.set(c.operator, opIdx++)
+  }
+  for (const c of clusters) {
+    const colorIdx = clusterOps.get(c.operator) ?? 0
+    clusterPoints.add({
+      position: Cartesian3.fromDegrees(c.lon, c.lat, 200),
+      pixelSize: Math.min(6 + Math.log10(Math.max(c.count, 1)) * 8, 28),
+      color: OP_COLORS[colorIdx % OP_COLORS.length],
+      distanceDisplayCondition: new DistanceDisplayCondition(4e4, 6e5),
+      scaleByDistance: new NearFarScalar(5e4, 1.5, 5e5, 0.6),
+      translucencyByDistance: new NearFarScalar(5e4, 1.0, 5e5, 0.5),
+    })
+  }
+
+  // --- Tier 3: Individual site points (local zoom, 0-80km) ---
+  const points = viewer.scene.primitives.add(new PointPrimitiveCollection())
+  for (let i = 0; i < siteCount; i++) {
+    points.add({
+      position: Cartesian3.fromDegrees(siteLons[i], siteLats[i], 100),
+      pixelSize: 6,
+      color: OP_COLORS[siteOpIndices[i] % OP_COLORS.length],
+      distanceDisplayCondition: new DistanceDisplayCondition(0, 8e4),
+      scaleByDistance: new NearFarScalar(1e3, 2.0, 6e4, 0.5),
+      translucencyByDistance: new NearFarScalar(1e3, 1.0, 6e4, 0.4),
     })
   }
 
   return {
-    points,
     labels,
-    entities: regionEntities,
+    clusters: clusterPoints,
+    points,
     destroy: () => {
-      viewer.scene.primitives.remove(points)
       viewer.scene.primitives.remove(labels)
-      for (const entity of regionEntities) {
-        viewer.entities.remove(entity)
-      }
+      viewer.scene.primitives.remove(clusterPoints)
+      viewer.scene.primitives.remove(points)
     },
     setVisible: (v: boolean) => {
-      points.show = v
       labels.show = v
-      for (const entity of regionEntities) {
-        entity.show = v
-      }
+      clusterPoints.show = v
+      points.show = v
     },
   }
 }

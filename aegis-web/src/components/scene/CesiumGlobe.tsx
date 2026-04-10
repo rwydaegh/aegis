@@ -52,6 +52,7 @@ export function CesiumGlobe() {
       state.siteOpIndices,
       state.siteCount,
       state.regions,
+      state.clusters,
     )
   }, [])
 
