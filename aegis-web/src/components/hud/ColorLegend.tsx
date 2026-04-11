@@ -46,7 +46,7 @@ function computeSmartDynamicRange(sabArray: Float32Array): number {
 }
 
 function legendLabel(qty: string, ratio: boolean, scale: string): string {
-  if (ratio && qty !== 'sab') return '\\text{Ratio to limit}'
+  if (ratio && qty !== 'sab') return '\\%\\text{ of ICNIRP limit}'
   const labels: Record<string, string> = {
     sab: 'S_\\text{ab}',
     sab_4cm2: 'S_\\text{ab}\\;(4\\,\\text{cm}^2)',
@@ -114,8 +114,14 @@ export default function ColorLegend() {
   const ticks = Array.from({ length: N }, (_, i) => {
     const frac = i / (N - 1)
     if (isRatioMode) {
-      const value = maxRatio * (1 - frac)
-      return { label: value.toFixed(2), pct: frac }
+      const pctValue = maxRatio * (1 - frac) * 100
+      // Smart formatting: drop decimals when they add no information
+      const label = pctValue >= 100 ? pctValue.toFixed(0)
+        : pctValue >= 10 ? pctValue.toFixed(1)
+        : pctValue >= 1 ? pctValue.toFixed(2)
+        : pctValue === 0 ? '0'
+        : pctValue.toFixed(2)
+      return { label, pct: frac }
     } else if (legendScale === 'linear') {
       const value = maxSab * (1 - frac)
       return { label: formatLegendValue(value), pct: frac }

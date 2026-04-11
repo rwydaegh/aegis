@@ -19,7 +19,7 @@ export default function IconRail() {
   }
 
   return (
-    <div className="w-12 shrink-0 h-full flex flex-col items-center pt-2 gap-1 border-r border-border">
+    <div data-tour="icon-rail" className="w-12 shrink-0 h-full flex flex-col items-center pt-2 gap-1 border-r border-border">
       {SIDEBAR_GROUPS.map(group => {
         const Icon = group.icon
         const isActive = activeGroup === group.id

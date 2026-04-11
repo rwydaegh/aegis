@@ -1,4 +1,4 @@
-import { PanelLeft, Box, Share2, BookOpen, Keyboard } from 'lucide-react'
+import { PanelLeft, Box, Share2, BookOpen, Keyboard, CirclePlay } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { useSimulationStore } from '@/stores/simulation'
@@ -133,12 +133,8 @@ function ModePill() {
 
 export default function Toolbar() {
   const { stats } = useActiveSimulation()
-  const viewerConfig = useSceneStore(s => s.viewerConfig)
-  const wireframe = useUIStore(s => s.wireframe)
-  const toggleSidebar = useUIStore(s => s.toggleSidebar)
-  const toggleWireframe = useUIStore(s => s.toggleWireframe)
-  const setStatusMessage = useUIStore(s => s.setStatusMessage)
-  const toggleHelp = useUIStore(s => s.toggleHelp)
+  const { viewerConfig } = useSceneStore()
+  const { wireframe, toggleSidebar, toggleWireframe, setStatusMessage, toggleHelp, startTour } = useUIStore()
   const sidebarOpen = useUIStore(selectSidebarOpen)
   const mimoEnabled = useMIMOStore(s => s.enabled)
 
@@ -231,6 +227,21 @@ export default function Toolbar() {
 
         <Tooltip>
           <TooltipTrigger
+            onClick={startTour}
+            className={cn(
+              'hidden md:inline-flex items-center justify-center size-7 rounded-md transition-colors',
+              'hover:bg-muted text-muted-foreground hover:text-foreground',
+            )}
+            aria-label="Guided tour"
+          >
+            <CirclePlay className="size-4" />
+          </TooltipTrigger>
+          <TooltipContent>Guided tour</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger
+            data-tour="help-button"
             onClick={toggleHelp}
             className={cn(
               'hidden md:inline-flex items-center justify-center size-7 rounded-md transition-colors',
