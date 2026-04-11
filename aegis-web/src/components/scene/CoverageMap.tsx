@@ -150,7 +150,7 @@ export function CoverageMap() {
   // Show photorealistic 3D view when zoomed in
   if (show3D && googleMapId) {
     return (
-      <APIProvider apiKey={googleApiKey}>
+      <APIProvider apiKey={googleApiKey} version="beta">
         <Photorealistic3DView center={lastCenterRef.current} />
         <button
           onClick={() => {
