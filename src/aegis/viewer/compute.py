@@ -519,12 +519,10 @@ def compute_dosimetry(
     body_center = rotated_body.centroids.mean(axis=0)
     timings["body_transform_ms"] = (time.perf_counter() - t0) * 1e3
 
-    # Direction from antenna to body
+    # Direction from antenna to body (fallback to -Z when coincident)
     direction = body_center - antenna_pos
     dist = np.linalg.norm(direction)
-    if dist < 1e-6:
-        dist = 1.0
-    k_hat = direction / dist
+    k_hat = np.array([0.0, 0.0, -1.0]) if dist < 1e-6 else direction / dist
 
     # Power at body surface (free-space path loss, clamp distance for near-field)
     tx_power_w = 10 ** ((power_dbm - 30) / 10)
@@ -575,9 +573,7 @@ def compute_dosimetry(
 
                 a_dir = body_center - ant_pos
                 a_dist = np.linalg.norm(a_dir)
-                if a_dist < 1e-6:
-                    a_dist = 1.0
-                a_k_hat = a_dir / a_dist
+                a_k_hat = np.array([0.0, 0.0, -1.0]) if a_dist < 1e-6 else a_dir / a_dist
                 a_d_clamped = max(a_dist, _DEFAULT_FSPL_DISTANCE_CLAMP_M)
                 a_S_inc = ant_tx_w / (4 * np.pi * a_d_clamped**2)
 
