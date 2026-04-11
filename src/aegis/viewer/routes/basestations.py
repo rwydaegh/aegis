@@ -664,6 +664,44 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
         return _handle_basestations_compute_mimo(cache, cache_lock)
 
 
+def _compute_fidelity_tier(prov_origins: dict[str, str], pattern_source: str) -> str:
+    """Compute fidelity readiness tier from provenance origin strings.
+
+    Uses column-name keys (Power, Frequency, Azimuth, etc.).
+    """
+
+    def is_confident(field: str) -> bool:
+        src = prov_origins.get(field, "missing")
+        return src != "missing" and not src.startswith("est:")
+
+    def is_available(field: str) -> bool:
+        src = prov_origins.get(field, "missing")
+        return src != "missing"
+
+    if (
+        is_confident("Power")
+        and is_confident("Frequency")
+        and is_confident("Azimuth")
+        and is_confident("CenterHeight")
+        and is_confident("Gain")
+        and is_available("Electrical_Tilt")
+        and is_available("Mechanical_Tilt")
+        and is_available("Horizontal_Beamwidth")
+        and is_available("Vertical_Beamwidth")
+    ):
+        if pattern_source and pattern_source not in ("", "synthetic:gaussian"):
+            return "full"
+        return "spatial"
+
+    if is_confident("Power") and is_confident("Frequency") and is_confident("Azimuth") and is_confident("CenterHeight"):
+        return "geometric"
+
+    if is_available("Power") and is_available("Frequency"):
+        return "bound"
+
+    return "location_only"
+
+
 def _bs_summary(bs) -> dict:
     """Serialize a BaseStation to a JSON-safe dict with classification."""
     from aegis.basestation.classify import classify_basestation
@@ -686,6 +724,43 @@ def _bs_summary(bs) -> dict:
     classification.pop("beam_config", None)
 
     prov_dict = bs.provenance_dict
+
+    # Build column-name-keyed provenance origins for fidelity tier computation
+    _PROVENANCE_FIELDS = [
+        "Power",
+        "Frequency",
+        "Azimuth",
+        "CenterHeight",
+        "Gain",
+        "Electrical_Tilt",
+        "Mechanical_Tilt",
+        "Horizontal_Beamwidth",
+        "Vertical_Beamwidth",
+        "FrequencyBand",
+    ]
+    prov_origins: dict[str, str] = {}
+    for col_name in _PROVENANCE_FIELDS:
+        # Map column name to field name to look up in prov_dict
+        field_name = {
+            "Power": "eirp_dbm",
+            "Frequency": "freq_mhz",
+            "Azimuth": "azimuth_deg",
+            "CenterHeight": "height_m",
+            "Gain": "gain_dbi",
+            "Electrical_Tilt": "electrical_tilt_deg",
+            "Mechanical_Tilt": "mechanical_tilt_deg",
+            "Horizontal_Beamwidth": "horizontal_beamwidth_deg",
+            "Vertical_Beamwidth": "vertical_beamwidth_deg",
+            "FrequencyBand": "frequency_band",
+        }.get(col_name, col_name)
+        fs = prov_dict.get(field_name)
+        prov_origins[col_name] = fs.origin if fs else "missing"
+
+    # Add Pattern source
+    prov_origins["Pattern"] = bs.pattern_source or ""
+
+    fidelity_tier = _compute_fidelity_tier(prov_origins, bs.pattern_source or "")
+
     return {
         "site_code": bs.site_code,
         "antenna_label": bs.antenna_label,
@@ -705,6 +780,8 @@ def _bs_summary(bs) -> dict:
         "frequency_band": bs.frequency_band,
         "pattern_source": bs.pattern_source,
         "confidence": aggregate_confidence(bs.provenance),
+        "fidelity_tier": fidelity_tier,
         "provenance": {k: {"origin": v.origin, "confidence": v.confidence} for k, v in prov_dict.items()},
+        "provenance_sources": prov_origins,
         **classification,
     }

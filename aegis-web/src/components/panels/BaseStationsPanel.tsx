@@ -1,10 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import * as Sentry from '@sentry/react'
 import { useBaseStationsStore } from '@/stores/basestations'
+import type { AntennaColorMode } from '@/stores/basestations'
 import { loadBasestations } from '@/api/basestations'
 import { useBaseStationsDosimetry } from '@/hooks/useBaseStationsDosimetry'
 import { useNotificationStore } from '@/stores/notifications'
 import AntennaDetailPanel from './AntennaDetailPanel'
+import RegionDataCard from './RegionDataCard'
+
+const COLOR_MODE_OPTIONS: { value: AntennaColorMode; label: string }[] = [
+  { value: 'operator', label: 'Operator' },
+  { value: 'fidelity', label: 'Fidelity readiness' },
+  { value: 'technology', label: 'Technology' },
+  { value: 'frequency_band', label: 'Frequency band' },
+]
 
 export default function BaseStationsPanel() {
   const [location, setLocation] = useState('Brussels, Belgium')
@@ -29,6 +38,9 @@ export default function BaseStationsPanel() {
   const setBasestations = useBaseStationsStore(s => s.setBasestations)
   const setLoading = useBaseStationsStore(s => s.setLoading)
   const clear = useBaseStationsStore(s => s.clear)
+
+  const colorMode = useBaseStationsStore(s => s.colorMode)
+  const setColorMode = useBaseStationsStore(s => s.setColorMode)
 
   const showCoverage = useBaseStationsStore(s => s.showCoverage)
   const setShowCoverage = useBaseStationsStore(s => s.setShowCoverage)
@@ -186,6 +198,19 @@ export default function BaseStationsPanel() {
           <p className="text-xs text-muted-foreground mt-3">
             {basestations.length} antennas loaded ({activeCount} active)
           </p>
+
+          <RegionDataCard basestations={basestations} />
+
+          <label className={labelClass}>Color by</label>
+          <select
+            className={selectClass}
+            value={colorMode}
+            onChange={e => setColorMode(e.target.value as AntennaColorMode)}
+          >
+            {COLOR_MODE_OPTIONS.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
 
           {operators.length > 0 && (
             <>
