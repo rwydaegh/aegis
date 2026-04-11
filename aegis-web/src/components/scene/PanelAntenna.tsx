@@ -44,11 +44,14 @@ export default function PanelAntenna({
   // Compute panel orientation quaternion from azimuth and tilt
   const quaternion = useMemo(() => {
     const q = new THREE.Quaternion()
-    // Azimuth: rotate around Y axis (compass bearing, 0=North=+Z in scene coords becomes -Z in Three.js)
-    // In Three.js Y-up: North is -Z, so azimuth rotation is around Y
+    // Azimuth: rotate around Y axis (compass bearing, 0=North=-Z in Three.js Y-up)
+    // The panel's local +Z face (where elements are drawn) must point toward the
+    // boresight direction. At azimuth=0 (North), boresight = [0,0,-1] in Three.js,
+    // so we need local +Z -> world -Z, which requires a pi offset on the Y rotation.
+    // Tilt: positive = downtilt (boresight below horizontal).
     const azRad = THREE.MathUtils.degToRad(azimuthDeg)
     const tiltRad = THREE.MathUtils.degToRad(tiltDeg)
-    const euler = new THREE.Euler(tiltRad, -azRad, 0, 'YXZ')
+    const euler = new THREE.Euler(tiltRad, Math.PI - azRad, 0, 'YXZ')
     q.setFromEuler(euler)
     return q
   }, [azimuthDeg, tiltDeg])
@@ -65,7 +68,7 @@ export default function PanelAntenna({
       for (let j = 0; j < nV; j++) {
         const x = nH > 1 ? startH + i * spacingH : 0
         const y = nV > 1 ? startV + j * spacingV : 0
-        positions.push([x, y, depth / 2 + 0.001])
+        positions.push([x, y, depth + 0.001])
       }
     }
     return positions
@@ -87,9 +90,12 @@ export default function PanelAntenna({
         </mesh>
       )}
 
-      {/* Panel body - oriented by azimuth and tilt */}
+      {/* Panel body - oriented by azimuth and tilt.
+          The box is offset forward by depth/2 so the back face sits at the
+          group origin (where the pole connects), keeping the pole behind
+          the panel instead of piercing through the center. */}
       <group position={[px, py, pz]} quaternion={quaternion}>
-        <mesh onClick={onClick}>
+        <mesh onClick={onClick} position={[0, 0, depth / 2]}>
           <boxGeometry args={[panelWidth, panelHeight, depth]} />
           <meshStandardMaterial
             color={panelColor}
