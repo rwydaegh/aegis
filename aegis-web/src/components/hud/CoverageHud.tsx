@@ -7,12 +7,13 @@ import { useNotificationStore } from '@/stores/notifications'
 import { loadBasestations } from '@/api/basestations'
 import { Globe, MapPin, ArrowLeft, RefreshCw } from 'lucide-react'
 
-const TRANSITION_ALTITUDE_M = 5_000
+/** Zoom level ~14 corresponds to roughly <5 km altitude equivalent */
+const TRANSITION_ZOOM = 14
 
 function CoverageHudInner() {
   const enabled = useCoverageStore(s => s.enabled)
   const activeScenario = useUIStore(s => s.activeScenario)
-  const cameraAltitude = useCoverageStore(s => s.cameraAltitude)
+  const zoom = useCoverageStore(s => s.zoom)
   const cameraLatLon = useCoverageStore(s => s.cameraLatLon)
   const regions = useCoverageStore(s => s.regions)
   const loading = useCoverageStore(s => s.loading)
@@ -21,7 +22,7 @@ function CoverageHudInner() {
   const isCoverageScenario = activeScenario === 'coverage_globe'
   if (!isCoverageScenario) return null
 
-  const showTransitionButton = enabled && cameraAltitude < TRANSITION_ALTITUDE_M && cameraLatLon
+  const showTransitionButton = enabled && zoom >= TRANSITION_ZOOM && cameraLatLon
 
   const handleSetupScene = () => {
     const ll = useCoverageStore.getState().cameraLatLon
@@ -44,7 +45,7 @@ function CoverageHudInner() {
   }
 
   const handleBackToGlobe = () => {
-    useEnvironmentStore.getState().setSource('cesium')
+    useEnvironmentStore.getState().setSource('coverage')
     useCoverageStore.getState().setEnabled(true)
     useBaseStationsStore.getState().clear()
   }

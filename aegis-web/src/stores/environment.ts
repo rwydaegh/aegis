@@ -3,7 +3,7 @@ import * as Sentry from '@sentry/react'
 import { fetchWithRetry, parseJsonHeader } from '@/api/client'
 import type { ScenePos } from '@/api/coordinates'
 
-export type EnvironmentSource = 'none' | 'voxels' | 'osm' | '3dtiles' | 'cesium'
+export type EnvironmentSource = 'none' | 'voxels' | 'osm' | '3dtiles' | 'cesium' | 'coverage'
 
 interface OsmOptions {
   defaultBuildingHeight: number
@@ -102,7 +102,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
     const { source, locationQuery } = get()
     const q = (query ?? locationQuery).trim()
     if (!q) return
-    if (source !== 'osm' && source !== '3dtiles' && source !== 'cesium') return
+    if (source !== 'osm' && source !== '3dtiles' && source !== 'coverage') return
 
     const controller = freshAbort(get, set)
     set({ geocoding: true, error: null })
