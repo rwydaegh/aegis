@@ -229,6 +229,7 @@ export interface Capabilities {
   has_location_loader: boolean
   has_api_key: boolean
   google_api_key: string
+  google_map_id: string
   cesium_ion_token: string
   body_placement: [number, number, number] | null
   body_device_offsets: Record<string, [number, number, number]>

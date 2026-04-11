@@ -93,6 +93,7 @@ function DeckOverlay() {
 
 export function CoverageMap() {
   const googleApiKey = useSceneStore(s => s.capabilities?.google_api_key) ?? ''
+  const googleMapId = useSceneStore(s => s.capabilities?.google_map_id) || undefined
 
   if (!googleApiKey) {
     return (
@@ -109,7 +110,7 @@ export function CoverageMap() {
         defaultCenter={{ lat: 48.8, lng: 2.3 }}
         defaultZoom={4}
         mapTypeId="hybrid"
-        mapId={import.meta.env.VITE_GOOGLE_MAP_ID || undefined}
+        mapId={googleMapId}
         disableDefaultUI
         gestureHandling="greedy"
         clickableIcons={false}
