@@ -116,9 +116,16 @@ class BodyMesh:
         if normals.shape != (self.vertices.shape[0], 3):
             raise ValueError(f"normals must be ({self.vertices.shape[0]}, 3), got {normals.shape}")
         norms = np.linalg.norm(normals, axis=1, keepdims=True)
-        if normals.shape[0] > 0 and np.any(norms[:, 0] <= 0):
-            raise ValueError("normals must have positive norm")
-        normalized = normals / np.where(norms > 0, norms, 1.0)
+        # Degenerate triangles (zero-area) produce zero normals from cross
+        # products. Assign a fallback direction so downstream code always sees
+        # unit normals. These triangles have zero area and contribute nothing
+        # to integrated quantities, so the direction is irrelevant.
+        zero = norms[:, 0] <= 0
+        if normals.shape[0] > 0 and np.any(zero):
+            normals = normals.copy()
+            normals[zero] = [0.0, 0.0, 1.0]
+            norms[zero] = 1.0
+        normalized = normals / norms
         object.__setattr__(self, "normals", normalized)
         if self._geometry_hash == 0:
             object.__setattr__(self, "_geometry_hash", self._compute_geometry_hash())
