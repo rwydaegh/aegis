@@ -9,6 +9,7 @@ import TouchControls from '@/components/hud/TouchControls'
 import KeyboardHelp from '@/components/hud/KeyboardHelp'
 import { AntennaHint } from '@/components/hud/AntennaHint'
 import { CoverageHud } from '@/components/hud/CoverageHud'
+import { CoverageTooltip } from '@/components/hud/CoverageTooltip'
 import { DataQualityHud } from '@/components/hud/DataQualityHud'
 import CameraWidget from '@/components/hud/CameraWidget'
 import HudToggle from '@/components/hud/HudToggle'
@@ -116,6 +117,9 @@ export default function HudOverlay() {
 
       {/* Guided tour overlay */}
       <GuidedTour />
+
+      {/* Coverage site hover tooltip - fixed at cursor position */}
+      <CoverageTooltip />
     </div>
   )
 }
