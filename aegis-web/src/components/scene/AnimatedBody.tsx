@@ -1,7 +1,8 @@
 // aegis-web/src/components/scene/AnimatedBody.tsx
-import { useRef, useEffect, Suspense } from 'react'
+import { Component, useRef, useEffect, Suspense, type ReactNode } from 'react'
 import * as THREE from 'three'
 import * as Sentry from '@sentry/react'
+import { useGLTF } from '@react-three/drei'
 import { useSceneStore } from '@/stores/scene'
 import { useSimulationStore } from '@/stores/simulation'
 import { useUIStore } from '@/stores/ui'
@@ -167,10 +168,57 @@ function AnimatedBodyInner() {
   )
 }
 
+/**
+ * Error boundary that catches GLB load failures (e.g. transient network errors
+ * on mobile) without crashing the entire 3D scene. Resets when bodyName changes
+ * so the user can try a different phantom.
+ */
+class GltfErrorBoundary extends Component<
+  { children: ReactNode; bodyName: string },
+  { hasError: boolean; failedUrl: string | null }
+> {
+  state: { hasError: boolean; failedUrl: string | null } = { hasError: false, failedUrl: null }
+
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+
+  componentDidCatch(error: Error) {
+    const url = `/api/phantom/${this.props.bodyName}.glb`
+    this.setState({ failedUrl: url })
+    // Clear drei's cached rejection so a retry (e.g. selecting the same phantom
+    // again) triggers a fresh fetch instead of replaying the cached error.
+    useGLTF.clear(url)
+    Sentry.captureException(error)
+    useNotificationStore.getState().addNotification(
+      'error',
+      `Failed to load animated phantom "${this.props.bodyName}". Try selecting a different body or refreshing the page.`,
+      'This error has been reported and will be fixed automatically using AI. Most issues are fixed in less than 30 minutes.',
+    )
+  }
+
+  componentDidUpdate(prevProps: { bodyName: string }) {
+    if (prevProps.bodyName !== this.props.bodyName && this.state.hasError) {
+      if (this.state.failedUrl) {
+        useGLTF.clear(this.state.failedUrl)
+      }
+      this.setState({ hasError: false, failedUrl: null })
+    }
+  }
+
+  render() {
+    if (this.state.hasError) return null
+    return this.props.children
+  }
+}
+
 export function AnimatedBody() {
+  const bodyName = useSceneStore(s => s.bodyName)
   return (
-    <Suspense fallback={null}>
-      <AnimatedBodyInner />
-    </Suspense>
+    <GltfErrorBoundary bodyName={bodyName}>
+      <Suspense fallback={null}>
+        <AnimatedBodyInner />
+      </Suspense>
+    </GltfErrorBoundary>
   )
 }
