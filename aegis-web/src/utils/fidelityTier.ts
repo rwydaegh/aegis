@@ -117,6 +117,8 @@ export const SOURCE_URLS: Record<string, { label: string; url: string }> = {
   'gov:bakom': { label: 'BAKOM Funksender', url: 'https://www.bakom.admin.ch/' },
   'gov:ised': { label: 'ISED Canada', url: 'https://www.ic.gc.ca/' },
   'gov:ofcom_wtr': { label: 'Ofcom WTR', url: 'https://www.ofcom.org.uk/' },
+  'gov:anatel_smp': { label: 'ANATEL (Brazil)', url: 'https://www.anatel.gov.br/' },
+  'gov:cadastre_gsm': { label: 'ILR Cadastre (Luxembourg)', url: 'https://data.public.lu/' },
   'ocid': { label: 'OpenCellID', url: 'https://opencellid.org/' },
 }
 

@@ -16,5 +16,7 @@
   "australia": "basestationLib.Countries.Australia.basestations",
   "new_zealand": "basestationLib.Countries.NewZealand.basestations",
   "uk": "basestationLib.Countries.UK.basestations",
+  "brazil": "basestationLib.Countries.Brazil.basestations",
+  "luxembourg": "basestationLib.Countries.Luxembourg.basestations",
   "other": "basestationLib.OpenCellID.basestations"
 }
