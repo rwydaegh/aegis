@@ -89,7 +89,7 @@ export function buildCoverageLayers(params: CoverageLayerParams) {
     layers.push(new ScatterplotLayer({
       id: 'antenna-sites',
       data: { length: siteCount },
-      getPosition: (_: unknown, { index }: { index: number }) => [siteLons[index], siteLats[index]] as [number, number, number],
+      getPosition: (_: unknown, { index }: { index: number }) => [siteLons[index], siteLats[index], 0] as [number, number, number],
       getRadius: 50,
       radiusMinPixels: 3,
       radiusMaxPixels: 15,
