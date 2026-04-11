@@ -7,7 +7,7 @@ import { useUIStore } from '@/stores/ui'
 import { useNotificationStore } from '@/stores/notifications'
 import { useMIMOStore } from '@/stores/mimo'
 import { useAntennaStore } from '@/stores/antenna'
-import { computeDosimetry, computeVoxelRT, computeRT, computeSionnaRT, computeSionnaEnvRT, fetchLSPHeatmap, type RtConfig } from '@/api/client'
+import { computeDosimetry, computeVoxelRT, computeRT, computeSionnaRT, computeSionnaEnvRT, fetchLSPHeatmap, isNetworkError, type RtConfig } from '@/api/client'
 import { toServer } from '@/api/coordinates'
 
 export function useDosimetry() {
@@ -219,6 +219,13 @@ export function useDosimetry() {
               `Compute timed out after ${timeoutMs / 1000}s. Try reducing path count or using a lower fidelity level.`,
             )
           }
+          return
+        }
+        if (isNetworkError(err)) {
+          useNotificationStore.getState().addNotification(
+            'warning',
+            'Network error during compute. Check your connection and try again.',
+          )
           return
         }
         Sentry.captureException(err)

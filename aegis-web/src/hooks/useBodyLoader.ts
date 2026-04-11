@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import * as Sentry from '@sentry/react'
-import { fetchBody } from '@/api/client'
+import { fetchBody, isNetworkError } from '@/api/client'
 import { useSceneStore } from '@/stores/scene'
 import { useSimulationStore } from '@/stores/simulation'
 import { useNotificationStore } from '@/stores/notifications'
@@ -50,6 +50,13 @@ export function useBodyLoader() {
       setBodyGeometry(geometry)
     }).catch(err => {
       if ((err as Error).name === 'AbortError') return
+      if (isNetworkError(err)) {
+        useNotificationStore.getState().addNotification(
+          'warning',
+          'Network error loading body mesh. Check your connection and try again.',
+        )
+        return
+      }
       Sentry.captureException(err)
       useNotificationStore.getState().addNotification('error', `Failed to load body: ${(err as Error).message}`)
     })
