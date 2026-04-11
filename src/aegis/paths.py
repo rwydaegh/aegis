@@ -52,9 +52,7 @@ class PropagationPaths:
             norms = np.linalg.norm(self.k_hat, axis=1)
             if not np.allclose(norms, 1.0, atol=1e-5):
                 worst = float(np.max(np.abs(norms - 1.0)))
-                raise ValueError(
-                    f"k_hat rows must be unit vectors (max norm deviation: {worst:.2e})"
-                )
+                raise ValueError(f"k_hat rows must be unit vectors (max norm deviation: {worst:.2e})")
 
     @property
     def n_paths(self) -> int:
