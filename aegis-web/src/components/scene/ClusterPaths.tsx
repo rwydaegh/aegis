@@ -1,4 +1,5 @@
-import { useMemo } from 'react'
+import { useMemo, useEffect, useRef, memo } from 'react'
+import * as THREE from 'three'
 import { Line } from '@react-three/drei'
 import { useSimulationStore } from '@/stores/simulation'
 import { useSceneStore } from '@/stores/scene'
@@ -15,6 +16,10 @@ const CLUSTER_COLORS = [
 const SCATTERER_RADIUS = 0.08
 const SUBPATH_SCATTERER_RADIUS = 0.03
 
+// Reusable objects for instanced mesh updates (single-threaded, safe to share)
+const _dummy = new THREE.Object3D()
+const _color = new THREE.Color()
+
 function ScattererSphere({ position, color, radius }: { position: [number, number, number]; color: string; radius?: number }) {
   return (
     <mesh position={position}>
@@ -24,7 +29,7 @@ function ScattererSphere({ position, color, radius }: { position: [number, numbe
   )
 }
 
-function ClusterRay({ cluster, index, antennaScene, bodyScene }: {
+const ClusterRay = memo(function ClusterRay({ cluster, index, antennaScene, bodyScene }: {
   cluster: ClusterVizItem
   index: number
   antennaScene: [number, number, number]
@@ -47,28 +52,94 @@ function ClusterRay({ cluster, index, antennaScene, bodyScene }: {
       {cluster.lbs && <ScattererSphere position={lbs} color={color} />}
     </group>
   )
-}
+})
 
-function SubpathRay({ subpath, antennaScene, bodyScene }: {
-  subpath: SubpathVizItem
+/** All subpath line segments batched into a single draw call. */
+function SubpathLines({ subpaths, antennaScene, bodyScene }: {
+  subpaths: SubpathVizItem[]
   antennaScene: [number, number, number]
   bodyScene: [number, number, number]
 }) {
-  const color = CLUSTER_COLORS[subpath.cluster % CLUSTER_COLORS.length]
-  const opacity = Math.max(0.15, Math.min(0.6, subpath.power * 8))
+  const geometry = useMemo(() => {
+    const positions: number[] = []
+    const colors: number[] = []
 
-  if (subpath.is_los) return null
+    for (const sp of subpaths) {
+      if (sp.is_los) continue
+      const c = _color.set(CLUSTER_COLORS[sp.cluster % CLUSTER_COLORS.length])
+      const fbs = sp.fbs ? toScene(sp.fbs) : antennaScene
+      const lbs = sp.lbs ? toScene(sp.lbs) : bodyScene
 
-  const fbs = subpath.fbs ? toScene(subpath.fbs) : antennaScene
-  const lbs = subpath.lbs ? toScene(subpath.lbs) : bodyScene
+      // 3 line segments per subpath (antenna->fbs, fbs->lbs, lbs->body)
+      positions.push(
+        antennaScene[0], antennaScene[1], antennaScene[2], fbs[0], fbs[1], fbs[2],
+        fbs[0], fbs[1], fbs[2], lbs[0], lbs[1], lbs[2],
+        lbs[0], lbs[1], lbs[2], bodyScene[0], bodyScene[1], bodyScene[2],
+      )
+      colors.push(
+        c.r, c.g, c.b, c.r, c.g, c.b,
+        c.r, c.g, c.b, c.r, c.g, c.b,
+        c.r, c.g, c.b, c.r, c.g, c.b,
+      )
+    }
+
+    const geom = new THREE.BufferGeometry()
+    geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
+    geom.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3))
+    return geom
+  }, [subpaths, antennaScene, bodyScene])
+
+  useEffect(() => () => geometry.dispose(), [geometry])
 
   return (
-    <group>
-      <Line points={[antennaScene, fbs]} color={color} lineWidth={0.5} transparent opacity={opacity * 0.4} />
-      <Line points={[fbs, lbs]} color={color} lineWidth={0.5} transparent opacity={opacity * 0.3} dashed dashSize={0.1} gapSize={0.08} />
-      <Line points={[lbs, bodyScene]} color={color} lineWidth={0.5} transparent opacity={opacity * 0.4} />
-      {subpath.lbs && <ScattererSphere position={lbs} color={color} radius={SUBPATH_SCATTERER_RADIUS} />}
-    </group>
+    <lineSegments geometry={geometry}>
+      <lineBasicMaterial vertexColors transparent opacity={0.18} depthWrite={false} />
+    </lineSegments>
+  )
+}
+
+/** All subpath scatterer spheres batched into a single instanced draw call. */
+function SubpathScatterers({ subpaths }: { subpaths: SubpathVizItem[] }) {
+  const meshRef = useRef<THREE.InstancedMesh>(null)
+
+  const instances = useMemo(() => {
+    const positions: [number, number, number][] = []
+    const clusterIndices: number[] = []
+
+    for (const sp of subpaths) {
+      if (sp.is_los || !sp.lbs) continue
+      positions.push(toScene(sp.lbs))
+      clusterIndices.push(sp.cluster)
+    }
+
+    return { positions, clusterIndices, count: positions.length }
+  }, [subpaths])
+
+  useEffect(() => {
+    const mesh = meshRef.current
+    if (!mesh || instances.count === 0) return
+
+    for (let i = 0; i < instances.count; i++) {
+      _dummy.position.set(...instances.positions[i])
+      _dummy.updateMatrix()
+      mesh.setMatrixAt(i, _dummy.matrix)
+      mesh.setColorAt(i, _color.set(CLUSTER_COLORS[instances.clusterIndices[i] % CLUSTER_COLORS.length]))
+    }
+    mesh.instanceMatrix.needsUpdate = true
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true
+  }, [instances])
+
+  if (instances.count === 0) return null
+
+  return (
+    <instancedMesh
+      ref={meshRef}
+      args={[null, null, instances.count] as unknown as [THREE.BufferGeometry, THREE.Material, number]}
+      frustumCulled={false}
+    >
+      <sphereGeometry args={[SUBPATH_SCATTERER_RADIUS, 8, 6]} />
+      <meshStandardMaterial toneMapped={false} />
+    </instancedMesh>
   )
 }
 
@@ -106,7 +177,6 @@ export default function ClusterPaths() {
 
   return (
     <group>
-      {/* Always show cluster-level rays */}
       {clusterVizData.map((cluster, i) => (
         <ClusterRay
           key={`c-${i}`}
@@ -116,15 +186,12 @@ export default function ClusterPaths() {
           bodyScene={bodyScene}
         />
       ))}
-      {/* Optionally overlay sub-path rays */}
-      {showSubpaths && subpathVizData.map((sp, i) => (
-        <SubpathRay
-          key={`s-${i}`}
-          subpath={sp}
-          antennaScene={antennaScene}
-          bodyScene={bodyScene}
-        />
-      ))}
+      {showSubpaths && subpathVizData && (
+        <>
+          <SubpathLines subpaths={subpathVizData} antennaScene={antennaScene} bodyScene={bodyScene} />
+          <SubpathScatterers subpaths={subpathVizData} />
+        </>
+      )}
     </group>
   )
 }
