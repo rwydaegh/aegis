@@ -1,4 +1,5 @@
 import { useRef, useMemo } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { Canvas, useThree, useFrame } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
@@ -357,7 +358,7 @@ export default function SceneRoot() {
   const cameraMode = useUIStore(s => s.cameraMode)
   const mimoEnabled = useMIMOStore(s => s.enabled)
   const envSource = useEnvironmentStore(s => s.source)
-  const antennaEntries = useAntennaStore(s => [...s.antennas.values()])
+  const antennaEntries = useAntennaStore(useShallow(s => [...s.antennas.values()]))
   const selectedAntennaId = useAntennaStore(s => s.selectedId)
   const controlsRef = useRef<OrbitControlsImpl | null>(null)
   if (!webglAvailable) return <WebGLUnavailable />

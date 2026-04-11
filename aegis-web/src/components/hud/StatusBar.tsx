@@ -8,7 +8,11 @@ function formatMs(ms: number): string {
 }
 
 export default function StatusBar() {
-  const { isComputing, statusMessage, setComputeElapsed, lastComputeTiming, computeColdStart } = useUIStore()
+  const isComputing = useUIStore(s => s.isComputing)
+  const statusMessage = useUIStore(s => s.statusMessage)
+  const setComputeElapsed = useUIStore(s => s.setComputeElapsed)
+  const lastComputeTiming = useUIStore(s => s.lastComputeTiming)
+  const computeColdStart = useUIStore(s => s.computeColdStart)
   const [elapsed, setElapsed] = useState(0)
   const [expanded, setExpanded] = useState(false)
   const startRef = useRef<number | null>(null)

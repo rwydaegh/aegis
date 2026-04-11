@@ -63,7 +63,9 @@ export default function Sidebar() {
       }
       setActiveGroup('source')
     } else {
-      setGroupOpenSections('source', sourceSections.filter(s => s !== 'mimo'))
+      if (sourceSections.includes('mimo')) {
+        setGroupOpenSections('source', sourceSections.filter(s => s !== 'mimo'))
+      }
     }
   }, [mimoEnabled, setActiveGroup, setGroupOpenSections])
 
