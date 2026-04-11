@@ -51,11 +51,11 @@ export function buildCoverageLayers(params: CoverageLayerParams) {
     siteAntennaCounts, siteCount, zoom, colorMode, onSiteHover, onSiteClick,
   } = params
 
-  // Heatmap opacity: full at zoom<=8, fades to 0 by zoom 12
-  const heatmapOpacity = zoom <= 8 ? 0.8 : zoom >= 12 ? 0 : 0.8 * (12 - zoom) / 4
+  // Heatmap opacity: full at zoom<=9, fades to 0 by zoom 13
+  const heatmapOpacity = zoom <= 9 ? 0.85 : zoom >= 13 ? 0 : 0.85 * (13 - zoom) / 4
 
-  // Scatter opacity: 0 at zoom<=8, fades to full by zoom 12
-  const scatterOpacity = zoom <= 8 ? 0 : zoom >= 12 ? 0.9 : 0.9 * (zoom - 8) / 4
+  // Scatter opacity: 0 at zoom<=9, fades to full by zoom 13
+  const scatterOpacity = zoom <= 9 ? 0 : zoom >= 13 ? 0.9 : 0.9 * (zoom - 9) / 4
 
   const layers: any[] = []
 
@@ -74,9 +74,9 @@ export function buildCoverageLayers(params: CoverageLayerParams) {
       data: heatmapData,
       getPosition: (d: { position: [number, number]; weight: number }) => d.position,
       getWeight: (d: { position: [number, number]; weight: number }) => d.weight,
-      radiusPixels: Math.max(15, 50 - zoom * 3),
-      intensity: 1 + zoom * 0.3,
-      threshold: 0.05,
+      radiusPixels: Math.max(20, 80 - zoom * 5),
+      intensity: 2 + zoom * 0.5,
+      threshold: 0.01,
       colorRange: HEATMAP_COLOR_RANGE,
       aggregation: 'SUM',
       opacity: heatmapOpacity,

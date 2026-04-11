@@ -498,7 +498,7 @@ def create_app(
             "default-src 'self'; "
             "script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' blob: "
             "https://analytics.waves-ugent.be https://maps.googleapis.com; "
-            "style-src 'self' 'unsafe-inline'; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
             "img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com "
             "https://*.google.com https://*.cesium.com https://*.cesium.org "
             "https://*.virtualearth.net; "
