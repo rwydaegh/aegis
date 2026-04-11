@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import type { ScenePos } from '@/api/coordinates'
 import type { ElementPattern } from '@/api/types'
+import { useSceneStore } from '@/stores/scene'
+import { useSimulationStore } from '@/stores/simulation'
 
 export interface AntennaArrayConfig {
   n_h: number
@@ -15,6 +17,8 @@ export interface AntennaConfig {
   id: string
   name: string
   position: ScenePos
+  height: number
+  focusPoint: [number, number, number] | null
   powerDbm: number
   arrayConfig: AntennaArrayConfig
   enabled: boolean
@@ -31,6 +35,8 @@ interface AntennaStore {
   selectAntenna: (id: string | null) => void
   moveAntenna: (id: string, position: ScenePos) => void
   setEnabled: (id: string, on: boolean) => void
+  setFocusPoint: (id: string, fp: [number, number, number] | null) => void
+  setHeight: (id: string, height: number) => void
   selectedAntenna: () => AntennaConfig | null
   enabledAntennas: () => AntennaConfig[]
 }
@@ -44,6 +50,22 @@ function defaultArrayConfig(): AntennaArrayConfig {
   }
 }
 
+/** Compute broadside unit vector from antenna tip toward focus point. */
+export function deriveBroadside(
+  focusPoint: [number, number, number] | null,
+  position: ScenePos,
+  height: number,
+): [number, number, number] {
+  if (!focusPoint) return [0, 0, -1]
+  const tip: [number, number, number] = [position[0], position[1] + height, position[2]]
+  const dx = focusPoint[0] - tip[0]
+  const dy = focusPoint[1] - tip[1]
+  const dz = focusPoint[2] - tip[2]
+  const len = Math.sqrt(dx * dx + dy * dy + dz * dz)
+  if (len < 1e-6) return [0, 0, -1]
+  return [dx / len, dy / len, dz / len]
+}
+
 export const useAntennaStore = create<AntennaStore>((set, get) => ({
   antennas: new Map(),
   selectedId: null,
@@ -53,9 +75,19 @@ export const useAntennaStore = create<AntennaStore>((set, get) => ({
     const state = get()
     const num = state._nextNumber
     const id = `ant_${num}`
+    const sceneConfig = useSceneStore?.getState?.()?.viewerConfig
+    const defaultHeight = sceneConfig?.antenna?.pole_height ?? 2
+    const simState = useSimulationStore?.getState?.()
+    const bodyOffset = simState?.bodyOffset ?? null
+    const focusPoint: [number, number, number] | null = bodyOffset ? [...bodyOffset] as [number, number, number] : null
+    const broadside = deriveBroadside(focusPoint, position, defaultHeight)
     const antenna: AntennaConfig = {
       id, name: `Antenna ${num}`, position,
-      powerDbm: 60, arrayConfig: defaultArrayConfig(), enabled: true,
+      height: defaultHeight,
+      focusPoint,
+      powerDbm: 60,
+      arrayConfig: { ...defaultArrayConfig(), broadside },
+      enabled: true,
     }
     const next = new Map(state.antennas)
     next.set(id, antenna)
@@ -90,8 +122,9 @@ export const useAntennaStore = create<AntennaStore>((set, get) => ({
     const state = get()
     const existing = state.antennas.get(id)
     if (!existing) return
+    const broadside = deriveBroadside(existing.focusPoint, position, existing.height)
     const next = new Map(state.antennas)
-    next.set(id, { ...existing, position })
+    next.set(id, { ...existing, position, arrayConfig: { ...existing.arrayConfig, broadside } })
     set({ antennas: next })
   },
 
@@ -101,6 +134,26 @@ export const useAntennaStore = create<AntennaStore>((set, get) => ({
     if (!existing) return
     const next = new Map(state.antennas)
     next.set(id, { ...existing, enabled: on })
+    set({ antennas: next })
+  },
+
+  setFocusPoint: (id, fp) => {
+    const state = get()
+    const ant = state.antennas.get(id)
+    if (!ant) return
+    const broadside = deriveBroadside(fp, ant.position, ant.height)
+    const next = new Map(state.antennas)
+    next.set(id, { ...ant, focusPoint: fp, arrayConfig: { ...ant.arrayConfig, broadside } })
+    set({ antennas: next })
+  },
+
+  setHeight: (id, height) => {
+    const state = get()
+    const ant = state.antennas.get(id)
+    if (!ant) return
+    const broadside = deriveBroadside(ant.focusPoint, ant.position, height)
+    const next = new Map(state.antennas)
+    next.set(id, { ...ant, height, arrayConfig: { ...ant.arrayConfig, broadside } })
     set({ antennas: next })
   },
 
