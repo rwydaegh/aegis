@@ -19,7 +19,26 @@ function scalarRadiationGain(
     }
     return Math.max(s, 1e-9)
   }
-  // short_dipole (default)
+  if (type === 'patch') {
+    // cos^q(theta) pattern where theta is angle from boresight (default -Z in Y-up)
+    const q = 1.5
+    let gsum = 0
+    for (const el of elements) {
+      const w = el.weight ?? [1, 0]
+      const w2 = w[0] * w[0] + (w[1] ?? 0) * (w[1] ?? 0)
+      // Boresight is perpendicular to dipole axis: for default vertical dipole [0,1,0],
+      // boresight is -Z direction [0,0,-1] in Y-up coords
+      const ax = new THREE.Vector3(...(el.axis ?? [0, 1, 0]))
+      if (ax.lengthSq() < 1e-12) ax.set(0, 1, 0)
+      ax.normalize()
+      // Boresight = direction perpendicular to dipole axis (pick -Z component)
+      const boresight = new THREE.Vector3(0, 0, -1)
+      const cosTheta = dir.dot(boresight)
+      gsum += w2 * Math.max(cosTheta, 0) ** q
+    }
+    return Math.max(gsum, 1e-12)
+  }
+  // short_dipole (default): 1.5 * sin^2(alpha) where alpha is angle from dipole axis
   let gsum = 0
   for (const el of elements) {
     const w = el.weight ?? [1, 0]
@@ -65,9 +84,10 @@ function interpolatePatternGain(dir: THREE.Vector3, data: Float32Array): number 
 interface AntennaProps {
   position: [number, number, number]
   selected?: boolean
+  elementPattern?: string
 }
 
-export default function Antenna({ position, selected = true }: AntennaProps) {
+export default function Antenna({ position, selected = true, elementPattern }: AntennaProps) {
   const config = useSceneStore(s => s.viewerConfig)
   const wireframe = useUIStore(s => s.wireframe)
   const cameraMode = useUIStore(s => s.cameraMode)
@@ -88,7 +108,7 @@ export default function Antenna({ position, selected = true }: AntennaProps) {
     const posAttr = base.attributes.position as THREE.BufferAttribute
     const nV = posAttr.count
 
-    const type = rp.type ?? 'short_dipole'
+    const type = elementPattern ?? rp.type ?? 'short_dipole'
     const elements = rp.elements?.length
       ? rp.elements
       : [{ offset: [0, 0, 0], weight: [1, 0], axis: [0, 1, 0] }]
@@ -132,7 +152,7 @@ export default function Antenna({ position, selected = true }: AntennaProps) {
 
     prevGeoRef.current = base
     return base
-  }, [config, appliedPattern, appliedPatternMeta])
+  }, [config, appliedPattern, appliedPatternMeta, elementPattern])
 
   useEffect(() => () => { prevGeoRef.current?.dispose() }, [])
 

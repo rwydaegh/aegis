@@ -393,6 +393,7 @@ export default function SceneRoot() {
               key={ant.id}
               position={ant.position}
               selected={ant.id === selectedAntennaId}
+              elementPattern={ant.arrayConfig.element_pattern}
             />
           ))}
           <DistanceLine />
