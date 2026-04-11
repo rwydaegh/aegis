@@ -296,6 +296,35 @@ def _preload_bodies(
             except FileNotFoundError as e:
                 print(f"  Warning: {e}")
 
+        # Also load GLB (animated) phantoms so /api/body serves them too
+        phantom_dir_cfg = cfg.get("body", {}).get("phantom_dir", "")
+        if phantom_dir_cfg and Path(phantom_dir_cfg).is_absolute():
+            phantom_dir = Path(phantom_dir_cfg)
+        else:
+            phantom_dir = Path(data_dir) / "phantoms"
+        if phantom_dir.is_dir():
+            for glb_path in sorted(phantom_dir.glob("*.glb")):
+                glb_name = glb_path.stem
+                if glb_name in cache["bodies"]:
+                    continue  # STL version already loaded, skip
+                try:
+                    from aegis.geometry.skeleton import GltfSkeleton
+
+                    skel = GltfSkeleton.load(glb_path)
+                    body = skel.pose_to_body(name=glb_name)
+                    binary, meta = body_to_binary(body)
+                    cache["bodies"][glb_name] = {"body": body, "binary": binary, "meta": meta}
+
+                    if glb_name in phantom_overrides:
+                        offset = [float(v) for v in phantom_overrides[glb_name]]
+                    else:
+                        offset = estimate_device_offset(body.vertices, forward_distance=fwd)
+                    cache["body_device_offsets"][glb_name] = offset
+
+                    print(f"  Body (GLB): {glb_name}, {body.n_triangles:,} triangles, device_offset={offset}")
+                except Exception as e:
+                    print(f"  Warning: failed to load GLB phantom {glb_path.name}: {e}")
+
         # Backward-compat aliases pointing at the default body
         default_entry = cache["bodies"].get(body_name)
         if default_entry is not None:
