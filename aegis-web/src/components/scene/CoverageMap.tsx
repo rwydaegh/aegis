@@ -1,12 +1,19 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { APIProvider, Map, Map3D, MapMode, useMap } from '@vis.gl/react-google-maps'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { APIProvider, Map, Map3D, MapMode, Marker3D, AltitudeMode, useMap } from '@vis.gl/react-google-maps'
 import { GoogleMapsOverlay } from '@deck.gl/google-maps'
 import { useSceneStore } from '@/stores/scene'
 import { useCoverageStore } from '@/stores/coverage'
-import { buildCoverageLayers } from './coverageLayers'
+import { buildCoverageLayers, OP_COLORS } from './coverageLayers'
+import { Radio, Building2, Layers, MapPin, X, Signal } from 'lucide-react'
 
 /** Zoom level at which we switch from 2D heatmap to 3D photorealistic view */
 const SWITCH_TO_3D_ZOOM = 15
+
+/** Max markers to render in 3D view (performance budget) */
+const MAX_3D_MARKERS = 2000
+
+/** Radius in degrees around camera center to load markers */
+const MARKER_RADIUS_DEG = 0.05
 
 function DeckOverlay() {
   const map = useMap()
@@ -94,8 +101,133 @@ function DeckOverlay() {
   return null
 }
 
-/** Photorealistic 3D view using Map3DElement */
+/** Site info for 3D markers */
+interface SiteInfo {
+  index: number
+  lat: number
+  lon: number
+  operator: string
+  technology: string
+  region: string
+  antennaCount: number
+  opIndex: number
+}
+
+/** Rich tooltip panel for a selected antenna site */
+function SiteInfoPanel({ site, onClose }: { site: SiteInfo; onClose: () => void }) {
+  const color = OP_COLORS[site.opIndex % OP_COLORS.length]
+  const colorHex = `rgb(${color[0]}, ${color[1]}, ${color[2]})`
+
+  return (
+    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-40 w-80 max-w-[90vw] bg-zinc-900/95 backdrop-blur-sm border border-zinc-700 rounded-xl shadow-2xl overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-700/50" style={{ borderLeftColor: colorHex, borderLeftWidth: 4 }}>
+        <div className="flex items-center gap-2">
+          <Radio size={16} className="text-blue-400" />
+          <span className="text-white font-medium text-sm">Base Station</span>
+        </div>
+        <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors p-1 rounded hover:bg-zinc-700">
+          <X size={14} />
+        </button>
+      </div>
+
+      {/* Content */}
+      <div className="px-4 py-3 space-y-3">
+        {/* Operator */}
+        <div className="flex items-start gap-3">
+          <Building2 size={14} className="text-zinc-500 mt-0.5 shrink-0" />
+          <div>
+            <div className="text-zinc-500 text-xs">Operator</div>
+            <div className="text-white text-sm font-medium" style={{ color: colorHex }}>{site.operator}</div>
+          </div>
+        </div>
+
+        {/* Technology */}
+        <div className="flex items-start gap-3">
+          <Signal size={14} className="text-zinc-500 mt-0.5 shrink-0" />
+          <div>
+            <div className="text-zinc-500 text-xs">Technology</div>
+            <div className="text-white text-sm">{site.technology}</div>
+          </div>
+        </div>
+
+        {/* Antennas */}
+        <div className="flex items-start gap-3">
+          <Layers size={14} className="text-zinc-500 mt-0.5 shrink-0" />
+          <div>
+            <div className="text-zinc-500 text-xs">Antennas at site</div>
+            <div className="text-white text-sm">{site.antennaCount}</div>
+          </div>
+        </div>
+
+        {/* Region */}
+        <div className="flex items-start gap-3">
+          <MapPin size={14} className="text-zinc-500 mt-0.5 shrink-0" />
+          <div>
+            <div className="text-zinc-500 text-xs">Region</div>
+            <div className="text-white text-sm">{site.region.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</div>
+          </div>
+        </div>
+
+        {/* Coordinates */}
+        <div className="pt-2 border-t border-zinc-800 flex gap-4">
+          <div>
+            <div className="text-zinc-600 text-[10px] uppercase tracking-wider">Lat</div>
+            <div className="text-zinc-400 text-xs font-mono">{site.lat.toFixed(5)}</div>
+          </div>
+          <div>
+            <div className="text-zinc-600 text-[10px] uppercase tracking-wider">Lon</div>
+            <div className="text-zinc-400 text-xs font-mono">{site.lon.toFixed(5)}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** Photorealistic 3D view with antenna markers */
 function Photorealistic3DView({ center }: { center: { lat: number; lon: number } }) {
+  const siteLats = useCoverageStore(s => s.siteLats)
+  const siteLons = useCoverageStore(s => s.siteLons)
+  const siteOpIndices = useCoverageStore(s => s.siteOpIndices)
+  const siteTechIndices = useCoverageStore(s => s.siteTechIndices)
+  const siteRegionIndices = useCoverageStore(s => s.siteRegionIndices)
+  const siteAntennaCounts = useCoverageStore(s => s.siteAntennaCounts)
+  const siteCount = useCoverageStore(s => s.siteCount)
+  const operatorNames = useCoverageStore(s => s.operatorNames)
+  const technologyNames = useCoverageStore(s => s.technologyNames)
+  const regionNames = useCoverageStore(s => s.regionNames)
+  const cameraLatLon = useCoverageStore(s => s.cameraLatLon)
+  const [selectedSite, setSelectedSite] = useState<SiteInfo | null>(null)
+
+  // Filter sites near the camera center
+  const visibleSites = useMemo(() => {
+    if (!siteLats || !siteLons || !siteOpIndices || !siteTechIndices || !siteRegionIndices || !siteAntennaCounts) return []
+    const cLat = cameraLatLon?.lat ?? center.lat
+    const cLon = cameraLatLon?.lon ?? center.lon
+    const r = MARKER_RADIUS_DEG
+
+    const sites: SiteInfo[] = []
+    for (let i = 0; i < siteCount && sites.length < MAX_3D_MARKERS; i++) {
+      const lat = siteLats[i]
+      const lon = siteLons[i]
+      if (lat >= cLat - r && lat <= cLat + r && lon >= cLon - r && lon <= cLon + r) {
+        sites.push({
+          index: i,
+          lat, lon,
+          operator: operatorNames[siteOpIndices[i]] ?? 'Unknown',
+          technology: technologyNames[siteTechIndices[i]] ?? 'Unknown',
+          region: regionNames[siteRegionIndices[i]] ?? 'Unknown',
+          antennaCount: siteAntennaCounts[i],
+          opIndex: siteOpIndices[i],
+        })
+      }
+    }
+    return sites
+  }, [siteLats, siteLons, siteOpIndices, siteTechIndices, siteRegionIndices,
+      siteAntennaCounts, siteCount, operatorNames, technologyNames, regionNames,
+      cameraLatLon, center])
+
   const handleCameraChanged = useCallback((ev: any) => {
     const detail = ev.detail
     if (detail?.center) {
@@ -107,15 +239,54 @@ function Photorealistic3DView({ center }: { center: { lat: number; lon: number }
   }, [])
 
   return (
-    <Map3D
-      style={{ width: '100%', height: '100%' }}
-      mode={MapMode.SATELLITE}
-      defaultCenter={{ lat: center.lat, lng: center.lon, altitude: 200 }}
-      defaultTilt={60}
-      defaultHeading={0}
-      defaultRange={500}
-      onCameraChanged={handleCameraChanged}
-    />
+    <>
+      <Map3D
+        style={{ width: '100%', height: '100%' }}
+        mode={MapMode.SATELLITE}
+        defaultCenter={{ lat: center.lat, lng: center.lon, altitude: 200 }}
+        defaultTilt={60}
+        defaultHeading={0}
+        defaultRange={500}
+        onCameraChanged={handleCameraChanged}
+      >
+        {visibleSites.map(site => {
+          const color = OP_COLORS[site.opIndex % OP_COLORS.length]
+          return (
+            <Marker3D
+              key={site.index}
+              position={{ lat: site.lat, lng: site.lon, altitude: 30 }}
+              altitudeMode={AltitudeMode.RELATIVE_TO_GROUND}
+              extruded
+              label={site.antennaCount > 1 ? `${site.antennaCount}` : undefined}
+              onClick={() => setSelectedSite(site)}
+            >
+              <div
+                style={{
+                  width: 14,
+                  height: 14,
+                  borderRadius: '50%',
+                  backgroundColor: `rgb(${color[0]}, ${color[1]}, ${color[2]})`,
+                  border: '2px solid white',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
+                  cursor: 'pointer',
+                }}
+              />
+            </Marker3D>
+          )
+        })}
+      </Map3D>
+
+      {/* Marker count indicator */}
+      <div className="absolute top-16 right-4 z-30 px-3 py-1.5 bg-zinc-900/80 text-zinc-400 text-xs rounded-lg border border-zinc-700">
+        <Radio size={12} className="inline mr-1.5" />
+        {visibleSites.length} sites in view
+      </div>
+
+      {/* Selected site info panel */}
+      {selectedSite && (
+        <SiteInfoPanel site={selectedSite} onClose={() => setSelectedSite(null)} />
+      )}
+    </>
   )
 }
 

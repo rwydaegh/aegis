@@ -2,7 +2,7 @@ import { HeatmapLayer } from '@deck.gl/aggregation-layers'
 import { ScatterplotLayer } from '@deck.gl/layers'
 
 // 16-color operator palette (RGBA arrays)
-const OP_COLORS: [number, number, number, number][] = [
+export const OP_COLORS: [number, number, number, number][] = [
   [59, 130, 245, 255],   // blue
   [245, 130, 28, 255],   // orange
   [46, 194, 125, 255],   // green
@@ -45,6 +45,27 @@ export interface CoverageLayerParams {
   onSiteClick: (info: any) => void
 }
 
+// Cache heatmap data array to avoid rebuilding 416K objects on every zoom change
+let _cachedHeatmapData: { position: [number, number]; weight: number }[] | null = null
+let _cachedHeatmapKey: string | null = null
+
+function getHeatmapData(siteLats: Float32Array, siteLons: Float32Array, siteAntennaCounts: Uint8Array, siteCount: number) {
+  const key = `${siteLats.byteLength}-${siteCount}`
+  if (_cachedHeatmapData && _cachedHeatmapKey === key && _cachedHeatmapData.length === siteCount) {
+    return _cachedHeatmapData
+  }
+  const data: { position: [number, number]; weight: number }[] = new Array(siteCount)
+  for (let i = 0; i < siteCount; i++) {
+    data[i] = {
+      position: [siteLons[i], siteLats[i]],
+      weight: siteAntennaCounts[i] || 1,
+    }
+  }
+  _cachedHeatmapData = data
+  _cachedHeatmapKey = key
+  return data
+}
+
 export function buildCoverageLayers(params: CoverageLayerParams) {
   const {
     siteLats, siteLons, siteOpIndices, siteTechIndices, siteRegionIndices,
@@ -59,15 +80,8 @@ export function buildCoverageLayers(params: CoverageLayerParams) {
 
   const layers: any[] = []
 
-  // HeatmapLayer needs array of objects (does NOT support {length} + indexed accessors)
   if (heatmapOpacity > 0) {
-    const heatmapData: { position: [number, number]; weight: number }[] = []
-    for (let i = 0; i < siteCount; i++) {
-      heatmapData.push({
-        position: [siteLons[i], siteLats[i]],
-        weight: siteAntennaCounts[i] || 1,
-      })
-    }
+    const heatmapData = getHeatmapData(siteLats, siteLons, siteAntennaCounts, siteCount)
 
     layers.push(new HeatmapLayer({
       id: 'antenna-heatmap',
@@ -80,7 +94,7 @@ export function buildCoverageLayers(params: CoverageLayerParams) {
       colorRange: HEATMAP_COLOR_RANGE,
       aggregation: 'SUM',
       opacity: heatmapOpacity,
-      debounceTimeout: 200,
+      debounceTimeout: 500,
     }))
   }
 
