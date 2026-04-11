@@ -275,7 +275,10 @@ def _preload_bodies(
     fwd = cfg.get("body", {}).get("smartphone", {}).get("forward_distance", 0.30)
 
     with cache_lock:
-        available_bodies = [p.stem for p in Path(data_dir).glob("*.stl")]
+        stl_bodies = {p.stem for p in Path(data_dir).glob("*.stl")}
+        phantom_dir = Path(data_dir) / "phantoms"
+        glb_bodies = {p.stem for p in phantom_dir.glob("*.glb")} if phantom_dir.is_dir() else set()
+        available_bodies = sorted(stl_bodies | glb_bodies)
         cache["bodies"] = {}
         cache["body_device_offsets"] = {}
         cache["default_body"] = body_name

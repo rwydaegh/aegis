@@ -470,12 +470,85 @@ def load_voxels_directory(
 # ---------------------------------------------------------------------------
 
 
+def _load_glb_mesh(glb_path: Path, name: str | None = None) -> BodyMesh:
+    """Load a body mesh from a GLB file, converting Y-up to Z-up.
+
+    Parses the GLB binary container (header + JSON + BIN chunks),
+    extracts vertex positions and indices from the first mesh primitive,
+    and converts from glTF Y-up to AEGIS Z-up coordinates.
+    """
+    import struct
+
+    with open(glb_path, "rb") as f:
+        magic, _version, total_length = struct.unpack("<III", f.read(12))
+        if magic != 0x46546C67:
+            raise ValueError(f"Not a valid GLB file: {glb_path}")
+
+        json_chunk: dict | None = None
+        bin_chunk: bytes | None = None
+        while f.tell() < total_length:
+            chunk_length, chunk_type = struct.unpack("<II", f.read(8))
+            chunk_data = f.read(chunk_length)
+            if chunk_type == 0x4E4F534A:  # JSON
+                json_chunk = json.loads(chunk_data)
+            elif chunk_type == 0x004E4942:  # BIN
+                bin_chunk = chunk_data
+
+    if json_chunk is None or bin_chunk is None:
+        raise ValueError(f"GLB file missing JSON or BIN chunk: {glb_path}")
+
+    def _read_accessor(accessor_idx: int, expected_type: np.dtype) -> np.ndarray:
+        acc = json_chunk["accessors"][accessor_idx]
+        bv = json_chunk["bufferViews"][acc["bufferView"]]
+        offset = bv.get("byteOffset", 0) + acc.get("byteOffset", 0)
+        count = acc["count"]
+        component_types = {5121: np.uint8, 5123: np.uint16, 5125: np.uint32, 5126: np.float32}
+        dtype = component_types[acc["componentType"]]
+        elements = {"SCALAR": 1, "VEC2": 2, "VEC3": 3, "VEC4": 4}[acc["type"]]
+        return (
+            np.frombuffer(bin_chunk, dtype=dtype, offset=offset, count=count * elements)
+            .reshape(count, elements)
+            .astype(expected_type)
+        )
+
+    all_triangles = []
+    for mesh in json_chunk["meshes"]:
+        for prim in mesh["primitives"]:
+            positions = _read_accessor(prim["attributes"]["POSITION"], np.float64)
+            if "indices" in prim:
+                indices = _read_accessor(prim["indices"], np.uint32).ravel()
+                verts = positions[indices]
+            else:
+                verts = positions
+            all_triangles.append(verts.reshape(-1, 3, 3))
+
+    triangles = np.concatenate(all_triangles, axis=0)
+
+    # Convert Y-up (glTF) to Z-up (AEGIS): [x, y, z] -> [x, -z, y]
+    triangles_zup = np.empty_like(triangles)
+    triangles_zup[..., 0] = triangles[..., 0]
+    triangles_zup[..., 1] = -triangles[..., 2]
+    triangles_zup[..., 2] = triangles[..., 1]
+
+    return BodyMesh.from_arrays(triangles_zup, name=name or glb_path.stem)
+
+
 def load_body(name: str, data_dir: str) -> BodyMesh:
-    """Load a body mesh by name from the data directory."""
+    """Load a body mesh by name from the data directory.
+
+    Tries STL first, then falls back to GLB in the phantoms subdirectory.
+    """
     stl_path = Path(data_dir) / f"{name}.stl"
-    if not stl_path.exists():
-        raise FileNotFoundError(f"Body mesh not found: {stl_path}")
-    return BodyMesh.load(str(stl_path))
+    if stl_path.exists():
+        return BodyMesh.load(str(stl_path))
+
+    # Fall back to GLB phantom
+    phantom_dir = Path(data_dir) / "phantoms"
+    glb_path = phantom_dir / f"{name}.glb"
+    if glb_path.exists():
+        return _load_glb_mesh(glb_path, name=name)
+
+    raise FileNotFoundError(f"Body mesh not found: {stl_path}")
 
 
 # ---------------------------------------------------------------------------
