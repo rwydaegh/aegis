@@ -32,12 +32,13 @@ RETRY_STATUSES = {429, 500, 502, 503, 504}
 RETRY_403 = False
 
 
-def create_session(retries: int = 3, pool_maxsize: int = 64, headers: Optional[dict] = None) -> requests.Session:
+def create_session(retries: int = 3, pool_maxsize: int = 64, headers: Optional[dict] = None, verify: bool = True) -> requests.Session:
     """
     Create a requests session with connection pooling + urllib3 retry for network-level issues.
     No proxies.
     """
     session = requests.Session()
+    session.verify = verify
     session.headers.update(DEFAULT_HEADERS)
     if headers:
         session.headers.update(headers)

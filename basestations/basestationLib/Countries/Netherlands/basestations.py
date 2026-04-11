@@ -304,18 +304,56 @@ def _bbox_4326_to_28992(bbox4326: Tuple[float, float, float, float]) -> Tuple[fl
     return float(minx), float(miny), float(maxx), float(maxy)
 
 
-def fetch_sites(session: requests.Session, *, bbox_4326= None, timeout: int = 25) -> List[Dict]:
-    """Fetch site features from layer Antennes for a given lon/lat bbox."""
-    
-    params = _wfs_base_params(LAYER_SITES)
-    if bbox_4326 is not None:
-        bbox_28992 = _bbox_4326_to_28992(bbox_4326)
-        params["bbox"] = ",".join(map(str, bbox_28992))
+def _tile_bbox_4326(bbox: Tuple[float, float, float, float], step: float = 0.5) -> List[Tuple[float, float, float, float]]:
+    """Split a (min_lon, min_lat, max_lon, max_lat) bbox into sub-tiles."""
+    min_lon, min_lat, max_lon, max_lat = bbox
+    tiles = []
+    lat = min_lat
+    while lat < max_lat:
+        lon = min_lon
+        lat_end = min(lat + step, max_lat)
+        while lon < max_lon:
+            lon_end = min(lon + step, max_lon)
+            tiles.append((lon, lat, lon_end, lat_end))
+            lon = lon_end
+        lat = lat_end
+    return tiles
 
+
+def _fetch_sites_single(session: requests.Session, bbox_4326: Tuple[float, float, float, float], timeout: int = 25) -> List[Dict]:
+    """Fetch site features for a single bbox tile."""
+    params = _wfs_base_params(LAYER_SITES)
+    bbox_28992 = _bbox_4326_to_28992(bbox_4326)
+    params["bbox"] = ",".join(map(str, bbox_28992))
     data = http_get_json(session, WFS_BASE_URL, params=params, timeout=timeout)
     if not data:
         return []
     return data.get("features") or []
+
+
+def fetch_sites(session: requests.Session, *, bbox_4326= None, timeout: int = 25) -> List[Dict]:
+    """Fetch site features from layer Antennes, tiling the bbox to avoid WFS 2000-result cap."""
+    if bbox_4326 is None:
+        params = _wfs_base_params(LAYER_SITES)
+        data = http_get_json(session, WFS_BASE_URL, params=params, timeout=timeout)
+        if not data:
+            return []
+        return data.get("features") or []
+
+    tiles = _tile_bbox_4326(bbox_4326, step=0.5)
+    print(f"Fetching sites across {len(tiles)} tiles")
+    seen_ids = set()
+    all_features = []
+    for i, tile in enumerate(tiles):
+        feats = _fetch_sites_single(session, tile, timeout=timeout)
+        for f in feats:
+            fid = f.get("id")
+            if fid not in seen_ids:
+                seen_ids.add(fid)
+                all_features.append(f)
+        if (i + 1) % 10 == 0 or (i + 1) == len(tiles):
+            print(f"  Tile {i+1}/{len(tiles)}: {len(all_features)} unique sites so far")
+    return all_features
 
 def create_df_from_antenna_features(features: List[Dict]) -> pd.DataFrame:
     df = pd.DataFrame()

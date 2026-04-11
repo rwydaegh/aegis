@@ -23,34 +23,24 @@ regions:
     sources:
       - type: basestationlib
         country: France
-        bbox: [-5.3, 9.8, 42.1, 51.3]
+        # No bbox: module defaults to full metropolitan France
         priority: 1
         source_tag: gov:anfr
-      - type: opencellid
-        country_code: 208
-        bbox: [-5.3, 9.8, 42.1, 51.3]
-        priority: 3
-        source_tag: ocid
     reference: data/basestations/raw/brussels_gov.parquet
 
   denmark:
     sources:
       - type: mastedatabasen
-        bbox: [7.9, 15.4, 54.4, 57.9]
+        # No bbox: fetches all Denmark, client-side filter optional
         priority: 1
         source_tag: gov:mastedatabasen
-      - type: opencellid
-        country_code: 238
-        bbox: [7.9, 15.4, 54.4, 57.9]
-        priority: 3
-        source_tag: ocid
     reference: data/basestations/raw/brussels_gov.parquet
 
   netherlands:
     sources:
       - type: basestationlib
         country: Netherlands
-        bbox: [3.2, 7.4, 50.6, 53.7]
+        # No bbox: module defaults to full Netherlands
         priority: 1
         source_tag: gov:antenneregister
     reference: data/basestations/raw/brussels_gov.parquet
@@ -59,7 +49,7 @@ regions:
     sources:
       - type: basestationlib
         country: Austria
-        bbox: [9.3, 17.4, 46.2, 49.2]
+        # No bbox: module fetches all Austrian sites regardless
         priority: 1
         source_tag: gov:rtr
     reference: data/basestations/raw/brussels_gov.parquet
@@ -69,6 +59,7 @@ regions:
       - type: basestationlib
         country: Germany
         bbox: [5.7, 15.2, 47.1, 55.3]
+        # bbox required: BNetzA API needs tile-based fetching
         priority: 1
         source_tag: gov:bnetza
     reference: data/basestations/raw/brussels_gov.parquet
@@ -77,7 +68,7 @@ regions:
     sources:
       - type: basestationlib
         country: Australia
-        bbox: [112.7, 154.1, -44.0, -9.9]
+        # No bbox: ACMA dataset is national, no filtering needed
         priority: 1
         source_tag: gov:acma
     reference: data/basestations/raw/brussels_gov.parquet
@@ -86,7 +77,7 @@ regions:
     sources:
       - type: basestationlib
         country: Poland
-        bbox: [14.0, 24.3, 48.8, 55.0]
+        # No bbox: module defaults to full Poland
         priority: 1
         source_tag: gov:uke
     reference: data/basestations/raw/brussels_gov.parquet
@@ -95,7 +86,7 @@ regions:
     sources:
       - type: basestationlib
         country: Spain
-        bbox: [-9.7, 4.5, 35.6, 43.9]
+        # No bbox: module has built-in full-Spain default [-9.31, 35.99, 3.33, 43.80]
         priority: 1
         source_tag: gov:vctel
     reference: data/basestations/raw/brussels_gov.parquet
@@ -104,7 +95,7 @@ regions:
     sources:
       - type: basestationlib
         country: Switzerland
-        bbox: [5.7, 10.7, 45.6, 48.0]
+        # No bbox: module defaults to full Switzerland
         priority: 1
         source_tag: gov:bakom
     reference: data/basestations/raw/brussels_gov.parquet
@@ -113,7 +104,7 @@ regions:
     sources:
       - type: basestationlib
         country: Canada
-        bbox: [-141.2, -52.4, 41.5, 83.5]
+        # No bbox: ISED ZIP contains full national data
         priority: 1
         source_tag: gov:ised
     reference: data/basestations/raw/brussels_gov.parquet
@@ -122,7 +113,7 @@ regions:
     sources:
       - type: basestationlib
         country: New_Zealand
-        bbox: [166.2, 178.8, -47.5, -34.2]
+        # No bbox: module defaults to full NZ
         priority: 1
         source_tag: gov:rsm
     reference: data/basestations/raw/brussels_gov.parquet

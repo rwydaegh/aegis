@@ -464,7 +464,8 @@ class BaseStations:
             print(f"Querying {len(subboxes)} tiles")
 
             pool_size = max(self.max_workers * 2, 32)
-            session = create_session(pool_maxsize=pool_size)
+            # Spanish gov cert uses FNMT-RCM CA not in standard bundles
+            session = create_session(pool_maxsize=pool_size, verify=False)
 
             w_bbox = max(1, min(self.max_workers, 16))
             w_det = max(1, min(self.max_workers * 2, 32))
