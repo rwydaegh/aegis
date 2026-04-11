@@ -48,6 +48,13 @@ class PropagationPaths:
             raise ValueError(f"is_los must be (N,), got {self.is_los.shape}")
         if n > 0 and np.any(self.element_index < 0):
             raise ValueError("element_index must be non-negative")
+        if n > 0:
+            norms = np.linalg.norm(self.k_hat, axis=1)
+            if not np.allclose(norms, 1.0, atol=1e-5):
+                worst = float(np.max(np.abs(norms - 1.0)))
+                raise ValueError(
+                    f"k_hat rows must be unit vectors (max norm deviation: {worst:.2e})"
+                )
 
     @property
     def n_paths(self) -> int:
