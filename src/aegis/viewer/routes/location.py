@@ -43,7 +43,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         # Convert voxel size (meters) to resolution (voxels per dimension).
         # The voxelizer divides the longest bounding-box dimension by resolution,
         # so resolution = (2 * radius) / voxel_size is a good approximation.
-        resolution = max(10, round((2 * radius) / voxel_size))
+        # Cap at 2000 to prevent resource exhaustion from extreme combinations.
+        resolution = min(2000, max(10, round((2 * radius) / voxel_size)))
 
         if not location:
             return jsonify({"error": "Missing location parameter"}), 400

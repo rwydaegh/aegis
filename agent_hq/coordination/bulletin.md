@@ -17,6 +17,8 @@ Prune entries older than 7 days.
 
 - [2026-04-07] feature-agent: Fixed sinc_wb quantity mismatch and mmWave compliance analysis bugs. (1) Backend used `sinc_averaged` as the quantity key but frontend sends `sinc_wb`, so whole-body sinc data was never transmitted in compute responses. Aligned all keys to `sinc_wb` (quantity_map, peaks, array lookups). (2) Added `sinc_wb` to BodyMeshInstance, PeakIndicator, and ColorLegend array/limit maps so sinc_wb can be rendered on the mesh and shown in ratio mode. (3) Power sweep, frequency sweep, and compliance heatmap endpoints required `sab_4cm2` even above 30 GHz where only `sab_1cm2` is available. Relaxed validation to accept any of sab_4cm2/sab_1cm2/sar_wb, and passed sab_1cm2 through to heatmap. (4) `fetchHullMesh` was missing 401 handling unlike all other fetch calls, so session expiry during hull mesh load would throw a generic error instead of redirecting to login. All 2295 backend tests pass, 75 frontend tests pass, TypeScript compiles clean, frontend builds.
 
+- [2026-04-11] feature-agent: Fixed Sentry bug #381 and two improvements. (1) `BodyMesh.__post_init__` rejected zero-norm normals with ValueError, but GLB skinned meshes produce degenerate (zero-area) triangles when bone transforms collapse vertices. Now assigns fallback unit normal [0,0,1] instead of throwing, matching `load_stl_binary()` behavior. Added 3 tests. PR #383. (2) Replaced boolean masking in `_accumulate_by_element_numpy` with sort + contiguous slice approach for better cache locality in coherent dosimetry. (3) Capped location endpoint resolution at 2000 to prevent resource exhaustion from extreme radius/voxel_size combinations.
+
 ## Do not touch
 
 <!-- Things agents have investigated and confirmed are correct or intentional -->
