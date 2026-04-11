@@ -32,3 +32,7 @@ After the deploy completes (~5 min after merge), the fix is live on production. 
 - Do not add try/catch blocks that swallow errors silently
 - Do not mark Sentry issues as resolved (release tracking handles this)
 - Do not push directly to master. Always use a branch and PR with squash merge.
+
+# Important 
+
+It's OK to give up at one point if you don't feel confident you can fix the error (eg its too obscure or you cant in this environment, or you're just guessing a lot). This is an automated script environment after all, and the maintainer isn't here for you at this time. Instead it would be better to delegate it sometimes to the user paired up with an interactive claude code session. If so, just keep the issue open and comment about it on GitHub. Tag the maintainer.
