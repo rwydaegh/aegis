@@ -57,6 +57,25 @@ export const SHARE_DEFAULTS = {
   dynamicRangeDb: 30,
   ratioMode: false,
   exposureScenario: 'general_public' as string,
+  // antenna store (multi-antenna)
+  antennas: [] as Array<{
+    id: string
+    name: string
+    position: [number, number, number]
+    height: number
+    focusPoint: [number, number, number] | null
+    powerDbm: number
+    arrayConfig: {
+      n_h: number
+      n_v: number
+      d_h_wavelengths: number
+      d_v_wavelengths: number
+      broadside: [number, number, number]
+      element_pattern: string
+    }
+    enabled: boolean
+  }>,
+  selectedAntennaId: null as string | null,
 }
 
 export type ShareState = typeof SHARE_DEFAULTS

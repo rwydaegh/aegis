@@ -4,6 +4,8 @@ import { useSimulationStore } from '../stores/simulation'
 import { useSceneStore } from '../stores/scene'
 import { useUIStore } from '../stores/ui'
 import type { QuantityKey } from '../stores/ui'
+import { useAntennaStore } from '../stores/antenna'
+import type { ElementPattern } from '../api/types'
 import { cameraState } from './cameraState'
 
 // ---------------------------------------------------------------------------
@@ -80,6 +82,26 @@ export function collectState(): Record<string, unknown> {
     dynamicRangeDb: ui.dynamicRangeDb,
     ratioMode: ui.ratioMode,
     exposureScenario: ui.exposureScenario,
+    // antenna store (multi-antenna)
+    ...collectAntennaState(),
+  }
+}
+
+function collectAntennaState(): Pick<ShareState, 'antennas' | 'selectedAntennaId'> {
+  const antStore = useAntennaStore.getState()
+  const antennas = [...antStore.antennas.values()].map(a => ({
+    id: a.id,
+    name: a.name,
+    position: a.position as [number, number, number],
+    height: a.height,
+    focusPoint: a.focusPoint,
+    powerDbm: a.powerDbm,
+    arrayConfig: { ...a.arrayConfig },
+    enabled: a.enabled,
+  }))
+  return {
+    antennas,
+    selectedAntennaId: antStore.selectedId,
   }
 }
 
@@ -206,6 +228,39 @@ export function applyShareState(state: Partial<ShareState>): void {
   // legendScale uses toggleLegendScale only; apply only if it differs from current
   if (state.legendScale !== undefined && state.legendScale !== ui.legendScale) {
     ui.toggleLegendScale()
+  }
+
+  // --- antenna store (multi-antenna) ---
+  if (state.antennas !== undefined && state.antennas.length > 0) {
+    const antStore = useAntennaStore.getState()
+    // Clear existing antennas
+    for (const id of [...antStore.antennas.keys()]) {
+      antStore.removeAntenna(id)
+    }
+    // Restore each antenna from share state
+    for (const a of state.antennas) {
+      const id = antStore.addAntenna(a.position)
+      antStore.updateAntenna(id, {
+        name: a.name,
+        height: a.height,
+        focusPoint: a.focusPoint,
+        powerDbm: a.powerDbm,
+        arrayConfig: {
+          ...a.arrayConfig,
+          element_pattern: a.arrayConfig.element_pattern as ElementPattern,
+        },
+        enabled: a.enabled,
+      })
+    }
+    // Restore selection
+    if (state.selectedAntennaId !== undefined) {
+      // Map old IDs to new IDs by position in the array
+      const newIds = [...useAntennaStore.getState().antennas.keys()]
+      const oldIdx = state.antennas.findIndex(a => a.id === state.selectedAntennaId)
+      if (oldIdx >= 0 && oldIdx < newIds.length) {
+        antStore.selectAntenna(newIds[oldIdx])
+      }
+    }
   }
 }
 
