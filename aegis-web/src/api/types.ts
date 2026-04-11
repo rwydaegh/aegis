@@ -405,23 +405,15 @@ export interface RegionSummary {
   completeness: number
 }
 
-export interface ClusterPoint {
-  lat: number
-  lon: number
-  count: number
-  operator: string
-  technology: string
-}
-
 export interface CoverageSitesMeta {
   count: number
   operators: string[]
   technologies: string[]
+  region_names: string[]
 }
 
 export interface CoverageResponse {
   regions: RegionSummary[]
-  clusters: ClusterPoint[]
   sites_meta: CoverageSitesMeta
   sites_b64: string
 }

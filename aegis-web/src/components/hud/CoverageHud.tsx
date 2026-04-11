@@ -7,21 +7,24 @@ import { useNotificationStore } from '@/stores/notifications'
 import { loadBasestations } from '@/api/basestations'
 import { Globe, MapPin, ArrowLeft, RefreshCw } from 'lucide-react'
 
-const TRANSITION_ALTITUDE_M = 5_000
+/** Zoom level ~14 corresponds to roughly <5 km altitude equivalent */
+const TRANSITION_ZOOM = 14
 
 function CoverageHudInner() {
   const enabled = useCoverageStore(s => s.enabled)
   const activeScenario = useUIStore(s => s.activeScenario)
-  const cameraAltitude = useCoverageStore(s => s.cameraAltitude)
+  const zoom = useCoverageStore(s => s.zoom)
   const cameraLatLon = useCoverageStore(s => s.cameraLatLon)
   const regions = useCoverageStore(s => s.regions)
   const loading = useCoverageStore(s => s.loading)
   const error = useCoverageStore(s => s.error)
+  const colorMode = useCoverageStore(s => s.colorMode)
+  const setColorMode = useCoverageStore(s => s.setColorMode)
 
   const isCoverageScenario = activeScenario === 'coverage_globe'
   if (!isCoverageScenario) return null
 
-  const showTransitionButton = enabled && cameraAltitude < TRANSITION_ALTITUDE_M && cameraLatLon
+  const showTransitionButton = enabled && zoom >= TRANSITION_ZOOM && cameraLatLon
 
   const handleSetupScene = () => {
     const ll = useCoverageStore.getState().cameraLatLon
@@ -44,7 +47,7 @@ function CoverageHudInner() {
   }
 
   const handleBackToGlobe = () => {
-    useEnvironmentStore.getState().setSource('cesium')
+    useEnvironmentStore.getState().setSource('coverage')
     useCoverageStore.getState().setEnabled(true)
     useBaseStationsStore.getState().clear()
   }
@@ -75,6 +78,21 @@ function CoverageHudInner() {
           {!loading && !error && (
             <div className="text-zinc-400">
               {regions.length} regions, {regions.reduce((s, r) => s + r.count, 0).toLocaleString()} antennas
+            </div>
+          )}
+          {!loading && !error && (
+            <div className="mt-2 pt-2 border-t border-zinc-700/50">
+              <label className="text-zinc-500 block mb-1">Color by</label>
+              <select
+                value={colorMode}
+                onChange={e => setColorMode(e.target.value as any)}
+                className="w-full bg-zinc-800 border border-zinc-600 rounded text-xs px-2 py-1 text-white"
+              >
+                <option value="density">Density heatmap</option>
+                <option value="operator">Operator</option>
+                <option value="technology">Technology</option>
+                <option value="region">Country</option>
+              </select>
             </div>
           )}
         </div>

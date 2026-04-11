@@ -558,7 +558,7 @@ DEFAULTS: dict = {
             "webState": {
                 "antennaPos": None,
                 "environment": {
-                    "source": "cesium",
+                    "source": "coverage",
                     "lat": 0,
                     "lon": 0,
                 },

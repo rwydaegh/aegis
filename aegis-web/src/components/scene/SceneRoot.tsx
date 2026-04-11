@@ -24,7 +24,7 @@ import SceneGeometry from './SceneGeometry'
 import Environment from './Environment'
 import FollowCamera from './FollowCamera'
 import { EnvironmentOSM } from './EnvironmentOSM'
-import { CesiumGlobe } from './CesiumGlobe'
+import { CoverageMap } from './CoverageMap'
 import { useEnvironmentStore } from '@/stores/environment'
 import { useMIMOStore } from '@/stores/mimo'
 import { useAntennaStore } from '@/stores/antenna'
@@ -371,13 +371,13 @@ export default function SceneRoot() {
   const cam = config.camera
   const ren = config.renderer
   const initialPosition = (cam.initial_position as [number, number, number]) ?? [0, 2, 5]
-  const isCesiumMode = envSource === 'cesium'
+  const isCoverageMode = envSource === 'coverage'
 
   const sceneContent = (
     <>
-      {!isCesiumMode && <color attach="background" args={[config.scene.background_color ?? '#0a0a0f']} />}
-      {!isCesiumMode && <SceneLighting />}
-      {!isCesiumMode && <ClickPlane />}
+      {!isCoverageMode && <color attach="background" args={[config.scene.background_color ?? '#0a0a0f']} />}
+      {!isCoverageMode && <SceneLighting />}
+      {!isCoverageMode && <ClickPlane />}
       {(envSource === 'none' || envSource === 'voxels') && (
         <>
           <VoxelField />
@@ -387,7 +387,7 @@ export default function SceneRoot() {
         </>
       )}
       {envSource === 'osm' && <EnvironmentOSM />}
-      {!isCesiumMode && (mimoEnabled ? (
+      {!isCoverageMode && (mimoEnabled ? (
         <MIMOScene bodyMeshVisible={bodyMeshVisible} />
       ) : (
         <>
@@ -436,13 +436,13 @@ export default function SceneRoot() {
           <DistanceLine />
         </>
       ))}
-      {!isCesiumMode && <RayPaths />}
+      {!isCoverageMode && <RayPaths />}
       <GroundPlane />
       <SceneGrid />
-      {!isCesiumMode && <EnvironmentTerrain />}
-      {!isCesiumMode && <BaseStationMarkers />}
-      {!isCesiumMode && <LSPHeatmap />}
-      {!isCesiumMode && <ClusterPaths />}
+      {!isCoverageMode && <EnvironmentTerrain />}
+      {!isCoverageMode && <BaseStationMarkers />}
+      {!isCoverageMode && <LSPHeatmap />}
+      {!isCoverageMode && <ClusterPaths />}
       <DosimetryController />
       <MIMODosimetryController />
       <MIMOKeyboardController />
@@ -461,16 +461,16 @@ export default function SceneRoot() {
 
   return (
     <div style={{ position: 'absolute', inset: 0 }}>
-      {isCesiumMode && (
+      {isCoverageMode && (
         <div style={{ position: 'absolute', inset: 0, zIndex: 1 }}>
-          <CesiumGlobe />
+          <CoverageMap />
         </div>
       )}
       <div style={{
         position: 'absolute',
         inset: 0,
         zIndex: 2,
-        pointerEvents: isCesiumMode ? 'none' : 'auto',
+        pointerEvents: isCoverageMode ? 'none' : 'auto',
       }}>
         <Canvas
           camera={{
@@ -490,9 +490,9 @@ export default function SceneRoot() {
           style={{
             position: 'absolute',
             inset: 0,
-            pointerEvents: isCesiumMode ? 'none' : 'auto',
+            pointerEvents: isCoverageMode ? 'none' : 'auto',
           }}
-          tabIndex={isCesiumMode ? -1 : 0}
+          tabIndex={isCoverageMode ? -1 : 0}
         >
           {sceneContent}
         </Canvas>
