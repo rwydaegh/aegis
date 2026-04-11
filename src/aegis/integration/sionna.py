@@ -355,6 +355,21 @@ def paths_from_sionna_scene(
     valid_raw = np.array(paths.valid)  # (num_rx, num_tx, num_paths)
     path_viz = _extract_path_viz(paths, valid_raw) if return_viz else []
 
+    # Validate synthetic_array assumption: both the JAX and NumPy paths
+    # index angles/delays as (num_rx, 1, num_paths) and CIR coefficients
+    # as (num_rx, 2, 1, n_elements, num_paths, 1). With synthetic_array=False,
+    # Sionna moves elements into the num_tx axis instead of num_tx_ant,
+    # producing (num_rx, n_elements, num_paths) angles and
+    # (num_rx, 2, n_elements, 1, num_paths, 1) CIR, which silently gives
+    # wrong results or crashes on multi-element arrays.
+    if not synthetic_array and n_elements > 1:
+        raise NotImplementedError(
+            "synthetic_array=False with multiple TX elements is not supported. "
+            "The AEGIS Sionna bridge assumes synthetic_array=True for "
+            "multi-element arrays (shared angles/delays across elements). "
+            "Use synthetic_array=True (default) or a single TX element."
+        )
+
     # --- Differentiable JAX path ---
     if differentiable:
         if not JAX_AVAILABLE:

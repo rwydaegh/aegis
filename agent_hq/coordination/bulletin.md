@@ -19,6 +19,8 @@ Prune entries older than 7 days.
 
 - [2026-04-11] feature-agent: Fixed Sentry bug #381 and two improvements. (1) `BodyMesh.__post_init__` rejected zero-norm normals with ValueError, but GLB skinned meshes produce degenerate (zero-area) triangles when bone transforms collapse vertices. Now assigns fallback unit normal [0,0,1] instead of throwing, matching `load_stl_binary()` behavior. Added 3 tests. PR #383. (2) Replaced boolean masking in `_accumulate_by_element_numpy` with sort + contiguous slice approach for better cache locality in coherent dosimetry. (3) Capped location endpoint resolution at 2000 to prevent resource exhaustion from extreme radius/voxel_size combinations.
 
+- [2026-04-11] code-reviewer: Focus area: integration bridges (DiffeRT, Sionna). Found 1 bug: `paths_from_sionna_scene` with `synthetic_array=False` and multiple TX elements silently produces wrong results (JAX path: shape mismatch, garbage psi/k_hat) or crashes (NumPy path: IndexError). Both the JAX and NumPy paths hardcode `tx_idx=0` and index angles/CIR assuming the synthetic array tensor layout. The parameter is user-accessible via viewer RT config and Modal tracers. Added guard that raises `NotImplementedError` for this unsupported configuration. Also reviewed: DiffeRT `paths_from_differt` (FSPL, k_hat extraction, degenerate path filtering, polarisation tracking all correct), `_accumulate.py` sort+slice approach (correct), `cloudrf.py` API client (clean), viewer `compute.py` exposure mode reduction (correct), `raytracer.py` voxel meshing (clean). PR pending.
+
 ## Do not touch
 
 <!-- Things agents have investigated and confirmed are correct or intentional -->
