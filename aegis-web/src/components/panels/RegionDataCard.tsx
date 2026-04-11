@@ -171,7 +171,7 @@ interface RegionDataCardProps {
 export default function RegionDataCard({ basestations }: RegionDataCardProps) {
   const [collapsed, setCollapsed] = useState(false)
 
-  const { sourceTag, sourceInfo, license, regionName, fieldStats } = useMemo(() => {
+  const { sourceInfo, license, regionName, fieldStats } = useMemo(() => {
     const tag = getDominantSourceTag(basestations)
     const info = tag ? SOURCE_URLS[tag] ?? null : null
     const lic = tag ? SOURCE_LICENSES[tag] ?? null : null
@@ -183,7 +183,6 @@ export default function RegionDataCard({ basestations }: RegionDataCardProps) {
     }
 
     return {
-      sourceTag: tag,
       sourceInfo: info,
       license: lic,
       regionName: region,

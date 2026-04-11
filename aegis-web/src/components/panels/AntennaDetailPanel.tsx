@@ -14,12 +14,6 @@ import {
   FIELD_UNITS,
 } from '@/utils/fidelityTier'
 
-const PROVENANCE_FIELDS = [
-  'eirp_dbm', 'azimuth_deg', 'height_m', 'freq_mhz', 'gain_dbi',
-  'electrical_tilt_deg', 'mechanical_tilt_deg',
-  'horizontal_beamwidth_deg', 'vertical_beamwidth_deg',
-] as const
-
 // Map API field names to provenance field names
 const API_TO_PROV: Record<string, string> = {
   eirp_dbm: 'Power',
