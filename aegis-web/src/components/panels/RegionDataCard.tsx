@@ -18,6 +18,8 @@ const SOURCE_LICENSES: Record<string, string> = {
   'gov:bakom': 'Swiss Open Data',
   'gov:ised': 'Crown Copyright (permissive)',
   'gov:ofcom_wtr': 'OGL v3.0',
+  'gov:anatel_smp': 'Brazilian Open Data',
+  'gov:cadastre_gsm': 'CC0 (Public Domain)',
 }
 
 /** Region display names derived from source tags. */
@@ -35,6 +37,8 @@ const SOURCE_REGION_NAMES: Record<string, string> = {
   'gov:bakom': 'Switzerland',
   'gov:ised': 'Canada',
   'gov:ofcom_wtr': 'United Kingdom',
+  'gov:anatel_smp': 'Brazil',
+  'gov:cadastre_gsm': 'Luxembourg',
 }
 
 /** Provenance field keys to display in the completion bars. */

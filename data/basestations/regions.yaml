@@ -126,3 +126,21 @@ regions:
         priority: 1
         source_tag: gov:ofcom_wtr
     reference: data/basestations/raw/brussels_gov.parquet
+
+  brazil:
+    sources:
+      - type: basestationlib
+        country: Brazil
+        # No bbox: ANATEL SMP CSV is national (~110K ERBs), bbox filter applied client-side
+        priority: 1
+        source_tag: gov:anatel_smp
+    reference: data/basestations/raw/brussels_gov.parquet
+
+  luxembourg:
+    sources:
+      - type: basestationlib
+        country: Luxembourg
+        # No bbox: OGC API covers all of Luxembourg (~2,590 km²), bbox applied internally
+        priority: 1
+        source_tag: gov:cadastre_gsm
+    reference: data/basestations/raw/brussels_gov.parquet

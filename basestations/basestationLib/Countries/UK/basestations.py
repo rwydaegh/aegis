@@ -13,7 +13,7 @@ from __future__ import annotations
 import logging
 import math
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import numpy as np
 import pandas as pd
@@ -109,18 +109,24 @@ def _convert_erp_to_dbm(erp_value: float, erp_unit: str, erp_type: str) -> float
     The WTR can report ERP in dBW or W. Convert everything to dBm.
     dBm = dBW + 30
     dBm = 10*log10(W) + 30
+
+    The WTR CSV uses '-' as a placeholder for missing values.
     """
     if pd.isna(erp_value):
         return np.nan
+    try:
+        erp_float = float(erp_value)
+    except (ValueError, TypeError):
+        return np.nan
     unit = str(erp_unit).strip().upper() if pd.notna(erp_unit) else ""
     if unit == "DBW":
-        return float(erp_value) + 30.0
+        return erp_float + 30.0
     if unit == "W":
-        if erp_value <= 0:
+        if erp_float <= 0:
             return np.nan
-        return round(10 * math.log10(erp_value) + 30, 1)
+        return round(10 * math.log10(erp_float) + 30, 1)
     # Default: assume dBW if unit is missing or unrecognized
-    return float(erp_value) + 30.0
+    return erp_float + 30.0
 
 
 def _download_wtr(session: requests.Session) -> pd.DataFrame:
@@ -155,9 +161,7 @@ def _filter_mobile_fixed_links(df: pd.DataFrame) -> pd.DataFrame:
         logger.warning("Column 'Licencee Company' not found in WTR data")
         return pd.DataFrame()
 
-    mask_operator = df["Licencee Company"].apply(
-        lambda x: _is_mobile_operator(x) if pd.notna(x) else False
-    )
+    mask_operator = df["Licencee Company"].apply(lambda x: _is_mobile_operator(x) if pd.notna(x) else False)
 
     filtered = df[mask_product & mask_operator].copy()
     logger.info(
@@ -166,6 +170,19 @@ def _filter_mobile_fixed_links(df: pd.DataFrame) -> pd.DataFrame:
         len(df),
     )
     return filtered
+
+
+def _to_float(value) -> float:
+    """Convert a value to float, returning NaN for missing/placeholder values.
+
+    The Ofcom WTR CSV uses '-' as a placeholder for missing numeric fields.
+    """
+    if pd.isna(value):
+        return np.nan
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return np.nan
 
 
 def _wtr_to_antenna_rows(df: pd.DataFrame) -> pd.DataFrame:
@@ -177,11 +194,8 @@ def _wtr_to_antenna_rows(df: pd.DataFrame) -> pd.DataFrame:
         site_id = licence_num.split("/")[0] if "/" in licence_num else licence_num
 
         # Frequency in MHz
-        freq_hz = row.get("Frequency (Hz)")
-        if pd.notna(freq_hz):
-            freq_mhz = float(freq_hz) / 1e6
-        else:
-            freq_mhz = np.nan
+        freq_hz = _to_float(row.get("Frequency (Hz)"))
+        freq_mhz = freq_hz / 1e6 if not np.isnan(freq_hz) else np.nan
 
         # ERP to dBm
         erp_value = row.get("Antenna ERP")
@@ -190,8 +204,7 @@ def _wtr_to_antenna_rows(df: pd.DataFrame) -> pd.DataFrame:
         power_dbm = _convert_erp_to_dbm(erp_value, erp_unit, erp_type)
 
         # Elevation / tilt
-        elevation = row.get("Antenna Elevation")
-        electrical_tilt = float(elevation) if pd.notna(elevation) else np.nan
+        electrical_tilt = _to_float(row.get("Antenna Elevation"))
 
         rows.append(
             {
@@ -199,16 +212,16 @@ def _wtr_to_antenna_rows(df: pd.DataFrame) -> pd.DataFrame:
                 "AntennaLabel": f"ANT({licence_num})",
                 "Operator": _map_operator(row.get("Licencee Company", "")),
                 "Technology": "FH",
-                "Latitude": float(row["Latitude(Deg)"]) if pd.notna(row.get("Latitude(Deg)")) else np.nan,
-                "Longitude": float(row["Longitude(Deg)"]) if pd.notna(row.get("Longitude(Deg)")) else np.nan,
-                "CenterHeight": float(row["Antenna Height"]) if pd.notna(row.get("Antenna Height")) else np.nan,
+                "Latitude": _to_float(row.get("Latitude(Deg)")),
+                "Longitude": _to_float(row.get("Longitude(Deg)")),
+                "CenterHeight": _to_float(row.get("Antenna Height")),
                 "Power": power_dbm,
                 "Frequency": freq_mhz,
                 "FrequencyBand": _derive_frequency_band(freq_mhz) if not np.isnan(freq_mhz) else "",
                 "Electrical_Tilt": electrical_tilt,
                 "Mechanical_Tilt": np.nan,
-                "Azimuth": float(row["Antenna AZIMUTH"]) if pd.notna(row.get("Antenna AZIMUTH")) else np.nan,
-                "Gain": float(row["Antenna Gain"]) if pd.notna(row.get("Antenna Gain")) else np.nan,
+                "Azimuth": _to_float(row.get("Antenna AZIMUTH")),
+                "Gain": _to_float(row.get("Antenna Gain")),
                 "Horizontal_Beamwidth": np.nan,
                 "Vertical_Beamwidth": np.nan,
             }
@@ -264,7 +277,7 @@ class BaseStations:
         if frequency_range is None:
             frequency_range = [0, np.inf]
         if date is None:
-            date = datetime.now(timezone.utc)
+            date = datetime.now(UTC)
 
         self.operator = operator
         self.technology = technology
@@ -291,10 +304,7 @@ class BaseStations:
             and self.technology is None
             and self.bounding_box is None
             and self.frequency_band is None
-            and (
-                self.frequency_range == [0, np.inf]
-                or np.array_equal(self.frequency_range, [0, np.inf])
-            )
+            and (self.frequency_range == [0, np.inf] or np.array_equal(self.frequency_range, [0, np.inf]))
         )
 
         # Try loading cached raw data
