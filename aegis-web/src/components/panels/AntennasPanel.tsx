@@ -1,8 +1,58 @@
+import { useState, useEffect } from 'react'
 import { useAntennaStore, type AntennaArrayConfig } from '@/stores/antenna'
 import { useSimulationStore } from '@/stores/simulation'
 import { useMIMOStore } from '@/stores/mimo'
 import type { ElementPattern } from '@/api/types'
 import Tex from '@/components/ui/Tex'
+
+/** Number input that allows clearing the field while typing, commits on blur. */
+function NumInput({
+  value,
+  onChange,
+  min,
+  max,
+  step,
+  integer,
+  className,
+}: {
+  value: number
+  onChange: (v: number) => void
+  min?: number
+  max?: number
+  step?: number
+  integer?: boolean
+  className?: string
+}) {
+  const [local, setLocal] = useState(String(value))
+  useEffect(() => setLocal(String(value)), [value])
+
+  return (
+    <input
+      type="number"
+      className={className}
+      value={local}
+      min={min}
+      max={max}
+      step={step}
+      onChange={e => {
+        setLocal(e.target.value)
+        const v = integer ? parseInt(e.target.value) : parseFloat(e.target.value)
+        if (!isNaN(v) && (min == null || v >= min) && (max == null || v <= max)) {
+          onChange(v)
+        }
+      }}
+      onBlur={() => {
+        const v = integer ? parseInt(local) : parseFloat(local)
+        if (isNaN(v) || (min != null && v < min)) {
+          setLocal(String(value))
+        } else if (max != null && v > max) {
+          setLocal(String(max))
+          onChange(max)
+        }
+      }}
+    />
+  )
+}
 
 const PATTERN_OPTIONS: { value: ElementPattern; label: string }[] = [
   { value: 'short_dipole', label: 'Dipole' },
@@ -182,32 +232,20 @@ export default function AntennasPanel() {
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className={labelClass}>N_h</label>
-                <input
-                  type="number"
+                <NumInput
                   className={inputClass}
                   value={selected.arrayConfig.n_h}
-                  min={1}
-                  max={16}
-                  step={1}
-                  onChange={e => {
-                    const v = parseInt(e.target.value)
-                    if (!isNaN(v) && v >= 1 && v <= 16) updateArrayConfig({ n_h: v })
-                  }}
+                  min={1} max={16} step={1} integer
+                  onChange={v => updateArrayConfig({ n_h: v })}
                 />
               </div>
               <div>
                 <label className={labelClass}>N_v</label>
-                <input
-                  type="number"
+                <NumInput
                   className={inputClass}
                   value={selected.arrayConfig.n_v}
-                  min={1}
-                  max={16}
-                  step={1}
-                  onChange={e => {
-                    const v = parseInt(e.target.value)
-                    if (!isNaN(v) && v >= 1 && v <= 16) updateArrayConfig({ n_v: v })
-                  }}
+                  min={1} max={16} step={1} integer
+                  onChange={v => updateArrayConfig({ n_v: v })}
                 />
               </div>
             </div>
@@ -219,32 +257,20 @@ export default function AntennasPanel() {
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className={labelClass}>d_h (wavelengths)</label>
-                <input
-                  type="number"
+                <NumInput
                   className={inputClass}
                   value={selected.arrayConfig.d_h_wavelengths}
-                  min={0.1}
-                  max={2.0}
-                  step={0.1}
-                  onChange={e => {
-                    const v = parseFloat(e.target.value)
-                    if (!isNaN(v) && v > 0) updateArrayConfig({ d_h_wavelengths: v })
-                  }}
+                  min={0.1} max={2.0} step={0.1}
+                  onChange={v => updateArrayConfig({ d_h_wavelengths: v })}
                 />
               </div>
               <div>
                 <label className={labelClass}>d_v (wavelengths)</label>
-                <input
-                  type="number"
+                <NumInput
                   className={inputClass}
                   value={selected.arrayConfig.d_v_wavelengths}
-                  min={0.1}
-                  max={2.0}
-                  step={0.1}
-                  onChange={e => {
-                    const v = parseFloat(e.target.value)
-                    if (!isNaN(v) && v > 0) updateArrayConfig({ d_v_wavelengths: v })
-                  }}
+                  min={0.1} max={2.0} step={0.1}
+                  onChange={v => updateArrayConfig({ d_v_wavelengths: v })}
                 />
               </div>
             </div>
