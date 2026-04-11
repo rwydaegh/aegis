@@ -326,6 +326,122 @@ export default function AntennasPanel() {
             </div>
             <p className="text-[9px] text-muted-foreground/60 mt-0.5">Click scene to place</p>
           </div>
+
+          {/* Height */}
+          <div>
+            <p className={sectionClass}>Height</p>
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <NumInput
+                  className={inputClass}
+                  value={selected.height}
+                  min={0.5}
+                  max={50}
+                  step={0.5}
+                  onChange={v => {
+                    if (selectedId) useAntennaStore.getState().setHeight(selectedId, v)
+                  }}
+                />
+              </div>
+              <span className="text-[10px] text-muted-foreground">m</span>
+            </div>
+          </div>
+
+          {/* Direction */}
+          <div>
+            <p className={sectionClass}>Direction</p>
+            {(() => {
+              const [bx, by, bz] = selected.arrayConfig.broadside
+              const horLen = Math.sqrt(bx * bx + bz * bz)
+              const azDeg = Math.atan2(bx, -bz) * (180 / Math.PI)
+              const tiltDeg = Math.atan2(-by, horLen) * (180 / Math.PI)
+
+              const setBroadside = (newBs: [number, number, number]) => {
+                if (!selectedId) return
+                updateAntenna(selectedId, {
+                  focusPoint: null,
+                  arrayConfig: { ...selected.arrayConfig, broadside: newBs },
+                })
+              }
+
+              return (
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className={labelClass}>Azimuth</label>
+                    <NumInput
+                      className={inputClass}
+                      value={Math.round(azDeg * 10) / 10}
+                      min={-180}
+                      max={180}
+                      step={5}
+                      onChange={v => {
+                        const azRad = v * Math.PI / 180
+                        const tiltRad = tiltDeg * Math.PI / 180
+                        const cosTilt = Math.cos(tiltRad)
+                        setBroadside([
+                          Math.sin(azRad) * cosTilt,
+                          -Math.sin(tiltRad),
+                          -Math.cos(azRad) * cosTilt,
+                        ])
+                      }}
+                    />
+                    <span className="text-[10px] text-muted-foreground mt-0.5 block">deg</span>
+                  </div>
+                  <div>
+                    <label className={labelClass}>Tilt</label>
+                    <NumInput
+                      className={inputClass}
+                      value={Math.round(tiltDeg * 10) / 10}
+                      min={-90}
+                      max={90}
+                      step={1}
+                      onChange={v => {
+                        const azRad = azDeg * Math.PI / 180
+                        const tiltRad = v * Math.PI / 180
+                        const cosTilt = Math.cos(tiltRad)
+                        setBroadside([
+                          Math.sin(azRad) * cosTilt,
+                          -Math.sin(tiltRad),
+                          -Math.cos(azRad) * cosTilt,
+                        ])
+                      }}
+                    />
+                    <span className="text-[10px] text-muted-foreground mt-0.5 block">deg (+down)</span>
+                  </div>
+                </div>
+              )
+            })()}
+          </div>
+
+          {/* Focus point (patch only) */}
+          {selected.arrayConfig.element_pattern === 'patch' && (
+            <div>
+              <p className={sectionClass}>Focus point</p>
+              <div className="flex gap-1">
+                {(['X', 'Y', 'Z'] as const).map((axis, i) => (
+                  <label key={axis} className="flex items-center gap-0.5 flex-1">
+                    <span className="text-[9px] text-muted-foreground">{axis}</span>
+                    <input
+                      type="number"
+                      step={0.5}
+                      value={selected.focusPoint?.[i] ?? 0}
+                      onChange={e => {
+                        const v = parseFloat(e.target.value)
+                        if (isNaN(v)) return
+                        const fp: [number, number, number] = selected.focusPoint
+                          ? [...selected.focusPoint] as [number, number, number]
+                          : [0, 0, 0]
+                        fp[i] = v
+                        if (selectedId) useAntennaStore.getState().setFocusPoint(selectedId, fp)
+                      }}
+                      className="w-full bg-muted/50 border border-border rounded px-1 py-0.5 text-[10px] text-foreground font-mono"
+                    />
+                  </label>
+                ))}
+              </div>
+              <p className="text-[9px] text-muted-foreground/60 mt-0.5">Target for broadside direction</p>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -14,6 +14,7 @@ export function useDosimetry() {
   const sim = useSimulationStore(useShallow(s => ({
     antennaPos: s.antennaPos,
     mode: s.mode,
+    exposureMode: s.exposureMode,
     fresnel: s.fresnel,
     polarisation: s.polarisation,
     curvature: s.curvature,
@@ -82,7 +83,7 @@ export function useDosimetry() {
     const antStore = useAntennaStore.getState()
     const enabledAntennas = [...antStore.antennas.values()].filter(a => a.enabled)
     const antennasParam = enabledAntennas.length > 0 ? enabledAntennas.map(a => ({
-      position: [a.position[0], a.position[1] + poleH, a.position[2]] as [number, number, number],
+      position: [a.position[0], a.position[1] + a.height, a.position[2]] as [number, number, number],
       power_dbm: a.powerDbm,
       array_config: {
         n_h: a.arrayConfig.n_h,
@@ -114,6 +115,7 @@ export function useDosimetry() {
       exposureScenario,
       bodyName: scene.bodyName || undefined,
       antennas: antennasParam,
+      exposureMode: sim.exposureMode,
     }
 
     // Timeout: abort after configured limit, with a distinct reason

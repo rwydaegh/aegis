@@ -350,6 +350,7 @@ export interface ComputeParams {
   exposureScenario: string
   bodyName?: string
   antennas?: AntennaParam[]
+  exposureMode?: string
 }
 
 function computePayload(params: ComputeParams) {
@@ -367,6 +368,7 @@ function computePayload(params: ComputeParams) {
     freq_hz: params.freqGhz * 1e9,
     quantities: params.quantities,
     exposure_scenario: params.exposureScenario,
+    exposure_mode: params.exposureMode ?? 'theoretical',
     ...(params.bodyName ? { body_name: params.bodyName } : {}),
     ...(params.stochastic ? {
       stochastic: true,
@@ -378,6 +380,10 @@ function computePayload(params: ComputeParams) {
       antennas: params.antennas.map(a => ({
         ...a,
         position: toServer(a.position),
+        array_config: {
+          ...a.array_config,
+          broadside: toServer(a.array_config.broadside as [number, number, number]),
+        },
       })),
     } : {}),
   }

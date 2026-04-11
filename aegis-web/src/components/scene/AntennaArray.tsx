@@ -9,13 +9,14 @@ interface AntennaArrayProps {
   freqHz: number
   showPattern?: boolean
   weights?: { real: number[][]; imag: number[][] } | null
+  selected?: boolean
 }
 
 const ARROW_COLOR = new THREE.Color(1, 0.4, 0)
 const MIN_ELEMENT_RADIUS = 0.005
 const MAX_ELEMENT_RADIUS = 0.03
 
-export default function AntennaArray({ config, freqHz, showPattern, weights }: AntennaArrayProps) {
+export default function AntennaArray({ config, freqHz, showPattern, weights, selected }: AntennaArrayProps) {
   // Compute element positions in local coords (array-centered)
   // Must match backend array.py axis construction so element indices align with precoder weights
   const localPositions = useMemo(() => {
@@ -99,10 +100,23 @@ export default function AntennaArray({ config, freqHz, showPattern, weights }: A
     const dirs: THREE.Vector3[] = []
     let gMax = 0
 
-    // Patch element gain: cos^q(theta) where theta = angle from broadside
+    // Element gain computation
     const isPatch = config.element_pattern === 'patch'
+    const isDipole = config.element_pattern === 'short_dipole'
     const bsDir = new THREE.Vector3(...config.broadside).normalize()
     const patchQ = 1.5
+
+    // Dipole axis: perpendicular to broadside, matching backend compute.py logic
+    let dipoleAxis: THREE.Vector3 | null = null
+    if (isDipole) {
+      // Find least-aligned canonical axis for stable cross product
+      const absB = [Math.abs(bsDir.x), Math.abs(bsDir.y), Math.abs(bsDir.z)]
+      const refVec = new THREE.Vector3(0, 0, 0)
+      if (absB[0] <= absB[1] && absB[0] <= absB[2]) refVec.x = 1
+      else if (absB[1] <= absB[2]) refVec.y = 1
+      else refVec.z = 1
+      dipoleAxis = new THREE.Vector3().crossVectors(bsDir, refVec).normalize()
+    }
 
     for (let i = 0; i < nV; i++) {
       const dir = new THREE.Vector3(
@@ -115,6 +129,9 @@ export default function AntennaArray({ config, freqHz, showPattern, weights }: A
       if (isPatch) {
         const cosTheta = dir.dot(bsDir)
         elementGain = cosTheta > 0 ? cosTheta ** patchQ : 0
+      } else if (isDipole && dipoleAxis) {
+        const cosAlpha = dir.dot(dipoleAxis)
+        elementGain = 1.5 * Math.max(0, 1 - cosAlpha * cosAlpha)
       }
 
       // Weighted array factor: AF = |sum_m w_m * exp(j * k0 * r_m . dir)|^2
@@ -202,6 +219,7 @@ export default function AntennaArray({ config, freqHz, showPattern, weights }: A
         color="#555555"
         showElements
         elementDotRadius={elementRadius}
+        selected={selected}
       />
 
       {/* Arrow and radiation pattern remain at the array center */}

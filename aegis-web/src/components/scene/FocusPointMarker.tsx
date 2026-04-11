@@ -8,9 +8,14 @@ const MARKER_COLOR = '#00e5ff'
 const MARKER_RADIUS = 0.025
 const RING_RADIUS = 0.05
 
-export default function FocusPointMarker() {
-  const focusPoint = useMIMOStore(s => s.focusPoint)
-  const arrayConfig = useMIMOStore(s => s.arrayConfig)
+interface FocusPointMarkerProps {
+  focusPoint?: [number, number, number]
+  arrayPosition?: [number, number, number]
+}
+
+export default function FocusPointMarker({ focusPoint: fpProp, arrayPosition: arrProp }: FocusPointMarkerProps = {}) {
+  const mimoFp = useMIMOStore(s => s.focusPoint)
+  const mimoConfig = useMIMOStore(s => s.arrayConfig)
   const sphereRef = useRef<THREE.Mesh>(null)
 
   // Gentle pulse
@@ -20,13 +25,15 @@ export default function FocusPointMarker() {
     sphereRef.current.scale.setScalar(s)
   })
 
-  if (!arrayConfig) return null
+  // Fall back to MIMO store if props not provided
+  const fp = fpProp ?? mimoFp
+  const arrPos = arrProp ?? mimoConfig?.position
 
-  const arrPos = arrayConfig.position
-  const fp = focusPoint
+  if (!fp || !arrPos) return null
 
   // Build ring geometry (a circle in the XZ plane at focus point)
   const ringPoints = useMemo(() => {
+    if (!fp) return []
     const pts: [number, number, number][] = []
     const segments = 32
     for (let i = 0; i <= segments; i++) {
@@ -38,7 +45,7 @@ export default function FocusPointMarker() {
       ])
     }
     return pts
-  }, [fp[0], fp[1], fp[2]])
+  }, [fp])
 
   return (
     <group>
