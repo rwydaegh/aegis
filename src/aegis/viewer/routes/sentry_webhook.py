@@ -41,7 +41,9 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             _handle_new_issue(payload)
         except Exception:
             log.exception("Failed to create GitHub issue from Sentry webhook")
-            return Response("Internal error", status=500)
+            # Return 200 to acknowledge receipt. Sentry retries on 5xx, which
+            # would create duplicate issues if the failure is transient.
+            return Response("Accepted (issue creation failed)", status=200)
 
         return Response("OK", status=200)
 

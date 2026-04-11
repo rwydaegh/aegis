@@ -248,7 +248,9 @@ class DosimetryResult:
 
         sinc_wb = None
         if body is not None and self.sinc is not None and self.sinc.size > 0:
-            sinc_wb = float(np.sum(self.sinc * body.areas) / np.sum(body.areas))
+            area_sum = np.sum(body.areas)
+            if area_sum > 0:
+                sinc_wb = float(np.sum(self.sinc * body.areas) / area_sum)
 
         return {
             "sab_4cm2": peak_4,

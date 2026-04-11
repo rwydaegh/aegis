@@ -1,5 +1,5 @@
 // aegis-web/src/components/scene/AnimatedBody.tsx
-import { useRef, useEffect, Suspense } from 'react'
+import { Component, useRef, useEffect, Suspense, type ReactNode } from 'react'
 import * as THREE from 'three'
 import * as Sentry from '@sentry/react'
 import { useSceneStore } from '@/stores/scene'
@@ -9,7 +9,37 @@ import { useNotificationStore } from '@/stores/notifications'
 import { useGltfBody } from '@/hooks/useGltfBody'
 import { extractPosedMesh } from '@/hooks/usePoseExtract'
 import { computeWithInlineMesh } from '@/api/computeInline'
+import { isNetworkError } from '@/api/client'
 import BodyMeshInstance from './BodyMeshInstance'
+
+/**
+ * Error boundary that catches GLB load failures and falls back to STL phantom.
+ * Network failures on mobile (e.g. "Failed to fetch") are not sent to Sentry.
+ */
+class GltfLoadBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false }
+
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+
+  componentDidCatch(error: Error) {
+    if (!isNetworkError(error)) {
+      Sentry.captureException(error)
+    }
+    // Switch to STL so SceneRoot renders <BodyMesh /> instead
+    useSceneStore.getState().setPhantomType('stl')
+    useNotificationStore.getState().addNotification(
+      'warning',
+      'Animated phantom failed to load. Using static mesh instead.',
+    )
+  }
+
+  render() {
+    if (this.state.hasError) return null
+    return this.props.children
+  }
+}
 
 function AnimatedBodyInner() {
   const groupRef = useRef<THREE.Group>(null!)
@@ -121,6 +151,13 @@ function AnimatedBodyInner() {
       })
       .catch(err => {
         if ((err as Error).name === 'AbortError') return
+        if (isNetworkError(err)) {
+          useNotificationStore.getState().addNotification(
+            'warning',
+            'Network error during compute. Check your connection and try again.',
+          )
+          return
+        }
         Sentry.captureException(err)
         useNotificationStore.getState().addNotification(
           'error',
@@ -169,8 +206,10 @@ function AnimatedBodyInner() {
 
 export function AnimatedBody() {
   return (
-    <Suspense fallback={null}>
-      <AnimatedBodyInner />
-    </Suspense>
+    <GltfLoadBoundary>
+      <Suspense fallback={null}>
+        <AnimatedBodyInner />
+      </Suspense>
+    </GltfLoadBoundary>
   )
 }

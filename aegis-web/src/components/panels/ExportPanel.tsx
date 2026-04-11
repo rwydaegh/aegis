@@ -1,6 +1,6 @@
 import * as Sentry from '@sentry/react'
 import { useSimulationStore } from '@/stores/simulation'
-import { fetchComplianceSummary, fetchDosimetryCsv, fetchDosimetryJson, fetchDosimetryNpz, exportConfig } from '@/api/client'
+import { fetchComplianceSummary, fetchDosimetryCsv, fetchDosimetryJson, fetchDosimetryNpz, exportConfig, isNetworkError } from '@/api/client'
 import { useNotificationStore } from '@/stores/notifications'
 import { collectState } from '@/lib/shareLink'
 
@@ -11,6 +11,15 @@ function downloadBlob(blob: Blob, filename: string) {
   a.download = filename
   a.click()
   URL.revokeObjectURL(url)
+}
+
+function handleExportError(err: unknown, label: string) {
+  if (isNetworkError(err)) {
+    useNotificationStore.getState().addNotification('warning', `Network error during ${label}. Check your connection and try again.`)
+    return
+  }
+  Sentry.captureException(err)
+  useNotificationStore.getState().addNotification('error', `Failed to ${label}`)
 }
 
 export default function ExportPanel() {
@@ -26,8 +35,7 @@ export default function ExportPanel() {
       const blob = await fetchDosimetryCsv()
       downloadBlob(blob, 'aegis_dosimetry.csv')
     } catch (err) {
-      Sentry.captureException(err)
-      useNotificationStore.getState().addNotification('error', 'Failed to export dosimetry CSV')
+      handleExportError(err, 'export dosimetry CSV')
     }
   }
 
@@ -37,8 +45,7 @@ export default function ExportPanel() {
       const blob = await fetchDosimetryJson()
       downloadBlob(blob, 'aegis_dosimetry.json')
     } catch (err) {
-      Sentry.captureException(err)
-      useNotificationStore.getState().addNotification('error', 'Failed to export dosimetry JSON')
+      handleExportError(err, 'export dosimetry JSON')
     }
   }
 
@@ -48,8 +55,7 @@ export default function ExportPanel() {
       const blob = await fetchDosimetryNpz()
       downloadBlob(blob, 'aegis_dosimetry.npz')
     } catch (err) {
-      Sentry.captureException(err)
-      useNotificationStore.getState().addNotification('error', 'Failed to export dosimetry NPZ')
+      handleExportError(err, 'export dosimetry NPZ')
     }
   }
 
@@ -59,8 +65,7 @@ export default function ExportPanel() {
       const { text } = await fetchComplianceSummary(powerDbm)
       downloadBlob(new Blob([text], { type: 'text/plain' }), 'aegis_compliance_report.txt')
     } catch (err) {
-      Sentry.captureException(err)
-      useNotificationStore.getState().addNotification('error', 'Failed to fetch compliance report')
+      handleExportError(err, 'fetch compliance report')
     }
   }
 
@@ -72,8 +77,7 @@ export default function ExportPanel() {
       const blob = new Blob([json], { type: 'application/json' })
       downloadBlob(blob, `aegis-config-${new Date().toISOString().slice(0, 10)}.json`)
     } catch (err) {
-      Sentry.captureException(err)
-      useNotificationStore.getState().addNotification('error', 'Failed to export configuration')
+      handleExportError(err, 'export configuration')
     }
   }
 

@@ -11,6 +11,14 @@ const BASE = ''
 const TRANSIENT_STATUSES = new Set([429, 502, 503, 504])
 const MAX_RETRIES = 2
 
+/** Detect transient network errors (mobile connection drops, offline, etc.). */
+export function isNetworkError(err: unknown): boolean {
+  if (err instanceof TypeError && /failed to fetch|network/i.test(err.message)) return true
+  if (err instanceof DOMException && err.name === 'AbortError') return false
+  if (err instanceof Error && /failed to fetch|networkerror|load failed/i.test(err.message)) return true
+  return false
+}
+
 /** Wrap fetch with automatic retry on transient HTTP errors and network failures. */
 export async function fetchWithRetry(
   input: RequestInfo | URL,

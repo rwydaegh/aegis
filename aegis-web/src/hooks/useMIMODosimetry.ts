@@ -5,7 +5,7 @@ import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
 import { useNotificationStore } from '@/stores/notifications'
 import { computeMIMO, fetchMIMOResult, fetchMIMOSummary } from '@/api/mimo'
-import { fetchBody } from '@/api/client'
+import { fetchBody, isNetworkError } from '@/api/client'
 import * as Sentry from '@sentry/react'
 import * as THREE from 'three'
 import type { MIMOComputeRequest, MIMOUserConfig } from '@/api/types'
@@ -143,6 +143,13 @@ export function useMIMODosimetry() {
             `MIMO compute timed out after ${timeoutMs / 1000}s. Try reducing the number of users or using MRT precoder.`,
           )
         }
+        return
+      }
+      if (isNetworkError(err)) {
+        useNotificationStore.getState().addNotification(
+          'warning',
+          'Network error during MIMO compute. Check your connection and try again.',
+        )
         return
       }
       Sentry.captureException(err)

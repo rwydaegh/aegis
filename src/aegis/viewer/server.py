@@ -397,7 +397,7 @@ def _setup_precompute_G(app: Flask, cache: dict) -> None:
                 if body.n_triangles > _G_MAX_TRIANGLES:
                     app.logger.info("G(%s) skipped (%d > %d tri)", name, body.n_triangles, _G_MAX_TRIANGLES)
                     continue
-                for area in [4e-4]:
+                for area in [4e-4, 1e-4]:
                     key = (DosimetryEngine._body_cache_key(body), area)
                     with DosimetryEngine._G_lock:
                         already_cached = key in DosimetryEngine._G_cache
