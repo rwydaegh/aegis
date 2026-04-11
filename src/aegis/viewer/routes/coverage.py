@@ -35,8 +35,19 @@ def _compute_coverage(
         pq = merged_dir / f"{name}.parquet"
         if not pq.exists():
             continue
+        # Only load columns we need (avoids OOM on small servers with 5M+ rows)
+        _NEEDED = [
+            "SiteCode",
+            "Latitude",
+            "Longitude",
+            "Operator",
+            "Technology",
+            *_COMPLETENESS_COLS,
+        ]
         try:
-            df = pd.read_parquet(str(pq))
+            schema_cols = set(pd.read_parquet(str(pq), nrows=0).columns)
+            use_cols = [c for c in _NEEDED if c in schema_cols]
+            df = pd.read_parquet(str(pq), columns=use_cols)
         except Exception:
             logger.warning("Corrupt parquet %s, skipping", pq)
             continue
