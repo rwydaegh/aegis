@@ -1,4 +1,5 @@
 """Tests for exposure mode applied to user-placed antennas."""
+
 import numpy as np
 import pytest
 
