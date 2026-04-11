@@ -648,6 +648,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         if err:
             return err
 
+        exposure_mode = params.get("exposure_mode", "theoretical")
+
         # Parse multi-antenna array (new API)
         antennas = None
         raw_antennas = params.get("antennas")
@@ -689,6 +691,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                 config=cfg,
                 stochastic=stochastic,
                 antennas=antennas,
+                exposure_mode=exposure_mode,
             )
         except Exception as exc:
             logger.exception("compute_dosimetry failed")

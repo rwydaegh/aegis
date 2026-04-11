@@ -13,6 +13,7 @@ from pathlib import Path
 import numpy as np
 import yaml
 
+from aegis.basestation.classify import _lookup_tdd
 from aegis.constants import C_0, EPS_0
 from aegis.defaults import DEFAULT_FREQ_HZ, DEFAULT_POWER_DBM
 from aegis.engine import DosimetryEngine
@@ -429,6 +430,41 @@ def _build_cluster_viz(viz_out: dict) -> dict:
     return {"clusters": clusters, "subpaths": subpaths}
 
 
+def apply_exposure_reduction(
+    power_dbm: float,
+    freq_hz: float,
+    n_elements: int,
+    exposure_mode: str,
+) -> float:
+    """Apply exposure mode reduction to transmit power.
+
+    Infers TDD from frequency (assumes 5G NR), applies power reduction
+    factor for mMIMO arrays (>= 16 elements), and traffic load for
+    typical mode.
+    """
+    if exposure_mode == "theoretical":
+        return power_dbm
+
+    freq_mhz = freq_hz / 1e6
+    factor = 1.0
+
+    # TDD duty cycle (assume 5G NR for band lookup)
+    is_tdd, dl_ratio = _lookup_tdd("5G", freq_mhz)
+    if is_tdd:
+        factor *= dl_ratio
+
+    # Power reduction factor: 0.32 for mMIMO panels (>= 16 elements)
+    prf = 0.32 if n_elements >= 16 else 1.0
+    factor *= prf
+
+    # Traffic load (typical mode only)
+    if exposure_mode == "typical":
+        factor *= 0.5
+
+    factor = max(factor, 1e-10)
+    return power_dbm + 10 * math.log10(factor)
+
+
 def compute_dosimetry(
     body: BodyMesh,
     antenna_pos: np.ndarray,
@@ -442,6 +478,7 @@ def compute_dosimetry(
     config: dict | None = None,
     stochastic: dict | None = None,
     antennas: list[dict] | None = None,
+    exposure_mode: str = "theoretical",
 ) -> tuple:
     """Run dosimetry from a single antenna position toward the body.
 
@@ -520,13 +557,21 @@ def compute_dosimetry(
             paths = PropagationPaths.from_powers(k_hat=k_hat[np.newaxis, :], power=np.array([0.0]))
             S_inc = 0.0
         else:
+            _freq_hz = tissue.freq_hz if tissue else DEFAULT_FREQ_HZ
             per_antenna_paths = []
             total_S_inc = 0.0
             for ant in antennas:
                 ant_pos = np.asarray(ant["position"], dtype=np.float64)
                 ant_power_dbm = float(ant.get("power_dbm", power_dbm))
-                ant_tx_w = 10 ** ((ant_power_dbm - 30) / 10)
                 acfg = ant.get("array_config", {})
+                if exposure_mode and exposure_mode != "theoretical":
+                    ant_power_dbm = apply_exposure_reduction(
+                        ant_power_dbm,
+                        _freq_hz,
+                        int(acfg.get("n_h", 1)) * int(acfg.get("n_v", 1)),
+                        exposure_mode,
+                    )
+                ant_tx_w = 10 ** ((ant_power_dbm - 30) / 10)
 
                 a_dir = body_center - ant_pos
                 a_dist = np.linalg.norm(a_dir)
@@ -560,6 +605,11 @@ def compute_dosimetry(
             S_inc = total_S_inc
     else:
         # Single plane wave
+        _freq_hz = tissue.freq_hz if tissue else DEFAULT_FREQ_HZ
+        if exposure_mode and exposure_mode != "theoretical":
+            _reduced_power_dbm = apply_exposure_reduction(power_dbm, _freq_hz, 1, exposure_mode)
+            _tx_power_w = 10 ** ((_reduced_power_dbm - 30) / 10)
+            S_inc = _tx_power_w / (4 * np.pi * d_clamped**2)
         paths = PropagationPaths.from_powers(
             k_hat=k_hat[np.newaxis, :],
             power=np.array([S_inc]),

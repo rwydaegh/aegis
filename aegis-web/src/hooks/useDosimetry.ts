@@ -14,6 +14,7 @@ export function useDosimetry() {
   const sim = useSimulationStore(useShallow(s => ({
     antennaPos: s.antennaPos,
     mode: s.mode,
+    exposureMode: s.exposureMode,
     fresnel: s.fresnel,
     polarisation: s.polarisation,
     curvature: s.curvature,
@@ -114,6 +115,7 @@ export function useDosimetry() {
       exposureScenario,
       bodyName: scene.bodyName || undefined,
       antennas: antennasParam,
+      exposureMode: sim.exposureMode,
     }
 
     // Timeout: abort after configured limit, with a distinct reason
