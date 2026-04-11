@@ -378,6 +378,10 @@ function computePayload(params: ComputeParams) {
       antennas: params.antennas.map(a => ({
         ...a,
         position: toServer(a.position),
+        array_config: {
+          ...a.array_config,
+          broadside: toServer(a.array_config.broadside as [number, number, number]),
+        },
       })),
     } : {}),
   }
