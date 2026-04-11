@@ -24,24 +24,52 @@ Exercise the AEGIS viewer end-to-end with Playwright CLI. The goal is to test th
 
 ## Tooling
 
-Use these approaches (NOT `npx @playwright/cli` which does not exist):
+Work **interactively, step by step**. Do NOT write multi-step .mjs/.js scripts that try to automate an entire flow. Instead, launch a persistent browser and issue one command at a time, reading each screenshot before deciding the next action. This is critical for Three.js/WebGL apps where rendering is async and state-dependent.
+
+### Step-by-step workflow
+
+1. **Launch a persistent browser** with a small inline script that keeps the page open:
+
+```bash
+node -e "
+const { chromium } = require('playwright');
+(async () => {
+  const b = await chromium.launch({ headless: true });
+  const p = await (await b.newContext({ viewport: { width: 1920, height: 1080 } })).newPage();
+  await p.goto('http://127.0.0.1:5000', { waitUntil: 'networkidle' });
+  await p.screenshot({ path: 'test_screenshots/step0.png' });
+  // Expose page for REPL-style usage via global
+  global.page = p; global.browser = b;
+  console.log('READY - page open');
+  // Keep alive
+  await new Promise(() => {});
+})();
+" &
+```
+
+2. **Then issue one action at a time** using separate small `node -e` scripts, each doing ONE thing:
+
+```bash
+# Take a screenshot
+node -e "... await page.screenshot({ path: 'test_screenshots/step1.png' }) ..."
+
+# Click a button
+node -e "... await page.click('text=Load') ..."
+
+# Evaluate JS in browser
+node -e "... await page.evaluate(() => { ... }) ..."
+```
+
+3. **Read every screenshot** with the Read tool before deciding the next step.
+
+### Alternative approaches
 
 - **Static screenshots**: `npx playwright screenshot --wait-for-timeout 5000 --viewport-size "1920,1080" URL output.png`
 - **API checks**: `curl -s http://127.0.0.1:5000/api/endpoint`
-- **Interactive testing** (clicks, keyboard, JS eval): Write a short Node.js script using the `playwright` library. Keep scripts minimal and focused. Example pattern:
 
-```js
-const { chromium } = require('playwright');
-(async () => {
-  const browser = await chromium.launch({ headless: true });
-  const page = await (await browser.newContext({ viewport: { width: 1920, height: 1080 } })).newPage();
-  await page.goto('http://127.0.0.1:5000', { waitUntil: 'networkidle' });
-  // ... interactions, screenshots ...
-  await browser.close();
-})();
-```
+### Why not scripts?
 
-Run with `node test_screenshots/script.js`.
+Pre-written scripts are fragile: they guess at selectors and timings, cannot react to what actually renders, and fail silently when the UI changes. Interactive step-by-step usage lets you adapt in real time, just like a human tester would.
 
 ## How to interact with the 3D scene
 
@@ -134,13 +162,13 @@ Always dispatch both `keydown` and `keyup` with a short sleep between. For WASD 
 
 ## Reading elements
 
-In Node.js scripts, use Playwright locators: `page.locator('text=Button')`, `page.locator('select')`, `page.locator('canvas')`. Use `page.evaluate()` for JS execution in the browser context.
+Use Playwright locators: `page.locator('text=Button')`, `page.locator('select')`, `page.locator('canvas')`. Use `page.evaluate()` for JS execution in the browser context.
 
-After actions that change the scene, wait 2-3 seconds before screenshotting.
+After actions that change the scene, wait 2-3 seconds before screenshotting. Always read the screenshot with the Read tool before proceeding.
 
 ## Console errors
 
-In Node.js scripts, collect errors via `page.on('console', msg => ...)` and `page.on('pageerror', ...)`. Report all errors found.
+Register error listeners early: `page.on('console', msg => ...)` and `page.on('pageerror', ...)`. Report all errors found.
 
 ## Cleanup
 
