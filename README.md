@@ -257,14 +257,14 @@ pytest tests/ -m "not slow"
   title   = {{AEGIS: Adaptive Electromagnetic Geometric Illumination \& Safety}},
   author  = {Wydaeghe, Robin},
   url     = {https://github.com/rwydaegh/aegis},
-  license = {Apache-2.0},
+  license = {Proprietary},
   version = {0.20.0}
 }
 ```
 
 ## License
 
-Apache-2.0. See [LICENSE](LICENSE) for details.
+Proprietary. All rights reserved. See [LICENSE](LICENSE) for details.
 
 ---
 

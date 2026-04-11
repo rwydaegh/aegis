@@ -12,5 +12,5 @@ identifiers:
     description: DOI placeholder until a Zenodo or journal DOI is assigned
     value: 10.00000/zenodo.placeholder
 repository-code: https://github.com/rwydaegh/aegis
-license: Apache-2.0
+license: LicenseRef-Proprietary
 abstract: Geometric dosimetry engine for wireless exposure assessment.
