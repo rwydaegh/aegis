@@ -29,6 +29,8 @@ def _compute_coverage(
     all_dfs: list[pd.DataFrame] = []
     regions_out: list[dict] = []
 
+    region_names: list[str] = []
+
     for name, rcfg in sorted(regions_cfg.items()):
         pq = merged_dir / f"{name}.parquet"
         if not pq.exists():
@@ -59,6 +61,8 @@ def _compute_coverage(
         completeness = float(df[present_cols].notna().mean().mean()) if present_cols else 0.0
 
         label = name.replace("_", " ").title()
+        region_idx = len(region_names)
+        region_names.append(name)
         regions_out.append(
             {
                 "name": name,
@@ -68,55 +72,34 @@ def _compute_coverage(
                 "completeness": round(completeness, 2),
             }
         )
+        df = df.copy()
+        df["_region_idx"] = region_idx
         all_dfs.append(df)
 
     if not all_dfs:
         return {
             "regions": [],
-            "clusters": [],
-            "sites_meta": {"count": 0, "operators": [], "technologies": []},
+            "sites_meta": {"count": 0, "operators": [], "technologies": [], "region_names": []},
             "sites_b64": "",
         }
 
     combined = pd.concat(all_dfs, ignore_index=True)
 
-    # Guard missing Operator/Technology columns before clustering
+    # Guard missing Operator/Technology columns
     if "Operator" not in combined.columns:
         combined["Operator"] = "Unknown"
     if "Technology" not in combined.columns:
         combined["Technology"] = "Unknown"
 
-    # Tier 2: clusters (0.1-degree grid)
-    combined["_cell_lat"] = np.floor(combined["Latitude"] / 0.1) * 0.1 + 0.05
-    combined["_cell_lon"] = np.floor(combined["Longitude"] / 0.1) * 0.1 + 0.05
-    grouped = combined.groupby(["_cell_lat", "_cell_lon"])
-    clusters = []
-    for (clat, clon), grp in grouped:
-        op_mode = grp["Operator"].mode()
-        tech_mode = grp["Technology"].mode()
-        clusters.append(
-            {
-                "lat": round(float(clat), 2),
-                "lon": round(float(clon), 2),
-                "count": len(grp),
-                "operator": str(op_mode.iloc[0]) if len(op_mode) > 0 else "",
-                "technology": str(tech_mode.iloc[0]) if len(tech_mode) > 0 else "",
-            }
-        )
-
-    # Tier 3: sites (deduplicated by SiteCode)
+    # Compute per-site antenna count before deduplication
     if "SiteCode" in combined.columns:
-        sites = combined.drop_duplicates(subset="SiteCode", keep="first")
+        antenna_counts = combined.groupby("SiteCode").size().rename("_antenna_count")
+        combined = combined.join(antenna_counts, on="SiteCode")
+        sites = combined.drop_duplicates(subset="SiteCode", keep="first").copy()
     else:
-        sites = combined.drop_duplicates(subset=["Latitude", "Longitude"], keep="first")
-
-    # Guard missing Operator/Technology columns
-    if "Operator" not in sites.columns:
-        sites = sites.copy()
-        sites["Operator"] = "Unknown"
-    if "Technology" not in sites.columns:
-        sites = sites.copy()
-        sites["Technology"] = "Unknown"
+        antenna_counts = combined.groupby(["Latitude", "Longitude"]).size().rename("_antenna_count")
+        combined = combined.join(antenna_counts, on=["Latitude", "Longitude"])
+        sites = combined.drop_duplicates(subset=["Latitude", "Longitude"], keep="first").copy()
 
     op_col = sites["Operator"].fillna("Unknown").astype(str)
     tech_col = sites["Technology"].fillna("Unknown").astype(str)
@@ -125,29 +108,35 @@ def _compute_coverage(
     op_map = {o: i for i, o in enumerate(operators)}
     tech_map = {t: i for i, t in enumerate(technologies)}
 
-    # Pack binary: float32 lat, float32 lon, uint8 op_idx, uint8 tech_idx
+    # Pack binary: lat(f4) + lon(f4) + op(u1) + tech(u1) + region(u1) + count(u1) = 12 bytes
     lats = sites["Latitude"].to_numpy(dtype=np.float32)
     lons = sites["Longitude"].to_numpy(dtype=np.float32)
     op_indices = op_col.map(op_map).fillna(0).to_numpy(dtype=np.uint8)
     tech_indices = tech_col.map(tech_map).fillna(0).to_numpy(dtype=np.uint8)
+    region_indices = sites["_region_idx"].fillna(0).clip(upper=255).to_numpy(dtype=np.uint8)
+    counts = sites["_antenna_count"].fillna(1).clip(upper=255).to_numpy(dtype=np.uint8)
 
     record = np.empty(
         len(sites),
-        dtype=np.dtype([("lat", "<f4"), ("lon", "<f4"), ("op", "u1"), ("tech", "u1")]),
+        dtype=np.dtype(
+            [("lat", "<f4"), ("lon", "<f4"), ("op", "u1"), ("tech", "u1"), ("region", "u1"), ("count", "u1")]
+        ),
     )
     record["lat"] = lats
     record["lon"] = lons
     record["op"] = op_indices
     record["tech"] = tech_indices
+    record["region"] = region_indices
+    record["count"] = counts
     buf = record.tobytes()
 
     return {
         "regions": regions_out,
-        "clusters": clusters,
         "sites_meta": {
             "count": len(sites),
             "operators": operators,
             "technologies": technologies,
+            "region_names": region_names,
         },
         "sites_b64": base64.b64encode(buf).decode("ascii"),
     }
