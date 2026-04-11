@@ -44,62 +44,62 @@ export function useConfig() {
         const sim = useSimulationStore.getState()
         const scene = useSceneStore.getState()
         const ui = useUIStore.getState()
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const cfg = config as any
 
-        if (cfg.dosimetry?.freq_hz) {
-          sim.setFreqGhz(cfg.dosimetry.freq_hz / 1e9)
+        if (config.dosimetry?.freq_hz) {
+          sim.setFreqGhz(config.dosimetry.freq_hz / 1e9)
         }
-        if (cfg.dosimetry?.default_power_dbm !== undefined) {
-          sim.setPowerDbm(cfg.dosimetry.default_power_dbm)
+        if (config.dosimetry?.default_power_dbm !== undefined) {
+          sim.setPowerDbm(config.dosimetry.default_power_dbm)
         }
-        if (cfg.dosimetry?.exposure_scenario) {
-          const scenario = cfg.dosimetry.exposure_scenario
+        if (config.dosimetry?.exposure_scenario) {
+          const scenario = config.dosimetry.exposure_scenario
           if (scenario === 'general_public' || scenario === 'occupational') {
             ui.setExposureScenario(scenario)
           }
         }
 
         // Round-trip config keys for export/reload
-        if (cfg.antenna?.default_position) {
-          sim.setAntennaPos(cfg.antenna.default_position)
+        if (config.antenna?.default_position) {
+          sim.setAntennaPos(config.antenna.default_position)
         }
-        if (cfg.dosimetry?.skin_model) {
-          sim.setSkinModel(cfg.dosimetry.skin_model)
+        if (config.dosimetry?.skin_model) {
+          sim.setSkinModel(config.dosimetry.skin_model)
         }
-        if (cfg.dosimetry?.dynamic_range_db !== undefined) {
-          ui.setDynamicRangeDb(cfg.dosimetry.dynamic_range_db)
+        if (config.dosimetry?.dynamic_range_db !== undefined) {
+          ui.setDynamicRangeDb(config.dosimetry.dynamic_range_db)
         }
-        if (cfg.dosimetry?.default_max_order !== undefined) {
-          scene.setRtMaxOrder(cfg.dosimetry.default_max_order)
+        if (config.dosimetry?.default_max_order !== undefined) {
+          scene.setRtMaxOrder(config.dosimetry.default_max_order)
         }
-        if (cfg.body?.default_offset) {
-          sim.setBodyOffset(cfg.body.default_offset)
+        if (config.body?.default_offset) {
+          sim.setBodyOffset(config.body.default_offset)
         }
-        if (cfg.body?.default_rotation_y !== undefined) {
-          sim.setBodyRotationY(cfg.body.default_rotation_y)
+        if (config.body?.default_rotation_y !== undefined) {
+          sim.setBodyRotationY(config.body.default_rotation_y)
         }
-        if (cfg.body?.wireframe === true && !ui.wireframe) {
+        if (config.body?.wireframe === true && !ui.wireframe) {
           ui.toggleWireframe()
         }
-        if (cfg.raytracer?.default_source) {
-          scene.setRtSource(cfg.raytracer.default_source)
+        if (config.raytracer?.default_source) {
+          const src = config.raytracer.default_source
+          if (src === 'sionna' || src === 'differt') {
+            scene.setRtSource(src)
+          }
         }
 
         // Display config
-        if (cfg.colormap?.name) scene.setColormapName(cfg.colormap.name)
-        if (cfg.lighting?.sun?.intensity !== undefined) scene.setSunIntensity(cfg.lighting.sun.intensity)
-        if (cfg.lighting?.ambient?.intensity !== undefined) scene.setAmbientIntensity(cfg.lighting.ambient.intensity)
-        if (cfg.camera?.fov !== undefined) scene.setCameraFov(cfg.camera.fov)
+        if (config.colormap?.name) scene.setColormapName(config.colormap.name)
+        if (config.lighting?.sun?.intensity !== undefined) scene.setSunIntensity(config.lighting.sun.intensity)
+        if (config.lighting?.ambient?.intensity !== undefined) scene.setAmbientIntensity(config.lighting.ambient.intensity)
+        if (config.camera?.fov !== undefined) scene.setCameraFov(config.camera.fov)
 
         // Hydrate environment store from config
-        if (cfg.environment) {
-          const env = cfg.environment
+        if (config.environment) {
+          const env = config.environment
           const osmCfg = env.osm
           const tilesCfg = env.tiles
           useEnvironmentStore.setState({
             source: (env.source || 'none') as 'none' | 'voxels' | 'osm' | '3dtiles',
-            location: env.location || null,
             radius: env.radius || 200,
             geometricError: tilesCfg?.geometric_error || 30,
             osmOptions: {

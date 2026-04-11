@@ -31,6 +31,7 @@ export interface RadiationPatternConfig {
 }
 
 export interface AntennaConfig {
+  default_position: [number, number, number] | null
   sphere_radius: number
   sphere_segments: number
   color: string
@@ -124,6 +125,43 @@ export interface ScenarioEntry {
 
 // -- ViewerConfig -------------------------------------------------------------
 
+export interface BodyConfig {
+  default_name: string
+  default_color: number
+  default_offset: [number, number, number]
+  default_rotation_y: number
+  wireframe: boolean
+  material: { roughness: number; metalness: number; double_sided: boolean }
+  phantom_type: string
+  phantom_dir: string
+  default_phantom: string
+  default_pose: string
+  animation_speed: number
+}
+
+export interface EnvironmentConfig {
+  source: string
+  location: string | null
+  radius: number
+  osm: {
+    default_building_height: number
+    level_height: number
+    buildings: boolean
+    roads: boolean
+    water: boolean
+    detail?: boolean
+  }
+  tiles: { geometric_error: number }
+}
+
+export interface RaytracerConfig {
+  max_rt_triangles: number
+  reflection_loss_per_order: number
+  fspl_distance_clamp: number
+  default_body_center: [number, number, number]
+  default_source: string
+}
+
 export interface ViewerConfig {
   server: { host: string; port: number; debug: boolean; open_browser: boolean }
   scene: { background_color: string; grid: Record<string, unknown>; ground_plane: Record<string, unknown> }
@@ -132,10 +170,25 @@ export interface ViewerConfig {
   lighting: LightingConfig
   antenna: AntennaConfig
   voxels: VoxelConfig
+  body: BodyConfig
+  environment: EnvironmentConfig
+  raytracer: RaytracerConfig
   dosimetry: {
     fidelity_levels: { value: number; label: string }[]
     max_order_options?: { value: number; label: string }[]
     compliance_threshold: number
+    freq_hz: number
+    default_power_dbm: number
+    default_max_order: number
+    skin_model: string
+    exposure_scenario: string
+    dynamic_range_db: number
+    default_level: number
+    display_mode: string
+    power_input: { min: number; max: number; step: number }
+    stochastic: { preset_dir: string; default_preset: string; default_seed: number }
+    convex_body_area_factor: number
+    level0_D_max: number
   }
   colormap: {
     name: string
