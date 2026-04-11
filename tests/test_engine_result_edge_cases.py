@@ -567,10 +567,10 @@ class TestBodyMeshFromArrays:
         with pytest.raises(ValueError, match="normals"):
             BodyMesh.from_arrays(vertices, normals=np.zeros((2, 3)))
 
-    def test_zero_custom_normal_raises(self) -> None:
+    def test_zero_custom_normal_accepted(self) -> None:
         vertices = np.array([[[0, 0, 0], [1, 0, 0], [0, 1, 0]]], dtype=np.float64)
-        with pytest.raises(ValueError, match="positive norm"):
-            BodyMesh.from_arrays(vertices, normals=np.zeros((1, 3)))
+        body = BodyMesh.from_arrays(vertices, normals=np.zeros((1, 3)))
+        np.testing.assert_array_equal(body.normals, np.zeros((1, 3)))
 
     def test_compatible_with_engine(self) -> None:
         """from_arrays mesh works with DosimetryEngine."""

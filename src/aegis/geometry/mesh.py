@@ -116,8 +116,8 @@ class BodyMesh:
         if normals.shape != (self.vertices.shape[0], 3):
             raise ValueError(f"normals must be ({self.vertices.shape[0]}, 3), got {normals.shape}")
         norms = np.linalg.norm(normals, axis=1, keepdims=True)
-        if normals.shape[0] > 0 and np.any(norms[:, 0] <= 0):
-            raise ValueError("normals must have positive norm")
+        # Allow zero-norm normals from degenerate triangles (zero-area faces).
+        # They stay as [0,0,0] after normalization and produce zero Sab.
         normalized = normals / np.where(norms > 0, norms, 1.0)
         object.__setattr__(self, "normals", normalized)
         if self._geometry_hash == 0:
