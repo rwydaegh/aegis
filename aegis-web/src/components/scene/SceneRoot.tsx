@@ -30,6 +30,7 @@ import { useMIMOStore } from '@/stores/mimo'
 import { useAntennaStore } from '@/stores/antenna'
 import BodyMeshInstance from './BodyMeshInstance'
 import AntennaArrayViz from './AntennaArray'
+import type { ArrayConfig } from '@/api/types'
 import FocusPointMarker from './FocusPointMarker'
 import SmartphoneModel from './SmartphoneModel'
 import BaseStationMarkers from './BaseStationMarkers'
@@ -356,6 +357,9 @@ export default function SceneRoot() {
   const phantomType = useSceneStore(s => s.phantomType)
   const bodyOffset = useSimulationStore(s => s.bodyOffset)
   const cameraMode = useUIStore(s => s.cameraMode)
+  const freqGhz = useSimulationStore(s => s.freqGhz)
+  const appliedPattern = useSimulationStore(s => s.appliedPattern)
+  const appliedPatternMeta = useSimulationStore(s => s.appliedPatternMeta)
   const mimoEnabled = useMIMOStore(s => s.enabled)
   const envSource = useEnvironmentStore(s => s.source)
   const antennaEntries = useAntennaStore(useShallow(s => [...s.antennas.values()]))
@@ -388,14 +392,42 @@ export default function SceneRoot() {
       ) : (
         <>
           {bodyMeshVisible && (phantomType === 'gltf' ? <AnimatedBody /> : <BodyMesh />)}
-          {antennaEntries.map(ant => (
-            <Antenna
-              key={ant.id}
-              position={ant.position}
-              selected={ant.id === selectedAntennaId}
-              elementPattern={ant.arrayConfig.element_pattern}
-            />
-          ))}
+          {antennaEntries.map(ant => {
+            const isMultiElement = ant.arrayConfig.n_h * ant.arrayConfig.n_v > 1
+            const isSelected = ant.id === selectedAntennaId
+            const hasLoadedPattern = !!appliedPattern && !!appliedPatternMeta
+
+            if (isMultiElement && !hasLoadedPattern) {
+              const arrayConfig: ArrayConfig = {
+                type: 'upa' as const,
+                n_h: ant.arrayConfig.n_h,
+                n_v: ant.arrayConfig.n_v,
+                d_h_wavelengths: ant.arrayConfig.d_h_wavelengths,
+                d_v_wavelengths: ant.arrayConfig.d_v_wavelengths,
+                position: [ant.position[0], ant.position[1] + ant.height, ant.position[2]],
+                broadside: ant.arrayConfig.broadside,
+                element_pattern: ant.arrayConfig.element_pattern,
+              }
+              return (
+                <AntennaArrayViz
+                  key={ant.id}
+                  config={arrayConfig}
+                  freqHz={freqGhz * 1e9}
+                  showPattern={cameraMode === 'orbit'}
+                  selected={isSelected}
+                />
+              )
+            }
+
+            return (
+              <Antenna
+                key={ant.id}
+                position={ant.position}
+                selected={isSelected}
+                elementPattern={ant.arrayConfig.element_pattern}
+              />
+            )
+          })}
           <DistanceLine />
         </>
       ))}

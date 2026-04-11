@@ -9,13 +9,14 @@ interface AntennaArrayProps {
   freqHz: number
   showPattern?: boolean
   weights?: { real: number[][]; imag: number[][] } | null
+  selected?: boolean
 }
 
 const ARROW_COLOR = new THREE.Color(1, 0.4, 0)
 const MIN_ELEMENT_RADIUS = 0.005
 const MAX_ELEMENT_RADIUS = 0.03
 
-export default function AntennaArray({ config, freqHz, showPattern, weights }: AntennaArrayProps) {
+export default function AntennaArray({ config, freqHz, showPattern, weights, selected }: AntennaArrayProps) {
   // Compute element positions in local coords (array-centered)
   // Must match backend array.py axis construction so element indices align with precoder weights
   const localPositions = useMemo(() => {
@@ -218,6 +219,7 @@ export default function AntennaArray({ config, freqHz, showPattern, weights }: A
         color="#555555"
         showElements
         elementDotRadius={elementRadius}
+        selected={selected}
       />
 
       {/* Arrow and radiation pattern remain at the array center */}
