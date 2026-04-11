@@ -1,9 +1,12 @@
-import { useCallback, useEffect, useState } from 'react'
-import { APIProvider, Map, useMap } from '@vis.gl/react-google-maps'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { APIProvider, Map, Map3D, MapMode, useMap } from '@vis.gl/react-google-maps'
 import { GoogleMapsOverlay } from '@deck.gl/google-maps'
 import { useSceneStore } from '@/stores/scene'
 import { useCoverageStore } from '@/stores/coverage'
 import { buildCoverageLayers } from './coverageLayers'
+
+/** Zoom level at which we switch from 2D heatmap to 3D photorealistic view */
+const SWITCH_TO_3D_ZOOM = 15
 
 function DeckOverlay() {
   const map = useMap()
@@ -91,15 +94,74 @@ function DeckOverlay() {
   return null
 }
 
+/** Photorealistic 3D view using Map3DElement */
+function Photorealistic3DView({ center }: { center: { lat: number; lon: number } }) {
+  const handleCameraChanged = useCallback((ev: any) => {
+    const detail = ev.detail
+    if (detail?.center) {
+      useCoverageStore.getState().setCameraLatLon({
+        lat: detail.center.lat,
+        lon: detail.center.lng,
+      })
+    }
+  }, [])
+
+  return (
+    <Map3D
+      style={{ width: '100%', height: '100%' }}
+      mode={MapMode.SATELLITE}
+      defaultCenter={{ lat: center.lat, lng: center.lon, altitude: 200 }}
+      defaultTilt={60}
+      defaultHeading={0}
+      defaultRange={500}
+      onCameraChanged={handleCameraChanged}
+    />
+  )
+}
+
 export function CoverageMap() {
   const googleApiKey = useSceneStore(s => s.capabilities?.google_api_key) ?? ''
   const googleMapId = useSceneStore(s => s.capabilities?.google_map_id) || undefined
+  const zoom = useCoverageStore(s => s.zoom)
+  const cameraLatLon = useCoverageStore(s => s.cameraLatLon)
+  const [show3D, setShow3D] = useState(false)
+  const lastCenterRef = useRef<{ lat: number; lon: number }>({ lat: 48.8, lon: 2.3 })
+
+  // Track center for 3D transition
+  useEffect(() => {
+    if (cameraLatLon) lastCenterRef.current = cameraLatLon
+  }, [cameraLatLon])
+
+  // Auto-switch to 3D when zoomed in enough (if Map ID is configured)
+  useEffect(() => {
+    if (googleMapId && zoom >= SWITCH_TO_3D_ZOOM && !show3D) {
+      setShow3D(true)
+    }
+  }, [zoom, googleMapId, show3D])
 
   if (!googleApiKey) {
     return (
       <div className="absolute inset-0 flex items-center justify-center bg-zinc-950 text-zinc-400 text-sm">
         Google API key not configured. Set GOOGLE_API_KEY on the server.
       </div>
+    )
+  }
+
+  // Show photorealistic 3D view when zoomed in
+  if (show3D && googleMapId) {
+    return (
+      <APIProvider apiKey={googleApiKey}>
+        <Photorealistic3DView center={lastCenterRef.current} />
+        <button
+          onClick={() => {
+            setShow3D(false)
+            useCoverageStore.getState().setZoom(10)
+          }}
+          className="absolute top-16 left-1/2 -translate-x-1/2 z-30 px-4 py-2 bg-zinc-800/90 hover:bg-zinc-700 text-white text-sm rounded-lg border border-zinc-600 shadow-lg transition-colors"
+        >
+          Back to heatmap overview
+        </button>
+      </APIProvider>
     )
   }
 
