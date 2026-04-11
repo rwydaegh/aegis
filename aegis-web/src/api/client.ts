@@ -19,12 +19,19 @@ export async function fetchWithRetry(
   let lastResponse: Response | undefined
   let lastError: unknown
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    if (attempt > 0 && init?.signal?.aborted) break
+    if (init?.signal?.aborted) break
     try {
       const res = await fetch(input, init)
       if (!TRANSIENT_STATUSES.has(res.status)) return res
       lastResponse = res
     } catch (err) {
+      // On some browsers (mobile Chrome/Android), aborting a fetch during the
+      // network phase throws TypeError("Failed to fetch") instead of the
+      // standard AbortError.  Detect this and re-throw a proper AbortError so
+      // callers only need to check one error type.
+      if (init?.signal?.aborted) {
+        throw new DOMException('The operation was aborted.', 'AbortError')
+      }
       // Network error (server unreachable, connection reset, etc.)
       lastError = err
       if (attempt >= MAX_RETRIES) break

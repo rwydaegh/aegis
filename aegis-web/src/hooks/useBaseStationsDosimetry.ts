@@ -44,7 +44,7 @@ export function useBaseStationsDosimetry() {
         })
       })
       .catch(err => {
-        if ((err as Error).name === 'AbortError') return
+        if ((err as Error).name === 'AbortError' || controller.signal.aborted) return
         Sentry.captureException(err)
         useNotificationStore.getState().addNotification(
           'error',

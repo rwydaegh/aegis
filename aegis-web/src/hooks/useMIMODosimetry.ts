@@ -136,7 +136,7 @@ export function useMIMODosimetry() {
         }
       }
     } catch (err) {
-      if ((err as Error).name === 'AbortError') {
+      if ((err as Error).name === 'AbortError' || controller.signal.aborted) {
         if (controller.signal.reason === 'timeout') {
           useNotificationStore.getState().addNotification(
             'warning',

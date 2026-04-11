@@ -211,7 +211,7 @@ export function useDosimetry() {
         }
       })
       .catch(err => {
-        if ((err as Error).name === 'AbortError') {
+        if ((err as Error).name === 'AbortError' || controller.signal.aborted) {
           // Distinguish user-initiated abort from timeout
           if (controller.signal.reason === 'timeout') {
             useNotificationStore.getState().addNotification(
@@ -269,7 +269,7 @@ export function useDosimetry() {
         useSimulationStore.getState().setLSPHeatmapData(result.data, result.bounds, [result.vmin, result.vmax])
       })
       .catch(err => {
-        if ((err as Error).name === 'AbortError') return
+        if ((err as Error).name === 'AbortError' || controller.signal.aborted) return
         Sentry.captureException(err)
       })
       .finally(() => {
