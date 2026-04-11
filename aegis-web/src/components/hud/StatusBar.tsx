@@ -38,7 +38,7 @@ export default function StatusBar() {
   if (!isComputing && !statusMessage && !showTiming) return null
 
   return (
-    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-0">
+    <div className="flex flex-col items-center gap-0">
       {expanded && showTiming && (
         <div className="bg-card/90 backdrop-blur-md rounded-lg border border-border px-3 py-2 mb-1
           text-[11px] font-mono text-muted-foreground min-w-[200px]">

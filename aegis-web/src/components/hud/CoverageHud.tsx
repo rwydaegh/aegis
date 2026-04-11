@@ -50,7 +50,7 @@ function CoverageHudInner() {
   }
 
   return (
-    <div className="absolute bottom-16 left-4 pointer-events-auto flex flex-col gap-2 z-20">
+    <div className="pointer-events-auto flex flex-col gap-2 z-20">
       {enabled && (
         <div className="rounded-lg bg-zinc-900/90 border border-zinc-700 p-3 text-xs text-white shadow-lg">
           <div className="flex items-center gap-2 mb-2 font-medium">
