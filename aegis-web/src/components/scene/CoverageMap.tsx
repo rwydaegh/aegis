@@ -172,7 +172,6 @@ export function CoverageMap() {
         defaultCenter={{ lat: 48.8, lng: 2.3 }}
         defaultZoom={4}
         mapTypeId="hybrid"
-        mapId={googleMapId}
         disableDefaultUI
         gestureHandling="greedy"
         clickableIcons={false}
