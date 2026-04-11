@@ -1,10 +1,13 @@
 import { useCallback, useMemo } from 'react';
-import { useSimulationStore } from '../stores/simulation';
+import { useSimulationStore, type DosimetryMode } from '../stores/simulation';
 import { useSceneStore } from '../stores/scene';
-import { useEnvironmentStore } from '../stores/environment';
+import { useEnvironmentStore, type EnvironmentSource } from '../stores/environment';
 import { useUIStore } from '../stores/ui';
 import { useCoverageStore } from '../stores/coverage';
 import type { ScenarioEntry } from '../api/types';
+
+const VALID_MODES = new Set<DosimetryMode>(['bound', 'aggregate', 'spatial']);
+const VALID_SOURCES = new Set<EnvironmentSource>(['none', 'voxels', 'osm', '3dtiles', 'cesium', 'coverage']);
 
 export function useScenario() {
   const viewerConfig = useSceneStore((s) => s.viewerConfig);
@@ -32,11 +35,15 @@ export function useScenario() {
       // 2. Apply instant state
       if (webState.freqGhz != null) sim.setFreqGhz(webState.freqGhz);
       if (webState.powerDbm != null) sim.setPowerDbm(webState.powerDbm);
-      if (webState.mode != null) sim.setMode(webState.mode as any);
+      if (webState.mode != null && VALID_MODES.has(webState.mode as DosimetryMode)) {
+        sim.setMode(webState.mode as DosimetryMode);
+      }
       if ('antennaPos' in webState) sim.setAntennaPos(webState.antennaPos ?? null);
 
       if (webState.environment) {
-        env.setSource(webState.environment.source as any);
+        if (VALID_SOURCES.has(webState.environment.source as EnvironmentSource)) {
+          env.setSource(webState.environment.source as EnvironmentSource);
+        }
         if (webState.environment.lat != null && webState.environment.lon != null) {
           env.setLocation(webState.environment.lat, webState.environment.lon);
         }

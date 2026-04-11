@@ -164,7 +164,7 @@ export default function ScenePanel() {
   const handleCancel = () => {
     esRef.current?.close()
     esRef.current = null
-    cancelLocation()
+    void cancelLocation().catch(() => {})
     useUIStore.getState().setLocationLoading(false)
     useUIStore.getState().appendLocationLog('Cancelled.')
   }
