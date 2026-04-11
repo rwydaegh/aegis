@@ -71,6 +71,12 @@ class TestValidation:
         with pytest.raises(ValueError, match="element_index must be non-negative"):
             PropagationPaths(**kw)
 
+    def test_k_hat_non_unit_raises(self):
+        kw = self._valid_kwargs(2)
+        kw["k_hat"] = np.array([[2.0, 0.0, 0.0], [0.0, 3.0, 0.0]])
+        with pytest.raises(ValueError, match="unit vectors"):
+            PropagationPaths(**kw)
+
     def test_mismatched_psi_length_raises(self):
         kw = self._valid_kwargs(2)
         kw["psi"] = np.ones((3, 3), dtype=complex)  # N=3 but k_hat N=2
