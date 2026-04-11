@@ -718,20 +718,24 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
         t_stats = _time.perf_counter()
 
-        # Cache result and body for export and compliance summary
-        _cache_dosimetry_for_export(cache, result, res_body, stats)
+        try:
+            # Cache result and body for export and compliance summary
+            _cache_dosimetry_for_export(cache, result, res_body, stats)
 
-        # Inject route-level timings
-        timings = extra.get("timings", {})
-        timings["compliance_stats_ms"] = (t_stats - t_compute) * 1e3
-        timings["route_total_ms"] = (t_stats - t_route) * 1e3
-        stats["timings"] = timings
-        stats["arrays"] = arrays_meta
+            # Inject route-level timings
+            timings = extra.get("timings", {})
+            timings["compliance_stats_ms"] = (t_stats - t_compute) * 1e3
+            timings["route_total_ms"] = (t_stats - t_route) * 1e3
+            stats["timings"] = timings
+            stats["arrays"] = arrays_meta
 
-        resp = Response(bytes(buf), mimetype=_OCTET_STREAM)
-        resp.headers["X-Stats"] = _json_dumps_safe(stats)
-        resp.headers["Access-Control-Expose-Headers"] = "X-Stats"
-        return resp
+            resp = Response(bytes(buf), mimetype=_OCTET_STREAM)
+            resp.headers["X-Stats"] = _json_dumps_safe(stats)
+            resp.headers["Access-Control-Expose-Headers"] = "X-Stats"
+            return resp
+        except Exception as exc:
+            logger.exception("response finalization failed")
+            return jsonify({"error": str(exc)}), 500
 
     @app.route("/api/scenes")
     def api_scenes():
@@ -1035,26 +1039,30 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             extra["gpu_backend"] = gpu_backend
 
         t_stats = _time.perf_counter()
-        timing_pairs = [
-            ("rt_ms", rt_ms if rt_ms is not None else (t_rt - t_route) * 1e3),
-            ("kernel_ms", (t_compute - t_rt) * 1e3),
-            ("compliance_stats_ms", (t_stats - t_compute) * 1e3),
-            ("route_total_ms", (t_stats - t_route) * 1e3),
-        ]
-        resp, stats, err = _make_rt_response(
-            result,
-            transformed_body,
-            tissue,
-            engine_kw,
-            quantities,
-            exposure_scenario,
-            extra,
-            timing_pairs,
-        )
-        if err:
-            return err
-        _cache_dosimetry_for_export(cache, result, transformed_body, stats, paths=paths)
-        return resp
+        try:
+            timing_pairs = [
+                ("rt_ms", rt_ms if rt_ms is not None else (t_rt - t_route) * 1e3),
+                ("kernel_ms", (t_compute - t_rt) * 1e3),
+                ("compliance_stats_ms", (t_stats - t_compute) * 1e3),
+                ("route_total_ms", (t_stats - t_route) * 1e3),
+            ]
+            resp, stats, err = _make_rt_response(
+                result,
+                transformed_body,
+                tissue,
+                engine_kw,
+                quantities,
+                exposure_scenario,
+                extra,
+                timing_pairs,
+            )
+            if err:
+                return err
+            _cache_dosimetry_for_export(cache, result, transformed_body, stats, paths=paths)
+            return resp
+        except Exception as exc:
+            logger.exception("response finalization failed")
+            return jsonify({"error": str(exc)}), 500
 
     @app.route("/api/compute/sionna-rt", methods=["POST"])
     def api_compute_sionna_rt():
@@ -1186,26 +1194,30 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             extra["gpu_backend"] = gpu_backend
 
         t_stats = _time.perf_counter()
-        timing_pairs = [
-            ("rt_ms", rt_ms if rt_ms is not None else (t_rt - t_route) * 1e3),
-            ("kernel_ms", (t_compute - t_rt) * 1e3),
-            ("compliance_stats_ms", (t_stats - t_compute) * 1e3),
-            ("route_total_ms", (t_stats - t_route) * 1e3),
-        ]
-        resp, stats, err = _make_rt_response(
-            result,
-            transformed_body,
-            tissue,
-            engine_kw,
-            quantities,
-            exposure_scenario,
-            extra,
-            timing_pairs,
-        )
-        if err:
-            return err
-        _cache_dosimetry_for_export(cache, result, transformed_body, stats, paths=paths)
-        return resp
+        try:
+            timing_pairs = [
+                ("rt_ms", rt_ms if rt_ms is not None else (t_rt - t_route) * 1e3),
+                ("kernel_ms", (t_compute - t_rt) * 1e3),
+                ("compliance_stats_ms", (t_stats - t_compute) * 1e3),
+                ("route_total_ms", (t_stats - t_route) * 1e3),
+            ]
+            resp, stats, err = _make_rt_response(
+                result,
+                transformed_body,
+                tissue,
+                engine_kw,
+                quantities,
+                exposure_scenario,
+                extra,
+                timing_pairs,
+            )
+            if err:
+                return err
+            _cache_dosimetry_for_export(cache, result, transformed_body, stats, paths=paths)
+            return resp
+        except Exception as exc:
+            logger.exception("response finalization failed")
+            return jsonify({"error": str(exc)}), 500
 
     @app.route("/api/compute/voxel-rt", methods=["POST"])
     def api_compute_voxel_rt():
@@ -1393,26 +1405,30 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             extra["gpu_backend"] = gpu_backend
 
         t_stats = _time.perf_counter()
-        timing_pairs = [
-            ("rt_ms", rt_ms if rt_ms is not None else (t_rt - t_route) * 1e3),
-            ("kernel_ms", (t_compute - t_rt) * 1e3),
-            ("compliance_stats_ms", (t_stats - t_compute) * 1e3),
-            ("route_total_ms", (t_stats - t_route) * 1e3),
-        ]
-        resp, stats, err = _make_rt_response(
-            result,
-            transformed_body,
-            tissue,
-            engine_kw,
-            quantities,
-            exposure_scenario,
-            extra,
-            timing_pairs,
-        )
-        if err:
-            return err
-        _cache_dosimetry_for_export(cache, result, transformed_body, stats, paths=paths)
-        return resp
+        try:
+            timing_pairs = [
+                ("rt_ms", rt_ms if rt_ms is not None else (t_rt - t_route) * 1e3),
+                ("kernel_ms", (t_compute - t_rt) * 1e3),
+                ("compliance_stats_ms", (t_stats - t_compute) * 1e3),
+                ("route_total_ms", (t_stats - t_route) * 1e3),
+            ]
+            resp, stats, err = _make_rt_response(
+                result,
+                transformed_body,
+                tissue,
+                engine_kw,
+                quantities,
+                exposure_scenario,
+                extra,
+                timing_pairs,
+            )
+            if err:
+                return err
+            _cache_dosimetry_for_export(cache, result, transformed_body, stats, paths=paths)
+            return resp
+        except Exception as exc:
+            logger.exception("response finalization failed")
+            return jsonify({"error": str(exc)}), 500
 
     @app.route("/api/compute/sionna-env-rt", methods=["POST"])
     def api_compute_sionna_env_rt():
@@ -1570,26 +1586,30 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             extra["gpu_backend"] = gpu_backend
 
         t_stats = _time.perf_counter()
-        timing_pairs = [
-            ("rt_ms", rt_ms if rt_ms is not None else (t_rt - t_route) * 1e3),
-            ("kernel_ms", (t_compute - t_rt) * 1e3),
-            ("compliance_stats_ms", (t_stats - t_compute) * 1e3),
-            ("route_total_ms", (t_stats - t_route) * 1e3),
-        ]
-        resp, stats, err = _make_rt_response(
-            result,
-            transformed_body,
-            tissue,
-            engine_kw,
-            quantities,
-            exposure_scenario,
-            extra,
-            timing_pairs,
-        )
-        if err:
-            return err
-        _cache_dosimetry_for_export(cache, result, transformed_body, stats, paths=paths)
-        return resp
+        try:
+            timing_pairs = [
+                ("rt_ms", rt_ms if rt_ms is not None else (t_rt - t_route) * 1e3),
+                ("kernel_ms", (t_compute - t_rt) * 1e3),
+                ("compliance_stats_ms", (t_stats - t_compute) * 1e3),
+                ("route_total_ms", (t_stats - t_route) * 1e3),
+            ]
+            resp, stats, err = _make_rt_response(
+                result,
+                transformed_body,
+                tissue,
+                engine_kw,
+                quantities,
+                exposure_scenario,
+                extra,
+                timing_pairs,
+            )
+            if err:
+                return err
+            _cache_dosimetry_for_export(cache, result, transformed_body, stats, paths=paths)
+            return resp
+        except Exception as exc:
+            logger.exception("response finalization failed")
+            return jsonify({"error": str(exc)}), 500
 
     @app.route("/api/export/dosimetry-csv", methods=["GET"])
     def export_dosimetry_csv():
