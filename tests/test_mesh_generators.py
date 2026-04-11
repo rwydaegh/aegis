@@ -119,3 +119,41 @@ class TestCylinder:
     def test_segments_minimum(self):
         with pytest.raises(ValueError, match="at least 3"):
             BodyMesh.cylinder(radius=0.1, height=0.5, n_segments=2)
+
+
+class TestFromArraysDegenerateTriangles:
+    """BodyMesh.from_arrays handles degenerate (zero-area) triangles.
+
+    GLB skinned meshes can produce degenerate triangles when bone transforms
+    collapse vertices. The resulting zero normals must not crash the backend.
+    """
+
+    def test_zero_normal_does_not_raise(self):
+        """A triangle with zero normals should be accepted, not rejected."""
+        good_tri = np.array([[[0, 0, 0], [1, 0, 0], [0, 1, 0]]], dtype=np.float64)
+        zero_normal = np.array([[0.0, 0.0, 0.0]])
+        body = BodyMesh.from_arrays(good_tri, normals=zero_normal)
+        # Fallback normal should be a unit vector
+        np.testing.assert_allclose(np.linalg.norm(body.normals, axis=1), 1.0)
+
+    def test_degenerate_triangle_computed_normals(self):
+        """Degenerate triangle (collinear vertices) with computed normals."""
+        degen = np.array([[[0, 0, 0], [1, 0, 0], [2, 0, 0]]], dtype=np.float64)
+        body = BodyMesh.from_arrays(degen)
+        np.testing.assert_allclose(np.linalg.norm(body.normals, axis=1), 1.0)
+
+    def test_mixed_good_and_degenerate(self):
+        """Mix of valid and degenerate triangles preserves valid normals."""
+        verts = np.array(
+            [
+                [[0, 0, 0], [1, 0, 0], [0, 1, 0]],  # valid, normal ~ +Z
+                [[0, 0, 0], [1, 0, 0], [2, 0, 0]],  # degenerate
+            ],
+            dtype=np.float64,
+        )
+        body = BodyMesh.from_arrays(verts)
+        assert body.n_triangles == 2
+        # First triangle normal should point +Z
+        assert body.normals[0, 2] > 0.99
+        # Both must be unit vectors
+        np.testing.assert_allclose(np.linalg.norm(body.normals, axis=1), 1.0)
