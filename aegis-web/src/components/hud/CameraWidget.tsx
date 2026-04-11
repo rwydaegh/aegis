@@ -12,7 +12,9 @@ const CAMERA_PRESETS: Array<{ preset: CameraPreset & string; label: string; icon
 ]
 
 export default function CameraWidget() {
-  const { cameraMode, setCameraPreset, setCameraMode } = useUIStore()
+  const cameraMode = useUIStore(s => s.cameraMode)
+  const setCameraPreset = useUIStore(s => s.setCameraPreset)
+  const setCameraMode = useUIStore(s => s.setCameraMode)
 
   function handleCameraPreset(preset: CameraPreset & string) {
     setCameraMode('orbit')

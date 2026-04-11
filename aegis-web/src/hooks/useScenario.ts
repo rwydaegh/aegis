@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useSimulationStore } from '../stores/simulation';
 import { useSceneStore } from '../stores/scene';
 import { useEnvironmentStore } from '../stores/environment';
@@ -9,7 +9,10 @@ import type { ScenarioEntry } from '../api/types';
 export function useScenario() {
   const viewerConfig = useSceneStore((s) => s.viewerConfig);
 
-  const scenarios: Record<string, ScenarioEntry> = viewerConfig?.scenarios ?? {};
+  const scenarios: Record<string, ScenarioEntry> = useMemo(
+    () => viewerConfig?.scenarios ?? {},
+    [viewerConfig?.scenarios],
+  );
 
   const loadScenario = useCallback(
     async (name: string) => {

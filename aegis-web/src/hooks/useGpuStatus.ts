@@ -16,7 +16,9 @@ export function useGpuStatus() {
 
   useEffect(() => {
     if (!rtEnabled) {
-      setGpuWarm(null)
+      if (useUIStore.getState().gpuWarm !== null) {
+        setGpuWarm(null)
+      }
       return
     }
 

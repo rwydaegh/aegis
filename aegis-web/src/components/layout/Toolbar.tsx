@@ -133,8 +133,12 @@ function ModePill() {
 
 export default function Toolbar() {
   const { stats } = useActiveSimulation()
-  const { viewerConfig } = useSceneStore()
-  const { wireframe, toggleSidebar, toggleWireframe, setStatusMessage, toggleHelp } = useUIStore()
+  const viewerConfig = useSceneStore(s => s.viewerConfig)
+  const wireframe = useUIStore(s => s.wireframe)
+  const toggleSidebar = useUIStore(s => s.toggleSidebar)
+  const toggleWireframe = useUIStore(s => s.toggleWireframe)
+  const setStatusMessage = useUIStore(s => s.setStatusMessage)
+  const toggleHelp = useUIStore(s => s.toggleHelp)
   const sidebarOpen = useUIStore(selectSidebarOpen)
   const mimoEnabled = useMIMOStore(s => s.enabled)
 
