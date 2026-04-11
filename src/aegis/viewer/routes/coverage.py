@@ -45,7 +45,9 @@ def _compute_coverage(
             *_COMPLETENESS_COLS,
         ]
         try:
-            schema_cols = set(pd.read_parquet(str(pq), nrows=0).columns)
+            import pyarrow.parquet as _pq_mod
+
+            schema_cols = set(_pq_mod.read_schema(str(pq)).names)
             use_cols = [c for c in _NEEDED if c in schema_cols]
             df = pd.read_parquet(str(pq), columns=use_cols)
         except Exception:
