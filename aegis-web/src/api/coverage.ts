@@ -13,21 +13,32 @@ export async function fetchCoverage(): Promise<CoverageResponse> {
 export function decodeSitesBinary(
   b64: string,
   count: number,
-): { latitudes: Float32Array; longitudes: Float32Array; opIndices: Uint8Array; techIndices: Uint8Array } {
+): {
+  latitudes: Float32Array
+  longitudes: Float32Array
+  opIndices: Uint8Array
+  techIndices: Uint8Array
+  regionIndices: Uint8Array
+  antennaCounts: Uint8Array
+} {
   const raw = Uint8Array.from(atob(b64), c => c.charCodeAt(0))
   const latitudes = new Float32Array(count)
   const longitudes = new Float32Array(count)
   const opIndices = new Uint8Array(count)
   const techIndices = new Uint8Array(count)
+  const regionIndices = new Uint8Array(count)
+  const antennaCounts = new Uint8Array(count)
 
   const view = new DataView(raw.buffer)
   for (let i = 0; i < count; i++) {
-    const offset = i * 10
-    latitudes[i] = view.getFloat32(offset, true)      // little-endian
+    const offset = i * 12
+    latitudes[i] = view.getFloat32(offset, true)
     longitudes[i] = view.getFloat32(offset + 4, true)
     opIndices[i] = raw[offset + 8]
     techIndices[i] = raw[offset + 9]
+    regionIndices[i] = raw[offset + 10]
+    antennaCounts[i] = raw[offset + 11]
   }
 
-  return { latitudes, longitudes, opIndices, techIndices }
+  return { latitudes, longitudes, opIndices, techIndices, regionIndices, antennaCounts }
 }
