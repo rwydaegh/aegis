@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "GPU-accelerated geometric dosimetry engine for wireless exposure assessment."
 readme = "README.md"
 requires-python = ">=3.11"
-license = {text = "Apache-2.0"}
+license = {text = "LicenseRef-Proprietary"}
 authors = [{name = "rwydaegh", email = "robin.wydaeghe@ugent.be"}]
 
 dependencies = [
@@ -100,7 +100,7 @@ addopts = "-ra --strict-markers --import-mode=prepend -n 2"
 ignore-words-list = "te,nd,ue,lod,coner"
 
 [tool.coverage.run]
-source = ["aegis"]
+source = ["src/aegis"]
 parallel = true
 # Omitted paths: optional Sionna bridge, viewer CLI, voxel pipeline glue
 omit = [
