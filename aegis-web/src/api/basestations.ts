@@ -29,6 +29,10 @@ export interface BaseStationData {
   confidence?: number
   pattern_source?: string
   provenance?: Record<string, { origin: string; confidence: number }>
+  // Fidelity tier computed server-side from provenance
+  fidelity_tier?: 'full' | 'spatial' | 'geometric' | 'bound' | 'location_only'
+  // Column-name-keyed provenance origins for fidelity tier display
+  provenance_sources?: Record<string, string>
 }
 
 interface LoadResponse {

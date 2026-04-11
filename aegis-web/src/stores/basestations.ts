@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import type { BaseStationData } from '@/api/basestations'
 
+export type AntennaColorMode = 'operator' | 'fidelity' | 'technology' | 'frequency_band'
+
 interface BaseStationsState {
   basestations: BaseStationData[]
   origin: { lat: number; lon: number } | null
@@ -13,6 +15,7 @@ interface BaseStationsState {
   technologies: string[]
   frequencyBands: string[]
   activeCount: number
+  colorMode: AntennaColorMode
 
   selectedIndex: number | null
   selectAntenna: (index: number | null) => void
@@ -26,6 +29,7 @@ interface BaseStationsState {
   toggleOperator: (op: string) => void
   toggleTechnology: (tech: string) => void
   toggleFrequencyBand: (band: string) => void
+  setColorMode: (mode: AntennaColorMode) => void
   setLoading: (v: boolean) => void
   setComputing: (v: boolean) => void
   clear: () => void
@@ -65,6 +69,7 @@ export const useBaseStationsStore = create<BaseStationsState>((set, get) => ({
   technologies: [],
   frequencyBands: [],
   activeCount: 0,
+  colorMode: 'operator' as AntennaColorMode,
   selectedIndex: null,
   selectAntenna: (index) => set({ selectedIndex: index }),
   showCoverage: false,
@@ -120,6 +125,8 @@ export const useBaseStationsStore = create<BaseStationsState>((set, get) => ({
     }
   }),
 
+  setColorMode: (mode) => set({ colorMode: mode }),
+
   setLoading: (v) => set({ isLoading: v }),
   setComputing: (v) => set({ isComputing: v }),
 
@@ -133,6 +140,7 @@ export const useBaseStationsStore = create<BaseStationsState>((set, get) => ({
     technologies: [],
     frequencyBands: [],
     activeCount: 0,
+    colorMode: 'operator' as AntennaColorMode,
     selectedIndex: null,
     showCoverage: false,
     coverageUrl: null,

@@ -9,6 +9,7 @@ import TouchControls from '@/components/hud/TouchControls'
 import KeyboardHelp from '@/components/hud/KeyboardHelp'
 import { AntennaHint } from '@/components/hud/AntennaHint'
 import { CoverageHud } from '@/components/hud/CoverageHud'
+import { DataQualityHud } from '@/components/hud/DataQualityHud'
 import CameraWidget from '@/components/hud/CameraWidget'
 import HudToggle from '@/components/hud/HudToggle'
 import { WelcomeOverlay } from '@/components/hud/WelcomeOverlay'
@@ -104,9 +105,12 @@ export default function HudOverlay() {
 
       {/* Antenna placement hint - shown after welcome dismissed, before antenna placed */}
       <AntennaHint />
-      <div className="absolute bottom-16 left-4">
+      <div className="absolute bottom-16 left-4 flex flex-col gap-2">
         <HudToggle id="coverage">
           <CoverageHud />
+        </HudToggle>
+        <HudToggle id="dataQuality">
+          <DataQualityHud />
         </HudToggle>
       </div>
 

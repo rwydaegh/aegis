@@ -118,50 +118,69 @@ def estimate_with_provenance(
         "Vertical_Beamwidth",
     ]
     df = df.copy()
-    for col in NUMERIC_COLS:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
+    present_cols = [c for c in NUMERIC_COLS if c in df.columns]
+    for col in present_cols:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+
     has_fb = "FrequencyBand" in df.columns and df["FrequencyBand"].notna().any()
-    if has_fb:
-        means_tf = df.groupby(["Technology", "FrequencyBand"])[NUMERIC_COLS].median()
-        for col in NUMERIC_COLS:
-            if col not in df.columns:
+
+    # --- Phase 1: fill from own (Technology, FrequencyBand) group medians ---
+    if has_fb and present_cols:
+        # Rows that can participate in groupby (both keys non-null)
+        valid_keys = df["Technology"].notna() & df["FrequencyBand"].notna()
+        group_medians = (
+            df.loc[valid_keys]
+            .groupby(
+                ["Technology", "FrequencyBand"],
+            )[present_cols]
+            .transform("median")
+        )
+
+        for col in present_cols:
+            was_nan = df[col].isna()
+            # Only fill where the row had valid keys AND the median is non-NaN
+            filled = group_medians[col]
+            fill_mask = was_nan & valid_keys & filled.notna()
+            if not fill_mask.any():
                 continue
+            df.loc[fill_mask, col] = filled[fill_mask]
             src_col = f"{col}_source"
-            nan_mask = df[col].isna()
-            if not nan_mask.any():
-                continue
-            for idx in df[nan_mask].index:
-                tech = df.at[idx, "Technology"]
-                fb = df.at[idx, "FrequencyBand"]
-                if pd.notna(tech) and pd.notna(fb) and (tech, fb) in means_tf.index:
-                    val = means_tf.at[(tech, fb), col]
-                    if pd.notna(val):
-                        df.at[idx, col] = val
-                        if src_col in df.columns:
-                            df.at[idx, src_col] = "est:tech+band"
+            if src_col in df.columns:
+                df.loc[fill_mask, src_col] = "est:tech+band"
+
+    # --- Phase 2: fill remaining NaNs from reference_df medians ---
     if reference_df is not None:
         reference_df = reference_df.copy()
-        for col in NUMERIC_COLS:
-            if col in reference_df.columns:
-                reference_df[col] = pd.to_numeric(reference_df[col], errors="coerce")
+        ref_present = [c for c in NUMERIC_COLS if c in reference_df.columns]
+        for col in ref_present:
+            reference_df[col] = pd.to_numeric(reference_df[col], errors="coerce")
+
         ref_has_fb = "FrequencyBand" in reference_df.columns and reference_df["FrequencyBand"].notna().any()
         if ref_has_fb:
-            ref_means = reference_df.groupby(["Technology", "FrequencyBand"])[NUMERIC_COLS].median()
-            for col in NUMERIC_COLS:
-                if col not in df.columns:
+            ref_medians = reference_df.groupby(["Technology", "FrequencyBand"])[ref_present].median()
+            # Build a lookup by mapping (Technology, FrequencyBand) -> median values
+            valid_keys = df["Technology"].notna() & df["FrequencyBand"].notna()
+            # Create a MultiIndex from the df rows to align with ref_medians
+            df_keys = pd.MultiIndex.from_arrays(
+                [df.loc[valid_keys, "Technology"], df.loc[valid_keys, "FrequencyBand"]],
+            )
+            # Reindex reference medians to match df rows (NaN where no match)
+            ref_aligned = ref_medians.reindex(df_keys)
+            ref_aligned.index = df.loc[valid_keys].index
+
+            for col in present_cols:
+                if col not in ref_present:
                     continue
+                was_nan = df[col].isna()
+                if not was_nan.any():
+                    continue
+                ref_vals = ref_aligned[col]
+                fill_mask = was_nan & valid_keys & ref_vals.notna()
+                if not fill_mask.any():
+                    continue
+                df.loc[fill_mask, col] = ref_vals[fill_mask]
                 src_col = f"{col}_source"
-                nan_mask = df[col].isna()
-                if not nan_mask.any():
-                    continue
-                for idx in df[nan_mask].index:
-                    tech = df.at[idx, "Technology"]
-                    fb = df.at[idx, "FrequencyBand"]
-                    if pd.notna(tech) and pd.notna(fb) and (tech, fb) in ref_means.index:
-                        val = ref_means.at[(tech, fb), col]
-                        if pd.notna(val):
-                            df.at[idx, col] = val
-                            if src_col in df.columns:
-                                df.at[idx, src_col] = "est:ref"
+                if src_col in df.columns:
+                    df.loc[fill_mask, src_col] = "est:ref"
+
     return df

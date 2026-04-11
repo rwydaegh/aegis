@@ -117,3 +117,12 @@ regions:
         priority: 1
         source_tag: gov:rsm
     reference: data/basestations/raw/brussels_gov.parquet
+
+  uk:
+    sources:
+      - type: basestationlib
+        country: UK
+        # No bbox: WTR CSV is national, filter to mobile operators only
+        priority: 1
+        source_tag: gov:ofcom_wtr
+    reference: data/basestations/raw/brussels_gov.parquet
