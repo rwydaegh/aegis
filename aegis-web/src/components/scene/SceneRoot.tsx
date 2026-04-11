@@ -398,24 +398,29 @@ export default function SceneRoot() {
             const hasLoadedPattern = !!appliedPattern && !!appliedPatternMeta
 
             if (isMultiElement && !hasLoadedPattern) {
-              const arrayConfig: ArrayConfig = {
+              const tipPos: [number, number, number] = [ant.position[0], ant.position[1] + ant.height, ant.position[2]]
+              const arrConfig: ArrayConfig = {
                 type: 'upa' as const,
                 n_h: ant.arrayConfig.n_h,
                 n_v: ant.arrayConfig.n_v,
                 d_h_wavelengths: ant.arrayConfig.d_h_wavelengths,
                 d_v_wavelengths: ant.arrayConfig.d_v_wavelengths,
-                position: [ant.position[0], ant.position[1] + ant.height, ant.position[2]],
+                position: tipPos,
                 broadside: ant.arrayConfig.broadside,
                 element_pattern: ant.arrayConfig.element_pattern,
               }
               return (
-                <AntennaArrayViz
-                  key={ant.id}
-                  config={arrayConfig}
-                  freqHz={freqGhz * 1e9}
-                  showPattern={cameraMode === 'orbit'}
-                  selected={isSelected}
-                />
+                <group key={ant.id}>
+                  <AntennaArrayViz
+                    config={arrConfig}
+                    freqHz={freqGhz * 1e9}
+                    showPattern={cameraMode === 'orbit'}
+                    selected={isSelected}
+                  />
+                  {ant.arrayConfig.element_pattern === 'patch' && ant.focusPoint && (
+                    <FocusPointMarker focusPoint={ant.focusPoint} arrayPosition={tipPos} />
+                  )}
+                </group>
               )
             }
 
