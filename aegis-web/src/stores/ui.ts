@@ -46,7 +46,12 @@ interface UIStore {
   activeScenario: string | null
   scenarioLoading: boolean
   cameraOverride: { position: [number, number, number]; target: [number, number, number] } | null
+  hiddenWidgets: Set<string>
+  tourActive: boolean
+  tourStep: number
+  tourCompleted: boolean
 
+  toggleWidget: (id: string) => void
   toggleSidebar: () => void
   setSidebarMode: (mode: SidebarMode) => void
   setActiveGroup: (group: GroupId) => void
@@ -74,6 +79,9 @@ interface UIStore {
   setActiveScenario: (v: string | null) => void
   setScenarioLoading: (v: boolean) => void
   setCameraOverride: (v: UIStore['cameraOverride']) => void
+  startTour: () => void
+  advanceTour: () => void
+  dismissTour: () => void
 }
 
 /** Derived selector: true when sidebar is visible (rail or expanded) */
@@ -84,6 +92,9 @@ export const selectSidebarExpanded = (s: UIStore) => s.sidebarMode === 'expanded
 
 // Track last visible mode so toggleSidebar can restore it
 let _lastVisibleMode: SidebarMode = 'expanded'
+
+/** Number of steps in the guided tour */
+export const TOUR_STEP_COUNT = 6
 
 export const useUIStore = create<UIStore>((set) => ({
   sidebarMode: 'expanded',
@@ -116,6 +127,10 @@ export const useUIStore = create<UIStore>((set) => ({
   activeScenario: null as string | null,
   scenarioLoading: false,
   cameraOverride: null,
+  hiddenWidgets: new Set<string>(),
+  tourActive: false,
+  tourStep: 0,
+  tourCompleted: localStorage.getItem('aegis-tour-completed') === '1',
   toggleSidebar: () => set((state) => {
     if (state.sidebarMode === 'hidden') {
       return { sidebarMode: _lastVisibleMode }
@@ -162,4 +177,23 @@ export const useUIStore = create<UIStore>((set) => ({
   setActiveScenario: (v) => set({ activeScenario: v }),
   setScenarioLoading: (v) => set({ scenarioLoading: v }),
   setCameraOverride: (v) => set({ cameraOverride: v }),
+  toggleWidget: (id) => set((state) => {
+    const next = new Set(state.hiddenWidgets)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    return { hiddenWidgets: next }
+  }),
+  startTour: () => set({ tourActive: true, tourStep: 0, tourCompleted: false }),
+  advanceTour: () => set((state) => {
+    const next = state.tourStep + 1
+    if (next >= TOUR_STEP_COUNT) {
+      localStorage.setItem('aegis-tour-completed', '1')
+      return { tourActive: false, tourStep: 0, tourCompleted: true }
+    }
+    return { tourStep: next }
+  }),
+  dismissTour: () => {
+    localStorage.setItem('aegis-tour-completed', '1')
+    set({ tourActive: false, tourStep: 0, tourCompleted: true })
+  },
 }))

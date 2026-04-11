@@ -72,7 +72,7 @@ export default function ServerInfoBadge() {
   }
 
   return (
-    <div className="absolute bottom-3 right-3 pointer-events-none">
+    <div className="pointer-events-none">
       <div className="bg-black/60 backdrop-blur-sm rounded-md border border-white/10 px-2.5 py-1.5 flex items-center gap-3">
         <span className={`text-[10px] font-mono font-medium select-none ${isCloud ? 'text-emerald-400' : 'text-blue-400'}`}>
           {label}{info.gitCommit ? ` ${info.gitCommit.slice(0, 7)}` : ''}

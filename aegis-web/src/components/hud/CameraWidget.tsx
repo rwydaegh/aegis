@@ -24,7 +24,7 @@ export default function CameraWidget() {
   }
 
   return (
-    <div className="absolute bottom-14 right-3 hidden md:flex flex-col pointer-events-auto
+    <div data-tour="camera-widget" className="flex flex-col pointer-events-auto
       bg-card/80 backdrop-blur-md rounded-lg border border-border p-1">
       {CAMERA_PRESETS.map(({ preset, label, icon }) => (
         <Tooltip key={preset}>
