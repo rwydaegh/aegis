@@ -9,6 +9,9 @@ export async function fetchCoverage(): Promise<CoverageResponse> {
   return resp.json()
 }
 
+/** Bytes per site record in the binary coverage format. */
+const BYTES_PER_SITE = 12 // lat(f4) + lon(f4) + op(u1) + tech(u1) + region(u1) + count(u1)
+
 /** Decode base64 sites binary into typed arrays. */
 export function decodeSitesBinary(
   b64: string,
@@ -22,6 +25,13 @@ export function decodeSitesBinary(
   antennaCounts: Uint8Array
 } {
   const raw = Uint8Array.from(atob(b64), c => c.charCodeAt(0))
+  const expectedBytes = count * BYTES_PER_SITE
+  if (raw.byteLength < expectedBytes) {
+    throw new Error(
+      `Coverage binary truncated: expected ${expectedBytes} bytes for ${count} sites, got ${raw.byteLength}`,
+    )
+  }
+
   const latitudes = new Float32Array(count)
   const longitudes = new Float32Array(count)
   const opIndices = new Uint8Array(count)
@@ -31,7 +41,7 @@ export function decodeSitesBinary(
 
   const view = new DataView(raw.buffer)
   for (let i = 0; i < count; i++) {
-    const offset = i * 12
+    const offset = i * BYTES_PER_SITE
     latitudes[i] = view.getFloat32(offset, true)
     longitudes[i] = view.getFloat32(offset + 4, true)
     opIndices[i] = raw[offset + 8]
