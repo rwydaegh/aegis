@@ -3,7 +3,7 @@ import { APIProvider, Map, Map3D, MapMode, Marker3D, AltitudeMode, useMap } from
 import { GoogleMapsOverlay } from '@deck.gl/google-maps'
 import { useSceneStore } from '@/stores/scene'
 import { useCoverageStore } from '@/stores/coverage'
-import { buildCoverageLayers, OP_COLORS } from './coverageLayers'
+import { buildCoverageLayers, buildComplianceZoneLayer, OP_COLORS } from './coverageLayers'
 import { Radio, Building2, Layers, MapPin, X, Signal } from 'lucide-react'
 
 /** Zoom level at which we switch from 2D heatmap to 3D photorealistic view */
@@ -28,6 +28,8 @@ function DeckOverlay() {
   const siteCount = useCoverageStore(s => s.siteCount)
   const zoom = useCoverageStore(s => s.zoom)
   const colorMode = useCoverageStore(s => s.colorMode)
+  const complianceZone = useCoverageStore(s => s.complianceZone)
+  const complianceZoneEnabled = useCoverageStore(s => s.complianceZoneEnabled)
 
   // Attach overlay to map
   useEffect(() => {
@@ -87,16 +89,22 @@ function DeckOverlay() {
       return
     }
 
-    const layers = buildCoverageLayers({
+    const coverageLayers = buildCoverageLayers({
       siteLats, siteLons, siteOpIndices, siteTechIndices,
       siteRegionIndices, siteAntennaCounts,
       siteCount, zoom, colorMode,
       onSiteHover, onSiteClick,
     })
 
-    overlay.setProps({ layers })
+    // Add compliance zone layer below coverage layers
+    const complianceLayers = complianceZoneEnabled
+      ? buildComplianceZoneLayer(complianceZone)
+      : []
+
+    overlay.setProps({ layers: [...complianceLayers, ...coverageLayers] })
   }, [siteLats, siteLons, siteOpIndices, siteTechIndices, siteRegionIndices,
-      siteAntennaCounts, siteCount, zoom, colorMode, overlay, onSiteHover, onSiteClick])
+      siteAntennaCounts, siteCount, zoom, colorMode, overlay, onSiteHover, onSiteClick,
+      complianceZone, complianceZoneEnabled])
 
   return null
 }

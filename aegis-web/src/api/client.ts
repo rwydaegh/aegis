@@ -633,3 +633,26 @@ export async function fetchFrequencySweep(params: {
   return getJson<FrequencySweepResult>(`/api/compliance/frequency-sweep?${qs}`)
 }
 
+export interface SpatialComplianceResult {
+  lats: number[]
+  lons: number[]
+  margin_db: number[][]
+  compliant: boolean[][]
+  sinc_w_m2: number[][]
+  n_lat: number
+  n_lon: number
+  scenario: string
+  freq_hz_dominant: number
+  T0: number
+  n_stations: number
+}
+
+export async function fetchSpatialCompliance(params: {
+  bbox?: [number, number, number, number]
+  resolution?: number
+  scenario?: string
+  receiver_height_m?: number
+}): Promise<SpatialComplianceResult> {
+  return postJson<SpatialComplianceResult>('/api/compliance/spatial', params)
+}
+

@@ -15,8 +15,12 @@ import enum
 import logging
 import math
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from aegis.defaults import DEFAULT_FREQ_HZ
+
+if TYPE_CHECKING:
+    import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +38,7 @@ __all__ = [
     "frequency_sweep",
     "compliance_heatmap",
     "link_budget_compliance",
+    "spatial_compliance_grid",
     # Backward-compat
     "ICNIRP_2020",
     "is_compliant_sab",
@@ -871,6 +876,185 @@ def link_budget_compliance(
         "margin_db": cr.margin_db,
         "max_tx_power_w": p_max_w,
         "max_tx_power_dbm": p_max_dbm,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Spatial compliance grid
+# ---------------------------------------------------------------------------
+
+
+def spatial_compliance_grid(
+    *,
+    station_lats: np.ndarray,
+    station_lons: np.ndarray,
+    station_eirp_dbm: np.ndarray,
+    station_freq_hz: np.ndarray,
+    station_heights_m: np.ndarray,
+    grid_lats: np.ndarray,
+    grid_lons: np.ndarray,
+    scenario: ExposureScenario = ExposureScenario.GENERAL_PUBLIC,
+    receiver_height_m: float = 1.5,
+    T0: float | None = None,
+) -> dict:
+    """Compute ICNIRP compliance margin at a grid of receiver locations.
+
+    For each grid point, sums incident power density from all stations
+    using free-space path loss, estimates absorbed power density via T0,
+    and evaluates the tightest ICNIRP compliance margin.
+
+    Uses per-station frequency for correct limit evaluation. Multi-frequency
+    cumulative exposure is assessed using the ICNIRP summation rule:
+    sum(value_i / limit_i) <= 1 across frequency groups.
+
+    Parameters
+    ----------
+    station_lats, station_lons : (N,) arrays
+        Station positions in WGS84 degrees.
+    station_eirp_dbm : (N,) array
+        EIRP per station in dBm.
+    station_freq_hz : (N,) array
+        Operating frequency per station in Hz.
+    station_heights_m : (N,) array
+        Antenna height above ground per station in meters.
+    grid_lats, grid_lons : (M,) arrays
+        Receiver grid positions in WGS84 degrees.
+    scenario : ExposureScenario
+    receiver_height_m : float
+        Receiver (body) height above ground in meters.
+    T0 : float or None
+        Normal-incidence transmission coefficient. If None, estimated
+        from skin tissue at the EIRP-weighted mean frequency.
+
+    Returns
+    -------
+    dict with keys:
+        sinc : (M,) total incident power density at each grid point [W/m^2]
+        sab_estimate : (M,) estimated S_ab at each grid point [W/m^2]
+        margin_db : (M,) tightest ICNIRP compliance margin [dB]
+        compliant : (M,) boolean, True if all limits satisfied
+        freq_hz_dominant : float, EIRP-weighted mean frequency
+        T0 : float, transmission coefficient used
+    """
+    import numpy as np
+
+    station_lats = np.asarray(station_lats, dtype=np.float64)
+    station_lons = np.asarray(station_lons, dtype=np.float64)
+    station_eirp_dbm = np.asarray(station_eirp_dbm, dtype=np.float64)
+    station_freq_hz = np.asarray(station_freq_hz, dtype=np.float64)
+    station_heights_m = np.asarray(station_heights_m, dtype=np.float64)
+    grid_lats = np.asarray(grid_lats, dtype=np.float64)
+    grid_lons = np.asarray(grid_lons, dtype=np.float64)
+
+    n_stations = len(station_lats)
+    n_grid = len(grid_lats)
+
+    if n_stations == 0:
+        return {
+            "sinc": np.zeros(n_grid),
+            "sab_estimate": np.zeros(n_grid),
+            "margin_db": np.full(n_grid, float("inf")),
+            "compliant": np.ones(n_grid, dtype=bool),
+            "freq_hz_dominant": 0.0,
+            "T0": T0 or 0.4,
+        }
+
+    # EIRP in watts: shape (N,)
+    eirp_w = 10.0 ** ((station_eirp_dbm - 30.0) / 10.0)
+
+    # EIRP-weighted mean frequency for T0 estimation
+    total_eirp = np.sum(eirp_w)
+    if total_eirp > 0:
+        freq_mean_hz = float(np.sum(station_freq_hz * eirp_w) / total_eirp)
+    else:
+        freq_mean_hz = float(np.median(station_freq_hz))
+
+    # Estimate T0 from skin tissue if not provided
+    if T0 is None:
+        try:
+            from aegis.tissue.dielectric import TissueModel
+
+            tissue = TissueModel.from_database("Skin", freq_mean_hz)
+            T0 = tissue.T0
+        except Exception:
+            T0 = 0.4
+
+    # Haversine distance: grid (M,) x stations (N,) -> (M, N)
+    lat1 = np.radians(grid_lats[:, None])  # (M, 1)
+    lat2 = np.radians(station_lats[None, :])  # (1, N)
+    dlat = lat2 - lat1
+    dlon = np.radians(station_lons[None, :] - grid_lons[:, None])
+
+    a = np.sin(dlat / 2) ** 2 + np.cos(lat1) * np.cos(lat2) * np.sin(dlon / 2) ** 2
+    horiz_dist_m = 6_371_000.0 * 2.0 * np.arctan2(np.sqrt(a), np.sqrt(1.0 - a))
+
+    # 3D distance including height difference
+    dh = station_heights_m[None, :] - receiver_height_m  # (1, N) broadcast to (M, N)
+    dist_3d = np.sqrt(horiz_dist_m**2 + dh**2)
+    dist_3d = np.maximum(dist_3d, 1.0)  # clamp to 1m minimum
+
+    # Free-space incident power density: S_inc = EIRP / (4 pi d^2)
+    # Shape: (M, N)
+    sinc_per_station = eirp_w[None, :] / (4.0 * np.pi * dist_3d**2)
+
+    # Total incident power density at each grid point: (M,)
+    sinc_total = np.sum(sinc_per_station, axis=1)
+
+    # Estimated absorbed power density (normal-incidence worst case)
+    sab_estimate = sinc_total * T0
+
+    # Evaluate compliance at the mean frequency
+    margin_db_arr = np.full(n_grid, float("inf"))
+    compliant_arr = np.ones(n_grid, dtype=bool)
+
+    try:
+        limits = icnirp_limits(scenario=scenario, freq_hz=freq_mean_hz)
+    except ValueError:
+        # Frequency outside ICNIRP range
+        return {
+            "sinc": sinc_total,
+            "sab_estimate": sab_estimate,
+            "margin_db": margin_db_arr,
+            "compliant": compliant_arr,
+            "freq_hz_dominant": freq_mean_hz,
+            "T0": T0,
+        }
+
+    # Check S_ab (4 cm^2) - most relevant above 6 GHz
+    if limits.sab_4cm2 is not None:
+        with np.errstate(divide="ignore"):
+            m = np.where(sab_estimate > 0, 10.0 * np.log10(limits.sab_4cm2 / sab_estimate), np.inf)
+        margin_db_arr = np.minimum(margin_db_arr, m)
+        compliant_arr &= sab_estimate <= limits.sab_4cm2
+
+    # Check S_ab (1 cm^2) for >30 GHz
+    if limits.sab_1cm2 is not None:
+        with np.errstate(divide="ignore"):
+            m = np.where(sab_estimate > 0, 10.0 * np.log10(limits.sab_1cm2 / sab_estimate), np.inf)
+        margin_db_arr = np.minimum(margin_db_arr, m)
+        compliant_arr &= sab_estimate <= limits.sab_1cm2
+
+    # Check S_inc (whole-body)
+    if limits.sinc_whole_body is not None:
+        with np.errstate(divide="ignore"):
+            m = np.where(sinc_total > 0, 10.0 * np.log10(limits.sinc_whole_body / sinc_total), np.inf)
+        margin_db_arr = np.minimum(margin_db_arr, m)
+        compliant_arr &= sinc_total <= limits.sinc_whole_body
+
+    # Check S_inc (local)
+    if limits.sinc_local is not None:
+        with np.errstate(divide="ignore"):
+            m = np.where(sinc_total > 0, 10.0 * np.log10(limits.sinc_local / sinc_total), np.inf)
+        margin_db_arr = np.minimum(margin_db_arr, m)
+        compliant_arr &= sinc_total <= limits.sinc_local
+
+    return {
+        "sinc": sinc_total,
+        "sab_estimate": sab_estimate,
+        "margin_db": margin_db_arr,
+        "compliant": compliant_arr,
+        "freq_hz_dominant": freq_mean_hz,
+        "T0": T0,
     }
 
 

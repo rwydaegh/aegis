@@ -5,7 +5,7 @@ import { useEnvironmentStore } from '@/stores/environment'
 import { useBaseStationsStore } from '@/stores/basestations'
 import { useNotificationStore } from '@/stores/notifications'
 import { loadBasestations } from '@/api/basestations'
-import { Globe, MapPin, ArrowLeft, RefreshCw } from 'lucide-react'
+import { Globe, MapPin, ArrowLeft, RefreshCw, Shield } from 'lucide-react'
 
 /** Zoom level ~14 corresponds to roughly <5 km altitude equivalent */
 const TRANSITION_ZOOM = 14
@@ -21,10 +21,26 @@ function CoverageHudInner() {
   const colorMode = useCoverageStore(s => s.colorMode)
   const setColorMode = useCoverageStore(s => s.setColorMode)
 
+  const complianceZoneEnabled = useCoverageStore(s => s.complianceZoneEnabled)
+  const complianceZoneLoading = useCoverageStore(s => s.complianceZoneLoading)
+  const complianceZone = useCoverageStore(s => s.complianceZone)
+
   const isCoverageScenario = activeScenario === 'coverage_globe'
   if (!isCoverageScenario) return null
 
   const showTransitionButton = enabled && zoom >= TRANSITION_ZOOM && cameraLatLon
+
+  const handleToggleCompliance = () => {
+    const store = useCoverageStore.getState()
+    if (!complianceZoneEnabled) {
+      store.setComplianceZoneEnabled(true)
+      if (!store.complianceZone) {
+        store.fetchComplianceZone()
+      }
+    } else {
+      store.setComplianceZoneEnabled(false)
+    }
+  }
 
   const handleSetupScene = () => {
     const ll = useCoverageStore.getState().cameraLatLon
@@ -93,6 +109,46 @@ function CoverageHudInner() {
                 <option value="technology">Technology</option>
                 <option value="region">Country</option>
               </select>
+            </div>
+          )}
+          {!loading && !error && (
+            <div className="mt-2 pt-2 border-t border-zinc-700/50">
+              <button
+                onClick={handleToggleCompliance}
+                disabled={complianceZoneLoading}
+                className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs transition-colors ${
+                  complianceZoneEnabled
+                    ? 'bg-emerald-700/30 text-emerald-300 border border-emerald-600/50'
+                    : 'bg-zinc-800 text-zinc-400 border border-zinc-600 hover:text-white hover:bg-zinc-700'
+                }`}
+              >
+                <Shield size={12} />
+                {complianceZoneLoading ? 'Computing...' : 'ICNIRP compliance zones'}
+              </button>
+              {complianceZoneEnabled && complianceZone && (
+                <div className="mt-2 space-y-0.5 text-[10px]">
+                  <div className="text-zinc-500 mb-1">Compliance margin (free-space estimate)</div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: 'rgb(248, 113, 113)' }} />
+                    <span className="text-zinc-400">Exceeded (margin &lt; 0 dB)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: 'rgb(251, 146, 60)' }} />
+                    <span className="text-zinc-400">Near limit (0-3 dB)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: 'rgb(250, 204, 21)' }} />
+                    <span className="text-zinc-400">Caution (3-10 dB)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: 'rgb(74, 222, 128)' }} />
+                    <span className="text-zinc-400">Safe (&gt; 10 dB)</span>
+                  </div>
+                  <div className="text-zinc-600 mt-1">
+                    {complianceZone.n_stations} stations, {(complianceZone.freq_hz_dominant / 1e9).toFixed(1)} GHz dominant
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -257,6 +257,7 @@ export interface ComplianceCheck {
   unit: string
   pass: boolean
   ratio: number
+  margin_db: number | null
 }
 
 export interface ComplianceInfo {
