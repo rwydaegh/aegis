@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import math
 
 import numpy as np
 from flask import Flask, jsonify, request
@@ -12,6 +13,26 @@ from aegis.viewer.server import scoped_cache_get
 logger = logging.getLogger(__name__)
 
 _VALID_SCENARIOS = {"general_public", "occupational"}
+
+
+def _finite_or_none(v):
+    """Replace inf/NaN with None for JSON-safe output."""
+    if isinstance(v, float) and not math.isfinite(v):
+        return None
+    return v
+
+
+def _sanitize_list(lst):
+    """Replace inf/NaN with None in a list (possibly nested)."""
+    out = []
+    for v in lst:
+        if isinstance(v, list):
+            out.append(_sanitize_list(v))
+        elif isinstance(v, float) and not math.isfinite(v):
+            out.append(None)
+        else:
+            out.append(v)
+    return out
 
 
 def register(app: Flask, cache: dict, cache_lock) -> None:
@@ -234,9 +255,9 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         return jsonify(
             {
                 "power_dbm": sweep["power_dbm"].tolist(),
-                "margin_db": sweep["margin_db"].tolist(),
+                "margin_db": _sanitize_list(sweep["margin_db"].tolist()),
                 "compliant": sweep["compliant"].tolist(),
-                "p_max_compliant_w": p_max_w,
+                "p_max_compliant_w": _finite_or_none(float(p_max_w)),
                 "p_max_compliant_dbm": p_max_dbm,
             }
         )
@@ -290,11 +311,11 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             return jsonify({"error": str(e)}), 400
 
         # Flatten 2D arrays for JSON transport (row-major: power varies fastest)
-        margin_flat = result["margin_db"].tolist()
+        margin_flat = _sanitize_list(result["margin_db"].tolist())
         compliant_flat = result["compliant"].tolist()
 
         p_max_per_freq = result["p_max_per_freq"]
-        p_max_dbm_per_freq = (10.0 * np.log10(np.clip(p_max_per_freq, 1e-30, None) * 1e3)).tolist()
+        p_max_dbm_per_freq = _sanitize_list((10.0 * np.log10(np.clip(p_max_per_freq, 1e-30, None) * 1e3)).tolist())
 
         return jsonify(
             {
@@ -348,7 +369,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         return jsonify(
             {
                 "freq_ghz": sweep["freq_ghz"].tolist(),
-                "margin_db": sweep["margin_db"].tolist(),
+                "margin_db": _sanitize_list(sweep["margin_db"].tolist()),
                 "compliant": sweep["compliant"].tolist(),
             }
         )
