@@ -45,6 +45,8 @@ Prune entries older than 7 days.
 - Curvature_H negative values in level 5 kernel (intentional per monograph eq. 47)
 - Fresnel T_avg > T0 near Brewster angle (physically correct, see physics-findings)
 
+- [2026-04-12] code-reviewer: Focus area: test coverage gaps and edge cases. Found 2 bugs and 6 stale tests. (1) **DosimetryResult.__repr__ crashes on empty sab**: `repr()` called `peak_sab` unconditionally, which raises ValueError when `sab.size == 0`. Fixed to show "N/A (empty)". (2) **peak_triangle_index missing empty guard**: unlike `peak_sab`, `peak_triangle_index` had no empty-array guard, causing confusing NumPy ValueError instead of a clear message. Added guard matching `peak_sab`. (3) **4 stale test_coverage_endpoint tests**: `_compute_coverage` was refactored from 10-byte to 12-byte binary records (added region + count fields) and removed the `clusters` key, but tests still expected the old format. Fixed all 4 tests. (4) **Stale E2E MIMO test**: MIMO panel moved from HUD overlay to sidebar accordion, but test expected direct checkbox access. Fixed `_enable_mimo` helper to navigate sidebar first. (5) Added 8 new edge-case tests: complex psi round-trip serialization, multi-component power summation, 3-way concatenate with reindex, peak_triangle_index/repr on empty results. Also reviewed: CoverageMap.tsx 3D marker budget applied before spatial filter (design choice, not bug), Uint8 antenna count cap at 255 (matches server-side clip), heatmap cache key by length only (stale risk but rare). 2382 tests pass.
+
 ## In progress
 
 <!-- Mark what you are working on to avoid collisions. Clear after merge or if stale >6h -->

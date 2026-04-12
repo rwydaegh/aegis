@@ -223,6 +223,41 @@ class TestResultPeakSab:
 
 
 # ===========================================================================
+# Result: peak_triangle_index on empty array
+# ===========================================================================
+
+
+class TestResultPeakTriangleIndex:
+    def test_peak_triangle_index_empty_raises(self):
+        r = DosimetryResult(sab=np.array([]), p_abs=0.0, fidelity_level=2)
+        with pytest.raises(ValueError, match="empty sab"):
+            _ = r.peak_triangle_index
+
+    def test_peak_triangle_index_normal(self):
+        r = DosimetryResult(sab=np.array([1.0, 5.0, 3.0]), p_abs=3.0, fidelity_level=2)
+        assert r.peak_triangle_index == 1
+
+
+# ===========================================================================
+# Result: __repr__ with empty sab
+# ===========================================================================
+
+
+class TestResultRepr:
+    def test_repr_empty_sab_does_not_crash(self):
+        r = DosimetryResult(sab=np.array([]), p_abs=0.0, fidelity_level=2)
+        s = repr(r)
+        assert "N/A" in s
+        assert "DosimetryResult" in s
+
+    def test_repr_normal(self):
+        r = DosimetryResult(sab=np.array([1.0, 2.0]), p_abs=1.5, fidelity_level=3)
+        s = repr(r)
+        assert "peak_sab" in s
+        assert "level=3" in s
+
+
+# ===========================================================================
 # Result: mean_sab
 # ===========================================================================
 
