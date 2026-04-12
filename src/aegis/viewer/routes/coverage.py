@@ -161,7 +161,9 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
     def api_coverage():
         with cache_lock:
             if "coverage_response" in cache:
-                return jsonify(cache["coverage_response"])
+                resp = jsonify(cache["coverage_response"])
+                resp.headers["Cache-Control"] = "public, max-age=3600"
+                return resp
             data_dir = cache.get("data_dir", "data")
 
         merged_dir = Path(data_dir) / "basestations" / "merged"
@@ -181,4 +183,6 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             if "coverage_response" not in cache:
                 cache["coverage_response"] = result
 
-        return jsonify(result)
+        resp = jsonify(result)
+        resp.headers["Cache-Control"] = "public, max-age=3600"
+        return resp
