@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 import type { ScenePos } from '@/api/coordinates'
 import type { DosimetryStats, QuantityKey, ComplianceInfo, ClusterVizItem, SubpathVizItem } from '@/api/types'
 import { useAntennaStore } from '@/stores/antenna'
@@ -116,7 +117,7 @@ interface SimulationStore {
   clearResults: () => void
 }
 
-export const useSimulationStore = create<SimulationStore>((set) => ({
+export const useSimulationStore = create<SimulationStore>()(persist((set) => ({
   antennaPos: null,
   selectedPattern: null,
   patternData: null,
@@ -292,6 +293,21 @@ export const useSimulationStore = create<SimulationStore>((set) => ({
     compliance: stats.compliance ?? null,
   }),
   clearResults: () => set({ sabArray: null, sabAveragedArray: null, sincArray: null, sincAveragedArray: null, sab1cm2AveragedArray: null, stats: null, compliance: null }),
+}), {
+  name: 'aegis-simulation-settings',
+  version: 1,
+  partialize: (state) => ({
+    mode: state.mode,
+    fresnel: state.fresnel,
+    polarisation: state.polarisation,
+    curvature: state.curvature,
+    diffraction: state.diffraction,
+    powerDbm: state.powerDbm,
+    skinModel: state.skinModel,
+    freqGhz: state.freqGhz,
+    exposureMode: state.exposureMode,
+    displayQuantity: state.displayQuantity,
+  }),
 }))
 
 // Bootstrap antenna store from existing antennaPos (config, share link, scenario)
