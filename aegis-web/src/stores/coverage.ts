@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import * as Sentry from '@sentry/react'
 import { fetchCoverage, decodeSitesBinary } from '@/api/coverage'
 import type { RegionSummary } from '@/api/types'
 
@@ -85,7 +86,7 @@ export const useCoverageStore = create<CoverageState>((set, get) => ({
         loading: false,
       })
     } catch (err) {
-      console.error('Failed to fetch coverage data:', err)
+      Sentry.captureException(err)
       set({ error: (err as Error).message, loading: false })
     }
   },

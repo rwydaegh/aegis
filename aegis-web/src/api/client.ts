@@ -40,8 +40,10 @@ export async function fetchWithRetry(
     if (attempt < MAX_RETRIES) {
       const retryAfter = lastResponse?.headers.get('Retry-After')
       const parsed = retryAfter ? parseInt(retryAfter, 10) : NaN
-      const delayMs = Number.isFinite(parsed) ? Math.min(parsed * 1000, 5000) : (attempt + 1) * 1000
-      await new Promise((r) => setTimeout(r, delayMs))
+      const baseDelayMs = Number.isFinite(parsed) ? Math.min(parsed * 1000, 5000) : (attempt + 1) * 1000
+      // Add +/-10% jitter to prevent thundering herd on concurrent retries
+      const jitter = baseDelayMs * (0.9 + Math.random() * 0.2)
+      await new Promise((r) => setTimeout(r, jitter))
     }
   }
   if (lastResponse) return lastResponse

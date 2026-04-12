@@ -37,6 +37,7 @@ import BaseStationMarkers from './BaseStationMarkers'
 import { EnvironmentTerrain } from './EnvironmentTerrain'
 import { LSPHeatmap } from './LSPHeatmap'
 import ClusterPaths from './ClusterPaths'
+import ComplianceRing from './ComplianceRing'
 import { cameraState } from '@/lib/cameraState'
 
 function GroundPlane() {
@@ -434,6 +435,7 @@ export default function SceneRoot() {
             )
           })}
           <DistanceLine />
+          <ComplianceRing />
         </>
       ))}
       {!isCoverageMode && <RayPaths />}
