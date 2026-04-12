@@ -428,8 +428,11 @@ def _handle_basestations_compute(cache: dict, cache_lock: threading.RLock):
     tissue = resolve_skin_model(skin_model, freq_hz)
 
     # Dosimetry engine
+    _VALID_MODES = {"bound", "aggregate", "spatial"}
     engine = DosimetryEngine(tissue)
     mode = params.get("mode", "spatial")
+    if mode not in _VALID_MODES:
+        return jsonify({"error": f"mode must be one of: {', '.join(sorted(_VALID_MODES))}"}), 400
     engine_kw = {"mode": mode, "spatial_averaging": True}
     engine_kw = _inject_curvature_H(engine_kw, transformed_body)
 

@@ -120,6 +120,7 @@ def test_compute_sites_binary(tmp_path):
     assert len(raw) == meta["count"] * 12  # 12 bytes per record
     assert len(meta["operators"]) > 0
     assert len(meta["technologies"]) > 0
+    assert len(meta["region_names"]) > 0
 
     # Parse first record: lat(f4) + lon(f4) + op(u1) + tech(u1) + region(u1) + count(u1)
     lat, lon = struct.unpack_from("<ff", raw, 0)
