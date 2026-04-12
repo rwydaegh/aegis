@@ -635,8 +635,9 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             power_dbm = float(params.get("power_dbm", dcfg["default_power_dbm"]))
         except (TypeError, ValueError):
             return jsonify({"error": "power_dbm must be a number"}), 400
-        if power_dbm < pwr_cfg["min"] or power_dbm > pwr_cfg["max"]:
-            return jsonify({"error": f"power_dbm must be between {pwr_cfg['min']} and {pwr_cfg['max']} dBm"}), 400
+        effective_max = min(pwr_cfg["max"], _MAX_POWER_DBM)
+        if power_dbm < pwr_cfg["min"] or power_dbm > effective_max:
+            return jsonify({"error": f"power_dbm must be between {pwr_cfg['min']} and {effective_max} dBm"}), 400
 
         # Stochastic channel params
         stochastic = None
