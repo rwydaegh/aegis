@@ -21,7 +21,7 @@ _OPERATOR_ALIASES: dict[str, str] = {
 
 
 def normalize_operator(name: str | None) -> str:
-    if name is None or (isinstance(name, float) and math.isnan(name)):
+    if name is None or pd.isna(name):
         return "unknown"
     s = str(name).strip().lower()
     if not s:
