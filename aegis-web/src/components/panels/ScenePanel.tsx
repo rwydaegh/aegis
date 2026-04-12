@@ -140,7 +140,7 @@ export default function ScenePanel() {
               )
             }
           } catch (err) {
-            console.warn('Auto-load base stations failed:', err)
+            Sentry.captureException(err)
           }
         })()
       }

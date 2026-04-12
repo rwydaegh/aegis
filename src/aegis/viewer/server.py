@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import threading
 import uuid
@@ -19,6 +20,8 @@ from aegis.viewer.scene_data import (
     load_voxels_directory,
     voxels_to_binary,
 )
+
+logger = logging.getLogger(__name__)
 
 # Module-level cache
 _cache: dict = {}
@@ -479,7 +482,13 @@ def create_app(
     app = Flask(__name__, template_folder=template_dir)
 
     # Session-based password gate
-    app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-secret-key-change-me")
+    secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-secret-key-change-me")
+    if secret_key == "dev-secret-key-change-me" and os.environ.get("FLASK_ENV") != "development":
+        logger.warning(
+            "FLASK_SECRET_KEY is not set -- using insecure default. "
+            "Set FLASK_SECRET_KEY in the environment for production."
+        )
+    app.secret_key = secret_key
     app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB upload limit
     app.config["SESSION_COOKIE_HTTPONLY"] = True
     app.config["SESSION_COOKIE_SECURE"] = os.environ.get("FLASK_ENV") != "development"

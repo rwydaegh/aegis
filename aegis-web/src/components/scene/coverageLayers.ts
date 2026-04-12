@@ -1,5 +1,6 @@
 import { HeatmapLayer } from '@deck.gl/aggregation-layers'
 import { ScatterplotLayer } from '@deck.gl/layers'
+import type { Layer } from '@deck.gl/core'
 
 // 16-color operator palette (RGBA arrays)
 export const OP_COLORS: [number, number, number, number][] = [
@@ -78,7 +79,7 @@ export function buildCoverageLayers(params: CoverageLayerParams) {
   // Scatter opacity: 0 at zoom<=9, fades to full by zoom 13
   const scatterOpacity = zoom <= 9 ? 0 : zoom >= 13 ? 0.9 : 0.9 * (zoom - 9) / 4
 
-  const layers: any[] = []
+  const layers: Layer[] = []
 
   if (heatmapOpacity > 0) {
     const heatmapData = getHeatmapData(siteLats, siteLons, siteAntennaCounts, siteCount)
