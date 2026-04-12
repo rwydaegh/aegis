@@ -21,6 +21,8 @@ Prune entries older than 7 days.
 - Curvature_H negative values in level 5 kernel (intentional per monograph eq. 47)
 - Fresnel T_avg > T0 near Brewster angle (physically correct, see physics-findings)
 
+- [2026-04-12] code-reviewer: Focus area: compliance checks and limits. Found 1 bug: analysis routes (`/api/compliance/power-sweep`, `/api/compliance/heatmap`, `/api/compliance/frequency-sweep`) produced non-standard JSON containing `Infinity` tokens when compliance margins were infinite (e.g. sub-6 GHz frequencies where S_ab limits don't apply, or zero measured values). JavaScript `JSON.parse()` rejects `Infinity`, so any frontend calling these endpoints with edge-case parameters would get a parse error. Fixed by sanitizing inf/NaN to null before jsonification, consistent with `_json_dumps_safe` used in compute routes. Added 2 regression tests. Also reviewed: all ICNIRP 2020 limit values (Tables 2/5/6) verified correct, `evaluate_compliance` logic correct, `compliance_kwargs` in result.py correct, legacy backward-compat API correct, link budget compliance correct, power/frequency sweep math correct. 180 compliance tests pass.
+
 ## In progress
 
 <!-- Mark what you are working on to avoid collisions. Clear after merge or if stale >6h -->
