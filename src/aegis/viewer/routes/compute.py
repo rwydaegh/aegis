@@ -494,17 +494,38 @@ def _handle_validate_sinc(cache: dict, cache_lock) -> Response:
 def register(app: Flask, cache: dict, cache_lock) -> None:
     """Attach compute routes to *app*."""
 
+    def _safe_int(val, default: int) -> int:
+        """Convert to int, returning *default* on failure."""
+        try:
+            return int(val)
+        except (TypeError, ValueError):
+            return default
+
     def _parse_rt_config(params: dict) -> dict:
         """Extract rt_config from request params, with backward-compatible fallbacks."""
         rt = params.get("rt_config", {})
         if not isinstance(rt, dict):
             rt = {}
+
+        max_depth = _safe_int(rt.get("max_depth", params.get("max_order", 3)), 3)
+        max_depth = max(0, min(max_depth, 10))
+
+        rays_per_source = _safe_int(rt.get("rays_per_source", 1_000_000), 1_000_000)
+        rays_per_source = max(100, min(rays_per_source, 10_000_000))
+
+        max_paths_per_source = _safe_int(rt.get("max_paths_per_source", 1_000_000), 1_000_000)
+        max_paths_per_source = max(100, min(max_paths_per_source, 10_000_000))
+
+        chunk_size = rt.get("chunk_size")
+        if chunk_size is not None:
+            chunk_size = max(1, min(_safe_int(chunk_size, 100_000), 1_000_000))
+
         return {
-            "max_depth": rt.get("max_depth", params.get("max_order", 3)),
+            "max_depth": max_depth,
             "method": rt.get("method", "exhaustive"),
-            "rays_per_source": rt.get("rays_per_source", 1_000_000),
-            "max_paths_per_source": rt.get("max_paths_per_source", 1_000_000),
-            "chunk_size": rt.get("chunk_size"),
+            "rays_per_source": rays_per_source,
+            "max_paths_per_source": max_paths_per_source,
+            "chunk_size": chunk_size,
             "los": rt.get("los", True),
             "specular_reflection": rt.get("specular_reflection", True),
             "diffuse_reflection": rt.get("diffuse_reflection", False),
@@ -614,8 +635,9 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             power_dbm = float(params.get("power_dbm", dcfg["default_power_dbm"]))
         except (TypeError, ValueError):
             return jsonify({"error": "power_dbm must be a number"}), 400
-        if power_dbm < pwr_cfg["min"] or power_dbm > pwr_cfg["max"]:
-            return jsonify({"error": f"power_dbm must be between {pwr_cfg['min']} and {pwr_cfg['max']} dBm"}), 400
+        effective_max = min(pwr_cfg["max"], _MAX_POWER_DBM)
+        if power_dbm < pwr_cfg["min"] or power_dbm > effective_max:
+            return jsonify({"error": f"power_dbm must be between {pwr_cfg['min']} and {effective_max} dBm"}), 400
 
         # Stochastic channel params
         stochastic = None

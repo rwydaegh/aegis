@@ -3,7 +3,7 @@ import { useEffect, useMemo } from 'react'
 import { useGLTF, useAnimations } from '@react-three/drei'
 import { useSceneStore } from '@/stores/scene'
 import { useShallow } from 'zustand/react/shallow'
-import type { Group } from 'three'
+import type { Group, Mesh } from 'three'
 import type React from 'react'
 
 export function useGltfBody(bodyName: string, groupRef: React.RefObject<Group>) {
@@ -26,6 +26,20 @@ export function useGltfBody(bodyName: string, groupRef: React.RefObject<Group>) 
   }, [animationClip, animationPlaying, actions])
 
   const clonedScene = useMemo(() => scene.clone(true), [scene])
+
+  // Dispose previous clone's GPU resources when scene changes
+  useEffect(() => {
+    return () => {
+      clonedScene.traverse((obj) => {
+        const mesh = obj as Mesh
+        if (mesh.geometry) mesh.geometry.dispose()
+        if (mesh.material) {
+          const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+          materials.forEach((m) => m.dispose())
+        }
+      })
+    }
+  }, [clonedScene])
 
   return { scene: clonedScene, actions, mixer }
 }

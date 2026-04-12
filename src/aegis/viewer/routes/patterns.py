@@ -63,6 +63,11 @@ def _handle_search(cache: dict):
     gain_min = _float_arg("gain_min")
     gain_max = _float_arg("gain_max")
 
+    if gain_min is not None and gain_max is not None and gain_min > gain_max:
+        return jsonify({"error": "gain_min must not exceed gain_max"}), 400
+    if freq_min is not None and freq_max is not None and freq_min > freq_max:
+        return jsonify({"error": "freq_min must not exceed freq_max"}), 400
+
     limit_str = request.args.get("limit", "50")
     try:
         limit = int(limit_str)

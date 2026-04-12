@@ -95,16 +95,32 @@ def solve_ecbf(
         p_abs = P * float(np.real(np.sum(eigenvalues * np.abs(x_tilde) ** 2))) / norm_sq
         return p_abs
 
-    # Check if constraint is feasible. As lambda -> inf, x concentrates
-    # in the smallest eigenvalue direction, giving P_abs -> P * lambda_min.
-    # If P * lambda_min > P_abs_max, constraint is infeasible. Return the
-    # minimum-absorption precoder (smallest eigenvector direction).
-    p_abs_min = P * float(eigenvalues[0])  # eigenvalues from eigh are ascending
-    if p_abs_min > P_abs_max:
+    # Compute the true asymptotic minimum P_abs as lambda -> infinity.
+    # When h has a component in the null space of Q, the null-space directions
+    # dominate (their weights stay 1) and p_abs -> 0. Otherwise, the limit is
+    # a weighted average: P * sum(a_k^2/mu_k) / sum(a_k^2/mu_k^2) where
+    # a_k = |h_tilde_k| and mu_k are the nonzero eigenvalues.
+    a_sq = np.abs(h_tilde) ** 2
+    nonzero_mask = eigenvalues > NUMERICAL_FLOOR
+    null_energy = float(np.sum(a_sq[~nonzero_mask]))
+
+    if null_energy > NUMERICAL_FLOOR:
+        # h has a null-space component: as lambda -> inf, x concentrates
+        # there and p_abs -> 0.
+        p_abs_inf = 0.0
+    elif np.any(nonzero_mask):
+        mu_nz = eigenvalues[nonzero_mask]
+        a_sq_nz = a_sq[nonzero_mask]
+        denom = float(np.sum(a_sq_nz / mu_nz**2))
+        p_abs_inf = P * float(np.sum(a_sq_nz / mu_nz)) / denom if denom > NUMERICAL_FLOOR else 0.0
+    else:
+        p_abs_inf = 0.0
+
+    if p_abs_inf > P_abs_max:
         # Infeasible: return smallest-eigenvalue direction
         warnings.warn(
             "ECBF constraint infeasible: minimum achievable P_abs "
-            f"({p_abs_min:.4g} W) exceeds P_abs_max ({P_abs_max:.4g} W); "
+            f"({p_abs_inf:.4g} W) exceeds P_abs_max ({P_abs_max:.4g} W); "
             "returning minimum-absorption precoder",
             stacklevel=2,
         )
@@ -144,7 +160,7 @@ def solve_ecbf(
     x_conj = V @ x_tilde
     norm = np.sqrt(float(np.real(np.vdot(x_conj, x_conj))))
     if norm < NUMERICAL_FLOOR:
-        return xp.asarray(x_mrt)
+        return xp.asarray(np.sqrt(P) * V[:, 0])
 
     x_star = np.sqrt(P) * x_conj / norm
     return xp.asarray(x_star)

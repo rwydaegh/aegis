@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import shutil
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 class EnvironmentCache:
@@ -20,7 +23,12 @@ class EnvironmentCache:
             )
             cache_dir = base
         self._dir = Path(cache_dir) / "environments"
-        self._dir.mkdir(parents=True, exist_ok=True)
+        self._enabled = True
+        try:
+            self._dir.mkdir(parents=True, exist_ok=True)
+        except OSError as e:
+            logger.warning("Cannot create environment cache at %s: %s. Caching disabled.", self._dir, e)
+            self._enabled = False
 
     def _key(
         self,
@@ -42,6 +50,8 @@ class EnvironmentCache:
         radius: float,
         options: dict,
     ) -> dict | None:
+        if not self._enabled:
+            return None
         path = self._dir / f"{self._key(source, lat, lon, radius, options)}.json"
         if not path.exists():
             return None
@@ -58,6 +68,8 @@ class EnvironmentCache:
         data: dict,
         meta: dict,
     ) -> None:
+        if not self._enabled:
+            return
         path = self._dir / f"{self._key(source, lat, lon, radius, options)}.json"
         with open(path, "w") as f:
             json.dump({"data": data, "meta": meta}, f)
@@ -71,6 +83,8 @@ class EnvironmentCache:
         options: dict,
     ) -> tuple[bytes, dict] | None:
         """Return cached (binary_blob, meta) or None if not cached."""
+        if not self._enabled:
+            return None
         key = self._key(source, lat, lon, radius, options)
         bin_path = self._dir / f"{key}.bin"
         meta_path = self._dir / f"{key}.meta.json"
@@ -93,6 +107,8 @@ class EnvironmentCache:
         meta: dict,
     ) -> None:
         """Cache a binary blob with its metadata."""
+        if not self._enabled:
+            return
         key = self._key(source, lat, lon, radius, options)
         bin_path = self._dir / f"{key}.bin"
         meta_path = self._dir / f"{key}.meta.json"
@@ -102,6 +118,8 @@ class EnvironmentCache:
             json.dump(meta, f)
 
     def clear(self) -> None:
+        if not self._enabled:
+            return
         if self._dir.exists():
             shutil.rmtree(self._dir)
             self._dir.mkdir(parents=True, exist_ok=True)

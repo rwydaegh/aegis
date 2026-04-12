@@ -27,6 +27,17 @@ class TestNormalizeOperator:
     def test_empty_returns_unknown(self):
         assert normalize_operator("") == "unknown"
 
+    def test_float_nan_returns_unknown(self):
+        assert normalize_operator(float("nan")) == "unknown"
+
+    def test_pd_na_returns_unknown(self):
+        assert normalize_operator(pd.NA) == "unknown"
+
+    def test_numpy_nan_returns_unknown(self):
+        import numpy as np
+
+        assert normalize_operator(np.nan) == "unknown"
+
 
 class TestSpatialDedup:
     def test_nearby_same_operator_same_band_merges(self):

@@ -85,7 +85,7 @@ function CoverageHudInner() {
               <label className="text-zinc-500 block mb-1">Color by</label>
               <select
                 value={colorMode}
-                onChange={e => setColorMode(e.target.value as any)}
+                onChange={e => setColorMode(e.target.value as 'density' | 'operator' | 'technology' | 'region')}
                 className="w-full bg-zinc-800 border border-zinc-600 rounded text-xs px-2 py-1 text-white"
               >
                 <option value="density">Density heatmap</option>

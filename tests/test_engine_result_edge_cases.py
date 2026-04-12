@@ -1109,3 +1109,66 @@ class TestEvaluateComplianceEmptyArrays:
         )
         result = r.evaluate_compliance()
         assert result is not None
+
+
+# ===========================================================================
+# Result: compliance_kwargs with body
+# ===========================================================================
+
+
+class TestComplianceKwargsWithBody:
+    """Test compliance_kwargs sinc_wb computation with body argument."""
+
+    def test_sinc_wb_computed_with_valid_body(self):
+        """sinc_wb should be area-weighted mean of sinc when body is given."""
+        sinc = np.array([10.0, 20.0])
+        body = BodyMesh.from_arrays(
+            vertices=np.array(
+                [
+                    [[0, 0, 0], [1, 0, 0], [0, 1, 0]],
+                    [[0, 0, 0], [2, 0, 0], [0, 2, 0]],
+                ],
+                dtype=float,
+            ),
+        )
+        r = DosimetryResult(
+            sab=np.array([5.0, 8.0]),
+            p_abs=1.0,
+            fidelity_level=2,
+            sinc=sinc,
+            freq_hz=28e9,
+        )
+        kw = r.compliance_kwargs(body=body)
+        expected_wb = float(np.sum(sinc * body.areas) / np.sum(body.areas))
+        assert kw["sinc_whole_body"] == pytest.approx(expected_wb)
+
+    def test_sinc_wb_none_when_areas_all_zero(self):
+        """sinc_wb should be None (not NaN/inf) when body areas are all zero."""
+        # Degenerate triangle: all vertices at origin -> area = 0
+        body = BodyMesh(
+            vertices=np.array([[[0, 0, 0], [0, 0, 0], [0, 0, 0]]], dtype=float),
+            normals=np.array([[0, 0, 1]], dtype=float),
+            centroids=np.array([[0, 0, 0]], dtype=float),
+            areas=np.array([0.0]),
+        )
+        r = DosimetryResult(
+            sab=np.array([5.0]),
+            p_abs=1.0,
+            fidelity_level=2,
+            sinc=np.array([10.0]),
+            freq_hz=28e9,
+        )
+        kw = r.compliance_kwargs(body=body)
+        assert kw["sinc_whole_body"] is None
+
+    def test_sinc_wb_none_when_no_body(self):
+        """sinc_wb should be None when body is not provided."""
+        r = DosimetryResult(
+            sab=np.array([5.0]),
+            p_abs=1.0,
+            fidelity_level=2,
+            sinc=np.array([10.0]),
+            freq_hz=28e9,
+        )
+        kw = r.compliance_kwargs()
+        assert kw["sinc_whole_body"] is None
