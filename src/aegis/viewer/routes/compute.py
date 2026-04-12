@@ -494,24 +494,31 @@ def _handle_validate_sinc(cache: dict, cache_lock) -> Response:
 def register(app: Flask, cache: dict, cache_lock) -> None:
     """Attach compute routes to *app*."""
 
+    def _safe_int(val, default: int) -> int:
+        """Convert to int, returning *default* on failure."""
+        try:
+            return int(val)
+        except (TypeError, ValueError):
+            return default
+
     def _parse_rt_config(params: dict) -> dict:
         """Extract rt_config from request params, with backward-compatible fallbacks."""
         rt = params.get("rt_config", {})
         if not isinstance(rt, dict):
             rt = {}
 
-        max_depth = int(rt.get("max_depth", params.get("max_order", 3)))
+        max_depth = _safe_int(rt.get("max_depth", params.get("max_order", 3)), 3)
         max_depth = max(0, min(max_depth, 10))
 
-        rays_per_source = int(rt.get("rays_per_source", 1_000_000))
+        rays_per_source = _safe_int(rt.get("rays_per_source", 1_000_000), 1_000_000)
         rays_per_source = max(100, min(rays_per_source, 10_000_000))
 
-        max_paths_per_source = int(rt.get("max_paths_per_source", 1_000_000))
+        max_paths_per_source = _safe_int(rt.get("max_paths_per_source", 1_000_000), 1_000_000)
         max_paths_per_source = max(100, min(max_paths_per_source, 10_000_000))
 
         chunk_size = rt.get("chunk_size")
         if chunk_size is not None:
-            chunk_size = max(1, min(int(chunk_size), 1_000_000))
+            chunk_size = max(1, min(_safe_int(chunk_size, 100_000), 1_000_000))
 
         return {
             "max_depth": max_depth,
