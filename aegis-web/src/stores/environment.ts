@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import * as Sentry from '@sentry/react'
 import { fetchWithRetry, parseJsonHeader } from '@/api/client'
 import type { ScenePos } from '@/api/coordinates'
+import { useSceneStore } from '@/stores/scene'
 
 export type EnvironmentSource = 'none' | 'voxels' | 'osm' | '3dtiles' | 'cesium' | 'coverage'
 
@@ -210,7 +211,6 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
     if (!location) return
     const controller = freshAbort(get, set)
     set({ loading: true, error: null })
-    const { useSceneStore } = await import('@/stores/scene')
     useSceneStore.getState().setSceneGeometry(null)
     useSceneStore.getState().setLoadedScenePath('')
     useSceneStore.getState().setVoxelData(null)
@@ -254,7 +254,6 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
     if (!location) return
     const controller = freshAbort(get, set)
     set({ loading: true, error: null })
-    const { useSceneStore } = await import('@/stores/scene')
     useSceneStore.getState().setSceneGeometry(null)
     useSceneStore.getState().setLoadedScenePath('')
     useSceneStore.getState().setVoxelData(null)
