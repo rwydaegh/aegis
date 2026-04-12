@@ -257,7 +257,7 @@ def _handle_basestations_load(cache: dict, cache_lock: threading.RLock):
                 bbox=bbox,
                 operator=params.get("operator"),
                 technology=params.get("technology"),
-                max_workers=int(params.get("max_workers", 4)),
+                max_workers=max(1, min(int(params.get("max_workers", 4)), 16)),
             )
     except ImportError:
         available = _list_available_regions(data_dir)
@@ -377,8 +377,8 @@ def _handle_basestations_compute(cache: dict, cache_lock: threading.RLock):
         max_distance_m = float(params.get("max_distance_m", 2000))
     except (TypeError, ValueError):
         return jsonify({"error": "max_distance_m must be a number"}), 400
-    if max_distance_m <= 0:
-        return jsonify({"error": "max_distance_m must be positive"}), 400
+    if max_distance_m <= 0 or max_distance_m > 50_000:
+        return jsonify({"error": "max_distance_m must be between 0 and 50000"}), 400
     paths = paths_from_basestations(
         selected,
         body_center,
