@@ -85,7 +85,6 @@ def _compute_coverage(
                 "completeness": round(completeness, 2),
             }
         )
-        df = df.copy()
         df["_region_idx"] = region_idx
         all_dfs.append(df)
 
