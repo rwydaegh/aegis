@@ -59,21 +59,29 @@ def _encode_sab(sab: np.ndarray) -> str:
     return base64.b64encode(np.asarray(sab, dtype=np.float32).tobytes()).decode()
 
 
+def _safe_int(val, default: int) -> int:
+    """Convert to int, returning *default* on failure."""
+    try:
+        return int(val)
+    except (TypeError, ValueError):
+        return default
+
+
 def _parse_rt_config(params: dict, cache: dict) -> dict[str, Any]:
     """Extract RT config for placement evaluation."""
     rt = params.get("rt_config", {})
     if not isinstance(rt, dict):
         rt = {}
 
-    max_depth = int(rt.get("max_depth", params.get("max_order", 3)))
+    max_depth = _safe_int(rt.get("max_depth", params.get("max_order", 3)), 3)
     max_depth = max(0, min(max_depth, 10))
 
-    rays_per_source = int(rt.get("rays_per_source", 1_000_000))
+    rays_per_source = _safe_int(rt.get("rays_per_source", 1_000_000), 1_000_000)
     rays_per_source = max(100, min(rays_per_source, 10_000_000))
 
     chunk_size = rt.get("chunk_size")
     if chunk_size is not None:
-        chunk_size = max(1, min(int(chunk_size), 1_000_000))
+        chunk_size = max(1, min(_safe_int(chunk_size, 100_000), 1_000_000))
 
     return {
         "max_depth": max_depth,
@@ -148,7 +156,7 @@ def _build_config(params: dict, app: Flask, cache: dict, cache_lock) -> dict:
     if mode not in _VALID_MODES:
         raise ValueError(f"mode must be one of {sorted(_VALID_MODES)}")
 
-    max_iters = int(params.get("max_iters", 50))
+    max_iters = _safe_int(params.get("max_iters", 50), 50)
     max_iters = max(1, min(max_iters, 10_000))
     config: dict[str, Any] = {"mode": mode, "max_iters": max_iters}
 
@@ -211,7 +219,7 @@ def _build_config(params: dict, app: Flask, cache: dict, cache_lock) -> dict:
     elif mode == "placement":
         config["center"] = np.array(params.get("center", [5, 0, 3]))
 
-        grid_size = int(params.get("grid_size", 5))
+        grid_size = _safe_int(params.get("grid_size", 5), 5)
         grid_size = max(1, min(grid_size, 50))
         config["grid_size"] = grid_size
 

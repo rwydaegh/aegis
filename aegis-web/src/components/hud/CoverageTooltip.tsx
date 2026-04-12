@@ -9,7 +9,7 @@ export function CoverageTooltip() {
   const siteAntennaCounts = useCoverageStore(s => s.siteAntennaCounts)
   const operatorNames = useCoverageStore(s => s.operatorNames)
 
-  if (hoveredIndex == null || !coords || !siteLats || !siteOpIndices || !siteAntennaCounts) return null
+  if (hoveredIndex == null || !coords || !siteLats || !siteLons || !siteOpIndices || !siteAntennaCounts) return null
 
   const lat = siteLats[hoveredIndex]
   const lon = siteLons![hoveredIndex]
