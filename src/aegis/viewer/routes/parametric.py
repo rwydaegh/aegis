@@ -34,6 +34,8 @@ def register(app, cache, cache_lock):
 
         pose = params.get("pose")
         if pose is not None:
+            if not isinstance(pose, list) or len(pose) > 600:
+                return jsonify({"error": "pose must be a list with at most 600 elements"}), 400
             pose = np.array(pose, dtype=np.float64)
             if pose.size > 500 or not np.all(np.isfinite(pose)):
                 return jsonify({"error": "pose must contain at most 500 finite values"}), 400

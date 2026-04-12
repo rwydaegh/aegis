@@ -128,6 +128,12 @@ def _handle_basestations_load(cache: dict, cache_lock: threading.RLock):
                 address = result.raw.get("address", {})
         except (GeopyError, Exception) as e:
             logger.warning("Reverse geocoding failed for (%s, %s): %s", params["lat"], params["lon"], e)
+            return jsonify(
+                {
+                    "error": f"Could not determine country for coordinates ({params['lat']}, {params['lon']}). "
+                    "Provide an explicit 'country' parameter."
+                }
+            ), 502
 
     # Build bbox from lat/lon/radius or use explicit bbox
     bbox = params.get("bbox")
