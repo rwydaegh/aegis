@@ -95,7 +95,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                             return
                 except Exception as e:
                     logger.exception("Pipeline execution failed")
-                    yield f"event: error\ndata: ERROR: Pipeline failed: {e}\n\n"
+                    err_type = type(e).__name__
+                    yield f"event: error\ndata: ERROR: Pipeline failed ({err_type}). Check server logs.\n\n"
                     return
 
             # Load voxels from output directory
@@ -129,7 +130,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                 yield f"event: done\ndata: {json.dumps(meta)}\n\n"
             except Exception as e:
                 logger.exception("Voxel loading failed in SSE stream")
-                yield f"event: error\ndata: Voxel load failed: {e}\n\n"
+                err_type = type(e).__name__
+                yield f"event: error\ndata: Voxel load failed ({err_type}). Check server logs.\n\n"
 
         return Response(
             generate(),

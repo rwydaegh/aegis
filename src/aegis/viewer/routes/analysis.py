@@ -11,6 +11,8 @@ from aegis.viewer.server import scoped_cache_get
 
 logger = logging.getLogger(__name__)
 
+_VALID_SCENARIOS = {"general_public", "occupational"}
+
 
 def register(app: Flask, cache: dict, cache_lock) -> None:
     """Register analysis-related API routes."""
@@ -30,6 +32,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             return jsonify({"error": "freq_hz must be positive"}), 400
 
         scenario_str = request.args.get("scenario", "general_public")
+        if scenario_str not in _VALID_SCENARIOS:
+            return jsonify({"error": f"scenario must be one of {sorted(_VALID_SCENARIOS)}"}), 400
         scenario = ExposureScenario.OCCUPATIONAL if scenario_str == "occupational" else ExposureScenario.GENERAL_PUBLIC
 
         try:
@@ -200,6 +204,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             return jsonify({"error": "freq_hz must be positive"}), 400
 
         scenario_str = request.args.get("scenario", "general_public")
+        if scenario_str not in _VALID_SCENARIOS:
+            return jsonify({"error": f"scenario must be one of {sorted(_VALID_SCENARIOS)}"}), 400
         scenario = ExposureScenario.OCCUPATIONAL if scenario_str == "occupational" else ExposureScenario.GENERAL_PUBLIC
 
         n_points = request.args.get("n_points", 50, type=int)
@@ -255,6 +261,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             return jsonify({"error": "freq_hz must be positive"}), 400
 
         scenario_str = request.args.get("scenario", "general_public")
+        if scenario_str not in _VALID_SCENARIOS:
+            return jsonify({"error": f"scenario must be one of {sorted(_VALID_SCENARIOS)}"}), 400
         scenario = ExposureScenario.OCCUPATIONAL if scenario_str == "occupational" else ExposureScenario.GENERAL_PUBLIC
 
         sinc_local = request.args.get("sinc_local", type=float)
@@ -314,6 +322,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             return jsonify({"error": "At least one of sab_4cm2, sab_1cm2, or sar_wb is required"}), 400
 
         scenario_str = request.args.get("scenario", "general_public")
+        if scenario_str not in _VALID_SCENARIOS:
+            return jsonify({"error": f"scenario must be one of {sorted(_VALID_SCENARIOS)}"}), 400
         scenario = ExposureScenario.OCCUPATIONAL if scenario_str == "occupational" else ExposureScenario.GENERAL_PUBLIC
 
         sinc_local = request.args.get("sinc_local", type=float)
