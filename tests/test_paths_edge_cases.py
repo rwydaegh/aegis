@@ -587,3 +587,83 @@ class TestProperties:
         )
         expected = psi_mag**2 / (2 * Z_0)
         assert paths.power[0] == pytest.approx(expected, rel=1e-14)
+
+    def test_power_complex_psi_uses_modulus(self):
+        """power = sum(|psi_i|^2) / (2*Z_0) for complex psi with both real and imag."""
+        a, b = 2.0, 1.5  # real and imaginary parts
+        k = np.array([[0.0, 0.0, -1.0]])
+        psi = np.zeros((1, 3), dtype=complex)
+        psi[0, 0] = complex(a, b)
+        paths = PropagationPaths(
+            k_hat=k,
+            psi=psi,
+            element_index=np.array([0], dtype=np.intp),
+            delay=np.zeros(1),
+            is_los=np.ones(1, dtype=bool),
+        )
+        expected = (a**2 + b**2) / (2 * Z_0)
+        assert paths.power[0] == pytest.approx(expected, rel=1e-14)
+
+    def test_power_multi_component_psi_sums_axes(self):
+        """power sums |psi|^2 across all 3 polarisation components."""
+        k = np.array([[0.0, 0.0, -1.0]])
+        psi = np.array([[1.0 + 2j, 3.0 + 0j, 0.0 + 1j]])
+        paths = PropagationPaths(
+            k_hat=k,
+            psi=psi,
+            element_index=np.array([0], dtype=np.intp),
+            delay=np.zeros(1),
+            is_los=np.ones(1, dtype=bool),
+        )
+        expected = (1**2 + 2**2 + 3**2 + 0**2 + 0**2 + 1**2) / (2 * Z_0)
+        assert paths.power[0] == pytest.approx(expected, rel=1e-14)
+
+
+# ---------------------------------------------------------------------------
+# 8. Complex psi serialization round-trip
+# ---------------------------------------------------------------------------
+
+
+class TestComplexPsiRoundTrip:
+    def test_roundtrip_nonzero_imaginary_psi(self):
+        """to_dict/from_dict preserves non-zero imaginary psi components."""
+        k = np.array([[0.0, 0.0, -1.0], [0.0, 1.0, 0.0]])
+        psi = np.array([[1.0 + 2j, 0.5 - 0.3j, 0.0 + 1j], [3.0 + 0j, 0.0 + 0j, -1.0 + 0.5j]])
+        paths = PropagationPaths(
+            k_hat=k,
+            psi=psi,
+            element_index=np.array([0, 1], dtype=np.intp),
+            delay=np.zeros(2),
+            is_los=np.ones(2, dtype=bool),
+        )
+        restored = PropagationPaths.from_dict(paths.to_dict())
+        np.testing.assert_allclose(restored.psi.real, psi.real, rtol=1e-14)
+        np.testing.assert_allclose(restored.psi.imag, psi.imag, rtol=1e-14)
+        np.testing.assert_allclose(restored.power, paths.power, rtol=1e-14)
+
+
+# ---------------------------------------------------------------------------
+# 9. Concatenate with 3+ paths and reindex
+# ---------------------------------------------------------------------------
+
+
+class TestConcatenateThreeWay:
+    def test_reindex_three_paths(self):
+        """Concatenating 3 path objects with reindex_elements=True gives disjoint indices."""
+        parts = []
+        for _i in range(3):
+            k = np.array([[0.0, 0.0, -1.0], [0.0, 1.0, 0.0]])
+            psi = np.zeros((2, 3), dtype=complex)
+            paths = PropagationPaths(
+                k_hat=k,
+                psi=psi,
+                element_index=np.array([0, 1], dtype=np.intp),
+                delay=np.zeros(2),
+                is_los=np.ones(2, dtype=bool),
+            )
+            parts.append(paths)
+        combined = PropagationPaths.concatenate(parts, reindex_elements=True)
+        assert combined.n_paths == 6
+        # Each part had n_elements=2, so indices should be [0,1, 2,3, 4,5]
+        expected = np.array([0, 1, 2, 3, 4, 5], dtype=np.intp)
+        np.testing.assert_array_equal(combined.element_index, expected)
