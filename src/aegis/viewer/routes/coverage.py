@@ -91,7 +91,12 @@ def _compute_coverage(
     if not all_dfs:
         return {
             "regions": [],
-            "sites_meta": {"count": 0, "operators": [], "technologies": [], "region_names": []},
+            "sites_meta": {
+                "count": 0,
+                "operators": [],
+                "technologies": [],
+                "region_names": [],
+            },
             "sites_b64": "",
         }
 
