@@ -21,6 +21,8 @@ Prune entries older than 7 days.
 - Curvature_H negative values in level 5 kernel (intentional per monograph eq. 47)
 - Fresnel T_avg > T0 near Brewster angle (physically correct, see physics-findings)
 
+- [2026-04-12] code-reviewer: Focus area: kernels and physics correctness. Verified all six core equations against monograph (T0, depth coupling weight, rho, ECBF optimal precoder, curvature correction, physical GELU) - all match. Verified: curvature_H clamping to non-negative is correct (PO correction only valid for convex surfaces, monograph confirms). Fresnel edge cases at grazing incidence thoroughly tested, 1e-10 guard correct. Level 5 vs level 6 activation function difference (ReLU vs GELU) intentional and consistent with composability analysis. Coherent sinc computation, exposure operator Q, eigendecomposition, and ECBF bisection solver all correct. 1841 tests pass, lint clean. No bugs found. The kernels and coherent pipeline are solid.
+
 ## In progress
 
 <!-- Mark what you are working on to avoid collisions. Clear after merge or if stale >6h -->
