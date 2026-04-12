@@ -88,10 +88,11 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             status = "PASS" if c.get("pass") else "FAIL"
             lines.append(f"  {c['label']}: {c['value']:.2f} / {c['limit']:.2f} {c['unit']}  [{status}]")
 
-        overall = last.get("overall_pass", True)
+        overall = last.get("overall_pass")
         margin = last.get("margin_db")
         lines.append("")
-        lines.append(f"Overall: {'PASS' if overall else 'FAIL'}")
+        overall_str = "N/A" if overall is None else ("PASS" if overall else "FAIL")
+        lines.append(f"Overall: {overall_str}")
         if margin is not None:
             lines.append(f"Margin: {margin:+.1f} dB")
 
