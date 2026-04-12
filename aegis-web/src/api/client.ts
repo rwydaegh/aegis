@@ -251,11 +251,11 @@ export async function fetchBody(
   return { binary, meta }
 }
 
-export async function fetchVoxels(): Promise<{
+export async function fetchVoxels(signal?: AbortSignal): Promise<{
   binary: { positions: Float32Array; sizes: Float32Array; colors: Uint8Array; materialIndices: Uint8Array }
   meta: VoxelMeta
 }> {
-  const res = await getBinary('/api/voxels')
+  const res = await getBinary('/api/voxels', signal)
 
   const meta = parseJsonHeader<VoxelMeta>(res.headers.get('X-Meta'), 'X-Meta')
 

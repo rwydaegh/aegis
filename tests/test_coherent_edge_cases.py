@@ -158,6 +158,38 @@ class TestEcbfEdgeCases:
         assert power == pytest.approx(P, rel=1e-5)
         assert x.shape == (M_ant,)
 
+    def test_infeasible_h_in_range_of_singular_Q(self):
+        """When Q has null space and h has no null-space component, the true
+        minimum P_abs can be much larger than P * lambda_min(Q). The solver
+        must detect this and warn rather than silently violating the constraint.
+        """
+        rng = np.random.default_rng(42)
+        M_ant = 6
+
+        # Rank-3 Q with 3 zero eigenvalues
+        eigvals = np.array([0.0, 0.0, 0.0, 1.0, 5.0, 10.0])
+        V = np.linalg.qr(rng.standard_normal((M_ant, M_ant)) + 1j * rng.standard_normal((M_ant, M_ant)))[0]
+        Q = (V * eigvals[None, :]) @ V.conj().T
+        Q = (Q + Q.conj().T) / 2
+
+        # h entirely in the range of Q (no null-space component)
+        h_tilde = np.array([0.0, 0.0, 0.0, 1.0 + 0.5j, 2.0 - 1j, 0.5 + 0.3j])
+        h = (V @ h_tilde).conj()
+
+        P = 1.0
+        P_abs_max = 0.5  # below the true asymptotic minimum (~1.46 W)
+
+        with pytest.warns(UserWarning, match="infeasible"):
+            x = solve_ecbf(h, Q, P_abs_max=P_abs_max, P=P)
+
+        # Result must not violate the constraint
+        p_abs = float(np.real(x.conj() @ Q @ x))
+        assert p_abs <= P_abs_max + 1e-6
+
+        # Must return a valid power-normalised vector
+        power = float(np.real(np.vdot(x, x)))
+        assert power == pytest.approx(P, rel=1e-5)
+
 
 # ---------------------------------------------------------------------------
 # Exposure operator edge cases

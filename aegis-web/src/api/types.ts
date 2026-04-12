@@ -228,6 +228,7 @@ export interface Capabilities {
   voxel_meta: VoxelMeta | null
   has_location_loader: boolean
   has_api_key: boolean
+  has_coverage: boolean
   google_api_key: string
   google_map_id: string
   cesium_ion_token: string
