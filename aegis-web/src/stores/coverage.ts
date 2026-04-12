@@ -1,7 +1,9 @@
 import { create } from 'zustand'
 import * as Sentry from '@sentry/react'
 import { fetchCoverage, decodeSitesBinary } from '@/api/coverage'
+import { fetchSpatialCompliance } from '@/api/client'
 import type { RegionSummary } from '@/api/types'
+import type { SpatialComplianceResult } from '@/api/client'
 
 interface CoverageState {
   enabled: boolean
@@ -26,6 +28,11 @@ interface CoverageState {
   selectedSiteIndex: number | null
   colorMode: 'density' | 'operator' | 'technology' | 'region'
 
+  // Compliance zone overlay
+  complianceZone: SpatialComplianceResult | null
+  complianceZoneEnabled: boolean
+  complianceZoneLoading: boolean
+
   fetch: () => Promise<void>
   retry: () => Promise<void>
   setEnabled: (v: boolean) => void
@@ -35,6 +42,9 @@ interface CoverageState {
   setHoveredScreenCoords: (coords: { x: number; y: number } | null) => void
   setSelectedSiteIndex: (index: number | null) => void
   setColorMode: (mode: 'density' | 'operator' | 'technology' | 'region') => void
+  setComplianceZoneEnabled: (v: boolean) => void
+  fetchComplianceZone: (bbox?: [number, number, number, number]) => Promise<void>
+  clearComplianceZone: () => void
 }
 
 export const useCoverageStore = create<CoverageState>((set, get) => ({
@@ -59,6 +69,10 @@ export const useCoverageStore = create<CoverageState>((set, get) => ({
   hoveredScreenCoords: null,
   selectedSiteIndex: null,
   colorMode: 'density',
+
+  complianceZone: null,
+  complianceZoneEnabled: false,
+  complianceZoneLoading: false,
 
   fetch: async () => {
     if (get().loaded || get().loading) return
@@ -103,4 +117,17 @@ export const useCoverageStore = create<CoverageState>((set, get) => ({
   setHoveredScreenCoords: (coords) => set({ hoveredScreenCoords: coords }),
   setSelectedSiteIndex: (index) => set({ selectedSiteIndex: index }),
   setColorMode: (mode) => set({ colorMode: mode }),
+  setComplianceZoneEnabled: (v) => set({ complianceZoneEnabled: v }),
+  fetchComplianceZone: async (bbox) => {
+    if (get().complianceZoneLoading) return
+    set({ complianceZoneLoading: true })
+    try {
+      const result = await fetchSpatialCompliance({ bbox, resolution: 80 })
+      set({ complianceZone: result, complianceZoneLoading: false })
+    } catch (err) {
+      console.error('Spatial compliance fetch failed:', err)
+      set({ complianceZoneLoading: false })
+    }
+  },
+  clearComplianceZone: () => set({ complianceZone: null }),
 }))
