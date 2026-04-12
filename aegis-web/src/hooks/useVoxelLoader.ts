@@ -11,7 +11,10 @@ export function useVoxelLoader() {
   useEffect(() => {
     if (!caps?.has_voxels) return
 
-    fetchVoxels().then(({ binary, meta }) => {
+    const controller = new AbortController()
+
+    fetchVoxels(controller.signal).then(({ binary, meta }) => {
+      if (controller.signal.aborted) return
       useSceneStore.setState({
         voxelData: { ...binary, meta },
         layerVisibility: Object.fromEntries(meta.materials.map(m => [m, true])),
@@ -32,6 +35,7 @@ export function useVoxelLoader() {
         useSimulationStore.getState().setBodyOffset(bp)
       }
     }).catch(err => {
+      if ((err as Error).name === 'AbortError') return
       const msg = (err as Error).message ?? ''
       // 404 means voxels were cleared from the backend (cache clear, server restart,
       // worker mismatch). This is expected during scene transitions, not a real error.
@@ -45,5 +49,7 @@ export function useVoxelLoader() {
       Sentry.captureException(err)
       useNotificationStore.getState().addNotification('error', `Failed to load voxels: ${msg}`)
     })
+
+    return () => { controller.abort() }
   }, [caps?.has_voxels])
 }
