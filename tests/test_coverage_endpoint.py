@@ -86,6 +86,24 @@ def test_compute_regions_bbox_from_data(tmp_path):
     assert max_lon > 3.0
 
 
+def test_compute_sites_binary_large(tmp_path):
+    """Sites are encoded as base64 binary with 12-byte records (200 unique sites)."""
+    from aegis.viewer.routes.coverage import _compute_coverage
+
+    _make_test_parquet(tmp_path, "clustered", n=200)
+    regions_cfg = {"clustered": {"sources": [{"bbox": [3.0, 4.0, 50.0, 51.0]}]}}
+    yaml_path = _make_test_regions_yaml(tmp_path, regions_cfg)
+
+    result = _compute_coverage(tmp_path / "merged", yaml_path)
+    meta = result["sites_meta"]
+    raw = base64.b64decode(result["sites_b64"])
+
+    assert meta["count"] > 0
+    assert meta["count"] <= 200
+    # 12 bytes per record: lat(f4) + lon(f4) + op(u1) + tech(u1) + region(u1) + count(u1)
+    assert len(raw) == meta["count"] * 12
+
+
 def test_compute_sites_binary(tmp_path):
     """Sites are encoded as base64 binary with correct 12-byte record format."""
     from aegis.viewer.routes.coverage import _compute_coverage
