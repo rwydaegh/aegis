@@ -111,12 +111,16 @@ def _handle_basestations_load(cache: dict, cache_lock: threading.RLock):
     elif "lat" in params and "lon" in params and not params.get("country"):
         # Reverse-geocode to determine country when only lat/lon provided
         try:
+            _lat = float(params["lat"])
+            _lon = float(params["lon"])
+            if not (-90 <= _lat <= 90) or not (-180 <= _lon <= 180):
+                return jsonify({"error": "lat must be in [-90,90] and lon in [-180,180]"}), 400
             from geopy.exc import GeopyError
             from geopy.geocoders import Nominatim
 
             geolocator = Nominatim(user_agent="aegis-viewer", timeout=10)
             result = geolocator.reverse(
-                (float(params["lat"]), float(params["lon"])),
+                (_lat, _lon),
                 addressdetails=True,
                 language="en",
             )

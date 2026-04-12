@@ -51,7 +51,7 @@ def _compute_coverage(
             use_cols = [c for c in _NEEDED if c in schema_cols]
             df = pd.read_parquet(str(pq), columns=use_cols)
         except Exception:
-            logger.warning("Corrupt parquet %s, skipping", pq)
+            logger.exception("Failed to read parquet %s, skipping", pq)
             continue
 
         # Bbox: read from first source, or compute from data
@@ -85,7 +85,6 @@ def _compute_coverage(
                 "completeness": round(completeness, 2),
             }
         )
-        df = df.copy()
         df["_region_idx"] = region_idx
         all_dfs.append(df)
 

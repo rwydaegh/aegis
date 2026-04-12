@@ -133,7 +133,12 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 def _build_config(params: dict, app: Flask, cache: dict, cache_lock) -> dict:
     """Parse request params into optimizer config dict."""
     mode = params["mode"]
-    config: dict[str, Any] = {"mode": mode, "max_iters": params.get("max_iters", 50)}
+    _VALID_MODES = {"mimo_peak", "tilt_power", "placement"}
+    if mode not in _VALID_MODES:
+        raise ValueError(f"mode must be one of {sorted(_VALID_MODES)}")
+    raw_iters = params.get("max_iters", 50)
+    max_iters = min(max(int(raw_iters), 1), 500)
+    config: dict[str, Any] = {"mode": mode, "max_iters": max_iters}
 
     if mode == "mimo_peak":
         if "G_tilde_real" in params:
@@ -193,7 +198,7 @@ def _build_config(params: dict, app: Flask, cache: dict, cache_lock) -> dict:
 
     elif mode == "placement":
         config["center"] = np.array(params.get("center", [5, 0, 3]))
-        config["grid_size"] = params.get("grid_size", 5)
+        config["grid_size"] = min(max(int(params.get("grid_size", 5)), 1), 20)
         config["grid_spacing"] = params.get("grid_spacing", 2.0)
         config["constraint_axis"] = params.get("constraint_axis")
         config["constraint_value"] = params.get("constraint_value")

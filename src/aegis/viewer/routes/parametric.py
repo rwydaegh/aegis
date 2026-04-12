@@ -17,10 +17,26 @@ def register(app, cache, cache_lock):
         params = request.get_json(silent=True) or {}
         model_type = params.get("model", "smplx")
         gender = params.get("gender", "neutral")
-        betas = np.array(params.get("betas", [0.0] * 10), dtype=np.float64)
+
+        _VALID_MODELS = {"smplx", "anny"}
+        _VALID_GENDERS = {"neutral", "male", "female"}
+        if model_type not in _VALID_MODELS:
+            return jsonify({"error": f"model must be one of {sorted(_VALID_MODELS)}"}), 400
+        if gender not in _VALID_GENDERS:
+            return jsonify({"error": f"gender must be one of {sorted(_VALID_GENDERS)}"}), 400
+
+        raw_betas = params.get("betas", [0.0] * 10)
+        if not isinstance(raw_betas, list) or len(raw_betas) > 300:
+            return jsonify({"error": "betas must be a list of at most 300 values"}), 400
+        betas = np.array(raw_betas, dtype=np.float64)
+        if not np.all(np.isfinite(betas)):
+            return jsonify({"error": "betas must contain finite values"}), 400
+
         pose = params.get("pose")
         if pose is not None:
             pose = np.array(pose, dtype=np.float64)
+            if pose.size > 500 or not np.all(np.isfinite(pose)):
+                return jsonify({"error": "pose must contain at most 500 finite values"}), 400
 
         try:
             pb = ParametricBody.load(model_type, gender)
