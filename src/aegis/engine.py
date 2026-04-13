@@ -305,8 +305,8 @@ class DosimetryEngine:
         if level is None and mode is None:
             level = 2
 
-        if body_mass is not None and body_mass <= 0:
-            raise ValueError("body_mass must be positive when provided")
+        if body_mass is not None and (not np.isfinite(body_mass) or body_mass <= 0):
+            raise ValueError("body_mass must be positive (and finite) when provided")
 
         active_freq_hz, active_n_tilde, active_T0, active_sigma = self._active_em_params(freq_hz)
 

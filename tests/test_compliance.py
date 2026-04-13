@@ -982,3 +982,28 @@ class TestEvaluateComplianceSub6GHz:
         r = evaluate_compliance(freq_hz=3.5e9, sar_wb=0.1)
         assert r.overall_pass is False
         assert r.sar_wb.compliant is False
+
+
+# -----------------------------------------------------------------------
+# NaN/inf frequency validation
+# -----------------------------------------------------------------------
+
+
+class TestFrequencyNonFiniteValidation:
+    def test_nan_freq_raises(self) -> None:
+        """NaN frequency must be rejected by _validate_freq."""
+        with pytest.raises(ValueError, match="finite"):
+            icnirp_limits(freq_hz=float("nan"))
+
+    def test_inf_freq_raises(self) -> None:
+        """Inf frequency must be rejected."""
+        with pytest.raises(ValueError, match="finite"):
+            icnirp_limits(freq_hz=float("inf"))
+
+    def test_neg_inf_freq_raises(self) -> None:
+        with pytest.raises(ValueError, match="finite"):
+            icnirp_limits(freq_hz=float("-inf"))
+
+    def test_nan_freq_in_evaluate_compliance_raises(self) -> None:
+        with pytest.raises(ValueError, match="finite"):
+            evaluate_compliance(freq_hz=float("nan"), sab_4cm2=10.0)

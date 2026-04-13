@@ -126,4 +126,7 @@ def xi_from_mu(mu, n_tilde):
 
 def T0(n_tilde: complex) -> float:
     """Normal-incidence power transmission."""
-    return float(4 * np.real(n_tilde) / abs(1 + n_tilde) ** 2)
+    denom = abs(1 + n_tilde) ** 2
+    if denom == 0:
+        raise ValueError(f"Cannot compute T0: |1 + n_tilde|^2 = 0 for n_tilde={n_tilde}")
+    return float(4 * np.real(n_tilde) / denom)
