@@ -13,19 +13,13 @@ from aegis._array_backend import JAX_AVAILABLE, xp
 
 
 def _accumulate_by_element_numpy(weighted, element_index, M, n_elements):
-    """NumPy: sort-and-slice accumulation (contiguous memory access)."""
+    """NumPy: scatter-add accumulation via np.add.at (no Python loop)."""
     G = np.zeros((M, 3, n_elements), dtype=complex)
     N = len(element_index)
     if N == 0:
         return G
-    order = np.argsort(element_index, kind="mergesort")
-    sorted_idx = element_index[order]
-    sorted_w = weighted[:, order, :]
-    bounds = np.searchsorted(sorted_idx, np.arange(n_elements + 1))
-    for e in range(n_elements):
-        lo, hi = bounds[e], bounds[e + 1]
-        if lo < hi:
-            G[:, :, e] = sorted_w[:, lo:hi, :].sum(axis=1)
+    weighted_t = weighted.transpose(0, 2, 1)  # (M, 3, N)
+    np.add.at(G, (slice(None), slice(None), element_index), weighted_t)
     return G
 
 
