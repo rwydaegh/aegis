@@ -36,6 +36,20 @@ def test_bug_report_missing_screenshot(client):
     assert "screenshot" in resp.get_json()["error"].lower()
 
 
+@patch.dict(os.environ, {"GITHUB_ISSUES_TOKEN": "", "GITHUB_TOKEN": ""}, clear=False)
+def test_bug_report_no_token(client):
+    resp = client.post(
+        "/api/bug-report",
+        json={
+            "screenshot": "data:image/jpeg;base64,/9j/4AAQ",
+            "description": "something broke",
+        },
+    )
+    assert resp.status_code == 503
+    assert "token" in resp.get_json()["error"].lower()
+
+
+@patch.dict(os.environ, {"GITHUB_ISSUES_TOKEN": "ghp_fake_token_for_test"})
 @patch("aegis.viewer.routes.bugreport._upload_screenshot_to_github")
 @patch("aegis.viewer.routes.bugreport._create_github_issue")
 def test_bug_report_success(mock_create_issue, mock_upload, client):

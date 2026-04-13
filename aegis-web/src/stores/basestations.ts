@@ -133,6 +133,8 @@ export const useBaseStationsStore = create<BaseStationsState>((set, get) => ({
   clear: () => set({
     basestations: [],
     origin: null,
+    isLoading: false,
+    isComputing: false,
     enabledOperators: new Set(),
     enabledTechnologies: new Set(),
     enabledFrequencyBands: new Set(),
