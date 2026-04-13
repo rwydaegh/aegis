@@ -135,11 +135,11 @@ function BugReporterModal({
     <>
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/50 z-50 pointer-events-auto"
+        className="absolute inset-0 bg-black/50 z-[60] pointer-events-auto"
         onClick={phase === 'submitting' ? undefined : onClose}
       />
       {/* Dialog */}
-      <div className="absolute inset-0 flex items-center justify-center z-50 pointer-events-none">
+      <div className="absolute inset-0 flex items-center justify-center z-[60] pointer-events-none">
         <div
           className={cn(
             'bg-card/95 backdrop-blur-md rounded-xl border border-border shadow-2xl',

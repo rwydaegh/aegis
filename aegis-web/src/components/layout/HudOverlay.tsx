@@ -116,8 +116,8 @@ export default function HudOverlay() {
         </HudToggle>
       </div>
 
-      {/* Bug reporter button - bottom right, above camera widget */}
-      <div className="absolute bottom-28 right-3 pointer-events-auto">
+      {/* Bug reporter button - z-30 so it floats above WelcomeOverlay (z-20) */}
+      <div className="absolute bottom-28 right-3 z-30 pointer-events-auto">
         <BugReporter />
       </div>
 
