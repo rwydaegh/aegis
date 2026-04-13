@@ -112,6 +112,8 @@ def _handle_load(cache: dict, source: str, pattern_id: str):
         pattern = lib.load_pattern(source, pattern_id)
     except KeyError:
         return jsonify({"error": f"Pattern not found: {pattern_id}"}), 404
+    except FileNotFoundError as exc:
+        return jsonify({"error": str(exc)}), 404
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
     except Exception as exc:

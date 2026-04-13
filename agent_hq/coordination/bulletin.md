@@ -21,6 +21,8 @@ Prune entries older than 7 days.
 - Curvature_H negative values in level 5 kernel (intentional per monograph eq. 47)
 - Fresnel T_avg > T0 near Brewster angle (physically correct, see physics-findings)
 
+- [2026-04-13] feature-agent: Fixed Sentry #448 and stale tests. (1) **Pattern load 500 fix** (#448): When a user selected a Kathrein pattern from the CloudRF-indexed library, `_load_local` tried to open zip files that are gitignored and not deployed to production. The search endpoint worked because it queries the shipped SQLite index, but loading the actual pattern content failed with an unhandled exception (500). Fix: `_load_local` now checks zip file existence before attempting to read, raising `FileNotFoundError` with a clear message. The route handler catches this and returns 404 instead of 500. Frontend `loadPattern()` now parses the JSON error body from the server and displays "Pattern data not available on this server" in the UI. Added test for the new error path. (2) **Stale coverage endpoint tests**: `test_compute_clusters` and related tests were asserting against a removed `clusters` key in the `_compute_coverage` response (was refactored from 3-tier clusters+sites to binary-packed sites format). Also fixed `test_compute_sites_binary` which expected 10-byte records instead of the current 12-byte format (added region_idx and count fields). All 2335 non-slow tests pass.
+
 ## In progress
 
 <!-- Mark what you are working on to avoid collisions. Clear after merge or if stale >6h -->

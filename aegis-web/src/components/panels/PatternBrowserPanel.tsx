@@ -12,6 +12,7 @@ export default function PatternBrowserPanel() {
   const [results, setResults] = useState<PatternSearchResult[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const selectedPattern = useSimulationStore(s => s.selectedPattern)
@@ -61,11 +62,13 @@ export default function PatternBrowserPanel() {
       gain_dbi: r.gain_dbi,
     })
     setPatternLoading(true)
+    setLoadError(null)
     try {
       const { data, meta } = await loadPattern(r.source, r.id)
       setPatternData(data, meta)
     } catch (err) {
       console.error('Failed to load pattern:', err)
+      setLoadError((err as Error).message)
       setPatternData(null, null)
     } finally {
       setPatternLoading(false)
@@ -106,6 +109,11 @@ export default function PatternBrowserPanel() {
               <span className="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
               Loading pattern...
             </div>
+          )}
+          {loadError && !patternLoading && (
+            <p className="text-xs text-destructive py-2">
+              Pattern data not available on this server.
+            </p>
           )}
           {patternData && patternMeta && !patternLoading && (
             <>

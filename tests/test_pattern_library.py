@@ -100,3 +100,18 @@ def test_search_result_fields(library: AntennaPatternLibrary) -> None:
     assert r.frequency_mhz == 2100.0
     assert r.gain_dbi == 15.0
     assert r.tilt_deg == 0.0
+
+
+def test_load_missing_zip_raises_file_not_found(library: AntennaPatternLibrary) -> None:
+    """FileNotFoundError when zip files are missing from disk."""
+    library.build_index()
+    results = library.search(query="Model_A")
+    pattern_id = results[0].id
+
+    # Remove all zip files so load cannot find the source data
+    msi_dir = Path(library._data_dir) / "antenna_patterns" / "msi_raw"
+    for zf in msi_dir.glob("*.zip"):
+        zf.unlink()
+
+    with pytest.raises(FileNotFoundError, match="not available"):
+        library.load_pattern(source="local", pattern_id=pattern_id)
