@@ -167,6 +167,14 @@ class TestFrequencyValidation:
         with pytest.raises(ValueError):
             icnirp_limits(freq_hz=-10.0e9)
 
+    def test_nan_raises(self) -> None:
+        with pytest.raises(ValueError, match="finite"):
+            icnirp_limits(freq_hz=float("nan"))
+
+    def test_inf_raises(self) -> None:
+        with pytest.raises(ValueError, match="finite"):
+            icnirp_limits(freq_hz=float("inf"))
+
 
 # -----------------------------------------------------------------------
 # ComplianceCheck
@@ -700,6 +708,14 @@ class TestLinkBudgetCompliance:
     def test_invalid_frequency_raises(self) -> None:
         with pytest.raises(ValueError, match="outside"):
             link_budget_compliance(tx_power_w=0.001, distance_m=1.0, freq_hz=50e3)
+
+    def test_nan_frequency_raises(self) -> None:
+        with pytest.raises(ValueError, match="finite"):
+            link_budget_compliance(tx_power_w=0.001, distance_m=1.0, freq_hz=float("nan"))
+
+    def test_inf_frequency_raises(self) -> None:
+        with pytest.raises(ValueError, match="finite"):
+            link_budget_compliance(tx_power_w=0.001, distance_m=1.0, freq_hz=float("inf"))
 
     def test_returns_expected_keys(self) -> None:
         result = link_budget_compliance(tx_power_w=0.001, distance_m=1.0, freq_hz=_VALID_FREQ)

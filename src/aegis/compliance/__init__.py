@@ -199,6 +199,8 @@ _FREQ_1CM2_THRESHOLD_HZ = 30.0e9  # 1 cm^2 limit only above 30 GHz
 
 def _validate_freq(freq_hz: float) -> None:
     """Raise ValueError if freq outside the ICNIRP 2020 range (100 kHz to 300 GHz)."""
+    if not math.isfinite(freq_hz):
+        raise ValueError(f"Frequency must be finite, got {freq_hz}")
     if freq_hz < _FREQ_MIN_HZ or freq_hz > _FREQ_MAX_HZ:
         raise ValueError(f"Frequency {freq_hz / 1e9:.6g} GHz is outside the ICNIRP 2020 range (100 kHz to 300 GHz)")
 
