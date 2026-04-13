@@ -10,7 +10,8 @@ import math
 import numpy as np
 import pytest
 
-from aegis.basestation.adapter import _safe_float, _sanitize_label, paths_from_basestation
+from aegis.basestation.adapter import paths_from_basestation
+from aegis.basestation.utils import _safe_float, _sanitize_label
 from aegis.basestation.antenna import AntennaPattern, BaseStation
 from aegis.basestation.coords import enu_to_wgs84, wgs84_to_enu
 from aegis.basestation.orientation import (

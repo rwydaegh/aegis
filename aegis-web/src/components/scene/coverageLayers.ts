@@ -45,13 +45,14 @@ export interface CoverageLayerParams {
   onSiteClick: (info: any) => void
 }
 
-// Cache heatmap data array to avoid rebuilding 416K objects on every zoom change
+// Cache heatmap data array to avoid rebuilding 416K objects on every zoom change.
+// Use the underlying ArrayBuffer identity as cache key so different datasets
+// with the same byte length and count do not produce stale cache hits.
 let _cachedHeatmapData: { position: [number, number]; weight: number }[] | null = null
-let _cachedHeatmapKey: string | null = null
+let _cachedHeatmapBuffer: ArrayBufferLike | null = null
 
 function getHeatmapData(siteLats: Float32Array, siteLons: Float32Array, siteAntennaCounts: Uint8Array, siteCount: number) {
-  const key = `${siteLats.byteLength}-${siteCount}`
-  if (_cachedHeatmapData && _cachedHeatmapKey === key && _cachedHeatmapData.length === siteCount) {
+  if (_cachedHeatmapData && _cachedHeatmapBuffer === siteLats.buffer && _cachedHeatmapData.length === siteCount) {
     return _cachedHeatmapData
   }
   const data: { position: [number, number]; weight: number }[] = new Array(siteCount)
@@ -62,7 +63,7 @@ function getHeatmapData(siteLats: Float32Array, siteLons: Float32Array, siteAnte
     }
   }
   _cachedHeatmapData = data
-  _cachedHeatmapKey = key
+  _cachedHeatmapBuffer = siteLats.buffer
   return data
 }
 

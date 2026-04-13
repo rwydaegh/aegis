@@ -14,7 +14,7 @@ from aegis.basestation.provenance import (
     CONFIDENCE_SCORES,
     FieldSource,
 )
-from aegis.basestation.utils import _safe_float, _sanitize_label
+from aegis.basestation.utils import _sanitize_label
 
 logger = logging.getLogger(__name__)
 
@@ -110,63 +110,105 @@ def dataframe_to_basestations(
     with_provenance: bool = False,
 ) -> list[BaseStation]:
     patterns = patterns or {}
-    result = []
-    for _, row in df.iterrows():
-        site = str(row.get("SiteCode", ""))
-        label = str(row.get("AntennaLabel", ""))
+    n = len(df)
+    if n == 0:
+        return []
+
+    # Pre-extract columns as arrays for fast iteration (avoids iterrows overhead)
+    def _col(name: str, default: str = "") -> np.ndarray:
+        if name in df.columns:
+            return df[name].fillna(default).to_numpy()
+        return np.full(n, default)
+
+    def _col_float(name: str, default: float) -> np.ndarray:
+        if name in df.columns:
+            return pd.to_numeric(df[name], errors="coerce").fillna(default).to_numpy(dtype=np.float64)
+        return np.full(n, default, dtype=np.float64)
+
+    sites = _col("SiteCode")
+    labels = _col("AntennaLabel")
+    operators = _col("Operator")
+    technologies = _col("Technology")
+    latitudes = df["Latitude"].to_numpy(dtype=np.float64)
+    longitudes = df["Longitude"].to_numpy(dtype=np.float64)
+    heights = _col_float("CenterHeight", 10.0)
+    powers = _col_float("Power", 30.0)
+    gains = _col_float("Gain", 0.0)
+    freqs = _col_float("Frequency", 2100.0)
+    azimuths = _col_float("Azimuth", 0.0)
+    e_tilts = _col_float("Electrical_Tilt", 0.0)
+    m_tilts = _col_float("Mechanical_Tilt", 0.0)
+    hbws = _col_float("Horizontal_Beamwidth", 65.0)
+    vbws = _col_float("Vertical_Beamwidth", 10.0)
+    freq_bands = _col("FrequencyBand")
+    pattern_sources_col = _col("Pattern_source") if "Pattern_source" in df.columns else None
+
+    # Pre-extract provenance source columns
+    prov_src_cols: list[tuple[str, str, np.ndarray]] | None = None
+    if with_provenance:
+        prov_src_cols = []
+        for col in _PROVENANCE_COLUMNS:
+            src_col = f"{col}_source"
+            field_name = COLUMN_TO_FIELD.get(col, col)
+            if src_col in df.columns:
+                prov_src_cols.append((field_name, src_col, df[src_col].fillna("missing").to_numpy()))
+
+    result: list[BaseStation] = [None] * n  # type: ignore[list-item]
+    for i in range(n):
+        site = str(sites[i])
+        label = str(labels[i])
+        key = _sanitize_label(f"{site}_{label}")
+
         pattern = None
         pattern_source = ""
-        key = _sanitize_label(f"{site}_{label}")
         if key in patterns:
             matrix = np.array(patterns[key], dtype=np.float32)
             if matrix.shape == (181, 360):
                 pattern = AntennaPattern(gain_dbi=matrix, max_gain_dbi=float(np.nanmax(matrix)))
-                pattern_source = str(row.get("Pattern_source", "gov"))
-        gain = _safe_float(row.get("Gain"), 0.0)
+                pattern_source = str(pattern_sources_col[i]) if pattern_sources_col is not None else "gov"
+
+        gain = float(gains[i])
         if pattern is None:
-            hbw = _safe_float(row.get("Horizontal_Beamwidth"), 0.0)
-            vbw = _safe_float(row.get("Vertical_Beamwidth"), 0.0)
+            hbw = float(hbws[i])
+            vbw = float(vbws[i])
             if hbw > 0 and vbw > 0 and gain > 0:
                 pattern = synthetic_pattern_from_beamwidth(hbw, vbw, gain)
                 pattern_source = "synthetic:gaussian"
-        if not pattern_source and "Pattern_source" in df.columns:
-            pattern_source = str(row.get("Pattern_source", ""))
+
+        if not pattern_source and pattern_sources_col is not None:
+            pattern_source = str(pattern_sources_col[i])
+
         prov: tuple[tuple[str, FieldSource], ...] = ()
-        if with_provenance:
-            prov_list = []
-            for col in _PROVENANCE_COLUMNS:
-                src_col = f"{col}_source"
-                field_name = COLUMN_TO_FIELD.get(col, col)
-                if src_col in df.columns:
-                    src_val = str(row.get(src_col, "missing"))
-                    conf = _confidence_for_source(src_val)
-                    prov_list.append((field_name, FieldSource(origin=src_val, confidence=conf)))
-            prov = tuple(prov_list)
-        fb = str(row.get("FrequencyBand", ""))
-        if fb == "nan" or pd.isna(row.get("FrequencyBand")):
-            fb = ""
-        result.append(
-            BaseStation(
-                site_code=site,
-                antenna_label=label,
-                operator=str(row.get("Operator", "")),
-                technology=str(row.get("Technology", "")),
-                latitude=float(row["Latitude"]),
-                longitude=float(row["Longitude"]),
-                height_m=_safe_float(row.get("CenterHeight"), 10.0),
-                eirp_dbm=_safe_float(row.get("Power"), 30.0),
-                gain_dbi=gain,
-                freq_mhz=_safe_float(row.get("Frequency"), 2100.0),
-                azimuth_deg=_safe_float(row.get("Azimuth"), 0.0),
-                electrical_tilt_deg=_safe_float(row.get("Electrical_Tilt"), 0.0),
-                mechanical_tilt_deg=_safe_float(row.get("Mechanical_Tilt"), 0.0),
-                horizontal_beamwidth_deg=_safe_float(row.get("Horizontal_Beamwidth"), 65.0),
-                vertical_beamwidth_deg=_safe_float(row.get("Vertical_Beamwidth"), 10.0),
-                pattern=pattern,
-                frequency_band=fb,
-                provenance=prov,
-                pattern_source=pattern_source,
+        if prov_src_cols is not None:
+            prov = tuple(
+                (field_name, FieldSource(origin=str(src_arr[i]), confidence=_confidence_for_source(str(src_arr[i]))))
+                for field_name, _, src_arr in prov_src_cols
             )
+
+        fb = str(freq_bands[i])
+        if fb == "nan":
+            fb = ""
+
+        result[i] = BaseStation(
+            site_code=site,
+            antenna_label=label,
+            operator=str(operators[i]),
+            technology=str(technologies[i]),
+            latitude=float(latitudes[i]),
+            longitude=float(longitudes[i]),
+            height_m=float(heights[i]),
+            eirp_dbm=float(powers[i]),
+            gain_dbi=gain,
+            freq_mhz=float(freqs[i]),
+            azimuth_deg=float(azimuths[i]),
+            electrical_tilt_deg=float(e_tilts[i]),
+            mechanical_tilt_deg=float(m_tilts[i]),
+            horizontal_beamwidth_deg=float(hbws[i]),
+            vertical_beamwidth_deg=float(vbws[i]),
+            pattern=pattern,
+            frequency_band=fb,
+            provenance=prov,
+            pattern_source=pattern_source,
         )
     logger.info("Converted %d rows to BaseStation objects", len(result))
     return result

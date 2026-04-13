@@ -12,7 +12,7 @@ from aegis.basestation.coords import wgs84_to_enu
 from aegis.basestation.orientation import departure_to_antenna_local
 from aegis.basestation.pattern import synthetic_pattern_from_beamwidth
 from aegis.basestation.power import ExposureMode, effective_eirp_dbm, eirp_to_tx_power_w
-from aegis.basestation.utils import _safe_float, _sanitize_label
+from aegis.basestation.utils import _sanitize_label
 from aegis.paths import PropagationPaths
 
 logger = logging.getLogger(__name__)
@@ -34,14 +34,46 @@ def load_basestations_from_df(
     list of BaseStation
     """
     patterns = patterns or {}
-    result = []
+    n = len(df)
+    if n == 0:
+        return []
 
-    for _, row in df.iterrows():
-        site = str(row.get("SiteCode", ""))
-        label = str(row.get("AntennaLabel", ""))
+    # Pre-extract columns as arrays (avoids per-row Series construction)
+    def _col(name: str, default: str = "") -> np.ndarray:
+        if name in df.columns:
+            return df[name].fillna(default).to_numpy()
+        return np.full(n, default)
+
+    def _col_float(name: str, default: float) -> np.ndarray:
+        if name in df.columns:
+            return pd.to_numeric(df[name], errors="coerce").fillna(default).to_numpy(dtype=np.float64)
+        return np.full(n, default, dtype=np.float64)
+
+    sites = _col("SiteCode")
+    labels = _col("AntennaLabel")
+    operators = _col("Operator")
+    technologies = _col("Technology")
+    latitudes = df["Latitude"].to_numpy(dtype=np.float64)
+    longitudes = df["Longitude"].to_numpy(dtype=np.float64)
+    heights = _col_float("CenterHeight", 10.0)
+    powers = _col_float("Power", 30.0)
+    gains_arr = _col_float("Gain", 0.0)
+    freqs = _col_float("Frequency", 2100.0)
+    azimuths = _col_float("Azimuth", 0.0)
+    e_tilts = _col_float("Electrical_Tilt", 0.0)
+    m_tilts = _col_float("Mechanical_Tilt", 0.0)
+    hbws = _col_float("Horizontal_Beamwidth", 65.0)
+    vbws = _col_float("Vertical_Beamwidth", 10.0)
+    freq_bands = _col("FrequencyBand")
+
+    result: list[BaseStation] = [None] * n  # type: ignore[list-item]
+    n_patterned = 0
+
+    for i in range(n):
+        site = str(sites[i])
+        label = str(labels[i])
         key = _sanitize_label(f"{site}_{label}")
 
-        # Try to find pattern
         pattern = None
         if key in patterns:
             matrix = np.array(patterns[key], dtype=np.float32)
@@ -51,42 +83,40 @@ def load_basestations_from_df(
                     max_gain_dbi=float(np.nanmax(matrix)),
                 )
 
-        # Frequency band
-        fb = str(row.get("FrequencyBand", ""))
-        if fb == "nan" or pd.isna(row.get("FrequencyBand")):
+        fb = str(freq_bands[i])
+        if fb == "nan":
             fb = ""
 
-        # If no measured pattern, synthesize from beamwidth
-        gain = _safe_float(row.get("Gain"), 0.0)
+        gain = float(gains_arr[i])
         if pattern is None:
-            hbw = _safe_float(row.get("Horizontal_Beamwidth"), 0.0)
-            vbw = _safe_float(row.get("Vertical_Beamwidth"), 0.0)
+            hbw = float(hbws[i])
+            vbw = float(vbws[i])
             if hbw > 0 and vbw > 0 and gain > 0:
                 pattern = synthetic_pattern_from_beamwidth(hbw, vbw, gain)
 
-        result.append(
-            BaseStation(
-                site_code=site,
-                antenna_label=label,
-                operator=str(row.get("Operator", "")),
-                technology=str(row.get("Technology", "")),
-                latitude=float(row["Latitude"]),
-                longitude=float(row["Longitude"]),
-                height_m=_safe_float(row.get("CenterHeight"), 10.0),
-                eirp_dbm=_safe_float(row.get("Power"), 30.0),
-                gain_dbi=gain,
-                freq_mhz=_safe_float(row.get("Frequency"), 2100.0),
-                azimuth_deg=_safe_float(row.get("Azimuth"), 0.0),
-                electrical_tilt_deg=_safe_float(row.get("Electrical_Tilt"), 0.0),
-                mechanical_tilt_deg=_safe_float(row.get("Mechanical_Tilt"), 0.0),
-                horizontal_beamwidth_deg=_safe_float(row.get("Horizontal_Beamwidth"), 65.0),
-                vertical_beamwidth_deg=_safe_float(row.get("Vertical_Beamwidth"), 10.0),
-                pattern=pattern,
-                frequency_band=fb,
-            )
+        if pattern is not None:
+            n_patterned += 1
+
+        result[i] = BaseStation(
+            site_code=site,
+            antenna_label=label,
+            operator=str(operators[i]),
+            technology=str(technologies[i]),
+            latitude=float(latitudes[i]),
+            longitude=float(longitudes[i]),
+            height_m=float(heights[i]),
+            eirp_dbm=float(powers[i]),
+            gain_dbi=gain,
+            freq_mhz=float(freqs[i]),
+            azimuth_deg=float(azimuths[i]),
+            electrical_tilt_deg=float(e_tilts[i]),
+            mechanical_tilt_deg=float(m_tilts[i]),
+            horizontal_beamwidth_deg=float(hbws[i]),
+            vertical_beamwidth_deg=float(vbws[i]),
+            pattern=pattern,
+            frequency_band=fb,
         )
 
-    n_patterned = sum(1 for b in result if b.pattern is not None)
     logger.info("Loaded %d base stations (%d with patterns)", len(result), n_patterned)
     return result
 

@@ -60,7 +60,7 @@ export const useCoverageStore = create<CoverageState>((set, get) => ({
   colorMode: 'density',
 
   fetch: async () => {
-    if (get().loaded || get().loading) return
+    if ((get().loaded && !get().error) || get().loading) return
     set({ loading: true, error: null })
     try {
       const data = await fetchCoverage()
