@@ -55,16 +55,16 @@ jobs:
         id: focus
         run: |
           AREAS=(
-            "kernels and physics correctness"
-            "viewer backend routes and API"
-            "geometry and mesh operations"
-            "tissue properties and Fresnel"
-            "coherent MIMO and ECBF"
-            "compliance checks and limits"
-            "integration bridges (DiffeRT, Sionna)"
-            "test coverage gaps and edge cases"
-            "error handling and input validation"
-            "type safety and API contracts"
+            "React components: state management, error boundaries, stale closures, missing cleanup"
+            "viewer feature completeness: trace user flows end-to-end, find dead code paths and unfinished features"
+            "frontend data flow: Zustand store updates, API response handling, loading/error states"
+            "viewer backend routes and API edge cases"
+            "integration bridges (DiffeRT, Sionna) and ray tracing pipeline"
+            "error handling and input validation at system boundaries"
+            "physics kernels and compliance (all levels, ECBF, spatial averaging, ICNIRP limits)"
+            "base station pipeline: scrapers, adapters, merge, coverage computation"
+            "3D scene: Three.js resource lifecycle, geometry disposal, camera state, rendering"
+            "type safety and API contracts across frontend and backend"
           )
           INDEX=$((RANDOM % ${#AREAS[@]}))
           echo "area=${AREAS[$INDEX]}" >> "$GITHUB_OUTPUT"
