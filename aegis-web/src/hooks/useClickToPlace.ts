@@ -5,14 +5,30 @@ import { useMIMOStore } from '@/stores/mimo'
 import { useAntennaStore } from '@/stores/antenna'
 
 /**
- * Returns onPointerDown/onPointerUp handlers that place the antenna
- * at the clicked 3D point (if the click wasn't a drag).
+ * Returns pointer handlers that place the antenna at the clicked 3D point,
+ * distinguishing genuine clicks from orbit-control drags.
+ *
+ * Tracks cumulative pointer travel (not just net displacement) so that
+ * circular orbit drags that end near their start point are not mistaken
+ * for clicks.
  */
 export function useClickToPlace() {
   const pointerDownPos = useRef<{ x: number; y: number } | null>(null)
+  const lastMovePos = useRef<{ x: number; y: number } | null>(null)
+  const cumulativeTravel = useRef(0)
 
   const onPointerDown = useCallback((e: ThreeEvent<PointerEvent>) => {
     pointerDownPos.current = { x: e.clientX, y: e.clientY }
+    lastMovePos.current = { x: e.clientX, y: e.clientY }
+    cumulativeTravel.current = 0
+  }, [])
+
+  const onPointerMove = useCallback((e: ThreeEvent<PointerEvent>) => {
+    if (!lastMovePos.current) return
+    const dx = e.clientX - lastMovePos.current.x
+    const dy = e.clientY - lastMovePos.current.y
+    cumulativeTravel.current += Math.sqrt(dx * dx + dy * dy)
+    lastMovePos.current = { x: e.clientX, y: e.clientY }
   }, [])
 
   const onPointerUp = useCallback((e: ThreeEvent<PointerEvent>) => {
@@ -20,12 +36,10 @@ export function useClickToPlace() {
     const config = useSceneStore.getState().viewerConfig
     if (!config) return
 
-    const dx = e.clientX - pointerDownPos.current.x
-    const dy = e.clientY - pointerDownPos.current.y
-    const dist = Math.sqrt(dx * dx + dy * dy)
     const threshold = config.interaction.click_max_drag_px ?? 5
+    const isClick = cumulativeTravel.current <= threshold
 
-    if (dist <= threshold && e.intersections.length > 0) {
+    if (isClick && e.intersections.length > 0) {
       const point = e.intersections[0].point
       const mimoStore = useMIMOStore.getState()
       if (mimoStore.enabled && mimoStore.arrayConfig) {
@@ -55,7 +69,8 @@ export function useClickToPlace() {
       }
     }
     pointerDownPos.current = null
+    lastMovePos.current = null
   }, [])
 
-  return { onPointerDown, onPointerUp }
+  return { onPointerDown, onPointerMove, onPointerUp }
 }
