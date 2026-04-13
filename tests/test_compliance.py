@@ -346,6 +346,10 @@ class TestMarginDb:
         """1 W/m^2 vs 20 W/m^2 limit -> 10*log10(20) dB."""
         assert margin_db(1.0, 20.0) == pytest.approx(10.0 * math.log10(20.0))
 
+    def test_zero_limit_returns_neg_inf(self) -> None:
+        """Zero limit with positive value should return -inf, not crash."""
+        assert margin_db(1.0, 0.0) == float("-inf")
+
 
 # -----------------------------------------------------------------------
 # summary_text
@@ -934,6 +938,11 @@ class TestComplianceCheckEdgeCases:
         """ComplianceCheck.ratio returns inf when limit is zero."""
         c = ComplianceCheck(value=5.0, limit=0.0, unit="W/m^2", label="test")
         assert c.ratio == float("inf")
+
+    def test_margin_db_with_zero_limit(self) -> None:
+        """ComplianceCheck.margin_db returns -inf when limit is zero and value > 0."""
+        c = ComplianceCheck(value=5.0, limit=0.0, unit="W/m^2", label="test")
+        assert c.margin_db == float("-inf")
 
     def test_margin_db_with_zero_value(self) -> None:
         """Zero measured value should return infinite margin (fully compliant)."""

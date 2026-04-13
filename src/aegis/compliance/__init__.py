@@ -113,6 +113,8 @@ class ComplianceCheck:
         """
         if self.value <= 0:
             return float("inf")
+        if self.limit <= 0:
+            return float("-inf")
         return float(10.0 * math.log10(self.limit / self.value))
 
     @property
@@ -371,6 +373,8 @@ def margin_db(value: float, limit: float) -> float:
     """
     if value <= 0:
         raise ValueError("value must be positive")
+    if limit <= 0:
+        return float("-inf")
     return float(10.0 * math.log10(limit / value))
 
 
