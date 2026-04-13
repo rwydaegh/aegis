@@ -11,8 +11,12 @@ inconsistent states. Those silent bugs are the ones only you can catch.
 
 ## Setup
 
+The production site has a password gate. Authenticate first, then test.
+
 ```bash
 npx playwright open --browser chromium https://aegis.waves-ugent.be
+# Fill the password field with: WiCa2026#
+# Then click the submit/enter button to proceed
 npx @playwright/cli resize 1920 1080
 ```
 

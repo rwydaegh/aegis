@@ -15,11 +15,17 @@ AEGIS is and what would make it better. Then do the most valuable work you can.
 
 Priority order (what Robin cares about most):
 
-1. Fix open issues and real bugs (check the open issues list injected below)
-2. New features and capabilities that make AEGIS more useful as a product
-3. Performance improvements in hot paths (kernels, geometry, spatial averaging)
-4. Better error messages, input validation, developer experience
+1. Fix open issues labeled `user-report` or `qa-bot` -- these are real problems
+   spotted by humans using the app. Treat them like Sentry bugs: fix the root cause.
+2. Fix other open issues and real bugs
+3. **Finish and polish existing features** -- the app has many half-baked features.
+   Trace user flows end-to-end. Find things that are broken, incomplete, or confusing.
+   Fix them. This is more valuable than adding new features.
+4. Performance improvements in hot paths (kernels, geometry, spatial averaging)
 5. Code quality improvements that reduce real bug risk
+
+**Do NOT add new user-visible features unless items 1-3 are empty.** The app has
+enough features. What it needs is for existing features to work properly.
 
 We already have ~1600 tests and ~60% coverage. Do NOT write tests unless they
 are for code you just wrote or changed. The test suite is also slow. Do not

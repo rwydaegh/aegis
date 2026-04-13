@@ -45,5 +45,5 @@ EXTRA+='```'
 exec "${REPO_DIR}/agent_hq/local/run-agent.sh" \
     "qa-agent" \
     "agent_hq/prompts/qa-tester.md" \
-    "30" \
+    "240" \
     "$EXTRA"

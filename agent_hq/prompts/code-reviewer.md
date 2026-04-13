@@ -66,3 +66,15 @@ NEVER ask questions. NEVER wait for input. Work autonomously.
 
 Update `agent_hq/coordination/bulletin.md` with what you reviewed and anything
 noteworthy. When you find nothing, that is a fine outcome.
+
+**If you found and fixed bugs:** ship them via the normal PR workflow (see
+`agent_hq/context/how-to-ship.md`). Include the bulletin update in the same PR.
+
+**If you found no bugs:** do NOT create a PR just for the bulletin update. Instead,
+commit the bulletin update directly to master and push:
+```bash
+git add agent_hq/coordination/bulletin.md
+git commit -m "Update agent bulletin for code-review run"
+git push origin master
+```
+This avoids polluting the PR history with no-code bulletin-only PRs.

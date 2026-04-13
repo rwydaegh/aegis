@@ -165,3 +165,7 @@ presentation.zip
 !presentations/group/animations/*.png
 !presentations/group/figures/*.png
 !presentations/promotors/figures/*.png
+
+# Agent local state (not shared)
+agent_hq/local/.last_reviewed.json
+agent_hq/local/logs/
