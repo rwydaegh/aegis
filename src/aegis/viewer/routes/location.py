@@ -33,6 +33,11 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             return jsonify({"error": "radius must be integer, voxel_size must be number"}), 400
         force = request.args.get("force", "false").lower() == "true"
 
+        if not location:
+            return jsonify({"error": "Missing location parameter"}), 400
+        if len(location) > 500:
+            return jsonify({"error": "Location string too long (max 500 characters)"}), 400
+
         if radius <= 0 or radius > 500:
             return jsonify({"error": "radius must be between 1 and 500 meters"}), 400
         if voxel_size <= 0 or voxel_size > 10:
@@ -45,9 +50,6 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         # so resolution = (2 * radius) / voxel_size is a good approximation.
         # Cap at 2000 to prevent resource exhaustion from extreme combinations.
         resolution = min(2000, max(10, round((2 * radius) / voxel_size)))
-
-        if not location:
-            return jsonify({"error": "Missing location parameter"}), 400
 
         api_key = os.environ.get("GOOGLE_API_KEY", "")
         if not api_key:
@@ -95,7 +97,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                             return
                 except Exception as e:
                     logger.exception("Pipeline execution failed")
-                    yield f"event: error\ndata: ERROR: Pipeline failed: {e}\n\n"
+                    err_type = type(e).__name__
+                    yield f"event: error\ndata: ERROR: Pipeline failed ({err_type}). Check server logs.\n\n"
                     return
 
             # Load voxels from output directory
@@ -129,7 +132,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                 yield f"event: done\ndata: {json.dumps(meta)}\n\n"
             except Exception as e:
                 logger.exception("Voxel loading failed in SSE stream")
-                yield f"event: error\ndata: Voxel load failed: {e}\n\n"
+                err_type = type(e).__name__
+                yield f"event: error\ndata: Voxel load failed ({err_type}). Check server logs.\n\n"
 
         return Response(
             generate(),
@@ -143,6 +147,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         q = request.args.get("q", "").strip()
         if not q:
             return jsonify({"error": "Missing q parameter"}), 400
+        if len(q) > 500:
+            return jsonify({"error": "Query too long (max 500 characters)"}), 400
 
         api_key = os.environ.get("GOOGLE_API_KEY", "")
         if not api_key:

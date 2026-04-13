@@ -54,10 +54,22 @@ def page(browser, base_url):
     context.close()
 
 
+def _open_mimo_section(page: Page):
+    """Expand the sidebar and open the MIMO accordion section."""
+    # Click the "Source" group icon in the rail to expand the sidebar panel
+    source_btn = page.get_by_label("Source")
+    source_btn.click()
+    page.wait_for_timeout(300)
+    # Open the MIMO accordion section if not already open
+    mimo_trigger = page.get_by_role("button", name="MIMO")
+    if mimo_trigger.count() > 0:
+        mimo_trigger.first.click()
+        page.wait_for_timeout(300)
+
+
 def _enable_mimo(page: Page):
     """Enable MIMO mode via the sidebar checkbox."""
-    # The MIMO accordion is always visible in the sidebar.
-    # Click the "Enable MIMO mode" checkbox inside it.
+    _open_mimo_section(page)
     checkbox = page.get_by_label("Enable MIMO mode")
     if not checkbox.is_checked():
         checkbox.check()
@@ -76,6 +88,7 @@ class TestMIMOToggle:
     """Test enabling/disabling MIMO mode."""
 
     def test_mimo_checkbox_exists(self, page: Page):
+        _open_mimo_section(page)
         checkbox = page.get_by_label("Enable MIMO mode")
         expect(checkbox).to_be_visible()
 

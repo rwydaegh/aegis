@@ -48,7 +48,7 @@ def _load_phantom_masses() -> dict[str, float]:
 # Cache for curvature computation (expensive, only changes when body changes)
 _curvature_cache: dict = {}
 _curvature_cache_lock = threading.Lock()
-_CURVATURE_CACHE_MAX = 8
+_CURVATURE_CACHE_MAX = 32
 
 
 def _curvature_cache_key(body: BodyMesh) -> int:

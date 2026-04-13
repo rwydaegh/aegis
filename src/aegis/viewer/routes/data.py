@@ -243,6 +243,11 @@ def _handle_config(cache):
     # Merge GLB names into the bodies list so they appear in the dropdown
     all_bodies = sorted(set(bodies) | set(gltf_bodies))
 
+    # Check for coverage data availability
+    data_dir_path = Path(cache.get("data_dir", "data"))
+    regions_yaml = data_dir_path / "basestations" / "regions.yaml"
+    has_coverage = regions_yaml.exists()
+
     return jsonify(
         {
             "bodies": all_bodies,
@@ -262,6 +267,7 @@ def _handle_config(cache):
             "voxel_meta": cache.get("voxel_meta"),
             "has_location_loader": has_pipeline and has_api_key,
             "has_api_key": has_api_key,
+            "has_coverage": has_coverage,
             "google_api_key": os.environ.get("GOOGLE_API_KEY", ""),
             "google_map_id": os.environ.get("GOOGLE_MAP_ID", ""),
             "cesium_ion_token": os.environ.get("CESIUM_ION_TOKEN", ""),

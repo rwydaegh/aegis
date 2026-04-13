@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import math
 
 import numpy as np
 from flask import Flask, jsonify, request
@@ -10,6 +11,28 @@ from flask import Flask, jsonify, request
 from aegis.viewer.server import scoped_cache_get
 
 logger = logging.getLogger(__name__)
+
+_VALID_SCENARIOS = {"general_public", "occupational"}
+
+
+def _finite_or_none(v):
+    """Replace inf/NaN with None for JSON-safe output."""
+    if isinstance(v, float) and not math.isfinite(v):
+        return None
+    return v
+
+
+def _sanitize_list(lst):
+    """Replace inf/NaN with None in a list (possibly nested)."""
+    out = []
+    for v in lst:
+        if isinstance(v, list):
+            out.append(_sanitize_list(v))
+        elif isinstance(v, float) and not math.isfinite(v):
+            out.append(None)
+        else:
+            out.append(v)
+    return out
 
 
 def register(app: Flask, cache: dict, cache_lock) -> None:
@@ -30,6 +53,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             return jsonify({"error": "freq_hz must be positive"}), 400
 
         scenario_str = request.args.get("scenario", "general_public")
+        if scenario_str not in _VALID_SCENARIOS:
+            return jsonify({"error": f"scenario must be one of {sorted(_VALID_SCENARIOS)}"}), 400
         scenario = ExposureScenario.OCCUPATIONAL if scenario_str == "occupational" else ExposureScenario.GENERAL_PUBLIC
 
         try:
@@ -88,10 +113,11 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             status = "PASS" if c.get("pass") else "FAIL"
             lines.append(f"  {c['label']}: {c['value']:.2f} / {c['limit']:.2f} {c['unit']}  [{status}]")
 
-        overall = last.get("overall_pass", True)
+        overall = last.get("overall_pass")
         margin = last.get("margin_db")
         lines.append("")
-        lines.append(f"Overall: {'PASS' if overall else 'FAIL'}")
+        overall_str = "N/A" if overall is None else ("PASS" if overall else "FAIL")
+        lines.append(f"Overall: {overall_str}")
         if margin is not None:
             lines.append(f"Margin: {margin:+.1f} dB")
 
@@ -200,6 +226,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             return jsonify({"error": "freq_hz must be positive"}), 400
 
         scenario_str = request.args.get("scenario", "general_public")
+        if scenario_str not in _VALID_SCENARIOS:
+            return jsonify({"error": f"scenario must be one of {sorted(_VALID_SCENARIOS)}"}), 400
         scenario = ExposureScenario.OCCUPATIONAL if scenario_str == "occupational" else ExposureScenario.GENERAL_PUBLIC
 
         n_points = request.args.get("n_points", 50, type=int)
@@ -227,9 +255,9 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         return jsonify(
             {
                 "power_dbm": sweep["power_dbm"].tolist(),
-                "margin_db": sweep["margin_db"].tolist(),
+                "margin_db": _sanitize_list(sweep["margin_db"].tolist()),
                 "compliant": sweep["compliant"].tolist(),
-                "p_max_compliant_w": p_max_w,
+                "p_max_compliant_w": _finite_or_none(float(p_max_w)),
                 "p_max_compliant_dbm": p_max_dbm,
             }
         )
@@ -255,6 +283,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             return jsonify({"error": "freq_hz must be positive"}), 400
 
         scenario_str = request.args.get("scenario", "general_public")
+        if scenario_str not in _VALID_SCENARIOS:
+            return jsonify({"error": f"scenario must be one of {sorted(_VALID_SCENARIOS)}"}), 400
         scenario = ExposureScenario.OCCUPATIONAL if scenario_str == "occupational" else ExposureScenario.GENERAL_PUBLIC
 
         sinc_local = request.args.get("sinc_local", type=float)
@@ -281,11 +311,11 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             return jsonify({"error": str(e)}), 400
 
         # Flatten 2D arrays for JSON transport (row-major: power varies fastest)
-        margin_flat = result["margin_db"].tolist()
+        margin_flat = _sanitize_list(result["margin_db"].tolist())
         compliant_flat = result["compliant"].tolist()
 
         p_max_per_freq = result["p_max_per_freq"]
-        p_max_dbm_per_freq = (10.0 * np.log10(np.clip(p_max_per_freq, 1e-30, None) * 1e3)).tolist()
+        p_max_dbm_per_freq = _sanitize_list((10.0 * np.log10(np.clip(p_max_per_freq, 1e-30, None) * 1e3)).tolist())
 
         return jsonify(
             {
@@ -314,6 +344,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             return jsonify({"error": "At least one of sab_4cm2, sab_1cm2, or sar_wb is required"}), 400
 
         scenario_str = request.args.get("scenario", "general_public")
+        if scenario_str not in _VALID_SCENARIOS:
+            return jsonify({"error": f"scenario must be one of {sorted(_VALID_SCENARIOS)}"}), 400
         scenario = ExposureScenario.OCCUPATIONAL if scenario_str == "occupational" else ExposureScenario.GENERAL_PUBLIC
 
         sinc_local = request.args.get("sinc_local", type=float)
@@ -337,7 +369,119 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         return jsonify(
             {
                 "freq_ghz": sweep["freq_ghz"].tolist(),
-                "margin_db": sweep["margin_db"].tolist(),
+                "margin_db": _sanitize_list(sweep["margin_db"].tolist()),
                 "compliant": sweep["compliant"].tolist(),
+            }
+        )
+
+    # ------------------------------------------------------------------
+    # POST /api/compliance/spatial
+    # ------------------------------------------------------------------
+    @app.route("/api/compliance/spatial", methods=["POST"])
+    def compliance_spatial():
+        """Compute spatial compliance margins over a grid around base stations.
+
+        Takes loaded base stations and a bounding box, creates a grid,
+        and returns ICNIRP compliance margins at each grid point using
+        free-space path loss estimation.
+        """
+        from aegis.compliance import ExposureScenario, spatial_compliance_grid
+        from aegis.viewer.server import scoped_cache_get
+
+        with cache_lock:
+            basestations = scoped_cache_get(cache, "basestations", [])
+
+        if not basestations:
+            return jsonify({"error": "No base stations loaded. Call /api/basestations/load first."}), 400
+
+        body = request.get_json(silent=True) or {}
+
+        # Grid bounds
+        bbox = body.get("bbox")
+        if bbox is None:
+            # Derive bbox from base station extent with padding
+            lats = [bs.latitude for bs in basestations]
+            lons = [bs.longitude for bs in basestations]
+            pad_lat = max(0.002, (max(lats) - min(lats)) * 0.15)
+            pad_lon = max(0.002, (max(lons) - min(lons)) * 0.15)
+            bbox = [
+                min(lons) - pad_lon,
+                max(lons) + pad_lon,
+                min(lats) - pad_lat,
+                max(lats) + pad_lat,
+            ]
+
+        if not isinstance(bbox, list) or len(bbox) != 4:
+            return jsonify({"error": "bbox must be [lon_min, lon_max, lat_min, lat_max]"}), 400
+
+        try:
+            lon_min, lon_max, lat_min, lat_max = [float(v) for v in bbox]
+        except (TypeError, ValueError):
+            return jsonify({"error": "bbox values must be numbers"}), 400
+
+        resolution = body.get("resolution", 80)
+        try:
+            resolution = int(resolution)
+        except (TypeError, ValueError):
+            return jsonify({"error": "resolution must be an integer"}), 400
+        resolution = min(max(resolution, 10), 200)
+
+        receiver_height = float(body.get("receiver_height_m", 1.5))
+        scenario_str = body.get("scenario", "general_public")
+        scenario = ExposureScenario.OCCUPATIONAL if scenario_str == "occupational" else ExposureScenario.GENERAL_PUBLIC
+
+        # Build grid
+        grid_lat_1d = np.linspace(lat_min, lat_max, resolution)
+        grid_lon_1d = np.linspace(lon_min, lon_max, resolution)
+        grid_lon_2d, grid_lat_2d = np.meshgrid(grid_lon_1d, grid_lat_1d)
+        flat_lats = grid_lat_2d.ravel()
+        flat_lons = grid_lon_2d.ravel()
+
+        # Extract station arrays
+        station_lats = np.array([bs.latitude for bs in basestations])
+        station_lons = np.array([bs.longitude for bs in basestations])
+        station_eirp = np.array([bs.eirp_dbm for bs in basestations])
+        station_freq = np.array([bs.freq_hz for bs in basestations])
+        station_heights = np.array([bs.height_m for bs in basestations])
+
+        try:
+            result = spatial_compliance_grid(
+                station_lats=station_lats,
+                station_lons=station_lons,
+                station_eirp_dbm=station_eirp,
+                station_freq_hz=station_freq,
+                station_heights_m=station_heights,
+                grid_lats=flat_lats,
+                grid_lons=flat_lons,
+                scenario=scenario,
+                receiver_height_m=receiver_height,
+            )
+        except Exception as e:
+            logger.exception("Spatial compliance grid failed")
+            return jsonify({"error": f"Computation failed: {e}"}), 500
+
+        # Reshape to 2D grid (n_lat, n_lon) for easy frontend consumption
+        n_lat = resolution
+        n_lon = resolution
+        margin_2d = result["margin_db"].reshape(n_lat, n_lon)
+        compliant_2d = result["compliant"].reshape(n_lat, n_lon)
+        sinc_2d = result["sinc"].reshape(n_lat, n_lon)
+
+        # Clamp infinite margins to a display-friendly value
+        margin_clamped = np.where(np.isinf(margin_2d), 60.0, margin_2d)
+
+        return jsonify(
+            {
+                "lats": grid_lat_1d.tolist(),
+                "lons": grid_lon_1d.tolist(),
+                "margin_db": margin_clamped.tolist(),
+                "compliant": compliant_2d.tolist(),
+                "sinc_w_m2": sinc_2d.tolist(),
+                "n_lat": n_lat,
+                "n_lon": n_lon,
+                "scenario": scenario_str,
+                "freq_hz_dominant": result["freq_hz_dominant"],
+                "T0": result["T0"],
+                "n_stations": len(basestations),
             }
         )

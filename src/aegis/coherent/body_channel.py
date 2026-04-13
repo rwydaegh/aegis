@@ -85,7 +85,8 @@ def compute_body_channel(
     # Depth coupling weight: sqrt(sigma / (4 * alpha_n))
     # alpha_n is the amplitude decay rate: k0*xi = beta - i*alpha, so alpha = -Im(k0*xi)
     # xi depends on incidence angle, so alpha varies per (m, n) pair
-    xi = xi_from_mu(xp.asarray(mu).ravel(), n_tilde).reshape(mu.shape)
+    # xi_from_mu is element-wise; pass (M, N) directly, no ravel needed
+    xi = xi_from_mu(mu, n_tilde)
     k0_xi = k0 * xi
     alpha = -xp.imag(k0_xi)  # (M, N), amplitude decay rate [1/m]
     alpha = xp.maximum(alpha, NUMERICAL_FLOOR)  # avoid division by zero
@@ -158,7 +159,8 @@ def compute_body_channel_factored(
     mu, t_s, t_p, e_s, e_p = compute_fresnel_operator(normals, center_k_hat, n_tilde)
 
     # Depth coupling per (M, N_center)
-    xi = xi_from_mu(xp.asarray(mu).ravel(), n_tilde).reshape(mu.shape)
+    # xi_from_mu is element-wise; pass (M, N_center) directly, no ravel needed
+    xi = xi_from_mu(mu, n_tilde)
     k0_xi = k0 * xi
     alpha = -xp.imag(k0_xi)
     alpha = xp.maximum(alpha, NUMERICAL_FLOOR)

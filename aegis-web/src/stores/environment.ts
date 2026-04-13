@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import * as Sentry from '@sentry/react'
 import { fetchWithRetry, parseJsonHeader } from '@/api/client'
 import type { ScenePos } from '@/api/coordinates'
+import { useSceneStore } from '@/stores/scene'
 
 export type EnvironmentSource = 'none' | 'voxels' | 'osm' | '3dtiles' | 'cesium' | 'coverage'
 
@@ -210,7 +211,6 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
     if (!location) return
     const controller = freshAbort(get, set)
     set({ loading: true, error: null })
-    const { useSceneStore } = await import('@/stores/scene')
     useSceneStore.getState().setSceneGeometry(null)
     useSceneStore.getState().setLoadedScenePath('')
     useSceneStore.getState().setVoxelData(null)
@@ -254,7 +254,6 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
     if (!location) return
     const controller = freshAbort(get, set)
     set({ loading: true, error: null })
-    const { useSceneStore } = await import('@/stores/scene')
     useSceneStore.getState().setSceneGeometry(null)
     useSceneStore.getState().setLoadedScenePath('')
     useSceneStore.getState().setVoxelData(null)
@@ -315,6 +314,19 @@ function parseEnvironmentBinary(
 ): EnvironmentMeshData {
   const nV = meta.n_vertices as number
   const nT = meta.n_triangles as number
+
+  if (!Number.isFinite(nV) || !Number.isFinite(nT) || nV < 0 || nT < 0) {
+    throw new Error(`Invalid environment mesh metadata: n_vertices=${nV}, n_triangles=${nT}`)
+  }
+
+  const expectedBytes = nV * 3 * 4 + nT * 3 * 4 + nT * 3 * 4 + nT
+  if (buf.byteLength < expectedBytes) {
+    throw new Error(
+      `Environment mesh buffer too small: got ${buf.byteLength} bytes, expected ${expectedBytes} ` +
+      `(${nV} vertices, ${nT} triangles)`
+    )
+  }
+
   let offset = 0
 
   const positions = new Float32Array(buf, offset, nV * 3)
