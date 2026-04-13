@@ -21,6 +21,8 @@ Prune entries older than 7 days.
 - Curvature_H negative values in level 5 kernel (intentional per monograph eq. 47)
 - Fresnel T_avg > T0 near Brewster angle (physically correct, see physics-findings)
 
+- [2026-04-13] code-reviewer: Focus area: compliance checks and limits. Reviewed `src/aegis/compliance/__init__.py` (912 lines), `__main__.py` CLI, `result.py` compliance_kwargs, viewer routes (compute.py, analysis.py, mimo.py), optim/tilt_power.py, run.py batch runner, viz/dashboard.py, and all 3 compliance test files (176 tests). Verified ICNIRP limit values against monograph (SAR_wb=0.08 W/kg GP and S_inc_wb=10 W/m^2 GP confirmed; other values from ICNIRP 2020 standard itself, not reproduced in monograph). Checked: limit formulas (sinc_local 55/f^0.177 for GP, 275/f^0.177 for OCC), frequency thresholds (6 GHz for S_ab, 30 GHz for 1cm^2), boundary conditions (<=6 GHz returns SAR only, >30 GHz for 1cm^2), compliance_kwargs extraction chain, power sweep vectorization, frequency sweep sub-6 GHz handling, compliance heatmap 2D grid, link budget compliance with tissue T0 lookup, tilt_power optimizer ICNIRP penalty. No bugs found. The compliance module is well-structured with correct physics, thorough input validation, and comprehensive test coverage. Two pre-existing test failures (test_compute_clusters KeyError, test_mimo_checkbox_exists E2E) are unrelated to compliance.
+
 ## In progress
 
 <!-- Mark what you are working on to avoid collisions. Clear after merge or if stale >6h -->
