@@ -15,6 +15,7 @@ import CameraWidget from '@/components/hud/CameraWidget'
 import HudToggle from '@/components/hud/HudToggle'
 import { WelcomeOverlay } from '@/components/hud/WelcomeOverlay'
 import GuidedTour from '@/components/hud/GuidedTour'
+import BugReporter from '@/components/hud/BugReporter'
 import { useUIStore, selectSidebarOpen } from '@/stores/ui'
 import { useSimulationStore } from '@/stores/simulation'
 import { useIsMobile, useIsTouchDevice } from '@/hooks/useIsMobile'
@@ -113,6 +114,11 @@ export default function HudOverlay() {
         <HudToggle id="dataQuality">
           <DataQualityHud />
         </HudToggle>
+      </div>
+
+      {/* Bug reporter button - bottom right, above camera widget */}
+      <div className="absolute bottom-28 right-3 pointer-events-auto">
+        <BugReporter />
       </div>
 
       {/* Guided tour overlay */}

@@ -1,0 +1,1 @@
+import{n as e}from"./index-BdKxtbVD.js";export{e as useAuth};
