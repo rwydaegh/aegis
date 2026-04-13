@@ -211,9 +211,6 @@ def provider_frequencies(session: requests.Session, timeout: int = 25) -> Dict[s
             "technology": tech
         }
         data = http_get_json(session, params = params, url =url, timeout=timeout)
-        with open(f"Test_{tech}.json", "w", encoding="utf-8") as f:
-            json.dump(data, f, indent = 2, ensure_ascii= False)
-        
         if not data:
             return out
         
@@ -227,11 +224,9 @@ def provider_frequencies(session: requests.Session, timeout: int = 25) -> Dict[s
             try:
                 freq_hz = float(freq_hz)
             except Exception:
-                print(f"Excpetion for converting freq to float for { res.get('id') }")
                 continue
 
             if not np.isfinite(freq_hz) or freq_hz <= 0:
-                print(f"Freq error for { res.get('id') }")
                 continue
 
             center_mhz = freq_hz / 1_000_000.0
@@ -356,7 +351,7 @@ def fetch_sites(session: requests.Session, *, bbox_4326= None, timeout: int = 25
     return all_features
 
 def create_df_from_antenna_features(features: List[Dict]) -> pd.DataFrame:
-    df = pd.DataFrame()
+    rows = []
     for feature in features:
         props = feature.get("properties") or {}
         # Clean up frequency field
@@ -371,38 +366,25 @@ def create_df_from_antenna_features(features: List[Dict]) -> pd.DataFrame:
 
         if not any(tok in ant_tech_str for tok in TECH_TOKENS):
             continue
-                    
+
         ant_directional = True if props.get("DIR_NONDIR") == "D" else False
         ant_height = props.get("HOOGTE", np.nan)
         ant_azimuth = props.get("HOOFDSTRAALRICHTING", "isotropic")
         if ant_azimuth == "0-359":
-            print(feature)
             ant_azimuth = "isotropic"
         ant_power = props.get("ZENDVERMOGEN", np.nan)
         ant_date = props.get("DATUM_WIJZIGING") or props.get("DATUM_INGEBRUIKNAME") or props.get("DATUM_PLAATSING")
-        if df.empty:
-            df = pd.DataFrame([{
-                "AntennaLabel": f"ANT({ant_id})",
-                "Technology": ant_tech,
-                "Frequency": ant_freq,
-                "Directional": ant_directional,
-                "CenterHeight": ant_height,
-                "Azimuth": ant_azimuth,
-                "Power": ant_power,
-                "Date": ant_date,
-            }])
-        else:
-            df = pd.concat([df, pd.DataFrame([{
-                "AntennaLabel": f"ANT({ant_id})",
-                "Technology": ant_tech,
-                "Frequency": ant_freq,
-                "Directional": ant_directional,
-                "CenterHeight": ant_height,
-                "Azimuth": ant_azimuth,
-                "Power": ant_power,
-                "Date": ant_date,
-            }])], ignore_index=True)
-    return df
+        rows.append({
+            "AntennaLabel": f"ANT({ant_id})",
+            "Technology": ant_tech,
+            "Frequency": ant_freq,
+            "Directional": ant_directional,
+            "CenterHeight": ant_height,
+            "Azimuth": ant_azimuth,
+            "Power": ant_power,
+            "Date": ant_date,
+        })
+    return pd.DataFrame(rows) if rows else pd.DataFrame()
         
 def get_antennas_for_site(session: requests.Session, site: Dict, timeout: int = 25) -> List[Dict]:
     
