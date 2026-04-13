@@ -1172,3 +1172,16 @@ class TestComplianceKwargsWithBody:
         )
         kw = r.compliance_kwargs()
         assert kw["sinc_whole_body"] is None
+
+
+class TestReprEdgeCases:
+    def test_repr_empty_sab(self):
+        """repr() must not crash on a result with empty sab array."""
+        r = DosimetryResult(
+            sab=np.array([]),
+            p_abs=0.0,
+            fidelity_level=2,
+        )
+        text = repr(r)
+        assert "N/A" in text
+        assert "DosimetryResult" in text
