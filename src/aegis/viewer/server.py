@@ -638,6 +638,7 @@ def create_app(
     from aegis.viewer.routes import (
         analysis,
         basestations,
+        bugreport,
         compute,
         coverage,
         data,
@@ -664,5 +665,6 @@ def create_app(
     sentry_webhook.register(app, _cache, _cache_lock)
     terrain.register(app, _cache, _cache_lock)
     optimize.register(app, _cache, _cache_lock)
+    bugreport.register(app, _cache, _cache_lock)
 
     return app
