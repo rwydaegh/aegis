@@ -1,4 +1,4 @@
-import type { RtConfig } from '@/api/client'
+import { fetchWithRetry, type RtConfig } from '@/api/client'
 
 const BASE = ''
 
@@ -69,7 +69,7 @@ export async function* streamOptimization(
   request: OptimizeRequest,
   signal?: AbortSignal,
 ): AsyncGenerator<SSEEvent> {
-  const res = await fetch(`${BASE}/api/optimize`, {
+  const res = await fetchWithRetry(`${BASE}/api/optimize`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),
@@ -87,37 +87,41 @@ export async function* streamOptimization(
   const decoder = new TextDecoder()
   let buffer = ''
 
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
 
-    buffer += decoder.decode(value, { stream: true })
-    const lines = buffer.split('\n')
-    buffer = lines.pop() ?? ''
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() ?? ''
 
-    for (const line of lines) {
-      if (line.startsWith('data: ')) {
-        try {
-          const event: SSEEvent = JSON.parse(line.slice(6))
-          yield event
-        } catch {
-          // skip malformed lines
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const event: SSEEvent = JSON.parse(line.slice(6))
+            yield event
+          } catch {
+            // skip malformed lines
+          }
         }
       }
     }
-  }
 
-  if (buffer.startsWith('data: ')) {
-    try {
-      yield JSON.parse(buffer.slice(6))
-    } catch {
-      // ignore
+    if (buffer.startsWith('data: ')) {
+      try {
+        yield JSON.parse(buffer.slice(6))
+      } catch {
+        // ignore
+      }
     }
+  } finally {
+    reader.cancel().catch(() => {})
   }
 }
 
 export async function cancelOptimization(): Promise<void> {
-  await fetch(`${BASE}/api/optimize/cancel`, { method: 'POST' })
+  await fetchWithRetry(`${BASE}/api/optimize/cancel`, { method: 'POST' })
 }
 
 /** Decode a base64-encoded float32 SAB array. */

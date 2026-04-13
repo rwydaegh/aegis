@@ -59,16 +59,35 @@ def _encode_sab(sab: np.ndarray) -> str:
     return base64.b64encode(np.asarray(sab, dtype=np.float32).tobytes()).decode()
 
 
+def _safe_int(val, default: int) -> int:
+    """Convert to int, returning *default* on failure."""
+    try:
+        return int(val)
+    except (TypeError, ValueError):
+        return default
+
+
 def _parse_rt_config(params: dict, cache: dict) -> dict[str, Any]:
     """Extract RT config for placement evaluation."""
     rt = params.get("rt_config", {})
     if not isinstance(rt, dict):
         rt = {}
+
+    max_depth = _safe_int(rt.get("max_depth", params.get("max_order", 3)), 3)
+    max_depth = max(0, min(max_depth, 10))
+
+    rays_per_source = _safe_int(rt.get("rays_per_source", 1_000_000), 1_000_000)
+    rays_per_source = max(100, min(rays_per_source, 10_000_000))
+
+    chunk_size = rt.get("chunk_size")
+    if chunk_size is not None:
+        chunk_size = max(1, min(_safe_int(chunk_size, 100_000), 1_000_000))
+
     return {
-        "max_depth": rt.get("max_depth", params.get("max_order", 3)),
+        "max_depth": max_depth,
         "method": rt.get("method", "exhaustive"),
-        "rays_per_source": rt.get("rays_per_source", 1_000_000),
-        "chunk_size": rt.get("chunk_size"),
+        "rays_per_source": rays_per_source,
+        "chunk_size": chunk_size,
         "reflection_loss_per_order": rt.get(
             "reflection_loss_per_order",
             cache["config"]["raytracer"]["reflection_loss_per_order"],
@@ -133,7 +152,13 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 def _build_config(params: dict, app: Flask, cache: dict, cache_lock) -> dict:
     """Parse request params into optimizer config dict."""
     mode = params["mode"]
-    config: dict[str, Any] = {"mode": mode, "max_iters": params.get("max_iters", 50)}
+    _VALID_MODES = {"mimo_peak", "tilt_power", "placement"}
+    if mode not in _VALID_MODES:
+        raise ValueError(f"mode must be one of {sorted(_VALID_MODES)}")
+
+    max_iters = _safe_int(params.get("max_iters", 50), 50)
+    max_iters = max(1, min(max_iters, 10_000))
+    config: dict[str, Any] = {"mode": mode, "max_iters": max_iters}
 
     if mode == "mimo_peak":
         if "G_tilde_real" in params:
@@ -193,8 +218,20 @@ def _build_config(params: dict, app: Flask, cache: dict, cache_lock) -> dict:
 
     elif mode == "placement":
         config["center"] = np.array(params.get("center", [5, 0, 3]))
-        config["grid_size"] = params.get("grid_size", 5)
-        config["grid_spacing"] = params.get("grid_spacing", 2.0)
+
+        grid_size = _safe_int(params.get("grid_size", 5), 5)
+        grid_size = max(1, min(grid_size, 50))
+        config["grid_size"] = grid_size
+
+        grid_spacing = float(params.get("grid_spacing", 2.0))
+        grid_spacing = max(0.1, min(grid_spacing, 500.0))
+        config["grid_spacing"] = grid_spacing
+
+        # Ensure max_iters covers the full grid so placement never truncates
+        total_candidates = grid_size * grid_size
+        if config["max_iters"] < total_candidates:
+            config["max_iters"] = total_candidates
+
         config["constraint_axis"] = params.get("constraint_axis")
         config["constraint_value"] = params.get("constraint_value")
         config["evaluate_fn"] = _build_placement_evaluate_fn(

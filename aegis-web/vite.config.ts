@@ -6,7 +6,23 @@ import path from 'path'
 
 export default defineConfig({
   build: {
-    sourcemap: true,
+    sourcemap: 'hidden',
+    rollupOptions: {
+      output: {
+        manualChunks(id: string) {
+          if (id.includes('node_modules/three/') || id.includes('@react-three/')) {
+            return 'three'
+          }
+          if (id.includes('@deck.gl/')) {
+            return 'deckgl'
+          }
+          if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/') ||
+              id.includes('node_modules/zustand/') || id.includes('node_modules/recharts/')) {
+            return 'vendor'
+          }
+        },
+      },
+    },
   },
   plugins: [
     react(),

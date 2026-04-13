@@ -28,7 +28,7 @@ def test_parametric_unknown_model(app_client):
         content_type="application/json",
     )
     assert resp.status_code == 400
-    assert b"Unknown model type" in resp.data
+    assert b"model must be one of" in resp.data
 
 
 def test_parametric_anny_not_implemented(app_client):

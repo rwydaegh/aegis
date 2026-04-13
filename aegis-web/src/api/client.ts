@@ -40,8 +40,10 @@ export async function fetchWithRetry(
     if (attempt < MAX_RETRIES) {
       const retryAfter = lastResponse?.headers.get('Retry-After')
       const parsed = retryAfter ? parseInt(retryAfter, 10) : NaN
-      const delayMs = Number.isFinite(parsed) ? Math.min(parsed * 1000, 5000) : (attempt + 1) * 1000
-      await new Promise((r) => setTimeout(r, delayMs))
+      const baseDelayMs = Number.isFinite(parsed) ? Math.min(parsed * 1000, 5000) : (attempt + 1) * 1000
+      // Add +/-10% jitter to prevent thundering herd on concurrent retries
+      const jitter = baseDelayMs * (0.9 + Math.random() * 0.2)
+      await new Promise((r) => setTimeout(r, jitter))
     }
   }
   if (lastResponse) return lastResponse
@@ -249,11 +251,11 @@ export async function fetchBody(
   return { binary, meta }
 }
 
-export async function fetchVoxels(): Promise<{
+export async function fetchVoxels(signal?: AbortSignal): Promise<{
   binary: { positions: Float32Array; sizes: Float32Array; colors: Uint8Array; materialIndices: Uint8Array }
   meta: VoxelMeta
 }> {
-  const res = await getBinary('/api/voxels')
+  const res = await getBinary('/api/voxels', signal)
 
   const meta = parseJsonHeader<VoxelMeta>(res.headers.get('X-Meta'), 'X-Meta')
 
@@ -629,5 +631,28 @@ export async function fetchFrequencySweep(params: {
   if (params.sar_wb != null) qs.set('sar_wb', String(params.sar_wb))
   if (params.sinc_wb != null) qs.set('sinc_wb', String(params.sinc_wb))
   return getJson<FrequencySweepResult>(`/api/compliance/frequency-sweep?${qs}`)
+}
+
+export interface SpatialComplianceResult {
+  lats: number[]
+  lons: number[]
+  margin_db: number[][]
+  compliant: boolean[][]
+  sinc_w_m2: number[][]
+  n_lat: number
+  n_lon: number
+  scenario: string
+  freq_hz_dominant: number
+  T0: number
+  n_stations: number
+}
+
+export async function fetchSpatialCompliance(params: {
+  bbox?: [number, number, number, number]
+  resolution?: number
+  scenario?: string
+  receiver_height_m?: number
+}): Promise<SpatialComplianceResult> {
+  return postJson<SpatialComplianceResult>('/api/compliance/spatial', params)
 }
 

@@ -13,12 +13,10 @@ import { useAntennaStore } from '@/stores/antenna'
  * for clicks.
  */
 export function useClickToPlace() {
-  const pointerDownPos = useRef<{ x: number; y: number } | null>(null)
   const lastMovePos = useRef<{ x: number; y: number } | null>(null)
   const cumulativeTravel = useRef(0)
 
   const onPointerDown = useCallback((e: ThreeEvent<PointerEvent>) => {
-    pointerDownPos.current = { x: e.clientX, y: e.clientY }
     lastMovePos.current = { x: e.clientX, y: e.clientY }
     cumulativeTravel.current = 0
   }, [])
@@ -32,7 +30,7 @@ export function useClickToPlace() {
   }, [])
 
   const onPointerUp = useCallback((e: ThreeEvent<PointerEvent>) => {
-    if (!pointerDownPos.current) return
+    if (!lastMovePos.current) return
     const config = useSceneStore.getState().viewerConfig
     if (!config) return
 
@@ -68,7 +66,6 @@ export function useClickToPlace() {
         }
       }
     }
-    pointerDownPos.current = null
     lastMovePos.current = null
   }, [])
 

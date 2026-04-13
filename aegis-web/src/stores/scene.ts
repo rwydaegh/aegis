@@ -76,6 +76,7 @@ interface SceneStore {
   bodyMeshVisible: boolean
   groundPlaneVisible: boolean
   gridVisible: boolean
+  complianceRingVisible: boolean
 
   // GLB tiles
   glbTiles: string[]
@@ -113,9 +114,11 @@ interface SceneStore {
   toggleBodyMeshVisible: () => void
   toggleGroundPlaneVisible: () => void
   toggleGridVisible: () => void
+  toggleComplianceRingVisible: () => void
   setBodyMeshVisible: (v: boolean) => void
   setGroundPlaneVisible: (v: boolean) => void
   setGridVisible: (v: boolean) => void
+  setComplianceRingVisible: (v: boolean) => void
   setSceneGeometryVisible: (v: boolean) => void
   setGlbTiles: (tiles: string[]) => void
   setPathSource: (source: SceneStore['pathSource']) => void
@@ -153,6 +156,7 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
   bodyMeshVisible: true,
   groundPlaneVisible: true,
   gridVisible: false,
+  complianceRingVisible: true,
   glbTiles: [],
   pathSource: 'synthetic',
   rtSource: 'sionna',
@@ -187,9 +191,11 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
   toggleBodyMeshVisible: () => set((state) => ({ bodyMeshVisible: !state.bodyMeshVisible })),
   toggleGroundPlaneVisible: () => set((state) => ({ groundPlaneVisible: !state.groundPlaneVisible })),
   toggleGridVisible: () => set((state) => ({ gridVisible: !state.gridVisible })),
+  toggleComplianceRingVisible: () => set((state) => ({ complianceRingVisible: !state.complianceRingVisible })),
   setBodyMeshVisible: (v) => set({ bodyMeshVisible: v }),
   setGroundPlaneVisible: (v) => set({ groundPlaneVisible: v }),
   setGridVisible: (v) => set({ gridVisible: v }),
+  setComplianceRingVisible: (v) => set({ complianceRingVisible: v }),
   setSceneGeometryVisible: (v) => set({ sceneGeometryVisible: v }),
   setGlbTiles: (tiles) => set({ glbTiles: tiles }),
   setPathSource: (source) => {

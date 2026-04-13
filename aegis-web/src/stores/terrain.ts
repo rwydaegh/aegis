@@ -26,6 +26,19 @@ function parseTerrainBinary(
 ): TerrainMeshData {
   const nV = meta.n_vertices as number
   const nT = meta.n_triangles as number
+
+  if (!Number.isFinite(nV) || !Number.isFinite(nT) || nV < 0 || nT < 0) {
+    throw new Error(`Invalid terrain mesh metadata: n_vertices=${nV}, n_triangles=${nT}`)
+  }
+
+  const expectedBytes = nV * 3 * 4 + nT * 3 * 4
+  if (buf.byteLength < expectedBytes) {
+    throw new Error(
+      `Terrain mesh buffer too small: got ${buf.byteLength} bytes, expected ${expectedBytes} ` +
+      `(${nV} vertices, ${nT} triangles)`
+    )
+  }
+
   let offset = 0
 
   const positions = new Float32Array(buf, offset, nV * 3)

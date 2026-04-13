@@ -3,6 +3,7 @@ import * as Sentry from '@sentry/react'
 import { useBaseStationsStore } from '@/stores/basestations'
 import type { AntennaColorMode } from '@/stores/basestations'
 import { loadBasestations } from '@/api/basestations'
+import { fetchWithRetry } from '@/api/client'
 import { useBaseStationsDosimetry } from '@/hooks/useBaseStationsDosimetry'
 import { useNotificationStore } from '@/stores/notifications'
 import AntennaDetailPanel from './AntennaDetailPanel'
@@ -52,7 +53,7 @@ export default function BaseStationsPanel() {
     if (basestations.length === 0) return
     const bs = basestations[0]
     try {
-      const resp = await fetch('/api/environment/coverage', {
+      const resp = await fetchWithRetry('/api/environment/coverage', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

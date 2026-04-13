@@ -95,6 +95,7 @@ class DosimetryEngine:
     # Protected by _G_lock for thread safety (Flask serves concurrent requests).
     _G_cache: OrderedDict = OrderedDict()
     _G_lock: threading.Lock = threading.Lock()
+    _G_computing: dict[tuple, threading.Event] = {}
     _G_CACHE_MAX: int = 16
 
     def __init__(self, tissue: TissueModel) -> None:
@@ -137,14 +138,31 @@ class DosimetryEngine:
             if key in self._G_cache:
                 self._G_cache.move_to_end(key)
                 return self._G_cache[key]
+            # Another thread is already computing this matrix, wait for it
+            if key in self._G_computing:
+                event = self._G_computing[key]
+                self._G_lock.release()
+                event.wait()
+                self._G_lock.acquire()
+                if key in self._G_cache:
+                    self._G_cache.move_to_end(key)
+                    return self._G_cache[key]
+            # Mark this key as being computed
+            event = threading.Event()
+            self._G_computing[key] = event
 
         from aegis.geometry.averaging import precompute_averaging_matrix
 
-        G = precompute_averaging_matrix(
-            body.centroids,
-            body.areas,
-            target_area_m2,
-        )
+        try:
+            G = precompute_averaging_matrix(
+                body.centroids,
+                body.areas,
+                target_area_m2,
+            )
+        finally:
+            with self._G_lock:
+                self._G_computing.pop(key, None)
+                event.set()
 
         with self._G_lock:
             # Evict least-recently-used entries if cache is full
