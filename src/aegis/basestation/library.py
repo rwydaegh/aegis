@@ -294,6 +294,12 @@ class AntennaPatternLibrary:
         source_zip, source_path, manufacturer, _gain_dbi = row
         zip_path = self._msi_dir / source_zip
 
+        if not zip_path.exists():
+            raise FileNotFoundError(
+                f"Pattern data not available: {source_zip} not found. "
+                f"MSI zip archives are required to load full pattern data."
+            )
+
         text = self._read_msi_from_zip(zip_path, source_path)
         meta, h_atten, v_atten = parse_msi(
             text,

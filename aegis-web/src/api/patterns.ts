@@ -37,7 +37,16 @@ export async function loadPattern(
   id: string,
 ): Promise<{ data: Float32Array; meta: PatternMeta }> {
   const res = await fetch(`/api/patterns/${source}/${id}`)
-  if (!res.ok) throw new Error(`Pattern load failed: ${res.status}`)
+  if (!res.ok) {
+    let detail = ''
+    try {
+      const body = await res.json()
+      detail = body.error || ''
+    } catch {
+      // Response may not be JSON
+    }
+    throw new Error(detail || `Pattern load failed: ${res.status}`)
+  }
   const metaHeader = res.headers.get('X-Meta')
   const meta: PatternMeta = metaHeader
     ? JSON.parse(metaHeader)
