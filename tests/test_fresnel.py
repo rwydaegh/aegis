@@ -221,3 +221,8 @@ class TestFresnelEdgeCases:
         t0 = T0(n)
         assert t0 > 0
         assert t0 <= 1.0
+
+    def test_T0_degenerate_n_tilde_minus_one_raises(self):
+        """T0(-1) causes |1+n|^2=0, must raise instead of returning inf."""
+        with pytest.raises(ValueError, match="Cannot compute T0"):
+            T0(-1.0 + 0j)

@@ -408,3 +408,12 @@ class TestComputeSab:
     def test_invalid_level(self, engine, ico_mesh, single_path_down):
         with pytest.raises(ValueError, match="0-8"):
             engine.compute_sab(ico_mesh, single_path_down, level=9)
+
+    def test_inf_body_mass_raises(self, engine, ico_mesh, single_path_down):
+        """Infinite body_mass must be rejected to prevent silent zero SAR."""
+        with pytest.raises(ValueError, match="body_mass must be positive"):
+            engine.compute(ico_mesh, single_path_down, level=2, body_mass=float("inf"))
+
+    def test_nan_body_mass_raises(self, engine, ico_mesh, single_path_down):
+        with pytest.raises(ValueError, match="body_mass must be positive"):
+            engine.compute(ico_mesh, single_path_down, level=2, body_mass=float("nan"))
