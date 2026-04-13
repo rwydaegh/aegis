@@ -51,7 +51,7 @@ def _compute_coverage(
             use_cols = [c for c in _NEEDED if c in schema_cols]
             df = pd.read_parquet(str(pq), columns=use_cols)
         except Exception:
-            logger.warning("Corrupt parquet %s, skipping", pq)
+            logger.exception("Failed to read parquet %s, skipping", pq)
             continue
 
         # Bbox: read from first source, or compute from data
@@ -85,14 +85,18 @@ def _compute_coverage(
                 "completeness": round(completeness, 2),
             }
         )
-        df = df.copy()
         df["_region_idx"] = region_idx
         all_dfs.append(df)
 
     if not all_dfs:
         return {
             "regions": [],
-            "sites_meta": {"count": 0, "operators": [], "technologies": [], "region_names": []},
+            "sites_meta": {
+                "count": 0,
+                "operators": [],
+                "technologies": [],
+                "region_names": [],
+            },
             "sites_b64": "",
         }
 
@@ -162,7 +166,9 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
     def api_coverage():
         with cache_lock:
             if "coverage_response" in cache:
-                return jsonify(cache["coverage_response"])
+                resp = jsonify(cache["coverage_response"])
+                resp.headers["Cache-Control"] = "public, max-age=3600"
+                return resp
             data_dir = cache.get("data_dir", "data")
 
         merged_dir = Path(data_dir) / "basestations" / "merged"
@@ -182,4 +188,6 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             if "coverage_response" not in cache:
                 cache["coverage_response"] = result
 
-        return jsonify(result)
+        resp = jsonify(result)
+        resp.headers["Cache-Control"] = "public, max-age=3600"
+        return resp

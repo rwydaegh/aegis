@@ -167,6 +167,14 @@ class TestFrequencyValidation:
         with pytest.raises(ValueError):
             icnirp_limits(freq_hz=-10.0e9)
 
+    def test_nan_raises(self) -> None:
+        with pytest.raises(ValueError, match="finite"):
+            icnirp_limits(freq_hz=float("nan"))
+
+    def test_inf_raises(self) -> None:
+        with pytest.raises(ValueError, match="finite"):
+            icnirp_limits(freq_hz=float("inf"))
+
 
 # -----------------------------------------------------------------------
 # ComplianceCheck
@@ -345,6 +353,10 @@ class TestMarginDb:
     def test_known_value(self) -> None:
         """1 W/m^2 vs 20 W/m^2 limit -> 10*log10(20) dB."""
         assert margin_db(1.0, 20.0) == pytest.approx(10.0 * math.log10(20.0))
+
+    def test_zero_limit_returns_neg_inf(self) -> None:
+        """Zero limit with positive value should return -inf, not crash."""
+        assert margin_db(1.0, 0.0) == float("-inf")
 
 
 # -----------------------------------------------------------------------
@@ -701,6 +713,14 @@ class TestLinkBudgetCompliance:
         with pytest.raises(ValueError, match="outside"):
             link_budget_compliance(tx_power_w=0.001, distance_m=1.0, freq_hz=50e3)
 
+    def test_nan_frequency_raises(self) -> None:
+        with pytest.raises(ValueError, match="finite"):
+            link_budget_compliance(tx_power_w=0.001, distance_m=1.0, freq_hz=float("nan"))
+
+    def test_inf_frequency_raises(self) -> None:
+        with pytest.raises(ValueError, match="finite"):
+            link_budget_compliance(tx_power_w=0.001, distance_m=1.0, freq_hz=float("inf"))
+
     def test_returns_expected_keys(self) -> None:
         result = link_budget_compliance(tx_power_w=0.001, distance_m=1.0, freq_hz=_VALID_FREQ)
         for key in (
@@ -934,6 +954,11 @@ class TestComplianceCheckEdgeCases:
         """ComplianceCheck.ratio returns inf when limit is zero."""
         c = ComplianceCheck(value=5.0, limit=0.0, unit="W/m^2", label="test")
         assert c.ratio == float("inf")
+
+    def test_margin_db_with_zero_limit(self) -> None:
+        """ComplianceCheck.margin_db returns -inf when limit is zero and value > 0."""
+        c = ComplianceCheck(value=5.0, limit=0.0, unit="W/m^2", label="test")
+        assert c.margin_db == float("-inf")
 
     def test_margin_db_with_zero_value(self) -> None:
         """Zero measured value should return infinite margin (fully compliant)."""

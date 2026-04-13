@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { memo, useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 
@@ -17,7 +17,7 @@ interface SmartphoneModelProps {
   deviceOffset: [number, number, number]
 }
 
-export default function SmartphoneModel({ position, rotationY, deviceOffset }: SmartphoneModelProps) {
+export default memo(function SmartphoneModel({ position, rotationY, deviceOffset }: SmartphoneModelProps) {
   const groupRef = useRef<THREE.Group>(null)
 
   // Convert Z-up device offset to Y-up scene coords: [x, z_up, -y_fwd]
@@ -73,4 +73,4 @@ export default function SmartphoneModel({ position, rotationY, deviceOffset }: S
       </mesh>
     </group>
   )
-}
+})

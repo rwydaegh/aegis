@@ -10,7 +10,7 @@ import math
 import numpy as np
 import pytest
 
-from aegis.basestation.adapter import _safe_float, _sanitize_label, paths_from_basestation
+from aegis.basestation.adapter import paths_from_basestation
 from aegis.basestation.antenna import AntennaPattern, BaseStation
 from aegis.basestation.coords import enu_to_wgs84, wgs84_to_enu
 from aegis.basestation.orientation import (
@@ -19,6 +19,7 @@ from aegis.basestation.orientation import (
 )
 from aegis.basestation.pattern import synthetic_pattern_from_beamwidth
 from aegis.basestation.power import dbm_to_w, eirp_to_tx_power_dbm, eirp_to_tx_power_w, w_to_dbm
+from aegis.basestation.utils import _safe_float, _sanitize_label
 
 # ---------------------------------------------------------------------------
 # coords

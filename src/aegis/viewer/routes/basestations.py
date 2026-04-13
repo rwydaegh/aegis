@@ -111,12 +111,16 @@ def _handle_basestations_load(cache: dict, cache_lock: threading.RLock):
     elif "lat" in params and "lon" in params and not params.get("country"):
         # Reverse-geocode to determine country when only lat/lon provided
         try:
+            _lat = float(params["lat"])
+            _lon = float(params["lon"])
+            if not (-90 <= _lat <= 90) or not (-180 <= _lon <= 180):
+                return jsonify({"error": "lat must be in [-90,90] and lon in [-180,180]"}), 400
             from geopy.exc import GeopyError
             from geopy.geocoders import Nominatim
 
             geolocator = Nominatim(user_agent="aegis-viewer", timeout=10)
             result = geolocator.reverse(
-                (float(params["lat"]), float(params["lon"])),
+                (_lat, _lon),
                 addressdetails=True,
                 language="en",
             )
@@ -124,6 +128,12 @@ def _handle_basestations_load(cache: dict, cache_lock: threading.RLock):
                 address = result.raw.get("address", {})
         except (GeopyError, Exception) as e:
             logger.warning("Reverse geocoding failed for (%s, %s): %s", params["lat"], params["lon"], e)
+            return jsonify(
+                {
+                    "error": f"Could not determine country for coordinates ({params['lat']}, {params['lon']}). "
+                    "Provide an explicit 'country' parameter."
+                }
+            ), 502
 
     # Build bbox from lat/lon/radius or use explicit bbox
     bbox = params.get("bbox")
@@ -253,7 +263,7 @@ def _handle_basestations_load(cache: dict, cache_lock: threading.RLock):
                 bbox=bbox,
                 operator=params.get("operator"),
                 technology=params.get("technology"),
-                max_workers=int(params.get("max_workers", 4)),
+                max_workers=max(1, min(int(params.get("max_workers", 4)), 16)),
             )
     except ImportError:
         available = _list_available_regions(data_dir)
@@ -309,19 +319,21 @@ def _handle_basestations_compute(cache: dict, cache_lock: threading.RLock):
         _parse_vec3,
     )
 
+    params = request.get_json(silent=True) or {}
+
     with cache_lock:
         basestations = scoped_cache_get(cache, "basestations", [])
         origin = scoped_cache_get(cache, "basestations_origin")
-        body = cache.get("body")
+        body_name = params.get("body_name", cache.get("default_body"))
+        entry = cache.get("bodies", {}).get(body_name)
 
     if not basestations:
         return jsonify({"error": "No base stations loaded"}), 400
-    if body is None:
-        return jsonify({"error": "No body mesh loaded"}), 400
+    if entry is None:
+        return jsonify({"error": f"Body '{body_name}' not found"}), 404
+    body = entry["body"]
     if origin is None:
         return jsonify({"error": "No scene origin set"}), 400
-
-    params = request.get_json(silent=True) or {}
 
     # Filter by indices
     indices = params.get("indices")
@@ -373,8 +385,8 @@ def _handle_basestations_compute(cache: dict, cache_lock: threading.RLock):
         max_distance_m = float(params.get("max_distance_m", 2000))
     except (TypeError, ValueError):
         return jsonify({"error": "max_distance_m must be a number"}), 400
-    if max_distance_m <= 0:
-        return jsonify({"error": "max_distance_m must be positive"}), 400
+    if max_distance_m <= 0 or max_distance_m > 50_000:
+        return jsonify({"error": "max_distance_m must be between 0 and 50000"}), 400
     paths = paths_from_basestations(
         selected,
         body_center,
@@ -418,8 +430,11 @@ def _handle_basestations_compute(cache: dict, cache_lock: threading.RLock):
     tissue = resolve_skin_model(skin_model, freq_hz)
 
     # Dosimetry engine
+    _VALID_MODES = {"bound", "aggregate", "spatial"}
     engine = DosimetryEngine(tissue)
     mode = params.get("mode", "spatial")
+    if mode not in _VALID_MODES:
+        return jsonify({"error": f"mode must be one of: {', '.join(sorted(_VALID_MODES))}"}), 400
     engine_kw = {"mode": mode, "spatial_averaging": True}
     engine_kw = _inject_curvature_H(engine_kw, transformed_body)
 
@@ -473,8 +488,10 @@ def _handle_basestations_compute_mimo(cache: dict, cache_lock: threading.RLock):
     with cache_lock:
         basestations = scoped_cache_get(cache, "basestations", [])
         origin = scoped_cache_get(cache, "basestations_origin")
-        body = cache.get("body")
         bodies_cache = cache.get("bodies", {})
+        body_name = params.get("body_name", cache.get("default_body"))
+        entry = bodies_cache.get(body_name)
+    body = entry["body"] if entry is not None else None
 
     index = params.get("index")
     if index is None:

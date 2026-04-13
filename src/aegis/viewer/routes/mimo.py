@@ -45,6 +45,8 @@ def _build_scene(params: dict, cache: dict) -> tuple[MIMOScene | None, Response 
         return None, (jsonify({"error": "freq_hz must be a number"}), 400)
     if freq_hz <= 0:
         return None, (jsonify({"error": "freq_hz must be positive"}), 400)
+    if freq_hz > 300e9:
+        return None, (jsonify({"error": "freq_hz exceeds 300 GHz maximum"}), 400)
     try:
         power_dbm = float(params.get("power_dbm", 30.0))
     except (TypeError, ValueError):
@@ -52,17 +54,47 @@ def _build_scene(params: dict, cache: dict) -> tuple[MIMOScene | None, Response 
     total_power = 10 ** ((power_dbm - 30) / 10)
 
     wavelength = C_0 / freq_hz
-    d_h = float(array_cfg.get("d_h_wavelengths", 0.5)) * wavelength
-    d_v = float(array_cfg.get("d_v_wavelengths", 0.5)) * wavelength
+
+    # Validate array dimensions before constructing the antenna array
+    try:
+        n_h = int(array_cfg["n_h"])
+        n_v = int(array_cfg["n_v"])
+    except (KeyError, TypeError, ValueError) as exc:
+        return None, (jsonify({"error": f"Invalid array dimensions: {exc}"}), 400)
+    if n_h < 1 or n_v < 1:
+        return None, (jsonify({"error": "Array dimensions n_h and n_v must be >= 1"}), 400)
+    if n_h * n_v > 1024:
+        return None, (jsonify({"error": f"Array too large: {n_h}x{n_v} = {n_h * n_v} elements (max 1024)"}), 400)
+
+    try:
+        d_h_wl = float(array_cfg.get("d_h_wavelengths", 0.5))
+        d_v_wl = float(array_cfg.get("d_v_wavelengths", 0.5))
+    except (TypeError, ValueError) as exc:
+        return None, (jsonify({"error": f"Invalid element spacing: {exc}"}), 400)
+    if d_h_wl <= 0 or d_v_wl <= 0:
+        return None, (jsonify({"error": "Element spacing must be positive"}), 400)
+    d_h = d_h_wl * wavelength
+    d_v = d_v_wl * wavelength
+
+    # Validate position and broadside arrays have exactly 3 elements
+    try:
+        position = np.array(array_cfg["position"], dtype=np.float64)
+        broadside = np.array(array_cfg["broadside"], dtype=np.float64)
+    except (KeyError, TypeError, ValueError) as exc:
+        return None, (jsonify({"error": f"Invalid array position/broadside: {exc}"}), 400)
+    if position.shape != (3,):
+        return None, (jsonify({"error": f"Array position must have 3 elements, got {position.shape}"}), 400)
+    if broadside.shape != (3,):
+        return None, (jsonify({"error": f"Array broadside must have 3 elements, got {broadside.shape}"}), 400)
 
     try:
         array = AntennaArray.upa(
-            n_h=int(array_cfg["n_h"]),
-            n_v=int(array_cfg["n_v"]),
+            n_h=n_h,
+            n_v=n_v,
             d_h=d_h,
             d_v=d_v,
-            center=np.array(array_cfg["position"], dtype=np.float64),
-            broadside=np.array(array_cfg["broadside"], dtype=np.float64),
+            center=position,
+            broadside=broadside,
             element_pattern=str(array_cfg.get("element_pattern", "patch")),
         )
     except (KeyError, ValueError) as exc:
@@ -77,10 +109,20 @@ def _build_scene(params: dict, cache: dict) -> tuple[MIMOScene | None, Response 
 
         # device_offset is relative to user body; rotate by orientation
         # then add to world position (matches frontend SmartphoneModel.tsx)
-        user_pos = np.array(u.get("position", [0.0, 0.0, 0.0]), dtype=np.float64)
+        try:
+            user_pos = np.array(u.get("position", [0.0, 0.0, 0.0]), dtype=np.float64)
+        except (TypeError, ValueError) as exc:
+            return None, (jsonify({"error": f"Invalid user position for '{u.get('id', '?')}': {exc}"}), 400)
+        if user_pos.shape != (3,):
+            return None, (jsonify({"error": f"User position must have 3 elements, got {user_pos.shape}"}), 400)
         default_offset = cache.get("body_device_offsets", {}).get(phantom, [0.0, 0.30, 1.4])
         raw_offset = u.get("device_offset") or u.get("device_position") or default_offset
-        device_offset = np.array(raw_offset, dtype=np.float64)
+        try:
+            device_offset = np.array(raw_offset, dtype=np.float64)
+        except (TypeError, ValueError) as exc:
+            return None, (jsonify({"error": f"Invalid device offset for '{u.get('id', '?')}': {exc}"}), 400)
+        if device_offset.shape != (3,):
+            return None, (jsonify({"error": f"Device offset must have 3 elements, got {device_offset.shape}"}), 400)
         orientation = float(u.get("orientation", 0.0))
         cos_o, sin_o = np.cos(orientation), np.sin(orientation)
         rotated_offset = np.array(
@@ -91,16 +133,23 @@ def _build_scene(params: dict, cache: dict) -> tuple[MIMOScene | None, Response 
             ]
         )
         device_position = user_pos + rotated_offset
-        device_orientation = u.get("device_orientation", [0.0, 0.0, 1.0])
+        raw_dev_orient = u.get("device_orientation", [0.0, 0.0, 1.0])
+        try:
+            device_orientation = np.array(raw_dev_orient, dtype=np.float64)
+        except (TypeError, ValueError) as exc:
+            return None, (jsonify({"error": f"Invalid device orientation for '{u.get('id', '?')}': {exc}"}), 400)
+        if device_orientation.shape != (3,):
+            msg = f"Device orientation must have 3 elements, got {device_orientation.shape}"
+            return None, (jsonify({"error": msg}), 400)
 
         try:
             cfg = UserConfig(
                 user_id=u["id"],
                 phantom_name=phantom,
-                position=np.array(u.get("position", [0.0, 0.0, 0.0]), dtype=np.float64),
-                device_position=np.array(device_position, dtype=np.float64),
-                device_orientation=np.array(device_orientation, dtype=np.float64),
-                orientation=float(u.get("orientation", 0.0)),
+                position=user_pos,
+                device_position=np.asarray(device_position, dtype=np.float64),
+                device_orientation=device_orientation,
+                orientation=orientation,
             )
         except (KeyError, ValueError) as exc:
             return None, (jsonify({"error": f"Invalid user config: {exc}"}), 400)

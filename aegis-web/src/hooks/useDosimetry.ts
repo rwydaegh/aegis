@@ -162,7 +162,15 @@ export function useDosimetry() {
           return
         }
       } else {
-        // DiffeRT: backend auto-detects geometry
+        // DiffeRT: check available geometry before calling backend
+        if (!scene.loadedScenePath && !scene.caps?.has_voxels && !scene.caps?.has_env_mesh) {
+          setComputing(false)
+          useNotificationStore.getState().addNotification(
+            'warning',
+            'No environment mesh available. Load an environment (OSM buildings, 3D Tiles, or a scene file) before using ray tracing.',
+          )
+          return
+        }
         computeCall = computeRT({ ...params, scenePath: scene.loadedScenePath || '', rtConfig: rtCfg }, controller.signal)
       }
     } else {

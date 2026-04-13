@@ -14,13 +14,21 @@ See theory/composability_analysis.md for derivation and limiting cases.
 
 from __future__ import annotations
 
-from aegis._array_backend import jit, xp
+import numpy as np
+
+from aegis._array_backend import JAX_AVAILABLE, jit, xp
 from aegis.constants import C_0
 from aegis.kernels._base import fresnel_weights, incidence_geometry, physical_gelu
 
+# Maximum number of (M, N) float64 elements before we split paths into chunks.
+# 50M elements ~ 400 MB per intermediate array. With ~4 live intermediates
+# (mu, T, g, T*g) the peak is ~1.6 GB, which fits comfortably in 4+ GB RAM.
+# Below this threshold the kernel runs unchunked (zero overhead).
+_MAX_MN_ELEMENTS = 50_000_000
+
 
 @jit(static_argnames=("fresnel", "polarisation", "curvature", "diffraction"))
-def spatial_kernel(
+def _spatial_kernel_unbatched(
     normals,
     k_hat,
     power,
@@ -35,32 +43,11 @@ def spatial_kernel(
     diffraction: bool = False,
     curvature_H=None,
 ):
-    """Compute per-triangle S_ab with composable physics corrections.
+    """Core spatial kernel operating on all paths at once.
 
-    Parameters
-    ----------
-    normals : (M, 3) unit outward normals
-    k_hat : (N, 3) incident directions
-    power : (N,) per-path power density [W/m^2]
-    n_tilde : complex refractive index
-    T0 : normal-incidence transmission coefficient
-    freq_hz : frequency [Hz]
-    fresnel : use angle-dependent T_avg(mu) instead of constant T0
-    polarisation : enable polarisation correction (requires fresnel=True)
-    q : TM excess parameter (scalar or (N,) array), used if polarisation=True
-    curvature : enable curvature correction (requires curvature_H)
-    diffraction : enable diffraction smoothing (requires curvature_H)
-    curvature_H : (M,) twice mean curvature per triangle [1/m]
-
-    Returns
-    -------
-    sab : (M,) absorbed power density per triangle [W/m^2]
+    This is the inner computation. For large M*N, use ``spatial_kernel``
+    which automatically chunks over paths to bound memory usage.
     """
-    if polarisation and not fresnel:
-        raise ValueError("polarisation correction requires fresnel=True")
-    if (curvature or diffraction) and curvature_H is None:
-        raise ValueError("curvature_H is required when curvature=True or diffraction=True")
-
     mu, mu_plus = incidence_geometry(normals, k_hat)
 
     # Fresnel factor
@@ -96,5 +83,106 @@ def spatial_kernel(
 
     if curvature or diffraction:
         sab = xp.maximum(sab, 0.0)
+
+    return sab
+
+
+def spatial_kernel(
+    normals,
+    k_hat,
+    power,
+    n_tilde,
+    T0,
+    freq_hz,
+    *,
+    fresnel: bool = True,
+    polarisation: bool = False,
+    q: float = 0.0,
+    curvature: bool = False,
+    diffraction: bool = False,
+    curvature_H=None,
+):
+    """Compute per-triangle S_ab with composable physics corrections.
+
+    Automatically chunks over paths (N dimension) when M*N exceeds
+    ``_MAX_MN_ELEMENTS`` to prevent out-of-memory on large scenes.
+    The result is mathematically identical to the unchunked version
+    because both the main term ``(T * g) @ power`` and the curvature
+    einsum decompose as sums over independent path subsets.
+
+    Parameters
+    ----------
+    normals : (M, 3) unit outward normals
+    k_hat : (N, 3) incident directions
+    power : (N,) per-path power density [W/m^2]
+    n_tilde : complex refractive index
+    T0 : normal-incidence transmission coefficient
+    freq_hz : frequency [Hz]
+    fresnel : use angle-dependent T_avg(mu) instead of constant T0
+    polarisation : enable polarisation correction (requires fresnel=True)
+    q : TM excess parameter (scalar or (N,) array), used if polarisation=True
+    curvature : enable curvature correction (requires curvature_H)
+    diffraction : enable diffraction smoothing (requires curvature_H)
+    curvature_H : (M,) twice mean curvature per triangle [1/m]
+
+    Returns
+    -------
+    sab : (M,) absorbed power density per triangle [W/m^2]
+    """
+    if polarisation and not fresnel:
+        raise ValueError("polarisation correction requires fresnel=True")
+    if (curvature or diffraction) and curvature_H is None:
+        raise ValueError("curvature_H is required when curvature=True or diffraction=True")
+
+    M = normals.shape[0]
+    N = k_hat.shape[0]
+
+    # Fast path: small enough to run in one shot
+    if M * N <= _MAX_MN_ELEMENTS or JAX_AVAILABLE:
+        return _spatial_kernel_unbatched(
+            normals,
+            k_hat,
+            power,
+            n_tilde,
+            T0,
+            freq_hz,
+            fresnel=fresnel,
+            polarisation=polarisation,
+            q=q,
+            curvature=curvature,
+            diffraction=diffraction,
+            curvature_H=curvature_H,
+        )
+
+    # Chunked path: split along N to bound peak memory
+    chunk_size = max(_MAX_MN_ELEMENTS // M, 1)
+    sab = np.zeros(M, dtype=np.float64)
+
+    for start in range(0, N, chunk_size):
+        end = min(start + chunk_size, N)
+        k_chunk = k_hat[start:end]
+        p_chunk = power[start:end]
+        q_chunk = q[start:end] if isinstance(q, np.ndarray) and q.ndim > 0 else q
+
+        chunk_sab = _spatial_kernel_unbatched(
+            normals,
+            k_chunk,
+            p_chunk,
+            n_tilde,
+            T0,
+            freq_hz,
+            fresnel=fresnel,
+            polarisation=polarisation,
+            q=q_chunk,
+            curvature=curvature,
+            diffraction=diffraction,
+            curvature_H=curvature_H,
+        )
+        sab += chunk_sab
+
+    # The clamp is already applied per-chunk when curvature/diffraction is on,
+    # but partial sums can be negative before the final sum. Re-clamp the total.
+    if curvature or diffraction:
+        sab = np.maximum(sab, 0.0)
 
     return sab

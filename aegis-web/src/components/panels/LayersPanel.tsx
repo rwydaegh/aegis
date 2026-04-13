@@ -17,6 +17,8 @@ export default function LayersPanel() {
   const toggleGroundPlane = useSceneStore(s => s.toggleGroundPlaneVisible)
   const gridVisible = useSceneStore(s => s.gridVisible)
   const toggleGrid = useSceneStore(s => s.toggleGridVisible)
+  const complianceRingVisible = useSceneStore(s => s.complianceRingVisible)
+  const toggleComplianceRing = useSceneStore(s => s.toggleComplianceRingVisible)
 
   const hasVoxels = !!voxelData
   const hasSceneGeo = !!sceneGeometry
@@ -49,6 +51,9 @@ export default function LayersPanel() {
       </button>
       <button onClick={toggleGrid} className={toggleClass(gridVisible)}>
         Grid
+      </button>
+      <button onClick={toggleComplianceRing} className={toggleClass(complianceRingVisible)}>
+        Compliance ring
       </button>
 
       {/* Scene geometry toggle */}

@@ -236,6 +236,55 @@ class TestPlacementMode:
         assert result["stats"]["peak_sab"] == 1.25
 
 
+class TestSafeInt:
+    """_safe_int falls back to default on non-numeric input."""
+
+    def test_valid_int(self):
+        from aegis.viewer.routes.optimize import _safe_int
+
+        assert _safe_int(5, 0) == 5
+
+    def test_valid_string_int(self):
+        from aegis.viewer.routes.optimize import _safe_int
+
+        assert _safe_int("7", 0) == 7
+
+    def test_invalid_string_returns_default(self):
+        from aegis.viewer.routes.optimize import _safe_int
+
+        assert _safe_int("abc", 42) == 42
+
+    def test_none_returns_default(self):
+        from aegis.viewer.routes.optimize import _safe_int
+
+        assert _safe_int(None, 10) == 10
+
+    def test_float_truncates(self):
+        from aegis.viewer.routes.optimize import _safe_int
+
+        assert _safe_int(3.9, 0) == 3
+
+
+class TestInvalidModeReturns400:
+    """Invalid optimizer mode returns 400, not 500."""
+
+    def test_invalid_mode(self, client):
+        resp = client.post("/api/optimize", json={"mode": "nonexistent"})
+        assert resp.status_code == 400
+        assert b"mode must be one of" in resp.data
+
+    def test_non_numeric_max_iters(self, client):
+        """Non-numeric max_iters should not crash (uses _safe_int fallback)."""
+        # This would 500 before the fix if max_iters was not handled
+        resp = client.post(
+            "/api/optimize",
+            json={"mode": "mimo_peak", "max_iters": "not_a_number"},
+        )
+        # 400 because no G_tilde cached, not because of max_iters crash
+        assert resp.status_code == 400
+        assert b"No MIMO scene" in resp.data or b"error" in resp.data
+
+
 class TestCancelEndpoint:
     def test_cancel_returns_json(self, client):
         resp = client.post("/api/optimize/cancel")

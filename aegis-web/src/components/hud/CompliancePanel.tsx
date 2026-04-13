@@ -112,6 +112,11 @@ export default function CompliancePanel() {
             <div className="flex justify-between text-foreground/90 gap-2 items-baseline">
               <span className="flex-1">{tex ? <Tex math={tex} /> : check.label}</span>
               <span className="whitespace-nowrap">{check.value.toFixed(2)} / {check.limit.toFixed(2)} {check.unit}</span>
+              {check.margin_db != null && (
+                <span className={cn('min-w-[42px] text-right tabular-nums', statusTextClass(check))}>
+                  {check.margin_db > 0 ? '+' : ''}{check.margin_db.toFixed(1)}dB
+                </span>
+              )}
               <span className={cn('font-bold min-w-[35px] text-right', statusTextClass(check))}>
                 {statusLabel(check)}
               </span>

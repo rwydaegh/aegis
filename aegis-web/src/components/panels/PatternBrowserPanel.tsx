@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import * as Sentry from '@sentry/react'
 import { searchPatterns, loadPattern } from '@/api/patterns'
 import type { PatternSearchResult } from '@/api/patterns'
 import { useSimulationStore } from '@/stores/simulation'
@@ -67,7 +68,7 @@ export default function PatternBrowserPanel() {
       const { data, meta } = await loadPattern(r.source, r.id)
       setPatternData(data, meta)
     } catch (err) {
-      console.error('Failed to load pattern:', err)
+      Sentry.captureException(err)
       setLoadError((err as Error).message)
       setPatternData(null, null)
     } finally {

@@ -1,3 +1,4 @@
+import { useState, useCallback } from 'react'
 import * as Sentry from '@sentry/react'
 import { useSimulationStore } from '@/stores/simulation'
 import { fetchComplianceSummary, fetchDosimetryCsv, fetchDosimetryJson, fetchDosimetryNpz, exportConfig, isNetworkError } from '@/api/client'
@@ -22,14 +23,31 @@ function handleExportError(err: unknown, label: string) {
   useNotificationStore.getState().addNotification('error', `Failed to ${label}`)
 }
 
+type ExportKey = 'csv' | 'json' | 'npz' | 'report' | 'config' | 'screenshot'
+
 export default function ExportPanel() {
   const stats = useSimulationStore(s => s.stats)
   const compliance = useSimulationStore(s => s.compliance)
   const sabArray = useSimulationStore(s => s.sabArray)
+  const [busy, setBusy] = useState<Set<ExportKey>>(new Set())
 
-  const btnClass = "w-full px-3 py-1.5 rounded text-xs font-medium bg-muted hover:bg-muted/80 text-foreground disabled:opacity-40"
+  const withBusy = useCallback((key: ExportKey, fn: () => Promise<void>) => {
+    return async () => {
+      if (busy.has(key)) return
+      setBusy(prev => new Set(prev).add(key))
+      try {
+        await fn()
+      } finally {
+        setBusy(prev => {
+          const next = new Set(prev)
+          next.delete(key)
+          return next
+        })
+      }
+    }
+  }, [busy])
 
-  const handleExportCsv = async () => {
+  const handleExportCsv = withBusy('csv', async () => {
     if (!sabArray) return
     try {
       const blob = await fetchDosimetryCsv()
@@ -37,9 +55,9 @@ export default function ExportPanel() {
     } catch (err) {
       handleExportError(err, 'export dosimetry CSV')
     }
-  }
+  })
 
-  const handleExportJson = async () => {
+  const handleExportJson = withBusy('json', async () => {
     if (!sabArray) return
     try {
       const blob = await fetchDosimetryJson()
@@ -47,9 +65,9 @@ export default function ExportPanel() {
     } catch (err) {
       handleExportError(err, 'export dosimetry JSON')
     }
-  }
+  })
 
-  const handleExportNpz = async () => {
+  const handleExportNpz = withBusy('npz', async () => {
     if (!sabArray) return
     try {
       const blob = await fetchDosimetryNpz()
@@ -57,9 +75,9 @@ export default function ExportPanel() {
     } catch (err) {
       handleExportError(err, 'export dosimetry NPZ')
     }
-  }
+  })
 
-  const handleExportReport = async () => {
+  const handleExportReport = withBusy('report', async () => {
     try {
       const powerDbm = useSimulationStore.getState().powerDbm
       const { text } = await fetchComplianceSummary(powerDbm)
@@ -67,9 +85,9 @@ export default function ExportPanel() {
     } catch (err) {
       handleExportError(err, 'fetch compliance report')
     }
-  }
+  })
 
-  const handleExportConfig = async () => {
+  const handleExportConfig = withBusy('config', async () => {
     try {
       const state = collectState()
       const config = await exportConfig(state)
@@ -79,9 +97,9 @@ export default function ExportPanel() {
     } catch (err) {
       handleExportError(err, 'export configuration')
     }
-  }
+  })
 
-  const handleScreenshot = async () => {
+  const handleScreenshot = withBusy('screenshot', async () => {
     try {
       const html2canvas = (await import('html2canvas')).default
       const canvas = await html2canvas(document.body, {
@@ -110,28 +128,30 @@ export default function ExportPanel() {
         else useNotificationStore.getState().addNotification('error', 'Screenshot capture returned empty image')
       })
     }
-  }
+  })
+
+  const btnClass = "w-full px-3 py-1.5 rounded text-xs font-medium bg-muted hover:bg-muted/80 text-foreground disabled:opacity-40"
 
   return (
     <div className="flex flex-col gap-2">
-      <button className={btnClass} onClick={handleScreenshot}>
-        Screenshot (PNG)
+      <button className={btnClass} onClick={handleScreenshot} disabled={busy.has('screenshot')}>
+        {busy.has('screenshot') ? 'Capturing...' : 'Screenshot (PNG)'}
       </button>
-      <button className={btnClass} onClick={handleExportCsv} disabled={!sabArray}>
-        Export dosimetry (CSV)
+      <button className={btnClass} onClick={handleExportCsv} disabled={!sabArray || busy.has('csv')}>
+        {busy.has('csv') ? 'Exporting...' : 'Export dosimetry (CSV)'}
       </button>
-      <button className={btnClass} onClick={handleExportJson} disabled={!sabArray}>
-        Export dosimetry (JSON)
+      <button className={btnClass} onClick={handleExportJson} disabled={!sabArray || busy.has('json')}>
+        {busy.has('json') ? 'Exporting...' : 'Export dosimetry (JSON)'}
       </button>
-      <button className={btnClass} onClick={handleExportNpz} disabled={!sabArray}>
-        Export dosimetry (NPZ)
+      <button className={btnClass} onClick={handleExportNpz} disabled={!sabArray || busy.has('npz')}>
+        {busy.has('npz') ? 'Exporting...' : 'Export dosimetry (NPZ)'}
       </button>
-      <button className={btnClass} onClick={handleExportReport} disabled={!stats || !compliance}>
-        Compliance report (TXT)
+      <button className={btnClass} onClick={handleExportReport} disabled={!stats || !compliance || busy.has('report')}>
+        {busy.has('report') ? 'Generating...' : 'Compliance report (TXT)'}
       </button>
       <hr className="border-border" />
-      <button className={btnClass} onClick={handleExportConfig}>
-        Export configuration (JSON)
+      <button className={btnClass} onClick={handleExportConfig} disabled={busy.has('config')}>
+        {busy.has('config') ? 'Exporting...' : 'Export configuration (JSON)'}
       </button>
     </div>
   )

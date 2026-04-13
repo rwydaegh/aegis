@@ -21,6 +21,8 @@ export function usePhysics() {
   })
 
   const controlledUserId = useMIMOStore(s => s.controlledUserId)
+  // Reusable Vector3 to avoid per-frame allocation
+  const _camDir = useRef(new THREE.Vector3())
 
   useEffect(() => {
     if (!controlledUserId) return
@@ -44,7 +46,7 @@ export function usePhysics() {
     const getGroundY = heightmapFn ?? ((_x: number, _z: number, _y: number) => 0)
 
     // Get camera forward direction (flattened to XZ)
-    const camDir = new THREE.Vector3()
+    const camDir = _camDir.current
     camera.getWorldDirection(camDir)
     const cameraDirection: [number, number] = [camDir.x, camDir.z]
     const len = Math.sqrt(cameraDirection[0] ** 2 + cameraDirection[1] ** 2)

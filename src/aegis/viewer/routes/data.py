@@ -220,9 +220,10 @@ def _handle_config(cache):
     has_voxels = cache.get("voxel_binary") is not None
     has_env_mesh = scoped_cache_get(cache, "env_mesh") is not None
     tiles_dir = cache.get("tiles_dir")
-    n_tiles = 0
-    if tiles_dir:
+    n_tiles = cache.get("n_tiles", 0)
+    if n_tiles == 0 and tiles_dir:
         n_tiles = len(list(Path(tiles_dir).glob("*.glb")))
+        cache["n_tiles"] = n_tiles
     # Report default body name and its meta from preloaded bodies cache
     default_body_name = cache.get("default_body", "")
     bodies_cache = cache.get("bodies", {})
@@ -230,18 +231,16 @@ def _handle_config(cache):
     body_meta = default_entry["meta"] if default_entry is not None else cache.get("body_meta")
     bodies.sort()
 
-    # Discover GLB (animated) phantoms from phantom_dir
-    # Resolve relative to data_dir so CWD doesn't matter
-    data_dir_path = Path(cache.get("data_dir", "data"))
-    phantom_dir_cfg = cfg.get("body", {}).get("phantom_dir", "")
-    if phantom_dir_cfg and Path(phantom_dir_cfg).is_absolute():
-        phantom_dir = Path(phantom_dir_cfg)
-    else:
-        phantom_dir = data_dir_path / "phantoms"
-    gltf_bodies = sorted(p.stem for p in phantom_dir.glob("*.glb") if p.is_file()) if phantom_dir.is_dir() else []
+    # Use cached GLB phantom names (populated at startup by _preload_bodies)
+    gltf_bodies = cache.get("gltf_bodies", [])
 
     # Merge GLB names into the bodies list so they appear in the dropdown
     all_bodies = sorted(set(bodies) | set(gltf_bodies))
+
+    # Check for coverage data availability
+    data_dir_path = Path(cache.get("data_dir", "data"))
+    regions_yaml = data_dir_path / "basestations" / "regions.yaml"
+    has_coverage = regions_yaml.exists()
 
     return jsonify(
         {
@@ -262,6 +261,7 @@ def _handle_config(cache):
             "voxel_meta": cache.get("voxel_meta"),
             "has_location_loader": has_pipeline and has_api_key,
             "has_api_key": has_api_key,
+            "has_coverage": has_coverage,
             "google_api_key": os.environ.get("GOOGLE_API_KEY", ""),
             "google_map_id": os.environ.get("GOOGLE_MAP_ID", ""),
             "cesium_ion_token": os.environ.get("CESIUM_ION_TOKEN", ""),
@@ -354,9 +354,12 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         else:
             phantom_dir = data_dir_path / "phantoms"
         path = (phantom_dir / f"{name}.glb").resolve()
+        # Guard against symlink escape: resolved path must stay inside phantom_dir
+        if not path.is_relative_to(phantom_dir.resolve()):
+            abort(403, "Path escapes phantom directory")
         if not path.is_file():
             abort(404)
-        return send_file(path, mimetype="model/gltf-binary")
+        return send_file(path, mimetype="model/gltf-binary", conditional=True, max_age=3600)
 
     @app.route("/api/clear-cache", methods=["POST"])
     def api_clear_cache():

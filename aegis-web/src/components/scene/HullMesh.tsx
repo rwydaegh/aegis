@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
+import * as Sentry from '@sentry/react'
 import * as THREE from 'three'
 import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
-import { fetchHullMesh } from '@/api/client'
+import { fetchHullMesh, isNetworkError } from '@/api/client'
 
 interface HullData {
   vertices: Float32Array
@@ -20,7 +21,7 @@ export default function HullMesh() {
     let cancelled = false
     fetchHullMesh()
       .then(d => { if (!cancelled) setData(d) })
-      .catch(err => console.error('Hull mesh fetch failed:', err))
+      .catch(err => { if (!isNetworkError(err)) Sentry.captureException(err) })
     return () => { cancelled = true }
   }, [envMode])
 

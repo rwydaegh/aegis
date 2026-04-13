@@ -95,20 +95,57 @@ def solve_ecbf(
         p_abs = P * float(np.real(np.sum(eigenvalues * np.abs(x_tilde) ** 2))) / norm_sq
         return p_abs
 
-    # Check if constraint is feasible. As lambda -> inf, x concentrates
-    # in the smallest eigenvalue direction, giving P_abs -> P * lambda_min.
-    # If P * lambda_min > P_abs_max, constraint is infeasible. Return the
-    # minimum-absorption precoder (smallest eigenvector direction).
-    p_abs_min = P * float(eigenvalues[0])  # eigenvalues from eigh are ascending
-    if p_abs_min > P_abs_max:
+    # Compute the true asymptotic minimum P_abs as lambda -> infinity.
+    # When h has a component in the null space of Q, the null-space directions
+    # dominate (their weights stay 1) and p_abs -> 0. Otherwise, the limit is
+    # a weighted average: P * sum(a_k^2/mu_k) / sum(a_k^2/mu_k^2) where
+    # a_k = |h_tilde_k| and mu_k are the nonzero eigenvalues.
+    a_sq = np.abs(h_tilde) ** 2
+    nonzero_mask = eigenvalues > NUMERICAL_FLOOR
+    null_energy = float(np.sum(a_sq[~nonzero_mask]))
+
+    if null_energy > NUMERICAL_FLOOR:
+        # h has a null-space component: as lambda -> inf, x concentrates
+        # there and p_abs -> 0.
+        p_abs_inf = 0.0
+    elif np.any(nonzero_mask):
+        mu_nz = eigenvalues[nonzero_mask]
+        a_sq_nz = a_sq[nonzero_mask]
+        denom = float(np.sum(a_sq_nz / mu_nz**2))
+        p_abs_inf = P * float(np.sum(a_sq_nz / mu_nz)) / denom if denom > NUMERICAL_FLOOR else 0.0
+    else:
+        p_abs_inf = 0.0
+
+    if p_abs_inf > P_abs_max:
         # Infeasible: return smallest-eigenvalue direction
         warnings.warn(
             "ECBF constraint infeasible: minimum achievable P_abs "
-            f"({p_abs_min:.4g} W) exceeds P_abs_max ({P_abs_max:.4g} W); "
+            f"({p_abs_inf:.4g} W) exceeds P_abs_max ({P_abs_max:.4g} W); "
             "returning minimum-absorption precoder",
             stacklevel=2,
         )
         return xp.asarray(np.sqrt(P) * V[:, 0])
+
+    # Power-slack regime: when Q is invertible and h is not aligned with
+    # the smallest eigenvalue directions, the parametric family
+    # x(lambda) = sqrt(P)*(lambda*Q+I)^{-1}h*/||...|| (which forces
+    # ||x||^2 = P) may never reach P_abs_max. The true QCQP optimum then
+    # has ||x||^2 < P with x proportional to Q^{-1} h*.
+    if eigenvalues[0] > NUMERICAL_FLOOR:
+        h_abs_sq = np.abs(h_tilde) ** 2
+        inv_eigvals = 1.0 / eigenvalues
+        # h*^H Q^{-1} h* and h*^H Q^{-2} h*
+        qinv_form = float(np.sum(h_abs_sq * inv_eigvals))
+        qinv2_form = float(np.sum(h_abs_sq * inv_eigvals**2))
+        if qinv2_form > NUMERICAL_FLOOR:
+            p_abs_asymp = P * qinv_form / qinv2_form
+            if p_abs_asymp > P_abs_max:
+                # Power constraint is slack at optimality.
+                # x = alpha * Q^{-1} h*, scaled so x^H Q x = P_abs_max.
+                alpha = np.sqrt(P_abs_max / qinv_form)
+                x_tilde_slack = alpha * h_tilde * inv_eigvals
+                x_slack = V @ x_tilde_slack
+                return xp.asarray(x_slack)
 
     # Bisect on lambda to find P_abs = P_abs_max
     lam_low = 0.0
@@ -144,7 +181,7 @@ def solve_ecbf(
     x_conj = V @ x_tilde
     norm = np.sqrt(float(np.real(np.vdot(x_conj, x_conj))))
     if norm < NUMERICAL_FLOOR:
-        return xp.asarray(x_mrt)
+        return xp.asarray(np.sqrt(P) * V[:, 0])
 
     x_star = np.sqrt(P) * x_conj / norm
     return xp.asarray(x_star)

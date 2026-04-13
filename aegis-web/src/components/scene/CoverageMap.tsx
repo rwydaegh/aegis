@@ -3,7 +3,7 @@ import { APIProvider, Map, Map3D, MapMode, Marker3D, AltitudeMode, useMap } from
 import { GoogleMapsOverlay } from '@deck.gl/google-maps'
 import { useSceneStore } from '@/stores/scene'
 import { useCoverageStore } from '@/stores/coverage'
-import { buildCoverageLayers, OP_COLORS } from './coverageLayers'
+import { buildCoverageLayers, buildComplianceZoneLayer, OP_COLORS } from './coverageLayers'
 import { Radio, Building2, Layers, MapPin, X, Signal } from 'lucide-react'
 
 /** Zoom level at which we switch from 2D heatmap to 3D photorealistic view */
@@ -28,6 +28,8 @@ function DeckOverlay() {
   const siteCount = useCoverageStore(s => s.siteCount)
   const zoom = useCoverageStore(s => s.zoom)
   const colorMode = useCoverageStore(s => s.colorMode)
+  const complianceZone = useCoverageStore(s => s.complianceZone)
+  const complianceZoneEnabled = useCoverageStore(s => s.complianceZoneEnabled)
 
   // Attach overlay to map
   useEffect(() => {
@@ -87,16 +89,22 @@ function DeckOverlay() {
       return
     }
 
-    const layers = buildCoverageLayers({
+    const coverageLayers = buildCoverageLayers({
       siteLats, siteLons, siteOpIndices, siteTechIndices,
       siteRegionIndices, siteAntennaCounts,
       siteCount, zoom, colorMode,
       onSiteHover, onSiteClick,
     })
 
-    overlay.setProps({ layers })
+    // Add compliance zone layer below coverage layers
+    const complianceLayers = complianceZoneEnabled
+      ? buildComplianceZoneLayer(complianceZone)
+      : []
+
+    overlay.setProps({ layers: [...complianceLayers, ...coverageLayers] })
   }, [siteLats, siteLons, siteOpIndices, siteTechIndices, siteRegionIndices,
-      siteAntennaCounts, siteCount, zoom, colorMode, overlay, onSiteHover, onSiteClick])
+      siteAntennaCounts, siteCount, zoom, colorMode, overlay, onSiteHover, onSiteClick,
+      complianceZone, complianceZoneEnabled])
 
   return null
 }
@@ -326,7 +334,8 @@ export function CoverageMap() {
         <button
           onClick={() => {
             setShow3D(false)
-            useCoverageStore.getState().setZoom(10)
+            // Restore zoom to just below the 3D threshold so we stay in 2D
+            useCoverageStore.getState().setZoom(SWITCH_TO_3D_ZOOM - 3)
           }}
           className="absolute top-16 left-1/2 -translate-x-1/2 z-30 px-4 py-2 bg-zinc-800/90 hover:bg-zinc-700 text-white text-sm rounded-lg border border-zinc-600 shadow-lg transition-colors"
         >
@@ -336,12 +345,20 @@ export function CoverageMap() {
     )
   }
 
+  // Use last known center when returning from 3D view, otherwise default to Europe
+  const mapCenter = lastCenterRef.current.lat !== 48.8 || lastCenterRef.current.lon !== 2.3
+    ? { lat: lastCenterRef.current.lat, lng: lastCenterRef.current.lon }
+    : { lat: 48.8, lng: 2.3 }
+  const mapZoom = mapCenter.lat !== 48.8 || mapCenter.lng !== 2.3
+    ? Math.min(zoom, SWITCH_TO_3D_ZOOM - 3)
+    : 4
+
   return (
     <APIProvider apiKey={googleApiKey}>
       <Map
         style={{ width: '100%', height: '100%' }}
-        defaultCenter={{ lat: 48.8, lng: 2.3 }}
-        defaultZoom={4}
+        defaultCenter={mapCenter}
+        defaultZoom={mapZoom}
         mapTypeId="hybrid"
         disableDefaultUI
         gestureHandling="greedy"
