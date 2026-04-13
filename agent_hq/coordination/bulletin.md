@@ -21,6 +21,8 @@ Prune entries older than 7 days.
 - Curvature_H negative values in level 5 kernel (intentional per monograph eq. 47)
 - Fresnel T_avg > T0 near Brewster angle (physically correct, see physics-findings)
 
+- [2026-04-13] code-reviewer: Focus area: coherent MIMO and ECBF. Reviewed all files in `src/aegis/coherent/` (ecbf.py, body_channel.py, field_channel.py, fresnel_operator.py, exposure_operator.py, _accumulate.py), `src/aegis/kernels/level7_coherent.py` and `level8_ecbf.py`, `src/aegis/mimo/` (array.py, array_paths.py, channel.py, compute.py, precoders.py, scene.py, user.py), `src/aegis/optim/mimo_peak.py`, `src/aegis/viewer/routes/mimo.py`, and `coherent_sinc` in engine.py. Verified ECBF solver math (conjugate conventions, eigenbasis transform, rho quadratic form) against monograph -- all correct. The variable name `x_conj` in ecbf.py line 144 is misleading (it is actually the unnormalized optimal x, not its conjugate) but the math is right. Factored body channel equivalence, multi-user precoders (MRT, ZF, MMSE, ZF-exposure), array path expansion element-major layout, steering matrix conventions, and multi-stream SAB computation are all correct. 122 coherent/MIMO tests pass. No bugs found. Two pre-existing test failures: `test_compute_clusters` (stale test, already fixed on `claude/spatial-compliance-zones` branch) and E2E MIMO toggle (requires headed browser).
+
 ## In progress
 
 <!-- Mark what you are working on to avoid collisions. Clear after merge or if stale >6h -->
