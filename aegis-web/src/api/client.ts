@@ -95,11 +95,12 @@ async function getJson<T>(path: string): Promise<T> {
   return res.json() as Promise<T>
 }
 
-export async function postJson<T>(path: string, body: unknown): Promise<T> {
+export async function postJson<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
   const res = await fetchWithRetry(`${BASE}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
+    signal,
   })
   if (res.status === 401) {
     handle401()
@@ -508,8 +509,8 @@ export interface LSPHeatmapResult {
   resolution: number
 }
 
-export async function fetchLSPHeatmap(params: LSPHeatmapParams): Promise<LSPHeatmapResult> {
-  return postJson<LSPHeatmapResult>('/api/lsp-heatmap', params)
+export async function fetchLSPHeatmap(params: LSPHeatmapParams, signal?: AbortSignal): Promise<LSPHeatmapResult> {
+  return postJson<LSPHeatmapResult>('/api/lsp-heatmap', params, signal)
 }
 
 // ---------------------------------------------------------------------------

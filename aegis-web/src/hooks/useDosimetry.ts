@@ -270,7 +270,7 @@ export function useDosimetry() {
       bounds: [-100, 100, -100, 100],
       resolution: 128,
       seed: sim.stochasticSeed,
-    })
+    }, controller.signal)
       .then(result => {
         if (controller.signal.aborted) return
         useSimulationStore.getState().setLSPHeatmapData(result.data, result.bounds, [result.vmin, result.vmax])

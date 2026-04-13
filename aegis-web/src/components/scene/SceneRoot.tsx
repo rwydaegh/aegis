@@ -38,6 +38,7 @@ import { EnvironmentTerrain } from './EnvironmentTerrain'
 import { LSPHeatmap } from './LSPHeatmap'
 import ClusterPaths from './ClusterPaths'
 import { cameraState } from '@/lib/cameraState'
+import { R3FErrorBoundary } from './ErrorBoundary'
 
 function GroundPlane() {
   const visible = useSceneStore(s => s.groundPlaneVisible)
@@ -379,14 +380,18 @@ export default function SceneRoot() {
       {!isCoverageMode && <SceneLighting />}
       {!isCoverageMode && <ClickPlane />}
       {(envSource === 'none' || envSource === 'voxels') && (
-        <>
+        <R3FErrorBoundary name="EnvironmentGeometry">
           <VoxelField />
           <HullMesh />
           <SceneGeometry />
           <Environment />
-        </>
+        </R3FErrorBoundary>
       )}
-      {envSource === 'osm' && <EnvironmentOSM />}
+      {envSource === 'osm' && (
+        <R3FErrorBoundary name="EnvironmentOSM">
+          <EnvironmentOSM />
+        </R3FErrorBoundary>
+      )}
       {!isCoverageMode && (mimoEnabled ? (
         <MIMOScene bodyMeshVisible={bodyMeshVisible} />
       ) : (
@@ -439,9 +444,21 @@ export default function SceneRoot() {
       {!isCoverageMode && <RayPaths />}
       <GroundPlane />
       <SceneGrid />
-      {!isCoverageMode && <EnvironmentTerrain />}
-      {!isCoverageMode && <BaseStationMarkers />}
-      {!isCoverageMode && <LSPHeatmap />}
+      {!isCoverageMode && (
+        <R3FErrorBoundary name="EnvironmentTerrain">
+          <EnvironmentTerrain />
+        </R3FErrorBoundary>
+      )}
+      {!isCoverageMode && (
+        <R3FErrorBoundary name="BaseStationMarkers">
+          <BaseStationMarkers />
+        </R3FErrorBoundary>
+      )}
+      {!isCoverageMode && (
+        <R3FErrorBoundary name="LSPHeatmap">
+          <LSPHeatmap />
+        </R3FErrorBoundary>
+      )}
       {!isCoverageMode && <ClusterPaths />}
       <DosimetryController />
       <MIMODosimetryController />

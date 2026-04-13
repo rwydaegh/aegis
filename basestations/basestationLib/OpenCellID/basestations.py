@@ -214,8 +214,6 @@ def fetch_cells_one_bbox(api_key: str,
             break
 
         text = resp.text.strip()
-        print(text)
-        input()
         if not text:
             print(f"    Warning: empty response at offset {offset}", file=sys.stderr)
             continue

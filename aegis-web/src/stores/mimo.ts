@@ -220,7 +220,15 @@ export const useMIMOStore = create<MIMOStore>((set, get) => ({
     const user = users.get(id)
     if (!user) return
     users.set(id, { ...user, position })
-    set({ users, _configVersion: get()._configVersion + 1 })
+    // Only bump config version (triggering dosimetry recompute) when the
+    // position changes by a meaningful amount. During WASD movement at 60fps,
+    // sub-centimeter changes produce identical dosimetry results but create
+    // timer churn in useMIMODosimetry's debounce.
+    const [ox, oy, oz] = user.position
+    const [nx, ny, nz] = position
+    const d2 = (nx - ox) ** 2 + (ny - oy) ** 2 + (nz - oz) ** 2
+    const bump = d2 > 0.05 * 0.05  // 5 cm threshold
+    set({ users, ...(bump ? { _configVersion: get()._configVersion + 1 } : {}) })
   },
 
   setUserOrientation: (id, orientation) => {

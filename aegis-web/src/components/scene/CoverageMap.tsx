@@ -236,6 +236,11 @@ function Photorealistic3DView({ center }: { center: { lat: number; lon: number }
         lon: detail.center.lng,
       })
     }
+    // Map3D range roughly maps to 2D zoom: zoom ~ 27 - log2(range)
+    if (typeof detail?.range === 'number' && detail.range > 0) {
+      const estimatedZoom = Math.max(1, Math.min(22, 27 - Math.log2(detail.range)))
+      useCoverageStore.getState().setZoom(estimatedZoom)
+    }
   }, [])
 
   return (
@@ -303,10 +308,12 @@ export function CoverageMap() {
     if (cameraLatLon) lastCenterRef.current = cameraLatLon
   }, [cameraLatLon])
 
-  // Auto-switch to 3D when zoomed in enough (if Map ID is configured)
+  // Auto-switch between 2D heatmap and 3D photorealistic based on zoom level
   useEffect(() => {
     if (googleMapId && zoom >= SWITCH_TO_3D_ZOOM && !show3D) {
       setShow3D(true)
+    } else if (show3D && zoom < SWITCH_TO_3D_ZOOM) {
+      setShow3D(false)
     }
   }, [zoom, googleMapId, show3D])
 
