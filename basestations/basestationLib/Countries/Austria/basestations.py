@@ -58,7 +58,7 @@ def get_antennas(session, sites):
     Note: is_sharing is kept for future implementation but not included in final output.
     """
     detail_url = "https://www.senderkataster.at/backend/data/getdetails.php"
-    antennas = pd.DataFrame()
+    rows: list[dict] = []
     transformer = Transformer.from_crs("EPSG:3857", "EPSG:4326", always_xy=True)
     
     for site in _tqdm(sites, desc="Fetching antenna details"):
@@ -113,12 +113,9 @@ def get_antennas(session, sites):
                     "is_sharing": is_sharing  # Keep for future implementation
                 }
                 
-                if antennas.empty:
-                    antennas = pd.DataFrame([antenna_row])
-                else:
-                    antennas = pd.concat([antennas, pd.DataFrame([antenna_row])], ignore_index=True)
-    
-    return antennas
+                rows.append(antenna_row)
+
+    return pd.DataFrame(rows) if rows else pd.DataFrame()
 
 
 class BaseStations:
