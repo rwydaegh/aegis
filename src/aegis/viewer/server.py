@@ -479,7 +479,7 @@ def create_app(
     app = Flask(__name__, template_folder=template_dir)
 
     # Session-based password gate
-    app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-secret-key-change-me")
+    app.secret_key = os.environ.get("FLASK_SECRET_KEY") or os.urandom(32)
     app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB upload limit
     app.config["SESSION_COOKIE_HTTPONLY"] = True
     app.config["SESSION_COOKIE_SECURE"] = os.environ.get("FLASK_ENV") != "development"

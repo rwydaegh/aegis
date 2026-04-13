@@ -28,6 +28,9 @@ export default function FollowCamera() {
 
   const yaw = useRef(0)
   const pitch = useRef(DEFAULT_PITCH)
+  // Reusable Vector3 objects to avoid per-frame GC pressure
+  const _targetPos = useRef(new THREE.Vector3())
+  const _desiredPos = useRef(new THREE.Vector3())
   const distance = useRef(DEFAULT_DISTANCE)
   const isDragging = useRef(false)
   const lastMouse = useRef({ x: 0, y: 0 })
@@ -101,16 +104,16 @@ export default function FollowCamera() {
       bodyPos = useSimulationStore.getState().bodyOffset
     }
     const [bx, by, bz] = bodyPos
-    const targetPos = new THREE.Vector3(bx, by + HEIGHT_OFFSET, bz)
+    const targetPos = _targetPos.current.set(bx, by + HEIGHT_OFFSET, bz)
 
     const d = distance.current
     const p = pitch.current
     const y = yaw.current
-    const desiredX = targetPos.x + d * Math.cos(p) * Math.sin(y)
-    const desiredY = targetPos.y + d * Math.sin(p)
-    const desiredZ = targetPos.z + d * Math.cos(p) * Math.cos(y)
-
-    const desiredPos = new THREE.Vector3(desiredX, desiredY, desiredZ)
+    const desiredPos = _desiredPos.current.set(
+      targetPos.x + d * Math.cos(p) * Math.sin(y),
+      targetPos.y + d * Math.sin(p),
+      targetPos.z + d * Math.cos(p) * Math.cos(y),
+    )
 
     // Keep camera above ground
     const minY = by + 0.5

@@ -47,11 +47,11 @@ export interface CoverageLayerParams {
 
 // Cache heatmap data array to avoid rebuilding 416K objects on every zoom change
 let _cachedHeatmapData: { position: [number, number]; weight: number }[] | null = null
-let _cachedHeatmapKey: string | null = null
+let _cachedHeatmapLats: Float32Array | null = null
 
 function getHeatmapData(siteLats: Float32Array, siteLons: Float32Array, siteAntennaCounts: Uint8Array, siteCount: number) {
-  const key = `${siteLats.byteLength}-${siteCount}`
-  if (_cachedHeatmapData && _cachedHeatmapKey === key && _cachedHeatmapData.length === siteCount) {
+  // Use buffer reference identity: a new Float32Array means new data was loaded
+  if (_cachedHeatmapData && _cachedHeatmapLats === siteLats && _cachedHeatmapData.length === siteCount) {
     return _cachedHeatmapData
   }
   const data: { position: [number, number]; weight: number }[] = new Array(siteCount)
@@ -62,7 +62,7 @@ function getHeatmapData(siteLats: Float32Array, siteLons: Float32Array, siteAnte
     }
   }
   _cachedHeatmapData = data
-  _cachedHeatmapKey = key
+  _cachedHeatmapLats = siteLats
   return data
 }
 

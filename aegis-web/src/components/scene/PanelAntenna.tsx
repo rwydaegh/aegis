@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react'
+import { memo, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 
 interface PanelAntennaProps {
@@ -23,7 +23,7 @@ const DEFAULT_POLE_RADIUS = 0.04
 const DEFAULT_DOT_RADIUS = 0.008
 const DEFAULT_COLOR = '#888888'
 
-export default function PanelAntenna({
+export default memo(function PanelAntenna({
   nH,
   nV,
   panelWidth,
@@ -115,4 +115,4 @@ export default function PanelAntenna({
       </group>
     </group>
   )
-}
+})

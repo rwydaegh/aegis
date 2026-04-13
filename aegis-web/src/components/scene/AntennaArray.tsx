@@ -1,4 +1,4 @@
-import { useMemo, useEffect } from 'react'
+import { memo, useMemo, useEffect } from 'react'
 import * as THREE from 'three'
 import type { ArrayConfig } from '@/api/types'
 import { jetColor, gainTFromLinear } from '@/lib/colormap'
@@ -16,7 +16,7 @@ const ARROW_COLOR = new THREE.Color(1, 0.4, 0)
 const MIN_ELEMENT_RADIUS = 0.005
 const MAX_ELEMENT_RADIUS = 0.03
 
-export default function AntennaArray({ config, freqHz, showPattern, weights, selected }: AntennaArrayProps) {
+export default memo(function AntennaArray({ config, freqHz, showPattern, weights, selected }: AntennaArrayProps) {
   // Compute element positions in local coords (array-centered)
   // Must match backend array.py axis construction so element indices align with precoder weights
   const localPositions = useMemo(() => {
@@ -91,7 +91,7 @@ export default function AntennaArray({ config, freqHz, showPattern, weights, sel
     }
 
     const k0 = 2 * Math.PI * freqHz / 3e8
-    const detail = 8
+    const detail = 5
     const base = new THREE.IcosahedronGeometry(1, detail)
     const posAttr = base.attributes.position as THREE.BufferAttribute
     const nV = posAttr.count
@@ -250,4 +250,4 @@ export default function AntennaArray({ config, freqHz, showPattern, weights, sel
       </group>
     </>
   )
-}
+})

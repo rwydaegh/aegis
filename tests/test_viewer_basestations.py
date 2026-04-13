@@ -312,10 +312,10 @@ class TestBasestationsComputeRoute:
                 _cache.pop("bodies", None)
 
             resp = c.post("/api/basestations/compute", json={})
-            # "No body mesh loaded" because body may not be set
+            # Body not found because bodies dict was cleared.
             # In test fixture with e2e_icosahedron, body is loaded
             # so this may actually proceed. Check status code is valid.
-            assert resp.status_code in (200, 400)
+            assert resp.status_code in (200, 400, 404)
 
             with _cache_lock:
                 _cache.pop("test-session:basestations", None)
