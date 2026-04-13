@@ -5,7 +5,8 @@ from unittest.mock import patch
 
 import pytest
 
-from aegis.viewer.server import create_app
+pytest.importorskip("flask")
+from aegis.viewer.server import create_app  # noqa: E402
 
 
 @pytest.fixture
