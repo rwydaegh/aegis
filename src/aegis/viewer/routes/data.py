@@ -239,7 +239,10 @@ def _handle_config(cache):
         phantom_dir = Path(phantom_dir_cfg)
     else:
         phantom_dir = data_dir_path / "phantoms"
-    gltf_bodies = sorted(p.stem for p in phantom_dir.glob("*.glb") if p.is_file()) if phantom_dir.is_dir() else []
+    gltf_on_disk = sorted(p.stem for p in phantom_dir.glob("*.glb") if p.is_file()) if phantom_dir.is_dir() else []
+    # Only advertise GLB bodies that were actually loaded into the cache
+    # (loading can fail silently at startup, leading to 404 on /api/body)
+    gltf_bodies = [b for b in gltf_on_disk if b in bodies_cache]
 
     # Merge GLB names into the bodies list so they appear in the dropdown
     all_bodies = sorted(set(bodies) | set(gltf_bodies))
