@@ -110,6 +110,27 @@ def solve_ecbf(
         )
         return xp.asarray(np.sqrt(P) * V[:, 0])
 
+    # Power-slack regime: when Q is invertible and h is not aligned with
+    # the smallest eigenvalue directions, the parametric family
+    # x(lambda) = sqrt(P)*(lambda*Q+I)^{-1}h*/||...|| (which forces
+    # ||x||^2 = P) may never reach P_abs_max. The true QCQP optimum then
+    # has ||x||^2 < P with x proportional to Q^{-1} h*.
+    if eigenvalues[0] > NUMERICAL_FLOOR:
+        h_abs_sq = np.abs(h_tilde) ** 2
+        inv_eigvals = 1.0 / eigenvalues
+        # h*^H Q^{-1} h* and h*^H Q^{-2} h*
+        qinv_form = float(np.sum(h_abs_sq * inv_eigvals))
+        qinv2_form = float(np.sum(h_abs_sq * inv_eigvals**2))
+        if qinv2_form > NUMERICAL_FLOOR:
+            p_abs_asymp = P * qinv_form / qinv2_form
+            if p_abs_asymp > P_abs_max:
+                # Power constraint is slack at optimality.
+                # x = alpha * Q^{-1} h*, scaled so x^H Q x = P_abs_max.
+                alpha = np.sqrt(P_abs_max / qinv_form)
+                x_tilde_slack = alpha * h_tilde * inv_eigvals
+                x_slack = V @ x_tilde_slack
+                return xp.asarray(x_slack)
+
     # Bisect on lambda to find P_abs = P_abs_max
     lam_low = 0.0
     lam_high = 1.0
