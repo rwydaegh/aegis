@@ -39,15 +39,24 @@ interface FieldQuality {
   total: number
 }
 
-/** Build provenance map from a BaseStationData record, same logic as AntennaDetailPanel */
+/** Build provenance map from a BaseStationData record.
+ *  Checks provenance_sources (flat string map) first, then falls back to
+ *  provenance (nested object map), matching RegionDataCard logic. */
 function buildProvMap(bs: BaseStationData): Record<string, string> | null {
-  const prov = bs.provenance ?? {}
-  if (Object.keys(prov).length === 0) return null
+  const hasFlatProv = bs.provenance_sources && Object.keys(bs.provenance_sources).length > 0
+  const hasNestedProv = bs.provenance && Object.keys(bs.provenance).length > 0
+  if (!hasFlatProv && !hasNestedProv) return null
 
   const provMap: Record<string, string> = {}
   for (const [apiField, provField] of Object.entries(API_TO_PROV)) {
-    const p = prov[apiField]
-    provMap[provField] = p ? p.origin : 'missing'
+    if (bs.provenance_sources) {
+      provMap[provField] = bs.provenance_sources[apiField] ?? 'missing'
+    } else if (bs.provenance) {
+      const entry = bs.provenance[apiField]
+      provMap[provField] = entry ? entry.origin : 'missing'
+    } else {
+      provMap[provField] = 'missing'
+    }
   }
   provMap['Pattern'] = bs.pattern_source ?? ''
   return provMap
