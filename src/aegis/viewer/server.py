@@ -325,6 +325,13 @@ def _preload_bodies(
                 except Exception as e:
                     print(f"  Warning: failed to load GLB phantom {glb_path.name}: {e}")
 
+        # Cache GLB phantom names so /api/config avoids re-globbing every request
+        cache["gltf_bodies"] = sorted(
+            name
+            for name in cache["bodies"]
+            if name not in available_bodies  # names loaded from GLB, not STL
+        )
+
         # Backward-compat aliases pointing at the default body
         default_entry = cache["bodies"].get(body_name)
         if default_entry is not None:
