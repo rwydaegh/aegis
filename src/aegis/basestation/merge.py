@@ -5,7 +5,9 @@ from __future__ import annotations
 import logging
 import math
 
+import numpy as np
 import pandas as pd
+from scipy.spatial import cKDTree
 
 from aegis.basestation.parquet_io import _PROVENANCE_COLUMNS
 
@@ -19,6 +21,8 @@ _OPERATOR_ALIASES: dict[str, str] = {
     "orange belgium": "orange",
 }
 
+_R_EARTH = 6_371_000.0
+
 
 def normalize_operator(name: str | None) -> str:
     if name is None or pd.isna(name):
@@ -30,56 +34,89 @@ def normalize_operator(name: str | None) -> str:
 
 
 def _haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    R = 6_371_000.0
     dlat = math.radians(lat2 - lat1)
     dlon = math.radians(lon2 - lon1)
     a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
-    return R * 2 * math.asin(math.sqrt(a))
+    return _R_EARTH * 2 * math.asin(math.sqrt(a))
 
 
 def spatial_dedup(df: pd.DataFrame, distance_m: float = 50) -> pd.DataFrame:
+    """Spatially deduplicate antennas of the same operator within *distance_m*.
+
+    Uses a cKDTree in projected (x, y) coordinates for O(n log n) neighbor
+    lookups instead of the previous O(n^2) pairwise scan.
+    """
     if df.empty:
         return df
     df = df.copy()
     df["_norm_op"] = df["Operator"].apply(normalize_operator)
-    merged_rows = []
-    used = set()
-    for i, row_i in df.iterrows():
-        if i in used:
+
+    lats = df["Latitude"].to_numpy(dtype=np.float64)
+    lons = df["Longitude"].to_numpy(dtype=np.float64)
+
+    # Equirectangular projection to metres (accurate enough for 50 m radius)
+    lat_rad = np.radians(lats)
+    lon_rad = np.radians(lons)
+    cos_lat = np.cos(lat_rad)
+    x = lon_rad * cos_lat * _R_EARTH
+    y = lat_rad * _R_EARTH
+
+    norm_ops = df["_norm_op"].to_numpy()
+    has_fb = "FrequencyBand" in df.columns
+    freq_bands = df["FrequencyBand"].to_numpy() if has_fb else None
+
+    # Build one tree for all points, query within distance_m
+    coords = np.column_stack([x, y])
+    tree = cKDTree(coords)
+    neighbor_lists = tree.query_ball_tree(tree, r=distance_m)
+
+    n = len(df)
+    labels = np.full(n, -1, dtype=np.intp)
+    cluster_id = 0
+
+    for i in range(n):
+        if labels[i] >= 0:
             continue
-        cluster = [row_i]
-        used.add(i)
-        for j, row_j in df.iterrows():
-            if j in used or j <= i:
-                continue
-            if row_i["_norm_op"] != row_j["_norm_op"]:
-                continue
-            fb_i = row_i.get("FrequencyBand", "")
-            fb_j = row_j.get("FrequencyBand", "")
-            if pd.notna(fb_i) and pd.notna(fb_j) and fb_i != fb_j:
-                continue
-            dist = _haversine_m(
-                row_i["Latitude"],
-                row_i["Longitude"],
-                row_j["Latitude"],
-                row_j["Longitude"],
-            )
-            if dist <= distance_m:
-                cluster.append(row_j)
-                used.add(j)
-        if len(cluster) == 1:
-            merged_rows.append(cluster[0])
+        # BFS to find the full connected cluster sharing operator+freq
+        labels[i] = cluster_id
+        queue = [i]
+        head = 0
+        while head < len(queue):
+            cur = queue[head]
+            head += 1
+            for j in neighbor_lists[cur]:
+                if labels[j] >= 0:
+                    continue
+                if norm_ops[j] != norm_ops[i]:
+                    continue
+                if has_fb and freq_bands is not None:
+                    fb_i = freq_bands[i]
+                    fb_j = freq_bands[j]
+                    if pd.notna(fb_i) and pd.notna(fb_j) and fb_i != fb_j:
+                        continue
+                labels[j] = cluster_id
+                queue.append(j)
+        cluster_id += 1
+
+    # Merge each cluster: keep first row, fill NaNs from later rows
+    df["_cluster"] = labels
+    merged_rows = []
+    for _, group in df.groupby("_cluster", sort=False):
+        if len(group) == 1:
+            merged_rows.append(group.iloc[0])
         else:
-            merged = cluster[0].copy()
-            for other in cluster[1:]:
+            merged = group.iloc[0].copy()
+            for idx in range(1, len(group)):
+                other = group.iloc[idx]
                 for col in merged.index:
-                    if col == "_norm_op":
+                    if col in ("_norm_op", "_cluster"):
                         continue
                     if pd.isna(merged[col]) and pd.notna(other[col]):
                         merged[col] = other[col]
             merged_rows.append(merged)
+
     result = pd.DataFrame(merged_rows).reset_index(drop=True)
-    result.drop(columns=["_norm_op"], inplace=True, errors="ignore")
+    result.drop(columns=["_norm_op", "_cluster"], inplace=True, errors="ignore")
     return result
 
 
