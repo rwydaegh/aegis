@@ -86,6 +86,24 @@ def test_compute_regions_bbox_from_data(tmp_path):
     assert max_lon > 3.0
 
 
+def test_compute_sites_binary_large(tmp_path):
+    """Sites are encoded as base64 binary with 12-byte records (200 unique sites)."""
+    from aegis.viewer.routes.coverage import _compute_coverage
+
+    _make_test_parquet(tmp_path, "clustered", n=200)
+    regions_cfg = {"clustered": {"sources": [{"bbox": [3.0, 4.0, 50.0, 51.0]}]}}
+    yaml_path = _make_test_regions_yaml(tmp_path, regions_cfg)
+
+    result = _compute_coverage(tmp_path / "merged", yaml_path)
+    meta = result["sites_meta"]
+    raw = base64.b64decode(result["sites_b64"])
+
+    assert meta["count"] > 0
+    assert meta["count"] <= 200
+    # 12 bytes per record: lat(f4) + lon(f4) + op(u1) + tech(u1) + region(u1) + count(u1)
+    assert len(raw) == meta["count"] * 12
+
+
 def test_compute_sites_binary(tmp_path):
     """Sites are encoded as base64 binary with correct 12-byte record format."""
     from aegis.viewer.routes.coverage import _compute_coverage
@@ -99,22 +117,23 @@ def test_compute_sites_binary(tmp_path):
     raw = base64.b64decode(result["sites_b64"])
 
     assert meta["count"] > 0
-    assert len(raw) == meta["count"] * 12  # lat(f4)+lon(f4)+op(u1)+tech(u1)+region(u1)+count(u1)
+    assert len(raw) == meta["count"] * 12  # 12 bytes per record
     assert len(meta["operators"]) > 0
     assert len(meta["technologies"]) > 0
+    assert len(meta["region_names"]) > 0
 
-    # Parse first record
+    # Parse first record: lat(f4) + lon(f4) + op(u1) + tech(u1) + region(u1) + count(u1)
     lat, lon = struct.unpack_from("<ff", raw, 0)
     op_idx = raw[8]
     tech_idx = raw[9]
     region_idx = raw[10]
-    antenna_count = raw[11]
+    count = raw[11]
     assert 49.0 < lat < 52.0
     assert 2.0 < lon < 5.0
     assert op_idx < len(meta["operators"])
     assert tech_idx < len(meta["technologies"])
     assert region_idx < len(meta["region_names"])
-    assert antenna_count >= 1
+    assert count >= 1
 
 
 def test_empty_merged_dir(tmp_path):
@@ -128,6 +147,7 @@ def test_empty_merged_dir(tmp_path):
     result = _compute_coverage(tmp_path / "merged", yaml_path)
     assert result["regions"] == []
     assert result["sites_meta"]["count"] == 0
+    assert result["sites_b64"] == ""
 
 
 def test_parquet_missing_operator_technology_columns(tmp_path):
@@ -155,7 +175,8 @@ def test_parquet_missing_operator_technology_columns(tmp_path):
 
     assert len(result["regions"]) == 1
     assert result["regions"][0]["count"] == n
-    assert result["sites_meta"]["count"] > 0
-    # Missing Operator/Technology columns should default to "Unknown"
-    assert "Unknown" in result["sites_meta"]["operators"]
-    assert "Unknown" in result["sites_meta"]["technologies"]
+    meta = result["sites_meta"]
+    assert meta["count"] > 0
+    # Missing columns should be filled with "Unknown"
+    assert "Unknown" in meta["operators"]
+    assert "Unknown" in meta["technologies"]

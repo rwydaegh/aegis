@@ -434,6 +434,30 @@ class TestComplianceSummaryExtended:
             with _cache_lock:
                 _cache.pop("test-session:_last_compliance_result", None)
 
+    def test_summary_overall_pass_none_shows_na(self, viewer_app):
+        """Regression: overall_pass=None (no applicable checks) must show N/A, not FAIL."""
+        from aegis.viewer.server import _cache, _cache_lock
+
+        compliance = {
+            "overall_pass": None,
+            "margin_db": None,
+            "scenario": "general_public",
+            "freq_hz": 3.5e9,
+            "checks": [],
+        }
+
+        with viewer_app.test_client() as c:
+            with c.session_transaction() as sess:
+                sess["session_id"] = "test-session"
+            with _cache_lock:
+                _cache["test-session:_last_compliance_result"] = compliance
+            resp = c.get("/api/compliance/summary")
+            data = resp.get_json()
+            assert "N/A" in data["text"]
+            assert "FAIL" not in data["text"]
+            with _cache_lock:
+                _cache.pop("test-session:_last_compliance_result", None)
+
 
 # ---------------------------------------------------------------------------
 # GET /api/compliance/power-sweep (from analysis routes)

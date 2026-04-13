@@ -53,8 +53,10 @@ def _handle_environment_osm(cache: dict, cache_lock) -> Response:
     )
     detail = bool(body.get("detail", False))
 
+    default_building_height = max(0.1, min(float(default_building_height), 500.0))
+
     cache_opts = {
-        "default_building_height": float(default_building_height),
+        "default_building_height": default_building_height,
         "detail": detail,
     }
 
@@ -134,13 +136,14 @@ def _handle_environment_3dtiles(cache: dict, cache_lock) -> Response:
 
     cfg_env = cache.get("config", {}).get("environment", {})
     tiles_cfg = cfg_env.get("tiles", {})
-    geometric_error = body.get("geometric_error", tiles_cfg.get("geometric_error", 30.0))
+    geometric_error = float(body.get("geometric_error", tiles_cfg.get("geometric_error", 30.0)))
+    geometric_error = max(0.1, min(geometric_error, 1000.0))
 
     root_url = "https://tile.googleapis.com/v1/3dtiles/root.json"
     traverser = TileTraverser(
         root_url=root_url,
         api_key=api_key,
-        geometric_error=float(geometric_error),
+        geometric_error=geometric_error,
     )
 
     try:
