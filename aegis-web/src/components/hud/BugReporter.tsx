@@ -4,12 +4,13 @@
  * Captures a screenshot via html2canvas, collects Zustand store state,
  * and posts to /api/bug-report. On success shows a link to the created GitHub issue.
  */
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import html2canvas from 'html2canvas'
 import { Bug, X, Send, Loader2, ExternalLink } from 'lucide-react'
 import { useSimulationStore } from '@/stores/simulation'
 import { useUIStore } from '@/stores/ui'
 import { cn } from '@/lib/utils'
+import AnnotationCanvas, { type AnnotationCanvasHandle } from './AnnotationCanvas'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -86,8 +87,9 @@ async function postBugReport(payload: {
 
 interface BugReporterModalProps {
   screenshot: string
+  screenshotDimensions: { width: number; height: number }
   onClose: () => void
-  onSubmit: (description: string) => Promise<void>
+  onSubmit: (description: string, annotatedScreenshot: Blob) => Promise<void>
   phase: Phase
   issueUrl: string | null
   errorMessage: string | null
@@ -95,6 +97,7 @@ interface BugReporterModalProps {
 
 function BugReporterModal({
   screenshot,
+  screenshotDimensions,
   onClose,
   onSubmit,
   phase,
@@ -103,6 +106,7 @@ function BugReporterModal({
 }: BugReporterModalProps) {
   const [description, setDescription] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const canvasRef = useRef<AnnotationCanvasHandle>(null)
 
   const handleSubmit = useCallback(async () => {
     if (phase === 'submitting') return
@@ -111,7 +115,10 @@ function BugReporterModal({
       textareaRef.current?.focus()
       return
     }
-    await onSubmit(text)
+    const blob = canvasRef.current
+      ? await canvasRef.current.getCompositeImage()
+      : new Blob()
+    await onSubmit(text, blob)
   }, [description, phase, onSubmit])
 
   const handleKeyDown = useCallback(
@@ -136,7 +143,7 @@ function BugReporterModal({
         <div
           className={cn(
             'bg-card/95 backdrop-blur-md rounded-xl border border-border shadow-2xl',
-            'p-5 w-[420px] max-w-[calc(100vw-2rem)] pointer-events-auto',
+            'p-5 max-w-[calc(100vw-4rem)] pointer-events-auto',
             'animate-in fade-in zoom-in-95 duration-150',
           )}
           onClick={(e) => e.stopPropagation()}
@@ -187,16 +194,19 @@ function BugReporterModal({
           {/* Form state */}
           {phase !== 'success' && (
             <div className="space-y-3">
-              {/* Screenshot preview */}
+              {/* Screenshot with annotation canvas */}
               <div>
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1.5">
-                  Screenshot
+                  Draw on the screenshot to highlight the issue
                 </p>
-                <img
-                  src={screenshot}
-                  alt="Current view"
-                  className="w-full rounded-md border border-border/50 object-cover max-h-36"
-                />
+                <div className="border border-border/50 rounded-md overflow-hidden">
+                  <AnnotationCanvas
+                    ref={canvasRef}
+                    screenshotUrl={screenshot}
+                    width={screenshotDimensions.width}
+                    height={screenshotDimensions.height}
+                  />
+                </div>
               </div>
 
               {/* Description */}
@@ -280,14 +290,19 @@ function BugReporterModal({
 // Main component
 // ---------------------------------------------------------------------------
 
+const MAX_WIDTH = 960
+const MAX_HEIGHT = 600
+
 export default function BugReporter() {
   const [phase, setPhase] = useState<Phase>('idle')
   const [screenshot, setScreenshot] = useState<string>('')
+  const [screenshotDimensions, setScreenshotDimensions] = useState({ width: 0, height: 0 })
   const [state, setState] = useState<Record<string, unknown>>({})
   const [issueUrl, setIssueUrl] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const handleOpen = useCallback(async () => {
+    if (phase !== 'idle') return
     setPhase('capturing')
     try {
       const [shot, appState] = await Promise.all([
@@ -296,30 +311,60 @@ export default function BugReporter() {
       ])
       setScreenshot(shot)
       setState(appState)
-      setPhase('open')
+      // Compute display dimensions for the annotation canvas
+      const img = new Image()
+      img.onload = () => {
+        let w = img.width
+        let h = img.height
+        if (w > MAX_WIDTH) { h = Math.round(h * (MAX_WIDTH / w)); w = MAX_WIDTH }
+        if (h > MAX_HEIGHT) { w = Math.round(w * (MAX_HEIGHT / h)); h = MAX_HEIGHT }
+        setScreenshotDimensions({ width: w, height: h })
+        setPhase('open')
+      }
+      img.src = shot
     } catch (err) {
       console.error('BugReporter: screenshot failed', err)
-      // Fall back to opening the dialog without a screenshot (use blank)
       setScreenshot('')
       setState(collectState())
       setPhase('open')
     }
-  }, [])
+  }, [phase])
+
+  // Shift+B keyboard shortcut
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.target instanceof HTMLTextAreaElement) return
+      if (e.key === 'B' && e.shiftKey && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault()
+        handleOpen()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [handleOpen])
 
   const handleClose = useCallback(() => {
     setPhase('idle')
     setScreenshot('')
+    setScreenshotDimensions({ width: 0, height: 0 })
     setState({})
     setIssueUrl(null)
     setErrorMessage(null)
   }, [])
 
   const handleSubmit = useCallback(
-    async (description: string) => {
+    async (description: string, annotatedBlob: Blob) => {
       setPhase('submitting')
       setErrorMessage(null)
       try {
-        const result = await postBugReport({ screenshot, description, state })
+        // Convert annotated blob to data URL for submission
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result as string)
+          reader.onerror = reject
+          reader.readAsDataURL(annotatedBlob)
+        })
+        const result = await postBugReport({ screenshot: dataUrl, description, state })
         setIssueUrl(result.issueUrl)
         setPhase('success')
       } catch (err) {
@@ -328,7 +373,7 @@ export default function BugReporter() {
         setPhase('error')
       }
     },
-    [screenshot, state],
+    [state],
   )
 
   const isOpen = phase === 'open' || phase === 'submitting' || phase === 'success' || phase === 'error'
@@ -361,6 +406,7 @@ export default function BugReporter() {
       {isOpen && (
         <BugReporterModal
           screenshot={screenshot}
+          screenshotDimensions={screenshotDimensions}
           onClose={handleClose}
           onSubmit={handleSubmit}
           phase={phase}

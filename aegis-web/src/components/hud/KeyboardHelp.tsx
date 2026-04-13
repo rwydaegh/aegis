@@ -88,6 +88,7 @@ export default function KeyboardHelp() {
       title: 'General',
       shortcuts: [
         { keys: ['?'], description: 'Toggle this help' },
+        { keys: ['Shift', 'B'], description: 'Report a bug' },
       ],
     },
   ]
