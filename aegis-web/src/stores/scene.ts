@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { ViewerConfig, Capabilities, VoxelMeta, PathViz } from '@/api/types'
 import type { BufferGeometry } from 'three'
+import { useUIStore } from '@/stores/ui'
 
 export interface RtStoreConfig {
   method: 'exhaustive' | 'sbr' | 'hybrid'
@@ -197,7 +198,12 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
   setComplianceRingVisible: (v) => set({ complianceRingVisible: v }),
   setSceneGeometryVisible: (v) => set({ sceneGeometryVisible: v }),
   setGlbTiles: (tiles) => set({ glbTiles: tiles }),
-  setPathSource: (source) => set({ pathSource: source, ...(source !== 'rt' ? { rtPaths: null } : {}) }),
+  setPathSource: (source) => {
+    set({ pathSource: source, ...(source !== 'rt' ? { rtPaths: null } : {}) })
+    // Clear stale RT timing and cold-start flag from the status bar
+    useUIStore.getState().setLastComputeTiming(null)
+    useUIStore.getState().setComputeColdStart(false)
+  },
   setRtSource: (source) => set({ rtSource: source }),
   setRtMaxOrder: (order) => set({ rtMaxOrder: order }),
   setRtPaths: (paths) => set({ rtPaths: paths }),

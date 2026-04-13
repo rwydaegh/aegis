@@ -109,7 +109,15 @@ class DosimetryEngine:
         if freq_hz is None:
             return self.freq_hz, self.n_tilde, self.T0, self.tissue.sigma
         if freq_hz <= 0:
-            raise ValueError(f"freq_hz must be positive, got {freq_hz}")
+            raise ValueError(f"freq_hz must be positive (in Hz), got {freq_hz}")
+        if 0 < freq_hz < 1e3:
+            import warnings
+
+            warnings.warn(
+                f"freq_hz={freq_hz} looks like GHz or MHz, not Hz. "
+                f"Did you mean {freq_hz * 1e9:.0f} Hz ({freq_hz} GHz)?",
+                stacklevel=3,
+            )
 
         active_n_tilde = fresnel_n_complex(self.tissue.eps_r, self.tissue.sigma, freq_hz)
         active_T0 = fresnel_T0(active_n_tilde)
@@ -187,9 +195,13 @@ class DosimetryEngine:
         if not np.all(np.isfinite(sab)):
             n_nan = int(np.sum(np.isnan(sab)))
             n_inf = int(np.sum(np.isinf(sab)))
+            pct = 100 * (n_nan + n_inf) / sab.size
             raise ValueError(
-                f"Kernel produced non-finite sab values ({n_nan} NaN, {n_inf} Inf). "
-                f"This indicates a numerical issue in the level {fidelity_level} kernel."
+                f"Kernel produced non-finite sab values "
+                f"({n_nan} NaN, {n_inf} Inf out of {sab.size} triangles, {pct:.1f}%). "
+                f"Level {fidelity_level} kernel. "
+                f"Common causes: degenerate mesh triangles with zero area, "
+                f"paths with invalid k_hat directions, or extreme tissue parameters."
             )
         p_abs = float(np.sum(sab * body.areas))
         sar_wb = p_abs / body_mass if body_mass is not None else None
@@ -486,7 +498,8 @@ class DosimetryEngine:
                 "ecbf": 8,
             }
             if mode not in mode_to_level:
-                raise ValueError(f"Unknown mode '{mode}'")
+                _all = ("spatial",) + tuple(mode_to_level)
+                raise ValueError(f"Unknown mode '{mode}', expected one of {_all}")
             level = mode_to_level[mode]
 
         if level < 0 or level > 8:
@@ -519,7 +532,10 @@ class DosimetryEngine:
 
         if level == 7:
             if x is None:
-                raise ValueError("Level 7 requires precoder or precoder_x")
+                raise ValueError(
+                    "Level 7 (coherent MIMO) requires a precoding vector. "
+                    "Pass precoder=Precoder(x=...) or precoder_x=np.array(...)."
+                )
             from aegis.kernels.level7_coherent import level7_coherent
 
             sab, _, _, _ = level7_coherent(
@@ -540,7 +556,10 @@ class DosimetryEngine:
 
         if level == 8:
             if h is None:
-                raise ValueError("Level 8 requires h")
+                raise ValueError(
+                    "Level 8 (ECBF) requires channel vector h of shape (M_ant,). "
+                    "Use level 7 if you only have a precoder without a channel estimate."
+                )
             from aegis.kernels.level8_ecbf import level8_ecbf
 
             P = float(precoder.power) if precoder is not None else 1.0
