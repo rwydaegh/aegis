@@ -319,19 +319,21 @@ def _handle_basestations_compute(cache: dict, cache_lock: threading.RLock):
         _parse_vec3,
     )
 
+    params = request.get_json(silent=True) or {}
+
     with cache_lock:
         basestations = scoped_cache_get(cache, "basestations", [])
         origin = scoped_cache_get(cache, "basestations_origin")
-        body = cache.get("body")
+        body_name = params.get("body_name", cache.get("default_body"))
+        entry = cache.get("bodies", {}).get(body_name)
 
     if not basestations:
         return jsonify({"error": "No base stations loaded"}), 400
-    if body is None:
-        return jsonify({"error": "No body mesh loaded"}), 400
+    if entry is None:
+        return jsonify({"error": f"Body '{body_name}' not found"}), 404
+    body = entry["body"]
     if origin is None:
         return jsonify({"error": "No scene origin set"}), 400
-
-    params = request.get_json(silent=True) or {}
 
     # Filter by indices
     indices = params.get("indices")
@@ -486,8 +488,10 @@ def _handle_basestations_compute_mimo(cache: dict, cache_lock: threading.RLock):
     with cache_lock:
         basestations = scoped_cache_get(cache, "basestations", [])
         origin = scoped_cache_get(cache, "basestations_origin")
-        body = cache.get("body")
         bodies_cache = cache.get("bodies", {})
+        body_name = params.get("body_name", cache.get("default_body"))
+        entry = bodies_cache.get(body_name)
+    body = entry["body"] if entry is not None else None
 
     index = params.get("index")
     if index is None:

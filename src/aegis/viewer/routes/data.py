@@ -220,9 +220,10 @@ def _handle_config(cache):
     has_voxels = cache.get("voxel_binary") is not None
     has_env_mesh = scoped_cache_get(cache, "env_mesh") is not None
     tiles_dir = cache.get("tiles_dir")
-    n_tiles = 0
-    if tiles_dir:
+    n_tiles = cache.get("n_tiles", 0)
+    if n_tiles == 0 and tiles_dir:
         n_tiles = len(list(Path(tiles_dir).glob("*.glb")))
+        cache["n_tiles"] = n_tiles
     # Report default body name and its meta from preloaded bodies cache
     default_body_name = cache.get("default_body", "")
     bodies_cache = cache.get("bodies", {})
@@ -360,9 +361,11 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         else:
             phantom_dir = data_dir_path / "phantoms"
         path = (phantom_dir / f"{name}.glb").resolve()
+        if not path.is_relative_to(phantom_dir.resolve()):
+            abort(403)
         if not path.is_file():
             abort(404)
-        return send_file(path, mimetype="model/gltf-binary")
+        return send_file(path, mimetype="model/gltf-binary", conditional=True, max_age=3600)
 
     @app.route("/api/clear-cache", methods=["POST"])
     def api_clear_cache():
