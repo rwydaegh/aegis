@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import * as Sentry from '@sentry/react'
-import { loadLocation, cancelLocation, loadSceneGeometry, fetchCapabilities } from '@/api/client'
+import { loadLocation, cancelLocation, loadSceneGeometry, fetchCapabilities, fetchWithRetry } from '@/api/client'
 import { useSceneStore } from '@/stores/scene'
 import { useSimulationStore } from '@/stores/simulation'
 import { useUIStore } from '@/stores/ui'
@@ -140,7 +140,7 @@ export default function ScenePanel() {
               )
             }
           } catch (err) {
-            console.warn('Auto-load base stations failed:', err)
+            Sentry.captureException(err)
           }
         })()
       }
@@ -238,7 +238,7 @@ export default function ScenePanel() {
       <div className="mt-4 pt-3 border-t border-border">
         <button
           onClick={() => {
-            fetch('/api/clear-cache', { method: 'POST' })
+            fetchWithRetry('/api/clear-cache', { method: 'POST' })
               .then(() => fetchCapabilities())
               .then(caps => useSceneStore.getState().setCapabilities(caps))
               .catch(() => {})

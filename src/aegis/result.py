@@ -134,6 +134,8 @@ class DosimetryResult:
     @property
     def peak_triangle_index(self) -> int:
         """Triangle index with maximum S_ab."""
+        if self.sab.size == 0:
+            raise ValueError("peak_triangle_index is undefined for empty sab")
         return int(np.argmax(self.sab))
 
     @property
@@ -368,8 +370,11 @@ class DosimetryResult:
         parts = [
             f"DosimetryResult(level={self.fidelity_level}",
             f"p_abs={self.p_abs:.4g} W",
-            f"peak_sab={self.peak_sab:.4g} W/m^2",
         ]
+        if self.sab.size > 0:
+            parts.append(f"peak_sab={self.peak_sab:.4g} W/m^2")
+        else:
+            parts.append("peak_sab=N/A (empty)")
         if self.sar_wb is not None:
             parts.append(f"sar_wb={self.sar_wb:.4g} W/kg")
         return ", ".join(parts) + ")"

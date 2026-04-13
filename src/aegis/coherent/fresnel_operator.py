@@ -115,10 +115,9 @@ def compute_fresnel_operator(
     mu = normals @ (-k_hat).T
 
     # Fresnel amplitude coefficients (vectorised over all M*N pairs)
-    mu_complex = xp.asarray(mu.ravel(), dtype=complex)
-    _, _, _, _, t_s_flat, t_p_flat = _fresnel_core(mu_complex, n_tilde)
-    t_s_out = t_s_flat.reshape(mu.shape)
-    t_p_out = t_p_flat.reshape(mu.shape)
+    # _fresnel_core is element-wise; pass (M, N) directly, no ravel needed
+    mu_complex = xp.asarray(mu, dtype=complex)
+    _, _, _, _, t_s_out, t_p_out = _fresnel_core(mu_complex, n_tilde)
 
     # Heaviside gate: zero for back-facing paths
     mask = mu > 0

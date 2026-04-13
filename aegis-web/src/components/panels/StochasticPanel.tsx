@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import * as Sentry from '@sentry/react'
+import { fetchWithRetry } from '@/api/client'
 import { useSceneStore } from '@/stores/scene'
 import { useSimulationStore } from '@/stores/simulation'
 import { useNotificationStore } from '@/stores/notifications'
@@ -76,7 +77,7 @@ export default function StochasticPanel() {
   const enabled = pathSource === 'stochastic'
 
   useEffect(() => {
-    fetch('/api/channel-presets')
+    fetchWithRetry('/api/channel-presets')
       .then(r => r.json())
       .then((data: PresetInfo[]) => {
         setAllPresets(data)

@@ -485,6 +485,25 @@ class TestECBF:
         assert p_abs_ecbf <= P_abs_max * 1.001
         assert p_abs_ecbf < p_abs_mrt
 
+    def test_ecbf_power_slack_regime(self):
+        """ECBF must handle the power-slack regime where ||x||^2 < P.
+
+        When Q is invertible and h is not aligned with the smallest eigenvalue
+        directions, the power constraint may be slack at optimality. The solver
+        must still satisfy x^H Q x <= P_abs_max.
+        """
+        Q = np.diag([10.0, 1.0, 0.001])
+        h = np.array([1.0, 1.0, 0.0], dtype=complex)
+        P = 1.0
+        P_abs_max = 0.5
+
+        x_star = np.asarray(solve_ecbf(h, Q, P_abs_max, P))
+        p_abs = float(np.real(x_star.conj() @ Q @ x_star))
+        power = float(np.real(np.vdot(x_star, x_star)))
+
+        assert p_abs <= P_abs_max * 1.001, f"Exposure constraint violated: p_abs={p_abs:.4f} > P_abs_max={P_abs_max}"
+        assert power <= P * 1.001, f"Power budget exceeded: ||x||^2={power:.4f} > P={P}"
+
 
 # ---------------------------------------------------------------------------
 # Precoder tests
