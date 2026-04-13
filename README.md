@@ -15,7 +15,7 @@
 [![Code style: ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Python](https://img.shields.io/badge/python-3.11+-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-Apache--2.0-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-2427%20cases-brightgreen.svg?logo=pytest)](tests/)
+[![Tests](https://img.shields.io/badge/tests-2448%20cases-brightgreen.svg?logo=pytest)](tests/)
 [![JAX](https://img.shields.io/badge/optional-JAX-blue.svg?logo=google&logoColor=white)](https://jax.readthedocs.io/)
 [![Viewer](https://img.shields.io/badge/viewer-React%20%2B%20Three.js-blue.svg?logo=react&logoColor=white)](https://react.dev/)
 [![CodSpeed](https://img.shields.io/endpoint?url=https://codspeed.io/badge.json)](https://codspeed.io/rwydaegh/aegis?utm_source=badge)
@@ -258,7 +258,7 @@ pytest tests/ -m "not slow"
   author  = {Wydaeghe, Robin},
   url     = {https://github.com/rwydaegh/aegis},
   license = {Proprietary},
-  version = {0.24.1}
+  version = {0.25.0}
 }
 ```
 
