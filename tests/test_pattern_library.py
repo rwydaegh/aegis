@@ -100,3 +100,61 @@ def test_search_result_fields(library: AntennaPatternLibrary) -> None:
     assert r.frequency_mhz == 2100.0
     assert r.gain_dbi == 15.0
     assert r.tilt_deg == 0.0
+
+
+def test_load_from_embedded_content(library: AntennaPatternLibrary) -> None:
+    """Loading works from embedded MSI content even when zip files are gone."""
+    library.build_index()
+    results = library.search(query="Model_A")
+    pattern_id = results[0].id
+
+    # Remove the zip file so only the embedded content in SQLite remains
+    msi_dir = Path(library._data_dir) / "antenna_patterns" / "msi_raw"
+    for zf in msi_dir.glob("*.zip"):
+        zf.unlink()
+
+    pattern = library.load_pattern(source="local", pattern_id=pattern_id)
+    assert pattern.gain_dbi.shape == (181, 360)
+    assert pattern.max_gain_dbi == 8.0
+
+
+def test_load_missing_zip_no_embedded_content(tmp_path: Path) -> None:
+    """FileNotFoundError when zip is gone and index lacks embedded content."""
+    import sqlite3
+
+    # Create a minimal index WITHOUT msi_content column (old schema)
+    db_dir = tmp_path / "antenna_patterns"
+    db_dir.mkdir(parents=True)
+    db_path = db_dir / "index.sqlite"
+    conn = sqlite3.connect(str(db_path))
+    conn.execute("""
+        CREATE TABLE patterns (
+            id TEXT PRIMARY KEY,
+            manufacturer TEXT NOT NULL,
+            model TEXT NOT NULL,
+            frequency_mhz REAL,
+            gain_dbi REAL,
+            tilt_deg REAL,
+            source_zip TEXT NOT NULL,
+            source_path TEXT NOT NULL
+        )
+    """)
+    conn.execute(
+        "INSERT INTO patterns VALUES (?,?,?,?,?,?,?,?)",
+        (
+            "TestMfg/900MHz/Model_A.MSI",
+            "TestMfg",
+            "Model_A",
+            900.0,
+            8.0,
+            0.0,
+            "TestMfg.zip",
+            "TestMfg/900MHz/Model_A.MSI",
+        ),
+    )
+    conn.commit()
+    conn.close()
+
+    lib = AntennaPatternLibrary(data_dir=str(tmp_path))
+    with pytest.raises(FileNotFoundError, match="not available"):
+        lib.load_pattern(source="local", pattern_id="TestMfg/900MHz/Model_A.MSI")

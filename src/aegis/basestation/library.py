@@ -78,7 +78,8 @@ class AntennaPatternLibrary:
                 gain_dbi REAL,
                 tilt_deg REAL,
                 source_zip TEXT NOT NULL,
-                source_path TEXT NOT NULL
+                source_path TEXT NOT NULL,
+                msi_content TEXT
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_manufacturer ON patterns(manufacturer)")
@@ -142,7 +143,7 @@ class AntennaPatternLibrary:
                 pattern_id = f"{manufacturer}/{prefix}{info.filename}"
                 model = Path(info.filename).stem
                 conn.execute(
-                    "INSERT OR REPLACE INTO patterns VALUES (?,?,?,?,?,?,?,?)",
+                    "INSERT OR REPLACE INTO patterns VALUES (?,?,?,?,?,?,?,?,?)",
                     (
                         pattern_id,
                         manufacturer,
@@ -152,6 +153,7 @@ class AntennaPatternLibrary:
                         meta.tilt_deg,
                         source_zip,
                         prefix + info.filename,
+                        text,
                     ),
                 )
                 count += 1
@@ -280,21 +282,42 @@ class AntennaPatternLibrary:
         raise ValueError(f"Unknown source: {source}")
 
     def _load_local(self, pattern_id: str) -> AntennaPattern:
-        """Extract an MSI file from its zip and parse the full 2D pattern."""
+        """Load a full 2D pattern from the SQLite index or zip archive."""
         self._ensure_index()
         conn = sqlite3.connect(str(self._db_path))
-        row = conn.execute(
-            "SELECT source_zip, source_path, manufacturer, gain_dbi FROM patterns WHERE id = ?",
-            (pattern_id,),
-        ).fetchone()
+        # Try reading msi_content from the index (new schema).
+        # Gracefully handle old indexes that lack the column.
+        try:
+            row = conn.execute(
+                "SELECT source_zip, source_path, manufacturer, gain_dbi, msi_content FROM patterns WHERE id = ?",
+                (pattern_id,),
+            ).fetchone()
+        except sqlite3.OperationalError:
+            row = conn.execute(
+                "SELECT source_zip, source_path, manufacturer, gain_dbi FROM patterns WHERE id = ?",
+                (pattern_id,),
+            ).fetchone()
+            if row is not None:
+                row = (*row, None)
         conn.close()
         if row is None:
             raise KeyError(f"Pattern not found: {pattern_id}")
 
-        source_zip, source_path, manufacturer, _gain_dbi = row
-        zip_path = self._msi_dir / source_zip
+        source_zip, source_path, manufacturer, _gain_dbi, msi_content = row
 
-        text = self._read_msi_from_zip(zip_path, source_path)
+        # Prefer embedded MSI content from the database
+        if msi_content:
+            text = msi_content
+        else:
+            zip_path = self._msi_dir / source_zip
+            if not zip_path.exists():
+                raise FileNotFoundError(
+                    f"Pattern source not available: {source_zip} not found "
+                    f"and MSI content not embedded in index. Rebuild the index "
+                    f"with the MSI zip archives present to embed pattern data."
+                )
+            text = self._read_msi_from_zip(zip_path, source_path)
+
         meta, h_atten, v_atten = parse_msi(
             text,
             manufacturer=manufacturer,
