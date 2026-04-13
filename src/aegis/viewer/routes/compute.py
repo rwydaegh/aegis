@@ -1817,9 +1817,15 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         freq_ghz = data.get("freq_ghz", 28.0)
         antenna_pos = data.get("antenna_pos", [0, 0, 10])
         lsp_name = data.get("lsp_name", "SF_dB")
-        bounds = tuple(data.get("bounds", [-100, 100, -100, 100]))
-        resolution = max(1, min(int(data.get("resolution", 128)), 256))
-        seed = int(data.get("seed", 42))
+        raw_bounds = data.get("bounds", [-100, 100, -100, 100])
+        try:
+            if not isinstance(raw_bounds, (list, tuple)) or len(raw_bounds) != 4:
+                return jsonify({"error": "bounds must be a 4-element list"}), 400
+            bounds = tuple(float(b) for b in raw_bounds)
+            resolution = max(1, min(int(data.get("resolution", 128)), 256))
+            seed = int(data.get("seed", 42))
+        except (ValueError, TypeError) as exc:
+            return jsonify({"error": f"Invalid parameter: {exc}"}), 400
 
         try:
             result = generate_lsp_heatmap(

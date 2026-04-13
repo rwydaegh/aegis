@@ -288,9 +288,7 @@ export function useDosimetry() {
         Sentry.captureException(err)
       })
       .finally(() => {
-        if (!controller.signal.aborted) {
-          useSimulationStore.getState().setLSPHeatmapLoading(false)
-        }
+        useSimulationStore.getState().setLSPHeatmapLoading(false)
       })
 
     return () => { controller.abort() }

@@ -75,7 +75,11 @@ export const useBaseStationsStore = create<BaseStationsState>((set, get) => ({
   showCoverage: false,
   coverageUrl: null,
   setShowCoverage: (show) => set({ showCoverage: show }),
-  setCoverageUrl: (url) => set({ coverageUrl: url }),
+  setCoverageUrl: (url) => {
+    const prev = get().coverageUrl
+    if (prev) URL.revokeObjectURL(prev)
+    set({ coverageUrl: url })
+  },
 
   setBasestations: (bs, origin) => {
     const { operators, technologies, frequencyBands } = deriveFilters(bs)
@@ -130,7 +134,10 @@ export const useBaseStationsStore = create<BaseStationsState>((set, get) => ({
   setLoading: (v) => set({ isLoading: v }),
   setComputing: (v) => set({ isComputing: v }),
 
-  clear: () => set({
+  clear: () => {
+    const prev = get().coverageUrl
+    if (prev) URL.revokeObjectURL(prev)
+    set({
     basestations: [],
     origin: null,
     isLoading: false,
@@ -146,7 +153,7 @@ export const useBaseStationsStore = create<BaseStationsState>((set, get) => ({
     selectedIndex: null,
     showCoverage: false,
     coverageUrl: null,
-  }),
+  })},
 
   activeIndices: () => {
     const { basestations, enabledOperators, enabledTechnologies, enabledFrequencyBands } = get()

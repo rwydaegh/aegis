@@ -1,5 +1,6 @@
 import { Eye, Gamepad2, X, Plus, Layers, Crosshair, AlertTriangle } from 'lucide-react'
 import { useMIMOStore, type PrecoderType } from '@/stores/mimo'
+import { useSimulationStore } from '@/stores/simulation'
 import { useSceneStore } from '@/stores/scene'
 import type { UserMIMOState } from '@/stores/mimo'
 import { formatSab } from '@/lib/format'
@@ -249,7 +250,10 @@ export default function MIMOPanel() {
                 <button
                   key={phantom}
                   disabled={K >= 8}
-                  onClick={() => addUser(phantom, [userList.length * 1.0, 0, 0])}
+                  onClick={() => {
+                    const bodyOffset = useSimulationStore.getState().bodyOffset
+                    addUser(phantom, [bodyOffset[0] + userList.length * 1.0, bodyOffset[1], bodyOffset[2]])
+                  }}
                   className={cn(
                     'flex items-center gap-0.5 text-[10px] py-0.5 px-1.5 rounded border',
                     'bg-muted/50 text-muted-foreground border-border hover:bg-muted transition-colors',

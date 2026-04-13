@@ -130,7 +130,10 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
         await get().fetchTilesForRT()
       }
     } catch (e) {
-      if ((e as Error).name === 'AbortError') return
+      if ((e as Error).name === 'AbortError') {
+        set({ geocoding: false })
+        return
+      }
       Sentry.captureException(e)
       set({ error: (e as Error).message, geocoding: false })
     }
@@ -286,7 +289,8 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
   },
 
   exportForRT: async (format) => {
-    set({ loading: true })
+    // Use a dedicated flag to avoid corrupting the shared `loading` state
+    // used by environment fetches (fetchOSM, fetchTilesForRT, fetchGeoJSON).
     try {
       const resp = await fetchWithRetry('/api/environment/export-scene', {
         method: 'POST',
@@ -299,10 +303,8 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
         throw new Error(msg)
       }
       const data = await resp.json()
-      set({ loading: false })
       return data.scene_path
     } catch (e) {
-      set({ loading: false })
       throw e
     }
   },

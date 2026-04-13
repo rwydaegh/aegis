@@ -179,22 +179,8 @@ export const useMIMOStore = create<MIMOStore>((set, get) => ({
     const users = new Map(get().users)
     users.set(id, user)
     const isFirst = users.size === 1
-    set({
-      users,
-      _nextUserNumber: num + 1,
-      _configVersion: get()._configVersion + 1,
-      ...(isFirst ? { focusedUserId: id, controlledUserId: id } : {}),
-    })
-  },
-
-  removeUser: (id) => {
-    const users = new Map(get().users)
-    const removed = users.get(id)
-    removed?.bodyGeometry?.dispose()
-    users.delete(id)
-    const { focusedUserId, controlledUserId, precoderType, arrayConfig } = get()
-    const nextId = users.size > 0 ? users.keys().next().value! : null
-    // Fall back to MRT if ZF/MMSE becomes infeasible (M < K)
+    // Fall back to MRT if adding this user makes ZF/MMSE infeasible (K > M)
+    const { precoderType, arrayConfig } = get()
     const nElements = arrayConfig ? arrayConfig.n_h * arrayConfig.n_v : 0
     const needsFallback = precoderType !== 'mrt' && nElements > 0 && nElements < users.size
     if (needsFallback) {
@@ -205,10 +191,25 @@ export const useMIMOStore = create<MIMOStore>((set, get) => ({
     }
     set({
       users,
+      _nextUserNumber: num + 1,
+      _configVersion: get()._configVersion + 1,
+      ...(isFirst ? { focusedUserId: id, controlledUserId: id } : {}),
+      ...(needsFallback ? { precoderType: 'mrt' as PrecoderType } : {}),
+    })
+  },
+
+  removeUser: (id) => {
+    const users = new Map(get().users)
+    const removed = users.get(id)
+    removed?.bodyGeometry?.dispose()
+    users.delete(id)
+    const { focusedUserId, controlledUserId } = get()
+    const nextId = users.size > 0 ? users.keys().next().value! : null
+    set({
+      users,
       _configVersion: get()._configVersion + 1,
       focusedUserId: focusedUserId === id ? nextId : focusedUserId,
       controlledUserId: controlledUserId === id ? nextId : controlledUserId,
-      ...(needsFallback ? { precoderType: 'mrt' as PrecoderType } : {}),
     })
   },
 
