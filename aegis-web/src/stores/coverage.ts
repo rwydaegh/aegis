@@ -106,7 +106,7 @@ export const useCoverageStore = create<CoverageState>((set, get) => ({
   },
 
   retry: async () => {
-    set({ loaded: false, loading: false, error: null })
+    set({ loaded: false, error: null })
     await get().fetch()
   },
 

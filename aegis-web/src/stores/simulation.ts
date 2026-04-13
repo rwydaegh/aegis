@@ -308,6 +308,16 @@ export const useSimulationStore = create<SimulationStore>()(persist((set) => ({
     exposureMode: state.exposureMode,
     displayQuantity: state.displayQuantity,
   }),
+  merge: (persisted, current) => {
+    const merged = { ...current, ...(persisted as Partial<SimulationStore>) }
+    // Validate displayQuantity against the default enabledQuantities set.
+    // enabledQuantities is NOT persisted, so it resets to default on reload.
+    // If the persisted displayQuantity is not in the default set, fall back.
+    if (!current.enabledQuantities.has(merged.displayQuantity)) {
+      merged.displayQuantity = current.enabledQuantities.values().next().value ?? 'sab'
+    }
+    return merged
+  },
 }))
 
 // Bootstrap antenna store from existing antennaPos (config, share link, scenario)

@@ -163,7 +163,7 @@ export default function ParametersPanel() {
           </option>
         ))}
       </select>
-      {stats?.tissue_eps_r != null && (
+      {stats?.tissue_eps_r != null && stats?.tissue_sigma != null && (
         <div className="flex gap-3 mt-1 text-[10px] text-muted-foreground">
           <span><Tex math={`\\varepsilon_r = ${stats.tissue_eps_r.toFixed(1)}`} /></span>
           <span><Tex math={`\\sigma = ${stats.tissue_sigma.toFixed(1)}\\;\\text{S/m}`} /></span>
