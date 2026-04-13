@@ -13,7 +13,7 @@ aegis.waves-ugent.be {
         X-Frame-Options "DENY"
         Referrer-Policy "strict-origin-when-cross-origin"
         Permissions-Policy "camera=(), microphone=(), geolocation=()"
-        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' blob: https://analytics.waves-ugent.be https://maps.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com https://*.google.com https://*.cesium.com https://*.cesium.org https://*.virtualearth.net; font-src 'self' data:; connect-src 'self' blob: https://analytics.waves-ugent.be https://*.sentry.io https://tile.googleapis.com https://*.googleapis.com https://*.cesium.com https://*.cesium.org https://*.virtualearth.net; worker-src 'self' blob:; frame-ancestors 'none'"
+        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' blob: https://analytics.waves-ugent.be https://maps.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com https://*.google.com https://*.cesium.com https://*.cesium.org https://*.virtualearth.net; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' blob: https://analytics.waves-ugent.be https://*.sentry.io https://tile.googleapis.com https://*.googleapis.com https://*.cesium.com https://*.cesium.org https://*.virtualearth.net; worker-src 'self' blob:; frame-ancestors 'none'"
     }
 
     reverse_proxy flask:8000

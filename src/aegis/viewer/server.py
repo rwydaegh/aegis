@@ -523,7 +523,7 @@ def create_app(
             "img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com "
             "https://*.google.com https://*.cesium.com https://*.cesium.org "
             "https://*.virtualearth.net; "
-            "font-src 'self' data:; "
+            "font-src 'self' data: https://fonts.gstatic.com; "
             "connect-src 'self' blob: https://analytics.waves-ugent.be "
             "https://*.sentry.io https://tile.googleapis.com "
             "https://*.googleapis.com "
