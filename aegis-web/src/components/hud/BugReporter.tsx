@@ -1,11 +1,11 @@
 /**
  * BugReporter - a floating button that opens a modal for submitting in-app bug reports.
  *
- * Captures a screenshot via html2canvas, collects Zustand store state,
- * and posts to /api/bug-report. On success shows a link to the created GitHub issue.
+ * Captures a screenshot from the WebGL canvas (preserveDrawingBuffer must be on),
+ * collects Zustand store state, and posts to /api/bug-report.
+ * On success shows a link to the created GitHub issue.
  */
 import { useState, useRef, useCallback, useEffect } from 'react'
-import html2canvas from 'html2canvas'
 import { Bug, X, Send, Loader2, ExternalLink } from 'lucide-react'
 import { useSimulationStore } from '@/stores/simulation'
 import { useUIStore } from '@/stores/ui'
@@ -47,14 +47,15 @@ function collectState(): Record<string, unknown> {
   }
 }
 
-/** Strip secrets / tokens; only what we want in the issue. */
-async function captureScreenshot(): Promise<string> {
-  const canvas = await html2canvas(document.body, {
-    useCORS: true,
-    allowTaint: false,
-    scale: 0.75,
-    logging: false,
-  })
+/** Grab the largest canvas on the page (the WebGL viewport).
+ *  Requires preserveDrawingBuffer: true on the R3F Canvas. */
+function captureScreenshot(): string {
+  const allCanvases = Array.from(document.querySelectorAll('canvas'))
+  const canvas = allCanvases.reduce<HTMLCanvasElement | null>((best, c) => {
+    if (!best) return c
+    return c.width * c.height > best.width * best.height ? c : best
+  }, null)
+  if (!canvas || canvas.width === 0) throw new Error('No visible canvas found')
   return canvas.toDataURL('image/jpeg', 0.7)
 }
 
@@ -121,6 +122,18 @@ function BugReporterModal({
     await onSubmit(text, blob)
   }, [description, phase, onSubmit])
 
+  // Escape to close, Cmd/Ctrl+Enter to submit
+  useEffect(() => {
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === 'Escape' && phase !== 'submitting') {
+        e.preventDefault()
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [onClose, phase])
+
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
@@ -135,11 +148,11 @@ function BugReporterModal({
     <>
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/50 z-[60] pointer-events-auto"
+        className="fixed inset-0 bg-black/50 z-[60] pointer-events-auto"
         onClick={phase === 'submitting' ? undefined : onClose}
       />
       {/* Dialog */}
-      <div className="absolute inset-0 flex items-center justify-center z-[60] pointer-events-none">
+      <div className="fixed inset-0 flex items-center justify-center z-[60] pointer-events-none">
         <div
           className={cn(
             'bg-card/95 backdrop-blur-md rounded-xl border border-border shadow-2xl',
@@ -235,7 +248,7 @@ function BugReporterModal({
                   autoFocus
                 />
                 <p className="text-[10px] text-muted-foreground/60 mt-1">
-                  Cmd+Enter to submit
+                  {navigator.platform?.includes('Mac') ? 'Cmd' : 'Ctrl'}+Enter to submit
                 </p>
               </div>
 
@@ -301,16 +314,14 @@ export default function BugReporter() {
   const [issueUrl, setIssueUrl] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  const handleOpen = useCallback(async () => {
+  const handleOpen = useCallback(() => {
     if (phase !== 'idle') return
     setPhase('capturing')
+    const appState = collectState()
+    setState(appState)
     try {
-      const [shot, appState] = await Promise.all([
-        captureScreenshot(),
-        Promise.resolve(collectState()),
-      ])
+      const shot = captureScreenshot()
       setScreenshot(shot)
-      setState(appState)
       // Compute display dimensions for the annotation canvas
       const img = new Image()
       img.onload = () => {
@@ -321,11 +332,15 @@ export default function BugReporter() {
         setScreenshotDimensions({ width: w, height: h })
         setPhase('open')
       }
+      img.onerror = () => {
+        setScreenshotDimensions({ width: MAX_WIDTH, height: MAX_HEIGHT })
+        setPhase('open')
+      }
       img.src = shot
     } catch (err) {
       console.error('BugReporter: screenshot failed', err)
       setScreenshot('')
-      setState(collectState())
+      setScreenshotDimensions({ width: MAX_WIDTH, height: MAX_HEIGHT })
       setPhase('open')
     }
   }, [phase])
@@ -380,25 +395,27 @@ export default function BugReporter() {
 
   return (
     <>
-      {/* Floating trigger button */}
+      {/* Trigger button - styled to sit in the toolbar */}
       <button
         onClick={phase === 'capturing' ? undefined : handleOpen}
         disabled={phase === 'capturing'}
         className={cn(
-          'pointer-events-auto flex items-center justify-center',
-          'size-8 rounded-full shadow-md',
-          'bg-card/80 backdrop-blur-sm border border-border/60',
-          'text-muted-foreground hover:text-foreground hover:bg-card/95',
-          'transition-colors cursor-pointer',
+          'inline-flex items-center gap-1 justify-center',
+          'h-7 px-2 rounded-md transition-colors cursor-pointer',
+          'bg-destructive/15 border border-destructive/25 text-destructive',
+          'hover:bg-destructive/25 hover:text-destructive',
           'disabled:opacity-50 disabled:cursor-wait',
         )}
         aria-label="Report a bug"
-        title="Report a bug"
+        title="Report a bug (Shift+B)"
       >
         {phase === 'capturing' ? (
           <Loader2 className="size-3.5 animate-spin" />
         ) : (
-          <Bug className="size-3.5" />
+          <>
+            <Bug className="size-3.5" />
+            <span className="text-[10px] font-medium hidden md:inline">Bug</span>
+          </>
         )}
       </button>
 
