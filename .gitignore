@@ -92,6 +92,9 @@ theory/*.out
 theory/*.toc
 theory/*.log
 
+# Playwright test results
+test-results/
+
 # Superpowers plans/specs/prompts (local tooling, not part of docs)
 docs/superpowers/
 .superpowers/
