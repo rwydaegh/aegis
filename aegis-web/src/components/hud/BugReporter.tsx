@@ -1,13 +1,14 @@
 /**
- * BugReporter - a floating button that opens a modal for submitting in-app bug reports.
+ * BugReporter - a toolbar button that opens a modal for submitting in-app bug reports.
  *
- * Captures a screenshot from the WebGL canvas (preserveDrawingBuffer must be on),
- * collects Zustand store state, and posts to /api/bug-report.
- * On success shows a link to the created GitHub issue.
+ * Captures a full-page screenshot via html-to-image (uses browser's own CSS engine,
+ * so oklch and other modern CSS work natively). Collects Zustand store state and
+ * posts to /api/bug-report. On success shows a link to the created GitHub issue.
  */
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { Bug, X, Send, Loader2, ExternalLink } from 'lucide-react'
+import { toJpeg } from 'html-to-image'
+import { Bug, X, Send, Loader2, ExternalLink, ImageOff, Image as ImageIcon } from 'lucide-react'
 import { useSimulationStore } from '@/stores/simulation'
 import { useUIStore } from '@/stores/ui'
 import { cn } from '@/lib/utils'
@@ -48,16 +49,19 @@ function collectState(): Record<string, unknown> {
   }
 }
 
-/** Grab the largest canvas on the page (the WebGL viewport).
- *  Requires preserveDrawingBuffer: true on the R3F Canvas. */
-function captureScreenshot(): string {
-  const allCanvases = Array.from(document.querySelectorAll('canvas'))
-  const canvas = allCanvases.reduce<HTMLCanvasElement | null>((best, c) => {
-    if (!best) return c
-    return c.width * c.height > best.width * best.height ? c : best
-  }, null)
-  if (!canvas || canvas.width === 0) throw new Error('No visible canvas found')
-  return canvas.toDataURL('image/jpeg', 0.7)
+/** Capture the full page as a JPEG data URL using html-to-image.
+ *  Uses the browser's own rendering engine so all modern CSS (oklch, etc.) works. */
+async function captureFullPage(): Promise<string> {
+  const root = document.getElementById('root') ?? document.body
+  return toJpeg(root, {
+    quality: 0.7,
+    pixelRatio: Math.min(window.devicePixelRatio, 2),
+    filter: (node: HTMLElement) => {
+      // Exclude the bug reporter modal itself from the screenshot
+      if (node.dataset?.bugReporterModal === 'true') return false
+      return true
+    },
+  })
 }
 
 async function postBugReport(payload: {
@@ -91,7 +95,7 @@ interface BugReporterModalProps {
   screenshot: string
   screenshotDimensions: { width: number; height: number }
   onClose: () => void
-  onSubmit: (description: string, annotatedScreenshot: Blob) => Promise<void>
+  onSubmit: (description: string, annotatedScreenshot: Blob | null) => Promise<void>
   phase: Phase
   issueUrl: string | null
   errorMessage: string | null
@@ -107,6 +111,7 @@ function BugReporterModal({
   errorMessage,
 }: BugReporterModalProps) {
   const [description, setDescription] = useState('')
+  const [includeScreenshot, setIncludeScreenshot] = useState(true)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const canvasRef = useRef<AnnotationCanvasHandle>(null)
 
@@ -117,13 +122,13 @@ function BugReporterModal({
       textareaRef.current?.focus()
       return
     }
-    const blob = canvasRef.current
+    const blob = includeScreenshot && canvasRef.current
       ? await canvasRef.current.getCompositeImage()
-      : new Blob()
+      : null
     await onSubmit(text, blob)
-  }, [description, phase, onSubmit])
+  }, [description, phase, onSubmit, includeScreenshot])
 
-  // Escape to close, Cmd/Ctrl+Enter to submit
+  // Escape to close
   useEffect(() => {
     function handleEscape(e: KeyboardEvent) {
       if (e.key === 'Escape' && phase !== 'submitting') {
@@ -145,25 +150,31 @@ function BugReporterModal({
     [handleSubmit],
   )
 
+  const hasScreenshot = screenshot.length > 0 && screenshotDimensions.width > 0
+
   return (
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/50 z-[60] pointer-events-auto"
+        className="fixed inset-0 bg-black/50 z-[60]"
         onClick={phase === 'submitting' ? undefined : onClose}
+        data-bug-reporter-modal="true"
       />
       {/* Dialog */}
-      <div className="fixed inset-0 flex items-center justify-center z-[60] pointer-events-none">
+      <div
+        className="fixed inset-0 flex items-center justify-center z-[60] pointer-events-none p-4"
+        data-bug-reporter-modal="true"
+      >
         <div
           className={cn(
             'bg-card/95 backdrop-blur-md rounded-xl border border-border shadow-2xl',
-            'p-5 max-w-[calc(100vw-4rem)] pointer-events-auto',
+            'p-4 sm:p-5 w-full max-w-2xl max-h-[90vh] overflow-y-auto pointer-events-auto',
             'animate-in fade-in zoom-in-95 duration-150',
           )}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Bug className="size-4 text-muted-foreground" />
               <h2 className="text-sm font-medium text-heading">Report a bug</h2>
@@ -208,19 +219,49 @@ function BugReporterModal({
           {/* Form state */}
           {phase !== 'success' && (
             <div className="space-y-3">
-              {/* Screenshot with annotation canvas */}
+              {/* Screenshot toggle + annotation canvas */}
               <div>
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1.5">
-                  Draw on the screenshot to highlight the issue
-                </p>
-                <div className="border border-border/50 rounded-md overflow-hidden">
-                  <AnnotationCanvas
-                    ref={canvasRef}
-                    screenshotUrl={screenshot}
-                    width={screenshotDimensions.width}
-                    height={screenshotDimensions.height}
-                  />
+                <div className="flex items-center justify-between mb-1.5">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+                    Screenshot
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setIncludeScreenshot(!includeScreenshot)}
+                    className={cn(
+                      'inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded transition-colors',
+                      includeScreenshot
+                        ? 'text-foreground/70 hover:text-foreground'
+                        : 'text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    {includeScreenshot ? (
+                      <><ImageOff className="size-3" /> Hide</>
+                    ) : (
+                      <><ImageIcon className="size-3" /> Show</>
+                    )}
+                  </button>
                 </div>
+                {includeScreenshot && hasScreenshot && (
+                  <>
+                    <p className="text-[10px] text-muted-foreground/60 mb-1">
+                      Draw on the screenshot to highlight the issue
+                    </p>
+                    <div className="border border-border/50 rounded-md overflow-hidden">
+                      <AnnotationCanvas
+                        ref={canvasRef}
+                        screenshotUrl={screenshot}
+                        width={screenshotDimensions.width}
+                        height={screenshotDimensions.height}
+                      />
+                    </div>
+                  </>
+                )}
+                {includeScreenshot && !hasScreenshot && (
+                  <p className="text-[10px] text-muted-foreground/60 italic">
+                    Screenshot capture failed. You can still submit a text-only report.
+                  </p>
+                )}
               </div>
 
               {/* Description */}
@@ -239,7 +280,7 @@ function BugReporterModal({
                   onKeyDown={handleKeyDown}
                   placeholder="Describe the issue..."
                   disabled={phase === 'submitting'}
-                  rows={4}
+                  rows={3}
                   className={cn(
                     'w-full rounded-md border border-border bg-muted/40 px-3 py-2',
                     'text-xs text-foreground placeholder:text-muted-foreground/60',
@@ -315,15 +356,13 @@ export default function BugReporter() {
   const [issueUrl, setIssueUrl] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  const handleOpen = useCallback(() => {
+  const handleOpen = useCallback(async () => {
     if (phase !== 'idle') return
     setPhase('capturing')
-    const appState = collectState()
-    setState(appState)
+    setState(collectState())
     try {
-      const shot = captureScreenshot()
+      const shot = await captureFullPage()
       setScreenshot(shot)
-      // Compute display dimensions for the annotation canvas
       const img = new Image()
       img.onload = () => {
         let w = img.width
@@ -334,14 +373,14 @@ export default function BugReporter() {
         setPhase('open')
       }
       img.onerror = () => {
-        setScreenshotDimensions({ width: MAX_WIDTH, height: MAX_HEIGHT })
+        setScreenshotDimensions({ width: 0, height: 0 })
         setPhase('open')
       }
       img.src = shot
     } catch (err) {
       console.error('BugReporter: screenshot failed', err)
       setScreenshot('')
-      setScreenshotDimensions({ width: MAX_WIDTH, height: MAX_HEIGHT })
+      setScreenshotDimensions({ width: 0, height: 0 })
       setPhase('open')
     }
   }, [phase])
@@ -369,18 +408,20 @@ export default function BugReporter() {
   }, [])
 
   const handleSubmit = useCallback(
-    async (description: string, annotatedBlob: Blob) => {
+    async (description: string, annotatedBlob: Blob | null) => {
       setPhase('submitting')
       setErrorMessage(null)
       try {
-        // Convert annotated blob to data URL for submission
-        const dataUrl = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader()
-          reader.onload = () => resolve(reader.result as string)
-          reader.onerror = reject
-          reader.readAsDataURL(annotatedBlob)
-        })
-        const result = await postBugReport({ screenshot: dataUrl, description, state })
+        let screenshotDataUrl = ''
+        if (annotatedBlob) {
+          screenshotDataUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader()
+            reader.onload = () => resolve(reader.result as string)
+            reader.onerror = reject
+            reader.readAsDataURL(annotatedBlob)
+          })
+        }
+        const result = await postBugReport({ screenshot: screenshotDataUrl, description, state })
         setIssueUrl(result.issueUrl)
         setPhase('success')
       } catch (err) {

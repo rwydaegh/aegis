@@ -28,30 +28,28 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
         if not description:
             return jsonify({"error": "description is required"}), 400
-        if not screenshot:
-            return jsonify({"error": "screenshot is required"}), 400
 
         token = os.environ.get("GITHUB_ISSUES_TOKEN", "") or os.environ.get("GITHUB_TOKEN", "")
         if not token:
             log.warning("Bug report received but no GitHub token configured")
             return jsonify({"error": "GitHub token not configured on server"}), 503
 
-        # Strip data URL prefix (e.g. "data:image/jpeg;base64,") and decode
-        screenshot_b64 = screenshot.split(",", 1)[1] if "," in screenshot else screenshot
+        # Upload screenshot if provided
+        screenshot_url = ""
+        if screenshot:
+            screenshot_b64 = screenshot.split(",", 1)[1] if "," in screenshot else screenshot
+            try:
+                screenshot_bytes = base64.b64decode(screenshot_b64)
+            except Exception:
+                return jsonify({"error": "screenshot must be a valid base64 image"}), 400
 
-        try:
-            screenshot_bytes = base64.b64decode(screenshot_b64)
-        except Exception:
-            return jsonify({"error": "screenshot must be a valid base64 image"}), 400
-
-        timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-        filename = f"{timestamp}.jpg"
-
-        try:
-            screenshot_url = _upload_screenshot_to_github(token, filename, screenshot_bytes)
-        except Exception:
-            log.exception("Failed to upload screenshot to GitHub")
-            return jsonify({"error": "Failed to upload screenshot to GitHub"}), 502
+            timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+            filename = f"{timestamp}.jpg"
+            try:
+                screenshot_url = _upload_screenshot_to_github(token, filename, screenshot_bytes)
+            except Exception:
+                log.exception("Failed to upload screenshot to GitHub")
+                return jsonify({"error": "Failed to upload screenshot to GitHub"}), 502
 
         title = f"[User report] {description[:72]}"
         body = _format_issue_body(description, screenshot_url, state)
