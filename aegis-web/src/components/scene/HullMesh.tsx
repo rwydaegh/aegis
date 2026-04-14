@@ -34,6 +34,7 @@ export default function HullMesh() {
 
     if (data.faceColors) {
       const nonIndexed = geo.toNonIndexed()
+      geo.dispose()
       nonIndexed.computeVertexNormals()
       const nFaces = data.faceColors.length / 3
       const colorAttr = new Float32Array(nFaces * 9)

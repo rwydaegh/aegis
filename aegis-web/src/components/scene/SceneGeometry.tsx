@@ -21,6 +21,7 @@ export default function SceneGeometry() {
 
     if (faceColors) {
       const nonIndexed = geo.toNonIndexed()
+      geo.dispose()
       nonIndexed.computeVertexNormals()
       const nFaces = faceColors.length / 3
       const colorAttr = new Float32Array(nFaces * 9)
