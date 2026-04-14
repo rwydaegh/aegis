@@ -162,7 +162,7 @@ def spatial_kernel(
         end = min(start + chunk_size, N)
         k_chunk = k_hat[start:end]
         p_chunk = power[start:end]
-        q_chunk = q[start:end] if isinstance(q, np.ndarray) and q.ndim > 0 else q
+        q_chunk = q[start:end] if hasattr(q, "__getitem__") and np.ndim(q) > 0 else q
 
         chunk_sab = _spatial_kernel_unbatched(
             normals,

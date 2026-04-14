@@ -209,7 +209,7 @@ function MarginChart({
 
 /** Extract a compliance check value by label from stats. */
 function checkValue(stats: { compliance?: { checks: Array<{ label: string; value: number }> } | null } | null, label: string): number | undefined {
-  return stats?.compliance?.checks.find(c => c.label === label)?.value
+  return stats?.compliance?.checks?.find(c => c.label === label)?.value
 }
 
 function PowerSweepSection() {
@@ -933,7 +933,7 @@ function SabHistogramSection() {
     )
   }
 
-  const limit = stats.compliance?.checks.find(c => c.label.includes('4 cm'))?.limit
+  const limit = stats.compliance?.checks?.find(c => c.label.includes('4 cm'))?.limit
   const chartData = histogram.bins.map((b, i) => ({
     idx: i,
     count: b.count,

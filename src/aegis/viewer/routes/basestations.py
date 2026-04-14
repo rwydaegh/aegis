@@ -294,6 +294,15 @@ def _handle_basestations_load(cache: dict, cache_lock: threading.RLock):
                     float(params["lon"]),
                 ),
             )
+        elif basestations:
+            # Fallback: compute centroid from loaded base stations so later
+            # compute operations have a valid origin instead of stale data.
+            avg_lat = sum(bs.latitude for bs in basestations) / len(basestations)
+            avg_lon = sum(bs.longitude for bs in basestations) / len(basestations)
+            scoped_cache_set(cache, "basestations_origin", (avg_lat, avg_lon))
+        else:
+            # No basestations and no coordinates: clear stale origin
+            scoped_cache_set(cache, "basestations_origin", None)
 
     return jsonify(
         {
