@@ -183,7 +183,10 @@ export const useUIStore = create<UIStore>((set) => ({
     else next.add(id)
     return { hiddenWidgets: next }
   }),
-  startTour: () => set({ tourActive: true, tourStep: 0, tourCompleted: false }),
+  startTour: () => {
+    localStorage.removeItem('aegis-tour-completed')
+    set({ tourActive: true, tourStep: 0, tourCompleted: false })
+  },
   advanceTour: () => set((state) => {
     const next = state.tourStep + 1
     if (next >= TOUR_STEP_COUNT) {
