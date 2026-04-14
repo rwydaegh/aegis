@@ -49,9 +49,12 @@ export default function BaseStationsPanel() {
 
   const computeExposure = useBaseStationsDosimetry()
 
+  const [coverageLoading, setCoverageLoading] = useState(false)
+
   const fetchCoverage = useCallback(async () => {
     if (basestations.length === 0) return
     const bs = basestations[0]
+    setCoverageLoading(true)
     try {
       const resp = await fetchWithRetry('/api/environment/coverage', {
         method: 'POST',
@@ -75,11 +78,18 @@ export default function BaseStationsPanel() {
       if (resp.ok) {
         const blob = await resp.blob()
         setCoverageUrl(URL.createObjectURL(blob))
+      } else {
+        setShowCoverage(false)
+        useNotificationStore.getState().addNotification('warning', 'Coverage map unavailable')
       }
-    } catch {
-      // Coverage fetch failed silently -- not critical
+    } catch (err) {
+      Sentry.captureException(err)
+      setShowCoverage(false)
+      useNotificationStore.getState().addNotification('warning', 'Coverage map request failed')
+    } finally {
+      setCoverageLoading(false)
     }
-  }, [basestations, setCoverageUrl])
+  }, [basestations, setCoverageUrl, setShowCoverage])
 
   const handleCoverageToggle = useCallback((checked: boolean) => {
     setShowCoverage(checked)
@@ -297,7 +307,9 @@ export default function BaseStationsPanel() {
               checked={showCoverage}
               onChange={e => handleCoverageToggle(e.target.checked)}
             />
-            <span className="text-foreground">Show coverage map (CloudRF)</span>
+            <span className="text-foreground">
+              {coverageLoading ? 'Loading coverage...' : 'Show coverage map (CloudRF)'}
+            </span>
           </label>
 
           <AntennaDetailPanel />
