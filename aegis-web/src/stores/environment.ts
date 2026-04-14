@@ -203,7 +203,10 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
       const meshData = parseEnvironmentBinary(buf, meta)
       set({ osmMeshData: meshData, loading: false })
     } catch (e) {
-      if ((e as Error).name === 'AbortError') return
+      if ((e as Error).name === 'AbortError') {
+        set({ loading: false })
+        return
+      }
       Sentry.captureException(e)
       set({ error: (e as Error).message, loading: false })
     }
@@ -246,7 +249,10 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
       const meshData = parseEnvironmentBinary(buf, meta)
       set({ osmMeshData: meshData, loading: false })
     } catch (e) {
-      if ((e as Error).name === 'AbortError') return
+      if ((e as Error).name === 'AbortError') {
+        set({ loading: false })
+        return
+      }
       Sentry.captureException(e)
       set({ error: (e as Error).message, loading: false })
     }
@@ -282,7 +288,10 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
       const meshData = parseEnvironmentBinary(buf, meta)
       set({ osmMeshData: meshData, loading: false })
     } catch (e) {
-      if ((e as Error).name === 'AbortError') return
+      if ((e as Error).name === 'AbortError') {
+        set({ loading: false })
+        return
+      }
       Sentry.captureException(e)
       set({ error: (e as Error).message, loading: false })
     }

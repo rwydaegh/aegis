@@ -64,11 +64,12 @@ class DosimetryResult:
             val = getattr(self, f.name)
             if val is None:
                 continue
-            if isinstance(val, np.ndarray):
+            # Use hasattr check so both NumPy and JAX arrays are handled
+            if hasattr(val, "tolist") and hasattr(val, "dtype"):
                 if np.iscomplexobj(val):
-                    out[f.name] = {"real": val.real.tolist(), "imag": val.imag.tolist()}
+                    out[f.name] = {"real": np.asarray(val.real).tolist(), "imag": np.asarray(val.imag).tolist()}
                 else:
-                    out[f.name] = val.tolist()
+                    out[f.name] = np.asarray(val).tolist()
             elif isinstance(val, np.generic):
                 out[f.name] = val.item()
             else:
