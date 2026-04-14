@@ -10,7 +10,7 @@
       "hidden": false,
       "webState": {
         "freqGhz": 3.5,
-        "powerDbm": 42.0,
+        "powerDbm": 30.0,
         "mode": "spatial"
       }
     }
