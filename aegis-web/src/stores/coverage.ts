@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import * as Sentry from '@sentry/react'
 import { fetchCoverage, decodeSitesBinary } from '@/api/coverage'
 import { fetchSpatialCompliance } from '@/api/client'
+import { useNotificationStore } from '@/stores/notifications'
 import type { RegionSummary } from '@/api/types'
 import type { SpatialComplianceResult } from '@/api/client'
 
@@ -125,8 +126,13 @@ export const useCoverageStore = create<CoverageState>((set, get) => ({
       const result = await fetchSpatialCompliance({ bbox, resolution: 80 })
       set({ complianceZone: result, complianceZoneLoading: false })
     } catch (err) {
-      console.error('Spatial compliance fetch failed:', err)
-      set({ complianceZoneLoading: false })
+      Sentry.captureException(err)
+      set({ complianceZoneLoading: false, complianceZoneEnabled: false })
+      useNotificationStore.getState().addNotification(
+        'error',
+        'Failed to compute compliance zones',
+        (err as Error).message,
+      )
     }
   },
   clearComplianceZone: () => set({ complianceZone: null }),

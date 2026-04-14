@@ -349,12 +349,6 @@ export interface ClusterVizData {
   subpaths: SubpathVizItem[]
 }
 
-export interface LevelInfo {
-  level: number
-  name: string
-  description: string
-}
-
 export interface BodyBinary {
   positions: Float32Array
   normals: Float32Array
@@ -369,16 +363,6 @@ export interface VoxelBinary {
 }
 
 // -- Analysis types -------------------------------------------------------
-
-export interface ICNIRPLimits {
-  scenario: string
-  freq_hz: number
-  sab_4cm2: number | null
-  sab_1cm2: number | null
-  sar_wb: number
-  sinc_local: number | null
-  sinc_whole_body: number | null
-}
 
 export interface TissueSpectrum {
   tissue: string

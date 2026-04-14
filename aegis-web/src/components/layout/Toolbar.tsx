@@ -162,6 +162,7 @@ export default function Toolbar() {
             useSceneStore.getState().clearScene()
             useUIStore.getState().setActiveScenario(null)
             useUIStore.getState().setWelcomeDismissed(false)
+            useUIStore.getState().dismissTour()
             useCoverageStore.getState().setEnabled(false)
             // Strip URL params and hash
             history.replaceState(null, '', window.location.pathname)

@@ -53,16 +53,6 @@ export async function loadBasestations(params: LoadParams): Promise<LoadResponse
   return postJson<LoadResponse>('/api/basestations/load', params)
 }
 
-export async function listBasestations(): Promise<LoadResponse> {
-  const res = await fetchWithRetry('/api/basestations/list')
-  if (!res.ok) {
-    let msg = `GET /api/basestations/list failed: ${res.status} ${res.statusText}`
-    try { const data = await res.json(); if (data?.error) msg = data.error } catch {}
-    throw new Error(msg)
-  }
-  return res.json() as Promise<LoadResponse>
-}
-
 interface ComputeParams {
   indices?: number[]
   mode?: string

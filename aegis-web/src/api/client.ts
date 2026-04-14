@@ -1,4 +1,4 @@
-import type { ViewerConfig, Capabilities, BodyMeta, VoxelMeta, DosimetryStats, LevelInfo, SystemInfo, ICNIRPLimits, TissueSpectrum } from './types'
+import type { ViewerConfig, Capabilities, BodyMeta, VoxelMeta, DosimetryStats, SystemInfo, TissueSpectrum } from './types'
 import { parseBodyBinary, parseVoxelBinary, parseSabBinary, parseSceneBinary } from './binary'
 import { toServer, type ScenePos } from './coordinates'
 
@@ -192,24 +192,8 @@ export async function fetchSystemInfo(): Promise<SystemInfo> {
   return getJson<SystemInfo>('/api/system')
 }
 
-export async function fetchLevels(): Promise<LevelInfo[]> {
-  return getJson<LevelInfo[]>('/api/levels')
-}
-
-export async function fetchBodyInfo(): Promise<BodyMeta> {
-  return getJson<BodyMeta>('/api/body/info')
-}
-
-export async function fetchScenes(): Promise<string[]> {
-  return getJson<string[]>('/api/scenes')
-}
-
 export async function fetchTileList(): Promise<{ tiles: string[]; transform: number[] | null }> {
   return getJson<{ tiles: string[]; transform: number[] | null }>('/api/tiles')
-}
-
-export async function fetchComplianceLimits(freqHz: number, scenario: string = 'general_public'): Promise<ICNIRPLimits> {
-  return getJson<ICNIRPLimits>(`/api/compliance/limits?freq_hz=${freqHz}&scenario=${scenario}`)
 }
 
 export async function fetchComplianceSummary(txPowerDbm?: number): Promise<{ text: string }> {
@@ -263,11 +247,6 @@ export async function fetchVoxels(signal?: AbortSignal): Promise<{
   const binary = parseVoxelBinary(buffer, meta.n_voxels)
 
   return { binary, meta }
-}
-
-export async function fetchTileFile(filename: string): Promise<ArrayBuffer> {
-  const res = await getBinary(`/api/tiles/${encodeURIComponent(filename)}`)
-  return res.arrayBuffer()
 }
 
 // ---------------------------------------------------------------------------
