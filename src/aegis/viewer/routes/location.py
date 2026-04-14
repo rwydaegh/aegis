@@ -91,10 +91,10 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                         # Filter noisy THREE.js warnings from Node.js pipeline
                         if "Couldn't load texture blob:" in line:
                             continue
-                        yield f"event: progress\ndata: {line}\n\n"
                         if line.startswith("ERROR:"):
                             yield f"event: error\ndata: {line}\n\n"
                             return
+                        yield f"event: progress\ndata: {line}\n\n"
                 except Exception as e:
                     logger.exception("Pipeline execution failed")
                     err_type = type(e).__name__
@@ -134,6 +134,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                 logger.exception("Voxel loading failed in SSE stream")
                 err_type = type(e).__name__
                 yield f"event: error\ndata: Voxel load failed ({err_type}). Check server logs.\n\n"
+                yield "event: done\ndata: {}\n\n"
 
         return Response(
             generate(),

@@ -426,8 +426,14 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             return jsonify({"error": "resolution must be an integer"}), 400
         resolution = min(max(resolution, 10), 200)
 
-        receiver_height = float(body.get("receiver_height_m", 1.5))
+        try:
+            receiver_height = float(body.get("receiver_height_m", 1.5))
+        except (TypeError, ValueError):
+            return jsonify({"error": "receiver_height_m must be a number"}), 400
+
         scenario_str = body.get("scenario", "general_public")
+        if scenario_str not in _VALID_SCENARIOS:
+            return jsonify({"error": f"scenario must be one of {sorted(_VALID_SCENARIOS)}"}), 400
         scenario = ExposureScenario.OCCUPATIONAL if scenario_str == "occupational" else ExposureScenario.GENERAL_PUBLIC
 
         # Build grid
@@ -467,8 +473,11 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         compliant_2d = result["compliant"].reshape(n_lat, n_lon)
         sinc_2d = result["sinc"].reshape(n_lat, n_lon)
 
-        # Clamp infinite margins to a display-friendly value
-        margin_clamped = np.where(np.isinf(margin_2d), 60.0, margin_2d)
+        # Clamp infinite/NaN margins to display-friendly values for valid JSON
+        margin_clamped = np.where(np.isnan(margin_2d), 0.0, margin_2d)
+        margin_clamped = np.where(np.isinf(margin_clamped), 60.0, margin_clamped)
+        sinc_clean = np.where(np.isnan(sinc_2d), 0.0, sinc_2d)
+        sinc_clean = np.where(np.isinf(sinc_clean), 0.0, sinc_clean)
 
         return jsonify(
             {
@@ -476,7 +485,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                 "lons": grid_lon_1d.tolist(),
                 "margin_db": margin_clamped.tolist(),
                 "compliant": compliant_2d.tolist(),
-                "sinc_w_m2": sinc_2d.tolist(),
+                "sinc_w_m2": sinc_clean.tolist(),
                 "n_lat": n_lat,
                 "n_lon": n_lon,
                 "scenario": scenario_str,
