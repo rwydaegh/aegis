@@ -6,6 +6,7 @@
  * On success shows a link to the created GitHub issue.
  */
 import { useState, useRef, useCallback, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { Bug, X, Send, Loader2, ExternalLink } from 'lucide-react'
 import { useSimulationStore } from '@/stores/simulation'
 import { useUIStore } from '@/stores/ui'
@@ -419,8 +420,8 @@ export default function BugReporter() {
         )}
       </button>
 
-      {/* Modal */}
-      {isOpen && (
+      {/* Modal - portalled to body to escape toolbar's backdrop-filter containing block */}
+      {isOpen && createPortal(
         <BugReporterModal
           screenshot={screenshot}
           screenshotDimensions={screenshotDimensions}
@@ -429,7 +430,8 @@ export default function BugReporter() {
           phase={phase}
           issueUrl={issueUrl}
           errorMessage={errorMessage}
-        />
+        />,
+        document.body,
       )}
     </>
   )
