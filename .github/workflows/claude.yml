@@ -21,7 +21,7 @@ jobs:
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
       (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
       (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
-      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')) && !contains(join(github.event.issue.labels.*.name, ','), 'sentry') && !contains(join(github.event.issue.labels.*.name, ','), 'qa-bot'))
+      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')) && !contains(join(github.event.issue.labels.*.name, ','), 'sentry') && !contains(join(github.event.issue.labels.*.name, ','), 'qa-bot') && !contains(join(github.event.issue.labels.*.name, ','), 'user-report'))
     runs-on: ubicloud-standard-2
     permissions:
       contents: write
@@ -133,6 +133,58 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Run Claude Code on Sentry issue
+        uses: anthropics/claude-code-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || github.token }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: '--model claude-opus-4-6 --allowedTools "Edit,Read,Write,Glob,Grep,Bash(*),WebSearch,WebFetch,Agent"'
+          track_progress: true
+          prompt: |
+            ${{ steps.load_prompt.outputs.content }}
+
+            After committing and pushing your fix, you MUST run `gh pr create` yourself to open
+            a pull request, then immediately run `gh pr merge --squash --delete-branch` to merge it.
+            Do not stop at just pushing a branch. The full cycle is: fix -> commit -> push -> pr create -> pr merge.
+            Add "Fixes #${{ github.event.issue.number }}" to the PR body so it auto-closes the issue on merge.
+
+  # Triggered when a user-report issue is opened or labeled
+  user-report-fix:
+    if: |
+      github.event_name == 'issues' &&
+      (github.event.action == 'labeled' || github.event.action == 'opened') &&
+      contains(join(github.event.issue.labels.*.name, ','), 'user-report')
+    runs-on: ubicloud-standard-2
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+      actions: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.PAT_TOKEN || github.token }}
+
+      - name: Load prompt
+        id: load_prompt
+        run: |
+          {
+            echo 'content<<PROMPT_EOF'
+            cat agent_hq/prompts/user-report-fixer.md
+            echo ''
+            cat agent_hq/context/aegis-overview.md
+            echo ''
+            cat agent_hq/context/environment.md
+            echo ''
+            cat agent_hq/context/how-to-ship.md
+            echo 'PROMPT_EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run Claude Code on user report
         uses: anthropics/claude-code-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || github.token }}
