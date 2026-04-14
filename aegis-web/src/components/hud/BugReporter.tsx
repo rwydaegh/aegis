@@ -7,7 +7,7 @@
  */
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { toJpeg } from 'html-to-image'
+import { toPng } from 'html-to-image'
 import { Bug, X, Send, Loader2, ExternalLink, ImageOff, Image as ImageIcon } from 'lucide-react'
 import { useSimulationStore } from '@/stores/simulation'
 import { useUIStore } from '@/stores/ui'
@@ -49,47 +49,51 @@ function collectState(): Record<string, unknown> {
   }
 }
 
-/** Capture the full viewport: DOM via html-to-image, then composite the WebGL
- *  canvas on top (foreignObject can't render WebGL content). */
+/** Capture the full viewport by compositing three layers:
+ *  1. WebGL canvas (bottom) - the 3D scene
+ *  2. DOM overlay (top, PNG with transparency) - sidebar, toolbar, HUD
+ *  foreignObject can't render WebGL, so we layer them manually. */
 async function captureFullPage(): Promise<string> {
   const vw = window.innerWidth
   const vh = window.innerHeight
 
-  // 1. DOM layer (sidebar, toolbar, HUD - canvas area will be blank)
-  const domShot = await toJpeg(document.body, {
-    quality: 0.9,
-    width: vw,
-    height: vh,
-    pixelRatio: 1,
-    filter: (node: HTMLElement) => {
-      if (node.dataset?.bugReporterModal === 'true') return false
-      return true
-    },
-  })
-
-  // 2. Find the WebGL canvas and its viewport position
+  // 1. Find the WebGL canvas
   const allCanvases = Array.from(document.querySelectorAll('canvas'))
   const glCanvas = allCanvases.reduce<HTMLCanvasElement | null>((best, c) => {
     if (!best) return c
     return c.width * c.height > best.width * best.height ? c : best
   }, null)
 
-  // 3. Composite: draw DOM layer, then WebGL canvas at its screen position
+  // 2. DOM layer as PNG (transparent where the canvas is)
+  //    Filter out canvas elements so they become transparent holes
+  const domShot = await toPng(document.body, {
+    width: vw,
+    height: vh,
+    pixelRatio: 1,
+    backgroundColor: 'transparent',
+    filter: (node: HTMLElement) => {
+      if (node.dataset?.bugReporterModal === 'true') return false
+      if (node.tagName === 'CANVAS') return false
+      return true
+    },
+  })
+
+  // 3. Composite: WebGL first (bottom), DOM on top (with transparency)
   const composite = document.createElement('canvas')
   composite.width = vw
   composite.height = vh
   const ctx = composite.getContext('2d')
   if (!ctx) throw new Error('Cannot create composite canvas')
 
-  // Draw DOM layer
-  const domImg = await loadImage(domShot)
-  ctx.drawImage(domImg, 0, 0, vw, vh)
-
-  // Overlay WebGL canvas at its screen position
+  // Bottom: WebGL canvas at its screen position
   if (glCanvas && glCanvas.width > 0) {
     const rect = glCanvas.getBoundingClientRect()
     ctx.drawImage(glCanvas, rect.left, rect.top, rect.width, rect.height)
   }
+
+  // Top: DOM overlay (sidebar, toolbar, HUD - canvas area is transparent)
+  const domImg = await loadImage(domShot)
+  ctx.drawImage(domImg, 0, 0, vw, vh)
 
   return composite.toDataURL('image/jpeg', 0.75)
 }
