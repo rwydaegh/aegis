@@ -87,6 +87,10 @@ test_screenshots/
 
 # Local theory artifacts (not part of the repo)
 theory/*.pdf
+theory/*.aux
+theory/*.out
+theory/*.toc
+theory/*.log
 
 # Superpowers plans/specs/prompts (local tooling, not part of docs)
 docs/superpowers/

@@ -11,47 +11,62 @@ inconsistent states. Those silent bugs are the ones only you can catch.
 
 ## Setup
 
-The production site has a password gate. Authenticate first, then test.
+The production site has a password gate. Use `npx @playwright/cli` for ALL
+browser interaction. NEVER write `node -e` scripts or use the Playwright Node API.
 
 ```bash
-npx playwright open --browser chromium https://aegis.waves-ugent.be
-# Fill the password field with: WiCa2026#
-# Then click the submit/enter button to proceed
+mkdir -p /tmp/qa_screenshots
+npx @playwright/cli open https://aegis.waves-ugent.be
 npx @playwright/cli resize 1920 1080
+npx @playwright/cli fill 'input[type="password"]' 'WiCa2026#'
+npx @playwright/cli click 'button[type="submit"]'
+npx @playwright/cli screenshot /tmp/qa_screenshots/step00.png
 ```
 
 ## How to interact
 
-**UI elements:** `npx @playwright/cli snapshot` to get refs, then
+**UI elements:** `npx @playwright/cli snapshot` to get element refs (eNN), then
 `npx @playwright/cli click eNN` or `npx @playwright/cli select eNN "value"`.
 
 **3D canvas:** R3F uses its own raycaster. Dispatch PointerEvents via eval:
 ```bash
-npx @playwright/cli evaluate "document.querySelector('canvas').dispatchEvent(new PointerEvent('pointerdown',{clientX:900,clientY:650,bubbles:true,pointerId:1,pointerType:'mouse',button:0}))"
-npx @playwright/cli evaluate "document.querySelector('canvas').dispatchEvent(new PointerEvent('pointerup',{clientX:900,clientY:650,bubbles:true,pointerId:1,pointerType:'mouse',button:0}))"
+npx @playwright/cli eval "document.querySelector('canvas').dispatchEvent(new PointerEvent('pointerdown',{clientX:900,clientY:650,bubbles:true,pointerId:1,pointerType:'mouse',button:0}))"
+npx @playwright/cli eval "document.querySelector('canvas').dispatchEvent(new PointerEvent('pointerup',{clientX:900,clientY:650,bubbles:true,pointerId:1,pointerType:'mouse',button:0}))"
 ```
 Click right of the phantom (clientX=800-1000, clientY=600-700) to place an antenna.
 
-**Keyboard:** Dispatch on `document` via eval:
+**Keyboard:**
 ```bash
-npx @playwright/cli evaluate "document.dispatchEvent(new KeyboardEvent('keydown',{key:'q',code:'KeyQ',bubbles:true}))"
-npx @playwright/cli evaluate "document.dispatchEvent(new KeyboardEvent('keyup',{key:'q',code:'KeyQ',bubbles:true}))"
+npx @playwright/cli press Shift+b          # bug reporter
+npx @playwright/cli keydown w              # hold W to move
+sleep 1
+npx @playwright/cli keyup w
+npx @playwright/cli press ArrowUp          # nudge antenna
 ```
-Q/E: rotate phantom. Arrow keys: nudge antenna (1m), Shift+Arrow: 3m. Always keydown+keyup.
 
-**Screenshots:** Save to `/tmp/qa_screenshots/` and read with the Read tool:
+**Screenshots:** Save to `/tmp/qa_screenshots/` and READ every one:
 ```bash
-mkdir -p /tmp/qa_screenshots
 npx @playwright/cli screenshot /tmp/qa_screenshots/step_01.png
+# Then use the Read tool to view the screenshot before proceeding
 ```
 
 ## How to test
+
+**Start with your focus area**, but always test recently shipped features too.
+Check the "Recent changes" section in your context -- if a new feature or fix
+landed in the last 48 hours, give it a quick smoke test even if it is not your
+main focus. New code is the most likely to have bugs.
 
 Be a real user first, a detective second. Actually use the features:
 - Place an antenna and check dosimetry computes (heatmap appears, HUD shows values)
 - Change settings and see if the result updates
 - Open panels, toggle checkboxes, select dropdown values
 - Try edge cases: empty inputs, extreme values, rapid toggling, unusual combos
+
+**Time budget:** aim for 10-15 meaningful interactions, not 30+. Each interaction
+should be: act, screenshot, read, assess. Do not spend more than 5 minutes on any
+single feature unless you found something suspicious. If everything looks fine,
+move on. A thorough 45-minute session beats a 4-hour crawl.
 
 ### Environment loading (important, often broken)
 

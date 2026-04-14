@@ -22,82 +22,110 @@ Exercise the AEGIS viewer end-to-end with Playwright CLI. The goal is to test th
 - For Playwright scripts, authenticate by navigating to the URL, filling the password gate, then proceeding with tests.
 - For curl, use `-c cookies.txt` to save and `-b cookies.txt` to send cookies.
 
-## Tooling
+## Tooling: Playwright CLI (MANDATORY)
 
-Work **interactively, step by step**. Do NOT write multi-step .mjs/.js scripts that try to automate an entire flow. Instead, launch a persistent browser and issue one command at a time, reading each screenshot before deciding the next action. This is critical for Three.js/WebGL apps where rendering is async and state-dependent.
+Use `npx @playwright/cli` for ALL browser interaction. This is a persistent,
+stateful CLI -- you open a browser once and issue commands against it. The
+browser session stays alive between commands.
 
-### Step-by-step workflow
+**NEVER write `node -e` scripts.** NEVER launch Chromium manually. NEVER use
+the Playwright Node.js API. Only use `npx @playwright/cli` commands.
 
-1. **Launch a persistent browser** with a small inline script that keeps the page open:
-
-```bash
-node -e "
-const { chromium } = require('playwright');
-(async () => {
-  const b = await chromium.launch({ headless: true });
-  const p = await (await b.newContext({ viewport: { width: 1920, height: 1080 } })).newPage();
-  await p.goto('http://127.0.0.1:5000', { waitUntil: 'networkidle' });
-  await p.screenshot({ path: 'test_screenshots/step0.png' });
-  // Expose page for REPL-style usage via global
-  global.page = p; global.browser = b;
-  console.log('READY - page open');
-  // Keep alive
-  await new Promise(() => {});
-})();
-" &
-```
-
-2. **Then issue one action at a time** using separate small `node -e` scripts, each doing ONE thing:
+### Workflow
 
 ```bash
-# Take a screenshot
-node -e "... await page.screenshot({ path: 'test_screenshots/step1.png' }) ..."
+# 1. Open browser (persistent session, stays alive)
+npx @playwright/cli open https://aegis.waves-ugent.be
+npx @playwright/cli resize 1920 1080
 
-# Click a button
-node -e "... await page.click('text=Load') ..."
+# 2. Authenticate
+npx @playwright/cli fill 'input[type="password"]' 'WiCa2026#'
+npx @playwright/cli click 'button[type="submit"]'
+npx @playwright/cli screenshot /tmp/qa_screenshots/step01.png
+# Read the screenshot with Read tool, then decide next action
 
-# Evaluate JS in browser
-node -e "... await page.evaluate(() => { ... }) ..."
+# 3. Interact one command at a time
+npx @playwright/cli click 'text=Load'
+npx @playwright/cli screenshot /tmp/qa_screenshots/step02.png
+# Read screenshot, decide next action...
+
+# 4. Done
+npx @playwright/cli close
 ```
 
-3. **Read every screenshot** with the Read tool before deciding the next step.
+### Key commands
 
-### Alternative approaches
+| Command | Example |
+|---------|---------|
+| Open browser | `npx @playwright/cli open <url>` |
+| Screenshot | `npx @playwright/cli screenshot /tmp/qa_screenshots/stepNN.png` |
+| Click | `npx @playwright/cli click 'text=Button'` or `npx @playwright/cli click eNN` |
+| Type | `npx @playwright/cli fill 'input' 'text'` |
+| Evaluate JS | `npx @playwright/cli eval "document.querySelector('canvas')..."` |
+| Snapshot (a11y tree) | `npx @playwright/cli snapshot` |
+| Press key | `npx @playwright/cli press Shift+b` |
+| Key down/up | `npx @playwright/cli keydown w` then `npx @playwright/cli keyup w` |
+| Mouse events | `npx @playwright/cli mousedown` / `npx @playwright/cli mouseup` |
+| Move mouse | `npx @playwright/cli mousemove 900 650` |
+| Console | `npx @playwright/cli console` |
+| Close | `npx @playwright/cli close` |
 
-- **Static screenshots**: `npx playwright screenshot --wait-for-timeout 5000 --viewport-size "1920,1080" URL output.png`
-- **API checks**: `curl -s http://127.0.0.1:5000/api/endpoint`
+### Why CLI, not scripts?
 
-### Why not scripts?
-
-Pre-written scripts are fragile: they guess at selectors and timings, cannot react to what actually renders, and fail silently when the UI changes. Interactive step-by-step usage lets you adapt in real time, just like a human tester would.
+Each `npx @playwright/cli` command runs against the SAME persistent browser.
+No re-launching, no re-authenticating, no sleep-polling. A 15-step test takes
+minutes, not hours.
 
 ## How to interact with the 3D scene
 
-R3F (React Three Fiber) uses its own raycaster. Synthetic DOM `click` events do NOT work. You must dispatch paired `PointerEvent`s on the canvas:
+R3F (React Three Fiber) uses its own raycaster. Standard DOM `click` does NOT
+work on the canvas. Use mouse events via `eval` or the CLI mouse commands:
 
-```js
-// Place antenna - dispatch pointerdown then pointerup at same coords (no drag)
-document.querySelector('canvas').dispatchEvent(new PointerEvent('pointerdown',{clientX:X,clientY:Y,bubbles:true,pointerId:1,pointerType:'mouse',button:0}))
-document.querySelector('canvas').dispatchEvent(new PointerEvent('pointerup',{clientX:X,clientY:Y,bubbles:true,pointerId:1,pointerType:'mouse',button:0}))
+```bash
+# Place antenna - move mouse to position, then mousedown + mouseup
+npx @playwright/cli mousemove 900 650
+npx @playwright/cli mousedown
+npx @playwright/cli mouseup
 ```
 
-- The invisible ClickPlane at y=0 catches clicks even without a loaded scene.
-- Click to the RIGHT of the phantom (around clientX=800-1000, clientY=600-700 at 1920x1080) to place an antenna a few meters away.
-- After placing, wait 3-5 seconds for the debounced compute to finish.
+Or via eval for PointerEvents (more reliable for R3F):
+
+```bash
+npx @playwright/cli eval "document.querySelector('canvas').dispatchEvent(new PointerEvent('pointerdown',{clientX:900,clientY:650,bubbles:true,pointerId:1,pointerType:'mouse',button:0}))"
+npx @playwright/cli eval "document.querySelector('canvas').dispatchEvent(new PointerEvent('pointerup',{clientX:900,clientY:650,bubbles:true,pointerId:1,pointerType:'mouse',button:0}))"
+```
+
+- Click to the RIGHT of the phantom (clientX=800-1000, clientY=600-700) to place an antenna.
+- After placing, wait 3-5 seconds for the debounced compute, then screenshot.
 
 ## Keyboard controls
 
-Dispatch on `document`, not on canvas. Use `eval` via Playwright CLI:
+Use the CLI `press`, `keydown`, and `keyup` commands:
 
-| Key | Action | Code example |
-|-----|--------|-------------|
-| W/A/S/D | Move phantom | `document.dispatchEvent(new KeyboardEvent('keydown',{key:'w',code:'KeyW',bubbles:true}))` |
-| Q/E | Rotate phantom | Same pattern with `key:'q'` or `key:'e'` |
-| Space | Jump | `key:' ',code:'Space'` |
-| Arrow keys | Nudge antenna (1m steps) | `key:'ArrowUp',code:'ArrowUp'` |
-| Shift+Arrow | Nudge antenna (3m steps) | Add `shiftKey:true` |
+```bash
+# Press a key (down + up)
+npx @playwright/cli press w
 
-Always dispatch both `keydown` and `keyup` with a short sleep between. For WASD movement, the physics loop runs while the key is held.
+# Hold a key (for WASD movement -- physics runs while held)
+npx @playwright/cli keydown w
+sleep 1
+npx @playwright/cli keyup w
+
+# Shift+B for bug reporter
+npx @playwright/cli press Shift+b
+
+# Arrow keys to nudge antenna
+npx @playwright/cli press ArrowUp
+```
+
+| Key | Action |
+|-----|--------|
+| W/A/S/D | Move phantom |
+| Q/E | Rotate phantom |
+| Arrow keys | Nudge antenna (1m) |
+| Shift+Arrow | Nudge antenna (3m) |
+| Shift+B | Open bug reporter |
+| ? | Keyboard help |
 
 **Antenna must be placed first** before arrow keys do anything.
 
@@ -151,7 +179,15 @@ Always dispatch both `keydown` and `keyup` with a short sleep between. For WASD 
 - Switch frequency bands and verify S_ab(1cm2) enables above 30 GHz
 - Toggle Occupational vs General Public exposure scenario
 
-### 8. Smoke test remaining UI
+### 8. Bug reporter and help overlays
+- Press Shift+B to open the bug reporter modal
+- Verify the modal appears with a screenshot preview and annotation canvas
+- Draw on the screenshot (freehand red pen), try undo and clear
+- Type a description, verify Cmd+Enter hint is visible
+- Close without submitting (Escape or Cancel button)
+- Press ? to open keyboard help modal, verify shortcuts listed
+
+### 9. Smoke test remaining UI
 - Camera presets (Front, Side, Top, Focus, Reset)
 - Wireframe toggle
 - Sidebar toggle
@@ -162,17 +198,24 @@ Always dispatch both `keydown` and `keyup` with a short sleep between. For WASD 
 
 ## Reading elements
 
-Use Playwright locators: `page.locator('text=Button')`, `page.locator('select')`, `page.locator('canvas')`. Use `page.evaluate()` for JS execution in the browser context.
+Use `npx @playwright/cli snapshot` to get the accessibility tree with element refs
+(eNN). Then click/fill/select by ref: `npx @playwright/cli click e42`.
 
-After actions that change the scene, wait 2-3 seconds before screenshotting. Always read the screenshot with the Read tool before proceeding.
+After actions that change the scene, wait 2-3 seconds before screenshotting.
+Always read each screenshot with the Read tool before deciding the next action.
 
 ## Console errors
 
-Register error listeners early: `page.on('console', msg => ...)` and `page.on('pageerror', ...)`. Report all errors found.
+Check browser console periodically:
+```bash
+npx @playwright/cli console
+```
 
 ## Cleanup
 
-Kill the server process when done: `kill $(lsof -t -i:5000) 2>/dev/null`
+```bash
+npx @playwright/cli close
+```
 
 ## Report format
 

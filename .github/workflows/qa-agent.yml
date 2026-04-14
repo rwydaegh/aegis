@@ -44,21 +44,16 @@ jobs:
         id: focus
         run: |
           AREAS=(
-            "Antenna placement and positioning"
-            "Phantom movement and rotation"
-            "Dosimetry HUD and compliance display"
-            "Scene loading and environment"
-            "Ray tracing integration"
-            "Stochastic propagation"
+            "Antenna placement, WASD movement, and phantom rotation"
+            "Dosimetry HUD, compliance panel, and quantity toggles"
+            "OSM environment loading and terrain"
+            "Ray tracing and stochastic propagation"
             "MIMO multi-user mode"
-            "Parameter controls and frequency bands"
-            "Export and analysis panels"
+            "Parameter controls, frequency bands, and exposure scenarios"
+            "Export, analysis panels, and data quality"
             "Camera controls and viewpoints"
-            "Base station panel"
-            "Tissue and skin model settings"
-            "Quantities and display modes"
-            "Layers panel and visibility toggles"
-            "Voxel environment and 3D tiles"
+            "Base station panel and coverage maps"
+            "Bug reporter (Shift+B), keyboard help (?), and guided tour"
           )
           INDEX=$((RANDOM % ${#AREAS[@]}))
           echo "area=${AREAS[$INDEX]}" >> "$GITHUB_OUTPUT"

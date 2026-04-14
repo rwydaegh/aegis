@@ -33,22 +33,41 @@ AREAS=(
     "type safety and API contracts across frontend and backend"
 )
 
-# Avoid repeating the same area back-to-back using a state file
+# Avoid repeating recently reviewed areas (cooldown of 3 runs)
 STATE_FILE="${REPO_DIR}/agent_hq/local/.last_reviewed.json"
-LAST_FOCUS=""
+RECENT_FOCUSES=()
 if [ -f "$STATE_FILE" ]; then
-    LAST_FOCUS=$(python3 -c "import json; print(json.load(open('$STATE_FILE')).get('last_focus',''))" 2>/dev/null || echo "")
+    mapfile -t RECENT_FOCUSES < <(python3 -c "
+import json
+data = json.load(open('$STATE_FILE'))
+for f in data.get('recent', []):
+    print(f)
+" 2>/dev/null || true)
 fi
 
-# Pick random focus, but skip if it matches last session
-for attempt in 1 2 3; do
+# Pick random focus, skip if reviewed in last 3 runs
+for attempt in 1 2 3 4 5; do
     INDEX=$((RANDOM % ${#AREAS[@]}))
     FOCUS="${AREAS[$INDEX]}"
-    [ "$FOCUS" != "$LAST_FOCUS" ] && break
+    SKIP=false
+    for recent in "${RECENT_FOCUSES[@]}"; do
+        [ "$FOCUS" = "$recent" ] && SKIP=true && break
+    done
+    [ "$SKIP" = false ] && break
 done
 
-# Save current focus for next run
-python3 -c "import json; json.dump({'last_focus': '''$FOCUS'''}, open('$STATE_FILE','w'))" 2>/dev/null || true
+# Save current focus, keep last 3
+python3 -c "
+import json, os
+data = {'recent': []}
+if os.path.exists('$STATE_FILE'):
+    try: data = json.load(open('$STATE_FILE'))
+    except: pass
+recent = data.get('recent', [])
+recent.insert(0, '''$FOCUS''')
+data['recent'] = recent[:3]
+json.dump(data, open('$STATE_FILE', 'w'))
+" 2>/dev/null || true
 
 # Code review agent uses all four context files
 EXTRA="$(cat "${REPO_DIR}/agent_hq/context/environment.md")"
