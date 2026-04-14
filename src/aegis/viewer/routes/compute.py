@@ -393,7 +393,7 @@ def _build_stats_response(result, body, tissue, level, extra=None, mode=None, co
     return stats
 
 
-def _zero_paths_response(body, tissue, level, extra=None):
+def _zero_paths_response(body, tissue, level, extra=None, cache=None):
     """Build stats dict when zero paths are found."""
     n_tri = body.n_triangles
     stats = {
@@ -424,6 +424,14 @@ def _zero_paths_response(body, tissue, level, extra=None):
     }
     if extra:
         stats.update(extra)
+    # Clear stale export cache so subsequent CSV/JSON/NPZ exports
+    # reflect the zero-result instead of serving old data
+    if cache is not None:
+        scoped_cache_set(cache, "_last_dosimetry_result", None)
+        scoped_cache_set(cache, "_last_dosimetry_body", None)
+        scoped_cache_set(cache, "_last_dosimetry_stats", None)
+        scoped_cache_set(cache, "_last_compliance_result", None)
+        scoped_cache_set(cache, "_last_rt_paths", None)
     sab_bytes = np.zeros(body.n_triangles, dtype=np.float32).tobytes()
     resp = Response(sab_bytes, mimetype=_OCTET_STREAM)
     resp.headers["X-Stats"] = _json_dumps_safe(stats)
@@ -1038,7 +1046,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
         level_val, _, _ = _stats_label(engine_kw)
         if paths.n_paths == 0:
-            return _zero_paths_response(body, tissue, level_val or 0)
+            return _zero_paths_response(body, tissue, level_val or 0, cache=cache)
 
         result, err = _run_dosimetry(tissue, transformed_body, paths, engine_kw)
         if err:
@@ -1188,7 +1196,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
         level_val, _, _ = _stats_label(engine_kw)
         if paths.n_paths == 0:
-            return _zero_paths_response(body, tissue, level_val or 0)
+            return _zero_paths_response(body, tissue, level_val or 0, cache=cache)
 
         result, err = _run_dosimetry(tissue, transformed_body, paths, engine_kw)
         if err:
@@ -1395,7 +1403,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
         level_val, _, _ = _stats_label(engine_kw)
         if paths.n_paths == 0:
-            return _zero_paths_response(body, tissue, level_val or 0)
+            return _zero_paths_response(body, tissue, level_val or 0, cache=cache)
 
         result, err = _run_dosimetry(tissue, transformed_body, paths, engine_kw)
         if err:
@@ -1572,7 +1580,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
         level_val, _, _ = _stats_label(engine_kw)
         if paths.n_paths == 0:
-            return _zero_paths_response(body, tissue, level_val or 0)
+            return _zero_paths_response(body, tissue, level_val or 0, cache=cache)
 
         result, err = _run_dosimetry(tissue, transformed_body, paths, engine_kw)
         if err:

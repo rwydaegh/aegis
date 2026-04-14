@@ -154,6 +154,7 @@ export function useDosimetry() {
         } else if (scene.caps?.has_env_mesh) {
           computeCall = computeSionnaEnvRT({ ...params, rtConfig: rtCfg }, controller.signal)
         } else {
+          clearTimeout(timeoutId)
           setComputing(false)
           useNotificationStore.getState().addNotification(
             'warning',
@@ -164,6 +165,7 @@ export function useDosimetry() {
       } else {
         // DiffeRT: check available geometry before calling backend
         if (!scene.loadedScenePath && !scene.caps?.has_voxels && !scene.caps?.has_env_mesh) {
+          clearTimeout(timeoutId)
           setComputing(false)
           useNotificationStore.getState().addNotification(
             'warning',

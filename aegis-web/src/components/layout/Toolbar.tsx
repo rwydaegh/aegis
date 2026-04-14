@@ -38,23 +38,7 @@ function ComplianceBadge({ stats }: { stats: DosimetryStats | null }) {
     )
   }
 
-  // Use backend compliant field (null when no checks apply)
   const compliant = stats.compliant
-
-  if (compliant == null) {
-    return (
-      <Tooltip>
-        <TooltipTrigger className="cursor-help">
-          <Badge variant="outline" className="text-amber-400/80 border-amber-400/30 font-mono text-xs">
-            N/A
-          </Badge>
-        </TooltipTrigger>
-        <TooltipContent side="bottom">
-          No compliance checks available at this frequency
-        </TooltipContent>
-      </Tooltip>
-    )
-  }
 
   if (!compliant) {
     return (
