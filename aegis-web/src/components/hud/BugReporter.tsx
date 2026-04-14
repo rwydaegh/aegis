@@ -52,12 +52,12 @@ function collectState(): Record<string, unknown> {
 /** Capture the full page as a JPEG data URL using html-to-image.
  *  Uses the browser's own rendering engine so all modern CSS (oklch, etc.) works. */
 async function captureFullPage(): Promise<string> {
-  const root = document.getElementById('root') ?? document.body
-  return toJpeg(root, {
+  return toJpeg(document.body, {
     quality: 0.7,
+    width: window.innerWidth,
+    height: window.innerHeight,
     pixelRatio: Math.min(window.devicePixelRatio, 2),
     filter: (node: HTMLElement) => {
-      // Exclude the bug reporter modal itself from the screenshot
       if (node.dataset?.bugReporterModal === 'true') return false
       return true
     },
