@@ -901,3 +901,33 @@ class TestPathsSerialization:
         json_str = json.dumps(p.to_dict())
         restored = PropagationPaths.from_dict(json.loads(json_str))
         np.testing.assert_allclose(restored.power, p.power, rtol=1e-10)
+
+
+class TestCloudRFTemplateConversion:
+    """Tests for CloudRF template to AEGIS scenario conversion."""
+
+    def test_power_dbm_is_conducted_not_eirp(self, tmp_path):
+        """powerDbm must be conducted TX power, not EIRP.
+
+        Regression: cloudrf_template_to_scenario used to store
+        EIRP (conducted + gain) in powerDbm, causing the dosimetry
+        engine to double-count antenna gain.
+        """
+        import json
+
+        from aegis.integration.cloudrf_templates import cloudrf_template_to_scenario
+
+        template = {
+            "template": {"name": "test-antenna"},
+            "transmitter": {"frq": 3500, "txw": 1.0},  # 1 W = 30 dBm
+            "antenna": {"txg": 12},  # 12 dBi gain
+        }
+        tpath = tmp_path / "test.json"
+        tpath.write_text(json.dumps(template))
+
+        scenario = cloudrf_template_to_scenario(str(tpath))
+
+        # powerDbm must be conducted power (30 dBm), not EIRP (42 dBm)
+        assert scenario["webState"]["powerDbm"] == 30.0
+        # Description should still mention EIRP for reference
+        assert "42.0 dBm EIRP" in scenario["description"]

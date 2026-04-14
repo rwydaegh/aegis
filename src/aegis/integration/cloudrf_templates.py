@@ -19,13 +19,16 @@ def cloudrf_template_to_scenario(template_path: str) -> dict:
     power_w = t["transmitter"]["txw"]
     gain_dbi = t["antenna"]["txg"]
 
-    # EIRP in dBm = 10*log10(power_W * 1000) + gain_dBi
-    power_dbm = round(10 * math.log10(max(power_w, 1e-10) * 1000) + gain_dbi, 1)
+    # Conducted TX power in dBm (without antenna gain).
+    # AEGIS applies antenna directivity separately, so powerDbm must be
+    # conducted power, not EIRP. Storing EIRP would double-count the gain.
+    power_dbm = round(10 * math.log10(max(power_w, 1e-10) * 1000), 1)
+    eirp_dbm = round(power_dbm + gain_dbi, 1)
 
     label = name.replace("-", " ").replace("_", " ")
 
     return {
-        "description": f"{label} ({freq_mhz} MHz, {gain_dbi} dBi, {power_dbm} dBm EIRP)",
+        "description": f"{label} ({freq_mhz} MHz, {gain_dbi} dBi, {eirp_dbm} dBm EIRP)",
         "label": label,
         "icon": "radio",
         "instant": True,
