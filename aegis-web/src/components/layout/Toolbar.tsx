@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils'
 import type { DosimetryStats } from '@/api/types'
 import SessionTimer from '@/components/layout/SessionTimer'
 import UserBadges from '@/components/hud/UserBadges'
+import BugReporter from '@/components/hud/BugReporter'
 import { ScenarioDropdown } from '@/components/hud/ScenarioDropdown'
 import { useActiveSimulation } from '@/hooks/useActiveSimulation'
 import { generateShareUrl } from '@/lib/shareLink'
@@ -209,6 +210,10 @@ export default function Toolbar() {
           </TooltipTrigger>
           <TooltipContent>Wireframe</TooltipContent>
         </Tooltip>
+
+        <BugReporter />
+
+        <div className="hidden md:block w-px h-4 bg-border/60 mx-0.5" />
 
         <Tooltip>
           <TooltipTrigger
