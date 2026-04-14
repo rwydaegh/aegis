@@ -49,18 +49,57 @@ function collectState(): Record<string, unknown> {
   }
 }
 
-/** Capture the full page as a JPEG data URL using html-to-image.
- *  Uses the browser's own rendering engine so all modern CSS (oklch, etc.) works. */
+/** Capture the full viewport: DOM via html-to-image, then composite the WebGL
+ *  canvas on top (foreignObject can't render WebGL content). */
 async function captureFullPage(): Promise<string> {
-  return toJpeg(document.body, {
-    quality: 0.7,
-    width: window.innerWidth,
-    height: window.innerHeight,
-    pixelRatio: Math.min(window.devicePixelRatio, 2),
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+
+  // 1. DOM layer (sidebar, toolbar, HUD - canvas area will be blank)
+  const domShot = await toJpeg(document.body, {
+    quality: 0.9,
+    width: vw,
+    height: vh,
+    pixelRatio: 1,
     filter: (node: HTMLElement) => {
       if (node.dataset?.bugReporterModal === 'true') return false
       return true
     },
+  })
+
+  // 2. Find the WebGL canvas and its viewport position
+  const allCanvases = Array.from(document.querySelectorAll('canvas'))
+  const glCanvas = allCanvases.reduce<HTMLCanvasElement | null>((best, c) => {
+    if (!best) return c
+    return c.width * c.height > best.width * best.height ? c : best
+  }, null)
+
+  // 3. Composite: draw DOM layer, then WebGL canvas at its screen position
+  const composite = document.createElement('canvas')
+  composite.width = vw
+  composite.height = vh
+  const ctx = composite.getContext('2d')
+  if (!ctx) throw new Error('Cannot create composite canvas')
+
+  // Draw DOM layer
+  const domImg = await loadImage(domShot)
+  ctx.drawImage(domImg, 0, 0, vw, vh)
+
+  // Overlay WebGL canvas at its screen position
+  if (glCanvas && glCanvas.width > 0) {
+    const rect = glCanvas.getBoundingClientRect()
+    ctx.drawImage(glCanvas, rect.left, rect.top, rect.width, rect.height)
+  }
+
+  return composite.toDataURL('image/jpeg', 0.75)
+}
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => resolve(img)
+    img.onerror = reject
+    img.src = src
   })
 }
 
@@ -168,9 +207,10 @@ function BugReporterModal({
         <div
           className={cn(
             'bg-card/95 backdrop-blur-md rounded-xl border border-border shadow-2xl',
-            'p-4 sm:p-5 w-full max-w-2xl max-h-[90vh] overflow-y-auto pointer-events-auto',
+            'p-4 sm:p-5 max-h-[90vh] overflow-y-auto pointer-events-auto',
             'animate-in fade-in zoom-in-95 duration-150',
           )}
+          style={{ width: 'fit-content', maxWidth: 'calc(100vw - 2rem)' }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -345,8 +385,9 @@ function BugReporterModal({
 // Main component
 // ---------------------------------------------------------------------------
 
-const MAX_WIDTH = 960
-const MAX_HEIGHT = 600
+// Size the annotation canvas to fit the modal with padding for controls
+const MAX_WIDTH_RATIO = 0.85  // % of viewport width
+const MAX_HEIGHT_RATIO = 0.55 // % of viewport height (leave room for description + buttons)
 
 export default function BugReporter() {
   const [phase, setPhase] = useState<Phase>('idle')
@@ -367,8 +408,10 @@ export default function BugReporter() {
       img.onload = () => {
         let w = img.width
         let h = img.height
-        if (w > MAX_WIDTH) { h = Math.round(h * (MAX_WIDTH / w)); w = MAX_WIDTH }
-        if (h > MAX_HEIGHT) { w = Math.round(w * (MAX_HEIGHT / h)); h = MAX_HEIGHT }
+        const maxW = Math.round(window.innerWidth * MAX_WIDTH_RATIO)
+        const maxH = Math.round(window.innerHeight * MAX_HEIGHT_RATIO)
+        if (w > maxW) { h = Math.round(h * (maxW / w)); w = maxW }
+        if (h > maxH) { w = Math.round(w * (maxH / h)); h = maxH }
         setScreenshotDimensions({ width: w, height: h })
         setPhase('open')
       }
