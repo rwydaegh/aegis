@@ -31,6 +31,13 @@ export function useOptimization() {
 
     useOptimizeStore.getState().setRunning(true)
 
+    if (mode === 'placement') {
+      const pos = useSimulationStore.getState().antennaPos
+      if (pos) {
+        useOptimizeStore.getState().setPlacementCenter([...pos] as [number, number, number])
+      }
+    }
+
     const request = buildRequest(mode, constraints)
     const addNotification = useNotificationStore.getState().addNotification
 
