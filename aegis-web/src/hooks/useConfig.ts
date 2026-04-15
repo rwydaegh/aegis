@@ -28,7 +28,7 @@ export function useConfig() {
         const simState: Record<string, unknown> = {
           mode: 'spatial',
           fresnel: true,
-          powerDbm: 60,
+          powerDbm: 43,
           skinModel: 'itis',
         }
 

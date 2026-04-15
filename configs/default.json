@@ -203,7 +203,7 @@
   },
   "dosimetry": {
     "default_level": 2,
-    "default_power_dbm": 60,
+    "default_power_dbm": 43,
     "default_max_order": 0,
     "compliance_threshold": 10.0,
     "fidelity_levels": [
@@ -513,7 +513,7 @@
       "autoCompute": true,
       "webState": {
         "freqGhz": 28,
-        "powerDbm": 60,
+        "powerDbm": 43,
         "mode": "spatial",
         "antennaPos": [0, 1.5, -0.8],
         "environment": {"source": "none"}
@@ -543,7 +543,7 @@
       "autoCompute": true,
       "webState": {
         "freqGhz": 28,
-        "powerDbm": 60,
+        "powerDbm": 43,
         "mode": "spatial",
         "antennaPos": [0, 10.0, -3.0],
         "environment": {

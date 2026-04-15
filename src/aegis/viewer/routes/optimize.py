@@ -297,7 +297,7 @@ def _build_placement_evaluate_fn(
     default_bc = np.array(cache["config"]["raytracer"]["default_body_center"], dtype=np.float64)
     body_center = default_bc + body_offset
 
-    power_dbm = float(params.get("power_dbm", 60.0))
+    power_dbm = float(params.get("power_dbm", 43.0))
     pole_height = float(cache["config"]["antenna"].get("pole_height", 2.0))
 
     rt_cfg = _parse_rt_config(params, cache)

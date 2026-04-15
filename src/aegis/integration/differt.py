@@ -264,7 +264,7 @@ def paths_from_differt(
         First vertex is TX, last is the arrival point near the body.
     tx_positions : (M_ant, 3) transmitter antenna element positions
     freq_hz : operating frequency [Hz]
-    tx_power_dbm : transmit power per element [dBm], default 60 (1 kW)
+    tx_power_dbm : transmit power per element [dBm], default 43 (20 W)
     element_indices : (N_paths,) which TX element each path originates from.
         If None, inferred from nearest TX position.
     object_indices : (N_paths, path_length) triangle index at each path
