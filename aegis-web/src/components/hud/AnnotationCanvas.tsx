@@ -333,10 +333,10 @@ const AnnotationCanvas = forwardRef<AnnotationCanvasHandle, Props>(
           )}
         </div>
 
-        {/* Zoom indicator */}
+        {/* Zoom indicator + pan hint */}
         {isZoomed && (
           <div className="absolute bottom-2 left-2 px-1.5 py-0.5 rounded bg-black/60 text-white text-[10px] font-mono backdrop-blur-sm">
-            {zoom.toFixed(1)}x {spaceHeld ? '(pan)' : ''}
+            {zoom.toFixed(1)}x {spaceHeld ? 'drag to pan' : 'hold Space to pan'}
           </div>
         )}
       </div>
