@@ -1,22 +1,29 @@
-"""In-app bug report endpoint: uploads screenshot to GitHub and creates an issue."""
+"""In-app bug report endpoint: saves screenshot locally and creates a GitHub issue."""
 
 import base64
 import json
 import logging
 import os
 from datetime import UTC, datetime
+from pathlib import Path
 from urllib.request import Request, urlopen
 
-from flask import Flask, Response, jsonify, request
+from flask import Flask, Response, jsonify, request, send_from_directory
 
 log = logging.getLogger(__name__)
 
 GITHUB_REPO = "rwydaegh/aegis"
-SCREENSHOT_BRANCH = "bug-screenshots"
+SCREENSHOT_DIR = Path(os.environ.get("BUG_SCREENSHOT_DIR", "/tmp/bug-screenshots"))
 
 
 def register(app: Flask, cache: dict, cache_lock) -> None:
-    """Attach the bug report route to *app*."""
+    """Attach the bug report routes to *app*."""
+
+    SCREENSHOT_DIR.mkdir(parents=True, exist_ok=True)
+
+    @app.route("/bug-screenshots/<path:filename>")
+    def serve_bug_screenshot(filename: str) -> Response:
+        return send_from_directory(str(SCREENSHOT_DIR), filename)
 
     @app.route("/api/bug-report", methods=["POST"])
     def bug_report() -> Response:
@@ -34,7 +41,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             log.warning("Bug report received but no GitHub token configured")
             return jsonify({"error": "GitHub token not configured on server"}), 503
 
-        # Upload screenshot if provided
+        # Save screenshot locally and build a public URL
         screenshot_url = ""
         if screenshot:
             screenshot_b64 = screenshot.split(",", 1)[1] if "," in screenshot else screenshot
@@ -45,11 +52,13 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
             timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
             filename = f"{timestamp}.jpg"
-            try:
-                screenshot_url = _upload_screenshot_to_github(token, filename, screenshot_bytes)
-            except Exception:
-                log.exception("Failed to upload screenshot to GitHub")
-                return jsonify({"error": "Failed to upload screenshot to GitHub"}), 502
+            filepath = SCREENSHOT_DIR / filename
+            filepath.write_bytes(screenshot_bytes)
+
+            # Build public URL from the request host
+            base_url = request.host_url.rstrip("/")
+            screenshot_url = f"{base_url}/bug-screenshots/{filename}"
+            log.info("Saved bug screenshot: %s", screenshot_url)
 
         title = f"[User report] {description[:72]}"
         body = _format_issue_body(description, screenshot_url, state)
@@ -66,41 +75,6 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                 "issueUrl": issue["html_url"],
             }
         )
-
-
-def _upload_screenshot_to_github(token: str, filename: str, image_bytes: bytes) -> str:
-    """Upload *image_bytes* to the bug-screenshots branch via the GitHub contents API.
-
-    Returns the blob URL (``github.com/.../blob/...``) which renders for anyone
-    with repo access, unlike raw URLs which expire for private repos.
-    """
-    url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/bug-screenshots/{filename}"
-    content_b64 = base64.b64encode(image_bytes).decode("ascii")
-    payload = json.dumps(
-        {
-            "message": f"Add bug screenshot {filename}",
-            "content": content_b64,
-            "branch": SCREENSHOT_BRANCH,
-        }
-    ).encode()
-    req = Request(
-        url,
-        data=payload,
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Accept": "application/vnd.github+json",
-            "Content-Type": "application/json",
-        },
-        method="PUT",
-    )
-    with urlopen(req, timeout=20) as resp:
-        result = json.loads(resp.read())
-        # Use the HTML URL (blob view) - works for anyone with repo access
-        html_url = result.get("content", {}).get("html_url", "")
-        # Append ?raw=true so GitHub serves the image directly
-        raw_url = f"{html_url}?raw=true" if html_url else ""
-        log.info("Uploaded bug screenshot: %s", raw_url)
-        return raw_url
 
 
 def _create_github_issue(token: str, title: str, body: str) -> dict:
