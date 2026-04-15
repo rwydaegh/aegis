@@ -85,7 +85,7 @@ export const useAntennaStore = create<AntennaStore>((set, get) => ({
       id, name: `Antenna ${num}`, position,
       height: defaultHeight,
       focusPoint,
-      powerDbm: 60,
+      powerDbm: 43,
       arrayConfig: { ...defaultArrayConfig(), broadside },
       enabled: true,
     }

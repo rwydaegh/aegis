@@ -507,7 +507,7 @@ DEFAULTS: dict = {
             "autoCompute": True,
             "webState": {
                 "freqGhz": 28,
-                "powerDbm": 60,
+                "powerDbm": 43,
                 "mode": "spatial",
                 "antennaPos": [0, 1.5, -0.8],
                 "environment": {"source": "none"},
@@ -537,7 +537,7 @@ DEFAULTS: dict = {
             "autoCompute": True,
             "webState": {
                 "freqGhz": 28,
-                "powerDbm": 60,
+                "powerDbm": 43,
                 "mode": "spatial",
                 "antennaPos": [0, 10.0, -3.0],
                 "environment": {

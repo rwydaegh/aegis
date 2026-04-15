@@ -6,7 +6,7 @@ imports and must remain a leaf dependency to avoid circular imports.
 """
 
 DEFAULT_FREQ_HZ: float = 28e9
-DEFAULT_POWER_DBM: float = 60.0
+DEFAULT_POWER_DBM: float = 43.0
 DEFAULT_P_ABS_MAX: float = 0.1  # absorbed power limit [W]
 DEFAULT_NOISE_POWER: float = 0.01  # MMSE noise power
 DEFAULT_FIDELITY_LEVEL: int = 2

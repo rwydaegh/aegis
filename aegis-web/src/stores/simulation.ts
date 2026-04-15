@@ -131,7 +131,7 @@ export const useSimulationStore = create<SimulationStore>()(persist((set) => ({
   polarisation: false,
   curvature: false,
   diffraction: false,
-  powerDbm: 60,
+  powerDbm: 43,
   skinModel: 'itis',
   stochasticPreset: '3GPP_38.901_UMi_LOS',
   stochasticOverrides: {},

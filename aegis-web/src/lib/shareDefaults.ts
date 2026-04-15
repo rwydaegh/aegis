@@ -7,7 +7,7 @@ export const SHARE_DEFAULTS = {
   polarisation: false,
   curvature: false,
   diffraction: false,
-  powerDbm: 60,
+  powerDbm: 43,
   skinModel: 'itis',
   freqGhz: 28,
   stochasticPreset: '3GPP_38.901_UMi_LOS',

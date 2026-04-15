@@ -28,6 +28,7 @@ class TestPathsFromDiffert:
             path_vertices=path_vertices,
             tx_positions=tx_pos,
             freq_hz=28e9,
+            tx_power_dbm=60.0,
         )
 
         assert paths.n_paths == 1
