@@ -38,6 +38,7 @@ import { EnvironmentTerrain } from './EnvironmentTerrain'
 import { LSPHeatmap } from './LSPHeatmap'
 import ClusterPaths from './ClusterPaths'
 import ComplianceRing from './ComplianceRing'
+import OptimizeGridPreview from './OptimizeGridPreview'
 import { cameraState } from '@/lib/cameraState'
 
 function GroundPlane() {
@@ -439,6 +440,7 @@ export default function SceneRoot() {
         </>
       ))}
       {!isCoverageMode && <RayPaths />}
+      {!isCoverageMode && <OptimizeGridPreview />}
       <GroundPlane />
       <SceneGrid />
       {!isCoverageMode && <EnvironmentTerrain />}

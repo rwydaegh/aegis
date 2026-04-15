@@ -68,9 +68,34 @@ export default function OptimizePanel() {
       </div>
 
       {/* Mode description */}
-      {mode && (
+      {!mode && (
         <p className="text-xs text-muted-foreground">
-          {MODES.find((m) => m.value === mode)?.description}
+          Select a strategy to optimize antenna configuration for minimum exposure.
+        </p>
+      )}
+      {mode === 'placement' && (
+        <p className="text-xs text-muted-foreground">
+          Evaluates a {constraints.gridSize ?? 5}&times;{constraints.gridSize ?? 5} grid
+          ({(constraints.gridSize ?? 5) ** 2} positions) centered on the current antenna,
+          spaced {constraints.gridSpacing ?? 2}m apart. Selects the position with the
+          lowest peak S<sub>ab</sub>. The grid is previewed in the 3D view.
+        </p>
+      )}
+      {mode === 'tilt_power' && (
+        <p className="text-xs text-muted-foreground">
+          Iteratively adjusts antenna downtilt and transmit power to maximize
+          coverage while keeping peak S<sub>ab</sub> below the ICNIRP limit.
+        </p>
+      )}
+      {mode === 'mimo_peak' && (
+        <p className="text-xs text-muted-foreground">
+          Optimizes MIMO precoder weights to minimize peak S<sub>ab</sub> across
+          all users within the specified power budget.
+        </p>
+      )}
+      {mode === 'placement' && !antennaPos && (
+        <p className="text-xs text-amber-400/80">
+          Click in the 3D view to place the antenna before optimizing.
         </p>
       )}
 
@@ -164,6 +189,25 @@ export default function OptimizePanel() {
       >
         {running ? `Stop (iter ${currentIter})` : 'Optimize'}
       </button>
+
+      {/* Placement progress */}
+      {running && mode === 'placement' && (() => {
+        const total = (constraints.gridSize ?? 5) ** 2
+        const pct = Math.min(100, (currentIter / total) * 100)
+        return (
+          <div className="space-y-1">
+            <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+              <div
+                className="h-full bg-primary rounded-full transition-all duration-300"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground text-center">
+              Evaluating position {currentIter} of {total}
+            </p>
+          </div>
+        )
+      })()}
 
       {/* Convergence sparkline */}
       {history.length > 1 && (
