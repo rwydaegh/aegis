@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useUIStore, TOUR_STEP_COUNT } from '@/stores/ui'
 import { ChevronRight, X } from 'lucide-react'
 
@@ -33,13 +34,47 @@ const STEPS: TourStep[] = [
     side: 'left',
   },
   {
-    target: '[data-tour="icon-rail"]',
-    title: 'Sidebar groups',
-    body: 'Settings are organized into four groups: World (scene setup), Source (antennas), Exposure (phantom and propagation), and Analysis (results and export).',
+    target: '[data-tour="sidebar"]',
+    title: 'World',
+    body: 'Set up your scene: choose a location, configure the environment, add base stations, and manage scene layers.',
     side: 'right',
     onEnter: () => {
       const ui = useUIStore.getState()
-      if (ui.sidebarMode === 'hidden') ui.setSidebarMode('expanded')
+      ui.setActiveGroup('world')
+      ui.setSidebarMode('expanded')
+    },
+  },
+  {
+    target: '[data-tour="sidebar"]',
+    title: 'Source',
+    body: 'Configure your sources: adjust frequency and power, manage antennas, set up MIMO arrays, and browse antenna patterns.',
+    side: 'right',
+    onEnter: () => {
+      const ui = useUIStore.getState()
+      ui.setActiveGroup('source')
+      ui.setSidebarMode('expanded')
+    },
+  },
+  {
+    target: '[data-tour="sidebar"]',
+    title: 'Exposure',
+    body: 'Control exposure settings: choose a phantom body, enable ray tracing for reflections, run stochastic analysis, and adjust tissue properties.',
+    side: 'right',
+    onEnter: () => {
+      const ui = useUIStore.getState()
+      ui.setActiveGroup('exposure')
+      ui.setSidebarMode('expanded')
+    },
+  },
+  {
+    target: '[data-tour="sidebar"]',
+    title: 'Analysis',
+    body: 'View and export results: analyze dosimetry data, optimize antenna placement for compliance, and export results.',
+    side: 'right',
+    onEnter: () => {
+      const ui = useUIStore.getState()
+      ui.setActiveGroup('analysis')
+      ui.setSidebarMode('expanded')
     },
   },
   {
@@ -153,7 +188,7 @@ export default function GuidedTour() {
   // Tooltip positioning
   const tooltipStyle = computeTooltipPosition(cutout, step.side)
 
-  return (
+  return createPortal(
     <div
       className={`fixed inset-0 z-[100] transition-opacity duration-300 ${
         visible ? 'opacity-100' : 'opacity-0'
@@ -239,7 +274,8 @@ export default function GuidedTour() {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 

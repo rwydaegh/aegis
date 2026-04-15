@@ -94,7 +94,7 @@ export const selectSidebarExpanded = (s: UIStore) => s.sidebarMode === 'expanded
 let _lastVisibleMode: SidebarMode = 'expanded'
 
 /** Number of steps in the guided tour */
-export const TOUR_STEP_COUNT = 6
+export const TOUR_STEP_COUNT = 9
 
 export const useUIStore = create<UIStore>((set) => ({
   sidebarMode: 'expanded',

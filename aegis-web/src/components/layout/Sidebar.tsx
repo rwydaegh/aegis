@@ -86,6 +86,7 @@ export default function Sidebar() {
 
   return (
     <aside
+      data-tour="sidebar"
       className="absolute top-0 left-0 h-full z-20 flex flex-col
         bg-card/90 backdrop-blur-xl border-r border-border
         transition-all duration-200 ease-in-out overflow-hidden"
