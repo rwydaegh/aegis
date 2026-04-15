@@ -121,9 +121,20 @@ export default function ScenePanel() {
       useEnvironmentStore.getState().setSource('none')
       useSceneStore.getState().setSceneGeometry(null)
       useSceneStore.getState().setLoadedScenePath('')
+      // Temporarily clear has_voxels so useVoxelLoader re-triggers when
+      // new capabilities arrive (the effect depends on caps?.has_voxels,
+      // so a true->true transition would be ignored without this reset).
+      const prev = useSceneStore.getState().capabilities
+      if (prev) {
+        useSceneStore.setState({ capabilities: { ...prev, has_voxels: false } })
+      }
       // Re-fetch capabilities so useVoxelLoader picks up the new voxels
       fetchCapabilities().then(caps => {
         useSceneStore.getState().setCapabilities(caps)
+        // Place body at the scene center computed from the new voxels
+        if (caps.body_placement) {
+          useSimulationStore.getState().setBodyOffset(caps.body_placement)
+        }
       }).catch((err) => {
         Sentry.captureException(err)
         useNotificationStore.getState().addNotification('error', 'Failed to refresh after location load')

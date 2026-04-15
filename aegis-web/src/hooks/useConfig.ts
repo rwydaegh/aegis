@@ -71,7 +71,7 @@ export function useConfig() {
         if (config.dosimetry?.default_max_order !== undefined) {
           scene.setRtMaxOrder(config.dosimetry.default_max_order)
         }
-        if (config.body?.default_offset) {
+        if (config.body?.default_offset && !caps.body_placement) {
           sim.setBodyOffset(config.body.default_offset)
         }
         if (config.body?.default_rotation_y !== undefined) {
