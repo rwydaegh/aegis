@@ -220,21 +220,48 @@ const AnnotationCanvas = forwardRef<AnnotationCanvasHandle, Props>(
     useImperativeHandle(ref, () => ({
       getCompositeImage: () => {
         return new Promise<Blob>((resolve, reject) => {
-          const composite = document.createElement('canvas')
-          composite.width = width
-          composite.height = height
-          const ctx = composite.getContext('2d')
-          if (!ctx) return reject(new Error('Cannot get canvas context'))
-          if (bgCanvasRef.current) ctx.drawImage(bgCanvasRef.current, 0, 0)
-          if (drawCanvasRef.current) ctx.drawImage(drawCanvasRef.current, 0, 0)
-          composite.toBlob(
-            blob => {
-              if (blob) resolve(blob)
-              else reject(new Error('Failed to export canvas'))
-            },
-            'image/jpeg',
-            0.85,
-          )
+          // Load the original screenshot to export at full captured resolution
+          const img = new Image()
+          img.onload = () => {
+            const fullW = img.naturalWidth
+            const fullH = img.naturalHeight
+            const scaleX = fullW / width
+            const scaleY = fullH / height
+
+            const composite = document.createElement('canvas')
+            composite.width = fullW
+            composite.height = fullH
+            const ctx = composite.getContext('2d')
+            if (!ctx) return reject(new Error('Cannot get canvas context'))
+
+            // Draw screenshot at full resolution
+            ctx.drawImage(img, 0, 0, fullW, fullH)
+
+            // Draw annotations scaled up to match
+            ctx.strokeStyle = '#ff3333'
+            ctx.lineWidth = 3 * Math.max(scaleX, scaleY)
+            ctx.lineCap = 'round'
+            ctx.lineJoin = 'round'
+            for (const stroke of strokesRef.current) {
+              if (stroke.points.length < 2) continue
+              ctx.beginPath()
+              ctx.moveTo(stroke.points[0].x * scaleX, stroke.points[0].y * scaleY)
+              for (let i = 1; i < stroke.points.length; i++) {
+                ctx.lineTo(stroke.points[i].x * scaleX, stroke.points[i].y * scaleY)
+              }
+              ctx.stroke()
+            }
+
+            composite.toBlob(
+              blob => {
+                if (blob) resolve(blob)
+                else reject(new Error('Failed to export canvas'))
+              },
+              'image/png',
+            )
+          }
+          img.onerror = () => reject(new Error('Failed to load screenshot for export'))
+          img.src = screenshotUrl
         })
       },
     }))

@@ -44,7 +44,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                 return jsonify({"error": "screenshot must be a valid base64 image"}), 400
 
             timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-            filename = f"{timestamp}.jpg"
+            filename = f"{timestamp}.png"
             try:
                 screenshot_url = _upload_screenshot_to_github(token, filename, screenshot_bytes)
             except Exception:
