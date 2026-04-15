@@ -37,7 +37,7 @@ export default function PatternBrowserPanel() {
       setIsLoading(true)
       setError(null)
       try {
-        const params: Parameters<typeof searchPatterns>[0] = { limit: 50 }
+        const params: Parameters<typeof searchPatterns>[0] = {}
         if (query.trim()) params.q = query.trim()
         if (sourceFilter !== 'all') params.source = sourceFilter
         const data = await searchPatterns(params)

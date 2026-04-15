@@ -207,7 +207,7 @@ class AntennaPatternLibrary:
         gain_min_dbi: float | None = None,
         gain_max_dbi: float | None = None,
         source: str = "all",
-        limit: int = 50,
+        limit: int = 10000,
     ) -> list[PatternSearchResult]:
         """Search the index by free-text query and/or structured filters.
 
