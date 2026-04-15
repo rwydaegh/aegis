@@ -67,16 +67,26 @@ export function useScenario() {
       // 4. Trigger environment fetch if needed
       if (
         webState.environment &&
-        webState.environment.source === 'osm' &&
         webState.environment.lat != null
       ) {
-        ui.setScenarioLoading(true);
-        try {
-          await env.fetchOSM();
-        } catch {
-          // Toast handled inside fetchOSM; we just stop loading
-        } finally {
-          ui.setScenarioLoading(false);
+        if (webState.environment.source === 'osm') {
+          ui.setScenarioLoading(true);
+          try {
+            await env.fetchOSM();
+          } catch {
+            // Toast handled inside fetchOSM; we just stop loading
+          } finally {
+            ui.setScenarioLoading(false);
+          }
+        } else if (webState.environment.source === '3dtiles') {
+          ui.setScenarioLoading(true);
+          try {
+            await env.fetchTilesForRT();
+          } catch {
+            // Toast handled inside fetchTilesForRT; we just stop loading
+          } finally {
+            ui.setScenarioLoading(false);
+          }
         }
       }
 
