@@ -49,7 +49,7 @@ jobs:
       (github.event.action == 'labeled' || github.event.action == 'opened') &&
       contains(join(github.event.issue.labels.*.name, ','), 'qa-bot')
     runs-on: ubicloud-standard-2
-    timeout-minutes: 60
+    timeout-minutes: 120
     permissions:
       contents: write
       pull-requests: write
@@ -103,7 +103,7 @@ jobs:
       (github.event.action == 'labeled' || github.event.action == 'opened') &&
       contains(join(github.event.issue.labels.*.name, ','), 'sentry')
     runs-on: ubicloud-standard-2
-    timeout-minutes: 60
+    timeout-minutes: 120
     permissions:
       contents: write
       pull-requests: write
@@ -155,7 +155,7 @@ jobs:
       (github.event.action == 'labeled' || github.event.action == 'opened') &&
       contains(join(github.event.issue.labels.*.name, ','), 'user-report')
     runs-on: ubicloud-standard-2
-    timeout-minutes: 60
+    timeout-minutes: 120
     permissions:
       contents: write
       pull-requests: write
