@@ -40,7 +40,7 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          claude_args: '--model claude-opus-4-6 --max-turns 30 --allowedTools "Edit,Read,Write,Glob,Grep,Bash(*),WebSearch,WebFetch,Agent"'
+          claude_args: '--model claude-opus-4-6 --max-turns 200 --allowedTools "Edit,Read,Write,Glob,Grep,Bash(*),WebSearch,WebFetch,Agent"'
 
   # Triggered when a qa-bot issue is opened or labeled
   qa-fix:
@@ -84,7 +84,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || github.token }}
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          claude_args: '--model claude-opus-4-6 --max-turns 30 --allowedTools "Edit,Read,Write,Glob,Grep,Bash(*),WebSearch,WebFetch,Agent"'
+          claude_args: '--model claude-opus-4-6 --max-turns 200 --allowedTools "Edit,Read,Write,Glob,Grep,Bash(*),WebSearch,WebFetch,Agent"'
           allowed_bots: "claude[bot]"
           include_comments_by_actor: "claude[bot]"
           track_progress: true
@@ -138,7 +138,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || github.token }}
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          claude_args: '--model claude-opus-4-6 --max-turns 30 --allowedTools "Edit,Read,Write,Glob,Grep,Bash(*),WebSearch,WebFetch,Agent"'
+          claude_args: '--model claude-opus-4-6 --max-turns 200 --allowedTools "Edit,Read,Write,Glob,Grep,Bash(*),WebSearch,WebFetch,Agent"'
           track_progress: true
           prompt: |
             ${{ steps.load_prompt.outputs.content }}
@@ -190,7 +190,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || github.token }}
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          claude_args: '--model claude-opus-4-6 --max-turns 30 --allowedTools "Edit,Read,Write,Glob,Grep,Bash(*),WebSearch,WebFetch,Agent"'
+          claude_args: '--model claude-opus-4-6 --max-turns 200 --allowedTools "Edit,Read,Write,Glob,Grep,Bash(*),WebSearch,WebFetch,Agent"'
           track_progress: true
           prompt: |
             ${{ steps.load_prompt.outputs.content }}
