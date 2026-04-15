@@ -54,7 +54,7 @@ function collectState(): Record<string, unknown> {
 async function captureFullPage(): Promise<string> {
   const canvas = await html2canvas(document.body, {
     useCORS: true,
-    scale: 1,
+    scale: window.devicePixelRatio || 2,
     logging: false,
   })
   return canvas.toDataURL('image/jpeg', 0.75)

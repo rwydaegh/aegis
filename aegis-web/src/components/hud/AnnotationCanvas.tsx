@@ -16,7 +16,7 @@ interface Stroke {
 }
 
 const MIN_ZOOM = 1
-const MAX_ZOOM = 6
+const MAX_ZOOM = 10
 
 const AnnotationCanvas = forwardRef<AnnotationCanvasHandle, Props>(
   function AnnotationCanvas({ screenshotUrl, width, height }, ref) {
@@ -38,6 +38,7 @@ const AnnotationCanvas = forwardRef<AnnotationCanvasHandle, Props>(
     // Track space key for pan mode
     useEffect(() => {
       function onKeyDown(e: KeyboardEvent) {
+        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
         if (e.code === 'Space' && !e.repeat) {
           e.preventDefault()
           setSpaceHeld(true)
@@ -171,22 +172,22 @@ const AnnotationCanvas = forwardRef<AnnotationCanvasHandle, Props>(
       isDrawingRef.current = false
     }, [])
 
-    // Scroll to zoom, centered on cursor
+    // Scroll to zoom, centered on cursor (multiplicative for natural feel)
     const handleWheel = useCallback((e: React.WheelEvent) => {
       e.preventDefault()
-      const delta = e.deltaY > 0 ? -0.3 : 0.3
+      // Multiplicative zoom: each scroll step scales by 1.15x (in or out)
+      const factor = e.deltaY > 0 ? 1 / 1.15 : 1.15
       setZoom(prev => {
-        const next = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, prev + delta))
-        // Adjust pan to keep the point under cursor stable
+        const next = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, prev * factor))
         const container = containerRef.current
         if (container && next !== prev) {
           const rect = container.getBoundingClientRect()
           const cx = e.clientX - rect.left - rect.width / 2
           const cy = e.clientY - rect.top - rect.height / 2
-          const factor = next / prev
+          const scale = next / prev
           const newPan = clampPan(
-            pan.x * factor + cx * (1 - factor),
-            pan.y * factor + cy * (1 - factor),
+            pan.x * scale + cx * (1 - scale),
+            pan.y * scale + cy * (1 - scale),
             next,
           )
           setPan(newPan)
@@ -202,7 +203,7 @@ const AnnotationCanvas = forwardRef<AnnotationCanvasHandle, Props>(
 
     const zoomIn = useCallback(() => {
       setZoom(prev => {
-        const next = Math.min(MAX_ZOOM, prev + 0.5)
+        const next = Math.min(MAX_ZOOM, prev * 1.5)
         if (next > prev) setPan(p => clampPan(p.x, p.y, next))
         return next
       })
@@ -210,7 +211,7 @@ const AnnotationCanvas = forwardRef<AnnotationCanvasHandle, Props>(
 
     const zoomOut = useCallback(() => {
       setZoom(prev => {
-        const next = Math.max(MIN_ZOOM, prev - 0.5)
+        const next = Math.max(MIN_ZOOM, prev / 1.5)
         setPan(p => clampPan(p.x, p.y, next))
         return next
       })
