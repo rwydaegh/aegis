@@ -5,6 +5,23 @@ import { toServer, type ScenePos } from './coordinates'
 const BASE = ''
 
 // ---------------------------------------------------------------------------
+// ApiError - preserves HTTP status for caller-side filtering
+// ---------------------------------------------------------------------------
+
+/** Error thrown by API helpers when the server returns a non-OK status. */
+export class ApiError extends Error {
+  constructor(message: string, public readonly status: number) {
+    super(message)
+    this.name = 'ApiError'
+  }
+}
+
+/** Returns true for client errors (4xx) that represent user mistakes, not bugs. */
+export function isClientError(err: unknown): boolean {
+  return err instanceof ApiError && err.status >= 400 && err.status < 500
+}
+
+// ---------------------------------------------------------------------------
 // Transient error retry
 // ---------------------------------------------------------------------------
 
@@ -91,9 +108,9 @@ async function getJson<T>(path: string): Promise<T> {
   const res = await fetchWithRetry(`${BASE}${path}`)
   if (res.status === 401) {
     handle401()
-    throw new Error(`GET ${path} failed: 401 Unauthorized`)
+    throw new ApiError(`GET ${path} failed: 401 Unauthorized`, 401)
   }
-  if (!res.ok) throw new Error(await extractErrorMessage(res, 'GET', path))
+  if (!res.ok) throw new ApiError(await extractErrorMessage(res, 'GET', path), res.status)
   return res.json() as Promise<T>
 }
 
@@ -105,9 +122,9 @@ export async function postJson<T>(path: string, body: unknown): Promise<T> {
   })
   if (res.status === 401) {
     handle401()
-    throw new Error(`POST ${path} failed: 401 Unauthorized`)
+    throw new ApiError(`POST ${path} failed: 401 Unauthorized`, 401)
   }
-  if (!res.ok) throw new Error(await extractErrorMessage(res, 'POST', path))
+  if (!res.ok) throw new ApiError(await extractErrorMessage(res, 'POST', path), res.status)
   return res.json() as Promise<T>
 }
 
@@ -115,9 +132,9 @@ async function getBinary(path: string, signal?: AbortSignal): Promise<Response> 
   const res = await fetchWithRetry(`${BASE}${path}`, signal ? { signal } : undefined)
   if (res.status === 401) {
     handle401()
-    throw new Error(`GET ${path} failed: 401 Unauthorized`)
+    throw new ApiError(`GET ${path} failed: 401 Unauthorized`, 401)
   }
-  if (!res.ok) throw new Error(await extractErrorMessage(res, 'GET', path))
+  if (!res.ok) throw new ApiError(await extractErrorMessage(res, 'GET', path), res.status)
   return res
 }
 
@@ -149,9 +166,9 @@ async function computeEndpoint(
   })
   if (res.status === 401) {
     handle401()
-    throw new Error(`POST ${path} failed: 401 Unauthorized`)
+    throw new ApiError(`POST ${path} failed: 401 Unauthorized`, 401)
   }
-  if (!res.ok) throw new Error(await extractErrorMessage(res, 'POST', path))
+  if (!res.ok) throw new ApiError(await extractErrorMessage(res, 'POST', path), res.status)
 
   const stats = parseJsonHeader<DosimetryStats>(res.headers.get('X-Stats'), 'X-Stats')
 
@@ -266,9 +283,9 @@ export async function loadSceneGeometry(scenePath: string): Promise<{
   })
   if (res.status === 401) {
     handle401()
-    throw new Error('POST /api/scene/load failed: 401 Unauthorized')
+    throw new ApiError('POST /api/scene/load failed: 401 Unauthorized', 401)
   }
-  if (!res.ok) throw new Error(await extractErrorMessage(res, 'POST', '/api/scene/load'))
+  if (!res.ok) throw new ApiError(await extractErrorMessage(res, 'POST', '/api/scene/load'), res.status)
 
   const meta = parseJsonHeader<{ n_vertices: number; n_triangles: number; has_face_colors: boolean }>(res.headers.get('X-Meta'), 'X-Meta')
 
@@ -291,9 +308,9 @@ export async function fetchHullMesh(): Promise<{
   const res = await fetchWithRetry(`${BASE}/api/voxels/hull-mesh`)
   if (res.status === 401) {
     handle401()
-    throw new Error('GET /api/voxels/hull-mesh failed: 401 Unauthorized')
+    throw new ApiError('GET /api/voxels/hull-mesh failed: 401 Unauthorized', 401)
   }
-  if (!res.ok) throw new Error(`Hull mesh fetch failed: ${res.status}`)
+  if (!res.ok) throw new ApiError(`Hull mesh fetch failed: ${res.status}`, res.status)
   const meta = parseJsonHeader<{ n_vertices: number; n_triangles: number; has_face_colors: boolean }>(res.headers.get('X-Meta'), 'X-Meta')
   const buffer = await res.arrayBuffer()
   const { vertices, indices, faceColors } = parseSceneBinary(
@@ -538,9 +555,9 @@ export async function fetchDosimetryCsv(): Promise<Blob> {
   const res = await fetchWithRetry(`${BASE}/api/export/dosimetry-csv`)
   if (res.status === 401) {
     handle401()
-    throw new Error('GET /api/export/dosimetry-csv failed: 401 Unauthorized')
+    throw new ApiError('GET /api/export/dosimetry-csv failed: 401 Unauthorized', 401)
   }
-  if (!res.ok) throw new Error(await extractErrorMessage(res, 'GET', '/api/export/dosimetry-csv'))
+  if (!res.ok) throw new ApiError(await extractErrorMessage(res, 'GET', '/api/export/dosimetry-csv'), res.status)
   return res.blob()
 }
 
@@ -548,9 +565,9 @@ export async function fetchDosimetryJson(): Promise<Blob> {
   const res = await fetchWithRetry(`${BASE}/api/export/dosimetry-json`)
   if (res.status === 401) {
     handle401()
-    throw new Error('GET /api/export/dosimetry-json failed: 401 Unauthorized')
+    throw new ApiError('GET /api/export/dosimetry-json failed: 401 Unauthorized', 401)
   }
-  if (!res.ok) throw new Error(await extractErrorMessage(res, 'GET', '/api/export/dosimetry-json'))
+  if (!res.ok) throw new ApiError(await extractErrorMessage(res, 'GET', '/api/export/dosimetry-json'), res.status)
   return res.blob()
 }
 
@@ -558,9 +575,9 @@ export async function fetchDosimetryNpz(): Promise<Blob> {
   const res = await fetchWithRetry(`${BASE}/api/export/dosimetry-npz`)
   if (res.status === 401) {
     handle401()
-    throw new Error('GET /api/export/dosimetry-npz failed: 401 Unauthorized')
+    throw new ApiError('GET /api/export/dosimetry-npz failed: 401 Unauthorized', 401)
   }
-  if (!res.ok) throw new Error(await extractErrorMessage(res, 'GET', '/api/export/dosimetry-npz'))
+  if (!res.ok) throw new ApiError(await extractErrorMessage(res, 'GET', '/api/export/dosimetry-npz'), res.status)
   return res.blob()
 }
 
