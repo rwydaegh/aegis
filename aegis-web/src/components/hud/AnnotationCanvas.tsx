@@ -220,39 +220,63 @@ const AnnotationCanvas = forwardRef<AnnotationCanvasHandle, Props>(
     useImperativeHandle(ref, () => ({
       getCompositeImage: () => {
         return new Promise<Blob>((resolve, reject) => {
-          // Compute visible region in canvas coordinates
-          const visW = width / zoom
-          const visH = height / zoom
-          const cx = width / 2 - pan.x / zoom
-          const cy = height / 2 - pan.y / zoom
-          const sx = Math.max(0, cx - visW / 2)
-          const sy = Math.max(0, cy - visH / 2)
-          const sw = Math.min(visW, width - sx)
-          const sh = Math.min(visH, height - sy)
+          // Load the original high-res screenshot to export at full resolution
+          const img = new Image()
+          img.onload = () => {
+            const fullW = img.naturalWidth
+            const fullH = img.naturalHeight
+            const scaleX = fullW / width
+            const scaleY = fullH / height
 
-          // Export at the viewport pixel size (what the user sees)
-          const composite = document.createElement('canvas')
-          composite.width = width
-          composite.height = height
-          const ctx = composite.getContext('2d')
-          if (!ctx) return reject(new Error('Cannot get canvas context'))
+            // Compute visible region in display coordinates, then scale to full-res
+            const visW = width / zoom
+            const visH = height / zoom
+            const cx = width / 2 - pan.x / zoom
+            const cy = height / 2 - pan.y / zoom
+            const sx = Math.max(0, cx - visW / 2) * scaleX
+            const sy = Math.max(0, cy - visH / 2) * scaleY
+            const sw = Math.min(visW, width - (cx - visW / 2)) * scaleX
+            const sh = Math.min(visH, height - (cy - visH / 2)) * scaleY
 
-          // Draw the visible portion of bg + annotations scaled to fill the output
-          if (bgCanvasRef.current) {
-            ctx.drawImage(bgCanvasRef.current, sx, sy, sw, sh, 0, 0, width, height)
+            // Export at full captured resolution
+            const outW = Math.round(sw)
+            const outH = Math.round(sh)
+            const composite = document.createElement('canvas')
+            composite.width = outW
+            composite.height = outH
+            const ctx = composite.getContext('2d')
+            if (!ctx) return reject(new Error('Cannot get canvas context'))
+
+            // Draw the visible portion of the high-res screenshot
+            ctx.drawImage(img, sx, sy, sw, sh, 0, 0, outW, outH)
+
+            // Draw annotations scaled to match
+            ctx.strokeStyle = '#ff3333'
+            ctx.lineWidth = 3 * Math.max(scaleX, scaleY)
+            ctx.lineCap = 'round'
+            ctx.lineJoin = 'round'
+            const offsetX = Math.max(0, cx - visW / 2)
+            const offsetY = Math.max(0, cy - visH / 2)
+            for (const stroke of strokesRef.current) {
+              if (stroke.points.length < 2) continue
+              ctx.beginPath()
+              ctx.moveTo((stroke.points[0].x - offsetX) * scaleX, (stroke.points[0].y - offsetY) * scaleY)
+              for (let i = 1; i < stroke.points.length; i++) {
+                ctx.lineTo((stroke.points[i].x - offsetX) * scaleX, (stroke.points[i].y - offsetY) * scaleY)
+              }
+              ctx.stroke()
+            }
+
+            composite.toBlob(
+              blob => {
+                if (blob) resolve(blob)
+                else reject(new Error('Failed to export canvas'))
+              },
+              'image/png',
+            )
           }
-          if (drawCanvasRef.current) {
-            ctx.drawImage(drawCanvasRef.current, sx, sy, sw, sh, 0, 0, width, height)
-          }
-
-          composite.toBlob(
-            blob => {
-              if (blob) resolve(blob)
-              else reject(new Error('Failed to export canvas'))
-            },
-            'image/jpeg',
-            0.85,
-          )
+          img.onerror = () => reject(new Error('Failed to load screenshot for export'))
+          img.src = screenshotUrl
         })
       },
     }))

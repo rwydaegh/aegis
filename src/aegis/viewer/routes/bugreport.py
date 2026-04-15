@@ -51,7 +51,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
                 return jsonify({"error": "screenshot must be a valid base64 image"}), 400
 
             timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-            filename = f"{timestamp}.jpg"
+            ext = "png" if "image/png" in screenshot else "jpg"
+            filename = f"{timestamp}.{ext}"
             filepath = SCREENSHOT_DIR / filename
             filepath.write_bytes(screenshot_bytes)
 
