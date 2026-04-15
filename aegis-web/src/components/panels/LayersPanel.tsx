@@ -10,6 +10,8 @@ export default function LayersPanel() {
   const sceneGeometry = useSceneStore(s => s.sceneGeometry)
   const sceneGeoVisible = useSceneStore(s => s.sceneGeometryVisible)
   const toggleSceneGeo = useSceneStore(s => s.toggleSceneGeometryVisible)
+  const hullStatus = useSceneStore(s => s.hullMeshStatus)
+  const setHullStatus = useSceneStore(s => s.setHullMeshStatus)
 
   const bodyMeshVisible = useSceneStore(s => s.bodyMeshVisible)
   const toggleBodyMesh = useSceneStore(s => s.toggleBodyMeshVisible)
@@ -84,6 +86,46 @@ export default function LayersPanel() {
             {caps?.voxel_rt_available && <option value="hull">Hull mesh</option>}
             {caps?.has_tiles && <option value="tiles">GLB tiles</option>}
           </select>
+
+          {envMode === 'hull' && hullStatus === 'idle' && (
+            <div className="mt-2 p-2 rounded border border-amber-500/30 bg-amber-500/5 text-xs text-muted-foreground">
+              <p className="mb-1.5">Computing the hull mesh may take a few seconds.</p>
+              <button
+                onClick={() => setHullStatus('computing')}
+                className="w-full px-2 py-1 rounded bg-accent text-accent-foreground text-xs font-medium hover:bg-accent/80 transition-colors"
+              >
+                Compute hull mesh
+              </button>
+            </div>
+          )}
+
+          {envMode === 'hull' && hullStatus === 'computing' && (
+            <div className="mt-2 p-2 rounded border border-border bg-muted/30 text-xs text-muted-foreground flex items-center gap-2">
+              <svg className="animate-spin size-3.5 shrink-0" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              Computing hull mesh...
+            </div>
+          )}
+
+          {envMode === 'hull' && hullStatus === 'ready' && (
+            <p className="mt-1.5 text-[10px] text-muted-foreground/70">
+              Wireframe enabled. Toggle off with the wireframe button in the toolbar.
+            </p>
+          )}
+
+          {envMode === 'hull' && hullStatus === 'error' && (
+            <div className="mt-2 p-2 rounded border border-destructive/30 bg-destructive/5 text-xs text-destructive">
+              <p className="mb-1.5">Failed to compute hull mesh.</p>
+              <button
+                onClick={() => setHullStatus('computing')}
+                className="w-full px-2 py-1 rounded bg-destructive text-destructive-foreground text-xs font-medium hover:bg-destructive/80 transition-colors"
+              >
+                Retry
+              </button>
+            </div>
+          )}
         </>
       )}
     </div>

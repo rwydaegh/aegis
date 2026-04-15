@@ -62,6 +62,7 @@ interface SceneStore {
   voxelHeightmap: ((x: number, z: number, bodyY: number) => number) | null
   layerVisibility: Record<string, boolean>
   envDisplayMode: 'cubes' | 'hull' | 'tiles'
+  hullMeshStatus: 'idle' | 'computing' | 'ready' | 'error'
 
   // Sionna scenes
   scenes: { name: string; path: string }[]
@@ -108,6 +109,7 @@ interface SceneStore {
   setVoxelHeightmap: (fn: SceneStore['voxelHeightmap']) => void
   toggleLayer: (material: string) => void
   setEnvDisplayMode: (mode: SceneStore['envDisplayMode']) => void
+  setHullMeshStatus: (status: SceneStore['hullMeshStatus']) => void
   setScenes: (scenes: SceneStore['scenes']) => void
   setSceneGeometry: (geom: SceneStore['sceneGeometry']) => void
   toggleSceneGeometryVisible: () => void
@@ -150,6 +152,7 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
   ambientIntensity: 0.6,
   cameraFov: 55,
   envDisplayMode: 'cubes',
+  hullMeshStatus: 'idle',
   scenes: [],
   sceneGeometry: null,
   sceneGeometryVisible: true,
@@ -184,7 +187,8 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
         [material]: !state.layerVisibility[material],
       },
     })),
-  setEnvDisplayMode: (mode) => set({ envDisplayMode: mode }),
+  setEnvDisplayMode: (mode) => set({ envDisplayMode: mode, ...(mode !== 'hull' ? { hullMeshStatus: 'idle' as const } : {}) }),
+  setHullMeshStatus: (status) => set({ hullMeshStatus: status }),
   setScenes: (scenes) => set({ scenes }),
   setSceneGeometry: (geom) => set({ sceneGeometry: geom }),
   toggleSceneGeometryVisible: () => set((state) => ({ sceneGeometryVisible: !state.sceneGeometryVisible })),

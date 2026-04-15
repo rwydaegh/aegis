@@ -13,16 +13,34 @@ interface HullData {
 
 export default function HullMesh() {
   const envMode = useSceneStore(s => s.envDisplayMode)
+  const hullStatus = useSceneStore(s => s.hullMeshStatus)
+  const setHullStatus = useSceneStore(s => s.setHullMeshStatus)
   const wireframe = useUIStore(s => s.wireframe)
   const [data, setData] = useState<HullData | null>(null)
 
   useEffect(() => {
-    if (envMode !== 'hull') return
+    if (envMode !== 'hull' || hullStatus !== 'computing') return
     let cancelled = false
     fetchHullMesh()
-      .then(d => { if (!cancelled) setData(d) })
-      .catch(err => { if (!isNetworkError(err)) Sentry.captureException(err) })
+      .then(d => {
+        if (cancelled) return
+        setData(d)
+        setHullStatus('ready')
+        if (!useUIStore.getState().wireframe) {
+          useUIStore.getState().toggleWireframe()
+        }
+      })
+      .catch(err => {
+        if (cancelled) return
+        setHullStatus('error')
+        if (!isNetworkError(err)) Sentry.captureException(err)
+      })
     return () => { cancelled = true }
+  }, [envMode, hullStatus, setHullStatus])
+
+  // Reset local data when switching away from hull
+  useEffect(() => {
+    if (envMode !== 'hull') setData(null)
   }, [envMode])
 
   const { geometry, hasVertexColors } = useMemo(() => {
