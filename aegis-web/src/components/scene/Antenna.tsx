@@ -90,7 +90,6 @@ interface AntennaProps {
 export default function Antenna({ position, selected = true, elementPattern }: AntennaProps) {
   const config = useSceneStore(s => s.viewerConfig)
   const wireframe = useUIStore(s => s.wireframe)
-  const cameraMode = useUIStore(s => s.cameraMode)
   const appliedPattern = useSimulationStore(s => s.appliedPattern)
   const appliedPatternMeta = useSimulationStore(s => s.appliedPatternMeta)
 
@@ -160,7 +159,7 @@ export default function Antenna({ position, selected = true, elementPattern }: A
 
   const ant = config.antenna
   const rp = ant.radiation_pattern
-  const usePattern = rp && rp.enabled !== false && cameraMode === 'orbit'
+  const usePattern = rp && rp.enabled !== false
 
   const poleH = ant.pole_height ?? 2
   const poleR = ant.pole_radius ?? 0.015
