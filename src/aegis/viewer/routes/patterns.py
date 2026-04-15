@@ -68,13 +68,13 @@ def _handle_search(cache: dict):
     if freq_min is not None and freq_max is not None and freq_min > freq_max:
         return jsonify({"error": "freq_min must not exceed freq_max"}), 400
 
-    limit_str = request.args.get("limit", "50")
+    limit_str = request.args.get("limit", "10000")
     try:
         limit = int(limit_str)
     except ValueError:
         return jsonify({"error": "limit must be an integer"}), 400
-    if limit < 1 or limit > 1000:
-        return jsonify({"error": "limit must be between 1 and 1000"}), 400
+    if limit < 1 or limit > 10000:
+        return jsonify({"error": "limit must be between 1 and 10000"}), 400
 
     lib = _get_library(cache)
     try:
