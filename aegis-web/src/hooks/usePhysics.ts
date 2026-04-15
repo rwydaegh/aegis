@@ -42,6 +42,22 @@ export function usePhysics() {
     const config = useSceneStore.getState().viewerConfig
     if (!config) return
 
+    // Detect external teleport (scene loading placed body somewhere new).
+    // Physics writes small deltas each frame, so a large gap between the
+    // store value and the physics ref means an external setBodyOffset call.
+    const storeOffset = useSimulationStore.getState().bodyOffset
+    const [sx, , sz] = storeOffset
+    const [rpx, , rpz] = physicsState.current.position
+    if ((sx - rpx) ** 2 + (sz - rpz) ** 2 > 4) {
+      physicsState.current = {
+        position: [...storeOffset],
+        velocity: [0, 0, 0],
+        rotationY: physicsState.current.rotationY,
+        angularVelocity: 0,
+        onGround: false,
+      }
+    }
+
     const heightmapFn = useSceneStore.getState().voxelHeightmap
     const getGroundY = heightmapFn ?? ((_x: number, _z: number, _y: number) => 0)
 
