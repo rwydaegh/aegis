@@ -45,7 +45,8 @@ function GroundPlane() {
   const visible = useSceneStore(s => s.groundPlaneVisible)
   const config = useSceneStore(s => s.viewerConfig)
   const envSource = useEnvironmentStore(s => s.source)
-  if (!visible || envSource !== 'none') return null
+  const voxelData = useSceneStore(s => s.voxelData)
+  if (!visible || envSource !== 'none' || voxelData) return null
   const gp = config?.scene?.ground_plane as Record<string, unknown> | undefined
   const size = (gp?.size as number) ?? 500
   const color = (gp?.color as string) ?? '#1a1a20'
@@ -62,7 +63,8 @@ function SceneGrid() {
   const visible = useSceneStore(s => s.gridVisible)
   const config = useSceneStore(s => s.viewerConfig)
   const envSource = useEnvironmentStore(s => s.source)
-  if (!visible || envSource !== 'none') return null
+  const voxelData = useSceneStore(s => s.voxelData)
+  if (!visible || envSource !== 'none' || voxelData) return null
   const grid = config?.scene?.grid as Record<string, unknown> | undefined
   const size = (grid?.size as number) ?? 200
   const divisions = (grid?.divisions as number) ?? 100
@@ -364,6 +366,7 @@ export default function SceneRoot() {
   const appliedPatternMeta = useSimulationStore(s => s.appliedPatternMeta)
   const mimoEnabled = useMIMOStore(s => s.enabled)
   const envSource = useEnvironmentStore(s => s.source)
+  const voxelData = useSceneStore(s => s.voxelData)
   const antennaEntries = useAntennaStore(useShallow(s => [...s.antennas.values()]))
   const selectedAntennaId = useAntennaStore(s => s.selectedId)
   const controlsRef = useRef<OrbitControlsImpl | null>(null)
@@ -379,7 +382,7 @@ export default function SceneRoot() {
     <>
       {!isCoverageMode && <color attach="background" args={[config.scene.background_color ?? '#0a0a0f']} />}
       {!isCoverageMode && <SceneLighting />}
-      {!isCoverageMode && <ClickPlane />}
+      {!isCoverageMode && !voxelData && envSource === 'none' && <ClickPlane />}
       {(envSource === 'none' || envSource === 'voxels') && (
         <>
           <VoxelField />
