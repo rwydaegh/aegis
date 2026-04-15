@@ -204,7 +204,7 @@
   "dosimetry": {
     "default_level": 2,
     "default_power_dbm": 43,
-    "default_max_order": 0,
+    "default_max_order": 2,
     "compliance_threshold": 10.0,
     "fidelity_levels": [
       {

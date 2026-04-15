@@ -186,7 +186,7 @@ DEFAULTS: dict = {
     "dosimetry": {
         "default_level": DEFAULT_FIDELITY_LEVEL,
         "default_power_dbm": DEFAULT_POWER_DBM,
-        "default_max_order": 0,
+        "default_max_order": 2,
         "freq_hz": DEFAULT_FREQ_HZ,
         "exposure_scenario": "general_public",
         "display_mode": "raw_sab",
