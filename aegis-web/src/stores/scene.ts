@@ -160,7 +160,7 @@ export const useSceneStore = create<SceneStore>((set, get) => ({
   glbTiles: [],
   pathSource: 'synthetic',
   rtSource: 'sionna',
-  rtMaxOrder: 3,
+  rtMaxOrder: 2,
   rtPaths: null,
   hasDiffert: false,
   loadedScenePath: '',

@@ -21,7 +21,7 @@ export const SHARE_DEFAULTS = {
   bodyName: '' as string,
   pathSource: 'synthetic' as string,
   rtSource: 'sionna' as string,
-  rtMaxOrder: 3,
+  rtMaxOrder: 2,
   rtConfig: {
     method: 'exhaustive' as string,
     raysPerSource: 1_000_000,
