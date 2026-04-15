@@ -414,7 +414,7 @@ export default function RayTracingPanel() {
                 className="flex-1 accent-primary h-1.5"
                 min={0}
                 max={1}
-                step={0.05}
+                step={0.01}
                 value={rc.reflectionLoss}
                 onChange={e => setRtConfig({ reflectionLoss: Number(e.target.value) })}
                 disabled={isDisabled(cap('reflectionLoss'))}
