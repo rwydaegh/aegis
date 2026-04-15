@@ -71,7 +71,8 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 def _upload_screenshot_to_github(token: str, filename: str, image_bytes: bytes) -> str:
     """Upload *image_bytes* to the bug-screenshots branch via the GitHub contents API.
 
-    Returns the raw URL of the uploaded file.
+    Returns the blob URL (``github.com/.../blob/...``) which renders for anyone
+    with repo access, unlike raw URLs which expire for private repos.
     """
     url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/bug-screenshots/{filename}"
     content_b64 = base64.b64encode(image_bytes).decode("ascii")
@@ -94,7 +95,10 @@ def _upload_screenshot_to_github(token: str, filename: str, image_bytes: bytes) 
     )
     with urlopen(req, timeout=20) as resp:
         result = json.loads(resp.read())
-        raw_url = result.get("content", {}).get("download_url", "")
+        # Use the HTML URL (blob view) - works for anyone with repo access
+        html_url = result.get("content", {}).get("html_url", "")
+        # Append ?raw=true so GitHub serves the image directly
+        raw_url = f"{html_url}?raw=true" if html_url else ""
         log.info("Uploaded bug screenshot: %s", raw_url)
         return raw_url
 
