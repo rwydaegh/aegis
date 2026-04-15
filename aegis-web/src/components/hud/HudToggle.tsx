@@ -8,7 +8,6 @@ const LABELS: Record<string, string> = {
   legend: 'Legend',
   camera: 'Camera',
   server: 'Server',
-  status: 'Status',
   coverage: 'Coverage',
   dataQuality: 'Data Quality',
 }
