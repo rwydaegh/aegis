@@ -8,6 +8,7 @@ import { useTerrainStore } from '@/stores/terrain'
 import { useUIStore } from '@/stores/ui'
 import { useSimulationStore } from '@/stores/simulation'
 import { useMIMOStore } from '@/stores/mimo'
+import { useCoverageStore } from '@/stores/coverage'
 import { Loader2, Search, RotateCw } from 'lucide-react'
 
 const SOURCE_OPTIONS: { value: EnvironmentSource; label: string }[] = [
@@ -15,6 +16,7 @@ const SOURCE_OPTIONS: { value: EnvironmentSource; label: string }[] = [
   { value: 'voxels', label: 'Voxels' },
   { value: 'osm', label: 'OSM' },
   { value: '3dtiles', label: '3D Tiles' },
+  { value: 'coverage', label: 'Coverage' },
 ]
 
 const labelClass = 'text-xs text-muted-foreground block mb-1'
@@ -55,6 +57,12 @@ export default function EnvironmentPanel() {
   const mimoEnabled = useMIMOStore((s) => s.enabled)
   const mimoUsers = useMIMOStore((s) => s.users)
 
+  const coverageLoading = useCoverageStore((s) => s.loading)
+  const coverageLoaded = useCoverageStore((s) => s.loaded)
+  const coverageError = useCoverageStore((s) => s.error)
+  const coverageSiteCount = useCoverageStore((s) => s.siteCount)
+  const coverageRegionCount = useCoverageStore((s) => s.regions.length)
+
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [geojsonFileName, setGeoJsonFileName] = useState<string | null>(null)
 
@@ -74,18 +82,23 @@ export default function EnvironmentPanel() {
       {/* Source selector */}
       <div>
         <label className={labelClass}>Source</label>
-        <div className="grid grid-cols-4 gap-1">
+        <div className="grid grid-cols-5 gap-1">
           {SOURCE_OPTIONS.map((opt) => (
             <button
               key={opt.value}
               onClick={() => {
+                const prev = source
                 setSource(opt.value)
-                if (opt.value === '3dtiles') {
-                  setCameraMode('globe')
-                } else if (source === '3dtiles') {
-                  setCameraMode('orbit')
-                  // Reset camera from globe-scale ECEF back to local scene
-                  setCameraPreset('reset')
+                if (opt.value === 'coverage') {
+                  const cov = useCoverageStore.getState()
+                  cov.setEnabled(true)
+                  cov.fetch()
+                } else {
+                  if (prev === 'coverage') {
+                    useCoverageStore.getState().setEnabled(false)
+                    setCameraMode('orbit')
+                    setCameraPreset('reset')
+                  }
                 }
               }}
               className={`px-2 py-1.5 rounded text-xs font-medium transition-colors ${
@@ -319,6 +332,31 @@ export default function EnvironmentPanel() {
       )}
 
       {/* 3D Tiles options - geometric error only affects backend RT mesh, hidden from globe view */}
+
+      {/* Coverage status */}
+      {source === 'coverage' && (
+        <div className="space-y-2 pt-1 border-t border-border">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            Coverage
+          </p>
+          {coverageLoading && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Loader2 className="size-3 animate-spin" />
+              Loading coverage data...
+            </div>
+          )}
+          {coverageError && (
+            <p className="text-xs text-destructive bg-destructive/10 rounded px-2 py-1.5">
+              {coverageError}
+            </p>
+          )}
+          {coverageLoaded && !coverageError && (
+            <p className="text-xs text-muted-foreground">
+              {coverageSiteCount.toLocaleString()} sites loaded across {coverageRegionCount} regions.
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Loading indicator */}
       {loading && (source === 'osm' || source === '3dtiles') && (

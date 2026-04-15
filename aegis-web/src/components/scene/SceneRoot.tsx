@@ -391,7 +391,7 @@ export default function SceneRoot() {
           <Environment />
         </>
       )}
-      {envSource === 'osm' && <EnvironmentOSM />}
+      {(envSource === 'osm' || envSource === '3dtiles') && <EnvironmentOSM />}
       {!isCoverageMode && (mimoEnabled ? (
         <MIMOScene bodyMeshVisible={bodyMeshVisible} />
       ) : (
