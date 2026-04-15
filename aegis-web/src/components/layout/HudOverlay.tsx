@@ -76,9 +76,7 @@ export default function HudOverlay() {
 
       {/* Status bar - bottom center */}
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 pointer-events-auto">
-        <HudToggle id="status">
-          <StatusBar />
-        </HudToggle>
+        <StatusBar />
       </div>
 
       {/* Server info - bottom right */}
