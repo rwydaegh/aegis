@@ -7,7 +7,7 @@
  */
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { toPng } from 'html-to-image'
+import html2canvas from 'html2canvas-pro'
 import { Bug, X, Send, Loader2, ExternalLink, ImageOff, Image as ImageIcon } from 'lucide-react'
 import { useSimulationStore } from '@/stores/simulation'
 import { useUIStore } from '@/stores/ui'
@@ -49,76 +49,15 @@ function collectState(): Record<string, unknown> {
   }
 }
 
-/** Capture the full viewport by compositing WebGL + DOM layers.
- *  foreignObject can't render WebGL, so we:
- *  1. Capture DOM (canvas area has opaque background, not the 3D scene)
- *  2. Punch a transparent hole where the canvas is
- *  3. Draw WebGL canvas behind the DOM layer through the hole */
+/** Full-page screenshot. html2canvas-pro supports oklch colors and
+ *  captures WebGL canvases natively. One call, everything included. */
 async function captureFullPage(): Promise<string> {
-  const vw = window.innerWidth
-  const vh = window.innerHeight
-
-  // 1. Find the WebGL canvas and its screen position
-  const allCanvases = Array.from(document.querySelectorAll('canvas'))
-  const glCanvas = allCanvases.reduce<HTMLCanvasElement | null>((best, c) => {
-    if (!best) return c
-    return c.width * c.height > best.width * best.height ? c : best
-  }, null)
-  const glRect = glCanvas?.getBoundingClientRect()
-
-  // 2. Temporarily hide the canvas so html-to-image renders its parent
-  //    container background as-is but without the canvas blocking it.
-  //    Then capture the DOM twice: once full (for areas outside canvas),
-  //    once with canvas parent made transparent (for HUD overlay).
-
-  // Capture HUD overlay: make canvas and its direct parent background transparent
-  const canvasParent = glCanvas?.parentElement
-  const savedCanvasDisplay = glCanvas?.style.display
-  const savedParentBg = canvasParent?.style.background
-  if (glCanvas) glCanvas.style.display = 'none'
-  if (canvasParent) canvasParent.style.background = 'transparent'
-
-  const hudShot = await toPng(document.body, {
-    width: vw,
-    height: vh,
-    pixelRatio: 1,
-    backgroundColor: 'transparent',
-    filter: (node: HTMLElement) => {
-      if (node.dataset?.bugReporterModal === 'true') return false
-      return true
-    },
+  const canvas = await html2canvas(document.body, {
+    useCORS: true,
+    scale: 1,
+    logging: false,
   })
-
-  // Restore
-  if (glCanvas) glCanvas.style.display = savedCanvasDisplay ?? ''
-  if (canvasParent) canvasParent.style.background = savedParentBg ?? ''
-
-  // 3. Composite: WebGL (bottom) + HUD overlay (top, transparent bg)
-  const composite = document.createElement('canvas')
-  composite.width = vw
-  composite.height = vh
-  const ctx = composite.getContext('2d')
-  if (!ctx) throw new Error('Cannot create composite canvas')
-
-  // Bottom: WebGL 3D scene
-  if (glCanvas && glCanvas.width > 0 && glRect) {
-    ctx.drawImage(glCanvas, glRect.left, glRect.top, glRect.width, glRect.height)
-  }
-
-  // Top: DOM with transparent canvas area (sidebar, toolbar, HUD all visible)
-  const hudImg = await loadImage(hudShot)
-  ctx.drawImage(hudImg, 0, 0, vw, vh)
-
-  return composite.toDataURL('image/jpeg', 0.75)
-}
-
-function loadImage(src: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    img.onload = () => resolve(img)
-    img.onerror = reject
-    img.src = src
-  })
+  return canvas.toDataURL('image/jpeg', 0.75)
 }
 
 async function postBugReport(payload: {
