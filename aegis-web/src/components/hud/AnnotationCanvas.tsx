@@ -220,13 +220,31 @@ const AnnotationCanvas = forwardRef<AnnotationCanvasHandle, Props>(
     useImperativeHandle(ref, () => ({
       getCompositeImage: () => {
         return new Promise<Blob>((resolve, reject) => {
+          // Compute visible region in canvas coordinates
+          const visW = width / zoom
+          const visH = height / zoom
+          const cx = width / 2 - pan.x / zoom
+          const cy = height / 2 - pan.y / zoom
+          const sx = Math.max(0, cx - visW / 2)
+          const sy = Math.max(0, cy - visH / 2)
+          const sw = Math.min(visW, width - sx)
+          const sh = Math.min(visH, height - sy)
+
+          // Export at the viewport pixel size (what the user sees)
           const composite = document.createElement('canvas')
           composite.width = width
           composite.height = height
           const ctx = composite.getContext('2d')
           if (!ctx) return reject(new Error('Cannot get canvas context'))
-          if (bgCanvasRef.current) ctx.drawImage(bgCanvasRef.current, 0, 0)
-          if (drawCanvasRef.current) ctx.drawImage(drawCanvasRef.current, 0, 0)
+
+          // Draw the visible portion of bg + annotations scaled to fill the output
+          if (bgCanvasRef.current) {
+            ctx.drawImage(bgCanvasRef.current, sx, sy, sw, sh, 0, 0, width, height)
+          }
+          if (drawCanvasRef.current) {
+            ctx.drawImage(drawCanvasRef.current, sx, sy, sw, sh, 0, 0, width, height)
+          }
+
           composite.toBlob(
             blob => {
               if (blob) resolve(blob)
