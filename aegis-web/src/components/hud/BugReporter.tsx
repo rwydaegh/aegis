@@ -49,51 +49,65 @@ function collectState(): Record<string, unknown> {
   }
 }
 
-/** Capture the full viewport by compositing three layers:
- *  1. WebGL canvas (bottom) - the 3D scene
- *  2. DOM overlay (top, PNG with transparency) - sidebar, toolbar, HUD
- *  foreignObject can't render WebGL, so we layer them manually. */
+/** Capture the full viewport by compositing WebGL + DOM layers.
+ *  foreignObject can't render WebGL, so we:
+ *  1. Capture DOM (canvas area has opaque background, not the 3D scene)
+ *  2. Punch a transparent hole where the canvas is
+ *  3. Draw WebGL canvas behind the DOM layer through the hole */
 async function captureFullPage(): Promise<string> {
   const vw = window.innerWidth
   const vh = window.innerHeight
 
-  // 1. Find the WebGL canvas
+  // 1. Find the WebGL canvas and its screen position
   const allCanvases = Array.from(document.querySelectorAll('canvas'))
   const glCanvas = allCanvases.reduce<HTMLCanvasElement | null>((best, c) => {
     if (!best) return c
     return c.width * c.height > best.width * best.height ? c : best
   }, null)
+  const glRect = glCanvas?.getBoundingClientRect()
 
-  // 2. DOM layer as PNG (transparent where the canvas is)
-  //    Filter out canvas elements so they become transparent holes
-  const domShot = await toPng(document.body, {
+  // 2. Temporarily hide the canvas so html-to-image renders its parent
+  //    container background as-is but without the canvas blocking it.
+  //    Then capture the DOM twice: once full (for areas outside canvas),
+  //    once with canvas parent made transparent (for HUD overlay).
+
+  // Capture HUD overlay: make canvas and its direct parent background transparent
+  const canvasParent = glCanvas?.parentElement
+  const savedCanvasDisplay = glCanvas?.style.display
+  const savedParentBg = canvasParent?.style.background
+  if (glCanvas) glCanvas.style.display = 'none'
+  if (canvasParent) canvasParent.style.background = 'transparent'
+
+  const hudShot = await toPng(document.body, {
     width: vw,
     height: vh,
     pixelRatio: 1,
     backgroundColor: 'transparent',
     filter: (node: HTMLElement) => {
       if (node.dataset?.bugReporterModal === 'true') return false
-      if (node.tagName === 'CANVAS') return false
       return true
     },
   })
 
-  // 3. Composite: WebGL first (bottom), DOM on top (with transparency)
+  // Restore
+  if (glCanvas) glCanvas.style.display = savedCanvasDisplay ?? ''
+  if (canvasParent) canvasParent.style.background = savedParentBg ?? ''
+
+  // 3. Composite: WebGL (bottom) + HUD overlay (top, transparent bg)
   const composite = document.createElement('canvas')
   composite.width = vw
   composite.height = vh
   const ctx = composite.getContext('2d')
   if (!ctx) throw new Error('Cannot create composite canvas')
 
-  // Bottom: WebGL canvas at its screen position
-  if (glCanvas && glCanvas.width > 0) {
-    const rect = glCanvas.getBoundingClientRect()
-    ctx.drawImage(glCanvas, rect.left, rect.top, rect.width, rect.height)
+  // Bottom: WebGL 3D scene
+  if (glCanvas && glCanvas.width > 0 && glRect) {
+    ctx.drawImage(glCanvas, glRect.left, glRect.top, glRect.width, glRect.height)
   }
 
-  // Top: DOM overlay (sidebar, toolbar, HUD - canvas area is transparent)
-  const domImg = await loadImage(domShot)
-  ctx.drawImage(domImg, 0, 0, vw, vh)
+  // Top: DOM with transparent canvas area (sidebar, toolbar, HUD all visible)
+  const hudImg = await loadImage(hudShot)
+  ctx.drawImage(hudImg, 0, 0, vw, vh)
 
   return composite.toDataURL('image/jpeg', 0.75)
 }
