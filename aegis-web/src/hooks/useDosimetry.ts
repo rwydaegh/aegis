@@ -238,6 +238,15 @@ export function useDosimetry() {
           )
           return
         }
+        // GPU/Modal unavailable is an expected operational state, not a bug
+        const errMsg = (err as Error).message ?? ''
+        if (/GPU|Modal unavailable/i.test(errMsg)) {
+          useNotificationStore.getState().addNotification(
+            'warning',
+            'GPU is currently unavailable. Try again later or switch to a non-RT path source.',
+          )
+          return
+        }
         Sentry.captureException(err)
         useNotificationStore.getState().addNotification('error', `Compute failed: ${(err as Error).message ?? err}`, 'This error has been reported and will be fixed automatically using AI. Most issues are fixed in less than 30 minutes.')
       })

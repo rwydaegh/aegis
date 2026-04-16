@@ -1183,7 +1183,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         )
 
         if modal_result is None:
-            return jsonify({"error": "Sionna RT requires GPU. Modal unavailable."}), 503
+            return jsonify({"error": "Sionna RT requires GPU. Modal unavailable."}), 501
 
         from aegis.paths import PropagationPaths
 
@@ -1390,7 +1390,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             ), 501
 
         if modal_result is None:
-            return jsonify({"error": "GPU unavailable for voxel ray tracing"}), 503
+            return jsonify({"error": "GPU unavailable for voxel ray tracing"}), 501
 
         from aegis.paths import PropagationPaths
 
@@ -1567,7 +1567,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
             return jsonify({"error": "Environment mesh ray tracing with Sionna is not yet implemented."}), 501
 
         if modal_result is None:
-            return jsonify({"error": "GPU unavailable for environment mesh ray tracing"}), 503
+            return jsonify({"error": "GPU unavailable for environment mesh ray tracing"}), 501
 
         from aegis.paths import PropagationPaths
 
