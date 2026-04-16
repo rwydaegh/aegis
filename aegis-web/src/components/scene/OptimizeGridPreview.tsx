@@ -21,7 +21,6 @@ export default function OptimizeGridPreview() {
 
   // Use frozen center during/after optimization, live antenna pos for preview
   const center = (running || summary) ? placementCenter : antennaPos
-  if (mode !== 'placement' || !center) return null
 
   const gridSize = constraints.gridSize ?? 5
   const gridSpacing = constraints.gridSpacing ?? 2.0
@@ -29,6 +28,7 @@ export default function OptimizeGridPreview() {
   // Compute grid points in scene coordinates
   // Backend free_axes=(0,2): varies server X (=scene X) and server Z (=scene Y)
   const gridPoints = useMemo(() => {
+    if (!center) return []
     const half = (gridSize - 1) / 2
     const points: [number, number, number][] = []
     for (let a = 0; a < gridSize; a++) {
@@ -41,10 +41,11 @@ export default function OptimizeGridPreview() {
       }
     }
     return points
-  }, [center[0], center[1], center[2], gridSize, gridSpacing])
+  }, [center?.[0], center?.[1], center?.[2], gridSize, gridSpacing])
 
   // Grid lines: horizontal (along X) and vertical (along Y)
   const gridLines = useMemo(() => {
+    if (!center) return []
     const half = (gridSize - 1) / 2
     const result: [number, number, number][][] = []
     for (let row = 0; row < gridSize; row++) {
@@ -64,7 +65,7 @@ export default function OptimizeGridPreview() {
       result.push(pts)
     }
     return result
-  }, [center[0], center[1], center[2], gridSize, gridSpacing])
+  }, [center?.[0], center?.[1], center?.[2], gridSize, gridSpacing])
 
   // Find the best grid point index from history
   const bestIdx = useMemo(() => {
@@ -73,6 +74,8 @@ export default function OptimizeGridPreview() {
     }
     return -1
   }, [history])
+
+  if (mode !== 'placement' || !center) return null
 
   const hasResults = running || (summary !== null && history.length > 0)
   const evaluatedCount = hasResults ? (running ? currentIter : history.length) : 0
