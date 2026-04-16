@@ -1,0 +1,139 @@
+"""Request parameter parsers for compute routes."""
+
+from __future__ import annotations
+
+import numpy as np
+from flask import jsonify
+
+from aegis.compliance import ExposureScenario
+from aegis.defaults import DEFAULT_FREQ_HZ
+
+# String constants (avoid duplicate literals)
+_ERR_VEC3_LEN = "must be a 3-element array [x, y, z]"
+_ERR_VEC3_TYPE = "must be a 3-element numeric array"
+_ERR_INVALID_JSON = "Invalid or missing JSON body"
+_ERR_ROTATION_TYPE = "body_rotation_y must be a number"
+_ERR_INVALID_SCENE = "Invalid scene path. Use /api/scenes to list available scenes."
+
+
+def _parse_bool(value, default: bool) -> bool:
+    """Parse a boolean from JSON params, handling string 'false'/'true'."""
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.lower() not in ("false", "0", "no", "")
+    return bool(value)
+
+
+def _validate_scene_path(scene_path: str) -> bool:
+    """Check that scene_path matches a known scene from list_available_scenes.
+
+    Prevents path traversal attacks where a user-supplied path could read
+    arbitrary files from the server filesystem.
+    """
+    from pathlib import Path as _Path
+
+    try:
+        from aegis.viewer.raytracer import list_available_scenes
+
+        allowed = {s["path"] for s in list_available_scenes()}
+    except ImportError:
+        return False
+    resolved = str(_Path(scene_path).resolve())
+    return resolved in {str(_Path(p).resolve()) for p in allowed}
+
+
+def _parse_vec3(params: dict, key: str, default: list | None = None):
+    """Parse a 3-element numeric array from request params.
+
+    Returns (np.ndarray, None) on success or (None, error_response) on failure.
+    """
+    default = default or [0, 0, 0]
+    try:
+        raw = list(params.get(key, default))
+        if len(raw) != 3:
+            return None, (jsonify({"error": f"{key} {_ERR_VEC3_LEN}"}), 400)
+        return np.array([float(v) for v in raw], dtype=np.float64), None
+    except (TypeError, ValueError):
+        return None, (jsonify({"error": f"{key} {_ERR_VEC3_TYPE}"}), 400)
+
+
+def _parse_rotation_y(params: dict):
+    """Parse body_rotation_y from request params.
+
+    Returns (float, None) on success or (None, error_response) on failure.
+    """
+    try:
+        return float(params.get("body_rotation_y", 0.0)), None
+    except (TypeError, ValueError):
+        return None, (jsonify({"error": _ERR_ROTATION_TYPE}), 400)
+
+
+def _parse_freq_and_tissue(params: dict, default_freq: float = DEFAULT_FREQ_HZ):
+    """Parse freq_hz and resolve tissue model from request params.
+
+    Returns (tissue, freq_hz, None) on success or (None, None, error_response) on failure.
+    """
+    from aegis.viewer.compute import resolve_skin_model
+
+    try:
+        freq_hz = float(params.get("freq_hz", default_freq))
+    except (TypeError, ValueError):
+        return None, None, (jsonify({"error": "freq_hz must be a number"}), 400)
+    if freq_hz <= 0:
+        return None, None, (jsonify({"error": "freq_hz must be positive"}), 400)
+
+    skin_model_name = params.get("skin_model", "itis")
+    try:
+        tissue = resolve_skin_model(skin_model_name, freq_hz)
+    except ValueError as exc:
+        return None, None, (jsonify({"error": str(exc)}), 400)
+
+    return tissue, freq_hz, None
+
+
+def _parse_quantities_and_scenario(params: dict):
+    """Parse display quantities and exposure scenario from request params.
+
+    Returns (quantities, scenario, None) on success or (None, None, error_response) on failure.
+    """
+    quantities = params.get("quantities", ["sab", "sab_4cm2"])
+    scenario_str = params.get("exposure_scenario", "general_public")
+    try:
+        scenario = ExposureScenario(scenario_str)
+    except ValueError:
+        return None, None, (jsonify({"error": f"Invalid exposure_scenario: {scenario_str}"}), 400)
+    return quantities, scenario, None
+
+
+_VALID_INCOHERENT_MODES = {"bound", "aggregate", "spatial"}
+
+
+def _parse_mode_or_level(params: dict, default_level: int = 2):
+    """Extract mode+corrections or level from request params.
+
+    Returns (engine_kw, None) on success or (None, error_response) on failure.
+    """
+    mode = params.get("mode")
+    if mode is not None:
+        if mode not in _VALID_INCOHERENT_MODES:
+            return None, (
+                jsonify({"error": f"mode must be one of: {', '.join(sorted(_VALID_INCOHERENT_MODES))}"}),
+                400,
+            )
+        out: dict = {"mode": mode}
+        if mode == "spatial":
+            out["fresnel"] = _parse_bool(params.get("fresnel"), True)
+            out["polarisation"] = _parse_bool(params.get("polarisation"), False)
+            out["curvature"] = _parse_bool(params.get("curvature"), False)
+            out["diffraction"] = _parse_bool(params.get("diffraction"), False)
+        return out, None
+    try:
+        level = int(params.get("level", default_level))
+    except (TypeError, ValueError):
+        return None, (jsonify({"error": "level must be an integer"}), 400)
+    if level < 0 or level > 8:
+        return None, (jsonify({"error": "level must be between 0 and 8"}), 400)
+    return {"level": level}, None
