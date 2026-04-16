@@ -465,6 +465,271 @@ def apply_exposure_reduction(
     return power_dbm + 10 * math.log10(factor)
 
 
+def _compute_incidence_geometry(
+    antenna_pos: np.ndarray,
+    body_center: np.ndarray,
+    power_dbm: float,
+) -> tuple[np.ndarray, float, float, float]:
+    """Compute direction, distance, incident power density, and clamped distance.
+
+    Returns ``(k_hat, dist, S_inc, d_clamped)``.
+    """
+    from aegis.viewer.raytracer import _DEFAULT_FSPL_DISTANCE_CLAMP_M
+
+    direction = body_center - antenna_pos
+    dist = float(np.linalg.norm(direction))
+    k_hat = np.array([0.0, 0.0, -1.0]) if dist < 1e-6 else direction / dist
+
+    tx_power_w = 10 ** ((power_dbm - 30) / 10)
+    d_clamped = max(dist, _DEFAULT_FSPL_DISTANCE_CLAMP_M)
+    S_inc = tx_power_w / (4 * np.pi * d_clamped**2)
+    return k_hat, dist, S_inc, d_clamped
+
+
+def _generate_stochastic_paths(
+    stochastic: dict,
+    antenna_pos: np.ndarray,
+    body_center: np.ndarray,
+    power_dbm: float,
+    cfg: dict,
+) -> tuple[PropagationPaths, dict | None]:
+    """Build paths from a stochastic channel preset; returns ``(paths, cluster_viz)``."""
+    from aegis.channel import generate_channel, load_preset
+
+    preset_dir = _resolve_channel_preset_dir(cfg)
+    preset = load_preset(stochastic["preset"], preset_dir)
+    viz_out: dict = {}
+    paths = generate_channel(
+        preset["params"],
+        freq_ghz=stochastic.get("freq_ghz", 28),
+        antenna_pos=antenna_pos,
+        body_center=body_center,
+        power_dbm=power_dbm,
+        seed=stochastic.get("seed", 42),
+        overrides=stochastic.get("overrides"),
+        viz_out=viz_out,
+    )
+    cluster_viz = _build_cluster_viz(viz_out)
+    return paths, cluster_viz
+
+
+def _build_single_antenna_paths(
+    ant: dict,
+    body_center: np.ndarray,
+    tissue: TissueModel | None,
+    exposure_mode: str,
+    fallback_power_dbm: float,
+) -> tuple[PropagationPaths, float]:
+    """Build a single-path PropagationPaths for one antenna entry.
+
+    Returns ``(paths, S_eff)`` where ``S_eff`` is the array-gain-scaled incident
+    power density at the body center.
+    """
+    from aegis.viewer.raytracer import _DEFAULT_FSPL_DISTANCE_CLAMP_M
+
+    _freq_hz = tissue.freq_hz if tissue else DEFAULT_FREQ_HZ
+    ant_pos = np.asarray(ant["position"], dtype=np.float64)
+    ant_power_dbm = float(ant.get("power_dbm", fallback_power_dbm))
+    acfg = ant.get("array_config", {})
+    if exposure_mode and exposure_mode != "theoretical":
+        ant_power_dbm = apply_exposure_reduction(
+            ant_power_dbm,
+            _freq_hz,
+            int(acfg.get("n_h", 1)) * int(acfg.get("n_v", 1)),
+            exposure_mode,
+        )
+    ant_tx_w = 10 ** ((ant_power_dbm - 30) / 10)
+
+    a_dir = body_center - ant_pos
+    a_dist = np.linalg.norm(a_dir)
+    a_k_hat = np.array([0.0, 0.0, -1.0]) if a_dist < 1e-6 else a_dir / a_dist
+    a_d_clamped = max(a_dist, _DEFAULT_FSPL_DISTANCE_CLAMP_M)
+    a_S_inc = ant_tx_w / (4 * np.pi * a_d_clamped**2)
+
+    a_gain = array_factor_gain(
+        k_hat=a_k_hat,
+        n_h=int(acfg.get("n_h", 1)),
+        n_v=int(acfg.get("n_v", 1)),
+        d_h=float(acfg.get("d_h_wavelengths", 0.5)),
+        d_v=float(acfg.get("d_v_wavelengths", 0.5)),
+        broadside=np.asarray(acfg.get("broadside", [0, 0, -1]), dtype=np.float64),
+        element_pattern=acfg.get("element_pattern", "short_dipole"),
+        freq_hz=_freq_hz,
+    )
+
+    a_S_eff = a_S_inc * a_gain
+    paths = PropagationPaths.from_powers(
+        k_hat=a_k_hat[np.newaxis, :],
+        power=np.array([a_S_eff]),
+    )
+    return paths, a_S_eff
+
+
+def _generate_multi_antenna_paths(
+    antennas: list[dict],
+    body_center: np.ndarray,
+    tissue: TissueModel | None,
+    exposure_mode: str,
+    power_dbm: float,
+    k_hat: np.ndarray,
+) -> tuple[PropagationPaths, float]:
+    """Build merged PropagationPaths from a list of antennas.
+
+    For an empty list returns a zero-power single path along ``k_hat`` and
+    ``S_inc = 0``.
+    """
+    if len(antennas) == 0:
+        paths = PropagationPaths.from_powers(k_hat=k_hat[np.newaxis, :], power=np.array([0.0]))
+        return paths, 0.0
+
+    per_antenna_paths = []
+    total_S_inc = 0.0
+    for ant in antennas:
+        ant_paths, ant_S_eff = _build_single_antenna_paths(ant, body_center, tissue, exposure_mode, power_dbm)
+        per_antenna_paths.append(ant_paths)
+        total_S_inc += ant_S_eff
+    paths = PropagationPaths.concatenate(per_antenna_paths, reindex_elements=True)
+    return paths, total_S_inc
+
+
+def _generate_single_plane_wave_paths(
+    k_hat: np.ndarray,
+    S_inc: float,
+    d_clamped: float,
+    power_dbm: float,
+    tissue: TissueModel | None,
+    exposure_mode: str,
+) -> tuple[PropagationPaths, float]:
+    """Build a single-plane-wave PropagationPaths; returns ``(paths, S_inc_effective)``."""
+    _freq_hz = tissue.freq_hz if tissue else DEFAULT_FREQ_HZ
+    if exposure_mode and exposure_mode != "theoretical":
+        _reduced_power_dbm = apply_exposure_reduction(power_dbm, _freq_hz, 1, exposure_mode)
+        _tx_power_w = 10 ** ((_reduced_power_dbm - 30) / 10)
+        S_inc = _tx_power_w / (4 * np.pi * d_clamped**2)
+    paths = PropagationPaths.from_powers(
+        k_hat=k_hat[np.newaxis, :],
+        power=np.array([S_inc]),
+    )
+    return paths, S_inc
+
+
+def _run_engine_mode(
+    engine: DosimetryEngine,
+    body: BodyMesh,
+    paths: PropagationPaths,
+    body_mass: float | None,
+    mode: str,
+    corrections: dict | None,
+    dos_cfg: dict,
+    total_area: float,
+) -> tuple:
+    """Run engine using the new mode-based API (``bound`` / ``aggregate`` / ``spatial``)."""
+    corr = corrections or {}
+    if mode == "bound":
+        A_ab = total_area * dos_cfg["convex_body_area_factor"]
+        D_max = dos_cfg["level0_D_max"]
+        return engine.compute_with_timings(body, paths, mode="bound", A_ab=A_ab, D_max=D_max, body_mass=body_mass)
+    if mode == "aggregate":
+        A_ab = total_area * dos_cfg["convex_body_area_factor"]
+        return engine.compute_with_timings(body, paths, mode="aggregate", A_ab=A_ab, body_mass=body_mass)
+
+    # spatial mode with correction flags
+    mode_kwargs: dict = {"mode": "spatial", "fresnel": corr.get("fresnel", True)}
+    if corr.get("polarisation"):
+        mode_kwargs["polarisation"] = True
+        mode_kwargs["q"] = 1.0  # short dipole TM-polarized
+    if corr.get("curvature"):
+        mode_kwargs["curvature"] = True
+        mode_kwargs["curvature_H"] = _compute_face_curvature(body)
+    if corr.get("diffraction"):
+        mode_kwargs["diffraction"] = True
+        if "curvature_H" not in mode_kwargs:
+            mode_kwargs["curvature_H"] = _compute_face_curvature(body)
+    return engine.compute_with_timings(body, paths, body_mass=body_mass, **mode_kwargs)
+
+
+def _run_engine_legacy_level(
+    engine: DosimetryEngine,
+    body: BodyMesh,
+    paths: PropagationPaths,
+    body_mass: float | None,
+    level: int | None,
+    dos_cfg: dict,
+    total_area: float,
+) -> tuple:
+    """Run engine using the legacy level-based API (levels 0-8)."""
+    if level is None:
+        level = 2
+    extra_kwargs: dict = {}
+    if level <= 1:
+        extra_kwargs["A_ab"] = total_area * dos_cfg["convex_body_area_factor"]
+        if level == 0:
+            extra_kwargs["D_max"] = dos_cfg["level0_D_max"]
+        return engine.compute_with_timings(body, paths, level=level, body_mass=body_mass, **extra_kwargs)
+    if level <= 6:
+        mode_kwargs: dict = {"mode": "spatial"}
+        if level == 2:
+            mode_kwargs["fresnel"] = False
+        if level >= 4:
+            mode_kwargs["polarisation"] = True
+            mode_kwargs["q"] = 1.0
+        if level >= 5:
+            mode_kwargs["curvature"] = True
+            mode_kwargs["curvature_H"] = _compute_face_curvature(body)
+        if level == 6:
+            mode_kwargs["diffraction"] = True
+        return engine.compute_with_timings(body, paths, body_mass=body_mass, **mode_kwargs)
+    return engine.compute_with_timings(body, paths, level=level, body_mass=body_mass, **extra_kwargs)
+
+
+def _run_engine_compute(
+    engine: DosimetryEngine,
+    body: BodyMesh,
+    paths: PropagationPaths,
+    body_mass: float | None,
+    mode: str | None,
+    level: int | None,
+    corrections: dict | None,
+    dos_cfg: dict,
+    total_area: float,
+) -> tuple:
+    """Dispatch to ``engine.compute_with_timings`` for mode-based or legacy-level APIs.
+
+    Returns ``(result, engine_timings)``.
+    """
+    if mode is not None:
+        return _run_engine_mode(engine, body, paths, body_mass, mode, corrections, dos_cfg, total_area)
+    return _run_engine_legacy_level(engine, body, paths, body_mass, level, dos_cfg, total_area)
+
+
+def _build_compute_extras(
+    S_inc: float,
+    dist: float,
+    paths: PropagationPaths,
+    antennas: list[dict] | None,
+    timings: dict,
+    cluster_viz: dict | None,
+    corrections: dict | None,
+    mode: str | None,
+) -> tuple[dict, list | None]:
+    """Build the ``extra`` dict and ``corr_list`` returned from ``compute_dosimetry``."""
+    extra = {
+        "S_inc": float(S_inc),
+        "distance_m": float(dist),
+        "n_paths": paths.n_paths,
+        "n_antennas": len(antennas) if antennas is not None else 1,
+        "timings": timings,
+    }
+    if cluster_viz is not None:
+        extra["cluster_viz"] = cluster_viz
+
+    corr_list = None
+    if mode is not None:
+        corr = corrections or {}
+        corr_list = [k for k in ("fresnel", "polarisation", "curvature", "diffraction") if corr.get(k)]
+    return extra, corr_list
+
+
 def compute_dosimetry(
     body: BodyMesh,
     antenna_pos: np.ndarray,
@@ -519,167 +784,24 @@ def compute_dosimetry(
     body_center = rotated_body.centroids.mean(axis=0)
     timings["body_transform_ms"] = (time.perf_counter() - t0) * 1e3
 
-    # Direction from antenna to body (fallback to -Z when coincident)
-    direction = body_center - antenna_pos
-    dist = np.linalg.norm(direction)
-    k_hat = np.array([0.0, 0.0, -1.0]) if dist < 1e-6 else direction / dist
-
-    # Power at body surface (free-space path loss, clamp distance for near-field)
-    tx_power_w = 10 ** ((power_dbm - 30) / 10)
-    from aegis.viewer.raytracer import _DEFAULT_FSPL_DISTANCE_CLAMP_M
-
-    d_clamped = max(dist, _DEFAULT_FSPL_DISTANCE_CLAMP_M)
-    S_inc = tx_power_w / (4 * np.pi * d_clamped**2)
+    k_hat, dist, S_inc, d_clamped = _compute_incidence_geometry(antenna_pos, body_center, power_dbm)
 
     cluster_viz = None
     if stochastic:
-        from aegis.channel import generate_channel, load_preset
-
-        preset_dir = _resolve_channel_preset_dir(cfg)
-        preset = load_preset(stochastic["preset"], preset_dir)
-        viz_out: dict = {}
-        paths = generate_channel(
-            preset["params"],
-            freq_ghz=stochastic.get("freq_ghz", 28),
-            antenna_pos=antenna_pos,
-            body_center=body_center,
-            power_dbm=power_dbm,
-            seed=stochastic.get("seed", 42),
-            overrides=stochastic.get("overrides"),
-            viz_out=viz_out,
-        )
-        cluster_viz = _build_cluster_viz(viz_out)
+        paths, cluster_viz = _generate_stochastic_paths(stochastic, antenna_pos, body_center, power_dbm, cfg)
     elif antennas is not None:
-        if len(antennas) == 0:
-            # Zero antennas: zero-power single path
-            paths = PropagationPaths.from_powers(k_hat=k_hat[np.newaxis, :], power=np.array([0.0]))
-            S_inc = 0.0
-        else:
-            _freq_hz = tissue.freq_hz if tissue else DEFAULT_FREQ_HZ
-            per_antenna_paths = []
-            total_S_inc = 0.0
-            for ant in antennas:
-                ant_pos = np.asarray(ant["position"], dtype=np.float64)
-                ant_power_dbm = float(ant.get("power_dbm", power_dbm))
-                acfg = ant.get("array_config", {})
-                if exposure_mode and exposure_mode != "theoretical":
-                    ant_power_dbm = apply_exposure_reduction(
-                        ant_power_dbm,
-                        _freq_hz,
-                        int(acfg.get("n_h", 1)) * int(acfg.get("n_v", 1)),
-                        exposure_mode,
-                    )
-                ant_tx_w = 10 ** ((ant_power_dbm - 30) / 10)
-
-                a_dir = body_center - ant_pos
-                a_dist = np.linalg.norm(a_dir)
-                a_k_hat = np.array([0.0, 0.0, -1.0]) if a_dist < 1e-6 else a_dir / a_dist
-                a_d_clamped = max(a_dist, _DEFAULT_FSPL_DISTANCE_CLAMP_M)
-                a_S_inc = ant_tx_w / (4 * np.pi * a_d_clamped**2)
-
-                a_gain = array_factor_gain(
-                    k_hat=a_k_hat,
-                    n_h=int(acfg.get("n_h", 1)),
-                    n_v=int(acfg.get("n_v", 1)),
-                    d_h=float(acfg.get("d_h_wavelengths", 0.5)),
-                    d_v=float(acfg.get("d_v_wavelengths", 0.5)),
-                    broadside=np.asarray(acfg.get("broadside", [0, 0, -1]), dtype=np.float64),
-                    element_pattern=acfg.get("element_pattern", "short_dipole"),
-                    freq_hz=tissue.freq_hz if tissue else DEFAULT_FREQ_HZ,
-                )
-
-                a_S_eff = a_S_inc * a_gain
-                total_S_inc += a_S_eff
-                per_antenna_paths.append(
-                    PropagationPaths.from_powers(
-                        k_hat=a_k_hat[np.newaxis, :],
-                        power=np.array([a_S_eff]),
-                    )
-                )
-
-            paths = PropagationPaths.concatenate(per_antenna_paths, reindex_elements=True)
-            S_inc = total_S_inc
+        paths, S_inc = _generate_multi_antenna_paths(antennas, body_center, tissue, exposure_mode, power_dbm, k_hat)
     else:
-        # Single plane wave
-        _freq_hz = tissue.freq_hz if tissue else DEFAULT_FREQ_HZ
-        if exposure_mode and exposure_mode != "theoretical":
-            _reduced_power_dbm = apply_exposure_reduction(power_dbm, _freq_hz, 1, exposure_mode)
-            _tx_power_w = 10 ** ((_reduced_power_dbm - 30) / 10)
-            S_inc = _tx_power_w / (4 * np.pi * d_clamped**2)
-        paths = PropagationPaths.from_powers(
-            k_hat=k_hat[np.newaxis, :],
-            power=np.array([S_inc]),
-        )
+        paths, S_inc = _generate_single_plane_wave_paths(k_hat, S_inc, d_clamped, power_dbm, tissue, exposure_mode)
 
     # Resolve body mass for SAR computation
     body_mass = _load_phantom_masses().get(body.name) if body.name else None
 
     engine = DosimetryEngine(tissue)
     t0 = time.perf_counter()
-
-    if mode is not None:
-        # New mode-based API from frontend
-        corr = corrections or {}
-        if mode == "bound":
-            A_ab = body.total_area * dos_cfg["convex_body_area_factor"]
-            D_max = dos_cfg["level0_D_max"]
-            result, engine_timings = engine.compute_with_timings(
-                rotated_body, paths, mode="bound", A_ab=A_ab, D_max=D_max, body_mass=body_mass
-            )
-        elif mode == "aggregate":
-            A_ab = body.total_area * dos_cfg["convex_body_area_factor"]
-            result, engine_timings = engine.compute_with_timings(
-                rotated_body, paths, mode="aggregate", A_ab=A_ab, body_mass=body_mass
-            )
-        else:
-            # spatial mode with correction flags
-            mode_kwargs: dict = {"mode": "spatial"}
-            mode_kwargs["fresnel"] = corr.get("fresnel", True)
-            if corr.get("polarisation"):
-                mode_kwargs["polarisation"] = True
-                mode_kwargs["q"] = 1.0  # short dipole TM-polarized
-            if corr.get("curvature"):
-                mode_kwargs["curvature"] = True
-                mode_kwargs["curvature_H"] = _compute_face_curvature(rotated_body)
-            if corr.get("diffraction"):
-                mode_kwargs["diffraction"] = True
-                if "curvature_H" not in mode_kwargs:
-                    mode_kwargs["curvature_H"] = _compute_face_curvature(rotated_body)
-            result, engine_timings = engine.compute_with_timings(
-                rotated_body, paths, body_mass=body_mass, **mode_kwargs
-            )
-    else:
-        # Legacy level-based API
-        if level is None:
-            level = 2
-        extra_kwargs: dict = {}
-        if level <= 1:
-            extra_kwargs["A_ab"] = body.total_area * dos_cfg["convex_body_area_factor"]
-            if level == 0:
-                extra_kwargs["D_max"] = dos_cfg["level0_D_max"]
-            result, engine_timings = engine.compute_with_timings(
-                rotated_body, paths, level=level, body_mass=body_mass, **extra_kwargs
-            )
-        elif level <= 6:
-            mode_kwargs2: dict = {"mode": "spatial"}
-            if level == 2:
-                mode_kwargs2["fresnel"] = False
-            if level >= 4:
-                mode_kwargs2["polarisation"] = True
-                mode_kwargs2["q"] = 1.0
-            if level >= 5:
-                mode_kwargs2["curvature"] = True
-                mode_kwargs2["curvature_H"] = _compute_face_curvature(rotated_body)
-            if level == 6:
-                mode_kwargs2["diffraction"] = True
-            result, engine_timings = engine.compute_with_timings(
-                rotated_body, paths, body_mass=body_mass, **mode_kwargs2
-            )
-        else:
-            result, engine_timings = engine.compute_with_timings(
-                rotated_body, paths, level=level, body_mass=body_mass, **extra_kwargs
-            )
-
+    result, engine_timings = _run_engine_compute(
+        engine, rotated_body, paths, body_mass, mode, level, corrections, dos_cfg, body.total_area
+    )
     timings["engine_compute_ms"] = (time.perf_counter() - t0) * 1e3
     timings["total_ms"] = (time.perf_counter() - t_total) * 1e3
 
@@ -688,20 +810,7 @@ def compute_dosimetry(
         if key in engine_timings:
             timings[key] = engine_timings[key]
 
-    extra = {
-        "S_inc": float(S_inc),
-        "distance_m": float(dist),
-        "n_paths": paths.n_paths,
-        "n_antennas": len(antennas) if antennas is not None else 1,
-        "timings": timings,
-    }
-    if cluster_viz is not None:
-        extra["cluster_viz"] = cluster_viz
-
-    corr_list = None
-    if mode is not None:
-        corr = corrections or {}
-        corr_list = [k for k in ("fresnel", "polarisation", "curvature", "diffraction") if corr.get(k)]
+    extra, corr_list = _build_compute_extras(S_inc, dist, paths, antennas, timings, cluster_viz, corrections, mode)
 
     return result, rotated_body, tissue, level, mode, corr_list, extra
 
