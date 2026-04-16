@@ -5,6 +5,7 @@ import { useEnvironmentStore } from '@/stores/environment'
 import { useBaseStationsStore } from '@/stores/basestations'
 import { useNotificationStore } from '@/stores/notifications'
 import { loadBasestations } from '@/api/basestations'
+import { isClientError } from '@/api/client'
 import { Globe, MapPin, ArrowLeft, RefreshCw, Shield } from 'lucide-react'
 
 /** Zoom level ~14 corresponds to roughly <5 km altitude equivalent */
@@ -57,7 +58,7 @@ function CoverageHudInner() {
     loadBasestations({ lat: ll.lat, lon: ll.lon, radius_m: 500 }).then(resp => {
       useBaseStationsStore.getState().setBasestations(resp.basestations, ll)
     }).catch(err => {
-      Sentry.captureException(err)
+      if (!isClientError(err)) Sentry.captureException(err)
       useNotificationStore.getState().addNotification('error', `Failed to load base stations: ${(err as Error).message}`)
     })
   }

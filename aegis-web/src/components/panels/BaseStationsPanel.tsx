@@ -3,7 +3,7 @@ import * as Sentry from '@sentry/react'
 import { useBaseStationsStore } from '@/stores/basestations'
 import type { AntennaColorMode } from '@/stores/basestations'
 import { loadBasestations } from '@/api/basestations'
-import { fetchWithRetry } from '@/api/client'
+import { fetchWithRetry, isClientError } from '@/api/client'
 import { useBaseStationsDosimetry } from '@/hooks/useBaseStationsDosimetry'
 import { useNotificationStore } from '@/stores/notifications'
 import AntennaDetailPanel from './AntennaDetailPanel'
@@ -120,7 +120,7 @@ export default function BaseStationsPanel() {
         `Loaded ${res.count} antennas`,
       )
     } catch (err) {
-      Sentry.captureException(err)
+      if (!isClientError(err)) Sentry.captureException(err)
       useNotificationStore.getState().addNotification(
         'error',
         `Load failed: ${(err as Error).message}`,

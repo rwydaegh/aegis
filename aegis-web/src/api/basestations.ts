@@ -1,4 +1,4 @@
-import { postJson, fetchWithRetry, parseJsonHeader } from './client'
+import { ApiError, postJson, fetchWithRetry, parseJsonHeader } from './client'
 import type { DosimetryStats } from './types'
 import type { Archetype } from '@/utils/classifyAntenna'
 
@@ -84,7 +84,7 @@ export async function computeBasestations(
   if (!res.ok) {
     let msg = `POST /api/basestations/compute failed: ${res.status} ${res.statusText}`
     try { const data = await res.json(); if (data?.error) msg = data.error } catch {}
-    throw new Error(msg)
+    throw new ApiError(msg, res.status)
   }
 
   const stats = parseJsonHeader<DosimetryStats>(res.headers.get('X-Stats'), 'X-Stats')

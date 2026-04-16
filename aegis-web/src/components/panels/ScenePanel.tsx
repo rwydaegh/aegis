@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import * as Sentry from '@sentry/react'
-import { loadLocation, cancelLocation, loadSceneGeometry, fetchCapabilities, fetchWithRetry } from '@/api/client'
+import { loadLocation, cancelLocation, loadSceneGeometry, fetchCapabilities, fetchWithRetry, isClientError } from '@/api/client'
 import { useSceneStore } from '@/stores/scene'
 import { useSimulationStore } from '@/stores/simulation'
 import { useUIStore } from '@/stores/ui'
@@ -151,7 +151,7 @@ export default function ScenePanel() {
               )
             }
           } catch (err) {
-            Sentry.captureException(err)
+            if (!isClientError(err)) Sentry.captureException(err)
           }
         })()
       }
