@@ -1,357 +1,372 @@
 # AEGIS feature inventory
 
-Complete list of intended features, grouped by subsystem. Status reflects current implementation state as of 2026-03-19.
-
-## Core dosimetry engine
-
-### Fidelity levels 0-8
-
-Nine kernel levels that trade accuracy for speed. Each level adds one physics correction on top of the previous.
-
-| Level | Name | What it computes | Status |
-|-------|------|-----------------|--------|
-| 0 | Bound | O(1) worst-case upper bound on total absorbed power. No per-triangle map. | Done |
-| 1 | Aggregate | Spherical-harmonic compressed directivity. Exact total power via D(k) SH coefficients. O(N) per path. | Done |
-| 2 | Geometric ReLU | Per-triangle absorption map: `Sab = Sinc * T0 * ReLU(n_hat . (-k_hat))`. The core equation. O(MN). | Done |
-| 3 | Fresnel | Level 2 + angle-dependent Fresnel transmission `T_avg(theta)` replacing constant T0. | Done |
-| 4 | Polarisation | Level 3 + TE/TM decomposition via Stokes excess factor `q * DeltaT/2`. | Done |
-| 5 | Curvature | Level 4 + local mean curvature correction `H/k * ReLU^2`. | Done |
-| 6 | Diffraction | Level 5 + shadow boundary smoothing (ReLU replaced by GELU). | Done |
-| 7 | Coherent MIMO | Full field channel `Sab = ||G_tilde(r) * x||^2`. Requires complex path amplitudes and precoder vector. | Done |
-| 8 | ECBF | Level 7 + exposure-constrained beamforming. QCQP solver finds precoder that maximizes signal subject to absorption limit. | Done |
-
-### Dispatch and result
-
-- `DosimetryEngine.compute(body, paths, level, precoder, body_mass)` dispatches to the correct kernel and returns a uniform `DosimetryResult`. Done.
-- `DosimetryResult` contains: per-triangle `Sab`, spatially averaged `Sab`, total `P_abs`, whole-body `SAR_wb`, peak `Sab`, compliance booleans, and (for levels 7-8) exposure operator Q, alignment rho, Q eigenvalues. Done.
-
-### Precoder
-
-- `Precoder` dataclass with factory methods `mrt(h)` (max-ratio transmission) and `ecbf(h, Q, P_abs_max, P)` (exposure-constrained). Done.
-
----
-
-## Tissue physics
-
-### Dielectric model
-
-- `TissueModel` frozen dataclass storing `eps_r`, `sigma`, `freq`. Done.
-- Predefined constants: `SKIN_28GHZ`, `SKIN_60GHZ`, `MUSCLE_28GHZ`, `FAT_28GHZ`. Done.
-- Methods: complex refractive index, normal-incidence Fresnel T0. Done.
-
-### Cole-Cole dispersion
-
-- 4-pole Cole-Cole model for complex permittivity `eps(f)` across 100 MHz to 100 GHz. Done.
-- Computes `eps_r(f)`, `sigma(f)`, `n_tilde(f)` from Cole-Cole parameters. Done.
-
-### IT'IS tissue database
-
-- Interface to the IT'IS Foundation v5.0 database (100+ tissue types). Done.
-- Lookup by tissue name and frequency. Returns Cole-Cole parameters. Done.
-
-### Fresnel transmission
-
-- Normal-incidence power transmission T0. Done.
-- Angle-dependent TE and TM transmission: `Ts(theta)`, `Tp(theta)`. Done.
-- Average transmission `T_avg(theta)` and excess `DeltaT(theta)` for polarisation correction. Done.
-- Flux-averaged transmission `T_bar(f)` for sub-6 GHz exact total-power results. Done.
-
----
-
-## Geometry
-
-### Body mesh
-
-- `BodyMesh` class: loads STL files, computes triangle normals, areas, centroids, total surface area. Done.
-- Vertex and face data accessible as NumPy arrays. Done.
-
-### Ambient occlusion
-
-- Exposure fraction `eta(r)` per triangle (how much of the hemisphere above each triangle is unobstructed). Done.
-- Used for self-shadowing correction and the generalized Cauchy formula. Done.
-
-### Directivity
-
-- Absorption directivity `D(k) = 4 * A_perp(k) / A_ab`. Done.
-- Antenna directivity patterns (isotropic, dipole, patch). Done.
-
-### Projected area
-
-- `A_perp(k)`: projected area of the body along direction k. Done.
-- Used by Level 1 for exact total power without per-triangle map. Done.
-
-### Spatial averaging
-
-- ICNIRP-compliant 4 cm^2 spatial averaging kernel. Done.
-- Smooths per-triangle Sab map to get regulatory-relevant peak values. Done.
-
-### Cauchy formula
-
-- Generalized Cauchy: `<P_abs> = Sinc * T0 * A_ab / 4` (direction-averaged absorbed power). Done.
-- Accounts for non-convexity via absorption area `A_ab = integral(eta * dA)`. Done.
-
----
-
-## Coherent MIMO (levels 7-8)
-
-### Body channel matrix
-
-- `H_b`: maps antenna element weights to body surface fields. Done.
-- Each column is one path's contribution across all M triangles. Done.
-
-### Field channel
-
-- `S_field`: complex 3xM field channel per surface point. Done.
-- Incorporates path amplitude vectors `psi_n` (V/m per sqrt(W)). Done.
-
-### Exposure operator Q
-
-- `Q = integral(G_tilde^H * G_tilde * dA)`: M x M Hermitian PSD matrix. Done.
-- Eigendecomposition reveals "exposure modes" (worst-case precoders). Done.
-- Quadratic form `x^H Q x` gives total absorbed power for any precoder x. Done.
-
-### Fresnel operator
-
-- Applies angle-dependent Fresnel transmission in the coherent regime. Done.
-- Modifies field channel columns by `sqrt(T_s)` and `sqrt(T_p)` per polarization component. Done.
-
-### ECBF solver
-
-- Exposure-constrained beamforming: maximizes `|h^H x|^2` subject to `x^H Q x <= P_abs_max`. Done.
-- Closed-form QCQP solution via KKT conditions: `x* = sqrt(P) * (lambda*Q + nu*I)^-1 * h* / norm(...)`. Done.
-- Returns optimal precoder, achieved capacity, and exposure margin. Done.
-
----
-
-## Compliance
-
-### ICNIRP 2020 limits
-
-- Spatial peak Sab threshold: 10 W/m^2 (averaged over 4 cm^2). Done.
-- Whole-body SAR threshold: 0.08 W/kg (general public). Done.
-- `DosimetryResult` includes boolean compliance flags. Done.
-
----
-
-## Propagation paths
-
-### PropagationPaths dataclass
-
-- Canonical form: each path has complex 3D amplitude vector `psi_n` (V/m/sqrt(W)), direction `k_hat`, element index, optional delay and LOS flag. Done.
-- Constructors: `from_powers()` (incoherent, scalar power per path), `from_sionna()` (full coherent data from ray tracer). Done.
-- Derived: incoherent power `S_i = |psi_i|^2 * Z0 / (4*pi)`. Done.
-
----
-
-## Ray tracer integration
-
-### DiffeRT adapter
-
-- `differt.py`: bridges DiffeRT ray tracer output to `PropagationPaths`. Done.
-- Supports Sionna XML scene files (indoor/outdoor). Done.
-- Configurable max reflection order (0, 1, 2). Done.
-
----
-
-## Visualization (offline)
-
-### Heatmap
-
-- Plotly `Mesh3d` interactive 3D heatmap of Sab on body surface. Done.
-- Matplotlib static heatmap for publications. Done.
-- Inferno colormap, auto-scaled to data range. Done.
-
-### Dashboard
-
-- Multi-panel summary: P_abs bar, Sab histogram, SAR gauge, compliance indicator. Done.
-
-### Level comparison
-
-- Side-by-side heatmaps comparing two or more fidelity levels on the same body/paths. Done.
-- Shows absolute and relative differences. Done.
-
----
-
-## Interactive 3D viewer (frontend)
-
-### Server (Flask REST API)
-
-12 endpoints serving the single-page Three.js application.
-
-| Endpoint | Purpose | Status |
-|----------|---------|--------|
-| `GET /` | Serve index.html | Done |
-| `GET /api/config` | Scene config: bodies, tissues, levels, voxel metadata, DiffeRT availability | Done |
-| `GET /api/body` | Binary body mesh (float32 positions + normals) | Done |
-| `GET /api/voxels` | Binary voxel data (positions, colors, material indices) | Done |
-| `POST /api/compute` | Dosimetry computation, returns binary Sab + stats header | Done |
-| `GET /api/scenes` | List available Sionna XML scenes | Done |
-| `POST /api/scene/load` | Load Sionna scene geometry (binary triangles) | Done |
-| `POST /api/compute/rt` | Ray-traced dosimetry via DiffeRT on Sionna scene | Done |
-| `POST /api/compute/voxel-rt` | Ray tracing through voxel environment | Done |
-| `GET /api/location/load` | EventSource: fetch location voxels (streaming progress) | Done |
-| `POST /api/location/cancel` | Cancel in-progress location loading | Done |
-
-### 3D rendering
-
-- Body mesh with per-vertex Sab heatmap color (Inferno colormap). Done.
-- Voxel environment as `InstancedMesh` (handles 500K+ voxels at 60fps). Done.
-- Sionna scene geometry (transparent/semi-transparent triangles). Done.
-- Ground plane with grid and shadow receiving. Done.
-- Antenna position marker (vertical colored line). Done.
-- Distance line and label (dashed white line, midpoint sprite showing meters). Done.
-- Ray path visualization (colored lines by reflection order). Done.
-- ACES filmic tone mapping, hemisphere light + directional light. Done.
-
-### Interactive controls
-
-- WASD keys: translate body in XZ plane (with gravity, friction, max speed). Done.
-- Q/E keys: rotate body around Y axis. Done.
-- Space: jump (with gravity physics). Done.
-- Shift: sprint multiplier. Done.
-- Arrow keys: nudge antenna position (0.5m steps). Done.
-- Mouse left-click: place antenna via raycaster. Done (has BUG-1: conflicts with orbit drag).
-- Mouse drag: orbit camera (OrbitControls). Done.
-- Scroll: zoom. Done.
-- Right-click drag: pan camera. Done.
-
-### Dosimetry controls (side panel)
-
-- Level selector dropdown (levels 0-6 in UI, 7-8 backend only). Done.
-- Power input (dBm). Done.
-- Path count selector (1, 5, 10, 20 synthetic multipath). Done.
-- Tissue preset (hardcoded to skin 28 GHz, no UI selector yet). Partial.
-
-### Dashboard panel
-
-- P_abs (total absorbed power, mW). Done.
-- Peak Sab (W/m^2). Done.
-- S_inc (incident power density). Done.
-- Distance to body (meters). Done.
-- Illuminated triangle count / total. Done.
-- ICNIRP compliance status (PASS green / FAIL red, threshold 10 W/m^2). Done.
-
-### Heatmap legend
-
-- Vertical gradient bar (Inferno colormap) on right side of viewport. Done.
-- Shows min/mid/max Sab values in W/m^2. Done.
-- Updates on every recompute. Done.
-
-### Camera presets
-
-- Front, Side, Top view buttons. Done.
-- Focus body (zoom to frame). Done.
-- Reset camera (default framing). Done.
-
-### Layer controls
-
-- Toggle buttons per voxel material (concrete, asphalt, vegetation, water, brick, glass). Done.
-- Toggle body mesh visibility. Done.
-- Buttons show voxel counts. Done.
-- Color mode: material classification vs photogrammetry original. Done.
-
-### Ray tracing controls
-
-- Enable/disable checkbox. Done.
-- RT source dropdown: Voxel environment or Sionna scenes. Done.
-- Max reflection order selector (0, 1, 2). Done.
-- RT status display (path count, source type, computation time). Done.
-
-### Location loader
-
-- Text input for location string (geocoded via Google Maps API). Done.
-- Radius slider (meters). Done.
-- Force re-download checkbox. Done.
-- EventSource streaming for real-time progress logs. Done.
-- Cancel button for in-progress downloads. Done.
-- Automatic body placement on loaded location. Done.
-- Requires GOOGLE_API_KEY environment variable. Done.
-
-### Wireframe mode
-
-- Toggle button to render all geometry as wireframe. Done.
-
-### Live recompute
-
-- Debounced 200ms recompute on body movement (WASD). Done.
-- Debounced recompute on antenna nudge (arrow keys). Done.
-- Computing overlay with spinner during fetch. Done.
-- Does not block camera interaction (pointer-events: none). Done.
-
----
-
-## Known bugs (as of 2026-03-19)
-
-| ID | Severity | Description |
-|----|----------|-------------|
-| BUG-1 | High | Click-to-place antenna fires on orbit drag (every mouseup triggers raycaster). Needs mouse-delta threshold. |
-| BUG-2 | High | Sionna scene geometry overlaps voxel environment (should hide voxels when Sionna is active). |
-| BUG-3 | High | Floating voxels, body at arbitrary elevation. Spatial coherence between voxel coordinates and body placement is poor. |
-| BUG-4 | Medium | RT ray paths converge on wrong point (offset from body centroid, likely coordinate system mismatch). |
-| BUG-5 | Low | Stale RT status text after disabling ray tracing. |
-| BUG-6 | Low | Stale ray path lines remain visible after disabling RT. |
-| BUG-7 | Trivial | Missing favicon (404 on /favicon.ico). |
-| BUG-8 | High | Body faces 180 degrees wrong for WASD. Pressing W walks body backward relative to face direction. STL coord frame flipped. |
-| BUG-9 | High | Voxel RT with reflections (order >= 1) exhausts 16 GB RAM and crashes server. No timeout, progress, or cancel. |
-| BUG-10 | Medium | WASD keys require prior canvas click to work. No visual hint that canvas needs focus. |
-| BUG-11 | Medium | Distance label vs dashboard mismatch (sprite shows different value than panel). |
-| BUG-12 | Medium | Peak S_ab displays "0.000 W/m^2" for small values due to fixed 3-decimal formatting. Should use scientific notation. |
-| BUG-13 | Low | "Focus body" camera frames poorly (body small at edge, voxels dominate). |
-| BUG-14 | Low | No RT progress indicator or cancel button. Slow RT gives no feedback. |
-| BUG-15 | Low | Paths dropdown missing "10 (multipath)" option (only has 1, 5, 20). |
-
----
-
-## Not yet implemented (from design docs)
-
-These features appear in the monograph, project proposal, or implementation plan but are not yet built.
-
-### Physics
-
-- Levels 7-8 in the viewer UI (backend works, no frontend controls for precoder input)
-- Tissue selector in the viewer (switch between skin/muscle/fat, or pick frequency)
-- SAR visualization in the viewer (backend computes it, no heatmap mode for SAR)
-- Spatial averaging visualization (show 4 cm^2 averaged Sab as separate map)
-- Polarisation-aware Stokes vector dosimetry visualization
-- Sub-6 GHz mode with flux-averaged T_bar(f)
-
-### Body and animation
-
-- SMPL/SMPL-X parametric body model integration (currently only static STL meshes)
-- Skeleton armature and pose control (24-joint SMPL)
-- Walk cycle animation with per-frame dosimetry recompute
-- BVH/FBX motion capture import
-- Linear blend skinning deformation
-- Lazy AO recompute on pose change (every N frames or on pose threshold)
-- Multiple body models (currently only Thelonious)
-
-### Visualization
-
-- Absorption directivity Mollweide projection (sphere plot of D(k))
-- Q eigenspectrum bar chart (exposure modes)
-- Rho alignment gauge (0 to 1)
-- Split-screen comparison in viewer (Level 2 vs Level 7, MRT vs ECBF)
-- Blender export with per-vertex Sab as vertex color attribute
-- GLTF export with embedded heatmap
-- Publication-quality Cycles renders
-
-### Optimization tools
-
-- Antenna placement optimizer (gradient-based, minimize worst-case Sab over user positions)
-- Beam pattern designer with sliding power constraint (Pareto front: capacity vs exposure)
-- RIS phase optimizer (differentiable through surface reflections)
-- Population Monte Carlo sampler (random poses x positions x angles, produces exposure CDFs)
-- End-to-end differentiable pipeline (scene to ray tracer to dosimetry to loss, gradient tape)
-
-### Performance
-
-- JAX GPU acceleration for all kernels (NumPy-only currently, clean migration path exists)
-- JIT compilation of inner loops
-- GPU-accelerated ambient occlusion (BVH or OptiX ray casting)
-- Real-time RT rendering (currently static ray paths only)
-
-### Platform
-
-- Web demo deployment
-- CI/CD pipeline (GitHub Actions)
-- Branch protection and review gates
+*Current as of v0.28.0 (April 2026). Updated on each release when user-facing features are added.*
+
+## Core physics engine
+
+- DosimetryEngine central dispatch with 9 fidelity levels (0-8) and mode-based routing (bound, aggregate, spatial, coherent, ecbf)
+- Core absorption law: Sab(r) = Sinc * T0 * ReLU[n_hat(r) * (-k_hat)]
+- PropagationPaths dataclass for batch storage of N paths with directions, complex polarisation-amplitude vectors (psi), element indices, delays, and LOS flags
+- Vectorized per-path incident power density: S_i = |psi_i|^2 / (2 * Z_0)
+- Path construction from scalar power and direction via PropagationPaths.from_powers with automatic perpendicular polarisation assignment
+- Path generation from spherical coordinates and uniform sphere sampling for Monte Carlo and worst-case analysis
+- Path concatenation with optional element index reindexing
+- LOS and NLOS path filtering properties
+- JSON serialization/deserialization of complex arrays using {"real": [...], "imag": [...]} format with round-trip fidelity
+- DosimetryResult frozen dataclass with per-triangle S_ab, p_abs, SAR, fidelity level, and coherent-specific fields (Q, rho, eigenvalues)
+- Per-triangle incident power density (sinc) computation for incoherent and coherent modes
+- Absorbed power computation: P_abs = sum(S_ab * areas)
+- Whole-body SAR computation: P_abs / mass
+- Spatial averaging at ICNIRP 4 cm^2 via precomputed sparse averaging matrices (CSR format)
+- 1 cm^2 spatial averaging for frequencies above 30 GHz
+- Thread-safe LRU cache (max 16 entries) for averaging matrices keyed on geometry hash and target area
+- Result scaling by arbitrary power factors for parameter sweeps (linear in transmit power)
+- Comparison of multiple dosimetry results across fidelity levels with relative errors, RMSE, and max absolute errors
+- Sweep across multiple fidelity levels with convergence analysis and silent skipping of levels with missing parameters
+- Peak S_ab extraction with triangle index, mean S_ab, and illuminated triangle count
+- Path contribution analysis: per-path contribution ranking, top-k filtering, exposure heatmap (M, N) matrix, importance scoring
+- SimulationConfig frozen dataclass aggregating TissueConfig, BodyConfig, AntennaConfig, RayTracerConfig, DosimetryConfig, ChannelConfig, MIMOConfig
+- YAML serialization/deserialization and CLI argument parsing with per-parameter overrides
+- Power unit conversion (dBm to watts)
+- Physical constants: C_0, EPS_0, MU_0, Z_0; defaults: 28 GHz, 43 dBm, level 2, 3 bounces
+- JAX array detection and NumPy conversion for cross-framework compatibility
+- Lazy module loading via __getattr__ for all public API classes
+- Finite value validation for S_ab with NaN/Inf reporting; degenerate mesh triangle detection
+- Numerical stability: safe division guards, unit vector validation (1e-5 tolerance), vectorized cross products
+- Timing profiling: kernel execution time, averaging matrix build time, matrix-vector product time
+- Thread-safe timings lock for concurrent requests
+
+## Fidelity levels (0-8)
+
+- Level 0 (Bound): worst-case absorbed power bound using absorption area A_ab and max directivity D_max; uniform surface distribution
+- Level 1 (Aggregate): directivity-weighted absorption via spherical harmonics, LUT nearest-neighbor, or isotropic fallback; uniform surface distribution of aggregated power
+- Level 2 (Geometric): ReLU spatial map with cosine-of-incidence via dot product of normals and incident directions; constant Fresnel T0
+- Level 3 (Fresnel): angle-dependent Fresnel transmission with TE/TM decomposition; unpolarised average (T_s + T_p) / 2
+- Level 4 (Polarisation): polarisation-aware correction via parameter q modifying effective transmission T_eff = T_avg + (q/2) * DeltaT
+- Level 5 (Curvature): additive curvature perturbation using twice mean curvature H and wavenumber k; non-negative clamping
+- Level 6 (Diffraction): physical GELU activation replacing hard ReLU shadow boundary; sigma from sqrt(lambda * H / (4pi)); diffraction-aware curvature correction
+- Level 7 (Coherent MIMO): body-surface channel G_tilde(r) with precoder application; per-triangle S_ab = ||G_tilde @ x||^2; exposure operator Q and eigendecomposition; rho metric
+- Level 8 (ECBF): exposure-constrained beamforming via QCQP solver; optimal precoder x* maximizing signal power subject to P_abs and transmit power constraints
+- Unified spatial kernel with composable corrections (fresnel, polarisation, curvature, diffraction flags)
+- Automatic chunking for large M*N > 50M problems to bound memory
+- JAX compatibility detection for automatic dispatch to compiled kernel
+
+## Tissue and dielectric modeling
+
+- TissueModel frozen dataclass with relative permittivity (eps_r), conductivity (sigma), and frequency
+- Complex refractive index n_tilde from permittivity and conductivity
+- Normal-incidence power transmission coefficient T0 calculation
+- 4-pole Cole-Cole permittivity model (Gabriel 1996) with 14 parameters per tissue
+- Per-pole dispersion modeling (delta, tau, alpha) with static conductivity integration
+- Debye single-pole permittivity model (Cole-Cole with alpha=0)
+- Vectorized frequency array support for spectrum computation
+- IT'IS v5.0 tissue database (SQLite, 7 MB) with Gabriel model parameter extraction
+- Database lookup by tissue name with caching for performance
+- Frequency-dependent complex permittivity, conductivity, extinction coefficient, and transmission coefficient retrieval
+- Predefined tissue instances: SKIN_28GHZ, SKIN_60GHZ, MUSCLE_28GHZ, FAT_28GHZ
+- Multiple skin model variants: ITIS, Christ2021 (1.2x scaled), Christ2025, NICT
+- Tissue measurement data (measurements-Skin.csv)
+- Energy-conserving Fresnel transmission computation for TE (s) and TM (p) polarisations
+- Fresnel amplitude reflection and transmission coefficients
+- Numerically stable square-root branch selection and grazing incidence handling (mu < 1e-10 floor)
+- JIT-safe and array-backend compatible Fresnel computation
+- Tissue spectrum plotting with matplotlib integration (permittivity and conductivity dual-axis)
+
+## Body geometry and mesh
+
+- Binary STL file loading with vectorized numpy I/O (~50-100x over struct.unpack)
+- BodyMesh frozen dataclass: triangles, normals, centroids, areas, name, content-based geometry hash
+- Icosphere mesh generation with configurable subdivision depth; capped cylinder mesh generation
+- STL binary format writing; mesh from raw vertex arrays with automatic normal computation
+- Bounding box caching, mesh center, height, scale, n_triangles, total_area properties
+- Fibonacci sphere sampling for near-uniform S^2 distribution (golden spiral, deterministic, cached up to 32)
+- Projected area A_perp computation with cosine-weighted projection and chunked direction processing
+- Directivity D = A_perp / mean(A_perp) normalization
+- Spherical harmonic fitting (complex coefficients, configurable degree L) with reconstruction error metrics (RMS, max, p99)
+- Cauchy surface area formula for convex bodies; mean projected area; self-occlusion metric
+- Cosine-weighted ambient occlusion (exposure fraction eta) with BVH acceleration
+- BVH construction (median-split, configurable leaf size), ray-AABB and Moller-Trumbore intersection tests
+- Numba JIT acceleration with fallback; ThreadPoolExecutor parallelization for >100 triangles
+- ICNIRP 4 cm^2 and 1 cm^2 spatial averaging matrix construction (area-weighted, row-stochastic, sparse CSR)
+- Numba-accelerated matrix building (~15-30x speedup); KDTree-based neighbor querying
+- JAX BCOO sparse array conversion for differentiable averaging
+- Device offset estimation: smartphone position from mesh, eye/head detection, face direction, forward distance parameterization
+- 8 phantom models: thelonious (cat, 17.4 kg), duke (72.4 kg), eartha (56.0 kg), ella (58.7 kg), adult_male (73 kg), adult_female (60 kg), boy_6y (19 kg), girl_8y (30 kg)
+- GLB/FBX animation models with poses: idle, walking, phone_ear_r, phone_ear_l, sitting
+- SMPL-X parametric body generation from shape (betas) and pose parameters with batch support; gender selection (neutral, male, female)
+- glTF skeleton loading, forward kinematics, linear blend skinning (LBS) with 4 joint influences per vertex
+- Joint hierarchy extraction, inverse bind matrices, local/global transform composition, quaternion to rotation matrix conversion
+- Posed mesh generation with FK+LBS and normal recomputation after deformation
+
+## Coherent MIMO and beamforming
+
+- Field channel matrix G(r) computation from multipath propagation with phase propagation exp(-jk0 * k_hat . r)
+- Scatter-add accumulation of path contributions by antenna element index
+- NumPy and JAX dual-backend implementation
+- Fresnel operator F_n(r) with TE/TM basis vector generation and rank-2 projection operator
+- Front-facing path filtering (Heaviside gate for mu <= 0); normal incidence fallback for parallel k_hat
+- Body-surface channel G_tilde(r) with depth coupling factors sqrt(sigma / (4*alpha_n)) for tissue penetration
+- Approximation 2: depth coupling Gamma ~ 1 (< 0.44% error at 28 GHz)
+- Factored Fresnel computation: O(N_center) instead of O(N_center * M_elements); 16x+ speedup for 4x4 UPA
+- Antenna array with M elements at arbitrary positions; UPA factory (n_h x n_v, d_h x d_v spacing)
+- Isotropic and patch element patterns (cos^q(theta), q=1.5 default) with backside suppression
+- Steering vector computation with per-element phase advances and pattern gain
+- Path expansion from center-of-array to per-element paths via phased array far-field model
+- UE channel vector h: steering matrix, half-wave dipole effective length (Balanis formula), UE phase per path
+- MIMOScene container: array, users, frequency, power, tissue model
+- UserConfig (phantom, position, orientation, device position) and UserState (body, paths, h, G_tilde, Q, result)
+- Stacked channel matrix H (K, M_ant) assembly; exposure operator list for multi-user constraint evaluation
+- build_user_channels, compute_mimo_scene, compute_mimo_scene_with_bodies orchestration pipelines
+- Per-stage timing measurement (channels_ms, precoder_ms, sab_and_engine_ms, total_ms)
+- Per-triangle multi-stream S_ab: ||G_tilde[m] @ W||_F^2; total absorbed power: trace(W^H Q W)
+
+## Exposure operator and ECBF
+
+- Exposure operator Q = integral G_tilde^H G_tilde dA; Hermitian PSD by construction
+- Total absorbed power: P_abs = x^H Q x
+- Eigendecomposition with descending ordering and noise clamping
+- Exposure-signal alignment rho = h^T Q h* / (||h||^2 * lambda_max), normalized to [0, 1]
+- QCQP solver: max |h^T x|^2 s.t. x^H Q x <= P_abs_max, ||x||^2 <= P
+- Eigendecomposition-based transformation to Q eigenbasis
+- Null-space detection and concentration as lambda -> infinity
+- Power-slack regime handling; per-column budget allocation
+- Bisection root-finding for constraint satisfaction; minimum-absorption direction fallback
+- Complementary slackness condition enforcement
+
+## Optimization
+
+- Mode-agnostic optimizer dispatcher with cancellation, per-iteration yield, and convergence detection
+- MIMO peak S_ab optimizer: projected gradient descent on soft_peak_exposure(coherent_sab(G_tilde, x))
+- Log-sum-exp soft peak with temperature parameter; Adam optimizer with bias correction
+- Power constraint projection; JAX automatic differentiation with finite-difference fallback
+- Convergence: 6-iteration history buffer with 0.1% relative change threshold
+- Tilt/power optimizer: joint gradient descent on (tilt_deg, log_power_dbm) for ICNIRP compliance maximization
+- Rodrigues formula for boresight tilt rotation; cosine^n radiation pattern gain
+- Violation penalty: lambda * (peak_sab - limit)^2; parameter bounds enforcement
+- Placement optimizer: grid search over 2D points with constraint axis support
+- Per-point evaluation callback; best position tracking; progress ratio reporting
+- Differentiable primitives: peak_exposure, total_absorbed_power, soft_peak_exposure, coherent_sab (all JAX-compatible)
+
+## Compliance and regulatory
+
+- ICNIRP 2020 evaluation from 100 kHz to 300 GHz for general public and occupational scenarios
+- Peak spatially-averaged S_ab over 4 cm^2 and 1 cm^2 (above 30 GHz) compliance checks
+- Whole-body SAR compliance check
+- Peak local and whole-body incident power density (S_inc) compliance checks
+- Frequency-dependent ICNIRP limit retrieval
+- Compliance margin calculation in dB; maximum compliant TX power (watts and dBm)
+- Human-readable compliance summary text generation
+- RF link budget compliance evaluation (TX power, gain, distance)
+- Power sweep compliance across TX power range; frequency sweep across 10 kHz to 300 GHz
+- Spatial compliance grid at 3D positions
+- 2D compliance heatmap (frequency x power axes) with per-point margin and max power per frequency
+- JSON compliance output format
+- Thermal relaxation time (T0) computation
+
+## Stochastic channel modeling
+
+- 3GPP TR 38.901 cluster-based stochastic channel generator with configurable cluster count and sub-paths per cluster
+- 3GPP sub-path offset angles (20 fixed-offset table); exponential PDP with K-factor
+- Cluster arrival angles with ASA/ESA-weighted scaling; LOS rotation to antenna-body direction
+- Sub-path expansion with angular offsets; path loss integration into incident power density
+- Spatial consistency mode via SC_lambda parameter; shadow fading generation
+- Logdist, dual-slope, NLOS, and FSPL path loss models
+- Large-Scale Fading model with spatially consistent, cross-correlated LSP maps
+- 8 large-scale parameters (DS, KF, SF, ASD, ASA, ESD, ESA, XPR) with frequency-dependent mu/sigma scaling
+- Per-parameter decorrelation distances; 8x8 inter-parameter correlation matrix with Cholesky factorization
+- Sum-of-Sinusoids spatial correlation engine (QuaDRiGa v2.8.1); deterministic seed control
+- 2D LSP map generation on horizontal planes with configurable resolution
+- QuaDRiGa .conf file parsing for channel presets (116+ parameter types) with LRU cache (max 32)
+- Scenario families: 3GPP 38.901 (UMi, UMa, RMa), 37.885 (V2X), 3D; QuaDRiGa, WINNER, mmMAGIC, 5G-ALLSTAR
+- Visualization metadata output (cluster angles, powers, delays, departure angles)
+
+## Ray tracing integrations
+
+- DiffeRT ray tracer integration with TE/TM polarization decomposition and multi-bounce support
+- Surface normal handling and Fresnel reflection coefficients per bounce
+- Polarization tracking through reflections; material refractive index lookup
+- Dual-polarization (horizontal/vertical); propagation phase tracking for coherent levels 7-8
+- LOS detection; multi-element TX array support with element index assignment
+- Variable bounce order with path padding and concatenation
+- Sionna RT integration with dual-polarized isotropic RX; cross-polarization (theta/phi)
+- JAX array output with gradient tracking; channel impulse response extraction
+- Spherical basis vector computation; Sionna CIR to AEGIS psi conversion
+- TX patterns: isotropic, half_wave_dipole; RT parameters: max_depth, specular/diffuse reflection, refraction, diffraction
+- Modal serverless GPU: DiffeRT on T4 (JAX/CUDA 12), Sionna RT on L4 (OptiX)
+- 120-second scaledown; volume-based scene caching; up to 1M rays per trace
+- Per-order reflection loss modeling; path visualization data for 3D ray rendering
+- Voxel geometry support with dynamic mesh-to-Sionna conversion; dual-tier scene caching
+- Gzip+pickle compression for network optimization; automatic PLY mesh writing
+- Mitsuba XML scene generation from voxel geometry; 10 predefined material types
+- Specular/diffuse reflection, refraction, diffraction, edge diffraction controls
+- Synthetic array generation for MIMO; seed control for reproducibility
+- CloudRF API client for antenna database, coverage heatmaps (GeoTIFF), point-to-point link budget
+- 7 predefined CloudRF templates (5G C-Band, LTE eNodeB, LoRa GW, WiFi AP, PMR446, DMR, Starlink)
+- 12 Sionna synthetic scenes (box, floor_wall, street_canyon variants)
+
+## Base station pipeline
+
+- AntennaPattern: 181x360 radiation pattern matrix with elevation/azimuth indexing
+- BaseStation dataclass: location, RF parameters, orientation, provenance
+- ExposureConfig: duplex mode, TDD downlink ratio, power reduction factor, traffic load factor
+- BeamConfig: mMIMO broadcast/traffic beam separation with independent gain, beamwidth, and sweep parameters
+- MSI file format parsing (Kathrein, Commscope, Huawei) with nested zip support; H-plane and V-plane attenuation
+- Gain unit conversion (dBi, dBd); tilt angle and vertical convention detection (boresight vs zenith)
+- Separable approximation reconstruction (3GPP TR 38.901 Sec 7.3) from 1D cuts to 2D patterns
+- Gaussian fallback pattern from beamwidth (ITU-R F.1336-5); sidelobe suppression floor
+- Pattern library: SQLite index with manufacturer/model/frequency/gain search; auto-decompression
+- Three archetype classification: mmimo (>=20 dBi + 5G), sector, small_cell (<10 dBi)
+- Element grid inference (n_h, n_v) from array gain with standard grid snapping per archetype
+- Physical panel dimensions from element grid and frequency (half-wavelength spacing)
+- TDD/FDD mode determination from technology and frequency bands; TDD band definitions (NR n41/n77/n78/mmWave, LTE B38/B40/B42/B43)
+- PRF assignment per archetype
+- Multi-source extraction: basestationLib (Belgium), OpenCellID, Mastedatabasen (Denmark), ANFR (France), BNetzA (Germany), RTR (Austria), ACMA (Australia), Antenneregister (Netherlands)
+- Bounding box, operator, technology, and frequency band filtering; multi-source parallel extraction with timeout
+- Spatial deduplication via cKDTree within 50m per operator and frequency band
+- Multi-source conflict resolution with priority-based selection; estimation from technology+frequency groupby medians
+- Validation: power 0-80 dBm, azimuth 0-360 deg; data coverage reporting with per-field completeness
+- Parquet I/O with PyArrow; provenance column tagging; pattern source tracking (gov, synthetic, estimated, missing)
+- Confidence score per source type; dosimetric impact weights for aggregate confidence
+- WGS84 to ENU conversion and reverse; antenna rotation matrix from azimuth + tilt
+- EIRP to TX power conversion; single LOS path generation with distance-based filtering
+- Pattern-modulated power density with gain interpolation; isotropic fallback
+- Exposure modes: THEORETICAL (full power), ACTUAL_MAX (broadcast/traffic envelope), TYPICAL (summed with load factors)
+- TDD downlink ratio and traffic load factor application; in-sweep detection for traffic beams
+- Extract/merge/validate/report pipeline stages; YAML region configuration with per-source priority
+
+## 3D environment reconstruction
+
+- WGS-84 to ECEF and ECEF to local ENU coordinate conversions
+- Transverse Mercator projection (degrees to local XY meters)
+- Three.js Y-up coordinate transformation
+- 13+ material types with EM properties: concrete, brick, glass, metal, asphalt, vegetation, water, wood, ground, roof tile, soil, dense vegetation, plaster
+- OpenStreetMap import via Overpass API with retry, rate-limit handling, and multiple server mirror fallback
+- OSM parsing for buildings (simple ways and multipolygon relations), highways, water bodies, natural features
+- Building-with-parts relations (hierarchical); building height from tags with type-based defaults
+- 12 roof shapes: flat, gabled, hipped, pyramidal, skillion, half-hipped, gambrel, saltbox, mansard, dome, onion, round
+- Per-level wall geometry with recessed window and door openings; glass recess depth
+- Building style library: default, house, detached, apartments, office, commercial, industrial, retail, garage
+- Polygon triangulation (fan algorithm); wall extrusion from 2D footprint; face normal computation
+- Road centerline to quad-strip mesh conversion with highway type classification and width mapping
+- Water polygon footprint extraction; forest canopy generation; hedgerow geometry; ground plane generation
+- SRTM1 HGT tile download and caching (~30m resolution); elevation grid with bilinear interpolation
+- Terrain mesh generation from elevation grid; Z-value projection for arbitrary XY points
+- OGC 3D Tiles v1.0/1.1 traversal (Google Photorealistic 3D Tiles) with geometric error filtering
+- GLB/B3DM tile content parsing; glTF 2.0 binary format with accessor decompression
+- Per-vertex color classification to MaterialType; ECEF to local ENU for tiles
+- Google API key authentication and session token support
+- GeoJSON FeatureCollection parsing and import; ring projection from lon/lat to local XY
+- Scene export: Mitsuba XML for Sionna RT, PLY per material group, DiffeRT TriangleScene with JAX arrays
+- Per-material RGB colors; brick/plaster/concrete color palettes; HSV-based material classification
+- EnvironmentMesh unified representation with origin and source tracking
+- Degenerate geometry filtering; malformed OSM relation recovery; void SRTM handling; fallback on complex roof failure
+
+## Web viewer backend (API)
+
+- Flask server with session-based password authentication, CORS, and security headers (CSP, X-Frame-Options, HSTS)
+- Multi-threaded request handling with binary data streaming and chunked responses
+- POST /api/compute: mode-based dosimetry with per-correction toggles, multi-antenna support, stochastic channel, inline mesh upload, body offset/rotation, tissue model and exposure scenario selection
+- POST /api/compute/rt: DiffeRT ray tracing (local CPU or Modal GPU fallback) with voxel hull, environment mesh, and scene support
+- POST /api/compute/sionna-rt, /api/compute/voxel-rt, /api/compute/sionna-env-rt: Sionna RT endpoints with scene caching and material assignment
+- GET /api/body: body mesh binary with X-Meta header; GET /api/voxels: voxel data binary; GET /api/tiles: GLB tile listing and serving
+- GET /api/phantom/<name>.glb: GLB phantom serving with path traversal protection
+- POST /api/scene/load: Sionna scene geometry extraction; POST /api/parametric-body: SMPL-X/Anny generation
+- POST /api/environment/osm, /3dtiles, /from-voxels, /combine, /geojson: environment mesh construction endpoints
+- POST /api/terrain/elevation: SRTM elevation mesh generation with flat terrain fallback
+- POST /api/environment/export-scene: DiffeRT and Sionna XML export
+- GET /api/environment/materials: material catalog with EM properties
+- POST /api/basestations/load: multi-source loading with geocoding, bbox/radius filtering, operator/technology filtering, region mapping
+- POST /api/basestations/compute: multi-station dosimetry with archetype-aware exposure modes
+- POST /api/basestations/compute_mimo: mMIMO dosimetry with element grid inference and ENU transform
+- GET /api/basestations/coverage: global overview with binary packing (12 bytes/site)
+- GET /api/patterns/search, /manufacturers, /<source>/<path>: pattern library search and binary pattern loading
+- POST /api/patterns/build-index: MSI zip scanning and SQLite index rebuild
+- POST /api/mimo/compute: coherent MIMO scene with UPA, multi-user phantoms, precoder selection; GET /api/mimo/result/<user_id>, /api/mimo/summary
+- GET /api/compliance/limits, /summary, /power-sweep, /heatmap, /frequency-sweep: ICNIRP evaluation endpoints
+- POST /api/compliance/spatial: gridded compliance with free-space path loss
+- GET /api/tissue/spectrum: frequency-vectorized dielectric spectrum with skin model variants
+- POST /api/validate/sinc: CloudRF SINC validation with great-circle path loss
+- POST /api/optimize: SSE streaming optimization (mimo_peak, tilt_power, placement) with cancellation
+- GET /api/export/dosimetry-csv, -json, -npz: per-triangle export in multiple formats
+- GET /api/config, /api/viewer-config, /api/levels, /api/body/info, /api/health, /api/system: system metadata endpoints
+- POST /api/export-config: merged config with camelCase mapping and fidelity level inference
+- GET /api/location/load: SSE pipeline streaming with voxelEarth integration; POST /api/location/cancel
+- GET /api/geocode: Google Geocoding wrapper
+- POST /api/bug-report: screenshot capture, GitHub issue creation; POST /api/sentry-webhook: HMAC-verified Sentry integration with rich issue generation
+- Configuration system: server, scene, camera, renderer, lighting, body material, voxels, antenna, physics, interaction, dosimetry, MIMO, colormap, distance viz, RT paths, base station, UI styling, named scenarios
+
+## Web viewer frontend (UI/UX)
+
+- Three.js canvas rendering with React Three Fiber and Zustand state management
+- Orbit, follow, and globe camera modes with presets (front, side, top, focus, reset) and FOV adjustment
+- Real-time SAB heatmap on 3D body model with dynamic range control, colormap selection, dB scale toggle, and peak indicator
+- Multi-mode dosimetry: Bound, Aggregate, Spatial with per-correction toggles (Fresnel, Polarisation, Curvature, Diffraction)
+- Interactive antenna placement via click-to-place; multiple antenna management with per-antenna power, enable/disable, and element pattern selection
+- Antenna array configuration (horizontal/vertical elements, element spacing); 3D radiation pattern visualization with gain interpolation
+- Pattern browser: search across local and CloudRF databases, polar plot preview, pattern loading/caching
+- MIMO mode: multi-user management, phantom assignment, orientation control, precoder selection (MRT, ZF, MMSE, ZF+Exposure)
+- Automatic precoder fallback (M < K); per-user SAB results and compliance; show-all-heatmaps toggle; precoder weight display
+- Multiple phantom selection (8 STL + animated GLB with pose controls); body rotation and offset positioning
+- Environment sources: None, Voxels, OSM, 3D Tiles, Cesium; geocoding search with radius control
+- OSM loading with building height config; 3D Tiles with geometric error LOD; GeoJSON upload; environment reload centered on antenna
+- Ray tracing backend selection (Sionna, DiffeRT) with method, reflection, diffraction, and seed controls
+- Ray path visualization with order-based coloring (LOS white, 1st orange, 2nd+ red)
+- Stochastic channel mode with preset selection, parameter overrides, LSP heatmap, and cluster/subpath visualization
+- Base station loading by location with operator/technology/frequency filtering and color coding
+- Base station markers, detail viewing, dosimetry computation, antenna pattern visualization
+- Global coverage map with zoom-level transitions, site density, operator coloring, and one-click setup to local scene
+- ICNIRP compliance indicators (pass/warn/fail); frequency-dependent quantity switching at 30 GHz
+- Power sweep and frequency sweep analysis charts (Recharts); compliance heatmap visualization
+- Optimization controls: placement grid search, tilt+power sweep, MIMO peak optimizer with iteration display and convergence tracking
+- Configuration export (JSON/YAML); shareable state links with URL encoding; dosimetry export (CSV, JSON, NPZ)
+- Responsive sidebar (hidden/rail/expanded) with grouped sections (World, Source, Exposure, Analysis)
+- Keyboard shortcuts with help overlay; status bar with timing and GPU info; notification toasts
+- Welcome overlay, guided tour (9 steps), and tour completion tracking
+- Touch controls for mobile; orientation-aware layout; camera widget for manual positioning
+- Voxel field visualization with per-material toggles; environment display modes (cubes, hull, tiles)
+- Distance line visualization; compliance ring with directivity-aware boundary; optimize grid preview
+- Lazy asset loading; binary protocol for data transfer; streaming responses; request abort/cancel
+- Sentry error tracking integration; local storage persistence with schema versioning
+- Error boundary protection at app and scene level
+
+## Visualization and analysis
+
+- Plotly interactive 3D mesh heatmap with per-triangle hover text, configurable colormap, and HTML/PNG export
+- Matplotlib static 2D projection heatmap with painter's algorithm depth sorting
+- Side-by-side S_ab comparison across multiple fidelity levels (Matplotlib 2D and Plotly 3D subplots)
+- Multi-panel compliance assessment figure: S_ab histogram with ICNIRP limit line, pass/fail status bar, margin in dB
+- Q eigenvalue spectrum bar chart (coherent results) with color-coded scaling
+- Rho (exposure-signal alignment) semicircular gauge with green/orange/red gradient
+- Peak S_ab versus frequency sweep plot with logarithmic scaling and ICNIRP reference line
+- Tissue material spectrum visualization (Cole-Cole permittivity) with dual-axis plots
+- Scene load and ray trace timing metrics
+- Dark theme support; lighting simulation parameters (ambient, diffuse, specular, roughness)
+
+## Data, infrastructure, and deployment
+
+- JAX-based differentiable kernels with NumPy fallback via AEGIS_ARRAY_BACKEND env var; JAX 64-bit precision
+- Numba JIT optional fast backend for ambient occlusion and averaging matrix construction
+- Git LFS for large files (STL meshes, databases); Parquet for base station datasets
+- AEGIS_DATA_DIR and SIONNA_SCENES_DIR environment variables
+- Hatchling build backend with hatch-vcs (version from git tags); Python >= 3.11
+- Core deps: numpy, scipy, pyyaml; optional: JAX, matplotlib, plotly, Flask, DiffeRT, Sionna, Modal, smplx, torch, pygltflib
+- aegis-run CLI entry point for batch processing with YAML configuration
+- 2443 test cases across 143 test files; pytest with pytest-xdist (2 workers) and Hypothesis property testing
+- CodSpeed benchmarking integration
+- Ruff linting (120 char, rules E F W I UP B SIM); pre-commit hooks with codespell
+- GitHub Actions CI with Ubicloud runners; lint job + test matrix (Windows + Linux x 3.11/3.12/3.13)
+- Codecov integration
+- Docker buildx multi-platform images (ghcr.io, tagged by SHA and latest); Debian Slim Python 3.12 containers
+- Hetzner cloud deployment via SSH; docker-compose: Caddy + Flask (Gunicorn gthread, 2 workers, 4 threads) + Umami + PostgreSQL
+- Caddy reverse proxy with HTTPS, HSTS (63072000s), JSON logging
+- 3GB memory limit; 600s Gunicorn timeout
+- Sentry error tracking with release tracking, auto-commit association, and deploy notification
+- Umami web analytics (PostgreSQL 15 backend)
+- Claude Code GitHub Action for QA swarm (manager + 5 testers) and code review agent
+- Playwright for E2E browser automation; feature agent, labeler, issue-labeler workflows
+- Modal GPU offload (T4 for DiffeRT, L4 for Sionna RT); TensorDock cloud GPU support
+- Google API key for geocoding and 3D Tiles; CloudRF API key for antenna patterns and coverage
+- MkDocs Material documentation with Jupytext integration; Getting Started, 6 tutorials, 8 concepts, 11 guides, developer guide
+- LicenseRef-Proprietary license
+- Config-driven scenario launcher with named scenarios (open_ground, mmwave_close, urban_ghent, indoor_office)
+- Regional power configs: indoor_office (23 dBm), mmwave_close (10 dBm), outdoor_urban (43 dBm)
