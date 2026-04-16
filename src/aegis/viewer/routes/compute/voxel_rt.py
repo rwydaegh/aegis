@@ -36,14 +36,12 @@ def _run_dosimetry(tissue, body, paths, engine_kw):
     return _pkg._run_dosimetry(tissue, body, paths, engine_kw)
 
 
-def _api_compute_voxel_rt_impl(cache: dict, cache_lock) -> Response:
-    """Compute dosimetry using Sionna RT on the voxel environment geometry (via Modal GPU)."""
-    from aegis.viewer.compute import _transform_body_for_viewer
+def _load_voxel_request(cache: dict, cache_lock, params: dict):
+    """Fetch body mesh + voxel data from the cache.
 
-    params = request.get_json(silent=True)
-    if not isinstance(params, dict):
-        return jsonify({"error": _ERR_INVALID_JSON}), 400
-
+    Returns ((body, voxel_positions, voxel_sizes, voxel_materials, cfg), None) on success
+    or (None, error_response) on failure.
+    """
     body_name = params.get("body_name", cache.get("default_body"))
     with cache_lock:
         entry = cache.get("bodies", {}).get(body_name)
@@ -52,51 +50,63 @@ def _api_compute_voxel_rt_impl(cache: dict, cache_lock) -> Response:
         voxel_materials = cache.get("voxel_materials")
         cfg = cache["config"]
     if entry is None:
-        return jsonify({"error": f"Body '{body_name}' not found"}), 404
-    body = entry["body"]
-
+        return None, (jsonify({"error": f"Body '{body_name}' not found"}), 404)
     if voxel_positions is None or len(voxel_positions) == 0:
-        return jsonify({"error": "No voxel data available"}), 400
+        return None, (jsonify({"error": "No voxel data available"}), 400)
+    return (entry["body"], voxel_positions, voxel_sizes, voxel_materials, cfg), None
 
+
+def _parse_voxel_rt_params(params: dict, cache: dict):
+    """Parse shared RT params for the voxel-RT route.
+
+    Returns (parsed_dict, None) or (None, error_response).
+    """
     antenna_pos, err = _parse_vec3(params, "antenna_pos", [5, 0, 1])
     if err:
-        return err
+        return None, err
     body_offset, err = _parse_vec3(params, "body_offset")
     if err:
-        return err
+        return None, err
     body_rotation_y, err = _parse_rotation_y(params)
     if err:
-        return err
+        return None, err
 
     engine_kw, err = _parse_mode_or_level(params)
     if err:
-        return err
+        return None, err
     try:
         power_dbm = float(params.get("power_dbm", DEFAULT_POWER_DBM))
     except (TypeError, ValueError):
-        return jsonify({"error": "power_dbm must be a number"}), 400
+        return None, (jsonify({"error": "power_dbm must be a number"}), 400)
     if power_dbm < 0 or power_dbm > _MAX_POWER_DBM:
-        return jsonify({"error": f"power_dbm must be between 0 and {_MAX_POWER_DBM} dBm"}), 400
+        return None, (jsonify({"error": f"power_dbm must be between 0 and {_MAX_POWER_DBM} dBm"}), 400)
     rt_cfg_parsed = _parse_rt_config(params, cache)
-    max_order = rt_cfg_parsed["max_depth"]
 
     quantities, exposure_scenario, err = _parse_quantities_and_scenario(params)
     if err:
-        return err
+        return None, err
     tissue, _, err = _parse_freq_and_tissue(params)
     if err:
-        return err
+        return None, err
 
-    # Transform body consistently (vertices, centroids, normals all rotated + offset)
-    transformed_body = _transform_body_for_viewer(body, body_offset, body_rotation_y)
-    body_center = transformed_body.centroids.mean(axis=0)
+    return {
+        "antenna_pos": antenna_pos,
+        "body_offset": body_offset,
+        "body_rotation_y": body_rotation_y,
+        "engine_kw": engine_kw,
+        "power_dbm": power_dbm,
+        "rt_cfg": rt_cfg_parsed,
+        "quantities": quantities,
+        "exposure_scenario": exposure_scenario,
+        "tissue": tissue,
+    }, None
 
-    import time as _time
 
-    t_route = _time.perf_counter()
+def _build_voxel_rt_scene(voxel_positions, voxel_sizes, voxel_materials, cfg, max_order: int, max_rt_triangles: int):
+    """Build the voxel RT scene hull + per-face material list for Modal Sionna.
 
-    # Prepare voxel mesh data for Modal
-    max_rt_triangles = cfg["raytracer"]["max_rt_triangles"]
+    Returns (scene_dict, None) on success or (None, error_response) on failure.
+    """
     try:
         from aegis.viewer.scene_data import extract_exterior, prepare_for_raytracing
 
@@ -108,7 +118,6 @@ def _api_compute_voxel_rt_impl(cache: dict, cache_lock) -> Response:
         if voxel_materials is not None:
             ext_materials = [voxel_materials[i] for i in np.nonzero(ext_mask)[0]]
 
-        # Pre-triangulate using greedy mesher (sends ~8x fewer triangles)
         from aegis.viewer.raytracer import get_or_build_voxel_scene
 
         ext_grid = grid_coords[ext_mask]
@@ -125,50 +134,58 @@ def _api_compute_voxel_rt_impl(cache: dict, cache_lock) -> Response:
 
         actual_triangles = len(hull_tris)
         if actual_triangles > max_rt_triangles and max_order > 0:
-            return jsonify(
-                {
-                    "error": f"Scene too large for reflections ({actual_triangles:,} triangles, "
-                    f"limit {max_rt_triangles:,}). Use LOS only (order 0) or reduce scene size."
-                }
-            ), 400
+            return None, (
+                jsonify(
+                    {
+                        "error": f"Scene too large for reflections ({actual_triangles:,} triangles, "
+                        f"limit {max_rt_triangles:,}). Use LOS only (order 0) or reduce scene size."
+                    }
+                ),
+                400,
+            )
 
-        # Build per-face material names for Sionna BSDF assignment
         face_mats_idx = np.array(voxel_scene.mesh.face_materials)
         mat_names_tuple = voxel_scene.mesh.material_names
         per_face_mats = [mat_names_tuple[int(i)] for i in face_mats_idx]
+        return {
+            "vertices": hull_verts.tolist(),
+            "triangles": hull_tris.tolist(),
+            "materials": per_face_mats,
+        }, None
     except Exception as e:
-        return jsonify({"error": f"Voxel mesh build failed: {e}"}), 500
+        return None, (jsonify({"error": f"Voxel mesh build failed: {e}"}), 500)
 
-    # Call Modal GPU for Sionna RT on voxel geometry
+
+def _sionna_rt_config(rt_cfg: dict) -> dict:
+    """Build the rt_config dict sent to Sionna Modal functions."""
+    return {
+        "los": rt_cfg["los"],
+        "specular_reflection": rt_cfg["specular_reflection"],
+        "diffuse_reflection": rt_cfg["diffuse_reflection"],
+        "refraction": rt_cfg["refraction"],
+        "diffraction": rt_cfg["diffraction"],
+        "edge_diffraction": rt_cfg["edge_diffraction"],
+        "diffraction_lit_region": rt_cfg["diffraction_lit_region"],
+        "samples_per_src": rt_cfg["rays_per_source"],
+        "max_num_paths_per_src": rt_cfg["max_paths_per_source"],
+        "synthetic_array": rt_cfg["synthetic_array"],
+        "seed": rt_cfg["seed"],
+    }
+
+
+def _invoke_modal_voxel_trace(
+    voxel_positions, scene_data, antenna_pos, body_center, max_order, tissue, power_dbm, rt_cfg_dict
+):
+    """Call Modal trace_sionna_voxel with an appropriate scene key.
+
+    Returns (modal_result, None) on success or (None, error_response) on failure.
+    """
     import hashlib
 
-    from aegis.viewer.modal_proxy import gpu_status as _gpu_status
     from aegis.viewer.modal_proxy import trace_sionna_voxel as _modal_trace_voxel
-
-    _was_cold = not _gpu_status().get("warm", False)
 
     voxel_hash = hashlib.md5(np.asarray(voxel_positions).tobytes()).hexdigest()[:12]
     scene_key = f"voxel_{voxel_hash}"
-
-    scene_data = {
-        "vertices": hull_verts.tolist(),
-        "triangles": hull_tris.tolist(),
-        "materials": per_face_mats,
-    }
-
-    rt_config_dict = {
-        "los": rt_cfg_parsed["los"],
-        "specular_reflection": rt_cfg_parsed["specular_reflection"],
-        "diffuse_reflection": rt_cfg_parsed["diffuse_reflection"],
-        "refraction": rt_cfg_parsed["refraction"],
-        "diffraction": rt_cfg_parsed["diffraction"],
-        "edge_diffraction": rt_cfg_parsed["edge_diffraction"],
-        "diffraction_lit_region": rt_cfg_parsed["diffraction_lit_region"],
-        "samples_per_src": rt_cfg_parsed["rays_per_source"],
-        "max_num_paths_per_src": rt_cfg_parsed["max_paths_per_source"],
-        "synthetic_array": rt_cfg_parsed["synthetic_array"],
-        "seed": rt_cfg_parsed["seed"],
-    }
 
     try:
         modal_result = _modal_trace_voxel(
@@ -179,15 +196,71 @@ def _api_compute_voxel_rt_impl(cache: dict, cache_lock) -> Response:
             max_bounces=max_order,
             freq_hz=tissue.freq_hz,
             tx_power_dbm=power_dbm,
-            rt_config=rt_config_dict,
+            rt_config=rt_cfg_dict,
         )
     except NotImplementedError:
-        return jsonify(
-            {"error": "Voxel ray tracing with Sionna is not yet implemented. Mesh-to-scene conversion is pending."}
-        ), 501
-
+        return None, (
+            jsonify(
+                {"error": "Voxel ray tracing with Sionna is not yet implemented. Mesh-to-scene conversion is pending."}
+            ),
+            501,
+        )
     if modal_result is None:
-        return jsonify({"error": "GPU unavailable for voxel ray tracing"}), 501
+        return None, (jsonify({"error": "GPU unavailable for voxel ray tracing"}), 501)
+    return modal_result, None
+
+
+def _api_compute_voxel_rt_impl(cache: dict, cache_lock) -> Response:
+    """Compute dosimetry using Sionna RT on the voxel environment geometry (via Modal GPU)."""
+    from aegis.viewer.compute import _transform_body_for_viewer
+
+    params = request.get_json(silent=True)
+    if not isinstance(params, dict):
+        return jsonify({"error": _ERR_INVALID_JSON}), 400
+
+    loaded, err = _load_voxel_request(cache, cache_lock, params)
+    if err is not None:
+        return err
+    body, voxel_positions, voxel_sizes, voxel_materials, cfg = loaded
+
+    pp, err = _parse_voxel_rt_params(params, cache)
+    if err is not None:
+        return err
+
+    transformed_body = _transform_body_for_viewer(body, pp["body_offset"], pp["body_rotation_y"])
+    body_center = transformed_body.centroids.mean(axis=0)
+
+    import time as _time
+
+    t_route = _time.perf_counter()
+
+    max_order = pp["rt_cfg"]["max_depth"]
+    max_rt_triangles = cfg["raytracer"]["max_rt_triangles"]
+
+    scene_data, err = _build_voxel_rt_scene(
+        voxel_positions, voxel_sizes, voxel_materials, cfg, max_order, max_rt_triangles
+    )
+    if err is not None:
+        return err
+
+    from aegis.viewer.modal_proxy import gpu_status as _gpu_status
+
+    _was_cold = not _gpu_status().get("warm", False)
+
+    rt_cfg_dict = _sionna_rt_config(pp["rt_cfg"])
+
+    modal_result, err = _invoke_modal_voxel_trace(
+        voxel_positions,
+        scene_data,
+        pp["antenna_pos"],
+        body_center,
+        max_order,
+        pp["tissue"],
+        pp["power_dbm"],
+        rt_cfg_dict,
+    )
+    if err is not None:
+        return err
 
     from aegis.paths import PropagationPaths
 
@@ -198,25 +271,24 @@ def _api_compute_voxel_rt_impl(cache: dict, cache_lock) -> Response:
 
     t_rt = _time.perf_counter()
 
-    level_val, _, _ = _stats_label(engine_kw)
+    level_val, _, _ = _stats_label(pp["engine_kw"])
     if paths.n_paths == 0:
-        return _zero_paths_response(body, tissue, level_val or 0, cache=cache)
+        return _zero_paths_response(body, pp["tissue"], level_val or 0, cache=cache)
 
-    result, err = _run_dosimetry(tissue, transformed_body, paths, engine_kw)
+    result, err = _run_dosimetry(pp["tissue"], transformed_body, paths, pp["engine_kw"])
     if err:
         return err
     t_compute = _time.perf_counter()
 
-    dist = float(np.linalg.norm(antenna_pos - body_center))
+    dist = float(np.linalg.norm(pp["antenna_pos"] - body_center))
     extra = {
         "S_inc": float(np.sum(paths.power)),
         "distance_m": dist,
         "n_rt_paths": paths.n_paths,
         "path_viz": path_viz,
+        "backend": "sionna-voxel",
+        "cold_start": _was_cold,
     }
-
-    extra["backend"] = "sionna-voxel"
-    extra["cold_start"] = _was_cold
     if gpu_backend is not None:
         extra["gpu_backend"] = gpu_backend
 
@@ -230,10 +302,10 @@ def _api_compute_voxel_rt_impl(cache: dict, cache_lock) -> Response:
     resp, stats, err = _make_rt_response(
         result,
         transformed_body,
-        tissue,
-        engine_kw,
-        quantities,
-        exposure_scenario,
+        pp["tissue"],
+        pp["engine_kw"],
+        pp["quantities"],
+        pp["exposure_scenario"],
         extra,
         timing_pairs,
     )
