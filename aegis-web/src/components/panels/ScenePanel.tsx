@@ -9,6 +9,45 @@ import { useEnvironmentStore } from '@/stores/environment'
 import { loadBasestations } from '@/api/basestations'
 import { useBaseStationsStore } from '@/stores/basestations'
 
+// ---------------------------------------------------------------------------
+// Shared styles
+// ---------------------------------------------------------------------------
+
+const INPUT_CLASS = "w-full bg-background border border-border rounded px-2 py-1.5 text-sm text-foreground"
+const LABEL_CLASS = "text-xs text-muted-foreground block mt-2 mb-1"
+const SELECT_LABEL_CLASS = "text-xs text-muted-foreground block mb-1"
+
+// ---------------------------------------------------------------------------
+// Shared helpers
+// ---------------------------------------------------------------------------
+
+/** Zero `has_voxels` so `useVoxelLoader` re-triggers when new capabilities arrive.
+ *  Without this, a true->true transition would be ignored. */
+function invalidateVoxelCapability() {
+  const prev = useSceneStore.getState().capabilities
+  if (prev) {
+    useSceneStore.setState({ capabilities: { ...prev, has_voxels: false } })
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Sionna scene selector
+// ---------------------------------------------------------------------------
+
+async function applySionnaScene(path: string) {
+  const result = await loadSceneGeometry(path)
+  useSceneStore.getState().setSceneGeometry({
+    vertices: result.vertices,
+    indices: result.indices,
+    faceColors: result.faceColors,
+  })
+  useSceneStore.getState().setLoadedScenePath(path)
+  useSceneStore.getState().setVoxelData(null)
+  // Clear has_voxels so useVoxelLoader does not re-fetch stale voxel data
+  invalidateVoxelCapability()
+  useEnvironmentStore.getState().setSource('none')
+}
+
 function SionnaSceneSelector() {
   const scenes = useSceneStore(s => s.scenes)
   const [selected, setSelected] = useState('')
@@ -16,27 +55,11 @@ function SionnaSceneSelector() {
 
   if (scenes.length === 0) return null
 
-  const selectClass = "w-full bg-background border border-border rounded px-2 py-1.5 text-sm text-foreground"
-  const labelClass = "text-xs text-muted-foreground block mb-1"
-
   const handleLoad = async () => {
     if (!selected) return
     setLoading(true)
     try {
-      const result = await loadSceneGeometry(selected)
-      useSceneStore.getState().setSceneGeometry({
-        vertices: result.vertices,
-        indices: result.indices,
-        faceColors: result.faceColors,
-      })
-      useSceneStore.getState().setLoadedScenePath(selected)
-      useSceneStore.getState().setVoxelData(null)
-      // Clear has_voxels so useVoxelLoader does not re-fetch stale voxel data
-      const prev = useSceneStore.getState().capabilities
-      if (prev) {
-        useSceneStore.setState({ capabilities: { ...prev, has_voxels: false } })
-      }
-      useEnvironmentStore.getState().setSource('none')
+      await applySionnaScene(selected)
     } catch (err) {
       Sentry.captureException(err)
       useNotificationStore.getState().addNotification('error', `Failed to load scene: ${(err as Error).message}`)
@@ -46,8 +69,8 @@ function SionnaSceneSelector() {
 
   return (
     <div className="mb-3 pb-3 border-b border-border">
-      <label className={labelClass}>Sionna scene</label>
-      <select className={selectClass} value={selected} onChange={e => setSelected(e.target.value)}>
+      <label className={SELECT_LABEL_CLASS}>Sionna scene</label>
+      <select className={INPUT_CLASS} value={selected} onChange={e => setSelected(e.target.value)}>
         <option value="">Select a scene...</option>
         {scenes.map(s => (
           <option key={s.path} value={s.path}>
@@ -66,13 +89,76 @@ function SionnaSceneSelector() {
   )
 }
 
-export default function ScenePanel() {
-  const caps = useSceneStore(s => s.capabilities)
-  const scenes = useSceneStore(s => s.scenes)
-  const actualVoxelSize = useSceneStore(s => s.voxelData?.meta?.voxel_size)
-  const locationLoading = useUIStore(s => s.locationLoading)
-  const locationLog = useUIStore(s => s.locationLog)
+// ---------------------------------------------------------------------------
+// Location load helpers
+// ---------------------------------------------------------------------------
 
+/** Fetch capabilities after a successful load and reposition the body. */
+async function refreshAfterLocationLoad() {
+  try {
+    const caps = await fetchCapabilities()
+    useSceneStore.getState().setCapabilities(caps)
+    // Place body at the scene center computed from the new voxels
+    if (caps.body_placement) {
+      useSimulationStore.getState().setBodyOffset(caps.body_placement)
+    }
+  } catch (err) {
+    Sentry.captureException(err)
+    useNotificationStore.getState().addNotification('error', 'Failed to refresh after location load')
+  }
+}
+
+/** Optionally pull base stations for the same location after a load. */
+async function loadBasestationsForLocation(location: string, radius: number) {
+  try {
+    const bsRes = await loadBasestations({ location, radius_m: radius })
+    if (bsRes.basestations.length > 0) {
+      const first = bsRes.basestations[0]
+      useBaseStationsStore.getState().setBasestations(
+        bsRes.basestations,
+        { lat: first.latitude, lon: first.longitude },
+      )
+    }
+  } catch (err) {
+    if (!isClientError(err)) Sentry.captureException(err)
+  }
+}
+
+function resetSceneForLocationLoad() {
+  useEnvironmentStore.getState().setSource('none')
+  useSceneStore.getState().setSceneGeometry(null)
+  useSceneStore.getState().setLoadedScenePath('')
+  // Temporarily clear has_voxels so useVoxelLoader re-triggers when
+  // new capabilities arrive (the effect depends on caps?.has_voxels,
+  // so a true->true transition would be ignored without this reset).
+  invalidateVoxelCapability()
+}
+
+function handleLocationSseError(es: EventSource, esRef: React.MutableRefObject<EventSource | null>) {
+  // EventSource fires 'error' for benign reasons: idle tab backgrounded,
+  // proxy timeout, browser killing inactive connections. Only treat it as
+  // a real failure if a location load was actively in progress.
+  const wasLoading = useUIStore.getState().locationLoading
+  es.close()
+  esRef.current = null
+  if (wasLoading) {
+    Sentry.captureException(new Error('Location load SSE connection lost'))
+    useUIStore.getState().setLocationLoading(false)
+    useUIStore.getState().appendLocationLog('Error: connection lost')
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Location form
+// ---------------------------------------------------------------------------
+
+interface LocationFormProps {
+  locationLoading: boolean
+  locationLog: string[]
+  actualVoxelSize?: number
+}
+
+function LocationForm({ locationLoading, locationLog, actualVoxelSize }: LocationFormProps) {
   const [location, setLocation] = useState('')
   const [radius, setRadius] = useState(30)
   const [voxelSize, setVoxelSize] = useState(0.5)
@@ -83,19 +169,6 @@ export default function ScenePanel() {
   useEffect(() => {
     return () => { esRef.current?.close() }
   }, [])
-
-  // Show Sionna scene selector even when location loading is unavailable
-  const hasScenes = scenes.length > 0
-  const hasLocation = caps?.has_location_loader
-  const hasApiKey = caps?.has_api_key
-
-  if (!hasScenes && !hasLocation && !hasApiKey) {
-    return (
-      <p className="text-xs text-muted-foreground">
-        Set GOOGLE_API_KEY env var to enable location loading.
-      </p>
-    )
-  }
 
   const handleLoad = () => {
     if (!location.trim()) return
@@ -118,58 +191,14 @@ export default function ScenePanel() {
       esRef.current = null
       useUIStore.getState().setLocationLoading(false)
       useUIStore.getState().appendLocationLog('Done! Loading voxels...')
-      useEnvironmentStore.getState().setSource('none')
-      useSceneStore.getState().setSceneGeometry(null)
-      useSceneStore.getState().setLoadedScenePath('')
-      // Temporarily clear has_voxels so useVoxelLoader re-triggers when
-      // new capabilities arrive (the effect depends on caps?.has_voxels,
-      // so a true->true transition would be ignored without this reset).
-      const prev = useSceneStore.getState().capabilities
-      if (prev) {
-        useSceneStore.setState({ capabilities: { ...prev, has_voxels: false } })
-      }
-      // Re-fetch capabilities so useVoxelLoader picks up the new voxels
-      fetchCapabilities().then(caps => {
-        useSceneStore.getState().setCapabilities(caps)
-        // Place body at the scene center computed from the new voxels
-        if (caps.body_placement) {
-          useSimulationStore.getState().setBodyOffset(caps.body_placement)
-        }
-      }).catch((err) => {
-        Sentry.captureException(err)
-        useNotificationStore.getState().addNotification('error', 'Failed to refresh after location load')
-      })
+      resetSceneForLocationLoad()
+      void refreshAfterLocationLoad()
       if (alsoLoadBS) {
-        ;(async () => {
-          try {
-            const bsRes = await loadBasestations({ location, radius_m: radius })
-            if (bsRes.basestations.length > 0) {
-              const first = bsRes.basestations[0]
-              useBaseStationsStore.getState().setBasestations(
-                bsRes.basestations,
-                { lat: first.latitude, lon: first.longitude },
-              )
-            }
-          } catch (err) {
-            if (!isClientError(err)) Sentry.captureException(err)
-          }
-        })()
+        void loadBasestationsForLocation(location, radius)
       }
     })
 
-    es.addEventListener('error', () => {
-      // EventSource fires 'error' for benign reasons: idle tab backgrounded,
-      // proxy timeout, browser killing inactive connections. Only treat it as
-      // a real failure if a location load was actively in progress.
-      const wasLoading = useUIStore.getState().locationLoading
-      es.close()
-      esRef.current = null
-      if (wasLoading) {
-        Sentry.captureException(new Error('Location load SSE connection lost'))
-        useUIStore.getState().setLocationLoading(false)
-        useUIStore.getState().appendLocationLog('Error: connection lost')
-      }
-    })
+    es.addEventListener('error', () => handleLocationSseError(es, esRef))
   }
 
   const handleCancel = () => {
@@ -180,89 +209,131 @@ export default function ScenePanel() {
     useUIStore.getState().appendLocationLog('Cancelled.')
   }
 
-  const inputClass = "w-full bg-background border border-border rounded px-2 py-1.5 text-sm text-foreground"
-  const labelClass = "text-xs text-muted-foreground block mt-2 mb-1"
+  return (
+    <>
+      <label className={LABEL_CLASS}>Location</label>
+      <input type="text" className={INPUT_CLASS} value={location}
+        onChange={e => setLocation(e.target.value)}
+        placeholder="e.g. Ghent, Belgium" disabled={locationLoading} />
+
+      <label className={LABEL_CLASS}>Radius (m)</label>
+      <input type="number" className={INPUT_CLASS} value={radius}
+        min={10} max={500} step={10}
+        onChange={e => setRadius(Number(e.target.value))} disabled={locationLoading} />
+
+      <label className={LABEL_CLASS}>Voxel size (m)</label>
+      <input type="number" className={INPUT_CLASS} value={voxelSize}
+        min={0.1} max={5} step={0.1}
+        onChange={e => setVoxelSize(Number(e.target.value))} disabled={locationLoading} />
+      {actualVoxelSize != null && (
+        <span className="text-[10px] text-muted-foreground mt-0.5 block">
+          Actual: {actualVoxelSize.toFixed(2)} m (median)
+        </span>
+      )}
+
+      <label className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
+        <input type="checkbox" checked={force} onChange={e => setForce(e.target.checked)} />
+        Force re-download
+      </label>
+
+      <label className="flex items-center gap-2 text-xs cursor-pointer select-none mt-2">
+        <input
+          type="checkbox"
+          className="rounded border-border accent-primary h-3.5 w-3.5"
+          checked={alsoLoadBS}
+          onChange={e => setAlsoLoadBS(e.target.checked)}
+        />
+        <span className="text-foreground/70">Also load base stations</span>
+      </label>
+
+      <div className="flex gap-2 mt-3">
+        {!locationLoading ? (
+          <button onClick={handleLoad}
+            className="px-3 py-1.5 rounded text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90">
+            Load
+          </button>
+        ) : (
+          <button onClick={handleCancel}
+            className="px-3 py-1.5 rounded text-xs font-medium bg-destructive text-white hover:bg-destructive/90">
+            Cancel
+          </button>
+        )}
+      </div>
+
+      {locationLog.length > 0 && (
+        <div className="mt-3 max-h-[120px] overflow-y-auto bg-background rounded p-2 text-[10px] text-muted-foreground font-mono whitespace-pre-wrap">
+          {locationLog.join('\n')}
+        </div>
+      )}
+    </>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Clear-scene section
+// ---------------------------------------------------------------------------
+
+function handleClearScene() {
+  fetchWithRetry('/api/clear-cache', { method: 'POST' })
+    .then(() => fetchCapabilities())
+    .then(caps => useSceneStore.getState().setCapabilities(caps))
+    .catch(() => {})
+  useSceneStore.getState().clearScene()
+  useSimulationStore.getState().clearResults()
+  useSimulationStore.getState().setBodyOffset([0, 0, 0])
+  useSimulationStore.getState().setBodyRotationY(0)
+}
+
+function ClearSceneButton() {
+  return (
+    <div className="mt-4 pt-3 border-t border-border">
+      <button
+        onClick={handleClearScene}
+        className="w-full px-3 py-1.5 rounded text-xs font-medium bg-destructive text-white hover:bg-destructive/90"
+      >
+        Clear Scene
+      </button>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Main panel
+// ---------------------------------------------------------------------------
+
+export default function ScenePanel() {
+  const caps = useSceneStore(s => s.capabilities)
+  const scenes = useSceneStore(s => s.scenes)
+  const actualVoxelSize = useSceneStore(s => s.voxelData?.meta?.voxel_size)
+  const locationLoading = useUIStore(s => s.locationLoading)
+  const locationLog = useUIStore(s => s.locationLog)
+
+  // Show Sionna scene selector even when location loading is unavailable
+  const hasScenes = scenes.length > 0
+  const hasLocation = caps?.has_location_loader
+  const hasApiKey = caps?.has_api_key
+
+  if (!hasScenes && !hasLocation && !hasApiKey) {
+    return (
+      <p className="text-xs text-muted-foreground">
+        Set GOOGLE_API_KEY env var to enable location loading.
+      </p>
+    )
+  }
 
   return (
     <div>
       {hasScenes && <SionnaSceneSelector />}
 
       {(hasLocation || hasApiKey) && (
-        <>
-          <label className={labelClass}>Location</label>
-          <input type="text" className={inputClass} value={location}
-            onChange={e => setLocation(e.target.value)}
-            placeholder="e.g. Ghent, Belgium" disabled={locationLoading} />
-
-          <label className={labelClass}>Radius (m)</label>
-          <input type="number" className={inputClass} value={radius}
-            min={10} max={500} step={10}
-            onChange={e => setRadius(Number(e.target.value))} disabled={locationLoading} />
-
-          <label className={labelClass}>Voxel size (m)</label>
-          <input type="number" className={inputClass} value={voxelSize}
-            min={0.1} max={5} step={0.1}
-            onChange={e => setVoxelSize(Number(e.target.value))} disabled={locationLoading} />
-          {actualVoxelSize != null && (
-            <span className="text-[10px] text-muted-foreground mt-0.5 block">
-              Actual: {actualVoxelSize.toFixed(2)} m (median)
-            </span>
-          )}
-
-          <label className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
-            <input type="checkbox" checked={force} onChange={e => setForce(e.target.checked)} />
-            Force re-download
-          </label>
-
-          <label className="flex items-center gap-2 text-xs cursor-pointer select-none mt-2">
-            <input
-              type="checkbox"
-              className="rounded border-border accent-primary h-3.5 w-3.5"
-              checked={alsoLoadBS}
-              onChange={e => setAlsoLoadBS(e.target.checked)}
-            />
-            <span className="text-foreground/70">Also load base stations</span>
-          </label>
-
-          <div className="flex gap-2 mt-3">
-            {!locationLoading ? (
-              <button onClick={handleLoad}
-                className="px-3 py-1.5 rounded text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90">
-                Load
-              </button>
-            ) : (
-              <button onClick={handleCancel}
-                className="px-3 py-1.5 rounded text-xs font-medium bg-destructive text-white hover:bg-destructive/90">
-                Cancel
-              </button>
-            )}
-          </div>
-
-          {locationLog.length > 0 && (
-            <div className="mt-3 max-h-[120px] overflow-y-auto bg-background rounded p-2 text-[10px] text-muted-foreground font-mono whitespace-pre-wrap">
-              {locationLog.join('\n')}
-            </div>
-          )}
-        </>
+        <LocationForm
+          locationLoading={locationLoading}
+          locationLog={locationLog}
+          actualVoxelSize={actualVoxelSize}
+        />
       )}
 
-      <div className="mt-4 pt-3 border-t border-border">
-        <button
-          onClick={() => {
-            fetchWithRetry('/api/clear-cache', { method: 'POST' })
-              .then(() => fetchCapabilities())
-              .then(caps => useSceneStore.getState().setCapabilities(caps))
-              .catch(() => {})
-            useSceneStore.getState().clearScene()
-            useSimulationStore.getState().clearResults()
-            useSimulationStore.getState().setBodyOffset([0, 0, 0])
-            useSimulationStore.getState().setBodyRotationY(0)
-          }}
-          className="w-full px-3 py-1.5 rounded text-xs font-medium bg-destructive text-white hover:bg-destructive/90"
-        >
-          Clear Scene
-        </button>
-      </div>
+      <ClearSceneButton />
     </div>
   )
 }
