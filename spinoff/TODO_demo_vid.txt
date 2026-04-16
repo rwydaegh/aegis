@@ -1,0 +1,26 @@
+demo vid
+
+THERE IS THIS TOOL ONLINE FOR IT FOR AI IT WORKS WELL
+
+Most Screen Studio-like, minimal effort: Rapidemo
+
+Best “all-in-one framed look” competitor: Motionik (radius/shadow/backgrounds are a core focus)
+
+Best if you want auto and manual control: Canvid
+
+Best if audio/cleanup matters a lot: FocuSee
+
+not too expensive for a month
+
+
+3b1b Cauchy vid is real. and open source? https://github.com/3b1b/videos/blob/master/_2022/visual_proofs/lies.py
+
+---> THIS IS FOR LINKEDIN
+
+
+--
+Tool	Full-features recurring plan	Price	One-time / lifetime option	Price
+Rapidemo	“All features” plan (billed yearly)	$9/mo (=$108/yr)	Pay once (one year of says “updates/shareable links”)	$129
+Motionik	Annual (no watermark, all recording/editing features)	$29.99/yr	Pay once (lifetime access, no watermark)	$59.99
+Canvid	Subscription (billed yearly, “All CANVID features”)	$7/mo (=$84/yr)	Lifetime (all features; shows discounted + list)	$75 (list $189)
+FocuSee	Advanced yearly (includes all Standard + AI features)	$79.99/yr	Advanced one-time purchase	$199.99
