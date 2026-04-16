@@ -19,12 +19,14 @@ if [[ "$CMD" == *"git commit"* ]] || [[ "$CMD" == *"git push"* ]]; then
     COUNT=$(git rev-list --count "${LAST_TAG}..HEAD" 2>/dev/null || echo "0")
     if [ "$COUNT" -gt 10 ]; then
       # Include commit summaries so Claude can judge release type
-      COMMITS=$(git log --oneline "${LAST_TAG}..HEAD" 2>/dev/null | head -30 | sed 's/"/\\"/g' | tr '\n' '|' | sed 's/|$//')
+      COMMITS=$(git log --oneline "${LAST_TAG}..HEAD" 2>/dev/null | head -40 | sed 's/"/\\"/g' | tr '\n' '|' | sed 's/|$//')
+      # Also grab merged PR numbers for changelog context
+      MERGED_PRS=$(git log --format="%s" "${LAST_TAG}..HEAD" 2>/dev/null | grep -oP '\(#\d+\)' | tr -d '()' | sort -u | tr '\n' ',' | sed 's/,$//' || echo "none")
       cat <<ENDJSON
 {
   "hookSpecificOutput": {
     "hookEventName": "PreToolUse",
-    "additionalContext": "RELEASE REMINDER: ${COUNT} commits since ${LAST_TAG}. Review the commits below and decide: (1) Is a release warranted, or are these just chores/CI/docs? (2) If yes, is it a PATCH (bug fixes, corrections, small improvements) or MINOR (new features, new modules, meaningful new capability)? Commits since ${LAST_TAG}: ${COMMITS} --- When tagging a release, also run 'bash .claude/hooks/update-release-metadata.sh' to update README.md (bibtex version, test count badge) and CITATION.cff (version, date-released). Commit these metadata updates before or alongside the tag."
+    "additionalContext": "RELEASE REMINDER: ${COUNT} commits since ${LAST_TAG}. Use /release to handle this with a proper changelog. Otherwise, review commits and decide: (1) Is a release warranted, or are these just chores/CI/docs? (2) If yes, is it a PATCH (bug fixes, corrections, small improvements) or MINOR (new features, new modules, meaningful new capability)? Merged PRs: ${MERGED_PRS} | Commits since ${LAST_TAG}: ${COMMITS} --- When tagging a release, also run 'bash .claude/hooks/update-release-metadata.sh' to update README.md (bibtex version, test count badge) and CITATION.cff (version, date-released). Commit these metadata updates before or alongside the tag."
   }
 }
 ENDJSON

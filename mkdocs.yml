@@ -85,6 +85,7 @@ nav:
     - AI automation: developer_guide/ai_automation.md
   - Reference:
     - API reference: reference/api.md
+    - Feature inventory: internal/features.md
 
 plugins:
   - search:
