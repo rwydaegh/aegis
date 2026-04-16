@@ -12,7 +12,7 @@ from flask import Flask, Response, abort, jsonify, render_template, request, sen
 from aegis.viewer.server import scoped_cache_get
 
 
-def _handle_index(cache):
+def _handle_index(cache: dict, cache_lock) -> Response:
     """Implementation for /."""
     static_dir = Path(__file__).parent.parent / "static"
     if (static_dir / "index.html").exists():
@@ -28,6 +28,30 @@ def _handle_index(cache):
         stacklevel=1,
     )
     return render_template("_legacy_index.html", viewer_config=json.dumps(cache["config"]))
+
+
+def _static_assets_impl(cache: dict, cache_lock, filename: str) -> Response:
+    """Implementation for /assets/<path:filename>."""
+    from flask import send_from_directory
+
+    static_dir = Path(__file__).parent.parent / "static" / "assets"
+    return send_from_directory(str(static_dir), filename)
+
+
+def _static_root_files_impl(cache: dict, cache_lock, filename: str) -> Response:
+    """Serve root-level static files (fonts, favicons) from static/."""
+    from flask import abort, send_from_directory
+
+    static_dir = Path(__file__).parent.parent / "static"
+    # Only serve files that actually exist to avoid masking API routes
+    if (static_dir / filename).is_file():
+        return send_from_directory(str(static_dir), filename)
+    return abort(404)
+
+
+def _api_viewer_config_impl(cache: dict, cache_lock) -> Response:
+    """Return the full viewer configuration."""
+    return jsonify(cache["config"])
 
 
 def _handle_export_config(cache, cache_lock):
@@ -98,7 +122,7 @@ def _handle_export_config(cache, cache_lock):
     return jsonify(base)
 
 
-def _handle_body(cache):
+def _handle_body(cache: dict, cache_lock) -> Response:
     """Implementation for /api/body."""
     name = request.args.get("name", cache.get("default_body"))
     bodies = cache.get("bodies", {})
@@ -119,7 +143,7 @@ def _handle_body(cache):
     return resp
 
 
-def _handle_voxels(cache):
+def _handle_voxels(cache: dict, cache_lock) -> Response:
     """Implementation for /api/voxels."""
     if cache.get("voxel_binary") is None:
         return jsonify({"error": "No voxel data loaded"}), 404
@@ -132,7 +156,48 @@ def _handle_voxels(cache):
     return resp
 
 
-def _handle_clear_cache(app, cache, cache_lock):
+def _api_tiles_list_impl(cache: dict, cache_lock) -> Response:
+    """Return list of available GLB tile files."""
+    td = cache.get("tiles_dir")
+    if td is None:
+        return jsonify({"tiles": [], "transform": None})
+
+    tile_names = sorted(p.name for p in Path(td).glob("*.glb"))
+    return jsonify({"tiles": tile_names, "transform": None})
+
+
+def _api_tiles_file_impl(cache: dict, cache_lock, filename: str) -> Response:
+    """Serve an individual GLB tile file."""
+    from flask import send_from_directory
+
+    td = cache.get("tiles_dir")
+    if td is None:
+        return jsonify({"error": "No tiles directory"}), 404
+    return send_from_directory(str(td), filename)
+
+
+def _serve_phantom_glb_impl(cache: dict, cache_lock, name: str) -> Response:
+    """Serve a GLB phantom file."""
+    import re
+
+    if not re.match(r"^[a-zA-Z0-9_-]+$", name):
+        abort(400, "Invalid phantom name")
+    data_dir_path = Path(cache.get("data_dir", "data"))
+    phantom_dir_cfg = cache["config"]["body"].get("phantom_dir", "")
+    if phantom_dir_cfg and Path(phantom_dir_cfg).is_absolute():
+        phantom_dir = Path(phantom_dir_cfg)
+    else:
+        phantom_dir = data_dir_path / "phantoms"
+    path = (phantom_dir / f"{name}.glb").resolve()
+    # Guard against symlink escape: resolved path must stay inside phantom_dir
+    if not path.is_relative_to(phantom_dir.resolve()):
+        abort(403, "Path escapes phantom directory")
+    if not path.is_file():
+        abort(404)
+    return send_file(path, mimetype="model/gltf-binary", conditional=True, max_age=3600)
+
+
+def _handle_clear_cache(cache: dict, cache_lock) -> Response:
     """Implementation for /api/clear-cache."""
     from aegis.viewer.server import scoped_cache_clear_session
 
@@ -161,7 +226,7 @@ def _handle_clear_cache(app, cache, cache_lock):
     return jsonify({"ok": True})
 
 
-def _handle_config(cache):
+def _handle_config(cache: dict, cache_lock) -> Response:
     """Implementation for /api/config."""
     from aegis.viewer.compute import SKIN_MODELS
 
@@ -276,97 +341,48 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
     @app.route("/")
     def index():
-        return _handle_index(cache)
+        return _handle_index(cache, cache_lock)
 
     @app.route("/assets/<path:filename>")
     def static_assets(filename):
-        from flask import send_from_directory
-
-        static_dir = Path(__file__).parent.parent / "static" / "assets"
-        return send_from_directory(str(static_dir), filename)
+        return _static_assets_impl(cache, cache_lock, filename)
 
     @app.route("/<path:filename>")
     def static_root_files(filename):
-        """Serve root-level static files (fonts, favicons) from static/."""
-        from flask import abort, send_from_directory
-
-        static_dir = Path(__file__).parent.parent / "static"
-        # Only serve files that actually exist to avoid masking API routes
-        if (static_dir / filename).is_file():
-            return send_from_directory(str(static_dir), filename)
-        return abort(404)
+        return _static_root_files_impl(cache, cache_lock, filename)
 
     @app.route("/api/viewer-config")
     def api_viewer_config():
-        """Return the full viewer configuration."""
-        return jsonify(cache["config"])
+        return _api_viewer_config_impl(cache, cache_lock)
 
     @app.route("/api/export-config", methods=["POST"])
     def api_export_config():
-        """Return full viewer config with interactive state overlaid."""
         return _handle_export_config(cache, cache_lock)
 
     @app.route("/api/body")
     def api_body():
-        """Return body mesh as binary (positions + normals, float32).
-
-        Accepts optional ?name= query parameter to select a specific body.
-        Defaults to the default body loaded at startup.
-        """
-        return _handle_body(cache)
+        return _handle_body(cache, cache_lock)
 
     @app.route("/api/voxels")
     def api_voxels():
-        """Return voxel data as binary (positions float32 + colors uint8 + materials uint8)."""
-        return _handle_voxels(cache)
+        return _handle_voxels(cache, cache_lock)
 
     @app.route("/api/tiles")
     def api_tiles_list():
-        """Return list of available GLB tile files."""
-        td = cache.get("tiles_dir")
-        if td is None:
-            return jsonify({"tiles": [], "transform": None})
-
-        tile_names = sorted(p.name for p in Path(td).glob("*.glb"))
-        return jsonify({"tiles": tile_names, "transform": None})
+        return _api_tiles_list_impl(cache, cache_lock)
 
     @app.route("/api/tiles/<path:filename>")
     def api_tiles_file(filename: str):
-        """Serve an individual GLB tile file."""
-        from flask import send_from_directory
-
-        td = cache.get("tiles_dir")
-        if td is None:
-            return jsonify({"error": "No tiles directory"}), 404
-        return send_from_directory(str(td), filename)
+        return _api_tiles_file_impl(cache, cache_lock, filename)
 
     @app.route("/api/phantom/<name>.glb")
     def serve_phantom_glb(name):
-        """Serve a GLB phantom file."""
-        import re
-
-        if not re.match(r"^[a-zA-Z0-9_-]+$", name):
-            abort(400, "Invalid phantom name")
-        data_dir_path = Path(cache.get("data_dir", "data"))
-        phantom_dir_cfg = cache["config"]["body"].get("phantom_dir", "")
-        if phantom_dir_cfg and Path(phantom_dir_cfg).is_absolute():
-            phantom_dir = Path(phantom_dir_cfg)
-        else:
-            phantom_dir = data_dir_path / "phantoms"
-        path = (phantom_dir / f"{name}.glb").resolve()
-        # Guard against symlink escape: resolved path must stay inside phantom_dir
-        if not path.is_relative_to(phantom_dir.resolve()):
-            abort(403, "Path escapes phantom directory")
-        if not path.is_file():
-            abort(404)
-        return send_file(path, mimetype="model/gltf-binary", conditional=True, max_age=3600)
+        return _serve_phantom_glb_impl(cache, cache_lock, name)
 
     @app.route("/api/clear-cache", methods=["POST"])
     def api_clear_cache():
-        """Clear all cached voxel, scene, and MIMO data."""
-        return _handle_clear_cache(app, cache, cache_lock)
+        return _handle_clear_cache(cache, cache_lock)
 
     @app.route("/api/config")
     def api_config():
-        """Return available configuration options."""
-        return _handle_config(cache)
+        return _handle_config(cache, cache_lock)

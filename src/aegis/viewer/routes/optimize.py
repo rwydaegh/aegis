@@ -95,58 +95,66 @@ def _parse_rt_config(params: dict, cache: dict) -> dict[str, Any]:
     }
 
 
+def _api_optimize_impl(app: Flask, cache: dict, cache_lock) -> Response:
+    params = request.get_json(silent=True) or {}
+    mode = params.get("mode")
+    if not mode:
+        return jsonify({"error": "mode is required"}), 400
+
+    try:
+        config = _build_config(params, app, cache, cache_lock)
+    except (ValueError, KeyError) as e:
+        return jsonify({"error": str(e)}), 400
+
+    sid = _get_session_id()
+    cancel = threading.Event()
+    with _cancel_lock:
+        if sid in _cancel_events:
+            _cancel_events[sid].set()
+        _cancel_events[sid] = cancel
+
+    def generate():
+        try:
+            for result in run_optimization(config, cancel_event=cancel):
+                event = _json_safe(result)
+                if "sab" in event:
+                    event["sab_b64"] = _encode_sab(result["sab"])
+                    del event["sab"]
+                yield f"data: {json.dumps(event)}\n\n"
+        except Exception as e:
+            logger.exception("Optimization error")
+            yield f"data: {json.dumps({'error': True, 'message': str(e)})}\n\n"
+        finally:
+            with _cancel_lock:
+                _cancel_events.pop(sid, None)
+
+    return Response(
+        generate(),
+        mimetype="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+def _api_optimize_cancel_impl(cache: dict, cache_lock) -> Response:
+    sid = _get_session_id()
+    with _cancel_lock:
+        ev = _cancel_events.get(sid)
+        if ev:
+            ev.set()
+            return jsonify({"cancelled": True})
+    return jsonify({"cancelled": False})
+
+
 def register(app: Flask, cache: dict, cache_lock) -> None:
     """Attach optimization routes to app."""
 
     @app.route("/api/optimize", methods=["POST"])
     def api_optimize():
-        params = request.get_json(silent=True) or {}
-        mode = params.get("mode")
-        if not mode:
-            return jsonify({"error": "mode is required"}), 400
-
-        try:
-            config = _build_config(params, app, cache, cache_lock)
-        except (ValueError, KeyError) as e:
-            return jsonify({"error": str(e)}), 400
-
-        sid = _get_session_id()
-        cancel = threading.Event()
-        with _cancel_lock:
-            if sid in _cancel_events:
-                _cancel_events[sid].set()
-            _cancel_events[sid] = cancel
-
-        def generate():
-            try:
-                for result in run_optimization(config, cancel_event=cancel):
-                    event = _json_safe(result)
-                    if "sab" in event:
-                        event["sab_b64"] = _encode_sab(result["sab"])
-                        del event["sab"]
-                    yield f"data: {json.dumps(event)}\n\n"
-            except Exception as e:
-                logger.exception("Optimization error")
-                yield f"data: {json.dumps({'error': True, 'message': str(e)})}\n\n"
-            finally:
-                with _cancel_lock:
-                    _cancel_events.pop(sid, None)
-
-        return Response(
-            generate(),
-            mimetype="text/event-stream",
-            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-        )
+        return _api_optimize_impl(app, cache, cache_lock)
 
     @app.route("/api/optimize/cancel", methods=["POST"])
     def api_optimize_cancel():
-        sid = _get_session_id()
-        with _cancel_lock:
-            ev = _cancel_events.get(sid)
-            if ev:
-                ev.set()
-                return jsonify({"cancelled": True})
-        return jsonify({"cancelled": False})
+        return _api_optimize_cancel_impl(cache, cache_lock)
 
 
 def _build_config(params: dict, app: Flask, cache: dict, cache_lock) -> dict:

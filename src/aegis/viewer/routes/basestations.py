@@ -312,6 +312,19 @@ def _handle_basestations_load(cache: dict, cache_lock: threading.RLock):
     )
 
 
+def _handle_basestations_list(cache: dict, cache_lock: threading.RLock):
+    """Implementation for GET /api/basestations/list."""
+    with cache_lock:
+        basestations = scoped_cache_get(cache, "basestations", [])
+
+    return jsonify(
+        {
+            "count": len(basestations),
+            "basestations": [_bs_summary(bs) for bs in basestations],
+        }
+    )
+
+
 def _handle_basestations_compute(cache: dict, cache_lock: threading.RLock):
     """Implementation for POST /api/basestations/compute."""
     from aegis.basestation.adapter import paths_from_basestations
@@ -690,15 +703,7 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
     @app.route("/api/basestations/list")
     def api_basestations_list():
         """List currently loaded base stations."""
-        with cache_lock:
-            basestations = scoped_cache_get(cache, "basestations", [])
-
-        return jsonify(
-            {
-                "count": len(basestations),
-                "basestations": [_bs_summary(bs) for bs in basestations],
-            }
-        )
+        return _handle_basestations_list(cache, cache_lock)
 
     @app.route("/api/basestations/compute", methods=["POST"])
     def api_basestations_compute():
