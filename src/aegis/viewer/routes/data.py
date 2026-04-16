@@ -54,13 +54,8 @@ def _api_viewer_config_impl(cache: dict, cache_lock) -> Response:
     return jsonify(cache["config"])
 
 
-def _handle_export_config(cache, cache_lock):
-    """Implementation for /api/export-config."""
-    with cache_lock:
-        base = copy.deepcopy(cache["config"])
-    interactive = request.get_json(silent=True) or {}
-
-    # Map interactive state (camelCase) to config paths
+def _apply_basic_overrides(base: dict, interactive: dict) -> None:
+    """Map simple interactive fields to their config paths."""
     if "freqGhz" in interactive:
         base["dosimetry"]["freq_hz"] = interactive["freqGhz"] * 1e9
     if "powerDbm" in interactive:
@@ -78,26 +73,28 @@ def _handle_export_config(cache, cache_lock):
     if "wireframe" in interactive:
         base["body"]["wireframe"] = interactive["wireframe"]
 
-    # Fidelity level from mode + toggles
-    if "mode" in interactive:
-        mode = interactive["mode"]
-        if mode == "bound":
-            base["dosimetry"]["default_level"] = 0
-        elif mode == "aggregate":
-            base["dosimetry"]["default_level"] = 1
-        else:
-            level = 2
-            if interactive.get("fresnel"):
-                level = 3
-            if interactive.get("polarisation"):
-                level = 4
-            if interactive.get("curvature"):
-                level = 5
-            if interactive.get("diffraction"):
-                level = 6
-            base["dosimetry"]["default_level"] = level
 
-    # RT config
+def _resolve_fidelity_level(interactive: dict) -> int:
+    """Resolve the fidelity level from mode + correction toggles."""
+    mode = interactive["mode"]
+    if mode == "bound":
+        return 0
+    if mode == "aggregate":
+        return 1
+    level = 2
+    if interactive.get("fresnel"):
+        level = 3
+    if interactive.get("polarisation"):
+        level = 4
+    if interactive.get("curvature"):
+        level = 5
+    if interactive.get("diffraction"):
+        level = 6
+    return level
+
+
+def _apply_rt_overrides(base: dict, interactive: dict) -> None:
+    """Map ray tracer interactive fields to config."""
     if "rtSource" in interactive:
         base["raytracer"]["default_source"] = interactive["rtSource"]
     if "rtMaxOrder" in interactive:
@@ -105,19 +102,37 @@ def _handle_export_config(cache, cache_lock):
     if "rtConfig" in interactive:
         base["raytracer"].update(interactive["rtConfig"])
 
-    # Stochastic channel
+
+def _apply_stochastic_overrides(base: dict, interactive: dict) -> None:
+    """Map stochastic channel interactive fields to config."""
     if "stochasticPreset" in interactive:
         base["dosimetry"]["stochastic"]["default_preset"] = interactive["stochasticPreset"]
     if "stochasticSeed" in interactive:
         base["dosimetry"]["stochastic"]["default_seed"] = interactive["stochasticSeed"]
 
-    # Display
+
+def _apply_display_overrides(base: dict, interactive: dict) -> None:
+    """Map display-related interactive fields to config."""
     if "exposureScenario" in interactive:
         base["dosimetry"]["exposure_scenario"] = interactive["exposureScenario"]
     if "legendScale" in interactive:
         base["dosimetry"]["display_mode"] = interactive["legendScale"]
     if "dynamicRangeDb" in interactive:
         base["dosimetry"]["dynamic_range_db"] = interactive["dynamicRangeDb"]
+
+
+def _handle_export_config(cache, cache_lock):
+    """Implementation for /api/export-config."""
+    with cache_lock:
+        base = copy.deepcopy(cache["config"])
+    interactive = request.get_json(silent=True) or {}
+
+    _apply_basic_overrides(base, interactive)
+    if "mode" in interactive:
+        base["dosimetry"]["default_level"] = _resolve_fidelity_level(interactive)
+    _apply_rt_overrides(base, interactive)
+    _apply_stochastic_overrides(base, interactive)
+    _apply_display_overrides(base, interactive)
 
     return jsonify(base)
 

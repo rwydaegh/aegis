@@ -157,10 +157,102 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         return _api_optimize_cancel_impl(cache, cache_lock)
 
 
+_VALID_MODES = {"mimo_peak", "tilt_power", "placement"}
+
+
+def _resolve_mimo_g_tilde(params: dict, cache: dict, cache_lock) -> np.ndarray:
+    """Resolve the MIMO body channel matrix G_tilde from params or cache."""
+    if "G_tilde_real" in params:
+        G_real = np.array(params["G_tilde_real"])
+        G_imag = np.array(params["G_tilde_imag"])
+        return G_real + 1j * G_imag
+
+    with cache_lock:
+        scene = scoped_cache_get(cache, "mimo_scene")
+    if scene is None:
+        raise ValueError("No MIMO scene cached. Run /api/mimo/compute first.")
+    # G_tilde lives on each UserState, not on the scene itself.
+    # Use the focused user's G_tilde (or first user with one).
+    user_id = params.get("user_id")
+    for u in scene.users:
+        if user_id and u.config.user_id != user_id:
+            continue
+        if u.G_tilde is not None:
+            return u.G_tilde
+    raise ValueError("No body channel (G_tilde) cached. Run /api/mimo/compute first.")
+
+
+def _resolve_mimo_x_init(params: dict, G_tilde: np.ndarray) -> np.ndarray:
+    """Resolve the initial precoder vector from params or default to first steering vector."""
+    x_real = np.array(params.get("x_init_real", []))
+    x_imag = np.array(params.get("x_init_imag", []))
+    if x_real.size > 0:
+        return x_real + 1j * x_imag
+    x_init = G_tilde[0, 0, :]
+    norm = np.linalg.norm(x_init)
+    if norm > 0:
+        x_init = x_init / norm
+    return x_init
+
+
+def _build_mimo_peak_config(config: dict, params: dict, cache: dict, cache_lock) -> None:
+    """Populate config for mimo_peak mode."""
+    config["G_tilde"] = _resolve_mimo_g_tilde(params, cache, cache_lock)
+    config["x_init"] = _resolve_mimo_x_init(params, config["G_tilde"])
+    config["p_max"] = params.get("p_max", 1.0)
+    config["signal_threshold"] = params.get("signal_threshold", 0.0)
+
+
+def _build_tilt_power_config(config: dict, params: dict, cache: dict) -> None:
+    """Populate config for tilt_power mode."""
+    last_result = scoped_cache_get(cache, "_last_dosimetry_result")
+    last_body = scoped_cache_get(cache, "_last_dosimetry_body")
+    last_paths = scoped_cache_get(cache, "_last_rt_paths")
+    if last_result is None or last_body is None:
+        raise ValueError("No dosimetry result cached. Run /api/compute first.")
+    if last_paths is None:
+        raise ValueError("No RT paths cached. Run an RT compute (/api/compute/rt) first.")
+    config["paths"] = last_paths
+    config["normals"] = np.array(last_body.normals)
+    config["antenna_direction"] = np.array(params.get("antenna_direction", [0, 0, -1]))
+    config["tilt_init_deg"] = params.get("tilt_init_deg", 0.0)
+    config["power_init_dbm"] = params.get("power_init_dbm", 60.0)
+    config["icnirp_limit"] = params.get("icnirp_limit", 20.0)
+
+    last_stats = scoped_cache_get(cache, "_last_dosimetry_stats", {}) or {}
+    config["T0"] = params.get("T0", last_stats.get("T0", 1.0))
+
+
+def _build_placement_config(config: dict, params: dict, app: Flask, cache: dict, cache_lock) -> None:
+    """Populate config for placement mode."""
+    config["center"] = np.array(params.get("center", [5, 0, 3]))
+
+    grid_size = _safe_int(params.get("grid_size", 5), 5)
+    grid_size = max(1, min(grid_size, 50))
+    config["grid_size"] = grid_size
+
+    grid_spacing = float(params.get("grid_spacing", 2.0))
+    grid_spacing = max(0.1, min(grid_spacing, 500.0))
+    config["grid_spacing"] = grid_spacing
+
+    # Ensure max_iters covers the full grid so placement never truncates
+    total_candidates = grid_size * grid_size
+    if config["max_iters"] < total_candidates:
+        config["max_iters"] = total_candidates
+
+    config["constraint_axis"] = params.get("constraint_axis")
+    config["constraint_value"] = params.get("constraint_value")
+    config["evaluate_fn"] = _build_placement_evaluate_fn(
+        params,
+        app,
+        cache,
+        cache_lock,
+    )
+
+
 def _build_config(params: dict, app: Flask, cache: dict, cache_lock) -> dict:
     """Parse request params into optimizer config dict."""
     mode = params["mode"]
-    _VALID_MODES = {"mimo_peak", "tilt_power", "placement"}
     if mode not in _VALID_MODES:
         raise ValueError(f"mode must be one of {sorted(_VALID_MODES)}")
 
@@ -169,90 +261,102 @@ def _build_config(params: dict, app: Flask, cache: dict, cache_lock) -> dict:
     config: dict[str, Any] = {"mode": mode, "max_iters": max_iters}
 
     if mode == "mimo_peak":
-        if "G_tilde_real" in params:
-            G_real = np.array(params["G_tilde_real"])
-            G_imag = np.array(params["G_tilde_imag"])
-            config["G_tilde"] = G_real + 1j * G_imag
-        else:
-            with cache_lock:
-                scene = scoped_cache_get(cache, "mimo_scene")
-            if scene is None:
-                raise ValueError("No MIMO scene cached. Run /api/mimo/compute first.")
-            # G_tilde lives on each UserState, not on the scene itself.
-            # Use the focused user's G_tilde (or first user with one).
-            user_id = params.get("user_id")
-            G_tilde = None
-            for u in scene.users:
-                if user_id and u.config.user_id != user_id:
-                    continue
-                if u.G_tilde is not None:
-                    G_tilde = u.G_tilde
-                    break
-            if G_tilde is None:
-                raise ValueError("No body channel (G_tilde) cached. Run /api/mimo/compute first.")
-            config["G_tilde"] = G_tilde
-
-        x_real = np.array(params.get("x_init_real", []))
-        x_imag = np.array(params.get("x_init_imag", []))
-        if x_real.size > 0:
-            config["x_init"] = x_real + 1j * x_imag
-        else:
-            G = config["G_tilde"]
-            config["x_init"] = G[0, 0, :]
-            norm = np.linalg.norm(config["x_init"])
-            if norm > 0:
-                config["x_init"] = config["x_init"] / norm
-
-        config["p_max"] = params.get("p_max", 1.0)
-        config["signal_threshold"] = params.get("signal_threshold", 0.0)
-
+        _build_mimo_peak_config(config, params, cache, cache_lock)
     elif mode == "tilt_power":
-        last_result = scoped_cache_get(cache, "_last_dosimetry_result")
-        last_body = scoped_cache_get(cache, "_last_dosimetry_body")
-        last_paths = scoped_cache_get(cache, "_last_rt_paths")
-        if last_result is None or last_body is None:
-            raise ValueError("No dosimetry result cached. Run /api/compute first.")
-        if last_paths is None:
-            raise ValueError("No RT paths cached. Run an RT compute (/api/compute/rt) first.")
-        config["paths"] = last_paths
-        config["normals"] = np.array(last_body.normals)
-        config["antenna_direction"] = np.array(params.get("antenna_direction", [0, 0, -1]))
-        config["tilt_init_deg"] = params.get("tilt_init_deg", 0.0)
-        config["power_init_dbm"] = params.get("power_init_dbm", 60.0)
-        config["icnirp_limit"] = params.get("icnirp_limit", 20.0)
-
-        last_stats = scoped_cache_get(cache, "_last_dosimetry_stats", {}) or {}
-        config["T0"] = params.get("T0", last_stats.get("T0", 1.0))
-
+        _build_tilt_power_config(config, params, cache)
     elif mode == "placement":
-        config["center"] = np.array(params.get("center", [5, 0, 3]))
-
-        grid_size = _safe_int(params.get("grid_size", 5), 5)
-        grid_size = max(1, min(grid_size, 50))
-        config["grid_size"] = grid_size
-
-        grid_spacing = float(params.get("grid_spacing", 2.0))
-        grid_spacing = max(0.1, min(grid_spacing, 500.0))
-        config["grid_spacing"] = grid_spacing
-
-        # Ensure max_iters covers the full grid so placement never truncates
-        total_candidates = grid_size * grid_size
-        if config["max_iters"] < total_candidates:
-            config["max_iters"] = total_candidates
-
-        config["constraint_axis"] = params.get("constraint_axis")
-        config["constraint_value"] = params.get("constraint_value")
-        config["evaluate_fn"] = _build_placement_evaluate_fn(
-            params,
-            app,
-            cache,
-            cache_lock,
-        )
-
+        _build_placement_config(config, params, app, cache, cache_lock)
     else:
         raise ValueError(f"Unknown mode: {mode!r}")
 
     return config
+
+
+def _resolve_placement_body(params: dict, cache: dict, cache_lock):
+    """Fetch the body entry referenced by params, raising if missing."""
+    body_name = params.get("body_name", cache.get("default_body"))
+    with cache_lock:
+        entry = cache.get("bodies", {}).get(body_name)
+    if entry is None:
+        raise ValueError(f"Body '{body_name}' not found. Load a body first.")
+    return entry["body"]
+
+
+def _parse_placement_engine_params(params: dict):
+    """Parse tissue + engine kwargs for placement evaluation."""
+    from aegis.viewer.routes.compute import _parse_freq_and_tissue, _parse_mode_or_level
+
+    tissue, _, err = _parse_freq_and_tissue(params)
+    if err:
+        raise ValueError("Invalid tissue/frequency parameters")
+    engine_params = {
+        "mode": params.get("dosimetry_mode"),
+        "level": params.get("level"),
+        "fresnel": params.get("fresnel"),
+        "polarisation": params.get("polarisation"),
+        "curvature": params.get("curvature"),
+        "diffraction": params.get("diffraction"),
+    }
+    engine_kw, err = _parse_mode_or_level(engine_params)
+    if err:
+        raise ValueError("Invalid mode/level parameters")
+    return tissue, engine_kw
+
+
+def _build_voxel_rt_scene(cache: dict, cache_lock):
+    """Build an RT scene from cached voxel data."""
+    from aegis.viewer.raytracer import get_or_build_voxel_scene
+    from aegis.viewer.scene_data import extract_exterior, prepare_for_raytracing
+
+    with cache_lock:
+        vp = cache["voxel_positions"]
+        vs = cache.get("voxel_sizes")
+        vm = cache.get("voxel_materials")
+        cfg = cache.get("config", {})
+
+    z_up_pos, gc, dominant_size = prepare_for_raytracing(vp, vs)
+    ext_mask = extract_exterior(gc)
+    ext_pos = z_up_pos[ext_mask]
+    ext_grid = gc[ext_mask]
+    ext_mats = [vm[i] for i in np.nonzero(ext_mask)[0]] if vm is not None else None
+    material_colors = cfg.get("voxels", {}).get("material_colors")
+    return get_or_build_voxel_scene(
+        ext_pos,
+        ext_grid,
+        voxel_size=dominant_size,
+        materials=ext_mats,
+        material_colors=material_colors,
+    )
+
+
+def _resolve_placement_rt_scene(params: dict, cache: dict, cache_lock):
+    """Resolve an RT scene for placement once, returning (rt_scene, scene_path).
+
+    rt_scene is None when the caller should fall back to a user-supplied
+    scene_path or to free-space propagation.
+    """
+    from aegis.viewer.routes.compute import _validate_scene_path
+
+    scene_path = params.get("scene_path") or None
+    if scene_path and not _validate_scene_path(scene_path):
+        raise ValueError("Invalid scene path. Use /api/scenes to list available scenes.")
+
+    if scene_path:
+        return None, scene_path
+
+    with cache_lock:
+        has_voxels = cache.get("voxel_positions") is not None and len(cache.get("voxel_positions", [])) > 0
+        has_env = scoped_cache_get(cache, "env_mesh") is not None
+
+    if has_voxels:
+        return _build_voxel_rt_scene(cache, cache_lock), None
+    if has_env:
+        from aegis.environment.export import to_differt_scene
+
+        with cache_lock:
+            env_mesh = scoped_cache_get(cache, "env_mesh")
+        return to_differt_scene(env_mesh), None
+    return None, None
 
 
 def _build_placement_evaluate_fn(
@@ -269,34 +373,12 @@ def _build_placement_evaluate_fn(
     from aegis.viewer.compute import _transform_body_for_viewer
     from aegis.viewer.routes.compute import (
         _build_stats_response,
-        _parse_freq_and_tissue,
-        _parse_mode_or_level,
         _run_dosimetry,
         _stats_label,
-        _validate_scene_path,
     )
 
-    body_name = params.get("body_name", cache.get("default_body"))
-    with cache_lock:
-        entry = cache.get("bodies", {}).get(body_name)
-    if entry is None:
-        raise ValueError(f"Body '{body_name}' not found. Load a body first.")
-    body = entry["body"]
-
-    tissue, _, err = _parse_freq_and_tissue(params)
-    if err:
-        raise ValueError("Invalid tissue/frequency parameters")
-    engine_params = {
-        "mode": params.get("dosimetry_mode"),
-        "level": params.get("level"),
-        "fresnel": params.get("fresnel"),
-        "polarisation": params.get("polarisation"),
-        "curvature": params.get("curvature"),
-        "diffraction": params.get("diffraction"),
-    }
-    engine_kw, err = _parse_mode_or_level(engine_params)
-    if err:
-        raise ValueError("Invalid mode/level parameters")
+    body = _resolve_placement_body(params, cache, cache_lock)
+    tissue, engine_kw = _parse_placement_engine_params(params)
 
     body_offset = np.array(params.get("body_offset", [0, 0, 0]), dtype=np.float64)
     body_rotation_y = float(params.get("body_rotation_y", 0.0))
@@ -316,51 +398,7 @@ def _build_placement_evaluate_fn(
     chunk_size = rt_cfg["chunk_size"]
 
     # Resolve RT scene once (not per eval)
-    scene_path = params.get("scene_path") or None
-    if scene_path and not _validate_scene_path(scene_path):
-        raise ValueError("Invalid scene path. Use /api/scenes to list available scenes.")
-
-    use_voxel_scene = False
-    use_env_mesh = False
-    rt_scene = None
-    with cache_lock:
-        has_voxels = cache.get("voxel_positions") is not None and len(cache.get("voxel_positions", [])) > 0
-        has_env = scoped_cache_get(cache, "env_mesh") is not None
-    if not scene_path:
-        if has_voxels:
-            use_voxel_scene = True
-        elif has_env:
-            use_env_mesh = True
-
-    if use_voxel_scene:
-        from aegis.viewer.raytracer import get_or_build_voxel_scene
-        from aegis.viewer.scene_data import extract_exterior, prepare_for_raytracing
-
-        with cache_lock:
-            vp = cache["voxel_positions"]
-            vs = cache.get("voxel_sizes")
-            vm = cache.get("voxel_materials")
-            cfg = cache.get("config", {})
-
-        z_up_pos, gc, dominant_size = prepare_for_raytracing(vp, vs)
-        ext_mask = extract_exterior(gc)
-        ext_pos = z_up_pos[ext_mask]
-        ext_grid = gc[ext_mask]
-        ext_mats = [vm[i] for i in np.nonzero(ext_mask)[0]] if vm is not None else None
-        material_colors = cfg.get("voxels", {}).get("material_colors")
-        rt_scene = get_or_build_voxel_scene(
-            ext_pos,
-            ext_grid,
-            voxel_size=dominant_size,
-            materials=ext_mats,
-            material_colors=material_colors,
-        )
-    elif use_env_mesh:
-        from aegis.environment.export import to_differt_scene
-
-        with cache_lock:
-            env_mesh = scoped_cache_get(cache, "env_mesh")
-        rt_scene = to_differt_scene(env_mesh)
+    rt_scene, scene_path = _resolve_placement_rt_scene(params, cache, cache_lock)
 
     def evaluate_fn(pos: np.ndarray) -> dict:
         from aegis.viewer.raytracer import (
