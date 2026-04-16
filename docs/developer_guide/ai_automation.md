@@ -1,6 +1,6 @@
 # AI automation
 
-AEGIS runs several Claude agents on GitHub Actions. They find bugs, fix them, build features, and test the production viewer around the clock. Every agent uses Claude Opus (`claude-opus-4-6`) via the `anthropics/claude-code-action` GitHub Action.
+AEGIS runs several Claude agents on GitHub Actions. They find bugs, fix them, build features, and test the production viewer around the clock. Every agent uses Claude Opus (`claude-opus-4-7`) via the `anthropics/claude-code-action` GitHub Action.
 
 ## How the pieces fit together
 
@@ -131,7 +131,7 @@ The full test matrix (Linux/Windows, Python 3.11-3.13) only runs on tag pushes v
 All agents authenticate via `CLAUDE_CODE_OAUTH_TOKEN` (OAuth, not API key). The model is set in `claude_args`:
 
 ```yaml
-claude_args: '--model claude-opus-4-6 --allowedTools "Bash(*)" "Read" "Write" "Edit" "Glob" "Grep"'
+claude_args: '--model claude-opus-4-7 --allowedTools "Bash(*)" "Read" "Write" "Edit" "Glob" "Grep"'
 ```
 
 Agent concurrency groups prevent overlapping runs of the same agent. Different agents can run in parallel.

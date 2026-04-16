@@ -3,8 +3,8 @@ version: 1
 
 # === Model routing ===
 models:
-  research: claude-opus-4-6
-  planning: claude-opus-4-6
+  research: claude-opus-4-7
+  planning: claude-opus-4-7
   execution: claude-sonnet-4-6
   execution_simple: claude-haiku-4-5-20251001
   completion: claude-sonnet-4-6

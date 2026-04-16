@@ -93,7 +93,7 @@ echo "$PROMPT" > "$PROMPT_TMPFILE"
 # Run Claude in print mode with timeout
 EXIT_CODE=0
 timeout $((TIMEOUT_MIN * 60)) claude -p \
-    --model claude-opus-4-6 \
+    --model claude-opus-4-7 \
     --allowedTools "Edit,Read,Write,Glob,Grep,Bash(*),WebSearch,WebFetch,Agent" \
     --dangerously-skip-permissions \
     < "$PROMPT_TMPFILE" \
