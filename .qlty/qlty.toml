@@ -22,6 +22,8 @@ exclude_patterns = [
   "basestations/**",
   # Presentations (one-off scripts, not production code)
   "presentations/**",
+  # Blender MCP add-on: one-off tool for preparing shipped phantoms, not production
+  "tools/blender-mcp/**",
 ]
 
 test_patterns = [
