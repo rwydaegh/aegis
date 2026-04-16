@@ -240,104 +240,114 @@ def _user_stats(user: UserState, scene: MIMOScene) -> dict:
     return stats
 
 
+def _api_mimo_compute_impl(cache: dict, cache_lock) -> Response:
+    params = request.get_json(silent=True) or {}
+
+    scene, err = _build_scene(params, cache)
+    if err is not None:
+        return err
+
+    # Resolve body meshes (only base bodies needed; compute translates them)
+    bodies = {name: entry["body"] for name, entry in cache.get("bodies", {}).items()}
+
+    try:
+        level = int(params.get("level", 7))
+    except (TypeError, ValueError):
+        return jsonify({"error": "level must be an integer"}), 400
+    if level not in (7, 8):
+        return jsonify({"error": "level must be 7 or 8 for MIMO"}), 400
+    precoder_type = str(params.get("precoder_type", "mrt"))
+    try:
+        summary = compute_mimo_scene_with_bodies(
+            scene,
+            bodies,
+            level=level,
+            precoder_type=precoder_type,
+        )
+    except Exception as exc:
+        logger.exception("MIMO compute failed")
+        return jsonify({"error": str(exc)}), 500
+
+    # Cache scene and per-user results (session-scoped)
+    with cache_lock:
+        scoped_cache_set(cache, "mimo_scene", scene)
+        scoped_cache_set(cache, "mimo_summary", summary)
+
+        results_binary: dict[str, bytes] = {}
+        results_stats: dict[str, dict] = {}
+        for user in scene.users:
+            uid = user.config.user_id
+            if user._sab_raw is not None:
+                results_binary[uid] = user._sab_raw.astype(np.float32).tobytes()
+            stats = _user_stats(user, scene)
+            results_stats[uid] = stats
+
+        scoped_cache_set(cache, "mimo_results_binary", results_binary)
+        scoped_cache_set(cache, "mimo_results_stats", results_stats)
+
+    return jsonify(summary)
+
+
+def _api_mimo_result_impl(user_id: str, cache: dict, cache_lock) -> Response:
+    results_binary = scoped_cache_get(cache, "mimo_results_binary")
+    if not results_binary or user_id not in results_binary:
+        return jsonify({"error": f"No result for user {user_id!r}"}), 404
+
+    data_bytes = results_binary[user_id]
+    stats = (scoped_cache_get(cache, "mimo_results_stats") or {}).get(user_id, {})
+
+    resp = Response(data_bytes, mimetype=_OCTET_STREAM)
+    resp.headers["X-Stats"] = _json_dumps_safe(stats)
+    resp.headers["Access-Control-Expose-Headers"] = "X-Stats"
+    return resp
+
+
+def _api_mimo_summary_impl(cache: dict, cache_lock) -> Response:
+    summary = scoped_cache_get(cache, "mimo_summary")
+    scene = scoped_cache_get(cache, "mimo_scene")
+    if summary is None or scene is None:
+        return jsonify({"error": "No MIMO results computed yet"}), 404
+
+    config = cache.get("config", {})
+    exposure_budget_mw = float(config.get("mimo", {}).get("exposure_budget_mw", 100.0))
+
+    users_out = []
+    results_stats = scoped_cache_get(cache, "mimo_results_stats", {})
+    for user in scene.users:
+        uid = user.config.user_id
+        stats = results_stats.get(uid, {})
+        p_abs_mw = stats.get("p_abs_mw", 0.0)
+        entry = {
+            "id": uid,
+            "phantom": user.config.phantom_name,
+            "position": user.config.position.tolist(),
+            "p_abs_mw": p_abs_mw,
+            "peak_sab": stats.get("peak_sab", 0.0),
+            "compliant": (stats["compliant"] if stats.get("compliant") is not None else p_abs_mw < exposure_budget_mw),
+        }
+        users_out.append(entry)
+
+    out: dict = {
+        "users": users_out,
+        "precoder": summary.get("precoder_type", "mrt"),
+        "timings": summary.get("timings", {}),
+    }
+    if summary.get("warning"):
+        out["warning"] = summary["warning"]
+    return jsonify(out)
+
+
 def register(app: Flask, cache: dict, cache_lock) -> None:
     """Attach MIMO routes to app."""
 
     @app.route("/api/mimo/compute", methods=["POST"])
     def api_mimo_compute():
-        params = request.get_json(silent=True) or {}
-
-        scene, err = _build_scene(params, cache)
-        if err is not None:
-            return err
-
-        # Resolve body meshes (only base bodies needed; compute translates them)
-        bodies = {name: entry["body"] for name, entry in cache.get("bodies", {}).items()}
-
-        try:
-            level = int(params.get("level", 7))
-        except (TypeError, ValueError):
-            return jsonify({"error": "level must be an integer"}), 400
-        if level not in (7, 8):
-            return jsonify({"error": "level must be 7 or 8 for MIMO"}), 400
-        precoder_type = str(params.get("precoder_type", "mrt"))
-        try:
-            summary = compute_mimo_scene_with_bodies(
-                scene,
-                bodies,
-                level=level,
-                precoder_type=precoder_type,
-            )
-        except Exception as exc:
-            logger.exception("MIMO compute failed")
-            return jsonify({"error": str(exc)}), 500
-
-        # Cache scene and per-user results (session-scoped)
-        with cache_lock:
-            scoped_cache_set(cache, "mimo_scene", scene)
-            scoped_cache_set(cache, "mimo_summary", summary)
-
-            results_binary: dict[str, bytes] = {}
-            results_stats: dict[str, dict] = {}
-            for user in scene.users:
-                uid = user.config.user_id
-                if user._sab_raw is not None:
-                    results_binary[uid] = user._sab_raw.astype(np.float32).tobytes()
-                stats = _user_stats(user, scene)
-                results_stats[uid] = stats
-
-            scoped_cache_set(cache, "mimo_results_binary", results_binary)
-            scoped_cache_set(cache, "mimo_results_stats", results_stats)
-
-        return jsonify(summary)
+        return _api_mimo_compute_impl(cache, cache_lock)
 
     @app.route("/api/mimo/result/<user_id>", methods=["GET"])
     def api_mimo_result(user_id: str):
-        results_binary = scoped_cache_get(cache, "mimo_results_binary")
-        if not results_binary or user_id not in results_binary:
-            return jsonify({"error": f"No result for user {user_id!r}"}), 404
-
-        data_bytes = results_binary[user_id]
-        stats = (scoped_cache_get(cache, "mimo_results_stats") or {}).get(user_id, {})
-
-        resp = Response(data_bytes, mimetype=_OCTET_STREAM)
-        resp.headers["X-Stats"] = _json_dumps_safe(stats)
-        resp.headers["Access-Control-Expose-Headers"] = "X-Stats"
-        return resp
+        return _api_mimo_result_impl(user_id, cache, cache_lock)
 
     @app.route("/api/mimo/summary", methods=["GET"])
     def api_mimo_summary():
-        summary = scoped_cache_get(cache, "mimo_summary")
-        scene = scoped_cache_get(cache, "mimo_scene")
-        if summary is None or scene is None:
-            return jsonify({"error": "No MIMO results computed yet"}), 404
-
-        config = cache.get("config", {})
-        exposure_budget_mw = float(config.get("mimo", {}).get("exposure_budget_mw", 100.0))
-
-        users_out = []
-        results_stats = scoped_cache_get(cache, "mimo_results_stats", {})
-        for user in scene.users:
-            uid = user.config.user_id
-            stats = results_stats.get(uid, {})
-            p_abs_mw = stats.get("p_abs_mw", 0.0)
-            entry = {
-                "id": uid,
-                "phantom": user.config.phantom_name,
-                "position": user.config.position.tolist(),
-                "p_abs_mw": p_abs_mw,
-                "peak_sab": stats.get("peak_sab", 0.0),
-                "compliant": (
-                    stats["compliant"] if stats.get("compliant") is not None else p_abs_mw < exposure_budget_mw
-                ),
-            }
-            users_out.append(entry)
-
-        out: dict = {
-            "users": users_out,
-            "precoder": summary.get("precoder_type", "mrt"),
-            "timings": summary.get("timings", {}),
-        }
-        if summary.get("warning"):
-            out["warning"] = summary["warning"]
-        return jsonify(out)
+        return _api_mimo_summary_impl(cache, cache_lock)
