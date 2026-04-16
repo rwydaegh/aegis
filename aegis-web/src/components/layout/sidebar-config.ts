@@ -22,7 +22,7 @@ import {
 import { RayTracingIcon } from '@/components/icons/RayTracingIcon'
 
 import ParametersPanel from '@/components/panels/ParametersPanel'
-import AnalysisPanel from '@/components/panels/AnalysisPanel'
+import AnalysisPanel from '@/components/panels/analysis'
 import EnvironmentPanel from '@/components/panels/EnvironmentPanel'
 import ScenePanel from '@/components/panels/ScenePanel'
 import MIMOPanel from '@/components/hud/MIMOPanel'
