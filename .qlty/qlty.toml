@@ -24,6 +24,10 @@ exclude_patterns = [
   "presentations/**",
   # Blender MCP add-on: one-off tool for preparing shipped phantoms, not production
   "tools/blender-mcp/**",
+  # Spin-off business docs + scripts (IDF, founder materials, one-off generators)
+  "spinoff/**",
+  # One-off phantom build script (run locally when phantom STLs are regenerated)
+  "scripts/build_phantoms.py",
 ]
 
 test_patterns = [
