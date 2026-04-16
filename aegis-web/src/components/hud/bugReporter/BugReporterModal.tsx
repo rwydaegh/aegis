@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { Bug, X, Send, Loader2, ExternalLink, ImageOff, Image as ImageIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import AnnotationCanvas, { type AnnotationCanvasHandle } from '../AnnotationCanvas'
+import AnnotationCanvas, { type AnnotationCanvasHandle } from '../annotationCanvas'
 import type { Phase, ScreenshotDimensions } from './types'
 
 interface BugReporterModalProps {
