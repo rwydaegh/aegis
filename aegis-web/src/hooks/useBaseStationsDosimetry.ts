@@ -1,12 +1,10 @@
 import { useCallback, useRef } from 'react'
-import * as Sentry from '@sentry/react'
 import { useBaseStationsStore } from '@/stores/basestations'
 import { useSimulationStore } from '@/stores/simulation'
 import { useUIStore } from '@/stores/ui'
-import { useNotificationStore } from '@/stores/notifications'
 import { computeBasestations } from '@/api/basestations'
-import { isNetworkError } from '@/api/client'
 import { toServer } from '@/api/coordinates'
+import { applyDosimetryResult, handleDosimetryError } from './_dosimetryResult'
 
 export function useBaseStationsDosimetry() {
   const abortRef = useRef<AbortController | null>(null)
@@ -43,39 +41,18 @@ export function useBaseStationsDosimetry() {
       },
       controller.signal,
     )
-      .then(({ sab, stats, arrays }) => {
+      .then(result => {
         if (gen !== generationRef.current) return
-        useNotificationStore.getState().dismissByLevel('error')
-        useSimulationStore.getState().setResults(sab, stats, {
-          sabAveraged: arrays['sab_4cm2'],
-          sinc: arrays['sinc_local'],
-          sincAveraged: arrays['sinc_wb'],
-          sab1cm2Averaged: arrays['sab_1cm2'],
-        })
+        applyDosimetryResult(result)
       })
       .catch(err => {
-        if ((err as Error).name === 'AbortError') {
-          if (controller.signal.reason === 'timeout') {
-            useNotificationStore.getState().addNotification(
-              'warning',
-              `Base station compute timed out after ${timeoutMs / 1000}s. Try selecting fewer base stations.`,
-            )
-          }
-          return
-        }
-        if (isNetworkError(err)) {
-          useNotificationStore.getState().addNotification(
-            'warning',
-            'Network error during base station compute. Check your connection and try again.',
-          )
-          return
-        }
-        Sentry.captureException(err)
-        useNotificationStore.getState().addNotification(
-          'error',
-          `Base station compute failed: ${(err as Error).message ?? err}`,
-          'This error has been reported and will be fixed automatically using AI. Most issues are fixed in less than 30 minutes.',
-        )
+        handleDosimetryError(err, {
+          controller,
+          timeoutMs,
+          label: 'Base station',
+          networkLabel: 'base station',
+          timeoutHint: 'Try selecting fewer base stations.',
+        })
       })
       .finally(() => {
         clearTimeout(timeoutId)

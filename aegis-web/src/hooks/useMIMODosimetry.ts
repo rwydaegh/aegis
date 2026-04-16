@@ -5,10 +5,15 @@ import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
 import { useNotificationStore } from '@/stores/notifications'
 import { computeMIMO, fetchMIMOResult, fetchMIMOSummary } from '@/api/mimo'
-import { fetchBody, isNetworkError } from '@/api/client'
-import * as Sentry from '@sentry/react'
+import { fetchBody } from '@/api/client'
 import * as THREE from 'three'
-import type { MIMOComputeRequest, MIMOUserConfig } from '@/api/types'
+import type { MIMOComputeRequest, MIMOComputeResponse, MIMOSummary, MIMOUserConfig } from '@/api/types'
+import { handleDosimetryError } from './_dosimetryResult'
+
+const LOW_ANTENNA_HINT =
+  'The antenna may be too close to the ground. A height of at least 0.5 m above the phantom improves channel conditioning.'
+const MIMO_TIMEOUT_MS = 120_000
+const FALLBACK_DEVICE_OFFSET: [number, number, number] = [0, 0.30, 1.4]
 
 async function loadMissingBodies(signal?: AbortSignal) {
   const { users, setUserBodyGeometry } = useMIMOStore.getState()
@@ -38,6 +43,80 @@ async function loadMissingBodies(signal?: AbortSignal) {
   await Promise.all(promises)
 }
 
+/** Snapshot the MIMO store + simulation inputs into a backend request. */
+function buildMIMORequest(
+  arrayConfig: MIMOComputeRequest['array'],
+  freqGhz: number,
+  powerDbm: number,
+  precoderType: MIMOComputeRequest['precoder_type'],
+): MIMOComputeRequest {
+  const deviceOffsets = useSceneStore.getState().capabilities?.body_device_offsets ?? {}
+
+  const mimoUsers: MIMOUserConfig[] = [...useMIMOStore.getState().users.values()].map(u => ({
+    id: u.userId,
+    phantom: u.phantomName,
+    position: u.position,
+    orientation: u.orientation,
+    device_offset: (deviceOffsets[u.phantomName] as [number, number, number]) ?? FALLBACK_DEVICE_OFFSET,
+  }))
+
+  return {
+    array: arrayConfig,
+    users: mimoUsers,
+    freq_hz: freqGhz * 1e9,
+    power_dbm: powerDbm,
+    precoder_type: precoderType,
+  }
+}
+
+/**
+ * Fan out per-user result fetches and write them into the MIMO store. Aborts
+ * cleanly if the caller's generation has been invalidated.
+ */
+async function fetchAndStoreUserResults(
+  userIds: string[],
+  signal: AbortSignal,
+  isCurrent: () => boolean,
+) {
+  const { setUserResult } = useMIMOStore.getState()
+  await Promise.all(
+    userIds.map(async (uid) => {
+      const { sab, stats } = await fetchMIMOResult(uid, signal)
+      if (!isCurrent()) return
+      setUserResult(uid, sab, stats)
+    }),
+  )
+}
+
+/**
+ * Combine the MIMO summary with the top-level response warning, commit it to
+ * the store, and surface any low-antenna warnings via the notification system.
+ */
+function applyMIMOSummary(summary: MIMOSummary, response: MIMOComputeResponse) {
+  const { setSummaryStats } = useMIMOStore.getState()
+
+  // Propagate backend warning to summary for UI display
+  if (response.warning && !summary.warning) {
+    summary.warning = response.warning
+  }
+  setSummaryStats(summary)
+
+  const warningMsg = summary.warning ?? response.warning
+  if (warningMsg) {
+    useNotificationStore.getState().addNotification('warning', warningMsg, LOW_ANTENNA_HINT)
+    return
+  }
+
+  const allZero = summary.users.every((u: { p_abs_mw: number }) => u.p_abs_mw === 0)
+  if (allZero && summary.users.length > 0) {
+    useNotificationStore.getState().addNotification(
+      'warning',
+      'All MIMO users show 0 W/m\u00b2. Try elevating the antenna above ground level.',
+      LOW_ANTENNA_HINT,
+    )
+  }
+}
+
 export function useMIMODosimetry() {
   const enabled = useMIMOStore(s => s.enabled)
   const precoderType = useMIMOStore(s => s.precoderType)
@@ -58,109 +137,47 @@ export function useMIMODosimetry() {
     const controller = new AbortController()
     abortRef.current = controller
     const gen = ++generationRef.current
+    const isCurrent = () => gen === generationRef.current
 
     // MIMO computes are heavier than single-user (scales with user count)
-    const timeoutMs = 120_000
-    const timeoutId = setTimeout(() => controller.abort('timeout'), timeoutMs)
-
+    const timeoutId = setTimeout(() => controller.abort('timeout'), MIMO_TIMEOUT_MS)
     const setComputing = useUIStore.getState().setComputing
     setComputing(true)
 
     try {
       await loadMissingBodies(controller.signal)
-      if (gen !== generationRef.current) return
+      if (!isCurrent()) return
 
-      const caps = useSceneStore.getState().capabilities
-      const deviceOffsets = caps?.body_device_offsets ?? {}
-      const fallbackOffset: [number, number, number] = [0, 0.30, 1.4]
-
-      const mimoUsers: MIMOUserConfig[] = [...useMIMOStore.getState().users.values()].map(u => ({
-        id: u.userId,
-        phantom: u.phantomName,
-        position: u.position,
-        orientation: u.orientation,
-        device_offset: (deviceOffsets[u.phantomName] as [number, number, number]) ?? fallbackOffset,
-      }))
-
-      const req: MIMOComputeRequest = {
-        array: arrayConfig,
-        users: mimoUsers,
-        freq_hz: freqGhz * 1e9,
-        power_dbm: powerDbm,
-        precoder_type: precoderType,
-      }
-
+      const req = buildMIMORequest(arrayConfig, freqGhz, powerDbm, precoderType)
       const response = await computeMIMO(req, controller.signal)
-      if (gen !== generationRef.current) return
+      if (!isCurrent()) return
       useNotificationStore.getState().dismissByLevel('error')
-
-      const { setUserResult, setSummaryStats, setPrecoderWeights } = useMIMOStore.getState()
 
       // Store precoder weights for antenna pattern visualization
       if (response.weights_real && response.weights_imag) {
-        setPrecoderWeights({ real: response.weights_real, imag: response.weights_imag })
+        useMIMOStore.getState().setPrecoderWeights({
+          real: response.weights_real,
+          imag: response.weights_imag,
+        })
       }
 
-      await Promise.all(
-        response.user_ids.map(async (uid) => {
-          const { sab, stats } = await fetchMIMOResult(uid, controller.signal)
-          if (gen !== generationRef.current) return
-          setUserResult(uid, sab, stats)
-        })
-      )
-      if (gen !== generationRef.current) return
+      await fetchAndStoreUserResults(response.user_ids, controller.signal, isCurrent)
+      if (!isCurrent()) return
 
       const summary = await fetchMIMOSummary(controller.signal)
-      if (gen === generationRef.current) {
-        // Propagate backend warning to summary for UI display
-        if (response.warning && !summary.warning) {
-          summary.warning = response.warning
-        }
-        setSummaryStats(summary)
-        const warningMsg = summary.warning ?? response.warning
-        if (warningMsg) {
-          useNotificationStore.getState().addNotification(
-            'warning',
-            warningMsg,
-            'The antenna may be too close to the ground. A height of at least 0.5 m above the phantom improves channel conditioning.'
-          )
-        } else {
-          const allZero = summary.users.every((u: { p_abs_mw: number }) => u.p_abs_mw === 0)
-          if (allZero && summary.users.length > 0) {
-            useNotificationStore.getState().addNotification(
-              'warning',
-              'All MIMO users show 0 W/m\u00b2. Try elevating the antenna above ground level.',
-              'The antenna may be too close to the ground. A height of at least 0.5 m above the phantom improves channel conditioning.'
-            )
-          }
-        }
-      }
+      if (!isCurrent()) return
+      applyMIMOSummary(summary, response)
     } catch (err) {
-      if ((err as Error).name === 'AbortError') {
-        if (controller.signal.reason === 'timeout') {
-          useNotificationStore.getState().addNotification(
-            'warning',
-            `MIMO compute timed out after ${timeoutMs / 1000}s. Try reducing the number of users or using MRT precoder.`,
-          )
-        }
-        return
-      }
-      if (isNetworkError(err)) {
-        useNotificationStore.getState().addNotification(
-          'warning',
-          'Network error during MIMO compute. Check your connection and try again.',
-        )
-        return
-      }
-      Sentry.captureException(err)
-      useNotificationStore.getState().addNotification(
-        'error',
-        `MIMO compute failed: ${(err as Error).message ?? err}`,
-        'This error has been reported and will be fixed automatically using AI. Most issues are fixed in less than 30 minutes.'
-      )
+      handleDosimetryError(err, {
+        controller,
+        timeoutMs: MIMO_TIMEOUT_MS,
+        label: 'MIMO',
+        networkLabel: 'MIMO',
+        timeoutHint: 'Try reducing the number of users or using MRT precoder.',
+      })
     } finally {
       clearTimeout(timeoutId)
-      if (gen === generationRef.current) setComputing(false)
+      if (isCurrent()) setComputing(false)
     }
   }, [enabled, precoderType, arrayConfig, freqGhz, powerDbm])
 

@@ -6,9 +6,269 @@ import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
 import { useNotificationStore } from '@/stores/notifications'
 import { useMIMOStore } from '@/stores/mimo'
-import { useAntennaStore } from '@/stores/antenna'
-import { computeDosimetry, computeVoxelRT, computeRT, computeSionnaRT, computeSionnaEnvRT, fetchLSPHeatmap, isNetworkError, type RtConfig } from '@/api/client'
+import { useAntennaStore, type AntennaConfig } from '@/stores/antenna'
+import {
+  computeDosimetry,
+  computeVoxelRT,
+  computeRT,
+  computeSionnaRT,
+  computeSionnaEnvRT,
+  fetchLSPHeatmap,
+  isNetworkError,
+  type RtConfig,
+  type ComputeResult,
+  type ComputeParams,
+  type AntennaParam,
+} from '@/api/client'
 import { toServer } from '@/api/coordinates'
+
+// -----------------------------------------------------------------------------
+// Module-scope helpers (kept outside the hook so they can be tested in isolation
+// and do not get re-created on every render).
+// -----------------------------------------------------------------------------
+
+type SimSlice = {
+  antennaPos: [number, number, number] | null
+  mode: string
+  exposureMode: string
+  fresnel: boolean
+  polarisation: boolean
+  curvature: boolean
+  diffraction: boolean
+  powerDbm: number
+  skinModel: string
+  freqGhz: number
+  bodyOffset: [number, number, number]
+  bodyRotationY: number
+  stochasticPreset: string
+  stochasticOverrides: Record<string, number>
+  stochasticSeed: number
+  enabledQuantities: Set<string>
+}
+
+type SceneSlice = {
+  bodyName: string
+  config: ReturnType<typeof useSceneStore.getState>['viewerConfig']
+  caps: ReturnType<typeof useSceneStore.getState>['capabilities']
+  pathSource: ReturnType<typeof useSceneStore.getState>['pathSource']
+  rtSource: ReturnType<typeof useSceneStore.getState>['rtSource']
+  rtMaxOrder: number
+  loadedScenePath: string
+  rtConfig: ReturnType<typeof useSceneStore.getState>['rtConfig']
+}
+
+function buildAntennasParam(enabledAntennas: AntennaConfig[]): AntennaParam[] | undefined {
+  if (enabledAntennas.length === 0) return undefined
+  return enabledAntennas.map(a => ({
+    position: [a.position[0], a.position[1] + a.height, a.position[2]] as [number, number, number],
+    power_dbm: a.powerDbm,
+    array_config: {
+      n_h: a.arrayConfig.n_h,
+      n_v: a.arrayConfig.n_v,
+      d_h_wavelengths: a.arrayConfig.d_h_wavelengths,
+      d_v_wavelengths: a.arrayConfig.d_v_wavelengths,
+      broadside: a.arrayConfig.broadside,
+      element_pattern: a.arrayConfig.element_pattern,
+    },
+  }))
+}
+
+export function buildComputeParams(
+  sim: SimSlice,
+  scene: SceneSlice,
+  exposureScenario: string,
+  enabledAntennas: AntennaConfig[],
+): ComputeParams {
+  // Send antenna tip position (not pole base) to the backend for physics
+  const poleH = scene.config?.antenna.pole_height ?? 2
+  const pos = sim.antennaPos as [number, number, number]
+  const antennaTip: [number, number, number] = [pos[0], pos[1] + poleH, pos[2]]
+
+  return {
+    antennaPos: antennaTip,
+    bodyOffset: sim.bodyOffset,
+    bodyRotationY: sim.bodyRotationY,
+    mode: sim.mode,
+    fresnel: sim.fresnel,
+    polarisation: sim.polarisation,
+    curvature: sim.curvature,
+    diffraction: sim.diffraction,
+    powerDbm: sim.powerDbm,
+    skinModel: sim.skinModel,
+    freqGhz: sim.freqGhz,
+    stochastic: scene.pathSource === 'stochastic',
+    stochasticPreset: sim.stochasticPreset,
+    stochasticOverrides: sim.stochasticOverrides,
+    stochasticSeed: sim.stochasticSeed,
+    quantities: Array.from(sim.enabledQuantities) as string[],
+    exposureScenario,
+    bodyName: scene.bodyName || undefined,
+    antennas: buildAntennasParam(enabledAntennas),
+    exposureMode: sim.exposureMode,
+  }
+}
+
+export function buildRtConfig(scene: SceneSlice): RtConfig {
+  const rc = scene.rtConfig
+  return {
+    max_depth: scene.rtMaxOrder,
+    method: rc.method,
+    rays_per_source: rc.raysPerSource,
+    max_paths_per_source: rc.maxPathsPerSource,
+    chunk_size: rc.chunkSize,
+    los: rc.los,
+    specular_reflection: rc.specularReflection,
+    diffuse_reflection: rc.diffuseReflection,
+    refraction: rc.refraction,
+    diffraction: rc.diffraction,
+    edge_diffraction: rc.edgeDiffraction,
+    diffraction_lit_region: rc.diffractionLitRegion,
+    reflection_loss_per_order: rc.reflectionLoss,
+    synthetic_array: rc.syntheticArray,
+    seed: rc.seed,
+  }
+}
+
+const NO_ENV_MESH_WARNING =
+  'No environment mesh available. Load an environment (OSM buildings, 3D Tiles, or a scene file) before using ray tracing.'
+const NO_ENV_MESH_WARNING_SIONNA =
+  'No environment mesh available. Load an environment (OSM buildings, 3D Tiles, or a scene file) before using Sionna RT.'
+
+export function selectComputeCall(
+  scene: SceneSlice,
+  params: ComputeParams,
+  rtCfg: RtConfig,
+  signal: AbortSignal,
+): { call: Promise<ComputeResult> | null; warning: string | null } {
+  if (scene.pathSource !== 'rt') {
+    return { call: computeDosimetry(params, signal), warning: null }
+  }
+
+  if (scene.rtSource === 'sionna') {
+    if (scene.loadedScenePath) {
+      return {
+        call: computeSionnaRT({ ...params, scenePath: scene.loadedScenePath, rtConfig: rtCfg }, signal),
+        warning: null,
+      }
+    }
+    if (scene.caps?.has_voxels) {
+      return { call: computeVoxelRT({ ...params, rtConfig: rtCfg }, signal), warning: null }
+    }
+    if (scene.caps?.has_env_mesh) {
+      return { call: computeSionnaEnvRT({ ...params, rtConfig: rtCfg }, signal), warning: null }
+    }
+    return { call: null, warning: NO_ENV_MESH_WARNING_SIONNA }
+  }
+
+  // DiffeRT: check available geometry before calling backend
+  if (!scene.loadedScenePath && !scene.caps?.has_voxels && !scene.caps?.has_env_mesh) {
+    return { call: null, warning: NO_ENV_MESH_WARNING }
+  }
+  return {
+    call: computeRT({ ...params, scenePath: scene.loadedScenePath || '', rtConfig: rtCfg }, signal),
+    warning: null,
+  }
+}
+
+type ComputeSuccessMeta = {
+  generation: number
+  tRequest: number
+  tResponse: number
+  isRtCall: boolean
+}
+
+export function onComputeSuccess(
+  result: ComputeResult,
+  meta: ComputeSuccessMeta,
+  generationRef: { current: number },
+): void {
+  const { sab, stats, arrays } = result
+  if (meta.generation !== generationRef.current) return // stale response
+
+  useNotificationStore.getState().dismissByLevel('error')
+  useSimulationStore.getState().setResults(sab, stats, {
+    sabAveraged: arrays['sab_4cm2'],
+    sinc: arrays['sinc_local'],
+    sincAveraged: arrays['sinc_wb'],
+    sab1cm2Averaged: arrays['sab_1cm2'],
+  })
+  if (stats.path_viz) {
+    useSceneStore.getState().setRtPaths(stats.path_viz)
+  }
+  const cviz = stats.cluster_viz
+  useSimulationStore.getState().setClusterVizData(
+    cviz?.clusters ?? null,
+    cviz?.subpaths ?? null,
+  )
+
+  // Compute timing breakdown for the UI
+  const networkMs = (meta.tResponse - meta.tRequest) - (stats.timings?.route_total_ms ?? 0)
+  const t = stats.timings
+  useUIStore.getState().setLastComputeTiming({
+    totalMs: meta.tResponse - meta.tRequest,
+    rtMs: t?.rt_ms ?? null,
+    kernelMs: t?.kernel_ms ?? 0,
+    averagingMs: (t?.avg_build_G_4cm2_ms ?? 0) + (t?.avg_matvec_4cm2_ms ?? 0),
+    complianceMs: t?.compliance_stats_ms ?? 0,
+    networkMs: Math.max(0, networkMs),
+    avgCached: (t?.avg_build_G_4cm2_ms ?? 999) < 1,
+    gpuBackend: stats.gpu_backend ?? null,
+    coldStart: stats.cold_start ?? false,
+  })
+  if (meta.isRtCall) {
+    useUIStore.getState().setGpuWarm(true)
+  }
+}
+
+export function onComputeError(
+  err: unknown,
+  timeoutMs: number,
+  controller: AbortController,
+): void {
+  const notify = useNotificationStore.getState().addNotification
+
+  if ((err as Error).name === 'AbortError') {
+    // Distinguish user-initiated abort from timeout
+    if (controller.signal.reason === 'timeout') {
+      notify(
+        'warning',
+        `Compute timed out after ${timeoutMs / 1000}s. Try reducing path count or using a lower fidelity level.`,
+      )
+    }
+    return
+  }
+  if (isNetworkError(err)) {
+    notify('warning', 'Network error during compute. Check your connection and try again.')
+    return
+  }
+  // GPU/Modal unavailable is an expected operational state, not a bug
+  const errMsg = (err as Error).message ?? ''
+  if (/GPU|Modal unavailable/i.test(errMsg)) {
+    notify('warning', 'GPU is currently unavailable. Try again later or switch to a non-RT path source.')
+    return
+  }
+  Sentry.captureException(err)
+  notify(
+    'error',
+    `Compute failed: ${(err as Error).message ?? err}`,
+    'This error has been reported and will be fixed automatically using AI. Most issues are fixed in less than 30 minutes.',
+  )
+}
+
+function shouldSkipCompute(sim: SimSlice, scene: SceneSlice): boolean {
+  // MIMO mode has its own compute pipeline (useMIMODosimetry)
+  if (useMIMOStore.getState().enabled) return true
+  // GLB phantoms handle dosimetry via AnimatedBody (inline posed mesh)
+  if (useSceneStore.getState().phantomType === 'gltf') return true
+  // Skip compute if glTF animation is playing (posed mesh changes every frame)
+  if (useSceneStore.getState().animationPlaying) return true
+  if (!sim.antennaPos || !scene.config) return true
+  return false
+}
+
+// -----------------------------------------------------------------------------
+// Hook
+// -----------------------------------------------------------------------------
 
 export function useDosimetry() {
   const sim = useSimulationStore(useShallow(s => ({
@@ -53,13 +313,7 @@ export function useDosimetry() {
   const generationRef = useRef(0)
 
   const triggerCompute = useCallback(() => {
-    // MIMO mode has its own compute pipeline (useMIMODosimetry)
-    if (useMIMOStore.getState().enabled) return
-    // GLB phantoms handle dosimetry via AnimatedBody (inline posed mesh)
-    if (useSceneStore.getState().phantomType === 'gltf') return
-    // Skip compute if glTF animation is playing (posed mesh changes every frame)
-    if (useSceneStore.getState().animationPlaying) return
-    if (!sim.antennaPos || !scene.config) return
+    if (shouldSkipCompute(sim, scene)) return
 
     // Abort any in-flight request
     abortRef.current?.abort()
@@ -75,180 +329,38 @@ export function useDosimetry() {
     const gpuWarm = useUIStore.getState().gpuWarm
     useUIStore.getState().setComputeColdStart(isRtCall && gpuWarm === false)
 
-    // Send antenna tip position (not pole base) to the backend for physics
-    const poleH = scene.config.antenna.pole_height ?? 2
-    const antennaTip: typeof sim.antennaPos = [sim.antennaPos[0], sim.antennaPos[1] + poleH, sim.antennaPos[2]]
-
-    // Build multi-antenna array from antenna store
     const antStore = useAntennaStore.getState()
     const enabledAntennas = [...antStore.antennas.values()].filter(a => a.enabled)
-    const antennasParam = enabledAntennas.length > 0 ? enabledAntennas.map(a => ({
-      position: [a.position[0], a.position[1] + a.height, a.position[2]] as [number, number, number],
-      power_dbm: a.powerDbm,
-      array_config: {
-        n_h: a.arrayConfig.n_h,
-        n_v: a.arrayConfig.n_v,
-        d_h_wavelengths: a.arrayConfig.d_h_wavelengths,
-        d_v_wavelengths: a.arrayConfig.d_v_wavelengths,
-        broadside: a.arrayConfig.broadside,
-        element_pattern: a.arrayConfig.element_pattern,
-      },
-    })) : undefined
 
-    const params = {
-      antennaPos: antennaTip,
-      bodyOffset: sim.bodyOffset,
-      bodyRotationY: sim.bodyRotationY,
-      mode: sim.mode,
-      fresnel: sim.fresnel,
-      polarisation: sim.polarisation,
-      curvature: sim.curvature,
-      diffraction: sim.diffraction,
-      powerDbm: sim.powerDbm,
-      skinModel: sim.skinModel,
-      freqGhz: sim.freqGhz,
-      stochastic: scene.pathSource === 'stochastic',
-      stochasticPreset: sim.stochasticPreset,
-      stochasticOverrides: sim.stochasticOverrides,
-      stochasticSeed: sim.stochasticSeed,
-      quantities: Array.from(sim.enabledQuantities) as string[],
-      exposureScenario,
-      bodyName: scene.bodyName || undefined,
-      antennas: antennasParam,
-      exposureMode: sim.exposureMode,
-    }
+    const params = buildComputeParams(sim, scene, exposureScenario, enabledAntennas)
+    const rtCfg = buildRtConfig(scene)
 
     // Timeout: abort after configured limit, with a distinct reason
     const timeoutMs = scene.config?.interaction?.compute_timeout_ms ?? 60000
     const timeoutId = setTimeout(() => controller.abort('timeout'), timeoutMs)
 
-    // Build RT config from store state
-    const rc = scene.rtConfig
-    const rtCfg: RtConfig = {
-      max_depth: scene.rtMaxOrder,
-      method: rc.method,
-      rays_per_source: rc.raysPerSource,
-      max_paths_per_source: rc.maxPathsPerSource,
-      chunk_size: rc.chunkSize,
-      los: rc.los,
-      specular_reflection: rc.specularReflection,
-      diffuse_reflection: rc.diffuseReflection,
-      refraction: rc.refraction,
-      diffraction: rc.diffraction,
-      edge_diffraction: rc.edgeDiffraction,
-      diffraction_lit_region: rc.diffractionLitRegion,
-      reflection_loss_per_order: rc.reflectionLoss,
-      synthetic_array: rc.syntheticArray,
-      seed: rc.seed,
-    }
+    const { call, warning } = selectComputeCall(scene, params, rtCfg, controller.signal)
 
-    // Choose endpoint based on path source
-    let computeCall: Promise<import('@/api/client').ComputeResult>
-    if (scene.pathSource === 'rt') {
-      if (scene.rtSource === 'sionna') {
-        // Sionna RT: route based on available geometry
-        if (scene.loadedScenePath) {
-          computeCall = computeSionnaRT({ ...params, scenePath: scene.loadedScenePath, rtConfig: rtCfg }, controller.signal)
-        } else if (scene.caps?.has_voxels) {
-          computeCall = computeVoxelRT({ ...params, rtConfig: rtCfg }, controller.signal)
-        } else if (scene.caps?.has_env_mesh) {
-          computeCall = computeSionnaEnvRT({ ...params, rtConfig: rtCfg }, controller.signal)
-        } else {
-          clearTimeout(timeoutId)
-          setComputing(false)
-          useNotificationStore.getState().addNotification(
-            'warning',
-            'No environment mesh available. Load an environment (OSM buildings, 3D Tiles, or a scene file) before using Sionna RT.',
-          )
-          return
-        }
-      } else {
-        // DiffeRT: check available geometry before calling backend
-        if (!scene.loadedScenePath && !scene.caps?.has_voxels && !scene.caps?.has_env_mesh) {
-          clearTimeout(timeoutId)
-          setComputing(false)
-          useNotificationStore.getState().addNotification(
-            'warning',
-            'No environment mesh available. Load an environment (OSM buildings, 3D Tiles, or a scene file) before using ray tracing.',
-          )
-          return
-        }
-        computeCall = computeRT({ ...params, scenePath: scene.loadedScenePath || '', rtConfig: rtCfg }, controller.signal)
+    if (!call) {
+      clearTimeout(timeoutId)
+      setComputing(false)
+      if (warning) {
+        useNotificationStore.getState().addNotification('warning', warning)
       }
-    } else {
-      computeCall = computeDosimetry(params, controller.signal)
+      return
     }
 
-    const t_request = performance.now()
-    computeCall
-      .then(({ sab, stats, arrays }) => {
-        const t_response = performance.now()
-        if (gen !== generationRef.current) return // stale response
-        useNotificationStore.getState().dismissByLevel('error')
-        useSimulationStore.getState().setResults(sab, stats, {
-          sabAveraged: arrays['sab_4cm2'],
-          sinc: arrays['sinc_local'],
-          sincAveraged: arrays['sinc_wb'],
-          sab1cm2Averaged: arrays['sab_1cm2'],
-        })
-        if (stats.path_viz) {
-          useSceneStore.getState().setRtPaths(stats.path_viz)
-        }
-        // Store cluster visualization data from stochastic channel
-        const cviz = stats.cluster_viz
-        useSimulationStore.getState().setClusterVizData(
-          cviz?.clusters ?? null,
-          cviz?.subpaths ?? null,
+    const tRequest = performance.now()
+    call
+      .then(result => {
+        onComputeSuccess(
+          result,
+          { generation: gen, tRequest, tResponse: performance.now(), isRtCall },
+          generationRef,
         )
-
-        // Compute timing breakdown for the UI
-        const networkMs = (t_response - t_request) - (stats.timings?.route_total_ms ?? 0)
-        const t = stats.timings
-        useUIStore.getState().setLastComputeTiming({
-          totalMs: t_response - t_request,
-          rtMs: t?.rt_ms ?? null,
-          kernelMs: t?.kernel_ms ?? 0,
-          averagingMs: (t?.avg_build_G_4cm2_ms ?? 0) + (t?.avg_matvec_4cm2_ms ?? 0),
-          complianceMs: t?.compliance_stats_ms ?? 0,
-          networkMs: Math.max(0, networkMs),
-          avgCached: (t?.avg_build_G_4cm2_ms ?? 999) < 1,
-          gpuBackend: stats.gpu_backend ?? null,
-          coldStart: stats.cold_start ?? false,
-        })
-        // GPU is now warm after successful RT
-        if (isRtCall) {
-          useUIStore.getState().setGpuWarm(true)
-        }
       })
       .catch(err => {
-        if ((err as Error).name === 'AbortError') {
-          // Distinguish user-initiated abort from timeout
-          if (controller.signal.reason === 'timeout') {
-            useNotificationStore.getState().addNotification(
-              'warning',
-              `Compute timed out after ${timeoutMs / 1000}s. Try reducing path count or using a lower fidelity level.`,
-            )
-          }
-          return
-        }
-        if (isNetworkError(err)) {
-          useNotificationStore.getState().addNotification(
-            'warning',
-            'Network error during compute. Check your connection and try again.',
-          )
-          return
-        }
-        // GPU/Modal unavailable is an expected operational state, not a bug
-        const errMsg = (err as Error).message ?? ''
-        if (/GPU|Modal unavailable/i.test(errMsg)) {
-          useNotificationStore.getState().addNotification(
-            'warning',
-            'GPU is currently unavailable. Try again later or switch to a non-RT path source.',
-          )
-          return
-        }
-        Sentry.captureException(err)
-        useNotificationStore.getState().addNotification('error', `Compute failed: ${(err as Error).message ?? err}`, 'This error has been reported and will be fixed automatically using AI. Most issues are fixed in less than 30 minutes.')
+        onComputeError(err, timeoutMs, controller)
       })
       .finally(() => {
         clearTimeout(timeoutId)
