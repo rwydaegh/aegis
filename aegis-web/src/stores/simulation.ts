@@ -117,6 +117,45 @@ interface SimulationStore {
   clearResults: () => void
 }
 
+interface FreqCrossoverPatch {
+  enabledQuantities?: Set<QuantityKey>
+  displayQuantity?: QuantityKey
+}
+
+// Crossing the 6 GHz boundary: swap SAR_wb availability.
+// Below 6 GHz SAR_wb applies; above it mmWave quantities dominate.
+function applyFreq6GhzCrossover(
+  state: { enabledQuantities: Set<QuantityKey>; displayQuantity: QuantityKey },
+  nowAbove6: boolean,
+): FreqCrossoverPatch {
+  const next = new Set(state.enabledQuantities)
+  let displayQuantity = state.displayQuantity
+  if (!nowAbove6) {
+    next.add('sar_wb')
+  } else {
+    next.delete('sar_wb')
+    if (displayQuantity === 'sar_wb') displayQuantity = 'sab'
+  }
+  return { enabledQuantities: next, displayQuantity }
+}
+
+// Crossing the 30 GHz boundary: swap 4 cm² <-> 1 cm² averaging defaults.
+function applyFreq30GhzCrossover(
+  state: { enabledQuantities: Set<QuantityKey>; displayQuantity: QuantityKey },
+  nowAbove30: boolean,
+): FreqCrossoverPatch {
+  const next = new Set(state.enabledQuantities)
+  let displayQuantity = state.displayQuantity
+  if (nowAbove30) {
+    if (next.has('sab_4cm2')) { next.delete('sab_4cm2'); next.add('sab_1cm2') }
+    if (displayQuantity === 'sab_4cm2') displayQuantity = 'sab_1cm2'
+  } else {
+    if (next.has('sab_1cm2')) { next.delete('sab_1cm2'); next.add('sab_4cm2') }
+    if (displayQuantity === 'sab_1cm2') displayQuantity = 'sab_4cm2'
+  }
+  return { enabledQuantities: next, displayQuantity }
+}
+
 export const useSimulationStore = create<SimulationStore>()(persist((set) => ({
   antennaPos: null,
   selectedPattern: null,
@@ -224,39 +263,25 @@ export const useSimulationStore = create<SimulationStore>()(persist((set) => ({
   setBodyOffset: (offset) => set({ bodyOffset: offset }),
   setBodyRotationY: (angle) => set({ bodyRotationY: angle }),
   setFreqGhz: (v) => set((state) => {
-    const wasAbove30 = state.freqGhz > 30
-    const nowAbove30 = v > 30
     const wasAbove6 = state.freqGhz > 6
     const nowAbove6 = v > 6
+    const wasAbove30 = state.freqGhz > 30
+    const nowAbove30 = v > 30
 
-    if (wasAbove30 === nowAbove30 && wasAbove6 === nowAbove6) return { freqGhz: v }
+    const crossed6 = wasAbove6 !== nowAbove6
+    const crossed30 = wasAbove30 !== nowAbove30
+    if (!crossed6 && !crossed30) return { freqGhz: v }
 
-    const next = new Set(state.enabledQuantities)
-    let displayQuantity = state.displayQuantity
-
-    // Crossing the 6 GHz boundary: swap SAR_wb availability
-    if (wasAbove6 !== nowAbove6) {
-      if (!nowAbove6) {
-        // Going below 6 GHz: enable SAR_wb so compliance panel stays useful
-        next.add('sar_wb')
-      } else {
-        // Going above 6 GHz: remove SAR_wb (not applicable at mmWave)
-        next.delete('sar_wb')
-        if (displayQuantity === 'sar_wb') displayQuantity = 'sab'
-      }
+    let working = { enabledQuantities: state.enabledQuantities, displayQuantity: state.displayQuantity }
+    if (crossed6) {
+      const patch = applyFreq6GhzCrossover(working, nowAbove6)
+      working = { enabledQuantities: patch.enabledQuantities!, displayQuantity: patch.displayQuantity! }
     }
-
-    // Crossing the 30 GHz boundary: swap 4 cm² <-> 1 cm² defaults
-    if (wasAbove30 !== nowAbove30) {
-      if (nowAbove30) {
-        if (next.has('sab_4cm2')) { next.delete('sab_4cm2'); next.add('sab_1cm2') }
-        if (displayQuantity === 'sab_4cm2') displayQuantity = 'sab_1cm2'
-      } else {
-        if (next.has('sab_1cm2')) { next.delete('sab_1cm2'); next.add('sab_4cm2') }
-        if (displayQuantity === 'sab_1cm2') displayQuantity = 'sab_4cm2'
-      }
+    if (crossed30) {
+      const patch = applyFreq30GhzCrossover(working, nowAbove30)
+      working = { enabledQuantities: patch.enabledQuantities!, displayQuantity: patch.displayQuantity! }
     }
-    return { freqGhz: v, enabledQuantities: next, displayQuantity }
+    return { freqGhz: v, enabledQuantities: working.enabledQuantities, displayQuantity: working.displayQuantity }
   }),
   setEnabledQuantities: (q) => set({ enabledQuantities: q }),
   toggleQuantity: (key) => set((state) => {
