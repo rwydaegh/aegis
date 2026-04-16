@@ -159,12 +159,11 @@ export function deserializeShareLink(encoded: string): Partial<ShareState> {
 // Apply / generate
 // ---------------------------------------------------------------------------
 
-export function applyShareState(state: Partial<ShareState>): void {
-  const sim = useSimulationStore.getState()
-  const scene = useSceneStore.getState()
-  const ui = useUIStore.getState()
+type SimStore = ReturnType<typeof useSimulationStore.getState>
+type SceneStore = ReturnType<typeof useSceneStore.getState>
+type UIStore = ReturnType<typeof useUIStore.getState>
 
-  // --- simulation store ---
+function applySimulationState(state: Partial<ShareState>, sim: SimStore): void {
   if (state.antennaPos !== undefined) sim.setAntennaPos(state.antennaPos)
   if (state.mode !== undefined) sim.setMode(state.mode as Parameters<typeof sim.setMode>[0])
   if (state.fresnel !== undefined) sim.setFresnel(state.fresnel)
@@ -184,8 +183,9 @@ export function applyShareState(state: Partial<ShareState>): void {
     sim.setEnabledQuantities(new Set(state.enabledQuantities as QuantityKey[]))
   }
   if (state.displayQuantity !== undefined) sim.setDisplayQuantity(state.displayQuantity as QuantityKey)
+}
 
-  // --- scene store ---
+function applySceneState(state: Partial<ShareState>, scene: SceneStore): void {
   if (state.bodyName !== undefined) scene.setBodyName(state.bodyName)
   if (state.pathSource !== undefined) scene.setPathSource(state.pathSource as Parameters<typeof scene.setPathSource>[0])
   if (state.rtSource !== undefined) {
@@ -200,22 +200,21 @@ export function applyShareState(state: Partial<ShareState>): void {
   if (state.sunIntensity !== undefined) scene.setSunIntensity(state.sunIntensity)
   if (state.ambientIntensity !== undefined) scene.setAmbientIntensity(state.ambientIntensity)
   if (state.cameraFov !== undefined) scene.setCameraFov(state.cameraFov)
-
-  // --- scene visibility ---
+  // scene visibility
   if (state.bodyMeshVisible !== undefined) scene.setBodyMeshVisible(state.bodyMeshVisible)
   if (state.groundPlaneVisible !== undefined) scene.setGroundPlaneVisible(state.groundPlaneVisible)
   if (state.gridVisible !== undefined) scene.setGridVisible(state.gridVisible)
   if (state.sceneGeometryVisible !== undefined) scene.setSceneGeometryVisible(state.sceneGeometryVisible)
+}
 
-  // --- camera override (applied by CameraController on mount) ---
+function applyUIState(state: Partial<ShareState>, ui: UIStore): void {
+  // camera override (applied by CameraController on mount)
   if (state.cameraPosition !== undefined && state.cameraTarget !== undefined) {
     ui.setCameraOverride({
       position: state.cameraPosition as [number, number, number],
       target: state.cameraTarget as [number, number, number],
     })
   }
-
-  // --- ui store ---
   if (state.dynamicRangeDb !== undefined) ui.setDynamicRangeDb(state.dynamicRangeDb)
   if (state.ratioMode !== undefined) ui.setRatioMode(state.ratioMode)
   if (state.exposureScenario !== undefined) {
@@ -229,39 +228,45 @@ export function applyShareState(state: Partial<ShareState>): void {
   if (state.legendScale !== undefined && state.legendScale !== ui.legendScale) {
     ui.toggleLegendScale()
   }
+}
 
-  // --- antenna store (multi-antenna) ---
-  if (state.antennas !== undefined && state.antennas.length > 0) {
-    const antStore = useAntennaStore.getState()
-    // Clear existing antennas
-    for (const id of [...antStore.antennas.keys()]) {
-      antStore.removeAntenna(id)
-    }
-    // Restore each antenna from share state
-    for (const a of state.antennas) {
-      const id = antStore.addAntenna(a.position)
-      antStore.updateAntenna(id, {
-        name: a.name,
-        height: a.height,
-        focusPoint: a.focusPoint,
-        powerDbm: a.powerDbm,
-        arrayConfig: {
-          ...a.arrayConfig,
-          element_pattern: a.arrayConfig.element_pattern as ElementPattern,
-        },
-        enabled: a.enabled,
-      })
-    }
-    // Restore selection
-    if (state.selectedAntennaId !== undefined) {
-      // Map old IDs to new IDs by position in the array
-      const newIds = [...useAntennaStore.getState().antennas.keys()]
-      const oldIdx = state.antennas.findIndex(a => a.id === state.selectedAntennaId)
-      if (oldIdx >= 0 && oldIdx < newIds.length) {
-        antStore.selectAntenna(newIds[oldIdx])
-      }
+function applyAntennaState(state: Partial<ShareState>): void {
+  if (state.antennas === undefined || state.antennas.length === 0) return
+  const antStore = useAntennaStore.getState()
+  // Clear existing antennas
+  for (const id of [...antStore.antennas.keys()]) {
+    antStore.removeAntenna(id)
+  }
+  // Restore each antenna from share state
+  for (const a of state.antennas) {
+    const id = antStore.addAntenna(a.position)
+    antStore.updateAntenna(id, {
+      name: a.name,
+      height: a.height,
+      focusPoint: a.focusPoint,
+      powerDbm: a.powerDbm,
+      arrayConfig: {
+        ...a.arrayConfig,
+        element_pattern: a.arrayConfig.element_pattern as ElementPattern,
+      },
+      enabled: a.enabled,
+    })
+  }
+  // Restore selection by mapping old IDs to new IDs by position in the array
+  if (state.selectedAntennaId !== undefined) {
+    const newIds = [...useAntennaStore.getState().antennas.keys()]
+    const oldIdx = state.antennas.findIndex(a => a.id === state.selectedAntennaId)
+    if (oldIdx >= 0 && oldIdx < newIds.length) {
+      antStore.selectAntenna(newIds[oldIdx])
     }
   }
+}
+
+export function applyShareState(state: Partial<ShareState>): void {
+  applySimulationState(state, useSimulationStore.getState())
+  applySceneState(state, useSceneStore.getState())
+  applyUIState(state, useUIStore.getState())
+  applyAntennaState(state)
 }
 
 export function generateShareUrl(): string {
