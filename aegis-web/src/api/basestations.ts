@@ -1,4 +1,4 @@
-import { ApiError, postJson, fetchWithRetry, parseJsonHeader } from './client'
+import { ApiError, postJson, fetchWithRetry, parseJsonHeader, throwIf401 } from './client'
 import type { DosimetryStats } from './types'
 import type { Archetype } from '@/utils/classifyAntenna'
 
@@ -81,6 +81,7 @@ export async function computeBasestations(
     body: JSON.stringify(params),
     signal,
   })
+  throwIf401(res, 'POST', '/api/basestations/compute')
   if (!res.ok) {
     let msg = `POST /api/basestations/compute failed: ${res.status} ${res.statusText}`
     try { const data = await res.json(); if (data?.error) msg = data.error } catch {}

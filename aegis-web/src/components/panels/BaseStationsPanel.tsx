@@ -3,7 +3,7 @@ import * as Sentry from '@sentry/react'
 import { useBaseStationsStore } from '@/stores/basestations'
 import type { AntennaColorMode } from '@/stores/basestations'
 import { loadBasestations } from '@/api/basestations'
-import { fetchWithRetry, isClientError } from '@/api/client'
+import { fetchWithRetry, isClientError, throwIf401 } from '@/api/client'
 import { useBaseStationsDosimetry } from '@/hooks/useBaseStationsDosimetry'
 import { useNotificationStore } from '@/stores/notifications'
 import AntennaDetailPanel from './AntennaDetailPanel'
@@ -75,16 +75,19 @@ export default function BaseStationsPanel() {
           radius_km: 1,
         }),
       })
+      throwIf401(resp, 'POST', '/api/environment/coverage')
       if (resp.ok) {
         const blob = await resp.blob()
         setCoverageUrl(URL.createObjectURL(blob))
       } else {
         setShowCoverage(false)
+        setCoverageUrl(null)
         useNotificationStore.getState().addNotification('warning', 'Coverage map unavailable')
       }
     } catch (err) {
       Sentry.captureException(err)
       setShowCoverage(false)
+      setCoverageUrl(null)
       useNotificationStore.getState().addNotification('warning', 'Coverage map request failed')
     } finally {
       setCoverageLoading(false)
@@ -95,8 +98,10 @@ export default function BaseStationsPanel() {
     setShowCoverage(checked)
     if (checked && basestations.length > 0) {
       void fetchCoverage()
+    } else if (!checked) {
+      setCoverageUrl(null)
     }
-  }, [setShowCoverage, basestations.length, fetchCoverage])
+  }, [setShowCoverage, setCoverageUrl, basestations.length, fetchCoverage])
 
   const selectClass =
     'w-full bg-background border border-border rounded px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring'
