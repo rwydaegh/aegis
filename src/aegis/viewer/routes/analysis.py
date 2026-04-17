@@ -391,6 +391,9 @@ def _compliance_spatial_impl(cache: dict, cache_lock) -> Response:
     except (TypeError, ValueError):
         return jsonify({"error": "bbox values must be numbers"}), 400
 
+    if not all(math.isfinite(v) for v in (lon_min, lon_max, lat_min, lat_max)):
+        return jsonify({"error": "bbox values must be finite numbers"}), 400
+
     if lon_min >= lon_max or lat_min >= lat_max:
         return (
             jsonify({"error": "bbox must have lon_min < lon_max and lat_min < lat_max"}),
