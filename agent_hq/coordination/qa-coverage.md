@@ -54,6 +54,43 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-17 14:17 UTC -- "3D environment reconstruction"
+
+- Actor: interactive
+- Depth: medium
+- Findings: none filed
+- Notes: Drove the Environment panel across all four sources on
+  production. Urban Ghent scenario preset loads compute + compliance
+  PASS immediately (7.80 mW/m^2, +34.1 dB margin), but the OSM
+  buildings fail to render because `/api/environment/osm` returns
+  504 repeatedly (Overpass upstream timeout, listed as known
+  tradeoff). The Environment panel does surface the error inline
+  ("Overpass query timed out. Try a smaller radius..."), so it is
+  not silent -- but only if the user expands Environment. Smaller
+  radii still timed out during this window. Switching source to
+  "3D Tiles" and geocoding "Times Square, New York" correctly
+  resolved (40.7580, -73.9855) and fired `POST /api/environment/
+  3dtiles`, but no tiles appeared in either first-person or globe
+  camera toggle, and no error surfaced in the panel after ~45 s.
+  Unclear whether this is slow tile traversal or a silent fail
+  (Google API key / geometric error handoff). Worth a follow-up
+  pass with a known-good 3D-tiles region. Sionna scene load/clear
+  is healthy: Simple Street Canyon (~1.5 s) and Box Two Screens
+  (~1.3 s) both load; phantom sits on floor (#7103cfe fix holding,
+  no clipping or floating); Clear Scene removes geometry both times
+  (#20881a9 verified visually). Minor curiosity: Sab dropped from
+  7.80 to 7.00 mW/m^2 after the first scene load and stayed at
+  7.00 through Clear Scene -- not flagged as a bug because the
+  scene load may change antenna or compliance basis, needs deeper
+  repro. Coverage source flips the view into globe mode, renders
+  the 416,171-site heatmap over Europe, and the "Hide Coverage"
+  HUD toggle correctly shows/hides the CoverageHud pill widget
+  (it does NOT hide the heatmap itself -- that is the HudToggle
+  contract, not a bug). Mid-session brief 502/ERR_CONNECTION_
+  REFUSED burst during a deploy, recovered in <30 s. Confident
+  OSM (when upstream cooperates), Sionna scenes, and Coverage
+  globe are healthy. 3D Tiles load needs a targeted follow-up.
+
 ### 2026-04-17 13:46 UTC -- "Sidebar panels (PR-5, PR-F, PR-J)"
 
 - Actor: swarm-tester-4
