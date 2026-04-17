@@ -20,7 +20,7 @@ Ship a logical unit of work through the full GitHub workflow: issue, branch, com
 
 1. Analyze changes with `git status -s` and `git diff --stat`
 2. Run pre-flight: ruff check, ruff format, pytest fast tests
-3. If any files in `kernels/`, `tissue/`, or `coherent/` are in the diff, run `/physics-review` first
+3. If any files in `kernels/`, `tissue/`, or `coherent/` are in the diff, review the physics changes carefully against `../monograph/summary_paper.tex`
 4. List available labels with `gh label list` and pick appropriate ones (create new labels with `gh label create` if none fit)
 5. Create GitHub issue with `gh issue create --label <labels>`
 6. Create feature branch from master
