@@ -94,7 +94,7 @@ function ModePill() {
     : modeLabel
 
   const tooltipLines = corrections.length > 0
-    ? corrections.map(c => ({ F: 'Fresnel', P: 'Polarisation', C: 'Curvature', D: 'Diffraction' })[c] ?? c)
+    ? corrections.map(c => ({ F: 'Fresnel T(θ)', P: 'Polarisation', C: 'Curvature', D: 'Diffraction' })[c] ?? c)
     : null
 
   const pill = (

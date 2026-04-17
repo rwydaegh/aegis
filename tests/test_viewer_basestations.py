@@ -288,6 +288,63 @@ class TestBasestationsLoadRoute:
             # Should not be a 500 (KeyError). 400 or other handled error is fine.
             assert resp.status_code != 500
 
+    def test_load_with_non_numeric_lat_lon_returns_400(self, viewer_app):
+        """Regression: malformed lat/lon with explicit country must return 400 not 500.
+
+        The ``country`` parameter bypasses the reverse-geocode lat/lon validator
+        in ``_geocode_if_needed``. ``_build_bbox`` must still validate cleanly.
+        """
+        with viewer_app.test_client() as c:
+            resp = c.post(
+                "/api/basestations/load",
+                json={"lat": "abc", "lon": "def", "country": "Belgium", "radius_m": 100},
+            )
+            assert resp.status_code == 400
+            assert "error" in resp.get_json()
+
+    def test_load_with_non_numeric_radius_returns_400(self, viewer_app):
+        """Regression: malformed radius_m must return 400 not 500."""
+        with viewer_app.test_client() as c:
+            resp = c.post(
+                "/api/basestations/load",
+                json={"lat": 51.05, "lon": 3.72, "radius_m": "huge", "country": "Belgium"},
+            )
+            assert resp.status_code == 400
+            assert "error" in resp.get_json()
+
+    def test_load_belgium_locale_routes_to_belgian_region(self, viewer_app):
+        """Regression (#534): Nominatim returning België/belgique must still
+        route to the Belgian region branch rather than falling through to a
+        {count: 0} response."""
+        be_address = {
+            "country": "België",
+            "country_code": "be",
+            "ISO3166-2-lvl4": "BE-BRU",
+        }
+        with (
+            viewer_app.test_client() as c,
+            patch(
+                "aegis.viewer.routes.basestations._load.geocode_location",
+                return_value=(50.85, 4.35, be_address),
+            ),
+            patch(
+                "aegis.viewer.routes.basestations._load.load_basestations_for_region",
+                return_value=[],
+            ) as mock_load,
+        ):
+            resp = c.post(
+                "/api/basestations/load",
+                json={"location": "Brussels, Belgium", "radius_m": 500},
+            )
+            assert resp.status_code == 200
+            # Must have reached the region loader with "brussels", not short-
+            # circuited to an empty response via the COUNTRY_TO_REGION fallback.
+            assert mock_load.called
+            args, _kwargs = mock_load.call_args
+            _data_dir, region, country, _bbox, _params = args
+            assert region == "brussels"
+            assert country.strip().lower() in {"belgium", "belgië", "be"}
+
 
 class TestBasestationsComputeRoute:
     """POST /api/basestations/compute"""

@@ -3,7 +3,7 @@ import * as Sentry from '@sentry/react'
 import { useBaseStationsStore } from '@/stores/basestations'
 import type { AntennaColorMode } from '@/stores/basestations'
 import { loadBasestations } from '@/api/basestations'
-import { fetchWithRetry, isClientError, throwIf401 } from '@/api/client'
+import { isClientError } from '@/api/client'
 import { useBaseStationsDosimetry } from '@/hooks/useBaseStationsDosimetry'
 import { useNotificationStore } from '@/stores/notifications'
 import AntennaDetailPanel from './AntennaDetailPanel'
@@ -43,65 +43,7 @@ export default function BaseStationsPanel() {
   const colorMode = useBaseStationsStore(s => s.colorMode)
   const setColorMode = useBaseStationsStore(s => s.setColorMode)
 
-  const showCoverage = useBaseStationsStore(s => s.showCoverage)
-  const setShowCoverage = useBaseStationsStore(s => s.setShowCoverage)
-  const setCoverageUrl = useBaseStationsStore(s => s.setCoverageUrl)
-
   const computeExposure = useBaseStationsDosimetry()
-
-  const [coverageLoading, setCoverageLoading] = useState(false)
-
-  const fetchCoverage = useCallback(async () => {
-    if (basestations.length === 0) return
-    const bs = basestations[0]
-    setCoverageLoading(true)
-    try {
-      const resp = await fetchWithRetry('/api/environment/coverage', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          stations: [{
-            lat: bs.latitude,
-            lon: bs.longitude,
-            alt: bs.height_m,
-            freq_mhz: bs.freq_mhz,
-            power_w: Math.pow(10, (bs.eirp_dbm - bs.gain_dbi) / 10) / 1000,
-            gain_dbi: bs.gain_dbi,
-            azimuth: bs.azimuth_deg,
-            tilt: bs.total_tilt_deg,
-            hbw: bs.horizontal_beamwidth_deg,
-            vbw: bs.vertical_beamwidth_deg,
-          }],
-          radius_km: 1,
-        }),
-      })
-      throwIf401(resp, 'POST', '/api/environment/coverage')
-      if (resp.ok) {
-        const blob = await resp.blob()
-        setCoverageUrl(URL.createObjectURL(blob))
-      } else {
-        setShowCoverage(false)
-        setCoverageUrl(null)
-        useNotificationStore.getState().addNotification('warning', 'Coverage map unavailable')
-      }
-    } catch (err) {
-      Sentry.captureException(err)
-      setShowCoverage(false)
-      setCoverageUrl(null)
-      useNotificationStore.getState().addNotification('warning', 'Coverage map request failed')
-    } finally {
-      setCoverageLoading(false)
-    }
-  }, [basestations, setCoverageUrl, setShowCoverage])
-
-  const handleCoverageToggle = useCallback((checked: boolean) => {
-    setShowCoverage(checked)
-    if (checked && basestations.length > 0) {
-      void fetchCoverage()
-    } else if (!checked) {
-      setCoverageUrl(null)
-    }
-  }, [setShowCoverage, setCoverageUrl, basestations.length, fetchCoverage])
 
   const selectClass =
     'w-full bg-background border border-border rounded px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring'
@@ -304,18 +246,6 @@ export default function BaseStationsPanel() {
               </span>
             ) : 'Compute exposure'}
           </button>
-
-          <label className="flex items-center gap-2 mt-3 text-xs cursor-pointer select-none">
-            <input
-              type="checkbox"
-              className="rounded border-border accent-primary h-3.5 w-3.5"
-              checked={showCoverage}
-              onChange={e => handleCoverageToggle(e.target.checked)}
-            />
-            <span className="text-foreground">
-              {coverageLoading ? 'Loading coverage...' : 'Show coverage map (CloudRF)'}
-            </span>
-          </label>
 
           <AntennaDetailPanel />
         </>
