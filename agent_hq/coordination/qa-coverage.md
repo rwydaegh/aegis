@@ -53,3 +53,38 @@ Depth guide:
 ## Log
 
 <!-- newest entries at the top -->
+
+### 2026-04-17 13:08 UTC -- "Compute orchestrator + voxel meshing + base station processing + interleaved fixes"
+
+- Actor: swarm-tester-2
+- Depth: thorough
+- Findings: 0 bugs filed
+- Notes: Exercised the compute API (`/api/compute` with `X-Stats` header) and
+  confirmed the full timings dict is populated -- `body_transform_ms`,
+  `engine_compute_ms`, `kernel_ms`, `avg_build_G_4cm2_ms`,
+  `avg_matvec_4cm2_ms`, `compliance_stats_ms`, `route_total_ms`,
+  `total_ms`. `distance_m` (5.19 m) matches antenna-to-body-center.
+  Zero-antenna edge case returns p_abs=0 with no crash. Exposure modes
+  reduce as expected (theoretical 100 % -> actual_max 72 % -> typical 36 %).
+  `corrections.curvature=true` (mode=spatial) bumps peak_sab from 0.024
+  to 0.055 W/m^2 vs Fresnel-only baseline. MSI parser
+  (`tests/test_msi_parser.py`, `tests/test_merge.py`) green: 11+14
+  passing; spot-checked `FREQUENCY 1.88-1.93 GHz` -> 1905 MHz, `GAIN
+  12.86 dBd` -> 15.01 dBi, and zenith convention detection. #535
+  Belgium geocoding verified: Ghent/Bruges/Antwerp -> `gov:flanders`,
+  Brussels -> `gov:brussels`. #543 ECBF slack-regime tests
+  (`test_ecbf_power_slack_regime`, `test_tight_constraint_invertible_Q_uses_slack_regime`)
+  pass. #537 MIMO graceful fallback observed: degenerate channels fall
+  back to MRT with a clear warning, brief production blip surfaced as a
+  friendly toast ("Network error during MIMO compute") rather than a JS
+  exception. Voxel-meshing endpoints could not be exercised end-to-end
+  because production has no voxel data loaded; both
+  `/api/voxels/hull-mesh` and `/api/compute/voxel-rt` returned clean
+  400 errors -- skipped this checklist section. Production was rolling
+  through redeploys mid-session (commit 4801fb4 -> ccf2b0f -> 09fcc4c)
+  which produced a couple of transient `ERR_CONNECTION_REFUSED`
+  bursts; these were brief and recovered on retry, not bug-worthy.
+  Confidence the orchestrator + base-station + ECBF + geocoding
+  surfaces are healthy. Voxel meshing v2 still needs an end-to-end pass
+  on a deployment that loads voxels.
+
