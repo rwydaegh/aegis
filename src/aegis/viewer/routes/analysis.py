@@ -391,6 +391,12 @@ def _compliance_spatial_impl(cache: dict, cache_lock) -> Response:
     except (TypeError, ValueError):
         return jsonify({"error": "bbox values must be numbers"}), 400
 
+    if lon_min >= lon_max or lat_min >= lat_max:
+        return (
+            jsonify({"error": "bbox must have lon_min < lon_max and lat_min < lat_max"}),
+            400,
+        )
+
     resolution = body.get("resolution", 80)
     try:
         resolution = int(resolution)
@@ -402,6 +408,11 @@ def _compliance_spatial_impl(cache: dict, cache_lock) -> Response:
         receiver_height = float(body.get("receiver_height_m", 1.5))
     except (TypeError, ValueError):
         return jsonify({"error": "receiver_height_m must be a number"}), 400
+    if not (0.0 < receiver_height <= 500.0):
+        return (
+            jsonify({"error": "receiver_height_m must be positive and <= 500 m"}),
+            400,
+        )
 
     scenario_str = body.get("scenario", "general_public")
     if scenario_str not in _VALID_SCENARIOS:

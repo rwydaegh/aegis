@@ -2,6 +2,7 @@
 
 import json
 import threading
+from unittest.mock import patch
 
 import pytest
 
@@ -13,6 +14,7 @@ from flask import Flask  # noqa: E402
 def app():
     app = Flask(__name__)
     app.config["TESTING"] = True
+    app.secret_key = "test-secret-key"
     cache = {}
     cache_lock = threading.Lock()
     from aegis.viewer.routes.analysis import register
@@ -83,3 +85,45 @@ class TestJsonSafeOutput:
         assert "Infinity" not in raw
         assert "NaN" not in raw
         json.loads(raw)
+
+
+class TestSpatialComplianceInputValidation:
+    """Reject nonsensical inputs before spending compute on them."""
+
+    class _FakeBaseStation:
+        def __init__(self, lat, lon):
+            self.latitude = lat
+            self.longitude = lon
+            self.eirp_dbm = 53.0
+            self.freq_hz = 26e9
+            self.height_m = 25.0
+
+    def _post_with_basestations(self, client, body):
+        """POST to /api/compliance/spatial with a preloaded base station."""
+        station = self._FakeBaseStation(51.05, 3.72)
+        with patch("aegis.viewer.server.scoped_cache_get", return_value=[station]):
+            return client.post("/api/compliance/spatial", json=body)
+
+    def test_rejects_inverted_bbox(self, client):
+        resp = self._post_with_basestations(client, {"bbox": [20.0, 10.0, 55.0, 50.0]})
+        assert resp.status_code == 400
+        assert "bbox" in resp.get_json()["error"].lower()
+
+    def test_rejects_zero_area_bbox(self, client):
+        resp = self._post_with_basestations(client, {"bbox": [10.0, 10.0, 50.0, 55.0]})
+        assert resp.status_code == 400
+
+    def test_rejects_negative_receiver_height(self, client):
+        resp = self._post_with_basestations(
+            client,
+            {"bbox": [3.6, 3.8, 51.0, 51.1], "receiver_height_m": -1.0},
+        )
+        assert resp.status_code == 400
+        assert "receiver_height" in resp.get_json()["error"].lower()
+
+    def test_rejects_implausibly_large_receiver_height(self, client):
+        resp = self._post_with_basestations(
+            client,
+            {"bbox": [3.6, 3.8, 51.0, 51.1], "receiver_height_m": 10000.0},
+        )
+        assert resp.status_code == 400
