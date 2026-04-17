@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import * as Sentry from '@sentry/react'
 import { useSimulationStore } from '@/stores/simulation'
-import { fetchComplianceSummary, fetchDosimetryCsv, fetchDosimetryJson, fetchDosimetryNpz, exportConfig, isNetworkError } from '@/api/client'
+import { ApiError, fetchComplianceSummary, fetchDosimetryCsv, fetchDosimetryJson, fetchDosimetryNpz, exportConfig, isNetworkError } from '@/api/client'
 import { useNotificationStore } from '@/stores/notifications'
 import { collectState } from '@/lib/shareLink'
 
@@ -19,8 +19,14 @@ function handleExportError(err: unknown, label: string) {
     useNotificationStore.getState().addNotification('warning', `Network error during ${label}. Check your connection and try again.`)
     return
   }
+  const notify = useNotificationStore.getState().addNotification
+  if (err instanceof ApiError) {
+    notify('error', `Failed to ${label}: ${err.message}`)
+    if (err.status >= 500) Sentry.captureException(err)
+    return
+  }
   Sentry.captureException(err)
-  useNotificationStore.getState().addNotification('error', `Failed to ${label}`)
+  notify('error', `Failed to ${label}`)
 }
 
 type ExportKey = 'csv' | 'json' | 'npz' | 'report' | 'config' | 'screenshot'

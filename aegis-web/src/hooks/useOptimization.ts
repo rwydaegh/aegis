@@ -206,8 +206,16 @@ export function useOptimization() {
           return
         }
       }
+      if (controller.signal.aborted) {
+        useOptimizeStore.getState().onDone('Cancelled by user')
+        addNotification('info', 'Optimization cancelled')
+      }
     } catch (err) {
-      if ((err as Error).name === 'AbortError') return
+      if ((err as Error).name === 'AbortError') {
+        useOptimizeStore.getState().onDone('Cancelled by user')
+        addNotification('info', 'Optimization cancelled')
+        return
+      }
       useOptimizeStore.getState().onError((err as Error).message)
       addNotification('error', `Optimization error: ${(err as Error).message}`)
     } finally {
