@@ -173,6 +173,7 @@ export function useOptimization() {
     abortRef.current?.abort()
     const controller = new AbortController()
     abortRef.current = controller
+    const isCurrent = () => abortRef.current === controller
 
     useOptimizeStore.getState().setRunning(true)
 
@@ -193,40 +194,51 @@ export function useOptimization() {
         if (controller.signal.aborted) break
 
         if (event.error) {
-          useOptimizeStore.getState().onError(event.message ?? 'Unknown error')
-          addNotification('error', `Optimization failed: ${event.message}`)
+          if (isCurrent()) {
+            useOptimizeStore.getState().onError(event.message ?? 'Unknown error')
+            addNotification('error', `Optimization failed: ${event.message}`)
+          }
           return
         }
 
+        if (!isCurrent()) return
         peaks = handleIterationEvent(event, peaks)
         applyPlacementMove(event, mode)
 
         if (event.done) {
-          handleDoneEvent(event, peaks)
+          if (isCurrent()) handleDoneEvent(event, peaks)
           return
         }
       }
-      if (controller.signal.aborted) {
+      if (controller.signal.aborted && isCurrent()) {
         useOptimizeStore.getState().onDone('Cancelled by user')
         addNotification('info', 'Optimization cancelled')
       }
     } catch (err) {
       if ((err as Error).name === 'AbortError') {
-        useOptimizeStore.getState().onDone('Cancelled by user')
-        addNotification('info', 'Optimization cancelled')
+        if (isCurrent()) {
+          useOptimizeStore.getState().onDone('Cancelled by user')
+          addNotification('info', 'Optimization cancelled')
+        }
         return
       }
-      useOptimizeStore.getState().onError((err as Error).message)
-      addNotification('error', `Optimization error: ${(err as Error).message}`)
+      if (isCurrent()) {
+        useOptimizeStore.getState().onError((err as Error).message)
+        addNotification('error', `Optimization error: ${(err as Error).message}`)
+      }
     } finally {
-      useOptimizeStore.getState().setRunning(false)
+      if (isCurrent()) {
+        useOptimizeStore.getState().setRunning(false)
+      }
     }
   }, [])
 
   const stop = useCallback(async () => {
+    // Writes to the optimize store are owned by the in-flight start():
+    // its AbortError catch/finally will set running=false and summary.
+    // Writing here would stomp a rapid stop()-then-start() sequence.
     abortRef.current?.abort()
     await cancelOptimization().catch(() => {})
-    useOptimizeStore.getState().setRunning(false)
   }, [])
 
   return { start, stop }
