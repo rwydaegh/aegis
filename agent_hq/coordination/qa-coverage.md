@@ -54,6 +54,39 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-17 13:12 UTC -- "Frontend stores, hooks, and physics/movement"
+
+- Actor: swarm-tester-3
+- Depth: medium
+- Findings: 0 bugs filed
+- Notes: Walked through the targeted checklist on production. Quantity
+  store transitions work both ways: 28→5 GHz enables SARwb and keeps
+  Sab(4cm²); 5→35 GHz removes SARwb and swaps to Sab(1cm²). Display
+  quantity stayed Sab across all transitions. `?scenario=open_ground`
+  loaded with expected freq, antenna position, body pose, colormap,
+  and PASS compliance. Reloading without a scenario param preserved
+  the NICT skin model I had picked -- commit 02ac45a fix visibly
+  holding. useScenario switching (Close-range, Urban Ghent) cleared
+  prior antennas, applied new freq and restriction quantity per-band,
+  and updated the URL to `?scenario=...`. Urban Ghent triggered OSM
+  ground load. useKeyboard: ArrowUp on canvas nudged antenna and
+  triggered recompute (80→12 mW/m²); Delete removed the antenna and
+  showed the "Click the scene to place an antenna" prompt. Text-input
+  guard holds: arrows in the freq spinbutton only tick the value and
+  Delete there does not kill the antenna. Follow-camera + W/D in
+  Urban Ghent walked the phantom smoothly with camera follow and
+  heatmap recompute each step -- no clipping or jitter observed.
+  Placement optimize converged in 25 iterations with 66% reduction,
+  final best applied (max went 0.085 → 0.032 W/m², margin +23.7 →
+  +30.4 dB), grid preview rendered correctly. MIMO enable flipped the
+  header to 1/1 USER and re-ran compute with the expected degraded
+  Max TX (70.4 → 56.8 dBm). Console clean (0 errors). Did not drive
+  low-height or all-zero MIMO warning paths, GPU-unavailable RT path,
+  or voxel step-up/wall-slide collisions -- those need a worked-out
+  voxel env and more canvas-coordinate plumbing than I had budget for.
+  Confident this area is healthy; those three gaps are worth a
+  targeted follow-up.
+
 ### 2026-04-17 13:08 UTC -- "Compute orchestrator + voxel meshing + base station processing + interleaved fixes"
 
 - Actor: swarm-tester-2
