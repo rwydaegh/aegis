@@ -78,7 +78,14 @@ export async function* streamOptimization(
 
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(`Optimize request failed: ${res.status} ${text}`)
+    let detail = text
+    try {
+      const parsed = JSON.parse(text) as { error?: string; message?: string }
+      detail = parsed.error ?? parsed.message ?? text
+    } catch {
+      // non-JSON body, fall back to raw text
+    }
+    throw new Error(detail || `Request failed with status ${res.status}`)
   }
 
   const reader = res.body?.getReader()
