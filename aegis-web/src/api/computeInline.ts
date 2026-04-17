@@ -1,5 +1,5 @@
 import type { ComputeResult } from './client'
-import { fetchWithRetry } from './client'
+import { fetchWithRetry, throwIf401 } from './client'
 import type { PosedMeshData } from '@/hooks/usePoseExtract'
 import { packMeshBinary } from '@/hooks/usePoseExtract'
 import { parseSabBinary } from './binary'
@@ -26,6 +26,7 @@ export async function computeWithInlineMesh(
     signal,
   })
 
+  throwIf401(res, 'POST', '/api/compute')
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }))
     throw new Error((err as Record<string, string>).error || res.statusText)

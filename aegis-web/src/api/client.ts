@@ -71,11 +71,19 @@ export async function fetchWithRetry(
 // 401 handling - imported lazily to avoid circular dependency
 // ---------------------------------------------------------------------------
 
-function handle401(): void {
+export function handle401(): void {
   // Lazy import to avoid circular dependency (useAuth imports from api/auth, not client.ts)
   import('@/hooks/useAuth').then(({ useAuth }) => {
     useAuth.getState().logout()
   })
+}
+
+/** Throw ApiError and trigger logout if the response is 401. No-op otherwise. */
+export function throwIf401(res: Response, method: string, path: string): void {
+  if (res.status === 401) {
+    handle401()
+    throw new ApiError(`${method} ${path} failed: 401 Unauthorized`, 401)
+  }
 }
 
 // ---------------------------------------------------------------------------
