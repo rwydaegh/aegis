@@ -42,6 +42,27 @@ function sourceLabel(origin: string): string {
   return origin.replace('gov:', '')
 }
 
+/** Find the most frequently occurring gov: source across provenance values. */
+function findDominantSource(
+  prov: Record<string, { origin: string }>,
+): string | null {
+  const origins = Object.values(prov).map(p => p.origin).filter(o => o.startsWith('gov:'))
+  if (origins.length === 0) return null
+  return origins.sort(
+    (a, b) => origins.filter(v => v === b).length - origins.filter(v => v === a).length,
+  )[0]
+}
+
+function fieldValueStr(bs: Record<string, unknown>, key: string): string {
+  const val = bs[key]
+  if (val === null || val === undefined) return '-'
+  if (typeof val === 'number') {
+    if (Number.isNaN(val)) return '-'
+    return val.toFixed(1)
+  }
+  return String(val)
+}
+
 function ImpactBar({ impact }: { impact: number }) {
   return (
     <span className="inline-flex gap-px ml-1">
@@ -49,9 +70,7 @@ function ImpactBar({ impact }: { impact: number }) {
         <span
           key={i}
           className="w-1 h-2.5 rounded-sm"
-          style={{
-            backgroundColor: i <= impact ? '#94a3b8' : '#1e293b',
-          }}
+          style={{ backgroundColor: i <= impact ? '#94a3b8' : '#1e293b' }}
         />
       ))}
     </span>
@@ -68,14 +87,52 @@ function TierBadge({ tier }: { tier: FidelityTier }) {
         border: `1px solid ${TIER_COLORS[tier]}40`,
       }}
     >
-      <span
-        className="w-1.5 h-1.5 rounded-full"
-        style={{ backgroundColor: TIER_COLORS[tier] }}
-      />
+      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: TIER_COLORS[tier] }} />
       {TIER_LABELS[tier]}
     </div>
   )
 }
+
+interface FieldRowProps {
+  apiKey: string
+  bs: Record<string, unknown>
+  prov: Record<string, { origin: string }>
+  hasProv: boolean
+}
+
+function FieldRow({ apiKey, bs, prov, hasProv }: FieldRowProps) {
+  const provField = API_TO_PROV[apiKey]
+  const label = FIELD_LABELS[provField] ?? apiKey
+  const unit = FIELD_UNITS[provField] ?? ''
+  const impact = FIELD_IMPACT[provField] ?? 0
+  const origin = prov[apiKey]?.origin ?? 'missing'
+  const val = fieldValueStr(bs, apiKey)
+
+  return (
+    <div className="flex items-center text-xs py-0.5">
+      <span className="text-muted-foreground w-10 shrink-0">{label}</span>
+      <span className="text-foreground w-16 shrink-0 tabular-nums">
+        {val !== '-' ? `${val} ${unit}` : '-'}
+      </span>
+      {hasProv && (
+        <>
+          <span
+            className="text-[9px] truncate max-w-20"
+            style={{ color: sourceColor(origin) }}
+            title={origin}
+          >
+            {sourceLabel(origin)}
+          </span>
+          <ImpactBar impact={impact} />
+        </>
+      )}
+    </div>
+  )
+}
+
+const CORE_FIELDS = ['eirp_dbm', 'freq_mhz', 'azimuth_deg', 'height_m', 'gain_dbi']
+const TILT_FIELDS = ['electrical_tilt_deg', 'mechanical_tilt_deg']
+const BEAM_FIELDS = ['horizontal_beamwidth_deg', 'vertical_beamwidth_deg']
 
 export default function AntennaDetailPanel() {
   const selectedIndex = useBaseStationsStore(s => s.selectedIndex)
@@ -89,7 +146,6 @@ export default function AntennaDetailPanel() {
   const prov = bs.provenance ?? {}
   const hasProv = Object.keys(prov).length > 0
 
-  // Build provenance map using parquet-style field names for tier computation
   const provMap: Record<string, string> = {}
   for (const [apiField, provField] of Object.entries(API_TO_PROV)) {
     const p = prov[apiField]
@@ -100,60 +156,10 @@ export default function AntennaDetailPanel() {
   const tier: FidelityTier = bs.fidelity_tier ?? computeFidelityTier(hasProv ? provMap : null)
   const upgradePath = computeUpgradePath(hasProv ? provMap : null)
 
-  const fieldValue = (key: string): string => {
-    const val = (bs as unknown as Record<string, unknown>)[key]
-    if (val === null || val === undefined) return '-'
-    if (typeof val === 'number') {
-      if (Number.isNaN(val)) return '-'
-      return val.toFixed(1)
-    }
-    return String(val)
-  }
-
-  // Find the dominant source for the source link
-  const sourceOrigins = Object.values(prov).map(p => p.origin).filter(o => o.startsWith('gov:'))
-  const dominantSource = sourceOrigins.length > 0
-    ? sourceOrigins.sort((a, b) =>
-        sourceOrigins.filter(v => v === b).length - sourceOrigins.filter(v => v === a).length
-      )[0]
-    : null
+  const dominantSource = findDominantSource(prov)
   const sourceInfo = dominantSource ? SOURCE_URLS[dominantSource] : null
 
-  // Group fields by tier requirement
-  const coreFields = ['eirp_dbm', 'freq_mhz', 'azimuth_deg', 'height_m', 'gain_dbi']
-  const tiltFields = ['electrical_tilt_deg', 'mechanical_tilt_deg']
-  const beamFields = ['horizontal_beamwidth_deg', 'vertical_beamwidth_deg']
-
-  const renderField = (key: string) => {
-    const provField = API_TO_PROV[key]
-    const label = FIELD_LABELS[provField] ?? key
-    const unit = FIELD_UNITS[provField] ?? ''
-    const impact = FIELD_IMPACT[provField] ?? 0
-    const p = prov[key]
-    const origin = p?.origin ?? 'missing'
-    const val = fieldValue(key)
-
-    return (
-      <div key={key} className="flex items-center text-xs py-0.5">
-        <span className="text-muted-foreground w-10 shrink-0">{label}</span>
-        <span className="text-foreground w-16 shrink-0 tabular-nums">
-          {val !== '-' ? `${val} ${unit}` : '-'}
-        </span>
-        {hasProv && (
-          <>
-            <span
-              className="text-[9px] truncate max-w-20"
-              style={{ color: sourceColor(origin) }}
-              title={origin}
-            >
-              {sourceLabel(origin)}
-            </span>
-            <ImpactBar impact={impact} />
-          </>
-        )}
-      </div>
-    )
-  }
+  const bsRecord = bs as unknown as Record<string, unknown>
 
   return (
     <div className="mt-3 p-2.5 rounded border border-border bg-muted/30">
@@ -178,37 +184,35 @@ export default function AntennaDetailPanel() {
         {bs.site_code} / {bs.antenna_label}
       </div>
 
-      {/* Fidelity tier badge */}
       <div className="mb-2.5">
         <TierBadge tier={tier} />
-        <div className="text-[10px] text-muted-foreground mt-1">
-          {TIER_DESCRIPTIONS[tier]}
-        </div>
+        <div className="text-[10px] text-muted-foreground mt-1">{TIER_DESCRIPTIONS[tier]}</div>
       </div>
 
-      {/* Field matrix - core fields */}
       <div className="mb-1">
-        {coreFields.map(renderField)}
+        {CORE_FIELDS.map(key => (
+          <FieldRow key={key} apiKey={key} bs={bsRecord} prov={prov} hasProv={hasProv} />
+        ))}
       </div>
 
-      {/* Tilt fields */}
       <div className="border-t border-border/50 pt-1 mb-1">
         <div className="text-[9px] text-muted-foreground/60 mb-0.5">Level 3+ fields</div>
-        {tiltFields.map(renderField)}
+        {TILT_FIELDS.map(key => (
+          <FieldRow key={key} apiKey={key} bs={bsRecord} prov={prov} hasProv={hasProv} />
+        ))}
       </div>
 
-      {/* Beamwidth fields */}
       <div className="border-t border-border/50 pt-1 mb-1">
         <div className="text-[9px] text-muted-foreground/60 mb-0.5">Level 5+ fields</div>
-        {beamFields.map(renderField)}
+        {BEAM_FIELDS.map(key => (
+          <FieldRow key={key} apiKey={key} bs={bsRecord} prov={prov} hasProv={hasProv} />
+        ))}
       </div>
 
-      {/* Pattern */}
       <div className="border-t border-border/50 pt-1 text-[10px] text-muted-foreground">
         Pattern: {bs.pattern_source || 'none'}
       </div>
 
-      {/* Source link */}
       {sourceInfo && (
         <div className="mt-1.5 flex items-center gap-1 text-[10px]">
           <span className="text-muted-foreground">Source:</span>
@@ -224,7 +228,6 @@ export default function AntennaDetailPanel() {
         </div>
       )}
 
-      {/* Upgrade path (collapsible) */}
       {upgradePath.length > 0 && (
         <div className="mt-2 border-t border-border/50 pt-1.5">
           <button

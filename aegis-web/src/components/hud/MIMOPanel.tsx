@@ -21,6 +21,153 @@ function complianceColor(user: UserMIMOState): string {
   return '#4ade80'
 }
 
+function complianceTitle(user: UserMIMOState): string {
+  if (user.compliant === null) return 'Not computed'
+  return user.compliant ? 'Compliant' : 'Non-compliant'
+}
+
+interface UserRowProps {
+  user: UserMIMOState
+  idx: number
+  focusedUserId: string | null
+  controlledUserId: string | null
+  onFocus: (id: string) => void
+  onControl: (id: string) => void
+  onRemove: (id: string) => void
+}
+
+function UserRow({ user, idx, focusedUserId, controlledUserId, onFocus, onControl, onRemove }: UserRowProps) {
+  const isFocused = user.userId === focusedUserId
+  const isControlled = user.userId === controlledUserId
+  return (
+    <div className="flex items-center gap-1.5 px-1.5 py-1 rounded text-xs">
+      <span
+        className="w-2 h-2 rounded-full shrink-0"
+        style={{ backgroundColor: complianceColor(user) }}
+        title={complianceTitle(user)}
+      />
+      <span className="text-muted-foreground w-3 text-right shrink-0 font-mono text-[10px]">
+        {idx + 1}
+      </span>
+      <span className="text-foreground truncate flex-1" title={user.phantomName}>
+        {user.displayName}
+      </span>
+      <span className="text-muted-foreground font-mono text-[10px] shrink-0">
+        {user.stats ? formatSab(user.stats.peak_sab) : '--'}
+      </span>
+      <button
+        onClick={() => onFocus(user.userId)}
+        className={cn(
+          'p-0.5 rounded transition-colors',
+          isFocused ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
+        )}
+        title="Focus camera"
+      >
+        <Eye className="w-3.5 h-3.5" />
+      </button>
+      <button
+        onClick={() => onControl(user.userId)}
+        className={cn(
+          'p-0.5 rounded transition-colors',
+          isControlled ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
+        )}
+        title="Keyboard control"
+      >
+        <Gamepad2 className="w-3.5 h-3.5" />
+      </button>
+      <button
+        onClick={() => onRemove(user.userId)}
+        className="p-0.5 rounded text-muted-foreground hover:text-destructive transition-colors"
+        title="Remove user"
+      >
+        <X className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  )
+}
+
+interface AddUserSectionProps {
+  availablePhantoms: string[]
+  userCount: number
+  userListLength: number
+}
+
+function AddUserSection({ availablePhantoms, userCount, userListLength }: AddUserSectionProps) {
+  const addUser = useMIMOStore(s => s.addUser)
+  const maxReached = userCount >= 8
+  return (
+    <div className="border-t border-border pt-2">
+      <p className="text-[10px] text-muted-foreground mb-1">Add user</p>
+      <div className="flex flex-wrap gap-1">
+        {availablePhantoms.map(phantom => (
+          <button
+            key={phantom}
+            disabled={maxReached}
+            onClick={() => {
+              const bodyOffset = useSimulationStore.getState().bodyOffset
+              addUser(phantom, [bodyOffset[0] + userListLength * 1.0, bodyOffset[1], bodyOffset[2]])
+            }}
+            className={cn(
+              'flex items-center gap-0.5 text-[10px] py-0.5 px-1.5 rounded border',
+              'bg-muted/50 text-muted-foreground border-border hover:bg-muted transition-colors',
+              maxReached && 'opacity-40 cursor-not-allowed',
+            )}
+            title={maxReached ? 'Maximum 8 users' : `Add ${phantom}`}
+          >
+            <Plus className="w-3 h-3" />
+            {phantom.charAt(0).toUpperCase() + phantom.slice(1)}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+interface FocusPointControlProps {
+  focusPoint: [number, number, number]
+  onSet: (fp: [number, number, number]) => void
+  onReset: () => void
+}
+
+function FocusPointControl({ focusPoint, onSet, onReset }: FocusPointControlProps) {
+  return (
+    <div className="mb-2">
+      <div className="flex items-center gap-1 mb-1">
+        <Crosshair className="w-3 h-3 text-[#00e5ff]" />
+        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Focus point</span>
+        <button
+          onClick={onReset}
+          className="ml-auto text-[9px] text-muted-foreground hover:text-foreground transition-colors"
+          title="Reset to origin"
+        >
+          reset
+        </button>
+      </div>
+      <div className="flex gap-1">
+        {(['X', 'Y', 'Z'] as const).map((axis, i) => (
+          <label key={axis} className="flex items-center gap-0.5 flex-1">
+            <span className="text-[9px] text-muted-foreground">{axis}</span>
+            <input
+              type="number"
+              step={0.5}
+              value={focusPoint[i]}
+              onChange={e => {
+                const v = parseFloat(e.target.value)
+                if (isNaN(v)) return
+                const fp: [number, number, number] = [...focusPoint]
+                fp[i] = i === 1 ? Math.max(0, v) : v
+                onSet(fp)
+              }}
+              className="w-full bg-muted/50 border border-border rounded px-1 py-0.5 text-[10px] text-foreground font-mono"
+            />
+          </label>
+        ))}
+      </div>
+      <p className="text-[9px] text-muted-foreground/60 mt-0.5">Shift+click to place</p>
+    </div>
+  )
+}
+
 export default function MIMOPanel() {
   const enabled = useMIMOStore(s => s.enabled)
   const setEnabled = useMIMOStore(s => s.setEnabled)
@@ -31,7 +178,6 @@ export default function MIMOPanel() {
   const showAllHeatmaps = useMIMOStore(s => s.showAllHeatmaps)
   const arrayConfig = useMIMOStore(s => s.arrayConfig)
 
-  const addUser = useMIMOStore(s => s.addUser)
   const removeUser = useMIMOStore(s => s.removeUser)
   const setFocusedUser = useMIMOStore(s => s.setFocusedUser)
   const setControlledUser = useMIMOStore(s => s.setControlledUser)
@@ -42,7 +188,6 @@ export default function MIMOPanel() {
   const setShowAllHeatmaps = useMIMOStore(s => s.setShowAllHeatmaps)
   const setShowArrayPattern = useMIMOStore(s => s.setShowArrayPattern)
   const caps = useSceneStore(s => s.capabilities)
-
   const summaryStats = useMIMOStore(s => s.summaryStats)
 
   const userList = [...users.values()]
@@ -52,7 +197,6 @@ export default function MIMOPanel() {
 
   return (
     <div className="bg-card/80 backdrop-blur-md rounded-lg border border-border p-3 min-w-[220px]">
-      {/* Enable checkbox */}
       <label className="flex items-center gap-2 mb-2 cursor-pointer">
         <input
           type="checkbox"
@@ -65,12 +209,10 @@ export default function MIMOPanel() {
 
       {enabled && (
         <>
-          {/* Header */}
           <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
             MIMO ({K} user{K !== 1 ? 's' : ''})
           </p>
 
-          {/* Precoder selector */}
           <div className="flex gap-1 mb-2">
             {PRECODER_OPTIONS.map(opt => {
               const needsMoreAntennas = opt.value !== 'mrt' && M < K
@@ -92,8 +234,6 @@ export default function MIMOPanel() {
                 </button>
               )
             })}
-
-            {/* Show all heatmaps toggle */}
             <button
               onClick={() => setShowAllHeatmaps(!showAllHeatmaps)}
               className={cn(
@@ -108,7 +248,6 @@ export default function MIMOPanel() {
             </button>
           </div>
 
-          {/* Array pattern toggle */}
           <label className="flex items-center gap-2 mb-2 cursor-pointer">
             <input
               type="checkbox"
@@ -119,7 +258,6 @@ export default function MIMOPanel() {
             <span className="text-[10px] text-muted-foreground">Show array pattern</span>
           </label>
 
-          {/* Degenerate channel warning */}
           {summaryStats?.warning && (
             <div className="flex items-start gap-1.5 mb-2 px-1.5 py-1.5 rounded bg-yellow-500/10 border border-yellow-500/30 text-yellow-400">
               <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
@@ -127,146 +265,32 @@ export default function MIMOPanel() {
             </div>
           )}
 
-          {/* Focus point */}
-          <div className="mb-2">
-            <div className="flex items-center gap-1 mb-1">
-              <Crosshair className="w-3 h-3 text-[#00e5ff]" />
-              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Focus point</span>
-              <button
-                onClick={() => setFocusPoint([0, 1.0, 0])}
-                className="ml-auto text-[9px] text-muted-foreground hover:text-foreground transition-colors"
-                title="Reset to origin"
-              >
-                reset
-              </button>
-            </div>
-            <div className="flex gap-1">
-              {(['X', 'Y', 'Z'] as const).map((axis, i) => (
-                <label key={axis} className="flex items-center gap-0.5 flex-1">
-                  <span className="text-[9px] text-muted-foreground">{axis}</span>
-                  <input
-                    type="number"
-                    step={0.5}
-                    value={focusPoint[i]}
-                    onChange={e => {
-                      const v = parseFloat(e.target.value)
-                      if (isNaN(v)) return
-                      const fp: [number, number, number] = [...focusPoint]
-                      fp[i] = i === 1 ? Math.max(0, v) : v
-                      setFocusPoint(fp)
-                    }}
-                    className="w-full bg-muted/50 border border-border rounded px-1 py-0.5 text-[10px] text-foreground font-mono"
-                  />
-                </label>
-              ))}
-            </div>
-            <p className="text-[9px] text-muted-foreground/60 mt-0.5">Shift+click to place</p>
-          </div>
+          <FocusPointControl
+            focusPoint={focusPoint}
+            onSet={setFocusPoint}
+            onReset={() => setFocusPoint([0, 1.0, 0])}
+          />
 
-          {/* User list */}
           <div className="space-y-1 mb-2">
-            {userList.map((user, idx) => {
-              const isFocused = user.userId === focusedUserId
-              const isControlled = user.userId === controlledUserId
-              return (
-                <div
-                  key={user.userId}
-                  className="flex items-center gap-1.5 px-1.5 py-1 rounded text-xs"
-                >
-                  {/* Compliance dot */}
-                  <span
-                    className="w-2 h-2 rounded-full shrink-0"
-                    style={{ backgroundColor: complianceColor(user) }}
-                    title={
-                      user.compliant === null
-                        ? 'Not computed'
-                        : user.compliant
-                          ? 'Compliant'
-                          : 'Non-compliant'
-                    }
-                  />
-
-                  {/* Index */}
-                  <span className="text-muted-foreground w-3 text-right shrink-0 font-mono text-[10px]">
-                    {idx + 1}
-                  </span>
-
-                  {/* Name */}
-                  <span className="text-foreground truncate flex-1" title={user.phantomName}>
-                    {user.displayName}
-                  </span>
-
-                  {/* Peak Sab */}
-                  <span className="text-muted-foreground font-mono text-[10px] shrink-0">
-                    {user.stats ? formatSab(user.stats.peak_sab) : '--'}
-                  </span>
-
-                  {/* Focus button */}
-                  <button
-                    onClick={() => setFocusedUser(user.userId)}
-                    className={cn(
-                      'p-0.5 rounded transition-colors',
-                      isFocused
-                        ? 'text-primary'
-                        : 'text-muted-foreground hover:text-foreground',
-                    )}
-                    title="Focus camera"
-                  >
-                    <Eye className="w-3.5 h-3.5" />
-                  </button>
-
-                  {/* Control button */}
-                  <button
-                    onClick={() => setControlledUser(user.userId)}
-                    className={cn(
-                      'p-0.5 rounded transition-colors',
-                      isControlled
-                        ? 'text-primary'
-                        : 'text-muted-foreground hover:text-foreground',
-                    )}
-                    title="Keyboard control"
-                  >
-                    <Gamepad2 className="w-3.5 h-3.5" />
-                  </button>
-
-                  {/* Remove button */}
-                  <button
-                    onClick={() => removeUser(user.userId)}
-                    className="p-0.5 rounded text-muted-foreground hover:text-destructive transition-colors"
-                    title="Remove user"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              )
-            })}
+            {userList.map((user, idx) => (
+              <UserRow
+                key={user.userId}
+                user={user}
+                idx={idx}
+                focusedUserId={focusedUserId}
+                controlledUserId={controlledUserId}
+                onFocus={setFocusedUser}
+                onControl={setControlledUser}
+                onRemove={removeUser}
+              />
+            ))}
           </div>
 
-          {/* Add user section */}
-          <div className="border-t border-border pt-2">
-            <p className="text-[10px] text-muted-foreground mb-1">Add user</p>
-            <div className="flex flex-wrap gap-1">
-              {availablePhantoms.map(phantom => (
-                <button
-                  key={phantom}
-                  disabled={K >= 8}
-                  onClick={() => {
-                    const bodyOffset = useSimulationStore.getState().bodyOffset
-                    addUser(phantom, [bodyOffset[0] + userList.length * 1.0, bodyOffset[1], bodyOffset[2]])
-                  }}
-                  className={cn(
-                    'flex items-center gap-0.5 text-[10px] py-0.5 px-1.5 rounded border',
-                    'bg-muted/50 text-muted-foreground border-border hover:bg-muted transition-colors',
-                    K >= 8 && 'opacity-40 cursor-not-allowed',
-                  )}
-                  title={K >= 8 ? 'Maximum 8 users' : `Add ${phantom}`}
-                >
-                  <Plus className="w-3 h-3" />
-                  {phantom.charAt(0).toUpperCase() + phantom.slice(1)}
-                </button>
-              ))}
-            </div>
-          </div>
+          <AddUserSection
+            availablePhantoms={availablePhantoms}
+            userCount={K}
+            userListLength={userList.length}
+          />
         </>
       )}
     </div>
