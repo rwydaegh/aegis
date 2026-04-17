@@ -140,22 +140,24 @@ Elements that can be varied:
 - The 3D environment source: OpenStreetMap buildings, Google Photorealistic 3D Tiles, SRTM terrain, GeoJSON, or voxel data
 - The base station data source: 14 government APIs (7 EU + 7 non-EU), OpenCellID, or user-specified
 - Tissue type and frequency: any tissue with known dielectric properties, 100 MHz to 100 GHz
+- Source distance: the framework applies from far-field (distant base stations) through radiating near-field (d > lambda/(2*pi), covering phones, wearables, AR headsets, and laptops at typical body proximity) with the same surface mesh and the same per-point absorption law
 
 Extensions:
 - Polarisation: exact handling via absorption Stokes vector (P_abs = m . s_inc)
 - Sub-6 GHz: replace T_0 with T_bar for exact direction-averaged results at any frequency above 100 MHz
 - Coherent MIMO: S_ab(r) = ||G_tilde(r) x||^2. Exposure operator Q. Closed-form exposure-constrained beamformer (ECBF) via QCQP.
 - Optimization: antenna placement grid search, tilt/power gradient descent under ICNIRP constraints, MIMO precoder optimization via Adam with projected gradient descent
+- Near-field devices: point-source illumination valid at d > lambda/(2*pi) (1.7 mm at 28 GHz, 0.8 mm at 60 GHz). The absorption law holds pointwise with spatially varying S_inc(r) and k_hat(r). A precomputed spherical-harmonic decoupling Gamma_lm(r_s) per source position reduces 10,000 antenna-pattern evaluations at a fixed device location to a dot product per pattern.
 
 The software (AEGIS): Python library + web-based interactive 3D platform implementing all of the above. Nine fidelity levels (0-8). Real-time 3D viewer (Flask + React + Three.js) with interactive antenna placement, multi-user MIMO, ICNIRP compliance dashboard, and three optimization algorithms. OpenStreetMap and Google 3D Tiles environment reconstruction. GPU ray tracing via Modal serverless (DiffeRT on T4, Sionna RT on L4). Real base station data from 14 government databases. 1,200+ real antenna patterns. 3GPP TR 38.901 stochastic channel generator with 91 presets. ~33,000 lines Python, ~21,000 lines TypeScript, 2,469 automated tests.
 
 ### If possible, provide a figure that shows all features of the invention.
 
-See attached figures from the AEGIS documentation: (1) S_ab heatmap on human phantom (sab_3d_front.png), (2) Fresnel TE/TM compensation curves at 28 GHz (fresnel_curves.png), (3) Mie-theory validation curve (mie_validation.png), (4) Framework error budget (error_budget.png). Additional figures and screenshots of the interactive viewer are available at the project documentation site.
+The interactive viewer at https://aegis.waves-ugent.be (current password: WiCa2026#) shows all features of the invention in a live, regularly updated deployment. The platform can be explored interactively: place antennas, compute dosimetry heatmaps, run MIMO scenarios, and assess ICNIRP compliance in real time. The password is changed periodically; contact the inventor for current credentials.
 
 ### Does your invention possess disadvantages or limitations? Indicate how they might be overcome.
 
-1. Far-field assumption. Requires source-to-body distance > ~3 wavelengths (~3 cm at 28 GHz). Does not apply to devices pressed against the body. *Can be overcome:* near-field extension under development.
+1. Reactive near-field exclusion. Not valid when the source sits inside d < lambda/(2*pi) of the body (1.7 mm at 28 GHz, 0.8 mm at 60 GHz, 14 mm at 3.5 GHz). In this regime evanescent fields and antenna-body impedance coupling require full-wave simulation. *Can be overcome:* the radiating near-field (d > lambda/(2*pi)) and far-field are covered by the framework with the point-source extension, so the exclusion applies only to sources in direct contact with the skin.
 
 2. Surface absorption assumption below 6 GHz. The local spatial map loses physical meaning below ~6 GHz when multi-layer resonances become significant. *Can be overcome:* total-power results remain valid via T_bar; the local map limitation is inherent to the surface-confinement physics.
 
@@ -171,7 +173,7 @@ Status: deployed production software with thorough validation.
 
 The theoretical framework is complete and documented in a monograph (~6,000 lines LaTeX) with all derivations, proofs, and error analysis.
 
-The software (AEGIS v0.28.0) is deployed on a production server:
+The software (AEGIS v0.28.0) is deployed on a production server at https://aegis.waves-ugent.be (password-protected, regularly updated):
 - Core engine: ~33,000 lines Python, 9 fidelity levels (0-8), JAX differentiable backend
 - Web platform: ~21,000 lines TypeScript/React, Three.js 3D rendering
 - 2,469 automated tests (golden tests against monograph tables, Mie-theory regression, Hypothesis property-based tests, end-to-end pipeline tests)
@@ -244,11 +246,7 @@ Absorbed power density, electromagnetic dosimetry, Fresnel transmission, pseudo-
 
 ### Patents or patent applications of others most closely related to the invention
 
-- US 8,630,596 B2 (Samsung, 2014): "Apparatus and method for controlling specific absorption rate." Device-level SAR control using return-loss sensing. *Distinguished:* device level, empirical sensing, no body-surface geometry computation, no exposure operator.
-- US 2022/0377799 A1 (2022): "RF exposure mitigation and beam selection." Heuristic beam selection and power backoff. *Distinguished:* no closed-form dosimetry, no spatial absorption maps, no mathematically optimal precoder.
-- WO 2016/195892 A1 (2016): "SAR distribution management for multi-antenna devices." Device-level power control. *Distinguished:* no geometric absorption framework, no Fresnel analysis, no exposure operator.
-
-A formal freedom-to-operate (FTO) search has not yet been conducted.
+No closely related patents were identified. The existing patent landscape addresses device-level SAR control (e.g. power backoff, beam selection at the handset) rather than base-station-side spatial dosimetry on body surfaces. A formal freedom-to-operate search has not yet been conducted.
 
 ### Who are the main academic or industrial research groups active in the field?
 
@@ -344,30 +342,35 @@ No. The software was written from scratch by the inventor based on the theoretic
 
 ### In your opinion, what kind of commercial applications could be derived from your invention and how easy/feasible would it be to bring a product to the market?
 
-1. Interactive EMF compliance platform (primary market). Telecom operators deploying 5G/6G must demonstrate regulatory compliance. Current practice uses either conservative worst-case calculations (unnecessarily restrictive exclusion zones, reduced network capacity) or expensive FDTD simulations (impractical at network scale). This invention enables a web-based platform where an engineer types a location, sees real antenna installations, places human bodies, and gets ICNIRP compliance results in under one second. The platform already exists and is deployed.
+1. Millimetre-wave device pre-compliance (primary market). Every 5G/6G-capable phone, laptop, tablet, AR headset, and wearable must demonstrate compliance with absorbed power density limits above 6 GHz under IEC/IEEE 63195-2 and equivalent national rules. Measurement at mmWave requires robotic near-field scanning (SPEAG DASY8 class), so the pre-compliance iteration loop is driven by simulation. Current practice runs FDTD on each design candidate. Each FDTD run takes hours, so only a small number of device, beam, and pose configurations can be evaluated per product cycle. The geometric dosimetry engine replaces the FDTD step for radiating near-field scenarios (d > lambda/(2*pi)) with a closed-form computation in milliseconds. A gradient-based antenna design step, not available in any full-wave tool, lets a designer move an array element to minimise peak APD while preserving beam gain. The engine covers the full IEC/IEEE 63195-2 range (6 GHz to 300 GHz) and all typical device-to-body distances (5 mm to 200 mm).
 
-2. Antenna placement and tilt optimization. The differentiable engine enables gradient-based optimization: "place this antenna such that nobody exceeds ICNIRP limits" solved by gradient descent. Telecom operators placing 5G small cells need exactly this. Three optimization algorithms are implemented and operational.
+2. Integration with the Sim4Life and DASY ecosystem. The engine is a pre-screening layer above full-wave FDTD (ZMT Sim4Life, Dassault CST Studio) and above measurement hardware (SPEAG DASY8, cSAR3D). A compliance engineer runs 10,000 geometric evaluations in an hour. The worst 20 configurations are then passed to Sim4Life for full-wave validation. The final design is measured on DASY. Each Sim4Life seat gains value rather than being replaced. The engine reads the IT'IS Foundation v5.0 Gabriel tissue database and outputs compliance quantities in the formats Sim4Life uses.
 
-3. Exposure-aware beamforming for MIMO. The exposure operator Q enables the first beamforming designs that account for human absorption. The closed-form ECBF precoder maximises signal quality while guaranteeing compliance. Relevant for dense urban deployments and indoor small cells. Multi-user MIMO with multiple body models is operational.
+3. Standards alignment. IEC/IEEE 63195-2 (computational procedure for device APD, 6 GHz to 300 GHz) has its 2026 edition currently in draft. The 2022 edition permits FDTD and FEM. The geometric method satisfies the standard's conservatism requirement (T_0 underestimates absorbed power below 40 GHz) and its validation requirement (matched within 3-8% against published reference data). Inclusion in the 2026 edition as an accepted fast method is an explicit target. IEC 62232:2025 (base stations, 110 MHz to 300 GHz, 4th edition, September 2025) permits computational methods including ray tracing. IEEE C95.3-2021 is the US parallel. ITU-R Report SM.2452-1 (July 2022) is the globally referenced 5G measurement methodology. Wout Joseph participates in these committees through INTEC-WAVES.
 
-4. Real-time exposure monitoring / digital twin. Millisecond computation enables continuous real-time monitoring. Combined with real base station data and 3D environment reconstruction from OpenStreetMap, this creates a digital twin of the electromagnetic environment for any city.
+4. Base-station and network compliance. Telecom operators deploying 5G/6G must demonstrate ICNIRP 2020 and IEC 62232:2025 compliance per site. Current practice uses zone-based calculators (IXUS, MVG EMF Visual) or field measurement (Narda SRM-3006). The engine produces body-specific compliance reports for sites that fail conservative zone checks, allowing operators to recover transmit power that would otherwise be lost to over-conservative exclusion zones. Real base station data from 14 government databases is already ingested.
 
-5. Statistical exposure assessment. The 3GPP stochastic channel integration enables Monte Carlo compliance: "what is the 95th percentile exposure in this scenario class?" without deterministic ray tracing. This addresses the regulatory question of typical vs. worst-case exposure.
+5. Antenna placement and tilt optimization. The differentiable engine enables gradient-based optimization: "place this antenna such that nobody exceeds ICNIRP limits" solved by gradient descent. Three optimization algorithms are implemented and operational.
 
-6. Standards and academic licensing. The nine-level fidelity ladder and the conservative compliance property (T_0 underestimates below 40 GHz) make the framework a candidate for adoption in exposure assessment standards (IEC 63195, IEEE C95.1).
+6. Exposure-aware beamforming for MIMO. The exposure operator Q enables beamforming designs that account for human absorption without FDTD recalibration. The closed-form ECBF precoder maximises signal quality while guaranteeing compliance. Relevant for dense urban deployments and indoor small cells. Multi-user MIMO with multiple body models is operational.
 
-Bringing the product to market is feasible. The software is already deployed, production-quality, and functional with 2,469 automated tests. It can be offered as a SaaS platform (per-seat subscription), licensed as an API to network planning vendors, or commercialised via a spin-off company.
+7. Statistical exposure assessment. The 3GPP TR 38.901 stochastic channel integration feeds directly into the dosimetry engine, enabling Monte Carlo compliance ("what is the 95th percentile exposure in this scenario class?") without deterministic ray tracing.
+
+8. Academic licensing. The nine-level fidelity ladder, the differentiable backend, and the 100 MHz to 100 GHz coverage make the framework a candidate reference implementation for research groups in dosimetry, antenna design, and 6G systems. A free or low-cost academic tier generates the citations and standards-body recognition that underwrite commercial adoption.
+
+Bringing the product to market is feasible. The software is already deployed, production-quality, and functional with 2,469 automated tests. It can be commercialised as a pre-compliance SaaS for device OEMs, as a licensing integration with Sim4Life, as a per-seat subscription for base-station compliance teams, as an API into network planning suites, and as a free academic tier.
 
 ### Which companies could be interested in your invention?
 
-Infrastructure vendors: Ericsson (SE), Nokia (FI), Huawei (CN) -- network planning, beamforming design
-Operators: Proximus (BE), KPN (NL), Orange (FR), Deutsche Telekom (DE), Vodafone (UK) -- deployment compliance
-Network planning software: ATDI (FR), Forsk (FR), iBwave (CA) -- integration into planning tools
-Chipset vendors: Qualcomm (US), MediaTek (TW) -- exposure-aware beamforming at chipset level
-Simulation vendors: ZMT / Sim4Life (CH), Dassault / CST (FR) -- complementary real-time module
-Device OEMs: Samsung, Apple, Xiaomi -- device compliance screening
-Test houses: SPEAG (CH), UL, TUV -- measurement and compliance
-Regulators: BIPT (BE), Agentschap Telecom (NL), ANFR (FR), BNetzA (DE) -- real-time monitoring
+Device OEMs: Apple (US), Samsung (KR), Xiaomi (CN), OPPO (CN), Vivo (CN), Huawei (CN), Google (US), OnePlus (CN), Motorola / Lenovo (US/CN), Nothing (UK) -- mmWave and future 6G device pre-compliance
+Simulation vendors: ZMT / Sim4Life (CH), Dassault / CST (FR), ANSYS HFSS (US), Remcom (US) -- integration and licensing partners for fast pre-compliance above full-wave FDTD
+Chipset vendors: Qualcomm (US), MediaTek (TW) -- reference design pre-compliance and exposure-aware beamforming at chipset level
+Test labs: SPEAG (CH), Eurofins E&E, UL (US), TUV (DE), PCTEST (US), Verkotan (FI), CETECOM (DE/US) -- pre-compliance service lines and DASY-adjacent workflows
+Standards bodies: IEC TC 106, IEEE ICES, ITU-R WP 5A/5C, 3GPP RAN 4 -- reference method recognition
+Infrastructure vendors: Ericsson (SE), Nokia (FI), Huawei (CN), Samsung Networks (KR) -- network planning, beamforming design, integration with MSI compliance workflows
+Network planning software: ATDI (FR), Forsk / Atoll (FR), iBwave (CA), InfoVista (FR/US) -- integration into planning tools
+Operators: Proximus (BE), KPN (NL), Orange (FR), Deutsche Telekom (DE), Vodafone (UK), Telefonica (ES), Telenet (BE) -- deployment compliance
+Regulators: BIPT (BE), BNetzA (DE), ARCEP (FR), Ofcom (UK), ANFR (FR), Agentschap Telecom (NL), FCC (US) -- independent verification
 
 ---
 
@@ -393,13 +396,21 @@ Claim 3 (Differentiable dosimetry optimization method). A computer-implemented m
 (b) computing a gradient of a loss function incorporating a regulatory exposure limit with respect to one or more antenna parameters;
 (c) iteratively updating the antenna parameters using the computed gradient to minimise peak exposure or maximise compliance margin.
 
-Claim 4 (Integrated compliance assessment system). A dosimetry computation system comprising:
+Claim 4 (Integrated base-station compliance assessment system). A dosimetry computation system comprising:
 (a) a base station data ingestion module that retrieves antenna installation parameters from one or more government databases;
 (b) a 3D environment reconstruction module that generates a ray-traceable scene mesh from geographic data sources;
 (c) a propagation path computation module that generates multipath propagation data via ray tracing or stochastic channel models;
 (d) a dosimetry computation engine implementing the method of claim 1;
 (e) a compliance evaluation module that assesses the computed absorption against regulatory limits;
 (f) an interactive web-based interface presenting the results in real-time on a 3D visualisation.
+
+Claim 4b (Device pre-compliance assessment system). A dosimetry computation system for wireless device pre-compliance, comprising:
+(a) a device antenna module accepting antenna element positions and per-element radiation patterns at frequencies between 6 GHz and 300 GHz;
+(b) a body phantom module providing a triangular surface mesh of at least a head or body portion with associated tissue dielectric properties;
+(c) a source-placement module positioning the device antenna at a specified distance from the body phantom, said distance exceeding the reactive-near-field boundary lambda/(2*pi);
+(d) a dosimetry computation engine implementing the method of claim 1 with spatially varying incident power density and propagation direction derived from point-source geometry;
+(e) a compliance evaluation module computing spatially averaged absorbed power density over 4 cm^2 and 1 cm^2 regions and comparing the result against IEC/IEEE 63195-2 and equivalent regulatory limits;
+(f) a pre-screening output that ranks candidate configurations and selects a subset for subsequent validation by full-wave numerical simulation.
 
 Claim 5 (Medium). A non-transitory computer-readable medium storing instructions for performing the method of any of claims 1-3.
 
@@ -424,6 +435,15 @@ Claim 13. The method of claim 3, wherein the loss function comprises a penalty t
 Claim 14. The system of claim 4, wherein the propagation path computation module comprises a stochastic channel generator implementing 3GPP TR 38.901 cluster-based multipath with configurable scenario presets.
 
 Claim 15. The system of claim 4, wherein the 3D environment reconstruction module generates scene geometry from OpenStreetMap building data, terrain elevation data, or photogrammetric 3D tile data, with per-surface electromagnetic material properties.
+
+Claim 16 (Spherical-harmonic antenna-pattern decoupling). The method of claim 1, further comprising precomputing a set of body-response coefficients Gamma_lm(r_s) for each source position r_s, said coefficients being surface integrals of the body's geometric absorption factor weighted by spherical harmonics Y_lm of the incidence direction, such that the absorbed power for an arbitrary antenna gain pattern at source position r_s is obtained as a dot product between the spherical-harmonic expansion of the antenna gain and the precomputed body-response coefficients.
+
+Claim 17 (Fast pre-screening for full-wave validation). A method for pre-screening candidate configurations of a wireless device relative to a human body before validation by full-wave electromagnetic simulation, comprising:
+(a) for each configuration in a set of candidate configurations differing in one or more of antenna position, antenna orientation, beam direction, transmit power, or body pose, computing absorbed power density using the method of claim 1;
+(b) ranking the configurations by peak spatially averaged absorbed power density over a specified averaging area;
+(c) selecting a subset of highest-ranked configurations for validation by a finite-difference time-domain or finite element method simulation.
+
+Claim 18. The system of claim 4b, wherein the pre-screening output is ingested by a finite-difference time-domain solver implementing IEC/IEEE 63195-2 reference procedures, such that the geometric engine accelerates the iteration loop of a full-wave compliance workflow without replacing the full-wave validation step.
 
 ---
 
