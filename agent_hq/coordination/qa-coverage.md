@@ -54,6 +54,28 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-17 13:25 UTC -- "HUD + R3F scene components + AnnotationCanvas + share link"
+
+- Actor: swarm-tester-5
+- Depth: medium
+- Findings: 0 bugs filed
+- Notes: Verified the recent decompositions held up in production.
+  MIMOPanel: added user rows, compliance title updated to "2 users".
+  CompliancePanel: all 4-5 CheckRow entries render with label, value,
+  limit, and PASS/FAIL state against the 60 GHz mmWave scenario.
+  ColorLegend: linear/dB toggle works, lock colormap button present,
+  floor spinbutton clamps at -80 and -5 dB boundaries. AnnotationCanvas
+  (bugReporter modal): drew a multi-point stroke -> Undo + Clear
+  appeared (gated on strokeCount > 0); Zoom in enabled Zoom out +
+  Reset zoom and showed the "1.5x hold Space to pan" hint; Clear
+  removed the stroke; Reset zoom restored 1x. Share link: generated
+  via Toolbar share button (clipboard write intercepted to capture
+  URL), navigated to /#s=<payload>, state decoded and restored without
+  crash on a fresh reload. #537 globe camera toggle did not crash.
+  Feels healthy; didn't stress AntennaArray phase-color selection or
+  multi-body colormap-lock coordination, worth a deeper pass next
+  swarm.
+
 ### 2026-04-17 13:12 UTC -- "Frontend stores, hooks, and physics/movement"
 
 - Actor: swarm-tester-3
@@ -120,4 +142,3 @@ Depth guide:
   Confidence the orchestrator + base-station + ECBF + geocoding
   surfaces are healthy. Voxel meshing v2 still needs an end-to-end pass
   on a deployment that loads voxels.
-
