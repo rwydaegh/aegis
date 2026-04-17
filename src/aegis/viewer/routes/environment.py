@@ -151,6 +151,20 @@ def _handle_environment_3dtiles(cache: dict, cache_lock) -> Response:
     except Exception as exc:
         return jsonify({"error": str(exc)}), 502
 
+    if mesh.triangles.shape[0] == 0:
+        return (
+            jsonify(
+                {
+                    "error": (
+                        "No 3D Tiles cover this region. Google's photorealistic "
+                        "tiles are only available for major cities. Try a different "
+                        "location or switch the source to OSM."
+                    )
+                }
+            ),
+            404,
+        )
+
     binary, meta = mesh.to_binary()
     with cache_lock:
         scoped_cache_set(cache, "env_mesh_tiles", mesh)
