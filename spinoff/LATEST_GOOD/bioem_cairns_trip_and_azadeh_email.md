@@ -58,10 +58,10 @@ The same rule applies to any public presentation at BioEM — poster, demo, exhi
 
 - Today: 17 April 2026.
 - BioEM 2026: roughly early-to-mid June 2026 (verify exact dates).
-- TechTransfer-to-filing realistic window: **2-4 months** per `patent_decision_and_defense_mechanics.md` §Stage 1.
-- Gap to BioEM: ~6-8 weeks. On the optimistic end of TechTransfer's timeline. Feasible but tight, and you do not yet have a filing date confirmed in writing.
+- TechTransfer-to-filing window: **5-12 weeks minimum, 2-4 months realistic, 5 months in the bad case.** This range is an internal bottom-up estimate (TT review 2-6 wk + attorney brief 1-2 wk + drafting/filing 2-4 wk), with a conservative buffer on top. UGent's own procedure page does not quantify this stage at all — its timeline axis starts at the priority date. No external benchmark (FPS Economy, WIPO, Chambers, industry guides) exists for the IDF-to-filing gap because it's institution-specific. The only authoritative number is what TechTransfer commits to in writing.
+- Gap to BioEM: ~6-8 weeks. Sits on the optimistic end of even the internal estimate. Feasible only if TT is primed now, claims are clean, and the attorney moves promptly.
 
-Until you have that confirmation in writing from TechTransfer, **assume no safe public presentation at BioEM**.
+Until you have a filing date confirmed in writing from TechTransfer, **assume no safe public presentation at BioEM**. The single most useful action this week is an email to `octrooien@ugent.be` with the August-defense hard deadline in the subject line, asking for an estimated filing date in writing.
 
 ### What's still safe
 
