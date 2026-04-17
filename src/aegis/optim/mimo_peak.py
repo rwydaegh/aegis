@@ -126,6 +126,7 @@ def step(state: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
     sab = np.array(coherent_sab(G_tilde, x))
     obj = float(soft_peak_exposure(sab, temperature=temp))
     grad_norm = float(np.sqrt(np.sum(np.abs(grad) ** 2)))
+    peak_sab = float(np.max(sab)) if sab.size > 0 else 0.0
 
     history = state["history"]
     history.append(obj)
@@ -154,6 +155,7 @@ def step(state: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
             "x_imag": x.imag.tolist(),
             "power": float(np.sum(np.abs(x) ** 2)),
         },
+        "stats": {"peak_sab": peak_sab, "peaks": {"sab": peak_sab}},
         "converged": converged,
     }
     return new_state, result

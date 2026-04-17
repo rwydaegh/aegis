@@ -172,7 +172,7 @@ def step(state: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
         "grad_norm": float(np.sqrt(grad_tilt**2 + grad_pwr**2)),
         "sab": np.asarray(sab, dtype=np.float32),
         "params": {"tilt_deg": tilt, "power_dbm": pwr},
-        "stats": {"peak_sab": peak, "compliant": compliant},
+        "stats": {"peak_sab": peak, "peaks": {"sab": peak}, "compliant": compliant},
         "converged": converged,
         "constraint_satisfied": compliant,
     }
