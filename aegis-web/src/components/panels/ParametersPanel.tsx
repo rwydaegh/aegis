@@ -96,28 +96,30 @@ export default function ParametersPanel() {
           <label className={labelClass}>Physics corrections</label>
           <div className="flex flex-col gap-1.5 pl-0.5">
             <CorrectionToggle
-              label="Fresnel"
+              label="Fresnel T(θ)"
               checked={fresnel}
               onChange={setFresnel}
+              title="Angle-dependent unpolarised Fresnel transmission T_avg(θ). When off, uses the constant normal-incidence value T₀ (monograph level 2). T_avg(0°) = T₀, so peak Sab at the face-on triangle is identical between on/off; mean Sab and absorbed power P_abs change."
             />
             <CorrectionToggle
               label="Polarisation"
               checked={polarisation}
               onChange={setPolarisation}
               disabled={!fresnel}
-              title={!fresnel ? 'Requires Fresnel' : undefined}
+              title={!fresnel ? 'Requires Fresnel' : 'Splits T_avg into TM/TE components via the excess parameter q.'}
             />
             <CorrectionToggle
               label="Curvature"
               checked={curvature}
               onChange={setCurvature}
               disabled={diffraction}
-              title={diffraction ? 'Required by diffraction' : undefined}
+              title={diffraction ? 'Required by diffraction' : 'First-order physical-optics curvature correction (adds H/k · g² term).'}
             />
             <CorrectionToggle
               label="Diffraction"
               checked={diffraction}
               onChange={setDiffraction}
+              title="Replaces sharp ReLU shadow boundary with a physical-GELU kernel tied to local curvature."
             />
           </div>
         </>
