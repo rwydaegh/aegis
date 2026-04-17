@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useSimulationStore } from '@/stores/simulation'
 import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
+import { useActiveSimulation } from '@/hooks/useActiveSimulation'
 import { arrayMax } from '@/lib/colormap'
 import Tex from '@/components/ui/Tex'
 import GradientBar from '@/components/hud/GradientBar'
@@ -111,9 +112,8 @@ const JET_GRADIENT_CSS =
   'linear-gradient(to bottom, rgb(128,0,0), rgb(255,0,0), rgb(255,128,0), rgb(255,255,0), rgb(128,255,128), rgb(0,255,255), rgb(0,128,255), rgb(0,0,255), rgb(0,0,128))'
 
 export default function ColorLegend() {
-  const stats = useSimulationStore(s => s.stats)
+  const { stats, sabArray } = useActiveSimulation()
   const config = useSceneStore(s => s.viewerConfig)
-  const sabArray = useSimulationStore(s => s.sabArray)
   const legendScale = useUIStore(s => s.legendScale)
   const toggleLegendScale = useUIStore(s => s.toggleLegendScale)
   const dynamicRangeDb = useUIStore(s => s.dynamicRangeDb)
