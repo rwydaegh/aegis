@@ -1,7 +1,12 @@
 name: QA swarm
 
 on:
-  workflow_dispatch: {}   # Manual trigger only
+  workflow_dispatch:
+    inputs:
+      target_doc:
+        description: "Path to a QA checklist doc to target (e.g. docs/internal/qa_maintainability.md). Leave empty for a generic feature-surface sweep."
+        required: false
+        default: ""
 
 jobs:
   # Manager: analyzes recent changes and feature surface, assigns 5 non-overlapping scopes
@@ -33,6 +38,8 @@ jobs:
 
       - name: Load prompt
         id: load_prompt
+        env:
+          TARGET_DOC: ${{ inputs.target_doc }}
         run: |
           {
             echo "content<<PROMPT_EOF"
@@ -41,6 +48,26 @@ jobs:
             echo "---"
             echo ""
             cat agent_hq/context/aegis-overview.md
+            if [ -n "$TARGET_DOC" ] && [ -f "$TARGET_DOC" ]; then
+              echo ""
+              echo "---"
+              echo ""
+              echo "## Targeted QA mode: divide THIS doc across 5 testers"
+              echo ""
+              echo "Path: $TARGET_DOC"
+              echo ""
+              echo "The doc below is a checklist already organized by touched surface."
+              echo "Your job is to split its items across 5 testers by contiguous surface,"
+              echo "NOT to invent a feature-area division. Skip the generic feature-surface"
+              echo "guidance and skip the mandatory environment-loading rule - those apply"
+              echo "only to generic sweeps. If the doc has backend API items (route shape,"
+              echo "response headers, SSE event fields), give that whole batch to ONE tester"
+              echo "and tell them to use curl + Bash, not Playwright."
+              echo ""
+              echo '```markdown'
+              cat "$TARGET_DOC"
+              echo '```'
+            fi
             echo "PROMPT_EOF"
           } >> "$GITHUB_OUTPUT"
 
@@ -159,6 +186,8 @@ jobs:
 
       - name: Load prompt
         id: load_prompt
+        env:
+          TARGET_DOC: ${{ inputs.target_doc }}
         run: |
           {
             echo "content<<PROMPT_EOF"
@@ -171,6 +200,25 @@ jobs:
             echo "---"
             echo ""
             cat agent_hq/context/not-bugs.md
+            if [ -n "$TARGET_DOC" ]; then
+              echo ""
+              echo "---"
+              echo ""
+              echo "## Targeted QA mode"
+              echo ""
+              echo "Your assignment below contains checklist items from \`$TARGET_DOC\`."
+              echo "Treat those items as a work queue, not a suggestion. Report back"
+              echo "which passed, which failed, and which you skipped (with a reason)."
+              echo ""
+              echo "- You can still wander if something looks broken, but the checklist"
+              echo "  is the anchor; do not invent new test areas."
+              echo "- For backend / API-contract items (route response shape, SSE event"
+              echo "  fields, response headers, timings dict, byte-identical payloads),"
+              echo "  drive the server with \`curl\` via Bash. You don't need Playwright"
+              echo "  for those and it's often the wrong tool."
+              echo "- Environment-loading is NOT mandatory in targeted mode unless it"
+              echo "  appears in your assigned checklist items."
+            fi
             echo "PROMPT_EOF"
           } >> "$GITHUB_OUTPUT"
 

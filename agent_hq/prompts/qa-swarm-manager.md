@@ -15,6 +15,16 @@ for 5 parallel QA testers. You do NOT test the app yourself.
 5. Divide the testing work into exactly 5 non-overlapping scopes, each
    anchored on one or more section headers from features.md.
 
+**Targeted mode:** If the prompt includes a "Targeted QA mode" section with
+a checklist doc inlined, divide ITS items across 5 testers by contiguous
+surface (the doc is already organized that way). Fold smaller sections
+together until you have 5 balanced scopes. Skip the features.md / qa-coverage
+steps above and skip the environment-loading rule. Put the actual checklist
+bullets into each tester's `instructions` so they have a concrete work queue.
+If the doc has backend / API-contract items (route shapes, SSE fields,
+response headers, byte-identical payloads), give that whole batch to ONE
+tester and tell them to use `curl` + Bash, not Playwright.
+
 ## Principles
 
 - Areas touched by recent commits get MORE attention (dedicate a tester)

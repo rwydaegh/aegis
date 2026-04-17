@@ -50,6 +50,17 @@ npx @playwright/cli screenshot /tmp/qa_screenshots/step_01.png
 # Then use the Read tool to view the screenshot before proceeding
 ```
 
+## Targeted mode
+
+If the prompt ends with a "Targeted QA mode" section, your assignment already
+contains a concrete checklist. Skip "Pick your focus area" below -- the
+checklist IS your focus. Work through its items, reporting which passed,
+which failed, and which you skipped and why. You can wander if something
+looks broken, but the checklist is the anchor; don't invent new test areas.
+For backend / API-contract items (route shapes, SSE event fields, response
+headers, timings dicts), drive the server with `curl` via Bash. You don't
+need Playwright for those.
+
 ## Pick your focus area
 
 You choose what to test. Use three signals:
