@@ -79,6 +79,8 @@ PROMPT=""
 PROMPT+="$(cat "${REPO_DIR}/${PROMPT_FILE}")"
 PROMPT+=$'\n\n---\n\n'
 PROMPT+="$(cat "${REPO_DIR}/agent_hq/context/aegis-overview.md")"
+PROMPT+=$'\n\n---\n\n'
+PROMPT+="$(cat "${REPO_DIR}/agent_hq/context/toolbox.md")"
 
 # Add extra context (assembled by the per-agent wrapper)
 if [ -n "$EXTRA_CONTEXT" ]; then
@@ -94,7 +96,7 @@ echo "$PROMPT" > "$PROMPT_TMPFILE"
 EXIT_CODE=0
 timeout $((TIMEOUT_MIN * 60)) claude -p \
     --model claude-opus-4-7 \
-    --allowedTools "Edit,Read,Write,Glob,Grep,Bash(*),WebSearch,WebFetch,Agent" \
+    --allowedTools "Edit,Read,Write,Glob,Grep,Bash(*),WebSearch,WebFetch,Agent,Skill,ToolSearch,TaskCreate,TaskUpdate,TaskList,TaskGet,TaskOutput,TaskStop,mcp__perplexity__perplexity_ask,mcp__perplexity__perplexity_search,mcp__perplexity__perplexity_reason,mcp__perplexity__perplexity_research,mcp__reddit__search_reddit,mcp__reddit__get_reddit_post,mcp__reddit__get_post_comments,mcp__reddit__get_subreddit_info,mcp__reddit__get_top_posts,mcp__reddit__get_trending_subreddits,mcp__reddit__get_user_posts,mcp__reddit__get_user_comments,mcp__reddit__get_user_info" \
     --dangerously-skip-permissions \
     < "$PROMPT_TMPFILE" \
     >> "$LOG_FILE" 2>&1 || EXIT_CODE=$?
