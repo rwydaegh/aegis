@@ -59,6 +59,63 @@ class MSIMetadata:
     vertical_convention: str  # "boresight" or "zenith"
 
 
+def _parse_frequency(line: str, upper: str) -> float:
+    """Parse a ``FREQUENCY`` directive. Returns MHz (nan if malformed)."""
+    parts = line.split()
+    if len(parts) < 2:
+        return float("nan")
+    freq_str = parts[1]
+    # Handle ranges like "1.88-1.93" by taking the midpoint
+    if "-" in freq_str and not freq_str.startswith("-"):
+        lo, hi = freq_str.split("-", 1)
+        freq_mhz = (float(lo) + float(hi)) / 2
+    else:
+        freq_mhz = float(freq_str)
+    if "GHZ" in upper:
+        freq_mhz *= 1000
+    return freq_mhz
+
+
+def _parse_gain(line: str, upper: str) -> float:
+    """Parse a ``GAIN`` directive. Handles dBi and dBd (adds 2.15)."""
+    parts = line.split()
+    is_dbd = "DBD" in upper
+    gain_dbi = float("nan")
+    for token in reversed(parts[1:]):
+        try:
+            gain_dbi = float(token)
+            break
+        except ValueError:
+            continue
+    if is_dbd and not np.isnan(gain_dbi):
+        gain_dbi += 2.15
+    return gain_dbi
+
+
+def _parse_tilt(line: str) -> float:
+    parts = line.split()
+    if len(parts) < 2:
+        return 0.0
+    try:
+        return float(parts[1])
+    except ValueError:
+        return 0.0
+
+
+def _read_pattern_rows(lines: list[str], start: int, count: int, out: np.ndarray) -> int:
+    """Read ``count`` angle-attenuation rows into out[0..count]. Returns new line index."""
+    i = start
+    n = len(lines)
+    for j in range(min(count, 360)):
+        i += 1
+        if i >= n:
+            break
+        row = lines[i].strip().split()
+        if len(row) >= 2:
+            out[j] = float(row[1])
+    return i
+
+
 def parse_msi(
     text: str,
     manufacturer: str = "",
@@ -88,86 +145,36 @@ def parse_msi(
     if not lines:
         raise ValueError("Empty MSI file")
 
-    # First non-empty line is the antenna name
     name = lines[0].strip()
-
     frequency_mhz = float("nan")
     gain_dbi = float("nan")
     tilt_deg = 0.0
-
     h_atten = np.zeros(360, dtype=np.float64)
     v_atten = np.zeros(360, dtype=np.float64)
 
     i = 1
     n = len(lines)
-
     while i < n:
         line = lines[i].strip()
         upper = line.upper()
 
         if upper.startswith("FREQUENCY"):
-            parts = line.split()
-            if len(parts) >= 2:
-                freq_str = parts[1]
-                # Handle ranges like "1.88-1.93" by taking the midpoint
-                if "-" in freq_str and not freq_str.startswith("-"):
-                    lo, hi = freq_str.split("-", 1)
-                    frequency_mhz = (float(lo) + float(hi)) / 2
-                else:
-                    frequency_mhz = float(freq_str)
-                # Convert GHz to MHz if unit is specified
-                if "GHZ" in upper:
-                    frequency_mhz *= 1000
-
+            frequency_mhz = _parse_frequency(line, upper)
         elif upper.startswith("GAIN"):
-            # "GAIN (dBi) 8.15" or "GAIN 8.15" or "GAIN 12.86 dBd"
-            parts = line.split()
-            is_dbd = "DBD" in upper
-            # Extract numeric gain value
-            for token in reversed(parts[1:]):
-                try:
-                    gain_dbi = float(token)
-                    break
-                except ValueError:
-                    continue
-            if is_dbd:
-                gain_dbi += 2.15  # dBd -> dBi conversion
-
+            gain_dbi = _parse_gain(line, upper)
         elif upper.startswith("TILT"):
-            parts = line.split()
-            if len(parts) >= 2:
-                try:
-                    tilt_deg = float(parts[1])
-                except ValueError:
-                    tilt_deg = 0.0
-
+            tilt_deg = _parse_tilt(line)
         elif upper.startswith("HORIZONTAL"):
             parts = line.split()
             count = int(parts[1]) if len(parts) >= 2 else 360
-            count = min(count, 360)
-            for j in range(count):
-                i += 1
-                if i >= n:
-                    break
-                row = lines[i].strip().split()
-                if len(row) >= 2:
-                    h_atten[j] = float(row[1])
-
+            i = _read_pattern_rows(lines, i, count, h_atten)
         elif upper.startswith("VERTICAL"):
             parts = line.split()
             count = int(parts[1]) if len(parts) >= 2 else 360
-            count = min(count, 360)
-            for j in range(count):
-                i += 1
-                if i >= n:
-                    break
-                row = lines[i].strip().split()
-                if len(row) >= 2:
-                    v_atten[j] = float(row[1])
+            i = _read_pattern_rows(lines, i, count, v_atten)
 
         i += 1
 
-    # Detect vertical convention
     vertical_convention = "boresight" if np.isclose(v_atten[0], 0.0, atol=1e-6) else "zenith"
 
     meta = MSIMetadata(

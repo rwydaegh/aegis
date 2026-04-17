@@ -40,6 +40,65 @@ def _haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     return _R_EARTH * 2 * math.asin(math.sqrt(a))
 
 
+def _project_to_metres(lats: np.ndarray, lons: np.ndarray) -> np.ndarray:
+    """Equirectangular projection of lat/lon arrays to (N, 2) metres."""
+    lat_rad = np.radians(lats)
+    lon_rad = np.radians(lons)
+    cos_lat = np.cos(lat_rad)
+    x = lon_rad * cos_lat * _R_EARTH
+    y = lat_rad * _R_EARTH
+    return np.column_stack([x, y])
+
+
+def _bfs_cluster_labels(
+    neighbor_lists: list[list[int]],
+    norm_ops: np.ndarray,
+    freq_bands: np.ndarray | None,
+) -> np.ndarray:
+    """Assign cluster labels via BFS over neighbor lists, sharing operator+freq."""
+    n = len(neighbor_lists)
+    labels = np.full(n, -1, dtype=np.intp)
+    cluster_id = 0
+    has_fb = freq_bands is not None
+
+    for seed in range(n):
+        if labels[seed] >= 0:
+            continue
+        labels[seed] = cluster_id
+        queue = [seed]
+        head = 0
+        while head < len(queue):
+            cur = queue[head]
+            head += 1
+            for j in neighbor_lists[cur]:
+                if labels[j] >= 0 or norm_ops[j] != norm_ops[seed]:
+                    continue
+                if has_fb:
+                    fb_seed = freq_bands[seed]
+                    fb_j = freq_bands[j]
+                    if pd.notna(fb_seed) and pd.notna(fb_j) and fb_seed != fb_j:
+                        continue
+                labels[j] = cluster_id
+                queue.append(j)
+        cluster_id += 1
+    return labels
+
+
+def _merge_cluster_rows(group: pd.DataFrame) -> pd.Series:
+    """Merge a cluster: keep first row, fill NaNs from subsequent rows."""
+    if len(group) == 1:
+        return group.iloc[0]
+    merged = group.iloc[0].copy()
+    for idx in range(1, len(group)):
+        other = group.iloc[idx]
+        for col in merged.index:
+            if col in ("_norm_op", "_cluster"):
+                continue
+            if pd.isna(merged[col]) and pd.notna(other[col]):
+                merged[col] = other[col]
+    return merged
+
+
 def spatial_dedup(df: pd.DataFrame, distance_m: float = 50) -> pd.DataFrame:
     """Spatially deduplicate antennas of the same operator within *distance_m*.
 
@@ -51,69 +110,18 @@ def spatial_dedup(df: pd.DataFrame, distance_m: float = 50) -> pd.DataFrame:
     df = df.copy()
     df["_norm_op"] = df["Operator"].apply(normalize_operator)
 
-    lats = df["Latitude"].to_numpy(dtype=np.float64)
-    lons = df["Longitude"].to_numpy(dtype=np.float64)
-
-    # Equirectangular projection to metres (accurate enough for 50 m radius)
-    lat_rad = np.radians(lats)
-    lon_rad = np.radians(lons)
-    cos_lat = np.cos(lat_rad)
-    x = lon_rad * cos_lat * _R_EARTH
-    y = lat_rad * _R_EARTH
-
-    norm_ops = df["_norm_op"].to_numpy()
-    has_fb = "FrequencyBand" in df.columns
-    freq_bands = df["FrequencyBand"].to_numpy() if has_fb else None
-
-    # Build one tree for all points, query within distance_m
-    coords = np.column_stack([x, y])
+    coords = _project_to_metres(
+        df["Latitude"].to_numpy(dtype=np.float64),
+        df["Longitude"].to_numpy(dtype=np.float64),
+    )
     tree = cKDTree(coords)
     neighbor_lists = tree.query_ball_tree(tree, r=distance_m)
 
-    n = len(df)
-    labels = np.full(n, -1, dtype=np.intp)
-    cluster_id = 0
+    freq_bands = df["FrequencyBand"].to_numpy() if "FrequencyBand" in df.columns else None
+    labels = _bfs_cluster_labels(neighbor_lists, df["_norm_op"].to_numpy(), freq_bands)
 
-    for i in range(n):
-        if labels[i] >= 0:
-            continue
-        # BFS to find the full connected cluster sharing operator+freq
-        labels[i] = cluster_id
-        queue = [i]
-        head = 0
-        while head < len(queue):
-            cur = queue[head]
-            head += 1
-            for j in neighbor_lists[cur]:
-                if labels[j] >= 0:
-                    continue
-                if norm_ops[j] != norm_ops[i]:
-                    continue
-                if has_fb and freq_bands is not None:
-                    fb_i = freq_bands[i]
-                    fb_j = freq_bands[j]
-                    if pd.notna(fb_i) and pd.notna(fb_j) and fb_i != fb_j:
-                        continue
-                labels[j] = cluster_id
-                queue.append(j)
-        cluster_id += 1
-
-    # Merge each cluster: keep first row, fill NaNs from later rows
     df["_cluster"] = labels
-    merged_rows = []
-    for _, group in df.groupby("_cluster", sort=False):
-        if len(group) == 1:
-            merged_rows.append(group.iloc[0])
-        else:
-            merged = group.iloc[0].copy()
-            for idx in range(1, len(group)):
-                other = group.iloc[idx]
-                for col in merged.index:
-                    if col in ("_norm_op", "_cluster"):
-                        continue
-                    if pd.isna(merged[col]) and pd.notna(other[col]):
-                        merged[col] = other[col]
-            merged_rows.append(merged)
+    merged_rows = [_merge_cluster_rows(g) for _, g in df.groupby("_cluster", sort=False)]
 
     result = pd.DataFrame(merged_rows).reset_index(drop=True)
     result.drop(columns=["_norm_op", "_cluster"], inplace=True, errors="ignore")
