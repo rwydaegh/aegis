@@ -20,11 +20,6 @@ interface BaseStationsState {
   selectedIndex: number | null
   selectAntenna: (index: number | null) => void
 
-  showCoverage: boolean
-  coverageUrl: string | null
-  setShowCoverage: (show: boolean) => void
-  setCoverageUrl: (url: string | null) => void
-
   setBasestations: (bs: BaseStationData[], origin: { lat: number; lon: number }) => void
   toggleOperator: (op: string) => void
   toggleTechnology: (tech: string) => void
@@ -72,14 +67,6 @@ export const useBaseStationsStore = create<BaseStationsState>((set, get) => ({
   colorMode: 'operator' as AntennaColorMode,
   selectedIndex: null,
   selectAntenna: (index) => set({ selectedIndex: index }),
-  showCoverage: false,
-  coverageUrl: null,
-  setShowCoverage: (show) => set({ showCoverage: show }),
-  setCoverageUrl: (url) => {
-    const prev = get().coverageUrl
-    if (prev) URL.revokeObjectURL(prev)
-    set({ coverageUrl: url })
-  },
 
   setBasestations: (bs, origin) => {
     const { operators, technologies, frequencyBands } = deriveFilters(bs)
@@ -134,10 +121,7 @@ export const useBaseStationsStore = create<BaseStationsState>((set, get) => ({
   setLoading: (v) => set({ isLoading: v }),
   setComputing: (v) => set({ isComputing: v }),
 
-  clear: () => {
-    const prev = get().coverageUrl
-    if (prev) URL.revokeObjectURL(prev)
-    set({
+  clear: () => set({
     basestations: [],
     origin: null,
     isLoading: false,
@@ -151,9 +135,7 @@ export const useBaseStationsStore = create<BaseStationsState>((set, get) => ({
     activeCount: 0,
     colorMode: 'operator' as AntennaColorMode,
     selectedIndex: null,
-    showCoverage: false,
-    coverageUrl: null,
-  })},
+  }),
 
   activeIndices: () => {
     const { basestations, enabledOperators, enabledTechnologies, enabledFrequencyBands } = get()
