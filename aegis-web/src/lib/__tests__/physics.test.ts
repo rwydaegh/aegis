@@ -77,6 +77,33 @@ describe('stepPhysics - jump', () => {
     // No jump impulse added - velocity stays at 0 or decreases due to gravity
     expect(next.velocity[1]).toBeLessThanOrEqual(0)
   })
+
+  it('does not re-inject jump while held at high framerate', () => {
+    // Regression: at framerates where jump_impulse * dt is near ground_snap, the
+    // body stays within snap distance after its first tick. If onGround is
+    // re-set to true during ascent, the next tick re-fires the jump impulse.
+    // With test config: jump_impulse=8, ground_snap=0.1. At dt=0.008, py after
+    // one tick is ~0.064 (within snap). onGround must stay false.
+    let state = groundedState()
+    const input: MovementInput = { ...NO_INPUT, jump: true }
+    const dt = 0.008
+    const vyHistory: number[] = []
+    for (let i = 0; i < 5; i++) {
+      state = stepPhysics(state, input, [0, -1], FLAT_GROUND, DEFAULT_CONFIG, dt)
+      vyHistory.push(state.velocity[1])
+    }
+    // After the first tick, vy should decay monotonically under gravity.
+    // If the bug re-fires the impulse, vy stays pinned at jump_impulse for
+    // multiple ticks.
+    for (let i = 1; i < vyHistory.length; i++) {
+      expect(vyHistory[i]).toBeLessThan(vyHistory[i - 1])
+    }
+    // vy must never exceed the initial impulse minus one gravity step.
+    const expectedMax = DEFAULT_CONFIG.jump_impulse - DEFAULT_CONFIG.gravity * dt + 1e-6
+    for (const vy of vyHistory) {
+      expect(vy).toBeLessThanOrEqual(expectedMax)
+    }
+  })
 })
 
 describe('stepPhysics - friction', () => {
