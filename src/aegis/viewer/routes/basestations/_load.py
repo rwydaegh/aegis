@@ -83,9 +83,14 @@ def _build_bbox(params: dict):
     if bbox is not None or "lat" not in params or "lon" not in params:
         return bbox, None
 
-    lat = float(params["lat"])
-    lon = float(params["lon"])
-    radius_m = float(params.get("radius_m", 500))
+    try:
+        lat = float(params["lat"])
+        lon = float(params["lon"])
+        radius_m = float(params.get("radius_m", 500))
+    except (TypeError, ValueError):
+        return None, (jsonify({"error": "lat, lon, and radius_m must be numbers"}), 400)
+    if not (-90 <= lat <= 90) or not (-180 <= lon <= 180):
+        return None, (jsonify({"error": "lat must be in [-90,90] and lon in [-180,180]"}), 400)
     if radius_m <= 0 or radius_m > 50_000:
         return None, (jsonify({"error": "radius_m must be between 0 and 50000"}), 400)
     dlat = radius_m / 111_320.0
@@ -108,7 +113,12 @@ def _resolve_country_and_region(params: dict, address: dict, cache: dict, cache_
     is_belgium = country.strip().lower() in BELGIUM_NAMES or country_code == "be"
     if region is None and is_belgium:
         if "lat" in params and "lon" in params:
-            region = _resolve_belgian_region(address, float(params["lat"]), float(params["lon"]))
+            try:
+                _lat = float(params["lat"])
+                _lon = float(params["lon"])
+            except (TypeError, ValueError):
+                return country, None, (jsonify({"error": "lat and lon must be numbers"}), 400)
+            region = _resolve_belgian_region(address, _lat, _lon)
             logger.info("Resolved Belgian region: %s", region)
         else:
             region = "brussels"

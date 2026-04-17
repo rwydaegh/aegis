@@ -288,6 +288,30 @@ class TestBasestationsLoadRoute:
             # Should not be a 500 (KeyError). 400 or other handled error is fine.
             assert resp.status_code != 500
 
+    def test_load_with_non_numeric_lat_lon_returns_400(self, viewer_app):
+        """Regression: malformed lat/lon with explicit country must return 400 not 500.
+
+        The ``country`` parameter bypasses the reverse-geocode lat/lon validator
+        in ``_geocode_if_needed``. ``_build_bbox`` must still validate cleanly.
+        """
+        with viewer_app.test_client() as c:
+            resp = c.post(
+                "/api/basestations/load",
+                json={"lat": "abc", "lon": "def", "country": "Belgium", "radius_m": 100},
+            )
+            assert resp.status_code == 400
+            assert "error" in resp.get_json()
+
+    def test_load_with_non_numeric_radius_returns_400(self, viewer_app):
+        """Regression: malformed radius_m must return 400 not 500."""
+        with viewer_app.test_client() as c:
+            resp = c.post(
+                "/api/basestations/load",
+                json={"lat": 51.05, "lon": 3.72, "radius_m": "huge", "country": "Belgium"},
+            )
+            assert resp.status_code == 400
+            assert "error" in resp.get_json()
+
     def test_load_belgium_locale_routes_to_belgian_region(self, viewer_app):
         """Regression (#534): Nominatim returning België/belgique must still
         route to the Belgian region branch rather than falling through to a
