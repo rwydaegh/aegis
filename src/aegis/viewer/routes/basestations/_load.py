@@ -18,6 +18,7 @@ from ._data import (
 )
 from ._fidelity import _bs_summary
 from ._geocode import (
+    BELGIUM_NAMES,
     COUNTRY_TO_REGION,
     _resolve_belgian_region,
     geocode_location,
@@ -104,7 +105,8 @@ def _resolve_country_and_region(params: dict, address: dict, cache: dict, cache_
     if country_code in COUNTRY_TO_REGION:
         country = country_code
 
-    if region is None and country.strip().lower() == "belgium":
+    is_belgium = country.strip().lower() in BELGIUM_NAMES or country_code == "be"
+    if region is None and is_belgium:
         if "lat" in params and "lon" in params:
             region = _resolve_belgian_region(address, float(params["lat"]), float(params["lon"]))
             logger.info("Resolved Belgian region: %s", region)
