@@ -96,6 +96,27 @@ let _lastVisibleMode: SidebarMode = 'expanded'
 /** Number of steps in the guided tour */
 export const TOUR_STEP_COUNT = 9
 
+const TOUR_KEY = 'aegis-tour-completed'
+
+// Guarded localStorage access: safe in SSR / non-jsdom test environments.
+function readTourCompleted(): boolean {
+  try {
+    return typeof localStorage !== 'undefined' && localStorage.getItem(TOUR_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+function writeTourCompleted(value: boolean): void {
+  try {
+    if (typeof localStorage === 'undefined') return
+    if (value) localStorage.setItem(TOUR_KEY, '1')
+    else localStorage.removeItem(TOUR_KEY)
+  } catch {
+    // ignore quota / disabled-storage errors
+  }
+}
+
 export const useUIStore = create<UIStore>((set) => ({
   sidebarMode: 'expanded',
   activeGroup: 'source',
@@ -130,7 +151,7 @@ export const useUIStore = create<UIStore>((set) => ({
   hiddenWidgets: new Set<string>(),
   tourActive: false,
   tourStep: 0,
-  tourCompleted: localStorage.getItem('aegis-tour-completed') === '1',
+  tourCompleted: readTourCompleted(),
   toggleSidebar: () => set((state) => {
     if (state.sidebarMode === 'hidden') {
       return { sidebarMode: _lastVisibleMode }
@@ -184,19 +205,19 @@ export const useUIStore = create<UIStore>((set) => ({
     return { hiddenWidgets: next }
   }),
   startTour: () => {
-    localStorage.removeItem('aegis-tour-completed')
+    writeTourCompleted(false)
     set({ tourActive: true, tourStep: 0, tourCompleted: false })
   },
   advanceTour: () => set((state) => {
     const next = state.tourStep + 1
     if (next >= TOUR_STEP_COUNT) {
-      localStorage.setItem('aegis-tour-completed', '1')
+      writeTourCompleted(true)
       return { tourActive: false, tourStep: 0, tourCompleted: true }
     }
     return { tourStep: next }
   }),
   dismissTour: () => {
-    localStorage.setItem('aegis-tour-completed', '1')
+    writeTourCompleted(true)
     set({ tourActive: false, tourStep: 0, tourCompleted: true })
   },
 }))
