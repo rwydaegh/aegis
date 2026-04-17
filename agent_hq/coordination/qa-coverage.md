@@ -54,6 +54,47 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-17 18:25 UTC -- "Coherent MIMO and beamforming"
+
+- Actor: interactive
+- Depth: medium
+- Findings: 1 bug filed: #567
+- Notes: Drove the MIMO panel end-to-end on Open ground. Toggled Enable
+  MIMO: header flipped to 1/1 USER, margin +22.1 -> +13.9 dB, Max TX
+  65.1 -> 56.9 dBm as expected. Added Duke as user 2 and swept all
+  four beamforming modes at 4x4 UPA: User 1 peak stayed 0.11 W/m^2
+  (consistent with per-user normalization), User 2 exposure differed
+  by mode (MRT 77.99, ZF 69.61, MMSE 81.74, ZF+Exp 69.61 mW/m^2).
+  ZF=ZF+Exp at low regularization is expected. MMSE > MRT is slightly
+  surprising but plausible since MMSE trades off per-link MSE not
+  "minimize user 2 exposure"; not bug-worthy without deeper analysis.
+  UPA array sizing exercised at 1x1 (13.62 mW/m^2, +26 dB margin),
+  4x4 (baseline), 8x8 (peak 0.31 W/m^2, +12.4 dB), and 12x12
+  (144 elements, 0.12 W/m^2 at User 1, +16.6 dB). All sizes compute
+  and update compliance without crashes. #566 gating verified:
+  Tilt+power button is disabled on Open ground (no RT paths).
+  #565 NaN colorbar fix verified: labels are numeric
+  (5.0e-7, 3.8e-7, 2.5e-7, 1.3e-7, 0), not NaN -- fix from commit
+  0068eeb holds. **Bug 1 (#567)**: ColorLegend scale gets stuck at
+  the optimizer's internal peak (e.g. 5.0e-7 W/m^2) after MIMO peak
+  optimize completes. Compliance panel and per-user HUD correctly
+  show the current beamforming state (0.11 W/m^2 compliant, +16.9
+  dB margin), and the body heatmap clearly renders bright red/orange
+  peaks, but the legend ticks are 5-6 orders of magnitude too small
+  and stay stale even when the user switches beamforming mode to
+  force a new compute. Root cause traced to `ColorLegend.tsx`:114
+  reading `useSimulationStore.stats` directly rather than via
+  `useActiveSimulation`, which is what the compliance panel uses.
+  In MIMO mode the simulation store's `stats.peak_sab` is only ever
+  updated by `useOptimization.ts`:50 during optimize, never by
+  `useMIMODosimetry` (which writes to `mimo.setUserResult`). Clicking
+  the lock button (🔒) snaps the legend to the actual peak, so the
+  data is available, just not being read. Console was clean apart
+  from the THREE.Clock deprecation warning (known not-a-bug).
+  Confident the beamforming math, multi-user, UPA sizing, and
+  optimize gating are healthy; the ColorLegend stale-state is the
+  only real bug and is documented with a surgical fix sketch in #567.
+
 ### 2026-04-17 16:25 UTC -- "Optimization"
 
 - Actor: interactive
