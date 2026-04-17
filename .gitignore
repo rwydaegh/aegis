@@ -104,6 +104,7 @@ docs/internal/
 
 # Personal spinoff notes
 spinoff/personal/
+spinoff/*.xlsx
 
 # Local task list
 TODO.txt
