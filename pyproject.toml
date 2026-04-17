@@ -39,7 +39,7 @@ modal = ["modal>=0.73"]
 docs = [
     "mkdocs>=1.5",
     "mkdocs-material>=9.5",
-    "pymdown-extensions>=10.16.1,<10.22",
+    "pymdown-extensions>=10.21.2,<10.22",
     "pygments>=2.20,<2.21",
     "mkdocstrings[python]>=0.24",
     "mkdocs-minify-plugin>=0.7",
