@@ -41,16 +41,3 @@ single response.
 
 Use these for any multi-step run where progress tracking helps you stay
 coherent across 30-90 minutes of work. Not for trivial one-step jobs.
-
-## Web and community research
-
-- `mcp__perplexity__perplexity_search` — URLs, facts, recent news with citations
-- `mcp__perplexity__perplexity_ask` — quick AI-answered questions with citations
-- `mcp__perplexity__perplexity_research` — deep multi-source investigation (slow, 30s+)
-- `mcp__perplexity__perplexity_reason` — complex step-by-step analysis
-- `mcp__reddit__*` — honest community opinions for library/tool evaluation
-  (per CLAUDE.md, Reddit is the best source for unfiltered developer opinions).
-  `WebFetch` cannot access Reddit or Twitter; use the MCP.
-
-Prefer these over raw `WebFetch` / `WebSearch` when you need cited,
-synthesized answers rather than raw pages.
