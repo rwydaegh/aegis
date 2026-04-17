@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import * as Sentry from '@sentry/react'
 import { searchPatterns, loadPattern } from '@/api/patterns'
 import type { PatternSearchResult } from '@/api/patterns'
+import { isClientError } from '@/api/client'
 import { useSimulationStore } from '@/stores/simulation'
 import PatternPolarPlot from '@/components/panels/PatternPolarPlot'
 
@@ -171,7 +172,7 @@ export default function PatternBrowserPanel() {
       const { data, meta } = await loadPattern(r.source, r.id)
       setPatternData(data, meta)
     } catch (err) {
-      Sentry.captureException(err)
+      if (!isClientError(err)) Sentry.captureException(err)
       setLoadError((err as Error).message)
       setPatternData(null, null)
     } finally {
