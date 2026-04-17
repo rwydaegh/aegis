@@ -54,6 +54,53 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-17 20:15 UTC -- "Compliance and regulatory"
+
+- Actor: interactive
+- Depth: medium
+- Findings: 0 bugs filed (intentional design path reviewed and
+  flagged below as a UX oddity, not bug-worthy)
+- Notes: Exercised the compliance surface on Open ground at 28 GHz.
+  Happy path is healthy: Sab(4cm²), Sinc(local), Sinc(wb) all PASS
+  with expected values and margins, limit scaling is correct on the
+  General Public -> Occupational toggle (every limit exactly 5×,
+  Summary Margin +22.1 -> +29.2 dB = +10log10(5) as expected).
+  Power sweep produced a clean curve and reported Max compliant
+  65.0 dBm, matching the CompliancePanel Summary's 65.1 dBm Max TX
+  value. Frequency sweep and Compliance heatmap both render without
+  NaN/empty cells (heatmap all green at 43 dBm, which is correct
+  since 65 dBm is the boundary). Clicking "Max TX power" from the
+  Summary correctly bumps power to 65.1 dBm, which produces an
+  OVERALL FAIL because SAR_wb tips over the 0.08 W/kg limit at
+  exactly ratio 1.00 -- and that row appears in the panel *only
+  once it starts failing* (the `visibleChecks` filter keeps passing
+  disabled checks hidden). The resulting UX is: user sees PASS rows
+  for Sab/Sinc with +1.9 to +4.8 dB margin at Max TX, but the
+  header badge flips to FAIL with SAR_wb row suddenly popping in.
+  **Not filed**: this is the intentional design from issue #235
+  ("Margin/Max TX/badge always use all compliance.checks, not
+  visibleChecks") merged via #236, which was chosen specifically to
+  avoid misreporting PASS when a disabled check is exceeded. The
+  remaining wart is that at 28 GHz the backend still returns a
+  SAR_wb check with limit 0.08 W/kg, while ICNIRP 2020 Table 5
+  restricts SAR_wb to 100 kHz - 6 GHz (the docstring of
+  `icnirp_limits` is honest that "Above 6 GHz all limits are
+  returned", i.e. the backend is deliberately conservative). Worth
+  thinking about someday: either (a) drop SAR_wb from checks above
+  6 GHz to match ICNIRP strictly, or (b) keep the conservative
+  extension but render a muted SAR_wb row in the panel so the
+  Summary margin/Max TX never refer to an invisible constraint.
+  /api/compliance/spatial: drove it with invalid bbox shapes, bad
+  receiver_height values, and an unknown scenario -- all returned
+  400 but with the prior-guard error "No base stations loaded"
+  firing before the #544 validators. The #544 input validators
+  themselves are present in routes/analysis.py:386-419; didn't
+  exercise them behind the basestation guard. Console was clean
+  apart from the expected 400s from my probe and WebGL/THREE
+  deprecation noise. Confident happy-path compliance flows are
+  healthy; the SAR_wb-at-mmWave conservatism is a design call
+  worth discussing rather than a bug.
+
 ### 2026-04-17 18:25 UTC -- "Coherent MIMO and beamforming"
 
 - Actor: interactive
