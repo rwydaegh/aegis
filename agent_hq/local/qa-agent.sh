@@ -23,7 +23,7 @@ STABLE_AREAS=(
     "Export, analysis panels, and data quality"
     "Camera controls and viewpoints"
     "Base station panel and coverage maps"
-    "Bug reporter (Shift+B), keyboard help (?), and guided tour"
+    "Keyboard help (?) and guided tour"
 )
 
 # 3. Pick focus: 50% chance recent PR, 50% chance stable rotation
