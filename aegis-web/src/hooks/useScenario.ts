@@ -9,6 +9,68 @@ import type { ScenarioEntry } from '../api/types';
 const VALID_MODES = new Set<DosimetryMode>(['bound', 'aggregate', 'spatial']);
 const VALID_SOURCES = new Set<EnvironmentSource>(['none', 'voxels', 'osm', '3dtiles', 'cesium', 'coverage']);
 
+type ScenarioWebState = ScenarioEntry['webState'];
+type EnvSpec = NonNullable<ScenarioWebState['environment']>;
+
+function applySimulationState(webState: ScenarioWebState): void {
+  const sim = useSimulationStore.getState();
+  if (webState.freqGhz != null) sim.setFreqGhz(webState.freqGhz);
+  if (webState.powerDbm != null) sim.setPowerDbm(webState.powerDbm);
+  if (webState.mode != null && VALID_MODES.has(webState.mode as DosimetryMode)) {
+    sim.setMode(webState.mode as DosimetryMode);
+  }
+  if ('antennaPos' in webState) sim.setAntennaPos(webState.antennaPos ?? null);
+}
+
+function applyEnvironmentState(env: EnvSpec): void {
+  const store = useEnvironmentStore.getState();
+  if (VALID_SOURCES.has(env.source as EnvironmentSource)) {
+    store.setSource(env.source as EnvironmentSource);
+  }
+  if (env.lat != null && env.lon != null) {
+    store.setLocation(env.lat, env.lon);
+  }
+  if (env.locationQuery) {
+    store.setLocationFormatted(env.locationQuery);
+  }
+}
+
+function applyCoverageForScenario(name: string): void {
+  const coverage = useCoverageStore.getState();
+  if (name === 'coverage_globe') {
+    coverage.setEnabled(true);
+    coverage.fetch();
+  } else {
+    coverage.setEnabled(false);
+  }
+}
+
+async function fetchEnvironmentIfNeeded(env: EnvSpec): Promise<void> {
+  if (env.lat == null) return;
+  if (env.source !== 'osm' && env.source !== '3dtiles') return;
+  const ui = useUIStore.getState();
+  const store = useEnvironmentStore.getState();
+  ui.setScenarioLoading(true);
+  try {
+    if (env.source === 'osm') await store.fetchOSM();
+    else await store.fetchTilesForRT();
+  } catch {
+    // Toast handled inside fetch*; we just stop loading
+  } finally {
+    ui.setScenarioLoading(false);
+  }
+}
+
+function updateScenarioUrl(name: string): void {
+  const url = new URL(window.location.href);
+  if (name === 'empty') {
+    url.searchParams.delete('scenario');
+  } else {
+    url.searchParams.set('scenario', name);
+  }
+  history.replaceState(null, '', url.toString());
+}
+
 export function useScenario() {
   const viewerConfig = useSceneStore((s) => s.viewerConfig);
 
@@ -23,87 +85,28 @@ export function useScenario() {
       if (!scenario) return;
 
       const { webState } = scenario;
-      const sim = useSimulationStore.getState();
-      const scene = useSceneStore.getState();
-      const env = useEnvironmentStore.getState();
-      const ui = useUIStore.getState();
 
       // 1. Reset - prevent stale data leaking between scenarios
-      sim.clearResults();
-      scene.clearScene();
+      useSimulationStore.getState().clearResults();
+      useSceneStore.getState().clearScene();
 
       // 2. Apply instant state
-      if (webState.freqGhz != null) sim.setFreqGhz(webState.freqGhz);
-      if (webState.powerDbm != null) sim.setPowerDbm(webState.powerDbm);
-      if (webState.mode != null && VALID_MODES.has(webState.mode as DosimetryMode)) {
-        sim.setMode(webState.mode as DosimetryMode);
-      }
-      if ('antennaPos' in webState) sim.setAntennaPos(webState.antennaPos ?? null);
+      applySimulationState(webState);
+      if (webState.environment) applyEnvironmentState(webState.environment);
+      applyCoverageForScenario(name);
 
-      if (webState.environment) {
-        if (VALID_SOURCES.has(webState.environment.source as EnvironmentSource)) {
-          env.setSource(webState.environment.source as EnvironmentSource);
-        }
-        if (webState.environment.lat != null && webState.environment.lon != null) {
-          env.setLocation(webState.environment.lat, webState.environment.lon);
-        }
-        if (webState.environment.locationQuery) {
-          env.setLocationFormatted(webState.environment.locationQuery);
-        }
-      }
-
-      // 3. Coverage globe: enable overlay and fetch data
-      if (name === 'coverage_globe') {
-        useCoverageStore.getState().setEnabled(true)
-        useCoverageStore.getState().fetch()
-      } else {
-        useCoverageStore.getState().setEnabled(false)
-      }
-
-      // 4. Set UI state
+      // 3. UI state
+      const ui = useUIStore.getState();
       ui.setActiveScenario(name);
       ui.setWelcomeDismissed(true);
 
-      // 4. Trigger environment fetch if needed
-      if (
-        webState.environment &&
-        webState.environment.lat != null
-      ) {
-        if (webState.environment.source === 'osm') {
-          ui.setScenarioLoading(true);
-          try {
-            await env.fetchOSM();
-          } catch {
-            // Toast handled inside fetchOSM; we just stop loading
-          } finally {
-            ui.setScenarioLoading(false);
-          }
-        } else if (webState.environment.source === '3dtiles') {
-          ui.setScenarioLoading(true);
-          try {
-            await env.fetchTilesForRT();
-          } catch {
-            // Toast handled inside fetchTilesForRT; we just stop loading
-          } finally {
-            ui.setScenarioLoading(false);
-          }
-        }
-      }
+      // 4. Environment fetch (OSM / 3dtiles)
+      if (webState.environment) await fetchEnvironmentIfNeeded(webState.environment);
 
-      // 5. Auto-compute: NOT needed. useDosimetry has a reactive useEffect
-      // that fires when antennaPos changes. Setting antennaPos above
-      // triggers the debounced compute pipeline automatically.
+      // 5. Auto-compute handled by useDosimetry's reactive useEffect.
 
-      // 6. Update URL
-      if (name === 'empty') {
-        const url = new URL(window.location.href);
-        url.searchParams.delete('scenario');
-        history.replaceState(null, '', url.toString());
-      } else {
-        const url = new URL(window.location.href);
-        url.searchParams.set('scenario', name);
-        history.replaceState(null, '', url.toString());
-      }
+      // 6. URL
+      updateScenarioUrl(name);
     },
     [scenarios],
   );

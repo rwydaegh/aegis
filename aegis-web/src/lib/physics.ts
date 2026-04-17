@@ -34,31 +34,11 @@ export interface PhysicsConfig {
   facing_smooth: number
 }
 
-/**
- * Pure function: takes state + input, returns new state.
- * Camera direction is the flattened XZ forward vector from the camera.
- * getGroundY returns the ground height at a given XZ position.
- */
-export function stepPhysics(
-  state: PhysicsState,
-  input: MovementInput,
-  cameraDirection: [number, number],
-  getGroundY: (x: number, z: number, refY: number) => number,
-  config: PhysicsConfig,
-  dt: number
-): PhysicsState {
-  dt = Math.min(dt, config.dt_clamp)
-
-  let [px, py, pz] = state.position
-  let [vx, vy, vz] = state.velocity
-  let rotY = state.rotationY
-  let angVel = state.angularVelocity
-  let onGround = state.onGround
-
-  // --- Angular dynamics ---
+function stepAngular(
+  input: MovementInput, rotY: number, angVel: number, config: PhysicsConfig, dt: number,
+): { rotY: number; angVel: number } {
   if (input.rotLeft) angVel += config.rotation_accel * dt
   if (input.rotRight) angVel -= config.rotation_accel * dt
-  // Friction on angular velocity
   const rotFriction = config.rotation_friction * dt
   if (Math.abs(angVel) <= rotFriction) {
     angVel = 0
@@ -66,21 +46,17 @@ export function stepPhysics(
     angVel -= Math.sign(angVel) * rotFriction
   }
   angVel = Math.max(-config.max_rotation_speed, Math.min(config.max_rotation_speed, angVel))
-  rotY += angVel * dt
+  return { rotY: rotY + angVel * dt, angVel }
+}
 
-  // --- Lateral dynamics ---
-  // Build move direction in world XZ relative to camera direction
+function buildMoveDirection(
+  input: MovementInput, cameraDirection: [number, number],
+): { moveX: number; moveZ: number } {
   const [camX, camZ] = cameraDirection
-  // Normalize camera direction
   const camLen = Math.sqrt(camX * camX + camZ * camZ)
-  let fwdX = 0
-  let fwdZ = 0
-  if (camLen > 0.0001) {
-    fwdX = camX / camLen
-    fwdZ = camZ / camLen
-  }
-  // Right is perpendicular to forward (rotate 90 degrees CW in XZ plane)
-  // For camera looking down -Z: fwd=(0,-1), right should be (+1,0) = positive X
+  const fwdX = camLen > 0.0001 ? camX / camLen : 0
+  const fwdZ = camLen > 0.0001 ? camZ / camLen : 0
+  // Right = forward rotated 90 deg CW in XZ
   const rightX = -fwdZ
   const rightZ = fwdX
 
@@ -91,22 +67,25 @@ export function stepPhysics(
   if (input.right) { moveX += rightX; moveZ += rightZ }
   if (input.left) { moveX -= rightX; moveZ -= rightZ }
 
-  // Normalize move direction
   const moveLen = Math.sqrt(moveX * moveX + moveZ * moveZ)
   if (moveLen > 0.0001) {
     moveX /= moveLen
     moveZ /= moveLen
   }
+  return { moveX, moveZ }
+}
 
-  const accel = config.walk_accel
+function stepLateral(
+  input: MovementInput, vx: number, vz: number, cameraDirection: [number, number],
+  onGround: boolean, config: PhysicsConfig, dt: number,
+): { vx: number; vz: number } {
+  const { moveX, moveZ } = buildMoveDirection(input, cameraDirection)
   const maxSpeed = config.max_walk_speed * (input.sprint ? config.sprint_multiplier : 1)
   const friction = onGround ? config.ground_friction : config.air_friction
 
-  // Apply acceleration
-  vx += moveX * accel * dt
-  vz += moveZ * accel * dt
+  vx += moveX * config.walk_accel * dt
+  vz += moveZ * config.walk_accel * dt
 
-  // Apply friction to lateral velocity
   const lateralSpeed = Math.sqrt(vx * vx + vz * vz)
   if (lateralSpeed > 0) {
     const frictionDelta = friction * dt
@@ -120,91 +99,142 @@ export function stepPhysics(
     }
   }
 
-  // Clamp lateral speed
   const speed = Math.sqrt(vx * vx + vz * vz)
   if (speed > maxSpeed) {
     vx = (vx / speed) * maxSpeed
     vz = (vz / speed) * maxSpeed
   }
+  return { vx, vz }
+}
 
-  // --- Vertical dynamics ---
+function stepVertical(
+  input: MovementInput, vy: number, onGround: boolean, config: PhysicsConfig, dt: number,
+): { vy: number; onGround: boolean } {
   if (onGround && input.jump) {
-    vy = config.jump_impulse
-    onGround = false
+    return { vy: config.jump_impulse, onGround: false }
   }
-
   if (!onGround) {
     vy -= config.gravity * dt
   }
+  return { vy, onGround }
+}
 
-  // --- Integrate position ---
-  // Test X movement independently for wall sliding
-  const newPxCandidate = px + vx * dt
-  const groundYAtNewX = getGroundY(newPxCandidate, pz, py)
-  const stepAtX = groundYAtNewX - py
-  if (stepAtX > config.max_step_height) {
-    // Wall in X direction - cancel X movement
+function integratePositionWithWalls(
+  px: number, py: number, pz: number,
+  vx: number, vz: number,
+  getGroundY: (x: number, z: number, refY: number) => number,
+  config: PhysicsConfig, dt: number,
+): { px: number; pz: number; vx: number; vz: number } {
+  const newPx = px + vx * dt
+  if (getGroundY(newPx, pz, py) - py > config.max_step_height) {
     vx = 0
   } else {
-    px = newPxCandidate
+    px = newPx
   }
 
-  // Test Z movement independently for wall sliding
-  const newPzCandidate = pz + vz * dt
-  const groundYAtNewZ = getGroundY(px, newPzCandidate, py)
-  const stepAtZ = groundYAtNewZ - py
-  if (stepAtZ > config.max_step_height) {
-    // Wall in Z direction - cancel Z movement
+  const newPz = pz + vz * dt
+  if (getGroundY(px, newPz, py) - py > config.max_step_height) {
     vz = 0
   } else {
-    pz = newPzCandidate
+    pz = newPz
   }
+  return { px, pz, vx, vz }
+}
 
-  // Vertical movement
-  py += vy * dt
-
-  // --- Ground collision ---
+function resolveGroundCollision(
+  px: number, py: number, pz: number, vy: number,
+  getGroundY: (x: number, z: number, refY: number) => number,
+  config: PhysicsConfig,
+): { py: number; vy: number; onGround: boolean } {
   const groundY = getGroundY(px, pz, py)
   if (py <= groundY + config.ground_snap && vy <= 0) {
-    py = groundY
-    vy = 0
-    onGround = true
-  } else if (py > groundY + config.ground_snap) {
-    onGround = false
+    return { py: groundY, vy: 0, onGround: true }
   }
+  return { py, vy, onGround: py <= groundY + config.ground_snap }
+}
 
-  // --- Step-up: auto-climb small ledges when on ground ---
-  // Without this, the body stays on a lower floor when a higher surface
-  // exists within step height (e.g. walking onto a raised platform where
-  // the lower floor continues underneath).
-  if (onGround) {
-    const probeY = py + config.max_step_height + 0.02
-    const higherGround = getGroundY(px, pz, probeY)
-    if (higherGround > py + 0.01 && higherGround - py <= config.max_step_height) {
-      py = higherGround
-    }
+function autoStepUp(
+  px: number, py: number, pz: number, onGround: boolean,
+  getGroundY: (x: number, z: number, refY: number) => number,
+  config: PhysicsConfig,
+): number {
+  if (!onGround) return py
+  const probeY = py + config.max_step_height + 0.02
+  const higherGround = getGroundY(px, pz, probeY)
+  if (higherGround > py + 0.01 && higherGround - py <= config.max_step_height) {
+    return higherGround
   }
+  return py
+}
 
-  // --- Fall-through protection ---
-  // If the player falls below a minimum Y (no voxels below), teleport to y=0
-  const FLOOR_MIN = -20
-  if (py < FLOOR_MIN) {
-    py = 0
-    vy = 0
-    onGround = true
-  }
+const FALL_FLOOR_MIN = -20
 
-  // --- Smooth facing ---
-  // Body rotation follows movement direction when moving
+function applyFallProtection(py: number, vy: number, onGround: boolean): { py: number; vy: number; onGround: boolean } {
+  if (py < FALL_FLOOR_MIN) return { py: 0, vy: 0, onGround: true }
+  return { py, vy, onGround }
+}
+
+function smoothFacing(
+  vx: number, vz: number, rotY: number, config: PhysicsConfig, dt: number,
+): number {
   const movingSpeed = Math.sqrt(vx * vx + vz * vz)
-  if (movingSpeed > 0.1) {
-    const targetRotY = Math.atan2(vx, vz)
-    // Shortest angle interpolation
-    let diff = targetRotY - rotY
-    while (diff > Math.PI) diff -= 2 * Math.PI
-    while (diff < -Math.PI) diff += 2 * Math.PI
-    rotY += diff * Math.min(1, config.facing_smooth * dt)
-  }
+  if (movingSpeed <= 0.1) return rotY
+  const targetRotY = Math.atan2(vx, vz)
+  let diff = targetRotY - rotY
+  while (diff > Math.PI) diff -= 2 * Math.PI
+  while (diff < -Math.PI) diff += 2 * Math.PI
+  return rotY + diff * Math.min(1, config.facing_smooth * dt)
+}
+
+/**
+ * Pure function: takes state + input, returns new state.
+ * Camera direction is the flattened XZ forward vector from the camera.
+ * getGroundY returns the ground height at a given XZ position.
+ */
+export function stepPhysics(
+  state: PhysicsState,
+  input: MovementInput,
+  cameraDirection: [number, number],
+  getGroundY: (x: number, z: number, refY: number) => number,
+  config: PhysicsConfig,
+  dt: number,
+): PhysicsState {
+  dt = Math.min(dt, config.dt_clamp)
+  let [px, py, pz] = state.position
+  let [vx, vy, vz] = state.velocity
+
+  const ang = stepAngular(input, state.rotationY, state.angularVelocity, config, dt)
+  let rotY = ang.rotY
+  const angVel = ang.angVel
+
+  const lat = stepLateral(input, vx, vz, cameraDirection, state.onGround, config, dt)
+  vx = lat.vx
+  vz = lat.vz
+
+  const vert = stepVertical(input, vy, state.onGround, config, dt)
+  vy = vert.vy
+  let onGround = vert.onGround
+
+  const integrated = integratePositionWithWalls(px, py, pz, vx, vz, getGroundY, config, dt)
+  px = integrated.px
+  pz = integrated.pz
+  vx = integrated.vx
+  vz = integrated.vz
+  py += vy * dt
+
+  const collided = resolveGroundCollision(px, py, pz, vy, getGroundY, config)
+  py = collided.py
+  vy = collided.vy
+  onGround = collided.onGround
+
+  py = autoStepUp(px, py, pz, onGround, getGroundY, config)
+
+  const fall = applyFallProtection(py, vy, onGround)
+  py = fall.py
+  vy = fall.vy
+  onGround = fall.onGround
+
+  rotY = smoothFacing(vx, vz, rotY, config, dt)
 
   return {
     position: [px, py, pz],

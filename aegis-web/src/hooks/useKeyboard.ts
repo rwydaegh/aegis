@@ -15,6 +15,48 @@ export interface KeyState {
   sprint: boolean
 }
 
+function isTypingTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLInputElement
+    || target instanceof HTMLSelectElement
+    || target instanceof HTMLTextAreaElement
+  )
+}
+
+function deleteAntenna(e: KeyboardEvent): void {
+  e.preventDefault()
+  const sim = useSimulationStore.getState()
+  if (sim.antennaPos) {
+    sim.setAntennaPos(null)
+    sim.clearResults()
+  }
+}
+
+const ARROW_DELTAS: Record<string, [number, number, number]> = {
+  ArrowUp: [0, 0, -1],
+  ArrowDown: [0, 0, 1],
+  ArrowLeft: [-1, 0, 0],
+  ArrowRight: [1, 0, 0],
+}
+
+function nudgeAntennaWithArrow(e: KeyboardEvent): void {
+  e.preventDefault()
+  const config = useSceneStore.getState().viewerConfig
+  const pos = useSimulationStore.getState().antennaPos
+  if (!config || !pos) return
+  const delta = ARROW_DELTAS[e.code]
+  if (!delta) return
+  const step = e.shiftKey
+    ? (config.antenna.nudge_step_shift ?? 3)
+    : (config.antenna.nudge_step ?? 1)
+  const [x, y, z] = pos
+  useSimulationStore.getState().setAntennaPos([
+    x + delta[0] * step,
+    y + delta[1] * step,
+    z + delta[2] * step,
+  ])
+}
+
 export function useKeyboard(): KeyState {
   const keysRef = useRef(new Set<string>())
   const stateRef = useRef<KeyState>({
@@ -46,40 +88,18 @@ export function useKeyboard(): KeyState {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't capture when typing in inputs
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.target instanceof HTMLTextAreaElement) return
+      if (isTypingTarget(e.target)) return
 
       keysRef.current.add(e.code)
       updateRef.current()
 
-      // Delete/Backspace removes the antenna
       if ((e.code === 'Delete' || e.code === 'Backspace') && !useMIMOStore.getState().enabled) {
-        e.preventDefault()
-        const sim = useSimulationStore.getState()
-        if (sim.antennaPos) {
-          sim.setAntennaPos(null)
-          sim.clearResults()
-        }
+        deleteAntenna(e)
         return
       }
 
-      // Arrow key antenna nudging (single-user mode only)
       if (e.code.startsWith('Arrow') && !useMIMOStore.getState().enabled) {
-        e.preventDefault()
-        const config = useSceneStore.getState().viewerConfig
-        const pos = useSimulationStore.getState().antennaPos
-        if (!config || !pos) return
-
-        const step = e.shiftKey
-          ? (config.antenna.nudge_step_shift ?? 3)
-          : (config.antenna.nudge_step ?? 1)
-        const [x, y, z] = pos
-        let newPos: [number, number, number] = [x, y, z]
-        if (e.code === 'ArrowUp') newPos = [x, y, z - step]
-        if (e.code === 'ArrowDown') newPos = [x, y, z + step]
-        if (e.code === 'ArrowLeft') newPos = [x - step, y, z]
-        if (e.code === 'ArrowRight') newPos = [x + step, y, z]
-        useSimulationStore.getState().setAntennaPos(newPos)
+        nudgeAntennaWithArrow(e)
       }
     }
 
