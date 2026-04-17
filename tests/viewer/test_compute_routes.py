@@ -486,7 +486,7 @@ class TestComputeSionnaRtRoute:
         assert resp.status_code == 400
         assert "Invalid scene path" in resp.get_json()["error"]
 
-    def test_gpu_unavailable_returns_503(self, viewer_app):
+    def test_gpu_unavailable_returns_501(self, viewer_app):
         with (
             viewer_app.test_client() as c,
             patch("aegis.viewer.routes.compute._validate_scene_path", return_value=True),
@@ -500,7 +500,7 @@ class TestComputeSionnaRtRoute:
                     "antenna_pos": [5, 0, 1],
                 },
             )
-        assert resp.status_code == 503
+        assert resp.status_code == 501
 
 
 # ---------------------------------------------------------------------------
