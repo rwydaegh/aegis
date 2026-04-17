@@ -34,17 +34,15 @@ function applyInitialSimulation(_config: ViewerConfig, caps: Capabilities) {
 }
 
 // Wire dosimetry/antenna/body keys from the config payload.
+// Note: freqGhz, powerDbm, skinModel are persisted via Zustand (see simulation
+// store partialize) and must NOT be set from server defaults here. Doing so
+// clobbers the user's choice on every reload. Server defaults already match
+// the Zustand defaults, so there is nothing to apply on first visit.
 function applyDosimetryConfig(config: ViewerConfig, caps: Capabilities) {
   const sim = useSimulationStore.getState()
   const scene = useSceneStore.getState()
   const ui = useUIStore.getState()
 
-  if (config.dosimetry?.freq_hz) {
-    sim.setFreqGhz(config.dosimetry.freq_hz / 1e9)
-  }
-  if (config.dosimetry?.default_power_dbm !== undefined) {
-    sim.setPowerDbm(config.dosimetry.default_power_dbm)
-  }
   if (config.dosimetry?.exposure_scenario) {
     const scenario = config.dosimetry.exposure_scenario
     if (scenario === 'general_public' || scenario === 'occupational') {
@@ -52,12 +50,8 @@ function applyDosimetryConfig(config: ViewerConfig, caps: Capabilities) {
     }
   }
 
-  // Round-trip config keys for export/reload
   if (config.antenna?.default_position) {
     sim.setAntennaPos(config.antenna.default_position)
-  }
-  if (config.dosimetry?.skin_model) {
-    sim.setSkinModel(config.dosimetry.skin_model)
   }
   if (config.dosimetry?.dynamic_range_db !== undefined) {
     ui.setDynamicRangeDb(config.dosimetry.dynamic_range_db)
