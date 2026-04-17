@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import math
 
 import numpy as np
 from flask import Response, jsonify, request
@@ -83,6 +84,8 @@ def _parse_power_dbm(params: dict):
         power_dbm = float(params.get("power_dbm", DEFAULT_POWER_DBM))
     except (TypeError, ValueError):
         return None, (jsonify({"error": "power_dbm must be a number"}), 400)
+    if not math.isfinite(power_dbm):
+        return None, (jsonify({"error": "power_dbm must be a finite number"}), 400)
     if power_dbm < 0 or power_dbm > _MAX_POWER_DBM:
         return None, (jsonify({"error": f"power_dbm must be between 0 and {_MAX_POWER_DBM} dBm"}), 400)
     return power_dbm, None
