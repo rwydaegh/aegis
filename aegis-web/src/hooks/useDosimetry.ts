@@ -311,6 +311,7 @@ export function useDosimetry() {
   const abortRef = useRef<AbortController | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const generationRef = useRef(0)
+  const lspHeatmapGenRef = useRef(0)
 
   const triggerCompute = useCallback(() => {
     if (shouldSkipCompute(sim, scene)) return
@@ -388,7 +389,7 @@ export function useDosimetry() {
   useEffect(() => {
     if (scene.pathSource !== 'stochastic' || !lspHeatmapVisible || !sim.antennaPos) return
 
-    const controller = new AbortController()
+    const gen = ++lspHeatmapGenRef.current
     const poleH = scene.config?.antenna?.pole_height ?? 2
     const antennaTip: [number, number, number] = [sim.antennaPos[0], sim.antennaPos[1] + poleH, sim.antennaPos[2]]
 
@@ -403,18 +404,16 @@ export function useDosimetry() {
       seed: sim.stochasticSeed,
     })
       .then(result => {
-        if (controller.signal.aborted) return
+        if (gen !== lspHeatmapGenRef.current) return
         useSimulationStore.getState().setLSPHeatmapData(result.data, result.bounds, [result.vmin, result.vmax])
       })
       .catch(err => {
-        if ((err as Error).name === 'AbortError') return
+        if (gen !== lspHeatmapGenRef.current) return
         Sentry.captureException(err)
       })
       .finally(() => {
-        useSimulationStore.getState().setLSPHeatmapLoading(false)
+        if (gen === lspHeatmapGenRef.current) useSimulationStore.getState().setLSPHeatmapLoading(false)
       })
-
-    return () => { controller.abort() }
   }, [scene.pathSource, lspHeatmapVisible, lspHeatmapParam, sim.stochasticPreset, sim.stochasticSeed, sim.freqGhz, sim.antennaPos, scene.config])
 
   // Cancel any in-flight request on unmount
