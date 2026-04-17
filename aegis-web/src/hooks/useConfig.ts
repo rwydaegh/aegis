@@ -22,20 +22,15 @@ function applySceneAndBody(config: ViewerConfig, caps: Capabilities) {
   })
 }
 
-// Baseline simulation state (mode/fresnel/power/skinModel) plus optional body placement.
+// Auto-place body at the recommended position (if location was loaded).
+// body_placement is already in Y-up (scene) coordinates.
+// Note: mode/fresnel/powerDbm/skinModel are intentionally NOT set here; they
+// are persisted via Zustand persist middleware (PR #419) and rehydrated from
+// localStorage. The Zustand defaults match what we used to hardcode.
 function applyInitialSimulation(_config: ViewerConfig, caps: Capabilities) {
-  const simState: Record<string, unknown> = {
-    mode: 'spatial',
-    fresnel: true,
-    powerDbm: 43,
-    skinModel: 'itis',
-  }
-  // Auto-place body at the recommended position (if location was loaded).
-  // body_placement is already in Y-up (scene) coordinates.
   if (caps.body_placement) {
-    simState.bodyOffset = caps.body_placement as ScenePos
+    useSimulationStore.setState({ bodyOffset: caps.body_placement as ScenePos })
   }
-  useSimulationStore.setState(simState)
 }
 
 // Wire dosimetry/antenna/body keys from the config payload.
