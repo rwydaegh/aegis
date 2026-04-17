@@ -16,6 +16,60 @@ const COLOR_MODE_OPTIONS: { value: AntennaColorMode; label: string }[] = [
   { value: 'frequency_band', label: 'Frequency band' },
 ]
 
+const labelClass = 'text-xs text-muted-foreground block mt-3 mb-1'
+const inputClass =
+  'w-full bg-background border border-border rounded px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring'
+const selectClass = inputClass
+
+function LoadingSpinner({ label }: { label: string }) {
+  return (
+    <span className="flex items-center justify-center gap-1.5">
+      <span className="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+      {label}
+    </span>
+  )
+}
+
+interface FilterCheckboxGroupProps {
+  title: string
+  items: string[]
+  enabled: Set<string>
+  onToggle: (item: string) => void
+}
+
+function FilterCheckboxGroup({ title, items, enabled, onToggle }: FilterCheckboxGroupProps) {
+  if (items.length === 0) return null
+  return (
+    <>
+      <label className={labelClass}>{title}</label>
+      <div className="flex flex-col gap-1 pl-0.5">
+        {items.map(item => (
+          <label key={item} className="flex items-center gap-2 text-xs cursor-pointer select-none">
+            <input
+              type="checkbox"
+              className="rounded border-border accent-primary h-3.5 w-3.5"
+              checked={enabled.has(item)}
+              onChange={() => onToggle(item)}
+            />
+            <span className="text-foreground">{item}</span>
+          </label>
+        ))}
+      </div>
+    </>
+  )
+}
+
+function FidelityLegend() {
+  return (
+    <div className="mt-3 flex items-center gap-2 text-[10px] text-muted-foreground">
+      <span className="w-2 h-2 rounded-full bg-[#22c55e] inline-block" /> Gov
+      <span className="w-2 h-2 rounded-full bg-[#eab308] inline-block" /> Mixed
+      <span className="w-2 h-2 rounded-full bg-[#f97316] inline-block" /> Est.
+      <span className="w-2 h-2 rounded-full bg-[#ef4444] inline-block" /> Low
+    </div>
+  )
+}
+
 export default function BaseStationsPanel() {
   const [location, setLocation] = useState('Brussels, Belgium')
   const [radius, setRadius] = useState(500)
@@ -39,16 +93,10 @@ export default function BaseStationsPanel() {
   const setBasestations = useBaseStationsStore(s => s.setBasestations)
   const setLoading = useBaseStationsStore(s => s.setLoading)
   const clear = useBaseStationsStore(s => s.clear)
-
   const colorMode = useBaseStationsStore(s => s.colorMode)
   const setColorMode = useBaseStationsStore(s => s.setColorMode)
 
   const computeExposure = useBaseStationsDosimetry()
-
-  const selectClass =
-    'w-full bg-background border border-border rounded px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring'
-  const inputClass = selectClass
-  const labelClass = 'text-xs text-muted-foreground block mt-3 mb-1'
 
   const handleLoad = useCallback(async () => {
     setLoading(true)
@@ -75,7 +123,7 @@ export default function BaseStationsPanel() {
     } finally {
       setLoading(false)
     }
-  }, [location, radius, setLoading, setBasestations])
+  }, [location, radius, setLoading, setBasestations, clear])
 
   useEffect(() => {
     if (!autoLoad) return
@@ -128,12 +176,7 @@ export default function BaseStationsPanel() {
           onClick={handleLoad}
           disabled={isLoading}
         >
-          {isLoading ? (
-            <span className="flex items-center justify-center gap-1.5">
-              <span className="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-              Loading...
-            </span>
-          ) : 'Load'}
+          {isLoading ? <LoadingSpinner label="Loading..." /> : 'Load'}
         </button>
         {basestations.length > 0 && (
           <button
@@ -170,81 +213,33 @@ export default function BaseStationsPanel() {
             ))}
           </select>
 
-          {operators.length > 0 && (
-            <>
-              <label className={labelClass}>Operators</label>
-              <div className="flex flex-col gap-1 pl-0.5">
-                {operators.map(op => (
-                  <label key={op} className="flex items-center gap-2 text-xs cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      className="rounded border-border accent-primary h-3.5 w-3.5"
-                      checked={enabledOperators.has(op)}
-                      onChange={() => toggleOperator(op)}
-                    />
-                    <span className="text-foreground">{op}</span>
-                  </label>
-                ))}
-              </div>
-            </>
-          )}
+          <FilterCheckboxGroup
+            title="Operators"
+            items={operators}
+            enabled={enabledOperators}
+            onToggle={toggleOperator}
+          />
+          <FilterCheckboxGroup
+            title="Technologies"
+            items={technologies}
+            enabled={enabledTechnologies}
+            onToggle={toggleTechnology}
+          />
+          <FilterCheckboxGroup
+            title="Frequency bands"
+            items={frequencyBands}
+            enabled={enabledFrequencyBands}
+            onToggle={toggleFrequencyBand}
+          />
 
-          {technologies.length > 0 && (
-            <>
-              <label className={labelClass}>Technologies</label>
-              <div className="flex flex-col gap-1 pl-0.5">
-                {technologies.map(tech => (
-                  <label key={tech} className="flex items-center gap-2 text-xs cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      className="rounded border-border accent-primary h-3.5 w-3.5"
-                      checked={enabledTechnologies.has(tech)}
-                      onChange={() => toggleTechnology(tech)}
-                    />
-                    <span className="text-foreground">{tech}</span>
-                  </label>
-                ))}
-              </div>
-            </>
-          )}
-
-          {frequencyBands.length > 0 && (
-            <>
-              <label className={labelClass}>Frequency bands</label>
-              <div className="flex flex-col gap-1 pl-0.5">
-                {frequencyBands.map(band => (
-                  <label key={band} className="flex items-center gap-2 text-xs cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      className="rounded border-border accent-primary h-3.5 w-3.5"
-                      checked={enabledFrequencyBands.has(band)}
-                      onChange={() => toggleFrequencyBand(band)}
-                    />
-                    <span className="text-foreground">{band}</span>
-                  </label>
-                ))}
-              </div>
-            </>
-          )}
-
-          <div className="mt-3 flex items-center gap-2 text-[10px] text-muted-foreground">
-            <span className="w-2 h-2 rounded-full bg-[#22c55e] inline-block" /> Gov
-            <span className="w-2 h-2 rounded-full bg-[#eab308] inline-block" /> Mixed
-            <span className="w-2 h-2 rounded-full bg-[#f97316] inline-block" /> Est.
-            <span className="w-2 h-2 rounded-full bg-[#ef4444] inline-block" /> Low
-          </div>
+          <FidelityLegend />
 
           <button
             className="w-full mt-3 px-3 py-1.5 text-xs rounded border border-primary/40 bg-primary/15 text-primary hover:bg-primary/25 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
             onClick={computeExposure}
             disabled={isComputing || activeCount === 0}
           >
-            {isComputing ? (
-              <span className="flex items-center justify-center gap-1.5">
-                <span className="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-                Computing...
-              </span>
-            ) : 'Compute exposure'}
+            {isComputing ? <LoadingSpinner label="Computing..." /> : 'Compute exposure'}
           </button>
 
           <AntennaDetailPanel />

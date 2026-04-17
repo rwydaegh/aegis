@@ -25,7 +25,6 @@ function computeSmartDynamicRange(sabArray: Float32Array): number {
   const max = arrayMax(sabArray)
   if (max <= 0) return 30
 
-  // Collect dB values for non-zero faces
   const dbValues: number[] = []
   for (let i = 0; i < sabArray.length; i++) {
     if (sabArray[i] > 0) {
@@ -40,7 +39,6 @@ function computeSmartDynamicRange(sabArray: Float32Array): number {
   const p5idx = Math.floor(dbValues.length * 0.05)
   const p5 = Math.abs(dbValues[p5idx])
 
-  // Round up to nearest 5 dB, clamp to [10, 60]
   const rounded = Math.ceil(p5 / 5) * 5
   return Math.max(10, Math.min(60, rounded))
 }
@@ -56,6 +54,57 @@ function legendLabel(qty: string, ratio: boolean, scale: string): string {
   const base = labels[qty] ?? 'S_\\text{ab}'
   const unit = scale === 'linear' ? '\\;(\\text{W/m}^2)' : '\\;(\\text{dB re peak})'
   return base + unit
+}
+
+/** Build tick labels for ratio mode (percentage of ICNIRP limit). */
+function ratioTick(maxRatio: number, frac: number): string {
+  const pctValue = maxRatio * (1 - frac) * 100
+  if (pctValue >= 100) return pctValue.toFixed(0)
+  if (pctValue >= 10) return pctValue.toFixed(1)
+  if (pctValue >= 1) return pctValue.toFixed(2)
+  if (pctValue === 0) return '0'
+  return pctValue.toFixed(2)
+}
+
+interface TickEntry {
+  label: string
+  pct: number
+}
+
+function buildTicks(
+  isRatioMode: boolean,
+  maxRatio: number,
+  maxSab: number,
+  legendScale: string,
+  dynamicRangeDb: number,
+): TickEntry[] {
+  const N = 5
+  return Array.from({ length: N }, (_, i) => {
+    const frac = i / (N - 1)
+    if (isRatioMode) {
+      return { label: ratioTick(maxRatio, frac), pct: frac }
+    }
+    if (legendScale === 'linear') {
+      return { label: formatLegendValue(maxSab * (1 - frac)), pct: frac }
+    }
+    return { label: `${(-dynamicRangeDb * frac).toFixed(0)} dB`, pct: frac }
+  })
+}
+
+/** Find the compliance limit for the given display quantity. */
+function findRatioLimit(
+  displayQuantity: string,
+  checks: Array<{ label: string; limit: number }>,
+): number {
+  const limitMap: Record<string, (c: { label: string }) => boolean> = {
+    sab_4cm2: c => c.label.includes('4 cm'),
+    sab_1cm2: c => c.label.includes('1 cm'),
+    sinc_local: c => c.label.includes('S_inc') && c.label.includes('local'),
+    sinc_wb: c => c.label.includes('S_inc') && c.label.includes('whole-body'),
+  }
+  const finder = limitMap[displayQuantity]
+  if (!finder) return 1.0
+  return checks.find(finder)?.limit ?? 20.0
 }
 
 const JET_GRADIENT_CSS =
@@ -81,55 +130,22 @@ export default function ColorLegend() {
   useEffect(() => {
     if (sabArray && sabArray !== prevArrayRef.current) {
       prevArrayRef.current = sabArray
-      const smart = computeSmartDynamicRange(sabArray)
-      setDynamicRangeDb(smart)
+      setDynamicRangeDb(computeSmartDynamicRange(sabArray))
     }
   }, [sabArray, setDynamicRangeDb])
 
   if (!stats || !config) return null
 
   const peakForQty = stats.peaks?.[displayQuantity] ?? stats.peak_sab
-  const maxSab = (colormapLocked && colormapLockedMax != null) ? colormapLockedMax : peakForQty
+  const maxSab = colormapLocked && colormapLockedMax != null ? colormapLockedMax : peakForQty
   const isRatioMode = ratioMode && displayQuantity !== 'sab'
 
-  // Find ratio limit from compliance checks
-  let ratioLimit = 1.0
-  if (isRatioMode && stats.compliance?.checks) {
-    const limitMap: Record<string, (c: { label: string }) => boolean> = {
-      sab_4cm2: (c) => c.label.includes('4 cm'),
-      sab_1cm2: (c) => c.label.includes('1 cm'),
-      sinc_local: (c) => c.label.includes('S_inc') && c.label.includes('local'),
-      sinc_wb: (c) => c.label.includes('S_inc') && c.label.includes('whole-body'),
-    }
-    const finder = limitMap[displayQuantity]
-    if (finder) {
-      ratioLimit = (stats.compliance.checks as Array<{ label: string; limit: number }>).find(finder)?.limit ?? 20.0
-    }
-  }
-
+  const ratioLimit = isRatioMode && stats.compliance?.checks
+    ? findRatioLimit(displayQuantity, stats.compliance.checks as Array<{ label: string; limit: number }>)
+    : 1.0
   const maxRatio = isRatioMode && ratioLimit > 0 ? peakForQty / ratioLimit : 1.0
 
-  // Both scales use 5 uniformly spaced ticks (top to bottom)
-  const N = 5
-  const ticks = Array.from({ length: N }, (_, i) => {
-    const frac = i / (N - 1)
-    if (isRatioMode) {
-      const pctValue = maxRatio * (1 - frac) * 100
-      // Smart formatting: drop decimals when they add no information
-      const label = pctValue >= 100 ? pctValue.toFixed(0)
-        : pctValue >= 10 ? pctValue.toFixed(1)
-        : pctValue >= 1 ? pctValue.toFixed(2)
-        : pctValue === 0 ? '0'
-        : pctValue.toFixed(2)
-      return { label, pct: frac }
-    } else if (legendScale === 'linear') {
-      const value = maxSab * (1 - frac)
-      return { label: formatLegendValue(value), pct: frac }
-    } else {
-      const db = -dynamicRangeDb * frac
-      return { label: `${db.toFixed(0)} dB`, pct: frac }
-    }
-  })
+  const ticks = buildTicks(isRatioMode, maxRatio, maxSab, legendScale, dynamicRangeDb)
 
   const titleNode = (
     <>
@@ -161,7 +177,7 @@ export default function ColorLegend() {
     </>
   )
 
-  const footerNode = (!isRatioMode && legendScale === 'dB') ? (
+  const footerNode = !isRatioMode && legendScale === 'dB' ? (
     <div className="flex items-center gap-1.5 mt-2">
       <span className="text-[10px] text-muted-foreground">Floor</span>
       <input
