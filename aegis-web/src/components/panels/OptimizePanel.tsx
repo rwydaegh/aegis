@@ -2,6 +2,7 @@ import { useOptimizeStore, type OptimizeMode } from '@/stores/optimize'
 import { useOptimization } from '@/hooks/useOptimization'
 import { useSimulationStore } from '@/stores/simulation'
 import { useMIMOStore } from '@/stores/mimo'
+import { useSceneStore } from '@/stores/scene'
 import { LineChart, Line, YAxis, ResponsiveContainer } from 'recharts'
 
 const MODES: { value: OptimizeMode; label: string; description: string }[] = [
@@ -26,14 +27,19 @@ interface ModeSelectorProps {
   mode: OptimizeMode | null
   running: boolean
   mimoEnabled: boolean
+  rtReady: boolean
   onToggle: (value: OptimizeMode) => void
 }
 
-function ModeSelector({ mode, running, mimoEnabled, onToggle }: ModeSelectorProps) {
+function ModeSelector({ mode, running, mimoEnabled, rtReady, onToggle }: ModeSelectorProps) {
   return (
     <div className="grid grid-cols-3 gap-1">
       {MODES.map(m => {
-        const disabled = running || (m.value === 'mimo_peak' && !mimoEnabled)
+        const needsRt = m.value === 'tilt_power' && !rtReady
+        const disabled = running || (m.value === 'mimo_peak' && !mimoEnabled) || needsRt
+        const title = needsRt
+          ? 'Requires a ray-traced scene. Run an RT compute first.'
+          : m.description
         return (
           <button
             key={m.value}
@@ -46,7 +52,7 @@ function ModeSelector({ mode, running, mimoEnabled, onToggle }: ModeSelectorProp
                   : 'bg-muted text-muted-foreground border border-border hover:bg-muted/80'
               }
               ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
-            title={m.description}
+            title={title}
           >
             {m.label}
           </button>
@@ -85,6 +91,7 @@ function ModeDescription({ mode, antennaPos, gridSize, gridSpacing }: ModeDescri
         <p className="text-xs text-muted-foreground">
           Iteratively adjusts antenna downtilt and transmit power to maximize
           coverage while keeping peak S<sub>ab</sub> below the ICNIRP limit.
+          Requires a ray-traced scene.
         </p>
       )}
       {mode === 'mimo_peak' && (
@@ -223,13 +230,15 @@ export default function OptimizePanel() {
 
   const antennaPos = useSimulationStore(s => s.antennaPos)
   const mimoEnabled = useMIMOStore(s => s.enabled)
+  const rtReady = useSceneStore(s => s.rtPaths !== null && s.rtPaths.length > 0)
 
   const { start, stop } = useOptimization()
 
   const canRun = antennaPos !== null && mode !== null && !running
   const canRunMimo = mimoEnabled && mode === 'mimo_peak'
-  const canRunOther = mode !== null && mode !== 'mimo_peak'
-  const enabled = canRun && (canRunMimo || canRunOther)
+  const canRunTiltPower = mode === 'tilt_power' && rtReady
+  const canRunPlacement = mode === 'placement'
+  const enabled = canRun && (canRunMimo || canRunTiltPower || canRunPlacement)
 
   const chartData = history.map(h => ({ iter: h.iter, value: h.objective }))
 
@@ -242,6 +251,7 @@ export default function OptimizePanel() {
         mode={mode}
         running={running}
         mimoEnabled={mimoEnabled}
+        rtReady={rtReady}
         onToggle={value => setMode(mode === value ? null : value)}
       />
 
