@@ -54,6 +54,43 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-17 13:46 UTC -- "Sidebar panels (PR-5, PR-F, PR-J)"
+
+- Actor: swarm-tester-4
+- Depth: thorough
+- Findings: none
+- Notes: Exercised every sidebar panel on open_ground scenario.
+  Analysis: Exposure distribution, SAB histogram, Power sweep,
+  Frequency sweep, Distance sweep, and Compliance heatmap all
+  compute and render without NaN/empty values. Ray Tracing:
+  verified PARAM_CAPS dispatch -- DiffeRT exposes
+  Exhaustive/SBR/Hybrid with edge-diffraction and diffraction
+  lit-region gating; Sionna RT pins method to SBR with
+  "(fixed for Sionna RT)" label. Fresnel T(theta) toggle shows
+  angle-dependence tooltip (#539 verified). Antennas panel MIMO
+  guard shows the "Antenna config managed in MIMO and Antenna
+  tabs" empty-state; operator filter filters 411 -> 72
+  antennas when Orange+Telenet unchecked. Environment panel shows
+  only terrain + coverage source count, no dead CloudRF
+  checkbox (#540 verified). Scene panel load/clear works (816ms
+  for Simple Street Canyon). Optimize panel: Placement strategy
+  converges ("Converged after 25 iterations. 68% reduction"),
+  Tilt+power and MIMO peak strategies selectable. Export panel
+  shows all 6 export buttons (Screenshot PNG, CSV/JSON/NPZ
+  dosimetry, Compliance TXT, Config JSON) enabled and clickable.
+  Bug reporter opens via Shift+B with screenshot, textarea,
+  Cancel/Submit buttons; Escape closes cleanly. Pattern browser
+  search filters list correctly (0 results for nonsense terms;
+  all Kathrein when filtered by "Kathrein"). Noted but not
+  filed: Pattern browser renders all 10000 patterns to DOM at
+  once (causes intermittent input timeouts); "10000 results"
+  counter is a cap label rather than a per-filter count; several
+  Commscope dBi values show excess precision (e.g.
+  "17.689999999999998 dBi") -- cosmetic float formatting,
+  flagged to Sentry-free. Overall confident this area is
+  healthy; Pattern browser DOM virtualization would be a nice
+  polish.
+
 ### 2026-04-17 13:25 UTC -- "HUD + R3F scene components + AnnotationCanvas + share link"
 
 - Actor: swarm-tester-5
