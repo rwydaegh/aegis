@@ -443,7 +443,7 @@ class TestECBF:
         assert alignment > 0.99
 
     def test_ecbf_respects_power_budget(self):
-        """||x*||^2 should equal P."""
+        """||x*||^2 must not exceed P (may be strictly less in the slack regime)."""
         rng = np.random.default_rng(66)
         M_ant = 4
         G_tilde = rng.standard_normal((20, 3, M_ant)) + 1j * rng.standard_normal((20, 3, M_ant))
@@ -451,10 +451,13 @@ class TestECBF:
         Q = compute_exposure_operator(G_tilde, areas)
         h = rng.standard_normal(M_ant) + 1j * rng.standard_normal(M_ant)
         P = 2.0
+        P_abs_max = 0.001
 
-        x_star = solve_ecbf(h, Q, P_abs_max=0.001, P=P)
+        x_star = np.asarray(solve_ecbf(h, Q, P_abs_max=P_abs_max, P=P))
         power = float(np.real(np.vdot(x_star, x_star)))
-        assert power == pytest.approx(P, rel=1e-6)
+        p_abs = float(np.real(x_star.conj() @ Q @ x_star))
+        assert power <= P * (1.0 + 1e-6), f"||x||^2 = {power} exceeds P = {P}"
+        assert p_abs <= P_abs_max * (1.0 + 1e-6), f"p_abs = {p_abs} exceeds P_abs_max = {P_abs_max}"
 
     def test_ecbf_reduces_absorption(self):
         """ECBF should reduce P_abs compared to MRT when constraint is feasible."""
@@ -490,7 +493,9 @@ class TestECBF:
 
         When Q is invertible and h is not aligned with the smallest eigenvalue
         directions, the power constraint may be slack at optimality. The solver
-        must still satisfy x^H Q x <= P_abs_max.
+        must still satisfy x^H Q x <= P_abs_max AND must return the true
+        slack-regime optimum (x = alpha * Q^{-1} h*), not a degenerate
+        zero-objective fallback.
         """
         Q = np.diag([10.0, 1.0, 0.001])
         h = np.array([1.0, 1.0, 0.0], dtype=complex)
@@ -500,9 +505,20 @@ class TestECBF:
         x_star = np.asarray(solve_ecbf(h, Q, P_abs_max, P))
         p_abs = float(np.real(x_star.conj() @ Q @ x_star))
         power = float(np.real(np.vdot(x_star, x_star)))
+        obj = float(np.abs(h @ x_star) ** 2)
 
         assert p_abs <= P_abs_max * 1.001, f"Exposure constraint violated: p_abs={p_abs:.4f} > P_abs_max={P_abs_max}"
         assert power <= P * 1.001, f"Power budget exceeded: ||x||^2={power:.4f} > P={P}"
+
+        # Closed-form slack-regime optimum: x = alpha * Q^{-1} h*, alpha chosen so x^H Q x = P_abs_max.
+        # Solver must reach (or exceed) this objective; falling back to the smallest-eigenvalue
+        # direction (the dead-code bug) gives obj=0 here because h is orthogonal to it.
+        qinv_h = np.linalg.solve(Q, h.conj())
+        alpha = np.sqrt(P_abs_max / float(np.real(h.conj() @ qinv_h)))
+        obj_optimal = float(np.abs(h @ (alpha * qinv_h)) ** 2)
+        assert obj >= obj_optimal * 0.99, (
+            f"Solver returned suboptimal objective: {obj:.6f} vs optimum {obj_optimal:.6f}"
+        )
 
 
 # ---------------------------------------------------------------------------

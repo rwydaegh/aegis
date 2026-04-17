@@ -49,7 +49,10 @@ def solve_ecbf(
     Returns
     -------
     x_star : (M_ant,)
-        Optimal precoding vector with ||x*||^2 = P.
+        Optimal precoding vector with ||x*||^2 <= P. The power constraint
+        is active (||x*||^2 = P) at the QCQP optimum unless the parametric
+        family cannot reach P_abs_max with full power, in which case the
+        QCQP optimum lies in the power-slack regime with ||x*||^2 < P.
     """
     if P <= 0:
         raise ValueError(f"Transmit power P must be positive, got {P}")
@@ -116,21 +119,14 @@ def solve_ecbf(
     else:
         p_abs_inf = 0.0
 
-    if p_abs_inf > P_abs_max:
-        # Infeasible: return smallest-eigenvalue direction
-        warnings.warn(
-            "ECBF constraint infeasible: minimum achievable P_abs "
-            f"({p_abs_inf:.4g} W) exceeds P_abs_max ({P_abs_max:.4g} W); "
-            "returning minimum-absorption precoder",
-            stacklevel=2,
-        )
-        return xp.asarray(np.sqrt(P) * V[:, 0])
-
     # Power-slack regime: when Q is invertible and h is not aligned with
     # the smallest eigenvalue directions, the parametric family
     # x(lambda) = sqrt(P)*(lambda*Q+I)^{-1}h*/||...|| (which forces
     # ||x||^2 = P) may never reach P_abs_max. The true QCQP optimum then
-    # has ||x||^2 < P with x proportional to Q^{-1} h*.
+    # has ||x||^2 < P with x proportional to Q^{-1} h*. This must be
+    # checked before the infeasibility branch below, since when Q is
+    # invertible p_abs_inf == p_abs_asymp and the QCQP is always feasible
+    # via the slack solution.
     if eigenvalues[0] > NUMERICAL_FLOOR:
         h_abs_sq = np.abs(h_tilde) ** 2
         inv_eigvals = 1.0 / eigenvalues
@@ -146,6 +142,16 @@ def solve_ecbf(
                 x_tilde_slack = alpha * h_tilde * inv_eigvals
                 x_slack = V @ x_tilde_slack
                 return xp.asarray(x_slack)
+
+    if p_abs_inf > P_abs_max:
+        # Infeasible: return smallest-eigenvalue direction
+        warnings.warn(
+            "ECBF constraint infeasible: minimum achievable P_abs "
+            f"({p_abs_inf:.4g} W) exceeds P_abs_max ({P_abs_max:.4g} W); "
+            "returning minimum-absorption precoder",
+            stacklevel=2,
+        )
+        return xp.asarray(np.sqrt(P) * V[:, 0])
 
     # Bisect on lambda to find P_abs = P_abs_max
     lam_low = 0.0
