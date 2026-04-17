@@ -106,6 +106,67 @@ If priority is **not** filed before the public defense, then the public defense 
 
 ---
 
+## Journal papers and the timing of the priority filing
+
+The same "disclosure clock" framing applies to journal papers. The key distinction is between **submission** and **publication**, not between "writing" and "sharing".
+
+- **Submission under confidential peer review is not a public disclosure.** Reviewers are bound by the journal's confidentiality policy; the manuscript is not publicly available. EPO treats this as non-disclosing.
+- **Publication (online Early Access, print issue, preprint posting) is a disclosure.** Priority must be filed before this moment.
+
+The universal rule:
+
+> File priority BEFORE publication, not before submission.
+
+### When you have slack (JSAC-style journals)
+
+Standard journal peer review takes 3-6 months. That is comfortably more than the 2-4 months needed for priority filing. So: submit freely, inform TechTransfer, file in parallel.
+
+JSAC Special Issue example timeline:
+- May 1: submission (confidential, not a disclosure).
+- June-August: TechTransfer files priority.
+- Aug-Oct: reviews, decision, revisions.
+- Nov-Dec: Early Access and print. Priority is already filed.
+
+### When the gap is tight
+
+Some venues publish fast or immediately after acceptance. File priority **before submission** in these cases:
+
+- **arXiv and other preprint servers**: posting is instant publication.
+- **Letters journals** (IEEE Wireless Comm Letters, APL, etc.): acceptance-to-online can be 2-4 weeks.
+- **Rolling-publication open access** (PLOS, Frontiers, parts of MDPI): may publish within days of acceptance.
+- **Conference proceedings**: camera-ready deadline is effectively publication day.
+- **Press-release-on-acceptance venues**: any PR counts as disclosure.
+
+Default for these: file before submission. Adds 2-4 months to your path but removes timing risk entirely.
+
+### Requesting a hold from the editor
+
+If acceptance comes in before priority is filed, ask the journal to hold online publication. Routine request in patent-active fields, standard boilerplate:
+
+> "Could you please hold online publication / Early Access until [date] to allow a patent filing to complete? We will confirm as soon as the filing is in."
+
+IEEE, Nature, Science, APS, and most Elsevier titles handle this as standard procedure. Typical hold 2-4 weeks, longer negotiable. Open access and rolling-publication venues may refuse — if you are on a tight patent deadline, avoid those venues entirely.
+
+### Watch out for "Early Access" and "online first"
+
+IEEE Xplore and many others post accepted papers as "Early Access" weeks before the print issue. Early Access is public. When requesting a hold, specify Early Access explicitly, not just the print date. Press embargoes (Nature, Science style) are generally non-disclosing but edge-case; still push for a hold on online posting itself.
+
+### Escape hatch
+
+If the hold request is refused and filing is not ready, **withdraw** the paper before publication and resubmit later. Ugly but available.
+
+### Practical workflow
+
+1. Before submission: tell TechTransfer the venue and expected timeline. Let them start priority prosecution in parallel.
+2. Submit.
+3. If acceptance comes in before filing: email editor immediately, request hold until filing date plus one week.
+4. When priority is filed: email editor "please proceed."
+5. If venue refuses to hold and filing will miss the publication date: withdraw and refile later.
+
+Tighter venue → earlier TechTransfer coordination. For JSAC you have natural buffer; for letters-style venues coordinate day by day.
+
+---
+
 ## Contract-end vs defense timing
 
 No hard regulatory deadline in the OER for how long after PhD contract end the defense must happen. You stay **enrolled** as a doctoral student until defense (annual re-enrollment), but that is administrative, not funded. The EPO novelty clock is triggered by the **public defense + Biblio deposit**, not the contract end. Benching for months between contract end and defense is common and IP-neutral provided you do not publicly circulate the thesis during the gap.
@@ -120,10 +181,11 @@ Note: VLAIO Innovation Mandate (September 2026 call) requires PhD diploma at the
 2. **Freeze IDF at "complete and clearly differentiated vs Kodera 2024 / Li 2019 / Bamba 2012, 2015".** Mark as v1.1 and hand off.
 3. **Ask Wout to coordinate Art. 27 §4 + Art. 30 §8 with the Valorisatiecel.** Routine request; he has done this before.
 4. **Biblio embargo 1-2 years, extendable, under "plans to publish parts in peer-reviewed journals".** Independent of any IP argument.
-5. **At month +6 (examination report):** re-evaluate. Killer prior art → drop or amend. Clean report → proceed toward PCT.
-6. **At month +12 (PCT):** file only if at least one of ZMT conversation advancing, JSAC accepted, LOI, VLAIO approved.
-7. **At month +30 (national entry):** only with active commercial path. UGent's default is to drop absent commercial commitment.
-8. **In parallel, invest in the standards track.** Patent and standards citation are complements (see `standards_play.md`). Kuster had both. Not competing priorities.
+5. **Coordinate journal submissions with TechTransfer.** Submit freely under confidential peer review, but no paper may reach online Early Access, print issue, or preprint posting before priority is filed. Request an editor hold if acceptance arrives before filing.
+6. **At month +6 (examination report):** re-evaluate. Killer prior art → drop or amend. Clean report → proceed toward PCT.
+7. **At month +12 (PCT):** file only if at least one of ZMT conversation advancing, JSAC accepted, LOI, VLAIO approved.
+8. **At month +30 (national entry):** only with active commercial path. UGent's default is to drop absent commercial commitment.
+9. **In parallel, invest in the standards track.** Patent and standards citation are complements (see `standards_play.md`). Kuster had both. Not competing priorities.
 
 ---
 
