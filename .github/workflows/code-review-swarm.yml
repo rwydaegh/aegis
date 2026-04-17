@@ -1,0 +1,250 @@
+name: Code review swarm
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_doc:
+        description: "Path to a review target doc (e.g. docs/internal/qa_maintainability.md). Empty = generic triage mode."
+        default: ""
+      time_window:
+        description: "Git lookback window for generic mode (e.g. '7 days', '48 hours')"
+        default: "7 days"
+
+jobs:
+  manager:
+    runs-on: ubicloud-standard-2
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      assignments: ${{ steps.extract.outputs.assignments }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Get recent commits
+        id: commits
+        run: |
+          RECENT=$(git log --oneline --since="${{ github.event.inputs.time_window }}" --no-merges -200)
+          if [ -z "$RECENT" ]; then
+            RECENT=$(git log --oneline -50 --no-merges)
+          fi
+          {
+            echo "log<<COMMITS_EOF"
+            echo "$RECENT"
+            echo "COMMITS_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Collect risk signals (generic mode only)
+        id: signals
+        if: ${{ github.event.inputs.target_doc == '' }}
+        run: |
+          WINDOW="${{ github.event.inputs.time_window }}"
+
+          CHURN=$(git log --name-only --since="$WINDOW" --no-merges --pretty=format: \
+            | grep -v '^$' | sort | uniq -c | sort -rn | head -20 || true)
+
+          CROSS=$(git log --since="$WINDOW" --no-merges --name-only --pretty=format:COMMIT:%H \
+            | awk '/^COMMIT:/{c=$0; next} /^aegis-web\//{fe[c]=1} /^src\/aegis\/viewer\/routes\//{be[c]=1}
+                   END{for(k in fe) if(k in be) print k}' | head -10 || true)
+
+          SOURCE_CHANGED=$(git diff --name-only "HEAD@{$WINDOW ago}" HEAD -- 'src/**' 'aegis-web/src/**' 2>/dev/null | sort -u || true)
+          TESTS_CHANGED=$(git diff --name-only "HEAD@{$WINDOW ago}" HEAD -- 'tests/**' 2>/dev/null | sort -u || true)
+
+          {
+            echo "signals<<SIG_EOF"
+            echo "### Churn (file, edit count)"
+            echo "$CHURN"
+            echo ""
+            echo "### Cross-layer commits (touched both aegis-web/ and src/aegis/viewer/routes/)"
+            echo "$CROSS"
+            echo ""
+            echo "### Source files changed (check if tests were updated with them)"
+            echo "$SOURCE_CHANGED"
+            echo ""
+            echo "### Test files changed"
+            echo "$TESTS_CHANGED"
+            echo "SIG_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Load target doc (targeted mode only)
+        id: target
+        if: ${{ github.event.inputs.target_doc != '' }}
+        run: |
+          DOC="${{ github.event.inputs.target_doc }}"
+          if [ ! -f "$DOC" ]; then
+            echo "::error::Target doc not found: $DOC"
+            exit 1
+          fi
+          {
+            echo "content<<DOC_EOF"
+            cat "$DOC"
+            echo "DOC_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Load manager prompt
+        id: load_prompt
+        run: |
+          {
+            echo "content<<PROMPT_EOF"
+            cat agent_hq/prompts/code-review-swarm-manager.md
+            echo ""
+            echo "---"
+            echo ""
+            cat agent_hq/context/aegis-overview.md
+            echo "PROMPT_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Plan review assignments
+        id: plan
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: '--model claude-opus-4-7 --allowedTools "Edit,Read,Write,Glob,Grep,Bash(*),WebSearch,WebFetch,Agent,Skill"'
+          prompt: |
+            ${{ steps.load_prompt.outputs.content }}
+
+            ## Mode
+
+            Target doc: "${{ github.event.inputs.target_doc }}"
+            Time window: "${{ github.event.inputs.time_window }}"
+
+            ${{ github.event.inputs.target_doc != '' && '## Target doc contents' || '' }}
+            ${{ github.event.inputs.target_doc != '' && '```markdown' || '' }}
+            ${{ steps.target.outputs.content }}
+            ${{ github.event.inputs.target_doc != '' && '```' || '' }}
+
+            ## Recent commits
+            ```
+            ${{ steps.commits.outputs.log }}
+            ```
+
+            ${{ github.event.inputs.target_doc == '' && '## Risk signals (generic mode)' || '' }}
+            ${{ github.event.inputs.target_doc == '' && steps.signals.outputs.signals || '' }}
+
+      - name: Extract assignments JSON
+        id: extract
+        run: |
+          EXEC_FILE="${{ steps.plan.outputs.execution_file }}"
+          if [ -z "$EXEC_FILE" ] || [ ! -f "$EXEC_FILE" ]; then
+            echo "::error::Claude execution file not found at: $EXEC_FILE"
+            exit 1
+          fi
+          cat > /tmp/extract.py << 'PYEOF'
+          import json, re, sys
+          data = json.load(open(sys.argv[1]))
+          def walk(obj):
+              if isinstance(obj, str):
+                  m = re.search(r'ASSIGNMENTS_JSON:(\{.*\})', obj)
+                  if m:
+                      try:
+                          json.loads(m.group(1))
+                          return m.group(1)
+                      except json.JSONDecodeError:
+                          pass
+              elif isinstance(obj, list):
+                  for item in reversed(obj):
+                      r = walk(item)
+                      if r: return r
+              elif isinstance(obj, dict):
+                  for v in obj.values():
+                      r = walk(v)
+                      if r: return r
+              return None
+          result = walk(data)
+          if result:
+              print(result)
+          PYEOF
+          ASSIGNMENTS=$(python3 /tmp/extract.py "$EXEC_FILE" 2>/dev/null || true)
+          if [ -z "$ASSIGNMENTS" ]; then
+            echo "::error::Manager did not produce ASSIGNMENTS_JSON output"
+            exit 1
+          fi
+          echo "assignments=$ASSIGNMENTS" >> "$GITHUB_OUTPUT"
+
+  reviewer:
+    needs: manager
+    runs-on: ubicloud-standard-2
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+      actions: read
+    strategy:
+      matrix:
+        reviewer_id: [1, 2, 3, 4, 5]
+      fail-fast: false
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install project (lint + test deps)
+        run: pip install -e ".[dev]"
+
+      - name: Extract my brief
+        id: assignment
+        env:
+          ALL_ASSIGNMENTS: ${{ needs.manager.outputs.assignments }}
+        run: |
+          ID=${{ matrix.reviewer_id }}
+          TARGET=$(echo "$ALL_ASSIGNMENTS" | jq -r ".reviewers[] | select(.id == $ID) | .target")
+          BRIEF=$(echo "$ALL_ASSIGNMENTS" | jq -r ".reviewers[] | select(.id == $ID) | .brief")
+          {
+            echo "target<<T_EOF"
+            echo "$TARGET"
+            echo "T_EOF"
+            echo "brief<<B_EOF"
+            echo "$BRIEF"
+            echo "B_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Load reviewer prompt
+        id: load_prompt
+        run: |
+          {
+            echo "content<<PROMPT_EOF"
+            cat agent_hq/prompts/code-reviewer-swarm.md
+            echo ""
+            echo "---"
+            echo ""
+            cat agent_hq/context/aegis-overview.md
+            echo ""
+            echo "---"
+            echo ""
+            cat agent_hq/context/how-to-ship.md
+            echo ""
+            echo "---"
+            echo ""
+            cat agent_hq/context/not-bugs.md
+            echo "PROMPT_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run reviewer
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: '--model claude-opus-4-7 --allowedTools "Edit,Read,Write,Glob,Grep,Bash(*),WebSearch,WebFetch,Agent,Skill,TaskCreate,TaskUpdate,TaskList"'
+          prompt: |
+            ${{ steps.load_prompt.outputs.content }}
+
+            ## Your brief
+
+            **Reviewer #${{ matrix.reviewer_id }} of 5 (swarm run ${{ github.run_id }})**
+
+            Target: ${{ steps.assignment.outputs.target }}
+
+            ${{ steps.assignment.outputs.brief }}
+
+            ## Run metadata for issue/PR bodies
+
+            Run link: https://github.com/rwydaegh/aegis/actions/runs/${{ github.run_id }}
