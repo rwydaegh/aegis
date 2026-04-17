@@ -1035,6 +1035,36 @@ class TestComputeAntennasArray:
             )
         assert resp.status_code == 200
 
+    def test_antennas_invalid_power_dbm_returns_400(self, viewer_app):
+        """POST /api/compute with a non-numeric power_dbm inside antennas returns 400 (not 500)."""
+        with viewer_app.test_client() as c:
+            resp = c.post(
+                "/api/compute",
+                json={
+                    "antennas": [
+                        {"position": [5, 0, 1], "power_dbm": "loud"},
+                    ],
+                    "level": 2,
+                },
+            )
+        assert resp.status_code == 400
+        assert "power_dbm" in resp.get_json()["error"]
+
+    def test_antennas_invalid_array_config_returns_400(self, viewer_app):
+        """POST /api/compute with a non-dict array_config returns 400 (not 500)."""
+        with viewer_app.test_client() as c:
+            resp = c.post(
+                "/api/compute",
+                json={
+                    "antennas": [
+                        {"position": [5, 0, 1], "power_dbm": 23, "array_config": "bogus"},
+                    ],
+                    "level": 2,
+                },
+            )
+        assert resp.status_code == 400
+        assert "array_config" in resp.get_json()["error"]
+
 
 class TestComputeVoxelRtExtended:
     """Additional edge cases for voxel RT."""

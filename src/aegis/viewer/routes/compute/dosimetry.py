@@ -277,8 +277,13 @@ def _parse_antennas_array(params: dict, default_power_dbm: float):
         ant_pos, err = _parse_vec3(raw_ant, "position", [5, 0, 1])
         if err:
             return None, err
-        ant_power = float(raw_ant.get("power_dbm", default_power_dbm))
+        try:
+            ant_power = float(raw_ant.get("power_dbm", default_power_dbm))
+        except (TypeError, ValueError):
+            return None, (jsonify({"error": f"antennas[{i}].power_dbm must be a number"}), 400)
         acfg = raw_ant.get("array_config", {})
+        if not isinstance(acfg, dict):
+            return None, (jsonify({"error": f"antennas[{i}].array_config must be an object"}), 400)
         antennas.append(
             {
                 "position": ant_pos.tolist(),

@@ -28,13 +28,19 @@ def test_bug_report_missing_description(client):
     assert "description" in resp.get_json()["error"].lower()
 
 
-def test_bug_report_missing_screenshot(client):
+@patch.dict(os.environ, {"GITHUB_ISSUES_TOKEN": "ghp_fake_token_for_test"})
+@patch("aegis.viewer.routes.bugreport._create_github_issue")
+def test_bug_report_text_only_allowed(mock_create_issue, client):
+    mock_create_issue.return_value = {"number": 999, "html_url": "https://github.com/rwydaegh/aegis/issues/999"}
+
     resp = client.post(
         "/api/bug-report",
         json={"description": "something is broken", "state": {}},
     )
-    assert resp.status_code == 400
-    assert "screenshot" in resp.get_json()["error"].lower()
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data["issueNumber"] == 999
+    mock_create_issue.assert_called_once()
 
 
 @patch.dict(os.environ, {"GITHUB_ISSUES_TOKEN": "", "GITHUB_TOKEN": ""}, clear=False)
@@ -51,10 +57,8 @@ def test_bug_report_no_token(client):
 
 
 @patch.dict(os.environ, {"GITHUB_ISSUES_TOKEN": "ghp_fake_token_for_test"})
-@patch("aegis.viewer.routes.bugreport._upload_screenshot_to_github")
 @patch("aegis.viewer.routes.bugreport._create_github_issue")
-def test_bug_report_success(mock_create_issue, mock_upload, client):
-    mock_upload.return_value = "https://raw.githubusercontent.com/rwydaegh/aegis/bug-screenshots/test.jpg"
+def test_bug_report_success(mock_create_issue, client):
     mock_create_issue.return_value = {"number": 999, "html_url": "https://github.com/rwydaegh/aegis/issues/999"}
 
     # Minimal 1x1 JPEG in base64
@@ -79,5 +83,4 @@ def test_bug_report_success(mock_create_issue, mock_upload, client):
     data = resp.get_json()
     assert data["issueNumber"] == 999
     assert "github.com" in data["issueUrl"]
-    mock_upload.assert_called_once()
     mock_create_issue.assert_called_once()
