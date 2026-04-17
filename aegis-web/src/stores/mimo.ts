@@ -258,7 +258,21 @@ export const useMIMOStore = create<MIMOStore>((set, get) => ({
   setArrayConfig: (config) => {
     const fp = get().focusPoint
     const broadside = deriveBroadside(fp, config.position)
-    set({ arrayConfig: { ...config, broadside }, _configVersion: get()._configVersion + 1 })
+    const { precoderType, users } = get()
+    const nElements = config.n_h * config.n_v
+    const needsFallback =
+      precoderType !== 'mrt' && nElements > 0 && nElements < users.size
+    if (needsFallback) {
+      useNotificationStore.getState().addNotification(
+        'warning',
+        `Switched to MRT precoder (${precoderType.toUpperCase()} requires M \u2265 K)`,
+      )
+    }
+    set({
+      arrayConfig: { ...config, broadside },
+      _configVersion: get()._configVersion + 1,
+      ...(needsFallback ? { precoderType: 'mrt' as PrecoderType } : {}),
+    })
   },
   setFocusPoint: (fp) => {
     const cfg = get().arrayConfig

@@ -46,7 +46,7 @@ export default function CameraWidget() {
 
       <Tooltip>
         <TooltipTrigger
-          onClick={() => setCameraMode(cameraMode === 'orbit' ? 'follow' : 'orbit')}
+          onClick={() => setCameraMode(cameraMode === 'follow' ? 'orbit' : 'follow')}
           className={cn(
             'inline-flex items-center justify-center size-7 rounded transition-colors',
             cameraMode === 'follow'
