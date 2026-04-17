@@ -9,6 +9,8 @@ Covers boundary conditions, degenerate inputs, and invariants across:
 
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 import pytest
 
@@ -136,10 +138,13 @@ class TestEcbfEdgeCases:
         power = float(np.real(np.vdot(x, x)))
         assert power == pytest.approx(2.0, rel=1e-6)
 
-    def test_infeasible_constraint_warns_and_returns_vector(self, rng):
-        """When P*lambda_min > P_abs_max the solver warns and returns min-absorption direction."""
+    def test_tight_constraint_invertible_Q_uses_slack_regime(self, rng):
+        """When Q is invertible and the parametric family cannot reach P_abs_max
+        with full power, the solver must take the slack-regime solution (||x||^2 < P)
+        rather than declaring the QCQP infeasible.
+        """
         M_ant = 4
-        # Build Q with well-separated eigenvalues, all large
+        # Build Q with well-separated eigenvalues, all large and strictly positive
         eigvals = np.array([10.0, 8.0, 6.0, 5.0])
         V = np.linalg.qr(rng.standard_normal((M_ant, M_ant)) + 1j * rng.standard_normal((M_ant, M_ant)))[0]
         Q = (V * eigvals[None, :]) @ V.conj().T
@@ -150,13 +155,18 @@ class TestEcbfEdgeCases:
         # lambda_min = 5.0, P*lambda_min = 5.0 > P_abs_max = 0.1
         P_abs_max = 0.1
 
-        with pytest.warns(UserWarning, match="infeasible"):
-            x = solve_ecbf(h, Q, P_abs_max=P_abs_max, P=P)
+        # No "infeasible" warning expected: Q invertible => slack-regime solution exists.
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", UserWarning)
+            x = np.asarray(solve_ecbf(h, Q, P_abs_max=P_abs_max, P=P))
 
-        # Must still return a valid power-normalised vector
         power = float(np.real(np.vdot(x, x)))
-        assert power == pytest.approx(P, rel=1e-5)
+        p_abs = float(np.real(x.conj() @ Q @ x))
         assert x.shape == (M_ant,)
+        assert power <= P * (1.0 + 1e-6), f"||x||^2 = {power} exceeds P = {P}"
+        assert p_abs <= P_abs_max * (1.0 + 1e-6), f"p_abs = {p_abs} exceeds P_abs_max = {P_abs_max}"
+        # Slack regime: should saturate the absorption constraint.
+        assert p_abs == pytest.approx(P_abs_max, rel=1e-4)
 
     def test_infeasible_h_in_range_of_singular_Q(self):
         """When Q has null space and h has no null-space component, the true
