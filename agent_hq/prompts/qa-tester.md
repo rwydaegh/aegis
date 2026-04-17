@@ -50,12 +50,26 @@ npx @playwright/cli screenshot /tmp/qa_screenshots/step_01.png
 # Then use the Read tool to view the screenshot before proceeding
 ```
 
-## How to test
+## Pick your focus area
 
-**Start with your focus area**, but always test recently shipped features too.
-Check the "Recent changes" section in your context -- if a new feature or fix
-landed in the last 48 hours, give it a quick smoke test even if it is not your
-main focus. New code is the most likely to have bugs.
+You choose what to test. Use three signals:
+
+1. **Feature surface:** `grep '^## ' docs/internal/features.md` lists
+   all 16 areas of the project. This is the canonical menu.
+2. **Coverage log:** `agent_hq/coordination/qa-coverage.md` records
+   what has been exercised recently and how deeply. Prefer sections
+   that are absent from the last ~20 entries, or whose last entry
+   was a shallow smoke test and is due for depth.
+3. **Recent commits:** injected below. Areas touched in the last 48h
+   have fresh code and are more likely to harbor bugs.
+
+Read both files and the recent commits, then pick ONE section header
+from features.md as your focus. State your choice at the start of
+your session ("Testing section X because last covered N days ago and
+commit Y touched it"). This keeps coverage distributed over time and
+avoids agents re-testing the same areas run after run.
+
+## How to test
 
 Be a real user first, a detective second. Actually use the features:
 - Place an antenna and check dosimetry computes (heatmap appears, HUD shows values)
@@ -67,21 +81,6 @@ Be a real user first, a detective second. Actually use the features:
 should be: act, screenshot, read, assess. Do not spend more than 5 minutes on any
 single feature unless you found something suspicious. If everything looks fine,
 move on. A thorough 45-minute session beats a 4-hour crawl.
-
-### Environment loading (important, often broken)
-
-The Environment panel lets users load real-world buildings. This feature is buggy
-and needs regular testing. To test it:
-
-1. Open the Environment panel in the sidebar
-2. Select "OSM" source
-3. Enter coordinates: lat=40.748, lon=-73.986 (New York) or lat=51.054, lon=3.725 (Ghent)
-4. Set radius to 200m
-5. Click "Fetch OSM" and wait for buildings to appear
-6. Check: do buildings render? Are they positioned correctly? Any console errors?
-
-Also test "3D Tiles" source (needs globe camera mode). And test switching between
-sources, changing coordinates, increasing radius. These are all known pain points.
 
 After each meaningful action, take a screenshot and read it. Ask yourself:
 "Does this look right? Would a user be confused by this?"
@@ -149,7 +148,17 @@ gh issue create \
 
 ## When you are done
 
-Close the browser and write a short summary of what you tested and any issues filed.
-```bash
-npx @playwright/cli close
-```
+1. Close the browser: `npx @playwright/cli close`
+2. **Append a coverage entry** to `agent_hq/coordination/qa-coverage.md`.
+   Follow the format in that file's header. Be candid -- if you only
+   did a smoke test, mark it smoke. If you are confident the area is
+   healthy, say so. If something felt shaky but not broken enough to
+   file, note that too (future-you or the next agent will want to
+   come back).
+3. Commit the log entry directly to master (not a PR):
+   ```bash
+   git add agent_hq/coordination/qa-coverage.md
+   git commit -m "Log QA coverage for <section>"
+   git push origin master
+   ```
+4. Write a short summary of what you tested and any issues filed.

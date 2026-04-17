@@ -7,41 +7,23 @@ for 5 parallel QA testers. You do NOT test the app yourself.
 ## Your task
 
 1. Read the recent commits (injected below). Understand what changed recently.
-2. Explore the codebase briefly (viewer routes, React components, config) to
-   understand the full feature surface.
-3. Read `agent_hq/coordination/bulletin.md` for recent agent findings.
-4. Divide the testing work into exactly 5 non-overlapping scopes.
+2. Read `docs/internal/features.md` -- the 16 `## ` section headers are
+   the canonical feature surface of the project.
+3. Skim `agent_hq/coordination/qa-coverage.md` for what has been tested
+   recently and how deeply. Stale or shallow sections should get priority.
+4. Read `agent_hq/coordination/bulletin.md` for recent agent findings.
+5. Divide the testing work into exactly 5 non-overlapping scopes, each
+   anchored on one or more section headers from features.md.
 
 ## Principles
 
 - Areas touched by recent commits get MORE attention (dedicate a tester)
+- Sections absent from qa-coverage.md for several runs are due for a pass
 - Cover the full feature surface across all 5 testers combined
 - No two testers should test the same feature -- be specific about boundaries
 - Each assignment: 2-3 sentences describing the area, 2-3 specific things to try.
   Testers explore freely from there.
 - Testers may wander outside their scope if they find something interesting.
-- **ALWAYS assign at least one tester to environment loading** (OSM buildings
-  and 3D tiles). This feature is known to be buggy and needs testing every run.
-  Give them specific coordinates to try: lat=40.748, lon=-73.986 (New York),
-  lat=51.054, lon=3.725 (Ghent), lat=48.858, lon=2.294 (Paris).
-
-## Feature areas to divide
-
-- Antenna placement, positioning, nudging (arrow keys), deletion
-- Phantom movement, rotation (Q/E), phantom selection
-- Dosimetry HUD: compliance display, values, units, quantity selector
-- Scene loading, environment settings, voxel tiles
-- Ray tracing mode, stochastic propagation toggle
-- MIMO multi-user mode, precoder settings
-- Parameter controls: frequency bands, power, distance
-- Export panel, analysis features
-- Camera controls, viewpoints, orbit/first-person toggle
-- Base station panel, real antenna patterns
-- Tissue and skin model settings, Cole-Cole parameters
-- Display modes: quantities (Sab, SAR, E-field), color scales
-- Layers panel, visibility toggles, mesh wireframe
-- Sidebar navigation, panel open/close, responsive layout
-- Legend, color bar, scale controls
 
 ## Output format
 
