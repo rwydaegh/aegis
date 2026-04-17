@@ -54,6 +54,42 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-17 16:25 UTC -- "Optimization"
+
+- Actor: interactive
+- Depth: medium
+- Findings: 2 bugs filed: #563, #564
+- Notes: Drove all three optimize strategies on the Open ground
+  scenario. Placement optimizer is healthy: 3x3 through 50x50 grids
+  all complete and improve the margin monotonically (+22.1 → +28.0 dB
+  at 5x5, +36.0 at 11x11, +44.4 dB eventual after stacking moves),
+  and server clamps grid_size to [1,50] and spacing to [0.1,500] as
+  documented in routes/optimize.py. The #553 race guard (stop writes
+  no longer stomp a subsequent start) held up in code review;
+  in-browser I couldn't actually catch the button showing "Stop
+  (iter X)" even on the biggest run because each placement iter is
+  a full /api/compute round-trip and the accessible-tree snapshot
+  seems to lag the text swap -- left as a gap rather than a finding.
+  Edge inputs: spacing=0 collapses to a single position, still
+  "converges" after N iterations with 1% reduction, not a crash but
+  cosmetically pointless. Grid size HTML attrs say min=3/max=9/step=2
+  but Playwright fill bypasses validation; backend clamps anyway, so
+  users can only hit the values the UI exposes -- fine. **Bug 1
+  (#563)**: after MIMO peak optimizer converges, ColorLegend ticks
+  render as 5 NaN strings. Root cause traced: mimo_peak.py step()
+  result dict has no `stats` key, useOptimization.handleIterationEvent
+  coerces missing stats to `{}`, ColorLegend computes
+  `maxSab = stats.peak_sab` = undefined → NaN through formatLegendValue.
+  Body heatmap and compliance panel still show valid numbers, so the
+  bug is silent unless you look at the legend. **Bug 2 (#564)**:
+  Tilt+power button is enabled in non-RT scenarios (Open ground),
+  clicking Optimize dumps the raw 400 JSON payload into a toast
+  ("No RT paths cached. Run an RT compute (/api/compute/rt) first.").
+  Missing gating + raw JSON leakage. Console stayed clean apart from
+  the expected 400 and the password-gate 401. Confident placement is
+  healthy. MIMO peak and tilt+power need the fixes in #563/#564 before
+  either surface can be called clean.
+
 ### 2026-04-17 14:17 UTC -- "3D environment reconstruction"
 
 - Actor: interactive
