@@ -21,6 +21,11 @@ export function initSentry() {
       // WebGL context failures are environmental (user GPU/browser), not actionable
       /Error creating WebGL context/,
       /WebGL context could not be created/,
+      // Overpass API upstream failures are external service issues, surfaced to
+      // the user in-app but not bugs in our code
+      /Overpass query timed out/,
+      /Overpass rate limit exceeded/,
+      /Overpass response too large/,
     ],
 
     beforeSend(event) {
