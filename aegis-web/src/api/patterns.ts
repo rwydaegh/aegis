@@ -1,3 +1,5 @@
+import { ApiError } from './client'
+
 export interface PatternSearchResult {
   id: string
   source: 'local' | 'cloudrf'
@@ -21,7 +23,7 @@ export async function searchPatterns(params: {
     if (v != null) qs.set(k, String(v))
   }
   const res = await fetch(`/api/patterns/search?${qs}`)
-  if (!res.ok) throw new Error(`Pattern search failed: ${res.status}`)
+  if (!res.ok) throw new ApiError(`Pattern search failed: ${res.status}`, res.status)
   return res.json()
 }
 
@@ -45,7 +47,7 @@ export async function loadPattern(
     } catch {
       // Response may not be JSON
     }
-    throw new Error(detail || `Pattern load failed: ${res.status}`)
+    throw new ApiError(detail || `Pattern load failed: ${res.status}`, res.status)
   }
   const metaHeader = res.headers.get('X-Meta')
   const meta: PatternMeta = metaHeader
