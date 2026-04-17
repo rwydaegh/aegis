@@ -47,19 +47,19 @@ docs = [
 ]
 dev = [
     "pytest>=9.0.3",
-    "pytest-xdist>=3.5",
-    "pytest-cov>=4.0",
-    "hypothesis>=6.90",
-    "ruff>=0.4",
-    "pre-commit>=3.5",
-    "codespell>=2.2",
+    "pytest-xdist>=3.8.0",
+    "pytest-cov>=7.1.0",
+    "hypothesis>=6.152.1",
+    "ruff>=0.15.11",
+    "pre-commit>=4.5.1",
+    "codespell>=2.4.2",
     "miepython>=2.6",
     "requests>=2.31",
     "pandas>=3.0.2",
     "pyarrow>=14.0",
 ]
 body = ["smplx>=0.1.28", "torch>=2.11.0", "pygltflib>=1.16.5"]
-benchmark = ["pytest-codspeed>=3.0"]
+benchmark = ["pytest-codspeed>=4.4.0"]
 cloud = ["requests>=2.31"]
 all = ["aegis[jax,gpu,viz,viewer,rt,sionna,docs,dev,cloud,modal,benchmark]"]
 
