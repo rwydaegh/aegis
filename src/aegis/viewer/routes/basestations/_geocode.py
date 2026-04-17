@@ -10,6 +10,8 @@ _ISO3166_TO_REGION = {
     "BE-WAL": "wallonia",
 }
 
+BELGIUM_NAMES: frozenset[str] = frozenset({"belgium", "belgië", "belgie", "belgique", "be"})
+
 COUNTRY_TO_REGION: dict[str, str] = {
     "netherlands": "netherlands",
     "nederland": "netherlands",
@@ -70,7 +72,7 @@ def geocode_location(location: str) -> tuple[float, float, dict]:
 
     geolocator = Nominatim(user_agent="aegis-viewer", timeout=10)
     try:
-        result = geolocator.geocode(location, addressdetails=True)
+        result = geolocator.geocode(location, addressdetails=True, language="en")
     except GeopyError as e:
         raise ValueError(f"Geocoding service unavailable: {e}") from e
 
