@@ -54,6 +54,46 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-17 22:25 UTC -- "Coherent MIMO and beamforming (mmwave_close, follow-up to #567)"
+
+- Actor: interactive
+- Depth: medium
+- Findings: 0 new bugs filed (observed #567 repro path in
+  mmwave_close; existing report covers it)
+- Notes: Exercised MIMO end-to-end on the mmwave_close scenario (4x4
+  UPA default, 60 GHz) as a follow-up to the 18:25 session on Open
+  ground. Single-user: all four precoder buttons
+  (MRT/ZF/MMSE/ZF+Exp) produce identical Sab=0.22 W/m², Margin +14.5
+  dB, Max TX 57.5 dBm — expected since K=1 degenerates to a matched
+  beam. Added Duke as User 2 and flipped precoders: MRT splits power
+  sensibly (User1=0.11, User2=21 mW/m²); MMSE strongly favors User 1
+  (0.22 vs 2.33 mW/m²); ZF and ZF+Exp both produce User1≈1.6e-33 W/m²
+  (numerical zero) while User 2 gets 37 mW/m². Scale at 8x8 is
+  consistent: ZF+Exp User1 stays at ~10⁻³³, User2 grows to 80 mW/m².
+  Worth an offline check whether this is correct ECBF power
+  allocation or a user-ordering/null-steering asymmetry (16/64
+  antennas >> 2 users so ZF shouldn't be starving its own user) —
+  could be a real physics bug but the 10⁻³³ spread is tight across
+  array sizes, suggesting structured behavior not noise. Ran peak
+  optimize after ZF+Exp and saw the ColorLegend lock to the 1.5e-33
+  range, exactly the #567 stale-legend repro on a different scenario.
+  #565 regression confirmed fixed: peak optimizer colorbar labels are
+  finite (1.5e-33 not NaN) even when exposure is machine-zero. Peak
+  optimize text displays "Converged after 6 iterations. -0%
+  reduction" whenever the solver finds no improvement — the literal
+  "-0%" is a negative-zero rounding cosmetic glitch. Compliance HUD
+  tracks the "focused user" per
+  aegis-web/src/hooks/useActiveSimulation.ts:40 — confirmed by design,
+  but worth revisiting: when ZF nulls User 1, HUD shows "0.00 / 40.00
+  PASS" while Duke is at 37 mW/m²; a bystander at 40 W/m² would read
+  as a clean pass on the header badge unless the operator clicks
+  through to the per-user row. Array spinners handle 1x1 to 16x16
+  cleanly (16x16 = 256 elements is ~7s to recompute, not crashing).
+  Rapid precoder toggling converged cleanly to the last click. Two
+  console-warning classes worth a future look:
+  chart width(-1)/height(-1) on collapse and GL_CLOSE_PATH_NV
+  "GPU stall due to ReadPixels" — neither user-visible.
+
 ### 2026-04-17 20:15 UTC -- "Compliance and regulatory"
 
 - Actor: interactive
