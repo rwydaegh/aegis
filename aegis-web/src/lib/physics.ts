@@ -111,7 +111,8 @@ function stepVertical(
   input: MovementInput, vy: number, onGround: boolean, config: PhysicsConfig, dt: number,
 ): { vy: number; onGround: boolean } {
   if (onGround && input.jump) {
-    return { vy: config.jump_impulse, onGround: false }
+    vy = config.jump_impulse
+    onGround = false
   }
   if (!onGround) {
     vy -= config.gravity * dt
@@ -142,7 +143,7 @@ function integratePositionWithWalls(
 }
 
 function resolveGroundCollision(
-  px: number, py: number, pz: number, vy: number,
+  px: number, py: number, pz: number, vy: number, onGround: boolean,
   getGroundY: (x: number, z: number, refY: number) => number,
   config: PhysicsConfig,
 ): { py: number; vy: number; onGround: boolean } {
@@ -150,7 +151,10 @@ function resolveGroundCollision(
   if (py <= groundY + config.ground_snap && vy <= 0) {
     return { py: groundY, vy: 0, onGround: true }
   }
-  return { py, vy, onGround: py <= groundY + config.ground_snap }
+  if (py > groundY + config.ground_snap) {
+    return { py, vy, onGround: false }
+  }
+  return { py, vy, onGround }
 }
 
 function autoStepUp(
@@ -222,7 +226,7 @@ export function stepPhysics(
   vz = integrated.vz
   py += vy * dt
 
-  const collided = resolveGroundCollision(px, py, pz, vy, getGroundY, config)
+  const collided = resolveGroundCollision(px, py, pz, vy, onGround, getGroundY, config)
   py = collided.py
   vy = collided.vy
   onGround = collided.onGround
