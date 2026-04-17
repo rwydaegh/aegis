@@ -63,6 +63,29 @@ function freshAbort(get: () => EnvironmentState, set: (s: Partial<EnvironmentSta
   return controller
 }
 
+/** Throw an Error with the HTTP status attached when the response is not ok. */
+async function throwIfNotOk(resp: Response): Promise<void> {
+  if (resp.ok) return
+  let msg = `HTTP ${resp.status}`
+  try { const err = await resp.json(); msg = err.error || msg } catch {}
+  const error = new Error(msg) as Error & { status?: number }
+  error.status = resp.status
+  throw error
+}
+
+/**
+ * Report to Sentry unless the error is an intentional abort or a transient
+ * upstream-service failure (429/502/503/504). The UI still displays the
+ * message either way — external provider hiccups (Overpass, Nominatim,
+ * Google 3D Tiles) are not AEGIS bugs, so we don't page on them.
+ */
+function reportUnexpected(e: unknown): void {
+  if ((e as Error).name === 'AbortError') return
+  const status = (e as Error & { status?: number }).status
+  if (status === 429 || status === 502 || status === 503 || status === 504) return
+  Sentry.captureException(e)
+}
+
 export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
   source: 'none',
   location: null,
@@ -113,7 +136,9 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
       })
       if (!resp.ok) {
         const data = await resp.json().catch(() => ({}))
-        throw new Error(data.error || `Geocoding failed: ${resp.status}`)
+        const error = new Error(data.error || `Geocoding failed: ${resp.status}`) as Error & { status?: number }
+        error.status = resp.status
+        throw error
       }
       const { lat, lon, formatted } = await resp.json()
       set((s) => ({
@@ -134,7 +159,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
         set({ geocoding: false })
         return
       }
-      Sentry.captureException(e)
+      reportUnexpected(e)
       set({ error: (e as Error).message, geocoding: false })
     }
   },
@@ -193,11 +218,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
         }),
         signal: controller.signal,
       })
-      if (!resp.ok) {
-        let msg = `HTTP ${resp.status}`
-        try { const err = await resp.json(); msg = err.error || msg } catch {}
-        throw new Error(msg)
-      }
+      await throwIfNotOk(resp)
       const meta = parseJsonHeader<Record<string, unknown>>(resp.headers.get('X-Meta'), 'X-Meta')
       const buf = await resp.arrayBuffer()
       const meshData = parseEnvironmentBinary(buf, meta)
@@ -207,7 +228,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
         set({ loading: false })
         return
       }
-      Sentry.captureException(e)
+      reportUnexpected(e)
       set({ error: (e as Error).message, loading: false })
     }
   },
@@ -239,11 +260,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
         }),
         signal: controller.signal,
       })
-      if (!resp.ok) {
-        let msg = `HTTP ${resp.status}`
-        try { const err = await resp.json(); msg = err.error || msg } catch {}
-        throw new Error(msg)
-      }
+      await throwIfNotOk(resp)
       const meta = parseJsonHeader<Record<string, unknown>>(resp.headers.get('X-Meta'), 'X-Meta')
       const buf = await resp.arrayBuffer()
       const meshData = parseEnvironmentBinary(buf, meta)
@@ -253,7 +270,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
         set({ loading: false })
         return
       }
-      Sentry.captureException(e)
+      reportUnexpected(e)
       set({ error: (e as Error).message, loading: false })
     }
   },
@@ -278,11 +295,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
         }),
         signal: controller.signal,
       })
-      if (!resp.ok) {
-        let msg = `HTTP ${resp.status}`
-        try { const err = await resp.json(); msg = err.error || msg } catch {}
-        throw new Error(msg)
-      }
+      await throwIfNotOk(resp)
       const meta = parseJsonHeader<Record<string, unknown>>(resp.headers.get('X-Meta'), 'X-Meta')
       const buf = await resp.arrayBuffer()
       const meshData = parseEnvironmentBinary(buf, meta)
@@ -292,7 +305,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
         set({ loading: false })
         return
       }
-      Sentry.captureException(e)
+      reportUnexpected(e)
       set({ error: (e as Error).message, loading: false })
     }
   },
@@ -306,11 +319,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ format }),
       })
-      if (!resp.ok) {
-        let msg = `HTTP ${resp.status}`
-        try { const err = await resp.json(); msg = err.error || msg } catch {}
-        throw new Error(msg)
-      }
+      await throwIfNotOk(resp)
       const data = await resp.json()
       return data.scene_path
     } catch (e) {
