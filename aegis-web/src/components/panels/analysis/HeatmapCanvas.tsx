@@ -162,16 +162,18 @@ export function HeatmapCanvas({
     const tip = tooltipRef.current
     if (!canvas || !tip) return
     const rect = canvas.getBoundingClientRect()
-    const mx = e.clientX - rect.left
-    const my = e.clientY - rect.top
+    const rx = e.clientX - rect.left
+    const ry = e.clientY - rect.top
+    const mx = rx * (canvas.width / rect.width)
+    const my = ry * (canvas.height / rect.height)
     const l = getCanvasLayout(canvas, n_freq, n_power)
     const hit = hitTestCell(mx, my, l, n_freq, n_power)
     if (!hit) { tip.style.display = 'none'; return }
     const { fi, pi } = hit
     const m = margin_db[pi][fi]
     tip.style.display = 'block'
-    tip.style.left = `${mx + 12}px`
-    tip.style.top = `${my - 10}px`
+    tip.style.left = `${rx + 12}px`
+    tip.style.top = `${ry - 10}px`
     const clickHint = onCellClick ? '  (click to apply)' : ''
     tip.textContent = `${freq_ghz[fi].toFixed(1)} GHz, ${power_dbm[pi].toFixed(0)} dBm: ${m > 0 ? '+' : ''}${m.toFixed(1)} dB${clickHint}`
   }, [result, n_freq, n_power, freq_ghz, power_dbm, margin_db, onCellClick])
