@@ -102,3 +102,31 @@ describe('handleDoneEvent summary', () => {
     expect(useOptimizeStore.getState().summary).toMatch(/^Cancelled after 1 iterations/)
   })
 })
+
+describe('beginRun', () => {
+  beforeEach(resetOptimizeStore)
+
+  // Regression for #623: pressing Optimize twice in the same mode used to
+  // append the new run's iterations onto the previous run's history, so the
+  // scrubber, "Peak S_ab per iteration" chart, and Best button drifted across
+  // runs. beginRun() must wipe per-run replay state.
+  it('clears history, currentIter, summary, and playbackIter for a fresh run', () => {
+    useOptimizeStore.setState({
+      history: [
+        { iter: 1, objective: 0.1, params: {} },
+        { iter: 2, objective: 0.05, params: {} },
+      ],
+      currentIter: 2,
+      summary: 'Converged after 2 iterations. 50% reduction',
+      playbackIter: 1,
+    })
+
+    useOptimizeStore.getState().beginRun()
+
+    const state = useOptimizeStore.getState()
+    expect(state.history).toEqual([])
+    expect(state.currentIter).toBe(0)
+    expect(state.summary).toBeNull()
+    expect(state.playbackIter).toBeNull()
+  })
+})

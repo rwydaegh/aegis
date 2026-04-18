@@ -42,6 +42,7 @@ interface OptimizeStore {
   setRunning: (running: boolean) => void
   setPlacementCenter: (center: [number, number, number] | null) => void
   setPlaybackIter: (iter: number | null) => void
+  beginRun: () => void
   onIteration: (result: IterationResult) => void
   onDone: (summary: string) => void
   onError: (message: string) => void
@@ -77,6 +78,15 @@ export const useOptimizeStore = create<OptimizeStore>((set) => ({
   setRunning: (running) => set({ running }),
   setPlacementCenter: (center) => set({ placementCenter: center }),
   setPlaybackIter: (iter) => set({ playbackIter: iter }),
+
+  // Clear per-run replay state so a fresh run does not append to the previous
+  // run's history (fixes #623: scrubber and "Best" drifted across runs).
+  beginRun: () => set({
+    history: [],
+    currentIter: 0,
+    summary: null,
+    playbackIter: null,
+  }),
 
   onIteration: (result) =>
     set((s) => ({
