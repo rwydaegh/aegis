@@ -203,7 +203,7 @@ def _build_stats_response(result, body, tissue, level, extra=None, mode=None, co
                     "limit": round(c.limit, 4),
                     "unit": c.unit,
                     "pass": c.compliant,
-                    "ratio": round(c.ratio, 4),
+                    "ratio": round(c.ratio, 10),
                     "margin_db": round(c.margin_db, 2) if c.margin_db != float("inf") else None,
                 }
                 for c in compliance.all_checks
