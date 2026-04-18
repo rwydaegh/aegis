@@ -213,6 +213,7 @@ export default function MIMOPanel() {
           type="checkbox"
           checked={enabled}
           onChange={e => setEnabled(e.target.checked)}
+          data-testid="mimo-enable"
           className="rounded border-border accent-primary h-3.5 w-3.5"
         />
         <span className="text-xs font-medium text-foreground">Enable MIMO mode</span>

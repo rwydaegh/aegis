@@ -230,7 +230,7 @@ export default function CompliancePanel() {
     : 'Enable quantities to see compliance checks'
 
   return (
-    <div className={cn(PANEL_BASE, isComputing && 'shimmer-panel')}>
+    <div className={cn(PANEL_BASE, isComputing && 'shimmer-panel')} data-testid="compliance-panel">
       <ComplianceHeader scenario={scenario} />
 
       {visibleChecks.length === 0 ? (

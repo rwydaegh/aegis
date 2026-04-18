@@ -49,7 +49,7 @@ export default function SidebarPanel({ group }: SidebarPanelProps) {
                 value={section.value}
                 className="border-b border-border px-3"
               >
-                <AccordionTrigger className="text-sm font-medium py-3">
+                <AccordionTrigger data-testid={`sidebar-section-${section.value}`} className="text-sm font-medium py-3">
                   <div className="flex items-center gap-2">
                     <SectionIcon className="size-4 text-muted-foreground shrink-0" />
                     <span>{section.label}</span>

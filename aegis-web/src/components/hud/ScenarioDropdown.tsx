@@ -48,6 +48,7 @@ export function ScenarioDropdown() {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(!open)}
+        data-testid="scenario-dropdown"
         className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 px-2.5 py-0.5 text-xs font-medium text-primary hover:bg-primary/20 transition-colors shrink-0"
       >
         {scenarioLoading ? (
@@ -64,6 +65,7 @@ export function ScenarioDropdown() {
             <button
               key={key}
               onClick={() => handleSelect(key)}
+              data-testid={`scenario-item-${key}`}
               className="w-full flex items-center gap-2 px-3 py-2 hover:bg-muted text-left transition-colors"
             >
               <div className="flex-1 min-w-0">
@@ -85,6 +87,7 @@ export function ScenarioDropdown() {
                 <button
                   key={key}
                   onClick={() => handleSelect(key)}
+                  data-testid={`scenario-item-${key}`}
                   className="w-full flex items-center gap-2 px-3 py-2 hover:bg-muted text-left transition-colors"
                 >
                   <div className="text-sm text-muted-foreground">{s.label}</div>

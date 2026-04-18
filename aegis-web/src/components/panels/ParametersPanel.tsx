@@ -80,6 +80,7 @@ export default function ParametersPanel() {
     <div>
       <label className={labelClass}>Computation mode</label>
       <select
+        data-testid="mode-select"
         className={selectClass}
         value={mode}
         onChange={(e) => setMode(e.target.value as DosimetryMode)}
@@ -176,6 +177,7 @@ export default function ParametersPanel() {
       <div className="flex gap-1.5 items-center mb-2">
         <input
           type="number"
+          data-testid="freq-input"
           className={inputClass + ' !w-[70px]'}
           value={freqGhz}
           onChange={(e) => {
