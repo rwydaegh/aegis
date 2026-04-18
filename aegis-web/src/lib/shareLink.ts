@@ -5,6 +5,7 @@ import { useSceneStore } from '../stores/scene'
 import { useUIStore } from '../stores/ui'
 import type { QuantityKey } from '../stores/ui'
 import { useAntennaStore } from '../stores/antenna'
+import { useEnvironmentStore, type EnvironmentSource } from '../stores/environment'
 import type { ElementPattern } from '../api/types'
 import { cameraState } from './cameraState'
 
@@ -36,8 +37,18 @@ export function collectState(): Record<string, unknown> {
   const sim = useSimulationStore.getState()
   const scene = useSceneStore.getState()
   const ui = useUIStore.getState()
+  const env = useEnvironmentStore.getState()
 
   return {
+    // environment store
+    envSource: env.source,
+    envLat: env.location?.lat ?? null,
+    envLon: env.location?.lon ?? null,
+    envLocationQuery: env.locationQuery,
+    envLocationFormatted: env.locationFormatted,
+    envRadius: env.radius,
+    envGeometricError: env.geometricError,
+    envOsmOptions: { ...env.osmOptions },
     // simulation store
     antennaPos: sim.antennaPos,
     mode: sim.mode,
@@ -264,7 +275,36 @@ function applyAntennaState(state: Partial<ShareState>): void {
   }
 }
 
+const VALID_ENV_SOURCES = new Set<EnvironmentSource>([
+  'none', 'voxels', 'osm', '3dtiles', 'cesium', 'coverage',
+])
+
+function applyEnvironmentState(state: Partial<ShareState>): void {
+  if (state.envSource === undefined) return
+  const env = useEnvironmentStore.getState()
+  const source = state.envSource as EnvironmentSource
+  if (!VALID_ENV_SOURCES.has(source)) return
+
+  env.setSource(source)
+  if (state.envLat != null && state.envLon != null) {
+    env.setLocation(state.envLat, state.envLon)
+  }
+  if (state.envLocationQuery !== undefined) env.setLocationQuery(state.envLocationQuery)
+  if (state.envLocationFormatted !== undefined) env.setLocationFormatted(state.envLocationFormatted)
+  if (state.envRadius !== undefined) env.setRadius(state.envRadius)
+  if (state.envGeometricError !== undefined) env.setGeometricError(state.envGeometricError)
+  if (state.envOsmOptions !== undefined) env.setOsmOptions(state.envOsmOptions)
+
+  // Fire-and-forget the mesh fetch so the scene shows buildings/tiles after
+  // hydration. Errors surface via the environment store's error state and toast.
+  if (state.envLat != null && state.envLon != null) {
+    if (source === 'osm') void env.fetchOSM()
+    else if (source === '3dtiles') void env.fetchTilesForRT()
+  }
+}
+
 export function applyShareState(state: Partial<ShareState>): void {
+  applyEnvironmentState(state)
   applySimulationState(state, useSimulationStore.getState())
   applySceneState(state, useSceneStore.getState())
   applyUIState(state, useUIStore.getState())

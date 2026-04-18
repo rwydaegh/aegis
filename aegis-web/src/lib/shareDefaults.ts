@@ -1,5 +1,21 @@
 // Default values for all shareable fields. Must match store defaults exactly.
 export const SHARE_DEFAULTS = {
+  // environment store (source, location, fetch params — mesh data is refetched)
+  envSource: 'none' as string,
+  envLat: null as number | null,
+  envLon: null as number | null,
+  envLocationQuery: '' as string,
+  envLocationFormatted: '' as string,
+  envRadius: 200,
+  envGeometricError: 30,
+  envOsmOptions: {
+    defaultBuildingHeight: 10,
+    levelHeight: 3.0,
+    buildings: true,
+    roads: true,
+    water: true,
+    detail: false,
+  },
   // simulation store
   antennaPos: null as [number, number, number] | null,
   mode: 'spatial' as string,
