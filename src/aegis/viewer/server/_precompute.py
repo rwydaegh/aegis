@@ -15,7 +15,8 @@ def setup_precompute_G(app: Flask, cache: dict) -> None:
     preload_app forks after create_app, so a thread started here would run in
     the master and its cache wouldn't be shared.
     """
-    max_triangles = int(os.environ.get("AEGIS_G_MAX_TRIANGLES", 100_000))
+    default_cap = cache["config"]["raytracer"]["precompute_max_triangles"]
+    max_triangles = int(os.environ.get("AEGIS_G_MAX_TRIANGLES", default_cap))
     started = {"done": False}
 
     @app.before_request

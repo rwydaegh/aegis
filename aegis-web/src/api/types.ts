@@ -83,6 +83,36 @@ export interface UIConfig {
   computing: Record<string, unknown>
   legend: Record<string, unknown>
   scenario?: string
+  focus_point_marker?: { color: string; marker_radius: number; ring_radius: number }
+  optimize_grid?: { dot_radius: number }
+  bug_reporter?: { max_width_ratio: number; max_height_ratio: number }
+}
+
+export interface FollowCameraConfig {
+  default_distance: number
+  default_pitch: number
+  min_distance: number
+  max_distance: number
+  smooth_factor: number
+  height_offset: number
+  orbit_speed: number
+}
+
+export interface CoverageMapConfig {
+  switch_to_3d_zoom: number
+  max_3d_markers: number
+  marker_radius_deg: number
+}
+
+export interface BasestationsPanelConfig {
+  depth: number
+  pole_radius: number
+  element_dot_radius: number
+  show_elements: boolean
+  margin: number
+  default_color: string
+  min_element_radius: number
+  max_element_radius: number
 }
 
 export interface SystemInfo {
@@ -160,12 +190,25 @@ export interface RaytracerConfig {
   fspl_distance_clamp: number
   default_body_center: [number, number, number]
   default_source: string
+  precompute_max_triangles?: number
+  inline_mesh_max_triangles?: number
+  defaults?: {
+    max_depth: number
+    max_depth_min: number
+    max_depth_max: number
+    rays_per_source: number
+    rays_per_source_min: number
+    rays_per_source_max: number
+    max_paths_per_source: number
+    chunk_size: number
+    chunk_size_max: number
+  }
 }
 
 export interface ViewerConfig {
   server: { host: string; port: number; debug: boolean; open_browser: boolean }
   scene: { background_color: string; grid: Record<string, unknown>; ground_plane: Record<string, unknown> }
-  camera: { fov: number; near: number; far: number; initial_position: [number, number, number]; controls: Record<string, unknown> }
+  camera: { fov: number; near: number; far: number; initial_position: [number, number, number]; controls: Record<string, unknown>; follow?: FollowCameraConfig }
   renderer: { tone_mapping: string; shadows_enabled: boolean; antialias: boolean; shadow_map_type?: string }
   lighting: LightingConfig
   antenna: AntennaConfig
@@ -205,6 +248,8 @@ export interface ViewerConfig {
     facing_smooth: number
   }
   ui: UIConfig
+  coverage_map?: CoverageMapConfig
+  basestations?: { panel: BasestationsPanelConfig; [k: string]: unknown }
   active_scenario?: string
   active_scenario_description?: string
   scenarios?: Record<string, ScenarioEntry>

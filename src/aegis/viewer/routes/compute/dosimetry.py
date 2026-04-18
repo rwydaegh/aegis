@@ -136,8 +136,10 @@ def _load_inline_mesh_body(cache: dict, cache_lock):
     n_tri = params.get("n_triangles")
     if n_tri is None or not isinstance(n_tri, int):
         return None, None, None, (jsonify({"error": "n_triangles required in X-Compute-Params"}), 400)
-    if n_tri <= 0 or n_tri > 500_000:
-        return None, None, None, (jsonify({"error": "n_triangles must be between 1 and 500000"}), 400)
+    with cache_lock:
+        max_tri = cache["config"]["raytracer"]["inline_mesh_max_triangles"]
+    if n_tri <= 0 or n_tri > max_tri:
+        return None, None, None, (jsonify({"error": f"n_triangles must be between 1 and {max_tri}"}), 400)
 
     mesh_data = request.get_data()
     if len(mesh_data) > _MAX_INLINE_MESH_BYTES:

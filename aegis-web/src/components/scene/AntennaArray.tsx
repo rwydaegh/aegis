@@ -2,6 +2,7 @@ import { memo, useMemo, useEffect } from 'react'
 import * as THREE from 'three'
 import type { ArrayConfig } from '@/api/types'
 import { jetColor, gainTFromLinear } from '@/lib/colormap'
+import { useSceneStore } from '@/stores/scene'
 import PanelAntenna from './PanelAntenna'
 
 interface AntennaArrayProps {
@@ -13,8 +14,8 @@ interface AntennaArrayProps {
 }
 
 const ARROW_COLOR = new THREE.Color(1, 0.4, 0)
-const MIN_ELEMENT_RADIUS = 0.005
-const MAX_ELEMENT_RADIUS = 0.03
+const FALLBACK_MIN_ELEMENT_RADIUS = 0.005
+const FALLBACK_MAX_ELEMENT_RADIUS = 0.03
 
 // ---------------------------------------------------------------------------
 // Pure helpers (module scope, no React)
@@ -211,9 +212,13 @@ export default memo(function AntennaArray({ config, freqHz, showPattern, weights
     return () => { patternGeo?.dispose() }
   }, [patternGeo])
 
+  const panelCfg = useSceneStore(s => s.viewerConfig?.basestations?.panel)
+  const minElementRadius = panelCfg?.min_element_radius ?? FALLBACK_MIN_ELEMENT_RADIUS
+  const maxElementRadius = panelCfg?.max_element_radius ?? FALLBACK_MAX_ELEMENT_RADIUS
+
   const lambda = 3e8 / freqHz
   const minSpacing = Math.min(config.d_h_wavelengths, config.d_v_wavelengths) * lambda
-  const elementRadius = Math.max(MIN_ELEMENT_RADIUS, Math.min(MAX_ELEMENT_RADIUS, minSpacing * 0.35))
+  const elementRadius = Math.max(minElementRadius, Math.min(maxElementRadius, minSpacing * 0.35))
 
   const panelSize = useMemo(() => {
     const dH = config.d_h_wavelengths * lambda

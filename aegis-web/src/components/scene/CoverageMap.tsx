@@ -6,14 +6,11 @@ import { useCoverageStore } from '@/stores/coverage'
 import { buildCoverageLayers, buildComplianceZoneLayer, OP_COLORS } from './coverageLayers'
 import { Radio, Building2, Layers, MapPin, X, Signal } from 'lucide-react'
 
-/** Zoom level at which we switch from 2D heatmap to 3D photorealistic view */
-const SWITCH_TO_3D_ZOOM = 15
-
-/** Max markers to render in 3D view (performance budget) */
-const MAX_3D_MARKERS = 2000
-
-/** Radius in degrees around camera center to load markers */
-const MARKER_RADIUS_DEG = 0.05
+const FALLBACK_COVERAGE_MAP = {
+  switch_to_3d_zoom: 15,
+  max_3d_markers: 2000,
+  marker_radius_deg: 0.05,
+}
 
 function DeckOverlay() {
   const map = useMap()
@@ -213,10 +210,12 @@ function Photorealistic3DView({ center }: { center: { lat: number; lon: number }
     if (!siteLats || !siteLons || !siteOpIndices || !siteTechIndices || !siteRegionIndices || !siteAntennaCounts) return []
     const cLat = cameraLatLon?.lat ?? center.lat
     const cLon = cameraLatLon?.lon ?? center.lon
-    const r = MARKER_RADIUS_DEG
+    const cmCfg = useSceneStore.getState().viewerConfig?.coverage_map ?? FALLBACK_COVERAGE_MAP
+    const r = cmCfg.marker_radius_deg
+    const maxMarkers = cmCfg.max_3d_markers
 
     const sites: SiteInfo[] = []
-    for (let i = 0; i < siteCount && sites.length < MAX_3D_MARKERS; i++) {
+    for (let i = 0; i < siteCount && sites.length < maxMarkers; i++) {
       const lat = siteLats[i]
       const lon = siteLons[i]
       if (lat >= cLat - r && lat <= cLat + r && lon >= cLon - r && lon <= cLon + r) {
@@ -303,6 +302,8 @@ export function CoverageMap() {
   const googleMapId = useSceneStore(s => s.capabilities?.google_map_id) || undefined
   const zoom = useCoverageStore(s => s.zoom)
   const cameraLatLon = useCoverageStore(s => s.cameraLatLon)
+  const coverageMapCfg = useSceneStore(s => s.viewerConfig?.coverage_map) ?? FALLBACK_COVERAGE_MAP
+  const switchTo3dZoom = coverageMapCfg.switch_to_3d_zoom
   const [show3D, setShow3D] = useState(false)
   const lastCenterRef = useRef<{ lat: number; lon: number }>({ lat: 48.8, lon: 2.3 })
 
@@ -313,10 +314,10 @@ export function CoverageMap() {
 
   // Auto-switch to 3D when zoomed in enough (if Map ID is configured)
   useEffect(() => {
-    if (googleMapId && zoom >= SWITCH_TO_3D_ZOOM && !show3D) {
+    if (googleMapId && zoom >= switchTo3dZoom && !show3D) {
       setShow3D(true)
     }
-  }, [zoom, googleMapId, show3D])
+  }, [zoom, googleMapId, show3D, switchTo3dZoom])
 
   if (!googleApiKey) {
     return (
@@ -335,7 +336,7 @@ export function CoverageMap() {
           onClick={() => {
             setShow3D(false)
             // Restore zoom to just below the 3D threshold so we stay in 2D
-            useCoverageStore.getState().setZoom(SWITCH_TO_3D_ZOOM - 3)
+            useCoverageStore.getState().setZoom(switchTo3dZoom - 3)
           }}
           className="absolute top-16 left-1/2 -translate-x-1/2 z-30 px-4 py-2 bg-zinc-800/90 hover:bg-zinc-700 text-white text-sm rounded-lg border border-zinc-600 shadow-lg transition-colors"
         >
@@ -350,7 +351,7 @@ export function CoverageMap() {
     ? { lat: lastCenterRef.current.lat, lng: lastCenterRef.current.lon }
     : { lat: 48.8, lng: 2.3 }
   const mapZoom = mapCenter.lat !== 48.8 || mapCenter.lng !== 2.3
-    ? Math.min(zoom, SWITCH_TO_3D_ZOOM - 3)
+    ? Math.min(zoom, switchTo3dZoom - 3)
     : 4
 
   return (

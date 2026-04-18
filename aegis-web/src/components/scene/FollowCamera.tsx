@@ -4,15 +4,18 @@ import * as THREE from 'three'
 import { useSimulationStore } from '@/stores/simulation'
 import { useMIMOStore } from '@/stores/mimo'
 import { useUIStore } from '@/stores/ui'
+import { useSceneStore } from '@/stores/scene'
 import { useKeyboard } from '@/hooks/useKeyboard'
 
-const DEFAULT_DISTANCE = 5
-const DEFAULT_PITCH = 0.3 // radians above horizontal
-const MIN_DISTANCE = 2
-const MAX_DISTANCE = 30
-const SMOOTH_FACTOR = 6 // higher = snappier
-const HEIGHT_OFFSET = 1.2 // look at body center, not feet
-const ORBIT_SPEED = 2.0 // radians per second for Q/E keys
+const FALLBACK_FOLLOW = {
+  default_distance: 5,
+  default_pitch: 0.3,
+  min_distance: 2,
+  max_distance: 30,
+  smooth_factor: 6,
+  height_offset: 1.2,
+  orbit_speed: 2.0,
+}
 
 /**
  * Third-person follow camera that orbits around the character.
@@ -25,13 +28,14 @@ export default function FollowCamera() {
   const { camera, gl } = useThree()
   const mode = useUIStore(s => s.cameraMode)
   const keys = useKeyboard()
+  const followCfg = useSceneStore(s => s.viewerConfig?.camera?.follow) ?? FALLBACK_FOLLOW
 
   const yaw = useRef(0)
-  const pitch = useRef(DEFAULT_PITCH)
+  const pitch = useRef(followCfg.default_pitch)
   // Reusable Vector3 objects to avoid per-frame GC pressure
   const _targetPos = useRef(new THREE.Vector3())
   const _desiredPos = useRef(new THREE.Vector3())
-  const distance = useRef(DEFAULT_DISTANCE)
+  const distance = useRef(followCfg.default_distance)
   const isDragging = useRef(false)
   const lastMouse = useRef({ x: 0, y: 0 })
 
@@ -64,8 +68,8 @@ export default function FollowCamera() {
 
     const onWheel = (e: WheelEvent) => {
       distance.current = Math.max(
-        MIN_DISTANCE,
-        Math.min(MAX_DISTANCE, distance.current + e.deltaY * 0.01),
+        followCfg.min_distance,
+        Math.min(followCfg.max_distance, distance.current + e.deltaY * 0.01),
       )
       e.preventDefault()
     }
@@ -91,8 +95,8 @@ export default function FollowCamera() {
     if (mode !== 'follow') return
 
     // Q/E keys orbit the camera around the character
-    if (keys.rotLeft) yaw.current += ORBIT_SPEED * dt
-    if (keys.rotRight) yaw.current -= ORBIT_SPEED * dt
+    if (keys.rotLeft) yaw.current += followCfg.orbit_speed * dt
+    if (keys.rotRight) yaw.current -= followCfg.orbit_speed * dt
 
     // In MIMO mode, follow the controlled user's position
     const mimoState = useMIMOStore.getState()
@@ -104,7 +108,7 @@ export default function FollowCamera() {
       bodyPos = useSimulationStore.getState().bodyOffset
     }
     const [bx, by, bz] = bodyPos
-    const targetPos = _targetPos.current.set(bx, by + HEIGHT_OFFSET, bz)
+    const targetPos = _targetPos.current.set(bx, by + followCfg.height_offset, bz)
 
     const d = distance.current
     const p = pitch.current
@@ -120,7 +124,7 @@ export default function FollowCamera() {
     if (desiredPos.y < minY) desiredPos.y = minY
 
     // Smooth interpolation
-    const t = Math.min(1, SMOOTH_FACTOR * dt)
+    const t = Math.min(1, followCfg.smooth_factor * dt)
     camera.position.lerp(desiredPos, t)
     camera.lookAt(targetPos)
   })

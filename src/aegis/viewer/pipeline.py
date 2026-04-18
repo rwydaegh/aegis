@@ -13,7 +13,11 @@ import threading
 from collections.abc import Generator
 from pathlib import Path
 
+from aegis.viewer.config import DEFAULTS as _VIEWER_DEFAULTS
+
 logger = logging.getLogger(__name__)
+
+_PROCESS_WAIT_TIMEOUT_S = _VIEWER_DEFAULTS["server"]["process_wait_timeout_s"]
 
 # String constants (avoid duplicate literals)
 _PIPELINE_SCRIPT = "run_pipeline.js"
@@ -158,7 +162,7 @@ def run_pipeline(
         if proc is not None and proc.poll() is None:
             proc.terminate()
             try:
-                proc.wait(timeout=5)
+                proc.wait(timeout=_PROCESS_WAIT_TIMEOUT_S)
             except subprocess.TimeoutExpired:
                 proc.kill()
 
@@ -172,7 +176,7 @@ def cancel_pipeline(session_id: str = "default") -> bool:
     if proc is not None:
         try:
             proc.terminate()
-            proc.wait(timeout=5)
+            proc.wait(timeout=_PROCESS_WAIT_TIMEOUT_S)
         except subprocess.TimeoutExpired:
             proc.kill()
         _active_processes.pop(session_id, None)

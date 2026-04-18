@@ -183,6 +183,7 @@ class TestPlacementMode:
         from unittest.mock import patch
 
         from aegis.geometry.mesh import BodyMesh
+        from aegis.viewer.config import load_config
         from aegis.viewer.routes.optimize import _build_placement_evaluate_fn
 
         vertices = np.array([[[0.0, 0.0, 0.0], [0.1, 0.0, 0.0], [0.0, 0.1, 0.0]]])
@@ -190,13 +191,7 @@ class TestPlacementMode:
         cache = {
             "default_body": "test_body",
             "bodies": {"test_body": {"body": body}},
-            "config": {
-                "raytracer": {
-                    "default_body_center": [0.0, 0.0, 1.0],
-                    "reflection_loss_per_order": 0.5,
-                },
-                "antenna": {"pole_height": 2.0},
-            },
+            "config": load_config(),
         }
         fake_result = SimpleNamespace(
             peak_sab=1.25,
@@ -338,16 +333,12 @@ class TestPlacementInputValidation:
         vertices = np.array([[[0.0, 0.0, 0.0], [0.1, 0.0, 0.0], [0.0, 0.1, 0.0]]])
         body = BodyMesh.from_arrays(vertices, name="test_body")
 
+        from aegis.viewer.config import load_config
+
         cache = app._optimize_cache
         cache["default_body"] = "test_body"
         cache["bodies"] = {"test_body": {"body": body}}
-        cache["config"] = {
-            "raytracer": {
-                "default_body_center": [0.0, 0.0, 1.0],
-                "reflection_loss_per_order": 0.5,
-            },
-            "antenna": {"pole_height": 2.0},
-        }
+        cache["config"] = load_config()
 
         client = app.test_client()
         resp = client.post(
