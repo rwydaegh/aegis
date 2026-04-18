@@ -54,6 +54,44 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-18 02:18 UTC -- "Visualization and analysis"
+
+- Actor: interactive
+- Depth: medium
+- Findings: 0 bugs filed. Both #565 and #566 fixes verified green on
+  production.
+- Notes: Anchored on the two fresh commits (#565 NaN colorbar after
+  MIMO peak, #566 Tilt+power RT gating) and swept the rest of the
+  visualization surface on Open ground. **#566 verified:** Tilt+power
+  button is now disabled-by-default in the non-RT/non-MIMO Open ground
+  scenario; enabling MIMO only unlocks MIMO peak, Tilt+power stays
+  disabled (no RT paths). Matches the gating described in #566 and
+  removes the raw-JSON-toast regression my last pass caught.
+  **#565 verified:** MIMO peak optimizer converged ("Converged after 6
+  iterations. -0% reduction" -- expected for 1-antenna 1-user case)
+  and the ColorLegend ticks rendered as valid numbers
+  (0/0.054/0.109/0.163/0.218 W/m²), not the `NaN NaN NaN NaN NaN`
+  strings I filed under #563. Legend surface is otherwise healthy:
+  Lin/dB toggle swaps units cleanly, dB ticks step -6/-13/-19/-25 as
+  expected; Floor spinbutton at -40 rescales ticks correctly; colormap
+  lock (🔓→🔒) holds the legend cap at 0.218 W/m² when frequency is
+  switched 28→47 GHz while Sab rises to 0.238, and unlocking snaps the
+  cap back to the current peak. Quantity restriction auto-swapped from
+  Sab(4cm²) to Sab(1cm²) at 47 GHz and compliance recomputed to
+  0.24/40.00 W/m² PASS (+13.9 dB) -- visible the restriction rule is
+  driving the limit. Analysis plots: SAB histogram draws log bins with
+  Below/Above legend, Frequency sweep produced a line plot in the
+  chart slot (tiny sidebar width made details hard to read but it
+  rendered without NaN axis labels), Compliance heatmap generated a
+  Compliant/Exceeded/Boundary grid with all green cells. Console
+  clean: 1 expected 401 at auth gate, a few harmless warnings
+  (THREE.Clock deprecated, WebGL ReadPixels GPU stall, chart width
+  -1 from a transient Recharts layout). Confident this area is
+  healthy after #565 + #566. Q eigenvalue + rho gauge are listed in
+  features.md for coherent MIMO results but I didn't find them
+  surfaced in the UI on this configuration -- worth a targeted
+  follow-up on a coherent RT scenario.
+
 ### 2026-04-18 00:18 UTC -- "Visualization and analysis"
 
 - Actor: interactive
