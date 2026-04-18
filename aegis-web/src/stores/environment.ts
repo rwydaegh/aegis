@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import * as Sentry from '@sentry/react'
-import { fetchWithRetry, parseJsonHeader } from '@/api/client'
+import { fetchWithRetry, parseJsonHeader, fetchCapabilities } from '@/api/client'
 import type { ScenePos } from '@/api/coordinates'
 import { useSceneStore } from '@/stores/scene'
 
@@ -84,6 +84,21 @@ function reportUnexpected(e: unknown): void {
   const status = (e as Error & { status?: number }).status
   if (status === 429 || status === 502 || status === 503 || status === 504) return
   Sentry.captureException(e)
+}
+
+/**
+ * After the backend env_mesh cache has been (re)populated by an environment
+ * fetch, pull fresh capabilities so downstream consumers (ray tracing, compute)
+ * see has_env_mesh=true. Without this, the RT dispatcher reports "no environment
+ * mesh available" even when buildings were loaded successfully.
+ */
+async function refreshCapabilitiesAfterEnvLoad(): Promise<void> {
+  try {
+    const caps = await fetchCapabilities()
+    useSceneStore.getState().setCapabilities(caps)
+  } catch (e) {
+    reportUnexpected(e)
+  }
 }
 
 export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
@@ -223,6 +238,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
       const buf = await resp.arrayBuffer()
       const meshData = parseEnvironmentBinary(buf, meta)
       set({ osmMeshData: meshData, loading: false })
+      await refreshCapabilitiesAfterEnvLoad()
     } catch (e) {
       if ((e as Error).name === 'AbortError') {
         set({ loading: false })
@@ -265,6 +281,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
       const buf = await resp.arrayBuffer()
       const meshData = parseEnvironmentBinary(buf, meta)
       set({ osmMeshData: meshData, loading: false })
+      await refreshCapabilitiesAfterEnvLoad()
     } catch (e) {
       if ((e as Error).name === 'AbortError') {
         set({ loading: false })
@@ -300,6 +317,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
       const buf = await resp.arrayBuffer()
       const meshData = parseEnvironmentBinary(buf, meta)
       set({ osmMeshData: meshData, loading: false })
+      await refreshCapabilitiesAfterEnvLoad()
     } catch (e) {
       if ((e as Error).name === 'AbortError') {
         set({ loading: false })
