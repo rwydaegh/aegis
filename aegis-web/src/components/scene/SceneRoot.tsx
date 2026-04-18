@@ -187,6 +187,15 @@ function CameraController({ controlsRef, initialPosition }: {
   return null
 }
 
+// Explicit shadow-camera frustum. The Three.js default is a ±5 m orthographic
+// box at origin, which leaves a visible 10x10 m shadow-boundary square on any
+// geometry extending past it.
+const SHADOW_FRUSTUM_HALF = 100
+const SHADOW_CAMERA_NEAR = 0.5
+const SHADOW_CAMERA_FAR = 800
+const SHADOW_MAP_SIZE = 2048
+const SHADOW_BIAS = -0.0005
+
 function SceneLighting() {
   const config = useSceneStore(s => s.viewerConfig)
   if (!config) return null
@@ -199,8 +208,15 @@ function SceneLighting() {
         position={light?.sun?.position ?? [5, 10, 5]}
         intensity={light?.sun?.intensity ?? 0.8}
         castShadow
-        shadow-mapSize-width={1024}
-        shadow-mapSize-height={1024}
+        shadow-mapSize-width={SHADOW_MAP_SIZE}
+        shadow-mapSize-height={SHADOW_MAP_SIZE}
+        shadow-camera-left={-SHADOW_FRUSTUM_HALF}
+        shadow-camera-right={SHADOW_FRUSTUM_HALF}
+        shadow-camera-top={SHADOW_FRUSTUM_HALF}
+        shadow-camera-bottom={-SHADOW_FRUSTUM_HALF}
+        shadow-camera-near={SHADOW_CAMERA_NEAR}
+        shadow-camera-far={SHADOW_CAMERA_FAR}
+        shadow-bias={SHADOW_BIAS}
       />
       {light?.fill && (
         <directionalLight
@@ -354,6 +370,13 @@ function WebGLUnavailable() {
   )
 }
 
+const SHADOW_MAP_TYPES: Record<string, THREE.ShadowMapType> = {
+  Basic: THREE.BasicShadowMap,
+  PCF: THREE.PCFShadowMap,
+  PCFSoft: THREE.PCFSoftShadowMap,
+  VSM: THREE.VSMShadowMap,
+}
+
 export default function SceneRoot() {
   const webglAvailable = useMemo(() => hasWebGL(), [])
   const config = useSceneStore(s => s.viewerConfig)
@@ -486,7 +509,7 @@ export default function SceneRoot() {
             far: cam.far,
             position: initialPosition,
           }}
-          shadows={ren.shadows_enabled ? { type: THREE.PCFShadowMap } : false}
+          shadows={ren.shadows_enabled ? { type: SHADOW_MAP_TYPES[ren.shadow_map_type ?? 'PCFSoft'] ?? THREE.PCFSoftShadowMap } : false}
           gl={{
             antialias: ren.antialias ?? true,
             toneMapping: THREE.ACESFilmicToneMapping,
