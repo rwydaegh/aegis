@@ -928,21 +928,61 @@ class TestBodyCacheKeyInvariance:
         key_translated = DosimetryEngine._body_cache_key(translated)
         assert key_original == key_translated
 
-    def test_rotation_not_invariant(self, flat_mesh):
-        """Cache key should differ for rotated meshes (different centroid layout)."""
+    def test_rotation_invariant(self, flat_mesh):
+        """Cache key should match for rigidly rotated copies of the same mesh.
+
+        The spatial averaging matrix depends only on relative geometry,
+        so yawing the phantom in the viewer must still hit the cache.
+        """
         key_original = DosimetryEngine._body_cache_key(flat_mesh)
 
-        R = np.array([[0, -1, 0], [1, 0, 0], [0, 0, 1]], dtype=np.float64)
-        rotated_centroids = (R @ flat_mesh.centroids.T).T
+        theta = 0.37
+        R = np.array(
+            [
+                [np.cos(theta), -np.sin(theta), 0.0],
+                [np.sin(theta), np.cos(theta), 0.0],
+                [0.0, 0.0, 1.0],
+            ],
+            dtype=np.float64,
+        )
         rotated = BodyMesh(
-            vertices=flat_mesh.vertices,
-            normals=flat_mesh.normals.copy(),
-            centroids=rotated_centroids,
+            vertices=flat_mesh.vertices @ R.T,
+            normals=flat_mesh.normals @ R.T,
+            centroids=flat_mesh.centroids @ R.T,
             areas=flat_mesh.areas.copy(),
             name="flat_plane_rotated",
         )
         key_rotated = DosimetryEngine._body_cache_key(rotated)
-        assert key_original != key_rotated
+        assert key_original == key_rotated
+
+    def test_rigid_transform_invariant_antenna_scale(self, flat_mesh):
+        """Cache key survives a rigid transform at antenna-position scale.
+
+        Regression: the previous hash centred the centroids and hashed the
+        float32 cast, but the near-zero residuals accumulated float64 noise
+        that crossed float32 boundaries at offsets of ~10 m, producing
+        spurious cache misses on every phantom move (issue #604).
+        """
+        key_original = DosimetryEngine._body_cache_key(flat_mesh)
+
+        theta = 0.37
+        R = np.array(
+            [
+                [np.cos(theta), -np.sin(theta), 0.0],
+                [np.sin(theta), np.cos(theta), 0.0],
+                [0.0, 0.0, 1.0],
+            ],
+            dtype=np.float64,
+        )
+        offset = np.array([12.93189463996947, 0.0, -6.767756328720121])
+        rigid = BodyMesh(
+            vertices=flat_mesh.vertices @ R.T + offset.reshape(1, 1, 3),
+            normals=flat_mesh.normals @ R.T,
+            centroids=flat_mesh.centroids @ R.T + offset,
+            areas=flat_mesh.areas.copy(),
+            name="flat_plane_rigid",
+        )
+        assert DosimetryEngine._body_cache_key(rigid) == key_original
 
 
 # ===========================================================================
