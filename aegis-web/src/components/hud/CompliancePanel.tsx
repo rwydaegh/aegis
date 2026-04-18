@@ -109,16 +109,19 @@ function ComplianceSummary({ allChecks, powerDbm, onSetPower, freqHz }: Complian
           {visibleMarginDb > 0 ? '+' : ''}{visibleMarginDb.toFixed(1)} dB
         </span>
       </div>
-      {maxPowerDbm != null && (
-        <div
-          className="flex justify-between cursor-pointer hover:text-blue-200 transition-colors"
-          title="Click to set TX power to max compliant value"
-          onClick={() => onSetPower(parseFloat(maxPowerDbm.toFixed(1)))}
-        >
-          <span>Max TX power</span>
-          <span className="text-blue-300">{maxPowerDbm.toFixed(1)} dBm</span>
-        </div>
-      )}
+      {maxPowerDbm != null && (() => {
+        const safeMaxPowerDbm = Math.floor(maxPowerDbm * 10) / 10
+        return (
+          <div
+            className="flex justify-between cursor-pointer hover:text-blue-200 transition-colors"
+            title="Click to set TX power to max compliant value"
+            onClick={() => onSetPower(safeMaxPowerDbm)}
+          >
+            <span>Max TX power</span>
+            <span className="text-blue-300">{safeMaxPowerDbm.toFixed(1)} dBm</span>
+          </div>
+        )
+      })()}
       <div className="flex justify-between">
         <span>Frequency</span>
         <span>{(freqHz / 1e9).toFixed(1)} GHz</span>
