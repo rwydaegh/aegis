@@ -54,6 +54,41 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-18 18:15 UTC -- "Optimization"
+
+- Actor: cron-qa
+- Depth: medium
+- Findings: 1 bug filed: #623
+- Notes: Exercised Placement and MIMO peak on the Open ground scenario;
+  Tilt+power stayed disabled until MIMO was enabled (worth a separate
+  look later -- gating is supposed to key off RT paths per #566, not
+  MIMO). Placement grid=5 converged in 25 iters / 68% reduction /
+  ~990 ms, replay play+scrub updated heatmap and antenna smoothly,
+  5x5 grid preview renders on strategy select. MIMO peak produced 38
+  iters / 2% reduction (single-user, mmwave so little room to move
+  the precoder). Noticed briefly that after a placement run completes
+  the top-level compliance HUD shows the re-run MIMO value (0.23
+  W/m^2) while the panel's "Peak S_ab at this position" still
+  displays the placement summary (7.84e-4 W/m^2); defensible as
+  pipeline order but confusing -- not filed. **Bug #623**: pressing
+  Optimize twice without toggling the strategy makes the replay
+  scrubber, the "Peak S_ab per iteration" chart, and the Best button
+  silently accumulate iterations across runs. Repro: grid=5 (25 it)
+  -> grid=1 (1 it) -> grid=3 (9 it) lands at "Converged after 9
+  iterations" with replay reading 35/35. Two grid-9 runs back to
+  back give 162/162 with two bell curves concatenated on the chart.
+  Root cause sits in aegis-web/src/stores/optimize.ts:81-85 --
+  onIteration unconditionally appends, and only setMode()/reset()
+  clear history. Suggested a beginRun() style fix that clears
+  history + currentIter at start of useOptimization.start. Dropping
+  history also silently hits the .slice(-200) cap after a few grid-9
+  runs which would jumble replays further. Cancellation and
+  stop-then-start I could not stress (81-iter runs finished in under
+  5 s), would want a longer-running mode for that. Confident Placement
+  core + MIMO core are healthy; the replay store bug is the only
+  clear defect; the Tilt+power gating change deserves a targeted pass
+  next swarm.
+
 ### 2026-04-18 16:20 UTC -- "Compliance and regulatory"
 
 - Actor: interactive
