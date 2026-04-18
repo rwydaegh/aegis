@@ -128,7 +128,7 @@ class TestSumOfSinusoidsEdgeCases:
         from aegis.channel.sos import SumOfSinusoids
 
         sos = SumOfSinusoids(d_lambda=1.0)
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=r"positions must have shape"):
             sos.evaluate(np.array([[0.0, 1.0]]))
 
     def test_single_sinusoid_works(self):

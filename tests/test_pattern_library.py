@@ -10,7 +10,7 @@ import pytest
 from aegis.basestation.library import AntennaPatternLibrary
 
 
-@pytest.fixture()
+@pytest.fixture
 def library(tmp_path: Path) -> AntennaPatternLibrary:
     """Set up a library backed by the test_patterns.zip fixture."""
     msi_dir = tmp_path / "antenna_patterns" / "msi_raw"

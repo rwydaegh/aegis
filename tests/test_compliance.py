@@ -144,11 +144,11 @@ class TestFrequencyValidation:
         assert lim.sinc_whole_body is None
 
     def test_below_100khz_raises(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="outside the ICNIRP 2020 range"):
             icnirp_limits(freq_hz=50.0e3)
 
     def test_above_300ghz_raises(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="outside the ICNIRP 2020 range"):
             icnirp_limits(freq_hz=301.0e9)
 
     def test_at_300ghz_ok(self) -> None:
@@ -160,11 +160,11 @@ class TestFrequencyValidation:
         assert lim.freq_hz == 6.001e9
 
     def test_zero_raises(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="outside the ICNIRP 2020 range"):
             icnirp_limits(freq_hz=0.0)
 
     def test_negative_raises(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="outside the ICNIRP 2020 range"):
             icnirp_limits(freq_hz=-10.0e9)
 
     def test_nan_raises(self) -> None:
@@ -321,7 +321,7 @@ class TestEvaluateCompliance:
         assert r.sinc_local is None
 
     def test_invalid_freq_raises(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="outside the ICNIRP 2020 range"):
             evaluate_compliance(freq_hz=50.0e3, sab_4cm2=10.0)
 
 

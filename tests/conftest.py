@@ -245,7 +245,7 @@ def multi_path():
 _E2E_LAB_DIR = str(Path(__file__).parent / "fixtures" / "e2e_lab")
 
 
-@pytest.fixture()
+@pytest.fixture
 def viewer_app():
     """Flask test app with the e2e_icosahedron body, shared across viewer tests.
 

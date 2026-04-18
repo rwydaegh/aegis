@@ -81,7 +81,8 @@ class TestToDiffertScene:
     def _has_differt(self):
         pytest.importorskip("differt")
 
-    def test_produces_triangle_scene(self, _has_differt, sample_mesh):
+    @pytest.mark.usefixtures("_has_differt")
+    def test_produces_triangle_scene(self, sample_mesh):
         from aegis.environment.export import to_differt_scene
 
         scene = to_differt_scene(sample_mesh)

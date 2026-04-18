@@ -116,7 +116,7 @@ python -m ruff check src/ tests/            # lint
 
 ```bash
 python -m pip install -e ".[rt]"   # optional: ray tracing in the UI
-python -m aegis.viewer --config configs/default.json
+python -m aegis.viewer --config configs/outdoor_urban.json
 ```
 
 See [Interactive viewer](user_guide/viewer.md) for scenarios, ports, and API overview.

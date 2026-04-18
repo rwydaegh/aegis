@@ -10,7 +10,7 @@ pytest.importorskip("flask")
 from flask import Flask  # noqa: E402
 
 
-@pytest.fixture()
+@pytest.fixture
 def app():
     app = Flask(__name__)
     app.config["TESTING"] = True
@@ -26,7 +26,7 @@ def app():
     return app
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(app):
     return app.test_client()
 

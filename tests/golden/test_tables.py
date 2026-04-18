@@ -27,7 +27,7 @@ TABLE_T0_SKIN = [
 class TestMonographTableT0:
     """Monograph Table 4: T_0 from IT'IS database skin properties."""
 
-    @pytest.mark.parametrize("freq_ghz, expected_T0", TABLE_T0_SKIN)
+    @pytest.mark.parametrize(("freq_ghz", "expected_T0"), TABLE_T0_SKIN)
     def test_T0_skin(self, freq_ghz, expected_T0):
         tissue = TissueModel.from_database("Skin", freq_ghz * 1e9)
         assert pytest.approx(expected_T0, abs=0.003) == tissue.T0
@@ -57,7 +57,7 @@ TABLE_SKIN_PROPERTIES = [
 class TestMonographTableSkinProperties:
     """Monograph Table 5: skin dielectric properties from Cole-Cole model."""
 
-    @pytest.mark.parametrize("freq_ghz, exp_eps_r, exp_abs_n", TABLE_SKIN_PROPERTIES)
+    @pytest.mark.parametrize(("freq_ghz", "exp_eps_r", "exp_abs_n"), TABLE_SKIN_PROPERTIES)
     def test_skin_properties(self, freq_ghz, exp_eps_r, exp_abs_n):
         tissue = TissueModel.from_database("Skin", freq_ghz * 1e9)
         assert tissue.eps_r == pytest.approx(exp_eps_r, rel=0.02)

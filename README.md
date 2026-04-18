@@ -100,7 +100,7 @@ Launch the 3D viewer:
 
 ```bash
 python -m aegis.viewer --location "Ghent, Belgium"
-python -m aegis.viewer --config configs/default.json
+python -m aegis.viewer --config configs/outdoor_urban.json
 python -m aegis.viewer --scenario open_ground
 ```
 

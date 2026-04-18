@@ -11,7 +11,7 @@ from aegis.basestation.parquet_io import (
 )
 
 
-@pytest.fixture()
+@pytest.fixture
 def sample_df():
     """Minimal 16-column DataFrame."""
     return pd.DataFrame(

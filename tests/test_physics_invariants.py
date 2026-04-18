@@ -467,7 +467,7 @@ class TestInputValidation:
         engine = DosimetryEngine(SKIN_28GHZ)
         r = engine.compute(body, paths, level=2)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="must be finite"):
             r.scale(float("nan"))
 
     def test_scale_inf_raises(self):
@@ -480,7 +480,7 @@ class TestInputValidation:
         engine = DosimetryEngine(SKIN_28GHZ)
         r = engine.compute(body, paths, level=2)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="must be finite"):
             r.scale(float("inf"))
 
     def test_zero_frequency_raises(self):

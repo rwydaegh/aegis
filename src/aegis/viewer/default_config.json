@@ -3,11 +3,14 @@
     "host": "127.0.0.1",
     "port": 5000,
     "debug": false,
-    "open_browser": true
+    "open_browser": true,
+    "network_timeout_s": 10,
+    "process_wait_timeout_s": 5
   },
   "scene": {
     "background_color": "#111115",
     "grid": {
+      "enabled": false,
       "size": 200,
       "divisions": 100,
       "color": "#666666",
@@ -15,6 +18,7 @@
       "y_offset": -0.01
     },
     "ground_plane": {
+      "enabled": false,
       "size": 500,
       "color": "#1a1a20",
       "opacity": 0.5,
@@ -36,6 +40,15 @@
       "damping_factor": 0.05,
       "min_distance": 0.1,
       "max_distance": 2000
+    },
+    "follow": {
+      "default_distance": 5,
+      "default_pitch": 0.3,
+      "min_distance": 2,
+      "max_distance": 30,
+      "smooth_factor": 6,
+      "height_offset": 1.2,
+      "orbit_speed": 2.0
     }
   },
   "renderer": {
@@ -79,6 +92,13 @@
   "body": {
     "default_name": "thelonious",
     "default_color": 0.5,
+    "default_offset": [
+      0,
+      0,
+      0
+    ],
+    "default_rotation_y": 0,
+    "wireframe": false,
     "material": {
       "roughness": 0.6,
       "metalness": 0.1,
@@ -90,8 +110,13 @@
       0
     ],
     "smartphone": {
-      "forward_distance": 0.30
-    }
+      "forward_distance": 0.3
+    },
+    "phantom_type": "stl",
+    "phantom_dir": "data/phantoms",
+    "default_phantom": "adult_male",
+    "default_pose": "idle",
+    "animation_speed": 1.0
   },
   "voxels": {
     "size_scale": 0.95,
@@ -136,6 +161,7 @@
     "heightmap_resolution_factor": 1
   },
   "antenna": {
+    "default_position": null,
     "sphere_radius": 0.08,
     "sphere_segments": 16,
     "color": "#ff3333",
@@ -158,7 +184,7 @@
       "ico_detail": 6,
       "radius": 0.9,
       "lobe_gamma": 0.42,
-      "dynamic_range_db": 36,
+      "dynamic_range_db": 36.0,
       "opacity": 0.94,
       "metalness": 0.12,
       "roughness": 0.5,
@@ -171,9 +197,20 @@
       "show_legacy_cone": false,
       "elements": [
         {
-          "offset": [0, 0, 0],
-          "weight": [1, 0],
-          "axis": [0, 1, 0]
+          "offset": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "weight": [
+            1.0,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            1.0,
+            0.0
+          ]
         }
       ]
     }
@@ -199,13 +236,16 @@
     "click_max_hold_ms": 300,
     "debounce_ms": 200,
     "focus_hint_timeout_ms": 3000,
-    "recompute_interval_ms": 500
+    "recompute_interval_ms": 500,
+    "compute_timeout_ms": 60000
   },
   "dosimetry": {
     "default_level": 2,
-    "default_power_dbm": 43,
+    "default_power_dbm": 43.0,
     "default_max_order": 2,
-    "compliance_threshold": 10.0,
+    "freq_hz": 28000000000.0,
+    "exposure_scenario": "general_public",
+    "display_mode": "raw_sab",
     "fidelity_levels": [
       {
         "value": 0,
@@ -236,6 +276,18 @@
         "label": "Level 6 - Diffraction"
       }
     ],
+    "power_input": {
+      "min": 0,
+      "max": 100,
+      "step": 1
+    },
+    "stochastic": {
+      "preset_dir": "channel_presets",
+      "default_preset": "3GPP_38.901_UMi_LOS",
+      "default_seed": 42
+    },
+    "level0_D_max": 4.0,
+    "compliance_threshold": 10.0,
     "max_order_options": [
       {
         "value": 0,
@@ -250,17 +302,49 @@
         "label": "2 (+ double reflection)"
       }
     ],
-    "power_input": {
-      "min": 0,
-      "step": 1
-    },
-    "level0_D_max": 4.0,
     "convex_body_area_factor": 0.25,
-    "stochastic": {
-      "preset_dir": "channel_presets",
-      "default_preset": "3GPP_38.901_UMi_LOS",
-      "default_seed": 42
-    }
+    "skin_model": "itis",
+    "dynamic_range_db": 30
+  },
+  "mimo": {
+    "enabled": false,
+    "array": {
+      "type": "upa",
+      "n_h": 4,
+      "n_v": 4,
+      "d_h_wavelengths": 0.5,
+      "d_v_wavelengths": 0.5,
+      "position": [
+        5.0,
+        0.0,
+        3.0
+      ],
+      "broadside": [
+        -1.0,
+        0.0,
+        0.0
+      ]
+    },
+    "users": [
+      {
+        "id": "user_0",
+        "phantom": "thelonious",
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "orientation": 0.0,
+        "device_offset": [
+          0.25,
+          0.0,
+          1.4
+        ]
+      }
+    ],
+    "precoder": "mrt",
+    "exposure_budget_mw": 100,
+    "max_users": 8
   },
   "colormap": {
     "name": "inferno",
@@ -338,12 +422,28 @@
     "ground_sample_step_m": 0.35,
     "feet_clearance_m": 0.05
   },
+  "environment": {
+    "source": "none",
+    "location": null,
+    "radius": 200,
+    "osm": {
+      "default_building_height": 10,
+      "level_height": 3.0,
+      "buildings": true,
+      "roads": true,
+      "water": true
+    },
+    "tiles": {
+      "geometric_error": 30.0
+    }
+  },
   "location": {
     "default_radius": 30,
     "radius_min": 10,
     "radius_max": 500,
     "radius_step": 10,
-    "default_resolution": 200
+    "default_resolution": 200,
+    "osm_radius_max_m": 5000
   },
   "raytracer": {
     "max_rt_triangles": 50000,
@@ -353,7 +453,21 @@
       0.0,
       0.0,
       1.0
-    ]
+    ],
+    "default_source": "differt",
+    "precompute_max_triangles": 100000,
+    "inline_mesh_max_triangles": 500000,
+    "defaults": {
+      "max_depth": 3,
+      "max_depth_min": 0,
+      "max_depth_max": 10,
+      "rays_per_source": 1000000,
+      "rays_per_source_min": 100,
+      "rays_per_source_max": 10000000,
+      "max_paths_per_source": 1000000,
+      "chunk_size": 100000,
+      "chunk_size_max": 1000000
+    }
   },
   "material_classification": {
     "saturation_gray_threshold": 0.08,
@@ -454,7 +568,24 @@
       "label_color": "#ccc",
       "title_font_size": 10,
       "title_color": "#888"
+    },
+    "focus_point_marker": {
+      "color": "#00e5ff",
+      "marker_radius": 0.025,
+      "ring_radius": 0.05
+    },
+    "optimize_grid": {
+      "dot_radius": 0.12
+    },
+    "bug_reporter": {
+      "max_width_ratio": 0.85,
+      "max_height_ratio": 0.55
     }
+  },
+  "coverage_map": {
+    "switch_to_3d_zoom": 15,
+    "max_3d_markers": 2000,
+    "marker_radius_deg": 0.05
   },
   "three_js": {
     "version": "0.160.0",
@@ -467,9 +598,52 @@
       "small_cell_gain_threshold": 10.0,
       "default_freq_mhz": 2100,
       "standard_grids": {
-        "mmimo": [[4,4],[4,8],[8,8],[8,16]],
-        "sector": [[1,2],[1,4],[2,4],[2,8]],
-        "small_cell": [[1,1],[2,2]]
+        "mmimo": [
+          [
+            4,
+            4
+          ],
+          [
+            4,
+            8
+          ],
+          [
+            8,
+            8
+          ],
+          [
+            8,
+            16
+          ]
+        ],
+        "sector": [
+          [
+            1,
+            2
+          ],
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            2,
+            8
+          ]
+        ],
+        "small_cell": [
+          [
+            1,
+            1
+          ],
+          [
+            2,
+            2
+          ]
+        ]
       }
     },
     "panel": {
@@ -477,7 +651,10 @@
       "pole_radius": 0.04,
       "element_dot_radius": 0.008,
       "show_elements": true,
-      "margin": 0.02
+      "margin": 0.02,
+      "default_color": "#888888",
+      "min_element_radius": 0.005,
+      "max_element_radius": 0.03
     },
     "mmimo": {
       "default_panel_width": 0.7,
@@ -497,16 +674,57 @@
       "default_panel_height": 0.15,
       "show_pattern": false
     },
+    "pattern_library": {
+      "cloudrf_api_key_env": "CLOUDRF_API_KEY",
+      "auto_build_index": true
+    },
     "auto_load_with_scene": false,
     "default_radius_m": 500,
     "max_distance_m": 2000,
-    "site_vertical_gap": 0.1
+    "site_vertical_gap": 0.1,
+    "exposure": {
+      "default_mode": "theoretical",
+      "defaults_by_archetype": {
+        "sector": {
+          "duplex_mode": "fdd",
+          "tdd_dl_ratio": 1.0,
+          "power_reduction_factor": 1.0,
+          "traffic_load_factor": 0.5
+        },
+        "mmimo": {
+          "duplex_mode": "tdd",
+          "tdd_dl_ratio": 0.75,
+          "power_reduction_factor": 0.32,
+          "traffic_load_factor": 0.5
+        },
+        "small_cell": {
+          "duplex_mode": "fdd",
+          "tdd_dl_ratio": 1.0,
+          "power_reduction_factor": 1.0,
+          "traffic_load_factor": 0.3
+        }
+      },
+      "sidelobe_suppression_db": 15.0,
+      "beam_config": {
+        "broadcast_gain_dbi": 18.0,
+        "broadcast_hbw_deg": 65.0,
+        "broadcast_vbw_deg": 10.0,
+        "traffic_gain_dbi": 25.0,
+        "traffic_hbw_deg": 12.0,
+        "traffic_vbw_deg": 8.0,
+        "sweep_h_range_deg": 60.0,
+        "sweep_v_range_deg": 15.0
+      }
+    }
   },
   "default_scenario": "open_ground",
   "scenarios": {
     "open_ground": {
       "description": "Body in free space, single antenna at 28 GHz",
-      "launch": {"voxel_dir": null, "voxel_json": null},
+      "launch": {
+        "voxel_dir": null,
+        "voxel_json": null
+      },
       "label": "Open ground",
       "icon": "radio",
       "instant": true,
@@ -515,13 +733,21 @@
         "freqGhz": 28,
         "powerDbm": 43,
         "mode": "spatial",
-        "antennaPos": [0, 1.5, -0.8],
-        "environment": {"source": "none"}
+        "antennaPos": [
+          0,
+          1.5,
+          -0.8
+        ],
+        "environment": {
+          "source": "none"
+        }
       }
     },
     "mmwave_close": {
       "description": "60 GHz antenna 10 cm from skin surface",
-      "launch": {"voxel_dir": null},
+      "launch": {
+        "voxel_dir": null
+      },
       "label": "Close-range mmWave",
       "icon": "zap",
       "instant": true,
@@ -530,8 +756,14 @@
         "freqGhz": 60,
         "powerDbm": 40,
         "mode": "spatial",
-        "antennaPos": [0, 0.15, -0.5],
-        "environment": {"source": "none"}
+        "antennaPos": [
+          0,
+          0.15,
+          -0.5
+        ],
+        "environment": {
+          "source": "none"
+        }
       }
     },
     "urban_ghent": {
@@ -545,12 +777,32 @@
         "freqGhz": 28,
         "powerDbm": 43,
         "mode": "spatial",
-        "antennaPos": [0, 10.0, -3.0],
+        "antennaPos": [
+          0,
+          10.0,
+          -3.0
+        ],
         "environment": {
           "source": "osm",
           "lat": 51.0447,
           "lon": 3.7268,
           "locationQuery": "Ghent, Belgium"
+        }
+      }
+    },
+    "coverage_globe": {
+      "description": "Browse base station coverage worldwide",
+      "launch": {},
+      "label": "Coverage globe",
+      "icon": "globe",
+      "instant": true,
+      "autoCompute": false,
+      "webState": {
+        "antennaPos": null,
+        "environment": {
+          "source": "coverage",
+          "lat": 0,
+          "lon": 0
         }
       }
     },
@@ -564,7 +816,9 @@
       "hidden": true,
       "webState": {
         "antennaPos": null,
-        "environment": {"source": "none"},
+        "environment": {
+          "source": "none"
+        },
         "clearResults": true,
         "clearScene": true
       }
