@@ -54,6 +54,46 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-18 16:20 UTC -- "Compliance and regulatory"
+
+- Actor: interactive
+- Depth: medium
+- Findings: 1 bug filed: #621
+- Notes: Drove the compliance HUD across a grid of (frequency, scenario,
+  TX power) on the Open ground scenario. Frequency-band transitions look
+  correct: at 5.8 GHz the HUD correctly shows only SARwb (Sab rows drop),
+  at 28 GHz only Sab(4cm²), and at 39 GHz Sab(1cm²) appears on top. Limits
+  verified against backend `/api/compliance/limits`: general public 20
+  W/m² Sab(4cm²), occupational 100 W/m² -- 5x scale, and Sab(1cm²) at 39
+  GHz occupational = 200 W/m², all per ICNIRP 2020. Occupational toggle at
+  5.8 GHz correctly shifted SARwb limit 0.08 → 0.40 W/kg (5x) and Max TX
+  75.2 → 82.2 dBm (+7 dB). The Max-TX-click-tips-to-FAIL overshoot I
+  tripped early on is already tracked and fixed as #594 (floor rounding
+  shipped earlier today). **Bug 1 (#621)**: at realistic low TX
+  (e.g. 30 dBm = 1 W) the compliance HUD silently drops the entire
+  "Margin / Max TX power / Frequency" summary row. Per-check row still
+  renders with the correct margin (+47.1 dB PASS), but the whole
+  ComplianceSummary block vanishes because the server rounds `ratio` to 4
+  decimals (`routes/compute/_responses.py:206`), so tiny ratios come back
+  as 0, and CompliancePanel.tsx:100-103 recomputes `visibleMarginDb` from
+  ratio and gets `Infinity` → returns null. Robin already flagged this
+  exact rounding seam in a comment on #594 but the summary-hiding symptom
+  wasn't fixed at that time. Also noted but not filed: AEGIS
+  intentionally evaluates SARwb above 6 GHz (tests in
+  `test_compliance.py:50-52` enforce `sar_wb == 0.08` at 28 GHz even
+  though ICNIRP 2020 scopes SARwb to ≤6 GHz only); that's a documented
+  design choice, not a bug. Also noted: at high-margin states the visible
+  per-check row's margin (e.g. +9.1 dB Sab) can differ from the overall
+  Margin summary (+7.0 dB) because passing restrictions with ratio > 0
+  are hidden from the rendered list but still drive the overall margin --
+  defensible UX, could surface the binding restriction label for clarity.
+  `/api/compliance/summary` curl test also hit a harmless red herring:
+  the empty-cache path returns "Frequency outside ICNIRP 2020 range"
+  regardless of the queried freq, but the endpoint is only reachable
+  after a compute (the frontend never sees the empty-cache branch), so
+  not worth filing. Confident panel is healthy at typical base-station TX
+  powers; low-TX regime silently misleads until #621 lands.
+
 ### 2026-04-18 12:30 UTC -- "Coherent MIMO and beamforming"
 
 - Actor: interactive
