@@ -162,14 +162,12 @@ export function HeatmapCanvas({
     const tip = tooltipRef.current
     if (!canvas || !tip) return
     const rect = canvas.getBoundingClientRect()
-    // Tooltip positioning uses CSS pixels; hit-test uses internal canvas pixels.
-    // The canvas is CSS-stretched (w-full) so rect.width != canvas.width.
     const cssX = e.clientX - rect.left
     const cssY = e.clientY - rect.top
-    const sx = canvas.width / rect.width
-    const sy = canvas.height / rect.height
+    const mx = cssX * (canvas.width / rect.width)
+    const my = cssY * (canvas.height / rect.height)
     const l = getCanvasLayout(canvas, n_freq, n_power)
-    const hit = hitTestCell(cssX * sx, cssY * sy, l, n_freq, n_power)
+    const hit = hitTestCell(mx, my, l, n_freq, n_power)
     if (!hit) { tip.style.display = 'none'; return }
     const { fi, pi } = hit
     const m = margin_db[pi][fi]

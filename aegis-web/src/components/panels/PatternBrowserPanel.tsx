@@ -18,16 +18,27 @@ const SOURCE_BUTTONS: { label: string; value: SourceFilter }[] = [
   { label: 'CloudRF', value: 'cloudrf' },
 ]
 
-const SEARCH_LIMIT = 10000
+// Backend caps /api/patterns/search at 10000. Mirror it here so we can
+// detect a capped response and prompt the user to narrow the query.
+const BACKEND_CAP = 10000
+// Rendering 10000 buttons stalls keyboard input; cap the visible list.
+const RENDER_LIMIT = 300
 
-function resultCount(n: number): string {
-  const plural = n !== 1 ? 's' : ''
-  const hitCap = n >= SEARCH_LIMIT
-  return `${n}${hitCap ? '+' : ''} result${plural}${hitCap ? ' (refine search)' : ''}`
+function formatGainDbi(g: number): string {
+  if (!Number.isFinite(g)) return '--'
+  return `${g.toFixed(1)} dBi`
 }
 
-function formatDbi(g: number): string {
-  return Number.isFinite(g) ? g.toFixed(2) : String(g)
+function formatFrequencyMhz(f: number): string {
+  if (!Number.isFinite(f)) return '-- MHz'
+  const rounded = Math.round(f * 10) / 10
+  const shown = Number.isInteger(rounded) ? rounded.toFixed(0) : rounded.toFixed(1)
+  return `${shown} MHz`
+}
+
+function resultCount(n: number, capped: boolean): string {
+  if (capped) return `${n}+ results, narrow your search`
+  return `${n} result${n !== 1 ? 's' : ''}`
 }
 
 function emptyMessage(query: string): string {
@@ -59,11 +70,11 @@ function PatternResultButton({ r, isSelected, onSelect }: PatternResultButtonPro
     >
       <div className="flex items-baseline justify-between gap-2">
         <span className="font-medium truncate">{r.manufacturer}</span>
-        <span className="shrink-0 text-muted-foreground">{formatDbi(r.gain_dbi)} dBi</span>
+        <span className="shrink-0 text-muted-foreground">{formatGainDbi(r.gain_dbi)}</span>
       </div>
       <div className="flex items-baseline justify-between gap-2 mt-0.5">
         <span className="text-muted-foreground truncate">{r.model}</span>
-        <span className="shrink-0 text-muted-foreground">{r.frequency_mhz} MHz</span>
+        <span className="shrink-0 text-muted-foreground">{formatFrequencyMhz(r.frequency_mhz)}</span>
       </div>
     </button>
   )
@@ -93,7 +104,7 @@ function SelectedPatternCard({ loadError, onClear }: SelectedPatternCardProps) {
         <div className="min-w-0">
           <p className="font-medium text-foreground truncate">{selectedPattern.manufacturer}</p>
           <p className="text-muted-foreground truncate">{selectedPattern.model}</p>
-          <p className="text-muted-foreground">{formatDbi(selectedPattern.gain_dbi)} dBi &middot; {selectedPattern.source}</p>
+          <p className="text-muted-foreground">{formatGainDbi(selectedPattern.gain_dbi)} &middot; {selectedPattern.source}</p>
         </div>
         <button
           className="shrink-0 px-2 py-0.5 text-xs rounded border border-border bg-muted/50 text-foreground hover:bg-muted transition-colors cursor-pointer"
@@ -239,9 +250,11 @@ export default function PatternBrowserPanel() {
           <p className="text-xs text-muted-foreground py-2">{emptyMessage(query)}</p>
         ) : (
           <>
-            <p className="text-xs text-muted-foreground mb-1">{resultCount(results.length)}</p>
+            <p className="text-xs text-muted-foreground mb-1">
+              {resultCount(results.length, results.length >= BACKEND_CAP)}
+            </p>
             <div className="overflow-y-auto max-h-[300px] flex flex-col gap-0.5 pr-0.5">
-              {results.map(r => (
+              {results.slice(0, RENDER_LIMIT).map(r => (
                 <PatternResultButton
                   key={`${r.source}:${r.id}`}
                   r={r}
@@ -249,6 +262,11 @@ export default function PatternBrowserPanel() {
                   onSelect={handleSelect}
                 />
               ))}
+              {results.length > RENDER_LIMIT && (
+                <p className="text-xs text-muted-foreground py-2 text-center">
+                  Showing first {RENDER_LIMIT} of {results.length}, refine your search
+                </p>
+              )}
             </div>
           </>
         )}

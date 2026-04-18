@@ -102,6 +102,32 @@ class TestTiltPowerStep:
 
         assert result["params"]["power_dbm"] > initial_pwr
 
+    def test_stats_dict_has_peaks_sab_for_colorlegend(self):
+        """Regression test for PR #565 (issue #563): ColorLegend reads
+        stats.peaks?.[displayQuantity] ?? stats.peak_sab. If either key is
+        missing, the legend renders NaN ticks."""
+        from aegis.optim.tilt_power import setup, step
+
+        paths = _make_synthetic_paths()
+        normals = np.tile([0, 0, 1], (100, 1)).astype(np.float64)
+        state = setup(
+            paths=paths,
+            normals=normals,
+            antenna_direction=np.array([0.0, 0.0, -1.0]),
+            tilt_init_deg=5.0,
+            power_init_dbm=60.0,
+            icnirp_limit=20.0,
+        )
+        _, result = step(state)
+
+        assert "stats" in result
+        stats = result["stats"]
+        assert "peak_sab" in stats
+        assert "peaks" in stats
+        assert "sab" in stats["peaks"]
+        assert np.isfinite(stats["peak_sab"])
+        assert stats["peak_sab"] == stats["peaks"]["sab"]
+
     def test_T0_scales_sab(self):
         """T0 factor must scale S_ab: lower T0 should yield lower peak S_ab."""
         from aegis.optim.tilt_power import _evaluate, setup

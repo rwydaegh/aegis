@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 
 import numpy as np
@@ -234,6 +235,8 @@ def _parse_power_dbm(params: dict, dcfg: dict, pwr_cfg: dict):
         power_dbm = float(params.get("power_dbm", dcfg["default_power_dbm"]))
     except (TypeError, ValueError):
         return None, (jsonify({"error": "power_dbm must be a number"}), 400)
+    if not math.isfinite(power_dbm):
+        return None, (jsonify({"error": "power_dbm must be a finite number"}), 400)
     effective_max = min(pwr_cfg["max"], _MAX_POWER_DBM)
     if power_dbm < pwr_cfg["min"] or power_dbm > effective_max:
         return None, (jsonify({"error": f"power_dbm must be between {pwr_cfg['min']} and {effective_max} dBm"}), 400)
@@ -260,7 +263,7 @@ def _parse_stochastic_params(params: dict, cfg: dict):
     return stochastic, None
 
 
-def _parse_antennas_array(params: dict, default_power_dbm: float):
+def _parse_antennas_array(params: dict, default_power_dbm: float, pwr_cfg: dict):
     """Parse the optional multi-antenna array.
 
     Returns (list_or_None, None) on success or (None, error_response) on failure.
@@ -270,6 +273,8 @@ def _parse_antennas_array(params: dict, default_power_dbm: float):
         return None, None
     if not isinstance(raw_antennas, list):
         return None, (jsonify({"error": "antennas must be a list"}), 400)
+    pwr_min = pwr_cfg["min"]
+    pwr_max = min(pwr_cfg["max"], _MAX_POWER_DBM)
     antennas: list[dict] = []
     for i, raw_ant in enumerate(raw_antennas):
         if not isinstance(raw_ant, dict):
@@ -281,6 +286,13 @@ def _parse_antennas_array(params: dict, default_power_dbm: float):
             ant_power = float(raw_ant.get("power_dbm", default_power_dbm))
         except (TypeError, ValueError):
             return None, (jsonify({"error": f"antennas[{i}].power_dbm must be a number"}), 400)
+        if not math.isfinite(ant_power):
+            return None, (jsonify({"error": f"antennas[{i}].power_dbm must be a finite number"}), 400)
+        if ant_power < pwr_min or ant_power > pwr_max:
+            return None, (
+                jsonify({"error": f"antennas[{i}].power_dbm must be between {pwr_min} and {pwr_max} dBm"}),
+                400,
+            )
         acfg = raw_ant.get("array_config", {})
         if not isinstance(acfg, dict):
             return None, (jsonify({"error": f"antennas[{i}].array_config must be an object"}), 400)
@@ -331,7 +343,7 @@ def _collect_compute_params(params: dict, cfg: dict):
     if err:
         return None, err
 
-    antennas, err = _parse_antennas_array(params, power_dbm)
+    antennas, err = _parse_antennas_array(params, power_dbm, pwr_cfg)
     if err is not None:
         return None, err
 

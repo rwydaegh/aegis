@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import math
 import os
 import threading
 
@@ -89,6 +90,8 @@ def _build_bbox(params: dict):
         radius_m = float(params.get("radius_m", 500))
     except (TypeError, ValueError):
         return None, (jsonify({"error": "lat, lon, and radius_m must be numbers"}), 400)
+    if not all(math.isfinite(v) for v in (lat, lon, radius_m)):
+        return None, (jsonify({"error": "lat, lon, and radius_m must be finite"}), 400)
     if not (-90 <= lat <= 90) or not (-180 <= lon <= 180):
         return None, (jsonify({"error": "lat must be in [-90,90] and lon in [-180,180]"}), 400)
     if radius_m <= 0 or radius_m > 50_000:

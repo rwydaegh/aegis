@@ -221,6 +221,35 @@ class TestEnvironment3DTiles:
             assert resp.status_code == 400
             assert "API key" in resp.get_json()["error"]
 
+    def test_empty_mesh_returns_404(self, app):
+        """Regions outside Google's photorealistic coverage produce an empty
+        mesh; the route should surface a user-friendly 404 instead of silently
+        returning a valid-but-empty binary."""
+        from unittest.mock import patch
+
+        from aegis.environment import EnvironmentMesh
+
+        empty_mesh = EnvironmentMesh(
+            vertices=np.zeros((0, 3), dtype=np.float64),
+            triangles=np.zeros((0, 3), dtype=np.int32),
+            normals=np.zeros((0, 3), dtype=np.float64),
+            materials=np.zeros(0, dtype=np.int32),
+            origin_lat=51.05,
+            origin_lon=3.72,
+            source="3dtiles",
+        )
+
+        with (
+            app.test_client() as c,
+            patch("aegis.environment.tiles.TileTraverser.traverse", return_value=empty_mesh),
+        ):
+            resp = c.post(
+                "/api/environment/3dtiles",
+                json={"lat": 51.05, "lon": 3.72, "api_key": "fake"},
+            )
+            assert resp.status_code == 404
+            assert "No 3D Tiles" in resp.get_json()["error"]
+
 
 # ---------------------------------------------------------------------------
 # POST /api/environment/from-voxels
