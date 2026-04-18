@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+
 import numpy as np
 from flask import jsonify
 
@@ -55,9 +57,12 @@ def _parse_vec3(params: dict, key: str, default: list | None = None):
         raw = list(params.get(key, default))
         if len(raw) != 3:
             return None, (jsonify({"error": f"{key} {_ERR_VEC3_LEN}"}), 400)
-        return np.array([float(v) for v in raw], dtype=np.float64), None
+        values = [float(v) for v in raw]
     except (TypeError, ValueError):
         return None, (jsonify({"error": f"{key} {_ERR_VEC3_TYPE}"}), 400)
+    if not all(math.isfinite(v) for v in values):
+        return None, (jsonify({"error": f"{key} values must be finite"}), 400)
+    return np.array(values, dtype=np.float64), None
 
 
 def _parse_rotation_y(params: dict):
@@ -66,9 +71,12 @@ def _parse_rotation_y(params: dict):
     Returns (float, None) on success or (None, error_response) on failure.
     """
     try:
-        return float(params.get("body_rotation_y", 0.0)), None
+        value = float(params.get("body_rotation_y", 0.0))
     except (TypeError, ValueError):
         return None, (jsonify({"error": _ERR_ROTATION_TYPE}), 400)
+    if not math.isfinite(value):
+        return None, (jsonify({"error": "body_rotation_y must be finite"}), 400)
+    return value, None
 
 
 def _parse_freq_and_tissue(params: dict, default_freq: float = DEFAULT_FREQ_HZ):
@@ -82,8 +90,8 @@ def _parse_freq_and_tissue(params: dict, default_freq: float = DEFAULT_FREQ_HZ):
         freq_hz = float(params.get("freq_hz", default_freq))
     except (TypeError, ValueError):
         return None, None, (jsonify({"error": "freq_hz must be a number"}), 400)
-    if freq_hz <= 0:
-        return None, None, (jsonify({"error": "freq_hz must be positive"}), 400)
+    if not math.isfinite(freq_hz) or freq_hz <= 0:
+        return None, None, (jsonify({"error": "freq_hz must be positive and finite"}), 400)
 
     skin_model_name = params.get("skin_model", "itis")
     try:
