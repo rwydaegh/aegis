@@ -131,14 +131,20 @@ class BodyMesh:
             object.__setattr__(self, "_geometry_hash", self._compute_geometry_hash())
 
     def _compute_geometry_hash(self) -> int:
-        """Content-based hash of geometry for cache keying.
+        """Rigid-transform-invariant content hash of the mesh for cache keying.
 
-        Uses centered centroids (translation-invariant) and areas.
-        Computed once at construction time and reused for all cache lookups.
+        Uses sorted per-triangle edge lengths plus areas. Both are stable
+        under translation and rotation up to float32 precision, so moved or
+        yawed copies of the same mesh hit caches (e.g. the spatial averaging
+        matrix G) instead of triggering expensive rebuilds. Subtracting the
+        mean centroid before hashing is not robust: near-zero residuals
+        collect enough float64 noise that tiny FP differences cross float32
+        quantization boundaries, producing spurious cache misses.
         """
-        centered = self.centroids - self.centroids.mean(axis=0)
-        h = hashlib.sha256(self.areas.tobytes())
-        h.update(centered.astype("float32").tobytes())
+        edge_vecs = np.roll(self.vertices, -1, axis=1) - self.vertices
+        edge_lengths = np.sort(np.linalg.norm(edge_vecs, axis=2), axis=1)
+        h = hashlib.sha256(self.areas.astype(np.float32).tobytes())
+        h.update(edge_lengths.astype(np.float32).tobytes())
         digest = h.digest()[:8]
         return hash((int.from_bytes(digest, "little"), self.n_triangles))
 
