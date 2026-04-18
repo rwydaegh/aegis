@@ -93,6 +93,12 @@ def _register_inline_routes(app: Flask) -> None:
     def api_levels():
         return jsonify(FIDELITY_LEVELS_API)
 
+    @app.route("/api/openapi.json")
+    def api_openapi_json():
+        from aegis.viewer.openapi import build_openapi_spec
+
+        return jsonify(build_openapi_spec())
+
     @app.route("/api/body/info")
     def api_body_info():
         body = _cache.get("body")
