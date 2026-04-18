@@ -10,6 +10,7 @@ export const SHARE_DEFAULTS = {
   powerDbm: 43,
   skinModel: 'itis',
   freqGhz: 28,
+  exposureMode: 'theoretical' as string,
   stochasticPreset: '3GPP_38.901_UMi_LOS',
   stochasticSeed: 42,
   stochasticOverrides: {} as Record<string, number>,
