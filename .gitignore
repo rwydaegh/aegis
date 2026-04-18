@@ -127,6 +127,7 @@ tools/mpfb2/
 # Roof visualization scripts (dev-only)
 scripts/*
 !scripts/build_phantoms.py
+!scripts/fuzz_api.sh
 
 # ── GSD baseline (auto-generated) ──
 *~
