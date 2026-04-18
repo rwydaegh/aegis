@@ -34,8 +34,41 @@ jobs:
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
+  schemathesis:
+    needs: [lint]
+    runs-on: ubicloud-standard-2
+    # Patch-release tier: catch HTTP-layer regressions (schema drift, 5xx on
+    # fuzzed inputs) that PR-tier doesn't afford. Budget ~5 min.
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+      - run: uv sync --python 3.12 --extra viewer --extra dev
+      - name: Start viewer
+        run: |
+          uv run python -m aegis.viewer --scenario open_ground >/tmp/viewer.log 2>&1 &
+          echo $! > /tmp/viewer.pid
+          for _ in $(seq 1 30); do
+            curl -sf http://localhost:5000/api/openapi.json >/dev/null && break
+            sleep 1
+          done
+          curl -sf http://localhost:5000/api/openapi.json >/dev/null || {
+            echo "viewer failed to start"; tail -80 /tmp/viewer.log; exit 1;
+          }
+      - name: Schemathesis sweep
+        run: |
+          uv run schemathesis run http://localhost:5000/api/openapi.json \
+            --checks=all \
+            --stateful=links \
+            --rate-limit=20/s \
+            --max-examples=100 \
+            --exclude-checks=negative_data_rejection,ignored_auth
+      - name: Stop viewer
+        if: always()
+        run: kill "$(cat /tmp/viewer.pid)" 2>/dev/null || true
+
   release:
-    needs: [lint, test]
+    needs: [lint, test, schemathesis]
     runs-on: ubicloud-standard-2
     permissions:
       contents: write

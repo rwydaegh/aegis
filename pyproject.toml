@@ -59,6 +59,10 @@ dev = [
     "requests>=2.31",
     "pandas>=3.0.2",
     "pyarrow>=14.0",
+    # Schemathesis drives the OpenAPI fuzzer at release-tier and the in-process
+    # smoke test in tests/test_viewer_schemathesis_smoke.py.
+    "schemathesis>=4.15",
+    "apispec>=6.10",
 ]
 body = ["smplx>=0.1.28", "torch>=2.11.0", "pygltflib>=1.16.5"]
 benchmark = ["pytest-codspeed>=4.4.0"]
