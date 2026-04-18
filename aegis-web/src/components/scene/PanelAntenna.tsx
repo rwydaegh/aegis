@@ -68,16 +68,16 @@ export default memo(function PanelAntenna({
       for (let j = 0; j < nV; j++) {
         const x = nH > 1 ? startH + i * spacingH : 0
         const y = nV > 1 ? startV + j * spacingV : 0
-        positions.push([x, y, depth + 0.001])
+        positions.push([x, y, resolvedDepth + 0.001])
       }
     }
     return positions
-  }, [nH, nV, panelWidth, panelHeight, depth, showElements])
+  }, [nH, nV, panelWidth, panelHeight, resolvedDepth, showElements])
 
   const [px, py, pz] = position
   const poleHeight = py
 
-  const panelColor = selected ? '#ffaa00' : color
+  const panelColor = selected ? '#ffaa00' : resolvedColor
   const emissive = selected ? '#664400' : '#000000'
 
   return (
@@ -85,7 +85,7 @@ export default memo(function PanelAntenna({
       {/* Support pole from ground to panel center */}
       {poleHeight > 0.1 && (
         <mesh position={[px, poleHeight / 2, pz]}>
-          <cylinderGeometry args={[poleRadius, poleRadius, poleHeight, 8]} />
+          <cylinderGeometry args={[resolvedPoleRadius, resolvedPoleRadius, poleHeight, 8]} />
           <meshStandardMaterial color="#404040" metalness={0.6} roughness={0.4} />
         </mesh>
       )}
@@ -95,8 +95,8 @@ export default memo(function PanelAntenna({
           group origin (where the pole connects), keeping the pole behind
           the panel instead of piercing through the center. */}
       <group position={[px, py, pz]} quaternion={quaternion}>
-        <mesh onClick={onClick} position={[0, 0, depth / 2]}>
-          <boxGeometry args={[panelWidth, panelHeight, depth]} />
+        <mesh onClick={onClick} position={[0, 0, resolvedDepth / 2]}>
+          <boxGeometry args={[panelWidth, panelHeight, resolvedDepth]} />
           <meshStandardMaterial
             color={panelColor}
             emissive={emissive}
@@ -108,7 +108,7 @@ export default memo(function PanelAntenna({
         {/* Element dots on the front face */}
         {showElements && elementPositions.map((pos, i) => (
           <mesh key={i} position={pos}>
-            <circleGeometry args={[elementDotRadius, 12]} />
+            <circleGeometry args={[resolvedDotRadius, 12]} />
             <meshBasicMaterial color="#cccccc" side={THREE.FrontSide} />
           </mesh>
         ))}
