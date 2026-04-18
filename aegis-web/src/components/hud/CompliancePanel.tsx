@@ -7,11 +7,18 @@ import Tex from '@/components/ui/Tex'
 import { cn } from '@/lib/utils'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
 
-function computeMaxPowerDbm(checks: Array<{ ratio: number }>, currentPowerDbm: number): number | null {
-  if (checks.length === 0) return null
-  const maxRatio = Math.max(...checks.map(c => c.ratio))
-  if (maxRatio <= 0) return null
-  return currentPowerDbm - 10 * Math.log10(maxRatio)
+function tightestMarginDb(checks: Array<{ margin_db?: number | null }>): number | null {
+  const margins = checks
+    .map(c => c.margin_db)
+    .filter((m): m is number => m != null && isFinite(m))
+  if (margins.length === 0) return null
+  return Math.min(...margins)
+}
+
+function computeMaxPowerDbm(checks: Array<{ margin_db?: number | null }>, currentPowerDbm: number): number | null {
+  const minMarginDb = tightestMarginDb(checks)
+  if (minMarginDb == null) return null
+  return currentPowerDbm + minMarginDb
 }
 
 const LABEL_TEX: Record<string, string> = {
@@ -99,10 +106,8 @@ interface ComplianceSummaryProps {
 
 function ComplianceSummary({ allChecks, powerDbm, onSetPower, freqHz }: ComplianceSummaryProps) {
   const maxPowerDbm = computeMaxPowerDbm(allChecks, powerDbm)
-  const visibleMarginDb = Math.min(
-    ...allChecks.map(c => (c.ratio > 0 ? 10 * Math.log10(1 / c.ratio) : Infinity)),
-  )
-  if (!isFinite(visibleMarginDb)) return null
+  const visibleMarginDb = tightestMarginDb(allChecks)
+  if (visibleMarginDb == null) return null
   return (
     <div className="border-t border-border pt-2 mt-2 text-muted-foreground">
       <div className="flex justify-between">
