@@ -17,18 +17,29 @@ def _parse_rt_config(params: dict, cache: dict) -> dict:
     if not isinstance(rt, dict):
         rt = {}
 
-    max_depth = _safe_int(rt.get("max_depth", params.get("max_order", 3)), 3)
-    max_depth = max(0, min(max_depth, 10))
+    rt_defaults = cache["config"]["raytracer"]["defaults"]
+    d_max = rt_defaults["max_depth"]
+    d_max_min = rt_defaults["max_depth_min"]
+    d_max_max = rt_defaults["max_depth_max"]
+    r_def = rt_defaults["rays_per_source"]
+    r_min = rt_defaults["rays_per_source_min"]
+    r_max = rt_defaults["rays_per_source_max"]
+    mp_def = rt_defaults["max_paths_per_source"]
+    c_def = rt_defaults["chunk_size"]
+    c_max = rt_defaults["chunk_size_max"]
 
-    rays_per_source = _safe_int(rt.get("rays_per_source", 1_000_000), 1_000_000)
-    rays_per_source = max(100, min(rays_per_source, 10_000_000))
+    max_depth = _safe_int(rt.get("max_depth", params.get("max_order", d_max)), d_max)
+    max_depth = max(d_max_min, min(max_depth, d_max_max))
 
-    max_paths_per_source = _safe_int(rt.get("max_paths_per_source", 1_000_000), 1_000_000)
-    max_paths_per_source = max(100, min(max_paths_per_source, 10_000_000))
+    rays_per_source = _safe_int(rt.get("rays_per_source", r_def), r_def)
+    rays_per_source = max(r_min, min(rays_per_source, r_max))
+
+    max_paths_per_source = _safe_int(rt.get("max_paths_per_source", mp_def), mp_def)
+    max_paths_per_source = max(r_min, min(max_paths_per_source, r_max))
 
     chunk_size = rt.get("chunk_size")
     if chunk_size is not None:
-        chunk_size = max(1, min(_safe_int(chunk_size, 100_000), 1_000_000))
+        chunk_size = max(1, min(_safe_int(chunk_size, c_def), c_max))
 
     return {
         "max_depth": max_depth,

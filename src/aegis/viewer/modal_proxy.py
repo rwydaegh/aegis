@@ -14,8 +14,13 @@ import time as _time
 import numpy as np
 
 from aegis.defaults import DEFAULT_FREQ_HZ, DEFAULT_POWER_DBM
+from aegis.viewer.config import DEFAULTS as _VIEWER_DEFAULTS
 
 logger = logging.getLogger(__name__)
+
+_RT_DEFAULTS = _VIEWER_DEFAULTS["raytracer"]["defaults"]
+_DEFAULT_NUM_RAYS = _RT_DEFAULTS["rays_per_source"]
+_DEFAULT_REFLECTION_LOSS = _VIEWER_DEFAULTS["raytracer"]["reflection_loss_per_order"]
 
 _MODAL_AVAILABLE = False
 _initialized = False
@@ -115,9 +120,9 @@ def trace_differt(
     max_order: int = 1,
     freq_hz: float = DEFAULT_FREQ_HZ,
     tx_power_dbm: float = DEFAULT_POWER_DBM,
-    reflection_loss_per_order: float = 0.5,
+    reflection_loss_per_order: float = _DEFAULT_REFLECTION_LOSS,
     method: str = "exhaustive",
-    num_rays: int = 1_000_000,
+    num_rays: int = _DEFAULT_NUM_RAYS,
     chunk_size: int | None = None,
     scene_files: dict[str, bytes] | None = None,
 ) -> dict | None:

@@ -1,11 +1,13 @@
 import html2canvas from 'html2canvas-pro'
 import { useSimulationStore } from '@/stores/simulation'
 import { useUIStore } from '@/stores/ui'
+import { useSceneStore } from '@/stores/scene'
 import type { BugReportResponse, ScreenshotDimensions } from './types'
 
-// Size the annotation canvas to fit the modal with padding for controls
-const MAX_WIDTH_RATIO = 0.85 // % of viewport width
-const MAX_HEIGHT_RATIO = 0.55 // % of viewport height (leave room for description + buttons)
+const FALLBACK_BUG_REPORTER = {
+  max_width_ratio: 0.85,
+  max_height_ratio: 0.55,
+}
 
 /** Collect a lightweight snapshot of the current app state for the issue body. */
 export function collectState(): Record<string, unknown> {
@@ -63,10 +65,11 @@ export async function postBugReport(payload: {
 
 /** Compute the display size for the annotation canvas so it fits the modal. */
 export function computeScreenshotDimensions(img: HTMLImageElement): ScreenshotDimensions {
+  const cfg = useSceneStore.getState().viewerConfig?.ui?.bug_reporter ?? FALLBACK_BUG_REPORTER
   let w = img.width
   let h = img.height
-  const maxW = Math.round(window.innerWidth * MAX_WIDTH_RATIO)
-  const maxH = Math.round(window.innerHeight * MAX_HEIGHT_RATIO)
+  const maxW = Math.round(window.innerWidth * cfg.max_width_ratio)
+  const maxH = Math.round(window.innerHeight * cfg.max_height_ratio)
   if (w > maxW) { h = Math.round(h * (maxW / w)); w = maxW }
   if (h > maxH) { w = Math.round(w * (maxH / h)); h = maxH }
   return { width: w, height: h }

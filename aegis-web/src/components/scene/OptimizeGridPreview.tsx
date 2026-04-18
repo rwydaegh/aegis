@@ -2,8 +2,9 @@ import { useMemo } from 'react'
 import { Line } from '@react-three/drei'
 import { useOptimizeStore } from '@/stores/optimize'
 import { useSimulationStore } from '@/stores/simulation'
+import { useSceneStore } from '@/stores/scene'
 
-const DOT_RADIUS = 0.12
+const FALLBACK_DOT_RADIUS = 0.12
 const COLOR_PREVIEW = '#4a9eff'
 const COLOR_EVALUATED = '#94a3b8'
 const COLOR_BEST = '#22c55e'
@@ -90,6 +91,7 @@ function getDotStyle(
 // ---------------------------------------------------------------------------
 
 export default function OptimizeGridPreview() {
+  const DOT_RADIUS = useSceneStore(s => s.viewerConfig?.ui?.optimize_grid?.dot_radius) ?? FALLBACK_DOT_RADIUS
   const mode = useOptimizeStore(s => s.mode)
   const running = useOptimizeStore(s => s.running)
   const constraints = useOptimizeStore(s => s.constraints)

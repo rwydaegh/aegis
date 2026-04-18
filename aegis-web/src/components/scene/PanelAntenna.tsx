@@ -1,5 +1,6 @@
 import { memo, useMemo, useRef } from 'react'
 import * as THREE from 'three'
+import { useSceneStore } from '@/stores/scene'
 
 interface PanelAntennaProps {
   nH: number
@@ -18,27 +19,34 @@ interface PanelAntennaProps {
   onClick?: () => void
 }
 
-const DEFAULT_DEPTH = 0.05
-const DEFAULT_POLE_RADIUS = 0.04
-const DEFAULT_DOT_RADIUS = 0.008
-const DEFAULT_COLOR = '#888888'
+const FALLBACK_PANEL = {
+  depth: 0.05,
+  pole_radius: 0.04,
+  element_dot_radius: 0.008,
+  default_color: '#888888',
+}
 
 export default memo(function PanelAntenna({
   nH,
   nV,
   panelWidth,
   panelHeight,
-  depth = DEFAULT_DEPTH,
+  depth,
   azimuthDeg,
   tiltDeg,
   position,
-  color = DEFAULT_COLOR,
+  color,
   showElements = true,
-  elementDotRadius = DEFAULT_DOT_RADIUS,
-  poleRadius = DEFAULT_POLE_RADIUS,
+  elementDotRadius,
+  poleRadius,
   selected = false,
   onClick,
 }: PanelAntennaProps) {
+  const panelCfg = useSceneStore(s => s.viewerConfig?.basestations?.panel)
+  const resolvedDepth = depth ?? panelCfg?.depth ?? FALLBACK_PANEL.depth
+  const resolvedPoleRadius = poleRadius ?? panelCfg?.pole_radius ?? FALLBACK_PANEL.pole_radius
+  const resolvedDotRadius = elementDotRadius ?? panelCfg?.element_dot_radius ?? FALLBACK_PANEL.element_dot_radius
+  const resolvedColor = color ?? panelCfg?.default_color ?? FALLBACK_PANEL.default_color
   const groupRef = useRef<THREE.Group>(null)
 
   // Compute panel orientation quaternion from azimuth and tilt

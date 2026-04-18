@@ -8,12 +8,16 @@ from pathlib import Path
 
 from flask import Flask, jsonify
 
+from aegis.viewer.config import DEFAULTS as _VIEWER_DEFAULTS
+
 from ._auth import setup_auth
 from ._bodies import preload_bodies
 from ._cache import _cache, _cache_lock
 from ._fidelity import FIDELITY_LEVELS_API
 from ._precompute import setup_precompute_G
 from ._voxels import preload_voxels
+
+_PROCESS_WAIT_TIMEOUT_S = _VIEWER_DEFAULTS["server"]["process_wait_timeout_s"]
 
 _CSP_POLICY = (
     "default-src 'self'; "
@@ -141,7 +145,7 @@ def _system_info() -> dict:
                 "--format=csv,noheader,nounits",
             ],
             text=True,
-            timeout=5,
+            timeout=_PROCESS_WAIT_TIMEOUT_S,
         ).strip()
         parts = [p.strip() for p in out.split(",")]
         if len(parts) >= 5:
@@ -205,11 +209,10 @@ def create_app(
     config: dict | None = None,
 ) -> Flask:
     """Create and configure the Flask app."""
-    from aegis.viewer.config import load_config
+    from aegis.viewer.config import _deep_merge, load_config
     from aegis.viewer.scene_data import set_config as set_scene_config
 
-    if config is None:
-        config = load_config()
+    config = load_config() if config is None else _deep_merge(load_config(), config)
     _cache["config"] = config
     set_scene_config(config)
 

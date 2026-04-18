@@ -3,10 +3,13 @@ import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import { Line } from '@react-three/drei'
 import { useMIMOStore } from '@/stores/mimo'
+import { useSceneStore } from '@/stores/scene'
 
-const MARKER_COLOR = '#00e5ff'
-const MARKER_RADIUS = 0.025
-const RING_RADIUS = 0.05
+const FALLBACK_MARKER = {
+  color: '#00e5ff',
+  marker_radius: 0.025,
+  ring_radius: 0.05,
+}
 
 interface FocusPointMarkerProps {
   focusPoint?: [number, number, number]
@@ -16,6 +19,10 @@ interface FocusPointMarkerProps {
 export default function FocusPointMarker({ focusPoint: fpProp, arrayPosition: arrProp }: FocusPointMarkerProps = {}) {
   const mimoFp = useMIMOStore(s => s.focusPoint)
   const mimoConfig = useMIMOStore(s => s.arrayConfig)
+  const markerCfg = useSceneStore(s => s.viewerConfig?.ui?.focus_point_marker) ?? FALLBACK_MARKER
+  const MARKER_COLOR = markerCfg.color
+  const MARKER_RADIUS = markerCfg.marker_radius
+  const RING_RADIUS = markerCfg.ring_radius
   const sphereRef = useRef<THREE.Mesh>(null)
 
   // Gentle pulse
@@ -45,7 +52,7 @@ export default function FocusPointMarker({ focusPoint: fpProp, arrayPosition: ar
       ])
     }
     return pts
-  }, [fp])
+  }, [fp, RING_RADIUS])
 
   if (!fp || !arrPos) return null
 

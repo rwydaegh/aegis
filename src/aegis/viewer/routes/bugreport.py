@@ -10,9 +10,12 @@ from urllib.request import Request, urlopen
 
 from flask import Flask, Response, jsonify, request, send_from_directory
 
+from aegis.viewer.config import DEFAULTS as _VIEWER_DEFAULTS
+
 log = logging.getLogger(__name__)
 
 GITHUB_REPO = "rwydaegh/aegis"
+_NETWORK_TIMEOUT_S = _VIEWER_DEFAULTS["server"]["network_timeout_s"]
 SCREENSHOT_DIR = Path(os.environ.get("BUG_SCREENSHOT_DIR", "/tmp/bug-screenshots"))
 
 
@@ -98,7 +101,7 @@ def _create_github_issue(token: str, title: str, body: str) -> dict:
         },
         method="POST",
     )
-    with urlopen(req, timeout=10) as resp:
+    with urlopen(req, timeout=_NETWORK_TIMEOUT_S) as resp:
         result = json.loads(resp.read())
         log.info("Created GitHub issue #%s: %s", result.get("number"), title)
         return result

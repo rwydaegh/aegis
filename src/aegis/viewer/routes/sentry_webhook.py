@@ -9,9 +9,12 @@ from urllib.request import Request, urlopen
 
 from flask import Flask, Response, request
 
+from aegis.viewer.config import DEFAULTS as _VIEWER_DEFAULTS
+
 log = logging.getLogger(__name__)
 
 GITHUB_REPO = "rwydaegh/aegis"
+_NETWORK_TIMEOUT_S = _VIEWER_DEFAULTS["server"]["network_timeout_s"]
 
 
 def register(app: Flask, cache: dict, cache_lock) -> None:
@@ -83,7 +86,7 @@ def _fetch_latest_event(org: str, project: str, issue_id: str, token: str) -> di
     url = f"{api_host}/api/0/issues/{issue_id}/events/latest/"
     req = Request(url, headers={"Authorization": f"Bearer {token}"})
     try:
-        with urlopen(req, timeout=10) as resp:
+        with urlopen(req, timeout=_NETWORK_TIMEOUT_S) as resp:
             return json.loads(resp.read())
     except Exception:
         log.exception("Failed to fetch Sentry event %s", issue_id)
@@ -273,6 +276,6 @@ def _create_github_issue(token: str, title: str, body: str) -> None:
         },
         method="POST",
     )
-    with urlopen(req, timeout=10) as resp:
+    with urlopen(req, timeout=_NETWORK_TIMEOUT_S) as resp:
         result = json.loads(resp.read())
         log.info("Created GitHub issue #%s: %s", result.get("number"), title)

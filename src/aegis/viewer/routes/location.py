@@ -10,9 +10,12 @@ from pathlib import Path
 import requests as http_requests
 from flask import Flask, Response, jsonify, request, session
 
+from aegis.viewer.config import DEFAULTS as _VIEWER_DEFAULTS
+
 logger = logging.getLogger(__name__)
 
 _GOOGLE_API_KEY_MISSING = "GOOGLE_API_KEY not set"
+_NETWORK_TIMEOUT_S = _VIEWER_DEFAULTS["server"]["network_timeout_s"]
 
 
 def _parse_load_params():
@@ -221,7 +224,7 @@ def _fetch_geocode(q: str, api_key: str):
         resp = http_requests.get(
             "https://maps.googleapis.com/maps/api/geocode/json",
             params={"address": q, "key": api_key},
-            timeout=10,
+            timeout=_NETWORK_TIMEOUT_S,
         )
         resp.raise_for_status()
         return resp.json(), None

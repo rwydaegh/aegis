@@ -39,8 +39,9 @@ def _handle_environment_osm(cache: dict, cache_lock) -> Response:
         return jsonify({"error": "lat must be between -90 and 90"}), 400
     if not (-180 <= lon <= 180):
         return jsonify({"error": "lon must be between -180 and 180"}), 400
-    if radius <= 0 or radius > 5000:
-        return jsonify({"error": "radius must be between 0 and 5000 meters"}), 400
+    max_radius = cache.get("config", {}).get("location", {}).get("osm_radius_max_m", 5000)
+    if radius <= 0 or radius > max_radius:
+        return jsonify({"error": f"radius must be between 0 and {int(max_radius)} meters"}), 400
 
     cfg_env = cache.get("config", {}).get("environment", {})
     osm_cfg = cfg_env.get("osm", {})
@@ -123,8 +124,9 @@ def _handle_environment_3dtiles(cache: dict, cache_lock) -> Response:
         return jsonify({"error": "lat must be between -90 and 90"}), 400
     if not (-180 <= lon <= 180):
         return jsonify({"error": "lon must be between -180 and 180"}), 400
-    if radius <= 0 or radius > 5000:
-        return jsonify({"error": "radius must be between 0 and 5000 meters"}), 400
+    max_radius = cache.get("config", {}).get("location", {}).get("osm_radius_max_m", 5000)
+    if radius <= 0 or radius > max_radius:
+        return jsonify({"error": f"radius must be between 0 and {int(max_radius)} meters"}), 400
 
     api_key = body.get("api_key")
     if not api_key:
