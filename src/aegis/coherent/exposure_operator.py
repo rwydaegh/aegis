@@ -10,14 +10,16 @@ Monograph: def:Q, sec:exposure-operator.
 
 from __future__ import annotations
 
+import numpy as np
+
 from aegis._array_backend import xp
 from aegis.defaults import NUMERICAL_FLOOR
 
 
 def compute_exposure_operator(
-    G_tilde,
-    areas,
-):
+    G_tilde: np.ndarray,
+    areas: np.ndarray,
+) -> np.ndarray:
     """Compute the exposure operator Q from the body-surface channel.
 
     Q = sum_m G_tilde[m]^H @ G_tilde[m] * area[m]
@@ -51,8 +53,8 @@ def compute_exposure_operator(
 
 
 def eigendecompose_Q(
-    Q,
-):
+    Q: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
     """Eigendecompose the exposure operator Q.
 
     Returns eigenvalues in descending order with corresponding eigenvectors.
@@ -82,10 +84,10 @@ def eigendecompose_Q(
 
 
 def compute_rho(
-    h,
-    Q,
-    lambda_max=None,
-):
+    h: np.ndarray,
+    Q: np.ndarray,
+    lambda_max: float | None = None,
+) -> float:
     """Compute exposure-signal alignment rho.
 
     rho = h^T @ Q @ h* / (||h||^2 * lambda_max(Q))

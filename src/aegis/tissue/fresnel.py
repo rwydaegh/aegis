@@ -22,7 +22,10 @@ def n_complex(eps_r: float, sigma: float, freq_hz: float) -> complex:
     return n_tilde
 
 
-def _fresnel_core(mu, n_tilde):
+def _fresnel_core(
+    mu: np.ndarray,
+    n_tilde: complex | np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Core Fresnel computation on xp arrays. JIT-safe (no Python control flow).
 
     Parameters

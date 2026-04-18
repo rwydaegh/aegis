@@ -25,12 +25,12 @@ from aegis.defaults import NUMERICAL_FLOOR
 
 
 def solve_ecbf(
-    h,
-    Q,
-    P_abs_max,
-    P,
-    tol=1e-10,
-):
+    h: np.ndarray,
+    Q: np.ndarray,
+    P_abs_max: float,
+    P: float,
+    tol: float = 1e-10,
+) -> np.ndarray:
     """Solve the ECBF QCQP for the optimal precoding vector.
 
     Parameters

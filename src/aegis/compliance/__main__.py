@@ -14,7 +14,9 @@ import argparse
 import sys
 
 from aegis.compliance import (
+    ComplianceResult,
     ExposureScenario,
+    ICNIRPLimits,
     evaluate_compliance,
     icnirp_limits,
     max_compliant_power,
@@ -164,11 +166,11 @@ def main(argv: list[str] | None = None) -> None:
                 print("\nMax compliant power: unlimited (all values zero)")
 
 
-def _print_limits(limits, as_json: bool) -> None:
+def _print_limits(limits: ICNIRPLimits, as_json: bool) -> None:
     if as_json:
         import json
 
-        d = {
+        d: dict[str, object] = {
             "scenario": limits.scenario.value,
             "freq_hz": limits.freq_hz,
             "sab_4cm2_limit": limits.sab_4cm2,
@@ -193,10 +195,10 @@ def _print_limits(limits, as_json: bool) -> None:
             print(f"  S_inc (whole-body): {limits.sinc_whole_body:g} W/m^2")
 
 
-def _print_json(result, ref_power: float | None) -> None:
+def _print_json(result: ComplianceResult, ref_power: float | None) -> None:
     import json
 
-    d = {
+    d: dict[str, object] = {
         "scenario": result.scenario.value,
         "freq_hz": result.freq_hz,
         "overall_pass": result.overall_pass,
@@ -219,7 +221,7 @@ def _print_json(result, ref_power: float | None) -> None:
     print(json.dumps(d, indent=2))
 
 
-def _link_budget_mode(args, scenario) -> None:
+def _link_budget_mode(args: argparse.Namespace, scenario: ExposureScenario) -> None:
     from aegis.compliance import link_budget_compliance
 
     try:
@@ -237,7 +239,7 @@ def _link_budget_mode(args, scenario) -> None:
     if args.json:
         import json
 
-        d = {
+        d: dict[str, object] = {
             "sinc_wm2": result["sinc"],
             "sab_estimate_wm2": result["sab_estimate"],
             "T0": result["T0"],

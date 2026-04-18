@@ -15,6 +15,7 @@ See theory/composability_analysis.md for derivation and limiting cases.
 from __future__ import annotations
 
 import numpy as np
+from numpy.typing import NDArray
 
 from aegis._array_backend import JAX_AVAILABLE, jit, xp
 from aegis.constants import C_0
@@ -29,20 +30,20 @@ _MAX_MN_ELEMENTS = 50_000_000
 
 @jit(static_argnames=("fresnel", "polarisation", "curvature", "diffraction"))
 def _spatial_kernel_unbatched(
-    normals,
-    k_hat,
-    power,
-    n_tilde,
-    T0,
-    freq_hz,
+    normals: NDArray[np.floating],
+    k_hat: NDArray[np.floating],
+    power: NDArray[np.floating],
+    n_tilde: complex | NDArray[np.complexfloating],
+    T0: float,
+    freq_hz: float,
     *,
     fresnel: bool = True,
     polarisation: bool = False,
-    q: float = 0.0,
+    q: float | NDArray[np.floating] = 0.0,
     curvature: bool = False,
     diffraction: bool = False,
-    curvature_H=None,
-):
+    curvature_H: NDArray[np.floating] | None = None,
+) -> NDArray[np.floating]:
     """Core spatial kernel operating on all paths at once.
 
     This is the inner computation. For large M*N, use ``spatial_kernel``
@@ -51,31 +52,39 @@ def _spatial_kernel_unbatched(
     mu, mu_plus = incidence_geometry(normals, k_hat)
 
     # Fresnel factor
+    t_factor: float | NDArray[np.floating]
     if fresnel:
         T_s, T_p, T_avg = fresnel_weights(mu, n_tilde)
         if polarisation:
             DeltaT = T_p - T_s
-            T = T_avg + 0.5 * q * DeltaT
+            t_factor = T_avg + 0.5 * q * DeltaT
         else:
-            T = T_avg
+            t_factor = T_avg
     else:
-        T = T0  # constant, broadcasts over (M, N)
+        t_factor = T0  # constant, broadcasts over (M, N)
 
     # Activation: ReLU or GELU (with diffraction)
+    H_safe: NDArray[np.floating] | None = None
     if diffraction:
         wavelength = C_0 / freq_hz
+        assert curvature_H is not None, "diffraction=True requires curvature_H"
         H_safe = xp.maximum(curvature_H, 0.0)
         sigma = xp.sqrt(xp.maximum(wavelength * H_safe / (4.0 * xp.pi), 1e-20))
         g = physical_gelu(mu, sigma)
     else:
         g = mu_plus
 
-    sab = (T * g) @ power
+    sab = (t_factor * g) @ power
 
     # Curvature correction: additive perturbative term
     if curvature:
         k = xp.maximum(2.0 * xp.pi * freq_hz / C_0, 1e-6)
-        H_for_curv = xp.maximum(curvature_H, 0.0) if not diffraction else H_safe
+        if diffraction:
+            assert H_safe is not None
+            H_for_curv = H_safe
+        else:
+            assert curvature_H is not None, "curvature=True requires curvature_H"
+            H_for_curv = xp.maximum(curvature_H, 0.0)
         # einsum avoids two (M, N) intermediates (g**2 and H-scaled g**2)
         g_sq_power = xp.einsum("mn,mn,n->m", g, g, power)
         sab_curvature = T0 * (H_for_curv / k) * g_sq_power
@@ -88,20 +97,20 @@ def _spatial_kernel_unbatched(
 
 
 def spatial_kernel(
-    normals,
-    k_hat,
-    power,
-    n_tilde,
-    T0,
-    freq_hz,
+    normals: NDArray[np.floating],
+    k_hat: NDArray[np.floating],
+    power: NDArray[np.floating],
+    n_tilde: complex | NDArray[np.complexfloating],
+    T0: float,
+    freq_hz: float,
     *,
     fresnel: bool = True,
     polarisation: bool = False,
-    q: float = 0.0,
+    q: float | NDArray[np.floating] = 0.0,
     curvature: bool = False,
     diffraction: bool = False,
-    curvature_H=None,
-):
+    curvature_H: NDArray[np.floating] | None = None,
+) -> NDArray[np.floating]:
     """Compute per-triangle S_ab with composable physics corrections.
 
     Automatically chunks over paths (N dimension) when M*N exceeds
@@ -162,7 +171,7 @@ def spatial_kernel(
         end = min(start + chunk_size, N)
         k_chunk = k_hat[start:end]
         p_chunk = power[start:end]
-        q_chunk = q[start:end] if hasattr(q, "__getitem__") and np.ndim(q) > 0 else q
+        q_chunk: float | NDArray[np.floating] = q[start:end] if isinstance(q, np.ndarray) and q.ndim > 0 else q
 
         chunk_sab = _spatial_kernel_unbatched(
             normals,
@@ -178,7 +187,7 @@ def spatial_kernel(
             diffraction=diffraction,
             curvature_H=curvature_H,
         )
-        sab += chunk_sab
+        sab = sab + chunk_sab
 
     # The clamp is already applied per-chunk when curvature/diffraction is on,
     # but partial sums can be negative before the final sum. Re-clamp the total.

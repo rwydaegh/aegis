@@ -2,12 +2,20 @@
 
 from __future__ import annotations
 
+import numpy as np
+from numpy.typing import NDArray
+
 from aegis._array_backend import jit
 from aegis.kernels._base import incidence_geometry
 
 
 @jit
-def level2_geometric(normals, k_hat, power, T0):
+def level2_geometric(
+    normals: NDArray[np.floating],
+    k_hat: NDArray[np.floating],
+    power: NDArray[np.floating],
+    T0: float,
+) -> NDArray[np.floating]:
     """Compute per-triangle S_ab using the geometric absorption law.
 
     Parameters
