@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import logging
 import math
+from typing import Any
 
 import numpy as np
 from flask import Response, jsonify, request
 
 from aegis.defaults import DEFAULT_POWER_DBM
+from aegis.viewer.routes._types import RouteResponse
 from aegis.viewer.server import scoped_cache_get
 
 from ._parsing import (
@@ -32,6 +34,8 @@ from ._rt_config import _parse_rt_config
 
 logger = logging.getLogger(__name__)
 
+_ErrResp = tuple[Response, int]
+
 
 def _validate_scene_path(scene_path: str) -> bool:
     """Proxy to package-level `_validate_scene_path` so tests can mock it."""
@@ -40,14 +44,14 @@ def _validate_scene_path(scene_path: str) -> bool:
     return _pkg._validate_scene_path(scene_path)
 
 
-def _run_dosimetry(tissue, body, paths, engine_kw):
+def _run_dosimetry(tissue, body, paths, engine_kw) -> tuple[Any, _ErrResp | None]:
     """Proxy to package-level `_run_dosimetry` so tests can mock it."""
     from aegis.viewer.routes import compute as _pkg
 
     return _pkg._run_dosimetry(tissue, body, paths, engine_kw)
 
 
-def _resolve_rt_body(cache: dict, cache_lock, params: dict):
+def _resolve_rt_body(cache: dict, cache_lock, params: dict) -> tuple[Any, _ErrResp | None]:
     """Resolve the cached body mesh.
 
     Returns (body, None) on success or (None, error_response) on failure.
@@ -60,7 +64,7 @@ def _resolve_rt_body(cache: dict, cache_lock, params: dict):
     return entry["body"], None
 
 
-def _resolve_rt_source(cache: dict, cache_lock, scene_path: str | None):
+def _resolve_rt_source(cache: dict, cache_lock, scene_path: str | None) -> tuple[str | None, _ErrResp | None]:
     """Decide which geometry source to use for ray tracing.
 
     Returns (mode, None) where mode is one of "scene", "voxel", "env",
@@ -78,7 +82,7 @@ def _resolve_rt_source(cache: dict, cache_lock, scene_path: str | None):
     return None, (jsonify({"error": "No scene, voxels, or environment loaded for ray tracing"}), 400)
 
 
-def _parse_power_dbm(params: dict):
+def _parse_power_dbm(params: dict) -> tuple[float | None, _ErrResp | None]:
     """Parse and validate power_dbm for RT routes."""
     try:
         power_dbm = float(params.get("power_dbm", DEFAULT_POWER_DBM))
@@ -91,7 +95,7 @@ def _parse_power_dbm(params: dict):
     return power_dbm, None
 
 
-def _collect_rt_params(cache: dict, params: dict):
+def _collect_rt_params(cache: dict, params: dict) -> tuple[dict[str, Any] | None, _ErrResp | None]:
     """Parse all shared ray-trace route parameters.
 
     Returns (parsed_dict, None) or (None, error_response).
@@ -183,6 +187,8 @@ def _build_voxel_scene(cache: dict, cache_lock):
         vm = cache.get("voxel_materials")
         cfg = cache.get("config", {})
 
+    if vs is None:
+        raise ValueError("voxel_sizes missing from cache; cannot build voxel scene")
     z_up_pos, gc, dominant_size = prepare_for_raytracing(vp, vs)
     ext_mask = extract_exterior(gc)
     ext_pos = z_up_pos[ext_mask]
@@ -199,7 +205,9 @@ def _build_voxel_scene(cache: dict, cache_lock):
     )
 
 
-def _trace_local_differt(source_mode, cache, cache_lock, scene_path, rt_kwargs):
+def _trace_local_differt(
+    source_mode, cache, cache_lock, scene_path, rt_kwargs
+) -> tuple[tuple[Any, Any] | None, _ErrResp | None]:
     """Run local DiffeRT against a scene file, voxel hull or environment mesh.
 
     Returns ((paths, path_viz), None) on success or (None, error_response) on failure.
@@ -215,6 +223,8 @@ def _trace_local_differt(source_mode, cache, cache_lock, scene_path, rt_kwargs):
 
             with cache_lock:
                 env_mesh = scoped_cache_get(cache, "env_mesh")
+            if env_mesh is None:
+                return None, (jsonify({"error": "No environment mesh loaded"}), 400)
             env_scene = to_differt_scene(env_mesh)
             return compute_paths_differt(**rt_kwargs, scene=env_scene), None
         return compute_paths_differt(scene_path, **rt_kwargs), None
@@ -222,7 +232,9 @@ def _trace_local_differt(source_mode, cache, cache_lock, scene_path, rt_kwargs):
         return None, (jsonify({"error": f"Ray tracing failed: {e}"}), 500)
 
 
-def _trace_paths(source_mode, cache, cache_lock, scene_path, antenna_pos, body_center, tissue, power_dbm, rt_cfg):
+def _trace_paths(
+    source_mode, cache, cache_lock, scene_path, antenna_pos, body_center, tissue, power_dbm, rt_cfg
+) -> tuple[Any, Any, str | None, float | None, _ErrResp | None]:
     """Run ray tracing via Modal or local fallback.
 
     Returns (paths, path_viz, gpu_backend, rt_ms, None) on success or
@@ -259,11 +271,12 @@ def _trace_paths(source_mode, cache, cache_lock, scene_path, antenna_pos, body_c
     traced, err = _trace_local_differt(source_mode, cache, cache_lock, scene_path, rt_kwargs)
     if err is not None:
         return None, None, None, None, err
+    assert traced is not None  # noqa: S101 - helper contract
     paths, path_viz = traced
     return paths, path_viz, None, None, None
 
 
-def _api_compute_rt_impl(cache: dict, cache_lock) -> Response:
+def _api_compute_rt_impl(cache: dict, cache_lock) -> RouteResponse:
     """Compute dosimetry using DiffeRT ray-traced paths."""
     try:
         from aegis.viewer.raytracer import compute_paths_differt as _  # noqa: F401
@@ -279,10 +292,12 @@ def _api_compute_rt_impl(cache: dict, cache_lock) -> Response:
     body, err = _resolve_rt_body(cache, cache_lock, params)
     if err is not None:
         return err
+    assert body is not None  # noqa: S101 - helper contract
 
     antenna_pos, err = _parse_vec3(params, "antenna_pos", [5, 0, 1])
     if err:
         return err
+    assert antenna_pos is not None  # noqa: S101 - helper contract
 
     scene_path = params.get("scene_path") or None
     if scene_path and not _validate_scene_path(scene_path):
@@ -291,10 +306,12 @@ def _api_compute_rt_impl(cache: dict, cache_lock) -> Response:
     source_mode, err = _resolve_rt_source(cache, cache_lock, scene_path)
     if err is not None:
         return err
+    assert source_mode is not None  # noqa: S101 - helper contract
 
     pp, err = _collect_rt_params(cache, params)
     if err is not None:
         return err
+    assert pp is not None  # noqa: S101 - helper contract
 
     # RT receiver: use configured default center (z=1m) shifted by body offset
     # (body centroid mean is ~z=-0.38, below floors of most Sionna scenes)
@@ -324,6 +341,7 @@ def _api_compute_rt_impl(cache: dict, cache_lock) -> Response:
     )
     if err is not None:
         return err
+    assert paths is not None  # noqa: S101 - helper contract
 
     t_rt = _time.perf_counter()
 
@@ -334,6 +352,7 @@ def _api_compute_rt_impl(cache: dict, cache_lock) -> Response:
     result, err = _run_dosimetry(pp["tissue"], transformed_body, paths, pp["engine_kw"])
     if err:
         return err
+    assert result is not None  # noqa: S101 - helper contract
     t_compute = _time.perf_counter()
 
     dist = float(np.linalg.norm(antenna_pos - body_center))
@@ -366,5 +385,7 @@ def _api_compute_rt_impl(cache: dict, cache_lock) -> Response:
     )
     if err:
         return err
+    assert resp is not None  # noqa: S101 - helper contract
+    assert stats is not None  # noqa: S101 - helper contract
     _cache_dosimetry_for_export(cache, result, transformed_body, stats, paths=paths)
     return resp

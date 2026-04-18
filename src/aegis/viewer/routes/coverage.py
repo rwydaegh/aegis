@@ -110,11 +110,11 @@ def _compute_coverage(
 
     # Compute per-site antenna count before deduplication
     if "SiteCode" in combined.columns:
-        antenna_counts = combined.groupby("SiteCode").size().rename("_antenna_count")
+        antenna_counts = combined.groupby("SiteCode").size().rename("_antenna_count")  # pyright: ignore[reportCallIssue, reportArgumentType]  # pandas stub bug: rename() accepts str label
         combined = combined.join(antenna_counts, on="SiteCode")
         sites = combined.drop_duplicates(subset="SiteCode", keep="first").copy()
     else:
-        antenna_counts = combined.groupby(["Latitude", "Longitude"]).size().rename("_antenna_count")
+        antenna_counts = combined.groupby(["Latitude", "Longitude"]).size().rename("_antenna_count")  # pyright: ignore[reportCallIssue, reportArgumentType]  # pandas stub bug
         combined = combined.join(antenna_counts, on=["Latitude", "Longitude"])
         sites = combined.drop_duplicates(subset=["Latitude", "Longitude"], keep="first").copy()
 
@@ -128,8 +128,8 @@ def _compute_coverage(
     # Pack binary: lat(f4) + lon(f4) + op(u1) + tech(u1) + region(u1) + count(u1) = 12 bytes
     lats = sites["Latitude"].to_numpy(dtype=np.float32)
     lons = sites["Longitude"].to_numpy(dtype=np.float32)
-    op_indices = op_col.map(op_map).fillna(0).to_numpy(dtype=np.uint8)
-    tech_indices = tech_col.map(tech_map).fillna(0).to_numpy(dtype=np.uint8)
+    op_indices = op_col.map(op_map).fillna(0).to_numpy(dtype=np.uint8)  # pyright: ignore[reportArgumentType]  # pandas stub bug: map() accepts dict
+    tech_indices = tech_col.map(tech_map).fillna(0).to_numpy(dtype=np.uint8)  # pyright: ignore[reportArgumentType]  # pandas stub bug
     region_indices = sites["_region_idx"].fillna(0).clip(upper=255).to_numpy(dtype=np.uint8)
     counts = sites["_antenna_count"].fillna(1).clip(upper=255).to_numpy(dtype=np.uint8)
 

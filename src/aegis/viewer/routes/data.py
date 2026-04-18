@@ -9,10 +9,11 @@ from pathlib import Path
 
 from flask import Flask, Response, abort, jsonify, render_template, request, send_file
 
+from aegis.viewer.routes._types import RouteResponse
 from aegis.viewer.server import scoped_cache_get
 
 
-def _handle_index(cache: dict, cache_lock) -> Response:
+def _handle_index(cache: dict, cache_lock) -> RouteResponse:
     """Implementation for /."""
     static_dir = Path(__file__).parent.parent / "static"
     if (static_dir / "index.html").exists():
@@ -30,7 +31,7 @@ def _handle_index(cache: dict, cache_lock) -> Response:
     return render_template("_legacy_index.html", viewer_config=json.dumps(cache["config"]))
 
 
-def _static_assets_impl(cache: dict, cache_lock, filename: str) -> Response:
+def _static_assets_impl(cache: dict, cache_lock, filename: str) -> RouteResponse:
     """Implementation for /assets/<path:filename>."""
     from flask import send_from_directory
 
@@ -38,7 +39,7 @@ def _static_assets_impl(cache: dict, cache_lock, filename: str) -> Response:
     return send_from_directory(str(static_dir), filename)
 
 
-def _static_root_files_impl(cache: dict, cache_lock, filename: str) -> Response:
+def _static_root_files_impl(cache: dict, cache_lock, filename: str) -> RouteResponse:
     """Serve root-level static files (fonts, favicons) from static/."""
     from flask import abort, send_from_directory
 
@@ -49,7 +50,7 @@ def _static_root_files_impl(cache: dict, cache_lock, filename: str) -> Response:
     return abort(404)
 
 
-def _api_viewer_config_impl(cache: dict, cache_lock) -> Response:
+def _api_viewer_config_impl(cache: dict, cache_lock) -> RouteResponse:
     """Return the full viewer configuration."""
     return jsonify(cache["config"])
 
@@ -137,7 +138,7 @@ def _handle_export_config(cache, cache_lock):
     return jsonify(base)
 
 
-def _handle_body(cache: dict, cache_lock) -> Response:
+def _handle_body(cache: dict, cache_lock) -> RouteResponse:
     """Implementation for /api/body."""
     name = request.args.get("name", cache.get("default_body"))
     bodies = cache.get("bodies", {})
@@ -158,7 +159,7 @@ def _handle_body(cache: dict, cache_lock) -> Response:
     return resp
 
 
-def _handle_voxels(cache: dict, cache_lock) -> Response:
+def _handle_voxels(cache: dict, cache_lock) -> RouteResponse:
     """Implementation for /api/voxels."""
     if cache.get("voxel_binary") is None:
         return jsonify({"error": "No voxel data loaded"}), 404
@@ -171,7 +172,7 @@ def _handle_voxels(cache: dict, cache_lock) -> Response:
     return resp
 
 
-def _api_tiles_list_impl(cache: dict, cache_lock) -> Response:
+def _api_tiles_list_impl(cache: dict, cache_lock) -> RouteResponse:
     """Return list of available GLB tile files."""
     td = cache.get("tiles_dir")
     if td is None:
@@ -181,7 +182,7 @@ def _api_tiles_list_impl(cache: dict, cache_lock) -> Response:
     return jsonify({"tiles": tile_names, "transform": None})
 
 
-def _api_tiles_file_impl(cache: dict, cache_lock, filename: str) -> Response:
+def _api_tiles_file_impl(cache: dict, cache_lock, filename: str) -> RouteResponse:
     """Serve an individual GLB tile file."""
     from flask import send_from_directory
 
@@ -191,7 +192,7 @@ def _api_tiles_file_impl(cache: dict, cache_lock, filename: str) -> Response:
     return send_from_directory(str(td), filename)
 
 
-def _serve_phantom_glb_impl(cache: dict, cache_lock, name: str) -> Response:
+def _serve_phantom_glb_impl(cache: dict, cache_lock, name: str) -> RouteResponse:
     """Serve a GLB phantom file."""
     import re
 
@@ -212,7 +213,7 @@ def _serve_phantom_glb_impl(cache: dict, cache_lock, name: str) -> Response:
     return send_file(path, mimetype="model/gltf-binary", conditional=True, max_age=3600)
 
 
-def _handle_clear_cache(cache: dict, cache_lock) -> Response:
+def _handle_clear_cache(cache: dict, cache_lock) -> RouteResponse:
     """Implementation for /api/clear-cache."""
     from aegis.viewer.server import scoped_cache_clear_session
 
@@ -241,7 +242,7 @@ def _handle_clear_cache(cache: dict, cache_lock) -> Response:
     return jsonify({"ok": True})
 
 
-def _handle_config(cache: dict, cache_lock) -> Response:
+def _handle_config(cache: dict, cache_lock) -> RouteResponse:
     """Implementation for /api/config."""
     from aegis.viewer.compute import SKIN_MODELS
 

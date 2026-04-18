@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import threading
+from typing import Any
 
 import numpy as np
 from flask import Response, jsonify, request
@@ -13,9 +14,10 @@ from aegis.viewer.server import scoped_cache_get
 logger = logging.getLogger(__name__)
 
 _OCTET_STREAM = "application/octet-stream"
+_ErrResp = tuple[Response, int]
 
 
-def _validate_index(index, basestations):
+def _validate_index(index, basestations) -> tuple[int | None, _ErrResp | None]:
     if index is None:
         return None, (jsonify({"error": "Missing 'index' in request"}), 400)
     try:
@@ -27,7 +29,7 @@ def _validate_index(index, basestations):
     return index, None
 
 
-def _validate_level(params: dict):
+def _validate_level(params: dict) -> tuple[int | None, _ErrResp | None]:
     try:
         level = int(params.get("level", 7))
     except (TypeError, ValueError):
@@ -50,7 +52,7 @@ def _broadside_from_azimuth_tilt(az_deg: float, tilt_deg: float) -> np.ndarray:
     )
 
 
-def _build_antenna_array(bs, ant_pos, broadside, archetype):
+def _build_antenna_array(bs, ant_pos, broadside, archetype) -> tuple[Any, int | None, int | None, _ErrResp | None]:
     from aegis.basestation.classify import infer_element_grid
     from aegis.constants import C_0
     from aegis.mimo.array import AntennaArray
@@ -77,7 +79,7 @@ def _build_user(
     bodies_cache: dict,
     body_offset: np.ndarray,
     body_rotation_y: float,
-):
+) -> tuple[Any, str | None, _ErrResp | None]:
     from aegis.mimo.user import UserConfig, UserState
 
     phantom_name = cache.get("default_body", "thelonious")
@@ -130,7 +132,7 @@ def _handle_basestations_compute_mimo(cache: dict, cache_lock: threading.RLock):
     params = request.get_json(silent=True) or {}
 
     with cache_lock:
-        basestations = scoped_cache_get(cache, "basestations", [])
+        basestations = scoped_cache_get(cache, "basestations", []) or []
         origin = scoped_cache_get(cache, "basestations_origin")
         bodies_cache = cache.get("bodies", {})
         body_name = params.get("body_name", cache.get("default_body"))
@@ -140,6 +142,7 @@ def _handle_basestations_compute_mimo(cache: dict, cache_lock: threading.RLock):
     index, err = _validate_index(params.get("index"), basestations)
     if err is not None:
         return err
+    assert index is not None  # noqa: S101 - helper contract
     bs = basestations[index]
 
     archetype = classify_antenna(
@@ -160,13 +163,16 @@ def _handle_basestations_compute_mimo(cache: dict, cache_lock: threading.RLock):
     body_offset, err = _parse_vec3(params, "body_offset", [0, 0, 0])
     if err:
         return err
+    assert body_offset is not None  # noqa: S101 - helper contract
     body_rotation_y, err = _parse_rotation_y(params)
     if err:
         return err
+    assert body_rotation_y is not None  # noqa: S101 - helper contract
 
     level, err = _validate_level(params)
     if err is not None:
         return err
+    assert level is not None  # noqa: S101 - helper contract
     precoder_type = str(params.get("precoder_type", "mrt"))
 
     lat0, lon0 = origin
@@ -177,12 +183,14 @@ def _handle_basestations_compute_mimo(cache: dict, cache_lock: threading.RLock):
     array, n_h, n_v, err = _build_antenna_array(bs, ant_pos, broadside, archetype)
     if err is not None:
         return err
+    assert array is not None  # noqa: S101 - helper contract
 
     total_power = 10 ** ((bs.eirp_dbm - 30) / 10)
 
     user, _phantom_name, err = _build_user(cache, bodies_cache, body_offset, body_rotation_y)
     if err is not None:
         return err
+    assert user is not None  # noqa: S101 - helper contract
 
     scene = MIMOScene(array=array, users=[user], freq_hz=bs.freq_hz, total_power=total_power)
     bodies = {name: entry["body"] for name, entry in bodies_cache.items()}

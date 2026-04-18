@@ -6,11 +6,13 @@ import json
 import logging
 import math
 import os
+from typing import Any
 
 import numpy as np
 from flask import Response, jsonify, request
 
 from aegis.defaults import DEFAULT_FREQ_HZ
+from aegis.viewer.routes._types import RouteResponse
 
 from ._parsing import (
     _parse_bool,
@@ -32,8 +34,10 @@ logger = logging.getLogger(__name__)
 
 _MAX_INLINE_MESH_BYTES = 5 * 1024 * 1024
 
+_ErrResp = tuple[Response, int]
 
-def _validate_sinc_request(body: dict):
+
+def _validate_sinc_request(body: dict) -> tuple[dict[str, float] | None, _ErrResp | None]:
     """Extract and validate parameters for /api/validate/sinc.
 
     Returns (params_dict, None) on success or (None, error_response) on failure.
@@ -69,7 +73,7 @@ def _compute_aegis_sinc(p: dict) -> tuple[float, float, float]:
     return float(sinc_wm2), float(sinc_dbm), float(dist_3d)
 
 
-def _fetch_cloudrf_sinc(api_key: str, p: dict):
+def _fetch_cloudrf_sinc(api_key: str, p: dict) -> tuple[float | None, _ErrResp | None]:
     """Fetch CloudRF link budget. Returns (rx_dbm, None) or (None, error_response)."""
     try:
         from aegis.integration.cloudrf import CloudRFClient
@@ -90,7 +94,7 @@ def _fetch_cloudrf_sinc(api_key: str, p: dict):
     return float(path_result.get("rxPower", path_result.get("rx_power", -200))), None
 
 
-def _handle_validate_sinc(cache: dict, cache_lock) -> Response:
+def _handle_validate_sinc(cache: dict, cache_lock) -> RouteResponse:
     """Implementation for POST /api/validate/sinc."""
     api_key = os.environ.get("CLOUDRF_API_KEY")
     if not api_key:
@@ -100,12 +104,14 @@ def _handle_validate_sinc(cache: dict, cache_lock) -> Response:
     p, err = _validate_sinc_request(body)
     if err is not None:
         return err
+    assert p is not None  # noqa: S101 - helper contract: p is not None when err is None
 
     sinc_wm2, sinc_dbm, dist_3d = _compute_aegis_sinc(p)
 
     cloudrf_sinc_dbm, err = _fetch_cloudrf_sinc(api_key, p)
     if err is not None:
         return err
+    assert cloudrf_sinc_dbm is not None  # noqa: S101 - helper contract
 
     return jsonify(
         {
@@ -118,7 +124,9 @@ def _handle_validate_sinc(cache: dict, cache_lock) -> Response:
     )
 
 
-def _load_inline_mesh_body(cache: dict, cache_lock):
+def _load_inline_mesh_body(
+    cache: dict, cache_lock
+) -> tuple[Any, dict[str, Any] | None, dict[str, Any] | None, _ErrResp | None]:
     """Parse the inline-mesh upload body for /api/compute.
 
     Returns (body, params, cfg, None) on success or (None, None, None, error_response)
@@ -172,7 +180,9 @@ def _load_inline_mesh_body(cache: dict, cache_lock):
     return body, params, cfg, None
 
 
-def _load_cached_body(cache: dict, cache_lock):
+def _load_cached_body(
+    cache: dict, cache_lock
+) -> tuple[Any, dict[str, Any] | None, dict[str, Any] | None, _ErrResp | None]:
     """Parse the JSON body for /api/compute and resolve the cached body mesh.
 
     Returns (body, params, cfg, None) on success or (None, None, None, error_response)
@@ -195,7 +205,9 @@ def _load_cached_body(cache: dict, cache_lock):
     return entry["body"], params, cfg, None
 
 
-def _resolve_body_and_params(cache: dict, cache_lock):
+def _resolve_body_and_params(
+    cache: dict, cache_lock
+) -> tuple[Any, dict[str, Any] | None, dict[str, Any] | None, _ErrResp | None]:
     """Dispatch based on content-type to load the body mesh + JSON params."""
     if request.content_type == _OCTET_STREAM:
         return _load_inline_mesh_body(cache, cache_lock)
@@ -265,7 +277,9 @@ def _parse_stochastic_params(params: dict, cfg: dict):
     return stochastic, None
 
 
-def _parse_antennas_array(params: dict, default_power_dbm: float, pwr_cfg: dict):
+def _parse_antennas_array(
+    params: dict, default_power_dbm: float, pwr_cfg: dict
+) -> tuple[list[dict] | None, _ErrResp | None]:
     """Parse the optional multi-antenna array.
 
     Returns (list_or_None, None) on success or (None, error_response) on failure.
@@ -284,6 +298,7 @@ def _parse_antennas_array(params: dict, default_power_dbm: float, pwr_cfg: dict)
         ant_pos, err = _parse_vec3(raw_ant, "position", [5, 0, 1])
         if err:
             return None, err
+        assert ant_pos is not None  # noqa: S101 - helper contract
         try:
             ant_power = float(raw_ant.get("power_dbm", default_power_dbm))
         except (TypeError, ValueError):
@@ -308,7 +323,7 @@ def _parse_antennas_array(params: dict, default_power_dbm: float, pwr_cfg: dict)
     return antennas, None
 
 
-def _collect_compute_params(params: dict, cfg: dict):
+def _collect_compute_params(params: dict, cfg: dict) -> tuple[dict[str, Any] | None, _ErrResp | None]:
     """Parse all request parameters for /api/compute.
 
     Returns (parsed_dict, None) on success or (None, error_response) on failure.
@@ -323,6 +338,7 @@ def _collect_compute_params(params: dict, cfg: dict):
     power_dbm, err = _parse_power_dbm(params, dcfg, pwr_cfg)
     if err is not None:
         return None, err
+    assert power_dbm is not None  # noqa: S101 - helper contract
 
     stochastic, err = _parse_stochastic_params(params, cfg)
     if err is not None:
@@ -366,7 +382,9 @@ def _collect_compute_params(params: dict, cfg: dict):
     }, None
 
 
-def _build_compute_response(result, res_body, res_tissue, res_level, res_mode, res_corr, extra, pp):
+def _build_compute_response(
+    result, res_body, res_tissue, res_level, res_mode, res_corr, extra, pp
+) -> tuple[Response | None, dict[str, Any] | None, _ErrResp | None]:
     """Build the final binary + X-Stats response.
 
     Returns (response, stats, None) on success or (None, None, error_response) on failure.
@@ -397,17 +415,21 @@ def _build_compute_response(result, res_body, res_tissue, res_level, res_mode, r
     return resp, stats, None
 
 
-def _api_compute_impl(cache: dict, cache_lock) -> Response:
+def _api_compute_impl(cache: dict, cache_lock) -> RouteResponse:
     """Compute dosimetry for given antenna position."""
     from aegis.viewer.compute import compute_dosimetry
 
     body, params, cfg, err = _resolve_body_and_params(cache, cache_lock)
     if err is not None:
         return err
+    assert body is not None  # noqa: S101 - helper contract
+    assert params is not None  # noqa: S101 - helper contract
+    assert cfg is not None  # noqa: S101 - helper contract
 
     pp, err = _collect_compute_params(params, cfg)
     if err is not None:
         return err
+    assert pp is not None  # noqa: S101 - helper contract
 
     import time as _time
 
@@ -438,6 +460,8 @@ def _api_compute_impl(cache: dict, cache_lock) -> Response:
     resp, stats, err = _build_compute_response(result, res_body, res_tissue, res_level, res_mode, res_corr, extra, pp)
     if err is not None:
         return err
+    assert resp is not None  # noqa: S101 - helper contract
+    assert stats is not None  # noqa: S101 - helper contract
 
     t_stats = _time.perf_counter()
 
@@ -450,7 +474,7 @@ def _api_compute_impl(cache: dict, cache_lock) -> Response:
     return resp
 
 
-def _api_gpu_status_impl(cache: dict, cache_lock) -> Response:
+def _api_gpu_status_impl(cache: dict, cache_lock) -> RouteResponse:
     """Return GPU container warmth status."""
     from aegis.viewer.modal_proxy import gpu_status
 

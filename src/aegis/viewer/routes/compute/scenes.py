@@ -7,6 +7,8 @@ import json
 import numpy as np
 from flask import Response, jsonify, request
 
+from aegis.viewer.routes._types import RouteResponse
+
 from ._parsing import _ERR_INVALID_SCENE
 from ._responses import _ERR_NO_DIFFERT, _OCTET_STREAM
 
@@ -18,7 +20,7 @@ def _validate_scene_path(scene_path: str) -> bool:
     return _pkg._validate_scene_path(scene_path)
 
 
-def _api_scenes_impl(cache: dict, cache_lock) -> Response:
+def _api_scenes_impl(cache: dict, cache_lock) -> RouteResponse:
     """List available Sionna XML scenes for DiffeRT ray tracing."""
     try:
         from aegis.viewer.raytracer import list_available_scenes
@@ -28,7 +30,7 @@ def _api_scenes_impl(cache: dict, cache_lock) -> Response:
         return jsonify({"error": _ERR_NO_DIFFERT}), 501
 
 
-def _api_scene_load_impl(cache: dict, cache_lock) -> Response:
+def _api_scene_load_impl(cache: dict, cache_lock) -> RouteResponse:
     """Load a Sionna scene and return its geometry for Three.js."""
     try:
         from aegis.viewer.raytracer import load_scene, scene_geometry_to_binary
@@ -55,7 +57,7 @@ def _api_scene_load_impl(cache: dict, cache_lock) -> Response:
         return jsonify({"error": str(e)}), 500
 
 
-def _api_voxels_hull_mesh_impl(cache: dict, cache_lock) -> Response:
+def _api_voxels_hull_mesh_impl(cache: dict, cache_lock) -> RouteResponse:
     """Exterior voxel hull as triangle soup (same geometry as voxel DiffeRT)."""
     try:
         from aegis.viewer.raytracer import get_or_build_voxel_scene, scene_geometry_to_binary
@@ -69,6 +71,8 @@ def _api_voxels_hull_mesh_impl(cache: dict, cache_lock) -> Response:
         cfg = cache.get("config", {})
     if voxel_positions is None or len(voxel_positions) == 0:
         return jsonify({"error": "No voxel data"}), 400
+    if voxel_sizes is None:
+        return jsonify({"error": "No voxel_sizes in cache"}), 400
 
     from aegis.viewer.scene_data import extract_exterior, prepare_for_raytracing
 

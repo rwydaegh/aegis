@@ -5,12 +5,14 @@ from __future__ import annotations
 import logging
 import os
 
-from flask import Response, jsonify, request
+from flask import jsonify, request
+
+from aegis.viewer.routes._types import RouteResponse
 
 logger = logging.getLogger(__name__)
 
 
-def _compliance_report_impl(cache: dict, cache_lock) -> Response:
+def _compliance_report_impl(cache: dict, cache_lock) -> RouteResponse:
     """Compliance data is returned inline in X-Stats from compute endpoints.
 
     This endpoint is deprecated. Clients should read compliance from the
@@ -19,7 +21,7 @@ def _compliance_report_impl(cache: dict, cache_lock) -> Response:
     return jsonify({"error": "Compliance data is available in X-Stats from /api/compute"}), 410
 
 
-def _channel_presets_impl(cache: dict, cache_lock) -> Response:
+def _channel_presets_impl(cache: dict, cache_lock) -> RouteResponse:
     """List available 3GPP stochastic channel presets."""
     from pathlib import Path
 
@@ -49,7 +51,7 @@ def _channel_presets_impl(cache: dict, cache_lock) -> Response:
     return jsonify(presets)
 
 
-def _lsp_heatmap_impl(cache: dict, cache_lock) -> Response:
+def _lsp_heatmap_impl(cache: dict, cache_lock) -> RouteResponse:
     """Generate an LSP spatial map for the frontend heatmap overlay."""
     from aegis.viewer.compute import generate_lsp_heatmap
 
@@ -62,7 +64,12 @@ def _lsp_heatmap_impl(cache: dict, cache_lock) -> Response:
     try:
         if not isinstance(raw_bounds, (list, tuple)) or len(raw_bounds) != 4:
             return jsonify({"error": "bounds must be a 4-element list"}), 400
-        bounds = tuple(float(b) for b in raw_bounds)
+        bounds: tuple[float, float, float, float] = (
+            float(raw_bounds[0]),
+            float(raw_bounds[1]),
+            float(raw_bounds[2]),
+            float(raw_bounds[3]),
+        )
         resolution = max(1, min(int(data.get("resolution", 128)), 256))
         seed = int(data.get("seed", 42))
     except (ValueError, TypeError) as exc:

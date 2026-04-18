@@ -120,7 +120,12 @@ exclude_lines = [
 ]
 
 [tool.basedpyright]
-include = ["src/aegis/kernels", "src/aegis/compliance"]
+include = ["src/aegis/kernels", "src/aegis/compliance", "src/aegis/viewer/routes"]
+# Kernels and compliance are strict. Routes use a custom ruleset (see below) that
+# demotes reportUnknown* boundary noise (Flask/numpy untyped surfaces) while
+# keeping real type bugs (Optional handling, return type mismatches, bad args to
+# typed APIs) as errors. Adding routes to strict would force reportUnknown* back
+# to error level regardless of the global overrides.
 strict = ["src/aegis/kernels", "src/aegis/compliance"]
 pythonVersion = "3.12"
 reportMissingTypeStubs = false
@@ -129,5 +134,46 @@ reportMissingTypeStubs = false
 # information level and address real shape bugs via jaxtyping later if needed.
 reportAny = "information"
 reportExplicitAny = "information"
+# Unparameterized generics (e.g. `dict`, `list`) pervade the Flask/numpy edges;
+# requiring explicit type args across route signatures is churn, not safety.
+reportMissingTypeArgument = "information"
 # f-string line wrapping ("foo " f"bar") is standard Python; not a real bug.
 reportImplicitStringConcatenation = "none"
+
+# Routes get an explicit ruleset: strict-equivalent bug-catching checks enabled
+# as errors, but reportUnknown*/reportMissingType* demoted to information since
+# Flask's request.get_json(), request.args, and numpy ops return untyped values
+# at HTTP boundaries. TypedDict'ing every request body would be pure churn.
+reportArgumentType = "error"
+reportReturnType = "error"
+reportAssignmentType = "error"
+reportCallIssue = "error"
+reportIndexIssue = "error"
+reportOperatorIssue = "error"
+reportAttributeAccessIssue = "error"
+reportGeneralTypeIssues = "error"
+reportOptionalSubscript = "error"
+reportOptionalMemberAccess = "error"
+reportOptionalCall = "error"
+reportOptionalIterable = "error"
+reportOptionalContextManager = "error"
+reportOptionalOperand = "error"
+reportUnboundVariable = "error"
+reportUndefinedVariable = "error"
+# Underscore-prefixed helpers shared across sibling modules in the routes package
+# are an intentional "package-private" pattern, not accidental API leakage.
+reportPrivateUsage = "information"
+reportTypedDictNotRequiredAccess = "error"
+reportRedeclaration = "error"
+# compute/rt.py, sionna_rt.py, voxel_rt.py, scenes.py deliberately import back
+# from aegis.viewer.routes.compute (the package) to expose test-mockable proxies.
+# This is an intentional re-export pattern; the cycle is structural, not a bug.
+reportImportCycles = "warning"
+reportInvalidTypeForm = "error"
+reportInvalidTypeVarUse = "error"
+reportUnusedFunction = "warning"
+reportUnusedImport = "warning"
+reportUnusedVariable = "warning"
+reportUnusedParameter = "warning"
+reportUnusedCallResult = "none"
+reportUntypedFunctionDecorator = "warning"

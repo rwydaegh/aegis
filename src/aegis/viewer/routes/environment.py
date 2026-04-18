@@ -8,6 +8,7 @@ import logging
 from flask import Flask, Response, jsonify, request
 
 from aegis.viewer.cache import EnvironmentCache
+from aegis.viewer.routes._types import RouteResponse
 from aegis.viewer.server import scoped_cache_get, scoped_cache_set
 
 logger = logging.getLogger(__name__)
@@ -15,7 +16,7 @@ logger = logging.getLogger(__name__)
 _env_cache = EnvironmentCache()
 
 
-def _handle_environment_osm(cache: dict, cache_lock) -> Response:
+def _handle_environment_osm(cache: dict, cache_lock) -> RouteResponse:
     """Implementation for POST /api/environment/osm."""
     from aegis.environment.osm import (
         OverpassRateLimitError,
@@ -106,7 +107,7 @@ def _handle_environment_osm(cache: dict, cache_lock) -> Response:
     return resp
 
 
-def _handle_environment_3dtiles(cache: dict, cache_lock) -> Response:
+def _handle_environment_3dtiles(cache: dict, cache_lock) -> RouteResponse:
     """Implementation for POST /api/environment/3dtiles."""
     from aegis.environment.tiles import TileTraverser
 
@@ -178,7 +179,7 @@ def _handle_environment_3dtiles(cache: dict, cache_lock) -> Response:
     return resp
 
 
-def _handle_environment_from_voxels(cache: dict, cache_lock) -> Response:
+def _handle_environment_from_voxels(cache: dict, cache_lock) -> RouteResponse:
     """Implementation for POST /api/environment/from-voxels."""
     import numpy as np
 
@@ -309,7 +310,7 @@ def _handle_environment_from_voxels(cache: dict, cache_lock) -> Response:
     return resp
 
 
-def _handle_environment_combine(cache: dict, cache_lock) -> Response:
+def _handle_environment_combine(cache: dict, cache_lock) -> RouteResponse:
     """Implementation for POST /api/environment/combine."""
     from aegis.environment import EnvironmentMesh
 
@@ -351,7 +352,7 @@ def _handle_environment_combine(cache: dict, cache_lock) -> Response:
     return resp
 
 
-def _handle_environment_mesh(cache: dict) -> Response:
+def _handle_environment_mesh(cache: dict) -> RouteResponse:
     """Implementation for GET /api/environment/mesh."""
     mesh = scoped_cache_get(cache, "env_mesh")
     if mesh is None:
@@ -364,7 +365,7 @@ def _handle_environment_mesh(cache: dict) -> Response:
     return resp
 
 
-def _handle_environment_export_scene(cache: dict) -> Response:
+def _handle_environment_export_scene(cache: dict) -> RouteResponse:
     """Implementation for POST /api/environment/export-scene."""
     import tempfile
     from pathlib import Path
@@ -397,7 +398,7 @@ def _handle_environment_export_scene(cache: dict) -> Response:
     return jsonify({"error": f"Unknown format '{fmt}'. Use 'differt' or 'sionna'."}), 400
 
 
-def _handle_environment_geojson(cache: dict, cache_lock) -> Response:
+def _handle_environment_geojson(cache: dict, cache_lock) -> RouteResponse:
     """Implementation for POST /api/environment/geojson."""
     from aegis.environment.geojson import build_environment_from_geojson
 
@@ -428,7 +429,7 @@ def _handle_environment_geojson(cache: dict, cache_lock) -> Response:
     return resp
 
 
-def _handle_environment_materials() -> Response:
+def _handle_environment_materials() -> RouteResponse:
     """Implementation for GET /api/environment/materials."""
     from aegis.environment import MATERIAL_EM_PROPERTIES, MaterialType
 

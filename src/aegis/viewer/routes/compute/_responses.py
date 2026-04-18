@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+from typing import Any
 
 import numpy as np
 from flask import Response, jsonify
@@ -13,6 +14,8 @@ from aegis.viewer.compute import _load_phantom_masses
 from aegis.viewer.server import scoped_cache_set
 
 logger = logging.getLogger(__name__)
+
+_ErrResp = tuple[Response, int]
 
 # String constants (avoid duplicate literals)
 _OCTET_STREAM = "application/octet-stream"
@@ -63,7 +66,7 @@ def _inject_curvature_H(engine_kw: dict, body) -> dict:
     return engine_kw
 
 
-def _run_dosimetry(tissue, body, paths, engine_kw):
+def _run_dosimetry(tissue, body, paths, engine_kw) -> tuple[Any, _ErrResp | None]:
     """Instantiate engine, inject curvature, run compute, return result.
 
     Returns (result, None) on success, or (None, error_response) on failure.
@@ -81,7 +84,9 @@ def _run_dosimetry(tissue, body, paths, engine_kw):
     return result, None
 
 
-def _make_rt_response(result, body, tissue, engine_kw, quantities, scenario, extra, timing_pairs):
+def _make_rt_response(
+    result, body, tissue, engine_kw, quantities, scenario, extra, timing_pairs
+) -> tuple[Response | None, dict[str, Any] | None, _ErrResp | None]:
     """Build binary Response with X-Stats header for RT route handlers.
 
     timing_pairs is a list of (key, value) timing entries to inject.
@@ -100,7 +105,7 @@ def _make_rt_response(result, body, tissue, engine_kw, quantities, scenario, ext
             extra=extra,
             scenario=scenario,
         )
-        timings = stats.get("timings", {})
+        timings: dict[str, Any] = stats.get("timings", {})
         for key, val in timing_pairs:
             timings[key] = val
         stats["timings"] = timings
@@ -163,7 +168,9 @@ def _build_binary_response(result, quantities):
     return buf, arrays_meta
 
 
-def _build_stats_response(result, body, tissue, level, extra=None, mode=None, corrections=None, scenario=None):
+def _build_stats_response(
+    result, body, tissue, level, extra=None, mode=None, corrections=None, scenario=None
+) -> dict[str, Any]:
     """Build the X-Stats JSON dict from a DosimetryResult."""
     freq_hz = result.freq_hz or tissue.freq_hz
     scenario = scenario or ExposureScenario.GENERAL_PUBLIC

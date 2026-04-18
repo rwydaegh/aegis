@@ -75,6 +75,8 @@ def _load_via_csv(path: str, bbox, params: dict):
 def _load_via_api(country: str, region: str | None, bbox, params: dict):
     from aegis.basestation.adapter import load_basestations
 
+    if region is None:
+        raise ValueError("region is required for API-based base station loading")
     return load_basestations(
         country=country,
         region=region,
@@ -104,7 +106,7 @@ def load_basestations_for_region(
 def _handle_basestations_list(cache: dict, cache_lock: threading.RLock):
     """Implementation for GET /api/basestations/list."""
     with cache_lock:
-        basestations = scoped_cache_get(cache, "basestations", [])
+        basestations = scoped_cache_get(cache, "basestations", []) or []
 
     return jsonify(
         {
