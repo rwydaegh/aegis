@@ -7,13 +7,16 @@ import { useUIStore } from '@/stores/ui'
 import { useNotificationStore } from '@/stores/notifications'
 import { useMIMOStore } from '@/stores/mimo'
 import { useAntennaStore, type AntennaConfig } from '@/stores/antenna'
+import { useEnvironmentStore } from '@/stores/environment'
 import {
   computeDosimetry,
   computeVoxelRT,
   computeRT,
   computeSionnaRT,
   computeSionnaEnvRT,
+  fetchCapabilities,
   fetchLSPHeatmap,
+  isClientError,
   isNetworkError,
   type RtConfig,
   type ComputeResult,
@@ -247,10 +250,23 @@ export function onComputeError(
     notify('warning', 'GPU is currently unavailable. Try again later or switch to a non-RT path source.')
     return
   }
+  // 4xx responses are user/state issues (e.g. no environment loaded), not bugs.
+  // If the server reports missing geometry, refresh capabilities so a stale
+  // frontend cache (e.g. after a server restart dropped session state) doesn't
+  // keep firing rejected requests.
+  if (isClientError(err)) {
+    notify('warning', errMsg || 'Compute request was rejected.')
+    if (/scene, voxels, or environment/i.test(errMsg)) {
+      fetchCapabilities()
+        .then(caps => useSceneStore.getState().setCapabilities(caps))
+        .catch(() => {})
+    }
+    return
+  }
   Sentry.captureException(err)
   notify(
     'error',
-    `Compute failed: ${(err as Error).message ?? err}`,
+    `Compute failed: ${errMsg || err}`,
     'This error has been reported and will be fixed automatically using AI. Most issues are fixed in less than 30 minutes.',
   )
 }
@@ -296,6 +312,7 @@ export function useDosimetry() {
   })))
 
   const exposureScenario = useUIStore(s => s.exposureScenario)
+  const mimoEnabled = useMIMOStore(s => s.enabled)
 
   const scene = useSceneStore(useShallow(s => ({
     bodyName: s.bodyName,
@@ -311,6 +328,7 @@ export function useDosimetry() {
   const abortRef = useRef<AbortController | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const generationRef = useRef(0)
+  const lspHeatmapGenRef = useRef(0)
 
   const triggerCompute = useCallback(() => {
     if (shouldSkipCompute(sim, scene)) return
@@ -379,16 +397,19 @@ export function useDosimetry() {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current)
     }
-  }, [sim, scene, exposureScenario, antennaStoreState, triggerCompute])
+    // mimoEnabled gates compute via shouldSkipCompute; subscribing here rearms
+    // the single-user recompute when MIMO toggles off.
+  }, [sim, scene, exposureScenario, antennaStoreState, mimoEnabled, triggerCompute])
 
   // LSP heatmap fetch
   const lspHeatmapVisible = useSimulationStore(s => s.lspHeatmapVisible)
   const lspHeatmapParam = useSimulationStore(s => s.lspHeatmapParam)
+  const envSource = useEnvironmentStore(s => s.source)
 
   useEffect(() => {
-    if (scene.pathSource !== 'stochastic' || !lspHeatmapVisible || !sim.antennaPos) return
+    if (scene.pathSource !== 'stochastic' || envSource !== 'none' || !lspHeatmapVisible || !sim.antennaPos) return
 
-    const controller = new AbortController()
+    const gen = ++lspHeatmapGenRef.current
     const poleH = scene.config?.antenna?.pole_height ?? 2
     const antennaTip: [number, number, number] = [sim.antennaPos[0], sim.antennaPos[1] + poleH, sim.antennaPos[2]]
 
@@ -403,19 +424,17 @@ export function useDosimetry() {
       seed: sim.stochasticSeed,
     })
       .then(result => {
-        if (controller.signal.aborted) return
+        if (gen !== lspHeatmapGenRef.current) return
         useSimulationStore.getState().setLSPHeatmapData(result.data, result.bounds, [result.vmin, result.vmax])
       })
       .catch(err => {
-        if ((err as Error).name === 'AbortError') return
+        if (gen !== lspHeatmapGenRef.current) return
         Sentry.captureException(err)
       })
       .finally(() => {
-        useSimulationStore.getState().setLSPHeatmapLoading(false)
+        if (gen === lspHeatmapGenRef.current) useSimulationStore.getState().setLSPHeatmapLoading(false)
       })
-
-    return () => { controller.abort() }
-  }, [scene.pathSource, lspHeatmapVisible, lspHeatmapParam, sim.stochasticPreset, sim.stochasticSeed, sim.freqGhz, sim.antennaPos, scene.config])
+  }, [scene.pathSource, envSource, lspHeatmapVisible, lspHeatmapParam, sim.stochasticPreset, sim.stochasticSeed, sim.freqGhz, sim.antennaPos, scene.config])
 
   // Cancel any in-flight request on unmount
   useEffect(() => {

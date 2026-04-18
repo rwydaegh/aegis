@@ -280,9 +280,82 @@ class TestInvalidModeReturns400:
             "/api/optimize",
             json={"mode": "mimo_peak", "max_iters": "not_a_number"},
         )
-        # 400 because no G_tilde cached, not because of max_iters crash
+        # 400 because no G_tilde cached, not because of max_iters crash.
+        # Error message must be user-friendly and must NOT leak internal API paths.
         assert resp.status_code == 400
-        assert b"No MIMO scene" in resp.data or b"error" in resp.data
+        assert b"error" in resp.data
+        assert b"not ready yet" in resp.data
+        assert b"/api/" not in resp.data
+
+
+class TestPlacementInputValidation:
+    """Placement mode tolerates malformed scalar inputs instead of 500-ing."""
+
+    def test_null_grid_spacing_falls_back_to_default(self, app):
+        from unittest.mock import patch
+
+        def fake_build_fn(*args, **kwargs):
+            def _eval(pos):
+                return {"peak_sab": 0.0, "sab": np.zeros(1, dtype=np.float32), "stats": {}}
+
+            return _eval
+
+        with patch(
+            "aegis.viewer.routes.optimize._build_placement_evaluate_fn",
+            fake_build_fn,
+        ):
+            client = app.test_client()
+            resp = client.post(
+                "/api/optimize",
+                json={"mode": "placement", "grid_spacing": None, "grid_size": 2},
+            )
+            assert resp.status_code == 200
+
+    def test_string_grid_spacing_falls_back_to_default(self, app):
+        from unittest.mock import patch
+
+        def fake_build_fn(*args, **kwargs):
+            def _eval(pos):
+                return {"peak_sab": 0.0, "sab": np.zeros(1, dtype=np.float32), "stats": {}}
+
+            return _eval
+
+        with patch(
+            "aegis.viewer.routes.optimize._build_placement_evaluate_fn",
+            fake_build_fn,
+        ):
+            client = app.test_client()
+            resp = client.post(
+                "/api/optimize",
+                json={"mode": "placement", "grid_spacing": "fast", "grid_size": 2},
+            )
+            assert resp.status_code == 200
+
+    def test_malformed_body_offset_returns_400(self, app):
+        """Non-numeric body_offset should 400, not crash with HTTP 500."""
+        from aegis.geometry.mesh import BodyMesh
+
+        vertices = np.array([[[0.0, 0.0, 0.0], [0.1, 0.0, 0.0], [0.0, 0.1, 0.0]]])
+        body = BodyMesh.from_arrays(vertices, name="test_body")
+
+        cache = app._optimize_cache
+        cache["default_body"] = "test_body"
+        cache["bodies"] = {"test_body": {"body": body}}
+        cache["config"] = {
+            "raytracer": {
+                "default_body_center": [0.0, 0.0, 1.0],
+                "reflection_loss_per_order": 0.5,
+            },
+            "antenna": {"pole_height": 2.0},
+        }
+
+        client = app.test_client()
+        resp = client.post(
+            "/api/optimize",
+            json={"mode": "placement", "body_offset": ["a", "b", "c"], "grid_size": 2},
+        )
+        assert resp.status_code == 400
+        assert b"body_offset" in resp.data or b"error" in resp.data
 
 
 class TestCancelEndpoint:

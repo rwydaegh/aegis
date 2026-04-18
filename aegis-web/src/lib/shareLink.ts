@@ -48,6 +48,7 @@ export function collectState(): Record<string, unknown> {
     powerDbm: sim.powerDbm,
     skinModel: sim.skinModel,
     freqGhz: sim.freqGhz,
+    exposureMode: sim.exposureMode,
     stochasticPreset: sim.stochasticPreset,
     stochasticSeed: sim.stochasticSeed,
     stochasticOverrides: sim.stochasticOverrides,
@@ -173,6 +174,7 @@ function applySimulationState(state: Partial<ShareState>, sim: SimStore): void {
   if (state.powerDbm !== undefined) sim.setPowerDbm(state.powerDbm)
   if (state.skinModel !== undefined) sim.setSkinModel(state.skinModel)
   if (state.freqGhz !== undefined) sim.setFreqGhz(state.freqGhz)
+  if (state.exposureMode !== undefined) sim.setExposureMode(state.exposureMode as Parameters<typeof sim.setExposureMode>[0])
   if (state.stochasticPreset !== undefined) sim.setStochasticPreset(state.stochasticPreset)
   if (state.stochasticSeed !== undefined) sim.setStochasticSeed(state.stochasticSeed)
   if (state.stochasticOverrides !== undefined) sim.setStochasticOverrides(state.stochasticOverrides)

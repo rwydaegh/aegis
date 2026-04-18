@@ -97,6 +97,7 @@ export default function OptimizeGridPreview() {
   const history = useOptimizeStore(s => s.history)
   const summary = useOptimizeStore(s => s.summary)
   const placementCenter = useOptimizeStore(s => s.placementCenter)
+  const playbackIter = useOptimizeStore(s => s.playbackIter)
   const antennaPos = useSimulationStore(s => s.antennaPos)
 
   const center = (running || summary) ? placementCenter : antennaPos
@@ -119,7 +120,13 @@ export default function OptimizeGridPreview() {
   if (mode !== 'placement' || !center) return null
 
   const hasResults = running || (summary !== null && history.length > 0)
-  const evaluatedCount = hasResults ? (running ? currentIter : history.length) : 0
+  const evaluatedCount = hasResults
+    ? running
+      ? currentIter
+      : playbackIter !== null
+        ? playbackIter + 1
+        : history.length
+    : 0
 
   return (
     <group>

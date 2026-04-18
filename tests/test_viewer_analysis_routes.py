@@ -127,3 +127,19 @@ class TestSpatialComplianceInputValidation:
             {"bbox": [3.6, 3.8, 51.0, 51.1], "receiver_height_m": 10000.0},
         )
         assert resp.status_code == 400
+
+    def test_rejects_nan_bbox(self, client):
+        resp = self._post_with_basestations(
+            client,
+            {"bbox": [float("nan"), 10.0, 50.0, 55.0]},
+        )
+        assert resp.status_code == 400
+        assert "finite" in resp.get_json()["error"].lower()
+
+    def test_rejects_inf_bbox(self, client):
+        resp = self._post_with_basestations(
+            client,
+            {"bbox": [0.0, float("inf"), 50.0, 55.0]},
+        )
+        assert resp.status_code == 400
+        assert "finite" in resp.get_json()["error"].lower()

@@ -67,6 +67,14 @@ def _safe_int(val, default: int) -> int:
         return default
 
 
+def _safe_float(val, default: float) -> float:
+    """Convert to float, returning *default* on failure."""
+    try:
+        return float(val)
+    except (TypeError, ValueError):
+        return default
+
+
 def _parse_rt_config(params: dict, cache: dict) -> dict[str, Any]:
     """Extract RT config for placement evaluation."""
     rt = params.get("rt_config", {})
@@ -170,7 +178,7 @@ def _resolve_mimo_g_tilde(params: dict, cache: dict, cache_lock) -> np.ndarray:
     with cache_lock:
         scene = scoped_cache_get(cache, "mimo_scene")
     if scene is None:
-        raise ValueError("No MIMO scene cached. Run /api/mimo/compute first.")
+        raise ValueError("MIMO scene is not ready yet. Wait for the compute to finish and try again.")
     # G_tilde lives on each UserState, not on the scene itself.
     # Use the focused user's G_tilde (or first user with one).
     user_id = params.get("user_id")
@@ -179,7 +187,7 @@ def _resolve_mimo_g_tilde(params: dict, cache: dict, cache_lock) -> np.ndarray:
             continue
         if u.G_tilde is not None:
             return u.G_tilde
-    raise ValueError("No body channel (G_tilde) cached. Run /api/mimo/compute first.")
+    raise ValueError("MIMO body channel is not ready yet. Wait for the compute to finish and try again.")
 
 
 def _resolve_mimo_x_init(params: dict, G_tilde: np.ndarray) -> np.ndarray:
@@ -231,7 +239,7 @@ def _build_placement_config(config: dict, params: dict, app: Flask, cache: dict,
     grid_size = max(1, min(grid_size, 50))
     config["grid_size"] = grid_size
 
-    grid_spacing = float(params.get("grid_spacing", 2.0))
+    grid_spacing = _safe_float(params.get("grid_spacing", 2.0), 2.0)
     grid_spacing = max(0.1, min(grid_spacing, 500.0))
     config["grid_spacing"] = grid_spacing
 
@@ -380,14 +388,17 @@ def _build_placement_evaluate_fn(
     body = _resolve_placement_body(params, cache, cache_lock)
     tissue, engine_kw = _parse_placement_engine_params(params)
 
-    body_offset = np.array(params.get("body_offset", [0, 0, 0]), dtype=np.float64)
-    body_rotation_y = float(params.get("body_rotation_y", 0.0))
+    try:
+        body_offset = np.array(params.get("body_offset") or [0, 0, 0], dtype=np.float64)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"Invalid body_offset: {exc}") from exc
+    body_rotation_y = _safe_float(params.get("body_rotation_y", 0.0), 0.0)
     transformed_body = _transform_body_for_viewer(body, body_offset, body_rotation_y)
 
     default_bc = np.array(cache["config"]["raytracer"]["default_body_center"], dtype=np.float64)
     body_center = default_bc + body_offset
 
-    power_dbm = float(params.get("power_dbm", 43.0))
+    power_dbm = _safe_float(params.get("power_dbm", 43.0), 43.0)
     pole_height = float(cache["config"]["antenna"].get("pole_height", 2.0))
 
     rt_cfg = _parse_rt_config(params, cache)

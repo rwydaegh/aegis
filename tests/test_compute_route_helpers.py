@@ -98,6 +98,20 @@ class TestParseVec3:
         assert err is None
         np.testing.assert_allclose(val, [1e10, -1e10, 1e-10])
 
+    def test_rejects_nan(self, app) -> None:
+        with app.app_context():
+            val, err = _parse_vec3({"pos": [float("nan"), 0, 0]}, "pos")
+            assert val is None
+            assert err[1] == 400
+            assert "finite" in err[0].get_json()["error"].lower()
+
+    def test_rejects_inf(self, app) -> None:
+        with app.app_context():
+            val, err = _parse_vec3({"pos": [float("inf"), 0, 0]}, "pos")
+            assert val is None
+            assert err[1] == 400
+            assert "finite" in err[0].get_json()["error"].lower()
+
 
 # ---------------------------------------------------------------------------
 # _parse_rotation_y
@@ -141,6 +155,18 @@ class TestParseRotationY:
         val, err = _parse_rotation_y({"body_rotation_y": 2})
         assert err is None
         assert val == 2.0
+
+    def test_rejects_nan(self, app) -> None:
+        with app.app_context():
+            val, err = _parse_rotation_y({"body_rotation_y": float("nan")})
+            assert val is None
+            assert err[1] == 400
+
+    def test_rejects_inf(self, app) -> None:
+        with app.app_context():
+            val, err = _parse_rotation_y({"body_rotation_y": float("inf")})
+            assert val is None
+            assert err[1] == 400
 
 
 # ---------------------------------------------------------------------------

@@ -3,7 +3,9 @@ import { useOptimization } from '@/hooks/useOptimization'
 import { useSimulationStore } from '@/stores/simulation'
 import { useMIMOStore } from '@/stores/mimo'
 import { useSceneStore } from '@/stores/scene'
+import { useUIStore } from '@/stores/ui'
 import { LineChart, Line, YAxis, ResponsiveContainer } from 'recharts'
+import HistoryScrubber from './HistoryScrubber'
 
 const MODES: { value: OptimizeMode; label: string; description: string }[] = [
   {
@@ -27,19 +29,24 @@ interface ModeSelectorProps {
   mode: OptimizeMode | null
   running: boolean
   mimoEnabled: boolean
+  mimoReady: boolean
   rtReady: boolean
   onToggle: (value: OptimizeMode) => void
 }
 
-function ModeSelector({ mode, running, mimoEnabled, rtReady, onToggle }: ModeSelectorProps) {
+function ModeSelector({ mode, running, mimoEnabled, mimoReady, rtReady, onToggle }: ModeSelectorProps) {
   return (
     <div className="grid grid-cols-3 gap-1">
       {MODES.map(m => {
         const needsRt = m.value === 'tilt_power' && !rtReady
-        const disabled = running || (m.value === 'mimo_peak' && !mimoEnabled) || needsRt
+        const needsMimo = m.value === 'mimo_peak' && !mimoEnabled
+        const needsMimoReady = m.value === 'mimo_peak' && mimoEnabled && !mimoReady
+        const disabled = running || needsMimo || needsMimoReady || needsRt
         const title = needsRt
           ? 'Requires a ray-traced scene. Run an RT compute first.'
-          : m.description
+          : needsMimoReady
+            ? 'MIMO scene is still computing. Wait for the compute to finish.'
+            : m.description
         return (
           <button
             key={m.value}
@@ -203,16 +210,23 @@ interface PlacementProgressProps {
 
 function PlacementProgress({ currentIter, total }: PlacementProgressProps) {
   const pct = Math.min(100, (currentIter / total) * 100)
+  const indeterminate = currentIter === 0
   return (
     <div className="space-y-1">
-      <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
-        <div
-          className="h-full bg-primary rounded-full transition-all duration-300"
-          style={{ width: `${pct}%` }}
-        />
+      <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden relative">
+        {indeterminate ? (
+          <div className="absolute inset-y-0 w-1/3 bg-primary/70 rounded-full animate-[pulse_1.4s_ease-in-out_infinite]" />
+        ) : (
+          <div
+            className="h-full bg-primary rounded-full transition-all duration-300"
+            style={{ width: `${pct}%` }}
+          />
+        )}
       </div>
       <p className="text-xs text-muted-foreground text-center">
-        Evaluating position {currentIter} of {total}
+        {indeterminate
+          ? 'Preparing ray tracer and scene…'
+          : `Evaluating position ${currentIter} of ${total}`}
       </p>
     </div>
   )
@@ -230,14 +244,23 @@ export default function OptimizePanel() {
 
   const antennaPos = useSimulationStore(s => s.antennaPos)
   const mimoEnabled = useMIMOStore(s => s.enabled)
+  const mimoSummary = useMIMOStore(s => s.summaryStats)
+  const isComputing = useUIStore(s => s.isComputing)
   const rtReady = useSceneStore(s => s.rtPaths !== null && s.rtPaths.length > 0)
+
+  // MIMO peak needs a cached mimo_scene on the server. summaryStats is set only
+  // after a successful compute, and !isComputing avoids the recompute race that
+  // clears/stales the backend cache while the store still thinks MIMO is on.
+  const mimoReady = mimoSummary !== null && !isComputing
 
   const { start, stop } = useOptimization()
 
-  const canRun = antennaPos !== null && mode !== null && !running
-  const canRunMimo = mimoEnabled && mode === 'mimo_peak'
+  // Only placement needs a single antennaPos; MIMO uses the MIMO array (checked via mimoEnabled/mimoReady)
+  // and tilt_power reads cached RT paths (checked via rtReady).
+  const canRun = mode !== null && !running
+  const canRunMimo = mode === 'mimo_peak' && mimoEnabled && mimoReady
   const canRunTiltPower = mode === 'tilt_power' && rtReady
-  const canRunPlacement = mode === 'placement'
+  const canRunPlacement = mode === 'placement' && antennaPos !== null
   const enabled = canRun && (canRunMimo || canRunTiltPower || canRunPlacement)
 
   const chartData = history.map(h => ({ iter: h.iter, value: h.objective }))
@@ -251,6 +274,7 @@ export default function OptimizePanel() {
         mode={mode}
         running={running}
         mimoEnabled={mimoEnabled}
+        mimoReady={mimoReady}
         rtReady={rtReady}
         onToggle={value => setMode(mode === value ? null : value)}
       />
@@ -292,20 +316,26 @@ export default function OptimizePanel() {
       )}
 
       {history.length > 1 && (
-        <div className="h-16">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData}>
-              <YAxis domain={['auto', 'auto']} hide />
-              <Line
-                type="monotone"
-                dataKey="value"
-                stroke="hsl(var(--primary))"
-                strokeWidth={1.5}
-                dot={false}
-                isAnimationActive={false}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+        <div>
+          <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">
+            Peak S<sub>ab</sub> per iteration
+          </p>
+          <div className="h-16">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData}>
+                <YAxis domain={['auto', 'auto']} hide />
+                <Line
+                  type="monotone"
+                  dataKey="value"
+                  stroke="var(--color-primary)"
+                  strokeWidth={1.5}
+                  dot={false}
+                  activeDot={{ r: 3, fill: 'var(--color-primary)', stroke: 'var(--color-foreground)' }}
+                  isAnimationActive={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       )}
 
@@ -314,6 +344,8 @@ export default function OptimizePanel() {
           {summary}
         </p>
       )}
+
+      {!running && mode === 'placement' && history.length > 1 && <HistoryScrubber />}
     </div>
   )
 }

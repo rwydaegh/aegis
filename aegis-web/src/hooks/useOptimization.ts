@@ -18,17 +18,31 @@ import type { DosimetryStats } from '@/api/types'
 // and so they don't re-create on every render).
 // -----------------------------------------------------------------------------
 
-type Peaks = { firstPeak: number | null; lastPeak: number | null }
+type Peaks = {
+  firstPeak: number | null
+  lastPeak: number | null
+  firstSab: number | null
+  lastSab: number | null
+  lastParams: Record<string, unknown> | null
+}
 
 /**
  * Update peak trackers and push iteration state / SAB heatmap to stores.
  * Returns the new peaks so the caller can thread them through the loop.
  */
 export function handleIterationEvent(event: SSEEvent, peaks: Peaks): Peaks {
-  let { firstPeak, lastPeak } = peaks
+  let { firstPeak, lastPeak, firstSab, lastSab, lastParams } = peaks
   if (event.objective !== undefined) {
     if (firstPeak === null) firstPeak = event.objective
     lastPeak = event.objective
+  }
+  const peakSab = (event.stats as { peak_sab?: number } | undefined)?.peak_sab
+  if (typeof peakSab === 'number' && Number.isFinite(peakSab)) {
+    if (firstSab === null) firstSab = peakSab
+    lastSab = peakSab
+  }
+  if (event.params && typeof event.params === 'object') {
+    lastParams = event.params as Record<string, unknown>
   }
 
   useOptimizeStore.getState().onIteration({
@@ -53,7 +67,7 @@ export function handleIterationEvent(event: SSEEvent, peaks: Peaks): Peaks {
     }
   }
 
-  return { firstPeak, lastPeak }
+  return { firstPeak, lastPeak, firstSab, lastSab, lastParams }
 }
 
 /**
@@ -72,19 +86,55 @@ export function applyPlacementMove(event: SSEEvent, mode: string): void {
   useSimulationStore.getState().setAntennaPos([sx, sz, -sy])
 }
 
+function reductionText(first: number | null, last: number | null): string {
+  if (first === null || last === null || first === 0) return ''
+  const pct = (1 - last / first) * 100
+  if (!Number.isFinite(pct)) return ''
+  return `${pct.toFixed(0)}% reduction`
+}
+
+function tiltPowerSummary(peaks: Peaks): string {
+  const tilt = peaks.lastParams?.tilt_deg
+  const power = peaks.lastParams?.power_dbm
+  const parts: string[] = []
+  if (typeof tilt === 'number' && Number.isFinite(tilt)) {
+    parts.push(`tilt ${tilt.toFixed(1)}°`)
+  }
+  if (typeof power === 'number' && Number.isFinite(power)) {
+    parts.push(`power ${power.toFixed(1)} dBm`)
+  }
+  if (peaks.lastSab !== null && Number.isFinite(peaks.lastSab)) {
+    parts.push(`peak ${peaks.lastSab.toExponential(2)} W/m²`)
+  }
+  return parts.join(', ')
+}
+
 /**
  * Final event: build the summary string and notify the optimize store.
+ *
+ * Summary style is mode-specific because the "objective" values aren't
+ * directly comparable across modes:
+ *  - placement/mimo_peak minimize a positive exposure metric, so "% reduction"
+ *    of the objective is meaningful.
+ *  - tilt_power minimizes a signed penalty (−power + λ·violation²) which can
+ *    flip sign; "% reduction" of it is nonsensical. Report final tilt, power,
+ *    and peak exposure instead.
  */
-export function handleDoneEvent(event: SSEEvent, peaks: Peaks): void {
-  const { firstPeak, lastPeak } = peaks
-  const reduction =
-    firstPeak !== null && lastPeak !== null
-      ? `${((1 - lastPeak / firstPeak) * 100).toFixed(0)}% reduction`
-      : ''
+export function handleDoneEvent(event: SSEEvent, peaks: Peaks, mode: string): void {
   const reason = event.cancelled ? 'Cancelled' : event.reason ?? 'Converged'
-  useOptimizeStore.getState().onDone(
-    `${reason} after ${event.total_iters ?? event.iter ?? '?'} iterations. ${reduction}`,
-  )
+  const iters = event.total_iters ?? event.iter ?? '?'
+
+  let detail: string
+  if (mode === 'tilt_power') {
+    detail = tiltPowerSummary(peaks)
+  } else {
+    detail = reductionText(peaks.firstPeak, peaks.lastPeak)
+  }
+
+  const message = detail
+    ? `${reason} after ${iters} iterations. ${detail}`
+    : `${reason} after ${iters} iterations.`
+  useOptimizeStore.getState().onDone(message)
 }
 
 function buildPlacementRequest(base: OptimizeRequest, constraints: OptimizeConstraints): void {
@@ -176,6 +226,7 @@ export function useOptimization() {
     const isCurrent = () => abortRef.current === controller
 
     useOptimizeStore.getState().setRunning(true)
+    useOptimizeStore.getState().setPlaybackIter(null)
 
     if (mode === 'placement') {
       const pos = useSimulationStore.getState().antennaPos
@@ -188,7 +239,13 @@ export function useOptimization() {
     const addNotification = useNotificationStore.getState().addNotification
 
     try {
-      let peaks: Peaks = { firstPeak: null, lastPeak: null }
+      let peaks: Peaks = {
+        firstPeak: null,
+        lastPeak: null,
+        firstSab: null,
+        lastSab: null,
+        lastParams: null,
+      }
 
       for await (const event of streamOptimization(request, controller.signal)) {
         if (controller.signal.aborted) break
@@ -206,7 +263,7 @@ export function useOptimization() {
         applyPlacementMove(event, mode)
 
         if (event.done) {
-          if (isCurrent()) handleDoneEvent(event, peaks)
+          if (isCurrent()) handleDoneEvent(event, peaks, mode)
           return
         }
       }

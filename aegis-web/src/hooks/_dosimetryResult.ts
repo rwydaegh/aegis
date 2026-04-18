@@ -37,34 +37,37 @@ export interface DosimetryErrorContext {
  * Handle an error thrown by a compute pipeline. Centralises the AbortError /
  * isNetworkError / Sentry.captureException ladder that used to live in every
  * dosimetry hook (single-user, MIMO, base stations).
+ *
+ * Returns a short summary of the failure for callers that want to surface it
+ * persistently in the UI (e.g. MIMO panel banner). Returns null when the abort
+ * was a normal cancellation (not a timeout) and no message is appropriate.
  */
 export function handleDosimetryError(
   err: unknown,
   ctx: DosimetryErrorContext,
-): void {
+): string | null {
   const error = err as Error
   if (error?.name === 'AbortError') {
     if (ctx.controller.signal.reason === 'timeout') {
       const hint = ctx.timeoutHint ? ` ${ctx.timeoutHint}` : ''
-      useNotificationStore.getState().addNotification(
-        'warning',
-        `${ctx.label} compute timed out after ${ctx.timeoutMs / 1000}s.${hint}`,
-      )
+      const msg = `${ctx.label} compute timed out after ${ctx.timeoutMs / 1000}s.${hint}`
+      useNotificationStore.getState().addNotification('warning', msg)
+      return `Timed out after ${ctx.timeoutMs / 1000}s`
     }
-    return
+    return null
   }
   if (isNetworkError(err)) {
     const netLabel = ctx.networkLabel ?? ctx.label.toLowerCase()
-    useNotificationStore.getState().addNotification(
-      'warning',
-      `Network error during ${netLabel} compute. Check your connection and try again.`,
-    )
-    return
+    const msg = `Network error during ${netLabel} compute. Check your connection and try again.`
+    useNotificationStore.getState().addNotification('warning', msg)
+    return 'Network error'
   }
   Sentry.captureException(err)
+  const msg = `${ctx.label} compute failed: ${error?.message ?? err}`
   useNotificationStore.getState().addNotification(
     'error',
-    `${ctx.label} compute failed: ${error?.message ?? err}`,
+    msg,
     'This error has been reported and will be fixed automatically using AI. Most issues are fixed in less than 30 minutes.',
   )
+  return error?.message ?? String(err)
 }
