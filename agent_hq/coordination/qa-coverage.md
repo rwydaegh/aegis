@@ -54,6 +54,50 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-18 06:22 UTC -- "Compliance and regulatory"
+
+- Actor: interactive
+- Depth: medium
+- Findings: 1 bug filed: #594 (plus follow-up comment)
+- Notes: Walked the compliance panel across multiple regimes. Open
+  ground scenario: 28 GHz General Public -> Sab(4cm²) only (Sab 1cm²
+  disabled, matches ICNIRP 30 GHz threshold). 60 GHz -> Sab(1cm²)
+  enables, Sab(4cm²) disables as expected. 1.8 GHz -> only SAR_wb
+  check shown, Sab/Sinc limits correctly suppressed below 6 GHz.
+  Occupational switch at 60 GHz: limits all scale 5x (Sab 40->200,
+  Sinc local 26.65->133.23, Sinc wb 10->50) and Max TX bumps by
+  ~6 dB. Per-check margin_db strings and PASS/WARN/FAIL statusing
+  look right.
+  **Finding (filed as #594)**: Clicking "Max TX power" in the compliance
+  summary, and clicking the matching "Set" in Analysis -> Power sweep,
+  both use `parseFloat(value.toFixed(1))` which can round **up** past
+  the true max compliant power. Repro: Open ground @ 60 GHz, enable
+  SAR_wb -> click "Max TX power" -> compliance badge flips from PASS
+  to FAIL with SAR_wb `-0.0dB FAIL`. Close-range mmWave @ 60 GHz ->
+  Power sweep reports Max compliant 61.2 dBm (compliance panel said
+  61.0 dBm for the same dataset!) -> [Set] -> SAR_wb `-0.2dB FAIL`.
+  Fix is `Math.floor(x * 10) / 10`. Commented on #594 noting the
+  second-order issue that the compliance-panel Max TX and the
+  power-sweep Max compliant disagreed by 0.2 dB on the same
+  compute, which also suggests the panel uses server-rounded `ratio`
+  (4-decimal) while the sweep uses exact floats.
+  Other observations worth noting but **not** filed:
+  - Summary "Margin" is the min over `compliance.checks` (all server
+    checks) while the visible rows are filtered to enabled
+    quantities. So with only Sab(4cm²) enabled at 28 GHz, you'll see
+    `Sab(4cm²) +23.9dB PASS` but summary Margin `+22.1 dB` driven
+    by invisible SAR_wb. Confusing but "min of all constraints" is a
+    reasonable safety-first summary; not a blocker.
+  - `SAR_wb` check is still evaluated at 60 GHz even though ICNIRP's
+    whole-body SAR restriction technically applies up to 10 GHz only.
+    Value stays tiny (~0.0002 W/kg at typical power) so it never
+    wins; probably intentional conservatism.
+  - Compliance heatmap renders a green/red compliant/exceeded
+    region grid as expected.
+  Confident the compliance surface is healthy aside from the rounding
+  bug and the panel<->sweep max-compliant disagreement, both of
+  which land under #594. (Auto-fixed via PR #595 mid-session.)
+
 ### 2026-04-18 04:20 UTC -- "Visualization and analysis"
 
 - Actor: interactive
