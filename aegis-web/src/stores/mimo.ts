@@ -48,6 +48,8 @@ interface MIMOStore {
   precoderWeights: { real: number[][]; imag: number[][] } | null
   showAllHeatmaps: boolean
   showArrayPattern: boolean
+  lastComputeError: string | null
+  lastSuccessfulUserCount: number
   _nextUserNumber: number
   _configVersion: number
 
@@ -71,6 +73,8 @@ interface MIMOStore {
   setPrecoderWeights: (w: { real: number[][]; imag: number[][] } | null) => void
   setShowAllHeatmaps: (on: boolean) => void
   setShowArrayPattern: (on: boolean) => void
+  setLastComputeError: (msg: string | null) => void
+  retryCompute: () => void
   clearAllResults: () => void
   reset: () => void
 }
@@ -87,6 +91,8 @@ const INITIAL_STATE = {
   precoderWeights: null as { real: number[][]; imag: number[][] } | null,
   showAllHeatmaps: false,
   showArrayPattern: true,
+  lastComputeError: null as string | null,
+  lastSuccessfulUserCount: 0,
   _nextUserNumber: 1,
   _configVersion: 0,
 }
@@ -102,7 +108,7 @@ export const useMIMOStore = create<MIMOStore>((set, get) => ({
 
   setEnabled: (on) => {
     if (!on) {
-      set({ enabled: false })
+      set({ enabled: false, lastComputeError: null })
       return
     }
 
@@ -284,6 +290,8 @@ export const useMIMOStore = create<MIMOStore>((set, get) => ({
   setPrecoderWeights: (w) => set({ precoderWeights: w }),
   setShowAllHeatmaps: (on) => set({ showAllHeatmaps: on }),
   setShowArrayPattern: (on) => set({ showArrayPattern: on }),
+  setLastComputeError: (msg) => set({ lastComputeError: msg }),
+  retryCompute: () => set({ _configVersion: get()._configVersion + 1, lastComputeError: null }),
 
   clearAllResults: () => {
     const users = new Map(get().users)
