@@ -4,6 +4,7 @@ import { useSimulationStore } from '@/stores/simulation'
 import { useMIMOStore } from '@/stores/mimo'
 import { useSceneStore } from '@/stores/scene'
 import { LineChart, Line, YAxis, ResponsiveContainer } from 'recharts'
+import HistoryScrubber from './HistoryScrubber'
 
 const MODES: { value: OptimizeMode; label: string; description: string }[] = [
   {
@@ -203,16 +204,23 @@ interface PlacementProgressProps {
 
 function PlacementProgress({ currentIter, total }: PlacementProgressProps) {
   const pct = Math.min(100, (currentIter / total) * 100)
+  const indeterminate = currentIter === 0
   return (
     <div className="space-y-1">
-      <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
-        <div
-          className="h-full bg-primary rounded-full transition-all duration-300"
-          style={{ width: `${pct}%` }}
-        />
+      <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden relative">
+        {indeterminate ? (
+          <div className="absolute inset-y-0 w-1/3 bg-primary/70 rounded-full animate-[pulse_1.4s_ease-in-out_infinite]" />
+        ) : (
+          <div
+            className="h-full bg-primary rounded-full transition-all duration-300"
+            style={{ width: `${pct}%` }}
+          />
+        )}
       </div>
       <p className="text-xs text-muted-foreground text-center">
-        Evaluating position {currentIter} of {total}
+        {indeterminate
+          ? 'Preparing ray tracer and scene…'
+          : `Evaluating position ${currentIter} of ${total}`}
       </p>
     </div>
   )
@@ -294,20 +302,26 @@ export default function OptimizePanel() {
       )}
 
       {history.length > 1 && (
-        <div className="h-16">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData}>
-              <YAxis domain={['auto', 'auto']} hide />
-              <Line
-                type="monotone"
-                dataKey="value"
-                stroke="hsl(var(--primary))"
-                strokeWidth={1.5}
-                dot={false}
-                isAnimationActive={false}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+        <div>
+          <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">
+            Peak S<sub>ab</sub> per iteration
+          </p>
+          <div className="h-16">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData}>
+                <YAxis domain={['auto', 'auto']} hide />
+                <Line
+                  type="monotone"
+                  dataKey="value"
+                  stroke="var(--color-primary)"
+                  strokeWidth={1.5}
+                  dot={false}
+                  activeDot={{ r: 3, fill: 'var(--color-primary)', stroke: 'var(--color-foreground)' }}
+                  isAnimationActive={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       )}
 
@@ -316,6 +330,8 @@ export default function OptimizePanel() {
           {summary}
         </p>
       )}
+
+      {!running && mode === 'placement' && history.length > 1 && <HistoryScrubber />}
     </div>
   )
 }

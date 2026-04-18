@@ -35,11 +35,13 @@ interface OptimizeStore {
   history: IterationResult[]
   summary: string | null
   placementCenter: [number, number, number] | null
+  playbackIter: number | null
 
   setMode: (mode: OptimizeMode | null) => void
   setConstraints: (c: Partial<OptimizeConstraints>) => void
   setRunning: (running: boolean) => void
   setPlacementCenter: (center: [number, number, number] | null) => void
+  setPlaybackIter: (iter: number | null) => void
   onIteration: (result: IterationResult) => void
   onDone: (summary: string) => void
   onError: (message: string) => void
@@ -61,11 +63,20 @@ export const useOptimizeStore = create<OptimizeStore>((set) => ({
   history: [],
   summary: null,
   placementCenter: null,
+  playbackIter: null,
 
-  setMode: (mode) => set({ mode, history: [], summary: null, currentIter: 0, placementCenter: null }),
+  setMode: (mode) => set({
+    mode,
+    history: [],
+    summary: null,
+    currentIter: 0,
+    placementCenter: null,
+    playbackIter: null,
+  }),
   setConstraints: (c) => set((s) => ({ constraints: { ...s.constraints, ...c } })),
   setRunning: (running) => set({ running }),
   setPlacementCenter: (center) => set({ placementCenter: center }),
+  setPlaybackIter: (iter) => set({ playbackIter: iter }),
 
   onIteration: (result) =>
     set((s) => ({
@@ -76,5 +87,13 @@ export const useOptimizeStore = create<OptimizeStore>((set) => ({
   onDone: (summary) => set({ running: false, summary }),
   onError: (message) => set({ running: false, summary: `Error: ${message}` }),
   reset: () =>
-    set({ mode: null, running: false, currentIter: 0, history: [], summary: null, placementCenter: null }),
+    set({
+      mode: null,
+      running: false,
+      currentIter: 0,
+      history: [],
+      summary: null,
+      placementCenter: null,
+      playbackIter: null,
+    }),
 }))
