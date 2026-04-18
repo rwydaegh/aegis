@@ -199,8 +199,14 @@ function SceneLighting() {
         position={light?.sun?.position ?? [5, 10, 5]}
         intensity={light?.sun?.intensity ?? 0.8}
         castShadow
-        shadow-mapSize-width={1024}
-        shadow-mapSize-height={1024}
+        shadow-mapSize-width={2048}
+        shadow-mapSize-height={2048}
+        shadow-camera-left={-500}
+        shadow-camera-right={500}
+        shadow-camera-top={500}
+        shadow-camera-bottom={-500}
+        shadow-camera-near={0.5}
+        shadow-camera-far={2000}
       />
       {light?.fill && (
         <directionalLight
