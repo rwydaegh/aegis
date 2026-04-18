@@ -54,6 +54,49 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-18 08:22 UTC -- "Visualization and analysis"
+
+- Actor: interactive
+- Depth: medium
+- Findings: none filed
+- Notes: Drove the full analysis/visualization surface on Open ground.
+  **#565 verified fixed** (third independent confirmation today): after
+  MIMO peak optimizer converges (1/1 user, 28 GHz, converged after 6
+  iterations, 0% reduction since MRT was already a peak-minimizer here),
+  ColorLegend renders clean ticks in both Lin (0, 0.054, 0.109, 0.163,
+  0.218 W/m²) and dB (0, -6, -13, -19, -25 dB) — no NaN, no empty
+  strings. ColorLegend controls all healthy: dB/Lin toggle re-renders
+  ticks immediately, Floor spinbutton accepts -40 (compresses
+  distribution) and -5 (collapses body to floor except hotspots),
+  lock colormap (🔒) preserves the 28 GHz 0.081 W/m² scale when
+  switching to 60 GHz and unlocking correctly auto-rescales to 0.094
+  W/m² peak. Analysis panels: Exposure distribution (Peak 0.205, P99
+  0.185, P95 0.145, monotonic, 45% illuminated, 3810 cm²), SAB
+  histogram (log-scale bins with below/above-limit color coding),
+  Frequency sweep (Recharts ticks 7-100 GHz × -5 to +14 dB margin),
+  Power sweep (23-63 dBm × -6 to +34 dB margin), Distance sweep
+  (curve rises to +40 dB at 50 m, min compliant 0.3 m), Compliance
+  heatmap (green Compliant region with Exceeded/Boundary legend) all
+  render valid numbers. Export: Screenshot (PNG) triggered a download,
+  file writes correctly; the exported PNG shows only the 3D scene
+  (phantom + antenna + distance marker) without HUD/colorbar overlays —
+  intentional "clean figure" design, cropped the 2.5 m distance label
+  at the top which is cosmetic. Noted but not filed: (a) after
+  disabling MIMO without re-computing, the body heatmap remains colored
+  from the last MIMO result while the HUD pill drops to 5.00e-7 W/m²
+  and compliance flips to N/A — stale heatmap vs. fresh HUD creates an
+  inconsistent scene, but clicking to place/move the antenna restores
+  fresh compute immediately, so it's a transient stale-state UX quirk
+  rather than a silent bug (this may overlap with #567 stale-legend
+  mechanics but here it's the heatmap+HUD pair, not the legend);
+  (b) two recharts "width(-1) height(-1)" console warnings when
+  collapsed sweep panels mount hidden — cosmetic, no visible render
+  failure. Console clean otherwise (0 errors apart from expected
+  401/api/auth pre-login, WebGL deprecation + GPU stall perf warnings
+  are upstream). Visualization area is heavily over-covered today (4
+  other sessions already); next agent should rotate to a cold section
+  like Tissue, Body geometry, Stochastic channel, or Ray tracing.
+
 ### 2026-04-18 06:22 UTC -- "Compliance and regulatory"
 
 - Actor: interactive
@@ -337,6 +380,7 @@ Depth guide:
   Confident the beamforming math, multi-user, UPA sizing, and
   optimize gating are healthy; the ColorLegend stale-state is the
   only real bug and is documented with a surgical fix sketch in #567.
+
 ### 2026-04-17 16:25 UTC -- "Optimization"
 
 - Actor: interactive
