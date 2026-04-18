@@ -166,7 +166,7 @@ export interface ViewerConfig {
   server: { host: string; port: number; debug: boolean; open_browser: boolean }
   scene: { background_color: string; grid: Record<string, unknown>; ground_plane: Record<string, unknown> }
   camera: { fov: number; near: number; far: number; initial_position: [number, number, number]; controls: Record<string, unknown> }
-  renderer: { tone_mapping: string; shadows_enabled: boolean; antialias: boolean }
+  renderer: { tone_mapping: string; shadows_enabled: boolean; antialias: boolean; shadow_map_type?: string }
   lighting: LightingConfig
   antenna: AntennaConfig
   voxels: VoxelConfig
