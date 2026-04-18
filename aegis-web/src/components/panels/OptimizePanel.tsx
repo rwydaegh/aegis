@@ -3,6 +3,7 @@ import { useOptimization } from '@/hooks/useOptimization'
 import { useSimulationStore } from '@/stores/simulation'
 import { useMIMOStore } from '@/stores/mimo'
 import { useSceneStore } from '@/stores/scene'
+import { useUIStore } from '@/stores/ui'
 import { LineChart, Line, YAxis, ResponsiveContainer } from 'recharts'
 import HistoryScrubber from './HistoryScrubber'
 
@@ -28,19 +29,24 @@ interface ModeSelectorProps {
   mode: OptimizeMode | null
   running: boolean
   mimoEnabled: boolean
+  mimoReady: boolean
   rtReady: boolean
   onToggle: (value: OptimizeMode) => void
 }
 
-function ModeSelector({ mode, running, mimoEnabled, rtReady, onToggle }: ModeSelectorProps) {
+function ModeSelector({ mode, running, mimoEnabled, mimoReady, rtReady, onToggle }: ModeSelectorProps) {
   return (
     <div className="grid grid-cols-3 gap-1">
       {MODES.map(m => {
         const needsRt = m.value === 'tilt_power' && !rtReady
-        const disabled = running || (m.value === 'mimo_peak' && !mimoEnabled) || needsRt
+        const needsMimo = m.value === 'mimo_peak' && !mimoEnabled
+        const needsMimoReady = m.value === 'mimo_peak' && mimoEnabled && !mimoReady
+        const disabled = running || needsMimo || needsMimoReady || needsRt
         const title = needsRt
           ? 'Requires a ray-traced scene. Run an RT compute first.'
-          : m.description
+          : needsMimoReady
+            ? 'MIMO scene is still computing. Wait for the compute to finish.'
+            : m.description
         return (
           <button
             key={m.value}
@@ -238,14 +244,21 @@ export default function OptimizePanel() {
 
   const antennaPos = useSimulationStore(s => s.antennaPos)
   const mimoEnabled = useMIMOStore(s => s.enabled)
+  const mimoSummary = useMIMOStore(s => s.summaryStats)
+  const isComputing = useUIStore(s => s.isComputing)
   const rtReady = useSceneStore(s => s.rtPaths !== null && s.rtPaths.length > 0)
+
+  // MIMO peak needs a cached mimo_scene on the server. summaryStats is set only
+  // after a successful compute, and !isComputing avoids the recompute race that
+  // clears/stales the backend cache while the store still thinks MIMO is on.
+  const mimoReady = mimoSummary !== null && !isComputing
 
   const { start, stop } = useOptimization()
 
-  // Only placement needs a single antennaPos; MIMO uses the MIMO array (checked via mimoEnabled)
+  // Only placement needs a single antennaPos; MIMO uses the MIMO array (checked via mimoEnabled/mimoReady)
   // and tilt_power reads cached RT paths (checked via rtReady).
   const canRun = mode !== null && !running
-  const canRunMimo = mimoEnabled && mode === 'mimo_peak'
+  const canRunMimo = mode === 'mimo_peak' && mimoEnabled && mimoReady
   const canRunTiltPower = mode === 'tilt_power' && rtReady
   const canRunPlacement = mode === 'placement' && antennaPos !== null
   const enabled = canRun && (canRunMimo || canRunTiltPower || canRunPlacement)
@@ -261,6 +274,7 @@ export default function OptimizePanel() {
         mode={mode}
         running={running}
         mimoEnabled={mimoEnabled}
+        mimoReady={mimoReady}
         rtReady={rtReady}
         onToggle={value => setMode(mode === value ? null : value)}
       />
