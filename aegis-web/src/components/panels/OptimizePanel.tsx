@@ -299,6 +299,7 @@ export default function OptimizePanel() {
       <button
         onClick={running ? stop : start}
         disabled={!running && !enabled}
+        data-testid="optimize-run"
         className={`w-full py-2 rounded text-xs font-semibold transition-colors
           ${
             running
@@ -310,6 +311,7 @@ export default function OptimizePanel() {
       >
         {running ? `Stop (iter ${currentIter})` : 'Optimize'}
       </button>
+
 
       {running && mode === 'placement' && (
         <PlacementProgress currentIter={currentIter} total={gridSize ** 2} />
@@ -340,7 +342,7 @@ export default function OptimizePanel() {
       )}
 
       {summary && (
-        <p className="text-xs text-muted-foreground bg-muted/50 rounded px-2 py-1.5">
+        <p className="text-xs text-muted-foreground bg-muted/50 rounded px-2 py-1.5" data-testid="optimize-summary">
           {summary}
         </p>
       )}

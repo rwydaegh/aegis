@@ -185,6 +185,7 @@ export default function Toolbar() {
         <Tooltip>
           <TooltipTrigger
             onClick={() => { void handleShare() }}
+            data-testid="toolbar-share"
             className={cn(
               'hidden md:inline-flex items-center justify-center size-7 rounded-md transition-colors',
               'hover:bg-muted text-muted-foreground hover:text-foreground',

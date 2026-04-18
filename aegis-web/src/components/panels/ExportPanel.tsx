@@ -159,7 +159,7 @@ export default function ExportPanel() {
 
   return (
     <div className="flex flex-col gap-2">
-      <button className={btnClass} onClick={handleScreenshot} disabled={busy.has('screenshot')}>
+      <button className={btnClass} onClick={handleScreenshot} data-testid="export-screenshot" disabled={busy.has('screenshot')}>
         {busy.has('screenshot') ? 'Capturing...' : 'Screenshot (PNG)'}
       </button>
       <button className={btnClass} onClick={handleExportCsv} disabled={!sabArray || busy.has('csv')}>

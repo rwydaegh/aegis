@@ -27,6 +27,7 @@ export default function IconRail() {
           <Tooltip key={group.id}>
             <TooltipTrigger
               onClick={() => handleClick(group.id)}
+              data-testid={`sidebar-group-${group.id}`}
               className={cn(
                 'relative w-10 h-10 flex items-center justify-center rounded-md transition-colors cursor-pointer',
                 isActive && sidebarMode === 'expanded'
