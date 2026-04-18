@@ -1,8 +1,9 @@
 import { create } from 'zustand'
 import * as Sentry from '@sentry/react'
 import { fetchCoverage, decodeSitesBinary } from '@/api/coverage'
-import { fetchSpatialCompliance } from '@/api/client'
+import { fetchSpatialCompliance, isClientError } from '@/api/client'
 import { useNotificationStore } from '@/stores/notifications'
+import { useBaseStationsStore } from '@/stores/basestations'
 import type { RegionSummary } from '@/api/types'
 import type { SpatialComplianceResult } from '@/api/client'
 
@@ -121,12 +122,21 @@ export const useCoverageStore = create<CoverageState>((set, get) => ({
   setComplianceZoneEnabled: (v) => set({ complianceZoneEnabled: v }),
   fetchComplianceZone: async (bbox) => {
     if (get().complianceZoneLoading) return
+    if (useBaseStationsStore.getState().basestations.length === 0) {
+      set({ complianceZoneEnabled: false })
+      useNotificationStore.getState().addNotification(
+        'error',
+        'No base stations loaded',
+        'Set up a scene first ("Set up scene here") to compute ICNIRP compliance zones.',
+      )
+      return
+    }
     set({ complianceZoneLoading: true })
     try {
       const result = await fetchSpatialCompliance({ bbox, resolution: 80 })
       set({ complianceZone: result, complianceZoneLoading: false })
     } catch (err) {
-      Sentry.captureException(err)
+      if (!isClientError(err)) Sentry.captureException(err)
       set({ complianceZoneLoading: false, complianceZoneEnabled: false })
       useNotificationStore.getState().addNotification(
         'error',
