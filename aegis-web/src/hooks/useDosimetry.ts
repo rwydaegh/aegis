@@ -296,6 +296,7 @@ export function useDosimetry() {
   })))
 
   const exposureScenario = useUIStore(s => s.exposureScenario)
+  const mimoEnabled = useMIMOStore(s => s.enabled)
 
   const scene = useSceneStore(useShallow(s => ({
     bodyName: s.bodyName,
@@ -380,7 +381,9 @@ export function useDosimetry() {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current)
     }
-  }, [sim, scene, exposureScenario, antennaStoreState, triggerCompute])
+    // mimoEnabled gates compute via shouldSkipCompute; subscribing here rearms
+    // the single-user recompute when MIMO toggles off.
+  }, [sim, scene, exposureScenario, antennaStoreState, mimoEnabled, triggerCompute])
 
   // LSP heatmap fetch
   const lspHeatmapVisible = useSimulationStore(s => s.lspHeatmapVisible)
