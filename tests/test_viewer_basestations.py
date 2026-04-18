@@ -708,6 +708,23 @@ class TestBasestationsLoadPolarLatitude:
             )
             assert resp.status_code == 400
 
+    def test_load_with_nan_radius_returns_400(self, viewer_app):
+        with viewer_app.test_client() as c:
+            resp = c.post(
+                "/api/basestations/load",
+                json={"lat": 51.0, "lon": 3.7, "radius_m": float("nan")},
+            )
+            assert resp.status_code == 400
+            assert "finite" in resp.get_json()["error"].lower()
+
+    def test_load_with_inf_radius_returns_400(self, viewer_app):
+        with viewer_app.test_client() as c:
+            resp = c.post(
+                "/api/basestations/load",
+                json={"lat": 51.0, "lon": 3.7, "radius_m": float("inf")},
+            )
+            assert resp.status_code == 400
+
 
 class TestResolveBelgianRegion:
     """Test _resolve_belgian_region fallback logic."""
