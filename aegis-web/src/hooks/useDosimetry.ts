@@ -14,7 +14,9 @@ import {
   computeRT,
   computeSionnaRT,
   computeSionnaEnvRT,
+  fetchCapabilities,
   fetchLSPHeatmap,
+  isClientError,
   isNetworkError,
   type RtConfig,
   type ComputeResult,
@@ -248,10 +250,23 @@ export function onComputeError(
     notify('warning', 'GPU is currently unavailable. Try again later or switch to a non-RT path source.')
     return
   }
+  // 4xx responses are user/state issues (e.g. no environment loaded), not bugs.
+  // If the server reports missing geometry, refresh capabilities so a stale
+  // frontend cache (e.g. after a server restart dropped session state) doesn't
+  // keep firing rejected requests.
+  if (isClientError(err)) {
+    notify('warning', errMsg || 'Compute request was rejected.')
+    if (/scene, voxels, or environment/i.test(errMsg)) {
+      fetchCapabilities()
+        .then(caps => useSceneStore.getState().setCapabilities(caps))
+        .catch(() => {})
+    }
+    return
+  }
   Sentry.captureException(err)
   notify(
     'error',
-    `Compute failed: ${(err as Error).message ?? err}`,
+    `Compute failed: ${errMsg || err}`,
     'This error has been reported and will be fixed automatically using AI. Most issues are fixed in less than 30 minutes.',
   )
 }
