@@ -51,6 +51,16 @@ def _validate_scene_path(scene_path: str) -> bool:
     return resolved in {str(_Path(p).resolve()) for p in allowed}
 
 
+# Position-vector components live in meters in an engine-local frame. Even
+# planet-scale coordinates are well under 1e8 m. ``np.linalg.norm`` overflows
+# to ``inf`` when components approach ``~1e154``, at which point
+# ``direction / norm`` produces NaNs that propagate into k_hat and later raise
+# deep in PropagationPaths.from_powers as an unhandled 500. Cap at 1e12 m -
+# astronomically permissive (~100 AU) while leaving 140 orders of magnitude
+# of headroom before overflow.
+_MAX_POSITION_ABS_M = 1e12
+
+
 def _parse_vec3(
     params: dict, key: str, default: list | None = None
 ) -> tuple[NDArray[np.float64] | None, _ErrResp | None]:
@@ -68,6 +78,11 @@ def _parse_vec3(
         return None, (jsonify({"error": f"{key} {_ERR_VEC3_TYPE}"}), 400)
     if not all(math.isfinite(v) for v in values):
         return None, (jsonify({"error": f"{key} values must be finite"}), 400)
+    if any(abs(v) > _MAX_POSITION_ABS_M for v in values):
+        return None, (
+            jsonify({"error": f"{key} components must have magnitude <= {_MAX_POSITION_ABS_M:g} m"}),
+            400,
+        )
     return np.array(values, dtype=np.float64), None
 
 
