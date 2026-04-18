@@ -9,6 +9,9 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
+    // Only collect unit tests under src/. tests/e2e/*.spec.ts are Playwright specs
+    // and must not be imported by vitest (Playwright's test() throws on import).
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],
