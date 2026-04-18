@@ -124,3 +124,10 @@ include = ["src/aegis/kernels", "src/aegis/compliance"]
 strict = ["src/aegis/kernels", "src/aegis/compliance"]
 pythonVersion = "3.12"
 reportMissingTypeStubs = false
+# JAX and numpy return `Any` from many ops because stubs are incomplete; forcing
+# casts at every boundary is noise, not safety. Keep the signal visible at
+# information level and address real shape bugs via jaxtyping later if needed.
+reportAny = "information"
+reportExplicitAny = "information"
+# f-string line wrapping ("foo " f"bar") is standard Python; not a real bug.
+reportImplicitStringConcatenation = "none"

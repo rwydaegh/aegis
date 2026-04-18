@@ -1,6 +1,6 @@
 # AEGIS feature inventory
 
-*Current as of v0.29.2 (April 2026). Updated on each release when user-facing features are added.*
+*Current as of v0.29.4 (April 2026). Updated on each release when user-facing features are added.*
 
 ## Core physics engine
 

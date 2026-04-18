@@ -29,82 +29,82 @@ def _build_parser() -> argparse.ArgumentParser:
         prog="python -m aegis.compliance",
         description="ICNIRP 2020 compliance evaluation (100 kHz to 300 GHz)",
     )
-    p.add_argument(
+    _ = p.add_argument(
         "--freq",
         type=float,
         required=True,
         help="Frequency in Hz (e.g. 28e9, 60e9)",
     )
-    p.add_argument(
+    _ = p.add_argument(
         "--sab",
         type=float,
         default=None,
         help="Peak spatially averaged S_ab over 4 cm^2 [W/m^2]",
     )
-    p.add_argument(
+    _ = p.add_argument(
         "--sab-1cm2",
         type=float,
         default=None,
         help="Peak spatially averaged S_ab over 1 cm^2 [W/m^2] (only > 30 GHz)",
     )
-    p.add_argument(
+    _ = p.add_argument(
         "--sar",
         type=float,
         default=None,
         help="Whole-body SAR [W/kg]",
     )
-    p.add_argument(
+    _ = p.add_argument(
         "--sinc",
         type=float,
         default=None,
         help="Peak local incident power density [W/m^2]",
     )
-    p.add_argument(
+    _ = p.add_argument(
         "--sinc-wb",
         type=float,
         default=None,
         help="Whole-body incident power density [W/m^2]",
     )
-    p.add_argument(
+    _ = p.add_argument(
         "--power",
         type=float,
         default=None,
         help="Reference transmit power [W] (used for max compliant power calculation)",
     )
-    p.add_argument(
+    _ = p.add_argument(
         "--occupational",
         action="store_true",
         help="Use occupational limits (default: general public)",
     )
-    p.add_argument(
+    _ = p.add_argument(
         "--limits",
         action="store_true",
         help="Just print the ICNIRP limits at this frequency and exit",
     )
-    p.add_argument(
+    _ = p.add_argument(
         "--json",
         action="store_true",
         help="Output as JSON instead of plain text",
     )
     # Link budget mode
-    p.add_argument(
+    _ = p.add_argument(
         "--link-budget",
         action="store_true",
         help="Quick compliance check from RF link budget parameters",
     )
-    p.add_argument(
+    _ = p.add_argument(
         "--tx-power",
         type=float,
         default=None,
         help="Transmit power [W] (for --link-budget mode)",
     )
-    p.add_argument(
+    _ = p.add_argument(
         "--gain",
         type=float,
         default=0.0,
         help="Antenna gain [dBi] (for --link-budget mode, default 0)",
     )
-    p.add_argument(
+    _ = p.add_argument(
         "--distance",
         type=float,
         default=None,
