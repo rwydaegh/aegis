@@ -83,3 +83,21 @@ class TestMimoPeakStep:
                 break
 
         assert result["converged"]
+
+    def test_stats_dict_has_peaks_sab_for_colorlegend(self):
+        """Regression test for PR #565 (issue #563): ColorLegend reads
+        stats.peaks?.[displayQuantity] ?? stats.peak_sab. If either key is
+        missing, the legend renders NaN ticks."""
+        from aegis.optim.mimo_peak import setup, step
+
+        G_tilde, x_mrt = _make_synthetic_scene()
+        state = setup(G_tilde=G_tilde, x_init=x_mrt, signal_threshold=0.0, p_max=1.0)
+        _, result = step(state)
+
+        assert "stats" in result
+        stats = result["stats"]
+        assert "peak_sab" in stats
+        assert "peaks" in stats
+        assert "sab" in stats["peaks"]
+        assert np.isfinite(stats["peak_sab"])
+        assert stats["peak_sab"] == stats["peaks"]["sab"]
