@@ -1,6 +1,6 @@
 import * as Sentry from '@sentry/react'
 import type { ComputeResult } from '@/api/client'
-import { isNetworkError } from '@/api/client'
+import { isClientError, isNetworkError } from '@/api/client'
 import { useSimulationStore } from '@/stores/simulation'
 import { useNotificationStore } from '@/stores/notifications'
 
@@ -61,6 +61,14 @@ export function handleDosimetryError(
     const msg = `Network error during ${netLabel} compute. Check your connection and try again.`
     useNotificationStore.getState().addNotification('warning', msg)
     return 'Network error'
+  }
+  // 4xx responses are user/state issues (e.g. server lost base stations after
+  // a worker restart), not bugs. Surface the backend message as a warning and
+  // do not report to Sentry.
+  if (isClientError(err)) {
+    const msg = error?.message ?? `${ctx.label} compute request was rejected.`
+    useNotificationStore.getState().addNotification('warning', msg)
+    return error?.message ?? null
   }
   Sentry.captureException(err)
   const msg = `${ctx.label} compute failed: ${error?.message ?? err}`

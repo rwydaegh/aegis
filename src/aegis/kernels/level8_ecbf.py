@@ -9,6 +9,9 @@ Monograph: sec:ecbf, eq:QCQP, eq:optimal-x.
 
 from __future__ import annotations
 
+import numpy as np
+from numpy.typing import NDArray
+
 from aegis._array_backend import xp
 from aegis.coherent.body_channel import compute_body_channel
 from aegis.coherent.ecbf import solve_ecbf
@@ -21,20 +24,26 @@ from aegis.defaults import DEFAULT_P_ABS_MAX
 
 
 def level8_ecbf(
-    normals,
-    centroids,
-    areas,
-    k_hat,
-    psi,
-    element_index,
-    h,
-    n_tilde,
-    sigma,
-    freq_hz,
-    n_elements,
-    P=1.0,
-    P_abs_max=DEFAULT_P_ABS_MAX,
-):
+    normals: NDArray[np.floating],
+    centroids: NDArray[np.floating],
+    areas: NDArray[np.floating],
+    k_hat: NDArray[np.floating],
+    psi: NDArray[np.complexfloating],
+    element_index: NDArray[np.integer],
+    h: NDArray[np.complexfloating],
+    n_tilde: complex | NDArray[np.complexfloating],
+    sigma: float,
+    freq_hz: float,
+    n_elements: int,
+    P: float = 1.0,
+    P_abs_max: float = DEFAULT_P_ABS_MAX,
+) -> tuple[
+    NDArray[np.floating],
+    NDArray[np.complexfloating],
+    NDArray[np.floating],
+    NDArray[np.complexfloating],
+    float,
+]:
     """Compute ECBF-optimised absorbed power density map.
 
     Parameters

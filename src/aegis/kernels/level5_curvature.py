@@ -2,13 +2,24 @@
 
 from __future__ import annotations
 
+import numpy as np
+from numpy.typing import NDArray
+
 from aegis._array_backend import jit, xp
 from aegis.constants import C_0
 from aegis.kernels._base import fresnel_weights, incidence_geometry
 
 
 @jit
-def level5_curvature(normals, k_hat, power, n_tilde, T0, curvature_H, freq_hz):
+def level5_curvature(
+    normals: NDArray[np.floating],
+    k_hat: NDArray[np.floating],
+    power: NDArray[np.floating],
+    n_tilde: complex | NDArray[np.complexfloating],
+    T0: float,
+    curvature_H: NDArray[np.floating],
+    freq_hz: float,
+) -> NDArray[np.floating]:
     """Compute per-triangle S_ab with Fresnel + curvature correction."""
     # Floor k to avoid division by near-zero at very low frequencies
     k = xp.maximum(2.0 * xp.pi * freq_hz / C_0, 1e-6)

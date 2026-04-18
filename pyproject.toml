@@ -52,6 +52,7 @@ dev = [
     "pytest-xdist>=3.8.0",
     "hypothesis>=6.152.1",
     "ruff>=0.15.11",
+    "basedpyright>=1.21",
     "pre-commit>=4.5.1",
     "codespell>=2.4.2",
     "miepython>=3.2.0",
@@ -117,3 +118,9 @@ exclude_lines = [
     "if TYPE_CHECKING:",
     "if __name__",
 ]
+
+[tool.basedpyright]
+include = ["src/aegis/kernels", "src/aegis/compliance"]
+strict = ["src/aegis/kernels", "src/aegis/compliance"]
+pythonVersion = "3.12"
+reportMissingTypeStubs = false

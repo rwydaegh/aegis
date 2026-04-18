@@ -54,6 +54,45 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-18 22:10 UTC -- "Base station pipeline"
+
+- Actor: cron-qa
+- Depth: medium
+- Findings: 1 bug filed: #635
+- Notes: Drove the pipeline end-to-end on production (commit `fef2338`).
+  Loaded Ghent (2056 antennas, operators 1/2/3/253625150/386900317,
+  all `location_only` tier, `freq_mhz=2100` fallback) and a small UK
+  set (Heathrow area, 2 antennas, `gov:ofcom_wtr`) via the location
+  picker, then inspected the Operator-coloured globe, clicked a few
+  pins to verify the per-antenna panel, and ran one compliance-zone
+  compute on the Ghent set (~7 s, returned 3.2M zone samples; globe
+  rendered the ICNIRP layer without trouble). Verified API directly
+  via session cookie: `/api/basestations` returns both
+  `provenance_sources` (flat, canonical keys: `Power`, `Azimuth`,
+  `CenterHeight`) and `provenance` (nested, API keys: `eirp_dbm`,
+  `azimuth_deg`). **Bug 1 (#635)**: the sidebar Data Quality panel
+  (`RegionDataCard.tsx:92-101`) and the HUD variant
+  (`DataQualityHud.tsx:50-62`) render all nine provenance bars as
+  100% gray (missing) for every loaded region, because both files
+  look up `bs.provenance_sources[apiField]` (e.g. `eirp_dbm`) but
+  `provenance_sources` is keyed by the canonical column name
+  (`Power`). PR #457 purported to fix this for the HUD but shipped
+  with the same key-direction mistake, so the bug has been live
+  since the data-quality UI was introduced. Single-antenna panels
+  render provenance correctly (they walk the nested `provenance`
+  map with API keys), which masks the regression. Not filed but
+  noted: the API-path leak in the "compute-without-basestations"
+  toast ("Call /api/basestations/load first") is already fixed on
+  master (PR #628, commit `d3113ef`) and merely pending the next
+  deploy -- confirmed by reading the diff, no need for a ticket.
+  Also noted: Ghent antennas all fall into `location_only` tier
+  because Frequency provenance is `missing` (Flanders feed doesn't
+  carry per-antenna frequency and we fall back to `freq_mhz=2100`
+  without attributing a provenance origin) -- once #635 is fixed
+  this will become very visible to users. Confidence the core
+  extract/merge/load/compute path is healthy; the fidelity-surfacing
+  UI needs another look after #635 lands.
+
 ### 2026-04-18 18:15 UTC -- "Optimization"
 
 - Actor: cron-qa

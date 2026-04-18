@@ -2,12 +2,22 @@
 
 from __future__ import annotations
 
+from typing import cast
+
+import numpy as np
+from numpy.typing import NDArray
+
 from aegis._array_backend import erf, xp
 from aegis.defaults import NUMERICAL_FLOOR
-from aegis.tissue.fresnel import _fresnel_core
+from aegis.tissue.fresnel import (
+    _fresnel_core,  # pyright: ignore[reportPrivateUsage]  # JIT-safe core, intentional cross-module reuse
+)
 
 
-def incidence_geometry(normals, k_hat):
+def incidence_geometry(
+    normals: NDArray[np.floating],
+    k_hat: NDArray[np.floating],
+) -> tuple[NDArray[np.floating], NDArray[np.floating]]:
     """Compute cosine of incidence and its ReLU.
 
     Parameters
@@ -25,7 +35,10 @@ def incidence_geometry(normals, k_hat):
     return mu, mu_plus
 
 
-def fresnel_weights(mu, n_tilde):
+def fresnel_weights(
+    mu: NDArray[np.floating],
+    n_tilde: complex | NDArray[np.complexfloating],
+) -> tuple[NDArray[np.floating], NDArray[np.floating], NDArray[np.floating]]:
     """Compute Fresnel transmission weights at each (triangle, path) pair.
 
     Calls _fresnel_core directly (not fresnel_transmission) to stay JIT-safe.
@@ -49,7 +62,10 @@ def fresnel_weights(mu, n_tilde):
     return T_s, T_p, T_avg
 
 
-def physical_gelu(mu, sigma):
+def physical_gelu(
+    mu: NDArray[np.floating],
+    sigma: NDArray[np.floating],
+) -> NDArray[np.floating]:
     """Physical GELU: mu * (1/2)[1 + erf(mu / sigma)].
 
     Replaces ReLU at the shadow boundary with a diffraction-smoothed
@@ -57,4 +73,5 @@ def physical_gelu(mu, sigma):
     """
     sigma_safe = xp.where(sigma > 0, sigma, NUMERICAL_FLOOR)
     z = mu / sigma_safe[:, None]
-    return mu * 0.5 * (1.0 + erf(z))
+    # erf is an Any-typed scipy/jax shim; the product is a float ndarray.
+    return cast(NDArray[np.floating], mu * 0.5 * (1.0 + erf(z)))

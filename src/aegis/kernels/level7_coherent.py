@@ -11,6 +11,9 @@ Monograph: thm:coherent-law (Theorem 4.1).
 
 from __future__ import annotations
 
+import numpy as np
+from numpy.typing import NDArray
+
 from aegis._array_backend import xp
 from aegis.coherent.body_channel import compute_body_channel
 from aegis.coherent.exposure_operator import (
@@ -21,19 +24,24 @@ from aegis.coherent.exposure_operator import (
 
 
 def level7_coherent(
-    normals,
-    centroids,
-    areas,
-    k_hat,
-    psi,
-    element_index,
-    x,
-    n_tilde,
-    sigma,
-    freq_hz,
-    n_elements,
-    h=None,
-):
+    normals: NDArray[np.floating],
+    centroids: NDArray[np.floating],
+    areas: NDArray[np.floating],
+    k_hat: NDArray[np.floating],
+    psi: NDArray[np.complexfloating],
+    element_index: NDArray[np.integer],
+    x: NDArray[np.complexfloating],
+    n_tilde: complex | NDArray[np.complexfloating],
+    sigma: float,
+    freq_hz: float,
+    n_elements: int,
+    h: NDArray[np.complexfloating] | None = None,
+) -> tuple[
+    NDArray[np.floating],
+    NDArray[np.complexfloating],
+    NDArray[np.floating],
+    float | None,
+]:
     """Compute coherent absorbed power density map.
 
     Parameters
@@ -81,7 +89,7 @@ def level7_coherent(
     eigenvalues, _ = eigendecompose_Q(Q)
 
     # Exposure-signal alignment rho
-    rho = None
+    rho: float | None = None
     if h is not None:
         rho = compute_rho(h, Q, lambda_max=float(eigenvalues[0]))
 
