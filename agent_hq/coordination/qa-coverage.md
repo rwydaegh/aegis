@@ -54,6 +54,42 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-18 12:30 UTC -- "Coherent MIMO and beamforming"
+
+- Actor: interactive
+- Depth: medium
+- Findings: 1 bug filed: #612
+- Notes: Drove the MIMO stack on Open ground. Single-user baseline
+  is healthy: enabling MIMO flips header to 1/1 PASS, drops Max TX
+  from 65 to 56 dBm (backoff for the 4x4 UPA beam) and lifts peak
+  Sab from 80.46 mW/m² (single element) to 0.22 W/m² (MRT, 16
+  elements, focused). Array sizing is physically sensible:
+  4x4 → 8x8 at same spacing scales peak Sab from 0.22 to 0.87 W/m²
+  and shaves ~6 dB off margin (+13.9 → +7.9 dB), Max TX drops
+  accordingly. Two-user MIMO (Thelonious + Duke) splits power as
+  expected — Thelonious 0.11 W/m², Duke 69.61 mW/m², both marked
+  Compliant, compliance margin +16.9 dB PASS. #565 colorbar fix
+  verified (fourth independent confirmation): MIMO peak optimizer
+  converges (6 iter, -0% on an already-near-optimal scene) and
+  ColorLegend renders clean numeric ticks in BOTH linear (0.218,
+  0.163, 0.109, 0.054, 0) and dB (0, -6, -13, -19, -25 dB) modes
+  — no NaN labels. **Bug (#612)**: adding a 3rd user kicks off a
+  MIMO compute that takes 90+ s on the 2-core prod box and
+  eventually hits ERR_TIMED_OUT (also got a transient 502 on one
+  attempt). The transient toast 'MIMO compute failed: timeout'
+  does surface, but: the new user's card is left showing '--'
+  with no error state, and the Margin/Max TX/PASS badge in the
+  compliance panel keep the stale 2-user numbers with no 'out of
+  date' indicator. A user who missed the toast could screenshot
+  / export a misleadingly-green compliance snapshot. Didn't
+  exercise ZF/MMSE/ZF+Exp precoders under clean (<=2 user) load,
+  the 'Show focused heatmap only' toggle, or the AntennaArray
+  per-element phase color mode that swarm-tester-5 flagged last
+  time — left for a future pass. '-0% reduction' wording when
+  MIMO peak makes no progress is cosmetic, not filed. MIMO 1-2
+  users on 4x4 is confident healthy; the 3+ user timeout path is
+  where UX degrades.
+
 ### 2026-04-18 10:25 UTC -- "Coherent MIMO and beamforming"
 
 - Actor: interactive
