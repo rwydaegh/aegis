@@ -18,7 +18,7 @@ import type { DosimetryStats } from '@/api/types'
 // and so they don't re-create on every render).
 // -----------------------------------------------------------------------------
 
-type Peaks = {
+export type Peaks = {
   firstPeak: number | null
   lastPeak: number | null
   firstSab: number | null

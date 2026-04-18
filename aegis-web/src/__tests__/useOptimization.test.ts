@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { handleDoneEvent, handleIterationEvent } from '@/hooks/useOptimization'
+import { handleDoneEvent, handleIterationEvent, type Peaks } from '@/hooks/useOptimization'
 import { useOptimizeStore } from '@/stores/optimize'
 import type { SSEEvent } from '@/api/optimize'
 
@@ -19,7 +19,7 @@ function resetOptimizeStore() {
   })
 }
 
-function emptyPeaks() {
+function emptyPeaks(): Peaks {
   return { firstPeak: null, lastPeak: null, firstSab: null, lastSab: null, lastParams: null }
 }
 
