@@ -1,7 +1,8 @@
-import { Eye, Gamepad2, X, Plus, Layers, Crosshair, AlertTriangle } from 'lucide-react'
+import { Eye, Gamepad2, X, Plus, Layers, Crosshair, AlertTriangle, RefreshCw } from 'lucide-react'
 import { useMIMOStore, type PrecoderType } from '@/stores/mimo'
 import { useSimulationStore } from '@/stores/simulation'
 import { useSceneStore } from '@/stores/scene'
+import { useUIStore } from '@/stores/ui'
 import type { UserMIMOState } from '@/stores/mimo'
 import { formatSab } from '@/lib/format'
 import { cn } from '@/lib/utils'
@@ -13,16 +14,16 @@ const PRECODER_OPTIONS: { value: PrecoderType; label: string }[] = [
   { value: 'zf_exposure', label: 'ZF+Exp' },
 ]
 
-function complianceColor(user: UserMIMOState): string {
-  if (user.compliant === null) return '#666'
+function complianceColor(user: UserMIMOState, errored: boolean): string {
+  if (user.compliant === null) return errored ? '#f87171' : '#666'
   if (!user.compliant) return '#f87171'
   const margin = user.stats?.compliance?.margin_db
   if (margin != null && margin < 1) return '#fbbf24'
   return '#4ade80'
 }
 
-function complianceTitle(user: UserMIMOState): string {
-  if (user.compliant === null) return 'Not computed'
+function complianceTitle(user: UserMIMOState, errored: boolean): string {
+  if (user.compliant === null) return errored ? 'Compute failed' : 'Not computed'
   return user.compliant ? 'Compliant' : 'Non-compliant'
 }
 
@@ -31,20 +32,22 @@ interface UserRowProps {
   idx: number
   focusedUserId: string | null
   controlledUserId: string | null
+  errored: boolean
   onFocus: (id: string) => void
   onControl: (id: string) => void
   onRemove: (id: string) => void
 }
 
-function UserRow({ user, idx, focusedUserId, controlledUserId, onFocus, onControl, onRemove }: UserRowProps) {
+function UserRow({ user, idx, focusedUserId, controlledUserId, errored, onFocus, onControl, onRemove }: UserRowProps) {
   const isFocused = user.userId === focusedUserId
   const isControlled = user.userId === controlledUserId
+  const sabLabel = user.stats ? formatSab(user.stats.peak_sab) : (errored ? 'err' : '--')
   return (
     <div className="flex items-center gap-1.5 px-1.5 py-1 rounded text-xs">
       <span
         className="w-2 h-2 rounded-full shrink-0"
-        style={{ backgroundColor: complianceColor(user) }}
-        title={complianceTitle(user)}
+        style={{ backgroundColor: complianceColor(user, errored && !user.stats) }}
+        title={complianceTitle(user, errored && !user.stats)}
       />
       <span className="text-muted-foreground w-3 text-right shrink-0 font-mono text-[10px]">
         {idx + 1}
@@ -52,8 +55,13 @@ function UserRow({ user, idx, focusedUserId, controlledUserId, onFocus, onContro
       <span className="text-foreground truncate flex-1" title={user.phantomName}>
         {user.displayName}
       </span>
-      <span className="text-muted-foreground font-mono text-[10px] shrink-0">
-        {user.stats ? formatSab(user.stats.peak_sab) : '--'}
+      <span
+        className={cn(
+          'font-mono text-[10px] shrink-0',
+          errored && !user.stats ? 'text-destructive' : 'text-muted-foreground',
+        )}
+      >
+        {sabLabel}
       </span>
       <button
         onClick={() => onFocus(user.userId)}
@@ -189,6 +197,9 @@ export default function MIMOPanel() {
   const setShowArrayPattern = useMIMOStore(s => s.setShowArrayPattern)
   const caps = useSceneStore(s => s.capabilities)
   const summaryStats = useMIMOStore(s => s.summaryStats)
+  const lastComputeError = useMIMOStore(s => s.lastComputeError)
+  const retryCompute = useMIMOStore(s => s.retryCompute)
+  const isComputing = useUIStore(s => s.isComputing)
 
   const userList = [...users.values()]
   const K = users.size
@@ -265,6 +276,31 @@ export default function MIMOPanel() {
             </div>
           )}
 
+          {lastComputeError && (
+            <div className="flex items-start gap-1.5 mb-2 px-1.5 py-1.5 rounded bg-destructive/10 border border-destructive/30 text-destructive">
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <div className="text-[10px] leading-tight font-semibold">MIMO compute failed</div>
+                <div className="text-[10px] leading-tight opacity-80 truncate" title={lastComputeError}>
+                  {lastComputeError}
+                </div>
+              </div>
+              <button
+                onClick={retryCompute}
+                disabled={isComputing}
+                className={cn(
+                  'flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded border border-destructive/40',
+                  'hover:bg-destructive/20 transition-colors',
+                  isComputing && 'opacity-40 cursor-not-allowed',
+                )}
+                title="Retry MIMO compute"
+              >
+                <RefreshCw className="w-3 h-3" />
+                Retry
+              </button>
+            </div>
+          )}
+
           <FocusPointControl
             focusPoint={focusPoint}
             onSet={setFocusPoint}
@@ -279,6 +315,7 @@ export default function MIMOPanel() {
                 idx={idx}
                 focusedUserId={focusedUserId}
                 controlledUserId={controlledUserId}
+                errored={lastComputeError !== null}
                 onFocus={setFocusedUser}
                 onControl={setControlledUser}
                 onRemove={removeUser}

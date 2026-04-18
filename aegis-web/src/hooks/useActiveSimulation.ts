@@ -22,6 +22,7 @@ export function useActiveSimulation(): ActiveSimulation {
   const focusedUser = useMIMOStore(s =>
     s.focusedUserId ? s.users.get(s.focusedUserId) ?? null : null
   )
+  const mimoError = useMIMOStore(s => s.lastComputeError)
 
   // Single-user fallback values (always called for hooks rules)
   const singleSab = useSimulationStore(s => s.sabArray)
@@ -35,9 +36,9 @@ export function useActiveSimulation(): ActiveSimulation {
   const singleRotation = useSimulationStore(s => s.bodyRotationY)
 
   if (mimoEnabled && focusedUser) {
-    // Use focused user's stats when available, fall back to single-user stats
-    // so the compliance panel remains visible before MIMO results are computed
-    const stats = focusedUser.stats ?? singleStats
+    // Suppress single-user fallback after a MIMO error: showing single-user
+    // numbers as the active scene would misrepresent a multi-user state.
+    const stats = focusedUser.stats ?? (mimoError ? null : singleStats)
     return {
       sabArray: focusedUser.sabArray,
       sabAveragedArray: null,

@@ -1,9 +1,11 @@
 import { useSimulationStore } from '@/stores/simulation'
 import { useActiveSimulation } from '@/hooks/useActiveSimulation'
 import { useUIStore } from '@/stores/ui'
+import { useMIMOStore } from '@/stores/mimo'
 import type { QuantityKey } from '@/api/types'
 import Tex from '@/components/ui/Tex'
 import { cn } from '@/lib/utils'
+import { AlertTriangle, RefreshCw } from 'lucide-react'
 
 function computeMaxPowerDbm(checks: Array<{ ratio: number }>, currentPowerDbm: number): number | null {
   if (checks.length === 0) return null
@@ -152,6 +154,39 @@ export default function CompliancePanel() {
   const setPowerDbm = useSimulationStore(s => s.setPowerDbm)
   const scenario = useUIStore(s => s.exposureScenario)
   const isComputing = useUIStore(s => s.isComputing)
+  const mimoEnabled = useMIMOStore(s => s.enabled)
+  const mimoError = useMIMOStore(s => s.lastComputeError)
+  const mimoRetry = useMIMOStore(s => s.retryCompute)
+
+  if (mimoEnabled && mimoError && !stats) {
+    return (
+      <div className={PANEL_BASE}>
+        <ComplianceHeader scenario={scenario} />
+        <div className="flex items-start gap-1.5 px-1.5 py-1.5 rounded bg-destructive/10 border border-destructive/30 text-destructive">
+          <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <div className="text-[11px] leading-tight font-semibold">Compliance unavailable</div>
+            <div className="text-[10px] leading-tight opacity-80 mt-0.5">
+              Last MIMO compute failed: {mimoError}. Re-run to refresh.
+            </div>
+          </div>
+          <button
+            onClick={mimoRetry}
+            disabled={isComputing}
+            className={cn(
+              'flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded border border-destructive/40',
+              'hover:bg-destructive/20 transition-colors',
+              isComputing && 'opacity-40 cursor-not-allowed',
+            )}
+            title="Retry MIMO compute"
+          >
+            <RefreshCw className="w-3 h-3" />
+            Retry
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   if (!stats) return null
 

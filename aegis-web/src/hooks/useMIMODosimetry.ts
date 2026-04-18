@@ -143,6 +143,7 @@ export function useMIMODosimetry() {
     const timeoutId = setTimeout(() => controller.abort('timeout'), MIMO_TIMEOUT_MS)
     const setComputing = useUIStore.getState().setComputing
     setComputing(true)
+    useMIMOStore.getState().setLastComputeError(null)
 
     try {
       await loadMissingBodies(controller.signal)
@@ -168,13 +169,19 @@ export function useMIMODosimetry() {
       if (!isCurrent()) return
       applyMIMOSummary(summary, response)
     } catch (err) {
-      handleDosimetryError(err, {
+      const summary = handleDosimetryError(err, {
         controller,
         timeoutMs: MIMO_TIMEOUT_MS,
         label: 'MIMO',
         networkLabel: 'MIMO',
         timeoutHint: 'Try reducing the number of users or using MRT precoder.',
       })
+      // Don't clobber state on a normal cancellation (a fresher compute
+      // already aborted us and is about to write its own results).
+      if (summary !== null && isCurrent()) {
+        useMIMOStore.getState().clearAllResults()
+        useMIMOStore.getState().setLastComputeError(summary)
+      }
     } finally {
       clearTimeout(timeoutId)
       if (isCurrent()) setComputing(false)
