@@ -162,16 +162,20 @@ export function HeatmapCanvas({
     const tip = tooltipRef.current
     if (!canvas || !tip) return
     const rect = canvas.getBoundingClientRect()
-    const mx = e.clientX - rect.left
-    const my = e.clientY - rect.top
+    // Tooltip positioning uses CSS pixels; hit-test uses internal canvas pixels.
+    // The canvas is CSS-stretched (w-full) so rect.width != canvas.width.
+    const cssX = e.clientX - rect.left
+    const cssY = e.clientY - rect.top
+    const sx = canvas.width / rect.width
+    const sy = canvas.height / rect.height
     const l = getCanvasLayout(canvas, n_freq, n_power)
-    const hit = hitTestCell(mx, my, l, n_freq, n_power)
+    const hit = hitTestCell(cssX * sx, cssY * sy, l, n_freq, n_power)
     if (!hit) { tip.style.display = 'none'; return }
     const { fi, pi } = hit
     const m = margin_db[pi][fi]
     tip.style.display = 'block'
-    tip.style.left = `${mx + 12}px`
-    tip.style.top = `${my - 10}px`
+    tip.style.left = `${cssX + 12}px`
+    tip.style.top = `${cssY - 10}px`
     const clickHint = onCellClick ? '  (click to apply)' : ''
     tip.textContent = `${freq_ghz[fi].toFixed(1)} GHz, ${power_dbm[pi].toFixed(0)} dBm: ${m > 0 ? '+' : ''}${m.toFixed(1)} dB${clickHint}`
   }, [result, n_freq, n_power, freq_ghz, power_dbm, margin_db, onCellClick])

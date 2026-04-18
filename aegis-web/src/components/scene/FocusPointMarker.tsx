@@ -29,9 +29,9 @@ export default function FocusPointMarker({ focusPoint: fpProp, arrayPosition: ar
   const fp = fpProp ?? mimoFp
   const arrPos = arrProp ?? mimoConfig?.position
 
-  if (!fp || !arrPos) return null
-
-  // Build ring geometry (a circle in the XZ plane at focus point)
+  // Build ring geometry (a circle in the XZ plane at focus point).
+  // useMemo must run on every render to satisfy the Rules of Hooks, so it
+  // guards on fp internally instead of sitting behind the early return below.
   const ringPoints = useMemo(() => {
     if (!fp) return []
     const pts: [number, number, number][] = []
@@ -46,6 +46,8 @@ export default function FocusPointMarker({ focusPoint: fpProp, arrayPosition: ar
     }
     return pts
   }, [fp])
+
+  if (!fp || !arrPos) return null
 
   return (
     <group>

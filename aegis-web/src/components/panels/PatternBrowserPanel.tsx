@@ -18,8 +18,16 @@ const SOURCE_BUTTONS: { label: string; value: SourceFilter }[] = [
   { label: 'CloudRF', value: 'cloudrf' },
 ]
 
+const SEARCH_LIMIT = 10000
+
 function resultCount(n: number): string {
-  return `${n} result${n !== 1 ? 's' : ''}`
+  const plural = n !== 1 ? 's' : ''
+  const hitCap = n >= SEARCH_LIMIT
+  return `${n}${hitCap ? '+' : ''} result${plural}${hitCap ? ' (refine search)' : ''}`
+}
+
+function formatDbi(g: number): string {
+  return Number.isFinite(g) ? g.toFixed(2) : String(g)
 }
 
 function emptyMessage(query: string): string {
@@ -51,7 +59,7 @@ function PatternResultButton({ r, isSelected, onSelect }: PatternResultButtonPro
     >
       <div className="flex items-baseline justify-between gap-2">
         <span className="font-medium truncate">{r.manufacturer}</span>
-        <span className="shrink-0 text-muted-foreground">{r.gain_dbi} dBi</span>
+        <span className="shrink-0 text-muted-foreground">{formatDbi(r.gain_dbi)} dBi</span>
       </div>
       <div className="flex items-baseline justify-between gap-2 mt-0.5">
         <span className="text-muted-foreground truncate">{r.model}</span>
@@ -85,7 +93,7 @@ function SelectedPatternCard({ loadError, onClear }: SelectedPatternCardProps) {
         <div className="min-w-0">
           <p className="font-medium text-foreground truncate">{selectedPattern.manufacturer}</p>
           <p className="text-muted-foreground truncate">{selectedPattern.model}</p>
-          <p className="text-muted-foreground">{selectedPattern.gain_dbi} dBi &middot; {selectedPattern.source}</p>
+          <p className="text-muted-foreground">{formatDbi(selectedPattern.gain_dbi)} dBi &middot; {selectedPattern.source}</p>
         </div>
         <button
           className="shrink-0 px-2 py-0.5 text-xs rounded border border-border bg-muted/50 text-foreground hover:bg-muted transition-colors cursor-pointer"
