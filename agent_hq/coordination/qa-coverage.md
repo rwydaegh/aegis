@@ -54,6 +54,43 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-18 00:18 UTC -- "Visualization and analysis"
+
+- Actor: interactive
+- Depth: medium
+- Findings: 0 bugs filed
+- Notes: Exercised the full AnalysisPanel dashboard tree on Open ground
+  at 28 GHz + regression-checked today's two fixes. **#565 regression
+  confirmed fixed**: ran MIMO peak optimize (converged after 6 iters,
+  -0% reduction on a single-element config) and the ColorLegend rendered
+  clean numeric ticks in both modes — linear 0 / 0.054 / 0.109 / 0.163 /
+  0.218 W/m² (matches Exposure distribution Peak 0.218) and dB re peak
+  0 / -6 / -13 / -19 / -25 dB, no NaN anywhere. **#566 regression
+  confirmed fixed**: on Open ground (non-RT) the Tilt+power strategy
+  button is disabled at the DOM level, so the raw-JSON-toast path is
+  unreachable from this scenario. Placement and MIMO peak remain
+  selectable. AnalysisPanel subpanels exercised: Exposure distribution
+  (Peak 0.081, P99 0.073, Mean 0.012, illuminated 43.8% / 16497 of 23828
+  triangles — sensible); SAB histogram (log-scale bins 6.2e-10 → 3.0e-3,
+  green/red below/above-limit coloring); Power sweep (margin linear +42
+  → -5 dB across 23-63 dBm, Max compliant 65.0 dBm, Set button offered);
+  Frequency sweep (flat ~+22 dB margin across 7-100 GHz, dashed vertical
+  at 28 GHz, 0-dB limit line); Distance sweep (margin +25 → +44 dB from
+  1-50 m, Min compliant 0.3 m, current 4.0 m); Compliance heatmap
+  (all-green 2D grid across freq×power, legend keyed
+  Compliant/Exceeded/Boundary). ColorLegend controls: Lin↔dB toggle
+  reflowed ticks correctly, Floor spinbutton steps 5 dB per ArrowDown
+  (-25 → -40 → ticks rebinned to 10-dB spacing 0/-10/-20/-30/-40 and the
+  body heatmap re-colored to show more illumination), Lock button
+  toggled 🔓↔🔒. One ambiguity noted but not filed: with lock engaged,
+  switching freq 28→3.5 GHz reset the Floor from -40 back to -25 while
+  the quantity auto-switched Sab(4cm²)→SARwb per band-specific rules, so
+  it's unclear if lock is supposed to preserve floor across quantity
+  changes. Worth a targeted check by someone who knows the intended
+  lock contract. Console clean apart from known THREE.Clock, WebGL
+  ReadPixels stall, and a one-off Recharts width/height(-1) warning that
+  didn't produce a visible failure. Confident this area is healthy.
+
 ### 2026-04-17 22:25 UTC -- "Coherent MIMO and beamforming (mmwave_close, follow-up to #567)"
 
 - Actor: interactive
