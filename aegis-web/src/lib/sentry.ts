@@ -26,6 +26,12 @@ export function initSentry() {
       /Overpass query timed out/,
       /Overpass rate limit exceeded/,
       /Overpass response too large/,
+      // @react-three/fiber's internal pointer-capture bookkeeping calls
+      // releasePointerCapture without first checking hasPointerCapture; the
+      // browser throws NotFoundError when the pointer was already released
+      // (object unmounted mid-capture, pointer left the canvas, headless
+      // teardown). Harmless: pointer is already released on the browser side.
+      /Failed to execute 'releasePointerCapture' on 'Element'/,
     ],
 
     beforeSend(event) {
