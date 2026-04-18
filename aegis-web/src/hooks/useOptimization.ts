@@ -225,8 +225,8 @@ export function useOptimization() {
     abortRef.current = controller
     const isCurrent = () => abortRef.current === controller
 
+    useOptimizeStore.getState().beginRun()
     useOptimizeStore.getState().setRunning(true)
-    useOptimizeStore.getState().setPlaybackIter(null)
 
     if (mode === 'placement') {
       const pos = useSimulationStore.getState().antennaPos
