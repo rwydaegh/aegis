@@ -66,6 +66,36 @@ def _inject_curvature_H(engine_kw: dict, body) -> dict:
     return engine_kw
 
 
+def _inject_bound_aggregate_params(engine_kw: dict, body) -> dict:
+    """Add A_ab and D_max for bound/aggregate modes and legacy levels 0-1.
+
+    The DosimetryEngine requires ``A_ab`` for aggregate/bound and ``D_max``
+    for bound. Routes that don't go through the ``compute_dosimetry``
+    wrapper (e.g. /api/compute/rt, placement optimizer) need these
+    precomputed from the body geometry and viewer config.
+    """
+    import numpy as _np
+
+    from aegis.viewer.config import DEFAULTS
+
+    mode = engine_kw.get("mode")
+    level = engine_kw.get("level")
+    # Parameters are only needed for bound/aggregate modes or levels 0-1.
+    needs_a_ab = mode in ("bound", "aggregate") or (level is not None and level <= 1)
+    needs_d_max = mode == "bound" or level == 0
+    if not needs_a_ab and not needs_d_max:
+        return engine_kw
+
+    dos_cfg = DEFAULTS.get("dosimetry", {})
+    total_area = float(_np.sum(body.areas)) if hasattr(body, "areas") and body.areas is not None else 0.0
+
+    if needs_a_ab and "A_ab" not in engine_kw:
+        engine_kw["A_ab"] = total_area * dos_cfg.get("convex_body_area_factor", 0.5)
+    if needs_d_max and "D_max" not in engine_kw:
+        engine_kw["D_max"] = dos_cfg.get("level0_D_max", 1.64)
+    return engine_kw
+
+
 def _run_dosimetry(tissue, body, paths, engine_kw) -> tuple[Any, _ErrResp | None]:
     """Instantiate engine, inject curvature, run compute, return result.
 
@@ -75,6 +105,7 @@ def _run_dosimetry(tissue, body, paths, engine_kw) -> tuple[Any, _ErrResp | None
 
     engine = DosimetryEngine(tissue)
     _inject_curvature_H(engine_kw, body)
+    _inject_bound_aggregate_params(engine_kw, body)
     body_mass = _load_phantom_masses().get(body.name) if body.name else None
     try:
         result = engine.compute(body, paths, body_mass=body_mass, **engine_kw)

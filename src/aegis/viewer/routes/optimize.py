@@ -306,14 +306,19 @@ def _parse_placement_engine_params(params: dict):
     tissue, _, err = _parse_freq_and_tissue(params)
     if err:
         raise ValueError("Invalid tissue/frequency parameters")
-    engine_params = {
-        "mode": params.get("dosimetry_mode"),
-        "level": params.get("level"),
-        "fresnel": params.get("fresnel"),
-        "polarisation": params.get("polarisation"),
-        "curvature": params.get("curvature"),
-        "diffraction": params.get("diffraction"),
-    }
+    # Only forward keys that the caller actually supplied so _parse_mode_or_level
+    # can fall back to its default level when neither mode nor level is set.
+    # Passing ``None`` for level bypasses the .get(key, default) fallback and
+    # trips the ``int(None)`` TypeError path.
+    engine_params: dict = {}
+    if params.get("dosimetry_mode") is not None:
+        engine_params["mode"] = params["dosimetry_mode"]
+    if params.get("level") is not None:
+        engine_params["level"] = params["level"]
+    for flag in ("fresnel", "polarisation", "curvature", "diffraction"):
+        if params.get(flag) is not None:
+            engine_params[flag] = params[flag]
+
     engine_kw, err = _parse_mode_or_level(engine_params)
     if err:
         raise ValueError("Invalid mode/level parameters")

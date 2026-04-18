@@ -109,16 +109,26 @@ def _parse_tags(way_elem: object) -> dict[str, str]:
 
 
 def _parse_height(tags: dict[str, str], building_type: str, default: float = 8.0) -> float:
-    """Parse height from OSM tags, with fallback to building type defaults."""
+    """Parse height from OSM tags, with fallback to building type defaults.
+
+    OSM tags are always strings, but GeoJSON can supply numeric values
+    directly. Accept both.
+    """
     if "height" in tags:
+        raw = tags["height"]
         try:
-            return float(tags["height"].split()[0])
-        except (ValueError, IndexError):
+            if isinstance(raw, (int, float)):
+                return float(raw)
+            return float(str(raw).split()[0])
+        except (ValueError, IndexError, TypeError):
             pass
     if "building:levels" in tags:
+        raw = tags["building:levels"]
         try:
-            return float(tags["building:levels"]) * 3.0
-        except ValueError:
+            if isinstance(raw, (int, float)):
+                return float(raw) * 3.0
+            return float(raw) * 3.0
+        except (ValueError, TypeError):
             pass
     return _BUILDING_TYPE_HEIGHT.get(building_type, default)
 

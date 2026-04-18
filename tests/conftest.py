@@ -268,3 +268,67 @@ def viewer_app():
     )
     app.config["TESTING"] = True
     return app
+
+
+# ---------------------------------------------------------------------------
+# Integration test fixtures (real phantoms, no mocks)
+# ---------------------------------------------------------------------------
+
+_REAL_DATA_DIR = Path(__file__).parent.parent / "data"
+
+
+def _real_phantom_available(name: str) -> bool:
+    return (_REAL_DATA_DIR / f"{name}.stl").exists()
+
+
+@pytest.fixture
+def viewer_app_real_phantom(data_dir):
+    """Flask test app wired to a real phantom mesh for integration tests.
+
+    Uses the ``thelonious`` phantom (~23k triangles) from ``data/``. Tests
+    consuming this fixture must be marked ``@pytest.mark.slow`` and skipped
+    when the phantom is not available.
+    """
+    pytest.importorskip("flask", reason="viewer tests require flask (pip install aegis[viewer])")
+
+    if not (data_dir / "thelonious.stl").exists():
+        pytest.skip("thelonious.stl phantom not available")
+
+    from aegis.viewer.config import load_config
+    from aegis.viewer.server import _cache, create_app
+
+    _cache.clear()
+    cfg = load_config()
+    cfg["server"]["host"] = "127.0.0.1"
+    cfg["server"]["port"] = 5097
+    app = create_app(
+        data_dir=str(data_dir),
+        body_name="thelonious",
+        config=cfg,
+    )
+    app.config["TESTING"] = True
+    return app
+
+
+@pytest.fixture
+def viewer_app_large_phantom(data_dir):
+    """Flask test app with a larger phantom (eartha ~164k triangles) for memory paths."""
+    pytest.importorskip("flask", reason="viewer tests require flask (pip install aegis[viewer])")
+
+    if not (data_dir / "eartha.stl").exists():
+        pytest.skip("eartha.stl phantom not available")
+
+    from aegis.viewer.config import load_config
+    from aegis.viewer.server import _cache, create_app
+
+    _cache.clear()
+    cfg = load_config()
+    cfg["server"]["host"] = "127.0.0.1"
+    cfg["server"]["port"] = 5098
+    app = create_app(
+        data_dir=str(data_dir),
+        body_name="eartha",
+        config=cfg,
+    )
+    app.config["TESTING"] = True
+    return app
