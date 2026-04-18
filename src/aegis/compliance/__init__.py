@@ -15,7 +15,7 @@ import enum
 import logging
 import math
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from aegis.defaults import DEFAULT_FREQ_HZ
 
@@ -492,7 +492,7 @@ def power_sweep(
     p_min_w: float | None = None,
     p_max_w: float | None = None,
     n_points: int = 200,
-) -> dict:
+) -> dict[str, Any]:
     """Compute compliance margin vs transmit power.
 
     S_ab scales linearly with P, so all checks scale by P/P_ref. This
@@ -594,7 +594,7 @@ def frequency_sweep(
     freq_min_hz: float = 7e9,
     freq_max_hz: float = 100e9,
     n_points: int = 200,
-) -> dict:
+) -> dict[str, Any]:
     """Evaluate compliance across a frequency range.
 
     The measured values are assumed constant (worst-case: same exposure
@@ -627,7 +627,7 @@ def frequency_sweep(
     freq_hz_arr = np.geomspace(freq_min_hz, freq_max_hz, n_points)
     margin_db_arr = np.zeros(n_points)
     compliant_arr = np.ones(n_points, dtype=bool)
-    results_list = []
+    results_list: list[ComplianceResult] = []
 
     for i, f in enumerate(freq_hz_arr):
         cr = evaluate_compliance(
@@ -670,7 +670,7 @@ def compliance_heatmap(
     n_freq: int = 50,
     n_power: int = 50,
     sinc_local: float | None = None,
-) -> dict:
+) -> dict[str, Any]:
     """2D compliance map over frequency and transmit power.
 
     Given an S_ab measurement at reference power, compute the compliance
@@ -793,7 +793,7 @@ def link_budget_compliance(
     freq_hz: float,
     T0: float | None = None,
     scenario: ExposureScenario = ExposureScenario.GENERAL_PUBLIC,
-) -> dict:
+) -> dict[str, Any]:
     """Quick compliance check from RF link budget parameters.
 
     Estimates incident power density from free-space path loss and
@@ -843,23 +843,26 @@ def link_budget_compliance(
     sinc = tx_power_w * gain_linear / (4.0 * math.pi * distance_m**2)
 
     # Estimate T0 from skin tissue if not provided
+    t0_value: float
     if T0 is None:
         try:
             from aegis.tissue.dielectric import TissueModel
 
             tissue = TissueModel.from_database("Skin", freq_hz)
-            T0 = tissue.T0
+            t0_value = tissue.T0
         except ImportError:
-            T0 = 0.4
+            t0_value = 0.4
         except Exception:
             logger.warning(
                 "Failed to load tissue T0 for %.1f MHz, using fallback T0=0.4",
                 freq_hz / 1e6,
                 exc_info=True,
             )
-            T0 = 0.4
+            t0_value = 0.4
+    else:
+        t0_value = T0
 
-    sab_estimate = sinc * T0
+    sab_estimate = sinc * t0_value
 
     # Evaluate compliance
     cr = evaluate_compliance(
@@ -876,7 +879,7 @@ def link_budget_compliance(
     return {
         "sinc": sinc,
         "sab_estimate": sab_estimate,
-        "T0": T0,
+        "T0": t0_value,
         "compliance": cr,
         "compliant": cr.overall_pass,
         "margin_db": cr.margin_db,
@@ -902,7 +905,7 @@ def spatial_compliance_grid(
     scenario: ExposureScenario = ExposureScenario.GENERAL_PUBLIC,
     receiver_height_m: float = 1.5,
     T0: float | None = None,
-) -> dict:
+) -> dict[str, Any]:
     """Compute ICNIRP compliance margin at a grid of receiver locations.
 
     For each grid point, sums incident power density from all stations
@@ -976,14 +979,17 @@ def spatial_compliance_grid(
         freq_mean_hz = float(np.median(station_freq_hz))
 
     # Estimate T0 from skin tissue if not provided
+    t0_value: float
     if T0 is None:
         try:
             from aegis.tissue.dielectric import TissueModel
 
             tissue = TissueModel.from_database("Skin", freq_mean_hz)
-            T0 = tissue.T0
+            t0_value = tissue.T0
         except Exception:
-            T0 = 0.4
+            t0_value = 0.4
+    else:
+        t0_value = T0
 
     # Haversine distance: grid (M,) x stations (N,) -> (M, N)
     lat1 = np.radians(grid_lats[:, None])  # (M, 1)
@@ -1007,7 +1013,7 @@ def spatial_compliance_grid(
     sinc_total = np.sum(sinc_per_station, axis=1)
 
     # Estimated absorbed power density (normal-incidence worst case)
-    sab_estimate = sinc_total * T0
+    sab_estimate = sinc_total * t0_value
 
     # Evaluate compliance at the mean frequency
     margin_db_arr = np.full(n_grid, float("inf"))
@@ -1023,7 +1029,7 @@ def spatial_compliance_grid(
             "margin_db": margin_db_arr,
             "compliant": compliant_arr,
             "freq_hz_dominant": freq_mean_hz,
-            "T0": T0,
+            "T0": t0_value,
         }
 
     # Check S_ab (4 cm^2) - most relevant above 6 GHz
@@ -1060,7 +1066,7 @@ def spatial_compliance_grid(
         "margin_db": margin_db_arr,
         "compliant": compliant_arr,
         "freq_hz_dominant": freq_mean_hz,
-        "T0": T0,
+        "T0": t0_value,
     }
 
 

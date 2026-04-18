@@ -27,16 +27,16 @@ from aegis.tissue.fresnel import xi_from_mu
 
 
 def compute_body_channel(
-    normals,
-    centroids,
-    k_hat,
-    psi,
-    element_index,
-    n_tilde,
-    sigma,
-    freq_hz,
-    n_elements,
-):
+    normals: np.ndarray,
+    centroids: np.ndarray,
+    k_hat: np.ndarray,
+    psi: np.ndarray,
+    element_index: np.ndarray,
+    n_tilde: complex | np.ndarray,
+    sigma: float,
+    freq_hz: float,
+    n_elements: int,
+) -> np.ndarray:
     """Build the body-surface channel G_tilde(r) at each triangle centroid.
 
     Parameters
