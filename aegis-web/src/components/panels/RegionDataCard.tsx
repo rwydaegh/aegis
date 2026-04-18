@@ -95,10 +95,11 @@ function computeFieldStats(
   let missing = 0
 
   for (const bs of basestations) {
-    // Try provenance_sources first (flat map), then provenance (nested map)
+    // provenance_sources is keyed by canonical field name (e.g. "Power"),
+    // while provenance is keyed by API field name (e.g. "eirp_dbm").
     let origin = 'missing'
     if (bs.provenance_sources) {
-      origin = bs.provenance_sources[apiField] ?? 'missing'
+      origin = bs.provenance_sources[field] ?? 'missing'
     } else if (bs.provenance) {
       const entry = bs.provenance[apiField]
       origin = entry ? entry.origin : 'missing'
