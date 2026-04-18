@@ -25,6 +25,7 @@ function CoverageHudInner() {
   const complianceZoneEnabled = useCoverageStore(s => s.complianceZoneEnabled)
   const complianceZoneLoading = useCoverageStore(s => s.complianceZoneLoading)
   const complianceZone = useCoverageStore(s => s.complianceZone)
+  const hasSessionBasestations = useBaseStationsStore(s => s.basestations.length > 0)
 
   const isCoverageScenario = activeScenario === 'coverage_globe'
   if (!isCoverageScenario) return null
@@ -116,12 +117,13 @@ function CoverageHudInner() {
             <div className="mt-2 pt-2 border-t border-zinc-700/50">
               <button
                 onClick={handleToggleCompliance}
-                disabled={complianceZoneLoading}
+                disabled={complianceZoneLoading || !hasSessionBasestations}
+                title={!hasSessionBasestations ? 'Set up a scene first to compute compliance zones' : undefined}
                 className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs transition-colors ${
                   complianceZoneEnabled
                     ? 'bg-emerald-700/30 text-emerald-300 border border-emerald-600/50'
                     : 'bg-zinc-800 text-zinc-400 border border-zinc-600 hover:text-white hover:bg-zinc-700'
-                }`}
+                } disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-zinc-800 disabled:hover:text-zinc-400`}
               >
                 <Shield size={12} />
                 {complianceZoneLoading ? 'Computing...' : 'ICNIRP compliance zones'}
