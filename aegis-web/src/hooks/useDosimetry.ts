@@ -7,6 +7,7 @@ import { useUIStore } from '@/stores/ui'
 import { useNotificationStore } from '@/stores/notifications'
 import { useMIMOStore } from '@/stores/mimo'
 import { useAntennaStore, type AntennaConfig } from '@/stores/antenna'
+import { useEnvironmentStore } from '@/stores/environment'
 import {
   computeDosimetry,
   computeVoxelRT,
@@ -388,9 +389,10 @@ export function useDosimetry() {
   // LSP heatmap fetch
   const lspHeatmapVisible = useSimulationStore(s => s.lspHeatmapVisible)
   const lspHeatmapParam = useSimulationStore(s => s.lspHeatmapParam)
+  const envSource = useEnvironmentStore(s => s.source)
 
   useEffect(() => {
-    if (scene.pathSource !== 'stochastic' || !lspHeatmapVisible || !sim.antennaPos) return
+    if (scene.pathSource !== 'stochastic' || envSource !== 'none' || !lspHeatmapVisible || !sim.antennaPos) return
 
     const gen = ++lspHeatmapGenRef.current
     const poleH = scene.config?.antenna?.pole_height ?? 2
@@ -417,7 +419,7 @@ export function useDosimetry() {
       .finally(() => {
         if (gen === lspHeatmapGenRef.current) useSimulationStore.getState().setLSPHeatmapLoading(false)
       })
-  }, [scene.pathSource, lspHeatmapVisible, lspHeatmapParam, sim.stochasticPreset, sim.stochasticSeed, sim.freqGhz, sim.antennaPos, scene.config])
+  }, [scene.pathSource, envSource, lspHeatmapVisible, lspHeatmapParam, sim.stochasticPreset, sim.stochasticSeed, sim.freqGhz, sim.antennaPos, scene.config])
 
   // Cancel any in-flight request on unmount
   useEffect(() => {
