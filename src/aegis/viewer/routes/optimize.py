@@ -170,7 +170,7 @@ def _resolve_mimo_g_tilde(params: dict, cache: dict, cache_lock) -> np.ndarray:
     with cache_lock:
         scene = scoped_cache_get(cache, "mimo_scene")
     if scene is None:
-        raise ValueError("No MIMO scene cached. Run /api/mimo/compute first.")
+        raise ValueError("MIMO scene is not ready yet. Wait for the compute to finish and try again.")
     # G_tilde lives on each UserState, not on the scene itself.
     # Use the focused user's G_tilde (or first user with one).
     user_id = params.get("user_id")
@@ -179,7 +179,7 @@ def _resolve_mimo_g_tilde(params: dict, cache: dict, cache_lock) -> np.ndarray:
             continue
         if u.G_tilde is not None:
             return u.G_tilde
-    raise ValueError("No body channel (G_tilde) cached. Run /api/mimo/compute first.")
+    raise ValueError("MIMO body channel is not ready yet. Wait for the compute to finish and try again.")
 
 
 def _resolve_mimo_x_init(params: dict, G_tilde: np.ndarray) -> np.ndarray:

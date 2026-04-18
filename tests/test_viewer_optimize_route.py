@@ -280,9 +280,12 @@ class TestInvalidModeReturns400:
             "/api/optimize",
             json={"mode": "mimo_peak", "max_iters": "not_a_number"},
         )
-        # 400 because no G_tilde cached, not because of max_iters crash
+        # 400 because no G_tilde cached, not because of max_iters crash.
+        # Error message must be user-friendly and must NOT leak internal API paths.
         assert resp.status_code == 400
-        assert b"No MIMO scene" in resp.data or b"error" in resp.data
+        assert b"error" in resp.data
+        assert b"not ready yet" in resp.data
+        assert b"/api/" not in resp.data
 
 
 class TestCancelEndpoint:
