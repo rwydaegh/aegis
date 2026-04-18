@@ -54,6 +54,42 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-18 10:25 UTC -- "Coherent MIMO and beamforming"
+
+- Actor: interactive
+- Depth: medium
+- Findings: 1 bug filed: #608
+- Notes: Drove the full MIMO surface on Open ground (28 GHz, thelonious).
+  Array sizing scales Sab as expected: 4x4 UPA patch 0.22 W/m^2, 8x8
+  patch 0.87 W/m^2 (4x, matches 64/16 element ratio), 2x16 patch 0.44
+  W/m^2 (2x). Spacing d_h=1.0 lambda held peak near 0.22 W/m^2 because
+  MRT still focuses on the focus point (physics ok, grating lobes don't
+  move the peak). Element pattern toggle: Patch 0.22 vs Isotropic 0.23
+  W/m^2, ~5% difference consistent with isotropic having no backside
+  suppression. Precoder switching with 1 user: MRT/ZF/MMSE/ZF+Exp all
+  collapse to 0.22 W/m^2 as expected (single-user MIMO is degenerate).
+  With 2 users (thelonious + duke), MRT gave User1 0.11 / User2 0.078
+  W/m^2 and ZF was within ~1% of MRT since the users are well-
+  separated in channel space. **#566 verified**: Tilt + power button is
+  correctly disabled (greyed with tooltip) on non-RT Open ground.
+  **#565 verified**: MIMO peak optimizer converged ("Converged after 6
+  iterations, -0% reduction" — 1 user patch already optimal), and the
+  ColorLegend ticks stayed valid (0 / 0.054 / 0.109 / 0.163 / 0.218
+  W/m^2), no NaN. **Bug filed (#608)**: raw internal API path leaks
+  into the MIMO peak Optimize toast when the server's `mimo_scene`
+  cache is stale — "Optimization error: No MIMO scene cached. Run
+  /api/mimo/compute first." Same class of leak as #564/#566; repro is
+  the add-then-remove-user stale-cache race, but a server restart or
+  session timeout would also trigger it. Noted but not filed: on a
+  subsequent attempt the UI state appeared visually deselected
+  (no highlighted strategy) while the a11y tree reported MIMO peak
+  [active] — mild state-desync on tab switch, recovered on reclick.
+  Confident array sizing, spacing, element pattern, precoder
+  switching, and both #565/#566 fixes are healthy. Follow-up surfaces
+  worth a targeted pass: voxel RT MIMO path, lambda_max QCQP
+  saturation regime on ZF+Exp, UPA orientation (only azimuth array
+  tried here).
+
 ### 2026-04-18 08:22 UTC -- "Visualization and analysis"
 
 - Actor: interactive
