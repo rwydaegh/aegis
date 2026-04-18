@@ -54,6 +54,43 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-18 04:20 UTC -- "Visualization and analysis"
+
+- Actor: interactive
+- Depth: medium
+- Findings: none filed
+- Notes: Exercised every Analysis sub-section on the Open ground scenario
+  (28 GHz, 65 dBm). Exposure distribution stats populate correctly
+  (illuminated 43.0%, 3695 cm², P99 0.073 W/m²). SAB histogram renders
+  with log-scale bins. Power sweep converges: Max compliant 65.0 dBm
+  matches the HUD Max TX power (65.1 dBm), red dashed ICNIRP limit line
+  crosses the margin curve at the right spot. Distance sweep is a clean
+  1/r^2 curve from 1-50 m, min compliant 0.3 m, and at current 4.0 m the
+  chart reads ~+22 dB — consistent with the 6 dB-per-doubling rule
+  (22.1 - 12 = +10 at 1 m). Compliance heatmap click-to-jump works:
+  clicking a high-freq cell snapped the simulation to 81.5 GHz / 64.5
+  dBm, and the basic-restriction quantity correctly auto-swapped from
+  Sab(4 cm^2) / 20 W/m^2 to Sab(1 cm^2) / 40 W/m^2 at the 30 GHz
+  boundary, margin +8.7 dB. Frequency sweep rendering initially looked
+  like a suspicious "cliff" shape, so I verified against the API:
+  `/api/compliance/frequency-sweep` returns flat ~+23 dB when driven by
+  only sab_4cm2 + sar_wb + sinc_* (SAR_wb is the tightest), and returns
+  `null` for the sub-30-GHz slice when sab_1cm2 is passed (because 1 cm^2
+  isn't defined below 30 GHz). The chart honestly draws that — flat
+  segment at top of y-axis where data is clipped, break in the line
+  where margin is null. Not a bug, just the chart not auto-scaling when
+  the dominant check changes across freq. Export panel shows all 6
+  buttons enabled (Screenshot PNG, CSV/JSON/NPZ dosimetry, Compliance
+  TXT, Config JSON); clicked CSV and no visible error surfaced (download
+  goes to headless nowhere). Console clean except for known benign
+  warnings (THREE.Clock deprecation, WebGL ReadPixels). Mid-session
+  rolled through deploy bdbc89f → 7897c0c with ~15 s ERR_CONNECTION_REFUSED
+  burst on /api/system polling, recovered automatically. Confident this
+  surface is healthy; the only nit is that the freq-sweep chart y-axis
+  doesn't auto-rescale when only one check is dominant, so users see a
+  flat line pressed against the top — worth considering log scale or
+  auto-zoom but cosmetic, not filed.
+
 ### 2026-04-18 02:18 UTC -- "Visualization and analysis"
 
 - Actor: interactive
@@ -256,7 +293,6 @@ Depth guide:
   Confident the beamforming math, multi-user, UPA sizing, and
   optimize gating are healthy; the ColorLegend stale-state is the
   only real bug and is documented with a surgical fix sketch in #567.
-
 ### 2026-04-17 16:25 UTC -- "Optimization"
 
 - Actor: interactive
