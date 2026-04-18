@@ -2,10 +2,12 @@ import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import { useSimulationStore } from '../../stores/simulation'
 import { useSceneStore } from '../../stores/scene'
+import { useEnvironmentStore } from '../../stores/environment'
 import { viridisColor } from '../../lib/colormap'
 
 export function LSPHeatmap() {
   const pathSource = useSceneStore((s) => s.pathSource)
+  const envSource = useEnvironmentStore((s) => s.source)
   const visible = useSimulationStore((s) => s.lspHeatmapVisible)
   const data = useSimulationStore((s) => s.lspHeatmapData)
   const bounds = useSimulationStore((s) => s.lspHeatmapBounds)
@@ -45,7 +47,7 @@ export function LSPHeatmap() {
 
   useEffect(() => () => { texture?.dispose() }, [texture])
 
-  if (pathSource !== 'stochastic' || !visible || !texture || !data) return null
+  if (pathSource !== 'stochastic' || envSource !== 'none' || !visible || !texture || !data) return null
 
   const [xMin, xMax, yMin, yMax] = bounds
   const width = xMax - xMin

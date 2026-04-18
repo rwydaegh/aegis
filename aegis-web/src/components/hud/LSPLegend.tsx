@@ -1,5 +1,6 @@
 import { useSimulationStore } from '@/stores/simulation'
 import { useSceneStore } from '@/stores/scene'
+import { useEnvironmentStore } from '@/stores/environment'
 import { VIRIDIS_GRADIENT_CSS } from '@/lib/colormap'
 import { getLSPMeta } from '@/lib/lsp-labels'
 import Tex from '@/components/ui/Tex'
@@ -16,13 +17,14 @@ function formatTickValue(value: number): string {
 
 export default function LSPLegend() {
   const pathSource = useSceneStore(s => s.pathSource)
+  const envSource = useEnvironmentStore(s => s.source)
   const visible = useSimulationStore(s => s.lspHeatmapVisible)
   const param = useSimulationStore(s => s.lspHeatmapParam)
   const data = useSimulationStore(s => s.lspHeatmapData)
   const range = useSimulationStore(s => s.lspHeatmapRange)
   const lspHeatmapLoading = useSimulationStore(s => s.lspHeatmapLoading)
 
-  if (pathSource !== 'stochastic' || !visible || !data) return null
+  if (pathSource !== 'stochastic' || envSource !== 'none' || !visible || !data) return null
 
   const [vmin, vmax] = range
   const meta = getLSPMeta(param)
