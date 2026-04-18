@@ -48,9 +48,11 @@ function buildProvMap(bs: BaseStationData): Record<string, string> | null {
   if (!hasFlatProv && !hasNestedProv) return null
 
   const provMap: Record<string, string> = {}
+  // provenance_sources is keyed by canonical field (e.g. "Power"),
+  // while provenance is keyed by API field (e.g. "eirp_dbm").
   for (const [apiField, provField] of Object.entries(API_TO_PROV)) {
     if (bs.provenance_sources) {
-      provMap[provField] = bs.provenance_sources[apiField] ?? 'missing'
+      provMap[provField] = bs.provenance_sources[provField] ?? 'missing'
     } else if (bs.provenance) {
       const entry = bs.provenance[apiField]
       provMap[provField] = entry ? entry.origin : 'missing'
