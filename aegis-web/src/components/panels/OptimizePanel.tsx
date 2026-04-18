@@ -234,10 +234,12 @@ export default function OptimizePanel() {
 
   const { start, stop } = useOptimization()
 
-  const canRun = antennaPos !== null && mode !== null && !running
+  // Only placement needs a single antennaPos; MIMO uses the MIMO array (checked via mimoEnabled)
+  // and tilt_power reads cached RT paths (checked via rtReady).
+  const canRun = mode !== null && !running
   const canRunMimo = mimoEnabled && mode === 'mimo_peak'
   const canRunTiltPower = mode === 'tilt_power' && rtReady
-  const canRunPlacement = mode === 'placement'
+  const canRunPlacement = mode === 'placement' && antennaPos !== null
   const enabled = canRun && (canRunMimo || canRunTiltPower || canRunPlacement)
 
   const chartData = history.map(h => ({ iter: h.iter, value: h.objective }))
