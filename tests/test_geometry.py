@@ -92,7 +92,7 @@ class TestFibonacciSphere:
         np.testing.assert_array_equal(k1, k2)
 
     def test_invalid_n(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="n must be positive"):
             fibonacci_sphere(0)
 
     def test_z_marginal_moments(self):
@@ -204,7 +204,7 @@ class TestDirectivity:
         assert D[1] / D[0] == pytest.approx(2.0, abs=1e-12)
 
     def test_zero_mean_raises(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=r"mean\(A_perp\) must be > 0"):
             compute_directivity(np.array([0.0, 0.0]))
 
 

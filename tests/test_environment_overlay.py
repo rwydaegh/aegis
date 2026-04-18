@@ -15,7 +15,8 @@ def test_tile_coords():
     tx, ty = tile_coords(51.05, 3.72, zoom=15)
     assert isinstance(tx, int)
     assert isinstance(ty, int)
-    assert tx > 0 and ty > 0
+    assert tx > 0
+    assert ty > 0
 
 
 def test_tile_url_osm():

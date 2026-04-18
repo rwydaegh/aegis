@@ -17,7 +17,7 @@ import pytest
 pytest.importorskip("flask")
 
 
-@pytest.fixture()
+@pytest.fixture
 def app():
     """Create a test Flask app with the e2e_icosahedron body."""
     from aegis.viewer.config import load_config

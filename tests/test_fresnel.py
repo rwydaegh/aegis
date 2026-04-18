@@ -35,7 +35,7 @@ class TestFresnelGolden:
         (75, 0.182, 0.952, 0.567),
     ]
 
-    @pytest.mark.parametrize("theta_deg, exp_Ts, exp_Tp, exp_Tavg", TABLE_1)
+    @pytest.mark.parametrize(("theta_deg", "exp_Ts", "exp_Tp", "exp_Tavg"), TABLE_1)
     def test_table1_values(self, theta_deg, exp_Ts, exp_Tp, exp_Tavg):
         mu = np.cos(np.radians(theta_deg))
         T_s, T_p = fresnel_transmission(mu, N_SKIN_28)

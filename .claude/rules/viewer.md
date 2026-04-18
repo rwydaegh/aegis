@@ -27,16 +27,16 @@ description: Viewer-specific rules for the Flask + Three.js 3D frontend
 - Scene data: `src/aegis/viewer/scene_data.py` (binary serialization, uses `set_config()`)
 - Ray tracer: `src/aegis/viewer/raytracer.py` (DiffeRT bridge)
 - CLI entry: `src/aegis/viewer/__main__.py` (`--config`, `--scenario`, voxel/location flags)
-- Default config: `configs/default.json` merged over `config.py` defaults; scenarios in `configs/README.md`
+- Default config: canonical JSON at `src/aegis/viewer/default_config.json`, loaded once at `config.py` import; scenarios in `configs/README.md`
 
 ## Configuration
 
-- All viewer constants live in `config.py` DEFAULTS. No hardcoded values elsewhere.
+- All viewer constants live in `src/aegis/viewer/default_config.json` (exposed via `config.DEFAULTS`). No hardcoded values elsewhere.
 - User configs in `configs/` deep-merge over defaults (only override what you need).
 - Launch: `python -m aegis.viewer --config configs/my_scene.json`
 - Frontend gets config as `CFG` global via Jinja2 template injection.
-- When adding new values: add to DEFAULTS in config.py, regenerate default.json.
-- Never add hardcoded constants to other viewer files. Put them in config.py DEFAULTS.
+- When adding new values: edit `default_config.json` directly; `config.DEFAULTS` reflects it automatically.
+- Never add hardcoded constants to other viewer files. Put them in `default_config.json`.
 
 ## Known issues and QA
 

@@ -79,8 +79,10 @@ class TestGenerateBuilding:
             roof_shape=roof_shape,
             roof_height=3.0,
         )
-        assert verts.ndim == 2 and verts.shape[1] == 3
-        assert tris.ndim == 2 and tris.shape[1] == 3
+        assert verts.ndim == 2
+        assert verts.shape[1] == 3
+        assert tris.ndim == 2
+        assert tris.shape[1] == 3
         assert mats.ndim == 1
         assert len(mats) == len(tris)
         assert tris.max() < len(verts)

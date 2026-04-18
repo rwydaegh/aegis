@@ -183,7 +183,11 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(description="AEGIS interactive 3D viewer")
     parser.add_argument("--version", action="version", version=f"aegis-viewer {__version__}")
-    parser.add_argument("--config", default=None, help="Path to JSON config file (see configs/default.json for schema)")
+    parser.add_argument(
+        "--config",
+        default=None,
+        help="Path to JSON config file (see src/aegis/viewer/default_config.json for schema)",
+    )
     parser.add_argument(
         "--scenario",
         default=None,

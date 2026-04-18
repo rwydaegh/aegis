@@ -282,7 +282,7 @@ class TestAntennaPattern:
             AntennaPattern(gain_dbi=np.zeros((181, 100), dtype=np.float32), max_gain_dbi=0.0)
 
     def test_rejects_1d(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=r"must be \(181, 360\)"):
             AntennaPattern(gain_dbi=np.zeros(181 * 360, dtype=np.float32), max_gain_dbi=0.0)
 
     def test_evaluate_at_boresight_gives_max_gain(self):
@@ -312,7 +312,7 @@ class TestAntennaPattern:
 class TestBaseStation:
     """BaseStation property computation."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def bs(self):
         return BaseStation(
             site_code="TEST001",
@@ -475,7 +475,7 @@ class TestSafeFloat:
 class TestPathsFromBasestation:
     """paths_from_basestation returns valid PropagationPaths."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def bs(self):
         return BaseStation(
             site_code="TEST001",

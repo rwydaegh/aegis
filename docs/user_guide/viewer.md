@@ -35,7 +35,7 @@ Common backend flags:
 
 | Flag | Purpose |
 |------|---------|
-| `--config path.json` | Merge JSON over built-in defaults (see `configs/default.json`). |
+| `--config path.json` | Merge JSON over built-in defaults (see `src/aegis/viewer/default_config.json`). |
 | `--scenario name` | Apply a named scenario from the config file. |
 | `--no-open` | Do not open a browser tab. |
 | `--port N` | HTTP port (default 5000). |
@@ -104,7 +104,7 @@ The hook debounces rapid parameter changes so only the latest input combination 
 
 ## Configuration and scenarios
 
-Viewer constants are defined in `src/aegis/viewer/config.py` and merged with your JSON. The repo ships `configs/default.json` plus [configs/README.md](https://github.com/rwydaegh/aegis/blob/master/configs/README.md) for the schema.
+Viewer defaults live in `src/aegis/viewer/default_config.json` (loaded once at import via `importlib.resources`) and your JSON is deep-merged over them. See [configs/README.md](https://github.com/rwydaegh/aegis/blob/master/configs/README.md) for the schema.
 
 **Scenarios** group launch inputs so runs are repeatable:
 

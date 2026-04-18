@@ -1,6 +1,6 @@
 # Viewer configuration
 
-`default.json` is merged on top of `src/aegis/viewer/config.py` defaults (deep merge). You can copy it to a new file and pass `--config path/to/yours.json`.
+User config files in this directory are deep-merged on top of the canonical defaults at `src/aegis/viewer/default_config.json` (loaded automatically). Copy an existing example to a new file, override the keys you want, and pass `--config path/to/yours.json`.
 
 ## Scenarios
 
@@ -33,7 +33,7 @@ Built-in default scenarios live in `config.py` (e.g. `open_ground`: body + groun
 }
 ```
 
-Run: `python -m aegis.viewer --config configs/default.json --scenario my_site`.
+Run: `python -m aegis.viewer --config configs/outdoor_urban.json --scenario my_site`.
 
 `--location` / `--voxel-dir` on the CLI still win over the scenario after merge.
 

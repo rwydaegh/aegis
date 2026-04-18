@@ -5,7 +5,7 @@ import { useUIStore } from '@/stores/ui'
 import { useVoxelLoader } from '@/hooks/useVoxelLoader'
 import { useClickToPlace } from '@/hooks/useClickToPlace'
 
-// Default material colors - must match configs/default.json voxels.material_colors
+// Default material colors - must match src/aegis/viewer/default_config.json voxels.material_colors
 const DEFAULT_MATERIAL_COLORS: Record<string, [number, number, number]> = {
   concrete: [180, 180, 180],
   asphalt: [80, 80, 80],

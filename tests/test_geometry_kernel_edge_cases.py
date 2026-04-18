@@ -57,11 +57,11 @@ class TestFibonacciSphere:
         assert abs(norm - 1.0) < 1e-12
 
     def test_negative_n_raises(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="n must be positive"):
             fibonacci_sphere(-1)
 
     def test_zero_n_raises(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="n must be positive"):
             fibonacci_sphere(0)
 
     def test_all_unit_length(self):

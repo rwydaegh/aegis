@@ -104,11 +104,11 @@ class TestGeocodeLocation:
 class TestPathsFromBasestations:
     """Tests for multi-station path aggregation."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def origin(self):
         return (51.050, 3.720)
 
-    @pytest.fixture()
+    @pytest.fixture
     def body_center(self):
         return np.array([0.0, 50.0, 1.5])
 

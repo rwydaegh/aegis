@@ -73,7 +73,7 @@ class TestEnvironmentMesh:
             EnvironmentMesh.combine(simple_mesh, other)
 
     def test_combine_empty(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="At least one mesh required"):
             EnvironmentMesh.combine()
 
 

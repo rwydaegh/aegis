@@ -22,7 +22,7 @@ Change the server port in your viewer config (`server.port` in JSON) or pass **`
 
 Symptoms: viewer loads but wrong scenario, missing keys, or merge behaviour surprises you.
 
-Use **`configs/default.json`** as the reference shape. Scenario blocks only override keys present in the file. For nested objects, deep merge is recursive: it only replaces the specific keys you override, preserving sibling keys you did not mention. See [Interactive viewer](viewer.md) and the files under `configs/`.
+Use **`src/aegis/viewer/default_config.json`** as the reference shape. Scenario blocks only override keys present in the file. For nested objects, deep merge is recursive: it only replaces the specific keys you override, preserving sibling keys you did not mention. See [Interactive viewer](viewer.md) and the files under `configs/`.
 
 ## Wrong Python version
 
