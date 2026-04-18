@@ -14,6 +14,7 @@ from aegis.mimo.array import AntennaArray
 from aegis.mimo.compute import compute_mimo_scene_with_bodies
 from aegis.mimo.scene import MIMOScene
 from aegis.mimo.user import UserConfig, UserState
+from aegis.viewer.routes._types import RouteResponse
 from aegis.viewer.routes.compute import _json_dumps_safe
 from aegis.viewer.server import scoped_cache_get, scoped_cache_set
 
@@ -21,9 +22,10 @@ logger = logging.getLogger(__name__)
 
 _OCTET_STREAM = "application/octet-stream"
 _ERR_VEC3_LEN = "must have 3 elements"
+_ErrResp = tuple[Response, int]
 
 
-def _parse_vec3(raw, label: str):
+def _parse_vec3(raw, label: str) -> tuple[np.ndarray | None, _ErrResp | None]:
     """Parse a 3-element numeric array.
 
     Returns (np.ndarray, None) on success or (None, error_response) on failure.
@@ -37,7 +39,7 @@ def _parse_vec3(raw, label: str):
     return arr, None
 
 
-def _validate_users_cfg(users_cfg):
+def _validate_users_cfg(users_cfg) -> _ErrResp | None:
     """Validate the users list config.
 
     Returns None on success or an error response tuple on failure.
@@ -53,7 +55,9 @@ def _validate_users_cfg(users_cfg):
     return None
 
 
-def _parse_scene_scalars(params: dict):
+def _parse_scene_scalars(
+    params: dict,
+) -> tuple[dict[str, float] | None, _ErrResp | None]:
     """Parse freq_hz, power_dbm and compute derived wavelength/total_power.
 
     Returns ({freq_hz, wavelength, total_power}, None) on success
@@ -81,7 +85,7 @@ def _parse_scene_scalars(params: dict):
     )
 
 
-def _build_antenna_array(array_cfg: dict, wavelength: float):
+def _build_antenna_array(array_cfg: dict, wavelength: float) -> tuple[AntennaArray | None, _ErrResp | None]:
     """Build the AntennaArray from request config.
 
     Returns (array, None) on success or (None, error_response) on failure.
@@ -115,9 +119,11 @@ def _build_antenna_array(array_cfg: dict, wavelength: float):
     position, err = _parse_vec3(raw_position, "array position")
     if err is not None:
         return None, err
+    assert position is not None  # noqa: S101 - helper contract
     broadside, err = _parse_vec3(raw_broadside, "array broadside")
     if err is not None:
         return None, err
+    assert broadside is not None  # noqa: S101 - helper contract
 
     try:
         array = AntennaArray.upa(
@@ -134,7 +140,7 @@ def _build_antenna_array(array_cfg: dict, wavelength: float):
     return array, None
 
 
-def _build_user_state(u: dict, cache: dict):
+def _build_user_state(u: dict, cache: dict) -> tuple[UserState | None, _ErrResp | None]:
     """Build a single UserState from a user config dict.
 
     Returns (UserState, None) on success or (None, error_response) on failure.
@@ -148,12 +154,14 @@ def _build_user_state(u: dict, cache: dict):
     user_pos, err = _parse_vec3(u.get("position", [0.0, 0.0, 0.0]), f"user position for '{uid_label}'")
     if err is not None:
         return None, err
+    assert user_pos is not None  # noqa: S101 - helper contract
 
     default_offset = cache.get("body_device_offsets", {}).get(phantom, [0.0, 0.30, 1.4])
     raw_offset = u.get("device_offset") or u.get("device_position") or default_offset
     device_offset, err = _parse_vec3(raw_offset, f"device offset for '{uid_label}'")
     if err is not None:
         return None, err
+    assert device_offset is not None  # noqa: S101 - helper contract
 
     orientation = float(u.get("orientation", 0.0))
     cos_o, sin_o = np.cos(orientation), np.sin(orientation)
@@ -169,6 +177,7 @@ def _build_user_state(u: dict, cache: dict):
     device_orientation, err = _parse_vec3(u.get("device_orientation", [0.0, 0.0, 1.0]), "device orientation")
     if err is not None:
         return None, err
+    assert device_orientation is not None  # noqa: S101 - helper contract
 
     try:
         cfg = UserConfig(
@@ -185,30 +194,34 @@ def _build_user_state(u: dict, cache: dict):
     return UserState(config=cfg), None
 
 
-def _build_scene(params: dict, cache: dict) -> tuple[MIMOScene | None, Response | None]:
+def _build_scene(params: dict, cache: dict) -> tuple[MIMOScene | None, _ErrResp | None]:
     """Build a MIMOScene from request params. Returns (scene, None) or (None, error_response)."""
     array_cfg = params.get("array")
     if not array_cfg:
         return None, (jsonify({"error": "Missing 'array' in request"}), 400)
 
     users_cfg = params.get("users")
-    err = _validate_users_cfg(users_cfg)
-    if err is not None:
-        return None, err
+    users_err = _validate_users_cfg(users_cfg)
+    if users_err is not None:
+        return None, users_err
+    assert isinstance(users_cfg, list)  # noqa: S101 - _validate_users_cfg ensures this
 
     scalars, err = _parse_scene_scalars(params)
     if err is not None:
         return None, err
+    assert scalars is not None  # noqa: S101 - helper contract
 
     array, err = _build_antenna_array(array_cfg, scalars["wavelength"])
     if err is not None:
         return None, err
+    assert array is not None  # noqa: S101 - helper contract
 
-    users = []
+    users: list[UserState] = []
     for u in users_cfg:
         user_state, err = _build_user_state(u, cache)
         if err is not None:
             return None, err
+        assert user_state is not None  # noqa: S101 - helper contract
         users.append(user_state)
 
     scene = MIMOScene(
@@ -306,12 +319,13 @@ def _user_stats(user: UserState, scene: MIMOScene) -> dict:
     return stats
 
 
-def _api_mimo_compute_impl(cache: dict, cache_lock) -> Response:
+def _api_mimo_compute_impl(cache: dict, cache_lock) -> RouteResponse:
     params = request.get_json(silent=True) or {}
 
     scene, err = _build_scene(params, cache)
     if err is not None:
         return err
+    assert scene is not None  # noqa: S101 - helper contract
 
     # Resolve body meshes (only base bodies needed; compute translates them)
     bodies = {name: entry["body"] for name, entry in cache.get("bodies", {}).items()}
@@ -354,7 +368,7 @@ def _api_mimo_compute_impl(cache: dict, cache_lock) -> Response:
     return jsonify(summary)
 
 
-def _api_mimo_result_impl(user_id: str, cache: dict, cache_lock) -> Response:
+def _api_mimo_result_impl(user_id: str, cache: dict, cache_lock) -> RouteResponse:
     results_binary = scoped_cache_get(cache, "mimo_results_binary")
     if not results_binary or user_id not in results_binary:
         return jsonify({"error": f"No result for user {user_id!r}"}), 404
@@ -368,7 +382,7 @@ def _api_mimo_result_impl(user_id: str, cache: dict, cache_lock) -> Response:
     return resp
 
 
-def _api_mimo_summary_impl(cache: dict, cache_lock) -> Response:
+def _api_mimo_summary_impl(cache: dict, cache_lock) -> RouteResponse:
     summary = scoped_cache_get(cache, "mimo_summary")
     scene = scoped_cache_get(cache, "mimo_scene")
     if summary is None or scene is None:
@@ -378,7 +392,7 @@ def _api_mimo_summary_impl(cache: dict, cache_lock) -> Response:
     exposure_budget_mw = float(config.get("mimo", {}).get("exposure_budget_mw", 100.0))
 
     users_out = []
-    results_stats = scoped_cache_get(cache, "mimo_results_stats", {})
+    results_stats = scoped_cache_get(cache, "mimo_results_stats", {}) or {}
     for user in scene.users:
         uid = user.config.user_id
         stats = results_stats.get(uid, {})

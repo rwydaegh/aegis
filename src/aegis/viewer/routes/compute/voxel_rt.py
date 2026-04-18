@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 import numpy as np
 from flask import Response, jsonify, request
 
 from aegis.defaults import DEFAULT_POWER_DBM
+from aegis.viewer.routes._types import RouteResponse
 
 from ._parsing import (
     _ERR_INVALID_JSON,
@@ -28,15 +30,19 @@ from ._rt_config import _parse_rt_config
 
 logger = logging.getLogger(__name__)
 
+_ErrResp = tuple[Response, int]
 
-def _run_dosimetry(tissue, body, paths, engine_kw):
+
+def _run_dosimetry(tissue, body, paths, engine_kw) -> tuple[Any, _ErrResp | None]:
     """Proxy to package-level `_run_dosimetry` so tests can mock it."""
     from aegis.viewer.routes import compute as _pkg
 
     return _pkg._run_dosimetry(tissue, body, paths, engine_kw)
 
 
-def _load_voxel_request(cache: dict, cache_lock, params: dict):
+def _load_voxel_request(
+    cache: dict, cache_lock, params: dict
+) -> tuple[tuple[Any, Any, Any, Any, Any] | None, _ErrResp | None]:
     """Fetch body mesh + voxel data from the cache.
 
     Returns ((body, voxel_positions, voxel_sizes, voxel_materials, cfg), None) on success
@@ -56,7 +62,7 @@ def _load_voxel_request(cache: dict, cache_lock, params: dict):
     return (entry["body"], voxel_positions, voxel_sizes, voxel_materials, cfg), None
 
 
-def _parse_voxel_rt_params(params: dict, cache: dict):
+def _parse_voxel_rt_params(params: dict, cache: dict) -> tuple[dict[str, Any] | None, _ErrResp | None]:
     """Parse shared RT params for the voxel-RT route.
 
     Returns (parsed_dict, None) or (None, error_response).
@@ -102,7 +108,9 @@ def _parse_voxel_rt_params(params: dict, cache: dict):
     }, None
 
 
-def _build_voxel_rt_scene(voxel_positions, voxel_sizes, voxel_materials, cfg, max_order: int, max_rt_triangles: int):
+def _build_voxel_rt_scene(
+    voxel_positions, voxel_sizes, voxel_materials, cfg, max_order: int, max_rt_triangles: int
+) -> tuple[dict[str, Any] | None, _ErrResp | None]:
     """Build the voxel RT scene hull + per-face material list for Modal Sionna.
 
     Returns (scene_dict, None) on success or (None, error_response) on failure.
@@ -175,7 +183,7 @@ def _sionna_rt_config(rt_cfg: dict) -> dict:
 
 def _invoke_modal_voxel_trace(
     voxel_positions, scene_data, antenna_pos, body_center, max_order, tissue, power_dbm, rt_cfg_dict
-):
+) -> tuple[dict[str, Any] | None, _ErrResp | None]:
     """Call Modal trace_sionna_voxel with an appropriate scene key.
 
     Returns (modal_result, None) on success or (None, error_response) on failure.
@@ -210,7 +218,7 @@ def _invoke_modal_voxel_trace(
     return modal_result, None
 
 
-def _api_compute_voxel_rt_impl(cache: dict, cache_lock) -> Response:
+def _api_compute_voxel_rt_impl(cache: dict, cache_lock) -> RouteResponse:
     """Compute dosimetry using Sionna RT on the voxel environment geometry (via Modal GPU)."""
     from aegis.viewer.compute import _transform_body_for_viewer
 
@@ -221,11 +229,13 @@ def _api_compute_voxel_rt_impl(cache: dict, cache_lock) -> Response:
     loaded, err = _load_voxel_request(cache, cache_lock, params)
     if err is not None:
         return err
+    assert loaded is not None  # noqa: S101 - helper contract
     body, voxel_positions, voxel_sizes, voxel_materials, cfg = loaded
 
     pp, err = _parse_voxel_rt_params(params, cache)
     if err is not None:
         return err
+    assert pp is not None  # noqa: S101 - helper contract
 
     transformed_body = _transform_body_for_viewer(body, pp["body_offset"], pp["body_rotation_y"])
     body_center = transformed_body.centroids.mean(axis=0)
@@ -242,6 +252,7 @@ def _api_compute_voxel_rt_impl(cache: dict, cache_lock) -> Response:
     )
     if err is not None:
         return err
+    assert scene_data is not None  # noqa: S101 - helper contract
 
     from aegis.viewer.modal_proxy import gpu_status as _gpu_status
 
@@ -261,6 +272,7 @@ def _api_compute_voxel_rt_impl(cache: dict, cache_lock) -> Response:
     )
     if err is not None:
         return err
+    assert modal_result is not None  # noqa: S101 - helper contract
 
     from aegis.paths import PropagationPaths
 
@@ -278,6 +290,7 @@ def _api_compute_voxel_rt_impl(cache: dict, cache_lock) -> Response:
     result, err = _run_dosimetry(pp["tissue"], transformed_body, paths, pp["engine_kw"])
     if err:
         return err
+    assert result is not None  # noqa: S101 - helper contract
     t_compute = _time.perf_counter()
 
     dist = float(np.linalg.norm(pp["antenna_pos"] - body_center))
@@ -311,5 +324,7 @@ def _api_compute_voxel_rt_impl(cache: dict, cache_lock) -> Response:
     )
     if err:
         return err
+    assert resp is not None  # noqa: S101 - helper contract
+    assert stats is not None  # noqa: S101 - helper contract
     _cache_dosimetry_for_export(cache, result, transformed_body, stats, paths=paths)
     return resp

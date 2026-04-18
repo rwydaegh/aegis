@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import logging
 import math
+from typing import Any
 
 import numpy as np
 from flask import Response, jsonify, request
 
 from aegis.defaults import DEFAULT_POWER_DBM
+from aegis.viewer.routes._types import RouteResponse
 from aegis.viewer.server import scoped_cache_get
 
 from ._parsing import (
@@ -31,6 +33,8 @@ from ._rt_config import _parse_rt_config
 
 logger = logging.getLogger(__name__)
 
+_ErrResp = tuple[Response, int]
+
 
 def _validate_scene_path(scene_path: str) -> bool:
     """Proxy to package-level `_validate_scene_path` so tests can mock it."""
@@ -39,14 +43,14 @@ def _validate_scene_path(scene_path: str) -> bool:
     return _pkg._validate_scene_path(scene_path)
 
 
-def _run_dosimetry(tissue, body, paths, engine_kw):
+def _run_dosimetry(tissue, body, paths, engine_kw) -> tuple[Any, _ErrResp | None]:
     """Proxy to package-level `_run_dosimetry` so tests can mock it."""
     from aegis.viewer.routes import compute as _pkg
 
     return _pkg._run_dosimetry(tissue, body, paths, engine_kw)
 
 
-def _parse_power_dbm(params: dict):
+def _parse_power_dbm(params: dict) -> tuple[float | None, _ErrResp | None]:
     """Parse and validate power_dbm. Returns (float, None) or (None, error_response)."""
     try:
         power_dbm = float(params.get("power_dbm", DEFAULT_POWER_DBM))
@@ -76,7 +80,7 @@ def _sionna_rt_config(rt_cfg: dict) -> dict:
     }
 
 
-def _resolve_body_from_cache(cache: dict, cache_lock, params: dict):
+def _resolve_body_from_cache(cache: dict, cache_lock, params: dict) -> tuple[Any, _ErrResp | None]:
     """Resolve cached body mesh for a scene-based request."""
     body_name = params.get("body_name", cache.get("default_body"))
     with cache_lock:
@@ -86,7 +90,7 @@ def _resolve_body_from_cache(cache: dict, cache_lock, params: dict):
     return entry["body"], None
 
 
-def _parse_common_sionna_params(params: dict, cache: dict):
+def _parse_common_sionna_params(params: dict, cache: dict) -> tuple[dict[str, Any] | None, _ErrResp | None]:
     """Parse shared sionna route parameters (antenna pos, offsets, engine, power, tissue, ...)."""
     antenna_pos, err = _parse_vec3(params, "antenna_pos", [5, 0, 1])
     if err:
@@ -126,7 +130,7 @@ def _parse_common_sionna_params(params: dict, cache: dict):
 
 def _finalize_rt_response(
     cache, transformed_body, body, paths, path_viz, gpu_backend, rt_ms, was_cold, backend_label, pp, timings
-):
+) -> RouteResponse:
     """Run dosimetry, build binary X-Stats response, and cache for export.
 
     ``timings`` is a dict with keys: ``t_route``, ``t_rt``.
@@ -141,6 +145,7 @@ def _finalize_rt_response(
     result, err = _run_dosimetry(pp["tissue"], transformed_body, paths, pp["engine_kw"])
     if err:
         return err
+    assert result is not None  # noqa: S101 - helper contract
     t_compute = _time.perf_counter()
 
     body_center_arr = timings.get("body_center")
@@ -177,11 +182,15 @@ def _finalize_rt_response(
     )
     if err:
         return err
+    assert resp is not None  # noqa: S101 - helper contract
+    assert stats is not None  # noqa: S101 - helper contract
     _cache_dosimetry_for_export(cache, result, transformed_body, stats, paths=paths)
     return resp
 
 
-def _call_modal_sionna_scene(scene_path: str, antenna_pos, body_center, pp, rt_cfg_dict):
+def _call_modal_sionna_scene(
+    scene_path: str, antenna_pos, body_center, pp, rt_cfg_dict
+) -> tuple[dict[str, Any] | None, _ErrResp | None]:
     """Run Sionna RT on Modal using a scene-file source.
 
     Returns (modal_result, None) or (None, error_response) on failure.
@@ -216,7 +225,7 @@ def _unpack_modal_result(modal_result: dict):
     return paths, path_viz, gpu_backend, rt_ms
 
 
-def _api_compute_sionna_rt_impl(cache: dict, cache_lock) -> Response:
+def _api_compute_sionna_rt_impl(cache: dict, cache_lock) -> RouteResponse:
     """Compute dosimetry using Sionna RT ray-traced paths (via Modal GPU)."""
     from aegis.viewer.compute import _transform_body_for_viewer
 
@@ -227,6 +236,7 @@ def _api_compute_sionna_rt_impl(cache: dict, cache_lock) -> Response:
     body, err = _resolve_body_from_cache(cache, cache_lock, params)
     if err is not None:
         return err
+    assert body is not None  # noqa: S101 - helper contract
 
     scene_path = params.get("scene_path")
     if not scene_path:
@@ -237,6 +247,7 @@ def _api_compute_sionna_rt_impl(cache: dict, cache_lock) -> Response:
     pp, err = _parse_common_sionna_params(params, cache)
     if err is not None:
         return err
+    assert pp is not None  # noqa: S101 - helper contract
 
     # RT receiver: use configured default center (z=1m) shifted by body offset
     default_bc = np.array(cache["config"]["raytracer"]["default_body_center"])
@@ -257,6 +268,7 @@ def _api_compute_sionna_rt_impl(cache: dict, cache_lock) -> Response:
     modal_result, err = _call_modal_sionna_scene(scene_path, pp["antenna_pos"], body_center, pp, rt_cfg_dict)
     if err is not None:
         return err
+    assert modal_result is not None  # noqa: S101 - helper contract
 
     paths, path_viz, gpu_backend, rt_ms = _unpack_modal_result(modal_result)
 
@@ -277,7 +289,7 @@ def _api_compute_sionna_rt_impl(cache: dict, cache_lock) -> Response:
     )
 
 
-def _load_env_request(cache: dict, cache_lock, params: dict):
+def _load_env_request(cache: dict, cache_lock, params: dict) -> tuple[tuple[Any, Any, Any] | None, _ErrResp | None]:
     """Fetch body mesh + environment mesh from the cache.
 
     Returns ((body, env_mesh, cfg), None) or (None, error_response) on failure.
@@ -294,7 +306,9 @@ def _load_env_request(cache: dict, cache_lock, params: dict):
     return (entry["body"], env_mesh, cfg), None
 
 
-def _build_env_mesh_scene(env_mesh, max_order: int, max_rt_triangles: int):
+def _build_env_mesh_scene(
+    env_mesh, max_order: int, max_rt_triangles: int
+) -> tuple[tuple[Any, Any, Any] | None, _ErrResp | None]:
     """Convert environment mesh to Sionna-ready scene data with triangle cap check.
 
     Returns ((hull_verts, hull_tris, per_face_mats), None) on success or
@@ -323,7 +337,7 @@ def _build_env_mesh_scene(env_mesh, max_order: int, max_rt_triangles: int):
 
 def _call_modal_sionna_env(
     env_mesh, scene_data: dict, antenna_pos, body_center, max_order: int, pp: dict, rt_cfg_dict: dict
-):
+) -> tuple[dict[str, Any] | None, _ErrResp | None]:
     """Run Sionna RT on Modal with an environment-mesh scene.
 
     Returns (modal_result, None) on success or (None, error_response) on failure.
@@ -354,7 +368,7 @@ def _call_modal_sionna_env(
     return modal_result, None
 
 
-def _api_compute_sionna_env_rt_impl(cache: dict, cache_lock) -> Response:
+def _api_compute_sionna_env_rt_impl(cache: dict, cache_lock) -> RouteResponse:
     """Compute dosimetry using Sionna RT on the environment mesh (via Modal GPU)."""
     from aegis.viewer.compute import _transform_body_for_viewer
 
@@ -365,11 +379,13 @@ def _api_compute_sionna_env_rt_impl(cache: dict, cache_lock) -> Response:
     loaded, err = _load_env_request(cache, cache_lock, params)
     if err is not None:
         return err
+    assert loaded is not None  # noqa: S101 - helper contract
     body, env_mesh, cfg = loaded
 
     pp, err = _parse_common_sionna_params(params, cache)
     if err is not None:
         return err
+    assert pp is not None  # noqa: S101 - helper contract
 
     transformed_body = _transform_body_for_viewer(body, pp["body_offset"], pp["body_rotation_y"])
     body_center = transformed_body.centroids.mean(axis=0)
@@ -384,6 +400,7 @@ def _api_compute_sionna_env_rt_impl(cache: dict, cache_lock) -> Response:
     scene_parts, err = _build_env_mesh_scene(env_mesh, max_order, max_rt_triangles)
     if err is not None:
         return err
+    assert scene_parts is not None  # noqa: S101 - helper contract
     hull_verts, hull_tris, per_face_mats = scene_parts
 
     from aegis.viewer.modal_proxy import gpu_status as _gpu_status
@@ -403,6 +420,7 @@ def _api_compute_sionna_env_rt_impl(cache: dict, cache_lock) -> Response:
     )
     if err is not None:
         return err
+    assert modal_result is not None  # noqa: S101 - helper contract
 
     paths, path_viz, gpu_backend, rt_ms = _unpack_modal_result(modal_result)
 

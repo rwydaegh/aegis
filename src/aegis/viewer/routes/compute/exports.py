@@ -7,12 +7,13 @@ import json
 import numpy as np
 from flask import Response, jsonify
 
+from aegis.viewer.routes._types import RouteResponse
 from aegis.viewer.server import scoped_cache_get
 
 from ._responses import _ERR_NO_EXPORT_DATA
 
 
-def _export_dosimetry_csv_impl(cache: dict, cache_lock) -> Response:
+def _export_dosimetry_csv_impl(cache: dict, cache_lock) -> RouteResponse:
     """Export last dosimetry result as a comprehensive CSV.
 
     Includes per-triangle centroids, areas, normals, and all computed
@@ -84,7 +85,7 @@ def _export_dosimetry_csv_impl(cache: dict, cache_lock) -> Response:
     return resp
 
 
-def _export_dosimetry_json_impl(cache: dict, cache_lock) -> Response:
+def _export_dosimetry_json_impl(cache: dict, cache_lock) -> RouteResponse:
     """Export last dosimetry result as a self-describing JSON file.
 
     Includes per-triangle data, compliance verdict, and peak statistics.
@@ -128,7 +129,7 @@ def _export_dosimetry_json_impl(cache: dict, cache_lock) -> Response:
     return resp
 
 
-def _export_dosimetry_npz_impl(cache: dict, cache_lock) -> Response:
+def _export_dosimetry_npz_impl(cache: dict, cache_lock) -> RouteResponse:
     """Export last dosimetry result as a NumPy .npz archive.
 
     Preserves full float64 precision and is much smaller than CSV for

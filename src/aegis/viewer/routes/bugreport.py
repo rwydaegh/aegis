@@ -8,9 +8,10 @@ from datetime import UTC, datetime
 from pathlib import Path
 from urllib.request import Request, urlopen
 
-from flask import Flask, Response, jsonify, request, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory
 
 from aegis.viewer.config import DEFAULTS as _VIEWER_DEFAULTS
+from aegis.viewer.routes._types import RouteResponse
 
 log = logging.getLogger(__name__)
 
@@ -25,11 +26,11 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
     SCREENSHOT_DIR.mkdir(parents=True, exist_ok=True)
 
     @app.route("/bug-screenshots/<path:filename>")
-    def serve_bug_screenshot(filename: str) -> Response:
+    def serve_bug_screenshot(filename: str) -> RouteResponse:
         return send_from_directory(str(SCREENSHOT_DIR), filename)
 
     @app.route("/api/bug-report", methods=["POST"])
-    def bug_report() -> Response:
+    def bug_report() -> RouteResponse:
         payload = request.get_json(silent=True) or {}
 
         description = payload.get("description", "").strip()

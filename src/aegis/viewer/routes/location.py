@@ -6,19 +6,23 @@ import json
 import logging
 import os
 from pathlib import Path
+from typing import Any
 
 import requests as http_requests
 from flask import Flask, Response, jsonify, request, session
 
 from aegis.viewer.config import DEFAULTS as _VIEWER_DEFAULTS
+from aegis.viewer.routes._types import RouteResponse
 
 logger = logging.getLogger(__name__)
+
+_ErrResp = tuple[Response, int]
 
 _GOOGLE_API_KEY_MISSING = "GOOGLE_API_KEY not set"
 _NETWORK_TIMEOUT_S = _VIEWER_DEFAULTS["server"]["network_timeout_s"]
 
 
-def _parse_load_params():
+def _parse_load_params() -> tuple[dict[str, Any] | None, _ErrResp | None]:
     """Parse location/radius/voxel_size/force from request args.
 
     Returns (params_dict, None) on success or (None, error_response) on failure.
@@ -36,7 +40,7 @@ def _parse_load_params():
     )
 
 
-def _validate_load_params(params: dict):
+def _validate_load_params(params: dict) -> _ErrResp | None:
     """Validate parsed location load params.
 
     Returns None on success or an error response tuple on failure.
@@ -58,7 +62,9 @@ def _validate_load_params(params: dict):
     return None
 
 
-def _resolve_pipeline_paths(cache: dict, location: str, radius: int):
+def _resolve_pipeline_paths(
+    cache: dict, location: str, radius: int
+) -> tuple[tuple[Any, Any, Any, Any] | None, _ErrResp | None]:
     """Resolve pipeline script path and output directories.
 
     Returns ((pipeline_js, pipeline_output, voxel_output), None) on success
@@ -155,14 +161,15 @@ def _stream_voxel_load(cache: dict, cache_lock, voxel_output: Path):
     yield f"event: done\ndata: {json.dumps(meta)}\n\n"
 
 
-def _api_location_load_impl(cache: dict, cache_lock) -> Response:
+def _api_location_load_impl(cache: dict, cache_lock) -> RouteResponse:
     """Stream pipeline progress via SSE, then load voxels."""
     params, err = _parse_load_params()
     if err is not None:
         return err
-    err = _validate_load_params(params)
-    if err is not None:
-        return err
+    assert params is not None  # noqa: S101 - helper contract
+    validate_err = _validate_load_params(params)
+    if validate_err is not None:
+        return validate_err
 
     api_key = os.environ.get("GOOGLE_API_KEY", "")
     if not api_key:
@@ -171,6 +178,7 @@ def _api_location_load_impl(cache: dict, cache_lock) -> Response:
     paths, err = _resolve_pipeline_paths(cache, params["location"], params["radius"])
     if err is not None:
         return err
+    assert paths is not None  # noqa: S101 - helper contract
     _pipeline_js, pipeline_output, voxel_output, pipeline_dir = paths
 
     resolution = _compute_resolution(params["radius"], params["voxel_size"])
@@ -209,7 +217,7 @@ def _api_location_load_impl(cache: dict, cache_lock) -> Response:
     )
 
 
-def _validate_geocode_query(q: str):
+def _validate_geocode_query(q: str) -> _ErrResp | None:
     """Validate the geocode query string. Returns None or an error response."""
     if not q:
         return jsonify({"error": "Missing q parameter"}), 400
@@ -218,7 +226,7 @@ def _validate_geocode_query(q: str):
     return None
 
 
-def _fetch_geocode(q: str, api_key: str):
+def _fetch_geocode(q: str, api_key: str) -> tuple[dict[str, Any] | None, _ErrResp | None]:
     """Call Google Geocoding API. Returns (data, None) or (None, error_response)."""
     try:
         resp = http_requests.get(
@@ -233,7 +241,7 @@ def _fetch_geocode(q: str, api_key: str):
         return None, (jsonify({"error": f"Geocoding failed: {exc}"}), 502)
 
 
-def _extract_geocode_result(data: dict, q: str):
+def _extract_geocode_result(data: dict, q: str) -> tuple[tuple[float, float, str] | None, _ErrResp | None]:
     """Extract (lat, lng, formatted) from geocoding response.
 
     Returns ((lat, lng, formatted), None) on success or (None, error_response) on failure.
@@ -251,7 +259,7 @@ def _extract_geocode_result(data: dict, q: str):
     return (lat, lng, formatted), None
 
 
-def _api_geocode_impl(cache: dict, cache_lock) -> Response:
+def _api_geocode_impl(cache: dict, cache_lock) -> RouteResponse:
     """Resolve a text location to lat/lon using Google Geocoding API."""
     q = request.args.get("q", "").strip()
     err = _validate_geocode_query(q)
@@ -265,15 +273,17 @@ def _api_geocode_impl(cache: dict, cache_lock) -> Response:
     data, err = _fetch_geocode(q, api_key)
     if err is not None:
         return err
+    assert data is not None  # noqa: S101 - helper contract
 
     extracted, err = _extract_geocode_result(data, q)
     if err is not None:
         return err
+    assert extracted is not None  # noqa: S101 - helper contract
     lat, lng, formatted = extracted
     return jsonify({"lat": lat, "lon": lng, "formatted": formatted})
 
 
-def _api_location_cancel_impl(cache: dict, cache_lock) -> Response:
+def _api_location_cancel_impl(cache: dict, cache_lock) -> RouteResponse:
     """Kill running pipeline subprocess for the current session."""
     from aegis.viewer.pipeline import cancel_pipeline
 

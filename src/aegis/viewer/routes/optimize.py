@@ -18,6 +18,7 @@ import numpy as np
 from flask import Flask, Response, jsonify, request, session
 
 from aegis.optim.loop import run_optimization
+from aegis.viewer.routes._types import RouteResponse
 from aegis.viewer.server import scoped_cache_get
 
 logger = logging.getLogger(__name__)
@@ -111,7 +112,7 @@ def _parse_rt_config(params: dict, cache: dict) -> dict[str, Any]:
     }
 
 
-def _api_optimize_impl(app: Flask, cache: dict, cache_lock) -> Response:
+def _api_optimize_impl(app: Flask, cache: dict, cache_lock) -> RouteResponse:
     params = request.get_json(silent=True) or {}
     mode = params.get("mode")
     if not mode:
@@ -151,7 +152,7 @@ def _api_optimize_impl(app: Flask, cache: dict, cache_lock) -> Response:
     )
 
 
-def _api_optimize_cancel_impl(cache: dict, cache_lock) -> Response:
+def _api_optimize_cancel_impl(cache: dict, cache_lock) -> RouteResponse:
     sid = _get_session_id()
     with _cancel_lock:
         ev = _cancel_events.get(sid)
@@ -316,6 +317,7 @@ def _parse_placement_engine_params(params: dict):
     engine_kw, err = _parse_mode_or_level(engine_params)
     if err:
         raise ValueError("Invalid mode/level parameters")
+    assert engine_kw is not None  # noqa: S101 - helper contract
     return tissue, engine_kw
 
 
@@ -330,6 +332,8 @@ def _build_voxel_rt_scene(cache: dict, cache_lock):
         vm = cache.get("voxel_materials")
         cfg = cache.get("config", {})
 
+    if vs is None:
+        raise ValueError("voxel_sizes missing from cache; cannot build voxel scene")
     z_up_pos, gc, dominant_size = prepare_for_raytracing(vp, vs)
     ext_mask = extract_exterior(gc)
     ext_pos = z_up_pos[ext_mask]
@@ -371,6 +375,8 @@ def _resolve_placement_rt_scene(params: dict, cache: dict, cache_lock):
 
         with cache_lock:
             env_mesh = scoped_cache_get(cache, "env_mesh")
+        if env_mesh is None:
+            return None, None
         return to_differt_scene(env_mesh), None
     return None, None
 
@@ -427,21 +433,32 @@ def _build_placement_evaluate_fn(
 
         tx_pos = np.asarray(pos, dtype=np.float64).reshape(3).copy()
         tx_pos[2] += pole_height
-        rt_kwargs = dict(
-            tx_pos=tx_pos,
-            rx_pos=body_center,
-            max_order=max_order,
-            freq_hz=tissue.freq_hz,
-            tx_power_dbm=power_dbm,
-            reflection_loss_per_order=reflection_loss,
-            method=method,
-            num_rays=num_rays,
-            chunk_size=chunk_size,
-        )
         if rt_scene is not None:
-            paths, path_viz = compute_paths_differt(**rt_kwargs, scene=rt_scene)
+            paths, path_viz = compute_paths_differt(
+                tx_pos=tx_pos,
+                rx_pos=body_center,
+                max_order=max_order,
+                freq_hz=tissue.freq_hz,
+                tx_power_dbm=power_dbm,
+                reflection_loss_per_order=reflection_loss,
+                method=method,
+                num_rays=num_rays,
+                chunk_size=chunk_size,
+                scene=rt_scene,
+            )
         elif scene_path:
-            paths, path_viz = compute_paths_differt(scene_path, **rt_kwargs)
+            paths, path_viz = compute_paths_differt(
+                scene_path,
+                tx_pos=tx_pos,
+                rx_pos=body_center,
+                max_order=max_order,
+                freq_hz=tissue.freq_hz,
+                tx_power_dbm=power_dbm,
+                reflection_loss_per_order=reflection_loss,
+                method=method,
+                num_rays=num_rays,
+                chunk_size=chunk_size,
+            )
         else:
             from aegis.paths import PropagationPaths
 

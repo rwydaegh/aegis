@@ -8,6 +8,7 @@ import threading
 import numpy as np
 from flask import Response, jsonify, request
 
+from aegis.viewer.routes._types import RouteResponse
 from aegis.viewer.server import scoped_cache_get
 
 logger = logging.getLogger(__name__)
@@ -57,7 +58,7 @@ def _eirp_weighted_freq(selected: list, freq_hz_override) -> float:
     return 3.5e9
 
 
-def _zero_power_response(body, n_basestations: int, json_dumps_safe) -> Response:
+def _zero_power_response(body, n_basestations: int, json_dumps_safe) -> RouteResponse:
     n_tri = body.n_triangles
     sab_bytes = np.zeros(n_tri, dtype=np.float32).tobytes()
     stats = {
@@ -133,6 +134,8 @@ def _handle_basestations_compute(cache: dict, cache_lock: threading.RLock):
     body_offset, body_rotation_y, err = _parse_body_transform(params, transform_fns)
     if err is not None:
         return err
+    assert body_offset is not None  # noqa: S101 - helper contract
+    assert body_rotation_y is not None  # noqa: S101 - helper contract
 
     transformed_body = _transform_body_for_viewer(body, body_offset, body_rotation_y)
     body_center = np.mean(transformed_body.centroids, axis=0)
@@ -146,6 +149,7 @@ def _handle_basestations_compute(cache: dict, cache_lock: threading.RLock):
     max_distance_m, err = _parse_max_distance(params)
     if err is not None:
         return err
+    assert max_distance_m is not None  # noqa: S101 - helper contract
 
     paths = paths_from_basestations(
         selected,

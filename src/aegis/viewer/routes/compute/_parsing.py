@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import math
+from typing import Any
 
 import numpy as np
-from flask import jsonify
+from flask import Response, jsonify
+from numpy.typing import NDArray
 
 from aegis.compliance import ExposureScenario
 from aegis.defaults import DEFAULT_FREQ_HZ
+
+_ErrResp = tuple[Response, int]
 
 # String constants (avoid duplicate literals)
 _ERR_VEC3_LEN = "must be a 3-element array [x, y, z]"
@@ -47,7 +51,9 @@ def _validate_scene_path(scene_path: str) -> bool:
     return resolved in {str(_Path(p).resolve()) for p in allowed}
 
 
-def _parse_vec3(params: dict, key: str, default: list | None = None):
+def _parse_vec3(
+    params: dict, key: str, default: list | None = None
+) -> tuple[NDArray[np.float64] | None, _ErrResp | None]:
     """Parse a 3-element numeric array from request params.
 
     Returns (np.ndarray, None) on success or (None, error_response) on failure.
@@ -65,7 +71,7 @@ def _parse_vec3(params: dict, key: str, default: list | None = None):
     return np.array(values, dtype=np.float64), None
 
 
-def _parse_rotation_y(params: dict):
+def _parse_rotation_y(params: dict) -> tuple[float | None, _ErrResp | None]:
     """Parse body_rotation_y from request params.
 
     Returns (float, None) on success or (None, error_response) on failure.
@@ -79,7 +85,9 @@ def _parse_rotation_y(params: dict):
     return value, None
 
 
-def _parse_freq_and_tissue(params: dict, default_freq: float = DEFAULT_FREQ_HZ):
+def _parse_freq_and_tissue(
+    params: dict, default_freq: float = DEFAULT_FREQ_HZ
+) -> tuple[Any, float | None, _ErrResp | None]:
     """Parse freq_hz and resolve tissue model from request params.
 
     Returns (tissue, freq_hz, None) on success or (None, None, error_response) on failure.
@@ -102,7 +110,9 @@ def _parse_freq_and_tissue(params: dict, default_freq: float = DEFAULT_FREQ_HZ):
     return tissue, freq_hz, None
 
 
-def _parse_quantities_and_scenario(params: dict):
+def _parse_quantities_and_scenario(
+    params: dict,
+) -> tuple[Any, ExposureScenario | None, _ErrResp | None]:
     """Parse display quantities and exposure scenario from request params.
 
     Returns (quantities, scenario, None) on success or (None, None, error_response) on failure.
@@ -119,7 +129,7 @@ def _parse_quantities_and_scenario(params: dict):
 _VALID_INCOHERENT_MODES = {"bound", "aggregate", "spatial"}
 
 
-def _parse_mode_or_level(params: dict, default_level: int = 2):
+def _parse_mode_or_level(params: dict, default_level: int = 2) -> tuple[dict[str, Any] | None, _ErrResp | None]:
     """Extract mode+corrections or level from request params.
 
     Returns (engine_kw, None) on success or (None, error_response) on failure.

@@ -10,6 +10,7 @@ from urllib.request import Request, urlopen
 from flask import Flask, Response, request
 
 from aegis.viewer.config import DEFAULTS as _VIEWER_DEFAULTS
+from aegis.viewer.routes._types import RouteResponse
 
 log = logging.getLogger(__name__)
 
@@ -21,7 +22,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
     """Attach the Sentry webhook route to *app*."""
 
     @app.route("/api/sentry-webhook", methods=["POST"])
-    def sentry_webhook() -> Response:
+    def sentry_webhook() -> RouteResponse:
         # --- Verify signature ---
         client_secret = os.environ.get("SENTRY_CLIENT_SECRET", "")
         if not client_secret:

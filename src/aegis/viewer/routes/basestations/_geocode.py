@@ -74,16 +74,16 @@ def geocode_location(location: str) -> tuple[float, float, dict]:
     from geopy.exc import GeopyError
     from geopy.geocoders import Nominatim
 
-    geolocator = Nominatim(user_agent="aegis-viewer", timeout=_NETWORK_TIMEOUT_S)
+    geolocator = Nominatim(user_agent="aegis-viewer", timeout=_NETWORK_TIMEOUT_S)  # pyright: ignore[reportArgumentType]  # geopy stub bug: timeout typed as object
     try:
-        result = geolocator.geocode(location, addressdetails=True, language="en")
+        result = geolocator.geocode(location, addressdetails=True, language="en")  # pyright: ignore[reportArgumentType]  # geopy stub bug: language typed as bool
     except GeopyError as e:
         raise ValueError(f"Geocoding service unavailable: {e}") from e
 
     if result is None:
         raise ValueError(f"Could not geocode location: {location!r}")
-    address = result.raw.get("address", {})
-    return result.latitude, result.longitude, address
+    address = result.raw.get("address", {})  # pyright: ignore[reportAttributeAccessIssue]  # geopy stub bug: geocode returns Location, not Coroutine
+    return result.latitude, result.longitude, address  # pyright: ignore[reportAttributeAccessIssue]  # same
 
 
 def _resolve_belgian_region(address: dict, lat: float, lon: float) -> str:
@@ -109,15 +109,15 @@ def reverse_geocode_country(lat: float, lon: float) -> dict:
     from geopy.exc import GeopyError
     from geopy.geocoders import Nominatim
 
-    geolocator = Nominatim(user_agent="aegis-viewer", timeout=_NETWORK_TIMEOUT_S)
+    geolocator = Nominatim(user_agent="aegis-viewer", timeout=_NETWORK_TIMEOUT_S)  # pyright: ignore[reportArgumentType]  # geopy stub bug
     try:
         result = geolocator.reverse(
             (lat, lon),
             addressdetails=True,
-            language="en",
+            language="en",  # pyright: ignore[reportArgumentType]  # geopy stub bug: language typed as bool
         )
     except GeopyError as e:
         raise ValueError(f"Reverse geocoding service unavailable: {e}") from e
     if result is None:
         return {}
-    return result.raw.get("address", {})
+    return result.raw.get("address", {})  # pyright: ignore[reportAttributeAccessIssue]  # geopy stub bug

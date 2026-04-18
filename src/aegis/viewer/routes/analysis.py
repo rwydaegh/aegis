@@ -6,8 +6,9 @@ import logging
 import math
 
 import numpy as np
-from flask import Flask, Response, jsonify, request
+from flask import Flask, jsonify, request
 
+from aegis.viewer.routes._types import RouteResponse
 from aegis.viewer.server import scoped_cache_get
 
 logger = logging.getLogger(__name__)
@@ -35,7 +36,7 @@ def _sanitize_list(lst):
     return out
 
 
-def _compliance_limits_impl(cache: dict, cache_lock) -> Response:
+def _compliance_limits_impl(cache: dict, cache_lock) -> RouteResponse:
     """Query ICNIRP 2020 limits at an arbitrary frequency/scenario."""
     from aegis.compliance import ExposureScenario, icnirp_limits
 
@@ -68,7 +69,7 @@ def _compliance_limits_impl(cache: dict, cache_lock) -> Response:
     )
 
 
-def _compliance_summary_impl(cache: dict, cache_lock) -> Response:
+def _compliance_summary_impl(cache: dict, cache_lock) -> RouteResponse:
     """Human-readable compliance summary text from last compute."""
     last = scoped_cache_get(cache, "_last_compliance_result")
     if last is None:
@@ -114,7 +115,7 @@ def _compliance_summary_impl(cache: dict, cache_lock) -> Response:
     return jsonify({"text": "\n".join(lines)})
 
 
-def _tissue_spectrum_impl(cache: dict, cache_lock) -> Response:
+def _tissue_spectrum_impl(cache: dict, cache_lock) -> RouteResponse:
     """Vectorized tissue properties vs frequency."""
     from aegis.tissue.database import get_tissue_spectrum
 
@@ -187,7 +188,7 @@ def _tissue_spectrum_impl(cache: dict, cache_lock) -> Response:
     )
 
 
-def _compliance_power_sweep_impl(cache: dict, cache_lock) -> Response:
+def _compliance_power_sweep_impl(cache: dict, cache_lock) -> RouteResponse:
     """Compliance margin vs transmit power at a fixed frequency."""
     from aegis.compliance import ExposureScenario, evaluate_compliance, power_sweep
 
@@ -244,7 +245,7 @@ def _compliance_power_sweep_impl(cache: dict, cache_lock) -> Response:
     )
 
 
-def _compliance_heatmap_impl(cache: dict, cache_lock) -> Response:
+def _compliance_heatmap_impl(cache: dict, cache_lock) -> RouteResponse:
     """2D compliance margin over (frequency, power) plane."""
     from aegis.compliance import ExposureScenario, compliance_heatmap
 
@@ -275,6 +276,7 @@ def _compliance_heatmap_impl(cache: dict, cache_lock) -> Response:
 
     # Use sab_4cm2 if available, fall back to sab_1cm2 as reference
     ref_sab = sab_4cm2 if sab_4cm2 is not None else sab_1cm2
+    assert ref_sab is not None  # noqa: S101 - enforced by the sab_4cm2/sab_1cm2 check above
 
     try:
         result = compliance_heatmap(
@@ -308,7 +310,7 @@ def _compliance_heatmap_impl(cache: dict, cache_lock) -> Response:
     )
 
 
-def _compliance_frequency_sweep_impl(cache: dict, cache_lock) -> Response:
+def _compliance_frequency_sweep_impl(cache: dict, cache_lock) -> RouteResponse:
     """Compliance margin vs frequency at fixed exposure values."""
     from aegis.compliance import ExposureScenario, frequency_sweep
 
@@ -350,7 +352,7 @@ def _compliance_frequency_sweep_impl(cache: dict, cache_lock) -> Response:
     )
 
 
-def _compliance_spatial_impl(cache: dict, cache_lock) -> Response:
+def _compliance_spatial_impl(cache: dict, cache_lock) -> RouteResponse:
     """Compute spatial compliance margins over a grid around base stations.
 
     Takes loaded base stations and a bounding box, creates a grid,
