@@ -127,6 +127,8 @@ def _tissue_spectrum_impl(cache: dict, cache_lock) -> RouteResponse:
     skin_model = request.args.get("skin_model", "itis")
     n = min(max(n, 10), 1000)
 
+    if not (math.isfinite(f_min) and math.isfinite(f_max)):
+        return jsonify({"error": "f_min and f_max must be finite"}), 400
     if f_min <= 0 or f_max <= 0:
         return jsonify({"error": "f_min and f_max must be positive"}), 400
     if f_min >= f_max:

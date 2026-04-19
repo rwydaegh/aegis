@@ -327,6 +327,24 @@ class TestTissueSpectrum:
             resp = c.get("/api/tissue/spectrum?f_max=0")
         assert resp.status_code == 400
 
+    @pytest.mark.parametrize(
+        "query",
+        [
+            "f_min=NaN&f_max=1e10",
+            "f_min=1e9&f_max=NaN",
+            "f_min=NaN&f_max=NaN",
+            "f_min=1e9&f_max=Infinity",
+            "f_min=-Infinity&f_max=1e10",
+            "f_min=Infinity&f_max=Infinity",
+        ],
+    )
+    def test_non_finite_freqs_return_400(self, viewer_app, query):
+        """NaN/Inf in f_min or f_max must be rejected, not silently produce NaN payload."""
+        with viewer_app.test_client() as c:
+            resp = c.get(f"/api/tissue/spectrum?{query}&n=10")
+        assert resp.status_code == 400
+        assert "finite" in resp.get_json()["error"]
+
 
 # ---------------------------------------------------------------------------
 # GET /api/compliance/limits - extended
