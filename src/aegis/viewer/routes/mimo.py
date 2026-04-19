@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 
 import numpy as np
-from flask import Flask, Response, jsonify, request
+from flask import Flask, Response, jsonify
 
 from aegis.compliance import ExposureScenario, evaluate_compliance
 from aegis.constants import C_0
@@ -14,6 +14,7 @@ from aegis.mimo.array import AntennaArray
 from aegis.mimo.compute import compute_mimo_scene_with_bodies
 from aegis.mimo.scene import MIMOScene
 from aegis.mimo.user import UserConfig, UserState
+from aegis.viewer.routes._helpers import get_json_dict
 from aegis.viewer.routes._types import RouteResponse
 from aegis.viewer.routes.compute import _json_dumps_safe
 from aegis.viewer.server import scoped_cache_get, scoped_cache_set
@@ -320,7 +321,9 @@ def _user_stats(user: UserState, scene: MIMOScene) -> dict:
 
 
 def _api_mimo_compute_impl(cache: dict, cache_lock) -> RouteResponse:
-    params = request.get_json(silent=True) or {}
+    params, err = get_json_dict()
+    if err is not None:
+        return err
 
     scene, err = _build_scene(params, cache)
     if err is not None:

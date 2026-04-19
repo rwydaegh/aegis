@@ -3,8 +3,9 @@
 import json
 
 import numpy as np
-from flask import jsonify, request
+from flask import jsonify
 
+from aegis.viewer.routes._helpers import get_json_dict
 from aegis.viewer.scene_data import body_to_binary
 
 
@@ -14,7 +15,9 @@ def register(app, cache, cache_lock):
         """Generate a parametric body mesh from shape/pose parameters."""
         from aegis.geometry.parametric import ParametricBody
 
-        params = request.get_json(silent=True) or {}
+        params, err = get_json_dict()
+        if err is not None:
+            return err
         model_type = params.get("model", "smplx")
         gender = params.get("gender", "neutral")
 

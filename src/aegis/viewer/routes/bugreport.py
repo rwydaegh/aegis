@@ -11,6 +11,7 @@ from urllib.request import Request, urlopen
 from flask import Flask, jsonify, request, send_from_directory
 
 from aegis.viewer.config import DEFAULTS as _VIEWER_DEFAULTS
+from aegis.viewer.routes._helpers import get_json_dict
 from aegis.viewer.routes._types import RouteResponse
 
 log = logging.getLogger(__name__)
@@ -31,11 +32,21 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
     @app.route("/api/bug-report", methods=["POST"])
     def bug_report() -> RouteResponse:
-        payload = request.get_json(silent=True) or {}
+        payload, err = get_json_dict()
+        if err is not None:
+            return err
 
-        description = payload.get("description", "").strip()
-        screenshot = payload.get("screenshot", "")
+        raw_description = payload.get("description") or ""
+        raw_screenshot = payload.get("screenshot") or ""
+        if not isinstance(raw_description, str):
+            return jsonify({"error": "description must be a string"}), 400
+        if not isinstance(raw_screenshot, str):
+            return jsonify({"error": "screenshot must be a base64 string"}), 400
+        description = raw_description.strip()
+        screenshot = raw_screenshot
         state = payload.get("state") or {}
+        if not isinstance(state, dict):
+            return jsonify({"error": "state must be an object"}), 400
 
         if not description:
             return jsonify({"error": "description is required"}), 400

@@ -5,8 +5,9 @@ from __future__ import annotations
 import logging
 import os
 
-from flask import jsonify, request
+from flask import jsonify
 
+from aegis.viewer.routes._helpers import get_json_dict
 from aegis.viewer.routes._types import RouteResponse
 
 logger = logging.getLogger(__name__)
@@ -55,7 +56,9 @@ def _lsp_heatmap_impl(cache: dict, cache_lock) -> RouteResponse:
     """Generate an LSP spatial map for the frontend heatmap overlay."""
     from aegis.viewer.compute import generate_lsp_heatmap
 
-    data = request.get_json(silent=True) or {}
+    data, err = get_json_dict()
+    if err is not None:
+        return err
     preset_name = data.get("preset", "3GPP_38.901_UMi_LOS")
     freq_ghz = data.get("freq_ghz", 28.0)
     antenna_pos = data.get("antenna_pos", [0, 0, 10])

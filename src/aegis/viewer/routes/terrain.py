@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import json
 
-from flask import Flask, Response, jsonify, request
+from flask import Flask, Response, jsonify
 
+from aegis.viewer.routes._helpers import get_json_dict
 from aegis.viewer.server import scoped_cache_set
 
 
@@ -29,7 +30,9 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
 
         from aegis.environment.terrain import generate_terrain_mesh, terrain_grid_for_location
 
-        body = request.get_json(silent=True) or {}
+        body, err = get_json_dict()
+        if err is not None:
+            return err
         lat = body.get("lat")
         lon = body.get("lon")
         if lat is None or lon is None:
