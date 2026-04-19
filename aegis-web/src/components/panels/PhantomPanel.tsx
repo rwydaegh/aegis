@@ -56,10 +56,10 @@ export default function PhantomPanel() {
     setTimeout(() => setCameraPreset(null), 50)
   }
 
-  // Merge backend bodies with known phantoms so all 8 always appear
-  const backendBodies = caps.bodies || []
-  const merged = Array.from(new Set([...PHANTOM_ORDER, ...backendBodies]))
-  const sortedBodies = merged.sort((a, b) => {
+  // Only advertise bodies the backend actually serves. Injecting hardcoded
+  // fallbacks causes 404s and silently breaks the scene (issue #655).
+  const backendBodies = [...(caps.bodies ?? []), ...(caps.gltf_bodies ?? [])]
+  const sortedBodies = Array.from(new Set(backendBodies)).sort((a, b) => {
     const ai = PHANTOM_ORDER.indexOf(a.toLowerCase())
     const bi = PHANTOM_ORDER.indexOf(b.toLowerCase())
     return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi)
