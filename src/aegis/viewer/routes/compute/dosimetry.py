@@ -451,6 +451,9 @@ def _api_compute_impl(cache: dict, cache_lock) -> RouteResponse:
             antennas=pp["antennas"],
             exposure_mode=pp["exposure_mode"],
         )
+    except ValueError as exc:
+        logger.warning("compute_dosimetry rejected invalid request: %s", exc)
+        return jsonify({"error": str(exc)}), 400
     except Exception as exc:
         logger.exception("compute_dosimetry failed")
         return jsonify({"error": str(exc)}), 500
