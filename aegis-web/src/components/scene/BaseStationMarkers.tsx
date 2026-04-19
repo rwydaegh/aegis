@@ -80,7 +80,7 @@ export default function BaseStationMarkers() {
     basestations.forEach((bs, index) => {
       if (!enabledOperators.has(bs.operator)) return
       if (!enabledTechnologies.has(bs.technology)) return
-      if (bs.frequency_band && enabledFrequencyBands.size > 0 && !enabledFrequencyBands.has(bs.frequency_band)) return
+      if (bs.frequency_band && !enabledFrequencyBands.has(bs.frequency_band)) return
 
       const key = bs.site_code
       if (!groups.has(key)) {

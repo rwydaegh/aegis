@@ -47,7 +47,9 @@ function computeActiveCount(
   return bs.filter(b => {
     if (!enabledOps.has(b.operator)) return false
     if (!enabledTechs.has(b.technology)) return false
-    if (b.frequency_band && enabledBands.size > 0 && !enabledBands.has(b.frequency_band)) return false
+    // Antennas without a frequency_band aren't filterable by band, so keep them;
+    // antennas with a band must be in the enabled set (unchecking all hides them).
+    if (b.frequency_band && !enabledBands.has(b.frequency_band)) return false
     return true
   }).length
 }
@@ -144,7 +146,7 @@ export const useBaseStationsStore = create<BaseStationsState>((set, get) => ({
       const b = basestations[i]
       if (!enabledOperators.has(b.operator)) continue
       if (!enabledTechnologies.has(b.technology)) continue
-      if (b.frequency_band && enabledFrequencyBands.size > 0 && !enabledFrequencyBands.has(b.frequency_band)) continue
+      if (b.frequency_band && !enabledFrequencyBands.has(b.frequency_band)) continue
       indices.push(i)
     }
     return indices
