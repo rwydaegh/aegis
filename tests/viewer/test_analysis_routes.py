@@ -579,3 +579,82 @@ class TestFrequencySweepInViewer:
         assert resp.status_code == 200
         data = resp.get_json()
         assert len(data["freq_ghz"]) == 20
+
+
+# ---------------------------------------------------------------------------
+# Non-finite query-arg guards across compliance GET endpoints
+# ---------------------------------------------------------------------------
+
+
+class TestComplianceNonFiniteQueryArgs:
+    """Regression: NaN/Inf in float query args must be rejected at the boundary.
+
+    Flask's `type=float` accepts "NaN"/"Infinity" (Python `float()` accepts them),
+    so the endpoint-level `value is None` / `value <= 0` checks let non-finite
+    floats through. Downstream compliance math then silently produces all-True
+    or all-False compliance arrays, which is worse than a 5xx because the user
+    cannot tell the answer is meaningless.
+    """
+
+    @pytest.mark.parametrize(
+        ("query", "bad_field"),
+        [
+            ("sab_4cm2=10&freq_hz=NaN&ref_power_dbm=23", "freq_hz"),
+            ("sab_4cm2=10&freq_hz=Infinity&ref_power_dbm=23", "freq_hz"),
+            ("sab_4cm2=10&freq_hz=28e9&ref_power_dbm=NaN", "ref_power_dbm"),
+            ("sab_4cm2=10&freq_hz=28e9&ref_power_dbm=Infinity", "ref_power_dbm"),
+            ("sab_4cm2=NaN&freq_hz=28e9&ref_power_dbm=23", "sab_4cm2"),
+            ("sab_4cm2=Infinity&freq_hz=28e9&ref_power_dbm=23", "sab_4cm2"),
+            ("sab_4cm2=10&freq_hz=28e9&ref_power_dbm=23&sab_1cm2=NaN", "sab_1cm2"),
+            ("sab_4cm2=10&freq_hz=28e9&ref_power_dbm=23&sinc_local=NaN", "sinc_local"),
+            ("sab_4cm2=10&freq_hz=28e9&ref_power_dbm=23&sinc_wb=Infinity", "sinc_wb"),
+            ("sab_4cm2=10&freq_hz=28e9&ref_power_dbm=23&sar_wb=NaN", "sar_wb"),
+        ],
+    )
+    def test_power_sweep_rejects_non_finite(self, viewer_app, query, bad_field):
+        with viewer_app.test_client() as c:
+            resp = c.get(f"/api/compliance/power-sweep?{query}")
+        assert resp.status_code == 400
+        err = resp.get_json()["error"]
+        assert bad_field in err
+        assert "finite" in err
+
+    @pytest.mark.parametrize(
+        ("query", "bad_field"),
+        [
+            ("sab_4cm2=NaN&freq_hz=28e9&ref_power_dbm=23", "sab_4cm2"),
+            ("sab_4cm2=Infinity&freq_hz=28e9&ref_power_dbm=23", "sab_4cm2"),
+            ("sab_4cm2=10&freq_hz=NaN&ref_power_dbm=23", "freq_hz"),
+            ("sab_4cm2=10&freq_hz=Infinity&ref_power_dbm=23", "freq_hz"),
+            ("sab_4cm2=10&freq_hz=28e9&ref_power_dbm=NaN", "ref_power_dbm"),
+            ("sab_4cm2=10&freq_hz=28e9&ref_power_dbm=Infinity", "ref_power_dbm"),
+            ("sab_1cm2=NaN&freq_hz=28e9&ref_power_dbm=23", "sab_1cm2"),
+            ("sab_4cm2=10&freq_hz=28e9&ref_power_dbm=23&sinc_local=NaN", "sinc_local"),
+        ],
+    )
+    def test_heatmap_rejects_non_finite(self, viewer_app, query, bad_field):
+        with viewer_app.test_client() as c:
+            resp = c.get(f"/api/compliance/heatmap?{query}")
+        assert resp.status_code == 400
+        err = resp.get_json()["error"]
+        assert bad_field in err
+        assert "finite" in err
+
+    @pytest.mark.parametrize(
+        ("query", "bad_field"),
+        [
+            ("sab_4cm2=NaN", "sab_4cm2"),
+            ("sab_4cm2=Infinity", "sab_4cm2"),
+            ("sab_4cm2=10&sab_1cm2=NaN", "sab_1cm2"),
+            ("sab_4cm2=10&sar_wb=NaN", "sar_wb"),
+            ("sab_4cm2=10&sinc_local=Infinity", "sinc_local"),
+            ("sab_4cm2=10&sinc_wb=NaN", "sinc_wb"),
+        ],
+    )
+    def test_frequency_sweep_rejects_non_finite(self, viewer_app, query, bad_field):
+        with viewer_app.test_client() as c:
+            resp = c.get(f"/api/compliance/frequency-sweep?{query}")
+        assert resp.status_code == 400
+        err = resp.get_json()["error"]
+        assert bad_field in err
+        assert "finite" in err
