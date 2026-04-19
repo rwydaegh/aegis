@@ -33,7 +33,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: astral-sh/setup-uv@v7
-      - run: uv sync --python ${{ matrix.python-version }} --extra dev
+      - run: uv sync --python ${{ matrix.python-version }} --extra dev --extra viewer
       - run: uv run pytest tests/ --cov=src/aegis --cov-report=xml -x
       - name: Upload coverage
         if: matrix.os == 'ubicloud-standard-2' && matrix.python-version == '3.12'
