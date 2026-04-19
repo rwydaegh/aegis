@@ -31,7 +31,12 @@ def register(app, cache, cache_lock):
         raw_betas = params.get("betas", [0.0] * 10)
         if not isinstance(raw_betas, list) or len(raw_betas) > 300:
             return jsonify({"error": "betas must be a list of at most 300 values"}), 400
-        betas = np.array(raw_betas, dtype=np.float64)
+        try:
+            betas = np.array(raw_betas, dtype=np.float64)
+        except (TypeError, ValueError):
+            return jsonify({"error": "betas must be a flat list of numbers"}), 400
+        if betas.ndim != 1:
+            return jsonify({"error": "betas must be a flat list of numbers"}), 400
         if not np.all(np.isfinite(betas)):
             return jsonify({"error": "betas must contain finite values"}), 400
 
@@ -39,7 +44,12 @@ def register(app, cache, cache_lock):
         if pose is not None:
             if not isinstance(pose, list) or len(pose) > 600:
                 return jsonify({"error": "pose must be a list with at most 600 elements"}), 400
-            pose = np.array(pose, dtype=np.float64)
+            try:
+                pose = np.array(pose, dtype=np.float64)
+            except (TypeError, ValueError):
+                return jsonify({"error": "pose must be a flat list of numbers"}), 400
+            if pose.ndim != 1:
+                return jsonify({"error": "pose must be a flat list of numbers"}), 400
             if pose.size > 500 or not np.all(np.isfinite(pose)):
                 return jsonify({"error": "pose must contain at most 500 finite values"}), 400
 
