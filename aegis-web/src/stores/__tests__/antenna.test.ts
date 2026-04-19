@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 // Import simulation first to break the antenna<->simulation module init cycle
 // (simulation.ts subscribes to useAntennaStore at module eval time).
 import '../simulation'
+import { useSimulationStore } from '../simulation'
 import { useAntennaStore } from '../antenna'
 import type { ScenePos } from '@/api/coordinates'
 
@@ -43,5 +44,39 @@ describe('useAntennaStore.clearAntennas', () => {
     useAntennaStore.getState().clearAntennas()
     expect(useAntennaStore.getState().antennas.size).toBe(0)
     expect(useAntennaStore.getState().selectedId).toBeNull()
+  })
+})
+
+describe('Delete key removes the antenna from the scene', () => {
+  // Regression: previously the Delete/Backspace handler called
+  // setAntennaPos(null), which only deselected. The antenna remained in
+  // useAntennaStore so its pole stayed visible. The handler must call
+  // removeAntenna(selectedId) so the store reflects the user's intent.
+  beforeEach(() => {
+    useAntennaStore.getState().clearAntennas()
+  })
+
+  it('removeAntenna on the selected id empties the store and clears antennaPos', () => {
+    const id = useAntennaStore.getState().addAntenna(P)
+    expect(useAntennaStore.getState().antennas.size).toBe(1)
+    expect(useSimulationStore.getState().antennaPos).not.toBeNull()
+
+    useAntennaStore.getState().removeAntenna(id)
+
+    expect(useAntennaStore.getState().antennas.size).toBe(0)
+    expect(useAntennaStore.getState().selectedId).toBeNull()
+    expect(useSimulationStore.getState().antennaPos).toBeNull()
+  })
+
+  it('removeAntenna transfers selection and syncs antennaPos to the remaining antenna', () => {
+    const a = useAntennaStore.getState().addAntenna(P)
+    const b = useAntennaStore.getState().addAntenna(Q)
+    expect(useAntennaStore.getState().selectedId).toBe(b)
+
+    useAntennaStore.getState().removeAntenna(b)
+
+    expect(useAntennaStore.getState().antennas.size).toBe(1)
+    expect(useAntennaStore.getState().selectedId).toBe(a)
+    expect(useSimulationStore.getState().antennaPos).toEqual(P)
   })
 })
