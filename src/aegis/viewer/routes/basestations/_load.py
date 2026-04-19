@@ -8,8 +8,9 @@ import os
 import threading
 
 import numpy as np
-from flask import jsonify, request
+from flask import jsonify
 
+from aegis.viewer.routes._helpers import get_json_dict
 from aegis.viewer.server import scoped_cache_set
 
 from ._data import (
@@ -136,7 +137,9 @@ def _resolve_country_and_region(params: dict, address: dict, cache: dict, cache_
 
 def _handle_basestations_load(cache: dict, cache_lock: threading.RLock):
     """Implementation for POST /api/basestations/load."""
-    params = request.get_json(silent=True) or {}
+    params, err = get_json_dict()
+    if err is not None:
+        return err
 
     address, err = _geocode_if_needed(params)
     if err is not None:

@@ -7,8 +7,9 @@ import threading
 from typing import Any
 
 import numpy as np
-from flask import Response, jsonify, request
+from flask import Response, jsonify
 
+from aegis.viewer.routes._helpers import get_json_dict
 from aegis.viewer.server import scoped_cache_get
 
 logger = logging.getLogger(__name__)
@@ -129,7 +130,9 @@ def _handle_basestations_compute_mimo(cache: dict, cache_lock: threading.RLock):
     from aegis.mimo.scene import MIMOScene
     from aegis.viewer.routes.compute import _json_dumps_safe, _parse_rotation_y, _parse_vec3
 
-    params = request.get_json(silent=True) or {}
+    params, err = get_json_dict()
+    if err is not None:
+        return err
 
     with cache_lock:
         basestations = scoped_cache_get(cache, "basestations", []) or []

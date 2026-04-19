@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import logging
 
-from flask import Flask, Response, jsonify, request
+from flask import Flask, Response, jsonify
 
 from aegis.viewer.cache import EnvironmentCache
 from aegis.viewer.routes._helpers import get_json_dict
@@ -27,7 +27,9 @@ def _handle_environment_osm(cache: dict, cache_lock) -> RouteResponse:
         fetch_osm,
     )
 
-    body = request.get_json(silent=True) or {}
+    body, err = get_json_dict()
+    if err is not None:
+        return err
     lat = body.get("lat")
     lon = body.get("lon")
     radius = body.get("radius", 200)
@@ -49,6 +51,8 @@ def _handle_environment_osm(cache: dict, cache_lock) -> RouteResponse:
     osm_cfg = cfg_env.get("osm", {})
     # Frontend sends options nested under "options" key
     options = body.get("options", {})
+    if not isinstance(options, dict):
+        return jsonify({"error": "options must be an object"}), 400
     default_building_height = (
         options.get("default_building_height")
         or body.get("default_building_height")
@@ -112,7 +116,9 @@ def _handle_environment_3dtiles(cache: dict, cache_lock) -> RouteResponse:
     """Implementation for POST /api/environment/3dtiles."""
     from aegis.environment.tiles import TileTraverser
 
-    body = request.get_json(silent=True) or {}
+    body, err = get_json_dict()
+    if err is not None:
+        return err
     lat = body.get("lat")
     lon = body.get("lon")
     radius = body.get("radius", 200)
@@ -193,7 +199,9 @@ def _handle_environment_from_voxels(cache: dict, cache_lock) -> RouteResponse:
     if positions is None or len(positions) == 0:
         return jsonify({"error": "No voxel data in cache"}), 404
 
-    body_data = request.get_json(silent=True) or {}
+    body_data, err = get_json_dict()
+    if err is not None:
+        return err
     try:
         lat = float(body_data.get("lat", 0.0))
         lon = float(body_data.get("lon", 0.0))
@@ -381,7 +389,9 @@ def _handle_environment_export_scene(cache: dict) -> RouteResponse:
     if mesh is None:
         return jsonify({"error": "No environment mesh cached"}), 404
 
-    body = request.get_json(silent=True) or {}
+    body, err = get_json_dict()
+    if err is not None:
+        return err
     fmt = body.get("format", "differt")
 
     if fmt == "differt":
@@ -409,7 +419,9 @@ def _handle_environment_geojson(cache: dict, cache_lock) -> RouteResponse:
     """Implementation for POST /api/environment/geojson."""
     from aegis.environment.geojson import build_environment_from_geojson
 
-    body = request.get_json(silent=True) or {}
+    body, err = get_json_dict()
+    if err is not None:
+        return err
     geojson_str = body.get("geojson", "")
     if not geojson_str:
         return jsonify({"error": "geojson field is required"}), 400

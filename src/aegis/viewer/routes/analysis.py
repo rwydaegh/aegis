@@ -8,6 +8,7 @@ import math
 import numpy as np
 from flask import Flask, jsonify, request
 
+from aegis.viewer.routes._helpers import get_json_dict
 from aegis.viewer.routes._types import RouteResponse
 from aegis.viewer.server import scoped_cache_get
 
@@ -368,7 +369,9 @@ def _compliance_spatial_impl(cache: dict, cache_lock) -> RouteResponse:
     if not basestations:
         return jsonify({"error": "No base stations loaded. Call /api/basestations/load first."}), 400
 
-    body = request.get_json(silent=True) or {}
+    body, err = get_json_dict()
+    if err is not None:
+        return err
 
     # Grid bounds
     bbox = body.get("bbox")

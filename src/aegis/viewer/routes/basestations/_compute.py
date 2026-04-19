@@ -6,8 +6,9 @@ import logging
 import threading
 
 import numpy as np
-from flask import Response, jsonify, request
+from flask import Response, jsonify
 
+from aegis.viewer.routes._helpers import get_json_dict
 from aegis.viewer.routes._types import RouteResponse
 from aegis.viewer.server import scoped_cache_get
 
@@ -108,7 +109,9 @@ def _handle_basestations_compute(cache: dict, cache_lock: threading.RLock):
         _parse_vec3,
     )
 
-    params = request.get_json(silent=True) or {}
+    params, err = get_json_dict()
+    if err is not None:
+        return err
 
     with cache_lock:
         basestations = scoped_cache_get(cache, "basestations", [])
