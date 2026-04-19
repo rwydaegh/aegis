@@ -40,3 +40,28 @@ def test_parametric_anny_not_implemented(app_client):
     )
     assert resp.status_code == 400
     assert b"Anny" in resp.data
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("betas", ["abc"]),
+        ("betas", [[1, 2], [3]]),
+        ("pose", ["abc"]),
+        ("pose", [[1, 2], [3]]),
+    ],
+)
+def test_parametric_rejects_non_numeric_or_ragged(app_client, field, value):
+    """Non-numeric strings or ragged nested lists for betas/pose must return 400, not 500.
+
+    ``np.array(..., dtype=np.float64)`` raises ValueError for these inputs;
+    the route previously let it propagate as a 500 AttributeError to the client.
+    """
+    resp = app_client.post(
+        "/api/parametric-body",
+        data=json.dumps({field: value}),
+        content_type="application/json",
+    )
+    assert resp.status_code == 400
+    payload = json.loads(resp.data)
+    assert field in payload.get("error", "")
