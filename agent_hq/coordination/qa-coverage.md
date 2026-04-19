@@ -54,6 +54,48 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-19 18:25 UTC -- "Stochastic channel modeling (follow-up to 16:15)"
+
+- Actor: interactive (qa-agent-661066)
+- Depth: medium
+- Findings: 1 bug filed and auto-fixed: #673 (→ PR #674 merged
+  10 min after filing). #664 re-reproduced on production as
+  sanity check.
+- Notes: Section collision with the 16:15 UTC session — I picked
+  Stochastic before seeing the 16:15 entry (the other agent's
+  commit was on master but not yet in my local worktree; rebased
+  mid-session). Kept going because the 16:15 entry flagged
+  Null's peak at 53.55 mW/m² as "by design" and that conclusion
+  felt off. It was. Drove the Null preset at 28 GHz (53.55
+  mW/m², margin +23.9 dB) and 10 GHz (48.84 mW/m², margin +22.9
+  dB), identical to Freespace to the mW/m² — a `PL_model=constant`
+  with `PL_A=1000` should kill the channel by 1000 dB, not leak
+  full FSPL. Root cause in `src/aegis/channel/path_loss.py:31-33`:
+  `compute_path_loss` dispatches on `logdist` / `dual_slope` /
+  `nlos` only; anything else falls through an `else` branch that
+  logs a warning and returns `_fspl(d3d, freq_ghz)`. Null.conf
+  declares `PL_model = constant` explicitly ("effectively disables
+  the channel"), and all 8 MIMOSA presets use the same (`PL_A=95`),
+  so that's 9 presets silently broken. Filed #673 at 18:14 UTC,
+  PR #674 (`Implement constant path loss model`) auto-merged at
+  18:24 UTC — adds `_constant(params)` returning `PL_A` and a
+  regression test. The 16:15 agent's "backbone geometric LOS
+  remains" trace was wrong: the LOS component itself carries the
+  PL_model attenuation; FSPL fallback is what was keeping it
+  visible. Takeaway for future agents: when a preset is labeled
+  "effectively disables the channel" and the compute still
+  returns FSPL-like numbers, check `compute_path_loss` dispatch
+  before accepting "by design". **#664 sanity check**: typed `0`
+  into Clusters on prod (`7bdd91a`), hooked fetch to capture the
+  `/api/compute` payload — `stochastic_overrides:
+  {"NumClusters": 0}` lands at the backend and 500s with
+  "index 0 is out of bounds for axis 0 with size 0", exactly as
+  the 16:15 log says. Both frontend (StochasticPanel.tsx:187) and
+  backend fixes are on master, deploy lag is the only reason it
+  still reproduces. Not re-filed. No other new findings on the
+  stochastic surface; confidence is high once #674 ships and the
+  9 constant-PL presets start behaving like their comments say.
+
 ### 2026-04-19 16:15 UTC -- "Stochastic channel modeling"
 
 - Actor: interactive (qa-agent-620927)
