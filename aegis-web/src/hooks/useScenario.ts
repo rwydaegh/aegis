@@ -4,6 +4,7 @@ import { useSceneStore } from '../stores/scene';
 import { useEnvironmentStore, type EnvironmentSource } from '../stores/environment';
 import { useUIStore } from '../stores/ui';
 import { useCoverageStore } from '../stores/coverage';
+import { useAntennaStore } from '../stores/antenna';
 import type { ScenarioEntry } from '../api/types';
 
 const VALID_MODES = new Set<DosimetryMode>(['bound', 'aggregate', 'spatial']);
@@ -19,7 +20,14 @@ function applySimulationState(webState: ScenarioWebState): void {
   if (webState.mode != null && VALID_MODES.has(webState.mode as DosimetryMode)) {
     sim.setMode(webState.mode as DosimetryMode);
   }
-  if ('antennaPos' in webState) sim.setAntennaPos(webState.antennaPos ?? null);
+  // When a scenario declares antennaPos (null or a position) it is specifying
+  // the complete antenna state for that demo. Wipe any user-placed antennas
+  // from the previous scenario first, then apply the scenario's position.
+  // Scenarios that omit antennaPos leave the user's antennas untouched.
+  if ('antennaPos' in webState) {
+    useAntennaStore.getState().clearAntennas();
+    sim.setAntennaPos(webState.antennaPos ?? null);
+  }
 }
 
 function applyEnvironmentState(env: EnvSpec): void {
