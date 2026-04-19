@@ -54,6 +54,75 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-19 14:25 UTC -- "Web viewer frontend (UI/UX)"
+
+- Actor: interactive (qa-agent-593255)
+- Depth: medium
+- Findings: none (1 pre-existing bug reproduced but already fixed
+  on master, not yet deployed)
+- Notes: Picked this section because the last direct UI/UX pass
+  was 2026-04-17 (2 days stale) and a cluster of UI-layer PRs had
+  landed since then: #665 Delete/Backspace fix, #662 scenario +
+  wordmark reset clears antennas, #625 share links include env
+  state. Prod deploy was at commit `7bdd91a` (PR #662) during
+  testing — 4 commits behind master, so #665 + everything after
+  were NOT live yet. **#665 repro confirmed**: on open_ground,
+  placed a single antenna via canvas click then pressed Delete.
+  Phantom went gray, compliance card + colorbar vanished, and
+  the "Click the scene to place an antenna" hint appeared as if
+  the scene were empty, but the Antennas panel still showed
+  Antenna 1 at its original coords (1.8, 0.0, ~4.0) with the
+  antenna pole still rendered in the 3D scene. This is exactly
+  the stale-state the d1fc7f1 patch targets (`setAntennaPos(null)`
+  clears sim mirror without calling `removeAntenna`). Not filed —
+  fix is already merged. **#662 verified healthy**: placed an
+  antenna, switched Scenarios dropdown from open_ground to
+  mmwave_close; user antenna cleared, Close-range default antenna
+  loaded, Peak 0.22 W/m² on Sab(1cm²) basic restriction (correct
+  for ≥30 GHz). Wordmark click on the `aegis` logo also resets to
+  the landing page and empties the Antennas panel ("No antennas.
+  Click below to add one."). **#625 share link round-trip
+  verified**: toggled Polarisation + Curvature, placed antenna,
+  clicked Share (hooked `navigator.clipboard.writeText` to
+  capture the URL since read permission is denied). URL is hash-
+  encoded `#s=<compressed payload>` with the scenario name baked
+  inside rather than a `?scenario=` query. Navigated to the
+  captured URL fresh and got back Peak 0.24 W/m², "Spatial +FPC"
+  badge, colorbar max 0.454, antenna at the same spot — clean
+  round-trip. **Keyboard shortcuts**: `?` opens the overlay
+  (Camera WASD, Antenna click/arrows/Shift+arrows/Del, General
+  `?` and `Shift+B`); overlay does close on `esc`, though a single
+  early `esc` press immediately after opening appeared to no-op
+  (likely a focus race with whatever had focus at the time — not
+  reproducible on second try, not filed). Arrow-up nudge (3×)
+  moved the antenna away from the body, Peak Sab dropped 0.24 →
+  0.04 W/m² and margin climbed +19.2 → +27.3 dB (working).
+  **Sidebar toggle + Analysis tab**: Toggle button collapses the
+  whole sidebar (Compliance card floats top-left, colorbar right,
+  right-edge HUD rail of 7 widget toggles remains); re-toggle
+  restores the expanded view. Clicking the Analysis rail button
+  (vertical rail on the far left, `World | Source | Exposure |
+  Analysis`) opens Analysis / Optimize / Export accordion;
+  Optimize shows Placement enabled, Tilt+power and MIMO peak
+  greyed out (consistent with the known `Tilt+power gating`
+  observation logged 2026-04-18 18:15 — gating is supposed to key
+  off RT paths per #566 but currently keys off MIMO-enabled).
+  Not re-filed. **Welcome tour**: cleared `aegis-welcome-dismissed`
+  in localStorage and clicked the toolbar play button to launch.
+  All 9 tour steps advance cleanly (Welcome → Compliance checks →
+  ... → Keyboard shortcuts), "Done" on step 9 dismisses the
+  overlay with no residual state. One minor asymmetry noted: a
+  page reload via `?scenario=open_ground&tour=1` resets the
+  antenna to the scenario default (wiping the user-placed antenna
+  + any arrow-key nudge) but PRESERVES the Polarisation and
+  Curvature toggles from a prior share link, so the "Spatial +FPC"
+  badge persists across reload. Defensible as physics-preference
+  persistence, just worth flagging in case a future bug report
+  ever says "my antenna moved". Not filed. Confident the UI/UX
+  surface is healthy on the currently-deployed build; the only
+  open concern is the 4-commit deploy lag that is keeping #665,
+  #664, #668, #669 off production.
+
 ### 2026-04-19 12:15 UTC -- "Tissue and dielectric modeling"
 
 - Actor: interactive (qa-agent-573021)
