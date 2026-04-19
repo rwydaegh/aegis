@@ -15,6 +15,7 @@ import UserBadges from '@/components/hud/UserBadges'
 import BugReporter from '@/components/hud/bugReporter'
 import { ScenarioDropdown } from '@/components/hud/ScenarioDropdown'
 import { useActiveSimulation } from '@/hooks/useActiveSimulation'
+import { resetScenarioScopedStores } from '@/hooks/useScenario'
 import { generateShareUrl } from '@/lib/shareLink'
 
 function ComplianceBadge({ stats }: { stats: DosimetryStats | null }) {
@@ -142,11 +143,12 @@ export default function Toolbar() {
       <div className="flex items-center gap-3 min-w-0">
         <button
           onClick={() => {
-            // Reset scene state
-            useSimulationStore.getState().clearResults()
+            // Reset scene state. The wordmark is the "start fresh" affordance,
+            // so we share the scenario-load wipe (basestations / MIMO users /
+            // optim history) with useScenario to keep both resets consistent.
+            resetScenarioScopedStores()
             useSimulationStore.setState({ antennaPos: null })
             useAntennaStore.getState().clearAntennas()
-            useSceneStore.getState().clearScene()
             useUIStore.getState().setActiveScenario(null)
             useUIStore.getState().setWelcomeDismissed(false)
             useUIStore.getState().dismissTour()
