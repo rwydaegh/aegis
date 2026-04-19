@@ -115,6 +115,14 @@ def _parse_freq_and_tissue(
         return None, None, (jsonify({"error": "freq_hz must be a number"}), 400)
     if not math.isfinite(freq_hz) or freq_hz <= 0:
         return None, None, (jsonify({"error": "freq_hz must be positive and finite"}), 400)
+    # Reject subnormal/near-zero positives that underflow ``omega * EPS_0`` to
+    # 0 downstream in ``fresnel.n_complex`` (Python scalar division by zero
+    # raises on the complex path). Schemathesis found ``freq_hz=5e-324``
+    # crashed /api/compute with ``ZeroDivisionError`` -> 500.
+    from aegis.constants import EPS_0
+
+    if 2 * math.pi * freq_hz * EPS_0 <= 0.0:
+        return None, None, (jsonify({"error": "freq_hz is too small to compute tissue properties"}), 400)
 
     skin_model_name = params.get("skin_model", "itis")
     try:
