@@ -110,6 +110,12 @@ export function EnvironmentOSM() {
     geo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
     geo.setAttribute('color', new THREE.BufferAttribute(colors, 3))
     geo.setAttribute('normal', new THREE.BufferAttribute(smoothNormals, 3))
+    // Compute bounds eagerly so frustum culling uses correct extents on the
+    // first render. Without this, Three.js lazily computes the sphere on first
+    // render but some callers (e.g. raycasting, shadow projection) can hit
+    // the uninitialized default before that happens.
+    geo.computeBoundingBox()
+    geo.computeBoundingSphere()
 
     return geo
   }, [meshData])
