@@ -54,6 +54,38 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-19 06:35 UTC -- "Web viewer backend (API)"
+
+- Actor: interactive
+- Depth: medium
+- Findings: 1 bug filed: #658
+- Notes: Drove the Flask API directly with a session cookie against
+  production (commit `f0eead5`). Verified recent fixes hold:
+  `freq_hz=1e-320` (subnormal, #657) returns 400 with a clean error
+  message; `freq_hz=0`, negative, and `NaN` all reject with 400;
+  `power_dbm` bounds [0, 100] are enforced inclusively.
+  `/api/body` and `/api/phantom` reject `../` path traversal cleanly.
+  `/api/compute` accepts the frontend payload shape (fresnel,
+  polarisation, curvature, diffraction booleans -- no `level` field
+  is read from the body, that was a red herring while testing).
+  `/api/tissue-spectrum` validates `f_min < f_max` and positive `n`.
+  **Bug 1 (#658)**: `POST /api/basestations/load` with `{}`
+  (empty body) passes every guard in `_load.py:_handle_basestations_load`
+  -- `_build_bbox` returns `(None, None)` silently, country defaults
+  to "Belgium", region falls through to "brussels", and
+  `read_merged_parquet` returns every row when bbox is None. A single
+  such request hangs the worker; a handful knocked all of
+  `aegis.waves-ugent.be` offline for ~20 minutes during this session
+  (TLS handshake failing on port 443, even `/api/health` unreachable).
+  Session-gated so not externally exploitable, but trivial for any
+  authenticated user. Suggested fix: require at least one of `bbox`,
+  `lat+lon+radius_m`, `location`, or explicit `region` at the top of
+  the handler and reject empty payloads with 400. Not tested due to
+  the outage: `/api/optimize` SSE cancel, `/api/patterns/search`,
+  `/api/geocode`. Confident the validated endpoints are healthy; the
+  basestations/load gap is the only real defect and should be
+  patched before another QA pass on this surface.
+
 ### 2026-04-19 04:20 UTC -- "Body geometry and mesh"
 
 - Actor: cron-qa
