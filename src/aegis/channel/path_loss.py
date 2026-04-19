@@ -17,7 +17,7 @@ def compute_path_loss(
 ) -> float:
     """Compute path loss in dB for the given model parameters.
 
-    Supports: logdist, dual_slope, nlos. Unknown models fall back to FSPL.
+    Supports: logdist, dual_slope, nlos, constant. Unknown models fall back to FSPL.
     """
     model = params.get("PL_model", "logdist")
     d3d = max(distance_m, 1.0)
@@ -28,6 +28,8 @@ def compute_path_loss(
         return _dual_slope(params, d3d, freq_ghz, h_bs, h_ms)
     elif model == "nlos":
         return _nlos(params, d3d, freq_ghz, h_bs, h_ms)
+    elif model == "constant":
+        return _constant(params)
     else:
         log.warning("Unsupported PL model %r, using free-space", model)
         return _fspl(d3d, freq_ghz)
@@ -35,6 +37,10 @@ def compute_path_loss(
 
 def _fspl(d3d: float, freq_ghz: float) -> float:
     return 20 * math.log10(d3d) + 20 * math.log10(freq_ghz) + 32.45
+
+
+def _constant(params: dict) -> float:
+    return float(params.get("PL_A", 0.0))
 
 
 def _logdist(params: dict, d3d: float, freq_ghz: float) -> float:
