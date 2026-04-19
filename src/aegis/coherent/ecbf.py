@@ -80,6 +80,14 @@ def solve_ecbf(
     eigenvalues, V = np.linalg.eigh(Q)
     eigenvalues = np.maximum(eigenvalues, 0.0)
 
+    # Numerical rank tolerance for separating null-space eigenvalues from
+    # genuine nonzero ones. NUMERICAL_FLOOR (1e-30) is a safe-division guard,
+    # not a rank threshold. Use numpy.matrix_rank's convention, relative to
+    # the largest eigenvalue, so the classification is invariant to
+    # platform-dependent eigh roundoff (see Windows-3.12 flake: zero
+    # eigenvalues recovered as ~1e-15).
+    rank_tol = max(Q.shape) * np.finfo(eigenvalues.dtype).eps * float(eigenvalues.max(initial=0.0))
+
     # Transform h into Q eigenbasis: h_tilde = V^H @ h*
     h_conj = h.conj()
     h_tilde = V.conj().T @ h_conj
@@ -104,10 +112,11 @@ def solve_ecbf(
     # a weighted average: P * sum(a_k^2/mu_k) / sum(a_k^2/mu_k^2) where
     # a_k = |h_tilde_k| and mu_k are the nonzero eigenvalues.
     a_sq = np.abs(h_tilde) ** 2
-    nonzero_mask = eigenvalues > NUMERICAL_FLOOR
+    nonzero_mask = eigenvalues > rank_tol
     null_energy = float(np.sum(a_sq[~nonzero_mask]))
+    energy_tol = np.finfo(a_sq.dtype).eps * float(a_sq.sum(initial=0.0))
 
-    if null_energy > NUMERICAL_FLOOR:
+    if null_energy > energy_tol:
         # h has a null-space component: as lambda -> inf, x concentrates
         # there and p_abs -> 0.
         p_abs_inf = 0.0
@@ -127,7 +136,7 @@ def solve_ecbf(
     # checked before the infeasibility branch below, since when Q is
     # invertible p_abs_inf == p_abs_asymp and the QCQP is always feasible
     # via the slack solution.
-    if eigenvalues[0] > NUMERICAL_FLOOR:
+    if eigenvalues[0] > rank_tol:
         h_abs_sq = np.abs(h_tilde) ** 2
         inv_eigvals = 1.0 / eigenvalues
         # h*^H Q^{-1} h* and h*^H Q^{-2} h*
