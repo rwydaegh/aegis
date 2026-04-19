@@ -307,3 +307,103 @@ class TestValidation:
             curvature_H=curvature_H,
         )
         assert np.all(np.isfinite(sab)), "sab must be finite at very low frequencies"
+
+
+class TestChunkingDeterminism:
+    """spatial_kernel must produce identical results regardless of chunk size.
+
+    Regression: per-chunk clamping ``max(sab, 0)`` inside the inner kernel made
+    the chunked path chunk-size-dependent when individual chunks could sum to
+    negative (e.g. diffraction with mostly back-facing paths). The fix clamps
+    only once, after all chunks are summed. This suite forces the chunked path
+    via small ``_MAX_MN_ELEMENTS`` values and asserts bit-for-bit agreement
+    across chunk sizes.
+    """
+
+    def _build_scene(self, rng):
+        # 4 triangles, 20 paths, strongly back-heavy so partial sums can be
+        # negative under the GELU (diffraction) activation.
+        normals = np.array(
+            [
+                [0.0, 0.0, 1.0],
+                [0.0, 0.0, 1.0],
+                [1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+            ],
+            dtype=np.float64,
+        )
+        N = 20
+        # Mix of glancing and back-facing directions near the shadow boundary,
+        # plus a couple of well-lit ones so the full sum is not all-zero.
+        k_hat = rng.standard_normal((N, 3))
+        k_hat[:16] = np.array([0.05, 0.0, 0.05])  # nearly back-facing for triangles 0/1
+        k_hat[:16] += rng.standard_normal((16, 3)) * 0.02
+        k_hat[16:] = np.array([0.0, 0.0, -1.0])  # fully incident on triangles 0/1
+        k_hat /= np.linalg.norm(k_hat, axis=1, keepdims=True)
+        power = rng.uniform(0.5, 2.0, size=N).astype(np.float64)
+        curvature_H = np.array([5.0, 50.0, 2.0, 10.0], dtype=np.float64)
+        return normals, k_hat, power, curvature_H
+
+    @pytest.mark.parametrize(
+        "flags",
+        [
+            {"fresnel": False, "diffraction": True},
+            {"fresnel": True, "diffraction": True},
+            {"fresnel": True, "curvature": True, "diffraction": True},
+            {"fresnel": True, "polarisation": True, "q": 0.5, "curvature": True, "diffraction": True},
+        ],
+    )
+    def test_chunk_size_invariance(self, monkeypatch, flags):
+        from aegis import kernels
+        from aegis.kernels.spatial import spatial_kernel
+
+        if kernels.spatial.JAX_AVAILABLE:
+            pytest.skip("chunking path is only exercised on NumPy backend")
+
+        rng = np.random.default_rng(0)
+        normals, k_hat, power, curvature_H = self._build_scene(rng)
+        n_tilde = SKIN_28GHZ.n_complex
+        T0 = SKIN_28GHZ.T0
+        freq_hz = SKIN_28GHZ.freq_hz
+        M = normals.shape[0]
+
+        reference = spatial_kernel(
+            normals,
+            k_hat,
+            power,
+            n_tilde,
+            T0,
+            freq_hz,
+            curvature_H=curvature_H,
+            **flags,
+        )
+
+        # Force chunked path with chunk sizes 1, 2, 3, 5, 7, 13 (not evenly
+        # divisible into N=20 — exercises partial trailing chunks).
+        for chunk_paths in [1, 2, 3, 5, 7, 13]:
+            monkeypatch.setattr(
+                kernels.spatial,
+                "_MAX_MN_ELEMENTS",
+                M * chunk_paths,
+            )
+            chunked = spatial_kernel(
+                normals,
+                k_hat,
+                power,
+                n_tilde,
+                T0,
+                freq_hz,
+                curvature_H=curvature_H,
+                **flags,
+            )
+            # Float64 @-product is exact under permutation of contributions
+            # only up to rounding; but for these sizes the error is well
+            # below 1e-12 of the magnitude. This guards the real regression
+            # (orders-of-magnitude drift from chunk-wise clamping to zero).
+            np.testing.assert_allclose(
+                chunked,
+                reference,
+                rtol=1e-12,
+                atol=1e-14,
+                err_msg=f"chunk_paths={chunk_paths} flags={flags} drift from unchunked",
+            )

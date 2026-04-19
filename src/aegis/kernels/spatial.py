@@ -90,9 +90,6 @@ def _spatial_kernel_unbatched(
         sab_curvature = T0 * (H_for_curv / k) * g_sq_power
         sab = sab + sab_curvature
 
-    if curvature or diffraction:
-        sab = xp.maximum(sab, 0.0)
-
     return sab
 
 
@@ -148,7 +145,7 @@ def spatial_kernel(
 
     # Fast path: small enough to run in one shot
     if M * N <= _MAX_MN_ELEMENTS or JAX_AVAILABLE:
-        return _spatial_kernel_unbatched(
+        sab = _spatial_kernel_unbatched(
             normals,
             k_hat,
             power,
@@ -162,36 +159,37 @@ def spatial_kernel(
             diffraction=diffraction,
             curvature_H=curvature_H,
         )
+    else:
+        # Chunked path: split along N to bound peak memory
+        chunk_size = max(_MAX_MN_ELEMENTS // M, 1)
+        sab = np.zeros(M, dtype=np.float64)
 
-    # Chunked path: split along N to bound peak memory
-    chunk_size = max(_MAX_MN_ELEMENTS // M, 1)
-    sab = np.zeros(M, dtype=np.float64)
+        for start in range(0, N, chunk_size):
+            end = min(start + chunk_size, N)
+            k_chunk = k_hat[start:end]
+            p_chunk = power[start:end]
+            q_chunk: float | NDArray[np.floating] = q[start:end] if isinstance(q, np.ndarray) and q.ndim > 0 else q
 
-    for start in range(0, N, chunk_size):
-        end = min(start + chunk_size, N)
-        k_chunk = k_hat[start:end]
-        p_chunk = power[start:end]
-        q_chunk: float | NDArray[np.floating] = q[start:end] if isinstance(q, np.ndarray) and q.ndim > 0 else q
+            chunk_sab = _spatial_kernel_unbatched(
+                normals,
+                k_chunk,
+                p_chunk,
+                n_tilde,
+                T0,
+                freq_hz,
+                fresnel=fresnel,
+                polarisation=polarisation,
+                q=q_chunk,
+                curvature=curvature,
+                diffraction=diffraction,
+                curvature_H=curvature_H,
+            )
+            sab = sab + chunk_sab
 
-        chunk_sab = _spatial_kernel_unbatched(
-            normals,
-            k_chunk,
-            p_chunk,
-            n_tilde,
-            T0,
-            freq_hz,
-            fresnel=fresnel,
-            polarisation=polarisation,
-            q=q_chunk,
-            curvature=curvature,
-            diffraction=diffraction,
-            curvature_H=curvature_H,
-        )
-        sab = sab + chunk_sab
-
-    # The clamp is already applied per-chunk when curvature/diffraction is on,
-    # but partial sums can be negative before the final sum. Re-clamp the total.
+    # Clamp the final summed result. Clamping per-chunk would produce
+    # chunk-size-dependent answers because partial sums can be negative while
+    # the full sum is positive (or vice versa).
     if curvature or diffraction:
-        sab = np.maximum(sab, 0.0)
+        sab = xp.maximum(sab, 0.0)
 
     return sab
