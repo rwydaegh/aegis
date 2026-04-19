@@ -147,6 +147,12 @@ export default function PatternBrowserPanel() {
   const [error, setError] = useState<string | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Generation counters invalidate in-flight responses when the user picks a
+  // different pattern (or clears) or types a new query before the previous
+  // request resolves. Without this, a slow earlier response can overwrite a
+  // faster later one, leaving selectedPattern and patternData out of sync.
+  const loadGenRef = useRef(0)
+  const searchGenRef = useRef(0)
 
   const selectedPattern = useSimulationStore(s => s.selectedPattern)
   const setSelectedPattern = useSimulationStore(s => s.setSelectedPattern)
@@ -157,6 +163,7 @@ export default function PatternBrowserPanel() {
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(async () => {
+      const myGen = ++searchGenRef.current
       setIsLoading(true)
       setError(null)
       try {
@@ -164,12 +171,14 @@ export default function PatternBrowserPanel() {
         if (query.trim()) params.q = query.trim()
         if (sourceFilter !== 'all') params.source = sourceFilter
         const data = await searchPatterns(params)
+        if (searchGenRef.current !== myGen) return
         setResults(data.results)
       } catch (err) {
+        if (searchGenRef.current !== myGen) return
         setError((err as Error).message)
         setResults([])
       } finally {
-        setIsLoading(false)
+        if (searchGenRef.current === myGen) setIsLoading(false)
       }
     }, 300)
     return () => {
@@ -178,6 +187,7 @@ export default function PatternBrowserPanel() {
   }, [query, sourceFilter])
 
   const handleSelect = async (r: PatternSearchResult) => {
+    const myGen = ++loadGenRef.current
     setSelectedPattern({
       source: r.source,
       id: r.id,
@@ -189,21 +199,25 @@ export default function PatternBrowserPanel() {
     setLoadError(null)
     try {
       const { data, meta } = await loadPattern(r.source, r.id)
+      if (loadGenRef.current !== myGen) return
       setPatternData(data, meta)
     } catch (err) {
+      if (loadGenRef.current !== myGen) return
       if (!isClientError(err)) Sentry.captureException(err)
       setLoadError((err as Error).message)
       setPatternData(null, null)
     } finally {
-      setPatternLoading(false)
+      if (loadGenRef.current === myGen) setPatternLoading(false)
     }
   }
 
   const handleClear = () => {
+    loadGenRef.current++
     setSelectedPattern(null)
     setPatternData(null, null)
     clearAppliedPattern()
     setLoadError(null)
+    setPatternLoading(false)
   }
 
   return (
