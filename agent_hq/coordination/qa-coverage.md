@@ -54,6 +54,52 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-19 12:15 UTC -- "Tissue and dielectric modeling"
+
+- Actor: interactive (qa-agent-573021)
+- Depth: medium
+- Findings: 1 bug filed: #667
+- Notes: Originally aimed at Stochastic channel modeling because
+  commit #664 landed fresh, but a thorough pass on that surface had
+  already been logged at 10:18 UTC (agent qa-agent-552296's branch,
+  not yet on master), so rotated to the genuinely cold Tissue area.
+  Drove the Source -> Skin model dropdown across all 4 options on
+  Open ground at 28 GHz: IT'IS v5 baseline (eps_r=16.6, sigma=25.8
+  S/m, Peak Sab 80.46 mW/m^2), Christ2021 correctly scales eps_r
+  and sigma by 1.2 (19.9, 31.0, Peak 75.59 mW/m^2 -- fix #132
+  remains solid), Christ2025 Dermis uses the Debye single-pole
+  parameters (20.3, 32.3, Peak 73.92 mW/m^2), NICT measurements
+  lowers sigma to 20.1 S/m at 28 GHz giving Peak 84.74 mW/m^2 /
+  colorbar max 0.085 W/m^2. Tissue panel under Exposure tab renders
+  three synchronised curves (relative permittivity, conductivity,
+  T_0) with dot-on-curve at the operating frequency; values update
+  live across all 4 models. Frequency sweep across 0.9 GHz and
+  100 GHz behaves correctly: at 0.9 GHz compliance correctly
+  flips to SAR_wb only (Sab rows drop below 6 GHz), at 100 GHz
+  Sab(1 cm^2) appears per ICNIRP 30+ GHz threshold with limit
+  40 W/m^2, Peak 0.106 W/m^2, margin +21.4 dB PASS. **Bug 1
+  (#667)**: drove `/api/tissue/spectrum` with boundary inputs and
+  found `f_min=NaN`, `f_max=NaN`, and `f_max=Infinity` all return
+  200 with a NaN-laden payload -- the `f_min <= 0 or f_max <= 0`
+  and `f_min >= f_max` guards in `routes/analysis.py:119-136` are
+  bypassed because every comparison with NaN yields False. PR #592
+  (\"Reject NaN/Inf inputs at viewer API boundaries\") covered
+  `_parse_vec3`, `_parse_rotation_y`, and `_parse_freq_and_tissue`
+  but not this analysis route. Suggested a `math.isfinite` guard
+  mirroring that pattern. Also noted but not filed: (a) `n=0` and
+  `n=-5` silently clamp up to 10 via `n = min(max(n, 10), 1000)`,
+  arguably intentional but inconsistent with the 400s on f_min /
+  f_max; (b) `skin_model=<arbitrary_string>` is echoed back and
+  falls through an `else` branch to itis-style eps_r/sigma -- the
+  response is numerically safe but the echoed model name is
+  meaningless. (c) Tissue panel chart y-axis bottom label reads
+  5.80 for IT'IS permittivity while the actual curve minimum at
+  100 GHz is ~5.60 per the API; the dot appears at the correct
+  position but visually sits just below the bottom gridline -- a
+  ~4% label/value discrepancy, cosmetic not filed. Confident all
+  four skin models compute and render correctly end-to-end; the
+  NaN boundary gap is the only real defect.
+
 ### 2026-04-19 06:35 UTC -- "Web viewer backend (API)"
 
 - Actor: interactive
