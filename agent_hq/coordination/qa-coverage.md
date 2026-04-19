@@ -54,6 +54,41 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-19 10:18 UTC -- "Stochastic channel modeling"
+
+- Actor: interactive (qa-agent-552296)
+- Depth: thorough
+- Findings: 0 new bugs filed (confirmed existing Sentry #663)
+- Notes: Drove the Stochastic panel under Exposure on Open ground
+  scenario. Enable/disable toggle cycles cleanly and state persists
+  across toggle (Canonical+TwoRayGR with Clusters=2 survived a
+  disable->re-enable round trip). Preset switching updates
+  parameters atomically: 3GPP 38.901 -> QuaDRiGa swaps K-factor 9
+  -> 7.8, az spread 54 -> 49, el spread 5 -> 44, clusters 12 -> 25.
+  Canonical preset rewrites the Scenario dropdown to {Freespace,
+  LOSonly, Null, TwoRayGR} with corresponding Clusters (1 for LOS,
+  2 for TwoRayGR). Null scenario zeros sigma_SF correctly (color
+  bar collapses to a single "0"). Reset to preset defaults restores
+  manual overrides. Seed regen button produces a large random seed.
+  Show cluster rays toggle + Clusters/All sub-paths radio behave as
+  expected -- "All sub-paths" view dramatically increases visible
+  rays (hundreds). LSP heatmap toggle works; switching LSP parameter
+  (Shadow fading / Rician K / Delay spread / XPR / az+el spreads)
+  changes the color bar label and range on the ground overlay.
+  Delay spread range 1.4e-7 - 8.8e-7 s for Industrial LOS is
+  plausible. XPR 10.5-25.2 dB plausible. Multi-antenna placement
+  with stochastic on still recomputes peak Sab (80 -> 87 mW/m^2
+  with a far second antenna). Edge cases reproduce existing
+  Sentry-filed bugs: Clusters=0 -> 500 "index 0 is out of bounds
+  for axis 0 with size 0" (Sentry #663, already open); Sub-paths=0
+  -> 500 (likely same backend call path); Clusters=200 -> 502
+  (gateway timeout, expected on a long compute). Would classify as
+  healthy overall; the 500s on 0-valued spin inputs should migrate
+  to frontend min=1 clamps or a 400 rejection following the pattern
+  of #592/#657 input-boundary validation fixes, but Sentry #663
+  already tracks this class. Did not exercise MIMO+stochastic
+  combination or the stochastic path under a loaded voxel environment.
+
 ### 2026-04-19 06:35 UTC -- "Web viewer backend (API)"
 
 - Actor: interactive
