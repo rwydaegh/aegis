@@ -54,6 +54,72 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-19 20:20 UTC -- "3D environment reconstruction"
+
+- Actor: interactive (qa-agent-692132)
+- Depth: medium
+- Findings: none filed (OSM 500 already captured by Sentry #678;
+  3D Tiles silent non-render is an unresolved follow-up from
+  2026-04-17 that PR #651 claimed "defensive fix" but only for OSM)
+- Notes: Picked this section because last direct pass was 2026-04-17
+  (2+ days stale) with two unresolved items (3D Tiles silent load,
+  Sab 7.80 → 7.00 after Clear Scene) and PR #651 (frustum culling
+  on urban scenarios) touched EnvironmentOSM bounding sphere logic.
+  **OSM regressed**: `POST /api/environment/osm` returns 500
+  consistently for Ghent (51.0447, 3.7268), Times Square (40.7580,
+  -73.9855), and Paris (48.8566, 2.3522) at radii 50-200m. Backend
+  catches OverpassRateLimit/Timeout/TooLarge specifically but lets
+  other exceptions propagate as generic 500 — panel shows only
+  "HTTP 500" to the user. Sentry auto-filed this as #678 during my
+  session so no new issue opened; root cause is likely an Overpass
+  response format change or a downstream parser raising before the
+  caught error set is hit. PR #651 was about bounding sphere init,
+  not the network path, so the fix wouldn't address this. Earlier
+  sessions (2026-04-17, 2026-04-19 04:20) saw 504 (upstream
+  timeout, known tradeoff) — today it's 500, which is different
+  and worth rechecking after the current Sentry spike clears.
+  **3D Tiles silent load reproduces**: switched Source to 3D Tiles,
+  geocoded Times Square (200 from /api/geocode), backend fetched
+  tiles successfully (`POST /api/environment/3dtiles` → 200, 29,233
+  bytes, meta `n_vertices:559, n_triangles:901, source:3dtiles,
+  origin 40.758,-73.9855`). Nothing visible in the 3D canvas in
+  either phantom or globe camera modes; Layers panel still lists
+  only Body/Ground/Compliance with no 3D Tiles entry. Reading
+  `aegis-web/src/stores/environment.ts:319` confirms 3dtiles mesh
+  is written into the same `osmMeshData` store slot that drives
+  `<EnvironmentOSM>` at `SceneRoot.tsx:417`, so the render path
+  exists — but something downstream (possibly the expanded
+  non-indexed positions being far from scene origin for 3D Tiles
+  specifically, or the material-index colors being (0,0,0) for the
+  color values Google tiles use) silently yields an invisible
+  mesh. Didn't file: not confident enough to call it clearly
+  broken vs. my view simply misaligned, and earlier #649 was
+  closed as QA harness false-negative. Worth a targeted followup
+  with WebGL draw inspection. **Sionna scene healthy**: Simple
+  Street Canyon loaded in ~1.5s, visible terrain around phantom,
+  Sab 7.80 mW/m² unchanged pre/post load. Clear Scene removed the
+  geometry cleanly, Sab dropped 7.80 → 7.00 mW/m² and stuck there
+  (same observation as 2026-04-17; still unclear whether this is
+  ground-material reset or compliance ring radius change, didn't
+  file). **Voxels source**: empty-state message "No voxels loaded.
+  Go to Scene > Location to load a location and generate voxel
+  data." is clear and helpful (good contrast vs. silent 3D Tiles
+  failure). Load button triggered /api/scene/load (200), /api/
+  voxels (200), and 5× /api/compute — background work is clearly
+  happening. **UX note (not filed)**: clicking the Paris quick-load
+  chip correctly sets Location coords to (48.8566, 2.3522) but
+  leaves the text input displaying the previous "Times Square,
+  New York" string, so re-submitting the search would overwrite
+  Paris with a re-geocode of NY. Minor, requires specific action
+  sequence. **Playwright instability**: after the voxel Load click
+  every subsequent `npx @playwright/cli screenshot` timed out with
+  "waiting for fonts to load... fonts loaded" — cold re-open of
+  the browser did not recover, so testing had to wrap. Could be a
+  font-observer loop triggered by the voxel panel; flag for
+  interactive repro. Confident Sionna + Voxels UI + guidance text
+  are healthy; OSM backend is failing (Sentry has it); 3D Tiles
+  silent non-render is still open and deserves a deeper dive.
+
 ### 2026-04-19 18:25 UTC -- "Stochastic channel modeling (follow-up to 16:15)"
 
 - Actor: interactive (qa-agent-661066)
