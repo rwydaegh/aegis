@@ -5,6 +5,9 @@ import { useEnvironmentStore, type EnvironmentSource } from '../stores/environme
 import { useUIStore } from '../stores/ui';
 import { useCoverageStore } from '../stores/coverage';
 import { useAntennaStore } from '../stores/antenna';
+import { useBaseStationsStore } from '../stores/basestations';
+import { useMIMOStore } from '../stores/mimo';
+import { useOptimizeStore } from '../stores/optimize';
 import type { ScenarioEntry } from '../api/types';
 
 const VALID_MODES = new Set<DosimetryMode>(['bound', 'aggregate', 'spatial']);
@@ -12,6 +15,22 @@ const VALID_SOURCES = new Set<EnvironmentSource>(['none', 'voxels', 'osm', '3dti
 
 type ScenarioWebState = ScenarioEntry['webState'];
 type EnvSpec = NonNullable<ScenarioWebState['environment']>;
+
+/**
+ * Wipe per-demo stores before a new scenario applies its state.
+ *
+ * Scenarios are a "jump to a fresh demo" mechanism; residue from the previous
+ * demo (basestation markers, MIMO users, optimizer history) would otherwise
+ * linger on the new scene and confuse the user. Exported so the wordmark reset
+ * and tests can reuse exactly the same wipe.
+ */
+export function resetScenarioScopedStores(): void {
+  useSimulationStore.getState().clearResults();
+  useSceneStore.getState().clearScene();
+  useBaseStationsStore.getState().clear();
+  useMIMOStore.getState().reset();
+  useOptimizeStore.getState().reset();
+}
 
 function applySimulationState(webState: ScenarioWebState): void {
   const sim = useSimulationStore.getState();
@@ -94,9 +113,8 @@ export function useScenario() {
 
       const { webState } = scenario;
 
-      // 1. Reset - prevent stale data leaking between scenarios
-      useSimulationStore.getState().clearResults();
-      useSceneStore.getState().clearScene();
+      // 1. Reset - prevent stale data leaking between scenarios.
+      resetScenarioScopedStores();
 
       // 2. Apply instant state
       applySimulationState(webState);
