@@ -67,6 +67,51 @@ jobs:
         if: always()
         run: kill "$(cat /tmp/viewer.pid)" 2>/dev/null || true
 
+  mutmut:
+    # Minor-release tier only: mutmut on the physics-critical modules runs on
+    # ``vX.Y.0`` tags (not patch releases). Report-only, does not block the
+    # release. See docs/internal/testing_roadmap.md Phase 4 and Wave 5 Agent I
+    # audit (docs/internal/mutation_audit_2026-04-18.md) for the score baseline.
+    if: endsWith(github.ref_name, '.0')
+    needs: [lint]
+    runs-on: ubicloud-standard-2
+    timeout-minutes: 45
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+      - run: uv sync --python 3.12 --extra dev --extra viewer
+      - name: Mutmut — fresnel
+        env:
+          AEGIS_DATA_DIR: ${{ github.workspace }}/data
+        run: |
+          bash scripts/run_mutmut.sh fresnel || true
+          echo "::group::Fresnel results"
+          uv run mutmut results | tee mutmut_results_fresnel.txt
+          echo "::endgroup::"
+      - name: Mutmut — compliance
+        env:
+          AEGIS_DATA_DIR: ${{ github.workspace }}/data
+        run: |
+          bash scripts/run_mutmut.sh compliance || true
+          echo "::group::Compliance results"
+          uv run mutmut results | tee mutmut_results_compliance.txt
+          echo "::endgroup::"
+      - name: Mutmut — _parsing
+        env:
+          AEGIS_DATA_DIR: ${{ github.workspace }}/data
+        run: |
+          bash scripts/run_mutmut.sh parsing || true
+          echo "::group::_parsing results"
+          uv run mutmut results | tee mutmut_results_parsing.txt
+          echo "::endgroup::"
+      - name: Upload mutmut reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutmut-results-${{ github.ref_name }}
+          path: mutmut_results_*.txt
+
   release:
     needs: [lint, test, schemathesis]
     runs-on: ubicloud-standard-2

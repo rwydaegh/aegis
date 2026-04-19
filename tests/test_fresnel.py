@@ -41,9 +41,12 @@ class TestFresnelGolden:
         T_s, T_p = fresnel_transmission(mu, N_SKIN_28)
         T_avg = 0.5 * (T_s + T_p)
 
-        assert T_s == pytest.approx(exp_Ts, abs=0.002)
-        assert T_p == pytest.approx(exp_Tp, abs=0.002)
-        assert T_avg == pytest.approx(exp_Tavg, abs=0.002)
+        # 1e-3 is tight enough to reject small numerical corruptions like
+        # `mu**2 -> mu**3` (diffs ~1e-3 at oblique angles) while still matching
+        # the 3-digit monograph values (rounding error < 5e-4).
+        assert T_s == pytest.approx(exp_Ts, abs=1e-3)
+        assert T_p == pytest.approx(exp_Tp, abs=1e-3)
+        assert T_avg == pytest.approx(exp_Tavg, abs=1e-3)
 
 
 class TestFresnelProperties:
@@ -226,3 +229,152 @@ class TestFresnelEdgeCases:
         """T0(-1) causes |1+n|^2=0, must raise instead of returning inf."""
         with pytest.raises(ValueError, match="Cannot compute T0"):
             T0(-1.0 + 0j)
+
+
+class TestFresnelHighPrecision:
+    """High-precision reference values for skin at 28 GHz.
+
+    The monograph Table 1 is rounded to 3 decimals, which lets small numeric
+    corruptions (e.g. ``mu**2 -> mu**3``) slip through with <5e-4 error.
+    These tests lock the formula at 8-decimal precision against values
+    computed from the canonical closed form, and anchor the amplitude
+    transmission/reflection coefficients (phase + magnitude) so the coherent
+    path cannot drift independently of the power path.
+    """
+
+    # Reference values computed from the canonical formulas at theta=45 deg,
+    # skin at 28 GHz (eps_r=17.0, sigma=25.0 S/m). Captured to 10 decimals from
+    # the unmutated implementation. A 1e-9 abs tolerance is well below any
+    # physically meaningful mutation on this function.
+    REF_T_S = 0.4218406076
+    REF_T_P = 0.6657317169
+    REF_T_S_NORMAL = 0.5386723767
+    REF_T0 = 0.5386723767
+    REF_T_S_AMP_45 = 0.24447251063166323 + 0.08565982285270618j
+    REF_T_P_AMP_45 = 0.3103780207303508 + 0.09455736751523924j
+    REF_R_S_45 = -0.7555274893683368 + 0.08565982285270621j
+    REF_R_P_45 = 0.5634841819400653 - 0.12943670179928313j
+    REF_XI_45 = 4.445107820955217 - 1.8052655039958063j
+
+    def test_transmission_power_45deg_exact(self):
+        mu = float(np.cos(np.radians(45)))
+        T_s, T_p = fresnel_transmission(mu, N_SKIN_28)
+        assert T_s == pytest.approx(self.REF_T_S, abs=1e-9)
+        assert T_p == pytest.approx(self.REF_T_P, abs=1e-9)
+
+    def test_transmission_power_normal_exact(self):
+        T_s, T_p = fresnel_transmission(1.0, N_SKIN_28)
+        assert T_s == pytest.approx(self.REF_T_S_NORMAL, abs=1e-9)
+        assert T_p == pytest.approx(self.REF_T_S_NORMAL, abs=1e-9)
+        assert T0(N_SKIN_28) == pytest.approx(self.REF_T0, abs=1e-9)
+
+    def test_amplitude_transmission_normal_matches_2_over_1_plus_n(self):
+        """At normal incidence, t_s = t_p = 2 / (1 + n_tilde) (closed form)."""
+        t_s, t_p = fresnel_amplitude(1.0, N_SKIN_28)
+        expected = 2 / (1 + N_SKIN_28)
+        assert t_s == pytest.approx(expected, abs=1e-12)
+        assert t_p == pytest.approx(expected, abs=1e-12)
+        # Anchor magnitude so a mutation like ``2 * mu * (mu + xi)`` (instead
+        # of divide) can't sneak through.
+        assert abs(t_s) == pytest.approx(abs(expected), abs=1e-12)
+        # The phase and sign must also match; ``2 / mu / (mu + xi)`` at mu=1
+        # gives the same value but away from normal it doesn't.
+
+    def test_amplitude_transmission_45deg_exact(self):
+        mu = float(np.cos(np.radians(45)))
+        t_s, t_p = fresnel_amplitude(mu, N_SKIN_28)
+        assert t_s == pytest.approx(self.REF_T_S_AMP_45, abs=1e-12)
+        assert t_p == pytest.approx(self.REF_T_P_AMP_45, abs=1e-12)
+
+    def test_reflection_45deg_exact(self):
+        mu = float(np.cos(np.radians(45)))
+        r_s, r_p = fresnel_reflection(mu, N_SKIN_28)
+        assert r_s == pytest.approx(self.REF_R_S_45, abs=1e-12)
+        assert r_p == pytest.approx(self.REF_R_P_45, abs=1e-12)
+
+    def test_xi_from_mu_45deg_exact(self):
+        """xi = sqrt(n^2 - 1 + mu^2), 10-decimal reference at theta=45."""
+        from aegis._array_backend import xp
+
+        mu = xp.asarray([float(np.cos(np.radians(45)))], dtype=complex)
+        xi = xi_from_mu(mu, N_SKIN_28)
+        xi_val = complex(np.asarray(xi)[0])
+        assert xi_val == pytest.approx(self.REF_XI_45, abs=1e-12)
+
+    def test_xi_from_mu_normal_equals_n_tilde(self):
+        """At normal incidence (mu=1), xi = sqrt(n^2 - 1 + 1) = n_tilde."""
+        from aegis._array_backend import xp
+
+        xi = xi_from_mu(xp.asarray([1.0 + 0j]), N_SKIN_28)
+        xi_val = complex(np.asarray(xi)[0])
+        assert xi_val == pytest.approx(N_SKIN_28, abs=1e-12)
+
+
+class TestScalarReturnTypes:
+    """Scalar inputs must return Python scalars, not 1-element arrays.
+
+    The wrappers branch on ``scalar_input = mu.ndim == 0``. A mutation of the
+    branch predicate silently returns a NumPy array at the scalar API, which
+    downstream coherent code passes to JAX primitives that then raise or
+    silently broadcast. Lock the contract here.
+    """
+
+    def test_fresnel_transmission_scalar_returns_python_floats(self):
+        T_s, T_p = fresnel_transmission(0.5, N_SKIN_28)
+        assert isinstance(T_s, float)
+        assert isinstance(T_p, float)
+
+    def test_fresnel_reflection_scalar_returns_python_complex(self):
+        r_s, r_p = fresnel_reflection(0.5, N_SKIN_28)
+        assert isinstance(r_s, complex)
+        assert isinstance(r_p, complex)
+
+    def test_fresnel_amplitude_scalar_returns_python_complex(self):
+        t_s, t_p = fresnel_amplitude(0.5, N_SKIN_28)
+        assert isinstance(t_s, complex)
+        assert isinstance(t_p, complex)
+
+    def test_array_input_returns_ndarray(self):
+        mu = np.asarray([0.5, 0.8])
+        T_s, T_p = fresnel_transmission(mu, N_SKIN_28)
+        assert isinstance(T_s, np.ndarray)
+        assert isinstance(T_p, np.ndarray)
+
+
+class TestGrazingClamp:
+    """The sub-threshold grazing clamp (mu_real < 1e-10 -> T = 0) must engage
+    specifically when mu is tiny-but-nonzero, not only at mu = 0. Without the
+    clamp, JIT'd complex paths can leak sub-picowatt T that then causes NaNs
+    when projected through 1/mu in downstream Sab normalisation.
+    """
+
+    def test_tiny_mu_is_clamped_to_zero(self):
+        T_s, T_p = fresnel_transmission(1e-11, N_SKIN_28)
+        assert T_s == 0.0
+        assert T_p == 0.0
+
+    def test_mu_above_threshold_is_not_clamped(self):
+        T_s, T_p = fresnel_transmission(1e-9, N_SKIN_28)
+        assert T_s > 0.0
+        assert T_p > 0.0
+
+
+class TestSignConvention:
+    """n_complex uses the physics time-convention exp(-j omega t).
+
+    This fixes ``Im(n_tilde) < 0`` for lossy media. The coherent kernels and
+    the Fresnel amplitude coefficients carry a phase that inverts under the
+    opposite convention, so a sign flip must fail loudly.
+    """
+
+    def test_n_complex_imag_negative_for_lossy_medium(self):
+        """Im(n) < 0 for a lossy dielectric under exp(-j omega t)."""
+        n = n_complex(17.0, 25.0, 28e9)
+        assert n.imag < 0, f"Expected Im(n) < 0, got {n}"
+
+    def test_n_complex_imag_scales_with_sigma(self):
+        """|Im(n)| grows monotonically with conductivity (more loss)."""
+        n1 = n_complex(17.0, 1.0, 28e9)
+        n2 = n_complex(17.0, 25.0, 28e9)
+        n3 = n_complex(17.0, 100.0, 28e9)
+        assert abs(n1.imag) < abs(n2.imag) < abs(n3.imag)

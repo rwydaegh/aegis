@@ -70,6 +70,13 @@ test_screenshots/
 # Hypothesis test database
 .hypothesis/
 
+# Mutmut run artifacts (local audit + minor-release CI only)
+mutants/
+mutmut_results_*.txt
+
+# Pynguin test-generation artifacts
+pynguin-report/
+
 # Debug screenshots
 *.png
 !docs/assets/*.png
@@ -128,6 +135,7 @@ tools/mpfb2/
 scripts/*
 !scripts/build_phantoms.py
 !scripts/fuzz_api.sh
+!scripts/run_mutmut.sh
 
 # ── GSD baseline (auto-generated) ──
 *~
