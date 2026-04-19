@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import * as Sentry from '@sentry/react'
-import { fetchBody, isNetworkError } from '@/api/client'
+import { fetchBody, isClientError, isNetworkError } from '@/api/client'
 import { useSceneStore } from '@/stores/scene'
 import { useSimulationStore } from '@/stores/simulation'
 import { useNotificationStore } from '@/stores/notifications'
@@ -57,7 +57,7 @@ export function useBodyLoader() {
         )
         return
       }
-      Sentry.captureException(err)
+      if (!isClientError(err)) Sentry.captureException(err)
       useNotificationStore.getState().addNotification('error', `Failed to load body: ${(err as Error).message}`)
     })
 
