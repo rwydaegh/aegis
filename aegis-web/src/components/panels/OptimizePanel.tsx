@@ -1,4 +1,4 @@
-import { useOptimizeStore, type OptimizeMode } from '@/stores/optimize'
+import { useOptimizeStore, type IterationResult, type OptimizeMode } from '@/stores/optimize'
 import { useOptimization } from '@/hooks/useOptimization'
 import { useSimulationStore } from '@/stores/simulation'
 import { useMIMOStore } from '@/stores/mimo'
@@ -6,6 +6,19 @@ import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
 import { LineChart, Line, YAxis, ResponsiveContainer } from 'recharts'
 import HistoryScrubber from './HistoryScrubber'
+
+/**
+ * For placement and mimo_peak, `objective` is peak S_ab (minimize-peak problem).
+ * For tilt_power, `objective` is a signed penalty `-power + lambda * violation^2`
+ * whose scale and sign flip across iterations — plotting it as "Peak S_ab" is
+ * misleading. Use `stats.peak_sab` when present so the chart is always a
+ * peak-exposure trajectory.
+ */
+export function chartValueForIteration(h: IterationResult): number {
+  const peakSab = (h.stats as { peak_sab?: unknown } | undefined)?.peak_sab
+  if (typeof peakSab === 'number' && Number.isFinite(peakSab)) return peakSab
+  return h.objective
+}
 
 const MODES: { value: OptimizeMode; label: string; description: string }[] = [
   {
@@ -263,7 +276,7 @@ export default function OptimizePanel() {
   const canRunPlacement = mode === 'placement' && antennaPos !== null
   const enabled = canRun && (canRunMimo || canRunTiltPower || canRunPlacement)
 
-  const chartData = history.map(h => ({ iter: h.iter, value: h.objective }))
+  const chartData = history.map(h => ({ iter: h.iter, value: chartValueForIteration(h) }))
 
   const gridSize = constraints.gridSize ?? 5
   const gridSpacing = constraints.gridSpacing ?? 2
