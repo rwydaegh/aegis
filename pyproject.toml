@@ -63,6 +63,9 @@ dev = [
     # smoke test in tests/test_viewer_schemathesis_smoke.py.
     "schemathesis>=4.15",
     "apispec>=6.10",
+    # Mutmut runs as a local audit + minor-release CI tool, not per-PR. See
+    # docs/internal/testing_roadmap.md (Phase 4) for the tiering rationale.
+    "mutmut>=3",
 ]
 body = ["smplx>=0.1.28", "torch>=2.11.0", "pygltflib>=1.16.5"]
 benchmark = ["pytest-codspeed>=4.4.0"]
@@ -121,6 +124,41 @@ exclude_lines = [
     "pragma: no cover",
     "if TYPE_CHECKING:",
     "if __name__",
+]
+
+[tool.mutmut]
+# Mutation testing — local audit + minor-release CI tier only. Mutmut v3 is
+# config-only: pick the target file(s) by editing paths_to_mutate or via
+# scripts/run_mutmut.sh which rewrites these lines per-invocation. See
+# docs/internal/testing_roadmap.md Phase 4 for rationale.
+paths_to_mutate = [
+    "src/aegis/tissue/fresnel.py",
+]
+tests_dir = [
+    "tests/test_fresnel.py",
+]
+# Override pyproject addopts (``-n 2`` conflicts with mutmut's own xdist args)
+# and skip slow-marked tests. Mutmut itself adds ``-x -q -p no:randomly
+# -p no:random-order`` to every pytest invocation.
+pytest_add_cli_args = [
+    "-o",
+    "addopts=",
+    "-m",
+    "not slow",
+    "-p",
+    "no:cacheprovider",
+    # Hypothesis raises "differing executors" when mutmut re-enters the same
+    # test under its own plugin stack; skip the property-based test here.
+    "--deselect",
+    "tests/test_fresnel.py::TestFresnelEdgeCases::test_T0_positive_hypothesis",
+]
+# Copy the rest of src/ (unmutated) plus configs/ so tests can import aegis.*
+# inside mutants/. The 1.3 GB data/ tree stays outside; set AEGIS_DATA_DIR so
+# tests that need the IT'IS database (viewer routes) find it.
+also_copy = ["src/", "configs/"]
+# Skip generated files.
+do_not_mutate = [
+    "*/_version.py",
 ]
 
 [tool.basedpyright]

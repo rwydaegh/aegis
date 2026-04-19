@@ -16,6 +16,7 @@ from flask import Flask  # noqa: E402
 from aegis.viewer.routes.compute import (  # noqa: E402
     _build_binary_response,
     _parse_bool,
+    _parse_freq_and_tissue,
     _parse_mode_or_level,
     _parse_quantities_and_scenario,
     _parse_rotation_y,
@@ -28,6 +29,23 @@ def app():
     app = Flask(__name__)
     app.config["TESTING"] = True
     return app
+
+
+def _error_message(err_tuple) -> str:
+    """Extract the ``error`` field from a ``(Response, int)`` err tuple.
+
+    Helper for tests that assert specific 400 error messages. Mutmut surfaced
+    that many tests only checked ``err[1] == 400`` without looking at the body,
+    so response-shape mutations (e.g. ``"error"`` -> ``"ERROR"``) slipped
+    through.
+    """
+    resp, status = err_tuple
+    body = resp.get_json()
+    assert isinstance(body, dict), f"expected JSON dict, got {body!r}"
+    assert "error" in body, f"expected key 'error' in body, got {body!r}"
+    msg = body["error"]
+    assert isinstance(msg, str), f"expected error message str, got {msg!r}"
+    return msg
 
 
 # ---------------------------------------------------------------------------
@@ -64,6 +82,36 @@ class TestParseVec3:
             val, err = _parse_vec3({"pos": [1, 2, 3, 4]}, "pos")
             assert val is None
             assert err[1] == 400
+
+    def test_error_body_shape_on_wrong_length(self, app) -> None:
+        """The 400 body must be ``{"error": "<key> <descriptor>"}``. Locks down
+        against mutations that replace the body with ``None`` or change the
+        error-key casing."""
+        with app.app_context():
+            _, err = _parse_vec3({"pos": [1, 2]}, "pos")
+            assert err is not None
+            msg = _error_message(err)
+            assert "pos" in msg
+            # Explicit dimensionality hint so the caller knows what to fix.
+            assert "3-element" in msg or "3 element" in msg
+
+    def test_error_body_shape_on_nan(self, app) -> None:
+        with app.app_context():
+            _, err = _parse_vec3({"pos": [1.0, float("nan"), 2.0]}, "pos")
+            assert err is not None
+            msg = _error_message(err)
+            assert "pos" in msg
+            assert "finite" in msg
+
+    def test_error_body_shape_on_overflow(self, app) -> None:
+        """Components above 1e12 m must be rejected with a message that names
+        the limit so the caller can see the threshold."""
+        with app.app_context():
+            _, err = _parse_vec3({"pos": [0.0, 0.0, 1e13]}, "pos")
+            assert err is not None
+            msg = _error_message(err)
+            assert "pos" in msg
+            assert "1e+12" in msg or "1e12" in msg
 
     def test_non_numeric(self, app) -> None:
         with app.app_context():
@@ -139,6 +187,26 @@ class TestParseRotationY:
         assert err is None
         assert val == 0.0
 
+    def test_error_body_shape_on_bad_type(self, app) -> None:
+        """The 400 response must have ``{"error": <str>}`` with a message
+        that mentions ``body_rotation_y``. Locked down explicitly because
+        response-shape mutations survived without this assertion.
+        """
+        with app.app_context():
+            _, err = _parse_rotation_y({"body_rotation_y": "abc"})
+            assert err is not None
+            msg = _error_message(err)
+            assert "body_rotation_y" in msg
+            assert "number" in msg
+
+    def test_error_body_shape_on_nan(self, app) -> None:
+        with app.app_context():
+            _, err = _parse_rotation_y({"body_rotation_y": float("nan")})
+            assert err is not None
+            msg = _error_message(err)
+            assert "body_rotation_y" in msg
+            assert "finite" in msg
+
     def test_string_raises(self, app) -> None:
         with app.app_context():
             val, err = _parse_rotation_y({"body_rotation_y": "abc"})
@@ -170,6 +238,89 @@ class TestParseRotationY:
 
 
 # ---------------------------------------------------------------------------
+# _parse_freq_and_tissue (boundary + error-shape tests)
+# ---------------------------------------------------------------------------
+
+
+class TestParseFreqAndTissue:
+    def test_default_freq(self) -> None:
+        tissue, freq, err = _parse_freq_and_tissue({})
+        assert err is None
+        assert tissue is not None
+        assert freq > 0
+
+    def test_valid_freq(self) -> None:
+        _, freq, err = _parse_freq_and_tissue({"freq_hz": 28e9})
+        assert err is None
+        assert freq == 28e9
+
+    def test_zero_freq_rejected(self, app) -> None:
+        """freq_hz == 0 is a boundary that mutated `<=` -> `<` slipped through."""
+        with app.app_context():
+            tissue, freq, err = _parse_freq_and_tissue({"freq_hz": 0})
+            assert tissue is None
+            assert freq is None
+            assert err is not None
+            msg = _error_message(err)
+            assert "freq_hz" in msg
+            assert "positive" in msg
+
+    def test_negative_freq_rejected(self, app) -> None:
+        with app.app_context():
+            _, _, err = _parse_freq_and_tissue({"freq_hz": -1.0})
+            assert err is not None
+            msg = _error_message(err)
+            assert "freq_hz" in msg
+
+    def test_nan_freq_rejected(self, app) -> None:
+        """`or` -> `and` mutation flipped the finite+positive logic; this
+        ensures NaN is rejected even though `freq_hz <= 0` is False for NaN.
+        """
+        with app.app_context():
+            _, _, err = _parse_freq_and_tissue({"freq_hz": float("nan")})
+            assert err is not None
+            msg = _error_message(err)
+            assert "finite" in msg
+
+    def test_inf_freq_rejected(self, app) -> None:
+        with app.app_context():
+            _, _, err = _parse_freq_and_tissue({"freq_hz": float("inf")})
+            assert err is not None
+
+    def test_non_numeric_freq_rejected(self, app) -> None:
+        with app.app_context():
+            _, _, err = _parse_freq_and_tissue({"freq_hz": "abc"})
+            assert err is not None
+            msg = _error_message(err)
+            assert "freq_hz" in msg
+            assert "number" in msg
+
+    def test_invalid_skin_model_rejected(self, app) -> None:
+        with app.app_context():
+            _, _, err = _parse_freq_and_tissue({"freq_hz": 28e9, "skin_model": "not_a_model"})
+            assert err is not None
+            msg = _error_message(err)
+            # The message is ``str(ValueError(...))`` forwarded from
+            # resolve_skin_model. It must reference the bad model name so the
+            # caller can see what was rejected (and not be the literal "None"
+            # from a degraded ``str(None)`` path).
+            assert msg != "None"
+            assert "not_a_model" in msg or "skin_model" in msg
+
+    def test_subhertz_freq_still_accepted(self) -> None:
+        """A 0.5 Hz frequency is physically absurd but syntactically valid.
+        Mutmut surfaced that ``<= 0`` could be mutated to ``<= 1`` silently,
+        which would reject fractional positive frequencies. Keep the lower
+        bound at 0 so only nonpositive values are rejected.
+        """
+        # The christ2025 skin model evaluates the Debye formula analytically,
+        # so it accepts any positive frequency.
+        _, freq, err = _parse_freq_and_tissue({"freq_hz": 0.5, "skin_model": "christ2025"})
+        assert err is None
+        assert freq == 0.5
+
+
+# ---------------------------------------------------------------------------
 # _parse_quantities_and_scenario
 # ---------------------------------------------------------------------------
 
@@ -196,6 +347,11 @@ class TestParseQuantitiesAndScenario:
             q, s, err = _parse_quantities_and_scenario({"exposure_scenario": "nonexistent"})
             assert q is None
             assert err[1] == 400
+            msg = _error_message(err)
+            assert "exposure_scenario" in msg
+            # The rejected scenario name should be echoed back so the caller
+            # can debug typos quickly.
+            assert "nonexistent" in msg
 
 
 # ---------------------------------------------------------------------------
@@ -239,18 +395,30 @@ class TestParseModeOrLevel:
             kw, err = _parse_mode_or_level({"level": 9})
             assert kw is None
             assert err[1] == 400
+            msg = _error_message(err)
+            assert "level" in msg
+            assert "0" in msg
+            assert "8" in msg
 
     def test_negative_level_rejected(self, app) -> None:
         with app.app_context():
             kw, err = _parse_mode_or_level({"level": -1})
             assert kw is None
             assert err[1] == 400
+            msg = _error_message(err)
+            assert "level" in msg
+            assert "between" in msg
+            assert "0" in msg
+            assert "8" in msg
 
     def test_non_integer_level(self, app) -> None:
         with app.app_context():
             kw, err = _parse_mode_or_level({"level": "abc"})
             assert kw is None
             assert err[1] == 400
+            msg = _error_message(err)
+            assert "level" in msg
+            assert "integer" in msg
 
     def test_mode_bound(self) -> None:
         kw, err = _parse_mode_or_level({"mode": "bound"})
@@ -269,6 +437,40 @@ class TestParseModeOrLevel:
         assert kw["mode"] == "spatial"
         assert "fresnel" in kw
 
+    def test_mode_spatial_default_corrections(self) -> None:
+        """Spatial mode defaults: fresnel=True, polarisation/curvature/diffraction=False.
+        Mutmut surfaced that `_parse_bool(..., True)` -> `_parse_bool(None, True)`
+        survived because tests didn't assert the default booleans.
+        """
+        kw, err = _parse_mode_or_level({"mode": "spatial"})
+        assert err is None
+        assert kw["fresnel"] is True
+        assert kw["polarisation"] is False
+        assert kw["curvature"] is False
+        assert kw["diffraction"] is False
+
+    def test_mode_spatial_fresnel_can_be_disabled(self) -> None:
+        kw, err = _parse_mode_or_level({"mode": "spatial", "fresnel": "false"})
+        assert err is None
+        assert kw["fresnel"] is False
+
+    def test_mode_spatial_polarisation_can_be_enabled(self) -> None:
+        kw, err = _parse_mode_or_level({"mode": "spatial", "polarisation": "true"})
+        assert err is None
+        assert kw["polarisation"] is True
+
+    def test_mode_spatial_diffraction_can_be_enabled(self) -> None:
+        """Diffraction toggle must read from the ``diffraction`` key
+        specifically (not ``None`` and not a case-shifted variant)."""
+        kw, err = _parse_mode_or_level({"mode": "spatial", "diffraction": "true"})
+        assert err is None
+        assert kw["diffraction"] is True
+
+    def test_mode_spatial_curvature_can_be_enabled(self) -> None:
+        kw, err = _parse_mode_or_level({"mode": "spatial", "curvature": "true"})
+        assert err is None
+        assert kw["curvature"] is True
+
     def test_mode_spatial_corrections(self) -> None:
         kw, err = _parse_mode_or_level({"mode": "spatial", "fresnel": True, "curvature": True})
         assert err is None
@@ -280,6 +482,12 @@ class TestParseModeOrLevel:
             kw, err = _parse_mode_or_level({"mode": "coherent"})
             assert kw is None
             assert err[1] == 400
+            msg = _error_message(err)
+            assert "mode" in msg
+            # Valid options must be listed in the message so callers know the
+            # allowed set without reading the source. Reject mutations that
+            # corrupt the `, ` separator by checking the exact comma-space join.
+            assert "aggregate, bound, spatial" in msg
 
     def test_mode_takes_precedence_over_level(self) -> None:
         kw, err = _parse_mode_or_level({"mode": "bound", "level": 4})
@@ -290,6 +498,18 @@ class TestParseModeOrLevel:
         kw, err = _parse_mode_or_level({}, default_level=5)
         assert err is None
         assert kw == {"level": 5}
+
+    def test_default_level_value_is_2(self) -> None:
+        """Baseline contract: omitting ``level`` and ``mode`` yields level 2,
+        not level 3. Mutmut tracked this as a signature default drift — the
+        inspect-based signature test doesn't catch it because the public API
+        is a trampoline wrapper; the behavior-level test is what matters.
+        """
+        kw, err = _parse_mode_or_level({})
+        assert err is None
+        assert kw == {"level": 2}
+        # Also lock against the mutant that returned ``{"level": 3}`` silently.
+        assert kw["level"] != 3
 
 
 # ---------------------------------------------------------------------------
@@ -327,6 +547,17 @@ class TestParseBool:
 
     def test_int_one(self) -> None:
         assert _parse_bool(1, False) is True
+
+    def test_string_no_lowercase(self) -> None:
+        """The string ``"no"`` must coerce to False (matches the falsy tuple)."""
+        assert _parse_bool("no", True) is False
+
+    def test_string_no_uppercase(self) -> None:
+        """Case-insensitive ``NO`` must also coerce to False."""
+        assert _parse_bool("NO", True) is False
+
+    def test_string_no_mixed_case(self) -> None:
+        assert _parse_bool("No", True) is False
 
 
 # ---------------------------------------------------------------------------
