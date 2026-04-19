@@ -143,6 +143,17 @@ reportExplicitAny = "information"
 reportMissingTypeArgument = "information"
 # f-string line wrapping ("foo " f"bar") is standard Python; not a real bug.
 reportImplicitStringConcatenation = "none"
+# Flask request.get_json(), numpy reductions, and pandas .rename/.map return
+# untyped values at HTTP/data boundaries. These fire thousands of times across
+# routes and carry no real-bug signal; keep visible as information notes.
+reportUnknownVariableType = "information"
+reportUnknownArgumentType = "information"
+reportUnknownMemberType = "information"
+reportUnknownParameterType = "information"
+reportUnknownLambdaType = "information"
+reportMissingParameterType = "information"
+# Flask registers view functions via @bp.route; basedpyright can't see the use.
+reportUnusedFunction = "information"
 
 # Routes get an explicit ruleset: strict-equivalent bug-catching checks enabled
 # as errors, but reportUnknown*/reportMissingType* demoted to information since
@@ -172,12 +183,13 @@ reportRedeclaration = "error"
 # compute/rt.py, sionna_rt.py, voxel_rt.py, scenes.py deliberately import back
 # from aegis.viewer.routes.compute (the package) to expose test-mockable proxies.
 # This is an intentional re-export pattern; the cycle is structural, not a bug.
-reportImportCycles = "warning"
+reportImportCycles = "information"
 reportInvalidTypeForm = "error"
 reportInvalidTypeVarUse = "error"
-reportUnusedFunction = "warning"
-reportUnusedImport = "warning"
-reportUnusedVariable = "warning"
-reportUnusedParameter = "warning"
+reportUnusedImport = "information"
+reportUnusedVariable = "information"
+# Flask handlers often accept unused args (decorator contract).
+reportUnusedParameter = "information"
 reportUnusedCallResult = "none"
-reportUntypedFunctionDecorator = "warning"
+# JAX @jit and Flask @bp.route are untyped from basedpyright's view.
+reportUntypedFunctionDecorator = "information"
