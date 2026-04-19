@@ -6,6 +6,7 @@ import { useSceneStore } from '@/stores/scene'
 import { useUIStore, selectSidebarOpen } from '@/stores/ui'
 import { useMIMOStore } from '@/stores/mimo'
 import { useCoverageStore } from '@/stores/coverage'
+import { useAntennaStore } from '@/stores/antenna'
 
 import { cn } from '@/lib/utils'
 import type { DosimetryStats } from '@/api/types'
@@ -143,7 +144,8 @@ export default function Toolbar() {
           onClick={() => {
             // Reset scene state
             useSimulationStore.getState().clearResults()
-            useSimulationStore.getState().setAntennaPos(null)
+            useSimulationStore.setState({ antennaPos: null })
+            useAntennaStore.getState().clearAntennas()
             useSceneStore.getState().clearScene()
             useUIStore.getState().setActiveScenario(null)
             useUIStore.getState().setWelcomeDismissed(false)

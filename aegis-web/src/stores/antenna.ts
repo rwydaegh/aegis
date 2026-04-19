@@ -31,6 +31,7 @@ interface AntennaStore {
 
   addAntenna: (position: ScenePos) => string
   removeAntenna: (id: string) => void
+  clearAntennas: () => void
   updateAntenna: (id: string, partial: Partial<AntennaConfig>) => void
   selectAntenna: (id: string | null) => void
   moveAntenna: (id: string, position: ScenePos) => void
@@ -106,6 +107,8 @@ export const useAntennaStore = create<AntennaStore>((set, get) => ({
     }
     set({ antennas: next, selectedId })
   },
+
+  clearAntennas: () => set({ antennas: new Map(), selectedId: null, _nextNumber: 1 }),
 
   updateAntenna: (id, partial) => {
     const state = get()
