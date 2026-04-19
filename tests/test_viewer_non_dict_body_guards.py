@@ -75,6 +75,32 @@ def test_scalar_body_does_not_500(viewer_client, endpoint):
     assert resp.status_code < 500
 
 
+@pytest.mark.parametrize("bad_user", [None, 42, "hello", [1, 2, 3]])
+def test_mimo_compute_non_dict_user_is_400(viewer_client, bad_user):
+    """``/api/mimo/compute`` must reject non-dict elements inside ``users``.
+
+    Previously, ``_validate_users_cfg`` ran ``"id" in u`` on every element,
+    which raises ``TypeError`` when ``u`` is ``None``/``int`` (not a container)
+    and silently accepts strings/lists — letting downstream ``u.get("phantom", ...)``
+    crash with ``AttributeError`` for a 500. The guard now rejects at the
+    validator with a clear 400.
+    """
+    # ``array`` is validated before ``users``; supply a minimal stub so the
+    # request reaches ``_validate_users_cfg``.
+    payload = {
+        "array": {"n_elements": [2, 2], "spacing": 0.5, "position": [0.0, 0.0, 2.0]},
+        "users": [bad_user],
+    }
+    resp = viewer_client.post("/api/mimo/compute", json=payload)
+    assert resp.status_code == 400, (
+        f"/api/mimo/compute returned {resp.status_code} for users=[{bad_user!r}]; "
+        "expected 400 from the element-type guard."
+    )
+    body = resp.get_json()
+    assert body is not None
+    assert "each user" in body.get("error", "").lower()
+
+
 def test_bug_report_null_description_is_400(viewer_client):
     """``{"description": null}`` previously crashed on ``None.strip()``.
 

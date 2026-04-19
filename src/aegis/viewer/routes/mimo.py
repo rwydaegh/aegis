@@ -49,6 +49,8 @@ def _validate_users_cfg(users_cfg) -> _ErrResp | None:
         return jsonify({"error": "Missing or empty 'users' in request"}), 400
     if not isinstance(users_cfg, list):
         return jsonify({"error": "'users' must be an array"}), 400
+    if not all(isinstance(u, dict) for u in users_cfg):
+        return jsonify({"error": "each user in 'users' must be a JSON object"}), 400
     user_ids = [u.get("id") for u in users_cfg if "id" in u]
     if len(user_ids) != len(set(user_ids)):
         dupes = [uid for uid in set(user_ids) if user_ids.count(uid) > 1]
