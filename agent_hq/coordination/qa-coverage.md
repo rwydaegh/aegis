@@ -54,6 +54,52 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-19 04:20 UTC -- "Body geometry and mesh"
+
+- Actor: cron-qa
+- Depth: medium
+- Findings: 1 bug filed: #655
+- Notes: Drove the Phantom panel + spatial averaging on production
+  (commit `e0ce22b`, Open ground scenario). Cycled through all 8 entries
+  in the Body mesh dropdown: `duke`, `ella`, `eartha`, `thelonious`
+  load and compute correctly (Sab values 0.14 - 0.19 W/m² on a 28 GHz /
+  60 dBm baseline with antenna at 3 m). The other 4 names
+  (`adult_male`, `adult_female`, `boy_6y`, `girl_8y`) all return 404
+  from `/api/body?name=...` -- confirmed via curl against the
+  authenticated session: only `['duke','eartha','ella','thelonious']`
+  appear in `caps.bodies`, and `gltf_bodies` is `[]`. The frontend
+  hardcodes a `PHANTOM_ORDER` of 8 in
+  `aegis-web/src/components/panels/PhantomPanel.tsx:22-31` and merges
+  with backend bodies (line 61), so the dropdown advertises 4 phantoms
+  the deployment does not have. **Bug 1 (#655)**: selecting one of the
+  missing 4 leaves a tiny bottom-right toast (`Body 'boy_6y' not
+  found`), the dropdown stays on the failed selection, the previously
+  loaded mesh persists, and heatmap + compliance HUD + color legend
+  all silently vanish. Sentry catches the underlying ApiError (issue
+  #653 was opened/auto-closed during this very session for boy_6y),
+  but the user-visible UX collapse needs a frontend fix. Suggested
+  fix in #655: drive the option list from `caps.bodies` only, or
+  render the missing 4 as disabled. Regression from #482 which fixed
+  "I only see 4 phantom options" by hardcoding all 8. Spatial
+  averaging surface verified healthy: clicking Sab(4cm²) "displayed"
+  switches the mesh + colorbar to averaged values (0.144 W/m² peak vs
+  0.145 unaveraged at 28 GHz -- area-weighted smoothing as expected),
+  and at 60 GHz the basic restriction auto-swaps to Sab(1cm²) per
+  ICNIRP (peak 0.168 W/m², +23.8 dB margin PASS, limit 40 W/m²).
+  Noted but not filed: (a) `gltf_bodies` is empty on production so the
+  Pose dropdown (idle/walking/phone_ear_r/phone_ear_l/sitting) and
+  animation Play/Pause from features.md are completely unreachable on
+  the live deploy -- the conditional `phantomType === 'gltf'` in
+  PhantomPanel.tsx never becomes true; (b) `features.md` describes
+  Thelonious as "(cat, 17.4 kg)" but the live mesh + PHANTOM_META is
+  a 6y boy, 18.6 kg -- internal docs nit, not user-facing; (c) the
+  antenna marker switches from a small triangle to a large red
+  icosphere as soon as any phantom selection happens (probably a
+  pattern-visualization toggle, not investigated). Confident the 4
+  available phantoms + spatial averaging are healthy; the missing-4
+  silent failure is the only real defect; pose/animation feature
+  needs a deployment audit before it can even be tested on prod.
+
 ### 2026-04-18 22:10 UTC -- "Base station pipeline"
 
 - Actor: cron-qa
