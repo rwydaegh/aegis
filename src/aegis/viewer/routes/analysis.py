@@ -144,7 +144,7 @@ def _tissue_spectrum_impl(cache: dict, cache_lock) -> RouteResponse:
                 eps_r = result["eps_r"] * 1.2
                 sigma = result["sigma"] * 1.2
             elif skin_model == "christ2025":
-                from aegis.viewer.compute import debye_permittivity
+                from aegis.tissue.cole_cole import debye_permittivity
 
                 eps_complex = np.array(
                     [debye_permittivity(f, eps_inf=7.88, eps_static=47.0, sigma=5.19, tau_s=8.35e-12) for f in freqs]

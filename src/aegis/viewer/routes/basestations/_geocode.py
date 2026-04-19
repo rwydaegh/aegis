@@ -74,7 +74,7 @@ def geocode_location(location: str) -> tuple[float, float, dict]:
     from geopy.exc import GeopyError
     from geopy.geocoders import Nominatim
 
-    geolocator = Nominatim(user_agent="aegis-viewer", timeout=_NETWORK_TIMEOUT_S)  # pyright: ignore[reportArgumentType]  # geopy stub bug: timeout typed as object
+    geolocator = Nominatim(user_agent="aegis-viewer", timeout=_NETWORK_TIMEOUT_S)
     try:
         result = geolocator.geocode(location, addressdetails=True, language="en")  # pyright: ignore[reportArgumentType]  # geopy stub bug: language typed as bool
     except GeopyError as e:
@@ -109,7 +109,7 @@ def reverse_geocode_country(lat: float, lon: float) -> dict:
     from geopy.exc import GeopyError
     from geopy.geocoders import Nominatim
 
-    geolocator = Nominatim(user_agent="aegis-viewer", timeout=_NETWORK_TIMEOUT_S)  # pyright: ignore[reportArgumentType]  # geopy stub bug
+    geolocator = Nominatim(user_agent="aegis-viewer", timeout=_NETWORK_TIMEOUT_S)
     try:
         result = geolocator.reverse(
             (lat, lon),
