@@ -357,7 +357,11 @@ _PATHS: dict[str, Any] = {
                     "description": "Stream started.",
                     "content": {
                         "text/event-stream": {
-                            "schema": {"type": "string"},
+                            # Each ``data:`` frame is a JSON object — either an
+                            # iteration payload or ``{error: true, message}``.
+                            # Schemathesis parses the frames and validates
+                            # against this schema; ``string`` would be wrong.
+                            "schema": {"type": "object", "additionalProperties": True},
                         },
                     },
                 },

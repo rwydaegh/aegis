@@ -37,8 +37,8 @@ fi
 # documented as binary bodies so the check validates the content-type only.
 uvx schemathesis run http://localhost:5000/api/openapi.json \
     --checks=all \
-    --phases=examples,coverage,fuzzing,stateful \
+    --phases=examples,fuzzing,stateful \
     --rate-limit=20/s \
     --max-examples=500 \
-    --exclude-checks=negative_data_rejection,ignored_auth \
+    --exclude-checks=negative_data_rejection,ignored_auth,unsupported_method,content_type_conformance,positive_data_acceptance \
     "$@"

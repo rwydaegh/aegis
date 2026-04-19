@@ -15,9 +15,10 @@ import uuid
 from typing import Any
 
 import numpy as np
-from flask import Flask, Response, jsonify, request, session
+from flask import Flask, Response, jsonify, session
 
 from aegis.optim.loop import run_optimization
+from aegis.viewer.routes._helpers import get_json_dict
 from aegis.viewer.routes._types import RouteResponse
 from aegis.viewer.server import scoped_cache_get
 
@@ -113,7 +114,9 @@ def _parse_rt_config(params: dict, cache: dict) -> dict[str, Any]:
 
 
 def _api_optimize_impl(app: Flask, cache: dict, cache_lock) -> RouteResponse:
-    params = request.get_json(silent=True) or {}
+    params, err = get_json_dict()
+    if err is not None:
+        return err
     mode = params.get("mode")
     if not mode:
         return jsonify({"error": "mode is required"}), 400

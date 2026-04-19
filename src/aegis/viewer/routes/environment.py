@@ -8,6 +8,7 @@ import logging
 from flask import Flask, Response, jsonify, request
 
 from aegis.viewer.cache import EnvironmentCache
+from aegis.viewer.routes._helpers import get_json_dict
 from aegis.viewer.routes._types import RouteResponse
 from aegis.viewer.server import scoped_cache_get, scoped_cache_set
 
@@ -314,8 +315,12 @@ def _handle_environment_combine(cache: dict, cache_lock) -> RouteResponse:
     """Implementation for POST /api/environment/combine."""
     from aegis.environment import EnvironmentMesh
 
-    body = request.get_json(silent=True) or {}
+    body, err = get_json_dict()
+    if err is not None:
+        return err
     sources = body.get("sources", ["osm", "tiles", "voxels"])
+    if not isinstance(sources, list):
+        return jsonify({"error": "sources must be a list of strings"}), 400
 
     source_map = {
         "osm": "env_mesh_osm",
@@ -325,6 +330,8 @@ def _handle_environment_combine(cache: dict, cache_lock) -> RouteResponse:
 
     meshes = []
     for src in sources:
+        if not isinstance(src, str):
+            continue
         key = source_map.get(src)
         if key:
             m = scoped_cache_get(cache, key)
