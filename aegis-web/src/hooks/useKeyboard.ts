@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useSimulationStore } from '@/stores/simulation'
+import { useAntennaStore } from '@/stores/antenna'
 import { useSceneStore } from '@/stores/scene'
 import { useMIMOStore } from '@/stores/mimo'
 import { touchKeys } from '@/lib/touchKeys'
@@ -25,11 +26,14 @@ function isTypingTarget(target: EventTarget | null): boolean {
 
 function deleteAntenna(e: KeyboardEvent): void {
   e.preventDefault()
-  const sim = useSimulationStore.getState()
-  if (sim.antennaPos) {
-    sim.setAntennaPos(null)
-    sim.clearResults()
-  }
+  // Remove the selected antenna from the antenna store. setAntennaPos(null) only
+  // deselects and leaves the pole on screen when more than one antenna exists
+  // (or when the sole antenna was added by the multi-antenna flow).
+  const antStore = useAntennaStore.getState()
+  const selectedId = antStore.selectedId
+  if (!selectedId) return
+  antStore.removeAntenna(selectedId)
+  useSimulationStore.getState().clearResults()
 }
 
 const ARROW_DELTAS: Record<string, [number, number, number]> = {
