@@ -182,12 +182,18 @@ export default function StochasticPanel() {
           <label className={labelClass}>Clusters</label>
           <input type="number" className={inputClass} step={1} min={1} max={50}
             value={getVal('NumClusters', 12)}
-            onChange={e => setOverride('NumClusters', Number(e.target.value))} />
+            onChange={e => {
+              const n = Number(e.target.value)
+              if (Number.isInteger(n) && n >= 1) setOverride('NumClusters', n)
+            }} />
 
           <label className={labelClass}>Sub-paths per cluster</label>
           <input type="number" className={inputClass} step={1} min={1} max={20}
             value={getVal('NumSubPaths', 20)}
-            onChange={e => setOverride('NumSubPaths', Number(e.target.value))} />
+            onChange={e => {
+              const n = Number(e.target.value)
+              if (Number.isInteger(n) && n >= 1) setOverride('NumSubPaths', n)
+            }} />
 
           <label className={labelClass}>Seed</label>
           <div className="flex gap-1.5">

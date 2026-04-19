@@ -238,3 +238,27 @@ def test_sc_path_count_unchanged():
     body = np.array([50.0, 0.0, 1.5])
     paths = generate_channel(params, 28.0, antenna, body, 40.0, seed=42)
     assert len(paths.k_hat) == 221  # 1 LOS + 11*20 NLOS
+
+
+@pytest.mark.parametrize(
+    "override,expected",
+    [
+        ({"NumClusters": 0}, "NumClusters must be >= 1"),
+        ({"NumSubPaths": 0}, "NumSubPaths must be >= 1"),
+    ],
+)
+def test_rejects_zero_cluster_or_subpath_override(override, expected):
+    """Zero clusters/sub-paths raises ValueError instead of IndexError on empty array."""
+    from aegis.channel import generate_channel, load_preset
+
+    preset = load_preset("3GPP_38.901_UMi_LOS", DATA_DIR)
+    with pytest.raises(ValueError, match=expected):
+        generate_channel(
+            preset["params"],
+            freq_ghz=28.0,
+            antenna_pos=np.array([0.0, 0.0, 10.0]),
+            body_center=np.array([50.0, 0.0, 1.5]),
+            power_dbm=40.0,
+            seed=42,
+            overrides=override,
+        )
