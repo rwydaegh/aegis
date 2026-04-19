@@ -54,6 +54,110 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-19 18:25 UTC -- "Stochastic channel modeling (follow-up to 16:15)"
+
+- Actor: interactive (qa-agent-661066)
+- Depth: medium
+- Findings: 1 bug filed and auto-fixed: #673 (→ PR #674 merged
+  10 min after filing). #664 re-reproduced on production as
+  sanity check.
+- Notes: Section collision with the 16:15 UTC session — I picked
+  Stochastic before seeing the 16:15 entry (the other agent's
+  commit was on master but not yet in my local worktree; rebased
+  mid-session). Kept going because the 16:15 entry flagged
+  Null's peak at 53.55 mW/m² as "by design" and that conclusion
+  felt off. It was. Drove the Null preset at 28 GHz (53.55
+  mW/m², margin +23.9 dB) and 10 GHz (48.84 mW/m², margin +22.9
+  dB), identical to Freespace to the mW/m² — a `PL_model=constant`
+  with `PL_A=1000` should kill the channel by 1000 dB, not leak
+  full FSPL. Root cause in `src/aegis/channel/path_loss.py:31-33`:
+  `compute_path_loss` dispatches on `logdist` / `dual_slope` /
+  `nlos` only; anything else falls through an `else` branch that
+  logs a warning and returns `_fspl(d3d, freq_ghz)`. Null.conf
+  declares `PL_model = constant` explicitly ("effectively disables
+  the channel"), and all 8 MIMOSA presets use the same (`PL_A=95`),
+  so that's 9 presets silently broken. Filed #673 at 18:14 UTC,
+  PR #674 (`Implement constant path loss model`) auto-merged at
+  18:24 UTC — adds `_constant(params)` returning `PL_A` and a
+  regression test. The 16:15 agent's "backbone geometric LOS
+  remains" trace was wrong: the LOS component itself carries the
+  PL_model attenuation; FSPL fallback is what was keeping it
+  visible. Takeaway for future agents: when a preset is labeled
+  "effectively disables the channel" and the compute still
+  returns FSPL-like numbers, check `compute_path_loss` dispatch
+  before accepting "by design". **#664 sanity check**: typed `0`
+  into Clusters on prod (`7bdd91a`), hooked fetch to capture the
+  `/api/compute` payload — `stochastic_overrides:
+  {"NumClusters": 0}` lands at the backend and 500s with
+  "index 0 is out of bounds for axis 0 with size 0", exactly as
+  the 16:15 log says. Both frontend (StochasticPanel.tsx:187) and
+  backend fixes are on master, deploy lag is the only reason it
+  still reproduces. Not re-filed. No other new findings on the
+  stochastic surface; confidence is high once #674 ships and the
+  9 constant-PL presets start behaving like their comments say.
+
+### 2026-04-19 16:15 UTC -- "Stochastic channel modeling"
+
+- Actor: interactive (qa-agent-620927)
+- Depth: medium
+- Findings: none filed (#664 regression reproducible on production
+  but fix already merged on master, awaiting deploy)
+- Notes: Picked this section because it was absent from the last 20
+  coverage entries and commit #664 (reject zero NumClusters/
+  NumSubPaths) landed fresh 6h ago. Production is at commit
+  `7bdd91a` (PR #662), which is BEHIND master — so #657, #659,
+  #660, #661, #664, #665, #668, #669, #670 are all merged but not
+  yet deployed. Enabled stochastic channel on Open ground (28 GHz,
+  65 dBm, antenna at 4 m). Baseline synthetic peak was 80.46 mW/m²
+  (+23.9 dB Sab margin). Swept all families/scenarios end-to-end:
+  **Canonical**: Freespace, TwoRayGR, Null, LOSonly all load and
+  compute. Null (PL_A=1000 dB) still yields peak 53.55 mW/m² with
+  K_mu=0 override — this looks suspicious at first glance but on
+  tracing `_generate_stochastic_paths` in `compute.py:489` the peak
+  still reflects the LOS-component direct path (Null zeroes the
+  scatterer paths but the backbone geometric LOS remains). Not a
+  bug, documented design. **3GPP 38.901**: cycled InF LOS → UMa
+  NLOS. UMa NLOS peak 0.26 W/m² (margin +13.0 dB), InF LOS
+  +15.2 dB — scenario truly changes the physics, not just labels.
+  Note: UMa NLOS preset correctly exposes KF_mu=-100 dB (effectively
+  no LOS) to the UI, which renders in the K-factor spinbutton.
+  **QuaDRiGa**: Industrial LOS loaded with K=7.8, AS=49°, ES=44°,
+  NumClusters=25 — peak 58.15 mW/m² at seed 1661939735, 36.11
+  mW/m² at seed 42 — seed determinism works. **#664 repro
+  confirmed on prod**: typed 0 into the Clusters field, browser
+  echoes "0" in DOM but the `n >= 1` guard in StochasticPanel.tsx
+  isn't in the deployed build yet, so `/api/compute` returned
+  500 with "index 0 is out of bounds for axis 0 with size 0".
+  Sentry captured. Backend-side validation (also in #664) matches.
+  Not filed — fix is already merged and awaiting deploy.
+  **Seed reroll** button (↻) generates a fresh 31-bit integer,
+  peak + margin respond as expected. **Reset to preset defaults**
+  clears overrides but leaves the seed field untouched (by design
+  per the panel code — seed is a separate store field). **Viz
+  toggles**: cluster rays FBS/LBS checkbox hides/shows correctly,
+  Clusters vs All sub-paths radios switch between 25 cluster
+  markers and 25×20=500 sub-path rays cleanly. LSP heatmap: all
+  8 LSP parameters (Shadow fading / Rician K-factor / Delay spread
+  / 4 angle spreads / Cross-polarization ratio) render a coloured
+  ground plane with appropriate legend units ("K (dB)", "lgs DS",
+  "σψ (dB)" etc). For NLOS scenarios where KF_sigma=0, the K-factor
+  heatmap renders as a near-uniform plane — correct. **K-factor
+  override**: setting KF_mu from preset (7.8) to override 30 dB
+  produced only ~10% peak change (58.15 → 65.79 mW/m²). This is
+  physically defensible (LOS component dominates regardless of
+  K-factor in a 4 m scene with no scatterers on the direct path),
+  but worth a targeted follow-up by someone who knows the ECBF /
+  cluster-power scaling intent. The K-factor input has NO guard
+  at all in the component (unlike NumClusters/NumSubPaths which
+  got `n >= 1` in #664) — typing `1e9` into K-factor likely
+  degenerates silently; noted but not filed because it's a
+  physics exploration, not a user-facing UX break. Confident the
+  stochastic channel surface is healthy on master; once #664
+  ships to prod, the only remaining gap worth a look is the
+  K-factor / AS / ES override response magnitudes in NLOS
+  scenarios and whether the silent minus-sign parsing on the
+  K-factor field is intentional.
+
 ### 2026-04-19 14:25 UTC -- "Web viewer frontend (UI/UX)"
 
 - Actor: interactive (qa-agent-593255)

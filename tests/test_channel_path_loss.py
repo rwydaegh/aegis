@@ -40,3 +40,29 @@ def test_unsupported_model_fallback():
     pl = compute_path_loss(params, distance_m=100, freq_ghz=28)
     expected = 20 * math.log10(100) + 20 * math.log10(28) + 32.45
     assert pl == pytest.approx(expected, abs=0.1)
+
+
+def test_constant_model():
+    """Constant PL model returns PL_A regardless of distance or frequency."""
+    from aegis.channel.path_loss import compute_path_loss
+
+    params = {"PL_model": "constant", "PL_A": 95}
+    assert compute_path_loss(params, distance_m=10, freq_ghz=2) == pytest.approx(95.0)
+    assert compute_path_loss(params, distance_m=1000, freq_ghz=28) == pytest.approx(95.0)
+
+
+def test_constant_model_null_preset():
+    """Null preset (PL_A=1000) attenuates the channel to effectively zero."""
+    from aegis.channel.path_loss import compute_path_loss
+
+    params = {"PL_model": "constant", "PL_A": 1000}
+    pl = compute_path_loss(params, distance_m=4, freq_ghz=28)
+    assert pl == pytest.approx(1000.0)
+
+
+def test_constant_model_default_a():
+    """Constant PL model with no PL_A defaults to 0 dB (no attenuation)."""
+    from aegis.channel.path_loss import compute_path_loss
+
+    params = {"PL_model": "constant"}
+    assert compute_path_loss(params, distance_m=100, freq_ghz=28) == pytest.approx(0.0)
