@@ -52,6 +52,7 @@ Flask elsewhere.
 | 8 | `multi-body.spec.ts` | MIMO mode with ≥ 2 bodies — verifies via HUD `MIMO (N users)` counter |
 | 9 | `mimo-precoder.spec.ts` | MIMO level-7 kernel: switch precoder to MMSE, verify compute fires |
 | 10 | `tilt-power-optimize.spec.ts` | tilt_power summary has "tilt" + "power" + "peak" and NOT "reduction" (fixme in headless envs without RT GPU) |
+| V | `visual-regression.spec.ts` | HUD pixel diffs against baselines in `__snapshots__/`. CI-only on `vX.Y.0` tags + workflow_dispatch; not block-on-fail. See below. |
 
 ## Fixtures
 
@@ -114,3 +115,51 @@ Not wired into PR CI. Add a manual workflow (`workflow_dispatch`) or a
 master-push job when the spec count stabilizes and Modal RT proxy is
 available for spec 10. The spec suite runs in ~6 minutes locally on a
 modest laptop.
+
+## Visual regression
+
+`visual-regression.spec.ts` captures HUD DOM subtrees (never the 3D
+canvas) and compares against PNG baselines committed under
+`__snapshots__/`. The spec uses the determinism scheme in
+`visualFixtures.ts`:
+
+- Chromium with `--use-gl=swiftshader` (already configured in
+  `playwright.config.ts`) so WebGL output does not drift between
+  GPU drivers.
+- `page.clock.install()` freezes `Date.now()` / `performance.now()` so
+  session timers, timestamps and elapsed-ms displays do not drift.
+- `Math.random` is monkeypatched to a seeded Mulberry32 PRNG.
+- Global CSS disables all animations and transitions and turns off
+  sub-pixel font smoothing so glyphs are pixel-identical across OSes.
+- `document.fonts.ready` awaits Geist before capture.
+- Each test targets a HUD `data-testid` or `data-tour` subtree, so
+  nothing in the snapshot comes from the WebGL canvas.
+
+### When a baseline needs to change
+
+Happens any time the HUD is intentionally modified. Process:
+
+1. Run locally to regenerate:
+   `npx playwright test tests/e2e/visual-regression.spec.ts --update-snapshots`
+2. Check the diff in the PR's file view (git diff shows the replaced
+   PNGs). Visually confirm the change is the one you intended — no
+   unrelated drift from a misclick, a tooltip appearing, etc.
+3. If the local Linux baseline matches what CI produces, commit. If CI
+   still fails, trigger the `Release` workflow via `workflow_dispatch`
+   with `update_snapshots=true`, download the
+   `visual-regression-baselines` artifact, and commit those instead.
+   The CI baselines are authoritative.
+
+### Running visual regression in CI
+
+The `Release` workflow runs visual regression in two modes:
+
+- On tag push matching `v*.*.0` (minor release): verifies baselines.
+  Non-blocking (`continue-on-error: true`) so a first-run diff does not
+  block the release. Diff artifacts upload on failure.
+- On `workflow_dispatch`: same, but optionally with
+  `update_snapshots=true` to regenerate the baselines and upload them
+  as an artifact for review.
+
+Runtime budget: ~3-5 min on `ubicloud-standard-2` (frontend build +
+Playwright install dominate; the spec itself runs in ~60-90s).

@@ -3,6 +3,14 @@ name: Release
 on:
   push:
     tags: ['v*']
+  # Visual regression can also be triggered manually to refresh or audit
+  # baselines without cutting a release.
+  workflow_dispatch:
+    inputs:
+      update_snapshots:
+        description: 'Regenerate visual regression baselines and upload as artifact'
+        type: boolean
+        default: false
 
 jobs:
   lint:
@@ -15,6 +23,7 @@ jobs:
       - run: uv run ruff format --check src/ tests/
 
   test:
+    if: github.event_name == 'push'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -36,6 +45,7 @@ jobs:
 
   schemathesis:
     needs: [lint]
+    if: github.event_name == 'push'
     runs-on: ubicloud-standard-2
     # Patch-release tier: catch HTTP-layer regressions (schema drift, 5xx on
     # fuzzed inputs) that PR-tier doesn't afford. Budget ~5 min.
@@ -112,8 +122,84 @@ jobs:
           name: mutmut-results-${{ github.ref_name }}
           path: mutmut_results_*.txt
 
+  visual-regression:
+    # Minor-release tier: visual regression against committed HUD baselines.
+    # Fires only on vX.Y.0 tags (not patch tags like vX.Y.Z where Z > 0) or
+    # via manual workflow_dispatch. Baselines live in
+    # `aegis-web/tests/e2e/__snapshots__/`. When `update_snapshots=true` the
+    # job uploads regenerated baselines as an artifact instead of failing.
+    # Does NOT block the release — `release` only needs lint/test/schemathesis.
+    needs: [lint]
+    if: github.event_name == 'workflow_dispatch' || endsWith(github.ref_name, '.0')
+    runs-on: ubicloud-standard-2
+    timeout-minutes: 20
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: aegis-web/package-lock.json
+      - name: Install Python deps
+        run: uv sync --python 3.12 --extra viewer --extra dev
+      - name: Install frontend deps
+        working-directory: aegis-web
+        run: npm ci
+      - name: Install Playwright browsers
+        working-directory: aegis-web
+        run: npx playwright install --with-deps chromium
+      - name: Build frontend and copy to Flask static
+        working-directory: aegis-web
+        run: npm run build:copy
+      - name: Start viewer backend
+        run: |
+          uv run python -m aegis.viewer --no-open --port 5001 >/tmp/viewer.log 2>&1 &
+          echo $! > /tmp/viewer.pid
+          for _ in $(seq 1 30); do
+            curl -sf http://localhost:5001/api/viewer-config >/dev/null && break
+            sleep 1
+          done
+          curl -sf http://localhost:5001/api/viewer-config >/dev/null || {
+            echo "viewer failed to start"; tail -80 /tmp/viewer.log; exit 1;
+          }
+      - name: Run visual regression specs
+        working-directory: aegis-web
+        env:
+          AEGIS_E2E_BASE_URL: http://localhost:5001
+          CI: 'true'
+        run: |
+          if [ "${{ inputs.update_snapshots }}" = "true" ]; then
+            npx playwright test tests/e2e/visual-regression.spec.ts --reporter=list --update-snapshots
+          else
+            npx playwright test tests/e2e/visual-regression.spec.ts --reporter=list
+          fi
+      - name: Upload diff artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-visual-diffs
+          path: |
+            aegis-web/test-results/
+            aegis-web/playwright-report/
+          retention-days: 14
+      - name: Upload regenerated baselines
+        if: inputs.update_snapshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-regression-baselines
+          path: aegis-web/tests/e2e/__snapshots__/
+          retention-days: 30
+      - name: Stop viewer
+        if: always()
+        run: kill "$(cat /tmp/viewer.pid)" 2>/dev/null || true
+
   release:
     needs: [lint, test, schemathesis]
+    # Only create a GitHub release on actual tag pushes, not on
+    # workflow_dispatch.
+    if: github.event_name == 'push'
     runs-on: ubicloud-standard-2
     permissions:
       contents: write
