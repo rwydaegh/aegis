@@ -22,7 +22,20 @@ export default defineConfig({
   testDir: './tests/e2e',
   testMatch: '**/*.spec.ts',
   timeout: 90_000,
-  expect: { timeout: 20_000 },
+  expect: {
+    timeout: 20_000,
+    // Visual regression defaults. Per-test overrides via `SHOT_OPTS` in
+    // visualFixtures.ts; these are the global fallback.
+    toHaveScreenshot: {
+      maxDiffPixels: 120,
+      threshold: 0.15,
+      animations: 'disabled',
+    },
+  },
+  // Baselines live in `tests/e2e/__snapshots__/<spec>/<name>-<project>-<os>.png`.
+  // The `{projectName}` and `{platform}` tokens distinguish baselines per OS
+  // so a Linux-CI baseline never collides with a macOS-local baseline.
+  snapshotPathTemplate: '{testDir}/__snapshots__/{testFilePath}/{arg}-{projectName}-{platform}{ext}',
   fullyParallel: false,
   retries: process.env.CI ? 1 : 0,
   // WebGL + shared Flask backend cache means we get cleanest state running serial.
