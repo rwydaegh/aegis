@@ -69,6 +69,11 @@ def generate_channel(
     n_subpaths = int(p.get("NumSubPaths", 20))
     sc_lambda = float(p.get("SC_lambda", 0))
 
+    if n_clusters < 1:
+        raise ValueError(f"NumClusters must be >= 1, got {n_clusters}")
+    if n_subpaths < 1:
+        raise ValueError(f"NumSubPaths must be >= 1, got {n_subpaths}")
+
     # Step 1: large-scale parameters
     if sc_lambda > 0:
         lsp = _draw_large_scale_sc(p, freq_ghz, body_center, seed, ov)
