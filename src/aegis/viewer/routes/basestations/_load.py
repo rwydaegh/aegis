@@ -141,6 +141,17 @@ def _handle_basestations_load(cache: dict, cache_lock: threading.RLock):
     if err is not None:
         return err
 
+    bbox_in = params.get("bbox")
+    has_bbox = isinstance(bbox_in, (list, tuple)) and len(bbox_in) == 4
+    has_location = bool(params.get("location"))
+    has_lat_lon = "lat" in params and "lon" in params
+    has_region = bool(params.get("region"))
+    if not (has_bbox or has_location or has_lat_lon or has_region):
+        return (
+            jsonify({"error": ("must provide bbox, lat+lon+radius_m, location, or region")}),
+            400,
+        )
+
     address, err = _geocode_if_needed(params)
     if err is not None:
         return err

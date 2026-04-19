@@ -312,6 +312,55 @@ class TestBasestationsLoadRoute:
             assert resp.status_code == 400
             assert "error" in resp.get_json()
 
+    def test_load_with_empty_body_returns_400(self, viewer_app):
+        """Regression (#658): empty body must 400 before any data loading.
+
+        Previously an empty JSON body silently defaulted to
+        ``country=Belgium, region=brussels, bbox=None`` and loaded the entire
+        merged Brussels Parquet, tying up a worker thread and DoS-ing the
+        site. Must reject up front.
+        """
+        with viewer_app.test_client() as c:
+            resp = c.post("/api/basestations/load", json={})
+            assert resp.status_code == 400
+            err = resp.get_json()["error"].lower()
+            assert "bbox" in err
+            assert "location" in err
+            assert "region" in err
+
+    def test_load_with_no_body_returns_400(self, viewer_app):
+        """A POST with no JSON body is also under-specified."""
+        with viewer_app.test_client() as c:
+            resp = c.post("/api/basestations/load")
+            assert resp.status_code == 400
+
+    def test_load_with_lat_only_returns_400(self, viewer_app):
+        """lat alone (without lon) is under-specified."""
+        with viewer_app.test_client() as c:
+            resp = c.post("/api/basestations/load", json={"lat": 51.05})
+            assert resp.status_code == 400
+
+    def test_load_with_unrelated_params_returns_400(self, viewer_app):
+        """Body with only non-scoping params (e.g. radius_m alone) is under-specified."""
+        with viewer_app.test_client() as c:
+            resp = c.post(
+                "/api/basestations/load",
+                json={"radius_m": 500, "country": "Belgium"},
+            )
+            assert resp.status_code == 400
+
+    def test_load_with_bare_region_is_allowed(self, viewer_app):
+        """An explicit region still bypasses the under-specified check."""
+        with (
+            viewer_app.test_client() as c,
+            patch(
+                "aegis.viewer.routes.basestations._load.load_basestations_for_region",
+                return_value=[],
+            ),
+        ):
+            resp = c.post("/api/basestations/load", json={"region": "brussels"})
+            assert resp.status_code == 200
+
     def test_load_belgium_locale_routes_to_belgian_region(self, viewer_app):
         """Regression (#534): Nominatim returning België/belgique must still
         route to the Belgian region branch rather than falling through to a
