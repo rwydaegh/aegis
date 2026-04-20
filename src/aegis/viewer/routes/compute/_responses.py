@@ -48,7 +48,7 @@ def _json_dumps_safe(obj: object) -> str:
     return json.dumps(_sanitize_for_json(obj))
 
 
-def _cache_dosimetry_for_export(cache: dict, result, body, stats: dict, paths=None) -> None:
+def _cache_dosimetry_for_export(cache: dict, result, body, stats: dict, paths=None, tissue=None) -> None:
     """Cache the last dosimetry result, body, and stats for export (session-scoped)."""
     scoped_cache_set(cache, "_last_dosimetry_result", result)
     scoped_cache_set(cache, "_last_dosimetry_body", body)
@@ -56,6 +56,8 @@ def _cache_dosimetry_for_export(cache: dict, result, body, stats: dict, paths=No
     scoped_cache_set(cache, "_last_compliance_result", stats.get("compliance"))
     if paths is not None:
         scoped_cache_set(cache, "_last_rt_paths", paths)
+    if tissue is not None:
+        scoped_cache_set(cache, "_last_rt_tissue", tissue)
 
 
 def _inject_curvature_H(engine_kw: dict, body) -> dict:
