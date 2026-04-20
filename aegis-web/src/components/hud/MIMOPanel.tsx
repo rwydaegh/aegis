@@ -1,4 +1,5 @@
 import { Eye, Gamepad2, X, Plus, Layers, Crosshair, AlertTriangle, RefreshCw } from 'lucide-react'
+import EcbfWarningChip from './EcbfWarningChip'
 import { useMIMOStore, precoderRequiresMgeK, type PrecoderType } from '@/stores/mimo'
 import { useSimulationStore } from '@/stores/simulation'
 import { useSceneStore } from '@/stores/scene'
@@ -275,6 +276,10 @@ export default function MIMOPanel() {
               <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
               <span className="text-[10px] leading-tight">{summaryStats.warning}</span>
             </div>
+          )}
+
+          {summaryStats?.ecbf_warnings && summaryStats.ecbf_warnings.length > 0 && (
+            <EcbfWarningChip warnings={summaryStats.ecbf_warnings} className="mb-2" />
           )}
 
           {lastComputeError && (

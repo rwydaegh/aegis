@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import math
+import warnings
 
 import numpy as np
 from flask import Flask, Response, jsonify
@@ -15,6 +16,7 @@ from aegis.mimo.array import AntennaArray
 from aegis.mimo.compute import compute_mimo_scene_with_bodies
 from aegis.mimo.scene import MIMOScene
 from aegis.mimo.user import UserConfig, UserState
+from aegis.viewer.compute import collect_ecbf_warnings
 from aegis.viewer.routes._helpers import get_json_dict
 from aegis.viewer.routes._types import RouteResponse
 from aegis.viewer.routes.compute import _json_dumps_safe
@@ -382,15 +384,21 @@ def _api_mimo_compute_impl(cache: dict, cache_lock) -> RouteResponse:
             400,
         )
     try:
-        summary = compute_mimo_scene_with_bodies(
-            scene,
-            bodies,
-            level=level,
-            precoder_type=precoder_type,
-        )
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            summary = compute_mimo_scene_with_bodies(
+                scene,
+                bodies,
+                level=level,
+                precoder_type=precoder_type,
+            )
     except Exception as exc:
         logger.exception("MIMO compute failed")
         return jsonify({"error": str(exc)}), 500
+
+    ecbf_msgs = collect_ecbf_warnings(caught)
+    if ecbf_msgs:
+        summary["ecbf_warnings"] = ecbf_msgs
 
     # Cache scene and per-user results (session-scoped)
     with cache_lock:
@@ -458,6 +466,8 @@ def _api_mimo_summary_impl(cache: dict, cache_lock) -> RouteResponse:
     }
     if summary.get("warning"):
         out["warning"] = summary["warning"]
+    if summary.get("ecbf_warnings"):
+        out["ecbf_warnings"] = summary["ecbf_warnings"]
     return jsonify(out)
 
 

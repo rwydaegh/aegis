@@ -7,6 +7,7 @@ import { PowerSweepSection } from './PowerSweepSection'
 import { FrequencySweepSection } from './FrequencySweepSection'
 import { DistanceSweepSection } from './DistanceSweepSection'
 import { ComplianceHeatmapSection } from './ComplianceHeatmapSection'
+import { PathInsightsSection } from './PathInsightsSection'
 
 // ---------------------------------------------------------------------------
 // Main panel
@@ -35,6 +36,13 @@ export default function AnalysisPanel() {
         onToggle={() => toggle('histogram')}
       >
         <SabHistogramSection />
+      </Section>
+      <Section
+        title="Path insights"
+        open={openSection === 'paths'}
+        onToggle={() => toggle('paths')}
+      >
+        <PathInsightsSection />
       </Section>
       <Section
         title="Power sweep"

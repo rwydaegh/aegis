@@ -350,6 +350,7 @@ export interface DosimetryStats {
   peak_sab: number
   compliant: boolean | null
   warning?: string | null
+  ecbf_warnings?: string[]
   n_illuminated: number
   n_triangles: number
   level: number
@@ -459,6 +460,7 @@ export interface MIMOComputeResponse {
   weights_real?: number[][]
   weights_imag?: number[][]
   warning?: string
+  ecbf_warnings?: string[]
 }
 
 export interface MIMOUserSummary {
@@ -475,6 +477,7 @@ export interface MIMOSummary {
   precoder: string
   timings: Record<string, number>
   warning?: string
+  ecbf_warnings?: string[]
 }
 
 // ScenePos is re-exported for convenience where types.ts is the single import point
