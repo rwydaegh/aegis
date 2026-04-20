@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import math
 
 import numpy as np
 from flask import Flask, Response, jsonify
@@ -143,6 +144,24 @@ def _build_antenna_array(array_cfg: dict, wavelength: float) -> tuple[AntennaArr
     return array, None
 
 
+def _parse_orientation(u: dict, uid_label: str) -> tuple[float | None, _ErrResp | None]:
+    """Parse the scalar ``orientation`` field (radians) from a user dict."""
+    raw = u.get("orientation", 0.0)
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        return None, (
+            jsonify({"error": f"orientation for '{uid_label}' must be a number"}),
+            400,
+        )
+    if not math.isfinite(value):
+        return None, (
+            jsonify({"error": f"orientation for '{uid_label}' must be finite"}),
+            400,
+        )
+    return value, None
+
+
 def _build_user_state(u: dict, cache: dict) -> tuple[UserState | None, _ErrResp | None]:
     """Build a single UserState from a user config dict.
 
@@ -166,7 +185,10 @@ def _build_user_state(u: dict, cache: dict) -> tuple[UserState | None, _ErrResp 
         return None, err
     assert device_offset is not None  # noqa: S101 - helper contract
 
-    orientation = float(u.get("orientation", 0.0))
+    orientation, err = _parse_orientation(u, uid_label)
+    if err is not None:
+        return None, err
+    assert orientation is not None  # noqa: S101 - helper contract
     cos_o, sin_o = np.cos(orientation), np.sin(orientation)
     rotated_offset = np.array(
         [

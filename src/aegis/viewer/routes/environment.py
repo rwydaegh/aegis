@@ -63,7 +63,11 @@ def _handle_environment_osm(cache: dict, cache_lock) -> RouteResponse:
     )
     detail = bool(body.get("detail", False))
 
-    default_building_height = max(0.1, min(float(default_building_height), 500.0))
+    try:
+        default_building_height = float(default_building_height)
+    except (TypeError, ValueError):
+        return jsonify({"error": "default_building_height must be a number"}), 400
+    default_building_height = max(0.1, min(default_building_height, 500.0))
 
     cache_opts = {
         "default_building_height": default_building_height,
@@ -161,7 +165,10 @@ def _handle_environment_3dtiles(cache: dict, cache_lock) -> RouteResponse:
 
     cfg_env = cache.get("config", {}).get("environment", {})
     tiles_cfg = cfg_env.get("tiles", {})
-    geometric_error = float(body.get("geometric_error", tiles_cfg.get("geometric_error", 30.0)))
+    try:
+        geometric_error = float(body.get("geometric_error", tiles_cfg.get("geometric_error", 30.0)))
+    except (TypeError, ValueError):
+        return jsonify({"error": "geometric_error must be a number"}), 400
     geometric_error = max(0.1, min(geometric_error, 1000.0))
 
     root_url = "https://tile.googleapis.com/v1/3dtiles/root.json"
