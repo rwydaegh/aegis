@@ -494,6 +494,16 @@ def _api_compute_impl(cache: dict, cache_lock) -> RouteResponse:
     except (ValueError, FileNotFoundError) as exc:
         logger.warning("compute_dosimetry rejected invalid request: %s", exc)
         return jsonify({"error": str(exc)}), 400
+    except MemoryError:
+        logger.exception("compute_dosimetry exhausted memory")
+        return jsonify(
+            {
+                "error": (
+                    "Request exceeded server memory budget. Try a smaller phantom, "
+                    "disable stochastic mode, or use a lower fidelity level."
+                )
+            }
+        ), 413
     except Exception as exc:
         logger.exception("compute_dosimetry failed")
         return jsonify({"error": str(exc)}), 500

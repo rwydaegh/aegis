@@ -21,11 +21,16 @@ from aegis._array_backend import JAX_AVAILABLE, jit, xp
 from aegis.constants import C_0
 from aegis.kernels._base import fresnel_weights, incidence_geometry, physical_gelu
 
-# Maximum number of (M, N) float64 elements before we split paths into chunks.
-# 50M elements ~ 400 MB per intermediate array. With ~4 live intermediates
-# (mu, T, g, T*g) the peak is ~1.6 GB, which fits comfortably in 4+ GB RAM.
-# Below this threshold the kernel runs unchunked (zero overhead).
-_MAX_MN_ELEMENTS = 50_000_000
+# Maximum number of (M, N) elements before we split paths into chunks.
+# The Fresnel path allocates multiple complex128 (M, N) intermediates
+# inside ``fresnel_weights`` (``mu_complex``, ``xi``, ``r_s``, ``r_p``) plus
+# a couple of transient complex arithmetic temporaries. Empirical peak is
+# ~100 bytes per (M, N) element during the Fresnel step, so 10M elements
+# corresponds to ~1 GB of resident memory — enough headroom for a 3 GB
+# container running two Gunicorn workers without triggering the cgroup OOM
+# killer (which surfaces as a 502 at the reverse proxy). Below this
+# threshold the kernel runs unchunked (zero overhead).
+_MAX_MN_ELEMENTS = 10_000_000
 
 
 @jit(static_argnames=("fresnel", "polarisation", "curvature", "diffraction"))

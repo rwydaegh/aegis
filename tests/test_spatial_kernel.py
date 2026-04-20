@@ -309,6 +309,40 @@ class TestValidation:
         assert np.all(np.isfinite(sab)), "sab must be finite at very low frequencies"
 
 
+class TestFresnelWeightsMatchCore:
+    """``fresnel_weights`` is an inlined, memory-lean variant of ``_fresnel_core``.
+
+    It must produce bit-for-bit identical ``T_s``, ``T_p``, ``T_avg`` outputs.
+    This guards against regressions where someone re-introduces the full
+    ``_fresnel_core`` call (which allocates unused ``t_s``/``t_p`` complex128
+    arrays and triggers OOM on large stochastic computes; see issue #696).
+    """
+
+    def test_matches_fresnel_core_on_dense_grid(self):
+        from aegis.kernels._base import fresnel_weights
+        from aegis.tissue.fresnel import (
+            _fresnel_core,  # pyright: ignore[reportPrivateUsage]
+        )
+
+        rng = np.random.default_rng(1234)
+        mu = rng.uniform(-0.1, 1.0, size=(17, 23)).astype(np.float64)
+        n_tilde = SKIN_28GHZ.n_complex
+
+        T_s, T_p, T_avg = fresnel_weights(mu, n_tilde)
+
+        mu_for_core = np.clip(mu, 0.0, 1.0).astype(complex)
+        _, _, T_s_ref, T_p_ref, _, _ = _fresnel_core(mu_for_core, n_tilde)
+
+        np.testing.assert_array_equal(np.asarray(T_s), np.asarray(T_s_ref))
+        np.testing.assert_array_equal(np.asarray(T_p), np.asarray(T_p_ref))
+        np.testing.assert_allclose(
+            np.asarray(T_avg),
+            0.5 * (np.asarray(T_s_ref) + np.asarray(T_p_ref)),
+            rtol=0,
+            atol=0,
+        )
+
+
 class TestChunkingDeterminism:
     """spatial_kernel must produce identical results regardless of chunk size.
 
