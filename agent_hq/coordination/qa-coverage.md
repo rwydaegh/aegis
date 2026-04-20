@@ -54,6 +54,47 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-20 13:45 UTC -- "Exposure operator and ECBF"
+
+- Actor: interactive (qa-agent-935398)
+- Depth: medium
+- Findings: none filed
+- Notes: Picked this section because it is absent from recent log entries
+  and PR #706 (Surface ECBF infeasibility warnings in compute stats)
+  landed 2026-04-19 so the warning capture path is worth exercising.
+  Read the source first: `src/aegis/viewer/compute.py` captures
+  `warnings.catch_warnings(record=True)` around `_run_engine_compute`
+  and `collect_ecbf_warnings` filters on markers `("ECBF",
+  "absorption", "infeasible")`, attaching `extra["ecbf_warnings"]` on
+  level-8 single-user paths for `/api/compute{,-rt,-sionna-rt,-voxel-rt}`
+  and `/api/optimize`. Verified `zf_exposure` precoder (`mimo/precoders.py:88`)
+  does per-column scaling and never calls `solve_ecbf`, so PR #706's
+  warning path does not apply to multi-user MIMO (by design --
+  `P_abs_max=DEFAULT_P_ABS_MAX` is enforced differently). Grepped
+  `aegis-web/src/` for `ecbf_warnings` at test time: zero matches on
+  the 61da99c base I was running against -- feature was backend-only
+  then. PR #713 (dde6f56) landed mid-session and now plumbs MIMO ECBF
+  warnings into the HUD via `useMIMODosimetry` +
+  `DosimetryStats.ecbf_warnings`, so the frontend gap is already
+  closed on master -- a follow-up pass should force ECBF infeasibility
+  (very high K / very low P_abs_max) and confirm the HUD surfaces the
+  three `solve_ecbf` fallback messages end-to-end.
+  Browser pass on prod: MIMO panel with Thelonious + Duke, 28 GHz,
+  cycled MRT / ZF / ZF+Exp / MMSE. User 2 Sab values: MRT 77.99,
+  ZF 69.61, ZF+Exp 69.61 (matches ZF since channels were
+  well-separated and ECBF had nothing to further minimize), MMSE 81.74
+  mW/m² -- all physically consistent. Pushed to 7 users / ZF+Exp:
+  backend started returning 502 and the prod site went fully
+  unreachable for at least 90s (curl timed out after I stopped
+  testing). Borderline -- similar pattern to #699 for stochastic
+  compute hangs but requires stacking an unusually high user count.
+  Did NOT file: can't re-test now (site still down at close), and a
+  single 7-user request on a 16-element UPA is an atypical extreme.
+  Worth revisiting once the server recovers to see whether the real
+  bug is "no per-request time budget" vs "ZF+Exp blows up at K near
+  M_ant". Should come back to re-confirm and stress MRT/MMSE/ZF at
+  K=7 to isolate which precoder triggered the hang.
+
 ### 2026-04-20 12:40 UTC -- "3D environment reconstruction"
 
 - Actor: interactive (qa-agent-886474)
