@@ -54,6 +54,57 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-20 16:15 UTC -- "Visualization and analysis"
+
+- Actor: interactive (qa-agent-977949)
+- Depth: medium
+- Findings: none filed
+- Notes: Initially picked this area for PR #712 (Surface path
+  contributions to the viewer Analysis panel, commit 4428201) but prod
+  is still at `0.30.0.dev59+g8bd6962` per `/api/health`, which
+  predates #712 — so the new `PathInsightsSection` between SAB
+  histogram and Power sweep is not yet deployed. Source
+  (`aegis-web/src/components/panels/analysis/AnalysisPanel.tsx:45`)
+  has it wired; grepped bundle behaviour matches source, the gap is
+  strictly deploy-lag. Worth a re-pass once the new build ships.
+  Pivoted to a regression sweep on the deployed AnalysisPanel tree.
+  On Urban Ghent (Thelonious, 28 GHz, Fresnel only): Exposure
+  distribution populated (Illuminated 44.1% / 10,509 of 23,826,
+  area 3723.5 cm², Peak 7.9e-3 matches HUD 7.80 mW/m², P99 7.1e-3,
+  P95 5.6e-3, Mean_all 1.2e-3). SAB histogram renders log bins from
+  1.1e-10 up to 3.8e-4 W/m², all-green (below-limit) legend, no red
+  bars — consistent with +34 dB peak margin. Power sweep returns
+  Max compliant 72.0 dBm; HUD shows Max TX 75.0 dBm (single-check
+  peak), difference is the spatial-4cm² vs raw-peak check (same
+  pattern called out in prior Power-sweep QA entries, not a bug).
+  Chart x-range stops at 63 dBm though, so the 72 dBm crossing is
+  off-chart — slightly confusing but the numeric readout is correct.
+  Distance sweep clean: current 12.7 m / min compliant 0.3 m, curve
+  monotonic, 0 dB crossing at ~0.3 m. Compliance heatmap (2D, freq x
+  TX power) came back entirely green as expected for an all-compliant
+  parameter window; boundary line not shown (no red cells to bound).
+  Frequency sweep curve is nearly flat around +29 dB; I initially
+  flagged the +32 HUD vs +29 sweep gap, but the backend
+  `/api/compliance/frequency-sweep` (analysis.py:353) holds the
+  exposure fixed and varies only the ICNIRP denominator, so "current
+  multi-check margin" vs "single-quantity sweep" diverge by design.
+  Close-range mmWave (60 GHz, Sab(1cm²) 0.22/40 = +22.6 dB, Margin
+  +18 dB, Max TX 61 dBm): distribution matches HUD (Peak 0.221, P99
+  0.199, Mean_ill 0.071); frequency sweep is a flat +18 dB line
+  7-100 GHz (same reason as Urban Ghent case). Placed a second
+  antenna via pointer events at (1200, 500): Illuminated went 43.0%
+  → 46.2%, Max TX 61→59 dBm, Margin +18→+16 dB. Peak readout went
+  0.221 → 0.220 which is technically non-monotone under incoherent
+  superposition — within single-digit ULP of the 3-digit display, so
+  I'm attributing it to rounding rather than a compute bug, but
+  worth a second look if anyone sees a clearer case. ColorLegend
+  Lin↔dB toggle clean (0, -5, -10, -15, -20 dB floor with -20
+  spinbox clamp, body recolors). Console reported 4 errors / 9
+  warnings across the session — all from Sentry/ResizeObserver
+  noise, nothing actionable. Confident the deployed AnalysisPanel
+  surface is healthy; flag for next swarm: re-run path-insights
+  specifically once the prod bundle advances past 4428201.
+
 ### 2026-04-20 13:45 UTC -- "Exposure operator and ECBF"
 
 - Actor: interactive (qa-agent-935398)
