@@ -29,11 +29,19 @@ show_status() {
 
 enable_local() {
     echo "Enabling local cron jobs..."
-    # Remove existing aegis-agent entries, then add fresh ones
+    # Remove existing aegis-agent entries, then add fresh ones.
+    # Schedule notes (staggered minutes so agents don't all fire at :00):
+    #   qa-agent          - every 2h :00         Playwright against prod, long session
+    #   code-review-agent - every 2h :30         correctness review from reading, not UX
+    #   polish-agent      - every 3h :45         small UX/state fixes, 45m session
+    #   feature-agent     - every 4h :15         ambitious product work, 2h session
+    #   manager           - every 6h :20         supervises the fleet, 30m session
     (crontab -l 2>/dev/null | grep -v "$CRON_MARKER" || true; cat <<CRON
 0 */2 * * * ${REPO_DIR}/agent_hq/local/qa-agent.sh ${CRON_MARKER}-qa
 30 */2 * * * ${REPO_DIR}/agent_hq/local/code-review-agent.sh ${CRON_MARKER}-code-review
-45 */3 * * * ${REPO_DIR}/agent_hq/local/feature-agent.sh ${CRON_MARKER}-feature
+45 */3 * * * ${REPO_DIR}/agent_hq/local/polish-agent.sh ${CRON_MARKER}-polish
+15 2,6,10,14,18,22 * * * ${REPO_DIR}/agent_hq/local/feature-agent.sh ${CRON_MARKER}-feature
+20 0,6,12,18 * * * ${REPO_DIR}/agent_hq/local/manager-agent.sh ${CRON_MARKER}-manager
 CRON
     ) | crontab -
     echo "Local cron: ENABLED"

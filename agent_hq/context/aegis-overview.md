@@ -8,8 +8,16 @@ optimization. Python physics stack (NumPy/SciPy, optional JAX). Flask + React/Th
 
 This is Robin's PhD research tool at Ghent University + IMEC. It is a real product
 deployed at https://aegis.waves-ugent.be. The summary paper
-(../monograph/summary_paper.tex) is a condensed reference for the physics. The code
-should match the math.
+(../monograph/summary_paper.tex) is a condensed reference for the physics if you
+need it, but the physics core is mature: golden tests, property tests, and several
+years of validation. Most active complexity today lives in the viewer
+(React + Three.js + Zustand), the Flask backend, and the data flow between them.
+Bug-hunting there often goes deeper than a repo grep — browser quirks, async
+ordering, 3D rendering state, and framework-specific gotchas are fair game for
+web search and external docs, not just the codebase.
+
+You are not expected to cover "all of" any area in a single run. Depth on one
+thing beats breadth across many.
 
 ## Codebase map
 

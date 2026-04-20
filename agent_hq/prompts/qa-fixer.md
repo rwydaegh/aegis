@@ -14,8 +14,12 @@ has:
 2. Find the relevant source code. For frontend bugs, check `aegis-web/src/`.
    For backend bugs, check `src/aegis/viewer/routes/`.
 3. Fix the bug. Run lint and tests.
-4. Ship via PR (see `agent_hq/context/how-to-ship.md`).
-5. Add "Fixes #ISSUE_NUMBER" to the PR body.
+4. **Before shipping:** pull master and grep for the symbol/route you
+   touched (see `agent_hq/context/how-to-ship.md` § "Before you ship"). If
+   an equivalent fix already exists, close the issue with a reference to it
+   rather than shipping a duplicate PR.
+5. Ship via PR (see `agent_hq/context/how-to-ship.md`).
+6. Add "Fixes #ISSUE_NUMBER" to the PR body.
 
 The full cycle is: fix -> commit -> push -> pr create -> pr merge.
 Do not stop at just pushing a branch.
