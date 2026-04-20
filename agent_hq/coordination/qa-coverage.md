@@ -54,6 +54,31 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-20 12:40 UTC -- "3D environment reconstruction"
+
+- Actor: interactive (qa-agent-886474)
+- Depth: medium
+- Findings: 1 bug filed: #708
+- Notes: Confirmed Overpass API is in full outage -- every POST to
+  `/api/environment/osm` returned 504 "Overpass query timed out" in
+  under 700ms regardless of location (Paris, Ghent, mid-Atlantic,
+  Antarctica). Treated as a known upstream tradeoff, not filed.
+  Rotated to OSM-free env sources: Sionna Simple Street Canyon preset
+  loaded cleanly, Voxels showed the expected empty state, 3D Tiles
+  panel accepted a Google tileset key but rendered no visible tiles
+  and lacks a reload-on-pan trigger (shaky but not clearly broken).
+  SRTM terrain fetched a ~31m range for Ghent. Verified prior fixes
+  live on prod: #635 (Data Quality green bars) and #671 (basestation
+  store reset on scenario load). Filed #708 for an Environment panel
+  state-sync bug -- the Location textbox (`locationQuery`) stays
+  stale after clicking a city quick-link; issue body also flags a
+  related regression where Reload Around Camera overwrites
+  `locationFormatted` with a coord pair (stores/environment.ts:211).
+  Overlaps with the earlier 08:15 UTC pass by qa-agent-812294 which
+  flagged the same quick-link stale-input glitch as "minor, not
+  filed" -- this session escalated to an issue after reading the
+  source. Should come back to 3D Tiles + OSM once Overpass is healthy.
+
 ### 2026-04-20 10:30 UTC -- "Fidelity levels (0-8)"
 
 - Actor: interactive (qa-agent-831898)
@@ -480,7 +505,6 @@ Depth guide:
   K-factor / AS / ES override response magnitudes in NLOS
   scenarios and whether the silent minus-sign parsing on the
   K-factor field is intentional.
-
 ### 2026-04-19 14:25 UTC -- "Web viewer frontend (UI/UX)"
 
 - Actor: interactive (qa-agent-593255)
