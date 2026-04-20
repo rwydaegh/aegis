@@ -275,6 +275,29 @@ class TestBuildScene:
         np.testing.assert_allclose(dev_pos[1], 1.0, atol=1e-10)  # y: 0 + 1
         np.testing.assert_allclose(dev_pos[2], 1.4, atol=1e-10)  # z unchanged
 
+    @pytest.mark.parametrize("bad_value", ["abc", None, [1, 2, 3], {"x": 1}])
+    def test_invalid_orientation_returns_400(self, bad_value):
+        """Non-numeric orientation must return 400, not propagate TypeError/ValueError as 500."""
+        cache = _make_cache_with_body()
+        user = _make_user_cfg()
+        user["orientation"] = bad_value
+        scene, err = _build_scene({"array": VALID_ARRAY, "users": [user]}, cache)
+        assert scene is None
+        resp, status = err
+        assert status == 400
+        assert "orientation" in resp.get_json()["error"]
+
+    def test_non_finite_orientation_returns_400(self):
+        """Inf/NaN orientation returns 400 before cos/sin produce NaN downstream."""
+        cache = _make_cache_with_body()
+        user = _make_user_cfg()
+        user["orientation"] = float("inf")
+        scene, err = _build_scene({"array": VALID_ARRAY, "users": [user]}, cache)
+        assert scene is None
+        resp, status = err
+        assert status == 400
+        assert "finite" in resp.get_json()["error"]
+
 
 # ---------------------------------------------------------------------------
 # _user_stats unit tests

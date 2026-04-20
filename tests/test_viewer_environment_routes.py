@@ -176,6 +176,22 @@ class TestEnvironmentOsm:
             resp = c.post("/api/environment/osm", json={"lat": 51.05, "lon": 3.72})
             assert resp.status_code == 413
 
+    @pytest.mark.parametrize("bad_value", ["abc", [1, 2], {"x": 1}])
+    def test_invalid_default_building_height_returns_400(self, app, bad_value):
+        """Non-numeric default_building_height must return 400, not propagate as 500."""
+        with app.test_client() as c:
+            resp = c.post(
+                "/api/environment/osm",
+                json={
+                    "lat": 51.05,
+                    "lon": 3.72,
+                    "radius": 100,
+                    "options": {"default_building_height": bad_value},
+                },
+            )
+            assert resp.status_code == 400
+            assert "default_building_height" in resp.get_json()["error"]
+
 
 def _import_and_raise(exc_name: str):
     """Return a callable that raises the named Overpass exception."""
@@ -220,6 +236,22 @@ class TestEnvironment3DTiles:
             resp = c.post("/api/environment/3dtiles", json={"lat": 51.05, "lon": 3.72})
             assert resp.status_code == 400
             assert "API key" in resp.get_json()["error"]
+
+    @pytest.mark.parametrize("bad_value", ["tiny", [1, 2], {"x": 1}])
+    def test_invalid_geometric_error_returns_400(self, app, bad_value):
+        """Non-numeric geometric_error must return 400, not propagate as 500."""
+        with app.test_client() as c:
+            resp = c.post(
+                "/api/environment/3dtiles",
+                json={
+                    "lat": 51.05,
+                    "lon": 3.72,
+                    "api_key": "fake",
+                    "geometric_error": bad_value,
+                },
+            )
+            assert resp.status_code == 400
+            assert "geometric_error" in resp.get_json()["error"]
 
     def test_empty_mesh_returns_404(self, app):
         """Regions outside Google's photorealistic coverage produce an empty
