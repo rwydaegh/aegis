@@ -537,6 +537,106 @@ def _compliance_spatial_impl(cache: dict, cache_lock) -> RouteResponse:
     )
 
 
+def _path_contributions_impl(cache: dict, cache_lock) -> RouteResponse:
+    """Rank the top ray-traced paths contributing to peak absorbed power density.
+
+    Uses the cached RT paths, body, and tissue from the last `/api/compute/rt`
+    (or sionna/voxel equivalent) invocation. Reports per-path contributions to a
+    chosen triangle (default: peak S_ab), plus the whole-body importance ranking.
+    """
+    from aegis.analysis import path_contributions, path_importance
+
+    paths = scoped_cache_get(cache, "_last_rt_paths")
+    body = scoped_cache_get(cache, "_last_dosimetry_body")
+    tissue = scoped_cache_get(cache, "_last_rt_tissue")
+    if paths is None or body is None or tissue is None:
+        return (
+            jsonify({"error": "No ray-traced dosimetry result cached. Run a ray-trace compute first."}),
+            404,
+        )
+    if paths.n_paths == 0:
+        return jsonify(
+            {
+                "triangle_index": None,
+                "sab_total": 0.0,
+                "paths": [],
+                "importance": {"top": [], "p_abs_total": 0.0, "n_paths": 0},
+                "n_paths": 0,
+                "n_los": 0,
+                "n_nlos": 0,
+            }
+        )
+
+    top_k = request.args.get("top_k", 10, type=int)
+    if top_k is None or top_k < 1:
+        top_k = 10
+    top_k = min(top_k, 100)
+
+    triangle_index_arg = request.args.get("triangle_index", type=int)
+    triangle_index = triangle_index_arg if triangle_index_arg is not None and triangle_index_arg >= 0 else None
+
+    try:
+        contrib = path_contributions(body, paths, tissue, triangle_index=triangle_index, top_k=top_k)
+        importance = path_importance(body, paths, tissue)
+    except Exception as e:
+        logger.exception("path_contributions failed")
+        return jsonify({"error": f"Path contribution analysis failed: {e}"}), 500
+
+    path_indices = np.asarray(contrib["path_indices"], dtype=int)
+    contributions = np.asarray(contrib["contributions"], dtype=float)
+    fractions = np.asarray(contrib["fractions"], dtype=float)
+    cumulative = np.asarray(contrib["cumulative"], dtype=float)
+    k_hat = np.asarray(contrib["k_hat"], dtype=float)
+    powers = np.asarray(contrib["power"], dtype=float)
+    is_los_full = np.asarray(paths.is_los).astype(bool)
+
+    out_paths = []
+    for i in range(len(path_indices)):
+        idx = int(path_indices[i])
+        out_paths.append(
+            {
+                "index": idx,
+                "contribution_w_m2": _finite_or_none(float(contributions[i])),
+                "fraction": _finite_or_none(float(fractions[i])),
+                "cumulative": _finite_or_none(float(cumulative[i])),
+                "k_hat": [float(k_hat[i, 0]), float(k_hat[i, 1]), float(k_hat[i, 2])],
+                "power_w_m2": _finite_or_none(float(powers[i])),
+                "is_los": bool(is_los_full[idx]) if idx < is_los_full.size else False,
+            }
+        )
+
+    imp = np.asarray(importance, dtype=float)
+    order = np.argsort(-imp)[: min(top_k, imp.size)]
+    p_abs_total = float(np.sum(imp))
+    imp_top = []
+    for i in order:
+        i_int = int(i)
+        imp_top.append(
+            {
+                "index": i_int,
+                "importance_w": _finite_or_none(float(imp[i_int])),
+                "fraction": _finite_or_none(float(imp[i_int] / p_abs_total) if p_abs_total > 0 else 0.0),
+                "is_los": bool(is_los_full[i_int]) if i_int < is_los_full.size else False,
+            }
+        )
+
+    return jsonify(
+        {
+            "triangle_index": int(contrib["triangle_index"]),
+            "sab_total": _finite_or_none(float(contrib["sab_total"])),
+            "paths": out_paths,
+            "importance": {
+                "top": imp_top,
+                "p_abs_total": _finite_or_none(p_abs_total),
+                "n_paths": int(paths.n_paths),
+            },
+            "n_paths": int(paths.n_paths),
+            "n_los": int(np.sum(is_los_full)),
+            "n_nlos": int(np.sum(~is_los_full)),
+        }
+    )
+
+
 def register(app: Flask, cache: dict, cache_lock) -> None:
     """Register analysis-related API routes."""
 
@@ -567,3 +667,7 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
     @app.route("/api/compliance/spatial", methods=["POST"])
     def compliance_spatial():
         return _compliance_spatial_impl(cache, cache_lock)
+
+    @app.route("/api/analyze/path-contributions")
+    def analyze_path_contributions():
+        return _path_contributions_impl(cache, cache_lock)

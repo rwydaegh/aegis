@@ -559,6 +559,48 @@ export async function fetchPowerSweep(params: {
   return getJson<PowerSweepResult>(`/api/compliance/power-sweep?${qs}`)
 }
 
+export interface PathContribution {
+  index: number
+  contribution_w_m2: number | null
+  fraction: number | null
+  cumulative: number | null
+  k_hat: [number, number, number]
+  power_w_m2: number | null
+  is_los: boolean
+}
+
+export interface PathImportanceEntry {
+  index: number
+  importance_w: number | null
+  fraction: number | null
+  is_los: boolean
+}
+
+export interface PathContributionsResult {
+  triangle_index: number | null
+  sab_total: number | null
+  paths: PathContribution[]
+  importance: {
+    top: PathImportanceEntry[]
+    p_abs_total: number | null
+    n_paths: number
+  }
+  n_paths: number
+  n_los: number
+  n_nlos: number
+}
+
+export async function fetchPathContributions(params?: {
+  top_k?: number
+  triangle_index?: number
+}): Promise<PathContributionsResult> {
+  const qs = new URLSearchParams()
+  if (params?.top_k != null) qs.set('top_k', String(params.top_k))
+  if (params?.triangle_index != null) qs.set('triangle_index', String(params.triangle_index))
+  const suffix = qs.toString() ? `?${qs}` : ''
+  return getJson<PathContributionsResult>(`/api/analyze/path-contributions${suffix}`)
+}
+
 export async function fetchDosimetryCsv(): Promise<Blob> {
   const res = await fetchWithRetry(`${BASE}/api/export/dosimetry-csv`)
   if (res.status === 401) {

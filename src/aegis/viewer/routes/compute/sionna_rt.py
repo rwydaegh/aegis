@@ -189,7 +189,7 @@ def _finalize_rt_response(
         return err
     assert resp is not None  # noqa: S101 - helper contract
     assert stats is not None  # noqa: S101 - helper contract
-    _cache_dosimetry_for_export(cache, result, transformed_body, stats, paths=paths)
+    _cache_dosimetry_for_export(cache, result, transformed_body, stats, paths=paths, tissue=pp["tissue"])
     return resp
 
 
