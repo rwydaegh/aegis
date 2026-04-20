@@ -145,5 +145,5 @@ export const useCoverageStore = create<CoverageState>((set, get) => ({
       )
     }
   },
-  clearComplianceZone: () => set({ complianceZone: null }),
+  clearComplianceZone: () => set({ complianceZone: null, complianceZoneEnabled: false }),
 }))
