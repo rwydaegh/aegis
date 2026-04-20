@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import math
 
 import numpy as np
 from flask import Flask, Response, jsonify
@@ -24,6 +25,9 @@ logger = logging.getLogger(__name__)
 _OCTET_STREAM = "application/octet-stream"
 _ERR_VEC3_LEN = "must have 3 elements"
 _ErrResp = tuple[Response, int]
+
+_VALID_PRECODER_TYPES = frozenset({"mrt", "zf", "mmse", "zf_exposure"})
+_PRECODERS_REQUIRE_M_GE_K = frozenset({"zf", "zf_exposure"})
 
 
 def _parse_vec3(raw, label: str) -> tuple[np.ndarray | None, _ErrResp | None]:
@@ -143,6 +147,24 @@ def _build_antenna_array(array_cfg: dict, wavelength: float) -> tuple[AntennaArr
     return array, None
 
 
+def _parse_orientation(u: dict, uid_label: str) -> tuple[float | None, _ErrResp | None]:
+    """Parse the scalar ``orientation`` field (radians) from a user dict."""
+    raw = u.get("orientation", 0.0)
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        return None, (
+            jsonify({"error": f"orientation for '{uid_label}' must be a number"}),
+            400,
+        )
+    if not math.isfinite(value):
+        return None, (
+            jsonify({"error": f"orientation for '{uid_label}' must be finite"}),
+            400,
+        )
+    return value, None
+
+
 def _build_user_state(u: dict, cache: dict) -> tuple[UserState | None, _ErrResp | None]:
     """Build a single UserState from a user config dict.
 
@@ -166,7 +188,10 @@ def _build_user_state(u: dict, cache: dict) -> tuple[UserState | None, _ErrResp 
         return None, err
     assert device_offset is not None  # noqa: S101 - helper contract
 
-    orientation = float(u.get("orientation", 0.0))
+    orientation, err = _parse_orientation(u, uid_label)
+    if err is not None:
+        return None, err
+    assert orientation is not None  # noqa: S101 - helper contract
     cos_o, sin_o = np.cos(orientation), np.sin(orientation)
     rotated_offset = np.array(
         [
@@ -342,6 +367,20 @@ def _api_mimo_compute_impl(cache: dict, cache_lock) -> RouteResponse:
     if level not in (7, 8):
         return jsonify({"error": "level must be 7 or 8 for MIMO"}), 400
     precoder_type = str(params.get("precoder_type", "mrt"))
+    if precoder_type not in _VALID_PRECODER_TYPES:
+        return (
+            jsonify(
+                {"error": (f"precoder_type must be one of {sorted(_VALID_PRECODER_TYPES)}, got {precoder_type!r}")}
+            ),
+            400,
+        )
+    M_ant = scene.array.n_elements
+    K = scene.n_users
+    if precoder_type in _PRECODERS_REQUIRE_M_GE_K and M_ant < K:
+        return (
+            jsonify({"error": (f"precoder_type {precoder_type!r} requires M_ant >= K, got M_ant={M_ant}, K={K}")}),
+            400,
+        )
     try:
         summary = compute_mimo_scene_with_bodies(
             scene,

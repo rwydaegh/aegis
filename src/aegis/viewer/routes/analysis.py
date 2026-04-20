@@ -37,6 +37,19 @@ def _sanitize_list(lst):
     return out
 
 
+def _reject_non_finite(pairs):
+    """Reject NaN/Inf floats at the boundary.
+
+    Flask's `type=float` accepts "NaN"/"Infinity" strings, which silently
+    propagate into compliance math and produce all-True/all-False payloads.
+    Returns a 400 response tuple on failure or None on success.
+    """
+    for name, val in pairs:
+        if val is not None and not math.isfinite(val):
+            return jsonify({"error": f"{name} must be finite"}), 400
+    return None
+
+
 def _compliance_limits_impl(cache: dict, cache_lock) -> RouteResponse:
     """Query ICNIRP 2020 limits at an arbitrary frequency/scenario."""
     from aegis.compliance import ExposureScenario, icnirp_limits
@@ -207,6 +220,19 @@ def _compliance_power_sweep_impl(cache: dict, cache_lock) -> RouteResponse:
         return jsonify({"error": "freq_hz and ref_power_dbm are required"}), 400
     if sab_4cm2 is None and sab_1cm2 is None and sar_wb is None:
         return jsonify({"error": "At least one of sab_4cm2, sab_1cm2, or sar_wb is required"}), 400
+    err = _reject_non_finite(
+        [
+            ("freq_hz", freq_hz),
+            ("ref_power_dbm", ref_power_dbm),
+            ("sab_4cm2", sab_4cm2),
+            ("sab_1cm2", sab_1cm2),
+            ("sinc_local", sinc_local),
+            ("sinc_wb", sinc_wb),
+            ("sar_wb", sar_wb),
+        ]
+    )
+    if err is not None:
+        return err
     if freq_hz <= 0:
         return jsonify({"error": "freq_hz must be positive"}), 400
 
@@ -270,6 +296,17 @@ def _compliance_heatmap_impl(cache: dict, cache_lock) -> RouteResponse:
     scenario = ExposureScenario.OCCUPATIONAL if scenario_str == "occupational" else ExposureScenario.GENERAL_PUBLIC
 
     sinc_local = request.args.get("sinc_local", type=float)
+    err = _reject_non_finite(
+        [
+            ("freq_hz", freq_hz),
+            ("ref_power_dbm", ref_power_dbm),
+            ("sab_4cm2", sab_4cm2),
+            ("sab_1cm2", sab_1cm2),
+            ("sinc_local", sinc_local),
+        ]
+    )
+    if err is not None:
+        return err
     n_freq = request.args.get("n_freq", 40, type=int)
     n_power = request.args.get("n_power", 40, type=int)
     n_freq = min(max(n_freq, 10), 100)
@@ -330,6 +367,17 @@ def _compliance_frequency_sweep_impl(cache: dict, cache_lock) -> RouteResponse:
 
     sinc_local = request.args.get("sinc_local", type=float)
     sinc_wb = request.args.get("sinc_wb", type=float)
+    err = _reject_non_finite(
+        [
+            ("sab_4cm2", sab_4cm2),
+            ("sab_1cm2", sab_1cm2),
+            ("sar_wb", sar_wb),
+            ("sinc_local", sinc_local),
+            ("sinc_wb", sinc_wb),
+        ]
+    )
+    if err is not None:
+        return err
     n_points = request.args.get("n_points", 50, type=int)
     n_points = min(max(n_points, 10), 500)
 

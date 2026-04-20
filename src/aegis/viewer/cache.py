@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import logging
@@ -55,8 +56,13 @@ class EnvironmentCache:
         path = self._dir / f"{self._key(source, lat, lon, radius, options)}.json"
         if not path.exists():
             return None
-        with open(path) as f:
-            return json.load(f)
+        try:
+            with open(path) as f:
+                return json.load(f)
+        except (OSError, json.JSONDecodeError) as e:
+            logger.warning("Discarding corrupt cache entry %s: %s", path, e)
+            self._remove_quiet(path)
+            return None
 
     def put(
         self,
@@ -71,8 +77,10 @@ class EnvironmentCache:
         if not self._enabled:
             return
         path = self._dir / f"{self._key(source, lat, lon, radius, options)}.json"
-        with open(path, "w") as f:
-            json.dump({"data": data, "meta": meta}, f)
+        try:
+            self._atomic_write_text(path, json.dumps({"data": data, "meta": meta}))
+        except OSError as e:
+            logger.warning("Failed to write cache entry %s: %s", path, e)
 
     def get_binary(
         self,
@@ -82,7 +90,12 @@ class EnvironmentCache:
         radius: float,
         options: dict,
     ) -> tuple[bytes, dict] | None:
-        """Return cached (binary_blob, meta) or None if not cached."""
+        """Return cached (binary_blob, meta) or None if not cached.
+
+        Treats unreadable or partially written cache files as a miss so that
+        a corrupted on-disk entry never surfaces as a 500 to the caller. The
+        offending files are removed so the next request can refresh cleanly.
+        """
         if not self._enabled:
             return None
         key = self._key(source, lat, lon, radius, options)
@@ -90,10 +103,16 @@ class EnvironmentCache:
         meta_path = self._dir / f"{key}.meta.json"
         if not bin_path.exists() or not meta_path.exists():
             return None
-        with open(meta_path) as f:
-            meta = json.load(f)
-        with open(bin_path, "rb") as f:
-            blob = f.read()
+        try:
+            with open(meta_path) as f:
+                meta = json.load(f)
+            with open(bin_path, "rb") as f:
+                blob = f.read()
+        except (OSError, json.JSONDecodeError) as e:
+            logger.warning("Discarding corrupt cache entry %s/%s: %s", bin_path, meta_path, e)
+            self._remove_quiet(bin_path)
+            self._remove_quiet(meta_path)
+            return None
         return blob, meta
 
     def put_binary(
@@ -106,16 +125,42 @@ class EnvironmentCache:
         blob: bytes,
         meta: dict,
     ) -> None:
-        """Cache a binary blob with its metadata."""
+        """Cache a binary blob with its metadata.
+
+        Writes are atomic (temp file + rename) so an interrupted write does
+        not leave a partial file that would later read as corrupt.
+        """
         if not self._enabled:
             return
         key = self._key(source, lat, lon, radius, options)
         bin_path = self._dir / f"{key}.bin"
         meta_path = self._dir / f"{key}.meta.json"
-        with open(bin_path, "wb") as f:
-            f.write(blob)
-        with open(meta_path, "w") as f:
-            json.dump(meta, f)
+        try:
+            self._atomic_write_bytes(bin_path, blob)
+            self._atomic_write_text(meta_path, json.dumps(meta))
+        except OSError as e:
+            logger.warning("Failed to write cache entry %s: %s", bin_path, e)
+            self._remove_quiet(bin_path)
+            self._remove_quiet(meta_path)
+
+    @staticmethod
+    def _atomic_write_bytes(path: Path, data: bytes) -> None:
+        tmp = path.with_suffix(path.suffix + ".tmp")
+        with open(tmp, "wb") as f:
+            f.write(data)
+        os.replace(tmp, path)
+
+    @staticmethod
+    def _atomic_write_text(path: Path, data: str) -> None:
+        tmp = path.with_suffix(path.suffix + ".tmp")
+        with open(tmp, "w") as f:
+            f.write(data)
+        os.replace(tmp, path)
+
+    @staticmethod
+    def _remove_quiet(path: Path) -> None:
+        with contextlib.suppress(OSError):
+            path.unlink(missing_ok=True)
 
     def clear(self) -> None:
         if not self._enabled:

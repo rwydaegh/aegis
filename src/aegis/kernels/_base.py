@@ -9,9 +9,6 @@ from numpy.typing import NDArray
 
 from aegis._array_backend import erf, xp
 from aegis.defaults import NUMERICAL_FLOOR
-from aegis.tissue.fresnel import (
-    _fresnel_core,  # pyright: ignore[reportPrivateUsage]  # JIT-safe core, intentional cross-module reuse
-)
 
 
 def incidence_geometry(
@@ -41,7 +38,10 @@ def fresnel_weights(
 ) -> tuple[NDArray[np.floating], NDArray[np.floating], NDArray[np.floating]]:
     """Compute Fresnel transmission weights at each (triangle, path) pair.
 
-    Calls _fresnel_core directly (not fresnel_transmission) to stay JIT-safe.
+    Inlined (rather than calling ``_fresnel_core``) to avoid allocating the
+    amplitude transmission coefficients ``t_s``/``t_p``, which the spatial
+    kernel never consumes. For (M, N) = (164k, 240) this saves ~1.3 GB of
+    transient complex128 allocation per call.
 
     Parameters
     ----------
@@ -55,9 +55,23 @@ def fresnel_weights(
     T_avg : (M, N) unpolarised average (T_s + T_p) / 2
     """
     mu_for_fresnel = xp.clip(mu, 0.0, 1.0)
-    # Cast to complex for _fresnel_core (Fresnel needs complex arithmetic)
+    # Cast to complex once (Fresnel needs complex arithmetic).
     mu_complex = xp.asarray(mu_for_fresnel, dtype=complex)
-    _, _, T_s, T_p, _, _ = _fresnel_core(mu_complex, n_tilde)
+
+    n2 = n_tilde**2
+    xi = xp.sqrt(n2 - 1 + mu_complex**2)
+    xi = xp.where(xp.real(xi) < 0, -xi, xi)
+
+    r_s = (mu_complex - xi) / (mu_complex + xi)
+    r_p = (n2 * mu_complex - xi) / (n2 * mu_complex + xi)
+
+    T_s = xp.real(1 - xp.abs(r_s) ** 2)
+    T_p = xp.real(1 - xp.abs(r_p) ** 2)
+
+    mu_real = xp.real(mu_complex)
+    T_s = xp.where(mu_real < 1e-10, 0.0, T_s)
+    T_p = xp.where(mu_real < 1e-10, 0.0, T_p)
+
     T_avg = 0.5 * (T_s + T_p)
     return T_s, T_p, T_avg
 

@@ -55,7 +55,14 @@ def _bfs_cluster_labels(
     norm_ops: np.ndarray,
     freq_bands: np.ndarray | None,
 ) -> np.ndarray:
-    """Assign cluster labels via BFS over neighbor lists, sharing operator+freq."""
+    """Assign cluster labels via BFS over neighbor lists, sharing operator+freq.
+
+    Cluster membership requires: same normalized operator, and a consistent
+    frequency band. The cluster's band starts as the seed's and is upgraded
+    once a known band is observed; subsequent rows with a different known
+    band are rejected so two explicitly-different bands never merge via a
+    NaN bridge.
+    """
     n = len(neighbor_lists)
     labels = np.full(n, -1, dtype=np.intp)
     cluster_id = 0
@@ -67,6 +74,7 @@ def _bfs_cluster_labels(
         labels[seed] = cluster_id
         queue = [seed]
         head = 0
+        cluster_band = freq_bands[seed] if has_fb else None
         while head < len(queue):
             cur = queue[head]
             head += 1
@@ -74,12 +82,13 @@ def _bfs_cluster_labels(
                 if labels[j] >= 0 or norm_ops[j] != norm_ops[seed]:
                     continue
                 if has_fb:
-                    fb_seed = freq_bands[seed]
                     fb_j = freq_bands[j]
-                    if pd.notna(fb_seed) and pd.notna(fb_j) and fb_seed != fb_j:
+                    if pd.notna(cluster_band) and pd.notna(fb_j) and cluster_band != fb_j:
                         continue
                 labels[j] = cluster_id
                 queue.append(j)
+                if has_fb and pd.isna(cluster_band) and pd.notna(fb_j):
+                    cluster_band = fb_j
         cluster_id += 1
     return labels
 

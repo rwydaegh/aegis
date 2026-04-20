@@ -257,6 +257,13 @@ def _parse_power_dbm(params: dict, dcfg: dict, pwr_cfg: dict):
     return power_dbm, None
 
 
+# Upper bounds for integer-valued stochastic overrides. These mirror the
+# frontend input caps in ``StochasticPanel.tsx`` and protect the worker from
+# multi-GB allocations inside ``aegis.channel.generator.generate`` when a
+# malicious or buggy client sends huge values via the share-link override path.
+_STOCHASTIC_OVERRIDE_MAX = {"NumClusters": 50, "NumSubPaths": 20}
+
+
 def _parse_stochastic_params(params: dict, cfg: dict):
     """Parse stochastic channel params (if requested).
 
@@ -264,12 +271,45 @@ def _parse_stochastic_params(params: dict, cfg: dict):
     """
     if not params.get("stochastic"):
         return None, None
+    from aegis.channel import list_presets
+    from aegis.viewer.compute import _resolve_channel_preset_dir
+
     stoch_cfg = cfg["dosimetry"].get("stochastic", {})
+
+    preset = params.get("stochastic_preset", stoch_cfg.get("default_preset", "3GPP_38.901_UMi_LOS"))
+    valid_presets = set(list_presets(_resolve_channel_preset_dir(cfg)))
+    if preset not in valid_presets:
+        return None, (jsonify({"error": "Unknown stochastic preset"}), 400)
+
+    overrides = params.get("stochastic_overrides", {})
+    # None / empty-list / empty-string are treated as empty dict to match the
+    # ``overrides or {}`` short-circuit in ``aegis.channel.generator.generate``.
+    if not overrides:
+        overrides = {}
+    elif not isinstance(overrides, dict):
+        return None, (jsonify({"error": "stochastic_overrides must be an object"}), 400)
+
+    # Every override must be a finite scalar. The channel generator eventually
+    # calls ``int()`` / ``float()`` on each value, so non-numeric types (bool,
+    # None from ``JSON.stringify(NaN)``, lists, strings) would surface as a
+    # cryptic 500. Validate uniformly rather than maintaining an allowlist.
+    for key, val in overrides.items():
+        if isinstance(val, bool) or not isinstance(val, (int, float)):
+            return None, (jsonify({"error": f"stochastic_overrides.{key} must be a number"}), 400)
+        if not math.isfinite(val):
+            return None, (jsonify({"error": f"stochastic_overrides.{key} must be a finite number"}), 400)
+        max_val = _STOCHASTIC_OVERRIDE_MAX.get(key)
+        if max_val is not None and val > max_val:
+            return None, (
+                jsonify({"error": f"stochastic_overrides.{key} must be <= {max_val}"}),
+                400,
+            )
+
     try:
         stochastic = {
-            "preset": params.get("stochastic_preset", stoch_cfg.get("default_preset", "3GPP_38.901_UMi_LOS")),
+            "preset": preset,
             "seed": int(params.get("stochastic_seed", stoch_cfg.get("default_seed", 42))),
-            "overrides": params.get("stochastic_overrides", {}),
+            "overrides": overrides,
             "freq_ghz": float(params.get("freq_hz", DEFAULT_FREQ_HZ)) / 1e9,
         }
     except (TypeError, ValueError):
@@ -454,6 +494,16 @@ def _api_compute_impl(cache: dict, cache_lock) -> RouteResponse:
     except (ValueError, FileNotFoundError) as exc:
         logger.warning("compute_dosimetry rejected invalid request: %s", exc)
         return jsonify({"error": str(exc)}), 400
+    except MemoryError:
+        logger.exception("compute_dosimetry exhausted memory")
+        return jsonify(
+            {
+                "error": (
+                    "Request exceeded server memory budget. Try a smaller phantom, "
+                    "disable stochastic mode, or use a lower fidelity level."
+                )
+            }
+        ), 413
     except Exception as exc:
         logger.exception("compute_dosimetry failed")
         return jsonify({"error": str(exc)}), 500

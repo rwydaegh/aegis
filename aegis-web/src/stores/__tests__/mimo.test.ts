@@ -1,5 +1,20 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { useMIMOStore } from '../mimo'
+import { useMIMOStore, precoderRequiresMgeK } from '../mimo'
+import { useNotificationStore } from '../notifications'
+import type { ArrayConfig } from '@/api/types'
+
+function makeArrayConfig(n_h: number, n_v: number): ArrayConfig {
+  return {
+    type: 'upa',
+    n_h,
+    n_v,
+    d_h_wavelengths: 0.5,
+    d_v_wavelengths: 0.5,
+    position: [0, 2, 0],
+    broadside: [-1, 0, 0],
+    element_pattern: 'patch',
+  }
+}
 
 describe('MIMO store', () => {
   beforeEach(() => {
@@ -90,6 +105,76 @@ describe('MIMO store', () => {
   it('setPrecoderType updates precoder', () => {
     useMIMOStore.getState().setPrecoderType('mmse')
     expect(useMIMOStore.getState().precoderType).toBe('mmse')
+  })
+
+  describe('precoderRequiresMgeK', () => {
+    it('is true only for ZF and zf_exposure', () => {
+      expect(precoderRequiresMgeK('zf')).toBe(true)
+      expect(precoderRequiresMgeK('zf_exposure')).toBe(true)
+      expect(precoderRequiresMgeK('mrt')).toBe(false)
+      expect(precoderRequiresMgeK('mmse')).toBe(false)
+    })
+  })
+
+  describe('M<K precoder feasibility', () => {
+    beforeEach(() => {
+      useNotificationStore.setState({ notifications: [] })
+    })
+
+    it('allows MMSE at M<K without fallback to MRT', () => {
+      const s = useMIMOStore.getState()
+      s.setArrayConfig(makeArrayConfig(2, 1)) // M=2
+      s.setPrecoderType('mmse')
+      s.addUser('thelonious', [0, 0, 0]) // K=1, M>=K
+      s.addUser('duke', [1, 0, 0]) // K=2, M=K
+      s.addUser('eartha', [2, 0, 0]) // K=3, M<K
+      expect(useMIMOStore.getState().precoderType).toBe('mmse')
+      expect(useMIMOStore.getState().users.size).toBe(3)
+    })
+
+    it('falls back from ZF to MRT when adding users past M', () => {
+      const s = useMIMOStore.getState()
+      s.setArrayConfig(makeArrayConfig(2, 1)) // M=2
+      s.setPrecoderType('zf')
+      s.addUser('thelonious', [0, 0, 0]) // K=1, OK
+      s.addUser('duke', [1, 0, 0]) // K=2, OK
+      expect(useMIMOStore.getState().precoderType).toBe('zf')
+      s.addUser('eartha', [2, 0, 0]) // K=3, M<K → fallback
+      expect(useMIMOStore.getState().precoderType).toBe('mrt')
+    })
+
+    it('falls back from zf_exposure to MRT when shrinking array past K', () => {
+      const s = useMIMOStore.getState()
+      s.setArrayConfig(makeArrayConfig(4, 1)) // M=4
+      s.addUser('thelonious', [0, 0, 0])
+      s.addUser('duke', [1, 0, 0])
+      s.addUser('eartha', [2, 0, 0]) // K=3
+      s.setPrecoderType('zf_exposure')
+      expect(useMIMOStore.getState().precoderType).toBe('zf_exposure')
+      s.setArrayConfig(makeArrayConfig(2, 1)) // M=2, K=3 → fallback
+      expect(useMIMOStore.getState().precoderType).toBe('mrt')
+    })
+
+    it('keeps MMSE across array shrink below K', () => {
+      const s = useMIMOStore.getState()
+      s.setArrayConfig(makeArrayConfig(4, 1))
+      s.addUser('thelonious', [0, 0, 0])
+      s.addUser('duke', [1, 0, 0])
+      s.addUser('eartha', [2, 0, 0])
+      s.setPrecoderType('mmse')
+      s.setArrayConfig(makeArrayConfig(2, 1)) // M=2, K=3
+      expect(useMIMOStore.getState().precoderType).toBe('mmse')
+    })
+
+    it('setPrecoderType rejects ZF when M<K and falls back to MRT', () => {
+      const s = useMIMOStore.getState()
+      s.setArrayConfig(makeArrayConfig(2, 1)) // M=2
+      s.addUser('thelonious', [0, 0, 0])
+      s.addUser('duke', [1, 0, 0])
+      s.addUser('eartha', [2, 0, 0]) // K=3, M<K
+      s.setPrecoderType('zf')
+      expect(useMIMOStore.getState().precoderType).toBe('mrt')
+    })
   })
 
   it('focusedUser selector returns the focused user state', () => {
