@@ -54,6 +54,79 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-20 20:15 UTC -- "Visualization and analysis"
+
+- Actor: interactive (qa-agent-47079)
+- Depth: medium
+- Findings: 1 bug filed: #719
+- Notes: Picked this section because PR #712 (4428201, "Surface path
+  contributions to the viewer Analysis panel") landed at 15:01 UTC
+  today and the Analysis surface had not been directly covered since
+  2026-04-18 08:22 UTC. Prod build at session start was `8bd6962`
+  (6 commits behind master) so the new PathInsightsSection is NOT yet
+  deployed — verified by reading `PathInsightsSection.tsx` locally
+  (empty-state copy: "Run a ray-traced compute to see which paths
+  drive the peak exposure") and confirming the Analysis accordion on
+  prod only has Exposure distribution / SAB histogram / Power sweep /
+  Frequency sweep / Distance sweep / Compliance heatmap. Follow-up
+  agent should re-test #712 once the deploy lag closes. **Section
+  collision**: qa-agent-977949 (16:15) and qa-agent-17564 (18:25)
+  also covered this area earlier today — rebase merged both entries
+  below. qa-agent-977949 flagged the frequency-sweep flatness
+  observationally ("+29 dB flat on Urban Ghent") but accepted it as
+  "by design — denominator-only sweep". I went deeper on Open ground
+  and confirmed via direct API probing that the flatness is actually
+  a SAR_wb-inclusion bug above 6 GHz (see below); filed as #719.
+  **Drove the rest of Analysis end-to-end on Open ground (28 GHz,
+  65 dBm, thelonious, Peak 80.46 mW/m², +22.1 dB)**:
+  Exposure distribution stats match HUD (Peak 0.081, P99 0.073, P95
+  0.058, Mean all 0.012, Mean illuminated 0.027, Median illuminated
+  0.023 W/m², Illuminated 43.8%, area 3695 cm²) — healthy.
+  SAB histogram renders a log-scale x (6.2e-10 to 3.6e-3 W/m²) with
+  linear count y (0-3400); bars all green "Below limit" consistent
+  with +22 dB margin. Y-axis labels "3400" and "1700" overlap each
+  other at the top of the axis — cosmetic quibble, not filed.
+  Power sweep renders the green margin curve from 22-63 dBm with
+  the red FAIL threshold dashed at 0 dB; reports "Max compliant
+  65.0 dBm" which matches current operating point. Healthy.
+  **Bug 1 (#719)**: Frequency sweep renders a PERFECTLY FLAT
+  green line at +22.04 dB across 7-100 GHz. Captured the fetch URL
+  — frontend calls `GET /api/compliance/frequency-sweep?sab_4cm2=...
+  &sinc_local=...&sar_wb=0.0005&sinc_wb=0.0204`, and `sar_wb`
+  (always 0.0005 W/kg from the compute) pins the tightest margin
+  at `10·log10(0.08/0.0005) = 22.04 dB` constant across the full
+  band. Re-ran the same URL with sar_wb removed → margin correctly
+  varied 23.95 → 22.07 dB (1.9 dB swing driven by Sinc_local ∝
+  1/f^0.177). Per ICNIRP 2020 Tables 2-3 SAR_wb is the basic
+  restriction for 100 kHz - 6 GHz; above 6 GHz the BR is Sab.
+  `icnirp_limits` (`compliance/__init__.py:234`) always returns
+  `sar_wb=0.08` regardless of frequency, and `evaluate_compliance`
+  (`:332-339`) creates a check whenever the value is passed —
+  SAR_wb leaks into checks at every frequency > 6 GHz.
+  `FrequencySweepSection.tsx:49` + `PowerSweepSection.tsx:53`
+  both pass sar_wb unconditionally. Suggested 3 independent
+  fixes in the issue body; cleanest is `frequency_sweep`
+  (`compliance/__init__.py:632`) setting `sar_wb=None` when
+  the iteration point is above 6 GHz. **Compliance heatmap**:
+  generated cleanly, all-green rectangle across the sampled
+  (freq, power) window — no visible artifacts. **Distance
+  sweep**: skipped live test — read `DistanceSweepSection.tsx`
+  and confirmed it's a pure client-side `20·log10(d/d0)`
+  transform on the current margin, so doesn't hit the API and
+  can't inherit the SAR_wb bug. Other observations (NOT filed):
+  (a) Power sweep has the same sar_wb unconditional-pass
+  pattern but since all metrics scale linearly with power, all
+  margin curves move together and the dominant metric doesn't
+  matter for the output shape — no user-visible bug. (b) Chart
+  current-frequency indicator (white dashed vertical line at
+  28 GHz on the sweep) renders correctly even when the
+  underlying data is flat. Confidence: the non-sweep Analysis
+  pieces (Exposure, Histogram, Power sweep, Distance sweep,
+  Heatmap) are healthy; Frequency sweep is actively misleading
+  and should be prioritized. Path Insights (#712) remains
+  untested on live site — blocked on deploy of commits
+  `4428201..6149aea`.
+
 ### 2026-04-20 18:25 UTC -- "Visualization and analysis"
 
 - Actor: interactive (qa-agent-17564)
