@@ -682,6 +682,59 @@ class TestMIMOCompute:
         assert "test-session:mimo_scene" in cache
         assert "test-session:mimo_summary" in cache
 
+    @pytest.mark.parametrize("bad_type", ["foo", "ZF", "", "maximum_ratio", None])
+    def test_unknown_precoder_type_returns_400(self, bad_type, client):
+        """Unknown precoder_type should reject as 400 before hitting compute."""
+        resp = client.post(
+            "/api/mimo/compute",
+            json={
+                "array": VALID_ARRAY,
+                "users": [_make_user_cfg()],
+                "precoder_type": bad_type,
+            },
+        )
+        assert resp.status_code == 400
+        assert "precoder_type" in resp.get_json()["error"]
+
+    @pytest.mark.parametrize("precoder_type", ["zf", "zf_exposure"])
+    @patch("aegis.viewer.routes.mimo.compute_mimo_scene_with_bodies")
+    def test_zf_precoder_m_lt_k_returns_400(self, mock_compute, precoder_type, client):
+        """ZF/zf_exposure with M_ant < K should reject as 400, not 500 from precoder."""
+        small_array = {**VALID_ARRAY, "n_h": 1, "n_v": 1}  # M_ant = 1
+        users = [_make_user_cfg("u1"), _make_user_cfg("u2")]  # K = 2
+        users[1]["position"] = [6.0, 0.0, 0.0]
+        resp = client.post(
+            "/api/mimo/compute",
+            json={
+                "array": small_array,
+                "users": users,
+                "precoder_type": precoder_type,
+            },
+        )
+        assert resp.status_code == 400
+        body = resp.get_json()["error"]
+        assert "M_ant" in body
+        assert "K" in body
+        assert mock_compute.call_count == 0  # never reached compute
+
+    @patch("aegis.viewer.routes.mimo.compute_mimo_scene_with_bodies")
+    def test_mmse_allowed_at_m_lt_k(self, mock_compute, client):
+        """MMSE is regularized and works for any M, K — must not be blocked."""
+        mock_compute.return_value = {"precoder_type": "mmse", "timings": {}}
+        small_array = {**VALID_ARRAY, "n_h": 1, "n_v": 1}
+        users = [_make_user_cfg("u1"), _make_user_cfg("u2")]
+        users[1]["position"] = [6.0, 0.0, 0.0]
+        resp = client.post(
+            "/api/mimo/compute",
+            json={
+                "array": small_array,
+                "users": users,
+                "precoder_type": "mmse",
+            },
+        )
+        assert resp.status_code == 200
+        assert mock_compute.call_count == 1
+
 
 # ---------------------------------------------------------------------------
 # /api/mimo/result/<user_id>

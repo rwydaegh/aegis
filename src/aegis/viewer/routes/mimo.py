@@ -26,6 +26,9 @@ _OCTET_STREAM = "application/octet-stream"
 _ERR_VEC3_LEN = "must have 3 elements"
 _ErrResp = tuple[Response, int]
 
+_VALID_PRECODER_TYPES = frozenset({"mrt", "zf", "mmse", "zf_exposure"})
+_PRECODERS_REQUIRE_M_GE_K = frozenset({"zf", "zf_exposure"})
+
 
 def _parse_vec3(raw, label: str) -> tuple[np.ndarray | None, _ErrResp | None]:
     """Parse a 3-element numeric array.
@@ -364,6 +367,20 @@ def _api_mimo_compute_impl(cache: dict, cache_lock) -> RouteResponse:
     if level not in (7, 8):
         return jsonify({"error": "level must be 7 or 8 for MIMO"}), 400
     precoder_type = str(params.get("precoder_type", "mrt"))
+    if precoder_type not in _VALID_PRECODER_TYPES:
+        return (
+            jsonify(
+                {"error": (f"precoder_type must be one of {sorted(_VALID_PRECODER_TYPES)}, got {precoder_type!r}")}
+            ),
+            400,
+        )
+    M_ant = scene.array.n_elements
+    K = scene.n_users
+    if precoder_type in _PRECODERS_REQUIRE_M_GE_K and M_ant < K:
+        return (
+            jsonify({"error": (f"precoder_type {precoder_type!r} requires M_ant >= K, got M_ant={M_ant}, K={K}")}),
+            400,
+        )
     try:
         summary = compute_mimo_scene_with_bodies(
             scene,
