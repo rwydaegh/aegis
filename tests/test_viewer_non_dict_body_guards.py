@@ -95,6 +95,43 @@ def test_lsp_heatmap_negative_seed_is_400(viewer_client):
     assert "seed" in resp.get_json()["error"].lower()
 
 
+@pytest.mark.parametrize(
+    ("field", "payload_override", "expected_substr"),
+    [
+        ("bounds", {"bounds": [float("nan"), 50, -50, 50]}, "bounds"),
+        ("bounds", {"bounds": [float("-inf"), 50, -50, 50]}, "bounds"),
+        ("bounds", {"bounds": [float("inf"), 50, -50, 50]}, "bounds"),
+        ("freq_ghz", {"freq_ghz": float("nan")}, "freq_ghz"),
+        ("freq_ghz", {"freq_ghz": float("inf")}, "freq_ghz"),
+        ("antenna_pos", {"antenna_pos": [0, 0, float("nan")]}, "antenna_pos"),
+        ("antenna_pos", {"antenna_pos": [float("inf"), 0, 10]}, "antenna_pos"),
+    ],
+)
+def test_lsp_heatmap_nonfinite_numeric_inputs_are_400(viewer_client, field, payload_override, expected_substr):
+    """Non-finite floats in ``bounds``/``freq_ghz``/``antenna_pos`` must be
+    rejected with a clear 400. Python's ``float(...)`` happily accepts
+    ``NaN``/``Infinity`` and they would otherwise cascade into a NaN-filled
+    200 response (issue #700)."""
+    payload = {
+        "preset": "3GPP_38.901_UMi_LOS",
+        "freq_ghz": 28.0,
+        "antenna_pos": [0, 0, 10],
+        "lsp_name": "SF_dB",
+        "bounds": [-50, 50, -50, 50],
+        "resolution": 32,
+        "seed": 42,
+    }
+    payload.update(payload_override)
+    resp = viewer_client.post("/api/lsp-heatmap", json=payload)
+    assert resp.status_code == 400, (
+        f"/api/lsp-heatmap returned {resp.status_code} for non-finite {field}; "
+        "expected 400 from the finite-value guard."
+    )
+    body = resp.get_json()
+    assert body is not None
+    assert expected_substr in body.get("error", "").lower()
+
+
 @pytest.mark.parametrize("bad_user", [None, 42, "hello", [1, 2, 3]])
 def test_mimo_compute_non_dict_user_is_400(viewer_client, bad_user):
     """``/api/mimo/compute`` must reject non-dict elements inside ``users``.
