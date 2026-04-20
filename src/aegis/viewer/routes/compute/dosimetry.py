@@ -257,6 +257,9 @@ def _parse_power_dbm(params: dict, dcfg: dict, pwr_cfg: dict):
     return power_dbm, None
 
 
+_STOCHASTIC_NUMERIC_OVERRIDE_KEYS = ("NumClusters", "NumSubPaths")
+
+
 def _parse_stochastic_params(params: dict, cfg: dict):
     """Parse stochastic channel params (if requested).
 
@@ -268,15 +271,34 @@ def _parse_stochastic_params(params: dict, cfg: dict):
     from aegis.viewer.compute import _resolve_channel_preset_dir
 
     stoch_cfg = cfg["dosimetry"].get("stochastic", {})
+
     preset = params.get("stochastic_preset", stoch_cfg.get("default_preset", "3GPP_38.901_UMi_LOS"))
     valid_presets = set(list_presets(_resolve_channel_preset_dir(cfg)))
     if preset not in valid_presets:
         return None, (jsonify({"error": "Unknown stochastic preset"}), 400)
+
+    overrides = params.get("stochastic_overrides", {})
+    # None / empty-list / empty-string are treated as empty dict to match the
+    # ``overrides or {}`` short-circuit in ``aegis.channel.generator.generate``.
+    if not overrides:
+        overrides = {}
+    elif not isinstance(overrides, dict):
+        return None, (jsonify({"error": "stochastic_overrides must be an object"}), 400)
+
+    for key in _STOCHASTIC_NUMERIC_OVERRIDE_KEYS:
+        if key not in overrides:
+            continue
+        val = overrides[key]
+        if isinstance(val, bool) or not isinstance(val, (int, float)):
+            return None, (jsonify({"error": f"stochastic_overrides.{key} must be a number"}), 400)
+        if not math.isfinite(val):
+            return None, (jsonify({"error": f"stochastic_overrides.{key} must be a finite number"}), 400)
+
     try:
         stochastic = {
             "preset": preset,
             "seed": int(params.get("stochastic_seed", stoch_cfg.get("default_seed", 42))),
-            "overrides": params.get("stochastic_overrides", {}),
+            "overrides": overrides,
             "freq_ghz": float(params.get("freq_hz", DEFAULT_FREQ_HZ)) / 1e9,
         }
     except (TypeError, ValueError):

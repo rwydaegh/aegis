@@ -265,6 +265,57 @@ class TestComputeRoute:
             )
         assert resp.status_code == 400
 
+    @pytest.mark.parametrize("key", ["NumClusters", "NumSubPaths"])
+    @pytest.mark.parametrize("bad_value", [None, float("nan"), float("inf"), "abc", [1]])
+    def test_invalid_stochastic_override_value(self, viewer_app, key, bad_value):
+        with viewer_app.test_client() as c:
+            resp = c.post(
+                "/api/compute",
+                json={
+                    "stochastic": True,
+                    "stochastic_preset": "3GPP_38.901_UMi_LOS",
+                    "stochastic_overrides": {key: bad_value},
+                    "n_paths": 1,
+                },
+            )
+        assert resp.status_code == 400
+        assert key in resp.get_json()["error"]
+
+    @pytest.mark.parametrize("bad_overrides", ["foo", [1, 2, 3], 42])
+    def test_stochastic_overrides_must_be_object(self, viewer_app, bad_overrides):
+        with viewer_app.test_client() as c:
+            resp = c.post(
+                "/api/compute",
+                json={
+                    "stochastic": True,
+                    "stochastic_overrides": bad_overrides,
+                    "n_paths": 1,
+                },
+            )
+        assert resp.status_code == 400
+        assert "stochastic_overrides" in resp.get_json()["error"]
+
+    @pytest.mark.parametrize("empty_overrides", [None, [], ""])
+    def test_stochastic_empty_overrides_short_circuit(self, viewer_app, empty_overrides):
+        """Falsy override values should be treated as empty dict, matching generator.py."""
+        with (
+            viewer_app.test_client() as c,
+            patch(
+                "aegis.viewer.compute.compute_dosimetry",
+                side_effect=_mock_compute_dosimetry,
+            ),
+        ):
+            resp = c.post(
+                "/api/compute",
+                json={
+                    "stochastic": True,
+                    "stochastic_preset": "Freespace",
+                    "stochastic_overrides": empty_overrides,
+                    "n_paths": 1,
+                },
+            )
+        assert resp.status_code == 200
+
     def test_invalid_freq_hz(self, viewer_app):
         with viewer_app.test_client() as c:
             resp = c.post("/api/compute", json={"freq_hz": -1, "n_paths": 1})
