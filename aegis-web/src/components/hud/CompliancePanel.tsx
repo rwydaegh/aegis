@@ -6,6 +6,7 @@ import type { QuantityKey } from '@/api/types'
 import Tex from '@/components/ui/Tex'
 import { cn } from '@/lib/utils'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
+import EcbfWarningChip from './EcbfWarningChip'
 
 function tightestMarginDb(checks: Array<{ margin_db?: number | null }>): number | null {
   const margins = checks
@@ -195,8 +196,10 @@ export default function CompliancePanel() {
 
   if (!stats) return null
 
+  const ecbfWarnings = stats.ecbf_warnings ?? []
+
   if (!stats.compliance) {
-    if (stats.warning) {
+    if (stats.warning || ecbfWarnings.length > 0) {
       return (
         <div className={PANEL_BASE}>
           <div className="mb-2">
@@ -204,13 +207,20 @@ export default function CompliancePanel() {
               COMPLIANCE (ICNIRP 2020)
             </span>
           </div>
-          <div className="text-amber-400 text-[11px]">
-            Compliance check not available below 6 GHz.
-          </div>
-          <div className="text-muted-foreground text-[11px] mt-1">
-            ICNIRP 2020 absorbed power density limits apply from 6 to 300 GHz.
-            SAR-based limits for lower frequencies are not yet implemented.
-          </div>
+          {ecbfWarnings.length > 0 && (
+            <EcbfWarningChip warnings={ecbfWarnings} className="mb-2" />
+          )}
+          {stats.warning && (
+            <>
+              <div className="text-amber-400 text-[11px]">
+                Compliance check not available below 6 GHz.
+              </div>
+              <div className="text-muted-foreground text-[11px] mt-1">
+                ICNIRP 2020 absorbed power density limits apply from 6 to 300 GHz.
+                SAR-based limits for lower frequencies are not yet implemented.
+              </div>
+            </>
+          )}
         </div>
       )
     }
@@ -232,6 +242,10 @@ export default function CompliancePanel() {
   return (
     <div className={cn(PANEL_BASE, isComputing && 'shimmer-panel')} data-testid="compliance-panel">
       <ComplianceHeader scenario={scenario} />
+
+      {ecbfWarnings.length > 0 && (
+        <EcbfWarningChip warnings={ecbfWarnings} className="mb-2" />
+      )}
 
       {visibleChecks.length === 0 ? (
         <div className="text-muted-foreground/60 text-[11px] italic">{emptyMessage}</div>
