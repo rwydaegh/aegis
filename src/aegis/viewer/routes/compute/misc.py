@@ -77,6 +77,8 @@ def _lsp_heatmap_impl(cache: dict, cache_lock) -> RouteResponse:
         seed = int(data.get("seed", 42))
     except (ValueError, TypeError) as exc:
         return jsonify({"error": f"Invalid parameter: {exc}"}), 400
+    if seed < 0:
+        return jsonify({"error": "seed must be a non-negative integer"}), 400
 
     try:
         result = generate_lsp_heatmap(
