@@ -208,9 +208,11 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
     const newLat = location.lat + (-cz) / METERS_PER_DEG_LAT
     const newLon = location.lon + cx / metersPerDegLon
 
+    // Preserve the existing human-readable locationFormatted (e.g. "Paris, France").
+    // Overwriting it with coord strings produces ugly duplicates like
+    // "48.8575, 2.3514 (48.8575, 2.3514)" in the breadcrumb label.
     set({
       location: { lat: newLat, lon: newLon },
-      locationFormatted: `${newLat.toFixed(4)}, ${newLon.toFixed(4)}`,
       radius: newRadius,
     })
 
