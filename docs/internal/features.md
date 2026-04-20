@@ -1,6 +1,6 @@
 # AEGIS feature inventory
 
-*Current as of v0.29.4 (April 2026). Updated on each release when user-facing features are added.*
+*Current as of v0.31.0 (April 2026). Updated on each release when user-facing features are added.*
 
 ## Core physics engine
 
@@ -119,6 +119,7 @@
 - build_user_channels, compute_mimo_scene, compute_mimo_scene_with_bodies orchestration pipelines
 - Per-stage timing measurement (channels_ms, precoder_ms, sab_and_engine_ms, total_ms)
 - Per-triangle multi-stream S_ab: ||G_tilde[m] @ W||_F^2; total absorbed power: trace(W^H Q W)
+- MMSE precoder selectable at any M vs K configuration; only ZF/zf_exposure are gated on M >= K feasibility
 
 ## Exposure operator and ECBF
 
@@ -132,6 +133,7 @@
 - Power-slack regime handling; per-column budget allocation
 - Bisection root-finding for constraint satisfaction; minimum-absorption direction fallback
 - Complementary slackness condition enforcement
+- Infeasibility warnings (e.g. P_abs_max too tight, no feasible direction) surfaced to compute stats so the frontend can show why ECBF fell back to MRT
 
 ## Optimization
 
@@ -170,7 +172,7 @@
 - Cluster arrival angles with ASA/ESA-weighted scaling; LOS rotation to antenna-body direction
 - Sub-path expansion with angular offsets; path loss integration into incident power density
 - Spatial consistency mode via SC_lambda parameter; shadow fading generation
-- Logdist, dual-slope, NLOS, and FSPL path loss models
+- Logdist, dual-slope, NLOS, FSPL, and constant path loss models
 - Large-Scale Fading model with spatially consistent, cross-correlated LSP maps
 - 8 large-scale parameters (DS, KF, SF, ASD, ASA, ESD, ESA, XPR) with frequency-dependent mu/sigma scaling
 - Per-parameter decorrelation distances; 8x8 inter-parameter correlation matrix with Cholesky factorization
@@ -341,6 +343,7 @@
 - Tissue material spectrum visualization (Cole-Cole permittivity) with dual-axis plots
 - Scene load and ray trace timing metrics
 - Dark theme support; lighting simulation parameters (ambient, diffuse, specular, roughness)
+- Path contribution insights panel in the viewer Analysis tab: auto-fetches after any ray-traced compute and ranks top paths by contribution to the peak triangle and to whole-body absorbed power, with LOS/NLOS badges and share bars (GET /api/analyze/path-contributions, top_k/triangle_index params)
 
 ## Data, infrastructure, and deployment
 
