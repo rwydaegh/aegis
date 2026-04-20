@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import math
 import os
 
 from flask import jsonify
@@ -60,31 +61,46 @@ def _lsp_heatmap_impl(cache: dict, cache_lock) -> RouteResponse:
     if err is not None:
         return err
     preset_name = data.get("preset", "3GPP_38.901_UMi_LOS")
-    freq_ghz = data.get("freq_ghz", 28.0)
-    antenna_pos = data.get("antenna_pos", [0, 0, 10])
     lsp_name = data.get("lsp_name", "SF_dB")
+    raw_freq = data.get("freq_ghz", 28.0)
+    raw_antenna_pos = data.get("antenna_pos", [0, 0, 10])
     raw_bounds = data.get("bounds", [-100, 100, -100, 100])
     try:
         if not isinstance(raw_bounds, (list, tuple)) or len(raw_bounds) != 4:
             return jsonify({"error": "bounds must be a 4-element list"}), 400
-        bounds: tuple[float, float, float, float] = (
+        bounds_floats = (
             float(raw_bounds[0]),
             float(raw_bounds[1]),
             float(raw_bounds[2]),
             float(raw_bounds[3]),
         )
+        freq_ghz = float(raw_freq)
+        if not isinstance(raw_antenna_pos, (list, tuple)) or len(raw_antenna_pos) != 3:
+            return jsonify({"error": "antenna_pos must be a 3-element list"}), 400
+        antenna_pos = (
+            float(raw_antenna_pos[0]),
+            float(raw_antenna_pos[1]),
+            float(raw_antenna_pos[2]),
+        )
         resolution = max(1, min(int(data.get("resolution", 128)), 256))
         seed = int(data.get("seed", 42))
     except (ValueError, TypeError) as exc:
         return jsonify({"error": f"Invalid parameter: {exc}"}), 400
+    if not all(math.isfinite(v) for v in bounds_floats):
+        return jsonify({"error": "bounds must be finite"}), 400
+    if not math.isfinite(freq_ghz):
+        return jsonify({"error": "freq_ghz must be finite"}), 400
+    if not all(math.isfinite(v) for v in antenna_pos):
+        return jsonify({"error": "antenna_pos must be finite"}), 400
     if seed < 0:
         return jsonify({"error": "seed must be a non-negative integer"}), 400
 
+    bounds: tuple[float, float, float, float] = bounds_floats
     try:
         result = generate_lsp_heatmap(
             preset_name=preset_name,
             freq_ghz=freq_ghz,
-            antenna_pos=tuple(antenna_pos),
+            antenna_pos=antenna_pos,
             lsp_name=lsp_name,
             bounds=bounds,
             resolution=resolution,
