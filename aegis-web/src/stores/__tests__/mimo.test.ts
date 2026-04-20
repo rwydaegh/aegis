@@ -188,4 +188,43 @@ describe('MIMO store', () => {
   it('focusedUser returns null when no users', () => {
     expect(useMIMOStore.getState().focusedUser()).toBeNull()
   })
+
+  it('setEnabled(false) clears per-user state but preserves config', () => {
+    const s = useMIMOStore.getState()
+    s.setEnabled(true)
+    s.addUser('duke', [3, 0, 0])
+    s.setPrecoderType('zf_exposure')
+    const initialConfig = useMIMOStore.getState().arrayConfig
+    expect(useMIMOStore.getState().users.size).toBeGreaterThan(0)
+
+    s.setEnabled(false)
+    const after = useMIMOStore.getState()
+    expect(after.enabled).toBe(false)
+    expect(after.users.size).toBe(0)
+    expect(after.focusedUserId).toBeNull()
+    expect(after.controlledUserId).toBeNull()
+    expect(after.summaryStats).toBeNull()
+    expect(after.precoderWeights).toBeNull()
+    expect(after.lastComputeError).toBeNull()
+    expect(after.lastSuccessfulUserCount).toBe(0)
+    // Config preferences preserved
+    expect(after.arrayConfig).toEqual(initialConfig)
+    expect(after.precoderType).toBe('zf_exposure')
+  })
+
+  it('setEnabled cycle auto-adds User 1 again after disable', () => {
+    const s = useMIMOStore.getState()
+    s.setEnabled(true)
+    s.addUser('duke', [3, 0, 0])
+    expect(useMIMOStore.getState().users.size).toBe(2)
+
+    s.setEnabled(false)
+    s.setEnabled(true)
+    const after = useMIMOStore.getState()
+    expect(after.users.size).toBe(1)
+    const user = [...after.users.values()][0]
+    expect(user.displayName).toBe('User 1')
+    expect(after.focusedUserId).toBe(user.userId)
+    expect(after.controlledUserId).toBe(user.userId)
+  })
 })

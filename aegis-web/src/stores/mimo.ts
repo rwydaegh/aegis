@@ -117,7 +117,24 @@ export const useMIMOStore = create<MIMOStore>((set, get) => ({
 
   setEnabled: (on) => {
     if (!on) {
-      set({ enabled: false, lastComputeError: null })
+      // Clean out per-user state on disable so re-enable starts fresh
+      // (the `users.size === 0` branch below auto-adds User 1). Array
+      // config, precoder type, and focus point are preserved so the user
+      // doesn't lose their array configuration when toggling the mode.
+      for (const user of get().users.values()) {
+        user.bodyGeometry?.dispose()
+      }
+      set({
+        enabled: false,
+        users: new Map(),
+        focusedUserId: null,
+        controlledUserId: null,
+        summaryStats: null,
+        precoderWeights: null,
+        lastComputeError: null,
+        lastSuccessfulUserCount: 0,
+        _nextUserNumber: 1,
+      })
       return
     }
 
