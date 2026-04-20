@@ -54,6 +54,51 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-20 18:25 UTC -- "Visualization and analysis"
+
+- Actor: interactive (qa-agent-17564)
+- Depth: medium
+- Findings: 1 bug filed: #716
+- Notes: Picked this section because last entry was 2026-04-18 08:22 (~2
+  days) and PR #712 (4428201, Surface path contributions to the viewer
+  Analysis panel) landed earlier today, so the Analysis sidebar has
+  fresh code. Wanted to exercise the new PathInsightsSection end-to-end
+  but the Urban Ghent OSM fetch 504'd on this session (Overpass timeout,
+  known external flake) so no ray-traced compute could run and
+  `rtPaths`/`rt_paths` never populated — thus Path insights stayed
+  hidden. Re-testing once OSM is warm (or using a scene file) is the
+  obvious follow-up; I did not try Sionna RT / voxel RT because the
+  frontend already errored on env before any backend selection
+  mattered. Exercised the rest of the Analysis panel on the Spatial
+  Urban Ghent result: Exposure distribution stats (illum 44.1%, peak
+  7.9e-3 W/m², P99 7.1e-3), SAB histogram (log-binned, all bins below
+  limit as expected), Power sweep (reported Max compliant 72.0 dBm but
+  chart X-axis only spans 23-63 dBm so the compliance crossover isn't
+  visible on the plot — plausibly by design), Frequency sweep 7-100
+  GHz (margin line is near-flat which for the 20 W/m² band-wide Sab
+  basic restriction above 6 GHz is physically fine), Distance sweep
+  1-64 m with current 12.7 m / min compliant 0.3 m (looks like a clean
+  1/r² curve), Compliance heatmap (all-green, white boundary not shown
+  because max compliant is above the 63 dBm top tick — consistent with
+  Power sweep). Colorbar "dB" toggle flipped correctly from linear
+  W/m² to "Sab (dB re peak)" with floor -25 dB and the phantom
+  re-coloured to emphasise sub-peak distribution. dB → Lin → dB round
+  trip worked.
+  The bug I filed (#716) surfaced while sanity-checking that frequency
+  change re-drives compute: with RT enabled but env 504'd, switching
+  presets 0.9 → 5.8 → 10 GHz and changing P_TX 43 → 30 dBm produced
+  zero `/api/compute*` calls (checked via
+  `performance.getEntriesByType('resource')`) yet the HUD gave no
+  warning. Unchecking RT immediately fired a 705 ms spatial compute
+  and the HUD snapped to the currently-selected frequency. The
+  "No environment mesh available" toast does appear when RT is
+  re-toggled but not when parameters change after a prior silent
+  drop, so a user who misses it is left with a HUD showing stale
+  compliance text (e.g. "S_ab limits do not apply below 6 GHz" at
+  f=10 GHz because the last real compute was at 5.8 GHz). Confident
+  the rest of Analysis is healthy; Path insights remains unverified
+  and should be the first target on a run where OSM cooperates.
+
 ### 2026-04-20 16:15 UTC -- "Visualization and analysis"
 
 - Actor: interactive (qa-agent-977949)
@@ -104,7 +149,6 @@ Depth guide:
   noise, nothing actionable. Confident the deployed AnalysisPanel
   surface is healthy; flag for next swarm: re-run path-insights
   specifically once the prod bundle advances past 4428201.
-
 ### 2026-04-20 13:45 UTC -- "Exposure operator and ECBF"
 
 - Actor: interactive (qa-agent-935398)
