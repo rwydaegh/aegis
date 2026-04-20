@@ -1,9 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { useMIMOStore } from '../mimo'
+import { useNotificationStore } from '../notifications'
 
 describe('MIMO store', () => {
   beforeEach(() => {
     useMIMOStore.getState().reset()
+    useNotificationStore.setState({ notifications: [] })
   })
 
   it('starts disabled with no users', () => {
@@ -90,6 +92,83 @@ describe('MIMO store', () => {
   it('setPrecoderType updates precoder', () => {
     useMIMOStore.getState().setPrecoderType('mmse')
     expect(useMIMOStore.getState().precoderType).toBe('mmse')
+  })
+
+  it('setPrecoderType falls back to MRT and notifies when M < K', () => {
+    const s = useMIMOStore.getState()
+    s.setArrayConfig({
+      type: 'upa',
+      position: [0, 2, 0],
+      broadside: [-1, 0, 0],
+      n_h: 1,
+      n_v: 2,
+      d_h_wavelengths: 0.5,
+      d_v_wavelengths: 0.5,
+      element_pattern: 'isotropic',
+    })
+    // Add users first so the later setPrecoderType runs against M=2 < K=3.
+    s.addUser('thelonious', [0, 1, -3])
+    s.addUser('duke', [0, 1, -5])
+    s.addUser('eartha', [0, 1, -7])
+    useNotificationStore.setState({ notifications: [] })
+
+    useMIMOStore.getState().setPrecoderType('zf')
+
+    expect(useMIMOStore.getState().precoderType).toBe('mrt')
+    const notes = useNotificationStore.getState().notifications
+    expect(notes).toHaveLength(1)
+    expect(notes[0].level).toBe('warning')
+    expect(notes[0].message).toContain('ZF')
+  })
+
+  it('setPrecoderType to mrt always succeeds regardless of M vs K', () => {
+    const s = useMIMOStore.getState()
+    s.setArrayConfig({
+      type: 'upa',
+      position: [0, 2, 0],
+      broadside: [-1, 0, 0],
+      n_h: 1,
+      n_v: 1,
+      d_h_wavelengths: 0.5,
+      d_v_wavelengths: 0.5,
+      element_pattern: 'isotropic',
+    })
+    s.addUser('thelonious', [0, 1, -3])
+    s.addUser('duke', [0, 1, -5])
+
+    useMIMOStore.getState().setPrecoderType('mrt')
+
+    expect(useMIMOStore.getState().precoderType).toBe('mrt')
+  })
+
+  it('setPrecoderType allows ZF when M >= K', () => {
+    const s = useMIMOStore.getState()
+    s.setArrayConfig({
+      type: 'upa',
+      position: [0, 2, 0],
+      broadside: [-1, 0, 0],
+      n_h: 2,
+      n_v: 2,
+      d_h_wavelengths: 0.5,
+      d_v_wavelengths: 0.5,
+      element_pattern: 'isotropic',
+    })
+    s.addUser('thelonious', [0, 1, -3])
+    s.addUser('duke', [0, 1, -5])
+
+    useMIMOStore.getState().setPrecoderType('zf')
+
+    expect(useMIMOStore.getState().precoderType).toBe('zf')
+  })
+
+  it('setPrecoderType allows ZF when no arrayConfig is set', () => {
+    const s = useMIMOStore.getState()
+    s.addUser('thelonious', [0, 1, -3])
+    s.addUser('duke', [0, 1, -5])
+
+    useMIMOStore.getState().setPrecoderType('zf')
+
+    expect(useMIMOStore.getState().precoderType).toBe('zf')
   })
 
   it('focusedUser selector returns the focused user state', () => {

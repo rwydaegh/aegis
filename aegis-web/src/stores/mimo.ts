@@ -260,7 +260,21 @@ export const useMIMOStore = create<MIMOStore>((set, get) => ({
     set({ users })
   },
 
-  setPrecoderType: (type) => set({ precoderType: type }),
+  setPrecoderType: (type) => {
+    if (type !== 'mrt') {
+      const { arrayConfig, users } = get()
+      const nElements = arrayConfig ? arrayConfig.n_h * arrayConfig.n_v : 0
+      if (nElements > 0 && nElements < users.size) {
+        useNotificationStore.getState().addNotification(
+          'warning',
+          `${type.toUpperCase()} precoder requires M \u2265 K (${nElements} antennas < ${users.size} users); staying on MRT`,
+        )
+        set({ precoderType: 'mrt' as PrecoderType })
+        return
+      }
+    }
+    set({ precoderType: type })
+  },
   setArrayConfig: (config) => {
     const fp = get().focusPoint
     const broadside = deriveBroadside(fp, config.position)
