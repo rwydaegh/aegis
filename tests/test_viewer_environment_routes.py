@@ -176,6 +176,33 @@ class TestEnvironmentOsm:
             resp = c.post("/api/environment/osm", json={"lat": 51.05, "lon": 3.72})
             assert resp.status_code == 413
 
+    def test_http_error_returns_502(self, app):
+        """Unexpected Overpass HTTP status (e.g. 400/500) is mapped to 502, not bare 500."""
+        from unittest.mock import patch
+
+        with (
+            app.test_client() as c,
+            patch(
+                "aegis.environment.osm.fetch_osm",
+                side_effect=_import_and_raise("OverpassHTTPError"),
+            ),
+        ):
+            resp = c.post("/api/environment/osm", json={"lat": 51.05, "lon": 3.72})
+            assert resp.status_code == 502
+            assert "error" in resp.get_json()
+
+    def test_malformed_xml_returns_502(self, app):
+        """Malformed XML from Overpass maps to 502, not bare 500."""
+        from unittest.mock import patch
+
+        with (
+            app.test_client() as c,
+            patch("aegis.environment.osm.fetch_osm", return_value="not valid <xml"),
+        ):
+            resp = c.post("/api/environment/osm", json={"lat": 51.05, "lon": 3.72})
+            assert resp.status_code == 502
+            assert "error" in resp.get_json()
+
     @pytest.mark.parametrize("bad_value", ["abc", [1, 2], {"x": 1}])
     def test_invalid_default_building_height_returns_400(self, app, bad_value):
         """Non-numeric default_building_height must return 400, not propagate as 500."""
@@ -196,6 +223,7 @@ class TestEnvironmentOsm:
 def _import_and_raise(exc_name: str):
     """Return a callable that raises the named Overpass exception."""
     from aegis.environment.osm import (
+        OverpassHTTPError,
         OverpassRateLimitError,
         OverpassResponseTooLarge,
         OverpassTimeoutError,
@@ -205,6 +233,7 @@ def _import_and_raise(exc_name: str):
         "OverpassRateLimitError": OverpassRateLimitError,
         "OverpassTimeoutError": OverpassTimeoutError,
         "OverpassResponseTooLarge": OverpassResponseTooLarge,
+        "OverpassHTTPError": OverpassHTTPError,
     }
 
     def _raise(*args, **kwargs):

@@ -54,6 +54,225 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-20 00:25 UTC -- "Stochastic channel modeling (third pass)"
+
+- Actor: interactive (qa-agent-729030)
+- Depth: medium
+- Findings: none filed (re-reproduced #664 and #673 on prod;
+  both already fixed on master, awaiting deploy)
+- Notes: Picked Stochastic before pulling origin/master, so I
+  missed the two prior same-day passes (16:15 + 18:25 UTC). The
+  three issues I observed during my session were all already
+  filed and patched: (a) `/api/compute` 500 with "index 0 out of
+  bounds for axis 0 with size 0" when `stochastic_overrides:
+  {NumClusters: 0}` reaches backend — fix #664 (f579093), in
+  master; (b) Canonical Null preset producing identical Sab
+  (1.35 mW/m² at 28 GHz, antenna 4 m, 65 dBm) to Freespace —
+  fix #674 (27e6156, "Implement constant path loss model"), in
+  master; (c) negative seed → 400 from `/api/lsp-heatmap` and
+  `/api/compute` (typed -100 in Seed spinner via React-aware JS,
+  visual desync between input and store but no toast surfaced) —
+  fix #685 (81dc3dd, "Reject negative seeds on /api/lsp-heatmap"),
+  in master. Production is at `7bdd91a` so all three reproduce
+  there. Verified working surface end-to-end on Open ground
+  scenario, 28 GHz, seed=42: Standard dropdown loads 11 families
+  (Canonical → DRESDEN), family change auto-picks first scenario
+  alphabetically + clears overrides per `handleFamilyChange`.
+  Cycled through Canonical Freespace/LOSonly/Null/TwoRayGR
+  (1.34-1.35 mW/m² band — Null bug noted above), 3GPP 38.901
+  UMi LOS (7.34 mW/m² at seed 42, 0.31 at random reroll —
+  determinism + variance both work), QuaDRiGa Industrial LOS
+  (0.95 mW/m²), WINNER Indoor A1 LOS (0.60 mW/m²), BERLIN
+  (0.42 mW/m²) — each family produces distinct, sensible values.
+  Seed reroll (↻) generates fresh 31-bit ints. Reset to preset
+  defaults clears overrides cleanly. K-factor / AS / ES override
+  inputs accept values in spec ranges. Cluster ray viz: FBS/LBS
+  toggle hides/shows scattered spheres correctly; Clusters vs
+  All sub-paths radio swaps between 12 cluster markers and ~12×20
+  sub-path dashed rays. LSP heatmap: switched parameter dropdown
+  through Shadow fading → Rician K-factor → Delay spread, ground
+  recolors live with appropriate colorbar units (sigma_SF dB,
+  K dB, log(s) for DS). API `/api/lsp-heatmap` POST returns
+  matching grid data (e.g. DS preset UMi LOS: ~10ns range).
+  **Caveat for next agent**: when a user types a value below
+  min into a number input in this panel, React state stays at
+  the prior valid value but the DOM input visually shows the
+  bad value (StochasticPanel.tsx:184-196 — onChange only calls
+  setOverride when `Number.isInteger(n) && n >= 1`). Annoying
+  UX but not a bug since the compute uses the (correct) state
+  value, not the visible one. Confidence high once #664/#674/
+  #685 ship; no untested gaps remain on the panel surface.
+
+### 2026-04-19 20:20 UTC -- "3D environment reconstruction"
+
+- Actor: interactive (qa-agent-692132)
+- Depth: medium
+- Findings: none filed (OSM 500 already captured by Sentry #678;
+  3D Tiles silent non-render is an unresolved follow-up from
+  2026-04-17 that PR #651 claimed "defensive fix" but only for OSM)
+- Notes: Picked this section because last direct pass was 2026-04-17
+  (2+ days stale) with two unresolved items (3D Tiles silent load,
+  Sab 7.80 → 7.00 after Clear Scene) and PR #651 (frustum culling
+  on urban scenarios) touched EnvironmentOSM bounding sphere logic.
+  **OSM regressed**: `POST /api/environment/osm` returns 500
+  consistently for Ghent (51.0447, 3.7268), Times Square (40.7580,
+  -73.9855), and Paris (48.8566, 2.3522) at radii 50-200m. Backend
+  catches OverpassRateLimit/Timeout/TooLarge specifically but lets
+  other exceptions propagate as generic 500 — panel shows only
+  "HTTP 500" to the user. Sentry auto-filed this as #678 during my
+  session so no new issue opened; root cause is likely an Overpass
+  response format change or a downstream parser raising before the
+  caught error set is hit. PR #651 was about bounding sphere init,
+  not the network path, so the fix wouldn't address this. Earlier
+  sessions (2026-04-17, 2026-04-19 04:20) saw 504 (upstream
+  timeout, known tradeoff) — today it's 500, which is different
+  and worth rechecking after the current Sentry spike clears.
+  **3D Tiles silent load reproduces**: switched Source to 3D Tiles,
+  geocoded Times Square (200 from /api/geocode), backend fetched
+  tiles successfully (`POST /api/environment/3dtiles` → 200, 29,233
+  bytes, meta `n_vertices:559, n_triangles:901, source:3dtiles,
+  origin 40.758,-73.9855`). Nothing visible in the 3D canvas in
+  either phantom or globe camera modes; Layers panel still lists
+  only Body/Ground/Compliance with no 3D Tiles entry. Reading
+  `aegis-web/src/stores/environment.ts:319` confirms 3dtiles mesh
+  is written into the same `osmMeshData` store slot that drives
+  `<EnvironmentOSM>` at `SceneRoot.tsx:417`, so the render path
+  exists — but something downstream (possibly the expanded
+  non-indexed positions being far from scene origin for 3D Tiles
+  specifically, or the material-index colors being (0,0,0) for the
+  color values Google tiles use) silently yields an invisible
+  mesh. Didn't file: not confident enough to call it clearly
+  broken vs. my view simply misaligned, and earlier #649 was
+  closed as QA harness false-negative. Worth a targeted followup
+  with WebGL draw inspection. **Sionna scene healthy**: Simple
+  Street Canyon loaded in ~1.5s, visible terrain around phantom,
+  Sab 7.80 mW/m² unchanged pre/post load. Clear Scene removed the
+  geometry cleanly, Sab dropped 7.80 → 7.00 mW/m² and stuck there
+  (same observation as 2026-04-17; still unclear whether this is
+  ground-material reset or compliance ring radius change, didn't
+  file). **Voxels source**: empty-state message "No voxels loaded.
+  Go to Scene > Location to load a location and generate voxel
+  data." is clear and helpful (good contrast vs. silent 3D Tiles
+  failure). Load button triggered /api/scene/load (200), /api/
+  voxels (200), and 5× /api/compute — background work is clearly
+  happening. **UX note (not filed)**: clicking the Paris quick-load
+  chip correctly sets Location coords to (48.8566, 2.3522) but
+  leaves the text input displaying the previous "Times Square,
+  New York" string, so re-submitting the search would overwrite
+  Paris with a re-geocode of NY. Minor, requires specific action
+  sequence. **Playwright instability**: after the voxel Load click
+  every subsequent `npx @playwright/cli screenshot` timed out with
+  "waiting for fonts to load... fonts loaded" — cold re-open of
+  the browser did not recover, so testing had to wrap. Could be a
+  font-observer loop triggered by the voxel panel; flag for
+  interactive repro. Confident Sionna + Voxels UI + guidance text
+  are healthy; OSM backend is failing (Sentry has it); 3D Tiles
+  silent non-render is still open and deserves a deeper dive.
+
+### 2026-04-19 18:25 UTC -- "Stochastic channel modeling (follow-up to 16:15)"
+
+- Actor: interactive (qa-agent-661066)
+- Depth: medium
+- Findings: 1 bug filed and auto-fixed: #673 (→ PR #674 merged
+  10 min after filing). #664 re-reproduced on production as
+  sanity check.
+- Notes: Section collision with the 16:15 UTC session — I picked
+  Stochastic before seeing the 16:15 entry (the other agent's
+  commit was on master but not yet in my local worktree; rebased
+  mid-session). Kept going because the 16:15 entry flagged
+  Null's peak at 53.55 mW/m² as "by design" and that conclusion
+  felt off. It was. Drove the Null preset at 28 GHz (53.55
+  mW/m², margin +23.9 dB) and 10 GHz (48.84 mW/m², margin +22.9
+  dB), identical to Freespace to the mW/m² — a `PL_model=constant`
+  with `PL_A=1000` should kill the channel by 1000 dB, not leak
+  full FSPL. Root cause in `src/aegis/channel/path_loss.py:31-33`:
+  `compute_path_loss` dispatches on `logdist` / `dual_slope` /
+  `nlos` only; anything else falls through an `else` branch that
+  logs a warning and returns `_fspl(d3d, freq_ghz)`. Null.conf
+  declares `PL_model = constant` explicitly ("effectively disables
+  the channel"), and all 8 MIMOSA presets use the same (`PL_A=95`),
+  so that's 9 presets silently broken. Filed #673 at 18:14 UTC,
+  PR #674 (`Implement constant path loss model`) auto-merged at
+  18:24 UTC — adds `_constant(params)` returning `PL_A` and a
+  regression test. The 16:15 agent's "backbone geometric LOS
+  remains" trace was wrong: the LOS component itself carries the
+  PL_model attenuation; FSPL fallback is what was keeping it
+  visible. Takeaway for future agents: when a preset is labeled
+  "effectively disables the channel" and the compute still
+  returns FSPL-like numbers, check `compute_path_loss` dispatch
+  before accepting "by design". **#664 sanity check**: typed `0`
+  into Clusters on prod (`7bdd91a`), hooked fetch to capture the
+  `/api/compute` payload — `stochastic_overrides:
+  {"NumClusters": 0}` lands at the backend and 500s with
+  "index 0 is out of bounds for axis 0 with size 0", exactly as
+  the 16:15 log says. Both frontend (StochasticPanel.tsx:187) and
+  backend fixes are on master, deploy lag is the only reason it
+  still reproduces. Not re-filed. No other new findings on the
+  stochastic surface; confidence is high once #674 ships and the
+  9 constant-PL presets start behaving like their comments say.
+
+### 2026-04-19 16:15 UTC -- "Stochastic channel modeling"
+
+- Actor: interactive (qa-agent-620927)
+- Depth: medium
+- Findings: none filed (#664 regression reproducible on production
+  but fix already merged on master, awaiting deploy)
+- Notes: Picked this section because it was absent from the last 20
+  coverage entries and commit #664 (reject zero NumClusters/
+  NumSubPaths) landed fresh 6h ago. Production is at commit
+  `7bdd91a` (PR #662), which is BEHIND master — so #657, #659,
+  #660, #661, #664, #665, #668, #669, #670 are all merged but not
+  yet deployed. Enabled stochastic channel on Open ground (28 GHz,
+  65 dBm, antenna at 4 m). Baseline synthetic peak was 80.46 mW/m²
+  (+23.9 dB Sab margin). Swept all families/scenarios end-to-end:
+  **Canonical**: Freespace, TwoRayGR, Null, LOSonly all load and
+  compute. Null (PL_A=1000 dB) still yields peak 53.55 mW/m² with
+  K_mu=0 override — this looks suspicious at first glance but on
+  tracing `_generate_stochastic_paths` in `compute.py:489` the peak
+  still reflects the LOS-component direct path (Null zeroes the
+  scatterer paths but the backbone geometric LOS remains). Not a
+  bug, documented design. **3GPP 38.901**: cycled InF LOS → UMa
+  NLOS. UMa NLOS peak 0.26 W/m² (margin +13.0 dB), InF LOS
+  +15.2 dB — scenario truly changes the physics, not just labels.
+  Note: UMa NLOS preset correctly exposes KF_mu=-100 dB (effectively
+  no LOS) to the UI, which renders in the K-factor spinbutton.
+  **QuaDRiGa**: Industrial LOS loaded with K=7.8, AS=49°, ES=44°,
+  NumClusters=25 — peak 58.15 mW/m² at seed 1661939735, 36.11
+  mW/m² at seed 42 — seed determinism works. **#664 repro
+  confirmed on prod**: typed 0 into the Clusters field, browser
+  echoes "0" in DOM but the `n >= 1` guard in StochasticPanel.tsx
+  isn't in the deployed build yet, so `/api/compute` returned
+  500 with "index 0 is out of bounds for axis 0 with size 0".
+  Sentry captured. Backend-side validation (also in #664) matches.
+  Not filed — fix is already merged and awaiting deploy.
+  **Seed reroll** button (↻) generates a fresh 31-bit integer,
+  peak + margin respond as expected. **Reset to preset defaults**
+  clears overrides but leaves the seed field untouched (by design
+  per the panel code — seed is a separate store field). **Viz
+  toggles**: cluster rays FBS/LBS checkbox hides/shows correctly,
+  Clusters vs All sub-paths radios switch between 25 cluster
+  markers and 25×20=500 sub-path rays cleanly. LSP heatmap: all
+  8 LSP parameters (Shadow fading / Rician K-factor / Delay spread
+  / 4 angle spreads / Cross-polarization ratio) render a coloured
+  ground plane with appropriate legend units ("K (dB)", "lgs DS",
+  "σψ (dB)" etc). For NLOS scenarios where KF_sigma=0, the K-factor
+  heatmap renders as a near-uniform plane — correct. **K-factor
+  override**: setting KF_mu from preset (7.8) to override 30 dB
+  produced only ~10% peak change (58.15 → 65.79 mW/m²). This is
+  physically defensible (LOS component dominates regardless of
+  K-factor in a 4 m scene with no scatterers on the direct path),
+  but worth a targeted follow-up by someone who knows the ECBF /
+  cluster-power scaling intent. The K-factor input has NO guard
+  at all in the component (unlike NumClusters/NumSubPaths which
+  got `n >= 1` in #664) — typing `1e9` into K-factor likely
+  degenerates silently; noted but not filed because it's a
+  physics exploration, not a user-facing UX break. Confident the
+  stochastic channel surface is healthy on master; once #664
+  ships to prod, the only remaining gap worth a look is the
+  K-factor / AS / ES override response magnitudes in NLOS
+  scenarios and whether the silent minus-sign parsing on the
+  K-factor field is intentional.
+
 ### 2026-04-19 14:25 UTC -- "Web viewer frontend (UI/UX)"
 
 - Actor: interactive (qa-agent-593255)

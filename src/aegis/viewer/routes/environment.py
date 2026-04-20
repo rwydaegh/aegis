@@ -19,7 +19,10 @@ _env_cache = EnvironmentCache()
 
 def _handle_environment_osm(cache: dict, cache_lock) -> RouteResponse:
     """Implementation for POST /api/environment/osm."""
+    import xml.etree.ElementTree as ET
+
     from aegis.environment.osm import (
+        OverpassHTTPError,
         OverpassRateLimitError,
         OverpassResponseTooLarge,
         OverpassTimeoutError,
@@ -101,6 +104,18 @@ def _handle_environment_osm(cache: dict, cache_lock) -> RouteResponse:
         )
     except OverpassResponseTooLarge:
         return jsonify({"error": "Overpass response too large. Reduce the radius."}), 413
+    except OverpassHTTPError as exc:
+        logger.warning("Overpass mirrors returned unexpected HTTP status: %s", exc)
+        return (
+            jsonify({"error": "Overpass API returned an unexpected error. Try again later."}),
+            502,
+        )
+    except ET.ParseError as exc:
+        logger.warning("Overpass returned malformed XML: %s", exc)
+        return (
+            jsonify({"error": "Overpass returned malformed XML. Try again later."}),
+            502,
+        )
 
     binary, meta = mesh.to_binary()
     with cache_lock:

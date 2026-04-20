@@ -197,8 +197,11 @@ export default function StochasticPanel() {
 
           <label className={labelClass}>Seed</label>
           <div className="flex gap-1.5">
-            <input type="number" className={inputClass + ' flex-1'}
-              value={seed} onChange={e => setSeed(Number(e.target.value))} />
+            <input type="number" className={inputClass + ' flex-1'} min={0} step={1}
+              value={seed} onChange={e => {
+                const n = Number(e.target.value)
+                if (Number.isFinite(n)) setSeed(Math.max(0, Math.floor(n)))
+              }} />
             <button
               className="px-2 py-1.5 rounded border border-border bg-muted/50 text-foreground hover:bg-muted transition-colors cursor-pointer text-sm"
               title="New channel realization (random seed)"

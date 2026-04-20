@@ -132,6 +132,52 @@ class TestRelationsIntegration:
         assert z_max > 10  # tallest part is 15m + roof
 
 
+class TestFetchOsmMirrorFailover:
+    """Unit tests for the mirror failover logic in fetch_osm.
+
+    These avoid hitting the network by mocking requests.post.
+    """
+
+    def _fake_response(self, status_code: int, text: str = ""):
+        from unittest.mock import MagicMock
+
+        resp = MagicMock()
+        resp.status_code = status_code
+        resp.ok = 200 <= status_code < 300
+        resp.text = text
+        resp.content = text.encode() if text else b""
+        return resp
+
+    def test_http_error_on_all_mirrors_raises_overpass_http_error(self):
+        """A non-(429/5xx/403) HTTP error on every mirror raises OverpassHTTPError, not HTTPError."""
+        from unittest.mock import patch
+
+        from aegis.environment.osm import OverpassHTTPError
+
+        with (
+            patch(
+                "requests.post",
+                return_value=self._fake_response(400, "bad query"),
+            ),
+            pytest.raises(OverpassHTTPError),
+        ):
+            fetch_osm(51.05, 3.72, radius_m=100, timeout=1, retries=0)
+
+    def test_http_error_on_first_mirror_falls_back_to_next(self):
+        """A bad status on the first mirror should let the second mirror succeed."""
+        from unittest.mock import patch
+
+        xml_body = "<osm></osm>"
+        responses = [
+            self._fake_response(400, "bad"),  # first mirror: bad request
+            self._fake_response(200, xml_body),  # second mirror: success
+        ]
+
+        with patch("requests.post", side_effect=responses):
+            result = fetch_osm(51.05, 3.72, radius_m=100, timeout=1, retries=0)
+            assert result == xml_body
+
+
 @pytest.mark.slow
 def test_fetch_osm_includes_relations():
     """Real Overpass fetch should include relation elements."""
