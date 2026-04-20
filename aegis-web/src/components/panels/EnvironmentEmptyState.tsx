@@ -12,6 +12,7 @@ export function EnvironmentEmptyState() {
   const setSource = useEnvironmentStore((s) => s.setSource);
   const setLocation = useEnvironmentStore((s) => s.setLocation);
   const setLocationFormatted = useEnvironmentStore((s) => s.setLocationFormatted);
+  const setLocationQuery = useEnvironmentStore((s) => s.setLocationQuery);
 
   if (source !== 'none') return null;
 
@@ -19,6 +20,7 @@ export function EnvironmentEmptyState() {
     setSource('osm');
     setLocation(city.lat, city.lon);  // TWO POSITIONAL ARGS
     setLocationFormatted(city.name);
+    setLocationQuery(city.name);
     useEnvironmentStore.getState().fetchOSM();
   };
 
