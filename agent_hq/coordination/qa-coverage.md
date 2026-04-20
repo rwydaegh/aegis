@@ -54,6 +54,56 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-20 06:20 UTC -- "Stochastic channel modeling"
+
+- Actor: interactive (qa-agent-791456)
+- Depth: medium
+- Findings: 1 bug filed: #700
+- Notes: Cold area in the log (last direct entry was the 2026-04-19
+  tissue pass that rotated off stochastic). Drove the Source ->
+  Exposure -> Stochastic panel end to end on Open ground (28 GHz,
+  65 dBm, thelonious, antenna at [3,0,1.5]). Enable stochastic
+  checkbox flips path source to stochastic, cluster rays + LSP
+  heatmap viz render (FBS/LBS colored spheres around the phantom,
+  SF_dB Shadow fading heatmap on ground). Peak Sab swung cleanly
+  across presets and seeds: synthetic LOS baseline 80.46 mW/m² ->
+  3GPP_38.901_UMi_LOS 57.33 mW/m² (multipath fading lowers peak) ->
+  UMi_NLOS 39.75 mW/m² (no strong LOS), seed randomization bumped
+  UMi_LOS to 49.51 mW/m². Family dropdown -> Canonical/Freespace
+  gave 53.55 mW/m² (+23.8 dB PASS). Subpath/Clusters radio toggle
+  swaps ~12 cluster lines for ~240 subpath lines (12 clusters × 20
+  subpaths). /api/channel-presets returned 91 presets. **#664 fix
+  confirmed deployed**: NumClusters=0 -> 400 "must be >= 1, got 0",
+  NumSubPaths=0 -> 400 "must be >= 1, got 0", NumClusters=-5 -> 400
+  "must be >= 1, got -5". **#697 fix also deployed**: NumClusters=10000
+  -> 400 "must be <= 50" (upper-bound cap at the API boundary now
+  matches the frontend input spinner limit). Invalid preset -> 400
+  "Unknown stochastic preset", non-int seed -> 400 "seed must be
+  integer", stochastic_overrides as string -> 400 "must be an object",
+  string NumClusters -> 400 "must be a number", NaN/Infinity
+  NumClusters/KF_mu -> 400 "must be a finite number". Fractional
+  NumClusters=1.7 silently coerces to int(1.7)=1 and returns 200
+  (acceptable: Python int() semantics, not bug-worthy). **Bug 1
+  (#700)**: `/api/lsp-heatmap` has no finite-value validation on its
+  numeric inputs. `bounds=[NaN,50,-50,50]` -> 200 with NaN-laden
+  `data[][]`, `bounds=[-Infinity,...]` -> 200 with same, `freq_ghz=NaN`
+  -> 200 OK, `antenna_pos=[Infinity,0,10]` -> 200 OK. Same class as
+  #668 (tissue spectrum) and #697 (stochastic_overrides float NaN) but
+  `_lsp_heatmap_impl` in routes/compute/misc.py:55-93 only wraps
+  `float()`/`int()` in a `ValueError`/`TypeError` try block, and
+  `float('NaN')` / `float('inf')` are both legal. Suggested a
+  `math.isfinite` guard mirroring the tissue-spectrum fix pattern.
+  Noted but not filed: (a) `lsp_name="nonsense"` returns 400
+  `{"error":"'nonsense'"}` — bare KeyError repr, poor UX but not
+  misleading; (b) invalid preset error leaks `/app/data/channel_presets/`
+  filesystem path in the 400 message — minor info leak; (c) switching
+  the Standard dropdown (family) resets the Scenario to the first
+  entry of the new family (e.g. 3GPP 38.901 lands on InF LOS rather
+  than preserving UMi LOS) — intentional per StochasticPanel.tsx:128.
+  Confident the stochastic channel surface is healthy at the compute
+  boundary post-#664/#694/#697; the LSP heatmap boundary is the only
+  remaining open finite-value gap.
+
 ### 2026-04-20 02:20 UTC -- "Stochastic channel modeling"
 
 - Actor: interactive (qa-agent-755370)
