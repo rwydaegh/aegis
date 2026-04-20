@@ -1,10 +1,24 @@
 import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
+import { useIsRtBlocked } from '@/components/hud/RtBlockedBanner'
 import type { Backend } from './capabilities'
 import PathSolvingSection from './PathSolvingSection'
 import InteractionsSection from './InteractionsSection'
 import SolverSection from './SolverSection'
 import { labelClass, selectClass } from './styles'
+
+function MissingEnvWarning() {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="mt-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-[11px] text-amber-400"
+    >
+      No environment geometry loaded. Compute is skipped until you load OSM buildings,
+      3D Tiles, or a scene file, or disable ray tracing.
+    </div>
+  )
+}
 
 function GpuStatus({ gpuWarm }: { gpuWarm: boolean }) {
   return (
@@ -31,6 +45,7 @@ export default function RayTracingPanel() {
   const gpuWarm = useUIStore(s => s.gpuWarm)
 
   const rtSource = useSceneStore(s => s.rtSource)
+  const rtBlocked = useIsRtBlocked()
 
   const hasDiffert = caps?.has_differt ?? false
   const hasSionna = caps?.has_sionna ?? false
@@ -53,6 +68,8 @@ export default function RayTracingPanel() {
         />
         Enable ray tracing
       </label>
+
+      {rtEnabled && rtBlocked && <MissingEnvWarning />}
 
       {rtEnabled && (
         <>

@@ -5,6 +5,7 @@ import LSPLegend from '@/components/hud/LSPLegend'
 import ServerInfoBadge from '@/components/hud/ServerInfoBadge'
 import CompliancePanel from '@/components/hud/CompliancePanel'
 import NotificationToast from '@/components/hud/NotificationToast'
+import RtBlockedBanner from '@/components/hud/RtBlockedBanner'
 import TouchControls from '@/components/hud/TouchControls'
 import KeyboardHelp from '@/components/hud/KeyboardHelp'
 import { AntennaHint } from '@/components/hud/AntennaHint'
@@ -84,6 +85,11 @@ export default function HudOverlay() {
         <HudToggle id="server">
           <ServerInfoBadge />
         </HudToggle>
+      </div>
+
+      {/* Persistent banner when RT is on but no environment geometry is loaded */}
+      <div className="absolute top-3 left-1/2 -translate-x-1/2">
+        <RtBlockedBanner />
       </div>
 
       {/* Notification toasts - bottom left */}
