@@ -349,6 +349,176 @@ class TestPlacementInputValidation:
         assert b"body_offset" in resp.data or b"error" in resp.data
 
 
+class TestMimoPeakInputValidation:
+    """mimo_peak rejects non-finite/non-numeric scalars at the boundary.
+
+    Before this guard the SSE stream opened with HTTP 200 and either silently
+    propagated NaN/Inf through the optimizer (producing garbage results with no
+    error indication) or surfaced internal Python TypeErrors as the ``message``
+    field of a single error event.
+    """
+
+    @staticmethod
+    def _payload(**extra):
+        return {
+            "mode": "mimo_peak",
+            "G_tilde_real": [[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]],
+            "G_tilde_imag": [[[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]],
+            "x_init_real": [1.0, 0.0],
+            "x_init_imag": [0.0, 0.0],
+            "max_iters": 3,
+            **extra,
+        }
+
+    @pytest.mark.parametrize(
+        ("bad_p_max", "expected"),
+        [
+            ("abc", b"p_max must be a number"),
+            (float("nan"), b"p_max must be finite"),
+            (float("inf"), b"p_max must be finite"),
+            (-float("inf"), b"p_max must be finite"),
+            (-1.0, b"p_max must be positive"),
+            (0.0, b"p_max must be positive"),
+            ([1, 2], b"p_max must be a number"),
+            ({"v": 1}, b"p_max must be a number"),
+        ],
+    )
+    def test_bad_p_max_returns_400(self, client, bad_p_max, expected):
+        resp = client.post("/api/optimize", json=self._payload(p_max=bad_p_max))
+        assert resp.status_code == 400
+        assert expected in resp.data
+
+    @pytest.mark.parametrize(
+        ("bad_val", "expected"),
+        [
+            (None, b"signal_threshold must be a number"),
+            (float("nan"), b"signal_threshold must be finite"),
+            (float("inf"), b"signal_threshold must be finite"),
+            ("foo", b"signal_threshold must be a number"),
+        ],
+    )
+    def test_bad_signal_threshold_returns_400(self, client, bad_val, expected):
+        resp = client.post("/api/optimize", json=self._payload(signal_threshold=bad_val))
+        assert resp.status_code == 400
+        assert expected in resp.data
+
+    def test_valid_p_max_still_streams(self, client):
+        resp = client.post("/api/optimize", json=self._payload(p_max=1.0))
+        assert resp.status_code == 200
+        assert "text/event-stream" in resp.content_type
+
+
+class TestTiltPowerInputValidation:
+    """tilt_power rejects non-finite/non-numeric scalars at the boundary."""
+
+    @pytest.fixture
+    def tilt_power_cache(self, app):
+        """Seed session cache with the tilt_power prerequisites."""
+        from types import SimpleNamespace
+
+        from aegis.paths import PropagationPaths
+
+        k_hat = np.array([[0.0, 0.0, -1.0]])
+        paths = PropagationPaths.from_powers(k_hat=k_hat, power=np.array([1.0]))
+        mock_result = SimpleNamespace(_paths=paths)
+        mock_body = SimpleNamespace(normals=np.array([[0.0, 0.0, 1.0]]))
+
+        client = app.test_client()
+        with client.session_transaction() as sess:
+            sess["session_id"] = "test-session"
+        cache = app._optimize_cache
+        cache["test-session:_last_dosimetry_result"] = mock_result
+        cache["test-session:_last_dosimetry_body"] = mock_body
+        cache["test-session:_last_rt_paths"] = paths
+        return client
+
+    @pytest.mark.parametrize(
+        ("field", "bad_val", "expected"),
+        [
+            ("tilt_init_deg", "abc", b"tilt_init_deg must be a number"),
+            ("tilt_init_deg", float("nan"), b"tilt_init_deg must be finite"),
+            ("tilt_init_deg", [1, 2, 3], b"tilt_init_deg must be a number"),
+            ("power_init_dbm", float("inf"), b"power_init_dbm must be finite"),
+            ("power_init_dbm", "loud", b"power_init_dbm must be a number"),
+            ("power_init_dbm", [1, 2], b"power_init_dbm must be a number"),
+            ("icnirp_limit", float("nan"), b"icnirp_limit must be finite"),
+            ("icnirp_limit", -5.0, b"icnirp_limit must be positive"),
+            ("icnirp_limit", 0.0, b"icnirp_limit must be positive"),
+            ("T0", "abc", b"T0 must be a number"),
+            ("T0", -1.0, b"T0 must be positive"),
+            ("T0", 0.0, b"T0 must be positive"),
+        ],
+    )
+    def test_bad_scalar_returns_400(self, tilt_power_cache, field, bad_val, expected):
+        resp = tilt_power_cache.post(
+            "/api/optimize",
+            json={"mode": "tilt_power", "max_iters": 2, field: bad_val},
+        )
+        assert resp.status_code == 400
+        assert expected in resp.data
+
+    @pytest.mark.parametrize(
+        ("bad_val", "expected"),
+        [
+            ("foo", b"antenna_direction must be a list of 3 numbers"),
+            ([0, 0], b"antenna_direction must have exactly 3 elements"),
+            ([0, 0, 0, 0], b"antenna_direction must have exactly 3 elements"),
+            ([0, 0, float("nan")], b"antenna_direction values must be finite"),
+            ([0, 0, float("inf")], b"antenna_direction values must be finite"),
+            ([0, 0, "foo"], b"antenna_direction must be a list of 3 numbers"),
+            (42, b"antenna_direction must be a list of 3 numbers"),
+        ],
+    )
+    def test_bad_antenna_direction_returns_400(self, tilt_power_cache, bad_val, expected):
+        resp = tilt_power_cache.post(
+            "/api/optimize",
+            json={"mode": "tilt_power", "max_iters": 2, "antenna_direction": bad_val},
+        )
+        assert resp.status_code == 400
+        assert expected in resp.data
+
+    def test_valid_defaults_still_stream(self, tilt_power_cache):
+        resp = tilt_power_cache.post("/api/optimize", json={"mode": "tilt_power", "max_iters": 2})
+        assert resp.status_code == 200
+        assert "text/event-stream" in resp.content_type
+
+    def test_invalid_cached_t0_falls_back_when_request_omits_T0(self, app):
+        """A stale cache entry with NaN T0 must not leak into the config.
+
+        When the request omits T0 entirely the helper falls back to the cached
+        value; if that is itself non-finite or non-positive we must reset to
+        1.0 rather than smuggling NaN into the optimizer.
+        """
+        from types import SimpleNamespace
+
+        from aegis.paths import PropagationPaths
+
+        k_hat = np.array([[0.0, 0.0, -1.0]])
+        paths = PropagationPaths.from_powers(k_hat=k_hat, power=np.array([1.0]))
+        mock_result = SimpleNamespace(_paths=paths)
+        mock_body = SimpleNamespace(normals=np.array([[0.0, 0.0, 1.0]]))
+
+        client = app.test_client()
+        with client.session_transaction() as sess:
+            sess["session_id"] = "test-session"
+        cache = app._optimize_cache
+        cache["test-session:_last_dosimetry_result"] = mock_result
+        cache["test-session:_last_dosimetry_body"] = mock_body
+        cache["test-session:_last_rt_paths"] = paths
+        cache["test-session:_last_dosimetry_stats"] = {"T0": float("nan")}
+
+        resp = client.post("/api/optimize", json={"mode": "tilt_power", "max_iters": 2})
+        # Should stream successfully using fallback T0=1.0, not 400 or stream
+        # an error with NaN poison.
+        assert resp.status_code == 200
+        events = []
+        for line in resp.data.decode().split("\n"):
+            if line.startswith("data: "):
+                events.append(json.loads(line[6:]))
+        # Final event should carry a finite T0, never NaN-corrupted
+        assert any("done" in e and e.get("done") for e in events)
+
+
 class TestCancelEndpoint:
     def test_cancel_returns_json(self, client):
         resp = client.post("/api/optimize/cancel")
