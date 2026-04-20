@@ -350,11 +350,13 @@ class TestFrequencySweep:
             sinc_local=20.0,
             n_points=10,
         )
-        # Each result should have all three checks
+        # Default sweep range is 7-100 GHz, entirely in the ICNIRP 2020
+        # Table 5 regime. Sab and Sinc_local are checked; SAR_wb is dropped
+        # (Table 5 basic restriction is Sab, not SAR_wb).
         for cr in result["results"]:
             assert cr.sab_4cm2 is not None
-            assert cr.sar_wb is not None
             assert cr.sinc_local is not None
+            assert cr.sar_wb is None
 
     def test_no_quantities_vacuously_compliant(self):
         result = frequency_sweep(n_points=10)

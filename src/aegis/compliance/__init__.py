@@ -285,8 +285,14 @@ def evaluate_compliance(
 ) -> ComplianceResult:
     """Evaluate ICNIRP 2020 compliance for measured/computed quantities.
 
-    Only checks for which both a value and a limit are available will be
-    included. Below 6 GHz, only SAR_wb is checked.
+    Only checks applicable at ``freq_hz`` per ICNIRP 2020 are included:
+
+    - Below or at 6 GHz (Table 2 regime): SAR_wb is the basic restriction.
+      Sab (4 cm^2, 1 cm^2) and Sinc_local/whole_body limits are omitted.
+    - Above 6 GHz (Table 5 regime): Sab and Sinc limits apply. SAR_wb is
+      omitted because it is no longer the ICNIRP basic restriction above
+      6 GHz, and its frequency-independent 0.08 W/kg cap would otherwise
+      flatten frequency-sweep margins across the 7-100 GHz band.
 
     Parameters
     ----------
@@ -330,7 +336,12 @@ def evaluate_compliance(
         )
 
     check_sar = None
-    if sar_wb is not None:
+    # Per ICNIRP 2020, whole-body SAR is the basic restriction for 100 kHz - 6 GHz
+    # (Table 2). Above 6 GHz the basic restriction shifts to Sab (Table 5), so SAR_wb
+    # no longer applies. Including it above 6 GHz makes the frequency-independent
+    # SAR_wb margin pin the tightest-check curve and hides the true frequency
+    # dependence of Sab / Sinc_local.
+    if sar_wb is not None and freq_hz <= _FREQ_SAB_THRESHOLD_HZ:
         check_sar = ComplianceCheck(
             value=sar_wb,
             limit=limits.sar_wb,
