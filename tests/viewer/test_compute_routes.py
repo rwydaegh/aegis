@@ -1182,6 +1182,35 @@ class TestComputeVoxelRtExtended:
         # 400 for either invalid power or no voxels
         assert resp.status_code in (400, 404)
 
+    @pytest.mark.parametrize("bad_power", [float("nan"), float("inf"), float("-inf")])
+    def test_nonfinite_power_dbm_rejected_before_modal(self, viewer_app, bad_power):
+        """NaN/Inf power_dbm must be rejected with 400 before hitting the GPU path.
+
+        Without this check, NaN slipped through the `< 0 or > MAX` bounds (all
+        comparisons with NaN are False) and propagated through to Modal, where
+        it either produced NaN results or a GPU-unavailable 501 that masked the
+        real issue. Matches the check in /api/compute/rt and /api/compute/sionna-rt.
+        """
+        import numpy as np
+
+        from aegis.viewer.server import _cache
+
+        _cache["voxel_positions"] = np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]])
+        _cache["voxel_sizes"] = np.array([[1.0, 1.0, 1.0], [1.0, 1.0, 1.0]])
+        _cache["voxel_materials"] = ["concrete", "concrete"]
+        try:
+            with viewer_app.test_client() as c:
+                resp = c.post(
+                    "/api/compute/voxel-rt",
+                    json={"power_dbm": bad_power, "antenna_pos": [5, 0, 1]},
+                )
+            assert resp.status_code == 400, resp.get_data(as_text=True)
+            assert "power_dbm" in resp.get_json()["error"]
+        finally:
+            _cache.pop("voxel_positions", None)
+            _cache.pop("voxel_sizes", None)
+            _cache.pop("voxel_materials", None)
+
     def test_invalid_level_returns_400(self, viewer_app):
         with viewer_app.test_client() as c:
             resp = c.post(
