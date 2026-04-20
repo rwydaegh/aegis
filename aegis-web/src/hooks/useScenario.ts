@@ -30,6 +30,7 @@ export function resetScenarioScopedStores(): void {
   useBaseStationsStore.getState().clear();
   useMIMOStore.getState().reset();
   useOptimizeStore.getState().reset();
+  useCoverageStore.getState().clearComplianceZone();
 }
 
 function applySimulationState(webState: ScenarioWebState): void {

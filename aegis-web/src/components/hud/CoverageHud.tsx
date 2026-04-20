@@ -67,6 +67,7 @@ function CoverageHudInner() {
   const handleBackToGlobe = () => {
     useEnvironmentStore.getState().setSource('coverage')
     useCoverageStore.getState().setEnabled(true)
+    useCoverageStore.getState().clearComplianceZone()
     useBaseStationsStore.getState().clear()
   }
 

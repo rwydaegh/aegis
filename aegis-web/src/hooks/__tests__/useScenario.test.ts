@@ -6,7 +6,9 @@ import { resetScenarioScopedStores } from '../useScenario'
 import { useBaseStationsStore } from '../../stores/basestations'
 import { useMIMOStore } from '../../stores/mimo'
 import { useOptimizeStore } from '../../stores/optimize'
+import { useCoverageStore } from '../../stores/coverage'
 import type { BaseStationData } from '@/api/basestations'
+import type { SpatialComplianceResult } from '@/api/client'
 
 function bs(partial: Partial<BaseStationData>): BaseStationData {
   return {
@@ -81,6 +83,25 @@ describe('resetScenarioScopedStores', () => {
     expect(useOptimizeStore.getState().history.length).toBe(0)
     expect(useOptimizeStore.getState().summary).toBeNull()
     expect(useOptimizeStore.getState().currentIter).toBe(0)
+  })
+
+  it('wipes cached compliance zone and disables the toggle', () => {
+    const fakeZone: SpatialComplianceResult = {
+      bbox: [0, 0, 1, 1],
+      resolution: 80,
+      ratios: [[0.5]],
+      n_stations: 3,
+      freq_hz_dominant: 3.5e9,
+    } as unknown as SpatialComplianceResult
+    useCoverageStore.setState({
+      complianceZone: fakeZone,
+      complianceZoneEnabled: true,
+    })
+
+    resetScenarioScopedStores()
+
+    expect(useCoverageStore.getState().complianceZone).toBeNull()
+    expect(useCoverageStore.getState().complianceZoneEnabled).toBe(false)
   })
 
   it('is idempotent on an already-empty state', () => {
