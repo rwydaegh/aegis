@@ -92,14 +92,25 @@ async function fetchAndStoreUserResults(
  * Combine the MIMO summary with the top-level response warning, commit it to
  * the store, and surface any low-antenna warnings via the notification system.
  */
-function applyMIMOSummary(summary: MIMOSummary, response: MIMOComputeResponse) {
+export function applyMIMOSummary(summary: MIMOSummary, response: MIMOComputeResponse) {
   const { setSummaryStats } = useMIMOStore.getState()
 
   // Propagate backend warning to summary for UI display
   if (response.warning && !summary.warning) {
     summary.warning = response.warning
   }
+  if (response.ecbf_warnings?.length && !summary.ecbf_warnings?.length) {
+    summary.ecbf_warnings = response.ecbf_warnings
+  }
   setSummaryStats(summary)
+
+  if (summary.ecbf_warnings?.length) {
+    useNotificationStore.getState().addNotification(
+      'warning',
+      'ECBF precoder fell back to a min-absorption baseline; results may differ from your requested precoder.',
+      summary.ecbf_warnings.join(' '),
+    )
+  }
 
   const warningMsg = summary.warning ?? response.warning
   if (warningMsg) {

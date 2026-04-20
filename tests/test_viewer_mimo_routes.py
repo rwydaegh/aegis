@@ -696,6 +696,52 @@ class TestMIMOCompute:
         assert resp.status_code == 400
         assert "precoder_type" in resp.get_json()["error"]
 
+    @patch("aegis.viewer.routes.mimo.compute_mimo_scene_with_bodies")
+    def test_compute_captures_ecbf_warnings(self, mock_compute, client):
+        """ECBF/absorption/infeasible warnings emitted during compute are attached to the response."""
+        import warnings as _warnings
+
+        def side_effect(*_args, **_kwargs):
+            _warnings.warn(
+                "ECBF constraint infeasible: minimum achievable P_abs (1.5 W) exceeds 0.5 W",
+                stacklevel=2,
+            )
+            _warnings.warn("RuntimeWarning: unrelated noise", stacklevel=2)
+            return {"precoder_type": "zf_exposure", "timings": {}}
+
+        mock_compute.side_effect = side_effect
+        resp = client.post(
+            "/api/mimo/compute",
+            json={
+                "array": VALID_ARRAY,
+                "users": [_make_user_cfg()],
+                "level": 8,
+                "precoder_type": "zf_exposure",
+            },
+        )
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert "ecbf_warnings" in data
+        assert len(data["ecbf_warnings"]) == 1
+        assert "infeasible" in data["ecbf_warnings"][0]
+        assert "unrelated noise" not in " ".join(data["ecbf_warnings"])
+
+    @patch("aegis.viewer.routes.mimo.compute_mimo_scene_with_bodies")
+    def test_compute_omits_ecbf_warnings_when_clean(self, mock_compute, client):
+        mock_compute.return_value = {"precoder_type": "mrt", "timings": {}}
+        resp = client.post(
+            "/api/mimo/compute",
+            json={
+                "array": VALID_ARRAY,
+                "users": [_make_user_cfg()],
+                "level": 7,
+                "precoder_type": "mrt",
+            },
+        )
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert "ecbf_warnings" not in data
+
     @pytest.mark.parametrize("precoder_type", ["zf", "zf_exposure"])
     @patch("aegis.viewer.routes.mimo.compute_mimo_scene_with_bodies")
     def test_zf_precoder_m_lt_k_returns_400(self, mock_compute, precoder_type, client):
@@ -779,7 +825,7 @@ class TestMIMOResult:
 
 
 class TestMIMOSummary:
-    def _populate_cache(self, app, n_users=1, warning=None):
+    def _populate_cache(self, app, n_users=1, warning=None, ecbf_warnings=None):
         """Set up cache with a computed MIMO scene."""
         users = []
         results_stats = {}
@@ -821,6 +867,8 @@ class TestMIMOSummary:
         }
         if warning:
             summary["warning"] = warning
+        if ecbf_warnings:
+            summary["ecbf_warnings"] = ecbf_warnings
 
         cache = app._test_cache
         cache["test-session:mimo_scene"] = scene
@@ -876,6 +924,22 @@ class TestMIMOSummary:
         resp = client.get("/api/mimo/summary")
         data = resp.get_json()
         assert "warning" not in data
+
+    def test_ecbf_warnings_surfaced(self, app, client):
+        msgs = [
+            "ECBF constraint infeasible: minimum achievable P_abs (1.2 W) exceeds 0.5 W",
+            "ECBF bisection failed to converge; using min-absorption fallback",
+        ]
+        self._populate_cache(app, n_users=1, ecbf_warnings=msgs)
+        resp = client.get("/api/mimo/summary")
+        data = resp.get_json()
+        assert data["ecbf_warnings"] == msgs
+
+    def test_ecbf_warnings_omitted_when_none(self, app, client):
+        self._populate_cache(app, n_users=1)
+        resp = client.get("/api/mimo/summary")
+        data = resp.get_json()
+        assert "ecbf_warnings" not in data
 
     def test_compliance_at_exact_budget_boundary(self, app, client):
         """User at exact budget boundary is non-compliant (strict less-than check)."""
