@@ -54,6 +54,66 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-20 08:15 UTC -- "3D environment reconstruction"
+
+- Actor: interactive (qa-agent-812294)
+- Depth: medium
+- Findings: none filed (OSM 504 is a documented known tradeoff;
+  minor preset/input desync not filed)
+- Notes: Picked this section because last pass was 2026-04-17
+  (3 days stale) and recent commits all touch it: #651 OSM mesh
+  frustum culling, #620 10x10m shadow-frustum artifact, #605
+  capabilities refresh after env fetch, #609 hide LSP heatmap.
+  Prod build is commit `257f03b` (4 commits behind master).
+  **Urban Ghent scenario broken on prod**: loading the "Urban
+  Ghent" tile from the Scenarios landing page results in zero
+  buildings rendered. `/api/environment/osm` consistently returns
+  **504 gateway timeout** (confirmed 14+ identical console errors
+  over ~5 min). Tested at radius 200m and 50m, location Ghent and
+  Leuven; same 504 each time. The frontend surfaces "Overpass query
+  timed out. Try a smaller radius or try again later." in the
+  Environment panel but the top-level scenario title still proudly
+  claims "28 GHz outdoor with OpenStreetMap buildings." Hit Overpass
+  (overpass-api.de) directly with an equivalent query: responded
+  HTTP 200 in 1.58s, so the upstream service is healthy — the 504
+  is coming from our backend. Per `not-bugs.md` this is covered by
+  "Overpass API timeouts on large radii (external service, we
+  retry)", so I did NOT file a new issue, but calling out that
+  50m is not "large" and the direct Overpass call is fast — the
+  tradeoff label may be masking a real backend-side regression
+  (gunicorn worker timeout, geocoding step, mirror selection?).
+  Might deserve an infra pass next time someone touches
+  `/api/environment/osm`. **Voxels source**: panel says "No voxels
+  loaded. Go to Scene > Location to load…" — the Scene and
+  Environment panels both have their own Location input, so the
+  instruction text is slightly ambiguous. Not filed. **Sionna scene
+  load (Box)**: dropdown + Load scene worked cleanly, scene walls
+  rendered in canvas, compute time flipped 692→1400 ms then back to
+  542 ms on further actions. Peak Sab unchanged at 7.80 mW/m² as
+  expected (Spatial +F is direct-path; walls don't block without
+  RT/diffraction). **Quick-location presets (Ghent/NY/Paris/Tokyo)**:
+  clicking Paris preset updated the active geocode label to "Paris
+  (48.8566, 2.3522)" and switched Source to OSM, but the Location
+  **text input retained its stale "Leuven, Belgium"** value from the
+  previous manual search. Real state uses the label, but any user
+  reading the input would be confused. Minor UX glitch, not filed.
+  **Terrain fetch**: SRTM1 tile download worked ("SRTM elevation
+  loaded (32 m range)"), Show terrain auto-checked. Terrain mesh
+  not visually obvious in canvas because active location was Paris
+  while camera was centered on phantom origin. Not a bug. **3D Tiles
+  source**: panel renders Location/Radius/Export but has no visible
+  Load button — unclear whether Google Photorealistic tiles require
+  a separate auth step on prod or the control is missing. Did not
+  file; would want to check whether a Google API key is configured
+  in prod env. **Layers panel**: shows four entries (Body mesh,
+  Ground plane, Grid disabled, Compliance ring) and toggles Ground
+  plane visibility cleanly. Terrain/OSM layers do NOT appear in the
+  Layers panel after loading — not clear if by design. Overall:
+  the parts of the env-reconstruction surface that don't depend on
+  Overpass (Sionna scene load, SRTM terrain fetch, Layers toggles,
+  geocoding) are healthy; the OSM ingest path is effectively broken
+  on prod and has been for some time.
+
 ### 2026-04-20 06:20 UTC -- "Stochastic channel modeling"
 
 - Actor: interactive (qa-agent-791456)
