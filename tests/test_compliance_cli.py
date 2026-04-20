@@ -38,10 +38,14 @@ class TestComplianceCLI:
         assert "0.8 W" in out
 
     def test_json_output(self, capsys):
-        main(["--freq", "28e9", "--sab", "15.0", "--sar", "0.05", "--json"])
+        # Sub-6 GHz frequency so SAR_wb is an applicable ICNIRP 2020 check.
+        # Above 6 GHz the basic restriction is Sab (Table 5), not SAR_wb.
+        main(["--freq", "3e9", "--sab", "15.0", "--sar", "0.05", "--json"])
         d = json.loads(capsys.readouterr().out)
         assert d["overall_pass"] is True
-        assert len(d["checks"]) == 2
+        # Only SAR_wb applies below 6 GHz (Sab is in the >6 GHz regime).
+        assert len(d["checks"]) == 1
+        assert d["checks"][0]["label"] == "SAR_wb"
 
     def test_occupational(self, capsys):
         main(["--freq", "28e9", "--sab", "50.0", "--occupational"])
@@ -68,14 +72,13 @@ class TestComplianceCLI:
             main(["--freq", "1e3", "--sab", "10.0"])
 
     def test_all_quantities(self, capsys):
+        # Above 6 GHz ICNIRP 2020 Table 5: Sab + Sinc labels apply (not SAR_wb).
         main(
             [
                 "--freq",
                 "28e9",
                 "--sab",
                 "10.0",
-                "--sar",
-                "0.05",
                 "--sinc",
                 "8.0",
                 "--sinc-wb",
@@ -84,9 +87,12 @@ class TestComplianceCLI:
         )
         out = capsys.readouterr().out
         assert "S_ab (4 cm^2)" in out
-        assert "SAR_wb" in out
         assert "S_inc (local)" in out
         assert "S_inc (whole-body)" in out
+        # Separately, sub-6 GHz: SAR_wb label is shown.
+        main(["--freq", "3e9", "--sar", "0.05"])
+        out2 = capsys.readouterr().out
+        assert "SAR_wb" in out2
 
     def test_link_budget_mode(self, capsys):
         main(["--freq", "28e9", "--link-budget", "--tx-power", "1.0", "--distance", "10.0"])
