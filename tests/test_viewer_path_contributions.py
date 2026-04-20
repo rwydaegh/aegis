@@ -186,3 +186,36 @@ class TestPathContributionsRoute:
         raw = resp.get_data(as_text=True)
         assert "Infinity" not in raw
         assert "NaN" not in raw
+
+    def test_stale_cache_cleared_after_non_rt_compute(self, viewer_app):
+        """A non-RT /api/compute must invalidate stale _last_rt_paths / _last_rt_tissue.
+
+        Without invalidation, the PathInsightsSection in the Analysis panel
+        surfaces the prior RT compute's paths against the *new* (non-RT) body,
+        producing misleading "top contributors" for the current compute.
+        """
+        body = _mock_body()
+        paths = _mock_paths()
+        try:
+            with viewer_app.test_client() as c:
+                with c.session_transaction() as sess:
+                    sess["session_id"] = "test-session"
+                _inject_rt_cache(viewer_app, body, paths, SKIN_28GHZ)
+                # Run a non-RT compute. /api/compute/dosimetry writes a fresh body
+                # and stats but previously left _last_rt_paths / _last_rt_tissue
+                # untouched; they must now be invalidated.
+                compute_resp = c.post(
+                    "/api/compute",
+                    json={
+                        "antenna_pos": [1.0, 0.0, 0.5],
+                        "power_dbm": 23.0,
+                        "level": 2,
+                        "freq_hz": 28e9,
+                    },
+                )
+                assert compute_resp.status_code == 200
+                resp = c.get("/api/analyze/path-contributions")
+        finally:
+            _clear_rt_cache()
+        assert resp.status_code == 404
+        assert "error" in resp.get_json()
