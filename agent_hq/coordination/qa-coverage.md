@@ -54,6 +54,57 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-20 04:20 UTC -- "Stochastic channel modeling"
+
+- Actor: interactive (qa-agent-773996)
+- Depth: medium
+- Findings: 1 bug filed: #697
+- Notes: Picked this section because it was cold in the last ~20 entries
+  (a 2026-04-19 attempt was logged by an agent whose branch never landed
+  on master) and PR #664 + #693 + #694 all shipped recent guards here
+  that were worth validating. Prod commit `0dfc0c1` (includes #664, #693,
+  #694). **UI surface is healthy**: enabled stochastic channel, rotated
+  through all 5 Canonical presets + 3GPP 38.901 families (UMi LOS
+  80.46→57.33 mW/m², UMi NLOS 39.75 mW/m², Canonical Freespace/LOSonly
+  53.55 mW/m², Canonical Null 1.16e-94 W/m² PASS +950.5 dB margin —
+  huge but mathematically correct for a null channel, not a bug).
+  Clusters=1 and Clusters=50 bracket both work in the UI (50 is slow
+  ~15 s but completes most of the time, compute times out at 502 on
+  prod's 2-core box occasionally — Sentry captured as #696, and the
+  frontend toast does surface "Compute failed: POST /api/compute
+  failed: 502" to the user). Seed randomize button generated a new
+  uint31 (491936726) and peak Sab shifted from 0.23 → 0.31 W/m²
+  confirming a new realization. LSP heatmap cycled through all 8
+  parameters cleanly (SF_dB, KF_dB, DS, ASA_deg, ASD_deg, ESA_deg,
+  ESD_deg, XPR_dB) — colorbar on the right correctly relabels (σ_SF,
+  K, τ_DS, σ_ASA, ..., XPR) and the ground-plane heatmap re-colors
+  accordingly. Cluster ray viz toggled from "Clusters" (fan of ~12
+  rays) to "All sub-paths" (dense fan of ~240 rays) without issue.
+  **Bug (#697)**: drove `/api/compute` with boundary inputs and found
+  two follow-up gaps to #694. (a) No upper bound on `NumClusters` /
+  `NumSubPaths` — `NumClusters=99999999` returns 500 with a numpy
+  "Unable to allocate 14.9 GiB" MemoryError, and `NumClusters=100 /
+  1000 / 10000` all 502 the worker (gunicorn 600 s timeout). Session-
+  gated like #658, but trivially DoS-able by any authenticated user
+  or a crafted share link. (b) Float overrides (KF_mu, AS_A_mu,
+  ES_A_mu, SC_lambda) with NaN or Inf crash with a cryptic
+  `float() argument must be a string or a real number, not 'NoneType'`
+  — because `JSON.stringify(NaN)` serializes to `null` → Python None.
+  PR #694 only added `_STOCHASTIC_NUMERIC_OVERRIDE_KEYS = ("NumClusters",
+  "NumSubPaths")` so the float keys slip through. Suggested fix is to
+  validate *every* value in `stochastic_overrides` (reject bool/None +
+  require isfinite) rather than maintaining a hand-curated allowlist
+  that keeps chasing the QuaDRiGa .conf schema. **Verified healthy**
+  (should not regress): `NumClusters:0`/`-5` → 400 "NumClusters must
+  be >= 1" (#664), `NumClusters:NaN`/`"12"` → 400 "must be a number"
+  (#694), `stochastic_preset:"__INVALID__"` or `"../../etc/passwd"` →
+  400 "Unknown stochastic preset" (#693). Also noted but not filed:
+  `NumClusters=12.7` (fractional) silently truncates to 12 via `int()`
+  in the generator — inconsistent with the 400s on negative/NaN but
+  not a user-reachable path (UI uses step=1). Confident the stochastic
+  channel panel and its three fresh guards are healthy; the two API-
+  boundary gaps in #697 should close out the #691/#694 thread.
+
 ### 2026-04-19 14:25 UTC -- "Web viewer frontend (UI/UX)"
 
 - Actor: interactive (qa-agent-593255)
