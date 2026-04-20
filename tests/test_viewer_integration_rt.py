@@ -112,7 +112,12 @@ class TestComputeRtInvalidPayload:
                 json={"scene_path": _BOX_SCENE, "power_dbm": float("nan")},
             )
         assert resp.status_code == 400
-        assert "finite" in resp.get_json()["error"]
+        # Either the per-field finiteness check fires (legacy path) or
+        # ``StrictJSONProvider`` rejects the raw ``NaN`` literal at parse time
+        # and the route returns its generic "Invalid or missing JSON body"
+        # 400. Both outcomes are correct — NaN never reaches numeric code.
+        error = resp.get_json()["error"].lower()
+        assert "finite" in error or "invalid" in error
 
     @pytest.mark.skipif(not _scene_available(), reason="box scene not available")
     def test_power_dbm_inf_rejected(self, viewer_app):

@@ -5,8 +5,10 @@ from __future__ import annotations
 import os
 from datetime import timedelta
 from pathlib import Path
+from typing import Any
 
 from flask import Flask, jsonify
+from flask.json.provider import DefaultJSONProvider
 
 from aegis.viewer.config import DEFAULTS as _VIEWER_DEFAULTS
 
@@ -16,6 +18,28 @@ from ._cache import _cache, _cache_lock
 from ._fidelity import FIDELITY_LEVELS_API
 from ._precompute import setup_precompute_G
 from ._voxels import preload_voxels
+
+
+class StrictJSONProvider(DefaultJSONProvider):
+    """JSON provider that rejects ``NaN``/``Infinity``/``-Infinity`` literals in
+    request bodies. Python's :mod:`json` accepts these by default as a
+    non-standard RFC 8259 extension, which lets non-finite floats slip past
+    every downstream route's ``math.isfinite`` guard. Rejecting them at the
+    parser is a single choke point that replaces per-field per-route checks.
+
+    Only ``loads`` is overridden; ``dumps`` still permits NaN so routes that
+    intentionally emit masked NaNs (e.g. out-of-ROI spatial averaging) are
+    unchanged.
+    """
+
+    @staticmethod
+    def _reject_non_finite(constant: str) -> float:
+        raise ValueError(f"non-finite JSON literal {constant!r} is not allowed in request bodies")
+
+    def loads(self, s: str | bytes, **kwargs: Any) -> Any:
+        kwargs.setdefault("parse_constant", self._reject_non_finite)
+        return super().loads(s, **kwargs)
+
 
 _PROCESS_WAIT_TIMEOUT_S = _VIEWER_DEFAULTS["server"]["process_wait_timeout_s"]
 
@@ -224,6 +248,7 @@ def create_app(
 
     template_dir = str(Path(__file__).parent.parent / "templates")
     app = Flask(__name__, template_folder=template_dir)
+    app.json = StrictJSONProvider(app)
     _configure_app(app)
     setup_auth(app, os.environ.get("AEGIS_GATE_PASSWORD"))
     _register_security_headers(app)

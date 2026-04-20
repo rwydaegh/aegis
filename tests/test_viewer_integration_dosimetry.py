@@ -262,7 +262,11 @@ class TestComputeDosimetryFrequencyEdges:
                 json={"freq_hz": float("nan"), "antenna_pos": [1, 0, 0.1]},
             )
         assert resp.status_code == 400
-        assert "freq_hz" in resp.get_json()["error"]
+        # ``StrictJSONProvider`` rejects the raw ``NaN`` literal at parse
+        # time, so the message may come from that layer instead of the
+        # per-field ``freq_hz`` guard. Either way the status is 400.
+        error = resp.get_json()["error"].lower()
+        assert "freq_hz" in error or "invalid" in error
 
     def test_freq_inf_rejected(self, viewer_app):
         with viewer_app.test_client() as c:
