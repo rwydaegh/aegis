@@ -285,7 +285,7 @@ def _build_tilt_power_config(config: dict, params: dict, cache: dict) -> None:
 
 def _build_placement_config(config: dict, params: dict, app: Flask, cache: dict, cache_lock) -> None:
     """Populate config for placement mode."""
-    config["center"] = np.array(params.get("center", [5, 0, 3]))
+    config["center"] = _require_finite_vec3(params, "center", [5, 0, 3])
 
     grid_size = _safe_int(params.get("grid_size", 5), 5)
     grid_size = max(1, min(grid_size, 50))
@@ -450,17 +450,17 @@ def _build_placement_evaluate_fn(
     body = _resolve_placement_body(params, cache, cache_lock)
     tissue, engine_kw = _parse_placement_engine_params(params)
 
-    try:
-        body_offset = np.array(params.get("body_offset") or [0, 0, 0], dtype=np.float64)
-    except (TypeError, ValueError) as exc:
-        raise ValueError(f"Invalid body_offset: {exc}") from exc
-    body_rotation_y = _safe_float(params.get("body_rotation_y", 0.0), 0.0)
+    if params.get("body_offset") is None:
+        body_offset = np.array([0.0, 0.0, 0.0], dtype=np.float64)
+    else:
+        body_offset = _require_finite_vec3(params, "body_offset", [0, 0, 0])
+    body_rotation_y = _require_finite_float(params, "body_rotation_y", 0.0)
     transformed_body = _transform_body_for_viewer(body, body_offset, body_rotation_y)
 
     default_bc = np.array(cache["config"]["raytracer"]["default_body_center"], dtype=np.float64)
     body_center = default_bc + body_offset
 
-    power_dbm = _safe_float(params.get("power_dbm", 43.0), 43.0)
+    power_dbm = _require_finite_float(params, "power_dbm", 43.0)
     pole_height = float(cache["config"]["antenna"].get("pole_height", 2.0))
 
     rt_cfg = _parse_rt_config(params, cache)
