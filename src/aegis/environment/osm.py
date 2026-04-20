@@ -59,6 +59,10 @@ class OverpassResponseTooLarge(RuntimeError):
     """Overpass API response exceeded size limit."""
 
 
+class OverpassHTTPError(RuntimeError):
+    """Overpass API returned an unexpected HTTP error on every mirror."""
+
+
 # ---------------------------------------------------------------------------
 # Overpass API fetch
 # ---------------------------------------------------------------------------
@@ -133,6 +137,10 @@ def fetch_osm(
             except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as exc:
                 last_exc = exc
                 continue
+            except requests.exceptions.RequestException as exc:
+                # Any other request-layer failure: try next mirror
+                last_exc = exc
+                break
 
             if resp.status_code == 429:
                 raise OverpassRateLimitError("Overpass rate limit exceeded (HTTP 429)")
@@ -143,7 +151,11 @@ def fetch_osm(
                 # Mirror rejected the request, try next mirror
                 last_exc = OverpassTimeoutError(f"Overpass mirror {url} returned 403")
                 break
-            resp.raise_for_status()
+            if not resp.ok:
+                # Any other 4xx/5xx (400 bad query, 404, 500, ...): try next mirror.
+                # Raising raise_for_status() here would bubble up as a bare Flask 500.
+                last_exc = OverpassHTTPError(f"Overpass mirror {url} returned HTTP {resp.status_code}")
+                break
 
             content = resp.content
             if len(content) > _MAX_RESPONSE_BYTES:
@@ -153,6 +165,8 @@ def fetch_osm(
 
             return resp.text
 
+    if isinstance(last_exc, OverpassHTTPError):
+        raise last_exc
     raise OverpassTimeoutError(f"All Overpass mirrors failed after retries ({timeout}s each)") from last_exc
 
 

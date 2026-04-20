@@ -241,7 +241,7 @@ def test_sc_path_count_unchanged():
 
 
 @pytest.mark.parametrize(
-    "override,expected",
+    ("override", "expected"),
     [
         ({"NumClusters": 0}, "NumClusters must be >= 1"),
         ({"NumSubPaths": 0}, "NumSubPaths must be >= 1"),

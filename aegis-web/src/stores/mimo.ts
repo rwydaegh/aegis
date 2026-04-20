@@ -8,6 +8,15 @@ import type { DosimetryStats, ArrayConfig, MIMOSummary, ElementPattern } from '@
 
 export type PrecoderType = 'mrt' | 'zf' | 'mmse' | 'zf_exposure'
 
+/**
+ * ZF and zf_exposure require M_ant >= K (non-regularized pseudoinverse).
+ * MRT and MMSE work at any M, K (MRT is per-user matched filter;
+ * MMSE regularizes the Gram matrix).
+ */
+export function precoderRequiresMgeK(type: PrecoderType): boolean {
+  return type === 'zf' || type === 'zf_exposure'
+}
+
 const DEFAULT_FOCUS_POINT: [number, number, number] = [0, 1.0, 0]
 
 /** Compute broadside = normalize(focusPoint - position), with safe fallback. */
@@ -108,7 +117,24 @@ export const useMIMOStore = create<MIMOStore>((set, get) => ({
 
   setEnabled: (on) => {
     if (!on) {
-      set({ enabled: false, lastComputeError: null })
+      // Clean out per-user state on disable so re-enable starts fresh
+      // (the `users.size === 0` branch below auto-adds User 1). Array
+      // config, precoder type, and focus point are preserved so the user
+      // doesn't lose their array configuration when toggling the mode.
+      for (const user of get().users.values()) {
+        user.bodyGeometry?.dispose()
+      }
+      set({
+        enabled: false,
+        users: new Map(),
+        focusedUserId: null,
+        controlledUserId: null,
+        summaryStats: null,
+        precoderWeights: null,
+        lastComputeError: null,
+        lastSuccessfulUserCount: 0,
+        _nextUserNumber: 1,
+      })
       return
     }
 
@@ -185,10 +211,12 @@ export const useMIMOStore = create<MIMOStore>((set, get) => ({
     const users = new Map(get().users)
     users.set(id, user)
     const isFirst = users.size === 1
-    // Fall back to MRT if adding this user makes ZF/MMSE infeasible (K > M)
+    // Fall back to MRT if adding this user makes ZF/zf_exposure infeasible (K > M).
+    // MMSE is regularized and works at any M, K.
     const { precoderType, arrayConfig } = get()
     const nElements = arrayConfig ? arrayConfig.n_h * arrayConfig.n_v : 0
-    const needsFallback = precoderType !== 'mrt' && nElements > 0 && nElements < users.size
+    const needsFallback =
+      precoderRequiresMgeK(precoderType) && nElements > 0 && nElements < users.size
     if (needsFallback) {
       useNotificationStore.getState().addNotification(
         'warning',
@@ -260,14 +288,29 @@ export const useMIMOStore = create<MIMOStore>((set, get) => ({
     set({ users })
   },
 
-  setPrecoderType: (type) => set({ precoderType: type }),
+  setPrecoderType: (type) => {
+    const { arrayConfig, users } = get()
+    const nElements = arrayConfig ? arrayConfig.n_h * arrayConfig.n_v : 0
+    // Reject infeasible selection (ZF/zf_exposure with M<K) and fall back to MRT.
+    // The MIMO panel already disables the button in this case; this guard protects
+    // programmatic callers (scenario JSON, tests, future URL state restoration).
+    if (precoderRequiresMgeK(type) && nElements > 0 && nElements < users.size) {
+      useNotificationStore.getState().addNotification(
+        'warning',
+        `Switched to MRT precoder (${type.toUpperCase()} requires M \u2265 K)`,
+      )
+      set({ precoderType: 'mrt' as PrecoderType })
+      return
+    }
+    set({ precoderType: type })
+  },
   setArrayConfig: (config) => {
     const fp = get().focusPoint
     const broadside = deriveBroadside(fp, config.position)
     const { precoderType, users } = get()
     const nElements = config.n_h * config.n_v
     const needsFallback =
-      precoderType !== 'mrt' && nElements > 0 && nElements < users.size
+      precoderRequiresMgeK(precoderType) && nElements > 0 && nElements < users.size
     if (needsFallback) {
       useNotificationStore.getState().addNotification(
         'warning',

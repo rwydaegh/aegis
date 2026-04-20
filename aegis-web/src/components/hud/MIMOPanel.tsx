@@ -1,5 +1,5 @@
 import { Eye, Gamepad2, X, Plus, Layers, Crosshair, AlertTriangle, RefreshCw } from 'lucide-react'
-import { useMIMOStore, type PrecoderType } from '@/stores/mimo'
+import { useMIMOStore, precoderRequiresMgeK, type PrecoderType } from '@/stores/mimo'
 import { useSimulationStore } from '@/stores/simulation'
 import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
@@ -227,7 +227,7 @@ export default function MIMOPanel() {
 
           <div className="flex gap-1 mb-2">
             {PRECODER_OPTIONS.map(opt => {
-              const needsMoreAntennas = opt.value !== 'mrt' && M < K
+              const needsMoreAntennas = precoderRequiresMgeK(opt.value) && M < K
               return (
                 <button
                   key={opt.value}
