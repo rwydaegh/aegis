@@ -281,6 +281,44 @@ class TestComputeRoute:
         assert resp.status_code == 400
         assert key in resp.get_json()["error"]
 
+    @pytest.mark.parametrize(("key", "max_val"), [("NumClusters", 50), ("NumSubPaths", 20)])
+    def test_stochastic_override_upper_bound(self, viewer_app, key, max_val):
+        """Cap integer overrides so huge values cannot DoS the worker."""
+        with viewer_app.test_client() as c:
+            resp = c.post(
+                "/api/compute",
+                json={
+                    "stochastic": True,
+                    "stochastic_preset": "3GPP_38.901_UMi_LOS",
+                    "stochastic_overrides": {key: max_val + 1},
+                    "n_paths": 1,
+                },
+            )
+        assert resp.status_code == 400
+        body = resp.get_json()
+        assert key in body["error"]
+        assert str(max_val) in body["error"]
+
+    @pytest.mark.parametrize(
+        "key",
+        ["KF_mu", "AS_A_mu", "ES_A_mu", "SC_lambda", "DS_mu", "SF_sigma", "XPR_mu"],
+    )
+    @pytest.mark.parametrize("bad_value", [None, float("nan"), float("inf"), "abc", [1]])
+    def test_invalid_stochastic_float_override_value(self, viewer_app, key, bad_value):
+        """Float-valued overrides must also reject bool/None/NaN/Inf/non-numeric (#697)."""
+        with viewer_app.test_client() as c:
+            resp = c.post(
+                "/api/compute",
+                json={
+                    "stochastic": True,
+                    "stochastic_preset": "3GPP_38.901_UMa_LOS",
+                    "stochastic_overrides": {key: bad_value},
+                    "n_paths": 1,
+                },
+            )
+        assert resp.status_code == 400
+        assert key in resp.get_json()["error"]
+
     @pytest.mark.parametrize("bad_overrides", ["foo", [1, 2, 3], 42])
     def test_stochastic_overrides_must_be_object(self, viewer_app, bad_overrides):
         with viewer_app.test_client() as c:
