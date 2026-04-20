@@ -129,7 +129,12 @@ def test_lsp_heatmap_nonfinite_numeric_inputs_are_400(viewer_client, field, payl
     )
     body = resp.get_json()
     assert body is not None
-    assert expected_substr in body.get("error", "").lower()
+    # ``StrictJSONProvider`` (PR #710) rejects raw ``NaN``/``Infinity`` literals
+    # at parse time, so the error may come from that layer instead of the
+    # per-field finiteness guard in the route. Either is acceptable — both
+    # surface as 400 with an informative message.
+    error = body.get("error", "").lower()
+    assert expected_substr in error or "invalid json body" in error
 
 
 @pytest.mark.parametrize("bad_user", [None, 42, "hello", [1, 2, 3]])

@@ -279,7 +279,11 @@ class TestComputeRoute:
                 },
             )
         assert resp.status_code == 400
-        assert key in resp.get_json()["error"]
+        # ``StrictJSONProvider`` (PR #710) rejects ``NaN``/``Infinity`` at parse
+        # time with a generic message; other bad values still surface via the
+        # per-field validator with the field name.
+        error = resp.get_json()["error"].lower()
+        assert key.lower() in error or "invalid json body" in error
 
     @pytest.mark.parametrize(("key", "max_val"), [("NumClusters", 50), ("NumSubPaths", 20)])
     def test_stochastic_override_upper_bound(self, viewer_app, key, max_val):
@@ -317,7 +321,11 @@ class TestComputeRoute:
                 },
             )
         assert resp.status_code == 400
-        assert key in resp.get_json()["error"]
+        # PR #710's parser-level rejection pre-empts the per-field message for
+        # ``NaN``/``Infinity``; non-numeric / None / list values still reach
+        # the validator and surface the field name.
+        error = resp.get_json()["error"].lower()
+        assert key.lower() in error or "invalid json body" in error
 
     @pytest.mark.parametrize("bad_overrides", ["foo", [1, 2, 3], 42])
     def test_stochastic_overrides_must_be_object(self, viewer_app, bad_overrides):
@@ -1205,7 +1213,13 @@ class TestComputeVoxelRtExtended:
                     json={"power_dbm": bad_power, "antenna_pos": [5, 0, 1]},
                 )
             assert resp.status_code == 400, resp.get_data(as_text=True)
-            assert "power_dbm" in resp.get_json()["error"]
+            # PR #710's ``StrictJSONProvider`` rejects the ``NaN``/``Infinity``
+            # literal at parse time; ``/api/compute/voxel-rt`` uses
+            # ``request.get_json(silent=True)`` which swallows the parser error
+            # and returns the route's own generic "Invalid or missing JSON body"
+            # message. All three surface as 400.
+            error = resp.get_json()["error"].lower()
+            assert "power_dbm" in error or "invalid" in error
         finally:
             _cache.pop("voxel_positions", None)
             _cache.pop("voxel_sizes", None)
