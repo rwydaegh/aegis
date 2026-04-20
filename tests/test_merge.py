@@ -136,6 +136,31 @@ class TestSpatialDedup:
         result = spatial_dedup(df, distance_m=50)
         assert len(result) == 2
 
+    def test_different_bands_do_not_merge_via_nan_bridge(self):
+        """A NaN-band seed must not merge two rows with distinct known bands.
+
+        Regression: when the seed had a missing FrequencyBand, the BFS compared
+        against the seed only, so neighbours with explicitly different bands
+        (e.g. 1800 and 2100) could both join the same cluster and one band was
+        silently lost during merge.
+        """
+        df = pd.DataFrame(
+            {
+                "SiteCode": ["A", "B", "C"],
+                "AntennaLabel": ["x", "x", "x"],
+                "Operator": ["Proximus"] * 3,
+                "Technology": ["5G"] * 3,
+                "Latitude": [50.850000, 50.850002, 50.849998],
+                "Longitude": [4.350000, 4.350001, 4.349999],
+                "FrequencyBand": [np.nan, "Band1800MHz", "Band2100MHz"],
+                "Power": [46.0, 44.0, 42.0],
+            }
+        )
+        result = spatial_dedup(df, distance_m=50)
+        bands = set(result["FrequencyBand"].dropna().tolist())
+        assert {"Band1800MHz", "Band2100MHz"}.issubset(bands)
+        assert len(result) >= 2
+
 
 class TestMergeSources:
     def test_higher_priority_fills_nan(self):

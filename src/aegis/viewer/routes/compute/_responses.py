@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import json
 import logging
+import warnings
 from typing import Any
 
 import numpy as np
 from flask import Response, jsonify
 
 from aegis.compliance import ExposureScenario, evaluate_compliance
-from aegis.viewer.compute import _load_phantom_masses
+from aegis.viewer.compute import _load_phantom_masses, collect_ecbf_warnings
 from aegis.viewer.server import scoped_cache_set
 
 logger = logging.getLogger(__name__)
@@ -96,10 +97,15 @@ def _inject_bound_aggregate_params(engine_kw: dict, body) -> dict:
     return engine_kw
 
 
-def _run_dosimetry(tissue, body, paths, engine_kw) -> tuple[Any, _ErrResp | None]:
+def _run_dosimetry(
+    tissue, body, paths, engine_kw, *, ecbf_warnings_out: list[str] | None = None
+) -> tuple[Any, _ErrResp | None]:
     """Instantiate engine, inject curvature, run compute, return result.
 
     Returns (result, None) on success, or (None, error_response) on failure.
+
+    If ``ecbf_warnings_out`` is provided, captured ECBF/absorption-constraint
+    warnings emitted by the dosimetry kernel (level 8) are appended to it.
     """
     from aegis.engine import DosimetryEngine
 
@@ -108,10 +114,14 @@ def _run_dosimetry(tissue, body, paths, engine_kw) -> tuple[Any, _ErrResp | None
     _inject_bound_aggregate_params(engine_kw, body)
     body_mass = _load_phantom_masses().get(body.name) if body.name else None
     try:
-        result = engine.compute(body, paths, body_mass=body_mass, **engine_kw)
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            result = engine.compute(body, paths, body_mass=body_mass, **engine_kw)
     except Exception as exc:
         logger.exception("Dosimetry compute failed")
         return None, (jsonify({"error": f"Dosimetry compute failed: {exc}"}), 500)
+    if ecbf_warnings_out is not None:
+        ecbf_warnings_out.extend(collect_ecbf_warnings(caught))
     return result, None
 
 

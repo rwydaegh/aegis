@@ -10,6 +10,7 @@ from __future__ import annotations
 import base64
 import json
 import logging
+import math
 import threading
 import uuid
 from typing import Any
@@ -75,6 +76,38 @@ def _safe_float(val, default: float) -> float:
         return float(val)
     except (TypeError, ValueError):
         return default
+
+
+def _require_finite_float(
+    params: dict,
+    key: str,
+    default: float,
+    *,
+    positive: bool = False,
+) -> float:
+    raw = params.get(key, default)
+    try:
+        value = float(raw)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{key} must be a number") from exc
+    if not math.isfinite(value):
+        raise ValueError(f"{key} must be finite")
+    if positive and value <= 0:
+        raise ValueError(f"{key} must be positive")
+    return value
+
+
+def _require_finite_vec3(params: dict, key: str, default: list[float]) -> np.ndarray:
+    raw = params.get(key, default)
+    try:
+        values = [float(v) for v in raw]
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{key} must be a list of 3 numbers") from exc
+    if len(values) != 3:
+        raise ValueError(f"{key} must have exactly 3 elements")
+    if not all(math.isfinite(v) for v in values):
+        raise ValueError(f"{key} values must be finite")
+    return np.array(values, dtype=np.float64)
 
 
 def _parse_rt_config(params: dict, cache: dict) -> dict[str, Any]:
@@ -219,8 +252,8 @@ def _build_mimo_peak_config(config: dict, params: dict, cache: dict, cache_lock)
     """Populate config for mimo_peak mode."""
     config["G_tilde"] = _resolve_mimo_g_tilde(params, cache, cache_lock)
     config["x_init"] = _resolve_mimo_x_init(params, config["G_tilde"])
-    config["p_max"] = params.get("p_max", 1.0)
-    config["signal_threshold"] = params.get("signal_threshold", 0.0)
+    config["p_max"] = _require_finite_float(params, "p_max", 1.0, positive=True)
+    config["signal_threshold"] = _require_finite_float(params, "signal_threshold", 0.0)
 
 
 def _build_tilt_power_config(config: dict, params: dict, cache: dict) -> None:
@@ -234,13 +267,20 @@ def _build_tilt_power_config(config: dict, params: dict, cache: dict) -> None:
         raise ValueError("No RT paths cached. Run an RT compute (/api/compute/rt) first.")
     config["paths"] = last_paths
     config["normals"] = np.array(last_body.normals)
-    config["antenna_direction"] = np.array(params.get("antenna_direction", [0, 0, -1]))
-    config["tilt_init_deg"] = params.get("tilt_init_deg", 0.0)
-    config["power_init_dbm"] = params.get("power_init_dbm", 60.0)
-    config["icnirp_limit"] = params.get("icnirp_limit", 20.0)
+    config["antenna_direction"] = _require_finite_vec3(params, "antenna_direction", [0, 0, -1])
+    config["tilt_init_deg"] = _require_finite_float(params, "tilt_init_deg", 0.0)
+    config["power_init_dbm"] = _require_finite_float(params, "power_init_dbm", 60.0)
+    config["icnirp_limit"] = _require_finite_float(params, "icnirp_limit", 20.0, positive=True)
 
     last_stats = scoped_cache_get(cache, "_last_dosimetry_stats", {}) or {}
-    config["T0"] = params.get("T0", last_stats.get("T0", 1.0))
+    t0_default = last_stats.get("T0", 1.0)
+    try:
+        t0_default = float(t0_default)
+        if not math.isfinite(t0_default) or t0_default <= 0:
+            t0_default = 1.0
+    except (TypeError, ValueError):
+        t0_default = 1.0
+    config["T0"] = _require_finite_float(params, "T0", t0_default, positive=True)
 
 
 def _build_placement_config(config: dict, params: dict, app: Flask, cache: dict, cache_lock) -> None:
@@ -480,7 +520,8 @@ def _build_placement_evaluate_fn(
             )
             path_viz = [{"vertices": [tx_pos.tolist(), body_center.tolist()], "order": 0, "length": dist}]
 
-        result, run_err = _run_dosimetry(tissue, transformed_body, paths, engine_kw)
+        ecbf_warnings: list[str] = []
+        result, run_err = _run_dosimetry(tissue, transformed_body, paths, engine_kw, ecbf_warnings_out=ecbf_warnings)
         if run_err:
             raise RuntimeError(f"Dosimetry failed at pos {pos}")
 
@@ -491,6 +532,8 @@ def _build_placement_evaluate_fn(
             "n_rt_paths": paths.n_paths,
             "path_viz": path_viz,
         }
+        if ecbf_warnings:
+            extra["ecbf_warnings"] = ecbf_warnings
         level_val, mode_val, corr_val = _stats_label(engine_kw)
         stats = _build_stats_response(
             result,

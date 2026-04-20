@@ -307,3 +307,137 @@ class TestValidation:
             curvature_H=curvature_H,
         )
         assert np.all(np.isfinite(sab)), "sab must be finite at very low frequencies"
+
+
+class TestFresnelWeightsMatchCore:
+    """``fresnel_weights`` is an inlined, memory-lean variant of ``_fresnel_core``.
+
+    It must produce bit-for-bit identical ``T_s``, ``T_p``, ``T_avg`` outputs.
+    This guards against regressions where someone re-introduces the full
+    ``_fresnel_core`` call (which allocates unused ``t_s``/``t_p`` complex128
+    arrays and triggers OOM on large stochastic computes; see issue #696).
+    """
+
+    def test_matches_fresnel_core_on_dense_grid(self):
+        from aegis.kernels._base import fresnel_weights
+        from aegis.tissue.fresnel import (
+            _fresnel_core,  # pyright: ignore[reportPrivateUsage]
+        )
+
+        rng = np.random.default_rng(1234)
+        mu = rng.uniform(-0.1, 1.0, size=(17, 23)).astype(np.float64)
+        n_tilde = SKIN_28GHZ.n_complex
+
+        T_s, T_p, T_avg = fresnel_weights(mu, n_tilde)
+
+        mu_for_core = np.clip(mu, 0.0, 1.0).astype(complex)
+        _, _, T_s_ref, T_p_ref, _, _ = _fresnel_core(mu_for_core, n_tilde)
+
+        np.testing.assert_array_equal(np.asarray(T_s), np.asarray(T_s_ref))
+        np.testing.assert_array_equal(np.asarray(T_p), np.asarray(T_p_ref))
+        np.testing.assert_allclose(
+            np.asarray(T_avg),
+            0.5 * (np.asarray(T_s_ref) + np.asarray(T_p_ref)),
+            rtol=0,
+            atol=0,
+        )
+
+
+class TestChunkingDeterminism:
+    """spatial_kernel must produce identical results regardless of chunk size.
+
+    Regression: per-chunk clamping ``max(sab, 0)`` inside the inner kernel made
+    the chunked path chunk-size-dependent when individual chunks could sum to
+    negative (e.g. diffraction with mostly back-facing paths). The fix clamps
+    only once, after all chunks are summed. This suite forces the chunked path
+    via small ``_MAX_MN_ELEMENTS`` values and asserts bit-for-bit agreement
+    across chunk sizes.
+    """
+
+    def _build_scene(self, rng):
+        # 4 triangles, 20 paths, strongly back-heavy so partial sums can be
+        # negative under the GELU (diffraction) activation.
+        normals = np.array(
+            [
+                [0.0, 0.0, 1.0],
+                [0.0, 0.0, 1.0],
+                [1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+            ],
+            dtype=np.float64,
+        )
+        N = 20
+        # Mix of glancing and back-facing directions near the shadow boundary,
+        # plus a couple of well-lit ones so the full sum is not all-zero.
+        k_hat = rng.standard_normal((N, 3))
+        k_hat[:16] = np.array([0.05, 0.0, 0.05])  # nearly back-facing for triangles 0/1
+        k_hat[:16] += rng.standard_normal((16, 3)) * 0.02
+        k_hat[16:] = np.array([0.0, 0.0, -1.0])  # fully incident on triangles 0/1
+        k_hat /= np.linalg.norm(k_hat, axis=1, keepdims=True)
+        power = rng.uniform(0.5, 2.0, size=N).astype(np.float64)
+        curvature_H = np.array([5.0, 50.0, 2.0, 10.0], dtype=np.float64)
+        return normals, k_hat, power, curvature_H
+
+    @pytest.mark.parametrize(
+        "flags",
+        [
+            {"fresnel": False, "diffraction": True},
+            {"fresnel": True, "diffraction": True},
+            {"fresnel": True, "curvature": True, "diffraction": True},
+            {"fresnel": True, "polarisation": True, "q": 0.5, "curvature": True, "diffraction": True},
+        ],
+    )
+    def test_chunk_size_invariance(self, monkeypatch, flags):
+        from aegis import kernels
+        from aegis.kernels.spatial import spatial_kernel
+
+        if kernels.spatial.JAX_AVAILABLE:
+            pytest.skip("chunking path is only exercised on NumPy backend")
+
+        rng = np.random.default_rng(0)
+        normals, k_hat, power, curvature_H = self._build_scene(rng)
+        n_tilde = SKIN_28GHZ.n_complex
+        T0 = SKIN_28GHZ.T0
+        freq_hz = SKIN_28GHZ.freq_hz
+        M = normals.shape[0]
+
+        reference = spatial_kernel(
+            normals,
+            k_hat,
+            power,
+            n_tilde,
+            T0,
+            freq_hz,
+            curvature_H=curvature_H,
+            **flags,
+        )
+
+        # Force chunked path with chunk sizes 1, 2, 3, 5, 7, 13 (not evenly
+        # divisible into N=20 — exercises partial trailing chunks).
+        for chunk_paths in [1, 2, 3, 5, 7, 13]:
+            monkeypatch.setattr(
+                kernels.spatial,
+                "_MAX_MN_ELEMENTS",
+                M * chunk_paths,
+            )
+            chunked = spatial_kernel(
+                normals,
+                k_hat,
+                power,
+                n_tilde,
+                T0,
+                freq_hz,
+                curvature_H=curvature_H,
+                **flags,
+            )
+            # Float64 @-product is exact under permutation of contributions
+            # only up to rounding; but for these sizes the error is well
+            # below 1e-12 of the magnitude. This guards the real regression
+            # (orders-of-magnitude drift from chunk-wise clamping to zero).
+            np.testing.assert_allclose(
+                chunked,
+                reference,
+                rtol=1e-12,
+                atol=1e-14,
+                err_msg=f"chunk_paths={chunk_paths} flags={flags} drift from unchunked",
+            )
