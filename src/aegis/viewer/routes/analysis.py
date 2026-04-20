@@ -209,6 +209,8 @@ def _compliance_power_sweep_impl(cache: dict, cache_lock) -> RouteResponse:
         return jsonify({"error": "At least one of sab_4cm2, sab_1cm2, or sar_wb is required"}), 400
     if freq_hz <= 0:
         return jsonify({"error": "freq_hz must be positive"}), 400
+    if not math.isfinite(ref_power_dbm):
+        return jsonify({"error": "ref_power_dbm must be finite"}), 400
 
     scenario_str = request.args.get("scenario", "general_public")
     if scenario_str not in _VALID_SCENARIOS:
@@ -261,8 +263,12 @@ def _compliance_heatmap_impl(cache: dict, cache_lock) -> RouteResponse:
         return jsonify({"error": "freq_hz and ref_power_dbm are required"}), 400
     if sab_4cm2 is None and sab_1cm2 is None:
         return jsonify({"error": "At least one of sab_4cm2 or sab_1cm2 is required"}), 400
+    if not math.isfinite(freq_hz):
+        return jsonify({"error": "freq_hz must be finite"}), 400
     if freq_hz <= 0:
         return jsonify({"error": "freq_hz must be positive"}), 400
+    if not math.isfinite(ref_power_dbm):
+        return jsonify({"error": "ref_power_dbm must be finite"}), 400
 
     scenario_str = request.args.get("scenario", "general_public")
     if scenario_str not in _VALID_SCENARIOS:

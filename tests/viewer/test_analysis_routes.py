@@ -579,3 +579,39 @@ class TestFrequencySweepInViewer:
         assert resp.status_code == 200
         data = resp.get_json()
         assert len(data["freq_ghz"]) == 20
+
+
+# ---------------------------------------------------------------------------
+# NaN/Inf boundary validation for power-sweep and heatmap
+# ---------------------------------------------------------------------------
+
+
+class TestComplianceNonFiniteBoundary:
+    """NaN/Inf inputs to power-sweep and heatmap must be rejected at the boundary.
+
+    Regression: before these checks, NaN/Inf ref_power_dbm produced 10**NaN = NaN
+    (or 10**inf = inf), which propagated through power_sweep/compliance_heatmap and
+    emitted a 200 response containing bare ``NaN`` tokens - invalid per RFC 8259
+    and silently corrupting frontend plots.
+    """
+
+    @pytest.mark.parametrize("val", ["NaN", "Infinity", "-Infinity"])
+    def test_power_sweep_rejects_non_finite_ref_power_dbm(self, viewer_app, val):
+        with viewer_app.test_client() as c:
+            resp = c.get(f"/api/compliance/power-sweep?sab_4cm2=10&freq_hz=28e9&ref_power_dbm={val}")
+        assert resp.status_code == 400
+        assert "finite" in resp.get_json()["error"]
+
+    @pytest.mark.parametrize("val", ["NaN", "Infinity", "-Infinity"])
+    def test_heatmap_rejects_non_finite_ref_power_dbm(self, viewer_app, val):
+        with viewer_app.test_client() as c:
+            resp = c.get(f"/api/compliance/heatmap?sab_4cm2=10&freq_hz=28e9&ref_power_dbm={val}")
+        assert resp.status_code == 400
+        assert "finite" in resp.get_json()["error"]
+
+    @pytest.mark.parametrize("val", ["NaN", "Infinity", "-Infinity"])
+    def test_heatmap_rejects_non_finite_freq_hz(self, viewer_app, val):
+        with viewer_app.test_client() as c:
+            resp = c.get(f"/api/compliance/heatmap?sab_4cm2=10&freq_hz={val}&ref_power_dbm=23")
+        assert resp.status_code == 400
+        assert "finite" in resp.get_json()["error"] or "positive" in resp.get_json()["error"]
