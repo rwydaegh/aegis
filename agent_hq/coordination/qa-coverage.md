@@ -54,6 +54,70 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-20 02:20 UTC -- "Stochastic channel modeling"
+
+- Actor: interactive (qa-agent-755370)
+- Depth: medium
+- Findings: 2 bugs filed: #691, #692
+- Notes: Picked this section because the 2026-04-19 12:15 agent rerouted
+  to Tissue (a thorough pass on Stochastic had been logged on a branch
+  at 10:18 but never landed on master), so it stayed cold in the log;
+  and #664 (Reject zero NumClusters/NumSubPaths) is fresh on this
+  surface. **#664 verified live on prod** (build marker `3868e47`):
+  `NumClusters=0` → 400 `"NumClusters must be >= 1, got 0"`,
+  `NumSubPaths=0` → 400 same shape, `NumClusters=-5` → 400.
+  **UI surface healthy**: Enable stochastic checkbox → cluster spheres
+  + sub-paths render, Peak Sab rises from single-antenna ~0.08 W/m² to
+  ~4.5 W/m² (12-cluster UMi LOS). Standard dropdown cycles cleanly
+  across all 11 families (Canonical, 3GPP 38.901 / 37.885 / 3D,
+  QuaDRiGa, WINNER, mmMAGIC, 5G-ALLSTAR, MIMOSA, BERLIN, DRESDEN) and
+  each re-loads Scenario options (QuaDRiGa → Industrial LOS / NTN-*
+  etc., Canonical → Freespace/LOSonly/TwoRayGR/Null). Seed refresh (↻)
+  produces a visibly different cluster arrangement and Peak Sab value
+  (42 → 1409870198 shifted peak 4.52 → 4.12 W/m²). K-factor override
+  to 30 dB visually collapses power to the LOS cluster as expected.
+  "Reset to preset defaults" drops the override back. Cluster-detail
+  radio (Clusters / All sub-paths) renders the sub-ray fan correctly.
+  LSP heatmap cycles through all 8 parameters (SF, KF, DS, ASA, ASD,
+  ESA, ESD, XPR) without errors or NaN ticks. Scenario switch
+  (open_ground → mmwave_close) preserved the stochastic state cleanly
+  — note that #671 (Reset basestations/MIMO/optim stores on scenario
+  load) deliberately did NOT include stochastic state in its reset
+  list, which is defensible as user-preference persistence rather
+  than per-scenario. **Bug 1 (#691)**: drove `/api/compute` with
+  stochastic boundary payloads and found the API-boundary guard gap:
+  `stochastic_overrides.NumClusters=null` → 500 `int() argument must
+  be a string...`, `stochastic_overrides.NumSubPaths=null` → 500 same,
+  `stochastic_overrides="foo"` → 500 `'str' object is not a mapping`.
+  Mirrors #592/#667 pattern — NaN/null/non-dict at viewer API should
+  400 not 500. Each such 500 creates a new Sentry event on prod.
+  **Bug 2 (#692)**: preset name isn't whitelisted, and
+  `Path(preset_dir) / "/etc/host"` collapses to `/etc/host.conf`
+  (pathlib absolute-right wins), which exists on Linux, so the
+  endpoint returns 200 after `parse_conf` silently ignores every
+  non-QuaDRiGa line. Contents don't leak (parse_conf is a strict
+  whitelist), but file *existence* does — an auth'd user can
+  enumerate `.conf` files on the filesystem. Error message also
+  leaks the deployment root `/app/data/channel_presets/`. Session-
+  gated so not externally exploitable, but worth a whitelist.
+  **Noted but not filed**: (a) `NumClusters=999` and `=500` both
+  return 502 after ~6-12 s (gateway timeout — no server-side upper
+  bound, frontend clamps to 50 but API users aren't clamped); the
+  worker recovers since Caddy times out first, so nothing like the
+  #658 20-min outage, but another soft-DoS seam. (b) `NumClusters=1.5`
+  (float) is silently truncated to 1 by `int()` while strings 400 —
+  inconsistent validation. (c) `NumClusters=true` (bool) is accepted
+  as 1. (d) KF_mu=NaN passes through entirely and produces Sab floats
+  back (status 200) — AS_A_mu=NaN hits a downstream `k_hat must be
+  finite` check and 400s, so LSP overrides have inconsistent NaN
+  handling. (e) The XPR LSP heatmap scale showed a very wide spread
+  on one seed (values that read as high-hundreds near the top tick on
+  a low-res screenshot) — couldn't reproduce cleanly and may be a
+  label I misread on the small screenshot, not filed.
+  Confident the Stochastic surface is healthy for the currently-
+  exposed UI controls on production; the two filed bugs are
+  backend-API-boundary gaps, not user-visible in the frontend.
+
 ### 2026-04-20 00:25 UTC -- "Stochastic channel modeling (third pass)"
 
 - Actor: interactive (qa-agent-729030)
