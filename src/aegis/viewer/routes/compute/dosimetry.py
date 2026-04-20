@@ -257,7 +257,11 @@ def _parse_power_dbm(params: dict, dcfg: dict, pwr_cfg: dict):
     return power_dbm, None
 
 
-_STOCHASTIC_NUMERIC_OVERRIDE_KEYS = ("NumClusters", "NumSubPaths")
+# Upper bounds for integer-valued stochastic overrides. These mirror the
+# frontend input caps in ``StochasticPanel.tsx`` and protect the worker from
+# multi-GB allocations inside ``aegis.channel.generator.generate`` when a
+# malicious or buggy client sends huge values via the share-link override path.
+_STOCHASTIC_OVERRIDE_MAX = {"NumClusters": 50, "NumSubPaths": 20}
 
 
 def _parse_stochastic_params(params: dict, cfg: dict):
@@ -285,14 +289,21 @@ def _parse_stochastic_params(params: dict, cfg: dict):
     elif not isinstance(overrides, dict):
         return None, (jsonify({"error": "stochastic_overrides must be an object"}), 400)
 
-    for key in _STOCHASTIC_NUMERIC_OVERRIDE_KEYS:
-        if key not in overrides:
-            continue
-        val = overrides[key]
+    # Every override must be a finite scalar. The channel generator eventually
+    # calls ``int()`` / ``float()`` on each value, so non-numeric types (bool,
+    # None from ``JSON.stringify(NaN)``, lists, strings) would surface as a
+    # cryptic 500. Validate uniformly rather than maintaining an allowlist.
+    for key, val in overrides.items():
         if isinstance(val, bool) or not isinstance(val, (int, float)):
             return None, (jsonify({"error": f"stochastic_overrides.{key} must be a number"}), 400)
         if not math.isfinite(val):
             return None, (jsonify({"error": f"stochastic_overrides.{key} must be a finite number"}), 400)
+        max_val = _STOCHASTIC_OVERRIDE_MAX.get(key)
+        if max_val is not None and val > max_val:
+            return None, (
+                jsonify({"error": f"stochastic_overrides.{key} must be <= {max_val}"}),
+                400,
+            )
 
     try:
         stochastic = {
