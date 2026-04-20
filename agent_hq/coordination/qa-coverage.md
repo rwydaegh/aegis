@@ -54,6 +54,55 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-20 00:25 UTC -- "Stochastic channel modeling (third pass)"
+
+- Actor: interactive (qa-agent-729030)
+- Depth: medium
+- Findings: none filed (re-reproduced #664 and #673 on prod;
+  both already fixed on master, awaiting deploy)
+- Notes: Picked Stochastic before pulling origin/master, so I
+  missed the two prior same-day passes (16:15 + 18:25 UTC). The
+  three issues I observed during my session were all already
+  filed and patched: (a) `/api/compute` 500 with "index 0 out of
+  bounds for axis 0 with size 0" when `stochastic_overrides:
+  {NumClusters: 0}` reaches backend — fix #664 (f579093), in
+  master; (b) Canonical Null preset producing identical Sab
+  (1.35 mW/m² at 28 GHz, antenna 4 m, 65 dBm) to Freespace —
+  fix #674 (27e6156, "Implement constant path loss model"), in
+  master; (c) negative seed → 400 from `/api/lsp-heatmap` and
+  `/api/compute` (typed -100 in Seed spinner via React-aware JS,
+  visual desync between input and store but no toast surfaced) —
+  fix #685 (81dc3dd, "Reject negative seeds on /api/lsp-heatmap"),
+  in master. Production is at `7bdd91a` so all three reproduce
+  there. Verified working surface end-to-end on Open ground
+  scenario, 28 GHz, seed=42: Standard dropdown loads 11 families
+  (Canonical → DRESDEN), family change auto-picks first scenario
+  alphabetically + clears overrides per `handleFamilyChange`.
+  Cycled through Canonical Freespace/LOSonly/Null/TwoRayGR
+  (1.34-1.35 mW/m² band — Null bug noted above), 3GPP 38.901
+  UMi LOS (7.34 mW/m² at seed 42, 0.31 at random reroll —
+  determinism + variance both work), QuaDRiGa Industrial LOS
+  (0.95 mW/m²), WINNER Indoor A1 LOS (0.60 mW/m²), BERLIN
+  (0.42 mW/m²) — each family produces distinct, sensible values.
+  Seed reroll (↻) generates fresh 31-bit ints. Reset to preset
+  defaults clears overrides cleanly. K-factor / AS / ES override
+  inputs accept values in spec ranges. Cluster ray viz: FBS/LBS
+  toggle hides/shows scattered spheres correctly; Clusters vs
+  All sub-paths radio swaps between 12 cluster markers and ~12×20
+  sub-path dashed rays. LSP heatmap: switched parameter dropdown
+  through Shadow fading → Rician K-factor → Delay spread, ground
+  recolors live with appropriate colorbar units (sigma_SF dB,
+  K dB, log(s) for DS). API `/api/lsp-heatmap` POST returns
+  matching grid data (e.g. DS preset UMi LOS: ~10ns range).
+  **Caveat for next agent**: when a user types a value below
+  min into a number input in this panel, React state stays at
+  the prior valid value but the DOM input visually shows the
+  bad value (StochasticPanel.tsx:184-196 — onChange only calls
+  setOverride when `Number.isInteger(n) && n >= 1`). Annoying
+  UX but not a bug since the compute uses the (correct) state
+  value, not the visible one. Confidence high once #664/#674/
+  #685 ship; no untested gaps remain on the panel surface.
+
 ### 2026-04-19 20:20 UTC -- "3D environment reconstruction"
 
 - Actor: interactive (qa-agent-692132)
