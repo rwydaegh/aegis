@@ -267,7 +267,15 @@ def _parse_stochastic_params(params: dict, cfg: dict):
     """
     if not params.get("stochastic"):
         return None, None
+    from aegis.channel import list_presets
+    from aegis.viewer.compute import _resolve_channel_preset_dir
+
     stoch_cfg = cfg["dosimetry"].get("stochastic", {})
+
+    preset = params.get("stochastic_preset", stoch_cfg.get("default_preset", "3GPP_38.901_UMi_LOS"))
+    valid_presets = set(list_presets(_resolve_channel_preset_dir(cfg)))
+    if preset not in valid_presets:
+        return None, (jsonify({"error": "Unknown stochastic preset"}), 400)
 
     overrides = params.get("stochastic_overrides", {})
     # None / empty-list / empty-string are treated as empty dict to match the
@@ -288,7 +296,7 @@ def _parse_stochastic_params(params: dict, cfg: dict):
 
     try:
         stochastic = {
-            "preset": params.get("stochastic_preset", stoch_cfg.get("default_preset", "3GPP_38.901_UMi_LOS")),
+            "preset": preset,
             "seed": int(params.get("stochastic_seed", stoch_cfg.get("default_seed", 42))),
             "overrides": overrides,
             "freq_ghz": float(params.get("freq_hz", DEFAULT_FREQ_HZ)) / 1e9,
