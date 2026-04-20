@@ -43,11 +43,11 @@ def _validate_scene_path(scene_path: str) -> bool:
     return _pkg._validate_scene_path(scene_path)
 
 
-def _run_dosimetry(tissue, body, paths, engine_kw) -> tuple[Any, _ErrResp | None]:
+def _run_dosimetry(tissue, body, paths, engine_kw, **kwargs) -> tuple[Any, _ErrResp | None]:
     """Proxy to package-level `_run_dosimetry` so tests can mock it."""
     from aegis.viewer.routes import compute as _pkg
 
-    return _pkg._run_dosimetry(tissue, body, paths, engine_kw)
+    return _pkg._run_dosimetry(tissue, body, paths, engine_kw, **kwargs)
 
 
 def _parse_power_dbm(params: dict) -> tuple[float | None, _ErrResp | None]:
@@ -142,7 +142,10 @@ def _finalize_rt_response(
     if paths.n_paths == 0:
         return _zero_paths_response(body, pp["tissue"], level_val or 0, cache=cache)
 
-    result, err = _run_dosimetry(pp["tissue"], transformed_body, paths, pp["engine_kw"])
+    ecbf_warnings: list[str] = []
+    result, err = _run_dosimetry(
+        pp["tissue"], transformed_body, paths, pp["engine_kw"], ecbf_warnings_out=ecbf_warnings
+    )
     if err:
         return err
     assert result is not None  # noqa: S101 - helper contract
@@ -162,6 +165,8 @@ def _finalize_rt_response(
     }
     if gpu_backend is not None:
         extra["gpu_backend"] = gpu_backend
+    if ecbf_warnings:
+        extra["ecbf_warnings"] = ecbf_warnings
 
     t_stats = _time.perf_counter()
     timing_pairs = [

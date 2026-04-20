@@ -8,6 +8,7 @@ import math
 import os
 import threading
 import time
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -702,6 +703,19 @@ def _run_engine_compute(
     return _run_engine_legacy_level(engine, body, paths, body_mass, level, dos_cfg, total_area)
 
 
+_ECBF_WARNING_MARKERS = ("ECBF", "absorption", "infeasible")
+
+
+def collect_ecbf_warnings(captured: list[warnings.WarningMessage]) -> list[str]:
+    """Filter captured warnings for ECBF/absorption-constraint messages."""
+    out: list[str] = []
+    for w in captured:
+        msg = str(w.message)
+        if any(marker in msg for marker in _ECBF_WARNING_MARKERS):
+            out.append(msg)
+    return out
+
+
 def _build_compute_extras(
     S_inc: float,
     dist: float,
@@ -799,9 +813,12 @@ def compute_dosimetry(
 
     engine = DosimetryEngine(tissue)
     t0 = time.perf_counter()
-    result, engine_timings = _run_engine_compute(
-        engine, rotated_body, paths, body_mass, mode, level, corrections, dos_cfg, body.total_area
-    )
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        result, engine_timings = _run_engine_compute(
+            engine, rotated_body, paths, body_mass, mode, level, corrections, dos_cfg, body.total_area
+        )
+    ecbf_warnings = collect_ecbf_warnings(caught)
     timings["engine_compute_ms"] = (time.perf_counter() - t0) * 1e3
     timings["total_ms"] = (time.perf_counter() - t_total) * 1e3
 
@@ -811,6 +828,8 @@ def compute_dosimetry(
             timings[key] = engine_timings[key]
 
     extra, corr_list = _build_compute_extras(S_inc, dist, paths, antennas, timings, cluster_viz, corrections, mode)
+    if ecbf_warnings:
+        extra["ecbf_warnings"] = ecbf_warnings
 
     return result, rotated_body, tissue, level, mode, corr_list, extra
 

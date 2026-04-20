@@ -520,7 +520,8 @@ def _build_placement_evaluate_fn(
             )
             path_viz = [{"vertices": [tx_pos.tolist(), body_center.tolist()], "order": 0, "length": dist}]
 
-        result, run_err = _run_dosimetry(tissue, transformed_body, paths, engine_kw)
+        ecbf_warnings: list[str] = []
+        result, run_err = _run_dosimetry(tissue, transformed_body, paths, engine_kw, ecbf_warnings_out=ecbf_warnings)
         if run_err:
             raise RuntimeError(f"Dosimetry failed at pos {pos}")
 
@@ -531,6 +532,8 @@ def _build_placement_evaluate_fn(
             "n_rt_paths": paths.n_paths,
             "path_viz": path_viz,
         }
+        if ecbf_warnings:
+            extra["ecbf_warnings"] = ecbf_warnings
         level_val, mode_val, corr_val = _stats_label(engine_kw)
         stats = _build_stats_response(
             result,
