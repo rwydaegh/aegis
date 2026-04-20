@@ -63,8 +63,8 @@ export default function KeyboardHelp() {
     {
       title: 'Camera',
       shortcuts: [
-        { keys: ['W', 'A', 'S', 'D'], description: 'Move camera' },
-        { keys: ['Q', 'E'], description: 'Rotate camera' },
+        { keys: ['WASD'], description: 'Move camera' },
+        { keys: ['QE'], description: 'Rotate camera' },
         { keys: ['Space'], description: 'Move up' },
       ],
     },
@@ -72,7 +72,7 @@ export default function KeyboardHelp() {
       title: 'Antenna',
       shortcuts: [
         { keys: ['Click'], description: 'Place antenna on body' },
-        { keys: ['\u2190', '\u2192', '\u2191', '\u2193'], description: 'Nudge antenna (1m)' },
+        { keys: ['\u2190\u2192\u2191\u2193'], description: 'Nudge antenna (1m)' },
         { keys: ['Shift', '\u2190\u2192\u2191\u2193'], description: 'Nudge antenna (3m)' },
         { keys: ['Del'], description: 'Remove antenna' },
       ],
@@ -81,7 +81,7 @@ export default function KeyboardHelp() {
       title: 'MIMO',
       shortcuts: [
         { keys: ['Tab'], description: 'Cycle to next user' },
-        { keys: ['1', '-', '9'], description: 'Select user by number' },
+        { keys: ['1-9'], description: 'Select user by number' },
       ],
     }] : []),
     {
