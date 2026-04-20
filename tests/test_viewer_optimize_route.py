@@ -348,6 +348,44 @@ class TestPlacementInputValidation:
         assert resp.status_code == 400
         assert b"body_offset" in resp.data or b"error" in resp.data
 
+    @pytest.mark.parametrize(
+        ("payload_key", "bad_value", "expected_substring"),
+        [
+            ("center", [float("nan"), 0, 3], b"center"),
+            ("center", [float("inf"), 0, 3], b"center"),
+            ("center", [1, 2], b"center"),
+            ("center", "bogus", b"center"),
+            ("body_offset", [float("nan"), 0, 0], b"body_offset"),
+            ("body_offset", [float("inf"), 0, 0], b"body_offset"),
+            ("body_rotation_y", float("nan"), b"body_rotation_y"),
+            ("body_rotation_y", float("inf"), b"body_rotation_y"),
+            ("body_rotation_y", "spin", b"body_rotation_y"),
+            ("power_dbm", float("nan"), b"power_dbm"),
+            ("power_dbm", float("inf"), b"power_dbm"),
+            ("power_dbm", "loud", b"power_dbm"),
+        ],
+    )
+    def test_nonfinite_placement_scalar_returns_400(self, app, payload_key, bad_value, expected_substring):
+        """Non-finite or non-numeric placement scalars must 400 at the boundary."""
+        from aegis.geometry.mesh import BodyMesh
+        from aegis.viewer.config import load_config
+
+        vertices = np.array([[[0.0, 0.0, 0.0], [0.1, 0.0, 0.0], [0.0, 0.1, 0.0]]])
+        body = BodyMesh.from_arrays(vertices, name="test_body")
+
+        cache = app._optimize_cache
+        cache["default_body"] = "test_body"
+        cache["bodies"] = {"test_body": {"body": body}}
+        cache["config"] = load_config()
+
+        client = app.test_client()
+        resp = client.post(
+            "/api/optimize",
+            json={"mode": "placement", "grid_size": 2, payload_key: bad_value},
+        )
+        assert resp.status_code == 400
+        assert expected_substring in resp.data
+
 
 class TestMimoPeakInputValidation:
     """mimo_peak rejects non-finite/non-numeric scalars at the boundary.
