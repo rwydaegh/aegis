@@ -49,15 +49,19 @@ def _json_dumps_safe(obj: object) -> str:
 
 
 def _cache_dosimetry_for_export(cache: dict, result, body, stats: dict, paths=None, tissue=None) -> None:
-    """Cache the last dosimetry result, body, and stats for export (session-scoped)."""
+    """Cache the last dosimetry result, body, and stats for export (session-scoped).
+
+    RT paths and tissue are always written (including ``None`` for non-RT
+    computes) so the cache stays in sync with the current compute. Leaving
+    stale RT paths alive after a non-RT compute would feed mismatched paths
+    plus the new body into ``path_contributions`` / tilt-power optimization.
+    """
     scoped_cache_set(cache, "_last_dosimetry_result", result)
     scoped_cache_set(cache, "_last_dosimetry_body", body)
     scoped_cache_set(cache, "_last_dosimetry_stats", stats)
     scoped_cache_set(cache, "_last_compliance_result", stats.get("compliance"))
-    if paths is not None:
-        scoped_cache_set(cache, "_last_rt_paths", paths)
-    if tissue is not None:
-        scoped_cache_set(cache, "_last_rt_tissue", tissue)
+    scoped_cache_set(cache, "_last_rt_paths", paths)
+    scoped_cache_set(cache, "_last_rt_tissue", tissue)
 
 
 def _inject_curvature_H(engine_kw: dict, body) -> dict:
@@ -351,6 +355,7 @@ def _zero_paths_response(body, tissue, level, extra=None, cache=None):
         scoped_cache_set(cache, "_last_dosimetry_stats", None)
         scoped_cache_set(cache, "_last_compliance_result", None)
         scoped_cache_set(cache, "_last_rt_paths", None)
+        scoped_cache_set(cache, "_last_rt_tissue", None)
     sab_bytes = np.zeros(body.n_triangles, dtype=np.float32).tobytes()
     resp = Response(sab_bytes, mimetype=_OCTET_STREAM)
     resp.headers["X-Stats"] = _json_dumps_safe(stats)
