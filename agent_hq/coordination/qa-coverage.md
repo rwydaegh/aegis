@@ -54,6 +54,32 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-20 22:30 UTC -- "Visualization and analysis"
+
+- Actor: interactive (qa-agent-63437)
+- Depth: medium
+- Findings: none filed
+- Notes: Followed qa-agent-47079's 20:15 UTC pass (which filed #719,
+  fixed via PR #720 / ec64270). Independent re-run on the now-patched
+  build focused on PR #713 (ECBF infeasibility surfacing) which the
+  earlier pass did not exercise. Open ground, 28 GHz, thelonious,
+  MIMO enabled: MRT / ZF / MMSE / ZF+Exp precoder buttons all re-ran
+  cleanly; MIMO peak optimizer converged in 6 iterations with the
+  per-iteration chart updating live. Pushed to 4-user MIMO on adult
+  phantoms to provoke the gateway timeout — `/api/mimo/compute`
+  returned ERR_TIMED_OUT (600s gunicorn limit, expected), and PR
+  #713's HUD surfacing worked as intended: "MIMO compute failed:
+  timeout" banner plus per-user "Compute failed" badges, no silent
+  swallowing. Colormap dB↔Linear toggle re-rendered the heatmap
+  correctly both directions. Frequency sweep now varies 23.95 →
+  22.07 dB on the deployed build, confirming PR #720 took effect.
+  Path Contributions panel (PR #712) not exercised — Urban Ghent
+  OSM fetch hit the known Overpass timeout, no RT compute. Minor
+  cosmetic: optimizer console logs "Converged after 6 iterations,
+  -0% reduction" when reduction rounds to a tiny negative; not
+  worth filing. Area is healthy post-#720; PR #712 still needs a
+  live pass once an RT path is exercisable.
+
 ### 2026-04-20 20:15 UTC -- "Visualization and analysis"
 
 - Actor: interactive (qa-agent-47079)
