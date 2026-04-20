@@ -429,7 +429,7 @@ export function useDosimetry() {
       })
       .catch(err => {
         if (gen !== lspHeatmapGenRef.current) return
-        Sentry.captureException(err)
+        if (!isClientError(err)) Sentry.captureException(err)
       })
       .finally(() => {
         if (gen === lspHeatmapGenRef.current) useSimulationStore.getState().setLSPHeatmapLoading(false)
