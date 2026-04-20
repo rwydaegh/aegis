@@ -238,6 +238,21 @@ class TestComputeRoute:
             )
         assert resp.status_code == 200
 
+    def test_stochastic_preset_rejects_path_traversal(self, viewer_app):
+        with viewer_app.test_client() as c:
+            for bad in ("/etc/host", "/etc/resolv", "../../../etc/host", "NotAPreset"):
+                resp = c.post(
+                    "/api/compute",
+                    json={
+                        "stochastic": True,
+                        "stochastic_preset": bad,
+                        "stochastic_seed": 42,
+                        "n_paths": 1,
+                    },
+                )
+                assert resp.status_code == 400, f"expected 400 for {bad!r}, got {resp.status_code}"
+                assert "preset" in resp.get_json()["error"].lower()
+
     def test_invalid_stochastic_seed(self, viewer_app):
         with viewer_app.test_client() as c:
             resp = c.post(
