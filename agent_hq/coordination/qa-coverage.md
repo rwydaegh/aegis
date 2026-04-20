@@ -54,6 +54,40 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-20 10:30 UTC -- "Fidelity levels (0-8)"
+
+- Actor: interactive (qa-agent-831898)
+- Depth: thorough
+- Findings: none filed (one minor API-hardening observation worth a follow-up, no UI bug)
+- Notes: Picked this section because it had never appeared in the log
+  and the underlying kernels are the dosimetry core. Cycled through
+  L0-L6 by toggling Computation mode and Physics corrections on
+  open_ground (thelonious, 28 GHz, 65 dBm). Per-level peak Sab in HUD:
+  L0 Bound 20.25 mW/m² (+29.9 dB margin), L1 Aggregate 5.06 mW/m²
+  (+36.0), L2 Spatial 80.46 (+22.1), L3 +F 80.46 (identical at face-on
+  triangle as expected), L4 +FP 80.81, L5 +FPC 83.78 (colorbar max
+  jumped to 0.179), L6 +FPCD 83.78 (colorbar max DECREASED to 0.166 --
+  GELU smoothing on diffraction). Header badge "Spatial +FPCD"
+  cascades correctly. Curvature checkbox is disabled-but-checked when
+  Diffraction is enabled (auto-required for L6); becomes user-toggleable
+  again when Diffraction is off. Sensible UX, not a bug. L7/L8 via
+  MIMO panel: enabling MIMO with 1 user (Thelonious) gave Sab 0.22
+  W/m² for ZF and ZF+Exp (identical -- physically expected since ECBF
+  reduces to trivial single-user case). Added Duke as User 2; ZF and
+  ZF+Exp still gave identical 0.11 / 69.61 mW/m² (well-separated
+  channels nullified perfectly by ZF leaving nothing for ECBF to
+  further minimize). MRT differed: 0.11 / 77.99 mW/m² for User 2
+  (12% higher than ZF, expected since MRT does not null inter-user
+  interference). API edge tests on `/api/compute`: invalid mode values
+  (`"badmode"`, `null`, numeric `42`, missing `interactive` block) all
+  return 200 OK and silently coerce to spatial level 2; non-physical
+  frequencies (0, -1e9, the string `"not_a_number"`) also return 200
+  OK. Frontend dropdowns gate this on the happy path so users never
+  hit it, but the route would benefit from a 400 on unknown mode and
+  a finite/positive guard on frequency_hz, matching the recent #698
+  hardening for stochastic-channel inputs. Confident the level surface
+  itself is healthy across the full 0-8 range.
+
 ### 2026-04-20 08:15 UTC -- "3D environment reconstruction"
 
 - Actor: interactive (qa-agent-812294)
