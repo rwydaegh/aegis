@@ -4,77 +4,32 @@ import { useFrame } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
 import { useSimulationStore } from '@/stores/simulation'
 import { useSceneStore } from '@/stores/scene'
-import { scalarRadiationGain, interpolatePatternGain, type AntennaElement } from '@/lib/antennaGain'
+import type { AntennaElement } from '@/lib/antennaGain'
+import {
+  computeComplianceFootprint,
+  smoothRadii,
+  DEFAULT_OBSERVER_HEIGHT_M,
+  DEFAULT_MAX_RADIUS_M,
+  type FootprintResult,
+} from '@/lib/complianceFootprint'
 
 const N_AZIMUTH = 128
 const RING_THICKNESS = 0.04
 const SMOOTHING_PASSES = 2
+// Head-of-standing-adult estimate: the body centre in scene coords
+// is bodyOffset.y + 0.6, matching DistanceLine.
+const BODY_CENTER_Y_OFFSET = 0.6
 
 // ---------------------------------------------------------------------------
-// Pure helpers (module scope)
+// Geometry builders
 // ---------------------------------------------------------------------------
 
-function sampleHorizontalGains(
-  nAzimuth: number,
-  useApplied: boolean,
-  appliedPattern: Float32Array | null | undefined,
-  type: string,
-  elements: AntennaElement[],
-): { gains: Float32Array; gMean: number; gMax: number; gMin: number } {
-  const gains = new Float32Array(nAzimuth)
-  const dir = new THREE.Vector3()
-  let gMean = 0
-  let gMax = -Infinity
-  let gMin = Infinity
-
-  for (let i = 0; i < nAzimuth; i++) {
-    const az = (i / nAzimuth) * 2 * Math.PI
-    dir.set(Math.sin(az), 0, Math.cos(az))
-    const g = (useApplied && appliedPattern)
-      ? interpolatePatternGain(dir, appliedPattern)
-      : scalarRadiationGain(dir, type, elements)
-    gains[i] = g
-    gMean += g
-    if (g > gMax) gMax = g
-    if (g < gMin) gMin = g
-  }
-  gMean /= nAzimuth
-  return { gains, gMean, gMax, gMin }
-}
-
-function smoothGains(gains: Float32Array, passes: number): void {
-  for (let pass = 0; pass < passes; pass++) {
-    const n = gains.length
-    const smoothed = new Float32Array(n)
-    for (let i = 0; i < n; i++) {
-      const prev = gains[(i - 1 + n) % n]
-      const next = gains[(i + 1) % n]
-      smoothed[i] = 0.25 * prev + 0.5 * gains[i] + 0.25 * next
-    }
-    gains.set(smoothed)
-  }
-}
-
-function buildRadii(gains: Float32Array, baseDist: number): { radii: Float32Array; maxR: number; gMean: number } {
-  let gMean = 0
-  const n = gains.length
-  for (let i = 0; i < n; i++) gMean += gains[i]
-  gMean /= n
-
-  const radii = new Float32Array(n)
-  let maxR = 0
-  for (let i = 0; i < n; i++) {
-    radii[i] = baseDist * Math.sqrt(gains[i] / gMean)
-    if (radii[i] > maxR) maxR = radii[i]
-  }
-  return { radii, maxR, gMean }
-}
-
-function buildDiscGeometry(radii: Float32Array, nAzimuth: number): THREE.ShapeGeometry {
+function buildDiscGeometry(radii: Float32Array): THREE.ShapeGeometry {
   const shape = new THREE.Shape()
-  for (let i = 0; i <= nAzimuth; i++) {
-    const idx = i % nAzimuth
-    const az = (idx / nAzimuth) * 2 * Math.PI
+  const n = radii.length
+  for (let i = 0; i <= n; i++) {
+    const idx = i % n
+    const az = (idx / n) * 2 * Math.PI
     const r = radii[idx]
     const sx = Math.sin(az) * r
     const sy = -Math.cos(az) * r
@@ -84,13 +39,14 @@ function buildDiscGeometry(radii: Float32Array, nAzimuth: number): THREE.ShapeGe
   return new THREE.ShapeGeometry(shape, 1)
 }
 
-function buildRingGeometry(radii: Float32Array, nAzimuth: number): THREE.BufferGeometry {
-  const nVerts = nAzimuth * 2
+function buildRingGeometry(radii: Float32Array): THREE.BufferGeometry {
+  const n = radii.length
+  const nVerts = n * 2
   const positions = new Float32Array(nVerts * 3)
   const indices: number[] = []
 
-  for (let i = 0; i < nAzimuth; i++) {
-    const az = (i / nAzimuth) * 2 * Math.PI
+  for (let i = 0; i < n; i++) {
+    const az = (i / n) * 2 * Math.PI
     const r = radii[i]
     const rOuter = r + RING_THICKNESS
     const rInner = Math.max(r - RING_THICKNESS, 0)
@@ -106,7 +62,7 @@ function buildRingGeometry(radii: Float32Array, nAzimuth: number): THREE.BufferG
     positions[ii * 3 + 1] = cy * rInner
     positions[ii * 3 + 2] = 0
 
-    const j = (i + 1) % nAzimuth
+    const j = (i + 1) % n
     indices.push(oi, ii, j * 2)
     indices.push(j * 2, ii, j * 2 + 1)
   }
@@ -239,15 +195,19 @@ function DirectionalBoundary({
 // ---------------------------------------------------------------------------
 
 /**
- * Renders a ground-plane compliance boundary around the antenna.
- * For directional antennas (patch, uploaded patterns), the boundary
- * follows the radiation pattern shape. For uniform patterns (isotropic,
- * vertical dipole), falls back to a circle.
+ * Renders a ground-plane ICNIRP compliance footprint around the antenna.
+ *
+ * Solves per-azimuth for the horizontal radius where the incident power
+ * density equals the compliance limit, at an observer height of 1.5 m. Uses
+ * the full 3-D antenna pattern (so vertical pattern and antenna height are
+ * honoured) and the body compute's margin_db as the reference. For a
+ * uniform pattern the footprint collapses to a circle.
  */
 export default function ComplianceRing() {
   const stats = useSimulationStore(s => s.stats)
   const compliance = useSimulationStore(s => s.compliance)
   const antennaPos = useSimulationStore(s => s.antennaPos)
+  const bodyOffset = useSimulationStore(s => s.bodyOffset)
   const appliedPattern = useSimulationStore(s => s.appliedPattern)
   const appliedPatternMeta = useSimulationStore(s => s.appliedPatternMeta)
   const config = useSceneStore(s => s.viewerConfig)
@@ -260,13 +220,31 @@ export default function ComplianceRing() {
   const distanceM = stats?.distance_m
   const marginDb = compliance?.margin_db
 
-  const minCompliantDist = useMemo(() => {
-    if (marginDb == null || distanceM == null || distanceM <= 0) return null
-    if (!Number.isFinite(marginDb)) return null
-    const d = distanceM * Math.pow(10, -marginDb / 20)
-    if (d < 0.1 || d > 500) return null
-    return d
-  }, [marginDb, distanceM])
+  const footprint: FootprintResult | null = useMemo(() => {
+    if (marginDb == null || !Number.isFinite(marginDb)) return null
+    if (distanceM == null || !(distanceM > 0)) return null
+    if (!antennaPos || !bodyOffset || !config) return null
+
+    const poleH = config.antenna?.pole_height ?? 2
+    const rp = config.antenna?.radiation_pattern
+    const type = rp?.type ?? 'short_dipole'
+    const elements: AntennaElement[] = rp?.elements?.length
+      ? rp.elements
+      : [{ offset: [0, 0, 0], weight: [1, 0], axis: [0, 1, 0] }]
+    const useApplied = !!(appliedPattern && appliedPatternMeta)
+
+    return computeComplianceFootprint({
+      antennaRadiatorPos: [antennaPos[0], antennaPos[1] + poleH, antennaPos[2]],
+      bodyCenterPos: [bodyOffset[0], bodyOffset[1] + BODY_CENTER_Y_OFFSET, bodyOffset[2]],
+      marginDb,
+      observerHeightM: DEFAULT_OBSERVER_HEIGHT_M,
+      patternType: type,
+      elements,
+      appliedPattern: useApplied ? appliedPattern : null,
+      nAzimuth: N_AZIMUTH,
+      maxRadiusM: DEFAULT_MAX_RADIUS_M,
+    })
+  }, [marginDb, distanceM, antennaPos, bodyOffset, appliedPattern, appliedPatternMeta, config])
 
   const boundary = useMemo(() => {
     prevDiscRef.current?.dispose()
@@ -274,36 +252,30 @@ export default function ComplianceRing() {
     prevDiscRef.current = null
     prevRingRef.current = null
 
-    if (minCompliantDist == null || !config) {
-      return { discGeo: null, ringGeo: null, maxDist: 0, isCircular: true }
+    if (!footprint || footprint.degenerate) {
+      return { discGeo: null, ringGeo: null, displayDist: 0, isCircular: true }
     }
 
-    const rp = config.antenna?.radiation_pattern
-    const type = rp?.type ?? 'short_dipole'
-    const elements = rp?.elements?.length
-      ? rp.elements
-      : [{ offset: [0, 0, 0], weight: [1, 0], axis: [0, 1, 0] }]
-    const useApplied = !!(appliedPattern && appliedPatternMeta)
-
-    const { gains, gMean, gMax, gMin } = sampleHorizontalGains(
-      N_AZIMUTH, useApplied, appliedPattern, type, elements,
-    )
-
-    if (gMean <= 0 || gMax <= 0 || (gMax - gMin) / gMax < 0.02) {
-      return { discGeo: null, ringGeo: null, maxDist: minCompliantDist, isCircular: true }
+    // For uniform patterns the solver already returns near-equal radii; render
+    // a proper circleGeometry at the footprint radius for smoother edges.
+    if (footprint.isCircular) {
+      return { discGeo: null, ringGeo: null, displayDist: footprint.maxR, isCircular: true }
     }
 
-    smoothGains(gains, SMOOTHING_PASSES)
-    const { radii, maxR } = buildRadii(gains, minCompliantDist)
+    // Sanity clamp: if the ring is under 0.1 m or over the safety cap, bail out.
+    if (footprint.maxR < 0.1) {
+      return { discGeo: null, ringGeo: null, displayDist: 0, isCircular: true }
+    }
 
-    const discGeo = buildDiscGeometry(radii, N_AZIMUTH)
-    const ringGeo = buildRingGeometry(radii, N_AZIMUTH)
+    const smoothed = smoothRadii(footprint.radii, SMOOTHING_PASSES)
+    const discGeo = buildDiscGeometry(smoothed)
+    const ringGeo = buildRingGeometry(smoothed)
 
     prevDiscRef.current = discGeo
     prevRingRef.current = ringGeo
 
-    return { discGeo, ringGeo, maxDist: maxR, isCircular: false }
-  }, [minCompliantDist, config, appliedPattern, appliedPatternMeta])
+    return { discGeo, ringGeo, displayDist: footprint.maxR, isCircular: false }
+  }, [footprint])
 
   useEffect(() => () => {
     prevDiscRef.current?.dispose()
@@ -316,19 +288,19 @@ export default function ComplianceRing() {
     ringGroupRef.current.scale.set(s, s, s)
   })
 
-  if (!complianceRingVisible || !antennaPos || minCompliantDist == null) return null
+  if (!complianceRingVisible || !antennaPos || !footprint || footprint.degenerate) return null
 
   const poleH = config?.antenna?.pole_height ?? 2
   const centerX = antennaPos[0]
   const centerZ = antennaPos[2]
   const isCompliant = compliance?.overall_pass ?? false
   const colors = resolveRingColors(isCompliant)
-  const displayDist = boundary.isCircular ? minCompliantDist : boundary.maxDist
 
-  const sharedProps = { centerX, centerZ, colors, poleH, displayDist, isCompliant, ringGroupRef }
+  const sharedProps = { centerX, centerZ, colors, poleH, displayDist: boundary.displayDist, isCompliant, ringGroupRef }
 
   if (boundary.isCircular) {
-    return <CircularBoundary {...sharedProps} minCompliantDist={minCompliantDist} />
+    if (footprint.maxR < 0.1) return null
+    return <CircularBoundary {...sharedProps} minCompliantDist={footprint.maxR} />
   }
   return <DirectionalBoundary {...sharedProps} discGeo={boundary.discGeo} ringGeo={boundary.ringGeo} />
 }
