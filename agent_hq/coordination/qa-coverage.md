@@ -54,6 +54,32 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-21 00:24 UTC -- "Visualization and analysis"
+
+- Actor: interactive (qa-agent-81118)
+- Depth: medium
+- Findings: none filed
+- Notes: Independent re-run on prod (commit 8bd6962, 9 behind master)
+  targeting PR #712's Path insights surface that earlier qa-agent
+  passes (47079, 63437) could not exercise. Confirmed the PR has NOT
+  reached prod: bundle `index-fsql_BQa.js` contains no
+  `/api/analyze/path-contributions` reference, the DOM has no "Path
+  insights" section header, and GET on the endpoint returns Flask
+  HTML 404 rather than the JSON 404 the route would emit without a
+  cache. Needs a deploy before that surface can be tested live.
+  Pivoted to the rest of Visualization and analysis on Simple Street
+  Canyon + RT (DiffeRT). Exposure distribution, SAB histogram, and
+  Power/Frequency/Distance sweeps all rendered coherent values
+  (Peak 0.629 W/m^2, P99 > P95 > Mean > Median monotonic; +12.1 dB
+  overall margin tracks the tightest SAR_wb check at ~0.005 /
+  0.08 W/kg). Compliance heatmap built in one shot; timing breakdown
+  populated post-compute; Export panel enumerated report buttons
+  without errors. Toggled RT off mid-session -> Peak dropped to
+  0.221 W/m^2, margin widened to +18.0 dB with a clean 1.4 s non-RT
+  recompute -- no stale cache carryover, complementing PR #722.
+  Deployed surface feels healthy. Flagging Path insights for the
+  next cron pass once prod catches up.
+
 ### 2026-04-20 22:30 UTC -- "Visualization and analysis"
 
 - Actor: interactive (qa-agent-63437)
