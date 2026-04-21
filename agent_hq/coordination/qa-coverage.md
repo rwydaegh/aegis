@@ -54,6 +54,59 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-21 04:25 UTC -- "Visualization and analysis"
+
+- Actor: interactive (qa-agent-116685)
+- Depth: medium
+- Findings: 1 bug filed: #729
+- Notes: Picked this section because last pass was 2026-04-18 (3 days
+  stale) and PR #712 (Surface path contributions to the viewer Analysis
+  panel) just landed on master at 4428201. Wanted to exercise the new
+  `PathInsightsSection`. **Prod deployment lag caught immediately**:
+  prod runs commit 8bd6962, which is 9 commits behind master
+  (before #707, #709, #710, #712, #713). The frontend bundle
+  `index-fsql_BQa.js` contains zero matches for `Path insights`,
+  `PathInsightsSection`, or `path-contributions`, so the new panel is
+  not deployable-testable yet. Not a bug to file — a release hasn't
+  fired since v0.30.0 metadata bump at 6149aea; next deploy will pick
+  it all up. Flagging so a follow-up agent picks this up post-deploy.
+  Pivoted to exercising the rest of the Viz/Analysis surface on prod:
+  Analysis panel -> Exposure distribution (Peak 0.081, P99 0.073,
+  P95 0.058, illuminated 43.8% / 3695 cm²), SAB histogram (log-scale
+  bins from 6.2e-10 to 3e-3 W/m², green below-limit / orange
+  above-limit colors correct), Power sweep (linear slope, dashed red
+  line at 0 dB, Max compliant 65.0 dBm with Set button), Frequency
+  sweep (flat ~+22 dB across 7-100 GHz for isotropic antenna — fine
+  for this scenario), Distance sweep (1/r² curve, Min compliant
+  distance 0.3 m, consistent with current +22 dB at 4 m), Compliance
+  heatmap (all green at 28 GHz x wide power range, expected).
+  Export surface: Screenshot PNG (canvas only, no HUD/compliance
+  overlay — a real-user pain point but the PNG export clearly says
+  "Screenshot", not "dashboard export", so not bug-worthy), CSV/JSON/NPZ
+  dosimetry (5 MB JSON with 23826-triangle centroids, well-formed),
+  Compliance TXT (all 4 checks PASS with +22.1 dB overall margin),
+  Configuration JSON (full app snapshot). Optimize -> Placement
+  strategy ran 25 iterations converging to 65% reduction
+  (+22.1 → +27.9 dB margin, peak Sab 0.081 → 0.016 W/m², max TX
+  power 65.0 → 70.8 dBm); replay slider and Best button render but
+  I didn't drag-interact. MIMO toggle: enabling MIMO with 1 user
+  (thelonious) gave Sab 0.22 W/m² compliant, and that's where the
+  bug surfaced. **#729 filed**: MIMO HUD loses the per-check
+  `+X.XdB` margin label AND the entire Margin/Max TX power/Frequency
+  summary row. Root cause is `_compliance_summary` in
+  `src/aegis/viewer/routes/mimo.py:296-317` omitting `margin_db`
+  per check while `src/aegis/viewer/routes/compute/_responses.py:239-263`
+  includes it. Frontend (`CompliancePanel.tsx:110`) hides the whole
+  summary block when `tightestMarginDb()` returns null. Clear
+  copy-pasteable one-line backend fix. dB colorbar toggle works
+  (Sab (dB re peak) goes 0 to -25 dB). Share link updates URL to
+  `?scenario=open_ground` but does NOT encode MIMO / optim / antenna
+  state — probably by design for a simple bookmark share, but a
+  power user who wants to reproduce a MIMO+optim session will hit
+  this wall. Not filed — share-link scope is ambiguous. Overall:
+  healthy surface except for the MIMO HUD info loss; should revisit
+  once PR #712 is live to actually test the Path Insights feature.
+
 ### 2026-04-21 02:30 UTC -- "Visualization and analysis"
 
 - Actor: interactive (qa-agent-99366)
