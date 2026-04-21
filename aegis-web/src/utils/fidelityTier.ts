@@ -80,7 +80,11 @@ export function computeUpgradePath(provenance: Record<string, string> | null): s
   const issues: string[] = []
   const src = (f: string) => provenance[f] || 'missing'
 
+  // Only flag issues that actually block a higher tier. For tilts and
+  // beamwidths, computeFidelityTier uses isAvailable (est is fine), so an
+  // estimated value is not a blocker — only missing ones are.
   if (src('Power') === 'missing') issues.push('Need Power (EIRP)')
+  else if (src('Power').startsWith('est:')) issues.push('EIRP is estimated')
   if (src('Frequency') === 'missing') issues.push('Need Frequency')
   if (src('Azimuth') === 'missing') issues.push('Need Azimuth')
   else if (src('Azimuth').startsWith('est:')) issues.push('Azimuth is estimated')
@@ -89,7 +93,6 @@ export function computeUpgradePath(provenance: Record<string, string> | null): s
   if (src('Gain') === 'missing') issues.push('Need antenna gain')
   else if (src('Gain').startsWith('est:')) issues.push('Gain is estimated')
   if (src('Electrical_Tilt') === 'missing') issues.push('Need electrical tilt')
-  else if (src('Electrical_Tilt').startsWith('est:')) issues.push('Electrical tilt is estimated')
   if (src('Mechanical_Tilt') === 'missing') issues.push('Need mechanical tilt')
   if (src('Horizontal_Beamwidth') === 'missing') issues.push('Need horizontal beamwidth')
   if (src('Vertical_Beamwidth') === 'missing') issues.push('Need vertical beamwidth')
