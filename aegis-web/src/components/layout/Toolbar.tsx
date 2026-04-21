@@ -13,7 +13,7 @@ import type { DosimetryStats } from '@/api/types'
 import SessionTimer from '@/components/layout/SessionTimer'
 import UserBadges from '@/components/hud/UserBadges'
 import BugReporter from '@/components/hud/bugReporter'
-import { ScenarioDropdown } from '@/components/hud/ScenarioDropdown'
+import { ScenarioDropdown, CLOUDRF_PRESETS } from '@/components/hud/ScenarioDropdown'
 import { useActiveSimulation } from '@/hooks/useActiveSimulation'
 import { resetScenarioScopedStores } from '@/hooks/useScenario'
 import { generateShareUrl } from '@/lib/shareLink'
@@ -126,8 +126,11 @@ export default function Toolbar() {
   const mimoEnabled = useMIMOStore(s => s.enabled)
 
   const activeScenario = useUIStore(s => s.activeScenario)
+  const cloudRFLabel = activeScenario
+    ? CLOUDRF_PRESETS.find(p => p.key === activeScenario)?.label
+    : undefined
   const scenario = activeScenario
-    ? (viewerConfig?.scenarios?.[activeScenario]?.description ?? activeScenario)
+    ? (viewerConfig?.scenarios?.[activeScenario]?.description ?? cloudRFLabel ?? activeScenario)
     : (viewerConfig?.active_scenario_description ?? viewerConfig?.active_scenario ?? null)
 
   async function handleShare() {
