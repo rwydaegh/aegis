@@ -107,7 +107,7 @@ def _build_bbox(params: dict):
 
 def _resolve_country_and_region(params: dict, address: dict, cache: dict, cache_lock):
     """Return ``(country, region, early_response)`` — early_response set for unknown country."""
-    country = params.get("country") or address.get("country", "Belgium")
+    country = params.get("country") or address.get("country") or ""
     region = params.get("region")
 
     country_code = address.get("country_code", "").lower()
