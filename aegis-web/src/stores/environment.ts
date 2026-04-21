@@ -124,8 +124,23 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
   _abortController: null,
 
   setSource: (source) => {
+    // Both 'osm' and '3dtiles' render through <EnvironmentOSM /> off the
+    // shared `osmMeshData` slot. A direct switch between them would keep
+    // the previous source's buildings visible until the new fetch lands.
+    // Clear the slot on that transition so the scene goes empty immediately.
+    // Toggling through 'none'/'voxels'/'coverage' and back preserves the
+    // cached mesh since nothing renders in those modes.
+    const prev = get().source
+    const isMeshSource = (s: EnvironmentSource) => s === 'osm' || s === '3dtiles'
+    const clearMesh = isMeshSource(prev) && isMeshSource(source) && prev !== source
     get()._abortController?.abort()
-    set({ source, loading: false, error: null, _abortController: null })
+    set({
+      source,
+      loading: false,
+      error: null,
+      _abortController: null,
+      ...(clearMesh ? { osmMeshData: null } : {}),
+    })
   },
   setLocation: (lat, lon) => set({ location: { lat, lon } }),
   setLocationQuery: (q) => set({ locationQuery: q }),
