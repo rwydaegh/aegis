@@ -137,12 +137,20 @@ const BEAM_FIELDS = ['horizontal_beamwidth_deg', 'vertical_beamwidth_deg']
 export default function AntennaDetailPanel() {
   const selectedIndex = useBaseStationsStore(s => s.selectedIndex)
   const basestations = useBaseStationsStore(s => s.basestations)
+  const enabledOperators = useBaseStationsStore(s => s.enabledOperators)
+  const enabledTechnologies = useBaseStationsStore(s => s.enabledTechnologies)
+  const enabledFrequencyBands = useBaseStationsStore(s => s.enabledFrequencyBands)
   const selectAntenna = useBaseStationsStore(s => s.selectAntenna)
   const [showUpgrade, setShowUpgrade] = useState(false)
 
   if (selectedIndex === null || selectedIndex >= basestations.length) return null
 
   const bs = basestations[selectedIndex]
+  // Hide the panel when the selected antenna is filtered out of the 3D scene.
+  if (!enabledOperators.has(bs.operator)) return null
+  if (!enabledTechnologies.has(bs.technology)) return null
+  if (bs.frequency_band && !enabledFrequencyBands.has(bs.frequency_band)) return null
+
   const prov = bs.provenance ?? {}
   const hasProv = Object.keys(prov).length > 0
 
