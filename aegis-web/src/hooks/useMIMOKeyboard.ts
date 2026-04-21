@@ -8,7 +8,11 @@ export function useMIMOKeyboard() {
     if (!enabled) return
 
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return
+      if (
+        e.target instanceof HTMLInputElement
+        || e.target instanceof HTMLSelectElement
+        || e.target instanceof HTMLTextAreaElement
+      ) return
 
       const store = useMIMOStore.getState()
       if (!store.enabled) return

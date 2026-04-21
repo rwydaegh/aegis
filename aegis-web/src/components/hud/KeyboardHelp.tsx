@@ -43,7 +43,11 @@ export default function KeyboardHelp() {
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return
+      if (
+        e.target instanceof HTMLInputElement
+        || e.target instanceof HTMLSelectElement
+        || e.target instanceof HTMLTextAreaElement
+      ) return
       if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
         e.preventDefault()
         toggleHelp()
