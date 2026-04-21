@@ -52,6 +52,42 @@ Depth guide:
 
 ## Log
 
+### 2026-04-21 20:20 UTC -- "Base station pipeline"
+
+- Actor: interactive
+- Depth: medium
+- Findings: 1 bug filed: #745
+- Notes: Drove the Coverage globe scenario with Playwright. Loaded
+  Brussels (411 antennas, BIPT Open Data, clean operators Citymesh /
+  Orange / Proximus / Telenet, 100% spatial-ready, H-BW showed the
+  expected 410 gov + 1 estimated split), swapped to Antwerp which
+  correctly remapped to the `Flanders` region (1464 antennas,
+  100% Location Only, weakest fields Frequency / Gain / E-Tilt /
+  M-Tilt all 100% missing -- consistent with the parquet's reduced
+  schema), then Paris (945 antennas, ANFR/Etalab, nice BOUYGUES /
+  FREE / ORANGE / SFR names). Operator filter unchecks correctly
+  thin the active count (411 -> 256 -> 200); `Clear` empties the
+  region panel cleanly; region-card swap does not leave a stale
+  provenance breakdown behind (#735/#736 behavior looked healthy).
+  Exercised the `/api/basestations/load` boundary directly: finite
+  ocean coords (`25,-30`, `30,-40`, `0,0`) surface a confusing
+  `No base station data for region 'wallonia'` because
+  `_resolve_country_and_region` defaults `country` to \"Belgium\"
+  when the Nominatim reverse geocode returns no address, and
+  `_resolve_belgian_region` then falls through to `\"wallonia\"`
+  for any `lat < 50.75`. Filed #745. Happier paths (Tokyo 35.68,139.69
+  and Wisconsin 45,-90) correctly return HTTP 200 with empty
+  `basestations`. One data-quality oddity worth watching but not
+  filing: Flanders exposes raw operator codes (`\"1\",\"2\",\"3\",
+  \"253625150\"`) in the Operators filter while Brussels shows
+  readable names -- looks like an upstream parquet/ingest
+  limitation on the gov:flanders source, not a regression.
+  Did not exercise individual BS selection-via-click (hard to hit a
+  single marker from the globe-camera default without a
+  zoom-to-region control); worth a targeted follow-up to probe
+  #736's actual runtime path via a selected-then-swapped flow.
+
+
 <!-- newest entries at the top -->
 
 ### 2026-04-21 18:20 UTC -- "Compliance and regulatory"
