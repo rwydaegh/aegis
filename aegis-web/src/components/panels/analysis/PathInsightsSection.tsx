@@ -42,6 +42,11 @@ export function PathInsightsSection() {
   // only after an RT compute, so non-RT computes skip this fetch.
   useEffect(() => {
     if (!stats || !rtPaths || rtPaths.length === 0) {
+      // Bump the token to invalidate any in-flight fetch from a prior RT
+      // compute. Without this, a fetch started while rtPaths was populated
+      // can resolve after the user leaves RT mode and fire a spurious
+      // Sentry.captureException + "Path insights unavailable" toast.
+      fetchTokenRef.current++
       setResult(null)
       setError(null)
       return
