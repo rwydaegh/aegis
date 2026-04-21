@@ -54,6 +54,78 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-21 08:30 UTC -- "Visualization and analysis"
+
+- Actor: interactive (qa-agent-147315)
+- Depth: medium
+- Findings: none filed
+- Notes: Picked this section because it was absent from recent 20+
+  log entries and commit 4428201 (PR #712 "Surface path contributions
+  to the viewer Analysis panel") just landed — directly relevant.
+  **PR #712 is NOT yet deployed**: prod is at `8bd6962`, #712
+  (`4428201`) is 9 commits ahead of deployed. Verified by grepping
+  the deployed AnalysisPanel.tsx at that commit — no PathInsights
+  import/Section, and the live DOM confirms no "Path insights"
+  heading or any "Path" text in the Analysis accordion. When this
+  ships the next QA agent should force an RT compute on Simple
+  Street Canyon and verify the top-K path table populates with LOS
+  #1 dominating (expected given open geometry). Drove the existing
+  viz surface end-to-end on open_ground + Simple Street Canyon
+  Sionna scene with RT enabled (DiffeRT backend, depth 2, 1M rays).
+  RT compute successful in 14.8s first run, Peak 0.124 W/m²
+  (+22.1 dB margin, PASS). **Exposure distribution**: pre-RT
+  43.8% illuminated (10.436 / 23.826 k triangles, 3669 cm²), post-RT
+  100% illuminated (23.826 / 23.826 k, 7905 cm²) — makes sense
+  since Street Canyon walls reflect rays to body back. Stats table
+  Peak/P99/P95/Mean/Median values all monotonic and consistent
+  across frequency swap (28→10 GHz: Peak 0.124→0.113, mean
+  0.024→0.023). **SAB histogram**: Plotly log-scale histogram
+  rendered with green "Below limit" bars correctly binned (no
+  "Above limit" red bars since PASS). **Power sweep**: plot shows
+  margin-vs-TX-power curve crossing y=0 at 62.0 dBm; "Max
+  compliant: 62.0 dBm" + Set button both work. **Frequency
+  sweep**: margin-vs-freq curve rendered cleanly. **Distance
+  sweep**: "Current distance: 2.6 m" (antenna scenario center is
+  ~3m but closest body point is 2.6m), "Min. compliant distance:
+  0.3 m" — both physically consistent with +22.1 dB margin at 2.6m
+  via 1/r² (reducing to 0.3m adds ~19 dB, leaving ~3 dB headroom
+  which rounds near-boundary). **Compliance heatmap**: 2D
+  (freq × TX power) grid rendered all-green at current operating
+  point, with legend Compliant/Exceeded/Boundary — boundary line
+  off-grid because we're well inside compliant region. **Colormap
+  controls**: dB toggle correctly switches Sab(W/m²) → Sab(dB re
+  peak) with floor -25 dB and phantom redraws with expanded color
+  range; lock toggle 🔓→🔒 persists scale across computes.
+  **Tissue spectrum**: live update confirmed at 28 GHz (eps_r=16.6,
+  sigma=25.8 S/m, T0=0.54) and 10 GHz (eps_r=31.3, sigma=8.01 S/m,
+  T0=0.49) — dots on curves move correctly, all three plots
+  (permittivity / conductivity / T0) sync. **Exports**: CSV
+  (3.16 MB, 12 columns: cx/cy/cz, area_m2, nx/ny/nz, sab_w_m2,
+  sab_4cm2_w_m2, sinc_w_m2, sinc_4cm2_w_m2; header + ~23826 rows
+  matches triangle count), TXT compliance report (S_ab 4cm² 0.11,
+  SAR_wb 0.00, S_inc local 0.23, wb 0.04, all PASS, +19.1 dB at
+  10 GHz/43 dBm), and config JSON (17.9 KB, full antenna +
+  rendering config) all download cleanly. **Q eigenvalue / rho
+  gauge**: listed in features.md as visualizations but searched
+  the DOM with MIMO enabled and found zero "Q eigenvalue" /
+  "eigenvalue" / "rho" / "ρ" strings — these live in
+  `src/aegis/viz/` Python matplotlib/plotly dashboards, not the
+  React viewer. Features doc could clarify this to avoid future
+  confusion. **Three minor observations not filed**: (a) clicking
+  Analysis section accordions collapses Export (accordion behaves
+  as single-open), defensible UX not a bug; (b) during the session
+  3× `/api/capabilities` 404s surfaced in the console — not
+  reproducible from a clean reload, possibly a race against
+  session refresh; the store seems to cope so no user-visible
+  impact; (c) RT compute trace label still reads "Spatial +F"
+  in the header even though the compute actually came from
+  `/api/compute/rt` — the label reflects the physics corrections
+  toggled, not the path source, and is consistent but slightly
+  misleading when RT is enabled. Worth a UX tweak ("RT + F") but
+  not bug-filing. Confident the deployed visualization surface is
+  healthy. Next pass should verify Path insights after the next
+  deploy catches up to master.
+
 ### 2026-04-21 06:15 UTC -- "Visualization and analysis"
 
 - Actor: interactive (qa-agent-129852)
@@ -394,6 +466,7 @@ Depth guide:
   noise, nothing actionable. Confident the deployed AnalysisPanel
   surface is healthy; flag for next swarm: re-run path-insights
   specifically once the prod bundle advances past 4428201.
+
 ### 2026-04-20 13:45 UTC -- "Exposure operator and ECBF"
 
 - Actor: interactive (qa-agent-935398)
