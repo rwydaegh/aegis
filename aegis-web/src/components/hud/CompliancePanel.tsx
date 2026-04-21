@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
 import EcbfWarningChip from './EcbfWarningChip'
 
-function tightestMarginDb(checks: Array<{ margin_db?: number | null }>): number | null {
+export function tightestMarginDb(checks: Array<{ margin_db?: number | null }>): number | null {
   const margins = checks
     .map(c => c.margin_db)
     .filter((m): m is number => m != null && isFinite(m))
@@ -16,10 +16,20 @@ function tightestMarginDb(checks: Array<{ margin_db?: number | null }>): number 
   return Math.min(...margins)
 }
 
-function computeMaxPowerDbm(checks: Array<{ margin_db?: number | null }>, currentPowerDbm: number): number | null {
+// Back off from the true compliance ceiling so the advertised value stays below
+// the UI's WARN threshold (ratio > 0.8 = ~0.97 dB below limit). Without this,
+// clicking "Max TX power" lands at ratio=1.0 on the tightest check, which is
+// still ICNIRP-compliant but flips the global status to WARN, contradicting
+// the "max compliant" label.
+export const WARN_HEADROOM_DB = 1.0
+
+export function computeMaxPowerDbm(
+  checks: Array<{ margin_db?: number | null }>,
+  currentPowerDbm: number,
+): number | null {
   const minMarginDb = tightestMarginDb(checks)
   if (minMarginDb == null) return null
-  return currentPowerDbm + minMarginDb
+  return currentPowerDbm + minMarginDb - WARN_HEADROOM_DB
 }
 
 const LABEL_TEX: Record<string, string> = {
@@ -122,7 +132,7 @@ function ComplianceSummary({ allChecks, powerDbm, onSetPower, freqHz }: Complian
         return (
           <div
             className="flex justify-between cursor-pointer hover:text-blue-200 transition-colors"
-            title="Click to set TX power to max compliant value"
+            title={`Click to set TX power to the highest value that keeps every ICNIRP check in PASS (${WARN_HEADROOM_DB.toFixed(0)} dB below the tightest limit).`}
             onClick={() => onSetPower(safeMaxPowerDbm)}
           >
             <span>Max TX power</span>
