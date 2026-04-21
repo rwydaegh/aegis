@@ -526,7 +526,7 @@ def _build_placement_evaluate_fn(
             raise RuntimeError(f"Dosimetry failed at pos {pos}")
 
         dist = float(np.linalg.norm(tx_pos - body_center))
-        extra = {
+        extra: dict[str, Any] = {
             "S_inc": float(np.sum(paths.power)),
             "distance_m": dist,
             "n_rt_paths": paths.n_paths,
