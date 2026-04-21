@@ -89,3 +89,33 @@ describe('basestations store frequency-band filter', () => {
     expect(s.activeIndices()).toEqual([])
   })
 })
+
+describe('basestations store selection reset on array swap', () => {
+  beforeEach(() => {
+    useBaseStationsStore.getState().clear()
+  })
+
+  it('clears selectedIndex when a new batch replaces the array', () => {
+    const store = useBaseStationsStore.getState()
+    const cityA = [
+      bs({ site_code: 'A1', operator: 'o1' }),
+      bs({ site_code: 'A2', operator: 'o2' }),
+      bs({ site_code: 'A3', operator: 'o3' }),
+    ]
+    store.setBasestations(cityA, { lat: 51, lon: 3 })
+    store.selectAntenna(2)
+    expect(useBaseStationsStore.getState().selectedIndex).toBe(2)
+
+    // Loading base stations for a different location swaps the array.
+    // The previous index would silently refer to a different antenna, so
+    // the selection must be dropped.
+    const cityB = [
+      bs({ site_code: 'B1', operator: 'o1' }),
+      bs({ site_code: 'B2', operator: 'o2' }),
+      bs({ site_code: 'B3', operator: 'o3' }),
+      bs({ site_code: 'B4', operator: 'o4' }),
+    ]
+    store.setBasestations(cityB, { lat: 48, lon: 2 })
+    expect(useBaseStationsStore.getState().selectedIndex).toBeNull()
+  })
+})
