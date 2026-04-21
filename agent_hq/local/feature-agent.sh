@@ -16,7 +16,7 @@ fi
 # We ship the filenames so the agent can open the ones that look relevant
 # rather than inlining thousands of lines of markdown into the prompt.
 # spinoff/personal/ is excluded - career notes, not product signal.
-SPINOFF_INDEX=$(cd "$REPO_DIR" && ls -1 spinoff/*.md spinoff/LATEST_GOOD/*.md 2>/dev/null | grep -v '/personal/' | head -40)
+SPINOFF_INDEX=$(cd "$REPO_DIR" && find spinoff -name '*.md' -not -path '*/personal/*' 2>/dev/null | sort | head -40 || true)
 
 # Internal docs index (features.md and friends).
 DOCS_INDEX=$(cd "$REPO_DIR" && ls -1 docs/internal/*.md 2>/dev/null | head -60)

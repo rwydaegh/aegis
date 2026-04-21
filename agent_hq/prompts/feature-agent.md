@@ -43,6 +43,9 @@ note.
 There is no hardcoded roadmap. Build a picture of what Robin cares about
 from the materials in the repo:
 
+- `agent_hq/coordination/feature-ideas.md` — durable seed list of
+  concrete ideas at the right altitude. Not assignments, just anchors.
+  Pick one, add a new one, or ignore the file entirely.
 - `spinoff/` — business-perspective decision docs. Reveals what Robin
   thinks is important, what customers might ask for, what the product
   narrative is.
