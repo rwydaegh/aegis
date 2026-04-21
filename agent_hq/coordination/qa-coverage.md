@@ -54,6 +54,46 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-21 02:30 UTC -- "Visualization and analysis"
+
+- Actor: interactive (qa-agent-99366)
+- Depth: medium
+- Findings: 1 bug filed: #726
+- Notes: Picked this section because recent commits `4428201` (PR #712
+  Path contributions in Analysis) and `dde6f56` (PR #713 ECBF warnings)
+  touched the analysis surface, and the last "Visualization and
+  analysis" entry was 2026-04-18. Production deployed at `8bd6962` still
+  predates PR #712 so the new Path insights panel was not exercisable.
+  Covered in `urban_ghent` and `open_ground`: Exposure distribution
+  (peak/P99/P95/mean stats match colormap visually), SAB histogram,
+  Frequency sweep (verified the flat line above 6 GHz is correct
+  physics -- Sab(4cm²) limit is a constant 20 W/m² in the mmWave regime
+  per ICNIRP 2020, and I confirmed via `/api/compliance/frequency-sweep`
+  that the backend endpoint is hardcoded to 7-100 GHz in
+  `frequency_sweep()` -- note this is an internal-API limitation, the
+  UI does not expose lower frequencies), Distance sweep (smooth
+  monotonic decay as expected), Power sweep (verified `p_max_compliant_dbm`
+  via direct API, then cross-checked against HUD -- see bug below),
+  Compliance heatmap (generates all-green plot at `open_ground`, boundary
+  line presumably outside swept range -- did not stress-test boundary
+  detection), legend dB/Lin toggle (both render correctly, dB mode
+  reveals more body structure), legend lock (🔓→🔒 sticks across
+  scenario switch), scenario switcher (`urban_ghent → open_ground`
+  correctly updates title, stats, peak Sab, and scene). Filed #726:
+  HUD "Max TX power" advertises a value (75 dBm in urban_ghent 28 GHz)
+  that becomes `WARN` when clicked -- 3 dB looser than the backend
+  `/api/compliance/power-sweep` p_max (72 dBm). Smoking-gun repro:
+  top-bar shows `WARN` while the panel's only displayed check row
+  (Sab 4cm²) shows `PASS +2.1 dB` at 75 dBm, so some invisible check
+  is dragging the global margin to 0. Root cause investigation in the
+  issue points at `evaluate_compliance()` unconditionally creating
+  `check_sar` at 28 GHz where SAR_wb arguably isn't applicable per ICNIRP
+  2020, plus divergent check sets between HUD `computeMaxPowerDbm` and
+  backend `power_sweep`. Confident in the analysis visuals; HUD
+  compliance math should get another pass after #726 fix -- this area
+  needs one more thorough run against the Path insights panel once PR
+  #712 is actually deployed.
+
 ### 2026-04-20 13:45 UTC -- "Exposure operator and ECBF"
 
 - Actor: interactive (qa-agent-935398)
