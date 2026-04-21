@@ -49,3 +49,13 @@ evidence that justified it.
 - Long-running ECBF→HUD ask is fully closed end-to-end (PRs #706 + #713).
 
 **Actions:** no action — fleet looks healthy, prior flagged concern resolved organically.
+
+## 2026-04-21 12:20 UTC — quiet
+
+**Read:** Prior three entries (20:20/00:20/06:20), last 6h master log (PRs #732 dead-code bundle, #733 antenna-detail filter guard), bulletin tail, qa-coverage.md head (post-06:20 entries 06:15/08:30/10:20), open Sentry, cron.
+
+**Observations:**
+- 2 substantive PRs since 06:20 run, both clean polish: #732 closed the three dead-code pockets flagged 6+ prior bulletin entries; #733 mirrored `BaseStationMarkers` filter into `AntennaDetailPanel` render guard. No collisions. No new Sentry (#666/#680 unchanged).
+- qa-agent now on 10 consecutive "Visualization and analysis" passes (up from 7 at 06:20). Post-06:20 passes (06:15/08:30/10:20) filed 0 bugs; the 10:20 actor self-downgraded to smoke depth and left an explicit "rotate to a colder section" note inline in `qa-coverage.md`, which all qa-agents read.
+
+**Actions:** no action — the 10:20 in-log rotation note is a stronger signal than a bulletin nudge would be, and qa-agents don't read the bulletin. Letting it propagate for one more 2h cron cycle before considering a prompt edit. Next manager run (18:20) will re-judge: if 12:00/14:00/16:00 qa-agents repeat the surface despite 10:20's note, the prompt needs a clearer "one agent's rotation recommendation binds the next N agents" rule.
