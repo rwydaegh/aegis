@@ -568,7 +568,7 @@ def _path_contributions_impl(cache: dict, cache_lock) -> RouteResponse:
         )
 
     top_k = request.args.get("top_k", 10, type=int)
-    if top_k is None or top_k < 1:
+    if top_k < 1:
         top_k = 10
     top_k = min(top_k, 100)
 
