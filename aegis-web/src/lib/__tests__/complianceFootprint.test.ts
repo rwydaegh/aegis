@@ -1,9 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import {
   computeComplianceFootprint,
+  computeComplianceVolume,
   smoothRadii,
   DEFAULT_OBSERVER_HEIGHT_M,
   type FootprintInputs,
+  type VolumeInputs,
 } from '../complianceFootprint'
 import type { AntennaElement } from '../antennaGain'
 
@@ -229,5 +231,136 @@ describe('computeComplianceFootprint — parametric check against closed form', 
     const dBody3d = Math.sqrt(bodyZ * bodyZ + 0.25)
     const expectedR = Math.sqrt(Math.max(dBody3d * dBody3d - 0.25, 0))
     expect(Math.abs(result.maxR - expectedR)).toBeLessThan(0.2)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// 3-D iso-S_inc surface
+// ---------------------------------------------------------------------------
+
+function makeVolumeInputs(partial: Partial<VolumeInputs>): VolumeInputs {
+  return {
+    antennaRadiatorPos: [0, 2, 0],
+    bodyCenterPos: [0, 1.1, 10],
+    marginDb: 0,
+    patternType: 'isotropic',
+    elements: [ISO_ELEMENT],
+    nAzimuth: 32,
+    nElevation: 17,
+    ...partial,
+  }
+}
+
+describe('computeComplianceVolume — isotropic', () => {
+  it('produces a sphere of radius ~d_body at margin_db = 0', () => {
+    const result = computeComplianceVolume(makeVolumeInputs({ marginDb: 0 }))
+    expect(result.degenerate).toBe(false)
+    expect(result.referenceValid).toBe(true)
+    const dBody3d = Math.sqrt(10 * 10 + 0.9 * 0.9)
+    const { nAzimuth, nElevation } = result
+    for (let i = 0; i < nAzimuth; i++) {
+      for (let j = 0; j < nElevation; j++) {
+        const r = result.radii[i * nElevation + j]
+        expect(Math.abs(r - dBody3d)).toBeLessThan(0.1)
+      }
+    }
+  })
+
+  it('scales r by 10^(-margin/20)', () => {
+    const r0 = computeComplianceVolume(makeVolumeInputs({ marginDb: 0 })).maxR
+    const r6 = computeComplianceVolume(makeVolumeInputs({ marginDb: 6 })).maxR
+    expect(r6 / r0).toBeCloseTo(Math.pow(10, -6 / 20), 2)
+  })
+
+  it('endpoints cover -pi/2 to +pi/2 exactly', () => {
+    const v = computeComplianceVolume(makeVolumeInputs({ nElevation: 5 }))
+    expect(v.elevationsRad[0]).toBeCloseTo(-Math.PI / 2, 5)
+    expect(v.elevationsRad[v.nElevation - 1]).toBeCloseTo(Math.PI / 2, 5)
+  })
+})
+
+describe('computeComplianceVolume — directional pattern', () => {
+  it('lobes towards the patch boresight and shrinks behind', () => {
+    const inputs = makeVolumeInputs({
+      antennaRadiatorPos: [0, 2, 0],
+      bodyCenterPos: [0, 1.1, -10], // forward boresight of patch
+      marginDb: 0,
+      patternType: 'patch',
+      elements: [ISO_ELEMENT],
+      nAzimuth: 64,
+      nElevation: 17,
+    })
+    const result = computeComplianceVolume(inputs)
+    expect(result.degenerate).toBe(false)
+
+    // Find the horizontal slice (elevation ≈ 0). For odd nElevation=17, j=8 is el=0.
+    const jEq = Math.floor((result.nElevation - 1) / 2)
+    // Forward azimuth (dir = (0, 0, -1)) maps to az = atan2(0, -1) = pi,
+    // i.e. i ≈ nAzimuth / 2.
+    const iForward = Math.round(result.nAzimuth / 2)
+    const iBack = 0
+
+    const rForward = result.radii[iForward * result.nElevation + jEq]
+    const rBack = result.radii[iBack * result.nElevation + jEq]
+    expect(rForward).toBeGreaterThan(rBack * 1.5)
+    // The forward sample is the body direction itself — at margin=0 it equals d_body.
+    const dBody3d = Math.sqrt(10 * 10 + 0.9 * 0.9)
+    expect(Math.abs(rForward - dBody3d)).toBeLessThan(0.5)
+  })
+
+  it('short_dipole has a null along its axis', () => {
+    // Dipole along y-axis. Gain ∝ sin²(angle from y-axis), so along ±y the gain is 0.
+    const result = computeComplianceVolume(makeVolumeInputs({
+      bodyCenterPos: [0, 1.1, 10],
+      patternType: 'short_dipole',
+    }))
+    // Zenith sample (elevation = +pi/2) points along +y; gain = 0 => radius floor.
+    const jZenith = result.nElevation - 1
+    for (let i = 0; i < result.nAzimuth; i++) {
+      expect(result.radii[i * result.nElevation + jZenith]).toBeLessThan(0.5)
+    }
+  })
+})
+
+describe('computeComplianceVolume — robustness', () => {
+  it('returns degenerate for NaN margin', () => {
+    const result = computeComplianceVolume(makeVolumeInputs({ marginDb: NaN }))
+    expect(result.degenerate).toBe(true)
+    expect(result.maxR).toBe(0)
+  })
+
+  it('returns degenerate when antenna and body coincide', () => {
+    const result = computeComplianceVolume(makeVolumeInputs({
+      antennaRadiatorPos: [0, 2, 0],
+      bodyCenterPos: [0, 2, 0],
+    }))
+    expect(result.degenerate).toBe(true)
+  })
+
+  it('caps every sample at maxRadiusM for highly noncompliant inputs', () => {
+    const result = computeComplianceVolume(makeVolumeInputs({
+      marginDb: -80,
+      maxRadiusM: 120,
+    }))
+    for (let k = 0; k < result.radii.length; k++) {
+      expect(result.radii[k]).toBeLessThanOrEqual(120.001)
+    }
+  })
+
+  it('flags reference as invalid when body is in a pattern null', () => {
+    const result = computeComplianceVolume(makeVolumeInputs({
+      bodyCenterPos: [0, 1.1, 10], // back of patch
+      patternType: 'patch',
+    }))
+    expect(result.referenceValid).toBe(false)
+  })
+
+  it('clamps nAzimuth and nElevation to sensible minima', () => {
+    const result = computeComplianceVolume(makeVolumeInputs({
+      nAzimuth: 2, // will be clamped to 4
+      nElevation: 1, // will be clamped to 3
+    }))
+    expect(result.nAzimuth).toBe(4)
+    expect(result.nElevation).toBe(3)
   })
 })
