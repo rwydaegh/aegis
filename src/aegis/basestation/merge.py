@@ -94,17 +94,28 @@ def _bfs_cluster_labels(
 
 
 def _merge_cluster_rows(group: pd.DataFrame) -> pd.Series:
-    """Merge a cluster: keep first row, fill NaNs from subsequent rows."""
+    """Merge a cluster: keep first row, fill NaNs from subsequent rows.
+
+    When a value column is filled from a lower-priority row, its companion
+    ``{col}_source`` column (if present) is copied from the same row so the
+    provenance origin follows the actual data source rather than staying at
+    the first row's "missing".
+    """
     if len(group) == 1:
         return group.iloc[0]
     merged = group.iloc[0].copy()
+    columns = list(merged.index)
+    source_cols = {c for c in columns if c.endswith("_source")}
     for idx in range(1, len(group)):
         other = group.iloc[idx]
-        for col in merged.index:
-            if col in ("_norm_op", "_cluster"):
+        for col in columns:
+            if col in ("_norm_op", "_cluster") or col in source_cols:
                 continue
             if pd.isna(merged[col]) and pd.notna(other[col]):
                 merged[col] = other[col]
+                src_col = f"{col}_source"
+                if src_col in source_cols:
+                    merged[src_col] = other[src_col]
     return merged
 
 
