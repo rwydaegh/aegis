@@ -210,6 +210,42 @@ class TestMergeSources:
         assert result["Power_source"].iloc[0] == "gov:brussels"
         assert result["Azimuth_source"].iloc[0] == "gov:brussels"
 
+    def test_lower_priority_fill_updates_source(self):
+        """When a high-priority row has NaN and a low-priority row fills the value,
+        the companion ``*_source`` column must track the actual origin, not stay
+        at the first row's "missing" tag. Otherwise fidelity_tier collapses to
+        ``location_only`` for rows that actually have every field populated.
+        """
+        gov = pd.DataFrame(
+            {
+                "SiteCode": ["S1"],
+                "AntennaLabel": ["A1"],
+                "Operator": ["Proximus"],
+                "Technology": ["5G"],
+                "Latitude": [50.85],
+                "Longitude": [4.35],
+                "Power": [np.nan],
+                "FrequencyBand": ["Band3600MHz"],
+            }
+        )
+        ocid = pd.DataFrame(
+            {
+                "SiteCode": ["S2"],
+                "AntennaLabel": ["A2"],
+                "Operator": ["Proximus"],
+                "Technology": ["5G"],
+                "Latitude": [50.850001],
+                "Longitude": [4.350001],
+                "Power": [42.0],
+                "FrequencyBand": ["Band3600MHz"],
+            }
+        )
+        sources = [(gov, "gov:brussels", 1), (ocid, "ocid", 3)]
+        result = merge_sources(sources, distance_m=50)
+        assert len(result) == 1
+        assert result["Power"].iloc[0] == 42.0
+        assert result["Power_source"].iloc[0] == "ocid"
+
 
 class TestEstimateWithProvenance:
     def test_fills_nan_with_estimation_tag(self):
