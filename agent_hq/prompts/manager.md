@@ -30,6 +30,16 @@ the action is cheap and reversible.
 
 At the start of each run, sample:
 
+- **Agent liveness.** For each worker in `crontab -l`, compare the newest
+  file in `agent_hq/local/logs/<agent>_*.log` against the agent's cron
+  cadence. If an agent has missed 2+ scheduled slots with no log at all
+  (not "ran and exited clean" — *no log written*), it is silently
+  failing and needs investigation. This is invisible in PR counts and
+  bulletin entries, so if you skip this check you will miss it. Common
+  causes: a shell script dying before `tee "$LOG_FILE"` due to
+  `set -euo pipefail` hitting a now-empty glob, a missing binary after a
+  PATH change, or a broken worktree state. Diagnose by running the
+  script manually with `bash -x`.
 - Last 24–48h of merged PRs, closed-unmerged PRs, and closed issues
   (`gh pr list`, `gh issue list`)
 - Current `agent_hq/coordination/bulletin.md` and recent
