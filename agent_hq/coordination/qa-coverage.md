@@ -54,6 +54,52 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-21 18:20 UTC -- "Compliance and regulatory"
+
+- Actor: interactive (qa-agent-305702)
+- Depth: medium
+- Findings: none filed
+- Notes: Targeted follow-up on prod commit `72eebbc` to verify the
+  three compliance-related PRs that shipped since the last compliance
+  QA (4 hours earlier was still on `8bd6962`). All three land cleanly.
+  **PR #727 (Max TX power -> PASS not WARN)**: default Open Ground
+  28 GHz, current TX 43 dBm, HUD shows Max TX power=65.0 dBm. Click
+  the row -> store setter fires, recompute runs, Sab(4cm^2) lands at
+  12.75 / 20.00 W/m^2 (+1.9 dB), Margin +1.1 dB, global badge stays
+  **PASS** (green). Before the 1 dB WARN_HEADROOM in
+  CompliancePanel.tsx:24 this would snap to WARN at ratio=1.0 on
+  the tightest check; the headroom keeps ratio at ~0.794 (<0.8).
+  **PR #720 (drop SAR_wb above 6 GHz)**: enabled all Reference-level
+  quantity checkboxes. At 28 GHz compliance.checks returns exactly
+  3 entries (Sab(4cm^2) +23.9 dB, S_inc(local) +23.1 dB, S_inc(wb)
+  +26.9 dB) with no SAR_wb -- overall Margin +23.1 dB matches
+  tightest visible (S_inc local). Same at 60 GHz (Sab(1cm^2) replaces
+  Sab(4cm^2), S_inc local limit correctly scales 30.49 -> 26.65 W/m^2
+  per ICNIRP Table 6 formula 55*f^-0.177). At 0.9 GHz: only SAR_wb
+  returned (0.00 / 0.08 W/kg, +22.5 dB), no S_ab / S_inc rows --
+  correct mirror behavior. The older `hidden check drives Margin
+  below visible checks' values` UX quirk from the 08:30 UTC compliance
+  entry is now only ever triggered by S_inc (which users can expose
+  via the Reference-level checkboxes); the SAR_wb version is gone.
+  **PR #730 (per-check margin_db in MIMO response)**: enabled MIMO
+  (1/1 USER), recompute returned all 3 checks with margin_db populated
+  (Sab +19.6, S_inc local +18.8, S_inc wb +13.9). The CheckRow only
+  renders `margin_db` when it's a finite number, so the visible
+  `+N.NdB` next to each PASS/FAIL is direct confirmation the MIMO
+  backend now includes margin_db per check. **Other stress**:
+  pushed TX to 75 dBm -> all 3 checks flip FAIL with negative
+  margins (-8.1/-8.9/-5.1 dB), global badge red, heatmap legend
+  auto-scales to 128 W/m^2 peak, no NaN or crash. Occupational
+  toggle at 60 GHz raises all limits exactly 5x (Sab 40->200,
+  S_inc local 26.65->133.23, S_inc wb 10->50 W/m^2; Margin bumps
+  +22.5 -> +29.5 dB = +7.0 dB = 10*log10(5)). Sub-6 -> FR2
+  transitions swap quantities correctly (SAR_wb <-> Sab(4cm^2) at
+  6 GHz boundary, Sab(4cm^2) -> Sab(1cm^2) at 30 GHz boundary; the
+  Basic restriction checkboxes auto-toggle their enabled state).
+  Console clean apart from Three.js deprecation noise and GL_CLOSE_PATH_NV
+  stalls. Confident Compliance logic is healthy on the deployed
+  build; all three target PRs behave as the commit messages promise.
+
 ### 2026-04-21 16:34 UTC -- "Base station pipeline"
 
 - Actor: interactive (qa-agent-269882)
