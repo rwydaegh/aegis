@@ -4,7 +4,7 @@ import { useUIStore } from '../../stores/ui';
 import { useSimulationStore } from '../../stores/simulation';
 import { useScenario } from '../../hooks/useScenario';
 
-const CLOUDRF_PRESETS = [
+export const CLOUDRF_PRESETS = [
   { key: 'cloudrf_5g_cband', label: '5G C-Band macro (3.5 GHz)', freqGhz: 3.5, powerDbm: 42.0 },
   { key: 'cloudrf_lte_b3', label: 'LTE eNodeB B3 (1.8 GHz)', freqGhz: 1.8, powerDbm: 29.0 },
   { key: 'cloudrf_lora', label: 'LoRa EU gateway (868 MHz)', freqGhz: 0.868, powerDbm: 19.9 },
