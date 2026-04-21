@@ -251,7 +251,7 @@ def _extract_breadcrumbs(event: dict) -> list[str]:
             elif cat == "navigation":
                 result.append(f"`{ts}` **nav:** {data.get('from', '?')} -> {data.get('to', '?')}")
             else:
-                desc = msg or json.dumps(data)[:80] if data else cat
+                desc = msg or (json.dumps(data)[:80] if data else cat)
                 result.append(f"`{ts}` **{cat}:** {desc}")
         return result
     return []
