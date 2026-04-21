@@ -31,8 +31,6 @@ def cloudrf_template_to_scenario(template_path: str) -> dict:
         "description": f"{label} ({freq_mhz} MHz, {gain_dbi} dBi, {eirp_dbm} dBm EIRP)",
         "label": label,
         "icon": "radio",
-        "instant": True,
-        "autoCompute": True,
         "hidden": False,
         "webState": {
             "freqGhz": freq_ghz,

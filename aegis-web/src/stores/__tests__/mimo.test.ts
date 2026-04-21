@@ -206,7 +206,6 @@ describe('MIMO store', () => {
     expect(after.summaryStats).toBeNull()
     expect(after.precoderWeights).toBeNull()
     expect(after.lastComputeError).toBeNull()
-    expect(after.lastSuccessfulUserCount).toBe(0)
     // Config preferences preserved
     expect(after.arrayConfig).toEqual(initialConfig)
     expect(after.precoderType).toBe('zf_exposure')

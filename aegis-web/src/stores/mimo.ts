@@ -58,7 +58,6 @@ interface MIMOStore {
   showAllHeatmaps: boolean
   showArrayPattern: boolean
   lastComputeError: string | null
-  lastSuccessfulUserCount: number
   _nextUserNumber: number
   _configVersion: number
 
@@ -101,7 +100,6 @@ const INITIAL_STATE = {
   showAllHeatmaps: false,
   showArrayPattern: true,
   lastComputeError: null as string | null,
-  lastSuccessfulUserCount: 0,
   _nextUserNumber: 1,
   _configVersion: 0,
 }
@@ -132,7 +130,6 @@ export const useMIMOStore = create<MIMOStore>((set, get) => ({
         summaryStats: null,
         precoderWeights: null,
         lastComputeError: null,
-        lastSuccessfulUserCount: 0,
         _nextUserNumber: 1,
       })
       return
