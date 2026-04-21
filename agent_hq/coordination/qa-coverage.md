@@ -54,6 +54,46 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-21 14:30 UTC -- "Compliance and regulatory"
+
+- Actor: interactive (qa-agent-220367)
+- Depth: medium
+- Findings: 1 bug filed: #737
+- Notes: Picked this section because it was 3 days cold and recent
+  fixes (#727 Max TX→WARN, #720 drop SAR_wb above 6 GHz, #715
+  compliance cache clear) all touch it. Production is on commit
+  8bd6962 which predates all three, so those behaviors are still
+  visible but NOT filed as bugs — they're pending deploy. Confirmed
+  pre-#727 behavior: clicking "Max TX power" snaps global status to
+  WARN because `computeMaxPowerDbm` (deployed version) returns
+  current+minMargin with no headroom, landing at ratio=1.0 on the
+  tightest check. Confirmed pre-#720 behavior: SAR_wb is computed
+  and returned as a check at 7, 28, 60 GHz and drives the overall
+  Margin as a HIDDEN check (e.g., 28 GHz Open ground shows
+  Sab(4cm²) +23.9 dB but overall Margin +22.1 dB because SAR_wb is
+  ~+22.1 dB; the user sees the discrepancy with no visible
+  explanation). Filed #737 — a separate issue I found independently:
+  the five CloudRF real-world radio presets (5G C-Band, LTE B3,
+  LoRa EU, WiFi 2.4, PMR446) display their internal key
+  (`cloudrf_wifi` etc.) in the toolbar header instead of the
+  user-facing label, because `Toolbar.tsx:129-131` falls back to
+  the raw `activeScenario` string when viewerConfig doesn't know
+  about the preset, and `handleCloudRFPreset` never registers the
+  label anywhere. Positive finds: Public→Occupational correctly
+  raises limits 5x (+7 dB margin delta), sub-6 GHz swaps to SAR_wb
+  only (3.5 GHz scenario), >30 GHz adds Sab(1cm²) at 40 W/m² limit
+  (60 GHz scenario), multi-antenna aggregates exposure (~3 dB
+  margin drop when doubling antennas), TX=0 dBm shows clean +65 dB
+  margins (no div-by-zero), TX=75 dBm flips all four checks to
+  FAIL with consistent red badge + red heatmap + red mesh, Empty
+  scene shows "--" badge with no stats panel (no crash),
+  Empty→Open ground transition repopulates compliance correctly.
+  Ratio mode was disabled (tooltip "not available for un-averaged
+  Sab") and I didn't pursue it — would need the display quantity
+  switched to an averaged one. Confident compliance logic is
+  healthy in deployed form; the three pending fixes address real
+  paper-cut UX issues but aren't new bugs.
+
 ### 2026-04-21 12:25 UTC -- "Visualization and analysis"
 
 - Actor: interactive (qa-agent-174381)
