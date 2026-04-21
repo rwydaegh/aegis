@@ -54,19 +54,19 @@ Empirical transmission coefficients. Several groups observed that a nearly const
 - Kodera et al. (2024) showed SAR_wb = T_tr x A_perp x S_inc / W, reproducing 3D FDTD to within 5% from 10-100 GHz. T_tr was extracted from a 1D slab model. No physical mechanism was identified for its near-constancy.
 - Li et al. (2019) showed numerically that transmitted flux is nearly insensitive to incidence angle on a flat skin model from 6 GHz to 1 THz, but did not consider 3D geometry.
 - Diao et al. (2024) obtained T ~ 0.52 at 28 GHz from anatomical FDTD.
-- Bamba et al. (2012, 2015) [same research group, UGent INTEC-WAVES] measured absorption efficiency eta ~ 0.5 in reverberation chambers, but did not identify the physical origin of this near-constant value.
+- Bamba et al. (2012, 2015) [same research group, UGent INTEC-WAVES] measured absorption efficiency η ~ 0.5 in reverberation chambers, but did not identify the physical origin of this near-constant value.
 
 *Difference:* all these works observed empirically that a nearly constant coefficient works, but none identified the physical mechanism (pseudo-Brewster compensation), derived the coefficient from Fresnel theory, extended the result to spatial maps on 3D bodies, handled polarisation-dependent dosimetry, or built an exposure operator for coherent MIMO beamforming.
 
 SAR matrix for MIMO (Hochwald 2014, Ying 2015-2017). The SAR matrix formulation S (where P_abs = x^H S x) and the QCQP precoder solution were introduced for uplink (handset) SAR at sub-6 GHz. In all works, the SAR matrix entries are calibrated by FDTD simulation with no closed-form content. *Difference:* the exposure operator Q disclosed here has closed-form entries derived from Fresnel theory and body geometry, requires no FDTD calibration, and works for the downlink base-station geometry.
 
-Commercial tools (Sim4Life by ZMT, CST Studio by Dassault, ANSYS HFSS). These tools all implement FDTD or FEM, are not real-time, and are not differentiable. They are desktop-only with expensive licenses (~50-60K/year) and offer no integration with real base station data or 3D environment reconstruction. *Difference:* the platform disclosed here runs in a web browser, computes in milliseconds, integrates real antenna data from government databases, and supports gradient-based optimization.
+Commercial tools (Sim4Life by ZMT, CST Studio by Dassault, ANSYS HFSS). These tools all implement FDTD or FEM, are not real-time, and are not differentiable. They are desktop-only with expensive module-based licensing: Sim4Life is priced per module (solver, phantom libraries, sub-gridding, each a separate seat), and a typical research or industrial configuration runs into the tens of thousands of dollars per year once a useful mix is combined. Dedicated measurement hardware (SPEAG DASY8 class) is a separate six-figure capital investment. None of these tools integrate real base station data or 3D environment reconstruction. *Difference:* the platform disclosed here runs in a web browser, computes in milliseconds, integrates real antenna data from government databases, and supports gradient-based optimization.
 
 Summary comparison with closest prior art:
 
 | Capability | Kodera (2024) | Li (2019) | Bamba (2012-15) | Ying (2015-17) | Sim4Life / CST | This invention |
 |---|---|---|---|---|---|---|
-| Tavg ~ T_0 (angular constancy) | Empirical | Empirical | Empirical | -- | N/A | Derived from Fresnel theory |
+| T_avg ~ T_0 (angular constancy) | Empirical | Empirical | Empirical | -- | N/A | Derived from Fresnel theory |
 | Local S_ab(r) on 3D body | -- | Flat slab only | -- | -- | FDTD (hours) | Closed-form (milliseconds) |
 | Exposure operator Q | -- | -- | -- | FDTD-calibrated | FDTD-calibrated | Closed-form from geometry |
 | Differentiable | No | No | No | No | No | Yes (JAX end-to-end) |
@@ -84,11 +84,11 @@ Summary comparison with closest prior art:
 
 3. Closed-form exposure operator Q. The first exposure operator for MIMO beamforming computed entirely from body geometry and Fresnel theory, without FDTD calibration. Enables exposure-constrained beamformer design (ECBF) with an analytical QCQP solution.
 
-4. Differentiable end-to-end. The entire computation graph (surface geometry, Fresnel coefficients, absorption map, spatial averaging, compliance evaluation) supports automatic differentiation via JAX. This enables gradient-based antenna placement optimization, tilt/power optimization under ICNIRP constraints, and MIMO precoder design. No existing dosimetry method is differentiable.
+4. Differentiable end-to-end. The entire computation graph (surface geometry, Fresnel coefficients, absorption map, spatial averaging, compliance evaluation) supports automatic differentiation via JAX. This enables gradient-based antenna placement optimization, tilt/power optimization under ICNIRP constraints, and MIMO precoder design. To the inventor's knowledge, no published dosimetry framework offers end-to-end differentiability.
 
-5. Interactive platform. A deployed web application where a user types a city name, sees real antenna installations from government databases, clicks to place a human body, and gets an ICNIRP compliance assessment in under one second. Multi-user MIMO with multiple body models. Three optimization algorithms. No existing compliance tool offers this workflow.
+5. Interactive platform. A deployed web application where a user types a city name, sees real antenna installations from government databases, clicks to place a human body, and gets an ICNIRP compliance assessment in under one second. Multi-user MIMO with multiple body models. Three optimization algorithms. No commercial or open-source compliance tool known to the inventor offers this workflow.
 
-6. Real-world data integration. The platform ingests real base station data from 14 government databases across the EU and beyond (~293K antennas), classifies antenna types (mMIMO, sector, small cell), assigns radiation patterns from a library of 1,200+ real patterns, reconstructs 3D urban environments from OpenStreetMap and Google 3D Tiles, and feeds all of this into the dosimetry engine. Nothing else connects laboratory dosimetry to operational network compliance.
+6. Real-world data integration. The platform ingests real base station data from 14 government databases across the EU and beyond (~293K antennas), classifies antenna types (mMIMO, sector, small cell), assigns radiation patterns from a library of 1,200+ real patterns, reconstructs 3D urban environments from OpenStreetMap and Google 3D Tiles, and feeds all of this into the dosimetry engine. The inventor is not aware of another tool that connects laboratory dosimetry to operational network compliance at this data scale.
 
 7. Full frequency range. Valid from 100 MHz to 100 GHz via the T_0/T_bar mechanism. Existing closed-form results were limited to single frequencies or narrow bands.
 
@@ -97,6 +97,12 @@ Summary comparison with closest prior art:
 9. Nine fidelity levels. A composable fidelity ladder from O(1) bounds (level 0) through aggregate directivity (level 1) and incoherent spatial maps (levels 2-6) to coherent MIMO (level 7) and exposure-constrained beamforming (level 8). Each level adds one physics correction. Users select the accuracy-speed trade-off appropriate to their use case.
 
 10. Conservative for compliance. Below 40 GHz, the T_0 approximation underestimates absorbed power. The method never certifies a non-compliant deployment as compliant.
+
+11. Solid-angle view-factor whole-body absorption (near-field result). For a point source at d > 3*λ, the total absorbed power reduces to P_abs = P_t * T_0 * Ω_body(r_s) / (4*π), where Ω_body(r_s) is the solid angle subtended by the visible front-facing body surface as seen from the source. For a directive antenna the integral carries the gain pattern as a weight. This is structurally identical to the emissive view-factor formula of radiative heat transfer, with T_0 replacing emissivity. Whole-body compliance becomes a pure geometric integral on a triangle mesh, for which efficient algorithms already exist in the radiometry and computer-graphics literature.
+
+12. Spherical-harmonic antenna-body decoupling (near-field result). For any fixed source position r_s, the absorbed power decomposes as P_abs = (T_0 / 4*π) * sum_{lm} g_lm * Γ_lm(r_s), where Γ_lm(r_s) is a precomputed body-response coefficient and g_lm are the spherical-harmonic coefficients of the antenna gain. The lookup table is approximately 50 MB per body at phone-scale resolution (1 cm grid, 50 cm extent, L up to 6). Any candidate antenna design at a fixed position is then evaluated in O(L^2) operations by a dot product. Standard FDTD/FEM workflows re-run per configuration and do not offer this pre-computation.
+
+13. Differentiability in the near field. The point-source absorption law is smooth in the source position r_s, in the antenna gain pattern (through g_lm or directly), and in all coherent-MIMO variables. Ω_body(r_s) and Γ_lm(r_s) are themselves smooth in r_s. Device pre-compliance therefore becomes a gradient-based design problem rather than a worst-case full-wave sweep. To the inventor's knowledge, this differentiability is not available in any published near-field dosimetry framework or in commercial full-wave tools.
 
 | Property | FDTD/FEM | This invention |
 |----------|----------|----------------|
@@ -117,51 +123,57 @@ Further technical effect (EPO G 1/19). The invention produces a further technica
 
 The method. Two physical insights reduce volumetric dosimetry to a surface-geometric computation:
 
-*Insight 1 (pseudo-Brewster compensation):* For biological tissue (complex refractive index |n| ~ 3-7), the TE and TM Fresnel power transmissions compensate each other. Their unpolarised average remains within 5.6% of the normal-incidence value T_0 over 0-75 degrees. This allows replacing angle-dependent transmission with a single scalar T_0 (= 0.54 for skin at 28 GHz).
+*Insight 1 (pseudo-Brewster compensation):* For biological tissue (|n| ~ 3-7), the TE and TM Fresnel power transmissions compensate each other. Their unpolarised average is within 5.6% of the normal-incidence value T_0 over 0-75 degrees. This allows replacing angle-dependent transmission with a single scalar T_0 (= 0.54 for skin at 28 GHz).
 
 *Insight 2 (surface confinement):* Above 6 GHz, the skin depth (< 1 mm) confines all absorption to the surface. Only the body's external shape matters.
 
 These yield the geometric absorption law:
 
-    S_ab(r) = S_inc * T_0 * ReLU[n_hat(r) . (-k_hat)]
+    S_ab(r) = S_inc(r) * T_0 * ReLU[n_hat(r) . (-k_hat(r))]
+
+The same equation covers far-field and radiating-near-field illumination. In the far-field limit (base stations, distant transmitters) S_inc and k_hat are constant across the body and the formula reduces to the plane-wave form.
+
+In the radiating near-field at source distance d > 3*λ (3.2 cm at 28 GHz, 1.5 cm at 60 GHz, 0.9 cm at 100 GHz), S_inc(r) = P_t * G(k_hat(r)) / (4*π*d(r)^2) and k_hat(r) = (r - r_s)/d(r) vary over the body surface. The pointwise law, the spatial map, total absorbed power, the exposure operator Q, and the ECBF precoder are all unchanged. This is the regime that governs device pre-compliance under IEC/IEEE 63195-2. Only the reactive near-field (d < λ/(2*π), at most 1.7 mm at 28 GHz) falls outside this framework and requires full-wave simulation.
+
+Two integrated near-field results follow from the pointwise law (derived in full in the monograph, summarised under "Advantages" above). First, a solid-angle view-factor formula P_abs = P_t T_0 Ω_body(r_s)/(4*π) for whole-body absorbed power, structurally identical to radiative-heat-transfer view factors. Second, a spherical-harmonic antenna-body decoupling Γ_lm(r_s) that reduces per-configuration antenna-pattern evaluation to a ~50 MB lookup and an O(L^2) dot product. Both are differentiable in r_s, in antenna-pattern parameters g_lm, and in body-pose variables.
 
 Essential elements:
-1. A tissue-dependent electromagnetic transmission coefficient (T_0, or the exact angle-dependent Tavg(theta), or the flux-averaged T_bar(f))
-2. A surface mesh of the human body with triangle normals
-3. Incident wave parameters: power density and propagation direction per source
-4. For coherent MIMO: the exposure channel matrix G_tilde and the exposure operator Q = integral of G_tilde^H G_tilde dA
-5. For optimization: a differentiable computation graph (JAX) enabling gradient-based search over antenna parameters
+
+1. A tissue-dependent transmission coefficient (T_0, or T_avg(θ), or T_bar(f))
+2. A human-body surface mesh with triangle normals
+3. Incident wave parameters: power density and propagation direction per source (body-constant for far field, derived from r_s and the antenna gain pattern G(u_hat) for near-field point sources)
+4. For coherent MIMO: the exposure channel matrix G_tilde and exposure operator Q = integral of G_tilde^H G_tilde dA (the same construction applies in both regimes)
+5. For optimization: a differentiable computation graph (JAX) over antenna parameters
+6. For fast device evaluation: the precomputed body-response tables Ω_body(r_s) and Γ_lm(r_s)
 
 Elements that can be varied:
-- The transmission coefficient variant: T_0 (constant, fastest), Tavg(theta) (exact, per-triangle), T_bar(f) (flux-averaged, for sub-6 GHz). Different accuracy-speed trade-offs.
-- The body mesh complexity: from simple ellipsoids to high-resolution anatomical phantoms (8 phantoms included, plus SMPL-X parametric generation)
-- The number of fidelity levels: O(1) bound, O(N) aggregate, O(M_tri * N) spatial, coherent MIMO
-- The propagation environment: synthetic paths, stochastic 3GPP channel models (91 presets), or deterministic ray tracing (DiffeRT on GPU with JAX, Sionna RT with OptiX)
-- The 3D environment source: OpenStreetMap buildings, Google Photorealistic 3D Tiles, SRTM terrain, GeoJSON, or voxel data
-- The base station data source: 14 government APIs (7 EU + 7 non-EU), OpenCellID, or user-specified
+- Transmission coefficient variant: T_0, T_avg(θ), or T_bar(f) (accuracy-speed trade-offs)
+- Body mesh: simple ellipsoids through high-resolution phantoms (8 phantoms plus SMPL-X parametric generation)
+- Fidelity level: O(1) bound, O(N) aggregate, O(M_tri * N) spatial, coherent MIMO
+- Propagation environment: synthetic paths, stochastic 3GPP channel models (91 presets), or deterministic ray tracing (DiffeRT on GPU with JAX, Sionna RT with OptiX)
+- 3D environment source: OpenStreetMap, Google Photorealistic 3D Tiles, SRTM terrain, GeoJSON, or voxel data
+- Base station data: 14 government APIs (7 EU + 7 non-EU), OpenCellID, or user-specified
 - Tissue type and frequency: any tissue with known dielectric properties, 100 MHz to 100 GHz
-- Source distance: the framework applies from far-field (distant base stations) through radiating near-field (d > lambda/(2*pi), covering phones, wearables, AR headsets, and laptops at typical body proximity) with the same surface mesh and the same per-point absorption law
+- Source distance: unified treatment of far-field (base stations) and radiating-near-field sources at d > 3*λ (devices at typical body proximity: phones, tablets, laptops, AR headsets). Reactive near-field excluded. Intermediate range λ/(2*π) <= d <= 3*λ, relevant to close wearables, is the subject of ongoing FDTD-matched validation.
 
 Extensions:
 - Polarisation: exact handling via absorption Stokes vector (P_abs = m . s_inc)
-- Sub-6 GHz: replace T_0 with T_bar for exact direction-averaged results at any frequency above 100 MHz
-- Coherent MIMO: S_ab(r) = ||G_tilde(r) x||^2. Exposure operator Q. Closed-form exposure-constrained beamformer (ECBF) via QCQP.
+- Sub-6 GHz: T_bar replaces T_0 for exact direction-averaged results from 100 MHz
+- Coherent MIMO: S_ab(r) = ||G_tilde(r) x||^2. Closed-form exposure-constrained beamformer (ECBF) via QCQP.
 - Optimization: antenna placement grid search, tilt/power gradient descent under ICNIRP constraints, MIMO precoder optimization via Adam with projected gradient descent
-- Near-field devices: point-source illumination valid at d > lambda/(2*pi) (1.7 mm at 28 GHz, 0.8 mm at 60 GHz). The absorption law holds pointwise with spatially varying S_inc(r) and k_hat(r). A precomputed spherical-harmonic decoupling Gamma_lm(r_s) per source position reduces 10,000 antenna-pattern evaluations at a fixed device location to a dot product per pattern.
-
-The software (AEGIS): Python library + web-based interactive 3D platform implementing all of the above. Nine fidelity levels (0-8). Real-time 3D viewer (Flask + React + Three.js) with interactive antenna placement, multi-user MIMO, ICNIRP compliance dashboard, and three optimization algorithms. OpenStreetMap and Google 3D Tiles environment reconstruction. GPU ray tracing via Modal serverless (DiffeRT on T4, Sionna RT on L4). Real base station data from 14 government databases. 1,200+ real antenna patterns. 3GPP TR 38.901 stochastic channel generator with 91 presets. ~33,000 lines Python, ~21,000 lines TypeScript, 2,469 automated tests.
+- Uplink exposure operator for device MIMO: the same Q-operator construction applies to the handset-side uplink with the point-source Green's function replacing the far-field channel. This gives a closed-form exposure-constrained precoder (ECBF) for handset mmWave MIMO without FDTD recalibration. The inventor is not aware of a prior closed-form uplink ECBF that accounts for near-field body absorption.
 
 ### If possible, provide a figure that shows all features of the invention.
 
-The interactive viewer at https://aegis.waves-ugent.be (current password: WiCa2026#) shows all features of the invention in a live, regularly updated deployment. The platform can be explored interactively: place antennas, compute dosimetry heatmaps, run MIMO scenarios, and assess ICNIRP compliance in real time. The password is changed periodically; contact the inventor for current credentials.
+The interactive viewer at https://aegis.waves-ugent.be shows all features of the invention in a live, regularly updated deployment. The platform can be explored interactively: place antennas, compute dosimetry heatmaps, run MIMO scenarios, and assess ICNIRP compliance in real time. The deployment is password-protected. Contact the inventor for current credentials.
 
 ### Does your invention possess disadvantages or limitations? Indicate how they might be overcome.
 
-1. Reactive near-field exclusion. Not valid when the source sits inside d < lambda/(2*pi) of the body (1.7 mm at 28 GHz, 0.8 mm at 60 GHz, 14 mm at 3.5 GHz). In this regime evanescent fields and antenna-body impedance coupling require full-wave simulation. *Can be overcome:* the radiating near-field (d > lambda/(2*pi)) and far-field are covered by the framework with the point-source extension, so the exclusion applies only to sources in direct contact with the skin.
+1. Reactive near-field exclusion. The pointwise absorption law is not valid for sources inside the reactive-near-field boundary d < λ/(2*π) (1.7 mm at 28 GHz, 0.8 mm at 60 GHz, 14 mm at 3.5 GHz). In this regime evanescent fields and antenna-body impedance coupling require full-wave simulation. The radiating-near-field regime d > 3*λ is covered by the point-source extension with a single unified absorption law. The intermediate range λ/(2*π) <= d <= 3*λ, relevant to wearables and on-body devices, is the subject of ongoing FDTD-matched validation. Extension to that range is a software and validation task rather than a new invention.
 
-2. Surface absorption assumption below 6 GHz. The local spatial map loses physical meaning below ~6 GHz when multi-layer resonances become significant. *Can be overcome:* total-power results remain valid via T_bar; the local map limitation is inherent to the surface-confinement physics.
+2. Surface absorption assumption below 6 GHz. The local spatial map loses physical meaning below ~6 GHz when multi-layer resonances become significant. *Can be overcome:* total-power results remain valid via T_bar. The local map limitation is inherent to the surface-confinement physics.
 
-3. Diffraction. Geometric optics; diffraction modelling is approximate (GELU smoothing at shadow boundaries). ~10% error on total absorbed power for torso-sized bodies at mmWave. *Can be overcome:* GTD correction layer (partially implemented at fidelity level 6).
+3. Diffraction. Geometric optics. Diffraction modelling is approximate (GELU smoothing at shadow boundaries). ~10% error on total absorbed power for torso-sized bodies at mmWave. *Can be overcome:* GTD correction layer (partially implemented at fidelity level 6).
 
 4. Tissue property uncertainty. Dielectric properties are uncertain to 10-20%. The framework error (2-6%) is well within this parametric uncertainty. *Inherent to the field.*
 
@@ -177,7 +189,7 @@ The software (AEGIS v0.28.0) is deployed on a production server at https://aegis
 - Core engine: ~33,000 lines Python, 9 fidelity levels (0-8), JAX differentiable backend
 - Web platform: ~21,000 lines TypeScript/React, Three.js 3D rendering
 - 2,469 automated tests (golden tests against monograph tables, Mie-theory regression, Hypothesis property-based tests, end-to-end pipeline tests)
-- Integrations: DiffeRT and Sionna RT ray tracing (GPU via Modal), 14 government base station databases, 1,200+ antenna patterns (CloudRF), 3GPP TR 38.901 stochastic channel (91 presets), OpenStreetMap, Google 3D Tiles, SRTM terrain
+- Integrations: DiffeRT and Sionna RT ray tracing (GPU via Modal), 14 government base station databases, 1,200+ real antenna patterns, 3GPP TR 38.901 stochastic channel (91 presets), OpenStreetMap, Google 3D Tiles, SRTM terrain
 - Infrastructure: Docker deployment, Caddy HTTPS, Sentry error tracking, Umami analytics, CI/CD with GitHub Actions
 
 Validation:
@@ -188,8 +200,8 @@ Validation:
 
 Further development needed:
 - Journal publication (monograph and summary paper written, not yet submitted)
-- Numerical validation against full-wave FDTD on IT'IS anatomical phantoms
-- Near-field extension
+- Numerical validation against full-wave FDTD on IT'IS anatomical phantoms, prioritising the IEC/IEEE 63195-2 distance range (5-200 mm, 6-300 GHz) and the on-body wearable regime (d < 3*λ)
+- Reference software implementation of the near-field point-source mode (Eq. S_ab(r) with spatially varying inputs), the solid-angle/view-factor formula, and the Γ_lm(r_s) fast pre-compliance primitive. Framework is fully specified and derived in the monograph. Code is on the 2026-2027 AEGIS roadmap, aligned with the IEC/IEEE 63195-2 2026 draft cycle.
 - Dynamic pose tracking
 - Formal IEC/IEEE certification pathway
 - Multi-site batch processing for network-scale deployment
@@ -204,7 +216,7 @@ Further development needed:
 |------|-------------------|
 | Oral presentation(s) at meetings, conferences, companies | None |
 | Abstract, poster, proceeding posted, printed, or web-published | None |
-| Manuscript submitted for publication (including internet pre-publishing) | Planned: JSAC SI 'Digital Twins for Wireless Networks' (submission deadline May 1, 2026) |
+| Manuscript submitted for publication (including internet pre-publishing) | None |
 | Manuscript published | None |
 | Thesis submitted or defended | Planned: PhD thesis defense before August 2026. Thesis will be publicly available after defense. |
 | Report (official or internal) | None |
@@ -214,7 +226,7 @@ Further development needed:
 
 The AEGIS software is deployed on a password-protected server accessible only to the inventor. No external parties have been given access. No public demonstrations have been conducted.
 
-The novelty is fully preserved. No anticipated disclosure date has been set. The inventor will coordinate with UGent TechTransfer before any public disclosure. Journal submission is confidential peer review and does not constitute public disclosure.
+The novelty is fully preserved. No anticipated disclosure date has been set. The inventor will coordinate with UGent TechTransfer before any public disclosure.
 
 ### Prior art: publications by the inventors most closely related to the invention
 
@@ -246,7 +258,7 @@ Absorbed power density, electromagnetic dosimetry, Fresnel transmission, pseudo-
 
 ### Patents or patent applications of others most closely related to the invention
 
-No closely related patents were identified. The existing patent landscape addresses device-level SAR control (e.g. power backoff, beam selection at the handset) rather than base-station-side spatial dosimetry on body surfaces. A formal freedom-to-operate search has not yet been conducted.
+No closely related patents were identified. The existing patent landscape addresses device-level SAR control (e.g. power backoff, beam selection at the handset) rather than base-station-side spatial dosimetry on body surfaces. A formal freedom-to-operate search has not yet been conducted. It is expected to be carried out by UGent-appointed patent counsel prior to national-phase entry, covering at minimum device-OEM (Qualcomm, Apple, Samsung, Nokia, Ericsson) and simulation-vendor (ZMT, Dassault, ANSYS) portfolios.
 
 ### Who are the main academic or industrial research groups active in the field?
 
@@ -290,7 +302,7 @@ Technologiepark-Zwijnaarde 126, 9052 Gent (UGent/IMEC iGent tower).
 
 ### Does the invention incorporate any material obtained from companies or institutions outside the University?
 
-No. Open-source software tools (Sionna, DiffeRT, NumPy, React, Three.js) are used as dependencies but do not form part of the invention. Base station data is from public government APIs. Antenna patterns are from CloudRF under standard commercial terms.
+No. Open-source software tools (Sionna, DiffeRT, NumPy, React, Three.js) are used as dependencies but do not form part of the invention. Base station data is from public government APIs.
 
 ---
 
@@ -306,7 +318,7 @@ This invention arose spontaneously and was not funded by any specific research p
 
 ### Future funding that will further develop/improve the invention
 
-No external funding sources have been identified. The invention is sufficiently complete for commercialisation without additional research funding. Further development (near-field extension, numerical validation, certification) can be pursued within the current PhD or a spin-off context.
+No external funding sources have been identified. The invention is sufficiently complete for commercialisation without additional research funding. Further development (near-field software implementation, FDTD validation across the IEC/IEEE 63195-2 distance range, certification) can be pursued within the current PhD or a spin-off context.
 
 ---
 
@@ -330,7 +342,7 @@ Yes. AEGIS: approximately 54,000 lines of Python and TypeScript implementing all
 
 ### What is the purpose of the software?
 
-Fully functional end-user system. It implements the complete invention from O(1) compliance bounds through full spatial dosimetry maps to exposure-constrained MIMO beamforming and antenna placement optimization, with a production-quality web-based 3D interface, real base station data, and GPU-accelerated ray tracing. Deployed on a production server with 2,469 automated tests.
+Fully functional end-user system. It implements the incoherent and coherent MIMO framework (fidelity levels 0-8) under far-field and locally-plane-wave illumination: O(1) compliance bounds through full spatial dosimetry maps, exposure-constrained MIMO beamforming, and antenna placement optimization. The production-quality web-based 3D interface, real base-station data pipeline (14 government databases), and GPU-accelerated ray tracing are all deployed. 2,469 automated tests pass. The near-field point-source mode, the solid-angle/view-factor formula, and the spherical-harmonic antenna-body decoupling Γ_lm(r_s) are specified and derived in the monograph and form part of the disclosed invention. Reference software implementation is on the 2026-2027 AEGIS roadmap, aligned with the IEC/IEEE 63195-2 2026 draft cycle. The disclosure is enabling: a skilled person can implement each near-field primitive from the monograph derivations.
 
 ### Is the software a derivative or improvement of any existing source code?
 
@@ -342,11 +354,26 @@ No. The software was written from scratch by the inventor based on the theoretic
 
 ### In your opinion, what kind of commercial applications could be derived from your invention and how easy/feasible would it be to bring a product to the market?
 
-1. Millimetre-wave device pre-compliance (primary market). Every 5G/6G-capable phone, laptop, tablet, AR headset, and wearable must demonstrate compliance with absorbed power density limits above 6 GHz under IEC/IEEE 63195-2 and equivalent national rules. Measurement at mmWave requires robotic near-field scanning (SPEAG DASY8 class), so the pre-compliance iteration loop is driven by simulation. Current practice runs FDTD on each design candidate. Each FDTD run takes hours, so only a small number of device, beam, and pose configurations can be evaluated per product cycle. The geometric dosimetry engine replaces the FDTD step for radiating near-field scenarios (d > lambda/(2*pi)) with a closed-form computation in milliseconds. A gradient-based antenna design step, not available in any full-wave tool, lets a designer move an array element to minimise peak APD while preserving beam gain. The engine covers the full IEC/IEEE 63195-2 range (6 GHz to 300 GHz) and all typical device-to-body distances (5 mm to 200 mm).
+1. Millimetre-wave device pre-compliance (primary market). Every 5G/6G-capable phone, laptop, tablet, AR headset, and wearable must demonstrate compliance with absorbed power density limits above 6 GHz under IEC/IEEE 63195-2 and equivalent national rules. Measurement at mmWave requires robotic near-field scanning (SPEAG DASY8 class), so the pre-compliance iteration loop is driven by simulation. Current practice runs FDTD on each design candidate. Each FDTD run takes hours, so only a small number of device, beam, and pose configurations can be evaluated per product cycle.
+
+The geometric dosimetry engine replaces the FDTD step for radiating-near-field scenarios (d > 3*λ) with a closed-form computation in milliseconds, backed by the solid-angle view-factor formula for whole-body absorbed power and the Γ_lm(r_s) precomputed body-response table for fast antenna-design sweeps at fixed source position. Gradient-based antenna design, not available in any full-wave tool, lets a designer move an array element to minimise peak APD while preserving beam gain.
+
+The engine targets the full IEC/IEEE 63195-2 range (6 GHz to 300 GHz). Its present-day locally-plane-wave validity threshold d > 3*λ covers the majority of the standard's 5-200 mm device-to-body distance range at mmWave frequencies (d > 32 mm at 28 GHz, d > 15 mm at 60 GHz, d > 9 mm at 100 GHz) and the upper end at sub-mmWave (d > 150 mm at 6 GHz). Closer-range coverage (the band λ/(2*π) < d < 3*λ) is the subject of ongoing FDTD-matched validation, with a monograph-derived theoretical extension already in place.
+
+Near-field differentiability enables several design workflows that full-wave tools cannot offer:
+
+- Device antenna placement: minimise peak spatially-averaged APD jointly over element positions and per-element weights across typical user poses. Gradient descent replaces the "move an element, re-run FDTD" iteration loop.
+- Array design co-optimization: solve for antenna-gain spherical-harmonic coefficients g_lm that maximise beam gain subject to a peak-APD constraint at a grid of source positions, via a QCQP-like coupled antenna-body formulation.
+- On-device beam selection: pick the beam that maximises link quality subject to a live APD constraint given current estimated body proximity r_s. The gradient of P_abs with respect to the precoding vector gives the ECBF update rule.
+- Pose-robust compliance: optimise a design to minimise worst-case APD over a distribution of plausible user poses (phone-to-ear, phone-to-hand, tablet-on-lap), differentiating through r_s and body-mesh parameters (SMPL-X shape coefficients β).
+- On-body wearables (once validated for d < 3*λ): the same gradient machinery extends to smartwatches, earbuds, and AR-headset temples, where r_s is fixed by the product form factor but array layout is a design variable.
+- Uplink MIMO ECBF: a handset MIMO transmitter precoded in closed form via the near-field exposure operator Q(r_s). Analogous to the downlink-MIMO ECBF but for device-to-base-station uplink, the regime where mmWave handset APD regulation is most acute.
+
+The commercial asymmetry between device pre-compliance (uplink, near-field) and base-station compliance (downlink, far-field) is structural. Device OEMs face a per-product regulatory gate at every launch, with shipment volumes in the millions and recertification budgets that for major OEMs are plausibly in the seven-figure range per program (exact figures are not public). Operators, by contrast, rely on conservative worst-case exclusion zones and in-situ measurement and have limited present incentive for body-specific modelling. The patent's near-field claims therefore sit on the side of the value chain that pays for computational pre-compliance today. The IEC/IEEE 63195-2 2026 edition (currently at draft stage) is the immediate standards window through which geometric near-field methods can be named as an accepted fast computational procedure alongside FDTD and FEM.
 
 2. Integration with the Sim4Life and DASY ecosystem. The engine is a pre-screening layer above full-wave FDTD (ZMT Sim4Life, Dassault CST Studio) and above measurement hardware (SPEAG DASY8, cSAR3D). A compliance engineer runs 10,000 geometric evaluations in an hour. The worst 20 configurations are then passed to Sim4Life for full-wave validation. The final design is measured on DASY. Each Sim4Life seat gains value rather than being replaced. The engine reads the IT'IS Foundation v5.0 Gabriel tissue database and outputs compliance quantities in the formats Sim4Life uses.
 
-3. Standards alignment. IEC/IEEE 63195-2 (computational procedure for device APD, 6 GHz to 300 GHz) has its 2026 edition currently in draft. The 2022 edition permits FDTD and FEM. The geometric method satisfies the standard's conservatism requirement (T_0 underestimates absorbed power below 40 GHz) and its validation requirement (matched within 3-8% against published reference data). Inclusion in the 2026 edition as an accepted fast method is an explicit target. IEC 62232:2025 (base stations, 110 MHz to 300 GHz, 4th edition, September 2025) permits computational methods including ray tracing. IEEE C95.3-2021 is the US parallel. ITU-R Report SM.2452-1 (July 2022) is the globally referenced 5G measurement methodology. Wout Joseph participates in these committees through INTEC-WAVES.
+3. Standards alignment. IEC/IEEE 63195-2 (computational procedure for device APD, 6 GHz to 300 GHz) has its 2026 edition currently in draft. The 2022 edition permits FDTD and FEM. The geometric method satisfies the standard's conservatism requirement (T_0 underestimates absorbed power below 40 GHz) and its validation requirement (matched within 3-8% against published reference data). Inclusion in the 2026 edition as an accepted fast method is an explicit target. IEC 62232:2025 (base stations, 110 MHz to 300 GHz, 4th edition, September 2025) permits computational methods including ray tracing. IEEE C95.3-2021 is the US parallel. ITU-R Report SM.2452-1 (July 2022) is the globally referenced 5G measurement methodology. Wout Joseph (INTEC-WAVES, UGent) is an active participant in these standards committees. This participation is an academic role rather than a formal AEGIS asset and any contribution of the geometric method to standard text would follow the standard route of technical merit, committee review, and consensus vote. It is noted here because the route from a new computational procedure to named acceptance in an IEC/IEEE document normally requires a sponsor already inside the committee, which is in place.
 
 4. Base-station and network compliance. Telecom operators deploying 5G/6G must demonstrate ICNIRP 2020 and IEC 62232:2025 compliance per site. Current practice uses zone-based calculators (IXUS, MVG EMF Visual) or field measurement (Narda SRM-3006). The engine produces body-specific compliance reports for sites that fail conservative zone checks, allowing operators to recover transmit power that would otherwise be lost to over-conservative exclusion zones. Real base station data from 14 government databases is already ingested.
 
@@ -384,17 +411,41 @@ Claim 1 (Core spatial dosimetry method). A computer-implemented method for deter
 (a) obtaining a surface mesh of at least a portion of a human body, the surface mesh comprising a plurality of surface elements each having an outward-facing surface normal;
 (b) obtaining a tissue-dependent electromagnetic transmission coefficient for a frequency of interest;
 (c) for each of one or more incident electromagnetic waves, each wave characterised by a propagation direction and a power density: computing, for each surface element, an incidence factor from the dot product of the surface normal with the negated propagation direction; applying a rectified linear activation to the incidence factor;
-(d) for each surface element, multiplying the activated incidence factor by the transmission coefficient and the power density to obtain the absorbed power density at that surface element.
+(d) for each surface element, multiplying the activated incidence factor by the transmission coefficient and the power density to obtain the absorbed power density at that surface element, wherein the power density and propagation direction may be constant across the body (far-field plane-wave illumination) or spatially varying (radiating-near-field point-source illumination).
+
+Claim 1a (Near-field point-source dosimetry method). A computer-implemented method for determining absorbed power density on a body surface illuminated by a point source in the radiating-near-field regime at a source position r_s at distance d > 3*λ from the body, comprising:
+(a) obtaining a surface mesh of at least a portion of a human body with outward-facing surface normals per element;
+(b) obtaining a tissue-dependent electromagnetic transmission coefficient at a frequency of interest;
+(c) obtaining the source position r_s and an antenna gain pattern G(u_hat) at said frequency;
+(d) for each surface element at position r, computing the source-to-surface distance d(r) = ||r - r_s||, the propagation direction k_hat(r) = (r - r_s) / d(r), and the incident power density S_inc(r) = P_t * G(k_hat(r)) / (4 * π * d(r)^2), where P_t is the total radiated power;
+(e) computing an incidence factor μ(r) = n_hat(r) . (-k_hat(r)) and applying a rectified linear activation;
+(f) multiplying, for each surface element, the activated incidence factor by the transmission coefficient and the spatially-varying incident power density to obtain the absorbed power density at that element.
+
+Claim 1b (Solid-angle view-factor absorption method). A computer-implemented method for determining total absorbed power on a human body illuminated by a point source at distance d > 3*λ, comprising:
+(a) obtaining a surface mesh of the body with per-element outward normals and per-element area;
+(b) obtaining a tissue-dependent transmission coefficient T_0 and a source position r_s;
+(c) computing a view-factor Ω_body(r_s) as the sum over front-facing, non-occluded surface elements of μ(r) * dA(r) / d(r)^2, where μ(r) = n_hat(r) . (-k_hat(r)), d(r) = ||r - r_s||, and occlusion is determined by ambient-occlusion or ray-casting from r_s;
+(d) computing total absorbed power as P_abs = P_t * T_0 * Ω_body(r_s) / (4 * π) for an isotropic source, or as the gain-weighted generalisation P_abs = (P_t * T_0 / (4 * π)) * integral over Ω_body of G(u_hat) dOmega_s for a directive source.
 
 Claim 2 (Exposure operator method). A computer-implemented method for exposure-constrained MIMO precoding, comprising:
 (a) for each propagation path from a plurality of antenna elements to a body surface, constructing an exposure channel matrix entry incorporating a Fresnel transmission coefficient, a depth-decay weighting factor, and a phase propagation term;
 (b) computing an exposure operator as a surface integral of the Hermitian outer product of the exposure channel matrix, yielding a Hermitian positive-semidefinite matrix;
 (c) solving a quadratically constrained optimisation to determine a precoding vector that maximises signal quality subject to an absorption constraint derived from the exposure operator.
 
+Claim 2a (Near-field uplink exposure-constrained precoder for device MIMO). A computer-implemented method for exposure-constrained MIMO precoding of a wireless device operating in the radiating near-field of a human body, comprising:
+(a) for each antenna element j of the device at position r_j, constructing a near-field exposure channel entry at each body-surface point r using a point-source Green's function evaluated at distance d_j(r) = ||r - r_j|| and incorporating the tissue Fresnel transmission coefficient;
+(b) assembling a near-field exposure operator Q_NF as a surface integral of the Hermitian outer product of the near-field exposure channel over the visible body surface, yielding a Hermitian positive-semidefinite matrix dependent on device geometry and body surface;
+(c) solving a quadratically constrained optimisation to determine a device-side precoding vector x that maximises uplink signal quality subject to x^H Q_NF x <= P_lim, where P_lim is derived from a regulatory absorbed-power-density limit under IEC/IEEE 63195-2 or an equivalent standard.
+
 Claim 3 (Differentiable dosimetry optimization method). A computer-implemented method for optimising antenna deployment parameters to satisfy electromagnetic exposure constraints, comprising:
 (a) computing absorbed power density on a body surface using the method of claim 1 via a differentiable computation graph;
 (b) computing a gradient of a loss function incorporating a regulatory exposure limit with respect to one or more antenna parameters;
 (c) iteratively updating the antenna parameters using the computed gradient to minimise peak exposure or maximise compliance margin.
+
+Claim 3a (Near-field differentiable device design method). A computer-implemented method for optimising the design of a wireless device with respect to electromagnetic exposure on a human body, comprising:
+(a) computing absorbed power density on the body surface using the near-field point-source method of claim 1a via a differentiable computation graph;
+(b) computing a gradient of a loss function incorporating a regulatory exposure limit (IEC/IEEE 63195-2 or equivalent) with respect to one or more of: the source position r_s, the positions r_j of individual antenna elements within a device-embedded array, spherical-harmonic coefficients g_lm of the antenna gain pattern, a precoding vector x, and body-pose parameters (such as SMPL-X shape coefficients) representing uncertainty in user posture;
+(c) iteratively updating said parameters by gradient descent to minimise a peak spatially-averaged APD over one or more averaging regions (4 cm^2 and 1 cm^2 per IEC/IEEE 63195-2) while preserving one or more communication objectives such as beam gain, spectral efficiency, or coverage.
 
 Claim 4 (Integrated base-station compliance assessment system). A dosimetry computation system comprising:
 (a) a base station data ingestion module that retrieves antenna installation parameters from one or more government databases;
@@ -407,18 +458,18 @@ Claim 4 (Integrated base-station compliance assessment system). A dosimetry comp
 Claim 4b (Device pre-compliance assessment system). A dosimetry computation system for wireless device pre-compliance, comprising:
 (a) a device antenna module accepting antenna element positions and per-element radiation patterns at frequencies between 6 GHz and 300 GHz;
 (b) a body phantom module providing a triangular surface mesh of at least a head or body portion with associated tissue dielectric properties;
-(c) a source-placement module positioning the device antenna at a specified distance from the body phantom, said distance exceeding the reactive-near-field boundary lambda/(2*pi);
-(d) a dosimetry computation engine implementing the method of claim 1 with spatially varying incident power density and propagation direction derived from point-source geometry;
+(c) a source-placement module positioning the device antenna at a specified distance from the body phantom, said distance lying in the radiating-near-field regime d > 3*λ, equivalently at a distance at which the incident field is locally plane-wave over a wavelength-scale surface patch;
+(d) a dosimetry computation engine implementing the method of claim 1 with spatially varying incident power density S_inc(r) = P_t * G(k_hat(r)) / (4*π*d(r)^2) and spatially varying propagation direction k_hat(r) = (r - r_s)/d(r) derived from point-source geometry;
 (e) a compliance evaluation module computing spatially averaged absorbed power density over 4 cm^2 and 1 cm^2 regions and comparing the result against IEC/IEEE 63195-2 and equivalent regulatory limits;
 (f) a pre-screening output that ranks candidate configurations and selects a subset for subsequent validation by full-wave numerical simulation.
 
-Claim 5 (Medium). A non-transitory computer-readable medium storing instructions for performing the method of any of claims 1-3.
+Claim 5 (Medium). A non-transitory computer-readable medium storing instructions for performing the method of any of claims 1, 1a, 1b, 2, 2a, 3, 3a, or 16a.
 
 ### Dependent claims
 
 Claim 6. The method of claim 1, wherein the transmission coefficient is the normal-incidence Fresnel power-absorption coefficient T_0 derived from the pseudo-Brewster compensation property of biological tissue.
 
-Claim 7. The method of claim 1, wherein the transmission coefficient is the exact angle-dependent Tavg(theta), computed per surface element from TE and TM Fresnel equations.
+Claim 7. The method of claim 1, wherein the transmission coefficient is the exact angle-dependent T_avg(θ), computed per surface element from TE and TM Fresnel equations.
 
 Claim 8. The method of claim 1, further comprising computing an exposure fraction per surface element using ambient-occlusion computation to account for self-shadowing.
 
@@ -436,7 +487,14 @@ Claim 14. The system of claim 4, wherein the propagation path computation module
 
 Claim 15. The system of claim 4, wherein the 3D environment reconstruction module generates scene geometry from OpenStreetMap building data, terrain elevation data, or photogrammetric 3D tile data, with per-surface electromagnetic material properties.
 
-Claim 16 (Spherical-harmonic antenna-pattern decoupling). The method of claim 1, further comprising precomputing a set of body-response coefficients Gamma_lm(r_s) for each source position r_s, said coefficients being surface integrals of the body's geometric absorption factor weighted by spherical harmonics Y_lm of the incidence direction, such that the absorbed power for an arbitrary antenna gain pattern at source position r_s is obtained as a dot product between the spherical-harmonic expansion of the antenna gain and the precomputed body-response coefficients.
+Claim 16 (Spherical-harmonic antenna-pattern decoupling). The method of claim 1, further comprising precomputing a set of body-response coefficients Γ_lm(r_s) for each source position r_s, said coefficients being surface integrals of the body's geometric absorption factor weighted by spherical harmonics Y_lm of the incidence direction, such that the absorbed power for an arbitrary antenna gain pattern at source position r_s is obtained as a dot product between the spherical-harmonic expansion of the antenna gain and the precomputed body-response coefficients.
+
+Claim 16a (Body-response spherical-harmonic pre-computation, independent). A computer-implemented method for rapid exposure evaluation of candidate antenna gain patterns at fixed source positions, comprising:
+(a) obtaining a body surface mesh and a set of source positions {r_s};
+(b) for each r_s, precomputing body-response coefficients Γ_lm(r_s) = integral over Σ_plus of μ(r) * Y_lm(k_hat(r)) / d(r)^2 * O(r, k_hat) dA, where Y_lm are spherical harmonics up to degree L, μ(r) = n_hat(r) . (-k_hat(r)) is the cosine-of-incidence factor, d(r) = ||r - r_s|| is the source-to-surface distance, and O(r, k_hat) is a visibility or ambient-occlusion factor;
+(c) storing the coefficients Γ_lm(r_s) in a look-up table indexed by source position;
+(d) for a candidate antenna gain pattern G(u_hat) at source position r_s, expanding G in spherical harmonics as G(u_hat) = sum_{lm} g_lm * Y_lm(u_hat);
+(e) evaluating total absorbed power as P_abs = (T_0 / (4 * π)) * sum_{lm} g_lm * Γ_lm(r_s) in O(L^2) operations per candidate, where T_0 is a tissue-dependent transmission coefficient.
 
 Claim 17 (Fast pre-screening for full-wave validation). A method for pre-screening candidate configurations of a wireless device relative to a human body before validation by full-wave electromagnetic simulation, comprising:
 (a) for each configuration in a set of candidate configurations differing in one or more of antenna position, antenna orientation, beam direction, transmit power, or body pose, computing absorbed power density using the method of claim 1;
