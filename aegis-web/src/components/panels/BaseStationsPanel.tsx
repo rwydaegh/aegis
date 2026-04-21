@@ -106,14 +106,14 @@ export default function BaseStationsPanel() {
         setEmptyResult(false)
         const first = res.basestations[0]
         setBasestations(res.basestations, { lat: first.latitude, lon: first.longitude })
+        useNotificationStore.getState().addNotification(
+          'info',
+          `Loaded ${res.count} antennas`,
+        )
       } else {
         setEmptyResult(true)
         clear()
       }
-      useNotificationStore.getState().addNotification(
-        'info',
-        `Loaded ${res.count} antennas`,
-      )
     } catch (err) {
       if (!isClientError(err)) Sentry.captureException(err)
       useNotificationStore.getState().addNotification(
