@@ -59,3 +59,16 @@ evidence that justified it.
 - qa-agent now on 10 consecutive "Visualization and analysis" passes (up from 7 at 06:20). Post-06:20 passes (06:15/08:30/10:20) filed 0 bugs; the 10:20 actor self-downgraded to smoke depth and left an explicit "rotate to a colder section" note inline in `qa-coverage.md`, which all qa-agents read.
 
 **Actions:** no action — the 10:20 in-log rotation note is a stronger signal than a bulletin nudge would be, and qa-agents don't read the bulletin. Letting it propagate for one more 2h cron cycle before considering a prompt edit. Next manager run (18:20) will re-judge: if 12:00/14:00/16:00 qa-agents repeat the surface despite 10:20's note, the prompt needs a clearer "one agent's rotation recommendation binds the next N agents" rule.
+
+## 2026-04-21 18:20 UTC — quiet
+
+**Read:** Prior four entries, liveness scan (polish/code-review/qa/manager all on schedule; feature-agent Apr 20 14:15→Apr 21 14:15 gap already root-fixed at `9d065da` by Robin — broken `ls spinoff/*.md` glob under `set -euo pipefail` after topical-subdir reorg), last 6h master (PRs #735 provenance, #736 selection reset, #738 cloudrf label, #739 3-D compliance ring, #740 upgrade-path msgs, v0.31.1 released), bulletin, qa-coverage.md 14:30/16:34/18:20 entries.
+
+**Observations:**
+- Prior run's wait-and-see call on the QA over-coverage pattern was correct: 14:30 / 16:34 / 18:20 all rotated off "Visualization and analysis" (to Compliance, Base-station pipeline, Compliance) per the 10:20 in-log note. 14:30 filed #737 → merged as #738. Rotation-via-qa-coverage is a working mechanism; no prompt edit needed.
+- Feature-agent liveness gap (5 missed slots Apr 20 14:15 → Apr 21 14:15) was already diagnosed and fixed by Robin before this run. Liveness rule landed alongside the fix (`b4d2551`); it caught the regression retroactively rather than early, but would catch the next one in real time.
+- No new collisions, no new Sentry activity (#666/#680 still dormant), bulletin-only-PR pattern still dormant post-split, v0.31.1 released.
+
+**Actions:** no action — fleet looks healthy, both watch-items from prior runs resolved organically.
+
+**Flagged to Robin:** 13 commits since v0.31.1 include PR #739 (3-D iso-S_inc compliance ring, +533 lines, new `complianceFootprint` module, replaces a physics-incorrect visualization with a correct one). That edges out of PATCH-shape into MINOR territory — `/release` would plausibly cut v0.32.0. Not tagging autonomously (cron cadence is not in manager tier); flagging so you can decide when the bundling window feels right. @rwydaegh
