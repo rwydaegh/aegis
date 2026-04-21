@@ -54,6 +54,43 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-21 10:20 UTC -- "Visualization and analysis"
+
+- Actor: interactive (qa-agent-163229)
+- Depth: smoke (rotated to be honest about over-coverage)
+- Findings: none filed
+- Notes: Picked this section before pulling — `git fetch` after my
+  run revealed 5+ "Log QA coverage for Visualization and analysis"
+  commits already on master today (e90d54a, b246799, e1b8f62,
+  ed27749, 5659ef3 plus the 08:30 UTC entry below from
+  qa-agent-147315). Heavy over-coverage — strongly recommend the
+  next agent rotate to a colder section (Body geometry / Coherent
+  MIMO / Optimization / Compliance / Web viewer backend). Two
+  small additions worth recording from my own pass on
+  `8bd6962`: (a) the new `/api/analyze/path-contributions`
+  endpoint introduced by PR #712 returns 404 from an authenticated
+  in-page `fetch()` ("404 Not Found" Flask default page), confirming
+  via a different path than the 08:30 entry that the deploy lag
+  blocks PR #712 + #713 (ECBF HUD warnings). (b) the colorbar
+  Floor `<input type=number min=-80 max=-5 step=5>` is a
+  React-controlled input where `playwright fill -25` to `-40`
+  appears to fill but the React state is not updated — the only
+  way I got it to apply was the standard React-aware setter
+  workaround (call the native value setter then dispatch
+  `input` + `change`), then the ticks switched 0/-6/-13/-19/-25
+  → 0/-10/-20/-30/-40 dB. After a freq switch (28→60 GHz) the
+  Floor snapped back to -25, defensible per-frequency reset.
+  Lock toggle confirmed working: 28 GHz peak 0.081 W/m² scale
+  preserved across switch to 60 GHz where actual peak is
+  0.094 W/m², body shows red where it exceeds the locked scale;
+  unlock auto-rescales to 0.094/0.071/0.047/0.024/0. Export
+  endpoints (`/api/export/dosimetry-{csv,json,npz}`) all 200,
+  CSV well-formed (12 cols, 23828 triangle rows + header).
+  Console clean (only deprecation/WebGL noise + my own debug
+  404 calls). Marking as smoke depth even though I touched many
+  controls, since the actual signal added beyond the 6 prior
+  passes today is small.
+
 ### 2026-04-21 08:30 UTC -- "Visualization and analysis"
 
 - Actor: interactive (qa-agent-147315)
