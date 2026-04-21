@@ -139,16 +139,12 @@ export interface ScenarioWebState {
     lon?: number;
     locationQuery?: string;
   };
-  clearResults?: boolean;
-  clearScene?: boolean;
 }
 
 export interface ScenarioEntry {
   label: string;
   description: string;
   icon: string;
-  instant: boolean;
-  autoCompute: boolean;
   hidden?: boolean;
   webState: ScenarioWebState;
 }

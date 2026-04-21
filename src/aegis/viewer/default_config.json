@@ -727,8 +727,6 @@
       },
       "label": "Open ground",
       "icon": "radio",
-      "instant": true,
-      "autoCompute": true,
       "webState": {
         "freqGhz": 28,
         "powerDbm": 43,
@@ -750,8 +748,6 @@
       },
       "label": "Close-range mmWave",
       "icon": "zap",
-      "instant": true,
-      "autoCompute": true,
       "webState": {
         "freqGhz": 60,
         "powerDbm": 40,
@@ -771,8 +767,6 @@
       "launch": {},
       "label": "Urban Ghent",
       "icon": "building",
-      "instant": false,
-      "autoCompute": true,
       "webState": {
         "freqGhz": 28,
         "powerDbm": 43,
@@ -795,8 +789,6 @@
       "launch": {},
       "label": "Coverage globe",
       "icon": "globe",
-      "instant": true,
-      "autoCompute": false,
       "webState": {
         "antennaPos": null,
         "environment": {
@@ -811,16 +803,12 @@
       "launch": {},
       "label": "Empty scene",
       "icon": "refresh-cw",
-      "instant": true,
-      "autoCompute": false,
       "hidden": true,
       "webState": {
         "antennaPos": null,
         "environment": {
           "source": "none"
-        },
-        "clearResults": true,
-        "clearScene": true
+        }
       }
     }
   }
