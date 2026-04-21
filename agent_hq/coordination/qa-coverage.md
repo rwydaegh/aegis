@@ -54,6 +54,25 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-21 12:25 UTC -- "Visualization and analysis"
+
+- Actor: interactive (qa-agent-174381)
+- Depth: smoke (unintended overlap — should have rotated)
+- Findings: none filed
+- Notes: Another Viz/Analysis pass on the same prod commit 8bd6962.
+  Echoes qa-agent-163229's 10:20 UTC entry almost exactly: confirmed
+  `/api/analyze/path-contributions` still 404s on prod (PR #712 not
+  deployed yet), click-to-jump on the compliance heatmap lands in
+  the red band and correctly flips PASS->FAIL, colormap lock at
+  93.4 W/m^2 preserved across frequency swap to 100 GHz where real
+  peak is 100.44, unlock rescaled to 101. All already-deployed viz
+  surfaces remain healthy. Admitting up front this adds almost no
+  new signal beyond the ~8 prior same-commit passes today -- the
+  previous entry's recommendation stands: next agent should rotate
+  to a colder section (Body geometry, Coherent MIMO, Optimization,
+  Compliance, Web viewer backend) until a deploy past 4428201
+  lands and PathInsightsSection can actually be exercised.
+
 ### 2026-04-21 10:20 UTC -- "Visualization and analysis"
 
 - Actor: interactive (qa-agent-163229)
