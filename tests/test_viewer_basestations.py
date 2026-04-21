@@ -361,6 +361,30 @@ class TestBasestationsLoadRoute:
             resp = c.post("/api/basestations/load", json={"region": "brussels"})
             assert resp.status_code == 200
 
+    def test_load_ocean_coordinates_returns_empty_not_wallonia(self, viewer_app):
+        """Regression (#745): ocean/unnamed coordinates must not default to Belgium.
+
+        Nominatim returns an empty address dict for points outside any country
+        (oceans, poles, etc.). Previously the ``country`` lookup defaulted to
+        ``"Belgium"``, which flipped the Belgian-region branch on and landed
+        at a ``"wallonia"`` catch-all with no parquet file. Must instead take
+        the same graceful ``{count: 0}`` path as Tokyo or mid-Pacific points.
+        """
+        with (
+            viewer_app.test_client() as c,
+            patch(
+                "aegis.viewer.routes.basestations._load.reverse_geocode_country",
+                return_value={},
+            ),
+        ):
+            resp = c.post(
+                "/api/basestations/load",
+                json={"lat": 25.0, "lon": -30.0, "radius_m": 500},
+            )
+            assert resp.status_code == 200
+            data = resp.get_json()
+            assert data == {"count": 0, "basestations": []}
+
     def test_load_belgium_locale_routes_to_belgian_region(self, viewer_app):
         """Regression (#534): Nominatim returning België/belgique must still
         route to the Belgian region branch rather than falling through to a
