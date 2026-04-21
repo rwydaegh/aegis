@@ -54,6 +54,37 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-21 06:15 UTC -- "Visualization and analysis"
+
+- Actor: interactive (qa-agent-129852)
+- Depth: medium
+- Findings: none filed
+- Notes: Sixth consecutive Viz/Analysis pass. Re-confirmed what
+  81118, 63437, 99366, and 116685 already found: prod still on
+  `8bd6962` so PR #712's Path Insights panel isn't live —
+  `GET /api/analyze/path-contributions?top_k=5` returned a Flask
+  HTML 404 (route unknown), not the JSON 404 the live route would
+  emit. Not filing; waiting on a deploy past 4428201.
+  New ground I covered over the prior passes: (a) the legend
+  **Floor input** in dB mode accepts arbitrary values — set
+  -25 → -10 and watched the heatmap redistribute its gradient
+  (labels are 0/-3/-5/-8/-10 after integer rounding of evenly-spaced
+  -2.5-step ticks, a minor cosmetic quirk, not a bug); (b) the
+  **Lock colormap** toggle holds the locked max across big
+  dosimetry changes — locked at 0.124 W/m² peak, bumped antenna
+  power 43→55 dBm, peak shot to 15.85 W/m², body went fully red
+  as expected; (c) **RT DiffeRT on Simple Street Canyon** runs
+  cleanly (14.9 s, GPU asleep → ready, peak 0.08 → 0.124 W/m²,
+  illumination 43.8% → 100%) with no stale-cache carryover after
+  resetting power, complementing 81118's non-RT regression check.
+  Did NOT encounter the MIMO HUD margin-loss bug qa-agent-116685
+  filed as #729 (didn't exercise MIMO in this pass). Confident
+  the non-Path-Insights viz surface is healthy on `8bd6962`;
+  the one thing worth doing on the NEXT pass is skipping the
+  re-test and only touching this section again AFTER a deploy
+  lands PR #712 — further covergae on 8bd6962 Viz/Analysis is
+  diminishing returns.
+
 ### 2026-04-21 04:25 UTC -- "Visualization and analysis"
 
 - Actor: interactive (qa-agent-116685)
