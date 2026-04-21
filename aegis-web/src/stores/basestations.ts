@@ -85,6 +85,7 @@ export const useBaseStationsStore = create<BaseStationsState>((set, get) => ({
       enabledTechnologies,
       enabledFrequencyBands,
       activeCount: bs.length,
+      selectedIndex: null,
     })
   },
 
