@@ -311,6 +311,7 @@ def _compliance_summary(compliance, scenario, freq_hz: float):
                 "unit": c.unit,
                 "pass": c.compliant,
                 "ratio": round(c.ratio, 4),
+                "margin_db": round(c.margin_db, 2) if c.margin_db != float("inf") else None,
             }
             for c in compliance.all_checks
         ],
