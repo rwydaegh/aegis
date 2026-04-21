@@ -21,6 +21,8 @@ export default function LayersPanel() {
   const toggleGrid = useSceneStore(s => s.toggleGridVisible)
   const complianceRingVisible = useSceneStore(s => s.complianceRingVisible)
   const toggleComplianceRing = useSceneStore(s => s.toggleComplianceRingVisible)
+  const complianceVolumeVisible = useSceneStore(s => s.complianceVolumeVisible)
+  const toggleComplianceVolume = useSceneStore(s => s.toggleComplianceVolumeVisible)
 
   const hasVoxels = !!voxelData
   const hasSceneGeo = !!sceneGeometry
@@ -56,6 +58,9 @@ export default function LayersPanel() {
       </button>
       <button onClick={toggleComplianceRing} className={toggleClass(complianceRingVisible)}>
         Compliance ring
+      </button>
+      <button onClick={toggleComplianceVolume} className={toggleClass(complianceVolumeVisible)}>
+        Compliance volume (3-D)
       </button>
 
       {/* Scene geometry toggle */}

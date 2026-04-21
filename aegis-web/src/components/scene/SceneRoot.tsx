@@ -38,6 +38,7 @@ import { EnvironmentTerrain } from './EnvironmentTerrain'
 import { LSPHeatmap } from './LSPHeatmap'
 import ClusterPaths from './ClusterPaths'
 import ComplianceRing from './ComplianceRing'
+import ComplianceVolume from './ComplianceVolume'
 import OptimizeGridPreview from './OptimizeGridPreview'
 import { cameraState } from '@/lib/cameraState'
 
@@ -463,6 +464,7 @@ export default function SceneRoot() {
           })}
           <DistanceLine />
           <ComplianceRing />
+          <ComplianceVolume />
         </>
       ))}
       {!isCoverageMode && <RayPaths />}

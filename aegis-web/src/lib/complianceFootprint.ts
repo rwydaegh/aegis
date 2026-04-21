@@ -221,3 +221,144 @@ export function smoothRadii(radii: Float32Array, passes: number): Float32Array {
   }
   return out
 }
+
+// Full 3-D iso-S_inc surface around the antenna. Same physics as the ring,
+// but sampled on an azimuth × elevation grid so the surface traces the whole
+// sphere where S_inc = S_limit, not just its intersection with the observer
+// plane. No Picard iteration is needed: once (az, el) are chosen, the direction
+// is fixed and the iso-condition gives a closed-form slant radius
+//   r(az, el) = d_body * sqrt(G(az, el) / G_body) * 10^(-margin_db / 20).
+//
+// Output is a flat-packed (nAzimuth × nElevation) grid of slant radii. Vertex
+// positions relative to the antenna radiator follow
+//   x =  r * cos(el) * sin(az)
+//   y =  r * sin(el)          (Y-up, Three.js convention)
+//   z =  r * cos(el) * cos(az)
+// so the caller can triangulate the surface directly.
+
+export interface VolumeInputs {
+  antennaRadiatorPos: [number, number, number]
+  bodyCenterPos: [number, number, number]
+  marginDb: number
+  patternType: string
+  elements: AntennaElement[]
+  appliedPattern?: Float32Array | null
+  nAzimuth: number
+  nElevation: number
+  maxRadiusM?: number
+  gainFloorFraction?: number
+}
+
+export interface VolumeResult {
+  // Row-major (i_az * nElevation + j_el) slant radii in meters.
+  radii: Float32Array
+  azimuthsRad: Float32Array
+  elevationsRad: Float32Array
+  nAzimuth: number
+  nElevation: number
+  maxR: number
+  meanR: number
+  validSamples: number
+  referenceValid: boolean
+  degenerate: boolean
+}
+
+export function computeComplianceVolume(inputs: VolumeInputs): VolumeResult {
+  const {
+    antennaRadiatorPos,
+    bodyCenterPos,
+    marginDb,
+    patternType,
+    elements,
+    appliedPattern,
+  } = inputs
+  const maxRadiusM = inputs.maxRadiusM ?? DEFAULT_MAX_RADIUS_M
+  const gainFloorFraction = inputs.gainFloorFraction ?? DEFAULT_GAIN_FLOOR_FRACTION
+  const nAzimuth = Math.max(4, Math.floor(inputs.nAzimuth))
+  const nElevation = Math.max(3, Math.floor(inputs.nElevation))
+
+  const azimuths = new Float32Array(nAzimuth)
+  const elevations = new Float32Array(nElevation)
+  const radii = new Float32Array(nAzimuth * nElevation)
+
+  const empty: VolumeResult = {
+    radii,
+    azimuthsRad: azimuths,
+    elevationsRad: elevations,
+    nAzimuth,
+    nElevation,
+    maxR: 0,
+    meanR: 0,
+    validSamples: 0,
+    referenceValid: false,
+    degenerate: true,
+  }
+
+  if (!Number.isFinite(marginDb)) return empty
+
+  const dxB = bodyCenterPos[0] - antennaRadiatorPos[0]
+  const dyB = bodyCenterPos[1] - antennaRadiatorPos[1]
+  const dzB = bodyCenterPos[2] - antennaRadiatorPos[2]
+  const dBody3d = Math.sqrt(dxB * dxB + dyB * dyB + dzB * dzB)
+  if (!(dBody3d > 0)) return empty
+
+  const dirBody = new THREE.Vector3(dxB / dBody3d, dyB / dBody3d, dzB / dBody3d)
+  const gPeak = findPeakGain(patternType, elements, appliedPattern)
+  const gBodyRaw = evaluateGain(dirBody, patternType, elements, appliedPattern)
+  const gBodyFloor = gPeak * gainFloorFraction
+  const gBody = Math.max(gBodyRaw, gBodyFloor, 1e-20)
+  const referenceValid = gBodyRaw >= gBodyFloor
+
+  const scale = Math.pow(10, -marginDb / 20)
+
+  for (let i = 0; i < nAzimuth; i++) {
+    azimuths[i] = (i / nAzimuth) * 2 * Math.PI
+  }
+  for (let j = 0; j < nElevation; j++) {
+    // Inclusive endpoints: -π/2 (nadir) to +π/2 (zenith).
+    elevations[j] = -Math.PI / 2 + (j / (nElevation - 1)) * Math.PI
+  }
+
+  const candDir = new THREE.Vector3()
+  let maxR = 0
+  let sumR = 0
+  let validCount = 0
+
+  for (let j = 0; j < nElevation; j++) {
+    const el = elevations[j]
+    const cosEl = Math.cos(el)
+    const sinEl = Math.sin(el)
+    for (let i = 0; i < nAzimuth; i++) {
+      const az = azimuths[i]
+      const sinAz = Math.sin(az)
+      const cosAz = Math.cos(az)
+      candDir.set(cosEl * sinAz, sinEl, cosEl * cosAz)
+      const gCand = evaluateGain(candDir, patternType, elements, appliedPattern)
+      let r = dBody3d * Math.sqrt(Math.max(gCand, 1e-20) / gBody) * scale
+      if (!Number.isFinite(r) || r < 0) r = 0
+      if (r > maxRadiusM) r = maxRadiusM
+      radii[i * nElevation + j] = r
+      if (r > 0) {
+        validCount++
+        sumR += r
+        if (r > maxR) maxR = r
+      }
+    }
+  }
+
+  const degenerate = validCount === 0 || maxR <= 0
+  const meanR = degenerate ? 0 : sumR / validCount
+
+  return {
+    radii,
+    azimuthsRad: azimuths,
+    elevationsRad: elevations,
+    nAzimuth,
+    nElevation,
+    maxR,
+    meanR,
+    validSamples: validCount,
+    referenceValid,
+    degenerate,
+  }
+}
