@@ -54,6 +54,9 @@ export function PathInsightsSection() {
     const token = ++fetchTokenRef.current
     setLoading(true)
     setError(null)
+    // Clear stale data from a prior compute so the "Analyzing paths…" loader
+    // renders during the refetch window instead of the previous table.
+    setResult(null)
     fetchPathContributions({ top_k: TOP_K })
       .then((data) => {
         if (fetchTokenRef.current !== token) return
