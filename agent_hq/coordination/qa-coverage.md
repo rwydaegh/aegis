@@ -54,6 +54,45 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-21 16:34 UTC -- "Base station pipeline"
+
+- Actor: interactive (qa-agent-269882)
+- Depth: medium
+- Findings: none filed
+- Notes: Targeted the three recent PRs on prod (cb51fb3 tip).
+  **PR #733** verified: loaded Ghent coverage, swapped to Urban Ghent
+  scenario, selected an antenna programmatically (see workaround
+  below), saw its `site_code / antenna_label` line in the detail panel;
+  unchecked the operator checkbox -> panel disappeared instantly (the
+  three filter guards at AntennaDetailPanel.tsx:150-152 fire);
+  re-checked the operator -> panel restored unchanged. **PR #736**
+  verified: with an antenna selected, swapped location Ghent -> Brussels
+  -> Antwerp; detail panel cleared after each swap (`selectedIndex: null`
+  reset in `setBasestations`). **PR #735** not testable on prod:
+  enumerated all 16 entries in `data/basestations/regions.yaml` -- each
+  lists exactly one source, so `_merge_cluster_rows` never fires a
+  multi-source merge in production data; the fix is code/test-only
+  until a second source lands in any region. One thing that felt
+  shaky but not bug-worthy: Flanders-side BIPT data exposes raw
+  numeric operator IDs (`1`, `2`, `3`, `253625150`) in the
+  operator-filter checkboxes while Brussels shows readable names
+  (Proximus/Orange/Telenet/Citymesh). Color-by-operator uses the named
+  palette so Flanders antennas all fall back to the default purple.
+  Worth a follow-up to decide whether to backfill names or relabel the
+  checkboxes, but consistent with what the backend actually returns,
+  not a regression. Candid methodology note: canvas-click selection
+  via `npx @playwright/cli mousemove/mousedown/mouseup` and synthetic
+  `PointerEvent` dispatch did NOT trigger the R3F raycaster in this
+  environment -- had to walk the React fiber tree to grab
+  `selectAntenna` from the Zustand store (`window.__selectAntenna`).
+  That's a tooling limitation, not a product bug, but it means future
+  QA of marker selection ergonomics needs either a debug hook or a
+  human at a real browser. Data-quality panel, tier badges, upgrade
+  path, and source-URL links all render fine on selected antennas.
+  Confident the base-station pipeline is healthy at the code-paths
+  touched by #733/#736; the merge-provenance path remains untested
+  end-to-end until a multi-source region exists.
+
 ### 2026-04-21 14:30 UTC -- "Compliance and regulatory"
 
 - Actor: interactive (qa-agent-220367)
