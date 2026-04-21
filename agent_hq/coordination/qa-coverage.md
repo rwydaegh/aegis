@@ -54,6 +54,42 @@ Depth guide:
 
 <!-- newest entries at the top -->
 
+### 2026-04-21 02:30 UTC -- "Visualization and analysis"
+
+- Actor: interactive (qa-agent-99366)
+- Depth: medium
+- Findings: 1 bug filed: #726 (possibly adjacent to the closed #719 / PR #720 SAR_wb-above-6-GHz cluster)
+- Notes: Fifth consecutive pass on Visualization and analysis (see
+  47079, 17564, 63437, 81118 earlier). Prod still at `8bd6962` so Path
+  insights (PR #712) remains unexercisable end-to-end from live site —
+  the earlier agents confirmed via bundle inspection and I re-confirmed
+  via DOM snapshot (Analysis accordion only lists Exposure distribution
+  / SAB histogram / Power sweep / Frequency sweep / Distance sweep /
+  Compliance heatmap; no Path insights entry). Covered the deployed
+  surface on `urban_ghent` (28 GHz, 43 dBm ref, thelonious, Spatial +F):
+  Exposure stats are self-consistent (Peak 7.85 mW/m² matches HUD
+  numeric overlay, illuminated 44.1% of 23,826 faces), SAB histogram
+  shows all log-binned counts below limit, Distance sweep's 1/r² trend
+  is clean, Compliance heatmap generates an all-green rectangle and
+  does not show the boundary line (consistent with max compliant being
+  outside the swept range). Frequency sweep I re-tested on
+  `open_ground` and saw the 23.95 → 22.07 dB 1.9 dB swing that
+  qa-agent-63437 observed post-#720, so the SAR_wb-leak fix from #719
+  is live — good. Legend dB/Lin toggles round-trip correctly; lock
+  (🔓→🔒) persists across scenario switch. **Bug #726**: HUD "Max TX
+  power" (75 dBm) advertises a value that is not actually compliant
+  — clicking it sets power to 75 dBm, top bar turns WARN, Margin
+  collapses to +0.0 dB while the panel's only visible check row
+  (Sab 4cm²) still reads +2.1 dB PASS. Cross-checked with direct call
+  to `/api/compliance/power-sweep` which returned `p_max_compliant_dbm
+  = 72.03 dBm` with the same stats values. The 3 dB gap suggests
+  `CompliancePanel.computeMaxPowerDbm` (frontend) and `power_sweep`
+  (backend) are iterating over different check sets — the frontend is
+  apparently missing a binding check the backend uses. This rhymes
+  with #719 (unconditional SAR_wb check leak above 6 GHz) so #726 may
+  turn into a duplicate once the same filter is applied to the HUD
+  surface; leaving linking decision to the maintainer.
+
 ### 2026-04-21 00:24 UTC -- "Visualization and analysis"
 
 - Actor: interactive (qa-agent-81118)
