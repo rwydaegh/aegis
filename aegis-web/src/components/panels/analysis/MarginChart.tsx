@@ -7,11 +7,29 @@ import {
   ResponsiveContainer,
   Tooltip,
   Area,
+  Legend,
 } from 'recharts'
 
 // ---------------------------------------------------------------------------
 // Margin chart (shared between power sweep and frequency sweep)
 // ---------------------------------------------------------------------------
+
+export interface PerCheckSeries {
+  key: string
+  label: string
+  color: string
+}
+
+// Parallel arrays: the main tightest-margin line is always rendered. When
+// `perCheck` series are supplied, each check is rendered as a thinner line
+// underneath so the frequency (or power) dependence of every basic
+// restriction stays legible even when one of them binds the tightest curve.
+type MarginRow = {
+  x: number
+  margin: number | null
+  compliant?: boolean
+  [key: string]: number | boolean | null | undefined
+}
 
 export function MarginChart({
   data,
@@ -20,24 +38,37 @@ export function MarginChart({
   currentX,
   maxCompliantX,
   onChartClick,
+  perCheck,
 }: {
-  data: { x: number; margin: number; compliant: boolean }[]
+  data: MarginRow[]
   xLabel: string
   xUnit: string
   currentX?: number
   maxCompliantX?: number | null
   onChartClick?: (xValue: number) => void
+  perCheck?: PerCheckSeries[]
 }) {
   if (data.length === 0) return null
 
-  const minMargin = Math.min(...data.map((d) => d.margin))
-  const maxMargin = Math.max(...data.map((d) => d.margin))
+  const allSampledValues: number[] = []
+  for (const row of data) {
+    const m = row.margin as number | null
+    if (typeof m === 'number' && isFinite(m)) allSampledValues.push(m)
+    if (perCheck) {
+      for (const s of perCheck) {
+        const v = row[s.key] as number | null | undefined
+        if (typeof v === 'number' && isFinite(v)) allSampledValues.push(v)
+      }
+    }
+  }
+  const minMargin = allSampledValues.length > 0 ? Math.min(...allSampledValues) : -5
+  const maxMargin = allSampledValues.length > 0 ? Math.max(...allSampledValues) : 5
   const yMin = Math.min(minMargin, -5)
   const yMax = Math.max(maxMargin, 5)
 
   return (
     <div className="mt-2">
-      <ResponsiveContainer width="100%" height={140}>
+      <ResponsiveContainer width="100%" height={perCheck ? 180 : 140}>
         <LineChart
           data={data}
           margin={{ top: 4, right: 8, bottom: 16, left: 0 }}
@@ -90,9 +121,10 @@ export function MarginChart({
               borderRadius: 4,
               fontSize: 11,
             }}
-            formatter={(value) => {
+            formatter={(value, name) => {
               const v = Number(value)
-              return [`${v > 0 ? '+' : ''}${v.toFixed(1)} dB`, 'Margin']
+              const label = typeof name === 'string' ? name : 'Margin'
+              return [`${v > 0 ? '+' : ''}${v.toFixed(1)} dB`, label]
             }}
             labelFormatter={(label) => {
               const v = Number(label)
@@ -134,15 +166,44 @@ export function MarginChart({
             fill="url(#marginFill)"
             stroke="none"
             baseLine={0}
+            name="Tightest"
+            legendType="none"
+            isAnimationActive={false}
           />
+          {perCheck?.map((s) => (
+            <Line
+              key={s.key}
+              type="monotone"
+              dataKey={s.key}
+              stroke={s.color}
+              strokeWidth={1}
+              strokeOpacity={0.75}
+              dot={false}
+              activeDot={{ r: 2, fill: s.color }}
+              name={s.label}
+              connectNulls={false}
+              isAnimationActive={false}
+            />
+          ))}
           <Line
             type="monotone"
             dataKey="margin"
             stroke="#4ade80"
-            strokeWidth={1.5}
+            strokeWidth={1.75}
             dot={false}
             activeDot={{ r: 3, fill: '#4ade80' }}
+            name="Tightest"
+            connectNulls={false}
+            isAnimationActive={false}
           />
+          {perCheck && (
+            <Legend
+              verticalAlign="bottom"
+              height={24}
+              iconType="plainline"
+              wrapperStyle={{ fontSize: 9, color: '#888', paddingTop: 4 }}
+            />
+          )}
         </LineChart>
       </ResponsiveContainer>
     </div>

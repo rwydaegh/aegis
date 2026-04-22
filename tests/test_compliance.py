@@ -393,22 +393,16 @@ class TestSummaryText:
         assert "dB" in text
 
     def test_multiple_checks_shown(self) -> None:
-        # Use a sub-6 GHz frequency so SAR_wb applies alongside other labels.
-        # Above 6 GHz SAR_wb is intentionally dropped per ICNIRP 2020 Table 5.
         r = evaluate_compliance(
-            freq_hz=5.0e9,
-            sar_wb=0.04,
-        )
-        text = summary_text(r)
-        assert "SAR_wb" in text
-        r2 = evaluate_compliance(
             freq_hz=28.0e9,
             sab_4cm2=10.0,
+            sar_wb=0.04,
             sinc_whole_body=5.0,
         )
-        text2 = summary_text(r2)
-        assert "S_ab (4 cm^2)" in text2
-        assert "S_inc (whole-body)" in text2
+        text = summary_text(r)
+        assert "S_ab (4 cm^2)" in text
+        assert "SAR_wb" in text
+        assert "S_inc (whole-body)" in text
 
 
 # -----------------------------------------------------------------------
@@ -1017,26 +1011,28 @@ class TestEvaluateComplianceSub6GHz:
         assert r.overall_pass is False
         assert r.sar_wb.compliant is False
 
-    def test_sar_wb_dropped_above_6ghz(self) -> None:
-        """Regression for #719: above 6 GHz SAR_wb is not the ICNIRP basic
-        restriction (Table 5 regime), so even when sar_wb is passed the check
-        must be dropped. Otherwise the frequency-independent 0.08 W/kg cap
-        pins the frequency-sweep margin into a flat line."""
-        r = evaluate_compliance(freq_hz=28e9, sab_4cm2=10.0, sar_wb=0.0005)
-        assert r.sar_wb is None
+    def test_sar_wb_kept_above_6ghz(self) -> None:
+        """SAR_wb is an ICNIRP 2020 basic restriction across 100 kHz - 300 GHz
+        (listed in both Table 2 and Table 5 at 0.08 W/kg general public). It
+        must be checked above 6 GHz too, not dropped."""
+        r = evaluate_compliance(freq_hz=28e9, sab_4cm2=10.0, sar_wb=0.04)
+        assert r.sar_wb is not None
+        assert r.sar_wb.value == pytest.approx(0.04)
+        assert r.sar_wb.limit == pytest.approx(0.08)
         assert r.sab_4cm2 is not None
 
     def test_sar_wb_kept_at_6ghz_boundary(self) -> None:
-        """At exactly 6 GHz we remain in the sub-6 regime (Table 2), matching
-        how icnirp_limits() sets sab limits to None at freq_hz == 6 GHz."""
+        """At exactly 6 GHz we remain in the sub-6 regime for Sab limits
+        (icnirp_limits() sets sab limits to None at freq_hz == 6 GHz), but
+        SAR_wb is checked regardless."""
         r = evaluate_compliance(freq_hz=6e9, sar_wb=0.04)
         assert r.sar_wb is not None
         assert r.sab_4cm2 is None
 
-    def test_frequency_sweep_not_flat_with_sar_wb(self) -> None:
-        """Regression for #719: a sweep across 7-100 GHz with sar_wb included
-        must not produce a flat line. Prior behavior pinned the tightest margin
-        to 10*log10(0.08/0.0005) ~ 22.04 dB at every frequency."""
+    def test_frequency_sweep_returns_per_check_margins(self) -> None:
+        """The sweep exposes per-check margins so the Sab / Sinc frequency
+        dependence stays visible even when SAR_wb happens to be the tightest
+        binding check (flat across frequency)."""
         from aegis.compliance import frequency_sweep
 
         out = frequency_sweep(
@@ -1048,12 +1044,15 @@ class TestEvaluateComplianceSub6GHz:
             freq_max_hz=100e9,
             n_points=20,
         )
-        margins = out["margin_db"]
-        # Sinc_local ~ 1/f^0.177 should give a ~1-2 dB swing across the band
-        assert margins.max() - margins.min() > 0.5
-        # And the flat-line value (22.04 dB) must not dominate every point
-        flat_hits = sum(1 for m in margins if abs(m - 22.041) < 1e-2)
-        assert flat_hits < len(margins)
+        per_check = out["per_check_margin_db"]
+        assert "sar_wb" in per_check
+        assert "sinc_local" in per_check
+        # SAR_wb is frequency-independent -> flat across the band
+        sar_margins = per_check["sar_wb"]
+        assert sar_margins.max() - sar_margins.min() < 1e-6
+        # Sinc_local ~ 1/f^0.177 -> non-trivial swing across 7-100 GHz
+        sinc_margins = per_check["sinc_local"]
+        assert sinc_margins.max() - sinc_margins.min() > 0.5
 
 
 # -----------------------------------------------------------------------

@@ -219,8 +219,9 @@ def icnirp_limits(
         General public or occupational.
     freq_hz : float
         Frequency in Hz. Must be >= 100 kHz and <= 300 GHz.
-        Above 6 GHz all limits are returned. Below 6 GHz only SAR_wb
-        is returned (S_ab and S_inc are set to None).
+        SAR_wb is returned across the whole range. Above 6 GHz the
+        Sab and S_inc limits are also returned; below 6 GHz they are
+        set to None because those basic restrictions do not apply.
 
     Returns
     -------
@@ -287,12 +288,14 @@ def evaluate_compliance(
 
     Only checks applicable at ``freq_hz`` per ICNIRP 2020 are included:
 
-    - Below or at 6 GHz (Table 2 regime): SAR_wb is the basic restriction.
-      Sab (4 cm^2, 1 cm^2) and Sinc_local/whole_body limits are omitted.
-    - Above 6 GHz (Table 5 regime): Sab and Sinc limits apply. SAR_wb is
-      omitted because it is no longer the ICNIRP basic restriction above
-      6 GHz, and its frequency-independent 0.08 W/kg cap would otherwise
-      flatten frequency-sweep margins across the 7-100 GHz band.
+    - Whole-body SAR (``sar_wb``) is a basic restriction across the entire
+      100 kHz - 300 GHz range (Table 2 and Table 5 both list it at
+      0.08 W/kg general public / 0.4 W/kg occupational), so it is always
+      checked when provided.
+    - Below or at 6 GHz (Table 2 regime): Sab (4 cm^2, 1 cm^2) and
+      Sinc_local/whole_body limits do not apply and are omitted.
+    - Above 6 GHz (Table 5 regime): Sab and Sinc limits apply in addition
+      to SAR_wb.
 
     Parameters
     ----------
@@ -336,12 +339,7 @@ def evaluate_compliance(
         )
 
     check_sar = None
-    # Per ICNIRP 2020, whole-body SAR is the basic restriction for 100 kHz - 6 GHz
-    # (Table 2). Above 6 GHz the basic restriction shifts to Sab (Table 5), so SAR_wb
-    # no longer applies. Including it above 6 GHz makes the frequency-independent
-    # SAR_wb margin pin the tightest-check curve and hides the true frequency
-    # dependence of Sab / Sinc_local.
-    if sar_wb is not None and freq_hz <= _FREQ_SAB_THRESHOLD_HZ:
+    if sar_wb is not None:
         check_sar = ComplianceCheck(
             value=sar_wb,
             limit=limits.sar_wb,
@@ -630,6 +628,11 @@ def frequency_sweep(
         freq_hz : (n_points,) frequency array
         freq_ghz : (n_points,) frequency in GHz
         margin_db : (n_points,) tightest margin at each frequency
+        per_check_margin_db : dict[str, (n_points,) ndarray]
+            Margin in dB for each individual check, by attribute name
+            (sab_4cm2, sab_1cm2, sar_wb, sinc_local, sinc_whole_body).
+            Points where the check does not apply at that frequency are
+            NaN so the UI can break lines cleanly.
         compliant : (n_points,) boolean mask
         results : list of ComplianceResult at each frequency
     """
@@ -639,6 +642,8 @@ def frequency_sweep(
     margin_db_arr = np.zeros(n_points)
     compliant_arr = np.ones(n_points, dtype=bool)
     results_list: list[ComplianceResult] = []
+    check_names = ("sab_4cm2", "sab_1cm2", "sar_wb", "sinc_local", "sinc_whole_body")
+    per_check: dict[str, np.ndarray] = {name: np.full(n_points, np.nan) for name in check_names}
 
     for i, f in enumerate(freq_hz_arr):
         cr = evaluate_compliance(
@@ -654,11 +659,16 @@ def frequency_sweep(
         margin_db_arr[i] = cr.margin_db
         overall = cr.overall_pass
         compliant_arr[i] = overall if overall is not None else True
+        for name in check_names:
+            check = getattr(cr, name)
+            if check is not None:
+                per_check[name][i] = check.margin_db
 
     return {
         "freq_hz": freq_hz_arr,
         "freq_ghz": freq_hz_arr / 1e9,
         "margin_db": margin_db_arr,
+        "per_check_margin_db": per_check,
         "compliant": compliant_arr,
         "results": results_list,
     }
