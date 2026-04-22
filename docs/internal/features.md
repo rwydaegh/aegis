@@ -1,6 +1,6 @@
 # AEGIS feature inventory
 
-*Current as of v0.31.1 (April 2026). Updated on each release when user-facing features are added.*
+*Current as of v0.32.0 (April 2026). Updated on each release when user-facing features are added.*
 
 ## Core physics engine
 
@@ -318,6 +318,8 @@
 - Base station markers, detail viewing, dosimetry computation, antenna pattern visualization
 - Global coverage map with zoom-level transitions, site density, operator coloring, and one-click setup to local scene
 - ICNIRP compliance indicators (pass/warn/fail); frequency-dependent quantity switching at 30 GHz
+- Ground-plane compliance ring: per-azimuth iso-S_inc contour solved at 1.5 m observer height via Picard iteration with full 3-D pattern and antenna geometry; falls back to horizontal-slice approximation when the iso-surface is above the ground plane
+- 3-D compliance exclusion volume: toggleable UV-sphere mesh showing the full S_inc = S_limit surface around the antenna in azimuth and elevation; ground-clipped; rendered as solid face and wireframe
 - Power sweep and frequency sweep analysis charts (Recharts); compliance heatmap visualization
 - Optimization controls: placement grid search, tilt+power sweep, MIMO peak optimizer with iteration display and convergence tracking
 - Configuration export (JSON/YAML); shareable state links with URL encoding; dosimetry export (CSV, JSON, NPZ)
