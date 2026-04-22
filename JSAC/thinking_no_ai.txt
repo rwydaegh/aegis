@@ -1,0 +1,50 @@
+
+JSAC paper
+
+my idea: change the tx power or precoding st we have better throughput, since UL is the determinant here.
+
+Claude convo 1:
+-C1 ECBF s.t. <stochastic shizzle> in most poses your exposure is ok
+-C2 use ISAC to guess the pose
+-- very complex
+
+rereading those 6 cited papers on coherent exposure operator..
+-good stuff, seriously. almost seems like they wanna try for JSAC lol. but old.
+-I get the Zhou paper better now. trying to work with the 6min max of ICNIRP kinda.
+-who prevents me from basically copy pasting this shit but using a real matrix. thats a basic question.
+-all fancy journals, many accepted. the David Love Purdue group WAS active and not anymore very recently. interesting if u even wanna go there.
+AI: yeah ok but they never have nice bodies and a DT of that. no 20 poses nice and analytical. Not differentiable either
+
+In the end claude was like "IMU sensor give u pose estimation (simple, done a million times, even has datasets), and you get to do exposure..."
+-hmhhhh. SAR back-off I learned here too (also from those 6 papers)
+-all u need is the confusion matrix and some stochastic blablabla. you should make abstraction it...
+
+Claude convo 2:
+opens with differentiable in the title, the has a weird breakdown i just dont get it.
+-something something UL AND DL and estimate poses and make sure not over it?? 
+
+
+having an idea
+-one can scan a body with an app one-time
+-if exposure matrix is only geometry dependent
+-it would then reduce dosimetry for you
+I did some staring at the exposure operator: yes it is purely a geometric thing. trace of it is isotropic from everywhere.
+-actually nope. it is an MxM thing (hence x on each side). but each element has an int dA on it... basically, its just on a triangle level and summed ya know. mu_n is only one that enters
+
+btw maybe im quite delusional for Wout:
+-too soon
+-AND a different topic?????
+
+idk man. could be a big waste. on top of acceptance rate....
+BE VANILLA FFSwr
+
+--> JSAC, but wout is happy?
+hotspots... a real niche... if I can convince people coherent MIMO is scary, I can harp on max APD instead of SAR
+
+
+What if I just have "the body", perhaps multi-layered for:
+-psSAR10g (todo...)
+-maxSab
+-SAR
+so a complete dosimetry calculation across freqs.
+with lyapunov... 

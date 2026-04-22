@@ -1,0 +1,27 @@
+JSAC special issue DIGITAL TWIN closed-loop optimization with exposure?? 
+- if worried about the non-physical layer stuff, Sionna+Chat and keep is simple
+
+Okay, I'm having this idea. I'm an expert at Sim4Life, right? So imagine you have like Duke or whatever Phantom and obviously this is a postable Phantom so you can place this Phantom anywhere. We could probably figure out a way to smoothly animate a thousand frames of a whole walking cycle, right? We could just have our boy do a walk and the phone itself could either be in the right pocket, left pocket, or in its hand while it's looking at it. So there's already two dimensions. And then there's also different Phantoms like children, etc. What if? Let's say for some reason I'm also a really good pro at computing a gazillion billion simulations at the same time. Like I can really do a lot of FDTV simulations. So I can make the dataset of your dreams and now that I have so much data of every TD, impinging would just be like a plane wave. Maybe even a realistic phone model and then there's a signal of that phone and we kind of really compute the whole transfer function. Then the question is how do we relate it to the special issue? 
+
+Chat summary of the issue:
+It’s pushing a shift from “digital twins of wireless networks” to “wireless networks enabling digital twin networks (DTNs)”: DTs act as real-time agents that sense the physical world, run predictions/optimization, and close the loop by reconfiguring RAN/edge/cloud resources to meet application/mission goals (QoE, latency, reliability, energy, resilience), not just network KPIs.
+
+Strongest ideas in the scope
+
+Twin-in-the-loop control: DTs directly inside the feedback loop (sense → predict → act → verify).
+
+Cross-layer optimization: jointly tune wireless + edge/cloud + scheduling/dataflow for mission objectives.
+
+Learning-based control: RL / differentiable control with stability + safety guarantees.
+
+Predictive resilience: DT analytics for proactive fault detection, self-healing, robustness.
+
+Scalable orchestration: distributed/federated DTs across edge–cloud; dynamic creation/migration.
+
+Semantic / task-aware networking: optimize “meaning” (task/QoE) rather than packets; intent-based APIs.
+
+Trustworthiness: latency-bounded synchronization, security/privacy, robust data pipelines, interoperability/standards.
+
+Strongest way to fit exposure into this (your angle)
+
+Make exposure a first-class control objective/constraint in the closed loop (SAR/APD risk budgets), enabled by a fast exposure micro-twin surrogate trained from Sim4Life/FDTD over phantoms/poses/device placements. Online DTN control uses it to adapt beams/power/scheduling safely under uncertainty.
