@@ -532,7 +532,14 @@ export interface PowerSweepResult {
 
 export interface FrequencySweepResult {
   freq_ghz: number[]
-  margin_db: number[]
+  margin_db: (number | null)[]
+  per_check_margin_db: {
+    sab_4cm2: (number | null)[]
+    sab_1cm2: (number | null)[]
+    sar_wb: (number | null)[]
+    sinc_local: (number | null)[]
+    sinc_whole_body: (number | null)[]
+  }
   compliant: boolean[]
 }
 

@@ -6,8 +6,16 @@ import { useNotificationStore } from '@/stores/notifications'
 import { useActiveSimulation } from '@/hooks/useActiveSimulation'
 import { fetchFrequencySweep } from '@/api/client'
 import type { FrequencySweepResult } from '@/api/client'
-import { MarginChart } from './MarginChart'
+import { MarginChart, type PerCheckSeries } from './MarginChart'
 import { btnClass, btnPrimaryClass, checkValue } from './utils'
+
+const PER_CHECK_SERIES: PerCheckSeries[] = [
+  { key: 'sab_4cm2', label: 'S_ab (4 cm²)', color: '#60a5fa' },
+  { key: 'sab_1cm2', label: 'S_ab (1 cm²)', color: '#a78bfa' },
+  { key: 'sar_wb', label: 'SAR_wb', color: '#fbbf24' },
+  { key: 'sinc_local', label: 'S_inc (local)', color: '#34d399' },
+  { key: 'sinc_whole_body', label: 'S_inc (wb)', color: '#f472b6' },
+]
 
 // ---------------------------------------------------------------------------
 // Frequency sweep section
@@ -64,7 +72,18 @@ export function FrequencySweepSection() {
         x: f,
         margin: result.margin_db[i],
         compliant: result.compliant[i],
+        sab_4cm2: result.per_check_margin_db?.sab_4cm2?.[i] ?? null,
+        sab_1cm2: result.per_check_margin_db?.sab_1cm2?.[i] ?? null,
+        sar_wb: result.per_check_margin_db?.sar_wb?.[i] ?? null,
+        sinc_local: result.per_check_margin_db?.sinc_local?.[i] ?? null,
+        sinc_whole_body: result.per_check_margin_db?.sinc_whole_body?.[i] ?? null,
       }))
+    : []
+
+  const activeSeries = result
+    ? PER_CHECK_SERIES.filter((s) =>
+        chartData.some((row) => row[s.key as keyof typeof row] != null),
+      )
     : []
 
   return (
@@ -93,6 +112,7 @@ export function FrequencySweepSection() {
           xUnit="GHz"
           currentX={freqGhz}
           onChartClick={(v) => useSimulationStore.getState().setFreqGhz(parseFloat(v.toFixed(1)))}
+          perCheck={activeSeries}
         />
       )}
     </div>

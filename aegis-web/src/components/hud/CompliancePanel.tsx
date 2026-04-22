@@ -2,7 +2,6 @@ import { useSimulationStore } from '@/stores/simulation'
 import { useActiveSimulation } from '@/hooks/useActiveSimulation'
 import { useUIStore } from '@/stores/ui'
 import { useMIMOStore } from '@/stores/mimo'
-import type { QuantityKey } from '@/api/types'
 import Tex from '@/components/ui/Tex'
 import { cn } from '@/lib/utils'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
@@ -38,14 +37,6 @@ const LABEL_TEX: Record<string, string> = {
   'SAR_wb': '\\text{SAR}_\\text{wb}',
   'S_inc (local)': 'S_\\text{inc}\\;(\\text{local})',
   'S_inc (whole-body)': 'S_\\text{inc}\\;(\\text{wb})',
-}
-
-const LABEL_TO_KEY: Record<string, QuantityKey> = {
-  'S_ab (4 cm^2)': 'sab_4cm2',
-  'S_ab (1 cm^2)': 'sab_1cm2',
-  'SAR_wb': 'sar_wb',
-  'S_inc (local)': 'sinc_local',
-  'S_inc (whole-body)': 'sinc_wb',
 }
 
 interface CheckEntry {
@@ -165,7 +156,6 @@ function ComplianceHeader({ scenario }: { scenario: string }) {
 
 export default function CompliancePanel() {
   const { stats } = useActiveSimulation()
-  const enabledQuantities = useSimulationStore(s => s.enabledQuantities)
   const powerDbm = useSimulationStore(s => s.powerDbm)
   const setPowerDbm = useSimulationStore(s => s.setPowerDbm)
   const scenario = useUIStore(s => s.exposureScenario)
@@ -239,15 +229,12 @@ export default function CompliancePanel() {
 
   const { compliance } = stats
 
-  const visibleChecks = compliance.checks.filter((check: CheckEntry) => {
-    if (!check.pass) return true
-    const key = LABEL_TO_KEY[check.label]
-    return key ? enabledQuantities.has(key) : true
-  })
+  // Compliance is regulatory, not a display preference: show every check
+  // that the backend returned at this frequency, regardless of which
+  // quantities the user has enabled for mesh display.
+  const visibleChecks = compliance.checks
 
-  const emptyMessage = compliance.checks.length > 0 && compliance.freq_hz < 6e9
-    ? 'S_ab limits do not apply below 6 GHz. Enable SAR_wb for compliance.'
-    : 'Enable quantities to see compliance checks'
+  const emptyMessage = 'No compliance checks applicable at this frequency'
 
   return (
     <div className={cn(PANEL_BASE, isComputing && 'shimmer-panel')} data-testid="compliance-panel">

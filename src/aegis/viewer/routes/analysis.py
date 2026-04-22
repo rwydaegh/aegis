@@ -394,10 +394,12 @@ def _compliance_frequency_sweep_impl(cache: dict, cache_lock) -> RouteResponse:
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
 
+    per_check = {name: _sanitize_list(arr.tolist()) for name, arr in sweep["per_check_margin_db"].items()}
     return jsonify(
         {
             "freq_ghz": sweep["freq_ghz"].tolist(),
             "margin_db": _sanitize_list(sweep["margin_db"].tolist()),
+            "per_check_margin_db": per_check,
             "compliant": sweep["compliant"].tolist(),
         }
     )
