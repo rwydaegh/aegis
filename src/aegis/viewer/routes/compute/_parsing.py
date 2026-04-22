@@ -123,6 +123,12 @@ def _parse_freq_and_tissue(
 
     if 2 * math.pi * freq_hz * EPS_0 <= 0.0:
         return None, None, (jsonify({"error": "freq_hz is too small to compute tissue properties"}), 400)
+    # Reject frequencies above the ICNIRP 2020 upper limit (300 GHz). Extreme
+    # values overflow Cole-Cole model arithmetic -> 500. Schemathesis found
+    # freq_hz=1.16e307 caused this.
+    _MAX_FREQ_HZ = 300e9
+    if freq_hz > _MAX_FREQ_HZ:
+        return None, None, (jsonify({"error": f"freq_hz must be at most {_MAX_FREQ_HZ:.0e} Hz (300 GHz)"}), 400)
 
     skin_model_name = params.get("skin_model", "itis")
     try:
