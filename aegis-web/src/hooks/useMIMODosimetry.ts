@@ -51,13 +51,16 @@ function buildMIMORequest(
   precoderType: MIMOComputeRequest['precoder_type'],
 ): MIMOComputeRequest {
   const deviceOffsets = useSceneStore.getState().capabilities?.body_device_offsets ?? {}
+  const override = useMIMOStore.getState().deviceOffsetOverride
 
   const mimoUsers: MIMOUserConfig[] = [...useMIMOStore.getState().users.values()].map(u => ({
     id: u.userId,
     phantom: u.phantomName,
     position: u.position,
     orientation: u.orientation,
-    device_offset: (deviceOffsets[u.phantomName] as [number, number, number]) ?? FALLBACK_DEVICE_OFFSET,
+    device_offset: override
+      ?? (deviceOffsets[u.phantomName] as [number, number, number])
+      ?? FALLBACK_DEVICE_OFFSET,
   }))
 
   return {

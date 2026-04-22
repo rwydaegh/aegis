@@ -58,6 +58,7 @@ interface MIMOStore {
   showAllHeatmaps: boolean
   showArrayPattern: boolean
   lastComputeError: string | null
+  deviceOffsetOverride: [number, number, number] | null
   _nextUserNumber: number
   _configVersion: number
 
@@ -82,6 +83,7 @@ interface MIMOStore {
   setShowAllHeatmaps: (on: boolean) => void
   setShowArrayPattern: (on: boolean) => void
   setLastComputeError: (msg: string | null) => void
+  setDeviceOffsetOverride: (offset: [number, number, number] | null) => void
   retryCompute: () => void
   clearAllResults: () => void
   reset: () => void
@@ -100,6 +102,7 @@ const INITIAL_STATE = {
   showAllHeatmaps: false,
   showArrayPattern: true,
   lastComputeError: null as string | null,
+  deviceOffsetOverride: null as [number, number, number] | null,
   _nextUserNumber: 1,
   _configVersion: 0,
 }
@@ -331,6 +334,8 @@ export const useMIMOStore = create<MIMOStore>((set, get) => ({
   setShowAllHeatmaps: (on) => set({ showAllHeatmaps: on }),
   setShowArrayPattern: (on) => set({ showArrayPattern: on }),
   setLastComputeError: (msg) => set({ lastComputeError: msg }),
+  setDeviceOffsetOverride: (offset) =>
+    set({ deviceOffsetOverride: offset, _configVersion: get()._configVersion + 1 }),
   retryCompute: () => set({ _configVersion: get()._configVersion + 1, lastComputeError: null }),
 
   clearAllResults: () => {

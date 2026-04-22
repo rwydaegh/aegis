@@ -1,4 +1,4 @@
-import { Eye, Gamepad2, X, Plus, Layers, Crosshair, AlertTriangle, RefreshCw } from 'lucide-react'
+import { Eye, Gamepad2, X, Plus, Layers, Crosshair, AlertTriangle, RefreshCw, Smartphone } from 'lucide-react'
 import EcbfWarningChip from './EcbfWarningChip'
 import { useMIMOStore, precoderRequiresMgeK, type PrecoderType } from '@/stores/mimo'
 import { useSimulationStore } from '@/stores/simulation'
@@ -177,6 +177,56 @@ function FocusPointControl({ focusPoint, onSet, onReset }: FocusPointControlProp
   )
 }
 
+interface DeviceOffsetControlProps {
+  effective: [number, number, number]
+  isOverridden: boolean
+  onSet: (offset: [number, number, number]) => void
+  onReset: () => void
+}
+
+function DeviceOffsetControl({ effective, isOverridden, onSet, onReset }: DeviceOffsetControlProps) {
+  const axisLabels = ['X', 'Y', 'Z'] as const
+  const axisTitles = ['Right (+) / left (-) of body', 'Forward (+) from body', 'Height above ground']
+  return (
+    <div className="mb-2">
+      <div className="flex items-center gap-1 mb-1">
+        <Smartphone className="w-3 h-3 text-[#00e5ff]" />
+        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Phone offset</span>
+        {isOverridden && (
+          <button
+            onClick={onReset}
+            className="ml-auto text-[9px] text-muted-foreground hover:text-foreground transition-colors"
+            title="Reset to phantom default"
+          >
+            reset
+          </button>
+        )}
+      </div>
+      <div className="flex gap-1">
+        {axisLabels.map((axis, i) => (
+          <label key={axis} className="flex items-center gap-0.5 flex-1" title={axisTitles[i]}>
+            <span className="text-[9px] text-muted-foreground">{axis}</span>
+            <input
+              type="number"
+              step={0.05}
+              value={Number(effective[i].toFixed(3))}
+              onChange={e => {
+                const v = parseFloat(e.target.value)
+                if (isNaN(v)) return
+                const next: [number, number, number] = [...effective]
+                next[i] = i === 2 ? Math.max(0, v) : v
+                onSet(next)
+              }}
+              className="w-full bg-muted/50 border border-border rounded px-1 py-0.5 text-[10px] text-foreground font-mono"
+            />
+          </label>
+        ))}
+      </div>
+      <p className="text-[9px] text-muted-foreground/60 mt-0.5">Body-relative, meters (Z-up)</p>
+    </div>
+  )
+}
+
 export default function MIMOPanel() {
   const enabled = useMIMOStore(s => s.enabled)
   const setEnabled = useMIMOStore(s => s.setEnabled)
@@ -196,6 +246,8 @@ export default function MIMOPanel() {
   const setPrecoderType = useMIMOStore(s => s.setPrecoderType)
   const setShowAllHeatmaps = useMIMOStore(s => s.setShowAllHeatmaps)
   const setShowArrayPattern = useMIMOStore(s => s.setShowArrayPattern)
+  const deviceOffsetOverride = useMIMOStore(s => s.deviceOffsetOverride)
+  const setDeviceOffsetOverride = useMIMOStore(s => s.setDeviceOffsetOverride)
   const caps = useSceneStore(s => s.capabilities)
   const summaryStats = useMIMOStore(s => s.summaryStats)
   const lastComputeError = useMIMOStore(s => s.lastComputeError)
@@ -206,6 +258,15 @@ export default function MIMOPanel() {
   const K = users.size
   const M = arrayConfig ? arrayConfig.n_h * arrayConfig.n_v : 0
   const availablePhantoms = caps?.bodies ?? []
+
+  const FALLBACK_DEVICE_OFFSET: [number, number, number] = [0, 0.30, 1.4]
+  const focusedUser = focusedUserId ? users.get(focusedUserId) : null
+  const defaultOffsetPhantom = focusedUser?.phantomName ?? userList[0]?.phantomName
+  const phantomDefault = defaultOffsetPhantom
+    ? (caps?.body_device_offsets?.[defaultOffsetPhantom] as [number, number, number] | undefined)
+    : undefined
+  const effectiveDeviceOffset: [number, number, number] =
+    deviceOffsetOverride ?? phantomDefault ?? FALLBACK_DEVICE_OFFSET
 
   return (
     <div className="bg-card/80 backdrop-blur-md rounded-lg border border-border p-3 min-w-[220px]">
@@ -311,6 +372,13 @@ export default function MIMOPanel() {
             focusPoint={focusPoint}
             onSet={setFocusPoint}
             onReset={() => setFocusPoint([0, 1.0, 0])}
+          />
+
+          <DeviceOffsetControl
+            effective={effectiveDeviceOffset}
+            isOverridden={deviceOffsetOverride !== null}
+            onSet={setDeviceOffsetOverride}
+            onReset={() => setDeviceOffsetOverride(null)}
           />
 
           <div className="space-y-1 mb-2">

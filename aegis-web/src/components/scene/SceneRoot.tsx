@@ -318,6 +318,7 @@ function MIMOScene({ bodyMeshVisible }: { bodyMeshVisible: boolean }) {
   const cameraMode = useUIStore(s => s.cameraMode)
   const caps = useSceneStore(s => s.capabilities)
   const deviceOffsets = caps?.body_device_offsets ?? {}
+  const deviceOffsetOverride = useMIMOStore(s => s.deviceOffsetOverride)
   const fallbackOffset: [number, number, number] = [0, 0.30, 1.4]
 
   return (
@@ -338,7 +339,11 @@ function MIMOScene({ bodyMeshVisible }: { bodyMeshVisible: boolean }) {
           <SmartphoneModel
             position={user.position}
             rotationY={user.orientation}
-            deviceOffset={deviceOffsets[user.phantomName] as [number, number, number] ?? fallbackOffset}
+            deviceOffset={
+              deviceOffsetOverride
+              ?? (deviceOffsets[user.phantomName] as [number, number, number])
+              ?? fallbackOffset
+            }
           />
         </group>
       ))}
