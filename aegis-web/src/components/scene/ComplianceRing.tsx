@@ -252,8 +252,23 @@ export default function ComplianceRing() {
     prevDiscRef.current = null
     prevRingRef.current = null
 
-    if (!footprint || footprint.degenerate) {
+    if (!footprint) {
       return { discGeo: null, ringGeo: null, displayDist: 0, isCircular: true }
+    }
+
+    // Degenerate means the 3-D iso-S_inc surface never intersects the observer
+    // plane (common for tall antennas with a comfortable compliance margin).
+    // Fall back to the horizontal-slice approximation: the radius at which
+    // S_inc = S_limit ignoring the vertical geometry.
+    if (footprint.degenerate) {
+      if (marginDb == null || distanceM == null || !(distanceM > 0)) {
+        return { discGeo: null, ringGeo: null, displayDist: 0, isCircular: true }
+      }
+      const r = distanceM * Math.pow(10, -marginDb / 20)
+      if (!(r >= 0.1) || r > DEFAULT_MAX_RADIUS_M) {
+        return { discGeo: null, ringGeo: null, displayDist: 0, isCircular: true }
+      }
+      return { discGeo: null, ringGeo: null, displayDist: r, isCircular: true }
     }
 
     // For uniform patterns the solver already returns near-equal radii; render
@@ -275,7 +290,7 @@ export default function ComplianceRing() {
     prevRingRef.current = ringGeo
 
     return { discGeo, ringGeo, displayDist: footprint.maxR, isCircular: false }
-  }, [footprint])
+  }, [footprint, marginDb, distanceM])
 
   useEffect(() => () => {
     prevDiscRef.current?.dispose()
@@ -288,7 +303,8 @@ export default function ComplianceRing() {
     ringGroupRef.current.scale.set(s, s, s)
   })
 
-  if (!complianceRingVisible || !antennaPos || !footprint || footprint.degenerate) return null
+  if (!complianceRingVisible || !antennaPos || !footprint) return null
+  if (boundary.displayDist <= 0) return null
 
   const poleH = config?.antenna?.pole_height ?? 2
   const centerX = antennaPos[0]
@@ -299,8 +315,7 @@ export default function ComplianceRing() {
   const sharedProps = { centerX, centerZ, colors, poleH, displayDist: boundary.displayDist, isCompliant, ringGroupRef }
 
   if (boundary.isCircular) {
-    if (footprint.maxR < 0.1) return null
-    return <CircularBoundary {...sharedProps} minCompliantDist={footprint.maxR} />
+    return <CircularBoundary {...sharedProps} minCompliantDist={boundary.displayDist} />
   }
   return <DirectionalBoundary {...sharedProps} discGeo={boundary.discGeo} ringGeo={boundary.ringGeo} />
 }
