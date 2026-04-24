@@ -44,7 +44,7 @@ jobs:
         working-directory: aegis-web
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: '20'
           cache: 'npm'
@@ -52,7 +52,7 @@ jobs:
       - run: npm ci
       - run: npm run test:coverage
       - name: Upload frontend coverage
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         with:
           files: aegis-web/coverage/lcov.info
           flags: frontend
