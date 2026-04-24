@@ -22,7 +22,7 @@ aegis = "aegis.__main__:main"
 aegis-run = "aegis.run:main"
 
 [project.optional-dependencies]
-fast = ["numba>=0.59"]
+fast = ["numba>=0.65.1"]
 jax = ["jax>=0.4.20"]
 gpu = ["jax[cuda12]>=0.4.20"]
 viz = [
