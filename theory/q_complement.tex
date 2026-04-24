@@ -1,0 +1,758 @@
+% ============================================================
+% The complement of Q
+% Companion note to monograph_v2.tex, Part III
+% Author: R. Wydaeghe
+% ============================================================
+
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[margin=2.4cm]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\linespread{1.04}
+
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{bm}
+\usepackage{mathrsfs}
+\usepackage{bbm}
+\usepackage{cancel}
+\usepackage{xfrac}
+\allowdisplaybreaks[2]
+
+\usepackage{empheq}
+\usepackage[most]{tcolorbox}
+\tcbset{highlight math style={%
+    enhanced, colframe=black!70, colback=gray!6,
+    arc=2pt, boxrule=0.5pt, left=3pt, right=3pt}}
+
+\usepackage{siunitx}
+\sisetup{detect-all, range-phrase = {--}, range-units = single,
+         per-mode = symbol, inter-unit-product = {\,}}
+
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{xspace}
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\cfoot{\thepage}
+\renewcommand{\headrulewidth}{0pt}
+
+\usepackage{titlesec}
+\titleformat{\section}{\large\bfseries}{\thesection}{1em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{1em}{}
+
+\usepackage[colorlinks=true, linkcolor={blue!55!black},
+            citecolor={green!45!black}, urlcolor={blue!65!black}]{hyperref}
+\usepackage[nameinlink,capitalize]{cleveref}
+
+\usepackage{aliascnt}
+\theoremstyle{definition}
+\newtheorem{theorem}{Theorem}[section]
+\newaliascnt{proposition}{theorem}
+\newtheorem{proposition}[proposition]{Proposition}
+\aliascntresetthe{proposition}
+\newaliascnt{lemma}{theorem}
+\newtheorem{lemma}[lemma]{Lemma}
+\aliascntresetthe{lemma}
+\newaliascnt{corollary}{theorem}
+\newtheorem{corollary}[corollary]{Corollary}
+\aliascntresetthe{corollary}
+\newaliascnt{definition}{theorem}
+\newtheorem{definition}[definition]{Definition}
+\aliascntresetthe{definition}
+\newaliascnt{remark}{theorem}
+\newtheorem{remark}[remark]{Remark}
+\aliascntresetthe{remark}
+\crefname{proposition}{Proposition}{Propositions}
+\Crefname{proposition}{Proposition}{Propositions}
+\crefname{lemma}{Lemma}{Lemmas}\Crefname{lemma}{Lemma}{Lemmas}
+\crefname{corollary}{Corollary}{Corollaries}\Crefname{corollary}{Corollary}{Corollaries}
+\crefname{definition}{Definition}{Definitions}\Crefname{definition}{Definition}{Definitions}
+\crefname{remark}{Remark}{Remarks}\Crefname{remark}{Remark}{Remarks}
+
+% Custom macros (aligned with monograph)
+\newcommand{\khat}{\hat{\bm{k}}}
+\newcommand{\nhat}{\hat{\bm{n}}}
+\newcommand{\rr}{\mathbf{r}}
+\newcommand{\EE}{\mathbf{E}}
+\newcommand{\Sinc}{S_{\mathrm{inc}}}
+\newcommand{\Sab}{S_{\mathrm{ab}}}
+\newcommand{\Sref}{S_{\mathrm{re}}}
+\newcommand{\Sinn}{S_{\mathrm{in}}}
+\newcommand{\Smis}{S_{\mathrm{mi}}}
+\DeclareMathOperator{\ReLU}{ReLU}
+\DeclareMathOperator{\RE}{Re}
+\DeclareMathOperator{\IM}{Im}
+\DeclareMathOperator{\tr}{tr}
+\newcommand{\diff}{\mathrm{d}}
+\newcommand{\ident}{\mathbbm{1}}
+\newcommand{\Reals}{\mathbb{R}}
+\newcommand{\Complex}{\mathbb{C}}
+\newcommand{\half}{\tfrac{1}{2}}
+\newcommand{\Gtil}{\tilde{\mathbf{G}}}
+\newcommand{\gtil}{\tilde{\mathbf{g}}}
+\newcommand{\Fn}{\mathbf{F}_{\!n}}
+\newcommand{\Rn}{\mathbf{R}_{\!n}}
+\newcommand{\Qabs}{\mathbf{Q}_{\mathrm{ab}}}
+\newcommand{\Qref}{\mathbf{Q}_{\mathrm{re}}}
+\newcommand{\Qinn}{\mathbf{Q}_{\mathrm{in}}}
+\newcommand{\Qmis}{\mathbf{Q}_{\mathrm{mi}}}
+
+\title{\textbf{The complement of $\mathbf{Q}$:\\
+scattered power, transparent precoders, thermal duality}}
+\author{Robin Wydaeghe\\
+ Ghent University \& imec\\
+ \texttt{robin.wydaeghe@ugent.be}}
+\date{\today}
+
+\makeatletter
+\renewcommand{\maketitle}{%
+  \thispagestyle{plain}%
+  \begin{center}
+    \rule{\linewidth}{1pt}\\[0.4em]
+    {\LARGE\bfseries \@title}\\[0.5em]
+    {\large \@author}\\[0.3em]
+    {\small \@date}\\[0.4em]\rule{\linewidth}{1pt}
+  \end{center}
+  \vspace{0.5em}
+}
+\makeatother
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+In Part III of the monograph the whole-body absorbed power is
+$P_{\mathrm{ab}}=\mathbf{x}^H\Qabs\mathbf{x}$, with $\Qabs$ the
+Fresnel-transmission Gram integral of the exposure channel.
+Power conservation asks a question this operator does not answer:
+of the $\|\mathbf{x}\|^2$ watts that leave the array, what fraction
+is \emph{not} absorbed, and where does it go?
+This note writes the book-keeping explicitly.  We introduce three
+companion Hermitian operators $\Qref$, $\Qinn$, $\Qmis$, show that
+$\Qinn=\Qabs+\Qref$ is an exact consequence of Fresnel energy
+conservation, and that
+$\Qabs+\Qref+\Qmis\preceq\mathbf{I}$ is the array-level version of
+``what goes out must come back, be absorbed, or leave forever''.
+Under the pseudo-Brewster regime $\Qabs$ and $\Qref$ share
+eigenvectors, so every exposure-constrained precoder is
+simultaneously a scattering-optimal waveform: the worst beam for
+the bystander is the best beam for a monostatic radar.  We finish
+by sketching the thermal-reciprocal reading of $\Qabs$ (the
+Kirchhoff dual) and the generic existence of a \emph{transparency
+subspace} $\ker\Qinn$ whenever $M>3M_{\triangle}$.
+\end{abstract}
+
+\vspace{0.3em}
+\noindent\textit{Style note.}~This is a wandering companion to
+Part~III, not a theorem-proof paper.  Sections are short.  Some
+claims are exact, others approximate in the pseudo-Brewster sense,
+others are conjectures flagged as such.
+
+\tableofcontents
+\bigskip
+
+% ============================================================
+\section{Where does the rest of the power go?}
+% ============================================================
+
+From the exposure-operator definition in Part~III of the monograph,
+\begin{equation}
+  P_{\mathrm{ab}} = \mathbf{x}^H\Qabs\mathbf{x},
+  \qquad
+  \Qabs = \int_\Sigma \Gtil(\rr)^H\Gtil(\rr)\,\diff A.
+\end{equation}
+The array radiates a total power that, in the convention of the
+monograph where $\mathbf{x}\in\Complex^M$ is scaled so that each
+entry is an amplitude at the element feed, is
+\begin{equation}\label{eq:Ptx}
+  P_{\mathrm{tx}} = \|\mathbf{x}\|^2 = \mathbf{x}^H\mathbf{I}\mathbf{x}.
+\end{equation}
+The ratio $\eta_{\mathrm{ab}}(\mathbf{x})
+=\mathbf{x}^H\Qabs\mathbf{x}/\|\mathbf{x}\|^2\in[0,1]$ is the
+whole-body absorption efficiency of the precoder.  What is
+$1-\eta_{\mathrm{ab}}$?
+
+There are three places the un-absorbed watts can go:
+\begin{enumerate}[leftmargin=1.6em,itemsep=2pt]
+\item they hit the body and bounce: Fresnel reflection back into
+      the environment;
+\item they hit the body and ride along the surface: evanescent
+      tangential fields and Norton-wave contributions that we drop
+      here, see \cref{rem:ignored};
+\item they never hit the body at all: radiation that lights up the
+      sky, the ceiling, the neighbouring building, or the inside of
+      a reverberation chamber.
+\end{enumerate}
+We want a matrix for each.  Three operators, one identity.
+
+% ============================================================
+\section{The reflection operator}
+% ============================================================
+
+\subsection{Fresnel amplitude reflection, revived}
+
+The monograph uses amplitude transmission coefficients
+\begin{equation}\label{eq:t}
+  t_{s,n}=\frac{2\mu_n}{\mu_n+\xi_n},\qquad
+  t_{p,n}=\frac{2\tilde n\,\mu_n}{\tilde n^2\mu_n+\xi_n},
+\end{equation}
+with $\xi_n=\sqrt{\tilde n^2-1+\mu_n^2}$ and $\RE\xi_n>0$.
+The \emph{reflection} siblings are
+\begin{equation}\label{eq:r}
+  r_{s,n}=\frac{\mu_n-\xi_n}{\mu_n+\xi_n},\qquad
+  r_{p,n}=\frac{\tilde n^2\mu_n-\xi_n}{\tilde n^2\mu_n+\xi_n},
+\end{equation}
+linked to \cref{eq:t} by $t_{s,n}=1+r_{s,n}$ and
+$t_{p,n}=(1+r_{p,n})/\tilde n$.  Power conservation at a lossy
+interface is the polarisation-wise identity
+\begin{equation}\label{eq:fresnel-energy}
+  T_{s,n}+|r_{s,n}|^2=1,\qquad T_{p,n}+|r_{p,n}|^2=1,
+\end{equation}
+where $T_{s,n}$ and $T_{p,n}$ are the monograph's power
+transmittances.  This is exact for lossy half-spaces once we read
+$T$ through the flux-weighted Poynting balance; see the appendix of
+the appendix of the monograph that derives Fresnel coefficients
+from the boundary conditions, and the discussion around the
+power-transmittance definition $T=1-|r|^2$ in Part~I.
+
+\subsection{A Fresnel reflection operator}
+
+Mirror the construction of the Fresnel transmission operator
+$\Fn(\rr)=\bigl(t_{s,n}\hat e_{s,n}\hat e_{s,n}^{\!T}
++t_{p,n}\hat e_{p,n}\hat e_{p,n}^{\!T}\bigr)H(\mu_n)$:
+
+\begin{definition}[Fresnel reflection operator]\label{def:Rop}
+At a front-facing surface point $\rr$ the per-path Fresnel
+reflection operator is
+\begin{equation}\label{eq:Rn}
+  \Rn(\rr)=\Bigl(r_{s,n}\,\hat e_{s,n}\hat e_{s,n}^{\!T}
+                +r_{p,n}\,\hat e_{p,n}\hat e_{p,n}^{\!T}\Bigr)H(\mu_n).
+\end{equation}
+\end{definition}
+
+Just as $\Fn$ filters the incident polarisation $\bm\psi_n$ into the
+transmitted surface field, $\Rn$ filters it into the specularly
+reflected amplitude.  Both are rank-two, dimensionless, and differ
+only in which Fresnel coefficient multiplies each polarisation
+eigenvector.
+
+\subsection{A scattered-power channel matrix and its Gram}
+
+The monograph's exposure channel vector is
+\begin{equation}
+  \gtil_j(\rr)=\sum_{n:j(n)=j}\sqrt{\tfrac{\sigma}{4\alpha_n}}\,
+  \Fn(\rr)\,\bm\psi_n\,e^{-ik_0\khat_n\cdot\rr}.
+\end{equation}
+The prefactor $\sqrt{\sigma/(4\alpha_n)}$ plus
+the depth-integral identity of the monograph exactly turns
+$|\Fn\bm\psi_n|^2$ into
+$T_n\cos\theta_n/Z_0$.  For reflection we do not integrate over
+depth, we evaluate the outgoing Poynting vector on $\Sigma^+$; the
+amplitude-to-power conversion is just $1/Z_0$ times $\cos\theta_n$.
+Define the \emph{scattered channel vector}
+\begin{equation}\label{eq:gref}
+  \gtil^{\mathrm{re}}_j(\rr)=\sum_{n:j(n)=j}
+  \sqrt{\tfrac{\cos\theta_n}{Z_0}}\,\Rn(\rr)\,\bm\psi_n\,
+  e^{-ik_0\khat_n^{\mathrm{re}}\cdot\rr},
+\end{equation}
+where $\khat_n^{\mathrm{re}}=\khat_n+2\mu_n\nhat$ is the specular
+direction.  Stack into
+$\Gtil^{\mathrm{re}}(\rr)=[\gtil^{\mathrm{re}}_1,\ldots,
+\gtil^{\mathrm{re}}_M]\in\Complex^{3\times M}$.
+
+\begin{definition}[Reflection operator]\label{def:Qref}
+\begin{equation}\label{eq:Qref}
+  \boxed{\Qref=\int_\Sigma\Gtil^{\mathrm{re}}(\rr)^H\,
+                             \Gtil^{\mathrm{re}}(\rr)\,\diff A
+         \;\in\;\Complex^{M\times M}.}
+\end{equation}
+\end{definition}
+
+$\Qref$ is Hermitian positive-semidefinite, same proof as $\Qabs$.
+Interpretation: $\mathbf{x}^H\Qref\mathbf{x}$ is the total power
+scattered by the body surface into its exterior half-space, under
+the same plane-wave superposition that defines $P_{\mathrm{ab}}$.
+
+\subsection{The per-surface energy identity}
+
+At a single front-facing point, Fresnel conservation
+\cref{eq:fresnel-energy} is a \emph{per-path, per-polarisation}
+statement.  When summed coherently over paths, the cross-terms
+survive in both $\Sab$ and $\Sref$ in the same way:
+
+\begin{proposition}[Local energy balance]\label{prop:local}
+Under Approximations~1 and~2 of the monograph,
+\begin{equation}\label{eq:local-balance}
+  \Sab(\rr)+\Sref(\rr)=\Sinn(\rr),
+\end{equation}
+where $\Sref(\rr)=\|\Gtil^{\mathrm{re}}(\rr)\mathbf{x}\|^2$ is the
+specularly scattered power density and
+\begin{equation}\label{eq:Sinn}
+  \Sinn(\rr)=\sum_n \frac{|x_{j(n)}|^2\cos\theta_n}{Z_0}
+             |\bm\psi_n|^2 H(\mu_n)
+             +\text{coherent cross-terms},
+\end{equation}
+is the \emph{incident} surface flux, i.e.\ the Poynting flux of
+$\sum_n\EE_n$ through $\Sigma$.
+\end{proposition}
+
+Sketch.  The incident tangential and normal fields decompose into
+TE and TM.  For TE, $|\psi_{s,n}|^2\cos\theta_n$ partitions as
+$T_{s,n}|\psi_{s,n}|^2\cos\theta_n+|r_{s,n}|^2|\psi_{s,n}|^2\cos\theta_n$
+by \cref{eq:fresnel-energy}, with identical angular and phase
+factors on the two outgoing terms, so cross-terms obey the same
+identity path-by-path.  TM is the same up to a factor of
+$|\tilde n|^{-2}$ in the normal-field contribution, already absorbed
+into the $O(|\tilde n|^{-2})$ error of Approximation~1.
+
+Integrating \cref{eq:local-balance} over the body gives the
+operator identity
+\begin{empheq}[box=\tcbhighmath]{equation}\label{eq:op-balance}
+  \Qinn=\Qabs+\Qref,\qquad
+  \Qinn\equiv\int_\Sigma\mathbf{G}(\rr)^H\mathbf{G}(\rr)H(\mu)\,\diff A,
+\end{empheq}
+where $\mathbf{G}$ is the incident field channel matrix of the
+monograph's field channel matrix.  $\Qinn$ is the
+\emph{incidence operator}: it maps precoders to power that lands on
+the body, irrespective of whether the body then absorbs it or
+reflects it away.  $\Qabs$ and $\Qref$ partition that landed power.
+
+\begin{remark}[What we have ignored]\label{rem:ignored}
+Three contributions do not appear in \cref{eq:op-balance}.
+(i) Evanescent/Norton tangential surface waves along the air-skin
+interface; negligible at mmWave, order a few percent below~6\,GHz.
+(ii) Creeping and diffraction around body contours, treated in
+Part~I as the diffraction-smoothing correction.
+(iii) Re-absorption after reflection, i.e.\ a path that reflects off
+the torso, hits the arm, and is then absorbed there.  This is a
+second-order term in the body's own albedo
+$\bar\alpha=\tr\Qref/\tr\Qinn$ and is left for \cref{sec:higher}.
+\end{remark}
+
+% ============================================================
+\section{Global book-keeping}
+% ============================================================
+
+\subsection{The missed operator}
+
+What never hits the body?  Everything the transmitter radiates
+outside the cone subtended by $\Sigma$.  Let $\mathbf{G}^{\mathrm{far}}$
+be the channel matrix of the per-element far field evaluated on a
+sphere at infinity; its Gram integrated over that sphere is a
+multiple of~$\mathbf{I}$, because by reciprocity/unitarity the
+total power radiated is $\|\mathbf{x}\|^2$ regardless of precoding.
+Split the sphere into the solid angle that contains the body,
+$\Omega_\Sigma$, and its complement.  Define
+\begin{equation}\label{eq:Qmis}
+  \Qmis=\|\mathbf{x}\|^{-2}\!\!\int_{\Omega_\Sigma^c}\!\!
+        \mathbf{G}^{\mathrm{far}}(\Omega)^H\mathbf{G}^{\mathrm{far}}(\Omega)\,\diff\Omega.
+\end{equation}
+This operator is cleanly defined when the body is the only scatterer.
+With walls and buildings, $\Qmis$ absorbs into a bigger
+\emph{environmental loss} operator $\mathbf{Q}_{\mathrm{env}}$
+(dissipation in concrete and glass) plus the true sky loss.  We
+keep the simple form.
+
+\subsection{The bound}
+
+In free space with a single scatterer, reciprocity gives
+
+\begin{theorem}[Array-level power conservation]\label{thm:global}
+In a lossless background with the body as the only scatterer, for
+every precoder $\mathbf{x}\in\Complex^M$,
+\begin{equation}\label{eq:global-balance}
+  \mathbf{x}^H\bigl(\Qabs+\Qref+\Qmis\bigr)\mathbf{x}
+  =\|\mathbf{x}\|^2,
+\end{equation}
+equivalently $\Qabs+\Qref+\Qmis=\mathbf{I}$ as Hermitian forms.
+With additional loss channels (walls, etc.), $\preceq$ replaces $=$.
+\end{theorem}
+
+Proof sketch.  The total radiated power is $\|\mathbf{x}\|^2$ and
+flows through any enclosing surface.  Split the surface into the
+body and a sphere at infinity.  On the body, Poynting in equals
+$\mathbf{x}^H\Qinn\mathbf{x}=\mathbf{x}^H(\Qabs+\Qref)\mathbf{x}$ by
+\cref{eq:op-balance}, where ``in'' is net inflow counting the
+reflected beam as part of the outflow on the far sphere.  The rest,
+which reaches infinity directly without interacting with the body,
+is $\mathbf{x}^H\Qmis\mathbf{x}$.  By conservation these three sum
+to $\|\mathbf{x}\|^2$.
+
+\Cref{thm:global} is the reason the title of this note calls
+$\Qref+\Qmis$ \emph{the complement}: it is literally
+$\mathbf{I}-\Qabs$, modulo environmental loss.
+
+\begin{corollary}[Kirchhoff-like identity for modes]\label{cor:modes}
+Let $\lambda_k^{\mathrm{ab}}$, $\lambda_k^{\mathrm{re}}$,
+$\lambda_k^{\mathrm{mi}}$ be the eigenvalues of $\Qabs,\Qref,\Qmis$
+along a common precoder direction $\mathbf{v}_k$.  Then
+$\lambda_k^{\mathrm{ab}}+\lambda_k^{\mathrm{re}}
++\lambda_k^{\mathrm{mi}}=1$.
+\end{corollary}
+
+This is a literal sum-of-probabilities over ``absorbed / reflected /
+missed'' if we think of precoders as pure quantum-mechanical states
+and the three operators as the POVM of outcomes.  It is almost too
+tidy.
+
+% ============================================================
+\section{Pseudo-Brewster eigenvector locking}
+% ============================================================
+
+Now the fun starts.  $\Qabs$ and $\Qref$ are built from the same
+paths, the same body, the same precoder, with different scalar
+weights ($t_s,t_p$ vs $r_s,r_p$) on the same TE/TM polarisation
+bases.  What if those weights are nearly the same up to an overall
+constant?
+
+\subsection{The observation}
+
+Under pseudo-Brewster (Part~I of the monograph) we have
+$T_s(\theta)\approx T_p(\theta)\approx T_0$ across
+$\theta\in[0,80^\circ]$ for skin and other high-water tissue.  Hence
+$|r_s|^2\approx|r_p|^2\approx 1-T_0$, and more strongly, the
+amplitude coefficients are nearly equal:
+\begin{equation}\label{eq:pB-amp}
+  t_{s,n}\approx t_{p,n}\approx\sqrt{T_0}\,e^{i\phi_t(\theta_n)},
+  \qquad
+  r_{s,n}\approx r_{p,n}\approx\sqrt{1-T_0}\,e^{i\phi_r(\theta_n)}.
+\end{equation}
+The phases $\phi_t,\phi_r$ are angle-dependent but
+polarisation-blind in this regime.  Substituting into \cref{eq:Rn}
+and the analogous $\Fn$,
+\begin{equation}\label{eq:F-R-collapse}
+  \Fn\approx \sqrt{T_0}\,e^{i\phi_t}\Pi_n,\qquad
+  \Rn\approx \sqrt{1-T_0}\,e^{i\phi_r}\Pi_n,
+\end{equation}
+where $\Pi_n=\hat e_{s,n}\hat e_{s,n}^{\!T}+\hat e_{p,n}\hat e_{p,n}^{\!T}
+=H(\mu_n)(\mathbf{I}_3-\khat_n\khat_n^{\!T})$ is the polarisation
+projector transverse to $\khat_n$.  That is the key identity.
+
+\subsection{Consequence: shared eigenvectors}
+
+\begin{proposition}[Eigenvector locking]\label{prop:lock}
+Under the pseudo-Brewster amplitude approximation \cref{eq:pB-amp},
+\begin{equation}\label{eq:lock}
+  \Qref\approx\frac{1-T_0}{T_0}\,\Qabs + \Delta,
+\end{equation}
+where $\|\Delta\|/\|\Qabs\|=O(\max|T_s-T_p|/T_0)\lesssim 5\%$ at mmWave.
+In particular, $\Qabs$ and $\Qref$ share their top eigenvectors
+(to within that tolerance), and for every unit precoder
+$\mathbf{x}$,
+\begin{equation}\label{eq:lock-ratio}
+  \mathbf{x}^H\Qref\mathbf{x}\approx
+  \frac{1-T_0}{T_0}\,\mathbf{x}^H\Qabs\mathbf{x}.
+\end{equation}
+\end{proposition}
+
+Proof sketch.  In \cref{eq:F-R-collapse} the phase factors
+$e^{i\phi_t},e^{i\phi_r}$ depend on $\theta_n$ but not on
+polarisation; they multiply each per-path contribution to
+$\Gtil(\rr)$ and $\Gtil^{\mathrm{re}}(\rr)$ by the \emph{same} scalar
+per path.  The two Gram integrals then differ only by the replacement
+$T_0\leftarrow 1-T_0$ and by the outgoing direction $\khat_n$ vs
+$\khat_n^{\mathrm{re}}$.  The outgoing-direction change affects only
+the per-point phase $e^{-ik_0\khat\cdot\rr}$, which is a unitary
+factor on the channel matrix: it leaves
+$\mathbf{G}^{\!H}\mathbf{G}$ invariant up to the sign of
+cross-element phases that integrate out on $\Sigma$.  What remains
+is the scalar factor $(1-T_0)/T_0$.
+
+Equation \cref{eq:lock-ratio} is striking.  \emph{The worst-case
+precoder for body exposure is the worst-case precoder for body
+scattering.}  In the pseudo-Brewster regime these two optimisation
+problems are the same problem with a rescaled objective.
+
+\subsection{Why this is a nontrivial statement}
+
+Pseudo-Brewster already told us that $\Sab\approx\Sinc\,T_0\,\ReLU(\mu)$
+is polarisation-blind per-wave.  What's new here is at the
+\emph{array level}: the entire Hermitian operator $\Qabs$ is
+proportional to $\Qref$, with a body-universal proportionality
+constant $(1-T_0)/T_0\approx 0.63/0.37\approx 1.7$ for skin at
+28\,GHz.  So every exposure mode $\mathbf{v}_k$ of $\Qabs$ is also a
+scattering mode, with scattered power
+$\lambda_k^{\mathrm{re}}\approx 1.7\lambda_k^{\mathrm{ab}}$.
+
+Two paragraphs ago this was a bookkeeping exercise.  Now it has a
+punch line: the body cannot be dosed more without being lit up more
+on a monostatic radar.
+
+% ============================================================
+\section{Sensing-communication duality, sketched}\label{sec:jsac}
+% ============================================================
+
+This is where the complement matrix earns its keep.  In joint
+sensing and communication (JSAC), we transmit $\mathbf{x}$ to serve
+a UE with channel $\mathbf{h}$ \emph{and} to image the environment
+via backscatter; the body is the dominant near-array scatterer.
+Sensing gain for a colocated mono-static receiver is
+\begin{equation}\label{eq:jsac-sense}
+  G_{\mathrm{sense}}(\mathbf{x})=
+  \mathbf{x}^H\Qref\mathbf{x}\cdot\mathcal{K}(\mathbf{h}_{\mathrm{rx}}),
+\end{equation}
+with $\mathcal{K}$ the receive-aperture collection factor we do not
+need to unpack here.  Exposure-constrained beamforming (Part~III of the monograph) solves
+\begin{equation}\label{eq:ecbf-orig}
+  \max_{\mathbf{x}}\;|\mathbf{h}^H\mathbf{x}|^2
+  \quad\text{s.t.}\quad \mathbf{x}^H\Qabs\mathbf{x}\le P_0.
+\end{equation}
+Under \cref{prop:lock} the feasibility set
+$\{\mathbf{x}:\mathbf{x}^H\Qabs\mathbf{x}\le P_0\}$ is, up to
+$5\,\%$, the same as
+$\{\mathbf{x}:\mathbf{x}^H\Qref\mathbf{x}\le P_0\cdot(1-T_0)/T_0\}$.
+Two consequences:
+
+\begin{enumerate}[leftmargin=1.6em,itemsep=2pt]
+\item \textbf{Safe-JSAC is a bound constraint, not a trade-off.}
+      Shrinking exposure shrinks sensing return proportionally
+      because the two Gram forms are parallel.  You do not pay for
+      ``communication + sensing'' against ``exposure'' as three
+      axes; exposure and sensing live on the same axis.
+\item \textbf{Nullspace precoders are the escape.}  The only
+      $\mathbf{x}$ that deliver $\mathbf{h}^H\mathbf{x}\ne 0$ with
+      $\mathbf{x}^H\Qabs\mathbf{x}=0$ are those with
+      $\mathbf{x}\in\ker\Qinn$ (the transparency subspace below).
+      These carry information to the UE without touching the body
+      and without scattering off it either.  Perfect for ``quiet''
+      communication, useless for imaging.
+\end{enumerate}
+
+I do not yet know how large $\ker\Qinn$ is for typical array sizes
+and body poses.  It is clearly non-empty when $M$ exceeds the number
+of independent polarised paths through $\Sigma$, which for a body
+and 256-element arrays is the common case.  The dimensionality of
+$\ker\Qinn$ is the key quantity for quiet JSAC and I mark it for
+follow-up.
+
+% ============================================================
+\section{The transparency subspace}
+% ============================================================
+
+\subsection{Definition and dimension}
+
+\begin{definition}[Transparency subspace]
+\begin{equation}
+  \mathcal{T}\equiv\ker\Qinn=
+  \{\mathbf{x}\in\Complex^M:\Qinn\mathbf{x}=\mathbf{0}\}.
+\end{equation}
+\end{definition}
+
+Because $\Qinn$ is a Gram, $\mathcal{T}$ is the orthogonal
+complement of the row space of the stacked channel matrix
+$[\mathbf{G}(\rr_1);\ldots;\mathbf{G}(\rr_K)]$ sampled on a
+sufficiently dense quadrature of $\Sigma$.  Its dimension is
+$M-\mathrm{rank}\,\Qinn$.  A precoder $\mathbf{x}\in\mathcal{T}$
+produces zero incident surface field on $\Sigma$, therefore zero
+absorbed and zero scattered power.  From the body's point of view
+the array is silent.
+
+\begin{proposition}[Generic transparency]\label{prop:dim}
+Let $N_{\mathrm{body}}$ be the number of distinct propagation paths
+reaching any surface element of $\Sigma$ from at least one array
+element (typically $N_{\mathrm{body}}\le 3M_\triangle$ where
+$M_\triangle$ is the number of front-facing triangles).  Then
+\begin{equation}\label{eq:dim}
+  \dim\mathcal{T}\ge\max(0,\,M-N_{\mathrm{body}}).
+\end{equation}
+\end{proposition}
+
+The bound is typically loose.  Inter-element path correlation, the
+finite solid angle subtended by the body, and the three-dimensional
+polarisation structure drive $\mathrm{rank}\,\Qinn$ well below its
+nominal upper bound.  A numerical measurement of $\dim\mathcal{T}$
+for, say, a 256-element URA at 28\,GHz facing a thelonious phantom
+at 1\,m is a one-afternoon experiment and I expect
+$\dim\mathcal{T}/M\gtrsim 0.3$ to $0.7$ depending on pose.  Flag:
+this is a conjecture based on how the monograph's directivity spectra
+decay, not a measurement.
+
+\subsection{The soft version}
+
+In practice we do not want a precoder in exact $\ker\Qinn$, we want
+one in the \emph{low-absorption eigenspan}.  The matrix
+\begin{equation}
+  \mathbf{P}_\varepsilon =
+  \sum_{k:\lambda_k^{\mathrm{ab}}/\lambda_1^{\mathrm{ab}}\le\varepsilon}
+        \mathbf{v}_k\mathbf{v}_k^{\!H}
+\end{equation}
+projects onto the $\varepsilon$-soft transparency subspace.  The
+monograph's ECBF solution is obtained by steering
+$(\lambda\Qabs+\nu\mathbf{I})^{-1}\mathbf{h}^*$; the transparency
+view is the complementary picture, where we first kill everything
+outside $\mathbf{P}_\varepsilon$ and then find the best
+UE-alignment inside it.  The two routes give the same optimiser in
+the limits, but the transparency picture makes the geometry of the
+feasibility set explicit.
+
+% ============================================================
+\section{Kirchhoff dual: $\Qabs$ is also a receiver}
+% ============================================================
+
+The same operator $\Qabs$ that counts absorbed power on a transmit
+precoder $\mathbf{x}$ counts, by reciprocity, the coupling of
+thermal emission from the body into a \emph{receive} combiner.
+This is Kirchhoff in array form.
+
+\subsection{Absorptivity equals emissivity, operator version}
+
+For a body at temperature $T$, spectral radiance per unit area per
+solid angle per polarisation is $B_\lambda(T)\cdot\epsilon(\rr,\khat)$
+with $\epsilon=1-|r|^2$.  By \cref{eq:fresnel-energy},
+$\epsilon=T_{s,p}$ per polarisation.  So the per-surface element
+emissive power toward direction $\khat'$ factors through the same
+$\Fn$-like operator that defined absorption, evaluated on the
+\emph{outgoing} path $(\rr,\khat')$.
+
+\begin{proposition}[Reciprocal coupling]\label{prop:kirch}
+Let $\mathbf{y}\in\Complex^M$ be a receive combiner applied to the
+array with effective noise temperature dominated by body radiation.
+Up to a Planck prefactor $\Phi(f,T)$,
+\begin{equation}\label{eq:kirch}
+  \langle|\mathbf{y}^H\mathbf{n}_{\mathrm{body}}|^2\rangle
+  \approx \Phi(f,T)\cdot \mathbf{y}^H\Qabs\mathbf{y}.
+\end{equation}
+Thermal pick-up is governed by the \emph{transmit} exposure operator.
+\end{proposition}
+
+Sketch.  Reciprocity for the two-port system ``array'' and
+``each body surface patch'' maps transmitted amplitude through $\Fn$
+to received amplitude through $\Fn^{\!T}$; the Gram integral over
+$\Sigma$ is the same in both directions.  The Planck prefactor
+collects bandwidth and temperature.
+
+\subsection{What this means in practice}
+
+If an array is precoded to maximise body exposure (top eigenvector
+of $\Qabs$), the conjugate combiner is the matched filter for
+body thermal emission.  Passive millimetre-wave body imaging and
+active mmWave exposure share the same spectral basis.  Exposure
+control and thermographic sensitivity are reciprocal problems.
+
+% ============================================================
+\section{A trace-level compliance law}
+% ============================================================
+
+The monograph gives $\lambda_1(\Qabs)$ as the worst-case
+whole-body absorbed power per unit transmit power, following
+(Ebadi-Shahrivar \textit{et al.}, 2019).  The complement view adds
+three free identities:
+
+\begin{description}[leftmargin=0pt,style=nextline]
+\item[Albedo.] The body's mean albedo under isotropic transmit is
+\[
+  \bar\alpha = \frac{\tr\Qref}{\tr\Qinn}
+  \approx 1-T_0\approx 0.37 \text{ at mmWave}.
+\]
+\item[Capture cross-section.] The body's effective capture
+fraction of the array's radiated power is
+\[
+  \bar\kappa = \frac{\tr\Qinn}{M}.
+\]
+This is the scaled isotropic-transmit solid-angle coverage, modulated
+by pseudo-Brewster.  Limit $\bar\kappa\to\Omega_\Sigma/4\pi$ in the
+incoherent regime.
+\item[Array-level compliance.]  ICNIRP-style whole-body SAR
+compliance is $\lambda_1(\Qabs)\le P_0\cdot m_{\mathrm{body}}\cdot
+\mathrm{SAR}_{\mathrm{wb,lim}}/P_{\mathrm{tx}}$.  Under
+\cref{prop:lock}, this is equivalent to a bound on
+$\lambda_1(\Qref)$ with the body-universal constant $(1-T_0)/T_0$.
+Two constraints, one eigenvalue.
+\end{description}
+
+% ============================================================
+\section{Where the book-keeping breaks down}\label{sec:higher}
+% ============================================================
+
+This whole note lives in the single-bounce pseudo-Brewster regime.
+Three obvious directions in which the clean picture loosens:
+
+\begin{enumerate}[leftmargin=1.6em,itemsep=2pt]
+\item \textbf{Multi-bounce body reflections.}  The torso scatters
+onto the arm; the arm then absorbs some of that.  A Neumann series
+on $\Qref$ gives the correction:
+\[
+  \Qabs^{(\infty)} = \Qabs + \Qabs\cdot\mathcal{R}\cdot\Qref
+  + \Qabs\cdot\mathcal{R}\cdot\Qref\cdot\mathcal{R}\cdot\Qref+\cdots,
+\]
+where $\mathcal{R}$ is a body-to-body visibility operator.  This is
+the classical radiosity cascade of Part~I, lifted to the coherent
+MIMO level.  Convergence is guaranteed by $\|\mathcal{R}\Qref\|\le
+\bar\alpha\cdot V_{\mathrm{self}}$ with self-visibility
+$V_{\mathrm{self}}$ of the phantom, typically $\ll 1$.
+\item \textbf{Below-6-GHz regime.}  Pseudo-Brewster is accurate only
+at mmWave.  At sub-6, \cref{prop:lock} becomes an inequality
+$\Qref\approx c_s(\theta)\Qabs^{(s)}+c_p(\theta)\Qabs^{(p)}$ with
+polarisation-dependent coefficients; the shared-eigenvector result
+becomes a block-sharing result.
+\item \textbf{Non-planar skin.}  Curvature and wavelength-comparable
+features give diffraction, not Fresnel.  $\Qabs+\Qref\ne\Qinn$
+there; the defect is the monograph's diffraction-smoothing term.
+\end{enumerate}
+
+% ============================================================
+\section{Loose threads}
+% ============================================================
+
+A list of leads the bookkeeping has opened.  Not claims.  Questions.
+
+\begin{enumerate}[leftmargin=1.6em,itemsep=3pt]
+\item Does $\Qref$ admit a closed-form bound analogous to
+$\lambda_1(\Qabs)\le T_0\cdot\Omega_{\mathrm{body}}/Z_0$ from
+Part~I?  \cref{prop:lock} suggests
+$\lambda_1(\Qref)\le(1-T_0)\cdot\Omega_{\mathrm{body}}/Z_0$
+with the same geometric factor.  Check.
+\item Is there a clean ECBF dual
+$\max_{\mathbf{x}}\mathbf{x}^H\Qref\mathbf{x}
+\text{ s.t. }\mathbf{x}^H\Qabs\mathbf{x}\le P_0$?  Under
+\cref{prop:lock} it degenerates to the trivial
+$\|\mathbf{x}\|^2\le P_0 T_0/(1-T_0)$, but away from pseudo-Brewster
+it is a real problem with its own optimiser, and it describes the
+best body-illuminator under a fixed dose budget.  Medical imaging
+reads this as ``best contrast per absorbed dose''.
+\item The transparency subspace dimension $\dim\mathcal{T}$ for
+representative base-station poses.  I would like a figure:
+cumulative eigenvalue fraction of $\Qinn$ vs mode index, overlaid
+for 10, 100, 1000-element arrays.  Conjecture: rapid decay; the
+``exposure information'' of a body is low-dimensional.
+\item Multi-user MU-MIMO.  Each user $u$ has a per-person operator
+$\mathbf{Q}^{(u)}$ (Part~III, multi-user section).  Do the
+per-person reflection operators $\mathbf{Q}^{(u)}_{\mathrm{re}}$
+still interleave with their absorption counterparts?  The
+pseudo-Brewster argument is per-material and per-body, so yes, but
+the cross-person $\mathbf{Q}^{(u,v)}_{\mathrm{re}}$ term (user $v$'s
+reflection hitting user $u$) is a new object.
+\item The thermal-dual statement \cref{eq:kirch} turns $\Qabs$ into
+a passive-sensing operator.  Is there a calibration procedure that
+\emph{measures} $\Qabs$ in situ by listening to body thermal
+emission through the array?  That would turn compliance into
+something an array could self-verify, without phantom.
+\item The JSAC duality.  Given that exposure and backscatter share
+eigenvectors, is there a regulator-level argument for
+\emph{simultaneous} compliance on $\lambda_1(\Qabs)$ and
+intentional sensing?  The radar engineer wants large
+$\lambda_1(\Qref)$; the dosimetrist wants small $\lambda_1(\Qabs)$;
+the pseudo-Brewster identity says you can't have one without the
+other, so regulation can be stated on either.
+\end{enumerate}
+
+% ============================================================
+\section{Summary}
+% ============================================================
+
+Start from the monograph's exposure operator $\Qabs$ and ask where
+the un-absorbed watts live.  Three Hermitian companions fall out:
+$\Qref$ (specular scattering), $\Qmis$ (radiation that never hit the
+body), and their joint book-keeping identity $\Qabs+\Qref+\Qmis=
+\mathbf{I}$.  Fresnel energy conservation localises on
+$\Qinn=\Qabs+\Qref$.  Pseudo-Brewster then performs the interesting
+collapse: $\Qref\approx(1-T_0)/T_0\cdot\Qabs$, shared eigenvectors,
+same modes.  The complement of the exposure operator is not a new
+degree of freedom.  It is the same geometry, seen from the other
+side of the skin.
+
+\end{document}
