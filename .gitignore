@@ -101,6 +101,12 @@ theory/*.out
 theory/*.toc
 theory/*.log
 
+# JSAC paper LaTeX build artifacts
+JSAC/**/*.aux
+JSAC/**/*.out
+JSAC/**/*.toc
+JSAC/**/*.log
+
 # Playwright test results
 test-results/
 
