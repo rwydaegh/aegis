@@ -1,0 +1,363 @@
+\documentclass[journal]{IEEEtran}
+
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{bm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{cleveref}
+
+\newtheorem{proposition}{Proposition}
+
+\newcommand{\rr}{\bm{r}}
+\newcommand{\xx}{\bm{x}}
+\newcommand{\hh}{\bm{h}}
+\newcommand{\Gtil}{\widetilde{\mathbf{G}}}
+\newcommand{\Sab}{S_{\mathrm{ab}}}
+\newcommand{\SARwb}{\mathrm{SAR}_{\mathrm{wb}}}
+\newcommand{\SAR}{\mathrm{SAR}}
+\newcommand{\APD}{\mathrm{APD}}
+\newcommand{\Pabs}{P_{\mathrm{abs}}}
+\newcommand{\Q}{\mathbf{Q}}
+\newcommand{\Aeff}{A_{\mathrm{eff}}}
+
+\begin{document}
+
+\title{From whole-body SAR to spatial compliance: \\
+  $\APD_{4}$ almost always binds first in mmWave MIMO}
+\author{Opus (draft for direction 4)}
+\maketitle
+
+\begin{abstract}
+At mmWave, ICNIRP replaces the whole-body SAR constraint by a
+$4\,\mathrm{cm}^2$-averaged absorbed power density (APD) constraint
+applied everywhere on the body surface. Using the monograph's coherent
+exposure operator we cast both as quadratic forms in the precoder,
+derive a scalar crossover condition based on the ``effective
+illumination area'' $\Aeff$, and verify the implied scaling with an
+AEGIS simulation of an $N$-element MIMO hotspot on a flat skin panel.
+The critical area for an adult is $\Aeff^\star=0.28\,\mathrm{m}^2$.
+Any beam-shaped illumination that lights less than this surface --
+i.e.\ effectively any mmWave link -- puts the system in the
+APD-dominated regime, and coherent MIMO beamforming moves it deeper
+in by a factor that scales linearly with the array size once the
+hotspot exceeds the $4\,\mathrm{cm}^2$ patch.
+\end{abstract}
+
+%======================================================================
+\section{Problem}\label{sec:problem}
+%======================================================================
+
+Consider an $M$-antenna UE or BS transmitting with precoder
+$\xx\in\mathbb{C}^M$ ($\lVert\xx\rVert^2\le P$) over a channel
+$\hh\in\mathbb{C}^M$. The body is a surface $\Sigma\subset\mathbb{R}^3$
+with outward normal $\hat{\bm n}(\rr)$, mass $m$, and area
+$|\Sigma|$.
+
+From the monograph (Def.~5.1, Thm.~4.1), the absorbed power density at
+$\rr\in\Sigma$ is
+\begin{equation}\label{eq:Sab}
+  \Sab(\rr) \;=\; \bigl\lVert\Gtil(\rr)\,\xx\bigr\rVert^2
+  \;=\; \xx^H\bigl(\Gtil(\rr)^H\Gtil(\rr)\bigr)\xx ,
+\end{equation}
+with $\Gtil(\rr)\in\mathbb{C}^{3\times M}$ the Fresnel-filtered,
+depth-coupled body-surface channel. Integrating over $\Sigma$ yields
+the global exposure operator $\Q=\int_\Sigma\Gtil^H\Gtil\,\mathrm{d} A$
+and $\Pabs=\xx^H\Q\xx$.
+
+Public-exposure limits switch regime at $6$\,GHz:
+\begin{align}
+  \text{(below 6\,GHz, bulk)}\quad&
+  \SARwb \;=\; \Pabs/m \;\le\; L_{\SARwb}^\star/m, \label{eq:SARwb}\\
+  \text{(above 6\,GHz, surface)}\quad&
+  \APD_4(\rr_0)\;\le\; L_{\APD} \;\;\forall\rr_0\!\in\!\Sigma,\label{eq:APDpt}
+\end{align}
+with $L_{\SARwb}^\star=0.08\,\mathrm{W/kg}$, $L_{\APD}=20\,\mathrm{W/m^2}$,
+$A_p=4\,\mathrm{cm}^2$, and
+\begin{equation}\label{eq:APDdef}
+  \APD_4(\rr_0) \;=\; \frac{1}{A_p}\!\int_{\mathcal{P}(\rr_0,A_p)}\!\Sab(\rr)\,\mathrm{d} A.
+\end{equation}
+FR2 (24--71\,GHz) and 6G candidate bands lie above the threshold:
+\eqref{eq:SARwb} is no longer the governing constraint there;
+\eqref{eq:APDpt} is. The balance between the two was examined at
+sub-6\,GHz by Hochwald \emph{et al.}~\cite{Hochwald2014} and
+Ying~\emph{et al.}~\cite{Ying2015} through a single quadratic
+``SAR matrix'' $\mathbf S_V$; above 6\,GHz no such scalar exists.
+
+%======================================================================
+\section{Local exposure operator}\label{sec:local-Q}
+%======================================================================
+
+Substituting \eqref{eq:Sab} into \eqref{eq:APDdef},
+\begin{equation}\label{eq:Qloc}
+  \APD_4(\rr_0) \;=\; \xx^H\,\Q_{\mathrm{loc}}(\rr_0)\,\xx,
+  \;\;
+  \Q_{\mathrm{loc}}(\rr_0) = \frac{1}{A_p}\!\int_{\mathcal{P}(\rr_0,A_p)}\!\Gtil^H\Gtil\,\mathrm{d} A .
+\end{equation}
+Each $\Q_{\mathrm{loc}}(\rr_0)\in\mathbb{C}^{M\times M}$ is Hermitian
+positive-semidefinite. The family
+$\{\Q_{\mathrm{loc}}(\rr_0)\}_{\rr_0\in\Sigma}$ replaces the single
+$\Q$ in ECBF (monograph Sec.~8).
+
+On a discretised mesh with $M_\triangle$ triangles, centroids
+$\{\rr_i\}$, areas $\{a_i\}$, the ICNIRP spatial averaging is a
+row-stochastic sparse matrix $W\in\mathbb{R}^{M_\triangle\times M_\triangle}_{\ge 0}$
+with row $i$ supported on the minimal ball around $\rr_i$ whose
+integrated area reaches $A_p$. Then
+\begin{equation}\label{eq:QlocD}
+  \Q_{\mathrm{loc}}(\rr_i)
+  \;=\; \sum_{j} W_{ij}\,\Gtil(\rr_j)^H\Gtil(\rr_j),
+\end{equation}
+and the full family is a linear reweighting of $M_\triangle$ rank-$\!\le\! 3$
+matrices. For a fixed $\xx$, the worst-case patch is computed directly
+from the per-triangle $\bm{s}_i=\Sab(\rr_i)$ as $\max_i (W\bm{s})_i$,
+costing one sparse mat-vec.
+
+The routine building $W$ exists in AEGIS as
+\texttt{aegis.geometry.averaging.\allowbreak precompute\_averaging\_matrix};
+it returns a Numba-accelerated CSR matrix that can be cached across
+precoders for the same mesh.
+
+%======================================================================
+\section{The joint-constrained problem}\label{sec:jointP}
+%======================================================================
+
+Writing $L_{\SAR}\!:=\!m\,L_{\SARwb}^\star$ (total body
+absorption budget), the rate-maximising precoder with both regulatory
+regimes active is
+\begin{equation}\label{eq:P}
+  \boxed{\;
+  \begin{aligned}
+    \max_{\xx\in\mathbb{C}^M}\;& |\hh^H\xx|^2 \\
+    \text{s.t.}\;& \xx^H\Q\xx \le L_{\SAR} &&\text{(whole-body SAR)}\\
+    & \xx^H\Q_{\mathrm{loc}}(\rr_0)\xx \le L_{\APD} \;\;\forall\rr_0\!\in\!\Sigma && \text{(local APD)} \\
+    & \lVert\xx\rVert^2 \le P &&\text{(transmit power)}.
+  \end{aligned}\;}
+\end{equation}
+On a discretised body this is a non-convex QCQP with
+$1+M_\triangle+1$ quadratic constraints. The Hochwald--Ying closed
+form~\cite{Hochwald2014,Ying2015} and the monograph's Sec.~8 handle
+the special case $M_\triangle\!=\!0$; with $M_\triangle\!\gg\! 1$
+S-procedure duality is no longer guaranteed tight in general, but
+for a single dominant hotspot only the tightest
+$\Q_{\mathrm{loc}}(\rr_\star)$ is active at the optimum, reducing
+\eqref{eq:P} to a two-constraint QCQP with the same closed-form
+solution $\xx^\star\!\propto\!(\lambda_1\Q_{\mathrm{loc}}(\rr_\star)+\lambda_2\Q+\nu\mathbf I)^{-1}\hh^*$.
+Identifying $\rr_\star$ is the real problem; it is a non-convex search
+over $\Sigma$ that the ECBF loop has to iterate with.
+
+The structural takeaway: $\Q$ averages over the body and is blind to
+hotspots; $\Q_{\mathrm{loc}}$ localises. Whichever of the
+$M_\triangle\!+\!1$ exposure constraints is tightest at unconstrained
+MRT sets the binding one.
+
+%======================================================================
+\section{When does the local limit bind?}\label{sec:crossover}
+%======================================================================
+
+The ratio of the two limits controls the crossover. Define the
+precoder's \emph{coupling efficiency}
+\begin{equation}\label{eq:kappa}
+  \kappa(\xx) \;:=\; \frac{\max_{\rr_0\in\Sigma}\APD_4(\rr_0)}{\Pabs}
+  \;=\; \frac{\lambda_{\max}\!\bigl\{\Q_{\mathrm{loc}}(\rr_0)\bigr\}_{\rr_0}}{\xx^H\Q\xx/\lVert\xx\rVert^2}
+  \quad[\mathrm{m}^{-2}]
+\end{equation}
+and the \emph{effective illumination area}
+$\Aeff(\xx):= 1/\kappa(\xx)$. For a uniformly illuminated
+surface of area $A$ embedded in a larger shadowed body, $\kappa=1/A$
+exactly, so $\Aeff=A$; this justifies the name. For a focused
+hotspot of area $A_h\le A_p$ on a uniformly dim background,
+$\Aeff\!\to\! A_p$ (averaging floor); for a hotspot broader than
+$A_p$, $\Aeff\!\to\! A_h$.
+
+\begin{proposition}[Crossover]\label{prop:cross}
+The local APD constraint binds strictly before whole-body SAR iff
+\begin{equation}\label{eq:crossover}
+  \Aeff(\xx) \;<\; \Aeff^\star
+  \;:=\; \frac{L_{\SAR}}{L_{\APD}}
+  \;=\; \frac{m\,L_{\SARwb}^\star}{L_{\APD}}.
+\end{equation}
+For the ICNIRP public-exposure reference: adult
+$(m\!=\!70,|\Sigma|\!=\!1.8\,\mathrm m^2)$, $\Aeff^\star\!=\!0.28\,\mathrm m^2$
+($15.6\%$ of $|\Sigma|$); infant $(m\!=\!8,|\Sigma|\!=\!0.4)$,
+$\Aeff^\star\!=\!0.032\,\mathrm m^2$ ($8.0\%$); large adult
+$(m\!=\!100,|\Sigma|\!=\!2.0)$, $\Aeff^\star\!=\!0.40\,\mathrm m^2$
+($20\%$).
+\end{proposition}
+
+\begin{proof}
+At SAR saturation $\Pabs\!=\!L_{\SAR}$, the worst-case APD is
+$\kappa L_{\SAR}$. APD binds before SAR iff
+$\kappa L_{\SAR}\!>\!L_{\APD}$, i.e.\ $\kappa\!>\!L_{\APD}/L_{\SAR}$,
+i.e.\ $\Aeff\!<\!L_{\SAR}/L_{\APD}$.
+\end{proof}
+
+\Cref{prop:cross} recasts the regulatory regime question as a purely
+geometric one: a beam that lights up more than a quarter of an adult's
+skin is SAR-limited; anything tighter than that is APD-limited.
+In practice all mmWave scenarios -- a handset held at 5--30\,cm, a
+5G CPE on a desk, a BS steering a pencil beam at a user -- illuminate
+body areas well below $0.28\,\mathrm m^2$; the smaller the focus, the
+further into the APD-dominated regime the system lies.
+
+\subsection{Scaling of $\Aeff$ with MIMO}
+
+$N$ antennas radiating co-polarised plane waves from a cone of
+half-angle $\alpha$ toward the body with MRT phasing produce a
+coherent hotspot at the cone axis. The monograph
+(Thm.~4.1 and Table~4) gives a peak coherent gain of $N$ relative to
+the body-average $\Sab$; combined with the hotspot coherence length
+$\delta_{\mathrm{coh}}\!\sim\!\lambda/(2\pi\sigma_\Omega)$ (Sec.~7.2)
+this gives two regimes for the $4\,\mathrm{cm}^2$-averaged peak:
+
+\noindent\emph{Narrow cone} ($\sigma_\Omega$ small,
+$\delta_{\mathrm{coh}}^2\!\gtrsim\!A_p$): the hotspot is broader than the
+averaging patch, so averaging does not dilute the peak. Then
+$\Aeff\!\sim\!|\Sigma_{\mathrm{lit}}|/N$, where
+$|\Sigma_{\mathrm{lit}}|$ is the lit body area; $\Aeff$ shrinks as
+$1/N$.
+
+\noindent\emph{Wide cone} ($\delta_{\mathrm{coh}}^2\!<\!A_p$): the
+hotspot fits inside the $4\,\mathrm{cm}^2$ patch; averaging dilutes
+the peak by the fill factor $\delta_{\mathrm{coh}}^2\pi/A_p$.
+$\Aeff$ saturates near $|\Sigma_{\mathrm{lit}}|A_p/(N\delta_{\mathrm{coh}}^2\pi)$
+in the best case for compliance but never above $A_p/N$ coherent
+multiplication times $\pi\delta_{\mathrm{coh}}^2$ in absolute value.
+
+\subsection{AEGIS numerical verification}
+
+We verify the scaling on a flat $30\!\times\!30$\,cm skin panel
+($28\,800$ isoceles triangles at $2.5$\,mm pitch, \texttt{SKIN\_28GHZ}
+dielectric) illuminated by $N$ plane waves from directions uniform in
+a cone of half-angle $\alpha$ around $-\hat{\bm z}$, co-polarised
+along $\hat{\bm x}$, co-phased at the panel centre via
+$h_j\!=\!1$. Code is in
+\verb|JSAC/direction_4_sim_opus/hotspot_scaling.py|; averaging via
+\texttt{precompute\_averaging\_matrix}; three seeds averaged per
+$(N,\alpha)$.
+
+\Cref{tab:eta4} reports the panel-level ratios $\eta_4^{\mathrm{peak}}\!=\!\Sab^{\mathrm{peak}}/\bar\Sab_{\mathrm{panel}}$
+(no averaging) and $\eta_4\!=\!\APD_4^{\mathrm{peak}}/\bar\Sab_{\mathrm{panel}}$
+(ICNIRP averaging). Since the panel is the only absorbing region in
+the scenario, $\kappa = \eta_4/A_{\mathrm{panel}}$ where
+$A_{\mathrm{panel}}\!=\!0.09\,\mathrm{m}^2$; the last column shows
+$\Aeff\!=\!1/\kappa$ in cm$^2$.
+
+\begin{table}[!t]
+\centering
+\caption{AEGIS simulation of $N$-antenna MIMO hotspot on a flat
+$30\!\times\!30$\,cm skin panel at $28$\,GHz, MRT phasing at centre,
+three seeds per cell. For each $\alpha$, left column is
+$\eta_4^{\mathrm{peak}}$ (pointwise $\Sab$ peak / panel average), right
+column is $\eta_4$ (ICNIRP $4\,\mathrm{cm}^2$ peak / panel average).
+Last column is $\Aeff=A_{\mathrm{panel}}/\eta_4$ for $\alpha=10^\circ$;
+values below $\Aeff^\star\!=\!2\,800\,\mathrm{cm}^2$ (\cref{prop:cross})
+are APD-limited. Every entry satisfies $\Aeff\!<\!\Aeff^\star$: APD
+binds everywhere.}
+\label{tab:eta4}
+\begin{tabular}{r cc cc cc c}
+\toprule
+ & \multicolumn{2}{c}{$\alpha\!=\!10^\circ$}
+ & \multicolumn{2}{c}{$30^\circ$}
+ & \multicolumn{2}{c}{$60^\circ$}
+ & $\Aeff$ \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+$N$ & $\eta^{\mathrm{pk}}$ & $\eta_4$ & $\eta^{\mathrm{pk}}$ & $\eta_4$
+    & $\eta^{\mathrm{pk}}$ & $\eta_4$ & [cm$^2$] @ $10^\circ$\\
+\midrule
+  1 &  1.0 &  1.0 &  1.0 &  1.0 &  1.0 &  1.0 &    900 \\
+  2 &  2.1 &  2.1 &  2.0 &  1.6 &  1.9 &  1.3 &    439 \\
+  4 &  3.5 &  3.0 &  3.3 &  1.8 &  2.8 &  1.2 &    299 \\
+  8 &  7.7 &  6.7 &  7.5 &  3.1 &  6.2 &  1.6 &    134 \\
+ 16 & 12.7 & 10.8 & 14.9 &  5.1 & 11.4 &  2.6 &   \phantom{0}84 \\
+ 32 & 22.1 & 19.0 & 28.8 & 10.0 & 23.0 &  4.1 &   \phantom{0}47 \\
+ 64 & 36.1 & 30.8 & 53.3 & 17.9 & 43.7 &  7.4 &   \phantom{0}29 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Three qualitative observations match \cref{prop:cross} and the
+scaling argument.
+
+\emph{(i)} At $\alpha\!=\!10^\circ$ the $4\,\mathrm{cm}^2$ averaging
+has almost no effect ($\eta_4\!\approx\!0.85\,\eta^{\mathrm{pk}}$): the
+hotspot is broader than the patch, so $\eta_4$ tracks $N$
+($\eta_4\!\approx\!0.48\,N$, slope matching the $N$-scaling of
+Table~4 in the monograph).
+
+\emph{(ii)} At $\alpha\!=\!60^\circ$ the hotspot is sub-wavelength and
+much smaller than $A_p$, so the $4\,\mathrm{cm}^2$ averaging dilutes
+the peak roughly by $A_h/A_p$; $\eta_4$ grows sublinearly
+($\sim N^{0.5}$) and saturates at a much lower value. Not shown in
+the table: the pointwise $\eta^{\mathrm{pk}}$ still grows linearly with
+$N$; the crop is an averaging artefact, not a physical protection.
+
+\emph{(iii)} The last column shows that the single-antenna
+($N\!=\!1$) case already has $\Aeff\!=\!900\,\mathrm{cm}^2$, about
+$3.1\times$ below $\Aeff^\star\!=\!2\,800\,\mathrm{cm}^2$, so
+\emph{even without any MIMO gain} the APD limit is already tighter
+than SAR for this geometry -- concentrating the illumination onto
+$9\%$ of the body surface is enough. Each doubling of $N$ then buys
+another factor of 2 (narrow cone) or less (wide cone) of
+concentration.
+
+%======================================================================
+\section{Implications}\label{sec:implications}
+%======================================================================
+
+\emph{(a) Whole-body SAR is not the design driver above 6\,GHz.} Any
+beam-shaped illumination with $\Aeff\!<\!0.28\,\mathrm{m}^2$ is
+APD-limited, and all realistic mmWave scenarios satisfy that.
+Papers using a single scalar $\Q$ (or $\mathbf S_V$) to bound
+exposure are optimistic in this regime:
+they tolerate precoders with feasible $\xx^H\Q\xx$ but infeasible
+$\xx^H\Q_{\mathrm{loc}}(\rr_\star)\xx$.
+
+\emph{(b) ECBF must track hotspots.} The single-constraint ECBF
+closed form is easy to state but spatially blind. Solving~\eqref{eq:P}
+demands alternating (\emph{i}) hotspot identification
+$\rr_\star(\xx)=\arg\max_{\rr_0}\xx^H\Q_{\mathrm{loc}}(\rr_0)\xx$
+and (\emph{ii}) two-constraint ECBF with
+$\{\Q_{\mathrm{loc}}(\rr_\star),\Q\}$. The monograph's
+$\lambda_1\Q_{\mathrm{loc}}+\lambda_2\Q+\nu\mathbf I$ structure still
+applies per iteration.
+
+\emph{(c) Finite covering of $\Sigma$ is tractable.} Because
+$\Q_{\mathrm{loc}}(\rr_0)$ is Lipschitz in $\rr_0$ over scales
+$\gtrsim\!\sqrt{A_p}/2\!\approx\!1\,\mathrm{cm}$ for mmWave field
+channels, only $\sim\!|\Sigma|/A_p\!\approx\!4\,500$ patch centres
+cover an adult body; fewer in practice because only hotspot
+candidates matter. AEGIS already computes the per-triangle $\Sab$ map,
+so the worst patch is one sparse mat-vec away: the cost of promoting
+ECBF from global to spatial is modest.
+
+\emph{(d) Zhou \emph{et al.}~\cite{Zhou2026}'s thermal relaxation sits
+on top.} Their long-term bioheat constraint replaces the rigid
+$\APD_4\!\le\!L_{\APD}$ by a queue-stability condition. Whichever
+constraint is in effect (instantaneous in this note, time-averaged
+there) is still a family indexed by $\rr_0\in\Sigma$, not a single
+matrix. The spatial-covering framework developed here applies
+unchanged and is a prerequisite to a physically-correct thermal ECBF.
+
+%======================================================================
+\bibliographystyle{IEEEtran}
+\begin{thebibliography}{9}
+\bibitem{ICNIRP2020} ICNIRP, ``Guidelines for limiting exposure to
+  electromagnetic fields (100\,kHz--300\,GHz),'' \emph{Health Phys.},
+  vol.~118, no.~5, pp.~483--524, 2020.
+\bibitem{IEEE95_2019} IEEE Std C95.1-2019, ``IEEE Standard for Safety
+  Levels with Respect to Human Exposure to Electric, Magnetic, and
+  Electromagnetic Fields, 0\,Hz to 300\,GHz,'' 2019.
+\bibitem{Hochwald2014} B.~Hochwald, D.~Love, S.~Yan, P.~Fay, and
+  J.~Jin, ``Incorporating specific absorption rate constraints into
+  wireless signal design,'' \emph{IEEE Commun. Mag.}, vol.~52, no.~9,
+  pp.~126--133, 2014.
+\bibitem{Ying2015} D.~Ying, D.~Love, and B.~Hochwald, ``Closed-loop
+  precoding and capacity analysis for multiple-antenna wireless
+  systems with user radiation exposure constraints,'' \emph{IEEE
+  Trans.\ Wireless Commun.}, vol.~14, no.~10, pp.~5859--5870, 2015.
+\bibitem{Zhou2026} Z.~Zhou \emph{et al.}, ``Exposure-aware beamforming
+  for mmWave systems: from EM theory to thermal compliance,''
+  arXiv:2601.19587, 2026.
+\end{thebibliography}
+
+\end{document}

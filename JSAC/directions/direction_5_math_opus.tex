@@ -1,0 +1,669 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath, amssymb, amsthm, mathtools}
+\usepackage{bm}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{xcolor}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{remark}[theorem]{Remark}
+
+\newcommand{\rr}{\mathbf{r}}
+\newcommand{\xx}{\mathbf{x}}
+\newcommand{\hh}{\mathbf{h}}
+\newcommand{\nh}{\hat{\mathbf{n}}}
+\newcommand{\kh}{\hat{\mathbf{k}}}
+\newcommand{\Sab}{S_{\mathrm{ab}}}
+\newcommand{\Q}{\mathbf{Q}}
+\newcommand{\G}{\mathbf{G}}
+\newcommand{\Gt}{\tilde{\mathbf{G}}}
+\newcommand{\F}{\mathbf{F}}
+\newcommand{\Cp}{\mathbf{C}}
+\newcommand{\psib}{\boldsymbol{\psi}}
+\newcommand{\Sigmaset}{\Sigma}
+\newcommand{\C}{\mathbb{C}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\trace}{\operatorname{tr}}
+\newcommand{\rank}{\operatorname{rank}}
+\newcommand{\lammax}{\lambda_{\max}}
+\newcommand{\diff}{\mathrm{d}}
+
+\title{Direction 5 (math note): \\
+       Identifiability of the exposure operator \texorpdfstring{$\Q$}{Q}
+       from the UE channel \texorpdfstring{$\hh$}{h}}
+\author{(working note in preparation for JSAC SI submission)}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+The exposure-constrained beamformer (ECBF) of the AEGIS monograph requires both
+the UE channel vector $\hh\in\C^M$ and the body exposure operator $\Q\in\C^{M\times M}$.
+Standard pilot sounding delivers $\hh$ but not $\Q$. This note formalises the
+gap. We give an information--geometric argument that $\Q$ is generically
+non-identifiable from $\hh$ alone, characterise the minimal additional
+measurements that close the gap (formalising the three ``recovery routes''
+of the working brief), and prove a first-order perturbation bound on $\Q$
+under rigid body motion. The bound separates cleanly into a translation
+term (sub-wavelength sensitivity) and a rotation term (radian sensitivity),
+which leads directly to a two-timescale estimation architecture in which
+$\hh$ is updated per coherence slot and $\Q$ per body-pose interval.
+We close with an $\hh$-observable necessary condition for the
+exposure-signal alignment $\rho$ to be large, which lets the BS decide
+when ECBF is actually needed without knowing $\Q$ exactly.
+\end{abstract}
+
+\section{Setup and notation}
+\label{sec:setup}
+
+We adopt the conventions of Part~III of the AEGIS monograph
+(\S\,Field channel matrix, \S\,Exposure operator).
+A base station with $M$ antenna elements illuminates a scene containing one
+or more bodies and one UE at $\rr_{\mathrm{UE}}$. Site-specific propagation
+generates $N$ paths. Path $n$ has
+
+\begin{itemize}[leftmargin=2em,itemsep=2pt]
+\item arrival direction $\kh_n \in S^2$ at the body region of interest;
+\item polarisation--amplitude vector
+      $\psib_n \in \C^3$ with $\psib_n \perp \kh_n$
+      (so $\psib_n$ has $4$ real degrees of freedom, encoded for instance
+      in the $(\hat{\boldsymbol{\theta}}(\kh_n),\hat{\boldsymbol{\varphi}}(\kh_n))$
+      basis);
+\item originating BS element index $j(n)\in\{1,\dots,M\}$.
+\end{itemize}
+
+The UE has receive antenna pattern $\Cp_R(\kh)\in\C^2$. The
+\emph{path data} is the multi-set
+\[
+  \mathcal{P} \;=\; \bigl\{(\psib_n,\kh_n,j(n))\bigr\}_{n=1}^N
+  \;\in\;\bigl(T^*S^2\bigr)^N \times \{1,\dots,M\}^N,
+\]
+where $T^*S^2$ denotes the cotangent bundle of the unit sphere
+(continuous part has $4+2=6$ real dof per path).
+
+\paragraph{Channel projection.}
+The UE channel vector
+$\hh = (h_1,\dots,h_M)^T \in \C^M$ has entries
+\begin{equation}
+  h_j \;=\; \sum_{n:\,j(n)=j}
+            a_n \, e^{-ik_0 \kh_n \cdot \rr_{\mathrm{UE}}},
+  \qquad
+  a_n \;=\; \Cp_R(\kh_n)^H \psib_n \;\in\;\C.
+  \label{eq:h-def}
+\end{equation}
+We refer to $\pi_h:\mathcal{P}\to\C^M$ as the
+\emph{channel projection} and to $a_n$ as the \emph{antenna-collapsed
+amplitude} of path $n$.
+
+\paragraph{Exposure operator.}
+For a body surface $\Sigmaset$ with outward unit normal $\nh(\rr)$, define
+the per-path Fresnel transmission operator
+$\F_n(\rr): \C^3 \to \C^3$ as in
+the monograph (TE/TM amplitude coefficients $t_{s,n}, t_{p,n}$ depending on
+$\mu_n(\rr) = -\kh_n\cdot\nh(\rr)$, supported on the front-facing region
+$\mu_n>0$). The body-surface field channel is
+\begin{equation}
+  \Gt_j(\rr) \;=\; \sum_{n:\,j(n)=j}
+                   \F_n(\rr)\,\psib_n\,e^{-ik_0\kh_n\cdot\rr},
+\end{equation}
+and the exposure operator is the Gram integral
+\begin{equation}
+  \Q \;=\; \int_{\Sigmaset} \Gt(\rr)^H \Gt(\rr)\,\diff A
+       \;\in\;\C^{M\times M}, \qquad
+  P_{\mathrm{abs}} \;=\; \xx^H \Q \xx.
+  \label{eq:Q-def}
+\end{equation}
+We refer to $\pi_Q:\mathcal{P}\to\mathcal{H}_M^+$ as the
+\emph{operator construction}, where $\mathcal{H}_M^+$ is the cone of
+Hermitian PSD $M\times M$ matrices.
+
+\paragraph{ECBF.}
+The closed-form ECBF precoder is
+\begin{equation}
+  \xx^\star \;=\; \sqrt{P}\,
+                  \frac{(\lambda\Q + \nu \mathbf{I})^{-1}\hh^*}
+                       {\|(\lambda\Q + \nu \mathbf{I})^{-1}\hh^*\|},
+  \label{eq:ecbf}
+\end{equation}
+with multipliers $(\lambda,\nu)\ge 0$ from KKT. Both $\hh$ and $\Q$
+are required at the BS.
+
+\paragraph{Notation for perturbations.}
+Body rigid motion is parameterised by $g=(R,\mathbf{t})\in SE(3)$ with
+infinitesimal generators $(\delta\boldsymbol{\omega},\delta\mathbf{t})\in
+\mathfrak{se}(3)$. We write $\Q(g)$ for the operator under pose $g$ and
+linearise around the identity.
+
+% =================================================
+\section{The identifiability gap}
+\label{sec:identifiability}
+
+\subsection{A degree-of-freedom counting argument}
+
+The path data $\mathcal{P}$ has $6N$ continuous real dof
+(plus $N$ discrete element labels). The channel projection $\pi_h$
+maps into $\C^M$, which has $2M$ real dof. The operator construction
+$\pi_Q$ maps into $\mathcal{H}_M^+$, which has $M^2$ real dof.
+
+\begin{proposition}[Per-path information loss]
+\label{prop:per-path-loss}
+For each path $n$, the channel projection retains
+$2$ of the $4$ continuous polarisation dof of $\psib_n$ and $0$ of
+the $2$ continuous arrival-angle dof of $\kh_n$ (only a phasor
+$e^{-ik_0\kh_n\cdot\rr_{\mathrm{UE}}}$ is retained, which couples to
+$\kh_n$ only at the single point $\rr_{\mathrm{UE}}$). The operator
+construction retains all $6$ continuous dof of every path.
+\end{proposition}
+
+\begin{proof}
+The per-path channel contribution
+$a_n = \Cp_R(\kh_n)^H\psib_n$ is a rank-$1$ linear functional on
+$\psib_n\in\C^2 \cong \C^2$ (using the
+$(\hat{\boldsymbol{\theta}},\hat{\boldsymbol{\varphi}})$ basis at $\kh_n$),
+giving $2$ real dof out of $4$. The arrival direction enters $h_j$ only
+through the scalar phase $e^{-ik_0\kh_n\cdot\rr_{\mathrm{UE}}}$;
+two paths with distinct $\kh_n$ that share this phase are
+indistinguishable in $h_j$ at the single point $\rr_{\mathrm{UE}}$.
+
+For $\pi_Q$: the per-path Fresnel operator
+$\F_n(\rr)\psib_n e^{-ik_0\kh_n\cdot\rr}$ depends on $\psib_n$ as a
+rank-$2$ map ($\F_n$ injective on its range)
+and on $\kh_n$ through both $\mu_n(\rr)$ and the phase ramp
+$e^{-ik_0\kh_n\cdot\rr}$ over the surface.
+\end{proof}
+
+\begin{corollary}[Structural unidentifiability]
+\label{cor:structural-unid}
+Whenever $N\ge M$, the map $\pi_Q$ does not factor through $\pi_h$: there
+exist $\mathcal{P},\mathcal{P}'$ with
+$\pi_h(\mathcal{P})=\pi_h(\mathcal{P}')$ but
+$\pi_Q(\mathcal{P})\ne\pi_Q(\mathcal{P}')$.
+\end{corollary}
+
+\begin{proof}
+Fix any $\mathcal{P}$ with $h_j$ as in \eqref{eq:h-def}.
+For any path $n$, replace $\psib_n$ by
+\[
+  \psib'_n \;=\; \psib_n + c\,\boldsymbol{\eta}_n,
+\]
+where $\boldsymbol{\eta}_n\in\C^3$ is non-zero, satisfies
+$\boldsymbol{\eta}_n\perp\kh_n$, and lies in the kernel of
+$\Cp_R(\kh_n)^H$ (this kernel is one-complex-dimensional, hence non-trivial,
+because $\Cp_R^H$ is a linear map from $\C^2\cong\C^2$ to $\C$).
+The channel value $a_n=\Cp_R(\kh_n)^H\psib_n$ is unchanged, so $\hh$ is
+unchanged. But $\F_n\boldsymbol{\eta}_n\ne 0$ generically, so
+$\Gt$, $\tilde{\Gt}$, and hence $\Q$ change.
+\end{proof}
+
+The kernel direction $\boldsymbol{\eta}_n$ is the
+\emph{cross-polarisation} component invisible to the UE antenna pattern but
+visible to the body surface (which absorbs both polarisations weighted by
+TE/TM Fresnel coefficients). Corollary~\ref{cor:structural-unid} therefore
+identifies the structural reason ECBF cannot be closed by uplink sounding
+alone: the UE antenna is a \emph{polarisation filter}, and $\Q$ depends on
+the cross-polarisation component that this filter discards.
+
+\subsection{What a sufficient statistic for $\Q$ looks like}
+
+\begin{proposition}[Sufficient statistic]
+\label{prop:sufficient}
+Given the body geometry $(\Sigmaset,\nh,\sigma,\rho_{\mathrm{tissue}},\tilde n)$,
+$\Q$ is a deterministic functional of the body-surface field channel
+$\Gt:\Sigmaset\to\C^{3\times M}$. Equivalently, $\Q$ is a deterministic
+functional of the path data $\{(\psib_n,\kh_n,j(n))\}_{n=1}^N$ together
+with the body geometry.
+\end{proposition}
+
+This is immediate from \eqref{eq:Q-def} but worth stating: $\Q$ has no
+``hidden'' dependence on traffic, on noise, or on temporal averaging.
+Whatever recovers $\Gt$ recovers $\Q$, and whatever recovers
+$\{(\psib_n,\kh_n)\}$ together with body geometry recovers $\Gt$.
+The operational question is which of these is cheapest to acquire.
+
+% =================================================
+\section{The three recovery routes, formally}
+\label{sec:routes}
+
+\subsection{Route A: ray tracing on a digital twin}
+
+Assume the BS holds a geometric model $\mathcal{S}$ of the scene
+(walls, scatterers, body pose at known location). A differentiable ray
+tracer $\mathcal{R}:\mathcal{S}\to\mathcal{P}$ delivers the path data,
+and $\Q = \pi_Q(\mathcal{R}(\mathcal{S}),\Sigmaset)$ follows from
+\eqref{eq:Q-def}. The DiffeRT integration in AEGIS realises this map.
+
+\paragraph{Sufficiency.} Trivially sufficient when $\mathcal{S}$ matches
+ground truth: $\pi_Q$ is by definition computable from $\mathcal{P}$.
+
+\paragraph{Failure modes.} The error
+$\Q-\Q^{true}$ is driven by mismatch between
+$\mathcal{S}$ and the true scene. Section~\ref{sec:perturbation} bounds
+this for the dominant component (body pose mismatch).
+
+\subsection{Route B: pilot sounding sufficient to recover \texorpdfstring{$\psib_n$}{psi\_n}}
+
+To upgrade pilots from delivering $\hh$ to delivering $\{\psib_n\}$ we need
+to invert the per-path projection
+$a_n=\Cp_R(\kh_n)^H\psib_n$. Because $\Cp_R(\kh_n)^H:\C^2\to\C^1$ is
+rank-$1$, a single scalar $a_n$ cannot determine $\psib_n$.
+
+\begin{proposition}[Minimal pilot diversity for $\psib_n$]
+\label{prop:pilot-diversity}
+Suppose the UE has a dual-polarised receive front end with two
+linearly independent patterns
+$\Cp_R^{(1)}(\kh),\Cp_R^{(2)}(\kh)\in\C^2$, and that the BS can
+estimate the per-path scalar from each port. Suppose further that the
+arrival direction $\kh_n$ of each path is known (e.g.\ via UE-side AoA
+estimation from a small antenna array). Then $\psib_n$ is identifiable.
+\end{proposition}
+
+\begin{proof}
+With $\kh_n$ known, $\psib_n$ lives in the $2$-complex-dimensional plane
+$\kh_n^{\perp}\subset\C^3$. The two scalar measurements
+\[
+  a_n^{(p)} \;=\; \Cp_R^{(p)}(\kh_n)^H\psib_n,\qquad p=1,2,
+\]
+form a $2\times 2$ linear system on $\psib_n$ in the
+$(\hat{\boldsymbol{\theta}},\hat{\boldsymbol{\varphi}})$ basis at $\kh_n$.
+Linear independence of $\Cp_R^{(1)},\Cp_R^{(2)}$ guarantees
+invertibility.
+\end{proof}
+
+The practical price is dual-polarised UE Rx hardware (already standard for FR2),
+UE-side AoA estimation (already done for spatial multiplexing), and a
+small protocol extension that exposes per-path polarisation amplitudes
+to the BS rather than the collapsed channel. Note this still does not
+deliver $\Q$ directly; it delivers the path-level data needed to
+\emph{construct} $\Q$ given a body model. So Route~B reduces to
+Route~A with a different source of $\mathcal{P}$ (sounded paths instead of
+ray-traced paths) and the same dependence on a body-pose model.
+
+\subsection{Route C: phantom-calibrated \texorpdfstring{$\Q$}{Q} envelope}
+
+Hochwald et al.\ measure their SAR matrix $\mathbf{S}_V$ on a calibrated
+phantom in a fixed canonical pose. The same procedure applied to AEGIS
+gives a phantom-calibrated $\Q^{\mathrm{phantom}}$ that bounds absorbed
+power from above:
+\[
+  P_{\mathrm{abs}}^{(u)} \;\le\; \lammax(\Q^{\mathrm{phantom}})\,P
+  \quad\text{for every precoder with}\quad \|\xx\|^2\le P.
+\]
+This is a one-shot \emph{static} bound; it is independent of $\hh$ and so
+yields a worst-case ECBF: replace $\Q$ in \eqref{eq:ecbf} by
+$\Q^{\mathrm{phantom}}$. Section~\ref{sec:rho-witness} shows that this
+bound is loose precisely in the regime where the $\hh$-witness is small,
+which suggests pairing Routes~A/C: use Route~A's posterior $\Q$
+when the $\hh$-witness flags ECBF as needed, and fall back to the static
+Route~C bound otherwise.
+
+% =================================================
+\section{Perturbation theorem for \texorpdfstring{$\Q$}{Q} under rigid body motion}
+\label{sec:perturbation}
+
+We now bound $\Q(g) - \Q(0)$ for small $g=(R,\mathbf{t})\in SE(3)$.
+Throughout this section the path data is treated as fixed (the scene
+outside the body is unchanged) and $\Q$ varies because $\Sigmaset$,
+$\nh$, and $\mu_n$ depend on body pose.
+
+\subsection{Translation: sub-wavelength sensitivity}
+
+\begin{proposition}[Translation perturbation]
+\label{prop:translation}
+Let $\Q(\mathbf{t})$ be the exposure operator after rigid translation of
+the body by $\mathbf{t}\in\R^3$. The $(a,b)$ entry decomposes
+exactly as
+\begin{equation}
+  [\Q(\mathbf{t})]_{ab} \;=\;
+  \sum_{\substack{n:\,j(n)=a\\ n':\,j(n')=b}}
+  e^{-ik_0(\kh_n - \kh_{n'})\cdot\mathbf{t}}\,
+  Q_{ab}^{(nn')},
+  \label{eq:Q-trans}
+\end{equation}
+where $Q_{ab}^{(nn')}$ is the path-pair contribution to $[\Q(0)]_{ab}$.
+For $\|\mathbf{t}\|\ll \lambda_0/(2\pi)$ this gives the first-order
+expansion
+\begin{equation}
+  \Q(\mathbf{t}) \;=\; \Q(0) - i k_0\,\mathbf{t}\cdot\Delta\Q \;+\; O\bigl((k_0\|\mathbf{t}\|)^2\bigr),
+\end{equation}
+with $\|\Delta\Q\|_F \le 2\|\Q(0)\|_F$, hence
+\begin{equation}
+  \frac{\|\Q(\mathbf{t})-\Q(0)\|_F}{\|\Q(0)\|_F}
+  \;\le\; 2\,k_0\|\mathbf{t}\| \;+\; O\bigl((k_0\|\mathbf{t}\|)^2\bigr).
+  \label{eq:Q-trans-bound}
+\end{equation}
+\end{proposition}
+
+\begin{proof}[Sketch]
+Translating the body by $\mathbf{t}$ shifts each surface point
+$\rr\mapsto \rr+\mathbf{t}$ but leaves $\nh(\rr)$, $\mu_n$, and $\F_n$
+invariant (Fresnel coefficients are rotation-only sensitive). Each
+per-path field then acquires a phasor $e^{-ik_0\kh_n\cdot\mathbf{t}}$,
+which factors out of the area integral and survives in the $\Gt^H\Gt$
+quadratic as $e^{-ik_0(\kh_n-\kh_{n'})\cdot\mathbf{t}}$. Expanding the
+exponential to first order and bounding by the sum of moduli gives the
+Frobenius bound.
+\end{proof}
+
+\paragraph{Operational consequence.} At $28\,$GHz, $\lambda_0\!\approx\!1.07\,$cm,
+so $k_0=2\pi/\lambda_0 \approx 587\,\mathrm{m}^{-1}$. A body translation
+of $\|\mathbf{t}\|=1\,$mm gives $k_0\|\mathbf{t}\|\approx 0.59\,$rad,
+which by \eqref{eq:Q-trans-bound} can move $\Q$ by more than its own
+norm. \emph{Translation invalidates $\Q$ on a sub-wavelength scale.}
+
+The bound is conservative because \emph{eigenstructure} of $\Q$ is more
+robust than its Frobenius norm. We turn to that next.
+
+\begin{corollary}[Spectral robustness]
+\label{cor:spectral}
+By Weyl's inequality,
+$|\lammax(\Q(\mathbf{t})) - \lammax(\Q(0))|
+ \le \|\Q(\mathbf{t})-\Q(0)\|_2 \le \|\Q(\mathbf{t})-\Q(0)\|_F$,
+so the Frobenius bound transfers, but is only tight when the perturbation
+is rank-one along the leading eigenvector. In practice $\delta\Q$ from
+translation is approximately a path-pair phase rotation, which mixes
+many eigenmodes and therefore typically affects $\lammax$ less than the
+Frobenius bound suggests.
+\end{corollary}
+
+\subsection{Rotation: radian sensitivity}
+
+\begin{proposition}[Rotation perturbation]
+\label{prop:rotation}
+Let $\Q(\theta\hat{\boldsymbol{\omega}})$ denote the exposure operator
+after rigid rotation of the body by angle $\theta$ about axis
+$\hat{\boldsymbol{\omega}}\in S^2$. Assume the visible-path set is
+unchanged (no self-shadowing transitions). Then
+\begin{equation}
+  \frac{\|\Q(\theta\hat{\boldsymbol{\omega}})-\Q(0)\|_F}{\|\Q(0)\|_F}
+  \;\le\; C_{\mathrm{rot}}\,\theta \;+\; O(\theta^2),
+\end{equation}
+where $C_{\mathrm{rot}}$ depends on
+(i) the maximum slope of the Fresnel amplitude coefficients
+$|\partial_\mu t_{s,n}|$, $|\partial_\mu t_{p,n}|$ over visible paths
+and (ii) the diameter of the body, but not on $k_0$.
+\end{proposition}
+
+\begin{proof}[Sketch]
+Rigid rotation perturbs the per-point normal as
+$\nh(\rr;\theta)=\nh(\rr;0)+\theta(\hat{\boldsymbol{\omega}}\times\nh(\rr))+O(\theta^2)$,
+so $\delta\mu_n(\rr)=-\theta\,(\nh\times\kh_n)\cdot\hat{\boldsymbol{\omega}} = O(\theta)$.
+The Fresnel amplitudes are smooth in $\mu$ on $\mu>0$ (the only loss of
+smoothness is the $\mu_n=0$ horizon, which by assumption no path crosses).
+The TE/TM basis vectors rotate with $\nh$ at the same rate.
+The phase ramp $e^{-ik_0\kh_n\cdot\rr}$ acquires a per-point variation
+$e^{-ik_0\kh_n\cdot\delta\rr(\theta)}$ where $\delta\rr=O(\theta\,\|\rr\|)$;
+this contributes a body-diameter-scaled rotation term. Combining and
+re-integrating over $\Sigmaset$ gives the stated bound.
+\end{proof}
+
+\paragraph{Operational consequence.} Unlike translation, rotation does
+\emph{not} carry a $k_0$ multiplier in front of the smooth-Fresnel
+component. Body rotation by $\theta\!=\!0.1\,$rad ($\sim 6^\circ$)
+typically perturbs $\Q$ by $\sim\!10\%$ in Frobenius norm. The
+phase-ramp term, however, does carry a $k_0\!\cdot\!\mathrm{diam}(\Sigmaset)$
+factor; for a body of diameter $50\,$cm at $28\,$GHz this factor is
+$\sim\!300$, so even small rotations can scramble inter-path interference
+patterns far away from the rotation axis. The bound is again conservative
+on $\lammax$.
+
+\subsection{Self-shadowing transitions}
+
+The smooth bounds above assume the visible-path set is unchanged.
+A path with $\mu_n(\rr;0)=0$ at some $\rr$ enters or leaves the
+visible set under arbitrarily small pose perturbation, with discontinuous
+contribution to $\Q$. These transitions are \emph{measure zero} in pose
+space (a finite union of codimension-1 strata) but their
+\emph{cumulative} effect over a finite pose excursion is bounded by the
+total grazing-incidence flux:
+\[
+  \|\delta\Q^{\mathrm{shadow}}\|_F \;\le\;
+  \int_{\partial\Sigmaset_{\mathrm{vis}}}
+  \left\|\Gt^{(n)}(\rr)\right\|^2 \diff\ell,
+\]
+i.e.\ a line integral along the silhouette curve weighted by the
+grazing-path field. This is small whenever no dominant path is at
+near-grazing incidence on the body, which is the generic case for
+ECBF-relevant scenarios (the dominant exposure modes correspond to
+near-normal incidence).
+
+% =================================================
+\section{Two-timescale architecture}
+\label{sec:timescales}
+
+The perturbation analysis motivates a decoupled estimation architecture.
+Let $T_c$ be the channel coherence time (typical $1{-}10\,$ms at FR2 for
+mobile users) and $T_p$ the body-pose coherence time (typical
+$0.1{-}1\,$s for a quasi-stationary user; longer for static seated/standing
+postures).
+
+\begin{definition}[Two-timescale ECBF]
+\label{def:two-timescale}
+Pilot sounding refreshes $\hh(t)$ at every slot of length $\le T_c$.
+A separate body-pose channel refreshes $\Q(t_p)$ at intervals of
+length $\le T_p$. The per-slot precoder is
+\[
+  \xx^\star(t) \;=\; \sqrt{P}\,
+                  \frac{(\lambda(t)\Q(t_p^-) + \nu(t)\mathbf{I})^{-1}\hh(t)^*}
+                       {\|\cdot\|},
+\]
+with multipliers re-solved per slot from current $(\hh(t),\Q(t_p^-))$,
+where $t_p^-$ is the most recent body-pose update.
+\end{definition}
+
+\begin{proposition}[Time-averaged constraint under staleness]
+\label{prop:time-avg}
+Let $P_{\mathrm{abs}}^{(true)}(t)$ be the actual absorbed power
+under $\xx^\star(t)$ and $\Q^{(true)}(t)$, and let
+$P_{\mathrm{abs}}^{(des)}(t)$ be the value computed at design time
+using $\Q(t_p^-)$. Then over a pose interval $[t_p^-,t_p^-+T_p)$,
+\[
+  \left|\frac{1}{T_p}\int_{t_p^-}^{t_p^-+T_p}
+        \!\!\bigl(P_{\mathrm{abs}}^{(true)}(t) - P_{\mathrm{abs}}^{(des)}(t)\bigr)\diff t\right|
+  \;\le\; P\,\overline{\|\delta\Q\|_2}_{[t_p^-,t_p^-+T_p)},
+\]
+where $\overline{\|\delta\Q\|_2}$ is the time-averaged spectral
+distance between $\Q^{(true)}$ and $\Q(t_p^-)$ over the interval.
+By Propositions~\ref{prop:translation}--\ref{prop:rotation}, this is
+controlled by the time-averaged body translation/rotation since the last
+pose update.
+\end{proposition}
+
+\begin{proof}
+Given any unit-norm $\xx$, $|\xx^H(\Q^{(true)}-\Q(t_p^-))\xx|\le
+\|\delta\Q\|_2$. With $\|\xx^\star(t)\|^2=P$, multiply by $P$ and
+average in $t$.
+\end{proof}
+
+This gives a clean separation of concerns. The compliance margin one
+must reserve for staleness scales linearly with body-motion budget,
+not with channel dynamics.
+
+% =================================================
+\section{An \texorpdfstring{$\hh$}{h}-observable witness for ECBF necessity}
+\label{sec:rho-witness}
+
+The exposure-signal alignment $\rho$ from the monograph quantifies how much
+of the worst-case absorption MRT actually achieves:
+\begin{equation}
+  \rho \;=\; \frac{\hh^T \Q\,\hh^*}{\|\hh\|^2\,\lammax(\Q)} \;\in\; [0,1].
+  \label{eq:rho-def-restate}
+\end{equation}
+The BS would like to decide ``ECBF is unnecessary; MRT will satisfy the
+exposure budget'' from $\hh$ alone. This is impossible without
+\emph{some} information about $\Q$, but it is possible to bound $\rho$
+from above using only $\hh$ together with a coarse \emph{angular
+support} $K\subset S^2$ of body-incident arrival directions.
+
+\begin{proposition}[\texorpdfstring{$\hh$}{h}-witness for low \texorpdfstring{$\rho$}{rho}]
+\label{prop:rho-witness}
+Suppose the BS has access to (i) the channel $\hh$, (ii) the per-path
+arrival directions $\{\kh_n\}_{n=1}^N$ at the BS array (recoverable
+from spatial covariance via MUSIC/ESPRIT in the multi-snapshot regime),
+and (iii) a coarse angular set $K\subset S^2$ that contains all
+directions illuminating the body (e.g.\ a cone subtended by the body's
+silhouette as seen from the BS). Decompose
+\[
+  \hh \;=\; \hh_K + \hh_{K^c},
+  \qquad
+  \hh_K \;=\; \sum_{n:\,\kh_n\in K} a_n e^{-ik_0\kh_n\cdot\rr_{\mathrm{UE}}}\mathbf{e}_{j(n)}.
+\]
+Then
+\begin{equation}
+  \rho \;\le\; \frac{\|\hh_K\|^2}{\|\hh\|^2}.
+  \label{eq:rho-witness}
+\end{equation}
+\end{proposition}
+
+\begin{proof}
+The exposure operator $\Q$ has support entirely in the body-illuminating
+subspace, in the sense that $\Q\,\hh_{K^c}^* = \mathbf{0}$ (every path
+contributing to $\Gt$ has $\kh_n\in K$). Hence
+$\hh^T\Q\hh^* = \hh_K^T\Q\hh_K^*$. By Rayleigh--Ritz on the PSD
+matrix $\Q$, $\hh_K^T\Q\hh_K^*\le\lammax(\Q)\|\hh_K\|^2$.
+Dividing by $\|\hh\|^2\,\lammax(\Q)$ yields the bound.
+\end{proof}
+
+\begin{remark}[Operational reading]
+\label{rem:operational}
+The right-hand side of \eqref{eq:rho-witness} is the
+\emph{body-incident energy fraction} of the channel. It is computable
+from $\hh$ and BS-side AoA estimates plus a coarse body location. If
+this fraction is below some threshold $\epsilon$, then $\rho\le\epsilon$
+unconditionally on the body's exact shape and pose, so MRT loses at most
+a fraction $\epsilon$ of $\lammax(\Q)\,P$ to the body. Combined with
+the static Route~C envelope $\lammax(\Q)\le\Lambda$, this gives an
+$\hh$-only certificate that MRT is exposure-safe whenever
+$\epsilon\Lambda\le P_{\mathrm{abs}}^{\max}/P$.
+\end{remark}
+
+\begin{remark}[What the witness does \emph{not} say]
+The converse fails. Large $\|\hh_K\|^2/\|\hh\|^2$ does not imply $\rho$
+is large; the body might still be illuminated mostly along low-Fresnel-
+coupling directions, or the dominant body modes might be misaligned with
+the channel within the body-incident subspace. The witness is a
+\emph{necessary} condition for ECBF to matter, not sufficient. Sufficiency
+requires Q.
+\end{remark}
+
+% =================================================
+\section{What this lets us write in the JSAC SI submission}
+\label{sec:writeup}
+
+The above isolates four claims that can be made cleanly without any
+additional empirical work, and three follow-up claims that require
+small-scale numerical experiments in AEGIS:
+
+\paragraph{Closed-form claims (this note alone).}
+\begin{enumerate}[leftmargin=2em,itemsep=2pt]
+\item Structural unidentifiability of $\Q$ from $\hh$
+      (Cor.~\ref{cor:structural-unid}). This is the analogue, in the
+      coherent-MIMO setting, of the polarisation-loss observation that
+      already appears in the monograph (\S Signal branch); we sharpen it
+      to a non-identifiability statement.
+\item Minimal pilot diversity for $\psib_n$ recovery
+      (Prop.~\ref{prop:pilot-diversity}). Identifies the minimum
+      hardware/protocol upgrade that closes the gap.
+\item Translation--rotation perturbation bounds
+      (Props.~\ref{prop:translation}--\ref{prop:rotation}). Quantifies the
+      tolerable body motion before $\Q$ must be re-estimated.
+\item $\hh$-witness for ECBF necessity (Prop.~\ref{prop:rho-witness}).
+      Lets the BS gate ECBF on a $\hh$-only observable.
+\end{enumerate}
+
+\paragraph{Empirical follow-ups (require AEGIS runs).}
+\begin{enumerate}[leftmargin=2em,itemsep=2pt,start=5]
+\item \textbf{Tightness of perturbation bounds.}
+      For a representative scenario (one phantom, one BS, single-path or
+      few-path environment, $28\,$GHz), compute
+      $\|\Q(g)-\Q(0)\|_F/\|\Q(0)\|_F$ and
+      $|\lammax(\Q(g))-\lammax(\Q(0))|/\lammax(\Q(0))$
+      as a function of body translation in $\{0,\,0.1,\,0.5,\,1,\,5,\,10\}\,$mm
+      and rotation in $\{0,\,1,\,5,\,10,\,30\}^\circ$. Compare to
+      Prop.~\ref{prop:translation}--\ref{prop:rotation} bounds.
+      Hypothesised result: Frobenius bounds are tight; spectral bounds
+      have an order-of-magnitude slack.
+\item \textbf{Witness sharpness.}
+      For a sweep over UE positions and body locations, compare the
+      $\hh$-witness $\|\hh_K\|^2/\|\hh\|^2$ to the true $\rho$. Identify
+      the regime where the witness is informative (gap less than 1\,dB).
+\item \textbf{Two-timescale ECBF in simulation.}
+      Implement the protocol of Def.~\ref{def:two-timescale} on a
+      synthetic body-motion trace and compare end-to-end exposure
+      compliance to (a) per-slot oracle ECBF and (b) static
+      Hochwald-style worst-case ECBF. Quantify the spectral-efficiency
+      gain at fixed compliance probability.
+\end{enumerate}
+
+A clean way to structure the JSAC SI manuscript is to lead with the
+identifiability and witness results (theory), then present the
+two-timescale ECBF as the algorithmic contribution, and use AEGIS as
+the digital-twin substrate that makes Route~A computationally feasible
+at the per-slot cadence. The resulting story sits squarely in the
+``twin-in-the-loop'' / ``closed-loop optimisation'' theme of the call.
+
+% =================================================
+\appendix
+
+\section{Symbol table}
+\label{app:symbols}
+
+\begin{center}
+\small
+\begin{tabular}{lp{8cm}l}
+\toprule
+Symbol & Meaning & Space \\
+\midrule
+$M$ & number of BS antenna elements & scalar \\
+$N$ & number of propagation paths & scalar \\
+$\rr_{\mathrm{UE}}$ & UE position & $\R^3$ \\
+$\Sigmaset$ & body surface & 2-manifold in $\R^3$ \\
+$\nh(\rr)$ & outward unit normal at $\rr\in\Sigmaset$ & $S^2$ \\
+$\kh_n$ & arrival direction of path $n$ at the body region & $S^2$ \\
+$\psib_n$ & polarisation-amplitude of path $n$, $\psib_n\perp\kh_n$ & $\C^3$ \\
+$j(n)$ & BS element originating path $n$ & $\{1,\dots,M\}$ \\
+$a_n$ & UE-projected scalar amplitude $\Cp_R^H\psib_n$ & $\C$ \\
+$\Cp_R(\kh)$ & UE receive antenna pattern & $\C^2$ \\
+$\hh$ & UE channel vector & $\C^M$ \\
+$\F_n(\rr)$ & per-path Fresnel transmission operator & $\C^{3\times 3}$ \\
+$\Gt(\rr)$ & body-surface field channel matrix & $\C^{3\times M}$ \\
+$\Q$ & exposure operator $\int_\Sigmaset \Gt^H\Gt\,\diff A$ & $\mathcal{H}_M^+$ \\
+$\rho$ & exposure-signal alignment $\hh^T\Q\hh^*/(\|\hh\|^2\lammax(\Q))$ & $[0,1]$ \\
+$g=(R,\mathbf{t})$ & body rigid pose & $SE(3)$ \\
+$T_c, T_p$ & channel and pose coherence times & seconds \\
+$K\subset S^2$ & angular support of body-incident directions at the BS & cone \\
+$\hh_K, \hh_{K^c}$ & body-incident and non-body channel components & $\C^M$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Cross-references to the monograph}
+\label{app:xrefs}
+
+\begin{center}
+\small
+\begin{tabular}{ll}
+\toprule
+This note & Monograph (\texttt{theory/monograph\_v2.tex}) \\
+\midrule
+\eqref{eq:h-def} & \texttt{eq:h-def}, \S\,Signal branch \\
+\eqref{eq:Q-def} & \texttt{eq:Q-def}, Def.\,Q \\
+\eqref{eq:ecbf} & \texttt{eq:optimal-x}, \S\,Optimal precoder \\
+\eqref{eq:rho-def-restate} & \texttt{eq:rho-def}, Def.\,$\rho$ \\
+Prop.~\ref{prop:per-path-loss} & paragraph after \texttt{eq:h-def} (informal) \\
+Cor.~\ref{cor:structural-unid} & remark in \S\,Per-user exposure tracking \\
+Routes A/B/C & remark in \S\,Per-user exposure tracking \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\end{document}

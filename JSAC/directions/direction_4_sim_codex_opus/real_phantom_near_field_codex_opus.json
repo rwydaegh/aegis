@@ -1,0 +1,1939 @@
+{
+  "phantom": {
+    "name": "thelonious",
+    "n_triangles": 23826,
+    "total_area_m2": 0.7865814496864133,
+    "height_m": 1.1820511668920517
+  },
+  "constants": {
+    "freq_hz": 28000000000.0,
+    "adult_m_kg": 70.0,
+    "adult_A_sigma_m2": 1.8,
+    "L_APD_W_m2": 20.0,
+    "L_SAR_wb_W_kg": 0.08,
+    "A_eff_star_adult_m2": 0.28,
+    "aperture_m": 0.03
+  },
+  "rows": [
+    {
+      "region": "chest",
+      "distance_m": 0.05,
+      "N": 1,
+      "N_eff": 1,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.09185504168272018,
+        -0.05665692687034607,
+        -0.04074900224804878
+      ],
+      "n_target": [
+        0.02046065163667098,
+        -0.9996896117032593,
+        0.014214147430976877
+      ],
+      "peak_apd_w_m2": 0.538425474727037,
+      "apd_at_target_w_m2": 0.5330428961237754,
+      "tracking_ratio": 0.9900031130473715,
+      "worst_patch_index": 20882,
+      "worst_patch_distance_cm": 15.844848517646154,
+      "p_abs_w": 0.11370871012526701,
+      "body_mean_apd_w_m2": 0.14456063026988406,
+      "eta_4cm2": 3.724565075026556,
+      "kappa_inv_m2": 4.7351295616130145,
+      "A_eff_cm2": 2111.8746319147212,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 34.37746770784939
+    },
+    {
+      "region": "chest",
+      "distance_m": 0.05,
+      "N": 4,
+      "N_eff": 4,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.09185504168272018,
+        -0.05665692687034607,
+        -0.04074900224804878
+      ],
+      "n_target": [
+        0.02046065163667098,
+        -0.9996896117032593,
+        0.014214147430976877
+      ],
+      "peak_apd_w_m2": 0.9303311130173534,
+      "apd_at_target_w_m2": 0.45168488889777264,
+      "tracking_ratio": 0.4855098175023062,
+      "worst_patch_index": 15132,
+      "worst_patch_distance_cm": 2.74810553990331,
+      "p_abs_w": 0.11110006299215155,
+      "body_mean_apd_w_m2": 0.14124419414727343,
+      "eta_4cm2": 6.586685694473994,
+      "kappa_inv_m2": 8.373812651061007,
+      "A_eff_cm2": 1194.1991559523303,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 34.37746770784939
+    },
+    {
+      "region": "chest",
+      "distance_m": 0.05,
+      "N": 16,
+      "N_eff": 16,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.09185504168272018,
+        -0.05665692687034607,
+        -0.04074900224804878
+      ],
+      "n_target": [
+        0.02046065163667098,
+        -0.9996896117032593,
+        0.014214147430976877
+      ],
+      "peak_apd_w_m2": 3.05680914840283,
+      "apd_at_target_w_m2": 3.05680914840283,
+      "tracking_ratio": 1.0,
+      "worst_patch_index": 15041,
+      "worst_patch_distance_cm": 0.0,
+      "p_abs_w": 0.11365388461908181,
+      "body_mean_apd_w_m2": 0.14449092927934196,
+      "eta_4cm2": 21.155716581302833,
+      "kappa_inv_m2": 26.89577359056331,
+      "A_eff_cm2": 371.80562835748344,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 34.37746770784939
+    },
+    {
+      "region": "chest",
+      "distance_m": 0.05,
+      "N": 64,
+      "N_eff": 64,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.09185504168272018,
+        -0.05665692687034607,
+        -0.04074900224804878
+      ],
+      "n_target": [
+        0.02046065163667098,
+        -0.9996896117032593,
+        0.014214147430976877
+      ],
+      "peak_apd_w_m2": 14.86528111872829,
+      "apd_at_target_w_m2": 14.86528111872829,
+      "tracking_ratio": 1.0,
+      "worst_patch_index": 15041,
+      "worst_patch_distance_cm": 0.0,
+      "p_abs_w": 0.1293257740527406,
+      "body_mean_apd_w_m2": 0.16441498093337817,
+      "eta_4cm2": 90.41317910532607,
+      "kappa_inv_m2": 114.94445888772374,
+      "A_eff_cm2": 86.99853909241392,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 34.37746770784939
+    },
+    {
+      "region": "chest",
+      "distance_m": 0.1,
+      "N": 1,
+      "N_eff": 1,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.09185504168272018,
+        -0.05665692687034607,
+        -0.04074900224804878
+      ],
+      "n_target": [
+        0.02046065163667098,
+        -0.9996896117032593,
+        0.014214147430976877
+      ],
+      "peak_apd_w_m2": 0.538425474727037,
+      "apd_at_target_w_m2": 0.5330428961237754,
+      "tracking_ratio": 0.9900031130473715,
+      "worst_patch_index": 20882,
+      "worst_patch_distance_cm": 15.844848517646154,
+      "p_abs_w": 0.11370871012526701,
+      "body_mean_apd_w_m2": 0.14456063026988406,
+      "eta_4cm2": 3.724565075026556,
+      "kappa_inv_m2": 4.7351295616130145,
+      "A_eff_cm2": 2111.8746319147212,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 17.188733853924695
+    },
+    {
+      "region": "chest",
+      "distance_m": 0.1,
+      "N": 4,
+      "N_eff": 4,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.09185504168272018,
+        -0.05665692687034607,
+        -0.04074900224804878
+      ],
+      "n_target": [
+        0.02046065163667098,
+        -0.9996896117032593,
+        0.014214147430976877
+      ],
+      "peak_apd_w_m2": 1.3555084169086475,
+      "apd_at_target_w_m2": 1.2296062440750064,
+      "tracking_ratio": 0.9071181179968091,
+      "worst_patch_index": 16317,
+      "worst_patch_distance_cm": 19.054078846394425,
+      "p_abs_w": 0.11327794502487387,
+      "body_mean_apd_w_m2": 0.14401298819090436,
+      "eta_4cm2": 9.412403936176775,
+      "kappa_inv_m2": 11.966216518237522,
+      "A_eff_cm2": 835.6860319850605,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 17.188733853924695
+    },
+    {
+      "region": "chest",
+      "distance_m": 0.1,
+      "N": 16,
+      "N_eff": 16,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.09185504168272018,
+        -0.05665692687034607,
+        -0.04074900224804878
+      ],
+      "n_target": [
+        0.02046065163667098,
+        -0.9996896117032593,
+        0.014214147430976877
+      ],
+      "peak_apd_w_m2": 6.357642129463718,
+      "apd_at_target_w_m2": 6.2719577448816874,
+      "tracking_ratio": 0.9865226159577405,
+      "worst_patch_index": 20883,
+      "worst_patch_distance_cm": 15.895802914743232,
+      "p_abs_w": 0.10587746867424341,
+      "body_mean_apd_w_m2": 0.13460458381831103,
+      "eta_4cm2": 47.231988310630264,
+      "kappa_inv_m2": 60.04716781645469,
+      "A_eff_cm2": 166.53574787351928,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 17.188733853924695
+    },
+    {
+      "region": "chest",
+      "distance_m": 0.1,
+      "N": 64,
+      "N_eff": 64,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.09185504168272018,
+        -0.05665692687034607,
+        -0.04074900224804878
+      ],
+      "n_target": [
+        0.02046065163667098,
+        -0.9996896117032593,
+        0.014214147430976877
+      ],
+      "peak_apd_w_m2": 26.85489344628823,
+      "apd_at_target_w_m2": 26.85489344628823,
+      "tracking_ratio": 1.0,
+      "worst_patch_index": 15041,
+      "worst_patch_distance_cm": 0.0,
+      "p_abs_w": 0.13001070523959002,
+      "body_mean_apd_w_m2": 0.16528575049846578,
+      "eta_4cm2": 162.47555137269686,
+      "kappa_inv_m2": 206.55909370538936,
+      "A_eff_cm2": 48.41229606798517,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 17.188733853924695
+    },
+    {
+      "region": "chest",
+      "distance_m": 0.3,
+      "N": 1,
+      "N_eff": 1,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.09185504168272018,
+        -0.05665692687034607,
+        -0.04074900224804878
+      ],
+      "n_target": [
+        0.02046065163667098,
+        -0.9996896117032593,
+        0.014214147430976877
+      ],
+      "peak_apd_w_m2": 0.5384254747270372,
+      "apd_at_target_w_m2": 0.5330428961237754,
+      "tracking_ratio": 0.9900031130473711,
+      "worst_patch_index": 20882,
+      "worst_patch_distance_cm": 15.844848517646154,
+      "p_abs_w": 0.11370871012526705,
+      "body_mean_apd_w_m2": 0.1445606302698841,
+      "eta_4cm2": 3.724565075026556,
+      "kappa_inv_m2": 4.735129561613015,
+      "A_eff_cm2": 2111.874631914721,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 5.729577951308233
+    },
+    {
+      "region": "chest",
+      "distance_m": 0.3,
+      "N": 4,
+      "N_eff": 4,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.09185504168272018,
+        -0.05665692687034607,
+        -0.04074900224804878
+      ],
+      "n_target": [
+        0.02046065163667098,
+        -0.9996896117032593,
+        0.014214147430976877
+      ],
+      "peak_apd_w_m2": 2.0010411075538217,
+      "apd_at_target_w_m2": 1.9989498563766195,
+      "tracking_ratio": 0.998954918432556,
+      "worst_patch_index": 20883,
+      "worst_patch_distance_cm": 15.895802914743232,
+      "p_abs_w": 0.10568570662232901,
+      "body_mean_apd_w_m2": 0.13436079208893467,
+      "eta_4cm2": 14.893043397878406,
+      "kappa_inv_m2": 18.933885872614745,
+      "A_eff_cm2": 528.1536007599803,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 5.729577951308233
+    },
+    {
+      "region": "chest",
+      "distance_m": 0.3,
+      "N": 16,
+      "N_eff": 16,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.09185504168272018,
+        -0.05665692687034607,
+        -0.04074900224804878
+      ],
+      "n_target": [
+        0.02046065163667098,
+        -0.9996896117032593,
+        0.014214147430976877
+      ],
+      "peak_apd_w_m2": 8.228515479551557,
+      "apd_at_target_w_m2": 8.228515479551557,
+      "tracking_ratio": 1.0,
+      "worst_patch_index": 15041,
+      "worst_patch_distance_cm": 0.0,
+      "p_abs_w": 0.12759876985216753,
+      "body_mean_apd_w_m2": 0.16221939877051178,
+      "eta_4cm2": 50.724608412538,
+      "kappa_inv_m2": 64.48742013018536,
+      "A_eff_cm2": 155.06900384311058,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 5.729577951308233
+    },
+    {
+      "region": "chest",
+      "distance_m": 0.3,
+      "N": 64,
+      "N_eff": 64,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.09185504168272018,
+        -0.05665692687034607,
+        -0.04074900224804878
+      ],
+      "n_target": [
+        0.02046065163667098,
+        -0.9996896117032593,
+        0.014214147430976877
+      ],
+      "peak_apd_w_m2": 33.18387984191371,
+      "apd_at_target_w_m2": 33.18387984191371,
+      "tracking_ratio": 1.0,
+      "worst_patch_index": 15041,
+      "worst_patch_distance_cm": 0.0,
+      "p_abs_w": 0.3699774502559212,
+      "body_mean_apd_w_m2": 0.47036127079200796,
+      "eta_4cm2": 70.54977078796843,
+      "kappa_inv_m2": 89.69162801397684,
+      "A_eff_cm2": 111.49312618611046,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 5.729577951308233
+    },
+    {
+      "region": "chest",
+      "distance_m": 1.0,
+      "N": 1,
+      "N_eff": 1,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.09185504168272018,
+        -0.05665692687034607,
+        -0.04074900224804878
+      ],
+      "n_target": [
+        0.02046065163667098,
+        -0.9996896117032593,
+        0.014214147430976877
+      ],
+      "peak_apd_w_m2": 0.5384254747270371,
+      "apd_at_target_w_m2": 0.5330428961237754,
+      "tracking_ratio": 0.9900031130473713,
+      "worst_patch_index": 20882,
+      "worst_patch_distance_cm": 15.844848517646154,
+      "p_abs_w": 0.11370871012526704,
+      "body_mean_apd_w_m2": 0.1445606302698841,
+      "eta_4cm2": 3.7245650750265553,
+      "kappa_inv_m2": 4.7351295616130145,
+      "A_eff_cm2": 2111.8746319147212,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 1.7188733853924696
+    },
+    {
+      "region": "chest",
+      "distance_m": 1.0,
+      "N": 4,
+      "N_eff": 4,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.09185504168272018,
+        -0.05665692687034607,
+        -0.04074900224804878
+      ],
+      "n_target": [
+        0.02046065163667098,
+        -0.9996896117032593,
+        0.014214147430976877
+      ],
+      "peak_apd_w_m2": 2.119765483168075,
+      "apd_at_target_w_m2": 2.119765483168075,
+      "tracking_ratio": 1.0,
+      "worst_patch_index": 15041,
+      "worst_patch_distance_cm": 0.0,
+      "p_abs_w": 0.11689532810331886,
+      "body_mean_apd_w_m2": 0.14861185469085442,
+      "eta_4cm2": 14.263771134393396,
+      "kappa_inv_m2": 18.133876841463703,
+      "A_eff_cm2": 551.4540595717884,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 1.7188733853924696
+    },
+    {
+      "region": "chest",
+      "distance_m": 1.0,
+      "N": 16,
+      "N_eff": 16,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.09185504168272018,
+        -0.05665692687034607,
+        -0.04074900224804878
+      ],
+      "n_target": [
+        0.02046065163667098,
+        -0.9996896117032593,
+        0.014214147430976877
+      ],
+      "peak_apd_w_m2": 8.501082687711804,
+      "apd_at_target_w_m2": 8.501082687711804,
+      "tracking_ratio": 1.0,
+      "worst_patch_index": 15041,
+      "worst_patch_distance_cm": 0.0,
+      "p_abs_w": 0.31892714433152625,
+      "body_mean_apd_w_m2": 0.40545978354647577,
+      "eta_4cm2": 20.966524998742244,
+      "kappa_inv_m2": 26.65524976097641,
+      "A_eff_cm2": 375.16061900271944,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 1.7188733853924696
+    },
+    {
+      "region": "chest",
+      "distance_m": 1.0,
+      "N": 64,
+      "N_eff": 64,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.09185504168272018,
+        -0.05665692687034607,
+        -0.04074900224804878
+      ],
+      "n_target": [
+        0.02046065163667098,
+        -0.9996896117032593,
+        0.014214147430976877
+      ],
+      "peak_apd_w_m2": 34.029529870169064,
+      "apd_at_target_w_m2": 34.029529870169064,
+      "tracking_ratio": 1.0,
+      "worst_patch_index": 15041,
+      "worst_patch_distance_cm": 0.0,
+      "p_abs_w": 1.458553253798296,
+      "body_mean_apd_w_m2": 1.8542939887277763,
+      "eta_4cm2": 18.35174469476471,
+      "kappa_inv_m2": 23.331016390077604,
+      "A_eff_cm2": 428.61398889818093,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 1.7188733853924696
+    },
+    {
+      "region": "head",
+      "distance_m": 0.05,
+      "N": 1,
+      "N_eff": 1,
+      "aperture_m": 0.03,
+      "r_target": [
+        -0.0013712990039493889,
+        -0.05022559314966202,
+        0.21095162133375803
+      ],
+      "n_target": [
+        -0.021944223841049548,
+        -0.02554768238833043,
+        0.9994327225804641
+      ],
+      "peak_apd_w_m2": 0.5372500732820019,
+      "apd_at_target_w_m2": 0.5364027271589836,
+      "tracking_ratio": 0.9984228087344094,
+      "worst_patch_index": 5943,
+      "worst_patch_distance_cm": 0.7303551164449056,
+      "p_abs_w": 0.04953260440118305,
+      "body_mean_apd_w_m2": 0.0629719966329364,
+      "eta_4cm2": 8.531571206382912,
+      "kappa_inv_m2": 10.846392588821153,
+      "A_eff_cm2": 921.9655215418361,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 34.37746770784939
+    },
+    {
+      "region": "head",
+      "distance_m": 0.05,
+      "N": 4,
+      "N_eff": 4,
+      "aperture_m": 0.03,
+      "r_target": [
+        -0.0013712990039493889,
+        -0.05022559314966202,
+        0.21095162133375803
+      ],
+      "n_target": [
+        -0.021944223841049548,
+        -0.02554768238833043,
+        0.9994327225804641
+      ],
+      "peak_apd_w_m2": 0.8768007131528026,
+      "apd_at_target_w_m2": 0.38035549592370765,
+      "tracking_ratio": 0.4337992547428756,
+      "worst_patch_index": 2984,
+      "worst_patch_distance_cm": 3.5137252088775828,
+      "p_abs_w": 0.07263003795583525,
+      "body_mean_apd_w_m2": 0.0923363219216404,
+      "eta_4cm2": 9.495729252643224,
+      "kappa_inv_m2": 12.072150006116836,
+      "A_eff_cm2": 828.3528613323311,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 34.37746770784939
+    },
+    {
+      "region": "head",
+      "distance_m": 0.05,
+      "N": 16,
+      "N_eff": 16,
+      "aperture_m": 0.03,
+      "r_target": [
+        -0.0013712990039493889,
+        -0.05022559314966202,
+        0.21095162133375803
+      ],
+      "n_target": [
+        -0.021944223841049548,
+        -0.02554768238833043,
+        0.9994327225804641
+      ],
+      "peak_apd_w_m2": 3.3582186555818216,
+      "apd_at_target_w_m2": 2.518815876687546,
+      "tracking_ratio": 0.7500452278474862,
+      "worst_patch_index": 23399,
+      "worst_patch_distance_cm": 5.916095665611844,
+      "p_abs_w": 0.06082274576361019,
+      "body_mean_apd_w_m2": 0.0773254261054064,
+      "eta_4cm2": 43.42968186174694,
+      "kappa_inv_m2": 55.21320376810446,
+      "A_eff_cm2": 181.11609755521553,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 34.37746770784939
+    },
+    {
+      "region": "head",
+      "distance_m": 0.05,
+      "N": 64,
+      "N_eff": 64,
+      "aperture_m": 0.03,
+      "r_target": [
+        -0.0013712990039493889,
+        -0.05022559314966202,
+        0.21095162133375803
+      ],
+      "n_target": [
+        -0.021944223841049548,
+        -0.02554768238833043,
+        0.9994327225804641
+      ],
+      "peak_apd_w_m2": 12.668016858104394,
+      "apd_at_target_w_m2": 12.668016858104394,
+      "tracking_ratio": 1.0,
+      "worst_patch_index": 23403,
+      "worst_patch_distance_cm": 0.0,
+      "p_abs_w": 0.05709857575358164,
+      "body_mean_apd_w_m2": 0.07259079879946971,
+      "eta_4cm2": 174.51270777580885,
+      "kappa_inv_m2": 221.86222144621118,
+      "A_eff_cm2": 45.07301844728182,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 34.37746770784939
+    },
+    {
+      "region": "head",
+      "distance_m": 0.1,
+      "N": 1,
+      "N_eff": 1,
+      "aperture_m": 0.03,
+      "r_target": [
+        -0.0013712990039493889,
+        -0.05022559314966202,
+        0.21095162133375803
+      ],
+      "n_target": [
+        -0.021944223841049548,
+        -0.02554768238833043,
+        0.9994327225804641
+      ],
+      "peak_apd_w_m2": 0.5372500732820018,
+      "apd_at_target_w_m2": 0.5364027271589835,
+      "tracking_ratio": 0.9984228087344094,
+      "worst_patch_index": 5943,
+      "worst_patch_distance_cm": 0.7303551164449056,
+      "p_abs_w": 0.04953260440118305,
+      "body_mean_apd_w_m2": 0.0629719966329364,
+      "eta_4cm2": 8.53157120638291,
+      "kappa_inv_m2": 10.846392588821152,
+      "A_eff_cm2": 921.9655215418362,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 17.188733853924695
+    },
+    {
+      "region": "head",
+      "distance_m": 0.1,
+      "N": 4,
+      "N_eff": 4,
+      "aperture_m": 0.03,
+      "r_target": [
+        -0.0013712990039493889,
+        -0.05022559314966202,
+        0.21095162133375803
+      ],
+      "n_target": [
+        -0.021944223841049548,
+        -0.02554768238833043,
+        0.9994327225804641
+      ],
+      "peak_apd_w_m2": 1.3811772626075682,
+      "apd_at_target_w_m2": 1.0979692790975506,
+      "tracking_ratio": 0.7949517479202196,
+      "worst_patch_index": 5945,
+      "worst_patch_distance_cm": 3.7971827129618303,
+      "p_abs_w": 0.05852126858475699,
+      "body_mean_apd_w_m2": 0.07439950256656533,
+      "eta_4cm2": 18.56433463882137,
+      "kappa_inv_m2": 23.601287121915245,
+      "A_eff_cm2": 423.70570504667035,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 17.188733853924695
+    },
+    {
+      "region": "head",
+      "distance_m": 0.1,
+      "N": 16,
+      "N_eff": 16,
+      "aperture_m": 0.03,
+      "r_target": [
+        -0.0013712990039493889,
+        -0.05022559314966202,
+        0.21095162133375803
+      ],
+      "n_target": [
+        -0.021944223841049548,
+        -0.02554768238833043,
+        0.9994327225804641
+      ],
+      "peak_apd_w_m2": 5.91120731786226,
+      "apd_at_target_w_m2": 5.91120731786226,
+      "tracking_ratio": 1.0,
+      "worst_patch_index": 23403,
+      "worst_patch_distance_cm": 0.0,
+      "p_abs_w": 0.047802894926700784,
+      "body_mean_apd_w_m2": 0.06077297518999257,
+      "eta_4cm2": 97.2670385048987,
+      "kappa_inv_m2": 123.65793592472359,
+      "A_eff_cm2": 80.86824290911237,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 17.188733853924695
+    },
+    {
+      "region": "head",
+      "distance_m": 0.1,
+      "N": 64,
+      "N_eff": 64,
+      "aperture_m": 0.03,
+      "r_target": [
+        -0.0013712990039493889,
+        -0.05022559314966202,
+        0.21095162133375803
+      ],
+      "n_target": [
+        -0.021944223841049548,
+        -0.02554768238833043,
+        0.9994327225804641
+      ],
+      "peak_apd_w_m2": 25.678580638028716,
+      "apd_at_target_w_m2": 25.678580638028716,
+      "tracking_ratio": 1.0,
+      "worst_patch_index": 23403,
+      "worst_patch_distance_cm": 0.0,
+      "p_abs_w": 0.06159049734311482,
+      "body_mean_apd_w_m2": 0.07830148723653364,
+      "eta_4cm2": 327.9449924170494,
+      "kappa_inv_m2": 416.92439167970633,
+      "A_eff_cm2": 23.985164215775352,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 17.188733853924695
+    },
+    {
+      "region": "head",
+      "distance_m": 0.3,
+      "N": 1,
+      "N_eff": 1,
+      "aperture_m": 0.03,
+      "r_target": [
+        -0.0013712990039493889,
+        -0.05022559314966202,
+        0.21095162133375803
+      ],
+      "n_target": [
+        -0.021944223841049548,
+        -0.02554768238833043,
+        0.9994327225804641
+      ],
+      "peak_apd_w_m2": 0.5372500732820017,
+      "apd_at_target_w_m2": 0.5364027271589835,
+      "tracking_ratio": 0.9984228087344096,
+      "worst_patch_index": 5943,
+      "worst_patch_distance_cm": 0.7303551164449056,
+      "p_abs_w": 0.04953260440118304,
+      "body_mean_apd_w_m2": 0.06297199663293639,
+      "eta_4cm2": 8.53157120638291,
+      "kappa_inv_m2": 10.846392588821152,
+      "A_eff_cm2": 921.9655215418362,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 5.729577951308233
+    },
+    {
+      "region": "head",
+      "distance_m": 0.3,
+      "N": 4,
+      "N_eff": 4,
+      "aperture_m": 0.03,
+      "r_target": [
+        -0.0013712990039493889,
+        -0.05022559314966202,
+        0.21095162133375803
+      ],
+      "n_target": [
+        -0.021944223841049548,
+        -0.02554768238833043,
+        0.9994327225804641
+      ],
+      "peak_apd_w_m2": 1.9835374100297063,
+      "apd_at_target_w_m2": 1.9835374100297063,
+      "tracking_ratio": 1.0,
+      "worst_patch_index": 23403,
+      "worst_patch_distance_cm": 0.0,
+      "p_abs_w": 0.04241155189665914,
+      "body_mean_apd_w_m2": 0.05391883054649632,
+      "eta_4cm2": 36.78747090627687,
+      "kappa_inv_m2": 46.768800511304896,
+      "A_eff_cm2": 213.81775651019342,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 5.729577951308233
+    },
+    {
+      "region": "head",
+      "distance_m": 0.3,
+      "N": 16,
+      "N_eff": 16,
+      "aperture_m": 0.03,
+      "r_target": [
+        -0.0013712990039493889,
+        -0.05022559314966202,
+        0.21095162133375803
+      ],
+      "n_target": [
+        -0.021944223841049548,
+        -0.02554768238833043,
+        0.9994327225804641
+      ],
+      "peak_apd_w_m2": 8.21637413346162,
+      "apd_at_target_w_m2": 8.21637413346162,
+      "tracking_ratio": 1.0,
+      "worst_patch_index": 23403,
+      "worst_patch_distance_cm": 0.0,
+      "p_abs_w": 0.09595422760393316,
+      "body_mean_apd_w_m2": 0.12198892771014021,
+      "eta_4cm2": 67.35344172370033,
+      "kappa_inv_m2": 85.62805765448975,
+      "A_eff_cm2": 116.78415082530682,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 5.729577951308233
+    },
+    {
+      "region": "head",
+      "distance_m": 0.3,
+      "N": 64,
+      "N_eff": 64,
+      "aperture_m": 0.03,
+      "r_target": [
+        -0.0013712990039493889,
+        -0.05022559314966202,
+        0.21095162133375803
+      ],
+      "n_target": [
+        -0.021944223841049548,
+        -0.02554768238833043,
+        0.9994327225804641
+      ],
+      "peak_apd_w_m2": 33.193559894383235,
+      "apd_at_target_w_m2": 33.193559894383235,
+      "tracking_ratio": 1.0,
+      "worst_patch_index": 23403,
+      "worst_patch_distance_cm": 0.0,
+      "p_abs_w": 0.4999938768602995,
+      "body_mean_apd_w_m2": 0.6356542949997515,
+      "eta_4cm2": 52.219516418741755,
+      "kappa_inv_m2": 66.38793279394032,
+      "A_eff_cm2": 150.62978434708495,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 5.729577951308233
+    },
+    {
+      "region": "head",
+      "distance_m": 1.0,
+      "N": 1,
+      "N_eff": 1,
+      "aperture_m": 0.03,
+      "r_target": [
+        -0.0013712990039493889,
+        -0.05022559314966202,
+        0.21095162133375803
+      ],
+      "n_target": [
+        -0.021944223841049548,
+        -0.02554768238833043,
+        0.9994327225804641
+      ],
+      "peak_apd_w_m2": 0.5372500732820018,
+      "apd_at_target_w_m2": 0.5364027271589835,
+      "tracking_ratio": 0.9984228087344094,
+      "worst_patch_index": 5943,
+      "worst_patch_distance_cm": 0.7303551164449056,
+      "p_abs_w": 0.04953260440118305,
+      "body_mean_apd_w_m2": 0.0629719966329364,
+      "eta_4cm2": 8.53157120638291,
+      "kappa_inv_m2": 10.846392588821152,
+      "A_eff_cm2": 921.9655215418362,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 1.7188733853924696
+    },
+    {
+      "region": "head",
+      "distance_m": 1.0,
+      "N": 4,
+      "N_eff": 4,
+      "aperture_m": 0.03,
+      "r_target": [
+        -0.0013712990039493889,
+        -0.05022559314966202,
+        0.21095162133375803
+      ],
+      "n_target": [
+        -0.021944223841049548,
+        -0.02554768238833043,
+        0.9994327225804641
+      ],
+      "peak_apd_w_m2": 2.1304273297811993,
+      "apd_at_target_w_m2": 2.1304273297811993,
+      "tracking_ratio": 1.0,
+      "worst_patch_index": 23403,
+      "worst_patch_distance_cm": 0.0,
+      "p_abs_w": 0.10695178900453622,
+      "body_mean_apd_w_m2": 0.13597039320870677,
+      "eta_4cm2": 15.668317782321298,
+      "kappa_inv_m2": 19.919510927403373,
+      "A_eff_cm2": 502.02035765059617,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 1.7188733853924696
+    },
+    {
+      "region": "head",
+      "distance_m": 1.0,
+      "N": 16,
+      "N_eff": 16,
+      "aperture_m": 0.03,
+      "r_target": [
+        -0.0013712990039493889,
+        -0.05022559314966202,
+        0.21095162133375803
+      ],
+      "n_target": [
+        -0.021944223841049548,
+        -0.02554768238833043,
+        0.9994327225804641
+      ],
+      "peak_apd_w_m2": 8.54865257800917,
+      "apd_at_target_w_m2": 8.54865257800917,
+      "tracking_ratio": 1.0,
+      "worst_patch_index": 23403,
+      "worst_patch_distance_cm": 0.0,
+      "p_abs_w": 0.5557524536368139,
+      "body_mean_apd_w_m2": 0.7065415207266532,
+      "eta_4cm2": 12.099292578328843,
+      "kappa_inv_m2": 15.38212296152226,
+      "A_eff_cm2": 650.1053219386287,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 1.7188733853924696
+    },
+    {
+      "region": "head",
+      "distance_m": 1.0,
+      "N": 64,
+      "N_eff": 64,
+      "aperture_m": 0.03,
+      "r_target": [
+        -0.0013712990039493889,
+        -0.05022559314966202,
+        0.21095162133375803
+      ],
+      "n_target": [
+        -0.021944223841049548,
+        -0.02554768238833043,
+        0.9994327225804641
+      ],
+      "peak_apd_w_m2": 34.23479298298713,
+      "apd_at_target_w_m2": 34.22544953331651,
+      "tracking_ratio": 0.9997270773719804,
+      "worst_patch_index": 5943,
+      "worst_patch_distance_cm": 0.7303551164449056,
+      "p_abs_w": 2.4013322752700574,
+      "body_mean_apd_w_m2": 3.052871735314121,
+      "eta_4cm2": 11.213963753201899,
+      "kappa_inv_m2": 14.256583037487818,
+      "A_eff_cm2": 701.4303479104991,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 1.7188733853924696
+    },
+    {
+      "region": "shoulder",
+      "distance_m": 0.05,
+      "N": 1,
+      "N_eff": 1,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.12831214567025503,
+        -0.02680102301140626,
+        -0.023082772890726726
+      ],
+      "n_target": [
+        0.9854670975621356,
+        -0.08260578840371571,
+        0.14842804096484258
+      ],
+      "peak_apd_w_m2": 0.5351927311927247,
+      "apd_at_target_w_m2": 0.5195705463372544,
+      "tracking_ratio": 0.9708101699724978,
+      "worst_patch_index": 10873,
+      "worst_patch_distance_cm": 34.853632047710015,
+      "p_abs_w": 0.10533127880670237,
+      "body_mean_apd_w_m2": 0.13391019944431035,
+      "eta_4cm2": 3.996653977169954,
+      "kappa_inv_m2": 5.081042756301081,
+      "A_eff_cm2": 1968.0999510580466,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 34.37746770784939
+    },
+    {
+      "region": "shoulder",
+      "distance_m": 0.05,
+      "N": 4,
+      "N_eff": 4,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.12831214567025503,
+        -0.02680102301140626,
+        -0.023082772890726726
+      ],
+      "n_target": [
+        0.9854670975621356,
+        -0.08260578840371571,
+        0.14842804096484258
+      ],
+      "peak_apd_w_m2": 1.6159966682765408,
+      "apd_at_target_w_m2": 0.4303401743260525,
+      "tracking_ratio": 0.2663001618592506,
+      "worst_patch_index": 14654,
+      "worst_patch_distance_cm": 12.68612951631237,
+      "p_abs_w": 0.10440582805359623,
+      "body_mean_apd_w_m2": 0.1327336515439307,
+      "eta_4cm2": 12.174732251238462,
+      "kappa_inv_m2": 15.478031240238588,
+      "A_eff_cm2": 646.0770006719442,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 34.37746770784939
+    },
+    {
+      "region": "shoulder",
+      "distance_m": 0.05,
+      "N": 16,
+      "N_eff": 16,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.12831214567025503,
+        -0.02680102301140626,
+        -0.023082772890726726
+      ],
+      "n_target": [
+        0.9854670975621356,
+        -0.08260578840371571,
+        0.14842804096484258
+      ],
+      "peak_apd_w_m2": 3.609253608579644,
+      "apd_at_target_w_m2": 3.0779602888517466,
+      "tracking_ratio": 0.8527969000391252,
+      "worst_patch_index": 12728,
+      "worst_patch_distance_cm": 6.039247021728307,
+      "p_abs_w": 0.10576070661380299,
+      "body_mean_apd_w_m2": 0.13445614139001963,
+      "eta_4cm2": 26.843352570338972,
+      "kappa_inv_m2": 34.126602630968,
+      "A_eff_cm2": 293.02653147563984,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 34.37746770784939
+    },
+    {
+      "region": "shoulder",
+      "distance_m": 0.05,
+      "N": 64,
+      "N_eff": 64,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.12831214567025503,
+        -0.02680102301140626,
+        -0.023082772890726726
+      ],
+      "n_target": [
+        0.9854670975621356,
+        -0.08260578840371571,
+        0.14842804096484258
+      ],
+      "peak_apd_w_m2": 14.924614040296822,
+      "apd_at_target_w_m2": 14.924614040296822,
+      "tracking_ratio": 1.0,
+      "worst_patch_index": 12735,
+      "worst_patch_distance_cm": 0.0,
+      "p_abs_w": 0.11587060451427432,
+      "body_mean_apd_w_m2": 0.14730909883581478,
+      "eta_4cm2": 101.31495038830724,
+      "kappa_inv_m2": 128.80414409556508,
+      "A_eff_cm2": 77.63725360094462,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 34.37746770784939
+    },
+    {
+      "region": "shoulder",
+      "distance_m": 0.1,
+      "N": 1,
+      "N_eff": 1,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.12831214567025503,
+        -0.02680102301140626,
+        -0.023082772890726726
+      ],
+      "n_target": [
+        0.9854670975621356,
+        -0.08260578840371571,
+        0.14842804096484258
+      ],
+      "peak_apd_w_m2": 0.5351927311927248,
+      "apd_at_target_w_m2": 0.5195705463372542,
+      "tracking_ratio": 0.9708101699724972,
+      "worst_patch_index": 10873,
+      "worst_patch_distance_cm": 34.853632047710015,
+      "p_abs_w": 0.10533127880670237,
+      "body_mean_apd_w_m2": 0.13391019944431035,
+      "eta_4cm2": 3.996653977169955,
+      "kappa_inv_m2": 5.081042756301082,
+      "A_eff_cm2": 1968.0999510580464,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 17.188733853924695
+    },
+    {
+      "region": "shoulder",
+      "distance_m": 0.1,
+      "N": 4,
+      "N_eff": 4,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.12831214567025503,
+        -0.02680102301140626,
+        -0.023082772890726726
+      ],
+      "n_target": [
+        0.9854670975621356,
+        -0.08260578840371571,
+        0.14842804096484258
+      ],
+      "peak_apd_w_m2": 1.4124238034432515,
+      "apd_at_target_w_m2": 1.2276184709197178,
+      "tracking_ratio": 0.8691573081160134,
+      "worst_patch_index": 3149,
+      "worst_patch_distance_cm": 82.3539683045798,
+      "p_abs_w": 0.10226620173572225,
+      "body_mean_apd_w_m2": 0.1300134929148059,
+      "eta_4cm2": 10.8636709296686,
+      "kappa_inv_m2": 13.81124730820899,
+      "A_eff_cm2": 724.0475662220819,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 17.188733853924695
+    },
+    {
+      "region": "shoulder",
+      "distance_m": 0.1,
+      "N": 16,
+      "N_eff": 16,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.12831214567025503,
+        -0.02680102301140626,
+        -0.023082772890726726
+      ],
+      "n_target": [
+        0.9854670975621356,
+        -0.08260578840371571,
+        0.14842804096484258
+      ],
+      "peak_apd_w_m2": 6.189917142099727,
+      "apd_at_target_w_m2": 6.189917142099727,
+      "tracking_ratio": 1.0,
+      "worst_patch_index": 12735,
+      "worst_patch_distance_cm": 0.0,
+      "p_abs_w": 0.11148343359601534,
+      "body_mean_apd_w_m2": 0.1417315824578122,
+      "eta_4cm2": 43.67352028925675,
+      "kappa_inv_m2": 55.5232014518879,
+      "A_eff_cm2": 180.10488838013467,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 17.188733853924695
+    },
+    {
+      "region": "shoulder",
+      "distance_m": 0.1,
+      "N": 64,
+      "N_eff": 64,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.12831214567025503,
+        -0.02680102301140626,
+        -0.023082772890726726
+      ],
+      "n_target": [
+        0.9854670975621356,
+        -0.08260578840371571,
+        0.14842804096484258
+      ],
+      "peak_apd_w_m2": 26.428451764019364,
+      "apd_at_target_w_m2": 26.428451764019364,
+      "tracking_ratio": 1.0,
+      "worst_patch_index": 12735,
+      "worst_patch_distance_cm": 0.0,
+      "p_abs_w": 0.1855426113861714,
+      "body_mean_apd_w_m2": 0.23588480437740011,
+      "eta_4cm2": 112.03965356638906,
+      "kappa_inv_m2": 142.4387183438612,
+      "A_eff_cm2": 70.205630296806,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 17.188733853924695
+    },
+    {
+      "region": "shoulder",
+      "distance_m": 0.3,
+      "N": 1,
+      "N_eff": 1,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.12831214567025503,
+        -0.02680102301140626,
+        -0.023082772890726726
+      ],
+      "n_target": [
+        0.9854670975621356,
+        -0.08260578840371571,
+        0.14842804096484258
+      ],
+      "peak_apd_w_m2": 0.5351927311927248,
+      "apd_at_target_w_m2": 0.5195705463372542,
+      "tracking_ratio": 0.9708101699724972,
+      "worst_patch_index": 10873,
+      "worst_patch_distance_cm": 34.853632047710015,
+      "p_abs_w": 0.10533127880670236,
+      "body_mean_apd_w_m2": 0.13391019944431032,
+      "eta_4cm2": 3.9966539771699554,
+      "kappa_inv_m2": 5.081042756301083,
+      "A_eff_cm2": 1968.0999510580457,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 5.729577951308233
+    },
+    {
+      "region": "shoulder",
+      "distance_m": 0.3,
+      "N": 4,
+      "N_eff": 4,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.12831214567025503,
+        -0.02680102301140626,
+        -0.023082772890726726
+      ],
+      "n_target": [
+        0.9854670975621356,
+        -0.08260578840371571,
+        0.14842804096484258
+      ],
+      "peak_apd_w_m2": 1.9664784937323554,
+      "apd_at_target_w_m2": 1.953487357746468,
+      "tracking_ratio": 0.9933937055364229,
+      "worst_patch_index": 2311,
+      "worst_patch_distance_cm": 11.82925204709199,
+      "p_abs_w": 0.11051862998367354,
+      "body_mean_apd_w_m2": 0.14050500431676088,
+      "eta_4cm2": 13.995789710799459,
+      "kappa_inv_m2": 17.793185583488096,
+      "A_eff_cm2": 562.0129095534137,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 5.729577951308233
+    },
+    {
+      "region": "shoulder",
+      "distance_m": 0.3,
+      "N": 16,
+      "N_eff": 16,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.12831214567025503,
+        -0.02680102301140626,
+        -0.023082772890726726
+      ],
+      "n_target": [
+        0.9854670975621356,
+        -0.08260578840371571,
+        0.14842804096484258
+      ],
+      "peak_apd_w_m2": 8.03193392893474,
+      "apd_at_target_w_m2": 8.03193392893474,
+      "tracking_ratio": 1.0,
+      "worst_patch_index": 12735,
+      "worst_patch_distance_cm": 0.0,
+      "p_abs_w": 0.20720218689618633,
+      "body_mean_apd_w_m2": 0.26342114599675814,
+      "eta_4cm2": 30.49084726491011,
+      "kappa_inv_m2": 38.76375075596546,
+      "A_eff_cm2": 257.97297229967023,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 5.729577951308233
+    },
+    {
+      "region": "shoulder",
+      "distance_m": 0.3,
+      "N": 64,
+      "N_eff": 64,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.12831214567025503,
+        -0.02680102301140626,
+        -0.023082772890726726
+      ],
+      "n_target": [
+        0.9854670975621356,
+        -0.08260578840371571,
+        0.14842804096484258
+      ],
+      "peak_apd_w_m2": 32.38056263693879,
+      "apd_at_target_w_m2": 32.38056263693879,
+      "tracking_ratio": 1.0,
+      "worst_patch_index": 12735,
+      "worst_patch_distance_cm": 0.0,
+      "p_abs_w": 0.4779374580209471,
+      "body_mean_apd_w_m2": 0.6076134368684726,
+      "eta_4cm2": 53.29138671426068,
+      "kappa_inv_m2": 67.75062739593767,
+      "A_eff_cm2": 147.60010917034845,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 5.729577951308233
+    },
+    {
+      "region": "shoulder",
+      "distance_m": 1.0,
+      "N": 1,
+      "N_eff": 1,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.12831214567025503,
+        -0.02680102301140626,
+        -0.023082772890726726
+      ],
+      "n_target": [
+        0.9854670975621356,
+        -0.08260578840371571,
+        0.14842804096484258
+      ],
+      "peak_apd_w_m2": 0.5351927311927249,
+      "apd_at_target_w_m2": 0.5195705463372544,
+      "tracking_ratio": 0.9708101699724975,
+      "worst_patch_index": 10873,
+      "worst_patch_distance_cm": 34.853632047710015,
+      "p_abs_w": 0.10533127880670237,
+      "body_mean_apd_w_m2": 0.13391019944431035,
+      "eta_4cm2": 3.9966539771699554,
+      "kappa_inv_m2": 5.081042756301083,
+      "A_eff_cm2": 1968.0999510580457,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 1.7188733853924696
+    },
+    {
+      "region": "shoulder",
+      "distance_m": 1.0,
+      "N": 4,
+      "N_eff": 4,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.12831214567025503,
+        -0.02680102301140626,
+        -0.023082772890726726
+      ],
+      "n_target": [
+        0.9854670975621356,
+        -0.08260578840371571,
+        0.14842804096484258
+      ],
+      "peak_apd_w_m2": 2.0758213476099003,
+      "apd_at_target_w_m2": 2.0666655620028185,
+      "tracking_ratio": 0.9955893190819991,
+      "worst_patch_index": 12218,
+      "worst_patch_distance_cm": 35.85118121913482,
+      "p_abs_w": 0.16741732245591448,
+      "body_mean_apd_w_m2": 0.2128416866716839,
+      "eta_4cm2": 9.752889013757585,
+      "kappa_inv_m2": 12.399083423141715,
+      "A_eff_cm2": 806.5112281877181,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 1.7188733853924696
+    },
+    {
+      "region": "shoulder",
+      "distance_m": 1.0,
+      "N": 16,
+      "N_eff": 16,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.12831214567025503,
+        -0.02680102301140626,
+        -0.023082772890726726
+      ],
+      "n_target": [
+        0.9854670975621356,
+        -0.08260578840371571,
+        0.14842804096484258
+      ],
+      "peak_apd_w_m2": 8.357899083397763,
+      "apd_at_target_w_m2": 8.287281524792576,
+      "tracking_ratio": 0.9915508002788089,
+      "worst_patch_index": 12730,
+      "worst_patch_distance_cm": 1.2763812321613803,
+      "p_abs_w": 0.377294514967327,
+      "body_mean_apd_w_m2": 0.479663631932514,
+      "eta_4cm2": 17.424500268499976,
+      "kappa_inv_m2": 22.152188149678086,
+      "A_eff_cm2": 451.42267357210574,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 1.7188733853924696
+    },
+    {
+      "region": "shoulder",
+      "distance_m": 1.0,
+      "N": 64,
+      "N_eff": 64,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.12831214567025503,
+        -0.02680102301140626,
+        -0.023082772890726726
+      ],
+      "n_target": [
+        0.9854670975621356,
+        -0.08260578840371571,
+        0.14842804096484258
+      ],
+      "peak_apd_w_m2": 33.49673838724019,
+      "apd_at_target_w_m2": 33.17272230557295,
+      "tracking_ratio": 0.9903269363744778,
+      "worst_patch_index": 12730,
+      "worst_patch_distance_cm": 1.2763812321613803,
+      "p_abs_w": 1.5840782143374104,
+      "body_mean_apd_w_m2": 2.013876903617464,
+      "eta_4cm2": 16.632962187048793,
+      "kappa_inv_m2": 21.14588666396832,
+      "A_eff_cm2": 472.9052112550839,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 1.7188733853924696
+    },
+    {
+      "region": "thigh",
+      "distance_m": 0.05,
+      "N": 1,
+      "N_eff": 1,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.003678249272828301,
+        -0.05581624060869217,
+        -0.3651637037595113
+      ],
+      "n_target": [
+        0.007854641883537643,
+        -0.9999409920683799,
+        0.007504464150460906
+      ],
+      "peak_apd_w_m2": 0.5382464426758515,
+      "apd_at_target_w_m2": 0.5339706926516695,
+      "tracking_ratio": 0.9920561481039699,
+      "worst_patch_index": 20882,
+      "worst_patch_distance_cm": 21.311342269268174,
+      "p_abs_w": 0.11366589843209732,
+      "body_mean_apd_w_m2": 0.14450620273007014,
+      "eta_4cm2": 3.724728990915823,
+      "kappa_inv_m2": 4.735337951843082,
+      "A_eff_cm2": 2111.7816936609165,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 34.37746770784939
+    },
+    {
+      "region": "thigh",
+      "distance_m": 0.05,
+      "N": 4,
+      "N_eff": 4,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.003678249272828301,
+        -0.05581624060869217,
+        -0.3651637037595113
+      ],
+      "n_target": [
+        0.007854641883537643,
+        -0.9999409920683799,
+        0.007504464150460906
+      ],
+      "peak_apd_w_m2": 0.9239422085970692,
+      "apd_at_target_w_m2": 0.5298614677120245,
+      "tracking_ratio": 0.5734790150095814,
+      "worst_patch_index": 5175,
+      "worst_patch_distance_cm": 31.995477548396977,
+      "p_abs_w": 0.11318996854944596,
+      "body_mean_apd_w_m2": 0.14390114157227005,
+      "eta_4cm2": 6.420673237905113,
+      "kappa_inv_m2": 8.16275700433165,
+      "A_eff_cm2": 1225.0762817873174,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 34.37746770784939
+    },
+    {
+      "region": "thigh",
+      "distance_m": 0.05,
+      "N": 16,
+      "N_eff": 16,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.003678249272828301,
+        -0.05581624060869217,
+        -0.3651637037595113
+      ],
+      "n_target": [
+        0.007854641883537643,
+        -0.9999409920683799,
+        0.007504464150460906
+      ],
+      "peak_apd_w_m2": 3.356357858823764,
+      "apd_at_target_w_m2": 3.356357858823764,
+      "tracking_ratio": 1.0,
+      "worst_patch_index": 7269,
+      "worst_patch_distance_cm": 0.0,
+      "p_abs_w": 0.11254550750747079,
+      "body_mean_apd_w_m2": 0.1430818226800789,
+      "eta_4cm2": 23.457611847231977,
+      "kappa_inv_m2": 29.822228653604576,
+      "A_eff_cm2": 335.3203449733229,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 34.37746770784939
+    },
+    {
+      "region": "thigh",
+      "distance_m": 0.05,
+      "N": 64,
+      "N_eff": 64,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.003678249272828301,
+        -0.05581624060869217,
+        -0.3651637037595113
+      ],
+      "n_target": [
+        0.007854641883537643,
+        -0.9999409920683799,
+        0.007504464150460906
+      ],
+      "peak_apd_w_m2": 15.940626171342114,
+      "apd_at_target_w_m2": 15.940626171342114,
+      "tracking_ratio": 1.0,
+      "worst_patch_index": 7269,
+      "worst_patch_distance_cm": 0.0,
+      "p_abs_w": 0.09145344367048827,
+      "body_mean_apd_w_m2": 0.11626697236115605,
+      "eta_4cm2": 137.10364902103328,
+      "kappa_inv_m2": 174.30318128617503,
+      "A_eff_cm2": 57.371299400334905,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 34.37746770784939
+    },
+    {
+      "region": "thigh",
+      "distance_m": 0.1,
+      "N": 1,
+      "N_eff": 1,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.003678249272828301,
+        -0.05581624060869217,
+        -0.3651637037595113
+      ],
+      "n_target": [
+        0.007854641883537643,
+        -0.9999409920683799,
+        0.007504464150460906
+      ],
+      "peak_apd_w_m2": 0.5382464426758514,
+      "apd_at_target_w_m2": 0.5339706926516695,
+      "tracking_ratio": 0.9920561481039701,
+      "worst_patch_index": 20882,
+      "worst_patch_distance_cm": 21.311342269268174,
+      "p_abs_w": 0.11366589843209732,
+      "body_mean_apd_w_m2": 0.14450620273007014,
+      "eta_4cm2": 3.7247289909158225,
+      "kappa_inv_m2": 4.735337951843081,
+      "A_eff_cm2": 2111.781693660917,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 17.188733853924695
+    },
+    {
+      "region": "thigh",
+      "distance_m": 0.1,
+      "N": 4,
+      "N_eff": 4,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.003678249272828301,
+        -0.05581624060869217,
+        -0.3651637037595113
+      ],
+      "n_target": [
+        0.007854641883537643,
+        -0.9999409920683799,
+        0.007504464150460906
+      ],
+      "peak_apd_w_m2": 1.4178075022732262,
+      "apd_at_target_w_m2": 1.2834440380106351,
+      "tracking_ratio": 0.9052315183498741,
+      "worst_patch_index": 4747,
+      "worst_patch_distance_cm": 10.425105176927579,
+      "p_abs_w": 0.11188430230815206,
+      "body_mean_apd_w_m2": 0.14224121653613497,
+      "eta_4cm2": 9.967627786092832,
+      "kappa_inv_m2": 12.672086012283446,
+      "A_eff_cm2": 789.1360578129512,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 17.188733853924695
+    },
+    {
+      "region": "thigh",
+      "distance_m": 0.1,
+      "N": 16,
+      "N_eff": 16,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.003678249272828301,
+        -0.05581624060869217,
+        -0.3651637037595113
+      ],
+      "n_target": [
+        0.007854641883537643,
+        -0.9999409920683799,
+        0.007504464150460906
+      ],
+      "peak_apd_w_m2": 6.524006688223303,
+      "apd_at_target_w_m2": 6.4061015782276005,
+      "tracking_ratio": 0.9819275001344593,
+      "worst_patch_index": 2382,
+      "worst_patch_distance_cm": 11.357557110858497,
+      "p_abs_w": 0.07970562771650629,
+      "body_mean_apd_w_m2": 0.10133169012348633,
+      "eta_4cm2": 64.38268897195853,
+      "kappa_inv_m2": 81.85126791081332,
+      "A_eff_cm2": 122.17281729705383,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 17.188733853924695
+    },
+    {
+      "region": "thigh",
+      "distance_m": 0.1,
+      "N": 64,
+      "N_eff": 64,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.003678249272828301,
+        -0.05581624060869217,
+        -0.3651637037595113
+      ],
+      "n_target": [
+        0.007854641883537643,
+        -0.9999409920683799,
+        0.007504464150460906
+      ],
+      "peak_apd_w_m2": 27.294094845350813,
+      "apd_at_target_w_m2": 27.294094845350813,
+      "tracking_ratio": 1.0,
+      "worst_patch_index": 7269,
+      "worst_patch_distance_cm": 0.0,
+      "p_abs_w": 0.10911523333900056,
+      "body_mean_apd_w_m2": 0.13872083225774212,
+      "eta_4cm2": 196.75555863620121,
+      "kappa_inv_m2": 250.1400951098476,
+      "A_eff_cm2": 39.97759733643883,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 17.188733853924695
+    },
+    {
+      "region": "thigh",
+      "distance_m": 0.3,
+      "N": 1,
+      "N_eff": 1,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.003678249272828301,
+        -0.05581624060869217,
+        -0.3651637037595113
+      ],
+      "n_target": [
+        0.007854641883537643,
+        -0.9999409920683799,
+        0.007504464150460906
+      ],
+      "peak_apd_w_m2": 0.5382464426758513,
+      "apd_at_target_w_m2": 0.5339706926516695,
+      "tracking_ratio": 0.9920561481039704,
+      "worst_patch_index": 20882,
+      "worst_patch_distance_cm": 21.311342269268174,
+      "p_abs_w": 0.11366589843209732,
+      "body_mean_apd_w_m2": 0.14450620273007014,
+      "eta_4cm2": 3.7247289909158217,
+      "kappa_inv_m2": 4.73533795184308,
+      "A_eff_cm2": 2111.7816936609174,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 5.729577951308233
+    },
+    {
+      "region": "thigh",
+      "distance_m": 0.3,
+      "N": 4,
+      "N_eff": 4,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.003678249272828301,
+        -0.05581624060869217,
+        -0.3651637037595113
+      ],
+      "n_target": [
+        0.007854641883537643,
+        -0.9999409920683799,
+        0.007504464150460906
+      ],
+      "peak_apd_w_m2": 2.009498635411435,
+      "apd_at_target_w_m2": 2.009498635411435,
+      "tracking_ratio": 1.0,
+      "worst_patch_index": 7269,
+      "worst_patch_distance_cm": 0.0,
+      "p_abs_w": 0.09107196619150135,
+      "body_mean_apd_w_m2": 0.11578199082600923,
+      "eta_4cm2": 17.35588256062377,
+      "kappa_inv_m2": 22.064952799920523,
+      "A_eff_cm2": 453.20740500455634,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 5.729577951308233
+    },
+    {
+      "region": "thigh",
+      "distance_m": 0.3,
+      "N": 16,
+      "N_eff": 16,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.003678249272828301,
+        -0.05581624060869217,
+        -0.3651637037595113
+      ],
+      "n_target": [
+        0.007854641883537643,
+        -0.9999409920683799,
+        0.007504464150460906
+      ],
+      "peak_apd_w_m2": 8.258614786260106,
+      "apd_at_target_w_m2": 8.258614786260106,
+      "tracking_ratio": 1.0,
+      "worst_patch_index": 7269,
+      "worst_patch_distance_cm": 0.0,
+      "p_abs_w": 0.1261642843803086,
+      "body_mean_apd_w_m2": 0.16039570273441683,
+      "eta_4cm2": 51.48900279413793,
+      "kappa_inv_m2": 65.45921317450986,
+      "A_eff_cm2": 152.76688360644778,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 5.729577951308233
+    },
+    {
+      "region": "thigh",
+      "distance_m": 0.3,
+      "N": 64,
+      "N_eff": 64,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.003678249272828301,
+        -0.05581624060869217,
+        -0.3651637037595113
+      ],
+      "n_target": [
+        0.007854641883537643,
+        -0.9999409920683799,
+        0.007504464150460906
+      ],
+      "peak_apd_w_m2": 33.29047201799911,
+      "apd_at_target_w_m2": 33.29047201799911,
+      "tracking_ratio": 1.0,
+      "worst_patch_index": 7269,
+      "worst_patch_distance_cm": 0.0,
+      "p_abs_w": 0.279852047189326,
+      "body_mean_apd_w_m2": 0.35578266853470125,
+      "eta_4cm2": 93.5696844230964,
+      "kappa_inv_m2": 118.95740035618671,
+      "A_eff_cm2": 84.06370658788461,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 5.729577951308233
+    },
+    {
+      "region": "thigh",
+      "distance_m": 1.0,
+      "N": 1,
+      "N_eff": 1,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.003678249272828301,
+        -0.05581624060869217,
+        -0.3651637037595113
+      ],
+      "n_target": [
+        0.007854641883537643,
+        -0.9999409920683799,
+        0.007504464150460906
+      ],
+      "peak_apd_w_m2": 0.5382464426758514,
+      "apd_at_target_w_m2": 0.5339706926516697,
+      "tracking_ratio": 0.9920561481039706,
+      "worst_patch_index": 20882,
+      "worst_patch_distance_cm": 21.311342269268174,
+      "p_abs_w": 0.11366589843209735,
+      "body_mean_apd_w_m2": 0.1445062027300702,
+      "eta_4cm2": 3.7247289909158208,
+      "kappa_inv_m2": 4.73533795184308,
+      "A_eff_cm2": 2111.7816936609174,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 1.7188733853924696
+    },
+    {
+      "region": "thigh",
+      "distance_m": 1.0,
+      "N": 4,
+      "N_eff": 4,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.003678249272828301,
+        -0.05581624060869217,
+        -0.3651637037595113
+      ],
+      "n_target": [
+        0.007854641883537643,
+        -0.9999409920683799,
+        0.007504464150460906
+      ],
+      "peak_apd_w_m2": 2.1241036153379715,
+      "apd_at_target_w_m2": 2.1241036153379715,
+      "tracking_ratio": 1.0,
+      "worst_patch_index": 7269,
+      "worst_patch_distance_cm": 0.0,
+      "p_abs_w": 0.1455835958785752,
+      "body_mean_apd_w_m2": 0.1850839425931225,
+      "eta_4cm2": 11.476433803917146,
+      "kappa_inv_m2": 14.59026755397354,
+      "A_eff_cm2": 685.3883907890765,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 1.7188733853924696
+    },
+    {
+      "region": "thigh",
+      "distance_m": 1.0,
+      "N": 16,
+      "N_eff": 16,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.003678249272828301,
+        -0.05581624060869217,
+        -0.3651637037595113
+      ],
+      "n_target": [
+        0.007854641883537643,
+        -0.9999409920683799,
+        0.007504464150460906
+      ],
+      "peak_apd_w_m2": 8.517321073724046,
+      "apd_at_target_w_m2": 8.517321073724046,
+      "tracking_ratio": 1.0,
+      "worst_patch_index": 7269,
+      "worst_patch_distance_cm": 0.0,
+      "p_abs_w": 0.3954965936107259,
+      "body_mean_apd_w_m2": 0.5028043742557096,
+      "eta_4cm2": 16.939632011618937,
+      "kappa_inv_m2": 21.53576342077768,
+      "A_eff_cm2": 464.3438825276104,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 1.7188733853924696
+    },
+    {
+      "region": "thigh",
+      "distance_m": 1.0,
+      "N": 64,
+      "N_eff": 64,
+      "aperture_m": 0.03,
+      "r_target": [
+        0.003678249272828301,
+        -0.05581624060869217,
+        -0.3651637037595113
+      ],
+      "n_target": [
+        0.007854641883537643,
+        -0.9999409920683799,
+        0.007504464150460906
+      ],
+      "peak_apd_w_m2": 34.0932103665656,
+      "apd_at_target_w_m2": 34.0932103665656,
+      "tracking_ratio": 1.0,
+      "worst_patch_index": 7269,
+      "worst_patch_distance_cm": 0.0,
+      "p_abs_w": 1.867039023374185,
+      "body_mean_apd_w_m2": 2.3736118161933746,
+      "eta_4cm2": 14.363431347102832,
+      "kappa_inv_m2": 18.260577277571326,
+      "A_eff_cm2": 547.6278130748126,
+      "A_eff_star_cm2_adult": 2800.0000000000005,
+      "apd_binds_adult": true,
+      "array_angular_spread_deg": 1.7188733853924696
+    }
+  ]
+}

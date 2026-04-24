@@ -1,0 +1,103 @@
+{
+  "body": {
+    "name": "thelonious",
+    "n_triangles": 23826,
+    "total_area_m2": 0.7865814496864133,
+    "height_m": 1.1820511668920517
+  },
+  "tissue": {
+    "name": "SKIN_28GHZ",
+    "freq_hz": 28000000000.0
+  },
+  "limits": {
+    "sab_4cm2_public_w_m2": 20.0,
+    "sar_wb_public_w_kg": 0.08,
+    "eta_thresholds": {
+      "adult": 6.428571428571428,
+      "child": 10.0,
+      "infant": 12.5
+    }
+  },
+  "case_study": [
+    {
+      "n_paths": 1,
+      "center_label": "minus_x_cone",
+      "spread_deg": 20.0,
+      "peak_patch_apd_w_m2": 0.5386422448059545,
+      "p_abs_w": 0.10469814163805038,
+      "whole_body_mean_apd_w_m2": 0.13310527686584833,
+      "eta_4cm2": 4.046738472651472,
+      "lambda_max_Q": 0.10469814163805038,
+      "worst_patch_index": 14654,
+      "binds_before_sar": {
+        "adult": false,
+        "child": false,
+        "infant": false
+      }
+    },
+    {
+      "n_paths": 2,
+      "center_label": "minus_x_cone",
+      "spread_deg": 20.0,
+      "peak_patch_apd_w_m2": 0.9295823092794717,
+      "p_abs_w": 0.13969070469622671,
+      "whole_body_mean_apd_w_m2": 0.1775921676667016,
+      "eta_4cm2": 5.234365464945939,
+      "lambda_max_Q": 0.1419816380564399,
+      "worst_patch_index": 14654,
+      "binds_before_sar": {
+        "adult": false,
+        "child": false,
+        "infant": false
+      }
+    },
+    {
+      "n_paths": 4,
+      "center_label": "minus_x_cone",
+      "spread_deg": 20.0,
+      "peak_patch_apd_w_m2": 0.9295831211685986,
+      "p_abs_w": 0.13968611024541236,
+      "whole_body_mean_apd_w_m2": 0.177586326630384,
+      "eta_4cm2": 5.234542201570333,
+      "lambda_max_Q": 0.14198225289682634,
+      "worst_patch_index": 14654,
+      "binds_before_sar": {
+        "adult": false,
+        "child": false,
+        "infant": false
+      }
+    },
+    {
+      "n_paths": 8,
+      "center_label": "minus_x_cone",
+      "spread_deg": 20.0,
+      "peak_patch_apd_w_m2": 1.885864887656138,
+      "p_abs_w": 0.12103685046861357,
+      "whole_body_mean_apd_w_m2": 0.1538770721288525,
+      "eta_4cm2": 12.25565876426974,
+      "lambda_max_Q": 0.14203860763318013,
+      "worst_patch_index": 14654,
+      "binds_before_sar": {
+        "adult": true,
+        "child": true,
+        "infant": false
+      }
+    },
+    {
+      "n_paths": 16,
+      "center_label": "minus_x_cone",
+      "spread_deg": 20.0,
+      "peak_patch_apd_w_m2": 3.7559400002199888,
+      "p_abs_w": 0.12566135322331937,
+      "whole_body_mean_apd_w_m2": 0.15975631420422745,
+      "eta_4cm2": 23.510432241310433,
+      "lambda_max_Q": 0.1447235061621077,
+      "worst_patch_index": 14654,
+      "binds_before_sar": {
+        "adult": true,
+        "child": true,
+        "infant": true
+      }
+    }
+  ]
+}
