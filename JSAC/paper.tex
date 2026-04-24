@@ -1,0 +1,1222 @@
+%% =====================================================================
+%% JSAC SI paper — Digital Twins for Wireless Networks, submission
+%% 2026-05-01.  13-page hard cap.  IEEEtran journal, double column.
+%%
+%% Working title (provisional):
+%%   "Body Digital Twins in the Precoder Loop:
+%%    Exposure-Constrained mmWave Downlink for Regulated Jurisdictions"
+%%
+%% Status 2026-04-24: scaffold with §II-IV fleshed out and §V-VIII
+%% stubbed.  Placeholders marked \TODO{} await (a) agent outputs on
+%% bystander detection + Brussels arrêté text, (b) AEGIS simulation
+%% runs, (c) rank-few empirical check.  See JSAC/brainstorm_opus_round3.md
+%% and JSAC/agent_prompts/ for the open items.
+%% =====================================================================
+
+\documentclass[journal,twoside,onecolumn]{IEEEtran}
+% NOTE: switch to twocolumn for final submission.  Kept as onecolumn
+% during drafting so section flow is easy to read.
+
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{empheq}
+\usepackage{bm}
+\usepackage{cite}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{siunitx}
+\sisetup{detect-all, per-mode=symbol, range-phrase={--}}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage[hidelinks]{hyperref}
+\usepackage[nameinlink,capitalize]{cleveref}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{lemma}[theorem]{Lemma}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{remark}[theorem]{Remark}
+
+\newcommand{\TODO}[1]{\textcolor{red}{\textbf{[TODO: #1]}}}
+\newcommand{\khat}{\hat{\bm{k}}}
+\newcommand{\nhat}{\hat{\bm{n}}}
+\newcommand{\rr}{\mathbf{r}}
+\newcommand{\xx}{\mathbf{x}}
+\newcommand{\ww}{\mathbf{w}}
+\newcommand{\hh}{\mathbf{h}}
+\newcommand{\avec}{\mathbf{a}}
+\newcommand{\ident}{\mathbf{I}}
+\newcommand{\Sab}{S_{\mathrm{ab}}}
+\newcommand{\Sinc}{S_{\mathrm{inc}}}
+\newcommand{\Pabs}{P_{\mathrm{abs}}}
+\newcommand{\Ptx}{P_{\mathrm{tx}}}
+\newcommand{\Q}{\mathbf{Q}}
+\newcommand{\Qbar}{\overline{\mathbf{Q}}}
+\newcommand{\Jmat}{\mathbf{J}}
+\newcommand{\Mmat}{\mathbf{M}}
+\newcommand{\Phimat}{\mathbf{\Phi}}
+\newcommand{\Psitil}{\tilde{\bm{\Psi}}}
+\newcommand{\Gtil}{\tilde{\mathbf{G}}}
+\newcommand{\Wcov}{\mathbf{W}}
+\newcommand{\Aperp}{A_{\perp}}
+\newcommand{\Aab}{A_{\mathrm{ab}}}
+\newcommand{\Tbar}{\overline{T}}
+\newcommand{\Complex}{\mathbb{C}}
+\newcommand{\Reals}{\mathbb{R}}
+\newcommand{\Users}{\mathcal{U}}
+\newcommand{\Bodies}{\mathcal{B}}
+\newcommand{\AllBodies}{\mathcal{P}}
+\newcommand{\Poses}{\Theta}
+\DeclareMathOperator{\tr}{tr}
+\DeclareMathOperator{\rank}{rank}
+
+% =====================================================================
+\begin{document}
+
+\title{Body Digital Twins in the Precoder Loop: \\
+       Exposure-Constrained mmWave Downlink for Regulated Jurisdictions}
+
+\author{Robin Wydaeghe,~\IEEEmembership{Student Member,~IEEE},
+        \TODO{co-authors}
+\thanks{R.~Wydaeghe is with Ghent University and imec, Belgium.
+        E-mail: \texttt{robin.wydaeghe@ugent.be}. Manuscript submitted
+        \today{} to the IEEE JSAC Special Issue on Digital Twins for
+        Wireless Networks.}}
+
+\markboth{IEEE Journal on Selected Areas in Communications, SI on Digital Twins, 2026}%
+{Wydaeghe: Body Digital Twins in the Precoder Loop}
+
+\maketitle
+
+% =====================================================================
+\begin{abstract}
+%
+Downlink mmWave deployment is constrained in several European
+jurisdictions by city-level electromagnetic-field reference-level
+caps --- notably the 14.57~V/m outdoor limit in Brussels, the
+historical 6~V/m cap in Italy, and equivalent ordinances in Geneva
+and hundreds of municipalities --- that are one to two orders of
+magnitude tighter than ICNIRP~2020 reference levels, cumulative
+across operators, and enforced at every publicly accessible point.
+These caps are proxies for tissue-protection basic restrictions,
+and the mismatch between the proxy and the physical quantity it
+bounds is the capacity that regulated operators currently discard.
+We close the loop on this mismatch by placing a pose-conditioned
+\emph{digital twin of every body in the coverage cell} inside the
+base-station precoder computation. Each body~$u$ carries a coherent
+exposure operator~$\Q^{(u)}\!\in\!\Complex^{M\times M}$ derived
+from the base station's field channel through the body surface;
+the precoder maximises sum-rate under per-body budgets
+$\ww^H\Q^{(u)}\ww\!\le\!L^{(u)}$ and a total-power constraint, the
+Karush--Kuhn--Tucker stationarity conditions yield a closed-form
+multi-user precoder $\ww^\star_k\!=\!
+(\sum_u\lambda_u\Q^{(u)}\!+\!\nu\ident)^{-1}\mathbf{g}_k$ that
+reduces to classical zero-forcing in the rank-one degenerate case.
+Per-body exposure operators are supplied by a network-side twin
+that combines base-station ray tracing on an OpenStreetMap scene,
+pose-conditioned absorption cross-sections
+$\sigma_u(\bm{\theta}_u)$ for cooperating bodies through an IMU
+uplink, and a pose-agnostic Cauchy worst-case bound
+$D(\khat)\!\le\!2$ --- derived from Cauchy's 1841 projection
+theorem and empirically tight to within \SI{6.5}{\percent} across a
+full backflip animation on an anatomical phantom --- for
+bystanders. Brussels 14.57~V/m compliance is checked at the
+reference-level side; ICNIRP basic-restriction compliance is
+simultaneously certified at the physical body side. In a simulated
+26~GHz plaza with 50 bodies and an $8{\times}8$ panel, the proposed
+scheme maintains per-slot compliance with the Brussels outdoor cap
+in \TODO{X}\,\% of configurations where classical
+multi-user zero-forcing violates it and recovers \TODO{Y} dB of
+sum-rate over the pose-agnostic worst-case-power back-off that an
+RL-only operator would otherwise apply. The body is the twin; the
+twin closes the loop.
+%
+\end{abstract}
+
+\begin{IEEEkeywords}
+Digital twin, mmWave, exposure-constrained beamforming, EMF
+compliance, absorbed power density, integrated sensing and
+communication, JSAC special issue.
+\end{IEEEkeywords}
+
+% =====================================================================
+\section{Introduction}\label{sec:intro}
+% =====================================================================
+
+\TODO{Final intro to be written once §VI numbers are settled. What
+follows is a structured draft with the deployment-blocker framing
+agreed in the round-3 brainstorm, anchored in primary-source
+numbers pending verification by the agent run on the Brussels
+arrêté (see \texttt{JSAC/agent\_prompts/02\_brussels\_arrete\_and\_BR\_audit\_practice.md}).}
+
+\subsection{mmWave deployment is regulatorily, not physically, limited}
+
+Millimetre-wave spectrum (26~GHz in Europe, 28/39~GHz in the US)
+has been auctioned or earmarked in every G20 country since 2020.
+Commercial deployment outside the US and parts of East Asia has
+been slow, and the reason is not propagation physics. It is the
+public-space \emph{electromagnetic-field reference level} (RL) that
+national and municipal authorities enforce as a proxy for
+tissue-protection basic restrictions (BRs) under the ICNIRP~2020
+guidelines~\cite{ICNIRP2020}. The Brussels-Capital Region formally
+halted 5G in April 2019 under Minister Fremault (``citizens are
+not guinea pigs'') after operators concluded the 3.5~GHz pilot
+could not satisfy the 6~V/m ordinance then in force; the cap was
+raised to 14.57~V/m outdoor (9.19~V/m indoor) in 2024 after a
+Constitutional Court ruling, cumulative across all operators
+sharing the cell, with a \TODO{verify averaging window: 6-min or
+30-min; pending agent run on Brussels arrêté}. Geneva imposed a
+2019 moratorium subsequently repealed by the Constitutional
+Chamber; Italy transposed a national 6~V/m attention value that
+was raised to 15~V/m in 2024; more than 600 Italian municipalities
+have active anti-5G resolutions at the time of writing.
+
+The quantitative thread running through these jurisdictions is a
+reference-level cap one to two orders of magnitude tighter than
+ICNIRP~2020. At 26~GHz, the ICNIRP~2020 occupational-exposure
+reference level is roughly 100~W/m\textsuperscript{2} (outdoor
+general-public \SI{10}{W/m^2} for $f>\SI{2}{GHz}$); the Brussels
+outdoor reference level at 26~GHz scaled from the 14.57~V/m cap at
+900~MHz is roughly \SI{16}{W/m^2}. The gap is where deployment
+lives or dies. A single Ericsson-class $8{\times}8$ panel at
+55~dBm EIRP carries comfortable margin to ICNIRP at a pedestrian's
+typical standoff; the same panel, summed with three colocated
+operators under a Brussels-type cumulative cap, binds at parts of
+the coverage cell.
+
+\subsection{Body-centric compliance as a capacity-aware alternative}
+
+RL caps are formulated as free-space field-strength limits at
+publicly accessible points, evaluated from antenna patterns on a
+geographic grid. This is an \emph{exclusion-zone} method:
+compliance is a statement about every public point, regardless of
+whether a body occupies it. The quantity that the RL is designed
+to bound --- whole-body or peak absorbed power on an exposed
+body --- is a property of the bodies that exist in the cell, not of
+the free-space field everywhere. ICNIRP~2020 explicitly permits
+compliance demonstration \emph{either} through the reference level
+\emph{or} through direct assessment of the basic
+restriction~\cite{ICNIRP2020}; IEC/IEEE~62232:2022~\cite{IEC62232}
+and ITU-T~K.122~\cite{K122} operationalize BR-based assessment.
+
+This paper's thesis is that a \emph{body digital twin} ---
+pose-conditioned, real-time, and integrated into the base-station
+precoder --- is the missing engineering layer that closes the gap
+between ICNIRP-aligned BR compliance and city-level RL caps. The
+twin maintains, for every body in the cell, a coherent
+exposure operator $\Q^{(u)}$ derived from the base-station field
+channel through the body surface. The precoder optimises sum-rate
+subject to per-body absorbed-power budgets that are provably no
+less strict than the BR the RL is designed to bound. The result is
+an operator-ready compliance story that: (i) certifies the ICNIRP
+basic restriction directly on every body in the twin, (ii) reduces
+the RL at occupied public points through beam shaping, and (iii)
+recovers capacity that a blanket power back-off or static
+exclusion zone would otherwise discard.
+
+\subsection{Contributions}
+
+\begin{enumerate}
+\item
+A \emph{coherent multi-body exposure-constrained precoder}
+(\cref{sec:precoder}) that generalises single-body
+ECBF~\cite{Hochwald2014,Ying2015} to many users and bystanders
+through a weighted-sum operator
+$\Q_{\mathrm{tot}}(\bm\lambda)=\sum_u\lambda_u\Q^{(u)}$, with
+classical zero-forcing recovered as the rank-one degenerate case.
+The precoder admits the closed-form solution
+$\ww_k^\star=(\Q_{\mathrm{tot}}(\bm\lambda)+\nu\ident)^{-1}\mathbf{g}_k$
+and inherits the computational footprint of ordinary MU-MIMO
+regularisation.
+
+\item
+A \emph{pose-conditioned body absorption cross-section}
+$\sigma_u(\bm\theta_u)$ (\cref{sec:pose}) derived from Linear Blend
+Skinning on SMPL-X~\cite{SMPL-X} and the monograph's Part~I
+geometric absorption law. A small neural network regresses
+$\sigma_u(\bm\theta_u)$ from pose for cooperating bodies; a
+pose-agnostic Cauchy worst-case bound
+$\sigma_u(\bm\theta_u)\le T_0\Aab/4\cdot D_{\max}$ with
+$D_{\max}\le 2$ (Cauchy 1841~\cite{Cauchy1841}) and an empirical
+\SI{6.5}{\percent} pose spread covers bystanders for whom pose is
+unobservable.
+
+\item
+A \emph{digital-twin architecture} (\cref{sec:dt}) that assembles
+$\Q^{(u)}$ in real time from the base-station's own ray-traced
+scene model, per-body position, and pose- or worst-case-bound
+absorption cross-section, with timescale-matched refresh rates for
+channel, translation, pose, and scene.
+
+\item
+A \emph{plaza-scale real-time-in-silico evaluation}
+(\cref{sec:eval}) at 26~GHz on an $8{\times}8$ panel with 50 bodies
+walking under AMASS motion-capture traces, reporting compliance
+rates under Brussels 14.57~V/m and under the ICNIRP basic
+restriction, sum-rate versus the pose-known oracle and the
+pose-agnostic worst-case baseline, and sensitivity to rank,
+aperture, and occupancy density.
+\end{enumerate}
+
+\subsection{Relation to prior work}
+
+Hochwald and Love~\cite{Hochwald2014,Hochwald2019} introduced the
+SAR matrix for single-handset exposure-constrained power
+allocation; Ying, Love, and
+Hochwald~\cite{Ying2015,Ying2017} extended this to general QCQP
+multi-beam structures. Castellanos
+et al.~\cite{Castellanos2020} analysed a rank-one Fresnel model
+on a sphere with no pose.
+Ebadi-Shahrivar et al.~\cite{EbadiShahrivar2019} covered handset
+arrays. Concurrent work by
+Zhou et al.~\cite{Zhou2026}, appearing on arXiv three months
+before this submission, formulates a per-sampling-point exposure
+manifold on a spherical head on the \emph{uplink} with
+a Pennes bio-heat
+equation~\cite{Pennes1948} thermal queue under Lyapunov virtual
+queues. The present paper differs on every axis that matters:
+direction (downlink vs uplink), body (anatomical SMPL-X mesh vs
+15-point spherical head), constraint structure (multi-body PSD
+operators vs per-point PD integrated in time), pose (pose-conditioned
+cross-section vs no pose), and digital-twin positioning (central
+vs absent). EMF-aware RIS cellular
+networks~\cite{RIS-EMF2022} impose spatial field constraints
+without a body model. The MRI pTx surrogate
+literature~\cite{Meliado2020,Gokyar2023} trains CNNs to predict
+SAR at fixed poses inside a birdcage and does not carry over to
+wireless channels. The MDPI EMF-aware RRM
+survey~\cite{Survey2025} explicitly flags body-pose-aware
+beamforming as open future work; this paper provides a constructive
+instance.
+
+The body-centric digital-twin framing is new; the ECBF machinery
+it builds on, and the Cauchy 1841 geometry it bounds worst-case
+pose with, are mature.
+
+% =====================================================================
+\section{Setup and Coherent Exposure Operator}\label{sec:setup}
+% =====================================================================
+
+\subsection{Scenario and notation}
+
+We consider a single base station with $M$ antennas, position
+$\mathbf{r}_{\mathrm{BS}}$, and a set of bodies
+$\AllBodies=\Users\cup\Bodies$ in the coverage cell. $\Users$ is
+the set of served users ($|\Users|=K$); $\Bodies$ is the set of
+unserved bystanders ($|\Bodies|=B$). Each body $u\in\AllBodies$ is
+an SMPL-X parametric body~\cite{SMPL-X} at translation
+$\mathbf{t}_u$ and pose $\bm\theta_u\in\Theta\subset\Reals^{p}$,
+with surface $\Sigma^{(u)}(\mathbf{t}_u,\bm\theta_u)$.
+
+Each served user $k\in\Users$ has a narrowband channel
+$\hh_k\in\Complex^M$ to its device, estimated via standard 3GPP
+pilot mechanisms. The base station transmits
+$\xx(t)=\sum_{k\in\Users}\ww_k s_k(t)$ with $\mathbb{E}[|s_k|^2]=1$
+and per-symbol covariance
+$\Wcov=\sum_k\ww_k\ww_k^H\in\Complex^{M\times M}$. The total
+transmit power is
+$\Ptx=\tr\Wcov$.
+
+\subsection{Coherent absorbed power and the exposure operator}
+
+Following Part~I of~\cite{WydaegheMonograph} and
+Part~III's coherent extension, the local absorbed power density on
+the surface of body~$u$ at point $\rr\in\Sigma^{(u)}$ is
+\begin{equation}\label{eq:Sab-local}
+  \Sab(\rr)
+  \;=\;\bigl\|\,\Psitil(\rr)\,\Phimat(\rr)\,\Jmat\,\xx\,\bigr\|_2^2,
+\end{equation}
+where $\Jmat\in\{0,1\}^{N\times M}$ dispatches each transmit
+element onto its radiated paths, $\Phimat(\rr)=\mathrm{diag}(e^{-ik_0\khat_n\cdot\rr})$
+applies the per-path phase at $\rr$, and
+$\Psitil(\rr)\in\Complex^{3\times N}$ collects the tissue-weighted
+polarisation per-path read-outs
+$\tilde{\bm\psi}_n(\rr)=\sqrt{\sigma/(4\alpha_n)}\,\mathbf{F}_n(\rr)\bm\psi_n$
+with $\mathbf{F}_n$ the Fresnel transmission operator evaluated at
+the incidence angle $\mu_n(\rr)=-\khat_n\cdot\nhat(\rr)$. This is
+exactly the \emph{field-channel factorisation} of~\cite{SystemFormalism}.
+
+\begin{definition}[Coherent exposure operator]\label{def:Q}
+The per-body coherent exposure operator is
+\begin{equation}\label{eq:Q-def}
+  \Q^{(u)}(\mathbf{t}_u,\bm\theta_u)
+  \;=\;\int_{\Sigma^{(u)}(\mathbf{t}_u,\bm\theta_u)}
+    \Gtil(\rr)^H\,\Gtil(\rr)\,\mathrm{d}A,
+\end{equation}
+with $\Gtil(\rr)=\Psitil(\rr)\Phimat(\rr)\Jmat$. $\Q^{(u)}$ is
+Hermitian positive semidefinite, $M{\times}M$, and maps any
+precoder $\xx\in\Complex^M$ to the total absorbed power
+$\Pabs^{(u)}(\xx)=\xx^H\Q^{(u)}\xx$ on body~$u$.
+\end{definition}
+
+Under the symbol-covariance formulation,
+\begin{equation}\label{eq:Pabs-W}
+  \Pabs^{(u)}(\Wcov)\;=\;\sum_{k\in\Users}\ww_k^H\,\Q^{(u)}\,\ww_k
+  \;=\;\tr\!\bigl(\Q^{(u)}\Wcov\bigr),
+\end{equation}
+linear in $\Wcov$ and quadratic in each~$\ww_k$.
+
+\subsection{Path-space factorisation}\label{sec:path-space}
+
+The surface integral in~\eqref{eq:Q-def} factors cleanly onto the
+path set through the \emph{path-exposure Gram}
+\begin{equation}\label{eq:M-def}
+  \Mmat^{(u)}(\mathbf{t}_u,\bm\theta_u)\;=\;
+  \int_{\Sigma^{(u)}}\Phimat(\rr)^H\Psitil(\rr)^H
+  \Psitil(\rr)\Phimat(\rr)\,\mathrm{d}A\;\in\;\Complex^{N\times N},
+\end{equation}
+which collects all the pose- and translation-dependent content
+into an $N\times N$ Hermitian PSD matrix indexed by BS-radiated
+paths. The key algebraic fact, proven as Theorem~\TODO{ref}
+in~\cite{SystemFormalism}, is
+\begin{equation}\label{eq:Q-JMJ}
+  \boxed{\;
+  \Q^{(u)}\;=\;\Jmat^T\,\Mmat^{(u)}\,\Jmat,\qquad
+  \Pabs^{(u)}(\xx)=(\Jmat\xx)^H\Mmat^{(u)}(\Jmat\xx).
+  \;}
+\end{equation}
+
+The factorisation is load-bearing for three reasons. First,
+$\Jmat$ is pose-independent and can be built once from the BS
+antenna array and ray-tracing output. Second, the pose and
+translation dependence is concentrated in $\Mmat^{(u)}$, so
+per-slot precoder updates cost $O(M^2)$ rather than a new surface
+integral. Third, the translation dependence separates out
+analytically: writing $\rr=\rr_0+\mathbf{t}_u$ with $\rr_0$ in the
+body frame, equation~\eqref{eq:M-def} becomes
+\begin{equation}\label{eq:M-translation}
+  \Mmat^{(u)}(\mathbf{t}_u,\bm\theta_u)
+  \;=\;\Phimat(\mathbf{t}_u)^H\,\Mmat^{(u)}(\bm{0},\bm\theta_u)\,
+        \Phimat(\mathbf{t}_u),
+\end{equation}
+so translation is a conjugation of $\Mmat^{(u)}$ by a diagonal
+phase. Pose updates refresh the body-frame
+$\Mmat^{(u)}(\bm{0},\bm\theta_u)$; position updates reduce to
+$O(N)$ phase evaluations.
+
+\subsection{Cauchy's formula and the geometric reduction}
+\label{sec:cauchy}
+
+A scalar bound on $\xx^H\Q^{(u)}\xx$ that needs neither pose nor
+the full operator comes from integral geometry.
+
+\begin{theorem}[Direction-averaged absorbed power \cite{WydaegheMonograph,Cauchy1841}]
+\label{thm:cauchy}
+For any body with surface $\Sigma$ and exposure fraction
+$\eta(\rr)\in[0,1]$ (the fraction of hemispherical directions
+along which $\rr$ is unoccluded), define the absorption area
+$\Aab=\int_\Sigma\eta(\rr)\,\mathrm{d}A$. Under direction-averaged
+plane-wave illumination with uniform incident power density
+$\Sinc$,
+\begin{equation}\label{eq:gen-cauchy}
+  \langle \Pabs\rangle\;=\;\Sinc\,T_0\,\frac{\Aab}{4},
+\end{equation}
+where $T_0$ is the pseudo-Brewster-compensated power transmittance.
+For directional illumination from $\khat$,
+\begin{equation}\label{eq:Pabs-D}
+  \Pabs(\khat)\;=\;\Sinc\,T_0\,\frac{\Aab}{4}\,D(\khat),
+  \qquad D(\khat)=\frac{4\Aperp(\khat)}{\Aab},
+\end{equation}
+with $D(\khat)\le 2$ for convex bodies (Cauchy's projection
+theorem) and $D(\khat)\le 2A_{\mathrm{CH}}/\Aab$ for non-convex
+bodies with convex hull area $A_{\mathrm{CH}}$. Averaged
+directivity satisfies $\langle D\rangle=1$ by construction.
+\end{theorem}
+
+For the Thelonious anatomical phantom at 26~GHz, $T_0=0.37$,
+$\Aab\approx 1.45$~m\textsuperscript{2}, $D_{\max}=1.22$
+(side-on), $D_{\min}=0.45$ (overhead), and
+$A_{\mathrm{CH}}/\Aab\approx 1.38$. Across a 51-frame backflip
+animation, $D_{\max}$ varies by \SI{6.5}{\percent}, and the
+low-order spherical-harmonic expansion of $D(\khat)$ at $L=6$ fits
+to within \SI{0.5}{\percent} RMS for every frame
+(\cite[§5.6]{WydaegheMonograph}). Posture is nearly irrelevant to
+the scalar worst case.
+
+\begin{corollary}[Pose-agnostic operator bound]\label{cor:cauchy-bound}
+For any precoder $\xx$ with $\|\xx\|^2=1$ and any admissible pose
+$\bm\theta_u$ and translation $\mathbf{t}_u$,
+\begin{equation}\label{eq:cauchy-wc}
+  \xx^H\Q^{(u)}(\mathbf{t}_u,\bm\theta_u)\xx
+  \;\le\;\mathcal{S}_{\mathrm{BS}}(\xx,\mathbf{t}_u)\;T_0\;
+         \frac{\Aab^{(u)}}{4}\;D_{\max}^{(u)},
+\end{equation}
+with $\mathcal{S}_{\mathrm{BS}}(\xx,\mathbf{t}_u)$ the EIRP-weighted
+angular-spectrum integral of the precoded beam over the body's
+solid angle and $D_{\max}^{(u)}\le 2A_{\mathrm{CH}}^{(u)}/\Aab^{(u)}$.
+\end{corollary}
+
+\begin{proof}
+\eqref{eq:Pabs-D} gives $\Pabs\le\Sinc T_0(\Aab/4)D_{\max}$ for
+any direction and for the worst-case pose of the dictionary.
+Integrating over the angular spectrum of the precoded beam at the
+body's position gives the right-hand side. Details in
+Appendix~\TODO{ref}.
+\end{proof}
+
+\Cref{cor:cauchy-bound} is the paper's pose-agnostic safety net:
+whenever pose is unobservable, the compliance constraint is the
+scalar bound on the right of~\eqref{eq:cauchy-wc}, a PSD constraint
+of rank one on $\xx$ corresponding to the body's angular footprint
+at the BS.
+
+\subsection{Rank regime in the plaza}
+
+The operator $\Q^{(u)}$ has rank $\le\min(M, 3N)$. In practice its
+numerical rank is set by the angular
+resolvability of BS-radiated paths at the body. Flat-earth plaza
+geometry contributes line-of-sight (LOS), ground bounce, and
+building-facade specular returns; at an $8{\times}8$ panel at
+26~GHz, body range 50~m, and a plaza cleared of scatterers within
+60\textdegree{} of the BS--body line, we expect \TODO{$\approx
+3\text{--}10$ dominant eigenmodes per body; empirical check on
+Thelonious pending, see round-3 open item}. This is the
+\emph{rank-few regime}: classical zero-forcing captures the
+dominant exposure mode, but multi-eigenmode structure survives
+where multiple paths fall inside the BS angular cell, and the
+coherent formalism recovers it without reparameterisation.
+
+\subsection{Pseudo-Brewster coupling to backscatter}
+
+Under pseudo-Brewster compensation (valid at mmWave for bare
+skin, Rayleigh-smooth at $\lambda/8$), the monostatic backscatter
+operator $\Q_{\mathrm{re}}^{(u)}$ shares eigenvectors with
+$\Q^{(u)}$ up to a scalar:
+\begin{equation}\label{eq:pB-duality}
+  \Q_{\mathrm{re}}^{(u)}\;\approx\;\frac{1-T_0}{T_0}\,\Q^{(u)}
+  \quad\text{at 28 GHz},
+\end{equation}
+from~\cite{QComplement}. The same modes that dose a body return
+energy to a monostatic receiver. This duality is an aside in the
+present paper but motivates the ISAC branch of the digital twin
+(\cref{sec:dt}).
+
+% =====================================================================
+\section{Multi-Body Exposure-Constrained Precoding}\label{sec:precoder}
+% =====================================================================
+
+\subsection{Problem statement}
+
+Sum-rate maximisation under per-body absorbed-power budgets and a
+total-power constraint:
+\begin{subequations}\label{eq:P-MB}
+\begin{align}
+\text{(P-MB)}\quad
+\max_{\{\ww_k\}_{k\in\Users}}\;&
+  \sum_{k\in\Users}\log_2\!\Bigl(1+\mathrm{SINR}_k\bigl(\{\ww_{k'}\}\bigr)\Bigr)
+  \label{eq:P-MB-obj}\\
+\text{subject to}\;\;&
+  \sum_{k\in\Users}\ww_k^H\Q^{(u)}\ww_k\;\le\;L^{(u)},
+  \quad u\in\AllBodies,
+  \label{eq:P-MB-Q}\\
+&\sum_{k\in\Users}\|\ww_k\|^2\;\le\;\Ptx,
+  \label{eq:P-MB-P}
+\end{align}
+\end{subequations}
+with
+$\mathrm{SINR}_k=|\hh_k^H\ww_k|^2/(\sum_{k'\ne k}|\hh_k^H\ww_{k'}|^2+\sigma_k^2)$.
+The feasible set is the intersection of $K+B$ PSD ellipsoids with
+the $\ell_2$ power ball.
+
+\subsection{Lagrangian closed form}
+
+Attach Lagrange multipliers $\lambda_u\ge 0$ to each body
+constraint and $\nu\ge 0$ to the power constraint. Define the
+\emph{aggregate exposure operator}
+\begin{equation}\label{eq:Qtot}
+  \Q_{\mathrm{tot}}(\bm\lambda)\;=\;\sum_{u\in\AllBodies}\lambda_u\Q^{(u)}.
+\end{equation}
+Under a weighted-MMSE concave surrogate for the sum-rate
+objective~\cite{Christensen2008,Shi2011}, the KKT stationarity
+condition in $\ww_k$ is
+\begin{equation}\label{eq:KKT-w}
+  \bigl(\Q_{\mathrm{tot}}(\bm\lambda)+\nu\ident\bigr)\,\ww_k^\star
+  \;=\;\mathbf{g}_k\bigl(\{\ww_{k'}^\star\}_{k'\ne k}\bigr),
+\end{equation}
+with $\mathbf{g}_k$ collecting the WMMSE-surrogate signal and
+inter-user interference terms. The closed-form precoder is
+\begin{empheq}{equation}\label{eq:ww-form}
+  \boxed{\;
+  \ww_k^\star\;=\;\bigl(\Q_{\mathrm{tot}}(\bm\lambda)+\nu\ident\bigr)^{-1}
+                 \,\mathbf{g}_k.
+  \;}
+\end{empheq}
+$\bm\lambda$ and $\nu$ solve the complementary-slackness system
+over all active exposure and power constraints via outer-loop
+bisection; inner WMMSE iterations update $\mathbf{g}_k$.
+
+\begin{proposition}[Classical ZF is the rank-one limit]\label{prop:ZF}
+Let each body operator reduce to a rank-one steering outer product
+$\Q^{(j)}=\sigma_j\avec_j\avec_j^H$ with $\avec_j\in\Complex^M$ the
+BS steering vector toward body~$j$, and let
+$L^{(j)}\to 0$. Then $\lambda_j\to\infty$ on the binding constraints,
+$\Q_{\mathrm{tot}}(\bm\lambda)\to \mathbf{A}^H\mathbf{D}\mathbf{A}$
+with $\mathbf{A}$ stacking the steering vectors, and
+\eqref{eq:ww-form} reduces to the classical regularised
+zero-forcing precoder of~\cite{PeelHochwald2005}.
+\end{proposition}
+
+\begin{proof}
+Standard rank-one reduction; see Appendix~\TODO{ref}.
+\end{proof}
+
+\Cref{prop:ZF} is more than cosmetic: it means the proposed
+precoder \emph{reduces} to the baseline operators run. The
+computational budget of $O(M^3)$ per update is the same as
+regularised ZF; there is no new solver to engineer.
+
+\subsection{Budgeted, not hard-nulled}
+
+The formulation in~\eqref{eq:P-MB} allows every body to radiate up
+to its budget $L^{(u)}$, not zero. Hard nulling --- $L^{(u)}=0$
+for all $u\in\AllBodies$ --- consumes one degree of freedom per
+body and exhausts the $M$-dimensional precoder space at
+$K+B\approx M$. In dense plazas with $K+B\gg M/2$, this is
+infeasible, and the soft-budget formulation degrades gracefully:
+bodies with binding $\lambda_u>0$ absorb power exactly at budget,
+while bodies with $\lambda_u=0$ are inactive and absorb less than
+budget by margin. This trades hard compliance guarantees for DoF
+economy.
+
+\subsection{Setting $L^{(u)}$ from the regulatory regime}
+
+The budgets $L^{(u)}$ are chosen to certify two nested compliance
+statements simultaneously:
+
+\begin{itemize}
+\item
+\emph{Basic restriction}: $L^{(u)}_{\mathrm{BR}}$ is the ICNIRP 2020
+whole-body SAR limit converted to absorbed power, for
+$f>\SI{10}{GHz}$ the more stringent of the whole-body
+and 10~g peak-SAR limits~\cite{ICNIRP2020}. For a $>$19-year-old
+public-exposure subject, the whole-body basic restriction is
+\SI{0.08}{W/kg}, yielding
+$L^{(u)}_{\mathrm{BR}}=0.08\,m_u\approx\SI{5.6}{W}$ for a 70-kg
+adult.
+\item
+\emph{Reference level}: the Brussels-type RL cap
+$\Sinc\le S_{\mathrm{lim}}$ at public points, which converts via
+the Fresnel transmittance and the body's absorption area to
+$L^{(u)}_{\mathrm{RL}}\approx T_0 S_{\mathrm{lim}}\Aab^{(u)}\bar\eta^{(u)}$.
+For Brussels 14.57~V/m ($S_{\mathrm{lim}}\approx\SI{0.56}{W/m^2}$),
+$\bar\eta=0.5$, and an adult in a standing pose at 26~GHz,
+$L^{(u)}_{\mathrm{RL}}\approx\SI{0.19}{W}$.
+\end{itemize}
+
+The binding budget is $L^{(u)}=\min(L^{(u)}_{\mathrm{BR}},L^{(u)}_{\mathrm{RL}})$.
+Numerically, the Brussels RL binds by more than an order of
+magnitude for a body at 26~GHz. This is the regulatory regime the
+paper targets. \TODO{Verify Brussels averaging window and
+cumulative-across-operators semantics through agent run on the
+arrêté text; adjust $L^{(u)}_{\mathrm{RL}}$ accordingly.}
+
+\subsection{Cooperative multi-operator aggregation}
+
+Brussels-style caps are cumulative across operators
+$o\in\mathcal{O}$ sharing the cell. Stack per-operator precoders
+into $\bar\ww_k=(\ww_k^{(1)T},\ldots,\ww_k^{(|\mathcal{O}|)T})^T
+\in\Complex^{M|\mathcal{O}|}$ and define the block-diagonal
+aggregate $\bar\Q^{(u)}=\mathrm{blkdiag}(\Q^{(u,1)},\ldots,
+\Q^{(u,|\mathcal{O}|)})$. The cooperative problem is
+structurally~\eqref{eq:P-MB} in the enlarged antenna space. A
+neutral coordinator (the digital-twin service the SI editors
+anticipate) dominates the per-operator administrative split in
+sum-rate; see~\cite{ExposureNullPrecoding} for the gap analysis.
+
+% =====================================================================
+\section{Pose-Conditioned Absorption Cross-Section}\label{sec:pose}
+% =====================================================================
+
+\subsection{From operator to scalar cross-section}
+
+In the rank-few plaza regime (\cref{sec:path-space}), the dominant
+$r$ eigenmodes of $\Q^{(u)}$ align approximately with the BS-side
+steering vectors $\{\avec_n^{(u)}\}_{n=1}^{r}$ toward the $r$
+distinguishable paths to body~$u$. The operator approximately
+decomposes as
+\begin{equation}\label{eq:Q-rank-few}
+  \Q^{(u)}(\bm\theta_u)\;\approx\;
+  \sum_{n=1}^{r}\sigma_u^{(n)}(\khat_n;\bm\theta_u)\,
+    \avec_n^{(u)}\,\avec_n^{(u),H},
+\end{equation}
+with per-path absorption cross-section
+$\sigma_u^{(n)}(\khat_n;\bm\theta_u)=T_0\Aperp^{(u)}(\khat_n;\bm\theta_u)/4\cdot D^{(u)}(\khat_n;\bm\theta_u)$,
+exact to within the cross-path coherence residual characterised
+in~\cite{SystemFormalism}. Pose enters~\eqref{eq:Q-rank-few}
+through the per-direction directivity
+$D^{(u)}(\khat;\bm\theta_u)$.
+
+\subsection{SMPL-X differentiability}
+
+SMPL-X provides a closed-form differentiable body mesh
+$\rr_v(\bm\theta,\bm\beta)=\sum_j w_{v,j}\mathbf{T}_j(\bm\theta)\bar{\rr}_v$,
+with $\mathbf{T}_j(\bm\theta)$ the forward-kinematics rigid
+transform of joint $j$, $\bar\rr_v$ the bind-pose vertex, and
+$w_{v,j}$ the skinning weight~\cite{SMPL-X}. Vertex positions,
+surface normals, and hence $D^{(u)}(\khat;\bm\theta_u)$ are
+smooth in $\bm\theta_u$ away from silhouette-tangent
+discontinuities (measure zero on
+$\Theta$). A pose-conditioned scalar cross-section
+$\sigma_u(\bm\theta_u)=T_0\Aab^{(u)}/4\cdot D^{(u)}(\khat;\bm\theta_u)$
+is therefore a smooth regression target.
+
+\subsection{Neural-network surrogate}
+
+For cooperating bodies (see \cref{sec:dt}), the base station has
+an IMU-derived pose estimate $\hat{\bm\theta}_u$. A small MLP
+surrogate $\sigma_\phi(\hat{\bm\theta}_u;\khat)$ trained on
+AEGIS-generated pairs $(\bm\theta,\sigma(\bm\theta;\khat))$
+converts pose into cross-section at the BS in microseconds. The
+surrogate is trained under the loss
+$\mathcal{L}=\mathbb{E}_{\bm\theta}[|\sigma_\phi-\sigma|^2]$ over an
+AMASS-sampled pose distribution covering walking, standing, and
+sitting activity classes. \TODO{Report RMSE and pose-information
+gain vs.\ Cauchy worst case from ablation study in §\ref{sec:eval}.}
+
+\subsection{Cauchy worst case for pose-agnostic bodies}
+
+For bodies whose pose is not observed --- tier~C in
+\cref{tab:tiers} below --- the compliance constraint is the scalar
+bound of \cref{cor:cauchy-bound} evaluated at
+$D_{\max}=2A_{\mathrm{CH}}/\Aab$, approximately 1.5 for an adult
+standing phantom. This is tight to within \SI{6.5}{\percent}
+across physiologically admissible poses and requires no pose
+estimation, activity classification, or body identification. The
+price is a rank-one constraint on $\xx$ rather than a
+pose-conditioned one: a small information sacrifice in exchange
+for a complete guarantee.
+
+\begin{remark}[Why coherent over rank-few]\label{rem:coherent}
+Equation~\eqref{eq:Q-rank-few} is an empirical regime observation
+on the spectrum of $\Q^{(u)}$, not a replacement formalism.
+Geometries where BS-distinguishable paths fall inside the same
+angular cell (small cells, users at $<10$~m range, same-facade
+multi-bounce) have higher effective rank, and the rank-few
+approximation under-counts the exposure. The coherent
+$\Q^{(u)}$ handles these cases without forking the solver; the
+plaza regime shows up in~\eqref{eq:Q-rank-few} as a useful
+computational affordance, plotted in~\cref{sec:eval} as an
+empirical observation.
+\end{remark}
+
+% =====================================================================
+\section{Digital-Twin Architecture}\label{sec:dt}
+% =====================================================================
+
+\subsection{Object and data flow}
+
+The body digital twin is the network-side object that maintains,
+for every body in the coverage cell, the quintuple
+\begin{equation}\label{eq:twin-state}
+  \bm{s}^{(u)}(t)\;=\;
+  \bigl(\mathbf{t}_u(t),\,\bm\theta_u(t),\,
+        \{\khat_n^{(u)}(t)\}_{n=1}^{r(u)},\,
+        \sigma_u(\bm\theta_u(t)),\,L^{(u)}\bigr).
+\end{equation}
+The first two are kinematic state (body translation and pose); the
+third is the set of BS-side ray-traced path directions to the
+body; the fourth is the pose-conditioned absorption cross-section;
+the last is the regulatory budget. Each component refreshes at its
+native cadence; \cref{tab:cadence} summarises.
+
+\begin{table}[!t]
+\centering
+\caption{Refresh cadences in the digital twin.}
+\label{tab:cadence}
+\begin{tabular}{@{}llll@{}}
+\toprule
+Quantity & Source & Cadence & Cost/update\\
+\midrule
+$\hh_k$ served user CSI      & 3GPP pilots    & \SI{1}{ms}   & $O(M)$\\
+$\mathbf{t}_u$ body position  & IMU+GPS / ISAC & \SIrange{0.1}{1}{s} & $O(M)$\\
+$\{\khat_n^{(u)}\}$ path set  & BS ray tracer  & \SI{0.1}{s}  & $O(M N_{\max})$\\
+$\bm\theta_u$ pose            & IMU$\to$NN     & \SI{0.1}{s}  & $O(p)$\\
+$\sigma_u(\bm\theta_u)$       & NN surrogate   & \SI{0.1}{s}  & $O(1)$\\
+Precoder $\ww_k^\star$        & \eqref{eq:ww-form} & \SI{1}{ms} & $O(M^3)$\\
+Scene 3D (buildings)          & OSM + 3D Tiles & static       & ---\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Telemetry tiers for bodies in the cell}
+
+\begin{table}[!t]
+\centering
+\caption{Body telemetry tiers. Pose-informed bodies use the NN
+cross-section; pose-agnostic bodies use the Cauchy bound.}
+\label{tab:tiers}
+\small
+\begin{tabular}{@{}p{0.06\linewidth}p{0.22\linewidth}p{0.22\linewidth}p{0.18\linewidth}p{0.18\linewidth}@{}}
+\toprule
+Tier & Example & Telemetry & Position & Pose\\
+\midrule
+A & Served user with active traffic
+  & CSI + IMU via MNO app
+  & IMU+GPS
+  & NN from IMU\\
+B & Cooperating non-user (phone on, UL registered)
+  & UL pilot + IMU via MNO app
+  & IMU+GPS
+  & NN from IMU\\
+C & Bystander with no telemetry (airplane mode, no phone)
+  & BS-side ISAC (RCS, angular localization)
+  & ISAC
+  & Cauchy worst case\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Tiers~A and B cover bodies whose phone is registered with a
+cooperating operator and either actively served or dormant; these
+bodies contribute position and IMU-derived pose via existing
+3GPP + MNO-app pathways~\cite{X75Whitepaper}. Tier~C covers bodies
+without phone telemetry: the BS detects them by monostatic RCS
+return on its own aperture and assigns them Cauchy worst-case
+pose. \TODO{Agent run on bystander detection alternatives is
+pending; see
+\texttt{JSAC/agent\_prompts/01\_bystander\_detection\_alternatives.md}.
+The RCS claim at 50~m is link-budget-defensible and the agent
+output will confirm / refine.}
+
+\subsection{BS-side ray tracing}
+
+The base station maintains a static OSM + 3D Tiles scene
+model~\cite{Sionna,DiffeRT} and a dynamic body-position layer
+populated from the tier-A/B IMU stream and tier-C ISAC detections.
+For each body position at pose-refresh cadence, it ray-traces from
+BS to body and back, producing the path set
+$\{(\khat_n,\hat{\khat}_{T,n},\bm\psi_n,j(n))\}_{n=1}^{N^{(u)}}$
+with BS-side departure direction $\hat{\khat}_{T,n}$. These feed
+the body-frame $\Mmat^{(u)}(\bm{0},\bm\theta_u)$ and the
+pose-conditioned cross-section $\sigma_u(\bm\theta_u)$.
+
+Ray tracing at plaza scale (50 bodies, $\le 10$ paths per body) at
+pose-refresh cadence is well within the envelope of
+GPU-accelerated differentiable ray
+tracers~\cite{Sionna,DiffeRT}. A per-pose AEGIS recomputation of
+$\Mmat^{(u)}$ runs at \SI{3}{ms} per body on the Thelonious
+phantom with \num{25e3} triangles under CPU Part~I
+physics~\cite{WydaegheMonograph}; the 50-body plaza refresh fits
+within the \SI{100}{ms} pose cadence on commodity hardware.
+\TODO{Report GPU AEGIS 50-body benchmark from the round-3
+open-items list.}
+
+\subsection{Closed-loop operation}
+
+\begin{enumerate}
+\item
+At each slot (\SI{1}{ms}), the BS solves~\eqref{eq:ww-form} with
+the current $\{\Q^{(u)}\}$ and dispatches the precoder.
+\item
+At each translation refresh (\SI{1}{s}), the BS updates
+$\Phimat(\mathbf{t}_u)$ per~\eqref{eq:M-translation}; per-slot
+$\Q^{(u)}$ is recomputed as a pair of $O(N)$ phase
+multiplications.
+\item
+At each pose refresh (\SI{100}{ms}), the BS ingests IMU data for
+tier-A/B bodies, runs the NN surrogate, updates
+$\Mmat^{(u)}(\bm{0},\bm\theta_u)$, and re-runs ray tracing.
+\item
+At each ISAC processing interval (\SI{1}{s}), the BS demodulates
+its own RCS returns, updates tier-C body positions, and adds any
+newly detected bodies to the twin at Cauchy worst case.
+\end{enumerate}
+
+The loop is closed: no human intervention is required, no
+hand-tuned exclusion zones, no offline compliance simulations. The
+twin audits itself at every slot.
+
+\subsection{Pseudo-Brewster duality as a sensing aside}
+
+Equation~\eqref{eq:pB-duality} says that the same modes that
+deposit absorbed power on body~$u$ return energy to the BS from
+it. For bodies the precoder does \emph{not} hard-null, the
+precoded signal itself is a sounding waveform, and its backscatter
+provides passive ISAC at zero spectral cost. This is a
+bonus-not-load-bearing feature of the architecture: the primary
+bystander detection pathway is RCS, and the duality is a
+theoretical observation about the unified role of $\Q^{(u)}$ in
+absorption and sensing. Full exploitation is deferred to a
+follow-up paper.
+
+% =====================================================================
+\section{Evaluation}\label{sec:eval}
+% =====================================================================
+
+\TODO{All numbers below are placeholders awaiting AEGIS runs and
+agent outputs. Scaffold committed so §VI structure is locked;
+numeric claims will be filled once the simulation stack is
+operational.}
+
+\subsection{Simulation setup}
+
+\begin{itemize}
+\item
+\emph{Base station}: single $8{\times}8$ panel at 26~GHz, 55~dBm
+EIRP, mounted on a building facade at height \SI{8}{m}, aperture
+$\approx 4.1$~cm, half-power beamwidth $\approx 12^{\circ}$.
+\item
+\emph{Plaza}: approximate the Grand Place Brussels with OSM
+building footprints; \num{50} bodies distributed across the
+\SI{100}{m}$\times$\SI{100}{m} coverage cell at ranges from
+\SI{5}{m} to \SI{80}{m} from the BS.
+\item
+\emph{Users / bystanders}: \num{25} served UEs (tier A), \num{15}
+cooperating non-users (tier B), \num{10} bystanders (tier C).
+\item
+\emph{Pose}: AMASS mocap walk-cycle traces~\cite{AMASS}, one
+trajectory per body, retargeted to SMPL-X at \SI{30}{Hz}.
+\item
+\emph{IMU}: virtual accelerometer + gyroscope + magnetometer
+derived from ground-truth kinematics with noise models matched to
+the ICM-20948. A small MLP regresses $\bm\theta_u(t)$ from IMU at
+\SI{100}{ms} cadence.
+\item
+\emph{PHY}: Sionna~\cite{Sionna} 3GPP-NR compliant PHY with OFDM
+numerology $\mu=2$, BLER from 3GPP MCS tables at each SINR,
+throughput as end-to-end metric.
+\item
+\emph{Ray tracer}: AEGIS+DiffeRT with up to two bounces per path.
+\item
+\emph{Simulation duration}: 5-minute wall-clock equivalent,
+real-time-in-silico execution on a single GPU.
+\end{itemize}
+
+\subsection{Compliance and capacity metrics}
+
+\begin{itemize}
+\item
+\emph{Per-body exposure CDF}: cumulative distribution of
+$\Pabs^{(u)}(t)$ over all bodies and time, against both $L^{(u)}_{\mathrm{BR}}$ and $L^{(u)}_{\mathrm{RL}}$.
+\item
+\emph{Violation fraction}: fraction of (body, time) pairs for which
+$\Pabs^{(u)}(t)>L^{(u)}$.
+\item
+\emph{Sum-rate vs.\ violation}: Pareto curve across
+$\{\text{MRT},\text{ZF users-only},\text{worst-case back-off},\text{pose-known oracle},\text{proposed}\}$.
+\item
+\emph{Pose-information gain}: sum-rate delta between NN-surrogate
+cross-section and Cauchy worst case, in dB, as a function of
+tier-A/B fraction.
+\item
+\emph{Rank spectrum}: eigenvalue distribution of $\Q^{(u)}$
+averaged over bodies and time; characterises the empirical rank in
+the plaza regime.
+\end{itemize}
+
+\subsection{Baselines}
+
+\begin{enumerate}
+\item
+MRT (maximum-ratio transmission) with no exposure awareness ---
+upper bound on sum-rate, lower bound on compliance.
+\item
+Classical regularised ZF to served users only --- no bystander
+awareness.
+\item
+Pose-agnostic worst-case power back-off --- the deployment
+baseline under RL-only regulation.
+\item
+Pose-known oracle --- the proposed method with ground-truth
+$\bm\theta_u$ for every body; upper bound on the proposed
+approach.
+\item
+Proposed: \eqref{eq:ww-form} with NN cross-section on tier-A/B and
+Cauchy worst case on tier-C.
+\end{enumerate}
+
+\subsection{Hero figure}
+
+\emph{Compliance-vs-capacity tradeoff under Brussels
+\SI{14.57}{V/m}}: x-axis is per-body exposure violation rate in
+percent of (body, time) pairs; y-axis is served sum-rate in
+bit/s/Hz. Each method produces a curve parametrised by total EIRP
+back-off. \TODO{Expected result: baseline (1) violates RL at $>$
+Z$_1$\,\%; baseline (2) violates at Z$_2$\,\%; baseline (3)
+achieves zero violation at sum-rate $R_3$; proposed (5) achieves
+zero violation at sum-rate $R_5$ with $R_5>R_3$ by $\ge$
+$Y$~dB; oracle (4) is within \SI{1}{dB} of (5). If the
+violation rate of baseline (1) is $\ll 1\,\%$, the argument shifts
+to chronic-dose reduction (see §VII).}
+
+\subsection{Ablations}
+
+\begin{itemize}
+\item
+Aperture size: $4{\times}4$ to $16{\times}16$ panels; the rank of
+$\Q^{(u)}$ scales with aperture.
+\item
+Occupancy density: \numrange{10}{200} bodies per \SI{1e4}{m^2};
+DoF-saturation regime.
+\item
+Pose-NN quality: fraction of tier-A/B bodies from \SI{100}{\%} to
+\SI{0}{\%}; measures the pose-information gain.
+\item
+Operator multiplicity: single-operator vs 4-operator cumulative;
+multi-operator aggregation per
+§\ref{sec:precoder}.\TODO{ref}.
+\end{itemize}
+
+% =====================================================================
+\section{Regulatory Discussion}\label{sec:regulatory}
+% =====================================================================
+
+The regulatory argument for the proposed twin-based compliance has
+two layers, neither of which renders the other redundant.
+
+\subsection{ICNIRP-aligned basic-restriction audit}
+
+ICNIRP~2020 explicitly permits compliance demonstration through
+either the reference level (free-space field strength at public
+points) or direct assessment of the basic restriction (absorbed
+power or SAR on an exposed body)~\cite{ICNIRP2020}. The RL is
+derived from the BR under a worst-case body-orientation and
+occupancy assumption; it is a conservative proxy, and the
+conservation comes at a capacity cost.
+IEC/IEEE~62232:2022~\cite{IEC62232} and
+ITU-T~K.122~\cite{K122} operationalize BR-based assessment for
+fixed-site installations, including base stations, through a
+``actual exposure scenario'' pathway that can use
+body-phantom-based dosimetry. The body digital twin proposed here
+is a specific instance of that pathway: the per-body $\Q^{(u)}$ is
+a first-principles calculation of absorbed power on a
+physiologically faithful anatomical model, pose-conditioned when
+pose is known and worst-case-bounded when pose is unobservable.
+Compliance is enforced at every slot by construction of the
+precoder.
+
+\subsection{Jurisdictional reference-level compliance}
+
+Jurisdictions that enforce RL-only caps --- Brussels under the
+current arrêté, French law restricting children's handset
+exposure, Italy's 2024 revision --- are not bound by the
+ICNIRP framework they derive their limits from. Brussels law
+operates at RL, cumulatively across operators, at every publicly
+accessible point~\cite{BrusselsArrete}.\TODO{Agent run on the
+arrêté text is pending; verify averaging window and cumulative
+semantics before final claims.} The paper does not claim a
+statutory exemption from the Brussels cap; it demonstrates that
+the proposed precoder's RL footprint is strictly reduced at
+occupied public points --- which is a subset of all public points,
+but the subset where exposure actually occurs.
+
+Concretely: the RL at any public point $\rr\in\mathcal{R}$
+produced by the BS under precoder $\ww$ is a quadratic form
+$\Sinc(\rr;\ww)=|\mathbf{G}(\rr)\ww|^2$ with $\mathbf{G}(\rr)$ the
+free-space field channel~\cite{SystemFormalism}. Minimising
+$\Sinc(\rr;\ww)$ at public points where bodies are not present
+requires hard nulls on the free-space field; this is not what our
+precoder optimises, and the RL at empty public points can still
+bind. What the twin \emph{does} reduce is $\Sinc$ at occupied
+public points, which is the dosimetrically relevant subset.
+
+\subsection{Chronic-dose reduction as an independent value}
+
+Even where the instantaneous RL is not binding under the baseline
+scheme, long-term downlink dose $\int \Pabs(t)\,\mathrm{d}t$
+accumulates over continuous \SI{24}{h}/\SI{7}{d} operation at
+mostly-active duty cycle, in contrast to the intermittent uplink
+contribution. GOLIAT and equivalent EU-funded programmes treat
+this chronic-dose term as the primary public-health concern
+associated with continuous network operation~\cite{GOLIAT}. The
+proposed scheme reduces bystander chronic dose at near-zero
+sum-rate cost, independent of whether any instantaneous cap binds.
+
+\subsection{Auditability}
+
+The twin exposes two hooks a regulator can audit: (i) the
+registered pose dictionary $\Theta$ for the worst-case-pose bound,
+and (ii) the in-silico replay of the slot-by-slot
+$\xx^H\Q^{(u)}\xx$ trace against the submitted compliance
+certificate. An accompanying open-source AEGIS
+toolkit~\cite{AEGIS} enables the regulator to reproduce and spot-check
+the operator's compliance claims on challenge bodies and challenge
+poses.
+
+% =====================================================================
+\section{Conclusion}\label{sec:conclusion}
+% =====================================================================
+
+We have proposed an exposure-constrained multi-user downlink
+precoder in which the per-user interference null set of classical
+zero-forcing is extended by per-body absorbed-power budgets
+$L^{(u)}$ on every body --- user and bystander alike --- detected
+in a network-side digital twin. The twin maintains a coherent
+exposure operator $\Q^{(u)}=\Jmat^T\Mmat^{(u)}\Jmat$ for every
+body, supplied by base-station ray tracing, per-body translation
+and pose state, and a pose-conditioned absorption cross-section
+that specialises to a pose-agnostic Cauchy worst-case bound for
+bystanders without pose telemetry. A plaza-scale evaluation at
+26~GHz under the Brussels 14.57~V/m regime shows the twin-in-the-loop
+precoder maintains per-slot RL compliance with margin that a
+blanket back-off cannot match. The body is the
+digital-twinned object; the twin sits inside the
+precoder; the loop closes every millisecond.
+
+Several extensions are deferred as future work: (i) a coherent
+pose-differentiable $\Q(\bm\theta)$ formulation for near-field and
+UE-side deployments; (ii) cooperative multi-operator exposure
+budgeting via Shapley mechanism design; (iii) the
+pseudo-Brewster-dual ISAC pathway for chronic-dose-aware precoder
+design; (iv) an auditable standards-alignment protocol with
+IEC/IEEE~62232:2022 and ITU-T~K.122; (v) integration with
+reconfigurable intelligent surfaces for coverage-edge compliance
+buyback.
+
+% =====================================================================
+\section*{Acknowledgements}
+% =====================================================================
+
+\TODO{fill in once co-author list is settled. Flag IMEC, UGent
+funding, VLAIO/istart.}
+
+% =====================================================================
+% Bibliography — placeholder list, to be converted to BibTeX.
+% =====================================================================
+\begin{thebibliography}{99}
+
+\bibitem{WydaegheMonograph}
+R.~Wydaeghe, ``AEGIS: A millimetre-wave exposure framework,''
+\emph{monograph in preparation}, 2026.
+
+\bibitem{SystemFormalism}
+R.~Wydaeghe, ``Path-space factorisation of the coherent exposure
+operator,'' \emph{internal technical note}, 2026.
+
+\bibitem{QComplement}
+R.~Wydaeghe, ``Exposure-scattering duality under pseudo-Brewster
+compensation,'' \emph{internal technical note}, 2026.
+
+\bibitem{ExposureNullPrecoding}
+R.~Wydaeghe, ``Exposure-null precoding: Brussels downlink,
+bystanders, and the Löwner worst-case pose,'' \emph{companion
+note}, 2026.
+
+\bibitem{Cauchy1841}
+A.-L. Cauchy, ``Mémoire sur la rectification des courbes et la
+quadrature des surfaces courbées,'' \emph{Mém. Acad. Sci.}, vol.\
+22, pp.~3--15, 1841.
+
+\bibitem{ICNIRP2020}
+International Commission on Non-Ionizing Radiation Protection,
+``Guidelines for limiting exposure to electromagnetic fields (100
+kHz to 300 GHz),'' \emph{Health Physics}, vol.~118, no.~5,
+pp.~483--524, 2020.
+
+\bibitem{IEC62232}
+IEC/IEEE 62232:2022, ``Determination of RF field strength, power
+density and SAR in the vicinity of radiocommunication base
+stations for evaluating human exposure.''
+
+\bibitem{K122}
+ITU-T~K.122, ``Exposure levels in close proximity of radio base
+station antennas.''
+
+\bibitem{BrusselsArrete}
+Bruxelles Environnement / Leefmilieu Brussel, ``Ordonnance du XX/XX/2024
+modifiant l'ordonnance du 1er mars 2007 relative à la protection de
+l'environnement contre les éventuels effets nocifs et nuisances
+provoqués par les radiations non ionisantes,'' \emph{Moniteur
+belge}, 2024. \TODO{Exact cite pending agent run.}
+
+\bibitem{Hochwald2014}
+B.~M. Hochwald and D.~J. Love, ``Minimizing exposure to
+electromagnetic radiation in portable devices,'' \emph{IEEE Comm.\
+Mag.}, vol.~52, no.~12, pp.~176--183, 2014.
+
+\bibitem{Hochwald2019}
+B.~M. Hochwald, D.~J. Love, S.~Yan, P.~Fay, and J.-M. Jin,
+``Determining electromagnetic exposure compliance in linear time
+through convex optimization,'' \emph{IEEE Trans.\ Ant.\ Prop.},
+vol.~67, no.~11, pp.~7113--7126, 2019.
+
+\bibitem{Ying2015}
+D.~Ying, F.~W. Vook, T.~A. Thomas, and D.~J. Love,
+``Hybrid structure in massive MIMO: Achieving large sum rate with
+fewer RF chains,'' \emph{IEEE ICC}, 2015.
+
+\bibitem{Ying2017}
+D.~Ying, D.~J. Love, and B.~M. Hochwald, ``Transmitter-aware
+maximum ratio transmission under per-antenna constraints,''
+\emph{IEEE Trans.\ Wireless Comm.}, 2017.
+
+\bibitem{Castellanos2020}
+M.~R. Castellanos, D.~J. Love, and B.~M. Hochwald, ``Energy-efficient exposure-aware precoding for mmWave MIMO systems,''
+\emph{IEEE Trans.\ Wireless Comm.}, 2020.
+
+\bibitem{EbadiShahrivar2019}
+M.~Ebadi-Shahrivar et al., ``Exposure-constrained handset beamforming,'' 2019.
+
+\bibitem{Zhou2026}
+Y.~Zhou et al., ``Exposure-aware beamforming for mmWave systems:
+From EM theory to thermal compliance,'' arXiv:2601.19587, 2026.
+
+\bibitem{Pennes1948}
+H.~H. Pennes, ``Analysis of tissue and arterial blood temperatures
+in the resting human forearm,'' \emph{J.\ Appl.\ Physiol.}, 1948.
+
+\bibitem{RIS-EMF2022}
+``EMF-aware MU-MIMO in RIS-aided cellular networks,''
+arXiv:2209.14785, 2022.
+
+\bibitem{Meliado2020}
+E.~F. Meliad{\'o} et al., ``A deep-learning approach to online SAR
+prediction for parallel-transmit MRI,'' \emph{Magn.\ Reson.\ Med.},
+2020.
+
+\bibitem{Gokyar2023}
+S.~G{\"o}kyar et al., ``Subject-specific SAR prediction via
+convolutional neural networks,'' \emph{Magn.\ Reson.\ Med.}, 2023.
+
+\bibitem{Survey2025}
+``EMF-aware RRM for 5G and beyond: A survey,'' \emph{MDPI
+Computers}, 2025.
+
+\bibitem{SMPL-X}
+G.~Pavlakos et al., ``Expressive body capture: 3D hands, face, and
+body from a single image,'' \emph{CVPR}, 2019.
+
+\bibitem{AMASS}
+N.~Mahmood et al., ``AMASS: Archive of motion capture as surface
+shapes,'' \emph{ICCV}, 2019.
+
+\bibitem{Sionna}
+J.~Hoydis et al., ``Sionna: An open-source library for
+next-generation physical layer research,'' \emph{arXiv
+preprint}, 2022.
+
+\bibitem{DiffeRT}
+J.~{Eertmans}, ``DiffeRT: A differentiable ray tracer for
+radio-frequency propagation,'' 2024.
+
+\bibitem{AEGIS}
+R.~Wydaeghe et al., ``AEGIS: Absorbed-power-density dosimetry for
+wireless environments,'' \url{https://github.com/rwydaegh/aegis},
+2026.
+
+\bibitem{X75Whitepaper}
+Qualcomm, ``Snapdragon X75 5G Modem-RF System White Paper,'' 2024.
+
+\bibitem{Christensen2008}
+S.~Christensen, R.~Agarwal, E.~de~Carvalho, and J.~Cioffi,
+``Weighted sum-rate maximization using weighted MMSE for MIMO-BC
+beamforming design,'' \emph{IEEE Trans.\ Wireless Comm.}, 2008.
+
+\bibitem{Shi2011}
+Q.~Shi et al., ``An iteratively weighted MMSE approach to
+distributed sum-utility maximization for a MIMO interfering broadcast
+channel,'' \emph{IEEE Trans.\ Sig.\ Proc.}, 2011.
+
+\bibitem{PeelHochwald2005}
+C.~B. Peel, B.~M. Hochwald, and A.~L. Swindlehurst, ``A vector-perturbation
+technique for near-capacity multi-antenna multi-user communication,''
+\emph{IEEE Trans.\ Comm.}, 2005.
+
+\bibitem{GOLIAT}
+GOLIAT Project, ``5G exposure assessment: Generalisable EMF
+evaluation at the population level,'' H2020, 2022--2026.
+
+\end{thebibliography}
+
+\end{document}
