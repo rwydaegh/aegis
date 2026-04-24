@@ -1,0 +1,1016 @@
+IEEE TRANSACTIONS ON WIRELESS COMMUNICATIONS, VOL. 14, NO. 10, OCTOBER 2015                                                                                5859
+
+
+
+
+          Closed-Loop Precoding and Capacity Analysis
+           for Multiple-Antenna Wireless Systems With
+               User Radiation Exposure Constraints
+     Dawei Ying, Student Member, IEEE, David J. Love, Fellow, IEEE, and Bertrand M. Hochwald, Fellow, IEEE
+
+
+
+   Abstract—Mobile handsets, classified as portable devices, are                     Organization (WHO) [1]. Recent research [2] shows that non-
+regulated on the amount of user electromagnetic exposure. The                        ionizing electromagnetic radiation has an effect, of unknown
+widely accepted exposure measurement is the specific absorption                      consequences, on human brains.
+rate (SAR). Despite the prevalence of SAR constraints throughout
+the world, there has been barely any work on the design and                             To protect users of portable devices, the Federal Commu-
+analysis of communication signals for SAR-constrained wireless                       nications Commission (FCC) and other regulatory agencies
+systems. In this paper, we show that multiple-antenna systems                        established testing methods and set limiting thresholds on the
+greatly reduce the SAR measurements when proper precoders are                        intensity of the user exposure to the electromagnetic radiation.
+used. Fifth-generation (5G) and beyond cellular systems will be                      In the US, every portable wireless communication device in-
+expected to support high rate uplinks, making multiple transmit
+antennas on user equipment a necessity. Our proposed SAR-aware                       tended for sale must be tested and comply with the regulatory
+transmission for multiple-antenna systems can be applied in 5G                       limitation enforced by the FCC. For portable devices below
+handsets to reduce the SAR and increase the rate. Assuming that                      6 GHz, which applies to all current cellular handsets, SAR
+channel knowledge is available at the transmitter and the receiver,                  is the only acceptable compliance metric for user exposure
+we perform capacity analysis for multiple-antenna systems under                      evaluation. SAR is a measure of the power absorbed by the
+both transmit power and SAR constraints. Analytical and numer-
+ical results demonstrate substantial performance improvements                        human body per unit mass, with units in W/kg [3]. Currently,
+over schemes that ignore the SAR constraint. Our work shows that                     the FCC authorizes the testing method and the SAR limitation
+SAR-constrained precoders have structures similar to precoders                       of 1.6 W/kg average over 1 gram for partial-body exposure in
+designed for spatially correlated channels.                                          the US [4].
+  Index Terms—Multiple-antenna array, specific absorption rate,                         The rapid and continuing evolution of wireless communica-
+precoding optimization.                                                              tion technology makes cellular devices more powerful and com-
+                            I. I NTRODUCTION                                         plex. Today’s phones are equipped with multiple transceivers
+                                                                                     supporting various standards (e.g., WiFi, Bluetooth, GSM, LTE,
+
+P    ORTABLE wireless communication devices, such as
+     smartphones, are already an essential part of our daily
+lives. They integrate functions of communication, network-
+                                                                                     etc), and these radios often operate simultaneously on different
+                                                                                     operating bands, which makes it difficult for devices to meet
+                                                                                     the SAR constraint. Therefore, SAR management is required in
+ing, and entertainment with multiple processors, various trans-                      signaling design for future handsets and other portable devices.
+ceivers, and large memories. These devices are widely used,                             The problem of achieving regulatory SAR compliance will
+even by children. However, portable communication devices,                           be exacerbated when future mobile handsets employ multiple
+which work by transmitting and receiving electromagnetic sig-                        transmit antennas, which is one important new feature intro-
+nals, emit electromagnetic radiation to the users. The safety                        duced by LTE-Advanced (3GPP Release 10 and beyond) in the
+of electromagnetic radiation on the human body is still a con-                       uplink. As we discuss, the gain and phase relationships between
+tentious issue. In 2011, radio-frequency electromagnetic fields                      the multiple transmit antennas can cause large variations in
+were classified as a possible carcinogen by the World Health                         SAR. Because regulators focus on worst-case SAR readings,
+                                                                                     techniques that are designed without regard to SAR would
+   Manuscript received May 20, 2014; revised November 14, 2014 and                   require the transmit power to be decreased until the worst-
+March 23, 2015; accepted May 18, 2015. Date of publication June 10, 2015;
+date of current version October 8, 2015. This work was supported in part by the      case gain and phase combination satisfies the SAR constraint.
+National Science Foundation under Grants CCF-1141868 and CCF-1403458.                Therefore, the far-field capacity improvements provided by
+Our initial results were presented in CISS 2013, Baltimore, MD, USA and              multiple-input multiple-output (MIMO) are intertwined with
+GLOBECOM 2013, Atlanta, GA, USA. The associate editor coordinating the
+review of this paper and approving it for publication was X. Zhu.                    near-field SAR problems caused by multiple transmit antennas.
+   D. Ying and D. J. Love are with the School of Electrical and Computer             Surprisingly, this could even mean that a single transmit an-
+Engineering, Purdue University, West Lafayette, IN 47907 USA (e-mail:                tenna system provides a larger achievable rate than a multiple
+yingd@purdue.edu; djlove@purdue.edu).
+   B. M. Hochwald is with the Department of Electrical and Computer En-              transmit antenna system if the SAR constraint is ignored in
+gineering, University of Notre Dame, Notre Dame, IN 46556 USA (e-mail:               signal design. This is because the MIMO system will require a
+bhochwal@nd.edu).                                                                    power reduction factor since it has a larger worst-case exposure.
+   Color versions of one or more of the figures in this paper are available online
+at http://ieeexplore.ieee.org.                                                       Therefore, near-field constraints should be taken into account
+   Digital Object Identifier 10.1109/TWC.2015.2443777                                during uplink precoding and signal design to ensure the massive
+                          1536-1276 © 2015 IEEE. Personal use is permitted, but republication/redistribution requires IEEE permission.
+                               Seeuse
+              Authorized licensed  http://www.ieee.org/publications_standards/publications/rights/index.html   forfrom
+                                      limited to: University of Gent. Downloaded on April 21,2026 at 14:11:41 UTC  moreIEEE
+                                                                                                                         information.
+                                                                                                                             Xplore. Restrictions apply.
+5860                                                                  IEEE TRANSACTIONS ON WIRELESS COMMUNICATIONS, VOL. 14, NO. 10, OCTOBER 2015
+
+
+
+capacity increase for 5G and beyond wireless communication                          Optimization problems with multiple quadratic constraints
+systems is not compromised by the SAR constraints. Multiple                      have been explored in various scenarios with MIMO systems
+transmit antennas in a single device will make 5G not only                       [17]–[21]. Most published quadratically constrained problems
+a power-constrained wireless communication system but also                       are convex. Therefore, they can be solved using standard convex
+explicitly a SAR-constrained system. Fortunately, we can take                    optimization methods, e.g., interior point methods [22]. Opti-
+advantage of a MIMO system’s large SAR variations with                           mization tool packages [23], [24] can efficiently deal with these
+proper signal design to reduce SAR values for portable devices.                  convex optimizations. However, we consider a quadratically
+In this paper, a SAR-aware transmission is presented with                        constrained capacity maximization with a rank-constraint in
+multiple transmit antennas to achieve a lower SAR value and                      this paper. The rank-constraint yields non-convexity and greatly
+a higher rate.                                                                   complicates the problem. We introduce a modified water-filling
+    Handset designs that deal with SAR mitigation were first                     algorithm to solve the optimization problem, and we prove its
+addressed with low SAR antenna designs [5], including aux-                       optimality by induction.
+iliary antenna elements, ferrite loading, special high impedance                    The remainder of the paper is organized as follows. In
+surfaces, and metamaterials. There has been much less work                       Section II-A, we introduce the SAR model in detail and for-
+addressing the effect of multiple transmit antennas on SAR. In                   mulate the optimization problems considered in this paper. In
+[6], a two-antenna phased-array transmission strategy is shown                   Section III, we analyze the channel capacity with additional
+to effectively reduce SAR. In [7], experimental and simulation                   SAR constraints. We discuss the notion of an effective chan-
+results demonstrate that the SAR value can be characterized                      nel, and we reveal that the effect of the SAR constraint on
+as a function of the phase difference between two transmit                       the system performance is similar to an effective correlation
+antennas. More related work on SAR reduction and modeling                        on the transmitter side. We show that a modified version of
+with multiple antenna systems can be found in [8], [9].                          water-filling over this effective channel is capacity achieving.
+    The problem of jointly optimizing far-field communication                    In Section IV, we present simulation results of our proposed
+system performance subject to a constraint on near-field elec-                   SAR-aware precoding, and we compare the performance with
+tromagnetic exposure has received very little attention. Recent                  techniques that simply reduce power to mitigate SAR, which
+research in [10] discusses new approaches for SAR-aware                          will be defined later.
+wireless communication systems that jointly optimize the near                       Notation: In the rest of this paper, all boldface letters indicate
+and far-field performances of multiple antenna systems by                        matrices (upper case) or vectors (lower case). The notations
+incorporating the SAR constraint into multiple antenna signal                    tr(A), |A|, AH , rank{A} are the trace, determinant, conjugate
+design. This work developed a framework for modeling SAR                         transpose, and rank of matrix A, respectively. A = diag{a}
+as a quadratic function of the transmitted signals [7]. Under                    denotes the diagonal matrix A with diagonal entries specified
+the same SAR model, the SAR reduction problem is addressed                       by the vector a. A[1:k] is a matrix truncated from A with its first
+from a coding perspective that gives rise to the design of SAR                   k columns.
+codes in [11], [12]. The proposed SAR codes outperform the
+popular Alamouti space-time code by 2.5 dB in probability of
+error on a SAR-constrained channel.                                                   II. S YSTEM M ODEL AND P ROBLEM F ORMULATION
+    In this paper, we apply similar signal level modeling for SAR                A. Multiple Antenna System Model
+as employed in [10]–[12]. We perform capacity analysis for
+multiple antenna systems having transmit and receive channel                       We consider an uplink MIMO communication system with
+knowledge under both transmit power and SAR constraints.                         NT transmit antennas at the portable device and NR receiver
+Without any SAR limitations, a precoder generated by water-                      antennas at the base station, and we assume the transmission is
+filling maximizes the channel capacity [13], [14]. In this paper,                narrow-band. The input-output relationship can be modeled by
+we prove that a modified version of traditional water-filling
+                                                                                                                y = Hx + n,                           (1)
+yields the maximum channel capacity with additional SAR con-
+straints. Furthermore, we reveal that the effect of the SAR con-                 where x ∈ CNT ×1 is the transmitted signal, y ∈ CNR ×1 is the
+straints is similar mathematically to an effective correlation at the            received signal, and n ∈ CNR ×1 is the additive white Gaussian
+transmitter side. Our initial results are available in [15] and [16].            noise vector distributed as n ∼ CN (0, σ 2 I). We assume that the
+    The SAR value varies significantly with mobile phone orien-                  channel matrix H ∈ CNR ×NT is known at both the transmitter
+tation relative to the human body [12]. Regulatory agencies set                  and receiver side. The transmitted signal is modeled as
+various exposure limits for different parts of the human body.
+For instance, the FCC enforces a SAR limitation of 1.6 W/kg                                                         x = Fs,                           (2)
+for partial body exposure, which applies to the human brain,
+and 4.0 W/kg for hands and wrists exposure. Therefore, we                        where F ∈ CNT ×M is the precoder, s ∈ CM is the vector of M
+investigate system performance when one or more SAR con-                         data streams, and M ≤ NT . For simplicity, the data streams are
+straints are imposed on a portable device in this paper. In [10],                modeled as being drawn from a distribution with zero-mean
+it was shown that a SAR constraint was well modeled as a                         and unit-variance, i.e., E{s} = 0 and E{ssH } = I. The received
+quadratic function of the transmitted signal. Hence, we opti-                    signal is expressed as
+mize a capacity maximization problem with multiple quadratic
+SAR constraints in this paper.                                                                                  y = HFs + n.                          (3)
+          Authorized licensed use limited to: University of Gent. Downloaded on April 21,2026 at 14:11:41 UTC from IEEE Xplore. Restrictions apply.
+YING et al.: PRECODING AND CAPACITY ANALYSIS FOR MULTIPLE-ANTENNA WIRELESS SYSTEMS                                                                        5861
+
+
+
+   For a fixed channel realization and precoder F, the mutual
+information I(s; y) is formulated as [13]
+
+            I(s; y) = h(y) − h(y|s) = h(y) − h(n).                       (4)
+
+Therefore, the channel capacity given a fixed precoder F can be
+formulated by
+                                                    
+                                        1           
+       C(F) = max I(s; y) = log I + 2 HFFH HH  ,        (5)
+                 p(s)                   σ
+where the optimal distribution of s, subject to an identity
+covariance denoted by p(s), is circularly symmetric complex
+Gaussian. Moreover, the precoder F defines the input covari-
+ance constraint E{xxH } = FFH . The goal of this work is to
+derive an optimal expression for F as a function of H that
+maximizes the capacity subject to transmit power and SAR
+constraints.
+
+B. Impact of Multiple Antennas on SAR                                           Fig. 1. Simulated and measured SAR values for a two transmit antenna
+                                                                                system with x = P2 [1, ejθ ]T given in [7, Fig. 5]. The proposed SAR model
+  As we discussed before, portable wireless communication
+                                                                                approximates the simulated data well. This figure is taken from reference [16].
+devices are subject to regulation limits on electromagnetic non-
+ionizing exposure in terms of the specific absorption rate. The
+SAR value can be expressed as [3]                                               More SAR simulation results for two and three antennas are
+                                                                                also available in [12].
+                                       κE2                                         In this paper, we concentrate on wireless systems operating
+                            SAR =          ,                             (6)
+                                        ρ                                       below 6 GHz, where the SAR is adopted and enforced as a
+where κ is the conductivity of tested material, E is the root mean              major measurement for user exposure. From the simulation
+square (RMS) electric field strength, and ρ is the density of                   results in [7], we observe that SAR measurements do not vary
+material. In general, the electric field is not spatially uniform,              significantly over a relatively wide range of carrier frequencies
+and it can vary with respect to the transmit signal x in a                      (1.8–2 GHz). Therefore, we concentrate on narrow-band pre-
+multiple antenna system. For example, in a two-antenna      system              coder optimization.
+                                                    √                              Multiple SAR constraints can be imposed on a device. The
+with equal gain transmission of the form x = P/2[1, ejθ ]T
+where P is the transmit power, experimental results demonstrate                 FCC tests exposure on the whole body, partial body, hands,
+that SAR value measurements match closely with a sinusoidal                     wrists, feet and ankles. Different testing areas have different
+function of the phase difference θ between two antennas [7]                     SAR matrices, and multiple SAR constraints may need to be
+given by                                                                        satisfied simultaneously. The SAR matrix changes with respect
+                                                                                to the relative position between a device and the user head (or
+                 SAR = P (r1 cos(ϕ + θ ) + r2 )                          (7)    other testing area). Therefore, multiple SAR constraints are also
+                                                                                introduced by various user gestures. We generalize the SAR
+with r1 and r2 both positive constants with units of kg−1 .                     constraints as
+For example, the SAR data measured and simulated in [7] is                                        
+properly parameterized by r1 = 2.6 kg−1 , r2 = 4.6 kg−1 and                                     tr FH Ri F ≤ Qi , i = 1, 2, . . . , K,       (10)
+ϕ = 0.8π as shown in Fig. 1.
+   In this paper, we use the same modeling approach developed                   where K is the number of SAR constraints and each Qi denotes
+in [10]–[12], and the SAR is a quadratic function of the trans-                 a real number corresponding to a specific SAR limitation.
+mitted signal x. Since SAR is measured as a time-averaged                       Considering both SAR and transmit power constraints, the
+quantity, we model the SAR with a time-averaged quadratic                       maximum channel capacity analysis problem for a fixed M is
+                                                                                                                         
+constraint given by                                                                                           1          
+                                                                                                          
+                                                                                        (PC) max log I + 2 HFF H    H H
+                                                                                               F            σ
+              SAR = E tr(xH Rx) = tr(FH RF),                (8)
+                                                                                                         H
+                                                                                                 s.t. tr F Ri F ≤ Qi , i = 1, 2, . . . , K
+For the above two antenna example, we have the corresponding                                            
+SAR matrix                                                                                            tr FH F ≤ P
+                                          
+                          a1       a2 e jϕ                                                                 rank{F} ≤ M.
+                   R=                                    (9)
+                          a2 e−jϕ  a3
+                                                                                In the following sections, we solve the above optimization
+with a1 + a3 = 2r2 and a2 = r1 . Detailed derivation and verifi-                problem for given constraints P and {Qi }, channel matrix H,
+cation of the proposed SAR model can be found in [11], [12].                    and SAR matrices {Ri }.
+           Authorized licensed use limited to: University of Gent. Downloaded on April 21,2026 at 14:11:41 UTC from IEEE Xplore. Restrictions apply.
+5862                                                                      IEEE TRANSACTIONS ON WIRELESS COMMUNICATIONS, VOL. 14, NO. 10, OCTOBER 2015
+
+
+
+   Today’s single transmit antenna systems deal with the SAR
+constraints using a power back-off approach. The general idea
+is to design the signaling algorithms using only a transmit
+power constraint, check to see if the final design satisfies the
+SAR regulations, and reduce the transmit power if necessary.
+This power reduction approach works because the FCC requires
+that the worst-case SAR reading of each portable device satisfy
+the SAR threshold. If we map the power back-off method to a
+multiple antenna transmitter, the worst-case SAR is given by
+                       (worst)
+                 SARi            =     max        tr FH Ri F.              (11)
+                                     tr(FH F)≤P
+                                     rank(F)≤M
+
+To achieve worst-case compliance, we would require that
+SAR(worst)
+    i       ≤ Qi for all i = 1, 2, . . . , K. To satisfy the SAR
+constraints, the transmit power P is reduced to αP where α is a
+power back-off factor chosen as
+                                                                                   Fig. 2. An example of the unusual average rate vs. power behavior for the
+                                 Q1                    QK                          adaptive back-off method caused by its sub-optimality. The simulations used
+           α = min 1,                     ,...,                   .        (12)    Q = 1.6 W/kg and noise variance σ 2 = 0.25.
+                            SAR(worst)
+                               1                   SAR(worst)
+                                                      K
+
+   A more sophisticated alternative to a worst-case back-off is
+an adaptive back-off method [10]. Suppose a portable device
+chooses the precoder only using a transmit power constraint for
+a given channel realization H as
+                                                
+                                    1           
+            F0 = argmax log I + 2 HFFH HH  .          (13)
+                  tr(FH F)≤P        σ
+                     rank(F)≤M
+
+The optimized precoding matrix is then checked using the
+quadratic SAR model to see if regulations are satisfied. If they
+are not, the transmit power is reduced using the power reduction
+factor
+
+                           Q1              QK
+       αF0 = min 1,             ,...,  H                            .    (14)
+                       tr FH R F
+                           0 1 0      tr F 0 RK F 0
+                                                                                   Fig. 3. (a) The adaptive back-off method water-fills over subchannels with a
+                                                                                   large total power constraint P. (b) To satisfy the SAR constraint, the method
+                                                                                   reduces the power in each subchannel by the same factor α, which is highly
+The power back-off factor is calculated by using the current                       sub-optimal. This is the reason for the unusual rate behavior in Fig. 2. (c) The
+precoder instead of the worst-case one, and the precoder for                       water-filling result for total power αP for comparison.
+                      √
+transmission is F = αF0 F0 .
+   Although the adaptive back-off method provides improve-
+ments in most popular performance metrics over a worst-case                        where  = diag{h1 , h2 , h3 } with real entries satisfying h1 >
+power back-off [10], it is still highly sub-optimal. In fact, the                  h2 > h3 > 0. The adaptive back-off method only considers the
+rate can actually decrease in certain scenarios as the power                       power constraint first. For a rank-3 precoder, the water-filling
+increases. For example, in Fig. 2, we plot the achievable rate                     process allocates power into all three subchannels when the
+of the adaptive back-off method with a transmit power con-                         power constraint P is relatively large. Fig. 3(a) is an illustration
+straint and a single SAR constraint averaged over 1000 channel                     of the water-filling result for a large P on H. The water-filling
+realizations, demonstrating the mentioned unusual behavior.                        level p satisfies
+We fix Q = 1.6 and let the power constraint grow large. The                                                     3                       3
+adaptive-off method yields a decreasing rate for rank-2 and                                                                1
+                                                                                                        P=           p−             =         Pi .           (16)
+rank-3 precoders, and the rank-1 precoder eventually provides                                                              hi
+                                                                                                               i=1                      i=1
+the best performance.
+   In Fig. 3, we provide a graphical explanation of the adaptive                   In the second stage, the method scales the transmit power
+back-off’s behavior. Suppose we have a 3-by-3 channel matrix                       to satisfy the SAR limitation. However, this simply reduces
+H with the singular value decomposition (SVD)                                      power on every subchannel with the same factor α as shown
+                                                                                   in Fig. 3(b). Compared to Fig. 3(c), which is the optimal water-
+                            H = U 1/2 VH ,                                (15)    filling result on H with total power constraint αP, the adaptive
+           Authorized licensed use limited to: University of Gent. Downloaded on April 21,2026 at 14:11:41 UTC from IEEE Xplore. Restrictions apply.
+YING et al.: PRECODING AND CAPACITY ANALYSIS FOR MULTIPLE-ANTENNA WIRELESS SYSTEMS                                                                     5863
+
+
+
+back-off method wastes power on some unfavorable subchan-                            Proof: See the proof in Appendix A.                    
+nels, i.e., subchannels 2 and 3 in the figure. All power should be                Note that [21, Proposition 3.1] is a special case of the
+poured into subchannel 1 for a higher rate. Therefore, the rank-3               above proposition with two quadratic constraints and no rank
+precoder can yield worse performance than the rank-1 precoder                   constraint. The precoder Fλ,μ is regarded as a function of the
+with the adaptive back-off method. This phenomenon is a good                    dual variables.
+illustration of the fact that a near-field regulatory limitation                  Define the objective function of the dual problem as
+can greatly affect the far-field performance. In the following
+sections, we introduce an optimal transmission strategy for                                          g(λ, μ) =         max     L(F, λ, μ).             (20)
+                                                                                                                   rank(F)≤M
+capacity maximization.
+   In this paper, we assume perfect knowledge of the channel                    We can find a set of optimal dual variables μopt and λopt that
+matrix H at both transmitter and receiver. This assumption                      minimize the dual according to
+is adopted for all three precoding methods. Transmit channel
+state information can be obtained via channel reciprocity in a                                       {λopt, μopt } = argmin g(λ, μ).                   (21)
+time division duplex (TDD) system with careful calibration. In                                                          λi ≥0,μ≥0
+a frequency division duplex (FDD) system, limited feedback
+                                                                                However, the precoder Fλopt ,μopt generated by these optimal
+methods are used to inform the transmitter of the current chan-
+                                                                                dual variables is not guaranteed to be optimal because, in
+nel state, and the transmitter only has access to an estimated
+                                                                                general, the duality gap between a non-convex problem and its
+channel matrix in general. The detailed estimation and feedback
+                                                                                dual is strictly larger than zero. Therefore, we state the property
+algorithms are beyond the scope of this paper. Moreover, our
+                                                                                of the optimal precoder in the following proposition. Note that
+proposed SAR-aware method can be used with an estimated
+                                                                                (PC) can be transformed into
+channel matrix.                                                                                                            
+                                                                                                                   1       
+                                                                                               max            
+                                                                                                          log I + 2 HZH  H
+                                                                                            rank{Z}≤M              σ
+          III. C APACITY A NALYSIS FOR M ULTIPLE
+                     SAR C ONSTRAINTS                                                                s.t.    tr(Ri Z) ≤ Qi , i = 1, 2, . . . , K
+   In general, the capacity maximization problem (PC) is                                                     tr(Z) ≤ P
+non-convex due to the rank constraint. The SVD-based dual
+optimization method [19], [21] does not promise an optimal so-                  with Z = FFH for simplicity and
+lution because the duality gap is not necessarily zero. However,
+in this section we prove that a modified water-filling algorithm                              Zλ,μ = Fλ,μ FH
+                                                                                                           λ,μ = argmax L(Z, λ, μ).                    (22)
+                                                                                                                         rank(Z)≤M
+can still generate the optimal precoder with the rank constraint
+and that the Lagrange dual is in fact a strong dual for (PC).                      Proposition 3.2: If there exist dual variables λ, μ and corre-
+   The Lagrangian of (PC) is formulated as                                      sponding Zλ,μ = Fλ,μ FH  λ,μ that satisfy the conditions
+                                                                                ⎧                              ⎧
+                                                                              ⎪
+                                                                                ⎨μ ≥   0                       ⎪
+                                                                                                               ⎨λi ≥   0
+                      1                                                                                          
+L(F, λ, μ) = log I + 2 HFFH HH  − μ tr(FH F) − P                              μ tr(Zλ,μ )−P = 0       and λi tr(Ri Zλ,μ )−Qi = 0 (23)
+                      σ                                                         ⎪
+                                                                                ⎩                              ⎪
+                                                                                                               ⎩
+                                                                                  tr(Zλ,μ ) ≤ P                   tr(Ri Zλ,μ ) ≤ Qi
+                                    K
+                                             
+                                −         λi tr FH Ri F − Qi ,         (17)     for all i = 1, 2, . . . , K, then Fλ,μ is the optimal precoder for (PC).
+                                    i=1                                               Proof: See the proof in Appendix B.                             
+                                                                                  Furthermore, we notice that if such dual variables exist,
+where μ and λi , i = 1, . . . , K are dual variables for the power
+                                                                                denoted as μ(0) and λ(0) , then the Lagrange dual is a strong
+and SAR constraints. We first state the following proposi-
+                                                                                dual for (PC). Notice that
+tion, showing the precoder formulation that maximizes the
+Lagrangian given μ and λi , i = 1, . . . , K.                                            min      g(λ, μ) ≤ g(λ(0) , μ(0) )
+   Proposition 3.1: Given μ and λi , i = 1, . . . , K, let K = μI +                   λi ≥0,μ≥0
+K                                                                                                                                        
+    λi Ri . Suppose that HK−1/2 has a SVD given by                                                                             1          
+                                                                                                 =       max          log I + 2 HFFH HH 
+i=1                                                                                                    tr(FH F)≤P              σ
+                       HK−1/2 = U 1/2 VH                              (18)                          tr(FH Ri F)≤Qi
+                                                                                                       rank(F)≤M
+
+with  = diag(g1 , g2 , . . . , gn ) where g1 ≥ g2 ≥ . . . ≥ gn ≥ 0.                             ≤     min       g(λ, μ).                              (24)
+                                                                                                     λi ≥0,μ≥0
+The precoder maximizing the Lagrangian is
+                                                                                The last inequality comes from the fact that the duality gap
+      Fλ,μ = argmax L(F, λ, μ) = K−1/2V[1:M] 1/2 ,                    (19)     of an optimization problem is always non-negative. Therefore,
+             rank(F)≤M
+                                                                                we have
+                                                                                                                           
+where  = diag(p1 , p2 , . . . , pM ) with pi = (1 − σ 2 /gi )+ for                              min g(λ, μ) = g λ(0) , μ(0) .           (25)
+i = 1, 2, . . . , M.                                                                               λi ≥0,μ≥0
+           Authorized licensed use limited to: University of Gent. Downloaded on April 21,2026 at 14:11:41 UTC from IEEE Xplore. Restrictions apply.
+5864                                                                 IEEE TRANSACTIONS ON WIRELESS COMMUNICATIONS, VOL. 14, NO. 10, OCTOBER 2015
+
+
+
+It also means that λ(0) = λopt and μ(0) = μopt are optimal dual                 for all i = 1, 2, . . . , K − 1. Based on the hypothesis, we prove
+variables, and Fλopt ,μopt is indeed the optimal precoder. Note                 the existence of the optimal dual variables for a problem with
+that all statements above rely on the assumption that the dual                  (K + 1) constraints, which is formulated as
+variables λ and μ described in Proposition 3.2 exist. In general,                                                                   
+this assumption is not true for a non-convex problem.                                                                         1     
+                                                                                   (PC − K + 1)          max                       H
+                                                                                                                      log I + 2 HZH  − tr(TZ)
+   Proposition 3.3: There exist dual variables λ, μ, and Fλ,μ                                         rank(Z)≤M               σ
+that satisfy the conditions listed in Proposition 3.2.
+   We prove the existence of such λ, μ and corresponding                                                      s.t.   tr(Z) ≤ P
+Fλ,μ by induction. We first examine a problem with only one
+quadratic constraint, and we introduce a dummy matrix T  0                                                          tr(Ri Z) ≤ Qi , i = 1, 2, . . . , K.
+to yield the problem
+                                                                                 Consider the following problem with K constraints:
+                                       1        
+                                 
+       (PC − 1) max log I + 2 HZH  − tr(TZ)  H
+                                                                                                                
+                  rank(Z)≤M            σ                                                                  1     
+                                                                                                               H
+                                                                                              max log I + 2 HZH  − tr(TZ)
+                      s.t.     tr(Z) ≤ P.                                                  rank(Z)≤M      σ
+
+                                                                                                        − λK (tr(RK Z) − QK )
+  We show that there exists a dual variable μ(0) ≥ 0 and
+corresponding Zμ(0) that satisfy the Proposition 3.2 conditions
+                                                                                                   s.t. tr(Z) ≤ P
+               ⎧
+               ⎪    (0)
+               ⎨μ ≥ 0                                                                                  tr(Ri Z) ≤ Qi , i = 1, 2, . . . , K − 1.
+                  μ(0) tr(Zμ(0) ) − P = 0                   (26)
+               ⎪
+               ⎩
+                  tr(Zμ(0) ) ≤ P.                                               From the hypothesis, we know that for any λK ≥ 0 there always
+                                                                                exists a set of dual variables μ(λK ), λ(λK ) (as functions of λK )
+First, we assume μ = 0 and obtain                                               and ZλK = Zλ(λK ),μ(λK ) that satisfy the conditions in (28).
+                                      
+                               1                                                We first assume λK = 0. If Z0 satisfies tr(RK Z0 ) ≤ QK then
+         Z0 = argmax log I + 2 HZHH  − tr(TZ),                     (27)     λK = 0 and Z0 satisfies
+              rank(Z)≤M        σ
+                                                                                                       ⎧
+which can be solved using Proposition 3.1. If tr(Z0 ) ≤ P, then                                        ⎪
+                                                                                                       ⎨λK ≥ 0
+the problem is solved. Clearly, μ = 0 and Z0 satisfy all condi-                                         λK (tr(Z0 ) − QK ) = 0                         (29)
+tions in (26). Otherwise, we have tr(Z0 ) > P, and the following                                       ⎪
+                                                                                                       ⎩
+                                                                                                        tr(RK Z0 ) ≤ QK .
+lemma ensures the monotonicity of tr(Zμ ) and lim tr(Zμ ) = 0.
+                                                       μ→∞
+  Lemma 3.4: If we denote Zμ = argmax L(Z, μ), then                             We then get a set of dual variables μ(0), λi (0), i =
+                                              rank(Z)≤M
+                                                                                1, 2, . . . , K − 1, λK = 0, and Z0 that satisfy (23) by combining
+tr(Zμ ) is a monotone deceasing function on μ ≥ 0 satisfying
+                                                                                the hypothesis (28) and (29). The proposition holds for a
+ lim tr(Zμ ) = 0.
+μ→∞                                                                             problem with K + 1 quadratic constraints. Otherwise, we have
+     Proof: See the proof in Appendix C.                                       tr(RK Z0 ) > QK . Similarly to the problem with one constraint,
+  Hence, we can search along μ > 0, and there must exist                        we have the following lemma.
+a μ(0) such that tr(Zμ(0) ) = P, The existence of optimal dual                     Lemma 3.5: tr(RK ZλK ) is monotone decreasing on λK ≥ 0
+variables is then proved for (PC-1). Note that if T = 0, then                   satisfying lim tr(RK ZλK ) = 0.
+(PC-1) is just a capacity maximization problem subject only to                               λK →∞
+                                                                                      Proof: See the proof in Appendix D.                      
+a power constraint. Our results coincide with the well-known
+                                                                                Therefore, we can search along λK ≥ 0, and there must exist
+solution in [14].                                                                   (0)                                (0)
+  Now, we assume the proposition is true for a problem with K                   a λK such that tr(RK Zλ(0) ) = QK . λK and Zλ(0) satisfy (29),
+                                                                                                         K                       K
+quadratic constraints specified by the problem                                  meaning the optimal dual variables are found for the problem
+                                                                              with K + 1 quadratic constraints. If we make T = 0, then
+                                  1        
+                             
+   (PC − K) max log I + 2 HZH  − tr(TZ)  H                                   we have proved the existence of the optimal dual variables
+               rank(Z)≤M          σ                                             described in Proposition 3.2 for any number of constraints by
+                   s.t.      tr(Z) ≤ P                                          induction. This ends the proof of Proposition 3.3.
+                                                                                   Therefore, the Lagrange dual is a strong dual for (PC), and
+                             tr(Ri Z) ≤ Qi , i = 1, 2, . . . , K − 1,           we can obtain the optimal dual variables μopt and λopt by
+                                                                                minimizing the dual problem (21). Regardless of the primal
+where T  0. Suppose there exists μ(0) , λ(0) and corresponding                 problem, a dual problem is always convex so standard convex
+Zλ(0) ,μ(0) that satisfy the Proposition 3.2 conditions                         optimization tools can be applied to solve it. In our simu-
+⎧                                 ⎧                                             lation, we use a sub-gradient method to obtain the optimal
+⎪
+⎨μ ≥   0                          ⎪
+                                  ⎨λi ≥  0
+                                                                              dual variables. Given μopt and λopt, the corresponding Fλopt ,μopt
+  μ tr(Zλ,μ )−P = 0           and λi tr(Ri Zλ,μ )−Qi = 0 (28)                   generated by Proposition 3.1 is the optimal precoder for (PC).
+⎪
+⎩                                 ⎪
+                                  ⎩
+  tr(Zλ,μ ) ≤ P                     tr(Ri Zλ,μ ) ≤ Qi                           We summarize this section with the following theorem.
+         Authorized licensed use limited to: University of Gent. Downloaded on April 21,2026 at 14:11:41 UTC from IEEE Xplore. Restrictions apply.
+YING et al.: PRECODING AND CAPACITY ANALYSIS FOR MULTIPLE-ANTENNA WIRELESS SYSTEMS                                                                        5865
+
+
+
+                               opt
+  Theorem 3.6: Suppose λi with i = 1, 2, . . . , K and μopt are
+optimal dual variables for the SAR and power constraints by
+                                       
+                                       K
+                                            opt
+solving the dual problem (21), and K =   λi Ri + μopt I. As
+                                                 i=1
+well, we denote the SVD of HK−1/2 as
+
+                       HK−1/2 = U 1/2 VH ,                            (30)
+
+where  = diag(g1 , g2 , . . . , gn ) with g1 ≥ g2 ≥ . . . ≥ gn ≥ 0.
+Then the rate-maximizing precoder is given by the modified
+water-filling result
+
+                      F = K−1/2V[1:M] 1/2 ,                           (31)
+
+where  = diag(p1 , p2 , . . . , pM ) with pi = (1 − σ 2 /gi )+ for
+i = 1, 2, . . . , M.
+     Proof: Proposition 3.2 ensures that Fλopt ,μopt is the op-
+timal precoder that maximizes the capacity given the transmit
+power and SAR constraints. The expression of Fλopt ,μopt is given
+                                                                                Fig. 4. Capacity comparison for MIMO systems with different approaches
+by Proposition 3.1.                                                            handling the SAR limitation. The power constraint is fixed at P = 0.2 W, and
+   Note that the SAR constraints create an effect on the precoder               the SNR is set to be 0 dB. For a two-antenna system, the rank-1 transmission is
+design similar to having a channel correlation K−1/2 at the trans-              marked as “,” and rank-2 is marked as “ .” For a four-antenna system, the
+                                                                                rank-2 is marked as “ ,” and the rank-4 is marked as “ .”
+mitter side. The optimal precoder always chooses the M strong-
+est subchannels of the effective channel matrix HK−1/2 and
+                                                                                We use its upper-left 2 × 2 submatrix as the SAR matrix for two
+waterfills over them. To balance the additional correlation, sig-
+                                                                                transmit antennas simulations. This SAR matrix is manually
+nals also go through a virtual correlation K1/2 after the source.
+                                                                                generated to demonstrate the performance of the proposed
+Therefore, a post-coding matrix K−1/2 is applied. This results in
+                                                                                precoding method.
+the capacity subject to the power and SAR constraints given by
+                                                                                   Note that all diagonal elements of R are 8 kg−1 . Therefore, if
+                                  M             +                         only one antenna transmits with a power of 23 dBm = 0.2 W,
+                  1          
+                       H H
+      log I + 2 HFF H  =              log gi /σ 2     ,      (32)             the SAR value is 0.2 × 8 = 1.6 W/kg, so the SAR limitation
+                  σ
+                                     i=1                                        is observed. However, if all antennas are used for transmission,
+where gi with i = 1, 2, . . . , M are given by the SVD of the                   then the worst-case SAR reading with a total power of 23 dBm
+effective channel HK−1/2 as (18).                                               is about 3.8 W/kg. Therefore, a portable device with this SAR
+   The proposed optimal SAR-aware precoding requires more                       matrix has to reduce the transit power by a factor of 0.43 due to
+computational complexity than both back-off methods. How-                       the 1.6 W/kg SAR constraint, and the far-field performance will
+ever, the proposed method brings around 1.4 dB gain over the                    suffer severe degradation. We compare our proposed capacity
+adaptive back-off method as shown in simulation results in                      achieving method against the two back-off methods introduced
+Section IV. The performance improvement is more substantial                     in Section II-A. We simulate with two and four transmit anten-
+when the SAR constraint becomes dominant. The proposed                          nas at a device, which are supported by LTE-Advanced. We as-
+method does not have the “decreasing rate” problem of the                       sume eight receive antennas at a base station in all simulations.
+adaptive back-off method due to its sub-optimal precoder.                          In the following simulation plots, the proposed optimal pre-
+Therefore, it is worth exploring the optimal precoder in the                    coding method is plotted in red, and the adaptive back-off
+SAR-aware transmission. Moreover, the optimal precoder first                    and power back-off methods are plotted in black and blue,
+reveals the role of the SAR constraints in MIMO signaling.                      respectively. We simulate four different precoding scenarios.
+                                                                                For a two-antenna system, we simulate the rank-1 (beamform-
+                                                                                ing) transmission, which is marked as “squares,” and rank-2
+                   IV. S IMULATION R ESULTS                                     precoding, which is marked as “circles.” Rank-2 and Rank-4
+                                                                                precoding is applied to a four-antenna system, and they are
+   In this section, we present simulation results for the proposed
+                                                                                marked as “down-triangle” and “up-triangle,” respectively.
+approach. We performed Monte Carlo simulations using uncor-
+                                                                                   In Fig. 4, we fix the transmit power constraint P = 23 dBm =
+related Rayleigh fading channel realizations. We first present
+                                                                                0.2 W, which is a common maximum transmit power for a
+the results with a single SAR constraint. The SAR characteristic
+                                                                                cell phone, and let the SAR constraint vary. The channel and
+matrix we used in the simulations for four transmit antennas is
+                                                                                noise are scaled to give a 0 dB SNR. In all scenarios, the
+given by
+                 ⎡                                   ⎤                          simulation results demonstrate that both proposed algorithms
+                     8       −6i     −2.1         0                             and the adaptive back-off method provide substantial capacity
+                 ⎢ 6i         8       −6i      −2.1⎥                            improvement compared to the power back-off. Therefore, the
+            R=⎢  ⎣−2.1
+                                                     ⎥.       (33)
+                              6i        8       −6i ⎦                           SAR constraints have a large impact on the far-field perfor-
+                     0      −2.1       6i         8                             mance of a portable device with multiple transmit antennas.
+           Authorized licensed use limited to: University of Gent. Downloaded on April 21,2026 at 14:11:41 UTC from IEEE Xplore. Restrictions apply.
+5866                                                                   IEEE TRANSACTIONS ON WIRELESS COMMUNICATIONS, VOL. 14, NO. 10, OCTOBER 2015
+
+
+
+
+                                                                                  Fig. 6. Capacity vs. SNR with both constraints fixed to P = 0.2 W and Q =
+Fig. 5. Simulation results with a SAR constraint fixed to Q = 1.0 W/kg for        1.0 W/kg. Our approach has a 1.4 dB gain compared to the adaptive back-off
+MIMO systems. The noise variance is fixed at σ 2 = 0.2.                           method and a more than 10 dB gain over the power back-off method.
+
+   For small Q-values, the proposed SAR-aware transmission                        is optimal, and the adaptive back-off method, which is sub-
+has a large capacity gain over the adaptive back-off method. In                   optimal. Therefore, we conclude that incorporating SAR con-
+a practical cell phone design, the targeted SAR value should                      straints in signal design is essential for future portable devices
+be smaller than 1.6 W/kg to leave some margin for compli-                         with multiple antennas.
+ance testing. For a large SAR limitation, the adaptive back-off                      We next present some simulation results with two SAR
+method soon catches up with the proposed optimal precoding                        constraints. We use the SAR matrix in (34) to characterize the
+method and yields the same rate. The back-off method will                         effect of the additional SAR limitation. The upper left 2 ×
+also give the same performance if the allowable SAR value                         2 submatrix is used as a two-antenna SAR matrix. Note that
+is extremely large, which is true when the power constraint                       this SAR matrix is also manually generated to demonstrate the
+becomes the dominant constraint.                                                  performance SAR-aware methods.
+   In Fig. 5, we present the capacity curves versus the transmit                     In Fig. 7, we present the capacity curves versus the increasing
+power constraint. The SAR constraint is fixed to Q = 1.0 W/kg                     power constraint when both SAR constraints are fixed. The
+and the noise variance is σ 2 = 0.2. As above, our proposed                       maximum allowable SAR value for the SAR matrix (33) is
+method helps to increase the capacity over both back-off meth-                    Q1 = 1.0 W/kg, and Q2 = 0.8 W/kg is the limitation for the
+ods, and the gain is substantial for a large power constraint.                    SAR matrix in (34), shown at the bottom of the page. The noise
+Note that the unusual “decreasing behavior” of the achievable-                    variance is σ 2 = 0.2. The capacity is increased by our proposed
+rate for the adaptive back-off method, as mentioned in                            precoding method, especially in the high power regime. Note
+Section II-B, is again visible for four transmit antennas results.                the “decreasing rate” phenomenon of the adaptive back-off
+   In Fig. 6, we plot the capacity versus SNR with the power                      method for 4 transmit antennas.
+constraint fixed to P = 0.2 W and the SAR constraint fixed to                        In Fig. 8, we plot the capacity results versus SNR with the con-
+Q = 1.0 W/kg. The simulation demonstrates that our approach                       straints fixed to P = 0.2 W, Q1 = 1.0 W/kg, and Q2 = 0.8 W/kg.
+has roughly a 1.4 dB gain compared to the adaptive back-off                       We obtain a 1.5 dB gain over the adaptive back-off method and
+method and a gain of over 10 dB compared to the power back-                       a more than 10 dB gain over the power back-off method.
+off method.
+   The performance gain of the proposed SAR-aware trans-
+                                                                                                              V. C ONCLUSION
+mission depends on the SAR matrix R and the constraint
+values. However, as shown in the above simulation results, the                      In this paper, we investigated multiple antenna system trans-
+back-off method has a large performance gap compared to the                       mit precoding performance under simultaneous transmit power
+SAR-aware methods, including the proposed method, which                           and SAR constraints. From our analysis, we showed that a
+
+
+
+                                     ⎡                                                                                    ⎤
+                                      3.94                    −2.65 − 2.53i           −0.01 + 3.46i          0.60 − 0.10i
+                                ⎢−2.65 + 2.53i                    4.57                −2.30 − 2.80i          −0.99 − 0.07i⎥
+                              R=⎢
+                                ⎣−0.01 − 3.46i
+                                                                                                                          ⎥                            (34)
+                                                              −2.30 + 2.80i               4.97               −1.22 − 2.04i⎦
+                                  0.60 + 0.10i                −0.99 + 0.07i           −1.22 + 2.04i              3.18
+           Authorized licensed use limited to: University of Gent. Downloaded on April 21,2026 at 14:11:41 UTC from IEEE Xplore. Restrictions apply.
+YING et al.: PRECODING AND CAPACITY ANALYSIS FOR MULTIPLE-ANTENNA WIRELESS SYSTEMS                                                                           5867
+
+
+
+                                                                                 rifice the far-field performance in order to satisfy the near-field
+                                                                                 regulatory limitation. Our proposed SAR-aware transmission is
+                                                                                 able to jointly optimize the near and far-field performance. It
+                                                                                 exploits the SAR variation in a MIMO system and employs
+                                                                                 an intelligent form of precoding on the transmit signal to
+                                                                                 achieve low SAR values. The analytical and simulation results
+                                                                                 demonstrate that proposed approach can provide a substantial
+                                                                                 improvement over widespread back-off methods.
+
+
+                                                                                                                  A PPENDIX
+                                                                                 A. Proof for Proposition 3.1
+                                                                                                                                        
+                                                                                                                                        K
+                                                                                       If we remove the constant term μP +                    λi Qi in (17), then
+                                                                                                                                        i=1
+                                                                                 maximizing the objective function is equivalent to maximizing
+                                                                                 the following expression
+                                                                                                                       
+                                                                                                          1            
+                                                                                     ∗                           H H
+                                                                                   L (F, λ, μ) = log I + 2 HFF H  − μtr(FH F)
+Fig. 7. Simulation results with SAR constraints fixed to Q1 = 1.0 W/kg and                                σ
+Q2 = 0.8 W/kg for MIMO systems. The noise variance is fixed to σ 2 = 0.2.
+                                                                                                                                   K
+                                                                                                                                             
+                                                                                                                              −         λi tr FH Ri F . (35)
+                                                                                                                                  i=1
+
+                                                                                 Using the definition of K, we can rewrite
+                                                                                                                         
+                                                                                                             1           
+                                                                                     ∗                              H H
+                                                                                    L (F, λ, μ) = log I + 2 HFF H  − tr(FH KF).                           (36)
+                                                                                                             σ
+
+                                                                                 By substituting F̃ = VH K1/2F, (36) can be transformed to
+                                                                                                           
+                                                                                                1          
+                                                                                                        H H
+                                                                                      log I + 2 HFF H  − tr(FH KF)
+                                                                                                σ
+                                                                                                                                   
+                                                                                                      1                            
+                                                                                                 
+                                                                                          = log I + 2 HK   −1/2      H H −1/2 H 
+                                                                                                                 VF̃F̃ V K      H 
+                                                                                                      σ
+                                                                                               − tr(F̃H VH K−1/2KK−1/2 VF̃)
+                                                                                                                           
+                                                                                                         1                 
+                                                                                                                 H 1/2 H 
+                                                                                             = log I + 2 U F̃F̃  U  − tr(F̃H F̃)
+                                                                                                              1/2
+                                                                                                                                                            (37)
+                                                                                                         σ
+                                                                                                                      
+                                                                                                         1 1/2 H 1/2 
+                                                                                                   
+                                                                                             = log I + 2  F̃F̃   − tr(F̃F̃H ).                          (38)
+Fig. 8. Capacity vs. SNR with constraints fixed to P = 0.2 W, Q1 =                                       σ
+1.0 W/kg, and Q2 = 0.8 W/kg. Optimal precoding has a 1.5 dB gain compared
+to the adaptive back-off method and a more than 10 dB gain over the power        In (37), we apply the SVD of matrix HK−1/2, and the last
+back-off method.
+                                                                                 equation comes from log |I + AB| = log |I + BA|. Optimizing
+                                                                                 (38) is equivalent to solving
+SAR-constrained channel is mathematically similar to a chan-                                                                
+                                                                                                               1 1/2 H 1/2 
+nel with spatial correlation at the transmitter side. Given perfect                                        
+                                                                                        max max log I + 2  F̃F̃   − T.              (39)
+transmit and receive channel knowledge, we proved that a                                T∈R+ tr(F̃F̃H )=T      σ
+modified version of the water-filling algorithm on the effective                                rank(F̃)≤M
+
+channel generates the optimal precoder that maximizes the                        The inner maximization is obtained by the water-filling
+capacity. We solved a capacity maximization problem with a
+                                                                                                                   H
+rank constraint, and we proved that the Lagrange dual is in fact                                 F̃ = IM , 0M×(n−l) 1/2 ,                                  (40)
+a strong dual to the primal problem by induction.
+   Previous communication and information theoretic research                     where  = diag(p1 , p2 , . . . , pM ) with pi = (t − σ 2 /gi )+ and
+and design only considered a transmit power constraint when                      
+                                                                                 M
+optimizing metrics for system performance. A precoder de-                          pi = T [14]. Thus, the outer maximization becomes
+                                                                                 i=1
+signed using only the transmit power constraint will have to                                                             gi t +
+                                                                                                                 M
+back-off the transmit power if a device fails to achieve the SAR                                         max           log 2      − T,                      (41)
+regulatory compliance. In other words, existing techniques sac-                                          T∈R+             σ
+                                                                                                                i=1
+            Authorized licensed use limited to: University of Gent. Downloaded on April 21,2026 at 14:11:41 UTC from IEEE Xplore. Restrictions apply.
+5868                                                                          IEEE TRANSACTIONS ON WIRELESS COMMUNICATIONS, VOL. 14, NO. 10, OCTOBER 2015
+
+
+
+or equivalently                                                                        and
+                                                              +                                                                
+                                                                                                                               
+                                gi t +                                                                                    1
+                      M                   M
+                                                         σ2                                                                    H
+                                                                                                    Zλ,μ = argmax log I + 2 HZH  .                  (50)
+            max              log 2      −             t−                  .    (42)                                       σ
+            t∈R+                σ                        gi                                                   tr(Z)≤P
+                      i=1                     i=1                                                           tr(Ri Z)≤Qi
+                                                                                                            rank(Z)≤M
+                                                         +
+ For all g > 0, function γ (t) = {log(gt)}+ − t − 1g         is
+                                                                                                                              λ,μ = Zλ,μ is optimal
+                                                                                       Therefore the precoder Fλ,μ with Fλ,μ FH
+maximized at t = 1. The derivatives of γ (t) are                                       for (PC).
+                                        ⎧
+                                        ⎪
+                                        ⎨0,       t ≤ 1g
+ dγ      0,        t≤ g1
+                                d γ
+                                  2
+                                                                                       C. Proof for Lemma 3.4
+     = 1                             =                     (43)
+  dt     t − 1, t > g ,
+                       1         dt2    ⎪
+                                        ⎩ 1
+                                           − t2 , t > g .
+                                                       1
+                                                                                          Suppose μ1 > μ2 > 0 and define the corresponding pre-
+                                                                                       coder Zi = Zμi as
+For all g > 0, dγ                d γ  2
+                                                                                                                    
+                dt = 0 and dt2 ≤ 0 at t = 1. Thus the above                                                 1       
+summation is also maximized at t = 1. Therefore, the optimal                                argmax log I + 2 HZHH  − tr(TZ) − μtr(Z),  (51)
+                                                                                                            σ
+ = diag(p1 , p2 , . . . , pM ) has pi = (1 − σ 2 /gi )+ , and the op-                     rank(Z)≤M
+
+timal precoder is given by
+                                                                                       with i = 1, 2. Therefore, by definition
+                             −1/2             −1/2
+             Fλ,μ = K               VF̃ = K          V[1:M]    1/2
+                                                                      .        (44)                       
+                                                                                                1         
+                                                                                       log I + 2 HZj HH  − tr(TZj ) − μj tr(Zj )
+                                                                                                σ
+B. Proof for Proposition 3.2                                                                                           
+                                                                                                             1         
+                                                                                                                      H
+                                                                                                 ≥ log I + 2 HZk H  − tr(TZk ) − μj tr(Zk ),        (52)
+   Note Zλ,μ is defined as the maximizer of the Lagrangian                                                   σ
+                      Zλ,μ = argmax L(Z, λ, μ).                                (45)    with j, k ∈ {1, 2} and j = k.
+                                rank(Z)≤M
+                                                                                         Denote
+Then for any feasible precoders F and Z = FFH that satisfy all                                                        
+                                                                                                                1     
+power, SAR and rank constraints,                                                                                     H
+                                                                                                Ai = log I + 2 HZi H  − tr(TZi ), i = 1, 2,
+                                                                                                               σ
+                        
+            1              K
+                                                                                               C = tr(Z1 ) − tr(Z2 ).
+   log I + 2 HZλ,μ HH  −   λi tr(Ri Zλ,μ ) − Qi                                                                                                   (53)
+            σ
+                                      i=1
+                                                                                       The above inequalities yield
+                  
+            − μ tr(Zλ,μ ) − P
+                                                                                                           μ1 C ≤ A1 − A2 ≤ μ2 C.                     (54)
+                         
+                   1        K
+                        H
+         ≥ log I + 2 HZH  −   λi (tr(Ri Z) − Qi )                                    Therefore, μ1 C ≤ μ2 C. Since μ1 > μ2 > 0, it gives C ≤
+                   σ                                                                   0. Hence tr(Z1 ) ≤ tr(Z2 ), then we proved that tr(Zμ ) is a
+                                            i=1
+                                                                                       monotone decreasing function on μ > 0.
+            − μ (tr(Z) − P) .                                                  (46)      Before we prove lim tr(Zμ ) = 0, we review a well-known
+                                                                                                            μ→∞
+                                                                                       inequality of matrix trace [25].
+Given the conditions                                                                      Lemma A.1: Suppose A and B are n × n Hermitian posi-
+                                                                                      tive semi-definite matrices and ηi (A) denotes the i−th largest
+                  μ tr(Zλ,μ ) − P = 0
+                                                                              (47)    eigenvalue of matrix A. Then
+                  λi tr(Ri Zλ,μ ) − Qi = 0,
+                                                                                                                          n
+                                                       
+                                                                                                        tr(AB) ≤            ηi (A)ηi (B).           (55)
+the left side of (46) is equal to log I + σ12 HZλ,μ HH . For any
+                                                                                                                      i=1
+feasible Z,
+                                                                                         According to Proposition 3.1, we have
+                             tr(Z) − P ≤ 0
+                                                                               (48)                                                       
+                             tr(Ri Z) − Qi ≤ 0,                                                 tr(Zμ ) = tr K−1/2 V[1:M] VH       K −1/2
+                                                                                                                              [1:M]
+                                                                                                                                
+and the right side of (46) is greater than or equal to                                                = tr K−1 V[1:M] VH
+                                                                                                                          [1:M] ,
+log I + σ 2 HZH . Hence we have
+          1      H
+                                             
+                  1                   1                                            where K = T + μI. Suppose ti = ηi (T) with t1 ≥ t2 ≥ . . . ≥
+                          H                 H
+         log I + 2 HZλ,μ H  ≥ log I + 2 HZH 
+                  σ                     σ
+                                                    (49)                               tNT ≥ 0, then ηi (K) = ti + μ and ηi (K−1 ) = tN −i+1
+                                                                                                                                          1
+                                                                                                                                             +μ .
+                                                                                                                                              T
+          Authorized licensed use limited to: University of Gent. Downloaded on April 21,2026 at 14:11:41 UTC from IEEE Xplore. Restrictions apply.
+YING et al.: PRECODING AND CAPACITY ANALYSIS FOR MULTIPLE-ANTENNA WIRELESS SYSTEMS                                                                         5869
+
+
+
+  Therefore,                                                                        3) If μ1 = 0 and μ2 > 0, then tr(Z1 ) ≤ P and tr(Z2 ) = P,
+                                                                                             1 = 0 and B2 ≤ 0.
+                                                                                       then BK          K
+                        M
+                                                                                   4) If μ > 0 and μ = 0, then tr(Z1 ) = P and tr(Z2 ) ≤ P,
+                                                                                           1          2
+            tr(Zμ ) ≤         ηi (K−1 )ηi V[1:M] VH
+                                                   [1:M]
+                                                                                             1 ≥ 0 and B2 = 0.
+                                                                                       then BK          K
+                        i=1
+                         M                                                                                                                             j     j
+                                                                                  Therefore, BK1 ≥ B2 always holds, and we can prove B1 ≥ B2
+                                                                                                         K
+                    =         ηi (K−1 )ηi ()
+                                                                                  for j = 1, 2, . . . , K − 1 using the same arguments. Thus, we
+                        i=1
+                         M                                    +                  combine the two inequalities in (59) to
+                                    1         σ2
+                    =                      1−                                                                K                         K
+                              tNT −i+1 + μ    hi                                                                   j                         j
+                        i=1                                                        λ1K C ≤ A1 − A2 −              B1 ≤ A1 − A2 −            B2 ≤ λ2K C. (60)
+                        M μ→∞
+                    <     −−−→ 0,                                          (56)                             j=1                       j=1
+                        μ
+                                                                                  Therefore, λ1K C ≤ λ2K C. Since λ1K > λ2K > 0, we have C ≤ 0.
+namely lim tr(Zμ ) = 0.                                                           Hence tr(RK ZλK ) is a monotone decreasing function on λK >
+        μ→∞
+                                                                                  0. Moreover, using Lemma A.1, we can show that
+                                                                                                                                     
+D. Proof for Lemma 3.5                                                              tr RK ZλK = tr RK K−1/2 V[1:M] VH    [1:M] K
+                                                                                                                                  −1/2
+                                                                                                                                      
+     Similar to the proof of Lemma 3.4, we assume λ1K >
+                                                                                                = tr K−1/2RK K−1/2 V[1:M] VH    [1:M]
+λK > 0 with corresponding dual variables μi = μ(λ1K ), λij =
+ 2
+                                                                                                      M                      
+λj (λ1K ) with j = 1, 2, . . . , K − 1 and matrix Zi = Zλi , i = 1, 2
+                                                         K                                        ≤         ηi K−1/2 RK K−1/2 ηi V[1:M] VH
+                                                                                                                                          [1:M]
+by solving the problems with K quadratic constraints in the
+                                                                                                      i=1
+hypothesis. Therefore, by definition                                                                   M                    
+                                                                                                ≤         η1 K−1/2 RK K−1/2 ηi ()
+          1                     K−1
+                 H
+  log I + 2 HZj H  − tr(TZj ) −
+                                       j
+                                      λi tr(Ri Zj )                                                   i=1
+          σ                                                                                            M                         +
+                                                                                                                                σ2
+                                                                                                          η1 K−1/2 RK K−1/2 1 −
+                                           i=1
+             j                                                                                    =
+        − λK tr(RK Zj ) − μj tr(Zj )                                                                                            hi
+                            
+                                                                                                      i=1                  
+                                                                                                    < Mη1 K−1/2 RK K−1/2 ,
+                                        K−1
+                 1        H                j                                                                                                             (61)
+      ≥ log I + 2 HZk H  − tr(TZk ) −     λi tr(Ri Zk )
+                 σ
+                                                        i=1
+             j                                                                                        
+                                                                                                      K
+         − λK tr(RK Zk ) − μj tr(Zk ),                                     (57)   where K = T +             λi Ri + μI, and η1 (K−1/2RK K−1/2 ) is the
+                                                                                                      i=1
+with j, k ∈ {1, 2} and j = k.                                                    largest eigenvalues of matrix K−1/2RK K−1/2 . Suppose RK has
+  Denote                                                                          the eigenvalue decomposition
+                               
+                     1                                                                                          RK = UUH                                (62)
+                              H
+      Ai = log I + 2 HZi H  − tr(TZi ),
+                     σ
+        j     j                                                                  with  = diag{r1 , . . . , rNT } with ri = ηi (RK ) > 0. Then, we
+      Bi = λi tr(Rj Z1 ) − tr(Rj Z2 ) , j = 1, 2, . . . , K − 1
+                                                                                  have
+     BKi = μ (tr(Z1 ) − tr(Z2 )),
+              i
+                                                                (58)
+                                                                                        K−1/2 RK K−1/2 = K−1/2UUH K−1/2
+for i = 1, 2, and C = tr(RK Z1 ) − tr(RK Z2 ). The above in-
+equalities yield                                                                                        r1 K−1/2UIUH K−1/2 = r1 K−1 ,
+
+                                              K
+                                                    j
+                                                                                  where A  B means (B − A) is positive semi-definite. Hence,
+                    λ1K C ≤ A1 − A2 −              B1 ,                           we can bound the largest eigenvalues of K−1/2RK K−1/2 as
+                                             j=1                                                                  
+                                              K                                               η1 K−1/2RK K−1/2 ≤ r1 η1 (K−1 ).            (63)
+                                                    j
+                    λ2K C ≥ A1 − A2 −              B2 .                    (59)                                           −1
+                                             j=1                                  Moreover, we have η1 (K−1 ) = ηNT (K) . Since K  λK RK ,
+                                                                                  we get ηNT (K) ≥ λK ηNT (RK ) = λK rNT . Therefore η1 (K−1 ) ≤
+                                                                   j   j
+  We can then prove that for all j = 1, 2, . . . , K, B1 ≥ B2 . As                  1
+                                                                                  λK rNT .
+an example we prove the statement for BK   1 ≥ B2 . Consider the
+                                                   K
+                                                                                     Finally we can bound tr(RK ZλK ) with
+pair of (μ , μ ), there are four possible conditions:
+          1   2
+                                                                                                                        Mr1 λK →∞
+  1) If μ1 = μ2 = 0, then BK                                                                        tr(RK ZλK ) <             −−−−→ 0.                     (64)
+                           1 = B2 = 0.
+                                K
+                                                                                                                       λK rNT
+  2) If μ > 0 and μ > 0, then by (28), we have tr(Z1 ) =
+         1            2
+
+     tr(Z2 ) = P. Hence BK
+                         1 = B2 = 0.
+                              K                                                   Namely, lim tr(RK ZλK ) = 0.
+                                                                                            λK →∞
+           Authorized licensed use limited to: University of Gent. Downloaded on April 21,2026 at 14:11:41 UTC from IEEE Xplore. Restrictions apply.
+5870                                                                   IEEE TRANSACTIONS ON WIRELESS COMMUNICATIONS, VOL. 14, NO. 10, OCTOBER 2015
+
+
+
+                              R EFERENCES                                                                   Dawei Ying (S’13) received the B.S. degree from
+                                                                                                            Shanghai Jiao Tong University, Shanghai, China,
+ [1] “IARC classifies radiofrequency electromagnetic fields as possibly car-                                in 2010 and the master’s degree in electrical and
+     cinogenic to humans,” World Health Org., Int. Agency Res. Cancer,                                      computer engineering from Purdue University, West
+     Lyon Cedex, France, May 2011. [Online]. Available: http://www.iarc.fr/                                 Lafayette, IN, USA, in 2012. He is currently working
+     en/mediacentre/pr/2011/pdfs/pr208_E.pdf                                                                toward the Ph.D. degree in the School of Electri-
+ [2] N. D. Volkow et al., “Effects of cell phone radiofrequency signal exposure                             cal and Computer Engineering, Purdue University.
+     on brain glucose metabolism,” J. Amer. Med. Assoc., vol. 305, no. 8,                                   During the summers of 2013 and 2014, he was an
+     pp. 808–813, Feb. 2011.                                                                                Intern with Nokia Networks, Arlington Heights, IL,
+ [3] J. C. Lin, “Specific absorption rates induced in head tissues by microwave                             USA. His research interests are in multiple-antenna
+     radiation from cell phones,” IEEE Microw. Mag., vol. 2, no. 1, pp. 22–25,                              systems with user exposure constraints and massive
+     Mar. 2001.                                                                   MIMO systems.
+ [4] FCC, “Evaluating compliance with FCC guidelines for human exposure
+     to radiofrequency electromagnetic fields,” OET Bull., vol. 65, Suppl. C,
+     ed. 01-01, Tech. Rep., Jun. 2001.
+ [5] R. Gomez-Villanueva, H. Jardon-Aguilar, and R. Linares y Miranda,
+     “State of the art methods for low SAR antenna implementation,” in Proc.
+     4th EuCAP, Barcelona, Spain, 2010, pp. 1–4.                                                           David J. Love (S’98–M’05–SM’09–F’15) received
+ [6] M. Mangoud, R. Abd-Alhameed, N. McEwan, P. Excell, and                                                the B.S. (with highest honors), M.S.E., and Ph.D.
+     E. Abdulmula, “SAR reduction for handset with two-element phased array                                degrees from The University of Texas at Austin,
+     antenna computed using hybrid MoM/FDTD technique,” Electron. Lett.,                                   Austin, TX, USA, in 2000, 2002, and 2004, respec-
+     vol. 35, no. 20, pp. 1693–1694, Sep. 1999.                                                            tively, all in electrical engineering.
+ [7] K.-C. Chim, K. C. Chan, and R. D. Murch, “Investigating the impact of                                     During the summers of 2000 and 2002, he was
+     smart antennas on SAR,” IEEE Trans. Antennas Propag., vol. 52, no. 5,                                 with Texas Instruments, Dallas, TX. Since August
+     pp. 1370–1374, May 2004.                                                                              2004, he has been with the School of Electrical
+ [8] C. Qiang, Y. Komukai, and K. Sawaya, “SAR investigation of array                                      and Computer Engineering, Purdue University, West
+     antennas for mobile handsets,” IEICE Trans. Commun., vol. 90, no. 6,                                  Lafayette, IN, USA, where he is currently a Professor
+     pp. 1354–1356, Jun. 2007.                                                                             and recognized as a University Faculty Scholar. He is
+ [9] K. R. Mahmoud, M. El-Adawy, S. M. Ibrahem, R. Bansal, and                    recognized as a Thomson Reuters Highly Cited Researcher and is the holder
+     S. H. Zainud-Deen, “Investigating the interaction between a human head       of 23 issued U.S. patents. Prof. Love is a Fellow of the Royal Statistical
+     and a smart handset for 4G mobile communication systems,” Progress           Society. He has served as an Editor of the IEEE T RANSACTIONS ON C OM -
+     Electromagn. Res. C, vol. 2, pp. 169–188, 2008.                              MUNICATIONS , an Associate Editor of the IEEE T RANSACTIONS ON S IGNAL
+[10] B. M. Hochwald and D. J. Love, “Minimizing exposure to electromagnetic       P ROCESSING, and a Guest Editor of special issues of the IEEE J OURNAL
+     radiation in portable devices,” in Proc. ITA Workshop, San Diego, CA,        ON S ELECTED A REAS IN C OMMUNICATIONS and the EURASIP Journal on
+     USA, 2012, pp. 255–261.                                                      Wireless Communications and Networking. Along with coauthors, he was a
+[11] B. M. Hochwald, D. J. Love, S. Yan, and J. Jin, “SAR codes,” in Proc.        recipient of the 2009 IEEE T RANSACTIONS ON V EHICULAR T ECHNOLOGY
+     ITA Workshop, San Diego, CA, USA, 2013, pp. 1–9.                             Jack Neubauer Memorial Award for the best systems paper published in
+[12] B. Hochwald, D. Love, S. Yan, P. Fay, and J.-M. Jin, “Incorporating          the IEEE T RANSACTIONS ON V EHICULAR T ECHNOLOGY in that year and
+     specific absorption rate constraints into wireless signal design,” IEEE      multiple Globecom best paper awards. He was also the recipient of the Fall 2010
+     Commun. Mag., vol. 52, no. 9, pp. 126–133, Sep. 2014.                        Purdue HKN Outstanding Teacher Award, the Fall 2013 Purdue ECE Graduate
+[13] E. Telatar, “Capacity of multi-antenna Gaussian channels,” Eur. Trans.       Student Association Outstanding Faculty Award, and the Spring 2015 Purdue
+     Telecommun., vol. 10, no. 6, pp. 585–595, Nov./Dec. 1999.                    HKN Outstanding Professor Award. He has been inducted into Tau Beta Pi and
+[14] A. Scaglione, P. Stoica, S. Barbarossa, G. B. Giannakis, and H. Sampath,     Eta Kappa Nu.
+     “Optimal designs for space-time linear precoders and decoders,” IEEE
+     Trans. Signal Process., vol. 50, no. 5, pp. 1051–1064, May 2002.
+[15] D. Ying, D. J. Love, and B. M. Hochwald, “Beamformer optimization
+     with a constraint on user electromagnetic radiation exposure,” in Proc.
+     47th Annu. CISS, Baltimore, MD, USA, 2013, pp. 1–6.                                                     Bertrand M. Hochwald (S’90–M’95–SM’06–F’08)
+[16] D. Ying, D. J. Love, and B. M. Hochwald, “Transmit covariance opti-                                     was born in New York, NY, USA. He received
+     mization with a constraint on user electromagnetic radiation exposure,” in                              the bachelor’s degree from Swarthmore College,
+     Proc. GLOBECOM, Atlanta, GA, USA, 2013, pp. 4104–4109.                                                  Swarthmore, PA, USA, the M.S. degree in electrical
+[17] R. Zhang and Y.-C. Liang, “Exploiting multi-antennas for opportunistic                                  engineering from Duke University, Durham, NC,
+     spectrum sharing in cognitive radio networks,” IEEE J. Sel. Topics Signal                               USA, and the M.A. degree in statistics and the Ph.D.
+     Process., vol. 2, no. 1, pp. 88–102, Feb. 2008.                                                         degree in electrical engineering from Yale Univer-
+[18] C. M. Vithanage, J. P. Coon, and S. C. Parker, “On capacity-optimal pre-                                sity, New Haven, CT, USA.
+     coding for multiple antenna systems subject to EIRP restrictions,” IEEE                                     From 1986 to 1989, he was with the Department
+     Trans. Wireless Commun., vol. 7, no. 12, pp. 5182–5187, Dec. 2008.                                      of Defense, Fort Meade, MD, USA. After complet-
+[19] R. Zhang, “Cooperative multi-cell block diagonalization with per-base-                                  ing graduate school, he became a Research Associate
+     station power constraints,” IEEE J. Sel. Areas Commun., vol. 28, no. 9,      and a Visiting Assistant Professor with the Coordinated Science Laboratory,
+     pp. 1435–1445, Apr. 2010.                                                    University of Illinois, Champaign, IL, USA. In September 1996, he joined
+[20] L. Sun, P. Li, M. R. McKay, and R. D. Murch, “Capacity of MIMO               the Mathematics of Communications Research Department, Bell Laboratories,
+     systems with mutual coupling: Transmitter optimization with dual power       Lucent Technologies, Murray Hill, NJ, USA, where he was a Distinguished
+     constraints,” IEEE Trans. Signal Process., vol. 60, no. 2, pp. 848–861,      Member of the Technical Staff. In 2005, he joined Beceem Communications,
+     Feb. 2012.                                                                   Santa Clara, CA, USA, as their Chief Scientist and, in 2009, as Vice President
+[21] R. Zhang and C. K. Ho, “MIMO broadcasting for simultaneous wireless          of Systems Engineering. He served concurrently as a Consulting Professor
+     information and power transfer,” IEEE Trans. Wireless Commun., vol. 12,      in electrical engineering at Stanford University, Palo Alto, CA. In 2011, he
+     no. 5, pp. 1989–2001, May 2013.                                              joined the faculty at the University of Notre Dame, Notre Dame, IN, USA, as a
+[22] S. Boyd and L. Vandenberghe, Convex Optimization. Cambridge, U.K.:           Freimann Professor of Electrical Engineering. He has coinvented several well-
+     Cambridge Univ. Press, 2004.                                                 known multiple-antenna techniques, including a differential method, linear
+[23] J. F. Sturm, “Using SeDuMi 1.02, a MATLAB toolbox for optimiza-              dispersion codes, and multiuser methods. He is the holder of 37 patents. He
+     tion over symmetric cones,” Optim. Methods Softw., vol. 11, no. 1–4,         was listed as a Thomson Reuters Most Influential Scientific Mind in 2014.
+     pp. 625–653, 1999.                                                              Prof. Hochwald has served as an Editor of several IEEE journals and
+[24] M. Grant, S. Boyd, and Y. Ye, CVX: MATLAB software for disciplined           given plenary and invited talks on various aspects of signal processing and
+     convex programming, 2008. [Online]. Available: http://stanford.edu/boyd/     communications. He has been a recipient of several achievement awards while
+     cvx                                                                          employed at the Department of Defense and the Prize Teaching Fellowship at
+[25] I. Olkin and A. W. Marshall, Inequalities: Theory of Majorization and Its    Yale University. In 2006, he received the Stephen O. Rice Prize for the best
+     Applications. New York, NY, USA: Academic, 1979.                             paper published in the IEEE T RANSACTIONS ON C OMMUNICATIONS.
+           Authorized licensed use limited to: University of Gent. Downloaded on April 21,2026 at 14:11:41 UTC from IEEE Xplore. Restrictions apply.
+

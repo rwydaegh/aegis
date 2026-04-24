@@ -1,0 +1,1135 @@
+7376                                                              IEEE TRANSACTIONS ON WIRELESS COMMUNICATIONS, VOL. 16, NO. 11, NOVEMBER 2017
+
+
+
+
+ Sum-Rate Analysis for Multi-User MIMO Systems
+         With User Exposure Constraints
+                  Dawei Ying, David J. Love, Fellow, IEEE, and Bertrand M. Hochwald, Fellow, IEEE
+
+
+
+   Abstract— Fifth generation (5G) and beyond cellular systems                   a single transmit antenna. However, the exposure measurement
+are expected to support multiple uplink transmit antennas.                       is not only a function of the radiated power when multiple
+Previous research demonstrates that designing waveforms                          transmit antennas are considered. SAR is also a function of the
+satisfying near field user exposure constraints affects the far-
+field data rates achievable by portable devices using multiple                   relative phase differences between antennas [5], [6]. Previous
+transmit antennas. Therefore, user exposure constraints need                     research results [7], [8] suggest that the SAR measurement is
+to be taken into account in the uplink transmission covariance                   a time-averaged quadratic form of the transmitted signal, and
+matrix design (e.g., precoder design) for 5G. Specific absorption                the peak SAR value can be much larger than the mean SAR
+rate (SAR) is a widely accepted user exposure measurement used                   measurement. SAR is usually enforced to ensure worst-case
+in wireless communication regulations throughout the world.
+In this paper, we perform sum-rate analysis for a multi-user                     compliance. In the single antenna case, worst-case compliance
+multiple-input multiple-output (MIMO) system with SAR con-                       can always be achieved by reducing the transmit power.
+straints enforced at each user. The maximum achievable sum                       However, worst-case exposure is much more difficult to deal
+rates for various channel state information at the transmitter                   with in multiple transmit antenna systems, especially those
+scenarios are studied in this paper. The SAR-aware MIMO                          employing beamforming, precoding, or any other form of
+transmission methods are based on the modified waterfilling
+algorithm. Simulation results show our proposed methods out-                     transmitter channel adaptation.
+perform the conventional transmission strategy for the two user                     In fifth generation (5G) cellular systems, multiple trans-
+case.                                                                            mit antennas at each portable device may be required to
+   Index Terms— Multi-user multiple-input multiple-output                        enable high-speed uplink throughput. In fact, multiple trans-
+(MU-MIMO), specific absorption rate (SAR), modified waterfil-                    mit antennas at the user equipment are already included in
+ing, maximum achievable sum-rate, asymptotic approximation.                      LTE-Advanced (3GPP releases 10-12). Due to the prevalence
+                         I. I NTRODUCTION                                        of multiple transmit antennas at the handset, 5G and beyond
+                                                                                 systems must be viewed as both power constrained and SAR
+A     LL portable devices are subject to regulations on the
+      level of radio frequency (RF) radiation that users of the
+devices are exposed to. This regulates the known effects (e.g.,
+                                                                                 constrained. In [7], the SAR constraints are first incorporated
+                                                                                 into the transmit signal design for a MIMO uplink channel,
+                                                                                 and the quadratic model for the SAR measurement is first
+heating [1], [2]) and unknown effects of electromagnetic (EM)
+                                                                                 proposed. In [8], a SAR code is proposed to handle a
+radiation [3]. SAR is a widely accepted measure of user
+                                                                                 SAR-constrained channel, which is shown to have a 2.5dB
+exposure, and it measures the absorbed power in a unit mass
+                                                                                 improvement over the conventional Alamouti space-time code
+of human tissue using units of Watt per kilogram (W/kg). The
+                                                                                 under SAR limitations. Meanwhile, SAR-aware beamforming
+Federal Communications Commission (FCC) enforces a SAR
+                                                                                 and transmit signal covariance optimization methods are pre-
+limitation of 1.6W/kg on partial body exposure [4]. Other
+                                                                                 sented in [9] and [10]. Capacity analysis with multiple SAR
+regulatory agencies also adopt similar limitations on SAR
+                                                                                 constraints on MIMO systems is examined in [11]. Other SAR
+measurements.
+                                                                                 reduction efforts can be found in [12] and [13], and their
+   In many cases, the exposure limitation simply acts like an
+                                                                                 references, which mainly focus on the hardware side.
+additional transmit power constraint on a portable device with
+                                                                                    In this paper, we study the maximum achievable sum rate
+  Manuscript received April 3, 2017; accepted August 14, 2017. Date of           of a SAR-constrained MU-MIMO uplink system, also called
+publication September 6, 2017; date of current version November 9, 2017.         a MIMO multiple access channel (MIMO-MAC). A MIMO
+This work was supported by the National Science Foundation under Grant
+CCF-1403458. The associate editor coordinating the review of this paper          system relies on accurate channel state information (CSI) to
+and approving it for publication was L. DaSilva. (Corresponding author:          achieve its full capacity gain over single antenna systems.
+Dawei Ying.)                                                                     MIMO rate maximization problems with perfect CSIT subject
+  D. Ying is with Intel Corporation, Hillsboro, OR 97124 USA (e-mail:
+dawei.ying@intel.com).                                                           to multiple quadratic constraints on the transmit covariance
+  D. J. Love is with the School of Electrical and Computer Engineering,          matrices have been explored in previous research [14]–[19].
+Purdue University, West Lafayette, IN 47907 USA (e-mail: djlove@                 In [16], an iterative watering-filling algorithm was proposed
+purdue.edu).
+  B. M. Hochwald is the with Department of Electrical and Computer               to find the optimal transmit covariance matrices that maximize
+Engineering, University of Notre Dame, Notre Dame, IN 46556 USA (e-mail:         the MIMO-MAC sum rate with power constraints at the users.
+bhochwal@nd.edu).                                                                In [15], MIMO broadcast (BC) and MAC duality is used under
+  Color versions of one or more of the figures in this paper are available
+online at http://ieeexplore.ieee.org.                                            a single power constraint to find the optimal transmission
+  Digital Object Identifier 10.1109/TWC.2017.2748103                             scheme for the MIMO BC. The BC-MAC duality has been
+                      1536-1276 © 2017 IEEE. Personal use is permitted, but republication/redistribution requires IEEE permission.
+                           See http://www.ieee.org/publications_standards/publications/rights/index.html for more information.
+
+           Authorized licensed use limited to: University of Gent. Downloaded on April 21,2026 at 14:10:44 UTC from IEEE Xplore. Restrictions apply.
+YING et al.: SUM-RATE ANALYSIS FOR MU-MIMO SYSTEMS WITH USER EXPOSURE CONSTRAINTS                                                                     7377
+
+
+
+extended and used to derive the capacity region under multiple                  simplified algorithms to find the optimal transmit signal
+general linear transmit covariance constraints in [18].                         covariance matrices for some special cases with statistical
+   Perfect instantaneous CSIT is not available in many prac-                    CSIT. We develop a modified form of waterfilling by exploit-
+tical scenarios. For example, much work has focused on                          ing the relationship between the optimal dual variables and
+quantized [20], [21] or statistical CSIT [22], [23] for frequency               asymptotic approximation results. The rate loss due to the
+division duplexing (FDD). If the transmitters only know that                    additional SAR constraints and improvement over a power
+the wireless channels are Rayleigh fading, the ergodic capacity                 back-off [7] solution are examined with small and large noise
+for both SU- and MU-MIMO with only power constraints                            power. In many deployment scenarios, each user would only
+is achieved when the transmit covariance is a scaled iden-                      have knowledge of its own SAR matrices and constraints,
+tity matrix [24]. If the transmitters have knowledge of each                    i.e., a globally optimal solution cannot be computed because
+channel’s spatial covariance matrix, then the optimal transmit                  there is no centralized knowledge. We develop a framework
+covariance matrix that maximizes the sum-rate should have                       to adapt the transmit signal optimization framework to this
+the same eigenvectors as the channel’s transmit spatial covari-                 setting. We present an iterative algorithm that requires only
+ance matrix for SU-MISO [25], SU-MIMO [26], [27], and                           local SAR matrices at each portable device.
+MU-MIMO systems [22]. If the transmitters can adapt to                             The remainder of the paper is organized as follows.
+only the channel mean, the optimal transmit signal covariance                   In Section II, we introduce the system and channel model
+matrix has the same eigenvectors as the channel mean for                        we use in this paper. We adopt the quadratic SAR model
+SU-MISO [25], SU-MIMO [27], and some special cases of                           introduced in [8] and [11]. In Section III and IV, sum-rate
+MU-MIMO [22]. For a SU-MISO system, when the channel                            analysis results are presented for MU-MIMO systems with
+is correlated Rician fading and the transmitter knows the                       perfect and statistical CSIT. In Section VII, we demonstrate
+channel’s mean and spatial covariance matrix, the structure of                  the simulation results of SAR-constrained MU-MIMO uplink
+the rate maximizing transmit signal covariance matrix is given                  transmission with both perfect and statistical CSIT. The pro-
+in [28]. The exact form of the sum-rate maximizing transmit                     posed SAR-aware sum-rate maximizing transmit covariance
+covariance matrices for the MIMO-MAC when the transmit-                         matrix provides approximately a 3dB improvement over con-
+ters know all of the channels’ mean and spatial covariance                      ventional transmission strategies. Finally, we conclude this
+information is still a point of research.                                       paper in Section VIII.
+   Although the optimal eigenvectors of the transmit signal                        Notation: In the rest of this paper, all boldface letters
+covariance matrix are known for most statistical CSIT cases,                    indicate matrices (upper case) or vectors (lower case). The
+the exact eigenvalues of the optimal transmit covariance                        notations tr(A), |A|, A H , rank{A} are the trace, determi-
+usually must be obtained from numerical optimization. With                      nant, conjugate transpose, and rank of matrix A, respectively.
+transmitter knowledge of only each channel’s mean or spatial                    A =         diag{a} denotes the diagonal matrix A with
+covariance matrix, the optimal power allocation is solved by                    diagonal entries specified by the vector a, and A =
+iterative algorithms presented in [29] and [30] for SU-MIMO                     diag{A1 , A2 , . . . , A K } denotes a block diagonal matrix.
+systems and in [23] and [31] for MU-MIMO systems. In [32],                      A[1:k] is a matrix truncated from A by taking the first k
+a Monte-Carlo-based stochastic optimization algorithm is                        columns.
+proposed to find the maximum ergodic sum-rate of a
+MIMO-MAC experiencing correlated Rician fading at each                                          II. S YSTEM AND C HANNEL M ODEL
+user. However, stochastic programming is computationally                           We consider a MU-MIMO uplink system with K users.
+demanding. Therefore, an asymptotic approximation method is                     There are Mk transmit antennas at portable device k and N
+applied in [33] to find the optimal transmit covariance matrices                receive antennas at the base station (BS). Denote the channel
+with statistical CSIT, and it is demonstrated that this approxi-                matrix between user k and the base station (BS) by Hk ∈
+mation to the ergodic sum-rate is tight even for a small number                 C N×Mk . Suppose xk = Fk sk is the transmit signal of user k,
+of antennas. In [34], the ergodic capacity of a SU-MIMO with                    where s ∈ Cm k ×1 is a vector of input symbols that follows
+channel mean and spatial covariance matrix knowledge (i.e.,                     a zero-mean, unit variance complex Gaussian distribution and
+a correlated Rician channel) is presented. Various MU-MIMO                      Fk ∈ C Mk ×m k is a precoding matrix. In this set-up, m k ≤ Mk
+scenarios are studied in [35] when the transmitters only have                   is the number of MIMO layers used in the uplink trans-
+access to each channel’s spatial covariance information in                      mission. In a closed-loop MIMO precoding scheme, m k can
+correlated Rayleigh fading channels and in [36] when the                        be specified as the “Rank Indicator (RI)” feedback from the
+transmitters have each channel’s mean and spatial covariance                    receiver.
+information. In [37], a more general Rican channel with the                        Each input vector xk ∈ C Mk ×1 for k = 1, . . . , K , is a com-
+Weichselberger spatial correlation model is considered in a                     plex random vector that follows a complex Guassian distribu-
+MU-MIMO system. The asymptotic approximation provides                           tion with zero-mean and covariance Sk = E{xk xkH } = Fk FkH .
+a clear characterization of the optimal structure of transmit                   Therefore, optimizing any function of the users’ rates over
+signal covariance matrices.                                                     the user precoding matrices {Fk } is equivalent to maximizing
+   In this paper, we apply a modified waterfilling algo-                        the function over the user transmit covariance matrices {Sk }.
+rithm [11] in the asymptotic approximation regime [34], [37]                    In the rest of this paper, we focus on the optimization of
+to find the maximum ergodic sum rate of a SAR-constrained                       transmit covariance matrices {Sk }, instead of the precoding
+MU-MIMO system with statistical CSIT. We propose                                matrices {Fk }.
+
+          Authorized licensed use limited to: University of Gent. Downloaded on April 21,2026 at 14:10:44 UTC from IEEE Xplore. Restrictions apply.
+7378                                                             IEEE TRANSACTIONS ON WIRELESS COMMUNICATIONS, VOL. 16, NO. 11, NOVEMBER 2017
+
+
+
+   Precoding is now commonly included in most cellular                          the device and the user. Thus each gesture needs a unique
+standards [38]–[40]. In LTE and its descendants [41], the user                  SAR matrix, and multiple SAR matrices are often required to
+precoders are chosen subject to rank constraints. This is                       characterize all constraints imposed on a device. We model
+because each uplink precoder is defined by a designated                         the multiple SAR constraints on user device k as
+feedback (e.g. rank indicator (RI) feedback) sent by the BS.
+To model this, we optimize the users’ precoders subject to a                            SARk,i = tr(Rk,i Sk ) ≤ Q k,i , i = 1, 2, . . . , G k ,       (5)
+rank constraint on each user’s precoder. Therefore, we require
+                                                                                where G k is the total number of SAR constraints, Rk,i is the
+that rank{Sk } ≤ m k for user k.
+                                                                                i -th SAR matrix, and Q k,i is the i -th constraint value imposed
+   Furthermore, we assume that input vectors of different users
+                                                                                on device k.
+are mutually independent with each other, which implies
+                                                                                    Since SAR is widely accepted and enforced as a major
+                             E{xi x H
+                                    j }=0                                (1)    exposure merit for RF systems below 6GHz, we only consider
+                                                                                wireless systems operating below 6GHz in this paper. Figure 8
+if i = j . The input-output relationship can be modeled by                     in [6] shows that SAR measurements do not vary significantly
+                       
+                       K                                                        over a fairly wide range of carrier frequencies (1.8 − 2GHz).
+                  y=         Hk xk + n = Hx + n                          (2)    Therefore, only a single pointwise SAR matrix is required
+                       k=1                                                      for an orthogonal frequency division multiplexing (OFDM)
+                                                                                system with a bandwidth less than 200MHz, and throughout
+where y ∈ C N×1 is the received signal. We denote the
+                                                                                this paper we concentrate on narrow-band optimization. Note
+aggregated channel matrix as H = [H1 , H2 , . . . , H K ], and
+                                                                                that although all sub-carriers share the same SAR matrix,
+we always assume that the BS has perfect knowledge of H
+                                                                                the transmit covariance optimization is required for each of
+(i.e., perfect CSIR) in this paper. Moreover, the transmit signal
+                          T                                                   the sub-carriers in an OFDM system. For a broadband system
+x = x1T , x2T , . . . , xTK satisfies
+                                                                                with non-contiguous bands, a series of SAR matrices may be
+                        
+             E xx H = S = diag {S1 , S2 , . . . , S K }       (3)               defined on various carrier frequency bands.
+                                                                                    The maximum achievable rate of a MIMO system depends
+             
+             K                                                                  on the CSI available at the transmitter. With perfect instan-
+with M =          Mk ≤ N. The additive white Gaussian noise                     taneous CSIT, the optimal capacity-achieving transmit covari-
+            k=1
+vector n is distributed as CN (0, σ 2 I N ), where σ 2 is the noise             ance matrix is given by waterfilling on the channel matrix H.
+power. In this paper, we always assume that σ 2 is known at                     If the CSIT at each transmitter in the MIMO-MAC is limited
+the transmitter. Under our assumptions, all transmit signals are                to knowledge of the channel statistics for the channels of all
+circularly symmetric complex Gaussian.                                          users, the maximum achievable rate is lower than the MIMO
+   In a real wireless system, the transmit signal for each user is              capacity assuming perfect CSIT, with usually a significant
+constrained by both the transmit power and exposure level to                    performance gap because the transmitter cannot perfectly
+the user. Transmit power is commonly considered throughout                      align the transmit signal to the instantaneous channel matrix.
+the wireless literature. In this paper, we enforce a transmit                   In Section IV, we investigate the ergodic maximum achievable
+power constraint by requiring that tr(Sk ) ≤ Pk for all k.                      sum-rate of a MU-MIMO uplink transmission with statistical
+   As we mentioned in the introduction, portable wireless                       CSIT. There are three statistical CSIT scenarios: each trans-
+communication devices are also subject to SAR limitations.                      mitter knows only the mean information of all users’ channels,
+Previous research [7] and [8] has shown that the pointwise                      each transmitter only knows the spatial covariance matrices of
+SAR value with multiple transmit antennas can be modeled                        all users’ channels, and each transmitter only knows the mean
+as a quadratic form of the transmitted signal, i.e., the SAR                    and spatial covariance information of all users’ channels.
+measurement of user device k is modeled as                                          The general channel model encompassing all three cases is
+                                                                                formulated as [34], [16]
+            SARk = E{tr(xkH Rk xk )} = tr(Rk Sk ),                       (4)                                             1/2       1/2
+                                                                                                       Hk = H̄k + Ar,k Wk At,k                        (6)
+where the SAR matrix Rk fully describes the SAR mea-
+surement’s dependence on the transmitted signal xk and the                      for user k where H̄k is the mean of the channel matrix Hk ,
+covariance matrix Sk . Entries of the SAR matrix have units                     which also represents the line-of-sight (LOS) component of the
+of kg−1 . Because the SAR measurements are always real                          channel. We denote the mean of the channel from        all users
+positive numbers, the SAR matrices Rk are positive-definite                     to the base station by H̄ = H̄1 , H̄2 , . . . , H̄ K . We assume
+Hermitian matrices.                                                             a Kronecker (or separable) model for the channel spatial
+   Moreover, multiple SAR constraints can be imposed on a                       correlation, and we denote Hermitian matrices At,k ∈ C Mk ×Mk
+single device since the SAR test is enforced and conducted                      and Ar,k ∈ C N×N as the correlation matrices at the transmitter
+on the whole body, partial body, hands, wrists, feet, and                       and receiver sides, respectively, for user k. For each user k,
+ankles with various measurement limitations according to                        Wk ∈ C N×Mk has i.i.d. zero-mean unit-variance complex
+FCC regulations [4]. The SAR matrix is a function of the                        Gaussian entries.
+relative position between a device and the testing area of the                    If each transmitter knows only the mean and spatial covari-
+body. Users may hold their devices with various gestures, and                   ance information of all users’ channels, then all portable
+each gesture presents a different spatial relationship between                  devices know H̄k , Ac,k , and Ar,k for k = 1, 2, . . . , K .
+
+          Authorized licensed use limited to: University of Gent. Downloaded on April 21,2026 at 14:10:44 UTC from IEEE Xplore. Restrictions apply.
+YING et al.: SUM-RATE ANALYSIS FOR MU-MIMO SYSTEMS WITH USER EXPOSURE CONSTRAINTS                                                                               7379
+
+
+
+Because statistical CSIT usually is fed back to the trans-                      where  = diag( p1, p2 , . . . , pm ) with pi = (1 − σ 2 /gi )+ for
+mitter, (6) also represents the “partial CSI with both mean                     i = 1, 2, . . . , m.
+and covariance feedback” model [22]. The channel model                            Based on the above lemma, analysis in [11] shows that
+can also be used to model a correlated Rician fading chan-                      the optimal transmit signal covariance matrix that maximizes
+nel. If transmitter knows only the mean information of all                      the point-to-point MIMO rate under both power and SAR
+users’ channels (“partial CSIT with channel mean feedback”),                    constraints is a modified waterfilling matrix computed using
+i.e., H̄k for k = 1, 2, . . . , K , then the general channel model              an effective channel. An extension of this lemma is to find
+degrades to                                                                     the optimal solution of a MIMO-MAC sum-rate maximization
+                                                                                problem, which is formulated as
+                         Hk = H̄k + W̄k ,                                (7)
+                                                                                                                                  1 
+                                                                                                                                         K
+where the entries of W̄k are i.i.d. zero-mean complex                                   (PC − MU)         max log I +                 Hk Sk HkH
+Gaussian random variables. If the transmitters only have                                                  Sk 0                   σ2
+                                                                                                                                       k=1
+each channel’s spatial covariance matrix information (“partial                                            s.t. tr(Sk ) ≤ Pk ,
+CSIT with channel covariance feedback”) Ac,k and Ar,k for
+                                                                                                                    tr(Ri Sk ) ≤ Q k,i , i = 1, . . . , G k
+k = 1, 2, . . . , K , then the channel matrix becomes
+                                 1/2        1/2
+                                                                                                                    rank(Sk ) ≤ m k ,
+                       Hk = Ar,k Wk At,k ,                               (8)                                        k = 1, . . . , K
+which also represents a Rayleigh fading channel.
+                                                                                  Combined with the iterative waterfilling algorithm of [16],
+  Given a channel model and statistical CSIT scenario,
+                                                                                we have the following theorem to characterize the optimal
+the transmit covariance matrix S = diag{S1 , S2 , . . . , S K } is
+                                                                                solution of above problem
+optimal in a SAR-aware MU-MIMO system if the covariance
+                                                                                  Theorem 2: Suppose {λk,i,opt } and μk,opt are the optimal
+matrices maximize the ergodic achievable sum-rate
+                                                                               dual variables for the SAR and power constraints in (PC-MU),
+                               1                                                The optimal transmit covariance matrices of (PC-MU) are
+                EH log I + 2 HSH H                             (9)
+                              σ                                                 expressed as
+while observing all power and SAR constraints. We also                                                              −1/2                             −1/2
+                                                                                        Sinst,MU,opt,k = Kk                Uk,[1:m k ] k Uk,[1:m
+                                                                                                                                           H
+                                                                                                                                                    K
+                                                                                                                                                  k] k
+                                                                                                                                                            ,
+consider rank constraints on individual transmit covariance
+                                                                                                      k = 1, . . . , K ,                                        (12)
+matrix Sk , i.e, rank(Sk ) ≤ m k , which enables the analysis
+to be applied to beamforming and precoding schemes in a                                                                          
+                                                                                                                                 Gk
+                                                                                where matrix Kk = μk,opt I +                           λk,i,opt Rk,i , and unitary
+SAR-aware transmission. Although the rank constraints intro-                                                                     i=1
+duce non-convexity into the optimization problem, we know                       matrix Uk comes from the eigenvalue decomposition
+that it does not change the structure of an optimal                                       ⎛                             ⎞−1
+solution [11]. The non-convexity of the primal problem can                                            
+                                                                                   −1/2       ⎜ 2     K
+                                                                                                                                ⎟                        −1/2
+be circumvented by considering the dual problem.                                 Kk       HkH ⎜
+                                                                                              ⎝σ  I +   H j Sinst,MU,opt, j H H ⎟
+                                                                                                                              j ⎠                 Hk Kk
+                                                                                                          j =1,
+          III. M AXIMUM ACHIEVABLE S UM -R ATE                                                             j  =k
+               A NALYSIS W ITH P ERFECT CSIT                                                                                                  = Uk  k UkH (13)
+   We first briefly review an important lemma from [11]                         with  k = diag(g1 , g2 , . . . , gn ) with g1 ≥ g2 ≥ . . . ≥
+that reveals insight into how the waterfilling algorithm can                    gn ≥ 0. The optimal power allocation is given by k =
+be modified to deal with both power and SAR constraints.                        diag( p1 , p2 , . . . , pm k ) with pi = (1 − 1/gi )+ for i =
+This framework will be very useful in sum-rate analysis with                    1, 2, . . . , m k .
+SAR-constrained wireless channels.                                              The proof of this theorem follows closely from the proof of
+   Lemma 1 [11, Proposition 3.1]: Suppose K is an arbitrary                     in [11, Th. 3.6]. Due to space limitations, it is omitted here.
+M-by-M Hermitian matrix satisfying K  0 and H ∈ C N×M
+is the channel matrix. Consider the maximization problem
+                                                                                      IV. E RGODIC M AXIMUM ACHIEVABLE S UM -R ATE
+                              1                                                                  W ITH S TATISTICAL CSIT
+               max log I + 2 HSH H − tr(KS)
+               S0           σ                                                     If each transmitter knows only statistical information of
+               s.t. rank(S) ≤ m.                                                all users’ channels, there is no closed-form for the optimal
+Denote the eigenvalue decomposition of K−1/2H H HK−1/2 as                       transmit covariance matrices that maximize sum-rate of the
+                                                                                MIMO-MAC. Therefore, we study the MU-MIMO system
+                 K−1/2 H H HK−1/2 = UU H ,                            (10)     asymptotically for its limiting performance with a large-
+                                                                                scale MIMO approximation. Some intuitive (waterfilling)
+where  = diag(g1 , g2 , . . . , gn ) with g1 ≥ g2 ≥ . . . ≥ gn ≥ 0
+                                                                                sum-rate maximizing solutions are available from previous
+and U is equal to the unitary eigenvector matrix. Then the
+                                                                                research [34], [37], which used asymptotic approximation of
+optimal covariance matrix of the above problem is given by a
+                                                                                MU-MIMO uplink channels. Although the asymptotic approx-
+modified water-filling according to
+                                                                                imation is based on representing the performance of large
+               S = K−1/2 U[1:m] U[1:m]
+                                  H
+                                        K−1/2 ,                        (11)     MIMO systems, i.e., Mk /N → ck for some real constant ck
+
+          Authorized licensed use limited to: University of Gent. Downloaded on April 21,2026 at 14:10:44 UTC from IEEE Xplore. Restrictions apply.
+7380                                                               IEEE TRANSACTIONS ON WIRELESS COMMUNICATIONS, VOL. 16, NO. 11, NOVEMBER 2017
+
+
+
+as N → ∞ for each k, its results are still very accurate for                     where we replace the ergodic sum-rate objective function its
+small-scale MIMO.                                                                asymptotic approximation.
+   We first study the ergodic maximum achievable sum-rate                          The optimal SAR-aware transmit covariance matrix Sk
+for the general channel model (6), which can be applied on                       can be found via a modified form of waterfilling over
+all three statistical CSIT scenarios. If the transmit covariance                   −1/2     −1/2                       
+                                                                                                                       Gk
+                                                                                 Kk k Kk        with Kk = μk,opt I +     λk,i,opt Rk,i for all
+matrix is given as S = diag{S1 , S2 , . . . , S K }, then the ergodic                                                                   i=1
+sum-rate                                                                         k = 1, 2, . . . , K , where λk,i,opt is the optimal dual variable
+                                                                               for the i -th SAR constraint of user k and μk,opt is the optimal
+                 1 
+                     K
+EH log I + 2            Hk Sk HkH                                                dual variable for the power constraints in (PE-MU). This is
+                σ                                                                summarized in the following Theorem for the MIMO-MAC
+                    k=1
+                                    
+                                                    1                            ergodic sum-rate with statistical CSIT
+                               = EH log I + 2 HSH H              (14)              Theorem 3: Suppose k is computed from (16) and (23)
+                                                   σ
+                                                                                 given the optimal covariance matrices of the form (PE-MU)
+is asymptotically approximated by [16]
+                                                                                                                 −1/2                                −1/2
+                                                            K                           Sstat,MU,opt,k = Kk            Uk,[1:m k ] k Uk,[1:m
+                                                                                                                                        H
+                                                                                                                                                 K
+                                                                                                                                               k] k
+                                                                                                                                                               (24)
+                      1
+       I(S) = log I + 2 S + log |I + | −   γk ψk ,                     (15)                                                              −1/2        −1/2
+                     σ                                                           where the eigenvalue decomposition of Kk                          k Kk      is
+                                                             i=1
+where                                                                                                    −1/2        −1/2
+                                                                                                     Kk         k Kk          = Uk  k UkH .                  (25)
+                                 H              −1
+                 = Dt + H̄ (I + Dr ) H̄,                                (16)
+                                                                                 with  k = diag{ pk,1 , . . . , pk,M }, and
+                 = Dr + H̄S(σ 2 I + Dt S)−1 H̄ H ,                      (17)                                     +             + 
+with                                                                                  k = diag 1 − 1/ pk,1 , . . . , 1 − 1/ pk,m k                            (26)
+
+           Dt = diag{γ1 At,1 , γ2 At,2 , . . . , γ K At,K },             (18)    with pk,1 ≥ pk,2 ≥ . . . ≥ pk,M ≥ 0 for each user k.
+                K                                                                   Proof: The Lagrangian of (PE-MU) with covariance
+           Dr =     ψi Ar,i ,                                            (19)    matrix S is given by
+                    i=1
+                                                                                                                      
+                                                                                                                      K
+and                                                                              L(S, {λk,i }, {μi }) = I(S) −                μk (tr(Sk ) − Pk )
+                                     −1                                                                               k=1
+               γk = tr((I + ) Ar,k ),                                   (20)
+                                                                                                            
+                                                                                                              K        
+                                                                                                                       Gk
+               ψk = tr(Sk (σ 2 I + S)−1 At,k ).                         (21)                             −         μk         λk,i (tr(Rk,i Sk ) − Q k,i ). (27)
+                                                     k
+                                                                                                              k=1        i=1
+The operation A k returns a matrix obtained by extracting the
+k-th diagonal block sub-matrix of A, i.e.,                                      Therefore, maximizing the Lagrangian for fixed γk and ψk is
+                                       A k is formed by
+                 
+                k−1               k                                             equivalent to maximizing
+selecting the       Mi + 1 to        Mi columns and rows
+                  i=1                     i=1                                                                                    1
+of A.                                                                                  L k (Sk , {λk,i }, μk ) = log I +            k Sk − tr(Kk Sk ), (28)
+                                                                                                                                 σ2
+  In [37], it proved that the derivative of I (S) with respect to
+Sk is                                                                            for all k = 1, 2, . . . , K . From Lemma 1, we know that
+                ∂I (S)                                                           Sstat,MU,opt,k indeed maximizes (28) when constructed using
+                       = (σ 2 I + k Sk )−1 k .            (22)                 the optimal dual variables.
+                 ∂Sk
+                                                                                    The optimal solution Sstat,MU,opt,k is a modified water-filling
+where                                                                                            −1/2    −1/2
+                                                                               result over Kk k Kk , and k is in turn a function of
+                 k = (σ 2 I + S\k )−1                    (23)                 the aggregated covariance matrix
+                                                         k
+with S\k = diag{S1 , . . . , Sk−1 , 0, Sk+1 , . . . , S K }. Therefore,               Sstat,MU,opt = diag{Sstat,MU,opt,1 , . . . , Sstat,MU,opt,K }. (29)
+the optimal transmit covariance matrix for the k-th device
+that maximizes the ergodic sum-rate subject to only the power                    Therefore some form of iterative process is required to find
+constraints can be obtained by waterfilling over k .                            Sstat,MU,opt . In [37], an iterative algorithm is proposed for
+  With additional SAR constraints, the approximated ergodic                      the MIMO channel with only a power constraint. In this
+capacity analysis problem is formulated as                                       paper, we develop a modified version of the algorithm in [37]
+                                                                                 for application to power and SAR constrained MU-MIMO
+                                   1                              K
+                                                                                 systems. Our algorithm finds the maximum achievable sum-
+(PE − MU) max log I +                 S + log |I + R| −   γk ψk
+                S0               σ 2                                            rate by solving the dual problem of (PE-MU).
+                                                                   i=1
+                s.t. tr(Sk ) ≤ Pk ,                                                                min           max           L(S, {λk,i }, {μk }).           (30)
+                                                                                              λk,i ≥0,μk ≥0      Sk 0,
+                      tr(Ri Sk ) ≤ Q k,i , i = 1, . . . , G k                                                 rank(Sk )≤m k
+                      rank(Sk ) ≤ m k ,                                          A straight-forward iterative algorithm based on the above
+                      k = 1, . . . , K                                           theorem is given in Algorithm 1.
+
+           Authorized licensed use limited to: University of Gent. Downloaded on April 21,2026 at 14:10:44 UTC from IEEE Xplore. Restrictions apply.
+YING et al.: SUM-RATE ANALYSIS FOR MU-MIMO SYSTEMS WITH USER EXPOSURE CONSTRAINTS                                                                      7381
+
+
+
+Algorithm 1 General Algorithm for Dual Optimization                              optimal covariance matrix of (PE-MU). γ and ψk are com-
+ Initialize λk,i ≥ 0, μk ≥ 0.                                                    puted from (20) and (21) based on Sstat,MU,opt . Then
+ repeat                                                                                              ⎛                               ⎞
+   Initialize S(0)  0, and  = 1.                                                                
+                                                                                                  K               
+                                                                                                                  Gk
+                                                                                         N −γ =      ⎝μk,opt Pk +     λk,i,opt Q k,i ⎠ . (32)
+   repeat
+      Find {γk() }, {ψk() } by solving (20), (21) with S(−1) .
+                                                                                                        k=1                   i=1
+
+      Update S() as (24) with γk() and ψk() .
+       =  + 1.                                                                    Proof:   The optimal transmit covariance matrix of
+   until The Lagrangian L(S() , {λk,i }, {μk }) converges for                   (PE-MU) and optimal dual variables should satisfy the Karush-
+   given dual variables.                                                         Kuhn-Tucker (KKT) conditions
+   Update {λk,i } and {μk } by minimizing                                              ⎧ 
+                                                                                       ⎪               −1              Gk
+   L(S() , {λk,i }, {μk }).                                                           ⎪
+                                                                                       ⎪
+                                                                                       ⎪
+                                                                                       ⎪    σ I + S
+                                                                                              2
+                                                                                                             = μk I +       λk,i Rk,i , (33)
+ until Dual variables converge                                                         ⎪
+                                                                                       ⎪
+                                                                                       ⎪
+                                                                                       ⎪
+                                                                                                               k         i=1
+                                                                                       ⎪
+                                                                                       ⎪
+                                                                                       ⎨ λk,i (tr(Rk,i S) − Q k,i ) = 0,                  (34)
+                                                                                           ⎪
+                                                                                           ⎪ λk,i ≥ 0, i = 1, . . . , G k ,
+   Note that the convergence of the inner iteration is still an                            ⎪
+                                                                                           ⎪
+                                                                                           ⎪
+                                                                                           ⎪
+open area [37]. However, similar iterations on S and (γ , ψ)                               ⎪
+                                                                                           ⎪ μk (tr(Sk ) − Pk ) = 0,
+                                                                                           ⎪
+                                                                                           ⎪                                                           (35)
+have been widely adopted in previous works of asymptotic                                   ⎪
+                                                                                           ⎩
+approximation on MIMO-MAC rate maximization [34], [36].                                      μk ≥ 0, k = 1, 2, . . . , K .
+It has been tested, although not in a mathematically rigorous                    We omit the “opt ” subscript for the optimal covariance matrix
+way, to accurately predict the sum rate performance of a                         and dual variables for simplicity in the proof. Given Ar,k = I,
+MIMO-MAC system, with even a relatively small dimension.                         matrix  and other asymptotic approximation related parame-
+Algorithm 1 requires an iteration between S and {γk , ψk } for                   ters are listed as
+each set of dual variables (λ, μ) to maximize the Lagrangian
+                                                                                                             1
+during the convex optimization of the dual problem. Therefore,                                 = Dt +              H̄ H H̄,                (36)
+the computational complexity is considerably large. Moreover,                                                K
+                                                                                                        1+       ψk
+for each S-{γk , ψk } iteration, the algorithm needs to solve k                                                     k=1
+pairs of saddle point equations to find the proper {γk , ψk }
+                                                                                                       
+                                                                                                       K
+for a given S, which further intensifies the computational                                       =           ψk I + H̄S(σ 2 I + Dt S)−1 H̄ H ,        (37)
+complexity. Algorithm 1 can be applied to all three statistical                                        k=1
+CSIT scenarios. In the next section, we examine special cases
+of statistical CSIT and propose low-complexity algorithms                        and
+with specific channel statistics.
+                                                                                                 γ = tr((I + )−1 ),                                   (38)
+   V. S IMPLIFIED A LGORITHM W ITH S TATISTICAL CSIT                                                              −1                      
+                                                                                                ψk = tr Sk σ 2 I + S                      At,k ,      (39)
+   In this section, we assume Ar,k = I for all k = 1, 2, . . . , K                                                                     k
+in the general channel model (6). This assumption is applica-                                    !                               "
+ble to the setting when the receiver has sufficient local                        with Dt = diag γ At,1 , γ At,2 , . . . , γ At,K
+scattering to decorrelate the channels experienced by each                          From (33), we have
+receive antenna. The receive spatially uncorrelated channel                                 −1
+assumption can also be applied when the transmitter has no                         σ 2 I + S    
+                                                                                          #                                                     $
+information about the statistics of the receive channel’s spatial                                
+                                                                                                 G1                             
+                                                                                                                                GK
+covariance information. We show that under this assump-                                = μ1 I +     λ1,i R1,i , . . . , μ K I +    λ K ,i R K ,i . (40)
+tion, Algorithm 1 can be simplified to reduce computational                                          i=1                             i=1
+complexity.                                                                      After multiplying the covariance matrix S and taking the trace
+                                                                                 of the both sides, the right-hand side equals
+A. Relationship Between Dual Variables and the Optimal λ                                             ⎛                        ⎞
+                                                                                                K              
+                                                                                                                Gk
+  First, it is clear from (20) that all {γk } are equal to each                                      ⎝μk Pk +      λk,i Q k,i ⎠ ,          (41)
+other and satisfy                                                                                    k=1                i=1
+                                         
+                  γk = γ = tr (I + )−1 ,                  (31)                  due to the KKT conditions. Therefore, we have
+                                                                                     ⎛                      ⎞
+                                                                                 K           
+                                                                                              Gk                                   
+for all k = 1, 2, . . . , K . Second, we can show that the                           ⎝μk Pk +    λk,i Q k,i ⎠ = tr S(σ 2 I + S)−1 
+following proposition always holds.                                               k=1               i=1
+   Proposition 4: Suppose the optimal dual variables are                                             −1 
+{λk,i,opt }i=1,...,G k , and {μk,opt }k=1,...,K , and Sstat,MU,opt is the             = tr S σ 2 I + S   Dt
+          k=1,...,K
+
+           Authorized licensed use limited to: University of Gent. Downloaded on April 21,2026 at 14:10:44 UTC from IEEE Xplore. Restrictions apply.
+7382                                                                              IEEE TRANSACTIONS ON WIRELESS COMMUNICATIONS, VOL. 16, NO. 11, NOVEMBER 2017
+
+
+                       1                                   
+           +                      tr H̄S(σ 2 I + S)−1 H̄ H                                     Algorithm 2 New Iterative Algorithm for Ar = I
+                       
+                       K
+               1+           ψk                                                                   Initialize λk,i ≥ 0 and μk ≥ 0.
+                      k=1                                                                        repeat               %                     &
+           
+           K              −1                                                                                  
+                                                                                                                   K           
+                                                                                                                               Gk
+                                                                             1                     Set γ = N −         μk Pk +    λk,i Q k,i .
+       =     tr Sk σ 2 I + S                              γ At,k +                      X                          k=1              i=1
+                                                                             
+                                                                             K
+                                                                                                  Initialize ψk(0) = 0,  = 1
+                                                       k
+           k=1                                                         1+           ψk
+                                                                             k=1                  repeat
+                                                                                                                                       (−1)
+               
+               K
+                                      1                                                             Set S() following (24) with γ , {ψk     }, and given dual
+       =γ            ψK +                        X,                                      (42)       variables.
+                                      
+                                      K                                                                     ()
+               k=1              1+          ψk                                                      Set ψk as (39) with S() .
+                                      k=1                                                            =  + 1.
+                                                                                                until {ψk } converges
+where we denote X = tr H̄S(σ 2 I + S)−1 H̄ H . To find X,
+apply the matrix inversion lemma on (38) to obtain                                                Update {λk,i } and {μk } by minimizing
+       ⎛%                                                                                          L(S() , {λk,i }, {μk }).
+                                                     &−1 ⎞
+                K                                                                               until Dual variables converge
+γ = tr ⎝ (1 +       ψk )I + H̄S(σ 2 I + Dt S)−1 H̄ H     ⎠
+                            k=1
+            ⎛                         ⎞                                                         of the channels’ mean information at each transmitter can
+        ⎜                 ⎟                                                                     use Algorithm 2 to find the optimal SAR-aware transmit
+        ⎜           1     ⎟       1
+   = tr ⎜                I⎟ −         2 tr ()                                                covariance matrices.
+        ⎝           
+                    K     ⎠       
+                                  K
+                 1+   ψk       1+   ψk
+                       k=1                            k=1
+                                                                                                C. Each Transmitter Knows Only the Spatial Covariance
+                 N                          1                                               Information of All Users’ Channels
+                                                                 2          H
+   =                         −                       2 tr H̄S σ I + S H̄
+                 
+                 K
+                                           
+                                           K                                                      If each portable device only has channel transmit covariance
+           1+          ψk             1+         ψk
+                 k=1                       k=1
+                                                                                                knowledge At,k , then we can further simplify the algorithm
+                                                                                                with H̄ = 0 and Ar,k = I. From (16),  without the
+            N        1                                                                          LOS component H̄ can be decoupled into a block diagonal
+   =           −          X,                                                             (43)
+           1+ψ   (1 + ψ)2                                                                       matrix as  = diag{1 , 2 , . . . ,  K }. Hence, the asymptotic
+                 ⎛                                                     ⎞−1                      approximation of EMI with transmit covariance matrix S is
+              ⎜                                                         ⎟                                                                     K
+where  = H̄S ⎝σ 2 I + Dt S +                          1
+                                                       
+                                                                H̄ H H̄S⎠    H̄ H                              1
+                                                  1+
+                                                       K
+                                                            ψ                                   I(S) = log I + 2 S + log |I + R| −   γk ψk
+                                                                                                              σ
+                                              
+                                              k=1                                                                                           k=1
+                                          
+                                          K              
+                                                         K
+                                                                                                                                           %         &
+  Thus,           X         =          1+   ψk    N − 1+   ψk γ ,                                    
+                                                                                                     K                                         K             
+                                                                                                                                                              K
+                                                                                                                   1
+and (42) leads to
+                                            k=1                             k=1                  =         log I + 2 k Sk + N log 1 +   ψk              −γ         ψk .
+                                                                                                                  σ
+    ⎛                        ⎞                                                                       k=1                                       k=1            k=1
+K            Gk
+                                                                                                                                                                    (45)
+    ⎝μk Pk +      λk,i Q k,i ⎠
+k=1                    i=1                                                                      Moreover, k = γ At,k for k = 1, 2, . . . , K .
+                                  %         %                    & &                               From Theorem 3, the optimal transmit covariance matrix
+                 
+                 K                                    
+                                                      K
+           =γ          ψk + N − 1 +                         ψK     γ   = N − γ . (44)           of (PE-MU) for the k-th user, denoted as SCov,MU,opt,k , is then
+                                                                                                                                           −1/2   −1/2
+                 k=1                                  k=1                                       a modified water-filling result over Kk k Kk . Note
+                                                                                                that all k are scaled by the same γ , and this universal γ
+   Note that (32) establishes a relationship between the optimal                                scalar plays an important role in the optimal transmission
+dual variables and the optimal γ . We propose a simplified                                      structure.
+Algorithm 2 based on (32) to solve the dual problem. Also for                                      Since H̄ = 0, from (17) and (20) we have
+each given set of dual variables, Algorithm 2 still requires an                                                      %           &
+                                                                                                                           K
+iterative process between S and {ψk }. However, the complexity                                                     γ 1+        ψk = N.                      (46)
+is reduced since there is no need to solve saddle point                                                                        k=1
+equations.
+                                                                                                Thus, the asymptotic ergodic sum-rate is given by
+
+B. Each Transmitter Knows Only the Mean                                                                             
+                                                                                                                    K
+Information of All Users’ Channels                                                              I(SCov,MU,opt ) =         log I + γ At,k SCov,MU,opt,k
+                                                                                                                    k=1
+   As a special case of no receive covariance information
+at the transmitter, MU-MIMO systems with only knowledge                                                                    +N log N − N log γ − (N − γ ). (47)
+
+                 Authorized licensed use limited to: University of Gent. Downloaded on April 21,2026 at 14:10:44 UTC from IEEE Xplore. Restrictions apply.
+YING et al.: SUM-RATE ANALYSIS FOR MU-MIMO SYSTEMS WITH USER EXPOSURE CONSTRAINTS                                                                      7383
+
+
+
+Based on the ergodic capacity formula, we propose a modified                       and the maximum sum rate with both power and SAR con-
+Lagrangian as                                                                      straints is
+                      
+                      K
+                                        γ                                                              CSAR =              max             I(S).       (52)
+     L̃(S, λ, μ) =          log I +        At,k Sk + N log N                                                           S:tr(Sk )≤ Pk
+                                        σ2                                                                          tr(Rk, j Sk )≤Q k, j
+                      k=1
+                                                                                                                       rank Sk ≤m k
+                                                         
+                                                         K
+                      − N log γ − (N − γ ) −                   tr(Kk Sk )          Therefore, the rate loss due to SAR constraints is Closs =
+                                                         k=1                       Cpower −CSAR . We study Closs in two extreme scenarios, σ 2 →
+                                ⎛                              ⎞                   ∞ and σ 2 → 0. The first case is the noise power σ 2 → ∞,
+                          
+                          K                   
+                                              Gk
+                                                                                   which corresponds to both the SNR an SAR-to-noise ratio
+                      +         ⎝μk Pk +            λk,i Q k,i ⎠ .          (48)   going to zero. Thus, when both Cpower and CSAR go to zero,
+                          k=1                 i=1                                  Closs also goes to zero.
+Moreover, the objective function of the dual problem is then                         The next and more interesting case is σ 2 → 0, which means
+modified as the maximum of the modified Lagrangian                                 the SNR and SAR-to-noise ratio both goes to infinity. We have
+                  g̃(λ, μ) = max L̃(S, λ, μ),                               (49)   the following proposition.
+                                    S                                                Proposition 5: If σ → 0, then Closs is upper bounded by a
+which can be proved as a convex function of dual variables.                        positive constant number that is determined by the constraints.
+Therefore the modified dual problem is a convex problem.
+   We propose Algorithm 3 to solve the modified dual problem                           Proof: For any given S,
+for a SAR-aware MU-MIMO system when the transmitters
+only have knowledge of each channel’s transmit spatial covari-                                
+                                                                                              K
+                                                                                                                                                   M
+                                                                                                    ψk = tr(S(σ 2 I + γ Dt S)−1 Dt ) →                 (53)
+ance matrices. Note that the proposed algorithm no longer                                                                                          γ
+                                                                                              k=1
+requires an iteration process between S and {γk , ψk } for a
+given set of dual variables. The computational complexity is                       as σ 2 → 0. Combined with (20) and (21), we have γ →
+then greatly reduced compared to that of Algorithm 1. The                          N − M. For simplicity, we assume N > M, then γ converges
+algorithm converges because the modified dual problem is                           to a positiive constant that is independent of the transmit
+convex.                                                                            covariance matrix S. The asymptotic rate approximation is
+                                                                                   then
+Algorithm 3 New Iterative Algorithm for H̄ = 0 and Ar,k = I
+                                                                                              
+                                                                                              K
+                                                                                                              γ                 N
+ Initialize λk,i ≥ 0 and μk ≥ 0.                                                     I(S) =         log I +      At,k Sk + N log − (N − γ )
+ repeat                                                                                                       σ2                γ
+                      %                      &                                                k=1
+                   
+                   K            
+                                Gk
+                                                                                              
+                                                                                              K
+   Set γ = N −          μk Pk +    λk,i Q k,i .                                                                 N−M                  N
+                                                                                          =         log I +         At,k Sk + N log     −M
+                    k=1                 i=1                                                                      σ2                 N−M
+   Set Sk as a modified water-filling result on γ At,k with                                   k=1
+   given dual variables                                                                       K
+   Update {λk,i } and {μk } by minimizing                                                 =         Ik (Sk ) + c,                                      (54)
+   L̃(S(), {λk,i }, {μk }) in (48).                                                          k=1
+  until Dual variables converge
+                                                                                   Thus, we can maximize Ik (Sk ) = log I + N−M
+                                                                                                                             σ2
+                                                                                                                                At,k Sk over
+                                                                                   Sk for all k separately.
+D. Analysis on Rate Differences                                                      Suppose Sk,P = argmax Ik (S) is optimal transmit
+                                                                                                                     tr(S)≤ P
+   In this section, we present analysis on the rate loss due                                                        rank S≤m
+                                                                                   covariance matrix subject to only power constraints, then
+to multiple SAR constraints, assuming H̄ = 0 and Ar,k = I
+                                                                                   Sk,P = mP Im , where Im = diag{1, . . . , 1, 0, . . . , 0}. Hence,
+for all k = 1, 2, . . . , K . In previous sections, we derived that                                               ' () *
+                                                                                                                                   m
+the asymptotic approximation of the MIMO-MAC sum rate
+                                                                                                                      
+is                                                                                                         P
+                                                                                           Cpower,k = I      Im
+        K
+                       γ                                                                                   m
+I(S) =     log I+ 2 At,k Sk + N log N − N log γ −(N − γ )                                                m                       
+                      σ                                                                                             (N − M)P
+       k=1                                                                                             =     log 1 +          ai,k    ,                (55)
+                                                                            (50)                                        σ 2m
+                                                                                                          i=1
+for a given aggregated transmit signal covariance matrix                           where ai,k are eigenvalues of the correlation matrix At,k , and
+S = diag{S1 , . . . , S K }. Note that λ is a function of S.
+The maximum sum rate with only a power constraint is                                                                  
+                                                                                                                      K
+given by                                                                                               Cpower =             Cpower,k + c.              (56)
+                                                                                                                      k=1
+                    Cpower =        max          I(S),                      (51)
+                                 S:tr(Sk )≤ Pk
+                                 rank Sk ≤m k                                      with c = N log N−M
+                                                                                                   N
+                                                                                                      − M.
+
+          Authorized licensed use limited to: University of Gent. Downloaded on April 21,2026 at 14:10:44 UTC from IEEE Xplore. Restrictions apply.
+7384                                                                    IEEE TRANSACTIONS ON WIRELESS COMMUNICATIONS, VOL. 16, NO. 11, NOVEMBER 2017
+
+
+
+  Similarly, suppose Sk,{Qj }                 =          argmax Ik (S) is the       as σ 2 → 0. Finally, the rate loss of a MIMO-MAC with SAR
+                                                        tr(S)≤ P                    constraint is upper bounded by
+                                                     tr(R j S)≤Q j
+
+corresponding optimal solution with both the power and
+                                                       rank S≤m
+                                                                                                
+                                                                                                K                          
+                                                                                                                           K
+                                                                                                                                        Pk          K     m
+                                                                                     Closs =              Closs,k ≤ m            log       +    log rk,i .                (63)
+SAR constraints. If the power constraint is the only active                                                                             Qk
+                                                                                                k=1                        k=1                    k=1 i=1
+constraint for the maximization problem, then Sk,{Qj } = Sk,P ,
+and CSAR = Cpower . Thus the rate loss is definitely zero.
+                                                                                      More interestingly, we can find the rate gain of the
+   Hence, we focus on the scenarios when only a single
+                                                                                    SAR-aware solution over the power back-off method solution,
+SAR constraint, with out loss of generality, we assume that                                 Q
+                                                                                    Sk,B =   Im .
+tr(R1 S) ≤ Q 1 is the only active constraint. Then we have                                 m
+                                                                                                    ri
+                               −1/2     −1/2
+Sk,Q1 = argmax Ik (S) = Qm1 R1 Im R1 . Thus,                                                  i=1
+            tr(R1 S)≤Q 1
+                                                                                                                                                  ⎛               ⎞
+              rank S≤m                                                                                                                 
+                                                                                                              Q −1/2               ⎜ Q       ⎟
+                                                                                  Cgain,k = Ik                R    Im R−1/2 − Ik ⎜      Im ⎟
+                       Q 1 −1/2   −1/2                                                                        m                    ⎝ 
+                                                                                                                                     m       ⎠
+           CSAR,k = Ik    R1 Im R1                                                                                                     ri
+                        m
+                     m                                                                                                                                i=1
+                               (N − M)Q 1                                                          
+                                                                                                    m                   
+                  =     log 1 +            b      ,                          (57)                           (N − M)Q
+                                   σ 2m
+                                             i                                                =     log 1 +          b i
+                           i=1                                                                                 σ 2m
+                                                                                                i=1      ⎛                 ⎞
+                                            −1/2         −1/2
+where bi are eigenvalues of R1                     At R1        , and                                            ⎜    (N − M)Qai ⎟
+                                                                                                          m
+                                                                                                    −         log ⎜
+                                                                                                                  ⎝1 +            ⎟
+                                                                                                                                  ⎠
+                                     
+                                     K                                                                                       
+                                                                                                                             m
+                                                                                                          i=1            σ 2   ri
+                       CSAR =               CSAR,k + c.                      (58)                                                        i=1
+                                     k=1                                                            
+                                                                                                    m
+                                                                                                                 σ 2 + (N−M)Qb
+                                                                                                                          m
+                                                                                                                               i
+                                                                                              =            log
+  Then
+                                                                                                     i=1         σ 2 + (N−M)Qa
+                                                                                                                         m
+                                                                                                                               i
+
+                                                                                                                                   ri
+Closs,k = Cpower,k − CSAR,k                                                                                                  i=1
+
+          m                                                                                        1            m           m
+                       (N − M)Pk                                                             → m log         ri +     (log bi − log ai )
+        =     log 1 +             ai                                                                  m
+                          σ 2m
+          i=1                                                                                         %  i=1     &i=1
+             m                                                                                       1 
+                                                                                                           m          m
+                         (N − M)Q k                                                           = m log          ri −       log ri , as σ 2 → 0. (64)
+          −      log 1 +              bi                                                                m
+                             σ 2m                                                                                    i=1                i=1
+               i=1
+             
+             m
+                    σ 2 + (N−M)
+                              m
+                                Pai                                                 The total rate improvement is
+          =     log
+            i=1     σ 2 + (N−M)Qb
+                              m
+                                  i                                                                        
+                                                                                                           K
+                                                                                           Cgain =               Cgain,k
+                       Pk   m
+             → m log             +         (log ai − log bi ), as σ → 0.(59)
+                                                                        2                                  k=1
+                                                                                                                         %                    &
+                           Qk                                                                                           1                           
+                                                                                                              K                  m                    K 
+                                                                                                                                                        m
+                                     i=1
+                                                                                                     ≥m              log     rk,i                 −             log rk,i . (65)
+Moreover, we denote λi (A) as the i −th largest eigenvalues of                                                           m
+                                                                                                               k=1               i=1                  k=1 i=1
+matrix A. To find the proper upper bound on the rate loss Closs,                    Therefore, we demonstrate that the rate loss of a MIMO-MAC
+we need to use the following lemma [42].                                            by imposing SAR constraints is upper bounded by a constant
+  Lemma 6: If A and B are both positive definite matrix, then                       if the noise power goes to zero. Moreover, the proposed SAR
+the following vector                                                                aware transmission scheme has a constant sum rate gain over
+                                                                                    the power back-off method.
+                    (log λ1 (AB), . . . , log λn (AB))                       (60)
+                                                                                                         VI. I TERATIVE A LGORITHMS W ITH
+is majorized by the vector                                                                                      L OCAL SAR M ATRICES
+       (log λ1 (A) + log λ1 (B), . . . , log λn (A) + log λn (B)). (61)                Although Algorithm 3 has low-complexity, it is still a
+                                                                                    fully centralized algorithm. In each iteration, the algorithm
+                                                                                    requires all dual variables to compute γ , but the dual vari-
+We let R−1/2 At R−1/2 = A and R = B in the above lemma.                             ables are functions of the user channels’ spatial covariance
+We also denote ri as the eigenvalues of the SAR matrix R.                           matrices and SAR matrices. Therefore, Algorithm 3 requires
+                               
+                               m          
+                                          m
+                                                                                    knowledge of {At,k }k=1,2,...,K and {Rk,i }i=1,2,...,G k , , if it is
+Then the majorization leads to   log ai ≤   (log bi +log ri ).                                                                                            k=1,2,...,K
+                                            i=1             i=1                     implemented on a portable device in a multi-user scenario.
+Thus,
+                                                                                    However, this assumption is impractical for a SAR-constrained
+                                           Pk       m                              MIMO channel. Because the SAR matrices are in general local
+                  Closs,k ≤ m log             +   log ri .                   (62)   information. Even the BS may not have access to its users’
+                                           Qk
+                                                    i=1                             SAR matrices.
+             Authorized licensed use limited to: University of Gent. Downloaded on April 21,2026 at 14:10:44 UTC from IEEE Xplore. Restrictions apply.
+YING et al.: SUM-RATE ANALYSIS FOR MU-MIMO SYSTEMS WITH USER EXPOSURE CONSTRAINTS                                                                       7385
+
+
+
+A. Each Transmitter Knows Only Have Its Own                                       instantaneous CSIT. In Figure 1, we simulate a two-user
+Spatial Covariance Information                                                    MIMO-MAC using the modified iterative waterfilling algo-
+   Note that if H̄ = 0, then the capacity optimization can                        rithm to maximize the sum-rate. The power constraint is
+be decoupled into K sub-optimization problems as shown                            the same for all portable devices, and the signal-to-noise
+by (45). Portable devices only need to know the univer-                           ratio (SNR) is calculated as σP2 . In our simulations, we scale σ 2
+sal scalar γ to perform the modified waterfilling algorithm,                      to achieve desired SNR. We consider only one SAR constraint
+because k = γ At,k .                                                             on each device (G = 1), and the SAR matrix is
+                                                                                                   ⎡                                 ⎤
+   Therefore, we propose the following iterative Algorithm 4                                           8      −6i −2.1           0
+when each user k only has knowledge of the local information                                       ⎢ 6i                  −6i −2.1 ⎥
+At,k and {Rk,i }i=1,2,...,G k . A simple handshake interaction                                     ⎢            8                    ⎥
+                                                                                             R=⎢                                     ⎥          (67)
+over γ with the BS helps the portable devices to find the                                          ⎣ −2.1      6i         8     −6i ⎦
+correct optimal transmit covariance matrix Sk . In Algorithm 4,                                             0       −2.1        6i         8
+users solve their dual
+%                       & variables and upload the quantity                       for four transmit antennas at each portable device. We use
+           
+           Gk
+                                                                                  the upper-left 2 × 2 submatrix of the matrix in (67) as the
+  μk Pk +     λk,i Q k,i to the BS. The BS broadcasts the
+            i=1                                                                   SAR matrix in two transmit antenna simulations. The BS is
+universal γ using (32). For a given universal γ , the optimal                     assumed to have eight receive antennas (i.e., N = 8). We apply
+dual variables are updated at k-th devices as                                     the same constraints on both devices, and they are fixed to
+                                                                                  P = 0.2W, Q = 1.0W/kg. Figure 1 shows that the SAR-aware
+({λk,i }, μk )                                                                    transmission schemes have a more than 1.5dB gain over back-
+                                      γ
+    =    argmin max log I +              At,k Sk                                  off methods. The power back-off method reduces the transmit
+        λk,i ≥0,μk ≥0 S0             σ2                                          power until the worst case SAR-reading of the portable device
+                                  
+                                  Gk                                              meets the EM exposure regulation limit. The worst-case SAR
+        − μk (tr(Sk ) − Pk ) −           λk,i (tr(Rk,i Sk ) − Q k,i ).   (66)     with matrix R is given by
+                                   i=1
+                                                                                                      SAR (worst) =       max        tr(RS).            (68)
+                                                                                                                         tr(S)≤ P
+                                                                                                                       rank(S)≤m
+Algorithm 4 Iterative Algorithm With Local Information                            To achieve worst-case compliance, the transmit power P is
+ Initialize λk,i ≥ 0 and μk ≥ 0.                                                  reduced to α P where α is a power back-off factor chosen as
+ User k maximizes ergodic capacity based on Ct,i , {Rk,i }.                                               
+                                                  (0)     (0)                                                     Q
+ Denote the optimal% dual variables at user& k: {λk,i }, μk .                                     α = min 1,              ,              (69)
+                             
+                             Gk                                                                               SAR (worst)
+                      (0)         (0)
+ All user upload μk Pk +         λk,i Q k,i to BS                                 and the resulting transmit covariance matrix is
+                                     i=1
+  Set  = 1.                                                                                                                         1
+  repeat                                                                                       Spb−off = argmax log I +                 HSH H .         (70)
+                                                                                                              tr(S)≤α P              σ2
+    BS broadcast the% universal                &                                                             rank(S)≤m
+     ()
+               K
+                       (−1)      
+                                  Gk
+                                      (−1)
+    γ =N−            μk      Pk +    λk,i Q k,i .                                    The adaptive back-off, on the other hand, first optimize the
+                    k=1             i=1                                           transmit covariance matrix with only the power constraint
+                     ()          ()
+    User k updates
+           %       {λk,i } and μk &by (66)
+                                                                                                                                1
+              ()      Gk
+                             ()                                                                  S0 = argmax log I +              HSH H .              (71)
+    Upload μk Pk +          λk,i Q k,i                                                                      tr(S)≤ P            σ2
+                       i=1                                                                                rank(S)≤m
+    =  + 1.
+                                                                                  The resulting matrix is then checked against the SAR require-
+  until γ () converges
+                                                                                  ment. If the covariance does not satisfy the limitation, a power
+                                                                                  reduction factor is used as
+                                                                                                               
+B. Each Transmitter Knows Only the Mean                                                                               Q
+                                                                                                    αS0 = min 1,              ,                (72)
+Information of All Users’ Channels                                                                                 tr(RS0 )
+   With minor modifications, Algorithm 4 can also be applied                      and the transmit covariance is then Sab−off = αS0 S0 .
+on MU-MIMO uplink transmission with only channel mean                                Figures 2-4 show the results for various statistical CSIT
+knowledge at the transmitters. Although the aggregated                            scenarios. In Figure 2, we simulate a SU-MIMO (K = 1)
+H̄ = [H̄1 , H̄2 , . . . , H̄ K ] is still required to be shared among             system with two transmit antennas at each device (M = 2)
+all users, every portable devices only needs to know its own                      using the upper-left 2 × 2 submatrix of the above SAR
+SAR matrices.                                                                     matrix. The transmitter only has knowledge of the SNR, and
+                                                                                  we assume that the channel model in (6) is simplified to
+                    VII. S IMULATION R ESULTS                                     Hk = Wk , where all entries of Wk are zero-mean unit-variance
+   In this section, we first present Monte-Carlo simula-                          complex Gaussian random variables. The power and SAR
+tion results for MU-MIMO uplink transmission with prefect                         limitation is set to be P = 0.2W and Q = 1.0W/kg, and
+
+            Authorized licensed use limited to: University of Gent. Downloaded on April 21,2026 at 14:10:44 UTC from IEEE Xplore. Restrictions apply.
+7386                                                             IEEE TRANSACTIONS ON WIRELESS COMMUNICATIONS, VOL. 16, NO. 11, NOVEMBER 2017
+
+
+
+
+Fig. 1. Rate vs. SNR for MU-MIMO with perfect instantaneous CSIT.               Fig. 3. Sum-rate vs. SNR when the transmitters only have knowledge of
+Two-user MIMO uplink with two and four antennas at portable devices.            channels’ spatial covariance matrices. Two-user MIMO with M = 2, N = 8,
+P = 0.2W and Q = 1.0W/kg. Optimal transmission has a 1.5dB gain over            P = 0.2W, and Q = 1.0W/kg. The proposed SAR-aware method has a more
+back-off methods.                                                               than 3dB improvement over the back-off method. The iterative algorithm with
+                                                                                local information converges to the optimal solution.
+
+
+
+
+                                                                                Fig. 4. Sum-rate vs. SNR when the transmitters only have knowledge of
+Fig. 2. Rate vs. SNR assuming only SNR knowledge at the transmitter.            channels’ mean matrices. Two-user MIMO with M = 2, N = 8, P = 0.2W,
+A SU-MIMO with M = 2, N = 8, P = 0.2W, and Q = 1.0W/kg.                         and Q = 1.0W/kg. The proposed SAR-aware method gives about 3dB
+The proposed SAR-aware method provide a 3dB improvement over the                improvement over the back-off method with medium SNR.
+conventional isotropic transmission with power back-off.
+
+                                                                                matrices in (8) all have the form
+                                                                                                             1       2
+                                                                                                                1 τk
+we allow full rank transmission (i.e., m = M = 2). The red                                            At,k =                                          (73)
+                                                                                                               τk 1
+curve is the simulation result for the SAR-aware transmission
+using the proposed optimization algorithms based on asymp-                      with τ1 = 0.5 and τ2 = 0.8. The SAR-aware method (red solid
+totic approximations. The asymptotic approximation results                      curve) using the asymptotic approximation and the proposed
+match perfectly with the Monte-Carlo simulation results (black                  Algorithm 3 has 3 − 4.5dB improvement over the power
+markers). The asymptotic approximation is thus tight even for                   back-off method (black solid curve). The simulation results
+a 2×8 MIMO system. The blue curve is the result for isotropic                   for the asymptotic approximation match well with the Monte-
+transmission with the covariance matrix set as a scaled identity                Carlo simulation results. The black dashed curve is the achiev-
+matrix, which is optimal if there is only a power constraint.                   able MIMO-MAC sum rate with only a power constriant, and
+The proposed SAR-aware method provides a roughly 3.0dB                          the green dashed curve is the ergodic maximum achievable
+improvement over conventional isotropic transmission.                           sum rate using Algorithm 4 with only local CSIT and SAR
+   In Figure 3, we plot the ergodic maximum achievable sum-                     matrices. It is clear that the proposed algorithm converges
+rate of a two-user MIMO system (i.e., K = 2) assuming each                      correctly, and it matches with optimal solution perfectly.
+transmitter knows only the spatial covariance matrices of all                     In Figure 4, we show results for a two-user MIMO system
+users’ channels. We assume that the channel spatial covariance                  assuming that each transmitter knows only the mean informa-
+
+          Authorized licensed use limited to: University of Gent. Downloaded on April 21,2026 at 14:10:44 UTC from IEEE Xplore. Restrictions apply.
+YING et al.: SUM-RATE ANALYSIS FOR MU-MIMO SYSTEMS WITH USER EXPOSURE CONSTRAINTS                                                                           7387
+
+
+
+tion of all users’ channel. We introduce the Rician factor κk                      [7] B. M. Hochwald and D. J. Love, “Minimizing exposure to electro-
+to better describe the channel model                                                   magnetic radiation in portable devices,” in Proc. Inf. Theory Appl.
+                    3             4                                                    Workshop (ITA), San Diego, CA, USA, 2012, pp. 255–261.
+                        κk            1                                            [8] B. M. Hochwald, D. J. Love, S. Yan, P. Fay, and J.-M. Jin, “Incorporating
+             Hk =            Bk +          Wk ,          (74)                          specific absorption rate constraints into wireless signal design,” IEEE
+                      1 + κk        1 + κk                                             Commun. Mag., vol. 52, no. 9, pp. 126–133, Sep. 2014.
+                                                                                   [9] D. Ying, D. J. Love, and B. M. Hochwald, “Beamformer optimization
+where matrix Bk is assumed to have the form ς arT at , where                           with a constraint on user electromagnetic radiation exposure,” in Proc.
+ς is just a normalization factor to ensure the LOS component                           47th Annu. Conf. Inf. Sci. Syst. (CISS), Baltimore, MD, USA, 2013,
+                                                                                       pp. 1–6.
+satisfies                                                                         [10] D. Ying, D. J. Love, and B. M. Hochwald, “Transmit covariance opti-
+                                1                                                      mization with a constraint on user electromagnetic radiation exposure,”
+                                    tr(Bk BkH ) = 1.                     (75)          in Proc. Global Commun. Conf. (GLOBECOM), Atlanta, GA, USA,
+                             N Mk                                                      Dec. 2013, pp. 4104–4109.
+We assume the array manifold vectors are formulated as at =                       [11] D. Ying, D. J. Love, and B. M. Hochwald, “Closed-loop precoding
+[1, e j θt , . . . , e j (M−1)θt ] and ar = [1, e j θr , . . . , e j (N−1)θr ].        and capacity analysis for multiple antenna wireless systems with user
+                                                                                       radiation exposure constraints,” IEEE Trans. Wireless Commun., vol. 14,
+In this simulation, we use θt,1 = π/6, θt,2 = π/8, θr,1 = π/5,                         no. 10, pp. 5859–5870, Oct. 2015.
+and θr,2 = π/3. The Rician factor is set to be κ1 = 1 and                         [12] M. A. Mangoud, R. A. Abd-Alhameed, N. J. McEwan, P. S. Excell, and
+κ2 = 0.1. The asymptotic approximation results (red curve)                             E. A. Abdulmula, “SAR reduction for handset with two-element phased
+                                                                                       array antenna computed using hybrid MoM/FDTD technique,” Electron.
+again fit with the Monte-Carlo results (black marker). More-                           Lett., vol. 35, no. 20, pp. 1693–1694, Sep. 1999.
+over, the proposed SAR-aware method (red curve) gives                             [13] R. Gomez-Villanueva et al., “State of the art methods for low
+approximately a 3dB improvement over back-off method                                   SAR antenna implementation,” in Proc. 4th Eur. Conf. Antennas
+                                                                                       Propag. (EuCAP), Barcelona, Spain, 2010, pp. 1–4.
+(blue curve) at the medium SNR area. The back-off method                          [14] D. Zhang and K. M. Wasserman, “Transmission schemes for time-
+finds the optimal transmit covariance matrices only subject to                         varying wireless channels with partial state observations,” in Proc.
+the power constraints first (green dashed curve), and then it                          INFOCOM, 2002, pp. 467–476.
+                                                                                  [15] S. Vishwanath, N. Jindal, and A. Goldsmith, “Duality, achievable rates,
+reduces the transmit power to meet the SAR constraints.                                and sum-rate capacity of Gaussian MIMO broadcast channels,” IEEE
+                                                                                       Trans. Inf. Theory, vol. 49, no. 10, pp. 2658–2668, Oct. 2003.
+                          VIII. C ONCLUSION                                       [16] W. Yu, W. Rhee, S. Boyd, and J. M. Cioffi, “Iterative water-filling for
+                                                                                       Gaussian vector multiple-access channels,” IEEE Trans. Inf. Theory,
+   In this paper, we found the maximum achievable sum-rate                             vol. 50, no. 1, pp. 145–152, Jan. 2004.
+of SAR-constrained MU-MIMO uplink channels with per-                              [17] L. Sun, P. Li, M. R. McKay, and R. D. Murch, “Capacity of MIMO
+                                                                                       systems with mutual coupling: Transmitter optimization with dual power
+fect or statistical CSIT. The additional SAR constraints divert                        constraints,” IEEE Trans. Signal Process., vol. 60, no. 2, pp. 848–861,
+the eigenvectors of the optimal transmit signal covariance                             Feb. 2012.
+matrices. The modified waterfilling algorithm also biases the                     [18] L. Zhang, R. Zhang, Y.-C. Liang, Y. Xin, and H. V. Poor, “On Gaussian
+                                                                                       MIMO BC-MAC duality with multiple transmit covariance constraints,”
+allocation of power to the eigenvector directions that have                            IEEE Trans. Inf. Theory, vol. 58, no. 4, pp. 2064–2078, Apr. 2012.
+a lower heating effect on the users. We applied asymptotic                        [19] R. Zhang and C. K. Ho, “MIMO broadcasting for simultaneous wire-
+approximation results to find the optimal covariance matrix                            less information and power transfer,” IEEE Trans. Wireless Commun.,
+with statistical CSIT. Simplified iteration algorithms were                            vol. 12, no. 5, pp. 1989–2001, May 2013.
+                                                                                  [20] D. J. Love, R. W. Heath, W. Santipach, and M. L. Honig, “What is the
+proposed when there is no receive spatial covariance. The                              value of limited feedback for MIMO channels?” IEEE Commun. Mag.,
+computational complexity is greatly reduced when users only                            vol. 42, no. 10, pp. 54–59, Oct. 2004.
+know their own channel’s spatial covariance information.                          [21] D. J. Love, R. W. Heath, V. K. N. Lau, D. Gesbert, B. D. Rao, and
+                                                                                       M. Andrews, “An overview of limited feedback in wireless com-
+Moreover, an iterative algorithm for devices with only local                           munication systems,” IEEE J. Sel. Areas Commun., vol. 26, no. 8,
+SAR information is also proposed. Simulation results demon-                            pp. 1341–1365, Oct. 2008.
+strate that the SAR-aware transmission provides improvement                       [22] A. Soysal and S. Ulukus, “Optimality of beamforming in fading MIMO
+                                                                                       multiple access channels,” IEEE Trans. Commun., vol. 57, no. 4,
+over the conventional back-off method.                                                 pp. 1171–1183, Apr. 2009.
+                                                                                  [23] A. Soysal and S. Ulukus, “Optimum power allocation for single-user
+                                                                                       MIMO and multi-user MIMO-MAC with partial CSI,” IEEE J. Sel. Areas
+                              R EFERENCES                                              Commun., vol. 25, no. 7, pp. 1402–1412, Sep. 2007.
+ [1] O. P. Gandhi, “State of the knowledge for electromagnetic absorbed           [24] İ. E. Telatar, “Capacity of multi-antenna Gaussian channels,” Eur. Trans.
+     dose in man and animals,” Proc. IEEE, vol. 68, no. 1, pp. 24–32,                  Telecommun., vol. 10, no. 6, pp. 585–595, 1999.
+     Jan. 1980.                                                                   [25] E. Visotsky and U. Madhow, “Space-time transmit precoding with
+ [2] P. J. Riu, K. R. Foster, D. W. Blick, and E. R. Adair, “A thermal                 imperfect feedback,” IEEE Trans. Inf. Theory, vol. 47, no. 6,
+     model for human thresholds of microwave-evoked warmth sensations,”                pp. 2632–2639, Sep. 2001.
+     Bioelectromagnetics, vol. 18, no. 8, pp. 578–583, 1997.                      [26] S. A. Jafar, S. Vishwanath, and A. Goldsmith, “Channel capacity and
+ [3] N. D. Volkow et al., “Effects of cell phone radiofrequency signal                 beamforming for multiple transmit and receive antennas with covariance
+     exposure on brain glucose metabolism,” J. Amer. Med. Assoc., vol. 305,            feedback,” in Proc. IEEE Int. Conf. Commun. (ICC), vol. 7. Jun. 2001,
+     no. 8, pp. 808–813, 2011.                                                         pp. 2266–2270.
+ [4] J. L. Ulcek and R. F. Cleveland, Jr., “Evaluating compliance with FCC        [27] S. A. Jafar and A. Goldsmith, “Transmitter optimization and optimality
+     guidelines for human exposure to radiofrequency electromagnetic fields,”          of beamforming for multiple antenna systems,” IEEE Trans. Wireless
+     Federal Commun. Commiss., Washington, DC, USA, Tech. Rep. 01-01,                  Commun., vol. 3, no. 4, pp. 1165–1175, Jul. 2004.
+     Jun. 2001.                                                                   [28] J. Li and Q. T. Zhang, “Transmitter optimization for correlated MISO
+ [5] C. Qiang, Y. Komukai, and K. Sawaya, “SAR investigation of array                  fading channels with generic mean and covariance feedback,” IEEE
+     antennas for mobile handsets,” IEICE Trans. Commun., vol. 90, no. 6,              Trans. Wireless Commun., vol. 7, no. 9, pp. 3312–3317, Sep. 2008.
+     pp. 1354–1356, 2007.                                                         [29] A. M. Tulino, A. Lozano, and S. Verdu, “Power allocation in
+ [6] K.-C. Chim, K. C. L. Chan, and R. D. Murch, “Investigating the impact             multiantenna communication with statistical channel information at
+     of smart antennas on SAR,” IEEE Trans. Antennas Propag., vol. 52,                 the transmitter,” in Proc. Int. Symp. Pers., Indoor Mobile Radio
+     no. 5, pp. 1370–1374, May 2004.                                                   Commun. (PIMRC), vol. 3. Sep. 2004, pp. 2003–2007.
+
+            Authorized licensed use limited to: University of Gent. Downloaded on April 21,2026 at 14:10:44 UTC from IEEE Xplore. Restrictions apply.
+7388                                                               IEEE TRANSACTIONS ON WIRELESS COMMUNICATIONS, VOL. 16, NO. 11, NOVEMBER 2017
+
+
+
+[30] A. M. Tulino, A. Lozano, and S. Verdú, “Capacity-achieving input                                      David J. Love (S’98–M’05–SM’09–F’15) received
+     covariance for single-user multi-antenna channels,” IEEE Trans. Wireless                              the B.S. (Hons.), M.S.E., and Ph.D. degrees from
+     Commun., vol. 5, no. 3, pp. 662–671, Mar. 2006.                                                       the University of Texas at Austin in 2000, 2002, and
+[31] A. Soysal and S. Ulukus, “Optimum power allocation in fading MIMO                                     2004, respectively, and all in electrical engineering.
+     multiple access channels with partial CSI at the transmitters,” in Proc.                              Since 2004, he has been with the School of Electri-
+     Asilomar Conf. Signals, Syst. Comput. (ACSSC), 2006, pp. 1526–1530.                                   cal and Computer Engineering, Purdue University,
+[32] M. Vu and A. Paulraj, “Capacity optimization for Rician correlated                                    where he is currently a Professor and leads the Col-
+     MIMO wireless channels,” in Proc. Asilomar Conf. Signals, Syst.                                       lege of Engineering Preeminent Team on Efficient
+     Comput., Nov. 2005, pp. 133–138.                                                                      Spectrum Usage. His industry experience includes
+[33] A. M. Tulino and S. Verdú, Random Matrix Theory and Wireless                                          work with Texas Instruments. He has been very
+     Communications, vol. 1. Breda, The Netherlands: Now Publishers, 2004.                                 involved in commercialization of his research with
+[34] J. Dumont, W. Hachem, S. Lasaulce, P. Loubaton, and J. Najim,                over 30 U.S. patent filings, 27 of which have issued. His research interests
+     “On the capacity achieving covariance matrix for Rician MIMO chan-           are in the design and analysis of communication systems and MIMO array
+     nels: An asymptotic approach,” IEEE Trans. Inf. Theory, vol. 56, no. 3,      processing. He was recognized as a Thomson Reuters highly cited researcher
+     pp. 1048–1069, Mar. 2010.                                                    in 2014 and 2015. Along with his co-authors, he has received best paper
+[35] R. Couillet, M. Debbah, and J. W. Silverstein, “A deterministic equiv-       awards from the IEEE Communications Society (2016 IEEE Communications
+     alent for the analysis of correlated MIMO multiple access channels,”         Society Stephen O. Rice Prize), the IEEE Signal Processing Society (2015
+     IEEE Trans. Inf. Theory, vol. 57, no. 6, pp. 3493–3514, Jun. 2011.           IEEE Signal Processing Society Best Paper Award), and the IEEE Vehicular
+[36] E. Riegler and G. Taricco, “Asymptotic ergodic capacity region and           Technology Society (2009 IEEE Transactions on Vehicular Technology Jack
+     rate optimization of a multiple access OFDM MIMO channel with                Neubauer Memorial Award). He has served as an Editor of the IEEE
+     separately-correlated Rician fading,” in Proc. Global Telecommun. Conf.      T RANSACTIONS ON C OMMUNICATIONS, an Associate Editor of the IEEE
+     (GLOBECOM), 2008, pp. 1–5.                                                   T RANSACTIONS ON S IGNAL P ROCESSING, and a Guest Editor for special
+[37] C.-K. Wen, S. Jin, and K.-K. Wong, “On the sum-rate of multiuser             issues of the IEEE J OURNAL ON S ELECTED A REAS IN C OMMUNICATIONS
+     MIMO uplink channels with jointly-correlated Rician fading,” IEEE            and the EURASIP Journal on Wireless Communications and Networking.
+     Trans. Commun., vol. 59, no. 10, pp. 2883–2895, Oct. 2011.
+[38] Evolved Universal Terrestrial Radio Access (E-UTRA): Physical Chan-                                     Bertrand M. Hochwald (F’08) was born in New
+     nels and Modulation (Release 14), document 3GPP TS 36.211,                                              York, NY, USA. He received the bachelor’s degree
+     Mar. 2017.                                                                                              from Swarthmore College, Swarthmore, PA, USA,
+[39] Evolved Universal Terrestrial Radio Access (E-UTRA): Multiplex-                                         the M.S. degree in electrical engineering from Duke
+     ing and Channel Coding (Release 14), document 3GPP TS 36.212,                                           University, Durham, NC, USA, the M.A. degree in
+     Mar. 2017.                                                                                              statistics, and the Ph.D. degree in electrical engineer-
+[40] IEEE Standard for Air Interface for Broadband Wireless Access Systems,                                  ing from Yale University, New Haven, CT, USA.
+     IEEE Standard 802.16-2012, Jun. 2012.                                                                   From 1986 to 1989, he was with the Department
+[41] C. S. Park, Y.-P. E. Wang, G. Jongren, and D. Hammarwall, “Evolution                                    of Defense, Fort Meade, MD, USA. He was a
+     of uplink MIMO for LTE-advanced,” IEEE Commun. Mag., vol. 49,                                           Research Associate and Visiting Assistant Professor
+     no. 2, pp. 112–121, Feb. 2011.                                                                          with the Coordinated Science Laboratory, University
+[42] A. W. Marshall, I. Olkin, and B. C. Arnold, Inequalities: Theory of          of Illinois, Urbana–Champaign. In 1996, he joined the Mathematics of Com-
+     Majorization and its Applications. New York, NY, USA: Academic,              munications Research Department, Bell Laboratories, Lucent Technologies,
+     1979.                                                                        Murray Hill, NJ, USA, where he was a Distinguished Member of the Technical
+                                                                                  Staff. In 2005, he joined as the Chief Scientist with Beceem Communications,
+                                                                                  Santa Clara, CA, USA, where he became the Vice-President with the Systems
+                                                                                  Engineering in 2009. He served concurrently as a Consulting Professor
+                                                                                  in electrical engineering with Stanford University, Palo Alto, CA, USA.
+                         Dawei Ying received the B.S. degree from Shanghai        In 2011, he joined the faculty of the University of Notre Dame as Freimann
+                         Jiao Tong University, Shanghai, China, in 2010,          Professor of electrical engineering. He received several achievement awards
+                         and the master’s and Ph.D. degrees in electrical         with the Department of Defense and the Prize Teaching Fellowship at Yale
+                         and computer engineering from Purdue University,         University. He has served as an editor for the several IEEE journals and given
+                         West Lafayette, IN, USA, in 2012 and 2015. In 2013       plenary and invited talks on various aspects of signal processing, communi-
+                         and 2014, he was an intern with Nokia Networks,          cations, and radiofrequency systems. He has co-invented several well-known
+                         Arlington Heights, IL, USA. In 2015, he was with         multiple-antenna techniques, including differential methods, linear disper-
+                         the Bell Labs, Murray Hill, NJ, USA, as an intern.       sion codes, and multiuser vector perturbation methods. He has 47 patents.
+                         In 2016, he joined Intel Corporation, where he is        He received the 2006 Stephen O. Rice Prize for the best paper published in
+                         currently a System Engineer involved in next gen-        the IEEE T RANSACTIONS ON C OMMUNICATIONS . He co-authored a paper
+                         eration cellular standards. His research interests are   that received the 2016 Best Paper Award by a young author in the IEEE
+in multiple antenna systems with user exposure constraints, massive MIMO,         T RANSACTIONS ON C IRCUITS AND S YSTEMS . He was listed as a Thomson
+and next generation wireless standards.                                           Reuters Most Influential Scientific Mind in 2014 and 2015.
+
+
+
+
+            Authorized licensed use limited to: University of Gent. Downloaded on April 21,2026 at 14:10:44 UTC from IEEE Xplore. Restrictions apply.
+

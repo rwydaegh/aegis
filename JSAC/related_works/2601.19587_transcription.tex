@@ -1,0 +1,721 @@
+\documentclass[journal]{IEEEtran}
+
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{bm}
+\usepackage{bbm}
+\usepackage{graphicx}
+\usepackage{cite}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{booktabs}
+\usepackage{array}
+
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
+
+\begin{document}
+
+\title{Exposure-Aware Beamforming for mmWave Systems:\\From EM Theory to Thermal Compliance}
+
+\author{Zihan Zhou, Ang Chen, Yunfei Chen,~\IEEEmembership{Fellow,~IEEE,}
+Weidong Wang, and Li Chen,~\IEEEmembership{Senior Member,~IEEE}}
+
+\maketitle
+
+\begin{abstract}
+Electromagnetic (EM) exposure compliance has long been recognized as a crucial aspect of communication terminal designs. However, accurately assessing the impact of EM exposure for proper design strategies remains challenging. In this paper, we develop a long-term thermal EM exposure constraint model and propose a novel adaptive exposure-aware beamforming design for an mmWave uplink system. Specifically, we first establish an equivalent channel model based on Maxwell's radiation equations, which accurately captures the EM physical effects. Then, we derive a closed-form thermal impulse response model from the Pennes Bioheat Transfer Equation (BHTE), characterizing the thermal inertia of tissue. Inspired by this model, we formulate a beamforming optimization problem that translates rigid instantaneous exposure limits into a flexible long-term thermal budget constraint. Furthermore, we develop a beamforming algorithm based on Lyapunov optimization theory, obtaining a closed-form near-optimal solution. Simulation results demonstrate that the proposed algorithm effectively stabilizes tissue temperature near a predefined safety threshold and significantly outperforms the conventional scheme with instantaneous exposure constraints.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Millimeter-wave communication, electromagnetic exposure, bioheat equation, thermal safety, beamforming, Lyapunov optimization.
+\end{IEEEkeywords}
+
+
+%=============================================================
+\section{Introduction}
+%=============================================================
+
+With the emergence of applications such as virtual reality, haptic interfaces, and digital twins, communication systems are demanding higher uplink transmission rates~\cite{ref1}. To meet these requirements, key technologies such as the use of higher frequency bands, advanced multi-antenna architectures, and beamforming schemes are expected to be widely deployed~\cite{ref2}. However, the adoption of these technologies raises concerns over increasing human exposure to electromagnetic (EM) radiation and associated thermal hazards~\cite{ref3}.
+
+To ensure regulatory compliance in EM exposure assessment, two key dosimetric metrics are commonly used. One metric is the specific absorption rate (SAR), expressed in watts per kilogram (W/kg), which quantifies the rate at which energy is absorbed per unit mass of tissue. The Federal Communications Commission (FCC) enforces a peak SAR limitation of 1.6~W/kg for partial body exposure including the head~\cite{ref5}, and the International Commission on Non-Ionizing Radiation Protection (ICNIRP) adopts the whole-body-averaged SAR to 0.4 and 0.08~W/kg for the occupational and public environments~\cite{ref6}, respectively. The other metric is power density (PD), measured in watts per square meter (W/m$^2$), which describes the EM power transmitted through a unit area. At high frequencies, EM energy is absorbed superficially within the skin, making incident power density a suitable measure for evaluating surface heating~\cite{ref7}. For instance, IEEE Std C95.1-2019 restricts the incident PD to 20~W/m$^2$ averaged over a 4~cm$^2$ area to prevent excessive tissue heating on the body surface~\cite{ref8}. In light of these regulatory limits, it is imperative to integrate EM exposure constraints into the design of millimeter-wave (mmWave) communication systems.
+
+The modeling of signal-level EM exposure constraints has been widely studied. The early work in~\cite{ref9} considered an uplink scenario with a two-antenna array and modeled the SAR as a linear combination of transmit power and a cosine term of the inter-antenna phase difference. Subsequent studies generalized this approach by introducing an exposure matrix that encapsulates antenna coupling and spatial directional characteristics~\cite{ref10}--\cite{ref12}. Although this mathematical formulation naturally embeds exposure limits into communication system optimization, obtaining the exposure matrix typically relies on extensive full-wave simulation or measured data, resulting in high computational overhead. To address this issue, authors in~\cite{ref13} proposed an efficient EM exposure modeling approach. By incorporating near-field effects and mutual coupling, this method enabled high-precision exposure prediction, providing a concise analytical tool for exposure-aware system design.
+
+Informed by these models, substantial research has been dedicated to maximizing the achievable rate under exposure constraints. For example, a conventional worst-case power back-off scheme was proposed to ensure compliance by scaling down transmit power with a fixed, peak-SAR-derived proportion~\cite{ref14}. The authors in~\cite{ref15} formulated the exposure constraint as a quadratic function of the transmit signal and incorporated it directly into the optimization problem. This allowed the joint design of beamformers under simultaneous transmit power and exposure limits, enabling an adaptive trade-off between regulatory compliance and communication performance. An EM manifold-based exposure modeling was introduced in~\cite{ref16}, which systematically integrated EM physical principles into the exposure constraint boundary, thereby achieving higher communication performance. Further, the authors in~\cite{ref17} extended this framework to a continuous-time setting and proposed an optimization strategy that dynamically allocates the SAR budget over multiple coherence blocks. By employing dynamic programming and asymptotic water-filling algorithms, this method satisfied time-averaged SAR regulations while significantly improving the achievable system rate.
+
+Most of the existing works focus only on instantaneous SAR and PD constraints. However, regulatory standards impose long-term exposure constraints at high frequencies. These constraints are specifically designed to prevent thermal hazards arising from prolonged EM exposure~\cite{ref18}. For instance, the ICNIRP states that the increase in core body temperature due to EM exposure should be limited to 1$^\circ$C over the exposure period. ICNIRP also notes that current instantaneous exposure limits are highly conservative relative to this temperature-based criterion. This is because the human body is an efficient thermoregulatory system, which mitigates significant variations in thermal load induced by EM exposure~\cite{ref20}. Therefore, establishing a precise relationship between long-term EM exposure and the resulting thermal effects is of significant importance. The key challenge lies in the fact that predicting tissue thermal effects is highly complex, as it depends on both exposure parameters and intrinsic tissue characteristics, e.g., blood perfusion rate.
+
+To fill this gap, in this paper we develop a long-term thermal EM exposure constraint model for an mmWave uplink system and propose a corresponding beamforming design. The exposure model is first proposed using the fundamental Bioheat Transfer Equation (BHTE) to characterize the thermal response. The BHTE has been extensively studied in biothermal research, which provides a physically consistent modeling framework by coupling key mechanisms such as EM energy deposition, tissue heat conduction, and perfusion-mediated cooling~\cite{ref21}. This framework enables us to translate the conventional instantaneous exposure constraint, defined as a physiological safety temperature threshold during a specified time period. Then, leveraging this novel model, we formulate an adaptive exposure-aware beamforming problem and demonstrate its effectiveness.
+
+The main contributions of this paper are summarized as follows:
+\begin{itemize}
+    \item \textbf{Long-term EM Exposure Constraint Modeling:} We develop a high-fidelity long-term EM exposure constraint for thermal exposure assessment in mmWave communication systems. We first propose the fundamental bioheat transfer model that incorporates mutual coupling, polarization, and spherical wavefront effects. This model enables the explicit characterization of both near-field exposure metrics and the equivalent columnar channel. Second, we establish a dynamic thermal assessment framework based on the BHTE, yielding a closed-form thermal impulse response that captures the thermal inertia of biological tissue. Collectively, this integrated assessment framework translates conventional instantaneous exposure limits into a flexible long-term thermal budget constraint.
+
+    \item \textbf{Adaptive Exposure-Aware Beamforming Design:} Building upon the new model, we formulate an adaptive beamforming optimization problem that aims to maximize the long-term average received signal-to-noise ratio (SNR) under the thermal exposure constraint. To solve this problem efficiently, we propose a Lyapunov optimization-based algorithmic framework. In this framework, the long-term temperature constraint is transformed into a virtual queue state information, allowing it to handle a sequence of per-time-slot subproblems with closed-form solutions. A tunable parameter is also incorporated to explicitly manage the trade-off between communication performance and exposure compliance. Simulation results demonstrate that our proposed scheme outperforms conventional slot-optimal baselines while guaranteeing thermal safety.
+\end{itemize}
+
+The rest of this paper is organized as follows. Section~\ref{sec:system} describes the system model, proposes an EM radiation model, and derives a physically consistent channel model. Section~\ref{sec:thermal} further develops an analytical framework for thermal exposure and formulates an exposure-aware beamforming problem. The beamforming optimization is proposed in Section~\ref{sec:design}. Numerical results are presented in Section~\ref{sec:results} to validate the effectiveness of the proposed scheme. Finally, Section~\ref{sec:conclusion} concludes the paper.
+
+\textit{Notations:} In this paper, vectors and matrices are denoted by lowercase and uppercase boldface letters, respectively. We use superscripts $(\cdot)^T$, $(\cdot)^*$, and $(\cdot)^H$ to denote the transpose, inverse, and Hermitian transpose, respectively. $\mathrm{diag}(\cdot)$ forms a diagonal matrix from a vector, and $\mathrm{Re}\{\cdot\}$ extracts the real part of its argument. The symbol $\|\cdot\|$ denotes the $\ell_2$-norm, and $|\cdot|$ represents the modulus operator. $\odot$ stands for the Hadamard (element-wise) product. $\mathbb{C}^{M \times N}$ denotes the set of all $M \times N$ complex matrices, and $\mathbb{E}(\cdot)$ denotes the mathematical expectation. $\mathbf{I}_N$ denotes the $N \times N$ identity matrix, $\mathbf{0}$ is a zero matrix, and $N$, $\mathrm{erf}(\cdot)$ denotes the error function. The operator $\nabla \times$ is the curl operator in vector calculus. The imaginary unit is denoted by $j = \sqrt{-1}$, and $\mathcal{CN}(\mu, \sigma^2)$ denotes the circularly symmetric complex Gaussian distribution with mean $\mu$ and variance $\sigma^2$.
+
+
+%=============================================================
+\section{System Model}
+\label{sec:system}
+%=============================================================
+
+Consider an uplink mmWave communication system where a UE transmits under the EM exposure constraint. To capture the impact of antenna radiation on both communications and EM exposure, we introduce a geometric model of the system and then derive an EM radiation model that incorporates mutual coupling, polarization, and spherical wavefront. Using this radiation model, a physically consistent channel model is formulated.
+
+\subsection{Geometric Model}
+
+As illustrated in Fig.~1, the base station (BS) is equipped with a uniform linear array (ULA) of $N_r$ receive antennas, while the UE employs a ULA of $N_t$ transmit antennas. The antenna spacings at the BS and UE are denoted by $d_r$ and $d_t$, respectively. We establish a global Cartesian coordinate system $O$-$xyz$ with unit basis vectors $\hat{x}$, $\hat{y}$, and $\hat{z}$. Without loss of generality, the BS array is assumed to be positioned at the height $h_s$ above the origin $O$, with its axis aligned along the $z$-axis. Thus, the position of the BS array center is given by $\mathbf{p}_b = (0, 0, h_s)$ and the position of the $r$-th receive antenna is given by:
+\begin{equation}
+    \mathbf{p}_{b,r} = \mathbf{p}_b + \frac{d_r}{2}(N_r + 1 - 2r)\hat{z}, \quad r = 1, \ldots, N_r.
+\end{equation}
+The UE array is assumed to be a parallel array (e.g., as in Fig.~2), with its center located at $\mathbf{p}_u = (p_{u,x}, 0, h_u)$ and the position of the $t$-th transmit antenna given by:
+\begin{equation}
+    \mathbf{p}_{u,t} = \mathbf{p}_u + \frac{d_t}{2}(N_t + 1 - 2t)\hat{n}_u, \quad t = 1, \ldots, N_t,
+\end{equation}
+where $\hat{n}_u = (\sin\alpha_t\sin\beta_t,\, \cos\alpha_t,\, \sin\alpha_t\cos\beta_t)$ is the unit orientation vector of the UE array, and $\alpha_t$ and $\beta_t$ are the tilt and polar angles, respectively. A local coordinate system $O'$-$x'y'z'$ is introduced, with its origin $O'$ fixed at the center of the UE array. The position of the $m$-th UE sampling point is given by:
+\begin{equation}
+    \mathbf{p}_m = \mathbf{p}_u + \mathbf{r}_m,
+\end{equation}
+where $\hat{k} \in \{1, \ldots, M\}$. The relative spatial geometry between the UE and BS array centers can be expressed as:
+\begin{equation}
+    \mathbf{p}_u - \mathbf{p}_b = (\hat{x}\, d_0 \cos\phi_0 + \hat{z}\, d_0 \sin\phi_0),
+\end{equation}
+where $d_0 = \|\mathbf{p}_u - \mathbf{p}_b\|$ is the reference distance and $\phi_0$ is the elevation angle. The distance between the $t$-th transmit and $r$-th receive antenna is:
+\begin{equation}
+    d_{r,t} = \|\mathbf{p}_{b,r} - \mathbf{p}_{u,t}\|
+    = \sqrt{d_0^2 + \delta_r^2 + \delta_t^2 - 2\delta_r d_0 \sin\theta_0 - 2\delta_t d_0 \cos\theta_0 + 2\delta_r\delta_t \cos\theta_0},
+\end{equation}
+where $\delta_r = \frac{d_r}{2}(N_r + 1 - 2r)$ and $\delta_t = \frac{d_t}{2}(N_t + 1 - 2t)$ are the offsets of the $r$-th receive and $t$-th transmit antennas from their respective array centers, and $\theta_0$ is the angle between the two array axes.
+
+\subsection{Radiation Model}
+
+For proper antenna analysis, radiation originates from a feed voltage that excites a transmit antenna. As shown in Fig.~2(a), consider a linearly polarized dipole antenna at position $\mathbf{r}_0$ and oriented along the orientation unit vector $\hat{n}_0$. Using the thin-wire approximation and assuming a sinusoidal current distribution, the current along the dipole axis is:
+\begin{equation}
+    I(l) = I_0 \frac{\sin\bigl(k(h - |l|)\bigr)}{\sin(kh)}, \quad l \in [-h, h],
+\end{equation}
+where $h$ is the half-length of the dipole, $k = 2\pi/\lambda$ is the wavenumber, and $l$ is the local coordinate along the dipole axis. For the time-harmonic case $e^{j\omega t}$ (omitted hereafter), the volume current density is:
+\begin{equation}
+    \mathbf{J}(\mathbf{r}') = I(l')\,\delta(x')\,\delta(y')\,\hat{n}_0,
+\end{equation}
+where $(x', y', l')$ are coordinates in the local system of the dipole.
+
+\begin{lemma}[Single-Antenna Radiation Model]
+Consider a single-antenna transmitter positioned at $\mathbf{r}_0$ and oriented along $\hat{n}_0$. The radiated electric field at an observation point $\mathbf{r}$ is given by:
+\begin{equation}
+    \mathbf{E}(\mathbf{r}) = \frac{j\eta_0 I_0}{2\pi} \cdot \frac{e^{-jk\|\mathbf{r} - \mathbf{r}_0\|}}{\|\mathbf{r} - \mathbf{r}_0\|} \cdot g(\mathbf{r})\, \hat{p}(\mathbf{r}),
+    \label{eq:efield}
+\end{equation}
+where $\eta_0 = \sqrt{\mu_0/\varepsilon_0}$ is the free-space impedance, $g(\mathbf{r})$ is the normalized gain given in~\eqref{eq:gain} according to~\cite{ref8}, and $\hat{p}(\mathbf{r})$ is the unit polarization vector.
+\end{lemma}
+
+In~\eqref{eq:efield}, the normalized gain of a half-wave dipole along the broadside direction is:
+\begin{equation}
+    g(\mathbf{r}) = \frac{\cos\!\bigl(kh\cos\theta(\mathbf{r})\bigr) - \cos(kh)}{\sin\theta(\mathbf{r})},
+    \label{eq:gain}
+\end{equation}
+where $\theta(\mathbf{r})$ is the angle between the observation direction $(\mathbf{r} - \mathbf{r}_0)/\|\mathbf{r} - \mathbf{r}_0\|$ and the dipole axis $\hat{n}_0$.
+
+By stacking the polarization vector from all transmit antennas into $\mathcal{P}(\mathbf{r}) = [\hat{p}(\mathbf{r}, \mathbf{r}_1), \ldots, \hat{p}(\mathbf{r}, \mathbf{r}_{N_t})]$, the total electric field at $\mathbf{r}$ from the array is:
+\begin{equation}
+    \mathbf{E}_{\mathrm{in}}(\mathbf{r}) = \mathcal{P}(\mathbf{r})\, \mathbf{A}_m(\mathbf{r}),
+    \label{eq:Ein}
+\end{equation}
+\begin{equation}
+    \mathbf{E}_{\mathrm{in}}(\mathbf{r}) = \mathcal{P}(\mathbf{r})\, \mathbf{A}_m(\mathbf{r}),
+\end{equation}
+where $\mathbf{A}_m(\mathbf{r}) \in \mathbb{C}^{N_t \times 1}$ is the exposure array manifold that encapsulates the mutual coupling, polarization, antenna radiation gain, and spherical wavefront effects. The expressions~\eqref{eq:Ein} and~\eqref{eq:Ein} provide a tractable model for channel modeling and EM exposure assessment.
+
+\subsection{Channel Model}
+
+Building upon the radiation model presented in the preceding section, a mathematically framework is established to characterize EM propagation process. This section uses superposition of EM fields and the reciprocity theorem to express the channel mathematically.
+
+For an $N_t$-element array, the antennas are positioned in proximity, so their mutual impedance cannot be ignored~\cite{ref24}. This effect is quantified by the following mutual impedance in the following lemma.
+
+\begin{lemma}
+Consider $N_t$ dipole antennas in a parallel array at positions $\mathbf{r}_1, \ldots, \mathbf{r}_{N_t}$ with half-lengths $h_0$, respectively. As shown in Fig.~2(b), the mutual impedance between the $p$-th and $q$-th antennas is given by:
+\begin{equation}
+    Z_{pq} = \frac{j\eta_0}{4\pi\sin^2(kh_0)}\int_{-h_0}^{h_0}\int_{-h_0}^{h_0}
+    \left[F_{pq}(l, l') + F_{pq}'(l, l')\right]e^{-jkR_{pq}}\,dl\,dl',
+\end{equation}
+where $R_{pq} = \|\mathbf{r}_p - \mathbf{r}_q + (l - l')\hat{z}\|$ and $F_{pq}$, $F_{pq}'$ are kernel functions depending on the current distribution along the two antennas.
+\end{lemma}
+
+The impedance matrix $\mathbf{Z} \in \mathbb{C}^{N_t \times N_t}$ has entries $[\mathbf{Z}]_{pq} = Z_{pq}$. Note that the impedance matrix has non-conjugate transpose symmetry, i.e., $\mathbf{Z} = \mathbf{Z}^T$, as a consequence of the reciprocity relation. For the $t$-th transmit antenna at position $\mathbf{r}_t$, we define the array response vector $\mathbf{a}(\mathbf{r}) \in \mathbb{C}^{N_t \times 1}$ that captures the EM physical effect from the UE array to observation point $\mathbf{r}$:
+\begin{equation}
+    \mathbf{a}(\mathbf{r}) = \left[g(\mathbf{r}, \mathbf{r}_1)e^{-jk\|\mathbf{r} - \mathbf{r}_1\|/\|\mathbf{r} - \mathbf{r}_1\|},\,
+    \ldots,\,
+    g(\mathbf{r}, \mathbf{r}_{N_t})e^{-jk\|\mathbf{r} - \mathbf{r}_{N_t}\|/\|\mathbf{r} - \mathbf{r}_{N_t}\|}\right]^T.
+\end{equation}
+
+The driving voltage-to-current relation is governed by the impedance matrix. For an $N_t$-element transmit array, the current vector $\mathbf{i} \in \mathbb{C}^{N_t}$ is related to the voltage vector $\mathbf{v}_1 \in \mathbb{C}^{N_t}$ by:
+\begin{equation}
+    \mathbf{v}_1 = \mathbf{Z}\,\mathbf{i},
+\end{equation}
+and the normalized transmit power is:
+\begin{equation}
+    P(\mathbf{w}) = \frac{1}{2}\mathrm{Re}\{\mathbf{v}_1^H \mathbf{i}\} = \frac{1}{2}\mathrm{Re}\{\mathbf{w}^H \mathbf{Z}\,\mathbf{w}\},
+\end{equation}
+where $\mathbf{w} \in \mathbb{C}^{N_t}$ is the beamforming vector. The power constraint $P(\mathbf{w}) \leq P_{\max}$ is equivalent to:
+\begin{equation}
+    \|\mathbf{w}\|^2 \leq \eta_0 P_{\max}.
+\end{equation}
+
+By the assumption of the maximum eigenvalue $\lambda_{\max}(\cdot)$, the power factor as $\eta_0 = \sqrt{2/\mathrm{Re}(\mathbf{Z}^{-1})}$. Consequently, the power constraint to the beamforming vector is given as Proposition~1.
+
+\begin{proposition}[Equivalent Channel Vector]
+Consider the transmission from the UE array to the $r$-th receive antenna. The equivalent channel $h_r \in \mathbb{C}^{N_t \times 1}$ is given by:
+\begin{equation}
+    h_r = \frac{j\eta_r \mu_0}{4\pi k}\,\mathrm{diag}\!\bigl(\mathbf{a}(\mathbf{r}_r)\bigr)\,\mathbf{Z}^{-1},
+    \label{eq:hr}
+\end{equation}
+where $\eta_r$ is an antenna factor converting field amplitude to voltage $V_{oc}$, $\mu_0$ is the permeability of free space, and $\mathbf{w} \in \mathbb{C}^{N_t \times 1}$ is the polarization mismatch vector.
+\end{proposition}
+
+Stacking the channel vectors, the channel matrix $\mathbf{H} \in \mathbb{C}^{N_r \times N_t}$ of the full ULA link is:
+\begin{equation}
+    \mathbf{H} = \bigl[h_1^H,\, h_2^H,\, \ldots,\, h_{N_r}^H\bigr]^T.
+    \label{eq:H}
+\end{equation}
+
+The received signal at the BS is:
+\begin{equation}
+    \mathbf{y} = \mathbf{H}\mathbf{w}x + \mathbf{n},
+    \label{eq:rx}
+\end{equation}
+where $x \in \mathbb{C}$ is the unit-power transmit symbol ($\mathbb{E}[|x|^2] = 1$), $\mathbf{w} \in \mathbb{C}^{N_t}$ is the beamforming vector with average transmit power $P_{\max}$, and $\mathbf{n} \sim \mathcal{CN}(\mathbf{0}, \sigma^2\mathbf{I}_{N_r})$ is additive white Gaussian noise. The received SNR is:
+\begin{equation}
+    \mathrm{SNR}(\mathbf{w}) = \frac{\|\mathbf{H}\mathbf{w}\|^2}{\sigma^2}.
+\end{equation}
+
+
+%=============================================================
+\section{EM Exposure Constraints}
+\label{sec:thermal}
+%=============================================================
+
+This section develops an integrated analytical framework for thermal exposure assessment in mmWave communication systems. We first propose the fundamental bioheat transfer model that accurately captures EM heating in tissue. We then extend it to the dynamic scenario and model the thermal response under time-varying EM exposure.
+
+\subsection{Thermal Model}
+
+International safety guidelines for mmWave frequencies are mainly designed to mitigate excessive tissue heating induced by EM exposure. To mechanistically assess the physics of EM exposure in tissue, we apply the BHTE to model the temperature dynamics:
+\begin{equation}
+    \kappa\nabla^2 T(\mathbf{r}, t)
+    - \rho_b c_b \omega_b\bigl(T(\mathbf{r}, t) - T_b\bigr)
+    + \rho\,\mathrm{SAR}(\mathbf{r}, t)
+    = \rho c_p\,\frac{\partial T(\mathbf{r}, t)}{\partial t},
+    \label{eq:bhte}
+\end{equation}
+where $T(\mathbf{r}, t)$ denotes the temperature rise above the baseline (pre-exposure) level, $\kappa$ is the blood perfusion-mediated thermal conductivity, $\rho_b$ is the blood density, $c_b$ is the specific heat of blood, $\omega_b$ is the blood perfusion rate, $T_b$ is the blood/arterial temperature, $c_p$ is the specific heat capacity, and $\rho$ is the tissue density. The tissue parameters for human skin are summarized in Table~\ref{tab:thermal}.
+
+\begin{table}[t]
+\centering
+\caption{Thermal Parameters of Human Skin Tissue}
+\label{tab:thermal}
+\begin{tabular}{cccc}
+\toprule
+Symbol & Value & Unit & Physical Meaning \\
+\midrule
+$\kappa$ & 0.37 & W/(m$\cdot^\circ$C) & Thermal conductivity \\
+$\rho$   & 1109 & kg/m$^3$ & Density \\
+$c_p$    & 190  & J/(kg$\cdot^\circ$C) & Specific heat capacity \\
+$\omega_b$ & 106  & ml/(min$\cdot$100g) & Blood perfusion rate \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+In~\eqref{eq:bhte}, the EM exposure is modeled as an external source term. The SAR quantifies the rate of EM energy deposited per unit mass of tissue, and the pSAR quantity is expressed as:
+\begin{equation}
+    \mathrm{SAR}(\mathbf{r}) = \frac{\sigma_e(\mathbf{r})}{2\rho}\,\|\mathbf{E}(\mathbf{r})\|^2,
+    \label{eq:sar}
+\end{equation}
+where $\sigma_e(\mathbf{r})$ is the tissue electrical conductivity. The surface heating temperature rise is defined as the thermal response. Physically,~\eqref{eq:sar} confirms that at mmWave frequencies, EM energy is absorbed predominantly in a superficial layer, and the heating can be directly linked to the incident PD.
+
+Using the incident PD in~\eqref{eq:bhte}, the approximation $\mathrm{erf}(\zeta_c/\sqrt{4\kappa t}) \approx 1$ holds. Substituting this into~\eqref{eq:bhte} with the approximation $\mathrm{erf}(\zeta/\sqrt{4\kappa t}) \approx 1$ and integrating, we find the spatial peak temperature:
+\begin{equation}
+    \psi_T = \frac{\tau_{\kappa}^{1/2}}{\sqrt{\pi \kappa \rho c_p}} \approx \frac{\tau_p}{\sqrt{\pi}}\cdot\frac{1}{R_{\kappa}},
+    \label{eq:psiT}
+\end{equation}
+where $\tau_p \approx 500$~ms and $R_{\kappa} = \sqrt{\kappa \rho c_p / \pi}$ are the characteristic length and time scales defined in~\eqref{eq:bhte}. The thermal response is defined as the time derivative of the temperature rise, given by:
+\begin{equation}
+    \theta_m(t) = \frac{d}{dt}T_m(t),
+\end{equation}
+where $T_m(t)$ is the temperature at sampling point $m$.
+
+\begin{proposition}
+Consider the exposure timeline $n = 1, 2, \ldots, N$. The temperature rise is defined as the thermal response at a sampling point $m$. The temperature is governed by:
+\begin{equation}
+    T_m(t) = \int_0^t G(t - \tau)\,L_m[n]\,d\tau,
+    \label{eq:Tm_int}
+\end{equation}
+where $G(t - \tau)$ is the Green's function of the BHTE and $L_m[n]$ is the instantaneous incident PD at slot $n$ and sampling point $m$.
+\end{proposition}
+
+\subsection{Thermal Response to Time-Varying Exposure}
+
+The conventional model presented in the preceding subsection cannot capture the dynamic EM exposure in mobile systems, due to UE mobility and beamforming, which is a serious challenge to real-time thermal safety assessment. To address this, we develop a dynamic bioheat transfer process that captures the thermal inertia of tissue under time-varying EM exposure.
+
+We discretize the exposure timeline into slots of duration $\Delta t = 0.1$~s. We denote the incident PD at the $m$-th sampling point at time slot $n$ as $L_m[n]$. For small slot length $a = \Delta t$, with the following unit step length $a = 2$~cm, the approximation $\mathrm{erf}(\zeta_c/\sqrt{4\kappa t}) \approx 1$ holds. Substituting this into~\eqref{eq:bhte} with the approximation,
+\begin{equation}
+    T_{m,n}[n] = e^{-\Delta t/\tau_{\kappa}}\,T_m[n-1]
+    + \frac{T_0\,\omega_b}{\sqrt{\pi}}\sum_{k=1}^{n} L_m[k]\,\zeta_k,
+    \label{eq:Tmn}
+\end{equation}
+where $\zeta_k = \mathrm{erf}\!\left(\sqrt{\frac{n - k + 1}{\tau_p}}\right) - \mathrm{erf}\!\left(\sqrt{\frac{n - k}{\tau_p}}\right)$ are pre-computable coefficients. The thermal impulse response is defined as the temperature rise at discrete time $n$ is exactly calculated as:
+\begin{equation}
+    T_m[n] = e^{-\Delta t / \tau_{\kappa}}\,T_m[n-1] + \frac{T_0}{\sqrt{\pi}}\,\sum_{k=1}^{n}\zeta_{n-k}\,L_m[k],
+    \label{eq:Tm_disc}
+\end{equation}
+where the coefficients $\zeta_k = \mathrm{erf}(\sqrt{(k+1)/\tau_p}) - \mathrm{erf}(\sqrt{k/\tau_p})$ can be pre-computed. This recurrence reduces to a first-order Markov relation:
+\begin{equation}
+    T_m[n] \approx e^{-\Delta t/\tau_\kappa}\,T_m[n-1] + \zeta_0\,\frac{T_0}{\sqrt{\pi}}\,L_m[n],
+    \label{eq:T_markov}
+\end{equation}
+where $T_0 = T_a\omega_b / (2\sqrt{\kappa\rho c_p})$. The temperature rise is defined as the thermal response and the temperature rise formula reduces to a first-order system.
+
+\subsection{Exposure-Aware Beamforming Constraint}
+
+Based on the channel model in~\eqref{eq:rx} and the exposure model in~\eqref{eq:T_markov}, we can formulate an adaptive exposure-aware optimization problem. The goal is to maximize the long-term SNR over $N$ time slots by optimizing beamforming vectors $\{\mathbf{w}[n]\}_{n=1}^N$, while satisfying the long-term temperature constraint at each sampling point $m \in \{1, \ldots, M\}$:
+\begin{equation}
+    \frac{1}{N}\sum_{n=1}^N T_m[n] \leq T_{\text{th}}, \quad \forall m \in \{1, \ldots, M\},
+    \label{eq:Tconst}
+\end{equation}
+where $T_{\text{th}}$ is a predefined thermal safety threshold. The equivalent channel in~\eqref{eq:H} gives the exposure array manifold $\boldsymbol{\Phi}_m \in \mathbb{C}^{N_t \times N_t}$ for the $m$-th sampling point, which is expressed compactly as a quadratic form of the transmit signal:
+\begin{equation}
+    L_m[n] = \mathbf{w}[n]^H\boldsymbol{\Phi}_m\,\mathbf{w}[n],
+    \label{eq:PD}
+\end{equation}
+where $\boldsymbol{\Phi}_m \in \mathbb{C}^{N_t \times N_t}$ is the exposure array manifold encapsulating EM physical characteristics.
+
+The instantaneous exposure constraint requires that $L_m[n] \leq S_{\text{th}}$ for all $m$ and $n$. In contrast, the long-term constraint in~\eqref{eq:Tconst} translates the rigid instantaneous limits into a flexible long-term thermal budget constraint. The $M$ exposure constraints cover all sampling points on the body surface. The overall optimization problem can be stated as:
+\begin{equation}
+\begin{aligned}
+    (\text{P1}) \quad & \max_{\{\mathbf{w}[n]\}} \quad \frac{1}{N}\sum_{n=1}^{N}\mathbb{E}\bigl[\|\mathbf{H}[n]\mathbf{w}[n]\|^2\bigr] \\
+    \text{s.t.} \quad & \frac{1}{N}\sum_{n=1}^{N} T_m[n] \leq T_{\text{th}}, \quad \forall m \in \{1, \ldots, M\}, \\
+    & \|\mathbf{w}[n]\|^2 \leq P_{\max}, \quad \forall n \in \{1, \ldots, N\}.
+\end{aligned}
+\label{eq:P1}
+\end{equation}
+
+
+%=============================================================
+\section{Exposure-Aware Beamforming Design}
+\label{sec:design}
+%=============================================================
+
+\subsection{Lyapunov Optimization Framework}
+
+We first convert the long-term averaging constraints into a virtual queue stability problem. Specifically, for each time slot $n \in \{1, 2, \ldots, N\}$, we define a virtual queue $Q_m[n]$ for sampling point $m$ as:
+\begin{equation}
+    Q_m[n+1] = \max\!\bigl(0,\, Q_m[n] + T_m[n] - T_{\text{th}}\bigr),
+    \label{eq:Qupdate}
+\end{equation}
+with $Q_m[0] = 0$ for all $m$. The virtual queue quantifies the cumulative temperature violation over past time slots. A large $Q_m$ means the temperature has been exceeding the threshold, which penalizes future beamforming choices.
+
+\begin{lemma}[Constraint Satisfaction via Queue Stability]
+\label{lem:queue}
+If the virtual temperature queues are mean rate stable, i.e.,
+\begin{equation}
+    \lim_{N\to\infty}\frac{\mathbb{E}[Q_m[N]]}{N} = 0, \quad \forall m,
+    \label{eq:queue_stable}
+\end{equation}
+then the temperature constraint $\frac{1}{N}\sum_{n=1}^{N} T_m[n] \leq T_{\text{th}}$ is asymptotically satisfied.
+\end{lemma}
+
+\begin{proof}
+By the queue update rule~\eqref{eq:Qupdate}, we have:
+\begin{equation}
+    Q_m[n+1] \geq Q_m[n] + T_m[n] - T_{\text{th}},
+\end{equation}
+which gives $T_m[n] - T_{\text{th}} \leq Q_m[n+1] - Q_m[n]$. Summing over $n = 0, 1, \ldots, N-1$ and applying the limit $\limsup_{N\to\infty} \frac{1}{N}\sum_{n=1}^{N}T_m[n] \leq T_{\text{th}}$, we have
+\begin{equation}
+    \frac{1}{N}\sum_{n=1}^{N} T_m[n] \leq T_{\text{th}} + \frac{\mathbb{E}[Q_m[N]] - Q_m[0]}{N}.
+\end{equation}
+Applying the limit $\lim_{N\to\infty}$ and using~\eqref{eq:queue_stable} completes the proof.
+\end{proof}
+
+Then, the problem~\eqref{eq:P1} is equivalent to ensuring the queues in~\eqref{eq:queue_stable} are stable. To solve the long-term problem, we employ the Lyapunov optimization framework. We define the quadratic Lyapunov function:
+\begin{equation}
+    L(\mathbf{Q}[n]) = \frac{1}{2}\sum_{m=1}^{M} Q_m[n]^2,
+    \label{eq:Lyap}
+\end{equation}
+and the one-step Lyapunov drift as $\Delta L(\mathbf{Q}[n]) = \mathbb{E}[L(\mathbf{Q}[n+1]) - L(\mathbf{Q}[n]) \mid \mathbf{Q}[n]]$. Following the drift-plus-penalty approach, we minimize an upper bound of:
+\begin{equation}
+    \Delta(\mathbf{Q}[n]) - V\,\mathbb{E}\bigl[\|\mathbf{H}[n]\mathbf{w}[n]\|^2 \mid \mathbf{Q}[n]\bigr],
+    \label{eq:DPP}
+\end{equation}
+where $V \geq 0$ is a control parameter that governs the trade-off between SNR maximization and queue stability (exposure compliance).
+
+To obtain the per-slot problem, we first bound the quadratic Lyapunov drift. Note that from~\eqref{eq:Qupdate}:
+\begin{equation}
+    Q_m[n+1]^2 \leq \bigl(Q_m[n] + T_m[n] - T_{\text{th}}\bigr)^2,
+\end{equation}
+\begin{align}
+    \Delta L(\mathbf{Q}[n]) &\leq B + \sum_{m=1}^{M} Q_m[n]\,\mathbb{E}\bigl[T_m[n] - T_{\text{th}} \mid \mathbf{Q}[n]\bigr],
+    \label{eq:drift_bound}
+\end{align}
+where $B = \frac{1}{2}\sum_{m=1}^{M}\mathbb{E}[(T_m[n] - T_{\text{th}})^2]$ is a finite constant. Substituting into~\eqref{eq:DPP} and dropping the constant $B$, the per-slot optimization subproblem is:
+\begin{equation}
+\begin{aligned}
+    (\text{P2}) \quad & \max_{\mathbf{w}[n]} \quad V\,\|\mathbf{H}[n]\mathbf{w}[n]\|^2
+    - \sum_{m=1}^{M} Q_m[n]\,L_m[n] \\
+    \text{s.t.} \quad & \|\mathbf{w}[n]\|^2 \leq P_{\max}.
+\end{aligned}
+\label{eq:P2}
+\end{equation}
+
+The per-slot problem~\eqref{eq:P2} is a quadratically constrained quadratic program (QCQP). Following the derivation, the per-slot beamforming optimization problem can be reformulated as a quadratically-constrained quadratic program (QCQP):
+\begin{equation}
+\begin{aligned}
+    \max_{\mathbf{w}[n]} \quad & \mathbf{w}[n]^H\!\left(V\mathbf{H}[n]^H\mathbf{H}[n] - \sum_{m=1}^{M} Q_m[n]\,\boldsymbol{\Phi}_m\right)\!\mathbf{w}[n]\\
+    \text{s.t.} \quad & \|\mathbf{w}[n]\|^2 \leq P_{\max}.
+\end{aligned}
+\label{eq:P3}
+\end{equation}
+
+The QCQP~\eqref{eq:P3} has a closed-form solution. When the matrix $V\mathbf{H}[n]^H\mathbf{H}[n] - \sum_m Q_m[n]\boldsymbol{\Phi}_m$ is positive semi-definite, the optimal beamformer is the principal eigenvector scaled to the power budget:
+\begin{equation}
+    \mathbf{w}^*[n] = \sqrt{P_{\max}}\,\mathbf{v}_{\max}\!\left[V\mathbf{H}[n]^H\mathbf{H}[n] - \sum_{m=1}^{M} Q_m[n]\,\boldsymbol{\Phi}_m\right],
+    \label{eq:w_opt}
+\end{equation}
+where $\mathbf{v}_{\max}[\cdot]$ denotes the unit-norm eigenvector corresponding to the largest eigenvalue of its argument. The second case corresponds to a safety-oriented silent mode where transmission is suspended to protect the user:
+\begin{equation}
+    \mathbf{w}^*[n] = \mathbf{0}.
+\end{equation}
+
+Based on this closed-form solution, we propose Algorithm~\ref{alg:lyap} for adaptive exposure-aware beamforming via Lyapunov optimization.
+
+\begin{algorithm}[t]
+\caption{Adaptive Exposure-Aware Beamforming via Lyapunov Optimization}
+\label{alg:lyap}
+\begin{algorithmic}[1]
+    \STATE \textbf{Initialization:}
+    \STATE Set control parameter $V \geq 0$ and let $n = 1$.
+    \STATE Set initial virtual queues $Q_m[1] = 0$ for all $m$.
+    \WHILE{$n \leq N$}
+        \STATE Compute channel matrix $\mathbf{H}[n]$ according to~\eqref{eq:H}.
+        \STATE Compute exposure array manifold $\{\boldsymbol{\Phi}_m\}_{m=1}^M$ according to~\eqref{eq:PD}.
+        \STATE Obtain the largest eigenvalue $\lambda_{\max}[n]$ and corresponding unit eigenvector $\mathbf{v}_{\max}[n]$ of $\left(V\mathbf{H}[n]^H\mathbf{H}[n] - \sum_{m}Q_m[n]\boldsymbol{\Phi}_m\right)$.
+        \IF{$\lambda_{\max}[n] > 0$}
+            \STATE $\mathbf{w}^*[n] = \sqrt{P_{\max}}\,\mathbf{v}_{\max}[n]$.
+        \ELSE
+            \STATE $\mathbf{w}^*[n] = \mathbf{0}$ \hfill (safety-oriented silent mode)
+        \ENDIF
+        \STATE \textbf{Update system state:}
+        \STATE Transmit with $\mathbf{w}^*[n]$ and update current temperature rise $T_m[n]$ according to~\eqref{eq:T_markov}.
+        \STATE Update all virtual queues $Q_m[n+1] = \max\!\bigl(0,\, Q_m[n] + T_m[n] - T_{\text{th}}\bigr)$, $\forall m$.
+        \STATE Let $n = n + 1$.
+    \ENDWHILE
+\end{algorithmic}
+\end{algorithm}
+
+\begin{proposition}[Performance Bound]
+\label{prop:perf}
+For any control parameter $V \geq 0$, the proposed algorithm achieves the following performance bound:
+\begin{equation}
+    \lim_{N\to\infty}\frac{1}{N}\sum_{n=1}^{N}\mathbb{E}\bigl[\|\mathbf{H}[n]\mathbf{w}[n]\|^2\bigr]^2 \geq \mathcal{G}_{\mathrm{opt}} - \frac{B}{V},
+    \label{eq:perf_bound}
+\end{equation}
+where $\mathcal{G}_{\mathrm{opt}}$ is the optimal long-term average beamforming gain of the original problem~\eqref{eq:P1}, and $B$ is the finite constant defined in~\eqref{eq:drift_bound}.
+\end{proposition}
+
+The performance bound~\eqref{eq:perf_bound} shows that as $V \to \infty$, the algorithm asymptotically approaches the optimal performance of the original long-term problem, at the cost of an increased risk of violating the long-term temperature constraint.
+
+\begin{proof}
+Taking expectations and summing over $n = 1, \ldots, N$ yields:
+\begin{equation}
+    \mathbb{E}[L(\mathbf{Q}[N+1])] - \mathbb{E}[L(\mathbf{Q}[1])] \leq NB
+    + \sum_{n=1}^{N}\mathbb{E}\left[\sum_m Q_m[n](T_m[n] - T_{\text{th}})\right]
+    - V\sum_{n=1}^{N}\mathbb{E}\bigl[\|\mathbf{H}[n]\mathbf{w}[n]\|^2\bigr].
+\end{equation}
+Rearranging terms and using $L(\mathbf{Q}[N+1]) \geq 0$ and $L(\mathbf{Q}[1]) = 0$, and applying a policy $\mathbf{w}^{\mathrm{opt}}[n]$ that achieves $\mathcal{G}_{\mathrm{opt}}$ while satisfying the constraints, we have:
+\begin{equation}
+    V\sum_{n=1}^{N}\mathbb{E}\bigl[\|\mathbf{H}[n]\mathbf{w}[n]\|^2\bigr] \geq
+    V\sum_{n=1}^{N}\mathcal{G}_{\mathrm{opt}} - NB.
+\end{equation}
+Dividing by $VN$ and taking $N \to \infty$ completes the proof.
+\end{proof}
+
+
+%=============================================================
+\section{Numerical Results and Discussion}
+\label{sec:results}
+%=============================================================
+
+This section presents numerical results to validate the EM and thermal models proposed and to evaluate the performance of our adaptive exposure-aware beamforming scheme. It is assumed that the UE is equipped with $N_t = 4$ antennas and the BS is equipped with $N_r = 64$ antennas. The carrier frequency is set to 30~GHz (wavelength $\lambda = 0.01$~m). The antenna elements at both the BS and UE are spaced $\lambda/2$ apart. The polarization vector of the receive antenna is along the $z$-axis and the BS is positioned at height $h_s = 5$~m. For EM exposure assessment, we considered a spherical head model with a diameter of ten wavelengths. The tissue parameters, including density and conductivity, follow the values listed in Table~\ref{tab:thermal}. $M = 15$ sampling points are uniformly distributed on the surface of the head model to obtain the temperature distribution.
+
+The EM exposure analysis over $N = 3600$ time slots, where each time slot has a duration of $\Delta t = 0.1$~s. During all time slots, the UE position is uniformly distributed in an annular region with inner radius $d_{\min}$ and outer radius $d_{\max}$. The UE is initially placed at $\mathbf{p}_u = [100, 0, 1.5, 0]$, where $d_{\mathrm{ref}}$ is the reference distance. The distance $d_{\mathrm{ref}}$ varies from 0.1~m to 0.5~m. The simulation results are obtained using an antenna toolbox, and the proposed model is calculated according to~\eqref{eq:hr}. A model that ignores mutual coupling is also plotted, which only considers the impedance matrix containing the self-impedances of the isolated antenna elements.
+
+To address potential extreme exposure scenarios, a high transmit power constraint of $P_{\max} = 5$~W, noise variance $\sigma^2 = 0.1$, the antenna factor $T_{ue} = 0.8$, and the control parameter $V = 5 \times 10^{-4}$.
+
+To evaluate the performance of the proposed scheme, we compare it against the following four baseline schemes:
+\begin{itemize}
+    \item \textbf{Worst-case Power Back-off:} This conservative approach maintains a fixed transmit power level that satisfies the PD constraint under all possible UE orientations and positions, ensuring compliance in the worst-case scenario.
+
+    \item \textbf{Adaptive Power Back-off:} This method first determines the optimal beamformer using the available CSI, then dynamically adjusts the transmit power in each time slot based on real-time UE position and orientation knowledge to satisfy the instantaneous PD constraints.
+
+    \item \textbf{Per-slot Optimal:} This scheme uses numerical optimization via the fmincon toolbox to optimize the beamforming vector, maximizing the received SNR while under power and PD constraints. This per-slot optimal approach yields the optimal solution for each individual slot without accounting for long-term exposure accumulation.
+
+    \item \textbf{Unconstrained Optimal:} This idealistic scheme selects beamforming vectors to maximize the received SNR without any EM exposure constraints, serving as a computational performance upper bound for comparison.
+\end{itemize}
+
+Fig.~3 shows the average PD at all sampling points versus the reference distance $d_{\mathrm{ref}}$ for different UE array orientations and positions. The beamforming vector is initialized with equal weights. The distance $d_{\mathrm{ref}}$ varies from 0.1~m to 0.5~m. It can be observed that the proposed model matches the simulated PD accurately, confirming its validity for use in subsequent beamforming framework.
+
+Fig.~4 shows the temporal evolution of the average temperature at sampling points under different control parameters $V = 5 \times 10^{-4}$ and $1 \times 10^{-4}$. To account for varying exposure scenarios and the distinct temperature thresholds, we set distinct temperature thresholds $T_{\max} = 0.1, 0.2$ and $0.3^\circ$C. For both thresholds, the system progresses through optimization opportunities over strict exposure compliance, thereby achieving near-optimal reception performance. Over time, the increasing weight assigned to EM exposure in the algorithm leads the system to progressively and eventually balances the external thermal input, resulting in the average temperature converging to a specific critical threshold.
+
+In Fig.~5, we present the received SNR and the average virtual queue length versus the control parameter $V$. The average queue length is proportional to the severity of the temperature violation and hence a large queue length corresponds to a high risk of violating the long-term exposure constraint. When $V$ is small, the algorithm achieves a higher SNR, until the performance eventually saturates. Under the same control parameter $V$, a lower temperature threshold $T_{\max}$ implies a tighter constraint, which results in lower system performance. This is because the algorithm must more actively manage the virtual queues to ensure the stricter limit is met, which restricts the beamforming freedom and thus reduces the achievable SNR.
+
+Fig.~6 compares the received SNR performance of the proposed scheme against four baseline schemes under different transmit power constraints. The PD constraint of four baseline schemes is given by $Z_{\text{th}} = 20$~W/m$^2$~\cite{ref8}. As observed, our approach closely matches the unconstrained optimal scheme while satisfying EM exposure constraints. The worst-case power back-off scheme maintains a low SNR across all distance ranges. In contrast, both the adaptive power back-off and the per-slot optimal scheme exhibit gradual SNR improvement with increasing $d_{\mathrm{ref}}$, eventually approaching the optimal performance. Under high-exposure scenarios, the proposed scheme surpasses the per-slot optimal scheme and shows a clear advantage over other baselines. As the distance increases and exposure worsens, the performance of the proposed scheme improves rapidly and converges to that of the unconstrained optimal strategy. This asymptotic behavior indicates that the dominant system constraint shifts from the EM exposure limit to the transmit power budget.
+
+Fig.~7 presents the cumulative distribution function (CDF) of the received SNR over 3600 time slots for the considered schemes. The proposed scheme achieves superior SNR performance across most probability levels. At the 50\% probability level, our scheme attains an SNR of 14.1~dB, outperforming the per-slot optimal scheme (11.1~dB). This improvement arises since the per-slot optimal strategy strictly adheres to instantaneous safety constraints in each slot, whereas the current temperature rise would not violate the long-term threshold, thereby forgoing potential performance improvement. A significant performance degradation is observed for the proposed scheme below the 2\% probability level. This is because the algorithm enters a silent mode when the exposure risk is high, which guarantees long-term temperature compliance. Furthermore, the per-slot optimal method requires solving a global optimization problem in each time slot, leading to a computationally prohibitive complexity for its practical deployment.
+
+Fig.~8 illustrates the received SNR versus exposure distance $d_{\mathrm{exp}}$ for different schemes under different EM exposure conditions. We assume the exposure intensity is fixed on a circle centered at $\mathbf{p}_u$, with a radius $d_{\mathrm{exp}}$, which we term the exposure distance to quantify the exposure intensity. When $d_{\mathrm{exp}}$ is large (low exposure), the worst-case back-off scheme maintains a low SNR. In contrast, both the adaptive power back-off and the per-slot optimal scheme exhibit gradual SNR improvement with increasing exposure distance $d_{\mathrm{exp}}$, eventually approaching the optimal performance. Under high-exposure scenarios, the proposed scheme surpasses the per-slot optimal scheme and shows a clear advantage over other baselines.
+
+These results confirm that the control parameter $V$ effectively governs the fundamental trade-off between exposure safety and communication performance in the proposed Lyapunov optimization framework.
+
+
+%=============================================================
+\section{Conclusion}
+\label{sec:conclusion}
+%=============================================================
+
+In this paper, we have developed a long-term thermal EM exposure constraint model and proposed a novel adaptive exposure-aware beamforming optimization framework for an mmWave uplink system. A physically consistent EM radiation model has been developed to accurately characterize the channel and exposure metrics, incorporating combined effects such as polarization, spherical wavefront, and mutual coupling. Based on this model and the BHTE, we have derived a closed-form thermal impulse response and characterized the thermal evolution in tissue under time-varying EM exposure. This analysis has revealed that exposure safety is governed by a long-term balance between EM power absorption and blood perfusion-driven cooling. Building on this insight, we have formulated an adaptive exposure-aware beamforming optimization problem that replaces rigid instantaneous constraints with a flexible long-term temperature exposure constraint. Using Lyapunov optimization theory, we have derived an optimal scheme with a closed-form solution requiring only instantaneous channel and exposure state information. Simulations have verified that the proposed algorithm stabilizes temperature and delivers near-optimal SNR. In contrast to conventional baselines, it dynamically manages the exposure budget and opportunistically boosts transmission when thermally permissible, thereby enhancing system performance.
+
+
+%=============================================================
+\appendices
+\section{Proof of Lemma~1}
+\label{app:lemma1}
+%=============================================================
+
+The EM field radiated by a current distribution $\mathbf{J}(\mathbf{r}')$ is derived from the magnetic vector potential $\mathbf{A}(\mathbf{r})$, which satisfies the inhomogeneous Helmholtz equation~\cite{ref31}:
+\begin{equation}
+    (\nabla^2 + k^2)\mathbf{A}(\mathbf{r}) = -\mu_0\mathbf{J}(\mathbf{r}'),
+    \label{eq:helm}
+\end{equation}
+where $\mu_0$ is the permeability of free space.
+
+Applying the distribution of surface current density in~\eqref{eq:helm}, the solution is given by the convolution of the current distribution with the scalar Green's function as:
+\begin{equation}
+    \mathbf{A}(\mathbf{r}) = \frac{\mu_0}{4\pi}\int_{-h}^{h} I(l)\,\frac{e^{-jkR(l)}}{R(l)}\,\hat{z}\,dl,
+    \label{eq:A}
+\end{equation}
+where $R(l) = \|\mathbf{r} - \mathbf{r}_0 - l\hat{n}_0\|$ is the distance from the source point to the observation point.
+
+Under the Lorenz gauge, the electric field components parallel and perpendicular to the dipole axis are derived from the vector potential and the scalar potential:
+\begin{align}
+    j\omega\mu_0\varepsilon_0 E_\parallel &= \partial_z^2 A_z + k^2 A_z, \label{eq:Epara} \\
+    j\omega\mu_0\varepsilon_0 E_\perp &= \partial_x^2 A_z, \label{eq:Eperp}
+\end{align}
+where $\partial_z$ is the partial derivative along the dipole axis. Using the free-space impedance $\eta_0 = \sqrt{\mu_0/\varepsilon_0}$ and the relation $\omega\varepsilon_0 = k/\eta_0$, \eqref{eq:Epara} and~\eqref{eq:Eperp} simplify to:
+\begin{equation}
+    jkA_z + jkA_z = E_z. \label{eq:simplify}
+\end{equation}
+
+Substituting~\eqref{eq:A} into~\eqref{eq:simplify} yields:
+\begin{equation}
+    \partial_z^2 A_z + k^2 A_z = \frac{\mu_0}{4\pi}\int_{-h}^{h} I(l)\,\bigl[\partial_z^2 + k^2\bigr]\,\frac{e^{-jkR}}{R}\,dl.
+    \label{eq:integ}
+\end{equation}
+
+The first integral in~\eqref{eq:integ} is $kL_m$, and the second integral is $-jkL_m + I(l)\bigl[G(R_1) - G(R_2)\bigr]$, where $R_0 = \|\mathbf{r} - \mathbf{r}_0\|$, $R_1 = \|\mathbf{r} - \mathbf{r}_0 + h\hat{n}_0\|$, and $R_2 = \|\mathbf{r} - \mathbf{r}_0 - h\hat{n}_0\|$, and:
+\begin{align}
+    R_0 &= \|\mathbf{r}_p - \mathbf{r}_0\|, \\
+    R_1 &= \|\mathbf{r}_p - \mathbf{r}_0 + (l - h_0)\hat{n}_0\|, \\
+    R_2 &= \|\mathbf{r}_p - \mathbf{r}_0 - (l - h_0)\hat{n}_0\|.
+\end{align}
+
+Combining the two integrals and using~\eqref{eq:A} and~\eqref{eq:integ}, we give:
+\begin{equation}
+    \mathbf{E}(\mathbf{r}) = \frac{j\eta_0 I_0}{4\pi\sin(kh)}\left[\frac{e^{-jkR_1}}{R_1} + \frac{e^{-jkR_2}}{R_2} - 2\cos(kh)\frac{e^{-jkR_0}}{R_0}\right]\hat{p},
+    \label{eq:Eexact}
+\end{equation}
+where $\hat{p}$ is the unit polarization vector in the plane containing the dipole axis and the observation direction $\hat{r} = (\mathbf{r} - \mathbf{r}_0)/\|\mathbf{r} - \mathbf{r}_0\|$. Expressing $\hat{p}$ via $\mathrm{via}$ $\cos\psi = \hat{n}_0 \cdot \hat{r}$, we arrive at the compact expression:
+\begin{equation}
+    \mathbf{E}(\mathbf{r}) = \frac{j\eta_0 I_0}{2\pi d_{0}}\,e^{-jkd_0}
+    \cdot\frac{\cos(kh\cos\theta) - \cos(kh)}{\sin\theta}\,\hat{p}(\mathbf{r}),
+\end{equation}
+where $d_0 = \|\mathbf{r} - \mathbf{r}_0\|$, confirming~\eqref{eq:efield}.
+
+The transverse component $\mathcal{E}_\perp$ can be efficiently derived via the magnetic field using Ampere's law. In a local cylindrical coordinate system $(\rho, \phi, z)$ aligned with the dipole (i.e., along $\hat{n}_0$), Ampere's circular law gives:
+\begin{equation}
+    \frac{1}{\rho}\frac{\partial(\rho H_\phi)}{\partial \rho} = j\omega\varepsilon_0 E_z,
+    \label{eq:ampere}
+\end{equation}
+Substituting $\mathcal{E}_\parallel$ into~\eqref{eq:ampere} and integrating, we find the magnetic field:
+\begin{equation}
+    H_\phi(\mathbf{r}) = \frac{I_0}{4\pi\sin(kh)}\left[\frac{e^{-jkR_1}}{R_1}\left(jk + \frac{1}{R_1}\right)
+    + \frac{e^{-jkR_2}}{R_2}\left(jk + \frac{1}{R_2}\right)
+    - 2\cos(kh)\frac{e^{-jkR_0}}{R_0}\left(jk + \frac{1}{R_0}\right)\right]\frac{\rho}{R}.
+\end{equation}
+
+For phase three we retain first-order expansions to preserve wavefront coherence. The approximations to~\eqref{eq:A} and~\eqref{eq:integ} give the expressions:
+\begin{align}
+    \mathcal{E}_1(\mathbf{r}) &= \frac{j\eta_0 I_0}{2\pi d}\,e^{-jkR_0}
+    \bigl[\cos(kh\cos\psi) - \cos(kh)\bigr]\frac{1}{\sin\psi},\label{eq:E1}\\
+    H_\phi(\mathbf{r}) &= \frac{jI_0}{2\pi d}\,e^{-jkR_0}\frac{\cos(kh\cos\psi) - \cos(kh)}{\sin\psi},\label{eq:Hphi}
+\end{align}
+where $p(\mathbf{r}) = [(\hat{n}_0 \cdot \hat{r})\hat{n}_0 - \hat{r}]/\sin\psi$ is the unit polarization vector, confirming Lemma~1.
+
+
+%=============================================================
+\appendices
+\section{Proof of Lemma~2}
+\label{app:lemma2}
+%=============================================================
+
+When antenna $p$ is open-circuited, the feed voltage on antenna $q$ induces an open-circuit voltage $V_{pq,\mathrm{oc}}$ on antenna $p$. The mutual impedance is defined as:
+\begin{equation}
+    Z_{pq} = -\frac{1}{I_p I_q}\int_{-h_p}^{h_p}\int_{-h_q}^{h_q}
+    \mathcal{E}_{pq}(l)\,\mathbf{I}_p(l)\,dl,
+    \label{eq:Zpq}
+\end{equation}
+where $I_p = I_p(0)$ is the input current of antenna $p$ when it is transmitting, $I_q = I_q(0)$ is the input current of antenna $q$, and $\mathcal{E}_{pq}(l)$ is the electric field produced by antenna $q$ evaluated at the axis of antenna $p$.
+
+According to the reciprocity theorem, the open-circuit voltage $V_{pq}$ induced on antenna $p$ can be expressed as:
+\begin{equation}
+    V_{pq,\mathrm{oc}} = -\frac{1}{I_q}\int_{-h_p}^{h_p}
+    \mathcal{E}_{pq}(l)\cdot\hat{n}_p\,I_p(l)\,dl,
+    \label{eq:Vpc}
+\end{equation}
+where $\mathcal{E}_{pq}(l)$ is the tangential electric field along the axis of antenna $p$ due to antenna $q$.
+
+These distances correspond, respectively, to the separation between the observation point on antenna $p$ and the center, the top end, and the bottom end of antenna $q$:
+\begin{align}
+    R_0 &= \|\mathbf{r}_p - \mathbf{r}_q\|, \\
+    R_1 &= \|\mathbf{r}_p - \mathbf{r}_q + h_0\hat{n}_q\|, \\
+    R_2 &= \|\mathbf{r}_p - \mathbf{r}_q - h_0\hat{n}_q\|,
+\end{align}
+where $\mathbf{r}_p$ and $\mathbf{r}_q$ are the center positions of antennas $p$ and $q$, respectively. Substituting~\eqref{eq:Eexact} and the current distribution~\eqref{eq:gain} into~\eqref{eq:Zpq} and using the thin-wire approximation, the axial component of the electric field along antenna $p$ is:
+\begin{equation}
+    \mathcal{E}_{pq}(l) = \frac{j\eta_0 I_0}{4\pi\sin(kh_0)}
+    \left[\frac{e^{-jkR_1(l)}}{R_1(l)} + \frac{e^{-jkR_2(l)}}{R_2(l)}
+    - 2\cos(kh_0)\frac{e^{-jkR_0(l)}}{R_0(l)}\right],
+    \label{eq:Epq}
+\end{equation}
+with the kernel function:
+\begin{equation}
+    F_{pq}(l) = \sin\!\bigl(k(h_0 - |l|)\bigr),
+\end{equation}
+Substituting~\eqref{eq:Epq} and the kernel~\eqref{eq:Zpq} into~\eqref{eq:Vpc} and integrating, we arrive at Lemma~2. Specifically, substituting~\eqref{eq:E1} into~\eqref{eq:Vpc} and integrating over $l \in [-h_p, h_p]$:
+\begin{equation}
+    Z_{pq} = \frac{j\eta_0}{4\pi\sin^2(kh_0)}\int_{-h_0}^{h_0}\sin\!\bigl(k(h_0 - |l|)\bigr)
+    \left[\frac{e^{-jkR_1}}{R_1} + \frac{e^{-jkR_2}}{R_2} - 2\cos(kh_0)\frac{e^{-jkR_0}}{R_0}\right]dl,
+    \label{eq:Zpq_final}
+\end{equation}
+where
+\begin{align}
+    Z_{pq} &= -\frac{1}{I_p I_q}\int_{-h_0}^{h_0} \mathcal{E}_{pq}(l)\,I_p(l)\,dl \\
+    &= \frac{j\eta_0}{4\pi\sin^2(kh_0)}\int_{-h_0}^{h_0}\!\!\int_{-h_0}^{h_0} F_{pq}(l, l')
+    \left[\frac{e^{-jkR_1}}{R_1} + \frac{e^{-jkR_2}}{R_2} - 2\cos(kh_0)\frac{e^{-jkR_0}}{R_0}\right]dl\,dl'.
+\end{align}
+
+This confirms Lemma~2. Combined with Proposition~1 which gives the channel vector in terms of $\mathbf{Z}^{-1}$, the proof is complete.
+
+Finally, the exposure array manifold $\boldsymbol{\Phi}_m$ for sampling point $m$ can be expressed as:
+\begin{equation}
+    Z_{pq} = -\frac{1}{I_p I_q}\int_{-h_0}^{h_0} F_{pq}(l)\,dl
+    = \frac{j\eta_0}{4\pi\sin(kh_0)}\int_{-h_0}^{h_0} \sin\!\bigl(k(h_0 - |l|)\bigr)\,F_{pq}^{\rm{wf}}(l)\,dl,
+    \label{eq:Zpq_confirm}
+\end{equation}
+with the kernel function $F_{pq}^{\rm{wf}}(l) = e^{-jkR_1}/R_1 + e^{-jkR_2}/R_2 - 2\cos(kh_0)e^{-jkR_0}/R_0$.
+
+
+\begin{thebibliography}{31}
+
+\bibitem{ref1}
+Z. Xiao, S. Hu, J. Xu, H. Huang, W. Zhuang, and X. Shen, ``User-centric immersive communications in 6G: A data-oriented framework via digital twin,'' \emph{IEEE Wireless Commun.}, vol. 32, no. 3, pp. 122--129, 2025.
+
+\bibitem{ref2}
+M. Xiao, S. Mumtaz, Y. Huang, L. Dai, Y. Li, M. Matthaiou, G. K. Karagiannidis, E. Bjornson, K. Yang, C. Lin, and A. Ghosh, ``Millimeter wave communications for future mobile networks,'' \emph{IEEE J. Sel. Areas Commun.}, vol. 35, no. 9, pp. 1909--1935, 2017.
+
+\bibitem{ref3}
+E. Carrasco, J. Riera, B. M. Hochwald, D. J. Love, and D. J. Riera, ``Exposure of portable wearable devices over 6 GHz,'' \emph{Radiation Protection Dosimetry}, vol. 183, no. 4, pp. 489--496, 2018.
+
+\bibitem{ref5}
+W. Chiaraviglio, A. Elzanaty, and M.-S. Alouini, ``Health risks associated with 5G exposure: A view from the communications engineering perspective,'' \emph{IEEE Open J. Commun. Soc.}, vol. 2, pp. 2131--2179, 2021.
+
+\bibitem{ref6}
+``Evaluating compliance with FCC guidelines for human exposure to radio frequency electromagnetic fields,'' Federal Communications Commission, Tech. Rep. OET Bul 65, Suppl. C, ed. 01-01, 2001.
+
+\bibitem{ref7}
+ICNIRP, ``Guidelines for limiting exposure to time-varying electric, magnetic, and electromagnetic fields (up to 300~GHz),'' \emph{Health Phys.}, vol. 74, no. 4, pp. 494--522, 1998.
+
+\bibitem{ref8}
+M. Zhadobov, N. Chahat, R. Sauleau, C. Le Quement, and Y. Le Drean, ``Millimeter-wave interactions with the human body: State of knowledge and recent advances,'' \emph{Int. J. Microw. Wireless Technol.}, vol. 3, no. 2, pp. 237--247, 2011.
+
+\bibitem{ref9}
+``IEEE standard for safety levels with respect to human exposure to electric, magnetic, and electromagnetic fields, 0~Hz to 300~GHz,'' \emph{IEEE Std C95.1-2019}, 2019.
+
+\bibitem{ref10}
+K.-C. Chim, K. C. Chan, and R. D. Murch, ``Investigating the impact of smart antennas on SAR,'' \emph{IEEE Trans. Antennas Propag.}, vol. 52, no. 5, pp. 1370--1374, 2004.
+
+\bibitem{ref11}
+B. M. Hochwald, D. J. Love, S. Yan, P. Fay, and J.-M. Jin, ``Incorporating specific absorption rate constraints into wireless signal design,'' \emph{IEEE Commun. Mag.}, vol. 52, no. 9, 2014.
+
+\bibitem{ref12}
+A. Ebadi-Shahrivar, J. Riera, B. M. Hochwald, P. Fay, J.-M. Jin, and D. J. Love, ``Mixed quadratic model for peak spatial-average SAR of holographic MIMO,'' in \emph{Proc. IEEE Int. Symp. Antennas Propag.}, 2017, pp. 1419--1420.
+
+\bibitem{ref13}
+J. Xiong, L. You, D. W. K. Ng, W. Wang, X. Gao, ``Energy-efficient precoder design with wireless signal exposure constraint,'' \emph{IEEE Trans. Veh. Technol.}, vol. 70, no. 7, pp. 7428--7442, 2021.
+
+\bibitem{ref14}
+M. R. Castellanos, Y. Liu, D. J. Love, B. Peleato, J.-M. Jin, and B. M. Hochwald, ``Signal-level models of pointwise near-field exposure for millimeter wave communications,'' \emph{IEEE Trans. Antennas Propag.}, vol. 68, no. 5, pp. 3963--3977, 2020.
+
+\bibitem{ref15}
+D. Yang, D. J. Love, and B. M. Hochwald, ``Sum-rate analysis for multi-user MIMO systems with user exposure constraints,'' \emph{IEEE Trans. Wireless Commun.}, vol. 16, no. 11, pp. 7376--7388, 2017.
+
+\bibitem{ref16}
+M. R. Castellanos, V. Petrov, P. Almers, and D. J. Love, ``An EM manifold-based approach to near-field communication exposure modeling,'' \emph{IEEE Wireless Commun. Lett.}, vol. 11, no. 1, pp. 86--90, 2022.
+
+\bibitem{ref17}
+M. R. Castellanos and R. W. Heath, ``Electromagnetic characterization of antenna arrays,'' \emph{IEEE Trans. Wireless Commun.}, vol. 24, no. 3, pp. 1772--1785, 2025.
+
+\bibitem{ref18}
+ICNIRP, ``Guidelines for limiting exposure to electromagnetic fields (100~kHz to 300~GHz),'' \emph{Health Phys.}, vol. 118, no. 5, pp. 483--524, 2020.
+
+\bibitem{ref19}
+K. R. Foster, M. C. Ziskin, and Q. Balzano, ``Thermal response of human skin to microwave energy: A critical review,'' \emph{Health Phys.}, vol. 111, no. 6, pp. 528--541, 2016.
+
+\bibitem{ref20}
+C. A. Balzano, \emph{Antenna Theory: Analysis and Design}. John Wiley \& Sons, 2016.
+
+\bibitem{ref21}
+M. R. Castellanos, Z. Zhou, J. Y. Chen, N. Zhang, and C. You, ``Near-field and mutual coupling-aware near-field exposure model for millimeter wave communications,'' \emph{IEEE J. Sel. Areas Commun.}, vol. 68, no. 5, pp. 3963--3977, 2020.
+
+\bibitem{ref22}
+L. Y. Yao, G. Liang, J. Y. Chen, S. Liu, H. Li, Zhu, Zhu, and C. Liu, ``An electromagnetically and mutual coupling-aware near-field exposure model for millimeter wave,'' \emph{IEEE J. Sel. Areas Commun.}, vol. 42, pp. 2131--2179, 2024.
+
+\bibitem{ref23}
+R. Zhang, Y. Shao, and Y. C. Eldar, ``Polarization-aware movable antenna communication with a constraint on EM exposure,'' \emph{IEEE Trans. Wireless Commun.}, vol. 35, pp. 7428--7442, 2025.
+
+\bibitem{ref24}
+H. H. Pennes, ``Analysis of tissue and arterial blood temperatures in the resting forearm,'' \emph{Journal of Applied Physiology}, vol. 1, no. 2, pp. 93--122, 1948.
+
+\bibitem{ref25}
+P. A. Hasgall, E. Neufeld, M. C. Gosselin, A. Klingenbock, N. Kuster, A. Klingenbock, P. Hasgall, and M. Gosselin, ``IT'IS database for thermal and electromagnetic parameters of biological tissues,'' \emph{Journal of Cell Biology}, vol. 93, no. 1, pp. 170--172, 2012.
+
+\bibitem{ref26}
+D. Yang, D. J. Love, and P. Camarini, ``Tissue temperature network optimization with application to communication and queuing systems,'' Morgan \& Claypool Publishers, 2010.
+
+\bibitem{ref27}
+D. Ying, D. J. Love, and B. M. Hochwald, ``Beamformer design with a constraint on mean electromagnetic radiation exposure,'' in \emph{Proc. IEEE WNCG}, pp. 86--90, 2014.
+
+\bibitem{ref28}
+M. R. Castellanos and R. W. Heath, ``Electromagnetic characterization of antenna arrays,'' \emph{IEEE Trans. Wireless Commun.}, vol. 24, no. 3, pp. 1772--1785, 2025.
+
+\bibitem{ref29}
+J. Guo, F. Liangbo, P. Camarini, ``Application of the time-dependent bioheat equation and Fourier transforms to the solution of the bioheat equation,'' \emph{International journal of hyperthermia}, vol. 11, no. 2, pp. 267--285, 1995.
+
+\bibitem{ref30}
+M. Neely, \emph{Stochastic network optimization with application to communication and queuing systems}. Morgan \& Claypool, 2010.
+
+\bibitem{ref31}
+S. J. Orfanidis, \emph{Electromagnetic Waves and Antennas}. Rutgers University, New Brunswick, NJ, 2002.
+
+\end{thebibliography}
+
+\end{document}
