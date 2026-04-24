@@ -32,7 +32,7 @@ viz = [
     "trame>=3.12.0",
     "scienceplots>=2.1.0",
 ]
-viewer = ["flask>=3.1.3", "psutil>=5.9", "differt @ git+https://github.com/rwydaegh/DiffeRT.git#subdirectory=differt", "modal>=1.4.2", "requests>=2.31", "pandas>=3.0.2", "geopy>=2.4", "Pillow>=12.2", "pyarrow>=14.0"]
+viewer = ["flask>=3.1.3", "psutil>=7.2.2", "differt @ git+https://github.com/rwydaegh/DiffeRT.git#subdirectory=differt", "modal>=1.4.2", "requests>=2.31", "pandas>=3.0.2", "geopy>=2.4", "Pillow>=12.2", "pyarrow>=14.0"]
 rt = ["differt @ git+https://github.com/rwydaegh/DiffeRT.git#subdirectory=differt"]
 sionna = ["sionna-rt>=2.0,<3.0"]
 modal = ["modal>=1.4.2"]
