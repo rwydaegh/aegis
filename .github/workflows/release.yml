@@ -124,7 +124,7 @@ jobs:
           echo "::endgroup::"
       - name: Upload mutmut reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: mutmut-results-${{ github.ref_name }}
           path: mutmut_results_*.txt
@@ -144,7 +144,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: astral-sh/setup-uv@v7
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: '20'
           cache: 'npm'
@@ -184,7 +184,7 @@ jobs:
           fi
       - name: Upload diff artifacts on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-visual-diffs
           path: |
@@ -193,7 +193,7 @@ jobs:
           retention-days: 14
       - name: Upload regenerated baselines
         if: inputs.update_snapshots
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: visual-regression-baselines
           path: aegis-web/tests/e2e/__snapshots__/
