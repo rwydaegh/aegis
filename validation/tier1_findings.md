@@ -1,8 +1,9 @@
-# Tier 1 findings: AEGIS vs FDTD on full thelonious at 7/9/11 GHz (in progress)
+# Tier 1 findings: AEGIS vs FDTD on full thelonious at 7 GHz (in progress)
 
-This is a draft.  The 36-sim Tier 1 sweep is launched and running on
-the upgraded TD VM.  Numbers are filled in as each frequency block
-completes.  Final write-up will replace placeholders.
+This is a draft.  Tier 1 was reduced from the original 36-sim Path-A
+scope (6 dir × 2 pol × 7/9/11 GHz) to **6 sims at 7 GHz, theta-pol
+only** — see "Reduced scope" below.  Numbers are filled in as the
+sweep returns.  Final write-up will replace placeholders.
 
 ## What this campaign tests
 
@@ -33,9 +34,33 @@ Differences from the original Tier 1 spec, with reasons:
   * Phantom: full thelonious (1.18 m, 17.4 kg).  No scaling, no
     cropping; sagittal symmetry exploited (`use_symmetry_reduction:
     true`).
-  * Frequencies: 7000, 9000, 11000 MHz.
-  * 6 directions × 2 polarisations = 12 incident scenarios per f.
+  * Frequency: 7000 MHz only.
+  * 6 directions × 1 polarisation (theta) = 6 sims.
+  * Grid 0.6 mm (paper baseline ~7 CPW in skin at 7 GHz).
   * Convergence target -30 dB.  `auto_induced.enabled: false`.
+  * `auto_cleanup_previous_results: ["output"]` — `_Output.h5`
+    deleted post-extraction (saved disk; dual-evaluator + sliced h5
+    survive and feed the AEGIS-side analysis).
+
+## Reduced scope rationale
+
+The original Path-A spec was 36 sims (6 dir × 2 pol × 3 freq).  The
+first 7 GHz scenario in that run profiled at ~12-15 minutes for the
+FDTD time-update plus ~5-10 minutes for SAR/SAPD extraction —
+~20 min/sim wall-clock.  At that rate the full sweep would take
+8 – 12 hours, which is past the available budget on this VM today.
+
+We therefore reduced to a single frequency (7 GHz, the lowest of
+the FR3 sweet-spot ladder) with theta polarisation only, keeping the
+full direction sweep so the headline ratio is direction-averaged.
+Trades made:
+
+  * Lose the freq-dependence on Tier 1's 7/9/11 GHz ladder.
+    Mitigation: 7 GHz is the closest in spirit to Tier 0's
+    5.8 GHz endpoint and the most-likely-to-be-in-AEGIS-band.
+  * Lose the polarisation residual `D_B` at FR3.  Mitigation: Tier 0
+    already showed `D_B` ≤ 19.5 % at 5.8 GHz on x_pos; Tier 1 was
+    expected to show the same envelope or tighter.
 
 Driver: `aegis/validation/scripts/run_tier1.py`
 Plot: `aegis/validation/scripts/plot_tier1.py`
@@ -45,11 +70,9 @@ Plot: `aegis/validation/scripts/plot_tier1.py`
 (filled in incrementally — see `tier1_thelonious.parquet` for raw
 table)
 
-| f (MHz) | x | direction-avg AEGIS L_all+O / FDTD | direction-avg Cauchy / FDTD | n=12 std |
+| f (MHz) | x | direction-avg AEGIS L_all+O / FDTD | direction-avg Cauchy / FDTD | n=6 std |
 |---:|---:|---:|---:|---:|
 | 7000 | 86.7 | TBD | TBD | TBD |
-| 9000 | 111.4 | TBD | TBD | TBD |
-| 11000 | 136.2 | TBD | TBD | TBD |
 
 (`x = π h / λ` with `h = 1.18205 m` for full thelonious.)
 
