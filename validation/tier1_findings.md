@@ -89,6 +89,33 @@ ratios at this single direction:
 | AEGIS L_all + occlusion | 0.063 | **0.35** |
 | Cauchy + T̄ (closed form) | 0.084 | 0.47 |
 
+**Peak SAPD (4-cm² windowed) — much better agreement than total Pabs:**
+
+|  | peak_sab_4cm² (W/m² at Sinc=1) | / FDTD |
+|---|---:|---:|
+| FDTD `peak_sapd_W_m2 × NORM` | 0.642 | — |
+| AEGIS `peak_sab_averaged` (L_all+O) | 0.678 | **1.06** |
+
+Two important things from the first scenario:
+
+  * **AEGIS peak 4-cm² SAPD agrees with goliat's GenericSAPDEvaluator
+    to 6 % at 7 GHz x_pos / theta** — this is the metric the IEC/IEEE
+    63195 standard cares about and AEGIS's intended sweet spot.
+  * **Total absorbed power (`DielLoss × NORM`) at 7 GHz is 2.8× the
+    Tier 0 5800 MHz value** for the same direction/polarisation
+    (0.180 W vs 0.064 W).  AEGIS's surface-only law (`Lall + O`)
+    gives a ratio that drops from 1.0 at Tier 0 5.8 GHz x_pos/theta
+    to 0.35 here at 7 GHz x_pos/theta — but AEGIS itself predicts
+    nearly the same number at both frequencies (0.110 vs 0.107 W).
+    The change is on the FDTD side: tighter convergence
+    (-30 dB vs Tier 0's -15 dB) plus finer grid (0.6 mm vs 1.0 mm)
+    likely captures more deep-tissue absorption that the surface
+    geometric law cannot represent.  Whether this means Tier 0's
+    "Cauchy matches FDTD to 1.2 % at 5.8 GHz" is an artefact of
+    under-converged FDTD, or whether it's a real frequency-dependent
+    effect, requires re-running 5800 MHz at -30 dB to settle —
+    not in scope today.
+
 Two things to note before the rest of the directions land:
 
   * **AEGIS's absolute Pabs at 7 GHz is essentially identical to its
