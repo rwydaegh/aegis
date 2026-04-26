@@ -72,9 +72,44 @@ table)
 
 | f (MHz) | x | direction-avg AEGIS L_all+O / FDTD | direction-avg Cauchy / FDTD | n=6 std |
 |---:|---:|---:|---:|---:|
-| 7000 | 86.7 | TBD | TBD | TBD |
+| 7000 | 86.7 | TBD (in progress) | TBD | TBD |
 
 (`x = π h / λ` with `h = 1.18205 m` for full thelonious.)
+
+### First-scenario snapshot (x_pos / theta-pol only, 1 of 6 sims complete)
+
+The `x_pos` / theta-pol scenario landed cleanly (no _Output.h5 retained
+courtesy of `auto_cleanup_previous_results: ["output"]`).  Per-direction
+ratios at this single direction:
+
+|  | absolute Pabs (W at Sinc=1 W/m²) | / FDTD |
+|---|---:|---:|
+| FDTD `DielLoss × NORM` | 0.180 | — |
+| AEGIS L_all (no occlusion) | 0.107 | 0.60 |
+| AEGIS L_all + occlusion | 0.063 | **0.35** |
+| Cauchy + T̄ (closed form) | 0.084 | 0.47 |
+
+Two things to note before the rest of the directions land:
+
+  * **AEGIS's absolute Pabs at 7 GHz is essentially identical to its
+    Pabs at Tier 0's 5800 MHz** for the same direction/polarisation
+    (0.107 vs 0.110 W).  AEGIS's prediction is `T̄(f) × A_ab × kernel`,
+    and `T̄` is nearly constant across the body band, so the AEGIS
+    answer barely moves with frequency.
+  * **FDTD's DielLoss at 7 GHz is 2.8× larger than at 5800 MHz** on
+    full thelonious x_pos / theta (0.180 vs 0.064 W in absolute units
+    at `Sinc = 1 W/m²`).  At higher frequency, more of the incident
+    plane wave is absorbed inside the body (shorter skin depth, higher
+    σ).  AEGIS's geometric law captures only the surface-incident
+    flux, not the deeper-tissue accumulation.
+
+These are still per-direction; the headline `direction-averaged`
+ratio will land once the 5 remaining directions return.  Already the
+trend suggests AEGIS over-corrects at high `x` (the curvature term
+contributes positively at the surface, but the deep-tissue absorption
+that FDTD sees grows faster than AEGIS's surface-only law).  The
+direction-average column will tell us whether this is x_pos-specific
+(it's the peak-illumination direction at lateral) or systematic.
 
 ## Per-direction variance and polarisation residual
 
