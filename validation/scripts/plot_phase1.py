@@ -121,10 +121,15 @@ def main():
     ax.grid(True, which="both", alpha=0.3)
     ax.legend(fontsize=9, loc="best")
 
-    # Panel 2 — peak SAPD ratio (4 cm² windowed)
+    # Panel 2 — peak SAPD ratio (4 cm² windowed) using AEGIS's
+    # `peak_sab_averaged` (its own 4-cm² spatial-averaging algorithm)
+    # vs goliat's `peak_sapd_W_m2` from the GenericSAPDEvaluator.
+    # Both at S_inc = 1 W/m^2 (NORM applied to the goliat side).
     ax = axes[1]
-    p1["peak4_ratio"] = p1["surface_peak_ratio_4cm2"]
-    ax.plot(p1["size_x"], p1["peak4_ratio"], "o-", color="C3", label="Phase 1 (scaled 1/3)")
+    p1["peak4_ratio_json"] = p1["Lall_peak_sab_4cm2"] / p1["fdtd_peak_sapd_W_m2"]
+    p1["peak4_ratio"] = p1["peak4_ratio_json"]
+    ax.plot(p1["size_x"], p1["peak4_ratio"], "o-", color="C3", label="Phase 1 (scaled 1/3) JSON peak")
+    ax.plot(p1["size_x"], p1["surface_peak_ratio_4cm2"], "x:", color="C3", alpha=0.4, label="Phase 1 surface_compare peak")
     ax.axhline(1.0, color="k", linewidth=0.5, alpha=0.5)
     ax.axhspan(0.8, 1.2, color="grey", alpha=0.15, label="±20 % band")
     for _, row in p1.iterrows():
