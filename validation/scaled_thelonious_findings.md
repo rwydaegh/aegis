@@ -187,6 +187,33 @@ Stretch tasks that remain open and useful:
   * Tier 3's 28 GHz head crop or Duke at 7 GHz remain on the table
     for a future hardware bump; nothing in Phase 1 closes them.
 
+## Caveats / known issues
+
+  * Manual grid step capped at 3 mm by goliat's
+    `_validate_grid_size`.  At 700 MHz on the scaled body that's
+    coarser than the 0.7 mm scaled-skin layer — absolute SAPD
+    magnitudes will reflect this discretisation; the AEGIS/FDTD
+    ratio is still meaningful since both solvers see the same scaled
+    body.
+  * Power balance reads ~71–88 % at sub-2 GHz (vs ~100 % expected
+    for `(DielLoss + RadPower) / Pin`).  Same Pin-vs-TF/SF-bbox
+    bookkeeping anomaly characterised in `tier0_findings.md`; does
+    not affect absolute Pabs comparisons.
+  * **`skin_apd.npz` is sliced to a 100 mm box around the peak
+    SAPD, not the full body** (discovered while debugging Tier 2
+    surface-map analysis on full thelonious 7 GHz).  Goliat's
+    `SapdExtractor._create_sliced_h5` + dual-evaluator pipeline
+    writes per-vertex APD only on the slice.  The Phase 1
+    `surface_compare`-derived `surface_nrmse` and
+    `surface_peak_ratio_4cm2` columns in the parquet therefore
+    compare AEGIS *full-body* Sab against FDTD *slice-region* SAPD,
+    which is only roughly meaningful where the slice dominates the
+    integrated absorption (it does at high-x where the peak is
+    concentrated; less so at low-x where absorption is spread).
+    The headline `Lall/FDTD_Pabs` and `Cauchy/FDTD_Pabs` ratios are
+    not affected — they use `DielLoss × NORM` (a volume integral
+    over the entire phantom), independent of the SAPD slice.
+
 ## Files
 
   * `validation/scripts/scale_thelonious.py` — STL scaling.
