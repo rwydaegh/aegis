@@ -201,31 +201,39 @@ error. If the sphere fails, debug there before touching the phantom.
 `tests/test_mie.py` already validates against Mie. Sphere calibration
 tests *goliat's FDTD setup*, not AEGIS.
 
-### Tier 1 onwards — *in limbo* pending the scaled-thelonious experiment
+### Tier 1 onwards — back in scope, awaiting re-scoping
 
-**As of 2026-04-26**, Tiers 1, 2, and 3 below are paused. Their original
-designs assumed full-body thelonious sims at high frequency, which the
-existing campaign-stats baseline (`goliat/simulation_stats/`, avg 19.5 min
-per sim sub-6 GHz) reveals to be brutal at 28 GHz (~27 wallclock-hours
-per sim). They also relied on phantom-slicing tricks that introduce
-diffraction edges and PML proximity issues.
+**As of 2026-04-26 (revised)**, Tiers 1–3 are *not* obviated by the
+scaled-thelonious idea. The original "1/N⁴ compute saving for the
+same physical regime" framing was wrong: Maxwell scale invariance
+plus FDTD cost ∝ x⁴ means that the apparent saving comes from
+validating at lower x (already covered by Tier 0), not from a free
+shortcut. See [`scaled_thelonious_proposal.md`](scaled_thelonious_proposal.md)
+(revised) for the corrected analysis. That proposal is now positioned
+as a sanity check, not a Tier 1 replacement.
 
-Replacement strategy under active investigation: see
-[`scaled_thelonious_proposal.md`](scaled_thelonious_proposal.md). One
-freq sweep on a 1/3-scale thelonious validates the same dimensionless
-$x = \pi d/\lambda$ regime with $1/N^4 = 1/81$ the compute cost, and
-overlays cleanly onto the monograph's existing Mie-on-spheres
-validation curve. If that experiment validates the framework, several
-of the tier-by-tier ambitions below collapse into a single afternoon's
-work. If it falls over, the original tier plans below come back into
-scope (revisit at that point).
+What this means for the tier plan:
 
-The text below is preserved as the *fallback* design — what we'd run if
-the scaled-phantom approach reveals a scaling artefact that demands
-real full-size sims. Read it for what its sweep targets are, not as a
-commitment.
+- **Tier 1 is back in scope** but should probably be re-scoped before
+  launch. The original 36-sim sweep (12 dir × 2 pol × 3 freqs at FR3)
+  is heavy and may not be the best use of compute given Tier 0
+  already shows AEGIS within 1.2 % direction-averaged at 5.8 GHz.
+  A leaner Tier 1 — one or two anchor frequencies at full body, full
+  direction sweep at one frequency, partial-body crops for the
+  expensive points — is likely the right next move. Re-design before
+  launch.
+- **Tier 2 (full surface map at one frequency)** is essentially
+  already enabled by the Tier 0.5 dual-evaluator pipeline. Could be
+  attached to whichever Tier 1 anchor sim ends up running.
+- **Tier 3 (28 GHz head crop, Duke at 7 GHz, 15 GHz multi-GPU)** is
+  the actual high-x validation. None of the lower tiers reach the
+  $x \gtrsim 200$ regime that this targets.
 
-### (paused) Tier 1 — geometric sweet spot (one day, 1×3090 + bumped TD)
+The text below is the original Tier 1/2/3 design, kept as reference
+while Tier 1 is re-scoped. Treat it as a menu of possible scenarios,
+not a commitment.
+
+### (re-scoping) Tier 1 — geometric sweet spot (one day, 1×3090 + bumped TD)
 
 Cleanest test of the geometric absorption law in the band where it's expected to be optimal. **Re-run from scratch** because no environmental FDTD data exists at FR3 — the 2026 PMB campaign used auto_induced (beamforming worst-case) at 7+ GHz, not 12-direction environmental.
 
@@ -246,7 +254,7 @@ Cleanest test of the geometric absorption law in the band where it's expected to
 
 The scientific output of Tier 1 alone is publishable as a validation paper. It's also the unit at which a regulatory reviewer would expect to see evidence.
 
-### (paused) Tier 2 — full surface map comparison (1–2 days, 1×3090)
+### Tier 2 — full surface map comparison (1–2 days, 1×3090)
 
 Gets us the spatial correlation result needed for the monograph figures.
 
@@ -258,7 +266,7 @@ Gets us the spatial correlation result needed for the monograph figures.
 
 This tier requires writing a small `goliat_h5_to_triangles.py` helper. Save it in `aegis/validation/`.
 
-### (paused) Tier 3 — stretch (multi-GPU TD machine or cloud)
+### Tier 3 — stretch / actual high-x regime (multi-GPU TD machine or cloud)
 
 Demos that justify the framework outside its comfort zone:
 
