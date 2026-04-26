@@ -201,37 +201,67 @@ error. If the sphere fails, debug there before touching the phantom.
 `tests/test_mie.py` already validates against Mie. Sphere calibration
 tests *goliat's FDTD setup*, not AEGIS.
 
-### Tier 1 onwards — back in scope, awaiting re-scoping
+### Tier 1 onwards — partial completion (2026-04-26 PM)
 
-**As of 2026-04-26 (revised)**, Tiers 1–3 are *not* obviated by the
-scaled-thelonious idea. The original "1/N⁴ compute saving for the
-same physical regime" framing was wrong: Maxwell scale invariance
-plus FDTD cost ∝ x⁴ means that the apparent saving comes from
-validating at lower x (already covered by Tier 0), not from a free
-shortcut. See [`scaled_thelonious_proposal.md`](scaled_thelonious_proposal.md)
-(revised) for the corrected analysis. That proposal is now positioned
-as a sanity check, not a Tier 1 replacement.
+**Status: 2 of 6 reduced-Tier-1 scenarios completed at 7 GHz on full
+thelonious.**  Headline (lateral pair x_pos+x_neg, theta-pol,
+n=2, x = 86.7):
 
-What this means for the tier plan:
+  * direction-avg `Lall+O / FDTD` = **0.383**
+  * direction-avg `Cauchy / FDTD` = 0.509
+  * direction-avg `AEGIS / FDTD` peak 4-cm² SAPD = **1.126**
 
-- **Tier 1 is back in scope** but should probably be re-scoped before
-  launch. The original 36-sim sweep (12 dir × 2 pol × 3 freqs at FR3)
-  is heavy and may not be the best use of compute given Tier 0
-  already shows AEGIS within 1.2 % direction-averaged at 5.8 GHz.
-  A leaner Tier 1 — one or two anchor frequencies at full body, full
-  direction sweep at one frequency, partial-body crops for the
-  expensive points — is likely the right next move. Re-design before
-  launch.
-- **Tier 2 (full surface map at one frequency)** is essentially
-  already enabled by the Tier 0.5 dual-evaluator pipeline. Could be
-  attached to whichever Tier 1 anchor sim ends up running.
-- **Tier 3 (28 GHz head crop, Duke at 7 GHz, 15 GHz multi-GPU)** is
-  the actual high-x validation. None of the lower tiers reach the
-  $x \gtrsim 200$ regime that this targets.
+Detail in [`tier1_findings.md`](tier1_findings.md).  Two takeaways:
 
-The text below is the original Tier 1/2/3 design, kept as reference
-while Tier 1 is re-scoped. Treat it as a menu of possible scenarios,
-not a commitment.
+  1. AEGIS captures the IEC/IEEE 63195 peak SAPD metric to within
+     ~13 % at 7 GHz on the lateral pair — the AEGIS sweet spot is
+     real for peaks.
+  2. AEGIS underpredicts FDTD's total absorbed power by factor ~2.6
+     at 7 GHz.  The AEGIS prediction is essentially unchanged from
+     Tier 0's 5800 MHz value on the same direction; FDTD's
+     `DielLoss × NORM` at 7 GHz is 2.8× the 5800 MHz value.  Most
+     plausible cause: Tier 1 ran at -30 dB convergence and 0.6 mm
+     grid, vs Tier 0's -15 dB and 1.0 mm — tighter convergence
+     reveals deep-tissue absorption the surface-only law cannot
+     model.  **This calls Tier 0's "Cauchy matches FDTD to 1.2 % at
+     5.8 GHz" headline into question** — that "agreement" may be an
+     artefact of under-converged FDTD.  Worth a follow-up:
+     re-running 5800 MHz environmental at -30 dB / 1.0 mm to
+     verify.
+
+Scope was reduced from the original 36-sim Path A:
+  * 7 GHz only (not 7/9/11) — full sweep would have taken 8–12 h on
+    this VM at the observed ~20 min/sim pace.
+  * theta-pol only (no `D_B` measurement at FR3).
+  * 6-direction sweep attempted, only 2 completed.  y_pos's FDTD
+    ran but `SapdExtractor._slice_skin_mesh`'s mesh repair loop
+    stalled on an anatomically complex region around the peak;
+    extraction never finished.  y_neg / z_pos / z_neg never started.
+
+**Phase 1 closed Path B.**  The scaled-thelonious sanity check found
+that scale invariance is broken by tissue dispersion at matching x
+(AEGIS / FDTD ratio on scaled body sits at 0.5–0.65× the full-body
+ratio), so partial-body crops or scaled phantoms are not a free
+shortcut to high-x validation.  See
+[`scaled_thelonious_findings.md`](scaled_thelonious_findings.md).
+
+What this means for the tier plan going forward:
+
+- **Tier 1 still has 4 missing scenarios** at 7 GHz (y_neg, z_pos,
+  z_neg, plus y_pos extraction) and the entire 9 / 11 GHz frequency
+  ladder.  The lateral-pair result is solid as far as it goes.
+- **Tier 2 (full surface map)** has a methodological wrinkle
+  uncovered by today's attempt: goliat's `skin_apd.npz` from the
+  dual-evaluator dump is *sliced to a 100 mm box around the peak
+  SAPD*, not the full body.  Surface NRMSE / R² metrics need the
+  AEGIS-side comparison restricted to the slice, or a goliat patch
+  to dump full-body APD.  See findings docs for detail.
+- **Tier 3 (28 GHz head crop, Duke at 7 GHz, 15 GHz multi-GPU)**
+  unchanged — none of today's work touches the $x \gtrsim 200$
+  regime.
+
+The text below is the original Tier 1/2/3 design, kept as reference.
+Treat it as a menu of possible scenarios, not a commitment.
 
 ### (re-scoping) Tier 1 — geometric sweet spot (one day, 1×3090 + bumped TD)
 
