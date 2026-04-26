@@ -284,6 +284,10 @@ class DosimetryEngine:
         q: np.ndarray | float = 0.0,
         # Level 5/6 curvature
         curvature_H: np.ndarray | None = None,
+        # Per-direction visibility (paper eq. 3.1: S_ab(r) = S_inc T_0 ReLU(mu) O(r, k_hat))
+        # Shape: (M_tri,) for single path, or (M_tri, N_paths) for multi-path.
+        # Values in [0, 1]. None => O = 1 everywhere (assume convex body).
+        occlusion: np.ndarray | None = None,
         # Level 7-8 coherent MIMO
         precoder: Precoder | None = None,
         h: np.ndarray | None = None,
@@ -342,7 +346,7 @@ class DosimetryEngine:
 
         # Mode-based path
         if mode is not None:
-            return self._compute_mode(
+            result = self._compute_mode(
                 body,
                 paths,
                 mode=mode,
@@ -369,6 +373,21 @@ class DosimetryEngine:
                 sigma=active_sigma,
                 _timings=_timings,
             )
+            if occlusion is not None and mode == "spatial":
+                # Re-build the result with occlusion-multiplied sab. We post-
+                # multiply the per-triangle Sab so paper eq. 3.1's O(r, k_hat)
+                # factor is applied to the spatial map.
+                occ = np.asarray(occlusion, dtype=result.sab.dtype)
+                if occ.ndim == 2:
+                    pw = np.asarray(paths.power, dtype=result.sab.dtype)
+                    occ = (occ * pw[None, :]).sum(axis=1) / max(pw.sum(), 1e-30)
+                new_sab = result.sab * occ
+                result = self._build_result(
+                    body, paths, new_sab, result.fidelity_level,
+                    body_mass=body_mass, freq_hz=active_freq_hz,
+                    spatial_averaging=spatial_averaging, _timings=_timings,
+                )
+            return result
 
         # Legacy level-based path
         if level < 0 or level > 8:
@@ -406,6 +425,15 @@ class DosimetryEngine:
             T0=active_T0,
         )
         sab = _to_numpy(sab)
+        if occlusion is not None and level is not None and level >= 2:
+            occ = np.asarray(occlusion, dtype=sab.dtype)
+            if occ.ndim == 2:
+                # paths combine inside the kernel via @ power, so occ must already
+                # be reduced to (M,) before reaching here. Reduce by power-weighted
+                # mean if a (M, N) array was passed.
+                pw = np.asarray(paths.power, dtype=sab.dtype)
+                occ = (occ * pw[None, :]).sum(axis=1) / max(pw.sum(), 1e-30)
+            sab = sab * occ
         return self._build_result(
             body,
             paths,
