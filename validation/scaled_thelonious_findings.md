@@ -4,15 +4,16 @@ The proposal asked: when we run the scaled-(1/3) thelonious phantom at
 frequency `f` and the full-size thelonious at `f/3`, both at matching
 size parameter `x = π h / λ`, do AEGIS and FDTD line up the same way?
 
-**Headline finding: no.  The AEGIS / FDTD ratio at the scaled body is
-roughly 0.4× the ratio at the full body for matching `x` across the
-overlap window (`x ≈ 10 – 41`).  The Cauchy direction-average formula
-shows the same gap.**  Scale invariance, in the form the proposal
-tested, is broken — but for an understood reason (materials at the
-scaled body's operating frequency `f_scaled` differ from materials at
-the full body's `f_full = f_scaled / 3`, and AEGIS only captures that
-dispersion through `T̄`, not through the body-scale absorption
-physics).  See "Diagnosis" below.
+**Headline finding: no.  The AEGIS / FDTD ratio at the scaled body
+sits at 0.5×–0.65× the ratio at the full body for matching `x`
+across the overlap window (`x ≈ 10 – 41`).  The Cauchy
+direction-average formula shows the same gap.**  Scale invariance,
+in the form the proposal tested, is broken — but for an understood
+reason (materials at the scaled body's operating frequency
+`f_scaled` differ from materials at the full body's
+`f_full = f_scaled / 3`, and AEGIS only captures that dispersion
+through `T̄`, not through the body-scale absorption physics).  See
+"Diagnosis" below.
 
 The methodological consequence: **partial-body crops or scaled
 phantoms are not a free shortcut to high-`x` validation.  Path A
