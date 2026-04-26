@@ -1,9 +1,36 @@
-# Tier 1 findings: AEGIS vs FDTD on full thelonious at 7 GHz (in progress)
+# Tier 1 findings: AEGIS vs FDTD on full thelonious at 7 GHz
 
-This is a draft.  Tier 1 was reduced from the original 36-sim Path-A
-scope (6 dir × 2 pol × 7/9/11 GHz) to **6 sims at 7 GHz, theta-pol
-only** — see "Reduced scope" below.  Numbers are filled in as the
-sweep returns.  Final write-up will replace placeholders.
+The Tier 1 sweep landed only the **lateral pair (x_pos, x_neg)
+theta-pol on full thelonious at 7 GHz** before the run hit a chain
+of issues that consumed the available budget — see "What actually
+ran" below.  The two scenarios that completed cleanly carry the
+headline result.
+
+## Headline (2-direction lateral pair, theta-pol, 7 GHz, x = 86.7)
+
+| metric | value | note |
+|---|---:|---|
+| direction-avg `Lall+O / FDTD` (Pabs) | **0.383** | AEGIS underpredicts FDTD by ~2.6× |
+| direction-avg `Cauchy / FDTD` (Pabs) | 0.509 | direction-averaged closed form |
+| direction-avg `AEGIS / FDTD` peak 4-cm² SAPD | **1.126** | AEGIS within 13 % of goliat's `GenericSAPDEvaluator` |
+
+Two stories from those three lines:
+
+  1. **AEGIS captures the peak SAPD on the lateral pair to within
+     ~13 %.**  Per-direction values are 1.06 (x_pos) and 1.20
+     (x_neg) — the metric the IEC/IEEE 63195 standard cares about,
+     in AEGIS's claimed sweet spot, is delivered.
+  2. **AEGIS underpredicts the total absorbed power by a factor
+     ~2.6** at this frequency vs. Tier 0's "Cauchy / FDTD ≈ 1.012
+     at 5.8 GHz" headline.  The AEGIS *prediction* is essentially
+     the same at 5800 and 7000 MHz (its dominant freq dependence
+     is in `T̄(f)`, ~3 %); the *FDTD* DielLoss at 7000 MHz is 2.8×
+     the 5800 MHz value on the same direction/polarisation.  Most
+     plausible explanations: tighter convergence (-30 dB here vs
+     Tier 0's -15 dB) and finer grid (0.6 mm vs 1.0 mm) reveal
+     deep-tissue absorption that the geometric surface-only law
+     cannot capture.  Full discussion in "First-scenario
+     snapshot" below.
 
 ## What this campaign tests
 
@@ -65,14 +92,38 @@ Trades made:
 Driver: `aegis/validation/scripts/run_tier1.py`
 Plot: `aegis/validation/scripts/plot_tier1.py`
 
-## Headline numbers
+## What actually ran
 
-(filled in incrementally — see `tier1_thelonious.parquet` for raw
-table)
+The 6-sim plan was: x_pos / x_neg / y_pos / y_neg / z_pos / z_neg
+× theta-pol on full thelonious at 7 GHz.  Order observed on the VM:
 
-| f (MHz) | x | direction-avg AEGIS L_all+O / FDTD | direction-avg Cauchy / FDTD | n=6 std |
-|---:|---:|---:|---:|---:|
-| 7000 | 86.7 | TBD (in progress) | TBD | TBD |
+  1. **x_pos / theta — completed cleanly.**  Sim + extract = 21 min.
+  2. **x_neg / theta — completed cleanly on retry.**  First attempt
+     hit a Sim4Life license feature error (`No such feature exists.
+     (-5,147) - [@wicacib.private.ugent.be]`) during the
+     dual-evaluator SAPD setup, which goliat handled by restarting
+     the study from scratch.  Re-run took ~26 min, then extract.
+  3. **y_pos / theta — FDTD ran, extraction stalled** during
+     `SapdExtractor._slice_skin_mesh`'s mesh repair pass on the
+     united skin entity (the 100-mm-box slice intersected an
+     anatomically complex region that triggered repeated
+     `Patching holes` / `Fixing degeneracies` iterations).  The
+     `_Output.h5` is on disk but no `sapd_results.json` /
+     `sar_results.json` / `skin_apd.npz` ever landed.  An
+     extract-only retry with `extraction.sapd_field: false`
+     was launched but didn't complete in time.
+  4. **y_neg, z_pos, z_neg — never started.**
+
+Net: 2 of 6 scenarios with full data, 1 with field but no extract
+deliverables, 3 not run.
+
+## Headline numbers (the 2-sim result)
+
+| f (MHz) | x | direction (n) | AEGIS Lall+O / FDTD | Cauchy / FDTD | AEGIS peak / FDTD peak (4 cm²) |
+|---:|---:|---|---:|---:|---:|
+| 7000 | 86.7 | x_pos / theta | 0.350 | 0.467 | 1.057 |
+| 7000 | 86.7 | x_neg / theta | 0.417 | 0.551 | 1.196 |
+| 7000 | 86.7 | lateral-pair avg (n=2) | **0.383** | **0.509** | **1.126** |
 
 (`x = π h / λ` with `h = 1.18205 m` for full thelonious.)
 
