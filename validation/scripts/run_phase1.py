@@ -178,15 +178,15 @@ def main():
         Tb = Tbar(f_hz)
         Pabs_cauchy = 1.0 * Tb * A_ab / 4.0
 
-        # FDTD-side absorbed power and peak SAPD
+        # FDTD-side absorbed power and peak SAPD.  Both `DielLoss` and
+        # `peak_sapd_W_m2` are stored in goliat's native E=1 V/m units
+        # (i.e. native S_inc = 1/(2 eta_0)).  Multiply by NORM = 2 eta_0
+        # to express everything at S_inc = 1 W/m^2, matching AEGIS's
+        # default `power=1.0`.
         diel_W = float(rec["power_balance"]["DielLoss"])
         fdtd_pabs = diel_W * NORM
-        fdtd_peak_sapd = float(rec.get("peak_sapd_W_m2", float("nan")))
-        if "peak_sapd_W_m2" in rec:
-            # Goliat reports peak in V/m^2 native units; the renormalisation
-            # factor is already applied in the goliat post-process (verified
-            # against tier0 and the campaign README).  Keep as-is.
-            pass
+        fdtd_peak_sapd_native = float(rec.get("peak_sapd_W_m2", float("nan")))
+        fdtd_peak_sapd = fdtd_peak_sapd_native * NORM
 
         # AEGIS L_all (every spatial-mode kernel on, with real H, real q,
         # binary occlusion).  This is the "best-AEGIS" estimate.

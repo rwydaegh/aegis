@@ -60,20 +60,30 @@ def main():
     p1 = pd.read_parquet(here / args.phase1) if not Path(args.phase1).is_absolute() else pd.read_parquet(args.phase1)
     t0 = pd.read_parquet(here / args.tier0) if not Path(args.tier0).is_absolute() else pd.read_parquet(args.tier0)
 
-    # Tier 0: direction-average
+    # Tier 0: filter to x_pos / theta-pol (apples-to-apples with Phase 1 single
+    # direction).  Also keep a direction-averaged column as a reference.
     t0 = add_size_param_to_tier0(t0, args.h_full)
+    t0_xpos = (
+        t0[(t0["direction"] == "x_pos") & (t0["pol"] == "theta")]
+        .sort_values("freq_mhz")
+        .copy()
+    )
+    t0_xpos["Lall_o_ratio"] = t0_xpos["Lallo_Pabs"] / t0_xpos["fdtd_Pabs_W_m2"]
+    t0_xpos["Cauchy_ratio"] = t0_xpos["Cauchy_Pabs"] / t0_xpos["fdtd_Pabs_W_m2"]
+
     t0_grp = (
         t0.groupby("freq_mhz")
         .agg(
             size_x=("size_x", "first"),
             fdtd_Pabs=("fdtd_Pabs_W_m2", "mean"),
             Lall_Pabs=("Lall_Pabs", "mean"),
+            Lallo_Pabs=("Lallo_Pabs", "mean"),
             Cauchy_Pabs=("Cauchy_Pabs", "mean"),
         )
         .reset_index()
         .sort_values("freq_mhz")
     )
-    t0_grp["Lall_ratio"] = t0_grp["Lall_Pabs"] / t0_grp["fdtd_Pabs"]
+    t0_grp["Lall_o_ratio"] = t0_grp["Lallo_Pabs"] / t0_grp["fdtd_Pabs"]
     t0_grp["Cauchy_ratio"] = t0_grp["Cauchy_Pabs"] / t0_grp["fdtd_Pabs"]
 
     # Phase 1: per-frequency (single direction/pol)
@@ -87,10 +97,12 @@ def main():
     fig, axes = plt.subplots(1, 2, figsize=(13, 5), sharey=False)
 
     # Panel 1 — total Pabs ratio vs x
+    # Apples-to-apples: Tier 0 x_pos/theta single direction (matches Phase 1)
     ax = axes[0]
-    ax.plot(t0_grp["size_x"], t0_grp["Lall_ratio"], "o-", color="C0", label="Tier 0 (full thel)  L_all")
-    ax.plot(t0_grp["size_x"], t0_grp["Cauchy_ratio"], "s--", color="C0", alpha=0.6, label="Tier 0  Cauchy + T̄")
-    ax.plot(p1["size_x"], p1["Lall_ratio"], "o-", color="C3", label="Phase 1 (scaled 1/3) L_all")
+    ax.plot(t0_xpos["size_x"], t0_xpos["Lall_o_ratio"], "o-", color="C0", label="Tier 0 (full, x_pos/theta) L_all+O")
+    ax.plot(t0_xpos["size_x"], t0_xpos["Cauchy_ratio"], "s--", color="C0", alpha=0.6, label="Tier 0  Cauchy + T̄")
+    ax.plot(t0_grp["size_x"], t0_grp["Lall_o_ratio"], ":", color="C0", alpha=0.4, label="Tier 0 (dir-avg) for ref")
+    ax.plot(p1["size_x"], p1["Lall_ratio"], "o-", color="C3", label="Phase 1 (scaled 1/3, x_pos/theta) L_all+O")
     ax.plot(p1["size_x"], p1["Cauchy_ratio"], "s--", color="C3", alpha=0.6, label="Phase 1  Cauchy + T̄")
     ax.axhline(1.0, color="k", linewidth=0.5, alpha=0.5)
     for _, row in p1.iterrows():
@@ -142,18 +154,18 @@ def main():
 
     # Compact text summary
     print()
-    print("=== Phase 1 vs matching-x Tier 0 ===")
+    print("=== Phase 1 vs matching-x Tier 0 (x_pos/theta single direction) ===")
     for _, p in p1.iterrows():
         # Matching Tier 0 freq is f_scaled / 3 (since h scales by 3)
         target_freq = p.freq_mhz / 3.0
         # nearest in Tier 0
-        idx = (t0_grp["freq_mhz"] - target_freq).abs().idxmin()
-        match = t0_grp.loc[idx]
+        idx = (t0_xpos["freq_mhz"] - target_freq).abs().idxmin()
+        match = t0_xpos.loc[idx]
         print(
             f"  scaled {int(p.freq_mhz):>5} MHz (x={p.size_x:.2f})  "
-            f"Lall ratio {p.Lall_ratio:.3f}   "
+            f"Lall+O ratio {p.Lall_ratio:.3f}   "
             f"  vs Tier 0 {int(match.freq_mhz):>5} MHz (x={match.size_x:.2f})  "
-            f"Lall ratio {match.Lall_ratio:.3f}"
+            f"Lall+O ratio {match.Lall_o_ratio:.3f}"
         )
 
 
