@@ -94,44 +94,25 @@ def dump_outputs_report(algorithm, out_path: str) -> dict:
 APD_PORT_NAME = "APD(x,y,z,f0)"
 
 
-def _vtk_grid_to_arrays(vtk_grid):
-    """Pull (vertices, faces) from a vtkUnstructuredGrid via vtk_to_numpy.
+def _surface_grid_to_arrays(grid):
+    """Pull (vertices, faces) from an S4L SurfaceGrid via GetPoint/GetCellPoints.
 
-    Sim4Life ships VTK; this is ~100x faster than iterating GetPoint /
-    GetCellPoints in pure Python on a 16k-vertex sphere. Handles both
-    legacy (one flat connectivity array prefixed with cell-size counts) and
-    modern (separate connectivity + offsets arrays, VTK 9+) cell layouts.
-    Asserts the mesh is pure triangles, since that is what
-    GenericSAPDEvaluator and ModelToGridFilter produce on a body surface.
+    S4L's `grid.GetVtkUnstructuredGrid()` returns a raw C++ pointer
+    (`vtkUnstructuredGrid*`) that Boost.Python's by-value converter cannot
+    unwrap, so the seemingly-faster vtk_to_numpy path actually fails at
+    runtime with "No to_python (by-value) converter found". Stick to the
+    documented iteration accessors. Cost is a few seconds on a ~50k-vertex
+    thelonious skin; tolerable for a Tier 1 sweep.
     """
     import numpy as np
-    from vtk.util import numpy_support as vns
 
-    n_pts = vtk_grid.GetNumberOfPoints()
-    n_cells = vtk_grid.GetNumberOfCells()
-    verts = vns.vtk_to_numpy(vtk_grid.GetPoints().GetData()).reshape(n_pts, 3)
-
-    cell_array = vtk_grid.GetCells()
-    try:
-        # VTK 9+ modern API: connectivity + offsets
-        conn = vns.vtk_to_numpy(cell_array.GetConnectivityArray())
-        offs = vns.vtk_to_numpy(cell_array.GetOffsetsArray())
-        sizes = np.diff(offs)
-        if not (sizes == 3).all():
-            raise ValueError(f"non-triangle cells: sizes={np.unique(sizes).tolist()}")
-        faces = conn.reshape(n_cells, 3)
-    except (AttributeError, NotImplementedError):
-        # Legacy flat layout: [3, i, j, k, 3, i, j, k, ...]
-        flat = vns.vtk_to_numpy(cell_array.GetData())
-        if flat.size != 4 * n_cells:
-            raise ValueError(
-                f"flat connectivity size {flat.size} != 4 * n_cells {n_cells} -> mesh is not pure triangles"
-            )
-        rs = flat.reshape(n_cells, 4)
-        if not (rs[:, 0] == 3).all():
-            raise ValueError("legacy flat array has non-3 cell sizes")
-        faces = rs[:, 1:]
-    return verts.astype(np.float64), faces.astype(np.int32)
+    n_pts = grid.NumberOfPoints
+    n_cells = grid.NumberOfCells
+    verts = np.array([grid.GetPoint(i) for i in range(n_pts)], dtype=np.float64)
+    faces = np.array([grid.GetCellPoints(i) for i in range(n_cells)], dtype=np.int32)
+    if faces.ndim != 2 or faces.shape[1] != 3:
+        raise ValueError(f"expected (T,3) triangle faces, got shape {faces.shape}")
+    return verts, faces
 
 
 def find_field_port(algorithm) -> tuple:
@@ -209,13 +190,14 @@ def dump_per_triangle_apd(algorithm, out_path: str, *, renorm: float = 753.46, q
     apd = field if field.ndim == 1 else np.linalg.norm(field, axis=-1)
     apd = apd.astype(np.float32, copy=False)
 
-    # 2. Pull mesh via VTK → numpy
+    # 2. Pull mesh via SurfaceGrid iteration (vtk_to_numpy doesn't work; see
+    #    _surface_grid_to_arrays for why)
     grid = data.Grid
-    if grid is None or not hasattr(grid, "GetVtkUnstructuredGrid"):
+    if grid is None or not hasattr(grid, "GetPoint"):
         raise RuntimeError(
-            f"port.Data.Grid lacks GetVtkUnstructuredGrid(); type={type(grid).__name__ if grid else 'None'}"
+            f"port.Data.Grid lacks GetPoint(); type={type(grid).__name__ if grid else 'None'}"
         )
-    verts, faces = _vtk_grid_to_arrays(grid.GetVtkUnstructuredGrid())
+    verts, faces = _surface_grid_to_arrays(grid)
 
     # 3. Sanity check: APD length matches vertex count for kNode fields
     value_location = str(getattr(data, "ValueLocation", "?"))
