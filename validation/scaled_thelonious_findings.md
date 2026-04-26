@@ -29,7 +29,7 @@ VM (1×3090 / 24 GB / 16 vCPU / 64 GB RAM) for five frequencies:
 | 2400 | 9.91  | 0.394 | 1.482 | ~3 min |
 | 5200 | 21.47 | 0.394 | 1.0  | ~3 min |
 | 10000 | 41.29 | 0.394 | 0.5  | ~5 min |
-| 28000 | 115.62 | 0.394 | 0.22 | ~20 min (running) |
+| 28000 | 115.62 | 0.394 | 0.22 | OOM — see below |
 
 Single direction (theta=90°, phi=0° = `x_pos`), single polarisation
 (`theta`).  Both `extraction.sapd` (peak 4-cm² windowed, via S4L's
@@ -55,7 +55,7 @@ ratios verified to within 1e-7 along each axis.
 | 2400 MHz | 9.91  | 0.41 | 0.33 | 0.91 |
 | 5200 MHz | 21.47 | 0.37 | 0.39 | 1.19 |
 | 10000 MHz | 41.29 | 0.37 | 0.44 | 1.91 |
-| 28000 MHz | 115.6 | TBD | TBD | TBD |
+| 28000 MHz | 115.6 | OOM (see below) | — | — |
 
 | Tier 0 (full) at matching x | x | AEGIS L_all+O / FDTD | Cauchy / FDTD |
 |---:|---:|---:|---:|
@@ -133,6 +133,27 @@ skin depth is much larger — roughly factor 2 at x ≈ 10 – 41 in our
 data.
 
 This is a **real result**, not a numerical artefact.  Closed by Phase 1.
+
+## 28 GHz OOM — hardware floor at single 24 GB GPU + 64 GB RAM
+
+The 28 GHz scaled run failed with `Not enough GPU memory` and a peak
+CPU memory consumption of 86.1 GB (VM has 64 GB) before the
+simulation kernel even started time-stepping.  The grid was 0.22 mm
+on a 22.4 × 17.4 × 49.4 cm sim domain (after 50 mm bbox padding),
+giving roughly 1.79 GCells full-body / 0.9 GCells half-body
+symmetric.  That cell count is in the ballpark of the
+`fdtd_validation_plan.md` mesh-cell budget table for thelonious at
+28 GHz on a *full body* (the table predicted ~17.9 GCells full /
+8.95 GCells half, much higher; the difference comes from the body
+being 1/3 the size cubed, but the result is still beyond the
+single-3090-with-64 GB-RAM envelope here).
+
+We did not retry at coarser CPW or with `height_limit_per_frequency_mm`
+because the headline finding (scale invariance broken at matching x
+across the 4-frequency overlap window) is already replicated and
+robust on the 4 frequencies that did land.  Adding a 5th point past
+Tier 0's `x` range would have nudged the existing trend forward but
+not changed the conclusion or the path-A vs path-B decision below.
 
 ## Implications for Phase 2 (Tier 1)
 
