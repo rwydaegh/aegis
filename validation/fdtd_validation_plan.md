@@ -201,7 +201,31 @@ error. If the sphere fails, debug there before touching the phantom.
 `tests/test_mie.py` already validates against Mie. Sphere calibration
 tests *goliat's FDTD setup*, not AEGIS.
 
-### Tier 1 — geometric sweet spot (one day, 1×3090 + bumped TD)
+### Tier 1 onwards — *in limbo* pending the scaled-thelonious experiment
+
+**As of 2026-04-26**, Tiers 1, 2, and 3 below are paused. Their original
+designs assumed full-body thelonious sims at high frequency, which the
+existing campaign-stats baseline (`goliat/simulation_stats/`, avg 19.5 min
+per sim sub-6 GHz) reveals to be brutal at 28 GHz (~27 wallclock-hours
+per sim). They also relied on phantom-slicing tricks that introduce
+diffraction edges and PML proximity issues.
+
+Replacement strategy under active investigation: see
+[`scaled_thelonious_proposal.md`](scaled_thelonious_proposal.md). One
+freq sweep on a 1/3-scale thelonious validates the same dimensionless
+$x = \pi d/\lambda$ regime with $1/N^4 = 1/81$ the compute cost, and
+overlays cleanly onto the monograph's existing Mie-on-spheres
+validation curve. If that experiment validates the framework, several
+of the tier-by-tier ambitions below collapse into a single afternoon's
+work. If it falls over, the original tier plans below come back into
+scope (revisit at that point).
+
+The text below is preserved as the *fallback* design — what we'd run if
+the scaled-phantom approach reveals a scaling artefact that demands
+real full-size sims. Read it for what its sweep targets are, not as a
+commitment.
+
+### (paused) Tier 1 — geometric sweet spot (one day, 1×3090 + bumped TD)
 
 Cleanest test of the geometric absorption law in the band where it's expected to be optimal. **Re-run from scratch** because no environmental FDTD data exists at FR3 — the 2026 PMB campaign used auto_induced (beamforming worst-case) at 7+ GHz, not 12-direction environmental.
 
@@ -222,7 +246,7 @@ Cleanest test of the geometric absorption law in the band where it's expected to
 
 The scientific output of Tier 1 alone is publishable as a validation paper. It's also the unit at which a regulatory reviewer would expect to see evidence.
 
-### Tier 2 — full surface map comparison (1–2 days, 1×3090)
+### (paused) Tier 2 — full surface map comparison (1–2 days, 1×3090)
 
 Gets us the spatial correlation result needed for the monograph figures.
 
@@ -234,7 +258,7 @@ Gets us the spatial correlation result needed for the monograph figures.
 
 This tier requires writing a small `goliat_h5_to_triangles.py` helper. Save it in `aegis/validation/`.
 
-### Tier 3 — stretch (multi-GPU TD machine or cloud)
+### (paused) Tier 3 — stretch (multi-GPU TD machine or cloud)
 
 Demos that justify the framework outside its comfort zone:
 

@@ -67,9 +67,10 @@ of these reuses the cache.
   and for retroactive analysis of saved projects. `dump_outputs_report()`
   enumerates the output ports of any algorithm; `dump_per_triangle_apd()`
   toggles `SetAPD = True`, pulls `Outputs["APD(x,y,z,f0)"]`, and writes
-  the same `skin_apd.npz` schema the goliat-side patch produces. Uses
-  `vtk_to_numpy` on `data.Grid.GetVtkUnstructuredGrid()` for the mesh
-  extraction (~100x faster than per-vertex iteration). Read alongside
+  the same `skin_apd.npz` schema the goliat-side patch produces. Mesh
+  extraction iterates `grid.GetPoint(i)` / `grid.GetCellPoints(i)` since
+  S4L's `GetVtkUnstructuredGrid()` returns a raw C++ pointer Boost.Python
+  cannot unwrap (see Tooling lessons below). Read alongside
   `s4l_surface_apd_recipes.md`.
 - `s4l_surface_apd_recipes.md` — written investigation of the three viable
   paths to per-triangle SAPD via the Sim4Life API. Includes the
@@ -117,3 +118,77 @@ of these reuses the cache.
 - A `BodyMesh.compute_curvature()` helper. Belongs in
   `aegis/src/aegis/geometry/mesh.py`, not here.
 - A `compute_q_field()` helper. Same — should live alongside `BodyMesh`.
+
+## Tooling lessons learned (2026-04-26)
+
+Things that surprised me during the goliat→AEGIS plumbing pass.
+Future-me / agent: read this before re-doing what I already debugged.
+
+### Sim4Life Python API
+
+- `data.Grid.GetVtkUnstructuredGrid()` returns a raw `vtkUnstructuredGrid*`
+  C++ pointer that Boost.Python's by-value converter cannot unwrap. The
+  attempted "fast path" of `vtk_to_numpy` on points + cell array fails
+  at runtime with: `No to_python (by-value) converter found for C++ type:
+  class vtkUnstructuredGrid * __ptr64`. **Workaround**: iterate the
+  documented `grid.GetPoint(i)` / `grid.GetCellPoints(i)` accessors with
+  a Python list comprehension. ~few seconds for a 50k-vertex thelonious
+  skin patch — slow enough to be visible in logs but tolerable.
+- `GenericSAPDEvaluator.SetAPD = True` *swaps the report port out of the
+  Outputs collection*, rather than adding the field port alongside.
+  After `UpdateAttributes()`, `Outputs["Spatial-Averaged Power Density
+  Report"]` returns `None` and `Outputs` has 3 anonymous ports
+  (`Name == ""`). **Fix**: build two parallel evaluators sharing the same
+  `ModelToGridFilter` — one without `SetAPD` for the report, one with
+  for the field. Cost is ~10–15 s per scenario; both metrics from one
+  run, both apples-to-apples on the same surface mesh discretisation.
+- `port.Update()` is required before reading `port.Data`. Skip it and
+  `Field(0)` raises something like "FieldData has no snapshots".
+- The renorm factor `753.46 = 2 η₀` converts S4L's E=1 V/m drive output
+  to Sinc = 1 W/m² reference. Apply it on the goliat side when writing
+  the npz, *not* on the AEGIS side, so consumers see standardised units.
+
+### Hardware / SSH / VPN (TensorDock VM)
+
+- The Tensordock OpenSSH-server hands SSH sessions an *elevated* token
+  by default (`net session` returns success). UAC is **not** the wall.
+  This means `my_connect_vpn.bat`-style flows can be replicated headless
+  over SSH; you don't need RDP for license / VPN bring-up.
+- VPN reconnect from SSH after a VM reboot:
+  ```bash
+  ssh goliat 'cd "/c/Users/$USERNAME/Desktop/certs/" && \
+      nohup "/c/Program Files/OpenVPN/bin/openvpn.exe" \
+        --config Intec-iGent.ovpn --auth-user-pass openvpn_auth.txt \
+        > /tmp/openvpn.log 2>&1 &'
+  # Wait ~10 s, then verify with `ipconfig` for TAP-Windows6 IP.
+  ```
+  See `goliat/cloud_setup/ssh/README.md` for the full bring-up sequence.
+- Without the VPN, `import s4l_v1` hangs >60 s waiting on the license
+  server. Symptom: goliat run starts but produces zero log output.
+  First diagnostic to try: `ipconfig | grep "OpenVPN" -A 4` on the VM.
+
+### Linux ↔ goliat git access
+
+- Linux `~/.gitconfig` uses a **per-host helper** (`!gh auth git-credential`)
+  for `github.com`, which queries the `gh` CLI's stored credentials.
+  `gh` *prefers the `GITHUB_TOKEN` env var* over its on-disk credential
+  store, so updating `~/.git-credentials` alone is not enough — `gh auth
+  status` will still report the env-var token as active.
+- **Workaround**: `env -u GITHUB_TOKEN git <cmd>` for any push/pull/fetch
+  that needs a different token (e.g. when the env-var token only has
+  scope for one repo and you need access to another). The fine-grained
+  PAT lives at `goliat/cloud_setup/ssh/goliat_aegis_PAT.txt`
+  (gitignored) and is loaded via `gh auth login --with-token`.
+
+### File transfer between Linux and the Windows VM
+
+- `scp /local/file goliat:/c/Users/.../path` *fails*: scp uses sftp on
+  the remote, which doesn't accept the MSYS-style `/c/...` path.
+  **Workaround**: pipe through SSH:
+  ```bash
+  cat /local/file | ssh goliat 'cat > path/relative/to/$HOME/file'
+  ```
+  Goliat repo files transfer fine via this method (path is relative to
+  `$HOME = /c/Users/user/`).
+- `goliat/...` paths over SSH default to `$HOME/goliat/` (i.e. the
+  cloned repo). No need for absolute Windows paths.
