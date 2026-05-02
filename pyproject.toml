@@ -23,8 +23,8 @@ aegis-run = "aegis.run:main"
 
 [project.optional-dependencies]
 fast = ["numba>=0.65.1"]
-jax = ["jax>=0.4.20"]
-gpu = ["jax[cuda12]>=0.4.20"]
+jax = ["jax>=0.10.0"]
+gpu = ["jax[cuda12]>=0.10.0"]
 viz = [
     "matplotlib>=3.10.9",
     "plotly>=6.7.0",
