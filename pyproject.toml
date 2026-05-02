@@ -65,7 +65,7 @@ dev = [
     "apispec>=6.10",
     # Mutmut runs as a local audit + minor-release CI tool, not per-PR. See
     # docs/internal/testing_roadmap.md (Phase 4) for the tiering rationale.
-    "mutmut>=3",
+    "mutmut>=3.5.0",
 ]
 body = ["smplx>=0.1.28", "torch>=2.11.0", "pygltflib>=1.16.5"]
 benchmark = ["pytest-codspeed>=4.5.0"]
