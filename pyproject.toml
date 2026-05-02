@@ -12,7 +12,7 @@ license = {text = "LicenseRef-Proprietary"}
 authors = [{name = "rwydaegh", email = "robin.wydaeghe@ugent.be"}]
 
 dependencies = [
-    "numpy>=1.24",
+    "numpy>=2.4.4",
     "scipy>=1.17.1,<2",
     "pyyaml>=6.0.3",
 ]
