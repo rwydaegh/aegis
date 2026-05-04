@@ -48,6 +48,8 @@ data/phantoms/*.fbx
 data/antenna_patterns/msi_raw/
 # AMASS-derived pose streams - not redistributable, see data/poses/README.md
 data/poses/*.npz
+# Raw AMASS dumps (license-restricted, do not commit)
+data/poses/amass_smplx_g/
 !tests/fixtures/e2e_lab/e2e_icosahedron.stl
 
 # MkDocs build
