@@ -16,6 +16,7 @@ from aegis.geometry.directivity import (
 )
 from aegis.geometry.mesh import BodyMesh, load_stl_binary, triangle_areas
 from aegis.geometry.occlusion import compute_ambient_occlusion
+from aegis.geometry.pose_stream import PoseStream, resample_axis_angle
 from aegis.geometry.projected_area import compute_projected_area, fibonacci_sphere
 
 __all__ = [
@@ -33,7 +34,9 @@ __all__ = [
     "fit_sh",
     "load_stl_binary",
     "mean_projected_area",
+    "PoseStream",
     "precompute_averaging_matrix",
+    "resample_axis_angle",
     "sh_reconstruction_error",
     "spherical_angles_from_k_hat",
     "triangle_areas",

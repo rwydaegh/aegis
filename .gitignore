@@ -46,6 +46,8 @@ data/phantoms/*.fbx
 !data/*.csv
 !data/antenna_patterns/index.sqlite.gz
 data/antenna_patterns/msi_raw/
+# AMASS-derived pose streams - not redistributable, see data/poses/README.md
+data/poses/*.npz
 !tests/fixtures/e2e_lab/e2e_icosahedron.stl
 
 # MkDocs build
@@ -144,6 +146,7 @@ tools/mpfb2/
 scripts/*
 !scripts/build_phantoms.py
 !scripts/fuzz_api.sh
+!scripts/ingest_amass.py
 !scripts/run_mutmut.sh
 
 # ── GSD baseline (auto-generated) ──
