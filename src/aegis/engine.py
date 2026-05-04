@@ -383,9 +383,14 @@ class DosimetryEngine:
                     occ = (occ * pw[None, :]).sum(axis=1) / max(pw.sum(), 1e-30)
                 new_sab = result.sab * occ
                 result = self._build_result(
-                    body, paths, new_sab, result.fidelity_level,
-                    body_mass=body_mass, freq_hz=active_freq_hz,
-                    spatial_averaging=spatial_averaging, _timings=_timings,
+                    body,
+                    paths,
+                    new_sab,
+                    result.fidelity_level,
+                    body_mass=body_mass,
+                    freq_hz=active_freq_hz,
+                    spatial_averaging=spatial_averaging,
+                    _timings=_timings,
                 )
             return result
 
