@@ -1,0 +1,20 @@
+Tier 2 surface-map comparison
+  phantom=thelonious  freq=7000 MHz  dir=x_pos  pol=theta
+  run_dir=/home/user/goliat/results/far_field/thelonious/7000MHz/environmental_x_pos_theta
+
+  nrmse: 52.0611
+  rmse_w_m2: 0.181696
+  corr: -0.457392
+  r2: -0.232833
+  slope: 3.05469
+  integrated_aegis_W: 0.0629783
+  integrated_fdtd_W: 0.00274521
+  integrated_ratio: 22.9411
+  mean_fdtd_w_m2: 0.00349006
+  mean_aegis_w_m2: 0.0800658
+  peak_aegis_4cm2_w_m2: 0.677783
+  peak_fdtd_4cm2_w_m2: 0.0108249
+  peak_ratio_4cm2: 62.6134
+  peak_aegis_raw: 1.19411
+  peak_fdtd_raw: 0.0108249
+  peak_ratio_raw: 110.311
