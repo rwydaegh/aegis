@@ -197,3 +197,10 @@ presentation.zip
 agent_hq/local/.last_reviewed.json
 agent_hq/local/logs/
 .claude/scheduled_tasks.lock
+
+# Validation cache + oversized FDTD references (regenerable / >500K)
+validation/data/geometry_cache/
+validation/sphere_apd_full.npz
+
+# Editor / tool backups
+*.bak
