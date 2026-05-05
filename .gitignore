@@ -91,6 +91,7 @@ pynguin-report/
 !docs/assets/diagrams/*.png
 !aegis-web/public/*.png
 !data/phantoms/renders/*.png
+!JSAC/planning/experiments/*/replay/*.png
 # Visual regression baselines — committed to git so drift is reviewable in PR diffs.
 !aegis-web/tests/e2e/__snapshots__/**/*.png
 

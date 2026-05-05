@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>plaza_run replay</title>
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; background: #14141c; color: #ddd; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+  #canvas-container { position: absolute; inset: 0; }
+  #hud {
+    position: absolute; top: 14px; left: 14px;
+    background: rgba(10,10,14,0.85); padding: 14px 18px; border-radius: 8px;
+    backdrop-filter: blur(8px); min-width: 280px; max-width: 340px;
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  #hud h1 { margin: 0 0 8px 0; font-size: 14px; color: #7eb4ff; font-weight: 600; }
+  #hud .row { display: flex; justify-content: space-between; font-size: 12px; padding: 2px 0; }
+  #hud .label { color: #888; }
+  #hud .val { color: #fff; font-variant-numeric: tabular-nums; }
+  #controls {
+    position: absolute; bottom: 14px; left: 14px; right: 14px;
+    background: rgba(10,10,14,0.85); padding: 12px 16px; border-radius: 8px;
+    backdrop-filter: blur(8px); display: flex; gap: 14px; align-items: center;
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  #controls button {
+    background: linear-gradient(135deg,#667eea,#764ba2); color: #fff; border: 0;
+    border-radius: 6px; padding: 8px 14px; font-size: 12px; cursor: pointer;
+    font-weight: 600; min-width: 64px;
+  }
+  #controls button:hover { filter: brightness(1.15); }
+  #controls select {
+    background: #222; color: #ccc; border: 1px solid #444; border-radius: 6px;
+    padding: 6px 10px; font-size: 12px;
+  }
+  #controls input[type=range] { flex: 1; }
+  #controls .speed { color: #888; font-size: 11px; }
+  #legend {
+    position: absolute; top: 14px; right: 14px;
+    background: rgba(10,10,14,0.85); padding: 10px 14px; border-radius: 8px;
+    backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.08);
+    font-size: 11px;
+  }
+  #legend .title { color: #aaa; font-size: 10px; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+  #legend .gradient {
+    width: 18px; height: 140px; display: inline-block; vertical-align: middle;
+    background: linear-gradient(to top, #1a1a3a 0%, #2166ac 30%, #f7b34a 70%, #b2182b 100%);
+    border-radius: 3px; margin-right: 8px;
+  }
+  #legend .scale {
+    display: inline-block; vertical-align: middle; height: 140px;
+    color: #ccc; font-variant-numeric: tabular-nums; font-size: 10px;
+    display: flex; flex-direction: column; justify-content: space-between;
+  }
+  #legend .label-bottom { color: #888; font-size: 9px; margin-top: 4px; text-align: center; }
+  .tier-pill { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 10px; margin-right: 4px; }
+  .tier-A { background: #b2182b; color: #fff; }
+  .tier-B { background: #2166ac; color: #fff; }
+  .tier-C { background: #404040; color: #fff; }
+</style>
+</head>
+<body>
+<div id="canvas-container"></div>
+
+<div id="hud">
+  <h1>plaza_run replay</h1>
+  <div class="row"><span class="label">scenario</span><span class="val" id="hud-scenario">…</span></div>
+  <div class="row"><span class="label">slot / time</span><span class="val" id="hud-time">…</span></div>
+  <div class="row"><span class="label">precoder</span><span class="val" id="hud-precoder">…</span></div>
+  <div class="row"><span class="label">sum-rate</span><span class="val" id="hud-sumrate">…</span></div>
+  <div class="row"><span class="label">max P_abs/L</span><span class="val" id="hud-maxratio">…</span></div>
+  <div style="margin-top: 8px; font-size: 11px;">
+    <span class="tier-pill tier-A">Served (A) ×<span id="cnt-A">0</span></span>
+    <span class="tier-pill tier-B">Coop (B) ×<span id="cnt-B">0</span></span>
+    <span class="tier-pill tier-C">Bystdr (C) ×<span id="cnt-C">0</span></span>
+  </div>
+</div>
+
+<div id="legend">
+  <div class="title">P_abs / L_RL</div>
+  <div style="display: flex; align-items: stretch; height: 140px;">
+    <div class="gradient"></div>
+    <div class="scale">
+      <span>1e0</span><span>1e-2</span><span>1e-4</span><span>1e-6</span>
+    </div>
+  </div>
+  <div class="label-bottom">log scale</div>
+</div>
+
+<div id="controls">
+  <button id="play-btn">Play</button>
+  <input id="time-slider" type="range" min="0" max="100" value="0" />
+  <select id="precoder-select"></select>
+  <span class="speed">speed
+    <select id="speed-select">
+      <option value="0.5">0.5x</option>
+      <option value="1.0" selected>1x</option>
+      <option value="2.0">2x</option>
+      <option value="5.0">5x</option>
+    </select>
+  </span>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+} }
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const TIER_COLORS = { 0: 0xb2182b, 1: 0x2166ac, 2: 0x404040 };
+const TIER_NAMES = { 0: 'A', 1: 'B', 2: 'C' };
+
+// Color mapping for log-scale p_abs/L_RL:
+//   ratio < 1e-6 → dark blue
+//   1e-6..1e-4   → blue
+//   1e-4..1e-2   → orange
+//   1e-2..1.0    → red
+//   >= 1.0       → bright red
+function ratioColor(ratio) {
+  const r = Math.max(ratio, 1e-9);
+  const t = Math.max(0, Math.min(1, (Math.log10(r) + 6) / 6)); // -6..0 -> 0..1
+  if (t < 0.3) return new THREE.Color(0x1a1a3a).lerp(new THREE.Color(0x2166ac), t / 0.3);
+  if (t < 0.7) return new THREE.Color(0x2166ac).lerp(new THREE.Color(0xf7b34a), (t - 0.3) / 0.4);
+  return new THREE.Color(0xf7b34a).lerp(new THREE.Color(0xb2182b), (t - 0.7) / 0.3);
+}
+
+let scene, camera, renderer, controls;
+let bodies = [];           // { mesh, tier, idx }
+let bsMesh, bsArrow, beamGroup;
+let data;                  // unpacked replay payload
+let playing = false, currentFrame = 0, lastTickMs = performance.now(), speed = 1.0;
+let activePrecoderIdx = 0;
+
+async function main() {
+  const resp = await fetch('replay_data.json');
+  data = await resp.json();
+  unpackArrays();
+  setupScene();
+  buildScene();
+  populateUI();
+  animate();
+}
+
+function unpackArrays() {
+  const fr = data.frames;
+  const [T, B, _] = fr.body_xy_shape;
+  const [Tp, Bp, P] = fr.p_abs_shape;
+  fr.body_xy = new Float32Array(fr.body_xy_flat);
+  fr.p_abs   = new Float32Array(fr.p_abs_flat);
+  fr.sumrate = new Float32Array(fr.sumrate_flat);
+  delete fr.body_xy_flat; delete fr.p_abs_flat; delete fr.sumrate_flat;
+  data.frames.T = T; data.frames.B = B; data.frames.P = P;
+}
+
+function setupScene() {
+  const container = document.getElementById('canvas-container');
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x14141c);
+  scene.fog = new THREE.Fog(0x14141c, 80, 220);
+
+  camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 600);
+  camera.position.set(0, -90, 70);
+  camera.up.set(0, 0, 1);
+
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.1;
+  renderer.shadowMap.enabled = true;
+  container.appendChild(renderer.domElement);
+
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.06;
+  controls.target.set(0, 0, 4);
+  controls.update();
+
+  // Lighting — brightened so bodies aren't lost in building shadows.
+  scene.add(new THREE.AmbientLight(0x6677aa, 1.1));
+  const sun = new THREE.DirectionalLight(0xfff5e6, 1.6);
+  sun.position.set(40, 60, 120);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.camera.left = -80;
+  sun.shadow.camera.right = 80;
+  sun.shadow.camera.top = 80;
+  sun.shadow.camera.bottom = -80;
+  sun.shadow.camera.near = 1;
+  sun.shadow.camera.far = 300;
+  sun.shadow.bias = -0.001;
+  scene.add(sun);
+  const fill = new THREE.HemisphereLight(0xaabbdd, 0x665544, 0.7);
+  scene.add(fill);
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+}
+
+function buildScene() {
+  // Ground
+  const g = data.ground;
+  const groundMesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(g.size[0], g.size[1]),
+    new THREE.MeshStandardMaterial({ color: 0x4a4a50, roughness: 0.92 })
+  );
+  groundMesh.rotation.x = 0; // already in z=0 plane
+  groundMesh.position.z = g.z;
+  groundMesh.receiveShadow = true;
+  scene.add(groundMesh);
+
+  // Buildings
+  const buildingMat = new THREE.MeshStandardMaterial({ color: 0x8a8a98, roughness: 0.7 });
+  for (const b of data.buildings) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(b.size[0], b.size[1], b.size[2]), buildingMat);
+    m.position.set(b.center[0], b.center[1], b.center[2]);
+    m.castShadow = true;
+    m.receiveShadow = true;
+    scene.add(m);
+  }
+
+  // BS panel — visible 8x8 grid of dots on a backplane
+  const bs = data.bs;
+  const PANEL_W = 1.6, PANEL_H = 1.6, PANEL_D = 0.18;
+  const bsBack = new THREE.Mesh(
+    new THREE.BoxGeometry(PANEL_W, PANEL_D, PANEL_H),
+    new THREE.MeshStandardMaterial({ color: 0x202028, roughness: 0.3, metalness: 0.4 })
+  );
+  bsBack.position.set(bs.position[0], bs.position[1], bs.position[2]);
+  bsBack.castShadow = true;
+  scene.add(bsBack);
+  // 8x8 element dots on the front face (facing +y broadside-ish)
+  const dotGeo = new THREE.SphereGeometry(0.05, 8, 8);
+  const dotMat = new THREE.MeshStandardMaterial({
+    color: 0xff5533, emissive: 0xff3322, emissiveIntensity: 1.2
+  });
+  for (let h = 0; h < bs.n_h; h++) {
+    for (let v = 0; v < bs.n_v; v++) {
+      const dx = (h - 3.5) * 0.18;
+      const dz = (v - 3.5) * 0.18;
+      const dot = new THREE.Mesh(dotGeo, dotMat);
+      dot.position.set(bs.position[0] + dx, bs.position[1] + PANEL_D / 2 + 0.01, bs.position[2] + dz);
+      scene.add(dot);
+    }
+  }
+  bsMesh = bsBack;
+  // Pole
+  const pole = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.06, 0.08, bs.position[2], 12),
+    new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.6 })
+  );
+  pole.position.set(bs.position[0], bs.position[1], bs.position[2] / 2);
+  pole.rotation.x = Math.PI / 2;
+  pole.castShadow = true;
+  scene.add(pole);
+  // Broadside arrow (longer, brighter)
+  bsArrow = new THREE.ArrowHelper(
+    new THREE.Vector3(...bs.broadside).normalize(),
+    new THREE.Vector3(...bs.position),
+    14, 0xffcc44, 2.4, 1.4
+  );
+  scene.add(bsArrow);
+  // BS label sprite
+  const labelCanvas = document.createElement('canvas');
+  labelCanvas.width = 256; labelCanvas.height = 64;
+  const ctx = labelCanvas.getContext('2d');
+  ctx.fillStyle = 'rgba(20,20,28,0.9)'; ctx.fillRect(0, 0, 256, 64);
+  ctx.fillStyle = '#ffcc44'; ctx.font = 'bold 26px sans-serif';
+  ctx.fillText('BS  8x8 @ 26 GHz', 14, 42);
+  const labelTex = new THREE.CanvasTexture(labelCanvas);
+  const labelMat = new THREE.SpriteMaterial({ map: labelTex });
+  const labelSprite = new THREE.Sprite(labelMat);
+  labelSprite.position.set(bs.position[0], bs.position[1], bs.position[2] + 2.0);
+  labelSprite.scale.set(6, 1.5, 1);
+  scene.add(labelSprite);
+
+  // Bodies — capsules ~ 1.7 m tall, 0.4 m wide. Slightly oversized for visibility.
+  const bodyGeo = new THREE.CapsuleGeometry(0.28, 1.4, 4, 12);
+  for (let i = 0; i < data.tier.length; i++) {
+    const tier = data.tier[i];
+    const mat = new THREE.MeshStandardMaterial({
+      color: TIER_COLORS[tier], roughness: 0.5, emissive: 0x000000, emissiveIntensity: 0.4
+    });
+    const m = new THREE.Mesh(bodyGeo, mat);
+    m.castShadow = true;
+    // Capsule's long axis is Y; we want it along Z (world up).
+    m.rotation.x = Math.PI / 2;
+    m.position.z = 0.9; // half-height above ground
+    scene.add(m);
+    bodies.push({ mesh: m, mat, tier, idx: i });
+  }
+
+  // Compass / origin
+  const axes = new THREE.AxesHelper(5);
+  axes.position.set(0, 0, 0.05);
+  scene.add(axes);
+
+  // Beams from BS to served (tier A) users. One line per served user,
+  // updated each frame. Color reflects the same p_abs ratio scale.
+  beamGroup = new THREE.Group();
+  scene.add(beamGroup);
+  for (let i = 0; i < data.tier.length; i++) {
+    if (data.tier[i] !== 0) continue;
+    const geom = new THREE.BufferGeometry();
+    geom.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
+    const mat = new THREE.LineBasicMaterial({
+      color: 0xffaa55, transparent: true, opacity: 0.35
+    });
+    const line = new THREE.Line(geom, mat);
+    line.userData.bodyIdx = i;
+    beamGroup.add(line);
+  }
+}
+
+function populateUI() {
+  const sel = document.getElementById('precoder-select');
+  data.precoder_names.forEach((p, i) => {
+    const o = document.createElement('option');
+    o.value = i;
+    o.text = p;
+    if (p === 'multibody_ecbf') o.selected = true;
+    sel.appendChild(o);
+  });
+  activePrecoderIdx = parseInt(sel.value, 10);
+  sel.addEventListener('change', () => { activePrecoderIdx = parseInt(sel.value, 10); updateFrame(currentFrame); });
+
+  const slider = document.getElementById('time-slider');
+  slider.max = data.frames.T - 1;
+  slider.addEventListener('input', () => { currentFrame = parseInt(slider.value, 10); updateFrame(currentFrame); });
+
+  const playBtn = document.getElementById('play-btn');
+  playBtn.addEventListener('click', () => {
+    playing = !playing;
+    playBtn.textContent = playing ? 'Pause' : 'Play';
+    lastTickMs = performance.now();
+  });
+
+  document.getElementById('speed-select').addEventListener('change', (e) => {
+    speed = parseFloat(e.target.value);
+  });
+
+  // Tier counts
+  let cnt = { 0: 0, 1: 0, 2: 0 };
+  for (const t of data.tier) cnt[t]++;
+  document.getElementById('cnt-A').textContent = cnt[0];
+  document.getElementById('cnt-B').textContent = cnt[1];
+  document.getElementById('cnt-C').textContent = cnt[2];
+
+  document.getElementById('hud-scenario').textContent =
+    `${data.scenario.paths_mode} / pose=${data.scenario.pose_mode} / ${data.scenario.freq_hz/1e9} GHz`;
+
+  // Default to a mid-trace frame so the page doesn't open on the cold-start
+  // transient where channel sumrate is ~0. Keyframe 15 = slot 75 is well past
+  // the first pose-cadence rebuild.
+  currentFrame = 15;
+  updateFrame(currentFrame);
+}
+
+function updateFrame(t) {
+  const fr = data.frames;
+  const B = fr.B, P = fr.P;
+  let maxRatio = 0;
+  for (let i = 0; i < B; i++) {
+    const x = fr.body_xy[(t * B + i) * 2 + 0];
+    const y = fr.body_xy[(t * B + i) * 2 + 1];
+    bodies[i].mesh.position.x = x;
+    bodies[i].mesh.position.y = y;
+    bodies[i].mesh.position.z = 0.9;
+    const pAbs = fr.p_abs[(t * B + i) * P + activePrecoderIdx];
+    const budget = data.body_budgets_w[i];
+    const ratio = pAbs / budget;
+    maxRatio = Math.max(maxRatio, ratio);
+    const c = ratioColor(ratio);
+    bodies[i].mat.color.copy(c);
+    bodies[i].mat.emissive.copy(c).multiplyScalar(0.4);
+  }
+  // Update beams from BS to served users
+  const bs = data.bs.position;
+  for (const line of beamGroup.children) {
+    const idx = line.userData.bodyIdx;
+    const x = bodies[idx].mesh.position.x;
+    const y = bodies[idx].mesh.position.y;
+    const pos = line.geometry.attributes.position;
+    pos.setXYZ(0, bs[0], bs[1], bs[2]);
+    pos.setXYZ(1, x, y, 1.5);
+    pos.needsUpdate = true;
+  }
+  // Update HUD
+  const slot = data.frames.t_keep[t];
+  const ts = (slot * data.scenario.dt_s).toFixed(2);
+  document.getElementById('hud-time').textContent = `${slot} / ${data.scenario.n_slots_full}  (${ts} s)`;
+  document.getElementById('hud-precoder').textContent = data.precoder_names[activePrecoderIdx];
+  const sr = fr.sumrate[t * P + activePrecoderIdx] / 1e6;
+  document.getElementById('hud-sumrate').textContent = `${sr.toFixed(1)} Mbps`;
+  document.getElementById('hud-maxratio').textContent = maxRatio.toExponential(2);
+  document.getElementById('time-slider').value = t;
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  if (playing) {
+    const now = performance.now();
+    const dt = (now - lastTickMs) / 1000;
+    // Each keyframe represents decim_t real slots. Replay at speed * 30 keyframes/s.
+    const advance = speed * 30 * dt;
+    if (advance >= 1.0) {
+      currentFrame = Math.floor(currentFrame + advance) % data.frames.T;
+      updateFrame(currentFrame);
+      lastTickMs = now;
+    }
+  }
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+main().catch(e => { console.error(e); document.body.innerHTML = '<pre style="color:red;padding:20px">' + e + '</pre>'; });
+</script>
+</body>
+</html>
