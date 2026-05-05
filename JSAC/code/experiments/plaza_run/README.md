@@ -50,16 +50,16 @@ python scripts/ingest_amass.py \
   --filter walk --max-sequences 60
 
 # 1. Visual preflight (no OSM scrape; the OSM cache is built lazily by scene_cache).
-python -m JSAC.planning.experiments.plaza_run.preflight --seed 42 --no-osm
+python -m JSAC.code.experiments.plaza_run.preflight --seed 42 --no-osm
 
 # 2. Production: plaza_specular + 3GPP UMa-LOS comparator, pose-aware.
 JAX_PLATFORMS=cpu AEGIS_ARRAY_BACKEND=jax \
-python -m JSAC.planning.experiments.plaza_run.run \
+python -m JSAC.code.experiments.plaza_run.run \
   --seed 42 --n-slots 600 --paths both --pose-period 30 --rt-period 30
 
 # 3. Pose-info-gain ablation (proposed-ablated).
 JAX_PLATFORMS=cpu AEGIS_ARRAY_BACKEND=jax \
-python -m JSAC.planning.experiments.plaza_run.run \
+python -m JSAC.code.experiments.plaza_run.run \
   --seed 42 --n-slots 600 --paths plaza_specular --ablate-pose-telemetry
 ```
 

@@ -139,10 +139,32 @@ async function main() {
   const resp = await fetch('replay_data.json');
   data = await resp.json();
   unpackArrays();
+  // Fetch posed-mesh binary if the sidecar pointer is present.
+  if (data.meshes_sidecar) {
+    try {
+      await fetchPosedMeshes(data.meshes_sidecar.bin_path);
+      console.log('posed mesh data loaded:', data.posedMesh.K, 'KF x', data.posedMesh.B, 'bodies');
+    } catch (err) {
+      console.warn('posed-mesh fetch failed; falling back to capsules:', err);
+      data.posedMesh = null;
+    }
+  }
   setupScene();
   buildScene();
   populateUI();
   animate();
+}
+
+async function fetchPosedMeshes(binPath) {
+  const resp = await fetch(binPath);
+  if (!resp.ok) throw new Error('mesh fetch ' + resp.status);
+  const buf = await resp.arrayBuffer();
+  const hdr = new Uint32Array(buf, 0, 6);
+  const [magic, version, K, B, T, decim] = hdr;
+  if (magic !== 0x504C5A4D) throw new Error('bad magic in mesh blob');
+  const verts = new Float32Array(buf, 24);  // skip 6 * 4 byte header
+  // Layout: (K, B, T, 3, 3) = 9 floats per triangle.
+  data.posedMesh = { K, B, T, decim, verts, stride_per_body: T * 9 };
 }
 
 function unpackArrays() {
@@ -299,7 +321,71 @@ function buildScene() {
   labelSprite.scale.set(6, 1.5, 1);
   scene.add(labelSprite);
 
-  // Bodies — rigged person: torso + head + 2 arms + 2 legs + smartphone at right hand.
+  // If posed-mesh binary is loaded, render real SMPL-X meshes per body.
+  // Else fall back to the rigged-capsule person.
+  if (data.posedMesh) {
+    buildPosedBodies();
+  } else {
+    buildRiggedBodies();
+  }
+  buildSceneCommon();
+}
+
+function buildSceneCommon() {
+  // Compass / origin
+  const axes = new THREE.AxesHelper(5);
+  axes.position.set(0, 0, 0.05);
+  scene.add(axes);
+
+  // Beams from BS to served (tier A) users. One line per served user,
+  // updated each frame. Color reflects the same p_abs ratio scale.
+  beamGroup = new THREE.Group();
+  scene.add(beamGroup);
+  for (let i = 0; i < data.tier.length; i++) {
+    if (data.tier[i] !== 0) continue;
+    const geom = new THREE.BufferGeometry();
+    geom.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
+    const mat = new THREE.LineBasicMaterial({
+      color: 0xffaa55, transparent: true, opacity: 0.35
+    });
+    const line = new THREE.Line(geom, mat);
+    line.userData.bodyIdx = i;
+    beamGroup.add(line);
+  }
+}
+
+function buildPosedBodies() {
+  const pm = data.posedMesh;
+  const T = pm.T;       // tris per body
+  const N = T * 3;      // verts per body (non-indexed)
+  for (let i = 0; i < pm.B; i++) {
+    const tier = data.tier[i];
+    const positions = new Float32Array(N * 3);
+    // initialize from keyframe 0
+    const src = pm.verts.subarray(i * pm.stride_per_body, (i + 1) * pm.stride_per_body);
+    positions.set(src);
+    const colors = new Float32Array(N * 3);
+    const geom = new THREE.BufferGeometry();
+    geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geom.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    geom.computeVertexNormals();
+    const mat = new THREE.MeshStandardMaterial({
+      vertexColors: true, roughness: 0.55, metalness: 0.05,
+      emissive: 0x000000, emissiveIntensity: 0.5,
+    });
+    const m = new THREE.Mesh(geom, mat);
+    m.castShadow = true;
+    scene.add(m);
+    bodies.push({
+      mesh: m, mat, tier, idx: i, posed: true,
+      geom, positions, colors,
+      lastPos: new THREE.Vector2(0, 0),
+    });
+  }
+}
+
+function buildRiggedBodies() {
+  // Rigged person: torso + head + 2 arms + 2 legs + smartphone at right hand.
   // Each body's limbs animate with a sinusoidal gait so the walk reads visually.
   // The phone bobbing IS the virtual IMU signal we'd consume in the precoder.
   const torsoGeo = new THREE.CapsuleGeometry(0.16, 0.40, 4, 10);
@@ -382,27 +468,6 @@ function buildScene() {
       lastPos: new THREE.Vector2(0, 0),
     });
   }
-
-  // Compass / origin
-  const axes = new THREE.AxesHelper(5);
-  axes.position.set(0, 0, 0.05);
-  scene.add(axes);
-
-  // Beams from BS to served (tier A) users. One line per served user,
-  // updated each frame. Color reflects the same p_abs ratio scale.
-  beamGroup = new THREE.Group();
-  scene.add(beamGroup);
-  for (let i = 0; i < data.tier.length; i++) {
-    if (data.tier[i] !== 0) continue;
-    const geom = new THREE.BufferGeometry();
-    geom.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
-    const mat = new THREE.LineBasicMaterial({
-      color: 0xffaa55, transparent: true, opacity: 0.35
-    });
-    const line = new THREE.Line(geom, mat);
-    line.userData.bodyIdx = i;
-    beamGroup.add(line);
-  }
 }
 
 function populateUI() {
@@ -449,38 +514,148 @@ function populateUI() {
   updateFrame(currentFrame);
 }
 
+// Tmp scratch vectors so we don't allocate inside the hot loop.
+const _v = { a: new THREE.Vector3(), b: new THREE.Vector3(), c: new THREE.Vector3(),
+             ab: new THREE.Vector3(), ac: new THREE.Vector3(), n: new THREE.Vector3(),
+             cen: new THREE.Vector3(), kHat: new THREE.Vector3(), bsP: new THREE.Vector3() };
+
+function updatePosedBody(body, i, pmKf, worldX, worldY, bs, ratioCol) {
+  const pm = data.posedMesh;
+  const T = pm.T;
+  const N = T * 3;  // verts per body
+  const stride = pm.stride_per_body;
+  // Source vertex slab for this (keyframe, body):
+  const offset = (pmKf * pm.B + i) * stride;
+  const src = pm.verts.subarray(offset, offset + stride);
+
+  // The exported binary already has world translation baked from the
+  // brief-08 body_positions. The replay-data body_xy may be at a different
+  // sub-keyframe slot, so apply a delta translation = (xy_replay - xy_atKf).
+  const slotAtKf = data.meshes_sidecar.keyframe_slots[pmKf];
+  // Source position from body_positions at slotAtKf (we don't have it here;
+  // approximate as the slot the keyframe was sampled at via the mesh's own
+  // root). Cheap path: use current xy as the body root and shift the whole
+  // mesh so its centroid xy matches.
+  // Compute mesh's centroid xy from the source slab.
+  let cx = 0, cy = 0;
+  for (let v = 0; v < N; v++) {
+    cx += src[v * 3 + 0];
+    cy += src[v * 3 + 1];
+  }
+  cx /= N; cy /= N;
+  const dx = worldX - cx, dy = worldY - cy;
+
+  // Per-vertex APD = max(0, n · k_BS_from_body) modulated by per-body p_abs.
+  // Compute per-triangle normal, scatter to its 3 verts, normalise to peak=1.
+  const positions = body.positions;
+  const colors = body.colors;
+  _v.bsP.set(bs[0], bs[1], bs[2]);
+
+  // Body centre to BS direction (constant over the body for one frame).
+  _v.kHat.copy(_v.bsP).sub(_v.cen.set(worldX, worldY, 1.0)).normalize();
+
+  // Pass 1: write translated positions; collect peak relu(n·k) for normalisation.
+  let peak = 0.0;
+  const reluPerVert = body.reluTmp || (body.reluTmp = new Float32Array(N));
+  for (let tri = 0; tri < T; tri++) {
+    const o = tri * 9;
+    const ax = src[o + 0] + dx, ay = src[o + 1] + dy, az = src[o + 2];
+    const bx = src[o + 3] + dx, by = src[o + 4] + dy, bz = src[o + 5];
+    const cxv = src[o + 6] + dx, cyv = src[o + 7] + dy, cz = src[o + 8];
+    positions[o + 0] = ax; positions[o + 1] = ay; positions[o + 2] = az;
+    positions[o + 3] = bx; positions[o + 4] = by; positions[o + 5] = bz;
+    positions[o + 6] = cxv; positions[o + 7] = cyv; positions[o + 8] = cz;
+    // Triangle normal via (b-a) x (c-a).
+    const ux = bx - ax, uy = by - ay, uz = bz - az;
+    const vx = cxv - ax, vy = cyv - ay, vz = cz - az;
+    const nx = uy * vz - uz * vy;
+    const ny = uz * vx - ux * vz;
+    const nz = ux * vy - uy * vx;
+    const nl = Math.hypot(nx, ny, nz);
+    if (nl < 1e-9) {
+      reluPerVert[tri * 3 + 0] = 0; reluPerVert[tri * 3 + 1] = 0; reluPerVert[tri * 3 + 2] = 0;
+      continue;
+    }
+    // Triangle centroid
+    const tcx = (ax + bx + cxv) / 3;
+    const tcy = (ay + by + cyv) / 3;
+    const tcz = (az + bz + cz) / 3;
+    // BS direction from this triangle.
+    const dxBS = _v.bsP.x - tcx, dyBS = _v.bsP.y - tcy, dzBS = _v.bsP.z - tcz;
+    const dl = Math.hypot(dxBS, dyBS, dzBS);
+    // n_hat · k_hat (k = body→BS, but exposure is incoming so we use -k).
+    // Normal is outward; relu(n · -k_inc) = relu(n · k_BSdir).
+    const dot = (nx * dxBS + ny * dyBS + nz * dzBS) / (nl * dl);
+    const r = Math.max(0, dot);
+    reluPerVert[tri * 3 + 0] = r;
+    reluPerVert[tri * 3 + 1] = r;
+    reluPerVert[tri * 3 + 2] = r;
+    if (r > peak) peak = r;
+  }
+  // Pass 2: write per-vertex colors. The base color is ratioColor(per-body p_abs/L);
+  // we modulate intensity by relu/peak so the body shows where on the surface
+  // the BS-facing side gets hit.
+  const base = ratioCol;  // already a THREE.Color
+  const baseR = base.r, baseG = base.g, baseB = base.b;
+  const denom = peak > 1e-6 ? peak : 1.0;
+  for (let v = 0; v < N; v++) {
+    const w = reluPerVert[v] / denom;
+    // Mix toward black on the back-facing side (low w), toward emissive-bright on the front.
+    const m = 0.20 + 0.80 * w;
+    colors[v * 3 + 0] = baseR * m;
+    colors[v * 3 + 1] = baseG * m;
+    colors[v * 3 + 2] = baseB * m;
+  }
+  body.geom.attributes.position.needsUpdate = true;
+  body.geom.attributes.color.needsUpdate = true;
+  body.geom.computeVertexNormals();
+  body.geom.attributes.normal.needsUpdate = true;
+  body.mat.emissive.copy(base).multiplyScalar(0.25);
+}
+
+
 function updateFrame(t) {
   const fr = data.frames;
   const B = fr.B, P = fr.P;
+  const bs = data.bs.position;
   let maxRatio = 0;
+  // Map replay-data keyframe t (decim_t = 5 slots) → posed-mesh keyframe (decim 30 slots).
+  let pmKf = -1;
+  if (data.posedMesh) {
+    const slot = data.frames.t_keep[t];
+    pmKf = Math.min(data.posedMesh.K - 1, Math.floor(slot / data.meshes_sidecar.keyframe_period));
+  }
   for (let i = 0; i < B; i++) {
     const x = fr.body_xy[(t * B + i) * 2 + 0];
     const y = fr.body_xy[(t * B + i) * 2 + 1];
     const body = bodies[i];
-    // Heading: face the direction we just moved (or initial if first frame)
-    const dx = x - body.lastPos.x, dy = y - body.lastPos.y;
-    const moved = Math.hypot(dx, dy);
-    if (moved > 1e-3) {
-      body.mesh.rotation.z = Math.atan2(dy, dx) - Math.PI / 2;  // capsule fwd is +y
-    }
-    body.lastPos.set(x, y);
-    body.mesh.position.x = x;
-    body.mesh.position.y = y;
-    body.mesh.position.z = 0;
     const pAbs = fr.p_abs[(t * B + i) * P + activePrecoderIdx];
     const budget = data.body_budgets_w[i];
     const ratio = pAbs / budget;
     maxRatio = Math.max(maxRatio, ratio);
     const c = ratioColor(ratio);
-    body.mat.color.copy(c);
-    body.mat.emissive.copy(c).multiplyScalar(0.4);
+
+    if (body.posed) {
+      updatePosedBody(body, i, pmKf, x, y, bs, c);
+    } else {
+      // Heading: face direction we moved
+      const dx = x - body.lastPos.x, dy = y - body.lastPos.y;
+      if (Math.hypot(dx, dy) > 1e-3) {
+        body.mesh.rotation.z = Math.atan2(dy, dx) - Math.PI / 2;
+      }
+      body.mesh.position.x = x;
+      body.mesh.position.y = y;
+      body.mesh.position.z = 0;
+      body.mat.color.copy(c);
+      body.mat.emissive.copy(c).multiplyScalar(0.4);
+    }
+    body.lastPos.set(x, y);
   }
   // Update beams from BS to served users
-  const bs = data.bs.position;
   for (const line of beamGroup.children) {
     const idx = line.userData.bodyIdx;
-    const x = bodies[idx].mesh.position.x;
-    const y = bodies[idx].mesh.position.y;
+    const x = bodies[idx].lastPos.x;
+    const y = bodies[idx].lastPos.y;
     const pos = line.geometry.attributes.position;
     pos.setXYZ(0, bs[0], bs[1], bs[2]);
     pos.setXYZ(1, x, y, 1.5);
@@ -501,10 +676,11 @@ function animate() {
   requestAnimationFrame(animate);
   const now = performance.now();
   const dt = (now - lastTickMs) / 1000;
-  // Drive the gait every render frame so it looks smooth even when the
-  // replay clock is paused.
+  // Drive the gait every render frame for the rigged-capsule fallback.
+  // Posed bodies get their motion from the SMPL-X mesh data directly.
   const gaitOmega = 2 * Math.PI * 1.5;  // 1.5 Hz gait, both legs
   for (const body of bodies) {
+    if (body.posed) continue;
     body.gaitPhase += gaitOmega * Math.min(0.05, dt);
     const phase = body.gaitPhase;
     const swing = Math.sin(phase);

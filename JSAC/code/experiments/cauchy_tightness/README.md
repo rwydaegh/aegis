@@ -141,7 +141,7 @@ without absorbing any constants into `a`.
 
 ```bash
 cd /home/user/aegis
-.venv/bin/python JSAC/planning/experiments/cauchy_tightness/run_tightness.py
+.venv/bin/python JSAC/code/experiments/cauchy_tightness/run_tightness.py
 # ~5-10 minutes on a 4-core/8 GB host with 1 worker
 ```
 

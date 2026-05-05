@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--seed", type=int, default=42)
-    p.add_argument("--out", type=Path, default=Path("JSAC/planning/experiments/plaza_run/outputs/preflight.png"))
+    p.add_argument("--out", type=Path, default=Path("JSAC/code/experiments/plaza_run/outputs/preflight.png"))
     p.add_argument("--no-osm", action="store_true", help="Skip Overpass scrape")
     p.add_argument("--log-level", default="INFO")
     args = p.parse_args()

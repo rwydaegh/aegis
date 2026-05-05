@@ -6,7 +6,7 @@ detected tier-C bodies are treated as cooperating-with-position-only
 through to the occupancy-envelope (regulator-defined) bound.
 
 Operating point and resolution numbers come from
-``JSAC/planning/experiments/tier_c_decision/decision.md``.
+``JSAC/code/experiments/tier_c_decision/decision.md``.
 """
 
 from __future__ import annotations

@@ -18,7 +18,7 @@ import numpy as np
 
 _FIG_DIR = Path(__file__).resolve().parent.parent / "figures"
 sys.path.insert(0, str(_FIG_DIR))
-from _data import load_canonical  # noqa: E402
+from _data import CANONICAL_RUNS, OUTPUTS_DIR, load_canonical  # noqa: E402
 
 # Scene cache.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -78,12 +78,23 @@ def synthetic_plaza_buildings() -> list[dict]:
 
 def main(npz_label: str = "specular_aware", decim_t: int = DECIM_T_DEFAULT) -> Path:
     run = load_canonical(npz_label)
+    run_npz_path = OUTPUTS_DIR / CANONICAL_RUNS[npz_label] if npz_label in CANONICAL_RUNS else None
 
     # Decimate time axis.
     t_keep = np.arange(0, run.n_slots, decim_t)
     body_xy = run.body_positions[t_keep, :, :2].astype(np.float32)
     p_abs = run.p_abs[t_keep, :, :].astype(np.float32)
     sumrate = run.sumrate[t_keep, :].astype(np.float32)
+
+    # Posed mesh sidecar (optional). The HTML fetches the .bin separately
+    # if the sidecar JSON is present.
+    meshes_sidecar: dict | None = None
+    if run_npz_path is not None:
+        sidecar_path = REPLAY_DIR / f"meshes_{run_npz_path.stem}.json"
+        if sidecar_path.exists():
+            import json as _json
+            meshes_sidecar = _json.loads(sidecar_path.read_text())
+            print(f"posed-mesh sidecar found: {sidecar_path.name}")
 
     # Try the real OSM scrape; fall back to synthetic if unreachable.
     osm_mesh: dict | None = None
@@ -138,6 +149,7 @@ def main(npz_label: str = "specular_aware", decim_t: int = DECIM_T_DEFAULT) -> P
             "sumrate_flat": sumrate.flatten().tolist(),
             "sumrate_shape": list(sumrate.shape),
         },
+        "meshes_sidecar": meshes_sidecar,
     }
 
     DATA_PATH.write_text(json.dumps(payload))

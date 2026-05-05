@@ -4,7 +4,7 @@ Serves index.html at / and replay_data.json at /replay_data.json. Boots
 on port 5050 to avoid conflicts with the main aegis viewer (5000).
 
 Run:
-    python -m JSAC.planning.experiments.plaza_run.replay.server
+    python -m JSAC.code.experiments.plaza_run.replay.server
 """
 
 from __future__ import annotations
@@ -27,6 +27,15 @@ def index():
 @app.route("/replay_data.json")
 def data():
     return send_from_directory(REPLAY_DIR, "replay_data.json")
+
+
+@app.route("/<path:filename>")
+def asset(filename: str):
+    """Serve mesh binary blobs and their sidecar JSONs. Strict allowlist to
+    avoid leaking the rest of the dir."""
+    if filename.startswith("meshes_") and (filename.endswith(".bin") or filename.endswith(".json")):
+        return send_from_directory(REPLAY_DIR, filename)
+    return ("not found", 404)
 
 
 def main() -> None:

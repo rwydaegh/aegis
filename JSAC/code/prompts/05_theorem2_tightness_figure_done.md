@@ -6,7 +6,7 @@ that fell out of it.
 
 ## What landed
 
-### `JSAC/planning/experiments/cauchy_tightness/run_tightness.py`
+### `JSAC/code/experiments/cauchy_tightness/run_tightness.py`
 
 Headless sweep of paper Theorem 2 (`paper_v2.tex` eq:cauchy-bound-op):
 
@@ -51,7 +51,7 @@ for:
      body is *not* in the user list -- it is a tier-C bystander, by
      definition unknown to the BS).
 
-### `JSAC/planning/experiments/cauchy_tightness/finalise.py`
+### `JSAC/code/experiments/cauchy_tightness/finalise.py`
 
 Post-processor that loads `ratios.npz`, regenerates the figure +
 `summary.json`, and refreshes the auto-results block in `README.md`
@@ -130,13 +130,13 @@ the unsafe loose interpretation.
 
 ```bash
 cd /home/user/aegis
-.venv/bin/python JSAC/planning/experiments/cauchy_tightness/run_tightness.py
+.venv/bin/python JSAC/code/experiments/cauchy_tightness/run_tightness.py
 # ~7 min on a 4-core/8 GB host with 1 worker
-.venv/bin/python JSAC/planning/experiments/cauchy_tightness/finalise.py
+.venv/bin/python JSAC/code/experiments/cauchy_tightness/finalise.py
 # replots + refreshes README's auto-results from saved ratios.npz
 
 # Iterate on precoder logic without redoing the Q sweep:
-.venv/bin/python JSAC/planning/experiments/cauchy_tightness/finalise.py --resweep
+.venv/bin/python JSAC/code/experiments/cauchy_tightness/finalise.py --resweep
 ```
 
 Override `CAUCHY_TIGHTNESS_WORKERS=N` for parallelism (default 1; each
@@ -177,7 +177,7 @@ spread (recommend >=16 GB RAM).
 
 ## Test sweep
 
-This experiment lives entirely under `JSAC/planning/experiments/` and
+This experiment lives entirely under `JSAC/code/experiments/` and
 adds no new code under `src/aegis/`, so no `tests/` changes are
 needed. Existing `python -m pytest tests/ -m "not slow"` continues to
 pass; the experiment imports use the public coherent + mimo +
@@ -185,16 +185,16 @@ geometry + tissue APIs without modification.
 
 ## Files touched
 
-- `JSAC/planning/experiments/cauchy_tightness/run_tightness.py` (new)
-- `JSAC/planning/experiments/cauchy_tightness/finalise.py` (new)
-- `JSAC/planning/experiments/cauchy_tightness/README.md` (new, full
+- `JSAC/code/experiments/cauchy_tightness/run_tightness.py` (new)
+- `JSAC/code/experiments/cauchy_tightness/finalise.py` (new)
+- `JSAC/code/experiments/cauchy_tightness/README.md` (new, full
   writeup)
-- `JSAC/planning/experiments/cauchy_tightness/tightness.{pdf,png}`
+- `JSAC/code/experiments/cauchy_tightness/tightness.{pdf,png}`
   (new figure, force-added past `*.{pdf,png}` gitignore the same way
   `csi_calibration/` did it)
-- `JSAC/planning/experiments/cauchy_tightness/ratios.npz` (new)
-- `JSAC/planning/experiments/cauchy_tightness/q_and_a.npz` (new, 1.5 MB)
-- `JSAC/planning/experiments/cauchy_tightness/summary.json` (new)
+- `JSAC/code/experiments/cauchy_tightness/ratios.npz` (new)
+- `JSAC/code/experiments/cauchy_tightness/q_and_a.npz` (new, 1.5 MB)
+- `JSAC/code/experiments/cauchy_tightness/summary.json` (new)
 - `JSAC/code/prompts/05_theorem2_tightness_figure_done.md` (this file)
 
 Pushed to master as `0f6901a`.

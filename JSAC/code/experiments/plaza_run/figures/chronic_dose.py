@@ -6,7 +6,7 @@ proposed solution) but since precoders collapse to MRT in this regime,
 the curve is invariant to that choice; we annotate that fact.
 
 Run:
-    python -m JSAC.planning.experiments.plaza_run.figures.chronic_dose
+    python -m JSAC.code.experiments.plaza_run.figures.chronic_dose
 """
 
 from __future__ import annotations

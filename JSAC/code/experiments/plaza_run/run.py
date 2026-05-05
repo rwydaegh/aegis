@@ -2,7 +2,7 @@
 
 Usage::
 
-    python -m JSAC.planning.experiments.plaza_run.run --seed 42
+    python -m JSAC.code.experiments.plaza_run.run --seed 42
 
 See ``--help`` for the full flag set. NPZ + run.json land under ``outputs/``.
 """
@@ -90,7 +90,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--out-dir",
         type=Path,
-        default=Path("JSAC/planning/experiments/plaza_run/outputs"),
+        default=Path("JSAC/code/experiments/plaza_run/outputs"),
     )
     p.add_argument("--log-level", default="INFO")
     p.add_argument("--progress-every", type=int, default=200)
