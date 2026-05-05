@@ -23,10 +23,10 @@ from .paths import make_path_generator
 from .scenario import (
     FREQ_HZ,
     TIER_COUNTS,
-    TX_POWER_DBM,
     assign_bodies,
     build_bs_panel,
     discover_walks,
+    generate_flux_trajectory,
     generate_walk_trajectory,
     load_pose_streams,
     smplx_body,
@@ -65,6 +65,29 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--noise-power", type=float, default=1e-2)
     p.add_argument("--oracle-noise-power", type=float, default=1e-3)
     p.add_argument(
+        "--tx-power-dbm",
+        type=float,
+        default=30.0,
+        help="BS total transmit power in dBm. 30 = 1W (paper §VII.A); 43 = 20W (macro); 46 = 40W.",
+    )
+    p.add_argument(
+        "--budget-multiplier",
+        type=float,
+        default=1.0,
+        help="Per-body L_RL multiplier. <1 tightens (e.g. 0.04 = 1980 3 V/m), >1 relaxes.",
+    )
+    p.add_argument(
+        "--label-suffix",
+        type=str,
+        default="",
+        help="Append to NPZ filename so multiple regimes don't overwrite each other.",
+    )
+    p.add_argument(
+        "--realistic-walks",
+        action="store_true",
+        help="Use Brussels Grand Place entry/exit street nodes for flux trajectories instead of bounded random walk.",
+    )
+    p.add_argument(
         "--out-dir",
         type=Path,
         default=Path("JSAC/planning/experiments/plaza_run/outputs"),
@@ -80,7 +103,7 @@ def _run_once(args, paths_mode: str) -> Path:
     rng = random.Random(seed)
     np_rng = np.random.default_rng(seed + 7919)
 
-    bs_panel = build_bs_panel(freq_hz=FREQ_HZ)
+    bs_panel = build_bs_panel(freq_hz=FREQ_HZ, tx_power_dbm=args.tx_power_dbm)
     walks = discover_walks()
     bodies = assign_bodies(args.n_bodies, rng, walks)
     pose_streams = load_pose_streams(bodies)
@@ -88,9 +111,12 @@ def _run_once(args, paths_mode: str) -> Path:
 
     body_positions = np.zeros((args.n_slots, args.n_bodies, 3), dtype=np.float64)
     for b in bodies:
-        body_positions[:, b.index, :] = generate_walk_trajectory(b, args.n_slots, args.dt_s, np_rng)
+        if args.realistic_walks:
+            body_positions[:, b.index, :] = generate_flux_trajectory(b, args.n_slots, args.dt_s, np_rng, rng)
+        else:
+            body_positions[:, b.index, :] = generate_walk_trajectory(b, args.n_slots, args.dt_s, np_rng)
 
-    body_budgets = per_body_budgets(args.n_bodies)
+    body_budgets = per_body_budgets(args.n_bodies) * args.budget_multiplier
 
     path_gen = make_path_generator(
         paths_mode,
@@ -155,17 +181,19 @@ def _run_once(args, paths_mode: str) -> Path:
         n_slots=args.n_slots,
         dt_s=args.dt_s,
         freq_hz=bs_panel.freq_hz,
-        tx_power_dbm=TX_POWER_DBM,
+        tx_power_dbm=args.tx_power_dbm,
         phy_mode="shannon",
         pose_mode="ablate" if args.ablate_pose_telemetry else "aware",
         paths_mode=paths_label,
-        scene_hash="hand-placed-bs",  # filled in once scene_cache is invoked elsewhere
+        scene_hash="hand-placed-bs",
         decim=args.decim,
         bs_position=tuple(bs_panel.position.tolist()),
         bs_broadside=tuple(bs_panel.broadside.tolist()),
         n_users_max=int((tier_arr == 0).sum()),
         cadence_ms=cadence,
         notes=f"path_mode_label={paths_mode}",
+        label_suffix=args.label_suffix,
+        budget_multiplier=args.budget_multiplier,
     )
 
     npz = write_run(

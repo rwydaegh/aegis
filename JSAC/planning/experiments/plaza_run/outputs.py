@@ -35,10 +35,16 @@ class RunMetadata:
     n_users_max: int
     cadence_ms: dict = field(default_factory=dict)
     notes: str = ""
+    label_suffix: str = ""
+    budget_multiplier: float = 1.0
 
 
 def npz_filename(meta: RunMetadata) -> str:
-    return f"plaza_run_seed{meta.seed:d}_phy{meta.phy_mode}_pose{meta.pose_mode}_paths{meta.paths_mode}.npz"
+    suffix = getattr(meta, "label_suffix", "")
+    suffix_part = f"_{suffix}" if suffix else ""
+    return (
+        f"plaza_run_seed{meta.seed:d}_phy{meta.phy_mode}_pose{meta.pose_mode}_paths{meta.paths_mode}{suffix_part}.npz"
+    )
 
 
 def write_run(

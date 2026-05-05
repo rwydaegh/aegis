@@ -34,8 +34,9 @@ def main() -> None:
         from . import prepare_data
 
         prepare_data.main()
-    print(f"plaza_run replay viewer: http://127.0.0.1:{PORT}/")
-    app.run(host="127.0.0.1", port=PORT, debug=False, use_reloader=False)
+    # Bind 0.0.0.0 so VS Code remote port-forwarding and direct LAN access both work.
+    print(f"plaza_run replay viewer: http://localhost:{PORT}/   (also LAN-reachable)")
+    app.run(host="0.0.0.0", port=PORT, debug=False, use_reloader=False, threaded=True)
 
 
 if __name__ == "__main__":

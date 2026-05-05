@@ -83,7 +83,7 @@ class Body:
     initial_heading_rad: float
 
 
-def build_bs_panel(freq_hz: float = FREQ_HZ) -> BSPanel:
+def build_bs_panel(freq_hz: float = FREQ_HZ, tx_power_dbm: float = TX_POWER_DBM) -> BSPanel:
     lam = C_0 / freq_hz
     array = AntennaArray.upa(
         n_h=N_PER_SIDE,
@@ -99,7 +99,7 @@ def build_bs_panel(freq_hz: float = FREQ_HZ) -> BSPanel:
         position=BS_POSITION,
         broadside=BS_BROADSIDE,
         freq_hz=freq_hz,
-        tx_power_w=TX_POWER_W,
+        tx_power_w=10 ** ((tx_power_dbm - 30.0) / 10.0),
     )
 
 
@@ -199,6 +199,93 @@ def generate_walk_trajectory(
             # Reverse and damp.
             heading += np.pi
             nx, ny = xy[0], xy[1]
+        xy = np.array([nx, ny])
+        pos[t] = [xy[0], xy[1], 0.0]
+    return pos
+
+
+# Brussels Grand Place entry / exit nodes in plaza-local frame (origin = plaza
+# centre, +y north, +x east). Approximate; calibrated against the OSM mesh.
+ENTRY_NODES_M: dict[str, tuple[float, float]] = {
+    "N_rue_au_beurre": (-12.0, 32.0),
+    "NE_rue_colline": (28.0, 30.0),
+    "E_rue_chapeliers": (33.0, -8.0),
+    "SE_rue_charles_buls": (24.0, -27.0),
+    "S_rue_etuve": (-6.0, -30.0),
+    "SW_rue_violette": (-25.0, -25.0),
+    "W_rue_chair_pain": (-32.0, 6.0),
+}
+
+
+def _flux_pair(rng: random.Random) -> tuple[str, str]:
+    """Pick a distinct (entry, exit) node pair uniformly."""
+    keys = list(ENTRY_NODES_M.keys())
+    a = rng.choice(keys)
+    b = rng.choice([k for k in keys if k != a])
+    return a, b
+
+
+def generate_flux_trajectory(
+    body: Body,
+    n_slots: int,
+    dt_s: float,
+    rng: np.random.Generator,
+    py_rng: random.Random,
+) -> np.ndarray:
+    """Origin-destination flux walk: enter via one street node, traverse the
+    plaza toward a random interior dwell point, then exit via a different
+    street node. When the body reaches the exit it re-enters via a new
+    (entry, exit) pair so the trace fills the full ``n_slots``.
+
+    Heading at each step is the bearing toward the current waypoint plus
+    Gaussian heading noise (matching the bounded-random-walk style).
+    """
+    pos = np.zeros((n_slots, 3), dtype=np.float64)
+
+    waypoints: list[np.ndarray] = []
+
+    def _refill_waypoints():
+        a, b = _flux_pair(py_rng)
+        # Spawn from entry; dwell at a random interior point near plaza centre;
+        # exit via b.
+        entry = np.array(ENTRY_NODES_M[a])
+        exit_ = np.array(ENTRY_NODES_M[b])
+        # Two dwell points biased toward plaza centre, randomised.
+        dwells = []
+        for _ in range(2):
+            dx = py_rng.uniform(-15.0, 15.0)
+            dy = py_rng.uniform(-15.0, 15.0)
+            dwells.append(np.array([dx, dy]))
+        waypoints.extend([entry, dwells[0], dwells[1], exit_])
+
+    # Body enters at its first entry node (override spawn).
+    _refill_waypoints()
+    xy = waypoints.pop(0).copy()
+
+    step = WALK_SPEED_M_PER_S * dt_s
+    arrive_eps = 1.5  # waypoint reached when within 1.5 m
+
+    for t in range(n_slots):
+        if not waypoints:
+            _refill_waypoints()
+        target = waypoints[0]
+        d = target - xy
+        dist = float(np.linalg.norm(d))
+        if dist < arrive_eps:
+            waypoints.pop(0)
+            pos[t] = [xy[0], xy[1], 0.0]
+            continue
+        bearing = float(np.arctan2(d[1], d[0]))
+        # Heading noise around the bearing.
+        bearing += rng.normal() * WALK_HEADING_NOISE_RAD_PER_S * np.sqrt(dt_s)
+        nx = xy[0] + step * np.cos(bearing)
+        ny = xy[1] + step * np.sin(bearing)
+        # Soft constraint: stay clear of the BS pole.
+        r_from_bs = float(np.hypot(nx - BS_X_M, ny - BS_Y_M))
+        if r_from_bs < RANGE_MIN_M:
+            # nudge tangentially
+            nx, ny = xy[0], xy[1]
+            waypoints.pop(0)  # abandon this dwell
         xy = np.array([nx, ny])
         pos[t] = [xy[0], xy[1], 0.0]
     return pos
