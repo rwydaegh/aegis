@@ -96,9 +96,7 @@ def main(npz_label: str = "specular_aware", decim_t: int = DECIM_T_DEFAULT) -> P
             "triangles_shape": list(mesh.triangles.shape),
             "hash": scene_hash,
         }
-        print(
-            f"loaded Brussels OSM mesh: {mesh.vertices.shape[0]} verts, {mesh.triangles.shape[0]} tris"
-        )
+        print(f"loaded Brussels OSM mesh: {mesh.vertices.shape[0]} verts, {mesh.triangles.shape[0]} tris")
     except Exception as exc:
         print(f"OSM scrape unavailable ({exc}); falling back to synthetic ring")
 

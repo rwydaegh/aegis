@@ -179,6 +179,9 @@ function setupScene() {
   controls.dampingFactor = 0.06;
   controls.target.set(0, 0, 4);
   controls.update();
+  // Expose for debugging / Playwright camera control
+  window.__camera = camera;
+  window.__controls = controls;
 
   // Lighting — brightened so bodies aren't lost in building shadows.
   scene.add(new THREE.AmbientLight(0x6677aa, 1.1));
@@ -296,20 +299,88 @@ function buildScene() {
   labelSprite.scale.set(6, 1.5, 1);
   scene.add(labelSprite);
 
-  // Bodies — capsules ~ 1.7 m tall, 0.4 m wide. Slightly oversized for visibility.
-  const bodyGeo = new THREE.CapsuleGeometry(0.28, 1.4, 4, 12);
+  // Bodies — rigged person: torso + head + 2 arms + 2 legs + smartphone at right hand.
+  // Each body's limbs animate with a sinusoidal gait so the walk reads visually.
+  // The phone bobbing IS the virtual IMU signal we'd consume in the precoder.
+  const torsoGeo = new THREE.CapsuleGeometry(0.16, 0.40, 4, 10);
+  const armGeo = new THREE.CapsuleGeometry(0.055, 0.45, 4, 8);
+  const legGeo = new THREE.CapsuleGeometry(0.075, 0.75, 4, 8);
+  const headGeo = new THREE.SphereGeometry(0.13, 14, 12);
+  const phoneGeo = new THREE.BoxGeometry(0.07, 0.13, 0.012);
+  const phoneMat = new THREE.MeshStandardMaterial({
+    color: 0x111111, emissive: 0x88aaff, emissiveIntensity: 0.45, roughness: 0.4
+  });
+
   for (let i = 0; i < data.tier.length; i++) {
     const tier = data.tier[i];
+    const tierColor = TIER_COLORS[tier];
     const mat = new THREE.MeshStandardMaterial({
-      color: TIER_COLORS[tier], roughness: 0.5, emissive: 0x000000, emissiveIntensity: 0.4
+      color: tierColor, roughness: 0.55, emissive: 0x000000, emissiveIntensity: 0.4
     });
-    const m = new THREE.Mesh(bodyGeo, mat);
-    m.castShadow = true;
-    // Capsule's long axis is Y; we want it along Z (world up).
-    m.rotation.x = Math.PI / 2;
-    m.position.z = 0.9; // half-height above ground
-    scene.add(m);
-    bodies.push({ mesh: m, mat, tier, idx: i });
+    const skinMat = new THREE.MeshStandardMaterial({
+      color: 0xeec3a0, roughness: 0.7, emissive: 0x000000, emissiveIntensity: 0.0
+    });
+
+    const root = new THREE.Group();
+    // Torso
+    const torso = new THREE.Mesh(torsoGeo, mat);
+    torso.rotation.x = Math.PI / 2;
+    torso.position.z = 1.10;
+    torso.castShadow = true;
+    root.add(torso);
+    // Head
+    const head = new THREE.Mesh(headGeo, skinMat);
+    head.position.z = 1.55;
+    head.castShadow = true;
+    root.add(head);
+    // Arms
+    const armLPivot = new THREE.Group();
+    armLPivot.position.set(-0.20, 0, 1.30);
+    const armL = new THREE.Mesh(armGeo, mat);
+    armL.rotation.x = Math.PI / 2;
+    armL.position.z = -0.25;
+    armL.castShadow = true;
+    armLPivot.add(armL);
+    root.add(armLPivot);
+    const armRPivot = new THREE.Group();
+    armRPivot.position.set(0.20, 0, 1.30);
+    const armR = new THREE.Mesh(armGeo, mat);
+    armR.rotation.x = Math.PI / 2;
+    armR.position.z = -0.25;
+    armR.castShadow = true;
+    armRPivot.add(armR);
+    root.add(armRPivot);
+    // Phone in right hand: child of armR end
+    const phone = new THREE.Mesh(phoneGeo, phoneMat);
+    phone.position.set(0, 0, -0.50);  // tip of right arm
+    phone.rotation.x = Math.PI / 2;
+    armRPivot.add(phone);
+    // Legs
+    const legLPivot = new THREE.Group();
+    legLPivot.position.set(-0.10, 0, 0.92);
+    const legL = new THREE.Mesh(legGeo, mat);
+    legL.rotation.x = Math.PI / 2;
+    legL.position.z = -0.40;
+    legL.castShadow = true;
+    legLPivot.add(legL);
+    root.add(legLPivot);
+    const legRPivot = new THREE.Group();
+    legRPivot.position.set(0.10, 0, 0.92);
+    const legR = new THREE.Mesh(legGeo, mat);
+    legR.rotation.x = Math.PI / 2;
+    legR.position.z = -0.40;
+    legR.castShadow = true;
+    legRPivot.add(legR);
+    root.add(legRPivot);
+
+    scene.add(root);
+    bodies.push({
+      mesh: root, mat, tier, idx: i,
+      pivots: { armL: armLPivot, armR: armRPivot, legL: legLPivot, legR: legRPivot },
+      torso, head, phone,
+      gaitPhase: (i * 1.7) % (2 * Math.PI),  // de-synced
+      lastPos: new THREE.Vector2(0, 0),
+    });
   }
 
   // Compass / origin
@@ -385,16 +456,24 @@ function updateFrame(t) {
   for (let i = 0; i < B; i++) {
     const x = fr.body_xy[(t * B + i) * 2 + 0];
     const y = fr.body_xy[(t * B + i) * 2 + 1];
-    bodies[i].mesh.position.x = x;
-    bodies[i].mesh.position.y = y;
-    bodies[i].mesh.position.z = 0.9;
+    const body = bodies[i];
+    // Heading: face the direction we just moved (or initial if first frame)
+    const dx = x - body.lastPos.x, dy = y - body.lastPos.y;
+    const moved = Math.hypot(dx, dy);
+    if (moved > 1e-3) {
+      body.mesh.rotation.z = Math.atan2(dy, dx) - Math.PI / 2;  // capsule fwd is +y
+    }
+    body.lastPos.set(x, y);
+    body.mesh.position.x = x;
+    body.mesh.position.y = y;
+    body.mesh.position.z = 0;
     const pAbs = fr.p_abs[(t * B + i) * P + activePrecoderIdx];
     const budget = data.body_budgets_w[i];
     const ratio = pAbs / budget;
     maxRatio = Math.max(maxRatio, ratio);
     const c = ratioColor(ratio);
-    bodies[i].mat.color.copy(c);
-    bodies[i].mat.emissive.copy(c).multiplyScalar(0.4);
+    body.mat.color.copy(c);
+    body.mat.emissive.copy(c).multiplyScalar(0.4);
   }
   // Update beams from BS to served users
   const bs = data.bs.position;
@@ -420,9 +499,24 @@ function updateFrame(t) {
 
 function animate() {
   requestAnimationFrame(animate);
+  const now = performance.now();
+  const dt = (now - lastTickMs) / 1000;
+  // Drive the gait every render frame so it looks smooth even when the
+  // replay clock is paused.
+  const gaitOmega = 2 * Math.PI * 1.5;  // 1.5 Hz gait, both legs
+  for (const body of bodies) {
+    body.gaitPhase += gaitOmega * Math.min(0.05, dt);
+    const phase = body.gaitPhase;
+    const swing = Math.sin(phase);
+    const counter = Math.sin(phase + Math.PI);
+    body.pivots.legL.rotation.x = swing * 0.55;
+    body.pivots.legR.rotation.x = counter * 0.55;
+    body.pivots.armL.rotation.x = counter * 0.45;
+    body.pivots.armR.rotation.x = swing * 0.45;
+    // Vertical bob from the gait — phone follows because it's a child of armR.
+    body.mesh.position.z = 0 + Math.abs(Math.sin(phase * 2)) * 0.04;
+  }
   if (playing) {
-    const now = performance.now();
-    const dt = (now - lastTickMs) / 1000;
     // Each keyframe represents decim_t real slots. Replay at speed * 30 keyframes/s.
     const advance = speed * 30 * dt;
     if (advance >= 1.0) {
@@ -430,6 +524,8 @@ function animate() {
       updateFrame(currentFrame);
       lastTickMs = now;
     }
+  } else {
+    lastTickMs = now;
   }
   controls.update();
   renderer.render(scene, camera);
