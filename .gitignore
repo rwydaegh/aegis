@@ -50,6 +50,10 @@ data/antenna_patterns/msi_raw/
 data/poses/*.npz
 # Raw AMASS dumps (license-restricted, do not commit)
 data/poses/amass_smplx_g/
+# Derived per-body PoseStream files for plaza_run; regenerable via scripts/ingest_amass.py
+data/poses/plaza_run_walks/
+# OSM cache for plaza_run preflight; regenerable from Overpass
+data/scenes/brussels_grand_place/
 !tests/fixtures/e2e_lab/e2e_icosahedron.stl
 
 # MkDocs build
@@ -147,9 +151,14 @@ tools/mpfb2/
 # Roof visualization scripts (dev-only)
 scripts/*
 !scripts/build_phantoms.py
+!scripts/fetch_smplx.py
 !scripts/fuzz_api.sh
 !scripts/ingest_amass.py
 !scripts/run_mutmut.sh
+
+# SMPL-X model archives (license-gated, not redistributable)
+smplx_*.zip
+models_smplx_*.zip
 
 # ── GSD baseline (auto-generated) ──
 *~
