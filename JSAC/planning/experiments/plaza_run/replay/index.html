@@ -216,14 +216,29 @@ function buildScene() {
   groundMesh.receiveShadow = true;
   scene.add(groundMesh);
 
-  // Buildings
-  const buildingMat = new THREE.MeshStandardMaterial({ color: 0x8a8a98, roughness: 0.7 });
-  for (const b of data.buildings) {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(b.size[0], b.size[1], b.size[2]), buildingMat);
-    m.position.set(b.center[0], b.center[1], b.center[2]);
-    m.castShadow = true;
-    m.receiveShadow = true;
-    scene.add(m);
+  // Buildings: prefer real OSM mesh if present, else synthetic boxes.
+  const buildingMat = new THREE.MeshStandardMaterial({
+    color: 0x8a8a98, roughness: 0.78, metalness: 0.05, side: THREE.DoubleSide
+  });
+  if (data.osm_mesh) {
+    const verts = new Float32Array(data.osm_mesh.vertices_flat);
+    const tris = new Uint32Array(data.osm_mesh.triangles_flat);
+    const geom = new THREE.BufferGeometry();
+    geom.setAttribute('position', new THREE.BufferAttribute(verts, 3));
+    geom.setIndex(new THREE.BufferAttribute(tris, 1));
+    geom.computeVertexNormals();
+    const osmMesh = new THREE.Mesh(geom, buildingMat);
+    osmMesh.castShadow = true;
+    osmMesh.receiveShadow = true;
+    scene.add(osmMesh);
+  } else {
+    for (const b of data.buildings) {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(b.size[0], b.size[1], b.size[2]), buildingMat);
+      m.position.set(b.center[0], b.center[1], b.center[2]);
+      m.castShadow = true;
+      m.receiveShadow = true;
+      scene.add(m);
+    }
   }
 
   // BS panel — visible 8x8 grid of dots on a backplane
