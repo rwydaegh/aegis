@@ -208,11 +208,11 @@ def generate_walk_trajectory(
 # centre, +y north, +x east). Approximate; calibrated against the OSM mesh.
 ENTRY_NODES_M: dict[str, tuple[float, float]] = {
     "N_rue_au_beurre": (-12.0, 32.0),
-    "NE_rue_colline": (28.0, 30.0),
+    "NE_rue_colline": (12.0, 22.0),
     "E_rue_chapeliers": (33.0, -8.0),
     "SE_rue_charles_buls": (24.0, -27.0),
     "S_rue_etuve": (-6.0, -30.0),
-    "SW_rue_violette": (-25.0, -25.0),
+    "SW_rue_violette": (-15.0, -15.0),
     "W_rue_chair_pain": (-32.0, 6.0),
 }
 
@@ -225,7 +225,28 @@ def _flux_pair(rng: random.Random) -> tuple[str, str]:
     return a, b
 
 
-PLAZA_OFFSCREEN_DIST_M = 60.0
+PLAZA_OFFSCREEN_DIST_M = 200.0  # park far past the camera frustum
+REST_SLOTS_RANGE = (60, 300)  # 2 .. 10 s parked off-screen between visits
+DWELL_HALF_M = 14.0  # interior dwell points sampled from [-DWELL,+DWELL]^2
+ENTRY_APPROACH_M = 35.0  # distance walked along the street outside the plaza
+HEADING_NOISE_RAD_PER_S = 0.35
+
+
+def _interior_dwell(py_rng: random.Random, anchor: np.ndarray) -> np.ndarray:
+    """Sample an interior dwell biased toward the line BS→anchor.
+
+    Pure uniform sampling tends to clip outside the plaza polygon; bias
+    toward the segment between BS and the body's anchor (entry / exit) so
+    dwell points land in the open courtyard.
+    """
+    bs_xy = np.array([BS_X_M, BS_Y_M])
+    mid = 0.5 * (bs_xy + anchor)
+    jx = py_rng.uniform(-DWELL_HALF_M, DWELL_HALF_M)
+    jy = py_rng.uniform(-DWELL_HALF_M, DWELL_HALF_M)
+    p = mid + np.array([jx, jy])
+    p[0] = float(np.clip(p[0], -PLAZA_HALF_WIDTH_M + 4, PLAZA_HALF_WIDTH_M - 4))
+    p[1] = float(np.clip(p[1], -25.0, 25.0))
+    return p
 
 
 def generate_flux_trajectory(
@@ -235,76 +256,100 @@ def generate_flux_trajectory(
     rng: np.random.Generator,
     py_rng: random.Random,
 ) -> np.ndarray:
-    """Origin-destination flux walk with staggered entry.
+    """Steady-state OD walks with continuous re-entry.
 
-    Each body picks an `entry_offset_slots` uniformly in [0, n_slots * 0.6]
-    so the plaza fills up gradually (staggered ingress) instead of all 50
-    bodies emerging at t=0. Before its entry slot, the body is parked
-    PLAZA_OFFSCREEN_DIST_M beyond its first entry node along the approach
-    direction (BS→entry) — far enough to be off-camera and to absorb
-    negligible BS power, so it doesn't pollute the constraint.
+    Each body cycles through:
 
-    Once entered: walks entry → 2 random interior dwell points → exit
-    node, then loops with a fresh (entry, exit) pair until n_slots ends.
+      1. Park off-screen (PLAZA_OFFSCREEN_DIST_M, unique per-body angle so
+         bodies don't stack at one point) for `rest` slots.
+      2. Walk entry → 1-2 interior dwells → exit, picking a fresh random
+         (entry, exit) pair from ``ENTRY_NODES_M``.
+      3. Repeat. The schedule extends from a per-body random phase
+         offset (in roughly [-n_slots, +n_slots/4]) past the end of the
+         run, so at t=0 some bodies are already mid-walk (steady state).
+
+    Speed: WALK_SPEED_M_PER_S along path-arc; small heading noise via
+    np.random within each segment. Output ``(n_slots, 3)`` positions.
     """
     pos = np.zeros((n_slots, 3), dtype=np.float64)
+    walk_step_m = WALK_SPEED_M_PER_S * dt_s
 
-    waypoints: list[np.ndarray] = []
+    # Unique parking angle per body so they fan out around the plaza when
+    # off-screen instead of stacking at one cardinal point.
+    park_angle = py_rng.uniform(-np.pi, np.pi)
+    park_xy = np.array(
+        [
+            PLAZA_OFFSCREEN_DIST_M * np.cos(park_angle),
+            PLAZA_OFFSCREEN_DIST_M * np.sin(park_angle),
+        ]
+    )
 
-    def _refill_waypoints():
-        a, b = _flux_pair(py_rng)
-        entry = np.array(ENTRY_NODES_M[a])
-        exit_ = np.array(ENTRY_NODES_M[b])
-        dwells = []
-        for _ in range(2):
-            dx = py_rng.uniform(-15.0, 15.0)
-            dy = py_rng.uniform(-15.0, 15.0)
-            dwells.append(np.array([dx, dy]))
-        waypoints.extend([entry, dwells[0], dwells[1], exit_])
+    # Random phase offset: when does this body's first event start, in
+    # slots relative to t=0? Negative means the body is already mid-walk
+    # / mid-park at t=0 (steady-state population).
+    phase_offset = py_rng.randint(-n_slots, n_slots // 4)
 
-    # Stagger: pick a random entry offset in the first 60 % of the run.
-    entry_offset_slots = py_rng.randint(0, max(1, int(n_slots * 0.6)))
-
-    # First entry node = waypoints[0]; pre-entry park position is
-    # PLAZA_OFFSCREEN_DIST_M further along the BS→entry direction so the
-    # body is clearly outside the plaza.
-    _refill_waypoints()
-    first_entry = waypoints[0].copy()
+    # Build the schedule from cursor=phase_offset until past n_slots.
+    # Each event = ('park', slot_a, slot_b) or ('walk', slot_a, slot_b, path).
+    schedule: list[tuple] = []
+    cursor = phase_offset
+    is_walking = py_rng.random() < 0.55  # ~55 % start mid-walk
     bs_xy = np.array([BS_X_M, BS_Y_M])
-    approach = first_entry - bs_xy
-    approach_norm = float(np.linalg.norm(approach))
-    if approach_norm > 1e-6:
-        offscreen_xy = first_entry + approach / approach_norm * PLAZA_OFFSCREEN_DIST_M
-    else:
-        offscreen_xy = first_entry + np.array([PLAZA_OFFSCREEN_DIST_M, 0.0])
+    while cursor < n_slots:
+        if is_walking:
+            a, b = _flux_pair(py_rng)
+            entry = np.array(ENTRY_NODES_M[a])
+            exit_ = np.array(ENTRY_NODES_M[b])
+            # Pre-entry / post-exit: extend the path along the BS→node
+            # outward direction so the body walks in/out of the plaza
+            # through the street, fading off-screen smoothly instead of
+            # teleporting at the entry/exit node.
+            entry_out = entry - bs_xy
+            entry_out = entry_out / max(float(np.linalg.norm(entry_out)), 1e-6)
+            pre_entry = entry + entry_out * ENTRY_APPROACH_M
+            exit_out = exit_ - bs_xy
+            exit_out = exit_out / max(float(np.linalg.norm(exit_out)), 1e-6)
+            post_exit = exit_ + exit_out * ENTRY_APPROACH_M
+            n_dwells = py_rng.choice([1, 2])
+            dwells = [_interior_dwell(py_rng, entry if k == 0 else exit_) for k in range(n_dwells)]
+            path = [pre_entry, entry, *dwells, exit_, post_exit]
+            seg_lengths = [float(np.linalg.norm(path[i + 1] - path[i])) for i in range(len(path) - 1)]
+            total_dist_m = sum(seg_lengths)
+            walk_slots = max(8, int(total_dist_m / walk_step_m))
+            schedule.append(("walk", cursor, cursor + walk_slots, path, seg_lengths, total_dist_m))
+            cursor += walk_slots
+        else:
+            rest = py_rng.randint(*REST_SLOTS_RANGE)
+            schedule.append(("park", cursor, cursor + rest))
+            cursor += rest
+        is_walking = not is_walking
 
-    # Pre-entry park.
-    for t in range(entry_offset_slots):
-        pos[t] = [offscreen_xy[0], offscreen_xy[1], 0.0]
-
-    xy = first_entry.copy()
-    step = WALK_SPEED_M_PER_S * dt_s
-    arrive_eps = 1.5
-
-    for t in range(entry_offset_slots, n_slots):
-        if not waypoints:
-            _refill_waypoints()
-        target = waypoints[0]
-        d = target - xy
-        dist = float(np.linalg.norm(d))
-        if dist < arrive_eps:
-            waypoints.pop(0)
-            pos[t] = [xy[0], xy[1], 0.0]
+    # Rasterise the schedule into pos[t] for t in [0, n_slots).
+    ev_idx = 0
+    for t in range(n_slots):
+        # Advance through schedule until the active event covers t.
+        while ev_idx < len(schedule) and schedule[ev_idx][2] <= t:
+            ev_idx += 1
+        if ev_idx >= len(schedule):
+            pos[t] = [park_xy[0], park_xy[1], 0.0]
             continue
-        bearing = float(np.arctan2(d[1], d[0]))
-        bearing += rng.normal() * WALK_HEADING_NOISE_RAD_PER_S * np.sqrt(dt_s)
-        nx = xy[0] + step * np.cos(bearing)
-        ny = xy[1] + step * np.sin(bearing)
-        r_from_bs = float(np.hypot(nx - BS_X_M, ny - BS_Y_M))
-        if r_from_bs < RANGE_MIN_M:
-            nx, ny = xy[0], xy[1]
-            waypoints.pop(0)
-        xy = np.array([nx, ny])
+        ev = schedule[ev_idx]
+        if t < ev[1] or ev[0] == "park":
+            pos[t] = [park_xy[0], park_xy[1], 0.0]
+            continue
+        # Walk event: linear-interp along path with arc-length parameter.
+        _, slot_a, slot_b, path, seg_lengths, total = ev
+        elapsed = t - slot_a
+        duration = max(1, slot_b - slot_a)
+        target_dist = (elapsed / duration) * total
+        travelled = 0.0
+        xy = np.array(path[0], dtype=np.float64).copy()
+        for i, sl in enumerate(seg_lengths):
+            if travelled + sl >= target_dist:
+                frac = (target_dist - travelled) / sl if sl > 1e-9 else 0.0
+                xy = path[i] + frac * (path[i + 1] - path[i])
+                break
+            travelled += sl
         pos[t] = [xy[0], xy[1], 0.0]
     return pos
 

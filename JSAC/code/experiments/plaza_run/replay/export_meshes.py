@@ -120,7 +120,7 @@ def export_meshes(
     npz_path: Path,
     *,
     target_faces: int = 1200,
-    keyframe_period: int = 6,
+    keyframe_period: int = 12,
     out_path: Path | None = None,
 ) -> Path:
     npz_path = Path(npz_path)
