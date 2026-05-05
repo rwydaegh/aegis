@@ -617,10 +617,12 @@ function updatePosedBody(body, i, pmKf, blend, worldX, worldY, heading, bs, rati
   if (!insidePlaza) return;
 
   // Place + rotate the mesh. Translation drives the global walk velocity,
-  // rotation matches direction of motion (heading). Subtracting π/2 because
-  // the SMPL-X canonical pose with global_orient=(π/2,0,0) faces +Y.
+  // rotation matches direction of motion (heading). SMPL-X canonical pose
+  // with global_orient=(π/2,0,0) faces -Y (the original body's +Z forward
+  // axis maps to -Y under R_x(π/2)), so we add π/2 to align -Y with the
+  // heading direction.
   body.mesh.position.set(worldX, worldY, 0.0);
-  body.mesh.rotation.z = heading - Math.PI / 2;
+  body.mesh.rotation.z = heading + Math.PI / 2;
 
   // Per-vertex APD = max(0, n_hat · k_BS) modulated by per-body p_abs.
   // The geometry's vertex normals are in body-local; transform to world by
@@ -654,27 +656,40 @@ function updatePosedBody(body, i, pmKf, blend, worldX, worldY, heading, bs, rati
     reluPerVert[v] = r;
     if (r > peak) peak = r;
   }
-  // Heatmap: BS-facing → ratioCol (clamped to a visible floor so dark
-  // ratios still render the body); back → muted skin/grey so silhouette is
-  // visible. The relu(n·k_BS) modulation provides the only shape cue
-  // because the material is unlit.
-  const base = ratioCol;
-  const baseR = base.r, baseG = base.g, baseB = base.b;
+  // Heatmap: per-body individually-normalized cold→warm ramp on relu(n·k_BS).
+  // Slack-regime bodies all have ratio≪1, so encoding ratio in the body's
+  // global hue (the previous design) collapsed to a uniform dark blue and
+  // the per-vertex shape silhouette disappeared. Now every body gets the
+  // full cold→warm range based on its own peak relu, so the BS-facing
+  // shape always reads. Per-body ratio is still surfaced via the HUD's
+  // `max P_abs/L` row.
   const denom = peak > 1e-6 ? peak : 1.0;
-  // Back-side: warm neutral (skin/grey) at 35 % luminance so the human
-  // shape reads even when the heatmap colour is dark blue.
-  const backR = 0.32, backG = 0.30, backB = 0.32;
   for (let v = 0; v < V; v++) {
-    const w = reluPerVert[v] / denom;
-    const ws = w * w * (3 - 2 * w);  // smoothstep
-    const u = 1.0 - ws;
-    // Brighten BS-facing side: amplify saturation for visibility.
-    const fR = Math.min(1.0, baseR * 1.2 + 0.05);
-    const fG = Math.min(1.0, baseG * 1.2 + 0.05);
-    const fB = Math.min(1.0, baseB * 1.2 + 0.05);
-    colors[v * 3 + 0] = backR * u + fR * ws;
-    colors[v * 3 + 1] = backG * u + fG * ws;
-    colors[v * 3 + 2] = backB * u + fB * ws;
+    const tv = Math.max(0.0, Math.min(1.0, reluPerVert[v] / denom));
+    // Smoothstep so the front and back regions hold their colour and the
+    // transition lives in the limb tangent plane (a thin band).
+    const ts = tv * tv * (3.0 - 2.0 * tv);
+    // 4-stop ramp: navy → blue → orange → red.
+    let r, g, b;
+    if (ts < 0.40) {
+      const u = ts / 0.40;
+      r = 0.10 + 0.05 * u;
+      g = 0.10 + 0.30 * u;
+      b = 0.30 + 0.40 * u;
+    } else if (ts < 0.75) {
+      const u = (ts - 0.40) / 0.35;
+      r = 0.15 + 0.70 * u;
+      g = 0.40 + 0.30 * u;
+      b = 0.70 - 0.50 * u;
+    } else {
+      const u = (ts - 0.75) / 0.25;
+      r = 0.85 + 0.05 * u;
+      g = 0.70 - 0.50 * u;
+      b = 0.20 - 0.05 * u;
+    }
+    colors[v * 3 + 0] = r;
+    colors[v * 3 + 1] = g;
+    colors[v * 3 + 2] = b;
   }
   body.geom.attributes.color.needsUpdate = true;
 }
