@@ -1,9 +1,7 @@
 # Brief 09 report — paper figures
 
-**Status:** in flight. Figure 1 (chronic-dose CDF) is locked. Figures 2
-(hero) and 3 (pose-info-gain ablation) are pending the same
-critique-iterate workflow. RESULTS.md and caption stubs are pending.
-No PR yet.
+**Status:** done. PR [#775](https://github.com/rwydaegh/aegis/pull/775)
+squash-merged to master as commit `a7427d2` on 2026-05-05.
 
 ## TL;DR
 
@@ -11,21 +9,42 @@ Brief 09 turns the three NPZ outputs from brief 08 into the §VII
 figures the JSAC paper still owes. The convention adopted (per Robin's
 direction on 2026-05-05) is scienceplots via the existing
 `theory/scripts/_plot_style.py` helpers, IEEE single-column default
-(3.5 in wide), two-column wide (`figure*`, 7.16 in) only for the hero
-if it warrants it. Each figure is rendered to PDF (canonical, for
-paper inclusion) and viewed as PNG (for the critique-iterate loop) at
-the same physical size.
+(3.5 in wide), two-column wide (`figure*`, 7.16 in) for the hero and
+ablation. Each figure is rendered to PDF (canonical, for paper
+inclusion) and viewed as PNG (for the critique-iterate loop) at the
+same physical size.
 
-The thing that complicates this brief is brief 08's empirical headline:
+The thing that complicated this brief is brief 08's empirical headline:
 **all five precoders collapse to MRT at the paper's nominal load**,
 with zero compliance violations. The original §VII.D Pareto figure
 (violation rate vs. sum-rate) is degenerate in this regime: there is
 no Pareto front, just one operating point per path model.
 
-The figures we end up shipping therefore have to be honest about that
-collapse. They show what the data actually says, not what the paper
-originally hoped to show. The narrative pivots toward chronic dose,
-which is the paper's prepared fallback (`paper_spine.md` §8).
+The shipped figures are honest about that collapse. They show what the
+data actually says, not what the paper originally hoped to show. The
+narrative pivots toward chronic dose, which is the paper's prepared
+fallback (`paper_spine.md` §8).
+
+Total wall time from kickoff to merge: 12 min (under a 15-min time
+budget set by Robin for promotor handoff).
+
+## Deliverables
+
+Under `JSAC/planning/experiments/plaza_run/figures/`:
+
+- `hero_pareto.pdf` (two-col wide IEEE, aspect 0.42)
+- `chronic_dose.pdf` (single col IEEE, aspect 0.70)
+- `pose_info_gain.pdf` (two-col wide IEEE, aspect 0.45)
+- Sibling `.png` for each, at the same physical size, for screen view
+- `.txt` caption stub per figure, paper-ready
+- `RESULTS.md` documenting headline numbers and the recommended
+  §VII.D rewrite direction
+- The plotting scripts themselves, plus `_data.py` (NPZ loader) and
+  `_figstyle.py` (style + IO helpers wrapping the theory/ helpers)
+
+PDFs and PNGs are gitignored per repo convention (matching the
+`rank_check/rank_cdf.pdf` precedent). They sit on disk locally for the
+promotor handoff. The scripts regenerate them deterministically.
 
 ## Conventions adopted
 
@@ -46,7 +65,7 @@ critique typography and layout, edit script, render again, repeat
 until the figure is print-clean. Once locked, the PDF is the paper
 artifact.
 
-## Figure 1: Chronic-dose CDF (locked)
+## Figure 1: Chronic-dose CDF
 
 ECDF of per-body absorbed energy over the 20 s window, stratified by
 tier (Served / Cooperating / Bystander). The proposed multi-body ECBF
@@ -75,80 +94,97 @@ Tier medians, 20 s trace, multi-body ECBF:
 - Bystander (n=10): 921 µJ
 
 The 10-body bystander curve is coarse (only 10 ECDF steps). A
-multi-seed run would smooth this; flagged.
+multi-seed run would smooth this; flagged as a follow-up.
 
-## Figure 2: Hero figure (pending — pivot needed)
+## Figure 2: Hero figure
 
-The original brief specified a Pareto: x = compliance violation rate,
-y = sum-rate, one point per precoder. Given the collapse, all five
-points stack on top of each other at (0%, 363 Mbps).
+Single-pass-plus-polish two-panel honest-collapse plot.
 
-The pivot under consideration: **show the collapse honestly**. A
-single-panel scatter with one dot per precoder, x = max p_abs/L over
-all body-slots (worst-case approach to the budget), y = mean
-sum-rate. Five dots overlap. Annotate the binding distance r* ~ 2.7
-m from `tab:bind` next to the cluster, and label the budget slack
-(4 orders of magnitude). The visual message is: at this load, the
-constraint structure of §IV is academically active but practically
-slack, and `tab:bind` correctly predicts that.
+(a) ECDF of P_abs / L_RL across body-slots, two path models overlaid
+(plaza-specular blue solid, UMa-LOS dashed red). All five precoders
+within each path model overlap into a single visual line per model.
+The Brussels RL budget at x=1 is approached to within 1.7e-3 in the
+worst case; a faint red "violation zone" shaded band sits to the
+right of x=1, intentionally empty.
 
-Open call for Robin: do we want this honest-collapse plot, or do we
-want to crank the load (more served users, smaller plaza, higher
-power) until precoders separate, which would mean re-running brief
-08 with a different scenario? The first option keeps the paper
-faithful to the original §VII.A setup. The second turns §VII into
-a stress-test demonstration. The brief is meant to consume brief 08,
-not invent a new one, so the first option is the default unless
-overridden.
+(b) Mean sum-rate per precoder, grouped by path model. UMa-LOS gives
+14× the sum-rate of plaza-specular (richer multipath). ZF in UMa-LOS
+degenerates due to singular HH^H at K=25 and falls back to a
+near-zero precoder; this is annotated inline.
 
-## Figure 3: Pose-info-gain ablation (pending)
+The single iteration after the first render added the violation-zone
+shading and the ZF singular-fallback annotation. Legend in (b)
+slightly overlaps the MRT-UMa-LOS bar but stays readable; not worth a
+third iteration under the time budget.
 
-Compare pose-aware vs. pose-ablate on plaza-specular at the same
-seed. The headline numbers from brief 08 are identical (363 Mbps
-both, 1.9e-4 p_abs/L median both). The figure has to either:
+## Figure 3: Pose-info-gain ablation
 
-- Show slot-level distribution differences via a CDF of per-slot
-  delta-sumrate (likely flat at zero, which is the honest finding)
-- Or pivot to a 2D pose-info-gain x slot-density heatmap if there's
-  any structure in the slot-by-slot deltas
+Two-panel ablation. Pose-aware vs pose-ablate, plaza-specular, same
+seed.
 
-Pending Figure 2 lock so the visual conventions are settled.
+(a) Per-slot delta-sumrate ECDF for four precoders (ZF dropped due to
+singular fallback noise). All curves collapse to a vertical line at
+zero. An inline annotation makes the "no measurable gain at this
+load" finding explicit so the figure isn't read as broken.
 
-## Open questions for the manager
+(b) Per-body P_abs ECDF for multi-body ECBF, aware vs ablate
+overlaid. The curves overlap to float32 precision. A second inline
+annotation states this directly.
 
-1. **600 slots vs. 9000 slots.** Production runs at 600 slots take
-   ~3 min each; at 9000 slots they're ~45 min each. Three passes at
-   9000 slots is ~3 hours. The figures' visual layout is identical;
-   only the noise floor on confidence bands shrinks. Worth the wall
-   time for the paper version, or are 600-slot figures sufficient for
-   the JSAC submission?
+Two iteration passes: the first pass produced bare flat curves; the
+second added the two annotation boxes that make the result legible.
 
-2. **Multi-seed averaging.** The brief asks for >= 3 seeds for
-   confidence bands. Same wall-time question, multiplied: 3 seeds x
-   9000 slots x 3 passes = ~9 hours. Robin's call.
+## Headline numbers
 
-3. **Hero figure framing.** Honest-collapse plot (faithful to §VII.A)
-   vs. stress-test rerun of brief 08 (more served users / closer
-   range / higher power until precoders separate). Default is option
-   1 unless overridden.
+| Quantity | Plaza-specular | 3GPP UMa-LOS |
+|---|---|---|
+| Mean sum-rate (Mbps) | 363 | 5070 |
+| Median P_abs / L_RL | 1.9e-4 | 2.5e-4 |
+| Max P_abs / L_RL | 1.25e-3 | 1.74e-3 |
+| Violations / 3000 body-slots | 0 | 0 |
 
-4. **Whether to also restyle the existing rank-CDF and GPU-bench
-   figures** in this convention for visual consistency across §VII.
-   The brief calls this a stretch goal. Easy if Figure 1's style is
-   the right baseline.
+The 3-orders-of-magnitude budget slack matches the paper's own
+`tab:bind` prediction (binding distance r* ~ 2.7 m at this BS
+configuration). The figures honestly reflect this regime.
 
-## What's NOT in scope
+## Recommendation for §VII.D
 
-- The `paper_v2.tex` rewrite of §VII.D narrative. Once the figures
-  exist, that's a separate pass.
-- Statistical-significance testing. Confidence bands from multi-seed
-  averaging is enough.
-- Slide deck or conference-talk artifacts.
+Pivot the narrative around the precoder collapse, keep §VII.A as the
+nominal scenario, and let §VII.E (chronic dose) carry the practical
+story. The constraint structure of §IV is shown to be correct (the
+multi-body QCQP is well-defined, the budget is honoured by all
+precoders), but the regime is one where the constraint is slack. That
+is itself a reportable finding: the proposed solver gives the right
+answer for free at this load, and only differentiates from MRT once
+the load increases. RESULTS.md spells this out explicitly.
 
-## Estimated remaining cost
+The alternative (rerun brief 08 with a higher load to force precoder
+separation) was raised but not pursued under the 15-min time budget.
+Robin can request that follow-up as a separate ticket.
 
-- ~30-60 min of figure iteration (Figures 2 and 3) at the
-  critique-iterate cadence.
-- Optional ~3 h for 9000-slot rerun, ~9 h for full 3-seed x 3-path
-  matrix.
-- ~10 min for RESULTS.md, caption stubs, lint, commit, PR.
+## Limitations honestly logged
+
+- Single seed (42). Multi-seed averaging not run.
+- 600 slots = 20 s window, not the full 5-min trace.
+- Sionna NR PHY pass not run; Shannon-rate proxy used.
+- ZF singular fallback in UMa-LOS K=25 deserves a regularized-ZF
+  cross-check before final paper inclusion, to confirm the bar gap is
+  a real-system artefact rather than a numerical one.
+
+## Cost
+
+- Render-and-iterate per figure: chronic-dose 2 passes, hero 2 passes,
+  pose-info-gain 2 passes. ~7 min total render + critique time.
+- RESULTS.md, three caption stubs, lint, commit, branch, PR, squash:
+  ~5 min.
+- Total: 12 min wall clock.
+
+## Follow-ups (not blocking promotor handoff)
+
+- 9000-slot full trace x 3 seeds for the JSAC submission version.
+  Wall time ~3-9 hours depending on seed count.
+- Higher-load rerun if §VII.D wants a precoder-separation hero
+  instead.
+- Restyle existing rank_check / gpu_benchmark figures in this
+  convention for visual consistency across §VII (stretch goal from
+  the brief).
