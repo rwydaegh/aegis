@@ -225,6 +225,9 @@ def _flux_pair(rng: random.Random) -> tuple[str, str]:
     return a, b
 
 
+PLAZA_OFFSCREEN_DIST_M = 60.0
+
+
 def generate_flux_trajectory(
     body: Body,
     n_slots: int,
@@ -232,13 +235,17 @@ def generate_flux_trajectory(
     rng: np.random.Generator,
     py_rng: random.Random,
 ) -> np.ndarray:
-    """Origin-destination flux walk: enter via one street node, traverse the
-    plaza toward a random interior dwell point, then exit via a different
-    street node. When the body reaches the exit it re-enters via a new
-    (entry, exit) pair so the trace fills the full ``n_slots``.
+    """Origin-destination flux walk with staggered entry.
 
-    Heading at each step is the bearing toward the current waypoint plus
-    Gaussian heading noise (matching the bounded-random-walk style).
+    Each body picks an `entry_offset_slots` uniformly in [0, n_slots * 0.6]
+    so the plaza fills up gradually (staggered ingress) instead of all 50
+    bodies emerging at t=0. Before its entry slot, the body is parked
+    PLAZA_OFFSCREEN_DIST_M beyond its first entry node along the approach
+    direction (BS→entry) — far enough to be off-camera and to absorb
+    negligible BS power, so it doesn't pollute the constraint.
+
+    Once entered: walks entry → 2 random interior dwell points → exit
+    node, then loops with a fresh (entry, exit) pair until n_slots ends.
     """
     pos = np.zeros((n_slots, 3), dtype=np.float64)
 
@@ -246,11 +253,8 @@ def generate_flux_trajectory(
 
     def _refill_waypoints():
         a, b = _flux_pair(py_rng)
-        # Spawn from entry; dwell at a random interior point near plaza centre;
-        # exit via b.
         entry = np.array(ENTRY_NODES_M[a])
         exit_ = np.array(ENTRY_NODES_M[b])
-        # Two dwell points biased toward plaza centre, randomised.
         dwells = []
         for _ in range(2):
             dx = py_rng.uniform(-15.0, 15.0)
@@ -258,14 +262,31 @@ def generate_flux_trajectory(
             dwells.append(np.array([dx, dy]))
         waypoints.extend([entry, dwells[0], dwells[1], exit_])
 
-    # Body enters at its first entry node (override spawn).
+    # Stagger: pick a random entry offset in the first 60 % of the run.
+    entry_offset_slots = py_rng.randint(0, max(1, int(n_slots * 0.6)))
+
+    # First entry node = waypoints[0]; pre-entry park position is
+    # PLAZA_OFFSCREEN_DIST_M further along the BS→entry direction so the
+    # body is clearly outside the plaza.
     _refill_waypoints()
-    xy = waypoints.pop(0).copy()
+    first_entry = waypoints[0].copy()
+    bs_xy = np.array([BS_X_M, BS_Y_M])
+    approach = first_entry - bs_xy
+    approach_norm = float(np.linalg.norm(approach))
+    if approach_norm > 1e-6:
+        offscreen_xy = first_entry + approach / approach_norm * PLAZA_OFFSCREEN_DIST_M
+    else:
+        offscreen_xy = first_entry + np.array([PLAZA_OFFSCREEN_DIST_M, 0.0])
 
+    # Pre-entry park.
+    for t in range(entry_offset_slots):
+        pos[t] = [offscreen_xy[0], offscreen_xy[1], 0.0]
+
+    xy = first_entry.copy()
     step = WALK_SPEED_M_PER_S * dt_s
-    arrive_eps = 1.5  # waypoint reached when within 1.5 m
+    arrive_eps = 1.5
 
-    for t in range(n_slots):
+    for t in range(entry_offset_slots, n_slots):
         if not waypoints:
             _refill_waypoints()
         target = waypoints[0]
@@ -276,16 +297,13 @@ def generate_flux_trajectory(
             pos[t] = [xy[0], xy[1], 0.0]
             continue
         bearing = float(np.arctan2(d[1], d[0]))
-        # Heading noise around the bearing.
         bearing += rng.normal() * WALK_HEADING_NOISE_RAD_PER_S * np.sqrt(dt_s)
         nx = xy[0] + step * np.cos(bearing)
         ny = xy[1] + step * np.sin(bearing)
-        # Soft constraint: stay clear of the BS pole.
         r_from_bs = float(np.hypot(nx - BS_X_M, ny - BS_Y_M))
         if r_from_bs < RANGE_MIN_M:
-            # nudge tangentially
             nx, ny = xy[0], xy[1]
-            waypoints.pop(0)  # abandon this dwell
+            waypoints.pop(0)
         xy = np.array([nx, ny])
         pos[t] = [xy[0], xy[1], 0.0]
     return pos

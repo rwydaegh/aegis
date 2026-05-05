@@ -130,6 +130,7 @@ function ratioColor(ratio) {
 
 let scene, camera, renderer, controls;
 let bodies = [];           // { mesh, tier, idx }
+let rtPaths = [];          // [{ bodyIdx, lines: { los, ground, facadePlus, facadeMinus } }]
 let bsMesh, bsArrow, beamGroup;
 let data;                  // unpacked replay payload
 let playing = false, currentFrame = 0, lastTickMs = performance.now(), speed = 1.0;
@@ -163,12 +164,23 @@ async function fetchPosedMeshes(binPath) {
   const hdr = new Uint32Array(buf, 0, 8);
   const [magic, version, K, B, V, F, kfPeriod] = hdr;
   if (magic !== 0x504C5A4D) throw new Error('bad magic in mesh blob');
-  if (version !== 2) throw new Error('mesh version ' + version + ' unsupported (expected 2)');
-  // After the 32-byte header: F*3 uint32 face indices, then K*B*V*3 float32 verts.
+  if (version !== 3) throw new Error('mesh version ' + version + ' unsupported (expected 3)');
+  // Layout after 32-byte header:
+  //   [F*3 uint32]              face indices (shared topology)
+  //   [K*B*V*3 float32]         body-local verts
+  //   [K*B float32]             per-keyframe heading (radians)
+  //   [K*B*2 float32]           per-keyframe world xy
   const facesByteLen = F * 3 * 4;
+  const vertsByteLen = K * B * V * 3 * 4;
+  const headingsByteLen = K * B * 4;
   const faces = new Uint32Array(buf, 32, F * 3);
-  const verts = new Float32Array(buf, 32 + facesByteLen);
-  data.posedMesh = { K, B, V, F, kfPeriod, faces, verts, stride_per_body: V * 3 };
+  const verts = new Float32Array(buf, 32 + facesByteLen, K * B * V * 3);
+  const headings = new Float32Array(buf, 32 + facesByteLen + vertsByteLen, K * B);
+  const worldXY = new Float32Array(buf, 32 + facesByteLen + vertsByteLen + headingsByteLen, K * B * 2);
+  data.posedMesh = {
+    K, B, V, F, kfPeriod, faces, verts, headings, worldXY,
+    stride_per_body: V * 3,
+  };
 }
 
 function unpackArrays() {
@@ -345,32 +357,67 @@ function buildSceneCommon() {
   axes.position.set(0, 0, 0.05);
   scene.add(axes);
 
-  // Beams from BS to served (tier A) users. One line per served user,
-  // updated each frame. Color reflects the same p_abs ratio scale.
+  // RT path bundle per served user: LOS (BS→UE) + ground bounce + 2 facade
+  // bounces, mirroring plaza_specular_paths::_reflect_point. Each path is
+  // a polyline whose vertices are updated each frame.
   beamGroup = new THREE.Group();
   scene.add(beamGroup);
+  const PATH_COLORS = {
+    los: 0xffd966,         // bright amber for LOS
+    ground: 0x8ab9ff,      // cool blue for ground bounce
+    facadePlus: 0xff8b6e,  // coral for north facade
+    facadeMinus: 0xc999ff, // lavender for south facade
+  };
+  const PATH_OPACITIES = {
+    los: 0.55, ground: 0.30, facadePlus: 0.30, facadeMinus: 0.30,
+  };
+  rtPaths = [];
   for (let i = 0; i < data.tier.length; i++) {
     if (data.tier[i] !== 0) continue;
-    const geom = new THREE.BufferGeometry();
-    geom.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
-    const mat = new THREE.LineBasicMaterial({
-      color: 0xffaa55, transparent: true, opacity: 0.35
-    });
-    const line = new THREE.Line(geom, mat);
-    line.userData.bodyIdx = i;
-    beamGroup.add(line);
+    const userPaths = { bodyIdx: i, lines: {} };
+    for (const [pname, color] of Object.entries(PATH_COLORS)) {
+      const npts = (pname === 'los') ? 2 : 3;
+      const geom = new THREE.BufferGeometry();
+      geom.setAttribute('position', new THREE.BufferAttribute(new Float32Array(npts * 3), 3));
+      const mat = new THREE.LineBasicMaterial({
+        color, transparent: true, opacity: PATH_OPACITIES[pname],
+      });
+      const line = new THREE.Line(geom, mat);
+      line.userData.pathName = pname;
+      beamGroup.add(line);
+      userPaths.lines[pname] = line;
+    }
+    rtPaths.push(userPaths);
   }
+  window.__replayDebug.rtPaths = rtPaths;
 }
+
+// Reflection-point helper using image method, matching paths.py::_reflect_point.
+// Returns { x, y, z } where the BS→UE specular ray hits the plane.
+function _reflectionPoint(bsX, bsY, bsZ, ueX, ueY, ueZ, planeNx, planeNy, planeNz, planePx, planePy, planePz) {
+  const d = (bsX - planePx) * planeNx + (bsY - planePy) * planeNy + (bsZ - planePz) * planeNz;
+  const imgX = bsX - 2 * d * planeNx;
+  const imgY = bsY - 2 * d * planeNy;
+  const imgZ = bsZ - 2 * d * planeNz;
+  const rx = ueX - imgX, ry = ueY - imgY, rz = ueZ - imgZ;
+  const denom = rx * planeNx + ry * planeNy + rz * planeNz;
+  if (Math.abs(denom) < 1e-9) return null;
+  const t = ((planePx - imgX) * planeNx + (planePy - imgY) * planeNy + (planePz - imgZ) * planeNz) / denom;
+  return { x: imgX + t * rx, y: imgY + t * ry, z: imgZ + t * rz };
+}
+
+// Plaza geometry constants, matching paths.py::FACADE_Y_M.
+const PLAZA_FACADE_Y_M = 35.0;
 
 function buildPosedBodies() {
   const pm = data.posedMesh;
   const V = pm.V;
-  // Indexed geometry: same face buffer reused across all bodies (memory win).
+  // Indexed geometry: same face buffer reused across all bodies.
   const indexAttr = new THREE.BufferAttribute(pm.faces, 1);
   for (let i = 0; i < pm.B; i++) {
     const tier = data.tier[i];
     const positions = new Float32Array(V * 3);
-    // init from keyframe 0 slab
+    // init body-local verts from keyframe 0 slab (already at root xy=0, feet z=0).
     const src = pm.verts.subarray(i * pm.stride_per_body, (i + 1) * pm.stride_per_body);
     positions.set(src);
     const colors = new Float32Array(V * 3);
@@ -379,17 +426,21 @@ function buildPosedBodies() {
     geom.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     geom.setIndex(indexAttr);
     geom.computeVertexNormals();
-    const mat = new THREE.MeshStandardMaterial({
-      vertexColors: true, roughness: 0.55, metalness: 0.05,
-      emissive: 0x000000, emissiveIntensity: 0.5,
+    // MeshBasicMaterial (unlit): vertex colors render directly so the
+    // per-vertex APD heatmap is visible without ambient/directional washout.
+    // The relu(n·k_BS) modulation in updatePosedBody provides its own
+    // shape-revealing shading.
+    const mat = new THREE.MeshBasicMaterial({
+      vertexColors: true, transparent: false,
     });
     const m = new THREE.Mesh(geom, mat);
-    m.castShadow = true;
     scene.add(m);
     bodies.push({
       mesh: m, mat, tier, idx: i, posed: true,
       geom, positions, colors,
       lastPos: new THREE.Vector2(0, 0),
+      lastKfBlend: -1,  // last (kfA, blend) tuple to avoid redundant rebuilds
+      blend: 0.0,
     });
   }
 }
@@ -529,69 +580,103 @@ const _v = { a: new THREE.Vector3(), b: new THREE.Vector3(), c: new THREE.Vector
              ab: new THREE.Vector3(), ac: new THREE.Vector3(), n: new THREE.Vector3(),
              cen: new THREE.Vector3(), kHat: new THREE.Vector3(), bsP: new THREE.Vector3() };
 
-function updatePosedBody(body, i, pmKf, worldX, worldY, bs, ratioCol) {
+// Tmp scratch.
+const _vTmpA = new Float32Array(3);
+const _vTmpB = new Float32Array(3);
+
+function updatePosedBody(body, i, pmKf, blend, worldX, worldY, heading, bs, ratioCol) {
   const pm = data.posedMesh;
   const V = pm.V;
   const stride = pm.stride_per_body;
-  // Source vertex slab for this (keyframe, body), already in world coords:
-  const offset = (pmKf * pm.B + i) * stride;
-  const src = pm.verts.subarray(offset, offset + stride);
-
-  // Replay-data body_xy may sit at a sub-keyframe slot, so shift the mesh's
-  // xy centroid to match worldX/worldY (cheap interpolation between keyframes).
-  let cx = 0, cy = 0;
-  for (let v = 0; v < V; v++) {
-    cx += src[v * 3 + 0];
-    cy += src[v * 3 + 1];
-  }
-  cx /= V; cy /= V;
-  const dx = worldX - cx, dy = worldY - cy;
-
+  // Lerp body-local verts between keyframe a (=pmKf) and b (=pmKf+1) by `blend`.
+  // This smooths the gait so it doesn't freeze for kp slots between keyframes.
+  const aOff = (pmKf * pm.B + i) * stride;
+  const bKf = Math.min(pmKf + 1, pm.K - 1);
+  const bOff = (bKf * pm.B + i) * stride;
+  const a = pm.verts;
   const positions = body.positions;
-  for (let v = 0; v < V; v++) {
-    positions[v * 3 + 0] = src[v * 3 + 0] + dx;
-    positions[v * 3 + 1] = src[v * 3 + 1] + dy;
-    positions[v * 3 + 2] = src[v * 3 + 2];
+  // Only rebuild verts if (kf, blend) changed enough — vertex lerp is the
+  // expensive step at 50 bodies × 757 verts × 30 fps.
+  const blendQ = pmKf * 100 + Math.floor(blend * 32);  // quantised key
+  if (blendQ !== body.lastKfBlend) {
+    if (blend < 1e-3) {
+      for (let k = 0; k < stride; k++) positions[k] = a[aOff + k];
+    } else {
+      const u = 1.0 - blend, w = blend;
+      for (let k = 0; k < stride; k++) positions[k] = a[aOff + k] * u + a[bOff + k] * w;
+    }
+    body.geom.attributes.position.needsUpdate = true;
+    body.geom.computeVertexNormals();
+    body.geom.attributes.normal.needsUpdate = true;
+    body.lastKfBlend = blendQ;
   }
-  body.geom.attributes.position.needsUpdate = true;
-  // Recompute vertex normals (indexed → averaged across adjacent faces).
-  body.geom.computeVertexNormals();
-  body.geom.attributes.normal.needsUpdate = true;
 
-  // Per-vertex APD = max(0, n_hat_v · k_BS_from_v) modulated by per-body p_abs.
-  // We have vertex normals in geom.attributes.normal after computeVertexNormals.
+  // Hide bodies that haven't entered the plaza yet (parked at off-camera xy).
+  const insidePlaza = Math.hypot(worldX, worldY) < 50.0;
+  body.mesh.visible = insidePlaza;
+  if (!insidePlaza) return;
+
+  // Place + rotate the mesh. Translation drives the global walk velocity,
+  // rotation matches direction of motion (heading). Subtracting π/2 because
+  // the SMPL-X canonical pose with global_orient=(π/2,0,0) faces +Y.
+  body.mesh.position.set(worldX, worldY, 0.0);
+  body.mesh.rotation.z = heading - Math.PI / 2;
+
+  // Per-vertex APD = max(0, n_hat · k_BS) modulated by per-body p_abs.
+  // The geometry's vertex normals are in body-local; transform to world by
+  // applying the same z-rotation we set on the mesh.
   const normals = body.geom.attributes.normal.array;
   const colors = body.colors;
+  const cosH = Math.cos(body.mesh.rotation.z), sinH = Math.sin(body.mesh.rotation.z);
   let peak = 0.0;
   const reluPerVert = body.reluTmp || (body.reluTmp = new Float32Array(V));
   const bsx = bs[0], bsy = bs[1], bsz = bs[2];
   for (let v = 0; v < V; v++) {
-    const px = positions[v * 3 + 0], py = positions[v * 3 + 1], pz = positions[v * 3 + 2];
-    const nx = normals[v * 3 + 0], ny = normals[v * 3 + 1], nz = normals[v * 3 + 2];
-    const dxBS = bsx - px, dyBS = bsy - py, dzBS = bsz - pz;
+    const lx = positions[v * 3 + 0], ly = positions[v * 3 + 1], lz = positions[v * 3 + 2];
+    // World-frame vertex
+    const wx = cosH * lx - sinH * ly + worldX;
+    const wy = sinH * lx + cosH * ly + worldY;
+    const wz = lz;
+    // World-frame normal
+    const nlx = normals[v * 3 + 0], nly = normals[v * 3 + 1], nlz = normals[v * 3 + 2];
+    const nwx = cosH * nlx - sinH * nly;
+    const nwy = sinH * nlx + cosH * nly;
+    const nwz = nlz;
+    // Direction from vertex to BS
+    const dxBS = bsx - wx, dyBS = bsy - wy, dzBS = bsz - wz;
     const dl = Math.hypot(dxBS, dyBS, dzBS);
     if (dl < 1e-9) {
       reluPerVert[v] = 0;
       continue;
     }
-    const dot = (nx * dxBS + ny * dyBS + nz * dzBS) / dl;
+    const dot = (nwx * dxBS + nwy * dyBS + nwz * dzBS) / dl;
     const r = Math.max(0, dot);
     reluPerVert[v] = r;
     if (r > peak) peak = r;
   }
-  // Modulate base color by per-vertex relu/peak: BS-facing surface lights up.
+  // Heatmap: BS-facing → ratioCol (clamped to a visible floor so dark
+  // ratios still render the body); back → muted skin/grey so silhouette is
+  // visible. The relu(n·k_BS) modulation provides the only shape cue
+  // because the material is unlit.
   const base = ratioCol;
   const baseR = base.r, baseG = base.g, baseB = base.b;
   const denom = peak > 1e-6 ? peak : 1.0;
+  // Back-side: warm neutral (skin/grey) at 35 % luminance so the human
+  // shape reads even when the heatmap colour is dark blue.
+  const backR = 0.32, backG = 0.30, backB = 0.32;
   for (let v = 0; v < V; v++) {
     const w = reluPerVert[v] / denom;
-    const m = 0.20 + 0.80 * w;
-    colors[v * 3 + 0] = baseR * m;
-    colors[v * 3 + 1] = baseG * m;
-    colors[v * 3 + 2] = baseB * m;
+    const ws = w * w * (3 - 2 * w);  // smoothstep
+    const u = 1.0 - ws;
+    // Brighten BS-facing side: amplify saturation for visibility.
+    const fR = Math.min(1.0, baseR * 1.2 + 0.05);
+    const fG = Math.min(1.0, baseG * 1.2 + 0.05);
+    const fB = Math.min(1.0, baseB * 1.2 + 0.05);
+    colors[v * 3 + 0] = backR * u + fR * ws;
+    colors[v * 3 + 1] = backG * u + fG * ws;
+    colors[v * 3 + 2] = backB * u + fB * ws;
   }
   body.geom.attributes.color.needsUpdate = true;
-  body.mat.emissive.copy(base).multiplyScalar(0.25);
 }
 
 
@@ -600,11 +685,15 @@ function updateFrame(t) {
   const B = fr.B, P = fr.P;
   const bs = data.bs.position;
   let maxRatio = 0;
-  // Map replay-data keyframe t (decim_t = 5 slots) → posed-mesh keyframe (decim 30 slots).
-  let pmKf = -1;
+  // Map replay-data keyframe t (decim_t = 5 slots) → posed-mesh keyframe a, b
+  // and a blend factor in [0, 1] for smooth interpolation between them.
+  let pmKfA = -1, pmKfBlend = 0.0;
   if (data.posedMesh) {
     const slot = data.frames.t_keep[t];
-    pmKf = Math.min(data.posedMesh.K - 1, Math.floor(slot / data.meshes_sidecar.keyframe_period));
+    const kp = data.meshes_sidecar.keyframe_period;
+    const fk = slot / kp;
+    pmKfA = Math.min(data.posedMesh.K - 1, Math.floor(fk));
+    pmKfBlend = Math.max(0, Math.min(1, fk - pmKfA));
   }
   for (let i = 0; i < B; i++) {
     const x = fr.body_xy[(t * B + i) * 2 + 0];
@@ -617,7 +706,11 @@ function updateFrame(t) {
     const c = ratioColor(ratio);
 
     if (body.posed) {
-      updatePosedBody(body, i, pmKf, x, y, bs, c);
+      // Heading from sidecar table at keyframe A. The export computes it from
+      // forward-difference velocity and damps Brownian noise.
+      const pm = data.posedMesh;
+      const heading = pm.headings[pmKfA * pm.B + i];
+      updatePosedBody(body, i, pmKfA, pmKfBlend, x, y, heading, bs, c);
     } else {
       // Heading: face direction we moved
       const dx = x - body.lastPos.x, dy = y - body.lastPos.y;
@@ -632,15 +725,65 @@ function updateFrame(t) {
     }
     body.lastPos.set(x, y);
   }
-  // Update beams from BS to served users
-  for (const line of beamGroup.children) {
-    const idx = line.userData.bodyIdx;
-    const x = bodies[idx].lastPos.x;
-    const y = bodies[idx].lastPos.y;
-    const pos = line.geometry.attributes.position;
-    pos.setXYZ(0, bs[0], bs[1], bs[2]);
-    pos.setXYZ(1, x, y, 1.5);
-    pos.needsUpdate = true;
+  // Update RT path bundles per served user. Hide all paths if the body
+  // is parked off-camera (xy magnitude > 50 m).
+  if (rtPaths.length) {
+    const ueZ = 1.5;
+    const bsX = bs[0], bsY = bs[1], bsZ = bs[2];
+    for (const userPaths of rtPaths) {
+      const idx = userPaths.bodyIdx;
+      const x = bodies[idx].lastPos.x;
+      const y = bodies[idx].lastPos.y;
+      const offCam = Math.hypot(x, y) > 50.0;
+      // LOS
+      {
+        const line = userPaths.lines.los;
+        line.visible = !offCam;
+        const pos = line.geometry.attributes.position;
+        pos.setXYZ(0, bsX, bsY, bsZ);
+        pos.setXYZ(1, x, y, ueZ);
+        pos.needsUpdate = true;
+      }
+      // Ground bounce: plane normal +z, point (0,0,0)
+      {
+        const r = _reflectionPoint(bsX, bsY, bsZ, x, y, ueZ, 0, 0, 1, 0, 0, 0);
+        const line = userPaths.lines.ground;
+        line.visible = !offCam && !!r;
+        if (r) {
+          const pos = line.geometry.attributes.position;
+          pos.setXYZ(0, bsX, bsY, bsZ);
+          pos.setXYZ(1, r.x, r.y, r.z);
+          pos.setXYZ(2, x, y, ueZ);
+          pos.needsUpdate = true;
+        }
+      }
+      // North facade y=+FACADE_Y, normal -y
+      {
+        const r = _reflectionPoint(bsX, bsY, bsZ, x, y, ueZ, 0, -1, 0, 0, PLAZA_FACADE_Y_M, 0);
+        const line = userPaths.lines.facadePlus;
+        line.visible = !offCam && !!r;
+        if (r) {
+          const pos = line.geometry.attributes.position;
+          pos.setXYZ(0, bsX, bsY, bsZ);
+          pos.setXYZ(1, r.x, r.y, r.z);
+          pos.setXYZ(2, x, y, ueZ);
+          pos.needsUpdate = true;
+        }
+      }
+      // South facade y=-FACADE_Y, normal +y
+      {
+        const r = _reflectionPoint(bsX, bsY, bsZ, x, y, ueZ, 0, 1, 0, 0, -PLAZA_FACADE_Y_M, 0);
+        const line = userPaths.lines.facadeMinus;
+        line.visible = !offCam && !!r;
+        if (r) {
+          const pos = line.geometry.attributes.position;
+          pos.setXYZ(0, bsX, bsY, bsZ);
+          pos.setXYZ(1, r.x, r.y, r.z);
+          pos.setXYZ(2, x, y, ueZ);
+          pos.needsUpdate = true;
+        }
+      }
+    }
   }
   // Update HUD
   const slot = data.frames.t_keep[t];
