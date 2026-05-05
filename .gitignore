@@ -68,6 +68,10 @@ site/
 # Batch runner outputs
 outputs/
 
+# Replay-viewer mesh exports (regenerable via export_meshes.py)
+JSAC/code/experiments/*/replay/meshes_*.bin
+JSAC/code/experiments/*/replay/meshes_*.json
+
 # QA screenshots
 test_screenshots/
 

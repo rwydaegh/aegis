@@ -143,7 +143,8 @@ async function main() {
   if (data.meshes_sidecar) {
     try {
       await fetchPosedMeshes(data.meshes_sidecar.bin_path);
-      console.log('posed mesh data loaded:', data.posedMesh.K, 'KF x', data.posedMesh.B, 'bodies');
+      console.log('posed mesh data loaded:', data.posedMesh.K, 'KF x', data.posedMesh.B, 'bodies, V=' + data.posedMesh.V + ' F=' + data.posedMesh.F);
+      window.__replayDebug = { data, bodies, scene: null };
     } catch (err) {
       console.warn('posed-mesh fetch failed; falling back to capsules:', err);
       data.posedMesh = null;
@@ -159,12 +160,15 @@ async function fetchPosedMeshes(binPath) {
   const resp = await fetch(binPath);
   if (!resp.ok) throw new Error('mesh fetch ' + resp.status);
   const buf = await resp.arrayBuffer();
-  const hdr = new Uint32Array(buf, 0, 6);
-  const [magic, version, K, B, T, decim] = hdr;
+  const hdr = new Uint32Array(buf, 0, 8);
+  const [magic, version, K, B, V, F, kfPeriod] = hdr;
   if (magic !== 0x504C5A4D) throw new Error('bad magic in mesh blob');
-  const verts = new Float32Array(buf, 24);  // skip 6 * 4 byte header
-  // Layout: (K, B, T, 3, 3) = 9 floats per triangle.
-  data.posedMesh = { K, B, T, decim, verts, stride_per_body: T * 9 };
+  if (version !== 2) throw new Error('mesh version ' + version + ' unsupported (expected 2)');
+  // After the 32-byte header: F*3 uint32 face indices, then K*B*V*3 float32 verts.
+  const facesByteLen = F * 3 * 4;
+  const faces = new Uint32Array(buf, 32, F * 3);
+  const verts = new Float32Array(buf, 32 + facesByteLen);
+  data.posedMesh = { K, B, V, F, kfPeriod, faces, verts, stride_per_body: V * 3 };
 }
 
 function unpackArrays() {
@@ -181,6 +185,10 @@ function unpackArrays() {
 function setupScene() {
   const container = document.getElementById('canvas-container');
   scene = new THREE.Scene();
+  window.__replayDebug = window.__replayDebug || {};
+  window.__replayDebug.scene = scene;
+  window.__replayDebug.getCamera = () => camera;
+  window.__replayDebug.getRenderer = () => renderer;
   scene.background = new THREE.Color(0x14141c);
   scene.fog = new THREE.Fog(0x14141c, 80, 220);
 
@@ -356,18 +364,20 @@ function buildSceneCommon() {
 
 function buildPosedBodies() {
   const pm = data.posedMesh;
-  const T = pm.T;       // tris per body
-  const N = T * 3;      // verts per body (non-indexed)
+  const V = pm.V;
+  // Indexed geometry: same face buffer reused across all bodies (memory win).
+  const indexAttr = new THREE.BufferAttribute(pm.faces, 1);
   for (let i = 0; i < pm.B; i++) {
     const tier = data.tier[i];
-    const positions = new Float32Array(N * 3);
-    // initialize from keyframe 0
+    const positions = new Float32Array(V * 3);
+    // init from keyframe 0 slab
     const src = pm.verts.subarray(i * pm.stride_per_body, (i + 1) * pm.stride_per_body);
     positions.set(src);
-    const colors = new Float32Array(N * 3);
+    const colors = new Float32Array(V * 3);
     const geom = new THREE.BufferGeometry();
     geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geom.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    geom.setIndex(indexAttr);
     geom.computeVertexNormals();
     const mat = new THREE.MeshStandardMaterial({
       vertexColors: true, roughness: 0.55, metalness: 0.05,
@@ -521,95 +531,66 @@ const _v = { a: new THREE.Vector3(), b: new THREE.Vector3(), c: new THREE.Vector
 
 function updatePosedBody(body, i, pmKf, worldX, worldY, bs, ratioCol) {
   const pm = data.posedMesh;
-  const T = pm.T;
-  const N = T * 3;  // verts per body
+  const V = pm.V;
   const stride = pm.stride_per_body;
-  // Source vertex slab for this (keyframe, body):
+  // Source vertex slab for this (keyframe, body), already in world coords:
   const offset = (pmKf * pm.B + i) * stride;
   const src = pm.verts.subarray(offset, offset + stride);
 
-  // The exported binary already has world translation baked from the
-  // brief-08 body_positions. The replay-data body_xy may be at a different
-  // sub-keyframe slot, so apply a delta translation = (xy_replay - xy_atKf).
-  const slotAtKf = data.meshes_sidecar.keyframe_slots[pmKf];
-  // Source position from body_positions at slotAtKf (we don't have it here;
-  // approximate as the slot the keyframe was sampled at via the mesh's own
-  // root). Cheap path: use current xy as the body root and shift the whole
-  // mesh so its centroid xy matches.
-  // Compute mesh's centroid xy from the source slab.
+  // Replay-data body_xy may sit at a sub-keyframe slot, so shift the mesh's
+  // xy centroid to match worldX/worldY (cheap interpolation between keyframes).
   let cx = 0, cy = 0;
-  for (let v = 0; v < N; v++) {
+  for (let v = 0; v < V; v++) {
     cx += src[v * 3 + 0];
     cy += src[v * 3 + 1];
   }
-  cx /= N; cy /= N;
+  cx /= V; cy /= V;
   const dx = worldX - cx, dy = worldY - cy;
 
-  // Per-vertex APD = max(0, n · k_BS_from_body) modulated by per-body p_abs.
-  // Compute per-triangle normal, scatter to its 3 verts, normalise to peak=1.
   const positions = body.positions;
+  for (let v = 0; v < V; v++) {
+    positions[v * 3 + 0] = src[v * 3 + 0] + dx;
+    positions[v * 3 + 1] = src[v * 3 + 1] + dy;
+    positions[v * 3 + 2] = src[v * 3 + 2];
+  }
+  body.geom.attributes.position.needsUpdate = true;
+  // Recompute vertex normals (indexed → averaged across adjacent faces).
+  body.geom.computeVertexNormals();
+  body.geom.attributes.normal.needsUpdate = true;
+
+  // Per-vertex APD = max(0, n_hat_v · k_BS_from_v) modulated by per-body p_abs.
+  // We have vertex normals in geom.attributes.normal after computeVertexNormals.
+  const normals = body.geom.attributes.normal.array;
   const colors = body.colors;
-  _v.bsP.set(bs[0], bs[1], bs[2]);
-
-  // Body centre to BS direction (constant over the body for one frame).
-  _v.kHat.copy(_v.bsP).sub(_v.cen.set(worldX, worldY, 1.0)).normalize();
-
-  // Pass 1: write translated positions; collect peak relu(n·k) for normalisation.
   let peak = 0.0;
-  const reluPerVert = body.reluTmp || (body.reluTmp = new Float32Array(N));
-  for (let tri = 0; tri < T; tri++) {
-    const o = tri * 9;
-    const ax = src[o + 0] + dx, ay = src[o + 1] + dy, az = src[o + 2];
-    const bx = src[o + 3] + dx, by = src[o + 4] + dy, bz = src[o + 5];
-    const cxv = src[o + 6] + dx, cyv = src[o + 7] + dy, cz = src[o + 8];
-    positions[o + 0] = ax; positions[o + 1] = ay; positions[o + 2] = az;
-    positions[o + 3] = bx; positions[o + 4] = by; positions[o + 5] = bz;
-    positions[o + 6] = cxv; positions[o + 7] = cyv; positions[o + 8] = cz;
-    // Triangle normal via (b-a) x (c-a).
-    const ux = bx - ax, uy = by - ay, uz = bz - az;
-    const vx = cxv - ax, vy = cyv - ay, vz = cz - az;
-    const nx = uy * vz - uz * vy;
-    const ny = uz * vx - ux * vz;
-    const nz = ux * vy - uy * vx;
-    const nl = Math.hypot(nx, ny, nz);
-    if (nl < 1e-9) {
-      reluPerVert[tri * 3 + 0] = 0; reluPerVert[tri * 3 + 1] = 0; reluPerVert[tri * 3 + 2] = 0;
+  const reluPerVert = body.reluTmp || (body.reluTmp = new Float32Array(V));
+  const bsx = bs[0], bsy = bs[1], bsz = bs[2];
+  for (let v = 0; v < V; v++) {
+    const px = positions[v * 3 + 0], py = positions[v * 3 + 1], pz = positions[v * 3 + 2];
+    const nx = normals[v * 3 + 0], ny = normals[v * 3 + 1], nz = normals[v * 3 + 2];
+    const dxBS = bsx - px, dyBS = bsy - py, dzBS = bsz - pz;
+    const dl = Math.hypot(dxBS, dyBS, dzBS);
+    if (dl < 1e-9) {
+      reluPerVert[v] = 0;
       continue;
     }
-    // Triangle centroid
-    const tcx = (ax + bx + cxv) / 3;
-    const tcy = (ay + by + cyv) / 3;
-    const tcz = (az + bz + cz) / 3;
-    // BS direction from this triangle.
-    const dxBS = _v.bsP.x - tcx, dyBS = _v.bsP.y - tcy, dzBS = _v.bsP.z - tcz;
-    const dl = Math.hypot(dxBS, dyBS, dzBS);
-    // n_hat · k_hat (k = body→BS, but exposure is incoming so we use -k).
-    // Normal is outward; relu(n · -k_inc) = relu(n · k_BSdir).
-    const dot = (nx * dxBS + ny * dyBS + nz * dzBS) / (nl * dl);
+    const dot = (nx * dxBS + ny * dyBS + nz * dzBS) / dl;
     const r = Math.max(0, dot);
-    reluPerVert[tri * 3 + 0] = r;
-    reluPerVert[tri * 3 + 1] = r;
-    reluPerVert[tri * 3 + 2] = r;
+    reluPerVert[v] = r;
     if (r > peak) peak = r;
   }
-  // Pass 2: write per-vertex colors. The base color is ratioColor(per-body p_abs/L);
-  // we modulate intensity by relu/peak so the body shows where on the surface
-  // the BS-facing side gets hit.
-  const base = ratioCol;  // already a THREE.Color
+  // Modulate base color by per-vertex relu/peak: BS-facing surface lights up.
+  const base = ratioCol;
   const baseR = base.r, baseG = base.g, baseB = base.b;
   const denom = peak > 1e-6 ? peak : 1.0;
-  for (let v = 0; v < N; v++) {
+  for (let v = 0; v < V; v++) {
     const w = reluPerVert[v] / denom;
-    // Mix toward black on the back-facing side (low w), toward emissive-bright on the front.
     const m = 0.20 + 0.80 * w;
     colors[v * 3 + 0] = baseR * m;
     colors[v * 3 + 1] = baseG * m;
     colors[v * 3 + 2] = baseB * m;
   }
-  body.geom.attributes.position.needsUpdate = true;
   body.geom.attributes.color.needsUpdate = true;
-  body.geom.computeVertexNormals();
-  body.geom.attributes.normal.needsUpdate = true;
   body.mat.emissive.copy(base).multiplyScalar(0.25);
 }
 
