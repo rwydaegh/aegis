@@ -1,8 +1,9 @@
 """Prepare replay JSON from a plaza_run NPZ.
 
-Bundles trajectories, per-slot P_abs, BS pose, and a synthetic plaza
-geometry (matching paths.py's facade assumptions) into a single JSON
-the replay HTML can fetch.
+Bundles trajectories, per-slot P_abs, BS pose, and the Brussels Grand
+Place OSM mesh (cached via scene_cache) into a single JSON the replay
+HTML can fetch. Falls back to a synthetic facade ring if the OSM cache
+is missing.
 """
 
 from __future__ import annotations
@@ -18,6 +19,10 @@ import numpy as np
 _FIG_DIR = Path(__file__).resolve().parent.parent / "figures"
 sys.path.insert(0, str(_FIG_DIR))
 from _data import load_canonical  # noqa: E402
+
+# Scene cache.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from scene_cache import load_or_scrape  # noqa: E402
 
 REPLAY_DIR = Path(__file__).resolve().parent
 DATA_PATH = REPLAY_DIR / "replay_data.json"
@@ -80,6 +85,23 @@ def main(npz_label: str = "specular_aware", decim_t: int = DECIM_T_DEFAULT) -> P
     p_abs = run.p_abs[t_keep, :, :].astype(np.float32)
     sumrate = run.sumrate[t_keep, :].astype(np.float32)
 
+    # Try the real OSM scrape; fall back to synthetic if unreachable.
+    osm_mesh: dict | None = None
+    try:
+        mesh, scene_hash = load_or_scrape()
+        osm_mesh = {
+            "vertices_flat": mesh.vertices.astype(np.float32).flatten().tolist(),
+            "vertices_shape": list(mesh.vertices.shape),
+            "triangles_flat": mesh.triangles.astype(np.uint32).flatten().tolist(),
+            "triangles_shape": list(mesh.triangles.shape),
+            "hash": scene_hash,
+        }
+        print(
+            f"loaded Brussels OSM mesh: {mesh.vertices.shape[0]} verts, {mesh.triangles.shape[0]} tris"
+        )
+    except Exception as exc:
+        print(f"OSM scrape unavailable ({exc}); falling back to synthetic ring")
+
     payload = {
         "scenario": {
             "label": npz_label,
@@ -93,7 +115,8 @@ def main(npz_label: str = "specular_aware", decim_t: int = DECIM_T_DEFAULT) -> P
             "dt_s": run.dt_s,
             "decim_t": decim_t,
         },
-        "buildings": synthetic_plaza_buildings(),
+        "osm_mesh": osm_mesh,  # may be None; client falls back to synthetic
+        "buildings": synthetic_plaza_buildings() if osm_mesh is None else [],
         "ground": {
             "size": [2 * PLAZA_HALF_X, 2 * PLAZA_HALF_Y],
             "z": 0.0,
