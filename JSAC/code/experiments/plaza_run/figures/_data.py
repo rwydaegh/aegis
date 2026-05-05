@@ -17,6 +17,7 @@ CANONICAL_RUNS = {
     "specular_aware": "plaza_run_seed42_physhannon_poseaware_pathsdict.npz",
     "specular_ablate": "plaza_run_seed42_physhannon_poseablate_pathsdict.npz",
     "uma_aware": "plaza_run_seed42_physhannon_poseaware_pathsuma.npz",
+    "specular_bind": "plaza_run_seed42_physhannon_poseaware_pathsdict_bind.npz",
 }
 
 PRECODER_DISPLAY = {

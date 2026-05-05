@@ -394,6 +394,7 @@ def run_slots(
                     P_tx,
                     noise_power=config.noise_power,
                     return_diagnostics=True,
+                    max_outer=8,
                 )
                 infeas_flags["multibody_ecbf"] = diag_p.method == "min-absorption"
             except Exception as exc:  # pragma: no cover - solver crash
@@ -412,6 +413,7 @@ def run_slots(
                 P_tx,
                 noise_power=config.oracle_noise_power,
                 return_diagnostics=True,
+                max_outer=8,
             )
             infeas_flags["oracle"] = diag_o.method == "min-absorption"
         except Exception as exc:  # pragma: no cover

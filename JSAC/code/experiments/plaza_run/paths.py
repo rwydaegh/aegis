@@ -74,10 +74,17 @@ def _reflect_point(p: np.ndarray, plane_point: np.ndarray, plane_normal: np.ndar
 
 
 def _perpendicular_pol(k_hat: np.ndarray) -> np.ndarray:
-    z = np.array([0.0, 0.0, 1.0])
-    ref = z if abs(k_hat[2]) < 0.95 else np.array([1.0, 0.0, 0.0])
-    e = np.cross(k_hat, ref)
-    return e / np.linalg.norm(e)
+    """Return theta_hat (V-pol) for k_hat: in the meridian plane, with z-component.
+
+    For k_hat = (sin θ cos φ, sin θ sin φ, cos θ), theta_hat is
+    (cos θ cos φ, cos θ sin φ, -sin θ). This couples to a vertical (ẑ) UE
+    dipole through the -sin θ z-term — using the pure horizontal phi_hat
+    instead would give zero coupling for horizontal-pol → vertical-dipole.
+    """
+    rho = float(np.hypot(k_hat[0], k_hat[1]))
+    if rho < 1e-9:
+        return np.array([1.0, 0.0, 0.0])
+    return np.array([k_hat[0] * k_hat[2] / rho, k_hat[1] * k_hat[2] / rho, -rho])
 
 
 def plaza_specular_paths(spec: PathSpec) -> PropagationPaths:
