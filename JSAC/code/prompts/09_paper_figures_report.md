@@ -30,7 +30,7 @@ budget set by Robin for promotor handoff).
 
 ## Deliverables
 
-Under `JSAC/planning/experiments/plaza_run/figures/`:
+Under `JSAC/code/experiments/plaza_run/figures/`:
 
 - `hero_pareto.pdf` (two-col wide IEEE, aspect 0.42)
 - `chronic_dose.pdf` (single col IEEE, aspect 0.70)

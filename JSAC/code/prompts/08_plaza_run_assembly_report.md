@@ -30,7 +30,7 @@ ratios.
 
 ## What we built
 
-A new module under `JSAC/planning/experiments/plaza_run/`. 12 Python
+A new module under `JSAC/code/experiments/plaza_run/`. 12 Python
 files plus a README, ~1.4 kLOC. Mirrors the layout of the existing
 `rank_check/` and `gpu_benchmark/` experiments (deterministic seed,
 NPZ outputs, hash-pinned scene cache, sibling outputs/ dir).

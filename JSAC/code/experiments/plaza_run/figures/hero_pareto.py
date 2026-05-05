@@ -13,7 +13,7 @@ Path-model comparison (plaza-specular vs UMa-LOS) overlaid where it
 matters. Two-column wide IEEE figure.
 
 Run:
-    python -m JSAC.planning.experiments.plaza_run.figures.hero_pareto
+    python -m JSAC.code.experiments.plaza_run.figures.hero_pareto
 """
 
 from __future__ import annotations

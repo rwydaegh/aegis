@@ -28,10 +28,10 @@ Outputs
 
 Run
 ---
-    python -m JSAC.planning.experiments.csi_calibration.run_calibration
+    python -m JSAC.code.experiments.csi_calibration.run_calibration
 
 or directly:
-    python JSAC/planning/experiments/csi_calibration/run_calibration.py
+    python JSAC/code/experiments/csi_calibration/run_calibration.py
 """
 
 from __future__ import annotations

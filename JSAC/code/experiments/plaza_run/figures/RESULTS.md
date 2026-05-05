@@ -109,15 +109,15 @@ Honour 31 ms in the rewrite.
 
 ```bash
 # data (already in outputs/)
-python -m JSAC.planning.experiments.plaza_run.run --seed 42 --n-slots 600 \
+python -m JSAC.code.experiments.plaza_run.run --seed 42 --n-slots 600 \
   --paths plaza_specular --pose-period 30 --rt-period 30
-python -m JSAC.planning.experiments.plaza_run.run --seed 42 --n-slots 600 \
+python -m JSAC.code.experiments.plaza_run.run --seed 42 --n-slots 600 \
   --paths uma_los --pose-period 30 --rt-period 30
-python -m JSAC.planning.experiments.plaza_run.run --seed 42 --n-slots 600 \
+python -m JSAC.code.experiments.plaza_run.run --seed 42 --n-slots 600 \
   --paths plaza_specular --pose-period 30 --rt-period 30 --ablate-pose-telemetry
 
 # figures
-cd JSAC/planning/experiments/plaza_run/figures
+cd JSAC/code/experiments/plaza_run/figures
 python hero_pareto.py
 python chronic_dose.py
 python pose_info_gain.py

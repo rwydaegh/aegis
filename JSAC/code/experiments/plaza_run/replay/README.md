@@ -5,7 +5,7 @@ A standalone Three.js + Flask scene that replays the trajectories and per-slot P
 ## Run
 
 ```bash
-python -m JSAC.planning.experiments.plaza_run.replay.server
+python -m JSAC.code.experiments.plaza_run.replay.server
 ```
 
 Open <http://127.0.0.1:5050/>.

@@ -12,7 +12,7 @@ Two panels:
   (b) per-body p_abs CDF, aware vs ablate, multi-body ECBF only.
 
 Run:
-    python -m JSAC.planning.experiments.plaza_run.figures.pose_info_gain
+    python -m JSAC.code.experiments.plaza_run.figures.pose_info_gain
 """
 
 from __future__ import annotations
