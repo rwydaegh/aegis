@@ -14,12 +14,21 @@ import numpy as np
 OUTPUTS_DIR = Path(__file__).resolve().parent.parent / "outputs"
 
 CANONICAL_RUNS = {
-    "specular_aware": "plaza_run_seed42_physhannon_poseaware_pathsdict.npz",
+    # Paper §VII canonical runs are 9000-slot (5 min) realistic-walk traces
+    # post the 2026-05-05 polarisation fix. Slack-specular reuses the
+    # `viz5min` file; ablate / UMa overwrite the legacy 600-slot NPZs in
+    # place; binding regime gets a `_bind5min` suffix to preserve the
+    # 600-slot baseline at `_bind` for diff comparison if needed.
+    "specular_aware": "plaza_run_seed42_physhannon_poseaware_pathsdict_viz5min.npz",
     "specular_ablate": "plaza_run_seed42_physhannon_poseablate_pathsdict.npz",
     "uma_aware": "plaza_run_seed42_physhannon_poseaware_pathsuma.npz",
-    "specular_bind": "plaza_run_seed42_physhannon_poseaware_pathsdict_bind.npz",
+    "specular_bind": "plaza_run_seed42_physhannon_poseaware_pathsdict_bind5min.npz",
     "specular_viz": "plaza_run_seed42_physhannon_poseaware_pathsdict_viz.npz",
     "specular_viz5min": "plaza_run_seed42_physhannon_poseaware_pathsdict_viz5min.npz",
+    # Legacy 600-slot snapshots, kept available for diff-checking the
+    # 5-min vs 20-s narratives.
+    "specular_aware_600s": "plaza_run_seed42_physhannon_poseaware_pathsdict.npz",
+    "specular_bind_600s": "plaza_run_seed42_physhannon_poseaware_pathsdict_bind.npz",
 }
 
 PRECODER_DISPLAY = {
