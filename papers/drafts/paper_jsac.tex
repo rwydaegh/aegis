@@ -809,17 +809,19 @@ $\sim 25\,$m north of the panel along the broadside, with
 $\sim 3.5\times$ heterogeneity from $1.4\times 10^{-4}$ at the cool
 plaza edges to $4.8\times 10^{-4}$ at the brightest cells. In the
 binding regime (\cref{fig:spatial}b, ZF) the picture is qualitatively
-different: the plaza-wide median sits at $0.50 L_{\mathrm{RL}}$, the
-$95^{\mathrm{th}}$ percentile at $1.25 L_{\mathrm{RL}}$, and the
-brightest cells reach $2.18 L_{\mathrm{RL}}$. Over half the plaza
-sits at half the budget on average, and persistent hot ridges
-between served users sit over budget. ZF's interference-suppressing
-nulls are geometric, not exposure-aware, so a body that walks
-through the ridge between two served-user beams sees over-budget
-exposure for several seconds. This is the spatial mechanism behind
-the binding-regime $16.7\%$ ZF violation rate over body-slots in the
-same trace, and the operational argument for budget-aware precoding
-even when the average compliance metric looks acceptable.
+different: the plaza-wide median sits at $0.06 L_{\mathrm{RL}}$, the
+$95^{\mathrm{th}}$ percentile at $0.20 L_{\mathrm{RL}}$, and the
+brightest cells reach $0.40 L_{\mathrm{RL}}$. The cell averaging hides
+the per-body-slot worst case: while only $0.10\%$ of body-slots
+violate the budget, the worst tail reaches $3.4 L_{\mathrm{RL}}$
+where a body walks through a high-gain ridge between two served-user
+beams. ZF's interference-suppressing nulls are geometric, not
+exposure-aware, and the spatial pattern depends on user geometry
+rather than body absorption. The operational argument for
+budget-aware precoding holds even when the cell-averaged compliance
+metric looks acceptable: the rare per-body overshoots are exactly
+where the closed-loop QCQP buys margin, and the geometric ZF
+solution does not see them.
 
 \begin{figure*}[!t]
   \centering
@@ -828,10 +830,12 @@ even when the average compliance metric looks acceptable.
   origin-destination flux trace, $1.5\,$m grid. Left: slack regime,
   multi-body ECBF, plaza-specular paths. Forward-sector hotspot from
   the $0.18\lambda$ UPA broadside; $\sim 3.5\times$ spatial
-  heterogeneity. Right: binding regime ($43\,$dBm transmit,
-  $L_{\mathrm{RL}} \times 0.1$), ZF. Plaza-wide median
-  $0.50 L_{\mathrm{RL}}$, hot ridges at $2.18\times$ budget.
-  ZF nulling is geometric, not exposure-aware.}
+  heterogeneity. Right: binding regime ($43\,$dBm conducted transmit
+  power, $E_{\mathrm{RL}} = 6\,$V/m post-2014 Brussels arr\^et\'e /
+  Italy outdoor attention level), ZF. Plaza-wide cell-mean median
+  $0.06 L_{\mathrm{RL}}$, hot cells reach $0.40 L_{\mathrm{RL}}$;
+  per-body-slot tail extends to $3.4 L_{\mathrm{RL}}$. ZF nulling is
+  geometric, not exposure-aware.}
   \label{fig:spatial}
 \end{figure*}
 
@@ -840,8 +844,10 @@ even when the average compliance metric looks acceptable.
 The closed-loop machinery uses tier-A and tier-B IMU pose telemetry
 to refresh $\Mmat^{(u)}(\bm\theta_u)$ at $\sim 100\,$ms.
 \Cref{fig:pose-info} ablates this telemetry in the binding regime
-($43\,$dBm transmit, $L_{\mathrm{RL}} \times 0.1$): the same $5$-min
-trace is re-executed with the tier-A and tier-B exposure operators
+($43\,$dBm conducted transmit power, $E_{\mathrm{RL}} = 6\,$V/m
+post-2014 Brussels arr\^et\'e / Italy outdoor attention level): the
+same $5$-min trace is re-executed with the tier-A and tier-B exposure
+operators
 swapped for the Cauchy worst-case envelope of \cref{sec:tiers}, which
 removes the IMU information advantage by treating every served and
 cooperating body as if it were a tier-C bystander. The slack regime
@@ -853,42 +859,55 @@ constraint and pose information becomes a real lever.
 
 The result is more nuanced than a one-sided gain. The closed-form
 precoders MRT and worst-case back-off do not consume $\Mmat^{(u)}$
-and therefore exhibit identically zero $\Delta$\textsf{SR}. The
-constrained QCQP (multi-body ECBF and the per-body oracle variant)
-exhibits a bimodal slot-level distribution: $\sim 10\%$ of slots sit
-at $\Delta\textsf{SR} \approx -10\,$Gbps where the pose-aware solver
-fell into min-absorption fallback while the Cauchy variant remained
-feasible, $\sim 5\%$ sit at $\Delta\textsf{SR} \approx +20\,$Gbps in
-the opposite configuration, and the remaining $\sim 85\%$ collapse to
-zero where the two methods land at the same operating point. Median
-$\Delta\textsf{SR}$ is $-185\,$Mbps for the multi-body ECBF and
-$-76\,$Mbps for the oracle. The mechanism is solver-side: the Cauchy
-envelope $\Mmat^{\mathrm{Cauchy}}_{(u)} \succeq \Mmat^{(u)}$ defines a
-strictly tighter constraint set, so the dual-Newton sweep converges
-in fewer iterations and triggers fallback less often
-($88.0\%$ versus $96.6\%$ for the proposed solver under the
-$\textsf{max\_outer} = 8$ cap of \cref{sec:multibody-ecbf}). The
-exposure side tells the opposite story.
+and therefore exhibit identically zero $\Delta$\textsf{SR}, and the
+per-body oracle uses the posed operator unconditionally so its
+$\Delta$\textsf{SR} is also identically zero (a useful sanity check
+for the implementation). The proposed multi-body ECBF, which
+substitutes a T-pose Cauchy envelope on tier-A and tier-B bodies in
+the ablate run, exhibits a bimodal slot-level distribution: $35.7\%$
+of slots sit at $\Delta\textsf{SR} < -1\,$Gbps where the posed-Q
+solver fell into min-absorption fallback while the Cauchy variant
+found a feasible non-degenerate solution, $12.6\%$ sit at
+$\Delta\textsf{SR} > +1\,$Gbps in the opposite configuration, and
+$40.6\%$ sit within $|\Delta\textsf{SR}| < 100\,$Mbps where the two
+methods land near the same operating point. Median
+$\Delta\textsf{SR}$ is $-78\,$Mbps and the mean is $-3.1\,$Gbps,
+pulled by the longer left tail. The mechanism is solver-side: the
+posed operator is more spectrally concentrated than its T-pose
+envelope, defining a tighter feasible cone in the $\bm\lambda$
+direction and triggering the min-absorption fallback more often
+($83.6\%$ for the proposed solver under aware versus $55.1\%$ under
+ablate, in the $\textsf{max\_outer} = 8$ cap of
+\cref{sec:multibody-ecbf}, with warm-started
+$\bm\lambda^{(t)}$ from $\bm\lambda^{(t-1)}$). The exposure side
+tells the opposite story.
 
 The right panel of \cref{fig:pose-info} plots the per-body absorbed
 power CDF for the multi-body ECBF, pose-aware versus pose-ablated.
-The pose-aware curve dominates: at every quantile the realised
-$P_{\mathrm{abs}}$ is lower than the Cauchy variant. The Cauchy
-solver's looser feasible set lets the maximizer push the actual
-absorbed power right up to $L_{\mathrm{RL}} = 16.3\,$mW; the pose-aware
-solver, working against the tighter posed operator, holds margin in
-hand. Pose information shapes the QCQP feasible set tighter and
-lowers realised exposure, at the cost of more frequent solver
-fallback under the present iteration cap. Warm-starting
-$\bm\lambda^{(t)}$ from $\bm\lambda^{(t-1)}$ and uncapping the outer
-Newton sweep would close this gap, and is the most direct follow-up
-the present data points to.
+The pose-aware curve dominates on compliance: only $0.96\%$ of
+body-slots violate the budget under aware versus $4.58\%$ under
+ablate, a $4.7\times$ reduction. The Cauchy solver's looser
+feasible set lets the maximizer push the actual absorbed power
+through the budget when the T-pose envelope under-estimates the
+posed body's true absorption; the pose-aware solver, working against
+the tighter posed operator, holds margin in hand. Pose telemetry
+shapes the QCQP feasible set tighter and lowers realised exposure,
+at the cost of more frequent solver fallback (and lower mean
+sum-rate, $2.55\,$Gbps versus ablate's $5.63\,$Gbps) under the
+present $\textsf{max\_outer} = 8$ Newton cap. Uncapping the outer
+sweep, switching to a low-rank Q decomposition that already lands
+in the implementation, and replacing the Cauchy-on-tier-C handling
+with a Lanczos-projected envelope are the three direct follow-ups
+this trade-off points to: pose information buys a tighter exposure
+profile, and the solver path needs to be tightened in lockstep to
+realise the sum-rate gain that the binding constraint promises.
 
 \begin{figure}[!t]
   \centering
   \includegraphics[width=\columnwidth]{pose_info_gain.pdf}
   \caption{Pose-information ablation, plaza-specular path model,
-  binding regime ($43\,$dBm, $L_{\mathrm{RL}} \times 0.1$). Left:
+  binding regime ($43\,$dBm conducted transmit power, $E_{\mathrm{RL}}
+  = 6\,$V/m). Left:
   slot-level sum-rate delta (pose-aware minus pose-ablated) ECDF,
   four precoders. MRT and worst-case back-off coincide with
   $\Delta = 0$ by construction. The constrained QCQP variants are
@@ -1077,22 +1096,30 @@ than a single-direction gain. Pose telemetry shapes
 $\Qmat^{(u)}(\bm\theta)$ by aligning the leading eigenvector with
 the body's torso plane, but in the slack regime $\bm\lambda = 0$
 drops the operator out of the precoder and any gain disappears. In
-the binding regime the operator binds and pose information becomes
-a real lever, with two distinct effects. The pose-aware operator
-defines a strictly tighter feasible set than its Cauchy envelope,
-which lowers realised $P_{\mathrm{abs}}$ at every quantile under
-the proposed solver, but the tighter set also makes the
-dual-Newton sweep harder to converge inside the
-$\textsf{max\_outer} = 8$ cap, raising the min-absorption fallback
-rate from $88\%$ to $97\%$. The slot-level sum-rate gap is bimodal
-in consequence rather than monotone in either direction. The
-honest reading is that pose telemetry buys a tighter exposure
-profile in exchange for a more delicate solver, and that warm-
-starting $\bm\lambda$ across slots and uncapping the Newton sweep
-are the next move. The same logic applies to the multi-body solver
-structure: it is a generalisation that contains MRT, ZF, and
-worst-case back-off as limits and degrades to one of them in the
-slack regime without a code path change.
+the binding regime ($43\,$dBm conducted transmit power against the
+post-2014 Brussels / Italy attention level $E_{\mathrm{RL}} =
+6\,$V/m), the operator binds and pose information becomes a real
+lever with two distinct effects. The pose-aware solver lowers the
+body-slot violation rate from $4.58\%$ to $0.96\%$, a $4.7\times$
+compliance improvement, but the tighter posed feasible cone also
+makes the dual-Newton sweep harder to converge inside the
+$\textsf{max\_outer} = 8$ cap (min-absorption fallback rises from
+$55\%$ under T-pose Cauchy to $84\%$ under posed). The slot-level
+sum-rate gap is bimodal in consequence rather than monotone in
+either direction; the proposed solver's mean sum-rate sits at
+$2.55\,$Gbps under aware versus $5.63\,$Gbps under ablate, even
+though the per-body oracle (which uses the posed operator
+unconditionally) achieves $11.79\,$Gbps with binding compliance.
+The honest reading is that pose telemetry buys a tighter exposure
+profile in exchange for a more delicate solver under the present
+inner-loop cap; uncapping the Newton sweep and the
+low-rank-Q-driven Cholesky reuse already in the codebase close most
+of this gap (the oracle's $26\%$ fallback rate is what the proposed
+solver should reach once the Cauchy-on-tier-C envelope is replaced
+with a tighter Lanczos-projected operator). The same logic applies
+to the multi-body solver structure: it is a generalisation that
+contains MRT, ZF, and worst-case back-off as limits and degrades to
+one of them in the slack regime without a code path change.
 
 The bound discussion is sharper than expected. The naive
 projected-area bound on $\xx^H \Qmat^{(u)} \xx$ that the literature
@@ -1164,14 +1191,21 @@ the network already sustains: $1\,$ms PHY, $\sim 100\,$ms pose
 update, $\sim 1\,$s translation phasor, offline ray tracing and
 dictionary calibration. We instantiate the loop at plaza scale on
 50 SMPL-X bodies under 26\,GHz $8 \times 8$ panel illumination and
-find a four-orders-of-magnitude budget margin at $K = 25$, an
-empirical operator rank of 3 to 4, a chronic-dose ECDF that
+find a four-orders-of-magnitude budget margin at $K = 25$ at
+the current Brussels reference level ($E_{\mathrm{RL}} = 14.57\,$V/m),
+an empirical operator rank that we measure at exactly 3 to numerical
+precision (relative Frobenius reconstruction error $5\times 10^{-13}$
+at $r = 3$, a result that the closed-form low-rank Cholesky path of
+\cref{sec:multibody-ecbf} exploits), a chronic-dose ECDF that
 separates the served, cooperating, and bystander tiers by a factor
 of 1.5 between served and cooperating after $5$-min steady-state
-walks, and a binding-regime pose-information ablation in which
-pose-aware operators yield strictly lower realised exposure at
-every quantile while exchanging some sum-rate against
-unconverged constrained-QCQP slots. The standard
+walks, and a binding-regime pose-information ablation under
+$E_{\mathrm{RL}} = 6\,$V/m (post-2014 Brussels / Italy outdoor
+attention level) in which pose-aware operators reduce the per-body
+violation rate $4.7\times$ ($0.96\%$ versus $4.58\%$) at the cost of
+a higher solver fallback rate, with the per-body oracle showing what
+the proposed solver could achieve once the Cauchy-on-tier-C
+envelope is tightened. The standard
 projected-area bound on $\xx^H \Qmat^{(u)} \xx$ is loose by 21 to
 27\,dB on the steering direction and breached by 49 to 70\,\% of
 unconstrained precoders, which we trace to the geometric mismatch
