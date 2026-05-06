@@ -1,0 +1,8 @@
+{
+  "name": "brussels_2024_slack",
+  "comment": "Paper §VII.A nominal: current Brussels limit (post-2024 ordinance), 30 dBm conducted on 8x8 panel.",
+  "tx_power_dbm": 30.0,
+  "reference_level_vpm": 14.57,
+  "n_array_per_side": 8,
+  "label_suffix": "slack_brussels2024"
+}

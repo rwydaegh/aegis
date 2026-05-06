@@ -124,6 +124,41 @@ def zf_exposure(
     return directions * np.sqrt(gamma_sq)[np.newaxis, :]
 
 
+def multibody_ecbf(
+    H: np.ndarray,
+    Q_list: list[np.ndarray],
+    L_list: list[float] | np.ndarray,
+    P: float = 1.0,
+    **solver_kwargs,
+) -> np.ndarray:
+    """Multi-body exposure-constrained beamforming precoder.
+
+    Solves the per-body PSD-budget QCQP from paper sec:precoder via the
+    closed form W[:, k] = (Q_tot(lambda) + I)^{-1} h_k^*, with the
+    Lagrange multipliers found by Gauss-Seidel coordinate bisection. See
+    aegis.coherent.multibody_ecbf for algorithm details.
+
+    Parameters
+    ----------
+    H : (K, M) complex
+        Per-user channel matrix.
+    Q_list : sequence of (M, M) Hermitian PSD operators
+        Per-body exposure operators (one per body in U cup B).
+    L_list : sequence of B positive floats
+        Per-body absorbed-power budgets in W.
+    P : float, default 1.0
+        Total transmit power in W.
+    **solver_kwargs :
+        Forwarded to aegis.coherent.solve_multibody_ecbf (max_outer,
+        max_inner, tol, return_diagnostics).
+    """
+    # Local import keeps the heavier coherent package off the precoders
+    # import path until first use.
+    from aegis.coherent.multibody_ecbf import solve_multibody_ecbf
+
+    return solve_multibody_ecbf(H, Q_list=Q_list, L_list=L_list, P=P, **solver_kwargs)
+
+
 def compute_precoder(
     H: np.ndarray,
     precoder_type: str = "zf",
@@ -131,8 +166,15 @@ def compute_precoder(
     noise_power: float = DEFAULT_NOISE_POWER,
     Q_list: list[np.ndarray] | None = None,
     P_abs_max: float | None = None,
+    L_list: list[float] | np.ndarray | None = None,
 ) -> np.ndarray:
-    """Dispatch to precoder by name. Returns W: (M_ant, K)."""
+    """Dispatch to precoder by name. Returns W: (M_ant, K).
+
+    For ``zf_exposure``, supply ``Q_list`` and ``P_abs_max``. For
+    ``multibody_ecbf``, supply ``Q_list`` and ``L_list`` (one budget per
+    body); ``P_abs_max`` is accepted as a convenience to broadcast a single
+    budget across all bodies.
+    """
     if precoder_type == "mrt":
         return mrt(H, P=P)
     if precoder_type == "zf":
@@ -144,5 +186,16 @@ def compute_precoder(
             msg = "zf_exposure requires Q_list and P_abs_max"
             raise ValueError(msg)
         return zf_exposure(H, Q_list, P_abs_max=P_abs_max, P=P)
+    if precoder_type == "multibody_ecbf":
+        if Q_list is None:
+            msg = "multibody_ecbf requires Q_list"
+            raise ValueError(msg)
+        budgets = L_list
+        if budgets is None:
+            if P_abs_max is None:
+                msg = "multibody_ecbf requires L_list (per-body budgets) or P_abs_max"
+                raise ValueError(msg)
+            budgets = [float(P_abs_max)] * len(Q_list)
+        return multibody_ecbf(H, Q_list=Q_list, L_list=budgets, P=P)
     msg = f"Unknown precoder type: {precoder_type!r}"
     raise ValueError(msg)

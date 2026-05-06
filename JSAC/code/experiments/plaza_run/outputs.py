@@ -36,7 +36,9 @@ class RunMetadata:
     cadence_ms: dict = field(default_factory=dict)
     notes: str = ""
     label_suffix: str = ""
-    budget_multiplier: float = 1.0
+    reference_level_vpm: float = 14.57
+    n_per_side: int = 8
+    config_name: str = ""
 
 
 def npz_filename(meta: RunMetadata) -> str:

@@ -83,11 +83,15 @@ class Body:
     initial_heading_rad: float
 
 
-def build_bs_panel(freq_hz: float = FREQ_HZ, tx_power_dbm: float = TX_POWER_DBM) -> BSPanel:
+def build_bs_panel(
+    freq_hz: float = FREQ_HZ,
+    tx_power_dbm: float = TX_POWER_DBM,
+    n_per_side: int = N_PER_SIDE,
+) -> BSPanel:
     lam = C_0 / freq_hz
     array = AntennaArray.upa(
-        n_h=N_PER_SIDE,
-        n_v=N_PER_SIDE,
+        n_h=n_per_side,
+        n_v=n_per_side,
         d_h=lam / 2.0,
         d_v=lam / 2.0,
         center=BS_POSITION,
