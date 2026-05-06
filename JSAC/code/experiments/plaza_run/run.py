@@ -3,6 +3,7 @@
 Usage::
 
     python -m JSAC.code.experiments.plaza_run.run --seed 42
+    python -m JSAC.code.experiments.plaza_run.run --config configs/mmwave_aggressive_2007.json
 
 See ``--help`` for the full flag set. NPZ + run.json land under ``outputs/``.
 """
@@ -10,6 +11,7 @@ See ``--help`` for the full flag set. NPZ + run.json land under ``outputs/``.
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import random
 import time
@@ -17,7 +19,7 @@ from pathlib import Path
 
 import numpy as np
 
-from .budgets import per_body_budgets
+from .budgets import BRUSSELS_E_LIM_VPM, per_body_budgets
 from .outputs import RunMetadata, cadence_summary, write_run
 from .paths import make_path_generator
 from .scenario import (
@@ -71,10 +73,24 @@ def parse_args() -> argparse.Namespace:
         help="BS total transmit power in dBm. 30 = 1W (paper §VII.A); 43 = 20W (macro); 46 = 40W.",
     )
     p.add_argument(
-        "--budget-multiplier",
+        "--reference-level-vpm",
         type=float,
-        default=1.0,
-        help="Per-body L_RL multiplier. <1 tightens (e.g. 0.04 = 1980 3 V/m), >1 relaxes.",
+        default=BRUSSELS_E_LIM_VPM,
+        help="ICNIRP-style reference level in V/m used to derive L_RL via paper §IV.D. "
+        "14.57 = current Brussels (2024 arrete); 6 = post-2014 / Italy attention (large urban); "
+        "3 = pre-2014 Brussels / Italy attention (small urban).",
+    )
+    p.add_argument(
+        "--n-array-per-side",
+        type=int,
+        default=8,
+        help="UPA elements per side (square panel). 8 = paper default 8x8 = 64 elements; 16 = 16x16 = 256.",
+    )
+    p.add_argument(
+        "--config",
+        type=Path,
+        default=None,
+        help="Path to a JSON config that overrides flag defaults. CLI flags take precedence.",
     )
     p.add_argument(
         "--label-suffix",
@@ -94,7 +110,25 @@ def parse_args() -> argparse.Namespace:
     )
     p.add_argument("--log-level", default="INFO")
     p.add_argument("--progress-every", type=int, default=200)
-    return p.parse_args()
+    args = p.parse_args()
+    if args.config is not None:
+        with open(args.config) as f:
+            cfg = json.load(f)
+        # CLI flag overrides config; only fill in fields the user did not pass.
+        cfg_to_dest = {
+            "tx_power_dbm": "tx_power_dbm",
+            "reference_level_vpm": "reference_level_vpm",
+            "n_array_per_side": "n_array_per_side",
+            "label_suffix": "label_suffix",
+        }
+        provided = {a.lstrip("-").replace("-", "_") for a in __import__("sys").argv[1:] if a.startswith("--")}
+        for cfg_key, dest in cfg_to_dest.items():
+            if cfg_key in cfg and dest not in provided:
+                setattr(args, dest, cfg[cfg_key])
+        args.config_name = cfg.get("name", args.config.stem)
+    else:
+        args.config_name = ""
+    return args
 
 
 def _run_once(args, paths_mode: str) -> Path:
@@ -103,7 +137,11 @@ def _run_once(args, paths_mode: str) -> Path:
     rng = random.Random(seed)
     np_rng = np.random.default_rng(seed + 7919)
 
-    bs_panel = build_bs_panel(freq_hz=FREQ_HZ, tx_power_dbm=args.tx_power_dbm)
+    bs_panel = build_bs_panel(
+        freq_hz=FREQ_HZ,
+        tx_power_dbm=args.tx_power_dbm,
+        n_per_side=args.n_array_per_side,
+    )
     walks = discover_walks()
     bodies = assign_bodies(args.n_bodies, rng, walks)
     pose_streams = load_pose_streams(bodies)
@@ -116,7 +154,7 @@ def _run_once(args, paths_mode: str) -> Path:
         else:
             body_positions[:, b.index, :] = generate_walk_trajectory(b, args.n_slots, args.dt_s, np_rng)
 
-    body_budgets = per_body_budgets(args.n_bodies) * args.budget_multiplier
+    body_budgets = per_body_budgets(args.n_bodies, e_lim_vpm=args.reference_level_vpm)
 
     path_gen = make_path_generator(
         paths_mode,
@@ -193,7 +231,9 @@ def _run_once(args, paths_mode: str) -> Path:
         cadence_ms=cadence,
         notes=f"path_mode_label={paths_mode}",
         label_suffix=args.label_suffix,
-        budget_multiplier=args.budget_multiplier,
+        reference_level_vpm=args.reference_level_vpm,
+        n_per_side=args.n_array_per_side,
+        config_name=getattr(args, "config_name", ""),
     )
 
     npz = write_run(

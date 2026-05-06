@@ -246,6 +246,14 @@ def run_slots(
     bs_pos = bs_panel.position
     sensing = config.sensing
 
+    # Warm-start state for the per-call multi-body ECBF dual variables.
+    # Geometry evolves at gait timescale, so the previous slot's lambda is
+    # a strong initial guess for the current slot. Cold-started at zero;
+    # on min-absorption fallback we reset to zero so a bad slot can't
+    # poison the warm-start of the next slot.
+    lambda_warm_proposed: np.ndarray | None = None
+    lambda_warm_oracle: np.ndarray | None = None
+
     pose_count = 0
     t_log_last = time.perf_counter()
 
@@ -386,6 +394,14 @@ def run_slots(
         precoders["wc_backoff"] = _wc_backoff_W(precoders["mrt"], p_abs_mrt, body_budgets)
 
         if Q_proposed:
+            # Warm-start length is checked by the solver; reset to None if
+            # the proposed-body count changes (Q_proposed is rebuilt per slot
+            # based on tier-C detection state, so length can flicker).
+            lam_init_p = (
+                lambda_warm_proposed
+                if (lambda_warm_proposed is not None and lambda_warm_proposed.shape == (len(Q_proposed),))
+                else None
+            )
             try:
                 W_p, diag_p = solve_multibody_ecbf(
                     H,
@@ -395,16 +411,26 @@ def run_slots(
                     noise_power=config.noise_power,
                     return_diagnostics=True,
                     max_outer=8,
+                    lambda_init=lam_init_p,
                 )
                 infeas_flags["multibody_ecbf"] = diag_p.method == "min-absorption"
+                lambda_warm_proposed = (
+                    None if diag_p.method == "min-absorption" else np.asarray(diag_p.lambdas, dtype=float).copy()
+                )
             except Exception as exc:  # pragma: no cover - solver crash
                 logger.warning("multibody_ecbf failed at slot %d: %s", t, exc)
                 W_p = precoders["wc_backoff"]
                 infeas_flags["multibody_ecbf"] = True
+                lambda_warm_proposed = None
         else:
             W_p = precoders["mrt"]
         precoders["multibody_ecbf"] = W_p
 
+        lam_init_o = (
+            lambda_warm_oracle
+            if (lambda_warm_oracle is not None and lambda_warm_oracle.shape == (len(Q_oracle),))
+            else None
+        )
         try:
             W_o, diag_o = solve_multibody_ecbf(
                 H,
@@ -414,12 +440,17 @@ def run_slots(
                 noise_power=config.oracle_noise_power,
                 return_diagnostics=True,
                 max_outer=8,
+                lambda_init=lam_init_o,
             )
             infeas_flags["oracle"] = diag_o.method == "min-absorption"
+            lambda_warm_oracle = (
+                None if diag_o.method == "min-absorption" else np.asarray(diag_o.lambdas, dtype=float).copy()
+            )
         except Exception as exc:  # pragma: no cover
             logger.warning("oracle ECBF failed at slot %d: %s", t, exc)
             W_o = precoders["wc_backoff"]
             infeas_flags["oracle"] = True
+            lambda_warm_oracle = None
         precoders["oracle"] = W_o
 
         prec_ms = (time.perf_counter() - prec_t0) * 1e3

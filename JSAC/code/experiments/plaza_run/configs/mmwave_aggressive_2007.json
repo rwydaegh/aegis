@@ -1,0 +1,8 @@
+{
+  "name": "mmwave_aggressive_2007",
+  "comment": "Realistic mmWave macro (43 dBm, 16x16 panel) under pre-2014 Brussels limit. Median binding without multiplier hack.",
+  "tx_power_dbm": 43.0,
+  "reference_level_vpm": 3.0,
+  "n_array_per_side": 16,
+  "label_suffix": "bind_mmwave_aggressive"
+}
