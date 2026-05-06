@@ -110,6 +110,13 @@ def parse_args() -> argparse.Namespace:
     )
     p.add_argument("--log-level", default="INFO")
     p.add_argument("--progress-every", type=int, default=200)
+    p.add_argument(
+        "--solver-backend",
+        choices=["numpy", "jax"],
+        default="numpy",
+        help="ECBF inner solver kernel backend. 'jax' offloads the Newton "
+        "step + FD Jacobian to GPU (~14x at M=64, ~14x at M=256).",
+    )
     args = p.parse_args()
     if args.config is not None:
         with open(args.config) as f:
@@ -173,6 +180,7 @@ def _run_once(args, paths_mode: str) -> Path:
         paths_mode=paths_mode,
         ablate_pose_telemetry=args.ablate_pose_telemetry,
         sensing=SensingConfig(),
+        solver_backend=args.solver_backend,
     )
 
     logger.info(
