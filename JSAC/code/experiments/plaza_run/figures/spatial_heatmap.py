@@ -64,10 +64,18 @@ def _try_load(label_5min: str, label_legacy: str):
     return load_canonical(label_legacy), label_legacy
 
 
+def _try_load_v6_or_legacy_bind():
+    """Prefer the v6 binding regime (43 dBm + 6 V/m) if present, else legacy."""
+    v6 = OUTPUTS_DIR / "v6_aware" / "plaza_run_seed42_physhannon_poseaware_pathsdict_v6_aware.npz"
+    if v6.exists():
+        return load_run(v6, label="v6_aware"), "v6 binding (43 dBm, 6 V/m)"
+    return _try_load("bind5min", "specular_bind")
+
+
 def main() -> None:
     apply_monograph_style(mode="png")
     run_specular, lbl_spec = _try_load("viz5min", "specular_aware")
-    run_bind, lbl_bind = _try_load("bind5min", "specular_bind")
+    run_bind, lbl_bind = _try_load_v6_or_legacy_bind()
 
     fig, axes = plt.subplots(1, 2, figsize=fig_size_ieee(columns=2, aspect=0.50))
     panels = [
