@@ -39,9 +39,20 @@ PRECODER_COLORS = {
 
 
 def main() -> None:
+    import os
+
     apply_monograph_style(mode="png")
-    aware = load_canonical("specular_bind")
-    ablate = load_canonical("specular_bind_ablate")
+    # Default to the v6 binding regime once both aware + ablate runs land.
+    # Falls back to the legacy `_bind5min` pair if v6 hasn't been built yet,
+    # so the figure stays runnable during the rebuild.
+    aware_key = os.environ.get("AEGIS_BIND_AWARE_KEY", "specular_v6_aware")
+    ablate_key = os.environ.get("AEGIS_BIND_ABLATE_KEY", "specular_v6_ablate")
+    try:
+        aware = load_canonical(aware_key)
+        ablate = load_canonical(ablate_key)
+    except FileNotFoundError:
+        aware = load_canonical("specular_bind")
+        ablate = load_canonical("specular_bind_ablate")
 
     fig, (ax_a, ax_b) = plt.subplots(1, 2, figsize=fig_size_ieee(columns=2, aspect=0.45))
 

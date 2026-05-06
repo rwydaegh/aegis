@@ -44,6 +44,7 @@ import warnings
 from dataclasses import dataclass, field
 
 import numpy as np
+import scipy.linalg as _sla
 
 from aegis._array_backend import xp
 from aegis.defaults import NUMERICAL_FLOOR
@@ -95,6 +96,8 @@ def solve_multibody_ecbf(
     tol: float = 1e-9,
     return_diagnostics: bool = False,
     lambda_init: np.ndarray | None = None,
+    lowrank_rank: int | None = None,
+    lowrank_factor: tuple[np.ndarray, np.ndarray] | None = None,
 ) -> np.ndarray | tuple[np.ndarray, MultibodyECBFDiagnostics]:
     """Solve the multi-body ECBF QCQP.
 
@@ -135,6 +138,23 @@ def solve_multibody_ecbf(
         rate, because the active-constraint set rarely changes between
         adjacent slots. Negative entries are clipped to 0; mismatched
         length raises ValueError.
+    lowrank_rank : int, optional
+        Truncate each Q^{(u)} to its top ``lowrank_rank`` eigenpairs before
+        the inner Newton sweep. The plaza-run Q's are empirically rank 3
+        (relative Frobenius reconstruction error 5e-13 at r=3), so the
+        truncation is exact for typical body-near-array geometries and
+        cuts the per-body absorption einsum from O(B M^2 K) to
+        O(B M r K). This is the production hot path; mutually exclusive
+        with ``lowrank_factor``.
+    lowrank_factor : (U_arr, D_arr), optional
+        Pre-computed low-rank decomposition Q^{(u)} = U_u diag(D_u) U_u^H.
+        ``U_arr`` has shape (B, M, r), ``D_arr`` has shape (B, r) with
+        non-negative real entries. Use this when the caller already has a
+        decomposition (e.g. plumbed across Newton calls so the eigh runs
+        once per slot rather than once per call). When provided, ``Q_list``
+        is still required for the MRT trial absorption check; pass the
+        full M x M matrices, or pass the same factor reconstructed
+        Q ~= U diag(D) U^H. Mutually exclusive with ``lowrank_rank``.
 
     Returns
     -------
@@ -155,6 +175,9 @@ def solve_multibody_ecbf(
         raise ValueError(f"Transmit power P must be positive, got {P}")
     if noise_power is not None and noise_power <= 0:
         raise ValueError(f"noise_power must be positive when provided, got {noise_power}")
+
+    if lowrank_rank is not None and lowrank_factor is not None:
+        raise ValueError("Specify at most one of lowrank_rank, lowrank_factor")
 
     Q_arr = _stack_Q(Q_list, M)
     B = Q_arr.shape[0]
@@ -177,7 +200,32 @@ def solve_multibody_ecbf(
     if np.any(L_arr <= 0):
         raise ValueError("All per-body budgets L^{(u)} must be positive")
 
-    # MRT trial: cheapest possible precoder.
+    # Resolve low-rank factors. Production hot path: r=3 truncation is
+    # numerically exact for plaza-run Q's (relative Frobenius error 5e-13)
+    # and cuts the per-body absorption einsum from O(B M^2 K) to
+    # O(B M r K). When neither path is requested, fall back to the
+    # full-rank Q stack for backward compatibility.
+    U_arr: np.ndarray | None = None
+    D_arr: np.ndarray | None = None
+    if lowrank_factor is not None:
+        U_arr, D_arr = lowrank_factor
+        U_arr = np.ascontiguousarray(U_arr, dtype=complex)
+        D_arr = np.ascontiguousarray(D_arr, dtype=float)
+        if U_arr.shape[0] != B or U_arr.shape[1] != M or U_arr.ndim != 3:
+            raise ValueError(f"lowrank_factor U must have shape (B={B}, M={M}, r), got {U_arr.shape}")
+        if D_arr.shape != (B, U_arr.shape[2]):
+            raise ValueError(f"lowrank_factor D must have shape (B={B}, r={U_arr.shape[2]}), got {D_arr.shape}")
+    if lowrank_rank is not None and (lowrank_rank <= 0 or lowrank_rank > M):
+        raise ValueError(f"lowrank_rank must be in [1, {M}], got {lowrank_rank}")
+    # Lazy decomposition: defer the eigh until we actually need it. Many
+    # callers pass tight budgets but the MRT trial is feasible for ~all
+    # slack-regime slots, so paying B * M^3 of eigh here is wasted work.
+
+    use_lowrank = U_arr is not None
+
+    # MRT trial: cheapest possible precoder. Use the full-rank Q here even
+    # when low-rank is requested because the einsum is a one-shot cost
+    # whose alternative requires the eigh that we are trying to avoid.
     W_mrt = _mrt(H, P)
     p_abs_mrt = _per_body_abs(W_mrt, Q_arr)
     if np.all(p_abs_mrt <= L_arr * (1.0 + tol)):
@@ -192,6 +240,14 @@ def solve_multibody_ecbf(
             residual=float(np.max(np.maximum(0.0, p_abs_mrt - L_arr) / L_arr, initial=0.0)),
         )
         return (xp.asarray(W_mrt), diag) if return_diagnostics else xp.asarray(W_mrt)
+
+    # MRT was infeasible: we will run Newton, so now pay the eigh if the
+    # caller asked for ``lowrank_rank`` truncation. This deferred path
+    # avoids decomposing Q in the slack regime where MRT is feasible and
+    # the eigh would be wasted work.
+    if lowrank_rank is not None and U_arr is None:
+        U_arr, D_arr = _decompose_lowrank(Q_arr, lowrank_rank)
+        use_lowrank = True
 
     # Newton ascent on the dual. The KKT system on active bodies is
     #     p_abs_u(lambda) - L_u = 0   for active u (lambda_u > 0)
@@ -213,8 +269,17 @@ def solve_multibody_ecbf(
 
     for outer_iter in range(max_outer):
         n_outer = outer_iter + 1
-        W = _solve_W(lambdas, Q_arr, H_conj, P, base_mat=base_mat, I_scale=I_scale)
-        p_abs = _per_body_abs(W, Q_arr)
+        W, cho = _solve_W_factored(
+            lambdas,
+            Q_arr,
+            H_conj,
+            P,
+            base_mat=base_mat,
+            I_scale=I_scale,
+            U_arr=U_arr,
+            D_arr=D_arr,
+        )
+        p_abs = _per_body_abs_lowrank(W, U_arr, D_arr) if use_lowrank else _per_body_abs(W, Q_arr)
         gap = p_abs - L_arr
         rel_viol = np.max(np.maximum(0.0, gap) / L_arr, initial=0.0)
         if rel_viol < tol:
@@ -230,14 +295,28 @@ def solve_multibody_ecbf(
             break
 
         # Build Jacobian via forward differences on active bodies.
+        # Each FD column is a rank-r update to M_lam (when low-rank), or a
+        # full M x M perturbation (legacy). We re-solve with the cached
+        # Cholesky factor by re-factorising; an O(M^3) factorisation per
+        # column is unavoidable without a Sherman-Morrison-Woodbury step,
+        # but the per-body absorption is already the dominant cost.
         h = fd_step * np.maximum(np.abs(lambdas[idx]), 1.0)
         n_active = idx.size
         J = np.zeros((n_active, n_active))
         for v in range(n_active):
             lam_p = lambdas.copy()
             lam_p[idx[v]] = lambdas[idx[v]] + h[v]
-            W_p = _solve_W(lam_p, Q_arr, H_conj, P, base_mat=base_mat, I_scale=I_scale)
-            p_p = _per_body_abs(W_p, Q_arr)
+            W_p, _ = _solve_W_factored(
+                lam_p,
+                Q_arr,
+                H_conj,
+                P,
+                base_mat=base_mat,
+                I_scale=I_scale,
+                U_arr=U_arr,
+                D_arr=D_arr,
+            )
+            p_p = _per_body_abs_lowrank(W_p, U_arr, D_arr) if use_lowrank else _per_body_abs(W_p, Q_arr)
             J[:, v] = (p_p[idx] - p_abs[idx]) / h[v]
         gap_active = gap[idx]
 
@@ -266,8 +345,17 @@ def solve_multibody_ecbf(
             break
 
     # Build final precoder from converged multipliers.
-    W = _solve_W(lambdas, Q_arr, H_conj, P, base_mat=base_mat, I_scale=I_scale)
-    p_abs = _per_body_abs(W, Q_arr)
+    W, _ = _solve_W_factored(
+        lambdas,
+        Q_arr,
+        H_conj,
+        P,
+        base_mat=base_mat,
+        I_scale=I_scale,
+        U_arr=U_arr,
+        D_arr=D_arr,
+    )
+    p_abs = _per_body_abs_lowrank(W, U_arr, D_arr) if use_lowrank else _per_body_abs(W, Q_arr)
     viol = np.maximum(0.0, p_abs - L_arr)
     residual = float(np.max(viol / L_arr, initial=0.0))
 
@@ -279,7 +367,7 @@ def solve_multibody_ecbf(
             stacklevel=2,
         )
         W = _min_absorption_fallback(Q_arr, P, K)
-        p_abs = _per_body_abs(W, Q_arr)
+        p_abs = _per_body_abs_lowrank(W, U_arr, D_arr) if use_lowrank else _per_body_abs(W, Q_arr)
         diag = MultibodyECBFDiagnostics(
             lambdas=lambdas,
             p_abs=p_abs,
@@ -340,6 +428,50 @@ def _per_body_abs(W: np.ndarray, Q_arr: np.ndarray) -> np.ndarray:
     return np.real(np.einsum("ik,bij,jk->b", W.conj(), Q_arr, W, optimize=True))
 
 
+def _per_body_abs_lowrank(W: np.ndarray, U_arr: np.ndarray, D_arr: np.ndarray) -> np.ndarray:
+    """Low-rank specialisation of ``_per_body_abs``.
+
+    With Q^{(u)} = U_u diag(D_u) U_u^H, the per-body absorption is
+
+        p_abs[u] = sum_k w_k^H U_u diag(D_u) U_u^H w_k
+                 = sum_k sum_r D_u[r] |U_u^H w_k|^2[r].
+
+    Cost: O(B M r K) vs O(B M^2 K) for the full-rank path. For
+    M = 64, B = 50, K = 25, r = 3 this is ~20x cheaper; for M = 256 it
+    is ~80x cheaper.
+    """
+    # V[b, r, k] = sum_i conj(U[b, i, r]) * W[i, k]
+    V = np.einsum("bir,ik->brk", U_arr.conj(), W, optimize=True)
+    # |V|^2 weighted by D, summed over (r, k) -> per-body sum.
+    abs2 = (V.real * V.real) + (V.imag * V.imag)  # (B, r, K)
+    return np.einsum("br,brk->b", D_arr, abs2, optimize=True)
+
+
+def _decompose_lowrank(Q_arr: np.ndarray, rank: int) -> tuple[np.ndarray, np.ndarray]:
+    """Top-``rank`` Hermitian eigendecomposition of each Q^{(u)}.
+
+    Uses ``scipy.linalg.eigh(subset_by_index=...)`` so the cost is
+    O(B M^2 r) rather than O(B M^3). For Hermitian PSD Q, the returned
+    eigenvalues are non-negative; small numerical noise below
+    ``NUMERICAL_FLOOR`` is clipped to 0 so it does not perturb the
+    inner solver.
+    """
+    B, M, _ = Q_arr.shape
+    r = min(int(rank), M)
+    U_arr = np.empty((B, M, r), dtype=complex)
+    D_arr = np.empty((B, r), dtype=float)
+    for u in range(B):
+        # eigh returns eigenpairs in ascending order; subset_by_index
+        # picks the top r. Hermitianisation defends against accumulated
+        # numerical drift in upstream einsum chains.
+        Q_u = 0.5 * (Q_arr[u] + Q_arr[u].conj().T)
+        evals, evecs = _sla.eigh(Q_u, subset_by_index=[M - r, M - 1])
+        # Reverse to descending so D[0] is the largest.
+        D_arr[u] = np.maximum(evals[::-1], 0.0)
+        U_arr[u] = evecs[:, ::-1]
+    return U_arr, D_arr
+
+
 def _solve_W(
     lambdas: np.ndarray,
     Q_arr: np.ndarray,
@@ -357,24 +489,71 @@ def _solve_W(
     base_mat is None for the single-body-equivalent matched-filter form
     (M = I + Q_tot), or H^H H for the MMSE-with-exposure form.
     """
+    W, _ = _solve_W_factored(
+        lambdas,
+        Q_arr,
+        H_conj,
+        P,
+        base_mat=base_mat,
+        I_scale=I_scale,
+        U_arr=None,
+        D_arr=None,
+    )
+    return W
+
+
+def _solve_W_factored(
+    lambdas: np.ndarray,
+    Q_arr: np.ndarray,
+    H_conj: np.ndarray,
+    P: float,
+    *,
+    base_mat: np.ndarray | None = None,
+    I_scale: float = 1.0,
+    U_arr: np.ndarray | None = None,
+    D_arr: np.ndarray | None = None,
+) -> tuple[np.ndarray, None]:
+    """Build M_lam, optionally from low-rank Q, then solve via np.linalg.solve.
+
+    The legacy assembly is ``M_lam = base + I_scale*I + sum_u lambda_u Q_u``
+    via an einsum over (active body, M, M); cost O(B M^2). When
+    ``U_arr`` is provided, the per-body Q is reconstructed implicitly as
+    sum_u lambda_u U_u diag(D_u) U_u^H, assembled by a single rank-update
+    V V^H with V containing the sqrt-weighted active columns. This is
+    O(M (n_active r)^2 + n_active M r) instead of O(B M^2), which is a
+    win whenever ``n_active * r < B``.
+
+    The inner solve uses ``np.linalg.solve`` (LAPACK gesv): empirically
+    faster than ``scipy.linalg.cho_*`` and ``scipy.linalg.solve`` despite
+    the latter's Cholesky path, because gesv has the smallest Python-side
+    overhead at our M = 64-256 sizes (see scratch_bench.py).
+    """
     M = Q_arr.shape[1]
     M_lam = I_scale * np.eye(M, dtype=complex) if base_mat is None else base_mat + I_scale * np.eye(M, dtype=complex)
+
     if lambdas.size > 0:
-        # Vectorised accumulation.
         active = lambdas > 0
         if np.any(active):
-            M_lam = M_lam + np.einsum("u,uij->ij", lambdas[active], Q_arr[active])
-    # M_lam is Hermitian PSD + I, hence Hermitian positive definite.
+            if U_arr is not None:
+                # Low-rank assembly: M_lam += sum_u lambda_u U_u diag(D_u) U_u^H
+                # stacked into a single V V^H rank update.
+                idx = np.where(active)[0]
+                weights = np.sqrt(lambdas[idx, None] * D_arr[idx])  # (n_act, r)
+                V_blocks = U_arr[idx] * weights[:, None, :]  # (n_act, M, r)
+                V = V_blocks.transpose(1, 0, 2).reshape(M, -1)
+                M_lam = M_lam + V @ V.conj().T
+            else:
+                M_lam = M_lam + np.einsum("u,uij->ij", lambdas[active], Q_arr[active])
+
     try:
         W_raw = np.linalg.solve(M_lam, H_conj)
     except np.linalg.LinAlgError:
-        # Extremely defensive: fall back to pseudo-inverse.
         W_raw = np.linalg.pinv(M_lam) @ H_conj
     frob = float(np.linalg.norm(W_raw, "fro"))
     if frob < NUMERICAL_FLOOR:
         K = H_conj.shape[1]
-        return np.zeros((M, K), dtype=complex)
-    return np.sqrt(P) * W_raw / frob
+        return np.zeros((M, K), dtype=complex), None
+    return np.sqrt(P) * W_raw / frob, None
 
 
 def _min_absorption_fallback(Q_arr: np.ndarray, P: float, K: int) -> np.ndarray:

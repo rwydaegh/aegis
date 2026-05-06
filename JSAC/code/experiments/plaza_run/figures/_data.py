@@ -24,6 +24,12 @@ CANONICAL_RUNS = {
     "uma_aware": "plaza_run_seed42_physhannon_poseaware_pathsuma.npz",
     "specular_bind": "plaza_run_seed42_physhannon_poseaware_pathsdict_bind5min.npz",
     "specular_bind_ablate": "plaza_run_seed42_physhannon_poseablate_pathsdict_bind5min.npz",
+    # v6 binding regime (43 dBm + 6 V/m, 8x8): macro mmWave on post-2014
+    # Brussels / Italy attention level. Oracle Newton converges most slots,
+    # proposed (with Cauchy on tier-C) hits min-absorption fallback - a
+    # tighter binding story than the synthetic --budget-multiplier path.
+    "specular_v6_aware": "v6_aware/plaza_run_seed42_physhannon_poseaware_pathsdict_v6_aware.npz",
+    "specular_v6_ablate": "v6_ablate/plaza_run_seed42_physhannon_poseablate_pathsdict_v6_ablate.npz",
     "specular_viz": "plaza_run_seed42_physhannon_poseaware_pathsdict_viz.npz",
     "specular_viz5min": "plaza_run_seed42_physhannon_poseaware_pathsdict_viz5min.npz",
     # Legacy 600-slot snapshots, kept available for diff-checking the

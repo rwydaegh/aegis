@@ -352,6 +352,80 @@ class TestPrecoderDispatch:
         assert W.shape == (8, 2)
 
 
+class TestLowRank:
+    """Low-rank Q truncation gives identical results when r captures Q."""
+
+    def _build_active(self, seed=2030, K=4, B=3, M=16):
+        rng = np.random.default_rng(seed)
+        H = _rand_complex(rng, K, M)
+        # Rank-3 Q: explicit U D U^H so r=3 truncation is exact.
+        Q_list = []
+        for _ in range(B):
+            U = _rand_complex(rng, M, 3)
+            d = np.abs(rng.standard_normal(3)) + 0.1
+            Q = U @ np.diag(d) @ U.conj().T
+            Q_list.append(0.5 * (Q + Q.conj().T))
+        # Tight enough to give an active Newton path.
+        W_mrt = mrt(H, P=1.0)
+        p_abs_mrt = _per_body_abs(W_mrt, Q_list)
+        L = list(0.6 * p_abs_mrt)
+        return H, Q_list, L
+
+    def test_lowrank_matches_full_when_rank_captures(self):
+        """Newton path converged: lowrank_rank=3 ≡ full-rank to ~1e-8."""
+        H, Q_list, L = self._build_active()
+        W_full, diag_full = solve_multibody_ecbf(
+            H, Q_list, L, P=1.0, noise_power=1e-2, return_diagnostics=True, max_outer=20
+        )
+        W_lr3, diag_lr3 = solve_multibody_ecbf(
+            H,
+            Q_list,
+            L,
+            P=1.0,
+            noise_power=1e-2,
+            return_diagnostics=True,
+            max_outer=20,
+            lowrank_rank=3,
+        )
+        # The solver path is identical given Q == U D U^H exactly, so W
+        # should match to numerical precision.
+        assert diag_full.method == diag_lr3.method
+        assert_allclose(np.asarray(W_full), np.asarray(W_lr3), atol=1e-6)
+        # Per-body absorption should match.
+        p_full = _per_body_abs(np.asarray(W_full), Q_list)
+        p_lr3 = _per_body_abs(np.asarray(W_lr3), Q_list)
+        assert_allclose(p_full, p_lr3, rtol=1e-6)
+
+    def test_lowrank_factor_kwarg(self):
+        """Caller-provided (U, D) bypasses internal eigh."""
+        H, Q_list, L = self._build_active()
+        # Decompose ourselves to mimic slot-loop pre-decomposition.
+        Q_arr = np.stack(Q_list, axis=0)
+        evals, evecs = np.linalg.eigh(Q_arr)
+        D_arr = np.maximum(evals[:, -3:][:, ::-1], 0.0).copy()
+        U_arr = evecs[:, :, -3:][:, :, ::-1].copy()
+
+        W_pre = solve_multibody_ecbf(H, Q_list, L, P=1.0, noise_power=1e-2, lowrank_factor=(U_arr, D_arr))
+        W_lr3 = solve_multibody_ecbf(H, Q_list, L, P=1.0, noise_power=1e-2, lowrank_rank=3)
+        assert_allclose(np.asarray(W_pre), np.asarray(W_lr3), atol=1e-9)
+
+    def test_lowrank_rank_validates(self):
+        H, Q_list, L = self._build_active()
+        with pytest.raises(ValueError, match="lowrank_rank"):
+            solve_multibody_ecbf(H, Q_list, L, P=1.0, lowrank_rank=0)
+        with pytest.raises(ValueError, match="lowrank_rank"):
+            solve_multibody_ecbf(H, Q_list, L, P=1.0, lowrank_rank=999)
+
+    def test_lowrank_rank_and_factor_mutually_exclusive(self):
+        H, Q_list, L = self._build_active()
+        Q_arr = np.stack(Q_list, axis=0)
+        evals, evecs = np.linalg.eigh(Q_arr)
+        D_arr = evals[:, -3:][:, ::-1].copy()
+        U_arr = evecs[:, :, -3:][:, :, ::-1].copy()
+        with pytest.raises(ValueError, match="at most one"):
+            solve_multibody_ecbf(H, Q_list, L, P=1.0, lowrank_rank=3, lowrank_factor=(U_arr, D_arr))
+
+
 class TestWarmStart:
     """Warm-starting lambda from a previous call cuts iteration count."""
 

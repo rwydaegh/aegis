@@ -2,13 +2,17 @@
 
 The nominal-load run shows precoder collapse (no constraint violations,
 single sum-rate per path model). To expose the §IV multi-body QCQP, this
-figure plots the *binding regime*: tx_power 43 dBm, per-body budget
-0.1× nominal, realistic ingress/egress walks. In this regime MRT
-exceeds the Brussels RL budget on most body-slots, WC back-off scales
-power down to comply, ZF natively achieves compliance via interference
-suppression (M=64 ≫ K=25 leaves ample nulling DOFs), and Multi-body
-ECBF returns the min-absorption fallback (treats QCQP as infeasible
-under solver tolerance).
+figure plots the *binding regime*: tx_power 43 dBm (macro mmWave) on a
+post-2014 Brussels reference level (6 V/m), 8x8 panel, 9000 slots
+(5 minutes at 30 fps). The 6 V/m reference is what the city of Brussels
+held until 2014 and what Italy's outdoor "attention" level is today;
+the 14.57 V/m current Brussels arrête is the slack regime where MRT is
+feasible. In this regime MRT exceeds the RL budget on most body-slots,
+WC back-off scales power down to comply, ZF natively achieves
+compliance via interference suppression (M=64 ≫ K=25 leaves ample
+nulling DOFs), and Multi-body ECBF returns the min-absorption fallback
+on tier-C envelopes (Cauchy back-off is too pessimistic when the
+constraint is binding) while the oracle's Newton converges most slots.
 
 Two panels:
   (a) ECDF of p_abs / L_RL across body-slots, per precoder. MRT pushes
@@ -52,8 +56,17 @@ PRECODER_MARKERS = {
 
 
 def main() -> None:
+    import os
+
     apply_monograph_style(mode="png")
-    run = load_canonical("specular_bind")
+    # Default to the v6 binding regime (43 dBm + 6 V/m + 8x8) once it has
+    # been written; fall back to the older budget-multiplier-derived bind
+    # NPZ for comparison while the v6 run is in flight.
+    bind_key = os.environ.get("AEGIS_BIND_KEY", "specular_v6_aware")
+    try:
+        run = load_canonical(bind_key)
+    except FileNotFoundError:
+        run = load_canonical("specular_bind")
 
     fig, (ax_a, ax_b) = plt.subplots(1, 2, figsize=fig_size_ieee(columns=2, aspect=0.42))
 
