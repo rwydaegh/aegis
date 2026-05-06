@@ -125,14 +125,49 @@ twin's value isn't separating served from bystander on integrated dose,
 it's tracking *who is currently in a hot zone* and steering precoders
 accordingly.
 
-## Pose-info gain ablation
+## Pose-info gain ablation (binding regime)
 
-`pose_info_gain.pdf` — pose-aware vs pose-ablate, slack regime,
-plaza-specular, same seed. All four non-MRT precoders show median
-ΔSR = 0.000 Mbps. Pose telemetry contributes zero measurable rate gain
-in the slack regime, exactly as theory predicts: when the constraint is
-academic, the constraint-shaping role of Q is academic too. The
-binding-regime ablation would change this — left as follow-up.
+`pose_info_gain.pdf` — pose-aware vs pose-ablate, **binding** regime
+(43 dBm, ×0.1 budget), plaza-specular, same seed. Slack regime was
+all-zero (constraint academic); binding regime makes the ablation bind
+and the curves separate.
+
+Per-precoder ΔSR (aware − ablate, 9000 slots):
+
+| Precoder | median ΔSR | mean ΔSR | max \|ΔSR\| | infeas % aware | infeas % ablate |
+|---|---:|---:|---:|---:|---:|
+| MRT | 0 Mbps | 0 Mbps | 0 Mbps | n/a | n/a |
+| WC back-off | 0 Mbps | 0 Mbps | 0 Mbps | n/a | n/a |
+| Multi-body ECBF | -185 Mbps | -1054 Mbps | 19.9 Gbps | 96.6 | 88.0 |
+| Oracle | -76 Mbps | -95 Mbps | 401 Mbps | 92.0 | 92.0 |
+
+MRT and WC back-off are closed-form and don't see Q, so ΔSR ≡ 0 by
+construction. ECBF and oracle do.
+
+The ECBF result is bimodal (panel a): ~10 % of slots sit at ΔSR ≈
+-10 Gbps (aware in fallback, ablate feasible), ~5 % sit at ΔSR ≈
++20 Gbps (ablate in fallback, aware feasible), the remaining ~85 %
+collapse to zero (both in fallback or both feasible at the same w).
+The mechanism: pose-aware Q is tighter (smaller eigenvalues than
+the Cauchy envelope), so the dual-Newton sweep with `max_outer=8`
+hits min-absorption fallback **more often** (96.6 % vs 88.0 % for
+ablate). The looser Cauchy constraint is solver-friendlier; the
+tighter posed constraint is exposure-friendlier.
+
+Panel (b) confirms the exposure side: per-body P_abs CDF for ECBF,
+aware vs ablate. Aware's CDF dominates ablate's — at every quantile,
+aware delivers lower actual P_abs. The maximum-rate w that ablate's
+solver picks against the loose Cauchy bound corresponds to actual
+P_abs that creeps right up to L_RL = 16.3 mW; aware stays comfortably
+below. So pose info **shapes the feasible set tighter, lowering
+realised exposure**, but the current solver pays for that with more
+fallback infeasibility.
+
+This is a real result for the paper, and it's a strictly stronger
+argument than the slack-regime "no measurable gain" finding the
+600-slot data showed. The follow-up is brief 03's warm-start λ and
+uncapped Newton — both shrink the 96.6 % fallback rate and let aware
+keep its exposure advantage without sacrificing rate.
 
 ## Per-figure summary
 
@@ -159,8 +194,13 @@ over 5 min, stratified by tier. The cooperating tier sits ~30 % below
 served; bystander overlaps cooperating. The 5-min averaging reveals
 the tier-stratification was largely an artefact of static positioning.
 
-**pose_info_gain.pdf** (slack, 2-col wide). Both panels show curves
-collapsed to zero — slack regime mutes constraint-aware structure.
+**pose_info_gain.pdf** (binding, 2-col wide). (a) ΔSR per slot ECDF
+(aware − ablate). MRT/WC at 0 (closed-form). ECBF/oracle bimodal:
+left tail ~-10 Gbps (aware in fallback), right tail ~+20 Gbps (ablate
+in fallback), bulk at zero. (b) per-body P_abs CDF for ECBF — aware
+dominates, lower realised exposure at every quantile. Pose info
+shapes the QCQP feasible set tighter; current solver pays in extra
+fallback (96.6 % vs 88.0 %).
 
 **spatial_heatmap.pdf** (new, 2-col wide). 1.5 m grid over the plaza,
 mean P_abs/L_RL per cell. (a) Slack regime, multi-body ECBF: clean
