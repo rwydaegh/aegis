@@ -839,31 +839,68 @@ even when the average compliance metric looks acceptable.
 
 The closed-loop machinery uses tier-A and tier-B IMU pose telemetry
 to refresh $\Mmat^{(u)}(\bm\theta_u)$ at $\sim 100\,$ms.
-\Cref{fig:pose-info} ablates this telemetry: the same $20\,$s run is
-re-executed with pose held at a canonical T-pose for every body,
-which simplifies the pose-conditioned operator and removes any
-information advantage from the IMU stream. The slot-level sum-rate
-delta CDF is a vertical line at zero across all four non-degenerate
-precoders. The per-body absorbed-power CDF of the multi-body ECBF
-overlaps the ablation curve to single-precision tolerance. The
-pose-information gain is zero at this load. The mechanism is
-geometric: the budget is slack by four orders of magnitude, so
-$\bm\lambda$ remains at zero in \cref{eq:closedform}, and the
-operator value drops out of the precoder. Pose telemetry is
-academically active but practically inert in the slack regime, and
-would activate only inside the binding regime of \cref{tab:bind}.
+\Cref{fig:pose-info} ablates this telemetry in the binding regime
+($43\,$dBm transmit, $L_{\mathrm{RL}} \times 0.1$): the same $5$-min
+trace is re-executed with the tier-A and tier-B exposure operators
+swapped for the Cauchy worst-case envelope of \cref{sec:tiers}, which
+removes the IMU information advantage by treating every served and
+cooperating body as if it were a tier-C bystander. The slack regime
+of \cref{tab:slack} produced a null result on this ablation: with the
+budget margin at four orders of magnitude, the dual variables
+$\bm\lambda$ in \cref{eq:closedform} sit at zero and the operator
+value drops out of the precoder. The binding regime activates the
+constraint and pose information becomes a real lever.
+
+The result is more nuanced than a one-sided gain. The closed-form
+precoders MRT and worst-case back-off do not consume $\Mmat^{(u)}$
+and therefore exhibit identically zero $\Delta$\textsf{SR}. The
+constrained QCQP (multi-body ECBF and the per-body oracle variant)
+exhibits a bimodal slot-level distribution: $\sim 10\%$ of slots sit
+at $\Delta\textsf{SR} \approx -10\,$Gbps where the pose-aware solver
+fell into min-absorption fallback while the Cauchy variant remained
+feasible, $\sim 5\%$ sit at $\Delta\textsf{SR} \approx +20\,$Gbps in
+the opposite configuration, and the remaining $\sim 85\%$ collapse to
+zero where the two methods land at the same operating point. Median
+$\Delta\textsf{SR}$ is $-185\,$Mbps for the multi-body ECBF and
+$-76\,$Mbps for the oracle. The mechanism is solver-side: the Cauchy
+envelope $\Mmat^{\mathrm{Cauchy}}_{(u)} \succeq \Mmat^{(u)}$ defines a
+strictly tighter constraint set, so the dual-Newton sweep converges
+in fewer iterations and triggers fallback less often
+($88.0\%$ versus $96.6\%$ for the proposed solver under the
+$\textsf{max\_outer} = 8$ cap of \cref{sec:multibody-ecbf}). The
+exposure side tells the opposite story.
+
+The right panel of \cref{fig:pose-info} plots the per-body absorbed
+power CDF for the multi-body ECBF, pose-aware versus pose-ablated.
+The pose-aware curve dominates: at every quantile the realised
+$P_{\mathrm{abs}}$ is lower than the Cauchy variant. The Cauchy
+solver's looser feasible set lets the maximizer push the actual
+absorbed power right up to $L_{\mathrm{RL}} = 16.3\,$mW; the pose-aware
+solver, working against the tighter posed operator, holds margin in
+hand. Pose information shapes the QCQP feasible set tighter and
+lowers realised exposure, at the cost of more frequent solver
+fallback under the present iteration cap. Warm-starting
+$\bm\lambda^{(t)}$ from $\bm\lambda^{(t-1)}$ and uncapping the outer
+Newton sweep would close this gap, and is the most direct follow-up
+the present data points to.
 
 \begin{figure}[!t]
   \centering
   \includegraphics[width=\columnwidth]{pose_info_gain.pdf}
-  \caption{Pose-information ablation, plaza-specular path model.
-  Left: slot-level sum-rate delta (pose-aware minus pose-ablated)
-  ECDF, four precoders. All curves coincide with $\Delta = 0$. Right:
-  per-body absorbed-power ECDF for the proposed multi-body ECBF,
-  pose-aware versus pose-ablated. The curves overlap to
-  single-precision tolerance. Pose telemetry is inactive at this
-  budget margin. Activating it requires the binding regime of
-  \cref{tab:bind}.}
+  \caption{Pose-information ablation, plaza-specular path model,
+  binding regime ($43\,$dBm, $L_{\mathrm{RL}} \times 0.1$). Left:
+  slot-level sum-rate delta (pose-aware minus pose-ablated) ECDF,
+  four precoders. MRT and worst-case back-off coincide with
+  $\Delta = 0$ by construction. The constrained QCQP variants are
+  bimodal: a left tail at $\Delta\textsf{SR} \approx -10\,$Gbps
+  (pose-aware in solver fallback) and a right tail at
+  $+20\,$Gbps (Cauchy in solver fallback). Right: per-body
+  absorbed-power ECDF for the proposed multi-body ECBF, pose-aware
+  versus pose-ablated. Pose-aware dominates at every quantile, with
+  realised $P_{\mathrm{abs}}$ held further below
+  $L_{\mathrm{RL}}$. The trade-off is solver-side, not physical:
+  the tighter pose-aware operator shapes a smaller feasible set that
+  the present 8-iteration Newton sweep handles less robustly.}
   \label{fig:pose-info}
 \end{figure}
 
@@ -1035,16 +1072,27 @@ deployments, body-worn relays). The chronic-dose ECDF separates
 the tiers and survives the slack regime, which is the practical
 value proposition outside the binding ring.
 
-The pose-information ablation null is consistent. Pose telemetry
-shapes the operator $\Qmat^{(u)}(\bm\theta)$ by aligning the leading
-eigenvector with the body's torso plane, but $\bm\lambda = 0$ in
-the slack regime drops the operator out of the precoder and any
-gain disappears. The honest reading is that pose telemetry's value
-is a binding-regime contingent gain, not a deployment-time always-on
-feature. The same logic applies to the multi-body solver structure:
-it is a generalisation that contains MRT, ZF, and worst-case
-back-off as limits and degrades to one of them in the slack regime
-without a code path change.
+The pose-information ablation tells a binding-regime story rather
+than a single-direction gain. Pose telemetry shapes
+$\Qmat^{(u)}(\bm\theta)$ by aligning the leading eigenvector with
+the body's torso plane, but in the slack regime $\bm\lambda = 0$
+drops the operator out of the precoder and any gain disappears. In
+the binding regime the operator binds and pose information becomes
+a real lever, with two distinct effects. The pose-aware operator
+defines a strictly tighter feasible set than its Cauchy envelope,
+which lowers realised $P_{\mathrm{abs}}$ at every quantile under
+the proposed solver, but the tighter set also makes the
+dual-Newton sweep harder to converge inside the
+$\textsf{max\_outer} = 8$ cap, raising the min-absorption fallback
+rate from $88\%$ to $97\%$. The slot-level sum-rate gap is bimodal
+in consequence rather than monotone in either direction. The
+honest reading is that pose telemetry buys a tighter exposure
+profile in exchange for a more delicate solver, and that warm-
+starting $\bm\lambda$ across slots and uncapping the Newton sweep
+are the next move. The same logic applies to the multi-body solver
+structure: it is a generalisation that contains MRT, ZF, and
+worst-case back-off as limits and degrades to one of them in the
+slack regime without a code path change.
 
 The bound discussion is sharper than expected. The naive
 projected-area bound on $\xx^H \Qmat^{(u)} \xx$ that the literature
@@ -1083,8 +1131,8 @@ solver is implemented on CPU at $31\,$ms median. A JAX vmap port to
 GPU is structural and would bring this below $10\,$ms based on the
 single-body solver speed. None of these affect the qualitative
 conclusions: the operator structure, the budget margin, the chronic-
-dose tier separation, the pose ablation null, and the bound
-geometry are all stable across these choices.
+dose tier separation, the pose ablation's solver/exposure trade-off,
+and the bound geometry are all stable across these choices.
 
 The closed-loop architecture extends in three directions naturally.
 A cooperative multi-operator allocation generalises the per-body
@@ -1119,8 +1167,11 @@ dictionary calibration. We instantiate the loop at plaza scale on
 find a four-orders-of-magnitude budget margin at $K = 25$, an
 empirical operator rank of 3 to 4, a chronic-dose ECDF that
 separates the served, cooperating, and bystander tiers by a factor
-of 2.5 between served and cooperating, and a pose-information
-ablation that returns zero in the slack regime. The standard
+of 1.5 between served and cooperating after $5$-min steady-state
+walks, and a binding-regime pose-information ablation in which
+pose-aware operators yield strictly lower realised exposure at
+every quantile while exchanging some sum-rate against
+unconverged constrained-QCQP slots. The standard
 projected-area bound on $\xx^H \Qmat^{(u)} \xx$ is loose by 21 to
 27\,dB on the steering direction and breached by 49 to 70\,\% of
 unconstrained precoders, which we trace to the geometric mismatch
