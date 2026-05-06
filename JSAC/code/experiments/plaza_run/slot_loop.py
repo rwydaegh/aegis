@@ -40,6 +40,14 @@ import numpy as np
 from aegis._array_backend import xp
 from aegis.coherent.multibody_ecbf import solve_multibody_ecbf
 from aegis.coherent.translation import compute_static_path_gram
+
+try:
+    from aegis.coherent.multibody_ecbf_jax import solve_multibody_ecbf_jax
+
+    _HAVE_JAX_SOLVER = True
+except ImportError:  # pragma: no cover
+    solve_multibody_ecbf_jax = None  # type: ignore
+    _HAVE_JAX_SOLVER = False
 from aegis.constants import C_0
 from aegis.geometry.parametric import ParametricBody
 from aegis.geometry.pose_stream import PoseStream
@@ -100,6 +108,7 @@ class SlotLoopConfig:
     paths_mode: str = "plaza_specular"
     ablate_pose_telemetry: bool = False
     sensing: SensingConfig = field(default_factory=SensingConfig)
+    solver_backend: str = "numpy"  # "numpy" or "jax"; jax routes ECBF through GPU kernels
 
 
 @dataclass
@@ -251,6 +260,16 @@ def run_slots(
     array_offsets = array.element_positions - array.reference_position
 
     state: list[_BodyState] = [_BodyState() for _ in range(n_bodies)]
+
+    # Resolve solver dispatch once.
+    if config.solver_backend == "jax":
+        if not _HAVE_JAX_SOLVER:
+            raise RuntimeError("solver_backend='jax' requested but JAX is not installed")
+        _solve_ecbf = solve_multibody_ecbf_jax
+    elif config.solver_backend == "numpy":
+        _solve_ecbf = solve_multibody_ecbf
+    else:
+        raise ValueError(f"Unknown solver_backend {config.solver_backend!r}; expected 'numpy' or 'jax'")
 
     served_idx = np.array([b.index for b in bodies if b.tier == "A"], dtype=np.int64)
     bystander_c_idx = np.array([b.index for b in bodies if b.tier == "C"], dtype=np.int64)
@@ -416,7 +435,7 @@ def run_slots(
                 else None
             )
             try:
-                W_p, diag_p = solve_multibody_ecbf(
+                W_p, diag_p = _solve_ecbf(
                     H,
                     Q_proposed,
                     L_proposed,
@@ -446,7 +465,7 @@ def run_slots(
             else None
         )
         try:
-            W_o, diag_o = solve_multibody_ecbf(
+            W_o, diag_o = _solve_ecbf(
                 H,
                 Q_oracle,
                 L_oracle,
