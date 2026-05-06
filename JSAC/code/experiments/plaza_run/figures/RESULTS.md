@@ -249,8 +249,11 @@ python -m JSAC.code.experiments.plaza_run.run --seed 42 --n-slots 9000 \
 python -m JSAC.code.experiments.plaza_run.run --seed 42 --n-slots 9000 \
   --realistic-walks --paths plaza_specular --ablate-pose-telemetry
 python -m JSAC.code.experiments.plaza_run.run --seed 42 --n-slots 9000 \
-  --realistic-walks --paths plaza_specular --tx-power-dbm 43 \
-  --budget-multiplier 0.1 --label-suffix bind5min
+  --realistic-walks --paths plaza_specular \
+  --config JSAC/code/experiments/plaza_run/configs/binding_43dbm_6vpm.json
+python -m JSAC.code.experiments.plaza_run.run --seed 42 --n-slots 9000 \
+  --realistic-walks --paths plaza_specular --ablate-pose-telemetry \
+  --config JSAC/code/experiments/plaza_run/configs/binding_43dbm_6vpm.json
 
 # figures
 cd JSAC/code/experiments/plaza_run/figures
