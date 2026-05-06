@@ -158,6 +158,12 @@ def _per_body_p_abs(W: np.ndarray, Q: np.ndarray) -> float:
 def _batch_p_abs(Q_stack: np.ndarray, W: np.ndarray) -> np.ndarray:
     """``trace(W^H Q[b] W)`` for every body ``b`` in one einsum.
 
+    The contraction is reordered as ``W^H Q W`` then trace, with
+    ``optimize='greedy'`` so numpy first builds (B, M, K) = Q @ W and then
+    Frobenius-reduces against W*. Without the optimize flag this is
+    bandwidth-bound on Q at M = 256 (B * M^2 * K = 80 M flops) because
+    numpy walks Q twice.
+
     Parameters
     ----------
     Q_stack : (B, M, M) Hermitian
@@ -167,7 +173,7 @@ def _batch_p_abs(Q_stack: np.ndarray, W: np.ndarray) -> np.ndarray:
     -------
     p_abs : (B,) real
     """
-    return np.real(np.einsum("bij,ik,jk->b", Q_stack, np.conj(W), W))
+    return np.real(np.einsum("bij,ik,jk->b", Q_stack, np.conj(W), W, optimize="greedy"))
 
 
 def _translation_phasor_np(center_k_hat: np.ndarray, delta_t: np.ndarray, freq_hz: float) -> np.ndarray:
@@ -177,8 +183,15 @@ def _translation_phasor_np(center_k_hat: np.ndarray, delta_t: np.ndarray, freq_h
 
 
 def _q_translate_np(M_static: np.ndarray, phi: np.ndarray) -> np.ndarray:
-    """Refresh Q under translation by sandwiching M_static with phi (numpy)."""
-    Q = np.einsum("c,d,cdpq->pq", np.conj(phi), phi, M_static)
+    """Refresh Q under translation by sandwiching M_static with phi (numpy).
+
+    The contraction is left-to-right: first reduce the rightmost path index
+    against ``phi`` (n_paths * M^2 -> M^2), then the leftmost against
+    ``conj(phi)``. Without ``optimize='greedy'`` numpy.einsum does the naive
+    n_paths^2 * M^2 contraction which is bandwidth-bound on M_static; the
+    intermediate cuts memory traffic by n_paths.
+    """
+    Q = np.einsum("c,d,cdpq->pq", np.conj(phi), phi, M_static, optimize="greedy")
     return 0.5 * (Q + np.conj(Q).T)
 
 
@@ -412,6 +425,7 @@ def run_slots(
                     return_diagnostics=True,
                     max_outer=8,
                     lambda_init=lam_init_p,
+                    lowrank_rank=3,  # plaza-run Q's are rank 3 to ~1e-12 (validated)
                 )
                 infeas_flags["multibody_ecbf"] = diag_p.method == "min-absorption"
                 lambda_warm_proposed = (
@@ -441,6 +455,7 @@ def run_slots(
                 return_diagnostics=True,
                 max_outer=8,
                 lambda_init=lam_init_o,
+                lowrank_rank=3,
             )
             infeas_flags["oracle"] = diag_o.method == "min-absorption"
             lambda_warm_oracle = (
