@@ -1,0 +1,461 @@
+% =====================================================================
+% AWPL letter
+% Closed-form peak spatial-average SAR over the IEEE/IEC 10 g cube
+% above 6 GHz, derived from the surface absorbed power density.
+% Author: Robin Wydaeghe
+% Target: IEEE Antennas and Wireless Propagation Letters (AWPL)
+% =====================================================================
+
+\documentclass[journal,twocolumn,10pt]{IEEEtran}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{bm}
+
+\usepackage{graphicx}
+\graphicspath{{figures/psSAR/}{figures/}{../../theory/figures/}{../../validation/}}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{caption}
+
+\usepackage{cite}
+\usepackage{xcolor}
+\usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+\usepackage[capitalize]{cleveref}
+
+\theoremstyle{plain}
+\newtheorem{proposition}{Proposition}
+\newtheorem{corollary}[proposition]{Corollary}
+\theoremstyle{remark}
+\newtheorem{remark}[proposition]{Remark}
+
+\crefname{proposition}{Proposition}{Propositions}
+\Crefname{proposition}{Proposition}{Propositions}
+\crefname{remark}{Remark}{Remarks}
+\Crefname{remark}{Remark}{Remarks}
+
+% --- math macros (kept consistent with the sister papers) ---
+\newcommand{\khat}{\hat{\bm{k}}}
+\newcommand{\nhat}{\hat{\bm{n}}}
+\newcommand{\rr}{\mathbf{r}}
+\newcommand{\Sinc}{S_{\mathrm{inc}}}
+\newcommand{\Sab}{S_{\mathrm{ab}}}
+\newcommand{\Aproj}{A_\perp}
+\newcommand{\rhom}{\rho_{\mathrm{m}}}
+\newcommand{\ntilde}{\tilde{n}}
+\newcommand{\diff}{\mathrm{d}}
+\newcommand{\pospart}[1]{\left(#1\right)_{+}}
+\DeclareMathOperator{\RE}{Re}
+
+\begin{document}
+
+\title{A closed-form peak spatial-average {SAR} over the
+{IEEE/IEC} 10\,g cube above 6\,{GHz}}
+
+\author{Robin~Wydaeghe%
+  \thanks{R. Wydaeghe is with Ghent University and imec, Ghent,
+  Belgium (e-mail: robin.wydaeghe@ugent.be).}}
+
+\markboth{IEEE Antennas and Wireless Propagation Letters,
+Vol.~XX, No.~X, Month~2026}%
+{Wydaeghe: Closed-form 10\,g cube peak SAR}
+
+\maketitle
+
+\begin{abstract}
+The peak spatial-average specific absorption rate over a 10\,g cube
+of tissue, prescribed by IEEE C95.3 and IEC/IEEE 62704 for
+compliance below 6\,GHz and used as a sanity bound above 6\,GHz, is
+typically computed by full-wave finite-difference time-domain
+simulation. The computation is identified here with a closed-form
+expression for any frequency where the body is opaque to the wave.
+Starting from the local surface absorbed power density
+$\Sab(\rr) = \Sinc T_0 \pospart{\nhat \cdot (-\khat)}$ and the
+exponential depth profile of a lossy half-space, the three-dimensional
+volumetric average reduces to a surface integral. For the
+axis-aligned cube specified by the standard, an energy-conservation
+argument gives the cube peak SAR in closed form:
+$\langle\mathrm{SAR}\rangle_{\mathrm{cube}}
+= \Sinc T_0 (|k_x|+|k_y|+|k_z|)/(\rhom L)$, with
+$L=(m/\rhom)^{1/3} = 21.5\,$mm. The expression is exact in the
+thin-skin limit ($\alpha L \gg 1$, satisfied above 6\,GHz to better
+than $10^{-19}$ on skin) under the half-space and angle-independent
+transmission approximations standard in millimetre-wave dosimetry.
+Direct numerical integration on a tilted body half-space and on a
+hemispheric sweep of incidence directions matches the closed form
+to machine precision. Compliance evaluation reduces to one scalar
+multiplication per surface point.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Specific absorption rate, peak spatial-average SAR, ICNIRP
+compliance, electromagnetic dosimetry, millimetre wave,
+finite-difference time-domain.
+\end{IEEEkeywords}
+
+\IEEEpeerreviewmaketitle
+
+
+\section{Introduction}\label{sec:intro}
+\IEEEPARstart{F}{ifth}-generation and emerging sixth-generation
+wireless systems above 6\,GHz produce concentrated near-surface
+energy deposition on exposed tissue, and regulators have responded
+by changing the basic restriction. ICNIRP 2020 and IEC/IEEE 63195
+specify the absorbed power density $\Sab$ averaged over a
+$4\,\mathrm{cm}^2$ surface patch as the compliance metric above
+6\,GHz, while retaining the peak spatial-average specific absorption
+rate over a 10\,g volume below 6\,GHz \cite{ICNIRP2020}. The
+$4\,\mathrm{cm}^2$ patch is sized to match the face of a $21.5\,$mm
+cube, the shape that IEC/IEEE 62704 prescribes for the volumetric
+average \cite{ICNIRP2020}. A regulatory campaign therefore traverses
+the 6\,GHz boundary in both directions, and the cube quantity stays
+relevant above 6\,GHz as a sanity bound, as input to combined
+limits, and as the historical anchor against which all millimetre
+wave dosimetry is calibrated \cite{Hirata2021,Samaras2019}.
+
+The standardised computation is driven by full-wave simulation. The
+phantom is voxelised on a Cartesian grid. An axis-aligned cube is
+expanded around each tissue voxel until the enclosed mass is within
+$10^{-4}$ of $10\,$g, and the maximum mass-averaged SAR over all
+valid seeds is the cube peak \cite{C953,62704-1}. At millimetre-wave
+frequencies the skin depth is $\delta \sim 0.3$ to $0.5\,$mm, so the
+mesh must resolve a thin absorption layer over a body span of order
+one metre. The cell count crosses $10^{12}$ per plane-wave
+configuration, and a campaign sweeping frequency, posture, and
+incidence direction takes weeks on GPU clusters.
+
+A surface law for $\Sab$ on biological tissue at millimetre wave is
+established in a sister paper \cite{WydaegheTAP_A}: at any frequency
+where the body is opaque to the wave,
+\begin{equation}\label{eq:surface-law}
+  \Sab(\rr) = \Sinc \, T_0 \, \pospart{\nhat(\rr) \cdot (-\khat)},
+\end{equation}
+where $T_0$ is the polarisation-degenerate Fresnel power
+transmission at normal incidence, computed in closed form from the
+tissue refractive index, and $\pospart{\cdot}$ is the positive
+part. The local map is a function of body geometry and incidence
+direction alone. The geometric local form
+\eqref{eq:surface-law} approximates the full Fresnel response to
+within $5.6\,\%$ on skin at $28\,$GHz over $[0^\circ, 75^\circ]$ and
+within $5\,\%$ root-mean-square across all biological tissues with
+refractive index modulus above $2.5$ from $0.3$ to $100\,$GHz
+\cite{WydaegheTAP_A}.
+
+The cube peak SAR is a volumetric quantity, and its connection to
+the surface law has not been written down in closed form. This
+letter does so. The route is direct. The depth profile of the
+internal field follows the Fresnel half-space with a single
+exponential decay, the volumetric integral collapses to a surface
+integral in the thin-skin limit, and energy conservation on the
+axis-aligned cube returns the projected-area factor
+$|k_x|+|k_y|+|k_z|$ for any incidence direction. The result is
+\begin{equation}\label{eq:headline}
+  \boxed{
+  \langle \mathrm{SAR} \rangle_{\mathrm{cube}}
+  = \frac{\Sinc \, T_0}{\rhom \, L} \,
+    \bigl(|k_x| + |k_y| + |k_z|\bigr),
+  }
+\end{equation}
+with $L = (m / \rhom)^{1/3} = 21.5\,$mm at $\rhom = 1000\,$kg/m$^3$
+and $m = 10\,$g. The cube's axis-aligned geometry, the tilt of the
+body surface relative to the cube, and the depth decay all collapse
+into the single Cauchy projected-area factor
+$|k_x|+|k_y|+|k_z|$ \cite{Cauchy1841}.
+
+The closed form serves any compliance pipeline that already produces
+a surface map of $\Sab$. The pipeline is complete with one scalar
+multiplication per cube seed. Section \ref{sec:setup} fixes
+notation. Section \ref{sec:reduction} performs the volume-to-surface
+reduction and derives \eqref{eq:headline}. Section \ref{sec:val}
+validates the formula against direct numerical integration on a
+tilted body half-space across a hemisphere of incidence directions.
+Section \ref{sec:disc} states the regime of validity and points to
+the relaxed-geometry, sphere, and complex-anatomy extensions
+treated in a separate companion paper.
+
+
+\section{Setup and notation}\label{sec:setup}
+
+A monochromatic plane wave with propagation direction $\khat$ and
+incident power density $\Sinc$ illuminates a body whose surface
+$\Sigma$ is locally flat on the wavelength scale. At a surface point
+$\rr$, the outward unit normal is $\nhat(\rr)$ and the local
+incidence cosine is
+$\mu(\rr) = \nhat(\rr) \cdot (-\khat) = \cos \theta_i(\rr)$. Tissue
+is modelled as a lossy half-space with complex refractive index
+$\ntilde = n - j \kappa$ and field decay rate
+$\alpha = k_0 \kappa$ at normal incidence. For skin at $28\,$GHz,
+$\ntilde = 4.49 - 1.79 j$, $T_0 = 0.539$, and
+$\alpha = 1047\,$m$^{-1}$, giving an SAR $e$-folding depth
+$1/(2\alpha) = 0.48\,$mm.
+
+The internal field intensity decays exponentially with depth $z$
+along the inward normal:
+\begin{equation}\label{eq:depth-decay}
+  |\mathbf{E}(\rr, z)|^2
+    = \frac{4\alpha}{\sigma}\, \Sab(\rr)\, e^{-2 \alpha z},
+\end{equation}
+which follows from integrating the ohmic loss density
+$\frac{\sigma}{2}|\mathbf{E}|^2$ over depth and identifying the
+result with the surface absorbed power density. The local SAR is
+\begin{equation}\label{eq:sar-depth}
+  \mathrm{SAR}(\rr, z)
+  = \frac{\sigma}{2 \rhom}\,|\mathbf{E}(\rr, z)|^2
+  = \frac{2 \alpha}{\rhom}\, \Sab(\rr)\, e^{-2 \alpha z}.
+\end{equation}
+The angular dependence of $\alpha$ is at most $2.2\,\%$ across
+$\theta_i \in [0^\circ, 85^\circ]$ for skin at $28\,$GHz because
+$|\ntilde| \gg 1$ compresses the refraction angle to within
+$10^\circ$ of normal \cite{WydaegheTAP_A}. We use the
+normal-incidence value throughout.
+
+The peak spatial-average SAR over a 10\,g region is
+\begin{equation}\label{eq:psSAR-def}
+  \mathrm{psSAR}_{10\mathrm{g}}
+  = \sup_{\Omega}\, \frac{1}{m}
+    \int_{\Omega}\, \mathrm{SAR}(\rr,z)\, \rhom\, \diff V,
+\end{equation}
+with $m = \rhom \mathrm{Vol}(\Omega) = 10\,$g. Under
+ICNIRP 2020, $\Omega$ is restricted to a cube of side
+$L = (m/\rhom)^{1/3}$, axis-aligned with the global
+Cartesian grid that hosts the voxel mesh. The supremum runs over
+cube positions. The cube does not rotate to track the surface
+\cite{C953}.
+
+
+\section{Cube reduction}\label{sec:reduction}
+
+\begin{figure*}[!t]
+  \centering
+  \includegraphics[width=0.92\textwidth]{psSAR_validation.pdf}
+  \caption{Validation of the closed-form cube
+  psSAR$_{10\mathrm{g}}$ for skin at $28\,$GHz
+  ($\Sinc = 10\,$W/m$^2$, $T_0 = 0.539$, $\rhom = 1000\,$kg/m$^3$,
+  $L = 21.5\,$mm). Panel (a): tilt cancellation, $\khat =
+  -\hat{\mathbf{z}}$, body normal rotated by $\gamma$ in the $xz$
+  plane. $\langle\Sab\rangle$ falls as $\cos\gamma$, the patch
+  area inside the cube grows as $1/\cos\gamma$, and the product is
+  the constant $\Sinc T_0/(\rhom L)$. Panel (b): face-flush
+  configuration ($\nhat = \hat{\mathbf{z}}$), closed form contracts
+  to $|k_z| = \cos\theta$ and overlaps the surface integral at
+  $\phi = 0$ and $\phi = 45^\circ$ to machine precision.}
+  \label{fig:val}
+\end{figure*}
+
+The cube $\mathcal{C} = [0,L]^3$ is placed near the body surface.
+Tissue occupies the half-space below the surface plane
+$\nhat \cdot \rr = D$. Absorbed power inside the cube is
+\begin{equation}\label{eq:Pabs-volume}
+  P_{\mathrm{abs}}
+  = \int_{\mathcal{C}\,\cap\,\text{tissue}}\,
+    \mathrm{SAR}(\rr,z)\, \rhom\, \diff V.
+\end{equation}
+Two routes evaluate this integral. The first integrates depth first;
+the second uses energy conservation on the cube as a whole.
+
+\subsection{Depth integral and surface collapse}
+At any tissue point $(\rr, z)$ inside the cube, integrating
+\eqref{eq:sar-depth} over depth from the surface plane down to the
+furthest tissue point in the cube gives, in the thin-skin limit
+$\alpha L \gg 1$,
+\begin{equation}\label{eq:depth-collapse}
+  \int_0^{d(\rr)}\, \mathrm{SAR}(\rr, z)\, \rhom\, \diff z
+  = \Sab(\rr)\, \bigl(1 - e^{-2 \alpha d(\rr)}\bigr)
+  \approx \Sab(\rr).
+\end{equation}
+At $28\,$GHz, $\alpha L \approx 45$, and the residual is below
+$e^{-90} \approx 10^{-39}$. The volumetric integral
+\eqref{eq:Pabs-volume} therefore reduces to a surface integral over
+the body-surface patch intercepted by the cube:
+\begin{equation}\label{eq:Pabs-surface}
+  P_{\mathrm{abs}} \approx
+  \int_{\Sigma\, \cap\, \mathcal{C}}\, \Sab(\rr)\, \diff A.
+\end{equation}
+The thin-skin approximation is conservative: the residual is at the
+exponential-suppression scale and contributes nothing measurable.
+The depth coordinate has dropped out.
+
+\subsection{Energy conservation on the cube}
+The thin-skin limit also says that all power crossing into tissue
+through the body surface is absorbed within the first few skin
+depths. The total absorbed power inside the cube therefore equals
+the net inward Poynting flux through the air-facing portion of the
+cube boundary. For an axis-aligned cube of side $L$ exposed to a
+plane wave with direction $\khat$, the projected area perpendicular
+to $\khat$ is the Cauchy projection of the cube,
+\begin{equation}\label{eq:Aproj-cube}
+  \Aproj(\khat) = L^2\, \bigl(|k_x| + |k_y| + |k_z|\bigr),
+\end{equation}
+which equals $L^2$ for incidence along a cube axis and
+$\sqrt{3}\, L^2$ along the space diagonal. Multiplying by
+$\Sinc T_0$, the absorbed power is
+\begin{equation}\label{eq:Pabs-energy}
+  P_{\mathrm{abs}} = \Sinc \, T_0 \, \Aproj(\khat)
+  = \Sinc \, T_0 \, L^2 \,
+    \bigl(|k_x|+|k_y|+|k_z|\bigr).
+\end{equation}
+The mass-averaged SAR is $P_{\mathrm{abs}} / m$ with
+$m = \rhom L^3$, which gives \eqref{eq:headline}.
+
+\begin{remark}[Tilt cancellation]\label{rem:tilt}
+For a body surface tilted by angle $\gamma$ from the cube
+$z$-axis and a wave along $\khat = -\hat{\mathbf{z}}$, the surface
+patch inside the cube has area $L^2/\cos\gamma$ (tilted plane cutting
+a square prism), and the local incidence cosine is $\cos\gamma$.
+The surface integral \eqref{eq:Pabs-surface} returns
+$\Sinc T_0 \cos\gamma \cdot L^2/\cos\gamma = \Sinc T_0 L^2$,
+independent of $\gamma$. The closed form
+\eqref{eq:headline} returns the same value because
+$|k_x|+|k_y|+|k_z| = 1$ for axis-aligned $\khat$. The
+$\cos\gamma$ in $\Sab$ exactly cancels the $1/\cos\gamma$ in
+patch area.
+\end{remark}
+
+\subsection{Discrete form on a mesh}
+For a body discretised as a triangulated mesh with $M$ triangles of
+areas $a_j$, centroids $\rr_j$, and surface normals $\nhat_j$,
+\eqref{eq:Pabs-surface} becomes
+\begin{equation}\label{eq:discrete}
+  \mathrm{psSAR}_{10\mathrm{g}}
+  \approx \frac{1}{m}\, \max_{\mathcal{C}}\,
+    \sum_{j:\rr_j \in \mathcal{C}}
+    \Sinc T_0\, \pospart{\nhat_j \cdot (-\khat)}\, a_j,
+\end{equation}
+where the maximum runs over cube placements anchored at mesh
+vertices. The closed form \eqref{eq:headline} replaces the sum by a
+single scalar multiplication when the body fills the cube
+cross-section perpendicular to $\khat$, which is the case for the
+torso, the limbs, and the head at $L = 21.5\,$mm.
+
+
+\section{Numerical validation}\label{sec:val}
+
+The closed form \eqref{eq:headline} is tested against direct
+numerical integration of \eqref{eq:Pabs-surface} on a flat body
+half-space. The body surface is the plane $\nhat \cdot \rr = 0$
+through the cube centre, parametrised in two cube-face coordinates
+and reconstructed on a $250 \times 250$ grid. The inside-cube mask
+restricts the patch to $\Sigma \cap \mathcal{C}$.
+\Cref{fig:val} reports the result.
+
+Panel (a) sweeps the body tilt $\gamma$ at axis-aligned $\khat$.
+The local $\Sab$ falls as $\cos\gamma$ while the patch area
+$L^2/\cos\gamma$ grows by the same factor. Their product is the
+constant $\Sinc T_0 / (\rhom L)$, predicted by both the closed form
+and the surface integral to within $2 \times 10^{-14}$ relative.
+This is the regulatory regime: an axis-aligned cube near a tilted
+body surface returns the same psSAR independent of tilt.
+
+Panel (b) sweeps the wave direction over the upper hemisphere with
+the body face-flush ($\nhat = \hat{\mathbf{z}}$). The closed form
+\eqref{eq:headline} contracts to $\Sinc T_0 |k_z| / (\rhom L)$
+because only the top cube face is air-facing. The surface integrals
+at azimuth $\phi = 0$ and $\phi = 45^\circ$ overlap the closed form
+across the entire $\theta \in [0^\circ, 89^\circ]$ range, with
+maximum relative error $3 \times 10^{-14}$, set by floating-point
+arithmetic. The dependence on $\phi$ vanishes by the planar symmetry
+of the half-space.
+
+For a body geometry that fills the cube cross-section perpendicular
+to $\khat$, multiple cube faces face air and the full
+$|k_x|+|k_y|+|k_z|$ factor is realised. This is the case for
+contiguous body parts at the cube scale of $21.5\,$mm such as the
+torso and the limbs, where the body occupies the entire wavefront
+silhouette of the cube. For thin or folded anatomy, the surface
+integral form \eqref{eq:Pabs-surface} stays exact and the closed
+form is an upper bound \cite{WydaegheTAP_A}.
+
+
+\section{Discussion}\label{sec:disc}
+
+The closed form \eqref{eq:headline} is exact under the
+approximations of \cite{WydaegheTAP_A}: a planar tissue interface,
+the universal-decay-rate approximation on $\alpha$, and the
+pseudo-Brewster compensation that makes $T_0$ the angle-independent
+transmission. The thin-skin requirement $\alpha L \gg 1$ is the
+weakest link below 6\,GHz, where $\alpha L$ falls to order unity for
+muscle and to order $10^{-1}$ for fat \cite{Gabriel1996}. The
+formula is therefore tagged as an above-6\,GHz construction.
+\Cref{tab:summary} collects the numerical values for skin at
+$28\,$GHz.
+
+\begin{table}[ht]
+  \centering
+  \caption{Numerical values for skin at $28\,$GHz, $m = 10\,$g,
+  $\rhom = 1000\,$kg/m$^3$.}
+  \label{tab:summary}
+  \begin{tabular}{@{}lll@{}}
+    \toprule
+    Quantity & Symbol & Value \\
+    \midrule
+    Refractive index & $\ntilde$ & $4.49 - 1.79 j$ \\
+    Normal-incidence transmission & $T_0$ & $0.539$ \\
+    Field decay rate & $\alpha$ & $1047\,$m$^{-1}$ \\
+    Cube side length & $L$ & $21.5\,$mm \\
+    Thin-skin parameter & $\alpha L$ & $45$ \\
+    \addlinespace
+    psSAR at $\Sinc = 20\,$W/m$^2$, axis-aligned & & $0.93\,$W/kg \\
+    psSAR at $\Sinc = 20\,$W/m$^2$, diagonal & & $1.61\,$W/kg \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The space-diagonal value is the worst case in the sense of the
+energy-conservation upper bound, attained when the body geometry
+fills the cube cross-section perpendicular to $\khat$ and the wave
+illuminates the cube along its space diagonal. For an axis-aligned
+incidence on a flat body, the psSAR is the smaller value
+$\Sinc T_0 / (\rhom L)$. ICNIRP's reference level for the basic
+restriction at $20\,$W/m$^2$ corresponds to $0.93\,$W/kg in the
+axis-aligned case, comfortably below the $2\,$W/kg basic restriction
+applicable below 6\,GHz \cite{ICNIRP2020}.
+
+The closed form fits inside a broader closed-form exposure
+pipeline. The whole-body absorbed power on a body in a multipath
+environment admits the direction-averaged identity of
+\cite{WydaegheTAP_B}, and the coherent beamforming exposure operator
+on multi-antenna millimetre-wave arrays is given in
+\cite{WydaegheTWC}. With \eqref{eq:headline}, the local volumetric
+quantity is computed in the same closed-form construction.
+Compliance evaluation across the three regulatory metrics reduces to
+surface operations on $\Sab$ plus a small number of scalar
+multiplications.
+
+Three extensions are deferred to a longer paper. First, the
+relaxation of the cube prescription to an arbitrary connected
+surface patch yields a one-parameter optimisation in which the
+depth integral is encoded by the function $h(u) = (1-e^{-u})/u$.
+The result upper-bounds the cube psSAR and recovers it when the
+patch is square and matched to the cube face. Second, on a sphere
+the relaxed optimisation reduces to a single transcendental
+equation parametrised by a dimensionless ratio of skin depth to
+body radius. Third, complex anatomy with folded tissue surfaces
+within a single cube (the ear pinna and the finger are the
+canonical cases) requires the surface integral form
+\eqref{eq:Pabs-surface} over all illuminated patches inside the
+cube. The closed form is a strict upper bound there.
+
+
+\section{Conclusion}\label{sec:conc}
+
+The peak spatial-average SAR over the IEEE/IEC 10\,g cube reduces,
+above 6\,GHz, to the closed form
+$\langle\mathrm{SAR}\rangle_{\mathrm{cube}}
+= \Sinc T_0 (|k_x| + |k_y| + |k_z|) / (\rhom L)$. The cube's
+axis-aligned geometry, the tilt of the body surface, and the depth
+decay all collapse into the Cauchy projected area of the cube. Any
+compliance pipeline that produces a surface map of $\Sab$ obtains
+the cube quantity from one scalar multiplication per seed point.
+Direct integration on a tilted body half-space and on a hemispheric
+sweep of incidence directions matches the formula to machine
+precision.
+
+
+\bibliographystyle{IEEEtran}
+\bibliography{refs}
+
+\end{document}

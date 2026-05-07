@@ -1,0 +1,513 @@
+\documentclass{IEEEtran}
+\usepackage{cite}
+\usepackage{url}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{gensymb}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{siunitx}
+\usepackage{textcomp}
+\usepackage{lipsum}   
+\usepackage{subfloat}
+\usepackage{subcaption}
+\usepackage{anyfontsize}
+\usepackage{comment}
+\usepackage{glossaries}
+\usepackage{mathtools}
+\usepackage{orcidlink}
+\usepackage{booktabs}
+\hypersetup{colorlinks=true,linkcolor=blue,allcolors=blue}
+\usepackage[switch]{lineno}
+\graphicspath{{./Figures/}}
+
+
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\makeglossaries%
+
+\newacronym{5G}{5G}{fifth}
+\newacronym{6G}{6G}{sixth}
+\newacronym{mmWave}{mmWave}{millimeter wave}
+\newacronym{RF-EMF}{RF-EMF}{Radio-Frequency Electromagnetic Field}
+\newacronym{DMaMIMO}{DMaMIMO}{Distributed Massive Multiple-Input Multiple-Output}
+\newacronym{SOTA}{SOTA}{state of the art}
+\newacronym{UE}{UE}{User Equipment}
+\newacronym{QuaDRiGa}{QuaDRiGa}{QUAsi Deterministic RadIo channel GenerAtor}
+\newacronym{FDTD}{FDTD}{Finite-Difference Time-Domain}
+\newacronym{S_inc}{$S_\mathrm{inc}$}{incident power density}
+\newacronym{S_ab}{$S_\mathrm{ab}$}{surface absorbed power density}
+\newacronym{AoA}{AoA}{Angle of Arrival}
+\newacronym{CIR}{CIR}{Channel Impulse Response}
+\newacronym{ICNIRP}{ICNIRP}{International Commission on Non-Ionizing Radiation Protection}
+\newacronym{MaMIMO}{MaMIMO}{Massive Multiple-Input Multiple-Output}
+\newacronym{CF-MaMIMO}{CF-MaMIMO}{Cell-Free MaMIMO}
+\newacronym{LoD}{LoD}{Level of Detail}
+\newacronym{BS}{BS}{Base Station}
+\newacronym{AP}{AP}{Access Point}
+\newacronym{RS}{RS}{Radio Stripe}
+\newacronym{EMF}{EMF}{Electromagnetic Field}
+\newacronym{APN}{APN}{Access Point Network}
+\newacronym{RT}{RT}{Ray Tracing}
+\newacronym{LBS}{LBS}{Last-Bounce-Scatterer}
+\newacronym{MRT}{MRT}{Maximum Ratio Transmission}
+\newacronym{DoA}{DoA}{Direction of Arrival}
+\newacronym{MIDA}{MIDA}{Multimodal Imaging-Based Detailed Anatomical Model of the Human Head and Neck}
+\newacronym{FWHM}{FWHM}{Full Width at Half Maximum}
+\newacronym{P/P}{P/P}{Prominence-to-Peak}
+\newacronym{GSCM}{GSCM}{Geometry-based Stochastic Channel Model}
+\newacronym{LSP}{LSP}{Large-Scale Parameter}
+\newacronym{NYC}{NYC}{New York City}
+\newacronym{LOS}{LOS}{Line-Of-Sight}
+\newacronym{NLOS}{NLOS}{Non-Line-Of-Sight}
+\newacronym{HPC}{HPC}{High-Performance Cluster}
+\newacronym{LSF}{LSF}{Large-Scale Fading}
+\newacronym{SSF}{SSF}{Small-Scale Fading}
+\newacronym{SNR}{SNR}{Signal-to-Noise Ratio}
+\newacronym{SBR}{SBR}{Shooting and Bouncing Rays}
+
+\newcommand{\refappendix}[1]{\hyperref[#1]{Appendix~\ref*{#1}}}
+\newcommand*{\doi}[1]{\href{http://dx.doi.org/#1}{#1}}
+
+\begin{document}
+
+\title{Hybrid~Ray-Tracing-QuaDRiGa/FDTD Method for Realistic 28 GHz Exposure with 6G CF-MaMIMO in 3D~Outdoor Environments}
+
+\author{Robin~Wydaeghe$^{1,*}$\,\orcidlink{0000-0002-1374-0118}, Sergei~Shikhantsov$^1$\,\orcidlink{0000-0002-0967-6379}, Günter~Vermeeren$^1$\,\orcidlink{0000-0002-5309-3808}, Luc~Martens$^1$\,\orcidlink{0000-0001-9948-9157}, Emmeric~Tanghe$^1$\,\orcidlink{0000-0003-0020-6466} and~Wout~Joseph$^1$\,\orcidlink{0000-0002-8807-0673}.
+\thanks{$^1$Department of Information Technology, Ghent University/IMEC, 9052 Ghent, Belgium.}
+\thanks{$^*$Corresponding~author: Robin~Wydaeghe~(Robin.Wydaeghe@UGent.be).}
+\thanks{This work is an extension of the conference submissions~\cite{hotspots_eucap} and~\cite{QD/FDTD}.}
+}
+
+\markboth
+{Wydaeghe \MakeLowercase{\textit{et al.}} Hybrid Method for CF-MaMIMO exposure at 28~GHz}
+{Wydaeghe \MakeLowercase{\textit{et al.}} Hybrid Method for CF-MaMIMO exposure at 28~GHz}
+
+\maketitle
+
+\begin{abstract}
+Amid worry for 5G and 6G, the layman's question arises: ``how much exposure do I \textit{realistically} experience when I walk down the street?'' Focusing on mmWave radio-frequency electromagnetic field exposure with Distributed Massive Multiple-Input Multiple-Output (DMaMIMO) technology, a new state-of-the-art (SOTA) numerical method is proposed to enable accurate exposure assessment almost anywhere on Earth. Google Earth 3D photorealistic tiles provide high level-of-detail and high-coverage photogrammetry. We semantically classify the meshes with a SOTA deep learning model. The path of a pedestrian is first ray-traced at 28~GHz with either 6G DMaMIMO or realistically deployed 5G antenna systems as transmitter. The large-scale fading parameters are extracted and form the input for the QuaDRiGa tool, which finely models the small-scale fading features of the channel along the full path with an omnidirectional User Equipment (UE) as receiver. The resulting channel is used in a hybridization procedure with a Huygens' box that models the Electromagnetic Fields (EMFs) around the UE. The surface absorbed power density ($S_\mathrm{ab}$) exposure metric is computed along the path using FDTD simulations of a realistic anatomical phantom. A case study in Helsinki finds that the cell-free MaMIMO free-space exposure range is 20~dB more uniform than collocated MaMIMO. A case study in New York City finds that users experience on average a 20~dB higher values in exposure compared to non-users. The small-scale fading \textit{hot-spot} phenomenon in realistic environments is studied in detail, showing on average a 12~dB electric field increase w.r.t. the background and a specific shape with up to 3 sidelobes, which is characterized quantitatively. The $S_\mathrm{ab}$ is less than 1\% of the ICNIRP guidelines during all simulations at realistic Tx powers.
+\end{abstract}
+
+\begin{IEEEkeywords}
+5G, 6G, mmWave, RF-EMF, DMaMIMO, QuaDRiGa, FDTD, Ray Tracing, CF-MaMIMO, ICNIRP, Hot-spot, Exposure Assessment
+\end{IEEEkeywords}
+
+\section{Introduction}
+\label{sec:introduction}
+\IEEEPARstart{T}{he} \gls{5G} and \gls{6G} generation of cellular networks address the ever-increasing demands in internet connectivity~\cite{general5G}. They feature order of magnitude increases in antenna density and frequency, aiming to increase the spectral efficiency and data rates~\cite{increases5G}. Infrastructure for the \gls{5G} sub-6~GHz bands is becoming widespread, with some cellular providers even deploying \gls{mmWave} \glspl{BS}~\cite{deployment}. Among the enabling technologies are (1) \gls{MaMIMO}, antennas composed of a large number of elements~\cite{MIMO}, and~(2) the utilization of higher frequencies, such as \glspl{mmWave}~\cite{mmWave}. For the former, beamforming becomes possible by constructively interfering with each element's wavefront through phase and amplitude modulation. Beamforming actively concentrates the emitted radiation optimally toward the \gls{UE}, in contrast with fourth-generation \glspl{BS} which do not target active users. For the latter, higher bandwidths become available in less crowded frequency bands, such as FR2, which operates around 26-28~GHz. However, these higher frequencies incur greater path loss. One proposed solution is \gls{6G} \gls{DMaMIMO} \glspl{BS}~\cite{Book You}. Elements are distributed, e.g., on a building facade, reducing the path length to the \gls{UE}. \gls{CF-MaMIMO} is a prospective variant of this technology, where a very large number of synchronized \glspl{AP} are distributed throughout a large geographical area~\cite{Ngo2015, Ngo2017}. \glspl{RS} are a prototype implementation of this paradigm~\cite{radiostripes}. \\
+
+A portion of the population is concerned that these new technologies could lead to adverse health effects, sparking deployment stops, protests, and general worry~\cite{worry5G}~\cite{worry5G2}. Although deployed \glspl{BS} always undergo stringent safety testing, research is needed to quantify the realistic \glspl{EMF} from novel antenna systems in relation to the guidelines set by the \gls{ICNIRP}~\cite{ICNIRP}. A new surface-absorbed power density metric $S_\mathrm{ab}$ is introduced for frequencies above 6~GHz in the updated 2020 guidelines. Between the transmission of \glspl{EMF} from the \gls{BS} and the absorption in the human body, numerical dosimetry studies often focus on a specific part of the radio channel, making \textit{worst-case} assumptions about other parts~\cite{worstcase}. There is a gap in the current literature on \textit{realistic} daily exposure from \glspl{EMF} with comprehensive end-to-end simulations. For example, \cite{1, 2} introduce complex workflows to increase the realism of exposure estimation, but ultimately do not relate their findings to absorption values in humans. However, these findings would interest both concerned citizens and policy-makers due to \gls{5G} and \gls{6G}’s novelty, in particular as a result of \gls{MaMIMO} technology. In addition, fully integrated simulations enable \gls{EMF}-aware network planning. Here, the locations and powers of \glspl{BS} in future networks can be realistically tuned before deployment. Finally, they enable the characterization of ``hot-spots”: wavelength-sized regions of increased \gls{EMF} shaped by the precoding of \gls{BS} transmission, the propagation environment, and the user~\cite{hotspots_art, hotspots_eucap, hotspots_bioem}. Besides some general features, the detailed characteristics of hot-spots in realistic environments are not known, especially at \gls{mmWave} frequencies. Therefore, this work comprehensively studies hot-spots in realistic environments at 28~GHz.
+
+To model the exposure from these technologies, the \textit{propagation step} (computing the incident fields in an environment) needs to be interfaced with the \textit{exposure step} (computing the absorbed exposure on a human) in one integrated method. 
+The \gls{MaMIMO} \gls{BS} estimates the channel between receiver (Rx) and transmitter (Tx) using pilot waves. The transmitted symbols are then precoded in a process known as beamforming. For \gls{LOS} transmission scenarios, this causes (a) the direction of maximum gain to be aligned toward the Rx and (b) the individual elements' phases of the Tx to align causing constructive interference at the exact location of the \gls{UE}'s antenna~\cite{beamforming}. When several beams impinge on the \gls{UE}, either from multipath components or from a \gls{DMaMIMO} system, a wavelength-sized region of increased \gls{EMF} is formed at the location of the \gls{UE}. Under \gls{MRT} precoding, the \gls{SNR} at Rx increases without bounds as function of the number of antenna elements and channel diversity~\cite{MIMO}. The maximum hot-spot E-field also increases with the received signal, but the relationship is unclear. The objective of this study is to study the effects of these hot-spots from \gls{MaMIMO} \glspl{BS} on human \gls{RF-EMF} exposure.
+
+To inform the general public and policy-makers of realistic \gls{5G} \gls{EMF}-levels, and to enable \gls{EMF}-aware network planning, integrated end-to-end methods should be able to map exposure almost anywhere in the world. 
+Google recently introduced an API for their photorealistic meshes~\cite{google}. The digital twin of the world provides environments with full 3D \gls{LoD}, instead of 2D or 2.5D \gls{LoD}, required for accurate \gls{mmWave} radio channel modeling~\cite{He, flatnotenough}. Conversely, the meshes are textured but not semantically labeled by Google. Recent advances in deep learning enable the semantic classification of these meshes to be performed with an accuracy of 93\%~\cite{SUMS}.
+
+Hybrid \gls{RT}/\gls{FDTD} is an example of an integrated method~\cite{RT/FDTD1}. The method was used to study hot-spots at 3.5~GHz~\cite{hotspots_art}. However, the first \gls{RT} step is not appropriate to study exposure with high coverage in many different environments because \gls{RT} is computationally intensive. Moreover, comprehensive data on the dielectric parameters and scattering of the materials is limited, especially at \gls{mmWave} frequencies~\cite{EMparamishard}. A new hybrid \gls{QuaDRiGa}/\gls{FDTD} method was proposed in~\cite{QD/FDTD} based on the \gls{SOTA} \gls{QuaDRiGa}~\cite{Quadriga}. \gls{QuaDRiGa} renders the computations more efficient. However, the method is not suitable for site-specific simulations with high accuracy, as the \gls{LSF} does not align deterministically with the environment~\cite{hotspots_eucap}. The computational requirements scale with the fourth power of frequency. Hence, there is a need to rethink the hybridization and exposure steps to obtain the exposure metrics efficiently.
+
+To the best knowledge of the authors, this work is novel in the following ways:
+\begin{enumerate}
+    \item The first end-to-end method for exposure assessment at \glspl{mmWave}. \Gls{RT} and \gls{QuaDRiGa} simulations are leveraged efficiently, with a Huygens' box to interface the incident \glspl{EMF} to \gls{FDTD} simulations.
+    \item Premier application of high-accuracy high-coverage photogrammetry in a scientific publication, in particular to compute the realistic exposure along any path. For the first time, a semantic classifier is applied to these meshes.
+    \item Comparison of collocated and cell-free \gls{MaMIMO} in both user and non-user scenarios at 28~GHz. 
+    \item Characterization of realistic hot-spots at 28~GHz in realistic 3D~environments. Their influence on the exposure metrics, the \gls{S_inc} and new \gls{S_ab} for frequencies above 6~GHz, is examined. 
+\end{enumerate} 
+
+\section{Methods}
+The integrated end-to-end method begins with a realistic walk of a user holding a smartphone and ends with the evaluation of the exposure metrics along this walk. The method chains 4 main steps in one pipeline. First, the configuration step, where the Rx, Tx, and environment are defined. Second, the propagation step, where the channel at the \gls{UE} of the user is computed. Third, the hybridization step, where the \glspl{EMF} impinging on the human body are computed. Fourth, the exposure step, where an FDTD and post-processing step returns the exposure metric. Fig. \ref{fig:nyc_config}(a) illustrates the configuration and propagation steps, and Fig. \ref{fig:nyc_config}(b) illustrates the hybdrization and exposure steps.
+\begin{figure}[h!]
+    \centering
+    \begin{subfigure}[b]{\linewidth}
+        \centering
+        \input{Figures/nyc.eps_tex}
+        \caption{A walk (blue dots) in the WTC of \gls{NYC} of a human (inset) is shown with the \glspl{AP} of a \gls{CF-MaMIMO} system (red dots). The \gls{LOS}/\gls{NLOS} distinction from one specific \gls{AP} is shown (green/red lines). A 3D realistic mesh from Google's 3D Tiles API~\cite{NYCenv} is retrieved to perform RT at 28~GHz on a coarse path.}
+    \end{subfigure}
+    \begin{subfigure}[b]{\linewidth}
+        \centering
+        \input{Figures/hybridization_and_exposure.eps_tex}
+        \caption{A specific location is shown along the path. The blue dots denote the coarse points where RT is performed, from which LSPs are extracted. These form the input for the QuaDRiGa computations for the points in the fine path. The \glspl{EMF} on a Huygens' are evaluated. These form the input for an FDTD simulation on the ear of the user from which the $S_\mathrm{ab}$ exposure metric is extracted.}
+    \end{subfigure}
+    \caption{Illustration of the (a) configuration and propagation steps, and the (b) hybridization and exposure steps.}
+    \label{fig:nyc_config}
+\end{figure} 
+
+\subsection{Configuration step}
+
+A flowchart of the configuration step is detailed in Fig. \ref{fig:flowchart_config}. The only input is the start and destination addresses that a pedestrian traverses. This outputs a 2D path and region around it. The 2D path is processed to a sampled set of 3D points along the path in the environment that are omnidirectional antennas, representing the Rx. The region defines the environment, which is processed for use in \gls{RT} simulations. The region also defines the locations of MIMO \glspl{BS}, either collocated when studying \gls{5G} or cell-free when studying \gls{6G}.
+
+\begin{figure}[h]
+    \centering
+    \def\svgwidth{\columnwidth}
+    \input{Figures/configuration_step.pdf_tex}
+    \caption{Flowchart of the configuration step.}
+    \label{fig:flowchart_config}
+\end{figure}
+
+\textit{Processed and classified environments:} High-accuracy environments are essential for accurate ray-tracing simulations. In particular for \gls{mmWave} frequencies, it is not sufficient to model building facades as flat surfaces~\cite{flatnotenough} or street canyons without cars or lampposts~\cite{lampposts}. Foliage is rarely modeled with individual trees. The wavelength at 28~GHz is 10.7~mm. Therefore, centimeter-sized features significantly affect the multipath diversity of the channel. A~greater number of NLOS paths can be utilized to beamform the signal toward the \gls{UE}. The API for photorealistic 3D tiles~\cite{google} is applicable to any location 3D-mapped by Google~Earth. The reference in~\cite{GoogleEarth} provides the first examination of its accuracy compared to established methods. The mesh includes vehicles, street furniture, individual trees and building facade details, significantly improving the realism of the channel with clutter.
+
+The input for the entire pipeline follows from the origin and destination of the user's path. First, the quality of the mesh returned from the API is improved. Then, the mesh is split into 6 classes using a deep learning model~\cite{SUMS}. Finally, the mesh is further simplified to be suitable for ray-tracing, and each class is assigned one suitable material. This three-step method is explained in more detail in the Suppl. Inf. 
+
+\textit{Receiver path:} The channel and exposure are computed along a path a user takes. The user's path is composed of series of waypoints forming the fastest path between the origin and destination addresses, as determined by the Google Maps Directions API~\cite{DirectionsAPI}. These waypoints are then subsampled linearly. The Google API causes the user to walk realistic paths, as the waypoints are on walkable routes, such as sidewalks. To eliminate discontinuous changes in direction of travel, the user is modeled to always walk toward the point that is 2~m ahead on the straight path, subsampling the path every wavelength. The final path can clip with the environment, in which case the points are discarded. The elevation of the points follows the terrain. 1.5~m is added to this elevation to take the average height of the \gls{UE} into account. The user walks at a constant speed of 1.4~m/s. Each point along the path is timestamped in order to average fields along time.
+
+\textit{Antenna locations in a 5G network:} The realistic locations of 5G \glspl{BS} are not available on a global scale. One possible solution is open services that aggregate \gls{BS} locations based on GPS location and signal strength through crowd-sourcing. For this work, the OpenCellID API~\cite{OpenCellID} provides the location of real cellular \glspl{BS} with high coverage. Locations are determined using crowd-sourced data. Therefore, the accuracy depends on the number of measurements and the propagation model used to triangulate \glspl{BS} positions. Only the antenna density is representative of the physical twin. This is illustrated in Fig. \ref{fig:nyc_config}(a) with red dots.
+
+\textit{Antenna locations in a 6G network:} A \gls{6G} \gls{CF-MaMIMO} \gls{APN} is a system that comprises a very large number of
+distributed \glspl{AP} which simultaneously serve a much smaller number of users over a wide area~\cite{Ngo2015, Ngo2017}. Here, \glspl{AP} are placed on the facades of buildings. First, building mesh faces whose normal have an azimuthal angle between 70 and 90 degrees and with heights 3 meters above the ground, are selected. Then, uniform Poisson disc sampling with a minimum distance of 10~m is performed using the efficient Bridson’s algorithm~\cite{Bridson}. 1.5~m above the nearest ground mesh, vertically-polarized omnidirectional antennas model the \gls{UE} (e.g. a smartphone) being held by the pedestrian. 
+
+\subsection{Propagation step}
+A flowchart of the propagation step is detailed in Fig. \ref{fig:flowchart_prop}. The upper box refers to the output of the configuration step in Fig.~\ref{fig:flowchart_config}. In the central box, the propagation step combines \gls{RT} and \gls{QuaDRiGa} simulations for the \gls{LSF} and \gls{SSF} modelling of the channel, respectively. These are post-processed and form the input for the hybridization step shown on the bottom right (Fig.~\ref{fig:hybridization_step}).
+\begin{figure}[h]
+    \centering
+    \input{Figures/propagation_step.pdf_tex}
+    \caption{Flowchart of the propagation step.}
+    \label{fig:flowchart_prop}
+\end{figure}
+
+In \textbf{summary}, from the configuration step, the Rxs along the path, the environment and the Tx's antenna elements are loaded in. This forms the input for \gls{RT} simulations evaluated for all Rxs and Txs for every 1~m along the path. The output is the \gls{LSF} channel and the 7 \glspl{LSP} for each point along the coarse path. Using \gls{QuaDRiGa}, the path is split into segments. Within each segment, the \glspl{LSP} are statistically aggregated to form the input for the \gls{QuaDRiGa} computation along the fine path. The output is the \gls{SSF} channel and the \glspl{LBS}. In a post-processing step, the former is combined with the \gls{LSF} channel to obtain the \textit{multipath matrix}, with entries for 4 dimensions: receivers $i$, antenna elements $j$, \glspl{LBS} $l$ and distance snapshots $s$. Precoding is applied to the transmitted symbols. A \textit{precoded multipath matrix} and the \glspl{LBS} form the input for the hybridization step.
+
+The propagation step involves simulating the wireless channel based on the configuration, defining all Txs, Rxs and the 3D environment between them. Channel models can be broadly classified into deterministic and stochastic models. Based on the survey in~\cite{channelgensurver}, the \gls{SOTA} among these channel models are selected.
+
+\textit{Ray-tracing:} \Gls{RT} is a deterministic channel modeling technique. In \gls{SBR} \gls{RT}, rays shoot out from the Txs, propagate and scatter through the environment, and are collected at the Rxs. The advantage of \gls{RT} is its potential to exactly model the underlying electromagnetic field problem in the high frequency limit, especially suitable for 5G and 6G \gls{mmWave} channel models. Therefore, \gls{RT} enables site-specific simulations that can match the corresponding measurements~\cite{RTmatchmeasurement}. An important disadvantage of the method is the need for an accurate description of \gls{EMF} scattering properties for different materials in the scene~\cite{EMparamishard}. The data on this remain sparse in the literature. Moreover, the \gls{LoD} for the meshes must be in the order of the wavelength~\cite{flatnotenough}. This requires a fine semantically classified environment at \glspl{mmWave} frequencies. All these factors cause the accuracy of the \gls{CIR} to be insufficient for large scale \gls{RT} simulations. \gls{RT} is also more computationally demanding compared to stochastic or map-based channel models. Derived parameters such as the \glspl{LSP} and their correlation matrix agree more robustly with measurements than the \gls{CIR}. \gls{RT} simulations are done every meter along the path. 
+
+The commercial solver Wireless Insite~\cite{WI} is employed to perform the \gls{RT} simulations. The Tx, Rx, and semantically classified environments are imported into the software. The six classes of materials are assigned homogeneous constitutive parameters (see Table S1 in the Suppl. Inf.). The \gls{SBR} method is employed with 5 reflections, 1 diffraction, and 0 transmissions. The maximum angular separation between rays at the transmitter is 0.25°. The radius of the collection sphere at the receiver is 20 cm. Diffuse scattering was not modeled. For each combination of $i$, $j$ and $s$, $N^\mathrm{rays}_{i,j,s}$ rays are retained if their power is at least -250 dBm at the receiver. The result is cast in a \textit{multipath matrix} $\mathbf{M}^\mathrm{RT}$ with dimensions $N \times M \times \left( \max N_{i,j,s}^\mathrm{rays} \right) \times N_\mathrm{snapshot}^\mathrm{RT}$.
+
+\textit{QuaDRiGa:} The \gls{QuaDRiGa} tool is used to generate realistic quasi-deterministic impulse responses from each \gls{AP} to each receiver over time. \gls{QuaDRiGa} is a quasi-deterministic channel model, but is classified as \gls{GSCM} with a large number of features~\cite{channelgensurver}. 
+Configuration files containing the stochastic information from measurement campaigns in \gls{LOS}/\gls{NLOS} urban/suburban environments are available in the software. Based on these, a spatially-consistent stochastic parameter map of the \glspl{LSP} is generated within each channel scenario~\cite{Quadriga}. Within segments along the path, stationary scattering clusters are generated around the receiver with properties that correspond to the parameter map. With the positions of the clusters known, a deterministic channel is obtained along the path of a moving user. This open-source model and its previous iterations have been validated for over two decades and comply with the 3GPP guidelines~\cite{QDcomplies3GPP}. This tool was chosen as a component of our numerical pipeline for three reasons. First, \gls{QuaDRiGa} provides realistic channels because the statistical parameters that generate parameter maps are derived from measurement campaigns~\cite{QDmeasurements, Quadriga}. In addition, version 2.0 features spatial consistency in the channels, which is important when modeling the resulting exposure along a path~\cite{spatialconsistency, QDv2}. Finally, the channel generator is computationally more efficient than deterministic methods to model the large number of channels in \gls{CF-MaMIMO} scenarios.
+
+A number of \gls{LBS} clusters, each with a number of subclusters, are generated around the user. The birth and death of clusters together with interpolations of their positions and powers also assure spatial consistency in the transitions between channel scenarios. Therefore, the hot-spot shape and exposure metrics consistently conform to the path and environment variations. Subclusters improve the realism of the channel clutter effect, by representing sub-resolution objects that accurately reproduce the \glspl{LSP} from measurements. Computing the fields emitted from each subcluster is too computationally expensive. Instead, at most $N^\mathrm{subclusters}_{i,j,s}$ beams with the greatest power are selected for a combined channel. $N^\mathrm{subclusters}_{i,j,s}$ is chosen such that 99\% of the power is accounted for in selected subclusters. Unselected subclusters have their total power (1\%) spread uniformly over the selected ones. Multi-user scenarios can be implemented by defining an origin and destination address for each receiver and repeating the above steps. The \gls{QuaDRiGa} software is modified to yield a multipath matrix $\textbf{M}^\mathrm{QD}$ with dimensions $N \times M \times \left( \max N_{i,j,s}^\mathrm{subclusters} \right) \times N_\mathrm{snapshot}^\mathrm{QD}$, and the positions of the subclusters at each snapshot. 
+
+Hybrid \gls{QuaDRiGa}/\gls{FDTD} that is not based on \gls{RT} uses the configuration files of the mmMAGIC model, valid for frequencies above 6~GHz, a \gls{UE} height of 1.5 meters and a Tx height of 6 to 10 meters~\cite{mmMAGIC}. For each point in the path, we manually assign a channel scenario based on the type of environment, e.g., dense urban, suburban, or rural. For each Tx, if the \gls{LOS} connection is obstructed, the channel scenario is classified as \gls{NLOS} and vice versa.
+
+\textit{Ray-tracing based QuaDRiGa:} Hybrid \gls{RT}/\gls{FDTD} was used for the first time at mmWaves in~\cite{RT/FDTD1}. This enabled a realistic, site-specific evaluation of the exposure metrics on humans in a factory-of-the-future. Hybrid \gls{RT}/\gls{FDTD} is computationally challenging because the full \glspl{EMF} for many \glspl{DoA} need to be loaded to memory~\cite{RT/FDTD2}. This was alleviated by introducing a Huygens' box as interface and applied to a small region in \gls{NYC} in~\cite{hotspots_eucap}. Despite improvements in efficiency, \gls{RT} remains computationally demanding for environments larger than 100~m$^2$.
+
+\gls{QuaDRiGa} was hybridized for the first time with the \gls{FDTD} method in~\cite{QD/FDTD}. The propagation step could then be computed faster and with more \glspl{AP} than with hybrid \gls{RT}/\gls{FDTD}. This enables the computation of exposure on the city scale, with an order of magnitude more APs and users. However, results can only be interpreted statistically over a large number of samples. Due to the stochastic nature of \glspl{GSCM}, the site-specific geometry is lost with the exception of environment classification into \gls{LOS}/\gls{NLOS} and urban/sub-urban/rural.
+
+This paper introduces for the first time a new hybrid propagation model: \textit{\gls{RT}-based \gls{QuaDRiGa}}. Falling under the map-based deterministic channel classification~\cite{channelgensurver}, this model represents the \gls{SOTA} in the wireless channel modeling literature by combining the benefits of both deterministic and stochastic models. Previous research has focused on substituting \gls{RT} with \gls{QuaDRiGa} using appropriate \glspl{LSP}~\cite{RT-based-QD}. This work presents a method to retain the physical accuracy of \gls{RT} while leveraging the speed of \gls{QuaDRiGa}. Points every 1 meter along the path of each user are chosen to evaluate the \gls{LSF} variations in the environment. \gls{RT} simulations compute the 8 \glspl{LSP} used in \gls{QuaDRiGa} \cite{QDv2} for these points. \gls{QuaDRiGa} splits the path for each receiver in segments. The length of segments is drawn from a normal distribution with a mean of 40~m, a standard deviation of 5~m, and minimum/maximum of 30/70~m, respectively~\cite{mmMAGIC}. A new segment is also created when the receiver transitions between the \gls{LOS} and \gls{NLOS} states. Within these segments, the 7 \glspl{LSP} (shadow fading is not considered) are aggregated statistically by computing the log-normal mean, standard deviation, decorrelation distances and inter-parameter correlation matrices. These form the stochastic basis for the \gls{QuaDRiGa} method. The data is collected in configuration files. These are generally used to characterize different radio environments classified by urbanicity. Then, \gls{QuaDRiGa} computes the channel along the full path, capturing the \gls{SSF} variations. For each Rx/Tx link, the \gls{LSF} and \gls{SSF} parts are combined. 
+
+Now, it is possible to construct the combined multipath matrix $\mathbf{M} \in \mathbb{C}^{N\times M \times L \times S}$ with $L = \max N_{i,j,s}^\mathrm{subclusters}$ and $S = N^\mathrm{QD}_\mathrm{snapshot}$. In general, the corresponding channel matrix $\textbf{H}_s$ for snapshot $s$ is the sum over either all subclusters in \gls{QuaDRiGa} or all collected rays in \gls{RT} in a link between receiver $i$ and transmitter $j$:
+\begin{equation}
+\label{eq:c_to_g}
+\textbf{H} = \sum_{l} \textbf{M}_{l} \, .
+\end{equation}
+$\mathbf{H}^\mathrm{QD}$ and $\mathbf{H}^\mathrm{RT}$ are interpolated and combined to form $\mathbf{H}^\mathrm{RT/QD}$ (see Suppl. Inf. for the details). 
+The final multipath matrix is obtained by:
+\begin{equation}
+\label{eq:final_channel}
+\mathbf{M}_l = \mathbf{M}_l^\mathrm{QD} \odot |  \mathbf{H}^\mathrm{RT/QD} | \oslash | \mathbf{H}^\mathrm{QD} | \, ,
+\end{equation}
+where $\odot$ and $\oslash$ are the Hadamard element-wise multiplication and division operators. Using this rescaling, the more accurate amplitude information from \gls{RT} is used, but the precise phase information from \gls{QuaDRiGa} is retained. Note that the \gls{AoA} information, including in \gls{NLOS} conditions, still originates from the \gls{QuaDRiGa} model.
+
+\textit{Precoding:} When computing the downlink exposure from a \gls{CF-MaMIMO} \gls{6G} system,~\cite{QD/FDTD} assumed that every \gls{AP} holds one antenna. However, these systems integrate multiple antenna elements within each \gls{AP}. This is the case, e.g., in \glspl{RS}. Due to the small wavelength at mid to upper mmWave bands, up to sixteen elements fit within the thin stripes, as is envisioned for \gls{6G}. Based on this, this paper presents results for a large number of \glspl{AP} of $4\times 4$ patch antennas at 28~GHz, distributed in the environment. 
+We consider a noiseless channel where each antenna element radiates with phases and amplitudes $\boldsymbol{x} \in \mathbb{C}^{M\times 1}$ and each \gls{UE} receives a signal $\boldsymbol{y} \in \mathbb{C}^{N\times 1}$
+\begin{equation}
+\label{eq:y_Hx}
+    \boldsymbol{y} = \mathbf{H}\boldsymbol{x} \, .
+\end{equation}
+As precoding is performed similarly for each snapshot $s$, this index is omitted for clarity. Precoding is performed with \gls{MRT} normalized to a power $P$ using vector normalization. The precoding matrix $\mathbf{W}$ is~\cite{vectornorm}
+\begin{equation}
+\label{eq:precoding_defintion}
+\mathbf{W} = \sqrt{\frac{P}{N}} \left[ \frac{\mathbf{f}_1}{\|\mathbf{f}_1\|} \, \cdots \, \frac{\mathbf{f}_N}{\|\mathbf{f}_N\|}\right] \, ,
+\end{equation}
+where $\mathbf{f}_i$ are column vectors of the hermitian conjugate of the channel. As the antenna elements within one \gls{AP} cannot cooperate with antenna elements from other \glspl{AP}, the precoding is performed in two steps. 
+
+In the first step, the powers and phases of each elements in the $4 \times 4$ arrays are tuned to beamform toward the user. For an \gls{AP} $J = 1, \dots ,\mathcal{M}$ that contains the antenna elements $j$ with indices $\mathcal{J}(J)$, the entries of its associated precoding matrix are 
+\begin{equation}
+\label{eq:prec1}
+   w_{j,i}^J = 
+   \begin{dcases}
+       \frac{h_{i,j}^*}{\sqrt{N\sum_j | h_{i,j} |^2}} \, & \forall \, j \in \mathcal{J}(J) \\
+       0 \, & \forall \, j \not\in \mathcal{J}(J)
+   \end{dcases}
+    \, ,
+\end{equation}
+where $P = \SI{1}{W}$. The phases and amplitudes of the antenna elements are independently added for each \gls{AP}
+\begin{equation}
+\label{eq:x_hat_sum}
+    \widehat{\boldsymbol{x}} = \sum_J \widehat{\boldsymbol{x}}^J = \sum_J\sum_i \mathbf{w}^J_{i} s_i \, ,
+\end{equation}
+where $\boldsymbol{s} \in \mathbb{C}^{N\times1}$ is the transmitted symbol. However, the phases and amplitudes are not final, as denoted by a hat, because there is no coordination between the \glspl{AP} yet. The received signal from \gls{AP} $J$ is
+\begin{equation}
+\label{eq:y_hat_J}
+    \widehat{\boldsymbol{y}}^J = \mathbf{H}\widehat{\boldsymbol{x}}^J \, ,
+\end{equation}
+or for each subcluster
+\begin{equation}
+\label{eq:y_hat_J_l}
+    \widehat{\boldsymbol{y}}^J_l = \mathbf{M}\widehat{\boldsymbol{x}}^J \, .
+\end{equation}
+We can now define an intermediary multipath matrix $\widehat{\mathbf{M}}~\in~\mathbb{C}^{N\times \mathcal{M} \times L \times S}$ which embeds these phases and amplitudes in its matrix elements:
+\begin{equation}
+\label{eq:M_hat}
+    \widehat{M}_{i,J,l,s} = \widehat{y}_{i,J,l,s} \, .
+\end{equation}
+
+In the second step, the phases and amplitudes of \glspl{AP} as a whole are tuned to beamform toward the user. The precoding matrix $\mathbf{W}$ of the entire \gls{APN} is defined as in \eqref{eq:precoding_defintion} but with 
+\begin{equation}
+\label{eq:prec2}
+\mathbf{F} = \widehat{\mathbf{H}}^H \, ,
+\end{equation}
+where $\widehat{H}$ is the intermediary channel computed with \eqref{eq:c_to_g}. All exposure results are linear w.r.t. to the total power $P$ allotted to the network in \eqref{eq:precoding_defintion}. The final phases and amplitudes of all antenna elements in the \gls{APN} are
+\begin{equation}
+\label{eq:x_final}
+    \boldsymbol{x} = \sum_i \mathbf{w}_i s_i \, .
+\end{equation}
+The final \textit{precoded multipath matrix} similarly embeds the transmitters' phases and amplitudes with symbol $\boldsymbol{s}$ such that its entries are the received signal at the \glspl{UE}: 
+\begin{equation}
+\label{eq:m_precoded}
+    m_{i,j,l,s}^\mathrm{precoded} = \hat{m}_{i,j,l,s} \cdot x_{j,s} \, .
+\end{equation}
+The precoded case will be compared with the \textit{unprecoded} case. Here, $h_{i,j}$ and $f_{i,j}$ in \eqref{eq:prec1} and \eqref{eq:prec2} are set to $\exp{j\phi_{i,j}}$ where $\phi_{i,j}$ are random numbers between $[0,2\pi)$. As the precoding acts on a completely different channel, the phases and amplitudes $x^\mathrm{unprecoded}$ will no longer cause beamforming toward the user. The final unprecoded multipath matrix is
+\begin{equation}
+\label{eq:m_unprecoded}
+    m_{i,j,l,s}^\mathrm{unprecoded} = \hat{m}_{i,j,l,s} \cdot x_{j,s}^\mathrm{unprecoded} \, ,
+\end{equation}
+where $x_{j,s}^\mathrm{unprecoded}$ arises from a normalized precoding matrix. \gls{MRT} precoding cannot place a null on a non-user. A non-user can however experience increased exposure when entering the \gls{LSF} hot-spot from an active user. Hence, the case of unprecoded transmission, where beamforming is disabled, is comparable to a non-user scenario when aggregated over many samples.
+
+\subsection{Hybridization step}
+\label{sec:hybridization}
+
+\begin{figure}[h]
+    \centering
+    \input{Figures/hybridization_step.pdf_tex}
+    \caption{Overview of vectors related to the hybridization step.}
+    \label{fig:hybridization_step}
+\end{figure}
+The geometry of the hybridization step is shown in Fig.~\ref{fig:hybridization_step}. A global coordinate system $O$ defines the positions of an antenna element $j$ in a MIMO \gls{BS} (Tx), a QuaDRiGa \gls{LBS} $l$ at time-snapshot $s$, the antenna of the \gls{UE} held by user $i$ at time snapshot $s$, and center of the evaluated exposure region (Ear) at time snapshot $s$. This center defines a new moving coordinate system $O'$, parallel to $O$ and translated by $\mathbf{r}_\mathrm{ear}$. The final electric field $E_{i,j,l,s}(x,y,z)$ is defined in $O'$ and emanates from the \gls{LBS} (one of the scatterers in a QuaDRiGa cluster). The indices $i$, $j$, $l$, $s$ form a combination of Rx, Tx (element), subcluster \gls{LBS} and distance snapshot, respectively, for which the electric field is computed. The Huygens' box function within the numerical pipeline is illustrated in Fig. \ref{fig:nyc_config}(b).  A Huygens' surface is used as interface with the exposure step, requiring saving the fields only on the surface of the box~\cite{HuygensBox}. 
+
+First, we describe the approach in free space. Section \ref{sec:exposure} will consider the case where the channel is altered because the impinging fields are scattered by the anatomical phantom. For a vertically-polarized omnidirectional receiving antenna, the channel in \eqref{eq:final_channel} can be related to the electric field at the \gls{UE}.
+\begin{equation}
+\label{eq:channel}
+m_{i,j,l,s}^\mathrm{precoded}=\frac{1}{A_F}\mathbf{E}_{i,j,l,s}\left(-\mathbf{T}\right)\cdot\mathbf{e}_\theta\left(\theta_{i,l,s},\phi_{i,l,s}\right) \, , 
+\end{equation}
+where $A_F$ is the antenna factor in~m$^{-1}$ of the omnidirectional antenna, $\theta$ and $\phi$ angles are the spherical coordinates of the impinging electric field $\mathbf{E}_{i,j,l,s}$ on the \gls{UE} and $\mathbf{e}_\theta$ is the unit vector along $\theta$. This expression holds true at the antenna of the \gls{UE}. The total fields are now computed on the bounding box around the location of the user’s right ear. Their coordinates $\mathbf{r}\left(x,y,z\right)$ are with respect to a new origin $O'$ at $\mathbf{r}_{\mathrm{ear}}=\mathbf{T}+\mathbf{r}_i$, where $\mathbf{T}$ is the translation between the \gls{UE}’s antenna and the ear. In $O'$, the electric field's spatial component $\xi$ in the far-field from a subcluster to $\mathbf{r}\left(x,y,z\right)$ behaves as
+\begin{equation}
+\label{eq:SEW}
+\xi(x,y,z) = A\frac{\exp\left(jk \left|\mathbf{d}_{i,l,s}+\mathbf{T}+\mathbf{r}\left(x,y,z\right)\right|\right)}{\left|\mathbf{d}_{i,l,s}+\mathbf{T}+\mathbf{r}\left(x,y,z\right)\right|} \, ,
+\end{equation}
+where $\mathbf{d}_{i,l,s} = \mathbf{r}_{i,s}-\mathbf{r}_{l,s}$ and $A$ is its amplitude, normalized to unity at the \gls{UE}
+\begin{equation}
+\label{eq:A_normalized}
+A = \exp\left(-jk\left|\mathbf{d}_{i,l,s}\right| \right) \left|\mathbf{d}_{i,l,s}\right| \, .
+\end{equation}
+An expression can be constructed for the electric field around the \gls{UE}:
+\begin{equation}
+\label{eq:E-field}
+\mathbf{E}_{i,j,l,s}\left(x,y,z\right)=A_F m_{i,j,l,s}^\mathrm{precoded} \xi(x,y,z)\mathbf{e}_\theta\left(\theta_{i,l,s},\phi_{i,l,s}\right) \, . 
+\end{equation}
+By summing over all Txs and subclusters, the total \glspl{EMF} are obtained
+\begin{equation}
+\label{eq:total_EMF}
+\begin{aligned}
+\mathbf{E}_{i, s}&=\sum_{j, l} \mathbf{E}_{i, j, l, s} \, ,\\
+\mathbf{H}_{i, s}&=\sum_{j, l} \frac{1}{Z_0} \frac{\mathbf{d}_{i, l, s}}{\left|\mathbf{d}_{i, l, s}\right|} \times \mathbf{E}_{i, j, l, s} \, .
+\end{aligned}
+\end{equation}
+These fields are evaluated on the sides of the Huygens' box on the same Yee-grid as the FDTD simulation. Hence, the computational and memory requirements scale quadratically with frequency instead of cubically. 
+
+\subsection{Exposure step}
+\label{sec:exposure}
+\textit{Absorbed power density:} The function of the exposure simulation within the numerical pipeline is illustrated in Fig. \ref{fig:nyc_config}(b). \gls{MRT} precoding of the symbols causes the transmitted beam's direction of maximal gain to be aligned toward $\mathbf{r}_{i,s}$, in particular for \gls{LOS} and collocated antennas~\cite{RT/FDTD2}. This is a \textit{large-scale hot-spot}, which can induce higher fields to nearby non-users. In addition, alignment of the amplitudes and phases from different beams causes an additional hot-spot gain at $\mathbf{r}_{i,s}$ if $\mathbf{r} = -\mathbf{T}$. This is the \textit{small-scale hot-spot} and is studied in detail in this work. As reference quantities are determined in free-space receiving scenarios, the time-averaged incoming power density $S_\mathrm{inc}$ is readily available. However, to compute the basic quantities, an anatomical phantom is included in the FDTD simulations, which invalidates \eqref{eq:channel} and eliminates the small-scale hot-spot effect. This user-induced coupling is included here based on~\cite{RT/FDTD_coupling}, but with the rays substituted by \gls{QuaDRiGa} subclusters. The FDTD simulations themselves are performed similarly as in ~\cite{RT/FDTD2}, but with efficiency and accuracy improvements. Both the details for the user-coupling and the FDTD simulations can be found in the Suppl. Inf. The result is the absorbed power density along the path.
+
+\textit{Hot-spot characterization:} In~\cite{hotspots_eucap}, the shape of a hot-spot was studied in an experimental setup. The hot-spot features a large-scale hot-spot around the receiver, a small-scale hot-spot as a result of the interference pattern, prominent sidelobes and spherical wavefronts. Similar results are seen at 3.5~GHz~\cite{hotspots_art}. The aforementioned study validated the hybridization part of our tool because the experiment matched the simulation well. 
+
+Two methods to define the location of hot-spots are examined. First, exactly where the \gls{UE} is located and second, where the fields are highest in a small region around the \gls{UE}. At this location, three slices are taken normal to the $x$-, $y$- and $z$-planes. A peak-finding algorithm detects whether a hot-spot is present along each axis. We introduce three properties to characterize the hot-spots:
+\begin{enumerate}
+    \item The \textit{dimensionality} of a hot-spot is the number of axes where a hot-spot was found. 
+    \item The \gls{FWHM} is the average of all detected \glspl{FWHM}. 
+    \item The \gls{P/P} ratio provides a representation of the hot-spot’s dynamic range, where a ratio of 1 is a peak flanked by fields equaling 0. 
+\end{enumerate}
+
+Two methods are proposed to average exposure metrics over time. In the first method, the exposure metrics $S_\mathrm{inc}$ and $S_\mathrm{ab}$ are considered for each time step in the walk. The average exposure metrics are then the average of all these over time. This is coined \textit{exposure-wise} averaging, because the concept of ``exposure at each time step” is correctly interpreted. These values correspond to the ICNIRP time-averaged exposure metrics for intervals of 6 minutes. In the second method, the average of the electric and magnetic fields over time is considered first. The average exposure metrics $S_\mathrm{inc}$ and $S_\mathrm{ab}$ are then computed for these average \glspl{EMF}. This is coined \textit{propagation-wise} averaging, because the concept of ``average propagated \glspl{EMF}” is correctly interpreted. These values provide insights into how interference typically forms the shape of a hot-spot. Thus, the equations for incident power density are the following:
+\begin{equation}
+\label{eq:exp_prop_wise}
+\begin{aligned}
+S_{\text{inc,exposure-wise}}(\mathbf{r}) &= \langle | \mathbf{E}(\mathbf{r}) \times \mathbf{H}(\mathbf{r}) | \rangle \, , \\
+S_{\text{inc,propagation-wise}}(\mathbf{r}) &= |\langle\mathbf{E}(\mathbf{r})\rangle \times \langle\mathbf{H}(\mathbf{r})\rangle| \, ,
+\end{aligned}
+\end{equation}
+where $\langle \cdot \rangle$ is the average of a quantity with respect to time. Analogous formulas apply for $S_\mathrm{ab}$.
+
+\textit{Exposure limits:} In order to prevent excessiving heating, the ICNIRP guidelines~\cite{ICNIRP} define limits for the reference and basic quantities. For the general public at 28~GHz, and for exposure durations longer than 6 minutes, the basic restriction is determined by \gls{S_ab} averaged over 4 cm$^2$ and 30 minutes, which should not exceed 20 W/m$^2$. Likewise, the reference level for \gls{S_inc} is 10 W/m$^2$. It should be noted that far-field exposure including those from \gls{MaMIMO} technology will typically induce highly non-uniform exposure patterns within intervals shorter than 6 minutes. In this case, the relevant exposure metric is integrated over time and compared with the brief local exposure limits~\cite{ICNIRP}. However, these limits will always be less stringent than the corresponding 30-minute time-averaged limits. Eventhough the results examine exposure over a walk of less than 6 miutes, we shall compare the instantaneous exposure metrics with the 30-minute limits for reference and basic quantities as it constitutes a worst-case scenario, and henceforth refer to them as the ``exposure limits".
+
+Moreover, compliance with the reference levels is assumed to imply compliance with the basic restrictions. The relevant literature uses computational methods to assert this point under simplified and worst-case incidence assumptions. Therefore, it is sufficient to demonstrate compliance with only the reference levels. However, our tool computes both reference and basic quantities, providing a unique insight into the validity of this assumption under realistic incidence conditions, offering the possibility to relax or tighten the reference levels based on its conclusions.
+
+\section{Results and Discussion}
+Two case studies are examined and the ray-tracing component is only introduced in the second. The first highlights the scalibility of hybrid \gls{QuaDRiGa}/\gls{FDTD}, the second the accuracy of the entire pipeline. Then, the localized exposure around the \gls{UE} is studied.
+\subsection{Case study in Helsinki, Finland}
+\begin{figure*}[t]
+    \centering
+    \input{Figures/helsinki_config.pdf_tex}
+    \caption{Configuration of the Helsinki case study. A \gls{CF-MaMIMO} network (green) is simulated. Alternatively, a collocated MIMO \gls{BS} beamforms toward the user (purple) at a snapshot in LOS path (black). At this snapshot, the \gls{QuaDRiGa} clusters, composed of subclusters (red), are shown (acting in free space). The inset depicts the user’s path (blue) walking from bottom to top.}
+    \label{fig:helsinki_config}
+\end{figure*}
+In this case study, hybrid \gls{QuaDRiGa}/\gls{FDTD} is applied to a single-user scenario of a \gls{6G} cell-free massive MIMO network and compared with a \gls{5G} collocated MIMO antenna. Fig. \ref{fig:helsinki_config} shows the configuration of this case study. 
+The signals are precoded toward a smartphone held in the hand of a pedestrian. The user walks the blue path shown in the inset of Fig. \ref{fig:helsinki_config}, near St. John's Church in Helsinki. The total distance of the walk is 273~m. The pedestrian is in an urban environment in the first and last 50~m. In between, the user walks through the park of St. John's church in central Helsinki. Due to the increased vegetation and absence of buildings, the environment in this section is suburban. A collocated $8\times 8$ MIMO antenna is placed on the tower of the church, facing south and tilted down by 15$^\circ$.
+
+The hybrid \gls{QuaDRiGa}/\gls{FDTD} method is applied with a carrier frequency of 28~GHz. The sampling rate is 53 Hz (such that there are 2.46 wavelengths between each snapshot) and the total number of distance snapshots (or evaluation points) is 9905. 335 distributed \glspl{AP} were generated in the $\SI{250}{m} \times \SI{250}{m}$ area around the path. The \gls{FDTD} grid and Huygens' surface have a resolution of 15 cells per wavelength resulting in a grid of $302 \times 230 \times 323$ cells. The average computation time for one snapshot of hybrid \gls{QuaDRiGa}/\gls{FDTD} is 160 sec. In this case study, we choose $\mathbf{T}=-\SI{50}{cm}\ \mathbf{e}_x\ +\ \SI{50}{cm}\ \mathbf{e}_z$, with the $x$-axis in the direction of travel and the $z$-axis in the vertical direction. This models holding a smartphone in front of the user's torso. Thus, including head-coupling is not necessary as no hot-spot gain is present. Note that the coupling is not necessary in free space when computing $S_\mathrm{inc}$ due to the experimental assessment procedure of reference quantities~\cite{ICNIRP}. \\
+
+\begin{figure*}[t]
+    \centering
+    \includegraphics[width=\textwidth]{Figures/Helsinki_exposure.pdf}
+    \caption{Reference (top) and basic (bottom) quantities as a function of distance along the path in Helsinki. Green or red patches indicate a \gls{LOS} or \gls{NLOS} state with the collocated antenna, respectively. The darker or lighter patches indicate an urban or suburban environment, respectively.}
+    \label{fig:helsinki}
+\end{figure*}
+
+Fig. \ref{fig:helsinki} shows the reference and basic quantities as a function of distance along the path. The exposure is compared for precoded (user scenario) and unprecoded (non-user scenario) transmission, and compared for cell-free and collocated \gls{MaMIMO}. The left axis expresses the exposure for normalized powers per antenna element. This means that the normalized exposure metric $\hat{E}$ is 
+\begin{equation}
+\label{eq:E_normalized}
+    \hat{E} = \frac{E}{N_\mathrm{AE}} \, ,
+\end{equation}
+where $E$ is the exposure metric and $N_\mathrm{AE}$ equals 64 for the collocated antenna case or 335 for the distributed antenna case. The right axis expresses the ratio to the exposure limits for a typical total power of 320~W. This ratio $\eta$ therefore equals
+\begin{equation}
+\label{eq:eta_ratio}
+    \eta = P \frac{\hat{E}}{E_\mathrm{limit}} \, ,
+\end{equation}
+where $P$ is the power (320~W) and $E_\mathrm{limit}$ is the maximum permissible level over a 30-min interval for the relevant exposure metric. At 28~GHz and for the general public, the reference level is \SI{10}{W/m^2} and the basic restriction is \SI{20}{W/m^2}. The maximum of these ratios is at most 0.05\% for a collocated \gls{BS} precoding the channel in a suburban LOS propagation environment. The range between the minimal and maximal $S_\mathrm{ab}$ exposure is about 20~dB or 100 times greater with precoded transmission compared to unprecoded transmission, because the beams are steered in the direction of the user. This effect almost completely disappears for \gls{CF-MaMIMO}, as can be seen in Fig. \ref{fig:helsinki}. At any time, only a few \glspl{AP} from different locations serve the user. The precoding gain is determined by the alignment of their phases and amplitudes, making beamforming impossible. The dynamic range of $S_\mathrm{ab}$ is also 20~dB smaller for the \gls{CF-MaMIMO} network than for collocated MIMO. This is because the path loss is highest at the start and end of the path. In these urban regions, the user is also in \gls{NLOS} due to the obstruction of the buildings. The cell-free \gls{APN} causes a more uniform exposure along the path because, most of the time, at least one \gls{AP} is in \gls{LOS} with the user. From a network planning point of view, more power can be fed to a \gls{6G} \gls{CF-MaMIMO} system compared to a \gls{5G} collocated one, while avoiding regions of excessive exposure. Furthermore, we observe the continuity (that is, no abrupt jumps) of the channel over time for \gls{LSF} and report continuity for \gls{SSF}. Finally, the Pearson correlation coefficients between the exposure quantities (in~dB) are shown in Fig. S1 of the Suppl. Inf. As was also found in~\cite{RT/FDTD2}, the relationship between reference and basic quantities is strong, in this case approximately 0.60.
+
+\subsection{Case study in New York City, USA}
+In this case study, \gls{RT}-based hybrid \gls{QuaDRiGa}/\gls{FDTD} is applied to the urban scenario shown in Fig. \ref{fig:nyc_config}(a). After spending 10 seconds indoors, a smartphone user walks from the One WTC tower southward to Liberty Street in \gls{NYC}, staying indoors for another 10 seconds. The user passes by an open area with foliage. Cellular \glspl{AP} from neighboring buildings radiate onto the user below the tree cover in either \gls{LOS} or \gls{NLOS}. The \gls{QuaDRiGa} channel model distinguishes and interpolates between these in a continuous fashion. The total duration of the walk is 6 minutes. In this case study, we choose $\mathbf{T}=\mathbf{0}$, corresponding to the user holding a smartphone by the right ear. Thus, including head-coupling is necessary as a hot-spot gain can be present.
+
+The \textit{user/non-user contrast} is defined as the average difference in signal gain between the two users walking 5 meters from each other. The transmit symbol $\boldsymbol{s} = [1 \ 0]^T$ is precoded such that the first user is a user and the second user is a non-user. Hence, a high user/non-user contrast shows functioning precoding and the extent of non-user exposure from a large-scale hot-spot created by beamforming. When precoding is applied only on antenna elements within each \gls{AP} (as in \eqref{eq:prec1}), the user/non-user contrast increases by 6.01~dB along the walk. All \glspl{AP} beamform toward the user, but the closest \glspl{AP} does not necessarily emit most of the power. When precoding is applied only on the \glspl{AP} themselves, the user/non-user contrast increases by 4.74~dB. None of the \glspl{AP} beamform toward the user, but the nearest \glspl{AP} emit most power. When both precodings are combined (equations \eqref{eq:prec1} and \eqref{eq:prec2}), the user/non-user contrast is 10.08~dB. 
+
+\begin{figure}[h]
+    \centering
+
+    \begin{subfigure}[b]{\columnwidth}
+        \centering
+        \includegraphics[width=\columnwidth]{Figures/nyc_reference.pdf}
+        \caption{The reference quantity $S_\mathrm{inc}$ along the path.}
+    \end{subfigure}
+    \begin{subfigure}[b]{\columnwidth}
+        \centering
+        \includegraphics[width=\columnwidth]{Figures/nyc_basic.pdf}
+        \caption{The basic quantity $S_\mathrm{ab}$ along the path.}
+    \end{subfigure}
+    \caption{The reference ($S_\mathrm{inc}$) and basic ($S_\mathrm{ab}$) exposure quantities are plotted along the walk (left vertical axis). The right axis shows the ratio w.r.t. the \gls{ICNIRP} limits for a 30-min averaging interval. The influence of the hot-spot is shown in free space.}
+    \label{fig:nyc}
+\end{figure}
+
+Fig. \ref{fig:nyc} shows the exposure metrics $S_\mathrm{inc}$ and $S_\mathrm{ab}$ along the walk on the left vertical axis. The maximum $S_\mathrm{inc}$ is compared with the median $S_\mathrm{inc}$ in the computational domain to illustrate the hot-spot gain. The precoded transmission case is compared with the unprecoded transmission case. The exposure is constant when the user is indoors. The exposure is continuous in time and consistent with the environment, e.g., the signal increases substantially when near \glspl{AP} and when the user is in LOS. The maximum exposure metric for $S_\mathrm{inc}$ and $S_\mathrm{inc}$ is -78.8 dBW/m$^2$ and -92.8 dBW/m$^2$, respectively, for 100~W total power in the \gls{CF-MaMIMO} network. The ratio of the exposure metric divided by the relevant \gls{ICNIRP} exposure limit is shown on the right vertical axis.
+
+\subsection{Hot-spots}
+Within a large-scale region exposed by the beams, hot-spots can increase the aforementioned 10.08~dB gain locally, at or within several wavelengths of the receiver. A free-space domain of 4.76$\lambda$ $\times$ 3.83$\lambda$ $\times$ 6.63 $\lambda$ (5.1 cm$\times$ 4.1 cm$\times$ 7.1 cm) is considered, fitting a human ear. The mean and standard deviation were computed based on 316 time steps along the walk. These results are shown in Table S2 of the Suppl. Inf.
+
+The means of the \gls{FWHM} and \gls{P/P} ratios indicate a size on the order of one wavelength (10.7~mm) and a visible peak, respectively. The distance from the center for the point with the highest field is 2.63 $\lambda$ on average. However, the number of hot-spots found along the path per $\lambda^3$ is highest in the center. More than 50\% of the hotspots are within 0.28 $\lambda$ of the center, with many outliers. As is excepted, the peak expresses high variability because of the log-normal distribution of received signals, as is typical in wireless channels. The standard deviations of the \gls{FWHM} and \gls{P/P} ratio are high, approximately 40\% of their mean. When examining the field distribution along the walk step by step, the location and shape of the hot-spot changes frequently, but in a continuous fashion due to the time-continuity of the propagation step. During 96\% of the walk, the dimensionality is equal to 3, indicating a roughly ellipsoidal or spherical shape. The hot-spots vanish or are reduced to a simple interference pattern when one or two strong LOS components are present, respectively. They also vanish when no precoding is applied. \\
+
+\begin{figure}[h!]
+    \centering
+    \begin{subfigure}[b]{\columnwidth}
+        \includegraphics[width=\columnwidth]{Figures/hotspot_propwise_E2D.pdf}
+        \caption{A 2D slice through the focused \gls{UE}.}
+    \end{subfigure}
+    \begin{subfigure}[b]{\columnwidth}
+        \includegraphics[width=\columnwidth]{Figures/hotspot_3D.pdf}
+        \caption{The radial probability density function of the fields, showing the 25$^\text{th}$, 50$^\text{th}$ and 75$^\text{th}$ percentiles of all fields at distance (± 0.15~mm). The green rectangles indicate the main, first, second, and (faint) third-order sidelobes of the hot-spot.}
+    \end{subfigure}
+    \caption{Visualization of a hot-spot’s electric field when averaged propagation-wise (norm of the time-average).}
+    \label{fig:hotspot_E}
+\end{figure}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=\columnwidth]{Figures/hotspot_propwise_H2D.pdf}
+    \caption{A 2D slice through the focused \gls{UE} of a hot-spot’s magnetic field when averaged propagation-wise (norm of the time-average).}
+    \label{fig:hotspot_H}
+\end{figure}
+
+At any specific time step, a hot-spot can appear in a variety of shapes, sizes, and locations. However, a characteristic shape appears when the hot-spot is averaged in time. \gls{ICNIRP} also specifies that exposure metrics should be averaged over 6-minute intervals. Fig. \ref{fig:hotspot_E}(a) depicts a horizontal slice through the receiver, positioned in the center. In a first step, the electric field is examined because its norm features in \eqref{eq:exp_prop_wise} for propagation-wise $S_\mathrm{inc}$ and its field is maximized through precoding. The main peak is located in the center with a \gls{FWHM} of 0.44 $\lambda$. The peak is flanked by troughs at 25\% of its value, giving a ratio of 75\% \gls{P/P} (90\% with the deepest troughs). A first-order sidelobe is observed at 0.61 $\lambda$ with a peak value equal to 50\% of the main peak. A second-order sidelobe is observed at 1.15 $\lambda$. Angular dependence is observed in the 2D slice, showing peaks and troughs for certain azimuthal angles. Fig. \ref{fig:hotspot_E}(b) shows the radial probability density function of the field with respect to distance. For a distance $r \pm \mathrm{d}r$ measured from the center of the FDTD domain, the field values are collected in a distribution. The graph displays the 25$^\text{th}$, 50$^\text{th}$ and 75$^\text{th}$ percentiles of this distribution as a function of $r$. The same main, first- and second-order sidelobes are observed (shown in green). A faint third-order is observed at 1.76 $\lambda$. This is more faint because the peaks and troughs are averaged out in the angular domain. As the distance approaches the edges of the domain, a constant field remains, which is 25\% of the peak in the main lobe. Therefore, the small-scale hot-spot increases the electric field by 12~dB on top of the large-scale beamforming gain. A higher number of antenna elements and \glspl{AP} increase this gain, in theory without bounds~\cite{NoBoundsMIMO}. Within each sidelobe, peaks and troughs appear as a function of the azimuthal and elevation angles.  \\
+
+\begin{figure}[h!]
+    \centering
+    \begin{subfigure}[b]{\columnwidth}
+        \includegraphics[width=\columnwidth]{Figures/hotspot_propwise_S2D.pdf}
+        \caption{Propagation-wise average of the hot-spot (norm of the time-average).}
+    \end{subfigure}
+    \begin{subfigure}[b]{\columnwidth}
+        \includegraphics[width=\columnwidth]{Figures/hotspot_expwise_S2D.pdf}
+        \caption{Exposure-wise average of the hot-spot (time-average of the norm).}
+    \end{subfigure}
+    \caption{Comparison of the $S_\mathrm{inc}$ with the propagation- and exposure-wise averaging using 2D slices. The former averages the fields in time first, the latter computes the exposure first and then averages these in time.}
+    \label{fig:hotspot2}
+\end{figure}
+
+The magnetic field of the hot-spot behaves analogously to a typical interference pattern: when the electric field reaches a peak in space, the magnetic field reaches a trough, and vice-versa, as can be seen in Fig. \ref{fig:hotspot_H}. Fig. \ref{fig:hotspot2}(a) shows $S_\mathrm{inc}$ for the 2D slice. The expression for $S_\mathrm{inc}$ combines the electric and magnetic fields. The hot-spot also combines the features of the electric and magnetic field hot-spots. The small peak at the center is the combination of an electric-field peak and a magnetic-field trough. This is flanked by higher peaks originating from the first-order magnetic-field sidelobes. The sidelobe series continues with alternating peaks from both fields. This can be seen more clearly in 1D slices (see Fig.~S2 of the Suppl. Inf.) corresponding to the dashed line. 
+
+With propagation-wise averaging, positive EMFs vector components at one time step can cancel out negative EMFs vector components at another time step. However, from an exposure assessment point of view, both positive and negative field values can contribute to dielectric heating. The exposure-wise average of $S_\mathrm{inc}$ is visualized in Fig. \ref{fig:hotspot2}(b) in the same 2D slice. A more chaotic interference pattern is seen with its highest peak not at the center. The \gls{FWHM} is 0.92 $\lambda$ and the \gls{P/P} ratio is 37\% with the deepest troughs (see also Fig. S3 of the Suppl. Inf.). The pattern is overlaid on a constant envelope. This causes the first-order troughs to be 2.5 times less deep than with propagation-wise averaging. \\
+
+This study has presented a comprehensive analysis of human exposure to \glspl{EMF} in realistic environments using a novel \gls{RT}-based hybrid \gls{QuaDRiGa}/\gls{FDTD} method. By integrating \gls{SOTA} computational techniques and leveraging high-resolution 3D models from Google Earth, we have demonstrated an efficient and accurate approach to assess exposure in \gls{6G} \gls{CF-MaMIMO} networks operating at 28~GHz.
+
+Key findings from case studies in Helsinki and \gls{NYC} show the reference and basic exposure metrics along a realistic path, remaining within at most 1\% of the ICNIRP guidelines limit for 30-min averaging intervals. The quasi-deterministic results indicate that the cell-free \gls{MaMIMO} system provides a more uniform exposure compared to collocated \gls{MaMIMO}, with a 20~dB reduction in path loss variability. Furthermore, the detailed hot-spot analysis shows a 12~dB increase in electric field within these localized regions, emphasizing the importance of understanding small-scale exposure variations.
+
+There are two key limitations of this study. First, ray-tracing complex scenes remains computationally intensive, especially for large urban environments with many reflective surfaces. Second, while ray-tracing provides deterministic amplitude information, the \gls{AoA} information still originates from QuaDRiGa clusters.
+
+The method enables (1) computing extensive exposure maps almost anywhere in the world and (2) studying a full digital twin of the entire pipeline, from Tx power control to exposure metric. These offer citizen and policy-makers insight into realistic \gls{EMF} values, and network planners the ability to model exposure more accurately. Future work should focus on applying the method in different microenvironments and comparing with measurements on city scales. Measurements can e.g. be performed with a body-worn dosimeter and validated deterministically, provided a sufficiently accurate model of the Tx antennas is known. They can also be performed indoors, e.g. in a \gls{MaMIMO} testbed~\cite{4} to examine the shape of real hotspots, provided the Rx antenna does not distort the signal too much~\cite{QD/FDTD}. The 12~dB figure is expected to increase when this study is conducted for extremely massive MIMO systems. The method can be further improved with comprehensive data of realistic devices. The Tx and \gls{UE} antenna patterns as well as their locations and configurations are the intellectual property of private companies. A wide outreach to industry from the scientific community in this field is important for realistic exposure assessment.
+
+\section{Acknowledgements}
+This work was supported in part by the European Research Council (ERC) through ATTO: A New Concept for Ultra-high Capacity Wireless Networks under Grant 695495, in part by Methusalem through SHAPE: Next Generation Wireless Networks, and in part by the Research Foundation Flanders (FWO) through file number K215823N.
+
+\section*{Data Availability}
+The data that support the findings of this study are available from the corresponding author upon reasonable request.
+
+\section*{Author Contributions}
+R.W. conducted the research and wrote the manuscript. S.S., G.V., L.M., E.T., W.J. provided feedback during the research process and on the drafts of the paper, and helped with the conceptualization. L.M. and W.J. are responsible for funding acquisition.
+
+\section*{Competing Interests}
+The authors declare no competing interests.
+
+\begin{thebibliography}{00}
+\bibitem{general5G} G. Torfs \textit{et al.}, ``ATTO: Wireless Networking at Fiber Speed,'' \textit{J. of Lightwave Technol.}, vol. 36, no. 8, pp. 1468-1477, Apr. 15, 2018, doi: \doi{10.1109/JLT.2017.2783038}.
+\bibitem{increases5G} C.-X. Wang \textit{et al.}, ``Cellular architecture and key technologies for 5G wireless communication networks," \textit{IEEE Communications Magazine}, vol. 52, no. 2, pp. 122-130, Feb. 2014, doi: \doi{10.1109/MCOM.2014.6736752}.
+\bibitem{deployment}  ``Advanced 5G with Millimeter Wave Penetration, Version 1.0,'' 5th Generation Mobile Communications Promotion Forum, March 2024. [Online]. Available: \url{https://www.telegraphic.jp/en/2023/12/107/}. [Accessed: Oct. 2024].
+\bibitem{MIMO} T. L. Marzetta, ``Noncooperative Cellular Wireless with Unlimited Numbers of Base Station Antennas,'' \textit{IEEE Trans. on Wireless Commun.}, vol. 9, no. 11, pp. 3590-3600, Nov. 2010, doi: \doi{10.1109/TWC.2010.092810.091092}.
+\bibitem{mmWave} Y. Niu, Y. Li, D. Jin, L. Su, A. V. Vasilakos, ``A survey of millimeter wave communications (mmWave) for 5G: opportunities and challenges," \textit{Wireless Networks}, vol. 21, pp. 2657–2676, 2015, doi: \doi{10.1007/s11276-015-0942-z}.
+\bibitem{Book You} X. You, D. Want and J. Wang, \textit{Distributed MIMO and Cell-Free Mobile Communication}, 1st ed. Singapore: Springer and Science Press, 2021.
+\bibitem{Ngo2015} H. Q. Ngo, A. Ashikhmin, H. Yang, E. G. Larsson, and T. L. Marzetta, ``Cell-free massive MIMO: Uniformly great service for everyone," in \textit{Proc. 16th IEEE Int. Workshop Signal Process. Adv. Wireless Commun.}, Stockholm, Sweden, Jun. 2015, pp. 201-205, doi: \doi{10.1109/SPAWC.2015.7227028}.
+\bibitem{Ngo2017} H. Q. Ngo, A. Ashikhmin, H. Yang, E. G. Larsson and T. L. Marzetta, ``Cell-Free Massive MIMO Versus Small Cells," \textit{IEEE Trans. Wirel. Commun.}, vol. 16, no. 3, pp. 1834-1850, March 2017, doi: \doi{10.1109/TWC.2017.2655515}.
+\bibitem{radiostripes} Z. H. Shaik, E. Björnson, and E. G. Larsson, ``Cell-Free Massive MIMO with Radio Stripes and Sequential Uplink Processing," \textit{Proc. IEEE Int. Conf. Commun. Workshops (ICC Workshops)}, Dublin, Ireland, 2020, pp. 1-6, doi: \doi{10.1109/ICCWorkshops49005.2020.9145164}.
+\bibitem{worry5G}  L. Chiaraviglio, A. Elzanaty, and M. -S. Alouini, ``Health Risks Associated With 5G Exposure: A View From the Communications Engineering Perspective," \textit{IEEE Open J. Commun. Soc.}, vol. 2, pp. 2131-2179, 2021, doi: \doi{10.1109/OJCOMS.2021.3106052}.
+\bibitem{worry5G2} M. Farhan and M. Y. Osman, ``Concerns over 5G Mobile Networking Technology," \textit{Scientific Writing and Communication}, University of Malaya, June 2020. [Online]. Available: \url{https://www.researchgate.net/publication/342512892_Concerns_over_5G_Mobile_Networking_Technology}. [Accessed: Oct. 2024].
+\bibitem{ICNIRP} International Commission on Non-Ionizing Radiation Protection, ``Guidelines for limiting exposure to electromagnetic fields (100 KHz to 300~GHz),'' \textit{Health Phys.}, vol. 118, no. 5, pp. 483–524, 2020, doi: \doi{10.1097/HP.0000000000001210}.
+\bibitem{worstcase} A. Hirata et al., ``Assessment of Human Exposure to Electromagnetic Fields: Review and Future Directions," \textit{IEEE Trans. Electromagn. Compat.}, vol. 63, no. 5, pp. 1619-1630, Oct. 2021, doi: \doi{10.1109/TEMC.2021.3109249}.
+\bibitem{1} A. Schiavoni, S. Bastonero, R. Lanzo and R. Scotti, ``Methodology for Electromagnetic Field Exposure Assessment of 5G Massive MIMO Antennas Accounting for Spatial Variability of Radiated Power,'' \textit{IEEE Access}, vol. 10, pp. 70572-70580, 2022, doi: \doi{10.1109/ACCESS.2022.3188269}.
+\bibitem{2} J. Carlos Estrada-Jiménez, E. Pardo, U. Roth, L. Selmane and S. Faye, ``Under the Hood of Electromagnetic Field Estimation and Evaluation in 5G Networks,'' \textit{IEEE Access}, vol. 12, pp. 88357-88369, 2024, doi: \doi{10.1109/ACCESS.2024.3418301}.
+\bibitem{hotspots_art} S. Shikhantsov, A. Thielens, G. Vermeeren, P. Demeester, L. Martens, and W. Joseph, ``Numerical Assessment of Human EMF Exposure to Collocated and Distributed Massive MIMO Deployments in an Industrial Indoor Environment,'' \textit{IEEE Trans. Electromagn. Compat.}, vol. 65, no. 4, pp. 960-971, Aug. 2023, doi: \doi{10.1109/TEMC.2023.3273475}.
+\bibitem{hotspots_eucap} R. Wydaeghe \textit{et al.}, ``New Hybrid Ray-Tracing/FDTD for EMF Exposure in 6G Networks using Semantically Classified Google Earth Photogrammetry with Measurement Validation," \textit{18th Eur. Conf. on Ant. and Prop.}, Glasgow, Scotland, Mar. 2024.
+\bibitem{hotspots_bioem} R. Wydaeghe, S. Shikhantsov, E. Tanghe, G. Vermeeren, W. Joseph, ``Characterization of EMF hotspots for realistic exposure assessment in end-to-end simulations using a hybrid QuaDRiGa/FDTD tool," \textit{3rd Int. Conf. Bioelectromagnetics}, Crete, Greece, Jun. 2024.
+\bibitem{beamforming} E. Björnson, J. Hoydis and L. Sanguinetti, ``Introduction and Motivation,”
+in Massive MIMO Networks: Spectral, Energy, and Hardware Efficiency, \textit{USA: Found. Trends Signal Process.}, 2017, ch. 1, p. 204, doi: \doi{10.1561/2000000093}.
+\bibitem{google} Google, ``Photorealistic 3D Tiles | Google Maps Tile API," [Online]. Available: \url{https://developers.google.com/maps/documentation/tile/3d-tiles}. [Accessed: Oct. 2024].
+\bibitem{He} D.~He, G.~Liang, J.~Portilla and T.~Riesgo, ``A novel method for radio propagation simulation based on automatic 3D environment reconstruction," \textit{6th Eur. Conf. on Ant. and Prop.}, Prague, Czech Republic, 2012, pp. 1445-1449, doi: \doi{10.1109/EuCAP.2012.6206457}.
+\bibitem{flatnotenough} D. He, B. Ai, K. Guan, L. Wang, Z. Zhong, and T. Kürner, ``The Design and Applications of High-Performance Ray-Tracing Simulation Platform for 5G and Beyond Wireless Communications: A Tutorial," \textit{IEEE Communications Surveys \& Tutorials}, vol. 21, no. 1, pp. 10-22, 2019, \doi{10.1109/COMST.2018.2865724}.
+\bibitem{SUMS} W. Gao, L. Nan, B. Boom, and H. Ledoux, ``SUM: A benchmark dataset of Semantic Urban Meshes,'' \textit{ISPRS J. Photogramm. Remote Sens.}, vol. 179, pp. 108-120, 2021, doi: \doi{10.1016/j.isprsjprs.2021.07.008}.
+\bibitem{RT/FDTD1} S. Shikhantsov \textit{et al.}, ``Hybrid Ray-Tracing/FDTD Method for Human Exposure Evaluation of a Massive MIMO Technology in an Industrial Indoor Environment,'' \textit{IEEE Access}, vol. 7, pp. 21020-21031, Feb. 2019, doi: \doi{10.1109/ACCESS.2019.2897921}.
+\bibitem{EMparamishard} A. W. Mbugua \textit{et al.}, ``Review on Ray Tracing Channel Simulation Accuracy in Sub-6~GHz Outdoor Deployment Scenarios,'' \textit{IEEE Open J. Antennas Propag.}, vol. 2, pp. 22-33, Jan. 2021, doi: \doi{10.1109/OJAP.2020.3041953}.
+\bibitem{QD/FDTD} R. Wydaeghe \textit{et al.}, ``New Hybrid QuaDRiGa-FDTD Method for Realistic Human Exposure Assessment at 28~GHz with 6G Cell-Free Massive MIMO in 3D Outdoor Environments,'' \textit{2nd Int. Conf. Bioelectromagnetics}, presented at BioEM 2023, Oxford, United Kingdom, June 18-23, 2023.
+\bibitem{Quadriga} S. Jaeckel, L. Raschkowski, K. Börner, and L. Thiele, ``QuaDRiGa: A 3-D Multi-Cell Channel Model With Time Evolution for Enabling Virtual Field Trials,'' \textit{IEEE Trans. Antennas Propag.}, vol. 62, no. 6, pp. 3242-3256, June 2014, doi: \doi{10.1109/TAP.2014.2310220}.
+\bibitem{lampposts} R. Heijs, G. Steinböck, B. -E. Olsson, M. Johansson, and B. Smolders, ``On the Importance of Scattering from Poles in Ray Tracing Simulations," \textit{18th Eur. Conf. on Ant. and Prop.}, Glasgow, United Kingdom, 2024, pp. 1-5, doi: \doi{10.23919/EuCAP60739.2024.10501579}.
+\bibitem{GoogleEarth} F. Bianconi, M. Filippucci, F. Cornacchini, and A. Migliosi, ``The impact of Google’s APIs on landscape virtual representation," \textit{Int. Arch. Photogramm. Remote Sens. Spatial Inf. Sci.}, vol. XLVIII-4/W9-2024, pp. 91–98, 2024, doi: \doi{10.5194/isprs-archives-XLVIII-4-W9-2024-91-2024}.
+\bibitem{NYCenv} Google Earth, 2024. World Trade Center, New York City. Google Earth [online]. Available: \url{https://earth.google.com/web/@40.71200981,-74.0127844,4.66348666a,537.65188487d,35y,38.88984458h,43.8020311t,-0r}. [Accessed Oct. 2024].
+\bibitem{DirectionsAPI}
+Google, ``Google Maps Directions API," Google Developers. [Online]. Available: \url{https://developers.google.com/maps/documentation/directions/overview}. [Accessed: Oct. 2024].
+\bibitem{OpenCellID} OpenCelliD, ``The world's largest Open Database of Cell Towers,'' OpenCelliD.org. [Online]. Available: \url{https://www.opencellid.org/}. [Accessed: Oct. 2024].
+\bibitem{Bridson} R. Bridson, ``Fast Poisson disk sampling in arbitrary dimensions," \textit{ACM SIGGRAPH 2007 Sketches}, San Diego, California, USA, 2007, pp. 22–es. doi: \doi{10.1145/1278780.1278807}.
+\bibitem{channelgensurver} C.-X. Wang, J. Bian, J. Sun, W. Zhang, and M. Zhang, ``A Survey of 5G Channel Measurements and Models,'' \textit{IEEE Commun. Surv. \& Tutor.}, vol. 20, no. 4, pp. 3142-3168, Fourth Quarter 2018, doi: \doi{10.1109/COMST.2018.2862141}.
+\bibitem{RTmatchmeasurement} K. H. Ng, E. K. Tameh, A. Doufexi, M. Hunukumbure and A. R. Nix, ``Efficient Multielement Ray Tracing With Site-Specific Comparisons Using Measured MIMO Channel Data," \textit{IEEE Trans. Veh. Technol.}, vol. 56, no. 3, pp. 1019-1032, May 2007, doi: \doi{10.1109/TVT.2007.895606}.
+\bibitem{WI} Remcom, ``Wireless InSite," [Software]. Available: \url{https://www.remcom.com/wireless-insite-em-propagation-software}. [Accessed: Oct. 2024].
+\bibitem{QDcomplies3GPP} S. Jaeckel, ``Quasi-Deterministic Channel Modeling and Experimental Validation in Cooperative and Massive MIMO Deployment Topologies," Ph.D. dissertation, Dept. Electrotech. and Infotech., Techn. Univ. Ilmenau, Ilmenau, Germany, 2017.
+\bibitem{QDmeasurements} S. Jaeckel \textit{et al.}, ``Industrial Indoor Measurements from 2-6~GHz for the 3GPP-NR and QuaDRiGa Channel Model," \textit{Proc. IEEE 90th Veh. Technol. Conf. (VTC-Fall)}, Honolulu, HI, USA, 2019, pp. 1-7, doi: \doi{10.1109/VTCFall.2019.8891356}.
+\bibitem{spatialconsistency} S. Dai, N. Abdellatif, M. Kurras, S. Jaeckel and L. Thiele, ``Spatial Consistency Validation on Massive SIMO Covariance Matrices in the Geometry-Based Stochastic Channel Model QuaDRiGa," WSA 2020; 24th International ITG Workshop on Smart Antennas, Hamburg, Germany, 2020, pp. 1-6.
+\bibitem{QDv2} S. Jaeckel, L. Raschkowski, and L. Thiele, ``QuaDRiGa - Quasi Deterministic Radio Channel Generator, User Manual and Documentation," Fraunhofer Heinrich Hertz Inst., Tech. Rep. v2.6.1, 2021.
+\bibitem{mmMAGIC} H2020-ICT-671650-mmMAGIC/D2.2, ``mmMAGIC D2.2 - measurement results and final mmMAGIC channel models," Tech. Rep., 2017.
+\bibitem{RT/FDTD2} R. Wydaeghe \textit{et al.}, ``Realistic human exposure at 3.5~GHz and 28~GHz for distributed and collocated MaMIMO in indoor environments using hybrid ray-tracing and FDTD," \textit{IEEE Access}, vol. 10, pp. 130996-131004, 2022, doi: \doi{10.1109/ACCESS.2022.3227107}.
+\bibitem{RT-based-QD} D. He, B. Ai, K. Guan, Z. Zhong, L. Tian, and J. Dou, ``Ray-tracing Assisted 3GPP Stochastic Channel Modeling for High-speed Railway Rural Scenario," \textit{2nd URSI AT-RASC}, Gran Canaria, Spain, 28 May – 1 June 2018.
+\bibitem{vectornorm} C. Lee, C. -B. Chae, T. Kim, S. Choi and J. Lee, ``Network massive MIMO for cell-boundary users: From a precoding normalization perspective," 2012 IEEE Globecom Workshops, Anaheim, CA, USA, 2012, pp. 233-237, doi: \doi{10.1109/GLOCOMW.2012.6477575}. 
+\bibitem{HuygensBox} P. Bernardi, M. Cavagnaro, S. Pisa and E. Piuzzi, ``Human exposure to radio base-station antennas in urban environment," \textit{IEEE Trans. Microw. Theory Techn.}, vol. 48, no. 11, pp. 1996-2002, Nov. 2000, doi: \doi{10.1109/22.884188}.
+\bibitem{RT/FDTD_coupling} S. Shikhantsov \textit{et al.}, ``Massive MIMO Propagation Modeling With User-Induced Coupling Effects Using Ray-Tracing and FDTD," \textit{IEEE J. Sel. Areas Commun.}, vol. 38, no. 9, pp. 1955-1963, Sept. 2020, doi: \doi{10.1109/JSAC.2020.3000874}.
+\bibitem{NoBoundsMIMO} G. J. Foschini and M. J. Gans, ``On Limits of Wireless Communications in a Fading Environment when Using Multiple Antennas," \textit{Wireless Personal Communications}, vol. 6, no. 3, pp. 311-335, 1998, doi: \doi{10.1023/A:1008889222784}.
+\bibitem{4} T. H. Loh, F. Heliot, D. Cheadle and T. Fielder, ``An Assessment of the Radio Frequency Electromagnetic Field Exposure from A Massive MIMO 5G Testbed,'' \textit{2020 14th European Conference on Antennas and Propagation (EuCAP)}, Copenhagen, Denmark, 2020, pp. 1-5, doi: \doi{10.23919/EuCAP48036.2020.9135291}.
+
+\end{thebibliography}
+
+\end{document}
