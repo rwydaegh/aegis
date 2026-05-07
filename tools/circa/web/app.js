@@ -183,6 +183,97 @@ function updateQueueBadge() {
   document.getElementById("queue-badge").textContent = `${pending} pending`;
 }
 
+const ARROW_HANDLERS = (svg, wrap) => {
+  let start = null, line = null;
+  svg.addEventListener("pointerdown", (e) => {
+    if (currentTool !== "arrow") return;
+    const r = svg.getBoundingClientRect();
+    start = [e.clientX - r.left, e.clientY - r.top];
+    line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    line.setAttribute("class", "shape");
+    line.setAttribute("stroke", "red");
+    line.setAttribute("stroke-width", "2");
+    line.setAttribute("marker-end", "url(#arrowhead)");
+    line.setAttribute("x1", start[0]);
+    line.setAttribute("y1", start[1]);
+    line.setAttribute("x2", start[0]);
+    line.setAttribute("y2", start[1]);
+    svg.appendChild(line);
+    svg.setPointerCapture(e.pointerId);
+  });
+  svg.addEventListener("pointermove", (e) => {
+    if (!line) return;
+    noteActivity();
+    const r = svg.getBoundingClientRect();
+    line.setAttribute("x2", e.clientX - r.left);
+    line.setAttribute("y2", e.clientY - r.top);
+  });
+  svg.addEventListener("pointerup", (e) => {
+    if (!start) return;
+    const r = svg.getBoundingClientRect();
+    const end = [e.clientX - r.left, e.clientY - r.top];
+    finalizeShape(svg, wrap, "arrow", [start, end]);
+    start = null;
+    line = null;
+  });
+};
+
+const RECT_HANDLERS = (svg, wrap) => {
+  let start = null, rect = null;
+  svg.addEventListener("pointerdown", (e) => {
+    if (currentTool !== "rect") return;
+    const r = svg.getBoundingClientRect();
+    start = [e.clientX - r.left, e.clientY - r.top];
+    rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    rect.setAttribute("class", "shape");
+    rect.setAttribute("stroke", "red");
+    rect.setAttribute("stroke-width", "2");
+    rect.setAttribute("fill", "none");
+    rect.setAttribute("x", start[0]);
+    rect.setAttribute("y", start[1]);
+    rect.setAttribute("width", "0");
+    rect.setAttribute("height", "0");
+    svg.appendChild(rect);
+    svg.setPointerCapture(e.pointerId);
+  });
+  svg.addEventListener("pointermove", (e) => {
+    if (!rect) return;
+    noteActivity();
+    const r = svg.getBoundingClientRect();
+    const x = Math.min(start[0], e.clientX - r.left);
+    const y = Math.min(start[1], e.clientY - r.top);
+    const w = Math.abs(e.clientX - r.left - start[0]);
+    const h = Math.abs(e.clientY - r.top - start[1]);
+    rect.setAttribute("x", x);
+    rect.setAttribute("y", y);
+    rect.setAttribute("width", w);
+    rect.setAttribute("height", h);
+  });
+  svg.addEventListener("pointerup", (e) => {
+    if (!start) return;
+    const r = svg.getBoundingClientRect();
+    finalizeShape(svg, wrap, "rect", [start, [e.clientX - r.left, e.clientY - r.top]]);
+    start = null;
+    rect = null;
+  });
+};
+
+const TEXT_HANDLERS = (svg, wrap) => {
+  svg.addEventListener("pointerdown", (e) => {
+    if (currentTool !== "text") return;
+    const r = svg.getBoundingClientRect();
+    const pt = [e.clientX - r.left, e.clientY - r.top];
+    const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    dot.setAttribute("class", "shape");
+    dot.setAttribute("fill", "red");
+    dot.setAttribute("cx", pt[0]);
+    dot.setAttribute("cy", pt[1]);
+    dot.setAttribute("r", "5");
+    svg.appendChild(dot);
+    finalizeShape(svg, wrap, "text", [pt]);
+  });
+};
+
 async function loadAndRender() {
   const pdf = await pdfjsLib.getDocument("/pdf").promise;
   const col = document.getElementById("pdf-col");
@@ -202,7 +293,15 @@ async function loadAndRender() {
     svg.setAttribute("class", "overlay");
     svg.setAttribute("viewBox", `0 0 ${viewport.width} ${viewport.height}`);
     wrap.appendChild(svg);
+    // Arrowhead marker for the arrow tool.
+    const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+    defs.innerHTML = `<marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="red"/></marker>`;
+    svg.appendChild(defs);
     PEN_HANDLERS(svg, wrap);
+    ARROW_HANDLERS(svg, wrap);
+    RECT_HANDLERS(svg, wrap);
+    TEXT_HANDLERS(svg, wrap);
     col.appendChild(wrap);
     await page.render({ canvasContext: ctx, viewport }).promise;
   }
