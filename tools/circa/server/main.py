@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, PlainTextResponse, JSONResponse
 
 from .state import State
@@ -85,6 +85,31 @@ def build_app(
             ann.status = AnnotationStatus.PENDING
         return {"ok": True}
 
+    from .ws_protocol import event
+
+    @app.websocket("/stream")
+    async def ws_stream(websocket: WebSocket):
+        await websocket.accept()
+        app.state.ws_clients.add(websocket)
+        try:
+            while True:
+                data = await websocket.receive_json()
+                kind = data.get("type")
+                if kind == "ping":
+                    await websocket.send_json(event(state, "pong"))
+                elif kind == "batch_flush":
+                    await _handle_batch_flush(app, data)
+                elif kind == "clarification_reply":
+                    await _handle_clarification_reply(app, data)
+                elif kind == "cancel_annotation":
+                    await _handle_cancel(app, data)
+                else:
+                    await websocket.send_json(event(state, "error", reason=f"unknown type {kind}"))
+        except WebSocketDisconnect:
+            return
+        finally:
+            app.state.ws_clients.discard(websocket)
+
     return app
 
 
@@ -113,3 +138,157 @@ def run_server(
     paper_dir: Path, port: int, build_timeout_s: int, batch_timeout_s: int, pdfcomment_enabled: bool
 ) -> None:
     raise NotImplementedError("wired in Task 14")
+
+
+async def _handle_batch_flush(app, data: dict) -> None:
+    state = app.state.state
+    if state.in_flight:
+        state.queue_next_batch_new(data)
+        return
+    state.in_flight = True
+    try:
+        await _process_batch(app, data)
+    finally:
+        state.in_flight = False
+        # Drain queued (clarifications first). Re-check after each item, since
+        # a clarification reply arriving DURING the drain (which sets in_flight=True)
+        # would be re-queued and must be picked up before we return.
+        while True:
+            pending = state.drain_next_batch()
+            if not pending:
+                break
+            for queued in pending:
+                state.in_flight = True
+                try:
+                    await _process_batch(app, queued)
+                finally:
+                    state.in_flight = False
+
+
+async def _process_batch(app, data: dict) -> None:
+    from .annotation import Annotation, AnnotationStatus
+    from .ws_protocol import annotation_status_event, diff_update_event
+
+    state = app.state.state
+    annotations = [Annotation.from_dict(d) for d in data["annotations"]]
+    for ann in annotations:
+        ann.batch_id = data["batch_id"]
+        ann.status = AnnotationStatus.IN_PROGRESS
+        state.add_annotation(ann)
+        await _broadcast(app, annotation_status_event(state, id=ann.id, status="in_progress"))
+
+    if app.state.claude_session is None:
+        from .ws_protocol import build_status_event
+
+        for ann in annotations:
+            ann.status = AnnotationStatus.DONE
+            ann.one_liner = "(stub)"
+            await _broadcast(
+                app, annotation_status_event(state, id=ann.id, status="done", one_liner="(stub)")
+            )
+        await _broadcast(app, diff_update_event(state, hunk=""))
+        await _broadcast(
+            app, build_status_event(state, ok=state.last_build_ok, error_tail=state.last_build_error)
+        )
+        return
+
+    # Real path: snapshot, send to Claude, persist hunks, update diff sidebar.
+    if app.state.snapshot_mgr is not None:
+        app.state.snapshot_mgr.take_snapshot(data["batch_id"])
+    import base64
+
+    page_pngs = {int(p): base64.b64decode(b64) for p, b64 in data.get("page_pngs", {}).items()}
+    build_text = "ok" if state.last_build_ok else f"broken: {state.last_build_error[:500]}"
+    statuses, _fb = await app.state.claude_session.send_batch(
+        pass_=state.current_pass,
+        annotations=annotations,
+        page_pngs=page_pngs,
+        build_status_text=build_text,
+    )
+    if app.state.hunk_mgr is not None:
+        app.state.hunk_mgr.persist_for_batch(data["batch_id"], [a.id for a in annotations])
+    if app.state.snapshot_mgr is not None:
+        app.state.snapshot_mgr.record_post_sha(data["batch_id"])
+    # Compute diff for sidebar (Task 13 will refine).
+    if app.state.snapshot_mgr is not None and app.state.hunk_mgr is not None:
+        from .diff_view import current_diff
+
+        diff = current_diff(app.state.paper_dir, data["batch_id"])
+        app.state.current_diff = diff
+        await _broadcast(app, diff_update_event(state, hunk=diff))
+
+    from .annotation import AnnotationStatus as AS
+
+    for ann in annotations:
+        info = statuses.get(ann.id, {})
+        ann.status = AS(info.get("status", "needs_clarification"))
+        ann.one_liner = info.get("one_liner")
+        ann.clarification = info.get("clarification")
+        await _broadcast(
+            app,
+            annotation_status_event(
+                state,
+                id=ann.id,
+                status=ann.status.value,
+                one_liner=ann.one_liner,
+                clarification=ann.clarification,
+            ),
+        )
+
+
+async def _handle_clarification_reply(app, data: dict) -> None:
+    """Wired in Task 13."""
+    raise NotImplementedError("Task 13")
+
+
+async def _handle_cancel(app, data: dict) -> None:
+    import time
+    import uuid
+    from .annotation import Annotation, AnnotationStatus
+    from .ws_protocol import annotation_status_event
+
+    state = app.state.state
+    ann = state.get_annotation(data["annotation_id"])
+    if ann is None:
+        return
+    if ann.status == AnnotationStatus.PENDING:
+        ann.status = AnnotationStatus.REJECTED
+        await _broadcast(app, annotation_status_event(state, id=ann.id, status="rejected"))
+    elif ann.status == AnnotationStatus.NEEDS_CLARIFICATION:
+        # Per spec: close the bubble, mark done with "user cancelled", and queue a follow-up
+        # informing Claude so future reasoning has context.
+        ann.status = AnnotationStatus.DONE
+        ann.one_liner = "user cancelled"
+        await _broadcast(
+            app,
+            annotation_status_event(
+                state,
+                id=ann.id,
+                status="done",
+                one_liner="user cancelled",
+            ),
+        )
+        followup = Annotation(
+            id=str(uuid.uuid4()),
+            page=ann.page,
+            shape=ann.shape,
+            points=ann.points,
+            text=f"(user cancelled clarification on {ann.id}; no edit needed)",
+            mode=ann.mode,
+            status=AnnotationStatus.PENDING,
+            pass_=ann.pass_,
+            created_at=int(time.time() * 1000),
+            parent_id=ann.id,
+            reply="(cancelled)",
+        )
+        payload = {
+            "type": "batch_flush",
+            "batch_id": str(uuid.uuid4()),
+            "annotations": [followup.to_dict()],
+            "page_pngs": {},
+        }
+        if state.in_flight:
+            state.queue_next_batch_clarification(payload)
+        else:
+            await _handle_batch_flush(app, payload)
+    # done / rejected / in_progress: cancel is a no-op; reject is the explicit path.
