@@ -104,3 +104,17 @@ Append a dict to the `CHARACTERS` list in `scripts/build_phantoms.py`:
 ```
 
 The `macro` dict maps directly to MPFB2's parametric sliders. The `target_height_m` value is used to scale the generated mesh after creation. Run the script again to regenerate all phantoms.
+
+## SMPL-X bootstrap
+
+The SMPL-X parametric body lives behind `ParametricBody.load("smplx")` (`src/aegis/geometry/parametric.py`) and the `POST /api/parametric-body` viewer route. The Python plumbing comes from the `[body]` extra: `pip install -e ".[body]"` (pulls `smplx`, `torch`, `pygltflib`).
+
+The model files are license-gated. Register at [smpl-x.is.tue.mpg.de](https://smpl-x.is.tue.mpg.de/), accept the EULA, and download `models_smplx_v1_1.zip` (~200 MB, three NEUTRAL/MALE/FEMALE NPZs plus pkl variants). Then place them with:
+
+```bash
+python scripts/fetch_smplx.py /path/to/models_smplx_v1_1.zip
+```
+
+The script copies `SMPLX_NEUTRAL.npz`, `SMPLX_MALE.npz`, and `SMPLX_FEMALE.npz` into `~/.aegis/models/smplx/` (override with `--dest` or `AEGIS_MODELS_DIR`). It accepts either the official zip or an already-extracted directory and is idempotent. Once those three files exist, `tests/test_parametric.py` and `tests/test_viewer_parametric.py` un-skip and `ParametricBody.load("smplx").generate(np.zeros(10))` returns a real triangle-soup `BodyMesh`.
+
+For CI / cloud runners, mirror the unzipped files into the same path or set `AEGIS_MODELS_DIR` to a host-side cache. The files cannot be redistributed in this repository.

@@ -7,89 +7,147 @@ Usage:
 """
 
 from __future__ import annotations
+
 import argparse
-import json
+import sys
 from pathlib import Path
 
+import matplotlib
 import numpy as np
 import pandas as pd
-import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from geometry import GOLIAT_DIRS, cache_geometry, goliat_basis
 from matplotlib.colors import Normalize
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
-from geometry import GOLIAT_DIRS, goliat_basis, cache_geometry
+# IEEE/SciencePlots styling. Add the theory/scripts dir to sys.path so the
+# shared style helper is importable when this script is run directly.
+_THEORY_SCRIPTS = Path(__file__).resolve().parents[2] / "theory" / "scripts"
+if _THEORY_SCRIPTS.exists() and str(_THEORY_SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(_THEORY_SCRIPTS))
+try:
+    from _plot_style import apply_monograph_style, fig_size_ieee  # noqa: E402
+
+    _HAVE_STYLE = True
+except Exception:
+    _HAVE_STYLE = False
 
 
-def fig_kernels_vs_fdtd(df: pd.DataFrame, out_path: Path):
-    """Per-direction ratios + direction-averaged ratios + Cauchy line."""
+def fig_kernels_vs_fdtd(df: pd.DataFrame, out_path: Path, *, ieee: bool = False):
+    """Single-panel: kernel curves with errorbars + Cauchy stars."""
     freqs = np.sort(df["freq_mhz"].unique())
-    fig, axes = plt.subplots(1, 2, figsize=(14, 5.5))
+    if ieee:
+        # Leave room inside the figure for the legend so the saved PDF is
+        # exactly column-width and LaTeX includegraphics does not rescale.
+        fig, ax = plt.subplots(1, 1, figsize=fig_size_ieee(columns=1, aspect=0.95))
+    else:
+        fig, ax = plt.subplots(1, 1, figsize=(7, 5.0))
 
-    ax = axes[0]
+    # (col, color, marker, linestyle, label)
     kernels = [
-        ("L3_Pabs", "C0", "o", "L3 (Fresnel only)"),
-        ("L4_Pabs", "C1", "s", "L4 (+ polarisation)"),
-        ("L6_Pabs", "C2", "^", "L6 (+ curvature/diffraction, real H)"),
-        ("Lall_Pabs", "C5", "*", "L_all (Fresnel+pol+curv+diff)"),
-        ("L3o_Pabs", "C3", "v", r"L3 $\times O$"),
-        ("Lallo_Pabs", "C6", "P", r"L_all $\times O$"),
+        ("L3_Pabs", "#0072B2", "o", (0, (1, 1)), "Fresnel"),
+        ("L4_Pabs", "#009E73", "s", (0, (3, 1, 1, 1)), "+ polar."),
+        ("L6_Pabs", "#E69F00", "^", (0, (5, 2)), r"+ curv./diffr."),
+        ("Lall_Pabs", "#CC79A7", "D", "-", "Full"),
+        ("Lallo_Pabs", "#56B4E9", "P", (0, (2, 1)), "Full + occl."),
     ]
-    for col, color, marker, label in kernels:
+
+    for col, color, marker, ls, label in kernels:
         means, stds = [], []
         for f in freqs:
             sub = df[df["freq_mhz"] == f]
             ratios = sub[col] / sub["fdtd_Pabs_W_m2"]
             means.append(ratios.mean())
             stds.append(ratios.std())
-        ax.errorbar(freqs / 1000, means, yerr=stds, marker=marker, color=color, label=label, capsize=2, alpha=0.85)
-    ax.axhline(1.0, color="k", ls="--", alpha=0.4, label="AEGIS = FDTD")
-    ax.set_xscale("log")
-    ax.set_xlabel("Frequency (GHz)")
-    ax.set_ylabel(
-        r"$P_{\rm abs}^{\rm AEGIS} / P_{\rm abs}^{\rm FDTD}$"
-        " (mean ± std over 12 dirs × 2 pols)"
-    )
-    ax.set_title("Per-direction comparison: AEGIS kernels vs FDTD")
-    ax.legend(loc="upper left", fontsize=8)
-    ax.grid(alpha=0.3)
+        ax.errorbar(
+            freqs / 1000,
+            means,
+            yerr=stds,
+            marker=marker,
+            color=color,
+            linestyle=ls,
+            label=label,
+            capsize=1.8,
+            lw=1.0,
+            ms=4.0,
+            markerfacecolor="none",
+            markeredgewidth=0.9,
+            elinewidth=0.6,
+        )
 
-    ax = axes[1]
+    # Cauchy stars: closed form vs FDTD direction-averaged
     grouped = df.groupby("freq_mhz").mean(numeric_only=True)
     fdtd_avg = grouped["fdtd_Pabs_W_m2"]
-    for col, color, marker, label in [
-        ("L3_Pabs", "C0", "o", "L3"),
-        ("L4_Pabs", "C1", "s", "L4"),
-        ("L6_Pabs", "C2", "^", "L6 (real H)"),
-        ("Lall_Pabs", "C5", "*", "L_all (Fresnel+pol+curv+diff)"),
-        ("Lallo_Pabs", "C6", "P", r"L_all $\times O$"),
-    ]:
-        ax.plot(grouped.index / 1000, grouped[col] / fdtd_avg, marker=marker, color=color, label=label)
+    cauchy_ratio = grouped["Cauchy_Pabs"] / fdtd_avg
     ax.plot(
         grouped.index / 1000,
-        grouped["Cauchy_Pabs"] / fdtd_avg,
-        "*-",
-        color="k",
-        markersize=14,
-        lw=2,
-        label=r"Cauchy $S_{\rm inc}\bar T A_{ab}/4$ / FDTD",
+        cauchy_ratio,
+        marker="*",
+        color="black",
+        linestyle="-",
+        markersize=8.0,
+        lw=1.2,
+        markerfacecolor="none",
+        markeredgewidth=0.9,
+        label=r"Cauchy formula",
+        zorder=10,
     )
-    ax.axhline(1.0, color="k", ls="--", alpha=0.4)
-    ax.set_xscale("log")
-    ax.set_xlabel("Frequency (GHz)")
-    ax.set_ylabel(
-        r"$\langle P_{\rm abs}^{\rm AEGIS}\rangle / "
-        r"\langle P_{\rm abs}^{\rm FDTD}\rangle$"
-    )
-    ax.set_title("Direction-averaged comparison: kernels & Cauchy-T̄ vs FDTD")
-    ax.legend(loc="lower right")
-    ax.grid(alpha=0.3)
+    ax.axhline(1.0, color="k", ls=(0, (4, 2)), lw=0.7, alpha=0.6, zorder=0)
 
-    plt.tight_layout()
-    plt.savefig(out_path, dpi=140)
+    # Annotate Cauchy at 5.8 GHz (closed form, no fit)
+    f58 = 5.8
+    y58 = float(cauchy_ratio.iloc[-1])
+    ax.annotate(
+        f"Cauchy: {y58:.3f}\nat 5.8\\,GHz (no fit)",
+        xy=(f58, y58),
+        xytext=(2.0, 0.30),
+        fontsize=7.0,
+        ha="left",
+        va="center",
+        arrowprops=dict(
+            arrowstyle="-", lw=0.6, color="black", shrinkA=0.5, shrinkB=2.0, connectionstyle="arc3,rad=-0.15"
+        ),
+    )
+
+    ax.set_xscale("linear")
+    ax.set_xticks([0, 1, 2, 3, 4, 5, 6])
+    ax.set_xlabel(r"Frequency $f$ [GHz]")
+    ax.set_ylabel(r"$P_{\mathrm{abs}}^{\mathrm{law}} / P_{\mathrm{abs}}^{\mathrm{FDTD}}$")
+    ax.set_xlim(0.0, 6.0)
+    ax.set_ylim(0.15, 1.45)
+    ax.grid(alpha=0.25)
+
+    # Legend on the axes (axes-relative coords) so the saved bbox tracks
+    # axes width, not figure width. fig.legend would span the full figure
+    # width and force bbox_inches="tight" to keep that width, leaving the
+    # plot panel narrower than the column once LaTeX scales to columnwidth.
+    leg = ax.legend(
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.18),
+        ncol=3,
+        fontsize=7.0,
+        handlelength=1.4,
+        handletextpad=0.3,
+        columnspacing=0.6,
+        borderpad=0.3,
+        frameon=True,
+        fancybox=False,
+    )
+    leg.get_frame().set_edgecolor("black")
+    leg.get_frame().set_linewidth(0.9)
+
+    suf = Path(out_path).suffix.lower()
+    # bbox_inches="tight" then crops to axes + y-label + legend, giving a
+    # PDF that LaTeX displays with the plot panel filling the column width
+    # (minus the y-label).
+    if suf == ".png":
+        plt.savefig(Path(out_path).with_suffix(".pdf"), bbox_inches="tight", pad_inches=0.02)
+        print(f"[plot] {Path(out_path).with_suffix('.pdf')}")
+    plt.savefig(out_path, dpi=300, bbox_inches="tight", pad_inches=0.02)
     print(f"[plot] {out_path}")
+    plt.close(fig)
 
 
 def fig_polarisation(df: pd.DataFrame, out_path: Path):
@@ -154,6 +212,7 @@ def fig_polarisation(df: pd.DataFrame, out_path: Path):
 def fig_geometry_maps(stl_path: Path, geom: dict, out_path: Path):
     """3D phantom maps: 2H, eta, O(r,+x), Sab at 5.8 GHz."""
     import trimesh
+
     from aegis import DosimetryEngine
     from aegis.geometry.mesh import BodyMesh
     from aegis.paths import PropagationPaths
@@ -296,7 +355,25 @@ def main():
     ap.add_argument("--phantom", default="thelonious")
     ap.add_argument("--stl", default=None)
     ap.add_argument("--outdir", default=None)
+    ap.add_argument(
+        "--mode",
+        choices=["png", "pdf"],
+        default="pdf",
+        help="Style mode: 'pdf' uses SciencePlots+LaTeX; 'png' falls back to no-LaTeX.",
+    )
+    ap.add_argument(
+        "--ieee",
+        action="store_true",
+        default=True,
+        help="Use IEEE column sizing for figures suitable for publication.",
+    )
     args = ap.parse_args()
+
+    if _HAVE_STYLE:
+        try:
+            apply_monograph_style(mode=args.mode)
+        except Exception as exc:
+            print(f"[plot] WARNING: could not apply SciencePlots style ({exc}); using defaults.")
 
     here = Path(__file__).resolve().parent
     val_dir = here.parent
@@ -312,7 +389,7 @@ def main():
     df = pd.read_parquet(args.records)
     print(f"[plot] loaded {len(df)} records from {args.records}")
 
-    fig_kernels_vs_fdtd(df, outdir / "fig_kernels_vs_fdtd.png")
+    fig_kernels_vs_fdtd(df, outdir / "fig_kernels_vs_fdtd.png", ieee=bool(args.ieee))
     fig_polarisation(df, outdir / "fig_polarisation.png")
 
     cache_dir = val_dir / "data" / "geometry_cache"
