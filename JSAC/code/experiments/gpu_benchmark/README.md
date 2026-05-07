@@ -70,11 +70,32 @@ Recommendation for §V.3:
 - If the paper's reference phantom is a detailed ~25 k-triangle mesh (Thelonious/Duke/Eartha/Ella as shipped): **drop the "100 ms in-silico" claim for the live-refresh pipeline** and reframe real-time as "per-pose ~3.3 s preprocessing on a single RTX 3090 (un-factored, un-batched baseline) → 1 ms translation refresh per slot via the phasor identity". That's the framing the prompt flags as an acceptable alternative.
 - If the paper is happy to work with SMPL-X-sized phantoms (~2 k–2.5 k triangles, which is what body-pose-tracking literature uses): the 100 ms claim is **within reach** — the current un-batched pipeline is at 378 ms, a single-line port of the factored Fresnel to pure JAX plus `vmap` across the 50-body axis should realistically land under 100 ms on the same GPU. The 10 ms slot cadence still needs the translation-phasor identity.
 
+## After-speedup variant (prompt 04)
+
+`bench_50body_fast.py` is the post-optimisation companion to `bench_50body.py`. It exercises the two levers from JSAC brief 04:
+
+1. **Factored Fresnel + `jax.vmap` over bodies** — `aegis.coherent._fast.compute_q_batch_vmap`. Fresnel is evaluated only at the `N_center` directions (not at the `N_center * M_ant` element-expanded set), the per-element steering is folded into the final `einsum`, and the 50 host dispatches collapse into a single device dispatch. Output is bit-equivalent to `compute_body_channel` on `expand_paths_to_array(...)`; see `tests/test_coherent_fast.py::test_factored_jax_matches_compute_body_channel`.
+2. **Translation phasor identity** — `aegis.coherent.translation`. Per-body `M_static[c, d, a, b] = sum_m a* sum_i conj(h)·h` is built once per (body, pose) at pose cadence, and slot-cadence refresh becomes
+   `Q(Δt) = einsum('c,d,cdab->ab', conj(φ), φ, M_static)` with `φ[c] = exp(-i k0 k_hat[c]·Δt)`. Verified against re-evaluation in `tests/test_coherent_fast.py::test_translation_phasor_matches_recompute`.
+
+Run after merging:
+
+```bash
+AEGIS_ARRAY_BACKEND=jax XLA_PYTHON_CLIENT_PREALLOCATE=false \
+  python JSAC/code/experiments/gpu_benchmark/bench_50body_fast.py
+```
+
+Set `AEGIS_BENCH_DECIM=1` to target the full 25 k-triangle Thelonious mesh; default is the SMPL-X-sized 10× stride. Output lands in `timings_after_speedup.json` next to the existing baselines.
+
+The smoke test on CPU (small synthetic body batch, B=5, M=200, M_ant=16) reports the structural shape — single-dispatch vmap cold construction at ~2 ms hot, translation refresh at sub-ms — but absolute numbers for the paper must come from the same RTX 3090 used for `timings.json` / `timings_decim10.json`.
+
 ## Files
 
-- `bench_50body.py` — the benchmark. `AEGIS_ARRAY_BACKEND=jax` required; `XLA_PYTHON_CLIENT_PREALLOCATE=false` recommended.
+- `bench_50body.py` — the original benchmark. `AEGIS_ARRAY_BACKEND=jax` required; `XLA_PYTHON_CLIENT_PREALLOCATE=false` recommended.
+- `bench_50body_fast.py` — factored + vmap + translation phasor companion (above).
 - `timings.json` — raw timings for 25 k-triangle phantoms (per-run totals, per-body-per-run, per-stage distributions, environment metadata).
 - `timings_decim10.json` — same, for the 10× decimated (~2.4 k triangle, SMPL-X-sized) run.
+- `timings_after_speedup.json` — produced by `bench_50body_fast.py`, holds the post-speedup numbers for the same scenario.
 
 ## Reproducing
 
