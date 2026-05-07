@@ -55,13 +55,11 @@ class ParametricBody:
         betas_batch: np.ndarray,
         name_prefix: str = "parametric",
     ) -> list[BodyMesh]:
-        import torch
-
-        betas_t = torch.tensor(betas_batch, dtype=torch.float32)
-        with torch.no_grad():
-            output = self._model(betas=betas_t)
-
-        return [self._verts_to_body(output.vertices[i].numpy(), f"{name_prefix}_{i}") for i in range(len(betas_batch))]
+        # smplx fixes batch_size at model construction, so a single forward
+        # over (N, 10) betas with a batch_size=1 model fails inside lbs. Loop
+        # over per-body generate() calls; the test surface is small and
+        # plaza_run drives bodies one at a time anyway (each has its own pose).
+        return [self.generate(betas_batch[i], name=f"{name_prefix}_{i}") for i in range(len(betas_batch))]
 
     def _verts_to_body(self, verts: np.ndarray, name: str) -> BodyMesh:
         """Convert indexed vertices to triangle soup BodyMesh."""
@@ -81,12 +79,14 @@ def _load_smplx(gender: str, model_path: str | Path | None) -> ParametricBody:
     except ImportError as err:
         raise ImportError("smplx is required for ParametricBody. Install with: pip install aegis[body]") from err
     if model_path is None:
-        model_path = Path.home() / ".aegis" / "models" / "smplx"
+        model_path = Path.home() / ".aegis" / "models"
     model_path = Path(model_path)
-    if not model_path.exists():
+    npz = model_path / "smplx" / f"SMPLX_{gender.upper()}.npz"
+    if not npz.exists():
         raise FileNotFoundError(
-            f"SMPL-X model files not found at {model_path}. "
-            "Download from https://smpl-x.is.tue.mpg.de/ and place in ~/.aegis/models/smplx/"
+            f"SMPL-X model file not found at {npz}. "
+            "Register at https://smpl-x.is.tue.mpg.de/, download models_smplx_v1_1.zip, "
+            "and run: python scripts/fetch_smplx.py <path/to/zip>"
         )
     model = smplx_pkg.create(str(model_path), model_type="smplx", gender=gender)
     faces = model.faces.astype(np.int64)
