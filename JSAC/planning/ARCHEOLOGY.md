@@ -1,33 +1,7 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<title>JSAC archeology — fresh look</title>
-<style>
-  html, body { margin:0; padding:0; height:100%; font-family: -apple-system, system-ui, sans-serif; background:#0e0e10; }
-  #toolbar { position:fixed; top:8px; left:8px; z-index:10; color:#aaa; font-size:11px;
-             background:rgba(0,0,0,.55); padding:6px 10px; border-radius:6px; line-height:1.5; }
-  #toolbar a { color:#7cd; text-decoration:none; margin-right:8px; }
-  svg.markmap { width:100vw; height:100vh; }
-</style>
-</head>
-<body>
-<div id="toolbar">
-  <b>JSAC archeology</b> · scroll to zoom · drag to pan · click nodes to collapse · color = phase
-  <br>
-  <span style="color:#9b9b9b">grey = abandoned / faded</span> ·
-  <span style="color:#7cd">cyan = current spine / paper_v2</span> ·
-  <span style="color:#fc9">orange = pivot / correction</span>
-</div>
-<svg class="markmap" data-markmap='{"colorFreezeLevel":2,"initialExpandLevel":2,"maxWidth":420,"duration":350,"spacingHorizontal":90,"spacingVertical":8}'></svg>
-
-<script>
-// markmap embed via CDN — renders the markdown below into a mindmap
-</script>
-<script src="https://cdn.jsdelivr.net/npm/markmap-autoloader@0.18"></script>
-
-<script type="text/template" data-markmap-target>
 # JSAC archeology
+
+*Reconstruction of the JSAC paper trajectory from file mtimes + content scan, May 4 2026.*
+*Companion: `ARCHEOLOGY.html` (interactive markmap, same content).*
 
 ## Timeline (file mtimes)
 - **Apr 21** — CFP grabbed, conversation, repr. papers, monograph PDFs
@@ -138,7 +112,7 @@
 - "you're acting like BR is a slam dunk; Brussels law cares about RL" — two-pronged framing
 - "I just hope DL binding isn't moot" — added §sec:binding back-of-envelope
 
-## Codex side-thread (Apr 24, dontreadthis/) — quietly merged
+## Codex side-thread (Apr 24, `dontreadthis/`) — quietly merged
 - B-map abstraction beyond J: Q_u = Bᴴ M B
 - Three levels: **element / beam / ray-tracer J**
 - Beam-level B = realistic deployment claim (Tier A served)
@@ -219,6 +193,3 @@
 - Zhou 2026 = parallel, not collision: UL/single/spherical/thermal vs DL/multi/SMPL/coherent
 - Hochwald 2014/2019, Ying 2015/2017, Castellanos 2020 = single-handset prior art
 - MDPI 2025 EMF-aware RRM survey = names the gap your paper fills
-</script>
-</body>
-</html>
