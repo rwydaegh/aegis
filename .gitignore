@@ -223,3 +223,41 @@ validation/sphere_apd_full.npz
 
 # Editor / tool backups
 *.bak
+
+# Papers workspace - exclude external materials and regenerable outputs
+# (PDFs and PNGs are already excluded globally above)
+papers/key_literature/
+papers/example_papers/
+papers/extracted/
+papers/drafts/tmp_*/
+papers/**/*.npz
+papers/**/*.aux
+papers/**/*.bbl
+papers/**/*.blg
+papers/**/*.fls
+papers/**/*.fdb_latexmk
+papers/**/*.synctex.gz
+papers/**/*.toc
+papers/**/*.out
+
+# Theory workspace - regenerable build artifacts (sources stay tracked)
+theory/**/*.npz
+theory/**/*.aux
+theory/**/*.bbl
+theory/**/*.blg
+theory/**/*.fls
+theory/**/*.fdb_latexmk
+theory/**/*.synctex.gz
+theory/**/*.toc
+theory/**/*.out
+
+# JSAC code experiments - regenerable computation outputs
+JSAC/code/experiments/**/*.npz
+JSAC/code/experiments/**/outputs/
+
+# Additional JSAC LaTeX build artifacts (extends earlier *.aux/*.out/*.toc/*.log rules)
+JSAC/**/*.bbl
+JSAC/**/*.blg
+JSAC/**/*.fls
+JSAC/**/*.fdb_latexmk
+JSAC/**/*.synctex.gz

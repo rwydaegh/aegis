@@ -11,7 +11,7 @@ repos:
         exclude: tests/golden/
       - id: check-added-large-files
         args: ['--maxkb=500']
-        exclude: '^(data/|uv\.lock$)'
+        exclude: '^(data/|uv\.lock$|JSAC/code/experiments/.*/replay/replay_data\.json$)'
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.9.0
