@@ -1,0 +1,35 @@
+study,freq_ghz,native_qty_label,native_value,native_sigma,unification_value_TbarAabA
+Flintoft 2014,1.0,Q^a (gamma_s=1),0.7,0.013,0.6054999999999999
+Flintoft 2014,3.0,Q^a (gamma_s=1),0.507,0.011,0.43855500000000003
+Flintoft 2014,5.0,Q^a (gamma_s=1),0.417,0.009,0.360705
+Flintoft 2014,7.0,Q^a (gamma_s=1),0.403,0.008,0.34859500000000004
+Flintoft 2014,9.0,Q^a (gamma_s=1),0.414,0.008,0.35811
+Flintoft 2014,11.0,Q^a (gamma_s=1),0.419,0.007,0.362435
+Zhang 2017,1.0,xi (envelope median),0.85,"[0.700,1.000]",0.85
+Zhang 2017,2.0,xi (envelope median),0.75,"[0.600,0.900]",0.75
+Zhang 2017,3.0,xi (envelope median),0.62,"[0.500,0.750]",0.62
+Zhang 2017,4.0,xi (envelope median),0.5,"[0.400,0.620]",0.5
+Zhang 2017,6.0,xi (envelope median),0.49,"[0.450,0.550]",0.49
+Zhang 2017,9.0,xi (envelope median),0.52,"[0.450,0.600]",0.52
+Zhang 2017,12.0,xi (envelope median),0.55,"[0.450,0.650]",0.55
+Zhang 2017,15.0,xi (envelope median),0.57,"[0.450,0.650]",0.57
+Zhang 2017,18.0,xi (envelope median),0.6,"[0.450,0.680]",0.6
+Bamba 2014,1.45,eta(f) regression,0.56005085,,0.56005085
+Bamba 2014,1.61,eta(f) regression,0.55719853,,0.55719853
+Bamba 2014,1.8,eta(f) regression,0.5538114,,0.5538114
+Bamba 2014,2.0,eta(f) regression,0.550246,,0.550246
+Bamba 2014,2.45,eta(f) regression,0.54222385,,0.54222385
+Bamba 2014,3.0,eta(f) regression,0.532419,,0.532419
+Bamba 2014,5.8,eta(f) regression,0.48250339999999997,,0.48250339999999997
+Kodera 2024,10.0,T_tr (T0 +- 5%),0.48882802508593537,,0.4228362416993341
+Kodera 2024,28.0,T_tr (T0 +- 5%),0.5359486588151586,,0.46359558987511224
+Kodera 2024,60.0,T_tr (T0 +- 5%),0.622379097452781,,0.5383579192966556
+Kodera 2024,100.0,T_tr (T0 +- 5%),0.7006148742849051,,0.6060318662564429
+Diao 2024,28.0,T at 28 GHz,0.52,,0.44980000000000003
+AEGIS-vs-FDTD,0.45,Cauchy / FDTD ratio,0.41,,
+AEGIS-vs-FDTD,0.7,Cauchy / FDTD ratio,0.39,,
+AEGIS-vs-FDTD,1.45,Cauchy / FDTD ratio,0.52,,
+AEGIS-vs-FDTD,2.45,Cauchy / FDTD ratio,0.59,,
+AEGIS-vs-FDTD,3.5,Cauchy / FDTD ratio,0.73,,
+AEGIS-vs-FDTD,5.2,Cauchy / FDTD ratio,0.96,,
+AEGIS-vs-FDTD,5.8,Cauchy / FDTD ratio,1.012,,
