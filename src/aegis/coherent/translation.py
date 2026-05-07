@@ -21,8 +21,6 @@ Reference: paper_v2.tex §III.C, eq:Mphase.
 
 from __future__ import annotations
 
-import jax.numpy as jnp
-
 from aegis.coherent.fresnel_operator import compute_fresnel_operator
 from aegis.constants import C_0
 from aegis.defaults import NUMERICAL_FLOOR
@@ -66,6 +64,8 @@ def compute_static_path_gram(
     -------
     M_static : (N_c, N_c, M_ant, M_ant) complex
     """
+    import jax.numpy as jnp
+
     k0 = 2.0 * jnp.pi * freq_hz / C_0
 
     mu, t_s, t_p, e_s, e_p = compute_fresnel_operator(normals, center_k_hat, n_tilde)
@@ -110,6 +110,8 @@ def translation_phasor(center_k_hat, delta_t, freq_hz):
     -------
     phi : (N_c,) complex
     """
+    import jax.numpy as jnp
+
     k0 = 2.0 * jnp.pi * freq_hz / C_0
     return jnp.exp(-1j * k0 * (center_k_hat @ delta_t))
 
@@ -128,6 +130,8 @@ def q_translate(M_static, phi):
     -------
     Q : (M_ant, M_ant) Hermitian.
     """
+    import jax.numpy as jnp
+
     Q = jnp.einsum("c,d,cdpq->pq", jnp.conj(phi), phi, M_static)
     return 0.5 * (Q + jnp.conj(Q).T)
 
@@ -144,5 +148,7 @@ def q_translate_batch(M_static_b, phi_b):
     -------
     Q_b : (B, M_ant, M_ant)
     """
+    import jax.numpy as jnp
+
     Q = jnp.einsum("bc,bd,bcdpq->bpq", jnp.conj(phi_b), phi_b, M_static_b)
     return 0.5 * (Q + jnp.conj(jnp.swapaxes(Q, -1, -2)))
