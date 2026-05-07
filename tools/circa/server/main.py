@@ -139,7 +139,45 @@ def _build_status(state, ok, error_tail):
 def run_server(
     paper_dir: Path, port: int, build_timeout_s: int, batch_timeout_s: int, pdfcomment_enabled: bool
 ) -> None:
-    raise NotImplementedError("wired in Task 14")
+    import uvicorn
+
+    from .claude_session import ClaudeSession
+    from .hunks import HunkManager
+    from .pdf_builder import PdfBuilder
+    from .snapshots import SnapshotManager
+
+    state = State()
+    paper_outline = (paper_dir / "paper.tex").read_text()[:5000]
+    tells_path = Path("/home/user/aegis/.claude/ai_writing_tells.md")
+    session = ClaudeSession.with_default_prompt(
+        paper_dir,
+        paper_outline,
+        pdfcomment_enabled,
+        tells_path=tells_path,
+        batch_timeout_s=batch_timeout_s,
+    )
+    builder = PdfBuilder(paper_dir, build_timeout_s=build_timeout_s)
+    snap = SnapshotManager(paper_dir)
+    hunks = HunkManager(paper_dir)
+    app = build_app(paper_dir, state, session, builder, snap, hunks)
+
+    @app.on_event("startup")
+    async def _startup():
+        await session.start()
+        # If a built PDF already exists, take its tex as the diff baseline.
+        if (paper_dir / "paper.pdf").exists():
+            app.state.last_built_tex = (paper_dir / "paper.tex").read_text()
+
+    @app.on_event("shutdown")
+    async def _shutdown():
+        await session.stop()
+
+    from fastapi.staticfiles import StaticFiles
+
+    web_dir = Path(__file__).parents[1] / "web"
+    app.mount("/", StaticFiles(directory=web_dir, html=True), name="web")
+
+    uvicorn.run(app, host="127.0.0.1", port=port, log_level="info")
 
 
 async def _handle_batch_flush(app, data: dict) -> None:
