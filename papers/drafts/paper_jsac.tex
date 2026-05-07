@@ -823,6 +823,9 @@ metric looks acceptable: the rare per-body overshoots are exactly
 where the closed-loop QCQP buys margin, and the geometric ZF
 solution does not see them.
 
+\paragraph*{Panel-size sensitivity}\label{par:panel-size-spatial}
+Repeating the binding-regime trace at $M = 256$ (16$\times$16 UPA, half-wavelength spacing, same $43\,$dBm conducted transmit power and $6\,$V/m reference level) sharpens this point. The MRT violation rate climbs from $14.9\%$ to $39.5\%$ and the ZF violation rate from $0.10\%$ to $18.7\%$, even with $231$ nulling DOFs over the $K = 25$ served users. A larger array focuses energy more tightly on each served user, and the side-lobe geometry that kept the cell-averaged $0.06 L_{\mathrm{RL}}$ at $M = 64$ no longer keeps the per-body tail bounded: the ZF $99^{\mathrm{th}}$ percentile $\Pabs/L_{\mathrm{RL}}$ rises from $0.53$ at $M = 64$ to $3.73$ at $M = 256$, and the maximum from $3.4 L_{\mathrm{RL}}$ to higher values. The proposed multi-body ECBF holds the per-body $99^{\mathrm{th}}$ percentile at $1.00\,L_{\mathrm{RL}}$ at both panel sizes by construction. The argument for budget-aware precoding strengthens with array size: the geometric ZF solution is increasingly non-compliant as $M$ grows, while the closed-loop QCQP holds the cap regardless. The $M = 256$ runs use the GPU-vmapped JAX inner solver of \cref{sec:multibody-ecbf}; the per-slot wall-clock of the Newton sweep at this size is $\sim 1.1\,$s on a single RTX 4090 with the body-batch finite-difference Jacobian fanned out under \texttt{jax.vmap}, against $\sim 4\,$s on a 16-vCPU host that has the contraction memory-bandwidth-bound on the $\Mmat^{(u)}$ tensor.
+
 \begin{figure*}[!t]
   \centering
   \includegraphics[width=0.96\linewidth]{spatial_heatmap.pdf}
@@ -901,6 +904,9 @@ with a Lanczos-projected envelope are the three direct follow-ups
 this trade-off points to: pose information buys a tighter exposure
 profile, and the solver path needs to be tightened in lockstep to
 realise the sum-rate gain that the binding constraint promises.
+
+\paragraph*{Panel-size sensitivity}\label{par:panel-size-pose}
+At $M = 256$ the bimodal trade-off in $\Delta\textsf{SR}$ widens. The proposed solver puts $20.4\%$ of slots into the left tail ($\Delta\textsf{SR} < -1\,$Gbps) and $11.5\%$ into the right tail, with median $\Delta\textsf{SR} = -438\,$Mbps and mean $-3.4\,$Gbps; the per-slot compliance gain compresses from $4.7\times$ at $M = 64$ to $2.5\times$ at $M = 256$ ($3.41\%$ aware versus $8.44\%$ ablate violations), and the proposed-solver fallback rate climbs from $83.6\%$ to $88.5\%$ under aware. The mechanism is unchanged --- the posed operator is more spectrally concentrated than its T-pose envelope --- but the larger array spreads $\bm\lambda$ across more orders of magnitude per slot, and the $\textsf{max\_outer} = 8$ Newton cap of \cref{sec:multibody-ecbf} handles the wider dynamic range less gracefully. The same three follow-ups apply, with the panel-size scaling making them more, not less, urgent: an uncapped Newton with restart, the lifted Cauchy-on-tier-C envelope, and the warm-start dual that this implementation already carries.
 
 \begin{figure}[!t]
   \centering

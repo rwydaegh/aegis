@@ -30,6 +30,12 @@ CANONICAL_RUNS = {
     # tighter binding story than the synthetic --budget-multiplier path.
     "specular_v6_aware": "v6_aware/plaza_run_seed42_physhannon_poseaware_pathsdict_v6_aware.npz",
     "specular_v6_ablate": "v6_ablate/plaza_run_seed42_physhannon_poseablate_pathsdict_v6_ablate.npz",
+    # v7 binding regime: same 43 dBm + 6 V/m as v6 but at 16x16 / M=256 panel
+    # via the JAX-backed solver (PR #788). Larger panel + more degrees of
+    # freedom = ZF gains and ECBF acquires more headroom; lets the paper
+    # report a panel-size sweep alongside the 8x8 baseline.
+    "specular_v7_aware": "v7_M256/plaza_run_seed42_physhannon_poseaware_pathsdict_v7_M256_aware.npz",
+    "specular_v7_ablate": "v7_M256/plaza_run_seed42_physhannon_poseablate_pathsdict_v7_M256_ablate.npz",
     "specular_viz": "plaza_run_seed42_physhannon_poseaware_pathsdict_viz.npz",
     "specular_viz5min": "plaza_run_seed42_physhannon_poseaware_pathsdict_viz5min.npz",
     # Legacy 600-slot snapshots, kept available for diff-checking the
