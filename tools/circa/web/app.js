@@ -77,6 +77,112 @@ async function reloadPdfPages() {
 
 function renderAnnotation(_a) { /* implemented in Task 17 */ }
 
+function setTool(t) {
+  currentTool = t;
+  document.querySelectorAll("#tools button").forEach((b) =>
+    b.classList.toggle("active", b.dataset.tool === t),
+  );
+}
+document.querySelectorAll("#tools button").forEach((btn) => {
+  btn.addEventListener("click", () => setTool(btn.dataset.tool));
+});
+document.getElementById("rebuild-btn").addEventListener("click", triggerRebuild);
+
+document.addEventListener("keydown", (e) => {
+  const tag = document.activeElement?.tagName;
+  if (tag === "INPUT" || tag === "TEXTAREA") return;
+  if (e.key === "1") setTool("pen");
+  else if (e.key === "2") setTool("arrow");
+  else if (e.key === "3") setTool("rect");
+  else if (e.key === "4") setTool("text");
+  else if (e.key === "r" || e.key === "R") triggerRebuild();
+  else if (e.key === "z" || e.key === "Z") confirmUndoLastBatch();
+});
+
+async function triggerRebuild() {
+  await fetch("/rebuild", { method: "POST" });
+}
+
+function confirmUndoLastBatch() {
+  alert("Z = undo last batch (not yet wired; use status pill 'reject' on individual annotations)");
+}
+
+const PEN_HANDLERS = (svg, wrap) => {
+  let drawing = null;
+  svg.addEventListener("pointerdown", (e) => {
+    if (currentTool !== "pen") return;
+    const r = svg.getBoundingClientRect();
+    drawing = {
+      points: [[(e.clientX - r.left), (e.clientY - r.top)]],
+      el: document.createElementNS("http://www.w3.org/2000/svg", "polyline"),
+    };
+    drawing.el.setAttribute("class", "shape");
+    drawing.el.setAttribute("fill", "none");
+    drawing.el.setAttribute("stroke", "red");
+    drawing.el.setAttribute("stroke-width", "2");
+    svg.appendChild(drawing.el);
+    svg.setPointerCapture(e.pointerId);
+  });
+  svg.addEventListener("pointermove", (e) => {
+    if (!drawing) return;
+    noteActivity();
+    const r = svg.getBoundingClientRect();
+    drawing.points.push([(e.clientX - r.left), (e.clientY - r.top)]);
+    drawing.el.setAttribute("points", drawing.points.map((p) => p.join(",")).join(" "));
+  });
+  svg.addEventListener("pointerup", (e) => {
+    if (!drawing) return;
+    finalizeShape(svg, wrap, "pen", drawing.points);
+    drawing = null;
+  });
+};
+
+function finalizeShape(svg, wrap, shape, pixelPoints) {
+  const w = parseFloat(wrap.style.width), h = parseFloat(wrap.style.height);
+  const points = pixelPoints.map(([x, y]) => [x / w, y / h]);
+  const id = crypto.randomUUID();
+  const ann = {
+    id, page: parseInt(wrap.dataset.pageNum), shape, points,
+    text: "", mode: "edit", status: "pending",
+    pass: currentPass, created_at: Date.now(),
+  };
+  annotations.set(id, ann);
+  spawnTextbox(svg, wrap, ann);
+  noteActivity();
+}
+
+function spawnTextbox(svg, wrap, ann) {
+  const xs = ann.points.map((p) => p[0]);
+  const ys = ann.points.map((p) => p[1]);
+  const w = parseFloat(wrap.style.width);
+  const h = parseFloat(wrap.style.height);
+  const tx = Math.max(...xs) * w + 4;
+  const ty = Math.min(...ys) * h;
+  const box = document.createElement("input");
+  box.type = "text";
+  box.className = "textbox";
+  box.style.left = (wrap.offsetLeft + tx) + "px";
+  box.style.top = (wrap.offsetTop + ty) + "px";
+  box.placeholder = "note (Enter to submit, Esc visual-only, Shift+Enter to ask)";
+  document.body.appendChild(box);
+  box.focus();
+  box.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { box.remove(); return; }
+    if (e.key === "Enter") {
+      ann.text = box.value;
+      ann.mode = e.shiftKey ? "ask" : "edit";
+      box.remove();
+      updateQueueBadge();
+      noteActivity();
+    }
+  });
+}
+
+function updateQueueBadge() {
+  const pending = [...annotations.values()].filter((a) => a.status === "pending").length;
+  document.getElementById("queue-badge").textContent = `${pending} pending`;
+}
+
 async function loadAndRender() {
   const pdf = await pdfjsLib.getDocument("/pdf").promise;
   const col = document.getElementById("pdf-col");
@@ -96,6 +202,7 @@ async function loadAndRender() {
     svg.setAttribute("class", "overlay");
     svg.setAttribute("viewBox", `0 0 ${viewport.width} ${viewport.height}`);
     wrap.appendChild(svg);
+    PEN_HANDLERS(svg, wrap);
     col.appendChild(wrap);
     await page.render({ canvasContext: ctx, viewport }).promise;
   }
