@@ -75,7 +75,155 @@ async function reloadPdfPages() {
   for (const a of annotations.values()) renderAnnotation(a);
 }
 
-function renderAnnotation(_a) { /* implemented in Task 17 */ }
+function renderAnnotation(a) {
+  const wrap = document.querySelector(`.page-wrap[data-page-num="${a.page}"]`);
+  if (!wrap) return;
+  const svg = wrap.querySelector("svg.overlay");
+  let g = svg.querySelector(`g[data-id="${a.id}"]`);
+  if (!g) {
+    g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    g.setAttribute("data-id", a.id);
+    svg.appendChild(g);
+  }
+  g.innerHTML = "";
+  const w = parseFloat(wrap.style.width), h = parseFloat(wrap.style.height);
+  const colorClass = a.status === "done" ? "grey"
+    : a.status === "in_progress" ? "amber"
+    : a.status === "needs_clarification" ? "" : "";
+
+  if (a.shape === "pen") {
+    const poly = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+    poly.setAttribute("class", `shape ${colorClass}`);
+    poly.setAttribute("fill", "none");
+    poly.setAttribute("stroke-width", "2");
+    poly.setAttribute("points", a.points.map(([x, y]) => `${x * w},${y * h}`).join(" "));
+    g.appendChild(poly);
+  } else if (a.shape === "arrow") {
+    const [s, e] = a.points;
+    const ln = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    ln.setAttribute("class", `shape ${colorClass}`);
+    ln.setAttribute("x1", s[0] * w); ln.setAttribute("y1", s[1] * h);
+    ln.setAttribute("x2", e[0] * w); ln.setAttribute("y2", e[1] * h);
+    ln.setAttribute("stroke-width", "2");
+    ln.setAttribute("marker-end", "url(#arrowhead)");
+    g.appendChild(ln);
+  } else if (a.shape === "rect") {
+    const [tl, br] = a.points;
+    const r = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    r.setAttribute("class", `shape ${colorClass}`);
+    r.setAttribute("x", tl[0] * w); r.setAttribute("y", tl[1] * h);
+    r.setAttribute("width", (br[0] - tl[0]) * w); r.setAttribute("height", (br[1] - tl[1]) * h);
+    g.appendChild(r);
+  } else if (a.shape === "text") {
+    const [p] = a.points;
+    const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    c.setAttribute("class", `shape ${colorClass}`);
+    c.setAttribute("fill", "currentColor");
+    c.setAttribute("cx", p[0] * w); c.setAttribute("cy", p[1] * h); c.setAttribute("r", "5");
+    g.appendChild(c);
+  }
+
+  // Status pill at bbox top-right.
+  const allPts = a.points;
+  const px = allPts.map((p) => Array.isArray(p) ? p[0] : p);
+  const py = allPts.map((p) => Array.isArray(p) ? p[1] : p);
+  const px0 = Math.max(...px) * w, py0 = Math.min(...py) * h;
+  const fo = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject");
+  fo.setAttribute("x", px0); fo.setAttribute("y", py0 - 18);
+  fo.setAttribute("width", "120"); fo.setAttribute("height", "20");
+  const div = document.createElement("div");
+  div.className = `status-pill ${colorClass}`;
+  div.textContent = a.one_liner ? `\u2713 ${a.one_liner.slice(0, 18)}` : (a.status === "needs_clarification" ? "?" : "\u2022");
+  div.title = a.one_liner || a.clarification || a.text || "";
+  div.addEventListener("click", () => openPillPopover(a));
+  fo.appendChild(div);
+  g.appendChild(fo);
+
+  if (a.status === "needs_clarification" && a.clarification) {
+    spawnSpeechBubble(wrap, a);
+  }
+}
+
+function openPillPopover(a) {
+  const action = window.prompt(
+    `${a.text || "(no note)"}\n\nClaude: ${a.one_liner || a.clarification || ""}\n\nType: 'r' to reject, 'e' to re-edit text, anything else to close`,
+    "",
+  );
+  if (action === "r") {
+    fetch(`/reject/${a.id}`, { method: "POST" }).then((r) => {
+      if (!r.ok) r.json().then((d) => alert(d.reason || "reject failed"));
+    });
+  } else if (action === "e") {
+    const wrap = document.querySelector(`.page-wrap[data-page-num="${a.page}"]`);
+    spawnTextbox(wrap.querySelector("svg.overlay"), wrap, a);
+  }
+}
+
+function spawnSpeechBubble(wrap, a) {
+  const existing = document.querySelector(`.bubble[data-for="${a.id}"]`);
+  if (existing) existing.remove();
+  const bubble = document.createElement("div");
+  bubble.className = "bubble";
+  bubble.dataset.for = a.id;
+  bubble.innerHTML = `<div><strong>Claude:</strong> ${escapeHtml(a.clarification)}</div>`;
+  const reply = document.createElement("input");
+  reply.type = "text";
+  reply.placeholder = "reply (Enter to send, Esc to dismiss)";
+  reply.style.marginTop = ".25rem";
+  reply.style.width = "100%";
+  bubble.appendChild(reply);
+  const xs = a.points.flatMap((p) => Array.isArray(p) ? [p[0]] : [p]);
+  const ys = a.points.flatMap((p) => Array.isArray(p) ? [p[1]] : [p]);
+  const w = parseFloat(wrap.style.width), h = parseFloat(wrap.style.height);
+  bubble.style.left = (wrap.offsetLeft + Math.max(...xs) * w + 8) + "px";
+  bubble.style.top = (wrap.offsetTop + Math.min(...ys) * h) + "px";
+  document.body.appendChild(bubble);
+  reply.focus();
+  reply.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { bubble.remove(); return; }
+    if (e.key === "Enter" && reply.value.trim()) {
+      ws.send(JSON.stringify({ type: "clarification_reply", annotation_id: a.id, reply: reply.value.trim() }));
+      bubble.remove();
+    }
+  });
+}
+
+function escapeHtml(s) {
+  return String(s || "").replace(/[&<>"']/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+}
+
+let idleTimer = null;
+const FLUSH_MS = 5000;
+
+function noteActivity() {
+  if (idleTimer) clearTimeout(idleTimer);
+  idleTimer = setTimeout(maybeFlush, FLUSH_MS);
+}
+
+document.addEventListener("keydown", noteActivity);
+document.addEventListener("pointermove", noteActivity);
+document.addEventListener("pointerdown", noteActivity);
+
+async function maybeFlush() {
+  const pending = [...annotations.values()].filter((a) => a.status === "pending" && a.text);
+  if (pending.length === 0 || inFlight) return;
+  pending.forEach((a) => (a.status = "in_progress"));
+  const pages = new Set(pending.map((a) => a.page));
+  const page_pngs = {};
+  for (const p of pages) {
+    const wrap = document.querySelector(`.page-wrap[data-page-num="${p}"]`);
+    if (!wrap) continue;
+    const canvas = wrap.querySelector("canvas");
+    page_pngs[p] = canvas.toDataURL("image/png").split(",")[1];
+  }
+  ws.send(JSON.stringify({
+    type: "batch_flush",
+    batch_id: crypto.randomUUID(),
+    annotations: pending.map(({ ...a }) => ({ ...a, status: "pending" })),
+    page_pngs,
+  }));
+  updateQueueBadge();
+}
 
 function setTool(t) {
   currentTool = t;
