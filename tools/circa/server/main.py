@@ -64,6 +64,8 @@ def build_app(
                 {"ok": False, "error": result.error_tail, "timed_out": result.timed_out},
                 status_code=408 if result.timed_out else 500,
             )
+        # Record current tex as the last successful-build baseline for diff sidebar.
+        app.state.last_built_tex = (paper_dir / "paper.tex").read_text()
         new_pass = state.next_pass()
         state.drop_annotations_below_pass(new_pass)
         await _broadcast(app, _pdf_reloaded(state, new_pass))
@@ -213,7 +215,11 @@ async def _process_batch(app, data: dict) -> None:
     if app.state.snapshot_mgr is not None and app.state.hunk_mgr is not None:
         from .diff_view import current_diff
 
-        diff = current_diff(app.state.paper_dir, data["batch_id"])
+        diff = current_diff(
+            app.state.paper_dir,
+            batch_id=data["batch_id"],
+            last_built_tex=getattr(app.state, "last_built_tex", None),
+        )
         app.state.current_diff = diff
         await _broadcast(app, diff_update_event(state, hunk=diff))
 
@@ -237,8 +243,38 @@ async def _process_batch(app, data: dict) -> None:
 
 
 async def _handle_clarification_reply(app, data: dict) -> None:
-    """Wired in Task 13."""
-    raise NotImplementedError("Task 13")
+    """Build a follow-up annotation from a reply and enqueue it as a clarification (priority)."""
+    import time
+    import uuid
+    from .annotation import Annotation, AnnotationStatus
+
+    state = app.state.state
+    parent = state.get_annotation(data["annotation_id"])
+    if parent is None:
+        return
+    follow = Annotation(
+        id=str(uuid.uuid4()),
+        page=parent.page,
+        shape=parent.shape,
+        points=parent.points,
+        text=f"(reply to {parent.id}) {data['reply']}",
+        mode=parent.mode,
+        status=AnnotationStatus.PENDING,
+        pass_=parent.pass_,
+        created_at=int(time.time() * 1000),
+        parent_id=parent.id,
+        reply=data["reply"],
+    )
+    payload = {
+        "type": "batch_flush",
+        "batch_id": str(uuid.uuid4()),
+        "annotations": [follow.to_dict()],
+        "page_pngs": data.get("page_pngs", {}),
+    }
+    if state.in_flight:
+        state.queue_next_batch_clarification(payload)
+    else:
+        await _handle_batch_flush(app, payload)
 
 
 async def _handle_cancel(app, data: dict) -> None:

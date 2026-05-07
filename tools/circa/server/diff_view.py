@@ -1,14 +1,18 @@
-from pathlib import Path
+import difflib
+from typing import Optional
 
 
-def current_diff(paper_dir: Path, batch_id: str) -> str:
-    """Return unified diff of current paper.tex vs the snapshot for batch_id. Stubbed in Task 12; expanded in Task 13."""
-    import difflib
-    from . import paths
+def current_diff(paper_dir, batch_id: Optional[str] = None, last_built_tex: Optional[str] = None) -> str:
+    """Diff current paper.tex against last_built_tex (preferred) or the batch snapshot."""
+    if last_built_tex is not None:
+        post = (paper_dir / "paper.tex").read_text().splitlines(keepends=True)
+        pre = last_built_tex.splitlines(keepends=True)
+    else:
+        from . import paths
 
-    snap = paths.snapshots_dir(paper_dir) / f"{batch_id}.tex"
-    if not snap.exists():
-        return ""
-    pre = snap.read_text().splitlines(keepends=True)
-    post = (paper_dir / "paper.tex").read_text().splitlines(keepends=True)
+        snap = paths.snapshots_dir(paper_dir) / f"{batch_id}.tex"
+        if not snap.exists():
+            return ""
+        pre = snap.read_text().splitlines(keepends=True)
+        post = (paper_dir / "paper.tex").read_text().splitlines(keepends=True)
     return "".join(difflib.unified_diff(pre, post, fromfile="a/paper.tex", tofile="b/paper.tex", n=3))
