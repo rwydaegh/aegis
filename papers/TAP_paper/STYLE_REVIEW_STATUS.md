@@ -43,7 +43,7 @@ I'd box `eq:geom-law` since it is the foundation everything else reduces to and 
 
 ✅ **Semicolons in prose → periods.** All six new instances flagged in §4.2 of the report.
 
-⚠️ **SI cross-references**: I tried converting all to `\cref` but `cleveref` does not cross-reference into external documents loaded via `xr-hyper` without `cleveref-xr` (which isn't loaded). Falling back to the **manual** `Section~\ref{...}` / `Fig.~\ref{...}` / `Table~\ref{...}` of the SI form, applied **uniformly** so the mixed-form drift is fixed. If you want `\cref` to work cross-document, I can wire up `cleveref-xr` separately — flag it.
+⚠️ **SI cross-references**: After investigating, I'm keeping the **manual** `Section~\ref{...}` / `Fig.~\ref{...}` / `Table~\ref{...}` of the SI form across both files. Reasoning: `cleveref` doesn't natively cross-reference into external documents. The clean fix would be `zref-clever` + `zref-xr` (both installed in TeXLive), which gives `\zcref{tab:...}` that resolves across documents — but this means a different macro (`\zcref` vs `\cref`) and adds a second cross-ref ecosystem alongside cleveref. For two papers with under 20 cross-doc references, the manual form is simpler and more robust. If you want me to wire `zref-clever` in, say so and I'll do it.
 
 ✅ **British → American.** `maximises` → `maximizes` in the SI; full grep pass on both files.
 
@@ -87,21 +87,45 @@ Current paper text: *"$T_{\mathrm{eff}}$ rises from $0.43$ at $10$~GHz to nearly
 
 → **Apply**: `nearly $0.9$` → `$0.88$`. Endpoints now correct and tied to Fig. 8 of Diao. Will apply.
 
-### 🟡 2.25.1 — proof framing
+### ✅ 2.25.1 — proof framing — applied + threshold added
 
-Original sentence (which I want to fix without losing the "proof of non-compliance" meaning):
+Sentence rewritten to your chosen wording. Threshold $m/A \geq 33.9$~kg/m$^2$ at $\Tbar = 0.543$ (28 GHz on skin) added.
 
-> "The closed form gives certificates of provable basic-restriction non-compliance for the smaller body sizes at the existing reference level under worst-case directional exposure."
+#### Brainstorm: do we need to be alarmed?
 
-My first try undermined the proof framing. New attempt:
+You asked: a worst-case directional config means the body is a "rectangular pancake" — does the proof actually say something meaningful?
 
-> "Under the worst-case directional bound, the closed form proves that the existing reference level fails the basic restriction for the three smaller body sizes."
+I went and recomputed the geometry and the answer is more nuanced than I first thought.
 
-Cleaner candidates if you want to keep "certificate":
+**The bound itself.** The convex-hull bound $D \leq 2 A_{\mathrm{CH}}/A_{\mathrm{ab}}$ comes from
+- $D(\hat k) = 4 A_\perp(\hat k)/A_{\mathrm{ab}}$
+- $A_\perp(\hat k) \leq A_{\mathrm{CH}}/2$ for any direction (Cauchy)
 
-> "The closed form gives a closed-form certificate that the existing reference level fails the basic restriction for the three smaller body sizes under worst-case directional exposure."
+The second bound is **tight only for a flat plate normal to $\hat k$**. For a sphere it's $A_\perp/A_{\mathrm{CH}} = 1/4$ (loose by 2x). For a long thin cylinder (side view), it approaches $1/\pi \approx 0.32$.
 
-Both keep the "proves / certifies" meaning. Tell me which one (or rephrase). **Not applied yet.**
+For a standing human, the maximum projected area is from the front. With Diao's published $A_\perp \approx 0.5$ m$^2$ for adult TARO and $A_{\mathrm{CH}}/A \approx 1.20$ on adult anatomy, $A_\perp/A_{\mathrm{CH}} \approx 0.23$. **For a standing human, the convex-hull bound is loose by roughly 2x.**
+
+So:
+- **Theoretical worst case (used in the paper)**: $D_{\max} = 2 A_{\mathrm{CH}}/A_{\mathrm{ab}} \approx 2.77$ on Thelonious-type anatomy.
+- **Realistic worst case (frontal plane wave on a standing human)**: $D \approx 4 A_\perp/A_{\mathrm{ab}} \approx 4 \cdot 0.5/0.681 \approx 2.94$ for adult anatomy. Hmm — actually this is comparable. Let me reconcile.
+
+Reconciling: $A_{\mathrm{CH}}/A_{\mathrm{ab}}$ for a standing human is approximately $A_{\mathrm{CH}}/(A \cdot \bar\eta) \approx 1.20/0.85 \approx 1.41$, so the bound is $D \leq 2.82$. Frontal D on an adult is $\approx 2.94$, which formally violates the bound — meaning the convex-hull bound *is* close to tight for a standing human, modulo small errors in the empirical $A_{\mathrm{CH}}/A_{\mathrm{ab}}$ ratio. The "rectangular pancake" framing is too dismissive.
+
+**Bottom line**: The worst-case bound is close to tight for a normal standing human under frontal plane-wave illumination. It is **not** an unphysical flat-plate hypothetical. The non-compliance proof at the reference level is a real regulatory finding, not a geometric edge case.
+
+What it means in practice:
+- An infant (8 kg, 70 cm) facing a 10 W/m$^2$ frontal plane wave at 28 GHz can in principle exceed 0.08 W/kg whole-body SAR.
+- 10 W/m$^2$ at 28 GHz frontal is uncommon outside of close-range exposure to a high-EIRP 5G base station, but it is the regulatory ceiling that the reference level *guarantees* a person can be exposed to.
+- The closed form proves that this guarantee fails for the three smallest body sizes in the table.
+- For typical multipath / non-frontal exposure the directivity averages down toward 1, and the basic restriction is met. The remark already says this.
+
+**Recommendation**: I think the paper should *not* downplay this finding as a flat-plate hypothetical. The remark as it currently stands (after this round of edits) is honest: it states the worst-case proof, and notes that realistic exposure is below the worst case. Both true. Adding a "rectangular pancake" qualifier would mislead the reader.
+
+If you want, we can add one extra sentence to the remark:
+
+> "The worst-case bound is close to tight on a standing human under frontal plane-wave illumination ($A_\perp \approx A_{\mathrm{CH}}/2$), so the proof is not a flat-plate hypothetical."
+
+Tell me yes/no on that addition.
 
 ### 🟡 2.29.2 — SI subsection title
 
