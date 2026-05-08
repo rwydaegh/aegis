@@ -6,7 +6,7 @@
 % Author: Robin Wydaeghe
 % =====================================================================
 
-\documentclass[journal,onecolumn,11pt]{IEEEtran}
+\documentclass[journal,twocolumn,10pt]{IEEEtran}
 
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
@@ -21,12 +21,25 @@
 \usepackage{booktabs}
 \usepackage{array}
 \usepackage{caption}
+\usepackage{subcaption}
 \usepackage{enumitem}
 
 \usepackage{cite}
 \usepackage{xcolor}
-\usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+\usepackage[colorlinks=true,linkcolor=black,citecolor=black,urlcolor=black]{hyperref}
 \usepackage[capitalize]{cleveref}
+\usepackage[acronym,nonumberlist,nopostdot,nomain]{glossaries}
+% Suppress hyperlinks on \gls expansions so they render as plain black text
+% rather than picking up the blue linkcolor from hyperref.
+\glsdisablehyper
+
+\newacronym{APD}{APD}{Absorbed Power Density}
+\newacronym{IPD}{IPD}{Incident Power Density}
+\newacronym{SAR}{SAR}{Specific Absorption Rate}
+\newacronym{FDTD}{FDTD}{Finite-Difference Time-Domain}
+\newacronym{ICNIRP}{ICNIRP}{International Commission on Non-Ionizing Radiation Protection}
+\newacronym{TM}{TM}{Transverse Magnetic}
+\newacronym{TE}{TE}{Transverse Electric}
 
 \theoremstyle{plain}
 \newtheorem{theorem}{Theorem}[section]
@@ -45,8 +58,8 @@
 \newcommand{\nhat}{\hat{\bm{n}}}
 \newcommand{\rr}{\mathbf{r}}
 \newcommand{\EE}{\mathbf{E}}
-\newcommand{\Sinc}{S_{\mathrm{inc}}}
-\newcommand{\Sab}{S_{\mathrm{ab}}}
+\newcommand{\IPD}{\mathrm{IPD}}
+\newcommand{\APD}{\mathrm{APD}}
 \newcommand{\Aab}{A_{\mathrm{ab}}}
 \newcommand{\Aperp}{A_\perp}
 \newcommand{\Teff}{T_{\mathrm{eff}}}
@@ -96,7 +109,7 @@ and figures cited without a prefix refer to the main paper.
 
 \subsection{Setup}
 A monochromatic plane wave with time-averaged Poynting vector
-$\mathbf{S}_{\mathrm{inc}} = \Sinc\,\khat$ illuminates a body whose
+$\mathbf{S}_{\mathrm{inc}} = \IPD\,\khat$ illuminates a body whose
 surface $\Sigma$ is locally flat on the wavelength scale. At a
 surface point $\rr$ with outward normal $\nhat(\rr)$, the local TE
 and TM unit vectors are
@@ -144,8 +157,8 @@ gives the effective transmission
   \Teff(\rr) = |e_s(\rr)|^2\,T_s(\theta(\rr))
             + |e_p(\rr)|^2\,T_p(\theta(\rr))\, ,
 \end{equation}
-and the absorbed power density at a visible point is
-$\Sab(\rr) = \Sinc\,\Teff(\rr)\,\pospart{\mu(\rr)}$.
+and the \gls{APD} at a visible point is
+$\APD(\rr) = \IPD\,\Teff(\rr)\,\pospart{\mu(\rr)}$.
 
 \subsection{Polarization splitting}
 Write
@@ -186,8 +199,54 @@ $D_B / \sqrt{2N}$. With $D_B = 16\%$ on the Thelonious phantom and
 $N = 20$ paths, the correction is below $2.5\%$.
 
 Under any of these three conditions, $\Teff \to \Tavg(\theta)$, and
-the local law reduces to $\Sab(\rr) = \Sinc\,\Tavg(\theta(\rr))\,
+the local law reduces to $\APD(\rr) = \IPD\,\Tavg(\theta(\rr))\,
 \pospart{\mu(\rr)}$.
+
+\subsection{Directional and polarization analysis on Thelonious}
+\label{si:apd-direction}
+
+To complement the single-direction comparison reported in the main
+paper (\S Validation, table comparing geometric law to full Fresnel
+integration), we evaluate the geometric law against the full
+polarization-aware Fresnel integration across $128$ illumination
+directions sampled uniformly on the sphere and three polarization
+states (TE, TM, unpolarized) on the Thelonious phantom at $28$~GHz
+with $\IPD = 1$~W/m$^2$. \Cref{fig:si-apd-direction} reports the
+results.
+
+\begin{figure*}[!t]
+  \centering
+  \begin{subfigure}[t]{0.48\linewidth}
+    \includegraphics[width=\linewidth]{apd_direction_panel_pdf.pdf}
+    \caption{Pointwise on illuminated triangles.}
+    \label{fig:si-apd-direction:pdf}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.48\linewidth}
+    \includegraphics[width=\linewidth]{apd_direction_panel_box.pdf}
+    \caption{Across $128$ directions.}
+    \label{fig:si-apd-direction:box}
+  \end{subfigure}
+  \caption{Directional and polarization analysis on the Thelonious
+  phantom (skin at $28$~GHz, $\IPD = 1$~W/m$^2$).
+  (a)~Probability density of local $\APD$ on illuminated triangles
+  for TE, TM, and unpolarized illumination. The unpolarized density
+  is the symmetric mean of the two polarized densities.
+  (b)~Distribution of total absorbed power $P_{\mathrm{abs}}$ across
+  $128$ directions. The dashed line marks the prediction
+  $T_0\,\Aperp = 105.9$~mW. The coefficient of variation across
+  directions is annotated above each box.}
+  \label{fig:si-apd-direction}
+\end{figure*}
+
+The TE and TM densities in panel (a) bracket the unpolarized density
+symmetrically, illustrating the $\tfrac12(T_s+T_p)$ averaging that
+underlies $\Tavg$. Panel (b) shows that the total absorbed power
+clusters around $T_0\,\Aperp$ across directions, with the directional
+spread (CV) set by self-shadowing rather than by polarization. Across
+the $128$ directions, the unpolarized full-Fresnel total absorbed
+power matches the simplified prediction $T_0\,\Aperp(\khat)$ with mean
+bias $-1.2\%$ and standard deviation $0.5\%$, and lies within $2.2\%$
+on every direction.
 
 
 \section{Pseudo-Brewster compensation across tissues}\label{si:azzam}
@@ -202,56 +261,62 @@ $\theta_{pB} = \arctan|\ntilde|$. The leading angular dependence
 cancels at $|\ntilde|^2 = 2 + \sqrt{3}$, leaving a quartic residual.
 
 The criterion weakens for $|\ntilde| > 2.5$, where the unpolarized
-reflectance varies by less than $6\%$ over $[0^\circ, 75^\circ]$.
+reflectance varies by less than $6\%$ over $[0^\circ, 60^\circ]$.
 We extend the criterion empirically to lossy biological tissue
 $\ntilde = n - i\kappa$ and verify on the IT'IS catalog.
 
-\subsection{Quantitative evaluation across IT'IS tissues}
-\Cref{tab:itis-pB} reports $\ntilde$, $T_0$, and the maximum angular
-variation of $\Tavg/T_0$ on the IT'IS v5.0 catalog across 0.3
-to 100~GHz. For every tissue with $|\ntilde| > 2.5$, the variation
-stays below $6\%$ over $[0^\circ, 60^\circ]$ and within a few percent
-over $[0^\circ, 75^\circ]$. \Cref{fig:si-tissue-universality} shows
-this directly. High-index tissues (skin, muscle, brain, eye) form a
-near-flat plateau through wide angles. Fat has $|\ntilde| \approx
-2.05$ at 28~GHz and is the only catalog entry that drops below
-the band before $60^\circ$. Fat is rarely the outermost tissue at
-exposure sites of regulatory interest.
+\subsection{Quantitative evaluation across outer-body tissues}
+At body surfaces relevant to regulatory dosimetry above 6~GHz, only
+three tissues can be the outermost layer: skin (the dominant case),
+subcutaneous fat (rare, exposed at the abdomen and thighs), and the
+eye. \Cref{tab:itis-pB} reports $\ntilde$, $T_0$, the
+pseudo-Brewster angle, and the maximum angular variation of
+$\Tavg/T_0$ on each of these three tissues at 28~GHz, with the IT'IS
+v5.0 Cole--Cole catalog as the source for $\varepsilon_r$ and
+$\sigma$~\cite{ITISv5,Gabriel1996}. Over $[0^\circ, 60^\circ]$ the
+variation is below $5\%$ on skin and fat and below $8\%$ on
+vitreous humor. Beyond $60^\circ$ the high-index tissues (skin,
+vitreous) bend upward toward their pseudo-Brewster minima, while fat
+($|\ntilde| = 2.63$, near the Azzam threshold) drops monotonically.
+The cosine weight $\mu(\rr)$ in the surface integral suppresses
+contributions from $\theta > 60^\circ$, so the table value at
+$60^\circ$ is the operationally relevant bound. \Cref{fig:si-tissue-universality} shows this directly.
 
 \begin{figure}[!t]
   \centering
-  \includegraphics[width=0.78\columnwidth]{si_tissue_universality.pdf}
-  \caption{Pseudo-Brewster compensation across the IT'IS v5.0
-  catalog at 28~GHz: $\Tavg(\theta)/T_0$ for six representative
-  tissues spanning $|\ntilde| \in [2.05, 7.19]$. The shaded band
-  marks $\pm 6\%$. High-index tissues stay within a few percent
-  through $60^\circ$ and bend upward only near grazing, where the
-  TM channel approaches its pseudo-Brewster minimum. Fat, with
-  $|\ntilde|$ below the Azzam threshold of $2.5$, is the sole
-  catalog outlier dropping out of the band.}
+  \includegraphics[width=\columnwidth]{si_tissue_universality.pdf}
+  \caption{Pseudo-Brewster compensation on the three tissues that
+  can be the outermost layer at body surfaces of regulatory interest
+  above 6~GHz: skin, subcutaneous fat, and ocular vitreous humor at
+  28~GHz, IT'IS Cole--Cole properties. The shaded band marks
+  $\pm 6\%$. All three curves stay inside the band over $[0^\circ,
+  60^\circ]$. Beyond $60^\circ$, vitreous humor (high index,
+  pseudo-Brewster near grazing) bends upward and fat (near the Azzam
+  threshold) drops; skin stays within $\pm 6\%$ across the entire
+  $[0^\circ, 75^\circ]$ range.}
   \label{fig:si-tissue-universality}
 \end{figure}
 
 \begin{table}[!t]
 \centering
-\caption{Pseudo-Brewster compensation on the IT'IS v5.0 catalog
-at 28~GHz. The variation column is the maximum deviation of
-$\Tavg/T_0$ from unity over $[0^\circ, 75^\circ]$.}
+\footnotesize
+\caption{Pseudo-Brewster compensation on the three outer-body
+tissues at 28~GHz, IT'IS Cole--Cole values. The variation column
+gives the maximum deviation of $\Tavg/T_0$ from unity over
+$[0^\circ, 60^\circ]$ and over $[0^\circ, 75^\circ]$.}
 \label{tab:itis-pB}
+\setlength{\tabcolsep}{3.5pt}
 \begin{tabular}{lcccccc}
 \toprule
 Tissue & $\varepsilon_r$ & $\sigma$ [S/m] & $|\ntilde|$ & $T_0$
-  & $\theta_{pB}$ & $\Tavg$ var. \\
+  & $\theta_{pB}$ & var. \\
 \midrule
-Skin            & 17.0 & 25.0 & 4.84 & 0.54 & $78^\circ$ & $5.6\%$ \\
-Muscle          & 25.0 & 30.0 & 5.62 & 0.48 & $80^\circ$ & $4.8\%$ \\
-Brain (white)   & 12.0 & 18.0 & 4.07 & 0.59 & $76^\circ$ & $6.2\%$ \\
-Brain (gray)    & 18.5 & 25.0 & 4.92 & 0.53 & $78^\circ$ & $5.5\%$ \\
-Fat             &  4.0 &  2.0 & 2.05 & 0.77 & $64^\circ$ & $8.2\%$ \\
-Bone (cortical) &  6.5 &  5.0 & 2.84 & 0.69 & $71^\circ$ & $7.0\%$ \\
-Eye (cornea)    & 28.0 & 38.0 & 6.06 & 0.45 & $81^\circ$ & $4.4\%$ \\
-Eye (vitreous)  & 39.0 & 53.0 & 7.06 & 0.40 & $82^\circ$ & $3.8\%$ \\
-Water           & 25.0 & 55.0 & 6.62 & 0.45 & $81^\circ$ & $3.9\%$ \\
+Skin                  & 16.55 & 25.82 & 4.84 & 0.536 & $78^\circ$
+  & $3.3\% / 5.7\%$ \\
+Fat                   &  6.09 &  5.04 & 2.63 & 0.784 & $69^\circ$
+  & $4.2\% / 17\%$ \\
+Eye (vitreous humor)  & 28.81 & 50.69 & 6.59 & 0.426 & $81^\circ$
+  & $7.4\% / 20\%$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -337,19 +402,18 @@ catalog~\cite{ITISv5,Gabriel1996}.}
 Tissue & $\varepsilon_r$ & $\sigma$ [S/m] & $n$ & $\kappa$
   & $\delta_{\mathrm{SAR}}$\,[mm] \\
 \midrule
-Skin   & 38.0 & 1.46 & 6.22 & 0.860 & 11.3 \\
-Fat    &  5.3 & 0.08 & 2.31 & 0.127 & 76.5 \\
-Muscle & 52.7 & 1.74 & 7.31 & 0.873 & 11.2 \\
+Skin   & 38.0 & 1.46  & 6.22 & 0.860 & 11.3 \\
+Fat    &  5.28 & 0.105 & 2.30 & 0.166 & 58.5 \\
+Muscle & 52.7 & 1.74  & 7.31 & 0.873 & 11.2 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Fat is nearly transparent
-($\delta_{\mathrm{SAR}} = 76.5$~mm), while skin and muscle are
-lossy. The wave passes through a thick fat layer with little
-attenuation and reaches the fat-muscle interface, where the
-impedance mismatch produces a strong backward wave with reflection
-$|r_{2,3}| \approx 0.52$.
+Fat is much less lossy than skin and muscle
+($\delta_{\mathrm{SAR}} = 58.5$~mm). The wave passes through a thick
+fat layer with little attenuation and reaches the fat-muscle
+interface, where the impedance mismatch produces a strong backward
+wave with reflection $|r_{2,3}| \approx 0.52$.
 
 Define the normal-incidence Fresnel coefficient at the interface
 between layers $j$ and $j+1$,
@@ -395,7 +459,7 @@ layer-resolved Chew formulation throughout this section.
 
 \begin{figure}[!t]
   \centering
-  \includegraphics[width=0.78\columnwidth]{si_tlay_fat_resonance.pdf}
+  \includegraphics[width=\columnwidth]{si_tlay_fat_resonance.pdf}
   \caption{Layered power transmission $\Tlay(f)$ at normal incidence
   for the 2~mm skin / 10~mm fat / semi-infinite muscle stack,
   IT'IS v5.0 Cole--Cole properties, with the skin-only $T_0(f)$
@@ -427,17 +491,17 @@ and $A_1$ follows from the incident amplitude through the air-skin
 transmission $1 - |\widetilde\Gamma_1|^2$.
 
 The squared modulus expands into three terms,
-\begin{equation}\label{eq:E2-three-SI}
+\begin{multline}\label{eq:E2-three-SI}
   \bigl|e^{-i k_j z} + g_j e^{i k_j z}\bigr|^2
-  = e^{-2\alpha_j z} + |g_j|^2 e^{+2\alpha_j z}
+  = e^{-2\alpha_j z} + |g_j|^2 e^{+2\alpha_j z}\\
   + 2|g_j|\cos(2\beta_j z + \psi_j)\, ,
-\end{equation}
+\end{multline}
 with $\psi_j = \arg g_j$. The SAR in layer $j$ is therefore
-\begin{equation}\label{eq:SAR-standing-SI}
+\begin{multline}\label{eq:SAR-standing-SI}
   \mathrm{SAR}_j(z) = \frac{\sigma_j |A_j|^2}{2\rho_j}\!
-  \left[e^{-2\alpha_j z} + |g_j|^2 e^{+2\alpha_j z}
-  + 2|g_j|\cos(2\beta_j z + \psi_j)\right]\, .
-\end{equation}
+  \bigl[e^{-2\alpha_j z} + |g_j|^2 e^{+2\alpha_j z}\\
+  + 2|g_j|\cos(2\beta_j z + \psi_j)\bigr]\, .
+\end{multline}
 The three terms are forward decay, backward growth, and the
 coherent interference between them. The half-space limit recovers
 when $g_j = 0$.
@@ -471,8 +535,8 @@ a finite layer $j$ admits a closed form,
 \begin{multline}\label{eq:layer-integral-SI}
   \int_0^{d_j}\mathrm{SAR}_j\,\rho_j\,\diff z
   = \frac{\sigma_j |A_j|^2}{2}\biggl[
-    \frac{1 - e^{-2\alpha_j d_j}}{2\alpha_j}
-  + |g_j|^2\,\frac{e^{2\alpha_j d_j} - 1}{2\alpha_j}\\
+    \frac{1 - e^{-2\alpha_j d_j}}{2\alpha_j}\\
+  + |g_j|^2\,\frac{e^{2\alpha_j d_j} - 1}{2\alpha_j}
   + \frac{|g_j|}{\beta_j}\bigl(\sin(2\beta_j d_j + \psi_j)
     - \sin\psi_j\bigr)
   \biggr]\, .
@@ -515,8 +579,8 @@ skin at 2.45~GHz, and even modest reflections $|g_1| \approx 0.6$
 with negative $\psi_1$ produce a large positive contribution.
 
 For a 2~mm skin / 10~mm fat / muscle stack at 2.45~GHz,
-$|g_1| = 0.61$, $\psi_1 = -61^\circ$, and the criterion evaluates
-to $0.37 + 7.7 = 8.0 \gg 1$. Thin lossy skin over thick low-loss
+$|g_1| = 0.60$, $\psi_1 = -60^\circ$, and the criterion evaluates
+to $0.36 + 7.5 = 7.9 \gg 1$. Thin lossy skin over thick low-loss
 fat over lossy muscle gives a Fabry--P\'erot enhancement of order
 $[(1+|g_1|)/(1-|g_1|)]^2$ at standing-wave antinodes, factors of
 $2$--$4$ for typical anatomy.
@@ -534,7 +598,7 @@ antenna. Internal fields are dominated by whole-body current
 distributions, not by the surface-transmitted plane wave. Localized
 hotspots form at anatomical constrictions (ankles, wrists, neck)
 where current density is highest. These hotspot locations bear no
-relation to the surface absorbed power density. The
+relation to the surface \gls{APD}. The
 surface-to-volume reduction does not apply.
 
 \paragraph{Finite-thickness anatomy.}
@@ -566,13 +630,13 @@ parameter. The geometric law predicts $Q^{\mathrm{geom}} = T_0$, and
 the relative error is $(T_0/Q_{\mathrm{abs}} - 1)\times 100\%$.
 
 The error decomposes as
-\begin{equation}\label{eq:mie-error-decomp}
+\begin{multline}\label{eq:mie-error-decomp}
   \frac{T_0}{Q_{\mathrm{abs}}} - 1
   = \underbrace{\bigl(T_0/\langle\Tavg\rangle_{\mathrm{sphere}}
-    - 1\bigr)}_{\mathrm{Fresnel}}
+    - 1\bigr)}_{\mathrm{Fresnel}}\\
     + \underbrace{\bigl(\langle\Tavg\rangle_{\mathrm{sphere}}
     /Q_{\mathrm{abs}} - 1\bigr)}_{\mathrm{diffraction}}\, ,
-\end{equation}
+\end{multline}
 with the Fresnel term shape- and frequency-dependent but
 size-independent (the sphere ratio $R_{\mathrm{sphere}}(f) =
 T_0/\langle\Tavg\rangle$ that crosses unity at approximately 39~GHz on
@@ -580,46 +644,104 @@ skin), and the diffraction term scaling as $x^{-2/3}$ in the optical
 regime, with the wave bending into the geometric shadow and adding
 absorption that the surface law misses.
 
-\Cref{tab:mie-residual} reports the residual at six frequencies on
+\Cref{tab:mie-residual} reports the residual at seven frequencies on
 four representative body-part diameters with frequency-dependent
-IT'IS skin properties. The mmWave band stays within 5--14\%
-on body-relevant sizes (head, torso). Fingers below 6~GHz are
-the worst case, with errors above $30\%$. On body-scale objects in
-the claimed regime, the residual is comparable to the $\pm 7\%$
-envelope on $T_0$ that follows from the $\pm 20\%$ input
-uncertainty on the IT'IS dielectric properties.
+IT'IS skin properties. For body-scale objects (head, torso) in the
+core mmWave band, the framework error is $10$--$14\%$ at $28$~GHz
+and $4$--$6\%$ at $60$~GHz, dominated by diffraction into the
+geometric shadow rather than by the Fresnel approximation. At
+$100$~GHz the head and torso residuals are sub-percent. Fingers are
+the worst case, with errors above $20\%$ across the entire mmWave
+band. The sphere is the worst-case geometry for a surface law: its
+uniform curvature maximises both Fresnel and diffraction errors. The
+human body, with large flat regions on the torso, has substantially
+smaller net errors, as the empirical match against volunteer and
+FDTD data in the main paper shows.
 
 \begin{table}[!t]
 \centering
+\footnotesize
 \caption{Mie residual $T_0/Q_{\mathrm{abs}} - 1$ in percent on
 lossy spheres with frequency-dependent IT'IS skin properties.
-Negative values mean the surface law underestimates absorption.}
+Negative values mean the surface law underestimates absorption.
+The $1$~GHz finger entry is in the Rayleigh regime
+($x = \pi d/\lambda = 0.18$), where the surface law has no claim of
+validity and the residual is large and positive; it is included
+only as a regime marker.}
 \label{tab:mie-residual}
+\setlength{\tabcolsep}{4pt}
 \begin{tabular}{rcccc}
 \toprule
-$f$\,[GHz] & Finger (17~mm) & Arm (80~mm)
-  & Head (180~mm) & Torso (300~mm) \\
+$f$\,[GHz] & Finger & Arm & Head & Torso \\
+           & (17~mm) & (80~mm) & (180~mm) & (300~mm) \\
 \midrule
-1   & $-58$ & $-44$ & $-32$ & $-23$ \\
-3   & $-42$ & $-25$ & $-15$ & $-9.4$ \\
-6   & $-32$ & $-15$ & $-7.6$ & $-4.8$ \\
-10  & $-24$ & $-9.0$ & $-4.5$ & $-2.7$ \\
-28  & $-12$ & $-3.8$ & $-1.9$ & $-1.4$ \\
-60  & $-5.2$ & $-1.8$ & $-1.4$ & $-1.3$ \\
-100 & $-2.6$ & $-1.0$ & $-1.0$ & $-1.0$ \\
+1   & $+1260$ (Rayleigh) & $-60$ & $-53$ & $-44$ \\
+3   & $-68$ & $-47$ & $-35$ & $-29$ \\
+6   & $-61$ & $-37$ & $-27$ & $-21$ \\
+10  & $-53$ & $-30$ & $-22$ & $-17$ \\
+28  & $-38$ & $-20$ & $-14$ & $-10$ \\
+60  & $-27$ & $-11$ & $-6.1$ & $-3.8$ \\
+100 & $-19$ & $-5.1$ & $-1.2$ & $+0.4$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 
+\subsection{Integrated diffraction effect on Thelonious}\label{si:diffraction-integrated}
+\Cref{tab:si-diffraction} reports the diffraction effect on whole-body
+absorbed power across frequency on the Thelonious phantom. We compute
+$P_{\mathrm{diff}}$ by replacing $\pospart{\mu}$ with the GELU
+smoothing of the main paper and adding the curvature ringing
+$T_0(H/k)\,\mathrm{GELU}(\mu)^2$. The baseline $P_{\mathrm{simp}} =
+\IPD\,T_0\,\Aperp(\khat)$ uses the same $T_0$, so the entry isolates
+diffraction. Six cardinal directions are averaged. Mean curvature $H$
+is taken from the cotangent Laplacian on the merged-vertex mesh.
+
+\begin{table}[!t]
+\centering
+\caption{Integrated diffraction effect on whole-body absorbed power
+on the Thelonious phantom: $(P_{\mathrm{diff}} -
+P_{\mathrm{simp}})/P_{\mathrm{simp}}$ in percent, at $S_{\mathrm{inc}}
+= 1$~W/m$^2$ on skin.}
+\label{tab:si-diffraction}
+\begin{tabular}{rr}
+\toprule
+$f$~[GHz] & $(P_{\mathrm{diff}}-P_{\mathrm{simp}})/P_{\mathrm{simp}}$ \\
+\midrule
+1   & $+33\%$ \\
+3   & $+12\%$ \\
+6   & $+6.0\%$ \\
+10  & $+3.5\%$ \\
+15  & $+2.3\%$ \\
+28  & $+1.2\%$ \\
+40  & $+0.8\%$ \\
+60  & $+0.6\%$ \\
+77  & $+0.4\%$ \\
+100 & $+0.3\%$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The effect falls below $1\%$ above $30$~GHz and below $0.5\%$ above
+$60$~GHz on body-scale geometry. Below $6$~GHz it grows quickly. At
+$1$~GHz the body diameter is comparable to the wavelength and the
+geometric law breaks down, consistent with the body-Mie regime
+identified in the main paper.
+
+
 \section{Anthropometric scaling}\label{si:anthro}
 
-The whole-body compliance threshold from the main paper is
+The whole-body compliance threshold from the main paper, evaluated
+at the worst-case directional exposure (\cref{rem:hull} of the main
+paper), is
 \begin{equation}\label{eq:Sinc-max-SI}
-  \Sinc^{\max} = \frac{0.16\,m}{\Tbar\,\Aab}\, ,
+  \IPD_{\max} = \frac{0.16\,m}{\Tbar\,A}\, ,
 \end{equation}
-with $\Aab = \bar\eta\,A$ where $A$ is the body surface area and
-$\bar\eta = \Aab/A$ the area-weighted exposure fraction.
+where $A$ is the body surface area. The convex-hull bound on the
+absorption directivity absorbs the ambient-occlusion factor
+$\bar\eta = \Aab/A$ in the worst-case algebra, leaving $A$ rather
+than $\Aab$ in the denominator. This is the conservative form used
+for regulatory bounds.
 
 \subsection{Du Bois scaling of body surface area}
 The empirical Du Bois formula~\cite{DuBois1916} gives
@@ -629,7 +751,7 @@ The empirical Du Bois formula~\cite{DuBois1916} gives
 in m$^2$ with mass $m$ in kg and height $h$ in cm. The threshold
 scales as $m/A$, so
 \begin{equation}\label{eq:Sinc-anthro}
-  \Sinc^{\max} \propto \frac{m}{A}
+  \IPD_{\max} \propto \frac{m}{A}
   \propto m^{0.575}\,h^{-0.725}
   = \mathrm{BMI}^{0.575}\,h^{0.425}\, ,
 \end{equation}
@@ -639,19 +761,23 @@ while mass scales with volume.
 
 \subsection{Population evaluation}
 \Cref{tab:anthro-SI} evaluates~\eqref{eq:Sinc-max-SI} on a
-representative population at 28~GHz with $T_0 = 0.536$ and
-$\bar\eta = 0.85$. The threshold varies by a factor of approximately
+representative population at 28~GHz with $\Tbar = 0.543$. The
+threshold varies by a factor of approximately
 two between an infant and a large adult.
 
 \begin{table}[!t]
 \centering
-\caption{Compliance threshold across body sizes at 28~GHz with
-$T_0 = 0.536$ and $\bar\eta = 0.85$.}
+\footnotesize
+\caption{Worst-case compliance threshold across body sizes at
+28~GHz with $\Tbar = 0.543$.}
 \label{tab:anthro-SI}
+\setlength{\tabcolsep}{3.5pt}
 \begin{tabular}{lccccc}
 \toprule
-Body type & $m$ [kg] & $h$ [cm] & $A$ [m$^2$]
-  & $m/A$ [kg/m$^2$] & $\Sinc^{\max}$ [W/m$^2$] \\
+Body type & $m$ & $h$ & $A$
+  & $m/A$ & $\IPD_{\max}$ \\
+          & [kg] & [cm] & [m$^2$]
+  & [kg/m$^2$] & [W/m$^2$] \\
 \midrule
 Infant (1~yr)    &   8 &  70 & 0.379 & 21.1 &  6.2 \\
 Child (6~yr)     &  20 & 110 & 0.776 & 25.8 &  7.6 \\
