@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
@@ -39,12 +40,15 @@ def build_app(
             "current_diff": getattr(app.state, "current_diff", ""),
         }
 
-    @app.get("/pdf")
+    @app.api_route("/pdf", methods=["GET", "HEAD"])
     async def get_pdf():
-        p = paper_dir / "paper.pdf"
-        if not p.exists():
+        served = paper_dir / ".circa" / "paper.served.pdf"
+        live = paper_dir / "paper.pdf"
+        if not served.exists() and live.exists():
+            _publish_served_pdf(paper_dir)
+        if not served.exists():
             raise HTTPException(status_code=404, detail="paper.pdf not found")
-        return FileResponse(p, media_type="application/pdf")
+        return FileResponse(served, media_type="application/pdf")
 
     @app.get("/tex")
     async def get_tex():
@@ -66,11 +70,36 @@ def build_app(
             )
         # Record current tex as the last successful-build baseline for diff sidebar.
         app.state.last_built_tex = (paper_dir / "paper.tex").read_text()
+        _publish_served_pdf(paper_dir)
         new_pass = state.next_pass()
-        state.drop_annotations_below_pass(new_pass)
         await _broadcast(app, _pdf_reloaded(state, new_pass))
         await _broadcast(app, _build_status(state, ok=True, error_tail=""))
         return {"ok": True, "pass": new_pass}
+
+    @app.post("/clear-old-comments")
+    async def post_clear_old_comments():
+        removed = state.clear_done_below_pass(state.current_pass)
+        from .ws_protocol import event as _evt
+
+        await _broadcast(app, _evt(state, "annotations_cleared", ids=removed))
+        return {"ok": True, "removed": removed}
+
+    @app.post("/dismiss/{annotation_id}")
+    async def post_dismiss(annotation_id: str):
+        from .annotation import AnnotationStatus
+        from .ws_protocol import annotation_status_event as _ase
+
+        ann = state.get_annotation(annotation_id)
+        if not ann:
+            raise HTTPException(404, "annotation not found")
+        ann.status = AnnotationStatus.REJECTED
+        ann.clarification = None
+        state.save()
+        await _broadcast(
+            app,
+            _ase(state, id=ann.id, status=ann.status.value, clarification=None),
+        )
+        return {"ok": True}
 
     @app.post("/reject/{annotation_id}")
     async def post_reject(annotation_id: str):
@@ -107,7 +136,7 @@ def build_app(
                     await _handle_cancel(app, data)
                 else:
                     await websocket.send_json(event(state, "error", reason=f"unknown type {kind}"))
-        except WebSocketDisconnect:
+        except (WebSocketDisconnect, RuntimeError):
             return
         finally:
             app.state.ws_clients.discard(websocket)
@@ -122,6 +151,47 @@ async def _broadcast(app, event: dict) -> None:
             await ws.send_json(event)
         except Exception:
             app.state.ws_clients.discard(ws)
+
+
+_FENCE_INLINE_RE = re.compile(
+    r"(% \[circa:[a-f0-9-]+(?:\+[a-f0-9-]+)*:(?:begin|end)\])([ \t]+)(\S.*)$",
+    re.MULTILINE,
+)
+
+
+def _fix_inline_fence_markers(tex: Path) -> bool:
+    """If a fence marker has trailing prose on the same line, split it.
+
+    LaTeX silently comments out everything after `%` on a line, so a marker like
+        % [circa:abc:end] Flintoft et al divide
+    drops the trailing prose from the rendered PDF. This rewrites it to:
+        % [circa:abc:end]
+        Flintoft et al divide
+    Returns True if the file was modified.
+    """
+    if not tex.exists():
+        return False
+    text = tex.read_text()
+    fixed = _FENCE_INLINE_RE.sub(r"\1\n\3", text)
+    if fixed == text:
+        return False
+    tex.write_text(fixed)
+    return True
+
+
+def _publish_served_pdf(paper_dir: Path) -> None:
+    """Atomically copy paper.pdf to .circa/paper.served.pdf so concurrent rebuilds
+    can't desync Content-Length with the response body."""
+    import shutil
+
+    live = paper_dir / "paper.pdf"
+    if not live.exists():
+        return
+    served = paper_dir / ".circa" / "paper.served.pdf"
+    served.parent.mkdir(parents=True, exist_ok=True)
+    tmp = served.with_suffix(".pdf.tmp")
+    shutil.copyfile(live, tmp)
+    tmp.replace(served)
 
 
 def _pdf_reloaded(state, new_pass):
@@ -146,7 +216,10 @@ def run_server(
     from .pdf_builder import PdfBuilder
     from .snapshots import SnapshotManager
 
-    state = State()
+    from .paths import annotations_log
+
+    state = State(save_path=annotations_log(paper_dir).with_suffix(".json"))
+    state.load()
     paper_outline = (paper_dir / "paper.tex").read_text()[:5000]
     tells_path = Path("/home/user/aegis/.claude/ai_writing_tells.md")
     session = ClaudeSession.with_default_prompt(
@@ -238,6 +311,10 @@ async def _process_batch(app, data: dict) -> None:
     import base64
 
     page_pngs = {int(p): base64.b64decode(b64) for p, b64 in data.get("page_pngs", {}).items()}
+    sent_dir = app.state.paper_dir / ".circa" / "sent_images" / data["batch_id"]
+    sent_dir.mkdir(parents=True, exist_ok=True)
+    for p, png in page_pngs.items():
+        (sent_dir / f"page_{p}.png").write_bytes(png)
     build_text = "ok" if state.last_build_ok else f"broken: {state.last_build_error[:500]}"
     statuses, _fb = await app.state.claude_session.send_batch(
         pass_=state.current_pass,
@@ -245,6 +322,7 @@ async def _process_batch(app, data: dict) -> None:
         page_pngs=page_pngs,
         build_status_text=build_text,
     )
+    _fix_inline_fence_markers(app.state.paper_dir / "paper.tex")
     if app.state.hunk_mgr is not None:
         app.state.hunk_mgr.persist_for_batch(data["batch_id"], [a.id for a in annotations])
     if app.state.snapshot_mgr is not None:
@@ -278,6 +356,7 @@ async def _process_batch(app, data: dict) -> None:
                 clarification=ann.clarification,
             ),
         )
+    state.save()
 
 
 async def _handle_clarification_reply(app, data: dict) -> None:

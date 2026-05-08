@@ -1,5 +1,7 @@
+import json
 import uuid
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Optional
 
 from .annotation import Annotation
@@ -12,6 +14,7 @@ class State:
     in_flight: bool = False
     last_build_ok: bool = True
     last_build_error: str = ""
+    save_path: Optional[Path] = None
     _seq: int = 0
     _annotations: dict[str, Annotation] = field(default_factory=dict)
     _next_clar: list[dict[str, Any]] = field(default_factory=list)
@@ -27,6 +30,7 @@ class State:
 
     def add_annotation(self, a: Annotation) -> None:
         self._annotations[a.id] = a
+        self.save()
 
     def get_annotation(self, id: str) -> Optional[Annotation]:
         return self._annotations.get(id)
@@ -36,10 +40,23 @@ class State:
 
     def next_pass(self) -> int:
         self.current_pass += 1
+        self.save()
         return self.current_pass
 
     def drop_annotations_below_pass(self, pass_: int) -> None:
         self._annotations = {id: a for id, a in self._annotations.items() if a.pass_ >= pass_}
+        self.save()
+
+    def clear_done_below_pass(self, pass_: int) -> list[str]:
+        removed = [
+            id
+            for id, a in self._annotations.items()
+            if a.pass_ < pass_ and a.status.value in ("done", "needs_clarification", "rejected")
+        ]
+        for id in removed:
+            del self._annotations[id]
+        self.save()
+        return removed
 
     def queue_next_batch_clarification(self, payload: dict[str, Any]) -> None:
         self._next_clar.append(payload)
@@ -52,3 +69,29 @@ class State:
         self._next_clar.clear()
         self._next_new.clear()
         return out
+
+    def save(self) -> None:
+        if self.save_path is None:
+            return
+        payload = {
+            "current_pass": self.current_pass,
+            "annotations": [a.to_dict() for a in self._annotations.values()],
+        }
+        tmp = self.save_path.with_suffix(self.save_path.suffix + ".tmp")
+        tmp.write_text(json.dumps(payload, indent=2))
+        tmp.replace(self.save_path)
+
+    def load(self) -> None:
+        if self.save_path is None or not self.save_path.exists():
+            return
+        try:
+            payload = json.loads(self.save_path.read_text())
+        except Exception:
+            return
+        self.current_pass = payload.get("current_pass", 1)
+        for d in payload.get("annotations", []):
+            try:
+                a = Annotation.from_dict(d)
+            except Exception:
+                continue
+            self._annotations[a.id] = a

@@ -8,6 +8,7 @@
 <body>
   <header id="topbar">
     <span id="status-build" class="ok">build: ok</span>
+    <span id="status-ws" class="ws-unknown" title="WebSocket connection state">ws: ...</span>
     <span id="queue-badge">0 pending</span>
     <div id="tools">
       <button data-tool="pen" class="active">1 Pen</button>
@@ -15,7 +16,9 @@
       <button data-tool="rect">3 Rect</button>
       <button data-tool="text">4 Text</button>
     </div>
+    <button id="send-now-btn" title="Flush pending annotations to Claude immediately">Send now</button>
     <button id="rebuild-btn">R Rebuild</button>
+    <button id="clear-old-btn" title="Drop done/asked annotations from earlier passes">Clear old</button>
     <span id="pass-label">pass 1</span>
   </header>
   <main>

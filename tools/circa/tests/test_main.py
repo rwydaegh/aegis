@@ -54,3 +54,39 @@ def test_reject_404_when_no_hunk_mgr(client):
     c, _ = client
     r = c.post("/reject/abc")
     assert r.status_code == 503
+
+
+def test_fix_inline_fence_markers_splits_trailing_prose(tmp_path):
+    from server.main import _fix_inline_fence_markers
+
+    tex = tmp_path / "paper.tex"
+    tex.write_text(
+        "before\n"
+        "% [circa:abc-123:end] trailing prose here\n"
+        "% [circa:def-456:end] more trailing\n"
+        "% [circa:abe-789:begin] also-bad\n"
+        "after\n"
+    )
+    changed = _fix_inline_fence_markers(tex)
+    assert changed is True
+    out = tex.read_text()
+    assert "% [circa:abc-123:end]\ntrailing prose here\n" in out
+    assert "% [circa:def-456:end]\nmore trailing\n" in out
+    assert "% [circa:abe-789:begin]\nalso-bad\n" in out
+
+
+def test_fix_inline_fence_markers_noop_when_clean(tmp_path):
+    from server.main import _fix_inline_fence_markers
+
+    tex = tmp_path / "paper.tex"
+    tex.write_text("% [circa:abc-123:begin]\nfoo\n% [circa:abc-123:end]\n")
+    assert _fix_inline_fence_markers(tex) is False
+
+
+def test_fix_inline_fence_markers_handles_merged_id(tmp_path):
+    from server.main import _fix_inline_fence_markers
+
+    tex = tmp_path / "paper.tex"
+    tex.write_text("% [circa:abc-1+def-2:end] trailing\n")
+    _fix_inline_fence_markers(tex)
+    assert tex.read_text() == "% [circa:abc-1+def-2:end]\ntrailing\n"

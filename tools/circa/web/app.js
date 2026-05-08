@@ -9,6 +9,19 @@ let inFlight = false;
 let currentTool = "pen";
 let ws = null;
 
+const PENDING_KEY = "circa_pending_v1";
+function savePending() {
+  const out = [...annotations.values()].filter((a) => a.status === "pending" && a.text);
+  try { localStorage.setItem(PENDING_KEY, JSON.stringify(out)); } catch (_) {}
+}
+function loadPendingFromStorage() {
+  try {
+    const raw = localStorage.getItem(PENDING_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw);
+  } catch (_) { return []; }
+}
+
 async function fetchStateAndConnect() {
   const r = await fetch("/state");
   const data = await r.json();
@@ -23,13 +36,47 @@ async function fetchStateAndConnect() {
   setBuildStatus(data.build_status?.ok !== false, data.build_status?.error_tail || "");
   document.getElementById("pass-label").textContent = `pass ${currentPass}`;
   document.getElementById("diff-content").textContent = data.current_diff || "";
+  // Render the PDF before annotations so the page-wrap divs exist for renderAnnotation.
+  if (!document.querySelector(".page-wrap")) {
+    await loadAndRender();
+  }
   for (const a of data.annotations) {
     annotations.set(a.id, a);
     renderAnnotation(a);
   }
+  // Restore client-only pending annotations (drawn but never reached the server).
+  const serverIds = new Set(data.annotations.map((a) => a.id));
+  for (const a of loadPendingFromStorage()) {
+    if (!serverIds.has(a.id)) {
+      annotations.set(a.id, a);
+      renderAnnotation(a);
+    }
+  }
+  updateQueueBadge();
   ws = new WebSocket(`ws://${location.host}/stream`);
   ws.onmessage = (ev) => handleWsMessage(JSON.parse(ev.data));
-  ws.onclose = () => setTimeout(fetchStateAndConnect, 1000);
+  ws.onopen = () => setWsStatus("up");
+  ws.onclose = () => {
+    setWsStatus("down");
+    setTimeout(fetchStateAndConnect, 1000);
+  };
+  ws.onerror = () => setWsStatus("down");
+}
+
+function setWsStatus(s) {
+  const el = document.getElementById("status-ws");
+  if (!el) return;
+  el.classList.remove("ws-up", "ws-down", "ws-unknown");
+  el.classList.add(s === "up" ? "ws-up" : s === "down" ? "ws-down" : "ws-unknown");
+  el.textContent = s === "up" ? "ws: ok" : s === "down" ? "ws: DISCONNECTED" : "ws: ...";
+}
+
+function flashToast(msg, kind = "info") {
+  const t = document.createElement("div");
+  t.className = `toast ${kind}`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 4000);
 }
 
 function handleWsMessage(m) {
@@ -42,22 +89,26 @@ function handleWsMessage(m) {
     if (m.clarification) a.clarification = m.clarification;
     annotations.set(m.id, a);
     renderAnnotation(a);
+    inFlight = [...annotations.values()].some((x) => x.status === "in_progress");
+    updateQueueBadge();
+    savePending();
   } else if (m.type === "diff_update") {
     document.getElementById("diff-content").textContent = m.hunk || "";
   } else if (m.type === "build_status") {
     setBuildStatus(m.ok, m.error_tail);
   } else if (m.type === "pdf_reloaded") {
-    // Drop annotations from earlier passes; reload PDF without losing pending ones.
-    for (const [id, a] of [...annotations]) {
-      if (a.pass < m.pass) {
-        const g = document.querySelector(`g[data-id="${id}"]`);
-        if (g) g.remove();
-        annotations.delete(id);
-      }
-    }
+    // Keep all annotations across rebuild — they remain visible (in their stale positions)
+    // until the user explicitly clears them via the "Clear old" button.
     currentPass = m.pass;
     document.getElementById("pass-label").textContent = `pass ${currentPass}`;
-    reloadPdfPages();  // implementation below
+    reloadPdfPages();
+  } else if (m.type === "annotations_cleared") {
+    for (const id of m.ids || []) {
+      const g = document.querySelector(`g[data-id="${id}"]`);
+      if (g) g.remove();
+      annotations.delete(id);
+    }
+    updateQueueBadge();
   }
 }
 
@@ -168,10 +219,19 @@ function spawnSpeechBubble(wrap, a) {
   bubble.innerHTML = `<div><strong>Claude:</strong> ${escapeHtml(a.clarification)}</div>`;
   const reply = document.createElement("input");
   reply.type = "text";
-  reply.placeholder = "reply (Enter to send, Esc to dismiss)";
+  reply.placeholder = "reply (Enter to send, Esc to hide)";
   reply.style.marginTop = ".25rem";
   reply.style.width = "100%";
   bubble.appendChild(reply);
+  const dismiss = document.createElement("button");
+  dismiss.textContent = "Dismiss";
+  dismiss.title = "Drop this question without replying. Claude won't be asked again.";
+  dismiss.style.marginTop = ".25rem";
+  dismiss.addEventListener("click", async () => {
+    await fetch(`/dismiss/${a.id}`, { method: "POST" });
+    bubble.remove();
+  });
+  bubble.appendChild(dismiss);
   const xs = a.points.flatMap((p) => Array.isArray(p) ? [p[0]] : [p]);
   const ys = a.points.flatMap((p) => Array.isArray(p) ? [p[1]] : [p]);
   const w = parseFloat(wrap.style.width), h = parseFloat(wrap.style.height);
@@ -200,21 +260,46 @@ function noteActivity() {
   idleTimer = setTimeout(maybeFlush, FLUSH_MS);
 }
 
-document.addEventListener("keydown", noteActivity);
-document.addEventListener("pointermove", noteActivity);
-document.addEventListener("pointerdown", noteActivity);
+async function compositePage(wrap) {
+  const canvas = wrap.querySelector("canvas");
+  const svg = wrap.querySelector("svg.overlay");
+  const out = document.createElement("canvas");
+  out.width = canvas.width;
+  out.height = canvas.height;
+  const ctx = out.getContext("2d");
+  ctx.drawImage(canvas, 0, 0);
+  if (svg) {
+    const svgClone = svg.cloneNode(true);
+    svgClone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    svgClone.setAttribute("width", canvas.width);
+    svgClone.setAttribute("height", canvas.height);
+    const xml = new XMLSerializer().serializeToString(svgClone);
+    const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(xml);
+    await new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => { ctx.drawImage(img, 0, 0, canvas.width, canvas.height); resolve(); };
+      img.onerror = reject;
+      img.src = url;
+    });
+  }
+  return out.toDataURL("image/png").split(",")[1];
+}
 
-async function maybeFlush() {
+async function maybeFlush({ force = false } = {}) {
   const pending = [...annotations.values()].filter((a) => a.status === "pending" && a.text);
-  if (pending.length === 0 || inFlight) return;
+  if (pending.length === 0) return;
+  if (!force && inFlight) return;
+  if (!ws || ws.readyState !== 1) {
+    if (force) flashToast("WebSocket is down — annotations saved locally. Refresh to reconnect.", "warn");
+    return;
+  }
   pending.forEach((a) => (a.status = "in_progress"));
   const pages = new Set(pending.map((a) => a.page));
   const page_pngs = {};
   for (const p of pages) {
     const wrap = document.querySelector(`.page-wrap[data-page-num="${p}"]`);
     if (!wrap) continue;
-    const canvas = wrap.querySelector("canvas");
-    page_pngs[p] = canvas.toDataURL("image/png").split(",")[1];
+    page_pngs[p] = await compositePage(wrap);
   }
   ws.send(JSON.stringify({
     type: "batch_flush",
@@ -222,6 +307,7 @@ async function maybeFlush() {
     annotations: pending.map(({ ...a }) => ({ ...a, status: "pending" })),
     page_pngs,
   }));
+  inFlight = true;
   updateQueueBadge();
 }
 
@@ -235,6 +321,13 @@ document.querySelectorAll("#tools button").forEach((btn) => {
   btn.addEventListener("click", () => setTool(btn.dataset.tool));
 });
 document.getElementById("rebuild-btn").addEventListener("click", triggerRebuild);
+document.getElementById("send-now-btn").addEventListener("click", () => {
+  if (idleTimer) { clearTimeout(idleTimer); idleTimer = null; }
+  maybeFlush({ force: true });
+});
+document.getElementById("clear-old-btn").addEventListener("click", async () => {
+  await fetch("/clear-old-comments", { method: "POST" });
+});
 
 document.addEventListener("keydown", (e) => {
   const tag = document.activeElement?.tagName;
@@ -306,21 +399,23 @@ function spawnTextbox(svg, wrap, ann) {
   const h = parseFloat(wrap.style.height);
   const tx = Math.max(...xs) * w + 4;
   const ty = Math.min(...ys) * h;
-  const box = document.createElement("input");
-  box.type = "text";
+  const box = document.createElement("textarea");
   box.className = "textbox";
   box.style.left = (wrap.offsetLeft + tx) + "px";
   box.style.top = (wrap.offsetTop + ty) + "px";
-  box.placeholder = "note (Enter to submit, Esc visual-only, Shift+Enter to ask)";
+  box.placeholder = "note (Enter submits edit, Shift+Enter asks, Ctrl+Enter newline, Esc visual-only)";
   document.body.appendChild(box);
   box.focus();
   box.addEventListener("keydown", (e) => {
     if (e.key === "Escape") { box.remove(); return; }
     if (e.key === "Enter") {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      e.preventDefault();
       ann.text = box.value;
       ann.mode = e.shiftKey ? "ask" : "edit";
       box.remove();
       updateQueueBadge();
+      savePending();
       noteActivity();
     }
   });
@@ -423,7 +518,7 @@ const TEXT_HANDLERS = (svg, wrap) => {
 };
 
 async function loadAndRender() {
-  const pdf = await pdfjsLib.getDocument("/pdf").promise;
+  const pdf = await pdfjsLib.getDocument(`/pdf?v=${currentPass}`).promise;
   const col = document.getElementById("pdf-col");
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);

@@ -10,11 +10,17 @@ main { display: flex; height: calc(100vh - 50px); }
 .page-wrap canvas { display: block; }
 .page-wrap svg.overlay { position: absolute; inset: 0; pointer-events: auto; }
 #status-build.ok { color: #060; } #status-build.fail { color: #b00; }
+#status-ws.ws-up { color: #060; }
+#status-ws.ws-down { color: #b00; font-weight: bold; }
+#status-ws.ws-unknown { color: #888; }
 .shape { fill: none; stroke: red; stroke-width: 2; }
 .shape.amber { stroke: #c80; }
 .shape.grey { stroke: #888; }
 .status-pill { font-size: 10px; padding: 1px 4px; background: red; color: white; border-radius: 3px; cursor: pointer; user-select: none; }
 .status-pill.amber { background: #c80; }
 .status-pill.grey { background: #888; }
-.textbox { position: absolute; min-width: 200px; padding: .25rem; background: white; border: 1px solid #999; }
+.textbox { position: absolute; width: 420px; height: 140px; padding: .5rem; background: white; border: 1px solid #999; font: inherit; resize: both; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; }
 .bubble { position: absolute; background: #fffbe6; border: 1px solid #cc6; padding: .5rem; max-width: 260px; }
+.toast { position: fixed; right: 16px; bottom: 16px; padding: .6rem 1rem; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,.2); background: #333; color: white; z-index: 9999; max-width: 360px; font-size: 13px; }
+.toast.warn { background: #b80; }
+.toast.error { background: #b00; }

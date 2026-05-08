@@ -48,6 +48,13 @@ For mode=edit annotations: apply the requested edit. Wrap every edit in
   % [circa:<id>:end]
 fence comments. {pdfc_rule}
 
+CRITICAL: each fence marker MUST be on its OWN LINE with NOTHING after the
+closing `]`. Never put text on the same line as a `% [circa:...:begin]` or
+`% [circa:...:end]` marker. Because the line starts with `%`, any trailing
+text on the same line is silently commented out by LaTeX. If you insert a
+fence in the middle of a line, split that line so the fence marker stands
+alone and any continuation prose starts on a NEW line.
+
 For mode=ask annotations: do NOT edit; reply via the JSON `clarification` field only.
 
 Conflict policy: two annotations are 'overlapping' if their fenced ranges in paper.tex would
