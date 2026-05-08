@@ -136,17 +136,9 @@ LLMs overuse: "very," "highly," "extremely," "particularly," "especially," "sign
 
 **Rule:** Delete them. Use words strong in themselves (Strunk, Rule 12). "Very important" becomes "essential" or just state why it matters. "Significantly" is reserved for statistical significance.
 
-### A19. Throat-Clearing Openings
+### A19. Throat-Clearing Openings — REMOVED
 
-LLMs start paragraphs with:
-- "It is worth noting that..."
-- "It is interesting to observe that..."
-- "One of the most important aspects of..."
-- "In recent years, there has been a growing interest in..."
-
-These delay the real content.
-
-**Rule:** Start with the subject. State the point. The first sentence of a paragraph is the topic sentence; make it count.
+(Previously banned phrases like "It is worth noting that..." This rule generated too many false positives in practice and is no longer enforced. Use judgment.)
 
 ### A20. Overuse of "Furthermore," "Moreover," "Additionally"
 

@@ -26,7 +26,9 @@
 
 \usepackage{cite}
 \usepackage{xcolor}
+\usepackage{xr-hyper}
 \usepackage[colorlinks=true,linkcolor=black,citecolor=black,urlcolor=black]{hyperref}
+\externaldocument{paper}
 \usepackage[capitalize]{cleveref}
 \usepackage[acronym,nonumberlist,nopostdot,nomain]{glossaries}
 % Suppress hyperlinks on \gls expansions so they render as plain black text
@@ -206,13 +208,13 @@ the local law reduces to $\APD(\rr) = \IPD\,\Tavg(\theta(\rr))\,
 \label{si:apd-direction}
 
 To complement the single-direction comparison reported in the main
-paper (\S Validation, table comparing geometric law to full Fresnel
-integration), we evaluate the geometric law against the full
-polarization-aware Fresnel integration across $128$ illumination
-directions sampled uniformly on the sphere and three polarization
-states (TE, TM, unpolarized) on the Thelonious phantom at $28$~GHz
-with $\IPD = 1$~W/m$^2$. \Cref{fig:si-apd-direction} reports the
-results.
+paper (Section~\ref{subsec:val-fresnel} and Table~\ref{tab:phantom}),
+we evaluate the geometric law against the full polarization-aware
+Fresnel integration. The grid is $128$ illumination directions
+sampled uniformly on the sphere and three polarization states: TE,
+TM, and unpolarized. The Thelonious phantom carries skin properties
+at $28$~GHz with $\IPD = 1$~W/m$^2$.
+\Cref{fig:si-apd-direction} reports the results.
 
 \begin{figure*}[!t]
   \centering
@@ -244,9 +246,9 @@ underlies $\Tavg$. Panel (b) shows that the total absorbed power
 clusters around $T_0\,\Aperp$ across directions, with the directional
 spread (CV) set by self-shadowing rather than by polarization. Across
 the $128$ directions, the unpolarized full-Fresnel total absorbed
-power matches the simplified prediction $T_0\,\Aperp(\khat)$ with mean
-bias $-1.2\%$ and standard deviation $0.5\%$, and lies within $2.2\%$
-on every direction.
+power matches the simplified prediction $T_0\,\Aperp(\khat)$ with
+mean bias $-1.2\%$ and standard deviation $0.5\%$. The largest
+single-direction deviation is $2.2\%$.
 
 
 \section{Pseudo-Brewster compensation across tissues}\label{si:azzam}
@@ -276,8 +278,9 @@ v5.0 Cole--Cole catalog as the source for $\varepsilon_r$ and
 $\sigma$~\cite{ITISv5,Gabriel1996}. Over $[0^\circ, 60^\circ]$ the
 variation is below $5\%$ on skin and fat and below $8\%$ on
 vitreous humor. Beyond $60^\circ$ the high-index tissues (skin,
-vitreous) bend upward toward their pseudo-Brewster minima, while fat
-($|\ntilde| = 2.63$, near the Azzam threshold) drops monotonically.
+vitreous) bend upward toward their pseudo-Brewster transmission peak,
+while fat ($|\ntilde| = 2.63$, near the Azzam threshold) drops
+monotonically.
 The cosine weight $\mu(\rr)$ in the surface integral suppresses
 contributions from $\theta > 60^\circ$, so the table value at
 $60^\circ$ is the operationally relevant bound. \Cref{fig:si-tissue-universality} shows this directly.
@@ -585,7 +588,7 @@ fat over lossy muscle gives a Fabry--P\'erot enhancement of order
 $[(1+|g_1|)/(1-|g_1|)]^2$ at standing-wave antinodes, factors of
 $2$--$4$ for typical anatomy.
 
-\subsection{Where the layered model breaks}
+\subsection{Validity limits of the layered model}
 Three phenomena invalidate the layered planar half-space at
 sufficiently low frequencies.
 
@@ -646,17 +649,17 @@ absorption that the surface law misses.
 
 \Cref{tab:mie-residual} reports the residual at seven frequencies on
 four representative body-part diameters with frequency-dependent
-IT'IS skin properties. For body-scale objects (head, torso) in the
-core mmWave band, the framework error is $10$--$14\%$ at $28$~GHz
-and $4$--$6\%$ at $60$~GHz, dominated by diffraction into the
-geometric shadow rather than by the Fresnel approximation. At
-$100$~GHz the head and torso residuals are sub-percent. Fingers are
-the worst case, with errors above $20\%$ across the entire mmWave
-band. The sphere is the worst-case geometry for a surface law: its
-uniform curvature maximises both Fresnel and diffraction errors. The
-human body, with large flat regions on the torso, has substantially
-smaller net errors, as the empirical match against volunteer and
-FDTD data in the main paper shows.
+IT'IS skin properties. For body-scale objects (head, torso), the
+framework error is $10$--$14\%$ at $28$~GHz and $4$--$6\%$ at
+$60$~GHz, dominated by diffraction into the geometric shadow rather
+than by the Fresnel approximation. At $100$~GHz the head and torso
+residuals are sub-percent. Fingers are the worst case, with errors
+above $20\%$ across the entire mmWave band. The sphere is the
+worst-case geometry for a surface law: its uniform curvature
+maximizes both Fresnel and diffraction errors. The human body has
+large flat regions on the torso, and net errors stay smaller.
+Fig.~\ref{fig:waterfall} of the main paper shows the empirical
+match against volunteer and FDTD data.
 
 \begin{table}[!t]
 \centering
@@ -665,9 +668,9 @@ FDTD data in the main paper shows.
 lossy spheres with frequency-dependent IT'IS skin properties.
 Negative values mean the surface law underestimates absorption.
 The $1$~GHz finger entry is in the Rayleigh regime
-($x = \pi d/\lambda = 0.18$), where the surface law has no claim of
-validity and the residual is large and positive; it is included
-only as a regime marker.}
+($x = \pi d/\lambda = 0.18$), where the surface law is invalid and
+the residual is large and positive. It is included only as a regime
+marker.}
 \label{tab:mie-residual}
 \setlength{\tabcolsep}{4pt}
 \begin{tabular}{rcccc}
@@ -691,8 +694,8 @@ $f$\,[GHz] & Finger & Arm & Head & Torso \\
 \Cref{tab:si-diffraction} reports the diffraction effect on whole-body
 absorbed power across frequency on the Thelonious phantom. We compute
 $P_{\mathrm{diff}}$ by replacing $\pospart{\mu}$ with the GELU
-smoothing of the main paper and adding the curvature ringing
-$T_0(H/k)\,\mathrm{GELU}(\mu)^2$. The baseline $P_{\mathrm{simp}} =
+smoothing in Eq.~\ref{eq:gelu} of the main paper and adding the
+second-order curvature term $T_0(H/k)\,\mathrm{GELU}(\mu)^2$. The baseline $P_{\mathrm{simp}} =
 \IPD\,T_0\,\Aperp(\khat)$ uses the same $T_0$, so the entry isolates
 diffraction. Six cardinal directions are averaged. Mean curvature $H$
 is taken from the cotangent Laplacian on the merged-vertex mesh.
@@ -731,14 +734,15 @@ identified in the main paper.
 
 \section{Anthropometric scaling}\label{si:anthro}
 
-The whole-body compliance threshold from the main paper, evaluated
-at the worst-case directional exposure (\cref{rem:hull} of the main
-paper), is
+All cross-references in this section that take a `main paper'
+qualifier point at the main paper's labels. The whole-body
+compliance threshold there, evaluated at the worst-case directional
+exposure (Remark~\ref{rem:hull}), is
 \begin{equation}\label{eq:Sinc-max-SI}
-  \IPD_{\max} = \frac{0.16\,m}{\Tbar\,A}\, ,
+  \IPD_{\mathrm{max}} = \frac{0.16\,m}{\Tbar\,A}\, ,
 \end{equation}
 where $A$ is the body surface area. The convex-hull bound on the
-absorption directivity absorbs the ambient-occlusion factor
+absorption directivity cancels the ambient-occlusion factor
 $\bar\eta = \Aab/A$ in the worst-case algebra, leaving $A$ rather
 than $\Aab$ in the denominator. This is the conservative form used
 for regulatory bounds.
@@ -751,7 +755,7 @@ The empirical Du Bois formula~\cite{DuBois1916} gives
 in m$^2$ with mass $m$ in kg and height $h$ in cm. The threshold
 scales as $m/A$, so
 \begin{equation}\label{eq:Sinc-anthro}
-  \IPD_{\max} \propto \frac{m}{A}
+  \IPD_{\mathrm{max}} \propto \frac{m}{A}
   \propto m^{0.575}\,h^{-0.725}
   = \mathrm{BMI}^{0.575}\,h^{0.425}\, ,
 \end{equation}
@@ -775,7 +779,7 @@ two between an infant and a large adult.
 \begin{tabular}{lccccc}
 \toprule
 Body type & $m$ & $h$ & $A$
-  & $m/A$ & $\IPD_{\max}$ \\
+  & $m/A$ & $\IPD_{\mathrm{max}}$ \\
           & [kg] & [cm] & [m$^2$]
   & [kg/m$^2$] & [W/m$^2$] \\
 \midrule
