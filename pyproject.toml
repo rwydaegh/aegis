@@ -42,7 +42,7 @@ docs = [
     "pymdown-extensions>=10.21.2,<10.22",
     "pygments>=2.20,<2.21",
     "mkdocstrings[python]>=1.0.4",
-    "mkdocs-minify-plugin>=0.7",
+    "mkdocs-minify-plugin>=0.8.0",
     "jupytext>=1.19.1",
 ]
 dev = [
