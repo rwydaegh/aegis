@@ -172,3 +172,8 @@ F.~Lastname, ``Title of the thesis,'' Ph.D.~dissertation, Dept. of Elec. Eng., U
 63. Compile with `draft` option once to spot overfull boxes via the black bars in the margin.
 64. **Verify bibitem order matches first-appearance order in the final compiled PDF.** Easy to drift when adding citations late. Read the PDF, note each `[N]` as it appears, confirm sequential.
 65. **Read the paper from a printed PDF, not the source.** Typesetting bugs invisible in the edi
+
+
+## Also
+
+On first new coinage of a term, always use italics. 
