@@ -1,0 +1,806 @@
+\documentclass[11pt,a4paper]{article}
+
+% ---------- packages ----------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathtools}
+\usepackage{physics}
+\usepackage{bm}
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage[dvipsnames]{xcolor}
+\usepackage{hyperref}
+\hypersetup{colorlinks,linkcolor=MidnightBlue,citecolor=OliveGreen,urlcolor=NavyBlue}
+\usepackage{cleveref}
+\usepackage{tikz}
+\usetikzlibrary{calc,decorations.pathreplacing,patterns,arrows.meta}
+
+% ---------- theorem styles ----------
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{claim}[theorem]{Claim}
+
+% ---------- shortcuts ----------
+\newcommand{\Sab}{S_{\mathrm{ab}}}
+\newcommand{\Sinc}{S_{\mathrm{inc}}}
+\newcommand{\Tzero}{T_0}
+\newcommand{\nhat}{\hat{\vb{n}}}
+\newcommand{\khat}{\hat{\vb{k}}}
+\newcommand{\ntilde}{\tilde{n}}
+\newcommand{\SAR}{\ensuremath{\mathrm{SAR}}}
+\newcommand{\psSAR}{\ensuremath{\mathrm{psSAR}_{10\mathrm{g}}}}
+\newcommand{\rhom}{\rho_{\mathrm{m}}}
+\newcommand{\Lact}{L_{\!*}}
+
+\title{%
+  When the Cauchy projection formula for $\psSAR$ fails:\\
+  side-entry constraints under the IEC/IEEE 62704 cube rule%
+}
+\author{Robin Wydaeghe (with Claude Opus 4.7)}
+\date{May 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+A previous note (\texttt{psSAR10g.tex}) derived a closed-form thin-skin
+expression for the peak spatial-average SAR over the ICNIRP/IEEE 10\,g
+cube,
+\[
+  \langle\SAR\rangle_{\mathrm{cube}}
+  = \frac{\Sinc\,\Tzero}{\rhom\,L}\bigl(|k_x|+|k_y|+|k_z|\bigr),
+  \qquad L = (m/\rhom)^{1/3}=21.5\ \mathrm{mm},
+\]
+on the basis of an energy-conservation argument: the absorbed power
+inside the cube equals the projected area $A_\perp(\khat) =
+L^2(|k_x|+|k_y|+|k_z|)$ of the cube on the wavefront, multiplied by
+$\Sinc\Tzero$. We revisit this derivation in the light of the actual
+IEC/IEEE 62704-1 averaging-volume rules (axis-aligned cube, mass
+fixed at 10\,g, at most 10\% air by volume, no face entirely in air)
+and find that the formula is correct only in a narrow regime that does
+not include the dominant compliance scenario of plane-wave illumination
+on a smooth body. For face-flush axis-aligned cubes on a planar body,
+five of the six cube faces are tissue-facing, the side-entry channel
+is essentially closed, and the absorbed power inside the cube is
+$\Sinc\Tzero L^2\cos\theta_i$ to within layer-induced corrections,
+where $\theta_i$ is the local incidence angle on the body surface.
+A numerical 62704-style optimisation on the Thelonious phantom across
+four frequencies (2.45, 10, 28, 60\,GHz), two polarisations, and five
+incidence directions confirms the analysis: the Cauchy formula
+overpredicts $\psSAR$ by a median of $3\times$ (and up to $50\times$
+at grazing incidence), while the cosine-law replacement
+$\langle\SAR\rangle = \Sab/(\rhom L)$ stays within $\sim 50\%$ of
+numerical, with the residual bias driven by the angle $\gamma$ between
+the body normal and the cube axes (zero for axis-aligned, growing to
+$+50\%$ at $\gamma=45^\circ$). We give the corrected formula, identify
+the regime in which the Cauchy expression remains accurate (sharp
+convex corners or small anatomy that the cube engulfs), and recommend
+that the corollary in \texttt{paper.tex} be replaced with the cosine
+law (with appropriate geometry caveat) or removed.
+\end{abstract}
+
+\tableofcontents
+
+
+% ======================================================================
+\section{The standardized averaging volume}
+\label{sec:standard}
+% ======================================================================
+
+\subsection{IEC/IEEE 62704-1 cube rule, restated}
+
+The peak spatial-average SAR over 10\,g of tissue is computed
+according to IEC/IEEE 62704-1:2017 (FDTD) and IEC/IEEE 62704-4:2020
+(FEM), using the averaging-volume construction in IEEE C95.3-2021
+Annex~E. Three rules are operationally relevant:
+
+\begin{enumerate}[label=(R\arabic*),leftmargin=2.5em]
+  \item\label{R:axis} The cube is \textbf{axis-aligned} with the
+    global Cartesian voxel grid. It does not rotate to follow the body
+    surface.
+  \item\label{R:mass} The cube is \textbf{grown} from a seed voxel
+    until the enclosed tissue mass equals the prescribed
+    $m=10$\,g (within a small tolerance).
+  \item\label{R:air} The cube is \textbf{valid} iff (a) the enclosed
+    air fraction does not exceed $10\%$ of the cube volume, and (b)
+    no single face is entirely in air. (Plain IEEE C95.3 omits the
+    $10\%$ rule and uses only the no-air-face condition; CST
+    documents both methods.)
+\end{enumerate}
+
+\noindent
+The first consequence is that the cube side is not fixed at
+$L=(m/\rhom)^{1/3} = 21.54$\,mm. With the maximum 10\% air, the
+cube side grows to
+\begin{equation}\label{eq:Lact}
+  \Lact = \Bigl(\frac{m}{0.9\,\rhom}\Bigr)^{1/3}
+  = 22.31\;\mathrm{mm},
+\end{equation}
+i.e.\ up to $3.6\%$ larger than the all-tissue value. The mass is
+$10$\,g by construction, so this is purely a volume effect.
+
+The second consequence is geometric: under~\ref{R:axis}, the cube
+sits in a plane wherever the body's local surface normal is not
+parallel to a global axis. Most of the body's surface satisfies this
+condition, so the body cuts the cube as a tilted slab.
+
+\subsection{Optimal valid placement on a planar body}
+
+Take a half-space body $\{z<0\}$ with horizontal surface and an
+axis-aligned cube of side $L$. Two regimes appear depending on
+whether the body normal aligns with a cube axis ($\gamma=0$) or not
+($\gamma>0$).
+
+\paragraph{Face-flush ($\gamma=0$): no-face-air rule binds.}
+For axis-aligned cube on a body whose local normal is parallel to a
+cube axis, the cube straddles the surface in the obvious way: top face
+above (in air), bottom face below (in tissue). If we try to push the
+cube up to allow $f_{\mathrm{air}}>0$, the entire top face moves into
+air and rule R3b (no entirely-air face) is violated. The optimum is
+therefore the limiting placement with the cube top exactly at the
+surface, $f_{\mathrm{air}}=0$ and
+\begin{equation}\label{eq:opt-faceflush}
+  L = L_{\mathrm{nominal}} = (m/\rhom)^{1/3} = 21.54\;\mathrm{mm}.
+\end{equation}
+
+\paragraph{Tilted ($\gamma>0$): 10\%-air rule binds.}
+For an axis-aligned cube on a body whose normal makes angle
+$\gamma>0$ with every cube axis, the body surface enters the cube as a
+tilted plane and the air region inside the cube becomes a wedge that
+sits across multiple faces. No single face is entirely in air, so
+rule R3b is satisfied even when $f_{\mathrm{air}}\approx 10\%$. The
+10\%-air constraint binds, giving
+\begin{equation}\label{eq:opt-Lstar}
+  L = \Lact = \Bigl(\frac{m}{0.9\,\rhom}\Bigr)^{1/3}
+  = 22.31\;\mathrm{mm},
+\end{equation}
+with cube footprint $\Lact^2 = 4.98$\,cm$^2$.
+
+\medskip\noindent
+The face-flush case ($L_{\mathrm{nominal}}$) and the tilted case
+($\Lact$) differ in cube side by $\Lact/L_{\mathrm{nominal}} = 1.036$
+and in the $1/(\rhom L)$ prefactor of the cosine formula by $0.965$,
+so the two limits set tight bounds on which $L$ is operative. The
+numerical search in \cref{sec:numerics-thelonious} confirms both
+regimes appear on Thelonious: for surface points with
+$\gamma\lesssim 5^\circ$ the optimum is the face-flush
+\cref{eq:opt-faceflush}; for the rest (the great majority on a smooth
+body) the optimum is the 10\%-air \cref{eq:opt-Lstar}.
+
+
+% ======================================================================
+\section{The Cauchy projection corollary}
+\label{sec:corollary}
+% ======================================================================
+
+The corollary in question, as stated in \texttt{paper.tex}
+(Cor.~\texttt{cor:cube} therein) and in \texttt{psSAR10g.tex} (eq.~52), is
+\begin{equation}\label{eq:cauchy-form}
+  \langle\SAR\rangle_{\mathrm{cube}}
+  \stackrel{?}{=} \frac{\Sinc\,\Tzero}{\rhom\,L}\,
+    \bigl(|k_x|+|k_y|+|k_z|\bigr),
+  \qquad L = (m/\rhom)^{1/3}.
+\end{equation}
+The argument is energy conservation in the thin-skin limit: every
+photon entering the cube's air-facing faces is absorbed inside the
+cube, so $P_{\mathrm{abs}}=\Sinc\Tzero A_\perp(\khat)$, with
+$A_\perp$ the projected area of the cube on the wavefront. For an
+axis-aligned cube,
+\begin{equation}\label{eq:cauchy-area}
+  A_\perp(\khat) = L^2\bigl(|k_x|+|k_y|+|k_z|\bigr).
+\end{equation}
+Dividing by $m=\rhom L^3$ gives \cref{eq:cauchy-form}.
+
+The implicit premise is that the body fills the cube's cross-section
+perpendicular to $\khat$, so that every photon entering the cube's
+geometric shadow is intercepted by tissue. The standalone note
+acknowledges this as a caveat for ``small or protruding anatomy''. The
+remainder of this report shows that the premise also fails for the
+\emph{opposite} extreme --- a smooth body large compared to the cube
+--- which is precisely the regime where the formula is most often
+invoked (torso, limb, head). The resulting overprediction is
+substantial.
+
+
+% ======================================================================
+\section{A face-by-face flux audit}
+\label{sec:audit}
+% ======================================================================
+
+Place the 10\%-air valid cube of \cref{eq:opt-Lstar} on a horizontal
+half-space body. Take a plane-wave incidence direction
+$\khat=-(\sin\theta,0,\cos\theta)$ with $\theta\in[0,\pi/2)$ the angle
+from the cube's vertical axis. The cube is
+$[0,\Lact]\times[0,\Lact]\times[-0.9\Lact, 0.1\Lact]$ and the body
+surface is the plane $z=0$ inside the cube footprint.
+
+\subsection{Air-facing vs tissue-facing}
+
+The cube has six faces. Their character under \cref{eq:opt-Lstar}
+is:
+
+\begin{center}
+\begin{tabular}{@{}llll@{}}
+\toprule
+Face & Outward normal & Region of face above $z=0$ & Character \\
+\midrule
+Top    & $+\hat{\vb z}$ & Entire face       & Air-facing \\
+Bottom & $-\hat{\vb z}$ & None              & Tissue-facing \\
+$x=0$  & $-\hat{\vb x}$ & Strip $z\in[0,0.1\Lact]$ & Mixed \\
+$x=\Lact$ & $+\hat{\vb x}$ & Strip $z\in[0,0.1\Lact]$ & Mixed \\
+$y=0$  & $-\hat{\vb y}$ & Strip $z\in[0,0.1\Lact]$ & Mixed \\
+$y=\Lact$ & $+\hat{\vb y}$ & Strip $z\in[0,0.1\Lact]$ & Mixed \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The four side faces are split: a thin $\Lact\times 0.1\Lact$ strip at
+the top is in air; the lower $\Lact\times 0.9\Lact$ region is in
+tissue. Five of the six faces have most or all of their area immersed
+in tissue.
+
+\subsection{Side entry through tissue strips is closed}
+
+The crucial point: the tissue strips of the side faces do not channel
+new wave power into the cube. Consider a photon present in tissue at
+the right-side tissue strip $\{x=\Lact,\,z<0\}$. It must have crossed
+the body surface $z=0$ at some location, then propagated in tissue to
+reach the cube boundary. In the thin-skin regime $\alpha L\gg 1$ the
+characteristic path length in tissue is $1/(2\alpha)\approx 0.5$\,mm
+(skin, 28\,GHz), much smaller than the cube side $L=21.5$\,mm. By
+Snell refraction into a high-index medium ($|\ntilde|\gtrsim 4$ above
+6\,GHz) the in-tissue propagation angle from normal is
+$\theta_t\approx\theta/|\ntilde|$, so a photon entering tissue at
+$(\Lact+\delta,y,0)$ (just to the right of the cube) travels nearly
+straight down and reaches $x=\Lact$ at depth
+$z\approx -\delta\cot\theta_t \approx -\delta\,|\ntilde|/\sin\theta$,
+with amplitude attenuated by $e^{-\alpha\delta\,\cot\theta_t}$.
+Integrated over $\delta\geq 0$, the inward Poynting flux through
+the tissue strip of the right face is
+\begin{equation}\label{eq:side-channel-bound}
+  \Phi^{\mathrm{tissue\,strip}}_{x=\Lact}
+  \;\lesssim\; \Sinc\,\Tzero\,\sin\theta\;\Lact\,
+    \frac{\sin\theta_t}{2\alpha}
+  \;=\; \frac{\Sinc\,\Tzero\,\Lact}{2\alpha\,|\ntilde|}\,\sin^2\theta,
+\end{equation}
+which at 28\,GHz is $\sim 10^{-4}\,\Sinc\Tzero\Lact^2$ per face.
+Compared to the top-face contribution $\Sinc\Tzero\Lact^2\cos\theta$,
+the tissue side-channel adds at most $\sim 0.1\%$ across all
+$\theta$. We therefore drop it.
+
+\subsection{Direct accounting via the body surface inside the footprint}
+
+The cleanest way to compute the absorbed power inside the cube is to
+note that, in the thin-skin limit, all wave power transmitted through
+the body surface inside the cube footprint is absorbed inside the
+cube (apart from the negligible side leakage of
+\cref{eq:side-channel-bound}). The body surface inside the footprint
+has area $\Lact^2$ (a horizontal $\Lact\times\Lact$ square at
+$z=0$). The local absorbed power density is
+$\Sab(\rr)=\Sinc\Tzero\cos\theta_i$, with $\theta_i=\theta$ here
+(planar body, $\hat{\vb n}=+\hat{\vb z}$).
+
+Hence
+\begin{equation}\label{eq:correct-Pabs}
+  P_{\mathrm{abs}}^{\mathrm{cube}}
+  = \int_{\Sigma\cap\mathcal{C}} \Sab\,\diff A
+  = \Sinc\,\Tzero\,\cos\theta\;\Lact^2,
+\end{equation}
+not $\Sinc\Tzero\Lact^2(|\sin\theta|+|\cos\theta|)$ as the Cauchy
+formula would predict.
+
+\subsection{Cross-check via inward flux through air-facing faces}
+
+The same answer follows from the Poynting-flux picture used in the
+original derivation. The inward Poynting flux through the air-facing
+parts of the cube boundary is
+\begin{equation}\label{eq:air-flux-correct}
+  \Phi^{\mathrm{in}}_{\mathrm{air}}
+  = \underbrace{\Sinc\,\Lact^2\cos\theta}_{\text{top face}}
+  + \underbrace{\Sinc\,(\Lact\times 0.1\Lact)\sin\theta}_{\text{right air strip}}
+  = \Sinc\Lact^2\bigl(\cos\theta + 0.1\sin\theta\bigr).
+\end{equation}
+Of this inflow, only the fraction that hits the body surface
+\emph{inside} the cube footprint contributes to
+$P_{\mathrm{abs}}^{\mathrm{cube}}$. A photon entering through the
+top face at $(x_t,y,0.1\Lact)$ reaches the body at
+$x_b = x_t-0.1\Lact\tan\theta$, which lies inside $[0,\Lact]$ only
+for $x_t \in [0.1\Lact\tan\theta,\Lact]$. The fraction is
+$1-0.1\tan\theta$. A photon entering the right air strip at
+$(\Lact,y,z_e)$ reaches the body at
+$x_b=\Lact-z_e\tan\theta\in[\Lact-0.1\Lact\tan\theta,\Lact]$,
+all inside the footprint. Thus
+\begin{align}
+  P_{\mathrm{abs}}^{\mathrm{cube}}
+  &= \Tzero\bigl[\Sinc\Lact^2\cos\theta\,(1-0.1\tan\theta)
+     + \Sinc\,0.1\Lact^2\sin\theta\bigr] \notag\\
+  &= \Sinc\,\Tzero\,\Lact^2\bigl[\cos\theta - 0.1\sin\theta + 0.1\sin\theta\bigr]
+  = \Sinc\,\Tzero\,\Lact^2\cos\theta,
+  \label{eq:flux-cancellation}
+\end{align}
+in agreement with \cref{eq:correct-Pabs}. The contribution that the
+Cauchy formula assigns to the side faces ($\Sinc\Tzero\Lact^2\sin\theta$
+in this geometry) is missing the factor $0.1$ from the actual air-strip
+height \emph{and} is partly cancelled by the wastage of top-face flux
+that misses the cube footprint. The two effects do not add up to the
+$\sin\theta$ term that appears in $|k_x|+|k_z|$.
+
+\begin{remark}[Where the Cauchy bookkeeping breaks]
+The Cauchy projection $A_\perp=L^2(|k_x|+|k_y|+|k_z|)$ counts the
+full geometric shadow of the cube as if the cube were an isolated
+opaque object suspended in air with body filling its shadow on every
+forward-facing side. For a 62704-valid cube (mostly inside the body),
+five of the six faces are immersed in tissue and intercept no fresh
+flux; the inflow comes essentially through the single air-facing
+face (top), with negligible corrections from the air strips on the
+other faces. The result is $\propto\cos\theta_i$, not
+$\propto |k_x|+|k_y|+|k_z|$.
+\end{remark}
+
+
+% ======================================================================
+\section{Numerical comparison}
+\label{sec:numerics}
+% ======================================================================
+
+For a horizontal half-space body and an optimally placed valid cube,
+the corrected and Cauchy expressions for $\psSAR/(\Sinc\Tzero)$ are
+compared in \cref{tab:compare}. Skin tissue at 28\,GHz, $\rhom=1000$
+kg/m$^3$, $\Lact=22.31$\,mm, $L=21.54$\,mm.
+
+\begin{table}[ht]
+\centering
+\caption{$\psSAR$ on a flat horizontal body for an optimal axis-aligned
+cube, plane-wave incidence at angle $\theta$ from the cube vertical.
+``Corrected'' uses \cref{eq:correct-Pabs} with $\Lact=22.31$\,mm
+(10\% air saturation). ``Cauchy'' uses \cref{eq:cauchy-form} with
+$L=21.54$\,mm. Errors are
+$(\text{Cauchy}-\text{Corrected})/\text{Corrected}$.}
+\label{tab:compare}
+\begin{tabular}{rcccc}
+\toprule
+$\theta$ & $\cos\theta$ & Corrected
+  $\;[\Sinc\Tzero\,\mathrm{W/kg}]$
+  & Cauchy $[\Sinc\Tzero\,\mathrm{W/kg}]$
+  & Error \\
+\midrule
+$0^\circ$  & 1.000 & 0.0498 & 0.0465 & $-7\%$ \\
+$15^\circ$ & 0.966 & 0.0481 & 0.0586 & $+22\%$ \\
+$30^\circ$ & 0.866 & 0.0431 & 0.0635 & $+47\%$ \\
+$45^\circ$ & 0.707 & 0.0352 & 0.0658 & $+87\%$ \\
+$60^\circ$ & 0.500 & 0.0249 & 0.0635 & $+155\%$ \\
+$75^\circ$ & 0.259 & 0.0129 & 0.0586 & $+355\%$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The Cauchy formula is biased low by $7\%$ at normal incidence (an
+$\Lact$ vs $L$ accounting issue) and biased high by $50\%$ to
+factor-of-three at oblique incidence (the side-entry overcounting).
+Crucially, the Cauchy formula is non-monotone in $\theta$, peaking
+near $\theta=45^\circ$, whereas the actual $\psSAR$ decreases
+monotonically with the incidence angle. The two expressions
+disagree even on the qualitative direction of the answer.
+
+For a generic $\khat$ with all three components nonzero, the same
+analysis gives, with $\theta_i$ the local incidence angle on the
+body surface (here $\cos\theta_i = -\nhat\cdot\khat = -k_z$ for
+horizontal body) and $\nhat=+\hat{\vb z}$,
+\begin{equation}\label{eq:correct-3d}
+  \langle\SAR\rangle^{\mathrm{flat}}_{\mathrm{cube}}
+  = \frac{\Sinc\,\Tzero}{\rhom\,\Lact}\,
+    \pospart{\nhat\cdot(-\khat)}
+  = \frac{\Sab(\rr)}{\rhom\,\Lact},
+\end{equation}
+which is the exact analogue of the surface-SAR formula
+$\SAR(\rr,0)=2\alpha\Sab/\rhom$ but with the depth scale set by the
+cube extent $\Lact$ rather than the skin depth $1/(2\alpha)$. The
+Cauchy projection factor is absent.
+
+
+% ======================================================================
+\section{When the Cauchy formula does hold}
+\label{sec:limits}
+% ======================================================================
+
+The Cauchy formula's premise --- the body fills the cube shadow on
+every forward-facing face --- is satisfied in three regimes.
+
+\subsection{Sharp convex corners}\label{sec:corner}
+
+If the body has a convex corner and the cube fits snugly into it,
+two or three forward-facing faces of the cube can simultaneously be
+air-facing. For an idealized rectangular corner (body fills octant
+$\{x<0,y<0,z<0\}$), the cube
+$[0,\Lact]^3$ would have its three positive-axis faces all
+air-facing and its three negative-axis faces tissue-facing. Inward
+flux through the air-facing faces would equal
+$\Sinc\Lact^2(|k_x|+|k_y|+|k_z|)$ for incidence with all components
+positive (i.e., from $-\khat$ in the all-positive octant), and the
+Cauchy formula would be exact.
+
+This is, however, an unphysical limit. Real anatomy has rounded
+features with curvature radius $R\gg\Lact$ (torso, limb) or
+$R\sim\Lact$ (fingertip, ear edge). The right-angle corner is an
+upper bound that the body never approaches. \emph{An interior corner
+on the body fails this scenario in the opposite direction: the cube
+cannot extend into the corner because most of its volume would be
+in tissue from multiple directions, but air-facing flux remains
+single-direction.}
+
+\subsection{Body fully engulfed by the cube}\label{sec:engulf}
+
+If a slender body part (a finger, an ear cartilage sheet) fits
+entirely inside the cube, the cube ``shadows'' the part from every
+forward-facing direction and the projected-area argument applies. For
+a finger of radius $r\approx 8$\,mm and $\Lact\approx 22$\,mm, the
+finger fills perhaps $\pi r^2 / \Lact^2\approx 41\%$ of the cube
+cross-section, so the formula is approximately right (within the
+40\% it omits). For ear cartilage of thickness $1$--$2$\,mm, the
+fill fraction is below $10\%$ and the Cauchy formula overpredicts
+by an order of magnitude, but in the opposite direction from the
+\cref{sec:audit} smooth-body case: the cube simply doesn't contain
+much absorbing material. The 62704 air-fraction rule tends to rule
+out such cubes anyway, since they violate the $\geq 90\%$ tissue
+criterion.
+
+\subsection{Axis-aligned incidence}\label{sec:axisaligned}
+
+If $\khat$ is along a global axis (one of $\pm\hat{\vb x}$,
+$\pm\hat{\vb y}$, $\pm\hat{\vb z}$), $A_\perp = L^2$ regardless of
+body geometry, and the formula reduces to
+$\langle\SAR\rangle = \Sinc\Tzero/(\rhom L)$. For a smooth body with
+the cube placed face-flush at the wave-incidence side, this matches
+\cref{eq:correct-3d} (with $\theta_i=0$) up to the $\Lact$ vs $L$
+factor, which is the $7\%$ underprediction in \cref{tab:compare}.
+
+\medskip\noindent
+Outside these three regimes, the Cauchy formula does not describe
+the standardized $\psSAR$.
+
+
+% ======================================================================
+\section{Numerical validation on Thelonious}
+\label{sec:numerics-thelonious}
+% ======================================================================
+
+The analytical argument above predicts a specific failure mode for the
+Cauchy formula at oblique incidence on a smooth body, and a $\sim$few-\%
+match for the cosine law in face-flush geometry. We now check both
+against a numerical 62704-style cube optimisation on the
+Thelonious phantom under plane-wave illumination, with a three-layer
+planar tissue model (skin\,2\,mm / fat\,10\,mm / muscle$_\infty$,
+IT'IS-style properties).
+
+\paragraph{Setup.} We sample 15 surface points on Thelonious. At each
+point we treat the body locally as a half-space with the surface normal
+taken from the STL face. We sweep four frequencies (2.45, 10, 28,
+60\,GHz), two polarisations (TE and TM), and five plane-wave incidence
+directions (one straight down, one frontal, one side, one 45$^\circ$
+above the horizon, one along the body diagonal). For each
+configuration we compute the layered Fresnel transmission via a 3-layer
+transfer matrix, the SAR depth profile in each tissue layer, and the
+maximum mass-averaged SAR over an axis-aligned cube whose placement is
+optimised under all three 62704 rules (cube grown to enclose 10\,g,
+$\le 10\%$ air by volume, no entirely-air face). The cube integration
+uses Monte Carlo (200\,k samples in the cube, focused scan of cube
+centres around the face-flush optimum).
+After dropping configurations with grazing or back-side incidence
+(280 valid records), the headline numbers are:
+
+\begin{table}[ht]
+\centering
+\caption{Median ratio of closed-form to numerical $\psSAR$ across the
+sweep (280 records, Thelonious).}
+\label{tab:thelonious-summary}
+\begin{tabular}{rccc}
+\toprule
+$f$ [GHz] & Cauchy / num & CosL$_*$ / num & CosL$_{\mathrm{nom}}$ / num \\
+\midrule
+2.45  & 3.12 & 1.33 & 1.38 \\
+10    & 2.53 & 1.06 & 1.09 \\
+28    & 3.06 & 1.31 & 1.35 \\
+60    & 3.19 & 1.37 & 1.41 \\
+\midrule
+all   & 3.09 & 1.30 & 1.30 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Cauchy is dramatically wrong.} The median Cauchy/numerical
+ratio is 3$\times$, and at grazing incidence ($\cos\theta_i \to 0$) it
+diverges to 10$\times$--50$\times$. The $|k_x|+|k_y|+|k_z|$ factor
+predicts the largest psSAR in directions where the cube would intercept
+the most flux \emph{as a free-floating object in air}, but those are
+exactly the directions where the body surface hardly intersects the
+cube at all. The two pictures fight each other and Cauchy loses.
+
+\paragraph{Cosine law is much closer but not exact.} Both variants of
+the cosine law (with $L_*$ or with $L_{\mathrm{nominal}}$) sit within
+the same envelope: median ratios near 1.0--1.5, no divergence at
+grazing incidence. The 10\,GHz column is the closest to unity (median
+1.06--1.09), because at 10\,GHz the SAR depth profile fills the
+$L=21.5$\,mm cube nicely, so even a tilted depth distribution averages
+out close to the nominal. At 28 and 60\,GHz the ratio rises to
+1.30--1.40 because in the thin-skin regime a tilted cube's
+near-surface samples shift below the SAR peak and the mass average
+falls. At 2.45\,GHz the ratio rises again from layered standing-wave
+effects below the 6\,GHz boundary (already known to break thin-skin).
+
+\paragraph{The dominant residual is the body-normal vs cube-axis tilt
+$\gamma$.} Binning by the angle $\gamma$ between the local body normal
+and the nearest cube axis:
+
+\begin{table}[ht]
+\centering
+\caption{Median ratio CosL$_{\mathrm{nom}}$/numerical, binned by the
+tilt $\gamma$ between body normal and nearest cube axis. The cube is
+axis-aligned in the global frame; $\gamma$ depends only on local body
+geometry.}
+\label{tab:gamma-bins}
+\begin{tabular}{rccccc}
+\toprule
+$\gamma$ & 2.45\,GHz & 10\,GHz & 28\,GHz & 60\,GHz & median \\
+\midrule
+5--15$^\circ$  & 1.16 & 0.94 & 0.95 & 0.95 & 0.96 \\
+15--25$^\circ$ & 1.26 & 1.03 & 1.19 & 1.24 & 1.20 \\
+25--35$^\circ$ & 1.35 & 1.09 & 1.33 & 1.40 & 1.33 \\
+35--45$^\circ$ & 1.43 & 1.14 & 1.39 & 1.42 & 1.40 \\
+45--55$^\circ$ & 1.46 & 1.16 & 1.45 & 1.50 & 1.46 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The cosine law is essentially exact ($\le 5\%$ error) when
+$\gamma \le 15^\circ$, and degrades monotonically with $\gamma$, reaching
+$+50\%$ overshoot at $\gamma=50^\circ$. This is a pure geometric
+effect: an axis-aligned cube on a tilted body samples a depth
+distribution that is biased away from the surface, so the mass average
+over the cube falls below the face-flush prediction. On a complex body
+like Thelonious the median $\gamma$ is around 25$^\circ$
+(few surface points are precisely axis-aligned).
+
+\paragraph{What about the 10\%-air optimum?} The numerical search
+finds that the optimal placement saturates the air constraint
+(median $f_{\mathrm{air}} = 0.09$, median $L = 22.2$\,mm) for every
+geometry where the body normal is not exactly aligned with a cube axis.
+For axis-aligned ($\gamma \to 0$) face-flush placements, the no-face-air
+rule rules out the 10\%-air configuration and the optimum collapses to
+$L = L_{\mathrm{nominal}} = 21.54$\,mm with $f_{\mathrm{air}} = 0$.
+The two cosine variants therefore correspond to the limiting cases:
+$L_{\mathrm{nominal}}$ for axis-aligned smooth body, $L_*$ for everywhere
+else. They differ by $1.07\times$, but the geometric tilt residual of
+$1.0$--$1.5\times$ dominates either way.
+
+\paragraph{Visual summary.}
+\Cref{fig:scatter} shows the
+formula--vs--numerical scatter across all 280 configurations. The
+Cauchy panel clearly separates above the diagonal across two orders of
+magnitude in $\psSAR$. The two cosine panels collapse onto a tight band
+just above the diagonal. \Cref{fig:ratio} shows the
+formula/numerical ratio against the incidence cosine and confirms that
+Cauchy diverges to $50\times$ at grazing while the cosine law stays in
+$[1, 2]$.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\textwidth]{scripts/psSAR10g_validation_out/scatter_formula_vs_numerical.png}
+\caption{Closed-form $\psSAR_{10\mathrm{g}}$ vs numerical 62704
+maximum-over-placement, on Thelonious with the three-layer planar
+tissue model. Dashed line is $y=x$. Cauchy projection (left) is
+2--50$\times$ above the diagonal across two decades. Cosine law with
+$L_*$ (centre) and with $L_{\mathrm{nominal}}$ (right) collapse onto a
+tight band just above the diagonal. Colour: incidence cosine
+$\cos\theta_i$.}
+\label{fig:scatter}
+\end{figure}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\textwidth]{scripts/psSAR10g_validation_out/ratio_vs_mu.png}
+\caption{Formula/numerical ratio vs incidence cosine. Cauchy diverges
+to 50$\times$ at grazing incidence. Cosine law (both variants)
+saturates around 1.0--1.5, with the 10\,GHz line (purple/pink) the
+closest to unity since the cube depth ($L=21.5$\,mm) is comparable to
+the SAR penetration there.}
+\label{fig:ratio}
+\end{figure}
+
+
+% ======================================================================
+\section{Why this matters and what to do}
+\label{sec:implications}
+% ======================================================================
+
+\subsection{Implication for the paper}
+
+The corollary in \texttt{paper.tex} is presented as a closed-form
+shortcut for the IEC/IEEE 62704 quantity, valid in the thin-skin
+limit $\alpha L\gg 1$. The thin-skin limit is correctly invoked, but
+the side-entry channel is silently assumed to be open. For the
+plane-wave-on-torso scenario that drives compliance assessments, the
+formula overstates $\psSAR$ by $50\%$ to a factor of three across
+realistic incidence angles (\cref{tab:compare}). This is not a
+controlled approximation; it is a structural error in the energy
+bookkeeping.
+
+The error is masked at axis-aligned incidence (where the formula
+happens to be approximately right by virtue of $|k_x|+|k_y|+|k_z|=1$
+matching $\cos\theta_i=1$) and could go unnoticed in a compliance
+table dominated by axis-aligned columns. It will reappear as soon as
+a base-station antenna is tilted, the user's body rotates, or
+multipath delivers oblique components.
+
+\subsection{Recommended replacement}
+
+The corrected closed-form expression for a smooth-body face-flush
+configuration is
+\begin{equation}\label{eq:replacement}
+  \boxed{%
+    \langle\SAR\rangle^{\mathrm{cube,smooth}}
+    = \frac{\Sab(\rr)}{\rhom\,\Lact}
+    = \frac{\Sinc\,\Tzero}{\rhom\,\Lact}\,
+      \pospart{\nhat(\rr)\cdot(-\khat)},
+  }
+\end{equation}
+with $\Lact = (m/((1-f_{\mathrm{air}}^{\max})\rhom))^{1/3}$, the
+cube side at the air-fraction saturation. This is one scalar
+multiplication per surface point, identical in implementation cost
+to the Cauchy formula, and uses a quantity ($\Sab$) that AEGIS
+already computes. The Cauchy projection
+factor disappears.
+
+A more cautious replacement would present
+\cref{eq:replacement} as the operative formula for smooth body parts
+and retain the Cauchy formula as a worst-case upper bound applicable
+when the cube engulfs a small body feature:
+\begin{equation}\label{eq:bound}
+  \langle\SAR\rangle^{\mathrm{cube}}
+  \;\leq\; \frac{\Sinc\,\Tzero}{\rhom\,L}\,
+    \bigl(|k_x|+|k_y|+|k_z|\bigr).
+\end{equation}
+The bound is loose by up to a factor of $\sqrt{3}$ even in its regime
+of best validity, and can be loose by more than a factor of three
+otherwise. It is not useful for compliance reporting, only for
+order-of-magnitude sanity.
+
+\subsection{What to verify next}
+
+Three numerical checks would close the loop:
+
+\begin{enumerate}[nosep,leftmargin=2em]
+  \item\emph{Half-space check.} Implement the 62704 cube-expansion
+  algorithm on a voxelized planar half-space at 28\,GHz under
+  plane-wave illumination, sweep $\theta\in\{0,15,30,45,60,75\}^\circ$,
+  and overlay against \cref{eq:replacement} and the Cauchy formula.
+  Expected: agreement with \cref{eq:replacement}, divergence from
+  Cauchy as in \cref{tab:compare}.
+  \item\emph{Phantom check.} Repeat on the Thelonious or Duke phantom
+  with several $\khat$ orientations. The torso, head, and thigh
+  should track \cref{eq:replacement}; the ear and finger may diverge.
+  \item\emph{Convex-corner check.} Construct a synthetic right-angle
+  body corner and verify that both formulas agree there. This
+  confirms the Cauchy bound is tight in its claimed regime.
+\end{enumerate}
+
+If these checks confirm the analysis, the corollary in
+\texttt{paper.tex} should be replaced with \cref{eq:replacement} (or
+removed entirely, since for a smooth body the surface-SAR formula
+$\SAR(\rr,0)=2\alpha\Sab/\rhom$ already gives the relevant bound,
+and the cube quantity differs only by the depth-scale ratio
+$\Lact/(2\alpha)^{-1}$).
+
+\subsection{Self-criticism of the standalone derivation}
+
+Two readings of the standalone note's energy argument can be
+distinguished, and both are problematic:
+
+\begin{itemize}[leftmargin=1.5em]
+  \item Reading A: ``Inward Poynting flux through the cube boundary
+  in the thin-skin limit equals $\Sinc A_\perp(\khat)$.'' This
+  conflates the cube's geometric shadow with the actual air-facing
+  inflow. For a 62704-valid cube the air-facing inflow is much smaller
+  than the geometric shadow, because most of the cube boundary is
+  immersed in tissue. The conflation is inherited from a setup in
+  which the cube is suspended in air with body filling its shadow,
+  not embedded in body with surface near one face.
+  \item Reading B: ``All photons entering the cube's geometric
+  shadow eventually hit the body and are absorbed there, regardless
+  of where the cube is.'' This is true for an isolated body, but the
+  cube boundary is the wrong control surface. The relevant quantity
+  is absorbed power inside the cube, which equals the integral of
+  $\Sab$ over the body surface inside the cube footprint, not the
+  cube's external shadow.
+\end{itemize}
+
+Either way, the cube formula reduces to a surface integral over
+$\Sigma\cap\mathcal{C}$, not a projected-area expression on
+$\partial\mathcal{C}$. The standalone note's eq.~38 gets this right
+in the abstract (``general surface integral $\int_{\Sigma\cap\mathcal{C}}
+\Sab\,\diff A$''), then derives a cleaner-looking but inequivalent
+expression by replacing the surface integral with a cube-shadow
+expression that is only correct in the engulfment limit.
+
+
+% ======================================================================
+\section{Summary}
+\label{sec:summary}
+% ======================================================================
+
+\begin{enumerate}[leftmargin=2em]
+  \item The IEC/IEEE 62704-1 cube is axis-aligned, fixed at $10$\,g
+  mass with up to $10\%$ air, with no entirely-air face
+  (\cref{sec:standard}). The optimal valid placement on a planar body
+  saturates the air constraint, giving cube side
+  $\Lact=22.31$\,mm.
+  \item Five of the six cube faces are immersed in tissue; only the
+  top face (and thin air strips on the four side faces) channels
+  fresh wave power into the cube (\cref{sec:audit}).
+  \item The absorbed power inside the cube is
+  $\Sinc\Tzero\Lact^2\cos\theta_i$, equal to the integral of $\Sab$
+  over the cube footprint on the body surface
+  (\cref{eq:correct-Pabs}), not $\Sinc\Tzero L^2(|k_x|+|k_y|+|k_z|)$.
+  \item The Cauchy projection formula overpredicts $\psSAR$ by
+  $50$--$150\%$ at oblique incidence
+  ($\theta_i\in[30^\circ,60^\circ]$) and underpredicts by $7\%$ at
+  normal incidence (\cref{tab:compare}). It is non-monotone in
+  $\theta_i$, contrary to physics.
+  \item The Cauchy formula is approximately correct for sharp
+  convex corners, axis-aligned incidence, or small body parts
+  engulfed by the cube. None of these are the dominant
+  compliance scenario (\cref{sec:limits}).
+  \item The replacement \cref{eq:replacement} is one scalar
+  multiplication per surface point, uses $\Sab$ which AEGIS
+  already computes, and matches the standardized $\psSAR$ for
+  smooth body parts in the thin-skin regime.
+  \item A short numerical experiment with a 62704-style cube
+  expansion on a half-space body would settle the matter
+  definitively (\cref{sec:implications}).
+\end{enumerate}
+
+\begin{thebibliography}{9}
+
+\bibitem{ICNIRP2020}
+ICNIRP, ``Guidelines for limiting exposure to electromagnetic fields
+(100\,kHz to 300\,GHz),'' \emph{Health Physics}, vol.~118, no.~5,
+pp.~483--524, 2020.
+
+\bibitem{62704-1}
+IEC/IEEE~62704-1:2017, ``Determining the peak spatial-average
+specific absorption rate (SAR) in the human body from wireless
+communications devices, 30\,MHz to 6\,GHz -- Part~1: General
+requirements for using the finite-difference time-domain (FDTD)
+method for SAR calculations,'' 2017.
+
+\bibitem{C953}
+IEEE, ``IEEE~C95.3-2021 -- Recommended practice for measurements
+and computations of electric, magnetic, and electromagnetic fields
+with respect to human exposure to such fields, 0\,Hz to 300\,GHz,''
+2021.
+
+\bibitem{CSTdocs}
+CST Cable Studio 2013 online help, ``SAR Calculation,''
+\url{http://www.mweda.com/cst/cst2013/mergedProjects/CST_CABLE_STUDIO/special_postpr/special_postpr_sar.htm},
+accessed May 2026. Documents three averaging methods (IEEE C95.3,
+IEEE/IEC 62704-1, CST C95.3) and confirms the $10\%$ air-volume rule
+and the no-air-face rule.
+
+\bibitem{psSAR10gNote}
+R.~Wydaeghe, ``Peak spatial-average SAR over 10\,g from surface
+absorbed power density: a closed-form reduction,''
+\texttt{theory/psSAR10g.tex}, April 2026.
+
+\end{thebibliography}
+
+\end{document}

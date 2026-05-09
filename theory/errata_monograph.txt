@@ -1,0 +1,43 @@
+Errata for monograph_v2.tex
+=============================
+
+Discovered during literature fact-check against papers/key_literature/ on
+2026-05-07 (see papers/TAP_paper/agent_reports/REPORT_LITERATURE_FACTCHECK.md
+and REPORT_LITERATURE_FIX_PLAN.md for the full audit trail).
+
+Erratum 1: Bamba 2014 bibliography entry points to the wrong paper
+------------------------------------------------------------------
+
+Location: bibliography, \bibitem{Bamba2014}, lines 5798--5804.
+
+Current (incorrect) entry:
+
+    \bibitem{Bamba2014}
+      A.~Bamba, W.~Joseph, G.~Vermeeren, E.~Tanghe, D.~P.~Gaillot,
+      J.~B.~Andersen, J.~{\O}.~Nielsen, M.~Li\'{e}nard, and L.~Martens,
+      ``Validation of experimental whole-body SAR assessment method in a complex
+      indoor environment,'' \textit{Bioelectromagnetics}, vol.~34, no.~2,
+      pp.~122--132, 2013.
+      \doi{10.1002/bem.21749}
+
+This is the BEM 2013 paper, which is a chamber-method validation paper at
+2.8 GHz only (verified by reading papers/key_literature/other/4229389.pdf).
+It does not contain the eta(f) regression, the 1.45-5.8 GHz fit, or the
+ellipsoidal-phantom FDTD that the monograph attaches to this key (e.g.
+lines 627-631, 795-796, 847-853, 3750-3753).
+
+Correct entry (the paper that actually contains those results):
+
+    \bibitem{Bamba2014}
+      A.~Bamba, W.~Joseph, G.~Vermeeren, A.~Thielens, E.~Tanghe, and
+      L.~Martens, ``A formula for human average whole-body SAR$_{\mathrm{wb}}$
+      under diffuse fields exposure in the GHz region,''
+      \textit{Phys.\ Med.\ Biol.}, vol.~59, no.~23, pp.~7435--7456, 2014.
+      \doi{10.1088/0031-9155/59/23/7435}
+
+The same bug existed in papers/TAP_paper/paper.tex and has been fixed there
+(commit on the master branch; before-state reproduces this bib entry verbatim).
+
+Action required: replace the \bibitem{Bamba2014} block in monograph_v2.tex
+with the corrected entry above. No body-text claims need to change; the
+quantitative content already matches the PMB 2014 paper.

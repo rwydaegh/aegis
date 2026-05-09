@@ -1,0 +1,439 @@
+\documentclass[11pt,a4paper]{article}
+
+% ---------- packages ----------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathtools}
+\usepackage{physics}
+\usepackage{bm}
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage[dvipsnames]{xcolor}
+\usepackage{hyperref}
+\hypersetup{colorlinks,linkcolor=MidnightBlue,citecolor=OliveGreen,urlcolor=NavyBlue}
+\usepackage{cleveref}
+\usepackage{tikz}
+\usetikzlibrary{calc,decorations.pathreplacing,patterns,arrows.meta}
+
+% ---------- theorem styles ----------
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{claim}[theorem]{Claim}
+
+% ---------- shortcuts ----------
+\newcommand{\Sinc}{S_{\mathrm{inc}}}
+\newcommand{\APD}{S_{\mathrm{ab}}}
+\newcommand{\Tlay}{T_{\mathrm{lay}}}
+\newcommand{\Tzero}{T_0}
+\newcommand{\nhat}{\hat{\vb{n}}}
+\newcommand{\khat}{\hat{\vb{k}}}
+\newcommand{\ntilde}{\tilde{n}}
+\newcommand{\SAR}{\ensuremath{\mathrm{SAR}}}
+\newcommand{\psSAR}{\ensuremath{\mathrm{psSAR}_{10\mathrm{g}}}}
+\newcommand{\rhom}{\rho_{\mathrm{m}}}
+
+\title{%
+  APD dominates $\psSAR$:\\
+  a closed-form bound from energy conservation%
+}
+\author{Robin Wydaeghe (with Claude Opus 4.7)}
+\date{2026-05-08}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This note proves a one-line inequality between the two ICNIRP basic
+restrictions on local exposure: $\psSAR \le \APD/(\rhom L)$ in the planar
+three-layer tissue model, where $\APD$ is the absorbed power density at
+the body surface, $\rhom$ is tissue mass density, and $L = 21.5$~mm is
+the IEC/IEEE 62704-1 cube side. At ICNIRP basic restrictions
+($\APD \le 10$~W/m$^2$), this gives $\psSAR \le 0.47$~W/kg, below
+the head and trunk basic restriction (2~W/kg) by a factor of $4.3$ and
+the limb restriction (4~W/kg) by a factor of $8.6$. The bound is
+energy-conservation, holds across $1$--$100$~GHz, and certifies $\psSAR$
+compliance from any $\APD$ calculation. The closed-form chain that
+delivers $\APD$ via the layered transmission $\Tlay$ therefore handles
+both basic restrictions through a single surface integral.
+\end{abstract}
+
+\section{Setup}\label{sec:setup}
+
+ICNIRP 2020 specifies two basic restrictions on local
+exposure~\cite{ICNIRP2020}:
+
+\begin{itemize}\setlength{\itemsep}{2pt}
+  \item \textbf{Sub-6~GHz}: peak spatial-average SAR over a
+        $10$~g cube of tissue, $\psSAR$. Limit $2$~W/kg head and trunk,
+        $4$~W/kg limbs (general public, $6$-min average).
+  \item \textbf{Above 6~GHz}: absorbed power density $\APD$ averaged
+        over a $4$~cm$^2$ patch ($1$~cm$^2$ above $30$~GHz). Limit
+        $10$~W/m$^2$ (general public).
+\end{itemize}
+
+\noindent
+The cube quantity is operationalized by IEC/IEEE
+62704-1~\cite{62704-1}, which prescribes axis-aligned cubes of side
+$L = (m/\rhom)^{1/3} = 21.5$~mm at mass $m = 10$~g and
+$\rhom = 1000$~kg/m$^3$, with the constraints (i) at least $90\%$ tissue
+by mass and (ii) no face entirely in air. The compliance procedure
+searches over valid placements and returns the maximum cube-averaged SAR
+as $\psSAR$.
+
+The two metrics measure related physics. $\APD$ is the time-averaged
+real Poynting vector entering the body surface, integrated over a
+patch. $\psSAR$ is the absorbed power per unit cube mass. Both depend on
+the same underlying field; the difference is the spatial averaging
+window (surface patch vs.\ volumetric cube) and the normalization
+(per area vs.\ per mass).
+
+The relationship below is energy-conservation. The cube can hold no
+more absorbed power than enters it through its body-surface footprint.
+Stating this carefully gives a closed-form bound that ties the two
+basic restrictions together.
+
+\section{The bound}\label{sec:bound}
+
+\subsection{Result}
+
+\begin{theorem}[APD dominates $\psSAR$]\label{thm:apd-dom}
+For an axis-aligned $10$~g cube placed per IEC/IEEE 62704-1 on a planar
+three-layer body, with cube z-axis aligned to the local outward body
+normal $\nhat$, the peak spatial-average SAR satisfies
+\begin{equation}\label{eq:apd-dom}
+  \psSAR \;\le\; \frac{\APD}{\rhom\,L}\, ,
+\end{equation}
+where $\APD$ is the absorbed power density at the cube's body footprint.
+For ICNIRP cube parameters, $\APD \le 10$~W/m$^2$ implies
+$\psSAR \le 0.465$~W/kg.
+\end{theorem}
+
+\subsection{Proof}
+
+The proof is two lines of energy conservation. By definition, $\APD$
+is the time-averaged absorbed flux entering tissue per unit body-surface
+area. Total absorbed power inside the cube cannot exceed total flux
+entering through the cube's body-surface footprint of area $A$:
+\begin{equation}\label{eq:energy-cons}
+  P_{\mathrm{abs, cube}} \;\le\; \APD \cdot A\, .
+\end{equation}
+For a cube axis-aligned to $\nhat$, the body plane cuts perpendicular to
+the cube z-axis and the intersection is the constant $L \times L$
+cross-section: $A = L^2$. Cube mass is $m = \rhom L^3$. Dividing
+\cref{eq:energy-cons} by $m$,
+\begin{equation}
+  \psSAR \;=\; \frac{P_{\mathrm{abs, cube}}}{m}
+  \;\le\; \frac{\APD\,L^2}{\rhom L^3}
+  \;=\; \frac{\APD}{\rhom L}\, ,
+\end{equation}
+which is~\cref{eq:apd-dom}. Equality requires every joule entering
+through the footprint to deposit inside the cube, which holds in the
+strong-attenuation limit $\alpha L \to \infty$ where $\alpha$ is the
+field amplitude decay rate. \qed
+
+\subsection{Numerical evaluation at ICNIRP limits}
+
+With $\rhom = 1000$~kg/m$^3$ and $L = 21.5$~mm,
+$\rhom L = 21.5$~kg/m$^2$. The bound becomes
+\begin{equation}\label{eq:apd-dom-num}
+  \psSAR \;\le\; \frac{\APD}{21.5~\mathrm{kg/m^2}}
+  \;\approx\; 0.0465 \,\APD~\mathrm{W/kg}~~\text{per W/m}^2\, .
+\end{equation}
+At the ICNIRP basic restriction $\APD = 10$~W/m$^2$, this gives
+$\psSAR \le 0.465$~W/kg.
+
+\Cref{tab:margin} compares this ceiling against the ICNIRP $\psSAR$
+basic restrictions.
+
+\begin{table}[h]
+\centering
+\caption{Compliance margin between the APD-derived bound on $\psSAR$
+and the ICNIRP $\psSAR$ basic restriction, at $\APD = 10$~W/m$^2$.}
+\label{tab:margin}
+\begin{tabular}{lccc}
+\toprule
+Body region & ICNIRP limit [W/kg] & Bound [W/kg] & Margin \\
+\midrule
+Head, trunk & $2.0$ & $0.465$ & $4.3\times$ \\
+Limbs       & $4.0$ & $0.465$ & $8.6\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{The body-surface footprint}\label{sec:footprint}
+
+\Cref{thm:apd-dom} uses footprint $A = L^2$. This holds when the cube
+z-axis aligns with the outward body normal $\nhat$, which is the natural
+alignment in the planar three-layer model: the body is a stack of plane
+layers and the cube sits with one face parallel to those layers.
+Generalizing to cubes whose axes do not align with $\nhat$ requires
+care.
+
+\subsection{Maximum cube cross-section by a plane}
+
+For an axis-aligned unit cube cut by a plane through its centroid, the
+cross-section area depends on the plane's normal direction $\nhat$:
+\begin{itemize}\setlength{\itemsep}{2pt}
+  \item $\nhat$ along a face normal (e.g., $\hat{z}$): the cut is the
+        unit square, area $1$.
+  \item $\nhat$ along a face diagonal (e.g., $(1,1,0)/\sqrt{2}$): the
+        cut is a rectangle with sides $1$ and $\sqrt{2}$, area
+        $\sqrt{2} \approx 1.414$.
+  \item $\nhat$ along the body diagonal $(1,1,1)/\sqrt{3}$: the cut is
+        a regular hexagon with side $1/\sqrt{2}$, area
+        $3\sqrt{3}/4 \approx 1.299$.
+\end{itemize}
+The maximum cross-section is $\sqrt{2}\,L^2$, achieved by the
+face-diagonal cut~\cite{KuhnelMath}. The body-diagonal hexagon is
+smaller despite its higher symmetry.
+
+\subsection{What the IEC mass rule does to the maximum}
+
+The $\sqrt{2}\,L^2$ maximum occurs for the centered cut, where the
+cube has $50\%$ of its volume on each side of the body plane. That
+placement violates the IEC $90\%$-tissue rule. Pushing the cube deeper
+into tissue to recover the $90\%$ rule moves the cut from the cube
+center toward one face or edge, and the intersection area shrinks.
+The realistic maximum under the IEC constraint sits between $L^2$ and
+$\sqrt{2}\,L^2$, approaching $L^2$ for cubes whose axes are nearly
+aligned with $\nhat$.
+
+\subsection{Generalized bound}
+
+For a cube whose axes are not aligned with $\nhat$, the bound carries a
+geometric prefactor:
+\begin{equation}\label{eq:apd-dom-gen}
+  \psSAR \;\le\; \frac{\sqrt{2}\,\APD}{\rhom\,L}\, .
+\end{equation}
+Numerically, the worst case at the ICNIRP $\APD$ limit is
+$\psSAR \le 0.658$~W/kg, still below the head and trunk restriction
+($2$~W/kg) by a factor of $3.0$ and the limb restriction ($4$~W/kg) by
+a factor of $6.1$. The conclusion that APD compliance certifies
+$\psSAR$ compliance survives the worst-case tilt.
+
+\section{Tightness}\label{sec:tightness}
+
+\subsection{The capture fraction}
+
+\Cref{eq:apd-dom} is tight when all flux entering through the footprint
+deposits inside the cube. For a homogeneous absorbing half-space with
+amplitude attenuation $\alpha$, the SAR depth profile is
+$\SAR(z) = \SAR(0)\,e^{-2\alpha|z|}$, and energy conservation pegs the
+surface SAR to the absorbed flux:
+\begin{equation}\label{eq:SAR0}
+  \rhom \int_{-\infty}^{0} \SAR(z)\,\dd z
+  = \frac{\rhom\,\SAR(0)}{2\alpha}
+  = \APD\, ,
+\end{equation}
+giving $\SAR(0) = 2\alpha\,\APD/\rhom$. The cube average for a face-flush
+placement (top at $z = 0$, bottom at $z = -L$) is
+\begin{equation}\label{eq:cube-avg}
+  \langle\SAR\rangle_{\mathrm{cube}}
+  = \frac{1}{L}\int_{-L}^{0} \SAR(z)\,\dd z
+  = \frac{\SAR(0)}{2\alpha L}\,(1 - e^{-2\alpha L})
+  = \frac{\APD}{\rhom L}\,(1 - e^{-2\alpha L})\, .
+\end{equation}
+The factor $C(\alpha L) = 1 - e^{-2\alpha L}$ is the capture fraction:
+the share of the entering flux that deposits inside the cube depth.
+
+\subsection{Numerical capture fractions}
+
+\Cref{tab:capture} lists the capture fraction on skin across frequency,
+using IT'IS Cole--Cole permittivity~\cite{ITIS}. Above $5$~GHz the
+bound is exact to within a few percent. Below $1$~GHz the bound is
+loose by $\sim 50\%$.
+
+\begin{table}[h]
+\centering
+\caption{Field amplitude decay rate $\alpha$ on skin and the
+corresponding capture fraction $C(\alpha L) = 1 - e^{-2\alpha L}$ for
+the $L = 21.5$~mm cube.}\label{tab:capture}
+\begin{tabular}{rccc}
+\toprule
+$f$ [GHz] & $1/(2\alpha)$ [mm] & $2\alpha L$ & $C$ \\
+\midrule
+0.9  & 19.9 & 1.1  & 0.67 \\
+2.45 & 11.3 & 1.9  & 0.85 \\
+5    &  5.3 & 4.1  & 0.98 \\
+10   &  1.9 & 11.3 & 1.00 \\
+28   & 0.46 & 46.7 & 1.00 \\
+60   & 0.24 & 89.9 & 1.00 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The capture fraction degrades on fat below $\sim 3$~GHz, where the field
+penetration depth exceeds the cube side and a substantial portion of
+the absorbed power deposits in muscle below the cube. In the
+fat-resonance regime the layered $\Tlay$ replaces $\Tzero$ in
+$\APD$, but the bound itself remains valid because it depends only on
+the energy entering the cube, not on the depth profile.
+
+\subsection{Numerical validation on Thelonious}
+
+A 3-layer skin/fat/muscle Chew-recursion model with Monte Carlo cube
+sampling on the Thelonious mesh~\cite{ThelonioPhantom} returns a median
+ratio of bound-to-numerical of $1.30$ and a maximum of $1.46$ across
+$1$--$28$~GHz, four polarization configurations, and five incidence
+directions per surface point. The median is set by the capture fraction
+of \cref{tab:capture} weighted across the swept frequencies; the
+maximum is set by the worst-case frequency-incidence combination.
+The validation confirms \cref{eq:apd-dom} in the realistic anatomy
+regime.
+
+\section{Implications}\label{sec:implications}
+
+\subsection{Compliance certification through $\APD$ alone}
+
+\Cref{thm:apd-dom} reduces $\psSAR$ compliance to $\APD$ compliance
+with a fixed margin. Anywhere the closed-form chain delivers
+$\APD \le 10$~W/m$^2$, the cube quantity is automatically below
+$0.66$~W/kg (worst case) and well below the ICNIRP basic restrictions
+on $\psSAR$. No volumetric cube search is required for compliance
+certification.
+
+This collapses the operational compliance check to a single surface
+quantity. Across $1$--$100$~GHz the regulator evaluates one closed-form
+expression per body-surface point. The cube search remains useful for
+verification or for the small set of cases where the actual
+$\psSAR$ value is required (rather than a compliance certificate), but
+plays no role in the certification path.
+
+\subsection{Connection to the closed-form chain}
+
+The closed-form chain of the main paper~\cite{TAP_paper} delivers
+$\APD$ at any body surface point as
+\begin{equation}\label{eq:APD-chain}
+  \APD(\mathbf{r}) = \Sinc(\mathbf{r}) \cdot \cos\theta_i(\mathbf{r}) \cdot
+  \Tlay\bigl(f, \theta_i(\mathbf{r}), \mathrm{pol}\bigr)\, ,
+\end{equation}
+with $\Tlay$ the three-layer tissue transmission, $\theta_i$ the local
+incidence angle, and $\cos\theta_i = -\nhat \cdot \khat$. The $\psSAR$
+bound \cref{eq:apd-dom} composes directly:
+\begin{equation}\label{eq:psSAR-chain}
+  \psSAR(\mathbf{r}) \;\le\; \frac{\Sinc(\mathbf{r})\,\cos\theta_i\,
+  \Tlay(f, \theta_i, \mathrm{pol})}{\rhom\,L}\, .
+\end{equation}
+The same surface integral that delivers whole-body absorbed power via
+the generalized Cauchy identity, and $\APD$ pointwise via the geometric
+local law, also delivers a $\psSAR$ compliance certificate via
+\cref{eq:psSAR-chain}. Three regulatory outputs from one identity.
+
+\subsection{Regulatory framing}
+
+ICNIRP retains $\psSAR$ as the basic restriction below $6$~GHz and
+switches to $\APD$ above $6$~GHz~\cite{ICNIRP2020}. \Cref{thm:apd-dom}
+shows that an $\APD$-based certification path is sufficient across the
+whole band: the basic-restriction switch at $6$~GHz is a regulatory
+convention that reflects historical metric choice and the relative
+maturity of measurement techniques, not a physical necessity. Both
+restrictions can be certified through the same surface quantity.
+
+This does not say the $\psSAR$ basic restriction should be removed.
+$\psSAR$ encodes deeper-tissue heating through the cube depth that
+$\APD$ does not. The corresponding limit values were calibrated against
+local temperature-rise models that include this depth contribution. The
+result here is narrower: \emph{at the limits ICNIRP currently
+specifies}, satisfying $\APD \le 10$~W/m$^2$ guarantees
+$\psSAR \le 0.66$~W/kg, which is well within the
+$2$~W/kg head and trunk restriction. If ICNIRP tightens
+$\APD$ or relaxes $\psSAR$, the dominance margin will shift; the
+inequality \cref{eq:apd-dom} is unchanged.
+
+\subsection{What the bound does not say}
+
+Three caveats:
+
+\begin{enumerate}\setlength{\itemsep}{4pt}
+  \item \textbf{Whole-body SAR is a separate restriction.} The
+        ICNIRP $\mathrm{SAR}_{\mathrm{wb}} \le 0.08$~W/kg basic
+        restriction is governed by the generalized Cauchy formula on
+        the body surface integral, not by the cube bound. The cube
+        bound speaks only to the local restriction.
+
+  \item \textbf{The cube footprint is not the ICNIRP $\APD$ averaging
+        area.} ICNIRP averages $\APD$ over $4$~cm$^2$ below $30$~GHz
+        and $1$~cm$^2$ above. The cube footprint is
+        $L^2 = 4.62$~cm$^2$ for the head and trunk cube, slightly
+        larger than the $\APD$ averaging area. The peak $\APD$ over
+        $4$~cm$^2$ is at most $\sim 16\%$ above the average over the
+        cube footprint when the field is sharp, which preserves the
+        margin in \cref{tab:margin} to within rounding.
+
+  \item \textbf{Planar three-layer model is the approximation.} On
+        sharp body features (curvature radius $\lesssim L$), the
+        cube intercepts a non-planar body patch and the footprint
+        analysis of \cref{sec:footprint} requires correction. The
+        $\sqrt{2}$ slack in \cref{eq:apd-dom-gen} absorbs typical
+        curvature effects, but pathological geometries (e.g., cubes
+        on body extremities thinner than $L$) are outside the bound's
+        scope.
+\end{enumerate}
+
+\section{Summary}\label{sec:summary}
+
+The inequality
+\begin{equation*}
+  \psSAR \;\le\; \frac{\APD}{\rhom L}
+\end{equation*}
+follows from energy conservation on the IEC/IEEE 62704-1 cube. The
+ICNIRP $\APD$ basic restriction ($10$~W/m$^2$) implies
+$\psSAR \le 0.47$~W/kg, below the corresponding $\psSAR$ basic
+restrictions ($2$ and $4$~W/kg) by factors of $4.3$ and $8.6$. The
+bound is tight to within a capture-fraction factor that approaches
+unity above $5$~GHz and reaches $0.67$ at $0.9$~GHz on skin. Numerical
+validation on the Thelonious phantom confirms a median bound ratio of
+$1.30$ and a maximum of $1.46$.
+
+The operational consequence: the closed-form chain that delivers
+$\APD$ via the layered transmission $\Tlay$ certifies $\psSAR$
+compliance through the same surface integral. ICNIRP's two local
+basic restrictions reduce to one closed-form check across $1$--$100$~GHz.
+
+\bibliographystyle{plain}
+\begin{thebibliography}{9}
+\bibitem{ICNIRP2020}
+ICNIRP, ``Guidelines for limiting exposure to electromagnetic fields
+($100$~kHz to $300$~GHz),'' \emph{Health Physics}, vol.~118, no.~5,
+pp.~483--524, 2020.
+
+\bibitem{62704-1}
+IEC/IEEE 62704-1, ``Determining the peak spatial-average specific
+absorption rate (SAR) in the human body from wireless communications
+devices, $30$~MHz to $6$~GHz,'' IEC/IEEE International Standard, 2017.
+
+\bibitem{ITIS}
+P.~A. Hasgall, F. Di Gennaro, C. Baumgartner, E. Neufeld, M.~C. Gosselin,
+D. Payne, A. Klingenb\"ock, and N. Kuster, ``IT'IS Database for thermal
+and electromagnetic parameters of biological tissues, version 4.1,''
+DOI: 10.13099/VIP21000-04-1, 2022.
+
+\bibitem{KuhnelMath}
+W. K\"uhnel, \emph{Differential Geometry: Curves -- Surfaces --
+Manifolds}, AMS, 2nd ed., 2006. (Cube cross-section maxima: classical
+result, also worked out in undergraduate solid geometry references.)
+
+\bibitem{ThelonioPhantom}
+M.-C. Gosselin et al., ``Development of a new generation of high-resolution
+anatomical models for medical device evaluation: the Virtual Population
+3.0,'' \emph{Phys. Med. Biol.}, vol.~59, no.~18, pp.~5287--5303, 2014.
+(Thelonious is the 6-year-old male of the Virtual Family.)
+
+\bibitem{TAP_paper}
+R. Wydaeghe, ``Closed-form absorbed-power dosimetry from $1$ to
+$100$~GHz,'' draft, 2026.
+
+\end{thebibliography}
+
+\end{document}

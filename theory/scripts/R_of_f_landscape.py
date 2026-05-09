@@ -195,7 +195,9 @@ def create_figure(mode: str, out_dir: Path) -> Path:
     ax.set_ylim(0.93, 1.05)
     ax.set_ylabel(r"$R(f) = T_0/\bar{T}$")
     ax.set_xlabel(r"Frequency $f$ [GHz]")
-    ax.legend(loc="lower left", **LEGEND_KW)
+    # [circa:5d3611a7-526e-4141-991a-569ebe369e79:begin]
+    ax.legend(loc="lower right", **LEGEND_KW)
+    # [circa:5d3611a7-526e-4141-991a-569ebe369e79:end]
 
     # Secondary axis: percent deviation
     ax2 = ax.twinx()
