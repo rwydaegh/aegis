@@ -23,6 +23,7 @@
 \graphicspath{{../../papers/drafts/figures/}{../../theory/figures/}{../../validation/}{../../JSAC/code/experiments/rank_check/}{../../JSAC/code/experiments/cauchy_tightness/}{../../JSAC/code/experiments/csi_calibration/}{../../JSAC/code/experiments/tier_c_decision/}{../../JSAC/code/experiments/plaza_run/figures/}}
 \usepackage{booktabs}
 \usepackage{array}
+\usepackage{multirow}
 \usepackage{caption}
 \usepackage{subcaption}
 
@@ -65,6 +66,10 @@
 \newcommand{\Mmat}{\mathbf{M}}
 \newcommand{\Hintf}{\mathbf{H}_{\mathrm{intf}}}
 \newcommand{\Jmat}{\mathbf{J}}
+\newcommand{\HH}{\mathbf{H}}
+\newcommand{\WW}{\mathbf{W}}
+\newcommand{\II}{\mathbf{I}}
+\newcommand{\PabsZF}{P_{\mathrm{abs},\mathrm{ZF}}}
 \newcommand{\Phimat}{\mathbf{\Phi}}
 \newcommand{\Psimat}{\bm{\Psi}}
 \newcommand{\Psitil}{\tilde{\bm{\Psi}}}
@@ -663,7 +668,7 @@ Shannon rate model leads to a different optimum that we treat in
 Let $\WW_{\mathrm{ZF}} \in \Complex^{M \times K}$ be the regularised
 channel-inversion zero-forcing precoder of Peel et
 al.~\cite{PeelHochwald2005} normalised to $\sum_k \|\ww_k\|^2 =
-P_{\mathrm{tx}}$, and let $\Pabs^{(u)}_{\mathrm{ZF}} = \sum_k
+P_{\mathrm{tx}}$, and let $\PabsZF^{(u)} = \sum_k
 (\ww_k^{\mathrm{ZF}})^H \Qmat^{(u)} \ww_k^{\mathrm{ZF}}$ denote its
 absorbed power at body $u$. The per-slot primal projection of
 $\WW_{\mathrm{ZF}}$ scales every column by a single scalar:
@@ -673,10 +678,10 @@ $\WW_{\mathrm{ZF}}$ scales every column by a single scalar:
   \quad
   \alpha = \min\!\left(1,\;
     \sqrt{\eta_S\,\min_{u \in \AllBodies}
-      \frac{L^{(u)}}{\Pabs^{(u)}_{\mathrm{ZF}}}}
+      \frac{L^{(u)}}{\PabsZF^{(u)}}}
   \right),\;}
 \end{equation}
-with $\Pabs^{(u)}_{\mathrm{ZF}}$ evaluated against the
+with $\PabsZF^{(u)}$ evaluated against the
 \emph{full-rank} $\Qmat^{(u)}$ and $\eta_S \in (0, 1]$ a safety
 fraction we set at $\eta_S = 0.97$ to absorb numerical and
 pose-estimation residuals. The outer $\min$ clamps the scale to
@@ -688,16 +693,16 @@ for the deployed compliance-aware loop:
 \begin{itemize}
 \item \emph{Always feasible.} For any input $\WW_{\mathrm{ZF}}$,
   the post-projection absorbed power satisfies
-  $\alpha^2\,\Pabs^{(u)}_{\mathrm{ZF}} \leq \eta_S\,L^{(u)} \leq
+  $\alpha^2\,\PabsZF^{(u)} \leq \eta_S\,L^{(u)} \leq
   L^{(u)}$ for every $u$.
 \item \emph{Identity on iterates with margin.} If
-  $\max_u \Pabs^{(u)}_{\mathrm{ZF}}/L^{(u)} \leq \eta_S$, the
+  $\max_u \PabsZF^{(u)}/L^{(u)} \leq \eta_S$, the
   clamp engages and $\alpha = 1$: the projection is a no-op on
   precoders that already satisfy the cap at the safety fraction.
 \item \emph{Bounded SINR cost.} Per-stream SINR scales as
   $\alpha^2$ for ZF (which has zero same-cell interference at
   served users). At an overshoot factor $\rho =
-  \max_u \Pabs^{(u)}_{\mathrm{ZF}}/L^{(u)} > \eta_S^{-1}$,
+  \max_u \PabsZF^{(u)}/L^{(u)} > \eta_S^{-1}$,
   $\alpha^2 = \eta_S/\rho$ and SINR shrinks by the same factor
   before re-evaluating against the rate model.
 \end{itemize}
@@ -729,7 +734,7 @@ $\mathrm{SINR}_k(\WW_{\mathrm{ZF}}) = |\hh_k^H \ww_k^{\mathrm{ZF}}|^2/
 \sigma_n^2$. Define
 \[
 \rho \;=\; \max_{u \in \AllBodies}\,
-        \Pabs^{(u)}_{\mathrm{ZF}}/L^{(u)},
+        \PabsZF^{(u)}/L^{(u)},
 \qquad
 \mathrm{SINR}^{\mathrm{ZF}}_{\min}
 \;=\; \min_k\,\mathrm{SINR}_k(\WW_{\mathrm{ZF}}),
@@ -749,7 +754,7 @@ so $\mathrm{SINR}_k = |\hh_k^H \ww_k|^2/\sigma_n^2$; scaling $\ww_k
 \to \alpha\,\ww_k$ scales every $\mathrm{SINR}_k$ by $\alpha^2$ and
 every $\Pabs^{(u)}$ by $\alpha^2$. The projection sets $\alpha^2 =
 \eta_S/\rho$ when $\rho > \eta_S^{-1}$ and $\alpha = 1$ otherwise,
-so $\alpha^2\,\Pabs^{(u)}_{\mathrm{ZF}} \leq \eta_S\,L^{(u)} \leq
+so $\alpha^2\,\PabsZF^{(u)} \leq \eta_S\,L^{(u)} \leq
 L^{(u)}$ for every $u$ (feasibility on the per-body caps).
 Power feasibility holds because $\alpha \leq 1$.
 Under the hypothesis $\alpha^2\,\mathrm{SINR}^{\mathrm{ZF}}_{\min}
@@ -778,10 +783,10 @@ ECBF/MMSE-with-exposure machinery of
 \cite{Ying2015,Ying2017,Hochwald2014} extended to $K + B$ bodies
 admits a closed-form scaling solution under the deployable rate
 model, and the body-twin pipeline of \cref{sec:twin} is what
-makes the $\Pabs^{(u)}_{\mathrm{ZF}}$ in
+makes the $\PabsZF^{(u)}$ in
 \cref{eq:primal-projection} computable per slot.
 
-\subsection{When dual ascent on $\bm\lambda$ earns its keep}\label{sec:dualascent-ref}
+\subsection{When dual ascent on the Lagrange multipliers earns its keep}\label{sec:dualascent-ref}
 
 \Cref{prop:projection-optimality} requires the MCS cap and the
 SINR-margin condition. Two regimes outside this scope warrant the
@@ -1431,43 +1436,44 @@ accelerometer corrector gives the loop tier-A and tier-B SMPL pose
 at the $\sim 100\,$ms cadence pose actually changes; tier-C
 bystanders default to the projected-area Cauchy envelope.
 
-The multi-user QCQP under per-body exposure caps admits the
-per-stream MMSE-with-exposure stationarity
-$\ww_k^\star = (\Qmat_{\mathrm{tot}}(\bm\lambda) + \mathbf{H}^H
-\mathbf{H} + \nu \mathbf{I})^{-1}\,\hh_k^*$, generalising regularised
-zero-forcing on the heterogeneous user-and-bystander steering set.
-The dual ascent on $\bm\lambda$ is ill-conditioned in the binding
-regime where many bodies are simultaneously active; the
-finite-difference Jacobian goes near-singular and a low-rank
-truncation of $\Qmat^{(u)}$ leaves a $1$-to-$5\,\%$ absorption tail.
-A primal-projection step that always runs at solver exit closes
-both gaps by uniform-scaling the precoder so the worst-margin body
-lands at $\eta_S\,L^{(u)}$ under the full-rank operator. Sum-rate
-scales by $\eta_S \min_u(L^{(u)}/\Pabs^{(u)})$, which is close to
-one when the dual ascent gets close to feasibility; the alternative
-``min-absorption'' fallback that the literature uses loses two
-orders of magnitude of sum-rate.
+The multi-user QCQP under per-body exposure caps has, under the
+deployable 5G NR FR2 MCS-cap rate model, a one-line closed-form
+optimum: the per-slot primal projection of regularised
+zero-forcing $\ww_k = \alpha\,\ww_k^{\mathrm{ZF}}$ with $\alpha =
+\min(1, \sqrt{\eta_S \min_u L^{(u)}/\PabsZF^{(u)}})$
+saturates the $K + B$ per-body caps and the per-stream MCS28 cap
+simultaneously, requires no inner optimisation, and is identity
+when ZF already satisfies the caps at the safety fraction $\eta_S$.
+The MCS-cap rate model is what kills the rate-cost of uniform
+scaling: regularised ZF on a tens-of-element panel achieves
+$30$-$50\,$dB SINR at the served users, well above the MCS28 clip
+threshold, so the projection scales SINR down without dropping
+below the clip. The dual-ascent QCQP solver of \cref{app:dualascent},
+which extends the per-stream MMSE-with-exposure stationarity of
+Ying et al.~\cite{Ying2017} to $K + B$ bodies, is dominated by
+projected ZF in this regime and earns its keep only in the
+academic uncapped-Shannon objective and the min-TX-power
+formulation.
 
 We instantiate the loop at plaza scale on 50 SMPL-X bodies under
 $26\,$GHz $8 \times 8$ panel illumination at the Italian rural
 attention level $E_{\mathrm{RL}} = 3\,$V/m and $43\,$dBm conducted
 transmit power. The empirical exposure-operator rank is 3 to 4 at
 the $99\,\%$ trace fraction; regularised ZF violates the cap on
-$14.6\,\%$ of body-slots over a 50-second steady-state walk; the
-proposed multi-body MMSE-with-exposure with primal projection runs
-at $1.3\,\%$ violation under virtual-IMU pose ($0.0\,\%$ under
-oracle) at $19.8\,$Gbps mean sum-rate, an order of magnitude
-compliance gain at $27\,\%$ of the unconstrained ZF rate. The
-projection holds $\Pabs^{(u)} \leq L^{(u)}$ with $\eta_S = 0.97$
-margin on every body in the constraint set; the residual $1.3\,\%$
-violation rate is paid by undetected tier-C bystanders that the
-twin does not include. The naive projected-area bound on
+$14.6\,\%$ of body-slots over a 50-second steady-state walk; ZF
+with primal projection holds violations at $0.0\,\%$ at the MCS28
+sum-cap of $74.0\,$Gbps. The same domination holds at $K = 10$ and
+$K = 5$ served-user counts and on a bystander-binding geometry
+where served users are far and the 35 non-served bodies are within
+$5$-$12\,$m of the panel: in every case projected ZF saturates the
+MCS sum-cap at zero violations and the dual-ascent solver
+underperforms by a factor $\sim 4$ in sum-rate at $\sim 1\,\%$
+worse violation rate. The naive projected-area bound on
 $\xx^H \Qmat^{(u)} \xx$ is loose by 21 to $27\,$dB on the steering
-direction and breached by 49 to $70\,\%$ of unconstrained precoders,
-which we trace to the geometric mismatch between the leading
-exposure mode and the BS-side steering vector. The conditional
-bound that does hold is the right object for compliance-aware
-precoder design.
+direction and breached by 49 to $70\,\%$ of unconstrained precoders;
+the conditional bound that does hold under a direction-set
+restriction is the safety envelope for the no-twin tier-D
+fall-through.
 
 
 \appendices
@@ -1541,7 +1547,7 @@ ZF precoder of Peel-Hochwald-Swindlehurst~\cite{PeelHochwald2005}
 when $\bm\lambda = 0$ and the per-body operators degenerate to
 rank one (\cref{prop:ZFlimit}).
 
-\subsection*{Dual ascent on $\bm\lambda$}
+\subsection*{Dual ascent on the Lagrange multipliers}
 
 \Cref{eq:closedform} closes $\ww_k$ in $(\bm\lambda, \nu)$. The
 dual problem is concave in $(\bm\lambda, \nu)$ and we solve it by
@@ -1678,13 +1684,13 @@ for any precoder $\xx \in \Complex^M$,
 \begin{proof}
 The angular-spectrum form of $\Qmat^{(u)}$ writes
 $\xx^H \Qmat^{(u)} \xx = \int_{S^2} T_0\,A_\perp^{(u)}(\khat)\,
-|\bar\bm\alpha_{\mathrm{BS}}^{(u)}(\khat)^H \xx|^2\,\diff\Omega$,
-with $\bar\bm\alpha_{\mathrm{BS}}^{(u)}(\khat) =
+|\bar{\bm\alpha}_{\mathrm{BS}}^{(u)}(\khat)^H \xx|^2\,\diff\Omega$,
+with $\bar{\bm\alpha}_{\mathrm{BS}}^{(u)}(\khat) =
 \bm\alpha_{\mathrm{BS}}^{(u)}(\khat)/
 \|\bm\alpha_{\mathrm{BS}}^{(u)}(\khat)\|$ the unit-norm BS-side
-direction. By hypothesis, $\bar\bm\alpha_{\mathrm{BS}}^{(u)}(\khat)
+direction. By hypothesis, $\bar{\bm\alpha}_{\mathrm{BS}}^{(u)}(\khat)
 \in \mathcal{A}$ for every $\khat$ in the visible hemisphere, so
-$|\bar\bm\alpha_{\mathrm{BS}}^{(u)}(\khat)^H \xx|^2 \leq
+$|\bar{\bm\alpha}_{\mathrm{BS}}^{(u)}(\khat)^H \xx|^2 \leq
 \sup_{\mathbf{a} \in \mathcal{A}} |\mathbf{a}^H \xx|^2 \equiv
 S_{\mathcal{A}}$ uniformly in $\khat$. Pulling $S_{\mathcal{A}}$
 out of the integral,
