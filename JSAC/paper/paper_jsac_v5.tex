@@ -131,19 +131,19 @@ low rank $r$ of the body-coupling Gram. We instantiate the loop on
 a Brussels Grand Place geometry with 50 SMPL-X bodies, an $8 \times
 8$ panel at $26\,$GHz, 25 served users, $43\,$dBm conducted, and
 $E_{\mathrm{RL}} = 3\,$V/m. Regularised ZF violates the cap on
-$10.2\,\%$ of body-slots; ZF with primal projection holds
-violations at $0.0\,\%$ at $74.0\,$Gbps, the MCS28 cap; this
-dominates the multi-body MMSE-with-exposure dual ascent of Ying et
-al.~\cite{Ying2017} extended to $K + B$ bodies, which lands at
-$0.85\,\%$ violation and $20.75\,$Gbps in the same regime. The
-domination holds across served-user-binding ($K = 25, 10, 5$) and
-bystander-binding (served users far, bystanders near the panel)
-regimes alike, because the MCS cap compresses ZF's SINR headroom
-into rate-cost-free projection scope. The dual-ascent QCQP solver
-remains the right tool when the rate model is uncapped Shannon or
-the objective is min-TX-power; we report the regime decomposition
-empirically and provide the dual-ascent solver in
-\cref{app:dualascent}. The naive projected-area Cauchy bound
+$10.2\,\%$ of body-slots; ZF with primal projection holds violations
+at $0.0\,\%$ at $74.0\,$Gbps, the MCS28 sum-cap, by
+feasibility-by-construction. The multi-body MMSE-with-exposure
+dual-ascent QCQP of Ying et al.~\cite{Ying2017} extended to $K + B$
+bodies, when its noise-power regulariser is matched to the receiver
+floor, attains the same MCS sum-cap on the same instance but at
+$\sim 2\,\%$ residual violations from imperfect dual convergence on
+a rank-truncated solver. Projected ZF is the preferred deployable
+consumer of the body twin: it is a single scalar scaling at
+$\sim 0.5\,$ms per slot vs $\sim 350\,$ms for the dual ascent, and
+its compliance is by construction. The dual-ascent solver is the
+right tool for the academic uncapped-Shannon objective and the
+min-TX-power formulation; we provide it in \cref{app:dualascent}. The naive projected-area Cauchy bound
 on $\xx^H \Qmat^{(u)} \xx$ is loose by 21 to $27\,$dB on the LOS
 steering precoder and breached by 49 to $70\,\%$ of random and
 shaped precoders; the conditional bound under a direction-set
@@ -1375,32 +1375,40 @@ Brussels pre-2014 reference), the per-body cap binds and the
 precoder choice is constrained on it. Regularised ZF gives the
 highest unconstrained sum-rate but at $10.2\,\%$ violation rate.
 ZF with primal projection holds violations at $0.0\,\%$ at the MCS
-sum-cap of $74.0\,$Gbps; this dominates the dual-ascent multi-body
-MMSE-with-exposure ($0.85\,\%$ violation, $20.75\,$Gbps under
-virtual-IMU pose) by a factor of $\sim 4$ on rate at the same
-compliance level. The post-2014 Brussels $14.57\,$V/m cumulative
-cap, the Italian $15\,$V/m attention level for high-density urban
-centres, and the $30\,$dBm conducted-power band sit in slack
-regimes where any reasonable precoder satisfies the cap by orders
-of magnitude.
+sum-cap of $74.0\,$Gbps; the dual-ascent multi-body
+MMSE-with-exposure, with its noise-power regulariser matched to
+the receiver noise floor (a deployable choice that the original
+Ying et al. formulation~\cite{Ying2017} silently makes), tracks the
+same MCS sum-cap but exits at $\sim 2\,\%$ residual violations
+because the rank-truncated dual ascent leaves a $1$-to-$5\,\%$
+absorption tail that the exit projection only partially closes.
+The post-2014 Brussels $14.57\,$V/m cumulative cap, the Italian
+$15\,$V/m attention level for high-density urban centres, and the
+$30\,$dBm conducted-power band sit in slack regimes where any
+reasonable precoder satisfies the cap by orders of magnitude.
 
-The dominance of projected ZF over the dual-ascent QCQP solver
-inverts the v2 narrative of this paper. Two specific properties of
-deployed 5G NR are responsible. First, the per-stream MCS28 cap of
-$7.4\,$bps/Hz clips Shannon-rate at the $\sim 30\,$dB SINR
-threshold; second, regularised ZF on a tens-of-element panel
-achieves SINR margin above the clip at the served users in the binding
-regime. The composition leaves $10$-$20\,$dB of SINR margin above
-the clip, which the per-slot scaling of \cref{eq:primal-projection}
-absorbs without rate cost. The dual ascent, by contrast, redirects
-power away from served-user constraints because served-user bodies
-themselves bind in the served-user-binding regime; the resulting
-beam shrinkage drops SINR below the clip and the rate falls into
-the unsaturated logarithmic regime. The dual-ascent solver retains
-its place in the academic uncapped-Shannon objective, the
-min-TX-power objective, and the SINR-margin-tight regime
-(low-element panels, dense served-user counts) where projection
-forces the served-user SINR below the clip.
+The preference for projected ZF over the dual-ascent QCQP solver
+under the deployable rate model is structural, not numerical. The
+per-stream MCS28 cap of $7.4\,$bps/Hz clips the rate model at the
+$\sim 30\,$dB SINR threshold. Both algorithms saturate this cap in
+the binding regime; what differs is feasibility. Projected ZF is
+feasibility-by-construction: the projection scale $\alpha$ in
+\cref{eq:primal-projection} is computed against the full-rank
+$\Qmat^{(u)}$ at every slot, so $\Pabs^{(u)} \leq \eta_S\,L^{(u)}$
+holds for every body in the constraint set. The dual ascent
+operates at rank-$r$ truncation of $\Qmat^{(u)}$ ($r = 4$ at the
+$99\,\%$ trace fraction), so the dual variables converge to the
+rank-$r$-faithful active set; the residual $1$-to-$5\,\%$
+absorption tail that the dual ascent does not see exits the solver
+as a $\sim 2\,\%$ violation rate against the full-rank operator.
+The exit-projection step closes part of that gap but cannot do so
+without re-running the full QCQP. Projected ZF absorbs the same
+gap upstream because its projection step \emph{is} the optimum, not
+a safety net. The dual-ascent solver retains its place in the
+academic uncapped-Shannon objective, the min-TX-power objective,
+and the SINR-margin-tight regime (low-element panels, dense
+served-user counts) where uniform scaling can drop the served-user
+SINR below the clip.
 
 The pose-information triage feeds both algorithms symmetrically:
 the projection scale and the dual-ascent residuals are computed
@@ -1508,13 +1516,17 @@ transmit power. The empirical exposure-operator rank is 3 to 4 at
 the $99\,\%$ trace fraction; regularised ZF violates the cap on
 $10.2\,\%$ of body-slots over a 50-second steady-state walk; ZF
 with primal projection holds violations at $0.0\,\%$ at the MCS28
-sum-cap of $74.0\,$Gbps. The same domination holds at $K = 10$ and
-$K = 5$ served-user counts and on a bystander-binding geometry
+sum-cap of $74.0\,$Gbps. The dual-ascent QCQP solver, when its
+noise-power regulariser is matched to the receiver floor, attains
+the same MCS sum-cap on the same instance but with $\sim 2\,\%$
+residual violations from imperfect dual-variable convergence at the
+rank-truncated solver exit. The same conclusion holds at $K = 10$
+and $K = 5$ served-user counts and on a bystander-binding geometry
 where served users are far and the 35 non-served bodies are within
-$5$-$12\,$m of the panel: in every case projected ZF saturates the
-MCS sum-cap at zero violations and the dual-ascent solver
-underperforms by a factor $\sim 4$ in sum-rate at $\sim 1\,\%$
-worse violation rate. The naive projected-area bound on
+$5$-$12\,$m of the panel: projected ZF saturates the MCS sum-cap
+with zero violations in every case; the dual-ascent solver tracks
+the rate when properly tuned but never matches the projection's
+hard-feasibility property at exit. The naive projected-area bound on
 $\xx^H \Qmat^{(u)} \xx$ is loose by 21 to $27\,$dB on the steering
 direction and breached by 49 to $70\,\%$ of unconstrained precoders;
 the conditional bound that does hold under a direction-set
