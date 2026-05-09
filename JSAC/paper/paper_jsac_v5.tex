@@ -131,11 +131,11 @@ low rank $r$ of the body-coupling Gram. We instantiate the loop on
 a Brussels Grand Place geometry with 50 SMPL-X bodies, an $8 \times
 8$ panel at $26\,$GHz, 25 served users, $43\,$dBm conducted, and
 $E_{\mathrm{RL}} = 3\,$V/m. Regularised ZF violates the cap on
-$14.6\,\%$ of body-slots; ZF with primal projection holds
+$10.2\,\%$ of body-slots; ZF with primal projection holds
 violations at $0.0\,\%$ at $74.0\,$Gbps, the MCS28 cap; this
 dominates the multi-body MMSE-with-exposure dual ascent of Ying et
 al.~\cite{Ying2017} extended to $K + B$ bodies, which lands at
-$1.3\,\%$ violation and $19.8\,$Gbps in the same regime. The
+$0.85\,\%$ violation and $20.75\,$Gbps in the same regime. The
 domination holds across served-user-binding ($K = 25, 10, 5$) and
 bystander-binding (served users far, bystanders near the panel)
 regimes alike, because the MCS cap compresses ZF's SINR headroom
@@ -269,12 +269,12 @@ effective rank of $\Qmat^{(u)}$ over the plaza geometry is 3 in the
 specular path model and 1-3 in the 3GPP UMa-LOS stochastic model at
 the $90\,\%$ trace fraction, climbing to 4 and 3 respectively at the
 $99\,\%$ trace fraction. Regularised ZF violates the cap on
-$14.6\,\%$ of body-slots; projected ZF holds violations at
+$10.2\,\%$ of body-slots; projected ZF holds violations at
 $0.0\,\%$ at the MCS28 cap of $74.0\,$Gbps, within $0.0\,\%$ of
 unconstrained-and-non-compliant ZF. The dual-ascent QCQP, with the
-same projection step at exit, holds violations at $1.3\,\%$ under
+same projection step at exit, holds violations at $0.85\,\%$ under
 virtual-IMU pose and $0.0\,\%$ under oracle pose, but its sum-rate
-is $19.8\,$Gbps because the dual scaling shrinks all $\ww_k$
+is $20.75\,$Gbps because the dual scaling shrinks all $\ww_k$
 including each served user's own beam. We replicate the result on
 $K = 10$ and $K = 5$ served-user counts, and on a
 bystander-binding geometry with served users at $25$-$50\,$m and
@@ -984,7 +984,7 @@ its keep against the closed-form scaling.
   amplitude. Right: per-precoder Pareto on cap-violation rate vs
   sum-rate. Projected ZF lands at $0.0\,\%$ violation and
   $74.0\,$Gbps, the MCS28 spectral-efficiency cap, dominating both
-  the dual ascent ($1.3\,\%$ violation, $19.8\,$Gbps under
+  the dual ascent ($0.85\,\%$ violation, $20.75\,$Gbps under
   virtual-IMU pose) and unconstrained-and-non-compliant ZF.}
   \label{fig:hero}
 \end{figure*}
@@ -1097,7 +1097,7 @@ evaluation time but the precoder does not see them).
 
 The T-pose source is qualitatively worse: at $16.5\,\%$ violation
 rate it is the only pose source where the dual-ascent precoder
-violates the cap on the order of unconstrained ZF ($14.6\,\%$
+violates the cap on the order of unconstrained ZF ($10.2\,\%$
 under the same regime). The mechanism is direction mismatch
 between the canonical T-pose $\Qmat^{(u)}$ and the actual walking
 $\Qmat^{(u)}$. The T-pose has the body's arms extended outward,
@@ -1370,10 +1370,10 @@ conducted transmit power and $E_{\mathrm{RL}} = 3\,$V/m (the
 Italian rural attention level under the 2024 decree, and the
 Brussels pre-2014 reference), the per-body cap binds and the
 precoder choice is constrained on it. Regularised ZF gives the
-highest unconstrained sum-rate but at $14.6\,\%$ violation rate.
+highest unconstrained sum-rate but at $10.2\,\%$ violation rate.
 ZF with primal projection holds violations at $0.0\,\%$ at the MCS
 sum-cap of $74.0\,$Gbps; this dominates the dual-ascent multi-body
-MMSE-with-exposure ($1.3\,\%$ violation, $19.8\,$Gbps under
+MMSE-with-exposure ($0.85\,\%$ violation, $20.75\,$Gbps under
 virtual-IMU pose) by a factor of $\sim 4$ on rate at the same
 compliance level. The post-2014 Brussels $14.57\,$V/m cumulative
 cap, the Italian $15\,$V/m attention level for high-density urban
@@ -1503,7 +1503,7 @@ $26\,$GHz $8 \times 8$ panel illumination at the Italian rural
 attention level $E_{\mathrm{RL}} = 3\,$V/m and $43\,$dBm conducted
 transmit power. The empirical exposure-operator rank is 3 to 4 at
 the $99\,\%$ trace fraction; regularised ZF violates the cap on
-$14.6\,\%$ of body-slots over a 50-second steady-state walk; ZF
+$10.2\,\%$ of body-slots over a 50-second steady-state walk; ZF
 with primal projection holds violations at $0.0\,\%$ at the MCS28
 sum-cap of $74.0\,$Gbps. The same domination holds at $K = 10$ and
 $K = 5$ served-user counts and on a bystander-binding geometry
