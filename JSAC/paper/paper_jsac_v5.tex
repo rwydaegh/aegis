@@ -1002,21 +1002,25 @@ and the $35$ non-served bodies cluster at $5$-$12\,$m from the
 panel. The bystander-binding geometry was constructed to test
 whether the dual-ascent solver wins when binding bodies are
 non-served and ZF cannot null them by construction. In every
-regime tested, projected ZF dominates the dual-ascent solver
-on both axes.
+regime tested, both algorithms saturate the MCS sum-cap; projected
+ZF wins on compliance at $0\,\%$ violations by construction while
+the rank-truncated dual ascent leaves $0.5$-to-$2.4\,\%$ residual
+violations.
 
 \begin{table}[!t]
 \caption{Projected ZF vs. dual-ascent QCQP across served-user
 counts and the bystander-binding geometry. Mean sum-rate and
 worst-case violation against the ground-truth full-rank
-$\Qmat^{(u)}$ on the $1500$-slot trace at $E_{\mathrm{RL}} =
+$\Qmat^{(u)}$ on the $600$-slot trace at $E_{\mathrm{RL}} =
 3\,$V/m, $43\,$dBm. \emph{ZF + proj} is the closed-form scaling of
-\cref{eq:primal-projection}. \emph{Dual ascent} is the multi-body
-MMSE-with-exposure of \cref{app:dualascent} with the same
+\cref{eq:primal-projection}. \emph{Dual ascent (tuned)} is the
+multi-body MMSE-with-exposure of \cref{app:dualascent} with its
+noise-power regulariser matched to the receiver floor and the
 projection step at exit. The MCS28 cap of $7.4\,$bps/Hz at 400 MHz
 puts $K\,S_{\max}\,$BW at $74.0\,$Gbps for $K = 25$, $29.6\,$Gbps
-for $K = 10$, $14.8\,$Gbps for $K = 5$. Projected ZF saturates
-the cap with zero violations in every case.}
+for $K = 10$, $14.8\,$Gbps for $K = 5$. Both algorithms saturate
+the cap; projected ZF achieves zero violations in every case
+while dual ascent leaves a small residual.}
 \label{tab:baselines}
 \centering
 \small
@@ -1026,41 +1030,50 @@ Regime & Precoder & Sum-rate (Gbps) & Violation rate & $p_{\max}$ (mW) \\
 \midrule
 \multirow{4}{*}{$K = 25$ served, plaza} & ZF (illegal) & 74.0 & 14.6\% & 119.7 \\
  & ZF + proj & \textbf{74.0} & \textbf{0.0\%} & 6.7 \\
- & Dual ascent & 19.8 & 1.3\% & 16.7 \\
- & Oracle (true pose) & 19.8 & 0.0\% & 6.7 \\
+ & Dual ascent (tuned) & 74.0 & 2.4\% & 39.2 \\
+ & Oracle (true pose) & 74.0 & 0.0\% & 6.7 \\
 \midrule
 \multirow{3}{*}{$K = 10$ served, plaza} & ZF (illegal) & 29.6 & 50.0\% & 135.6 \\
  & ZF + proj & \textbf{29.6} & \textbf{0.0\%} & 6.7 \\
- & Dual ascent & 17.5 & 1.9\% & 34.7 \\
+ & Dual ascent (tuned) & 29.6 & 0.7\% & 58.0 \\
 \midrule
 \multirow{3}{*}{$K = 5$ served, plaza} & ZF (illegal) & 14.8 & 37.2\% & 55.5 \\
  & ZF + proj & \textbf{14.8} & \textbf{0.0\%} & 6.7 \\
- & Dual ascent & 13.2 & 1.4\% & 51.9 \\
+ & Dual ascent (tuned) & 14.8 & 1.0\% & 21.5 \\
 \midrule
 \multirow{3}{*}{Bystander-binding} & ZF (illegal) & 29.6 & 21.7\% & 104.8 \\
  & ZF + proj & \textbf{29.6} & \textbf{0.0\%} & 6.7 \\
- & Dual ascent & 11.7 & 0.2\% & 12.1 \\
+ & Dual ascent (tuned) & 29.6 & 0.5\% & 19.0 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The mechanism is exactly the SINR-margin hypothesis of
-\cref{prop:projection-optimality}. The worst-body absorbed-power
+Both algorithms saturate the MCS sum-cap in every regime tested.
+The mechanism is the SINR-margin hypothesis of
+\cref{prop:projection-optimality}: the worst-body absorbed-power
 overshoot factor is bounded at $\rho \leq 17$ in the plaza traces,
-which corresponds to $\alpha^2 \geq \eta_S/17 \approx 0.057$. ZF
-empirically saturates the MCS28 cap unconstrained, and projected ZF
-saturates the same cap after scaling by $\alpha$, which witnesses
-that ZF holds enough SINR margin above $\sim 30\,$dB to absorb the
-projection without falling below the clip threshold. The dual-ascent solver, by
-contrast, allocates dual mass on served-user constraints because
-served users themselves bind in the served-user-binding regime;
-the resulting precoder shrinks each served beam below the MCS
-threshold and the sum-rate falls into the unsaturated logarithmic
-regime. The bystander-binding geometry shifts the binding
-constraints to non-served bodies, but ZF retains its served-user
-SINR margin; projection scales the precoder down by the
-bystander-overshoot factor and rate-cost is still zero because
-the post-projection SINR remains above the MCS clip.
+which corresponds to $\alpha^2 \geq \eta_S/17 \approx 0.057$, and
+unconstrained ZF holds enough SINR margin above the
+$\sim 30\,$dB MCS clip threshold to absorb the projection without
+falling below the clip. The dual-ascent solver achieves the same
+clip-saturation when its noise-power regulariser is matched to the
+receiver floor; with the over-regularised noise of
+$\nu = 10^{-3}$ used in the original Ying et al.~formulation it
+falls into the unsaturated logarithmic regime, which we
+diagnosed and corrected in the v7 production reported in this
+table.
+
+The compliance gap is what separates the two methods. Projected
+ZF achieves $0\,\%$ violations by construction: the projection
+scale $\alpha$ is computed against the full-rank $\Qmat^{(u)}$,
+so post-scaling absorption $\leq \eta_S\,L^{(u)} \leq L^{(u)}$ for
+every body. The dual ascent operates at rank-$r$ truncation of
+$\Qmat^{(u)}$ ($r = 4$ at the $99\,\%$ trace fraction) so the dual
+variables converge to a rank-$r$-faithful active set; the residual
+$1$-to-$5\,\%$ absorption tail at full rank exits the solver as a
+$0.5$-to-$2.4\,\%$ violation rate. The exit-projection step trims
+the worst-margin body but does not re-enter the dual ascent against
+the corrected residuals.
 
 \subsection{Pose-information triage and the IMU
 estimator}\label{sec:eval-imu}
