@@ -52,9 +52,11 @@
 };
 
 % --- Black censor rectangles over eyes and genitals --------------------
+% [circa:128ed4f9-f86d-456b-a3e2-bfce82bd9dcc:begin]
 \fill[black]
-  ({\phx + 0.36*\phw}, {\phy + 0.870*\phh}) rectangle
-  ({\phx + 0.70*\phw}, {\phy + 0.900*\phh});
+  ({\phx + 0.41*\phw}, {\phy + 0.870*\phh}) rectangle
+  ({\phx + 0.75*\phw}, {\phy + 0.900*\phh});
+% [circa:128ed4f9-f86d-456b-a3e2-bfce82bd9dcc:end]
 \fill[black]
   ({\phx + 0.36*\phw}, {\phy + 0.440*\phh}) rectangle
   ({\phx + 0.60*\phw}, {\phy + 0.490*\phh});
@@ -63,18 +65,20 @@
 % Label is stacked on two lines so it fits in the narrow gap between
 % phantom and lens-circle. Sits well below the head; arrow tip lands
 % in empty space just to the right of the phantom shoulder.
+% [circa:28efe1ce-f65e-44a4-a80c-18506c1be55a:begin]
 \node[anchor=west, font=\small, align=center] (thel_node)
   at ({\phx + \phw + 0.20}, {\phy + 0.78*\phh})
-  {Thelonious\\ phantom};
+  {Thelonious\\ phantom $\Sigma$};
+% [circa:28efe1ce-f65e-44a4-a80c-18506c1be55a:end]
 \coordinate (thel_target) at ({\phx + \phw + 0.07}, {\phy + 0.88*\phh});
 \draw[->, line width=0.55pt]
   (thel_node.north) to[bend right=22] (thel_target);
 
 % --- Plane wave arrow on the LEFT --------------------------------------
 \draw[->, line width=1.1pt] (\pwax, \pwy) -- (\pwbx, \pwy);
-% Math labels above the arrow: k_hat and S_inc together
+% Math labels above the arrow: k_hat and IPD together
 \node[above=2pt, font=\normalsize] at ({(\pwax+\pwbx)/2}, \pwy)
-  {$\hat{\bm{k}},\, S_{\mathrm{inc}}$};
+  {$\hat{\bm{k}},\, \mathrm{IPD}$};
 % Descriptive label below
 \node[below=4pt, font=\small] at ({(\pwax+\pwbx)/2}, \pwy)
   {Plane wave};

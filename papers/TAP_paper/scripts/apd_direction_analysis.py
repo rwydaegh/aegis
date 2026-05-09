@@ -141,6 +141,7 @@ def main(argv: List[str] | None = None):
     mesh_paths = [
         Path(__file__).parent.parent / 'data' / 'thelonious.stl',
         Path(__file__).parent.parent.parent / 'data' / 'thelonious.stl',
+        Path(__file__).parent.parent.parent.parent / 'data' / 'thelonious.stl',
         Path(__file__).parent / 'thelonious.stl',
     ]
     
@@ -214,7 +215,19 @@ def main(argv: List[str] | None = None):
               f"std={P.std()*1e3:.2f} mW, range=[{P.min()*1e3:.2f}, {P.max()*1e3:.2f}] mW")
         print(f"  Max APD: mean={results[pol]['apd_max'].mean():.4f} W/m²")
         print(f"  Mean APD (illuminated): mean={results[pol]['apd_mean'].mean():.4f} W/m²")
-    
+
+    # Per-direction simplified prediction P_simp(k_hat) = T_0 * sum(area * [mu]_+),
+    # and the bias of P_simp relative to the unpolarized full-Fresnel integral.
+    P_simp_per_dir = []
+    for k_hat in directions:
+        cos_theta = np.maximum(0, np.sum(normals * (-k_hat), axis=1))
+        P_simp_per_dir.append(T_0 * np.sum(areas * cos_theta))
+    P_simp = np.array(P_simp_per_dir)
+    bias = P_simp / results['unpolarized']['P_abs'] - 1
+    print(f"\nDirection-averaged bias (P_simp / P_full_unp - 1) across {len(directions)} directions:")
+    print(f"  mean = {bias.mean()*100:+.2f}%, std = {bias.std()*100:.2f}%, "
+          f"range = [{bias.min()*100:+.2f}%, {bias.max()*100:+.2f}%]")
+
     # Create figures
     print("\nGenerating figures...")
 
@@ -232,7 +245,8 @@ def main(argv: List[str] | None = None):
     box_labels = [pol_labels[p] for p in polarizations]
 
     def _frame_legend(ax, **kwargs):
-        leg = ax.legend(frameon=True, fancybox=False, edgecolor='black', **kwargs)
+        leg = ax.legend(frameon=True, fancybox=False, edgecolor='black',
+                        framealpha=1.0, **kwargs)
         leg.get_frame().set_linewidth(1.0)
         return leg
 
@@ -245,7 +259,7 @@ def main(argv: List[str] | None = None):
             color=colors[pol], linestyle=linestyles[pol],
             density=True, label=pol_labels[pol],
         )
-    ax_b.set_xlabel(r'$S_{\mathrm{ab}}$ [W/m$^2$]')
+    ax_b.set_xlabel(r'$\mathrm{APD}$ [W/m$^2$]')
     ax_b.set_ylabel(r'Probability density [m$^2$/W]')
     ax_b.set_xlim(0, 0.6)
     _y0, _y1 = ax_b.get_ylim()
@@ -344,11 +358,13 @@ def main(argv: List[str] | None = None):
 
     # Annotation: pseudo-Brewster peak (rule 22). Placed just above the
     # T_p maximum to avoid overlap with the descending T_s curve.
+    # circa:b1cd21c1-256d-4234-bdc0-f5b6cdf82742 -- relabeled to
+    # "Pseudo-Brewster angle" and shifted further left to clear the arrow.
     i_peak = int(np.argmax(T_p))
     ax5.annotate(
-        "pseudo-Brewster",
+        "Pseudo-Brewster angle",
         xy=(theta_deg[i_peak], T_p[i_peak]),
-        xytext=(theta_deg[i_peak] - 20, 1.00),
+        xytext=(theta_deg[i_peak] - 38, 1.00),
         fontsize=8.0,
         ha="center",
         va="center",
@@ -364,7 +380,7 @@ def main(argv: List[str] | None = None):
                       edgecolor="black", framealpha=1.0,
                       handlelength=2.0, handletextpad=0.4,
                       borderpad=0.3, fontsize=8)
-    leg5.get_frame().set_linewidth(0.9)
+    leg5.get_frame().set_linewidth(1.0)
 
     # Second figure: APD = T * cos(theta)
     apd_s = T_s * mu
@@ -380,7 +396,7 @@ def main(argv: List[str] | None = None):
     ax6.plot(theta_deg, apd_p, "--", color=c_TM, linewidth=1.6, label=r"$T_p\cos\theta$ (TM)")
     ax6.plot(theta_deg, apd_avg, "-.", color=c_avg, linewidth=1.4, label=r"$T_{\mathrm{avg}}\cos\theta$")
     ax6.set_xlabel(r"Incidence angle $\theta$ [deg]")
-    ax6.set_ylabel(r"$S_{\mathrm{ab}}/S_{\mathrm{inc}}$")
+    ax6.set_ylabel(r"$\mathrm{APD}/\mathrm{IPD}$")
     ax6.set_xlim(0, 85)
     ax6.set_ylim(0, 0.62)
     ax6.set_xticks([0, 15, 30, 45, 60, 75])
@@ -404,7 +420,7 @@ def main(argv: List[str] | None = None):
     fig_T.tight_layout(pad=0.4)
     fig_Sab.tight_layout(pad=0.4)
     p_T = output_dir / f"apd_angle_panel_T{ext}"
-    p_Sab = output_dir / f"apd_angle_panel_Sab{ext}"
+    p_Sab = output_dir / f"apd_angle_panel_APD{ext}"
     fig_T.savefig(p_T, **save_kw)
     fig_Sab.savefig(p_Sab, **save_kw)
     plt.close(fig_T)

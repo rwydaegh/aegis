@@ -118,24 +118,24 @@ def main():
     ax.plot([f_dip], [T_dip], "o", color="black",
             markersize=4.5, markerfacecolor="white", markeredgewidth=1.0)
     ax.annotate(
-        rf"fat $\lambda/4$ dip at {f_dip:.2f} GHz",
+        rf"Fat $\lambda/4$ dip at {f_dip:.2f}\,GHz",
         xy=(f_dip, T_dip),
-        xytext=(f_dip * 1.55, T_dip - 0.06),
-        fontsize=7.5, ha="center", va="top",
+        xytext=(f_dip, T_dip - 0.06),
+        fontsize=8, ha="center", va="top",
         arrowprops=dict(arrowstyle="-", lw=0.6, color="black",
-                        shrinkA=0, shrinkB=2),
+                        shrinkA=0, shrinkB=3),
     )
 
     if f_pk is not None:
         ax.plot([f_pk], [T_pk], "s", color="black",
                 markersize=4.0, markerfacecolor="white", markeredgewidth=1.0)
         ax.annotate(
-            rf"fat-transparent peak at {f_pk:.2f} GHz",
+            rf"Fat-transparent peak at {f_pk:.2f}\,GHz",
             xy=(f_pk, T_pk),
-            xytext=(f_pk * 0.55, T_pk - 0.06),
-            fontsize=7.5, ha="center", va="top",
+            xytext=(f_pk, T_pk + 0.12),
+            fontsize=8, ha="center", va="bottom",
             arrowprops=dict(arrowstyle="-", lw=0.6, color="black",
-                            shrinkA=0, shrinkB=2),
+                            shrinkA=0, shrinkB=3),
         )
 
     ax.set_xscale("log")
@@ -144,7 +144,9 @@ def main():
     ax.set_xlim(f_ghz.min(), f_ghz.max())
     ax.set_ylim(0.0, 1.0)
     ax.grid(True, which="both", alpha=0.25)
-    ax.legend(loc="lower right", fontsize=7.5, framealpha=0.92)
+    leg = ax.legend(loc="lower right", frameon=True, fancybox=False,
+                    edgecolor="black", framealpha=1.0)
+    leg.get_frame().set_linewidth(1.0)
 
     plt.tight_layout(pad=0.4)
     out = HERE / "si_tlay_fat_resonance.pdf"

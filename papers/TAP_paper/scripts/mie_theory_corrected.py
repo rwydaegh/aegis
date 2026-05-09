@@ -440,7 +440,8 @@ def create_validation_plots(*, mode: str = "png", out_dir: Path | None = None) -
     def _frame_legend(leg):
         if leg is None:
             return
-        leg.get_frame().set_linewidth(0.8)
+        leg.get_frame().set_linewidth(1.0)
+        leg.get_frame().set_edgecolor("black")
         leg.get_frame().set_boxstyle("Square", pad=0.3)
 
     # ========================================================================
@@ -467,7 +468,7 @@ def create_validation_plots(*, mode: str = "png", out_dir: Path | None = None) -
 
     ax1.set_xlabel(r'Size parameter $x = \pi d / \lambda$')
     ax1.set_ylabel(f'Prediction error [{pct}]')
-    ax1.set_xlim([0.3, 2000])
+    ax1.set_xlim([3, 2000])
     ax1.set_ylim([-70, 10])
 
     # Body-part guide lines at 28 GHz, with short labels rotated 90 degrees.
@@ -477,6 +478,7 @@ def create_validation_plots(*, mode: str = "png", out_dir: Path | None = None) -
         ('arm', 0.080),
         ('head', 0.180),
         ('torso', 0.300),
+        ('body', 1.000),
     ]
     for name, d in body_parts_ann:
         x = np.pi * d / wavelength_28

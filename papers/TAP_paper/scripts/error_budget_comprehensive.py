@@ -2,18 +2,30 @@
 Error budget for the geometric absorption law on body-scale geometries
 =======================================================================
 
-Single-panel horizontal bar chart for the IEEE TAP paper. Shows where
-the Fresnel approximation error proven in this paper compares against
-the diffraction residual and the propagated dielectric uncertainty.
+Paired-bar chart for the IEEE TAP paper. For each error source, two
+bars are drawn:
 
-Components (paper_AB.tex, Sec. "Error budget"):
-  - Fresnel approximation (this paper):  bounded by 5.6 % on skin at 28 GHz
-  - Inter-body reflections:               below 2 %  at body-averaged level
-  - Diffraction at body-scale features:   up to ~14 %
-  - Tissue dielectric uncertainty:        ~7 % envelope on T_0 obtained by
-                                          propagating the +-20 % IT'IS input
-                                          uncertainty through the Fresnel
-                                          coefficient at 28 GHz on skin.
+  - "Worst case" (single body part, single direction, pointwise local).
+  - "Typical case" (whole-body integrated, direction-averaged at mmWave
+    on Thelonious).
+
+All entries are on T_0 at 28 GHz on skin. Numerical sources:
+
+  - Fresnel approximation: 5.3% pointwise local on Thelonious from
+    apd_pipeline.py (Table tab:phantom in the main paper); 1.2%
+    direction-averaged across 128 Fibonacci directions from
+    apd_direction_analysis.py (SI Sec si:apd-direction).
+  - Diffraction at body edges: 10% on a torso-scale Mie sphere
+    (30 cm at 28 GHz) from mie_theory_corrected.py; 1.2% integrated
+    on Thelonious at 28 GHz from diffraction_integrated.py
+    (SI Sec si:diffraction-integrated).
+  - Inter-body reflection: 4% under the diffuse bound; 1% under
+    specular at mmWave (compute_inter_body_reflections.py).
+  - Tissue dielectric input: +-7% on T_0 from sweeping +-20% on each
+    of eps_r and sigma at the four corners of the box, on skin at
+    28 GHz. The +-20% input spread is the inter-model gap between
+    Gabriel 1996 and the empirical Gabriel-times-1.2 fit of Christ
+    et al. 2021.
 """
 
 import argparse
@@ -33,85 +45,56 @@ def create_error_budget_plot(mode: str = "png", out_dir=None) -> None:
     apply_monograph_style(mode=mode)
     pct = r"\%" if mode == "pdf" else "%"
 
-    # --- Data ------------------------------------------------------------
-    # Order: largest (floor) at the top so the eye lands on the floor first,
-    # smallest (this paper's contribution) at the bottom for emphasis.
+    # Order: largest worst-case at the top, smallest at the bottom.
     labels = [
-        "Tissue dielectric\n" + r"($\pm 20\%$ IT'IS $\to T_0$)",
         "Diffraction at body edges",
+        "Tissue dielectric\n" + r"($\pm 20\%$ Gabriel/Christ)",
+        "Fresnel approximation",
         "Inter-body reflections",
-        r"Fresnel approximation",
     ]
-    # Tissue dielectric: 7 % is the envelope on T_0 obtained by sweeping
-    # +-20 % independently on eps_r and sigma at 28 GHz on skin and
-    # evaluating the Fresnel coefficient T_0 = 4n/((1+n)^2+kappa^2).
-    values = np.array([7.0, 14.0, 2.0, 5.6])
-    # "this paper" gets the highlight color; the floor gets a muted grey;
-    # the other two are neutral.
-    HIGHLIGHT = "#b2182b"   # red-ish, color-blind safe (Brewer RdBu)
-    FLOOR = "#4d4d4d"       # dark grey
-    NEUTRAL = "#888888"     # light grey
-    colors = [FLOOR, NEUTRAL, NEUTRAL, HIGHLIGHT]
-    hatches = ["//", "", "", ""]
+    worst = np.array([10.0, 7.0, 5.3, 4.0])
+    typical = np.array([1.2, 7.0, 1.2, 1.0])
 
-    # --- Figure ----------------------------------------------------------
-    fig, ax = plt.subplots(figsize=fig_size_ieee(columns=1, aspect=0.62))
+    COLOR_WORST = "#9d9d9d"
+    COLOR_TYPICAL = "#1f3b73"
+
+    fig, ax = plt.subplots(figsize=fig_size_ieee(columns=1, aspect=0.78))
 
     y = np.arange(len(labels))
-    bars = ax.barh(
-        y,
-        values,
-        color=colors,
-        edgecolor="black",
-        linewidth=0.7,
-        height=0.62,
-    )
-    for bar, h in zip(bars, hatches):
-        if h:
-            bar.set_hatch(h)
+    h = 0.36
 
-    # Value labels at the end of each bar.
-    for yi, v in zip(y, values):
-        ax.text(
-            v + 0.5,
-            yi,
-            f"{v:.1f}\\,{pct}" if mode == "pdf" else f"{v:.1f} {pct}",
-            va="center",
-            ha="left",
-            fontsize=8,
-        )
+    bars_worst = ax.barh(
+        y + h / 2, worst,
+        height=h, color=COLOR_WORST, edgecolor="black", linewidth=0.6,
+        label="Worst case",
+    )
+    bars_typical = ax.barh(
+        y - h / 2, typical,
+        height=h, color=COLOR_TYPICAL, edgecolor="black", linewidth=0.6,
+        label="Typical case",
+    )
+
+    def _annotate(bars, values):
+        for bar, v in zip(bars, values):
+            ax.text(
+                v + 0.25, bar.get_y() + bar.get_height() / 2,
+                f"{v:.1f}\\,{pct}" if mode == "pdf" else f"{v:.1f} {pct}",
+                va="center", ha="left", fontsize=7.5,
+            )
+
+    _annotate(bars_worst, worst)
+    _annotate(bars_typical, typical)
 
     ax.set_yticks(y)
     ax.set_yticklabels(labels)
-    ax.set_xlabel(f"Relative error in $T_0$ [{pct}]")
-    ax.set_xlim(0, 18)
-    ax.set_ylim(-0.7, 3.8)
-    ax.set_xticks([0, 5, 10, 15])
+    ax.set_xlabel(f"Relative error on $T_0$ [{pct}]")
+    ax.set_xlim(0, 13)
+    ax.set_xticks([0, 2, 4, 6, 8, 10, 12])
+    ax.set_ylim(-0.7, len(labels) - 0.3)
     ax.grid(axis="x", which="major", alpha=0.25, linewidth=0.5)
     ax.grid(axis="y", which="both", visible=False)
     ax.set_axisbelow(True)
 
-    # "This paper" callout pointing to the Fresnel bar (bottom). Place to the
-    # right of the value label so it does not overlap.
-    ax.annotate(
-        "this paper",
-        xy=(5.6, 3.25),
-        xytext=(11.0, 3.55),
-        fontsize=7.5,
-        color=HIGHLIGHT,
-        ha="center",
-        va="center",
-        arrowprops=dict(
-            arrowstyle="->",
-            color=HIGHLIGHT,
-            lw=0.7,
-            shrinkA=0.0,
-            shrinkB=2.0,
-        ),
-    )
-
-    # Cosmetic: thinner spines, no top/right spine, no top ticks (they would
-    # otherwise float above the axis since the top spine is hidden).
     for side in ("top", "right"):
         ax.spines[side].set_visible(False)
     for side in ("left", "bottom"):
@@ -119,9 +102,15 @@ def create_error_budget_plot(mode: str = "png", out_dir=None) -> None:
     ax.tick_params(axis="x", which="both", top=False)
     ax.tick_params(axis="y", which="both", right=False, length=0)
 
+    leg = ax.legend(
+        loc="upper right", frameon=True, fancybox=False,
+        edgecolor="black", framealpha=1.0,
+        borderpad=0.3, handlelength=1.6, handletextpad=0.5,
+    )
+    leg.get_frame().set_linewidth(0.8)
+
     plt.tight_layout(pad=0.4)
 
-    # --- Save ------------------------------------------------------------
     out = Path(out_dir) if out_dir else Path(__file__).parent.parent / "figures"
     out.mkdir(parents=True, exist_ok=True)
     ext = ".pdf" if mode == "pdf" else ".png"

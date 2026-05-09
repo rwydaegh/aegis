@@ -139,6 +139,14 @@ def main():
     z_peak_mm = z_all[i_peak] * 1e3
     sar_peak = sar_all[i_peak]
 
+    # Scale to muW/kg per W/m^2 to avoid 0.000175-style y-tick labels.
+    SAR_SCALE = 1e6  # W/kg -> muW/kg
+    sar_skin_u = sar_skin * SAR_SCALE
+    sar_fat_u = sar_fat * SAR_SCALE
+    sar_muscle_u = sar_muscle * SAR_SCALE
+    sar_peak_u = sar_peak * SAR_SCALE
+    sar_all_u = sar_all * SAR_SCALE
+
     # ----- plot -----
     fig, ax = plt.subplots(1, 1, figsize=fig_size_ieee(columns=1, aspect=0.78))
 
@@ -146,38 +154,48 @@ def main():
     color_fat = "#FFE0B2"
     color_muscle = "#EF5350"
 
-    ax.axvspan(0, d_s * 1e3, color=color_skin, alpha=0.30, lw=0)
+    # Log x-axis: clip the lower bound to 0.05 mm so axvspan and the SAR
+    # curves render correctly (z=0 is the air-skin interface, off-axis in log).
+    z_min_mm = 0.05
+    z_max_mm = (d_s + d_f) * 1e3 + 25
+
+    ax.axvspan(z_min_mm, d_s * 1e3, color=color_skin, alpha=0.30, lw=0)
     ax.axvspan(d_s * 1e3, (d_s + d_f) * 1e3, color=color_fat, alpha=0.45, lw=0)
-    ax.axvspan((d_s + d_f) * 1e3, (d_s + d_f) * 1e3 + 25,
+    ax.axvspan((d_s + d_f) * 1e3, z_max_mm,
                color=color_muscle, alpha=0.18, lw=0)
 
-    # Layer labels
-    ax.text(d_s * 1e3 / 2, 0.97, "skin", ha="center", va="top",
+    # Layer labels (log-scale midpoints by geometric mean of edges).
+    skin_mid = np.sqrt(z_min_mm * d_s * 1e3)
+    fat_mid = np.sqrt(d_s * 1e3 * (d_s + d_f) * 1e3)
+    muscle_mid = np.sqrt((d_s + d_f) * 1e3 * z_max_mm)
+    ax.text(skin_mid, 0.97, "Skin", ha="center", va="top",
             transform=ax.get_xaxis_transform(), fontsize=8)
-    ax.text((d_s + d_f / 2) * 1e3, 0.97, "fat", ha="center", va="top",
+    ax.text(fat_mid, 0.97, "Fat", ha="center", va="top",
             transform=ax.get_xaxis_transform(), fontsize=8)
-    ax.text((d_s + d_f + 12.5e-3) * 1e3, 0.97, "muscle", ha="center", va="top",
+    ax.text(muscle_mid, 0.97, "Muscle", ha="center", va="top",
             transform=ax.get_xaxis_transform(), fontsize=8)
 
-    ax.plot(z_skin_global * 1e3, sar_skin, color="#0072B2", lw=1.4)
-    ax.plot(z_fat_global * 1e3, sar_fat, color="#0072B2", lw=1.4)
-    ax.plot(z_muscle_global * 1e3, sar_muscle, color="#0072B2", lw=1.4)
+    ax.plot(z_skin_global * 1e3, sar_skin_u, color="#0072B2", lw=1.4)
+    ax.plot(z_fat_global * 1e3, sar_fat_u, color="#0072B2", lw=1.4)
+    ax.plot(z_muscle_global * 1e3, sar_muscle_u, color="#0072B2", lw=1.4)
 
-    # Mark subsurface peak
-    ax.plot([z_peak_mm], [sar_peak], "o", color="black",
+    # Mark subsurface peak; label directly above the marker.
+    ax.plot([z_peak_mm], [sar_peak_u], "o", color="black",
             markersize=5, markerfacecolor="white", markeredgewidth=1.0)
-    ax.annotate(rf"subsurface peak at $z={z_peak_mm:.1f}\,$mm",
-                xy=(z_peak_mm, sar_peak),
-                xytext=(z_peak_mm + 6, sar_peak * 1.05),
-                fontsize=7.5, ha="left", va="center",
+    ax.annotate(rf"Subsurface peak at $z={z_peak_mm:.1f}\,$mm",
+                xy=(z_peak_mm, sar_peak_u),
+                xytext=(z_peak_mm, sar_peak_u + 12.0),
+                fontsize=8, ha="center", va="bottom",
                 arrowprops=dict(arrowstyle="-", lw=0.6, color="black",
-                                shrinkA=0, shrinkB=2))
+                                shrinkA=0, shrinkB=3))
 
+    ax.set_xscale("log")
     ax.set_xlabel(r"Depth $z$ [mm]")
-    ax.set_ylabel(r"SAR [W/kg per W/m$^2$]")
-    ax.set_xlim(0, (d_s + d_f) * 1e3 + 25)
-    ax.set_ylim(0, max(sar_all) * 1.18)
-    ax.grid(True, alpha=0.25)
+    ax.set_ylabel(r"SAR [$\mu$W/kg per W/m$^2$]")
+    ax.set_xlim(z_min_mm, z_max_mm)
+    # Headroom for the (above-peak) annotation and the top-of-panel layer labels.
+    ax.set_ylim(0, max(sar_all_u) * 1.32)
+    ax.grid(True, alpha=0.25, which="both")
 
     plt.tight_layout(pad=0.4)
     out = HERE / "si_standing_wave_sar.pdf"

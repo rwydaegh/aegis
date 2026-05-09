@@ -1,0 +1,150 @@
+% archive_psSAR10g_subsection.tex
+%
+% Provenance.
+%   Excised from papers/TAP_paper/paper.tex on 2026-05-08 (commit pending).
+%   Origin: Section VII.B "Peak spatial-average SAR over a 10 g cube"
+%           (lines 1599-1696 in the pre-removal paper.tex).
+%
+% Why archived, not deleted.
+%   1. The Cauchy-projection corollary as written
+%      (\langle\mathrm{SAR}\rangle_{\mathrm{cube}}
+%       = (S_{\mathrm{inc}} T_0)/(\rho_m L)\,(|k_x|+|k_y|+|k_z|))
+%      models the 10 g cube as if it were free-floating in air, where every
+%      cube face presented to k-hat absorbs fresh incident flux. For the
+%      IEC/IEEE 62704-1 cube (>= 90% tissue, axis-aligned, one face flush
+%      with the body surface), only the body-facing face collects
+%      unattenuated S_inc. The other "front" faces are inside tissue and
+%      see flux that has already been absorbed somewhere upstream.
+%   2. Numerical validation on Thelonious (theory/scripts/psSAR10g_cube_validation.py)
+%      against a 3-layer skin/fat/muscle Chew-recursion model with Monte
+%      Carlo cube sampling: median Cauchy/numerical ratio = 3.09x, with the
+%      ratio diverging to ~50x at grazing incidence. The cosine replacement
+%      (cos theta_i instead of |k_x|+|k_y|+|k_z|) lands at 1.30x median with
+%      a residual driven by gamma (cube-axis vs body-normal tilt).
+%   3. The independent high-level critique
+%      (papers/TAP_paper/CRITIQUE_HIGH_LEVEL.md, item #1) recommended cutting
+%      the layered-cube-SAR machinery from the main paper: "Section VII.B ...
+%      introduces a whole separate mechanical apparatus ... This material does
+%      not connect cleanly to the surface-Cauchy story."
+%
+% What lives here.
+%   - The thin-skin Cauchy-projection corollary (Cor. 4 in the original).
+%   - The depth-parameter table (tab:depth).
+%   - The sub-6 GHz Chew-recursion / standing-wave / sub-surface peak
+%     paragraphs and the associated criterion (eq:subsurface-criterion).
+%
+% What still depends on this material.
+%   - papers/TAP_paper/paper_SI.tex Section "Layered tissue model and the
+%     cube SAR" (label si:layered) is the long form of the layered model.
+%     Several figures and equations in that SI section are referenced from
+%     the text below.
+%   - theory/psSAR10g.tex (1078 lines) is the original standalone derivation.
+%   - theory/psSAR10g_cube_critique.tex is the post-validation critique
+%     covering the Cauchy-vs-cosine analysis on Thelonious.
+%
+% Status.
+%   Not included in any compiled document. Kept as a reference so the
+%   layered analysis can be revived in a follow-up paper without
+%   re-typesetting it. Compile by including from a host tex with the same
+%   preamble (acronyms psSAR10g, APD, ICNIRP; macros IPD, Tlay, Tbar,
+%   ntilde, khat, Aab, etc.) defined.
+%
+% ============================================================================
+
+\subsection{Peak spatial-average SAR over a 10~g cube}
+\label{subsec:compl-cube}
+ICNIRP retains the peak spatial-average SAR over a $10$~g cube of
+tissue as the basic restriction below $6$~GHz, prescribed by
+IEC/IEEE~62704~\cite{62704-1} and IEEE~C95.3~\cite{C953}. Above
+$6$~GHz the basic restriction switches to \gls{APD} and the cube
+quantity is retained only as a sanity
+bound~\cite{Hirata2021,Samaras2019}. The closed form takes two
+shapes across the $6$~GHz boundary, and we treat the two regimes
+in turn. Let $\alpha = k_0\,\mathrm{Im}(\ntilde)$ be the field decay
+rate, $L = (m/\rho_m)^{1/3} = 21.5$~mm the cube side at
+$\rho_m = 1000$~kg/m$^3$ and $m = 10$~g, and $\delta_{\mathrm{SAR}}
+= 1/(2\alpha)$ the SAR penetration depth.
+
+In the thin-skin regime $\alpha L \gg 1$, the volumetric SAR integral
+collapses to a surface integral over the body patch inside the cube.
+Energy conservation on the axis-aligned cube returns the Cauchy
+projection along $\khat$.
+
+\begin{corollary}[Thin-skin cube SAR]\label{cor:cube}
+For a body that fills the cube cross-section perpendicular to
+$\khat$, the peak spatial-average SAR over an axis-aligned cube of
+side $L$ satisfies
+\begin{equation}\label{eq:cube}
+  \langle\mathrm{SAR}\rangle_{\mathrm{cube}}
+  = \frac{\IPD\,T_0}{\rho_m\,L}\,
+    \bigl(|k_x| + |k_y| + |k_z|\bigr)\, ,
+\end{equation}
+exact in the limit $\alpha L \gg 1$.
+\end{corollary}
+
+The factor $|k_x| + |k_y| + |k_z|$ equals $1$ along a cube axis and
+$\sqrt{3}$ along the space diagonal~\cite{Cauchy1841}. For skin at
+$28$~GHz, $\alpha L \approx 45$ and the residual is below
+$e^{-90} \approx 10^{-39}$. \Cref{cor:cube} gives the cube quantity
+from one scalar multiplication per surface point, against the
+iterative voxel-by-voxel cube expansion specified by IEC/IEEE~62704.
+\Cref{tab:depth} shows the depth parameter $2\alpha L$ falling from
+approximately $90$ at $60$~GHz to approximately $1$ at $0.9$~GHz on
+skin. This
+marks the boundary at which the thin-skin shortcut breaks down.
+
+\begin{table}[!t]
+\centering
+\caption{Skin-tissue depth parameter across frequency
+($L = 21.5$~mm, IT'IS Cole--Cole). $h(2\alpha L)$ is the fraction of
+the surface SAR surviving mass-averaging to depth $L$, and
+$C = 1 - e^{-2\alpha L}$ is the capture fraction.}\label{tab:depth}
+\small
+\begin{tabular}{rcccc}
+\toprule
+$f$\,[GHz] & $\delta_{\mathrm{SAR}}$\,[mm] & $2\alpha L$ & $h$ & $C$ \\
+\midrule
+0.9  & 19.9 &  1.1 & 0.61  & 0.67 \\
+2.45 & 11.3 &  1.9 & 0.45  & 0.85 \\
+5    &  5.3 &  4.1 & 0.24  & 0.98 \\
+10   &  1.9 & 11.3 & 0.088 & 1.00 \\
+28   & 0.46 & 46.7 & 0.021 & 1.00 \\
+60   & 0.24 & 89.9 & 0.011 & 1.00 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Below $6$~GHz the depth parameter on fat falls to order unity. The
+wave passes through tissue layers without saturating. The field
+develops a standing-wave structure with internal reflections. The
+thin-skin shortcut overpredicts the cube SAR by up to a factor of
+two, and the cube maximum can be below the body surface. A three-layer planar
+model (skin $d_1 \approx 2$~mm, fat $d_2 \approx 5$--$20$~mm,
+semi-infinite muscle) at normal incidence gives a closed-form cube
+SAR via Chew recursion~\cite{Chew1995} of the layer transmission and
+reflection coefficients. Section~\ref{si:layered} of the SI gives
+the full derivation. Fig.~\ref{fig:si-sar-z} of the SI shows the
+standing-wave SAR profile across the canonical stack at $2.45$~GHz.
+
+The layer transmission $\Tlay(f)$ replaces
+$T_0$ in the cube formula~\eqref{eq:cube} below $6$~GHz. The
+cube-averaged SAR is enhanced over its half-space prediction by a
+standing-wave Fabry--P\'erot factor of $2$--$4$ at fat-resonance
+antinodes (\cref{eq:subsurface-criterion}), and the cube maximum
+migrates below the surface in fat. Differentiating the standing-wave
+SAR at $z = 0$ in skin (Eq.~\ref{eq:dSAR-dz-SI} of the SI) gives the
+criterion
+\begin{equation}\label{eq:subsurface-criterion}
+  |g_1|^2 - \frac{2\beta_1}{\alpha_1}\,|g_1|\sin\psi_1 > 1\, ,
+\end{equation}
+under which the cube maximum lies below the body surface, where
+$g_1 = \widetilde\Gamma_2\,e^{-2 i k_0 \ntilde_1 d_1}$ is the
+backward-to-forward amplitude ratio in the skin layer,
+$\alpha_1, \beta_1$ are the imaginary and real parts of the skin
+wavenumber, and $\psi_1 = \arg g_1$. For a $2$~mm skin / $10$~mm
+fat / muscle stack at $2.45$~GHz the criterion evaluates to $7.9$,
+well above unity, so the peak is in the fat-muscle stack where
+forward and backward waves interfere constructively. Thin lossy skin
+over thick low-loss fat over lossy muscle gives a Fabry--P\'erot
+enhancement of order $[(1+|g_1|)/(1-|g_1|)]^2$ at antinodes, factors
+of $2$--$4$ for typical anatomy.

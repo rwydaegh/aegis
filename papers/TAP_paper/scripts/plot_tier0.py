@@ -116,7 +116,7 @@ def fig_kernels_vs_fdtd(df: pd.DataFrame, out_path: Path, *, ieee: bool = False)
         frameon=True, fancybox=False,
     )
     leg.get_frame().set_edgecolor("black")
-    leg.get_frame().set_linewidth(0.9)
+    leg.get_frame().set_linewidth(1.0)
 
     suf = Path(out_path).suffix.lower()
     # bbox_inches="tight" then crops to axes + y-label + legend, giving a
@@ -190,7 +190,7 @@ def fig_polarisation(df: pd.DataFrame, out_path: Path):
 
 
 def fig_geometry_maps(stl_path: Path, geom: dict, out_path: Path):
-    """3D phantom maps: 2H, eta, O(r,+x), Sab at 5.8 GHz."""
+    """3D phantom maps: 2H, eta, O(r,+x), APD at 5.8 GHz."""
     import trimesh
     from aegis import DosimetryEngine
     from aegis.geometry.mesh import BodyMesh
@@ -263,7 +263,7 @@ def fig_geometry_maps(stl_path: Path, geom: dict, out_path: Path):
     sm = plot_face_field(
         fig.add_subplot(144, projection="3d"),
         res.sab,
-        "S_ab(r), 5.8 GHz, x_neg incidence\nL6, S_inc=1 W/m^2",
+        "APD(r), 5.8 GHz, x_neg incidence\nL6, IPD=1 W/m^2",
         cmap="hot",
         vmin=0,
         vmax=float(res.sab.max()),

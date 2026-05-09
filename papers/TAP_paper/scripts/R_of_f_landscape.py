@@ -170,12 +170,13 @@ def create_figure(mode: str, out_dir: Path) -> Path:
     # ================================================================
     ax = axes[0]
 
+    # circa:04764a12-1ce7-42a6-a270-ffe82b10059a -- capitalize legend C.
     ax.fill_between(f_dense, 1, R_d, where=(R_d < 1), interpolate=True,
                     color=COLOR_FILL_CONS, alpha=0.55,
-                    label=r"conservative ($R<1$)")
+                    label=r"Conservative ($R<1$)")
     ax.fill_between(f_dense, 1, R_d, where=(R_d > 1), interpolate=True,
                     color=COLOR_FILL_NONC, alpha=0.55,
-                    label=r"non-conservative ($R>1$)")
+                    label=r"Non-conservative ($R>1$)")
 
     ax.semilogx(f_dense, R_d, "-", color="black", lw=1.4)
     ax.semilogx(STANDARD_FREQS_GHZ, R_s, "o",
@@ -195,7 +196,10 @@ def create_figure(mode: str, out_dir: Path) -> Path:
     ax.set_ylim(0.93, 1.05)
     ax.set_ylabel(r"$R(f) = T_0/\bar{T}$")
     ax.set_xlabel(r"Frequency $f$ [GHz]")
-    ax.legend(loc="lower left", **LEGEND_KW)
+    # [circa:5d3611a7-526e-4141-991a-569ebe369e79:begin]
+    leg = ax.legend(loc="lower right", **LEGEND_KW)
+    leg.get_frame().set_linewidth(1.0)
+    # [circa:5d3611a7-526e-4141-991a-569ebe369e79:end]
 
     # Secondary axis: percent deviation
     ax2 = ax.twinx()
@@ -244,11 +248,12 @@ def create_figure(mode: str, out_dir: Path) -> Path:
     ax.set_xticks([0, 15, 30, 45, 60, 75, 90])
     ax.set_xlabel(r"Incidence angle $\theta$ [deg]")
     ax.set_ylabel(r"$T_{\mathrm{avg}}(\theta)\cos\theta$")
-    ax.legend(loc="upper right", ncol=2, columnspacing=1.1,
-              handlelength=1.6, handletextpad=0.4,
-              frameon=True, fancybox=False,
-              edgecolor="black", framealpha=1.0,
-              borderpad=0.35, fontsize=7)
+    leg_si = ax.legend(loc="upper right", ncol=2, columnspacing=1.1,
+                       handlelength=1.6, handletextpad=0.4,
+                       frameon=True, fancybox=False,
+                       edgecolor="black", framealpha=1.0,
+                       borderpad=0.35, fontsize=7)
+    leg_si.get_frame().set_linewidth(1.0)
 
     plt.tight_layout(pad=0.4)
     out_si = out_dir / f"R_of_f_angle_family{ext}"

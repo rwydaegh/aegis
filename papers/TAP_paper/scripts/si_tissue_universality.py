@@ -1,10 +1,17 @@
 """
-SI Figure F-S1: Pseudo-Brewster compensation across IT'IS tissues at 28 GHz.
+SI Figure F-S1: Pseudo-Brewster compensation on outer-body tissues at 28 GHz.
 
-Plots T_avg(theta) / T_0 versus incidence angle for six representative
-tissues from the IT'IS v5.0 catalogue. Most tissues collapse to a near-unity
-plateau over [0, 75] deg; fat is the outlier with about 8% variation
-because |n_tilde| sits below the Azzam threshold of 2.5.
+Plots T_avg(theta) / T_0 versus incidence angle for the three tissues that
+can actually be the outermost layer at body surfaces relevant to regulatory
+dosimetry: skin, subcutaneous fat (Cole-Cole "Fat" entry, equivalent to
+Average-Infiltrated SAT), and ocular vitreous humor. Skin (high index,
+|n| = 4.84) stays within ~6% of T_0 across [0, 75] deg. Fat (|n| = 2.63,
+near the Azzam threshold) and vitreous humor (|n| = 6.59, with the
+pseudo-Brewster angle near grazing) bend out of the +-6% band only beyond
+about 60 deg, where the cosine weight in the body integral is small.
+
+Tissue properties are evaluated from the IT'IS Cole-Cole 4-pole model at
+28 GHz (consistent with tab:itis-fvs in the SI).
 
 Generates one PDF: si_tissue_universality.pdf, sized for a single SI column.
 """
@@ -24,14 +31,13 @@ from _plot_style import apply_monograph_style, fig_size_ieee  # noqa: E402
 EPS_0 = 8.854187817e-12
 
 
-# Six tissues from Table tab:itis-pB at 28 GHz. Values match the SI table.
+# Three tissues from Table tab:itis-pB at 28 GHz, IT'IS Cole-Cole values.
+# Order: high-index plateau (skin), Azzam-threshold outlier (fat), very
+# high-index near-grazing case (vitreous humor).
 TISSUES = [
-    ("Skin",          17.0, 25.0, "#0072B2"),
-    ("Muscle",        25.0, 30.0, "#009E73"),
-    ("Brain (gray)",  18.5, 25.0, "#D55E00"),
-    ("Bone (cortical)", 6.5,  5.0, "#CC79A7"),
-    ("Eye (vitreous)", 39.0, 53.0, "#56B4E9"),
-    ("Fat",            4.0,  2.0, "#E69F00"),
+    ("Skin",                16.55, 25.82, "#0072B2"),
+    ("Fat",                  6.09,  5.04, "#E69F00"),
+    ("Eye (vitreous humor)", 28.81, 50.69, "#56B4E9"),
 ]
 
 
@@ -72,23 +78,31 @@ def main():
         Tavg = 0.5 * (Ts + Tp)
         T0 = Tavg[0]
         ratio = Tavg / T0
-        n_abs = abs(n_t)
-        ax.plot(theta_deg, ratio, color=color, lw=1.5,
-                label=rf"{label}, $|\tilde n|={n_abs:.2f}$")
+        ax.plot(theta_deg, ratio, color=color, lw=1.5, label=label)
 
     ax.axhspan(0.94, 1.06, color="#999999", alpha=0.18, lw=0)
     ax.axhline(1.0, color="black", lw=0.6, ls="--", alpha=0.6)
-    ax.text(74, 1.061, r"$\pm 6\%$ band", fontsize=7.2, color="#444444",
+    ax.text(74, 1.061, r"$\pm 6\%$ band", fontsize=8, color="#444444",
             ha="right", va="bottom")
+    # Mark the [0, 60] deg sub-range where the +-6% bound holds for all
+    # three tissues; beyond 60 deg, the high-index curves bend upward
+    # toward their respective pseudo-Brewster minima.
+    ax.axvline(60, color="#666666", lw=0.5, ls=":")
+    ax.text(60.5, 0.82, r"$60^\circ$", fontsize=7, color="#666666",
+            ha="left", va="bottom")
 
     ax.set_xlabel(r"Incidence angle $\theta$ [deg]")
     ax.set_ylabel(r"$\bar T(\theta)/T_0$")
     ax.set_xlim(0, 75)
-    ax.set_ylim(0.80, 1.18)
+    ax.set_ylim(0.80, 1.25)
     ax.grid(True, alpha=0.25)
-    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.22),
-              fontsize=7.2, frameon=False, ncol=3,
-              handlelength=1.4, borderpad=0.3, columnspacing=0.9)
+    # In-panel legend at upper-left with 1pt black frame.
+    leg = ax.legend(loc="upper left", ncol=1,
+                    handlelength=1.4, borderpad=0.35, handletextpad=0.4,
+                    labelspacing=0.3,
+                    frameon=True, framealpha=1.0,
+                    edgecolor="black", fancybox=False)
+    leg.get_frame().set_linewidth(1.0)
 
     plt.tight_layout(pad=0.4)
     out = HERE / "si_tissue_universality.pdf"

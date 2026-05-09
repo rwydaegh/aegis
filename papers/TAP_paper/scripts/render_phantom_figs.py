@@ -345,7 +345,7 @@ def render_sab_pair_paperA(
     cb = fig.colorbar(sm, cax=cax)
     cb.outline.set_linewidth(0.6)
     cb.ax.tick_params(labelsize=tick_fs, width=0.6)
-    cb.set_label(r"$S_{\mathrm{ab}}\;(\mathrm{W}\,\mathrm{m}^{-2})$",
+    cb.set_label(r"$\mathrm{APD}\;(\mathrm{W}\,\mathrm{m}^{-2})$",
                  fontsize=label_fs, labelpad=3)
 
     pdf_path = out_path_base.with_suffix(".pdf")
@@ -439,7 +439,7 @@ def main():
     print("Rendering single-panel phantom figures...")
     panels = [
         dict(scalar=sab_visible, vmax=sab_max,
-             cbar_label=r"$S_{\mathrm{ab}}$ [W/m$^{2}$]",
+             cbar_label=r"$\mathrm{APD}$ [W/m$^{2}$]",
              view_az=210.0, view_el=5.0,
              out_path=FIGURE_DIR / "sab_phantom_visible.pdf"),
         dict(scalar=eta, vmax=1.0,
