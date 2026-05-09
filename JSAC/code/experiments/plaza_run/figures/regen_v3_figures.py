@@ -493,7 +493,7 @@ def write_table(stats_o, stats_i, stats_t):
     lines.append(rf"Virtual IMU ($4^\circ$) & ${s['mean_sr_gbps']:.2f}\,$Gbps & "
                  rf"${s['viol_pct']:.2f}\,\%$ & ${s['fallback_pct']:.0f}\,\%$ \\")
     s = stats_t["multibody_ecbf"]
-    lines.append(rf"T-pose (Cauchy envelope) & ${s['mean_sr_gbps']:.2f}\,$Gbps & "
+    lines.append(rf"T-pose fallback & ${s['mean_sr_gbps']:.2f}\,$Gbps & "
                  rf"${s['viol_pct']:.2f}\,\%$ & ${s['fallback_pct']:.0f}\,\%$ \\")
     out = "\n".join(lines)
     (OUT_DIR / "table_pose_triage.txt").write_text(out + "\n")
