@@ -559,12 +559,15 @@ mid-band value for a smartphone IMU running an open-source AHRS;
 The estimator output preserves the SMPL-X axis-angle representation
 so that the body twin can swap in the IMU-estimated pose for the
 ground-truth pose with no other code change. The
-twin's exposure operator then varies between the IMU-pose ECBF
-limit (the production reading), the T-pose Cauchy envelope (the
-fallback for a body without IMU), and the ground-truth
-oracle (an upper bound that no real telemetry pipeline reaches).
-The body twin's worst-case operating point is between IMU and
-T-pose, not at the oracle.
+twin's exposure operator then varies between the IMU-pose
+$\Qmat^{(u)}$ (the production reading), the T-pose-fallback
+$\Qmat^{(u)}$ for a body without IMU (the canonical SMPL-X T-pose
+substituted for the actual pose), and the ground-truth oracle
+(an upper bound that no real telemetry pipeline reaches). The
+body twin's worst-case operating point is between IMU and T-pose,
+not at the oracle. The conditional projected-area Cauchy bound of
+\cref{app:cauchy} is a separate object and applies to bodies
+without ANY pose information (tier C and tier D).
 
 \subsection{Closing the in-silico to deployed-channel gap}\label{sec:csi-cal}
 
@@ -1125,7 +1128,7 @@ Pose source & Mean sum-rate & Violation rate & Min-abs.\ fallback \\
 \midrule
 Oracle (true pose) & $20.68\,$Gbps & $0.98\,\%$ & $0.0\,\%$ \\
 Virtual IMU ($4^\circ$) & $20.75\,$Gbps & $0.85\,\%$ & $0.0\,\%$ \\
-T-pose (Cauchy envelope) & $17.22\,$Gbps & $16.55\,\%$ & $0.0\,\%$ \\
+T-pose fallback & $17.22\,$Gbps & $16.55\,\%$ & $0.0\,\%$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1136,10 +1139,11 @@ T-pose (Cauchy envelope) & $17.22\,$Gbps & $16.55\,\%$ & $0.0\,\%$ \\
   \caption{Pose-information triage in the binding regime,
   plaza-specular paths. (a) Cap-violation rate against the
   ground-truth $\Qmat^{(u)}$. Oracle and virtual-IMU pose deliver
-  $\leq 1\,\%$ violation; the T-pose Cauchy envelope is
-  qualitatively worse at $16.5\,\%$ because it shapes the
-  constraint with an over-conservative $\Qmat^{(u)}$ that lets the
-  precoder push more power than the actual posed body can absorb.
+  $\leq 1\,\%$ violation; the T-pose source is qualitatively
+  worse at $16.5\,\%$ because the canonical T-pose's $\Qmat^{(u)}$
+  does not envelope the actual moving-population operator, so the
+  solver under-estimates absorption and the precoder pushes more
+  power than the posed body can absorb in some directions.
   (b) Mean sum-rate; oracle and IMU at $\sim 20.7\,$Gbps are
   near-identical, T-pose at $17.2\,$Gbps achieves slightly less
   rate \emph{and} more violations, so it is dominated. (c) Solver
@@ -1167,9 +1171,9 @@ instrumented-mocap-grade hardware.
   error $\sigma_{\mathrm{joint}}$ at six measured points. Red solid:
   cap-violation rate against the ground-truth $\Qmat^{(u)}$, rising
   monotonically with $\sigma_{\mathrm{joint}}$ but staying well
-  below the T-pose envelope. Green dashed: mean sum-rate. The
-  T-pose Cauchy envelope (dotted asymptotes) is dominated on both
-  metrics across the deployment-realistic
+  below the T-pose-fallback rate. Green dashed: mean sum-rate. The
+  T-pose-fallback asymptote (dotted) is dominated on both metrics
+  across the deployment-realistic
   $\sigma_{\mathrm{joint}} \in [1.5^\circ, 8^\circ]$ band.}
   \label{fig:imu-sweep}
 \end{figure}
