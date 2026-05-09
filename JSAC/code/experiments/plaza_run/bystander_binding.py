@@ -98,9 +98,10 @@ def main():
         "--paths", "plaza_specular",
         "--phy", "shannon",
         "--pose-source", "oracle",
-        "--noise-power", "1e-3",
+        "--noise-power", "1e-12",
+        "--oracle-noise-power", "1e-12",
         "--solver-backend", "jax",
-        "--label-suffix", "_bystander_v1",
+        "--label-suffix", "_bystander_v7",
         "--progress-every", "200",
     ]
     print(f"\n=== bystander-binding regime ===  K_served={scn.TIER_COUNTS['A']}  "
@@ -113,7 +114,7 @@ def main():
 
     # Read back stats.
     out = REPO / "JSAC/code/experiments/plaza_run/outputs"
-    cands = list(out.glob("plaza_run_seed42_*_bystander_v1.npz"))
+    cands = list(out.glob("plaza_run_seed42_*_bystander_v7.npz"))
     print(f"  wall: {wall:.0f}s")
     if not cands:
         print("  NO NPZ written"); return

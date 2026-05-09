@@ -48,9 +48,10 @@ def run_one(*, label, k_served, b_coop, c_sense, n_slots=600):
         "--pose-period", "30", "--rt-period", "30",
         "--tx-power-dbm", "43", "--reference-level-vpm", "3.0",
         "--paths", "plaza_specular", "--phy", "shannon",
-        "--pose-source", "oracle", "--noise-power", "1e-3",
+        "--pose-source", "oracle", "--noise-power", "1e-12",
+        "--oracle-noise-power", "1e-12",
         "--solver-backend", "jax",
-        "--label-suffix", f"_regimeK{k_served}_v5",
+        "--label-suffix", f"_regimeK{k_served}_v7",
         "--progress-every", "200",
     ]
     print(f"\n=== {label} ===  K_served={k_served}  B_coop={b_coop}  C_sense={c_sense}  total={n_total}")
@@ -60,7 +61,7 @@ def run_one(*, label, k_served, b_coop, c_sense, n_slots=600):
     wall = time.perf_counter() - t0
 
     out = REPO / "JSAC/code/experiments/plaza_run/outputs"
-    cands = list(out.glob(f"plaza_run_seed42_*regimeK{k_served}_v5.npz"))
+    cands = list(out.glob(f"plaza_run_seed42_*regimeK{k_served}_v7.npz"))
     print(f"  wall: {wall:.0f}s")
     if not cands:
         return

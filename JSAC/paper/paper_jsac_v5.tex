@@ -1089,31 +1089,32 @@ deployments without pose telemetry. The cap binds in all three
 branches and the dual-ascent solver degrades gracefully along the
 chain.
 
-\Cref{tab:pose-triage} reports the binding-regime metrics across the
-three pose sources at $\sigma_{\mathrm{joint}} = 4^\circ$. Oracle
-and IMU pose are essentially indistinguishable on every metric;
-sum-rate sits in the $20.7\,$Gbps band and the residual
-$\sim 1\,\%$ violation rate against the ground-truth full-body
-$\Qmat^{(u)}$ comes from undetected tier-C bystanders that the
-twin does not include in the QCQP (their cap is checked at
-evaluation time but the precoder does not see them).
+\Cref{tab:pose-triage} reports the binding-regime metrics across
+the three pose sources at $\sigma_{\mathrm{joint}} = 4^\circ$. All
+three saturate the MCS sum-cap of $74.00\,$Gbps; what differs is
+the residual violation rate against the ground-truth full-body
+$\Qmat^{(u)}$, which rises monotonically with pose-source
+mismatch: $0.29\,\%$ under oracle pose, $0.53\,\%$ under
+virtual-IMU pose at $\sigma_{\mathrm{joint}} = 4^\circ$, and
+$0.75\,\%$ under T-pose fallback. Even the T-pose source remains
+well below the $10.2\,\%$ violation rate of unconstrained ZF and
+within an order of magnitude of the oracle.
 
-The T-pose source is qualitatively worse: at $17.6\,\%$ violation
-rate it is the only pose source where the dual-ascent precoder
-violates the cap on the order of unconstrained ZF ($10.2\,\%$
-under the same regime). The mechanism is direction mismatch
-between the canonical T-pose $\Qmat^{(u)}$ and the actual walking
-$\Qmat^{(u)}$. The T-pose has the body's arms extended outward,
-which spreads the absorption mode laterally; an actual walking
-body has the arms inward, which tightens the absorption mode along
-the torso axis. In some BS-precoder directions the T-pose
-$\Qmat^{(u)}$ is smaller than the actual posed one, so the dual
-ascent and projection under-estimate the true absorbed power and
-permit precoder amplitudes that violate the actual cap. Pose
-telemetry, even crude IMU, prevents this failure mode by tracking
-the body's actual configuration; a pose-agnostic deterministic
-envelope must use the conditional projected-area Cauchy bound of
-\cref{app:cauchy} to guarantee feasibility.
+The mechanism of the residual violation is the rank-truncated
+operator $\Qmat^{(u)}$ used inside the dual-ascent solver: the
+solver uses $r = 4$ at the $99\,\%$ trace fraction but the cap is
+checked against the full-rank operator at evaluation time, leaving
+a $1$-to-$5\,\%$ absorption tail that the dual ascent does not
+see. The exit projection trims the worst-margin body to the safety
+fraction $\eta_S$ but does not re-enter the dual ascent against
+the corrected residuals. T-pose specifically adds a second source
+of mismatch: the canonical pose has the arms extended laterally
+while the walking population has the arms inward, so the T-pose
+$\Qmat^{(u)}$ misrepresents the absorption-mode geometry in some
+BS-precoder directions. Both sources are absent from projected ZF,
+which projects against the full-rank pose-aware $\Qmat^{(u)}$
+directly and is feasibility-by-construction at every slot
+regardless of pose source.
 
 \begin{table}[!t]
 \caption{Binding-regime pose-information triage at
@@ -1129,9 +1130,9 @@ include in the QCQP and from pose-mismatch on the bodies it does.}
 \toprule
 Pose source & Mean sum-rate & Violation rate & Min-abs.\ fallback \\
 \midrule
-Oracle (true pose) & $20.68\,$Gbps & $0.98\,\%$ & $0.0\,\%$ \\
-Virtual IMU ($4^\circ$) & $20.75\,$Gbps & $0.85\,\%$ & $0.0\,\%$ \\
-T-pose fallback & $17.20\,$Gbps & $17.58\,\%$ & $0.0\,\%$ \\
+Oracle (true pose) & $74.00\,$Gbps & $0.29\,\%$ & $0.0\,\%$ \\
+Virtual IMU ($4^\circ$) & $74.00\,$Gbps & $0.53\,\%$ & $0.0\,\%$ \\
+T-pose fallback & $74.00\,$Gbps & $0.75\,\%$ & $0.0\,\%$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1141,17 +1142,15 @@ T-pose fallback & $17.20\,$Gbps & $17.58\,\%$ & $0.0\,\%$ \\
   \includegraphics[width=\columnwidth]{pose_info_gain.pdf}
   \caption{Pose-information triage in the binding regime,
   plaza-specular paths. (a) Cap-violation rate against the
-  ground-truth $\Qmat^{(u)}$. Oracle and virtual-IMU pose deliver
-  $\leq 1\,\%$ violation; the T-pose source is qualitatively
-  worse at $17.6\,\%$ because the canonical T-pose's $\Qmat^{(u)}$
-  does not envelope the actual moving-population operator, so the
-  solver under-estimates absorption and the precoder pushes more
-  power than the posed body can absorb in some directions.
-  (b) Mean sum-rate; oracle and IMU at $\sim 20.7\,$Gbps are
-  near-identical, T-pose at $17.2\,$Gbps achieves slightly less
-  rate \emph{and} more violations, so it is dominated. (c) Solver
-  health: the always-on primal projection drives min-absorption
-  fallback to $0\,\%$ in all three regimes.}
+  ground-truth $\Qmat^{(u)}$, rising monotonically with pose-source
+  mismatch: oracle $0.29\,\%$, virtual-IMU $0.53\,\%$, T-pose
+  fallback $0.75\,\%$, all well below the $10.2\,\%$ unconstrained-ZF
+  baseline. (b) Mean sum-rate is the MCS sum-cap of $74.00\,$Gbps
+  in all three pose sources, since the dual-ascent solver redirects
+  power per the noise-floor regulariser without dropping below the
+  MCS clip. (c) Solver health: the always-on primal projection at
+  exit drives min-absorption fallback to $0\,\%$ in all three
+  regimes.}
   \label{fig:pose-info}
 \end{figure}
 

@@ -56,9 +56,10 @@ PRECODER_MARKERS = {
 
 
 def load(tag):
-    # Try v6 first (E_RL=3V/m, with stored zf_proj precoder), then v4
-    # (E_RL=3V/m, post-hoc zf_proj), then v3 (6V/m), then fallback.
-    for prefix in ["bind3v_v6_", "bind3v_v4_", "bind5min_v3_"]:
+    # Try v7 first (E_RL=3V/m, noise=1e-12 matched solver/eval, zf_proj
+    # stored), then v6 (zf_proj stored but noise=1e-3 in solver),
+    # then v4 (post-hoc zf_proj), then v3 (6V/m), then fallback.
+    for prefix in ["bind3v_v7_", "bind3v_v6_", "bind3v_v4_", "bind5min_v3_"]:
         cands = list(NPZ_DIR.glob(f"plaza_run_seed42_*{prefix}{tag}.npz"))
         if cands:
             return np.load(cands[0], allow_pickle=True)
