@@ -117,6 +117,31 @@ def parse_args() -> argparse.Namespace:
         help="ECBF inner solver kernel backend. 'jax' offloads the Newton "
         "step + FD Jacobian to GPU (~14x at M=64, ~14x at M=256).",
     )
+    p.add_argument(
+        "--use-wmmse",
+        action="store_true",
+        help="Replace the unweighted MMSE-with-exposure inner solve with the "
+        "WMMSE outer + dual-Newton inner. The proposed and oracle precoders "
+        "both pick this up; baselines (MRT, ZF, WC back-off) are unchanged.",
+    )
+    p.add_argument(
+        "--pose-source",
+        choices=["oracle", "tpose", "imu"],
+        default="oracle",
+        help="Pose telemetry source for the proposed precoder's per-body Q. "
+        "'oracle' = ground truth from the AMASS stream; 'tpose' = T-pose "
+        "Cauchy envelope (same effect as --ablate-pose-telemetry); 'imu' = "
+        "virtual-IMU-estimated pose with calibrated bias-drift + white "
+        "noise (aegis.geometry.virtual_imu).",
+    )
+    p.add_argument(
+        "--imu-rms-deg",
+        type=float,
+        default=4.0,
+        help="Steady-state per-joint attitude RMS error in degrees for the "
+        "virtual-IMU pose model. 4° = consumer smartphone AHRS; 1.5° = "
+        "deep-learning-augmented inertial-mocap.",
+    )
     args = p.parse_args()
     if args.config is not None:
         with open(args.config) as f:
@@ -154,6 +179,20 @@ def _run_once(args, paths_mode: str) -> Path:
     pose_streams = load_pose_streams(bodies)
     parametric = smplx_body()
 
+    pose_streams_imu = None
+    if args.pose_source == "imu":
+        from dataclasses import replace as _replace
+
+        from aegis.geometry.virtual_imu import IMUNoiseModel, simulate_imu_pose_trajectory
+
+        imu_model = IMUNoiseModel(rms_per_joint_deg=args.imu_rms_deg)
+        pose_streams_imu = []
+        for b_idx, ps in enumerate(pose_streams):
+            est = simulate_imu_pose_trajectory(
+                ps.poses, fps=float(ps.fps), noise=imu_model, rng_seed=seed + b_idx + 1
+            )
+            pose_streams_imu.append(_replace(ps, poses=est))
+
     body_positions = np.zeros((args.n_slots, args.n_bodies, 3), dtype=np.float64)
     for b in bodies:
         if args.realistic_walks:
@@ -181,6 +220,8 @@ def _run_once(args, paths_mode: str) -> Path:
         ablate_pose_telemetry=args.ablate_pose_telemetry,
         sensing=SensingConfig(),
         solver_backend=args.solver_backend,
+        use_wmmse=args.use_wmmse,
+        pose_source=args.pose_source,
     )
 
     logger.info(
@@ -203,6 +244,7 @@ def _run_once(args, paths_mode: str) -> Path:
         path_generator=path_gen,
         config=config,
         progress_every=args.progress_every,
+        pose_streams_imu=pose_streams_imu,
     )
     wall_s = time.perf_counter() - t0
 

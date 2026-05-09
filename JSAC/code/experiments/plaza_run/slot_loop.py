@@ -48,6 +48,7 @@ try:
 except ImportError:  # pragma: no cover
     solve_multibody_ecbf_jax = None  # type: ignore
     _HAVE_JAX_SOLVER = False
+from aegis.coherent.multibody_ecbf_wmmse import solve_multibody_ecbf_wmmse
 from aegis.constants import C_0
 from aegis.geometry.parametric import ParametricBody
 from aegis.geometry.pose_stream import PoseStream
@@ -62,7 +63,7 @@ from .tier_c import SensingConfig, detect_bodies
 
 logger = logging.getLogger(__name__)
 
-PRECODER_NAMES = ["mrt", "zf", "wc_backoff", "multibody_ecbf", "oracle"]
+PRECODER_NAMES = ["mrt", "zf", "wc_backoff", "zf_proj", "multibody_ecbf", "oracle"]
 DEFAULT_NOISE_POWER = 1e-2
 DEFAULT_ORACLE_NOISE_POWER = 1e-3
 DEFAULT_POSE_PERIOD = 30  # slots
@@ -109,6 +110,8 @@ class SlotLoopConfig:
     ablate_pose_telemetry: bool = False
     sensing: SensingConfig = field(default_factory=SensingConfig)
     solver_backend: str = "numpy"  # "numpy" or "jax"; jax routes ECBF through GPU kernels
+    use_wmmse: bool = False  # if True, the proposed and oracle precoders use the WMMSE outer loop
+    pose_source: str = "oracle"  # "oracle" (ground truth), "tpose" (envelope), or "imu" (virtual IMU estimator)
 
 
 @dataclass
@@ -117,8 +120,10 @@ class _BodyState:
 
     posed_M_static: np.ndarray | None = None
     tposed_M_static: np.ndarray | None = None
+    imu_M_static: np.ndarray | None = None  # M-static from IMU-estimated pose
     posed_centroids_ref: np.ndarray | None = None  # body centroid at pose snapshot
     tposed_centroids_ref: np.ndarray | None = None
+    imu_centroids_ref: np.ndarray | None = None
     last_path_set: object | None = None  # PropagationPaths (centre-of-array form)
     detected: bool = True
 
@@ -204,11 +209,63 @@ def _q_translate_np(M_static: np.ndarray, phi: np.ndarray) -> np.ndarray:
     return 0.5 * (Q + np.conj(Q).T)
 
 
+def _solve_wmmse_compat(
+    H,
+    Q_list,
+    L_list,
+    P,
+    *,
+    noise_power=None,
+    return_diagnostics=False,
+    max_outer=16,
+    lambda_init=None,
+    lowrank_rank=None,
+    **_unused,
+):
+    """Adapter so the slot-loop's MMSE-shaped call site can dispatch to WMMSE.
+
+    The WMMSE solver internally seeds (u, v) from one MMSE-with-exposure
+    pass, then runs the WMMSE outer block-coordinate descent. ``tol_dual``
+    is set at 1e-3 to match the fallback threshold (the dual-Newton FD
+    Jacobian carries 1e-5-ish noise; tighter tolerance is unrealisable and
+    drives the unweighted MMSE solver into 90%+ fallback in the binding
+    regime even though residual 1e-3 is already deployment-grade).
+    """
+    if noise_power is None:
+        noise_power = DEFAULT_NOISE_POWER
+    return solve_multibody_ecbf_wmmse(
+        H,
+        Q_list,
+        L_list,
+        P,
+        noise_power=float(noise_power),
+        max_outer_wmmse=4,
+        max_outer_dual=int(max_outer),
+        tol_dual=1e-3,
+        return_diagnostics=return_diagnostics,
+        lambda_init=lambda_init,
+        lowrank_rank=lowrank_rank,
+    )
+
+
 def _wc_backoff_W(W_mrt: np.ndarray, p_abs_mrt: np.ndarray, budgets: np.ndarray) -> np.ndarray:
     """Scale MRT power so the worst body's budget is met (paper baseline 3)."""
     margin = budgets / np.maximum(p_abs_mrt, 1e-30)
     scale = float(np.sqrt(min(1.0, np.min(margin))))
     return W_mrt * scale
+
+
+def _primal_project_W(W: np.ndarray, p_abs: np.ndarray, budgets: np.ndarray,
+                      eta_S: float = 0.97) -> np.ndarray:
+    """Per-slot uniform-scale projection (the same one used at the ECBF
+    solver's exit). Apply to any W to get cap-feasibility against a given Q.
+
+    p_abs: (B,) per-body absorbed power under W against ground-truth Q.
+    Returns a scaled W with sum-rate cost alpha^2 < 1 only when needed.
+    """
+    margin = (eta_S * budgets) / np.maximum(p_abs, 1e-30)
+    scale_sq = max(0.0, min(1.0, float(np.min(margin))))
+    return W * float(np.sqrt(scale_sq))
 
 
 @dataclass
@@ -246,6 +303,7 @@ def run_slots(
     path_generator: Callable[[PathSpec], object],
     config: SlotLoopConfig,
     progress_every: int = 200,
+    pose_streams_imu: list[PoseStream] | None = None,
 ) -> _RunBuffers:
     """Run the per-slot loop and return per-slot tensors."""
     n_bodies = len(bodies)
@@ -261,8 +319,12 @@ def run_slots(
 
     state: list[_BodyState] = [_BodyState() for _ in range(n_bodies)]
 
-    # Resolve solver dispatch once.
-    if config.solver_backend == "jax":
+    # Resolve solver dispatch once. When use_wmmse=True the proposed and
+    # oracle precoders take the WMMSE outer loop with the same inner
+    # dual-Newton scaffold; otherwise they take the unweighted MMSE form.
+    if config.use_wmmse:
+        _solve_ecbf = _solve_wmmse_compat
+    elif config.solver_backend == "jax":
         if not _HAVE_JAX_SOLVER:
             raise RuntimeError("solver_backend='jax' requested but JAX is not installed")
         _solve_ecbf = solve_multibody_ecbf_jax
@@ -348,6 +410,26 @@ def run_slots(
                         n_t, c_t, a_t, paths_b, array, array_offsets, n_tilde, sigma, bs_panel.freq_hz
                     )
                     state[b.index].tposed_centroids_ref = world_pos.copy()
+
+                # IMU-estimated mesh: same code path as oracle posed, but
+                # pose drawn from the IMU-noise stream so the dispatched
+                # Q^(u) carries realistic per-joint attitude error. Only
+                # built when an IMU stream is supplied.
+                if pose_streams_imu is not None:
+                    imu_axang, _ = pose_streams_imu[b.index].frame(pose_count, loop=True)
+                    imu_local = parametric.generate(
+                        betas=betas[:10],
+                        pose=imu_axang[:66],
+                        name=f"body{b.index}_imu_t{t}",
+                    )
+                    imu_cents = _translate_to_world(imu_local.centroids, imu_local.vertices, world_pos)
+                    n_i, c_i, a_i = _decimate_arrays(
+                        imu_local.normals, imu_cents, imu_local.areas, config.decim_stride
+                    )
+                    state[b.index].imu_M_static = _build_M_static(
+                        n_i, c_i, a_i, paths_b, array, array_offsets, n_tilde, sigma, bs_panel.freq_hz
+                    )
+                    state[b.index].imu_centroids_ref = world_pos.copy()
             pose_count += 1
 
         # ------------------------------------------------------------------
@@ -372,17 +454,35 @@ def run_slots(
             phi_tp = _translation_phasor_np(paths.k_hat, tposed_dt, bs_panel.freq_hz)
             Q_tp = _q_translate_np(state[b.index].tposed_M_static, phi_tp)
 
+            Q_imu = None
+            if state[b.index].imu_M_static is not None:
+                imu_dt = world - state[b.index].imu_centroids_ref
+                phi_imu = _translation_phasor_np(paths.k_hat, imu_dt, bs_panel.freq_hz)
+                Q_imu = _q_translate_np(state[b.index].imu_M_static, phi_imu)
+
+            # Proposed Q dispatch:
+            #   ablate_pose_telemetry      -> T-pose Cauchy envelope
+            #   pose_source == "imu"       -> IMU-estimated Q (when available)
+            #   else (default oracle/twin) -> posed Q from ground-truth telemetry
+            def _proposed_q():
+                if config.ablate_pose_telemetry:
+                    return Q_tp
+                if config.pose_source == "imu" and Q_imu is not None:
+                    return Q_imu
+                return Q_pose
+
             # Proposed Q + budget by tier.
             if b.tier == "A" or b.tier == "B":
-                Q_proposed.append(Q_tp if config.ablate_pose_telemetry else Q_pose)
+                Q_proposed.append(_proposed_q())
                 L_proposed.append(float(body_budgets[b.index]))
             elif b.tier == "C":
                 if state[b.index].detected:
+                    # Tier-C bystander: never has IMU, always envelope.
                     Q_proposed.append(Q_tp)
                     L_proposed.append(float(body_budgets[b.index]))
                 # Else: undetected → envelope (skipped from problem).
 
-            # Oracle: posed for everyone.
+            # Oracle: posed for everyone, regardless of pose_source.
             Q_oracle.append(Q_pose)
             L_oracle.append(float(body_budgets[b.index]))
         q_ms = (time.perf_counter() - q_t0) * 1e3
@@ -425,66 +525,73 @@ def run_slots(
         p_abs_mrt = _batch_p_abs(Q_actual_stack, precoders["mrt"])
         precoders["wc_backoff"] = _wc_backoff_W(precoders["mrt"], p_abs_mrt, body_budgets)
 
-        if Q_proposed:
-            # Warm-start length is checked by the solver; reset to None if
-            # the proposed-body count changes (Q_proposed is rebuilt per slot
-            # based on tier-C detection state, so length can flicker).
-            lam_init_p = (
-                lambda_warm_proposed
-                if (lambda_warm_proposed is not None and lambda_warm_proposed.shape == (len(Q_proposed),))
+        # ZF + per-slot primal projection: simplest pose-agnostic baseline that
+        # is cap-feasible by construction. The projection uses the ground-truth
+        # Q (so this is an oracle in the sense that it knows the actual posed
+        # absorption); it isolates "what does primal projection alone buy".
+        p_abs_zf = _batch_p_abs(Q_actual_stack, precoders["zf"])
+        precoders["zf_proj"] = _primal_project_W(precoders["zf"], p_abs_zf, body_budgets)
+
+        # max_outer=24 in binding regime: dual-Newton FD-Jacobian needs more
+        # iterations when many bodies are simultaneously active. tol=1e-3 is
+        # the operational compliance threshold; tightening below that drives
+        # the solver into 90%+ fallback even though residuals at 1e-3 are
+        # already much tighter than any deployable measurement precision.
+        _max_outer = 24
+        _solver_tol = 1e-3
+
+        def _try_solve(Q_list_, L_list_, lam_warm, np_, label):
+            lam_init = (
+                lam_warm
+                if (lam_warm is not None and lam_warm.shape == (len(Q_list_),))
                 else None
             )
             try:
-                W_p, diag_p = _solve_ecbf(
-                    H,
-                    Q_proposed,
-                    L_proposed,
-                    P_tx,
-                    noise_power=config.noise_power,
-                    return_diagnostics=True,
-                    max_outer=8,
-                    lambda_init=lam_init_p,
-                    lowrank_rank=3,  # plaza-run Q's are rank 3 to ~1e-12 (validated)
+                if config.use_wmmse:
+                    W_, diag_ = _solve_ecbf(
+                        H, Q_list_, L_list_, P_tx,
+                        noise_power=np_,
+                        return_diagnostics=True,
+                        max_outer=_max_outer,
+                        lambda_init=lam_init,
+                        lowrank_rank=6,
+                    )
+                else:
+                    W_, diag_ = _solve_ecbf(
+                        H, Q_list_, L_list_, P_tx,
+                        noise_power=np_,
+                        return_diagnostics=True,
+                        max_outer=_max_outer,
+                        tol=_solver_tol,
+                        lambda_init=lam_init,
+                        lowrank_rank=6,
+                    )
+                fallback = diag_.method == "min-absorption"
+                # Persist the previous successful lambda when the projected
+                # path takes us to feasibility (lambdas there are still
+                # informative). Reset on min-absorption: that path means the
+                # dual blew up and the lambdas are stale.
+                lam_next = (
+                    None if fallback else np.asarray(diag_.lambdas, dtype=float).copy()
                 )
-                infeas_flags["multibody_ecbf"] = diag_p.method == "min-absorption"
-                lambda_warm_proposed = (
-                    None if diag_p.method == "min-absorption" else np.asarray(diag_p.lambdas, dtype=float).copy()
-                )
-            except Exception as exc:  # pragma: no cover - solver crash
-                logger.warning("multibody_ecbf failed at slot %d: %s", t, exc)
-                W_p = precoders["wc_backoff"]
-                infeas_flags["multibody_ecbf"] = True
-                lambda_warm_proposed = None
+                return W_, fallback, lam_next
+            except Exception as exc:  # pragma: no cover
+                logger.warning("%s ECBF failed at slot %d: %s", label, t, exc)
+                return precoders["wc_backoff"], True, None
+
+        if Q_proposed:
+            W_p, fb_p, lambda_warm_proposed = _try_solve(
+                Q_proposed, L_proposed, lambda_warm_proposed, config.noise_power, "multibody_ecbf"
+            )
+            infeas_flags["multibody_ecbf"] = fb_p
         else:
             W_p = precoders["mrt"]
         precoders["multibody_ecbf"] = W_p
 
-        lam_init_o = (
-            lambda_warm_oracle
-            if (lambda_warm_oracle is not None and lambda_warm_oracle.shape == (len(Q_oracle),))
-            else None
+        W_o, fb_o, lambda_warm_oracle = _try_solve(
+            Q_oracle, L_oracle, lambda_warm_oracle, config.oracle_noise_power, "oracle"
         )
-        try:
-            W_o, diag_o = _solve_ecbf(
-                H,
-                Q_oracle,
-                L_oracle,
-                P_tx,
-                noise_power=config.oracle_noise_power,
-                return_diagnostics=True,
-                max_outer=8,
-                lambda_init=lam_init_o,
-                lowrank_rank=3,
-            )
-            infeas_flags["oracle"] = diag_o.method == "min-absorption"
-            lambda_warm_oracle = (
-                None if diag_o.method == "min-absorption" else np.asarray(diag_o.lambdas, dtype=float).copy()
-            )
-        except Exception as exc:  # pragma: no cover
-            logger.warning("oracle ECBF failed at slot %d: %s", t, exc)
-            W_o = precoders["wc_backoff"]
-            infeas_flags["oracle"] = True
-            lambda_warm_oracle = None
+        infeas_flags["oracle"] = fb_o
         precoders["oracle"] = W_o
 
         prec_ms = (time.perf_counter() - prec_t0) * 1e3
