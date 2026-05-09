@@ -730,7 +730,10 @@ binding regime, it is also globally optimal for the QCQP
 
 \begin{proposition}[ZF + projection optimality under MCS cap]
 \label{prop:projection-optimality}
-Consider the QCQP \cref{eq:P-MB} under the MCS-cap rate model
+Fix the served-user count $K$ and the channel matrix
+$\HH \in \Complex^{M \times K}$. Consider the QCQP
+\cref{eq:P-MB} restricted to $K$-stream precoders
+$\WW \in \Complex^{M\times K}$ under the MCS-cap rate model
 $R_{\mathrm{sum}} = \sum_k \min(\log_2(1 + \mathrm{SINR}_k),\,
 S_{\max})$ with the regularised ZF interference structure
 $\mathrm{SINR}_k(\WW_{\mathrm{ZF}}) = |\hh_k^H \ww_k^{\mathrm{ZF}}|^2/
@@ -746,9 +749,9 @@ and let $\alpha$ be the projection scale of
 \cref{eq:primal-projection}. If
 $\alpha^2\,\mathrm{SINR}^{\mathrm{ZF}}_{\min} \geq 2^{S_{\max}} - 1$,
 the projected ZF precoder $\WW = \alpha\,\WW_{\mathrm{ZF}}$ attains
-$R_k = S_{\max}$ on every served stream and globally maximises
+$R_k = S_{\max}$ on every served stream and maximises
 $R_{\mathrm{sum}}$ subject to all $K + B + 1$ constraints of
-\cref{eq:P-MB}.
+\cref{eq:P-MB} over the $K$-stream feasible set.
 \end{proposition}
 
 \begin{proof}
@@ -764,10 +767,10 @@ Under the hypothesis $\alpha^2\,\mathrm{SINR}^{\mathrm{ZF}}_{\min}
 \geq 2^{S_{\max}} - 1$, post-projection $\mathrm{SINR}_k \geq
 2^{S_{\max}} - 1$ for every $k$, so $\log_2(1 + \mathrm{SINR}_k)
 \geq S_{\max}$ and the rate clip engages: $R_k = S_{\max}$ for
-every $k$. Hence $R_{\mathrm{sum}} = K\,S_{\max}$. The system upper
-bound on the QCQP objective with a per-stream MCS clip is
-$K\,S_{\max}$ regardless of precoder. Therefore $\WW =
-\alpha\,\WW_{\mathrm{ZF}}$ attains the upper bound and is a global
+every $k$. Hence $R_{\mathrm{sum}} = K\,S_{\max}$. With $K$ streams
+and a per-stream MCS clip at $S_{\max}$, the rate is upper-bounded
+by $K\,S_{\max}$ regardless of the precoder choice. Therefore
+$\WW = \alpha\,\WW_{\mathrm{ZF}}$ attains this upper bound and is a global
 optimum.
 \end{proof}
 
