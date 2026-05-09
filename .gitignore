@@ -261,3 +261,6 @@ JSAC/**/*.blg
 JSAC/**/*.fls
 JSAC/**/*.fdb_latexmk
 JSAC/**/*.synctex.gz
+
+# TAP paper dielectric bundle: large SQLite blob (regenerable from IT'IS)
+papers/TAP_paper/dielectric_bundle/itis_v5.db
