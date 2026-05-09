@@ -341,7 +341,16 @@ document.addEventListener("keydown", (e) => {
 });
 
 async function triggerRebuild() {
-  await fetch("/rebuild", { method: "POST" });
+  const r = await fetch("/rebuild", { method: "POST" });
+  if (r.ok) return;
+  let msg = `Rebuild failed (${r.status})`;
+  try {
+    const j = await r.json();
+    if (j.reason) msg += `: ${j.reason}`;
+    if (j.error) msg += `\n${j.error.split("\n").slice(-6).join("\n")}`;
+    if (j.timed_out) msg += " (timed out)";
+  } catch (_) {}
+  flashToast(msg, "error");
 }
 
 function confirmUndoLastBatch() {

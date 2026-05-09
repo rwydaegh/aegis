@@ -21,6 +21,6 @@ main { display: flex; height: calc(100vh - 50px); }
 .status-pill.grey { background: #888; }
 .textbox { position: absolute; width: 420px; height: 140px; padding: .5rem; background: white; border: 1px solid #999; font: inherit; resize: both; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; }
 .bubble { position: absolute; background: #fffbe6; border: 1px solid #cc6; padding: .5rem; max-width: 260px; }
-.toast { position: fixed; right: 16px; bottom: 16px; padding: .6rem 1rem; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,.2); background: #333; color: white; z-index: 9999; max-width: 360px; font-size: 13px; }
+.toast { position: fixed; right: 16px; bottom: 16px; padding: .6rem 1rem; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,.2); background: #333; color: white; z-index: 9999; max-width: 480px; font-size: 12px; font-family: ui-monospace, monospace; white-space: pre-wrap; }
 .toast.warn { background: #b80; }
 .toast.error { background: #b00; }
