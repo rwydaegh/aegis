@@ -1055,19 +1055,29 @@ because the post-projection SINR is still above MCS clip.
 \subsection{Pose-information triage and the IMU
 estimator}\label{sec:eval-imu}
 
-The proposed multi-body MMSE-with-exposure consumes the body's posed
-exposure operator on every slot. \Cref{fig:pose-info} ablates this
-telemetry along three axes. The \emph{oracle} branch feeds the
-ground-truth pose, which is unattainable by deployed telemetry but
-serves as the upper bound on what pose information can buy. The
-\emph{IMU-estimated} branch feeds a virtual-IMU pose with
-$\sigma_{\mathrm{joint}} = 4^\circ$ steady-state per-joint RMS
-attitude error, which is the production reading. The \emph{Cauchy
-envelope} branch feeds a T-pose worst-case exposure operator on
-tier-A and tier-B bodies, treating every served and cooperating body
-as if it were a tier-C bystander; this is the fallback for
-deployments without IMU telemetry. The cap binds in all three;
-the closed-form precoder degrades gracefully along the chain.
+Both the projected-ZF precoder of \cref{sec:primal-projection} and
+the dual-ascent QCQP solver of \cref{app:dualascent} consume the
+body's posed $\Qmat^{(u)}$: the projection scale $\alpha$ in
+\cref{eq:primal-projection} is set by
+$\min_u L^{(u)}/\Pabs^{(u)}$ where $\Pabs^{(u)}$ is computed against
+the twin's posed $\Qmat^{(u)}$, and the dual-ascent Newton step on
+$\bm\lambda$ operates on the same residuals. We run the
+pose-source ablation against the dual-ascent solver in
+\cref{fig:pose-info} and \cref{tab:pose-triage} because it is the
+more pose-sensitive of the two (the dual ascent spreads mass over
+many bodies and is sensitive to mismatch in any one $\Qmat^{(u)}$,
+whereas the projection only watches the worst-margin scalar). The
+\emph{oracle} branch feeds the ground-truth pose, which is
+unattainable by deployed telemetry but serves as the upper bound
+on what pose information can buy. The \emph{IMU-estimated} branch
+feeds a virtual-IMU pose with $\sigma_{\mathrm{joint}} = 4^\circ$
+steady-state per-joint RMS attitude error, which is the production
+reading. The \emph{T-pose} branch feeds the SMPL-X canonical T-pose
+to every tier-A and tier-B body, treating each as if it were a
+tier-C bystander without IMU; this is the fallback for
+deployments without pose telemetry. The cap binds in all three
+branches and the dual-ascent solver degrades gracefully along the
+chain.
 
 \Cref{tab:pose-triage} reports the binding-regime metrics across the
 three pose sources at $\sigma_{\mathrm{joint}} = 4^\circ$. Oracle
@@ -1078,18 +1088,22 @@ $\Qmat^{(u)}$ comes from undetected tier-C bystanders that the
 twin does not include in the QCQP (their cap is checked at
 evaluation time but the precoder does not see them).
 
-The T-pose Cauchy envelope is qualitatively worse: at
-$16.5\,\%$ violation rate it is the only pose source where the
-proposed precoder violates the cap more often than unconstrained
-ZF does ($10.2\,\%$). The mechanism is loose-shaping. The T-pose
-envelope's $\Qmat^{(u)}$ is uniformly larger than the actual posed
-$\Qmat^{(u)}$ on a moving population, so the dual ascent under-uses
-its budget and the primal projection still lets the precoder push
-power up to the loose-Q feasibility cone. When the precoder is
-evaluated against the actual posed $\Qmat^{(u)}$, the loose
-envelope's spare capacity becomes overshoot. Pose telemetry, even
-crude IMU, prevents this kind of compliance failure that an
-unconditional pose-agnostic envelope cannot.
+The T-pose source is qualitatively worse: at $16.5\,\%$ violation
+rate it is the only pose source where the dual-ascent precoder
+violates the cap on the order of unconstrained ZF ($14.6\,\%$
+under the same regime). The mechanism is direction mismatch
+between the canonical T-pose $\Qmat^{(u)}$ and the actual walking
+$\Qmat^{(u)}$. The T-pose has the body's arms extended outward,
+which spreads the absorption mode laterally; an actual walking
+body has the arms inward, which tightens the absorption mode along
+the torso axis. In some BS-precoder directions the T-pose
+$\Qmat^{(u)}$ is smaller than the actual posed one, so the dual
+ascent and projection under-estimate the true absorbed power and
+permit precoder amplitudes that violate the actual cap. Pose
+telemetry, even crude IMU, prevents this failure mode by tracking
+the body's actual configuration; a pose-agnostic deterministic
+envelope must use the conditional projected-area Cauchy bound of
+\cref{app:cauchy} to guarantee feasibility.
 
 \begin{table}[!t]
 \caption{Binding-regime pose-information triage at
@@ -1161,19 +1175,20 @@ instrumented-mocap-grade hardware.
 \Cref{fig:spatial} bins each (body, slot) sample onto a $2\,$m
 grid and plots the per-cell mean $\Pabs/L_{\mathrm{RL}}$ on a
 shared log color scale. The two panels expose how the precoders
-distribute deposited power spatially. ZF disperses its energy: the
-geometric nulling pattern leaves bright ridges between served-user
-beams and does not concentrate on bodies because their location is
-not in the precoder's information set. The proposed multi-body
-MMSE-with-exposure does the opposite: it pushes per-body absorbed
-power up to the $\eta_S\,L_{\mathrm{RL}}$ projection ceiling on
-bodies where the cap is binding (visible as the bright cluster
-near the panel-facing crowd), and the white contour at
+distribute deposited power spatially. Unconstrained ZF disperses
+its energy: the geometric nulling pattern leaves bright ridges
+between served-user beams and does not concentrate on bodies
+because their location is not in the precoder's information set;
+on the slots where the per-body cap binds, ZF overshoots
+silently. Projected ZF (right) cuts the precoder uniformly on
+binding slots so per-body absorbed power lands at the
+$\eta_S\,L_{\mathrm{RL}}$ ceiling on the binding slot and well
+below on the non-binding slots; the white contour at
 $\Pabs/L_{\mathrm{RL}} = 1$ marks the level set where the
-projection bites. The operational argument is that the geometric
-ZF heatmap leaves a long compliance tail on bodies whose presence
-is not in its design; the proposed heatmap transforms this into a
-deterministic ceiling.
+projection bites. The operational argument is that the
+unconstrained heatmap leaves a long compliance tail on bodies
+whose presence is not in the precoder's design; the projected
+heatmap transforms this tail into a deterministic ceiling.
 
 \begin{figure*}[!t]
   \centering
@@ -1181,13 +1196,13 @@ deterministic ceiling.
   \caption{Per-cell mean $\Pabs/L_{\mathrm{RL}}$ over the 50-second
   trace at $43\,$dBm, $E_{\mathrm{RL}} = 3\,$V/m, $2\,$m grid,
   shared log color scale; empty cells (no body visited) shown in
-  light grey. Left: regularised ZF, plaza-specular paths. Right:
-  multi-body MMSE-with-exposure with primal projection under
-  virtual-IMU pose. The white contour marks
-  $\Pabs/L_{\mathrm{RL}} = 1$. ZF disperses below the cap but
-  leaves an uncontrolled tail; the proposed precoder pushes to the
-  projection ceiling on bodies where the cap binds and stays
-  bounded by construction.}
+  light grey. Left: regularised ZF (unconstrained, non-compliant),
+  plaza-specular paths. Right: ZF passed through per-slot primal
+  projection against the body-twin's posed $\Qmat^{(u)}$. The white
+  contour marks $\Pabs/L_{\mathrm{RL}} = 1$. ZF disperses below
+  the cap on most cells but leaves an uncontrolled tail on
+  binding-slot bodies; projected ZF holds the tail at the
+  $\eta_S\,L_{\mathrm{RL}}$ ceiling by construction.}
   \label{fig:spatial}
 \end{figure*}
 
@@ -1198,18 +1213,21 @@ Brussels and Italian regimes also impose $6\,$min and $24\,$h
 median averaging windows respectively. \Cref{fig:chronic} plots the
 ECDF of body-integrated absorbed energy across all bodies as a
 fraction of the chronic budget $L_{\mathrm{RL}}\!\cdot\!T$ (here
-$T = 50\,$s), with one curve per precoder. The story matches the
-instantaneous compliance picture: MRT pushes most bodies past
-the chronic budget (median fraction $0.92$); regularised ZF and
-WC back-off keep all bodies under (medians $0.17$ and $0.13$); the
-proposed multi-body MMSE-with-exposure under virtual-IMU pose
-sits at median $0.21$, slightly higher than ZF because the primal
-projection drives bodies up to the cap on slots where it binds,
-trading a small chronic-dose increase for an order-of-magnitude
-reduction in the per-slot violation tail of \cref{fig:hero}. The
-ECDF scales linearly with window length under stationary load, so
-the medians transfer to the $6\,$min and $24\,$h regulatory windows
-unchanged.
+$T = 50\,$s), with one curve per precoder. MRT pushes most bodies
+past the chronic budget (median fraction $0.92$); regularised ZF
+violates the budget on the slot-binding bodies but keeps the median
+at $0.17$ across the population; WC back-off keeps everyone under
+at $0.13$; projected ZF lands at median $0.18$ (essentially the same
+as unconstrained ZF, because the projection only scales on
+binding slots and the binding mass is a small fraction of the
+trace) and is the right operating point for the regulatory
+window because per-slot violations are zero. The dual-ascent
+multi-body MMSE-with-exposure sits at median $0.21$ and is below
+the chronic budget on every body, but the price for that comes
+from the per-stream beam shrinkage rather than from any compliance
+benefit (\cref{tab:baselines}). The ECDF scales linearly with
+window length under stationary load, so the medians transfer to
+the $6\,$min and $24\,$h regulatory windows unchanged.
 
 \begin{figure}[!t]
   \centering
@@ -1217,12 +1235,12 @@ unchanged.
   \caption{ECDF of body-integrated absorbed energy as a fraction of
   the chronic RL budget $L^{(u)}_{\mathrm{RL}}\!\cdot\!T$ over the
   $T = 50\,$s trace, log scale, one curve per precoder. MRT pushes
-  most bodies past the chronic budget; ZF, WC back-off and the
-  proposed multi-body MMSE-with-exposure all keep every body well
-  under. The proposed precoder sits slightly above ZF on chronic
-  dose because primal projection drives the per-slot ceiling up to
-  $\eta_S\,L^{(u)}$, trading a small mean increase for an
-  order-of-magnitude reduction in the per-slot violation tail.}
+  most bodies past the chronic budget; ZF, WC back-off, projected
+  ZF, and the dual-ascent multi-body MMSE-with-exposure all keep
+  every body well under chronic when the per-slot projection is
+  applied. Projected ZF and ZF carry nearly identical chronic-dose
+  curves because primal projection scales the precoder only on
+  the small fraction of slots where the per-slot cap binds.}
   \label{fig:chronic}
 \end{figure}
 
@@ -1345,66 +1363,83 @@ Italian rural attention level under the 2024 decree, and the
 Brussels pre-2014 reference), the per-body cap binds and the
 precoder choice is constrained on it. Regularised ZF gives the
 highest unconstrained sum-rate but at $14.6\,\%$ violation rate.
-The proposed multi-body MMSE-with-exposure with primal projection
-runs at $1.3\,\%$ violation rate under virtual-IMU pose
-(0.0\% under oracle pose), an order of magnitude compliance gain.
-The cap-binding corner is where the multi-body machinery is
-load-bearing; the post-2014 Brussels $14.57\,$V/m cumulative cap,
-the Italian $15\,$V/m attention level for high-density urban
+ZF with primal projection holds violations at $0.0\,\%$ at the MCS
+sum-cap of $74.0\,$Gbps; this dominates the dual-ascent multi-body
+MMSE-with-exposure ($1.3\,\%$ violation, $19.8\,$Gbps under
+virtual-IMU pose) by a factor of $\sim 4$ on rate at the same
+compliance level. The post-2014 Brussels $14.57\,$V/m cumulative
+cap, the Italian $15\,$V/m attention level for high-density urban
 centres, and the $30\,$dBm conducted-power band sit in slack
 regimes where any reasonable precoder satisfies the cap by orders
-of magnitude. The chronic-dose ECDF separates the served,
-cooperating, and bystander populations and is the regulator-facing
-readback that survives both regimes.
+of magnitude.
 
-The pose-information triage is the operationally interesting
-result. Pose telemetry shapes $\Qmat^{(u)}(\bm\theta)$ by aligning
-its leading eigenvector with the body's torso plane; the dual
-ascent converts that shaping into a tighter feasible cone in
-$\bm\lambda$, and the primal projection trims the iterate uniformly
-to feasibility against the full-rank operator. Sum-rate is
-essentially flat across pose sources because the projection sets
-the operating point; what differs is the projection-active fraction,
-which is highest under T-pose Cauchy and lowest under oracle. The
-IMU pose at $\sigma_{\mathrm{joint}} = 4^\circ$ sits between and is
-the deployment-honest reading.
+The dominance of projected ZF over the dual-ascent QCQP solver
+inverts the v2 narrative of this paper. Two specific properties of
+deployed 5G NR are responsible. First, the per-stream MCS28 cap of
+$7.4\,$bps/Hz clips Shannon-rate at the $\sim 30\,$dB SINR
+threshold; second, regularised ZF on a tens-of-element panel
+achieves $40$-$50\,$dB SINR at the served users in the binding
+regime. The composition leaves $10$-$20\,$dB of SINR margin above
+the clip, which the per-slot scaling of \cref{eq:primal-projection}
+absorbs without rate cost. The dual ascent, by contrast, redirects
+power away from served-user constraints because served-user bodies
+themselves bind in the served-user-binding regime; the resulting
+beam shrinkage drops SINR below the clip and the rate falls into
+the unsaturated logarithmic regime. The dual-ascent solver retains
+its place in the academic uncapped-Shannon objective, the
+min-TX-power objective, and the SINR-margin-tight regime
+(low-element panels, dense served-user counts) where projection
+forces the served-user SINR below the clip.
 
-The wall-clock budget at the binding regime ($M = 64$, $K = 25$,
-$B = 50$) puts the median per-slot precoder solve at $\sim 330\,$ms
-on a single 4090 GPU under JAX with $\textsf{max\_outer} = 24$ and
-$\textsf{lowrank\_rank} = 6$; on CPU NumPy the same computation
-takes $\sim 1500\,$ms. The operationally-correct framing is
-soft-real-time advisory at the slot window cadence rather than the
-hard PHY-rate: the slot is $33\,$ms, body motion is $\sim 1\,$s per
-metre of displacement, and the pose estimator's significant
-trajectory updates land at $\sim 100\,$ms. Scheduling the dual
-ascent across slots inside a 30-slot pose window brings the median
-into the $10$-to-$30\,$ms regime per amortised slot.
+The pose-information triage feeds both algorithms symmetrically:
+the projection scale and the dual-ascent residuals are computed
+against the same posed $\Qmat^{(u)}$. We report the ablation on
+the dual-ascent precoder because it is the more pose-sensitive of
+the two; oracle and IMU pose at $\sigma_{\mathrm{joint}} =
+4^\circ$ produce indistinguishable compliance and rate. The T-pose
+fallback (every body modelled as a tier-C bystander without IMU)
+is qualitatively worse because the canonical T-pose's
+$\Qmat^{(u)}$ does not envelope the actual moving-population
+operator; pose-agnostic deployments must use the conditional
+projected-area Cauchy bound of \cref{app:cauchy} instead.
+
+The wall-clock budget collapses with the algorithm change. The
+projected-ZF solver costs $\sim 0.5\,$ms per slot on CPU NumPy:
+one Cholesky factorisation of the regularised ZF system matrix,
+followed by $K$ rank-update solves and $B$ low-rank
+absorbed-power evaluations. The dual-ascent solver of
+\cref{app:dualascent} costs $\sim 350\,$ms on CPU and $\sim 25\,$ms
+on a single GPU; the projected ZF baseline does not need GPU
+acceleration to fit in a $33\,$ms PHY slot.
 
 The bound discussion is sharper than expected. The naive
 projected-area bound on $\xx^H \Qmat^{(u)} \xx$ is loose by 21 to
 $27\,$dB on the BS-side steering precoder and fails at 49 to
-$70\,\%$ of random and ECBF precoders. The conditional bound of
+$70\,\%$ of random and shaped precoders. The conditional bound of
 \cref{app:cauchy} is the right object: it applies over a chosen
 direction set, and the worst case over that set is what the twin
-commits to. The empirical Q-rank result has a related geometric
-content: at $26\,$GHz with an $8\times 8$ panel resolving
+commits to. The empirical $\Qmat^{(u)}$-rank result has a related
+geometric content: at $26\,$GHz with an $8\times 8$ panel resolving
 $\sim 14^\circ$ in azimuth, the dominant body modes condense into
 3 to 4 distinguishable beam directions regardless of multipath
 density. Adding paths raises the trace but not the rank.
 
-The present evaluation has four limitations. First, the PHY surrogate
-is Shannon capacity rather than Sionna NR PHY. A calibrated
-modulation-coding-scheme link curve would shift the absolute
-sum-rate numbers but should not affect the violation/sum-rate
-trade-off. Second, the $5\,$min steady-state window is a single seed;
-multi-seed averaging would smooth the chronic-dose ECDF tails further.
-Third, the ZF baseline is naive (singular $\hh \hh^H$ at $K = 25$ in
-UMa-LOS). A regularised ZF would not collapse, and the comparison is
-informative only as a degeneracy boundary. Fourth, the IMU model is
-a calibrated Madgwick/xsens proxy; a deep-learning-augmented
-inertial-mocap pipeline would lower $\sigma_{\mathrm{joint}}$ to the
-$1.5^\circ$ floor of \cref{fig:imu-sweep}. None of these affect the
+The present evaluation has four limitations. First, the PHY
+surrogate is Shannon-capacity-with-MCS-clip rather than Sionna NR
+PHY. A calibrated modulation-coding-scheme link curve would shift
+the absolute sum-rate numbers and could change the
+SINR-margin condition of \cref{prop:projection-optimality}, but
+the qualitative dominance of projected ZF holds whenever the
+deployable rate model has a per-stream cap that ZF saturates
+unconstrained. Second, the $50$-second steady-state window is a
+single seed; multi-seed averaging would smooth the chronic-dose
+ECDF tails further. Third, the bystander-binding geometry was
+constructed by hand; a stadium-scale auditorium-and-stage geometry
+would test the dual-ascent solver under a less favourable
+SINR-margin regime. Fourth, the IMU model is a calibrated
+Madgwick/xsens proxy; a deep-learning-augmented inertial-mocap
+pipeline would lower $\sigma_{\mathrm{joint}}$ to the $1.5^\circ$
+floor of \cref{fig:imu-sweep}. None of these affect the
 qualitative conclusions.
 
 The exposure-aware multi-body architecture extends in three
