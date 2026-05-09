@@ -119,7 +119,7 @@ bystanders, and undetected occupancy; IMU-bearing tiers carry a
 virtual inertial-mocap pose at $4^\circ$ per-joint RMS attitude
 error. We then show that under the 3GPP NR FR2 MCS28 spectral-efficiency
 cap of $7.4\,$bps/Hz (which a regularised zero-forcing precoder on
-a tens-of-element panel saturates at $30$-$50\,$dB SINR margin), the
+a tens-of-element panel saturates with substantial SINR margin), the
 multi-body sum-rate-maximisation QCQP under per-body caps admits a
 one-line per-slot closed-form optimum: the primal projection of
 regularised ZF, $\ww_k \leftarrow \alpha\,\ww_k$ with $\alpha =
@@ -214,7 +214,7 @@ dictionary is built once and refreshed under body translation by a
 diagonal phasor. Second, we observe that the operational rate model
 of 5G NR FR2 is the per-stream MCS cap of $7.4\,$bps/Hz at MCS28,
 not uncapped Shannon. Regularised ZF on a tens-of-element panel
-saturates this cap at $30$-$50\,$dB SINR for the served-user count
+saturates this cap with margin above the clip threshold for the served-user count
 that fits the array DoF. We prove
 (\cref{prop:projection-optimality}) that under the MCS-cap rate
 model and the SINR-margin condition that ZF achieves the cap
@@ -773,11 +773,16 @@ The hypothesis $\alpha^2\,\mathrm{SINR}^{\mathrm{ZF}}_{\min} \geq
 leaves enough SINR headroom above the $\sim 30\,$dB MCS28 clip
 threshold to absorb the worst-body overshoot factor $\rho^{-1}$
 without falling below the cap. In the plaza-scale binding regime
-of \cref{sec:eval}, we measure $\rho \in [4, 17]$ at $E_{\mathrm{RL}}
-= 3\,$V/m and $\mathrm{SINR}^{\mathrm{ZF}}_{\min} \approx 50\,$dB
-on the $99$th percentile served user, so the hypothesis holds with
-margin of $\sim 8$-$13\,$dB and ZF + projection saturates the MCS
-cap on every slot of the trace. \Cref{prop:projection-optimality}
+of \cref{sec:eval} we measure $\rho \in [4, 17]$ at $E_{\mathrm{RL}}
+= 3\,$V/m, so the hypothesis is equivalent to
+$\mathrm{SINR}^{\mathrm{ZF}}_{\min} \geq \rho/\eta_S \cdot
+(2^{S_{\max}} - 1) \approx 17.5\cdot 10^{S_{\max}/10}/\eta_S
+\sim 42\,$dB. Empirically, ZF saturates the MCS sum-cap of
+$74.0\,$Gbps on every slot of the trace and projected ZF retains
+the same cap at zero violation, which witnesses
+$\mathrm{SINR}^{\mathrm{ZF}}_{\min}$ at or above this margin
+threshold across the entire $1500$-slot window.
+\Cref{prop:projection-optimality}
 is the gating result: the multi-body QCQP that motivates the
 ECBF/MMSE-with-exposure machinery of
 \cite{Ying2015,Ying2017,Hochwald2014} extended to $K + B$ bodies
@@ -1034,23 +1039,22 @@ Regime & Precoder & Sum-rate (Gbps) & Violation rate & $p_{\max}$ (mW) \\
 \end{table}
 
 The mechanism is exactly the SINR-margin hypothesis of
-\cref{prop:projection-optimality}. Regularised ZF on the $M = 64$
-panel achieves served-user SINR of $40$-$50\,$dB, which is
-$10$-$20\,$dB above the MCS28 clip threshold of $\sim 30\,$dB. The
-worst-body absorbed-power overshoot factor is bounded at
-$\rho \leq 17$ in the plaza traces, which corresponds to
-$\alpha^2 \geq \eta_S/17 \approx 0.057$ and post-projection SINR of
-$\geq 28\,$dB above MCS threshold for the worst served user; the
-clip engages and rate-cost is zero. The dual-ascent solver, by
+\cref{prop:projection-optimality}. The worst-body absorbed-power
+overshoot factor is bounded at $\rho \leq 17$ in the plaza traces,
+which corresponds to $\alpha^2 \geq \eta_S/17 \approx 0.057$. ZF
+empirically saturates the MCS28 cap unconstrained, and projected ZF
+saturates the same cap after scaling by $\alpha$, which witnesses
+that ZF holds enough SINR margin above $\sim 30\,$dB to absorb the
+projection without falling below the clip threshold. The dual-ascent solver, by
 contrast, allocates dual mass on served-user constraints because
 served users themselves bind in the served-user-binding regime;
 the resulting precoder shrinks each served beam below the MCS
 threshold and the sum-rate falls into the unsaturated logarithmic
 regime. The bystander-binding geometry shifts the binding
-constraints to non-served bodies, but ZF retains its $\sim 50\,$dB
-SINR margin on the served users; projection scales the precoder
-down by the bystander-overshoot factor and rate-cost is again zero
-because the post-projection SINR is still above MCS clip.
+constraints to non-served bodies, but ZF retains its served-user
+SINR margin; projection scales the precoder down by the
+bystander-overshoot factor and rate-cost is still zero because
+the post-projection SINR remains above the MCS clip.
 
 \subsection{Pose-information triage and the IMU
 estimator}\label{sec:eval-imu}
@@ -1378,7 +1382,7 @@ inverts the v2 narrative of this paper. Two specific properties of
 deployed 5G NR are responsible. First, the per-stream MCS28 cap of
 $7.4\,$bps/Hz clips Shannon-rate at the $\sim 30\,$dB SINR
 threshold; second, regularised ZF on a tens-of-element panel
-achieves $40$-$50\,$dB SINR at the served users in the binding
+achieves SINR margin above the clip at the served users in the binding
 regime. The composition leaves $10$-$20\,$dB of SINR margin above
 the clip, which the per-slot scaling of \cref{eq:primal-projection}
 absorbs without rate cost. The dual ascent, by contrast, redirects
@@ -1481,7 +1485,7 @@ simultaneously, requires no inner optimisation, and is identity
 when ZF already satisfies the caps at the safety fraction $\eta_S$.
 The MCS-cap rate model is what kills the rate-cost of uniform
 scaling: regularised ZF on a tens-of-element panel achieves
-$30$-$50\,$dB SINR at the served users, well above the MCS28 clip
+substantial SINR at the served users, well above the MCS28 clip
 threshold, so the projection scales SINR down without dropping
 below the clip. The dual-ascent QCQP solver of \cref{app:dualascent},
 which extends the per-stream MMSE-with-exposure stationarity of
