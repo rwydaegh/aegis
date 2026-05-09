@@ -773,14 +773,14 @@ optimum.
 
 The hypothesis $\alpha^2\,\mathrm{SINR}^{\mathrm{ZF}}_{\min} \geq
 2^{S_{\max}} - 1$ has a single physical meaning: regularised ZF
-leaves enough SINR headroom above the $\sim 30\,$dB MCS28 clip
-threshold to absorb the worst-body overshoot factor $\rho^{-1}$
-without falling below the cap. In the plaza-scale binding regime
-of \cref{sec:eval} we measure $\rho \in [4, 17]$ at $E_{\mathrm{RL}}
-= 3\,$V/m, so the hypothesis is equivalent to
-$\mathrm{SINR}^{\mathrm{ZF}}_{\min} \geq \rho/\eta_S \cdot
-(2^{S_{\max}} - 1) \approx 17.5\cdot 10^{S_{\max}/10}/\eta_S
-\sim 42\,$dB. Empirically, ZF saturates the MCS sum-cap of
+leaves enough SINR headroom above the $2^{S_{\max}} - 1 \approx
+22.3\,$dB MCS28 clip threshold to absorb the worst-body overshoot
+factor $\rho/\eta_S$ without falling below the cap. In the
+plaza-scale binding regime of \cref{sec:eval} we measure $\rho \in
+[4, 17]$ at $E_{\mathrm{RL}} = 3\,$V/m, so the hypothesis is
+equivalent to $\mathrm{SINR}^{\mathrm{ZF}}_{\min} \geq
+(\rho/\eta_S)\,(2^{S_{\max}} - 1) \approx 17.5 \cdot 168 \approx
+34.7\,$dB. Empirically, ZF saturates the MCS sum-cap of
 $74.0\,$Gbps on every slot of the trace and projected ZF retains
 the same cap at zero violation, which witnesses
 $\mathrm{SINR}^{\mathrm{ZF}}_{\min}$ at or above this margin
