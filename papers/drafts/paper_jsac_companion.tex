@@ -1,0 +1,1038 @@
+% =====================================================================
+% paper_jsac_companion.tex
+% A companion explainer for Robin, walking him through paper_jsac.tex.
+% Not for submission. Casual voice. Single column. Lots of figures.
+% Targets: the comms-side jargon (WMMSE, KKT, ZF generalisation, scene
+% dictionary, tier system, regime story, Cauchy failure) that the main
+% paper takes for granted but Robin does not yet have a clean mental
+% model for.
+% =====================================================================
+
+\documentclass[11pt]{article}
+
+\usepackage[a4paper,margin=2.4cm]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{parskip}
+
+\usepackage{amsmath,amssymb,bm,mathtools}
+\usepackage{graphicx}
+\graphicspath{%
+  {../../JSAC/code/experiments/rank_check/}%
+  {../../JSAC/code/experiments/cauchy_tightness/}%
+  {../../JSAC/code/experiments/csi_calibration/}%
+  {../../JSAC/code/experiments/tier_c_decision/}%
+  {../../JSAC/code/experiments/plaza_run/figures/}%
+}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage[hidelinks]{hyperref}
+\usepackage{xcolor}
+
+\usepackage{enumitem}
+
+% Sidebar for "the part that confused you"
+\usepackage[framemethod=TikZ]{mdframed}
+\newenvironment{nb}[1][]{%
+  \begin{mdframed}[backgroundcolor=yellow!7,linecolor=yellow!50!black,
+    linewidth=0.4pt,roundcorner=2pt,innertopmargin=8pt,
+    innerbottommargin=8pt,innerleftmargin=10pt,innerrightmargin=10pt,
+    frametitle={\textbf{#1}},frametitlebackgroundcolor=yellow!20]%
+}{\end{mdframed}}
+\newenvironment{defs}[1][]{%
+  \begin{mdframed}[backgroundcolor=blue!4,linecolor=blue!40!black,
+    linewidth=0.4pt,roundcorner=2pt,innertopmargin=8pt,
+    innerbottommargin=8pt,innerleftmargin=10pt,innerrightmargin=10pt,
+    frametitle={\textbf{#1}},frametitlebackgroundcolor=blue!10]%
+}{\end{mdframed}}
+
+% math macros (kept aligned with paper_jsac.tex so you can flip between)
+\newcommand{\khat}{\hat{\bm{k}}}
+\newcommand{\nhat}{\hat{\bm{n}}}
+\newcommand{\rr}{\mathbf{r}}
+\newcommand{\xx}{\mathbf{x}}
+\newcommand{\hh}{\mathbf{h}}
+\newcommand{\ww}{\mathbf{w}}
+\newcommand{\gvec}{\mathbf{g}}
+\newcommand{\Pabs}{P_{\mathrm{abs}}}
+\newcommand{\Sab}{S_{\mathrm{ab}}}
+\newcommand{\Aab}{A_{\mathrm{ab}}}
+\newcommand{\Qmat}{\mathbf{Q}}
+\newcommand{\Mmat}{\mathbf{M}}
+\newcommand{\Jmat}{\mathbf{J}}
+\newcommand{\Phimat}{\mathbf{\Phi}}
+
+\title{\textbf{A companion to the JSAC paper, written for Robin}\\[2pt]
+\large{Big picture, comms jargon decoded, and what the experiments are actually saying}}
+\author{Self-reading edition. Not for submission.}
+\date{2026-05-07}
+
+\begin{document}
+\maketitle
+
+\section*{Read this first}
+
+You wrote \texttt{paper\_jsac.tex} (and \texttt{paper\_v2.tex} before it,
+and the spine doc, and three rounds of brainstorm). All of it sits on
+\texttt{ARCHEOLOGY.md} and \texttt{paper\_spine.md}. The paper itself is
+correct and self-contained, but you are not the audience: a JSAC reviewer
+who already lives in multi-user MIMO is. So when you re-read it, half
+the sentences sit on terminology that does not yet have a clean home in
+your head, and you cannot tell whether a paragraph is doing real work or
+just paying its taxes.
+
+This document is a friend reading the paper with you. It assumes you
+already know everything in:
+\begin{itemize}[leftmargin=1.4em,itemsep=2pt]
+  \item \texttt{theory/summary\_paper.tex} (the monograph summary): the
+  local absorption law, Cauchy/projected area, the exposure operator
+  $\Qmat$, the Fresnel/depth factorisation.
+  \item \texttt{papers/TAP\_paper/paper.tex}: closed-form whole-body
+  dosimetry, $T_0$, $\Aab$, ambient occlusion, layered fat below 6\,GHz.
+\end{itemize}
+It will not re-explain those. It will explain the \textbf{communications}
+side, the \textbf{architecture}, and the \textbf{regime story} the JSAC
+paper actually rests on, plus the half-dozen places you got lost.
+
+Section 1 is the $30$-second pitch in your own voice.
+Section 2 is a defs of the comms terms you have been seeing without a
+dictionary. Section 3 walks the precoder math at the level your
+backend brain wants. Section 4 explains the closed-loop architecture
+(why the dictionary, translation phasor, CSI calibration, tiers all
+need to be there). Section 5 tells you what each plaza-run experiment
+is actually doing, with the figure inline so you do not have to flip.
+Section 6 is the Cauchy story (it is more interesting than you remember).
+Section 7 is what is genuinely new in this paper vs. what you already
+knew from earlier work, and what the next-paper hooks are.
+
+Every figure is dropped in here so you can read it without bouncing.
+
+\bigskip\hrule\bigskip
+
+\section{The 30-second pitch in your own voice}
+
+\textbf{One sentence:} every body in the cell becomes a $64\!\times\!64$
+Hermitian matrix $\Qmat^{(u)}$ inside the base station's precoder, the
+multi-user QCQP under per-body absorbed-power caps has a closed form
+that contains zero-forcing as its rank-one limit, and the plaza
+experiment shows the cap is slack by four orders of magnitude so the
+practical value is chronic-dose stratification by tier, not
+instantaneous compliance.
+
+\textbf{Three-paragraph version:}
+
+\textit{The blocker.} Brussels caps cumulative outdoor field at
+$14.57\,$V/m. Italy caps at 6 to $15\,$V/m. These are reference levels:
+free-space proxies for actual tissue absorption, and they are 10 to
+$30\times$ tighter than ICNIRP's basic restriction. Operators
+deploying mmWave downlink in those jurisdictions are not propagation-limited,
+they are RL-limited. The cap is conservative because it cannot see what
+is actually happening on the body. Your machinery can.
+
+\textit{The move.} Treat each body as a digital twin maintained inside
+the BS control loop. Each body contributes a Hermitian PSD operator
+$\Qmat^{(u)} \in \mathbb{C}^{M \times M}$ such that absorbed power is
+$\xx^H \Qmat^{(u)} \xx$. The BS already does ray tracing on its scene
+model to plan beams. The same path set that gives the channel
+$\hh_k$ to the served user gives every $\Qmat^{(u)}$ on every body
+through your TAP-paper machinery. So the twin is computed from
+quantities the network already maintains. Stack budgets across served
+users, cooperating non-users, and ISAC-detected bystanders, and solve
+the multi-user sum-rate QCQP. The KKT closed form is
+$\ww_k^\star = (\Qmat_{\mathrm{tot}} + \nu \mathbf{I})^{-1} \gvec_k$.
+That is the same shape as regularised zero-forcing. ZF is its
+rank-one degenerate limit. Drop-in, not a new solver.
+
+\textit{The reality check.} On the Brussels Grand Place geometry with
+50 SMPL-X bodies at $26\,$GHz on an $8\!\times\!8$ panel and 25 served
+users, the cap sits four orders of magnitude away from the actual
+absorbed power. The five precoders you compare (MRT, ZF, worst-case
+back-off, multi-body ECBF, pose-known oracle) collapse to one operating
+point on the budget metric. So the paper pivots: it characterises the
+\emph{regime} (when does the cap bind, when does it not), shows that
+chronic-dose ECDFs separate by tier even when instantaneous compliance
+is easy ($\sim 1.5\times$ between served and cooperating), and walks
+back the Cauchy bound from a universal upper bound to a conditional
+one (it is loose by 21 to $27\,$dB on the steering direction and
+breached by half of random precoders).
+
+That is the paper. Now everything else is filling in why each piece is
+there.
+
+\section{Glossary: the comms side, in your language}
+
+You know what a precoder is. You know MRT. You know what "illuminate a
+phantom and compute Sab" means. The paper assumes a half-dozen more
+things that you have never had a reason to internalise. Here they are.
+
+\begin{defs}[Precoding terms cheat sheet]
+\textbf{Precoder $\xx$ or $\ww_k$.} A complex vector in $\mathbb{C}^M$
+that the BS multiplies the data symbol by, then transmits one component
+per antenna element. So if $M=64$, the precoder is 64 complex numbers,
+one phase-and-amplitude knob per element. The radiated field anywhere
+in space is linear in $\xx$. Every dosimetric quantity that depends on
+the field is quadratic in $\xx$. That is why $\Qmat$ shows up: power
+is $|E|^2$, $E$ is linear in $\xx$, so power is $\xx^H \Qmat \xx$ for
+some Hermitian $\Qmat$. You wrote that operator. The whole paper is
+about exploiting that quadratic form.
+
+\textbf{Channel $\hh_k$.} For served user $k$, the BS-to-UE channel
+vector. The received baseband signal at user $k$ is $y_k = \hh_k^T \xx
++ n$. The channel comes from the same ray tracer that gives you the
+path set used to build $\Qmat^{(u)}$. Your TAP paper computes
+$\Sab(\rr)$ from a path set; the network computes $\hh_k$ from the
+same path set evaluated at the UE position. Same upstream, two
+downstream uses.
+
+\textbf{MRT (maximum ratio transmission).} The simplest single-user
+precoder: $\xx \propto \hh_k^*$. Phases align constructively at the UE.
+Maximises SNR. Ignores everyone else. You know this.
+
+\textbf{ZF (zero-forcing).} Multi-user. Stack $K$ user channels as the
+rows of $\mathbf{H} \in \mathbb{C}^{K \times M}$. The ZF precoder for
+user $k$ is the $k$-th column of $\mathbf{H}^H (\mathbf{H} \mathbf{H}^H)^{-1}$,
+which projects the precoder for user $k$ onto the null space of all
+other users' channels. So user $k'$ sees $\hh_{k'}^T \ww_k = 0$ for
+$k' \neq k$. Hard nulls, no inter-user interference, but it costs DoF:
+each null eats one degree of freedom. With $K=M$, you exhaust the
+array.
+
+\textbf{Regularised ZF.} Replace the inverse with
+$(\mathbf{H} \mathbf{H}^H + \nu \mathbf{I})^{-1}$. Soft nulls, trades
+a bit of interference for not blowing up when $\mathbf{H} \mathbf{H}^H$
+is near-singular. Peel-Hochwald-Swindlehurst 2005.
+
+\textbf{WMMSE (weighted minimum mean square error).} The standard
+trick for converting a non-convex multi-user sum-rate maximisation
+into something solvable. The sum-rate $\sum_k \log(1 + \mathrm{SINR}_k)$
+is non-convex in $\{\ww_k\}$ jointly. WMMSE replaces it with a quadratic
+that has the same fixed points: $\sum_k [\log u_k - u_k e_k(\ww_k)]$,
+where $e_k$ is the per-user MSE and $u_k$ is a per-user weight. You
+alternate three steps: optimise $u_k$, optimise the receive equaliser
+$v_k$, optimise $\ww_k$. The third step is quadratic in $\ww_k$, so it
+plays nicely with quadratic exposure constraints. Christensen 2008,
+Shi 2011. \textbf{This is why the closed form exists.} Without WMMSE,
+the multi-user sum-rate problem under exposure caps does not collapse
+to one matrix inverse per user.
+
+\textbf{KKT / Karush-Kuhn-Tucker.} The first-order optimality conditions
+for a constrained optimisation. For a Lagrangian
+$\mathcal{L} = f + \sum_i \lambda_i g_i$ with constraints $g_i \leq 0$,
+KKT says: stationarity ($\nabla f + \sum \lambda_i \nabla g_i = 0$),
+primal feasibility ($g_i \leq 0$), dual feasibility ($\lambda_i \geq 0$),
+and complementary slackness ($\lambda_i g_i = 0$). When you see
+"closed-form solver" in the paper, it means KKT-stationarity has
+been solved analytically for the inner WMMSE step at fixed dual
+variables, and the outer dual ascent on $(\bm\lambda, \nu)$ is what
+runs iteratively. It is exactly the structure of Lagrangian duality
+you have probably seen in optimisation 101, just with quadratic forms
+in $\mathbb{C}^M$.
+
+\textbf{QCQP (quadratically constrained quadratic program).} A problem
+with quadratic objective and quadratic constraints. The exposure-
+constrained sum-rate problem is one of these (after the WMMSE
+substitution). General QCQPs are NP-hard, but the structure you have
+(PSD constraints, ridge regulariser, KKT closed form for the inner
+step) reduces yours to a sequence of $M\times M$ Cholesky solves with
+a Newton-like outer loop on the dual variables.
+
+\textbf{Dual variables $\bm\lambda$, $\nu$.} One non-negative scalar
+per constraint. $\lambda_u$ is the "shadow price" on body $u$'s
+absorbed-power budget: how much sum-rate would gain if you were given
+$1\,$\textmu W more headroom on body $u$. $\nu$ is the same thing for
+the BS transmit-power budget. In the slack regime,
+$\lambda_u = 0$ for all bodies, the exposure operators drop out of
+\cref{eq:closedform-companion}, and the precoder reduces to plain WMMSE
+zero-forcing. In the binding regime, the active set of $\lambda_u$ is
+non-zero and the precoder steers \emph{against} the exposure modes of
+constrained bodies. That is the entire control story.
+
+\textbf{ECBF (exposure-constrained beamforming).} Generic name for any
+precoder that solves a sum-rate / SINR problem under SAR or
+absorbed-power caps. Hochwald 2014 introduced the SAR-matrix version
+for a single body. Ying 2015 / 2017 generalised to multi-user. Your
+paper generalises again to a heterogeneous body population with
+soft per-body budgets.
+\end{defs}
+
+\begin{defs}[Architecture terms]
+\textbf{ISAC (integrated sensing and communications).} Use the same
+panel and waveform for radar-style sensing in addition to comms. In
+this paper, ISAC means monostatic radar at the BS panel: send a
+chirp, listen for the echo, detect bodies that have no phone uplink.
+This is how the BS learns about tier-C bystanders.
+
+\textbf{CPI (coherent processing interval).} The window over which
+radar pulses are coherently integrated. $10\,$ms CPI gives a $10\,$dB
+gain in SNR per decade if the target is stationary. The paper's link
+budget shows that a $10\,$ms CPI is enough to detect a $0\,$dBsm body
+at $50\,$m with $P_d = 0.99$ at $P_{fa} = 10^{-6}$.
+
+\textbf{CSI (channel state information).} The BS's estimate of $\hh_k$
+for each served user. Comes from uplink pilots (the UE transmits a known
+sequence; the BS measures what it received). Used both to decide the
+precoder for the next slot \emph{and}, in this paper, to calibrate the
+ray-traced path amplitudes against reality.
+
+\textbf{Path dictionary $\mathcal{D}$.} A precomputed library of ray
+sets indexed by candidate body positions in the cell. Run the ray
+tracer once over the static scene-and-array geometry on a grid of
+$1\,$m spacing across the cell, store $(\khat_n, \bm\psi_n,
+\alpha_n^{(d)}, j(n))$ per probe point. Then at runtime, looking up
+the path set for a body at position $\rr_0$ is an $O(1)$ lookup, not
+a fresh ray trace. Pose still varies (the body's mesh is different
+when posed), but the path geometry on its $1\,$m grid cell does not.
+This is what makes the loop run in real time.
+
+\textbf{Translation phasor.} If the body moves by $\mathbf{t}$ inside
+its grid cell (so the path \emph{geometry} doesn't change, only the
+phase along each ray to the body's centre), the per-body Gram matrix
+$\Mmat^{(u)}$ updates by a diagonal complex-exponential factor:
+$\Mmat^{(u)}(\rr_0 + \mathbf{t}) = \Phimat(\mathbf{t})^H
+\Mmat^{(u)}(\rr_0) \Phimat(\mathbf{t})$. This avoids re-running the
+ray tracer for sub-grid translations. It is just the path-space
+version of the obvious thing: shift the observation point, every
+plane-wave path picks up an extra phase $\exp(-i k_0 \khat_n \cdot
+\mathbf{t})$.
+
+\textbf{Tiered telemetry.} Four classes of body, distinguished by what
+the BS knows about them: A (served users, full GPS+IMU), B (cooperating
+non-users, same telemetry but no served traffic), C (sensed bystanders,
+position from ISAC, pose from worst-case envelope), D (undetected,
+fall back to occupancy assumption). The reason this matters: you have
+to constrain bystanders too, and bystanders by definition do not
+report anything to the BS. The tier system makes that operational.
+\end{defs}
+
+\begin{defs}[The "regime" jargon]
+\textbf{Slack regime.} The exposure budgets $L^{(u)}$ are larger than
+the achievable absorbed power under any feasible precoder. Dual
+variables $\lambda_u$ all sit at zero. Exposure constraints do not
+bind. The precoder reduces to WMMSE / regularised ZF. This is what
+the plaza scenario shows: $\Pabs/L_{\mathrm{RL}} \approx 10^{-3}$, far
+below the cap.
+
+\textbf{Binding regime.} At least one $\lambda_u > 0$. The exposure
+constraints actively shape the precoder. The closed-form QCQP machinery
+does real work. This regime activates at higher transmit power,
+closer range, lower user counts, or under tighter caps (the post-2014
+Brussels arrêté at $6\,$V/m, Italian outdoor attention values).
+
+\textbf{Why the regime split matters.} Most of the paper's quantitative
+results are in the slack regime, because that is what the canonical
+plaza load actually is. The pose-information ablation needs the
+binding regime to even produce a non-trivial result. The chronic-dose
+argument and the spatial heatmap apply across both regimes.
+\end{defs}
+
+\section{The exposure operator and the precoder math, in your language}
+
+You already know
+\begin{equation}\label{eq:Q-recap}
+  \Qmat^{(u)} = \int_{\Sigma^{(u)}} \tilde{\mathbf{G}}(\rr)^H
+  \tilde{\mathbf{G}}(\rr) \, \mathrm{d} A
+\end{equation}
+from the summary paper. The new factorisation that the JSAC paper
+uses is
+\begin{equation}\label{eq:Q-factor-recap}
+  \Qmat^{(u)} = \Jmat^T\,\Mmat^{(u)}\,\Jmat,
+\end{equation}
+which is just \eqref{eq:Q-recap} pushed through the path-space
+identity $\tilde{\mathbf{G}} = \tilde{\bm\Psi} \Phimat \Jmat$. The
+content of this is purely organisational, but it lets you separate
+\textbf{what depends on the array} ($\Jmat$, fixed forever) from
+\textbf{what depends on the body and pose} ($\Mmat^{(u)}$, refreshes at
+$\sim 100\,$ms) from \textbf{what depends on body position}
+($\Phimat$, refreshes at $\sim 1\,$s as the body walks). The
+two-timescale separation in the paper rides this factorisation.
+
+So far, this is just bookkeeping. The new content is what to do with
+$\Qmat^{(u)}$ once you have one per body.
+
+\subsection{From single-user SAR-aware to multi-user sum-rate}
+
+Hochwald 2014 wrote the single-user version: maximise SNR
+$|\hh^T \xx|^2 / \sigma_n^2$ subject to $\xx^H \mathbf{S} \xx \leq L$
+and $\|\xx\|^2 \leq P$. It is a Rayleigh-quotient problem with one
+extra ellipsoid constraint, and the closed form is
+$\xx^\star \propto (\lambda \mathbf{S} + \nu \mathbf{I})^{-1} \hh^*$
+(Ying 2015). One inverse, two scalar dual variables, done.
+
+The JSAC paper goes multi-user. Now there are $K$ served users (each
+wants their own data stream) and $K + B$ exposure constraints (one per
+body, served users count, bystanders count too). The objective is
+sum-rate $\sum_k \log(1 + \mathrm{SINR}_k)$, where SINR for user $k$
+is $|\hh_k^T \ww_k|^2 / (\sigma_n^2 + \sum_{k' \neq k} |\hh_k^T
+\ww_{k'}|^2)$. The interference-in-the-denominator is what makes
+sum-rate non-convex.
+
+\textbf{This is where WMMSE enters.} The trick is that
+$\log(1 + \mathrm{SINR}_k)$ has the same global maxima (in $\ww_k$)
+as a quadratic surrogate
+$\log u_k - u_k e_k(\ww_k)$ for the right per-user weight $u_k$ and
+MSE $e_k$. The proof is one paragraph of algebra (Christensen 2008).
+What you get out of it is: at fixed $u_k, v_k$, the objective is
+quadratic in $\ww_k$, and the exposure and power constraints are
+quadratic too. You have a clean QCQP, and the inner KKT for $\ww_k$
+gives
+\begin{equation}\label{eq:closedform-companion}
+  \ww_k^\star = \bigl(\Qmat_{\mathrm{tot}}(\bm\lambda) + \nu \mathbf{I}
+  + \text{interference matrix}\bigr)^{-1}\,\gvec_k,
+\end{equation}
+where $\Qmat_{\mathrm{tot}}(\bm\lambda) = \sum_u \lambda_u \Qmat^{(u)}$
+is the dual-weighted aggregate exposure operator and $\gvec_k =
+u_k v_k \hh_k$ is the WMMSE drive.
+
+\textbf{Why this is interesting.} The denominator
+$(\Qmat_{\mathrm{tot}} + \nu \mathbf{I} + \text{interference})$ has
+exactly three pieces:
+\begin{itemize}[leftmargin=1.4em,itemsep=2pt]
+  \item $\Qmat_{\mathrm{tot}}$: \emph{don't shine on bodies}
+  \item $\sum_{k'} u_{k'} |v_{k'}|^2 \hh_{k'} \hh_{k'}^H$:
+  \emph{don't interfere with other users}
+  \item $\nu \mathbf{I}$: \emph{don't blow up the transmit power}
+\end{itemize}
+That is regularised zero-forcing with one extra term: the body-
+aggregated exposure operator. You are inverting the same matrix shape
+as ZF, but with an exposure-aware regulariser inside.
+
+\subsection{The rank-one limit and why ZF is "the rank-one case"}
+
+Set $\Qmat^{(u)} = \sigma_u \mathbf{a}_u \mathbf{a}_u^H$ for every body
+(every body collapses to a scalar steering vector). Stack
+$\mathbf{a}_u$ into a matrix $\mathbf{A}$. Then
+$\Qmat_{\mathrm{tot}} = \mathbf{A}^H \mathbf{D} \mathbf{A}$
+with $\mathbf{D} = \mathrm{diag}(\lambda_u \sigma_u)$. The closed form
+\eqref{eq:closedform-companion} reduces to
+$\ww_k^\star \propto (\mathbf{A}^H \mathbf{D} \mathbf{A} + \nu
+\mathbf{I})^{-1} \hh_k$, which is the regularised inverse with
+\emph{user channels and bystander steering vectors stacked together}.
+That is exactly Peel-Hochwald-Swindlehurst regularised ZF, applied to
+the union of served-user channels and bystander steering directions.
+
+So the message of the rank-one limit is that the paper's proposal does
+not invent a new precoder. It shows that the multi-body exposure-
+constrained problem and ZF are the \emph{same} machine, with full
+$\Qmat^{(u)}$ replacing rank-one steering vectors. Soft budgets cost
+less than hard nulls because they share DoF instead of consuming one
+per body.
+
+\begin{nb}[The "soft budget" part that confused you]
+With hard nulls (ZF), each body or user costs exactly one precoder
+DoF, and you saturate at $K + B \approx M$. With soft budgets, the
+$\lambda_u$ trade off how aggressively each body's exposure is
+suppressed against the total transmit power. Two nearby bodies that
+share an angular subspace can be jointly soft-budgeted using less than
+two DoF. With $K + B = 50$ and $M = 64$, hard nulling exhausts the
+array, but soft budgeting (with $\Qmat^{(u)}$ rank 3 to 4 per body)
+is well within the closed-form regime.
+\end{nb}
+
+\subsection{What the dual ascent actually does}
+
+The closed form \eqref{eq:closedform-companion} solves the inner
+WMMSE problem at fixed $\bm\lambda, \nu$. The outer loop:
+\begin{enumerate}[leftmargin=1.6em,itemsep=2pt]
+  \item Initialise $\bm\lambda = 0$, $\nu$ from the power budget.
+  \item Solve \eqref{eq:closedform-companion} for $\{\ww_k^\star\}$.
+  \item Evaluate constraint residuals $F_u = \sum_k \ww_k^{\star H}
+  \Qmat^{(u)} \ww_k^\star - L^{(u)}$.
+  \item Newton step on $\bm\lambda$: bodies with $F_u > 0$ get
+  $\lambda_u$ increased, bodies with $F_u < 0$ stay at zero.
+  \item Repeat until residuals are below tolerance.
+\end{enumerate}
+This converges in 10-30 iterations cold-started, $\sim 5$ warm-started
+across slots. Each iteration is one $M \times M$ Cholesky solve at
+$O(M^3) = O(64^3)$. The published median is $31\,$ms on CPU for
+$K=B=25$, $M=64$. GPU vmap brings that under $10\,$ms.
+
+That is the whole solver. It is dual-decomposition for QCQP, nothing
+exotic. The exotic part is that the constraints are exposure operators
+on bodies, computed from your TAP-paper machinery.
+
+\section{The closed-loop architecture, ingredient by ingredient}
+
+The paper's §IV-V is about \emph{how} the BS actually maintains
+$\Qmat^{(u)}$ for every body in real time. This is the part you wrote
+the spine doc to clarify. Here is the cleaner version.
+
+\subsection{Why a path dictionary}
+
+You cannot afford to ray-trace per body per slot. A naive cost is
+$50\,\text{bodies} \times 1\,\text{ms slot} = 50\,000\,$ray traces per
+second. Even on GPU that is not happening.
+
+The dictionary $\mathcal{D}$ is precomputed offline, once per scene-and-
+panel installation. Run the ray tracer over the static geometry
+(BS panel + buildings + ground, no bodies) on a $1\,$m grid of
+candidate body-centre positions. Store the resulting path set
+$\{\khat_n, \bm\psi_n, \alpha_n^{(d)}, j(n)\}$ per grid cell. For a
+$100 \times 100\,$m cell at $1\,$m spacing with $\leq 20$ paths per
+cell, this fits in tens of megabytes.
+
+At runtime, when body $u$ is at position $\rr_0$, its path set is
+$\mathcal{D}[\rr_0]$, an $O(1)$ lookup. Pose changes only the per-body
+Gram $\Mmat^{(u)}(\rr_0, \bm\theta_u)$, which you recompute from the
+SMPL-X mesh. Position changes inside the grid cell are handled by the
+translation phasor.
+
+\textbf{Why this works.} The ray geometry between BS and a $1\,$m
+grid cell does not change much when you nudge the body $0.3\,$m
+inside the cell. The phase along each ray does change, hence the
+phasor. Pose changes the body mesh, so the integrand
+$\tilde{\bm\psi}_n^H \tilde{\bm\psi}_{n'}$ over the body surface
+changes, hence the per-pose $\Mmat^{(u)}$ recomputation. But the
+ray tracer is amortised over the offline dictionary build.
+
+\subsection{Why CSI calibration}
+
+The path \emph{directions} from the dictionary are accurate (ray
+tracing on real building geometry is fine). The path \emph{amplitudes}
+are not. Real deployments suffer from antenna calibration error,
+material mismatches against the OSM database, missing facade detail,
+diffuse scattering from window glass that the ray tracer
+discretised wrong. So you fit a complex per-path scale $\beta_n$
+against the served users' uplink CSI:
+\[
+  \hat{\bm\beta}_k = \arg\min_{\bm\beta} \|\hh_k^{\mathrm{meas}} -
+  \mathrm{diag}(\bm\beta) \cdot \hat{\hh}_k\|^2 + \rho \|\bm\beta -
+  \mathbf{1}\|^2.
+\]
+The ridge term biases toward the in-silico amplitudes when the LS
+problem is underdetermined or noisy. The fitted $\bm\beta$ propagates
+to every body that shares dictionary entries with user $k$, since the
+dictionary entries are shared across bodies in nearby grid cells.
+This is what closes the in-silico to deployed gap. The residual is
+characterised in \cref{fig:csi-companion}.
+
+\begin{figure}[!h]
+  \centering
+  \includegraphics[width=0.9\linewidth]{residual_vs_snr.png}
+  \caption{CSI calibration residual vs uplink SNR for $M=64$, three
+  path counts, plain LS vs ridge LS. The dashed black baseline at
+  $-4.7\,$dB is the no-calibration error (set by the perturbation
+  magnitude). \textbf{Plain LS (solid)} only beats no-calibration when
+  $N \leq M/2$ \emph{and} SNR is high; at $N=60 \approx M$ it amplifies
+  noise badly. \textbf{Ridge LS (dashed)} converges at all path counts
+  and gives a clean trend with SNR. Operational rule: keep $N \leq
+  M$, cluster correlated paths if needed, and always use the ridge.}
+  \label{fig:csi-companion}
+\end{figure}
+
+\subsection{The tier system}
+
+Bodies in a cell come in four flavours, and the paper has to handle
+all four because the budget constraint applies to all of them:
+
+\begin{table}[!h]
+\centering
+\small
+\begin{tabular}{@{}p{0.05\linewidth}p{0.22\linewidth}p{0.32\linewidth}p{0.28\linewidth}@{}}
+\toprule
+Tier & What they are & Position from & Pose from \\
+\midrule
+A & Served users & 3GPP UL pilots + GPS via MNO app & Phone IMU $\to$ SMPL-X via Madgwick or VQF (existing literature) \\
+B & Cooperating non-users (registered phone, no traffic) & Same as A & Same as A \\
+C & Sensed bystanders (no phone, no MNO context) & ISAC monostatic radar at the panel & Worst-case Cauchy envelope (no pose telemetry) \\
+D & Undetected & Occupancy grid (regulator-defined) & Worst-case envelope \\
+\bottomrule
+\end{tabular}
+\caption{The tier table from the paper, annotated. The reason this
+exists is that bystanders are constraints too, and bystanders do not
+report to the BS by definition.}
+\end{table}
+
+The thing that took you a while to internalise: \textbf{the BS does
+not need the body to tell it the angle of attack.} The BS already
+runs its own ray tracer. What it needs from the body is
+\emph{position}, full stop. Pose is a second-order refinement that
+shapes $\Qmat^{(u)}$'s trace and leading eigenvector. For tier A and
+B you get pose from the phone IMU. For tier C, you fall back to the
+Cauchy worst case ($D \leq 2$ on convex bodies, projected area at
+its peak orientation). For tier D, you assume an occupancy envelope.
+
+\subsection{The cadence table, decoded}
+
+\begin{table}[!h]
+\centering
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+Quantity & Cadence & Per-update cost \\
+\midrule
+UE CSI $\hh_k$ & $1\,$ms & $O(M)$ from PHY pilots \\
+Precoder $\ww_k^\star$ & $1\,$ms & $31\,$ms median solve, $K=B=25$, $M=64$ \\
+Translation phasor & $\sim 1\,$s & $O(N)$ per body \\
+Pose-driven $\Mmat^{(u)}$ & $\sim 100\,$ms & $7.5\,$ms per body (SMPL-X) \\
+Path dictionary $\mathcal{D}$ & static & offline, minutes \\
+CSI calibration $\bm\beta_k$ & $\sim 1\,$s & LS fit, $O(NM)$ \\
+\bottomrule
+\end{tabular}
+\caption{The cadence ladder. Slow things at the top, fast things at
+the bottom. Each row's cost is amortised over its cadence: the
+precoder solve is $31\,$ms per slot, but warm-starting across slots
+brings it down. The pose refresh dominates per-body GPU cost.}
+\end{table}
+
+\textbf{Why "$1\,$ms slot but $31\,$ms solve" is fine.} The slot
+cadence is what the PHY transmits at; the solve runs in pipelined
+fashion across slots and is amortised. In production, you warm-start
+$\bm\lambda^{(t)}$ from $\bm\lambda^{(t-1)}$ and the dual converges
+in five iterations. Real BS implementations do this kind of pipelined
+solve constantly, this is not novel.
+
+\section{What the experiments are actually showing}
+
+The plaza experiment is the heart of the paper. There are seven figures
+and they each tell one story. Let me walk you through them with the
+images inline.
+
+\subsection{The plaza geometry}
+
+\begin{figure}[!h]
+  \centering
+  \includegraphics[width=0.65\linewidth]{plaza_top.png}
+  \caption{Brussels Grand Place geometry as the experiment sees it.
+  The orange square at the bottom is the BS panel on the south facade
+  at $8\,$m height with $10^\circ$ downtilt. The labelled red dots are
+  OSM-verified entry points where bodies enter and exit the plaza on
+  origin-destination flux traces. Cell extent is roughly $80 \times
+  80\,$m. Bodies are $5$ to $55\,$m from the panel.}
+\end{figure}
+
+You probably already had a mental picture, but it helps to see it
+explicitly. The bodies walk between these seven entry nodes on AMASS
+walk-cycle traces. The BS sees them as a cloud of moving SMPL-X
+phantoms, ray-traces to each at $\sim 100\,$ms cadence, and updates
+$\Qmat^{(u)}$ accordingly.
+
+\subsection{Operator rank: 3 to 4, basically always}
+
+\begin{figure}[!h]
+  \centering
+  \includegraphics[width=0.95\linewidth]{rank_cdf.png}
+  \caption{Empirical eigenvalue spectrum of $\Qmat^{(u)}$ over 20
+  Thelonious bodies in a $20$-$80\,$m ring around the panel. The
+  $\lambda_k / \lambda_1$ y-axis is logarithmic and falls off a
+  cliff at $k = 3$ (specular) or $k \approx 5$ (UMa-LOS). The
+  effective rank is the index where the trace fraction drops below
+  some threshold $\epsilon$.}
+\end{figure}
+
+This is the easiest figure in the paper. The story:
+
+\begin{itemize}[leftmargin=1.4em,itemsep=2pt]
+  \item In the plaza-specular path model (LOS + ground + 2 facades),
+  $\Qmat^{(u)}$ has effective rank 3 at $\epsilon = 10^{-2}$, max 4 at
+  $\epsilon = 10^{-3}$.
+  \item In the stochastic 3GPP UMa-LOS model (60 subpaths per cluster),
+  the rank is even smaller at the leading edge: median 1 at
+  $\epsilon = 10^{-1}$, climbing to 3 at $10^{-3}$.
+\end{itemize}
+
+\textbf{Why so low?} Because the $8 \times 8$ panel resolves $\sim
+14^\circ$ in azimuth at $26\,$GHz. A body subtends maybe two beams
+across the torso. The dominant body-coupling subspace collapses into
+3 to 4 distinguishable BS-side beam directions, regardless of how
+much multipath the path model gives you. \textbf{Adding more
+multipath raises the trace, not the rank.} This is a panel-side
+affordance, not a model simplification.
+
+\textbf{Why this matters for the algorithm.} The closed-form solver
+inverts $\Qmat_{\mathrm{tot}}(\bm\lambda) + \nu \mathbf{I}$, which is
+a $64 \times 64$ matrix. When each $\Qmat^{(u)}$ has rank 3 to 4 and
+you have $K+B = 50$ bodies, $\Qmat_{\mathrm{tot}}$ has at most
+$\sim 4 \times 50 = 200$ effective directions, well above $M = 64$, so
+the soft-budget formulation is well-posed. Hard nulling 50 bodies
+into a 64-dim array would be hopeless; the rank-few structure is what
+saves it.
+
+\subsection{The hero figure (which is a null result, and why that's OK)}
+
+\begin{figure}[!h]
+  \centering
+  \includegraphics[width=\linewidth]{hero_pareto.png}
+  \caption{(a) ECDF of $\Pabs / L_{\mathrm{RL}}$ over 450{,}000
+  body-slots in the canonical plaza load. The violation zone is at
+  $x = 1$ (right margin). The data clusters at $x \approx 10^{-3}$.
+  All five precoders satisfy the cap by $\sim 1000\times$. (b) Mean
+  sum-rate per precoder. ZF wins on rate in plaza-specular paths
+  (44\,Gbps because the narrow-angle path set keeps $\hh \hh^H$
+  well-conditioned for $K=25$ on $M=64$), but degenerates in UMa-LOS
+  where the effective channel rank falls below $K$.}
+\end{figure}
+
+\textbf{What you wanted this to show.} Some baseline (MRT or ZF)
+violates the cap and your ECBF does not. A clean Pareto with your
+precoder dominating.
+
+\textbf{What it actually shows.} The cap is slack by $1000\times$. All
+five precoders sit on the same CDF on the budget side. ZF separates
+on the rate side (because it nulls inter-user interference), but on
+the compliance metric, no one violates and no one is interesting.
+
+\textbf{Why the paper survives this null.} You pivoted (correctly) to
+a regime-characterisation paper. The hero figure now does three jobs:
+(i) it shows the algorithm is correct (it satisfies the cap), (ii)
+it locates the binding regime precisely (this scenario is not it),
+(iii) it motivates the chronic-dose argument as the actual
+deployment value-prop.
+
+The handoff doc says "the plaza data is a null on the instantaneous
+metric." Yes. The pivot is to chronic-dose ECDFs and the spatial
+heatmap, both of which separate even when the instantaneous compliance
+is easy.
+
+\subsection{Chronic dose ECDFs by tier}
+
+\begin{figure}[!h]
+  \centering
+  \includegraphics[width=0.85\linewidth]{chronic_dose.png}
+  \caption{ECDF of body-integrated absorbed energy over a $300\,$s
+  origin-destination flux trace, stratified by tier.
+  Tier A served users $n=25$, B cooperating $n=15$, C bystander
+  $n=10$. Median: A $\sim 12.6\,$mJ, B $\sim 8.4\,$mJ, C $\sim 9.1\,$mJ.}
+\end{figure}
+
+\textbf{The story.} Even when instantaneous compliance is easy,
+\emph{chronic dose} (integrated $\Pabs$ over a 5-min walk) separates by
+tier. Served users (red) carry the most because their precoders steer
+toward them. Cooperating non-users (blue) carry the least because they
+get only side-lobe spillover and the precoder is not aimed at them.
+Bystanders (black) sit in between because their dose is also side-lobe
+dominated, but they are not steered \emph{away from} either.
+
+\textbf{The 1.5$\times$ ratio between A and B is the practical value
+proposition.} An operator that wants to argue chronic-dose reduction
+for the bystander population can point at this and say "even at slack
+instantaneous compliance, our DL serves users at 1.5$\times$ the dose
+we deposit on bystanders." This is the deployable angle when the
+instantaneous cap is not binding.
+
+\textbf{Caveat the paper flags.} Earlier shorter (20\,s) traces
+over-stated the gap at $3\times$. Longer traces converge to $1.5\times$
+because side lobes dominate cumulative dose, not the steered beams.
+You should be careful when reading the paper not to claim "$3\times$"
+in conversation: that was a stale number from a static-position trace.
+
+\subsection{Spatial heatmaps in slack vs binding regimes}
+
+\begin{figure}[!h]
+  \centering
+  \includegraphics[width=\linewidth]{spatial_heatmap.png}
+  \caption{(a) Slack regime, multi-body ECBF: forward-sector hotspot
+  $\sim 25\,$m north of the panel, peaks at $\sim 4.8 \times 10^{-4}
+  L_{\mathrm{RL}}$. (b) Binding regime ($43\,$dBm Tx, $E_{\mathrm{RL}}
+  = 6\,$V/m post-2014 Brussels / Italy), ZF: cell-mean median
+  $0.06\,L_{\mathrm{RL}}$, hot cells $0.4\,L_{\mathrm{RL}}$, but per-
+  body-slot tail to $3.4\,L_{\mathrm{RL}}$ (i.e. ZF violates).}
+\end{figure}
+
+\textbf{Two stories in one figure:}
+
+\textit{Slack regime (left).} The deposition map looks like the array's
+projected gain pattern. Hot zones are where the broadside spills the
+most energy. Bodies that walk through these zones absorb more. Nothing
+is close to the cap.
+
+\textit{Binding regime (right).} Higher Tx power, tighter RL ($6\,$V/m
+not $14.57$). Cell-averaged compliance looks acceptable
+($0.06\,L_{\mathrm{RL}}$ median), but the per-body tail violates: rare
+body-slots reach $3.4\,L_{\mathrm{RL}}$ where a body walks through a
+high-gain ridge between two served-user beams. \textbf{ZF nulling is
+geometric, not exposure-aware.} Your ECBF holds the per-body
+$99^{\mathrm{th}}$ percentile at $1.0\,L_{\mathrm{RL}}$ by
+construction.
+
+\textbf{This is the key message.} The case for budget-aware precoding
+strengthens with array size. At $M = 256$ the ZF violation rate climbs
+from $0.10\%$ (M=64) to $18.7\%$, even with 231 nulling DoFs over 25
+served users. A larger array focuses energy more tightly, and
+geometric ZF nulls do not see exposure tails. The operational argument
+holds even when the cell-averaged metric looks fine.
+
+\subsection{Pose-information ablation}
+
+\begin{figure}[!h]
+  \centering
+  \includegraphics[width=\linewidth]{pose_info_gain.png}
+  \caption{Pose ablation in the binding regime. (a) Slot-level $\Delta$
+  sum-rate (aware $-$ ablate) ECDF: bimodal, with a large left tail
+  (-10\,Gbps) and a smaller right tail (+20\,Gbps). MRT and WC back-off
+  collapse to $\Delta = 0$ because they don't consume $\Mmat^{(u)}$.
+  Oracle is also $\Delta = 0$ because it always uses posed-Q. (b) Per-
+  body $P_{\mathrm{abs}}$ ECDF: pose-aware (blue) dominates pose-
+  ablated (red dashed) at every quantile, with the red curve hitting
+  $L_{\mathrm{RL}}$ much sooner.}
+\end{figure}
+
+This figure is more nuanced than the others, and you should re-read the
+paper's §V.E with the following picture in mind:
+
+\textbf{The compliance side (right panel).} Pose-aware solver has
+$0.96\%$ violation rate vs $4.58\%$ without pose. \textbf{$4.7\times$
+compliance gain.} This is the win.
+
+\textbf{The sum-rate side (left panel).} Bimodal. Sometimes pose-aware
+is much \emph{worse} on sum-rate ($35.7\%$ of slots have $\Delta < -1\,$Gbps,
+left tail), sometimes much \emph{better} ($12.6\%$ of slots have
+$\Delta > +1\,$Gbps, right tail). The negative tail is solver-side: the
+posed operator is \emph{tighter} than the Cauchy envelope, so the
+feasible cone is smaller, the dual-Newton sweep is harder to converge
+in 8 iterations, and the solver falls into min-absorption fallback
+more often ($83.6\%$ pose-aware vs $55.1\%$ Cauchy).
+
+\textbf{What this means.} Pose information buys a \emph{tighter
+exposure profile} but costs solver iterations. The trade-off vanishes
+once you uncap the Newton sweep and replace the Cauchy envelope with
+a tighter Lanczos-projected operator (the codebase already has the
+ingredients). The oracle (which uses posed-Q always with no fallback)
+achieves $11.79\,$Gbps with full compliance, showing the upper bound
+of what the solver could reach.
+
+\textbf{Don't read this figure as "pose information is a wash."} It is
+not. The compliance gain is real and large. The sum-rate cost is a
+solver-engineering issue, not a fundamental limit.
+
+\subsection{Tier-C ISAC link budget}
+
+\begin{figure}[!h]
+  \centering
+  \includegraphics[width=\linewidth]{detection_vs_range.png}
+  \caption{Monostatic ISAC link budget at the panel. (a) Integrated
+  SNR vs range for three CPI durations. Plaza range ($\sim 50\,$m)
+  hits $42\,$dB at $10\,$ms CPI. (b) Detection probability (Albersheim,
+  Swerling-0) saturates by $50\,$m and reaches $P_d = 0.99$ at
+  $137\,$m for $10\,$ms CPI.}
+\end{figure}
+
+\textbf{What this is showing.} Monostatic radar detection of bodies
+(treated as $0\,$dBsm RCS targets) at the BS panel, using the same
+$8\!\times\!8$ array at $26\,$GHz. The point is that the link budget
+\emph{closes}: bystander detection is feasible in the plaza geometry
+under standard radar assumptions. $137\,$m at $P_d = 0.99$ with
+$P_{fa} = 10^{-6}$ is a comfortable margin over plaza range.
+
+\textbf{What this is not showing.} Tracking, clutter rejection,
+spatial discrimination of multiple bodies, vital-signs at plaza range.
+Those are out of scope (and the brainstorm rounds explicitly walked
+back the vital-signs claim). This figure says "yes, you can detect
+that something body-shaped is at this range and angle." The Cauchy
+envelope handles everything else.
+
+\textbf{Why this is one figure not seven.} Round 3 of the brainstorm
+killed the ISAC heartbeat / respiration angle (no plaza-range
+literature exists for that). What's left is presence + angular
+localisation, which closes by a wide margin and lives in one
+sub-figure of one section.
+
+\subsection{Cauchy bound failure}
+
+\begin{figure}[!h]
+  \centering
+  \includegraphics[width=\linewidth]{tightness.png}
+  \caption{Tightness of the rank-1 Cauchy operator bound (Theorem 2 of
+  paper\_v2). The $x$-axis is $10 \log_{10}(\xx^H \Qmat \xx /
+  \text{RHS})$. Negative means the bound holds, positive means it is
+  violated. Different curves are different precoder ensembles; the
+  bound applies to a precoder direction. \textbf{MRT to LOS direction
+  (red, leftmost):} bound holds by 21 to $27\,$dB. \textbf{Random,
+  ECBF, ZF (blue/orange/green/purple):} bound \emph{breached} at
+  the median of the distribution.}
+\end{figure}
+
+This is the figure that forced the biggest narrative correction in the
+JSAC paper. Read this carefully because it changed the paper's claims.
+
+\textbf{What you wanted Cauchy to do.} Provide a universal upper bound
+on $\xx^H \Qmat^{(u)} \xx$ in terms of the body's projected area and
+the BS-side directivity, so the twin could satisfy the budget without
+pose telemetry by applying the Cauchy worst case.
+
+\textbf{What Cauchy actually does.} The bound holds for $\xx$ that
+points in the BS-side steering direction $\mathbf{a}_{\mathrm{BS}}^{(u)}$.
+For an MRT-LOS precoder it is loose by 21 to $27\,$dB. For random and
+ECBF precoders it \emph{breaches} 49 to $70\%$ of the time, with
+median ratios up to $+6.34\,$dB above the bound.
+
+\textbf{Why it breaks.} The leading exposure mode $\mathbf{v}_1$ of
+$\Qmat^{(u)}$ does not align with the BS-side steering vector
+$\mathbf{a}_{\mathrm{BS}}$. The inner product
+$|\langle \mathbf{v}_1, \mathbf{a}_{\mathrm{BS}}\rangle|^2$ sits in
+$[0, 0.19]$ across all evaluated jobs. So the projected-area bound,
+derived under the assumption that the absorbed power is concentrated
+along the BS-pointed direction, simply misses where the absorption
+actually peaks. The projected-area integral averages $D \leq 2$ over
+the sphere, but the body's leading exposure mode picks out a specific
+direction not on the BS axis.
+
+\textbf{The fix.} Theorem~2 of paper\_v2 was demoted from a universal
+upper bound to a \emph{conditional} bound (Appendix C of the JSAC
+paper). The conditional form holds when the precoder is restricted to
+the conic hull of a chosen direction set $\mathcal{A}$ that includes
+$\mathbf{a}_{\mathrm{BS}}$. The price is that you have to commit to
+the direction set up front, and any precoder outside that set falls
+back to direct $\xx^H \Qmat^{(u)} \xx$ evaluation (which is fine,
+just expensive in the binding regime).
+
+\textbf{Why this is interesting and not just an embarrassment.} It is
+a clean geometric fact about how 64-element panels and human bodies
+couple. The body's dominant absorption mode is shaped by the body's
+geometry under whatever angular spectrum hits it; the BS steering
+vector points at the user's location. These are not the same direction
+unless the user happens to be the body and the body happens to face
+the BS at exactly the right orientation. So the disconnect is
+generic, and it is now a paragraph in the discussion section that
+flags this for any future compliance-bound construction. The honest
+version is the right version.
+
+\section{What's actually new vs what you already had}
+
+The paper has six contributions, and four of them existed in pieces
+before this paper. Here is the honest accounting.
+
+\begin{table}[!h]
+\centering
+\small
+\begin{tabular}{@{}p{0.30\linewidth}p{0.62\linewidth}@{}}
+\toprule
+Contribution & State of the art before this paper \\
+\midrule
+Coherent $\Qmat^{(u)}$ from path set & In your monograph and the JSAC paper's §II. The path-space factorisation $\Jmat^T \Mmat \Jmat$ is from your summary paper. Reused, not new. \\
+Single-body SAR-aware precoding & Hochwald 2014, Ying 2015/17. Existed. Single-body, single-pose, FDTD-calibrated $\mathbf{S}$. \\
+Multi-user, multi-body QCQP closed form & \textbf{This is new.} Generalisation of Ying-2015 to a heterogeneous population, with bystanders as constraints. The KKT structure and the rank-one ZF limit are new statements. \\
+Scene path dictionary $+$ translation phasor $+$ CSI calibration & \textbf{This is new as an architecture.} Each piece individually is standard (ray tracing for scene; channel charting for calibration; path-space phase shift is trivial), but the composition that lets the loop run on real BS cadences is the actual operational contribution. \\
+Tiered telemetry (A/B/C/D) & \textbf{New as a framing.} The pieces (3GPP location services, IMU mocap, ISAC at panel, occupancy envelopes) are individually deployed elsewhere. The categorisation that makes bystander compliance operational is yours. \\
+Plaza-scale empirical regime characterisation & \textbf{This is new and is the paper's empirical anchor.} No prior work has run a 50-body multi-user ECBF at plaza scale on real OSM geometry under a real RL. The rank-3-to-4 result, the $7.5\,$ms/body GPU number, the $4\times 10^4$ slack margin, the chronic-dose tier ECDFs, and the Cauchy bound failure are all empirical contributions specific to this paper. \\
+\bottomrule
+\end{tabular}
+\caption{What the paper adds to the literature, and where it is
+standing on prior work.}
+\end{table}
+
+So when you re-read the paper and feel "is this novel enough?", the
+honest answer is: it has one new theoretical contribution (multi-body
+QCQP closed form including bystanders), one new architectural
+contribution (the dictionary + tiers + cadence ladder), and a real
+empirical anchor at plaza scale that no one has done before. The
+single-body machinery and the body-side dosimetry are reused from
+your earlier work.
+
+\section{Where the paper is rough on purpose}
+
+The handoff doc lists three places. Read them with the following
+mental model: each is a known limitation that does not affect the
+qualitative regime story.
+
+\begin{itemize}[leftmargin=1.4em,itemsep=2pt]
+  \item \textbf{Single seed, $20\,$s window, Shannon proxy.} A multi-
+  seed average would smooth the bystander tail (currently $n=10$
+  bodies, visibly coarse on the chronic-dose ECDF). A real Sionna NR
+  PHY pass would shift absolute sum-rate numbers but should not affect
+  the precoder collapse. Both are noted in the discussion.
+  \item \textbf{Cauchy proof in Appendix~C}, appeals to the angular-
+  spectrum decomposition without re-deriving the projected-area
+  identity. The identity is classical and in your TAP paper.
+  \item \textbf{Brussels averaging window} cited as $6\,$min per
+  current practice; the 2024 ordinance number is a placeholder
+  citation. Italian $15\,$V/m attention value is flagged TODO.
+\end{itemize}
+
+\section{What you can hand to the next paper}
+
+The brainstorm rounds named several follow-ups that got sidelined.
+Three of them are real next-paper material:
+
+\begin{enumerate}[leftmargin=1.6em,itemsep=2pt]
+  \item \textbf{Pose-differentiable $\Qmat^{(u)}(\bm\theta)$.} Round-1
+  hero, deferred. SMPL-X is differentiable, your TAP machinery is
+  closed form, so $\Qmat^{(u)}$ is differentiable in $\bm\theta$ in
+  principle. A pose-loop SDP or proximal solver that directly
+  optimises pose for compliance is genuinely new. Killed in this paper
+  because the slack regime made it moot.
+
+  \item \textbf{Multi-operator cooperative cap allocation.} Brussels
+  cumulative cap is shared across operators in the same band. Each
+  operator sees a slot of the cumulative budget. Mechanism design
+  (Shapley, VCG) and the cooperation gap are open. You sidelined this
+  in round 2.
+
+  \item \textbf{Reflective intelligent surface in the binding-regime
+  corner.} A one-line modification to $\Mmat^{(u)}$ in
+  $\Qmat = \Jmat^T \Mmat \Jmat$. The RIS adds a controllable subspace
+  to $\Mmat$. The open question is what RIS configuration buys back
+  the most cap headroom for a given body distribution. Not in this
+  paper, listed as future work only.
+\end{enumerate}
+
+\section{The thing to remember}
+
+\textbf{The paper is regime characterisation.} It is not "we built a
+new precoder that beats ZF". The new precoder \emph{contains} ZF as a
+limit. The paper's claim is:
+
+\begin{quote}
+Under canonical mmWave plaza conditions on the Brussels Grand Place,
+the Brussels reference level is slack by four orders of magnitude;
+the binding regime is exclusion-zone geometry rather than coverage
+geometry; the chronic-dose argument carries the deployable value at
+plaza scale; pose information shapes the operator and gives a real
+compliance lever in the binding regime; the projected-area Cauchy
+bound is conditional, not universal, with the geometric mismatch
+between the leading exposure mode and the BS-side steering vector
+explaining the breach. The body-twin architecture is closed-form,
+real-time-feasible at $7.5\,$ms/body GPU pose-refresh and $31\,$ms
+median multi-body QCQP solve, and is composable from quantities the
+network already maintains.
+\end{quote}
+
+That paragraph is the thing the JSAC reviewer needs to come away with.
+Everything else is justification. Re-read the paper through this lens
+and the structure makes sense: §II builds the operator (your existing
+work, slimmed), §III states the multi-body QCQP and its closed form
+(the one new theoretical thing), §IV-V build the architecture (the
+new operational thing), §VI-VII run the plaza experiment and tell the
+regime story, §VIII discusses, §IX concludes. The figures map onto
+this structure one to one.
+
+\bigskip\hrule\bigskip
+
+\section*{If you forget everything else, remember these five things}
+
+\begin{enumerate}[leftmargin=1.6em,itemsep=4pt]
+  \item \textbf{The closed form $\ww_k^\star = (\Qmat_{\mathrm{tot}} +
+  \nu \mathbf{I})^{-1} \gvec_k$ is regularised ZF with an exposure-
+  aware regulariser.} It contains MRT, ZF, regularised ZF, and worst-
+  case back-off as limits. Reduces to ZF when every $\Qmat^{(u)}$ is
+  rank one.
+  \item \textbf{The empirical $\Qmat^{(u)}$ rank is 3 to 4.} Set by
+  panel angular resolution, not by multipath richness. This is what
+  makes soft budgets cheap and the closed-form solver well-behaved at
+  $K + B = 50$ on $M = 64$.
+  \item \textbf{The plaza scenario is in the slack regime.} The
+  Brussels RL is slack by $\sim 10^4$ at the canonical load. The
+  binding regime activates inside $\sim 3\,$m of the panel at $K = 25$,
+  or under tighter RL ($6\,$V/m post-2014 Brussels / Italy), or at
+  larger arrays ($M = 256$ on the same scenario gives ZF violation
+  rates of $18.7\%$).
+  \item \textbf{Chronic-dose ECDFs separate by tier even in the slack
+  regime.} Cooperating non-users absorb $\sim 0.4\times$ the served-
+  user median over a 5-min walk. This is the deployable value-prop
+  outside the binding ring.
+  \item \textbf{The projected-area Cauchy bound is conditional, not
+  universal.} It is loose by 21 to $27\,$dB on the LOS steering
+  direction and breached by 49 to $70\%$ of unconstrained precoders.
+  The conditional form (over a chosen direction set) is the right
+  object to use, and the mechanism (leading exposure mode does not
+  align with BS-side steering) is a clean geometric fact about how
+  bodies couple to 64-element panels.
+\end{enumerate}
+
+\bigskip
+\textit{End of companion. This document is for your own reading. Do
+not cite it anywhere. The actual paper is paper\_jsac.tex; this is
+just the friend who reads with you.}
+
+\end{document}
