@@ -235,46 +235,77 @@ def make_hero(z):
 
 
 def make_pose_info(stats_o, stats_i, stats_t):
-    """Two-panel: cap-violation rate and mean sum-rate vs pose source.
-    Pose source modulates compliance at sub-percent scale; rate is
-    saturated at the MCS cap across all three sources, so both panels
-    use the same y-axis units."""
+    """Two-panel grouped bar: ECBF and ZF+proj (deployable) vs pose source.
+    When zf_proj_proposed is unavailable in a stats dict (older v7 NPZs
+    that predate the precoder), fall back to ECBF-only display."""
     sources = ["Oracle", r"IMU $4^\circ$", "T-pose"]
-    s_list = [stats_o["multibody_ecbf"], stats_i["multibody_ecbf"], stats_t["multibody_ecbf"]]
-    viol = [s["viol_pct"] for s in s_list]
-    sr = [s["mean_sr_gbps"] for s in s_list]
+    s_ecbf = [stats_o["multibody_ecbf"], stats_i["multibody_ecbf"], stats_t["multibody_ecbf"]]
+    viol_ecbf = [s["viol_pct"] for s in s_ecbf]
+    sr_ecbf = [s["mean_sr_gbps"] for s in s_ecbf]
+    has_zfp = all("zf_proj_proposed" in s for s in [stats_o, stats_i, stats_t])
+    if has_zfp:
+        s_zfp = [stats_o["zf_proj_proposed"], stats_i["zf_proj_proposed"], stats_t["zf_proj_proposed"]]
+        viol_zfp = [s["viol_pct"] for s in s_zfp]
+        sr_zfp = [s["mean_sr_gbps"] for s in s_zfp]
 
     fig, axes = plt.subplots(
         1, 2, figsize=fig_size_ieee(columns=2, aspect=0.42),
     )
     x = np.arange(3)
-    # Colour-code per pose source so the same source has the same colour across
-    # both panels: oracle = blue, IMU 4° = green, T-pose = red.
-    pose_colors = ["#2166ac", "#2ca02c", "#b2182b"]
+    width = 0.4 if has_zfp else 0.6
 
-    axes[0].bar(x, viol, color=pose_colors, alpha=0.85, edgecolor="k", lw=0.4)
+    # Two-bar group per pose source: ECBF (red) and ZF+proj (green).
+    if has_zfp:
+        axes[0].bar(x - width/2, viol_zfp, width, color="#5fa55a",
+                    alpha=0.9, edgecolor="k", lw=0.4, label="ZF + proj (deploy)")
+        axes[0].bar(x + width/2, viol_ecbf, width, color="#b2182b",
+                    alpha=0.9, edgecolor="k", lw=0.4, label="ECBF (dual ascent)")
+        for xi, v in zip(x - width/2, viol_zfp):
+            axes[0].text(xi, v + max(viol_ecbf + viol_zfp) * 0.04, f"{v:.2f}", ha="center", fontsize=7)
+        for xi, v in zip(x + width/2, viol_ecbf):
+            axes[0].text(xi, v + max(viol_ecbf + viol_zfp) * 0.04, f"{v:.2f}", ha="center", fontsize=7)
+        v_top = max(viol_ecbf + viol_zfp) * 1.30 + 0.05
+    else:
+        pose_colors = ["#2166ac", "#2ca02c", "#b2182b"]
+        axes[0].bar(x, viol_ecbf, color=pose_colors, alpha=0.85, edgecolor="k", lw=0.4)
+        for xi, v in zip(x, viol_ecbf):
+            axes[0].text(xi, v + max(viol_ecbf) * 0.04, f"{v:.2f}%", ha="center", fontsize=8)
+        v_top = max(viol_ecbf) * 1.30 + 0.05
+
     axes[0].set_xticks(x); axes[0].set_xticklabels(sources)
     axes[0].set_ylabel("Cap-violation rate (%)")
     axes[0].set_title("(a) Compliance vs pose source")
-    axes[0].set_ylim(0, max(viol) * 1.30 + 0.05)
-    for xi, v in zip(x, viol):
-        axes[0].text(xi, v + max(viol) * 0.04, f"{v:.2f}%", ha="center", fontsize=8)
+    axes[0].set_ylim(0, v_top)
+    if has_zfp:
+        axes[0].legend(loc="upper left", frameon=False, fontsize=7)
     axes[0].grid(True, alpha=0.3, axis="y")
 
-    axes[1].bar(x, sr, color=pose_colors, alpha=0.85, edgecolor="k", lw=0.4)
+    if has_zfp:
+        axes[1].bar(x - width/2, sr_zfp, width, color="#5fa55a",
+                    alpha=0.9, edgecolor="k", lw=0.4, label="ZF + proj (deploy)")
+        axes[1].bar(x + width/2, sr_ecbf, width, color="#b2182b",
+                    alpha=0.9, edgecolor="k", lw=0.4, label="ECBF (dual ascent)")
+        for xi, v in zip(x - width/2, sr_zfp):
+            axes[1].text(xi, v + max(sr_ecbf + sr_zfp) * 0.04, f"{v:.2f}", ha="center", fontsize=7)
+        for xi, v in zip(x + width/2, sr_ecbf):
+            axes[1].text(xi, v + max(sr_ecbf + sr_zfp) * 0.04, f"{v:.2f}", ha="center", fontsize=7)
+        s_top = max(sr_ecbf + sr_zfp) * 1.20 + 0.05
+    else:
+        pose_colors = ["#2166ac", "#2ca02c", "#b2182b"]
+        axes[1].bar(x, sr_ecbf, color=pose_colors, alpha=0.85, edgecolor="k", lw=0.4)
+        for xi, v in zip(x, sr_ecbf):
+            axes[1].text(xi, v + max(sr_ecbf) * 0.04, f"{v:.2f}", ha="center", fontsize=8)
+        s_top = max(sr_ecbf) * 1.30 + 0.05
+
     axes[1].set_xticks(x); axes[1].set_xticklabels(sources)
     axes[1].set_ylabel("Mean sum-rate (Gbps)")
-    axes[1].set_title("(b) Throughput at MCS28 cap")
-    axes[1].set_ylim(0, max(sr) * 1.30 + 0.05)
-    for xi, v in zip(x, sr):
-        axes[1].text(xi, v + max(sr) * 0.04, f"{v:.2f}", ha="center", fontsize=8)
-    axes[1].grid(True, alpha=0.3, axis="y")
-    # Reference line at MCS28 sum-cap. Place text inside the axes margin
-    # so it doesn't get clipped on tight figure layouts.
+    axes[1].set_title("(b) Throughput at MCS27 cap")
+    axes[1].set_ylim(0, s_top)
     axes[1].axhline(74.0, color="k", ls=":", lw=0.7, alpha=0.5)
-    axes[1].text(0.02, 74.0 / (max(sr) * 1.30), "MCS28 cap",
+    axes[1].text(0.02, 74.0 / s_top, "MCS27 cap",
                  transform=axes[1].transAxes,
                  fontsize=7, va="bottom", ha="left", alpha=0.6)
+    axes[1].grid(True, alpha=0.3, axis="y")
 
     fig.tight_layout()
     save_both(fig, OUT_DIR / "pose_info_gain")
