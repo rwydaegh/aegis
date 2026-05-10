@@ -960,9 +960,15 @@ S_{\max})$ with $S_{\max} = 7.4\,$bps/Hz from 3GPP TS 38.214
 Table 5.1.3.1-2 (256-QAM, $\mathrm{MCS}=27$, coderate
 $948/1024$)~\cite{TS38214MCS}. Receiver noise power is
 $\sigma_n^2 = 10^{-12}\,$W ($-90\,$dBm at $400\,$MHz, optimistic
-$0\,$dB NF). The dual-ascent solver's noise-power regulariser is
-matched to this floor; in the original Ying et
-al.~\cite{Ying2017} formulation the regulariser is a free
+$0\,$dB NF) for the headline numbers; we additionally re-ran the
+$K = 25$ instance at $\sigma_n^2 = 6.4 \cdot 10^{-12}\,$W
+($-82\,$dBm, $\mathrm{NF} = 6\,$dB realistic receiver noise) and
+both algorithms still saturate the MCS sum-cap with violation
+rates within a factor 2 of the optimistic-floor numbers (ZF + proj
+deployable $0.46\,\%$, dual ascent $0.52\,\%$ vs $1.21\,\%$ and
+$2.39\,\%$ at the optimistic floor). The dual-ascent solver's
+noise-power regulariser is matched to this floor; in the original
+Ying et al.~\cite{Ying2017} formulation the regulariser is a free
 parameter set to $10^{-2}$ or $10^{-3}$, and we observed
 in early v3-era runs that this $7$-$9$ orders of magnitude
 mismatch with the SE evaluator drove the dual ascent into
