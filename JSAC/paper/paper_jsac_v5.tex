@@ -117,7 +117,7 @@ refreshed under body translation by a diagonal phasor. Tiered
 telemetry covers served users, cooperating non-users, ISAC-sensed
 bystanders, and undetected occupancy; IMU-bearing tiers carry a
 virtual inertial-mocap pose at $4^\circ$ per-joint RMS attitude
-error. We then show that under the 3GPP NR FR2 MCS28 spectral-efficiency
+error. We then show that under the 3GPP NR FR2 MCS27 spectral-efficiency
 cap of $7.4\,$bps/Hz (which a regularised zero-forcing precoder on
 a tens-of-element panel saturates with substantial SINR margin), the
 multi-body sum-rate-maximisation QCQP under per-body caps admits a
@@ -134,7 +134,7 @@ $E_{\mathrm{RL}} = 3\,$V/m. Channel-inversion ZF without exposure
 shaping violates the cap on $10.2\,\%$ of body-slots; ZF passed
 through the per-slot primal projection of the body twin's posed
 $\Qmat^{(u)}$ holds violations at $0.0\,\%$ across all detected
-bodies at $74.0\,$Gbps, the MCS28 sum-cap, by
+bodies at $74.0\,$Gbps, the MCS27 sum-cap, by
 feasibility-by-construction. The multi-body MMSE-with-exposure
 dual-ascent QCQP of Ying et al.~\cite{Ying2017} extended to
 $K + B$ bodies, when its noise-power regulariser is matched to the
@@ -222,7 +222,7 @@ $\Qmat^{(u)} = \Jmat^T \Mmat^{(u)} \Jmat$, that the network can
 maintain at the cadence each piece varies on. The scene-side path
 dictionary is built once and refreshed under body translation by a
 diagonal phasor. Second, we observe that the operational rate model
-of 5G NR FR2 is the per-stream MCS cap of $7.4\,$bps/Hz at MCS28,
+of 5G NR FR2 is the per-stream MCS cap of $7.4\,$bps/Hz at MCS27,
 not uncapped Shannon. Regularised ZF on a tens-of-element panel
 saturates this cap with margin above the clip threshold for the served-user count
 that fits the array DoF. We prove
@@ -282,7 +282,7 @@ the $90\,\%$ trace fraction, climbing to 4 and 3 respectively at the
 $99\,\%$ trace fraction. Channel-inversion ZF without exposure shaping
 violates the cap on $10.2\,\%$ of body-slots over the 50-second walk;
 projected ZF holds violations at $0.0\,\%$ on detected bodies at the
-MCS28 cap of $74.0\,$Gbps, within $0.0\,\%$ of unconstrained-and-non-compliant
+MCS27 cap of $74.0\,$Gbps, within $0.0\,\%$ of unconstrained-and-non-compliant
 ZF. The dual-ascent QCQP, with its noise-power regulariser matched
 to the receiver floor and the same projection step at exit, attains
 the same MCS sum-cap of $74.0\,$Gbps with $0\,\%$ violations on its
@@ -679,11 +679,11 @@ QCQP is non-separable in $k$.
 The rate model determines what optimality means in
 \cref{eq:P-MB}. We adopt the operational 5G NR FR2 rate model:
 per stream, $R_k = \min\bigl(\log_2(1 + \mathrm{SINR}_k),\,
-S_{\max}\bigr)$ with $S_{\max} = 7.4\,$bps/Hz, the MCS28 cap of NR
+S_{\max}\bigr)$ with $S_{\max} = 7.4\,$bps/Hz, the MCS27 cap of NR
 FR2~\cite{TS38214MCS}. The cap reflects that the deployable
 constellation is $256$-QAM at coderate $948/1024$, not Shannon, and
 that a deployed precoder gains nothing operationally from SINR
-beyond the $\sim 30\,$dB threshold at which MCS28 clips reliably.
+beyond the $\sim 30\,$dB threshold at which MCS27 clips reliably.
 The MCS-cap rate model is what simplifies \cref{eq:P-MB} into the
 closed-form solution we develop below; the academic uncapped
 Shannon rate model leads to a different optimum that we treat in
@@ -800,7 +800,7 @@ optimum.
 
 The hypothesis $\alpha^2\,\mathrm{SINR}^{\mathrm{ZF}}_{\min} \geq
 2^{S_{\max}} - 1$ has a single physical meaning: channel-inversion
-ZF leaves enough SINR headroom above the linear MCS28 clip
+ZF leaves enough SINR headroom above the linear MCS27 clip
 threshold $2^{S_{\max}} - 1 = 167.9$ (i.e.\ $22.25\,$dB) to absorb
 the worst-body overshoot factor $\rho/\eta_S$ without falling below
 the cap. In the plaza-scale binding regime of \cref{sec:eval} we
@@ -912,7 +912,7 @@ $26\,$GHz and bodies in the cell share $3$ to $4$ dominant
 beam-direction modes; both the projection of
 \cref{eq:primal-projection} and the dual ascent of
 \cref{app:dualascent} inherit this regime structurally and the
-projection is rate-cost-free at MCS28 because the SINR margin
+projection is rate-cost-free at MCS27 because the SINR margin
 absorbs the worst-body overshoot.
 
 
@@ -1046,7 +1046,7 @@ its keep against the closed-form scaling.
   multi-body MMSE-with-exposure (blue), with the same projection
   step at exit, also holds the tail at the cap. Right: per-precoder
   Pareto on cap-violation rate vs sum-rate. Both projected ZF and
-  the dual ascent saturate the MCS28 sum-cap at $74.0\,$Gbps; both
+  the dual ascent saturate the MCS27 sum-cap at $74.0\,$Gbps; both
   drive aggregate violations to $0.0\,\%$ on their detected-body
   input set (\cref{sec:eval-baselines} for per-tier breakdown).}
   \label{fig:hero}
@@ -1097,7 +1097,7 @@ ground-truth $\Qmat^{(u)}$; \emph{ZF + proj (deployable)} sets it
 against only the detected-body input set the dual ascent receives.
 \emph{Dual ascent (tuned)} is the multi-body MMSE-with-exposure of
 \cref{app:dualascent} with its noise-power regulariser matched to
-the receiver floor and the projection step at exit. The MCS28 cap
+the receiver floor and the projection step at exit. The MCS27 cap
 of $7.4\,$bps/Hz at 400 MHz puts $K\,S_{\max}\,$BW at $74.0\,$Gbps
 for $K = 25$, $29.6\,$Gbps for $K = 10$, $14.8\,$Gbps for $K = 5$.
 The undetected-tier-C floor is identical in both deployable
@@ -1307,7 +1307,7 @@ upward with $\sigma_{\mathrm{joint}}$ from $0\,\%$ to $0.93\,\%$
 with sub-percent slot-to-slot fluctuation between adjacent grid
 points (single-seed). The closed-form scaling overlaid on the same
 sweep tracks within $0.1\,$pp of the dual ascent at every point.
-Sum-rate sits at the MCS28 sum-cap of $74.0\,$Gbps across the full
+Sum-rate sits at the MCS27 sum-cap of $74.0\,$Gbps across the full
 sweep, since the SINR-margin condition holds throughout. The
 operationally-honest target sits at $\sigma_{\mathrm{joint}} \in
 [1.5^\circ, 8^\circ]$, the consumer-IMU band: in this band the
@@ -1325,7 +1325,7 @@ requiring instrumented-mocap-grade hardware.
   Green dashed: ZF + proj (deployable) cap-violation rate on the
   subset of points where the closed-form scaling was logged
   (within $0.1\,$pp of the dual ascent at every measured point).
-  Green dotted: mean sum-rate, flat at the MCS28 sum-cap of
+  Green dotted: mean sum-rate, flat at the MCS27 sum-cap of
   $74.0\,$Gbps across the sweep. The T-pose-fallback asymptote
   sits at $0.75\,\%$ for reference.}
   \label{fig:imu-sweep}
@@ -1546,7 +1546,7 @@ reasonable precoder satisfies the cap by orders of magnitude.
 
 The preference for projected ZF over the dual-ascent QCQP solver
 under the deployable rate model is structural and operational, not
-algorithmic. The per-stream MCS28 cap of $7.4\,$bps/Hz clips the
+algorithmic. The per-stream MCS27 cap of $7.4\,$bps/Hz clips the
 rate model at the $22.25\,$dB linear SINR threshold. Both
 algorithms saturate this cap in the binding regime and both drive
 their detected-body violations to $0\,\%$. What differs is
@@ -1674,12 +1674,12 @@ deployable 5G NR FR2 MCS-cap rate model, a one-line closed-form
 optimum: the per-slot primal projection of regularised
 zero-forcing $\ww_k = \alpha\,\ww_k^{\mathrm{ZF}}$ with $\alpha =
 \min(1, \sqrt{\eta_S \min_u L^{(u)}/\PabsZF^{(u)}})$
-saturates the $K + B$ per-body caps and the per-stream MCS28 cap
+saturates the $K + B$ per-body caps and the per-stream MCS27 cap
 simultaneously, requires no inner optimisation, and is identity
 when ZF already satisfies the caps at the safety fraction $\eta_S$.
 The MCS-cap rate model is what kills the rate-cost of uniform
 scaling: regularised ZF on a tens-of-element panel achieves
-substantial SINR at the served users, well above the MCS28 clip
+substantial SINR at the served users, well above the MCS27 clip
 threshold, so the projection scales SINR down without dropping
 below the clip. The dual-ascent QCQP solver of \cref{app:dualascent},
 which extends the per-stream MMSE-with-exposure stationarity of
@@ -1698,7 +1698,7 @@ transmit power. The empirical exposure-operator rank is 3 to 4 at
 the $99\,\%$ trace fraction; regularised ZF violates the cap on
 $10.2\,\%$ of body-slots over a 50-second steady-state walk; ZF
 with primal projection holds violations at $0.0\,\%$ on its
-detected-body input set at the MCS28 sum-cap of $74.0\,$Gbps. The
+detected-body input set at the MCS27 sum-cap of $74.0\,$Gbps. The
 dual-ascent QCQP solver, when its noise-power regulariser is
 matched to the receiver floor, attains the same MCS sum-cap with
 the same $0\,\%$ violations on the detected set; the
