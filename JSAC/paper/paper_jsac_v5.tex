@@ -958,7 +958,17 @@ around the panel under bounded random-walk trajectories. The PHY
 surrogate is per-stream $\min(\log_2(1+\mathrm{SINR}_k),\,
 S_{\max})$ with $S_{\max} = 7.4\,$bps/Hz from 3GPP TS 38.214
 Table 5.1.3.1-2 (256-QAM, $\mathrm{MCS}=27$, coderate
-$948/1024$)~\cite{TS38214MCS}.
+$948/1024$)~\cite{TS38214MCS}. Receiver noise power is
+$\sigma_n^2 = 10^{-12}\,$W ($-90\,$dBm at $400\,$MHz, optimistic
+$0\,$dB NF). The dual-ascent solver's noise-power regulariser is
+matched to this floor; in the original Ying et
+al.~\cite{Ying2017} formulation the regulariser is a free
+parameter set to $10^{-2}$ or $10^{-3}$, and we observed
+in early v3-era runs that this $7$-$9$ orders of magnitude
+mismatch with the SE evaluator drove the dual ascent into
+MRT-like degenerate behaviour and produced a spurious
+``factor-4 rate gap'' that disappeared once the regulariser was
+matched to the floor.
 The post-2014 Brussels $14.57\,$V/m cumulative cap and the Italian
 $15\,$V/m attention level for high-density urban centres are slack
 regimes where any reasonable precoder satisfies the cap by an order
