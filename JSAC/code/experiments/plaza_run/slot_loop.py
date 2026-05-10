@@ -63,7 +63,7 @@ from .tier_c import SensingConfig, detect_bodies
 
 logger = logging.getLogger(__name__)
 
-PRECODER_NAMES = ["mrt", "zf", "wc_backoff", "zf_proj", "multibody_ecbf", "oracle"]
+PRECODER_NAMES = ["mrt", "zf", "wc_backoff", "zf_proj", "zf_proj_proposed", "multibody_ecbf", "oracle"]
 DEFAULT_NOISE_POWER = 1e-2
 DEFAULT_ORACLE_NOISE_POWER = 1e-3
 DEFAULT_POSE_PERIOD = 30  # slots
@@ -525,12 +525,28 @@ def run_slots(
         p_abs_mrt = _batch_p_abs(Q_actual_stack, precoders["mrt"])
         precoders["wc_backoff"] = _wc_backoff_W(precoders["mrt"], p_abs_mrt, body_budgets)
 
-        # ZF + per-slot primal projection: simplest pose-agnostic baseline that
-        # is cap-feasible by construction. The projection uses the ground-truth
-        # Q (so this is an oracle in the sense that it knows the actual posed
-        # absorption); it isolates "what does primal projection alone buy".
+        # ZF + per-slot primal projection: two variants for fair comparison.
+        # zf_proj projects against Q_actual_stack (oracle: every body's true posed Q).
+        # This is the upper bound on what primal projection can buy with perfect
+        # detection.
         p_abs_zf = _batch_p_abs(Q_actual_stack, precoders["zf"])
         precoders["zf_proj"] = _primal_project_W(precoders["zf"], p_abs_zf, body_budgets)
+
+        # zf_proj_proposed projects against Q_proposed (detected bodies only,
+        # under the active pose source). This is the fair head-to-head input
+        # set with multibody_ecbf and reflects what is deployable when tier-C
+        # bodies can be undetected. The same precoder is then evaluated
+        # against the ground-truth Q for ALL bodies, so residual violations
+        # on undetected tier-C bystanders contribute to the violation rate.
+        if Q_proposed:
+            Q_proposed_stack = np.stack(Q_proposed, axis=0)
+            L_proposed_arr = np.asarray(L_proposed, dtype=np.float64)
+            p_abs_zf_proposed = _batch_p_abs(Q_proposed_stack, precoders["zf"])
+            precoders["zf_proj_proposed"] = _primal_project_W(
+                precoders["zf"], p_abs_zf_proposed, L_proposed_arr
+            )
+        else:
+            precoders["zf_proj_proposed"] = precoders["zf"]
 
         # max_outer=24 in binding regime: dual-Newton FD-Jacobian needs more
         # iterations when many bodies are simultaneously active. tol=1e-3 is

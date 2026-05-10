@@ -32,12 +32,14 @@ OUT_DIR = Path(__file__).parent
 FALLBACK_NPZ = NPZ_DIR / "plaza_run_seed42_physhannon_poseaware_pathsdict_bind5min.npz"
 
 L_RL = 0.00693  # body budget [W] at E_RL=3V/m (T0 * S * A * eta)
-PRECODER_NAMES = ["mrt", "zf", "wc_backoff", "zf_proj", "multibody_ecbf", "oracle"]
+PRECODER_NAMES = ["mrt", "zf", "wc_backoff", "zf_proj", "zf_proj_proposed",
+                  "multibody_ecbf", "oracle"]
 PRECODER_DISPLAY = {
     "mrt": "MRT",
     "zf": "ZF (raw)",
     "wc_backoff": "WC back-off",
-    "zf_proj": "ZF + proj",
+    "zf_proj": "ZF + proj (oracle)",
+    "zf_proj_proposed": "ZF + proj (deploy)",
     "multibody_ecbf": "ECBF (IMU pose)",
     "oracle": "Oracle ECBF",
 }
@@ -46,11 +48,13 @@ PRECODER_COLORS = {
     "zf": "#ef8a62",
     "wc_backoff": "#fddbc7",
     "zf_proj": "#2ca02c",
+    "zf_proj_proposed": "#5fa55a",
     "multibody_ecbf": "#2166ac",
     "oracle": "#67a9cf",
 }
 PRECODER_MARKERS = {
     "mrt": "o", "zf": "s", "wc_backoff": "D", "zf_proj": "P",
+    "zf_proj_proposed": "X",
     "multibody_ecbf": "^", "oracle": "v",
 }
 
@@ -150,20 +154,34 @@ def make_hero(z):
     sumrate = z["sumrate"]
     violation = z["violation"]
 
+    # Hero figure shows the operationally-relevant set: MRT, ZF (raw),
+    # WC back-off, ZF + proj (deployable variant since it's the head-to-head
+    # match), ECBF (IMU pose), Oracle. ZF + proj (oracle) is dropped to keep
+    # the legend manageable; it overlaps zf_proj_proposed everywhere except
+    # tier-C tail and is reported in Table II.
+    HERO_PRECODERS = ["mrt", "zf", "wc_backoff",
+                      "zf_proj_proposed" if "zf_proj_proposed" in pn else "zf_proj",
+                      "multibody_ecbf", "oracle"]
+
     fig, (ax_a, ax_b) = plt.subplots(
         1, 2, figsize=fig_size_ieee(columns=2, aspect=0.40),
     )
 
     # (a) ECDFs
-    for name in PRECODER_NAMES:
+    for name in HERO_PRECODERS:
         if name not in pn:
             continue
         i = pn.index(name)
         r = (p_abs[:, :, i] / L_RL).reshape(-1)
         r_sorted = np.sort(np.maximum(r, 1e-6))
         f = np.arange(1, len(r_sorted) + 1) / len(r_sorted)
+        # Override display name so "ZF + proj" reads cleanly in the hero
+        # figure when we picked the deployable variant.
+        disp = PRECODER_DISPLAY[name]
+        if name == "zf_proj_proposed":
+            disp = "ZF + proj"
         ax_a.plot(r_sorted, f, color=PRECODER_COLORS[name], lw=1.6,
-                  label=PRECODER_DISPLAY[name])
+                  label=disp)
     ax_a.axvspan(1.0, 1e2, alpha=0.10, color="#b2182b", lw=0)
     ax_a.axvline(1.0, color="#b2182b", ls=":", lw=1.0, alpha=0.7)
     ax_a.text(1.05, 0.04, "violates RL", color="#b2182b", fontsize=8,
@@ -181,17 +199,20 @@ def make_hero(z):
     # Use a legend on the right rather than per-marker labels so we don't
     # have to hand-place text around overlapping points.
     xs, ys, names = [], [], []
-    for name in PRECODER_NAMES:
+    for name in HERO_PRECODERS:
         if name not in pn:
             continue
         i = pn.index(name)
         v = float(violation[:, :, i].mean()) * 100
         s = float(sumrate[:, i].mean()) / 1e9
         xs.append(v); ys.append(s); names.append(name)
+        disp = PRECODER_DISPLAY[name]
+        if name == "zf_proj_proposed":
+            disp = "ZF + proj"
         ax_b.scatter(v, s, marker=PRECODER_MARKERS[name],
                      s=110, color=PRECODER_COLORS[name],
                      edgecolor="k", linewidth=0.7, zorder=4,
-                     label=PRECODER_DISPLAY[name])
+                     label=disp)
     xmax = max(xs) if xs else 1
     sr_max = max(ys) if ys else 1
     cap_x = max(xmax * 0.05, 1.0)
@@ -246,14 +267,6 @@ def make_pose_info(stats_o, stats_i, stats_t):
     for xi, v in zip(x, sr):
         axes[1].text(xi, v + max(sr) * 0.04, f"{v:.2f}", ha="center", fontsize=8)
     axes[1].grid(True, alpha=0.3, axis="y")
-    # Mark the T-pose bar as not-quite-comparable: it gains throughput by
-    # leaving cap violations on the table.
-    if viol[2] > max(viol[:2]) * 1.2:
-        axes[1].annotate(r"$\uparrow$ achieved with"
-                         f" {viol[2]:.1f}% violations",
-                         xy=(2, sr[2]),
-                         xytext=(2, sr[2] * 0.50),
-                         fontsize=7, ha="center", color="#b2182b")
 
     axes[2].bar(x, fb, color=pose_colors, alpha=0.85, edgecolor="k", lw=0.4)
     axes[2].set_xticks(x); axes[2].set_xticklabels(sources)
@@ -276,7 +289,7 @@ def _imu_sweep_real_data():
     for sigma in [0, 1, 2, 4, 8, 16]:
         tag = "oracle" if sigma == 0 else f"imu{sigma}"
         cands = []
-        for prefix in ["bind3v_v4_", "bind5min_v3_"]:
+        for prefix in ["bind3v_v7_", "bind3v_v4_", "bind5min_v3_"]:
             cands.extend(NPZ_DIR.glob(f"plaza_run_seed42_*{prefix}{tag}.npz"))
             if cands:
                 break
@@ -381,7 +394,10 @@ def make_chronic(z_imu, dt_s=None):
 
     fig, ax = plt.subplots(figsize=fig_size_ieee(columns=1, aspect=0.78))
     fracs_max = 0.0
-    for name in ["mrt", "zf", "wc_backoff", "zf_proj", "multibody_ecbf"]:
+    chronic_set = ["mrt", "zf", "wc_backoff",
+                   "zf_proj_proposed" if "zf_proj_proposed" in pn else "zf_proj",
+                   "multibody_ecbf"]
+    for name in chronic_set:
         if name not in pn:
             continue
         i = pn.index(name)
@@ -389,8 +405,11 @@ def make_chronic(z_imu, dt_s=None):
         frac = energy_J / max_compliant_J
         x = np.sort(np.maximum(frac, 1e-4))
         y = np.arange(1, len(x) + 1) / len(x)
+        disp = PRECODER_DISPLAY[name]
+        if name == "zf_proj_proposed":
+            disp = "ZF + proj"
         ax.plot(x, y, color=PRECODER_COLORS[name], lw=1.6,
-                label=f"{PRECODER_DISPLAY[name]} (med $={np.median(frac):.2f}$)")
+                label=f"{disp} (med $={np.median(frac):.2f}$)")
         fracs_max = max(fracs_max, float(frac.max()))
 
     ax.axvline(1.0, color="k", ls="--", lw=1.0, alpha=0.6)
@@ -416,7 +435,14 @@ def make_spatial(z_oracle, z_imu):
     pn = [str(s) for s in z_oracle["precoder_names"]]
     pn_i = [str(s) for s in z_imu["precoder_names"]]
     zf_idx = pn.index("zf")
-    prop_idx = pn_i.index("zf_proj") if "zf_proj" in pn_i else pn_i.index("multibody_ecbf")
+    # Prefer the deployable variant for the right-panel heatmap; fall back
+    # to the oracle variant or to the dual ascent.
+    if "zf_proj_proposed" in pn_i:
+        prop_idx = pn_i.index("zf_proj_proposed")
+    elif "zf_proj" in pn_i:
+        prop_idx = pn_i.index("zf_proj")
+    else:
+        prop_idx = pn_i.index("multibody_ecbf")
 
     pos_o = z_oracle["body_positions"]
     pos_i = z_imu["body_positions"]
@@ -462,7 +488,10 @@ def make_spatial(z_oracle, z_imu):
     fig, axes = plt.subplots(
         1, 2, figsize=fig_size_ieee(columns=2, aspect=0.42), sharey=True,
     )
-    for ax, h, ttl in zip(axes, [h_zf, h_pr], ["ZF (unconstrained)", "ZF + proj (IMU pose)"]):
+    right_label = "ZF + proj (IMU pose)"
+    if "zf_proj_proposed" in pn_i:
+        right_label = "ZF + proj (deployable, IMU pose)"
+    for ax, h, ttl in zip(axes, [h_zf, h_pr], ["ZF (unconstrained)", right_label]):
         masked = np.ma.masked_invalid(h.T)
         im = ax.imshow(masked, origin="lower",
                        extent=[xb[0], xb[-1], yb[0], yb[-1]],

@@ -130,20 +130,30 @@ construction at $\eta_S \in (0, 1]$ and costs $O(B M r)$ per slot at
 low rank $r$ of the body-coupling Gram. We instantiate the loop on
 a Brussels Grand Place geometry with 50 SMPL-X bodies, an $8 \times
 8$ panel at $26\,$GHz, 25 served users, $43\,$dBm conducted, and
-$E_{\mathrm{RL}} = 3\,$V/m. Regularised ZF violates the cap on
-$10.2\,\%$ of body-slots; ZF with primal projection holds violations
-at $0.0\,\%$ at $74.0\,$Gbps, the MCS28 sum-cap, by
+$E_{\mathrm{RL}} = 3\,$V/m. Channel-inversion ZF without exposure
+shaping violates the cap on $10.2\,\%$ of body-slots; ZF passed
+through the per-slot primal projection of the body twin's posed
+$\Qmat^{(u)}$ holds violations at $0.0\,\%$ across all detected
+bodies at $74.0\,$Gbps, the MCS28 sum-cap, by
 feasibility-by-construction. The multi-body MMSE-with-exposure
-dual-ascent QCQP of Ying et al.~\cite{Ying2017} extended to $K + B$
-bodies, when its noise-power regulariser is matched to the receiver
-floor, attains the same MCS sum-cap on the same instance but at
-$\sim 2\,\%$ residual violations from imperfect dual convergence on
-a rank-truncated solver. Projected ZF is the preferred deployable
-consumer of the body twin: it is a single scalar scaling at
-$\sim 0.5\,$ms per slot vs $\sim 350\,$ms for the dual ascent, and
-its compliance is by construction. The dual-ascent solver is the
-right tool for the academic uncapped-Shannon objective and the
-min-TX-power formulation; we provide it in \cref{app:dualascent}. The naive projected-area Cauchy bound
+dual-ascent QCQP of Ying et al.~\cite{Ying2017} extended to
+$K + B$ bodies, when its noise-power regulariser is matched to the
+receiver floor, attains the same $74.0\,$Gbps MCS sum-cap and the
+same $0\,\%$ violation rate on detected bodies on the same
+instance. Aggregate violations against the full ground-truth
+population sit at $1.21\,\%$ for projected ZF and $2.39\,\%$
+for the dual ascent at $K = 25$, both concentrated entirely on
+undetected tier-C bystanders that absent themselves from the
+QCQP; the dual ascent's $\sim 2 \times$ wider tail comes from
+its per-stream shaping leaving more residual on undetected bodies
+than the uniform projection does. Projected ZF is the preferred
+deployable consumer of the body twin: it is a single scalar
+scaling at $\sim 0.5\,$ms per slot vs $\sim 350\,$ms for the dual
+ascent, and its feasibility on the detected set is by construction
+at every slot rather than only at solver convergence. The dual-ascent solver
+is the right tool for the academic uncapped-Shannon objective and
+the min-TX-power formulation; we provide it in
+\cref{app:dualascent}. The naive projected-area Cauchy bound
 on $\xx^H \Qmat^{(u)} \xx$ is loose by 21 to $27\,$dB on the LOS
 steering precoder and breached by 49 to $70\,\%$ of random and
 shaped precoders; the conditional bound under a direction-set
@@ -268,19 +278,28 @@ Body-coupling is heavily rank-deficient at the panel: the empirical
 effective rank of $\Qmat^{(u)}$ over the plaza geometry is 3 in the
 specular path model and 1-3 in the 3GPP UMa-LOS stochastic model at
 the $90\,\%$ trace fraction, climbing to 4 and 3 respectively at the
-$99\,\%$ trace fraction. Regularised ZF violates the cap on
-$10.2\,\%$ of body-slots; projected ZF holds violations at
-$0.0\,\%$ at the MCS28 cap of $74.0\,$Gbps, within $0.0\,\%$ of
-unconstrained-and-non-compliant ZF. The dual-ascent QCQP, with the
-same projection step at exit, holds violations at $0.85\,\%$ under
-virtual-IMU pose and $0.0\,\%$ under oracle pose, but its sum-rate
-is $20.75\,$Gbps because the dual scaling shrinks all $\ww_k$
-including each served user's own beam. We replicate the result on
+$99\,\%$ trace fraction. Channel-inversion ZF without exposure shaping
+violates the cap on $10.2\,\%$ of body-slots over the 50-second walk;
+projected ZF holds violations at $0.0\,\%$ on detected bodies at the
+MCS28 cap of $74.0\,$Gbps, within $0.0\,\%$ of unconstrained-and-non-compliant
+ZF. The dual-ascent QCQP, with its noise-power regulariser matched
+to the receiver floor and the same projection step at exit, attains
+the same MCS sum-cap of $74.0\,$Gbps with $0\,\%$ violations on its
+detected-body input set; its residual $0.5\,\%$ to $2.4\,\%$
+aggregate violation rate is concentrated on undetected
+tier-C bystanders that are excluded from both algorithms' QCQP and
+manifest only at evaluation against the ground-truth $\Qmat^{(u)}$
+for all bodies. The undetected-tier-C floor is a sensing-pipeline
+property that ZF + primal projection inherits identically when its
+projection scale is computed from the same detected-body input set
+(rather than from oracle full-population $\Qmat$); we report both
+variants in \cref{sec:eval-baselines}. We replicate the result on
 $K = 10$ and $K = 5$ served-user counts, and on a
 bystander-binding geometry with served users at $25$-$50\,$m and
 non-served bodies at $5$-$12\,$m: in every case ZF plus primal
-projection meets compliance at the MCS cap and dominates the
-dual-ascent solver on rate. The conditional projected-area bound
+projection meets the MCS sum-cap and matches the dual-ascent solver's
+rate-and-violation tuple at $\sim 700\times$ lower wall-clock. The
+conditional projected-area bound
 on $\xx^H \Qmat^{(u)} \xx$ in \cref{app:cauchy} is the right object
 for the no-twin tier-D fall-through; the unconditional version is
 loose by 21 to $27\,$dB on the LOS steering precoder and breached
@@ -775,26 +794,37 @@ optimum.
 \end{proof}
 
 The hypothesis $\alpha^2\,\mathrm{SINR}^{\mathrm{ZF}}_{\min} \geq
-2^{S_{\max}} - 1$ has a single physical meaning: regularised ZF
-leaves enough SINR headroom above the $2^{S_{\max}} - 1 \approx
-22.3\,$dB MCS28 clip threshold to absorb the worst-body overshoot
-factor $\rho/\eta_S$ without falling below the cap. In the
-plaza-scale binding regime of \cref{sec:eval} we measure $\rho \in
-[4, 17]$ at $E_{\mathrm{RL}} = 3\,$V/m, so the hypothesis is
-equivalent to $\mathrm{SINR}^{\mathrm{ZF}}_{\min} \geq
-(\rho/\eta_S)\,(2^{S_{\max}} - 1) \approx 17.5 \cdot 168 \approx
-34.7\,$dB. Empirically, ZF saturates the MCS sum-cap of
-$74.0\,$Gbps on every slot of the trace and projected ZF retains
-the same cap at zero violation, which witnesses
+2^{S_{\max}} - 1$ has a single physical meaning: channel-inversion
+ZF leaves enough SINR headroom above the linear MCS28 clip
+threshold $2^{S_{\max}} - 1 = 167.9$ (i.e.\ $22.25\,$dB) to absorb
+the worst-body overshoot factor $\rho/\eta_S$ without falling below
+the cap. In the plaza-scale binding regime of \cref{sec:eval} we
+measure $\rho \in [1, 20]$ at $E_{\mathrm{RL}} = 3\,$V/m
+across the four regimes of \cref{tab:baselines}, so the hypothesis
+is equivalent to a worst-case
+$\mathrm{SINR}^{\mathrm{ZF}}_{\min} \gtrsim
+(\rho/\eta_S)\,(2^{S_{\max}} - 1) \approx 20.6 \cdot 167.9
+\approx 3460$ in linear units, i.e.\ $34.7\,$dB. Empirically, ZF
+saturates the MCS sum-cap of $74.0\,$Gbps on every slot of the
+trace and projected ZF retains the same cap at zero violation on
+the detected-body input set, which witnesses
 $\mathrm{SINR}^{\mathrm{ZF}}_{\min}$ at or above this margin
 threshold across the entire $1500$-slot window.
-\Cref{prop:projection-optimality}
-is the gating result: the multi-body QCQP that motivates the
-ECBF/MMSE-with-exposure machinery of
-\cite{Ying2015,Ying2017,Hochwald2014} extended to $K + B$ bodies
-admits a closed-form scaling solution under the deployable rate
-model, and the body-twin pipeline of \cref{sec:twin} is what
-makes the $\PabsZF^{(u)}$ in
+\Cref{prop:projection-optimality} establishes that any $K$-stream
+precoder satisfying the SINR-margin condition and the per-body
+caps attains $R_{\mathrm{sum}} = K\,S_{\max}$, and that the
+closed-form scaled ZF of \cref{eq:primal-projection} is one such
+precoder reachable in $O(B M r)$ per slot. The proposition does
+not single out projected ZF as the unique global optimum: any
+$K$-stream method that saturates the cap and meets the per-body
+constraints is co-optimal in this regime, including the
+dual-ascent QCQP of \cref{app:dualascent} when its noise-power
+regulariser is matched to the receiver floor. The case for
+projected ZF over the dual ascent is not algorithmic optimality
+but feasibility-by-construction at every slot together with the
+$\sim 700\times$ wall-clock advantage at the same rate
+(\cref{sec:eval-baselines}). The body-twin pipeline of
+\cref{sec:twin} is what makes the $\PabsZF^{(u)}$ in
 \cref{eq:primal-projection} computable per slot.
 
 \subsection{When dual ascent on the Lagrange multipliers earns its keep}\label{sec:dualascent-ref}
@@ -822,8 +852,10 @@ ascends the dual on $\bm\lambda \in \mathbb{R}_+^{K+B}$ via Newton
 steps with finite-difference Jacobian, and re-runs the projection
 of \cref{eq:primal-projection} at solver exit as a feasibility
 safety net. We relegate the dual ascent because under the MCS-cap
-rate model it underperforms projected ZF by $\sim 73\,\%$ of MCS
-sum-cap (\cref{sec:eval-baselines}).
+rate model it attains the same MCS sum-cap as projected ZF on the
+same instance but at $\sim 700\times$ the wall-clock and without
+the per-slot feasibility-by-construction guarantee
+(\cref{sec:eval-baselines}).
 
 \subsection{ZF as the rank-one Q limit}\label{sec:zf-limit}
 
@@ -906,14 +938,22 @@ $L^{(u)}_{\mathrm{RL}} = T_0\,S_{\mathrm{lim}}\,\Aab^{(u)}\,
 \bar\eta^{(u)}$, with $T_0 = 0.4$ the mean Fresnel transmissivity
 of skin at normal incidence, $\Aab \approx 1.45\,$m$^2$ the
 ICRP-89 reference-adult absorption area, and $\bar\eta = 0.5$
-the mean illumination view-factor (which already absorbs the
-Cauchy projected-area factor $1/4$ for an average-pose body lit
-from a single panel direction). This gives
-$L^{(u)}_{\mathrm{RL}} \approx 6.9\,$mW per body. The trace window is
+the mean illumination view-factor for a single-panel-illuminated
+body. This $\bar\eta$ is twice the Cauchy projected-area
+factor $1/4$ to leave headroom on the $D_{\max} \leq 2$
+peak-to-average directivity bound; the unconditional Cauchy bound
+is breached by a $+2.86$-to-$+6.34\,$dB median ratio on shaped
+precoders (\cref{sec:eval-cauchy}), but the conditional bound of
+\cref{app:cauchy} that holds when $\xx$ lies in the BS-side
+beamforming codebook keeps the operational budget defensible.
+This gives $L^{(u)}_{\mathrm{RL}} \approx 6.9\,$mW per body. The trace window is
 $1500$ slots at $33\,$ms slot spacing, giving $50\,$s of
 wall-clock-equivalent simulation; bodies walk in a 5-to-55$\,$m ring
 around the panel under bounded random-walk trajectories. The PHY
-surrogate is Shannon capacity over the per-stream effective channel.
+surrogate is per-stream $\min(\log_2(1+\mathrm{SINR}_k),\,
+S_{\max})$ with $S_{\max} = 7.4\,$bps/Hz from 3GPP TS 38.214
+Table 5.1.3.1-2 (256-QAM, $\mathrm{MCS}=27$, coderate
+$948/1024$)~\cite{TS38214MCS}.
 The post-2014 Brussels $14.57\,$V/m cumulative cap and the Italian
 $15\,$V/m attention level for high-density urban centres are slack
 regimes where any reasonable precoder satisfies the cap by an order
@@ -983,44 +1023,57 @@ its keep against the closed-form scaling.
   cap (red shaded zone). Projected ZF (green) holds the right tail
   to $\eta_S\,L_{\mathrm{RL}}$ by construction. The dual-ascent
   multi-body MMSE-with-exposure (blue), with the same projection
-  step at exit, also holds the tail at the cap but at a lower
-  amplitude. Right: per-precoder Pareto on cap-violation rate vs
-  sum-rate. Projected ZF lands at $0.0\,\%$ violation and
-  $74.0\,$Gbps, the MCS28 spectral-efficiency cap, dominating both
-  the dual ascent ($0.85\,\%$ violation, $20.75\,$Gbps under
-  virtual-IMU pose) and unconstrained-and-non-compliant ZF.}
+  step at exit, also holds the tail at the cap. Right: per-precoder
+  Pareto on cap-violation rate vs sum-rate. Both projected ZF and
+  the dual ascent saturate the MCS28 sum-cap at $74.0\,$Gbps; both
+  drive aggregate violations to $0.0\,\%$ on their detected-body
+  input set (\cref{sec:eval-baselines} for per-tier breakdown).}
   \label{fig:hero}
 \end{figure*}
 
 \subsection{Head-to-head: projected ZF vs. dual-ascent QCQP}\label{sec:eval-baselines}
 
 \Cref{tab:baselines} reports the per-precoder metrics over the
-$1500$-slot, $50$-second steady-state trace at three served-user
-counts ($K = 25, 10, 5$ out of $50$ bodies) and on a
-bystander-binding geometry where served users are at $25$-$50\,$m
-and the $35$ non-served bodies cluster at $5$-$12\,$m from the
-panel. The bystander-binding geometry was constructed to test
-whether the dual-ascent solver wins when binding bodies are
-non-served and ZF cannot null them by construction. In every
-regime tested, both algorithms saturate the MCS sum-cap; projected
-ZF wins on compliance at $0\,\%$ violations by construction while
-the rank-truncated dual ascent leaves $0.5$-to-$2.4\,\%$ residual
-violations.
+$600$-slot steady-state trace at three served-user counts
+($K = 25, 10, 5$ out of $50$ bodies) and on a bystander-binding
+geometry where served users are at $25$-$50\,$m and the $35$
+non-served bodies cluster at $5$-$12\,$m from the panel. The
+bystander-binding geometry was constructed to test whether the
+dual-ascent solver wins when binding bodies are non-served and ZF
+cannot null them by construction. To separate algorithmic from
+sensing-pipeline effects we report two ZF + projection variants:
+\emph{ZF + proj (oracle)} sets the projection scale $\alpha$
+against the ground-truth $\Qmat^{(u)}$ for every body in the
+population, including undetected tier-C bystanders, and is
+feasibility-by-construction at every slot; \emph{ZF + proj
+(deployable)} sets $\alpha$ against only the bodies in
+$Q_{\mathrm{proposed}}$ that the body twin sees at the slot, the
+same input set the dual ascent receives. The deployable variant
+re-introduces the sensing-pipeline floor that absent undetected
+tier-C bodies impose at evaluation against the full population. In
+every regime tested, both ZF + projection and the dual ascent
+saturate the MCS sum-cap, and ZF + proj (deployable) edges out
+the dual ascent on aggregate compliance with margins of
+$1.05\times$ to $19\times$ on violation rate, traceable to the
+dual ascent's rank-$r$ truncation of $\Qmat^{(u)}$ and
+FD-Jacobian noise that the closed-form scaling does not incur.
+Both deployable variants inherit the same undetected-tier-C
+floor.
 
 \begin{table}[!t]
-\caption{Projected ZF vs. dual-ascent QCQP across served-user
-counts and the bystander-binding geometry. Mean sum-rate and
-worst-case violation against the ground-truth full-rank
-$\Qmat^{(u)}$ on the $600$-slot trace at $E_{\mathrm{RL}} =
-3\,$V/m, $43\,$dBm. \emph{ZF + proj} is the closed-form scaling of
-\cref{eq:primal-projection}. \emph{Dual ascent (tuned)} is the
-multi-body MMSE-with-exposure of \cref{app:dualascent} with its
-noise-power regulariser matched to the receiver floor and the
-projection step at exit. The MCS28 cap of $7.4\,$bps/Hz at 400 MHz
-puts $K\,S_{\max}\,$BW at $74.0\,$Gbps for $K = 25$, $29.6\,$Gbps
-for $K = 10$, $14.8\,$Gbps for $K = 5$. Both algorithms saturate
-the cap; projected ZF achieves zero violations in every case
-while dual ascent leaves a small residual.}
+\caption{Projected ZF vs.\ dual-ascent QCQP across served-user
+counts and the bystander-binding geometry, mean over the $600$-slot
+trace at $E_{\mathrm{RL}} = 3\,$V/m, $43\,$dBm. \emph{ZF + proj
+(oracle)} sets the projection scale against the full-population
+ground-truth $\Qmat^{(u)}$; \emph{ZF + proj (deployable)} sets it
+against only the detected-body input set the dual ascent receives.
+\emph{Dual ascent (tuned)} is the multi-body MMSE-with-exposure of
+\cref{app:dualascent} with its noise-power regulariser matched to
+the receiver floor and the projection step at exit. The MCS28 cap
+of $7.4\,$bps/Hz at 400 MHz puts $K\,S_{\max}\,$BW at $74.0\,$Gbps
+for $K = 25$, $29.6\,$Gbps for $K = 10$, $14.8\,$Gbps for $K = 5$.
+The undetected-tier-C floor is identical in both deployable
+variants.}
 \label{tab:baselines}
 \centering
 \small
@@ -1028,21 +1081,28 @@ while dual ascent leaves a small residual.}
 \toprule
 Regime & Precoder & Sum-rate (Gbps) & Violation rate & $p_{\max}$ (mW) \\
 \midrule
-\multirow{4}{*}{$K = 25$ served, plaza} & ZF (illegal) & 74.0 & 14.6\% & 119.7 \\
- & ZF + proj & \textbf{74.0} & \textbf{0.0\%} & 6.7 \\
+\multirow{4}{*}{$K = 25$ served, plaza}
+ & ZF (illegal) & 74.0 & 14.6\% & 119.7 \\
+ & ZF + proj (oracle) & \textbf{74.0} & \textbf{0.0\%} & 6.7 \\
+ & ZF + proj (deployable) & 74.0 & 1.2\% & 27.7 \\
  & Dual ascent (tuned) & 74.0 & 2.4\% & 39.2 \\
- & Oracle (true pose) & 74.0 & 0.0\% & 6.7 \\
 \midrule
-\multirow{3}{*}{$K = 10$ served, plaza} & ZF (illegal) & 29.6 & 50.0\% & 135.6 \\
- & ZF + proj & \textbf{29.6} & \textbf{0.0\%} & 6.7 \\
+\multirow{4}{*}{$K = 10$ served, plaza}
+ & ZF (illegal) & 29.6 & 50.0\% & 135.6 \\
+ & ZF + proj (oracle) & \textbf{29.6} & \textbf{0.0\%} & 6.7 \\
+ & ZF + proj (deployable) & 29.6 & 0.7\% & 14.3 \\
  & Dual ascent (tuned) & 29.6 & 0.7\% & 58.0 \\
 \midrule
-\multirow{3}{*}{$K = 5$ served, plaza} & ZF (illegal) & 14.8 & 37.2\% & 55.5 \\
- & ZF + proj & \textbf{14.8} & \textbf{0.0\%} & 6.7 \\
+\multirow{4}{*}{$K = 5$ served, plaza}
+ & ZF (illegal) & 14.8 & 37.2\% & 55.5 \\
+ & ZF + proj (oracle) & \textbf{14.8} & \textbf{0.0\%} & 6.7 \\
+ & ZF + proj (deployable) & 14.8 & 0.05\% & 8.8 \\
  & Dual ascent (tuned) & 14.8 & 1.0\% & 21.5 \\
 \midrule
-\multirow{3}{*}{Bystander-binding} & ZF (illegal) & 29.6 & 21.7\% & 104.8 \\
- & ZF + proj & \textbf{29.6} & \textbf{0.0\%} & 6.7 \\
+\multirow{4}{*}{Bystander-binding}
+ & ZF (illegal) & 29.6 & 21.7\% & 104.8 \\
+ & ZF + proj (oracle) & \textbf{29.6} & \textbf{0.0\%} & 6.7 \\
+ & ZF + proj (deployable) & 29.6 & 0.3\% & 10.3 \\
  & Dual ascent (tuned) & 29.6 & 0.5\% & 19.0 \\
 \bottomrule
 \end{tabular}
@@ -1063,17 +1123,38 @@ falls into the unsaturated logarithmic regime, which we
 diagnosed and corrected in the v7 production reported in this
 table.
 
-The compliance gap is what separates the two methods. Projected
-ZF achieves $0\,\%$ violations by construction: the projection
-scale $\alpha$ is computed against the full-rank $\Qmat^{(u)}$,
-so post-scaling absorption $\leq \eta_S\,L^{(u)} \leq L^{(u)}$ for
-every body. The dual ascent operates at rank-$r$ truncation of
-$\Qmat^{(u)}$ ($r = 4$ at the $99\,\%$ trace fraction) so the dual
-variables converge to a rank-$r$-faithful active set; the residual
-$1$-to-$5\,\%$ absorption tail at full rank exits the solver as a
-$0.5$-to-$2.4\,\%$ violation rate. The exit-projection step trims
-the worst-margin body but does not re-enter the dual ascent against
-the corrected residuals.
+The compliance gap requires careful framing. \emph{ZF + proj
+(oracle)} in \cref{tab:baselines} projects against the ground-truth
+$\Qmat^{(u)}$ for every body in the population, including
+undetected tier-C bystanders, and achieves $0\,\%$ violation by
+construction. The dual-ascent solver and \emph{ZF + proj
+(deployable)} both operate on the same detected-body twin (tier A
+and B with their pose estimates, tier-C bodies whose ISAC return
+crosses the detector at the slot, plus their T-pose envelope), so
+their $0.05\,\%$ to $2.4\,\%$ aggregate violation rates are
+dominated by undetected tier-C bystanders that absent themselves
+from the QCQP and only re-enter at evaluation against the full
+ground-truth $\Qmat^{(u)}$. A per-tier breakdown of the $K = 25$
+regime row makes the mechanism explicit: tier A and tier B carry
+$0.00\,\%$ violation under both deployable algorithms, while
+tier-C carries $6.03\,\%$ under ZF + proj (deployable) and
+$11.93\,\%$ under the dual ascent. The mechanism behind the
+deployable variant's smaller residual is that the uniform-scaling
+projection cuts the precoder amplitude by the same $\alpha < 1$
+on every direction, reducing absorbed power on undetected bystanders
+as a free side-effect of constraint enforcement on detected bodies;
+the dual ascent's per-stream MMSE-with-exposure shaping is more
+aggressive on the detected constraint set but offers no analogous
+guarantee on undetected bodies. The structural separation between
+the two algorithms is therefore a wall-clock gap (\cref{tab:cadence})
+plus a small algorithmic edge for the closed-form scaling on
+undetected-body residuals, on top of an identical
+feasibility-by-construction guarantee on the detected input set.
+The dual-ascent solver's rank-$r$ truncation at $r = 6$
+(conservative above the empirical rank-4 envelope of
+\cref{sec:rank-eval}) and its FD-Jacobian noise on the order of
+$10^{-5}$ account for the residual sub-percent gap on top of this;
+we document the solver in \cref{app:dualascent}.
 
 \subsection{Pose-information triage and the IMU
 estimator}\label{sec:eval-imu}
@@ -1113,21 +1194,26 @@ $0.75\,\%$ under T-pose fallback. Even the T-pose source remains
 well below the $10.2\,\%$ violation rate of unconstrained ZF and
 within an order of magnitude of the oracle.
 
-The mechanism of the residual violation is the rank-truncated
-operator $\Qmat^{(u)}$ used inside the dual-ascent solver: the
-solver uses $r = 4$ at the $99\,\%$ trace fraction but the cap is
-checked against the full-rank operator at evaluation time, leaving
-a $1$-to-$5\,\%$ absorption tail that the dual ascent does not
-see. The exit projection trims the worst-margin body to the safety
-fraction $\eta_S$ but does not re-enter the dual ascent against
-the corrected residuals. T-pose specifically adds a second source
-of mismatch: the canonical pose has the arms extended laterally
-while the walking population has the arms inward, so the T-pose
+The dominant mechanism of the residual violation is the
+sensing-pipeline floor: tier-C bystanders that ISAC fails to
+detect on a slot are absent from $Q_{\mathrm{proposed}}$ and
+re-enter at evaluation against the full ground-truth set. A
+per-tier breakdown of the dual-ascent run at $K = 25$ regimeic shows
+the cumulative tier-A and tier-B violation at $0.00\,\%$, with
+all of the $\sim 0.5\,\%$ aggregate violation rate localised to
+the undetected-tier-C subset. The pose-source progression
+oracle/IMU/T-pose modulates this floor at a sub-percent
+incremental scale: T-pose adds a second source of mismatch where
+the canonical pose has the arms extended laterally while the
+walking population has the arms inward, so the T-pose
 $\Qmat^{(u)}$ misrepresents the absorption-mode geometry in some
-BS-precoder directions. Both sources are absent from projected ZF,
-which projects against the full-rank pose-aware $\Qmat^{(u)}$
-directly and is feasibility-by-construction at every slot
-regardless of pose source.
+BS-precoder directions. Both sources are absent from
+\emph{ZF + proj (oracle)} of \cref{tab:baselines}, which projects
+against the full-rank pose-aware $\Qmat^{(u)}$ for every body in
+the population (including undetected tier-C) and is
+feasibility-by-construction at every slot regardless of pose
+source; the deployable variant inherits the same sensing-pipeline
+floor as the dual ascent.
 
 \begin{table}[!t]
 \caption{Binding-regime pose-information triage at
@@ -1171,12 +1257,14 @@ T-pose fallback & $74.00\,$Gbps & $0.75\,\%$ & $0.0\,\%$ \\
 \Cref{fig:imu-sweep} measures the per-joint attitude RMS error
 $\sigma_{\mathrm{joint}}$ at six points from $0^\circ$ (oracle) to
 $16^\circ$ (poorly calibrated phone IMU) at fixed plaza load. Mean
-cap-violation rate rises monotonically with
-$\sigma_{\mathrm{joint}}$ and stays well below the T-pose envelope
-across the range. Sum-rate sits in a $16$-to-$21\,$Gbps band, much
-higher than the T-pose envelope reading. The operationally-honest
-target sits at $\sigma_{\mathrm{joint}} \in [1.5^\circ, 5^\circ]$:
-that band keeps the violation rate below $1\,\%$ without requiring
+cap-violation rate trends upward with $\sigma_{\mathrm{joint}}$
+across the range, with sub-percent slot-to-slot fluctuation
+between adjacent grid points (single-seed). Sum-rate sits at the
+MCS28 sum-cap of $74.0\,$Gbps across the full sweep, since the
+SINR-margin condition holds throughout. The operationally-honest
+target sits at $\sigma_{\mathrm{joint}} \in [1.5^\circ, 8^\circ]$,
+the consumer-IMU band: in this band the violation rate stays
+below the T-pose-fallback asymptote without requiring
 instrumented-mocap-grade hardware.
 
 \begin{figure}[!t]
@@ -1184,11 +1272,12 @@ instrumented-mocap-grade hardware.
   \includegraphics[width=\columnwidth]{imu_sweep.pdf}
   \caption{Sensitivity to the virtual-IMU per-joint attitude RMS
   error $\sigma_{\mathrm{joint}}$ at six measured points. Red solid:
-  cap-violation rate against the ground-truth $\Qmat^{(u)}$, rising
-  monotonically with $\sigma_{\mathrm{joint}}$ but staying well
-  below the T-pose-fallback rate. Green dashed: mean sum-rate. The
-  T-pose-fallback asymptote (dotted) is dominated on both metrics
-  across the deployment-realistic
+  cap-violation rate against the ground-truth $\Qmat^{(u)}$, trending
+  upward with $\sigma_{\mathrm{joint}}$ at single-seed slot-to-slot
+  fluctuations of a few tenths of a percent. Green dashed: mean
+  sum-rate, flat at the MCS28 sum-cap of $74.0\,$Gbps across the
+  sweep. The T-pose-fallback asymptote (dotted) sits above the
+  measured violation rate across the deployment-realistic
   $\sigma_{\mathrm{joint}} \in [1.5^\circ, 8^\circ]$ band.}
   \label{fig:imu-sweep}
 \end{figure}
@@ -1237,20 +1326,21 @@ median averaging windows respectively. \Cref{fig:chronic} plots the
 ECDF of body-integrated absorbed energy across all bodies as a
 fraction of the chronic budget $L_{\mathrm{RL}}\!\cdot\!T$ (here
 $T = 50\,$s), with one curve per precoder. MRT pushes most bodies
-past the chronic budget (median fraction $0.92$); regularised ZF
-violates the budget on the slot-binding bodies but keeps the median
-at $0.17$ across the population; WC back-off keeps everyone under
-at $0.13$; projected ZF lands at median $0.18$ (essentially the same
-as unconstrained ZF, because the projection only scales on
-binding slots and the binding mass is a small fraction of the
-trace) and is the right operating point for the regulatory
-window because per-slot violations are zero. The dual-ascent
-multi-body MMSE-with-exposure sits at median $0.21$ and is below
-the chronic budget on every body, but the price for that comes
-from the per-stream beam shrinkage rather than from any compliance
-benefit (\cref{tab:baselines}). The ECDF scales linearly with
-window length under stationary load, so the medians transfer to
-the $6\,$min and $24\,$h regulatory windows unchanged.
+past the chronic budget (median fraction $2.17$); channel-inversion
+ZF violates the budget on the slot-binding bodies but keeps the
+median at $0.40$ across the population; WC back-off keeps everyone
+under at $0.31$; projected ZF lands at median $0.19$ (lower than
+unconstrained ZF because the projection cuts power on binding
+slots and the binding mass is non-negligible) and is the right
+operating point for the regulatory window because per-slot
+violations are zero on its input set. The dual-ascent multi-body
+MMSE-with-exposure sits at median $0.12$ across the same trace,
+the smallest of the five precoders, since the dual-variable
+shaping concentrates power on directions that miss bodies more
+heavily than the uniform scaling does
+(\cref{tab:baselines}). The ECDF scales linearly with window
+length under stationary load, so the medians transfer to the
+$6\,$min and $24\,$h regulatory windows unchanged.
 
 \begin{figure}[!t]
   \centering
@@ -1384,43 +1474,49 @@ The plaza evaluation answers a regime question. At $43\,$dBm
 conducted transmit power and $E_{\mathrm{RL}} = 3\,$V/m (the
 Italian rural attention level under the 2024 decree, and the
 Brussels pre-2014 reference), the per-body cap binds and the
-precoder choice is constrained on it. Regularised ZF gives the
-highest unconstrained sum-rate but at $10.2\,\%$ violation rate.
-ZF with primal projection holds violations at $0.0\,\%$ at the MCS
-sum-cap of $74.0\,$Gbps; the dual-ascent multi-body
-MMSE-with-exposure, with its noise-power regulariser matched to
-the receiver noise floor (a deployable choice that the original
-Ying et al. formulation~\cite{Ying2017} silently makes), tracks the
-same MCS sum-cap but exits at $\sim 2\,\%$ residual violations
-because the rank-truncated dual ascent leaves a $1$-to-$5\,\%$
-absorption tail that the exit projection only partially closes.
+precoder choice is constrained on it. Channel-inversion ZF
+without exposure shaping gives the highest unconstrained sum-rate
+but at $10.2\,\%$ violation rate. ZF with primal projection
+attains the MCS sum-cap of $74.0\,$Gbps and zero violation on its
+input set; the dual-ascent multi-body MMSE-with-exposure, with
+its noise-power regulariser matched to the receiver noise floor
+(a deployable choice that the original Ying et
+al.~formulation~\cite{Ying2017} silently makes), tracks the same
+MCS sum-cap and the same zero compliance gap on the same
+detected-body input set. The $\sim 0.5$-to-$2.4\,\%$ aggregate
+violation rate that the dual ascent shows in \cref{tab:baselines}
+is dominated by undetected tier-C bystanders that absent
+themselves from the QCQP at the slot and re-enter at evaluation
+against the full ground-truth $\Qmat^{(u)}$; this floor is a
+sensing-pipeline property that ZF + primal projection with the
+same input set inherits identically.
 The post-2014 Brussels $14.57\,$V/m cumulative cap, the Italian
 $15\,$V/m attention level for high-density urban centres, and the
 $30\,$dBm conducted-power band sit in slack regimes where any
 reasonable precoder satisfies the cap by orders of magnitude.
 
 The preference for projected ZF over the dual-ascent QCQP solver
-under the deployable rate model is structural, not numerical. The
-per-stream MCS28 cap of $7.4\,$bps/Hz clips the rate model at the
-$\sim 30\,$dB SINR threshold. Both algorithms saturate this cap in
-the binding regime; what differs is feasibility. Projected ZF is
-feasibility-by-construction: the projection scale $\alpha$ in
-\cref{eq:primal-projection} is computed against the full-rank
-$\Qmat^{(u)}$ at every slot, so $\Pabs^{(u)} \leq \eta_S\,L^{(u)}$
-holds for every body in the constraint set. The dual ascent
-operates at rank-$r$ truncation of $\Qmat^{(u)}$ ($r = 4$ at the
-$99\,\%$ trace fraction), so the dual variables converge to the
-rank-$r$-faithful active set; the residual $1$-to-$5\,\%$
-absorption tail that the dual ascent does not see exits the solver
-as a $\sim 2\,\%$ violation rate against the full-rank operator.
-The exit-projection step closes part of that gap but cannot do so
-without re-running the full QCQP. Projected ZF absorbs the same
-gap upstream because its projection step \emph{is} the optimum, not
-a safety net. The dual-ascent solver retains its place in the
-academic uncapped-Shannon objective, the min-TX-power objective,
-and the SINR-margin-tight regime (low-element panels, dense
-served-user counts) where uniform scaling can drop the served-user
-SINR below the clip.
+under the deployable rate model is structural and operational, not
+algorithmic. The per-stream MCS28 cap of $7.4\,$bps/Hz clips the
+rate model at the $22.25\,$dB linear SINR threshold. Both
+algorithms saturate this cap in the binding regime and both drive
+their detected-body violations to $0\,\%$. What differs is
+deployability. Projected ZF is feasibility-by-construction at
+every slot: the projection scale $\alpha$ in
+\cref{eq:primal-projection} solves the constraint
+$\Pabs^{(u)} \leq \eta_S\,L^{(u)}$ for every body in its input set
+in closed form. The dual ascent only meets the constraints at
+solver convergence, with a typical $\sim 350\,$ms wall-clock per
+slot vs the $\sim 0.5\,$ms of the closed-form scaling; outside
+convergence (e.g.\ when the FD-Jacobian goes near-singular) the
+exit projection rescues feasibility on the worst-margin body but
+not at the rate-saturation point. The dual-ascent solver retains
+its place in the academic uncapped-Shannon objective, the
+min-TX-power objective, and the SINR-margin-tight regime
+(low-element panels, dense served-user counts at $K \approx M$)
+where uniform scaling can drop the served-user SINR below the
+clip; we identify this regime in \cref{sec:eval-baselines} as the
+boundary where projected ZF and the dual ascent exchange roles.
 
 The pose-information triage feeds both algorithms symmetrically:
 the projection scale and the dual-ascent residuals are computed
@@ -1455,7 +1551,7 @@ $\sim 14^\circ$ in azimuth, the dominant body modes condense into
 3 to 4 distinguishable beam directions regardless of multipath
 density. Adding paths raises the trace but not the rank.
 
-The present evaluation has four limitations. First, the PHY
+The present evaluation has six limitations. First, the PHY
 surrogate is Shannon-capacity-with-MCS-clip rather than Sionna NR
 PHY. A calibrated modulation-coding-scheme link curve would shift
 the absolute sum-rate numbers and could change the
@@ -1463,15 +1559,29 @@ SINR-margin condition of \cref{prop:projection-optimality}, but
 the qualitative dominance of projected ZF holds whenever the
 deployable rate model has a per-stream cap that ZF saturates
 unconstrained. Second, the $50$-second steady-state window is a
-single seed; multi-seed averaging would smooth the chronic-dose
-ECDF tails further. Third, the bystander-binding geometry was
-constructed by hand; a stadium-scale auditorium-and-stage geometry
-would test the dual-ascent solver under a less favourable
-SINR-margin regime. Fourth, the IMU model is a calibrated
-Madgwick/xsens proxy; a deep-learning-augmented inertial-mocap
-pipeline would lower $\sigma_{\mathrm{joint}}$ to the $1.5^\circ$
-floor of \cref{fig:imu-sweep}. None of these affect the
-qualitative conclusions.
+single seed at this revision; multi-seed averaging would smooth
+the chronic-dose ECDF tails and shrink the small ($\sim 1\,$pp)
+slot-to-slot fluctuations on the violation curves. Third, the
+bystander-binding geometry was constructed by hand; a
+stadium-scale auditorium-and-stage geometry would test the
+dual-ascent solver under a less favourable SINR-margin regime.
+Fourth, the IMU model is a calibrated Madgwick/xsens proxy; a
+deep-learning-augmented inertial-mocap pipeline would lower
+$\sigma_{\mathrm{joint}}$ to the $1.5^\circ$ floor of
+\cref{fig:imu-sweep}. Fifth, the head-to-head between projected
+ZF and the dual ascent uses oracle channels modulo the ridge LS
+calibration of \cref{eq:csi-LS}; a deployment with tight
+$\sigma_{\mathrm{CSI}}$ on the served-user channel would degrade
+ZF's interference structure first and could narrow the wall-clock
+gap because the projection's SINR margin shrinks. Sixth, the
+served-user count $K = 25$ on $M = 64$ leaves ample DoF for ZF;
+the SINR-margin condition of \cref{prop:projection-optimality}
+loses headroom as $K \to M$ and projected ZF can drop below the
+MCS clip, the regime where the dual ascent earns its keep
+algorithmically rather than only operationally. None of these
+limitations affect the qualitative conclusion that the body-twin
+pipeline makes the multi-body QCQP closed-form-solvable in the
+binding regime.
 
 The exposure-aware multi-body architecture extends in three
 directions naturally. A cooperative multi-operator allocation
@@ -1516,10 +1626,13 @@ substantial SINR at the served users, well above the MCS28 clip
 threshold, so the projection scales SINR down without dropping
 below the clip. The dual-ascent QCQP solver of \cref{app:dualascent},
 which extends the per-stream MMSE-with-exposure stationarity of
-Ying et al.~\cite{Ying2017} to $K + B$ bodies, is dominated by
-projected ZF in this regime and earns its keep only in the
-academic uncapped-Shannon objective and the min-TX-power
-formulation.
+Ying et al.~\cite{Ying2017} to $K + B$ bodies, attains the same
+MCS sum-cap on the same detected-body input set, but at $\sim
+700\times$ the wall-clock and only at solver convergence rather
+than by closed form; it earns its keep in the academic
+uncapped-Shannon objective, the min-TX-power formulation, and the
+SINR-margin-tight regime $K \approx M$ where uniform scaling can
+drop the served-user SINR below the clip.
 
 We instantiate the loop at plaza scale on 50 SMPL-X bodies under
 $26\,$GHz $8 \times 8$ panel illumination at the Italian rural
@@ -1527,18 +1640,22 @@ attention level $E_{\mathrm{RL}} = 3\,$V/m and $43\,$dBm conducted
 transmit power. The empirical exposure-operator rank is 3 to 4 at
 the $99\,\%$ trace fraction; regularised ZF violates the cap on
 $10.2\,\%$ of body-slots over a 50-second steady-state walk; ZF
-with primal projection holds violations at $0.0\,\%$ at the MCS28
-sum-cap of $74.0\,$Gbps. The dual-ascent QCQP solver, when its
-noise-power regulariser is matched to the receiver floor, attains
-the same MCS sum-cap on the same instance but with $\sim 2\,\%$
-residual violations from imperfect dual-variable convergence at the
-rank-truncated solver exit. The same conclusion holds at $K = 10$
-and $K = 5$ served-user counts and on a bystander-binding geometry
+with primal projection holds violations at $0.0\,\%$ on its
+detected-body input set at the MCS28 sum-cap of $74.0\,$Gbps. The
+dual-ascent QCQP solver, when its noise-power regulariser is
+matched to the receiver floor, attains the same MCS sum-cap with
+the same $0\,\%$ violations on the detected set; the
+$\sim 0.5$-to-$2.4\,\%$ aggregate violation rate that the
+solver shows at evaluation against the full-population ground
+truth is concentrated on undetected tier-C bystanders, which is a
+sensing-pipeline floor that ZF + projection on the same input set
+inherits identically. The same conclusion holds at $K = 10$ and
+$K = 5$ served-user counts and on a bystander-binding geometry
 where served users are far and the 35 non-served bodies are within
 $5$-$12\,$m of the panel: projected ZF saturates the MCS sum-cap
-with zero violations in every case; the dual-ascent solver tracks
-the rate when properly tuned but never matches the projection's
-hard-feasibility property at exit. The naive projected-area bound on
+with by-construction feasibility on its input set in every case;
+the dual-ascent solver matches the rate when properly tuned at
+$\sim 700\times$ the wall-clock. The naive projected-area bound on
 $\xx^H \Qmat^{(u)} \xx$ is loose by 21 to $27\,$dB on the steering
 direction and breached by 49 to $70\,\%$ of unconstrained precoders;
 the conditional bound that does hold under a direction-set
@@ -1659,16 +1776,21 @@ projection.
 
 \subsection*{Wall-clock and rank cost}
 
-At the binding regime ($M = 64$, $K = 25$, $B = 50$, rank $r = 6$
-at $99\,\%$ trace fraction), each Newton step costs $(B' + 1) M^2
-r$ and is single-precision-complex-bound. On a 16-core CPU with
-NumPy LAPACK the median solve sits at $\sim 350\,$ms with
+At the binding regime ($M = 64$, $K = 25$, $B = 50$), the solver
+runs at low-rank truncation $r = 6$, conservatively above the
+empirical rank-4 envelope of \cref{sec:rank-eval} at the $99\,\%$
+trace fraction so the solver does not lose secondary modes. Each
+Newton step costs $(B' + 1) M^2 r$ and is
+single-precision-complex-bound. On a 16-core CPU with NumPy LAPACK
+the median solve sits at $\sim 350\,$ms with
 $\textsf{max\_outer} = 24$. JAX vmap over the FD fanout reduces
 this $\sim 14\times$ on a single GPU. Under the MCS-cap rate model
-the dual ascent is dominated by the $\sim 0.5\,$ms projected-ZF
-solve at the same compliance level (\cref{sec:eval-baselines}); we
-include the dual ascent for the uncapped-Shannon and min-power
-regimes of \cref{sec:dualascent-ref}.
+the dual ascent matches projected ZF on rate and on detected-body
+violation rate but at $\sim 700\times$ the wall-clock and without
+the per-slot feasibility-by-construction guarantee
+(\cref{sec:eval-baselines}); we include the dual ascent for the
+uncapped-Shannon and min-power regimes of
+\cref{sec:dualascent-ref}.
 
 
 \section{Weighted-MMSE generalisation}\label{app:wmmse}

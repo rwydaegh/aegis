@@ -122,7 +122,7 @@ def main():
     pn = [str(s) for s in z["precoder_names"]]
     print(f"  precoders: {pn}")
     body_tier = z.get("body_tier", None)
-    for n in ["mrt", "zf", "wc_backoff", "zf_proj", "multibody_ecbf", "oracle"]:
+    for n in ["mrt", "zf", "wc_backoff", "zf_proj", "zf_proj_proposed", "multibody_ecbf", "oracle"]:
         if n not in pn:
             continue
         i = pn.index(n)

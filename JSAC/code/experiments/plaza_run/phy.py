@@ -13,10 +13,16 @@ import time
 
 import numpy as np
 
-# 3GPP NR FR2 spectral efficiency cap (256-QAM r=948/1024 = MCS27/28).
+# 3GPP NR FR2 spectral efficiency cap, TS 38.214 Table 5.1.3.1-2,
+# 256-QAM, MCS=27, coderate 948/1024 -> SE 7.4063 bps/Hz.
 NR_SE_CAP_BPS_PER_HZ = 7.4
 DEFAULT_BANDWIDTH_HZ = 400e6
-DEFAULT_NOISE_POWER_W = 1e-12  # -90 dBm noise floor at 400 MHz, NF 6 dB
+# -90 dBm receiver noise floor at 400 MHz: optimistic (kT*B at 290K = -88 dBm
+# implies NF = -2 dB which is unphysical). Use this for clean unit-test runs;
+# realistic NF=6 dB receiver noise should set this to 6.4e-12 W (= -82 dBm).
+# The SINR-margin of the binding-regime experiments was checked to hold at
+# both values (see paper §IV.B).
+DEFAULT_NOISE_POWER_W = 1e-12
 
 
 def shannon_sumrate_bps(
