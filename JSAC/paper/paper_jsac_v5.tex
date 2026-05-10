@@ -1234,12 +1234,15 @@ chain.
 the three pose sources at $\sigma_{\mathrm{joint}} = 4^\circ$. All
 three saturate the MCS sum-cap of $74.00\,$Gbps; what differs is
 the residual violation rate against the ground-truth full-body
-$\Qmat^{(u)}$, which rises monotonically with pose-source
-mismatch: $0.29\,\%$ under oracle pose, $0.53\,\%$ under
-virtual-IMU pose at $\sigma_{\mathrm{joint}} = 4^\circ$, and
-$0.75\,\%$ under T-pose fallback. Even the T-pose source remains
-well below the $10.2\,\%$ violation rate of unconstrained ZF and
-within an order of magnitude of the oracle.
+$\Qmat^{(u)}$. \Cref{fig:pose-info} shows both compliance-aware
+methods across the pose sources: the dual ascent's residual
+ranges $0.29\,\%$ (oracle) $\to 0.53\,\%$ (IMU $4^\circ$)
+$\to 0.75\,\%$ (T-pose), while ZF + proj (deployable) ranges
+$0.45\,\%$ $\to 0.55\,\%$ $\to 0.20\,\%$. The T-pose row reverses
+the ordering: uniform amplitude scaling's conservative behaviour
+on the canonical-pose Q absorbs the T-pose mismatch better than
+the dual ascent's per-stream shaping. All values are well below
+the $10.2\,\%$ violation rate of channel-inversion ZF.
 
 The dominant mechanism of the residual violation is the
 sensing-pipeline floor: tier-C bystanders that ISAC fails to
@@ -1288,12 +1291,18 @@ T-pose fallback & $74.00\,$Gbps & $0.75\,\%$ & $0.0\,\%$ \\
   \centering
   \includegraphics[width=\columnwidth]{pose_info_gain.pdf}
   \caption{Pose-information triage in the binding regime,
-  plaza-specular paths, dual-ascent solver. (a) Cap-violation rate
-  against the ground-truth $\Qmat^{(u)}$ trends upward with
-  pose-source mismatch: oracle $0.29\,\%$, virtual-IMU $4^\circ$
-  $0.53\,\%$, T-pose fallback $0.75\,\%$, all well below the
-  $10.2\,\%$ unconstrained-ZF baseline. (b) Mean sum-rate sits at
-  the MCS sum-cap of $74.0\,$Gbps in all three pose sources because
+  plaza-specular paths, ZF + proj (deployable, green) and
+  dual-ascent ECBF (red) compared across three pose sources.
+  (a) Cap-violation rate against the ground-truth $\Qmat^{(u)}$:
+  at oracle pose ECBF edges out projected ZF
+  ($0.29\,\%$ vs $0.45\,\%$); at virtual IMU $4^\circ$ the two
+  methods are essentially tied ($0.53\,\%$ vs $0.55\,\%$); at
+  T-pose fallback projected ZF wins by $\sim 4 \times$
+  ($0.20\,\%$ vs $0.75\,\%$) because the uniform amplitude
+  scaling is more conservative against T-pose mismatch than the
+  dual ascent's per-stream shaping. All values are well below the
+  $10.2\,\%$ unconstrained-ZF baseline. (b) Mean sum-rate at the
+  MCS27 sum-cap of $74.0\,$Gbps in all three pose sources because
   the SINR-margin condition holds throughout.}
   \label{fig:pose-info}
 \end{figure}
