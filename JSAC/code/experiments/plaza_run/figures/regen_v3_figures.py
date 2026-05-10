@@ -282,8 +282,9 @@ def make_pose_info(stats_o, stats_i, stats_t):
 
 
 def _imu_sweep_real_data():
-    """Find bind3v_v4_imu{N}.npz files (or bind5min_v3) and return
-    (sigma_arr, viol, sr, fb). Returns None if fewer than 2 sigma points."""
+    """Find bind3v_v8/v7/v4_imu{N}.npz files (or bind5min_v3) and return
+    a dict of arrays: {sigmas, ecbf_viol, ecbf_sr, ecbf_fb,
+    zfproj_viol, zfproj_sr}. Returns None if fewer than 2 sigma points."""
     pts = {}
     for sigma in [0, 1, 2, 4, 8, 16]:
         tag = "oracle" if sigma == 0 else f"imu{sigma}"
@@ -296,18 +297,38 @@ def _imu_sweep_real_data():
             continue
         z = np.load(cands[0], allow_pickle=True)
         pn = [str(s) for s in z["precoder_names"]]
-        i = pn.index("multibody_ecbf") if sigma > 0 else pn.index("oracle")
-        v = float(z["violation"][:, :, i].mean()) * 100
-        s = float(z["sumrate"][:, i].mean()) / 1e9
-        fb = float(z["infeasible"][:, i].mean()) * 100
-        pts[float(sigma)] = (v, s, fb)
+        # ECBF data: at sigma=0 use the "oracle" precoder (oracle pose ECBF);
+        # at sigma>0 use multibody_ecbf (uses the IMU pose).
+        ecbf_i = pn.index("multibody_ecbf") if sigma > 0 else pn.index("oracle")
+        v_ecbf = float(z["violation"][:, :, ecbf_i].mean()) * 100
+        s_ecbf = float(z["sumrate"][:, ecbf_i].mean()) / 1e9
+        fb_ecbf = float(z["infeasible"][:, ecbf_i].mean()) * 100
+        # zf_proj_proposed (deployable closed-form scaling) — only present
+        # in v8/v7-fresh NPZs.
+        if "zf_proj_proposed" in pn:
+            zfp_i = pn.index("zf_proj_proposed")
+            v_zfp = float(z["violation"][:, :, zfp_i].mean()) * 100
+            s_zfp = float(z["sumrate"][:, zfp_i].mean()) / 1e9
+        else:
+            v_zfp = np.nan
+            s_zfp = np.nan
+        pts[float(sigma)] = (v_ecbf, s_ecbf, fb_ecbf, v_zfp, s_zfp)
     if len(pts) < 2:
         return None
     sigmas = np.array(sorted(pts))
-    viol = np.array([pts[s][0] for s in sigmas])
-    sr = np.array([pts[s][1] for s in sigmas])
-    fb = np.array([pts[s][2] for s in sigmas])
-    return sigmas, viol, sr, fb
+    ecbf_viol = np.array([pts[s][0] for s in sigmas])
+    ecbf_sr = np.array([pts[s][1] for s in sigmas])
+    ecbf_fb = np.array([pts[s][2] for s in sigmas])
+    zfp_viol = np.array([pts[s][3] for s in sigmas])
+    zfp_sr = np.array([pts[s][4] for s in sigmas])
+    return {
+        "sigmas": sigmas,
+        "ecbf_viol": ecbf_viol,
+        "ecbf_sr": ecbf_sr,
+        "ecbf_fb": ecbf_fb,
+        "zfp_viol": zfp_viol,
+        "zfp_sr": zfp_sr,
+    }
 
 
 def make_imu_sweep(stats_o, stats_i, stats_t):
@@ -323,13 +344,29 @@ def make_imu_sweep(stats_o, stats_i, stats_t):
     tpose_v = sT["viol_pct"]; tpose_sr = sT["mean_sr_gbps"]
 
     if real is not None:
-        sigmas, viol, sr, fb = real
-        ax_v.plot(sigmas, viol, color="#b2182b", marker="o", lw=1.6,
-                  label="Cap-violation (%)")
-        ax_s.plot(sigmas, sr, color="#2ca02c", marker="s", lw=1.6, ls="--",
-                  label="Sum-rate (Gbps)")
+        sigmas = real["sigmas"]
+        ecbf_v = real["ecbf_viol"]; ecbf_s = real["ecbf_sr"]
+        zfp_v = real["zfp_viol"]; zfp_s = real["zfp_sr"]
+        ax_v.plot(sigmas, ecbf_v, color="#b2182b", marker="o", lw=1.6,
+                  label="ECBF (dual ascent)")
+        # Overlay zf_proj_proposed if any non-NaN data is available.
+        if np.any(np.isfinite(zfp_v)):
+            mask = np.isfinite(zfp_v)
+            ax_v.plot(sigmas[mask], zfp_v[mask], color="#5fa55a",
+                      marker="X", lw=1.6, ls="--",
+                      label="ZF + proj (deployable)")
+        ax_s.plot(sigmas, ecbf_s, color="#2ca02c", marker="s", lw=1.6, ls=":",
+                  label="Sum-rate")
         ax_v.set_xlim(-0.5, max(sigmas) * 1.05 + 0.5)
+        # Place violation legend outside the plot area to avoid clutter.
+        ax_v.legend(loc="upper center", bbox_to_anchor=(0.5, 1.18),
+                    frameon=False, fontsize=7, ncol=2,
+                    handletextpad=0.4, columnspacing=0.8)
         title_suffix = f"({len(sigmas)} measured points)"
+        # For the y-axis bookkeeping below, expose 1d arrays that match the
+        # non-real fallback's expectations.
+        viol = ecbf_v
+        sr = ecbf_s
     else:
         # Anchor logistic blend on σ=0, σ=4, σ→∞
         sigma = np.linspace(0.0, 18.0, 100)
@@ -363,9 +400,9 @@ def make_imu_sweep(stats_o, stats_i, stats_t):
     # Compose ymax from the envelope and any sweep-curve maxima so all
     # markers/lines stay on-axis.
     if real is not None:
-        v_top = max(tpose_v, float(real[1].max()), float(s4["viol_pct"]))
-        s_top = max(tpose_sr, float(real[2].max()), s4["mean_sr_gbps"])
-        s_bot = min(s0["mean_sr_gbps"], float(real[2].min()), s4["mean_sr_gbps"])
+        v_top = max(tpose_v, float(real["ecbf_viol"].max()), float(s4["viol_pct"]))
+        s_top = max(tpose_sr, float(real["ecbf_sr"].max()), s4["mean_sr_gbps"])
+        s_bot = min(s0["mean_sr_gbps"], float(real["ecbf_sr"].min()), s4["mean_sr_gbps"])
     else:
         v_top, s_top = tpose_v, max(tpose_sr, s4["mean_sr_gbps"])
         s_bot = s0["mean_sr_gbps"]
