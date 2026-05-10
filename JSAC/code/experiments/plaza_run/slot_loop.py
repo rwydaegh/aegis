@@ -64,8 +64,13 @@ from .tier_c import SensingConfig, detect_bodies
 logger = logging.getLogger(__name__)
 
 PRECODER_NAMES = ["mrt", "zf", "wc_backoff", "zf_proj", "zf_proj_proposed", "multibody_ecbf", "oracle"]
-DEFAULT_NOISE_POWER = 1e-2
-DEFAULT_ORACLE_NOISE_POWER = 1e-3
+# Noise-power matched to phy.py DEFAULT_NOISE_POWER_W = 1e-12. Earlier
+# defaults of 1e-2 / 1e-3 over-regularised the dual-ascent solver into
+# MRT-like behaviour, which appeared as a "factor-4 rate gap" at
+# evaluation time (the SE evaluator uses 1e-12 unconditionally). Always
+# pass explicit values when reproducibility matters.
+DEFAULT_NOISE_POWER = 1e-12
+DEFAULT_ORACLE_NOISE_POWER = 1e-12
 DEFAULT_POSE_PERIOD = 30  # slots
 DEFAULT_RT_PERIOD = 30
 

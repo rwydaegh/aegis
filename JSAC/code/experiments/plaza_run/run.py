@@ -64,8 +64,12 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--decim", type=int, default=10, help="SMPL-X mesh stride.")
     p.add_argument("--pose-period", type=int, default=30)
     p.add_argument("--rt-period", type=int, default=30)
-    p.add_argument("--noise-power", type=float, default=1e-2)
-    p.add_argument("--oracle-noise-power", type=float, default=1e-3)
+    # Noise-power should match phy.py DEFAULT_NOISE_POWER_W (1e-12). Older
+    # defaults (1e-2 / 1e-3) over-regularised the ECBF solver and produced
+    # a spurious "factor-4 rate gap" against the SE evaluator that always
+    # used the receiver floor. See paper §VI.B and slot_loop.py.
+    p.add_argument("--noise-power", type=float, default=1e-12)
+    p.add_argument("--oracle-noise-power", type=float, default=1e-12)
     p.add_argument(
         "--tx-power-dbm",
         type=float,
