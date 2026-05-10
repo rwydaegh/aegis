@@ -60,10 +60,11 @@ PRECODER_MARKERS = {
 
 
 def load(tag):
-    # Try v7 first (E_RL=3V/m, noise=1e-12 matched solver/eval, zf_proj
-    # stored), then v6 (zf_proj stored but noise=1e-3 in solver),
-    # then v4 (post-hoc zf_proj), then v3 (6V/m), then fallback.
-    for prefix in ["bind3v_v7_", "bind3v_v6_", "bind3v_v4_", "bind5min_v3_"]:
+    # Try v8 first (zf_proj_proposed column populated), then v7 (E_RL=3V/m,
+    # noise=1e-12 matched solver/eval, zf_proj stored), then v6 (zf_proj
+    # stored but noise=1e-3 in solver), then v4 (post-hoc zf_proj), then
+    # v3 (6V/m), then fallback.
+    for prefix in ["bind3v_v8_", "bind3v_v7_", "bind3v_v6_", "bind3v_v4_", "bind5min_v3_"]:
         cands = list(NPZ_DIR.glob(f"plaza_run_seed42_*{prefix}{tag}.npz"))
         if cands:
             return np.load(cands[0], allow_pickle=True)
@@ -234,26 +235,27 @@ def make_hero(z):
 
 
 def make_pose_info(stats_o, stats_i, stats_t):
-    """Three-panel: cap-violation rate, mean sum-rate, projection-active rate
-    versus pose source. Annotates T-pose as cap-violating at the top."""
+    """Two-panel: cap-violation rate and mean sum-rate vs pose source.
+    Pose source modulates compliance at sub-percent scale; rate is
+    saturated at the MCS cap across all three sources, so both panels
+    use the same y-axis units."""
     sources = ["Oracle", r"IMU $4^\circ$", "T-pose"]
     s_list = [stats_o["multibody_ecbf"], stats_i["multibody_ecbf"], stats_t["multibody_ecbf"]]
     viol = [s["viol_pct"] for s in s_list]
     sr = [s["mean_sr_gbps"] for s in s_list]
-    fb = [s["fallback_pct"] for s in s_list]
 
     fig, axes = plt.subplots(
-        1, 3, figsize=fig_size_ieee(columns=2, aspect=0.34),
+        1, 2, figsize=fig_size_ieee(columns=2, aspect=0.42),
     )
     x = np.arange(3)
     # Colour-code per pose source so the same source has the same colour across
-    # all three panels: oracle = blue, IMU 4° = green, T-pose = red.
+    # both panels: oracle = blue, IMU 4° = green, T-pose = red.
     pose_colors = ["#2166ac", "#2ca02c", "#b2182b"]
 
     axes[0].bar(x, viol, color=pose_colors, alpha=0.85, edgecolor="k", lw=0.4)
     axes[0].set_xticks(x); axes[0].set_xticklabels(sources)
     axes[0].set_ylabel("Cap-violation rate (%)")
-    axes[0].set_title("(a) Compliance")
+    axes[0].set_title("(a) Compliance vs pose source")
     axes[0].set_ylim(0, max(viol) * 1.30 + 0.05)
     for xi, v in zip(x, viol):
         axes[0].text(xi, v + max(viol) * 0.04, f"{v:.2f}%", ha="center", fontsize=8)
@@ -262,20 +264,17 @@ def make_pose_info(stats_o, stats_i, stats_t):
     axes[1].bar(x, sr, color=pose_colors, alpha=0.85, edgecolor="k", lw=0.4)
     axes[1].set_xticks(x); axes[1].set_xticklabels(sources)
     axes[1].set_ylabel("Mean sum-rate (Gbps)")
-    axes[1].set_title("(b) Throughput")
+    axes[1].set_title("(b) Throughput at MCS28 cap")
     axes[1].set_ylim(0, max(sr) * 1.30 + 0.05)
     for xi, v in zip(x, sr):
         axes[1].text(xi, v + max(sr) * 0.04, f"{v:.2f}", ha="center", fontsize=8)
     axes[1].grid(True, alpha=0.3, axis="y")
-
-    axes[2].bar(x, fb, color=pose_colors, alpha=0.85, edgecolor="k", lw=0.4)
-    axes[2].set_xticks(x); axes[2].set_xticklabels(sources)
-    axes[2].set_ylabel("Min-abs. fallback rate (%)")
-    axes[2].set_title("(c) Solver health")
-    axes[2].set_ylim(0, max(fb + [1.0]) * 1.30 + 0.05)
-    for xi, v in zip(x, fb):
-        axes[2].text(xi, v + max(fb + [1.0]) * 0.04, f"{v:.1f}%", ha="center", fontsize=8)
-    axes[2].grid(True, alpha=0.3, axis="y")
+    # Reference line at MCS28 sum-cap. Place text inside the axes margin
+    # so it doesn't get clipped on tight figure layouts.
+    axes[1].axhline(74.0, color="k", ls=":", lw=0.7, alpha=0.5)
+    axes[1].text(0.02, 74.0 / (max(sr) * 1.30), "MCS28 cap",
+                 transform=axes[1].transAxes,
+                 fontsize=7, va="bottom", ha="left", alpha=0.6)
 
     fig.tight_layout()
     save_both(fig, OUT_DIR / "pose_info_gain")
@@ -289,7 +288,7 @@ def _imu_sweep_real_data():
     for sigma in [0, 1, 2, 4, 8, 16]:
         tag = "oracle" if sigma == 0 else f"imu{sigma}"
         cands = []
-        for prefix in ["bind3v_v7_", "bind3v_v4_", "bind5min_v3_"]:
+        for prefix in ["bind3v_v8_", "bind3v_v7_", "bind3v_v4_", "bind5min_v3_"]:
             cands.extend(NPZ_DIR.glob(f"plaza_run_seed42_*{prefix}{tag}.npz"))
             if cands:
                 break
@@ -378,6 +377,72 @@ def make_imu_sweep(stats_o, stats_i, stats_t):
     fig.tight_layout()
     save_both(fig, OUT_DIR / "imu_sweep")
     plt.close(fig)
+
+
+def make_per_tier_breakdown(npz_path):
+    """Per-tier (A/B/C) violation rate for each precoder in the K=25
+    regime sweep. Visualises the sensing-pipeline-floor finding: tier-A
+    and tier-B carry zero violations under all compliance-aware
+    precoders; tier-C carries the floor due to undetected bystanders.
+
+    Parameters
+    ----------
+    npz_path : Path
+        regimeK25_v7 (or v8) NPZ with the new ``zf_proj_proposed`` column.
+    """
+    import matplotlib.pyplot as _plt
+    import numpy as _np
+    z = _np.load(npz_path, allow_pickle=True)
+    pn = [str(s) for s in z["precoder_names"]]
+    tiers = _np.asarray(z["tier"], dtype=int)
+    TIER_LABEL = {0: "A (served)", 1: "B (cooperating)", 2: "C (sensed)"}
+    fig, ax = _plt.subplots(figsize=fig_size_ieee(columns=1, aspect=0.78))
+
+    bar_set = ["zf", "zf_proj_proposed", "multibody_ecbf"]
+    bar_disp = {"zf": "ZF (raw)",
+                "zf_proj_proposed": "ZF + proj (deploy)",
+                "multibody_ecbf": "ECBF (deploy)"}
+    bar_colors = {"zf": "#ef8a62", "zf_proj_proposed": "#5fa55a",
+                  "multibody_ecbf": "#2166ac"}
+    if "zf_proj_proposed" not in pn:
+        bar_set = ["zf", "zf_proj", "multibody_ecbf"]
+        bar_disp["zf_proj_proposed"] = "ZF + proj (oracle)"
+        bar_colors["zf_proj"] = "#2ca02c"
+
+    n_groups = 3  # tier A, B, C
+    n_bars = len(bar_set)
+    width = 0.8 / n_bars
+    x = _np.arange(n_groups)
+
+    for j, name in enumerate(bar_set):
+        if name not in pn:
+            continue
+        i = pn.index(name)
+        viols = []
+        for t in range(3):
+            mask = tiers == t
+            if mask.sum() == 0:
+                viols.append(0)
+            else:
+                viols.append(float(z["violation"][:, mask, i].mean()) * 100)
+        offset = (j - (n_bars - 1) / 2) * width
+        ax.bar(x + offset, viols, width,
+               label=bar_disp.get(name, name),
+               color=bar_colors.get(name, "#999999"),
+               alpha=0.9, edgecolor="k", lw=0.4)
+        for xi, v in zip(x + offset, viols):
+            if v > 0.5:
+                ax.text(xi, v + 0.5, f"{v:.1f}", ha="center", va="bottom",
+                        fontsize=7)
+    ax.set_xticks(x)
+    ax.set_xticklabels([TIER_LABEL[t] for t in range(3)], fontsize=8)
+    ax.set_ylabel("Cap-violation rate (%)")
+    ax.set_title(r"Per-tier violation, $K=25$ regime", fontsize=9)
+    ax.legend(loc="upper left", frameon=False, fontsize=7)
+    ax.grid(True, alpha=0.3, axis="y")
+    fig.tight_layout()
+    save_both(fig, OUT_DIR / "per_tier_breakdown")
+    _plt.close(fig)
 
 
 def make_chronic(z_imu, dt_s=None):
@@ -553,6 +618,12 @@ def main():
     make_imu_sweep(s_o, s_i, s_t)
     make_chronic(z_imu)
     make_spatial(z_oracle, z_imu)
+    # Per-tier breakdown using the K=25 regime NPZ (the deployable
+    # variant lives there; fall back to bind5min if unavailable).
+    regime_k25 = list(NPZ_DIR.glob("plaza_run_seed42_*regimeK25_v7.npz"))
+    if regime_k25:
+        make_per_tier_breakdown(regime_k25[0])
+        print("  per_tier_breakdown.pdf <- regimeK25_v7.npz")
 
     print("\n=== Table II body ===")
     write_table(s_o, s_i, s_t)

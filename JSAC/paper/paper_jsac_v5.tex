@@ -628,10 +628,12 @@ the bulk of the per-tick wall clock.
 \begin{table}[!t]
 \caption{Refresh cadence and empirical per-update wall-clock for
 each twin component, plaza-run binding regime, $K = 25$, $B = 50$,
-$M = 64$, NumPy + thread-limited LAPACK on a 16-core CPU.
-Per-slot updates with ``$1\,$ms'' label run at the PHY frame; the
-precoder solve cadence in the present implementation is the slot
-window, $\sim 30\,$ms, not the PHY frame.}
+$M = 64$, NumPy + thread-limited LAPACK on a 16-core CPU; JAX vmap
+on a single GPU where indicated. Per-slot updates with ``$1\,$ms''
+label run at the PHY frame; the precoder solve cadence in the
+present implementation is the slot window, $\sim 30\,$ms, not the
+PHY frame. The closed-form scaling fits the slot budget on CPU
+NumPy alone; the dual ascent needs GPU vmap to fit.}
 \label{tab:cadence}
 \centering
 \small
@@ -640,8 +642,9 @@ window, $\sim 30\,$ms, not the PHY frame.}
 Quantity & Cadence & Per-update time \\
 \midrule
 UE CSI $\hh_k$ & $1\,$ms & $O(M)$ from PHY pilots \\
-Precoder solve & $\sim 30\,$ms & median $\sim 350\,$ms binding regime, p95 $\sim 800\,$ms \\
-Translation phasor $\Phimat(\mathbf{t}_u)$ & $1\,$ms & $O(N M^2)$ einsum, $\sim 25\,$ms per body \\
+Precoder solve (proj.\ ZF) & $\sim 30\,$ms & median $\sim 0.5\,$ms; one Cholesky + scalar $\alpha$ \\
+Precoder solve (dual ascent) & $\sim 30\,$ms & median $\sim 350\,$ms CPU, $\sim 25\,$ms GPU vmap, p95 $\sim 800\,$ms \\
+Translation phasor (50 bodies, batched) & $1\,$ms & $\sim 35\,$ms NumPy serial; sub-ms with JAX vmap \\
 Pose-driven $\Mmat^{(u)}$ & $\sim 1\,$s & $\sim 80\,$ms per body, $\sim 2.4$\,k tri \\
 Path dictionary $\Dict$ & static & offline ray tracer, minutes \\
 CSI calibration $\bm\beta_k$ & $\sim 1\,$s & ridge LS, $O(N M)$ \\
@@ -1108,14 +1111,33 @@ Regime & Precoder & Sum-rate (Gbps) & Violation rate & $p_{\max}$ (mW) \\
 \end{tabular}
 \end{table}
 
+\begin{figure}[!t]
+  \centering
+  \includegraphics[width=\columnwidth]{per_tier_breakdown.pdf}
+  \caption{Per-tier cap-violation breakdown for the $K = 25$ regime
+  ($600$-slot, plaza-specular paths, $E_{\mathrm{RL}} = 3\,$V/m).
+  Tier A and B carry zero violations under both compliance-aware
+  algorithms (the closed-form scaling and the dual ascent both
+  drive the detected-body cap to zero). Tier C carries the
+  sensing-pipeline floor, with the deployable variants of ZF + proj
+  and the dual ascent at $6.0\,\%$ and $11.9\,\%$ respectively.
+  The gap reflects the difference between the closed-form scaling's
+  uniform amplitude cut, which reduces absorbed power on undetected
+  bodies as a side-effect, and the dual ascent's per-stream
+  shaping, which has no analogous guarantee on bodies absent from
+  the QCQP.}
+  \label{fig:per-tier}
+\end{figure}
+
 Both algorithms saturate the MCS sum-cap in every regime tested.
 The mechanism is the SINR-margin hypothesis of
 \cref{prop:projection-optimality}: the worst-body absorbed-power
-overshoot factor is bounded at $\rho \leq 17$ in the plaza traces,
-which corresponds to $\alpha^2 \geq \eta_S/17 \approx 0.057$, and
+overshoot factor is bounded at $\rho \leq 20$ in the plaza traces,
+which corresponds to $\alpha^2 \geq \eta_S/20 \approx 0.05$, and
 unconstrained ZF holds enough SINR margin above the
-$\sim 30\,$dB MCS clip threshold to absorb the projection without
-falling below the clip. The dual-ascent solver achieves the same
+$\sim 22.3\,$dB MCS clip threshold (linear $2^{S_{\max}}-1
+\approx 168$) to absorb the projection without falling below the
+clip. The dual-ascent solver achieves the same
 clip-saturation when its noise-power regulariser is matched to the
 receiver floor; with the over-regularised noise of
 $\nu = 10^{-3}$ used in the original Ying et al.~formulation it
@@ -1240,16 +1262,13 @@ T-pose fallback & $74.00\,$Gbps & $0.75\,\%$ & $0.0\,\%$ \\
   \centering
   \includegraphics[width=\columnwidth]{pose_info_gain.pdf}
   \caption{Pose-information triage in the binding regime,
-  plaza-specular paths. (a) Cap-violation rate against the
-  ground-truth $\Qmat^{(u)}$, rising monotonically with pose-source
-  mismatch: oracle $0.29\,\%$, virtual-IMU $0.53\,\%$, T-pose
-  fallback $0.75\,\%$, all well below the $10.2\,\%$ unconstrained-ZF
-  baseline. (b) Mean sum-rate is the MCS sum-cap of $74.00\,$Gbps
-  in all three pose sources, since the dual-ascent solver redirects
-  power per the noise-floor regulariser without dropping below the
-  MCS clip. (c) Solver health: the always-on primal projection at
-  exit drives min-absorption fallback to $0\,\%$ in all three
-  regimes.}
+  plaza-specular paths, dual-ascent solver. (a) Cap-violation rate
+  against the ground-truth $\Qmat^{(u)}$ trends upward with
+  pose-source mismatch: oracle $0.29\,\%$, virtual-IMU $4^\circ$
+  $0.53\,\%$, T-pose fallback $0.75\,\%$, all well below the
+  $10.2\,\%$ unconstrained-ZF baseline. (b) Mean sum-rate sits at
+  the MCS sum-cap of $74.0\,$Gbps in all three pose sources because
+  the SINR-margin condition holds throughout.}
   \label{fig:pose-info}
 \end{figure}
 
@@ -1518,17 +1537,18 @@ where uniform scaling can drop the served-user SINR below the
 clip; we identify this regime in \cref{sec:eval-baselines} as the
 boundary where projected ZF and the dual ascent exchange roles.
 
-The pose-information triage feeds both algorithms symmetrically:
-the projection scale and the dual-ascent residuals are computed
-against the same posed $\Qmat^{(u)}$. We report the ablation on
-the dual-ascent precoder because it is the more pose-sensitive of
-the two; oracle and IMU pose at $\sigma_{\mathrm{joint}} =
-4^\circ$ produce indistinguishable compliance and rate. The T-pose
-fallback (every body modelled as a tier-C bystander without IMU)
-is qualitatively worse because the canonical T-pose's
-$\Qmat^{(u)}$ does not envelope the actual moving-population
-operator; pose-agnostic deployments must use the conditional
-projected-area Cauchy bound of \cref{app:cauchy} instead.
+The pose-information triage modulates compliance at sub-percent
+scale across all three pose sources: oracle, virtual IMU at
+$4^\circ$ per-joint RMS, and T-pose fallback. The aggregate
+violation-rate spread (oracle $0.29\,\%$ to T-pose
+$0.75\,\%$ on the dual ascent) is consistent with the
+sensing-pipeline floor analysis above: pose only modulates which
+detected-body $\Qmat^{(u)}$ the algorithm sees, while the
+dominant residual driver is whether tier-C is detected at all.
+The IMU-vs-T-pose gap is the one degree of freedom the body twin
+buys for the dual ascent; for the closed-form scaling the
+ground-truth-projected oracle variant gives the tighter upper
+bound on what perfect detection would buy.
 
 The wall-clock budget collapses with the algorithm change. The
 projected-ZF solver costs $\sim 0.5\,$ms per slot on CPU NumPy:
