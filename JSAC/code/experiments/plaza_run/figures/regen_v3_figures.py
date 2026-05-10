@@ -282,14 +282,16 @@ def make_pose_info(stats_o, stats_i, stats_t):
 
 
 def _imu_sweep_real_data():
-    """Find bind3v_v8/v7/v4_imu{N}.npz files (or bind5min_v3) and return
-    a dict of arrays: {sigmas, ecbf_viol, ecbf_sr, ecbf_fb,
-    zfproj_viol, zfproj_sr}. Returns None if fewer than 2 sigma points."""
+    """Find bind3v_v8/v7_imu{N}.npz files and return a dict of arrays.
+    Sigma points are skipped entirely if only stale v4/v3 data exist
+    for them, since mixing noise=1e-3 (stale) and noise=1e-12 (v7+)
+    runs produces a discontinuous sum-rate axis (21 vs 74 Gbps)."""
     pts = {}
     for sigma in [0, 1, 2, 4, 8, 16]:
         tag = "oracle" if sigma == 0 else f"imu{sigma}"
         cands = []
-        for prefix in ["bind3v_v8_", "bind3v_v7_", "bind3v_v4_", "bind5min_v3_"]:
+        # Only accept v7/v8 — drop sigma points with only stale data.
+        for prefix in ["bind3v_v8_", "bind3v_v7_"]:
             cands.extend(NPZ_DIR.glob(f"plaza_run_seed42_*{prefix}{tag}.npz"))
             if cands:
                 break
@@ -358,10 +360,10 @@ def make_imu_sweep(stats_o, stats_i, stats_t):
         ax_s.plot(sigmas, ecbf_s, color="#2ca02c", marker="s", lw=1.6, ls=":",
                   label="Sum-rate")
         ax_v.set_xlim(-0.5, max(sigmas) * 1.05 + 0.5)
-        # Place violation legend outside the plot area to avoid clutter.
-        ax_v.legend(loc="upper center", bbox_to_anchor=(0.5, 1.18),
-                    frameon=False, fontsize=7, ncol=2,
-                    handletextpad=0.4, columnspacing=0.8)
+        # Place violation legend in the upper-left where there's
+        # whitespace because the data trends upward to the right.
+        ax_v.legend(loc="upper left", frameon=False, fontsize=7,
+                    handletextpad=0.4)
         title_suffix = f"({len(sigmas)} measured points)"
         # For the y-axis bookkeeping below, expose 1d arrays that match the
         # non-real fallback's expectations.

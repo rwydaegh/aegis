@@ -1277,30 +1277,34 @@ T-pose fallback & $74.00\,$Gbps & $0.75\,\%$ & $0.0\,\%$ \\
 
 \paragraph*{Sensitivity to the IMU calibration}
 \Cref{fig:imu-sweep} measures the per-joint attitude RMS error
-$\sigma_{\mathrm{joint}}$ at six points from $0^\circ$ (oracle) to
-$16^\circ$ (poorly calibrated phone IMU) at fixed plaza load. Mean
-cap-violation rate trends upward with $\sigma_{\mathrm{joint}}$
-across the range, with sub-percent slot-to-slot fluctuation
-between adjacent grid points (single-seed). Sum-rate sits at the
-MCS28 sum-cap of $74.0\,$Gbps across the full sweep, since the
-SINR-margin condition holds throughout. The operationally-honest
-target sits at $\sigma_{\mathrm{joint}} \in [1.5^\circ, 8^\circ]$,
-the consumer-IMU band: in this band the violation rate stays
-below the T-pose-fallback asymptote without requiring
-instrumented-mocap-grade hardware.
+$\sigma_{\mathrm{joint}}$ at five points from $0^\circ$ (oracle) to
+$16^\circ$ (poorly calibrated phone IMU) at fixed plaza load. The
+dual-ascent ECBF mean cap-violation rate trends monotonically
+upward with $\sigma_{\mathrm{joint}}$ from $0\,\%$ to $0.93\,\%$
+with sub-percent slot-to-slot fluctuation between adjacent grid
+points (single-seed). The closed-form scaling overlaid on the same
+sweep tracks within $0.1\,$pp of the dual ascent at every point.
+Sum-rate sits at the MCS28 sum-cap of $74.0\,$Gbps across the full
+sweep, since the SINR-margin condition holds throughout. The
+operationally-honest target sits at $\sigma_{\mathrm{joint}} \in
+[1.5^\circ, 8^\circ]$, the consumer-IMU band: in this band the
+violation rate stays below the T-pose-fallback asymptote without
+requiring instrumented-mocap-grade hardware.
 
 \begin{figure}[!t]
   \centering
   \includegraphics[width=\columnwidth]{imu_sweep.pdf}
   \caption{Sensitivity to the virtual-IMU per-joint attitude RMS
-  error $\sigma_{\mathrm{joint}}$ at six measured points. Red solid:
-  cap-violation rate against the ground-truth $\Qmat^{(u)}$, trending
-  upward with $\sigma_{\mathrm{joint}}$ at single-seed slot-to-slot
-  fluctuations of a few tenths of a percent. Green dashed: mean
-  sum-rate, flat at the MCS28 sum-cap of $74.0\,$Gbps across the
-  sweep. The T-pose-fallback asymptote (dotted) sits above the
-  measured violation rate across the deployment-realistic
-  $\sigma_{\mathrm{joint}} \in [1.5^\circ, 8^\circ]$ band.}
+  error $\sigma_{\mathrm{joint}}$ at five measured points (v7
+  noise-matched runs only). Red solid: dual-ascent ECBF
+  cap-violation rate against the ground-truth $\Qmat^{(u)}$,
+  trending monotonically upward with $\sigma_{\mathrm{joint}}$.
+  Green dashed: ZF + proj (deployable) cap-violation rate on the
+  subset of points where the closed-form scaling was logged
+  (within $0.1\,$pp of the dual ascent at every measured point).
+  Green dotted: mean sum-rate, flat at the MCS28 sum-cap of
+  $74.0\,$Gbps across the sweep. The T-pose-fallback asymptote
+  sits at $0.75\,\%$ for reference.}
   \label{fig:imu-sweep}
 \end{figure}
 
