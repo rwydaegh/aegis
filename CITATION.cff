@@ -2,8 +2,8 @@ cff-version: 1.2.0
 title: AEGIS
 message: If you use this software, please cite it using these metadata.
 type: software
-version: 0.34.0
-date-released: 2026-05-09
+version: 0.35.0
+date-released: 2026-05-10
 authors:
   - family-names: Wydaeghe
     given-names: Robin

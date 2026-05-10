@@ -258,7 +258,7 @@ pytest tests/ -m "not slow"
   author  = {Wydaeghe, Robin},
   url     = {https://github.com/rwydaegh/aegis},
   license = {Proprietary},
-  version = {0.34.0}
+  version = {0.35.0}
 }
 ```
 
