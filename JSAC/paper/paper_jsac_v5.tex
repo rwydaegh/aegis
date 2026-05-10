@@ -227,12 +227,13 @@ not uncapped Shannon. Regularised ZF on a tens-of-element panel
 saturates this cap with margin above the clip threshold for the served-user count
 that fits the array DoF. We prove
 (\cref{prop:projection-optimality}) that under the MCS-cap rate
-model and the SINR-margin condition that ZF achieves the cap
-unconstrained, the multi-body sum-rate QCQP under $K + B$ per-body
-absorbed-power caps has a global optimum given by the per-slot
-primal projection of regularised ZF: $\ww_k \leftarrow
-\alpha\,\ww_k$ with $\alpha = \min(1, \sqrt{\eta_S \min_u
-L^{(u)}/\Pabs^{(u)}})$. Feasibility is by construction; the
+model and the SINR-margin condition that channel-inversion ZF
+achieves the cap unconstrained, any $K$-stream precoder satisfying
+the SINR-margin condition and the per-body caps attains the
+$K$-stream upper bound $K\,S_{\max}$, and the per-slot primal
+projection $\ww_k \leftarrow \alpha\,\ww_k$ with
+$\alpha = \min(1, \sqrt{\eta_S \min_u L^{(u)}/\Pabs^{(u)}})$ is one
+such precoder reachable in $O(B M r)$ per slot. Feasibility is by construction; the
 projection costs $O(B M r)$ per slot at low rank $r$ of the
 body-coupling Gram; and the projection is identity on iterates that
 already satisfy the cap at the safety fraction $\eta_S \in (0, 1]$.
@@ -747,8 +748,9 @@ PHY-slot-budget-comfortable.
 The closed-form scaling of \cref{eq:primal-projection} is feasible
 by construction; under the operational rate model and a SINR-margin
 condition that the deployed system already satisfies in the
-binding regime, it is also globally optimal for the QCQP
-\cref{eq:P-MB}.
+binding regime, it attains the $K$-stream upper bound on the QCQP
+\cref{eq:P-MB} sum-rate, alongside any other $K$-stream precoder
+that satisfies the SINR-margin condition.
 
 \begin{proposition}[ZF + projection optimality under MCS cap]
 \label{prop:projection-optimality}
