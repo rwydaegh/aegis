@@ -1628,7 +1628,14 @@ served-user count $K = 25$ on $M = 64$ leaves ample DoF for ZF;
 the SINR-margin condition of \cref{prop:projection-optimality}
 loses headroom as $K \to M$ and projected ZF can drop below the
 MCS clip, the regime where the dual ascent earns its keep
-algorithmically rather than only operationally. None of these
+algorithmically rather than only operationally. We ran a
+$K = 50$ stress test on the same $M = 64$ panel (no
+non-served bodies; pure served-user binding), which still
+saturates the MCS sum-cap at $K \cdot S_{\max} \cdot \mathrm{BW}
+= 148\,$Gbps with zero violations under both projected ZF and
+the dual ascent; the SINR-margin condition therefore holds at
+$K/M = 0.78$ in this geometry. A full $K \approx M$ regime that
+includes near-panel bystanders is left as future work. None of these
 limitations affect the qualitative conclusion that the body-twin
 pipeline makes the multi-body QCQP closed-form-solvable in the
 binding regime.
