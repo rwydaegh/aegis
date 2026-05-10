@@ -141,12 +141,12 @@ $K + B$ bodies, when its noise-power regulariser is matched to the
 receiver floor, attains the same $74.0\,$Gbps MCS sum-cap and the
 same $0\,\%$ violation rate on detected bodies on the same
 instance. Aggregate violations against the full ground-truth
-population sit at $1.21\,\%$ for projected ZF and $2.39\,\%$
-for the dual ascent at $K = 25$, both concentrated entirely on
-undetected tier-C bystanders that absent themselves from the
-QCQP; the dual ascent's $\sim 2 \times$ wider tail comes from
-its per-stream shaping leaving more residual on undetected bodies
-than the uniform projection does. Projected ZF is the preferred
+population sit at $\sim 0.6$-to-$2.4\,\%$ for both algorithms
+across two seeds at $K = 25$, with statistical-tie-on-mean and
+larger seed-to-seed variance for the dual ascent; both residuals
+are concentrated entirely on undetected tier-C bystanders that
+absent themselves from the QCQP, a sensing-pipeline floor rather
+than a precoder-side property. Projected ZF is the preferred
 deployable consumer of the body twin: it is a single scalar
 scaling at $\sim 0.5\,$ms per slot vs $\sim 350\,$ms for the dual
 ascent, and its feasibility on the detected set is by construction
@@ -1073,11 +1073,18 @@ same input set the dual ascent receives. The deployable variant
 re-introduces the sensing-pipeline floor that absent undetected
 tier-C bodies impose at evaluation against the full population. In
 every regime tested, both ZF + projection and the dual ascent
-saturate the MCS sum-cap, and ZF + proj (deployable) edges out
-the dual ascent on aggregate compliance with margins of
-$1.05\times$ to $19\times$ on violation rate, traceable to the
-dual ascent's rank-$r$ truncation of $\Qmat^{(u)}$ and
-FD-Jacobian noise that the closed-form scaling does not incur.
+saturate the MCS sum-cap. On the seed-42 trace reported in
+\cref{tab:baselines}, ZF + proj (deployable) edges out the dual
+ascent on aggregate compliance with margins of $1.05\times$ to
+$19\times$ on violation rate, traceable to the dual ascent's
+rank-$r$ truncation of $\Qmat^{(u)}$ and FD-Jacobian noise that
+the closed-form scaling does not incur. A multi-seed cross-check
+at seed $1729$ on the $K = 25$ regime flips this ordering
+(ZF + proj $0.58\,\%$, dual ascent $0.32\,\%$); the two methods
+are therefore statistically tied on aggregate compliance with the
+dual ascent showing larger seed-to-seed variance ($\sigma_{
+\mathrm{viol}} \approx 1.5\,$pp on two-seed estimates) reflecting
+the solver's path-dependent behaviour in the rank-truncated QCQP.
 Both deployable variants inherit the same undetected-tier-C
 floor.
 
