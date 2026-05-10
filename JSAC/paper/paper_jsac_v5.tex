@@ -1387,16 +1387,17 @@ $T = 50\,$s), with one curve per precoder. MRT pushes most bodies
 past the chronic budget (median fraction $2.17$); channel-inversion
 ZF violates the budget on the slot-binding bodies but keeps the
 median at $0.40$ across the population; WC back-off keeps everyone
-under at $0.31$; projected ZF lands at median $0.19$ (lower than
-unconstrained ZF because the projection cuts power on binding
-slots and the binding mass is non-negligible) and is the right
-operating point for the regulatory window because per-slot
-violations are zero on its input set. The dual-ascent multi-body
-MMSE-with-exposure sits at median $0.12$ across the same trace,
-the smallest of the five precoders, since the dual-variable
-shaping concentrates power on directions that miss bodies more
-heavily than the uniform scaling does
-(\cref{tab:baselines}). The ECDF scales linearly with window
+under at $0.31$; projected ZF lands at median $0.19$ and the
+dual-ascent multi-body MMSE-with-exposure at median $0.12$. The
+honest reading is that chronic dose is dominated by the
+slot-distribution of binding mass, not by per-slot algorithm
+choice: every per-slot rate-aware precoder that is not MRT keeps
+the median chronic fraction comfortably under unity, with all
+compliance-aware variants (WC, projected ZF, dual ascent) clearing
+the budget for every body in the trace. The body-twin advantage on
+this metric is real but quantitative ($\sim\!37\%$ tighter median
+than projected ZF, $\sim\!2.6\times$ tighter than WC), not a
+solve-vs-fail distinction. The ECDF scales linearly with window
 length under stationary load, so the medians transfer to the
 $6\,$min and $24\,$h regulatory windows unchanged.
 
@@ -1406,12 +1407,13 @@ $6\,$min and $24\,$h regulatory windows unchanged.
   \caption{ECDF of body-integrated absorbed energy as a fraction of
   the chronic RL budget $L^{(u)}_{\mathrm{RL}}\!\cdot\!T$ over the
   $T = 50\,$s trace, log scale, one curve per precoder. MRT pushes
-  most bodies past the chronic budget; ZF, WC back-off, projected
-  ZF, and the dual-ascent multi-body MMSE-with-exposure all keep
-  every body well under chronic when the per-slot projection is
-  applied. Projected ZF and ZF carry nearly identical chronic-dose
-  curves because primal projection scales the precoder only on
-  the small fraction of slots where the per-slot cap binds.}
+  most bodies past the chronic budget. WC back-off, projected ZF,
+  and the dual-ascent multi-body MMSE-with-exposure all clear the
+  chronic budget for every body in the trace; raw ZF clears the
+  budget at the median but leaves the slot-binding tail above
+  unity. Among compliance-aware precoders the gap is quantitative
+  (projected ZF $0.19$, ECBF $0.12$), reflecting the slot-binding
+  fraction of dose, not a solve-vs-fail distinction.}
   \label{fig:chronic}
 \end{figure}
 
@@ -1511,9 +1513,11 @@ The proposed precoder reduces $\Pabs^{(u)}$ at every occupied $u$,
 which strictly reduces the cumulative reference-level reading at
 those points. The reading at unoccupied public points is governed by
 the precoder's spatial coverage and is not affected by the
-machinery. Combined with the chronic-dose ECDF of \cref{sec:chronic},
-the deployment value is the chronic-dose reduction at occupied
-points, not the slack instantaneous reading at unoccupied points.
+machinery. Combined with \cref{sec:chronic}, the deployment value
+is the marginal chronic-dose headroom at occupied points; chronic
+compliance itself is delivered by any rate-aware compliance-aware
+precoder at this regime, and the body twin contributes the
+spectral-efficiency gain documented in \cref{tab:baselines}.
 
 The Brussels averaging window is $6\,$min in current
 practice~\cite{BrusselsArrete2024}. The chronic-dose ECDF's
