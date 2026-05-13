@@ -362,37 +362,43 @@ def solve_multibody_ecbf(
         U_arr=U_arr,
         D_arr=D_arr,
     )
-    p_abs = _per_body_abs_lowrank(W, U_arr, D_arr) if use_lowrank else _per_body_abs(W, Q_arr)
-    viol = np.maximum(0.0, p_abs - L_arr)
-    residual = float(np.max(viol / L_arr, initial=0.0))
-
-    if residual > 1e-3:
-        warnings.warn(
-            f"Multi-body ECBF: residual relative budget violation {residual:.3g} "
-            f"exceeds 1e-3 after {n_outer} outer sweeps. Returning the smallest-"
-            "joint-eigenvalue direction as a min-absorption fallback.",
-            stacklevel=2,
-        )
-        W = _min_absorption_fallback(Q_arr, P, K)
-        p_abs = _per_body_abs_lowrank(W, U_arr, D_arr) if use_lowrank else _per_body_abs(W, Q_arr)
-        diag = MultibodyECBFDiagnostics(
-            lambdas=lambdas,
-            p_abs=p_abs,
-            L=L_arr,
-            method="min-absorption",
-            converged=False,
-            n_outer=n_outer,
-            n_active=int(np.count_nonzero(lambdas > 0)),
-            residual=float(np.max(np.maximum(0.0, p_abs - L_arr) / L_arr, initial=0.0)),
-        )
-        return (xp.asarray(W), diag) if return_diagnostics else xp.asarray(W)
+    # ALWAYS evaluate against full-rank Q at the final step and project
+    # primally to guarantee feasibility under the FULL operator. The dual
+    # ascent may have used a low-rank approximation that hides ~1-5% of the
+    # true absorption tail. Always-on primal projection is cheap (one matrix
+    # product + one scalar) and turns the dual approximation error into a
+    # bounded sum-rate cost rather than a sneaky violation.
+    p_abs_full = _per_body_abs(W, Q_arr)
+    SAFETY = 0.97
+    margin = (SAFETY * L_arr) / np.maximum(p_abs_full, 1e-30)
+    scale = float(np.sqrt(max(0.0, min(1.0, margin.min()))))
+    method = "multibody-ecbf"
+    converged_final = converged
+    if scale < 1.0 - 1e-9:
+        if scale > 1e-3:
+            W = W * scale
+            p_abs_full = _per_body_abs(W, Q_arr)
+            method = "multibody-ecbf-projected"
+            converged_final = True
+        else:
+            warnings.warn(
+                f"Multi-body ECBF: dual residual blew up after "
+                f"{n_outer} sweeps; projection scale {scale:.3e} too small. "
+                "Falling back to min-absorption direction.",
+                stacklevel=2,
+            )
+            W = _min_absorption_fallback(Q_arr, P, K)
+            p_abs_full = _per_body_abs(W, Q_arr)
+            method = "min-absorption"
+            converged_final = False
+    residual = float(np.max(np.maximum(0.0, p_abs_full - L_arr) / L_arr, initial=0.0))
 
     diag = MultibodyECBFDiagnostics(
         lambdas=lambdas,
-        p_abs=p_abs,
+        p_abs=p_abs_full,
         L=L_arr,
-        method="multibody-ecbf",
-        converged=converged,
+        method=method,
+        converged=converged_final,
         n_outer=n_outer,
         n_active=int(np.count_nonzero(lambdas > 0)),
         residual=residual,
