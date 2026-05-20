@@ -1,0 +1,10 @@
+% PREV: Skin roughness sets an upper limit near $1$~THz, where the Rayleigh
+% NEXT: The dielectric properties of biological tissue have been measured to
+For sources in the reactive near field ($d < \lambda/(2\pi)$, that is
+$1.7$~mm at $28$~GHz), evanescent waves and antenna-body impedance
+coupling require full-wave simulation. Outside this regime, the law
+applies pointwise with spatially varying inputs.
+
+## reviews (paragraph)
+
+_(empty — run /review to populate)_

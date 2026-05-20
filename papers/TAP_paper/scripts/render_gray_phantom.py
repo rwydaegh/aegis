@@ -4,12 +4,10 @@ matching the camera angle of figure 4a (azimuth=210, elevation=5).
 Output: thelonious_gray.png with alpha channel.
 """
 from __future__ import annotations
-import sys
 from pathlib import Path
 import numpy as np
 
-REPO_ROOT = Path(__file__).resolve().parents[4]
-sys.path.insert(0, str(REPO_ROOT / "theory" / "scripts"))
+REPO_ROOT = Path(__file__).resolve().parent.parent
 
 from compute_exposure_fraction_eta import load_stl_binary  # noqa: E402
 from visualize_eta_3d import _build_view_matrix  # noqa: E402

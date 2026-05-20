@@ -1,0 +1,86 @@
+{
+  "reviewer": "Wout Joseph",
+  "date": "2026-05-11",
+  "paper_tex": "v1_to_coauthors/paper.tex",
+  "source_count": 13,
+  "sources": [
+    {
+      "name": "IMG_2705.jpeg",
+      "path": "/home/user/aegis/papers/TAP_paper/v1_to_coauthors/feedback_wout_extracted/feedback_wout/IMG_2705.jpeg",
+      "size_bytes": 1174113,
+      "sha256": "a1bccd7e1c06159f5f9a5057220eb563fd5cd494de3f4c86429114a4a52f4407"
+    },
+    {
+      "name": "IMG_2706.jpeg",
+      "path": "/home/user/aegis/papers/TAP_paper/v1_to_coauthors/feedback_wout_extracted/feedback_wout/IMG_2706.jpeg",
+      "size_bytes": 1154962,
+      "sha256": "f0f8b747fe7a6494427b00dfc1a8dca7edd83a36d03e37c7be233b5771628d79"
+    },
+    {
+      "name": "IMG_2707.jpeg",
+      "path": "/home/user/aegis/papers/TAP_paper/v1_to_coauthors/feedback_wout_extracted/feedback_wout/IMG_2707.jpeg",
+      "size_bytes": 1038692,
+      "sha256": "49ac6a04e29a4e64e19e2cff47bde5bdc04ed4e77392064f70e444f19822fcb8"
+    },
+    {
+      "name": "IMG_2708.jpeg",
+      "path": "/home/user/aegis/papers/TAP_paper/v1_to_coauthors/feedback_wout_extracted/feedback_wout/IMG_2708.jpeg",
+      "size_bytes": 1066315,
+      "sha256": "407569338df9723ffdc99c64b9bb8075772025334e06824299d15fd3152f1dda"
+    },
+    {
+      "name": "IMG_2709.jpeg",
+      "path": "/home/user/aegis/papers/TAP_paper/v1_to_coauthors/feedback_wout_extracted/feedback_wout/IMG_2709.jpeg",
+      "size_bytes": 1147521,
+      "sha256": "513b22ea95c496f20e49af91262a9655f2d03ad91a260e6bd7c4512539b05034"
+    },
+    {
+      "name": "IMG_2710.jpeg",
+      "path": "/home/user/aegis/papers/TAP_paper/v1_to_coauthors/feedback_wout_extracted/feedback_wout/IMG_2710.jpeg",
+      "size_bytes": 1042092,
+      "sha256": "7e9228f1d85e55f206c4a6c5644a5a97cf6e8a1fb3cfb2d4470274c9def51a1b"
+    },
+    {
+      "name": "IMG_2711.jpeg",
+      "path": "/home/user/aegis/papers/TAP_paper/v1_to_coauthors/feedback_wout_extracted/feedback_wout/IMG_2711.jpeg",
+      "size_bytes": 1122710,
+      "sha256": "eb1a38e6ddecf08b427305307f9e550468faf44fe2cc997bfb6e2b6eb096f518"
+    },
+    {
+      "name": "IMG_2712.jpeg",
+      "path": "/home/user/aegis/papers/TAP_paper/v1_to_coauthors/feedback_wout_extracted/feedback_wout/IMG_2712.jpeg",
+      "size_bytes": 1171040,
+      "sha256": "b90e370106e173d483dd337158353ebc84e43c0e5b2b9a567e70ad08212a5b22"
+    },
+    {
+      "name": "IMG_2713.jpeg",
+      "path": "/home/user/aegis/papers/TAP_paper/v1_to_coauthors/feedback_wout_extracted/feedback_wout/IMG_2713.jpeg",
+      "size_bytes": 1079319,
+      "sha256": "88a1bc2feff681b1ec469aa3fb4747b34764c5060f7da1c5ee9045b21245a06d"
+    },
+    {
+      "name": "IMG_2714.jpeg",
+      "path": "/home/user/aegis/papers/TAP_paper/v1_to_coauthors/feedback_wout_extracted/feedback_wout/IMG_2714.jpeg",
+      "size_bytes": 1136230,
+      "sha256": "b4077059c633345564373745f7a34ea88dcb73de5307964b83190a127bc3eede"
+    },
+    {
+      "name": "IMG_2715.jpeg",
+      "path": "/home/user/aegis/papers/TAP_paper/v1_to_coauthors/feedback_wout_extracted/feedback_wout/IMG_2715.jpeg",
+      "size_bytes": 1102583,
+      "sha256": "9aa35a1b3523509e8499692e351a23460057ff2404042c65c14e4342d3e4269a"
+    },
+    {
+      "name": "IMG_2716.jpeg",
+      "path": "/home/user/aegis/papers/TAP_paper/v1_to_coauthors/feedback_wout_extracted/feedback_wout/IMG_2716.jpeg",
+      "size_bytes": 1207752,
+      "sha256": "3a4d32c631b1cecc0eddf301e53481f147739f91bc6e49b008130941020dd352"
+    },
+    {
+      "name": "IMG_2717.jpeg",
+      "path": "/home/user/aegis/papers/TAP_paper/v1_to_coauthors/feedback_wout_extracted/feedback_wout/IMG_2717.jpeg",
+      "size_bytes": 1174680,
+      "sha256": "e4ce48ad11668ae05a5c153fc66537a42f7b65cc50185b339084e518d51654e0"
+    }
+  ]
+}

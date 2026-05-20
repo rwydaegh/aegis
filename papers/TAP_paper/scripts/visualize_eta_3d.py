@@ -3,7 +3,7 @@
 
 Outputs
 -------
-- monograph/figures/eta_3d_phantom.png  : clean 3/4-view render (default)
+- figures/eta_3d_thelonious.png         : clean 3/4-view render (default)
 - figures/eta_3d_<phantom>.html         : interactive Plotly HTML (optional)
 
 Usage
@@ -308,9 +308,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--stl", type=str,
                    default=str(root / "data" / "thelonious.stl"))
     p.add_argument("--eta_npz", type=str,
-                   default=str(root / "artifacts" / "eta" / "thelonious" / "eta.npz"))
+                   default=str(root / "data" / "eta_thelonious.npz"))
     p.add_argument("--out_png", type=str, default=None,
-                   help="PNG path (default: monograph/figures/eta_3d_phantom.png)")
+                   help="PNG path (default: figures/eta_3d_<phantom>.png)")
     p.add_argument("--out_html", type=str, default=None,
                    help="HTML path (default: figures/eta_3d_<phantom>.html)")
     p.add_argument("--html", action="store_true",
@@ -343,7 +343,7 @@ def main() -> None:
 
     # --- PNG (always) ---
     png_path = (Path(args.out_png) if args.out_png
-                else root / "monograph" / "figures" / "eta_3d_phantom.png")
+                else root / "figures" / f"eta_3d_{phantom}.png")
     print(f"Creating PNG: {png_path}")
     create_eta_phantom_png(vertices, eta, normals, png_path,
                            dpi=args.dpi,

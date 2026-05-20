@@ -3,7 +3,8 @@ R(f) Landscape + T̄ Table + Activation Shapes
 ==============================================
 
 Produces:
-  - 3-panel figure  →  theory/figures/R_of_f_landscape.{png,pdf}
+  - main figure     →  figures/R_of_f.{png,pdf}
+  - companion       →  figures/R_of_f_angle_family.{png,pdf}
   - LaTeX table     →  console + report
 
 Panel (a): R(f) vs frequency, conservative / non-conservative shading.
@@ -27,11 +28,9 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 from scipy import integrate
 import argparse
-import sys
 import cmath
 
 # ── project helpers ──────────────────────────────────────────────────
-sys.path.insert(0, str(Path(__file__).parent))
 from _fresnel import fresnel_transmission, n_complex, EPS_0
 from _plot_style import apply_monograph_style, fig_size_ieee
 

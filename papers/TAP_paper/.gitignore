@@ -15,3 +15,17 @@
 *.fls
 *.synctex.gz
 .circa/
+build/
+!data/
+!data/thelonious.stl
+!data/itis_v5.db
+!data/*.npz
+!data/*.parquet
+!figures/
+!figures/*.pdf
+!figures/*.png
+# itis_v5.db is tracked once under data/; scripts/ has an identical copy we keep untracked
+scripts/itis_v5.db
+# coauthor feedback: large binaries kept on disk but out of git history
+v1_to_coauthors/feedback_wout.zip
+v1_to_coauthors/feedback_wout_extracted/

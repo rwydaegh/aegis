@@ -46,10 +46,7 @@ C_0 = 299792458.0         # m/s
 # Database paths
 DB_PATHS = [
     Path(__file__).parent.parent / "data" / "itis_v5.db",
-    Path(__file__).parent.parent.parent / "data" / "itis_v5.db",
     Path(__file__).parent / "itis_v5.db",
-    Path(__file__).parent.parent / "EMT" / "itis_v5.db",
-    Path(__file__).parent.parent / "PRL_brainstorm" / "itis_v5.db",
 ]
 
 

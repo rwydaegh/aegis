@@ -12,14 +12,13 @@ Generates one PDF: si_tlay_fat_resonance.pdf.
 """
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 import numpy as np
 import matplotlib.pyplot as plt
 
 HERE = Path(__file__).resolve().parent
-sys.path.insert(0, str(HERE.parent.parent.parent / "theory" / "scripts"))
+FIGURES_DIR = HERE.parent / "figures"
 from _plot_style import apply_monograph_style, fig_size_ieee  # noqa: E402
 
 # Reuse the IT'IS Cole-Cole helpers from the Mie validation script.
@@ -149,7 +148,8 @@ def main():
     leg.get_frame().set_linewidth(1.0)
 
     plt.tight_layout(pad=0.4)
-    out = HERE / "si_tlay_fat_resonance.pdf"
+    FIGURES_DIR.mkdir(parents=True, exist_ok=True)
+    out = FIGURES_DIR / "si_tlay_fat_resonance.pdf"
     fig.savefig(out, bbox_inches="tight")
     fig.savefig(out.with_suffix(".png"), dpi=300, bbox_inches="tight")
     plt.close(fig)

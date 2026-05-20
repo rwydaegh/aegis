@@ -6,18 +6,16 @@ Outputs (in ./figures/):
   - sab_phantom_pair.pdf, .png   : two-panel S_ab(r) on Thelonious for Paper A
                                     (a) convex limit V=1, (b) V(r,k_hat)
 
-Reuses the BVH and rasteriser from theory/scripts/.
+Uses local BVH and rasteriser helpers in this PaperMaker instance.
 """
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 import numpy as np
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(REPO_ROOT / "theory" / "scripts"))
+REPO_ROOT = Path(__file__).resolve().parent.parent
 
 # Reuse the existing primitives
 from compute_exposure_fraction_eta import (
@@ -41,7 +39,8 @@ from matplotlib.cm import ScalarMappable  # noqa: E402
 from matplotlib.colors import Normalize  # noqa: E402
 
 
-FIGURE_DIR = Path(__file__).resolve().parent
+FIGURE_DIR = REPO_ROOT / "figures"
+CACHE_DIR = REPO_ROOT / "data"
 STL = REPO_ROOT / "data" / "thelonious.stl"
 
 
@@ -370,7 +369,7 @@ def main():
     print(f"  total surface area: {A_total:.4f} m^2")
 
     # === Figure 1: eta phantom for Paper B ===
-    eta_npz = FIGURE_DIR / "eta_thelonious.npz"
+    eta_npz = CACHE_DIR / "eta_thelonious.npz"
     n_samples = 128
     if eta_npz.exists():
         print(f"Loading cached eta: {eta_npz}")
@@ -413,7 +412,7 @@ def main():
     sab_convex = S_inc * T_0 * cos_pos
 
     # Panel (b): V(r, k_hat) computed by ray casting
-    V_npz = FIGURE_DIR / f"V_thelonious_kx{int(k_hat[0])}_ky{int(k_hat[1])}_kz{int(k_hat[2])}.npz"
+    V_npz = CACHE_DIR / f"V_thelonious_kx{int(k_hat[0])}_ky{int(k_hat[1])}_kz{int(k_hat[2])}.npz"
     if V_npz.exists():
         print(f"Loading cached visibility: {V_npz}")
         V = np.load(V_npz)["V"]
@@ -483,16 +482,26 @@ def _render_panels_aligned(vertices, normals, panels, *, cmap_name):
 
     # Pad every trimmed image to the same dimensions so each subfigure
     # PDF has the same physical aspect ratio and content scale.
+    # content_scale < 1 shrinks the body by padding the canvas
+    # horizontally only, so the body occupies content_scale of the width
+    # and still fills the height (no white bands above or below). The
+    # figure height follows the wider aspect and stays tight to the body,
+    # so the body and colorbar shrink together at print size while the
+    # label/tick fonts keep their absolute point size.
+    content_scale = 0.70
     max_w = max(im.shape[1] for im in images)
     max_h = max(im.shape[0] for im in images)
+    new_w = int(round(max_w / content_scale))
+    new_h = max_h
     aligned = []
     for im in images:
         h, w = im.shape[:2]
-        canvas = np.ones((max_h, max_w, 3), dtype=im.dtype)
-        x0 = (max_w - w) // 2
-        y0 = (max_h - h) // 2
+        canvas = np.ones((new_h, new_w, 3), dtype=im.dtype)
+        x0 = (new_w - w) // 2
+        y0 = (new_h - h) // 2
         canvas[y0:y0 + h, x0:x0 + w] = im
         aligned.append(canvas)
+    max_w, max_h = new_w, new_h
 
     # Match the source-PDF width to the actual displayed subfigure
     # width (~0.32 of IEEE two-column textwidth) so a 10pt source font
