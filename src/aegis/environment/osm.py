@@ -69,9 +69,12 @@ class OverpassHTTPError(RuntimeError):
 
 _OVERPASS_URLS = [
     "https://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
     "https://overpass.openstreetmap.fr/api/interpreter",
-    "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
 ]
+# Public Overpass mirrors reject the default requests/urllib User-Agent
+# (overpass-api.de returns HTTP 406). Send a descriptive UA per the OSM usage policy.
+_USER_AGENT = "aegis/1.0 (+https://aegis.waves-ugent.be; robin.wydaeghe@ugent.be)"
 _MAX_RESPONSE_BYTES = 50 * 1024 * 1024  # 50 MB
 
 
@@ -132,6 +135,7 @@ def fetch_osm(
                 resp = requests.post(
                     url,
                     data={"data": query},
+                    headers={"User-Agent": _USER_AGENT},
                     timeout=timeout,
                 )
             except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as exc:
@@ -148,8 +152,8 @@ def fetch_osm(
                 last_exc = OverpassTimeoutError(f"Overpass gateway error (HTTP {resp.status_code}) from {url}")
                 continue
             if resp.status_code == 403:
-                # Mirror rejected the request, try next mirror
-                last_exc = OverpassTimeoutError(f"Overpass mirror {url} returned 403")
+                # Mirror forbade the request (not a timeout), try next mirror
+                last_exc = OverpassHTTPError(f"Overpass mirror {url} returned 403")
                 break
             if not resp.ok:
                 # Any other 4xx/5xx (400 bad query, 404, 500, ...): try next mirror.
