@@ -1,0 +1,17 @@
+TODO: run the papermaker sweep
+
+Status of the TAP paper as of 2026-05-20, before the agent sweep:
+
+Done
+  - Wout's review feedback: intaken and incorporated.
+  - Spinal work: respined to the current 8-section structure
+    (introduction reframed; validation and higher-order corrections
+    merged into one section).
+
+Not done yet
+  - The papermaker sweep. The multi-agent clean pass has not been run
+    over the paper. This is the next step.
+
+Snapshot: the pre-sweep state is committed and pushed on the branch
+paper/tap-presweep (so the sweep is fully revertible). The version
+prepared for coauthors is in v2_to_coauthors/.
