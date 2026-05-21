@@ -14,4 +14,11 @@ for each polarization separately.
 
 ## reviews (paragraph)
 
-_(empty — run /review to populate)_
+
+_PaperMaker9000 sweep — all clear across 4 lens(es)._
+
+- **sentence-craft** — pass (14 rules cleared).
+- **voice-tells** — pass (22 rules cleared).
+- **lexical-spotcheck** — pass (54 rules cleared).
+- **latex-micro** — pass (41 rules cleared).
+

@@ -30,4 +30,14 @@ contributions.
 
 ## reviews (paragraph)
 
-_(empty — run /review to populate)_
+
+_PaperMaker9000 sweep — 3 flag(s) across 4 lens(es)._
+
+- **sentence-craft** — 1 flag(s), 13 cleared:
+    - `style.positive_voice.no_passive_no_we` (high): "We derive closed-form \gls{APD} laws from Fresnel transmission" → Drop "we": "The paper derives closed-form APD laws..." to match the third-person noun-verb framing of items 2-4.
+- **voice-tells** — 1 flag(s), 21 cleared:
+    - `style.pet_peeves_wout.first_time_framing` (high): "To the best of the authors' knowledge, this paper makes the following contributions." → Recast the contribution items with explicit first-time framing, e.g. open the list with a sentence stating that the closed-form APD law and its four-way validation are derived for the first time, and attach a distinct novelty claim to the load-bearing items.
+- **lexical-spotcheck** — 1 flag(s), 53 cleared:
+    - `BOOK_ELOS_style.misused_words.while_as_although` (low): "A layered transmission term covers the sub-6~GHz whole-body   comparison, while curvature, diffraction, and inter-body reflection   terms bound the main higher-order errors." → Replace contrastive 'while' with 'whereas' (the two clauses contrast roles, not time): '...whole-body comparison, whereas curvature, diffraction, and inter-body reflection terms bound the main higher-order errors.'
+- **latex-micro** — pass (41 rules cleared).
+

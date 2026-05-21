@@ -15,4 +15,13 @@ thresholds by $61\%$, $32\%$, and $1\%$ respectively.
 
 ## reviews (paragraph)
 
-_(empty — run /review to populate)_
+
+_PaperMaker9000 sweep — all clear across 4 lens(es)._
+
+- **sentence-craft** — pass (14 rules cleared).
+- **voice-tells** — pass (22 rules cleared).
+- **lexical-spotcheck** — pass (54 rules cleared).
+    - _dismissed_ `BOOK_ELOS_style.misused_words.respectively`: Three thresholds map to three percentages; the pairing is not unambiguous from order alone, so respectively earns its place (and respectively_welcome explicitly endorses it).
+- **latex-micro** — pass (41 rules cleared).
+    - _dismissed_ `latex.substitutions.units_math_mode_consistent`: The number-in-math, unit-in-text `$N$~unit` form is the deliberate paper-wide convention (535 such uses across main/, zero siunitx); it is applied consistently, so reformatting one leaf would break uniformity rather than improve it. Same disposition for thin_space_math_units / thin_space_units / siunitx_consistency.
+

@@ -28,4 +28,10 @@ constraints become differentiable end-to-end.
 
 ## reviews (abstract)
 
-_(empty — run /review to populate)_
+
+_PaperMaker9000 sweep — 2 flag(s) across 1 lens(es)._
+
+- **abstract** — 2 flag(s), 16 cleared:
+    - `structural.abstract.word_count_and_content` (high): "evaluated in under $10$~ms on a GPU" → Spell out GPU on first use in the abstract: "on a graphics processing unit (GPU)".
+    - `style.abstract_keywords.abstract_word_count_and_acronyms` (high): "evaluated in under $10$~ms on a GPU" → Expand GPU on its first abstract appearance, e.g. "graphics processing unit (GPU)".
+

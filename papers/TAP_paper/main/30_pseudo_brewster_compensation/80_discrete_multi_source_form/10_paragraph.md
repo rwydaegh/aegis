@@ -16,4 +16,13 @@ $\bm{\mathrm{APD}} \in \mathbb{R}^{M}$.
 
 ## reviews (paragraph)
 
-_(empty — run /review to populate)_
+
+_PaperMaker9000 sweep — 1 flag(s) across 4 lens(es)._
+
+- **sentence-craft** — pass (14 rules cleared).
+- **voice-tells** — pass (22 rules cleared).
+- **lexical-spotcheck** — pass (54 rules cleared).
+- **latex-micro** — 1 flag(s), 40 cleared:
+    - `latex.math.vector_matrix_bold_consistent` (high): "\bm{\mathrm{APD}} \in \mathbb{R}^{M}" → Set the APD vector with the same macro as the other vectors/matrices: \mathbf{\mathrm{APD}} to match \mathbf{N}, \mathbf{K}, \mathbf{s}, \mathbf{V}.
+    - _dismissed_ `latex.substitutions.vector_bold_convention_documented`: APD is a vector in the same category as \mathbf{s}, so this is plain macro inconsistency captured by vector_matrix_bold_consistent, not an intentional documented category split.
+

@@ -26,7 +26,12 @@
 
 ## reviews (figure)
 
-_(empty — run /review to populate)_
+
+_PaperMaker9000 sweep — 1 flag(s) across 1 lens(es)._
+
+- **figure** — 1 flag(s), 42 cleared:
+    - `figures.conventions.scripting_log_ticks` (medium): "ax1.semilogx(x_vals, errors_total, color=CB_BLUE, linewidth=1.8, label='Mie error')" → Panel (a) log x-axis renders 10^1/10^2/10^3; set explicit linear-readable ticks, e.g. ax1.set_xticks([5,10,50,100,500,1000]); ax1.set_xticklabels(['5','10','50','100','500','1000']).
+    - _dismissed_ `figures.conventions.axis_units`: x is a named dimensionless ratio whose defining formula pi d / lambda is printed in the label; the two unit-bearing axes ([%], [GHz]) use a consistent square-bracket style, and appending '(-)' to a self-evidently dimensionless defined ratio would add clutter, not clarity.
 
 ## grinder notes
 - **label**: fig:mie:size

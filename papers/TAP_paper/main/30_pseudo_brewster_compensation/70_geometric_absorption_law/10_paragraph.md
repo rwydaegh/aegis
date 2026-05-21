@@ -29,4 +29,15 @@ the normal-incidence transmission.
 
 ## reviews (paragraph)
 
-_(empty — run /review to populate)_
+
+_PaperMaker9000 sweep — 4 flag(s) across 4 lens(es)._
+
+- **sentence-craft** — 2 flag(s), 12 cleared:
+    - `style.positive_voice.no_passive_no_we` (high): "First, we apply the polarization reduction~\eqref{eq:Sab-Tavg}." → Rewrite noun-verb to match the surrounding prose: "First, the polarization reduction~\eqref{eq:Sab-Tavg} removes the angular dependence."
+    - `style.positive_voice.subject_verb_early` (medium): "Under frontal illumination the medial thighs, the inside of the wrists, and the underside of the chin become self-shadowed and drop to zero through $\Vis$." → Front the verb and move the list to the end: "Under frontal illumination, $\Vis$ drops three regions to zero: the medial thighs, the inside of the wrists, and the underside of the chin."
+- **voice-tells** — 1 flag(s), 21 cleared:
+    - `style.pet_peeves_wout.tilde_spacing` (high): "The transmission coefficient $T_{\mathrm{tr}}$ fitted in \cite{Kodera2024,Diao2024,Funahashi2018}" → Replace the space before the citation with a tie: "fitted in~\cite{Kodera2024,Diao2024,Funahashi2018}".
+- **lexical-spotcheck** — 1 flag(s), 53 cleared:
+    - `BOOK_WILLIAMS_style.prose_structure.comma_after_long_intro` (unknown): "For a convex body $\Vis \equiv 1$ and~\eqref{eq:geom-law} reduces to the classical" → Add a comma after the four-word intro phrase: "For a convex body, $\Vis \equiv 1$ and~\eqref{eq:geom-law} reduces..." so the symbol is not misread as part of the noun phrase.
+- **latex-micro** — pass (41 rules cleared).
+

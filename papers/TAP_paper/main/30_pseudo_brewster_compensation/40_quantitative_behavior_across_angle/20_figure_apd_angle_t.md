@@ -27,7 +27,11 @@
 
 ## reviews (figure)
 
-_(empty — run /review to populate)_
+
+_PaperMaker9000 sweep — 1 flag(s) across 1 lens(es)._
+
+- **figure** — 1 flag(s), 42 cleared:
+    - `figures.conventions.axis_units` (high): "Incidence angle $\theta$ [deg]" → x-axis uses square-bracket units [deg] but both dimensionless y-axes (Transmission T(theta), APD/IPD) carry no unit bracket; add [-] (or [1]) to the y-labels so every axis states a unit in one consistent bracket style.
 
 ## grinder notes
 - **label**: fig:apd-angle:T

@@ -21,4 +21,13 @@ the Thelonious phantom are in Table~\ref{tab:si-diffraction} of the SI.
 
 ## reviews (paragraph)
 
-_(empty — run /review to populate)_
+
+_PaperMaker9000 sweep — 2 flag(s) across 4 lens(es)._
+
+- **sentence-craft** — 2 flag(s), 12 cleared:
+    - `style.positive_voice.no_passive_no_we` (high): "Second, we quantify the effect of diffraction at the shadow boundary." → Drop the pronoun: "Second, diffraction at the shadow boundary smooths the sharp cutoff."
+    - `style.positive_voice.subject_verb_early` (medium): "The integrated effect on whole-body absorbed power on the Thelonious phantom is $1.2\%$ at $28$~GHz" → Move the qualifier forward so the verb lands early: "On the Thelonious phantom, the integrated whole-body effect is 1.2% at 28 GHz..."
+- **voice-tells** — pass (22 rules cleared).
+- **lexical-spotcheck** — pass (54 rules cleared).
+- **latex-micro** — pass (41 rules cleared).
+

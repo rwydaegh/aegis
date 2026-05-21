@@ -17,4 +17,14 @@ polarization detail in the reference, not the closed form.
 
 ## reviews (paragraph)
 
-_(empty — run /review to populate)_
+
+_PaperMaker9000 sweep — 3 flag(s) across 4 lens(es)._
+
+- **sentence-craft** — 3 flag(s), 11 cleared:
+    - `style.positive_voice.no_passive_no_we` (high): "Two regulatory metrics are evaluated." → Active third-person: "The comparison evaluates two regulatory metrics."
+    - `style.positive_voice.subject_verb_early` (medium): "At $7$~GHz on three lateral and frontal incidence directions with $\theta$-polarization, the direction-averaged ratio of law to FDTD is $1.027$." → Front the subject-verb: "The direction-averaged ratio of law to FDTD is $1.027$ at $7$~GHz over three lateral and frontal incidence directions with $\theta$-polarization."
+    - `style.prose_structure.subject_verb_rest` (high): "At $7$~GHz on three lateral and frontal incidence directions with $\theta$-polarization, the direction-averaged ratio of law to FDTD is $1.027$." → Reorder to subject-verb-rest, moving the fronted condition clause to the end of the sentence.
+- **voice-tells** — pass (22 rules cleared).
+- **lexical-spotcheck** — pass (54 rules cleared).
+- **latex-micro** — pass (41 rules cleared).
+

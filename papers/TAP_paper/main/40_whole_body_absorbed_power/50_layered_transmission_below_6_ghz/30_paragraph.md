@@ -29,4 +29,17 @@ $3.5$~GHz (destructive interference).
 
 ## reviews (paragraph)
 
-_(empty — run /review to populate)_
+
+_PaperMaker9000 sweep — 2 flag(s) across 4 lens(es)._
+
+- **sentence-craft** — 1 flag(s), 13 cleared:
+    - `style.positive_voice.subject_verb_early` (medium): "A three-layer transfer-matrix model with skin, fat, and a semi-infinite muscle half-space gives the layered transmission" → Front the verb and move the layer list to the end: 'A three-layer transfer-matrix model gives the layered transmission, stacking skin, fat, and a semi-infinite muscle half-space.'
+- **voice-tells** — pass (22 rules cleared).
+    - _dismissed_ `style.anti_ai_language.excess_vocabulary_tiers`: enhances/suppresses is the conventional antonym pair for constructive/destructive interference; honest literal physics, not the puffery sense of the common-set word.
+- **lexical-spotcheck** — pass (54 rules cleared).
+    - _dismissed_ `style.prose_structure.kiss_simple_verbs`: enhances/suppresses is the standard interference vocabulary, parallel and unambiguous; swapping to increases/reduces would not improve clarity. The result verbs use the preferred simple gives, not yields.
+- **latex-micro** — 1 flag(s), 40 cleared:
+    - `latex.structure_style.no_sentence_starting_with_acronym` (medium): "Fig.~\ref{fig:si-tlay-fr} of the SI shows $\Tlay(f)$ for" → Spell out the abbreviation at sentence start: "Figure~\ref{fig:si-tlay-fr} of the SI shows..."
+    - _dismissed_ `latex.floats_refs.fig_abbrev`: Same text as the sentence-start defect, which the dedicated no_sentence_starting_with_acronym rule owns; mid-sentence Fig.~\ref usage elsewhere is correct, so this abbrev rule is otherwise satisfied.
+    - _dismissed_ `latex.structure_style.acronym_first_use`: SAR is the paper's central quantity, defined far earlier (Section 2); this Section-4 leaf is not its first use, so no first-use violation is provable from the leaf.
+

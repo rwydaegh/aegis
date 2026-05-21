@@ -13,4 +13,12 @@ tissues are skin, subcutaneous fat, and vitreous humor.
 
 ## reviews (paragraph)
 
-_(empty — run /review to populate)_
+
+_PaperMaker9000 sweep — all clear across 4 lens(es)._
+
+- **sentence-craft** — pass (14 rules cleared).
+- **voice-tells** — pass (22 rules cleared).
+- **lexical-spotcheck** — pass (54 rules cleared).
+- **latex-micro** — pass (41 rules cleared).
+    - _dismissed_ `latex.substitutions.approx_text_vs_math`: This is a genuine math-mode relation between the quantity $|\ntilde|$ and a value, not \approx standing in for the prose word 'approximately' (the rule's '$\approx 5\%$' failure mode); legitimate use.
+

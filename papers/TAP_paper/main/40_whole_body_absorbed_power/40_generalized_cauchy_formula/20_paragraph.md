@@ -19,4 +19,12 @@ $\nhat$. Integration over $\Sigma$ gives~\eqref{eq:cauchy}.
 
 ## reviews (paragraph)
 
-_(empty — run /review to populate)_
+
+_PaperMaker9000 sweep — 1 flag(s) across 4 lens(es)._
+
+- **sentence-craft** — pass (14 rules cleared).
+- **voice-tells** — pass (22 rules cleared).
+- **lexical-spotcheck** — pass (54 rules cleared).
+- **latex-micro** — 1 flag(s), 40 cleared:
+    - `latex.spacing_ties.equation_punctuation_gap` (medium): "= \frac{\IPD\,T_0}{4}\,\eta(\rr)," → Insert a thin space before the trailing comma: \eta(\rr)\,, to match the paper's house style (cf. \mathbf{s}\, . elsewhere).
+

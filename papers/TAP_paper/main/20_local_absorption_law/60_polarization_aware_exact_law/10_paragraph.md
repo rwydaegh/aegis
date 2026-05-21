@@ -25,4 +25,14 @@ with the multi-source matrix form in \cref{subsec:matrix}.
 
 ## reviews (paragraph)
 
-_(empty — run /review to populate)_
+
+_PaperMaker9000 sweep — all clear across 4 lens(es)._
+
+- **sentence-craft** — pass (14 rules cleared).
+    - _dismissed_ `style.positive_voice.no_passive_no_we`: Active rewrite would force the weak metadiscourse agent 'this subsection' into the subject slot; the passive keeps the self-shadowing factor as topic, supporting old-before-new flow. The rule's awkward-active exception applies.
+    - _dismissed_ `style.positive_voice.subject_verb_early`: Verb 'is' lands at roughly word 9, inside the 7-9 window; the qualification 'of the geometric law in sec:pB' carries needed identifying information, so reordering would be merely different, not better.
+- **voice-tells** — pass (22 rules cleared).
+- **lexical-spotcheck** — pass (54 rules cleared).
+- **latex-micro** — pass (40 rules cleared).
+    - _dismissed_ `latex.substitutions.vector_bold_convention_documented`: The leaf does mix two bold macros for unit vectors (\khat/\nhat expand to \hat{\bm{k}}/\hat{\bm{n}}, bold; \hat{e}_s/\hat{e}_p are non-bold), but this is a deliberate paper-wide split (geometry/propagation unit vectors bold, polarization-basis unit vectors light) applied consistently, and the corrective (adding a notation block) is a document-level fix not local to this leaf; scalar magnitudes |e_s|, |e_p| correctly stay italic.
+

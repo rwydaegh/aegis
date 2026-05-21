@@ -15,4 +15,15 @@ scaling and bounds the linearly polarized worst-case correction to
 
 ## reviews (paragraph)
 
-_(empty — run /review to populate)_
+
+_PaperMaker9000 sweep — 1 flag(s) across 4 lens(es)._
+
+- **sentence-craft** — pass (14 rules cleared).
+- **voice-tells** — pass (22 rules cleared).
+- **lexical-spotcheck** — 1 flag(s), 53 cleared:
+    - `BOOK_ELOS_style.misused_words.while_as_although` (low): "absorption cross-section scales with surface area while mass scales with volume" → Replace contrastive "while" with "whereas": "...scales with surface area, whereas mass scales with volume."
+- **latex-micro** — pass (41 rules cleared).
+    - _dismissed_ `latex.substitutions.cref_capitalized`: Paper-wide convention spells "Section" and uses \ref for SI cross-refs (a dozen identical "Section~\ref{si:...} of the SI" instances); not a \cref needing capitalization.
+    - _dismissed_ `latex.floats_refs.label_prefix_conventions`: si: is the deliberate prefix for supplementary-information sections throughout the paper, kept distinct from main-text sec:.
+    - _dismissed_ `latex.spacing_ties.tilde_number_unit`: Matches the universal paper convention (number then ~unit in text, e.g. 28~GHz, $6$~GHz, $100$~GHz); siunitx is not adopted, so this is consistent, not a violation.
+

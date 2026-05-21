@@ -21,7 +21,10 @@ $75^\circ$ & 0.182 & 0.952 & 0.567 & 1.053 \\
 
 ## reviews (table)
 
-_(empty — run /review to populate)_
+
+_PaperMaker9000 sweep — all clear across 1 lens(es)._
+
+- **table** — pass (10 rules cleared).
 
 ## grinder notes
 - **label**: tab:fresnel-skin

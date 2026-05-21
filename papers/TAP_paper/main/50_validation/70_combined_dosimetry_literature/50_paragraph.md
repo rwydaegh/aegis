@@ -21,4 +21,15 @@ set by the body-shape factor $\Aab/A$.
 
 ## reviews (paragraph)
 
-_(empty — run /review to populate)_
+
+_PaperMaker9000 sweep — 2 flag(s) across 4 lens(es)._
+
+- **sentence-craft** — pass (14 rules cleared).
+    - _dismissed_ `style.positive_voice.no_passive_no_we`: Passive is the licensed exception: opening with the known 'spread' satisfies old-before-new and parks the new key term $\Aab/A$ in the emphatic end position; the active rewrite would bury the factor mid-sentence.
+- **voice-tells** — 2 flag(s), 22 cleared:
+    - `style.pet_peeves_wout.no_semicolons` (high): "two reverberation-chamber measurement campaigns; their Fig.~6" → Split into two sentences: end after 'campaigns.' and start 'Their~Fig.~6 extends...'
+    - `style.pet_peeves_wout.no_semicolons` (high): "from a one-dimensional multilayer slab calculation; their homogeneous-skin curve" → Split into two sentences: end after 'calculation.' and start 'Their homogeneous-skin curve...'
+- **lexical-spotcheck** — pass (54 rules cleared).
+- **latex-micro** — pass (41 rules cleared).
+    - _dismissed_ `latex.spacing_ties.tilde_before_refs`: No canonical rule in this lens covers a tie before \eqref/\cref; the in-scope tie rules (tilde_number_unit, tilde_names) are all satisfied (numbers, units, names, and \cite are tied), and a break after 'that' is harmless, so no flaggable canonical rule applies.
+

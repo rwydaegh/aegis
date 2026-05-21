@@ -22,4 +22,12 @@ body surface area, and the flux-weighted Fresnel transmission.
 
 ## reviews (paragraph)
 
-_(empty — run /review to populate)_
+
+_PaperMaker9000 sweep — 1 flag(s) across 4 lens(es)._
+
+- **sentence-craft** — 1 flag(s), 13 cleared:
+    - `style.positive_voice.subject_verb_early` (medium): "Resolving the submillimeter absorption layer at ten cells per in-tissue wavelength sets a cell count of $10^{8}$ at 6~GHz" → Front the subject so the verb arrives early: "Ten cells per in-tissue wavelength resolve the submillimeter absorption layer and set the cell count at $10^{8}$ at 6~GHz".
+- **voice-tells** — pass (22 rules cleared).
+- **lexical-spotcheck** — pass (54 rules cleared).
+- **latex-micro** — pass (41 rules cleared).
+

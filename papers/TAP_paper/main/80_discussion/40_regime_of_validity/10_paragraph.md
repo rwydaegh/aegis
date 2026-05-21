@@ -12,4 +12,15 @@ than the low-frequency boundary.
 
 ## reviews (paragraph)
 
-_(empty — run /review to populate)_
+
+_PaperMaker9000 sweep — all clear across 4 lens(es)._
+
+- **sentence-craft** — pass (14 rules cleared).
+    - _dismissed_ `style.positive_voice.no_passive_no_we`: Passive keeps the carried-forward topic ('boundary') in subject position and the new information (the scales) at the emphatic end, matching the parallel opener of the next sentence; the active rewrite would break old-before-new flow, which the rule's exception permits.
+- **voice-tells** — pass (22 rules cleared).
+- **lexical-spotcheck** — pass (54 rules cleared).
+    - _dismissed_ `style.anti_ai_language.rule_of_three`: The triplet is a literal count stated in the sentence ('three independent physical scales') and contrasted with the explicit 'two' of the high-frequency boundary, so the three items are factually grounded, not a reflexive cadence.
+    - _dismissed_ `BOOK_WILLIAMS_style.prose_structure.colon_after_complete_clause`: The clause before the colon is grammatically complete (subject 'boundary', verb 'is set', complement 'by three scales') and the colon correctly introduces the enumerating list.
+- **latex-micro** — pass (41 rules cleared).
+    - _dismissed_ `latex.substitutions.approx_text_vs_math`: Approximation is spelled out as the prose word 'approximately'; no \approx symbol appears in text mode, which is exactly the correct usage.
+

@@ -38,7 +38,11 @@
 
 ## reviews (figure)
 
-_(empty — run /review to populate)_
+
+_PaperMaker9000 sweep — 1 flag(s) across 1 lens(es)._
+
+- **figure** — 1 flag(s), 42 cleared:
+    - `figures.visual_quality.colorblind_friendly` (high): "$\APD$ and $\eta$ maps on the Thelonious phantom" → Render the three surface scalar maps with a perceptually-uniform colorblind-safe sequential colormap (viridis/inferno) instead of the jet/rainbow scale, whose non-monotonic luminance and red-green midband are confusing for deuteranope readers and in greyscale.
 
 ## grinder notes
 - **label**: fig:phantom:sab

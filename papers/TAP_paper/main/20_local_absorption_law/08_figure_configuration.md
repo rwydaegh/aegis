@@ -14,7 +14,11 @@
 
 ## reviews (figure)
 
-_(empty — run /review to populate)_
+
+_PaperMaker9000 sweep — all clear across 1 lens(es)._
+
+- **figure** — pass (43 rules cleared).
+    - _dismissed_ `figures.visual_quality.minimalistic_academic_style`: These are privacy redactions on a child anthropomorphic phantom, a legitimate non-decorative element, not chartjunk/decoration the rule targets; removing them would not improve the figure.
 
 ## grinder notes
 - **label**: fig:configuration

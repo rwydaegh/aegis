@@ -110,7 +110,11 @@
 
 ## reviews (figure)
 
-_(empty — run /review to populate)_
+
+_PaperMaker9000 sweep — 1 flag(s) across 1 lens(es)._
+
+- **figure** — 1 flag(s), 42 cleared:
+    - `figures.wout_specifics.flowchart_style` (high): "\node[outbox, fill=outA] (outLocal) at (6.5, -2.65) {Local $\APDAvg$};" → Drop the pale colour fills (outA/outB/outC and fill=black!4) so all flowchart boxes are plain white black-bordered rectangles, per the no-colour-fills rule; if grouping the three output types matters, use dashed sub-enclosures or text labels instead of fills.
 
 ## grinder notes
 - **label**: fig:flowchart

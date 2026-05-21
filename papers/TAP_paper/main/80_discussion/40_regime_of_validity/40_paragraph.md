@@ -7,4 +7,12 @@ frequency the framework reduces to volumetric solvers.
 
 ## reviews (paragraph)
 
-_(empty — run /review to populate)_
+
+_PaperMaker9000 sweep — 1 flag(s) across 4 lens(es)._
+
+- **sentence-craft** — pass (14 rules cleared).
+- **voice-tells** — 1 flag(s), 21 cleared:
+    - `style.pet_peeves_wout.tilde_spacing` (high): "below approximately $300$~MHz" → Tie the adverb to its number: "below approximately~$300$~MHz" so the line cannot break before the quantity.
+- **lexical-spotcheck** — pass (54 rules cleared).
+- **latex-micro** — pass (41 rules cleared).
+

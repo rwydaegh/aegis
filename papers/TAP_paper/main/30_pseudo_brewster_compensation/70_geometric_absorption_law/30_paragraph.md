@@ -12,4 +12,13 @@ mmWave~\cite{AlekseevZiskin2007}.
 
 ## reviews (paragraph)
 
-_(empty — run /review to populate)_
+
+_PaperMaker9000 sweep — all clear across 4 lens(es)._
+
+- **sentence-craft** — pass (14 rules cleared).
+    - _dismissed_ `style.positive_voice.no_passive_no_we`: Active rewrite ('the maximum ... bounds the error') is genuinely awkward and inverts the natural error-as-topic flow; the passive is the standard mathematical idiom here, so the rule's awkwardness exception applies.
+    - _dismissed_ `style.positive_voice.subject_verb_early`: Subject ('the error') is already front-loaded; the qualifier 'relative to the exact ... law' must sit with the noun it modifies, and relocating it would create an ambiguous, weaker sentence, so no faithful rewrite improves clarity.
+- **voice-tells** — pass (22 rules cleared).
+- **lexical-spotcheck** — pass (54 rules cleared).
+- **latex-micro** — pass (41 rules cleared).
+

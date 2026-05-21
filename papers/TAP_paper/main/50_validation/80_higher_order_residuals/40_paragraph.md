@@ -12,4 +12,14 @@ bounded by the local nonvisible hemisphere area.
 
 ## reviews (paragraph)
 
-_(empty — run /review to populate)_
+
+_PaperMaker9000 sweep — all clear across 4 lens(es)._
+
+- **sentence-craft** — pass (14 rules cleared).
+    - _dismissed_ `style.positive_voice.no_passive_no_we`: This 'we' is a deliberate enumeration parallel with the prev leaf ('we quantify the effect of diffraction'); rewriting only this leaf would break the First/Second/Finally series and make it different, not better. Remaining passives ('is absorbed', 'is reflected') are natural state descriptions of the physical process.
+- **voice-tells** — pass (22 rules cleared).
+- **lexical-spotcheck** — pass (54 rules cleared).
+- **latex-micro** — pass (41 rules cleared).
+    - _dismissed_ `latex.substitutions.approx_text_vs_math`: \approx sits inside a complete relational math expression, not as a bare prose approximation like $\approx N\%$; legitimate math-mode use.
+    - _dismissed_ `latex.dashes_quotes.minus_sign_math`: The minus is inside math mode, so it renders as a proper math minus, not a text-mode hyphen.
+

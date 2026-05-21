@@ -9,4 +9,13 @@ across $0.45$--$5.8$~GHz.
 
 ## reviews (paragraph)
 
-_(empty — run /review to populate)_
+
+_PaperMaker9000 sweep — 1 flag(s) across 4 lens(es)._
+
+- **sentence-craft** — 1 flag(s), 13 cleared:
+    - `style.positive_voice.subject_verb_early` (medium): "The ratio of law to FDTD on direction-averaged total absorbed power is $1.012$" → Front-load the verb: "Law matches FDTD on direction-averaged total absorbed power to within a ratio of $1.012$, with ..."
+- **voice-tells** — pass (22 rules cleared).
+- **lexical-spotcheck** — pass (54 rules cleared).
+- **latex-micro** — pass (41 rules cleared).
+    - _dismissed_ `latex.spacing_ties.inter_sentence_spacing`: Sentence ends on the capital abbreviation GHz, but the canonical fix is a global \frenchspacing in the preamble (one decision), not per-leaf \@. insertions; not a leaf-level defect.
+

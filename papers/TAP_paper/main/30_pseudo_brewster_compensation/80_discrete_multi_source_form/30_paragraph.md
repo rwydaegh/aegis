@@ -15,4 +15,12 @@ the GPU.
 
 ## reviews (paragraph)
 
-_(empty — run /review to populate)_
+
+_PaperMaker9000 sweep — 1 flag(s) across 4 lens(es)._
+
+- **sentence-craft** — 1 flag(s), 13 cleared:
+    - `style.positive_voice.subject_verb_early` (medium): "Gradients of regulatory quantities with respect to antenna positions, antenna orientations, and RIS phases propagate through any differentiable ray tracer~\cite{SionnaRT}." → Move the qualification list after the verb: "Gradients of regulatory quantities propagate through any differentiable ray tracer, taken with respect to antenna positions, antenna orientations, and RIS phases."
+- **voice-tells** — pass (22 rules cleared).
+- **lexical-spotcheck** — pass (54 rules cleared).
+- **latex-micro** — pass (41 rules cleared).
+

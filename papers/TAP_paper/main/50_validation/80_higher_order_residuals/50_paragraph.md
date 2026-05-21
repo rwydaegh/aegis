@@ -18,4 +18,14 @@ $A_{\mathrm{CH}}/A \approx 1.20$ on Thelonious.
 
 ## reviews (paragraph)
 
-_(empty — run /review to populate)_
+
+_PaperMaker9000 sweep — all clear across 4 lens(es)._
+
+- **sentence-craft** — pass (14 rules cleared).
+- **voice-tells** — pass (22 rules cleared).
+- **lexical-spotcheck** — pass (54 rules cleared).
+    - _dismissed_ `style.anti_ai_language.first_second_third_overuse`: Single First/Second pair for two genuinely distinct physical effects; the rule explicitly permits one enumerated use, and there is no third item or listicle padding.
+- **latex-micro** — pass (41 rules cleared).
+    - _dismissed_ `latex.substitutions.cref_capitalized`: The reference is mid-sentence (object of 'derived in'), not sentence-initial, so lowercase \cref correctly renders 'subsection X'.
+    - _dismissed_ `latex.substitutions.approx_text_vs_math`: Each \approx sits inside a full inline math expression with a variable, not floating in prose; this is the correct math-mode use, consistent with the rest of the paper.
+

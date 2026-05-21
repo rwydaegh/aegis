@@ -21,4 +21,14 @@ source has $\mu \le 0$.
 
 ## reviews (paragraph)
 
-_(empty — run /review to populate)_
+
+_PaperMaker9000 sweep — 2 flag(s) across 4 lens(es)._
+
+- **sentence-craft** — 1 flag(s), 13 cleared:
+    - `style.positive_voice.subject_verb_early` (medium): "A harmonic plane wave with time-averaged Poynting vector $\mathbf{S}_{\mathrm{inc}} = \IPD\,\khat$ (units W/m$^2$) illuminates a body." → Front the verb, trail the qualifier: "A harmonic plane wave illuminates a body, with time-averaged Poynting vector $\mathbf{S}_{\mathrm{inc}} = \IPD\,\khat$ (units W/m$^2$)."
+    - _dismissed_ `style.positive_voice.no_passive_no_we`: The only natural active rewrite needs an agent (the absorption law) not yet introduced at this setup point, so the active form is genuinely awkward and the exception applies; the passives "is absorbed"/"are neglected" are agentless physics statements, also exempt.
+- **voice-tells** — 1 flag(s), 22 cleared:
+    - `style.pet_peeves_wout.no_semicolons` (high): "front-facing point has $\mu > 0$; a point facing away from the" → Replace the semicolon with a period: "...has $\mu > 0$. A point facing away from the source has $\mu \le 0$."
+- **lexical-spotcheck** — pass (54 rules cleared).
+- **latex-micro** — pass (41 rules cleared).
+

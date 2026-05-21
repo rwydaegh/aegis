@@ -12,4 +12,13 @@ features and is marginal at $300$~GHz.
 
 ## reviews (paragraph)
 
-_(empty — run /review to populate)_
+
+_PaperMaker9000 sweep — 1 flag(s) across 4 lens(es)._
+
+- **sentence-craft** — 1 flag(s), 13 cleared:
+    - `style.positive_voice.no_passive_no_we` (high): "Skin features are stratified into" → Use the active verb: "Skin features stratify into ..." (keeps the subject fronted, no awkwardness).
+- **voice-tells** — pass (22 rules cleared).
+- **lexical-spotcheck** — pass (54 rules cleared).
+- **latex-micro** — pass (41 rules cleared).
+    - _dismissed_ `latex.substitutions.units_math_mode_consistent`: The number-then-tie-then-text-unit pattern ($num$~mm/GHz/THz, with \,\mu inside math only for the prefix symbol) is the paper-wide convention and matches the PREV/NEXT neighbours; it is internally consistent, so forcing all units into \mathrm{} would be a global change, not a leaf-level fix.
+

@@ -21,4 +21,12 @@ throughout.
 
 ## reviews (paragraph)
 
-_(empty — run /review to populate)_
+
+_PaperMaker9000 sweep — all clear across 4 lens(es)._
+
+- **sentence-craft** — pass (14 rules cleared).
+- **voice-tells** — pass (22 rules cleared).
+- **lexical-spotcheck** — pass (54 rules cleared).
+- **latex-micro** — pass (41 rules cleared).
+    - _dismissed_ `latex.final_pass.figure_table_refs_text`: Refers to figures inside Zhang's cited thesis (external document) via the citation locator, not this paper's floats; correct as a bare locator with no local \ref.
+

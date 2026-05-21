@@ -17,7 +17,12 @@
 
 ## reviews (figure)
 
-_(empty — run /review to populate)_
+
+_PaperMaker9000 sweep — 1 flag(s) across 1 lens(es)._
+
+- **figure** — 1 flag(s), 42 cleared:
+    - `figures.conventions.axis_units` (high): "Frequency $f$ [GHz]" → Match bracket conventions across axes: the x-axis uses square brackets [GHz] while the y-axis uses parentheses (1); switch the x-axis to (GHz) to match the (1) dimensionless convention.
+    - _dismissed_ `figures.visual_quality.unfilled_markers`: Flintoft (RC measurement anchor) and Wydaeghe (this paper's FDTD) are the only two filled series among ~9; the fill is a deliberate two-tier hierarchy that lets the reader instantly locate the measurement reference and this paper's ground truth, and the filled circles sit in clear regions occluding no underlying curves, so enforcing all-unfilled would erase a useful distinction without improving legibility.
 
 ## grinder notes
 - **label**: fig:waterfall

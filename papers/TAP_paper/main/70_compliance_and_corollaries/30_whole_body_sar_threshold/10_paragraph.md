@@ -15,4 +15,13 @@ solve on the specific exposure scenario.
 
 ## reviews (paragraph)
 
-_(empty — run /review to populate)_
+
+_PaperMaker9000 sweep — 2 flag(s) across 4 lens(es)._
+
+- **sentence-craft** — pass (14 rules cleared).
+- **voice-tells** — pass (22 rules cleared).
+- **lexical-spotcheck** — pass (54 rules cleared).
+- **latex-micro** — 2 flag(s), 39 cleared:
+    - `latex.substitutions.units_math_mode_consistent` (medium): "average SAR limit of $0.08$~W/kg for the general public" → Move the unit inside math mode: $0.08\,\mathrm{W/kg}$ rather than $0.08$~W/kg.
+    - `latex.spacing_ties.thin_space_math_units` (medium): "average SAR limit of $0.08$~W/kg for the general public" → Write $0.08\,\mathrm{W/kg}$ so number and unit share math mode with a thin space, not $0.08$ in math and W/kg in text.
+

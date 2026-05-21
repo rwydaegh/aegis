@@ -26,4 +26,22 @@ typical case every model error stays below the dielectric uncertainty.
 
 ## reviews (paragraph)
 
-_(empty — run /review to populate)_
+
+_PaperMaker9000 sweep — 2 flag(s) across 4 lens(es)._
+
+- **sentence-craft** — 1 flag(s), 13 cleared:
+    - `style.positive_voice.no_passive_no_we` (high): "We evaluate $T_0 = 4n/[(1+n)^2+\kappa^2]$ at the four corners of the $\pm 20\%$ box." → Drop the pronoun: "Evaluating $T_0 = 4n/[(1+n)^2+\kappa^2]$ at the four corners of the $\pm 20\%$ box gives a largest skin deviation of $\pm 7\%$ at $28$~GHz." or noun-verb "$T_0$, evaluated at the four corners of the $\pm 20\%$ box, deviates by at most $\pm 7\%$ on skin."
+- **voice-tells** — 1 flag(s), 21 cleared:
+    - `style.pet_peeves_wout.tilde_spacing` (high): "obtained from $S_{11}$ measurements on $37$ volunteers at" → Tie the bare count: "on~$37$ volunteers" so the number cannot orphan-break, matching the near-universal tie applied elsewhere in the leaf.
+    - _dismissed_ `style.anti_ai_language.in_summary_in_conclusion_opener`: "In the typical case" is a factual scope qualifier carrying a new comparison, not an "In summary/Overall" recap opener.
+    - _dismissed_ `style.pet_peeves_wout.hackneyed_nouns`: "worst case"/"typical case" is the load-bearing dosimetry regime terminology the figure compares, not empty filler like factor/aspect.
+    - _dismissed_ `style.anti_ai_language.internal_brand_names_in_prose`: Thelonious is a published anatomical phantom name, not an internal codebase/project brand.
+- **lexical-spotcheck** — pass (54 rules cleared).
+    - _dismissed_ `style.misused_words.obtains_gets`: "obtained from measurements" is idiomatic data-acquisition usage; swapping to "got" would read as colloquial and degrade clarity, not improve it.
+    - _dismissed_ `BOOK_ELOS_style.misused_words.case_redundant`: "worst case"/"typical case" name the two regimes the figure plots; they are not deletable "in many cases" padding.
+    - _dismissed_ `style.prose_structure.staccato_sentences`: The rule prefers short single-claim sentences; these are exactly that, not subordinate-clause-heavy failures.
+- **latex-micro** — pass (41 rules cleared).
+    - _dismissed_ `latex.math.subscript_labels_upright`: $\varepsilon_r$ (relative permittivity) is the field-standard typesetting with italic r; forcing \mathrm{r} would be non-standard, merely different, not better.
+    - _dismissed_ `latex.substitutions.cref_capitalized`: Lowercase \cref in mid-sentence parentheses renders "(table ...)" deliberately; \Cref is reserved for sentence-initial use, applied consistently across the leaf.
+    - _dismissed_ `latex.structure_style.acronym_first_use`: GELU is a method term used throughout the paper and defined at its true first use elsewhere; this is not the first occurrence, so no expansion is owed here.
+

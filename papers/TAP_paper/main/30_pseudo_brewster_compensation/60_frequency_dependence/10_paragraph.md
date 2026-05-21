@@ -22,4 +22,12 @@ Table~\ref{tab:itis-fvs} and Fig.~\ref{fig:si-angle-family} of the SI.
 
 ## reviews (paragraph)
 
-_(empty — run /review to populate)_
+
+_PaperMaker9000 sweep — 1 flag(s) across 4 lens(es)._
+
+- **sentence-craft** — pass (14 rules cleared).
+- **voice-tells** — pass (22 rules cleared).
+- **lexical-spotcheck** — pass (54 rules cleared).
+- **latex-micro** — 1 flag(s), 40 cleared:
+    - `latex.structure_style.first_coinage_italics` (low): "Define the sphere ratio $R(f)$" → Change to "Define the \emph{sphere ratio} $R(f)$" to mark the coinage with italics at first introduction.
+

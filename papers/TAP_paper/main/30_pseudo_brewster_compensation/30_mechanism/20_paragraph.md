@@ -15,4 +15,12 @@ numerically~\cite{Samaras2019} without the high-index reduction.
 
 ## reviews (paragraph)
 
-_(empty — run /review to populate)_
+
+_PaperMaker9000 sweep — all clear across 4 lens(es)._
+
+- **sentence-craft** — pass (14 rules cleared).
+- **voice-tells** — pass (22 rules cleared).
+- **lexical-spotcheck** — pass (54 rules cleared).
+- **latex-micro** — pass (41 rules cleared).
+    - _dismissed_ `latex.substitutions.units_math_mode_consistent`: The number sits in math mode and GHz is a text-mode tied unit, matching the paper's established convention (28~GHz, 100~GHz, sub-6~GHz, and other $6$~GHz / $100$~GHz instances in main.md); this is a clean tied unit, not a stranded thin-space drift, so no defect.
+

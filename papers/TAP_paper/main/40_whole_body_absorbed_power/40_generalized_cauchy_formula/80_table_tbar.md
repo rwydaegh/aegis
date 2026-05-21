@@ -24,7 +24,10 @@ $f$\,[GHz] & $|\ntilde|$ & $T_0$ & $\Tbar$ & $R$ \\
 
 ## reviews (table)
 
-_(empty — run /review to populate)_
+
+_PaperMaker9000 sweep — all clear across 1 lens(es)._
+
+- **table** — pass (10 rules cleared).
 
 ## grinder notes
 - **label**: tab:Tbar

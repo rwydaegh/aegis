@@ -11,4 +11,12 @@ bodies $\eta \in [0,1]$.
 
 ## reviews (paragraph)
 
-_(empty — run /review to populate)_
+
+_PaperMaker9000 sweep — 1 flag(s) across 4 lens(es)._
+
+- **sentence-craft** — pass (14 rules cleared).
+- **voice-tells** — pass (22 rules cleared).
+- **lexical-spotcheck** — pass (54 rules cleared).
+- **latex-micro** — 1 flag(s), 40 cleared:
+    - `latex.structure_style.first_coinage_italics` (low): "The \textit{exposure fraction} $\eta$ at a surface point" → Use \emph{exposure fraction} rather than \textit{} for the coined term; \emph is the semantic command for first-use coinage and toggles correctly inside any italic context.
+

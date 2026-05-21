@@ -13,4 +13,16 @@ real-time rendering~\cite{AkenineMoller2018}.
 
 ## reviews (paragraph)
 
-_(empty — run /review to populate)_
+
+_PaperMaker9000 sweep — all clear across 4 lens(es)._
+
+- **sentence-craft** — pass (14 rules cleared).
+- **voice-tells** — pass (22 rules cleared).
+    - _dismissed_ `style.anti_ai_language.mic_drop_stinger_sentences`: Short sentence, but it states a new identification (cosine gate = rectified shading), not a restatement of the preceding longer sentence, so it is not a stinger.
+- **lexical-spotcheck** — pass (54 rules cleared).
+    - _dismissed_ `style.anti_ai_language.first_second_third_overuse`: Only one ordinal appears in this leaf; the rule allows a single use for genuinely enumerated distinct contributions, and the cadence spans separate paragraphs, not one.
+    - _dismissed_ `style.misused_words.which_that`: Uses restrictive 'whose' correctly with no comma; no which/that misuse present.
+- **latex-micro** — pass (41 rules cleared).
+    - _dismissed_ `latex.substitutions.cref_capitalized`: Reference sits inside a trailing parenthetical, not at sentence start or as a mid-sentence reference word, so lowercase \cref rendering '(table 5)' is the standard cleveref form here.
+    - _dismissed_ `latex.math.thin_space_units`: Number is in math mode, unit follows in text after a non-breaking tilde; this number-in-math plus tilde-unit pattern is internally consistent and not a missing-separator violation.
+

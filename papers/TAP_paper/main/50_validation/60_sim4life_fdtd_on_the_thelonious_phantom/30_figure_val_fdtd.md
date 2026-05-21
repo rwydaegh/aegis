@@ -21,7 +21,14 @@
 
 ## reviews (figure)
 
-_(empty — run /review to populate)_
+
+_PaperMaker9000 sweep — 1 flag(s) across 1 lens(es)._
+
+- **figure** — 1 flag(s), 42 cleared:
+    - `figures.conventions.axis_units` (high): "$P_{\mathrm{abs}}^{\mathrm{law}} / P_{\mathrm{abs}}^{\mathrm{FDTD}}$" → Append a dimensionless unit marker to the y-axis label, e.g. add ' (1)' to match the parenthesised dimensionless convention used elsewhere in the paper (lit_waterfall y-axes).
+    - _dismissed_ `BOOK_WSRA_figures.conventions.stand_alone`: Caption phrases (``Fresnel only'', ``Full kernel'') are obvious expansions of the legend abbreviations (Fresnel, Full); the mapping is unambiguous and forcing exact-match strings would only lengthen the legend without aiding clarity.
+    - _dismissed_ `BOOK_WSRA_figures.conventions.storytelling_title`: The opening clause frames the comparison and the finding is delivered in the same caption ('giving $1.012$ at $5.8$~GHz', 'recovers the sub-$6$~GHz dip'); leading with a single numeric headline would over-simplify a five-curve diagnostic figure.
+    - _dismissed_ `figures.wout_specifics.no_brand_names_in_figures`: Legend entries (Fresnel, + polar., + curv./diffr., Full, Full + occl., Cauchy formula) are descriptive scientific identifiers, not codebase names like the L3_Pabs/Lall_Pabs columns in the source script.
 
 ## grinder notes
 - **label**: fig:val-fdtd

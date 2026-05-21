@@ -13,7 +13,11 @@
 
 ## reviews (figure)
 
-_(empty — run /review to populate)_
+
+_PaperMaker9000 sweep — 1 flag(s) across 1 lens(es)._
+
+- **figure** — 1 flag(s), 42 cleared:
+    - `figures.conventions.scripting_colour_palette` (high): "COLOR_WORST = "#9d9d9d"  /  COLOR_TYPICAL = "#1f3b73"" → Replace the grey/navy fills with two Wong palette hex codes (e.g. #56B4E9 worst, #0072B2 typical) so the figure matches the paper-wide colour-blind-safe palette.
 
 ## grinder notes
 - **label**: fig:err-budget
