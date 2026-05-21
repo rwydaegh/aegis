@@ -1,5 +1,4 @@
 % PREV: \section{Validation and error analysis}\label{sec:val}
-% NEXT: # Validation
 We validate the theory four ways: (i) Mie theory on lossy spheres,
 (ii) full polarization-aware Fresnel calculations on the Thelonious
 phantom, (iii) Sim4Life FDTD on the same phantom, and (iv) the

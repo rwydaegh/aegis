@@ -7,13 +7,13 @@ plane-wave excitation completes the comparison. Two regulatory
 metrics are evaluated. The first is the IEC/IEEE~63195 peak $\APD$
 averaged over a $4$~cm$^2$ patch. At $7$~GHz on three
 lateral and frontal incidence directions with $\theta$-polarization,
-the direction-averaged ratio of law to FDTD is $1.027$. Propagating a
-$\pm 20\%$ uncertainty on the IT'IS dielectric properties~\cite{ITISv5,Gabriel1996} through
-the Fresnel coefficient at $7$~GHz gives $\pm 7\%$ on
-$T_0$, and the direction-averaged ratio falls inside it. The
+the direction-averaged ratio of law to FDTD is $1.027$. A
+$\pm 20\%$ uncertainty on the IT'IS dielectric properties~\cite{ITISv5,Gabriel1996} propagates
+through the Fresnel coefficient at $7$~GHz to $\pm 7\%$ on
+$T_0$. The direction-averaged ratio falls inside this band. The
 per-direction values are $1.06$, $1.20$, and $0.83$. The spread
-beyond $\pm 7\%$ reflects FDTD discretization and per-direction
-polarization detail in the reference rather than the closed form.
+beyond $\pm 7\%$ comes from FDTD discretization and per-direction
+polarization detail in the reference, not the closed form.
 
 ## reviews (paragraph)
 

@@ -1,12 +1,17 @@
 % PREV: We validate the theory four ways: (i) Mie theory on lossy spheres,
+% PREV: (ii) full polarization-aware Fresnel calculations on the Thelonious
+% PREV: phantom, (iii) Sim4Life FDTD on the same phantom, and (iv) the
+% PREV: reverberation-chamber and FDTD literature across $168$ volunteers
+% PREV: and $5$ phantoms. The four checks isolate, respectively, the
+% PREV: Fresnel approximation, realistic anatomy, volumetric FDTD agreement,
+% PREV: and population-level scaling. We then add the higher-order corrections
+% PREV: for curvature, diffraction, and inter-body reflection, and close with a
+% PREV: single error budget that propagates the dielectric uncertainty.
 # Validation
 
 <!-- AUTO_BEGIN: assembled -->
-% NEXT: We validate the theory four ways: (i) Mie theory on lossy spheres,
 \section{Validation and error analysis}\label{sec:val}
 
-% PREV: \section{Validation and error analysis}\label{sec:val}
-% NEXT: # Validation
 We validate the theory four ways: (i) Mie theory on lossy spheres,
 (ii) full polarization-aware Fresnel calculations on the Thelonious
 phantom, (iii) Sim4Life FDTD on the same phantom, and (iv) the
@@ -17,11 +22,8 @@ and population-level scaling. We then add the higher-order corrections
 for curvature, diffraction, and inter-body reflection, and close with a
 single error budget that propagates the dielectric uncertainty.
 
-% NEXT: Thelonious is a 6-year-old male phantom from the Virtual
 \subsection{Configuration}\label{subsec:val-setup}
 
-% PREV: \subsection{Configuration}\label{subsec:val-setup}
-% NEXT: # Setup
 Thelonious is a 6-year-old male phantom from the Virtual
 Population~\cite{ITISv5}, shown in \cref{fig:phantom}. The surface is
 a high-resolution triangle mesh with $23{,}826$ faces. Tissue
@@ -39,11 +41,8 @@ ray-tracer~\cite{SionnaRT} with no roughness model. All scripts and
 input geometries that produced the figures in this section are in the
 companion code release.
 
-% NEXT: For a lossy sphere of radius $a$ and complex refractive index
 \subsection{Mie theory on lossy spheres}\label{subsec:val-mie}
 
-% PREV: \subsection{Mie theory on lossy spheres}\label{subsec:val-mie}
-% NEXT: \Cref{fig:mie} shows the Mie validation.
 For a lossy sphere of radius $a$ and complex refractive index
 $\ntilde$, the Mie series gives an exact solution for the absorption
 efficiency $Q_{\mathrm{abs}}$. The geometric law predicts
@@ -62,16 +61,12 @@ diffracted contribution exceeds a few percent of total absorption as
 the \emph{body-Mie regime}. For body-scale targets it corresponds to
 frequencies below approximately $6$~GHz.
 
-% PREV: For a lossy sphere of radius $a$ and complex refractive index
-% NEXT: \begin{figure*}[!t]
 \Cref{fig:mie} shows the Mie validation. \Cref{fig:mie}(a) shows
 the error versus size parameter at $28$~GHz. It converges from
 below towards the Fresnel limit $R_{\mathrm{sphere}} - 1 \approx
 -1.2\%$ as $x \to \infty$. \Cref{fig:mie}(b) shows the error versus
 frequency for four representative body-part diameters.
 
-% PREV: \Cref{fig:mie} shows the Mie validation.
-% NEXT: # Mie theory on lossy spheres
 \begin{figure*}[!t]
   \centering
   \begin{subfigure}[t]{0.48\linewidth}
@@ -96,7 +91,6 @@ frequency for four representative body-part diameters.
   \label{fig:mie}
 \end{figure*}
 
-% PREV: # Mie theory on lossy spheres
 For body-relevant sizes (head, torso) over 6--100~GHz, the error ranges
 from $0.4\%$ on a torso at $100$~GHz to $14\%$ on a head at
 $28$~GHz, set mostly by diffraction into the geometric shadow at
@@ -108,11 +102,8 @@ the dielectric uncertainty on $T_0$ (\cref{fig:err-budget}).
 Per-frequency residuals across four body-part diameters ($17$, $80$,
 $180$, $300$~mm) are in Table~\ref{tab:mie-residual} of the SI.
 
-% NEXT: The Mie test bounds the Fresnel error on a smooth shape.
 \subsection{Full Fresnel on the Thelonious phantom}\label{subsec:val-fresnel}
 
-% PREV: \subsection{Full Fresnel on the Thelonious phantom}\label{subsec:val-fresnel}
-% NEXT: \begin{table}[!t]
 The Mie test bounds the Fresnel error on a smooth shape. This
 section validates the theory on a realistic human body. We compare the simplified
 prediction $\APD^{\mathrm{simp}} = \IPD\,T_0 \pospart{\mu}$ against
@@ -122,8 +113,6 @@ mesh ($23\,826$ triangles, $0.787\,\mathrm{m}^2$ surface area). The
 incident plane wave comes from above, with skin properties at
 $28$~GHz.
 
-% PREV: The Mie test bounds the Fresnel error on a smooth shape.
-% NEXT: \Cref{tab:phantom} reports the pointwise comparison.
 \begin{table}[!t]
 \centering
 \caption{Geometric law versus full Fresnel integration on the
@@ -139,8 +128,6 @@ Peak $\APD$              & $0.539$~W/m$^2$ & $0.539$~W/m$^2$ & $0.0\%$ \\
 \end{tabular}
 \end{table}
 
-% PREV: \begin{table}[!t]
-% NEXT: # Full Fresnel on the Thelonious phantom
 \Cref{tab:phantom} reports the pointwise comparison. For the
 $4\,907$ illuminated triangles with
 $\theta < 75^\circ$, the local statistics are mean error $-2.6\%$,
@@ -153,11 +140,8 @@ $128$ illumination directions and three polarization states. The
 per-direction distribution of total absorbed power clusters around
 $T_0\,\Aperp$ within the directional spread set by self-shadowing.
 
-% NEXT: The Mie and Fresnel tests check approximations against analytic and
 \subsection{Sim4Life FDTD on the Thelonious phantom}\label{subsec:val-fdtd}
 
-% PREV: \subsection{Sim4Life FDTD on the Thelonious phantom}\label{subsec:val-fdtd}
-% NEXT: The second metric is the direction-averaged Cauchy formula~\eqref{eq:cauchy-exact}
 The Mie and Fresnel tests check approximations against analytic and
 semi-analytic ground truths. Full Sim4Life FDTD on the same
 Thelonious mesh, matched dielectric properties, and matched
@@ -173,8 +157,6 @@ per-direction values are $1.06$, $1.20$, and $0.83$. The spread
 beyond $\pm 7\%$ reflects FDTD discretization and per-direction
 polarization detail in the reference rather than the closed form.
 
-% PREV: The Mie and Fresnel tests check approximations against analytic and
-% NEXT: \begin{figure}[!t]
 The second metric is the direction-averaged Cauchy formula~\eqref{eq:cauchy-exact}
 across $12$ directions and $2$ polarizations at $5.8$~GHz. The ratio
 of law to FDTD on direction-averaged total absorbed power is
@@ -182,8 +164,6 @@ $1.012$, with $\Aab/A = 0.865$ and $\Tbar(f)$ from \cref{tab:Tbar}.
 \Cref{fig:val-fdtd} extends the comparison
 across $0.45$--$5.8$~GHz.
 
-% PREV: The second metric is the direction-averaged Cauchy formula~\eqref{eq:cauchy-exact}
-% NEXT: The closed-form Cauchy prediction approaches unity at the upper end
 \begin{figure}[!t]
   \centering
   \includegraphics[width=\columnwidth]{fig_kernels_vs_fdtd.pdf}
@@ -203,19 +183,14 @@ across $0.45$--$5.8$~GHz.
   \label{fig:val-fdtd}
 \end{figure}
 
-% PREV: \begin{figure}[!t]
-% NEXT: # Sim4Life FDTD on the Thelonious phantom
 The closed-form Cauchy prediction approaches unity at the upper end
 of the band. Below $6$~GHz the surface law underestimates because
 body-scale Mie and resonance effects do not enter a surface-only law,
 in line with the Mie analysis on a sphere of comparable size
 parameter.
 
-% NEXT: The literature comparison maps each reported empirical scalar to the
 \subsection{Combined dosimetry literature}\label{subsec:val-waterfall}
 
-% PREV: \subsection{Combined dosimetry literature}\label{subsec:val-waterfall}
-% NEXT: \begin{figure*}[!t]
 The literature comparison maps each reported empirical scalar to the
 corresponding closed-form quantity. Kodera's transmission coefficient
 $T_{\mathrm{tr}}$ is compared with the Fresnel transmission used in
@@ -232,8 +207,6 @@ $1$--$6$~GHz envelope from~\cite[Fig.~4.11]{Zhang2017thesis}.
 prediction~\eqref{eq:cauchy-exact} against $168$ volunteers and $5$
 FDTD phantoms from $1$ to $100$~GHz.
 
-% PREV: The literature comparison maps each reported empirical scalar to the
-% NEXT: \Cref{tab:waterfall} lists the numerical comparisons.
 \begin{figure*}[!t]
   \centering
   \includegraphics[width=\linewidth]{lit_waterfall_combined.pdf}
@@ -249,8 +222,6 @@ FDTD phantoms from $1$ to $100$~GHz.
   \label{fig:waterfall}
 \end{figure*}
 
-% PREV: \begin{figure*}[!t]
-% NEXT: \begin{table*}[!t]
 \Cref{tab:waterfall} lists the numerical comparisons. Bamba
 \textit{et~al.}~\cite{Bamba2014}'s $\eta$ in panel (c) is fit from full-body FDTD on
 ellipsoidal phantoms in diffuse-field exposure. Their fit absorbs
@@ -272,8 +243,6 @@ TARO sweep (frontal plane wave, vertical polarization, projected area
 $0.54$~m$^2$), where $T_{\mathrm{eff}}$ rises from $0.43$ at $10$~GHz
 to $0.88$ at $1$~GHz.
 
-% PREV: \Cref{tab:waterfall} lists the numerical comparisons.
-% NEXT: Kodera \textit{et~al.}~\cite{Kodera2024} report the closest numerical
 \begin{table*}[!t]
 \centering
 \caption{Quantitative comparison of the closed-form prediction to the
@@ -313,8 +282,6 @@ Flintoft~\cite{Flintoft2014}
 \end{tabular}
 \end{table*}
 
-% PREV: \begin{table*}[!t]
-% NEXT: # Combined dosimetry literature
 Kodera \textit{et~al.}~\cite{Kodera2024} report the closest numerical
 counterpart to the present analysis. Their Fig.~13 compiles
 whole-body absorbed SAR data over $1$--$10$~GHz at
@@ -334,11 +301,8 @@ $T_{\mathrm{tr}} \to \Tbar(f)$ that all phantoms converge to in the
 geometric-optics regime. The residual phantom-to-phantom spread is
 set by the body-shape factor $\Aab/A$.
 
-% NEXT: The correction box in the flowchart collects the effects left out by
 \subsection{Higher-order corrections}\label{subsec:corr-residuals}
 
-% PREV: \subsection{Higher-order residuals}\label{subsec:corr-residuals}
-% NEXT: First, we examine the influence of curvature.
 The correction box in the flowchart collects the effects left out by
 the geometric law. We treat them in turn: curvature, diffraction at
 the shadow boundary, and inter-body reflections. The kernel labels in
@@ -346,8 +310,6 @@ the shadow boundary, and inter-body reflections. The kernel labels in
 curvature \& diffraction,'' ``Full kernel,'' ``+ occlusion'') switch
 each correction on against the same FDTD reference.
 
-% PREV: The correction box in the flowchart collects the effects left out by
-% NEXT: \begin{table}[!t]
 First, we examine the influence of curvature. For a surface with
 twice the local mean curvature $H = 1/R_1 +
 1/R_2$, the first-order Physical Optics correction multiplies the
@@ -364,8 +326,6 @@ adding a quadratic gate on top of the linear one. The magnitude is
 set by $1/(kR)$. \Cref{tab:curv-mag} lists the correction at
 $28$~GHz on representative body parts.
 
-% PREV: First, we examine the influence of curvature.
-% NEXT: The correction grows as the wavelength approaches the local
 \begin{table}[!t]
 \centering
 \caption{Curvature correction at $28$~GHz ($k \approx 587$~m$^{-1}$).
@@ -384,16 +344,12 @@ Ear edge    & approx.\ $2$  & $8.5\%$ & approx.\ $8\%$ \\
 \end{tabular}
 \end{table}
 
-% PREV: \begin{table}[!t]
-% NEXT: Second, we quantify the effect of diffraction at the shadow boundary.
 The correction grows as the wavelength approaches the local
 body-part size. At sub-$6$~GHz frequencies the smallest features
 have $kR \lesssim 5$ where the correction is no longer small. At
 $28$~GHz, only the ear edges and fingertips carry a correction
 above the Fresnel error floor.
 
-% PREV: The correction grows as the wavelength approaches the local
-% NEXT: Finally, we study the impact of inter-body reflections.
 Second, we quantify the effect of diffraction at the shadow boundary.
 The sharp $[\cdot]_+$ cutoff at $\mu = 0$ is a geometric-optics
 idealization. Diffraction smooths the shadow edge over a Fresnel-zone
@@ -413,8 +369,6 @@ $6$~GHz, in line with the Mie analysis on body-scale spheres in
 \cref{subsec:val-mie}. Numerical values across $1$--$100$~GHz on
 the Thelonious phantom are in Table~\ref{tab:si-diffraction} of the SI.
 
-% PREV: Second, we quantify the effect of diffraction at the shadow boundary.
-% NEXT: Two effects keep the body-averaged correction small.
 Finally, we study the impact of inter-body reflections. At a surface
 point the fraction $T_0$ is absorbed and the remaining
 $1 - T_0 \approx 0.46$ is reflected. On a nonconvex body, part of
@@ -425,7 +379,6 @@ where $\bar{R} = 1 - \Tbar \approx 0.46$ is the flux-weighted
 reflectance and $f(\rr) \le 1 - \eta(\rr)$ is the recapture fraction
 bounded by the local nonvisible hemisphere area.
 
-% PREV: Finally, we study the impact of inter-body reflections.
 Two effects keep the body-averaged correction small. First, the bound
 $f \le 1 - \eta$ self-compensates: deep concavities ($\eta$ low) have
 a high recapture fraction ($f$ high), so the product $\eta\cdot C$
@@ -442,11 +395,8 @@ $\langle P_{\mathrm{abs}}\rangle \le \IPD\,A_{\mathrm{CH}}/4$
 brackets the true absorbed power within
 $A_{\mathrm{CH}}/A \approx 1.20$ on Thelonious.
 
-% NEXT: \Cref{fig:err-budget} reports two regimes side by side at $28$~GHz on
 \subsection{Error budget}\label{subsec:corr-summary}
 
-% PREV: \subsection{Error budget}\label{subsec:corr-summary}
-% NEXT: \begin{figure}[!t]
 \Cref{fig:err-budget} reports two regimes side by side at $28$~GHz on
 skin. The worst case is single body part, single direction, pointwise
 local. The typical case is whole-body integrated, direction-averaged.
@@ -471,7 +421,6 @@ case is $4\%$ under the diffuse bound. The typical case is $1\%$
 under specular at mmWave (\cref{subsec:corr-residuals}). In the
 typical case every model error stays below the dielectric uncertainty.
 
-% PREV: \Cref{fig:err-budget} reports two regimes side by side at $28$~GHz on
 \begin{figure}[!t]
   \centering
   \includegraphics[width=\columnwidth]{error_budget_comprehensive.pdf}
@@ -483,6 +432,10 @@ typical case every model error stays below the dielectric uncertainty.
   \label{fig:err-budget}
 \end{figure}
 <!-- AUTO_END: assembled -->
+
+
+
+
 
 
 

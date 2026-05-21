@@ -1,5 +1,17 @@
 % PREV: \begin{table}[!t]
-% NEXT: # Full Fresnel on the Thelonious phantom
+% PREV: \centering
+% PREV: \caption{Geometric law versus full Fresnel integration on the
+% PREV: Thelonious phantom (skin at $28$~GHz, plane wave from above).}
+% PREV: \label{tab:phantom}
+% PREV: \begin{tabular}{lccc}
+% PREV: \toprule
+% PREV: Metric & Simplified & Full Fresnel & Error \\
+% PREV: \midrule
+% PREV: Mean $\APD$ (illum.)     & $0.185$~W/m$^2$ & $0.186$~W/m$^2$ & $0.5\%$ \\
+% PREV: Peak $\APD$              & $0.539$~W/m$^2$ & $0.539$~W/m$^2$ & $0.0\%$ \\
+% PREV: \bottomrule
+% PREV: \end{tabular}
+% PREV: \end{table}
 \Cref{tab:phantom} reports the pointwise comparison. For the
 $4\,907$ illuminated triangles with
 $\theta < 75^\circ$, the local statistics are mean error $-2.6\%$,
