@@ -14,7 +14,7 @@ rectified linear unit (ReLU). Replacing it with the smooth
 \gls{GELU} activation~\cite{Hendrycks2016} leaves the structure
 intact and replaces the hard cutoff with a soft rolloff
 (\cref{eq:gelu}). Gradients of regulatory quantities with respect to
-antenna positions and antenna orientations propagate
+antenna positions, antenna orientations, and RIS phases propagate
 through any differentiable ray tracer~\cite{SionnaRT}. The arithmetic
 primitive is the per-pixel shading operation that consumer GPUs run
 at sub-millisecond rates, with the cosine gate as rectified shading

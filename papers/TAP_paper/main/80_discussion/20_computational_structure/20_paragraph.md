@@ -15,7 +15,8 @@ First, the network is differentiable in every input. The smooth
 \gls{GELU} activation~\eqref{eq:gelu} replaces the hard $[\cdot]_+$
 gate, preserving the chain rule. Gradients of
 regulatory quantities propagate to antenna positions, antenna
-orientations, and beam codebooks through standard backpropagation.
+orientations, beam codebooks, and reconfigurable-intelligent-surface
+phases through standard backpropagation.
 End-to-end exposure assessment in current practice requires a
 per-scenario FDTD evaluation on the user phantom as the back-end
 step~\cite{Wydaeghe2022access,Wydaeghe2026npj}. With the closed form

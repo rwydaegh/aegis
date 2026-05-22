@@ -55,8 +55,8 @@ def create_error_budget_plot(mode: str = "png", out_dir=None) -> None:
     worst = np.array([10.0, 7.0, 5.3, 4.0])
     typical = np.array([1.2, 7.0, 1.2, 1.0])
 
-    COLOR_WORST = "#000000"
-    COLOR_TYPICAL = "#FF0000"
+    COLOR_WORST = "#FF0000"
+    COLOR_TYPICAL = "#000000"
 
     fig, ax = plt.subplots(figsize=fig_size_ieee(columns=1, aspect=0.78))
 
