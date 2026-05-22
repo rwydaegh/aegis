@@ -50,8 +50,8 @@ dev = [
     "pytest-cov>=7.1.0",
     "pytest-randomly>=4.1.0",
     "pytest-xdist>=3.8.0",
-    "hypothesis>=6.152.7",
-    "ruff>=0.15.13",
+    "hypothesis>=6.152.9",
+    "ruff>=0.15.14",
     "basedpyright>=1.39.4",
     "pre-commit>=4.6.0",
     "codespell>=2.4.2",
@@ -68,7 +68,7 @@ dev = [
     "mutmut>=3.5.0",
 ]
 body = ["smplx>=0.1.28", "torch>=2.11.0", "pygltflib>=1.16.5"]
-benchmark = ["pytest-codspeed>=5.0.2"]
+benchmark = ["pytest-codspeed>=5.0.3"]
 cloud = ["requests>=2.34.2"]
 all = ["aegis[jax,gpu,viz,viewer,rt,sionna,docs,dev,cloud,modal,benchmark]"]
 
