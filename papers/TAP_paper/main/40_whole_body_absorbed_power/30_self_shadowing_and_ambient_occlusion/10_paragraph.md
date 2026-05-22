@@ -14,7 +14,15 @@ in~\eqref{eq:geom-law} is the ambient-occlusion primitive of computer
 graphics that Zhukov \textit{et~al.}~\cite{Zhukov1998} introduced and
 Landis~\cite{Landis2002} brought into production rendering. Modern GPUs
 evaluate $\Vis(\rr,\khat)$ at interactive frame
-rates~\cite{AkenineMoller2018}.
+rates~\cite{AkenineMoller2018}. The \emph{exposure fraction} $\eta$ at
+a surface point $\rr$ is the cosine-weighted fraction of the upper
+hemisphere from which $\rr$ is unobstructed,
+\begin{equation}\label{eq:eta-def}
+  \eta(\rr) = \frac{1}{\pi}\int_{S^2}
+  \pospart{\nhat(\rr)\cdot(-\khat)}\,\Vis(\rr,\khat)\,\diff\Omega\, .
+\end{equation}
+For convex bodies $\Vis \equiv 1$ and $\eta \equiv 1$. For nonconvex
+bodies $\eta \in [0,1]$.
 
 ## reviews (paragraph)
 

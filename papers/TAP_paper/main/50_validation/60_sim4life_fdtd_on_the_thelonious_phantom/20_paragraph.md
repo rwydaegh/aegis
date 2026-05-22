@@ -35,7 +35,11 @@ across $12$ directions and $2$ polarizations at $5.8$~GHz. The ratio
 of law to FDTD on direction-averaged total absorbed power is
 $1.012$, with $\Aab/A = 0.865$ and $\Tbar(f)$ from \cref{tab:Tbar}.
 \Cref{fig:val-fdtd} extends the comparison
-across $0.45$--$5.8$~GHz.
+across $0.45$--$5.8$~GHz. The closed-form Cauchy prediction approaches
+unity at the upper end of the band. Below $6$~GHz the surface law
+underestimates because body-scale Mie and resonance effects do not
+enter a surface-only law, in line with the Mie analysis on a sphere of
+comparable size parameter.
 
 ## reviews (paragraph)
 

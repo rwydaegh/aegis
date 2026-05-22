@@ -8,7 +8,12 @@
 A closed-form method is proposed for the absorbed power density on
 biological tissue from $1$ to $100$~GHz. The whole-body absorbed
 power factors into a flux-weighted Fresnel transmission $\Tbar(f)$
-times a body shape factor $\Aab/A$.
+times a body shape factor $\Aab/A$. The cost no longer depends on
+frequency. The $f^4$ FDTD scaling becomes one matrix-vector multiply
+with positive-part gating, differentiable in antenna position,
+orientation, and beam codebooks. A simulation campaign that takes
+weeks of FDTD reduces to a tissue-property lookup and an
+ambient-occlusion pass on the body mesh.
 
 ## reviews (paragraph)
 

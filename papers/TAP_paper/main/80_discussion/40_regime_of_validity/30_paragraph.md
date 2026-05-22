@@ -14,7 +14,11 @@
 The Mie regime sets a second lower limit. The geometric-optics
 asymptote holds with sub-percent residual once $ka \gtrsim 30$ on a
 body characteristic dimension, and \cref{subsec:val-mie} quantifies
-the residual on body-scale spheres.
+the residual on body-scale spheres. Whole-body resonance dominates
+below approximately~$300$~MHz, where the body acts as a half-wave
+dipole and surface absorbed power is unrelated to internal
+hot-spots~\cite{Durney1986}. Below this frequency the framework
+reduces to volumetric solvers.
 
 ## reviews (paragraph)
 

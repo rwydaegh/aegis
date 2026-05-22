@@ -23,7 +23,13 @@
 The classical Cauchy formula $\langle\Aperp\rangle = A/4$ is the
 special case $\eta \equiv 1$, valid for any convex body. The
 absorption area $\Aab$ reduces all geometric complexity of
-self-shadowing to a single scalar.
+self-shadowing to a single scalar. Let $A_{\mathrm{CH}}$ be the
+surface area of the convex hull of the body. Energy conservation under
+isotropic illumination implies
+$\langle P_{\mathrm{abs}} \rangle \le \IPD\,A_{\mathrm{CH}}/4$, because
+the power entering the convex hull bounds the absorbed power. For the
+Thelonious phantom $A_{\mathrm{CH}}/A \approx 1.20$, so the hull bound
+is within a few percent of the true absorbed power.
 
 ## reviews (paragraph)
 

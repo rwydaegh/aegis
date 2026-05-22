@@ -8,6 +8,7 @@
 % NEXT: database~\cite{Gabriel1996} gives muscle skin-depth values that
 % NEXT: exceed limb cross-sections below approximately $1$~GHz and torso
 % NEXT: cross-sections below approximately $250$~MHz.
+\Cref{tab:bands} summarizes the validity by frequency band.
 Equations~\eqref{eq:geom-law} and~\eqref{eq:cauchy-exact} hold
 quantitatively above approximately $1$~GHz on whole-body absorbed
 power and above approximately $6$~GHz pointwise on the surface, with

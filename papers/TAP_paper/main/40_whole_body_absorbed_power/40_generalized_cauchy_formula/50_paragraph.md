@@ -14,8 +14,17 @@
 % NEXT: \end{equation}
 The constant-$T_0$ approximation in~\eqref{eq:cauchy} is accurate to
 $5\%$ root-mean-square across $0.3$--$100$~GHz, but it is not
-exact. Replacing $T_0$ with the flux-weighted transmission $\Tbar(f)$
-defined in~\eqref{eq:R-of-f} removes the approximation.
+exact. The same direction-averaged identity becomes exact when $T_0$
+is replaced by the angle-dependent $\Tavg(\theta)$. The
+cosine-weighted angular integral becomes $\Tbar$
+via~\eqref{eq:R-of-f}, so for any body opaque at the wavelength
+\begin{equation}\label{eq:cauchy-exact}
+  \langle P_{\mathrm{abs}} \rangle = \IPD\,\Tbar(f)\,\Aab/4 \,.
+\end{equation}
+\Cref{eq:cauchy-exact} requires only electromagnetic opacity, a
+condition met above approximately $1$~GHz on a torso and above
+approximately $6$~GHz on a finger. \Cref{tab:Tbar} lists $T_0$,
+$\Tbar$, and the ratio $R = T_0/\Tbar$ for skin from $0.3$--$100$~GHz.
 
 ## reviews (paragraph)
 

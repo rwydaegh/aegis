@@ -21,7 +21,12 @@
 % PREV:   $R_{\mathrm{sphere}}(f)-1$, the size-independent Fresnel limit.}
 % PREV:   \label{fig:mie}
 % PREV: \end{figure*}
-For body-relevant sizes (head, torso) over 6--100~GHz, the error ranges
+\Cref{fig:mie} shows the Mie validation. \Cref{fig:mie}(a) gives the
+error versus size parameter at $28$~GHz, converging from below to the
+Fresnel limit $R_{\mathrm{sphere}} - 1 \approx -1.2\%$ as
+$x \to \infty$. \Cref{fig:mie}(b) gives the error versus frequency for
+four representative body-part diameters. For body-relevant sizes
+(head, torso) over 6--100~GHz, the error ranges
 from $0.4\%$ on a torso at $100$~GHz to $14\%$ on a head at
 $28$~GHz, set mostly by diffraction into the geometric shadow at
 the low end of the band. At $28$~GHz the law underestimates
