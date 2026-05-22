@@ -1,10 +1,7 @@
 % PREV: Two effects keep the body-averaged correction small.
 <!-- AUTO_BEGIN: assembled -->
-% NEXT: The correction box in the flowchart collects the effects left out by
 \subsection{Higher-order corrections}\label{subsec:corr-residuals}
 
-% PREV: \subsection{Higher-order corrections}\label{subsec:corr-residuals}
-% NEXT: First, we examine the influence of curvature.
 The correction box in the flowchart collects the effects left out by
 the geometric law. We treat them in turn: curvature, diffraction at
 the shadow boundary, and inter-body reflections. The kernel labels in
@@ -12,8 +9,6 @@ the shadow boundary, and inter-body reflections. The kernel labels in
 curvature \& diffraction,'' ``Full kernel,'' ``+ occlusion'') switch
 each correction on against the same FDTD reference.
 
-% PREV: The correction box in the flowchart collects the effects left out by
-% NEXT: \begin{table}[!t]
 First, we examine the influence of curvature. For a surface with
 twice the local mean curvature $H = 1/R_1 +
 1/R_2$, the first-order Physical Optics correction multiplies the
@@ -30,8 +25,6 @@ adding a quadratic gate on top of the linear one. The magnitude is
 set by $1/(kR)$. \Cref{tab:curv-mag} lists the correction at
 $28$~GHz on representative body parts.
 
-% PREV: First, we examine the influence of curvature.
-% NEXT: The correction grows as the wavelength approaches the local
 \begin{table}[!t]
 \centering
 \caption{Curvature correction at $28$~GHz ($k \approx 587$~m$^{-1}$).
@@ -50,16 +43,12 @@ Ear edge    & approx.\ $2$  & $8.5\%$ & approx.\ $8\%$ \\
 \end{tabular}
 \end{table}
 
-% PREV: \begin{table}[!t]
-% NEXT: Second, we quantify the effect of diffraction at the shadow boundary.
 The correction grows as the wavelength approaches the local
 body-part size. At sub-$6$~GHz frequencies the smallest features
 have $kR \lesssim 5$ where the correction is no longer small. At
 $28$~GHz, only the ear edges and fingertips carry a correction
 above the Fresnel error floor.
 
-% PREV: The correction grows as the wavelength approaches the local
-% NEXT: Finally, we study the impact of inter-body reflections.
 Second, we quantify the effect of diffraction at the shadow boundary.
 The sharp $[\cdot]_+$ cutoff at $\mu = 0$ is a geometric-optics
 idealization. Diffraction smooths the shadow edge over a Fresnel-zone
@@ -79,8 +68,6 @@ $6$~GHz, in line with the Mie analysis on body-scale spheres in
 \cref{subsec:val-mie}. Numerical values across $1$--$100$~GHz on
 the Thelonious phantom are in Table~\ref{tab:si-diffraction} of the SI.
 
-% PREV: Second, we quantify the effect of diffraction at the shadow boundary.
-% NEXT: Two effects keep the body-averaged correction small.
 Finally, we study the impact of inter-body reflections. At a surface
 point the fraction $T_0$ is absorbed and the remaining
 $1 - T_0 \approx 0.46$ is reflected. On a nonconvex body, part of
@@ -91,8 +78,6 @@ where $\bar{R} = 1 - \Tbar \approx 0.46$ is the flux-weighted
 reflectance and $f(\rr) \le 1 - \eta(\rr)$ is the recapture fraction
 bounded by the local nonvisible hemisphere area.
 
-% PREV: Finally, we study the impact of inter-body reflections.
-% NEXT: <!-- AUTO_BEGIN: assembled -->
 Two effects keep the body-averaged correction small. First, the bound
 $f \le 1 - \eta$ self-compensates: deep concavities ($\eta$ low) have
 a high recapture fraction ($f$ high), so the product $\eta\cdot C$
@@ -109,6 +94,7 @@ $\langle P_{\mathrm{abs}}\rangle \le \IPD\,A_{\mathrm{CH}}/4$
 brackets the true absorbed power within
 $A_{\mathrm{CH}}/A \approx 1.20$ on Thelonious.
 <!-- AUTO_END: assembled -->
+
 
 
 ## Aggregation notes (AI-owned)

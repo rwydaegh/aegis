@@ -1,5 +1,12 @@
-% PREV: Finally, we study the impact of inter-body reflections.
-% NEXT: <!-- AUTO_BEGIN: assembled -->
+% PREV: Finally, we study the impact of inter-body reflections. At a surface
+% PREV: point the fraction $T_0$ is absorbed and the remaining
+% PREV: $1 - T_0 \approx 0.46$ is reflected. On a nonconvex body, part of
+% PREV: this reflected power re-illuminates another point and contributes
+% PREV: to absorption that the first-bounce law omits. The radiosity series
+% PREV: gives a multiplier $C(\rr) = 1/(1 - \bar{R}\,f(\rr))$ at each point,
+% PREV: where $\bar{R} = 1 - \Tbar \approx 0.46$ is the flux-weighted
+% PREV: reflectance and $f(\rr) \le 1 - \eta(\rr)$ is the recapture fraction
+% PREV: bounded by the local nonvisible hemisphere area.
 Two effects keep the body-averaged correction small. First, the bound
 $f \le 1 - \eta$ self-compensates: deep concavities ($\eta$ low) have
 a high recapture fraction ($f$ high), so the product $\eta\cdot C$
@@ -19,6 +26,7 @@ $A_{\mathrm{CH}}/A \approx 1.20$ on Thelonious.
 ## reviews (paragraph)
 
 
+
 _PaperMaker9000 sweep — all clear across 4 lens(es)._
 
 - **sentence-craft** — pass (14 rules cleared).
@@ -28,4 +36,5 @@ _PaperMaker9000 sweep — all clear across 4 lens(es)._
 - **latex-micro** — pass (41 rules cleared).
     - _dismissed_ `latex.substitutions.cref_capitalized`: The reference is mid-sentence (object of 'derived in'), not sentence-initial, so lowercase \cref correctly renders 'subsection X'.
     - _dismissed_ `latex.substitutions.approx_text_vs_math`: Each \approx sits inside a full inline math expression with a variable, not floating in prose; this is the correct math-mode use, consistent with the rest of the paper.
+- **incremental (2026-05-22)** — pass (2 new/edited rules cleared).
 

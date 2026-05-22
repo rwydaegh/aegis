@@ -2,7 +2,6 @@
 # Postmatter
 
 <!-- AUTO_BEGIN: assembled -->
-% NEXT: # Postmatter
 \begin{thebibliography}{10}
 \providecommand{\url}[1]{#1}
 
@@ -322,6 +321,7 @@ experience.
 
 \end{document}
 <!-- AUTO_END: assembled -->
+
 
 
 

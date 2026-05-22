@@ -1,5 +1,39 @@
 % PREV: \subsection{Geometric absorption law}\label{subsec:pB-geom}
 % NEXT: \begin{figure*}[!t]
+% NEXT:   \centering
+% NEXT:   \begin{subfigure}[b]{0.30\linewidth}
+% NEXT:     \centering
+% NEXT:     \censorphantom[0.9\linewidth]{sab_phantom_visible.pdf}%
+% NEXT:       {0.324,0.880}{0.499,0.915}{0.289,0.440}{0.443,0.490}
+% NEXT:     \caption{$\APD(\rr)$, frontal $\khat$.}
+% NEXT:     \label{fig:phantom:sab}
+% NEXT:   \end{subfigure}\hfill
+% NEXT:   \begin{subfigure}[b]{0.30\linewidth}
+% NEXT:     \centering
+% NEXT:     \censorphantom[0.9\linewidth]{eta_phantom_front.pdf}%
+% NEXT:       {0.282,0.870}{0.429,0.905}{0.289,0.440}{0.443,0.490}
+% NEXT:     \caption{$\eta(\rr)$, front view.}
+% NEXT:     \label{fig:phantom:eta-front}
+% NEXT:   \end{subfigure}\hfill
+% NEXT:   \begin{subfigure}[b]{0.30\linewidth}
+% NEXT:     \centering
+% NEXT:     \censorphantom[0.9\linewidth]{eta_phantom_side.pdf}%
+% NEXT:       {0.212,0.870}{0.310,0.905}{0.289,0.440}{0.443,0.490}
+% NEXT:     \caption{$\eta(\rr)$, side view.}
+% NEXT:     \label{fig:phantom:eta-side}
+% NEXT:   \end{subfigure}
+% NEXT:   \caption{$\APD$ and $\eta$ maps on the Thelonious phantom (skin
+% NEXT:   at 28~GHz, $\IPD = 1$~W/m$^2$,
+% NEXT:   area-weighted mean $\bar\eta = 0.865$). (a)~APD
+% NEXT:   under frontal illumination $\khat = +\hat{y}$. Front-facing
+% NEXT:   triangles absorb at the cosine rate $T_0\,\IPD\,\cos\theta$.
+% NEXT:   Self-shadowed elements drop to zero through $\Vis(\rr,\khat)$.
+% NEXT:   (b,~c)~Direction-isotropic exposure fraction
+% NEXT:   $\eta(\rr) \in [0,1]$ from~\eqref{eq:eta-def}, front and side
+% NEXT:   views. Panel~(a) is the integrand of the Cauchy formula along
+% NEXT:   one direction. Panels~(b,~c) integrate over the full sphere.}
+% NEXT:   \label{fig:phantom}
+% NEXT: \end{figure*}
 Two simplifications act on the exact law in~\eqref{eq:Sab-exact}.
 First, we apply the polarization reduction~\eqref{eq:Sab-Tavg}.
 Second, we substitute $\Tavg(\theta) \to T_0$ and reinstate
@@ -30,14 +64,16 @@ the normal-incidence transmission.
 ## reviews (paragraph)
 
 
+
 _PaperMaker9000 sweep — 4 flag(s) across 4 lens(es)._
 
 - **sentence-craft** — 2 flag(s), 12 cleared:
-    - `style.positive_voice.no_passive_no_we` (high): "First, we apply the polarization reduction~\eqref{eq:Sab-Tavg}." → Rewrite noun-verb to match the surrounding prose: "First, the polarization reduction~\eqref{eq:Sab-Tavg} removes the angular dependence."
-    - `style.positive_voice.subject_verb_early` (medium): "Under frontal illumination the medial thighs, the inside of the wrists, and the underside of the chin become self-shadowed and drop to zero through $\Vis$." → Front the verb and move the list to the end: "Under frontal illumination, $\Vis$ drops three regions to zero: the medial thighs, the inside of the wrists, and the underside of the chin."
+    - `style.positive_voice.no_passive_no_we` (high): `First, we apply the polarization reduction~\eqref{eq:Sab-Tavg}.` -> Rewrite noun-verb to match the surrounding prose: "First, the polarization reduction~\eqref{eq:Sab-Tavg} removes the angular dependence."
+    - `style.positive_voice.subject_verb_early` (medium): `Under frontal illumination the medial thighs, the inside of the wrists, and the underside of the chin become self-shadowed and drop to zero through $\Vis$.` -> Front the verb and move the list to the end: "Under frontal illumination, $\Vis$ drops three regions to zero: the medial thighs, the inside of the wrists, and the underside of the chin."
 - **voice-tells** — 1 flag(s), 21 cleared:
-    - `style.pet_peeves_wout.tilde_spacing` (high): "The transmission coefficient $T_{\mathrm{tr}}$ fitted in \cite{Kodera2024,Diao2024,Funahashi2018}" → Replace the space before the citation with a tie: "fitted in~\cite{Kodera2024,Diao2024,Funahashi2018}".
+    - `style.pet_peeves_wout.tilde_spacing` (high): `The transmission coefficient $T_{\mathrm{tr}}$ fitted in \cite{Kodera2024,Diao2024,Funahashi2018}` -> Replace the space before the citation with a tie: "fitted in~\cite{Kodera2024,Diao2024,Funahashi2018}".
 - **lexical-spotcheck** — 1 flag(s), 53 cleared:
-    - `BOOK_WILLIAMS_style.prose_structure.comma_after_long_intro` (unknown): "For a convex body $\Vis \equiv 1$ and~\eqref{eq:geom-law} reduces to the classical" → Add a comma after the four-word intro phrase: "For a convex body, $\Vis \equiv 1$ and~\eqref{eq:geom-law} reduces..." so the symbol is not misread as part of the noun phrase.
+    - `BOOK_WILLIAMS_style.prose_structure.comma_after_long_intro` (unknown): `For a convex body $\Vis \equiv 1$ and~\eqref{eq:geom-law} reduces to the classical` -> Add a comma after the four-word intro phrase: "For a convex body, $\Vis \equiv 1$ and~\eqref{eq:geom-law} reduces..." so the symbol is not misread as part of the noun phrase.
 - **latex-micro** — pass (41 rules cleared).
+- **incremental (2026-05-22)** — pass (2 new/edited rules cleared).
 

@@ -12,15 +12,17 @@ single error budget that propagates the dielectric uncertainty.
 ## reviews (paragraph)
 
 
+
 _PaperMaker9000 sweep — 2 flag(s) across 4 lens(es)._
 
 - **sentence-craft** — 1 flag(s), 13 cleared:
-    - `style.positive_voice.no_passive_no_we` (high): "We validate the theory four ways" → Recast as a noun-verb opener, e.g. "Four checks validate the theory:" and likewise "We then add" -> "Higher-order corrections then follow".
+    - `style.positive_voice.no_passive_no_we` (high): `We validate the theory four ways` -> Recast as a noun-verb opener, e.g. "Four checks validate the theory:" and likewise "We then add" -> "Higher-order corrections then follow".
 - **voice-tells** — 1 flag(s), 21 cleared:
-    - `style.pet_peeves_wout.tilde_spacing` (high): "across $168$ volunteers and $5$ phantoms" → Use non-breaking ties before the numbers: "across~$168$ volunteers and~$5$ phantoms".
+    - `style.pet_peeves_wout.tilde_spacing` (high): `across $168$ volunteers and $5$ phantoms` -> Use non-breaking ties before the numbers: "across~$168$ volunteers and~$5$ phantoms".
 - **lexical-spotcheck** — pass (54 rules cleared).
     - _dismissed_ `BOOK_ELOS_style.misused_words.respectively`: Four checks map to four distinct targets; respectively carries the pairing and removing it would force the reader to guess the mapping. respectively_welcome explicitly sanctions this parallel construction.
     - _dismissed_ `style.anti_ai_language.rule_of_three`: Three items is the actual count of higher-order corrections, not a cadenced triplet; the companion list earlier has four items, so the prose is fact-driven, not template-driven.
 - **latex-micro** — pass (41 rules cleared).
     - _dismissed_ `latex.spacing_ties.tilde_number_unit`: $168$ and $5$ are bare counts with no attached unit, so the number-unit tie rule does not apply; the universal pre-number tie is Wout's tilde_spacing, handled by the voice-tells lens.
+- **incremental (2026-05-22)** — pass (2 new/edited rules cleared).
 

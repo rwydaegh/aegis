@@ -1,5 +1,16 @@
-% PREV: # Regime of validity
+% PREV: Whole-body resonance dominates below approximately $300$~MHz, where
+% PREV: the body acts as a half-wave dipole and surface absorbed power is
+% PREV: unrelated to internal hot-spots~\cite{Durney1986}. Below this
+% PREV: frequency the framework reduces to volumetric solvers.
 % NEXT: The pseudo-Brewster compensation softens above $200$--$250$~GHz,
+% NEXT: where the Azzam high-index criterion $|\ntilde| > 2.5$ weakens and
+% NEXT: worst-case angular variation grows from $5.6\%$ at $28$~GHz to
+% NEXT: approximately $10\%$ at $250$~GHz and $15\%$ at $300$~GHz, comparable
+% NEXT: to the dielectric uncertainty on $T_0$ (\cref{fig:err-budget}). Skin
+% NEXT: refractive-index modulus from the IT'IS database~\cite{ITISv5,Gabriel1996} is $4.84$ at $28$~GHz,
+% NEXT: $3.68$ at $60$~GHz, and $3.01$ at $100$~GHz, and extrapolation puts
+% NEXT: $|\ntilde|$ near $2.5$ around $200$--$250$~GHz, approximately $2.2$
+% NEXT: at $300$~GHz, and $1.8$--$2$ at $1$~THz.
 \begin{table}[!t]
 \centering
 \caption{Frequency-band limits of~\eqref{eq:cauchy-exact} on a
@@ -32,6 +43,7 @@ $6$--$100$~GHz
 \end{table}
 
 ## reviews (table)
+
 
 
 _PaperMaker9000 sweep — all clear across 1 lens(es)._

@@ -2,21 +2,15 @@
 # Whole-body absorbed power
 
 <!-- AUTO_BEGIN: assembled -->
-% NEXT: The flowchart next integrates the geometric local law over the body.
 \section{Method: whole-body absorbed power}\label{sec:cauchy}
 
-% PREV: \section{Method: whole-body absorbed power}\label{sec:cauchy}
-% NEXT: # Whole-body absorbed power
 The flowchart next integrates the geometric local law over the body.
 This section turns surface \gls{APD} into direction-averaged
 whole-body absorbed power. The needed new ingredient is visibility:
 nonconvex body parts can shadow one another.
 
-% NEXT: The human body is not convex.
 \subsection{Self-shadowing and ambient occlusion}\label{sec:self-shadow}
 
-% PREV: \subsection{Self-shadowing and ambient occlusion}\label{sec:self-shadow}
-% NEXT: The \textit{exposure fraction} $\eta$ at a surface point $\rr$ is the cosine-weighted
 The human body is not convex. Concavities such as the armpits, the
 gap between the legs, and the neck region cause one part of the body
 to shadow another. The binary visibility $\Vis(\rr,\khat) \in \{0,1\}$
@@ -26,8 +20,6 @@ into production rendering by Landis~\cite{Landis2002}. Modern GPUs
 evaluate $\Vis(\rr,\khat)$ at interactive frame
 rates~\cite{AkenineMoller2018}.
 
-% PREV: The human body is not convex.
-% NEXT: The exposure fraction $\eta$ is mathematically identical to the
 The \textit{exposure fraction} $\eta$ at a surface point $\rr$ is the cosine-weighted
 fraction of the upper hemisphere from which $\rr$ is unobstructed,
 \begin{equation}\label{eq:eta-def}
@@ -37,8 +29,6 @@ fraction of the upper hemisphere from which $\rr$ is unobstructed,
 For convex bodies $\Vis \equiv 1$ and $\eta \equiv 1$. For nonconvex
 bodies $\eta \in [0,1]$.
 
-% PREV: The \textit{exposure fraction} $\eta$ at a surface point $\rr$ is the cosine-weighted
-% NEXT: # Self-shadowing and ambient occlusion
 The exposure fraction $\eta$ is mathematically identical to the
 self-shadowing factor $\gamma_s$ that Flintoft \textit{et~al.}\ define as
 ``the proportion of total surface area of the body that is illuminated
@@ -58,11 +48,8 @@ the chin, and the soles of the feet are the dominant such regions.
 On a $10^4$--$10^5$ triangle mesh the solver evaluates $\eta$ in
 tens of milliseconds on commodity hardware.
 
-% NEXT: The generalized Cauchy formula is the central whole-body identity.
 \subsection{Generalized Cauchy formula}\label{subsec:cauchy-thm}
 
-% PREV: \subsection{Generalized Cauchy formula}\label{subsec:cauchy-thm}
-% NEXT: \begin{proof}
 The generalized Cauchy formula is the central whole-body identity.
 \begin{theorem}\label{thm:cauchy}
 Let a body $\Sigma$ have surface area $A$, exposure fraction
@@ -76,8 +63,6 @@ whole-body absorbed power is
 \end{equation}
 \end{theorem}
 
-% PREV: The generalized Cauchy formula is the central whole-body identity.
-% NEXT: The classical Cauchy formula $\langle\Aperp\rangle = A/4$ is the
 \begin{proof}
 Apply Fubini's theorem to exchange the surface and direction
 integrals. The local law~\eqref{eq:geom-law} gives
@@ -95,15 +80,11 @@ using the definition of $\eta$ and the identity $\int_{S^2}
 $\nhat$. Integration over $\Sigma$ gives~\eqref{eq:cauchy}.
 \end{proof}
 
-% PREV: \begin{proof}
-% NEXT: # Generalized Cauchy formula
 The classical Cauchy formula $\langle\Aperp\rangle = A/4$ is the
 special case $\eta \equiv 1$, valid for any convex body. The
 absorption area $\Aab$ reduces all geometric complexity of
 self-shadowing to a single scalar.
 
-% PREV: # Generalized Cauchy formula
-% NEXT: The constant-$T_0$ approximation in~\eqref{eq:cauchy} is accurate to
 Let $A_{\mathrm{CH}}$ be the surface area of the convex hull of the
 body. Energy conservation under isotropic illumination implies
 $\langle P_{\mathrm{abs}} \rangle \le \IPD\,A_{\mathrm{CH}}/4$,
@@ -111,15 +92,11 @@ because the power entering the convex hull bounds the absorbed power.
 For the Thelonious phantom $A_{\mathrm{CH}}/A \approx 1.20$, so the
 hull bound brackets the true absorbed power within a few percent.
 
-% PREV: Let $A_{\mathrm{CH}}$ be the surface area of the convex hull of the
-% NEXT: The same direction-averaged identity becomes exact when $T_0$ is
 The constant-$T_0$ approximation in~\eqref{eq:cauchy} is accurate to
 $5\%$ root-mean-square across $0.3$--$100$~GHz, but it is not
 exact. Replacing $T_0$ with the flux-weighted transmission $\Tbar(f)$
 defined in~\eqref{eq:R-of-f} removes the approximation.
 
-% PREV: The constant-$T_0$ approximation in~\eqref{eq:cauchy} is accurate to
-% NEXT: \Cref{eq:cauchy-exact} requires only electromagnetic opacity, a
 The same direction-averaged identity becomes exact when $T_0$ is
 replaced by the angle-dependent
 $\Tavg(\theta)$. The cosine-weighted angular integral collapses to
@@ -129,15 +106,11 @@ wavelength
   \langle P_{\mathrm{abs}} \rangle = \IPD\,\Tbar(f)\,\Aab/4 \,.
 \end{equation}
 
-% PREV: The same direction-averaged identity becomes exact when $T_0$ is
-% NEXT: \begin{table}[!t]
 \Cref{eq:cauchy-exact} requires only electromagnetic opacity, a
 condition met above approximately $1$~GHz on a torso and above approximately $6$~GHz
 on a finger. \Cref{tab:Tbar} lists $T_0$, $\Tbar$, and the ratio
 $R = T_0/\Tbar$ for skin from $0.3$--$100$~GHz.
 
-% PREV: \Cref{eq:cauchy-exact} requires only electromagnetic opacity, a
-% NEXT: The reverberation-chamber literature has been measuring $\Tbar$
 \begin{table}[!t]
 \centering
 \caption{Normal-incidence transmission $T_0$, flux-weighted
@@ -160,7 +133,6 @@ $f$\,[GHz] & $|\ntilde|$ & $T_0$ & $\Tbar$ & $R$ \\
 \end{tabular}
 \end{table}
 
-% PREV: \begin{table}[!t]
 The reverberation-chamber literature has been measuring $\Tbar$
 directly. Bamba's empirical efficiency $\eta(f)$ for diffuse-field
 exposure on four FDTD ellipsoid phantoms~\cite{Bamba2014}
@@ -173,26 +145,18 @@ at $7$--$11$~GHz matches $\Tbar$ at the same frequencies to $2\%$~\cite{Flintoft
 Zhang's plateau $\xi = 0.45$--$0.65$ above $6$~GHz brackets
 $\Tbar\cdot\Aab/A$~\cite{Zhang2017thesis}.
 
-% PREV: The reverberation-chamber literature has been measuring $\Tbar$
-
 \subsection{Layered transmission below 6~GHz}\label{subsec:fp}
 
-% PREV: \subsection{Layered transmission below 6~GHz}\label{subsec:fp}
-% NEXT: Above $6$~GHz, \eqref{eq:cauchy-exact} matches the plateau values
-
-% NEXT: The mechanism is a Fabry--P\'erot resonance in the subcutaneous fat
 Above $6$~GHz, \eqref{eq:cauchy-exact} matches the plateau values
 reported by Bamba, Flintoft, and Zhang. Below $6$~GHz, Flintoft and
 Zhang observe a structured dip near $3$~GHz that the homogeneous
 half-space model does not reproduce~\cite{Flintoft2014,Zhang2017thesis}. The
-dip is anatomical rather than instrumental: Flintoft's negative
+dip is anatomical. Flintoft's negative
 correlation of $\langle Q^a\rangle$ with mean subcutaneous fat
 thickness $d_{\mathrm{SF}}$ is steepest at $3$~GHz
 ($-0.0061\,\mathrm{mm}^{-1}$, $R^2 = 0.40$,~\cite[Table~6]{Flintoft2014}),
 with the slope falling to $-0.0030\,\mathrm{mm}^{-1}$ at $7$--$11$~GHz.
 
-% PREV: Above $6$~GHz, \eqref{eq:cauchy-exact} matches the plateau values
-% NEXT: Zhang derives the planar limit of this model in his
 The mechanism is a Fabry--P\'erot resonance in the subcutaneous fat
 layer. Below $6$~GHz the SAR penetration depth in fat exceeds
 $70$~mm, against fat thicknesses of $2$--$20$~mm in the Flintoft
@@ -220,8 +184,6 @@ predicts a $40\%$ enhancement above the homogeneous prediction at
 $0.9$~GHz (quarter-wave matching) and a $27\%$ reduction at
 $3.5$~GHz (destructive interference).
 
-% PREV: The mechanism is a Fabry--P\'erot resonance in the subcutaneous fat
-% NEXT: # Layered transmission below 6~GHz
 Zhang derives the planar limit of this model in his
 thesis~\cite[Sec.~2.2]{Zhang2017thesis} and observes the resonance
 shift with fat thickness in his Figs.~2.7--2.8, writing that ``the
@@ -241,6 +203,7 @@ meaning below $6$~GHz, where the SAR penetration depth exceeds the
 surface layer thickness. Total power remains valid via $\Tlay$
 throughout.
 <!-- AUTO_END: assembled -->
+
 
 
 

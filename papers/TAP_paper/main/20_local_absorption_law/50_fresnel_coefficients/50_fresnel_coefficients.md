@@ -2,11 +2,8 @@
 # Fresnel coefficients
 
 <!-- AUTO_BEGIN: assembled -->
-% NEXT: The body surface is modeled as a planar interface between free
 \subsection{Fresnel coefficients}
 
-% PREV: \subsection{Fresnel coefficients}
-% NEXT: # Fresnel coefficients
 The body surface is modeled as a planar interface between free
 space ($n_1 = 1$) and a lossy medium with complex refractive index
 $\ntilde = \sqrt{\varepsilon_r - i\sigma/(\omega\varepsilon_0)}$. The
@@ -29,6 +26,7 @@ $\xi = \ntilde$, giving the polarization-degenerate value
 For skin at 28~GHz with $\varepsilon_r = 16.55$ and
 $\sigma = 25.8$~S/m, $\ntilde = 4.49 - 1.79i$ and $T_0 = 0.539$.
 <!-- AUTO_END: assembled -->
+
 
 
 

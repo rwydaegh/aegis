@@ -25,10 +25,11 @@ $28$~GHz.
 ## reviews (paragraph)
 
 
+
 _PaperMaker9000 sweep — 1 flag(s) across 4 lens(es)._
 
 - **sentence-craft** — 1 flag(s), 13 cleared:
-    - `style.positive_voice.no_passive_no_we` (high): "We compare the simplified prediction" → Rewrite third-person: "This section compares the simplified prediction ..."
+    - `style.positive_voice.no_passive_no_we` (high): `We compare the simplified prediction` -> Rewrite third-person: "This section compares the simplified prediction ..."
 - **voice-tells** — pass (22 rules cleared).
     - _dismissed_ `style.anti_ai_language.throat_clearing_openings`: Not an empty meta opener: it pivots from the preceding sentence's smooth-shape Mie result to the realistic-body validation, the contrast the whole subsection rests on. The rule explicitly allows a connective transition that buys connection to the preceding sentence; deleting it would drop the smooth-shape-to-body bridge.
 - **lexical-spotcheck** — pass (54 rules cleared).
@@ -36,4 +37,5 @@ _PaperMaker9000 sweep — 1 flag(s) across 4 lens(es)._
 - **latex-micro** — pass (41 rules cleared).
     - _dismissed_ `latex.substitutions.units_math_mode_consistent`: Number closed in math, unit set in text mode with a non-breaking tilde. This is the paper-wide simple-unit convention (28~GHz, 1~W/m$^2$ throughout); the rule's negative is a unit drifting out of math after a \, (e.g. $0.08\,$ W/kg), which does not occur here. The exponented-unit quantity $0.787\,\mathrm{m}^2$ correctly uses \,\mathrm{} matching the paper's mm$^{-1}$/cm$^2$ practice.
     - _dismissed_ `latex.spacing_ties.siunitx_consistency`: The paper adopts no siunitx in the body; all units use manual \,\mathrm{} (exponented) or text-mode ~unit (simple). The rule only bites once siunitx is adopted, so manual formatting here is consistent with the document's chosen convention.
+- **incremental (2026-05-22)** — pass (2 new/edited rules cleared).
 

@@ -2,11 +2,8 @@
 # Self-shadowing and ambient occlusion
 
 <!-- AUTO_BEGIN: assembled -->
-% NEXT: The human body is not convex.
 \subsection{Self-shadowing and ambient occlusion}\label{sec:self-shadow}
 
-% PREV: \subsection{Self-shadowing and ambient occlusion}\label{sec:self-shadow}
-% NEXT: The \textit{exposure fraction} $\eta$ at a surface point $\rr$ is the cosine-weighted
 The human body is not convex. Concavities such as the armpits, the
 gap between the legs, and the neck region cause one part of the body
 to shadow another. The binary visibility $\Vis(\rr,\khat) \in \{0,1\}$
@@ -16,8 +13,6 @@ into production rendering by Landis~\cite{Landis2002}. Modern GPUs
 evaluate $\Vis(\rr,\khat)$ at interactive frame
 rates~\cite{AkenineMoller2018}.
 
-% PREV: The human body is not convex.
-% NEXT: The exposure fraction $\eta$ is mathematically identical to the
 The \textit{exposure fraction} $\eta$ at a surface point $\rr$ is the cosine-weighted
 fraction of the upper hemisphere from which $\rr$ is unobstructed,
 \begin{equation}\label{eq:eta-def}
@@ -27,8 +22,6 @@ fraction of the upper hemisphere from which $\rr$ is unobstructed,
 For convex bodies $\Vis \equiv 1$ and $\eta \equiv 1$. For nonconvex
 bodies $\eta \in [0,1]$.
 
-% PREV: The \textit{exposure fraction} $\eta$ at a surface point $\rr$ is the cosine-weighted
-% NEXT: # Self-shadowing and ambient occlusion
 The exposure fraction $\eta$ is mathematically identical to the
 self-shadowing factor $\gamma_s$ that Flintoft \textit{et~al.}\ define as
 ``the proportion of total surface area of the body that is illuminated
@@ -48,6 +41,7 @@ the chin, and the soles of the feet are the dominant such regions.
 On a $10^4$--$10^5$ triangle mesh the solver evaluates $\eta$ in
 tens of milliseconds on commodity hardware.
 <!-- AUTO_END: assembled -->
+
 
 
 

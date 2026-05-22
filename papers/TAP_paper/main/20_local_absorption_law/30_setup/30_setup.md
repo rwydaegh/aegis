@@ -2,11 +2,8 @@
 # Setup
 
 <!-- AUTO_BEGIN: assembled -->
-% NEXT: \Cref{fig:configuration} shows the considered configuration.
 \subsection{Configuration}
 
-% PREV: \subsection{Configuration}
-% NEXT: # Setup
 \Cref{fig:configuration} shows the considered configuration. A
 plane wave with intensity $\IPD$ and direction $\khat$ illuminates
 the body, and we evaluate $\APD(\rr)$ at each visible surface point.
@@ -26,6 +23,7 @@ $\mu(\rr) \equiv \nhat(\rr)\cdot(-\khat) = \cos\theta_i(\rr)$. A
 front-facing point has $\mu > 0$; a point facing away from the
 source has $\mu \le 0$.
 <!-- AUTO_END: assembled -->
+
 
 
 

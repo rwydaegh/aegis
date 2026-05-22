@@ -2,11 +2,8 @@
 # Mechanism
 
 <!-- AUTO_BEGIN: assembled -->
-% NEXT: The Brewster angle of a lossless dielectric is $\theta_{\mathrm{B}} =
 \subsection{Mechanism}\label{subsec:pB-mech}
 
-% PREV: \subsection{Mechanism}\label{subsec:pB-mech}
-% NEXT: Azzam~\cite{Azzam2015} showed that for lossless dielectric substrates
 The Brewster angle of a lossless dielectric is $\theta_{\mathrm{B}} =
 \arctan(n_2/n_1)$, at which the TM reflection coefficient
 vanishes~\cite{BornWolf1999}. For a lossy dielectric the reflection
@@ -19,8 +16,6 @@ average $\Tavg(\theta_{\mathrm{pB}}) \approx 0.5$ is close to the
 normal-incidence value $T_0 \approx 0.5$--$0.6$ for biological
 tissue at mmWave.
 
-% PREV: The Brewster angle of a lossless dielectric is $\theta_{\mathrm{B}} =
-% NEXT: # Mechanism
 Azzam~\cite{Azzam2015} showed that for lossless dielectric substrates
 with refractive index $|\ntilde| > 2 + \sqrt{3} \approx 3.73$, the
 unpolarized reflectance varies by less than $1\%$ over $[0^\circ,
@@ -34,6 +29,7 @@ where prior work has evaluated the angular and polarization
 dependence of body transmission above $6$~GHz
 numerically~\cite{Samaras2019} without the high-index reduction.
 <!-- AUTO_END: assembled -->
+
 
 
 

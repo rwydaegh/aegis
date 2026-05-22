@@ -2,11 +2,8 @@
 # Discrete multi-source form
 
 <!-- AUTO_BEGIN: assembled -->
-% NEXT: Equation~\eqref{eq:geom-law} extends to a triangle mesh under
 \subsection{Discrete multi-source form}\label{subsec:matrix}
 
-% PREV: \subsection{Discrete multi-source form}\label{subsec:matrix}
-% NEXT: The geometric law on the mesh then reads
 Equation~\eqref{eq:geom-law} extends to a triangle mesh under
 multiple incident waves. Discretize the body into $M$ triangles. Row $j$ of
 $\mathbf{N} \in \mathbb{R}^{M\times 3}$ holds the outward unit
@@ -21,8 +18,6 @@ $V_{ji} = 1$ when direction $\khat_i$ reaches triangle $j$, and
 $V_{ji} = 0$ otherwise. Collect the per-triangle APD values into
 $\bm{\mathrm{APD}} \in \mathbb{R}^{M}$.
 
-% PREV: Equation~\eqref{eq:geom-law} extends to a triangle mesh under
-% NEXT: Each step is differentiable.
 The geometric law on the mesh then reads
 \begin{equation}\label{eq:mat-multi}
   \bm{\mathrm{APD}} = T_0\,\bigl(\pospart{\mathbf{N}\,\mathbf{K}}
@@ -35,8 +30,6 @@ back-facing entries to zero. The Hadamard product $\odot$ with
 $\mathbf{V}$ gates self-shadowed entries. The product with
 $\mathbf{s}$ sums the contributions of the $N$ incident waves.
 
-% PREV: The geometric law on the mesh then reads
-% NEXT: # Discrete multi-source form
 Each step is differentiable. The operator $\pospart{\cdot}$ is the
 rectified linear unit (ReLU). Replacing it with the smooth
 \gls{GELU} activation~\cite{Hendrycks2016} leaves the structure
@@ -50,6 +43,7 @@ and $\mathbf{V}$ as ambient occlusion. For $M \approx 10^4$ and
 $N \approx 10^2$, the spatial map is one matrix-vector multiply on
 the GPU.
 <!-- AUTO_END: assembled -->
+
 
 
 

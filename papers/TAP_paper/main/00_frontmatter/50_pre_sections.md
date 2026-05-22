@@ -1,4 +1,6 @@
 % PREV: \begin{IEEEkeywords}
+% PREV: APD, dosimetry, FDTD, Fresnel transmission, ICNIRP, mmWave, SAR.
+% PREV: \end{IEEEkeywords}
 \IEEEpeerreviewmaketitle
 
 ## reviews (pre_sections)

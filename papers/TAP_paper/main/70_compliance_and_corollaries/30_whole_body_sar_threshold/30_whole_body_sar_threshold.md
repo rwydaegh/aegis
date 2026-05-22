@@ -3,11 +3,8 @@
 # Whole-body SAR threshold
 
 <!-- AUTO_BEGIN: assembled -->
-% NEXT: The ICNIRP 2020 guidelines~\cite{ICNIRP2020} specify a whole-body
 \subsection{Whole-body SAR threshold}\label{subsec:compl-wb}
 
-% PREV: \subsection{Whole-body SAR threshold}\label{subsec:compl-wb}
-% NEXT: Body surface area follows the Du Bois formula~\cite{DuBois1916} $A
 The ICNIRP 2020 guidelines~\cite{ICNIRP2020} specify a whole-body
 average SAR limit of $0.08$~W/kg for the general public. The bound
 $\Aperp(\khat) \le A/2$ on closed surfaces gives
@@ -21,8 +18,6 @@ a closed-form function of body mass $m$, body surface area $A$,
 and tissue transmission $\Tbar$, none of which requires an FDTD
 solve on the specific exposure scenario.
 
-% PREV: The ICNIRP 2020 guidelines~\cite{ICNIRP2020} specify a whole-body
-% NEXT: Implications for the existing ICNIRP general-public reference level
 Body surface area follows the Du Bois formula~\cite{DuBois1916} $A
 \approx 0.007184\,m^{0.425}\,h^{0.725}$ with mass in kg and height in
 cm, so $\IPD_{\mathrm{max}}$ scales as $m/A \propto
@@ -36,12 +31,9 @@ volume. Section~\ref{si:anthro} of the SI derives the Du Bois
 scaling and bounds the linearly polarized worst-case correction to
 \eqref{eq:Sinc-max-worst} via the body polarization directivity.
 
-% PREV: Body surface area follows the Du Bois formula~\cite{DuBois1916} $A
-% NEXT: # Whole-body SAR threshold
 Implications for the existing ICNIRP general-public reference level
 above $6$~GHz are stated in \cref{subsec:disc-regulatory}.
 
-% PREV: # Whole-body SAR threshold
 \begin{table}[!t]
 \centering
 \caption{Worst-case compliance threshold across the human
@@ -63,6 +55,7 @@ Large adult     & 100 & 180 & 13.5 \\
 \end{tabular}
 \end{table}
 <!-- AUTO_END: assembled -->
+
 
 
 

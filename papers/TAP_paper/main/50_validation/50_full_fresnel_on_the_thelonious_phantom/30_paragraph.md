@@ -27,12 +27,14 @@ $T_0\,\Aperp$ within the directional spread set by self-shadowing.
 ## reviews (paragraph)
 
 
+
 _PaperMaker9000 sweep — 1 flag(s) across 4 lens(es)._
 
 - **sentence-craft** — 1 flag(s), 13 cleared:
-    - `style.prose_structure.emphatic_end` (high): "The local error is below $5.5\%$ everywhere with $\theta < 75^\circ$." → Drop the trailing "with $\theta < 75^\circ$" (the scope is already set two sentences earlier) so the stress falls on "below $5.5\%$ everywhere".
+    - `style.prose_structure.emphatic_end` (high): `The local error is below $5.5\%$ everywhere with $\theta < 75^\circ$.` -> Drop the trailing "with $\theta < 75^\circ$" (the scope is already set two sentences earlier) so the stress falls on "below $5.5\%$ everywhere".
     - _dismissed_ `style.positive_voice.no_passive_no_we`: Passive keeps focus on the result (peak APD), and the trailing because-clause supplies the mechanism; an active rewrite would shift emphasis away from the finding, so it falls under the awkward-active exception.
 - **voice-tells** — pass (22 rules cleared).
 - **lexical-spotcheck** — pass (54 rules cleared).
 - **latex-micro** — pass (41 rules cleared).
+- **incremental (2026-05-22)** — pass (2 new/edited rules cleared).
 

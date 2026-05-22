@@ -1,5 +1,18 @@
 % PREV: \subsection{Combined dosimetry literature}\label{subsec:val-waterfall}
 % NEXT: \begin{figure*}[!t]
+% NEXT:   \centering
+% NEXT:   \includegraphics[width=\linewidth]{lit_waterfall_combined.pdf}
+% NEXT:   \caption{Closed-form prediction~\eqref{eq:cauchy-exact} compared
+% NEXT:   with direction-averaged whole-body absorption ratios from the
+% NEXT:   dosimetry literature. The thick black line uses the
+% NEXT:   population-averaged layered transmission, the thin black line is the
+% NEXT:   geometric-optics asymptote $\Tbar(f)\Aab/A$, and the dotted line is
+% NEXT:   the normal-incidence reference $T_0(f)\Aab/A$. The gray band shows
+% NEXT:   the layered-transmission envelope for subcutaneous-fat thicknesses
+% NEXT:   $d_{\mathrm{SF}}\in[2,30]$~mm. Error bars are standard errors of the
+% NEXT:   mean. The inset gives framework validity by frequency band.}
+% NEXT:   \label{fig:waterfall}
+% NEXT: \end{figure*}
 The literature comparison maps each reported empirical scalar to the
 corresponding closed-form quantity. Kodera's transmission coefficient
 $T_{\mathrm{tr}}$ is compared with the Fresnel transmission used in
@@ -19,10 +32,11 @@ FDTD phantoms from $1$ to $100$~GHz.
 ## reviews (paragraph)
 
 
+
 _PaperMaker9000 sweep — 2 flag(s) across 4 lens(es)._
 
 - **sentence-craft** — 1 flag(s), 13 cleared:
-    - `style.positive_voice.no_passive_no_we` (high): "$\gamma_s$ is compared with the surface mean of the exposure fraction" → Rewrite active: "the comparison matches $\gamma_s$ against the surface mean" (and the two sibling "is/are compared with" clauses).
+    - `style.positive_voice.no_passive_no_we` (high): `$\gamma_s$ is compared with the surface mean of the exposure fraction` -> Rewrite active: "the comparison matches $\gamma_s$ against the surface mean" (and the two sibling "is/are compared with" clauses).
 - **voice-tells** — pass (22 rules cleared).
     - _dismissed_ `style.pet_peeves_wout.hackneyed_nouns`: "factor" names a specific physical quantity (the whole-body transmission factor bound to $\Tbar(f)\Aab/A$), not the empty "important factor in" filler the rule targets.
     - _dismissed_ `style.pet_peeves_wout.first_time_framing`: This is a mid-paper validation paragraph, not the end of the introduction; the first-time-framing mandate applies only to the contribution sentences at the close of the intro.
@@ -31,7 +45,8 @@ _PaperMaker9000 sweep — 2 flag(s) across 4 lens(es)._
     - _dismissed_ `style.anti_ai_language.em_dash_overuse`: The "--" is an en-dash numeric range, explicitly allowed; not an em dash in prose.
     - _dismissed_ `style.misused_words.passive_for_flow`: Passive keeps the short familiar empirical scalar in subject position with the comparison target trailing; agent (the authors) is self-evident, so passive is correct here.
 - **latex-micro** — 1 flag(s), 40 cleared:
-    - `latex.math.subscript_labels_upright` (medium): "Flintoft's self-shadowing factor $\gamma_s$" → Set the descriptive subscript upright: $\gamma_{\mathrm{s}}$, matching the $\mathrm{tr}$ and $\mathrm{SF}$ labels in the same paragraph.
+    - `latex.math.subscript_labels_upright` (medium): `Flintoft's self-shadowing factor $\gamma_s$` -> Set the descriptive subscript upright: $\gamma_{\mathrm{s}}$, matching the $\mathrm{tr}$ and $\mathrm{SF}$ labels in the same paragraph.
     - _dismissed_ `latex.citations.merged_cite`: Both cite the same key but carry different locators (Fig.~4.9 vs Fig.~4.11), so they cannot be merged into one \cite with a single optional argument.
     - _dismissed_ `latex.substitutions.cref_capitalized`: Already capitalized \Cref at sentence start, which is the correct form.
+- **incremental (2026-05-22)** — pass (2 new/edited rules cleared).
 

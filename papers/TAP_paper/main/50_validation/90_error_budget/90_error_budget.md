@@ -1,10 +1,7 @@
 % PREV: \begin{figure}[!t]
 <!-- AUTO_BEGIN: assembled -->
-% NEXT: \Cref{fig:err-budget} reports two regimes side by side at $28$~GHz on
 \subsection{Error budget}\label{subsec:corr-summary}
 
-% PREV: \subsection{Error budget}\label{subsec:corr-summary}
-% NEXT: \begin{figure}[!t]
 \Cref{fig:err-budget} reports two regimes side by side at $28$~GHz on
 skin. The worst case is single body part, single direction, pointwise
 local. The typical case is whole-body integrated, direction-averaged.
@@ -29,8 +26,6 @@ case is $4\%$ under the diffuse bound. The typical case is $1\%$
 under specular at mmWave (\cref{subsec:corr-residuals}). In the
 typical case every model error stays below the dielectric uncertainty.
 
-% PREV: \Cref{fig:err-budget} reports two regimes side by side at $28$~GHz on
-% NEXT: <!-- AUTO_BEGIN: assembled -->
 \begin{figure}[!t]
   \centering
   \includegraphics[width=\columnwidth]{error_budget_comprehensive.pdf}
@@ -42,6 +37,7 @@ typical case every model error stays below the dielectric uncertainty.
   \label{fig:err-budget}
 \end{figure}
 <!-- AUTO_END: assembled -->
+
 
 
 ## Aggregation notes (AI-owned)

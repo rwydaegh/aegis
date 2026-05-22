@@ -1,4 +1,7 @@
-% PREV: # Quantitative behavior across angle
+% PREV: \Cref{tab:fresnel-skin} quantifies the deviation of $\Tavg$ from
+% PREV: $T_0$ across $[0^\circ, 75^\circ]$ on skin at 28~GHz. The maximum
+% PREV: deviation is $5.6\%$ at $70$--$75^\circ$. Below $30^\circ$ the agreement
+% PREV: is at the fourth significant figure.
 \begin{table}[!t]
 \centering
 \caption{Fresnel transmission for skin at 28~GHz. Here $T_0 =
@@ -20,6 +23,7 @@ $75^\circ$ & 0.182 & 0.952 & 0.567 & 1.053 \\
 \end{table}
 
 ## reviews (table)
+
 
 
 _PaperMaker9000 sweep — all clear across 1 lens(es)._

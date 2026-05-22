@@ -1,5 +1,18 @@
 % PREV: \Cref{eq:cauchy-exact} requires only electromagnetic opacity, a
+% PREV: condition met above approximately $1$~GHz on a torso and above approximately $6$~GHz
+% PREV: on a finger. \Cref{tab:Tbar} lists $T_0$, $\Tbar$, and the ratio
+% PREV: $R = T_0/\Tbar$ for skin from $0.3$--$100$~GHz.
 % NEXT: The reverberation-chamber literature has been measuring $\Tbar$
+% NEXT: directly. Bamba's empirical efficiency $\eta(f)$ for diffuse-field
+% NEXT: exposure on four FDTD ellipsoid phantoms~\cite{Bamba2014}
+% NEXT: coincides with $\Tbar(f)$ to $3\%$ at $5.8$~GHz. It diverges below
+% NEXT: $3$~GHz, where the body-Mie contribution to absorption on a finite
+% NEXT: ellipsoid becomes non-negligible (\cref{tab:bands}). The framework
+% NEXT: is mainly a mmWave method.
+% NEXT: Flintoft's plateau $\langle Q^a\rangle/\gamma_s = 0.47$--$0.49$
+% NEXT: at $7$--$11$~GHz matches $\Tbar$ at the same frequencies to $2\%$~\cite{Flintoft2014}.
+% NEXT: Zhang's plateau $\xi = 0.45$--$0.65$ above $6$~GHz brackets
+% NEXT: $\Tbar\cdot\Aab/A$~\cite{Zhang2017thesis}.
 \begin{table}[!t]
 \centering
 \caption{Normal-incidence transmission $T_0$, flux-weighted
@@ -23,6 +36,7 @@ $f$\,[GHz] & $|\ntilde|$ & $T_0$ & $\Tbar$ & $R$ \\
 \end{table}
 
 ## reviews (table)
+
 
 
 _PaperMaker9000 sweep — all clear across 1 lens(es)._

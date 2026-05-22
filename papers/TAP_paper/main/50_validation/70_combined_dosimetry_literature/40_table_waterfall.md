@@ -1,5 +1,41 @@
-% PREV: \Cref{tab:waterfall} lists the numerical comparisons.
+% PREV: \Cref{tab:waterfall} lists the numerical comparisons. Bamba
+% PREV: \textit{et~al.}~\cite{Bamba2014}'s $\eta$ in panel (c) is fit from full-body FDTD on
+% PREV: ellipsoidal phantoms in diffuse-field exposure. Their fit absorbs
+% PREV: creeping-wave and finite-curvature contributions that the
+% PREV: planar-tissue $\Tbar$ omits. Its convergence to $\Tbar$ at
+% PREV: $5.8$~GHz, the upper edge of their calibration range, is the
+% PREV: convergence to the geometric-optics regime predicted by a Mie
+% PREV: analysis of body-scale spheres~\cite{BohrenHuffman1983}. The
+% PREV: $1.45$--$3$~GHz portion of their fit lies outside the
+% PREV: geometric-optics validity window of the present framework
+% PREV: (\cref{tab:bands}). The systematic divergence in panel (c) below
+% PREV: $3$~GHz is the body-Mie regime, not a model failure. Bamba
+% PREV: \textit{et~al.}'s anatomical-phantom validation at $3$~GHz returns
+% PREV: residuals of $-39.4\%$, $-11.7\%$, $+10.7\%$, and $+10.6\%$ on the
+% PREV: Thelonious, Billie, Ella, and Duke phantoms~\cite[Table~7]{Bamba2014}.
+% PREV: The largest divergence is on the smallest phantom. The same
+% PREV: mechanism appears in panel (d) on the Diao \textit{et~al.}~\cite{Diao2024}
+% PREV: TARO sweep (frontal plane wave, vertical polarization, projected area
+% PREV: $0.54$~m$^2$), where $T_{\mathrm{eff}}$ rises from $0.43$ at $10$~GHz
+% PREV: to $0.88$ at $1$~GHz.
 % NEXT: Kodera \textit{et~al.}~\cite{Kodera2024} report the closest numerical
+% NEXT: counterpart to the present analysis. Their Fig.~13 compiles
+% NEXT: whole-body absorbed SAR data over $1$--$10$~GHz at
+% NEXT: $\IPD = 10$~W/m$^2$ across nine prior numerical phantom studies and
+% NEXT: two reverberation-chamber measurement campaigns; their Fig.~6
+% NEXT: extends the same comparison to $1$--$100$~GHz on five parametric
+% NEXT: layered models (Models~I--V). The compilation shows the asymptotic
+% NEXT: plateau that \eqref{eq:cauchy-exact} predicts. Kodera
+% NEXT: \textit{et~al.}\ fit a study-specific $T_{\mathrm{tr}}$ per phantom
+% NEXT: and frequency from a one-dimensional multilayer slab calculation;
+% NEXT: their homogeneous-skin curve (Fig.~9, right axis) reproduces the
+% NEXT: Fresnel $T_0$ within $1$--$2\%$ above $6$~GHz, and oscillates around
+% NEXT: that value below $6$~GHz with a multilayer Fabry--P\'erot pattern of
+% NEXT: the same form as the layered transmission $\Tlay$ in
+% NEXT: \cref{subsec:fp}. \Cref{eq:cauchy-exact} supplies the closed-form
+% NEXT: $T_{\mathrm{tr}} \to \Tbar(f)$ that all phantoms converge to in the
+% NEXT: geometric-optics regime. The residual phantom-to-phantom spread is
+% NEXT: set by the body-shape factor $\Aab/A$.
 \begin{table*}[!t]
 \centering
 \caption{Quantitative comparison of the closed-form prediction to the
@@ -40,6 +76,7 @@ Flintoft~\cite{Flintoft2014}
 \end{table*}
 
 ## reviews (table)
+
 
 
 _PaperMaker9000 sweep — all clear across 1 lens(es)._

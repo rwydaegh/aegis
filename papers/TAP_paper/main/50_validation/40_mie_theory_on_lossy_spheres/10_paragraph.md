@@ -1,5 +1,9 @@
 % PREV: \subsection{Mie theory on lossy spheres}\label{subsec:val-mie}
-% NEXT: \Cref{fig:mie} shows the Mie validation.
+% NEXT: \Cref{fig:mie} shows the Mie validation. \Cref{fig:mie}(a) shows
+% NEXT: the error versus size parameter at $28$~GHz. It converges from
+% NEXT: below towards the Fresnel limit $R_{\mathrm{sphere}} - 1 \approx
+% NEXT: -1.2\%$ as $x \to \infty$. \Cref{fig:mie}(b) shows the error versus
+% NEXT: frequency for four representative body-part diameters.
 For a lossy sphere of radius $a$ and complex refractive index
 $\ntilde$, the Mie series gives an exact solution for the absorption
 efficiency $Q_{\mathrm{abs}}$. The geometric law predicts
@@ -21,12 +25,13 @@ frequencies below approximately $6$~GHz.
 ## reviews (paragraph)
 
 
+
 _PaperMaker9000 sweep — 3 flag(s) across 4 lens(es)._
 
 - **sentence-craft** — 3 flag(s), 11 cleared:
-    - `style.positive_voice.no_passive_no_we` (high): "We use skin properties from the IT'IS database~\cite{ITISv5,Gabriel1996} at each frequency." → Skin properties come from the IT'IS database~\cite{ITISv5,Gabriel1996} at each frequency.
-    - `style.positive_voice.subject_verb_early` (medium): "For a lossy sphere of radius $a$ and complex refractive index $\ntilde$, the Mie series gives an exact solution for the absorption efficiency $Q_{\mathrm{abs}}$." → The Mie series gives an exact solution for the absorption efficiency $Q_{\mathrm{abs}}$ of a lossy sphere of radius $a$ and complex refractive index $\ntilde$.
-    - `style.prose_structure.subject_verb_rest` (high): "For a lossy sphere of radius $a$ and complex refractive index $\ntilde$, the Mie series gives an exact solution for the absorption efficiency $Q_{\mathrm{abs}}$." → Lead with subject-verb: "The Mie series gives an exact solution for the absorption efficiency $Q_{\mathrm{abs}}$ of a lossy sphere ..."
+    - `style.positive_voice.no_passive_no_we` (high): `We use skin properties from the IT'IS database~\cite{ITISv5,Gabriel1996} at each frequency.` -> Skin properties come from the IT'IS database~\cite{ITISv5,Gabriel1996} at each frequency.
+    - `style.positive_voice.subject_verb_early` (medium): `For a lossy sphere of radius $a$ and complex refractive index $\ntilde$, the Mie series gives an exact solution for the absorption efficiency $Q_{\mathrm{abs}}$.` -> The Mie series gives an exact solution for the absorption efficiency $Q_{\mathrm{abs}}$ of a lossy sphere of radius $a$ and complex refractive index $\ntilde$.
+    - `style.prose_structure.subject_verb_rest` (high): `For a lossy sphere of radius $a$ and complex refractive index $\ntilde$, the Mie series gives an exact solution for the absorption efficiency $Q_{\mathrm{abs}}$.` -> Lead with subject-verb: "The Mie series gives an exact solution for the absorption efficiency $Q_{\mathrm{abs}}$ of a lossy sphere ..."
 - **voice-tells** — pass (22 rules cleared).
     - _dismissed_ `style.anti_ai_language.elegant_variation`: "surface law" describes the mechanism (a surface ReLU prediction) versus the named "geometric law"; both are honest descriptors here and collapsing them would lose the surface-vs-volume contrast the diffraction point relies on.
     - _dismissed_ `style.pet_peeves_wout.no_anthropomorphism`: Diffraction literally bending waves into the shadow is standard physical description, not anthropomorphism of a standards body, field, or algorithm.
@@ -36,4 +41,5 @@ _PaperMaker9000 sweep — 3 flag(s) across 4 lens(es)._
 - **latex-micro** — pass (41 rules cleared).
     - _dismissed_ `latex.substitutions.cref_capitalized`: Lowercase \cref is correct inside a parenthetical mid-sentence aside, which renders "(fig. 2)"; \Cref is reserved for sentence-initial or running-text references that must capitalize.
     - _dismissed_ `latex.math.subscript_labels_upright`: Label subscripts abs are already upright via \mathrm; the $T_0$ subscript is a numeric literal, not a label, so it stays as-is.
+- **incremental (2026-05-22)** — pass (2 new/edited rules cleared).
 

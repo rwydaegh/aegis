@@ -2,20 +2,14 @@
 # Discussion
 
 <!-- AUTO_BEGIN: assembled -->
-% NEXT: # Discussion
 \section{Discussion}\label{sec:disc}
 
-% NEXT: The matrix form~\eqref{eq:mat-multi} is a single-hidden-layer
 \subsection{Computational structure}\label{subsec:disc-primitives}
 
-% PREV: \subsection{Computational structure}\label{subsec:disc-primitives}
-% NEXT: # Computational structure
 The matrix form~\eqref{eq:mat-multi} is a single-hidden-layer
 rectified-linear `network' whose weights are the path directions and
 powers from a ray tracer~\cite{SionnaRT}. Three properties follow.
 
-% PREV: # Computational structure
-% NEXT: Second, the per-triangle absorbed-power map for $M \approx 10^4$
 First, the network is differentiable in every input. Replacing the
 hard $[\cdot]_+$ gate with the smooth \gls{GELU}
 activation~\eqref{eq:gelu} preserves the chain rule. Gradients of
@@ -28,8 +22,6 @@ step~\cite{Wydaeghe2022access,Wydaeghe2026npj}. With the closed form
 replacing that step, exposure-constrained network design becomes a
 continuous optimization problem.
 
-% PREV: First, the network is differentiable in every input.
-% NEXT: Third, the whole-body identity~\eqref{eq:cauchy-exact} factorizes the
 Second, the per-triangle absorbed-power map for $M \approx 10^4$
 triangles and $N \approx 10^2$ paths is one matrix-vector multiply on
 a modern GPU, evaluated in under $10$~ms. The cost is independent of
@@ -41,7 +33,6 @@ cosine gate is rectified shading. The visibility matrix $\mathbf{V}$
 is ambient occlusion, one of the most optimized computations in
 real-time rendering~\cite{AkenineMoller2018}.
 
-% PREV: Second, the per-triangle absorbed-power map for $M \approx 10^4$
 Third, the whole-body identity~\eqref{eq:cauchy-exact} factorizes the
 body dependence into a single scalar $\Aab = \bar\eta\,A$. For a
 given phantom and posture, $\bar\eta$ is computed once, in tens of
@@ -50,18 +41,13 @@ required one FDTD solve per body and per direction reduce to one
 Fresnel quadrature shared across the population and one occlusion
 pass per body.
 
-% NEXT: Whole-body ICNIRP compliance reduces to one inequality on three
 \subsection{Regulatory implications}\label{subsec:disc-regulatory}
 
-% PREV: \subsection{Regulatory implications}\label{subsec:disc-regulatory}
-% NEXT: The ICNIRP general-public reference level above $6$~GHz is
 Whole-body ICNIRP compliance reduces to one inequality on three
 precomputed scalars (\cref{eq:Sinc-max-worst}). The same algebra
 evaluates the existing reference levels for under- or over-protection
 across the population without an FDTD campaign.
 
-% PREV: Whole-body ICNIRP compliance reduces to one inequality on three
-% NEXT: The closed form gives a closed-form certificate that the existing
 The ICNIRP general-public reference level above $6$~GHz is
 $10$~W/m$^2$~\cite{ICNIRP2020}. Reference levels are the
 operationally measured incident-power-density limits intended to
@@ -75,8 +61,6 @@ the adolescent under the worst-case directional bound
 $D \le 2A_{\mathrm{CH}}/\Aab$. The reference level exceeds these
 thresholds by $61\%$, $32\%$, and $1\%$ respectively.
 
-% PREV: The ICNIRP general-public reference level above $6$~GHz is
-% NEXT: # Regulatory implications
 The closed form gives a closed-form certificate that the existing
 reference level fails the basic restriction for the three smaller
 body sizes under worst-case directional exposure. Under realistic
@@ -85,15 +69,10 @@ worst case, and the basic restriction is met~\cite{ICNIRP2020}. The
 closed form makes both the worst-case and the directional-average
 evaluation explicit.
 
-% NEXT: \Cref{tab:bands} summarizes the resulting band stratification.
 \subsection{Regime of validity}\label{subsec:disc-validity}
 
-% PREV: \subsection{Regime of validity}\label{subsec:disc-validity}
-% NEXT: Equations~\eqref{eq:geom-law} and~\eqref{eq:cauchy-exact} hold
 \Cref{tab:bands} summarizes the resulting band stratification.
 
-% PREV: \Cref{tab:bands} summarizes the resulting band stratification.
-% NEXT: The surface law requires the body to be optically thick to the
 Equations~\eqref{eq:geom-law} and~\eqref{eq:cauchy-exact} hold
 quantitatively above approximately $1$~GHz on whole-body absorbed
 power and above approximately $6$~GHz pointwise on the surface, with
@@ -104,8 +83,6 @@ The high-frequency boundary is set by two, the softening of the
 pseudo-Brewster compensation and skin surface roughness, both gentler
 than the low-frequency boundary.
 
-% PREV: Equations~\eqref{eq:geom-law} and~\eqref{eq:cauchy-exact} hold
-% NEXT: The Mie regime sets a second lower limit.
 The surface law requires the body to be optically thick to the
 incident wave: the tissue skin depth must stay smaller than the body
 characteristic dimension, otherwise the wave passes through rather
@@ -116,22 +93,16 @@ database~\cite{Gabriel1996} gives muscle skin-depth values that
 exceed limb cross-sections below approximately $1$~GHz and torso
 cross-sections below approximately $250$~MHz.
 
-% PREV: The surface law requires the body to be optically thick to the
-% NEXT: Whole-body resonance dominates below approximately $300$~MHz, where
 The Mie regime sets a second lower limit. The geometric-optics
 asymptote holds with sub-percent residual once $ka \gtrsim 30$ on a
 body characteristic dimension, and \cref{subsec:val-mie} quantifies
 the residual on body-scale spheres.
 
-% PREV: The Mie regime sets a second lower limit.
-% NEXT: # Regime of validity
 Whole-body resonance dominates below approximately $300$~MHz, where
 the body acts as a half-wave dipole and surface absorbed power is
 unrelated to internal hot-spots~\cite{Durney1986}. Below this
 frequency the framework reduces to volumetric solvers.
 
-% PREV: # Regime of validity
-% NEXT: The pseudo-Brewster compensation softens above $200$--$250$~GHz,
 \begin{table}[!t]
 \centering
 \caption{Frequency-band limits of~\eqref{eq:cauchy-exact} on a
@@ -163,8 +134,6 @@ $6$--$100$~GHz
 \end{tabular}
 \end{table}
 
-% PREV: \begin{table}[!t]
-% NEXT: Skin roughness sets an upper limit near $1$~THz, where the Rayleigh
 The pseudo-Brewster compensation softens above $200$--$250$~GHz,
 where the Azzam high-index criterion $|\ntilde| > 2.5$ weakens and
 worst-case angular variation grows from $5.6\%$ at $28$~GHz to
@@ -175,8 +144,6 @@ $3.68$ at $60$~GHz, and $3.01$ at $100$~GHz, and extrapolation puts
 $|\ntilde|$ near $2.5$ around $200$--$250$~GHz, approximately $2.2$
 at $300$~GHz, and $1.8$--$2$ at $1$~THz.
 
-% PREV: The pseudo-Brewster compensation softens above $200$--$250$~GHz,
-% NEXT: For sources in the reactive near field ($d < \lambda/(2\pi)$, that is
 Skin roughness sets an upper limit near $1$~THz, where the Rayleigh
 criterion $h\cos\theta/\lambda < 1/8$ is violated on
 papillary-ridge-scale features and diffuse scattering becomes the
@@ -187,14 +154,11 @@ Wavelength is $3$~mm at $100$~GHz, $1$~mm at $300$~GHz, $0.3$~mm at
 $1$~THz. The Rayleigh criterion is met at $100$~GHz on ridge-scale
 features and is marginal at $300$~GHz.
 
-% PREV: Skin roughness sets an upper limit near $1$~THz, where the Rayleigh
-% NEXT: The dielectric properties of biological tissue have been measured to
 For sources in the reactive near field ($d < \lambda/(2\pi)$, that is
 $1.7$~mm at $28$~GHz), evanescent waves and antenna-body impedance
 coupling require full-wave simulation. Outside this regime, the law
 applies pointwise with spatially varying inputs.
 
-% PREV: For sources in the reactive near field ($d < \lambda/(2\pi)$, that is
 The dielectric properties of biological tissue have been measured to
 within approximately $20\%$ at mmWave~\cite{AlekseevZiskin2007}. This
 input uncertainty produces $\pm 7\%$ on $T_0$ through the sublinear
@@ -202,6 +166,7 @@ propagation derived in \cref{subsec:corr-summary}, and it dominates
 the error budget at every operating regime where the surface law
 applies.
 <!-- AUTO_END: assembled -->
+
 
 
 

@@ -2,11 +2,8 @@
 # Tissue universality
 
 <!-- AUTO_BEGIN: assembled -->
-% NEXT: All biological tissues at the wireless mmWave band cluster in the
 \subsection{Tissue universality}\label{subsec:pB-tissues}
 
-% PREV: \subsection{Tissue universality}\label{subsec:pB-tissues}
-% NEXT: \begin{table}[!t]
 All biological tissues at the wireless mmWave band cluster in the
 $|\ntilde| > 2.5$ region where the compensation operates.
 \Cref{tab:materials} lists the relevant parameters at 28~GHz from
@@ -18,8 +15,6 @@ variation, but fat is rarely the outermost tissue at exposure sites
 of regulatory interest. Above $6$~GHz, the relevant outermost
 tissues are skin, subcutaneous fat, and vitreous humor.
 
-% PREV: All biological tissues at the wireless mmWave band cluster in the
-% NEXT: # Tissue universality
 \begin{table}[!t]
 \centering
 \caption{Pseudo-Brewster compensation across tissue types at
@@ -39,6 +34,7 @@ Water  & 25.0 & 55.0 & 6.62 & 0.45 & $3.9\%$ \\
 \end{tabular}
 \end{table}
 <!-- AUTO_END: assembled -->
+
 
 
 

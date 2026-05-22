@@ -2,11 +2,8 @@
 # Combined dosimetry literature
 
 <!-- AUTO_BEGIN: assembled -->
-% NEXT: The literature comparison maps each reported empirical scalar to the
 \subsection{Combined dosimetry literature}\label{subsec:val-waterfall}
 
-% PREV: \subsection{Combined dosimetry literature}\label{subsec:val-waterfall}
-% NEXT: \begin{figure*}[!t]
 The literature comparison maps each reported empirical scalar to the
 corresponding closed-form quantity. Kodera's transmission coefficient
 $T_{\mathrm{tr}}$ is compared with the Fresnel transmission used in
@@ -23,8 +20,6 @@ $1$--$6$~GHz envelope from~\cite[Fig.~4.11]{Zhang2017thesis}.
 prediction~\eqref{eq:cauchy-exact} against $168$ volunteers and $5$
 FDTD phantoms from $1$ to $100$~GHz.
 
-% PREV: The literature comparison maps each reported empirical scalar to the
-% NEXT: \Cref{tab:waterfall} lists the numerical comparisons.
 \begin{figure*}[!t]
   \centering
   \includegraphics[width=\linewidth]{lit_waterfall_combined.pdf}
@@ -40,8 +35,6 @@ FDTD phantoms from $1$ to $100$~GHz.
   \label{fig:waterfall}
 \end{figure*}
 
-% PREV: \begin{figure*}[!t]
-% NEXT: \begin{table*}[!t]
 \Cref{tab:waterfall} lists the numerical comparisons. Bamba
 \textit{et~al.}~\cite{Bamba2014}'s $\eta$ in panel (c) is fit from full-body FDTD on
 ellipsoidal phantoms in diffuse-field exposure. Their fit absorbs
@@ -63,8 +56,6 @@ TARO sweep (frontal plane wave, vertical polarization, projected area
 $0.54$~m$^2$), where $T_{\mathrm{eff}}$ rises from $0.43$ at $10$~GHz
 to $0.88$ at $1$~GHz.
 
-% PREV: \Cref{tab:waterfall} lists the numerical comparisons.
-% NEXT: Kodera \textit{et~al.}~\cite{Kodera2024} report the closest numerical
 \begin{table*}[!t]
 \centering
 \caption{Quantitative comparison of the closed-form prediction to the
@@ -104,8 +95,6 @@ Flintoft~\cite{Flintoft2014}
 \end{tabular}
 \end{table*}
 
-% PREV: \begin{table*}[!t]
-% NEXT: # Combined dosimetry literature
 Kodera \textit{et~al.}~\cite{Kodera2024} report the closest numerical
 counterpart to the present analysis. Their Fig.~13 compiles
 whole-body absorbed SAR data over $1$--$10$~GHz at
@@ -125,6 +114,7 @@ $T_{\mathrm{tr}} \to \Tbar(f)$ that all phantoms converge to in the
 geometric-optics regime. The residual phantom-to-phantom spread is
 set by the body-shape factor $\Aab/A$.
 <!-- AUTO_END: assembled -->
+
 
 
 

@@ -1,5 +1,4 @@
 % PREV: \subsection{Power flux through the surface}
-% NEXT: # Power flux through the surface
 The inward power flux through a surface element $\diff A$ at $\rr$
 is $\diff P_{\mathrm{in}} = \IPD\,\mu\,\diff A$. The reflected wave
 propagates in the specular direction with power density
@@ -15,10 +14,12 @@ for each polarization separately.
 ## reviews (paragraph)
 
 
+
 _PaperMaker9000 sweep — all clear across 4 lens(es)._
 
 - **sentence-craft** — pass (14 rules cleared).
 - **voice-tells** — pass (22 rules cleared).
 - **lexical-spotcheck** — pass (54 rules cleared).
 - **latex-micro** — pass (41 rules cleared).
+- **incremental (2026-05-22)** — pass (2 new/edited rules cleared).
 

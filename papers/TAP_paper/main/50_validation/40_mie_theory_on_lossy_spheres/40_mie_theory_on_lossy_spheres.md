@@ -3,11 +3,8 @@
 # Mie theory on lossy spheres
 
 <!-- AUTO_BEGIN: assembled -->
-% NEXT: For a lossy sphere of radius $a$ and complex refractive index
 \subsection{Mie theory on lossy spheres}\label{subsec:val-mie}
 
-% PREV: \subsection{Mie theory on lossy spheres}\label{subsec:val-mie}
-% NEXT: \Cref{fig:mie} shows the Mie validation.
 For a lossy sphere of radius $a$ and complex refractive index
 $\ntilde$, the Mie series gives an exact solution for the absorption
 efficiency $Q_{\mathrm{abs}}$. The geometric law predicts
@@ -26,16 +23,12 @@ diffracted contribution exceeds a few percent of total absorption as
 the \emph{body-Mie regime}. For body-scale targets it corresponds to
 frequencies below approximately $6$~GHz.
 
-% PREV: For a lossy sphere of radius $a$ and complex refractive index
-% NEXT: \begin{figure*}[!t]
 \Cref{fig:mie} shows the Mie validation. \Cref{fig:mie}(a) shows
 the error versus size parameter at $28$~GHz. It converges from
 below towards the Fresnel limit $R_{\mathrm{sphere}} - 1 \approx
 -1.2\%$ as $x \to \infty$. \Cref{fig:mie}(b) shows the error versus
 frequency for four representative body-part diameters.
 
-% PREV: \Cref{fig:mie} shows the Mie validation.
-% NEXT: # Mie theory on lossy spheres
 \begin{figure*}[!t]
   \centering
   \begin{subfigure}[t]{0.48\linewidth}
@@ -60,7 +53,6 @@ frequency for four representative body-part diameters.
   \label{fig:mie}
 \end{figure*}
 
-% PREV: # Mie theory on lossy spheres
 For body-relevant sizes (head, torso) over 6--100~GHz, the error ranges
 from $0.4\%$ on a torso at $100$~GHz to $14\%$ on a head at
 $28$~GHz, set mostly by diffraction into the geometric shadow at
@@ -72,6 +64,7 @@ the dielectric uncertainty on $T_0$ (\cref{fig:err-budget}).
 Per-frequency residuals across four body-part diameters ($17$, $80$,
 $180$, $300$~mm) are in Table~\ref{tab:mie-residual} of the SI.
 <!-- AUTO_END: assembled -->
+
 
 
 

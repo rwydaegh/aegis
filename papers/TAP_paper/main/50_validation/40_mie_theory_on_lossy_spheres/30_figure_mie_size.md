@@ -1,5 +1,18 @@
-% PREV: \Cref{fig:mie} shows the Mie validation.
-% NEXT: # Mie theory on lossy spheres
+% PREV: \Cref{fig:mie} shows the Mie validation. \Cref{fig:mie}(a) shows
+% PREV: the error versus size parameter at $28$~GHz. It converges from
+% PREV: below towards the Fresnel limit $R_{\mathrm{sphere}} - 1 \approx
+% PREV: -1.2\%$ as $x \to \infty$. \Cref{fig:mie}(b) shows the error versus
+% PREV: frequency for four representative body-part diameters.
+% NEXT: For body-relevant sizes (head, torso) over 6--100~GHz, the error ranges
+% NEXT: from $0.4\%$ on a torso at $100$~GHz to $14\%$ on a head at
+% NEXT: $28$~GHz, set mostly by diffraction into the geometric shadow at
+% NEXT: the low end of the band. At $28$~GHz the law underestimates
+% NEXT: absorption.
+% NEXT: For fingers below 6~GHz, errors exceed $30\%$. On
+% NEXT: body-scale objects in the claimed regime, the residual stays within
+% NEXT: the dielectric uncertainty on $T_0$ (\cref{fig:err-budget}).
+% NEXT: Per-frequency residuals across four body-part diameters ($17$, $80$,
+% NEXT: $180$, $300$~mm) are in Table~\ref{tab:mie-residual} of the SI.
 \begin{figure*}[!t]
   \centering
   \begin{subfigure}[t]{0.48\linewidth}
@@ -27,10 +40,11 @@
 ## reviews (figure)
 
 
+
 _PaperMaker9000 sweep — 1 flag(s) across 1 lens(es)._
 
 - **figure** — 1 flag(s), 42 cleared:
-    - `figures.conventions.scripting_log_ticks` (medium): "ax1.semilogx(x_vals, errors_total, color=CB_BLUE, linewidth=1.8, label='Mie error')" → Panel (a) log x-axis renders 10^1/10^2/10^3; set explicit linear-readable ticks, e.g. ax1.set_xticks([5,10,50,100,500,1000]); ax1.set_xticklabels(['5','10','50','100','500','1000']).
+    - `figures.conventions.scripting_log_ticks` (medium): `ax1.semilogx(x_vals, errors_total, color=CB_BLUE, linewidth=1.8, label='Mie error')` -> Panel (a) log x-axis renders 10^1/10^2/10^3; set explicit linear-readable ticks, e.g. ax1.set_xticks([5,10,50,100,500,1000]); ax1.set_xticklabels(['5','10','50','100','500','1000']).
     - _dismissed_ `figures.conventions.axis_units`: x is a named dimensionless ratio whose defining formula pi d / lambda is printed in the label; the two unit-bearing axes ([%], [GHz]) use a consistent square-bracket style, and appending '(-)' to a self-evidently dimensionless defined ratio would add clutter, not clarity.
 
 ## grinder notes

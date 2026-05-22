@@ -2,21 +2,15 @@
 # Pseudo-Brewster compensation
 
 <!-- AUTO_BEGIN: assembled -->
-% NEXT: The flowchart now moves from the exact local law to its unpolarized
 \section{Method: pseudo-Brewster compensation}\label{sec:pB}
 
-% PREV: \section{Method: pseudo-Brewster compensation}\label{sec:pB}
-% NEXT: # Pseudo-Brewster compensation
 The flowchart now moves from the exact local law to its unpolarized
 form. This section shows why the Fresnel factor can be replaced by a
 nearly constant scalar for mmWave tissue. The reason is
 pseudo-Brewster compensation.
 
-% NEXT: The Brewster angle of a lossless dielectric is $\theta_{\mathrm{B}} =
 \subsection{Mechanism}\label{subsec:pB-mech}
 
-% PREV: \subsection{Mechanism}\label{subsec:pB-mech}
-% NEXT: Azzam~\cite{Azzam2015} showed that for lossless dielectric substrates
 The Brewster angle of a lossless dielectric is $\theta_{\mathrm{B}} =
 \arctan(n_2/n_1)$, at which the TM reflection coefficient
 vanishes~\cite{BornWolf1999}. For a lossy dielectric the reflection
@@ -29,8 +23,6 @@ average $\Tavg(\theta_{\mathrm{pB}}) \approx 0.5$ is close to the
 normal-incidence value $T_0 \approx 0.5$--$0.6$ for biological
 tissue at mmWave.
 
-% PREV: The Brewster angle of a lossless dielectric is $\theta_{\mathrm{B}} =
-% NEXT: # Mechanism
 Azzam~\cite{Azzam2015} showed that for lossless dielectric substrates
 with refractive index $|\ntilde| > 2 + \sqrt{3} \approx 3.73$, the
 unpolarized reflectance varies by less than $1\%$ over $[0^\circ,
@@ -44,11 +36,8 @@ where prior work has evaluated the angular and polarization
 dependence of body transmission above $6$~GHz
 numerically~\cite{Samaras2019} without the high-index reduction.
 
-% NEXT: \Cref{fig:apd-angle} illustrates the compensation for skin at
 \subsection{Quantitative behavior across angle}\label{subsec:pB-quant}
 
-% PREV: \subsection{Quantitative behavior across angle}\label{subsec:pB-quant}
-% NEXT: \begin{figure}[!t]
 \Cref{fig:apd-angle} illustrates the compensation for skin at
 28~GHz. \Cref{fig:apd-angle:T} shows $T_s$, $T_p$, and $\Tavg$ versus
 incidence angle. \Cref{fig:apd-angle:APD} shows the \gls{APD}
@@ -57,8 +46,6 @@ simplified product $T_0\cos\theta$. The unpolarized curve closely
 tracks the simplified prediction, and the small gap is the Fresnel
 approximation error.
 
-% PREV: \Cref{fig:apd-angle} illustrates the compensation for skin at
-% NEXT: \Cref{tab:fresnel-skin} quantifies the deviation of $\Tavg$ from
 \begin{figure}[!t]
   \centering
   \begin{subfigure}[t]{\columnwidth}
@@ -84,14 +71,11 @@ approximation error.
   \label{fig:apd-angle}
 \end{figure}
 
-% PREV: \begin{figure}[!t]
-% NEXT: # Quantitative behavior across angle
 \Cref{tab:fresnel-skin} quantifies the deviation of $\Tavg$ from
 $T_0$ across $[0^\circ, 75^\circ]$ on skin at 28~GHz. The maximum
 deviation is $5.6\%$ at $70$--$75^\circ$. Below $30^\circ$ the agreement
 is at the fourth significant figure.
 
-% PREV: # Quantitative behavior across angle
 \begin{table}[!t]
 \centering
 \caption{Fresnel transmission for skin at 28~GHz. Here $T_0 =
@@ -112,11 +96,8 @@ $75^\circ$ & 0.182 & 0.952 & 0.567 & 1.053 \\
 \end{tabular}
 \end{table}
 
-% NEXT: All biological tissues at the wireless mmWave band cluster in the
 \subsection{Tissue universality}\label{subsec:pB-tissues}
 
-% PREV: \subsection{Tissue universality}\label{subsec:pB-tissues}
-% NEXT: \begin{table}[!t]
 All biological tissues at the wireless mmWave band cluster in the
 $|\ntilde| > 2.5$ region where the compensation operates.
 \Cref{tab:materials} lists the relevant parameters at 28~GHz from
@@ -128,8 +109,6 @@ variation, but fat is rarely the outermost tissue at exposure sites
 of regulatory interest. Above $6$~GHz, the relevant outermost
 tissues are skin, subcutaneous fat, and vitreous humor.
 
-% PREV: All biological tissues at the wireless mmWave band cluster in the
-% NEXT: # Tissue universality
 \begin{table}[!t]
 \centering
 \caption{Pseudo-Brewster compensation across tissue types at
@@ -149,11 +128,8 @@ Water  & 25.0 & 55.0 & 6.62 & 0.45 & $3.9\%$ \\
 \end{tabular}
 \end{table}
 
-% NEXT: The accuracy of the constant-$T_0$ approximation has a clean
 \subsection{Frequency dependence}\label{subsec:pB-freq}
 
-% PREV: \subsection{Frequency dependence}\label{subsec:pB-freq}
-% NEXT: \begin{figure}[!t]
 The accuracy of the constant-$T_0$ approximation has a clean
 frequency dependence. Define the sphere ratio $R(f)$
 \begin{equation}\label{eq:R-of-f}
@@ -174,8 +150,6 @@ Cole--Cole values for skin and the angle family
 $\Tavg(\theta)\cos\theta$ at six representative frequencies are in
 Table~\ref{tab:itis-fvs} and Fig.~\ref{fig:si-angle-family} of the SI.
 
-% PREV: The accuracy of the constant-$T_0$ approximation has a clean
-% NEXT: # Frequency dependence
 \begin{figure}[!t]
   \centering
   % Legend entries capitalized (Conservative / Non-conservative); see
@@ -190,11 +164,8 @@ Table~\ref{tab:itis-fvs} and Fig.~\ref{fig:si-angle-family} of the SI.
   \label{fig:R-of-f}
 \end{figure}
 
-% NEXT: Two simplifications act on the exact law in~\eqref{eq:Sab-exact}.
 \subsection{Geometric absorption law}\label{subsec:pB-geom}
 
-% PREV: \subsection{Geometric absorption law}\label{subsec:pB-geom}
-% NEXT: \begin{figure*}[!t]
 Two simplifications act on the exact law in~\eqref{eq:Sab-exact}.
 First, we apply the polarization reduction~\eqref{eq:Sab-Tavg}.
 Second, we substitute $\Tavg(\theta) \to T_0$ and reinstate
@@ -222,8 +193,6 @@ $T_{\mathrm{tr}}$ fitted in
 \cite{Kodera2024,Diao2024,Funahashi2018} is identified with $T_0$,
 the normal-incidence transmission.
 
-% PREV: Two simplifications act on the exact law in~\eqref{eq:Sab-exact}.
-% NEXT: Hence, the error of~\eqref{eq:geom-law} relative to the exact
 \begin{figure*}[!t]
   \centering
   \begin{subfigure}[b]{0.30\linewidth}
@@ -260,8 +229,6 @@ the normal-incidence transmission.
   \label{fig:phantom}
 \end{figure*}
 
-% PREV: \begin{figure*}[!t]
-% NEXT: # Geometric absorption law
 Hence, the error of~\eqref{eq:geom-law} relative to the exact
 polarization-aware law is bounded by the maximum of the polarization
 correction and the angular variation of $\Tavg$. The latter is below
@@ -272,11 +239,8 @@ polarized single plane wave. The combined error is below the
 $20\%$ uncertainty in tissue dielectric properties at
 mmWave~\cite{AlekseevZiskin2007}.
 
-% NEXT: Equation~\eqref{eq:geom-law} extends to a triangle mesh under
 \subsection{Discrete multi-source form}\label{subsec:matrix}
 
-% PREV: \subsection{Discrete multi-source form}\label{subsec:matrix}
-% NEXT: The geometric law on the mesh then reads
 Equation~\eqref{eq:geom-law} extends to a triangle mesh under
 multiple incident waves. Discretize the body into $M$ triangles. Row $j$ of
 $\mathbf{N} \in \mathbb{R}^{M\times 3}$ holds the outward unit
@@ -291,8 +255,6 @@ $V_{ji} = 1$ when direction $\khat_i$ reaches triangle $j$, and
 $V_{ji} = 0$ otherwise. Collect the per-triangle APD values into
 $\bm{\mathrm{APD}} \in \mathbb{R}^{M}$.
 
-% PREV: Equation~\eqref{eq:geom-law} extends to a triangle mesh under
-% NEXT: Each step is differentiable.
 The geometric law on the mesh then reads
 \begin{equation}\label{eq:mat-multi}
   \bm{\mathrm{APD}} = T_0\,\bigl(\pospart{\mathbf{N}\,\mathbf{K}}
@@ -305,8 +267,6 @@ back-facing entries to zero. The Hadamard product $\odot$ with
 $\mathbf{V}$ gates self-shadowed entries. The product with
 $\mathbf{s}$ sums the contributions of the $N$ incident waves.
 
-% PREV: The geometric law on the mesh then reads
-% NEXT: # Discrete multi-source form
 Each step is differentiable. The operator $\pospart{\cdot}$ is the
 rectified linear unit (ReLU). Replacing it with the smooth
 \gls{GELU} activation~\cite{Hendrycks2016} leaves the structure
@@ -320,6 +280,7 @@ and $\mathbf{V}$ as ambient occlusion. For $M \approx 10^4$ and
 $N \approx 10^2$, the spatial map is one matrix-vector multiply on
 the GPU.
 <!-- AUTO_END: assembled -->
+
 
 
 

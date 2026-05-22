@@ -1,4 +1,13 @@
 % PREV: Second, the per-triangle absorbed-power map for $M \approx 10^4$
+% PREV: triangles and $N \approx 10^2$ paths is one matrix-vector multiply on
+% PREV: a modern GPU, evaluated in under $10$~ms. The cost is independent of
+% PREV: frequency. Against an FDTD reference whose cost scales as $f^4$, the
+% PREV: speed advantage grows by roughly $10^4$ from $6$ to $60$~GHz, exactly
+% PREV: the band where the Fresnel approximation is sharpest and the closed
+% PREV: form holds pointwise within $3\%$ of FDTD (\cref{tab:bands}). The
+% PREV: cosine gate is rectified shading. The visibility matrix $\mathbf{V}$
+% PREV: is ambient occlusion, one of the most optimized computations in
+% PREV: real-time rendering~\cite{AkenineMoller2018}.
 Third, the whole-body identity~\eqref{eq:cauchy-exact} factorizes the
 body dependence into a single scalar $\Aab = \bar\eta\,A$. For a
 given phantom and posture, $\bar\eta$ is computed once, in tens of
@@ -8,6 +17,7 @@ Fresnel quadrature shared across the population and one occlusion
 pass per body.
 
 ## reviews (paragraph)
+
 
 
 _PaperMaker9000 sweep — all clear across 4 lens(es)._
@@ -20,4 +30,5 @@ _PaperMaker9000 sweep — all clear across 4 lens(es)._
     - _dismissed_ `style.anti_ai_language.first_second_third_overuse`: A single ordinal opening this paragraph; the rule targets repeated First/Second/Third cadence within one paragraph, and the enumeration here is spread one item per sibling paragraph, not a listicle inside this leaf.
     - _dismissed_ `style.misused_words.which_that`: Restrictive clause defining which studies, so 'that' with no comma is correct.
 - **latex-micro** — pass (41 rules cleared).
+- **incremental (2026-05-22)** — pass (2 new/edited rules cleared).
 

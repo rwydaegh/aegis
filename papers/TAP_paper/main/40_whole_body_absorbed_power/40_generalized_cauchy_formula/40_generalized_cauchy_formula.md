@@ -3,11 +3,8 @@
 # Generalized Cauchy formula
 
 <!-- AUTO_BEGIN: assembled -->
-% NEXT: The generalized Cauchy formula is the central whole-body identity.
 \subsection{Generalized Cauchy formula}\label{subsec:cauchy-thm}
 
-% PREV: \subsection{Generalized Cauchy formula}\label{subsec:cauchy-thm}
-% NEXT: \begin{proof}
 The generalized Cauchy formula is the central whole-body identity.
 \begin{theorem}\label{thm:cauchy}
 Let a body $\Sigma$ have surface area $A$, exposure fraction
@@ -21,8 +18,6 @@ whole-body absorbed power is
 \end{equation}
 \end{theorem}
 
-% PREV: The generalized Cauchy formula is the central whole-body identity.
-% NEXT: The classical Cauchy formula $\langle\Aperp\rangle = A/4$ is the
 \begin{proof}
 Apply Fubini's theorem to exchange the surface and direction
 integrals. The local law~\eqref{eq:geom-law} gives
@@ -40,15 +35,11 @@ using the definition of $\eta$ and the identity $\int_{S^2}
 $\nhat$. Integration over $\Sigma$ gives~\eqref{eq:cauchy}.
 \end{proof}
 
-% PREV: \begin{proof}
-% NEXT: # Generalized Cauchy formula
 The classical Cauchy formula $\langle\Aperp\rangle = A/4$ is the
 special case $\eta \equiv 1$, valid for any convex body. The
 absorption area $\Aab$ reduces all geometric complexity of
 self-shadowing to a single scalar.
 
-% PREV: # Generalized Cauchy formula
-% NEXT: The constant-$T_0$ approximation in~\eqref{eq:cauchy} is accurate to
 Let $A_{\mathrm{CH}}$ be the surface area of the convex hull of the
 body. Energy conservation under isotropic illumination implies
 $\langle P_{\mathrm{abs}} \rangle \le \IPD\,A_{\mathrm{CH}}/4$,
@@ -56,15 +47,11 @@ because the power entering the convex hull bounds the absorbed power.
 For the Thelonious phantom $A_{\mathrm{CH}}/A \approx 1.20$, so the
 hull bound brackets the true absorbed power within a few percent.
 
-% PREV: Let $A_{\mathrm{CH}}$ be the surface area of the convex hull of the
-% NEXT: The same direction-averaged identity becomes exact when $T_0$ is
 The constant-$T_0$ approximation in~\eqref{eq:cauchy} is accurate to
 $5\%$ root-mean-square across $0.3$--$100$~GHz, but it is not
 exact. Replacing $T_0$ with the flux-weighted transmission $\Tbar(f)$
 defined in~\eqref{eq:R-of-f} removes the approximation.
 
-% PREV: The constant-$T_0$ approximation in~\eqref{eq:cauchy} is accurate to
-% NEXT: \Cref{eq:cauchy-exact} requires only electromagnetic opacity, a
 The same direction-averaged identity becomes exact when $T_0$ is
 replaced by the angle-dependent
 $\Tavg(\theta)$. The cosine-weighted angular integral collapses to
@@ -74,15 +61,11 @@ wavelength
   \langle P_{\mathrm{abs}} \rangle = \IPD\,\Tbar(f)\,\Aab/4 \,.
 \end{equation}
 
-% PREV: The same direction-averaged identity becomes exact when $T_0$ is
-% NEXT: \begin{table}[!t]
 \Cref{eq:cauchy-exact} requires only electromagnetic opacity, a
 condition met above approximately $1$~GHz on a torso and above approximately $6$~GHz
 on a finger. \Cref{tab:Tbar} lists $T_0$, $\Tbar$, and the ratio
 $R = T_0/\Tbar$ for skin from $0.3$--$100$~GHz.
 
-% PREV: \Cref{eq:cauchy-exact} requires only electromagnetic opacity, a
-% NEXT: The reverberation-chamber literature has been measuring $\Tbar$
 \begin{table}[!t]
 \centering
 \caption{Normal-incidence transmission $T_0$, flux-weighted
@@ -105,7 +88,6 @@ $f$\,[GHz] & $|\ntilde|$ & $T_0$ & $\Tbar$ & $R$ \\
 \end{tabular}
 \end{table}
 
-% PREV: \begin{table}[!t]
 The reverberation-chamber literature has been measuring $\Tbar$
 directly. Bamba's empirical efficiency $\eta(f)$ for diffuse-field
 exposure on four FDTD ellipsoid phantoms~\cite{Bamba2014}
@@ -117,9 +99,8 @@ Flintoft's plateau $\langle Q^a\rangle/\gamma_s = 0.47$--$0.49$
 at $7$--$11$~GHz matches $\Tbar$ at the same frequencies to $2\%$~\cite{Flintoft2014}.
 Zhang's plateau $\xi = 0.45$--$0.65$ above $6$~GHz brackets
 $\Tbar\cdot\Aab/A$~\cite{Zhang2017thesis}.
-
-% PREV: The reverberation-chamber literature has been measuring $\Tbar$
 <!-- AUTO_END: assembled -->
+
 
 
 

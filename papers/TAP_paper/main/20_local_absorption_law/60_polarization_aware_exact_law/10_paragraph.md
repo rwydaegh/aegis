@@ -1,5 +1,30 @@
 % PREV: \subsection{Polarization-aware exact law}\label{subsec:exact-law}
 % NEXT: To proceed, write
+% NEXT: \begin{equation}\label{eq:Teff-decomp}
+% NEXT:   \Teff(\rr) = \Tavg(\theta) + \tfrac{1}{2}\,q(\rr)\,\Delta T(\theta)\, ,
+% NEXT: \end{equation}
+% NEXT: with $\Tavg = \tfrac{1}{2}(T_s + T_p)$ the unpolarized baseline,
+% NEXT: $\Delta T = T_p - T_s$ the polarization splitting, and $q = |e_p|^2 -
+% NEXT: |e_s|^2 \in [-1, 1]$ the local TM excess. The polarization correction
+% NEXT: vanishes pointwise for circular illumination, in expectation for
+% NEXT: random-orientation linear illumination, and to within $2.5\%$ for
+% NEXT: multipath averaging above 20 paths. First, for circular polarization
+% NEXT: the TE and TM intensities are equal at every point on every body, so
+% NEXT: $q \equiv 0$ pointwise. Second, for linear polarization with random
+% NEXT: ensemble orientation either in space or time, the ensemble average
+% NEXT: $\langle q\rangle$ vanishes by the same argument. Third, for a body
+% NEXT: in a multipath environment with $N$ independent path orientations,
+% NEXT: the variance of the polarization correction scales as $D_B/\sqrt{2N}$,
+% NEXT: where $D_B \le 16\%$ is the body's polarization directivity on the
+% NEXT: Thelonious phantom, and for $N \ge 20$ paths the correction drops
+% NEXT: below $2.5\%$. Section~\ref{si:fresnel} of the SI derives all three
+% NEXT: conditions and the $D_B/\sqrt{2N}$ variance bound. Under any of these conditions the exact law reduces to
+% NEXT: \begin{equation}\label{eq:Sab-Tavg}
+% NEXT:   \APD(\rr) = \IPD \, \Tavg(\theta(\rr)) \, \pospart{\mu(\rr)}\, .
+% NEXT: \end{equation}
+% NEXT: The angular dependence is now confined to the scalar function
+% NEXT: $\Tavg(\theta)$. The next section shows that this function is nearly
+% NEXT: constant for biological tissue.
 A plane wave is fully polarized. At a surface point
 $\rr$, decompose the incident electric field into local TE and TM
 components by projecting on the unit vectors
@@ -26,6 +51,7 @@ with the multi-source matrix form in \cref{subsec:matrix}.
 ## reviews (paragraph)
 
 
+
 _PaperMaker9000 sweep — all clear across 4 lens(es)._
 
 - **sentence-craft** — pass (14 rules cleared).
@@ -35,4 +61,5 @@ _PaperMaker9000 sweep — all clear across 4 lens(es)._
 - **lexical-spotcheck** — pass (54 rules cleared).
 - **latex-micro** — pass (40 rules cleared).
     - _dismissed_ `latex.substitutions.vector_bold_convention_documented`: The leaf does mix two bold macros for unit vectors (\khat/\nhat expand to \hat{\bm{k}}/\hat{\bm{n}}, bold; \hat{e}_s/\hat{e}_p are non-bold), but this is a deliberate paper-wide split (geometry/propagation unit vectors bold, polarization-basis unit vectors light) applied consistently, and the corrective (adding a notation block) is a document-level fix not local to this leaf; scalar magnitudes |e_s|, |e_p| correctly stay italic.
+- **incremental (2026-05-22)** — pass (2 new/edited rules cleared).
 

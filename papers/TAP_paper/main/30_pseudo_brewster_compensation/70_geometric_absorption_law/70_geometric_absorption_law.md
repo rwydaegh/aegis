@@ -2,11 +2,8 @@
 # Geometric absorption law
 
 <!-- AUTO_BEGIN: assembled -->
-% NEXT: Two simplifications act on the exact law in~\eqref{eq:Sab-exact}.
 \subsection{Geometric absorption law}\label{subsec:pB-geom}
 
-% PREV: \subsection{Geometric absorption law}\label{subsec:pB-geom}
-% NEXT: \begin{figure*}[!t]
 Two simplifications act on the exact law in~\eqref{eq:Sab-exact}.
 First, we apply the polarization reduction~\eqref{eq:Sab-Tavg}.
 Second, we substitute $\Tavg(\theta) \to T_0$ and reinstate
@@ -34,8 +31,6 @@ $T_{\mathrm{tr}}$ fitted in
 \cite{Kodera2024,Diao2024,Funahashi2018} is identified with $T_0$,
 the normal-incidence transmission.
 
-% PREV: Two simplifications act on the exact law in~\eqref{eq:Sab-exact}.
-% NEXT: Hence, the error of~\eqref{eq:geom-law} relative to the exact
 \begin{figure*}[!t]
   \centering
   \begin{subfigure}[b]{0.30\linewidth}
@@ -72,8 +67,6 @@ the normal-incidence transmission.
   \label{fig:phantom}
 \end{figure*}
 
-% PREV: \begin{figure*}[!t]
-% NEXT: # Geometric absorption law
 Hence, the error of~\eqref{eq:geom-law} relative to the exact
 polarization-aware law is bounded by the maximum of the polarization
 correction and the angular variation of $\Tavg$. The latter is below
@@ -84,6 +77,7 @@ polarized single plane wave. The combined error is below the
 $20\%$ uncertainty in tissue dielectric properties at
 mmWave~\cite{AlekseevZiskin2007}.
 <!-- AUTO_END: assembled -->
+
 
 
 

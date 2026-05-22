@@ -1,4 +1,5 @@
-% PREV: # Whole-body SAR threshold
+% PREV: Implications for the existing ICNIRP general-public reference level
+% PREV: above $6$~GHz are stated in \cref{subsec:disc-regulatory}.
 \begin{table}[!t]
 \centering
 \caption{Worst-case compliance threshold across the human
@@ -21,6 +22,7 @@ Large adult     & 100 & 180 & 13.5 \\
 \end{table}
 
 ## reviews (table)
+
 
 
 _PaperMaker9000 sweep — all clear across 1 lens(es)._

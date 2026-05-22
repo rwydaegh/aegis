@@ -1,5 +1,16 @@
 % PREV: Equations~\eqref{eq:geom-law} and~\eqref{eq:cauchy-exact} hold
-% NEXT: The Mie regime sets a second lower limit.
+% PREV: quantitatively above approximately $1$~GHz on whole-body absorbed
+% PREV: power and above approximately $6$~GHz pointwise on the surface, with
+% PREV: documented sub-$6$~GHz behavior from~\eqref{eq:T-lay}. The
+% PREV: low-frequency boundary is set by three independent physical scales:
+% PREV: body opacity, the body-scale Mie regime, and whole-body resonance.
+% PREV: The high-frequency boundary is set by two, the softening of the
+% PREV: pseudo-Brewster compensation and skin surface roughness, both gentler
+% PREV: than the low-frequency boundary.
+% NEXT: The Mie regime sets a second lower limit. The geometric-optics
+% NEXT: asymptote holds with sub-percent residual once $ka \gtrsim 30$ on a
+% NEXT: body characteristic dimension, and \cref{subsec:val-mie} quantifies
+% NEXT: the residual on body-scale spheres.
 The surface law requires the body to be optically thick to the
 incident wave: the tissue skin depth must stay smaller than the body
 characteristic dimension, otherwise the wave passes through rather
@@ -13,6 +24,7 @@ cross-sections below approximately $250$~MHz.
 ## reviews (paragraph)
 
 
+
 _PaperMaker9000 sweep — all clear across 4 lens(es)._
 
 - **sentence-craft** — pass (14 rules cleared).
@@ -23,4 +35,5 @@ _PaperMaker9000 sweep — all clear across 4 lens(es)._
 - **latex-micro** — pass (41 rules cleared).
     - _dismissed_ `latex.substitutions.units_math_mode_consistent`: Number-in-math-then-tilde-then-text-unit ($N$~unit) is consistent across the paragraph and matches the neighbour style; no unit drifts out of a thin-space-opened math run, so the targeted failure mode is absent.
     - _dismissed_ `latex.substitutions.approx_text_vs_math`: Approximation is spelled out as `approximately` in prose; the math-mode \approx symbol is correctly not used.
+- **incremental (2026-05-22)** — pass (2 new/edited rules cleared).
 

@@ -35,6 +35,7 @@ Peak $\APD$              & $0.539$~W/m$^2$ & $0.539$~W/m$^2$ & $0.0\%$ \\
 ## reviews (table)
 
 
+
 _PaperMaker9000 sweep — all clear across 1 lens(es)._
 
 - **table** — pass (10 rules cleared).

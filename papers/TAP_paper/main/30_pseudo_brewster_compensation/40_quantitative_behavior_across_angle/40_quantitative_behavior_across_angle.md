@@ -3,11 +3,8 @@
 # Quantitative behavior across angle
 
 <!-- AUTO_BEGIN: assembled -->
-% NEXT: \Cref{fig:apd-angle} illustrates the compensation for skin at
 \subsection{Quantitative behavior across angle}\label{subsec:pB-quant}
 
-% PREV: \subsection{Quantitative behavior across angle}\label{subsec:pB-quant}
-% NEXT: \begin{figure}[!t]
 \Cref{fig:apd-angle} illustrates the compensation for skin at
 28~GHz. \Cref{fig:apd-angle:T} shows $T_s$, $T_p$, and $\Tavg$ versus
 incidence angle. \Cref{fig:apd-angle:APD} shows the \gls{APD}
@@ -16,8 +13,6 @@ simplified product $T_0\cos\theta$. The unpolarized curve closely
 tracks the simplified prediction, and the small gap is the Fresnel
 approximation error.
 
-% PREV: \Cref{fig:apd-angle} illustrates the compensation for skin at
-% NEXT: \Cref{tab:fresnel-skin} quantifies the deviation of $\Tavg$ from
 \begin{figure}[!t]
   \centering
   \begin{subfigure}[t]{\columnwidth}
@@ -43,14 +38,11 @@ approximation error.
   \label{fig:apd-angle}
 \end{figure}
 
-% PREV: \begin{figure}[!t]
-% NEXT: # Quantitative behavior across angle
 \Cref{tab:fresnel-skin} quantifies the deviation of $\Tavg$ from
 $T_0$ across $[0^\circ, 75^\circ]$ on skin at 28~GHz. The maximum
 deviation is $5.6\%$ at $70$--$75^\circ$. Below $30^\circ$ the agreement
 is at the fourth significant figure.
 
-% PREV: # Quantitative behavior across angle
 \begin{table}[!t]
 \centering
 \caption{Fresnel transmission for skin at 28~GHz. Here $T_0 =
@@ -71,6 +63,7 @@ $75^\circ$ & 0.182 & 0.952 & 0.567 & 1.053 \\
 \end{tabular}
 \end{table}
 <!-- AUTO_END: assembled -->
+
 
 
 

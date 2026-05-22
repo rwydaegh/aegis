@@ -4,22 +4,16 @@
 <!-- AUTO_BEGIN: assembled -->
 \subsection{Layered transmission below 6~GHz}\label{subsec:fp}
 
-% PREV: \subsection{Layered transmission below 6~GHz}\label{subsec:fp}
-% NEXT: Above $6$~GHz, \eqref{eq:cauchy-exact} matches the plateau values
-
-% NEXT: The mechanism is a Fabry--P\'erot resonance in the subcutaneous fat
 Above $6$~GHz, \eqref{eq:cauchy-exact} matches the plateau values
 reported by Bamba, Flintoft, and Zhang. Below $6$~GHz, Flintoft and
 Zhang observe a structured dip near $3$~GHz that the homogeneous
 half-space model does not reproduce~\cite{Flintoft2014,Zhang2017thesis}. The
-dip is anatomical rather than instrumental: Flintoft's negative
+dip is anatomical. Flintoft's negative
 correlation of $\langle Q^a\rangle$ with mean subcutaneous fat
 thickness $d_{\mathrm{SF}}$ is steepest at $3$~GHz
 ($-0.0061\,\mathrm{mm}^{-1}$, $R^2 = 0.40$,~\cite[Table~6]{Flintoft2014}),
 with the slope falling to $-0.0030\,\mathrm{mm}^{-1}$ at $7$--$11$~GHz.
 
-% PREV: Above $6$~GHz, \eqref{eq:cauchy-exact} matches the plateau values
-% NEXT: Zhang derives the planar limit of this model in his
 The mechanism is a Fabry--P\'erot resonance in the subcutaneous fat
 layer. Below $6$~GHz the SAR penetration depth in fat exceeds
 $70$~mm, against fat thicknesses of $2$--$20$~mm in the Flintoft
@@ -47,8 +41,6 @@ predicts a $40\%$ enhancement above the homogeneous prediction at
 $0.9$~GHz (quarter-wave matching) and a $27\%$ reduction at
 $3.5$~GHz (destructive interference).
 
-% PREV: The mechanism is a Fabry--P\'erot resonance in the subcutaneous fat
-% NEXT: # Layered transmission below 6~GHz
 Zhang derives the planar limit of this model in his
 thesis~\cite[Sec.~2.2]{Zhang2017thesis} and observes the resonance
 shift with fat thickness in his Figs.~2.7--2.8, writing that ``the
@@ -68,6 +60,7 @@ meaning below $6$~GHz, where the SAR penetration depth exceeds the
 surface layer thickness. Total power remains valid via $\Tlay$
 throughout.
 <!-- AUTO_END: assembled -->
+
 
 
 

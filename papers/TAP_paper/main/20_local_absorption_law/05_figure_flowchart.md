@@ -1,5 +1,19 @@
 % PREV: Flowchart \ref{fig:flowchart} shows the exact local law, the
+% PREV: reductions to whole-body absorbed power, the higher-order
+% PREV: corrections, and the regulatory outputs. This section derives the top
+% PREV: box: the local law at one visible surface point.
 % NEXT: \begin{figure}[!t]
+% NEXT:   \centering
+% NEXT:   \includegraphics[width=\columnwidth]{fig_geometry.pdf}
+% NEXT:   \caption{Configuration of the dosimetry problem. A plane wave with
+% NEXT:   intensity $\IPD$ and direction $\hat{\bm{k}}$ illuminates the
+% NEXT:   Thelonious phantom. The local APD at a visible
+% NEXT:   surface point is $\APD = \IPD\,T(\theta)\cos\theta$, with $\theta$
+% NEXT:   the angle between $-\hat{\bm{k}}$ and the outward normal
+% NEXT:   $\hat{\bm{n}}$ on the triangulated body surface, and $T$ the
+% NEXT:   Fresnel transmission.}
+% NEXT:   \label{fig:configuration}
+% NEXT: \end{figure}
 \begin{figure}[!t]
   \centering
   \begin{tikzpicture}[
@@ -111,10 +125,11 @@
 ## reviews (figure)
 
 
+
 _PaperMaker9000 sweep — 1 flag(s) across 1 lens(es)._
 
 - **figure** — 1 flag(s), 42 cleared:
-    - `figures.wout_specifics.flowchart_style` (high): "\node[outbox, fill=outA] (outLocal) at (6.5, -2.65) {Local $\APDAvg$};" → Drop the pale colour fills (outA/outB/outC and fill=black!4) so all flowchart boxes are plain white black-bordered rectangles, per the no-colour-fills rule; if grouping the three output types matters, use dashed sub-enclosures or text labels instead of fills.
+    - `figures.wout_specifics.flowchart_style` (high): `\node[outbox, fill=outA] (outLocal) at (6.5, -2.65) {Local $\APDAvg$};` -> Drop the pale colour fills (outA/outB/outC and fill=black!4) so all flowchart boxes are plain white black-bordered rectangles, per the no-colour-fills rule; if grouping the three output types matters, use dashed sub-enclosures or text labels instead of fills.
 
 ## grinder notes
 - **label**: fig:flowchart

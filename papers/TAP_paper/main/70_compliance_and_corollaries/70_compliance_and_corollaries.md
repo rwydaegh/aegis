@@ -2,22 +2,16 @@
 # Compliance and corollaries
 
 <!-- AUTO_BEGIN: assembled -->
-% NEXT: Proven bounds on the ICNIRP basic restrictions follow in closed form
 \section{Compliance bounds}\label{sec:compliance}
 
-% PREV: \section{Compliance bounds}\label{sec:compliance}
-% NEXT: # Compliance and corollaries
 Proven bounds on the ICNIRP basic restrictions follow in closed form
 from the incident power density. \Cref{subsec:compl-wb} bounds the
 incident power density allowed for whole-body SAR.
 \Cref{subsec:compl-cube} bounds the peak spatial-average SAR over a
 $10$~g cube.
 
-% NEXT: The ICNIRP 2020 guidelines~\cite{ICNIRP2020} specify a whole-body
 \subsection{Whole-body SAR threshold}\label{subsec:compl-wb}
 
-% PREV: \subsection{Whole-body SAR threshold}\label{subsec:compl-wb}
-% NEXT: Body surface area follows the Du Bois formula~\cite{DuBois1916} $A
 The ICNIRP 2020 guidelines~\cite{ICNIRP2020} specify a whole-body
 average SAR limit of $0.08$~W/kg for the general public. The bound
 $\Aperp(\khat) \le A/2$ on closed surfaces gives
@@ -31,8 +25,6 @@ a closed-form function of body mass $m$, body surface area $A$,
 and tissue transmission $\Tbar$, none of which requires an FDTD
 solve on the specific exposure scenario.
 
-% PREV: The ICNIRP 2020 guidelines~\cite{ICNIRP2020} specify a whole-body
-% NEXT: Implications for the existing ICNIRP general-public reference level
 Body surface area follows the Du Bois formula~\cite{DuBois1916} $A
 \approx 0.007184\,m^{0.425}\,h^{0.725}$ with mass in kg and height in
 cm, so $\IPD_{\mathrm{max}}$ scales as $m/A \propto
@@ -46,12 +38,9 @@ volume. Section~\ref{si:anthro} of the SI derives the Du Bois
 scaling and bounds the linearly polarized worst-case correction to
 \eqref{eq:Sinc-max-worst} via the body polarization directivity.
 
-% PREV: Body surface area follows the Du Bois formula~\cite{DuBois1916} $A
-% NEXT: # Whole-body SAR threshold
 Implications for the existing ICNIRP general-public reference level
 above $6$~GHz are stated in \cref{subsec:disc-regulatory}.
 
-% PREV: # Whole-body SAR threshold
 \begin{table}[!t]
 \centering
 \caption{Worst-case compliance threshold across the human
@@ -73,19 +62,14 @@ Large adult     & 100 & 180 & 13.5 \\
 \end{tabular}
 \end{table}
 
-% NEXT: Below $6$~GHz the ICNIRP basic restriction is the peak spatial-average
 \subsection{Peak spatial-average SAR over a 10~g cube}\label{subsec:compl-cube}
 
-% PREV: \subsection{Peak spatial-average SAR over a 10~g cube}\label{subsec:compl-cube}
-% NEXT: The following bound links the cube quantity to APD.
 Below $6$~GHz the ICNIRP basic restriction is the peak spatial-average
 SAR over a $10$~g cube~\cite{ICNIRP2020,62704-1}. An
 energy-conservation argument on the cube footprint bounds this
 restriction by the absorbed power density, so no explicit cube search
 is needed.
 
-% PREV: Below $6$~GHz the ICNIRP basic restriction is the peak spatial-average
-% NEXT: The bound follows from energy conservation on the cube footprint,
 The following bound links the cube quantity to APD.
 \begin{theorem}\label{thm:apd-bound}
 For an axis-aligned $10$~g cube placed per IEC/IEEE~62704-1 on a planar
@@ -102,8 +86,6 @@ the head and trunk basic restriction of $2$~W/kg and a factor of six
 below the limb restriction of $4$~W/kg.
 \end{theorem}
 
-% PREV: The following bound links the cube quantity to APD.
-% NEXT: # Peak spatial-average SAR over a 10~g cube
 The bound follows from energy conservation on the cube footprint,
 with the $\sqrt{2}$ factor covering the worst-case tilt between cube
 axes and body normal. Section~\ref{si:apd-bound} of the SI derives the bound,
@@ -112,6 +94,7 @@ confirms it on Thelonious to within a median ratio of $1.30$. The same
 surface integral that delivers $\APDAvg$ therefore controls
 $\mathrm{psSAR}_{10\mathrm{g}}$.
 <!-- AUTO_END: assembled -->
+
 
 
 

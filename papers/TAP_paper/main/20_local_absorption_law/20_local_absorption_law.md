@@ -1,18 +1,13 @@
 # Local absorption law
 
 <!-- AUTO_BEGIN: assembled -->
-% NEXT: Flowchart \ref{fig:flowchart} shows the exact local law, the
 \section{Method: local absorption law}\label{sec:law}
 
-% PREV: \section{Method: local absorption law}\label{sec:law}
-% NEXT: \begin{figure}[!t]
 Flowchart \ref{fig:flowchart} shows the exact local law, the
 reductions to whole-body absorbed power, the higher-order
 corrections, and the regulatory outputs. This section derives the top
 box: the local law at one visible surface point.
 
-% PREV: Flowchart \ref{fig:flowchart} shows the exact local law, the
-% NEXT: \begin{figure}[!t]
 \begin{figure}[!t]
   \centering
   \begin{tikzpicture}[
@@ -121,7 +116,6 @@ box: the local law at one visible surface point.
   \label{fig:flowchart}
 \end{figure}
 
-% PREV: \begin{figure}[!t]
 \begin{figure}[!t]
   \centering
   \includegraphics[width=\columnwidth]{fig_geometry.pdf}
@@ -135,14 +129,8 @@ box: the local law at one visible surface point.
   \label{fig:configuration}
 \end{figure}
 
-% PREV: \begin{figure}[!t]
-% NEXT: # Local absorption law
-
-% NEXT: \Cref{fig:configuration} shows the considered configuration.
 \subsection{Configuration}
 
-% PREV: \subsection{Configuration}
-% NEXT: # Setup
 \Cref{fig:configuration} shows the considered configuration. A
 plane wave with intensity $\IPD$ and direction $\khat$ illuminates
 the body, and we evaluate $\APD(\rr)$ at each visible surface point.
@@ -162,11 +150,8 @@ $\mu(\rr) \equiv \nhat(\rr)\cdot(-\khat) = \cos\theta_i(\rr)$. A
 front-facing point has $\mu > 0$; a point facing away from the
 source has $\mu \le 0$.
 
-% NEXT: The inward power flux through a surface element $\diff A$ at $\rr$
 \subsection{Power flux through the surface}
 
-% PREV: \subsection{Power flux through the surface}
-% NEXT: # Power flux through the surface
 The inward power flux through a surface element $\diff A$ at $\rr$
 is $\diff P_{\mathrm{in}} = \IPD\,\mu\,\diff A$. The reflected wave
 propagates in the specular direction with power density
@@ -179,11 +164,8 @@ conservation at a lossy half-space gives
 \end{equation}
 for each polarization separately.
 
-% NEXT: The body surface is modeled as a planar interface between free
 \subsection{Fresnel coefficients}
 
-% PREV: \subsection{Fresnel coefficients}
-% NEXT: # Fresnel coefficients
 The body surface is modeled as a planar interface between free
 space ($n_1 = 1$) and a lossy medium with complex refractive index
 $\ntilde = \sqrt{\varepsilon_r - i\sigma/(\omega\varepsilon_0)}$. The
@@ -206,20 +188,16 @@ $\xi = \ntilde$, giving the polarization-degenerate value
 For skin at 28~GHz with $\varepsilon_r = 16.55$ and
 $\sigma = 25.8$~S/m, $\ntilde = 4.49 - 1.79i$ and $T_0 = 0.539$.
 
-% NEXT: A plane wave is fully polarized.
 \subsection{Polarization-aware exact law}\label{subsec:exact-law}
 
-% PREV: \subsection{Polarization-aware exact law}\label{subsec:exact-law}
-% NEXT: To proceed, write
 A plane wave is fully polarized. At a surface point
 $\rr$, decompose the incident electric field into local TE and TM
 components by projecting on the unit vectors
 $\hat{e}_s(\rr) = \khat \times \nhat / |\khat \times \nhat|$ and
-$\hat{e}_p(\rr) = \hat{e}_s \times \khat$. Writing the field as
-$\EE_0 = a_s \hat{e}_s + a_p \hat{e}_p$ and the local TE and TM
-energy fractions as $|e_s|^2 = |a_s|^2 / |\EE_0|^2$ and
-$|e_p|^2 = |a_p|^2 / |\EE_0|^2$, the effective transmission at $\rr$
-is
+$\hat{e}_p(\rr) = \hat{e}_s \times \khat$. Let $\EE_0 = a_s \hat{e}_s + a_p \hat{e}_p$, with the local TE and TM
+energy fractions $|e_s|^2 = |a_s|^2 / |\EE_0|^2$ and
+$|e_p|^2 = |a_p|^2 / |\EE_0|^2$. The effective transmission at $\rr$
+is then
 \begin{equation}\label{eq:Teff}
   \Teff(\rr) = |e_s(\rr)|^2 \, T_s(\theta) + |e_p(\rr)|^2 \,
   T_p(\theta)\, .
@@ -235,8 +213,6 @@ suppressed in this subsection because the Fresnel calculation
 operates at a point already taken to be visible. Visibility re-enters
 with the multi-source matrix form in \cref{subsec:matrix}.
 
-% PREV: A plane wave is fully polarized.
-% NEXT: # Polarization-aware exact law
 To proceed, write
 \begin{equation}\label{eq:Teff-decomp}
   \Teff(\rr) = \Tavg(\theta) + \tfrac{1}{2}\,q(\rr)\,\Delta T(\theta)\, ,
@@ -264,6 +240,7 @@ The angular dependence is now confined to the scalar function
 $\Tavg(\theta)$. The next section shows that this function is nearly
 constant for biological tissue.
 <!-- AUTO_END: assembled -->
+
 
 
 

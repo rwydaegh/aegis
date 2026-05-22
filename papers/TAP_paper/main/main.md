@@ -418,11 +418,10 @@ A plane wave is fully polarized. At a surface point
 $\rr$, decompose the incident electric field into local TE and TM
 components by projecting on the unit vectors
 $\hat{e}_s(\rr) = \khat \times \nhat / |\khat \times \nhat|$ and
-$\hat{e}_p(\rr) = \hat{e}_s \times \khat$. Writing the field as
-$\EE_0 = a_s \hat{e}_s + a_p \hat{e}_p$ and the local TE and TM
-energy fractions as $|e_s|^2 = |a_s|^2 / |\EE_0|^2$ and
-$|e_p|^2 = |a_p|^2 / |\EE_0|^2$, the effective transmission at $\rr$
-is
+$\hat{e}_p(\rr) = \hat{e}_s \times \khat$. Let $\EE_0 = a_s \hat{e}_s + a_p \hat{e}_p$, with the local TE and TM
+energy fractions $|e_s|^2 = |a_s|^2 / |\EE_0|^2$ and
+$|e_p|^2 = |a_p|^2 / |\EE_0|^2$. The effective transmission at $\rr$
+is then
 \begin{equation}\label{eq:Teff}
   \Teff(\rr) = |e_s(\rr)|^2 \, T_s(\theta) + |e_p(\rr)|^2 \,
   T_p(\theta)\, .
@@ -892,7 +891,7 @@ Above $6$~GHz, \eqref{eq:cauchy-exact} matches the plateau values
 reported by Bamba, Flintoft, and Zhang. Below $6$~GHz, Flintoft and
 Zhang observe a structured dip near $3$~GHz that the homogeneous
 half-space model does not reproduce~\cite{Flintoft2014,Zhang2017thesis}. The
-dip is anatomical rather than instrumental: Flintoft's negative
+dip is anatomical. Flintoft's negative
 correlation of $\langle Q^a\rangle$ with mean subcutaneous fat
 thickness $d_{\mathrm{SF}}$ is steepest at $3$~GHz
 ($-0.0061\,\mathrm{mm}^{-1}$, $R^2 = 0.40$,~\cite[Table~6]{Flintoft2014}),
@@ -1083,13 +1082,13 @@ plane-wave excitation completes the comparison. Two regulatory
 metrics are evaluated. The first is the IEC/IEEE~63195 peak $\APD$
 averaged over a $4$~cm$^2$ patch. At $7$~GHz on three
 lateral and frontal incidence directions with $\theta$-polarization,
-the direction-averaged ratio of law to FDTD is $1.027$. Propagating a
-$\pm 20\%$ uncertainty on the IT'IS dielectric properties~\cite{ITISv5,Gabriel1996} through
-the Fresnel coefficient at $7$~GHz gives $\pm 7\%$ on
-$T_0$, and the direction-averaged ratio falls inside it. The
+the direction-averaged ratio of law to FDTD is $1.027$. A
+$\pm 20\%$ uncertainty on the IT'IS dielectric properties~\cite{ITISv5,Gabriel1996} propagates
+through the Fresnel coefficient at $7$~GHz to $\pm 7\%$ on
+$T_0$. The direction-averaged ratio falls inside this band. The
 per-direction values are $1.06$, $1.20$, and $0.83$. The spread
-beyond $\pm 7\%$ reflects FDTD discretization and per-direction
-polarization detail in the reference rather than the closed form.
+beyond $\pm 7\%$ comes from FDTD discretization and per-direction
+polarization detail in the reference, not the closed form.
 
 The second metric is the direction-averaged Cauchy formula~\eqref{eq:cauchy-exact}
 across $12$ directions and $2$ polarizations at $5.8$~GHz. The ratio
@@ -1962,6 +1961,7 @@ experience.
 
 \end{document}
 <!-- AUTO_END: assembled -->
+
 
 
 

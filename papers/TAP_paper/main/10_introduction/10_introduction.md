@@ -3,11 +3,8 @@
 # Introduction
 
 <!-- AUTO_BEGIN: assembled -->
-% NEXT: # Introduction
 \section{Introduction}\label{sec:introduction}
 
-% PREV: # Introduction
-% NEXT: Several groups already capture this absorption with a single fitted
 \IEEEPARstart{W}{ireless} exposure on the human body is regulated
 through two basic restrictions in the \gls{ICNIRP} 2020
 guidelines~\cite{ICNIRP2020}, IEC/IEEE~63195, and IEEE~C95.1: the
@@ -28,8 +25,6 @@ frequency from 1 to 100~GHz. The whole-body absorbed power
 reduces to only three precomputed scalars: the body mass, the
 body surface area, and the flux-weighted Fresnel transmission.
 
-% PREV: \IEEEPARstart{W}{ireless} exposure on the human body is regulated
-% NEXT: This work derives the closed form behind these coefficients.
 Several groups already capture this absorption with a single fitted
 coefficient~\cite{Bamba2014,Flintoft2014,Zhang2017thesis,ZhangRobinson2020,Kodera2024,Diao2024}.
 The coefficient is defined in different ways, as an efficiency, a
@@ -42,8 +37,6 @@ differ between studies, and they provide no gradients for design. No
 study writes them as one expression, and none treats a nonconvex body
 in closed form.
 
-% PREV: Several groups already capture this absorption with a single fitted
-% NEXT: To the best of the authors' knowledge, this paper makes the following
 This work derives the closed form behind these coefficients. On
 high-index tissue, the unpolarized Fresnel transmission collapses to a
 near-constant scalar~\cite{Azzam2015}. The local law then integrates
@@ -57,7 +50,6 @@ dielectric uncertainty, at a small fraction of the cost. Because it is
 also differentiable, antenna and beam design under exposure limits
 becomes a continuous optimization.
 
-% PREV: This work derives the closed form behind these coefficients.
 To the best of the authors' knowledge, this paper makes the following
 contributions.
 \begin{enumerate}
@@ -87,6 +79,7 @@ contributions.
   across $168$ volunteers and $5$ FDTD phantoms.
 \end{enumerate}
 <!-- AUTO_END: assembled -->
+
 
 
 

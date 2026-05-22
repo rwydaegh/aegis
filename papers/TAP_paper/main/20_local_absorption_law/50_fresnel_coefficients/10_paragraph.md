@@ -1,5 +1,4 @@
 % PREV: \subsection{Fresnel coefficients}
-% NEXT: # Fresnel coefficients
 The body surface is modeled as a planar interface between free
 space ($n_1 = 1$) and a lossy medium with complex refractive index
 $\ntilde = \sqrt{\varepsilon_r - i\sigma/(\omega\varepsilon_0)}$. The
@@ -25,11 +24,13 @@ $\sigma = 25.8$~S/m, $\ntilde = 4.49 - 1.79i$ and $T_0 = 0.539$.
 ## reviews (paragraph)
 
 
+
 _PaperMaker9000 sweep — 1 flag(s) across 4 lens(es)._
 
 - **sentence-craft** — 1 flag(s), 13 cleared:
-    - `style.positive_voice.subject_verb_early` (medium): "The normal component of the wave vector inside the medium is" → Tighten the nominal subject so the verb lands within 7-9 words: "The normal wave-vector component inside the medium is $\xi = ...$"
+    - `style.positive_voice.subject_verb_early` (medium): `The normal component of the wave vector inside the medium is` -> Tighten the nominal subject so the verb lands within 7-9 words: "The normal wave-vector component inside the medium is $\xi = ...$"
 - **voice-tells** — pass (22 rules cleared).
 - **lexical-spotcheck** — pass (54 rules cleared).
 - **latex-micro** — pass (41 rules cleared).
+- **incremental (2026-05-22)** — pass (2 new/edited rules cleared).
 

@@ -2,11 +2,8 @@
 # Setup
 
 <!-- AUTO_BEGIN: assembled -->
-% NEXT: Thelonious is a 6-year-old male phantom from the Virtual
 \subsection{Configuration}\label{subsec:val-setup}
 
-% PREV: \subsection{Configuration}\label{subsec:val-setup}
-% NEXT: # Setup
 Thelonious is a 6-year-old male phantom from the Virtual
 Population~\cite{ITISv5}, shown in \cref{fig:phantom}. The surface is
 a high-resolution triangle mesh with $23{,}826$ faces. Tissue
@@ -24,6 +21,7 @@ ray-tracer~\cite{SionnaRT} with no roughness model. All scripts and
 input geometries that produced the figures in this section are in the
 companion code release.
 <!-- AUTO_END: assembled -->
+
 
 
 

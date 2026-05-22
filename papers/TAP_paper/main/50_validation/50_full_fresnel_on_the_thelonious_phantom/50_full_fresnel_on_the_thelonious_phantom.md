@@ -58,6 +58,7 @@ $T_0\,\Aperp$ within the directional spread set by self-shadowing.
 
 
 
+
 ## section notes
 
 _(AI-owned notes about this section as a whole)_

@@ -2,11 +2,8 @@
 # Frequency dependence
 
 <!-- AUTO_BEGIN: assembled -->
-% NEXT: The accuracy of the constant-$T_0$ approximation has a clean
 \subsection{Frequency dependence}\label{subsec:pB-freq}
 
-% PREV: \subsection{Frequency dependence}\label{subsec:pB-freq}
-% NEXT: \begin{figure}[!t]
 The accuracy of the constant-$T_0$ approximation has a clean
 frequency dependence. Define the sphere ratio $R(f)$
 \begin{equation}\label{eq:R-of-f}
@@ -27,8 +24,6 @@ Cole--Cole values for skin and the angle family
 $\Tavg(\theta)\cos\theta$ at six representative frequencies are in
 Table~\ref{tab:itis-fvs} and Fig.~\ref{fig:si-angle-family} of the SI.
 
-% PREV: The accuracy of the constant-$T_0$ approximation has a clean
-% NEXT: # Frequency dependence
 \begin{figure}[!t]
   \centering
   % Legend entries capitalized (Conservative / Non-conservative); see
@@ -43,6 +38,7 @@ Table~\ref{tab:itis-fvs} and Fig.~\ref{fig:si-angle-family} of the SI.
   \label{fig:R-of-f}
 \end{figure}
 <!-- AUTO_END: assembled -->
+
 
 
 

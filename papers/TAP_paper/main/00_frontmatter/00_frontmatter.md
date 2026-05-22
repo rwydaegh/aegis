@@ -2,8 +2,6 @@
 # Frontmatter
 
 <!-- AUTO_BEGIN: assembled -->
-% PREV: # Frontmatter
-% NEXT: \begin{document}
 % =====================================================================
 % Paper A+B (merged)
 % Closed-form absorbed-power dosimetry on the human body, 1 to 100 GHz:
@@ -101,8 +99,6 @@
   \end{tikzpicture}%
 }
 
-% PREV: \documentclass[journal,twocolumn,10pt]{IEEEtran}
-% NEXT: \begin{abstract}
 \begin{document}
 
 \title{Closed-Form Absorbed-Power Dosimetry from~1~to~100\,GHz}
@@ -124,8 +120,6 @@ Absorbed-Power Dosimetry}
 
 \maketitle
 
-% PREV: \begin{document}
-% NEXT: \begin{IEEEkeywords}
 \begin{abstract}
 Regulatory dosimetry on the human body relies on Finite-Difference
 Time-Domain (FDTD) simulations, which grow to trillions of cells at
@@ -152,15 +146,13 @@ precomputed scalars. Antenna and beam optimization under exposure
 constraints become differentiable end-to-end.
 \end{abstract}
 
-% PREV: \begin{abstract}
-% NEXT: \IEEEpeerreviewmaketitle
 \begin{IEEEkeywords}
 APD, dosimetry, FDTD, Fresnel transmission, ICNIRP, mmWave, SAR.
 \end{IEEEkeywords}
 
-% PREV: \begin{IEEEkeywords}
 \IEEEpeerreviewmaketitle
 <!-- AUTO_END: assembled -->
+
 
 
 

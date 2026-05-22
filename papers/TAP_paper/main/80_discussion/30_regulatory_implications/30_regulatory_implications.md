@@ -2,18 +2,13 @@
 # Regulatory implications
 
 <!-- AUTO_BEGIN: assembled -->
-% NEXT: Whole-body ICNIRP compliance reduces to one inequality on three
 \subsection{Regulatory implications}\label{subsec:disc-regulatory}
 
-% PREV: \subsection{Regulatory implications}\label{subsec:disc-regulatory}
-% NEXT: The ICNIRP general-public reference level above $6$~GHz is
 Whole-body ICNIRP compliance reduces to one inequality on three
 precomputed scalars (\cref{eq:Sinc-max-worst}). The same algebra
 evaluates the existing reference levels for under- or over-protection
 across the population without an FDTD campaign.
 
-% PREV: Whole-body ICNIRP compliance reduces to one inequality on three
-% NEXT: The closed form gives a closed-form certificate that the existing
 The ICNIRP general-public reference level above $6$~GHz is
 $10$~W/m$^2$~\cite{ICNIRP2020}. Reference levels are the
 operationally measured incident-power-density limits intended to
@@ -27,8 +22,6 @@ the adolescent under the worst-case directional bound
 $D \le 2A_{\mathrm{CH}}/\Aab$. The reference level exceeds these
 thresholds by $61\%$, $32\%$, and $1\%$ respectively.
 
-% PREV: The ICNIRP general-public reference level above $6$~GHz is
-% NEXT: # Regulatory implications
 The closed form gives a closed-form certificate that the existing
 reference level fails the basic restriction for the three smaller
 body sizes under worst-case directional exposure. Under realistic
@@ -37,6 +30,7 @@ worst case, and the basic restriction is met~\cite{ICNIRP2020}. The
 closed form makes both the worst-case and the directional-average
 evaluation explicit.
 <!-- AUTO_END: assembled -->
+
 
 
 

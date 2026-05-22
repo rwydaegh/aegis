@@ -1,5 +1,15 @@
 % PREV: Below $6$~GHz the ICNIRP basic restriction is the peak spatial-average
+% PREV: SAR over a $10$~g cube~\cite{ICNIRP2020,62704-1}. An
+% PREV: energy-conservation argument on the cube footprint bounds this
+% PREV: restriction by the absorbed power density, so no explicit cube search
+% PREV: is needed.
 % NEXT: The bound follows from energy conservation on the cube footprint,
+% NEXT: with the $\sqrt{2}$ factor covering the worst-case tilt between cube
+% NEXT: axes and body normal. Section~\ref{si:apd-bound} of the SI derives the bound,
+% NEXT: gives the cube-intersection geometry under the IEC mass rule, and
+% NEXT: confirms it on Thelonious to within a median ratio of $1.30$. The same
+% NEXT: surface integral that delivers $\APDAvg$ therefore controls
+% NEXT: $\mathrm{psSAR}_{10\mathrm{g}}$.
 The following bound links the cube quantity to APD.
 \begin{theorem}\label{thm:apd-bound}
 For an axis-aligned $10$~g cube placed per IEC/IEEE~62704-1 on a planar
@@ -19,6 +29,7 @@ below the limb restriction of $4$~W/kg.
 ## reviews (paragraph)
 
 
+
 _PaperMaker9000 sweep — all clear across 4 lens(es)._
 
 - **sentence-craft** — pass (14 rules cleared).
@@ -30,4 +41,5 @@ _PaperMaker9000 sweep — all clear across 4 lens(es)._
     - _dismissed_ `latex.math.subscript_labels_upright`: The m subscript on rho is the mass density m, the same italic mass variable used standalone in L = (m/\rho_m)^{1/3}; making it \mathrm{m} would mismatch that variable, and the form is used consistently paper-wide.
     - _dismissed_ `latex.substitutions.units_math_mode_consistent`: The paper's consistent house style is $<number>$~<unit> with text-mode units and a tilde (hundreds of instances: $28$~GHz, $0.08$~W/kg); this matches the tilde_number_unit positive example 100~mW, no siunitx is used, and switching one leaf to math-mode units would break paper-wide consistency.
     - _dismissed_ `latex.math.thin_space_units`: Same house-style convention: the number sits in math mode and the unit follows in text mode with a tilde, applied uniformly across the paper rather than the \,\mathrm{} math-mode form.
+- **incremental (2026-05-22)** — pass (2 new/edited rules cleared).
 
