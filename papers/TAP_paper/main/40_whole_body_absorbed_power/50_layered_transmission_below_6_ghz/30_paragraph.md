@@ -31,9 +31,8 @@ $70$~mm, against fat thicknesses of $2$--$20$~mm in the Flintoft
 cohort~\cite[Table~1]{Flintoft2014}. The wave passes through the fat
 layer with little attenuation and reflects from the fat-muscle
 interface. Constructive interference enhances absorption, and destructive
-interference suppresses it. A three-layer transfer-matrix model with
-skin, fat, and a semi-infinite muscle half-space gives the layered
-transmission
+interference suppresses it. A three-layer transfer-matrix model gives the layered transmission,
+stacking skin, fat, and a semi-infinite muscle half-space,
 \begin{equation}\label{eq:T-lay}
   \Tlay(f, d_{\mathrm{SF}})
   = 1 - \bigl|\widetilde{\Gamma}_1(f, d_{\mathrm{SF}})\bigr|^2\, ,

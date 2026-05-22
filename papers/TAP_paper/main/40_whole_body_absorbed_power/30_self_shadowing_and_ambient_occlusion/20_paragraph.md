@@ -24,7 +24,7 @@
 % NEXT: the chin, and the soles of the feet are the dominant such regions.
 % NEXT: On a $10^4$--$10^5$ triangle mesh the solver evaluates $\eta$ in
 % NEXT: tens of milliseconds on commodity hardware.
-The \textit{exposure fraction} $\eta$ at a surface point $\rr$ is the cosine-weighted
+The \emph{exposure fraction} $\eta$ at a surface point $\rr$ is the cosine-weighted
 fraction of the upper hemisphere from which $\rr$ is unobstructed,
 \begin{equation}\label{eq:eta-def}
   \eta(\rr) = \frac{1}{\pi}\int_{S^2}

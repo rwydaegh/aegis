@@ -6,8 +6,9 @@
 % PREV: ambient-occlusion pass on the body mesh.
 Two extensions follow naturally. Coherent beamforming replaces
 summed powers with summed amplitudes on short-range mmWave devices.
-At mmWave the far-field distance shrinks to centimeters, so the
-device antenna pattern maps directly onto the body surface
+At mmWave the far-field distance is on the order of centi- to
+millimeters, so the device antenna pattern maps directly onto the body
+surface
 (\cref{subsec:disc-validity}). Pre-compliance for handheld uplink
 follows in closed form.
 

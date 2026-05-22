@@ -13,7 +13,7 @@
 % NEXT:   \label{fig:R-of-f}
 % NEXT: \end{figure}
 The accuracy of the constant-$T_0$ approximation has a clean
-frequency dependence. Define the sphere ratio $R(f)$
+frequency dependence. Define the \emph{sphere ratio} $R(f)$
 \begin{equation}\label{eq:R-of-f}
   R(f) \equiv T_0(f) / \Tbar(f),
   \qquad

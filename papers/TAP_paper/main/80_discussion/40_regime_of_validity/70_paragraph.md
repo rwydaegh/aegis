@@ -37,12 +37,12 @@
 % NEXT: Wavelength is $3$~mm at $100$~GHz, $1$~mm at $300$~GHz, $0.3$~mm at
 % NEXT: $1$~THz. The Rayleigh criterion is met at $100$~GHz on ridge-scale
 % NEXT: features and is marginal at $300$~GHz.
-The pseudo-Brewster compensation softens above $200$--$250$~GHz,
+The pseudo-Brewster compensation weakens above $200$--$250$~GHz,
 where the Azzam high-index criterion $|\ntilde| > 2.5$ weakens and
 worst-case angular variation grows from $5.6\%$ at $28$~GHz to
 approximately $10\%$ at $250$~GHz and $15\%$ at $300$~GHz, comparable
-to the dielectric uncertainty on $T_0$ (\cref{fig:err-budget}). Skin
-refractive-index modulus from the IT'IS database~\cite{ITISv5,Gabriel1996} is $4.84$ at $28$~GHz,
+to the dielectric uncertainty on $T_0$ (\cref{fig:err-budget}). The
+skin refractive-index modulus from the IT'IS database~\cite{ITISv5,Gabriel1996} is $4.84$ at $28$~GHz,
 $3.68$ at $60$~GHz, and $3.01$ at $100$~GHz, and extrapolation puts
 $|\ntilde|$ near $2.5$ around $200$--$250$~GHz, approximately $2.2$
 at $300$~GHz, and $1.8$--$2$ at $1$~THz.

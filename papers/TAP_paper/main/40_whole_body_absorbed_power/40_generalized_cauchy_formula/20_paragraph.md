@@ -24,7 +24,7 @@ is
   \frac{1}{4\pi}\int_{S^2}
   \IPD\,T_0\,\Vis(\rr,\khat)\,\pospart{\nhat\cdot(-\khat)}\,
   \diff\Omega
-  = \frac{\IPD\,T_0}{4}\,\eta(\rr),
+  = \frac{\IPD\,T_0}{4}\,\eta(\rr)\,,
 \]
 using the definition of $\eta$ and the identity $\int_{S^2}
 \pospart{\nhat\cdot(-\khat)}\,\diff\Omega = \pi$ for any unit

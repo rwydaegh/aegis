@@ -12,7 +12,7 @@
 % NEXT: scaling and bounds the linearly polarized worst-case correction to
 % NEXT: \eqref{eq:Sinc-max-worst} via the body polarization directivity.
 The ICNIRP 2020 guidelines~\cite{ICNIRP2020} specify a whole-body
-average SAR limit of $0.08$~W/kg for the general public. The bound
+average SAR limit of $0.08\,\mathrm{W/kg}$ for the general public. The bound
 $\Aperp(\khat) \le A/2$ on closed surfaces gives
 $D(\khat) \le 2A/\Aab$. With $\mathrm{SAR}_{\mathrm{wb}} =
 P_{\mathrm{abs}}/m$ and the conservative replacement $\Aab \le A$,

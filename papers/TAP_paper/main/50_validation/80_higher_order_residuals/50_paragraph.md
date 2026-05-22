@@ -15,7 +15,7 @@ mmWave (skin meets the Rayleigh roughness criterion) reduces $f$ by
 roughly a factor of three relative to the diffuse bound. On the
 Thelonious phantom at $28$~GHz, the area-weighted recapture fraction is
 $f_{\mathrm{global}} \approx 0.09$ under the diffuse bound, giving
-$C \approx 1.04$. The specular estimate brings this to
+$C \approx 1.04$. The specular estimate gives
 $C \approx 1.01$. The body-averaged correction stays below $2\%$,
 smaller than the propagated dielectric uncertainty derived in
 \cref{subsec:corr-summary}. The convex-hull energy bound

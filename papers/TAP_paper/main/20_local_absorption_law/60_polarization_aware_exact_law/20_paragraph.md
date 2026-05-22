@@ -29,7 +29,7 @@ $\Delta T = T_p - T_s$ the polarization splitting, and $q = |e_p|^2 -
 |e_s|^2 \in [-1, 1]$ the local TM excess. The polarization correction
 vanishes pointwise for circular illumination, in expectation for
 random-orientation linear illumination, and to within $2.5\%$ for
-multipath averaging above 20 paths. First, for circular polarization
+multipath averaging above~20 paths. First, for circular polarization
 the TE and TM intensities are equal at every point on every body, so
 $q \equiv 0$ pointwise. Second, for linear polarization with random
 ensemble orientation either in space or time, the ensemble average

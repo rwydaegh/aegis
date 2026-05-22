@@ -14,7 +14,7 @@
 % NEXT: ray-tracer~\cite{SionnaRT} with no roughness model. All scripts and
 % NEXT: input geometries that produced the figures in this section are in the
 % NEXT: companion code release.
-\subsection{Configuration}\label{subsec:val-setup}
+\subsection{Setup}\label{subsec:val-setup}
 
 ## reviews (subsection_header)
 

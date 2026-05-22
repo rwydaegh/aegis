@@ -264,6 +264,26 @@ power matches the simplified prediction $T_0\,\Aperp(\khat)$ with
 mean bias $-1.2\%$ and standard deviation $0.5\%$. The largest
 single-direction deviation is $2.2\%$.
 
+\subsection{Grazing incidence}\label{si:grazing}
+
+The pointwise comparison in the main paper (Table~\ref{tab:phantom})
+excludes triangles with $\theta > 75^\circ$. The headline check uses a
+single plane wave incident from above, the most grazing-heavy
+incidence for an upright body. The area-weighted fraction of the
+illuminated surface at $\theta \ge 75^\circ$ is $50\%$ from above,
+against $19\%$ under frontal illumination and $26\%$ on a convex
+sphere of equal area. These grazing triangles carry only about $15\%$
+of the absorbed power, because the cosine weight
+$\pospart{\mu} = \cos\theta$ suppresses their contribution.
+
+The local relative error grows beyond $75^\circ$, but this is an
+artifact of the vanishing $\APD$: as $\cos\theta \to 0$ both the
+predicted and the reference value go to zero, so a small absolute
+difference becomes a large ratio. The absolute error at grazing stays
+at or below the near-normal band, at most about $2\%$ of the peak
+$\APD$. For this top-down incidence the geometric law matches the
+area-integrated total absorbed power to within about $0.35\%$.
+
 
 \section{Pseudo-Brewster compensation across tissues}\label{si:azzam}
 

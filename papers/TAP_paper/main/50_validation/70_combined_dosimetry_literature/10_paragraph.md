@@ -26,7 +26,7 @@ $\langle Q^a\rangle$ at $d_{\mathrm{SF}} = 0$ with $\gamma_s =
 $6$--$18$~GHz plateau from~\cite[Fig.~4.9]{Zhang2017thesis} with the
 $1$--$6$~GHz envelope from~\cite[Fig.~4.11]{Zhang2017thesis}.
 \Cref{fig:waterfall} then compares the closed-form
-prediction~\eqref{eq:cauchy-exact} against $168$ volunteers and $5$
+prediction~\eqref{eq:cauchy-exact} against $108$ volunteers and $5$
 FDTD phantoms from $1$ to $100$~GHz.
 
 ## reviews (paragraph)

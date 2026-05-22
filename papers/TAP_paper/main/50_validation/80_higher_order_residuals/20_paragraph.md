@@ -21,11 +21,11 @@
 % NEXT: \bottomrule
 % NEXT: \end{tabular}
 % NEXT: \end{table}
-First, we examine the influence of curvature. For a surface with
-twice the local mean curvature $H = 1/R_1 +
-1/R_2$, the first-order Physical Optics correction multiplies the
-geometric law by $1 + \mu/(kR_1) + \mu/(kR_2)$, where
-$k = 2\pi/\lambda$ is the free-space wavenumber. Since
+First, consider the influence of curvature. The first-order Physical
+Optics correction multiplies the geometric law by
+$1 + \mu/(kR_1) + \mu/(kR_2)$ for a surface with twice the local mean
+curvature $H = 1/R_1 + 1/R_2$, where $k = 2\pi/\lambda$ is the
+free-space wavenumber. Since
 $\pospart{\mu}\cdot\mu = \pospart{\mu}^2$, the per-triangle update
 separates additively,
 \begin{equation}\label{eq:curv-update}

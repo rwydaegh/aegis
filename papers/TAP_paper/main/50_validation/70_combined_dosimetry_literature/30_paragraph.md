@@ -54,9 +54,8 @@
 \textit{et~al.}~\cite{Bamba2014}'s $\eta$ in panel (c) is fit from full-body FDTD on
 ellipsoidal phantoms in diffuse-field exposure. Their fit absorbs
 creeping-wave and finite-curvature contributions that the
-planar-tissue $\Tbar$ omits. Its convergence to $\Tbar$ at
-$5.8$~GHz, the upper edge of their calibration range, is the
-convergence to the geometric-optics regime predicted by a Mie
+planar-tissue $\Tbar$ omits. At $5.8$~GHz, the upper edge of their calibration range, $\eta$
+converges to $\Tbar$ in the geometric-optics regime predicted by a Mie
 analysis of body-scale spheres~\cite{BohrenHuffman1983}. The
 $1.45$--$3$~GHz portion of their fit lies outside the
 geometric-optics validity window of the present framework

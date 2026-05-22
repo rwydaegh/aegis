@@ -467,6 +467,8 @@ def create_validation_plots(*, mode: str = "png", out_dir: Path | None = None) -
     ax1.set_ylabel(f'Prediction error [{pct}]')
     ax1.set_xlim([3, 2000])
     ax1.set_ylim([-70, 10])
+    ax1.set_xticks([5, 10, 50, 100, 500, 1000])
+    ax1.set_xticklabels(['5', '10', '50', '100', '500', '1000'])
 
     # Body-part guide lines at 28 GHz, with short labels rotated 90 degrees.
     wavelength_28 = c / 28e9

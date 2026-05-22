@@ -34,7 +34,7 @@
 % NEXT: \cref{subsec:val-mie}. Numerical values across $1$--$100$~GHz on
 % NEXT: the Thelonious phantom are in Table~\ref{tab:si-diffraction} of the SI.
 The correction grows as the wavelength approaches the local
-body-part size. At sub-$6$~GHz frequencies the smallest features
+body-part size. At sub-$6$~GHz frequencies, the smallest features
 have $kR \lesssim 5$ where the correction is no longer small. At
 $28$~GHz, only the ear edges and fingertips carry a correction
 above the Fresnel error floor.

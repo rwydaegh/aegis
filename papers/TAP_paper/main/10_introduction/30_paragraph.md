@@ -38,7 +38,7 @@
 % NEXT:   across $168$ volunteers and $5$ FDTD phantoms.
 % NEXT: \end{enumerate}
 This work derives the closed form behind these coefficients. On
-high-index tissue, the unpolarized Fresnel transmission collapses to a
+high-index tissue, the unpolarized Fresnel transmission becomes a
 near-constant scalar~\cite{Azzam2015}. The local law then integrates
 over a nonconvex body through a generalized Cauchy
 formula~\cite{Cauchy1841}, with self-shadowing from ambient

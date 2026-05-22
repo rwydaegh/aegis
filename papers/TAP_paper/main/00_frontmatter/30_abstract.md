@@ -36,10 +36,11 @@ surface yields a generalized Cauchy whole-body identity with one
 geometry scalar. A layered transmission term captures the sub-6~GHz
 whole-body dip. On a $10^4$-triangle mesh under $10^2$ incident
 paths, this turns the absorbed-power map into one differentiable
-matrix-vector multiply, evaluated in under $10$~ms on a GPU. The
+matrix-vector multiply, evaluated in under $10$~ms on a Graphics
+Processing Unit (GPU). The
 closed form is validated in four ways: Mie theory on lossy spheres,
 full polarization-aware Fresnel calculations on the Thelonious
-phantom, Sim4Life FDTD, and dosimetry literature across 168
+phantom, Sim4Life FDTD, and dosimetry literature across 108
 volunteers and 5 FDTD phantoms. In the high-frequency regime, the
 error is below 5\%, within the reported uncertainty in human-skin
 dielectric parameters. Whole-body compliance reduces to three

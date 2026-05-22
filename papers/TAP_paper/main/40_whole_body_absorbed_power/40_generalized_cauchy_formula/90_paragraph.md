@@ -20,9 +20,9 @@
 % PREV: \end{tabular}
 % PREV: \end{table}
 The reverberation-chamber literature has been measuring $\Tbar$
-directly. Bamba's empirical efficiency $\eta(f)$ for diffuse-field
-exposure on four FDTD ellipsoid phantoms~\cite{Bamba2014}
-coincides with $\Tbar(f)$ to $3\%$ at $5.8$~GHz. It diverges below
+directly. Bamba's empirical efficiency $\eta(f)$
+coincides with $\Tbar(f)$ to $3\%$ at $5.8$~GHz on four FDTD ellipsoid
+phantoms under diffuse-field exposure~\cite{Bamba2014}. It diverges below
 $3$~GHz, where the body-Mie contribution to absorption on a finite
 ellipsoid becomes non-negligible (\cref{tab:bands}). The framework
 is mainly a mmWave method.

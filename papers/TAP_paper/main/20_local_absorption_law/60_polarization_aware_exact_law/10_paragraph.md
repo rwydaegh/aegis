@@ -25,7 +25,8 @@
 % NEXT: The angular dependence is now confined to the scalar function
 % NEXT: $\Tavg(\theta)$. The next section shows that this function is nearly
 % NEXT: constant for biological tissue.
-A plane wave is fully polarized. At a surface point
+Any incident plane wave is fully polarized, so the exact \gls{APD}
+law must be polarization-aware. At a surface point
 $\rr$, decompose the incident electric field into local TE and TM
 components by projecting on the unit vectors
 $\hat{e}_s(\rr) = \khat \times \nhat / |\khat \times \nhat|$ and
@@ -45,7 +46,7 @@ The exact \gls{APD} at a visible point is therefore
 the body is opaque, and any locally flat surface. The self-shadowing
 factor $\Vis(\rr,\khat)$ of the geometric law in \cref{sec:pB} is
 suppressed in this subsection because the Fresnel calculation
-operates at a point already taken to be visible. Visibility re-enters
+operates at a point already taken to be visible. Visibility returns
 with the multi-source matrix form in \cref{subsec:matrix}.
 
 ## reviews (paragraph)

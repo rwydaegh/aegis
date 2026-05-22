@@ -18,7 +18,9 @@ $\theta < 75^\circ$, the local statistics are mean error $-2.6\%$,
 root-mean-square $3.2\%$, and range $[-5.3\%, 0.0\%]$. The peak
 $\APD$ is recovered exactly because the maximum is at normal incidence,
 where $\Teff(0) = T_0$ regardless of polarization. The local error is
-below $5.5\%$ everywhere with $\theta < 75^\circ$.
+below $5.5\%$ everywhere with $\theta < 75^\circ$. Above $75^\circ$
+the local error rises, but these surfaces carry only $15\%$ of the
+absorbed power (Section~\ref{si:grazing} of the SI).
 Section~\ref{si:apd-direction} of the SI extends the analysis to
 $128$ illumination directions and three polarization states. The
 per-direction distribution of total absorbed power clusters around

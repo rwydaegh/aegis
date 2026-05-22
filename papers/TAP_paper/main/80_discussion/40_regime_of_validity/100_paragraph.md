@@ -2,7 +2,7 @@
 % PREV: $1.7$~mm at $28$~GHz), evanescent waves and antenna-body impedance
 % PREV: coupling require full-wave simulation. Outside this regime, the law
 % PREV: applies pointwise with spatially varying inputs.
-The dielectric properties of biological tissue have been measured to
+Measurements place the dielectric properties of biological tissue
 within approximately $20\%$ at mmWave~\cite{AlekseevZiskin2007}. This
 input uncertainty produces $\pm 7\%$ on $T_0$ through the sublinear
 propagation derived in \cref{subsec:corr-summary}, and it dominates

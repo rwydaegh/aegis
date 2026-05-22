@@ -1,7 +1,7 @@
 % PREV: \section{Method: pseudo-Brewster compensation}\label{sec:pB}
-The flowchart now moves from the exact local law to its unpolarized
-form. This section shows why the Fresnel factor can be replaced by a
-nearly constant scalar for mmWave tissue. The reason is
+As shown in the flowchart~(\cref{fig:flowchart}), this section reduces
+the exact local law to its unpolarized form. A nearly constant scalar
+can replace the Fresnel factor for mmWave tissue, and the reason is
 pseudo-Brewster compensation.
 
 ## reviews (paragraph)

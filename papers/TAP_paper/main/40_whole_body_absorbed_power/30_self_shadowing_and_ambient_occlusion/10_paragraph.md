@@ -7,12 +7,12 @@
 % NEXT: \end{equation}
 % NEXT: For convex bodies $\Vis \equiv 1$ and $\eta \equiv 1$. For nonconvex
 % NEXT: bodies $\eta \in [0,1]$.
-The human body is not convex. Concavities such as the armpits, the
-gap between the legs, and the neck region cause one part of the body
+The human body is not convex. Concavities, e.g., the armpits, the
+gap between the legs, and the neck region, cause one part of the body
 to shadow another. The binary visibility $\Vis(\rr,\khat) \in \{0,1\}$
 in~\eqref{eq:geom-law} is the ambient-occlusion primitive of computer
-graphics introduced by Zhukov \textit{et~al.}~\cite{Zhukov1998} and brought
-into production rendering by Landis~\cite{Landis2002}. Modern GPUs
+graphics that Zhukov \textit{et~al.}~\cite{Zhukov1998} introduced and
+Landis~\cite{Landis2002} brought into production rendering. Modern GPUs
 evaluate $\Vis(\rr,\khat)$ at interactive frame
 rates~\cite{AkenineMoller2018}.
 

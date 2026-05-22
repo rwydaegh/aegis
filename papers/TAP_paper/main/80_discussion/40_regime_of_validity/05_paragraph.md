@@ -8,7 +8,7 @@
 % NEXT: The high-frequency boundary is set by two, the softening of the
 % NEXT: pseudo-Brewster compensation and skin surface roughness, both gentler
 % NEXT: than the low-frequency boundary.
-\Cref{tab:bands} summarizes the resulting band stratification.
+\Cref{tab:bands} summarizes the validity by frequency band.
 
 ## reviews (paragraph)
 

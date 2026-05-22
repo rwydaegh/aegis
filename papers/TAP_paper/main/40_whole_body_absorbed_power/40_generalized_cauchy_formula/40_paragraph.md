@@ -11,7 +11,7 @@ body. Energy conservation under isotropic illumination implies
 $\langle P_{\mathrm{abs}} \rangle \le \IPD\,A_{\mathrm{CH}}/4$,
 because the power entering the convex hull bounds the absorbed power.
 For the Thelonious phantom $A_{\mathrm{CH}}/A \approx 1.20$, so the
-hull bound brackets the true absorbed power within a few percent.
+hull bound is within a few percent of the true absorbed power.
 
 ## reviews (paragraph)
 

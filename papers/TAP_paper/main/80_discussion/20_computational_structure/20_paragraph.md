@@ -11,14 +11,13 @@
 % NEXT: cosine gate is rectified shading. The visibility matrix $\mathbf{V}$
 % NEXT: is ambient occlusion, one of the most optimized computations in
 % NEXT: real-time rendering~\cite{AkenineMoller2018}.
-First, the network is differentiable in every input. Replacing the
-hard $[\cdot]_+$ gate with the smooth \gls{GELU}
-activation~\eqref{eq:gelu} preserves the chain rule. Gradients of
+First, the network is differentiable in every input. The smooth
+\gls{GELU} activation~\eqref{eq:gelu} replaces the hard $[\cdot]_+$
+gate, preserving the chain rule. Gradients of
 regulatory quantities propagate to antenna positions, antenna
-orientations, beam codebooks, and reconfigurable-intelligent-surface
-phases through standard backpropagation. End-to-end exposure
-assessment in current practice carries a per-scenario FDTD
-evaluation on the user phantom as the back-end
+orientations, and beam codebooks through standard backpropagation.
+End-to-end exposure assessment in current practice requires a
+per-scenario FDTD evaluation on the user phantom as the back-end
 step~\cite{Wydaeghe2022access,Wydaeghe2026npj}. With the closed form
 replacing that step, exposure-constrained network design becomes a
 continuous optimization problem.

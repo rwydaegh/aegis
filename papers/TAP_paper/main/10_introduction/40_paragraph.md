@@ -10,8 +10,9 @@
 % PREV: dielectric uncertainty, at a small fraction of the cost. Because it is
 % PREV: also differentiable, antenna and beam design under exposure limits
 % PREV: becomes a continuous optimization.
-To the best of the authors' knowledge, this paper makes the following
-contributions.
+To the best of the authors' knowledge, this is the first closed-form
+\gls{APD} law for the human body, validated four independent ways. The
+contributions are as follows.
 \begin{enumerate}
   \item We derive closed-form \gls{APD} laws from Fresnel transmission
   on lossy biological tissue and integrate them over nonconvex
@@ -24,19 +25,20 @@ contributions.
   geometric approximation within a few percent over the relevant
   angular range.
 
-  \item The computation is differentiable end-to-end. For a body mesh
+  \item The computation is differentiable end-to-end, the first
+  \gls{APD} map to provide closed-form gradients. For a body mesh
   under many incident paths, the absorbed-power map is one $10$~ms
   matrix-vector multiply.
 
   \item Higher-order correction terms extend and delimit the closed
   form. A layered transmission term covers the sub-6~GHz whole-body
-  comparison, while curvature, diffraction, and inter-body reflection
+  comparison, whereas curvature, diffraction, and inter-body reflection
   terms bound the main higher-order errors.
 
   \item The theory is validated in four independent ways: Mie theory
   on lossy spheres, full polarization-aware Fresnel calculations on
   the Thelonious phantom, Sim4Life FDTD, and dosimetry literature
-  across $168$ volunteers and $5$ FDTD phantoms.
+  across $108$ volunteers and $5$ FDTD phantoms.
 \end{enumerate}
 
 ## reviews (paragraph)

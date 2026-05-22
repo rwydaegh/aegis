@@ -343,7 +343,7 @@ def main(argv: List[str] | None = None):
         label=r"$T_{\mathrm{avg}}$",
     )
     ax5.set_xlabel(r"Incidence angle $\theta$ [deg]")
-    ax5.set_ylabel(r"Transmission $T(\theta)$")
+    ax5.set_ylabel(r"Transmission $T(\theta)$ $[\,]$")
     ax5.set_xlim(0, 85)
     ax5.set_ylim(0, 1.05)
     ax5.set_xticks([0, 15, 30, 45, 60, 75])
@@ -395,7 +395,7 @@ def main(argv: List[str] | None = None):
     ax6.plot(theta_deg, apd_p, "--", color=c_TM, linewidth=1.6, label=r"$T_p\cos\theta$ (TM)")
     ax6.plot(theta_deg, apd_avg, "-.", color=c_avg, linewidth=1.4, label=r"$T_{\mathrm{avg}}\cos\theta$")
     ax6.set_xlabel(r"Incidence angle $\theta$ [deg]")
-    ax6.set_ylabel(r"$\mathrm{APD}/\mathrm{IPD}$")
+    ax6.set_ylabel(r"$\mathrm{APD}/\mathrm{IPD}$ $[\,]$")
     ax6.set_xlim(0, 85)
     ax6.set_ylim(0, 0.62)
     ax6.set_xticks([0, 15, 30, 45, 60, 75])

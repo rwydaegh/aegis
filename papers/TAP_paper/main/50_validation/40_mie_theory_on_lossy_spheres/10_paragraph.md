@@ -4,11 +4,11 @@
 % NEXT: below towards the Fresnel limit $R_{\mathrm{sphere}} - 1 \approx
 % NEXT: -1.2\%$ as $x \to \infty$. \Cref{fig:mie}(b) shows the error versus
 % NEXT: frequency for four representative body-part diameters.
-For a lossy sphere of radius $a$ and complex refractive index
-$\ntilde$, the Mie series gives an exact solution for the absorption
-efficiency $Q_{\mathrm{abs}}$. The geometric law predicts
+The Mie series gives an exact solution for the absorption
+efficiency $Q_{\mathrm{abs}}$ of a lossy sphere of radius $a$ and
+complex refractive index $\ntilde$. The geometric law predicts
 $P_{\mathrm{abs}} = \IPD\,T_0\,\pi a^2$, so its error is
-$(T_0/Q_{\mathrm{abs}} - 1)$. We use skin properties from the
+$(T_0/Q_{\mathrm{abs}} - 1)$. Skin properties come from the
 IT'IS database~\cite{ITISv5,Gabriel1996} at each frequency. The total error splits into two
 contributions. The Fresnel approximation error is shape- and
 frequency-dependent but size-independent. On a sphere it is the

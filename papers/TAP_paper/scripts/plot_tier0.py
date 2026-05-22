@@ -90,7 +90,7 @@ def fig_kernels_vs_fdtd(df: pd.DataFrame, out_path: Path, *, ieee: bool = False)
     ax.set_xticks([0, 1, 2, 3, 4, 5, 6])
     ax.set_xlabel(r"Frequency $f$ [GHz]")
     ax.set_ylabel(
-        r"$P_{\mathrm{abs}}^{\mathrm{law}} / P_{\mathrm{abs}}^{\mathrm{FDTD}}$"
+        r"$P_{\mathrm{abs}}^{\mathrm{law}} / P_{\mathrm{abs}}^{\mathrm{FDTD}}$ $[\,]$"
     )
     ax.set_xlim(0.0, 6.0)
     ax.set_ylim(0.15, 1.45)

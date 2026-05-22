@@ -106,7 +106,7 @@
 % NEXT:   used by ICNIRP (\cref{sec:compliance}).}
 % NEXT:   \label{fig:flowchart}
 % NEXT: \end{figure}
-Flowchart \ref{fig:flowchart} shows the exact local law, the
+Flowchart~\ref{fig:flowchart} shows the exact local law, the
 reductions to whole-body absorbed power, the higher-order
 corrections, and the regulatory outputs. This section derives the top
 box: the local law at one visible surface point.

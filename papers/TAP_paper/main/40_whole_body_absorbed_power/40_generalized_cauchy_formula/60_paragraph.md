@@ -8,7 +8,7 @@
 % NEXT: $R = T_0/\Tbar$ for skin from $0.3$--$100$~GHz.
 The same direction-averaged identity becomes exact when $T_0$ is
 replaced by the angle-dependent
-$\Tavg(\theta)$. The cosine-weighted angular integral collapses to
+$\Tavg(\theta)$. The cosine-weighted angular integral becomes
 $\Tbar$ via~\eqref{eq:R-of-f}, so for any body opaque at the
 wavelength
 \begin{equation}\label{eq:cauchy-exact}

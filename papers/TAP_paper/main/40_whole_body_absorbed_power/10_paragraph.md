@@ -1,7 +1,7 @@
 % PREV: \section{Method: whole-body absorbed power}\label{sec:cauchy}
-The flowchart next integrates the geometric local law over the body.
-This section turns surface \gls{APD} into direction-averaged
-whole-body absorbed power. The needed new ingredient is visibility:
+Next, as shown in the flowchart~(\cref{fig:flowchart}), this section
+turns surface \gls{APD} into direction-averaged whole-body absorbed
+power. The needed new ingredient is visibility:
 nonconvex body parts can shadow one another.
 
 ## reviews (paragraph)

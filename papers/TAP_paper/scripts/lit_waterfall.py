@@ -515,7 +515,7 @@ def _panel_kodera_diao(ax: plt.Axes) -> None:
             markeredgewidth=1.0, markersize=8.0,
             label=r"Diao 2024 5G patch (28\,GHz)")
     ax.set_ylim(0.0, 1.0)
-    ax.set_ylabel(r"$T_{\mathrm{tr}}$ / $T_{\mathrm{eff}}$ (1)",
+    ax.set_ylabel(r"$T_{\mathrm{tr}}$ / $T_{\mathrm{eff}}$ $[\,]$",
                   fontsize=FS_AXIS)
     _format_freq_axis(ax, ticks=[1, 3, 10, 30, 100])
     ax.set_xlim(0.85, 115.0)
@@ -537,7 +537,7 @@ def _panel_aegis(ax: plt.Axes) -> None:
     ax.set_ylim(0.28, 1.32)
     ax.set_ylabel(
         r"$\langle P_{\mathrm{abs}}\rangle_{\mathrm{AEGIS}}/"
-        r"\langle P_{\mathrm{abs}}\rangle_{\mathrm{FDTD}}$ (1)",
+        r"\langle P_{\mathrm{abs}}\rangle_{\mathrm{FDTD}}$ $[\,]$",
         fontsize=FS_AXIS,
     )
     _format_freq_axis(ax, ticks=[0.5, 1, 2, 5, 10])
@@ -587,7 +587,7 @@ def _panel_unification(ax: plt.Axes) -> None:
             markeredgewidth=1.0, markersize=8.0,
             label="Diao 2024 (28 GHz, patch array)")
     ax.set_ylim(0.0, 1.0)
-    ax.set_ylabel(r"$\bar{T}(f)\,A_{\mathrm{ab}}/A$ (1)", fontsize=FS_AXIS)
+    ax.set_ylabel(r"$\bar{T}(f)\,A_{\mathrm{ab}}/A$ $[\,]$", fontsize=FS_AXIS)
     _format_freq_axis(ax, ticks=[1, 3, 10, 30, 100])
     ax.set_xlim(0.85, 115.0)
 
@@ -700,7 +700,7 @@ def build_summary() -> Path:
             markeredgewidth=1.2, markersize=10,
             label=r"Diao 2024, 28 GHz patch on TARO")
     ax.set_ylim(0.20, 0.82)
-    ax.set_ylabel(r"$\bar{T}(f)\,A_{\mathrm{ab}}/A$ (1)")
+    ax.set_ylabel(r"$\bar{T}(f)\,A_{\mathrm{ab}}/A$ $[\,]$")
     _format_freq_axis(ax, ticks=[1, 3, 10, 30, 100])
     ax.set_xlim(0.85, 115.0)
     ax.tick_params(axis="both", which="major", labelsize=9.5)
@@ -1002,7 +1002,7 @@ def build_combined() -> Path:
     )
 
     ax.set_ylim(0.0, 1.0)
-    ax.set_ylabel(r"$\bar{T}(f)\,A_{\mathrm{ab}}/A$ (1)")
+    ax.set_ylabel(r"$\bar{T}(f)\,A_{\mathrm{ab}}/A$ $[\,]$")
     _format_freq_axis(ax, ticks=[1, 3, 10, 30, 100])
     ax.set_xlim(0.85, 115.0)
     ax.grid(True, which="major", alpha=0.25)
