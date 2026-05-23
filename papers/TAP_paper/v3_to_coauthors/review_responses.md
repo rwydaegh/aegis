@@ -642,12 +642,70 @@ The Mie figures were regenerated in place (`figures/mie_panel_freq.pdf`,
 above, I'll roll the leaves into a fresh `paper.tex` + PDF and (if you want) a v4
 snapshot.
 
-## Quick index of what's still open for you
+## Round 2 — your follow-ups (these supersede the matching entries above)
 
-- **3** — formula vs identity: unify, or keep the split? (no edit yet)
-- **15** — pick the wrist→? swap and the chin wording (no edit yet)
-- **21** — apply the body-Mie gloss (option 1)? (no edit yet)
-- **24** — pick A (drop subscript everywhere) or B (define $R_\text{sphere}$ once) (no edit yet)
-- **28** — keep ±15%, or change? (no edit needed)
-- **29** — add a sentence making the 4·C₁ = Cauchy link explicit? (no edit, per your "dont edit yet")
-- **32** — one accuracy sentence enough, or add a "what it means" clause? (one sentence already added)
+**#0 GPU** — ✅ confirmed done; the abstract leaf reads "on a GPU." (The v3 PDF
+still shows the spelled-out form because v3 was snapshotted before the change.)
+
+**#13 vitreous humor** — ✅ reverted per your note: now "skin and vitreous
+humor" (dropped subcutaneous fat, kept vitreous humor).
+
+**#21 body-Mie — decoined.** Footprint was **6** places, not 3: the Cauchy §IV
+prose, the Mie §V definition, the literature §V prose, the SI, and *two* labels in
+the waterfall figure (the inline "Body-Mie / fat λ/4 regime" and the validity-inset
+"Body-Mie residual"). It did not clearly earn the coinage. I dropped the "body-"
+prefix everywhere and use the standard term **"Mie"** (Mie scattering/regime is
+textbook, not a coinage), which also removes the define-it-later problem. Waterfall
+figure regenerated. If you'd rather name *no* regime at all, swapping the remaining
+"Mie regime/contribution" for "finite-body diffraction" is a one-step follow-up.
+
+**#24 R_sphere — Option A applied (subscript dropped everywhere).** `R = T₀/T̄`
+was already defined as "the sphere ratio" and there is no symbol collision
+(reflectance is `R̄`), so the subscript was redundant. Edited: the Mie asymptote
+sentence, the Mie figure caption (×2), the SI definition, and three labels in
+`mie_theory_corrected.py` (mie figures regenerated). `R` is now used consistently,
+and the Mie freq panel's asymptote `R(f)−1` is visibly the same curve as Fig. 5.
+
+**#32 — ✅ four-ways clause added.** The conclusion now opens beat 1 with
+"Validated four independent ways, it matches FDTD in the mmWave band to within the
+7% tissue-dielectric uncertainty."
+
+**#28 — what the sentence means, and the number.** It defends the law: the three
+per-direction law/FDTD ratios are 1.06, 1.20, 0.83. They scatter beyond the ±7%
+dielectric band, but that scatter is FDTD *reference* noise, not closed-form error.
+The RMS of those deviations from 1.0 is √((6²+20²+17²)/3) ≈ **15%**, so ±15% is
+data-grounded — ±10% would not cover the 1.20 / 0.83 points. You're right that
+voxel discretization isn't the only source, so I broadened it: "voxel
+discretization, staircasing, and finite convergence scatter the per-direction FDTD
+result by about ±15% at 7 GHz, against the closed form's own ≈5% diffraction
+error." (If you still want ±10%, I can, but it'll sit oddly next to 1.20/0.83.)
+
+**#29 — why Zhang sits high, and the plot.**
+- *Why ~0.57 vs our ~0.43–0.45:* at 6 GHz we match Zhang exactly (both 0.43). Above
+  6 GHz his C₁ climbs (0.107→0.14) because the body becomes *fully* skin-absorbing —
+  his plateau is the surface-area-dominated limit. Our T̄ rises too, but only mildly
+  (T₀: 0.48→0.54 over 6–28 GHz), so our curve stays ~0.45 while Zhang reaches 0.57.
+  So our model *under*-predicts the high-frequency rise — conservative, not inflated.
+- *Why other literature is ~0.4:* Flintoft (0.47–0.49), Bamba (~0.5) and our T̄
+  (~0.5) cluster; Zhang's 0.57 is the high outlier. Part is the ×4 mapping (his
+  ξ = 4C₁ uses the convex-hull silhouette 0.25·BSA), which amplifies small C₁
+  differences; part is method (reverberation chamber on 48 real subjects vs FDTD
+  phantoms). The digitization itself is faithful (verified to ±0.005 in C₁).
+- *Honesty flag:* the waterfall table says Zhang (0.45–0.65) is matched "within
+  scatter" by our 0.43–0.49 — but our value sits at/just below Zhang's lower edge,
+  so "within scatter" is slightly generous. Worth softening if you want.
+- *The plot:* yes, there **is** a 6 GHz plateau point (ξ=0.43) — it sits right at the
+  envelope's right edge and almost on our black framework curve (both ~0.43 there),
+  so it's visually buried. Below 6 GHz Zhang is shown as the 48-subject *envelope*
+  band (his Fig. 4.11, where the low-frequency spread is real); above 6 GHz as the
+  *plateau* squares (his Fig. 4.9 C₁ fit). 6 GHz is the shared boundary, which is
+  why the rendering switches from band to points there.
+
+## Still open (you didn't address these)
+
+- **#3** — formula vs identity: unify, or keep the split (generalized *identity* /
+  classical *formula*)?
+- **#15** — the wrist→armpit swap and the "underside of the chin" wording.
+- **(unnumbered) "no gradients for design"** — you marked it "idk"; I recommended
+  keeping it (crisper than "for the optimization applications"). Want the
+  "optimization" rewrite, or leave it?

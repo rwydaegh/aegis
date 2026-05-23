@@ -456,7 +456,7 @@ def create_validation_plots(*, mode: str = "png", out_dir: Path | None = None) -
                  label='Mie error')
     ax1.axhline(y=0, color='k', linestyle='--', alpha=0.5, linewidth=0.7)
     fresnel_label = (
-        r'Fresnel limit $R_{\mathrm{sphere}}{-}1='
+        r'Fresnel limit $R{-}1='
         + f'{(R_sphere_28 - 1) * 100:.1f}'
         + pct_math + r'$'
     )
@@ -521,7 +521,7 @@ def create_validation_plots(*, mode: str = "png", out_dir: Path | None = None) -
     # Frequency-dependent Fresnel asymptote (curve only; the mmWave
     # band sits outside the 0-6 GHz window so no inline label).
     ax2.plot(freqs_dense_hz / 1e9, asymp_dense, color=CB_ORANGE,
-             linewidth=1.4, label=r'$R_{\mathrm{sphere}}(f)-1$')
+             linewidth=1.4, label=r'$R(f)-1$')
 
     ax2.set_xlabel('Frequency [GHz]')
     ax2.set_ylabel(f'Prediction error [{pct}]')
@@ -583,7 +583,7 @@ def create_validation_plots(*, mode: str = "png", out_dir: Path | None = None) -
              fontsize=7, color=CB_VERMILION, alpha=0.9, va='center', ha='left')
 
     ax3.set_xlabel('Frequency [GHz]')
-    ax3.set_ylabel(r'$R_{\mathrm{sphere}} = T_0 / \langle T_{\mathrm{avg}} \rangle$')
+    ax3.set_ylabel(r'$R = T_0 / \langle T_{\mathrm{avg}} \rangle$')
 
     # Secondary y-axis: asymptotic error in %.
     ax3b = ax3.twinx()

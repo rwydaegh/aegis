@@ -26,7 +26,7 @@ $5.6\%$. Water has $|\ntilde| > 6$ and a variation below $4\%$.
 Fat is the outlier, with $|\ntilde| \approx 2$ and an $8.2\%$
 variation, but fat is rarely the outermost tissue at exposure sites
 of regulatory interest. Above $6$~GHz, the relevant outermost
-tissues are skin and, at the eyes, the ocular surface.
+tissues are skin and vitreous humor.
 
 ## reviews (paragraph)
 

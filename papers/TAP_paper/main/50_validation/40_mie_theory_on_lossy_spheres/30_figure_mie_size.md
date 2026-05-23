@@ -29,11 +29,11 @@
   IT'IS skin properties~\cite{ITISv5,Gabriel1996}. (a)~Prediction error versus size parameter
   at $28$~GHz. Vertical dashed lines mark body-part sizes. The
   curve converges from below to the Fresnel limit
-  $R_{\mathrm{sphere}}-1\approx -1.2\%$ as $x\to\infty$.
+  $R-1\approx -1.2\%$ as $x\to\infty$.
   (b)~Prediction error versus frequency for finger ($17$~mm), arm
   ($80$~mm), head ($180$~mm), and torso ($300$~mm) diameters. The
   wireless mmWave band is shaded green. The orange asymptote is
-  $R_{\mathrm{sphere}}(f)-1$, the size-independent Fresnel limit.}
+  $R(f)-1$, the size-independent Fresnel limit.}
   \label{fig:mie}
 \end{figure*}
 

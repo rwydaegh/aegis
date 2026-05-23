@@ -60,7 +60,7 @@ analysis of body-scale spheres~\cite{BohrenHuffman1983}. The
 $1.45$--$3$~GHz portion of their fit lies outside the
 geometric-optics validity window of the present framework
 (\cref{tab:bands}). The systematic divergence in panel (c) below
-$3$~GHz is the body-Mie regime, not a model failure. Bamba
+$3$~GHz is the Mie regime, not a model failure. Bamba
 \textit{et~al.}'s anatomical-phantom validation at $3$~GHz returns
 residuals of $-39.4\%$, $-11.7\%$, $+10.7\%$, and $+10.6\%$ on the
 Thelonious, Billie, Ella, and Duke phantoms~\cite[Table~7]{Bamba2014}.

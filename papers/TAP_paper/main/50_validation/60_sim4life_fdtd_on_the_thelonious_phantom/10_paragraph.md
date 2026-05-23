@@ -17,10 +17,10 @@ $\pm 20\%$ uncertainty on the IT'IS dielectric properties~\cite{ITISv5,Gabriel19
 through the Fresnel coefficient at $7$~GHz to $\pm 7\%$ on
 $T_0$. The direction-averaged ratio falls inside this band. The
 per-direction values are $1.06$, $1.20$, and $0.83$. The spread
-beyond $\pm 7\%$ is set by the reference, not the closed form: FDTD
-voxel discretization and per-direction polarization detail give about
-$\pm 15\%$ per direction at $7$~GHz, against the closed form's own
-$\approx 5\%$ diffraction error (Table~\ref{tab:si-diffraction} of the
+beyond $\pm 7\%$ is set by the FDTD reference, not the closed form: voxel
+discretization, staircasing, and finite convergence scatter the
+per-direction FDTD result by about $\pm 15\%$ at $7$~GHz, against the
+closed form's own $\approx 5\%$ diffraction error (Table~\ref{tab:si-diffraction} of the
 SI).
 
 ## reviews (paragraph)

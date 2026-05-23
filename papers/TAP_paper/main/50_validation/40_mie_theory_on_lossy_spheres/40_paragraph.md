@@ -23,7 +23,7 @@
 % PREV: \end{figure*}
 \Cref{fig:mie} shows the Mie validation. \Cref{fig:mie}(a) gives the
 error versus size parameter at $28$~GHz, converging from below to the
-Fresnel limit $R_{\mathrm{sphere}} - 1 \approx -1.2\%$ as
+Fresnel limit $R - 1 \approx -1.2\%$ as
 $x \to \infty$. \Cref{fig:mie}(b) gives the error versus frequency for
 four representative body-part diameters. For body-relevant sizes
 (head, torso) over 6--100~GHz, the error ranges

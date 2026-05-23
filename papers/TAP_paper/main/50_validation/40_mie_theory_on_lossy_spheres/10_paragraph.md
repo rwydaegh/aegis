@@ -19,7 +19,7 @@ $x = \pi d/\lambda$ is the size parameter. Diffraction bends waves
 into the geometric shadow, adding absorption that the surface law
 misses. We refer to the regime where $x$ is small enough that this
 diffracted contribution exceeds a few percent of total absorption as
-the \emph{body-Mie regime}. For body-scale targets it corresponds to
+the Mie regime. For body-scale targets it corresponds to
 frequencies below approximately $6$~GHz.
 
 ## reviews (paragraph)

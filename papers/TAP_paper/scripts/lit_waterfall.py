@@ -995,7 +995,7 @@ def build_combined() -> Path:
     # Body-Mie / fat lambda/4 regime label, placed inside the shaded band.
     ax.text(
         3.0, 0.06,
-        r"Body-Mie / fat $\lambda/4$ regime",
+        r"Mie / fat $\lambda/4$ regime",
         fontsize=FS_ANNOT - 0.5, color="#444", style="italic",
         ha="center", va="bottom",
         zorder=5,
@@ -1019,7 +1019,7 @@ def build_combined() -> Path:
         "\n"
         r"\quad Layered ($T_{\mathrm{lay}}$): $f\!<\!6$\,GHz"
         "\n"
-        r"Body-Mie residual: $f\!\lesssim\!3$\,GHz"
+        r"Mie residual: $f\!\lesssim\!3$\,GHz"
     )
     ax.text(
         0.98, 0.97, box_text,
