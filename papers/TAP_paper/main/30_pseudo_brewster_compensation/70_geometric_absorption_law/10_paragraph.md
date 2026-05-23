@@ -42,8 +42,8 @@ $\Vis(\rr,\khat) \in \{0,1\}$. The exact law reduces to the
 \textit{geometric absorption law}
 \begin{equation}\label{eq:geom-law}
   \boxed{%
-    \APD(\rr) \approx \IPD \cdot T_0 \cdot \Vis(\rr,\khat) \cdot
-    \pospart{\nhat(\rr) \cdot (-\khat)}
+    \APD(\rr) \approx \IPD \cdot T_0 \cdot \pospart{\nhat(\rr) \cdot (-\khat)} \cdot
+    \Vis(\rr,\khat)
   }\, .
 \end{equation}
 The tissue physics enters through the scalar $T_0$. The transmission

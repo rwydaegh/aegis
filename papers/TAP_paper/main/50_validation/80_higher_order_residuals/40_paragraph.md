@@ -51,10 +51,7 @@ $f_{\mathrm{global}} \approx 0.09$ under the diffuse bound, giving
 $C \approx 1.04$. The specular estimate gives $C \approx 1.01$. The
 body-averaged correction stays below $2\%$, smaller than the
 propagated dielectric uncertainty derived in
-\cref{subsec:corr-summary}. The convex-hull energy bound
-$\langle P_{\mathrm{abs}}\rangle \le \IPD\,A_{\mathrm{CH}}/4$ brackets
-the true absorbed power within $A_{\mathrm{CH}}/A \approx 1.20$ on
-Thelonious.
+\cref{subsec:corr-summary}.
 
 ## reviews (paragraph)
 

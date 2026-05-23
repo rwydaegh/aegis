@@ -530,7 +530,7 @@ def create_validation_plots(*, mode: str = "png", out_dir: Path | None = None) -
     ax2.axhline(y=0, color='k', linestyle='--', alpha=0.5, linewidth=0.7)
     # Re-add the mmWave shading and inline label since the panel now
     # spans the full 1-100 GHz band again.
-    ax2.axvspan(20, 60, alpha=0.10, color=CB_GREEN, linewidth=0)
+    ax2.axvspan(24, 100, alpha=0.10, color=CB_GREEN, linewidth=0)
     ax2.text(35, 4, 'mmWave', ha='center', va='top',
              fontsize=7, color=CB_GREEN, alpha=0.95)
 
@@ -552,7 +552,7 @@ def create_validation_plots(*, mode: str = "png", out_dir: Path | None = None) -
              marker='o', markersize=4.5, markerfacecolor='none',
              markeredgewidth=1.0, markeredgecolor=CB_BLUE, zorder=5)
     ax3.axhline(y=1.0, color='k', linestyle='--', alpha=0.5, linewidth=0.7)
-    ax3.axvspan(20, 60, alpha=0.10, color=CB_GREEN, linewidth=0)
+    ax3.axvspan(24, 100, alpha=0.10, color=CB_GREEN, linewidth=0)
 
     # Crossover at R = 1.
     R_arr = np.array(R_dense)

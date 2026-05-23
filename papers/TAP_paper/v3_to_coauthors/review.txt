@@ -1,0 +1,253 @@
+these are copy pastes from the pdf directly, as they appear
+first bit is whats written then my comment
+
+
+idk.
+
+and they provide no gradients for design. 
+
+and they provide no gradient for the optimization applications.
+
+0.
+
+abstract: write GPU directly there
+
+1.
+
+the surface-averaged absorbed power density (Absorbed
+Power Density (APD)) above 6 GHz.
+
+yeah, there is issue there
+
+2.
+
+ at ten cells per in-tissue wavelength
+
+ no in-tissue
+
+3.
+
+The
+local law then integrates over a nonconvex body through
+a generalized Cauchy formula [11], with..
+
+The local law is the integrated over a nonconvex body based on a generalized Cauchy identity from 1841 [41] and ...
+
+4.
+
+ to within the tissue
+dielectric uncertainty
+
+add: of 7%
+right after
+
+5. 
+
+Section II derives the local absorption law at a visible
+surface point. Section III reduces it to a near-constant scalar
+through pseudo-Brewster compensation. Then Section IV
+integrates the local law over the whole body. Section V
+validates the theory four ways. 
+
+These actually form a triplet, the methods. 
+
+Section x, y, z comprise the methods of this paper. Respectively, they [list what u already wrote here].
+
+6. 
+
+Section V
+validates the theory four ways. 
+
+dont forget corrections too here
+
+7.
+
+Section VII discusses the regime of
+validity,
+
+Section VII discusses some consequences and the regime of
+validity, while Section VIII concludes.
+
+8. 
+
+on first appearance of []_+ AFAIK I dont think that notation is explained mathematically, and physically I dont see the explanation either? 
+LMK if im wrong tho. But if im not, do so nice and clearly, KISS, on first proper occurence.
+
+9.
+
+As shown in the flowchart (Fig. 1)
+
+As described in the flowchart of Fig. 1
+
+Can be done throughout btw.
+
+10. 
+
+has not appeared in the
+optics or bioelectromagnetics literature
+
+in the antenna propagation or bioelectromagnetics literature
+
+also there: " literature, where prior work" --> literature; prior work
+(yes we accept the ;)
+
+11. 
+
+Figure 3b shows the APD APD/IPD = 
+
+wtf went wrong here
+
+12. 
+
+Below 30◦ the agreement is at the fourth
+significant figure.
+
+Below 30◦ the agreement is exact within four significant figures.
+thats better grammar isnt it? 
+
+Btw, Im suspicious it's this good, can u verify the claim.
+
+13. 
+
+Above 6 GHz, the relevant outermost tissues are
+skin, subcutaneous fat, and vitreous humor.
+
+correct me if im wrong but can subcutaneous fat be relevant here? genuine question. or what would you do. afaik humans dont have fat exposed right
+
+14. 
+ 
+equation 9 (geom abs law): swap position of V and []_+, that's it
+
+15. 
+
+the medial thighs, the inside of the
+wrists, and the underside of the chin
+
+the first one is good but the second one I have doubts... why not that area like near the armpits on the arm or side-chest idk how to call it. 
+underside of chin: idk if we can have a better description? like we're talking about the tissue actually "hanging" from the head joining to the neck idk how ppl call this
+lets discuss
+ 
+
+16. 
+
+Paragraph discrete multi-source form
+
+the vector s should be IPD. its elements shouldnt be S_1,... it should be IPD_1,... and make sure you mimick the formatting of bold, mathrm kinda like APD (never italicized). 
+
+17.
+
+The medial sides of the legs and arms, the
+armpits, the underside of the chin, and the soles of the feet
+are the dominant such regions.
+
+soldes of the feet?? imo thats like one of the best ones no.. 
+maybe the back of the ears or something
+
+18. 
+
+On a 104–105 triangle mesh,
+the solver evaluates η in tens of milliseconds on commodity
+hardware.
+
+Remove this sentence and replace with a KISS clearn short sentence that it can be pre-computed.
+btw tell me in the chat here: isnt this a shader? im a total noob on that concept, explain me. worth to mention or? 
+
+19. 
+
+The classical Cauchy formula
+
+The classical Cauchy formula from 1841 [cite]
+
+20.
+
+, so the hull
+bound is within a few percent of the true absorbed power.
+
+Remove
+
+21. 
+
+where the body-Mie contribution 
+
+the emph'ed definition follows later in the paper: what should we do about this? 
+
+
+22. 
+
+and close with a single error budget that
+propagates the dielectric uncertainty.
+
+and close with an error budget bounded by the dielectric uncertainty.
+
+23. 
+
+ here generalizes to larger adults.
+
+ here generalizes favorably to larger adults.
+
+24.
+
+below to the Fresnel limit Rsphere
+
+question: should we be adding this sphere subscript? isnt it already like known to be the sphere ratio or not? or should we write R_sphere earlier? 
+if so, check for all places of this in the paper and SI and figures even! 
+
+
+25. 
+
+Fig 6 b (across freq fig): the mmWave band shaded region should go 24-100 GHz. the mmWave label should remain same place btw.
+
+
+26. 
+
+This section validates the theor
+
+This subsection validates the theor
+
+27. 
+
+The incident plane wave comes from abovee, with skin
+properties at 28 GHz.
+
+The incident plane wave impinges from above. The computation is done at 28~GHz.
+
+28.
+
+FDTD voxel discretization and convergence error yield about ±10%
+
+29.
+
+v3_to_coauthors/Screenshot 2026-05-23 224949.png
+
+take a look. it is fig 4.9 from [8] referred there. apparantly the plateau is important and this somehow ends up showing in our figure.
+
+i dont understand it: can you explain the reasoning here? dont edit yet
+
+and in the end the points seem a bit for us.. look at the script that generates the fig to tell me what those zhang 2017 values are
+
+the thesis is in /home/user/aegis/papers/key_literature/zhang.pdf but be careful cuz the pdf is massive. nevertheless, you may convert some pages carefully to png if you need. 
+
+for this task, dispatch an agent that is well instructed.
+
+30. 
+
+The kernel labels in 
+
+The labels in 
+
+31. 
+
+he convex-hull energy bound
+⟨Pabs⟩ ≤ IPD ACH/4 brackets the true absorbed power
+within ACH/A ≈1.20 on Thelonious.
+
+this sentence seems misplaced, where would you put it? or how can we argue for keeping it (you may if you want)? 
+
+
+32. 
+
+In general, it seems our conclusion is only about speed, and we didnt discuss validation at all? can you surface all rules in the corpus about how to write a good conclusion? lets discuss this point
+
+
+
+

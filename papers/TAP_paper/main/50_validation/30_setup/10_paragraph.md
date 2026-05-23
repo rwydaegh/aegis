@@ -3,7 +3,7 @@ Thelonious is a 6-year-old male phantom from the Virtual
 Population~\cite{ITISv5}, shown in \cref{fig:phantom}. A small child
 phantom is the worst case for the surface law: diffraction is more
 prominent on smaller body parts at a given frequency, so agreement
-here generalizes to larger adults. The surface is
+here generalizes favorably to larger adults. The surface is
 a high-resolution triangle mesh with~$23{,}826$ faces. Tissue
 properties at every frequency follow the tissue-properties
 database~\cite{ITISv5,Gabriel1996}. Mie

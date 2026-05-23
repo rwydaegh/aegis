@@ -42,6 +42,9 @@ The exact \gls{APD} at a visible point is therefore
 \begin{equation}\label{eq:Sab-exact}
   \APD(\rr) = \IPD \, \Teff(\rr) \, \pospart{\mu(\rr)} \,.
 \end{equation}
+Here $\pospart{x} = \max(x, 0)$ is the positive part: it keeps the
+front-facing surface and sets the back-facing surface ($\mu \le 0$, no
+incident power) to zero.
 \Cref{eq:Sab-exact} holds for any polarization, any frequency where
 the body is opaque, and any locally flat surface. The self-shadowing
 factor $\Vis(\rr,\khat)$ of the geometric law in \cref{sec:pB} is

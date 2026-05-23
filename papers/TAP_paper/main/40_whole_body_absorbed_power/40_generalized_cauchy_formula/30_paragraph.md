@@ -20,8 +20,9 @@
 % NEXT: because the power entering the convex hull bounds the absorbed power.
 % NEXT: For the Thelonious phantom $A_{\mathrm{CH}}/A \approx 1.20$, so the
 % NEXT: hull bound brackets the true absorbed power within a few percent.
-The classical Cauchy formula $\langle\Aperp\rangle = A/4$ is the
-special case $\eta \equiv 1$, valid for any convex body. The
+The classical Cauchy formula from 1841~\cite{Cauchy1841},
+$\langle\Aperp\rangle = A/4$, is the special case $\eta \equiv 1$,
+valid for any convex body. The
 absorption area $\Aab$ reduces all geometric complexity of
 self-shadowing to a single scalar. Let $A_{\mathrm{CH}}$ be the
 surface area of the convex hull of the body. Energy conservation under
@@ -29,7 +30,7 @@ isotropic illumination implies
 $\langle P_{\mathrm{abs}} \rangle \le \IPD\,A_{\mathrm{CH}}/4$, because
 the power entering the convex hull bounds the absorbed power. For the
 Thelonious phantom $A_{\mathrm{CH}}/A \approx 1.20$, so the hull bound
-is within a few percent of the true absorbed power.
+brackets the true absorbed power within that factor.
 
 ## reviews (paragraph)
 

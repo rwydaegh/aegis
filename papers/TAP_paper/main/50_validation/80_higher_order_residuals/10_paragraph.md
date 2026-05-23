@@ -17,7 +17,7 @@
 The correction box in the flowchart collects the effects left out by
 the geometric law. We examine three types of corrections: curvature,
 diffraction at the shadow boundary, and inter-body reflections. The
-kernel labels in~\cref{fig:val-fdtd} (``Fresnel only,'' ``+ polarization,'' ``+
+labels in~\cref{fig:val-fdtd} (``Fresnel only,'' ``+ polarization,'' ``+
 curvature \& diffraction,'' ``Full kernel,'' ``+ occlusion'') switch
 each correction on against the same FDTD reference.
 

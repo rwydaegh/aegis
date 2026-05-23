@@ -25,14 +25,14 @@
 % NEXT: \end{figure}
 \Cref{fig:apd-angle} illustrates the compensation for skin at
 28~GHz. \Cref{fig:apd-angle:T} shows $T_s$, $T_p$, and $\Tavg$ versus
-incidence angle. \Cref{fig:apd-angle:APD} shows the \gls{APD}
+incidence angle. \Cref{fig:apd-angle:APD} shows the normalized absorbed power
 $\APD/\IPD = T(\theta)\cos\theta$ for each polarization and for the
 simplified product $T_0\cos\theta$. The unpolarized curve closely
 tracks the simplified prediction, and the small gap is the Fresnel
 approximation error. \Cref{tab:fresnel-skin} quantifies the deviation
 of $\Tavg$ from $T_0$ across $[0^\circ, 75^\circ]$ on skin at 28~GHz.
 The maximum deviation is $5.6\%$ at $70$--$75^\circ$. Below $30^\circ$
-the agreement is at the fourth significant figure.
+the deviation stays below $0.2\%$.
 
 ## reviews (paragraph)
 
