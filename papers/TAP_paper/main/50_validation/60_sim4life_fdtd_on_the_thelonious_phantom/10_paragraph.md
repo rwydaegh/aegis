@@ -15,13 +15,13 @@ of law to FDTD is $1.027$ at $7$~GHz over three lateral and frontal
 incidence directions with $\theta$-polarization. A
 $\pm 20\%$ uncertainty on the IT'IS dielectric properties~\cite{ITISv5,Gabriel1996} propagates
 through the Fresnel coefficient at $7$~GHz to $\pm 7\%$ on
-$T_0$. The direction-averaged ratio falls inside this band. The
-per-direction values are $1.06$, $1.20$, and $0.83$. The spread
-beyond $\pm 7\%$ is set by the FDTD reference, not the closed form: voxel
-discretization, staircasing, and finite convergence scatter the
-per-direction FDTD result by about $\pm 15\%$ at $7$~GHz, against the
-closed form's own $\approx 5\%$ diffraction error (Table~\ref{tab:si-diffraction} of the
-SI).
+$T_0$, and the direction-averaged ratio falls inside this band. The
+individual directions scatter more widely, $1.06$, $1.20$, and
+$0.83$, a spread of about $\pm 15\%$, but this scatter is FDTD
+reference noise from voxel discretization, staircasing, and finite
+convergence, not closed-form error, whose own diffraction
+contribution is about $5\%$ (Table~\ref{tab:si-diffraction} of the
+SI). It cancels on direction averaging.
 
 ## reviews (paragraph)
 

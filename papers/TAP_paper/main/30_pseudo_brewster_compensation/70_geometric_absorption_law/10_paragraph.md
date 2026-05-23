@@ -58,8 +58,8 @@ convex form $\IPD\,T_0 \pospart{\nhat\cdot(-\khat)}$.
 the Thelonious phantom. Panel~(a) shows the frontal APD map.
 Panels~(b) and~(c) show the direction-isotropic exposure fraction
 $\eta(\rr)$ from the front and side. Under frontal illumination,
-$\Vis$ drops three regions to zero: the medial thighs, the inside of
-the wrists, and the underside of the chin.
+$\Vis$ drops three regions to zero: the medial thighs, the sides of
+the torso beneath the arms, and the underside of the jaw.
 
 ## reviews (paragraph)
 
