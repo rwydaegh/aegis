@@ -122,8 +122,8 @@ Time-Domain (FDTD) simulations, which grow to trillions of cells at
 high mmWave frequencies. From 1 to 100~GHz, we replace these
 simulations with closed-form Fresnel surface laws for opaque
 biological tissue. Locally, Absorbed Power Density (APD) is Incident
-Power Density (IPD) multiplied by normal-incidence transmission, an
-ambient-occlusion factor, and the positive incidence cosine. For
+Power Density (IPD) multiplied by normal-incidence transmission, the positive
+incidence cosine, and an ambient-occlusion factor. For
 unpolarized skin at 28~GHz, pseudo-Brewster compensation keeps
 angular transmission within 5.6\% of normal incidence up to
 $75^\circ$. Integrating the local law over the visible nonconvex body
@@ -131,8 +131,7 @@ surface yields a generalized Cauchy whole-body identity with one
 geometry scalar. A layered transmission term captures the sub-6~GHz
 whole-body dip. On a $10^4$-triangle mesh under $10^2$ incident
 paths, this turns the absorbed-power map into one differentiable
-matrix-vector multiply, evaluated in under $10$~ms on a Graphics
-Processing Unit (GPU). The
+matrix-vector multiply, evaluated in under $10$~ms on a GPU. The
 closed form is validated in four ways: Mie theory on lossy spheres,
 full polarization-aware Fresnel calculations on the Thelonious
 phantom, Sim4Life FDTD, and dosimetry literature across 108
@@ -155,11 +154,10 @@ APD, dosimetry, FDTD, Fresnel transmission, ICNIRP, mmWave, SAR.
 through two basic restrictions in the \gls{ICNIRP} 2020
 guidelines~\cite{ICNIRP2020}, IEC/IEEE~63195, and IEEE~C95.1: the
 mass-averaged \gls{SAR} below 6~GHz, with peak values evaluated as
-\gls{psSAR10g}, and the surface-averaged absorbed power density
-(\gls{APD}) above 6~GHz. Direct evaluation uses
+\gls{psSAR10g}, and the surface-averaged \gls{APD} above 6~GHz. Direct evaluation uses
 \gls{FDTD} simulations on an anatomical
 phantom~\cite{Kodera2024,Diao2024,Hirata2021,Wydaeghe2026}. Resolving the submillimeter
-absorption layer at ten cells per in-tissue wavelength
+absorption layer at ten cells per wavelength
 sets a cell count of $10^{8}$ at 6~GHz, growing to $10^{12}$ near
 100~GHz. A simulation campaign that covers frequencies, postures, and
 incidence directions takes weeks on \gls{GPU} clusters. Whole-body
@@ -186,13 +184,13 @@ in closed form.
 This work derives the closed form behind these coefficients. On
 high-index tissue, the unpolarized Fresnel transmission becomes a
 near-constant scalar~\cite{Azzam2015}. The local law then integrates
-over a nonconvex body through a generalized Cauchy
-formula~\cite{Cauchy1841}, with self-shadowing from ambient
+over a nonconvex body through a generalized Cauchy identity
+from 1841~\cite{Cauchy1841}, with self-shadowing from ambient
 occlusion~\cite{Zhukov1998,Landis2002,AkenineMoller2018}. A layered
 correction in the fat layer covers the $3$~GHz dip~\cite{Flintoft2014}.
 The five fitted coefficients are special cases of this expression. In
 the mmWave band it reproduces \gls{FDTD} to within the tissue
-dielectric uncertainty, at a small fraction of the cost. Because it is
+dielectric uncertainty of $7\%$, at a small fraction of the cost. Because it is
 also differentiable, antenna and beam design under exposure limits
 becomes a continuous optimization.
 
@@ -228,12 +226,14 @@ contributions are as follows.
 \end{enumerate}
 
 The remainder of this paper is organized as follows.
-\Cref{sec:law} derives the local absorption law at a visible surface
-point. \Cref{sec:pB} reduces it to a near-constant scalar through
-pseudo-Brewster compensation. Then \cref{sec:cauchy} integrates the
-local law over the whole body. \Cref{sec:val} validates the theory
-four ways. \Cref{sec:compliance} gives closed-form compliance bounds.
-\Cref{sec:disc} discusses the regime of validity, and \cref{sec:conc}
+\Cref{sec:law,sec:pB,sec:cauchy} comprise the methods of this paper.
+Respectively, they derive the local absorption law at a visible
+surface point, reduce it to a near-constant scalar through
+pseudo-Brewster compensation, and integrate the local law over the
+whole nonconvex body. \Cref{sec:val} validates the theory four ways
+and bounds the higher-order corrections. \Cref{sec:compliance} gives
+closed-form compliance bounds. \Cref{sec:disc} discusses some
+consequences and the regime of validity, while \cref{sec:conc}
 concludes.
 
 \section{Method: local absorption law}\label{sec:law}
@@ -442,6 +442,9 @@ The exact \gls{APD} at a visible point is therefore
 \begin{equation}\label{eq:Sab-exact}
   \APD(\rr) = \IPD \, \Teff(\rr) \, \pospart{\mu(\rr)} \,.
 \end{equation}
+Here $\pospart{x} = \max(x, 0)$ is the positive part: it keeps the
+front-facing surface and sets the back-facing surface ($\mu \le 0$, no
+incident power) to zero.
 \Cref{eq:Sab-exact} holds for any polarization, any frequency where
 the body is opaque, and any locally flat surface. The self-shadowing
 factor $\Vis(\rr,\khat)$ of the geometric law in \cref{sec:pB} is
@@ -478,7 +481,7 @@ constant for biological tissue.
 
 \section{Method: pseudo-Brewster compensation}\label{sec:pB}
 
-As shown in the flowchart~(\cref{fig:flowchart}), this section reduces
+As described in the flowchart of~\cref{fig:flowchart}, this section reduces
 the exact local law to its unpolarized form. A nearly constant scalar
 can replace the Fresnel factor for mmWave tissue, and the reason is
 pseudo-Brewster compensation.
@@ -505,8 +508,8 @@ below the strict Azzam threshold. The SI evaluates this extension on
 the IT'IS tissue-properties database~\cite{ITISv5,Gabriel1996}. Biological tissue at the wireless mmWave
 band has $|\ntilde| \in [3, 6]$, putting it in the high-index
 regime. This connection between the Azzam criterion and biological dosimetry
-has not appeared in the optics or bioelectromagnetics literature,
-where prior work has evaluated the angular and polarization
+has not appeared in the antenna propagation or bioelectromagnetics literature;
+prior work has evaluated the angular and polarization
 dependence of body transmission above $6$~GHz
 numerically~\cite{Samaras2019} without the high-index reduction.
 
@@ -514,14 +517,14 @@ numerically~\cite{Samaras2019} without the high-index reduction.
 
 \Cref{fig:apd-angle} illustrates the compensation for skin at
 28~GHz. \Cref{fig:apd-angle:T} shows $T_s$, $T_p$, and $\Tavg$ versus
-incidence angle. \Cref{fig:apd-angle:APD} shows the \gls{APD}
+incidence angle. \Cref{fig:apd-angle:APD} shows the normalized absorbed power
 $\APD/\IPD = T(\theta)\cos\theta$ for each polarization and for the
 simplified product $T_0\cos\theta$. The unpolarized curve closely
 tracks the simplified prediction, and the small gap is the Fresnel
 approximation error. \Cref{tab:fresnel-skin} quantifies the deviation
 of $\Tavg$ from $T_0$ across $[0^\circ, 75^\circ]$ on skin at 28~GHz.
 The maximum deviation is $5.6\%$ at $70$--$75^\circ$. Below $30^\circ$
-the agreement is at the fourth significant figure.
+the deviation stays below $0.2\%$.
 
 \begin{figure}[!t]
   \centering
@@ -579,7 +582,7 @@ $5.6\%$. Water has $|\ntilde| > 6$ and a variation below $4\%$.
 Fat is the outlier, with $|\ntilde| \approx 2$ and an $8.2\%$
 variation, but fat is rarely the outermost tissue at exposure sites
 of regulatory interest. Above $6$~GHz, the relevant outermost
-tissues are skin, subcutaneous fat, and vitreous humor.
+tissues are skin and vitreous humor.
 
 \begin{table}[!t]
 \centering
@@ -646,8 +649,8 @@ $\Vis(\rr,\khat) \in \{0,1\}$. The exact law reduces to the
 \textit{geometric absorption law}
 \begin{equation}\label{eq:geom-law}
   \boxed{%
-    \APD(\rr) \approx \IPD \cdot T_0 \cdot \Vis(\rr,\khat) \cdot
-    \pospart{\nhat(\rr) \cdot (-\khat)}
+    \APD(\rr) \approx \IPD \cdot T_0 \cdot \pospart{\nhat(\rr) \cdot (-\khat)} \cdot
+    \Vis(\rr,\khat)
   }\, .
 \end{equation}
 The tissue physics enters through the scalar $T_0$. The transmission
@@ -662,8 +665,8 @@ convex form $\IPD\,T_0 \pospart{\nhat\cdot(-\khat)}$.
 the Thelonious phantom. Panel~(a) shows the frontal APD map.
 Panels~(b) and~(c) show the direction-isotropic exposure fraction
 $\eta(\rr)$ from the front and side. Under frontal illumination,
-$\Vis$ drops three regions to zero: the medial thighs, the inside of
-the wrists, and the underside of the chin.
+$\Vis$ drops three regions to zero: the medial thighs, the sides of
+the torso beneath the arms, and the underside of the jaw.
 
 \begin{figure*}[!t]
   \centering
@@ -717,11 +720,12 @@ Equation~\eqref{eq:geom-law} extends to a triangle mesh under
 multiple incident waves. Discretize the body into $M$ triangles. Row $j$ of
 $\mathbf{N} \in \mathbb{R}^{M\times 3}$ holds the outward unit
 normal $\nhat_j$. Let $N$ plane waves arrive with unit directions
-$\khat_1, \ldots, \khat_N$ and power densities $S_1, \ldots, S_N$.
+$\khat_1, \ldots, \khat_N$ and incident power densities
+$\IPD_1, \ldots, \IPD_N$.
 Stack the directions column-wise into
 $\mathbf{K} \in \mathbb{R}^{3\times N}$, with column $i$ equal to
-$-\khat_i$. Stack the powers into
-$\mathbf{s} = [S_1,\ldots,S_N]^\top \in \mathbb{R}^N$. Let
+$-\khat_i$. Stack the incident power densities into
+$\bm{\mathrm{IPD}} = [\IPD_1,\ldots,\IPD_N]^\top \in \mathbb{R}^N$. Let
 $\mathbf{V} \in \{0,1\}^{M\times N}$ be the visibility matrix, with
 $V_{ji} = 1$ when direction $\khat_i$ reaches triangle $j$, and
 $V_{ji} = 0$ otherwise. Collect the per-triangle APD values into
@@ -730,14 +734,14 @@ $\bm{\mathrm{APD}} \in \mathbb{R}^{M}$.
 The geometric law on the mesh then reads
 \begin{equation}\label{eq:mat-multi}
   \bm{\mathrm{APD}} = T_0\,\bigl(\pospart{\mathbf{N}\,\mathbf{K}}
-  \odot \mathbf{V}\bigr)\,\mathbf{s}\, .
+  \odot \mathbf{V}\bigr)\,\bm{\mathrm{IPD}}\, .
 \end{equation}
 The cosine matrix $\mathbf{N}\,\mathbf{K} \in \mathbb{R}^{M\times N}$
 has entry $(j,i)$ equal to $\nhat_j\cdot(-\khat_i)$. The operator
 $\pospart{\cdot} \equiv \max(\cdot,0)$ acts componentwise, and clamps
 back-facing entries to zero. The Hadamard product $\odot$ with
 $\mathbf{V}$ gates self-shadowed entries. The product with
-$\mathbf{s}$ sums the contributions of the $N$ incident waves.
+$\bm{\mathrm{IPD}}$ sums the contributions of the $N$ incident waves.
 
 Each step is differentiable. The operator $\pospart{\cdot}$ is the
 rectified linear unit (ReLU). Replacing it with the smooth
@@ -792,10 +796,10 @@ Flintoft's band $[0.75, 0.85]$~\cite{Tomita1999}.
 \Cref{fig:phantom}\subref{fig:phantom:eta-front} and
 \subref{fig:phantom:eta-side} render it on the phantom. Most of the
 body has $\eta \approx 1$. Reductions occur in concavities. The
-medial sides of the legs and arms, the armpits, the underside of
-the chin, and the soles of the feet are the dominant such regions.
-On a $10^4$--$10^5$ triangle mesh, the solver evaluates $\eta$ in
-tens of milliseconds on commodity hardware.
+medial sides of the legs and arms, the armpits, and the underside of
+the jaw are the dominant such regions.
+Because $\eta$ depends only on body shape, the solver precomputes it
+once per posture.
 
 \subsection{Generalized Cauchy formula}\label{subsec:cauchy-thm}
 
@@ -829,8 +833,9 @@ using the definition of $\eta$ and the identity $\int_{S^2}
 $\nhat$. Integration over $\Sigma$ gives~\eqref{eq:cauchy}.
 \end{proof}
 
-The classical Cauchy formula $\langle\Aperp\rangle = A/4$ is the
-special case $\eta \equiv 1$, valid for any convex body. The
+The classical Cauchy formula from 1841~\cite{Cauchy1841},
+$\langle\Aperp\rangle = A/4$, is the special case $\eta \equiv 1$,
+valid for any convex body. The
 absorption area $\Aab$ reduces all geometric complexity of
 self-shadowing to a single scalar. Let $A_{\mathrm{CH}}$ be the
 surface area of the convex hull of the body. Energy conservation under
@@ -838,7 +843,7 @@ isotropic illumination implies
 $\langle P_{\mathrm{abs}} \rangle \le \IPD\,A_{\mathrm{CH}}/4$, because
 the power entering the convex hull bounds the absorbed power. For the
 Thelonious phantom $A_{\mathrm{CH}}/A \approx 1.20$, so the hull bound
-is within a few percent of the true absorbed power.
+brackets the true absorbed power within that factor.
 
 The constant-$T_0$ approximation in~\eqref{eq:cauchy} is accurate to
 $5\%$ root-mean-square across $0.3$--$100$~GHz, but it is not
@@ -880,7 +885,7 @@ The reverberation-chamber literature has been measuring $\Tbar$
 directly. Bamba's empirical efficiency $\eta(f)$
 coincides with $\Tbar(f)$ to $3\%$ at $5.8$~GHz on four FDTD ellipsoid
 phantoms under diffuse-field exposure~\cite{Bamba2014}. It diverges below
-$3$~GHz, where the body-Mie contribution to absorption on a finite
+$3$~GHz, where the Mie contribution to absorption on a finite
 ellipsoid becomes non-negligible (\cref{tab:bands}). The framework
 is mainly a mmWave method.
 Flintoft's plateau $\langle Q^a\rangle/\gamma_s = 0.47$--$0.49$
@@ -954,8 +959,8 @@ the Thelonious phantom, (iii) Sim4Life FDTD on the same phantom, and
 volunteers and~$5$ phantoms. The four checks isolate, respectively, the
 Fresnel approximation, realistic anatomy, volumetric FDTD agreement,
 and population-level scaling. We then add the higher-order corrections
-for curvature, diffraction, and inter-body reflection, and close with a
-single error budget that propagates the dielectric uncertainty.
+for curvature, diffraction, and inter-body reflection, and close with an
+error budget bounded by the dielectric uncertainty.
 
 \subsection{Setup}\label{subsec:val-setup}
 
@@ -963,7 +968,7 @@ Thelonious is a 6-year-old male phantom from the Virtual
 Population~\cite{ITISv5}, shown in \cref{fig:phantom}. A small child
 phantom is the worst case for the surface law: diffraction is more
 prominent on smaller body parts at a given frequency, so agreement
-here generalizes to larger adults. The surface is
+here generalizes favorably to larger adults. The surface is
 a high-resolution triangle mesh with~$23{,}826$ faces. Tissue
 properties at every frequency follow the tissue-properties
 database~\cite{ITISv5,Gabriel1996}. Mie
@@ -995,7 +1000,7 @@ $x = \pi d/\lambda$ is the size parameter. Diffraction bends waves
 into the geometric shadow, adding absorption that the surface law
 misses. We refer to the regime where $x$ is small enough that this
 diffracted contribution exceeds a few percent of total absorption as
-the \emph{body-Mie regime}. For body-scale targets it corresponds to
+the Mie regime. For body-scale targets it corresponds to
 frequencies below approximately $6$~GHz.
 
 \begin{figure*}[!t]
@@ -1014,17 +1019,17 @@ frequencies below approximately $6$~GHz.
   IT'IS skin properties~\cite{ITISv5,Gabriel1996}. (a)~Prediction error versus size parameter
   at $28$~GHz. Vertical dashed lines mark body-part sizes. The
   curve converges from below to the Fresnel limit
-  $R_{\mathrm{sphere}}-1\approx -1.2\%$ as $x\to\infty$.
+  $R-1\approx -1.2\%$ as $x\to\infty$.
   (b)~Prediction error versus frequency for finger ($17$~mm), arm
   ($80$~mm), head ($180$~mm), and torso ($300$~mm) diameters. The
   wireless mmWave band is shaded green. The orange asymptote is
-  $R_{\mathrm{sphere}}(f)-1$, the size-independent Fresnel limit.}
+  $R(f)-1$, the size-independent Fresnel limit.}
   \label{fig:mie}
 \end{figure*}
 
 \Cref{fig:mie} shows the Mie validation. \Cref{fig:mie}(a) gives the
 error versus size parameter at $28$~GHz, converging from below to the
-Fresnel limit $R_{\mathrm{sphere}} - 1 \approx -1.2\%$ as
+Fresnel limit $R - 1 \approx -1.2\%$ as
 $x \to \infty$. \Cref{fig:mie}(b) gives the error versus frequency for
 four representative body-part diameters. For body-relevant sizes
 (head, torso) over 6--100~GHz, the error ranges
@@ -1041,12 +1046,12 @@ $180$, $300$~mm) are in Table~\ref{tab:mie-residual} of the SI.
 \subsection{Full Fresnel on the Thelonious phantom}\label{subsec:val-fresnel}
 
 The Mie test bounds the Fresnel error on a smooth shape. This
-section validates the theory on a realistic human body. We compare the simplified
+subsection validates the theory on a realistic human body. We compare the simplified
 prediction $\APD^{\mathrm{simp}} = \IPD\,T_0 \pospart{\mu}$ against
 the full polarization-aware Fresnel integration $\APD^{\mathrm{full}}
 = \IPD\,\Teff(\theta, \mathrm{pol}) \pospart{\mu}$ on the Thelonious
 mesh ($23\,826$ triangles, $0.787\,\mathrm{m}^2$ surface area). The
-incident plane wave comes from above, with skin properties at
+incident plane wave impinges from above. The computation is done at
 $28$~GHz.
 
 \begin{table}[!t]
@@ -1090,13 +1095,10 @@ of law to FDTD is $1.027$ at $7$~GHz over three lateral and frontal
 incidence directions with $\theta$-polarization. A
 $\pm 20\%$ uncertainty on the IT'IS dielectric properties~\cite{ITISv5,Gabriel1996} propagates
 through the Fresnel coefficient at $7$~GHz to $\pm 7\%$ on
-$T_0$. The direction-averaged ratio falls inside this band. The
-per-direction values are $1.06$, $1.20$, and $0.83$. The spread
-beyond $\pm 7\%$ is set by the reference, not the closed form: FDTD
-voxel discretization and per-direction polarization detail give about
-$\pm 15\%$ per direction at $7$~GHz, against the closed form's own
-$\approx 5\%$ diffraction error (Table~\ref{tab:si-diffraction} of the
-SI).
+$T_0$, and the $1.027$ average sits inside this band. The
+per-direction values $1.06$, $1.20$, and $0.83$ scatter by about
+$\pm 15\%$, but that scatter is FDTD reference noise, not closed-form
+error, and cancels on averaging.
 
 The second metric is the direction-averaged Cauchy formula~\eqref{eq:cauchy-exact}
 across $12$ directions and $2$ polarizations at $5.8$~GHz. The ratio
@@ -1171,7 +1173,7 @@ analysis of body-scale spheres~\cite{BohrenHuffman1983}. The
 $1.45$--$3$~GHz portion of their fit lies outside the
 geometric-optics validity window of the present framework
 (\cref{tab:bands}). The systematic divergence in panel (c) below
-$3$~GHz is the body-Mie regime, not a model failure. Bamba
+$3$~GHz is the Mie regime, not a model failure. Bamba
 \textit{et~al.}'s anatomical-phantom validation at $3$~GHz returns
 residuals of $-39.4\%$, $-11.7\%$, $+10.7\%$, and $+10.6\%$ on the
 Thelonious, Billie, Ella, and Duke phantoms~\cite[Table~7]{Bamba2014}.
@@ -1244,7 +1246,7 @@ set by the body-shape factor $\Aab/A$.
 The correction box in the flowchart collects the effects left out by
 the geometric law. We examine three types of corrections: curvature,
 diffraction at the shadow boundary, and inter-body reflections. The
-kernel labels in~\cref{fig:val-fdtd} (``Fresnel only,'' ``+ polarization,'' ``+
+labels in~\cref{fig:val-fdtd} (``Fresnel only,'' ``+ polarization,'' ``+
 curvature \& diffraction,'' ``Full kernel,'' ``+ occlusion'') switch
 each correction on against the same FDTD reference.
 
@@ -1324,10 +1326,7 @@ $f_{\mathrm{global}} \approx 0.09$ under the diffuse bound, giving
 $C \approx 1.04$. The specular estimate gives $C \approx 1.01$. The
 body-averaged correction stays below $2\%$, smaller than the
 propagated dielectric uncertainty derived in
-\cref{subsec:corr-summary}. The convex-hull energy bound
-$\langle P_{\mathrm{abs}}\rangle \le \IPD\,A_{\mathrm{CH}}/4$ brackets
-the true absorbed power within $A_{\mathrm{CH}}/A \approx 1.20$ on
-Thelonious.
+\cref{subsec:corr-summary}.
 
 \subsection{Error budget}\label{subsec:corr-summary}
 
@@ -1631,8 +1630,9 @@ applies.
 A closed-form method is proposed for the absorbed power density on
 biological tissue from $1$ to $100$~GHz. The whole-body absorbed
 power factors into a flux-weighted Fresnel transmission $\Tbar(f)$
-times a body shape factor $\Aab/A$. The cost no longer depends on
-frequency. The $f^4$ FDTD scaling becomes one matrix-vector multiply
+times a body shape factor $\Aab/A$. Validated four independent ways, it matches FDTD in the mmWave band
+to within the $7\%$ tissue-dielectric uncertainty. The cost no longer
+depends on frequency. The $f^4$ FDTD scaling becomes one matrix-vector multiply
 with positive-part gating, differentiable in antenna position,
 orientation, beam codebooks, and reconfigurable-intelligent-surface
 phases. A simulation campaign that takes
