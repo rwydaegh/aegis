@@ -282,7 +282,14 @@ def solve_multibody_ecbf(
         p_abs = _per_body_abs_lowrank(W, U_arr, D_arr) if use_lowrank else _per_body_abs(W, Q_arr)
         gap = p_abs - L_arr
         rel_viol = np.max(np.maximum(0.0, gap) / L_arr, initial=0.0)
-        if rel_viol < tol:
+        # KKT complementary slackness: a body that is strictly slack
+        # (gap < -tol*L) must have lambda = 0. If a positive multiplier
+        # persists on a slack body, the dual hasn't converged yet — keep
+        # iterating so the active set can release it. Without this guard,
+        # the solver can lock in a spurious lambda and produce a
+        # suboptimal precoder (Paper C local-vs-global-Q artefact).
+        slack_with_lambda = (lambdas > 0) & (gap < -tol * L_arr)
+        if rel_viol < tol and not np.any(slack_with_lambda):
             converged = True
             break
 
