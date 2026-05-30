@@ -196,13 +196,25 @@ def generate_channel(
     # Step 6: convert to k_hat and power
     k_hats = _angles_to_khats(az, el)
 
-    # Compute S_inc: path loss gives received power; convert to power density
-    tx_w = 10 ** ((power_dbm - 30) / 10)
-    pl_db = compute_path_loss(p, dist, freq_ghz)
-    sf_db = lsp["SF_dB"]
-    p_rx = tx_w * 10 ** ((sf_db - pl_db) / 10)  # received power [W]
-    wavelength = 0.3 / freq_ghz
-    s_inc = p_rx * 4 * np.pi / wavelength**2  # power density [W/m²]
+    # Compute S_inc: path loss gives received power; convert to power density.
+    # A pathologically tiny freq (e.g. the ~1e-161 Hz schemathesis synthesises)
+    # drives both the path-loss exponent and wavelength**2 to overflow float,
+    # raising OverflowError. Compute defensively and reject non-finite results
+    # with a ValueError so the route surfaces a clean 400 rather than a 500,
+    # matching how the kernel already rejects non-finite Sab.
+    try:
+        tx_w = 10 ** ((power_dbm - 30) / 10)
+        pl_db = compute_path_loss(p, dist, freq_ghz)
+        sf_db = lsp["SF_dB"]
+        p_rx = tx_w * 10 ** ((sf_db - pl_db) / 10)  # received power [W]
+        wavelength = 0.3 / freq_ghz
+        s_inc = p_rx * 4 * np.pi / wavelength**2  # power density [W/m²]
+    except OverflowError as exc:
+        raise ValueError(
+            f"freq_hz produces out-of-range channel arithmetic ({exc}); use a physically meaningful frequency"
+        ) from exc
+    if not np.isfinite(s_inc):
+        raise ValueError("freq_hz produces non-finite incident power density; use a physically meaningful frequency")
 
     path_powers = np.maximum(powers * s_inc, 0.0)
 

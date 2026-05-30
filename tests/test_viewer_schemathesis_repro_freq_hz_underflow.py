@@ -52,3 +52,14 @@ class TestFreqHzUnderflow:
         with viewer_app.test_client() as c:
             resp = c.post("/api/compute", json={"freq_hz": 28e9})
         assert resp.status_code == 200
+
+    def test_tiny_freq_overflowing_path_loss_never_500(self, viewer_app):
+        """``8.96e-161`` clears the dielectric-underflow guard but overflows
+        the stochastic path-loss term ``10**((sf_db - pl_db)/10)`` with an
+        OverflowError, surfacing as a 500. Schemathesis found this. The
+        generator now clamps that exponent, so the request resolves without a
+        500 (a tiny but syntactically valid frequency is still accepted).
+        """
+        with viewer_app.test_client() as c:
+            resp = c.post("/api/compute", json={"freq_hz": 8.959311933024457e-161, "stochastic": True})
+        assert resp.status_code < 500, f"unexpected {resp.status_code}: {resp.data[:200]!r}"
