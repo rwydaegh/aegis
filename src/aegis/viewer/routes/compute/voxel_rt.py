@@ -50,6 +50,8 @@ def _load_voxel_request(
     or (None, error_response) on failure.
     """
     body_name = params.get("body_name", cache.get("default_body"))
+    if body_name is not None and not isinstance(body_name, str):
+        return None, (jsonify({"error": "body_name must be a string"}), 400)
     with cache_lock:
         entry = cache.get("bodies", {}).get(body_name)
         voxel_positions = cache.get("voxel_positions")

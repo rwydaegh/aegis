@@ -335,6 +335,8 @@ def _build_config(params: dict, app: Flask, cache: dict, cache_lock) -> dict:
 def _resolve_placement_body(params: dict, cache: dict, cache_lock):
     """Fetch the body entry referenced by params, raising if missing."""
     body_name = params.get("body_name", cache.get("default_body"))
+    if body_name is not None and not isinstance(body_name, str):
+        return None, (jsonify({"error": "body_name must be a string"}), 400)
     with cache_lock:
         entry = cache.get("bodies", {}).get(body_name)
     if entry is None:
