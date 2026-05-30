@@ -1,0 +1,261 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{enumitem}
+\usepackage{parskip}
+\usepackage{eurosym}
+\usepackage[hidelinks]{hyperref}
+
+\setlist{nosep,leftmargin=1.4em}
+
+\title{\vspace{-1.5em}Standards primer for AEGIS\\[-0.2em]
+\large What the field looks like, plus a concrete pre-compliance workflow}
+\author{Robin Wydaeghe \quad (working note, May 2026)}
+\date{}
+
+\begin{document}
+\maketitle
+\vspace{-2em}
+
+\section{The four core standards}
+There are four interlocking documents that decide what ``acceptable'' means for EMF exposure assessment.
+Learn these four names and you understand the field.
+
+\begin{description}[itemsep=0.7em, leftmargin=0pt, labelindent=0pt]
+  \item[\textbf{IEC 62232:2025} (base stations, 110\,MHz to 300\,GHz).]
+  Just published, 4th edition, September 2025. Covers product compliance, installation compliance, and
+  in-situ assessment. This is \emph{the} standard for base-station EMF compliance globally. Explicitly
+  updated for time-varying beam steering (massive MIMO and 5G NR), which is exactly AEGIS territory.
+  Developed by IEC TC 106. Next edition likely 2027 to 2028.
+
+  \item[\textbf{IEC/IEEE 63195-2:2022} (devices, 6 to 300\,GHz, computational procedure).]
+  This is the one that matters most for AEGIS. It specifies how to \emph{compute} absorbed power density
+  for a device near the body (5 to 200\,mm device-to-body distance). The current edition permits FDTD and
+  FEM. \textbf{The 2026 edition is in draft right now.} This is the specific open window. Parallel document
+  63195-1 covers the measurement procedure (DASY-world).
+
+  \item[\textbf{ITU-R Report SM.2452-1} (July 2022, 5G EMF measurement methodology).]
+  ITU-R reports are not hard standards but they are globally referenced by national regulators who do not
+  want to write their own methodology from scratch. Covers 5G NR specifics: TDD, SS/PBCH, beamforming,
+  small cells. Every national spectrum authority cites this. ATDI contributed to it, which tells you who
+  plays this game.
+
+  \item[\textbf{IEEE C95.3-2021} (``Recommended Practice for Measurements and Computations'').]
+  The US-centric sister to IEC 62232 and 63195. Blessed computational practices, 0\,Hz to 300\,GHz.
+  Maintained by IEEE ICES, specifically SC4 (Safety Levels and Human Exposure), currently chaired by
+  Bailey and Lapin. IEEE C95.1-2019 is the sister ``safety levels'' standard (the IEEE parallel to ICNIRP
+  2020).
+\end{description}
+
+\section{Other standards that touch AEGIS}
+The four above are the spine. The documents below are the surrounding muscle. AEGIS results land on the
+\textbf{limits} standards, are computed using the \textbf{procedures} standards, and feed into systems
+governed by \textbf{telecom and regional} standards. Each tier matters for a different conversation
+(regulator, OEM, operator).
+
+\subsection*{Where the AEGIS-computed values land (limit standards)}
+\begin{description}[itemsep=0.5em, leftmargin=0pt, labelindent=0pt]
+  \item[\textbf{ICNIRP 2020 Guidelines.}]
+  The international civilian limit set, 100\,kHz to 300\,GHz, WHO-endorsed and adopted by most non-US
+  jurisdictions (EU via Council Recommendation 1999/519/EC and the upcoming Workers' Directive update).
+  Absorbed power density limits for the public (5 to 100\,W/m\textsuperscript{2} depending on averaging
+  area and exposure scenario) are the values AEGIS compares against. The 2020 revision introduced the
+  4\,cm\textsuperscript{2} and 1\,cm\textsuperscript{2} APD averaging areas that 63195-2 implements.
+
+  \item[\textbf{IEEE C95.1-2019} (Safety Levels for Human Exposure to RF, 0\,Hz to 300\,GHz).]
+  The IEEE counterpart to ICNIRP, harmonised to within a few percent of ICNIRP 2020 at most
+  frequencies. The FCC adopts this for US compliance (with its own implementation rules). This is what a
+  US-bound device must clear.
+
+  \item[\textbf{National implementations.}]
+  Most regulators adopt ICNIRP wholesale (Belgium federal, France, Netherlands, Germany, UK, most of
+  Asia-Pacific). The exceptions matter: Brussels-Capital Region (around 14.5\,V/m total telecom, much
+  stricter than ICNIRP, varies per service), Switzerland (NISV ordinance with installation-specific
+  limits stricter than ICNIRP at sensitive locations), Italy (6\,V/m precautionary limit in some
+  scenarios), Poland (formerly stricter, harmonised in 2019). The strict regimes are where fast per-site
+  exposure tools are most useful.
+\end{description}
+
+\subsection*{Sister procedures (measurement and computational reference)}
+\begin{description}[itemsep=0.5em, leftmargin=0pt, labelindent=0pt]
+  \item[\textbf{IEC/IEEE 63195-1:2022} (device APD, measurement procedure).]
+  The DASY-side companion to 63195-2. Specifies how to measure APD on a device under test using a robotic
+  near-field scanner (SPEAG DASY8 class). This is the chamber test AEGIS pre-screens for. A device that
+  passes 63195-2 computational analysis still has to pass 63195-1 measurement for certification.
+
+  \item[\textbf{IEC 62209 series} (handset and body-worn SAR, sub-6\,GHz).]
+  62209-1500 (measurement) and 62209-3 (head SAR) govern phone SAR testing below 6\,GHz. Older but still
+  mandatory for every device. Not AEGIS's primary range (sub-6 SAR is volumetric, not surface) but the
+  workflow shape (chamber test, pre-compliance simulation, certification report) is the template AEGIS
+  inherits.
+
+  \item[\textbf{IEC 62704 series} (FDTD validation, canonical reference scenarios).]
+  62704-1 specifies the canonical FDTD test cases (defined dipole at defined distance from a defined
+  flat phantom) that any FDTD implementation must reproduce within a stated tolerance. References the
+  IT'IS Foundation tissue database by name. This is the document AEGIS would map its closed-form
+  validation against: reproduce the 62704 reference cases within tolerance, and the case for ``equivalent
+  numerical method'' status under 62232 and 63195-2 is straightforward.
+
+  \item[\textbf{IEEE C95.7-2014} (RF safety programs).]
+  Occupational programme document. Not technically dosimetric but cited in worker-exposure compliance
+  files (relevant to telecom-tower riggers and to operator EHS departments). Adjacent rather than
+  central.
+\end{description}
+
+\subsection*{Telecom and product standards that frame the AEGIS inputs}
+\begin{description}[itemsep=0.5em, leftmargin=0pt, labelindent=0pt]
+  \item[\textbf{3GPP TS 38.101 series} (NR UE radio specs, including MPE).]
+  The handset radio spec. 38.101-2 (mmWave) defines the per-band Maximum Permissible Exposure (MPE)
+  back-off mechanism that a UE applies when proximity is detected. This is the actual product
+  requirement the device-side compliance teams care about, and it is the layer AEGIS-class pre-screening
+  feeds: the OEM picks the codebook and the MPE policy, AEGIS evaluates the resulting APD, the chamber
+  test certifies.
+
+  \item[\textbf{3GPP TR 38.901} (channel model).]
+  Not an exposure standard, but the stochastic propagation model AEGIS already ingests
+  (91 scenario presets per the IDF). Relevant because the standards conversation around 5G and 6G EMF
+  references it as the canonical channel basis, and AEGIS having it built in is a credibility point.
+
+  \item[\textbf{ITU-T K-series} (telecom EMF guidance).]
+  K.52 (compliance with EMF guidelines, BS), K.61 (measurement methods), K.83 (in-situ monitoring),
+  K.91 (RF exposure guidance), K.100 (measurement of RF EMF for compliance), K.121 (assessment in
+  5G environments), \textbf{K.160} (mmWave EMF compliance, the 5G one), K.176 (RIS-specific guidance,
+  current draft). The K-series is how national telecom regulators implement IEC 62232 day-to-day. K.160
+  is the doc that flows into national 5G base-station compliance procedures.
+
+  \item[\textbf{3GPP RAN 4 working group.}]
+  Where the next round of MPE and exposure-aware UE behaviour gets argued out. Not a published standard
+  but the venue feeding into 38.101. Qualcomm, Apple, Samsung, MediaTek and Ericsson are heavily
+  represented. Relevant if the AEGIS coherent-MIMO operator ever wants to influence UE-side MPE design.
+\end{description}
+
+\subsection*{Regional implementations (where compliance lands per country)}
+\begin{description}[itemsep=0.5em, leftmargin=0pt, labelindent=0pt]
+  \item[\textbf{FCC OET Bulletin 65 + Supplement C/D} (US RF exposure compliance).]
+  The procedural document the FCC uses to assess RF exposure. OET 65 itself dates to 1997 (sub-6) and
+  Supplement C extends the device-side methodology to mmWave with explicit reference to IEC/IEEE 63195-2.
+  This is what a US-market device must demonstrate compliance with.
+
+  \item[\textbf{JEITA TR-T-018} (Japan, mmWave APD test method).]
+  The Japan Electronics and Information Technology Industries Association test method for APD above
+  6\,GHz. Aligns to 63195-2 with Japan-specific adaptations. The Japanese MIC uses it for type approval.
+
+  \item[\textbf{AS/NZS 2772.2:2016} (Australia and New Zealand).]
+  The ARPANSA-aligned measurement and computation standard for RF exposure compliance. Adopts ICNIRP
+  limits and references IEC procedures. Relevant if the Carolina/ARPANSA path materialises.
+
+  \item[\textbf{ETSI EN 50492 / EN 50647 / EN 50413} (Europe).]
+  EN 50492 (in-situ base station measurement), EN 50647 (worker exposure near sources), EN 50413
+  (generic measurement and computation procedures, the EU umbrella). These are what BIPT, BNetzA, ANFR
+  and Ofcom actually reference in national EMF site compliance.
+
+  \item[\textbf{5G-PPP Beyond 5G/6G EMF Considerations (2023)} (EU position paper).]
+  Not a standard but a Horizon-Europe consensus document that flags computational gaps before they
+  filter into IEC text. Getting cited here is the easier early win before pushing the same content
+  through IEC.
+\end{description}
+
+\section{How standards actually work, and how AEGIS does pre-compliance}
+
+\subsection*{Compliance versus pre-compliance, the distinction that matters}
+``Compliance'' is the official certification that a product or a deployed installation can legally be
+placed on the market or operated. It is run by an accredited test lab, using an accredited measurement
+chain, following the standard's procedure step by step. The output is an auditable test report that the
+manufacturer or operator files with regulators (or keeps as their DoC dossier).
+
+``Pre-compliance'' is everything that happens \emph{before} the official test. It is informal, run
+internally by the manufacturer or their consultancy during product or site design, and exists for one
+reason: full-wave simulation and chamber time are expensive, so you do not want to discover at
+certification that your design is non-compliant. You use a fast tool to evaluate many configurations,
+identify the worst cases, and only those go to the formal procedure.
+
+\textbf{AEGIS sits in the pre-compliance layer.} It does not need to be a ``permitted method'' under any
+standard to be used here. The OEM or operator only needs confidence that AEGIS predicts the certified-method
+output well enough to identify the worst-case configurations.
+
+The patent and the standards-committee work in parallel are about adding AEGIS to the list of permitted
+\emph{compliance} methods alongside FDTD and FEM. That is a multi-year arc and a separate question from
+the day-one pre-compliance customer pitch.
+
+\subsection*{Concrete pre-compliance workflow: device side (handset OEM)}
+The customer is the EMF compliance team at a chipset or device maker (Qualcomm, Apple, Samsung Mobile,
+MediaTek) or at a contracted test lab (CETECOM, Verkotan).
+
+\textbf{Inputs.}
+\begin{itemize}
+  \item Device geometry: antenna positions on the PCB, mmWave panel locations, plastic/metal masking.
+  \item RF spec: per-band max EIRP, beam codebook from 3GPP TS 38.101-2, MPE backoff policy.
+  \item Body model: Duke or Ella from the IT'IS Virtual Population, plus pose distribution (phone-to-ear, phone-in-hand, tablet-on-lap).
+  \item Distance envelope: the 5 to 200\,mm range that IEC/IEEE 63195-2 specifies.
+  \item Averaging spec: 4\,cm\textsuperscript{2} and 1\,cm\textsuperscript{2} regions per 63195-2 and ICNIRP 2020.
+\end{itemize}
+
+\textbf{Steps.}
+\begin{enumerate}
+  \item AEGIS sweeps body pose $\times$ device position $\times$ beam $\times$ frequency. Thousands of scenarios in minutes.
+  \item Returns per-scenario Sab maps, spatially averaged over the 63195-2 region sizes.
+  \item Ranks scenarios by peak spatially-averaged Sab against the ICNIRP or C95.1 limit.
+  \item Top 10 to 50 worst cases are exported to Sim4Life (or CST or HFSS) for full-wave verification.
+  \item Worst-of-worst (one to five scenarios) go to DASY in chamber for certification.
+\end{enumerate}
+
+\textbf{Economics.} A Sim4Life run is hours to a day at mmWave. DASY chamber time runs roughly
+\hbox{4 to 8\,k\euro{}} per measurement scenario. An OEM at scale runs hundreds of pre-compliance
+candidates per product cycle. Replacing 90\% of the Sim4Life runs and 95\% of the chamber bookings with a
+30-minute AEGIS sweep is the payback story.
+
+\subsection*{Concrete pre-compliance workflow: base-station side (operator and vendor)}
+The customer is a network EMF team at an operator (Proximus, Orange, KPN), a vendor (Ericsson, Nokia), or
+a network planning consultancy (ATDI, Forsk/Atoll, iBwave).
+
+\textbf{Inputs.}
+\begin{itemize}
+  \item Antenna: panel type, gain pattern, beam codebook, max EIRP per beam, tilt and azimuth.
+  \item Deployment scene: building 3D from OpenStreetMap or Google 3D Tiles, terrain, nearby reflectors.
+  \item Regulatory regime: ICNIRP 2020 (most countries), the local-regional override (Brussels, Swiss NISV), IEC 62232:2025 procedural alignment.
+  \item Traffic statistics for actual-max time averaging on massive MIMO (per IEC 62232:2025 Annex K).
+\end{itemize}
+
+\textbf{Steps.}
+\begin{enumerate}
+  \item AEGIS computes the incident power density Sinc(r) at body-accessible surfaces across the cell coverage area.
+  \item Applies the Sab = Sinc $\cdot$ T0 $\cdot$ ReLU model on the body surface.
+  \item For massive MIMO, computes the time-averaged Sab over the codebook weighted by traffic statistics (the ``actual max'' construction).
+  \item Outputs per-direction max-allowed-EIRP heatmaps that satisfy the limit for that scene.
+  \item Operator schedules transmit power per direction to maximise coverage subject to compliance.
+\end{enumerate}
+
+For IEC 62232 in-situ verification, the worst-case directions AEGIS identifies are then measured in the
+field with a Narda SRM-3006 or equivalent. The chamber-free path makes AEGIS additive to the existing
+operator workflow rather than displacing it.
+
+\subsection*{Path for AEGIS to become a named computational method}
+This is the standards-committee arc, separate from day-one pre-compliance sales. Five steps:
+
+\begin{enumerate}
+  \item \textbf{Reproduce the standard's reference cases.} 63195-2 ships a set of canonical test geometries (defined dipoles at defined distances from defined phantoms). The candidate method must reproduce the expected outputs within the standard's quoted uncertainty bracket.
+  \item \textbf{Matched validation against an established solver.} A clean Sim4Life-vs-AEGIS comparison on a 63195-2 reference scenario (e.g.\ defined phone at 28\,GHz against Duke). GOLIAT can drive the Sim4Life side. Two to four weeks of focused work.
+  \item \textbf{Peer-reviewed publication.} The Mie-sphere validation plus the Sim4Life comparison published in IEEE TAP, IEEE EMC, or PMB. Once a peer-reviewed comparison exists, it is citable in the standards contribution.
+  \item \textbf{Written contribution to the working group.} Wout tables the contribution to the IEC TC 106 / IEEE ICES SC4 joint working group on 63195-2. Format: a few pages of proposed standard text plus the validation evidence and a redline against the current edition.
+  \item \textbf{Inclusion in the next edition.} Realistic timeline: 12 to 24 months from first contribution to published edition, faster if the working group is already in CD stage when the contribution lands. The 2026 edition window is narrow (the next is years later).
+\end{enumerate}
+
+The political note from \texttt{standards\_play.md} stands: frame as a fast pre-screening method that
+\emph{complements} FDTD rather than replacing it, so the ZMT/SPEAG/IT'IS bloc has no incentive to block.
+
+\subsection*{The economic case (why customers actually buy)}
+SPEAG DASY8 capex sits around half a million euro. Sim4Life licensing for a useful module mix is in the
+tens of thousands per year per seat. Chamber bookings at mmWave are several thousand euro per scenario.
+A device OEM running an mmWave compliance program is spending six to seven figures per product cycle on
+the full-wave plus chamber loop, and the rate-limiting step is not money but calendar time and the number
+of design iterations a compliance team can absorb before a launch slot closes.
+
+A pre-compliance tool that cuts the number of Sim4Life runs by 90\% and the number of chamber bookings
+by 95\% pays for itself in the first program. That puts the realistic per-seat licence number for AEGIS
+device-side in the 50 to 200\,k\euro{} per year range, roughly aligned with how Sim4Life seat prices have
+moved. The base-station side is different (operators are more cost-sensitive and slower to adopt new
+tools) but the same pre-screening logic applies and the per-seat number lands lower (10 to 50\,k\euro{}
+per year, more if integrated into a network-planning suite).
+
+\end{document}

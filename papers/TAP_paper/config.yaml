@@ -1,0 +1,27 @@
+paper_id: "tap-closed-form-absorbed-power-dosimetry"
+title: "Closed-Form Absorbed-Power Dosimetry from 1 to 100 GHz"
+author: "Robin Wydaeghe"
+journal: "IEEE Transactions on Antennas and Propagation"
+source_draft: "v1_to_coauthors/paper.tex"
+papermaker_version: "0.1.0"
+framework_commit: "44aa055+review-intake"
+
+overrides:
+  abstract_word_count: [150, 250]
+  acronyms_redefine_in_intro: true
+  bib_style: manual_bibitem
+  section_case: sentence
+  cleveref: true
+  twocolumn: true
+  doc_class: IEEEtran
+
+review_intake:
+  active_review: "reviews/2026-05-11_wout_joseph"
+  source_type: "smartphone photos of marked paper pages"
+  source_paper: "v1_to_coauthors/paper.tex"
+
+litreview:
+  budgets:
+    medium_max_papers: 30
+    high_max_papers: 15
+    highest_max_papers: 8

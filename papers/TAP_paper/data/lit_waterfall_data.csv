@@ -1,0 +1,50 @@
+study,freq_ghz,native_qty_label,native_value,native_sigma,unification_value_TbarAabA
+Flintoft 2014,1.0,Q^a (gamma_s=1) [= Tbar*Aab/A],0.7,0.013,0.7
+Flintoft 2014,3.0,Q^a (gamma_s=1) [= Tbar*Aab/A],0.507,0.009,0.507
+Flintoft 2014,5.0,Q^a (gamma_s=1) [= Tbar*Aab/A],0.417,0.007,0.417
+Flintoft 2014,7.0,Q^a (gamma_s=1) [= Tbar*Aab/A],0.403,0.007,0.403
+Flintoft 2014,9.0,Q^a (gamma_s=1) [= Tbar*Aab/A],0.414,0.007,0.414
+Flintoft 2014,11.0,Q^a (gamma_s=1) [= Tbar*Aab/A],0.419,0.007,0.419
+Zhang 2017,6.0,xi = 4*C1(f) (Fig. 4.9 fit),0.43,,0.43
+Zhang 2017,9.0,xi = 4*C1(f) (Fig. 4.9 fit),0.55,,0.55
+Zhang 2017,12.0,xi = 4*C1(f) (Fig. 4.9 fit),0.57,,0.57
+Zhang 2017,15.0,xi = 4*C1(f) (Fig. 4.9 fit),0.57,,0.57
+Zhang 2017,18.0,xi = 4*C1(f) (Fig. 4.9 fit),0.56,,0.56
+Zhang 2017 envelope,1.0,xi (Fig. 4.11 envelope),0.895,"[0.820,0.970]",0.895
+Zhang 2017 envelope,2.0,xi (Fig. 4.11 envelope),0.665,"[0.550,0.780]",0.665
+Zhang 2017 envelope,3.0,xi (Fig. 4.11 envelope),0.5449999999999999,"[0.470,0.620]",0.5449999999999999
+Zhang 2017 envelope,4.0,xi (Fig. 4.11 envelope),0.49,"[0.430,0.550]",0.49
+Zhang 2017 envelope,6.0,xi (Fig. 4.11 envelope),0.5,"[0.450,0.550]",0.5
+Bamba 2014,1.45,eta(f) PMB regression,0.56005085,0.0,0.56005085
+Bamba 2014,1.61,eta(f) PMB regression,0.55719853,0.0012296795144827596,0.55719853
+Bamba 2014,1.8,eta(f) PMB regression,0.5538114,0.0026735722758620692,0.5538114
+Bamba 2014,2.0,eta(f) PMB regression,0.550246,0.004174280000000001,0.550246
+Bamba 2014,2.45,eta(f) PMB regression,0.54222385,0.007478949655172415,0.54222385
+Bamba 2014,3.0,eta(f) PMB regression,0.532419,0.011382751034482759,0.532419
+Bamba 2014,5.8,eta(f) PMB regression,0.48250339999999997,0.028950203999999997,0.48250339999999997
+Bamba 2014 validation,3.0,anatomical-phantom DMC (Table 7),0.322392,,0.322392
+Bamba 2014 validation,3.0,anatomical-phantom DMC (Table 7),0.469756,,0.469756
+Bamba 2014 validation,3.0,anatomical-phantom DMC (Table 7),0.588924,,0.588924
+Bamba 2014 validation,3.0,anatomical-phantom DMC (Table 7),0.588392,,0.588392
+Kodera 2024,1.0,T_tr from Fig. 9 right axis,0.43,0.015,0.37195
+Kodera 2024,3.0,T_tr from Fig. 9 right axis,0.45,0.015,0.38925
+Kodera 2024,6.0,T_tr from Fig. 9 right axis,0.47,0.015,0.40654999999999997
+Kodera 2024,10.0,T_tr from Fig. 9 right axis,0.49,0.015,0.42385
+Kodera 2024,30.0,T_tr from Fig. 9 right axis,0.55,0.015,0.47575
+Kodera 2024,60.0,T_tr from Fig. 9 right axis,0.62,0.015,0.5363
+Kodera 2024,100.0,T_tr from Fig. 9 right axis,0.7,0.015,0.6054999999999999
+Diao 2024 patch,28.0,"T at 28 GHz, 5G patch on TARO",0.52,,0.44980000000000003
+Diao 2024 plane wave,1.0,T_eff from Fig. 8 plane-wave WBASAR,0.8787037037037037,,0.7600787037037037
+Diao 2024 plane wave,3.0,T_eff from Fig. 8 plane-wave WBASAR,0.7703703703703704,,0.6663703703703704
+Diao 2024 plane wave,6.0,T_eff from Fig. 8 plane-wave WBASAR,0.48148148148148145,,0.41648148148148145
+Diao 2024 plane wave,10.0,T_eff from Fig. 8 plane-wave WBASAR,0.4333333333333333,,0.3748333333333333
+Diao 2024 plane wave,20.0,T_eff from Fig. 8 plane-wave WBASAR,0.5296296296296296,,0.45812962962962955
+Diao 2024 plane wave,25.0,T_eff from Fig. 8 plane-wave WBASAR,0.5296296296296296,,0.45812962962962955
+Diao 2024 plane wave,30.0,T_eff from Fig. 8 plane-wave WBASAR,0.5416666666666666,,0.46854166666666663
+AEGIS-vs-FDTD,0.45,Cauchy / FDTD ratio,0.41,,
+AEGIS-vs-FDTD,0.7,Cauchy / FDTD ratio,0.39,,
+AEGIS-vs-FDTD,1.45,Cauchy / FDTD ratio,0.52,,
+AEGIS-vs-FDTD,2.45,Cauchy / FDTD ratio,0.59,,
+AEGIS-vs-FDTD,3.5,Cauchy / FDTD ratio,0.73,,
+AEGIS-vs-FDTD,5.2,Cauchy / FDTD ratio,0.96,,
+AEGIS-vs-FDTD,5.8,Cauchy / FDTD ratio,1.012,,

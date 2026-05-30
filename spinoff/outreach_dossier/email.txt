@@ -1,0 +1,135 @@
+Dag allen
+
+Hieronder een voorstel chronologisch planning voor PhD, spin-off en GOLIAT.
+
+
+Wanneer
+Wat
+PhD
+Spin-off
+GOLIAT
+In vet actiepunten
+15 mei (verleden)
+
+
+JSAC deadline, ik was uiteindelijk niet blij met de scope-fit en kwaliteit, dus heb het gelaten. Op zich zijn hier wel goede applicaties uit gekomen waar ik nu op zit.
+25 mei (gisteren)
+
+
+TAP paper versie 3 doorsturen, voor mij klaar om te submitten.
+wo 26 mei
+
+
+GOLIAT peer reviews reply sturen naar co-auteurs --> vrijdag 29 mei hersubmitten
+
+
+do 28 mei
+GOLIAT sT1.5 update meeting
+Uncertainty analysis resultaten en aanpak bespreken
+Near-field data compleet
+Afspraken maken D1.4
+vr 29 mei
+
+
+TWC paper versie 1 doorsturen
+ma 01 juni
+
+
+Update meeting 
+AWPL paper metingen validatie
+Vergelijking 10 steden
+Papers bespreking
+Timing PhD
+Inhoud boek
+5 juni
+
+
+Deadline co-auteurs reviews TWC paper. 
+
+Vandaag: aanzet
+1/06 - 30/06
+8/06: mails sturen
+
+Align met TechTransfer --> NDA --> Spreken met bedrijven --> Letter of Intent en businessplan validatie voor IOF
+In bijlage: een document met wat TT vraagt, wat te mailen naar bedrijven, en hoe, geef gerust feedback.
+Daarin zit ook een lijst met mailadressen, ik ontbreek contacten of ben soms niet zeker van wie @Luc @Wout
+Als je wilt deelnemen aan deze meetings, heb ik beschikbaarheden nodig i.h.b. van @Wout
+
+~ 1 - 15 juli
+
+Patent filing klaar, telt trouwens als C3 (FWO), C2 (BOF), A1 (EPO)
+Na de patent filing
+
+Wat @Wout voorstelde (goed idee): TAP en TWC papers submitten. Zowel TT als IOF jury heeft niet graag deze disclosure, maar het is uiteindelijk onze keuze en essentieel voor credibility bij klanten/IEC standaarden/onderzoeksgroepen/...
+
+
+1 - 15 juli
+GOLIAT sT1.5 meeting + deadline UGent en partners voor D1.4
+Finale check D1.4
+
+
+7 - 15 juli
+
+Intake gesprek IOF met Filip
+Goed voorbereiden, o.b.v. gesprekken bedrijven
+Toestemming krijgen om in te dienen
+Afhankelijk van verlof @Wout
+
+3 augustus
+
+Deadline IOF "juni" call (in feite augustus). @Wout ik ben nog in de war met wat die andere deadlines zijn van working groups op ​​​​​​​​​​deze link​​​​​​​​​​.
+Blijkbaar 20% meer kans dankzij patent
+Filip was al heel positief
+
+
+
+~ augustus
+PMB paper effectief gepubliceerd
+19 augustus
+
+
+Indienen boek, inhoudstafel in bijlage, geef gerust feedback. Ik heb de laatste feedback van Wout en Emmeric meegenomen en met nieuwe methode rekening gehouden
+H1: Introductie
+H2: FDTD Simulation: PMB paper, A1, published
+H3: Hybrid RT/FDTD: IEEE Access paper, A1, published
+H4: Hybrid RT-QuaDRiGa/FDTD: npj Wirel. Tech., A2, published
+H5: Closed-form Absorbed-Power Dosimetry: TAP & TWC papers, A1, in submission + EPO priority patent, C3 FWO/C2 BOF/A1 EPO, published
+Incoherent
+Validation
+Coherent
+Application (deterministic vs stochastic exposure in 10 realistic cities)
+H6: Experimental validation: EuCAP + AWPL papers, C1 & A1, published
+H7: Discussion and Conclusion
+27 augustus
+
+
+Faculteitsraad en juryleden contacteren
+Wout stelt voor: niet Sven Kühn maar Azadeh Peyman omdat dit competitie is. Met Sven spreken we wel in de spin-off context
+
+~15 september (TBD)
+
+VLAIO september call. Dit is goed als
+>27 september
+
+
+Interne verdediging, verplicht >1 maand
+
+15 oktober
+
+Vroegste startdatum IOF juni-call
+~ november
+
+
+Publieke verdediging, <1 maand na interne
+~ eind 2026
+
+Publicatie van TAP & TWC papers 
+
+
+december 2026
+Deadline D1.4
+
+
+Met vriendelijke groetjes,
+
+Robin

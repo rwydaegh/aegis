@@ -1,0 +1,1848 @@
+% ============================================================
+% RIHB-in-the-loop, v4.
+% Ground-up derivation: Fresnel coefficients -> body PO ->
+% UE-anchored Kirchhoff render -> UL-pilot-calibrated
+% closed loop -> pose-differentiable rate.
+%
+% Self-contained: no required reading of other docs.
+% Author: R. Wydaeghe
+% ============================================================
+
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[margin=2.4cm]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\linespread{1.04}
+
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{bm}
+\usepackage{mathrsfs}
+\usepackage{bbm}
+\usepackage{cancel}
+\usepackage{xfrac}
+\usepackage{booktabs}
+\usepackage{multirow}
+\allowdisplaybreaks[2]
+
+\usepackage{empheq}
+\usepackage[most]{tcolorbox}
+\tcbset{highlight math style={%
+    enhanced, colframe=black!70, colback=gray!6,
+    arc=2pt, boxrule=0.5pt, left=3pt, right=3pt}}
+
+\usepackage{siunitx}
+\sisetup{detect-all, range-phrase = {--}, range-units = single,
+         per-mode = symbol, inter-unit-product = {\,}}
+
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{xspace}
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\cfoot{\thepage}
+\renewcommand{\headrulewidth}{0pt}
+
+\usepackage{titlesec}
+\titleformat{\section}{\large\bfseries}{\thesection}{1em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{1em}{}
+
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,calc,fit,backgrounds,shapes.geometric}
+
+\usepackage[colorlinks=true, linkcolor={blue!55!black},
+            citecolor={green!45!black}, urlcolor={blue!65!black}]{hyperref}
+\usepackage[nameinlink,capitalize]{cleveref}
+
+\usepackage{aliascnt}
+\theoremstyle{definition}
+\newtheorem{theorem}{Theorem}[section]
+\newaliascnt{proposition}{theorem}
+\newtheorem{proposition}[proposition]{Proposition}
+\aliascntresetthe{proposition}
+\newaliascnt{lemma}{theorem}
+\newtheorem{lemma}[lemma]{Lemma}
+\aliascntresetthe{lemma}
+\newaliascnt{corollary}{theorem}
+\newtheorem{corollary}[corollary]{Corollary}
+\aliascntresetthe{corollary}
+\newaliascnt{definition}{theorem}
+\newtheorem{definition}[definition]{Definition}
+\aliascntresetthe{definition}
+\newaliascnt{remark}{theorem}
+\newtheorem{remark}[remark]{Remark}
+\aliascntresetthe{remark}
+\crefname{proposition}{Proposition}{Propositions}
+\Crefname{proposition}{Proposition}{Propositions}
+\crefname{lemma}{Lemma}{Lemmas}\Crefname{lemma}{Lemma}{Lemmas}
+\crefname{corollary}{Corollary}{Corollaries}\Crefname{corollary}{Corollary}{Corollaries}
+\crefname{definition}{Definition}{Definitions}\Crefname{definition}{Definition}{Definitions}
+\crefname{remark}{Remark}{Remarks}\Crefname{remark}{Remark}{Remarks}
+
+\newcommand{\khat}{\hat{\bm{k}}}
+\newcommand{\nhat}{\hat{\bm{n}}}
+\newcommand{\rhat}{\hat{\bm{r}}}
+\newcommand{\etahat}{\hat{\bm{\eta}}}
+\newcommand{\rr}{\mathbf{r}}
+\newcommand{\EE}{\mathbf{E}}
+\newcommand{\HH}{\mathbf{H}}
+\newcommand{\Sinc}{S_{\mathrm{inc}}}
+\newcommand{\Sab}{S_{\mathrm{ab}}}
+\DeclareMathOperator{\ReLU}{ReLU}
+\DeclareMathOperator{\RE}{Re}
+\DeclareMathOperator{\IM}{Im}
+\DeclareMathOperator{\tr}{tr}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\newcommand{\diff}{\mathrm{d}}
+\newcommand{\ident}{\mathbbm{1}}
+\newcommand{\Reals}{\mathbb{R}}
+\newcommand{\Complex}{\mathbb{C}}
+\newcommand{\Qabs}{\mathbf{Q}_{\mathrm{ab}}}
+\newcommand{\Phimat}{\mathbf{\Phi}}
+\newcommand{\Mmat}{\mathbf{M}}
+\newcommand{\Jmat}{\mathbf{J}}
+\newcommand{\hh}{\mathbf{h}}
+\newcommand{\xvec}{\mathbf{x}}
+\newcommand{\thetab}{\bm{\theta}}
+\newcommand{\betab}{\bm{\beta}}
+\newcommand{\gammab}{\bm{\gamma}}
+\newcommand{\Pabs}{P_{\mathrm{ab}}}
+\newcommand{\SINR}{\mathrm{SINR}}
+\newcommand{\Sigmaplus}{\Sigma_{+}}
+\newcommand{\hbody}{h_{\mathrm{b}}}
+\newcommand{\hLOS}{h_{\mathrm{LOS}}}
+\newcommand{\Hkern}{\mathcal{K}}
+\newcommand{\Tepskin}{T_{\mathrm{0}}}
+\newcommand{\Frib}{\mathbf{F}_{\mathrm{b}}}
+\newcommand{\Qref}{\mathbf{Q}_{\mathrm{re}}}
+\newcommand{\kout}{\hat{\bm{k}}_{\mathrm{o}}}
+
+\title{\textbf{The User as a Reflective Intelligent Body:\\
+SAR receipts and pose-differentiable mmWave\\
+capacity, from the Fresnel coefficient out (v4)}}
+\author{Robin Wydaeghe\\
+ Ghent University \& imec\\
+ \texttt{robin.wydaeghe@ugent.be}}
+\date{\today}
+
+\makeatletter
+\renewcommand{\maketitle}{%
+  \thispagestyle{plain}%
+  \begin{center}
+    \rule{\linewidth}{1pt}\\[0.4em]
+    {\LARGE\bfseries \@title}\\[0.5em]
+    {\large \@author}\\[0.3em]
+    {\small \@date}\\[0.4em]\rule{\linewidth}{1pt}
+  \end{center}
+  \vspace{0.5em}
+}
+\makeatother
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+A user holding a phone in an mmWave cell is, geometrically, a
+reflective intelligent body: a near-array passive scatterer whose
+surface phase pattern is fixed by pose, and whose only tuning
+controller is the human brain.  This paper derives, from the
+Fresnel reflection coefficient at a planar lossy interface, two
+deployable products that share one piece of on-device machinery: a
+live SAR receipt that displays the user's current absorbed power
+in real time, and a pose-differentiable cascaded-channel rate
+optimisation that suggests sub-degree to few-degree pose moves to
+the user.  The derivation is self-contained.  Section~II builds
+the per-triangle Fresnel transmission and reflection coefficients
+under the pseudo-Brewster collapse that holds for skin tissue at
+mmWave; Section~III lifts those per-triangle coefficients to a
+discretised SMPL-X body surface; Section~IV writes the absorbed
+power as a Hermitian quadratic form in the BS precoder; Section~V
+derives the body-to-phone channel coefficient as a UE-anchored
+Kirchhoff radiation integral, with no assumption that the body is
+in any single far-field direction from the phone; Sections VI--VII
+state the closed loop where uplink pilots calibrate the on-device
+twin via a regional or modal regression on the body-mediated
+channel residual; Sections VIII--IX develop the optimisation, the
+compute architecture, and the bandwidth budget.  An empirical PoC
+in the line-of-sight un-shadowing regime measures
+\SI{14.5}{\percent} of rate gain at \SI{15}{\degree} of torso
+yaw with no operationally relevant exposure cost.
+\end{abstract}
+
+\vspace{0.3em}
+\noindent\textit{Style note.}~Wandering style, theorems where the
+proof is short, propositions when a sketch is enough, conjectures
+flagged.  Self-contained: every quantity is defined where it
+appears, including the Fresnel coefficients in
+\cref{sec:fresnel}.  Intended deployable home is \S\,IV-V of a
+JSAC2 SI submission.
+
+\tableofcontents
+\bigskip
+
+% ============================================================
+\section{Introduction}\label{sec:intro}
+% ============================================================
+
+\subsection{The two reasons mmWave deployment slowed}
+
+Two things slowed mmWave 5G past its original schedule.  First, the
+human body in the line-of-sight of an FR2 channel costs
+\SI{25}{} to \SI{40}{dB} of received power
+\cite{MacCartney2017,Maccartney2017blockage}.  Bodies are
+everywhere bodies are: torsos in offices, commuters in transit,
+limbs near the held device.  Second, the post-deployment
+public-relations conversation has been dominated by exposure
+questions, and the conventional ``the regulator already certifies
+it''~\cite{ICNIRP2020} response has not won the
+argument.~\cite{Roosli2010, Roosli2021}.  Both deployment blockers
+route through the human body in the cell.
+
+This paper proposes that the same on-device body twin can address
+both.  Part~1 turns the conversation by giving each user a
+real-time, transparent dose receipt: \emph{this is exactly how
+much electromagnetic power your body is currently absorbing.}
+Part~2 turns the blockage cost into a small adaptable
+channel-shaping opportunity: the body-as-passive-RIS, with pose
+as the tuning knob the user already controls.  Both products use
+the same per-triangle Fresnel-PO machinery; the differences are in
+what is computed at each surface point and where the result is
+displayed.
+
+\subsection{Why ``reflective intelligent body''?}
+
+A reconfigurable intelligent surface (RIS) is a passive panel of
+sub-wavelength tunable phase shifters that reshapes incident waves
+toward a desired receiver~\cite{DiRenzo2020,Wu2019}.  A human body
+at mmWave is, in the high-frequency Kirchhoff/PO regime that
+\cref{sec:po} formalises, a passive scatterer whose surface phase
+pattern $e^{-ik_0\khat\cdot\rr}$ is \emph{fixed by pose} and whose
+only tuning is the user's posture.  The body cannot tune
+electronically; it can re-pose, on the order of \SI{1}{\Hz}.  In
+one sentence:
+
+\begin{quote}
+\emph{Human bodies are reflectors at mmWaves.  They are also
+mounted with a highly intelligent organ called the brain.  They
+are therefore reflective intelligent human bodies (RIHBs).}
+\end{quote}
+
+We adopt RIS lingo throughout: ``cascaded channel,''
+``passive RIS,'' ``surface phase mask,'' ``re-pointing.''  The
+cascaded structure familiar from RIS,
+\(
+  \hh_{\mathrm{cascaded}} = \hh_{\mathrm{BS\to RIS}}\cdot
+  \Phimat\cdot\hh_{\mathrm{RIS\to UE}},
+\)
+has a body-side analog
+\begin{equation}\label{eq:cascaded-body}
+  \hh(\thetab,\rr_p)=\hLOS(\rr_p)+\hbody(\thetab,\rr_p),
+\end{equation}
+where $\hbody$ is the body-mediated channel coefficient
+\cref{sec:body-to-phone} derives below.  The body's
+``$\Phimat$'' is the implicit per-triangle phase mask induced by
+its surface and pose; the BS's ``re-pointing'' of the body is the
+pose suggestion the user takes (or does not take).  The analogy
+is informal but pedagogically useful and used throughout.
+
+\subsection{Two contributions, one piece of machinery}
+
+\begin{table}[h]
+\caption{The two contributions of this paper, on the same per-triangle
+Fresnel-PO machinery.}
+\label{tab:two-parts}
+\centering\small
+\begin{tabular}{@{}p{0.30\linewidth}p{0.31\linewidth}p{0.31\linewidth}@{}}
+\toprule
+\textbf{Question} & \textbf{Part~1: SAR receipt} &
+\textbf{Part~2: RIHB capacity} \\
+\midrule
+What is computed? &
+$\Pabs(\thetab,\xvec)$ on the body surface in real time &
+$\nabla_{\thetab} R(\thetab,\xvec)$ for a pose suggestion $\thetab^*$ \\
+Output & a number, displayed in an app & a pose move, suggested via
+notification \\
+Where it lives & on the body & at the phone antenna \\
+Privacy & receipt computed locally; opt-in aggregation &
+gradient computed locally; only $\thetab^*$ accept/reject leaves
+device \\
+Optimization role & none: informational only &
+maximises rate under comfort cost only \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ============================================================
+\section{Fresnel coefficients at a lossy half-space}\label{sec:fresnel}
+% ============================================================
+
+This section is the foundation everything else stands on.  We
+derive the per-polarisation amplitude and power transmission and
+reflection coefficients at a planar interface between vacuum and a
+lossy dielectric, recover the pseudo-Brewster collapse that holds
+for skin at mmWave, and write down the per-point absorbed-flux
+identity that drives both the SAR receipt and the body-to-phone
+channel.
+
+\subsection{Setup}
+
+Let region $z<0$ be vacuum and region $z>0$ be a lossy dielectric
+with relative permittivity
+$\tilde\varepsilon_r=\varepsilon_r-i\sigma/(\omega\varepsilon_0)$,
+relative permeability $\mu_r=1$, and complex refractive index
+$\tilde n=\sqrt{\tilde\varepsilon_r}$ (principal branch with
+$\IM\tilde n\le 0$).  At \SI{28}{\GHz}, skin tissue has
+$\tilde\varepsilon_r\approx 16.5-i12.6$ \cite{IT'IS2024} so
+$\tilde n\approx 4.4-i1.4$.  An incident plane wave at the
+interface is parametrised by polar angle $\theta_i$ from the
+outward surface normal $\nhat=-\hat z$, with propagation direction
+$\khat$ in the half-space $\khat\cdot\nhat<0$ and unit
+amplitudes for the transverse-electric (TE / $s$) and
+transverse-magnetic (TM / $p$) components.  Snell's law gives
+$\sin\theta_i=\tilde n\sin\tilde\theta_t$ with complex transmitted
+angle $\tilde\theta_t$.
+
+\subsection{Amplitude coefficients}
+
+Direct application of the boundary conditions $E_\parallel$
+continuous and $H_\parallel$ continuous to the plane wave gives the
+Fresnel amplitude transmission and reflection coefficients (TE in
+the first column, TM in the second):
+\begin{empheq}[box=\tcbhighmath]{equation}\label{eq:fresnel-amp}
+\begin{aligned}
+  t_s &= \frac{2\mu}{\mu+\xi},
+  & r_s &= \frac{\mu-\xi}{\mu+\xi}, \\[2pt]
+  t_p &= \frac{2\,\tilde n\,\mu}{\tilde n^2\,\mu+\xi},
+  & r_p &= \frac{\tilde n^2\,\mu-\xi}{\tilde n^2\,\mu+\xi}.
+\end{aligned}
+\end{empheq}
+where $\mu=\cos\theta_i$ and $\xi=\sqrt{\tilde n^2-1+\mu^2}$ with
+$\RE\xi>0$.  These are exact for a planar interface and a lossy
+half-space; no Born approximation is invoked.  The amplitudes are
+linked by $t_s=1+r_s$ and $t_p=(1+r_p)/\tilde n$, which is
+boundary-condition continuity in disguise.
+
+\subsection{Power transmission and the absorbed flux}
+
+The boundary-conditioned Poynting flux normal to the interface
+gives, per polarisation, the power transmission
+\begin{equation}\label{eq:T-power}
+  T_s = \RE\!\left[\frac{\xi}{\mu}\right]\cdot |t_s|^2,\qquad
+  T_p = \RE\!\left[\frac{\xi}{\tilde n^2\,\mu}\right]\cdot |t_p|^2.
+\end{equation}
+Power conservation per polarisation
+$T_s+|r_s|^2=1$ and $T_p+|r_p|^2=1$ holds exactly, with the
+absorbed flux per unit area at the interface
+\begin{equation}\label{eq:Sab-perpol}
+  S_\mathrm{ab}^{(\sigma)}(\theta_i) = \Sinc^{(\sigma)}\,T_\sigma(\theta_i)\,
+  \cos\theta_i,
+  \qquad \sigma\in\{s,p\},
+\end{equation}
+where $\Sinc^{(\sigma)}=|E_\sigma^{\mathrm{inc}}|^2/(2 Z_0)$ is the
+incident Poynting flux of polarisation $\sigma$ in vacuum.  The
+key observation for what follows is that $T_s$ and $T_p$ in
+\cref{eq:T-power} depend on incidence angle and on tissue
+permittivity but not on the precoder; they are deterministic
+per-triangle scalars once the geometry is set.
+
+\subsection{The pseudo-Brewster collapse}\label{sec:pBrewster}
+
+\begin{lemma}[Pseudo-Brewster]\label{lem:pBrewster}
+For a planar lossy half-space with refractive index
+$|\tilde n|\gg 1$ (mmWave high-water tissue: $|\tilde n|\sim 5$ at
+\SI{28}{\GHz}), and for incidence angles $\theta_i\in[0,80^\circ]$,
+the polarisation-averaged power transmission is
+\begin{empheq}[box=\tcbhighmath]{equation}\label{eq:pBrewster-T}
+  T_s(\theta_i)\approx T_p(\theta_i)\approx
+  T_0(\theta_i;\tilde n)
+  \;=\; 1-\bigl|r_0(\theta_i;\tilde n)\bigr|^2
+\end{empheq}
+to within a relative error
+$|T_s-T_p|/T_0\lesssim 5\,\%$ across the band, where
+$|r_0|=\frac{1}{2}(|r_s|+|r_p|)\approx
+|\tilde n-1|/|\tilde n+1|$ at small $\theta_i$.
+At normal incidence and for skin at \SI{28}{\GHz},
+$T_0(0)\approx 0.54$, hence $|r_0(0)|^2\approx 0.46$.  The angular
+dependence is mild: $T_0$ stays in $[0.49,0.56]$ across
+$\theta_i\in[0,70^\circ]$ before falling off near grazing.
+\end{lemma}
+
+The proof is direct from \cref{eq:fresnel-amp} and large-$|\tilde
+n|$ algebra.  The practical consequence is that polarisation
+sensitivity drops out of dosimetry at mmWave: each surface point
+contributes the same scalar $T_0(\theta_i)$ regardless of
+incident polarisation, and we can write
+\begin{equation}\label{eq:Sab-pB}
+  \Sab(\rr) = \Sinc(\rr)\,T_0\bigl(\theta_i(\rr)\bigr)
+  \,\cos\theta_i(\rr)
+  \quad
+  \text{with}
+  \quad
+  \cos\theta_i(\rr)=-\khat\cdot\nhat(\rr).
+\end{equation}
+The reflected amplitude collapses likewise: in the
+pseudo-Brewster regime,
+\begin{equation}\label{eq:r-pB}
+  r_s\approx r_p\approx r_0(\theta_i)\,e^{i\phi_r(\theta_i)}
+  \quad \text{with}\quad |r_0|^2 = 1-T_0,
+\end{equation}
+with the angle-dependent phase $\phi_r$ acting as a per-triangle
+scalar in what follows.
+
+\subsection{What this section gives us}
+
+Two scalars per surface point, computable from the surface normal
+and the incident path direction alone, fully describe the local
+EM book-keeping under the pseudo-Brewster regime:
+\begin{itemize}[leftmargin=1.6em,itemsep=2pt]
+\item the \emph{absorption fraction} $T_0(\theta_i)\cdot\cos\theta_i$,
+which converts incident flux into absorbed flux pointwise
+(\cref{eq:Sab-pB});
+\item the \emph{reflected amplitude}
+$\sqrt{1-T_0(\theta_i)}\,e^{i\phi_r(\theta_i)}$, which seeds the
+Huygens secondary source that radiates body-to-UE
+(\cref{eq:r-pB}).
+\end{itemize}
+Both are deterministic functions of geometry and tissue, with no
+precoder dependence.  Sections \ref{sec:po}-\ref{sec:body-to-phone}
+build everything else on top.
+
+% ============================================================
+\section{The body as a discretised PO scatterer}\label{sec:po}
+% ============================================================
+
+\subsection{The SMPL-X parametric body}
+
+The body is modeled as a closed parametric surface
+$\Sigma=\Sigma(\thetab,\betab)$ from SMPL-X
+\cite{Pavlakos2019}.  The shape vector
+$\betab\in\Reals^{10}$ parametrises bone lengths, body
+proportions, and body-mass distribution; the pose vector
+$\thetab\in\Reals^{72}$ parametrises 24 articulated joints in axis-angle
+representation.  Linear blend skinning (LBS) maps a canonical
+T-pose template mesh
+$\Sigma_0\subset\Reals^3$ with $V=10\,475$ vertices and
+$M_\triangle\sim 20\,000$ triangles to the posed surface
+\begin{equation}\label{eq:lbs}
+  \rr_v(\thetab,\betab)
+  =\sum_{j=1}^{24} w_{vj}\,T_j(\thetab,\betab)\,
+   \rr_v^{(0)}(\betab),
+\end{equation}
+with skinning weights $\{w_{vj}\}$ supplied by SMPL-X and per-joint
+rigid transforms $T_j(\thetab,\betab)\in SE(3)$ that compose
+$24\times 4\times 4$ floats per pose.  The smooth dependence
+$\thetab\mapsto\rr_v$ is $C^\infty$ on the open set of
+non-singular kinematics and is the differentiability foundation
+\cref{sec:diff} relies on.
+
+\paragraph{Per-triangle local frame.}  Each triangle
+$t\in\{1,\ldots,M_\triangle\}$ has vertices
+$\{\rr_{v_1(t)},\rr_{v_2(t)},\rr_{v_3(t)}\}$, centroid
+$\rr_t=\tfrac{1}{3}\sum_i\rr_{v_i(t)}$, area $A_t$, outward unit
+normal $\nhat_t$, and an associated tangent pair
+$(\hat e_{1,t},\hat e_{2,t})$.  All four are smooth functions of
+$(\thetab,\betab)$ via \cref{eq:lbs}.
+
+\paragraph{Visibility from a point.}  The PO regime requires that
+the surface element be lit by the source: triangles in the body's
+self-shadow must not contribute.  We define the visibility
+indicator
+\begin{equation}\label{eq:vis-from}
+  V(\rr;\rr_s)=\begin{cases}
+    1 & \text{the segment from $\rr_s$ to $\rr$ is not occluded by $\Sigma$},\\
+    0 & \text{otherwise.}
+  \end{cases}
+\end{equation}
+$V(\rr;\rr_s)$ is computed by ray-mesh intersection
+($O(\log M_\triangle)$ per query with a BVH).  It is non-smooth at
+silhouette transitions; we replace the indicator by a per-triangle
+GELU smoothed gate $V_\delta$ with width $\delta\sim 1^\circ$ in
+incidence angle, giving a $C^\infty$ surrogate.  The bias on
+$\Pabs$ from the gate softening is bounded by $\delta\cdot
+\partial(\nhat\cdot(-\khat))/\partial\theta\cdot
+\mathrm{(silhouette\ length)}$ and stays under \SI{0.5}{\percent}
+empirically.
+
+\subsection{Single-bounce PO, with the corrections we ignore}
+
+We adopt single-bounce physical optics for the body's interaction
+with the radiation: each lit triangle reflects according to the
+local Fresnel coefficients (\cref{lem:pBrewster}) and is
+absorbed according to \cref{eq:Sab-pB}.  Three contributions are
+neglected:
+\begin{itemize}[leftmargin=1.6em,itemsep=2pt]
+\item evanescent and Norton-wave tangential surface fields.
+Negligible at mmWave (skin depth \SI{0.7}{mm}; reactive zone
+\SI{1.7}{mm}); reduces \cref{eq:Sab-pB} accuracy by less than
+\SI{1}{\percent} except in the immediate-contact regime;
+\item creeping and diffraction around limb contours: introduces a
+smoothing of the visibility gate already absorbed into $V_\delta$
+above;
+\item multi-bounce body re-illumination (torso reflects to arm,
+arm absorbs): a Neumann series in the body's albedo $1-T_0\sim
+0.46$ gives a bounded correction $\le (1-T_0)\bar V\sim
+\SI{15}{\percent}$ on the absorbed power and is left for
+\cref{sec:threads}.
+\end{itemize}
+
+\subsection{The base-station array}
+
+A single base station has $M$ antenna elements at known positions
+$\{\rr_j\}_{j=1}^M$.  In running examples $M=64$ ($8\times 8$
+uniform rectangular array, half-wavelength spacing, carrier
+$f_c=\SI{28}{\GHz}$, $\lambda=\SI{1.07}{\cm}$, aperture
+\SI{0.14}{\m}).  The element pattern $g_j(\hat\xi)$ is taken as a
+calibrated complex vector function of direction with the per-element
+gain factor absorbed in.  The array radiates with precoder
+$\xvec\in\Complex^M$ subject to $\|\xvec\|^2\le P_{\mathrm{tx}}$.
+
+\paragraph{The far-field assumption on the BS side.}  The Fraunhofer
+distance for an aperture of diameter $D$ at carrier $f_c$ is
+$r_F=2D^2/\lambda$.  For the BS aperture
+($D=\SI{0.14}{\m}$, $\lambda=\SI{1.07}{\cm}$),
+$r_F^{\mathrm{BS}}=\SI{3.7}{\m}$.  Bodies at the cell range
+($\sim\SI{30}{\m}$) sit comfortably in the BS array's far field,
+and the radiated waves arrive at the body as plane waves with a
+single direction and a single polarisation amplitude per element,
+modulated by the per-element pattern $g_j(\hat\xi)$.
+
+\paragraph{The path dictionary.}  Propagation between the array
+and a probe point $\rr$ is described by a list of
+$N$ paths
+\(
+  \mathcal{D}(\rr)=\{j(n),\khat_n,\bm\psi_n\}_{n=1}^N,
+\)
+where $j(n)\in\{1,\ldots,M\}$ is the source element, $\khat_n$ is
+the unit propagation direction at the probe, and $\bm\psi_n\in
+\Complex^3$ is the complex polarisation amplitude (carrying any
+intervening reflections, refractions, and the per-element
+pattern).  The total incident field at the probe is the sum
+\begin{equation}\label{eq:E-inc-probe}
+  \EE^{\mathrm{inc}}(\rr;\xvec)
+  =\sum_{n=1}^N x_{j(n)}\,\bm\psi_n(\rr)\,
+   e^{-ik_0\khat_n\cdot\rr}.
+\end{equation}
+The dictionary $\mathcal{D}(\rr)$ is sampled at the probe location
+by a ray tracer that traverses the wireless scene.  We treat
+$\mathcal{D}$ as given for the rest of this paper; how the BS
+shares it with the phone is the bandwidth budget of
+\cref{sec:bandwidth}.
+
+% ============================================================
+\section{The absorbed power side: the Qabs operator}\label{sec:Qabs}
+% ============================================================
+
+This section converts the per-triangle absorption flux of
+\cref{eq:Sab-pB} into a Hermitian quadratic form in the precoder.
+The result is the operator $\Qabs(\thetab)$ that the SAR receipt
+displays and that v5 (the BS-side compliance paper) projects
+against.
+
+\subsection{Per-triangle incident flux}
+
+Substitute \cref{eq:E-inc-probe} into the definition of incident
+Poynting flux at triangle $t$:
+\begin{equation}\label{eq:Sinc-t}
+  \Sinc(\rr_t;\xvec)
+  =\frac{1}{2 Z_0}\bigl|\EE^{\mathrm{inc}}(\rr_t;\xvec)\bigr|^2
+  =\frac{1}{2 Z_0}\sum_{n,n'} x_{j(n)}\overline{x_{j(n')}}\,
+    \bm\psi_n^H\bm\psi_{n'}\,
+    e^{-ik_0(\khat_n-\khat_{n'})\cdot\rr_t}.
+\end{equation}
+The sum has $N^2$ cross-terms, all of which carry phase factors
+$e^{-ik_0(\khat_n-\khat_{n'})\cdot\rr_t}$ that depend on the
+triangle position $\rr_t$.
+
+\subsection{Per-triangle absorbed power}
+
+Multiply \cref{eq:Sinc-t} by the per-triangle Fresnel weight from
+\cref{eq:Sab-pB} and the triangle area:
+\begin{equation}\label{eq:Pab-t}
+  \Pabs^{(t)}(\xvec)
+  =\Sab(\rr_t;\xvec)\cdot A_t
+  =A_t\,T_0\!\bigl(\theta_t\bigr)\,
+   \frac{\cos\theta_t^{(\mathrm{eff})}}{2 Z_0}
+   \sum_{n,n'} x_{j(n)}\overline{x_{j(n')}}\,
+    [\cdots].
+\end{equation}
+Here $\theta_t$ stands for the per-path incidence angle, which
+\emph{varies per path} on the same triangle; in
+\cref{eq:Sab-pB} we used a single $\theta_i$ for a single
+incident wave.  The honest generalisation drops the
+single-incidence simplification:
+\begin{equation}\label{eq:Pab-t-fullcoupling}
+  \Pabs^{(t)}(\xvec)
+  =\frac{A_t}{2 Z_0}
+   \sum_{n,n'} x_{j(n)}\overline{x_{j(n')}}\,
+   \tilde T_{nn'}(\rr_t)\,
+   \bm\psi_n^H\bm\psi_{n'}\,
+   e^{-ik_0(\khat_n-\khat_{n'})\cdot\rr_t},
+\end{equation}
+with the per-path-pair Fresnel weight
+\begin{equation}\label{eq:Tnnp}
+  \tilde T_{nn'}(\rr_t)
+  = \sqrt{T_0(\theta_n(\rr_t))\,T_0(\theta_{n'}(\rr_t))}
+    \cdot \sqrt{\mu_n^+(\rr_t)\,\mu_{n'}^+(\rr_t)},
+\end{equation}
+$\mu_n^+ = \max(0,-\khat_n\cdot\nhat_t)$ the visibility-and-cosine
+gate.
+
+\subsection{Sum over the body}
+
+Sum \cref{eq:Pab-t-fullcoupling} over the lit triangles and define
+the per-body Hermitian Gram
+\begin{empheq}[box=\tcbhighmath]{equation}\label{eq:Qabs-def}
+  \Qabs(\thetab)\in\Complex^{M\times M},\quad
+  [\Qabs]_{j,j'}\;=\;\sum_{n:j(n)=j}\sum_{n':j(n')=j'}\!\!
+   M_{nn'}(\thetab),
+\end{empheq}
+with
+\begin{equation}\label{eq:Mnnp}
+  M_{nn'}(\thetab)
+  =\frac{1}{2 Z_0}
+   \int_\Sigma A(\rr)\,
+   \tilde T_{nn'}(\rr)\,
+   \bm\psi_n^H\bm\psi_{n'}\,
+   e^{-ik_0(\khat_n-\khat_{n'})\cdot\rr}
+   \diff A(\rr),
+\end{equation}
+where $A(\rr)$ is a continuous interpolation of the per-triangle
+area density (one factor of $A_t/3$ at each vertex; vanishes
+elsewhere).  The whole-body absorbed power is the Hermitian
+quadratic form
+\begin{empheq}[box=\tcbhighmath]{equation}\label{eq:Pabs-Qabs}
+  \Pabs(\thetab,\xvec) = \xvec^H\,\Qabs(\thetab)\,\xvec.
+\end{empheq}
+The matrix $\Qabs$ is positive semidefinite by construction (a
+Gram), $C^\infty$ in $\thetab$ except on the measure-zero set of
+silhouette transitions (smoothed away by $V_\delta$), and has
+effective rank set by the angular resolution of the BS array on
+the body solid angle (typically rank 3-5 at the \SI{99}{\percent}
+trace fraction; this is empirical).
+
+\subsection{Two enabling approximations}\label{sec:approxs}
+
+The Hermitian Gram structure of \cref{eq:Qabs-def} relies on two
+non-trivial approximations that the absorbed-power literature has
+identified
+\cite{Wydaeghe2025monograph}.  They are stated here for
+completeness; the error budget is bounded and small at mmWave.
+
+\begin{proposition}[Approximation 1: TM polarisation direction]
+\label{prop:approx1}
+Inside a lossy half-space with refractive index $|\tilde n|\gg 1$,
+the refracted TM direction $\hat e'_{p,n}$ differs from the
+incident TM direction $\hat e_{p,n}$ by an angle
+$\theta_n-\theta_{t,n}$ with $\sin\theta_{t,n}=
+\sin\theta_n/|\tilde n|$.  The two normal components differ by
+$\sin\theta_n(1-1/|\tilde n|)$ but the dot product
+$\hat e'_{p,n}\cdot\hat e'_{p,n'}$ that appears in cross-terms is
+dominated by the tangential product and the normal-normal product
+is $O(1/|\tilde n|^2)\lesssim 4\,\%$ for skin at \SI{28}{\GHz}.  We
+replace $\hat e'_{p,n}$ by $\hat e_{p,n}$.  Self-terms are
+unaffected.
+\end{proposition}
+
+\begin{proposition}[Approximation 2: universal depth coupling]
+\label{prop:approx2}
+The cross-pair depth integral
+\(
+  \Lambda_{nn'}=\int_0^\infty e^{-(\alpha_n+\alpha_{n'})z}\,
+  e^{i(\beta_n-\beta_{n'})z}\diff z
+\)
+that emerges from the ohmic-loss integral in the lossy half-space
+factorises as $\Lambda_{nn'}=\sqrt{\Lambda_{nn}\Lambda_{n'n'}}\,
+\Gamma_{nn'}$ with the normalised coupling
+$\Gamma_{nn'}=2\sqrt{\alpha_n\alpha_{n'}}/(\alpha_n+\alpha_{n'}-
+i(\beta_{n'}-\beta_n))$.  For high-water tissue at mmWave, the
+spread in $\alpha_n$ across the path dictionary is small, and
+$\Gamma_{nn'}\approx 1$ uniformly with relative error
+$\le\SI{2}{\percent}$.  We absorb this into the per-path-pair
+Fresnel weight $\tilde T_{nn'}$ of \cref{eq:Tnnp}.
+\end{proposition}
+
+The two approximations reduce the per-triangle absorbed flux from
+a triple sum (path pair $\times$ polarisation direction $\times$
+depth coupling) to a clean per-path-pair quadratic form, which is
+what makes the operator $\Qabs$ a single Hermitian Gram rather
+than a depth-coupled tensor.  Both errors are bounded and
+non-conservative (they slightly under-estimate $\Pabs$); see
+\cite{Wydaeghe2025monograph} for the full error budget.
+
+\subsection{Translation phasor identity}\label{sec:translation}
+
+The body moves through the cell.  Per-slot rebuild of
+\cref{eq:Mnnp} is too expensive for a deployment: the surface
+integral is $O(M_\triangle\cdot N^2)$.  We exploit one identity.
+
+Let $\rr=\rr_0+\mathbf{t}$ where $\rr_0$ are the body-local mesh
+coordinates (constant in absolute body translation) and
+$\mathbf{t}$ is the body's world-frame translation per-slot.
+Substituting into \cref{eq:Mnnp},
+\begin{empheq}[box=\tcbhighmath]{equation}\label{eq:translation}
+  M_{nn'}(\rr_0+\mathbf{t},\thetab)
+  =e^{-ik_0(\khat_n-\khat_{n'})\cdot\mathbf{t}}\,
+   M_{nn'}(\rr_0,\thetab),
+\end{empheq}
+which says $\Mmat$ is built once per pose at the body-local frame
+($\sim$\SI{7.5}{\ms} per body on a phone-class GPU empirically), and
+per-slot translation is an $O(N^2)$ phasor sandwich that costs
+sub-millisecond.  This is what makes the SAR receipt deployable
+at slot cadence.  An identical identity holds for the body-to-phone
+channel of \cref{sec:body-to-phone} and gives that side the same
+deployability.
+
+\subsection{What the absorbed-power operator is and is not}
+
+$\Qabs$ is the operator that maps every BS precoder to the body's
+absorbed power, with the body geometry baked into the matrix.  It
+is the SAR receipt's primary computation: $\Pabs=\xvec^H\Qabs\xvec$.
+It is also v5's compliance constraint: the BS holds
+$\Pabs\le L_{\mathrm{RL}}$ via the per-slot projection
+$\xvec\to\alpha\xvec$ with $\alpha$ chosen to satisfy
+\cref{eq:Pabs-Qabs}.
+
+$\Qabs$ is \emph{not} the body-to-UE channel.  It counts power
+\emph{landing in the body}, not power \emph{leaving the body
+toward the phone}.  The body-to-UE machinery (which the rate
+gradient of \cref{sec:diff} needs) is a different object,
+derived next.
+
+% ============================================================
+\section{The body-to-phone channel: a UE-anchored Kirchhoff render}\label{sec:body-to-phone}
+% ============================================================
+
+This section is the new contribution relative to the back-hemisphere
+$\Frib(\thetab,\kout)$ scattering matrix that prior work (and this
+paper's earlier drafts) imported from radar.  We do not assume the
+body re-radiates into a single far-field direction $\kout$.  We
+compute the field at the phone antenna directly, summing over the
+body's surface as a collection of Huygens secondary sources, and
+weighting by the per-direction-of-arrival UE antenna pattern.
+
+\subsection{The PO surface current}
+
+For a single incident plane wave from direction $\khat_n$ with
+polarisation amplitude $\bm\psi_n$ at a triangle $t$, the
+specularly reflected amplitude in the upper half-space is, in the
+pseudo-Brewster regime (\cref{eq:r-pB}),
+\begin{equation}\label{eq:E-refl}
+  \EE^{\mathrm{refl}}_n(\rr_t)
+  = \sqrt{1-T_0(\theta_n^{(t)})}\,e^{i\phi_r(\theta_n^{(t)})}\,
+    \mathrm{P}_n^{(t)}\,\bm\psi_n,
+\end{equation}
+where $\theta_n^{(t)}=\arccos(-\khat_n\cdot\nhat_t)$ is the local
+incidence angle, and $\mathrm{P}_n^{(t)}$ is the per-polarisation
+projector that maps the incident polarisation onto the local
+(TE,TM) basis at the triangle and applies the corresponding
+pseudo-Brewster amplitude.  In the pseudo-Brewster regime
+$\mathrm{P}_n^{(t)}$ collapses to the planar projector
+$(\ident_3-\khat_n^{\mathrm{r}}\khat_n^{\mathrm{r}\,T})$ where
+$\khat_n^{\mathrm{r}}=\khat_n+2(\khat_n\cdot\nhat_t)\nhat_t$ is
+the reflected direction.
+
+The per-triangle equivalent surface current that supports the
+reflected field, by Stratton-Chu / PO theory \cite{Balanis2005}, is
+$\mathbf J_t=2\nhat_t\times\HH_n^{\mathrm{inc}}$ on the lit half
+$\Sigma_+(\khat_n)$ and zero elsewhere.  We write the reflected
+amplitude $\EE^{\mathrm{refl}}_n$ with the prefactor of
+\cref{eq:E-refl} and treat each triangle as a point Huygens
+source of dipole moment proportional to
+$\EE^{\mathrm{refl}}_n(\rr_t)\,A_t$.
+
+\subsection{Propagation to the phone}
+
+The phone receiver is at world position $\rr_p$, with antenna
+pattern $\bm g_{\mathrm{UE}}(\hat\xi)$ that returns the
+polarisation-aware complex gain for a wave arriving from direction
+$\hat\xi$.  The free-space scalar Green's function from
+$\rr$ to $\rr_p$ is
+$G(\rr,\rr_p)=e^{ik_0|\rr-\rr_p|}/(4\pi|\rr-\rr_p|)$.  The per-point
+direction of arrival at the phone is
+\begin{empheq}[box=\tcbhighmath]{equation}\label{eq:eta-perpoint}
+  \etahat(\rr;\rr_p) \;\equiv\; \frac{\rr_p-\rr}{|\rr-\rr_p|}.
+\end{empheq}
+This direction \emph{varies pointwise on $\Sigma$}: each lit
+triangle has its own direction-of-arrival at the phone, its own
+distance, and its own angle into the UE antenna pattern.  This is
+the central observation that distinguishes this section from the
+$\Frib(\thetab,\kout)$-with-single-$\kout$ formulation.
+
+\paragraph{The Kirchhoff radiation integral.}  By the
+Stratton-Chu radiation formula \cite{Balanis2005,Senior1995}, the
+field at $\rr_p$ from the PO surface current and reflected
+amplitude on $\Sigma_+(\khat_n)$ is
+\begin{equation}\label{eq:KirchhoffPO}
+  \EE^{(n)}_{\mathrm{body}}(\rr_p)
+  = ik_0\!\!\int_{\Sigma_+(\khat_n)}\!\!
+   \bigl(\ident_3-\etahat\,\etahat^T\bigr)\,
+   \EE^{\mathrm{refl}}_n(\rr)\,
+   G(\rr,\rr_p)\,
+   V(\rr;\rr_p)\,
+   \diff A(\rr)
+\end{equation}
+where $V(\rr;\rr_p)$ is the body-self-occlusion gate from the phone
+side (the source-side counterpart of \cref{eq:vis-from},
+implemented by the same BVH-accelerated ray-mesh visibility query).
+The integrand is the Huygens secondary source amplitude
+$\EE^{\mathrm{refl}}_n$, projected to the transverse plane at the
+arrival direction $\etahat$, propagated by the free-space Green
+function, and gated by self-visibility from the phone.
+
+\paragraph{The phone-side polarisation projection.}  The complex
+voltage at the UE antenna terminals from the body-mediated wave is
+the inner product of the incident field at the phone with the
+phone's effective height vector
+$\bm g_{\mathrm{UE}}(\etahat)$:
+\begin{equation}\label{eq:UE-projection}
+  v^{(n)}_{\mathrm{body}}(\rr_p)
+  = \bm g_{\mathrm{UE}}\bigl(\etahat\bigr)^H \cdot
+    \EE^{(n)}_{\mathrm{body}}(\rr_p).
+\end{equation}
+This is where the per-point $\etahat(\rr;\rr_p)$ matters
+operationally: the UE antenna gain depends on the arrival direction,
+and that direction varies across the body surface.  The integral
+\cref{eq:KirchhoffPO} cannot be factored as
+$(\text{single-direction gain})\times(\text{integral over body})$
+when the body subtends a non-trivial solid angle from the phone, as
+it does at smartphone-on-body geometries.
+
+\subsection{The body-mediated channel coefficient}
+
+Putting \cref{eq:KirchhoffPO} and \cref{eq:UE-projection} together
+and summing over BS paths gives the per-element body-mediated
+channel:
+\begin{empheq}[box=\tcbhighmath]{equation}\label{eq:hbody}
+  \boxed{\;
+  \hbody^{(j)}(\thetab,\rr_p)
+  =\!\!\sum_{n:j(n)=j}\!\!
+   \int_{\Sigma_+(\khat_n)}
+   K_n(\rr;\rr_p,\thetab)\,
+   V(\rr;\rr_p)\,
+   \bm\psi_n^H\,\bm g_{\mathrm{UE}}\!\bigl(\etahat\bigr)\,
+   \frac{e^{ik_0|\rr-\rr_p|}}{4\pi|\rr-\rr_p|}\,
+   e^{-ik_0\khat_n\cdot\rr}\,
+   \diff A(\rr).
+  \;}
+\end{empheq}
+The per-triangle scalar
+\begin{equation}\label{eq:K-kernel}
+  K_n(\rr;\rr_p,\thetab)
+  = ik_0\,\sqrt{1-T_0\!\bigl(\theta_n^{(t)}\bigr)}\,
+    e^{i\phi_r(\theta_n^{(t)})}\,
+    \bigl(\hat e^{(\sigma)}_n\cdot\bigl(\ident-\etahat\,\etahat^T\bigr)
+    \cdot\hat e^{(\sigma)}_n\bigr)
+\end{equation}
+absorbs the local Fresnel reflection amplitude, its angle-dependent
+phase, and the polarisation projection onto the
+$\etahat$-transverse plane.  In the pseudo-Brewster regime the
+polarisation factor in $K_n$ is unity for the dominant
+field-aligned component and the kernel reduces to
+$ik_0\sqrt{1-T_0}\,e^{i\phi_r}$, scalar in the precoder index.
+
+The per-element coefficients of \cref{eq:hbody} stack into
+$\hbody(\thetab,\rr_p)\in\Complex^M$.  The cascaded channel of
+\cref{eq:cascaded-body} is then
+\begin{equation}\label{eq:hcascaded}
+  \hh(\thetab,\rr_p) = \hLOS(\rr_p) + \hbody(\thetab,\rr_p)
+   \;\in\;\Complex^M,
+\end{equation}
+with $\hLOS$ the direct (not body-mediated) channel coefficient,
+itself a sum over the BS-to-phone paths in $\mathcal{D}(\rr_p)$
+that do not interact with the user's body.  In the strict-LOS
+case $\hLOS$ is one path; in NLOS it is the sum of all wall and
+ceiling reflections that reach the phone without the body's
+surface being a node.
+
+\subsection{What the integral does and does not assume}
+
+\Cref{eq:hbody} is computed without invoking any far-field
+assumption on the body-to-phone propagation.  The integrand is
+exact PO; the only approximations are:
+\begin{itemize}[leftmargin=1.6em,itemsep=2pt]
+\item single-bounce body-to-UE (no body-to-body re-illumination);
+\item pseudo-Brewster polarisation collapse, which sets
+$|r_s|\approx|r_p|\approx\sqrt{1-T_0}$;
+\item GELU-smoothed visibility gates (\cref{eq:vis-from});
+\item locally-plane-wave incidence on each triangle from the BS,
+which holds because the BS is in the body's far field
+($r_F^{\mathrm{BS}}=\SI{3.7}{\m}\ll\SI{30}{\m}$).
+\end{itemize}
+None of these assumes the phone is in the body's far field or
+introduces a single $\kout$ direction.  At the phone-on-body
+geometry where the torso subtends $\sim\SI{40}{\degree}$ of solid
+angle from the phone at \SI{30}{\cm}, every triangle has a
+distinct $\etahat$ and a distinct $|\rr-\rr_p|$, and the integral
+is computed with these per-triangle quantities.
+
+\subsection{The same translation identity holds}
+
+The translation identity of \cref{eq:translation} carries to
+\cref{eq:hbody} verbatim: substituting
+$\rr=\rr_0+\mathbf{t}$ and noting that $\etahat$ and
+$|\rr-\rr_p|$ both depend only on the relative geometry
+$\rr_0-\rr_p$ when the body translates rigidly,
+\begin{equation}\label{eq:hbody-trans}
+  \hbody^{(j)}(\rr_0+\mathbf{t};\thetab)
+  = \!\!\sum_{n:j(n)=j}\!\!
+    e^{-ik_0\khat_n\cdot\mathbf{t}}\;
+    \hbody^{(j),(n)}(\rr_0;\thetab),
+\end{equation}
+where the per-path pre-built coefficient
+$\hbody^{(j),(n)}(\rr_0;\thetab)$ is the integral over the
+body-local mesh in body-local coordinates.  Per-slot translation
+is again a per-path phasor multiplication, $O(N M)$, sub-millisecond
+on phone-class hardware.
+
+% ============================================================
+\section{UE-anchored rendering: a complexity argument}\label{sec:ue-render}
+% ============================================================
+
+\subsection{Forward radiosity vs.\ backward path tracing}
+
+Path tracing in computer graphics renders an image of a 3D scene
+by tracing rays \emph{from the camera backward into the scene},
+because most rays leaving the scene do not reach the camera and
+the camera-anchored render culls them for free.  An equivalent
+forward renderer that traces rays from light sources is
+correct but operationally wasteful when the only quantity wanted
+is the field at the camera (i.e., one pixel).
+
+The same observation governs $\Qabs$ vs.\ $\hbody$:
+\begin{itemize}[leftmargin=1.6em,itemsep=2pt]
+\item \textbf{$\Qabs(\thetab)$ is BS-anchored.}  Computed once per
+body, it is an $M\times M$ Gram of the surface integral, used by
+the BS to enforce compliance against \emph{every precoder it might
+radiate}.  Cost per body refresh:
+$O(N^2\cdot M_\triangle)$ for the integral plus $O(M^2)$ for the
+matrix view.  The BS amortises this across many bodies and many
+slots; deployment-feasible.
+\item \textbf{$\hbody(\thetab,\rr_p)$ is UE-anchored.}  Computed
+on the phone, it is one complex coefficient per BS element per
+body slot.  The integral
+\cref{eq:hbody} is summed over only the triangles visible from the
+phone (visibility cull from $\rr_p$).  Per-element cost:
+$O(M_\triangle^{(\mathrm{vis})}\cdot N^{(\mathrm{vis})})$, where
+$M_\triangle^{(\mathrm{vis})}$ is the visible triangle count from
+$\rr_p$ and $N^{(\mathrm{vis})}$ is the number of BS paths that
+illuminate at least one of those visible triangles.
+\end{itemize}
+
+\subsection{Empirical cost on a phone-on-body geometry}
+
+For a typical phone-held configuration (phone at \SI{30}{\cm} from
+torso centroid, oriented toward face), the visibility cull from
+$\rr_p$ removes about \SI{80}{\percent} of the body mesh
+($M_\triangle^{(\mathrm{vis})}\sim\num{4000}$ on a
+\num{20000}-triangle SMPL-X mesh).  The number of BS paths
+illuminating at least one of those triangles depends on the
+deployment: at the typical mmWave LOS-dominated geometry,
+$N^{(\mathrm{vis})}\le\num{20}$ of $N=50$ total paths.  So the
+phone-side cost per BS element is
+\begin{align*}
+  \text{per element}: \quad &
+  M_\triangle^{(\mathrm{vis})}\cdot N^{(\mathrm{vis})}\sim\num{8e4}
+  \text{ complex multiplies}\\
+  \text{per slot}: \quad & M\cdot M_\triangle^{(\mathrm{vis})}\cdot N^{(\mathrm{vis})}
+  \sim \num{5e6} \text{ complex multiplies}.
+\end{align*}
+At \SI{32}{bit} complex precision and a \SI{200}{GFLOPS} phone-class
+NPU/GPU \cite{Apple2024A18}, the per-slot cost is
+$\sim$\SI{50}{\micro\second}, well below the \SI{1}{\milli\second}
+PHY frame and the \SI{30}{\milli\second} slot cadence.  The
+visibility query (BVH ray-mesh intersection from $\rr_p$ for each
+of the BS paths' arrival directions) is
+$O(N\log M_\triangle)\sim\SI{1}{\milli\second}$ per slot.  Total
+per-slot phone-side budget is $\sim$\SI{1.5}{\milli\second}, with
+$\Mmat$-rebuild and pose-gradient steps amortised at
+$\le\SI{1}{\Hz}$ refresh.
+
+\subsection{The complexity-class point}
+
+In one sentence: the BS-anchored $\Qabs$ render does
+$O(M^2 M_\triangle)$ work per body to handle every precoder it
+might use; the UE-anchored $\hbody$ render does
+$O(M\cdot M_\triangle^{(\mathrm{vis})})$ work per body per slot
+because \emph{the only field point that matters is the phone}.
+This is what makes the on-device twin tractable.  It is also why
+the radar-style $\Frib(\thetab,\kout)$ Gram of prior work is the
+wrong primitive for the body-to-UE channel: $\Frib$ is built to
+handle every $\kout\in S^2$, but the deployment only ever
+queries one direction (the phone's).
+
+% ============================================================
+\section{The closed loop: UL pilots calibrate the twin}\label{sec:closedloop}
+% ============================================================
+
+\subsection{Why the loop needs closing}
+
+\Cref{eq:hbody} gives the on-device prediction $\hbody^{\mathrm{pred}}(\thetab,\rr_p)$
+from the BS-shared dictionary, the SMPL-X body, the UE pattern, and
+the user's pose estimate.  Three sources of error blur this
+prediction relative to the channel the user actually observes:
+\begin{enumerate}[leftmargin=1.6em,itemsep=2pt]
+\item \emph{BS-side dictionary amplitude error}: the ray tracer's
+material codes and 3D-tile geometry have systematic errors that
+miscount per-path amplitudes;
+\item \emph{Body-side shape and surface error}: SMPL-X is a
+generic parametric mesh; per-user surface roughness, clothing,
+non-skin tissues introduce per-region amplitude and phase
+deviations from the canonical SMPL-X surface;
+\item \emph{Pose error}: the IMU-and-AR pose pipeline has finite
+RMS accuracy ($\sigma_\theta\sim 4$--$8^\circ$ per joint).
+\end{enumerate}
+Without measurement, the on-device prediction is a model.  With
+measurement, it becomes a calibrated estimator.  The measurement
+is uplink pilots: the phone transmits known pilots, the BS
+measures the cascaded channel
+$\hh^{\mathrm{meas}}\in\Complex^M$ at $\sim\SI{1}{\milli\second}$
+PHY-frame cadence, and the residual against the BS's own
+prediction closes the loop.
+
+\subsection{The residual decomposition}
+
+Let $\hh^{\mathrm{pred}}(\thetab;\bm\beta,\bm\gamma)$ denote the
+BS-side prediction of the cascaded channel under the same
+machinery the phone runs, parametrised by:
+\begin{itemize}[leftmargin=1.6em,itemsep=2pt]
+\item $\bm\beta\in\Complex^N$: per-path complex amplitude
+calibration on the BS dictionary
+(this is the v5 \emph{dictionary calibration}, fit by ridge LS
+against served-user uplink CSI as
+$\hat{\bm\beta}=\argmin_{\bm\beta}\|\hh^{\mathrm{meas}}-
+\mathrm{diag}(\bm\beta)\hh^{\mathrm{pred}}\|^2+\rho\|\bm\beta-\mathbf{1}\|^2$);
+\item $\bm\gamma$: per-body calibration for the body-side terms,
+introduced and stratified below.
+\end{itemize}
+The innovation
+\(
+  \Delta = \hh^{\mathrm{meas}} - \hh^{\mathrm{pred}}(\thetab;\bm\beta,\bm\gamma)
+\)
+splits, by linearity of \cref{eq:hcascaded}, into a non-body
+contribution (already absorbed by $\bm\beta$ on the dictionary
+side) and a body contribution that $\bm\gamma$ targets.
+
+\subsection{Choosing the body-side parametrisation}\label{sec:gamma-choice}
+
+We considered three parametrisations of $\bm\gamma$ and tested them
+empirically (see \cref{sec:eval-cal} for the recovery curves).
+The relevant trade-off is identifiability vs.\ expressiveness, and
+the regime that controls it is the rank of
+$\Lambda(\thetab,\rr_p)\in\Complex^{M\times M_\triangle^{(\mathrm{vis})}}$,
+the per-element-per-triangle Kirchhoff coefficient matrix at the
+current pose.
+
+\paragraph{Three candidate parametrisations.}
+\begin{enumerate}[leftmargin=1.6em,itemsep=2pt]
+\item \emph{Single complex scalar} ($\gamma_0\in\Complex$).
+$\hbody^{\mathrm{cal}}=\gamma_0\hbody^{\mathrm{pred}}$.  One DOF.
+Identifiable from any UL pilot.  Captures only an overall amplitude
+and phase miscalibration.
+\item \emph{Per-region scaling} ($\gammab\in\Complex^{R}$, $R=6$
+anatomical regions).  $\hbody^{\mathrm{cal}}=\sum_b\gamma_b
+\hbody^{(b)}$ where $\hbody^{(b)}$ is the partial Kirchhoff sum
+restricted to triangles in region $b$.  $R$ DOF.  Identifiable when
+$\Lambda$ has rank $\ge R$; otherwise the regional bases collapse
+and the LS becomes ill-conditioned.
+\item \emph{$K$-mode SVD coefficients} ($\bm\gamma^{\mathrm{B}}\in\Complex^K$).
+SVD $\Lambda=U\Sigma V^H$, truncate to the first $K$ modes:
+$\hbody^{\mathrm{cal}}=\sum_{k=1}^K\gamma_k^{\mathrm{B}}
+\sigma_k U_k$.  $K$ DOF.  The basis is orthogonal and adaptive to
+the pose; identifiability is automatic when $K\le M$.
+\end{enumerate}
+For each, the fit is ridge LS against the residual
+$\hh^{\mathrm{meas}}-\hLOS-\hbody^{\mathrm{pred}}$, with a small
+ridge weight $\rho$ that biases toward the un-perturbed twin.
+
+\paragraph{Empirical winner (\cref{sec:eval-cal}).}
+The best parametrisation is geometry-dependent:
+
+\begin{itemize}[leftmargin=1.6em,itemsep=2pt]
+\item In the \emph{far-BS regime} (BS at \SI{30}{\m},
+body-to-BS angular footprint sub-beamwidth, $K_{99}\!=\!1$),
+$\Lambda$ is effectively rank one; the regional basis collapses
+($\hbody^{(b)}\propto u_1$ for all $b$), and Tier C error plateaus
+above Tier D.  The $K\!=\!8$ SVD parametrisation, in contrast,
+reaches \SI{1}{\percent} body-channel reconstruction error at
+\SI{40}{\dB} pilot SNR.
+\item In the \emph{close-BS regime} (BS at \SI{5}{\m}, body
+super-resolved, $K_{99}\!=\!4$), per-region $\bm\gamma\in\Complex^6$
+is the most identifiable: the array sees regional differences
+distinctly and Tier C reaches \SI{3}{\percent} at \SI{40}{\dB} SNR,
+beating both the single scalar and the SVD parametrisation.
+\end{itemize}
+
+\paragraph{What we deploy.}  $K$-mode SVD with
+$K=K_{99}(\thetab,\rr_p)$ chosen at each pose refresh tick from
+the singular spectrum of $\Lambda$.  The empirical $K_{99}$ ranges
+from 1 (far-BS, body sub-beamwidth) to 4 (close-BS, body
+super-resolved); $K\le 10$ across all tested geometries.  The fit
+is ridge LS at $\rho=0$ (the system is overdetermined since
+$K\ll M$); the SVD itself is amortised across slots
+($\sim$\SI{80}{\milli\second} per pose refresh on phone-class
+hardware).  The DL bandwidth for refined $\bm\gamma^{\mathrm{B}}$
+is $\le 10$ floats per body per second
+$\le\SI{0.3}{\kilo bps}$, negligible relative to the path
+dictionary.
+
+\subsection{Why this is principled}
+
+Three observations make $K$-mode SVD with
+$K\!=\!K_{99}$ the principled choice rather than a hyperparameter
+guess:
+\begin{enumerate}[leftmargin=1.6em,itemsep=2pt]
+\item \emph{Adaptivity.}  $K_{99}$ is computed from the singular
+spectrum at the current pose, not chosen up front.  As the BS-body
+geometry changes, $K$ tracks.
+\item \emph{Identifiability automatic.}  $K\le M$ by construction;
+the LS is overdetermined and never ill-conditioned, regardless of
+$\Lambda$'s structural rank.
+\item \emph{Optimality in the perturbation class.}  For a Tier C
+perturbation $\bm\gamma^{(\mathrm{C})}$ in the regional basis, the
+$K_{99}$-truncated SVD captures \SI{99}{\percent} of the
+representable variation in $\hbody$.  The reconstruction error
+floor is then determined by the pilot noise, not by the
+parametrisation.
+\end{enumerate}
+
+\subsection{Why the loop is now closed}
+
+The phone's prediction $\hbody^{\mathrm{pred}}(\thetab,\rr_p)$ is
+periodically corrected by $\gammab$ values fit from
+measurements the BS already collects.  The corrected estimate
+$\hbody^{\mathrm{cal}}(\thetab,\rr_p;\hat\gammab)$ is the basis
+for both the SAR receipt and the pose-gradient suggestion.  When
+the user moves a joint by $\delta\thetab$, the change in cascaded
+channel can be predicted in advance from the calibrated twin and
+verified after the fact from the new UL pilot measurement; the
+gradient computation rides on the calibrated estimate and is
+self-validating.
+
+\subsection{Pointer to v5's beta calibration}\label{sec:csi-cal-pointer}
+
+The dictionary-side calibration $\bm\beta$ is identical in form to
+v5's CSI calibration (v5~\S\,III.E): per-path complex scale fit
+by ridge LS against served-user uplink CSI.  We do not re-derive
+it here; we re-use it as the dictionary-side companion to the
+$\bm\gamma$ ladder.  The $\bm\gamma$ side is the new contribution.
+Both run at the BS at $\sim 1\,\mathrm{s}$ cadence; the path
+dictionary, $\bm\beta$, and $\bm\gamma$ are all broadcast down to
+the phone in the closed-loop control plane of
+\cref{sec:bandwidth}.
+
+% ============================================================
+\section{Pose-differentiable rate}\label{sec:diff}
+% ============================================================
+
+\subsection{The cascaded SINR and the rate model}
+
+For single-stream MRT precoding $\xvec=\sqrt{P_{\mathrm{tx}}}
+\hh(\thetab)/\|\hh(\thetab)\|$ on the cascaded channel
+$\hh(\thetab)$ of \cref{eq:hcascaded}, the SINR is
+\begin{equation}\label{eq:SINR}
+  \SINR(\thetab) = \frac{P_{\mathrm{tx}}\|\hh(\thetab)\|^2/\sigma_\eta^2}
+  {1+\sum_{u\ne k}\text{interference at $u$}/\text{etc.}},
+\end{equation}
+which, in the deployable single-user single-stream regime, reduces
+to $\SINR(\thetab)=P_{\mathrm{tx}}\|\hh(\thetab)\|^2/\sigma_\eta^2$.
+The rate is the operational 5G NR FR2 rate
+$R(\thetab)=B\cdot\min(\log_2(1+\SINR),\,S_{\max})$ with
+$S_{\max}=\SI{7.4}{bps/Hz}$ (MCS27, \cite{TS38214}).  The cap matters
+for the gradient interpretation: large SINR gains compress to
+small rate gains at the cap, so the rate gradient saturates above
+$\sim\SI{22}{dB}$ SINR.
+
+\subsection{The pose gradient}
+
+The cascaded channel $\hh(\thetab)$ is differentiable in pose by
+the chain
+\begin{equation}\label{eq:chain}
+  \frac{\partial\hh}{\partial\theta_i}
+  = \underbrace{\frac{\partial\hLOS}{\partial\theta_i}}_{\text{LOS un-shadowing}}
+  + \underbrace{\frac{\partial\hbody}{\partial\theta_i}}_{\text{body-mediated}},
+\end{equation}
+both terms computed by autograd through the SMPL-X chain
+$\thetab\to\{\rr_t(\thetab)\}\to\hbody$ and $\thetab\to v(\thetab)$
+(visibility), respectively.  The rate gradient is
+\begin{empheq}[box=\tcbhighmath]{equation}\label{eq:rate-grad}
+  \frac{\partial R}{\partial\theta_i}
+  = \frac{B}{\ln 2}\cdot
+    \frac{P_{\mathrm{tx}}/\sigma_\eta^2}
+         {1+P_{\mathrm{tx}}\|\hh\|^2/\sigma_\eta^2}\cdot
+    2\,\RE\!\left(\hh^H\,\frac{\partial\hh}{\partial\theta_i}\right),
+\end{empheq}
+provided the operating SINR is below the MCS cap; above, the
+gradient is zero in the cap-saturated regime.
+
+\subsection{Differentiability statement}
+
+\begin{proposition}[$C^\infty$ pose dependence]\label{prop:smooth}
+The map $\thetab\mapsto(\hh(\thetab),\Qabs(\thetab))$ is
+$C^\infty$ on the open set of poses where (i) no SMPL-X
+joint is at a kinematic singularity and (ii) no surface triangle
+crosses a visibility silhouette as $\thetab$ moves.  Under the
+GELU smoothing of \cref{eq:vis-from} with width $\delta=1^\circ$,
+condition (ii) is replaced by global $C^\infty$ at the cost of a
+relative bias on $\Pabs$ and on $\hbody$ bounded by
+$\delta\cdot(1-T_0)\cdot(\text{silhouette length}/\sqrt{A_{\mathrm{body}}})$,
+$\le\SI{0.5}{\percent}$ in our PoC geometries.
+\end{proposition}
+
+The proof is direct from the SMPL-X $C^\infty$ statement
+(\cref{eq:lbs}) and the integrability of \cref{eq:hbody} and
+\cref{eq:Qabs-def} in pose, given the smoothed visibility gates.
+The chain rule then assembles the gradient of any scalar functional
+of $\hh$ and $\Qabs$ that is itself $C^\infty$, including
+\cref{eq:rate-grad} and the SAR receipt $\Pabs$.
+
+\subsection{The user-side optimisation loss}
+
+The optimisation that drives the pose suggestion is
+\begin{empheq}[box=\tcbhighmath]{equation}\label{eq:loss}
+  \mathcal{L}(\thetab,\xvec;\thetab^{(0)})
+  = -R(\thetab,\xvec)
+   \;+\;\lambda_M\,C(\thetab-\thetab^{(0)}),
+\end{empheq}
+where $C$ is a separable comfort cost calibrated such that
+$C\le 1$ corresponds to a $5^\circ$ torso rotation (RULA score
+increment $+1$, ``low load'' \cite{McAtamney1993}), and
+$\lambda_M$ trades pose-comfort against rate.  No exposure penalty
+appears in \cref{eq:loss}.  In operational downlink, the user is
+\emph{always} below the ICNIRP basic restriction
+\cite{ICNIRP2020,FCCSAR2024}: typical handset-served-from-BS
+configurations show $\Pabs\sim\SI{0.001}\times L_{\mathrm{RL}}$;
+the receipt is informational, not a constraint that the
+optimisation needs to enforce.  Compliance enforcement, if and
+when it binds, is the BS-side projection of v5 (\cref{sec:saridx}).
+
+\subsection{Where the gradient comes from}
+
+The two terms of \cref{eq:chain} have different magnitudes in
+different geometries.  In LOS-dominated body-shadowed scenarios
+(the PoC of \cref{sec:eval-poc}), $\partial\hLOS/\partial\theta_i$
+dominates: pose moves un-shadow the direct path, the cascaded
+channel grows, the rate grows.  In strict NLOS scenarios where
+$\hLOS=0$, $\partial\hbody/\partial\theta_i$ is the only term and
+the gradient drives the user toward poses where the body
+re-radiates a useful path to the phone.  In multi-user
+co-operative scenarios (\cref{sec:eval-multi-user}), the gradient
+on user $A$'s pose includes user $B$'s body in the cascaded
+channel and vice versa; the joint optimum is a correlated
+equilibrium.
+
+% ============================================================
+\section{The closed-loop block diagram}\label{sec:loop}
+% ============================================================
+
+\begin{center}
+\begin{tikzpicture}[
+  node distance=8mm and 14mm, font=\small,
+  block/.style={draw, rounded corners, align=center, minimum height=8mm,
+                minimum width=20mm, fill=gray!8},
+  arrow/.style={-{Stealth[length=2mm]}, thick},
+]
+\node[block] (bs) {BS array};
+\node[block, right=of bs] (rt) {Ray tracer};
+\node[block, right=of rt] (dict) {Path dict.\\$\mathcal{D}$};
+\node[block, below=of dict] (uephone) {Phone twin\\(SMPL-X + Kirchhoff)};
+\node[block, below=of bs] (precoder) {Precoder\\(proj.\ ZF)};
+\node[block, below=of precoder] (comp) {Compliance\\enforcer};
+\node[block, right=of uephone, xshift=8mm] (loss) {Rate loss\\$+$ comfort};
+\node[block, right=of loss] (suggest) {Pose\\suggest};
+\node[block, below=of uephone] (sar) {SAR receipt\\display};
+\node[block, below=of dict, yshift=-22mm] (cal) {$\bm\beta,\bm\gamma$\\calibrator};
+\draw[arrow] (rt)--(dict);
+\draw[arrow] (dict)--(uephone);
+\draw[arrow] (uephone)--(loss);
+\draw[arrow] (loss)--(suggest);
+\draw[arrow] (suggest.south) -- ++(0,-7mm) -| (rt.south);
+\draw[arrow] (uephone)--(sar);
+\draw[arrow] (rt)--(precoder);
+\draw[arrow] (precoder)--(comp);
+\draw[arrow] (comp)--(bs);
+\draw[arrow, dashed] (suggest) -- ++(0,12mm) -| (uephone.north);
+\draw[arrow] (bs.east) -- ++(-2mm,-12mm) |- (cal.west);
+\draw[arrow] (cal.east) -| (uephone.south);
+\end{tikzpicture}
+\end{center}
+
+\noindent The two new blocks relative to v5 are the on-device twin
+(SMPL-X + Kirchhoff render at the phone) and the
+$\bm\beta,\bm\gamma$ calibrator.  Solid arrows are the data plane;
+the dashed arrow is the control-plane pose suggestion the user
+accepts or rejects.
+
+\subsection{Bandwidth budget}\label{sec:bandwidth}
+
+\begin{table}[h]
+\centering\small
+\caption{Bandwidth budget for the closed loop, per-user, per-second.
+Path dictionary stays within the existing v5 control-plane
+allocation; $\bm\beta,\bm\gamma$ are the new payload.}
+\label{tab:bandwidth}
+\begin{tabular}{@{}p{0.40\linewidth}p{0.27\linewidth}p{0.20\linewidth}@{}}
+\toprule
+Channel & Payload & Rate \\
+\midrule
+DL: path dictionary           & $50\times 8$ floats $\times \SI{10}{Hz}$ & \SI{128}{kbps} \\
+DL: dictionary calibration $\bm\beta$ & $50$ floats $\times$ \SI{1}{Hz} & \SI{1.6}{kbps} \\
+DL: body calibration $\bm\gamma$ (Tier C) & 6 floats $\times$ \SI{1}{Hz} & \SI{0.2}{kbps} \\
+DL: body calibration $\bm\gamma$ (Tier B) & 20 floats $\times$ \SI{1}{Hz} & \SI{0.7}{kbps} \\
+DL: pose suggestion $\thetab^*$ & $72$ floats $\times$ \SI{1}{Hz} & \SI{2.3}{kbps} \\
+UL: pose estimate $\hat\thetab$ & $72$ floats $\times$ \SI{1}{Hz} & \SI{2.3}{kbps} \\
+UL: pilots (already present)    & in PHY frame                       & 0 incremental \\
+UL: accept/reject + SAR opt-in  & one bit + occasional bits          & negligible \\
+UL: shape $\bm\beta_{\mathrm{body}}$ (one-time) & 10 floats once / session & \SI{40}{B} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent Total bidirectional control bandwidth $\le\SI{135}{kbps}$,
+four orders of magnitude below the data rate the loop negotiates
+over.
+
+\subsection{Privacy delta against v5}
+
+The phone holds the SMPL-X body and runs the Kirchhoff render
+locally; only the pose-suggestion accept/reject bit and the (opt-in)
+aggregated SAR receipt leave the device.  The BS already has the
+pose estimate (UL), the path dictionary (it owns it), and the
+calibrated $\bm\beta,\bm\gamma$ values (it computes them from UL
+pilots).  The user's body geometry is implicit in $\bm\gamma$ but
+is not directly disclosed: $\bm\gamma_b$ is a per-region complex
+scale that the BS reads as a six-vector, not a mesh.  The privacy
+delta over v5 is thus: same input data flow, plus on-device
+pose-gradient compute, plus opt-in aggregated receipt.
+
+% ============================================================
+\section{Part 1: the live SAR receipt}\label{sec:saridx}
+% ============================================================
+
+\subsection{What it computes}
+
+At each slot, the phone evaluates
+\begin{equation}\label{eq:sar-receipt}
+  \Pabs(\thetab,\xvec_t;\hat{\bm\gamma}_t)
+  = \xvec_t^H\,\Qabs^{\mathrm{cal}}(\thetab;\hat{\bm\gamma}_t)\,\xvec_t
+  \;[\mathrm{W}],
+\end{equation}
+where $\Qabs^{\mathrm{cal}}$ is the calibrated per-body operator
+of \cref{sec:closedloop}: $\Qabs$ scaled by the appropriate
+$\hat{\bm\gamma}$ on its body-region or modal decomposition, with
+the same calibration flowing into the $\hbody$ side of the loop
+in \cref{sec:diff}.  $\xvec_t$ is the precoder the BS used at the
+slot, broadcast in the path-dictionary update plane.  The user
+sees the receipt in absolute Watts, optionally normalised to (a)
+the local reference-level budget $L_{\mathrm{RL}}$, (b) a body-mass
+SAR $\Pabs/m_{\mathrm{body}}$, or (c) a 6-min time average for the
+Brussels regulatory window.
+
+\subsection{Why this has not been done}
+
+Standard SAR disclosure on handsets is a fixed worst-case
+$\mathrm{SAR}_{1g}$ or $\mathrm{SAR}_{10g}$ measured under
+standardised conditions in a phantom.  Real-time per-user SAR
+requires (i) real-time ray tracing of the user's local channel,
+(ii) a calibrated body model on-device, and (iii) the BS sharing
+the path information that real-time SAR depends on.  All three
+become available when the BS already runs a body twin for
+compliance: the BS is doing the ray tracing already, SMPL-X is on
+the phone for AR purposes anyway, and the BS-to-UE control plane
+already carries DL telemetry that can absorb the path dictionary
+and calibration values.
+
+\subsection{What the receipt is and what it is not}
+
+The receipt is a model-based estimate of the user's absorbed
+power, calibrated against the BS's own measurement of the
+cascaded channel.  It is not a regulatory measurement; it does not
+replace the basic-restriction-pathway compliance audit that the
+regulator certifies.  It is a transparent number the user can act
+on (move, re-orient the device, defer a session), and a rich data
+source for population-scale dose epidemiology of the kind that
+\cite{ICNIRP2020}~Annex~A~\S\,1.4 admits the field has been
+unable to collect.
+
+\subsection{Aggregated receipts and dose-effect epidemiology}
+
+Per-user logged receipts, with consent, become input to dose-effect
+studies of mmWave exposure that have been operationally impossible
+without per-user, per-slot data.  The receipt aggregator is opt-in
+and can be implemented with standard differential-privacy primitives
+(noise injection on the per-slot sample; secure aggregation across
+users).  The study-design question is its own paper.
+
+% ============================================================
+\section{App UX: gradient-with-feedback, not one-shot pose targeting}\label{sec:app}
+% ============================================================
+
+The on-device twin has two outputs: an absorbed-power scalar
+(receipt) and a pose gradient (capacity coach).  This section
+sketches the user-facing app and explains why differentiability
+matters for the UX even when the global optimum could in principle
+be precomputed.
+
+\subsection{Why one-shot pose targeting fails}
+
+In a perfect-twin idealisation, the phone could solve
+$\thetab^*=\argmin_\thetab\mathcal{L}$ from
+\eqref{eq:loss} once and instruct the user to assume $\thetab^*$
+verbatim.  Three error sources break this in practice:
+\begin{enumerate}[leftmargin=1.6em,itemsep=2pt]
+\item \emph{Twin-model bias.}  SMPL-X is a canonical-mean
+parametric body; per-user surface roughness, clothing dielectric,
+and small-feature deviations from the canonical mesh produce a
+per-region bias on $\hbody^{\mathrm{pred}}$ that we cannot measure
+off-line.
+\item \emph{Pose-estimator noise.}  The IMU + AR pose pipeline has
+RMS error $\sigma_\theta\sim 4$--$8^\circ$/joint.  Even if the
+predicted optimum is right, the achieved pose is
+$\hat\thetab=\thetab^*+\bm\epsilon$.
+\item \emph{Path-dictionary drift.}  As the user moves through the
+cell, BS scatterers come and go; the dictionary's per-path
+amplitudes are non-stationary.
+\end{enumerate}
+Compounded, the predicted optimum $\thetab^*_{\mathrm{pred}}$ is
+significantly away from the actual maximum-rate pose
+$\thetab^*_{\mathrm{true}}$.
+
+\subsection{The closed loop converts ``find optimum'' into ``ride a
+calibrated local model''}
+
+The differentiable + UL-pilot-calibrated twin reframes
+optimisation as a noisy-gradient descent on a slowly-drifting
+non-stationary objective:
+\begin{enumerate}[leftmargin=1.6em,itemsep=2pt]
+\item Phone computes $\nabla_{\thetab}R$ from the current
+calibrated twin.
+\item App suggests a small move
+$\delta\thetab=-\alpha\nabla_{\thetab}\mathcal{L}/\|\nabla\mathcal{L}\|$.
+\item User attempts $\delta\thetab$; achieves
+$\delta\hat\thetab=\delta\thetab+\bm\epsilon$.
+\item UL pilots after the move give $\hh^{\mathrm{meas}}$;
+calibration step refits $\bm\gamma$ against the residual.
+\item Refined twin computes the next gradient; repeat.
+\end{enumerate}
+Convergence in 2--5 iterations is the empirical observation for
+the geometries of \cref{sec:eval-poc}.  Note that step 4 is
+\emph{free}: the UL pilots are in the PHY frame anyway; their
+information is what the operator already has.
+
+\subsection{The metal-detector metaphor}
+
+The UX pattern is exactly that of a metal detector or a
+PT-biofeedback fitness coach.  The user moves; the system responds
+in real time with a haptic or visual ``warmer/colder'' signal
+proportional to $\|\nabla R\|$ at the current pose.  The user does
+not need to nail an exact target $\thetab^*$ (which they could not
+reach anyway given $\sigma_\theta$); they need only know the
+direction of improvement and follow it.  The twin's confidence in
+the gradient direction grows as UL pilots accumulate, so early
+moves are coarse and later moves are fine.
+
+\subsection{The three-screen app}
+
+\begin{enumerate}[leftmargin=1.6em,itemsep=2pt]
+\item \textbf{Receipt.}  Live SAR per body region (W), current
+rate (Mbps), comfort cost.  Pure information; no optimiser.  The
+trust-mode user lives here.
+\item \textbf{Capacity coach.}  Avatar showing the suggested local
+pose move (e.g.\ ``rotate left shoulder \SI{5}{\degree} forward'').
+The phone vibrates with intensity proportional to $\|\nabla R\|$
+as the user moves toward the suggestion.  The suggestion updates
+as UL pilots refine the twin.  This is the differentiable +
+calibrated mode.
+\item \textbf{Settings.}  Slider for comfort weight $\lambda_M$,
+opt-in for receipt aggregation, on/off for capacity coach.  Single
+user only; no operator-side cooperation among users.
+\end{enumerate}
+
+The literal-RIS-but-personal framing carries: the user's body is
+\emph{their own} reflective intelligent surface, controllable only
+by them, optimised for their session.  The single-user scope keeps
+the privacy story simple: only the accept/reject bit and the
+opt-in receipt aggregation leave the device.
+
+\subsection{Why differentiability is load-bearing for this UX}
+
+Without on-device gradients, the loop has only the option of
+testing arbitrary new poses one at a time and waiting for UL
+pilots to confirm or refute each guess.  This is a
+random-search-with-measurement, slow and frustrating for the user.
+With on-device gradients, the suggested move is informed by the
+current calibrated twin's local linearisation; the next UL-pilot
+measurement validates and refines this, but the user does not wait
+for it.  Differentiability turns the closed loop from
+sample-and-test into local steering: this is the operational
+counterpart to the differentiability theorem of
+\cref{prop:smooth}.
+
+% ============================================================
+\section{Empirical PoC: line-of-sight un-shadowing}\label{sec:eval-poc}
+% ============================================================
+
+\subsection{Geometry and parameters}
+
+The PoC at \texttt{poc/s1\_window/} measures a single-DOF (torso
+yaw) sweep in a binding-regime body-shadowed LOS scenario at
+$f_c=\SI{28}{GHz}$, $M=64$ URA, BS at $\rr_{\mathrm{BS}}=(0,0,8)$~m,
+user torso centroid at $\rr_{\mathrm{u}}=(30,0,1)$~m, phone offset
+$(0.55,0,0.10)$~m in body-local coordinates (arm extended forward,
+chest-low).  Scene loss \SI{35}{dB} (window + interior wall +
+multipath floor) puts the operating SINR at the binding edge of the
+MCS27 cap.  Visibility computed via trimesh ray-mesh
+intersection of 49 sub-rays sampling the first Fresnel zone.
+
+\subsection{Results}
+
+\begin{table}[h]
+\centering\small
+\caption{Hero numbers per comfort budget, S1 PoC.}
+\label{tab:poc}
+\begin{tabular}{@{}lrrrrr@{}}
+\toprule
+$C\le$ & equiv.\ deg.\ & $\Delta$ rate (dB) & $\Delta$ SINR (dB)
+       & $\Delta$ dose (dB) & $\Delta$ rate (\%) \\
+\midrule
+1   & $\sim 5$  & $+0.22$ & $+0.97$ & $+0.00$ & $+5.4$ \\
+4   & $\sim 10$ & $+0.22$ & $+0.97$ & $+0.00$ & $+5.4$ \\
+\textbf{9}   & \textbf{$\sim 15$} & \textbf{$+0.58$} & \textbf{$+2.63$}
+            & \textbf{$+0.08$} & \textbf{$+14.5$} \\
+16  & $\sim 20$ & $+0.72$ & $+3.36$ & $+0.13$ & $+18.0$ \\
+36  & $\sim 30$ & $+0.91$ & $+4.66$ & $+0.21$ & $+23.1$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent A \SI{15}{\degree} torso turn buys \SI{14.5}{\percent}
+of rate (\SI{+87}{Mbps}, \SI{+2.6}{dB} SINR) at no
+operationally-relevant exposure cost.  Dose change is
+$\le\SI{1}{\percent}$ in absolute terms across the swept
+configurations.
+
+\subsection{What the PoC tests of the v4 spine}
+
+The S1 PoC is the LOS un-shadowing limit of the cascaded channel,
+in which $\partial\hLOS/\partial\theta_i$ dominates and the
+body-mediated $\partial\hbody/\partial\theta_i$ contribution is
+small relative to the un-shadowed direct path.  In this limit the
+LOS visibility $V(\rr;\rr_{\mathrm{BS}})$ for the direct path is
+the controlling quantity and the PoC reduces to a clean visibility
+sweep.  This is robust to all the new physics of \cref{sec:body-to-phone}
+because the body-mediated term is a small correction.  The next
+PoC (NLOS, S2 in \texttt{scenarios.md}) is the spine-test for the
+Kirchhoff render proper.
+
+\subsection{Roadmap to spine-tests of \cref{sec:body-to-phone}}
+
+\begin{enumerate}[leftmargin=1.6em,itemsep=2pt]
+\item Re-run S1 with the calibrated twin (Tier C
+$\hat{\bm\gamma}^{(\mathrm{C})}$ from synthetic UL pilots): verify
+that the cascaded $\hh(\thetab)$ prediction matches a full-wave
+reference within \SI{0.5}{dB} after calibration.
+\item Implement S2 NLOS: BS path occluded, only specular bounces
+available.  Expected: $\partial\hLOS/\partial\theta_i\equiv 0$,
+$\partial\hbody/\partial\theta_i$ dominates; pose moves re-orient
+the body to provide a useful reflection.  Spine-test for
+\cref{eq:hbody} as a load-bearing primitive.
+\item Implement S3 multi-user co-operative: bodies of two users
+co-shape each other's cascaded channels.  Spine-test for the
+multi-user gradient in \cref{sec:diff}.
+\item Move from torch.no\_grad() in the SMPL-X mesh layer to
+full autograd through the chain
+$\thetab\to\{\rr_t\}\to\hbody\to R$; verify gradients agree with
+finite differences within \SI{1}{\percent}.
+\end{enumerate}
+
+% ============================================================
+\section{Connection to v5 and what we do not relitigate}\label{sec:v5}
+% ============================================================
+
+This paper is the UE-side counterpart to v5's BS-side compliance
+paper, on the same per-triangle Fresnel-PO machinery.  v5 owns the
+BS-side compliance loop ($\Qabs$ + per-slot primal projection of
+regularised ZF + the dual-ascent QCQP solver for the binding
+regime).  This paper adds the on-device twin, the
+$\bm\gamma$-calibrated body-mediated channel
+\cref{eq:hbody}, the UE-anchored Kirchhoff render, the SAR
+receipt, and the pose-gradient suggestion.  Neither side competes
+with the other.
+
+What we do not relitigate from v5: the dictionary-side calibration
+$\bm\beta$ (only re-stated as a parallel to $\bm\gamma$); the
+per-slot primal projection of ZF; the dual-ascent solver for the
+binding regime; the tier-A/B/C/D telemetry classification; the ISAC
+bystander detection link budget.
+
+% ============================================================
+\section{What this is not}\label{sec:notthis}
+% ============================================================
+
+\begin{enumerate}[leftmargin=1.6em,itemsep=3pt]
+\item Not a compliance paper.  v5 owns BS-side compliance; the
+receipt of \cref{sec:saridx} is informational.
+\item Not a back-hemisphere scattering paper.  The body-to-UE
+channel \cref{eq:hbody} is a one-pixel render to the phone, not a
+total-scattered-power Gram with a single far-field $\kout$.  The
+back-hemisphere objects ($\Qref$, $\Frib$) of prior work are
+correct for monostatic radar / ISAC bystander imaging but are the
+wrong primitive here.
+\item Not a beamforming paper.  The precoder is v5's projected ZF.
+\item Not a pose-estimation paper.  The pose estimator is the
+on-device IMU + AR pipeline.
+\item Not a JCAS paper.  Pose tracking is on-device, not from
+backscatter.
+\item Not a regulatory measurement.  The SAR receipt is
+model-based; the basic-restriction-pathway audit is what the
+regulator certifies.
+\item Not new hardware.  Vanilla 5G FR2 panel + vanilla smartphone
+with IMU and AR.
+\item Not a literal RIS paper.  The body cannot tune
+electronically; the analogy is geometric.
+\end{enumerate}
+
+% ============================================================
+\section{Loose threads and conjectures}\label{sec:threads}
+% ============================================================
+
+\begin{enumerate}[leftmargin=1.6em,itemsep=3pt]
+\item \emph{Multi-bounce body re-illumination.}  Drop the
+single-bounce approximation: a Neumann series in the body's
+albedo $1-T_0$ gives the correction.  Convergence is guaranteed by
+$\|\mathcal{R}\Qref\|\le\bar\alpha\cdot V_{\mathrm{self}}$ with
+self-visibility $V_{\mathrm{self}}\ll 1$ for typical poses.
+Magnitude $\sim\SI{10}{\percent}$ correction on $\Pabs$.
+\item \emph{Multi-user RIHB.}  Joint loss
+$\mathcal{L}(\thetab_1,\thetab_2,\xvec)$.  Conjecture: a
+Stackelberg-style lift exists when both users follow gradients.
+Scenario S3 measures.
+\item \emph{Per-region $\bm\gamma$ stability.}  How rapidly does
+$\hat{\bm\gamma}^{(\mathrm{C})}$ change with pose?  If it is
+quasi-static (the body's response per region is dominated by
+geometry not by surface-roughness phase variation), the calibration
+overhead can be amortised over many slots.  Empirical question.
+\item \emph{Sub-\SI{6}{\GHz}.}  Pseudo-Brewster collapses at
+mmWave; below \SI{6}{GHz} the body's $T_0$ is polarisation-dependent
+and the body-RIS analogy weakens.  A separate development for the
+sub-6 carrier is needed.
+\item \emph{Comfort metric calibration.}  Cost weights $c_i$
+calibrated against an ergonomic study (RULA / REBA); separate
+companion study.
+\item \emph{Privacy preservation of the receipt aggregation.}
+Differential-privacy treatments of the per-slot receipt;
+secure-aggregation protocols.  Out of scope.
+\item \emph{Body re-routing increases own dose.}  Re-routing
+multipath through one's own body via RIHB pose moves probably
+\emph{increases} that user's own absorbed dose.  Interesting
+discussion observation; does not feed back into the optimisation
+because exposure is informational only.
+\item \emph{Pose-conditional dose-effect studies.}  Aggregated
+receipts at population scale support exposure-dose-response
+epidemiology that the field has been unable to run.  Study-design
+question its own paper.
+\item \emph{Adversarial poses.}  Worst-case pose on the comfort
+ball gives the BS a regret bound on rate-loss under
+non-cooperative pose.  An interesting characterisation of v5's
+robustness to its own pose-estimator quality.
+\item \emph{Federated $\bm\beta_{\mathrm{body}}$.}  Operator
+estimates population $\bar{\bm\beta}_{\mathrm{body}}$ via federated
+averaging without seeing any individual shape; whether the
+smoothed-mannequin shape is operationally useful is unknown.
+\item \emph{Tier B mode dimension.}  How many SVD modes does the
+body-to-UE Kirchhoff operator require to capture
+\SI{99}{\percent} of its spectral mass at typical
+geometries?  Conjecture: $\sim 10$--$30$ at \SI{28}{GHz}, scaling
+sublinearly with body solid angle from the phone.  Empirical
+measurement is a one-afternoon experiment.
+\item \emph{The two-paper option.}  Part~1 (SAR receipt) and
+Part~2 (RIHB capacity) may merit separate papers in different
+venues.  The unified spine here keeps both contributions on one
+piece of machinery; splitting is mechanical.
+\end{enumerate}
+
+% ============================================================
+\section{Summary}\label{sec:sum}
+% ============================================================
+
+A user with a smartphone is, at mmWave, a slowly-tunable RIS, and
+a real-time exposure data source.  The right physics for both is
+not a back-hemisphere scattered-power Gram (which counts total
+power leaving the body) but a UE-anchored Kirchhoff radiation
+integral (which gives the field at the phone antenna directly).
+The integral is per-triangle, per-Fresnel-coefficient, and
+naturally handles the spatially-varying direction-of-arrival
+$\etahat(\rr;\rr_p)$ that distinguishes a phone-on-body geometry
+from a far-field reception scenario.  Uplink pilots, which are
+already in the PHY frame, calibrate the on-device twin via a
+ladder of body-side scaling parameters $\bm\gamma$, mirroring v5's
+dictionary-side $\bm\beta$ calibration.  The closed loop has four
+orders of magnitude of bandwidth headroom relative to the data
+rate it negotiates over.  The PoC measures the LOS un-shadowing
+limit and finds \SI{14.5}{\percent} of rate at \SI{15}{\degree} of
+torso yaw, with no operationally-relevant exposure cost.  Next is
+the NLOS spine-test that exercises the Kirchhoff render proper.
+
+% ============================================================
+\appendix
+% ============================================================
+
+% ============================================================
+\section{Calibration recovery: empirical evidence}\label{sec:eval-cal}
+% ============================================================
+
+This appendix reports the empirical comparison of the three
+parametrisations of \cref{sec:gamma-choice} on synthetic UL
+pilots at known per-region perturbation $\bm\gamma_{\mathrm{true}}
+\in\Complex^6$.  Two geometries are tested:
+\begin{itemize}[leftmargin=1.6em,itemsep=2pt]
+\item \emph{Far-BS (\SI{30}{\m})}: BS at \SI{8}{\m} height, body
+\SI{30}{\m} away.  $\Lambda$ has $K_{99}=1$.  The body subtends
+$\sim 2.5^\circ$ from BS, well below the array's
+$\sim 4^\circ$ beamwidth.
+\item \emph{Close-BS (\SI{5}{\m})}: BS at \SI{3}{\m} height, body
+\SI{5}{\m} away.  $\Lambda$ has $K_{99}=4$.  The body subtends
+$\sim 13^\circ$ from BS, above beamwidth.
+\end{itemize}
+\Cref{fig:cal} (companion code, Fig.~3) shows the relative
+$\hbody$-reconstruction error vs.\ pilot SNR for each
+parametrisation, averaged over 30 trials.  The empirical winners:
+the single-scalar reaches $\SI{8}{\percent}$ floor in either
+geometry; per-region reaches $\SI{5}{\percent}$ at far-BS and
+$\SI{3}{\percent}$ at close-BS; SVD with $K=8$ reaches
+$\SI{1}{\percent}$ at far-BS \SI{40}{\dB} SNR but overfits at
+$K=32$ in low-SNR.  The principled choice $K=K_{99}$ tracks the
+geometry: $K=1$ at far-BS (matches single-scalar performance),
+$K=4$ at close-BS (matches per-region).
+
+% ============================================================
+\section{Below 6 GHz: layered Fabry--P\'erot transmission}\label{sec:layered}
+% ============================================================
+
+The pseudo-Brewster collapse of \cref{lem:pBrewster} holds at
+mmWave because skin tissue's refractive index has $|\tilde n|\sim 5$,
+making $T_s\approx T_p$ to within \SI{5}{\percent}.  Below
+\SI{6}{\GHz} this collapse weakens because (i) the polarisation
+sensitivity of the planar interface returns ($T_s\ne T_p$ at
+modest incidence angles), and (ii) the EM penetration depth
+exceeds the subcutaneous fat layer thickness, so the planar
+half-space approximation breaks: the fat layer sits between a
+skin layer and a muscle half-space and forms a Fabry--P\'erot
+resonator.  The right per-triangle replacement for $T_0$ is the
+layered transmission
+\begin{equation}\label{eq:T-lay}
+  T_{\mathrm{lay}}(f,d_{\mathrm{SF}})
+  = 1-|\tilde\Gamma_1(f,d_{\mathrm{SF}})|^2,
+\end{equation}
+where $\tilde\Gamma_1$ is the generalised Fresnel reflection
+coefficient at the air-skin interface, computed from the
+fat-muscle interface upward by the Chew recursion
+\cite{Chew1995}.  $T_{\mathrm{lay}}$ depends on subcutaneous fat
+thickness $d_{\mathrm{SF}}$ and exhibits a constructive resonance
+near \SI{0.9}{\GHz} (quarter-wave matching) and destructive
+suppression near \SI{3}{\GHz} (anti-matching) for the canonical
+$\SI{2}{\milli\m}$ skin / $\SI{10}{\milli\m}$ fat / muscle stack.
+The fat-thickness-weighted population average
+$\langle T_{\mathrm{lay}}\rangle_{d_{\mathrm{SF}}}$ smooths the
+oscillation and recovers the dosimetry-literature
+plateaus
+\cite{Flintoft2014,Zhang2017thesis}.  For the per-triangle
+Kirchhoff render of \cref{eq:hbody} the modification is local:
+substitute $T_0$ with $T_{\mathrm{lay}}(f,d_{\mathrm{SF}}^{(t)})$
+per triangle, using a per-region $d_{\mathrm{SF}}$ map (which
+SMPL-X can supply by anatomical region).  See
+\cite{WydaegheTAP2025} for the full Chew recursion, the
+layer-by-layer cube integral, and validation against \num{168}
+volunteers from the dosimetry literature.
+
+% ============================================================
+\section{Compliance metrics: SARwb, psSAR10g, and peak local APD}\label{sec:compliance-metrics}
+% ============================================================
+
+The receipt of \cref{sec:saridx} reports $\Pabs$, the whole-body
+absorbed power.  The ICNIRP 2020 basic restrictions
+\cite{ICNIRP2020} are stated in three forms, each derivable from
+$\Sab(\rr)$:
+
+\begin{itemize}[leftmargin=1.6em,itemsep=2pt]
+\item \emph{Whole-body SAR.}  $\mathrm{SAR}_{\mathrm{wb}}=
+\Pabs/m_{\mathrm{body}}$; basic restriction
+\SI{0.4}{\W\per\kg} for occupational and \SI{0.08}{\W\per\kg} for
+general public, time-averaged over the 6-min window.  Direct
+output of the receipt; the only metric that uses $\Pabs$ alone.
+\item \emph{Peak spatial-averaged 10\,g SAR ($\mathrm{psSAR}_{10\mathrm{g}}$).}
+The maximum of $\Pabs|_C/m_C$ over a sliding \SI{10}{\g}
+contiguous tissue cube $C$.  Basic restriction
+\SI{2}{\W\per\kg} for general public (head/trunk).  Requires
+sub-surface SAR per voxel; the receipt's per-triangle $\Sab(\rr)$
+combined with the standard skin-depth integral
+$\int_0^{\delta}\sigma|E|^2\diff z$ gives a sub-surface volumetric
+SAR map per voxel; the cube-averaging is a standard convolution
+with the IEEE/IEC 63195 \SI{10}{\g}-cube template.
+\item \emph{Peak local absorbed power density (peak local APD).}
+Above \SI{6}{\GHz}, the IEC/IEEE 63195 standard replaces the
+\SI{10}{\g}-cube SAR with a peak \SI{4}{\square\centi\meter}
+surface-averaged absorbed power density:
+$\mathrm{APD}^{\max}_{4\,\mathrm{cm}^2}=\max_{\Sigma'\subset
+\Sigma,\,|\Sigma'|=4\,\mathrm{cm}^2}\frac{1}{|\Sigma'|}
+\int_{\Sigma'}\Sab(\rr)\diff A$.
+Basic restriction $\SI{20}{\W\per\square\meter}$ general public.
+Direct surface average of the per-triangle $\Sab(\rr)$ on a sliding
+\SI{4}{\square\centi\meter} window.
+\end{itemize}
+
+In operational mmWave downlink the
+\emph{whole-body} restriction is the binding one (see
+\cref{sec:diff,sec:app}); the receipt displays whichever metric
+the user prefers, defaulting to the
+$\Pabs/L_{\mathrm{RL}}$ fraction of the local reference level
+budget.  The peak local APD is the most relevant for
+above-\SI{6}{\GHz} compliance audits and is what the regulator
+queries when the operator's compliance pipeline is independently
+verified; v5 supplies the BS-side enforcement, this paper supplies
+the on-device display.
+
+% ============================================================
+\section{Notation summary}\label{sec:notation}
+% ============================================================
+
+\begin{center}\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+Symbol & Meaning \\
+\midrule
+$\Sigma(\thetab,\betab)$ & SMPL-X body surface, pose $\thetab$,
+shape $\betab$ \\
+$\rr_t,\nhat_t,A_t$ & per-triangle position, normal, area \\
+$\khat_n,\bm\psi_n,j(n)$ & path direction, polarisation, source
+element \\
+$T_0(\theta)$ & pseudo-Brewster power transmission \\
+$r_0(\theta)e^{i\phi_r}$ & pseudo-Brewster amplitude reflection \\
+$\Sinc(\rr),\Sab(\rr)$ & incident, absorbed power density \\
+$\Qabs(\thetab)\in\Complex^{M\times M}$ & per-body absorbed-power
+operator \\
+$\hbody(\thetab,\rr_p)\in\Complex^M$ & body-mediated cascaded
+channel \\
+$\hLOS(\rr_p)\in\Complex^M$ & direct (non-body) channel \\
+$\hh(\thetab,\rr_p)$ & cascaded channel
+$\hLOS+\hbody$ \\
+$\etahat(\rr;\rr_p)$ & per-point direction-of-arrival at phone \\
+$\bm g_{\mathrm{UE}}(\hat\xi)$ & UE antenna pattern \\
+$\bm\beta\in\Complex^N$ & dictionary-side calibration \\
+$\bm\gamma$ & body-side calibration (Tier C/B/A) \\
+$\xvec\in\Complex^M$ & BS precoder \\
+$\sigma_\eta^2$ & receiver noise power \\
+$\Pabs(\thetab,\xvec)=\xvec^H\Qabs\xvec$ & whole-body absorbed
+power \\
+$R(\thetab,\xvec)$ & user rate, capped at $S_{\max}=\SI{7.4}{bps/Hz}$ \\
+$C(\thetab-\thetab^{(0)})$ & comfort cost in pose deviation \\
+$L_{\mathrm{RL}}$ & ICNIRP reference level (informational) \\
+$T_0\approx 0.54$ at \SI{28}{GHz}, skin & pseudo-Brewster value \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\end{document}

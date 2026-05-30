@@ -1,0 +1,164 @@
+=== Message 1 ===
+JSAC/paper/paper_jsac_v5.tex
+JSAC/paper/paper_jsac_evolution.md
+JSAC/paper/paper_jsac_v5_review.md
+
+So the above files are there just for you to read around and understand some context here. You can even start reading more if you're really interested cause it refers to a bunch of files, right? Under the directory theory we actually have everything written down really well. I also have a whole other paper, unsubmitted, just about the details of this gram matrix, how you construct it and stuff.
+
+To be honest this whole time the main thing I realized was you can make this matrix really quickly and compute it very fast, much faster than FDTD, and that's really the enabler.
+
+What's really important for you to understand is you have to go under the directory JSAC under Planning and you have to read the special issue digital twins markdown file. They will explain to you exactly what the special issue is about, and you can clearly see that I have my idea and I'm really pushing myself to go into it. If you think about it, true at this evolution, you just see that as we go through it we get more, we get honest with ourselves, and we're like, 'Oh it doesn't bind, it doesn't work well. It's basically the same as zero forcing and it just kind of loses its relevance to the special issue and it's not very groundbreaking at all, at least if you get past the fact that the exposure matrix can be computed very fast.'
+
+Here comes a new part. I was just thinking really, really on the high level, and one of the toughest parts about the paper is also the introduction. Just how do we situate our paper? You can almost see that as a tiny business: what problem are we trying to solve? The ones we did above are frankly not really a problem we're trying to solve. We're thinking about those as well. We're thinking about the worst worst case where somehow you can have an antenna overexpose you, but honestly that's not really an issue.
+
+I have this angle. It's called JSAC2 new angle. I'll link it below. The idea is in the introduction we just say, 'Oh well, it's very well known that the move to the wave was a bit of a hype and we low-key failed because the operators didn't want it anymore.' Why did it fail? Honestly for two reasons, almost equally as big.
+1. Huge path loss. The moment it enters a body or the moment it gets blocked by some tree or whatever, non-line-of-sight is terrible. The body, what was a major issue, and I'm sure just from your own knowledge you'll know of the study I'm talking about. I think this is a really famous study that might have come from New York where they said the body absorbs this many dB and it's so bad.
+Okay, fair enough, but that is going to be our introduction. That's really the problem. And then I'm also thinking, like, 5G in day-to-day life in 2026. Nobody goes out downloading a Netflix movie of 10 GB unless very, very seldom. You're in a big plaza or something and there are tons of people and the base station needs to provide gigabits of data. I don't know. Maybe there are some very specific applications where you're having a VR headset. I don't know what but the point is that very seldom do you actually need that 5G massive download speed, which really is just line-of-sight millimeter wave but tempered by the body. Let's be honest.
+
+The idea is, and this is also shown a little bit in one of the Markdown files under planning, I think so at least. You should probably grep. The idea is that an SMPLX body is basically defined by a whole bunch of essentially scalars that determine the skeleton of the human body so it's low-dimensional. With respect to these scalars the skeleton is 100% differentiable. I think it is somewhere in this repo, look around. So the idea is that a plane wave hits both the smartphone and the human body. The human body at these frequencies is very quickly in the far field essentially. A smartphone with respect to this human body is kind of in the far field but we can be smart about it.
+
+It's literally an arm that could be affecting the channel. That's the kind of resolution we want to be at and moving the set arm in some way can improve the download speed. That's what is differentiable.
+
+The smartphone should somehow direct the user in a pop-up or in an app on a smartphone, like: do this, do that. If you want to be static just don't move your position but at least, I don't know, bend your neck or whatever in order to improve the channel. That could be what happens now. Oftentimes I guess maybe you just put the smartphone up into the air. I don't actually know unless you put a constraint on that but the application is limitless there and we kind of have to not go too crazy here because honestly you can just keep thinking about this. It's just a proof of concept here that something like that should be possible, okay. JSAC/paper/rib.tex So this is the document that kind of has a bit of a random walk down a street called "Reflective Intelligent Bodies", and it proves all sorts of things, honestly. Probably only a subset of this is actually useful but it would really be interesting for you to know about it and definitely read it. 
+
+JSAC2/NEW_ANGLE.md
+
+-----
+
+READ READ READ. Look around, find nuggets of info.
+
+Now I've made this new directory called JSAC2 because I think this is a way better spine that actually might hold. I say might because we haven't actually done any coding whatsoever but maybe that's still a little bit early to do.
+
+Maybe we can just have a bit of a conversation here where you just think about the feasibility of it. Maybe make a LaTeX file that's not a paper, like the JSAC paper. It's not an IEEE paper but it's just a bunch of theory and only the most relevant one. We just go through to the point.
+
+Let's start from first principles because I'm being very vague right now and I really need you to make this concreter and really state the problem and exactly what's happening. Also think about the special issue: how we have to sell this in the introduction, how we have to sell this to the special issue editors, and how can I sell this to Wout, frankly? Who is an exposure guy?
+
+The idea is that the app would also be showing you, at this point, getting this much volts per meter or SAR or APD (I don't know what exactly on this location that would be). That would somehow appease people to actually use it you know. Maybe even reduce their exposure too idk (might bring us too far?).
+
+Also get ready already in your mind for how to code this, mostly after doing the initial writeup. JSAC/code is what we had before. What "scenario" would you simulate (since half the paper has to be some type of validation or in silico experiment), several options here.
+
+Be ambitious, we have all the time in the world.
+
+=== Message 2 ===
+I'm gonna be away for a while. You should work on this long and hard. Once you wrote your first version (latex deliverable and scenario proposals), already think / write of version two of this, maybe do some Proof of Concept stuff. You have a lot of time. Go! Be ambitious.
+
+=== Message 3 ===
+hi im back. it will take me a while to read, so in the mean time, you can just keep going. before you do so, let me know every single file you have read in this convo
+
+=== Message 4 ===
+read JSAC/paper/paper_jsac_v5.tex itself and the key code in JSAC/code/experiments for it (a good bit). I think you will learn some things. There is stuff available.
+
+I'm gionna start reading now. you can work on a new version of theory and or code and or md file critique. Just be a researcher.
+
+=== Message 5 ===
+a fraunhofer distance of 300 m ??!
+
+=== Message 6 ===
+Start by reading any relevant files in this convo if u havent already
+
+One thing I feel like is a problem is you kinda built off of the old rib.tex or q_complement.tex where you just totally go with 'radar' and 'far-field outgoing direction'. you correctly figured out this is just not the case. I think we need to do some of the physics from the ground up. You hinted at this in your near field extension. I think one can know exactly
+1 k direction comes on the body from the BS --> hits the body, know it SAR (Established). --> every triangle then gets collected at the UE antenna --> passed through its antenna pattern. 
+theory/summary_paper.tex will briefly mention near field and the monograph goes into more detail.
+
+It's a "weird" near field as we do disregard evanescent waves we need FDTD for, it's just that the angles of each patch onto the UE is varying, and also varies in amplitude because of distance
+
+One super key thing we are missing I think, which v5 kinda touched on, is the calibration of it all with UL pilots... The DT will never be perfect. I also feel like it's not qutie a closed loop since right now the BS just donates its RT scene and the phone figures it out 'with the user'. It's important that the BS also tells the phone, yo I got these UL right now, to close the loop. I am ebing vague since I dont really know if this is right and what really is the nail to hit here (Think about it). I think it's also kinda like how blender does RT fast since it's rendering based on final rendered pixels, not the whole scene: you can do the rendering/AO pass 'from the UE and back up the chain', since I dont care what the fields are on any OTHER location besides the UE antenna.
+
+=== Message 7 ===
+Go
+
+=== Message 8 ===
+spawn an agent with spine+rihb_theory_v4 with fresh eyes. say it's a JSAC paper and ask it to judge it on a high level like if certain sections make sense to include or not and what would be missing. critique the spine with general fresh eyes. it COULD be that this agent is like 'uhm what' on a fundamental level and asks a basic question with a touhg answer.
+
+One for you already is: what kind of paper talks about an APP ux? I mean, I get it that it's needed, but it's not a business pitch. It's better suited framed as 'coaching of the human' or whatever... Using the word app is not illegal though but it's not the USP we wanna share. 
+
+That's one example maybe the agent comes up with more (but prompt it unbiased/fairly).
+
+Dont act on its suggestions, just communicate them
+
+=== Message 9 ===
+small comment: btw the tikz figure I was referring to earlier is theory/figures/incidence_plane_fig.pdf. you may have misinterpreted what I meant on that. convert to png to view.
+
+=== Message 10 ===
+what do you think of the agents opinion? it appears to think we're doing two submission when we're not? JSAC2 is the way to go
+
+=== Message 11 ===
+one thing he got right is that the DTN fit can be better... The BS and the network really needs to get involved. feedback_no_invented_phrases_no_vibes has nothing to do with this. a good idea is to study 'convergence'. is there always a good solution? how can we test this in-silico. 
+
+I mean obviously the tex file we wrote right now are wandering things, they are NOT publishable, they were meant to. It's purely about spine and approach, that's whats getting judged.
+
+I would indeed include the live SAR, thats not a second paper. the framing is quite good there. no need to cite too many RIS paper since RIHB is HARDLY a ris, it's just a bit of framing lol (I like the cheeky way we sold it with humans are equiped with intelligent brains). 
+
+Think of the last couple of responses here in this convo, and aggregate
+
+=== Message 12 ===
+btw it's a double column IEEE paper and I think 23 pages is a little muhc (idk how many pages it is in double column tho). we can use the SI too
+
+=== Message 13 ===
+wdym roosli? where was this mentioned?
+
+=== Message 14 ===
+I do like the framing from all the way back in JSAC2/NEW_ANGLE.md or previous versions of rihb with 'mmWave lowkey failed cuz ppl are scared and they block it with their own bodies'. I think we can bolt on the SI framing too
+
+=== Message 15 ===
+oh and the SAR receipts is perfect for epi people like Roosli (mention CLUE-H project)
+
+=== Message 16 ===
+timing is not an issue (dont worry). CLUE-H is a consortia of big EU projects where we try to get a better sense of real exposure to RF-EMF and relate it to bio outcomes from questionaires prospective cohort study that's high quality ya know
+
+=== Message 17 ===
+Now, think of all the code that still need to be done. Spawn agents for parallel work where it's possible, delegate already in the current dir structure (so we can keep track of stuff) and sequential when it's needed (previous work is a blocker). Meanwhile, write the first true version of the JSAC paper two column IEEE but quite spinally. so <here goes yadeyade> and where it's already really certain (the physics of reflecting off a body), you can try to already get more polished stuff out. some stuff will remain in limbo. Iterate on this a bit too by self reflecting if this is the best way to structure the paper (I love very classical structure if possiblle, like IMRAD or intro-system model - ... - numerical example - ... maybe a discussion.
+
+=== Message 18 ===
+ask agaib
+
+=== Message 19 ===
+hows it going
+
+=== Message 20 ===
+keep going
+
+=== Message 21 ===
+[Request interrupted by user]
+
+=== Message 22 ===
+keep going
+
+=== Message 23 ===
+[Request interrupted by user]
+
+=== Message 24 ===
+btw can u also make the SI? sry to interrupt you (feel free to keep going what u were doing)
+
+also I think there is something really wrong with the pose you show in the figures. maybe you can make a png only of the base pose and examine that: it's like the hands/arms are pointing left and the face/boobs are pointing right so the whole body looks like a frankenstein impossible thing idk..
+
+=== Message 25 ===
+[Request interrupted by user]
+
+=== Message 26 ===
+yeah if you think that is VPoser then let's work with that, unless you're not sure
+
+=== Message 27 ===
+hows it going
+
+=== Message 28 ===
+I havent quite read the paper in full yet but how did you get 36 scenes? what are they?
+
+=== Message 29 ===
+i dont know why but the pc ssh connection starting hanging so i restarted the pc
+
+=== Message 30 ===
+is that SI complete though? see the paper, look for references. what could be added. obviously, if you wanna learn some thing there is the TAP paper, the monograph, and much more, to write it. JSAC/ and JSAC2/
+
+=== Message 31 ===
+on the fact that it would take forever for real scenes: I disagree. We did JSAC/ paper (the old one) based on precomputed RT and I think that should work too. Perhaps I want something more canonical though. Like, use the sionna rt base munich scene. reraytrace that in a number of points: LOS and NLOS with enough reflections. no need to map the whole scene of course meter by meter, a sampling already works. you can place Rx by viewing the scene from the top, placing the rx in code/config file, seeing if it landed where you wanted it to land, and iterate on that as an AI (youre not that good with fat fingering, but you can do this I think). I think much scene is pretty canonical and I like that.
+
+=== Message 32 ===
+wdym parametric scalar sweep?
+
+=== Message 33 ===
+A
+
+=== Message 34 ===
+can u find this CC convo in jsonl. then get all MY user message, filter out those that are compaction. dump to txt
+

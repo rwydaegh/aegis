@@ -3,7 +3,8 @@ R(f) Landscape + T̄ Table + Activation Shapes
 ==============================================
 
 Produces:
-  - 3-panel figure  →  theory/figures/R_of_f_landscape.{png,pdf}
+  - main figure     →  figures/R_of_f.{png,pdf}
+  - companion       →  figures/R_of_f_angle_family.{png,pdf}
   - LaTeX table     →  console + report
 
 Panel (a): R(f) vs frequency, conservative / non-conservative shading.
@@ -27,11 +28,9 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 from scipy import integrate
 import argparse
-import sys
 import cmath
 
 # ── project helpers ──────────────────────────────────────────────────
-sys.path.insert(0, str(Path(__file__).parent))
 from _fresnel import fresnel_transmission, n_complex, EPS_0
 from _plot_style import apply_monograph_style, fig_size_ieee
 
@@ -194,8 +193,10 @@ def create_figure(mode: str, out_dir: Path) -> Path:
 
     ax.set_xlim(0.3, 100)
     ax.set_ylim(0.93, 1.05)
-    ax.set_ylabel(r"$R(f) = T_0/\bar{T}$")
+    ax.set_ylabel(r"$R(f) = T_0/\bar{T}$ $[\,]$")
     ax.set_xlabel(r"Frequency $f$ [GHz]")
+    ax.set_xticks([1, 10, 100])
+    ax.set_xticklabels(['1', '10', '100'])
     # [circa:5d3611a7-526e-4141-991a-569ebe369e79:begin]
     leg = ax.legend(loc="lower right", **LEGEND_KW)
     leg.get_frame().set_linewidth(1.0)
@@ -205,7 +206,7 @@ def create_figure(mode: str, out_dir: Path) -> Path:
     ax2 = ax.twinx()
     ylo, yhi = ax.get_ylim()
     ax2.set_ylim((ylo - 1) * 100, (yhi - 1) * 100)
-    ax2.set_ylabel(rf"$(R-1)\times 100$ ({pct})")
+    ax2.set_ylabel(rf"$(R-1)\times 100$ [{pct}]")
     ax2.grid(False)
 
     # ── save the single-panel main figure ──────────────────────────

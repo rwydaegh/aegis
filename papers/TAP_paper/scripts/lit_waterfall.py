@@ -20,24 +20,21 @@ Run from repo root: python papers/drafts/figures/lit_waterfall.py
 from __future__ import annotations
 
 import csv
-import sys
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.ticker import LogLocator, NullFormatter
 
-# Add theory/scripts so we can import the shared monograph style helper.
-_REPO_ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(_REPO_ROOT / "theory" / "scripts"))
+from _fresnel import fresnel_transmission, get_tissue_spectrum  # noqa: E402
 from _plot_style import apply_monograph_style, fig_size_ieee  # noqa: E402
 
-from aegis.tissue.database import get_tissue_spectrum  # noqa: E402
-from aegis.tissue.fresnel import fresnel_transmission  # noqa: E402
-
 HERE = Path(__file__).resolve().parent
+PAPER_ROOT = HERE.parent
+FIGURES_DIR = PAPER_ROOT / "figures"
+DATA_DIR = PAPER_ROOT / "data"
 
-# Body-shape constant: Thelonious-mesh AO mean computed by AEGIS's own AO solver.
+# Body-shape constant: Thelonious-mesh AO mean computed by the local AO solver.
 A_AB_OVER_A = 0.865  # = Flintoft's gamma_s, area-weighted mean of eta(r).
 
 C_0 = 299792458.0
@@ -288,7 +285,7 @@ AEGIS_RATIO = np.array([0.41, 0.39, 0.52, 0.59, 0.73, 0.96, 1.012])
 # (SD/sqrt(n) with n=24 samples per frequency), reflecting uncertainty in the
 # direction-averaged value. The directional SD across (direction, polarization)
 # pairs is ~5x larger and is shape-locked in the GO regime by the projected-area
-# spread of the body. Source: validation/data/tier0_thelonious.parquet.
+# spread of the body. Source copied into data/tier0_thelonious.parquet.
 WYD_GHZ = np.array([0.450, 0.700, 0.835, 1.450, 2.140, 2.450, 3.500, 5.200, 5.800])
 WYD_UNI = np.array([0.903, 1.001, 0.947, 0.793, 0.739, 0.706, 0.577, 0.442, 0.420])
 WYD_UNI_ERR = np.array([0.047, 0.039, 0.040, 0.068, 0.087, 0.090, 0.081, 0.060, 0.056])
@@ -518,7 +515,7 @@ def _panel_kodera_diao(ax: plt.Axes) -> None:
             markeredgewidth=1.0, markersize=8.0,
             label=r"Diao 2024 5G patch (28\,GHz)")
     ax.set_ylim(0.0, 1.0)
-    ax.set_ylabel(r"$T_{\mathrm{tr}}$ / $T_{\mathrm{eff}}$ (1)",
+    ax.set_ylabel(r"$T_{\mathrm{tr}}$ / $T_{\mathrm{eff}}$ $[\,]$",
                   fontsize=FS_AXIS)
     _format_freq_axis(ax, ticks=[1, 3, 10, 30, 100])
     ax.set_xlim(0.85, 115.0)
@@ -540,7 +537,7 @@ def _panel_aegis(ax: plt.Axes) -> None:
     ax.set_ylim(0.28, 1.32)
     ax.set_ylabel(
         r"$\langle P_{\mathrm{abs}}\rangle_{\mathrm{AEGIS}}/"
-        r"\langle P_{\mathrm{abs}}\rangle_{\mathrm{FDTD}}$ (1)",
+        r"\langle P_{\mathrm{abs}}\rangle_{\mathrm{FDTD}}$ $[\,]$",
         fontsize=FS_AXIS,
     )
     _format_freq_axis(ax, ticks=[0.5, 1, 2, 5, 10])
@@ -590,7 +587,7 @@ def _panel_unification(ax: plt.Axes) -> None:
             markeredgewidth=1.0, markersize=8.0,
             label="Diao 2024 (28 GHz, patch array)")
     ax.set_ylim(0.0, 1.0)
-    ax.set_ylabel(r"$\bar{T}(f)\,A_{\mathrm{ab}}/A$ (1)", fontsize=FS_AXIS)
+    ax.set_ylabel(r"$\bar{T}(f)\,A_{\mathrm{ab}}/A$ $[\,]$", fontsize=FS_AXIS)
     _format_freq_axis(ax, ticks=[1, 3, 10, 30, 100])
     ax.set_xlim(0.85, 115.0)
 
@@ -640,8 +637,9 @@ def build_six_panel() -> Path:
     _panel_bamba(fig.add_subplot(gs[0, 2]))
     _panel_kodera_diao(fig.add_subplot(gs[1, 0]))
     _panel_unification(fig.add_subplot(gs[1, 1:3]))
-    pdf = HERE / "lit_waterfall.pdf"
-    png = HERE / "lit_waterfall.png"
+    FIGURES_DIR.mkdir(parents=True, exist_ok=True)
+    pdf = FIGURES_DIR / "lit_waterfall.pdf"
+    png = FIGURES_DIR / "lit_waterfall.png"
     fig.savefig(pdf)
     fig.savefig(png, dpi=300)
     plt.close(fig)
@@ -702,7 +700,7 @@ def build_summary() -> Path:
             markeredgewidth=1.2, markersize=10,
             label=r"Diao 2024, 28 GHz patch on TARO")
     ax.set_ylim(0.20, 0.82)
-    ax.set_ylabel(r"$\bar{T}(f)\,A_{\mathrm{ab}}/A$ (1)")
+    ax.set_ylabel(r"$\bar{T}(f)\,A_{\mathrm{ab}}/A$ $[\,]$")
     _format_freq_axis(ax, ticks=[1, 3, 10, 30, 100])
     ax.set_xlim(0.85, 115.0)
     ax.tick_params(axis="both", which="major", labelsize=9.5)
@@ -713,8 +711,9 @@ def build_summary() -> Path:
                     fancybox=False)
     leg.get_frame().set_linewidth(0.7)
     leg.get_frame().set_boxstyle("Square", pad=0.4)
-    pdf = HERE / "lit_waterfall_summary.pdf"
-    png = HERE / "lit_waterfall_summary.png"
+    FIGURES_DIR.mkdir(parents=True, exist_ok=True)
+    pdf = FIGURES_DIR / "lit_waterfall_summary.pdf"
+    png = FIGURES_DIR / "lit_waterfall_summary.png"
     fig.savefig(pdf)
     fig.savefig(png, dpi=300)
     plt.close(fig)
@@ -773,14 +772,15 @@ def write_csv() -> Path:
     f_ref = np.array([0.3, 0.45, 0.7, 0.9, 1.0, 1.45, 2.0, 2.4, 3.0, 5.8,
                       6.0, 10.0, 28.0, 40.0, 60.0, 100.0])
     T0_ref, Tbar_ref = framework_curves(f_ref)
-    framework_path = HERE / "lit_waterfall_framework_T.csv"
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    framework_path = DATA_DIR / "lit_waterfall_framework_T.csv"
     with framework_path.open("w", newline="") as fh:
         w = csv.writer(fh)
         w.writerow(["freq_ghz", "T0", "T_bar", "T_bar_times_AabA"])
         for f, t0, tb in zip(f_ref, T0_ref, Tbar_ref, strict=True):
             w.writerow([f, t0, tb, tb * A_AB_OVER_A])
 
-    csv_path = HERE / "lit_waterfall_data.csv"
+    csv_path = DATA_DIR / "lit_waterfall_data.csv"
     with csv_path.open("w", newline="") as fh:
         w = csv.DictWriter(
             fh,
@@ -995,14 +995,14 @@ def build_combined() -> Path:
     # Body-Mie / fat lambda/4 regime label, placed inside the shaded band.
     ax.text(
         3.0, 0.06,
-        r"Body-Mie / fat $\lambda/4$ regime",
+        r"Mie / fat $\lambda/4$ regime",
         fontsize=FS_ANNOT - 0.5, color="#444", style="italic",
         ha="center", va="bottom",
         zorder=5,
     )
 
     ax.set_ylim(0.0, 1.0)
-    ax.set_ylabel(r"$\bar{T}(f)\,A_{\mathrm{ab}}/A$ (1)")
+    ax.set_ylabel(r"$\bar{T}(f)\,A_{\mathrm{ab}}/A$ $[\,]$")
     _format_freq_axis(ax, ticks=[1, 3, 10, 30, 100])
     ax.set_xlim(0.85, 115.0)
     ax.grid(True, which="major", alpha=0.25)
@@ -1019,7 +1019,7 @@ def build_combined() -> Path:
         "\n"
         r"\quad Layered ($T_{\mathrm{lay}}$): $f\!<\!6$\,GHz"
         "\n"
-        r"Body-Mie residual: $f\!\lesssim\!3$\,GHz"
+        r"Mie residual: $f\!\lesssim\!3$\,GHz"
     )
     ax.text(
         0.98, 0.97, box_text,
@@ -1054,12 +1054,28 @@ def build_combined() -> Path:
         **LEGEND_KW,
     )
     _apply_legend_frame(leg)
+    ax.add_artist(leg)
 
-    pdf = HERE / "lit_waterfall_combined.pdf"
-    png = HERE / "lit_waterfall_combined.png"
+    # Plain "This paper" key, lower right: the black framework lines and the
+    # grey envelope are this work; the colored points are the literature.
+    from matplotlib.lines import Line2D
+    from matplotlib.patches import Patch
+    from matplotlib.legend_handler import HandlerTuple
+    _tp_line = Line2D([0], [0], color="black", lw=1.9)
+    _tp_band = Patch(facecolor="#888888", alpha=0.5, edgecolor="none")
+    leg_tp = ax.legend(
+        [(_tp_line, _tp_band)], ["This paper"],
+        loc="lower right", handler_map={tuple: HandlerTuple(ndivide=None)},
+        **LEGEND_KW,
+    )
+    _apply_legend_frame(leg_tp)
+
+    FIGURES_DIR.mkdir(parents=True, exist_ok=True)
+    pdf = FIGURES_DIR / "lit_waterfall_combined.pdf"
+    png = FIGURES_DIR / "lit_waterfall_combined.png"
     # bbox_inches='tight' + bbox_extra_artists ensures the bottom-anchored
     # legend frame is fully captured in the saved figure.
-    save_kw = dict(bbox_inches="tight", bbox_extra_artists=(leg,),
+    save_kw = dict(bbox_inches="tight", bbox_extra_artists=(leg, leg_tp),
                    pad_inches=0.05)
     fig.savefig(pdf, **save_kw)
     fig.savefig(png, dpi=300, **save_kw)

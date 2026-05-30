@@ -138,11 +138,10 @@ def main(argv: List[str] | None = None):
     apply_monograph_style(mode=args.mode)
 
     # Load mesh
+    root = Path(__file__).resolve().parent.parent
     mesh_paths = [
-        Path(__file__).parent.parent / 'data' / 'thelonious.stl',
-        Path(__file__).parent.parent.parent / 'data' / 'thelonious.stl',
-        Path(__file__).parent.parent.parent.parent / 'data' / 'thelonious.stl',
-        Path(__file__).parent / 'thelonious.stl',
+        root / 'data' / 'thelonious.stl',
+        Path(__file__).resolve().parent / 'thelonious.stl',
     ]
     
     mesh_path = None
@@ -155,7 +154,7 @@ def main(argv: List[str] | None = None):
             continue
     
     if mesh_path is None:
-        print("ERROR: Could not find thelonious.stl mesh file")
+        print("ERROR: Could not find thelonious.stl inside this PaperMaker instance")
         return
     
     print(f"Loading mesh: {mesh_path}")
@@ -344,7 +343,7 @@ def main(argv: List[str] | None = None):
         label=r"$T_{\mathrm{avg}}$",
     )
     ax5.set_xlabel(r"Incidence angle $\theta$ [deg]")
-    ax5.set_ylabel(r"Transmission $T(\theta)$")
+    ax5.set_ylabel(r"Transmission $T(\theta)$ $[\,]$")
     ax5.set_xlim(0, 85)
     ax5.set_ylim(0, 1.05)
     ax5.set_xticks([0, 15, 30, 45, 60, 75])
@@ -396,25 +395,16 @@ def main(argv: List[str] | None = None):
     ax6.plot(theta_deg, apd_p, "--", color=c_TM, linewidth=1.6, label=r"$T_p\cos\theta$ (TM)")
     ax6.plot(theta_deg, apd_avg, "-.", color=c_avg, linewidth=1.4, label=r"$T_{\mathrm{avg}}\cos\theta$")
     ax6.set_xlabel(r"Incidence angle $\theta$ [deg]")
-    ax6.set_ylabel(r"$\mathrm{APD}/\mathrm{IPD}$")
+    ax6.set_ylabel(r"$\mathrm{APD}/\mathrm{IPD}$ $[\,]$")
     ax6.set_xlim(0, 85)
     ax6.set_ylim(0, 0.62)
     ax6.set_xticks([0, 15, 30, 45, 60, 75])
     ax6.set_yticks([0.0, 0.2, 0.4, 0.6])
-    # Identify the simplified reference curve in-panel; the polarization
-    # styles are keyed by the shared legend below the figure. The dotted
-    # grey curve is placed in the empty lower-right region.
-    ax6.annotate(
-        r"$T_0\cos\theta$",
-        xy=(70, T_0 * np.cos(np.radians(70))),
-        xytext=(55, 0.07),
-        fontsize=8.0, color="black", ha="center", va="center",
-        arrowprops=dict(
-            arrowstyle="->", color="black", lw=0.5,
-            shrinkA=1.0, shrinkB=2.0,
-            connectionstyle="arc3,rad=-0.2",
-        ),
-    )
+    leg6 = ax6.legend(loc="upper right", frameon=True, fancybox=False,
+                      edgecolor="black", framealpha=1.0,
+                      handlelength=2.0, handletextpad=0.4,
+                      borderpad=0.3, fontsize=8)
+    leg6.get_frame().set_linewidth(1.0)
 
     # Save the two angle-dependence panels separately for LaTeX subfigure layout.
     fig_T.tight_layout(pad=0.4)

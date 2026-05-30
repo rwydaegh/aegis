@@ -1,0 +1,16 @@
+Start voxeling
+Topological Voxeler Report: Sphere 1
+	Target Grid: Primary
+	Duration: 8.9353 ms
+	Priority: 0
+	Edges: None
+	Voxels: 43
+	Memory Consumption: 16 bytes
+
+Topological Voxeler Report: Complete Voxel Scene
+	Voxel Scene Memory Consumption: 0.001083 kB
+	Wall Clock Time: 0.0195385 s
+
+Visualization Data Memory Consumption: 0.003159 kB
+	 Elapsed Time: 0.0008879 s
+Time step: 1.78226e-11 s

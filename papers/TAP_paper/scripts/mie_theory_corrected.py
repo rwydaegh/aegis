@@ -46,10 +46,7 @@ C_0 = 299792458.0         # m/s
 # Database paths
 DB_PATHS = [
     Path(__file__).parent.parent / "data" / "itis_v5.db",
-    Path(__file__).parent.parent.parent / "data" / "itis_v5.db",
     Path(__file__).parent / "itis_v5.db",
-    Path(__file__).parent.parent / "EMT" / "itis_v5.db",
-    Path(__file__).parent.parent / "PRL_brainstorm" / "itis_v5.db",
 ]
 
 
@@ -459,7 +456,7 @@ def create_validation_plots(*, mode: str = "png", out_dir: Path | None = None) -
                  label='Mie error')
     ax1.axhline(y=0, color='k', linestyle='--', alpha=0.5, linewidth=0.7)
     fresnel_label = (
-        r'Fresnel limit $R_{\mathrm{sphere}}{-}1='
+        r'Fresnel limit $R{-}1='
         + f'{(R_sphere_28 - 1) * 100:.1f}'
         + pct_math + r'$'
     )
@@ -470,6 +467,8 @@ def create_validation_plots(*, mode: str = "png", out_dir: Path | None = None) -
     ax1.set_ylabel(f'Prediction error [{pct}]')
     ax1.set_xlim([3, 2000])
     ax1.set_ylim([-70, 10])
+    ax1.set_xticks([5, 10, 50, 100, 500, 1000])
+    ax1.set_xticklabels(['5', '10', '50', '100', '500', '1000'])
 
     # Body-part guide lines at 28 GHz, with short labels rotated 90 degrees.
     wavelength_28 = c / 28e9
@@ -522,7 +521,7 @@ def create_validation_plots(*, mode: str = "png", out_dir: Path | None = None) -
     # Frequency-dependent Fresnel asymptote (curve only; the mmWave
     # band sits outside the 0-6 GHz window so no inline label).
     ax2.plot(freqs_dense_hz / 1e9, asymp_dense, color=CB_ORANGE,
-             linewidth=1.4, label=r'$R_{\mathrm{sphere}}(f)-1$')
+             linewidth=1.4, label=r'$R(f)-1$')
 
     ax2.set_xlabel('Frequency [GHz]')
     ax2.set_ylabel(f'Prediction error [{pct}]')
@@ -531,7 +530,7 @@ def create_validation_plots(*, mode: str = "png", out_dir: Path | None = None) -
     ax2.axhline(y=0, color='k', linestyle='--', alpha=0.5, linewidth=0.7)
     # Re-add the mmWave shading and inline label since the panel now
     # spans the full 1-100 GHz band again.
-    ax2.axvspan(20, 60, alpha=0.10, color=CB_GREEN, linewidth=0)
+    ax2.axvspan(24, 100, alpha=0.10, color=CB_GREEN, linewidth=0)
     ax2.text(35, 4, 'mmWave', ha='center', va='top',
              fontsize=7, color=CB_GREEN, alpha=0.95)
 
@@ -553,7 +552,7 @@ def create_validation_plots(*, mode: str = "png", out_dir: Path | None = None) -
              marker='o', markersize=4.5, markerfacecolor='none',
              markeredgewidth=1.0, markeredgecolor=CB_BLUE, zorder=5)
     ax3.axhline(y=1.0, color='k', linestyle='--', alpha=0.5, linewidth=0.7)
-    ax3.axvspan(20, 60, alpha=0.10, color=CB_GREEN, linewidth=0)
+    ax3.axvspan(24, 100, alpha=0.10, color=CB_GREEN, linewidth=0)
 
     # Crossover at R = 1.
     R_arr = np.array(R_dense)
@@ -584,7 +583,7 @@ def create_validation_plots(*, mode: str = "png", out_dir: Path | None = None) -
              fontsize=7, color=CB_VERMILION, alpha=0.9, va='center', ha='left')
 
     ax3.set_xlabel('Frequency [GHz]')
-    ax3.set_ylabel(r'$R_{\mathrm{sphere}} = T_0 / \langle T_{\mathrm{avg}} \rangle$')
+    ax3.set_ylabel(r'$R = T_0 / \langle T_{\mathrm{avg}} \rangle$')
 
     # Secondary y-axis: asymptotic error in %.
     ax3b = ax3.twinx()

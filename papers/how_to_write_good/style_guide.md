@@ -136,15 +136,45 @@ LLMs overuse: "very," "highly," "extremely," "particularly," "especially," "sign
 
 **Rule:** Delete them. Use words strong in themselves (Strunk, Rule 12). "Very important" becomes "essential" or just state why it matters. "Significantly" is reserved for statistical significance.
 
-### A19. Throat-Clearing Openings — REMOVED
+### A19. Throat-Clearing Openings — SOFTENED
 
-(Previously banned phrases like "It is worth noting that..." This rule generated too many false positives in practice and is no longer enforced. Use judgment.)
+Phrases like "It is worth noting that...", "Note that...", "It is important to mention...", "We can observe that..." used to be banned outright. The ban produced too many false positives, and recent LLMs lean on these openings less than they once did. The current position:
+
+- A throat-clearing opener is **usually fine** when the natural subject-verb-rest construction would be awkward, when the sentence's job is to **connect** to what just came (the throat clears the connection), or when an inanimate subject would force a contortion.
+- Keep them **rare overall**. Across a section, a handful is normal; one per paragraph is too many; back-to-back openings of "Note that ... Note also that ..." are a smell.
+- The forbidden flavours are still the empty meta ones: "In this section, we discuss...", "It is worth pointing out the obvious fact that...", and any opener whose deletion does not change the sentence's meaning.
+
+**Rule:** Default to subject-verb-rest. Allow a throat clearer when it earns its place by buying connection or fluency. If you cannot say *which* of those two it bought, cut it.
 
 ### A20. Overuse of "Furthermore," "Moreover," "Additionally"
 
 LLMs chain these transition words mechanically. They become invisible filler.
 
 **Rule:** If two sentences follow logically, you often need no connective at all. When you do need one, vary your approach: sometimes the connection is best shown by placing old information at the start of the new sentence (see B10).
+
+### A21. Mic-Drop Stinger Sentences
+
+LLMs end paragraphs with a short, declarative punchline after a longer descriptive sentence: "The physics does not.", "No fitted parameters.", "The chain is.", "Both values are moderate.", "This paper closes the gap." The pattern is a long-prose-then-short-punchline rhythm that mimics op-ed or sales copy.
+
+**Rule:** Sentences under five words that immediately follow a longer sentence already conveying the same point must be folded into the preceding sentence. **One** deliberate short-sentence landmark per paper is the maximum, and even that is optional. The cleaner default is zero.
+
+### A22. Internal-Codebase Brand Names in Body Prose
+
+LLMs adopt whatever name appears in the source repository and treat it as a load-bearing noun in the paper. "The AEGIS framework computes...", "Our AEGIS solver shows...", "AEGIS = FDTD". A reader of the journal paper has not heard of the codebase and does not need to.
+
+**Rule:** Internal project names belong in the implementation, not in body prose, captions, or figure legends. Replace with neutral identifiers: "the closed-form prediction", "the proposed method", "the present approach". The exception is when the code release itself is part of the paper's contribution and a named repository is announced — then introduce it once and use the name consistently.
+
+### A23. Anthropomorphism of Standards, Literature, and Algorithms
+
+LLMs write "ICNIRP wants...", "the regulator cares about...", "the literature has converged on...", "5G demands...", "the algorithm prefers...". Standards bodies, fields, and algorithms do not want, care about, demand, or converge on anything.
+
+**Rule:** Replace with what the entity actually does. "ICNIRP C95.1 specifies X above 6 GHz." "Several recent studies report Y." "The algorithm minimizes Z." If the verb cannot be replaced with a literal action, the framing was promotional and should be dropped entirely.
+
+### A24. Grand-Narrative Framing of the Contribution
+
+LLMs reach for sweeping rhetoric to explain why the contribution matters: "five communities", "the literature has converged", "we chain five known results from five fields into one closed form", "this paper closes a long-standing gap". The structural metaphor (chain, bridge, unification) becomes the thesis; the actual technical contribution gets obscured.
+
+**Rule:** Cite the prior work and state the technical result. "We derive X from Y under assumptions Z, and validate against published data from \cite{...}, \cite{...}, \cite{...}." That is the contribution. The word "chain" / "chains" / "chaining" should not appear in the paper. Neither should "five communities", "the literature has converged", or any phrase that implies you have surveyed and synthesised an entire field. If you did survey it, just cite it.
 
 ---
 
@@ -359,12 +389,14 @@ Build sentences in this order: subject, then verb, then the rest. Avoid long int
 
 Write "we measured," not "measurements were performed." Switch to passive only for information flow or when the agent truly does not matter.
 
-### C6. No Throat-Clearing
+### C6. Throat-Clearing — Used Sparingly
 
-Never start a paragraph with meta-commentary about what you are about to say. Start with the content.
+Avoid meta-commentary about what you are about to say. Start with the content when you can.
 
 - Weak: "In this section, we discuss the theoretical framework underlying our approach."
 - Strong: "The compensation mechanism relies on destructive interference between successive reflections."
+
+This is softer than the old "never" version. Modern LLMs reach for empty openers less than they once did, and a connecting opener ("Note that the integral diverges at the pole" or "Two regimes follow from the above") is genuinely reasonable when subject-verb-rest would be awkward, especially when the sentence's job is to **bridge** to what just came. See A19 for the longer treatment. The rule is: rare, deliberate, and earning its place — not banned.
 
 ### C7. No Filler Transitions
 
@@ -395,6 +427,22 @@ Section titles, subsection titles, and paragraph headings should not begin with 
 - Strong: "Role of Layer Thickness" or better: "Layer Thickness Effects"
 
 **Exception:** When "The" is part of a proper name or established term that requires it for clarity.
+
+### C12. Subject-Verb-[long list] is Welcome
+
+Long sentences are tolerable — and often preferable to splitting — when the structure is **subject — verb — long list**. After the subject-verb stem the reader handles the cognitive load every time, no matter how many list items follow. Example:
+
+> "The closed form matches Mie theory on lossy spheres, full polarization-aware Fresnel on the Thelonious phantom, Sim4Life FDTD at 5.8 GHz, and the dosimetry literature across 168 volunteers and 5 FDTD phantoms."
+
+This is one sentence and reads fine. Don't split it into five short sentences just because §C2 ("short sentences as default") says so. The long-list pattern is the recognised exception. Long *subordinate-clause-heavy* sentences are still the failure mode to avoid; long *list-tail* sentences are not.
+
+### C13. "Respectively" Carries No Cognitive Load Penalty
+
+The word **respectively** (and its abbreviation **resp.**) is welcomed without budget. Parallel constructions of the form "X and Y are A and B, respectively" are clearer than splitting into two sentences and should be used freely whenever they fit. Do not avoid them in the name of simplicity.
+
+### C14. No Cross-References to Unpublished Sister Papers
+
+Each paper must stand alone for its readers. Phrases like "as derived in companion paper A" or `\cite{...}` placeholders for sister papers that aren't on arXiv yet are forbidden. Overlap of *content* between sister papers is fine; the second paper re-derives what its readers need. The only exception is an explicit short-letter format where parallel-submission citation is part of the venue's contract, and even then only with a real DOI or arXiv ID.
 
 ---
 

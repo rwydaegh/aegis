@@ -1,0 +1,1120 @@
+% ============================================================
+% Pose-Differentiable Body Twins (RIHB-in-the-loop) — v2
+% First-principles companion to rib.tex and q_complement.tex.
+% Intended home for the deployable parts: a JSAC2 SI submission
+% on Digital Twins for Wireless Networks (Q4 2026 issue).
+% Author: R. Wydaeghe
+%
+% v2 addresses critique_v1.md:
+%   - new lemma on dB-per-degree LOS un-shadowing rate gradient (K1, I6)
+%   - LOS un-shadowing theorem: rate up AND dose down, both monotone in v
+%   - MCS cap saturation plateau corollary (K4)
+%   - Pareto bound restated as trace inequality, fixed operator slip (K2, K6)
+%   - pose-noise-aware Pareto (K1)
+%   - near-field correction for body-to-phone propagation (K3)
+%   - gait-action principle restricted to body-mediated component (K5)
+%   - convergence under partial compliance (I4)
+%   - acceptance-pattern privacy caveat (I3)
+%   - 1% opt-in back-of-envelope (I1)
+%   - RULA/REBA reference for comfort weights (I2)
+%   - notation cleanup (I5)
+%   - block diagram, "no new hardware", tightened bandwidth arithmetic (C1, C2, C4)
+% ============================================================
+
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[margin=2.4cm]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\linespread{1.04}
+
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{bm}
+\usepackage{mathrsfs}
+\usepackage{bbm}
+\usepackage{cancel}
+\usepackage{xfrac}
+\usepackage{booktabs}
+\allowdisplaybreaks[2]
+
+\usepackage{empheq}
+\usepackage[most]{tcolorbox}
+\tcbset{highlight math style={%
+    enhanced, colframe=black!70, colback=gray!6,
+    arc=2pt, boxrule=0.5pt, left=3pt, right=3pt}}
+
+\usepackage{siunitx}
+\sisetup{detect-all, range-phrase = {--}, range-units = single,
+         per-mode = symbol, inter-unit-product = {\,}}
+
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{xspace}
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\cfoot{\thepage}
+\renewcommand{\headrulewidth}{0pt}
+
+\usepackage{titlesec}
+\titleformat{\section}{\large\bfseries}{\thesection}{1em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{1em}{}
+
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,calc,fit,backgrounds,shapes.geometric}
+
+\usepackage[colorlinks=true, linkcolor={blue!55!black},
+            citecolor={green!45!black}, urlcolor={blue!65!black}]{hyperref}
+\usepackage[nameinlink,capitalize]{cleveref}
+
+\usepackage{aliascnt}
+\theoremstyle{definition}
+\newtheorem{theorem}{Theorem}[section]
+\newaliascnt{proposition}{theorem}
+\newtheorem{proposition}[proposition]{Proposition}
+\aliascntresetthe{proposition}
+\newaliascnt{lemma}{theorem}
+\newtheorem{lemma}[lemma]{Lemma}
+\aliascntresetthe{lemma}
+\newaliascnt{corollary}{theorem}
+\newtheorem{corollary}[corollary]{Corollary}
+\aliascntresetthe{corollary}
+\newaliascnt{definition}{theorem}
+\newtheorem{definition}[definition]{Definition}
+\aliascntresetthe{definition}
+\newaliascnt{remark}{theorem}
+\newtheorem{remark}[remark]{Remark}
+\aliascntresetthe{remark}
+\crefname{proposition}{Proposition}{Propositions}
+\Crefname{proposition}{Proposition}{Propositions}
+\crefname{lemma}{Lemma}{Lemmas}\Crefname{lemma}{Lemma}{Lemmas}
+\crefname{corollary}{Corollary}{Corollaries}\Crefname{corollary}{Corollary}{Corollaries}
+\crefname{definition}{Definition}{Definitions}\Crefname{definition}{Definition}{Definitions}
+\crefname{remark}{Remark}{Remarks}\Crefname{remark}{Remark}{Remarks}
+
+% Macros aligned with monograph, q_complement, rib.tex
+\newcommand{\khat}{\hat{\bm{k}}}
+\newcommand{\nhat}{\hat{\bm{n}}}
+\newcommand{\rhat}{\hat{\bm{r}}}
+\newcommand{\rr}{\mathbf{r}}
+\newcommand{\EE}{\mathbf{E}}
+\newcommand{\Sinc}{S_{\mathrm{inc}}}
+\newcommand{\Sab}{S_{\mathrm{ab}}}
+\newcommand{\Sref}{S_{\mathrm{re}}}
+\newcommand{\Sinn}{S_{\mathrm{in}}}
+\newcommand{\Smis}{S_{\mathrm{mi}}}
+\DeclareMathOperator{\ReLU}{ReLU}
+\DeclareMathOperator{\RE}{Re}
+\DeclareMathOperator{\IM}{Im}
+\DeclareMathOperator{\tr}{tr}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\newcommand{\diff}{\mathrm{d}}
+\newcommand{\ident}{\mathbbm{1}}
+\newcommand{\Reals}{\mathbb{R}}
+\newcommand{\Complex}{\mathbb{C}}
+\newcommand{\half}{\tfrac{1}{2}}
+\newcommand{\Gtil}{\tilde{\mathbf{G}}}
+\newcommand{\gtil}{\tilde{\mathbf{g}}}
+\newcommand{\Fn}{\mathbf{F}_{\!n}}
+\newcommand{\Rn}{\mathbf{R}_{\!n}}
+\newcommand{\Qabs}{\mathbf{Q}_{\mathrm{ab}}}
+\newcommand{\Qref}{\mathbf{Q}_{\mathrm{re}}}
+\newcommand{\Qinn}{\mathbf{Q}_{\mathrm{in}}}
+\newcommand{\Qmis}{\mathbf{Q}_{\mathrm{mi}}}
+
+% RIB / RIHB macros
+\newcommand{\kin}{\hat{\bm{k}}_{\mathrm{i}}}
+\newcommand{\kout}{\hat{\bm{k}}_{\mathrm{o}}}
+\newcommand{\Frib}{\mathbf{F}_{\mathrm{b}}}
+\newcommand{\sigb}{\sigma_{\mathrm{b}}}
+\newcommand{\Qbist}{\mathbf{Q}_{\mathrm{bi}}}
+\newcommand{\hh}{\mathbf{h}}
+\newcommand{\Jmat}{\mathbf{J}}
+\newcommand{\bvec}{\mathbf{b}}
+\newcommand{\xvec}{\mathbf{x}}
+\newcommand{\thetab}{\bm{\theta}}
+\newcommand{\betab}{\bm{\beta}}
+\newcommand{\Mmesh}{\mathcal{M}}
+\newcommand{\LBS}{\mathrm{LBS}}
+\newcommand{\Pabs}{P_{\mathrm{ab}}}
+\newcommand{\PLOS}{P_{\mathrm{LOS}}}
+\newcommand{\Pbody}{P_{\mathrm{body}}}
+\newcommand{\Lrl}{L_{\mathrm{RL}}}
+\newcommand{\SINR}{\mathrm{SINR}}
+
+\title{\textbf{Pose-Differentiable Body Twins:\\
+First Principles for User-Adaptive\\
+mmWave Capacity and Exposure (v2)}}
+\author{Robin Wydaeghe\\
+ Ghent University \& imec\\
+ \texttt{robin.wydaeghe@ugent.be}}
+\date{\today}
+
+\makeatletter
+\renewcommand{\maketitle}{%
+  \thispagestyle{plain}%
+  \begin{center}
+    \rule{\linewidth}{1pt}\\[0.4em]
+    {\LARGE\bfseries \@title}\\[0.5em]
+    {\large \@author}\\[0.3em]
+    {\small \@date}\\[0.4em]\rule{\linewidth}{1pt}
+  \end{center}
+  \vspace{0.5em}
+}
+\makeatother
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+A user with a smartphone is, at mmWave frequencies, an electromagnetic
+object that the network can both \emph{model} and \emph{negotiate
+with}.  We treat the user's pose
+$\thetab\in\Reals^{72}$ from an on-device SMPL-X estimator as the
+control variable in a closed loop with the array's precoder.  Two
+regimes emerge from the same construction.  In the \emph{LOS
+un-shadowing} regime, pose moves that take the user's body out of
+the line of sight increase rate and decrease absorbed dose
+simultaneously; we give a closed-form rate-gradient lemma and a
+``win-win'' theorem.  In the \emph{body-as-passive-RIS} regime, pose
+moves that orient the body to redirect specular paths trade rate for
+dose along a body-universal Pareto slope $T_0/(1-T_0)\approx 0.32$
+at \SI{28}{GHz}.  The two regimes are complementary, not
+contradictory: LOS un-shadowing handles the open-window scenario,
+the Pareto bound handles the multi-user crowd.  Differentiability of
+the exposure operator $\Qabs(\thetab)$ in pose follows from
+linear-blend-skinning smoothness and the Kirchhoff surface-integral
+chain rule; the closed-loop bandwidth budget is
+$\le$\,\SI{130}{kbps}, four orders of magnitude below the data rate
+the loop negotiates over.  The hero claim is empirical and is left
+to a companion experiment document.
+\end{abstract}
+
+\vspace{0.3em}
+\noindent\textit{Style note.}~Like its siblings
+\texttt{rib.tex} and \texttt{q\_complement.tex}, this is a wandering
+companion, not a theorem-proof paper.  Theorems are theorems where
+the proof is self-contained; propositions are claims I want a
+reviewer to take or leave on sketches; conjectures are flagged.
+The intended home for the deployable parts is \S\,IV of a JSAC2 SI
+submission.
+
+\tableofcontents
+\bigskip
+
+% ============================================================
+\section{Why a fifth body-twin paper}\label{sec:why}
+% ============================================================
+
+The body-twin papers in the lineage \texttt{(paper, paper\_v2,
+paper\_jsac\_v1\dots v5)} converged on a result whose body twin had
+structurally shrunk to ``supply one scalar per slot.''  Under the
+operational \mbox{5G NR FR2} per-stream MCS27 cap, regularised
+zero-forcing on a tens-of-element panel saturates the rate cap
+with $\sim$\SI{12}{dB} of SINR margin, and a one-line scaling
+$\alpha=\sqrt{\eta_S\,\min_u L_{\mathrm{RL}}^{(u)}/\Pabs^{(u)}}$
+enforces compliance.  Two-seed multi-seed cross-checks show the
+elaborate dual-ascent solver and the closed-form scaling are
+statistically tied on aggregate compliance.  The deployment value
+of the twin over a worst-case Cauchy envelope is real but small.
+The body twin is decorative.
+
+The JSAC2 SI on Digital Twins for Wireless Networks asks for
+something different.  Its scope keywords are \emph{closed-loop
+optimization}, \emph{differentiable control},
+\emph{twin-in-the-loop}, and \emph{cross-layer feedback}.  None of
+these describe a one-line amplitude scaling.  We re-target the body
+twin from constraint provider to control variable: the user's pose
+is the channel-shaping degree of freedom the network negotiates
+with, and the body twin is the model that makes the negotiation
+tractable.
+
+\subsection{Why now and why this user}
+
+mmWave deployment slowed in part because (a) bodies and trees block
+$25\text{--}40$\,dB at \SI{28}{GHz}, and (b) consumer-side
+exposure concerns produce friction even where the dose is well
+within ICNIRP limits.  Both fixes flow through the body twin.  The
+network knows the user's body (\Cref{sec:diff} below); the user
+sees a dose receipt for the rate they purchase (\Cref{sec:loop}
+below).  The cost is one consent prompt per session; the upside is
+both a capacity story and a trust story, with one piece of
+machinery.
+
+\subsection{What this gives up}
+
+The v5 paper is a story the operator can run with no UE-side
+cooperation at all.  Our spine assumes opt-in.  At opt-in fraction
+$f$, the architecture's value to opted-out users is \emph{indirect}:
+opted-in users' bodies still scatter coherently into the propagation
+graph, and at plaza scale the cooperative-body-mediated path
+contribution is order $f\cdot K\cdot\bar V_{\mathrm{cross}}$ where
+$K$ is the local crowd size and $\bar V_{\mathrm{cross}}\sim 0.05$
+is the average cross-body visibility (\texttt{rib.tex} \S\,11).  At
+$f=5\%$, $K=50$, this is $\sim$0.13 cooperative paths per user, of
+order\ a quarter-dB MIMO lift.  Below useful.  At $f=30\%$ the same
+arithmetic gives $\sim$0.75 paths per user, an order of magnitude
+larger and approaching the empirical rank-lift threshold of the
+JSAC v5 plaza runs.  Scenario S4 of \texttt{scenarios.md} measures
+the curve.
+
+\subsection{The minimum technical content}
+
+The construction needs three things to hold up to a careful
+reviewer.  (i) The exposure operator must be differentiable in
+$\thetab$ with a chain rule the device can compute
+(\Cref{sec:diff}).  (ii) The capacity-vs-dose trade must be
+characterised in both pose-move regimes — LOS un-shadowing
+(\Cref{sec:los-unshadow}) and body-as-RIS (\Cref{sec:rib-pareto}) —
+with the right Pareto bound in each.  (iii) The closed-loop must
+have a bandwidth and latency budget compatible with a
+phone-class compute envelope (\Cref{sec:loop}).  The rest is
+framing.
+
+% ============================================================
+\section{Setup and notation}\label{sec:setup}
+% ============================================================
+
+\subsection{Geometry}
+
+A single base station hosts an array of $M$ elements at known
+positions $\{\rr_j\}_{j=1}^M$.  In the running examples we take a
+$M=64$ uniform rectangular array (URA) with half-wavelength spacing
+at carrier frequency $f_c=\SI{28}{GHz}$
+($\lambda\approx\SI{1.07}{cm}$).  The array radiates the precoder
+$\xvec\in\Complex^M$ with sum-power constraint
+$\|\xvec\|^2\le P_{\mathrm{tx}}$.
+
+A single user is described by a parametric body model.  We use
+SMPL-X (Pavlakos et al.\ 2019) with shape vector
+$\betab\in\Reals^{10}$ (identity, fixed once per user) and pose
+vector $\thetab\in\Reals^{72}$ (root orientation plus 21 axis-angle
+joint rotations plus a few facial / hand DOF that we ignore).  The
+body mesh is the closed orientable surface
+\begin{equation}\label{eq:mesh}
+  \Sigma(\thetab,\betab)
+   =\Mmesh\bigl(\LBS(\thetab,\betab,\mathbf{T})\bigr),
+\end{equation}
+with $\mathbf{T}\in\Reals^{V\times 3}$ the SMPL-X template
+($V=\num{10475}$ vertices, $F=\num{20908}$ triangles), $\LBS$ the
+linear blend skinning operator, and $\Mmesh$ the topology assembly.
+
+The user holds a smartphone receiver at position $\rr_p(\thetab)
+\in\Reals^3$.  The phone is anchored at the right wrist, which is
+itself an SMPL-X joint, so $\rr_p$ inherits LBS smoothness in
+$\thetab$.  The phone-to-body distance $d_p\equiv\|\rr_p-\rr_b\|$
+where $\rr_b$ is the body centroid is $\sim$\SI{30}{cm} in the
+running examples, deep in the body's near field at \SI{28}{GHz}.
+This forces a near-field correction in \Cref{sec:nearfield}.
+
+\subsection{Path-space factorisation reminder}
+
+The propagation between the array and any spatial probe is
+described by $N$ multipath contributions
+$\{j(n),\khat_n,\bm\psi_n,\tau_n\}_{n=1}^N$ as in the JSAC paper:
+$j(n)\in\{1,\dots,M\}$ the source element, $\khat_n$ the unit
+propagation direction at the probe, $\bm\psi_n\in\Complex^3$ the
+polarisation amplitude, and $\tau_n$ the path delay.  At the body,
+the per-element steering response across the lit area factors as
+$\Jmat^T\mathbf{a}(\khat_n)$, where $\Jmat\in\Complex^{M\times M}$
+encodes element-to-element phase relationships and
+$\mathbf{a}(\khat)$ is the array manifold.  The two operators that
+recur:
+\begin{align}
+  \Qabs(\thetab)
+  &= \int_{\Sigma(\thetab)}
+     \Gtil(\rr;\thetab)^H\,\Gtil(\rr;\thetab)\,
+     \mu(\rr;\thetab)\,\diff A(\rr),
+  \label{eq:Qabs-def}\\[0.2em]
+  \Qbist(\thetab,\kout)
+  &= \frac{1}{Z_0}\,\Frib(\thetab,\kout)^H\,
+     \Frib(\thetab,\kout),
+  \label{eq:Qbist-def}
+\end{align}
+with $\mu(\rr;\thetab)=\nhat(\rr;\thetab)\cdot(-\khat)$ the
+incidence cosine, $Z_0$ the free-space impedance, and
+$\Frib(\thetab,\kout)$ the body scattering matrix from
+\texttt{rib.tex} \S\,4 (we drop the $\betab$-dependence everywhere
+since shape is fixed once per user).
+
+For one user and one precoder the absorbed-power scalar and the
+body-mediated contribution to receive power are
+\begin{equation}\label{eq:Pabs-Pbody}
+  \Pabs(\thetab,\xvec)=\xvec^H\Qabs(\thetab)\xvec,
+  \qquad
+  \Pbody(\thetab,\xvec)
+   =\frac{1}{(4\pi d_{u\to\mathrm{UE}})^2}\,
+    \xvec^H\Qbist(\thetab,\kout_{u\to\mathrm{UE}})\xvec,
+\end{equation}
+where $\kout_{u\to\mathrm{UE}}$ is the body-to-phone direction.  We
+will use $\Pabs$ and $\Pbody$ throughout to keep notation uniform.
+
+\subsection{What this note adds to its siblings}
+
+Both operators were treated as static functions of pose in the JSAC
+v1--v5 papers: pose was an estimated parameter, the twin
+re-evaluated $\Qabs$ at the new estimate every \SI{100}{ms}.  In
+this note, $\thetab$ is a decision variable.  The mathematics is
+the same; the question posed of it is different.
+
+% ============================================================
+\section{The user as a reconfigurable surface}\label{sec:user}
+% ============================================================
+
+\subsection{The body-state vector and its actuation manifold}
+
+The user control vector is
+$\bm\varphi=(\thetab,\rr_{\mathrm{root}},\bm\omega_{\mathrm{root}})
+\in\Reals^{78}$ (SMPL-X pose plus root translation plus root
+orientation).  Not all $78$ DOF are negotiable at the same cost.
+We adopt the four-tier classification of biomechanics ergonomic
+scoring (RULA, OWAS, REBA): \emph{free} (eyebrow, finger, jaw —
+no metabolic cost, no mmWave effect), \emph{comfortable} (head
+yaw/pitch, torso yaw, arm and forearm joint angles),
+\emph{costly} (spine bend, kneeling, leaning beyond support
+polygon), \emph{rigid} (root translation in world coordinates).
+
+We model the cost of the pose move from baseline $\thetab^{(0)}$
+to proposed $\thetab$ as a separable convex
+\begin{equation}\label{eq:movement-cost}
+  C(\thetab-\thetab^{(0)})
+   = \sum_{i=1}^{72}c_i\,(\theta_i-\theta_i^{(0)})^2
+   + \sum_{i=1}^{72}\beta_i\,
+       \log\!\bigl(1-(\theta_i/\theta_i^{\max})^2\bigr)^{-1},
+\end{equation}
+with $c_i$ small for comfortable DOF, large for costly DOF, and
+$\beta_i$ the joint-limit log-barrier coefficient.  In the
+companion experiment we calibrate $c_i$ such that $C\le 1$
+corresponds to a \SI{5}{\degree} torso rotation, equivalent to a
+RULA score increment of $1$ (\emph{low load}).  A \SI{30}{\degree}
+turn is $C\approx 36$, RULA $3$ (\emph{significant load}); these
+are the moves the gradient should not suggest.
+
+\subsection{Update cadence}
+
+Internal pose drift (breathing, postural sway) gives
+$\mathrm{std}(\thetab)\sim$ a few tenths of a degree per joint at
+the torso across \SI{100}{ms} windows.  This is the cadence the
+\texttt{virtual\_imu.py} pipeline tracks at; the JSAC v5 machinery
+budgets the twin against it unchanged.
+
+Negotiated pose moves (the BS suggests, the user takes) complete in
+$\SI{200}{ms}$ to $\SI{2}{s}$.  The control loop runs at
+\SI{1}{Hz}.  The inner-precoder cadence is the per-slot
+\SI{0.1}{ms}; pose-gradient evaluation runs at a few \SI{}{Hz} on a
+phone-class GPU (cost analysis in \Cref{sec:diff}).
+
+% ============================================================
+\section{Differentiability of the body channel}\label{sec:diff}
+% ============================================================
+
+\subsection{LBS is smooth in pose, almost everywhere}
+
+\begin{lemma}[LBS smoothness]\label{lem:lbs-smooth}
+For fixed shape $\betab$, the map $\thetab\mapsto\Sigma(\thetab,
+\betab)$ in \eqref{eq:mesh} is piecewise-smooth on $\Reals^{72}$.
+Each vertex position $\rr_v(\thetab)$ is given by
+\begin{equation}\label{eq:lbs-eq}
+  \rr_v(\thetab)
+  =\sum_{j=1}^{J}w_{vj}\bigl(\mathbf{R}_j(\thetab)\,
+                              (\mathbf{T}_v+\mathbf{B}_v(\betab)
+                                              -\mathbf{j}_j)
+                              +\mathbf{j}_j+\mathbf{t}_j(\thetab)\bigr),
+\end{equation}
+where $\mathbf{R}_j(\thetab)\in SO(3)$ is the world rotation of
+joint $j$, polynomial in $\sin\theta_{j,\cdot},\cos\theta_{j,\cdot}$;
+$\mathbf{j}_j$ is the canonical joint position; and
+$\mathbf{t}_j(\thetab)$ is the joint's forward-kinematic
+translation.  Both are $C^\infty$ in $\thetab$.  Triangle normals
+$\nhat_t=\mathrm{normalise}((\rr_2-\rr_1)\times(\rr_3-\rr_1))$ are
+$C^\infty$ wherever the triangle is non-degenerate.
+\end{lemma}
+
+\subsection{Smoothing the silhouette}\label{sec:gelu}
+
+The Heaviside visibility gate $H(\mu)$ in \eqref{eq:Qabs-def} is the
+only non-smooth ingredient.  We replace it by the GELU smoothing of
+TAP \S\,2.6:
+\begin{equation}\label{eq:gelu}
+  H_\epsilon(\mu)=\half\bigl(1+\mathrm{erf}(\mu/(\epsilon\sqrt{2}))\bigr),
+\end{equation}
+with $\epsilon=0.017$ chosen so the smoothing zone width is one
+incidence-degree.  At Thelonious mesh size and \SI{28}{GHz} the
+bias on $\tr\Qabs$ is $\le$\,$0.4\%$, well below the JSAC paper's
+$\sim$5\% calibration floor.
+
+\subsection{The end-to-end Jacobian}
+
+\begin{theorem}[Pose differentiability of $\Qabs$]\label{thm:Q-diff}
+For fixed shape and path set, with GELU-smoothed visibility, the
+map $\thetab\mapsto\Qabs(\thetab)\in\Complex^{M\times M}$ is
+$C^\infty$ on the LBS smooth set.  The Jacobian factorises as
+\begin{empheq}[box=\tcbhighmath]{equation}\label{eq:Q-jac}
+  \frac{\partial\Qabs}{\partial\theta_i}
+  \;=\;\sum_{t=1}^{F}\sum_{n=1}^{N}\sum_{v\in t}
+        \frac{\partial q_{t,n}}{\partial\rr_v}\cdot
+        \frac{\partial\rr_v}{\partial\theta_i},
+\end{empheq}
+where $q_{t,n}$ is the per-(triangle, path) integrand (a smooth
+function of vertex positions and path direction) and the LBS
+Jacobian $\partial\rr_v/\partial\theta_i$ is exactly the SMPL-X
+PyTorch autograd output.
+\end{theorem}
+
+\noindent Compose \cref{lem:lbs-smooth} with the smoothness of the
+integrand (Fresnel coefficient is rational in $\mu$, area is
+polynomial in vertices, GELU is $C^\infty$).  Sum the
+$F\cdot N\cdot 3$ chain-rule contributions.  The same theorem
+holds for $\Qbist(\thetab,\kout)$ verbatim with the additional
+phase factor $e^{-ik_0\kout\cdot\rr}$.  $\square$
+
+\subsection{The dB-per-degree LOS rate gradient}\label{sec:rate-grad}
+
+The empirical hero claim depends on how steeply the rate changes
+under small pose moves.  In the body-shadowed LOS regime, this is
+dominated by un-shadowing rather than by changes in the bistatic
+operators.  We give the closed form.
+
+Let $v(\thetab)\in[0,1]$ be the LOS path's amplitude transmission
+through the body.  $v=1$ when the LOS bypasses the body entirely;
+$v\approx 0.06$ when the body fully blocks (\SI{25}{dB} body
+loss).  Let
+$h_{\mathrm{LOS}}(\thetab)=v(\thetab)\,h_{\mathrm{LOS},0}\,e^{i\phi_0}$
+where $h_{\mathrm{LOS},0}$ is the unblocked LOS amplitude.
+
+\begin{lemma}[Rate gradient in body-shadowed LOS]\label{lem:rate-grad}
+Below the MCS cap, with single-stream MRT-MMSE precoding,
+\begin{equation}\label{eq:rate-grad-los}
+  \frac{\partial R}{\partial\theta_i}
+  =\frac{B}{\ln 2}\,
+    \frac{2\,\SINR_{\max}\,v(\thetab)\,(\partial v/\partial\theta_i)}
+         {1+\SINR_{\max}\,v(\thetab)^2},
+\end{equation}
+where $\SINR_{\max}=P_{\mathrm{tx}}|h_{\mathrm{LOS},0}|^2/N_0B$ is
+the unblocked-LOS SINR.  In the binding regime
+$\SINR_{\max}\,v(\thetab)^2\ll 1$, this simplifies to
+\begin{equation}\label{eq:rate-grad-binding}
+  \frac{\partial R}{\partial\theta_i}\approx
+  \frac{2B\,\SINR_{\max}\,v(\thetab)}{\ln 2}\,
+        \frac{\partial v}{\partial\theta_i},
+\end{equation}
+which is linear in $v$ and in the un-shadowing rate
+$\partial v/\partial\theta_i$.
+\end{lemma}
+
+\noindent Differentiate
+$R=B\log_2(1+\SINR_{\max}v(\thetab)^2)$.  The rate gradient is
+governed entirely by $\partial v/\partial\theta_i$, the
+geometric-blockage derivative.
+
+\begin{remark}[Magnitude estimate]\label{rem:dB-per-deg}
+For a torso of width $w_b\approx\SI{30}{cm}$ at distance $r_b
+\approx\SI{30}{m}$ from the BS, with the spine offset from the
+body's lateral center by $\delta_s\approx\SI{8}{cm}$, a torso
+rotation of $\delta\theta=\SI{1}{\degree}$ moves the chest's
+lateral position relative to the LOS by $\delta_s\cdot\sin
+(\delta\theta)\approx\SI{1.4}{mm}$.  This is $\sim$$\lambda/8$;
+within the first Fresnel zone ($\sqrt{\lambda r_b}\approx
+\SI{60}{cm}$) it modulates $v(\thetab)$ smoothly with a slope
+$\partial v/\partial\theta\sim\delta_s/w_b\approx 0.27$ per radian,
+$\sim 0.005$ per degree.  Combined with the binding-regime
+expression \eqref{eq:rate-grad-binding} and $\SINR_{\max}\sim
+\SI{30}{dB}$ at unblocked LOS, the per-degree rate gradient
+peaks at $\sim$\SI{2}{dB/degree} of torso yaw at mid-shadow
+($v\approx 0.5$).  For combined moves in three DOF the linearised
+gain over a $C\le 1$ ball is therefore in the \SI{6}{dB} to
+\SI{12}{dB} range.  This is the pre-experiment estimate;
+\texttt{scenarios.md} S1 measures it.
+\end{remark}
+
+\subsection{Cost of one Jacobian-vector product}
+
+The chain rule in \eqref{eq:Q-jac} costs one Fresnel-side
+evaluation per (triangle, path) and one LBS-side evaluation per
+(vertex, pose DOF).  In numbers: $F\cdot N\sim 10^6$ Fresnel-side
+terms (each a $3\times M$ complex matrix, $\sim M^2\cdot 10^6=
+4\cdot 10^9$ flops at $M=64$); $V\cdot 72\sim\num{750000}$
+LBS-side terms (each a $3\times 1$ real vector, trivial).  The
+forward pass is identical in cost to the JSAC paper's $\Qabs$
+build, $\sim$\SI{7.5}{ms} per body on a single GPU at SMPL-X mesh
+size.  A reverse-mode VJP of one scalar against $\thetab\in
+\Reals^{72}$ costs $\sim$\SI{15}{ms} on a phone-class GPU.
+
+% ============================================================
+\section{Two pose-move regimes}\label{sec:regimes}
+% ============================================================
+
+The empirical and theoretical content of the spine splits cleanly
+in two.  The pose moves available to the user fall in one of two
+regimes, governed by which channel component dominates the rate
+gradient.  We treat each in its own section.
+
+\subsection{The dichotomy}
+
+Define the LOS un-shadowing fraction
+$v(\thetab)\in[0,1]$ and the body-mediated coupling
+$\Pbody(\thetab,\xvec)$ as in \eqref{eq:Pabs-Pbody}.  The total
+receive power is
+\begin{equation}\label{eq:Prx}
+  P_{\mathrm{rx}}(\thetab,\xvec)
+  =P_{\mathrm{LOS}}(\thetab,\xvec)+\Pbody(\thetab,\xvec)
+  +\text{wall-multipath terms}.
+\end{equation}
+A pose move $\thetab\to\thetab+\delta\thetab$ changes both
+contributions.  Define the dominant component:
+\begin{itemize}[leftmargin=1.6em,itemsep=2pt]
+\item \textbf{Regime~A (LOS un-shadowing).}  $|\partial
+P_{\mathrm{LOS}}/\partial\thetab|\gg|\partial\Pbody/\partial
+\thetab|$.  The pose move is moving the body in or out of the LOS
+path.
+\item \textbf{Regime~B (body as RIS).}  $|\partial\Pbody/\partial
+\thetab|\gtrsim|\partial P_{\mathrm{LOS}}/\partial\thetab|$.  The
+pose move is re-orienting the body to redirect specular paths.
+\end{itemize}
+The two regimes need different theoretical instruments.
+
+% ============================================================
+\section{Regime A: LOS un-shadowing}\label{sec:los-unshadow}
+% ============================================================
+
+In Regime~A the pose move's rate effect is captured by
+\Cref{lem:rate-grad}.  The dose effect runs in the opposite
+direction.
+
+\subsection{Dose decreases as LOS un-shadows}
+
+When the body un-shadows the LOS, the lit-area integral in
+\eqref{eq:Qabs-def} shrinks.  The geometry is intuitive: the same
+projected area that intercepts the LOS is the area that absorbs the
+LOS power.  Concretely, for a single LOS path with amplitude
+$|h_{\mathrm{LOS},0}|^2$ and visibility $v(\thetab)$,
+\begin{equation}\label{eq:Pabs-LOS}
+  \Pabs^{\mathrm{LOS}}(\thetab,\xvec)
+  =(1-v(\thetab)^2)\,|h_{\mathrm{LOS},0}|^2\,P_{\mathrm{tx}},
+\end{equation}
+since the absorbed fraction is the complement of the transmitted
+fraction.  Thus
+$\partial\Pabs^{\mathrm{LOS}}/\partial\theta_i = -2v(\thetab)\,
+(\partial v/\partial\theta_i)\,|h_{\mathrm{LOS},0}|^2P_{\mathrm{tx}}$.
+
+\subsection{The win-win theorem}
+
+\begin{theorem}[LOS un-shadowing is Pareto-dominant]\label{thm:los-pareto}
+In Regime~A, every pose move with
+$\partial v/\partial\theta_i>0$ simultaneously
+\emph{(i)}~increases the rate
+$\partial R/\partial\theta_i>0$
+(\Cref{lem:rate-grad}), and
+\emph{(ii)}~decreases the absorbed dose
+$\partial\Pabs/\partial\theta_i<0$
+\eqref{eq:Pabs-LOS}.  Below the MCS cap, the trade is monotone in
+$v$: rate is concave-increasing in $v$, dose is concave-decreasing
+in $v$.
+\end{theorem}
+
+\noindent Both signs follow directly from \eqref{eq:rate-grad-los}
+and \eqref{eq:Pabs-LOS}.  The concavity statements follow from
+$R\sim\log(1+v^2)$ (concave in $v^2$) and $\Pabs^{\mathrm{LOS}}\sim
+(1-v^2)$ (linear in $v^2$, hence concave-decreasing in $v$).
+$\square$
+
+\Cref{thm:los-pareto} is the theoretical backbone of the hero
+scenario.  In Regime~A there is no Pareto trade: pose moves that
+unshadow the LOS are strictly better on both axes.  The dose
+receipt the user sees is honest about this: ``you bought
+\SI{12}{dB} of rate and reduced your dose by \SI{8}{dB} in the
+process.''  This is the friendliest possible UX framing of an
+exposure-aware loop.
+
+\subsection{The MCS-cap saturation plateau}
+
+Above the MCS cap, the rate gradient vanishes:
+\begin{equation}\label{eq:cap-zero}
+  R(\thetab)=R_{\max}\;\;\Rightarrow\;\;
+  \frac{\partial R}{\partial\theta_i}=0,
+\end{equation}
+so the loss \eqref{eq:loss} below has no rate term to maximise.
+The dose term remains active, however, and the gradient on
+$\thetab$ now points only at minimising $\Pabs$.
+
+\begin{corollary}[Operating point at saturation]\label{cor:cap}
+At a pose where the SINR has reached the MCS cap, the local optimum
+of \eqref{eq:loss} is the lowest-dose pose in the comfort
+neighbourhood that still attains the cap.  Equivalently, the
+gradient ascends the iso-rate set's lowest-dose direction, which
+in Regime~A is the same direction as further LOS un-shadowing.
+\end{corollary}
+
+The Pareto plot in this regime has a vertical edge at $R=R_{\max}$:
+all the gain along that edge is dose reduction at constant rate.
+This is the engineering statement the BS sends to the UE: ``you
+have already maxed out your rate; further pose moves only reduce
+your dose receipt.''
+
+% ============================================================
+\section{Regime B: body as passive RIS}\label{sec:rib-pareto}
+% ============================================================
+
+In Regime~B the LOS is either unavailable (NLOS) or already
+saturated (above-cap).  Pose moves no longer trade in
+LOS un-shadowing; they reorient the body so that body-mediated
+specular paths reach the receiver.  The Pareto bound of
+\texttt{rib.tex} \S\,8 governs this regime, with the
+single-user pose-conditional refinement below.
+
+\subsection{The single-user Pareto bound, fixed}
+
+\begin{theorem}[Single-user pose-conditional Pareto, trace form]
+\label{thm:pareto-1}
+Under the assumptions of \texttt{rib.tex} \S\,3 (high-frequency
+PO, far-field observer, single bounce, pseudo-Brewster), at any
+fixed pose $\thetab$, at receiver direction
+$\kout=\kout_{u\to\mathrm{UE}}(\thetab)$, and at any precoder
+$\xvec$,
+\begin{empheq}[box=\tcbhighmath]{equation}\label{eq:pareto-1}
+  \xvec^H\Qbist(\thetab,\kout)\xvec
+  \;\le\;
+  \frac{1-T_0}{T_0}\,\xvec^H\Qabs^{(\kout)}(\thetab)\xvec
+  \;+\;O\!\bigl(5\%\bigr),
+\end{empheq}
+with $\Qabs^{(\kout)}(\thetab)$ the $\kout$-visible-area-restricted
+absorbed-power operator.  Equality holds when $\xvec$ aligns with
+the top eigenvector of $\Qabs^{(\kout)}$.  Taking traces and
+bounding by visibility,
+\begin{equation}\label{eq:pareto-1-trace}
+  \tr\Qbist(\thetab,\kout)
+  \;\le\;
+  \frac{1-T_0}{T_0}\,\mathcal{V}_{\mathrm{out}}(\thetab)\,
+                       \tr\Qabs(\thetab),
+\end{equation}
+where $\mathcal{V}_{\mathrm{out}}(\thetab)\in[0,1]$ is the trace
+fraction $\tr\Qabs^{(\kout)}/\tr\Qabs$.  The body-mediated power
+contribution to the receive flux is bounded by
+\begin{equation}\label{eq:Pbody-bound}
+  \Pbody(\thetab,\xvec)
+  \;\le\;
+  \frac{1}{(4\pi d_{u\to\mathrm{UE}})^2}\,
+   \frac{1-T_0}{T_0}\,\mathcal{V}_{\mathrm{out}}(\thetab)\,
+   M\,\Pabs(\thetab,\xvec)/\tr\Qabs,
+\end{equation}
+i.e.\ for any normalised precoder, $\Pbody\le c(\thetab)\Pabs$ with
+the body-and-geometry constant
+$c(\thetab)=\frac{1-T_0}{T_0}\mathcal{V}_{\mathrm{out}}(\thetab)/
+(4\pi d_{u\to\mathrm{UE}})^2$.
+\end{theorem}
+
+\noindent The operator inequality \eqref{eq:pareto-1} is
+\texttt{rib.tex} \S\,7 (per-direction pseudo-Brewster locking)
+applied to the $\kout$-restricted operators on both sides.  The
+trace inequality \eqref{eq:pareto-1-trace} is its trace; the
+visibility factor $\mathcal{V}_{\mathrm{out}}\le 1$ accounts for the
+restricted integration domain.  $\square$
+
+\begin{remark}\label{rem:fixed-op-ineq}
+The earlier draft erroneously asserted an operator inequality
+$\Qabs^{(\kout)}\preceq\mathcal{V}_{\mathrm{out}}\Qabs$, which is
+not implied by domain restriction (the eigenvalues of
+$\Qabs^{(\kout)}$ can be at most equal to those of $\Qabs$ but are
+not bounded by a trace-fraction prefactor).  The correct statement
+is the trace bound \eqref{eq:pareto-1-trace}, which is what is
+used in the corollaries below.
+\end{remark}
+
+\subsection{The gait-action principle, restated}
+
+\begin{corollary}[Gait-action, body-mediated component]\label{cor:gait}
+At any precoder $\xvec$ aligned with the top eigenvector of
+$\Qabs^{(\kout)}$, the ratio of body-mediated capacity-per-dose,
+$\Pbody/\Pabs$, is bounded by $c(\thetab)$ from
+\eqref{eq:Pbody-bound} and is maximised when $\xvec$ aligns with
+that eigenvector.  Pose moves that scale
+$\mathcal{V}_{\mathrm{out}}(\thetab)$ scale this maximum
+proportionally; the body-universal slope $(1-T_0)/T_0$ is
+unchanged.
+
+The total capacity-per-dose ratio is \emph{not} bounded by
+$c(\thetab)$, because the LOS contribution
+$P_{\mathrm{LOS}}/\Pabs$ has its own behaviour governed by
+\Cref{thm:los-pareto}.
+\end{corollary}
+
+This restated form fixes the over-reach in v1.  The body-mediated
+component is governed by the body-universal Pareto slope; the LOS
+component is governed by the win-win theorem of Regime~A.
+
+\subsection{Pose-noise-aware bound}\label{sec:pose-noise}
+
+The pose estimator on the device has covariance $\bm\Sigma_\theta
+\succeq 0$.  At evaluation time, the BS uses the mean estimate
+$\hat\thetab$ rather than the true $\thetab$.  Linearising the
+Pareto bound around $\hat\thetab$,
+
+\begin{proposition}[Noise-aware Pareto]\label{prop:noisy-pareto}
+For pose noise with covariance $\bm\Sigma_\theta$, the expected
+body-mediated power is bounded by
+\begin{equation}\label{eq:noisy-pareto}
+  \mathbb{E}_{\thetab\sim\mathcal{N}(\hat\thetab,\bm\Sigma_\theta)}
+   \bigl[\Pbody(\thetab,\xvec)\bigr]
+  \;\le\;
+  c(\hat\thetab)\,\Pabs(\hat\thetab,\xvec)
+  +\half\,\tr\!\bigl(\bm\Sigma_\theta\,\nabla^2_\thetab
+                     \,\bigl(c\Pabs\bigr)\big|_{\hat\thetab}\bigr)
+  +O(\|\bm\Sigma_\theta\|^{3/2}).
+\end{equation}
+\end{proposition}
+
+\noindent Taylor-expand $\Pbody$ around $\hat\thetab$, take
+expectations.  The first-order term zeroes; the second-order term
+is the Hessian-trace correction.  $\square$
+
+\Cref{prop:noisy-pareto} says the noisy-pose bound differs from
+the noiseless one by a Hessian-trace term that is
+$O(\|\bm\Sigma_\theta\|)$.  At the JSAC v5 IMU's $\sim
+\SI{0.5}{\degree}$ RMS, this term is $\sim 1\%$ of the leading
+order.  The pose noise's effect on the Pareto bound is
+sub-percent.
+
+% ============================================================
+\section{Near-field correction for body-to-phone}\label{sec:nearfield}
+% ============================================================
+
+The phone-to-body distance $d_p\approx\SI{30}{cm}$ is well inside
+the body's Fraunhofer distance $D^2/\lambda\approx\SI{300}{m}$ at
+\SI{28}{GHz}.  $\Frib(\thetab,\kout)$ as defined in
+\texttt{rib.tex} \S\,4 is a far-field object; using it directly to
+predict body-to-phone amplitude is wrong by the Fresnel-Kirchhoff
+correction.
+
+\subsection{The near-field body scattering matrix}
+
+For a receiver at finite position $\rr_p$, the far-field
+$1/(4\pi R)$ in \texttt{rib.tex} eq.\ for $\bvec_{u\to\mathrm{UE}}$
+is replaced by the Fresnel-Kirchhoff kernel
+$e^{ik_0|\rr-\rr_p|}/(4\pi|\rr-\rr_p|)$.  The body scattering
+matrix becomes
+\begin{equation}\label{eq:Fb-NF}
+  \Frib^{(n),\mathrm{NF}}(\thetab,\rr_p)
+  =\frac{ik_0}{4\pi}\,\Pi^{\mathrm{out}}(\rr_p)\!
+   \int_{\Sigma(\thetab)}\!\!\mathbf{R}(\rr;\khat_n)\,
+   \frac{e^{ik_0(|\rr-\rr_p|-\khat_n\cdot\rr)}}{|\rr-\rr_p|}\,
+   H(\mu_n)\,H(\nhat\cdot\hat{\bm\eta})\,\diff A,
+\end{equation}
+where $\hat{\bm\eta}=(\rr_p-\rr)/|\rr_p-\rr|$ is the per-point
+direction to the phone (no longer a constant $\kout$).
+
+\subsection{The near-field Pareto correction}
+
+\begin{proposition}[Near-field Pareto]\label{prop:nf-pareto}
+Under the same pseudo-Brewster regime as
+\Cref{thm:pareto-1}, with the receiver in the body's Fresnel zone
+at distance $d_p$ from the body centroid,
+\begin{equation}\label{eq:nf-pareto}
+  \Pbody^{\mathrm{NF}}(\thetab,\xvec)
+  \;\le\;
+  \frac{1-T_0}{T_0}\,
+  \frac{\mathcal{V}_{\mathrm{out}}^{\mathrm{NF}}(\thetab)}
+       {(4\pi d_p)^2}\,
+   M\,\Pabs(\thetab,\xvec)/\tr\Qabs\,
+  \cdot g_{\mathrm{NF}}(d_p,D),
+\end{equation}
+with the near-field correction factor $g_{\mathrm{NF}}(d_p,D)
+=1+O(D/d_p)$ for $d_p<D^2/\lambda$.
+\end{proposition}
+
+\noindent Repeat the proof of \Cref{thm:pareto-1} with the
+Fresnel-Kirchhoff kernel; the per-point direction $\hat{\bm\eta}$
+breaks the constant-$\kout$ pseudo-Brewster locking but the local
+locking applies pointwise; integrating gives the Hessian-trace
+correction.  Quantification of $g_{\mathrm{NF}}$ for a body at
+$d_p\approx\SI{30}{cm}$ is a numerical exercise (one Kirchhoff
+integral per pose); we estimate $g_{\mathrm{NF}}\le 2$ for the
+worst-case torso-to-hand geometry.  $\square$
+
+\subsection{What this means for the spine}
+
+The near-field correction modifies the Pareto slope by at most a
+factor of $2$.  The body-universal $(1-T_0)/T_0=0.59$ at
+\SI{28}{GHz} becomes a body-and-geometry-specific
+$\le 1.2$ in the worst case.  This widens the trade but does not
+break it.  The user-facing dose receipt remains honest; only the
+displayed conversion rate changes.
+
+The near-field correction is most relevant in Regime~B, where the
+body-mediated path goes from the BS off the body to the phone.  In
+Regime~A the phone is hit directly by the LOS and the near field
+is irrelevant.  Hero scenario S1 of \texttt{scenarios.md} is in
+Regime~A and the near-field correction does not affect its
+analysis; future S3 (multi-user) is in Regime~B and does need it.
+
+% ============================================================
+\section{The joint loss and closed loop}\label{sec:loss}
+% ============================================================
+
+\subsection{Composite objective}
+
+For $\lambda_E,\lambda_M>0$,
+\begin{empheq}[box=\tcbhighmath]{equation}\label{eq:loss}
+  \mathcal{L}(\thetab,\xvec;\thetab^{(0)})
+  = -R(\thetab,\xvec)
+    \;+\;\lambda_E\,\bigl[\Pabs(\thetab,\xvec)-\Lrl\bigr]_+
+    \;+\;\lambda_M\,C(\thetab-\thetab^{(0)}).
+\end{empheq}
+$R$ is the MCS-capped achievable rate; $\Pabs$ is from
+\eqref{eq:Pabs-Pbody}; $C$ is the comfort cost
+\eqref{eq:movement-cost}; $[\cdot]_+$ is GELU-smoothed at the same
+$\epsilon$ as the visibility for differentiability.
+
+\subsection{Inner-outer alternation and convergence}
+
+The natural solver alternates a closed-form precoder optimum with a
+gradient step on $\thetab$.  By Danskin's envelope theorem,
+\begin{equation}\label{eq:envelope}
+  \frac{\diff R}{\diff\thetab}\bigg|_{\xvec^*(\thetab)}
+  = \frac{\partial R}{\partial\thetab},
+\end{equation}
+so the outer-loop gradient does not need to differentiate through
+the inner QCQP.
+
+\begin{proposition}[Monotone descent]\label{prop:descent}
+Under \cref{thm:Q-diff}, the alternating scheme produces a
+non-increasing sequence
+$\mathcal{L}(\thetab^{(\ell)},\xvec^{(\ell)})$ with limit a
+stationary point.
+\end{proposition}
+
+\subsection{Convergence under partial compliance}\label{sec:compliance}
+
+The user does not always take the suggested move.  Model the
+acceptance as a probability $p_a(\delta\thetab^*)$ that decreases
+with the magnitude of the suggestion:
+\begin{equation}\label{eq:p-accept}
+  p_a(\delta\thetab^*)=
+  \exp\!\bigl(-\gamma\,C(\delta\thetab^*)\bigr),
+  \qquad\gamma>0.
+\end{equation}
+Under partial compliance, the realised pose at slot $\ell+1$ is
+$\thetab^{(\ell+1)}=\thetab^{(\ell)}+a_\ell\delta\thetab^*$ with
+$a_\ell\sim\mathrm{Bernoulli}(p_a(\delta\thetab^*))$.
+
+\begin{proposition}[Biased convergence]\label{prop:bias}
+The expected stationary point of the alternating scheme under
+acceptance model \eqref{eq:p-accept} is biased away from the
+unconstrained optimum by an amount
+$O\bigl((1-\bar p_a)\rho_{\mathrm{comfort}}\bigr)$, where
+$\bar p_a$ is the time-averaged acceptance and
+$\rho_{\mathrm{comfort}}$ is the comfort budget.
+\end{proposition}
+
+\noindent The expected pose update has magnitude $\bar p_a
+\|\delta\thetab^*\|$.  Substituting into the descent inequality
+gives a stationarity gap of $(1-\bar p_a)$ times the noiseless
+gap.  $\square$
+
+In practice $\bar p_a\sim 0.3\text{--}0.7$ in user studies of
+notification-driven micro-tasks; the architecture survives at
+small $\bar p_a$ because the rate gradient is small there
+(\Cref{lem:rate-grad} is dominated by un-shadowing geometry, not
+by the magnitude of the move).
+
+% ============================================================
+\section{Closed-loop architecture}\label{sec:loop}
+% ============================================================
+
+\subsection{Block diagram}
+
+\begin{center}
+\begin{tikzpicture}[
+  node distance=10mm and 14mm, font=\small,
+  block/.style={draw, rounded corners, align=center, minimum height=8mm,
+                minimum width=18mm, fill=gray!8},
+  arrow/.style={-{Stealth[length=2mm]}, thick},
+]
+\node[block] (bs) {BS array \\ M=64};
+\node[block, right=of bs] (rt) {Path \\ dictionary};
+\node[block, right=of rt] (ue) {UE phone \\ (SMPL-X)};
+\node[block, below=of ue] (user) {User \\ (pose actuator)};
+\node[block, left=of user] (imu) {IMU + AR \\ pose track};
+\node[block, left=of imu] (qabs) {$\Qabs(\hat\thetab)$ \\ + gradient};
+\node[block, below=of bs] (prec) {Precoder \\ ZF + projection};
+\draw[arrow] (bs)--(rt) node[midway, above]{$\xvec$};
+\draw[arrow] (rt)--(ue) node[midway, above]{paths};
+\draw[arrow] (ue)--(user) node[midway, right]{suggest $\delta\thetab^*$};
+\draw[arrow] (user)--(imu) node[midway, above]{move};
+\draw[arrow] (imu)--(qabs) node[midway, above]{$\hat\thetab$};
+\draw[arrow] (qabs)--(prec) node[midway, left]{$\nabla\mathcal{L}$};
+\draw[arrow] (prec)--(bs) node[midway, left]{};
+\draw[arrow] (qabs.north) |- (ue.west) node[midway, above]{accept/reject};
+\draw[arrow, dashed] (rt) -- (qabs.north east);
+\end{tikzpicture}
+\end{center}
+
+\noindent The dashed arrow is the path-dictionary downlink; the
+solid arrows are the per-slot data flow.
+
+\subsection{Information channels and rates}
+
+Each path is described by 8 floats (direction $\khat\in S^2$:
+2~floats; complex polarisation: 6 floats normalised; delay: 1
+float; amplitude: 1 float).  At 32-bit precision and $N=50$ paths
+re-evaluated at \SI{10}{Hz}, the path-dictionary downlink
+amounts to $50\cdot 10\cdot 32\cdot 10=\SI{128}{kbps}$.
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+\textbf{Channel} & \textbf{Payload} & \textbf{Rate} \\
+\midrule
+DL: path dictionary               & $50$ paths $\times$ 8 floats $\times$ \SI{10}{Hz}        & \SI{128}{kbps} \\
+DL: pose suggestion (network-side) & $72$ floats $\times$ \SI{1}{Hz}                          & \SI{2.3}{kbps} \\
+UL: pose estimate $\hat\thetab$    & $72$ floats $\times$ \SI{1}{Hz}                          & \SI{2.3}{kbps} \\
+UL: accept/reject                 & $1$ bit $\times$ \SI{1}{Hz}                              & \SI{1}{bps} \\
+UL: shape $\betab$ (one-time)     & $10$ floats once per session                            & \SI{40}{B} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent Total bidirectional control bandwidth is
+$\le$\,\SI{135}{kbps}, four orders of magnitude below the data
+rate the loop negotiates over.
+
+\subsection{Privacy by gradient passing, with a caveat}\label{sec:privacy}
+
+In the user-side variant, the phone transmits only:
+\emph{(i)}~the current pose estimate, \emph{(ii)}~the suggestion
+acceptance bit, and \emph{(iii)}~optionally an aggregated
+absorbed-dose receipt.  Body shape $\betab$ stays on-device.  This
+is structurally similar to federated learning: heavy data stays
+local, summary statistics flow.
+
+\begin{remark}[Acceptance-pattern inference]\label{rem:accept-infer}
+Even with shape and pose held local, the BS sees the time-series
+of acceptance bits and pose-estimate updates.  From this it can
+infer the user's pose distribution, response latency, and likely
+activity.  The strong privacy property is ``the operator does not
+see body geometry,'' not ``the operator learns nothing about the
+user.''  Differential-privacy treatments of the acceptance bit are
+the obvious mitigation but are out of scope.
+\end{remark}
+
+\subsection{No new hardware}
+
+Both endpoints run on commodity gear: the BS is a vanilla 5G FR2
+panel with the JSAC v5 ECBF / projected-ZF precoder; the UE is a
+smartphone with IMU and a pose-estimator.  The added compute on the
+device is one VJP per second on the SMPL-X mesh (\SI{15}{ms} on
+phone-class GPU per \Cref{thm:Q-diff}).  This is the same scale as
+real-time face filters; the engineering is plumbing.
+
+% ============================================================
+\section{Connection to the JSAC2 SI scope}\label{sec:si}
+% ============================================================
+
+The SI keywords map to this construction in the following one-to-one
+way.
+
+\begin{enumerate}[leftmargin=1.6em,itemsep=2pt]
+\item \emph{Closed-loop optimization.}  \Cref{sec:loop} is a literal
+closed loop with measurable feedback and bounded latency.
+\item \emph{Differentiable control.}  \Cref{thm:Q-diff} +
+\Cref{lem:rate-grad}.
+\item \emph{Twin-in-the-loop architectures.}  The body twin is
+load-bearing; remove it and the gradient is ill-defined.
+\item \emph{Cross-layer optimization.}  PHY (rate, exposure) couples
+to biomechanical (pose, comfort).
+\item \emph{Application-aware design.}  The user's session is the
+application; the construction parameterises in it.
+\item \emph{Predictive DT analytics.}  The phone displays the
+current dose receipt and the predicted dose-and-rate trajectory.
+\item \emph{Trustworthy data collection.}  User-side variant
+(\Cref{sec:privacy}); body data stays local.
+\item \emph{XR-adjacent.}  AR / VR sessions already track body
+pose; the construction reuses that pipeline.  This is the weakest
+of the eight; see also \Cref{sec:notthis}.
+\end{enumerate}
+
+% ============================================================
+\section{What this is not}\label{sec:notthis}
+% ============================================================
+
+\begin{enumerate}[leftmargin=1.6em,itemsep=3pt]
+\item Not a JCAS / ISAC paper.  We use on-device pose tracking, not
+backscatter pose estimation.
+\item Not a beamforming paper.  The precoder is the JSAC v5
+projected-ZF closed form.
+\item Not a pose-estimation paper.  The pose estimator is
+borrowed from Madgwick / Mahony / IMU-SMPL-X literature.
+\item Not an RIS paper.  The body is not actively tunable; gait is.
+\item Not a regulatory-compliance paper.  Exposure constraints are
+the engineering substrate; we do not certify a deployment.
+\item Not a hardware paper.  No new hardware on either side.
+\item Not an XR paper.  The XR connection is real but is one
+sentence, not the spine.
+\end{enumerate}
+
+% ============================================================
+\section{Loose threads and conjectures}\label{sec:threads}
+% ============================================================
+
+\begin{enumerate}[leftmargin=1.6em,itemsep=3pt]
+\item \emph{Multi-user RIHB.}  Joint loss
+$\mathcal{L}(\thetab_1,\thetab_2,\xvec)$.  Conjecture: a
+Stackelberg-style lift exists when both users follow gradients.
+Scenario S3 measures.
+\item \emph{Adversarial poses.}  Worst-case pose for a given
+precoder is the global maximum of $\Pabs(\thetab)$ over a
+comfort-bounded ball.  Robustness question for the BS: how much
+rate must it leave for safety?
+\item \emph{Federated $\betab$.}  Population-level capacity
+statistics without seeing individual $\betab$.
+\item \emph{Sub-\SI{6}{GHz}.}  Pseudo-Brewster collapse holds at
+mmWave; below \SI{6}{GHz} the body's $T_0$ is
+polarisation-dependent and the slope is no longer body-universal.
+\item \emph{Pose suggestion as channel coding.}  The BS suggests
+a \emph{distribution} over poses with priors from the comfort
+metric; rate-distortion view of human-in-the-loop control.
+\item \emph{Comfort metric calibration.}  The weights $c_i$ in
+\eqref{eq:movement-cost} need a small ergonomics user study to
+calibrate.  RULA / REBA give the framework; specific numbers do
+not exist for our pose vocabulary.
+\item \emph{Negotiation as a game.}  Operator that bills on data
+delivered while user pays in pose deviation: two-player game with
+known utilities.  Conjecturally the loop converges to the Nash
+equilibrium.
+\item \emph{Quantitative near-field.}  $g_{\mathrm{NF}}(d_p,D)$ in
+\Cref{prop:nf-pareto} is bounded but not computed.  One Kirchhoff
+integral per pose suffices.
+\item \emph{The role of clothing.}  Textile roughness perturbs the
+specular peak by $\sim 30\%$ at \SI{28}{GHz}; the
+JSAC v5 calibration pipeline absorbs this.  Whether the absorbed
+fraction is consistent across pose (i.e.\ the calibration is
+pose-stationary) is open and is a real engineering question.
+\item \emph{Foundation-model dose receipt.}  The dose receipt the
+user sees could be augmented by a per-tissue health-impact
+predictor.  Is well outside scope; flagged as a future-work
+sentence.
+\end{enumerate}
+
+% ============================================================
+\section{Summary}\label{sec:sum}
+% ============================================================
+
+The body twin in the JSAC paper is a noun; this note makes it a
+verb.  The same surface-integral operators that already estimate
+dose now flow gradients to the user, who is free to take or ignore
+them.  Two regimes emerge cleanly: in LOS un-shadowing
+(\Cref{thm:los-pareto}) pose moves are Pareto-dominant, increasing
+rate and decreasing dose simultaneously; in body-as-RIS
+(\Cref{thm:pareto-1}) pose moves trade rate for dose along a
+body-universal slope $T_0/(1-T_0)\approx 0.32$ at \SI{28}{GHz}.
+The differentiability contract (\Cref{thm:Q-diff}) is small; the
+information budget of the loop ($\le$\,\SI{135}{kbps}) is
+negligible; the convergence under partial compliance
+(\Cref{prop:bias}) is graceful.  What remains is empirical: how
+much capacity does a few-degree pose move buy in the body-shadowed
+LOS regime, and at what dose.  The companion experiment in
+\texttt{scenarios.md} S1 answers that.
+
+\end{document}

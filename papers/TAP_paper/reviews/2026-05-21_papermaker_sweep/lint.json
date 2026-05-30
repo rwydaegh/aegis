@@ -1,0 +1,93 @@
+{
+  "summary": {
+    "n_flags": 8,
+    "n_auto": 0,
+    "n_candidate": 8,
+    "by_rule": {
+      "style.pet_peeves_wout.no_semicolons": 5,
+      "latex.spacing_ties.tilde_before_refs": 3
+    }
+  },
+  "flags": [
+    {
+      "rule": "latex.spacing_ties.tilde_before_refs",
+      "cls": "candidate",
+      "leaf": "20_local_absorption_law/04_method_map.md",
+      "line": 3,
+      "col": 10,
+      "excerpt": "igure}[!t] Flowchart \\ref{fig:flowchart} shows",
+      "message": "space before a reference command (missing non-breaking tie)",
+      "fix": "replace the space with ~"
+    },
+    {
+      "rule": "style.pet_peeves_wout.no_semicolons",
+      "cls": "candidate",
+      "leaf": "20_local_absorption_law/30_setup/10_paragraph.md",
+      "line": 19,
+      "col": 33,
+      "excerpt": "point has $\\mu > 0$; a point facing away",
+      "message": "semicolon in body prose",
+      "fix": "split into two sentences or use a connector"
+    },
+    {
+      "rule": "style.pet_peeves_wout.no_semicolons",
+      "cls": "candidate",
+      "leaf": "30_pseudo_brewster_compensation/60_frequency_dependence/20_figure_r_of_f.md",
+      "line": 11,
+      "col": 11,
+      "excerpt": "-averaged   quantity; $R < 1$ means $T_0$",
+      "message": "semicolon in body prose",
+      "fix": "split into two sentences or use a connector"
+    },
+    {
+      "rule": "latex.spacing_ties.tilde_before_refs",
+      "cls": "candidate",
+      "leaf": "40_whole_body_absorbed_power/50_layered_transmission_below_6_ghz/20_paragraph.md",
+      "line": 2,
+      "col": 15,
+      "excerpt": "s fat Above $6$~GHz, \\eqref{eq:cauchy-exact} mat",
+      "message": "space before a reference command (missing non-breaking tie)",
+      "fix": "replace the space with ~"
+    },
+    {
+      "rule": "style.pet_peeves_wout.no_semicolons",
+      "cls": "candidate",
+      "leaf": "50_validation/60_sim4life_fdtd_on_the_thelonious_phantom/30_figure_val_fdtd.md",
+      "line": 8,
+      "col": 35,
+      "excerpt": "om $0.45$--$5.8$~GHz; error bars show the",
+      "message": "semicolon in body prose",
+      "fix": "split into two sentences or use a connector"
+    },
+    {
+      "rule": "style.pet_peeves_wout.no_semicolons",
+      "cls": "candidate",
+      "leaf": "50_validation/70_combined_dosimetry_literature/50_paragraph.md",
+      "line": 7,
+      "col": 48,
+      "excerpt": "easurement campaigns; their Fig.~6 extend",
+      "message": "semicolon in body prose",
+      "fix": "split into two sentences or use a connector"
+    },
+    {
+      "rule": "style.pet_peeves_wout.no_semicolons",
+      "cls": "candidate",
+      "leaf": "50_validation/70_combined_dosimetry_literature/50_paragraph.md",
+      "line": 12,
+      "col": 65,
+      "excerpt": "yer slab calculation; their homogeneous-s",
+      "message": "semicolon in body prose",
+      "fix": "split into two sentences or use a connector"
+    },
+    {
+      "rule": "latex.spacing_ties.tilde_before_refs",
+      "cls": "candidate",
+      "leaf": "50_validation/70_combined_dosimetry_literature/50_paragraph.md",
+      "line": 10,
+      "col": 13,
+      "excerpt": "mptotic plateau that \\eqref{eq:cauchy-exact} pre",
+      "message": "space before a reference command (missing non-breaking tie)",
+      "fix": "replace the space with ~"
+    }
+  ]
+}

@@ -176,4 +176,23 @@ F.~Lastname, ``Title of the thesis,'' Ph.D.~dissertation, Dept. of Elec. Eng., U
 
 ## Also
 
-On first new coinage of a term, always use italics. 
+On first new coinage of a term, always use italics.
+
+## Common substitutions resolved in prior sessions
+
+66. **`et al.` everywhere, never `co-workers`.** Replace globally on first draft.
+67. **`approx.` in body text, `\approx` only in math mode.** "approx. 5%" in prose, not "$\approx 5\%$".
+68. **No `\gls{}` inside `\IEEEkeywords`.** Just write the acronym. Keywords should also be short and generic — drop technical jargon.
+69. **Acronym body capitalisation matches the acronym.** "Transverse Electric (TE)", "Reconfigurable Intelligent Surface (RIS)" — not "transverse electric (TE)".
+70. **Units in `[ ]` brackets**, not `( )`, throughout the paper. Pick one and apply globally.
+71. **American spelling** (`polarization`, `behavior`, `modeling`, `color`, `gray`, `meter`, `center`, `program`) for IEEE TAP/TWC/JSAC. The British forms (`polarisation`, `behaviour`, etc.) are a project habit but IEEE house style is American.
+72. **No space before `%`** in IEEE house style: write `5.6%`, not `5.6\,\%`. This overrides the generic "thin space between number and unit" rule for the percent sign specifically.
+73. **`\Cref{...}`** (capitalised, sentence-start safe) over `\cref{...}` when the reference begins or appears mid-sentence and would render as "Section~III". Use the combined form `\Cref{sec:a,sec:b}` rather than two separate `\Cref`s with "and" between them — `cleveref` will format "Sections~III and~V" correctly.
+74. **Math/text unit spacing**: don't mix modes for units. Write `$0.08\,\mathrm{W/kg}$`, not `$0.08\,$W/kg`. Same pattern for `$\mathrm{GHz}$`, `$\mathrm{mm}$`, `$\mathrm{kg}$`, etc. inside tables.
+75. **Bold convention for vectors and matrices stays consistent.** If you use `\mathbf` for matrices and `\bm` for hatted unit vectors, document that choice in a notation block and apply it globally. The split between `\mathbf{r}, \mathbf{E}, \mathbf{N}, \mathbf{V}` and `\hat{\bm{k}}, \hat{\bm{n}}` is defensible if it is consistent across the paper.
+
+## Abstract precision
+
+76. **Numbers in the abstract match the body to the third or fourth significant figure.** "shows a factor of 4 to 5 reduction" — not "shows a 4 to 5 reduction" (ambiguous units), and not "shows a factor of ~5 reduction" (loses precision). The abstract is not a place to round freely.
+77. **State the regime where the number applies.** "Up to $10^{12}$ cells at $100\,\mathrm{GHz}$ on an adult phantom" beats "$10^{12}$ cells". An order-of-magnitude claim without its conditions reads as decoration.
+78. **No author names in the abstract** unless the body has already introduced the named result. "Smith's identity" is fine in §III if §II derived or introduced the identity; in the abstract, the reader hasn't met Smith. Reframe to plain prose ("a published identity for...", "a recent result for...", or just describe the result).

@@ -1,15 +1,14 @@
 """Regenerate the four Tier 0 figures from the parquet produced by run_tier0.py.
 
 Usage:
-    python plot_tier0.py [--records ../data/tier0_thelonious.parquet]
+    python plot_tier0.py [--records data/tier0_thelonious.parquet]
                          [--phantom thelonious]
-                         [--outdir ..]
+                         [--outdir figures]
 """
 
 from __future__ import annotations
 import argparse
 import json
-import sys
 from pathlib import Path
 
 import numpy as np
@@ -21,13 +20,6 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import Normalize
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
-from geometry import GOLIAT_DIRS, goliat_basis, cache_geometry
-
-# IEEE/SciencePlots styling. Add the theory/scripts dir to sys.path so the
-# shared style helper is importable when this script is run directly.
-_THEORY_SCRIPTS = Path(__file__).resolve().parents[2] / "theory" / "scripts"
-if _THEORY_SCRIPTS.exists() and str(_THEORY_SCRIPTS) not in sys.path:
-    sys.path.insert(0, str(_THEORY_SCRIPTS))
 try:
     from _plot_style import apply_monograph_style, fig_size_ieee  # noqa: E402
     _HAVE_STYLE = True
@@ -98,7 +90,7 @@ def fig_kernels_vs_fdtd(df: pd.DataFrame, out_path: Path, *, ieee: bool = False)
     ax.set_xticks([0, 1, 2, 3, 4, 5, 6])
     ax.set_xlabel(r"Frequency $f$ [GHz]")
     ax.set_ylabel(
-        r"$P_{\mathrm{abs}}^{\mathrm{law}} / P_{\mathrm{abs}}^{\mathrm{FDTD}}$"
+        r"$P_{\mathrm{abs}}^{\mathrm{law}} / P_{\mathrm{abs}}^{\mathrm{FDTD}}$ $[\,]$"
     )
     ax.set_xlim(0.0, 6.0)
     ax.set_ylim(0.15, 1.45)
@@ -130,7 +122,7 @@ def fig_kernels_vs_fdtd(df: pd.DataFrame, out_path: Path, *, ieee: bool = False)
     plt.close(fig)
 
 
-def fig_polarisation(df: pd.DataFrame, out_path: Path):
+def fig_polarisation(df: pd.DataFrame, out_path: Path, goliat_dirs: dict):
     freqs = np.sort(df["freq_mhz"].unique())
     fig, axes = plt.subplots(1, 2, figsize=(14, 5))
 
@@ -164,7 +156,7 @@ def fig_polarisation(df: pd.DataFrame, out_path: Path):
     ax = axes[1]
     for f, color in [(3500, "C0"), (5800, "C1")]:
         obs, pred = [], []
-        for d in GOLIAT_DIRS:
+        for d in goliat_dirs:
             tF = df[(df.freq_mhz == f) & (df.direction == d) & (df.pol == "theta")]["fdtd_Pabs_W_m2"]
             pF = df[(df.freq_mhz == f) & (df.direction == d) & (df.pol == "phi")]["fdtd_Pabs_W_m2"]
             tA = df[(df.freq_mhz == f) & (df.direction == d) & (df.pol == "theta")]["L4_Pabs"]
@@ -329,7 +321,7 @@ def fig_fdtd_bookkeeping(df: pd.DataFrame, body_bbox: tuple, out_path: Path):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument(
-        "--records", default=None, help="parquet from run_tier0.py; default ../data/tier0_<phantom>.parquet"
+        "--records", default=None, help="parquet from run_tier0.py; default data/tier0_<phantom>.parquet"
     )
     ap.add_argument("--phantom", default="thelonious")
     ap.add_argument("--stl", default=None)
@@ -346,6 +338,15 @@ def main():
         default=True,
         help="Use IEEE column sizing for figures suitable for publication.",
     )
+    ap.add_argument(
+        "--diagnostics",
+        action="store_true",
+        help=(
+            "Also regenerate diagnostic geometry/bookkeeping figures. This path "
+            "requires the broader AEGIS package and validation geometry helpers "
+            "and is not needed for the TAP publication figure."
+        ),
+    )
     args = ap.parse_args()
 
     if _HAVE_STYLE:
@@ -355,13 +356,13 @@ def main():
             print(f"[plot] WARNING: could not apply SciencePlots style ({exc}); using defaults.")
 
     here = Path(__file__).resolve().parent
-    val_dir = here.parent
+    paper_root = here.parent
     if args.records is None:
-        args.records = str(val_dir / "data" / f"tier0_{args.phantom}.parquet")
+        args.records = str(paper_root / "data" / f"tier0_{args.phantom}.parquet")
     if args.stl is None:
-        args.stl = str(val_dir.parent / "data" / f"{args.phantom}.stl")
+        args.stl = str(paper_root / "data" / f"{args.phantom}.stl")
     if args.outdir is None:
-        args.outdir = str(val_dir)
+        args.outdir = str(paper_root / "figures")
 
     outdir = Path(args.outdir)
     outdir.mkdir(parents=True, exist_ok=True)
@@ -369,17 +370,26 @@ def main():
     print(f"[plot] loaded {len(df)} records from {args.records}")
 
     fig_kernels_vs_fdtd(df, outdir / "fig_kernels_vs_fdtd.png", ieee=bool(args.ieee))
-    fig_polarisation(df, outdir / "fig_polarisation.png")
 
-    cache_dir = val_dir / "data" / "geometry_cache"
-    geom = cache_geometry(args.stl, str(cache_dir))
-    fig_geometry_maps(Path(args.stl), geom, outdir / "fig_geometry_maps.png")
+    if args.diagnostics:
+        try:
+            from geometry import GOLIAT_DIRS, cache_geometry  # type: ignore
+            from aegis.geometry.mesh import BodyMesh
+        except Exception as exc:
+            raise RuntimeError(
+                "Tier-0 diagnostics require the broader AEGIS package and "
+                "validation/scripts/geometry.py. The publication figure path "
+                "is self-contained and does not use these imports."
+            ) from exc
 
-    from aegis.geometry.mesh import BodyMesh
+        fig_polarisation(df, outdir / "fig_polarisation.png", GOLIAT_DIRS)
+        cache_dir = paper_root / "data" / "geometry_cache"
+        geom = cache_geometry(args.stl, str(cache_dir))
+        fig_geometry_maps(Path(args.stl), geom, outdir / "fig_geometry_maps.png")
 
-    body = BodyMesh.load(args.stl)
-    bbox = tuple(body.bounding_box[1] - body.bounding_box[0])
-    fig_fdtd_bookkeeping(df, bbox, outdir / "fig_fdtd_bookkeeping.png")
+        body = BodyMesh.load(args.stl)
+        bbox = tuple(body.bounding_box[1] - body.bounding_box[0])
+        fig_fdtd_bookkeeping(df, bbox, outdir / "fig_fdtd_bookkeeping.png")
 
 
 if __name__ == "__main__":

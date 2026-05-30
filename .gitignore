@@ -264,3 +264,49 @@ JSAC/**/*.synctex.gz
 
 # TAP paper dielectric bundle: large SQLite blob (regenerable from IT'IS)
 papers/TAP_paper/dielectric_bundle/itis_v5.db
+
+# ── Embedded paper repo: versioned in its own GitHub repo, never gitlink here ──
+papers/coherent-exposure-operator/
+
+# ── Downloaded / license-gated model weights (rclone-backed, regenerable) ──
+data/vposer/
+*.ckpt
+*.h5
+
+# ── Archives (keep local, never commit) ──
+*.zip
+*.rar
+!tests/fixtures/test_patterns.zip
+
+# ── Sim4Life EM-sim blobs ──
+*.smash
+
+# ── JSAC2 experimental workspace: regenerable compute + 3D + LaTeX junk ──
+JSAC2/code/replay/
+JSAC2/code/outputs/
+JSAC2/**/*.npz
+JSAC2/**/*.bin
+JSAC2/**/*.glb
+JSAC2/**/*.aux
+JSAC2/**/*.out
+JSAC2/**/*.toc
+JSAC2/**/*.log
+
+# ── Patent-deck LaTeX build artifacts ──
+presentations/patent_concepts/*.aux
+presentations/patent_concepts/*.out
+presentations/patent_concepts/*.toc
+presentations/patent_concepts/*.nav
+presentations/patent_concepts/*.snm
+presentations/patent_concepts/*.log
+presentations/patent_concepts/_render/
+presentations/patent_meeting/*.aux
+presentations/patent_meeting/*.out
+presentations/patent_meeting/*.toc
+presentations/patent_meeting/*.nav
+presentations/patent_meeting/*.snm
+presentations/patent_meeting/*.log
+
+# ── Raw scrape data (large, regenerable) ──
+spinoff/nature career column ai/*.json
+spinoff/nature career column ai/*.txt
