@@ -256,41 +256,41 @@ def solve_multibody_ecbf_jax(
 
     # Final precoder.
     lam_dev = jnp.asarray(lambdas)
-    W_dev, p_abs_dev = _step_kernel_jax(lam_dev, U_dev, D_dev, base_mat_dev, I_scale, H_conj_dev, P)
+    W_dev, _p_abs_dev_lr = _step_kernel_jax(lam_dev, U_dev, D_dev, base_mat_dev, I_scale, H_conj_dev, P)
     W = np.asarray(W_dev)
-    p_abs = np.asarray(p_abs_dev)
-    viol = np.maximum(0.0, p_abs - L_arr)
-    residual = float(np.max(viol / L_arr, initial=0.0))
-
-    if residual > 1e-3:
-        warnings.warn(
-            f"Multi-body ECBF (jax): residual relative budget violation {residual:.3g} "
-            f"exceeds 1e-3 after {n_outer} outer sweeps. Returning the smallest-"
-            "joint-eigenvalue direction as a min-absorption fallback.",
-            stacklevel=2,
-        )
-        W_fb_dev = _min_absorption_jax(Q_dev, P, int(K))
-        W = np.asarray(W_fb_dev)
-        # Re-evaluate p_abs at the fallback direction.
-        p_abs = _per_body_abs(W, Q_arr)
-        diag = MultibodyECBFDiagnostics(
-            lambdas=lambdas,
-            p_abs=p_abs,
-            L=L_arr,
-            method="min-absorption",
-            converged=False,
-            n_outer=n_outer,
-            n_active=int(np.count_nonzero(lambdas > 0)),
-            residual=float(np.max(np.maximum(0.0, p_abs - L_arr) / L_arr, initial=0.0)),
-        )
-        return (W, diag) if return_diagnostics else W
-
+    # Always evaluate against the FULL-rank Q for honest residual reporting
+    # and primal-projection scale, mirroring the NumPy multibody_ecbf path.
+    p_abs_full = _per_body_abs(W, Q_arr)
+    SAFETY = 0.97
+    margin = (SAFETY * L_arr) / np.maximum(p_abs_full, 1e-30)
+    scale = float(np.sqrt(max(0.0, min(1.0, margin.min()))))
+    method = "multibody-ecbf"
+    converged_final = converged
+    if scale < 1.0 - 1e-9:
+        if scale > 1e-3:
+            W = W * scale
+            p_abs_full = _per_body_abs(W, Q_arr)
+            method = "multibody-ecbf-projected"
+            converged_final = True
+        else:
+            warnings.warn(
+                f"Multi-body ECBF (jax): dual blow-up after {n_outer} sweeps; "
+                f"projection scale {scale:.3e} too small. "
+                "Falling back to min-absorption direction.",
+                stacklevel=2,
+            )
+            W_fb_dev = _min_absorption_jax(Q_dev, P, int(K))
+            W = np.asarray(W_fb_dev)
+            p_abs_full = _per_body_abs(W, Q_arr)
+            method = "min-absorption"
+            converged_final = False
+    residual = float(np.max(np.maximum(0.0, p_abs_full - L_arr) / L_arr, initial=0.0))
     diag = MultibodyECBFDiagnostics(
         lambdas=lambdas,
-        p_abs=p_abs,
+        p_abs=p_abs_full,
         L=L_arr,
-        method="multibody-ecbf",
-        converged=converged,
+        method=method,
+        converged=converged_final,
         n_outer=n_outer,
         n_active=int(np.count_nonzero(lambdas > 0)),
         residual=residual,
