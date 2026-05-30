@@ -12,7 +12,10 @@ def test_build_cli_help():
         [sys.executable, "-m", "aegis.basestation.build", "--help"],
         capture_output=True,
         text=True,
-        timeout=10,
+        # Generous: this asserts the CLI imports and lists its subcommands, not
+        # how fast it does so. The cold import chain (numpy/JAX/etc.) can exceed
+        # 10s on the slowest CI combo (Windows 3.11), flaking the release.
+        timeout=60,
     )
     assert result.returncode == 0
     assert "extract" in result.stdout
