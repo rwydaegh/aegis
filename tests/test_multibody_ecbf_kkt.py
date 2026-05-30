@@ -79,8 +79,7 @@ def test_kkt_slack_lambda_is_zero(seed):
 
     # Complementary slackness: slack constraint must have lambda == 0
     assert diag.lambdas[1] < 1e-8, (
-        f"KKT slackness violated: lambda[1]={diag.lambdas[1]:.3e} > 0 "
-        f"but body 1 constraint is slack (seed={seed})"
+        f"KKT slackness violated: lambda[1]={diag.lambdas[1]:.3e} > 0 but body 1 constraint is slack (seed={seed})"
     )
 
 
@@ -123,9 +122,5 @@ def test_kkt_converges_within_budget(seed):
 
     p_abs = _per_body_abs(W, [Q0, Q1])
     tol = 1e-6  # generous relative tolerance for budget check
-    assert p_abs[0] <= L0 * (1.0 + tol), (
-        f"Budget 0 violated: p={p_abs[0]:.6g} > L={L0:.6g} (seed={seed})"
-    )
-    assert p_abs[1] <= L1 * (1.0 + tol), (
-        f"Budget 1 violated: p={p_abs[1]:.6g} > L={L1:.6g} (seed={seed})"
-    )
+    assert p_abs[0] <= L0 * (1.0 + tol), f"Budget 0 violated: p={p_abs[0]:.6g} > L={L0:.6g} (seed={seed})"
+    assert p_abs[1] <= L1 * (1.0 + tol), f"Budget 1 violated: p={p_abs[1]:.6g} > L={L1:.6g} (seed={seed})"
