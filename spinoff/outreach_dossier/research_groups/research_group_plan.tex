@@ -1,0 +1,125 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{enumitem}
+\usepackage{parskip}
+\usepackage[hidelinks]{hyperref}
+
+\setlist{nosep,leftmargin=1.4em,itemsep=0.25em}
+
+\title{\vspace{-1.5em}AEGIS outreach: who and when}
+\author{Robin Wydaeghe \quad (Draft, May 2026)}
+\date{}
+
+\begin{document}
+\maketitle
+\vspace{-2em}
+
+\section{Four purposes}
+\begin{itemize}
+  \item P1. Letters before 3 August. Target: 3 or 4 signed.
+  \item P2. Standards allies for the 63195-2 Edition 2 window. 3 to 6 months.
+  \item P3. Matched-validation co-authorship. 6 to 12 months. Replaces the ZMT track.
+  \item P4. Long-term users. 1 to 3 years. The spin-off arc.
+\end{itemize}
+
+A separate lane runs in parallel: post-patent industry (Nokia, device OEMs), patient by design, not for August.
+
+\section{P1, letters before 3 August}
+A mix of academic adoption-signal letters and letters from friendly regulators, test labs, and operators. None of these need an NDA.
+\begin{itemize}
+  \item BIPT (Belgium). National telecom regulator. You know the EMF engineer. Credentialing letter for the file.
+  \item Shanshan Wang (C2M, T\'el\'ecom Paris), Joe Wiart in cc. Wiart chairs CENELEC TC106X. GOLIAT-adjacent. Email goes to Shanshan, Wiart copied.
+  \item Marta Parazzini (CNR-IEIIT Milan). Stochastic and ML dosimetry. GOLIAT. \#1 regime-matched bench group, recent mmWave \emph{Sensors} 2025 paper.
+  \item Sapienza Rome (Liberti, Apollonio, or Paffi). DIET group. \#1 BioEM bench output 2023 to 2025 (19 abstracts).
+  \item Gernot Schmid (Seibersdorf, AT). Address Schmid, mention Rene Hirtl by name (Hirtl led their 2023 FR2 body+hand SAR work, which is the AEGIS regime; Schmid's own recent output is ELF/LF, EV charging). IEC TC106 + IEEE ICES seats, BfS/femu/Charit\'e subcontractor pipeline, ISO 17025. Letter only, not P3.
+  \item Yang Hao (Queen Mary). Body-centric mmWave. EuCAP route.
+  \item Mats Gustafsson (Lund EIT/LTH). Antenna bounds. Verified email.
+  \item Test labs. CETECOM (Essen), Verkotan (Oulu). Both on IEC TC106 and IEEE ICES; both face APD test qualification at mmWave. Eurofins as brand-name fallback.
+  \item Orange Innovation (Dinh-Thuy Phan-Huy). EMF-aware beam selection, RIS research. Via Margot Deruyck, 2nd-degree.
+  \item Proximus, Telenet (BE operators). Brussels EMF limits much stricter than ICNIRP, so per-site compliance is harder here than elsewhere. Letter via Luc's standing relationship.
+  \item ARPANSA (Australia). Only if Carolina has a real tie through her grant.
+  \item GOLIAT consortium internal letter. Free, I am inside.
+  \item Key stakeholders named in the IDF. List to extract.
+\end{itemize}
+
+\section{P2, the 63195-2 Ed.\ 2 window}
+Process-first conversations, not letters. Your SC6 Advisory Board seat is the asset.
+\begin{itemize}
+  \item Akimasa Hirata (NITech). Chair ICNIRP, Chair IEEE ICES SC6. Sensitive (their group builds the obvious comparison surrogates).
+  \item Kun Li (UEC Tokyo). Chairs SC6 TG6 (EPD/APD averaging).
+  \item Yinliang Diao (SCAU, joint NITech). Co-Chair IEEE ICES SC6.
+  \item Ilkka Laakso (Aalto). SC6 Advisory Board. Your colleague there.
+  \item Teruo Onishi (NICT). Chair IEC TC106 since 2024.
+  \item Walid El Hajj. Chair 63195 Part 3 (measurement side, where APD now sits in Ed.\ 2).
+  \item Dragan Poljak (Split). SC6 Advisory Board. Defensive co-authorship (see P3).
+\end{itemize}
+
+\section{P3, matched validation}
+The deliverable is one or two joint papers with named numbers. Without them, P2 lands as a claim.
+\begin{itemize}
+  \item Ericsson Research (T\"ornevik, Colombi, Xu). First call. Bern in-situ data, joint paper. Route: you to Luc.
+  \item IETR Rennes (Zhadobov, Sacco). mmWave APD at 26 and 60\,GHz. Also defuses the Split overlap.
+  \item CNR-IEIIT Milan (Parazzini, Bonato, Fiocchi). Their 2025 \emph{Sensors} paper on shape + skin layering is the FDTD version of AEGIS.
+  \item NPL and UKHSA (Chitnis et al.). 2025 \emph{Bioelectromagnetics} on traceable APD above 10\,GHz. UK regulator-affiliated.
+  \item NITech (Hirata, Kodera). Sensitive. Kodera 2024 is the empirical observation; AEGIS gives the closed-form mechanism.
+  \item INRIM Turin (Bottauscio, Zilberti). Uncertainty quantification on voxel models.
+\end{itemize}
+
+\section{P4, long-term users}
+Labs that would use AEGIS day to day. No letter asks here; the goal is joint work.
+\begin{itemize}
+  \item Shanshan Wang (C2M), Wiart cc. Stochastic surrogates need a fast forward model.
+  \item INSA Lyon, Inria CITI (Mallik, Villemaud). ExposNet deep-learning EMF maps.
+  \item Surrey 5G/6GIC (Elzanaty, Tafazolli). RIS for EMF reduction.
+  \item Tor Vergata (Chiaraviglio, Bartoletti). RESTART 5G testbed.
+  \item Thomas Eibert (TUM). Near-field rigor.
+  \item Emil Bj\"ornson (KTH). Coherent-MIMO operator framing.
+  \item Marco Di Renzo (Paris-Saclay). RIS. Dual with Orange Innovation. Via Margot Deruyck.
+  \item CEA-LETI (Grenoble). French national RF systems lab.
+  \item Oulu 6G Flagship. Testbed group that needs exposure-assessment tooling for its own experiments.
+  \item ACEBR and ARPANSA (Karipidis, Loughran, Croft, Wood). ICNIRP Vice-Chair. Possibly via Carolina.
+\end{itemize}
+
+\section{Post-patent industry (a separate, patient lane)}
+Not for August. Open after patent filing ($\sim$1 to 15 July).
+\begin{itemize}
+  \item Nokia. RAN-vendor compliance. Via Jafar Keshvari (IEEE ICES Chair), 2nd-degree through Luc and Mike Wood.
+  \item Device side: Qualcomm, Apple, Samsung Mobile, MediaTek. Handset beam steering above 6\,GHz is the main APD case. Route via your IEEE ICES contacts, not cold. Qualcomm needs disclosure-timing care: the Hochwald exposure-aware-beam-selection patent (US11940477) sits there.
+\end{itemize}
+
+\section{60 days}
+Weeks 1 to 2.
+\begin{itemize}
+  \item I send the P1 letter ask to Shanshan Wang (Wiart cc), Parazzini, Sapienza (Liberti or Apollonio), Schmid, Yang Hao, Gustafsson, and to the test-lab and Orange contacts.
+  \item You send the BIPT ask and the Proximus/Telenet ask.
+  \item I request the GOLIAT internal letter.
+  \item You open Ericsson through Luc (matched validation, not a sales call).
+  \item I ask Filip about academic letters vs commercial LOIs for the IOF jury.
+\end{itemize}
+
+Weeks 3 to 6.
+\begin{itemize}
+  \item I produce the matched AEGIS-vs-Sim4Life validation on a 63195-2 reference scenario (GOLIAT compute).
+  \item You send a process question on 63195-2 Ed.\ 2 (Hirata or Kun Li).
+  \item I email Zhadobov and Sacco about a 26 or 60\,GHz matched validation.
+\end{itemize}
+
+Weeks 7 to 8.
+\begin{itemize}
+  \item I open the C2M long-term conversation with Wiart.
+  \item You decide on the Split approach (I lean defensive co-authorship via Poljak).
+  \item Patent filing 1 to 15 July. Post-patent industry lane opens.
+\end{itemize}
+
+\section{Questions for you}
+\begin{itemize}
+  \item Green light on the Ericsson approach through Luc.
+  \item Corrections to the P1 list, especially BIPT, the test labs, Orange, and the Belgian operators.
+  \item Read on the Split approach.
+  \item For Filip: do academic adoption letters carry weight, vs commercial LOIs?
+  \item For Alessandro: disclosure scope per lane. My read: teaser plus password-protected demo for academic and friendly-regulator letters, NDA-only deck for industry conversations.
+\end{itemize}
+
+\end{document}

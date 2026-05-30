@@ -1,0 +1,431 @@
+\documentclass[aspectratio=169, 11pt]{beamer}
+\input{preamble}
+
+\begin{document}
+
+\begin{frame}{Two physical reductions behind the dosimetry law}
+  \vspace{2pt}
+  Conventional dosimetry solves Maxwell's equations over the whole body volume
+  (FDTD, ${\sim}10^{12}$ cells, hours to days). Two physical facts reduce that
+  to a single evaluation on the body \emph{surface}:
+  \vspace{6pt}
+  \begin{center}
+    {\large $\displaystyle
+      \Sab(\rr) \;=\;
+      {\color{colsinc}\Sinc}\;\cdot\;
+      {\color{coltransmission}T_0}\;\cdot\;
+      {\color{colgeometry}\ReLU\!\bigl[\nhat(\rr)\cdot(-\khat)\bigr]}
+    $}
+  \end{center}
+  \vspace{6pt}
+  \begin{columns}[T]
+    \begin{column}{0.33\textwidth}
+      \centering {\color{colsinc}$\Sinc$}\\[2pt]
+      {\footnotesize incident power density, set by the environment}
+    \end{column}
+    \begin{column}{0.33\textwidth}
+      \centering {\color{coltransmission}$T_0$ : one scalar}\\[2pt]
+      {\footnotesize the material factor, from pseudo-Brewster compensation}
+    \end{column}
+    \begin{column}{0.33\textwidth}
+      \centering {\color{colgeometry}pure geometry}\\[2pt]
+      {\footnotesize only the outer shape matters, from surface confinement}
+    \end{column}
+  \end{columns}
+  \vspace{6pt}
+  \begin{resultbox}\centering
+    Reduction 1 replaces the material with one scalar. Reduction 2 replaces the body
+    volume with its surface.
+  \end{resultbox}
+\end{frame}
+
+
+\begin{frame}{1.\ Pseudo-Brewster compensation}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \vspace{2pt}
+      A wave entering tissue splits into TE and TM polarizations, each with its
+      own Fresnel transmission.
+      \begin{itemize}\setlength\itemsep{2pt}
+        \item As the angle grows, {\color{colsinc}$T_s$ (TE) falls} while
+              {\color{coltransmission}$T_p$ (TM) rises} to the
+              \emph{pseudo-Brewster} peak (${\approx}0.95$)
+        \item Moving oppositely, the unpolarized average
+              $\Tavg=\tfrac12(T_s+T_p)$ stays nearly flat
+        \item True for any high-index medium ($|\ntilde|\gtrsim 2.5$), and tissue at
+              mmWave is $|\ntilde|\in[3,6]$
+      \end{itemize}
+      \vspace{3pt}
+      \begin{resultbox}\centering
+        \footnotesize Replace $\Tavg(\theta)$ by one scalar:
+        $T_0 = 0.539$ (skin, \SI{28}{\giga\hertz}).
+      \end{resultbox}
+    \end{column}
+    \begin{column}{0.52\textwidth}
+      \centering
+      \includegraphics[width=0.96\linewidth]{apd_angle_panel_T.pdf}\\[1pt]
+      {\scriptsize $T_s$ falls and $T_p$ peaks, but $\Tavg$ stays within
+      \SI{5.6}{\percent} of $T_0$ out to $75^\circ$.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{1.\ Pseudo-Brewster: validity and contribution}
+  \begin{columns}[c]
+    \begin{column}{0.5\textwidth}
+      \centering
+      \includegraphics[width=0.93\linewidth]{R_of_f.pdf}\\[1pt]
+      {\scriptsize Sphere ratio $R(f)=T_0/\Tbar$. $R<1$ means $T_0$
+      \emph{underestimates} absorbed power, so the result is conservative for
+      compliance. Within $\pm\SI{4}{\percent}$ across the band, with the crossover
+      at \SI{40.4}{\giga\hertz}.}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \begin{honestbox}[Prior art and contribution]
+        {\small\raggedright
+        Azzam (2015) proved this near-constant transmission for high-index
+        \emph{optical} substrates ($|\ntilde|>3.73$). Kodera, Bamba, Flintoft and
+        Zhang \emph{measured} it in tissue above \SI{6}{\giga\hertz}.\\[5pt]
+        The contribution here is the derivation for biological tissue from Fresnel
+        theory, used as the material factor in a body-surface dosimetry system. The
+        scalar is enabling physics, not the claimed invention.}
+      \end{honestbox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+
+\begin{frame}{2.\ Surface confinement}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \vspace{2pt}
+      Above a few GHz the field penetrates only a thin skin of the tissue before it
+      is fully absorbed.
+      \vspace{3pt}
+      \begin{center}
+        \begin{tikzpicture}[scale=0.92]
+          \fill[colgeometry!7] (0,0) rectangle (3.6,1.7);
+          \draw[colgeometry!40, line width=0.4pt] (0,0) rectangle (3.6,1.7);
+          \fill[coltransmission!35] (0,1.55) rectangle (3.6,1.7);
+          \draw[colgeometry, line width=1pt] (0,1.7) -- (3.6,1.7);
+          \draw[->, navyblue, line width=1pt, decorate,
+                decoration={snake, amplitude=0.5pt, segment length=4pt, post length=2pt}]
+                (0.2,2.5) -- (1.5,1.7);
+          \draw[->, navyblue!45, line width=0.7pt] (1.5,1.7) -- (2.8,2.5);
+          \draw[<->, coltransmission, line width=0.5pt] (3.72,1.55) -- (3.72,1.7);
+          \node[right, font=\scriptsize, coltransmission] at (3.78,1.62)
+            {$\delta<\SI{1}{\milli\metre}$};
+          \node[font=\scriptsize\itshape, darkgray] at (1.8,0.7)
+            {opaque interior: no field};
+        \end{tikzpicture}
+      \end{center}
+      \begin{itemize}\setlength\itemsep{2pt}
+        \item All absorption stays within that surface skin, so only the body's
+              \emph{external shape} matters
+        \item No internal anatomy, no volume mesh
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.52\textwidth}
+      \centering
+      \includegraphics[width=0.92\linewidth]{skin_depth_vs_freq.pdf}\\[1pt]
+      {\scriptsize Penetration depth (IT'IS model): below \SI{0.5}{\milli\metre}
+      across the mmWave bands, ${\sim}1000\times$ thinner than a limb.}
+      \vspace{1pt}
+      \begin{resultbox}\centering
+        \footnotesize A ${\sim}10^{12}$-cell volume mesh becomes a
+        ${\sim}10^{4}$-triangle surface integral.
+      \end{resultbox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{2.\ Surface confinement: validity and contribution}
+  \begin{columns}[T]
+    \begin{column}{0.5\textwidth}
+      \vspace{2pt}
+      The surface picture is valid above ${\sim}\SI{6}{\giga\hertz}$, the band where
+      the regulatory metric is already surface absorbed power density, not
+      whole-body SAR.
+      \vspace{6pt}
+
+      Below ${\sim}\SI{6}{\giga\hertz}$ the field reaches past the subcutaneous fat,
+      Fabry--P\'erot resonances appear, and the local surface map loses pointwise
+      meaning. Total absorbed power stays valid there through a layered
+      transmission $\Tbar$.
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \vspace{2pt}
+      \begin{honestbox}[Prior art and contribution]
+        {\footnotesize
+        A sub-millimetre skin depth at mmWave is textbook electromagnetics. The
+        contribution here is the resulting method: volumetric dosimetry reduces to a
+        surface integral over the body's outer shape, the incidence factor
+        $\ReLU[\nhat\cdot(-\khat)]$ gates the lit side against the shadow, and the
+        valid frequency window is bounded.}
+      \end{honestbox}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Both reductions give the law}
+  \vspace{4pt}
+  \begin{center}
+    {\large $\displaystyle
+      \Sab(\rr) \;=\;
+      {\color{colsinc}\Sinc}\;\cdot\;
+      \underbrace{{\color{coltransmission}T_0}}_{\text{reduction 1}}\;\cdot\;
+      \underbrace{{\color{colgeometry}\ReLU\!\bigl[\nhat(\rr)\cdot(-\khat)\bigr]}}_{\text{reduction 2}}
+    $}
+  \end{center}
+  \vspace{6pt}
+  \begin{columns}[T]
+    \begin{column}{0.5\textwidth}
+      \begin{itemize}\setlength\itemsep{3pt}
+        \item {\color{coltransmission}Pseudo-Brewster} reduces the angle- and
+              polarization-dependent material to one scalar $T_0$
+        \item {\color{colgeometry}Surface confinement} reduces the body volume to a
+              surface, with absorption gated by the incidence cosine
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \begin{itemize}\setlength\itemsep{3pt}
+        \item The same law also covers near-field point sources and coherent MIMO
+        \item It is differentiable end to end, so antenna and device parameters
+              can be optimized by gradient descent
+      \end{itemize}
+    \end{column}
+  \end{columns}
+  \vspace{4pt}
+  \begin{resultbox}\centering
+    These two are the enabling physics. The independent claims in the IDF
+    (the spatial law and its near-field forms, the exposure operator $\QQ$, the
+    differentiable optimization, and the systems) are built on top of them.
+  \end{resultbox}
+\end{frame}
+
+\begin{frame}{The dosimetry framework}
+  \begin{adjustbox}{max width=\linewidth, max totalheight=7.0cm, center}
+  \begin{tikzpicture}[
+    box/.style={draw=black, line width=0.5pt, rectangle, rounded corners=1.5pt,
+                inner sep=3pt, minimum height=11mm, minimum width=44mm,
+                fill=white, align=center, font=\footnotesize},
+    sub6/.style={draw=black, line width=0.5pt, rectangle, rounded corners=1.5pt,
+                inner sep=3pt, minimum height=10mm, minimum width=36mm,
+                fill=black!4, align=center, font=\footnotesize},
+    outbox/.style={draw=black, line width=0.5pt, rectangle, rounded corners=1.5pt,
+                inner sep=3pt, minimum height=10mm, minimum width=36mm,
+                align=center, font=\footnotesize},
+    smallout/.style={draw=black, line width=0.4pt, rectangle, rounded corners=1pt,
+                inner sep=2pt, minimum height=5mm, minimum width=30mm,
+                align=center, font=\scriptsize},
+    inputs/.style={draw=black, line width=0.4pt, rectangle, dashed,
+                inner sep=4pt, text width=30mm, align=left, font=\scriptsize, fill=white},
+    corrbox/.style={draw=black, line width=0.4pt, dash pattern=on 2pt off 1.4pt,
+                inner sep=3pt, text width=38mm, align=center,
+                font=\scriptsize\itshape, fill=white},
+    arrow/.style={->, line width=0.5pt, >=Latex},
+    smallarrow/.style={->, line width=0.4pt, >=Latex, rounded corners=0.6pt},
+    ftag/.style={font=\scriptsize\itshape, align=center, fill=white, inner sep=0.8pt}
+  ]
+    \node[box] (exact) at (2.0, 0)     {Exact law\\[1pt]$\APD=\IPD\,\Teff\,{\color{colsc}\ReLU(\mu)\,\Vis}$};
+    \node[box] (avg)   at (2.0, -1.75) {Unpolarized\\[1pt]$\APD=\IPD\,\Tavg\,{\color{colsc}\ReLU(\mu)\,\Vis}$};
+    \node[box] (geom)  at (2.0, -3.50) {Geometric\\[1pt]$\APD=\IPD\,{\color{colpb}T_0}\,{\color{colsc}\ReLU(\mu)\,\Vis}$};
+    \node[box] (whole) at (2.0, -6.95) {Whole-body\\[1pt]$\langle P_{\mathrm{abs}}\rangle=\IPD\,\Tbar\,\Aab/4$};
+
+    \node[sub6] (layered) at (3.1, -5.225) {Sub-6\,GHz\\[1pt]$T_0\!\to\!\Tlay(f)$};
+
+    \node[outbox, fill=outA] (outLocal) at (8.2, -3.50) {Local $\APDAvg$};
+    \node[smallout, fill=outA!60] (outLocalPeak) at (8.5, -4.36) {Peak $\APDAvg$};
+    \node[outbox, fill=outC] (outCube) at (8.2, -5.225) {$\mathrm{SAR}_{10\mathrm{g}}$};
+    \node[smallout, fill=outC!60] (outCubePeak) at (8.5, -6.09) {$\mathrm{psSAR}_{10\mathrm{g}}$};
+    \node[outbox, fill=outB] (outWB) at (8.2, -6.95) {$\mathrm{SAR}_{\mathrm{wb}}$};
+
+    \draw[arrow] (exact) -- node[ftag,right=2pt] {Three conditions} (avg);
+    \draw[arrow, colpb, line width=0.9pt] (avg) -- node[ftag,right=2pt,text=colpb] {\bfseries Pseudo-Brewster} (geom);
+
+    \coordinate (geom_q1) at ($(geom.south west)!0.25!(geom.south east)$);
+    \coordinate (whole_q1) at ($(whole.north west)!0.25!(whole.north east)$);
+    \draw[arrow] (geom_q1) -- node[ftag,left=1pt,pos=0.34] {Cauchy mean\\+ occlusion} (whole_q1);
+
+    \draw[arrow] (geom.south -| layered.north) -- (layered.north);
+
+    \draw[arrow] (geom.east)    -- (outLocal.west);
+    \draw[arrow] (layered.east) -- (outCube.west);
+    \draw[arrow] (whole.east)   -- (outWB.west);
+
+    \draw[smallarrow] ($(outLocal.south west) + (2mm,0)$) |- (outLocalPeak.west);
+    \draw[smallarrow] ($(outCube.south west)  + (2mm,0)$) |- (outCubePeak.west);
+
+    \begin{pgfonlayer}{background}
+      \node[draw=black, line width=0.4pt, dashed, fit=(exact)(whole)(layered),
+            inner sep=5pt, name=formulabox, label={[ztitle]north:Formula}] {};
+      \node[draw=black, line width=0.4pt, dashed,
+            fit=(outLocal)(outLocalPeak)(outCube)(outCubePeak)(outWB),
+            inner sep=5pt, label={[ztitle]north:Regulatory outputs}] {};
+    \end{pgfonlayer}
+
+    \node[inputs, label={[ztitle]north:Inputs}] (inp) at (8.2, -1.10)
+      {Tissue $\varepsilon_r$, $\sigma$\\ Normals $\nhat$\\ Direction $\khat$\\ Visibility $\Vis$\\ Power $\IPD$};
+    \draw[arrow] (inp.west) -- (formulabox.east |- inp);
+
+    \node[corrbox] (corr) at (8.2, 1.15) {+ Corrections: curvature,\\ diffraction, inter-body};
+    \draw[arrow] (formulabox.north east) to[bend left=18] (corr.west);
+
+    \node[scnode, font=\scriptsize, text width=34mm] (scnote) at (-2.6, 0)
+      {{\bfseries Surface confinement}\\[1pt] body opaque, so the law lives on the surface (lit side only)};
+    \draw[->, colsc, line width=0.7pt] (scnote.east) to[bend right=6] (exact.west);
+  \end{tikzpicture}
+  \end{adjustbox}
+\end{frame}
+
+\begin{frame}{Incoherent and coherent regimes}
+  \vspace{2pt}
+  \begin{adjustbox}{max width=\linewidth, max totalheight=5.7cm, center}
+  \begin{tikzpicture}
+    \node[pbnode] (pb) at (0,0.95) {Pseudo-Brewster\\[1pt]$\Rightarrow$ scalar ${\color{colpb}T_0}$};
+    \node[scnode] (sc) at (0,-0.95) {Surface confinement\\[1pt]$\Rightarrow$ surface integral};
+    \begin{pgfonlayer}{background}
+      \node[zone, fit=(pb)(sc), inner sep=6pt, name=redbox,
+            label={[ztitle]north:Two reductions (slides 2--5)}] {};
+    \end{pgfonlayer}
+
+    \node[stage, text width=44mm] (kernel) at (4.4,0)
+      {Surface dosimetry kernel\\[2pt]$\Sab(\rr)=\Sinc\,{\color{colpb}T_0}\,{\color{colsc}\ReLU[\nhat\cdot(-\khat)]}$};
+
+    \node[stage, text width=40mm] (incoh) at (9.1,1.9)
+      {{\bfseries Incoherent:} plane wave\\[1pt]$\APD$ map $\to$ whole-body $\langle P_{\mathrm{abs}}\rangle$};
+    \node[stage, text width=40mm] (coh) at (9.1,-1.9)
+      {{\bfseries Coherent:} MIMO array\\[1pt]exposure operator\\[1pt]$P_{\mathrm{abs}}=\xx^{\!H}\QQ\,\xx$};
+
+    \draw[flow] (redbox.east) -- (kernel.west);
+    \draw[flow] (kernel.north) to[out=90,in=180] (incoh.west);
+    \draw[flow] (kernel.south) to[out=-90,in=180] (coh.west);
+
+    \node[stage, fill=outA, text width=22mm] (out) at (12.6,0) {Compliance\\metrics\\$\APD$, SAR};
+    \draw[flow] (incoh.east) to[out=0,in=90] (out.north);
+    \draw[flow] (coh.east)   to[out=0,in=-90] (out.south);
+  \end{tikzpicture}
+  \end{adjustbox}
+
+  \vspace{4pt}
+  \begin{resultbox}\centering
+    \footnotesize The same two reductions and the same surface kernel serve both
+    excitation regimes: plane-wave incidence and coherent MIMO.
+  \end{resultbox}
+\end{frame}
+
+\begin{frame}{The differentiable platform}
+  \vspace{1pt}
+  \begin{adjustbox}{max width=\linewidth, max totalheight=5.15cm, center}
+  \begin{tikzpicture}
+    \node[io, text width=20mm] (scn) at (0,0)
+      {Scenario\\environment + BS\\ UE (near-field)\\ body surface\\ precoder $\xx$};
+
+    \node[scnode, font=\scriptsize, text width=24mm] (sc) at (2.9,1.30)
+      {Surface confinement\\$\to$ surface integral};
+    \node[pbnode, font=\scriptsize, text width=24mm] (pb) at (2.9,0.0)
+      {Pseudo-Brewster\\$\to$ scalar $T_0$};
+    \node[stage, font=\scriptsize, text width=24mm] (q) at (2.9,-1.30)
+      {Coherent operator\\$\QQ(\xx)$};
+    \begin{pgfonlayer}{background}
+      \node[zone, fit=(sc)(pb)(q), inner sep=7pt, name=engine,
+            label={[ztitle]north:Enabling physics}] {};
+    \end{pgfonlayer}
+    \node[tag, text=black!55, font=\scriptsize\itshape] at ($(engine.south)+(0,-0.02)$)
+      {validated $<10\%$ error};
+
+    \node[stage, font=\scriptsize, text width=22mm] (apd) at (6.6,0)
+      {Fast,\\differentiable\\$\APD$ / SAR};
+    \node[claim, text width=30mm] (loop) at (10.1,0.55)
+      {{\bfseries Differentiable optimization}\\[2pt]
+       $\nabla(\text{exposure})$ tunes\\
+       precoder $\xx$, BS placement,\\
+       array geometry\\
+       s.t. exposure $\le$ limit};
+    \node[stage, fill=outA, font=\scriptsize, text width=28mm] (cert) at (10.1,-1.85)
+      {Compliant design /\\pre-compliance};
+    \draw[flow] (loop.south) -- (cert.north);
+    \begin{pgfonlayer}{background}
+      \node[zone, draw=navyblue, fit=(apd)(loop)(cert), inner sep=7pt, name=claimz,
+            label={[ztitle, text=navyblue]north:Claimed invention: AEGIS software}] {};
+    \end{pgfonlayer}
+
+    \draw[flow] (scn.east) -- (pb.west);
+    \draw[flow] (pb.east) -- (apd.west);
+    \draw[flow] (sc.east) to[out=0,in=180] (apd.north west);
+    \draw[flow] (q.east)  to[out=0,in=180] (apd.south west);
+    \draw[flow] (apd.east) to[out=0,in=180] (loop.west);
+    \node[io, font=\scriptsize, text width=18mm] (mkt) at (13.4,-1.0)
+      {Network operators\\UE vendors\\research};
+    \draw[flow] (cert.east) to[out=0,in=180] (mkt.west);
+
+    \draw[flow, navyblue, line width=0.7pt, rounded corners=5pt]
+      (loop.north east) -- ([xshift=5mm]loop.north east)
+      -- ([xshift=5mm,yshift=18mm]loop.north east)
+      -- ([yshift=18mm]loop.north east -| scn.north) -- (scn.north);
+    \node[tag, text=navyblue, fill=white, inner sep=2pt] at (5.6,3.62)
+      {Differentiable design loop: gradient $\to$ update};
+  \end{tikzpicture}
+  \end{adjustbox}
+
+  \vspace{2pt}
+  \begin{resultbox}\centering
+    \footnotesize The two reductions are the {\color{colpb}engine}. The claimed
+    invention is the {\color{navyblue}\bfseries AEGIS software} that designs RF systems
+    to meet exposure limits, covering far-field, near-field and coherent MIMO.
+  \end{resultbox}
+\end{frame}
+
+\appendix
+
+\begin{frame}{Appendix: exact Fresnel coefficients}
+  For a planar interface between free space and a lossy medium with complex
+  refractive index $\ntilde=\sqrt{\varepsilon_r - i\sigma/(\omega\varepsilon_0)}$,
+  and normal wave-vector component $\xi=\sqrt{\ntilde^2-1+\mu^2}$ with
+  $\mu=\cos\theta_i$:
+  \begin{equation*}
+    r_s = \frac{\mu-\xi}{\mu+\xi}, \qquad
+    r_p = \frac{\ntilde^2\mu-\xi}{\ntilde^2\mu+\xi},\qquad
+    T_{s,p} = 1 - |r_{s,p}|^2 .
+  \end{equation*}
+  At normal incidence both reduce to
+  \[
+    T_0 = \frac{4\,\RE(\ntilde)}{|1+\ntilde|^2}.
+  \]
+  For skin at \SI{28}{\giga\hertz}: $\varepsilon_r=16.55$, $\sigma=\SI{25.8}{\siemens\per\metre}$,
+  $\ntilde=4.49-1.79i$, $T_0=0.539$.
+\end{frame}
+
+\begin{frame}{Appendix: pseudo-Brewster across tissues (\SI{28}{\giga\hertz})}
+  \centering\small
+  \begin{tabular}{lcccc}
+    \toprule
+    Tissue & $|\ntilde|$ & $T_0$
+      & \makecell{pointwise dev.\\$\Tavg/T_0-1$, $[0,75^\circ]$}
+      & \makecell{absorbed-power\\(flux-weighted) dev.} \\
+    \midrule
+    Skin   & 4.8 & 0.54 & $+5.7\%$  & $-1.2\%$ \\
+    Muscle & 5.7 & 0.48 & $+12.6\%$ & $-2.9\%$ \\
+    Water  & 6.9 & 0.41 & $+22.3\%$ & $-5.1\%$ \\
+    Fat    & 2.6 & 0.78 & $-17.4\%$ & $+4.6\%$ \\
+    \bottomrule
+  \end{tabular}
+  \vspace{8pt}
+
+  {\footnotesize Computed from the IT'IS tissue model. The pointwise $\Tavg(\theta)$
+  does rise (or, for fat, fall) at grazing angles, more so for the higher-index
+  tissues. But absorbed power scales as $T(\theta)\cos\theta$, so the
+  \emph{absorbed-power-weighted} deviation stays within ${\sim}5\%$ for every tissue.
+  That is the quantity the direction-averaged $R(f)$ reflects, and why the single
+  scalar is accurate for absorbed power even where the raw transmission is not flat.}
+\end{frame}
+
+\begin{frame}{Appendix: absorbed power across angle}
+  \centering
+  \includegraphics[height=0.74\textheight]{apd_angle_panel_APD.pdf}\\[2pt]
+  {\footnotesize Normalized absorbed power $\Sab/\Sinc = T(\theta)\cos\theta$ for
+  TE, TM, and the unpolarized average, against the simplified $T_0\cos\theta$
+  prediction (dotted). The small gap is the Fresnel approximation error.}
+\end{frame}
+
+\end{document}

@@ -1,0 +1,216 @@
+\documentclass[aspectratio=169, 11pt]{beamer}
+\input{preamble}
+\usepackage{adjustbox}
+\usetikzlibrary{fit, calc, backgrounds, positioning, arrows.meta}
+
+\definecolor{outA}{RGB}{216,234,251}
+\definecolor{outB}{RGB}{251,234,216}
+\definecolor{outC}{RGB}{226,247,217}
+\colorlet{forecol}{black!42}
+
+\providecommand{\IPD}{\mathrm{IPD}}
+\providecommand{\APD}{\mathrm{APD}}
+\providecommand{\APDAvg}{\langle\mathrm{APD}\rangle}
+\providecommand{\Tlay}{T_{\mathrm{lay}}}
+\providecommand{\pospart}[1]{\left[#1\right]_{+}}
+\providecommand{\Vis}{V}
+
+\tikzset{
+  stage/.style={draw=black, line width=0.5pt, rectangle, rounded corners=1.5pt,
+                inner sep=4pt, align=center, font=\footnotesize, fill=white},
+  pbnode/.style={draw=colpb, line width=0.7pt, rectangle, rounded corners=1.5pt,
+                inner sep=4pt, align=center, font=\footnotesize, fill=colpb!8},
+  scnode/.style={draw=colsc, line width=0.7pt, rectangle, rounded corners=1.5pt,
+                inner sep=4pt, align=center, font=\footnotesize, fill=colsc!8},
+  claim/.style={draw=navyblue, line width=1.1pt, rectangle, rounded corners=2pt,
+                inner sep=5pt, align=center, font=\footnotesize, fill=lightblue},
+  fore/.style={draw=forecol, line width=0.5pt, dash pattern=on 2pt off 1.4pt,
+                rectangle, rounded corners=1.5pt, inner sep=4pt, align=center,
+                font=\footnotesize, fill=black!4, text=black!55},
+  io/.style={draw=black, line width=0.4pt, rectangle, inner sep=4pt,
+                align=center, font=\scriptsize, fill=white},
+  flow/.style={->, line width=0.55pt, >=Latex},
+  zone/.style={draw=black!70, line width=0.5pt, dash pattern=on 2.5pt off 1.6pt,
+                rectangle, rounded corners=2pt},
+  ztitle/.style={font=\scriptsize\itshape, fill=white, inner sep=1.5pt},
+  tag/.style={font=\scriptsize\itshape, fill=white, inner sep=0.8pt, align=center},
+}
+
+\begin{document}
+
+\begin{frame}{Option 1}
+  \begin{adjustbox}{max width=\linewidth, max totalheight=7.0cm, center}
+  \begin{tikzpicture}[
+    box/.style={draw=black, line width=0.5pt, rectangle, rounded corners=1.5pt,
+                inner sep=3pt, minimum height=11mm, minimum width=44mm,
+                fill=white, align=center, font=\footnotesize},
+    sub6/.style={draw=black, line width=0.5pt, rectangle, rounded corners=1.5pt,
+                inner sep=3pt, minimum height=10mm, minimum width=36mm,
+                fill=black!4, align=center, font=\footnotesize},
+    outbox/.style={draw=black, line width=0.5pt, rectangle, rounded corners=1.5pt,
+                inner sep=3pt, minimum height=10mm, minimum width=36mm,
+                align=center, font=\footnotesize},
+    smallout/.style={draw=black, line width=0.4pt, rectangle, rounded corners=1pt,
+                inner sep=2pt, minimum height=5mm, minimum width=30mm,
+                align=center, font=\scriptsize},
+    inputs/.style={draw=black, line width=0.4pt, rectangle, dashed,
+                inner sep=4pt, text width=30mm, align=left, font=\scriptsize, fill=white},
+    corrbox/.style={draw=black, line width=0.4pt, dash pattern=on 2pt off 1.4pt,
+                inner sep=3pt, text width=38mm, align=center,
+                font=\scriptsize\itshape, fill=white},
+    arrow/.style={->, line width=0.5pt, >=Latex},
+    smallarrow/.style={->, line width=0.4pt, >=Latex, rounded corners=0.6pt},
+    ftag/.style={font=\scriptsize\itshape, align=center, fill=white, inner sep=0.8pt}
+  ]
+    \node[box] (exact) at (2.0, 0)     {Exact law\\[1pt]$\APD=\IPD\,\Teff\,{\color{colsc}\ReLU(\mu)\,\Vis}$};
+    \node[box] (avg)   at (2.0, -1.75) {Unpolarized\\[1pt]$\APD=\IPD\,\Tavg\,{\color{colsc}\ReLU(\mu)\,\Vis}$};
+    \node[box] (geom)  at (2.0, -3.50) {Geometric\\[1pt]$\APD=\IPD\,{\color{colpb}T_0}\,{\color{colsc}\ReLU(\mu)\,\Vis}$};
+    \node[box] (whole) at (2.0, -6.95) {Whole-body\\[1pt]$\langle P_{\mathrm{abs}}\rangle=\IPD\,\Tbar\,\Aab/4$};
+
+    \node[sub6] (layered) at (3.1, -5.225) {Sub-6\,GHz\\[1pt]$T_0\!\to\!\Tlay(f)$};
+
+    \node[outbox, fill=outA] (outLocal) at (8.2, -3.50) {Local $\APDAvg$};
+    \node[smallout, fill=outA!60] (outLocalPeak) at (8.5, -4.36) {Peak $\APDAvg$};
+    \node[outbox, fill=outC] (outCube) at (8.2, -5.225) {$\mathrm{SAR}_{10\mathrm{g}}$};
+    \node[smallout, fill=outC!60] (outCubePeak) at (8.5, -6.09) {$\mathrm{psSAR}_{10\mathrm{g}}$};
+    \node[outbox, fill=outB] (outWB) at (8.2, -6.95) {$\mathrm{SAR}_{\mathrm{wb}}$};
+
+    \draw[arrow] (exact) -- node[ftag,right=2pt] {Three conditions} (avg);
+    \draw[arrow, colpb, line width=0.9pt] (avg) -- node[ftag,right=2pt,text=colpb] {\bfseries Pseudo-Brewster} (geom);
+
+    \coordinate (geom_q1) at ($(geom.south west)!0.25!(geom.south east)$);
+    \coordinate (whole_q1) at ($(whole.north west)!0.25!(whole.north east)$);
+    \draw[arrow] (geom_q1) -- node[ftag,left=1pt,pos=0.34] {Cauchy mean\\+ occlusion} (whole_q1);
+
+    \draw[arrow] (geom.south -| layered.north) -- (layered.north);
+
+    \draw[arrow] (geom.east)    -- (outLocal.west);
+    \draw[arrow] (layered.east) -- (outCube.west);
+    \draw[arrow] (whole.east)   -- (outWB.west);
+
+    \draw[smallarrow] ($(outLocal.south west) + (2mm,0)$) |- (outLocalPeak.west);
+    \draw[smallarrow] ($(outCube.south west)  + (2mm,0)$) |- (outCubePeak.west);
+
+    \begin{pgfonlayer}{background}
+      \node[draw=black, line width=0.4pt, dashed, fit=(exact)(whole)(layered),
+            inner sep=5pt, name=formulabox, label={[ztitle]north:Formula}] {};
+      \node[draw=black, line width=0.4pt, dashed,
+            fit=(outLocal)(outLocalPeak)(outCube)(outCubePeak)(outWB),
+            inner sep=5pt, label={[ztitle]north:Regulatory outputs}] {};
+    \end{pgfonlayer}
+
+    \node[inputs, label={[ztitle]north:Inputs}] (inp) at (8.2, -1.10)
+      {Tissue $\varepsilon_r$, $\sigma$\\ Normals $\nhat$\\ Direction $\khat$\\ Visibility $\Vis$\\ Power $\IPD$};
+    \draw[arrow] (inp.west) -- (formulabox.east |- inp);
+
+    \node[corrbox] (corr) at (8.2, 1.15) {+ Corrections: curvature,\\ diffraction, inter-body};
+    \draw[arrow] (formulabox.north east) to[bend left=18] (corr.west);
+
+    \node[scnode, font=\scriptsize, text width=34mm] (scnote) at (-2.6, 0)
+      {{\bfseries Surface confinement}\\[1pt] body opaque, so the law lives on the surface (lit side only)};
+    \draw[->, colsc, line width=0.7pt] (scnote.east) to[bend right=6] (exact.west);
+  \end{tikzpicture}
+  \end{adjustbox}
+\end{frame}
+
+\begin{frame}{Option 2}
+  \vspace{2pt}
+  \begin{adjustbox}{max width=\linewidth, max totalheight=5.5cm, center}
+  \begin{tikzpicture}
+    \node[pbnode] (pb) at (0,0.95) {Pseudo-Brewster\\[1pt]$\Rightarrow$ scalar ${\color{colpb}T_0}$};
+    \node[scnode] (sc) at (0,-0.95) {Surface confinement\\[1pt]$\Rightarrow$ surface integral};
+    \begin{pgfonlayer}{background}
+      \node[zone, fit=(pb)(sc), inner sep=6pt, name=redbox,
+            label={[ztitle]north:Two reductions (slides 2--5)}] {};
+    \end{pgfonlayer}
+
+    \node[stage, text width=44mm] (kernel) at (4.4,0)
+      {Surface dosimetry kernel\\[2pt]$\Sab(\rr)=\Sinc\,{\color{colpb}T_0}\,{\color{colsc}\ReLU[\nhat\cdot(-\khat)]}$};
+
+    \node[stage, text width=40mm] (incoh) at (9.1,1.9)
+      {{\bfseries Incoherent:} plane wave\\[1pt]$\APD$ map $\to$ whole-body $\langle P_{\mathrm{abs}}\rangle$};
+    \node[fore, text width=40mm] (coh) at (9.1,-1.9)
+      {{\bfseries Coherent:} MIMO array\\[1pt]exposure operator\\[1pt]$P_{\mathrm{abs}}=\xx^{\!H}\QQ\,\xx$};
+    \node[fore, font=\scriptsize, text=forecol] at ($(coh.south)+(0,-0.40)$) {(forthcoming, second paper)};
+
+    \draw[flow] (redbox.east) -- (kernel.west);
+    \draw[flow] (kernel.north) to[out=90,in=180] (incoh.west);
+    \draw[flow] (kernel.south) to[out=-90,in=180] (coh.west);
+
+    \node[stage, fill=outA, text width=22mm] (out) at (12.6,0) {Compliance\\metrics\\$\APD$, SAR};
+    \draw[flow] (incoh.east) to[out=0,in=90] (out.north);
+    \draw[flow] (coh.east)   to[out=0,in=-90] (out.south);
+  \end{tikzpicture}
+  \end{adjustbox}
+
+  \vspace{4pt}
+  \begin{resultbox}\centering
+    \footnotesize The same two reductions and the same surface kernel serve both
+    regimes. Plane-wave dosimetry is the first paper, the coherent MIMO operator
+    $\QQ$ is the extension.
+  \end{resultbox}
+\end{frame}
+
+\begin{frame}{Option 3}
+  \vspace{1pt}
+  \begin{adjustbox}{max width=\linewidth, max totalheight=5.15cm, center}
+  \begin{tikzpicture}
+    \node[io, text width=20mm] (scn) at (0,0)
+      {Scenario\\environment + BS\\ {\color{forecol}UE (near-field)}\\ body surface\\ precoder $\xx$};
+
+    \node[scnode, font=\scriptsize, text width=24mm] (sc) at (2.9,1.30)
+      {Surface confinement\\$\to$ surface integral};
+    \node[pbnode, font=\scriptsize, text width=24mm] (pb) at (2.9,0.0)
+      {Pseudo-Brewster\\$\to$ scalar $T_0$};
+    \node[fore, font=\scriptsize, text width=24mm] (q) at (2.9,-1.30)
+      {Coherent operator\\$\QQ(\xx)$ (forthcoming)};
+    \begin{pgfonlayer}{background}
+      \node[zone, fit=(sc)(pb)(q), inner sep=7pt, name=engine,
+            label={[ztitle]north:Enabling physics}] {};
+    \end{pgfonlayer}
+    \node[tag, text=black!55, font=\scriptsize\itshape] at ($(engine.south)+(0,-0.02)$)
+      {validated $<10\%$ error};
+
+    \node[stage, font=\scriptsize, text width=22mm] (apd) at (6.6,0)
+      {Fast,\\differentiable\\$\APD$ / SAR};
+    \node[claim, text width=30mm] (loop) at (10.1,0.55)
+      {{\bfseries Differentiable optimization}\\[2pt]
+       $\nabla(\text{exposure})$ tunes\\
+       precoder $\xx$, BS placement,\\
+       array geometry\\
+       s.t. exposure $\le$ limit};
+    \node[stage, fill=outA, font=\scriptsize, text width=28mm] (cert) at (10.1,-1.85)
+      {Compliant design /\\pre-compliance};
+    \draw[flow] (loop.south) -- (cert.north);
+    \begin{pgfonlayer}{background}
+      \node[zone, draw=navyblue, fit=(apd)(loop)(cert), inner sep=7pt, name=claimz,
+            label={[ztitle, text=navyblue]north:Claimed invention: AEGIS software}] {};
+    \end{pgfonlayer}
+
+    \draw[flow] (scn.east) -- (pb.west);
+    \draw[flow] (pb.east) -- (apd.west);
+    \draw[flow] (sc.east) to[out=0,in=180] (apd.north west);
+    \draw[flow] (q.east)  to[out=0,in=180] (apd.south west);
+    \draw[flow] (apd.east) to[out=0,in=180] (loop.west);
+    \node[io, font=\scriptsize, text width=18mm] (mkt) at (13.4,-1.0)
+      {Network operators\\UE vendors\\research};
+    \draw[flow] (cert.east) to[out=0,in=180] (mkt.west);
+
+    \draw[flow, navyblue, line width=0.7pt, rounded corners=5pt]
+      (loop.north east) -- ([xshift=5mm]loop.north east)
+      -- ([xshift=5mm,yshift=18mm]loop.north east)
+      -- ([yshift=18mm]loop.north east -| scn.north) -- (scn.north);
+    \node[tag, text=navyblue, fill=white, inner sep=2pt] at (5.6,3.62)
+      {Differentiable design loop: gradient $\to$ update};
+  \end{tikzpicture}
+  \end{adjustbox}
+
+  \vspace{2pt}
+  \begin{resultbox}\centering
+    \footnotesize The two reductions are the {\color{colpb}engine}. The claimed
+    invention is the {\color{navyblue}\bfseries AEGIS software} that designs RF systems
+    to meet exposure limits. Far-field today, with coherent MIMO and near-field forthcoming.
+  \end{resultbox}
+\end{frame}
+
+\end{document}

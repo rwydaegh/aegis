@@ -1,0 +1,151 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[margin=2.3cm]{geometry}
+\usepackage{enumitem}
+\usepackage{parskip}
+\usepackage{titlesec}
+\usepackage[hidelinks]{hyperref}
+
+\setlist{nosep,leftmargin=1.4em,itemsep=0.22em}
+\titleformat{\section}{\large\bfseries}{\thesection.}{0.6em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{}{0em}{}
+
+\title{\vspace{-1.5em}AEGIS outreach: one-pager bundle for review}
+\author{Robin Wydaeghe \quad (Draft for Alessandro, May 2026)}
+\date{}
+
+\begin{document}
+\maketitle
+\vspace{-1.5em}
+
+\section*{For Alessandro}
+Three items are enclosed for your review before any external send.
+
+\begin{itemize}
+  \item A single shared one-pager describing AEGIS at a level we are comfortable showing externally.
+  \item Two short cover notes, one for the academic recipients (Hirata, Wiart, Parazzini, Onishi), one for Ericsson (T\"ornevik, Colombi via Luc).
+  \item A say/don't-say matrix capturing the disclosure boundary, for our own discipline on the calls and for your sign-off.
+\end{itemize}
+
+The principle on the one-pager: name the regime, name the class of method, name a defensible speed claim, name the validation posture. Do not name the closed-form expression, the pseudo-Brewster compensation, or the coherent-MIMO operator decomposition. Those stay inside the patent application.
+
+The ask: permission to share this bundle with the named parties once you have approved the text. Calls are conversational and bounded by the say/don't-say matrix. We would prefer to keep the call schedule and the patent drafting in parallel rather than serial, given the IOF deadline of 3 August.
+
+\vspace{0.6em}
+\hrule
+\vspace{0.6em}
+
+\section*{Item A. Shared one-pager}
+
+\subsection*{AEGIS: fast, differentiable absorbed power density in the 6 to 100\,GHz regime}
+
+\textbf{Problem.} Above 6\,GHz, the dosimetric quantity that governs human exposure compliance is surface absorbed power density (APD, $S_\mathrm{ab}$). Computing it on realistic phantoms in realistic scenes is done today with FDTD on voxelised body models. A single configuration takes hours on a workstation. Sweeping frequency, pose, antenna placement, beam pattern, or scene geometry is therefore impractical at the rate needed for RAN planning, beam steering studies, RIS-aware design, sensor network exposure assessment, or standards-track method development.
+
+\textbf{What AEGIS is.} A closed-form surface kernel for $S_\mathrm{ab}$, embedded inside a coherent forward operator that maps antenna excitations to absorbed power density on a body mesh. The implementation is in JAX, so the full pipeline is differentiable end to end: gradients flow from any scalar (e.g.\ a peak APD or a spatially averaged compliance figure) back to antenna weights, beam parameters, antenna positions, or scene geometry.
+
+\textbf{Regime of validity.} 6 to 100\,GHz, formulation extends to 300\,GHz. Surface absorption only, no in-body fields. Radiative regime, $d > \lambda/(2\pi)$. No reactive near-field, no implantable devices, no intra-body wireless.
+
+\textbf{Speed claim.}
+\emph{[PLACEHOLDER. Sample formulations, pick or replace.]}
+\begin{itemize}
+  \item Seconds where matched FDTD on the same phantom and scene takes hours, on a single GPU.
+  \item Order $10^{4}$ to $10^{6}$ speedup over voxel FDTD for equivalent scene complexity.
+  \item One full-body APD evaluation in $<100$\,ms for a typical scene.
+\end{itemize}
+
+\textbf{Validation posture.}
+\emph{[PLACEHOLDER. Adjust to what is currently defensible.]}
+\begin{itemize}
+  \item Mie scattering reference cases (analytic ground truth) pass within tolerance.
+  \item ICNIRP 2020 compliance limits implemented and tested.
+  \item IEC/IEEE 63195-2 reference configurations: partial coverage, expanding.
+  \item Bern in-situ campaign (Aerts et al.\ 2021): matched comparison planned, joint with WAVES.
+\end{itemize}
+
+\textbf{Status.} Implemented as a JAX/Python library with a 3D viewer for interactive scene inspection. Running internally on multi-antenna 5G base-station scenes at city block scale (millions of antenna elements). Pre-compliance use, not a standards-listed evaluation tool.
+
+\textbf{Positioning.} AEGIS sits in the pre-compliance layer: the fast forward model that makes design iteration tractable. Final regulatory acceptance still goes through the established route. AEGIS shortens the loop that feeds it.
+
+\vspace{0.6em}
+\hrule
+\vspace{0.6em}
+
+\section*{Item B. Cover note for academic recipients}
+\emph{Variant for Hirata (cc Kodera), Shanshan Wang (Wiart cc), Parazzini (CNR-IEIIT Milan), Sapienza DIET group (Liberti or Apollonio), Schmid (Seibersdorf), Onishi (NICT). One paragraph each, lightly tailored on the opening line.}
+
+\begin{quote}
+Dear Prof.\ [Name],
+
+I am Robin Wydaeghe, finishing my PhD with Wout Joseph at IMEC/Ghent University. Together with the WAVES group we have built AEGIS, a JAX-based forward model for absorbed power density in the 6 to 100\,GHz regime. It is closed-form on the surface and end-to-end differentiable, which collapses the inner loop of an exposure study from hours to seconds and opens design optimisation, large-scale stochastic studies, and gradient-based scenario fitting that are not practical with voxel FDTD today.
+
+A one-page summary is attached. I would value a short call to hear how the speed and differentiability would change the studies your group does, and what you would want to see validated to take the method seriously. I am not asking for adoption, only for an honest read.
+
+Kind regards,\\
+Robin Wydaeghe
+\end{quote}
+
+\vspace{0.6em}
+\hrule
+\vspace{0.6em}
+
+\section*{Item C. Cover note for Ericsson}
+\emph{Sent through Luc Martens. T\"ornevik primary, Colombi cc.}
+
+\begin{quote}
+Dear Christer, dear Davide,
+
+Luc Martens suggested I reach out. I am finishing my PhD in the WAVES group with Wout Joseph and have built AEGIS, a fast differentiable forward model for surface absorbed power density above 6\,GHz, implemented in JAX. A one-page summary is attached.
+
+The reason I am writing: we believe there is a natural matched-validation opportunity with the Bern in-situ campaign (Aerts et al.\ 2021), where AEGIS predictions on the measured scenes could be compared against your Ericsson data and against the existing WAVES analysis. A joint paper on that comparison would be the cleanest way to surface the method to the community and to the standards groups.
+
+Could we schedule a short call to see whether this fits your roadmap? I would also be glad to hear how Ericsson Research handles pre-compliance forward modelling at 26 and 60\,GHz today, and where a faster forward model would be useful.
+
+Kind regards,\\
+Robin Wydaeghe
+\end{quote}
+
+\vspace{0.6em}
+\hrule
+\vspace{0.6em}
+
+\section*{Item D. Say / don't-say matrix}
+
+\subsection*{Say (on a call, if asked)}
+\begin{itemize}
+  \item Regime: 6 to 100\,GHz, surface absorbed power density, radiative only.
+  \item Class of method: closed-form surface kernel inside a coherent forward operator.
+  \item Implementation: JAX, end to end differentiable, GPU-friendly.
+  \item Speed: order-of-magnitude faster than voxel FDTD on comparable scenes.
+  \item Validation posture: Mie analytic checks, ICNIRP 2020 limits, ongoing 63195-2 reference work.
+  \item Status: working software, used internally, pre-compliance positioning.
+  \item Intent: collaboration, joint validation, eventual spin-off (timing unspecified).
+\end{itemize}
+
+\subsection*{Do not say}
+\begin{itemize}
+  \item The closed-form expression for $S_\mathrm{ab}$, in any form.
+  \item The pseudo-Brewster compensation that keeps the transmission coefficient near-constant.
+  \item The coherent-MIMO operator decomposition (Hochwald US11940477 adjacency, treat as IP-sensitive).
+  \item Any claim of standards-track listing or accreditation.
+  \item Patent filing dates or specific drafting status.
+  \item Pricing, commercial terms, or BV details.
+\end{itemize}
+
+\subsection*{If pressed for the equation}
+``The closed form is part of a patent application currently being drafted. I can show validation outputs and benchmark numbers, and we can revisit the method itself after the application is filed.''
+
+\subsection*{If pressed on the MIMO operator}
+``The operator framing is a separate piece of work and is also inside the patent scope, so I would rather not detail it on this call. Happy to discuss the surface kernel.''
+
+\vspace{0.8em}
+
+\section*{Open questions for you}
+\begin{itemize}
+  \item Are you comfortable releasing the one-pager (Item A) without an NDA in place, given the disclosure boundary in Item D?
+  \item Or do you prefer NDA-first, even on the bare one-pager? If yes, what is the realistic turnaround per recipient through the SharePoint template?
+  \item For the call schedule, can we run intake conversations now in parallel with the patent draft, or do you want the priority application filed before any synchronous call (including Ericsson)?
+  \item Do you want to attend any of the first calls?
+\end{itemize}
+
+\end{document}

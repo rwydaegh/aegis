@@ -1,0 +1,3 @@
+Search which groups in the world do the most numerical dosimetry of base stations and user equipment in the world in academia. I'm talking research groups from uni's and institutions. So think SAR, APD, ICNIRP etc but in a context of like FDTD ray-tracing Sionna machine learning computational digital twin etc etc
+
+I need a fairly comprehensive list and more or less sorted on size and importance top to bottom. 
