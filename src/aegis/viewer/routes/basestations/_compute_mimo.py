@@ -134,11 +134,13 @@ def _handle_basestations_compute_mimo(cache: dict, cache_lock: threading.RLock):
     if err is not None:
         return err
 
+    body_name = params.get("body_name", cache.get("default_body"))
+    if body_name is not None and not isinstance(body_name, str):
+        return jsonify({"error": "body_name must be a string"}), 400
     with cache_lock:
         basestations = scoped_cache_get(cache, "basestations", []) or []
         origin = scoped_cache_get(cache, "basestations_origin")
         bodies_cache = cache.get("bodies", {})
-        body_name = params.get("body_name", cache.get("default_body"))
         entry = bodies_cache.get(body_name)
     body = entry["body"] if entry is not None else None
 

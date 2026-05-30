@@ -18,13 +18,13 @@ pytest.importorskip("flask", reason="viewer tests require flask (pip install aeg
 # Documented endpoints that resolve body_name from the request body. These are
 # exactly the paths schemathesis fuzzes from /api/openapi.json.
 _BODY_NAME_ENDPOINTS = [
-    "/api/compute/dosimetry",
+    "/api/compute",
     "/api/compute/rt",
     "/api/compute/sionna-rt",
     "/api/compute/voxel-rt",
-    "/api/optimize/place-antenna",
+    "/api/optimize",
     "/api/basestations/compute",
-    "/api/basestations/mimo/compute",
+    "/api/basestations/compute_mimo",
 ]
 
 
@@ -35,8 +35,7 @@ def test_non_string_body_name_never_500(viewer_app, endpoint, bad_body_name):
         resp = c.post(endpoint, json={"body_name": bad_body_name})
     # The whole point: an unhashable / wrong-typed body_name must not crash.
     assert resp.status_code != 500, (
-        f"{endpoint} returned 500 for body_name={bad_body_name!r}: "
-        f"{resp.get_data(as_text=True)[:200]}"
+        f"{endpoint} returned 500 for body_name={bad_body_name!r}: {resp.get_data(as_text=True)[:200]}"
     )
     # Response must be valid JSON with an error message (schema contract).
     payload = resp.get_json()

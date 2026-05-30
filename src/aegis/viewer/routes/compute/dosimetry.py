@@ -197,6 +197,8 @@ def _load_cached_body(
         return None, None, None, (jsonify({"error": "JSON body must be an object"}), 400)
 
     body_name = params.get("body_name", cache.get("default_body"))
+    if body_name is not None and not isinstance(body_name, str):
+        return None, None, None, (jsonify({"error": "body_name must be a string"}), 400)
     with cache_lock:
         entry = cache.get("bodies", {}).get(body_name)
         cfg = cache["config"]
