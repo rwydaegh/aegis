@@ -59,7 +59,6 @@ from aegis.coherent.multibody_ecbf import (
     _solve_W_factored,
     _stack_Q,
 )
-from aegis.defaults import NUMERICAL_FLOOR
 
 
 @dataclass
@@ -224,7 +223,6 @@ def solve_multibody_ecbf_wmmse(
 
     sumrate_hist: list[float] = []
     converged_outer = False
-    method = "multibody-ecbf-wmmse"
 
     n_wmmse = 0
     fallback_triggered = False
@@ -269,7 +267,6 @@ def solve_multibody_ecbf_wmmse(
 
         if dual_diag["fallback"]:
             fallback_triggered = True
-            method = "min-absorption"
             break
 
         # Sum-rate (with proper nu bisection, ||W||_F^2 = P).
@@ -612,7 +609,7 @@ def _dual_newton_ecbf(
     when the residual still exceeds 1e-3 after ``max_outer`` steps.
     """
     fd_step = 1e-5
-    B = Q_arr.shape[0]
+    Q_arr.shape[0]
     info = {"fallback": False, "n_outer": 0, "converged": False}
 
     for outer_iter in range(max_outer):

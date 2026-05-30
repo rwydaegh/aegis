@@ -163,10 +163,7 @@ def simulate_imu_pose_trajectory(
 
     # Pass through trailing dims (hands / face) unchanged so downstream
     # readers that index the full 165-dim SMPL-X vector see consistent shapes.
-    if p_total > 66:
-        out = np.concatenate([est_pose, true_poses[:, 66:]], axis=1)
-    else:
-        out = est_pose
+    out = np.concatenate([est_pose, true_poses[:, 66:]], axis=1) if p_total > 66 else est_pose
     return out
 
 
