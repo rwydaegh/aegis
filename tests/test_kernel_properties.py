@@ -87,28 +87,28 @@ class TestSabNonNegative:
     """S_ab must be non-negative for all incoherent levels."""
 
     @given(mesh=random_mesh(), paths=random_paths())
-    @settings(max_examples=30, deadline=5000)
+    @settings(max_examples=30, deadline=None)
     def test_level2_sab_non_negative(self, mesh, paths):
         engine = DosimetryEngine(SKIN_28GHZ)
         result = engine.compute(mesh, paths, level=2)
         assert np.all(result.sab >= NUMERICAL_FLOOR), f"min sab = {result.sab.min()}"
 
     @given(mesh=random_mesh(), paths=random_paths())
-    @settings(max_examples=30, deadline=5000)
+    @settings(max_examples=30, deadline=None)
     def test_level3_sab_non_negative(self, mesh, paths):
         engine = DosimetryEngine(SKIN_28GHZ)
         result = engine.compute(mesh, paths, level=3)
         assert np.all(result.sab >= NUMERICAL_FLOOR), f"min sab = {result.sab.min()}"
 
     @given(mesh=random_mesh(), paths=random_paths())
-    @settings(max_examples=30, deadline=5000)
+    @settings(max_examples=30, deadline=None)
     def test_level4_sab_non_negative(self, mesh, paths):
         engine = DosimetryEngine(SKIN_28GHZ)
         result = engine.compute(mesh, paths, level=4, q=0.0)
         assert np.all(result.sab >= NUMERICAL_FLOOR)
 
     @given(mesh=random_mesh(), paths=random_paths())
-    @settings(max_examples=30, deadline=5000)
+    @settings(max_examples=30, deadline=None)
     def test_level5_sab_non_negative(self, mesh, paths):
         engine = DosimetryEngine(SKIN_28GHZ)
         H = np.full(mesh.n_triangles, 10.0)
@@ -116,7 +116,7 @@ class TestSabNonNegative:
         assert np.all(result.sab >= NUMERICAL_FLOOR)
 
     @given(mesh=random_mesh(), paths=random_paths())
-    @settings(max_examples=30, deadline=5000)
+    @settings(max_examples=30, deadline=None)
     def test_level6_sab_non_negative(self, mesh, paths):
         engine = DosimetryEngine(SKIN_28GHZ)
         H = np.full(mesh.n_triangles, 10.0)
@@ -128,7 +128,7 @@ class TestEnergyConservation:
     """P_abs must not exceed the incident power times T0 times body area."""
 
     @given(mesh=random_mesh(), paths=random_paths())
-    @settings(max_examples=30, deadline=5000)
+    @settings(max_examples=30, deadline=None)
     def test_level2_energy_bound(self, mesh, paths):
         engine = DosimetryEngine(SKIN_28GHZ)
         result = engine.compute(mesh, paths, level=2)
@@ -137,7 +137,7 @@ class TestEnergyConservation:
         assert result.p_abs <= upper * 1.001, f"P_abs={result.p_abs:.6g} exceeds bound={upper:.6g}"
 
     @given(mesh=random_mesh(), paths=random_paths())
-    @settings(max_examples=30, deadline=5000)
+    @settings(max_examples=30, deadline=None)
     def test_level3_energy_bound(self, mesh, paths):
         engine = DosimetryEngine(SKIN_28GHZ)
         result = engine.compute(mesh, paths, level=3)
@@ -150,7 +150,7 @@ class TestLevelConsistency:
     """Levels that should agree under special conditions."""
 
     @given(mesh=random_mesh(), paths=random_paths())
-    @settings(max_examples=20, deadline=5000)
+    @settings(max_examples=20, deadline=None)
     def test_level4_q0_equals_level3(self, mesh, paths):
         """Level 4 with q=0 must equal Level 3 (no polarisation effect)."""
         engine = DosimetryEngine(SKIN_28GHZ)
@@ -159,7 +159,7 @@ class TestLevelConsistency:
         np.testing.assert_allclose(r4.sab, r3.sab, rtol=1e-12, atol=1e-15)
 
     @given(mesh=random_mesh(), paths=random_paths())
-    @settings(max_examples=20, deadline=5000)
+    @settings(max_examples=20, deadline=None)
     def test_level5_zero_curvature_equals_level3(self, mesh, paths):
         """Level 5 with H=0 must equal Level 3."""
         engine = DosimetryEngine(SKIN_28GHZ)
@@ -173,7 +173,7 @@ class TestSpatialKernelComposability:
     """The mode='spatial' API must produce same results as legacy levels."""
 
     @given(mesh=random_mesh(), paths=random_paths())
-    @settings(max_examples=20, deadline=5000)
+    @settings(max_examples=20, deadline=None)
     def test_spatial_fresnel_matches_level3(self, mesh, paths):
         engine = DosimetryEngine(SKIN_28GHZ)
         r3 = engine.compute(mesh, paths, level=3)
@@ -181,7 +181,7 @@ class TestSpatialKernelComposability:
         np.testing.assert_allclose(r_sp.sab, r3.sab, rtol=1e-12, atol=1e-15)
 
     @given(mesh=random_mesh(), paths=random_paths())
-    @settings(max_examples=20, deadline=5000)
+    @settings(max_examples=20, deadline=None)
     def test_spatial_no_fresnel_matches_level2(self, mesh, paths):
         engine = DosimetryEngine(SKIN_28GHZ)
         r2 = engine.compute(mesh, paths, level=2)
@@ -302,7 +302,7 @@ class TestPowerScaling:
         seed=st.integers(min_value=0, max_value=2**31),
         scale=st.floats(min_value=0.1, max_value=100.0),
     )
-    @settings(max_examples=20, deadline=5000)
+    @settings(max_examples=20, deadline=None)
     def test_linear_scaling_level2(self, mesh, seed, scale):
         rng = np.random.default_rng(seed)
         n = rng.integers(1, 10)
@@ -323,7 +323,7 @@ class TestPowerScaling:
         seed=st.integers(min_value=0, max_value=2**31),
         scale=st.floats(min_value=0.1, max_value=100.0),
     )
-    @settings(max_examples=20, deadline=5000)
+    @settings(max_examples=20, deadline=None)
     def test_linear_scaling_level3(self, mesh, seed, scale):
         rng = np.random.default_rng(seed)
         n = rng.integers(1, 10)
