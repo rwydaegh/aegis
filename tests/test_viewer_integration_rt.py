@@ -21,13 +21,34 @@ pytest.importorskip("flask", reason="viewer tests require flask (pip install aeg
 _differt = pytest.importorskip("differt", reason="RT tests require DiffeRT (pip install aegis[rt])")
 
 
-_BOX_SCENE = "/home/user/aegis/data/scenes/box/box.xml"
+def _resolve_box_scene() -> str | None:
+    """Resolve a box scene path that passes server-side validation.
+
+    The route validates ``scene_path`` against ``list_available_scenes()``
+    (env var, then the sionna package, then the bundled ``data/scenes/``),
+    not mere on-disk existence. Picking the path from that same list keeps
+    the fixture and the validator in agreement, so the invalid-payload tests
+    actually reach mode/power/level validation instead of being short
+    circuited by an "Invalid scene path" 400.
+    """
+    try:
+        from aegis.viewer.raytracer import list_available_scenes
+    except ImportError:
+        return None
+    scenes = list_available_scenes()
+    if not scenes:
+        return None
+    for s in scenes:
+        if "box" in str(s.get("path", "")).lower():
+            return s["path"]
+    return scenes[0]["path"]
+
+
+_BOX_SCENE = _resolve_box_scene()
 
 
 def _scene_available() -> bool:
-    from pathlib import Path
-
-    return Path(_BOX_SCENE).exists()
+    return _BOX_SCENE is not None
 
 
 # ---------------------------------------------------------------------------
