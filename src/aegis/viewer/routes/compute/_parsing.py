@@ -47,8 +47,16 @@ def _validate_scene_path(scene_path: str) -> bool:
         allowed = {s["path"] for s in list_available_scenes()}
     except ImportError:
         return False
-    resolved = str(_Path(scene_path).resolve())
-    return resolved in {str(_Path(p).resolve()) for p in allowed}
+    # A path that cannot even be resolved (embedded null byte, malformed UTF-8,
+    # OS-level error) is by definition not one of our known scenes. Treat it as
+    # invalid rather than letting ``Path.resolve`` raise a raw 500. Schemathesis
+    # found ``scene_path`` containing a null byte crashed this with ValueError.
+    try:
+        resolved = str(_Path(scene_path).resolve())
+        allowed_resolved = {str(_Path(p).resolve()) for p in allowed}
+    except (ValueError, OSError):
+        return False
+    return resolved in allowed_resolved
 
 
 # Position-vector components live in meters in an engine-local frame. Even

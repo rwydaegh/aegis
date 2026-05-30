@@ -553,6 +553,29 @@ class TestComputeRtRoute:
             )
         assert resp.status_code in (400, 501)
 
+    @pytest.mark.parametrize(
+        "bad_scene_path",
+        [
+            "t]\x00\xed%c",  # embedded null byte (schemathesis-found)
+            "scene\x00.xml",
+            "\x00",
+        ],
+    )
+    def test_unresolvable_scene_path_never_500(self, viewer_app, bad_scene_path):
+        """A scene_path that ``Path.resolve`` cannot handle (embedded null byte)
+        must be rejected as an invalid scene, not surface a raw 500.
+
+        Schemathesis synthesised a scene_path with a null byte; ``Path.resolve``
+        raised ``ValueError: embedded null byte`` deep in ``_validate_scene_path``.
+        """
+        with viewer_app.test_client() as c:
+            resp = c.post("/api/compute/rt", json={"scene_path": bad_scene_path})
+        assert resp.status_code != 500, (
+            f"got 500 for scene_path={bad_scene_path!r}: {resp.get_data(as_text=True)[:200]}"
+        )
+        # 400 (invalid scene) or 501 (no DiffeRT backend)
+        assert resp.status_code in (400, 501)
+
 
 # ---------------------------------------------------------------------------
 # POST /api/compute/sionna-rt
