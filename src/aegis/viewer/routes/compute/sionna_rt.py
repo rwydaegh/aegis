@@ -83,6 +83,8 @@ def _sionna_rt_config(rt_cfg: dict) -> dict:
 def _resolve_body_from_cache(cache: dict, cache_lock, params: dict) -> tuple[Any, _ErrResp | None]:
     """Resolve cached body mesh for a scene-based request."""
     body_name = params.get("body_name", cache.get("default_body"))
+    if body_name is not None and not isinstance(body_name, str):
+        return None, (jsonify({"error": "body_name must be a string"}), 400)
     with cache_lock:
         entry = cache.get("bodies", {}).get(body_name)
     if entry is None:
@@ -300,6 +302,8 @@ def _load_env_request(cache: dict, cache_lock, params: dict) -> tuple[tuple[Any,
     Returns ((body, env_mesh, cfg), None) or (None, error_response) on failure.
     """
     body_name = params.get("body_name", cache.get("default_body"))
+    if body_name is not None and not isinstance(body_name, str):
+        return None, (jsonify({"error": "body_name must be a string"}), 400)
     with cache_lock:
         entry = cache.get("bodies", {}).get(body_name)
         env_mesh = scoped_cache_get(cache, "env_mesh")
