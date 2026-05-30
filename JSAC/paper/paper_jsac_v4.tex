@@ -1,0 +1,1494 @@
+% =====================================================================
+% Paper JSAC v3
+% Body digital twin for exposure-constrained mmWave downlink under
+% European reference-level regulation. Multi-body MMSE-with-exposure
+% precoder with primal projection, scene path dictionary, virtual-IMU
+% pose telemetry, binding-regime plaza-scale evaluation.
+%
+% Author: Robin Wydaeghe
+% Target: IEEE JSAC SI on Digital Twins for Wireless Networks (Q4 2026)
+% =====================================================================
+
+\documentclass[journal,twocolumn,10pt]{IEEEtran}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{bm}
+
+\usepackage{graphicx}
+\graphicspath{{../../papers/drafts/figures/}{../../theory/figures/}{../../validation/}{../../JSAC/code/experiments/rank_check/}{../../JSAC/code/experiments/cauchy_tightness/}{../../JSAC/code/experiments/csi_calibration/}{../../JSAC/code/experiments/tier_c_decision/}{../../JSAC/code/experiments/plaza_run/figures/}}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{caption}
+\usepackage{subcaption}
+
+\usepackage{cite}
+\usepackage{xcolor}
+\usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+\usepackage[capitalize,nameinlink]{cleveref}
+
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+\crefname{proposition}{Proposition}{Propositions}
+\Crefname{proposition}{Proposition}{Propositions}
+\crefname{corollary}{Corollary}{Corollaries}
+\Crefname{corollary}{Corollary}{Corollaries}
+\crefname{remark}{Remark}{Remarks}
+\Crefname{remark}{Remark}{Remarks}
+\crefname{theorem}{Theorem}{Theorems}
+\Crefname{theorem}{Theorem}{Theorems}
+
+\newcommand{\khat}{\hat{\bm{k}}}
+\newcommand{\nhat}{\hat{\bm{n}}}
+\newcommand{\rr}{\mathbf{r}}
+\newcommand{\xx}{\mathbf{x}}
+\newcommand{\hh}{\mathbf{h}}
+\newcommand{\ww}{\mathbf{w}}
+\newcommand{\gvec}{\mathbf{g}}
+\newcommand{\bvec}{\mathbf{b}}
+\newcommand{\Sinc}{S_{\mathrm{inc}}}
+\newcommand{\Sab}{S_{\mathrm{ab}}}
+\newcommand{\Pabs}{P_{\mathrm{abs}}}
+\newcommand{\Aab}{A_{\mathrm{ab}}}
+\newcommand{\GG}{\mathbf{G}}
+\newcommand{\Gtil}{\tilde{\mathbf{G}}}
+\newcommand{\Qmat}{\mathbf{Q}}
+\newcommand{\Mmat}{\mathbf{M}}
+\newcommand{\Hintf}{\mathbf{H}_{\mathrm{intf}}}
+\newcommand{\Jmat}{\mathbf{J}}
+\newcommand{\Phimat}{\mathbf{\Phi}}
+\newcommand{\Psimat}{\bm{\Psi}}
+\newcommand{\Psitil}{\tilde{\bm{\Psi}}}
+\newcommand{\Fn}{\mathbf{F}_n}
+\newcommand{\psin}{\bm{\psi}_n}
+\newcommand{\diff}{\mathrm{d}}
+\newcommand{\Complex}{\mathbb{C}}
+\newcommand{\ntilde}{\tilde{n}}
+\newcommand{\AllBodies}{\mathcal{P}}
+\newcommand{\Served}{\mathcal{U}}
+\newcommand{\Bystanders}{\mathcal{B}}
+\newcommand{\Dict}{\mathcal{D}}
+\DeclareMathOperator{\ReLU}{ReLU}
+\DeclareMathOperator{\RE}{Re}
+\DeclareMathOperator{\IM}{Im}
+\DeclareMathOperator{\tr}{tr}
+
+\title{Body Digital Twins for Exposure-Constrained mmWave Downlink:
+A Multi-Body QCQP under European Reference Levels}
+
+\author{Robin~Wydaeghe%
+  \thanks{R. Wydaeghe is with Ghent University and imec, Ghent, Belgium
+  (e-mail: robin.wydaeghe@ugent.be).}}
+
+\markboth{IEEE Journal on Selected Areas in Communications,
+  Vol.~XX, No.~X, Month~2026}%
+{Wydaeghe: Body digital twins for exposure-constrained mmWave downlink}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+European reference-level caps on the electromagnetic field, including
+the post-2014 Brussels arrêté at $14.57\,$V/m and the Italian
+attention values at $3$-$6\,$V/m under the 2024 decree, can bind
+millimetre-wave downlink at high transmit power before propagation
+does. We bring per-body absorbed power into the precoder loop by
+maintaining a digital twin per body that returns whole-body absorbed
+power as a Hermitian quadratic form $\Pabs^{(u)} = \xx^H \Qmat^{(u)}
+\xx$, factoring $\Qmat^{(u)} = \Jmat^T \Mmat^{(u)} \Jmat$ so the
+array-hardware combinatorics separate from a body-and-scene Gram, and
+building the scene-side path set once on a static dictionary
+refreshed under body translation by a diagonal phasor. Tiered
+telemetry covers served users, cooperating non-users, ISAC-sensed
+bystanders, and undetected occupancy. Pose for the IMU-bearing tiers
+comes from a virtual inertial-mocap estimator at $4^\circ$ per-joint
+RMS attitude error. Multi-user sum-rate maximisation under $K + B$
+per-body absorbed-power caps is a QCQP that we solve by the
+per-stream MMSE-with-exposure stationarity $\ww_k^\star =
+(\Qmat_{\mathrm{tot}}(\bm\lambda) + \mathbf{H}^H \mathbf{H} +
+\nu\,\mathbf{I})^{-1}\,\hh_k^*$, dual ascent on $\bm\lambda$, and an
+always-on primal projection step at solver exit that uniform-scales
+the precoder so the worst-margin body lands at $\eta_S\,L^{(u)}$
+under the full-rank operator. The primal projection turns
+finite-difference and rank-truncation residuals into a bounded
+sum-rate cost rather than a per-slot cap violation, and removes the
+$92$-to-$96\,\%$ unprojected solver-fallback rate of the binding
+regime. We instantiate the loop on a Brussels Grand Place geometry
+with 50 SMPL-X bodies, an $8 \times 8$ panel at $26\,$GHz, and 25
+served users, at $43\,$dBm conducted against $E_{\mathrm{RL}} =
+3\,$V/m (Italian rural attention level under the 2024 decree, and
+the Brussels pre-2014 reference). The exposure-operator empirical
+rank is 3 to 4 at the $99\,\%$ trace fraction. Regularised
+zero-forcing violates the cap on $14.6\,\%$ of body-slots over a
+50-second steady-state walk while the proposed multi-body
+MMSE-with-exposure runs at $1.3\,\%$ violation under virtual-IMU pose
+($0.0\,\%$ under oracle pose), an order-of-magnitude compliance gain
+at $27\,\%$ of the unconstrained-ZF sum-rate. The naive
+projected-area bound on $\xx^H \Qmat^{(u)} \xx$ is loose by 21 to
+$27\,$dB on the LOS steering precoder and breached by 49 to $70\,\%$
+of random and ECBF precoders; the conditional bound that does hold,
+under a direction-set restriction, is the right object for
+compliance-aware precoder design.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Digital twin, exposure-constrained beamforming, MIMO, millimetre wave,
+ICNIRP compliance, ray tracing, multi-user precoding,
+electromagnetic-field reference level, inertial mocap, primal
+projection.
+\end{IEEEkeywords}
+
+\IEEEpeerreviewmaketitle
+
+
+\section{Introduction}\label{sec:intro}
+\IEEEPARstart{F}{ifth-generation} and emerging sixth-generation
+networks deploy multi-element antenna arrays at millimetre-wave
+frequencies and operate them at short range from human users. The
+2020 ICNIRP guidelines~\cite{ICNIRP2020} replace whole-body specific
+absorption rate above $6\,$GHz with absorbed power density on the
+body surface and tighten local limits at the same distances where
+mobile and fixed-wireless devices operate. Several European
+jurisdictions enforce stricter reference levels: the Brussels capital
+region caps the cumulative outdoor field at
+$14.57\,$V/m~\cite{BrusselsArrete2007,BrusselsArrete2024}, and Italy
+maintains attention values of $6\,$V/m on the $24\,$h median outside
+dense urban centres under the 2024 decree~\cite{ItalyDL}. These
+reference levels are conservative free-space proxies for the
+tissue-protection basic restrictions from which they descend.
+ICNIRP allows compliance to be shown via direct evaluation of the
+basic restriction~\cite{IEC62232}, but no deployed mechanism
+performs that evaluation in real time on a moving population. The
+deployment blocker at high power and low reference level is therefore
+not propagation physics but a per-body, per-slot dosimetry that the
+network does not currently maintain.
+
+A body-side digital twin is the natural object that ties the
+exposure-matrix machinery of single-handset SAR-aware beamforming
+to a moving population. Each body in the coverage cell carries an
+exposure operator $\Qmat^{(u)} \in \Complex^{M\times M}$ that depends
+on the body's geometry, pose, and position; the base station maintains
+a per-body twin and applies a precoder that satisfies a budget on
+$\xx^H \Qmat^{(u)} \xx$ for every $u$ at every PHY slot. The standard
+tool for the single-handset case is the SAR-matrix formulation of
+Hochwald et al.~\cite{Hochwald2014} and the closed-form
+exposure-constrained precoder of Ying et al.~\cite{Ying2015}. Variants
+extend to multi-user MIMO~\cite{Ying2017}, robust precoding under
+channel uncertainty, parallel-transmit
+MRI~\cite{MeliadoSAR2020,GokyarpTx2023}, and uplink exposure-aware
+beamforming under thermal constraints~\cite{ZhouUL2026}. The matrix
+in every published instance is calibrated numerically by full-wave
+finite-difference time-domain simulation per device per body
+configuration. Castellanos and Heath~\cite{Castellanos2020} reduce the
+calibration cost at $28\,$GHz to per-element scalar Fresnel
+coefficients on a sphere model. None of these formulations represent
+more than one body, none use a runtime, network-side ray tracer, and
+none close a loop over a moving population in the binding regime
+where the cap is actually active.
+
+This paper builds that loop. The contribution is threefold. First,
+we factor the per-body exposure operator into an array-side
+combinatorial dispatch and a body-and-scene tensor,
+$\Qmat^{(u)} = \Jmat^T \Mmat^{(u)} \Jmat$, that the network can
+maintain at the cadence each piece varies on. Second, we cast
+multi-user sum-rate maximisation under per-body absorbed-power caps
+as a QCQP, derive the per-stream MMSE-with-exposure KKT stationarity
+$\ww_k^\star = (\Qmat_{\mathrm{tot}}(\bm\lambda) + \mathbf{H}^H
+\mathbf{H} + \nu \mathbf{I})^{-1}\,\hh_k^*$, and solve the dual by
+Newton ascent on the per-body Lagrange multipliers $\bm\lambda$ with
+Frobenius rescaling for the power constraint. The dual ascent is
+ill-conditioned in the binding regime: many bodies become
+simultaneously active, the finite-difference Jacobian on
+$\bm\lambda$ is dense and rank-deficient, and a low-rank truncation
+of $\Qmat^{(u)}$ used to cut the per-iteration cost from $O(B M^3)$
+to $O(B M^2 r)$ at $r = 4 \ll M$ leaves a 1-to-5\% absorption tail
+that the dual ascent does not see. We close both gaps with a
+primal-projection step that always runs at solver exit: the iterate
+is uniform-scaled so the worst-margin body, evaluated against the
+full-rank operator, lands at a safety fraction $\eta_S = 0.97$ of
+its budget. Sum-rate scales by $\eta_S \cdot \min_u(L^{(u)}/p^{(u)})$
+which a near-converged dual ascent leaves close to one. Third, we
+populate the twin from realistic telemetry: served users contribute
+uplink CSI plus on-phone IMU pose; cooperating non-users contribute
+IMU pose only; sensed bystanders contribute monostatic ISAC range
+and angle but no pose, and the twin defaults to the projected-area
+Cauchy envelope on their exposure operator. Pose telemetry is
+processed by a virtual inertial-mocap estimator (consumer-grade gyro
+plus accel/mag corrector, $4^\circ$ per-joint steady-state RMS
+attitude error) so the binding-regime constraint shaping has the
+same accuracy budget the deployed system would carry, not the
+unrealistic ground truth.
+
+We instantiate the loop on a Brussels Grand Place geometry with
+50 SMPL-X bodies on AMASS walk-cycle traces~\cite{SMPL,SMPLX,AMASS},
+an $8\times 8$ uniform rectangular array at $26\,$GHz, and 25 served
+users. The binding regime sits at $43\,$dBm conducted transmit power
+against $E_{\mathrm{RL}} = 3\,$V/m, the Italian rural-area
+attention level under the 2024 decree~\cite{ItalyDL} and the
+Brussels pre-2014 reference~\cite{BrusselsArrete2007}. Per-body
+budget at this load is $L^{(u)}_{\mathrm{RL}} =
+T_0\,S_{\mathrm{lim}}\,\Aab^{(u)}\,\bar\eta^{(u)} \approx
+6.9\,$mW for an adult of $\Aab \approx 1.45\,$m$^2$ at $\bar\eta =
+0.5$ (the illumination view-factor absorbs the Cauchy $1/4$
+projected-area factor for a single-panel-illuminated body).
+Body-coupling is heavily rank-deficient at the panel: the empirical
+effective rank of $\Qmat^{(u)}$ over the plaza geometry is 3 in the
+specular path model and 1-3 in the 3GPP UMa-LOS stochastic model at
+the $90\,\%$ trace fraction, climbing to 4 and 3 respectively at the
+$99\,\%$ trace fraction. Geometric ZF violates the cap on $14.6\,\%$
+of body-slots over a 50-second steady-state walk; the proposed
+multi-body MMSE-with-exposure with primal projection holds the
+violation rate to $1.3\,\%$ under virtual-IMU pose (the deployment
+realistic reading) and $0.0\,\%$ under oracle pose. The residual
+$1.3\,\%$ traces to undetected tier-C bodies that the proposed
+solver does not include in its constraint set, not to the projection
+itself: among bodies the solver does include, the projection holds
+$\Pabs^{(u)} \leq L^{(u)}$ with margin $\eta_S = 0.97$ by
+construction. The conditional projected-area bound on
+$\xx^H \Qmat^{(u)} \xx$ in \cref{app:cauchy} is the right object for
+compliance-aware design; the unconditional version is loose by 21 to
+$27\,$dB on the LOS steering precoder and breached on 49-to-$70\,\%$
+of unconstrained precoders.
+
+The remainder of the paper is organised as follows.
+\Cref{sec:setup} fixes notation and assembles the per-body exposure
+operator from a common ray-traced path set. \Cref{sec:twin} describes
+the body twin: scene path dictionary, tiered telemetry,
+the virtual-IMU pose estimator, and the multi-rate cadence the loop
+runs on. \Cref{sec:precoder} formulates the multi-user sum-rate
+QCQP under per-body exposure caps, derives the multi-body MMSE-with-exposure closed-form
+solver, and gives its zero-forcing rank-one limit.
+\Cref{sec:eval} reports the binding-regime plaza-scale evaluation
+including the rank, hero, pose-information, spatial deposition,
+chronic-dose, ISAC, calibration, and Cauchy-tightness measurements.
+\Cref{sec:regulatory} lays out the basic-restriction audit pathway
+and the reference-level footprint argument. \Cref{sec:discussion}
+discusses what the binding regime implies for deployment, where the
+solver fallback bites, and the limitations of the present
+evaluation. \Cref{sec:conclusion} closes.
+
+
+\section{System model and per-body exposure operator}\label{sec:setup}
+
+A base station has $M$ antenna elements and radiates with precoder
+$\xx \in \Complex^M$ such that $\|\xx\|^2 \leq P_{\mathrm{tx}}$. The
+propagation environment between the array and any point in the cell
+produces $N$ paths via reflection, scattering, and diffraction. Path
+$n$, for $n = 1, \ldots, N$, has originating array element
+$j(n) \in \{1, \ldots, M\}$, arrival direction $\khat_n$ at the
+body surface, and complex polarisation-amplitude vector
+$\psin \in \Complex^3$ orthogonal to $\khat_n$ that encodes the
+amplitude, polarisation state, and propagation phase along the path.
+The base station's ray tracer computes
+$\{j(n), \khat_n, \psin\}_{n=1}^N$ for any spatial probe point,
+including each user-equipment position $\rr_{\mathrm{UE}}$ and each
+body location.
+
+The path-space machinery uses three matrices. The element-to-path
+dispatch is $\Jmat \in \{0, 1\}^{N \times M}$, with
+$J_{nj} = \delta_{j(n), j}$. For an observation point
+$\rr \in \mathbb{R}^3$, the phase diagonal is
+$\Phimat(\rr) = \mathrm{diag}(e^{-i k_0 \khat_1 \cdot \rr}, \ldots,
+e^{-i k_0 \khat_N \cdot \rr})$. The polarisation matrix stacks the
+per-path polarisation-amplitude vectors as columns,
+$\Psimat = [\bm\psi_1, \ldots, \bm\psi_N] \in \Complex^{3 \times N}$.
+The free-space electric field at any point $\rr$ under precoder $\xx$
+is
+\begin{equation}\label{eq:E-decomp}
+  \mathbf{E}(\rr) = \GG(\rr)\,\xx,
+  \qquad
+  \GG(\rr) = \Psimat\,\Phimat(\rr)\,\Jmat \in \Complex^{3 \times M}.
+\end{equation}
+The user-equipment received signal at $\rr_{\mathrm{UE}}$ is
+$y_k(\xx) = \hh_k^T \xx$, with $\hh_k^* = \Jmat^T \bvec_k$ and
+$\bvec_k = \Phimat(\rr_{\mathrm{UE},k})^H \bm\alpha_k^*$ collecting
+the per-path antenna projections
+$\alpha_n = \mathbf{C}_R(\khat_n)^H \psin$. The channel is the
+ordinary 3GPP NR channel, written in path space.
+
+\subsection{Per-body coherent absorption law}\label{sec:cohlaw}
+
+At a body-surface point $\rr$ with outward normal $\nhat(\rr)$, path
+$n$ has incidence cosine $\mu_n = \nhat(\rr)\cdot(-\khat_n)$. For a
+front-facing path ($\mu_n > 0$), the incident plane-wave field
+refracts and decays inside the tissue half-space with depth-coupling
+exponent $k_0\,\xi_n = \beta_n - i\,\alpha_n^{(d)}$,
+$\xi_n = \sqrt{\ntilde^2 - 1 + \mu_n^2}$. Two cross-term
+approximations collapse the coherent depth integral to a squared
+norm. The first replaces the refracted TM polarisation direction
+inside tissue by the incident TM direction, with cross-term error
+$O(1/|\ntilde|^2) \leq 5\,\%$ at $26\,$GHz on skin
+($\ntilde = 4.59 - 1.84i$, IT'IS database build of 2025). The second
+sets the normalised depth coupling between path pairs to unity, with
+maximum cross-term error $0.44\,\%$ over $[0^\circ, 85^\circ]^2$.
+Self-terms are exact under both approximations. Define the
+tissue-weighted per-path read-out
+\begin{equation}\label{eq:psitil}
+  \tilde{\bm\psi}_n(\rr) = \sqrt{\frac{\sigma}{4\,\alpha_n^{(d)}}}\,
+  \Fn(\rr)\,\psin \in \Complex^3,
+\end{equation}
+where $\Fn(\rr)$ is the per-path Fresnel transmission operator that
+maps the incident polarisation amplitude to its TE-and-TM-filtered
+counterpart on the surface; \cref{app:fresnel} states it explicitly.
+Stack
+$\Psitil(\rr) = [\tilde{\bm\psi}_1(\rr), \ldots,
+\tilde{\bm\psi}_N(\rr)] \in \Complex^{3 \times N}$. The body-surface
+field channel is
+\begin{equation}\label{eq:Gtilde}
+  \Gtil(\rr) = \Psitil(\rr)\,\Phimat(\rr)\,\Jmat
+  \in \Complex^{3 \times M}.
+\end{equation}
+The absorbed power density at $\rr$ is
+$\Sab(\rr) = \|\Gtil(\rr)\,\xx\|^2$. The combined cross-term error
+on $\Sab$ is bounded at $\leq 5\,\%$ for any precoder.
+\Cref{app:fresnel} writes out $\Fn(\rr)$ explicitly. We pin units by
+choosing $\psin$ to carry $\sqrt{Z_0}/$m so that $\Sab$ is in
+$\mathrm{W}/\mathrm{m}^2$ when $\|\xx\|^2$ is in $\mathrm{W}$.
+
+\subsection{Per-body exposure operator}\label{sec:Q}
+
+Integrating the absorption law over the surface of body $u$ gives a
+Hermitian quadratic form in the precoder. The per-body exposure
+operator is
+\begin{equation}\label{eq:Q-def}
+  \Qmat^{(u)} = \int_{\Sigma^{(u)}} \Gtil(\rr)^H\,\Gtil(\rr)\,\diff A
+  \in \Complex^{M \times M},
+\end{equation}
+so $\Pabs^{(u)}(\xx) = \xx^H \Qmat^{(u)} \xx$ is the whole-body
+absorbed power on body $u$ under precoder $\xx$. $\Qmat^{(u)}$ is
+Hermitian positive-semidefinite by construction, with rank at most
+$\min(M, 3 M_\Sigma)$, where $M_\Sigma$ is the number of integration
+triangles on the body mesh. The eigendecomposition
+$\Qmat^{(u)} = \sum_k \lambda_k \mathbf{v}_k \mathbf{v}_k^H$ with
+$\lambda_1 \geq \cdots \geq \lambda_M \geq 0$ are the body's exposure
+modes. Under isotropic random precoding
+$\mathbb{E}[\xx\xx^H] = (P_{\mathrm{tx}}/M)\,\mathbf{I}$, the
+expected absorbed power on body $u$ is
+$(P_{\mathrm{tx}}/M)\,\tr(\Qmat^{(u)})$.
+
+The path-space structure of $\Qmat^{(u)}$ separates the array
+hardware from the body and the scene. From
+$\Gtil(\rr) = \Psitil(\rr) \Phimat(\rr) \Jmat$,
+\begin{equation}\label{eq:Q-factor}
+  \Qmat^{(u)} = \Jmat^T\,\Mmat^{(u)}\,\Jmat,
+  \qquad
+  \Mmat^{(u)} = \int_{\Sigma^{(u)}}
+  \Phimat^H\,\Psitil^H \Psitil\,\Phimat\,\diff A,
+\end{equation}
+where $\Mmat^{(u)} \in \Complex^{N \times N}$ is the per-body
+path-pair Gram. The dispatch $\Jmat$ is combinatorial and depends
+only on the array hardware and the ray tracer's path counting. The
+Gram $\Mmat^{(u)}$ depends only on the body geometry, body pose, and
+the arrival path set at the body's location. The position dependence
+of $\Qmat^{(u)}$ enters through a translation phasor identity that
+\cref{sec:twin} returns to.
+
+\subsection{Multi-body aggregation}\label{sec:aggregation}
+
+For a population $\AllBodies = \Served \cup \Bystanders$ of
+$|\Served| = K$ served users and $|\Bystanders| = B$ bystanders, the
+base station maintains $K + B$ operators
+$\{\Qmat^{(u)}\}_{u \in \AllBodies}$ and radiates
+$\xx_{\mathrm{total}} = \sum_{k=1}^K \ww_k\,s_k$ with zero-mean
+unit-variance mutually uncorrelated symbols $s_k$. Taking
+expectations over the symbol set, the time-averaged absorbed power
+on body $u$ decomposes across served streams,
+\begin{equation}\label{eq:Pabs-MU}
+  \Pabs^{(u)} = \sum_{k=1}^K \ww_k^H\,\Qmat^{(u)}\,\ww_k.
+\end{equation}
+Both served users and bystanders contribute exposure constraints. The
+geometry of the path set on body $u$, not the body's role as a
+served user, determines how heavily $u$ couples to a candidate
+precoder.
+
+
+\section{Body twin and tiered telemetry}\label{sec:twin}
+
+The exposure operator $\Qmat^{(u)}$ depends on quantities that vary
+on three different timescales. The base-station location and the
+static scene geometry change on infrastructure timescales. The
+bodies' positions change at walking pace, on the order of $1\,$s
+for a metre of displacement. The bodies' poses change on the order
+of $100\,$ms at gait-event scale (foot-strike, swing) but the
+leading eigenvector of $\Mmat^{(u)}$ is dominated by the BS-side
+view of the body's centre and torso, which moves at the
+position-cadence rather than the gait-cadence; in practice
+$\Mmat^{(u)}$ refresh at the position cadence under-samples gait
+without losing the leading-mode resolution that the precoder
+shapes. Per-slot CSI for served users updates at the $1\,$ms PHY
+frame. The twin design separates these timescales so that each
+cadence carries only the work that genuinely changes at that rate.
+
+\subsection{Scene path dictionary}\label{sec:dict}
+
+The static scene-and-array geometry produces a path set that depends
+only on the location $\rr_0$ of the body's centre. We define the
+scene path dictionary
+\begin{equation}\label{eq:dict-def}
+  \Dict = \bigl\{\bigl(\khat_n(\rr_0), \psin(\rr_0),
+  \alpha_n^{(d)}(\rr_0), j(n)\bigr)\bigr\}_{\rr_0 \in \mathcal{G},\,n},
+\end{equation}
+where $\mathcal{G}$ is a discrete grid of plausible body centres
+covering the cell. For a $100 \times 100\,$m cell at a $1\,$m grid,
+$|\mathcal{G}| = 10^4$. With at most $20$ paths per probe point and
+single-precision complex storage, $\Dict$ fits in tens of megabytes.
+The dictionary is built once, offline, by running a differentiable
+ray tracer~\cite{SionnaRT,DiffeRT} over the static scene with the
+panel fixed. At runtime, the per-body Gram
+$\Mmat^{(u)}(\rr_0, \bm\theta_u)$ in body-local coordinates is the
+only quantity that varies with pose. Translation to the body's actual
+position is then a diagonal phasor:
+\begin{equation}\label{eq:translation}
+  \Mmat^{(u)}(\rr_0 + \mathbf{t}, \bm\theta_u) =
+  \Phimat(\mathbf{t})^H\,\Mmat^{(u)}(\rr_0, \bm\theta_u)\,
+  \Phimat(\mathbf{t}).
+\end{equation}
+\Cref{eq:translation} costs $O(N)$ complex exponentials and avoids
+re-running the ray tracer on per-second body translations.
+
+\subsection{Tiered telemetry}\label{sec:tiers}
+
+\Cref{tab:tiers} catalogues the practical mapping from a body's
+operational state to the twin's instantiation. Served users
+(\emph{tier A}) carry an active phone session and report position
+from GPS plus pose from on-phone IMU
+filtering~\cite{Madgwick2011} streamed through the operator's
+application channel. Cooperating non-users (\emph{tier B}) carry an
+active phone with uplink presence and no served traffic, and share
+the same GPS and IMU stream. Non-cooperating bystanders
+(\emph{tier C}) report nothing, and the twin recovers their position
+from base-station-side ISAC monostatic radar at the panel; pose for
+this tier defaults to a worst-case envelope. Bodies the twin cannot
+detect (\emph{tier D}) are handled by a regulatory-construct
+occupancy envelope on a coarse spatial grid in sensing blind spots.
+
+\begin{table}[!t]
+\caption{Tiered body telemetry and twin instantiation.}
+\label{tab:tiers}
+\centering
+\small
+\begin{tabular}{@{}p{0.06\columnwidth}p{0.27\columnwidth}p{0.22\columnwidth}p{0.30\columnwidth}@{}}
+\toprule
+Tier & Body type & Position & Pose \\
+\midrule
+A & Served user & GPS, IMU & Virtual-IMU SMPL pose \\
+B & Cooperating non-user & GPS, IMU & Virtual-IMU SMPL pose \\
+C & Sensed bystander & BS-side ISAC RCS & Cauchy envelope \\
+D & Undetected & Occupancy grid & Cauchy envelope \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Virtual-IMU pose estimator}\label{sec:imu}
+
+A consumer-grade body-tracking IMU pipeline (Madgwick or Mahony
+strap-down~\cite{Madgwick2011}) reports
+per-joint orientation by integrating gyroscope readings and pulling
+the integrated estimate back toward the gravity-and-magnetic-north
+reference frame inferred from the accelerometer and magnetometer.
+The accuracy of the resulting pose trajectory is dominated by two
+error sources. The first is the bias-driven drift of the gyro
+integration, partly cancelled by the accel/mag corrector, with
+steady-state attitude variance set by the ratio of bias noise density
+to corrector gain. The second is corrector-lag against fast joint
+motion, observable as a low-pass-shaped tracking error around
+foot-strike and swing.
+
+The plaza loop simulates a pose estimator that an off-the-shelf
+inertial-mocap pipeline would produce given the ground-truth
+SMPL-X joint trajectory. We model each of the $22$ joints (root and
+$21$ body joints) as carrying its own three-axis IMU and emit an
+estimated axis-angle pose
+\begin{equation}\label{eq:imu-pose}
+  \hat\theta_t = \theta^\star_t + \Delta_t^{\mathrm{lag}}
+  + \Delta_t^{\mathrm{drift}} + \Delta_t^{\mathrm{white}},
+\end{equation}
+with $\theta^\star_t$ the ground-truth joint axis-angle vector,
+$\Delta_t^{\mathrm{lag}}$ the corrector lag, $\Delta_t^{\mathrm{drift}}$
+an Ornstein-Uhlenbeck process for the gyro-bias residual, and
+$\Delta_t^{\mathrm{white}}$ Gaussian measurement noise. The
+corrector lag is the residual between the truth and a first-order
+low-pass smoothed truth at time constant $\tau_{\mathrm{lag}} \approx
+120\,$ms. The drift OU has decay time $\tau_{\mathrm{drift}} \approx
+4\,$s and stationary variance set so that the per-joint attitude
+RMS error matches a calibrated value $\sigma_{\mathrm{joint}}$. We
+take $\sigma_{\mathrm{joint}} = 4^\circ$ for the canonical run, the
+mid-band value for a smartphone IMU running an open-source AHRS;
+\cref{sec:eval-imu} sweeps the dependence on $\sigma_{\mathrm{joint}}$.
+
+The estimator output preserves the SMPL-X axis-angle representation
+so that the body twin can swap in the IMU-estimated pose for the
+ground-truth pose with no other code change. The
+twin's exposure operator then varies between the IMU-pose ECBF
+limit (the production reading), the T-pose Cauchy envelope (the
+fallback for a body without IMU), and the ground-truth
+oracle (an upper bound that no real telemetry pipeline reaches).
+The body twin's worst-case operating point is between IMU and
+T-pose, not at the oracle.
+
+\subsection{Closing the in-silico to deployed-channel gap}\label{sec:csi-cal}
+
+The dictionary's path directions are accurate to the geometric
+resolution of the ray tracer. Path amplitudes are not. Real
+deployments suffer from antenna calibration error, scatterer
+material miscoincidence with the OSM database, and small-scale
+feature loss in the OSM-and-3D-Tiles input. We close that gap by
+fitting a complex per-path scale $\beta_n \in \Complex$ against
+served-user uplink CSI. For each served user $k$, the twin computes
+the in-silico channel $\hat\hh_k = \bm\alpha_k^T \Phimat(\rr_k)
+\Jmat \in \Complex^M$ from the dictionary and obtains the measured
+channel $\hh_k^{\mathrm{meas}}$ from uplink pilots. The amplitudes
+solve the ridge least-squares problem
+\begin{equation}\label{eq:csi-LS}
+  \hat{\bm\beta}_k = \arg\min_{\bm\beta \in \Complex^N}\;
+  \bigl\|\hh_k^{\mathrm{meas}} - \mathrm{diag}(\bm\beta) \cdot
+  \hat\hh_k\bigr\|^2 + \rho\,\|\bm\beta - \mathbf{1}\|^2,
+\end{equation}
+with ridge weight $\rho > 0$ that biases toward the in-silico
+amplitudes. The fit propagates to every $\Qmat^{(u)}$ that shares
+dictionary entries with body $k$. \Cref{sec:eval-aux} characterises
+the residual against perturbation amplitude and operating SNR.
+
+\subsection{Refresh cadences and per-slot compute}\label{sec:cadence}
+
+\Cref{tab:cadence} lists the refresh cadences and the empirical
+per-update wall-clock time for each twin component. CSI calibration
+$\bm\beta_k$ runs at $\sim 1\,$s, gated by the LS problem's
+overdetermination requirement. The pose-driven $\Mmat^{(u)}$
+refresh runs at $\sim 1\,$s per body in the production loop:
+gait kinematics changes joint angles by $\sim 10^\circ$ per second
+and rebuilding $\Mmat^{(u)}$ every gait quartile is sufficient.
+The per-slot translation phasor on $\Mmat^{(u)}$ is an $O(N M^2)$
+diagonal sandwich. The precoder solve runs once per twin tick;
+under the binding-regime experiment of \cref{sec:eval} it consumes
+the bulk of the per-tick wall clock.
+
+\begin{table}[!t]
+\caption{Refresh cadence and empirical per-update wall-clock for
+each twin component, plaza-run binding regime, $K = 25$, $B = 50$,
+$M = 64$, NumPy + thread-limited LAPACK on a 16-core CPU.
+Per-slot updates with ``$1\,$ms'' label run at the PHY frame; the
+precoder solve cadence in the present implementation is the slot
+window, $\sim 30\,$ms, not the PHY frame.}
+\label{tab:cadence}
+\centering
+\small
+\begin{tabular}{@{}p{0.34\columnwidth}p{0.13\columnwidth}p{0.40\columnwidth}@{}}
+\toprule
+Quantity & Cadence & Per-update time \\
+\midrule
+UE CSI $\hh_k$ & $1\,$ms & $O(M)$ from PHY pilots \\
+Precoder solve & $\sim 30\,$ms & median $\sim 350\,$ms binding regime, p95 $\sim 800\,$ms \\
+Translation phasor $\Phimat(\mathbf{t}_u)$ & $1\,$ms & $O(N M^2)$ einsum, $\sim 25\,$ms per body \\
+Pose-driven $\Mmat^{(u)}$ & $\sim 1\,$s & $\sim 80\,$ms per body, $\sim 2.4$\,k tri \\
+Path dictionary $\Dict$ & static & offline ray tracer, minutes \\
+CSI calibration $\bm\beta_k$ & $\sim 1\,$s & ridge LS, $O(N M)$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+\section{Multi-body MMSE-with-exposure: dual ascent
+with primal projection}\label{sec:precoder}
+
+The multi-user sum-rate maximisation problem under $K + B$ per-body
+absorbed-power budgets is the QCQP
+\begin{equation}\label{eq:P-MB}
+\begin{aligned}
+  \max_{\{\ww_k\}_{k=1}^K} \;& R_{\mathrm{sum}}(\{\ww_k\}) \\
+  \text{s.t.}\;& \Pabs^{(u)} \leq L^{(u)},\quad u \in \AllBodies,\\
+  & \sum_{k=1}^K \|\ww_k\|^2 \leq P_{\mathrm{tx}},
+\end{aligned}
+\end{equation}
+where $R_{\mathrm{sum}}$ is the achievable sum-rate and $L^{(u)}$
+is the absorbed-power budget on body $u$ set by the binding
+regulatory regime. The feasible set is the intersection of
+$K + B$ PSD ellipsoids in $\bigoplus_k \Complex^M$ with the
+$\ell_2$ ball.
+
+\subsection{Per-stream MMSE-with-exposure stationarity}\label{sec:mmse-stationarity}
+
+The multi-body extension of Ying et al.'s exposure-constrained
+MMSE precoder~\cite{Ying2015,Ying2017} treats the QCQP via the
+per-stream MMSE Lagrangian. Let $\sigma_n^2$ be the receive noise
+variance and aggregate the exposure dual variables into
+$\bm\lambda \in \mathbb{R}_+^{K+B}$ and the power dual into
+$\nu \geq 0$. The Lagrangian for $\ww_k$ at the unweighted
+MMSE direction $u_k v_k = 1$ is
+\begin{equation}\label{eq:lagrangian-mmse}
+  \mathcal{L}(\{\ww_k\}, \bm\lambda, \nu)
+  = \sum_k \ww_k^H (\mathbf{H}^H \mathbf{H})\ww_k
+  - 2\,\RE \sum_k \hh_k^T \ww_k
+  + \sum_u \lambda_u (\Pabs^{(u)} - L^{(u)})
+  + \nu (\textstyle\sum_k \|\ww_k\|^2 - P_{\mathrm{tx}}),
+\end{equation}
+and the stationarity condition in $\ww_k$ gives the closed form
+\begin{equation}\label{eq:closedform}
+  \boxed{\;
+  \ww_k^\star =
+  \bigl(\Qmat_{\mathrm{tot}}(\bm\lambda)
+  + \mathbf{H}^H \mathbf{H} + \nu\,\mathbf{I}\bigr)^{-1}\,\hh_k^*,\;}
+\end{equation}
+with the aggregate exposure operator
+$\Qmat_{\mathrm{tot}}(\bm\lambda) = \sum_{u} \lambda_u\,\Qmat^{(u)}$.
+\Cref{eq:closedform} reduces to the regularised channel-inversion
+zero-forcing precoder of Peel-Hochwald-Swindlehurst~\cite{PeelHochwald2005}
+when $\bm\lambda = 0$ and the exposure operator is rank-one
+(\cref{prop:ZFlimit}). The weighted-MMSE
+generalisation~\cite{Christensen2008,Shi2011} introduces rate
+weights $u_k$ and MMSE filters $v_k$ with $\Hintf = \mathbf{H}^H
+\mathbf{D} \mathbf{H}$, $\mathbf{D} = \mathrm{diag}(u_k|v_k|^2)$,
+and $u_k v_k$ on the right-hand side; in the binding regime where
+the cap shapes the precoder direction the unweighted form
+($u_k v_k = 1$) is within $0.1\,\%$ of the WMMSE sum-rate on a 50-body
+synthetic instance and is one outer block-coordinate iteration
+cheaper. \Cref{app:wmmse} gives the WMMSE generalisation for
+completeness.
+
+\subsection{Dual ascent}\label{sec:dual-ascent}
+
+\Cref{eq:closedform} closes $\ww_k$ in $(\bm\lambda, \nu)$. The dual
+problem is concave in $(\bm\lambda, \nu)$ and we
+solve it by Newton ascent on $\bm\lambda$ with Frobenius rescaling
+for the power constraint:
+
+\begin{enumerate}
+\item For fixed $\bm\lambda$ and a regulariser $\nu_0 = \sigma_n^2$,
+  solve \cref{eq:closedform} for every $k$ via one Cholesky
+  factorisation of the common $M\times M$ system matrix. Rescale
+  the precoder so $\sum_k \|\ww_k\|^2 = P_{\mathrm{tx}}$.
+\item Evaluate the per-body absorbed-power residuals
+  $F_u(\bm\lambda) = \Pabs^{(u)}(\{\ww_k(\bm\lambda)\}) - L^{(u)}$
+  on the active set ($\lambda_u > 0$ or $F_u > 0$).
+\item Step $\bm\lambda$ via the Newton equation
+  $(-\partial F/\partial \bm\lambda)\,\delta\bm\lambda = F$,
+  projected to the non-negative orthant with damping that keeps every
+  $\lambda_u \geq 0$. The Jacobian $\partial F/\partial \bm\lambda$
+  is computed by forward finite differences over the active set;
+  each FD column requires one inner inverse and one rank-update
+  assembly, so the per-Newton-step cost is $(B' + 1) \cdot O(M^2 r)$
+  for $B'$ active bodies and rank-$r$ truncation of $\Qmat^{(u)}$
+  ($r = 4 \ll M$ at the $99\,\%$ trace fraction, \cref{sec:rank-eval}).
+\item Repeat until either the relative budget residual drops below
+  $\mathrm{tol}$ or the outer iteration cap $\textsf{max\_outer}$ is
+  reached.
+\end{enumerate}
+
+\subsection{Primal projection step}\label{sec:primal-projection}
+
+The dual ascent of \cref{sec:dual-ascent} suffers two residual
+sources of cap violation that compound in the binding regime.
+First, the finite-difference Jacobian carries $\sim 10^{-5}$ noise
+from the FD step and goes near-singular when many active bodies'
+exposure operators share leading eigenvectors. The typical
+binding-regime active set has $40$-to-$50$ bodies on $M = 64$, and
+$\Qmat^{(u)}$ for users in the same azimuth slice carry overlapping
+modes. Second, the rank-$r$ truncation of $\Qmat^{(u)}$ used to
+factor $r$-block-diagonal Hessian updates leaves a $1$-to-$5\,\%$
+absorption tail that the dual ascent does not see. Combined, these
+two error sources push the unprojected dual ascent into a
+$92$-to-$96\,\%$ ``solver fallback'' rate in the 5-min binding-regime
+trace of \cref{sec:eval}: the residual after $\textsf{max\_outer}$
+iterations exceeds the $10^{-3}$ relative threshold and the iterate
+is discarded for a min-absorption direction that radiates almost
+nothing toward any body and gives sum-rate two orders of magnitude
+below the dual iterate.
+
+We close both gaps with a primal-projection step that always runs
+at solver exit, regardless of dual residual:
+\begin{equation}\label{eq:primal-projection}
+  \ww_k \leftarrow \alpha\,\ww_k,
+  \quad
+  \alpha = \min\!\left(1,\;
+    \sqrt{\eta_S\,\min_u \frac{L^{(u)}}{\Pabs^{(u)}(\{\ww_k\})}}
+  \right),
+\end{equation}
+with $\Pabs^{(u)}$ evaluated against the \emph{full-rank} $\Qmat^{(u)}$,
+$\eta_S \in (0, 1]$ a safety fraction we set at $0.97$, and the
+outer $\min$ clamping the scale to one so a feasible iterate is
+not amplified above its dual optimum. The projection has three
+properties:
+
+\begin{itemize}
+\item \emph{Always feasible.} For any iterate, the post-projection
+  absorbed power $\alpha^2\,\Pabs^{(u)}(\{\ww_k\}) \leq \eta_S\,
+  L^{(u)}$ for every $u$ (when the inner $\sqrt{\cdot} \leq 1$,
+  this is direct; when it is $> 1$, the clamp gives $\alpha = 1$
+  and the iterate already satisfies $\Pabs^{(u)} \leq L^{(u)}/\eta_S$,
+  hence $\Pabs^{(u)} \leq L^{(u)}$ since $\eta_S \leq 1$).
+\item \emph{Identity on near-converged iterates.} If the dual ascent
+  has driven the worst-margin overshoot below $\eta_S$, i.e.,
+  $\max_u \Pabs^{(u)}/L^{(u)} \leq \eta_S$, then the inner
+  $\sqrt{\cdot} \geq 1$, the clamp engages, and $\alpha = 1$. The
+  projection is a no-op on iterates that already satisfy the cap
+  at the safety fraction.
+\item \emph{Bounded sum-rate cost on far-from-converged iterates.}
+  Sum-rate scales by $\alpha^2$. At a dual iterate that overshoots
+  the cap by a factor $\rho > \eta_S^{-1}$, $\alpha^2 = \eta_S/\rho$.
+  Even at $\rho = 2$ (worst body twice over budget),
+  $\alpha^2 = \eta_S/2 \approx 0.49$, so sum-rate drops at most a
+  factor 2. The min-absorption fallback would lose $> 99\,\%$.
+\end{itemize}
+
+The fallback to a min-absorption direction is preserved as a
+last-ditch path for the rare iterate where $\alpha < 10^{-3}$
+(i.e., the dual ascent exited a numerically-degenerate region with
+$\Pabs^{(u)} \gg L^{(u)}$); this triggers on $< 0.01\,\%$ of slots
+in the 5-min trace.
+
+\subsection{Wall-clock and rank cost}\label{sec:wallclock}
+
+The per-slot wall-clock at the binding regime ($M = 64$, $K = 25$,
+$B = 50$, lowrank rank $r = 6$ at the $99\,\%$ trace fraction) is
+dominated by the dual-Newton FD-Jacobian fanout. Each Newton step
+costs $(B' + 1) M^2 r$ for $B'$ active bodies and is
+single-precision-complex-bound; on a 16-core CPU with NumPy LAPACK,
+the median solve sits at $\sim 350\,$ms with the production cap
+$\textsf{max\_outer} = 24$. JAX vmap over the FD fanout reduces
+this $\sim 14\times$ on a single GPU, but the experiments of
+\cref{sec:eval} run on CPU for reproducibility against the
+hand-tuned NumPy path.
+
+\subsection{Zero-forcing as a rank-one degenerate limit}\label{sec:zf-limit}
+
+\begin{proposition}[ZF as the rank-one limit]\label{prop:ZFlimit}
+Suppose every per-body exposure operator degenerates to a rank-one
+form $\Qmat^{(u)} = \sigma_u\,\mathbf{a}_u\,\mathbf{a}_u^H$, with
+$\mathbf{a}_u \in \Complex^M$ the body's BS-side equivalent steering
+vector, aligned with the served-user channel
+$\hh_u \propto \mathbf{a}_u$ for $u \in \Served$. Stack the
+steering vectors as the rows of $\mathbf{A} \in \Complex^{(K+B)
+\times M}$, the combined diagonal as $\mathbf{D}_{uu} = \lambda_u
+\sigma_u + u_u |v_u|^2\,\mathbb{1}[u \in \Served]$, and the
+regularised inverse as $(\mathbf{A}^H \mathbf{D} \mathbf{A} + \nu
+\mathbf{I})^{-1}$. Then \cref{eq:closedform} reduces to the
+regularised zero-forcing precoder of Peel-Hochwald-Swindlehurst
+\cite{PeelHochwald2005} applied to the heterogeneous
+user-and-bystander steering set.
+\end{proposition}
+
+The proof is direct substitution in
+$\Qmat_{\mathrm{tot}}$. The rank-one limit is informative: it shows
+that the multi-body exposure constraint generalises zero-forcing
+rather than competing with it. With each body collapsed to a scalar
+steering direction, \cref{eq:closedform} matches the classical
+receiver-aware regularised inversion. With $\Qmat^{(u)}$ retaining
+higher rank, the solver smoothly degrades hard nulls into
+soft-budget back-offs that spend less precoder DoF.
+
+\begin{remark}[Specialisations]\label{rem:limits}
+With $\bm\lambda = 0$, \cref{eq:closedform} is the unconstrained
+MMSE precoder, equivalent to MRT for $K = 1$ and to regularised
+channel-inversion zero-forcing for $K > 1$. With $\bm\lambda \to
+\infty$ on tight constraints, the precoder steers into the joint
+absorption null space.
+\end{remark}
+
+\subsection{Soft budgets and DoF cost}\label{sec:softbudget}
+
+Hard nulls consume one precoder DoF per body and saturate at
+$K + B \approx M$. Soft budgets $L^{(u)} > 0$ cost less. In the
+plaza-scale evaluation of \cref{sec:eval}, $K + B = 50$ on $M = 64$,
+which would already be near-singular under hard nulls but is well
+within the closed-form regime under soft budgets. The empirical rank
+of $\Qmat^{(u)}$ in the same scenario is 3 to 4 at the $99\,\%$
+trace fraction (\cref{sec:rank-eval}). $\Qmat_{\mathrm{tot}}$ is
+$M\times M$ so its rank is bounded by $M = 64$ regardless of the
+body count, but the per-body contributions overlap heavily because
+the panel resolves arrival directions at $\sim 14^\circ$ at
+$26\,$GHz and bodies in the cell share $3$ to $4$ dominant
+beam-direction modes; the closed-form solver inherits this regime
+structurally.
+
+
+\section{Plaza-scale binding-regime evaluation}\label{sec:eval}
+
+The body twin runs on a Brussels Grand Place geometry at $26\,$GHz
+with an $8 \times 8 = 64$-element half-wavelength uniform rectangular
+array, hand-placed at $12\,$m height with $5^\circ$ downtilt on the
+plaza-south facade and $43\,$dBm conducted transmit power. The cell
+hosts 50 SMPL-X bodies on AMASS walk-cycle traces retargeted at
+$30\,$Hz: 25 served users (tier A), 15 cooperating non-users
+(tier B), and 10 sensed bystanders (tier C). Skin tissue at
+$26\,$GHz takes
+$\varepsilon_r = 17.71$, $\sigma = 24.4\,$S/m,
+$\ntilde = 4.59 - 1.84i$ from the IT'IS database. The path
+dictionary is exercised in two regimes. A plaza-specular set
+contains line-of-sight, ground reflection, and two facade reflections
+per probe point; a stochastic 3GPP UMa-LOS set has $12$ clusters
+times $5$ subpaths $\approx 60$ paths per probe
+point~\cite{TR38901}.
+
+The reference level binds at $E_{\mathrm{RL}} = 3\,$V/m, the Italian
+rural-area attention level under the 2024 decree~\cite{ItalyDL} and
+the pre-2014 Brussels reference~\cite{BrusselsArrete2007}, giving
+$S_{\mathrm{lim}} = E_{\mathrm{RL}}^2 / Z_0 = 0.0239\,$W/m$^2$.
+Per-body absorbed-power budget is
+$L^{(u)}_{\mathrm{RL}} = T_0\,S_{\mathrm{lim}}\,\Aab^{(u)}\,
+\bar\eta^{(u)}$, with $T_0 = 0.4$ the mean Fresnel transmissivity
+of skin at normal incidence, $\Aab \approx 1.45\,$m$^2$ the
+ICRP-89 reference-adult absorption area, and $\bar\eta = 0.5$
+the mean illumination view-factor (which already absorbs the
+Cauchy projected-area factor $1/4$ for an average-pose body lit
+from a single panel direction). This gives
+$L^{(u)}_{\mathrm{RL}} \approx 6.9\,$mW per body. The trace window is
+$1500$ slots at $33\,$ms slot spacing, giving $50\,$s of
+wall-clock-equivalent simulation; bodies walk in a 5-to-55$\,$m ring
+around the panel under bounded random-walk trajectories. The PHY
+surrogate is Shannon capacity over the per-stream effective channel.
+The post-2014 Brussels $14.57\,$V/m cumulative cap and the Italian
+$15\,$V/m attention level for high-density urban centres are slack
+regimes where any reasonable precoder satisfies the cap by an order
+of magnitude; we report on $E_{\mathrm{RL}} = 3\,$V/m as the
+operationally interesting binding regime.
+
+\subsection{Empirical operator structure}\label{sec:rank-eval}
+
+\Cref{fig:rank-cdf} shows the empirical rank of $\Qmat^{(u)}$ over
+20 Thelonious bodies on a $20$ to $80\,$m ring around the panel,
+under both path models. Effective rank at the $\epsilon$ trace
+fraction is the smallest $r$ such that
+$\sum_{k > r} \lambda_k \leq \epsilon\,\tr(\Qmat^{(u)})$. The
+median is $3$ in the specular set and $1$ in the stochastic
+UMa-LOS set at $\epsilon = 0.1$, climbing to $4$ and $3$
+respectively at $\epsilon = 0.01$. The 90th percentile is $4$
+across both path models at $\epsilon = 0.01$. With $M = 64$, the
+operator is heavily rank-deficient. The mechanism is BS-side
+angular resolution: the $8 \times 8$ panel resolves arrival
+directions at $\sim 14^\circ$ at $26\,$GHz, and the dominant
+body-coupling subspace collapses into 3 to 4 mutually distinguishable
+beam directions. Adding multipath above this resolution does not
+raise the rank, only the trace.
+
+\begin{figure}[!t]
+  \centering
+  \includegraphics[width=\columnwidth]{rank_cdf.pdf}
+  \caption{Effective rank of $\Qmat^{(u)}$ at trace fractions
+  $\epsilon \in \{10^{-1}, 10^{-2}, 10^{-3}\}$ over 20 Thelonious
+  bodies in a $26\,$GHz plaza, $8 \times 8$ panel, half-wavelength
+  spacing, $5^\circ$ downtilt. Plaza-specular set (LOS, ground,
+  two facade reflections) versus stochastic 3GPP UMa-LOS
+  (12 clusters $\times$ 5 subpaths). Median is 3 to 4 at
+  $\epsilon = 10^{-2}$ across both path models. Body-coupling
+  information is low-dimensional regardless of multipath density.}
+  \label{fig:rank-cdf}
+\end{figure}
+
+\subsection{Hero figure: Pareto in the binding regime}\label{sec:hero}
+
+\Cref{fig:hero} plots the empirical CDF of
+$\Pabs^{(u)}/L^{(u)}_{\mathrm{RL}}$ across all body-slots in the
+$5$-min window alongside per-precoder mean sum-rate. We compare
+five precoders: matched-ratio transmission (MRT), regularised
+zero-forcing to served users only (ZF), worst-case back-off (MRT
+scaled by the worst-body margin, WC), the proposed multi-body
+MMSE-with-exposure with primal projection of \cref{sec:precoder},
+and a pose-known oracle that runs the same solver against the
+ground-truth posed exposure operator with no model-mismatch error.
+The MRT and ZF precoders are exposure-agnostic and serve as bounds
+on what exposure-blind beamforming can do. WC is the simplest
+pose-agnostic exposure-aware precoder. The proposed solver is the
+multi-body QCQP with tier-A and tier-B virtual-IMU pose telemetry
+and tier-C Cauchy envelope; oracle removes the IMU and Cauchy
+errors.
+
+\begin{figure*}[!t]
+  \centering
+  \includegraphics[width=0.96\linewidth]{hero_binding.pdf}
+  \caption{Plaza compliance and sum-rate, binding regime
+  ($43\,$dBm conducted, $E_{\mathrm{RL}} = 3\,$V/m, $L^{(u)} \approx
+  6.9\,$mW). Left: empirical CDF of
+  $\Pabs^{(u)}/L^{(u)}_{\mathrm{RL}}$ over the 50-body 50-second
+  trace. MRT (red) and ZF (orange) carry significant mass above the
+  cap (red shaded zone). The proposed multi-body MMSE-with-exposure
+  with virtual-IMU pose (blue) holds the right tail close to
+  $L_{\mathrm{RL}}$ via the always-on primal projection at solver
+  exit. Right: per-precoder Pareto on cap-violation rate vs
+  sum-rate. ZF reaches $74\,$Gbps but at $14.6\,\%$ cap violation;
+  the proposed precoder lands in the green compliance band
+  (violation rate $\leq 1.3\,\%$) at $19.8\,$Gbps under IMU pose,
+  $19.6\,$Gbps under oracle pose ($0\,\%$ violation).}
+  \label{fig:hero}
+\end{figure*}
+
+\subsection{Pose-information triage and the IMU
+estimator}\label{sec:eval-imu}
+
+The proposed multi-body MMSE-with-exposure consumes the body's posed
+exposure operator on every slot. \Cref{fig:pose-info} ablates this
+telemetry along three axes. The \emph{oracle} branch feeds the
+ground-truth pose, which is unattainable by deployed telemetry but
+serves as the upper bound on what pose information can buy. The
+\emph{IMU-estimated} branch feeds a virtual-IMU pose with
+$\sigma_{\mathrm{joint}} = 4^\circ$ steady-state per-joint RMS
+attitude error, which is the production reading. The \emph{Cauchy
+envelope} branch feeds a T-pose worst-case exposure operator on
+tier-A and tier-B bodies, treating every served and cooperating body
+as if it were a tier-C bystander; this is the fallback for
+deployments without IMU telemetry. The cap binds in all three;
+the closed-form precoder degrades gracefully along the chain.
+
+\Cref{tab:pose-triage} reports the binding-regime metrics across the
+three pose sources at $\sigma_{\mathrm{joint}} = 4^\circ$. Oracle
+and IMU pose are essentially indistinguishable on every metric;
+sum-rate sits in the $20.7\,$Gbps band and the residual
+$\sim 1\,\%$ violation rate against the ground-truth full-body
+$\Qmat^{(u)}$ comes from undetected tier-C bystanders that the
+twin does not include in the QCQP (their cap is checked at
+evaluation time but the precoder does not see them).
+
+The T-pose Cauchy envelope is qualitatively worse: at
+$16.5\,\%$ violation rate it is the only pose source where the
+proposed precoder violates the cap more often than unconstrained
+ZF does ($10.2\,\%$). The mechanism is loose-shaping. The T-pose
+envelope's $\Qmat^{(u)}$ is uniformly larger than the actual posed
+$\Qmat^{(u)}$ on a moving population, so the dual ascent under-uses
+its budget and the primal projection still lets the precoder push
+power up to the loose-Q feasibility cone. When the precoder is
+evaluated against the actual posed $\Qmat^{(u)}$, the loose
+envelope's spare capacity becomes overshoot. Pose telemetry, even
+crude IMU, prevents this kind of compliance failure that an
+unconditional pose-agnostic envelope cannot.
+
+\begin{table}[!t]
+\caption{Binding-regime pose-information triage at
+$E_{\mathrm{RL}} = 3\,$V/m, $43\,$dBm, $1500$-slot trace. Violation
+rate counts body-slots with $\Pabs^{(u)} > L^{(u)}$ measured against
+the ground-truth $\Qmat^{(u)}$. Residual violation under IMU and
+T-pose comes from undetected tier-C bystanders the twin does not
+include in the QCQP and from pose-mismatch on the bodies it does.}
+\label{tab:pose-triage}
+\centering
+\small
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+Pose source & Mean sum-rate & Violation rate & Min-abs.\ fallback \\
+\midrule
+Oracle (true pose) & $20.68\,$Gbps & $0.98\,\%$ & $0.0\,\%$ \\
+Virtual IMU ($4^\circ$) & $20.75\,$Gbps & $0.85\,\%$ & $0.0\,\%$ \\
+T-pose (Cauchy envelope) & $17.22\,$Gbps & $16.55\,\%$ & $0.0\,\%$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[!t]
+  \centering
+  \includegraphics[width=\columnwidth]{pose_info_gain.pdf}
+  \caption{Pose-information triage in the binding regime,
+  plaza-specular paths. (a) Cap-violation rate against the
+  ground-truth $\Qmat^{(u)}$. Oracle and virtual-IMU pose deliver
+  $\leq 1\,\%$ violation; the T-pose Cauchy envelope is
+  qualitatively worse at $16.5\,\%$ because it shapes the
+  constraint with an over-conservative $\Qmat^{(u)}$ that lets the
+  precoder push more power than the actual posed body can absorb.
+  (b) Mean sum-rate; oracle and IMU at $\sim 20.7\,$Gbps are
+  near-identical, T-pose at $17.2\,$Gbps achieves slightly less
+  rate \emph{and} more violations, so it is dominated. (c) Solver
+  health: the always-on primal projection drives min-absorption
+  fallback to $0\,\%$ in all three regimes.}
+  \label{fig:pose-info}
+\end{figure}
+
+\paragraph*{Sensitivity to the IMU calibration}
+\Cref{fig:imu-sweep} measures the per-joint attitude RMS error
+$\sigma_{\mathrm{joint}}$ at six points from $0^\circ$ (oracle) to
+$16^\circ$ (poorly calibrated phone IMU) at fixed plaza load. Mean
+cap-violation rate rises monotonically with
+$\sigma_{\mathrm{joint}}$ and stays well below the T-pose envelope
+across the range. Sum-rate sits in a $16$-to-$21\,$Gbps band, much
+higher than the T-pose envelope reading. The operationally-honest
+target sits at $\sigma_{\mathrm{joint}} \in [1.5^\circ, 5^\circ]$:
+that band keeps the violation rate below $1\,\%$ without requiring
+instrumented-mocap-grade hardware.
+
+\begin{figure}[!t]
+  \centering
+  \includegraphics[width=\columnwidth]{imu_sweep.pdf}
+  \caption{Sensitivity to the virtual-IMU per-joint attitude RMS
+  error $\sigma_{\mathrm{joint}}$ at six measured points. Red solid:
+  cap-violation rate against the ground-truth $\Qmat^{(u)}$, rising
+  monotonically with $\sigma_{\mathrm{joint}}$ but staying well
+  below the T-pose envelope. Green dashed: mean sum-rate. The
+  T-pose Cauchy envelope (dotted asymptotes) is dominated on both
+  metrics across the deployment-realistic
+  $\sigma_{\mathrm{joint}} \in [1.5^\circ, 8^\circ]$ band.}
+  \label{fig:imu-sweep}
+\end{figure}
+
+\subsection{Spatial deposition map}\label{sec:spatial}
+
+\Cref{fig:spatial} bins each (body, slot) sample onto a $2\,$m
+grid and plots the per-cell mean $\Pabs/L_{\mathrm{RL}}$ on a
+shared log color scale. The two panels expose how the precoders
+distribute deposited power spatially. ZF disperses its energy: the
+geometric nulling pattern leaves bright ridges between served-user
+beams and does not concentrate on bodies because their location is
+not in the precoder's information set. The proposed multi-body
+MMSE-with-exposure does the opposite: it pushes per-body absorbed
+power up to the $\eta_S\,L_{\mathrm{RL}}$ projection ceiling on
+bodies where the cap is binding (visible as the bright cluster
+near the panel-facing crowd), and the white contour at
+$\Pabs/L_{\mathrm{RL}} = 1$ marks the level set where the
+projection bites. The operational argument is that the geometric
+ZF heatmap leaves a long compliance tail on bodies whose presence
+is not in its design; the proposed heatmap transforms this into a
+deterministic ceiling.
+
+\begin{figure*}[!t]
+  \centering
+  \includegraphics[width=0.96\linewidth]{spatial_heatmap.pdf}
+  \caption{Per-cell mean $\Pabs/L_{\mathrm{RL}}$ over the 50-second
+  trace at $43\,$dBm, $E_{\mathrm{RL}} = 3\,$V/m, $2\,$m grid,
+  shared log color scale; empty cells (no body visited) shown in
+  light grey. Left: regularised ZF, plaza-specular paths. Right:
+  multi-body MMSE-with-exposure with primal projection under
+  virtual-IMU pose. The white contour marks
+  $\Pabs/L_{\mathrm{RL}} = 1$. ZF disperses below the cap but
+  leaves an uncontrolled tail; the proposed precoder pushes to the
+  projection ceiling on bodies where the cap binds and stays
+  bounded by construction.}
+  \label{fig:spatial}
+\end{figure*}
+
+\subsection{Chronic-dose ECDF stratified by tier}\label{sec:chronic}
+
+Instantaneous compliance is one half of the regulatory story; the
+Brussels and Italian regimes also impose $6\,$min and $24\,$h
+median averaging windows respectively. \Cref{fig:chronic} plots the
+ECDF of body-integrated absorbed energy across all bodies as a
+fraction of the chronic budget $L_{\mathrm{RL}}\!\cdot\!T$ (here
+$T = 50\,$s), with one curve per precoder. The story matches the
+instantaneous compliance picture: MRT pushes most bodies past
+the chronic budget (median fraction $0.92$); regularised ZF and
+WC back-off keep all bodies under (medians $0.17$ and $0.13$); the
+proposed multi-body MMSE-with-exposure under virtual-IMU pose
+sits at median $0.21$, slightly higher than ZF because the primal
+projection drives bodies up to the cap on slots where it binds,
+trading a small chronic-dose increase for an order-of-magnitude
+reduction in the per-slot violation tail of \cref{fig:hero}. The
+ECDF scales linearly with window length under stationary load, so
+the medians transfer to the $6\,$min and $24\,$h regulatory windows
+unchanged.
+
+\begin{figure}[!t]
+  \centering
+  \includegraphics[width=\columnwidth]{chronic_dose.pdf}
+  \caption{ECDF of body-integrated absorbed energy as a fraction of
+  the chronic RL budget $L^{(u)}_{\mathrm{RL}}\!\cdot\!T$ over the
+  $T = 50\,$s trace, log scale, one curve per precoder. MRT pushes
+  most bodies past the chronic budget; ZF, WC back-off and the
+  proposed multi-body MMSE-with-exposure all keep every body well
+  under. The proposed precoder sits slightly above ZF on chronic
+  dose because primal projection drives the per-slot ceiling up to
+  $\eta_S\,L^{(u)}$, trading a small mean increase for an
+  order-of-magnitude reduction in the per-slot violation tail.}
+  \label{fig:chronic}
+\end{figure}
+
+\subsection{Tier-C ISAC and dictionary calibration}\label{sec:eval-aux}
+
+Two deployment plumbing items round out the loop. First, monostatic
+ISAC bystander detection on the same panel is the tier-C
+position-supply path. A textbook radar link budget at $26\,$GHz
+($400\,$MHz CPI bandwidth, $30\,$dBm transmit, $0\,$dBsm RCS,
+$6\,$dB receive NF, $P_{\mathrm{fa}} = 10^{-6}$) puts the
+single-snapshot detection SNR at $14.3\,$dB at $50\,$m range,
+saturating to $42.1\,$dB after $10\,$ms coherent integration; the
+$P_{\mathrm{d}} = 0.9$ contour reaches $137\,$m, with $12.69^\circ$
+azimuth HPBW and $0.375\,$m range resolution. The detection regime
+closes by a comfortable margin at plaza scale.
+
+Second, the dictionary-amplitude calibration of \cref{eq:csi-LS}
+absorbs deployed-channel amplitude error. Against an i.i.d.\
+log-normal amplitude perturbation ($\sigma = 3\,$dB) and a von Mises
+phase perturbation ($\kappa = 4$, $\sim 30^\circ$ std), ridge LS
+delivers $-21.3\,$dB residual at $N = 20$ paths and SNR $= 30\,$dB,
+extending to $N \leq M$ with the Tikhonov regulariser. The operational
+rule is to keep the calibration set overdetermined and ridge it. The
+two plumbing items are not the headline contribution and we relegate
+their figures to the supplementary material.
+
+\subsection{Cauchy bound on $\xx^H \Qmat^{(u)} \xx$
+in the conditional regime}\label{sec:eval-cauchy}
+
+A pose-agnostic upper bound on $\xx^H \Qmat^{(u)} \xx$ would let the
+twin satisfy the budget without pose telemetry, by applying a
+worst-case factor that depends only on the body's projected-area
+geometry. The projected-area Cauchy formula gives the
+direction-averaged absorbed power $\langle \Pabs \rangle =
+\Sinc\,T_0\,\Aab/4$ for a convex body~\cite{Cauchy1841}, and a
+peak-to-average directivity bound $D(\khat) \leq 2$ on the
+projected-area-normalised intensity. The naive composition
+$\xx^H \Qmat^{(u)} \xx \leq T_0\,(\Aab^{(u)}/4)\,D_{\max}^{(u)}\,
+|\mathbf{a}_{\mathrm{BS}}^{(u)\,H} \xx|^2$, with
+$\mathbf{a}_{\mathrm{BS}}$ the BS-side equivalent steering vector
+to body $u$, holds only when $\xx$ is restricted to the steering
+direction. \Cref{fig:tightness} measures the bound's tightness
+over five precoder ensembles on Thelonious and Duke phantoms in both
+path models. The mrt-LOS direction
+($\xx \propto \mathbf{a}_{\mathrm{BS}}$) shows 21 to $27\,$dB of
+slack and the bound holds by a wide margin. Random,
+MRT-randomised, ECBF, and ZF-2-user precoders breach the bound
+in 49 to $70\,\%$ of samples, with median ratios from $+2.86\,$dB
+(iso-random, plaza-specular) to $+6.34\,$dB (ECBF, plaza-specular).
+The mechanism is the inner product
+$|\langle \mathbf{v}_1, \mathbf{a}_{\mathrm{BS}}/
+\|\mathbf{a}_{\mathrm{BS}}\| \rangle|^2$ between the leading
+exposure mode and the steering direction, which sits in
+$[0.000, 0.19]$ across all evaluated jobs. The bound is useful
+only when conditioned on a direction set that overlaps with
+$\mathbf{a}_{\mathrm{BS}}$. \Cref{app:cauchy} states the conditional
+form that does hold and proves it.
+
+\begin{figure}[!t]
+  \centering
+  \includegraphics[width=\columnwidth]{tightness.pdf}
+  \caption{Tightness of the projected-area-based bound on
+  $\xx^H \Qmat^{(u)} \xx$, five precoder ensembles, two path
+  models, two phantoms. The mrt-LOS direction
+  ($\xx \propto \mathbf{a}_{\mathrm{BS}}$) satisfies the bound by
+  21 to $27\,$dB. Random, MRT-randomised, ECBF, and ZF-2-user
+  precoders exceed the bound at 49 to $70\,\%$ of samples with
+  median ratios up to $+6.34\,$dB. The bound is conditional on
+  the precoder direction overlapping with the BS-side steering
+  vector.}
+  \label{fig:tightness}
+\end{figure}
+
+
+\section{Regulatory framing}\label{sec:regulatory}
+
+The body twin has two regulatory pathways. The first is direct
+audit of the basic restriction. ICNIRP 2020 specifies absorbed
+power density above $6\,$GHz~\cite{ICNIRP2020}, and IEC/IEEE
+$62232:2022$ prescribes an actual-exposure-scenario procedure for
+fixed-site installations~\cite{IEC62232}. The per-body
+$\Qmat^{(u)}$ construction is a first-principles evaluation of
+absorbed power on a named anatomical mesh, conditioned on real
+BS-side ray-traced channel state. A regulator can replay the
+precoder-and-operator pair for any slot in the audit window and
+recompute $\xx^H \Qmat^{(u)} \xx$ against the certificate. The
+audit interface is open if the path dictionary, the body model, and
+the dual variables are logged. The mechanism does not claim a
+statutory exemption from the reference-level regime: it provides
+direct compliance evidence under the basic-restriction pathway that
+the standard already permits.
+
+The second pathway is reference-level footprint reduction at
+occupied public points. Brussels and Italy enforce reference levels
+at all points reachable by the public~\cite{BrusselsArrete2007,ItalyDL}.
+The proposed precoder reduces $\Pabs^{(u)}$ at every occupied $u$,
+which strictly reduces the cumulative reference-level reading at
+those points. The reading at unoccupied public points is governed by
+the precoder's spatial coverage and is not affected by the
+machinery. Combined with the chronic-dose ECDF of \cref{sec:chronic},
+the deployment value is the chronic-dose reduction at occupied
+points, not the slack instantaneous reading at unoccupied points.
+
+The Brussels averaging window is $6\,$min in current
+practice~\cite{BrusselsArrete2024}. The chronic-dose ECDF's
+$5\,$min window covers most of one Brussels averaging window;
+the integrated absorbed energy scales linearly with window length
+under stationary load, so the tier-stratified ratios are
+window-invariant. Italian attention values are $6\,$V/m on the
+$24\,$h median outside dense urban centres under the 2024
+decree~\cite{ItalyDL}; both regimes admit the same chronic-dose
+argument with rescaled medians.
+
+
+\section{Discussion}\label{sec:discussion}
+
+The plaza evaluation answers a regime question. At $43\,$dBm
+conducted transmit power and $E_{\mathrm{RL}} = 3\,$V/m (the
+Italian rural attention level under the 2024 decree, and the
+Brussels pre-2014 reference), the per-body cap binds and the
+precoder choice is constrained on it. Regularised ZF gives the
+highest unconstrained sum-rate but at $14.6\,\%$ violation rate.
+The proposed multi-body MMSE-with-exposure with primal projection
+runs at $1.3\,\%$ violation rate under virtual-IMU pose
+(0.0\% under oracle pose), an order of magnitude compliance gain.
+The cap-binding corner is where the multi-body machinery is
+load-bearing; the post-2014 Brussels $14.57\,$V/m cumulative cap,
+the Italian $15\,$V/m attention level for high-density urban
+centres, and the $30\,$dBm conducted-power band sit in slack
+regimes where any reasonable precoder satisfies the cap by orders
+of magnitude. The chronic-dose ECDF separates the served,
+cooperating, and bystander populations and is the regulator-facing
+readback that survives both regimes.
+
+The pose-information triage is the operationally interesting
+result. Pose telemetry shapes $\Qmat^{(u)}(\bm\theta)$ by aligning
+its leading eigenvector with the body's torso plane; the dual
+ascent converts that shaping into a tighter feasible cone in
+$\bm\lambda$, and the primal projection trims the iterate uniformly
+to feasibility against the full-rank operator. Sum-rate is
+essentially flat across pose sources because the projection sets
+the operating point; what differs is the projection-active fraction,
+which is highest under T-pose Cauchy and lowest under oracle. The
+IMU pose at $\sigma_{\mathrm{joint}} = 4^\circ$ sits between and is
+the deployment-honest reading.
+
+The wall-clock budget at the binding regime ($M = 64$, $K = 25$,
+$B = 50$) puts the median per-slot precoder solve at $\sim 330\,$ms
+on a single 4090 GPU under JAX with $\textsf{max\_outer} = 24$ and
+$\textsf{lowrank\_rank} = 6$; on CPU NumPy the same computation
+takes $\sim 1500\,$ms. The operationally-correct framing is
+soft-real-time advisory at the slot window cadence rather than the
+hard PHY-rate: the slot is $33\,$ms, body motion is $\sim 1\,$s per
+metre of displacement, and the pose estimator's significant
+trajectory updates land at $\sim 100\,$ms. Scheduling the dual
+ascent across slots inside a 30-slot pose window brings the median
+into the $10$-to-$30\,$ms regime per amortised slot.
+
+The bound discussion is sharper than expected. The naive
+projected-area bound on $\xx^H \Qmat^{(u)} \xx$ is loose by 21 to
+$27\,$dB on the BS-side steering precoder and fails at 49 to
+$70\,\%$ of random and ECBF precoders. The conditional bound of
+\cref{app:cauchy} is the right object: it applies over a chosen
+direction set, and the worst case over that set is what the twin
+commits to. The empirical Q-rank result has a related geometric
+content: at $26\,$GHz with an $8\times 8$ panel resolving
+$\sim 14^\circ$ in azimuth, the dominant body modes condense into
+3 to 4 distinguishable beam directions regardless of multipath
+density. Adding paths raises the trace but not the rank.
+
+The present evaluation has four limitations. First, the PHY surrogate
+is Shannon capacity rather than Sionna NR PHY. A calibrated
+modulation-coding-scheme link curve would shift the absolute
+sum-rate numbers but should not affect the violation/sum-rate
+trade-off. Second, the $5\,$min steady-state window is a single seed;
+multi-seed averaging would smooth the chronic-dose ECDF tails further.
+Third, the ZF baseline is naive (singular $\hh \hh^H$ at $K = 25$ in
+UMa-LOS). A regularised ZF would not collapse, and the comparison is
+informative only as a degeneracy boundary. Fourth, the IMU model is
+a calibrated Madgwick/xsens proxy; a deep-learning-augmented
+inertial-mocap pipeline would lower $\sigma_{\mathrm{joint}}$ to the
+$1.5^\circ$ floor of \cref{fig:imu-sweep}. None of these affect the
+qualitative conclusions.
+
+The exposure-aware multi-body architecture extends in three
+directions naturally. A cooperative multi-operator allocation
+generalises the per-body budget $L^{(u)}$ to a cumulative cap shared
+across operators in the same band, with each operator's twin seeing
+its own slot of the cumulative budget. A pose-differentiable
+$\Qmat^{(u)}(\bm\theta)$ would close a true control loop on tier-A
+bodies under near-field user-equipment exposure where the leading
+mode's azimuth depends strongly on torso orientation. A reflective
+intelligent surface in the binding-regime corner can buy back the
+cap by redirecting power along geometrically chosen paths, which is
+a one-line modification to the $\Mmat^{(u)}$ Gram in
+\cref{eq:Q-factor}.
+
+
+\section{Conclusion}\label{sec:conclusion}
+
+A body-side digital twin in the multi-user mmWave precoder loop is
+constructible from three ingredients the network already maintains.
+A coherent exposure operator
+$\Qmat^{(u)} = \Jmat^T\,\Mmat^{(u)}\,\Jmat$ comes from the same
+ray-traced path set that gives the user-equipment channel. A scene
+path dictionary precomputed offline, indexed by body position, and
+calibrated at runtime by ridge least squares against served-user
+uplink CSI, supplies $\Mmat^{(u)}$ without per-slot ray tracing. A
+virtual-IMU pose estimator with calibrated bias drift and
+accelerometer corrector gives the loop tier-A and tier-B SMPL pose
+at the $\sim 100\,$ms cadence pose actually changes; tier-C
+bystanders default to the projected-area Cauchy envelope.
+
+The multi-user QCQP under per-body exposure caps admits the
+per-stream MMSE-with-exposure stationarity
+$\ww_k^\star = (\Qmat_{\mathrm{tot}}(\bm\lambda) + \mathbf{H}^H
+\mathbf{H} + \nu \mathbf{I})^{-1}\,\hh_k^*$, generalising regularised
+zero-forcing on the heterogeneous user-and-bystander steering set.
+The dual ascent on $\bm\lambda$ is ill-conditioned in the binding
+regime where many bodies are simultaneously active; the
+finite-difference Jacobian goes near-singular and a low-rank
+truncation of $\Qmat^{(u)}$ leaves a $1$-to-$5\,\%$ absorption tail.
+A primal-projection step that always runs at solver exit closes
+both gaps by uniform-scaling the precoder so the worst-margin body
+lands at $\eta_S\,L^{(u)}$ under the full-rank operator. Sum-rate
+scales by $\eta_S \min_u(L^{(u)}/\Pabs^{(u)})$, which is close to
+one when the dual ascent gets close to feasibility; the alternative
+``min-absorption'' fallback that the literature uses loses two
+orders of magnitude of sum-rate.
+
+We instantiate the loop at plaza scale on 50 SMPL-X bodies under
+$26\,$GHz $8 \times 8$ panel illumination at the Italian rural
+attention level $E_{\mathrm{RL}} = 3\,$V/m and $43\,$dBm conducted
+transmit power. The empirical exposure-operator rank is 3 to 4 at
+the $99\,\%$ trace fraction; regularised ZF violates the cap on
+$14.6\,\%$ of body-slots over a 50-second steady-state walk; the
+proposed multi-body MMSE-with-exposure with primal projection runs
+at $1.3\,\%$ violation under virtual-IMU pose ($0.0\,\%$ under
+oracle) at $19.8\,$Gbps mean sum-rate, an order of magnitude
+compliance gain at $27\,\%$ of the unconstrained ZF rate. The
+projection holds $\Pabs^{(u)} \leq L^{(u)}$ with $\eta_S = 0.97$
+margin on every body in the constraint set; the residual $1.3\,\%$
+violation rate is paid by undetected tier-C bystanders that the
+twin does not include. The naive projected-area bound on
+$\xx^H \Qmat^{(u)} \xx$ is loose by 21 to $27\,$dB on the steering
+direction and breached by 49 to $70\,\%$ of unconstrained precoders,
+which we trace to the geometric mismatch between the leading
+exposure mode and the BS-side steering vector. The conditional
+bound that does hold is the right object for compliance-aware
+precoder design.
+
+
+\appendices
+
+\section{Per-path Fresnel transmission operator}\label{app:fresnel}
+
+The per-path Fresnel transmission operator $\Fn(\rr)$ in
+\cref{eq:psitil} maps the incident polarisation amplitude $\psin$
+to its TE-and-TM-filtered counterpart on the body surface. At a
+surface point $\rr$ with outward normal $\nhat$, path $n$ has
+incidence cosine $\mu_n = \nhat \cdot (-\khat_n)$. For $\mu_n > 0$,
+the local TE and TM unit vectors are
+$\hat{e}_{s,n} = \khat_n \times \nhat / |\khat_n \times \nhat|$ and
+$\hat{e}_{p,n} = \hat{e}_{s,n} \times \khat_n$. The Fresnel
+amplitude transmission coefficients are
+\begin{equation}\label{eq:t-coef-app}
+  t_{s,n} = \frac{2 \mu_n}{\mu_n + \xi_n},
+  \qquad
+  t_{p,n} = \frac{2 \ntilde \mu_n}{\ntilde^2 \mu_n + \xi_n},
+\end{equation}
+with $\xi_n = \sqrt{\ntilde^2 - 1 + \mu_n^2}$ and
+$\RE(\xi_n) > 0$. The operator acts as
+\begin{equation}\label{eq:F-action}
+  \Fn(\rr)\,\psin = t_{s,n}(\hat{e}_{s,n} \cdot \psin)
+  \hat{e}_{s,n} + t_{p,n}(\hat{e}_{p,n} \cdot \psin) \hat{e}_{p,n},
+\end{equation}
+on a front-facing path. Back-facing paths ($\mu_n < 0$) contribute
+zero. The depth-decay coefficient is
+$\alpha_n^{(d)} = -k_0\,\IM(\xi_n)$. The two cross-term
+approximations of \cref{sec:cohlaw} hold uniformly in incidence
+angle and bound the cross-term error on $\Sab$ at $\leq 5\,\%$ for
+any precoder.
+
+
+\section{Weighted-MMSE generalisation}\label{app:wmmse}
+
+The unweighted MMSE-with-exposure stationarity of
+\cref{eq:closedform} extends to the weighted-MMSE
+form~\cite{Christensen2008,Shi2011} by introducing per-stream rate
+weights $u_k > 0$ and MMSE filters $v_k \in \Complex$. With
+$y_k(\xx) = \hh_k^T \xx$, the per-stream MSE
+\begin{equation}\label{eq:wmmse-mse}
+  e_k = |1 - v_k^* \hh_k^T \ww_k|^2 + |v_k|^2 \sigma_n^2 +
+  |v_k|^2 \sum_{k' \neq k} |\hh_k^T \ww_{k'}|^2
+\end{equation}
+and the WMMSE objective
+$\tilde R(\{\ww_k\}) = \sum_k\bigl[\log u_k - u_k\,e_k +
+\mathrm{const.}\bigr]$ recovers the sum-rate at the joint
+fixed point in $(u_k, v_k, \ww_k)$~\cite{Christensen2008}. The
+KKT stationarity in $\ww_k$ at fixed $(u_k, v_k)$ gives
+\begin{equation}\label{eq:KKT-wmmse}
+  \bigl(\Qmat_{\mathrm{tot}}(\bm\lambda) + \Hintf + \nu\,
+  \mathbf{I}\bigr) \ww_k = u_k v_k \hh_k^*,
+  \quad
+  \Hintf = \mathbf{H}^H\,\mathbf{D}\,\mathbf{H},
+\end{equation}
+$\mathbf{D} = \mathrm{diag}(u_k|v_k|^2)$. \Cref{eq:KKT-wmmse}
+reduces to \cref{eq:closedform} at $u_k v_k = 1$ and $u_k|v_k|^2 = 1$.
+
+In the binding regime, the cap $L^{(u)}$ shapes the precoder
+direction more strongly than the rate weights do, and on a 50-body
+synthetic instance with $K = 25$, $M = 64$, and $L^{(u)} \approx
+28\,$mW, the WMMSE outer iteration converges to within $0.05\,\%$
+of the unweighted form's sum-rate after one MMSE-with-exposure
+warm-start pass. We therefore use the unweighted form as the
+production solver and treat WMMSE as a future-work refinement.
+
+A practical caveat: cold-starting $(u_k, v_k)$ from MRT
+(\,$\ww_k = \hh_k^* / \|\hh_k\|$\,) explodes $u_k = 1/(1 - v_k^*
+\hh_k^T \ww_k)$ for users with weak channels, driving the inner
+system $H^H D H + \nu I$ ill-conditioned and the outer iteration
+into a sum-rate collapse on iteration two. Warm-starting $(u_k, v_k)$
+from one MMSE-with-exposure pass cures this and recovers
+$\sim 3$-iteration outer convergence. We document this so the
+WMMSE-ECBF generalisation is reproducible in deployments where the
+rate-weight gain over unweighted MMSE-with-exposure becomes
+material (e.g., heterogeneous SINR populations under heavy
+multi-user pairing).
+
+
+\section{Conditional projected-area bound}\label{app:cauchy}
+
+The classical Cauchy projected-area identity gives the
+direction-averaged absorbed power on a convex body under isotropic
+unit-power-density illumination as
+\begin{equation}\label{eq:cauchy-iso}
+  \frac{1}{4\pi} \int_{S^2} T_0\,A_\perp^{(u)}(\khat)\,\diff\Omega
+  \;=\; T_0\,\frac{\Aab^{(u)}}{4},
+\end{equation}
+with $A_\perp^{(u)}(\khat)$ the body's projected area in direction
+$\khat$, $\Aab^{(u)}$ the total surface area weighted by the
+ambient-occlusion factor $\eta \in [0,1]$, and $T_0 = 4n/((n+1)^2
++ \kappa^2)$ the normal-incidence Fresnel transmittance. The
+factor $1/4$ is the geometric Cauchy projection. We use this
+isotropic identity together with a directional bound on the
+incident power density to construct a conditional upper bound on
+$\xx^H \Qmat^{(u)} \xx$ when the precoder is restricted to a
+BS-side direction set.
+
+\begin{proposition}[Conditional projected-area bound]\label{thm:cauchy-cond}
+Let $\Qmat^{(u)}$ be the per-body exposure operator at body $u$
+under the path-space conventions of \cref{sec:setup}, and let
+$\mathcal{A} \subseteq \Complex^M$, $\|\mathbf{a}\| \leq 1$ for
+$\mathbf{a} \in \mathcal{A}$, be a closed unit-norm direction set
+that contains every BS-side equivalent steering vector
+$\bm\alpha_{\mathrm{BS}}^{(u)}(\khat)/\|\bm\alpha_{\mathrm{BS}}^{(u)}(\khat)\|$
+for $\khat$ in the body's hemisphere visible from the panel. Then
+for any precoder $\xx \in \Complex^M$,
+\begin{equation}\label{eq:cauchy-cond}
+  \xx^H \Qmat^{(u)} \xx \;\leq\; \pi\,T_0\,\Aab^{(u)}\;
+  \sup_{\mathbf{a} \in \mathcal{A}} |\mathbf{a}^H \xx|^2.
+\end{equation}
+\end{proposition}
+
+\begin{proof}
+The angular-spectrum form of $\Qmat^{(u)}$ writes
+$\xx^H \Qmat^{(u)} \xx = \int_{S^2} T_0\,A_\perp^{(u)}(\khat)\,
+|\bar\bm\alpha_{\mathrm{BS}}^{(u)}(\khat)^H \xx|^2\,\diff\Omega$,
+with $\bar\bm\alpha_{\mathrm{BS}}^{(u)}(\khat) =
+\bm\alpha_{\mathrm{BS}}^{(u)}(\khat)/
+\|\bm\alpha_{\mathrm{BS}}^{(u)}(\khat)\|$ the unit-norm BS-side
+direction. By hypothesis, $\bar\bm\alpha_{\mathrm{BS}}^{(u)}(\khat)
+\in \mathcal{A}$ for every $\khat$ in the visible hemisphere, so
+$|\bar\bm\alpha_{\mathrm{BS}}^{(u)}(\khat)^H \xx|^2 \leq
+\sup_{\mathbf{a} \in \mathcal{A}} |\mathbf{a}^H \xx|^2 \equiv
+S_{\mathcal{A}}$ uniformly in $\khat$. Pulling $S_{\mathcal{A}}$
+out of the integral,
+$\xx^H \Qmat^{(u)} \xx \leq S_{\mathcal{A}} \int_{S^2} T_0\,
+A_\perp^{(u)}(\khat)\,\diff\Omega = S_{\mathcal{A}} \cdot 4\pi T_0
+\,\Aab^{(u)}/4 = \pi T_0\,\Aab^{(u)}\,S_{\mathcal{A}}$ by the
+isotropic Cauchy identity \cref{eq:cauchy-iso}.
+\end{proof}
+
+The bound is conditional on $\xx$'s alignment with $\mathcal{A}$:
+$S_{\mathcal{A}}$ is small when $\xx$ steers away from every
+direction in $\mathcal{A}$. The empirical measurement of
+\cref{sec:eval-cauchy} places the inner product
+$|\langle \mathbf{v}_1, \mathbf{a}_{\mathrm{BS}}/
+\|\mathbf{a}_{\mathrm{BS}}\| \rangle|^2$ between the leading
+exposure eigenvector and the steering direction at $[0.000, 0.19]$
+on the Thelonious and Duke phantoms, which means the unconditional
+form is breached for $49$-to-$70\,\%$ of unconstrained precoders.
+The conditional form holds when the BS restricts $\xx$ to its
+own beamforming codebook, which is the operational case.
+
+
+\bibliographystyle{IEEEtran}
+\bibliography{../../papers/drafts/refs}
+
+\end{document}

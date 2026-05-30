@@ -18,7 +18,7 @@
 \usepackage{bm}
 
 \usepackage{graphicx}
-\graphicspath{{figures/}{figures/jsac/}{../../theory/figures/}{../../validation/}{../../JSAC/code/experiments/rank_check/}{../../JSAC/code/experiments/cauchy_tightness/}{../../JSAC/code/experiments/csi_calibration/}{../../JSAC/code/experiments/tier_c_decision/}{../../JSAC/code/experiments/plaza_run/figures/}}
+\graphicspath{{../../papers/drafts/figures/}{../../theory/figures/}{../../validation/}{../../JSAC/code/experiments/rank_check/}{../../JSAC/code/experiments/cauchy_tightness/}{../../JSAC/code/experiments/csi_calibration/}{../../JSAC/code/experiments/tier_c_decision/}{../../JSAC/code/experiments/plaza_run/figures/}}
 \usepackage{booktabs}
 \usepackage{array}
 \usepackage{caption}
@@ -62,6 +62,7 @@
 \newcommand{\Gtil}{\tilde{\mathbf{G}}}
 \newcommand{\Qmat}{\mathbf{Q}}
 \newcommand{\Mmat}{\mathbf{M}}
+\newcommand{\Hintf}{\mathbf{H}_{\mathrm{intf}}}
 \newcommand{\Jmat}{\mathbf{J}}
 \newcommand{\Pmat}{\mathbf{P}}
 \newcommand{\Phimat}{\mathbf{\Phi}}
@@ -114,9 +115,9 @@ uplink CSI. A tiered telemetry mapping turns served users, cooperating
 non-users, and sensed bystanders into twin instantiations of
 decreasing position-and-pose fidelity. Multi-user sum-rate maximisation
 under per-body exposure caps admits the closed-form precoder
-$\ww_k^\star = (\Qmat_{\mathrm{tot}}(\bm\lambda) + \nu\,\mathbf{I})^{-1}
-\gvec_k$, in which the rank-one degenerate limit recovers regularised
-zero-forcing. The loop runs on the Brussels Grand Place geometry with
+$\ww_k^\star = (\Qmat_{\mathrm{tot}}(\bm\lambda) + \Hintf +
+\nu\,\mathbf{I})^{-1} \gvec_k$, in which the rank-one degenerate limit
+recovers regularised zero-forcing. The loop runs on the Brussels Grand Place geometry with
 50 SMPL-X bodies on AMASS walk-cycles, an $8 \times 8$ panel at
 $26\,$GHz, and 25 served users. The empirical exposure operator has
 effective rank 3 to 4 at the $99\,\%$ trace fraction in both a
@@ -215,8 +216,9 @@ geometry, indexed by body position, and calibrated at runtime by
 least-squares regression of path amplitudes against served-user
 uplink CSI. Multi-user sum-rate maximisation under $K + B$ per-body
 exposure caps admits the closed-form precoder
-$\ww_k^\star = (\Qmat_{\mathrm{tot}}(\bm\lambda) + \nu \mathbf{I})^{-1}
-\gvec_k$ with KKT bisection on the dual variables, a generalisation of
+$\ww_k^\star = (\Qmat_{\mathrm{tot}}(\bm\lambda) + \Hintf +
+\nu \mathbf{I})^{-1} \gvec_k$ with KKT bisection on the dual variables,
+a generalisation of
 Ying-2015 to a heterogeneous body population that retains the
 closed-form structure and reduces to regularised zero-forcing in the
 rank-one degenerate limit. The empirical contribution is a
@@ -409,15 +411,20 @@ the aggregate exposure operator
   \Qmat_{\mathrm{tot}}(\bm\lambda) =
   \sum_{u \in \AllBodies} \lambda_u\,\Qmat^{(u)},
 \end{equation}
-also Hermitian positive-semidefinite. Define the per-stream
-weighted-MMSE drive vector $\gvec_k$ as the canonical
-weighted-MMSE pseudo-channel whose precise form follows
-Shi-2011~\cite{Shi2011} and is reproduced in \cref{app:ecbf}. The
-inner stationarity gives
+also Hermitian positive-semidefinite. The WMMSE inner problem
+contributes a $k$-independent inter-user interference Gram
+\begin{equation}\label{eq:Hgram}
+  \Hintf =
+  \sum_{k'} u_{k'}\,|v_{k'}|^2\,\hh_{k'}\hh_{k'}^H,
+\end{equation}
+together with the per-stream drive $\gvec_k = u_k v_k\,\hh_k$, where
+$u_k$ and $v_k$ are the WMMSE auxiliary weight and receive filter of
+Shi-2011~\cite{Shi2011}, reproduced in \cref{app:ecbf}. The inner
+stationarity gives
 \begin{equation}\label{eq:closedform}
   \boxed{\;
   \ww_k^\star =
-  \bigl(\Qmat_{\mathrm{tot}}(\bm\lambda) + \nu\,\mathbf{I}\bigr)^{-1}\,
+  \bigl(\Qmat_{\mathrm{tot}}(\bm\lambda) + \Hintf + \nu\,\mathbf{I}\bigr)^{-1}\,
   \gvec_k.\;}
 \end{equation}
 The dual variables $(\bm\lambda, \nu)$ are determined by
@@ -431,12 +438,13 @@ $1{,}600$ Gauss-Seidel sweeps for the same accuracy.
 
 \begin{remark}[Specialisations]\label{rem:limits}
 \Cref{eq:closedform} contains every standard mmWave precoder as a
-special case. With $\bm\lambda = 0$, the matrix
-$\Qmat_{\mathrm{tot}}$ vanishes and $\ww_k^\star \propto \gvec_k$
-reduces, after the WMMSE outer fixed point, to MRT for $K = 1$ or to
-regularised channel-inversion zero-forcing for $K > 1$. With
-$\bm\lambda \to \infty$ on tight constraints, the precoder steers
-into the joint absorption null space.
+special case. With $\bm\lambda = 0$ the exposure piece vanishes and
+$\ww_k^\star = (\Hintf + \nu\,\mathbf{I})^{-1} \gvec_k$ is the
+unconstrained WMMSE precoder, which converges under the outer
+fixed point on $(u_k, v_k)$ to MRT for $K = 1$ and to regularised
+channel-inversion zero-forcing for $K > 1$. With $\bm\lambda \to
+\infty$ on tight constraints, the precoder steers into the joint
+absorption null space.
 \end{remark}
 
 \subsection{Zero-forcing as a rank-one degenerate limit}
@@ -448,16 +456,19 @@ The classical zero-forcing precoder is the rank-one limit of
 Suppose every per-body exposure operator degenerates to a rank-one
 form $\Qmat^{(u)} = \sigma_u\,\mathbf{a}_u\,\mathbf{a}_u^H$, with
 $\mathbf{a}_u \in \Complex^M$ the body's BS-side equivalent steering
-vector. Stack the steering vectors as the rows of $\mathbf{A}
-\in \Complex^{(K+B)\times M}$, the dual-weighted diagonal as
-$\mathbf{D} = \mathrm{diag}(\lambda_u \sigma_u)$, and the regularised
-inverse as $(\mathbf{A}^H \mathbf{D} \mathbf{A} + \nu \mathbf{I})^{-1}$.
-Then \cref{eq:closedform} reduces to the regularised zero-forcing
+vector, aligned with the served-user channel $\hh_u \propto
+\mathbf{a}_u$ for $u \in \Served$. Stack the steering vectors as the
+rows of $\mathbf{A} \in \Complex^{(K+B)\times M}$, the combined
+diagonal as $\mathbf{D}_{uu} = \lambda_u \sigma_u + u_u |v_u|^2\,
+\mathbb{1}[u \in \Served]$, and the regularised inverse as
+$(\mathbf{A}^H \mathbf{D} \mathbf{A} + \nu \mathbf{I})^{-1}$. Then
+\cref{eq:closedform} reduces to the regularised zero-forcing
 precoder of Peel-Hochwald-Swindlehurst~\cite{PeelHochwald2005}
 applied to the heterogeneous user-and-bystander steering set.
 \end{proposition}
 
-The proof is direct substitution in \cref{eq:Qtot}. The rank-one
+The proof is direct substitution in \cref{eq:Qtot,eq:Hgram}. The
+rank-one
 limit is informative: it shows that the multi-body exposure
 constraint generalises zero-forcing rather than competing with it.
 With each body collapsed to a scalar steering direction,
@@ -1191,8 +1202,8 @@ precomputed offline, indexed by body position, and calibrated at
 runtime by least squares against served-user uplink CSI, supplies
 $\Mmat^{(u)}$ without per-slot ray tracing. A multi-user QCQP under
 per-body exposure caps admits the closed-form precoder
-$\ww_k^\star = (\Qmat_{\mathrm{tot}} + \nu \mathbf{I})^{-1} \gvec_k$,
-generalising regularised zero-forcing. The loop runs at the cadences
+$\ww_k^\star = (\Qmat_{\mathrm{tot}} + \Hintf + \nu \mathbf{I})^{-1}
+\gvec_k$, generalising regularised zero-forcing. The loop runs at the cadences
 the network already sustains: $1\,$ms PHY, $\sim 100\,$ms pose
 update, $\sim 1\,$s translation phasor, offline ray tracing and
 dictionary calibration. We instantiate the loop at plaza scale on
@@ -1277,14 +1288,11 @@ under the exposure and power constraints is
 Stationarity in $\ww_k$, fixing $u_k, v_k$ at their inner WMMSE
 optima, gives
 \begin{equation}\label{eq:KKT}
-  \biggl(\Qmat_{\mathrm{tot}}(\bm\lambda) + \nu\,\mathbf{I} +
-  \sum_{k'} u_{k'} |v_{k'}|^2 \hh_{k'}\hh_{k'}^H\biggr) \ww_k =
-  u_k v_k \hh_k.
+  \bigl(\Qmat_{\mathrm{tot}}(\bm\lambda) + \Hintf + \nu\,\mathbf{I}\bigr)
+  \ww_k = u_k v_k \hh_k,
 \end{equation}
-Folding the inter-user interference term into a redefined drive
-$\gvec_k = u_k v_k \hh_k$ and a slightly modified denominator yields
-\cref{eq:closedform} with $\Qmat_{\mathrm{tot}}$ inheriting the
-interference contribution. The dual variables $(\bm\lambda, \nu)$
+with $\Hintf$ as in \cref{eq:Hgram}. This is \cref{eq:closedform}
+with $\gvec_k = u_k v_k \hh_k$. The dual variables $(\bm\lambda, \nu)$
 are updated by Newton ascent on the dual residual
 $F_u(\bm\lambda, \nu) = \sum_k \ww_k^{\star H}(\bm\lambda, \nu)
 \Qmat^{(u)} \ww_k^\star - L^{(u)}$. The dual feasibility set is the
@@ -1356,6 +1364,6 @@ $\xx^H \Qmat^{(u)} \xx$ evaluation.
 
 
 \bibliographystyle{IEEEtran}
-\bibliography{refs}
+\bibliography{../../papers/drafts/refs}
 
 \end{document}
