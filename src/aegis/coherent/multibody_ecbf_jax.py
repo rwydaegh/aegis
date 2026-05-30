@@ -260,9 +260,12 @@ def solve_multibody_ecbf_jax(
     W = np.asarray(W_dev)
     # Always evaluate against the FULL-rank Q for honest residual reporting
     # and primal-projection scale, mirroring the NumPy multibody_ecbf path.
+    # Project exactly to L (no extra cushion): p_abs_full is the exact
+    # absorbed power under the full operator, so the exact projection alone
+    # guarantees feasibility. A deliberate regulatory margin, if wanted,
+    # belongs at the call site as L_target < L, not as a hidden constant.
     p_abs_full = _per_body_abs(W, Q_arr)
-    SAFETY = 0.97
-    margin = (SAFETY * L_arr) / np.maximum(p_abs_full, 1e-30)
+    margin = L_arr / np.maximum(p_abs_full, 1e-30)
     scale = float(np.sqrt(max(0.0, min(1.0, margin.min()))))
     method = "multibody-ecbf"
     converged_final = converged

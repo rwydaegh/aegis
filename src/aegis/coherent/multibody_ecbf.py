@@ -363,14 +363,16 @@ def solve_multibody_ecbf(
         D_arr=D_arr,
     )
     # ALWAYS evaluate against full-rank Q at the final step and project
-    # primally to guarantee feasibility under the FULL operator. The dual
-    # ascent may have used a low-rank approximation that hides ~1-5% of the
-    # true absorption tail. Always-on primal projection is cheap (one matrix
-    # product + one scalar) and turns the dual approximation error into a
-    # bounded sum-rate cost rather than a sneaky violation.
+    # primally to the exact limit. The dual ascent may have used a low-rank
+    # approximation that hides ~1-5% of the true absorption tail, but this
+    # evaluation uses the FULL operator, so p_abs_full is the exact absorbed
+    # power. Project exactly to L (no extra cushion): the exact projection
+    # alone guarantees feasibility, turning the dual approximation error into
+    # a bounded sum-rate cost rather than a sneaky violation. A deliberate
+    # regulatory margin, if wanted, belongs at the call site as L_target < L,
+    # not as a hidden constant here.
     p_abs_full = _per_body_abs(W, Q_arr)
-    SAFETY = 0.97
-    margin = (SAFETY * L_arr) / np.maximum(p_abs_full, 1e-30)
+    margin = L_arr / np.maximum(p_abs_full, 1e-30)
     scale = float(np.sqrt(max(0.0, min(1.0, margin.min()))))
     method = "multibody-ecbf"
     converged_final = converged

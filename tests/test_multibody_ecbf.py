@@ -11,6 +11,8 @@ Covers the four sanity tests requested by the JSAC brief:
 
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
@@ -242,14 +244,27 @@ class TestSmokeMultibody:
         assert diag.method == "multibody-ecbf"
         assert diag.residual < 1e-6
 
-    def test_total_power(self):
+    def test_infeasible_regime_backs_off_to_stay_feasible(self):
+        # Budgets L are feasible at P=1.0; asking for P=2.5 cannot keep every
+        # body under L. The solver must NOT return an over-limit precoder. It
+        # projects primally to the exact limit, so the result is feasible and
+        # transmits less than the full budget. This is normal operation for an
+        # exposure-constrained beamformer (signalled via diag.method), not an
+        # error, so no warning is emitted.
         H, Q_list, L = self._build(seed=2024)
-        # Frobenius normalisation is enforced even when the budget is
-        # infeasible at the higher P (the min-absorption fallback also
-        # returns ||W||_F^2 = P), so the warning is expected.
-        with pytest.warns(UserWarning, match="Multi-body ECBF: residual"):
-            W = np.asarray(solve_multibody_ecbf(H, Q_list, L, P=2.5))
-        assert_allclose(_frob_sq(W), 2.5, rtol=1e-8, atol=1e-10)
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            W, diag = solve_multibody_ecbf(H, Q_list, L, P=2.5, return_diagnostics=True)
+        W = np.asarray(W)
+        # Power backed off below the budget to honour the absorption limit.
+        assert _frob_sq(W) <= 2.5 * (1.0 + 1e-9)
+        assert _frob_sq(W) < 2.5
+        # Every body stays under its limit (the invariant that actually matters).
+        p_abs = _per_body_abs(W, Q_list)
+        for u, (p, lim) in enumerate(zip(p_abs, L, strict=True)):
+            assert p <= lim * (1.0 + 1e-6), f"body {u}: p_abs={p} > L={lim}"
+        assert diag.method == "multibody-ecbf-projected"
+        assert diag.residual < 1e-6
 
     def test_beats_mrt_backoff(self):
         """Compare achievable sum-rate vs. MRT scaled to satisfy budgets.
