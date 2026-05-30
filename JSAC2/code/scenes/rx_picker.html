@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Munich RX picker</title>
+<style>
+  html, body { margin:0; padding:0; height:100%; background:#101418; color:#e8e8e8;
+               font-family: ui-sans-serif, system-ui, sans-serif; overflow:hidden; }
+  #app { position:fixed; inset:0; }
+  canvas { display:block; }
+  #ui {
+    position:absolute; top:10px; left:10px; right:10px;
+    display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+    background:rgba(20,24,28,0.85); padding:8px 12px; border-radius:6px;
+    backdrop-filter: blur(4px);
+  }
+  #ui button {
+    background:#293340; color:#fff; border:1px solid #3b4a5c; border-radius:4px;
+    padding:6px 10px; cursor:pointer; font-size:13px;
+  }
+  #ui button.active { background:#2e7d32; border-color:#3da33d; }
+  #ui button.nlos.active { background:#b32d2d; border-color:#cc4040; }
+  #ui button.del.active  { background:#5b3f00; border-color:#a07000; }
+  #ui .counter { font-size:13px; padding:4px 6px; }
+  #ui .sep { width:1px; height:22px; background:#3b4a5c; margin:0 4px; }
+  #help { color:#8aa5c2; font-size:12px; margin-left:auto; }
+  #side {
+    position:absolute; top:60px; right:10px; width:240px; max-height:80vh;
+    overflow-y:auto; background:rgba(20,24,28,0.9); padding:8px 10px;
+    border-radius:6px; font-size:12px;
+  }
+  #side h3 { margin:6px 0 4px 0; font-size:13px; color:#9bd6a8; }
+  #side h3.nlos { color:#f0a3a3; }
+  #side .row { display:flex; justify-content:space-between; padding:2px 4px;
+               border-bottom:1px solid #2b3540; cursor:pointer; }
+  #side .row:hover { background:rgba(255,255,255,0.06); }
+  #side .row .coords { color:#cfd8e3; }
+  #side .row .del { color:#e07070; font-weight:bold; }
+  #cursor-hud {
+    position:absolute; pointer-events:none;
+    background:rgba(20,24,28,0.92); color:#e8e8e8;
+    font-family:ui-monospace,monospace; font-size:11px;
+    padding:3px 6px; border-radius:3px; border:1px solid #3b4a5c;
+    transform:translate(12px, -28px); z-index:50;
+    visibility:hidden;
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<div id="ui">
+  <button id="mode-los"   class="active">Pick LOS</button>
+  <button id="mode-nlos"  class="nlos">Pick NLOS</button>
+  <button id="mode-del"   class="del">Delete</button>
+  <div class="sep"></div>
+  <span class="counter" id="cnt-los">LOS: 0</span>
+  <span class="counter" id="cnt-nlos">NLOS: 0</span>
+  <div class="sep"></div>
+  <button id="snap-grid">Snap-to-grid: 1 m</button>
+  <div class="sep"></div>
+  <button id="view-top">Top</button>
+  <button id="view-iso">Iso</button>
+  <button id="view-bs">From BS</button>
+  <div class="sep"></div>
+  <button id="export">Export JSON</button>
+  <button id="copy">Copy JSON</button>
+  <button id="load">Load existing</button>
+  <span id="help">Click ground to drop. Drag = orbit. Scroll = zoom. Right-drag = pan.</span>
+</div>
+
+<div id="side"></div>
+<div id="cursor-hud"></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+
+// --- world / scene ----------------------------------------------------------
+const BS_POS  = [8.5, 21.7, 35.0];
+const BS_TGT  = [33.0, 91.0, 1.5];   // panel boresight target (LOS plaza centroid, matches munich_trace.py)
+const PHONE_Z = 1.5;
+const SCENE_Z_AXIS_IS_UP = true;     // sionna munich uses z-up
+
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.getElementById("app").appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0e1217);
+scene.fog = new THREE.Fog(0x0e1217, 200, 800);
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.5, 2000);
+camera.up.set(0, 0, 1);
+camera.position.set(8.5, -120, 220);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 30, 0);
+controls.update();
+
+// quick camera presets
+function setView(name) {
+  if (name === "top") {
+    camera.position.set(0, 30, 240);
+    controls.target.set(0, 30, 0);
+  } else if (name === "bs") {
+    camera.position.set(BS_POS[0]+15, BS_POS[1]+15, BS_POS[2]+25);
+    controls.target.set(BS_POS[0]-10, BS_POS[1]+10, 0);
+  } else if (name === "iso") {
+    camera.position.set(60, -100, 180);
+    controls.target.set(0, 30, 0);
+  }
+  controls.update();
+}
+
+// lights
+scene.add(new THREE.HemisphereLight(0xb0c4d6, 0x404040, 0.7));
+const sun = new THREE.DirectionalLight(0xffffff, 0.8);
+sun.position.set(50, -50, 100);
+scene.add(sun);
+
+// transparent ground plane for raycasting (large)
+const groundGeo = new THREE.PlaneGeometry(800, 800);
+const groundMat = new THREE.MeshBasicMaterial({
+  color:0x1a2230, transparent:true, opacity:0.20,
+  side:THREE.DoubleSide,
+});
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.position.set(0, 0, 0);
+scene.add(ground);
+
+// Grid for orientation. Two layers: coarse (40 m, bright) for distance
+// reference, fine (snap step, dim) for snap-cell preview. The fine grid
+// is span-capped so it stays above ~0.5 px/cell at typical zoom -- a
+// 1 m grid would blur into a sheet at city scale.
+const GRID_SPAN_COARSE = 400;
+const FINE_MAX_CELLS  = 60;       // cap so lines stay visible
+const gridCoarse = new THREE.GridHelper(GRID_SPAN_COARSE,
+                                          GRID_SPAN_COARSE/40,
+                                          0x6c8aa6, 0x32445a);
+gridCoarse.rotation.x = Math.PI/2;
+gridCoarse.position.set(0, 0, 0.01);
+scene.add(gridCoarse);
+
+let gridFine = null;
+function rebuildFineGrid(stepMeters) {
+  if (gridFine) scene.remove(gridFine);
+  const span = Math.min(GRID_SPAN_COARSE, FINE_MAX_CELLS * stepMeters);
+  const div  = Math.round(span / stepMeters);
+  gridFine = new THREE.GridHelper(span, div, 0x4a6580, 0x2a3845);
+  gridFine.rotation.x = Math.PI/2;
+  gridFine.position.set(0, 0, 0.02);
+  gridFine.material.opacity = 0.55; gridFine.material.transparent = true;
+  scene.add(gridFine);
+}
+rebuildFineGrid(1);
+
+// world axes
+function addAxis(p0, p1, color) {
+  const g = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(...p0), new THREE.Vector3(...p1)]);
+  scene.add(new THREE.Line(g, new THREE.LineBasicMaterial({color, linewidth:2})));
+}
+addAxis([0,0,0.05],[40,0,0.05],0xff5050);    // +x red
+addAxis([0,0,0.05],[0,40,0.05],0x50ff50);    // +y green
+
+// --- BS marker + broadside arrow -------------------------------------------
+function addBS() {
+  // Panel-normal frame
+  const n = new THREE.Vector3(BS_TGT[0]-BS_POS[0], BS_TGT[1]-BS_POS[1], BS_TGT[2]-BS_POS[2]).normalize();
+  const up = Math.abs(n.z) < 0.95 ? new THREE.Vector3(0,0,1) : new THREE.Vector3(0,1,0);
+  const ex = new THREE.Vector3().crossVectors(up, n).normalize();   // in-panel horizontal
+  const ey = new THREE.Vector3().crossVectors(n, ex).normalize();   // in-panel vertical
+  const W = 3.5;          // visual panel width / height in metres (exaggerated)
+
+  // Backing plate (flat panel oriented along the panel normal).
+  // PlaneGeometry's default normal is +z, so we orient it via a basis matrix.
+  const plateGeo = new THREE.PlaneGeometry(W, W);
+  const plateMat = new THREE.MeshStandardMaterial({color:0x202830, emissive:0x080810,
+                                                    side:THREE.DoubleSide});
+  const plate = new THREE.Mesh(plateGeo, plateMat);
+  // Build the rotation that sends +z -> n, +x -> ex, +y -> ey
+  const M = new THREE.Matrix4().makeBasis(ex, ey, n);
+  plate.quaternion.setFromRotationMatrix(M);
+  plate.position.set(...BS_POS);
+  scene.add(plate);
+
+  // Yellow rim around the panel edge to make orientation obvious.
+  const rimGeo = new THREE.EdgesGeometry(plateGeo);
+  const rim = new THREE.LineSegments(rimGeo,
+                       new THREE.LineBasicMaterial({color:0xffd000, linewidth:2}));
+  rim.quaternion.copy(plate.quaternion);
+  rim.position.set(...BS_POS);
+  scene.add(rim);
+
+  // 8x8 elements on the panel face, slightly proud of it.
+  const step = W / 9;          // 9 gaps for 8 elements + edges
+  const offset = 0.04;          // 4 cm proud of the plate
+  const dot = new THREE.SphereGeometry(0.10, 10, 10);
+  const dotM = new THREE.MeshStandardMaterial({color:0x4ec3ff, emissive:0x103040,
+                                               emissiveIntensity:0.7});
+  for (let i=0;i<8;i++) for (let j=0;j<8;j++) {
+    const u = (i - 3.5) * step;
+    const v = (j - 3.5) * step;
+    const m = new THREE.Mesh(dot, dotM);
+    m.position.set(BS_POS[0] + offset*n.x + u*ex.x + v*ey.x,
+                   BS_POS[1] + offset*n.y + u*ex.y + v*ey.y,
+                   BS_POS[2] + offset*n.z + u*ex.z + v*ey.z);
+    scene.add(m);
+  }
+
+  // Broadside arrow from the panel face toward the served plaza.
+  const dir = new THREE.Vector3(BS_TGT[0]-BS_POS[0], BS_TGT[1]-BS_POS[1], BS_TGT[2]-BS_POS[2]);
+  const len = dir.length();
+  dir.normalize();
+  const arrow = new THREE.ArrowHelper(dir, new THREE.Vector3(...BS_POS),
+                                      Math.min(len, 30), 0xffd000, 4, 2);
+  scene.add(arrow);
+
+  const sprite = makeLabel("BS @ (8.5, 21.7, 35 m)", "#ffd000");
+  sprite.position.set(BS_POS[0]+2, BS_POS[1]+2, BS_POS[2]+5);
+  scene.add(sprite);
+}
+function makeLabel(text, color) {
+  const c = document.createElement("canvas"); c.width=512; c.height=64;
+  const ctx = c.getContext("2d");
+  ctx.font = "28px sans-serif"; ctx.fillStyle = color;
+  ctx.fillText(text, 8, 40);
+  const tex = new THREE.CanvasTexture(c);
+  const mat = new THREE.SpriteMaterial({map:tex, transparent:true});
+  const s = new THREE.Sprite(mat); s.scale.set(20, 2.5, 1);
+  return s;
+}
+
+// --- load scene GLB ---------------------------------------------------------
+const loader = new GLTFLoader();
+loader.load("./munich_scene.glb", (gltf) => {
+  // GLTF stores vertices as written; trimesh preserves the source frame.
+  // Sionna munich is z-up. If the GLB ends up y-up after import (some
+  // exporters add a rotation), we'd see buildings lying on their side.
+  // We don't apply any rotation here -- adjust if buildings look wrong.
+  scene.add(gltf.scene);
+  addBS();
+});
+
+// --- pick logic --------------------------------------------------------------
+let mode = "los";   // "los" | "nlos" | "del"
+let snap = 1;       // grid step in m
+const pts = [];     // [{x,y,z,los_flag, mesh, label}]
+
+function setMode(m) {
+  mode = m;
+  for (const k of ["los","nlos","del"]) {
+    document.getElementById("mode-"+k).classList.toggle("active", k===m);
+  }
+}
+document.getElementById("mode-los") .onclick = ()=> setMode("los");
+document.getElementById("mode-nlos").onclick = ()=> setMode("nlos");
+document.getElementById("mode-del") .onclick = ()=> setMode("del");
+
+document.getElementById("view-top").onclick = ()=> setView("top");
+document.getElementById("view-iso").onclick = ()=> setView("iso");
+document.getElementById("view-bs") .onclick = ()=> setView("bs");
+
+document.getElementById("snap-grid").onclick = (e) => {
+  const cycle = [0.5, 1, 2, 4, 8];
+  snap = cycle[(cycle.indexOf(snap)+1) % cycle.length];
+  e.target.textContent = `Snap-to-grid: ${snap} m`;
+  rebuildFineGrid(snap);
+};
+
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+let downX = 0, downY = 0;
+
+// Hover ghost marker: a thin ring at z=PHONE_Z showing where a click
+// would land after snap-to-grid. Updated on mousemove.
+const ghostGeo = new THREE.RingGeometry(0.55, 0.85, 24);
+const ghostMat = new THREE.MeshBasicMaterial({color:0xfff080, transparent:true,
+                                                opacity:0.85, side:THREE.DoubleSide});
+const ghost = new THREE.Mesh(ghostGeo, ghostMat);
+ghost.rotation.x = -Math.PI/2; // disc parallel to ground (xz plane in three default)
+ghost.visible = false;
+scene.add(ghost);
+const hud = document.getElementById("cursor-hud");
+
+function rayHitGround(eX, eY) {
+  mouse.x =  (eX/window.innerWidth) *2 - 1;
+  mouse.y = -(eY/window.innerHeight)*2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+  const hits = raycaster.intersectObjects(scene.children, true);
+  for (const h of hits) {
+    if (h.object === ghost) continue;
+    if (h.object === ground || (h.point.z >= 0 && h.point.z <= 0.5)) return h.point;
+  }
+  return null;
+}
+
+renderer.domElement.addEventListener("pointermove", (e) => {
+  const p = rayHitGround(e.clientX, e.clientY);
+  if (!p) { ghost.visible = false; hud.style.visibility = "hidden"; return; }
+  const x = Math.round(p.x / snap) * snap;
+  const y = Math.round(p.y / snap) * snap;
+  ghost.position.set(x, y, PHONE_Z);
+  // Re-orient ghost so the disc lies in the world xy plane (not xz):
+  ghost.rotation.set(0, 0, 0);
+  ghost.visible = true;
+  hud.style.left = e.clientX + "px";
+  hud.style.top  = e.clientY + "px";
+  hud.textContent = `(${x.toFixed(1)}, ${y.toFixed(1)})  snap ${snap} m`;
+  hud.style.visibility = "visible";
+});
+renderer.domElement.addEventListener("pointerleave", () => {
+  ghost.visible = false; hud.style.visibility = "hidden";
+});
+
+renderer.domElement.addEventListener("pointerdown", (e) => { downX=e.clientX; downY=e.clientY; });
+renderer.domElement.addEventListener("pointerup", (e) => {
+  if (Math.hypot(e.clientX-downX, e.clientY-downY) > 4) return; // drag, not click
+  if (e.button !== 0) return;
+  const p = rayHitGround(e.clientX, e.clientY);
+  if (p) placePoint(p);
+});
+
+function placePoint(v) {
+  const x = Math.round(v.x / snap) * snap;
+  const y = Math.round(v.y / snap) * snap;
+  if (mode === "del") {
+    // remove the closest point within 3m
+    let best = -1, bestD = 3.0;
+    for (let i=0;i<pts.length;i++) {
+      const d = Math.hypot(pts[i].x-x, pts[i].y-y);
+      if (d < bestD) { bestD = d; best = i; }
+    }
+    if (best>=0) {
+      scene.remove(pts[best].mesh);
+      scene.remove(pts[best].label);
+      pts.splice(best, 1);
+      refresh();
+    }
+    return;
+  }
+  const flag = (mode === "los") ? "LOS" : "NLOS";
+  const color = flag === "LOS" ? 0x4dd060 : 0xe04040;
+  const g = new THREE.SphereGeometry(0.8, 14, 14);
+  const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({color, emissive:color, emissiveIntensity:0.5}));
+  m.position.set(x, y, PHONE_Z);
+  scene.add(m);
+  const idx = pts.filter(p=>p.los_flag===flag).length;
+  const lbl = makeLabel(`${flag}_${String(idx).padStart(2,"0")}`, flag==="LOS" ? "#9bd6a8" : "#f0a3a3");
+  lbl.position.set(x, y, PHONE_Z+2);
+  lbl.scale.set(8, 1, 1);
+  scene.add(lbl);
+  pts.push({ x, y, z: PHONE_Z, los_flag: flag, mesh: m, label: lbl });
+  refresh();
+}
+
+function refresh() {
+  const los = pts.filter(p=>p.los_flag==="LOS");
+  const nlos = pts.filter(p=>p.los_flag==="NLOS");
+  document.getElementById("cnt-los").textContent  = `LOS: ${los.length}`;
+  document.getElementById("cnt-nlos").textContent = `NLOS: ${nlos.length}`;
+  // re-label LOS_00.. and NLOS_00..
+  let il=0, in_=0;
+  for (const p of pts) {
+    const idx = (p.los_flag==="LOS") ? il++ : in_++;
+    scene.remove(p.label);
+    p.label = makeLabel(`${p.los_flag}_${String(idx).padStart(2,"0")}`,
+                        p.los_flag==="LOS"?"#9bd6a8":"#f0a3a3");
+    p.label.position.set(p.x, p.y, PHONE_Z+2);
+    p.label.scale.set(8,1,1);
+    scene.add(p.label);
+  }
+  // side panel
+  const side = document.getElementById("side");
+  side.innerHTML = "";
+  const mkSection = (title, list, klass) => {
+    const h = document.createElement("h3");
+    h.textContent = `${title} (${list.length})`;
+    if (klass) h.className = klass;
+    side.appendChild(h);
+    list.forEach((p, i) => {
+      const row = document.createElement("div"); row.className="row";
+      row.innerHTML = `<span>${title.slice(0,1)}_${String(i).padStart(2,"0")}</span>` +
+                      `<span class="coords">${p.x.toFixed(1)}, ${p.y.toFixed(1)}</span>` +
+                      `<span class="del">x</span>`;
+      row.onclick = () => {
+        const k = pts.indexOf(p);
+        if (k>=0) {
+          scene.remove(p.mesh); scene.remove(p.label);
+          pts.splice(k,1); refresh();
+        }
+      };
+      side.appendChild(row);
+    });
+  };
+  mkSection("LOS",  los,  null);
+  mkSection("NLOS", nlos, "nlos");
+}
+
+function exportJSON() {
+  let il=0, in_=0;
+  const rxs = pts.map(p => {
+    const idx = p.los_flag==="LOS" ? il++ : in_++;
+    return { x: p.x, y: p.y, z: PHONE_Z,
+             label: `${p.los_flag}_${String(idx).padStart(2,"0")}`,
+             los_flag: p.los_flag };
+  });
+  return JSON.stringify({
+    bs_pos_xyz_m: BS_POS,
+    phone_z_m: PHONE_Z,
+    rx: rxs,
+  }, null, 2);
+}
+
+document.getElementById("export").onclick = () => {
+  const blob = new Blob([exportJSON()], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = "munich_rx.json"; a.click();
+};
+document.getElementById("copy").onclick = async () => {
+  await navigator.clipboard.writeText(exportJSON());
+  document.getElementById("copy").textContent = "Copied!";
+  setTimeout(()=> document.getElementById("copy").textContent = "Copy JSON", 1200);
+};
+
+document.getElementById("load").onclick = async () => {
+  try {
+    const r = await fetch("./munich_rx.json");
+    const j = await r.json();
+    for (const p of pts) { scene.remove(p.mesh); scene.remove(p.label); }
+    pts.length = 0;
+    for (const r of j.rx) {
+      setMode(r.los_flag.toLowerCase());
+      placePoint(new THREE.Vector3(r.x, r.y, 0));
+    }
+    setMode("los");
+  } catch (e) { console.error("load failed", e); alert("load failed: " + e.message); }
+};
+
+// --- render loop ------------------------------------------------------------
+function tick() {
+  requestAnimationFrame(tick);
+  controls.update();
+  renderer.render(scene, camera);
+}
+tick();
+window.addEventListener("resize", () => {
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>

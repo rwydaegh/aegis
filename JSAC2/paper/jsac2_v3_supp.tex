@@ -1,0 +1,724 @@
+% Supplementary information for jsac2_v1 (Reflective Intelligent
+% Human Bodies). Contents extend the main paper at SI level only --
+% no claims live here that aren't summarised in the main text.
+
+\documentclass[10pt,journal,twocolumn]{IEEEtran}
+
+\usepackage{amsmath,amssymb,amsthm,bm}
+\usepackage{graphicx}
+\usepackage{cite}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{hyperref}
+\usepackage[capitalise]{cleveref}
+
+\graphicspath{{figures/}{../code/outputs/}}
+
+% Math macros (mirror jsac2_v1.tex).
+\newcommand{\rr}{\bm{r}}
+\newcommand{\hh}{\bm{h}}
+\newcommand{\xx}{\mathbf{x}}
+\newcommand{\nhat}{\hat{\bm{n}}}
+\newcommand{\khat}{\hat{\bm{k}}}
+\newcommand{\etahat}{\hat{\bm{\eta}}}
+\newcommand{\Sinc}{S_{\mathrm{inc}}}
+\newcommand{\Sab}{S_{\mathrm{ab}}}
+\newcommand{\Aab}{A_{\mathrm{ab}}}
+\newcommand{\Qabs}{\mathbf{Q}_{\mathrm{ab}}}
+\newcommand{\Jmat}{\mathbf{J}}
+\newcommand{\Phimat}{\mathbf{\Phi}}
+\newcommand{\Fn}{\mathbf{F}_n}
+\newcommand{\psin}{\bm{\psi}_n}
+\newcommand{\thetab}{\bm{\theta}}
+\newcommand{\gammab}{\bm{\gamma}}
+\newcommand{\hBS}{\bm{h}_{\mathrm{BS}}}
+\newcommand{\hbody}{\bm{h}_{\mathrm{b}}}
+\newcommand{\Tepskin}{T_{0}}
+\newcommand{\diff}{\mathrm{d}}
+\newcommand{\Complex}{\mathbb{C}}
+\newcommand{\Reals}{\mathbb{R}}
+\newcommand{\ntilde}{\tilde{n}}
+\DeclareMathOperator{\RE}{Re}
+\DeclareMathOperator{\IM}{Im}
+
+% TAP-style numbering: S1, S2, ... for sections, figures, tables, equations.
+\renewcommand{\thesection}{S\arabic{section}}
+\renewcommand{\thefigure}{S\arabic{figure}}
+\renewcommand{\thetable}{S\arabic{table}}
+\renewcommand{\theequation}{S\arabic{equation}}
+
+\theoremstyle{plain}
+\newtheorem{proposition}{Proposition}[section]
+\theoremstyle{definition}
+\newtheorem{definition}[proposition]{Definition}
+
+\title{Supplementary information:\\
+Reflective Intelligent Human Bodies}
+\author{Robin~Wydaeghe%
+  \thanks{R. Wydaeghe is with Ghent University and imec, Ghent, Belgium
+  (e-mail: robin.wydaeghe@ugent.be).}}
+
+\begin{document}
+
+\maketitle
+
+% =====================================================================
+\section{Approximations 1 and 2: error budgets and proofs}\label{si:approx-proofs}
+% =====================================================================
+
+Approximations~1 and~2 of the main paper reduce the coherent absorption
+double sum to a single squared norm. Both rest on the same mechanism.
+The high refractive index of skin compresses all in-tissue refraction
+angles to within $\sim\!10^{\circ}$ of normal. This suppresses the
+normal component of the refracted TM field and the angular variation
+of the per-path attenuation and phase rates. The proofs follow,
+with notation aligned to the main paper.
+
+\subsection{Proof of Approximation~1 (TM polarisation direction)}
+
+\begin{proposition}[Approximation~1]\label{prop:S-approx1}
+Let $\hat{\bm{t}}_n$ be the unit tangent in the incidence plane, so
+$\hat{\bm{k}}_n = \sin\theta_n\,\hat{\bm{t}}_n - \cos\theta_n\,\nhat$.
+The exact in-tissue TM direction is $\hat{e}'_{p,n} =
+\cos\theta_{t,n}\,\hat{\bm{t}}_n + \sin\theta_{t,n}\,\nhat$ with
+$\sin\theta_{t,n} = \sin\theta_n / \ntilde$ from Snell's law in
+complex form. Replacing $\hat{e}'_{p,n}$ by the incident-side
+$\hat{e}_{p,n} = \cos\theta_n\,\hat{\bm{t}}_n + \sin\theta_n\,\nhat$
+in the per-path Fresnel operator $\Fn$ leaves self-terms unchanged
+and incurs a non-conservative TM--TM cross-term error of
+$O(1/|\ntilde|^2)$.
+\end{proposition}
+
+\begin{proof}
+Self-terms are exact because $\|\hat{e}_{p,n}\|^2 =
+\|\hat{e}'_{p,n}\|^2 = 1$. The TM--TM cross-term contains the inner
+product
+\begin{equation}\label{eq:eppdot}
+  \hat{e}'_{p,n} \cdot \hat{e}'_{p,n'}
+  = \cos\theta_{t,n}\cos\theta_{t,n'}
+  + \sin\theta_{t,n}\sin\theta_{t,n'}.
+\end{equation}
+Snell's law gives $\sin\theta_{t,n} = \sin\theta_n / \ntilde =
+O(1/|\ntilde|)$ across all incidence angles
+$\theta_n \in [0^{\circ}, 90^{\circ}]$. The tangential product
+$\cos\theta_{t,n}\cos\theta_{t,n'}$ is therefore the dominant
+contribution and the normal-normal product is $O(1/|\ntilde|^2)$.
+The same expansion applied to the approximated inner product
+$\hat{e}_{p,n} \cdot \hat{e}_{p,n'} = \cos\theta_n\cos\theta_{n'}
++ \sin\theta_n\sin\theta_{n'}$ recovers the same dominant term and
+substitutes $\sin\theta_n\sin\theta_{n'}$ (which is $O(1)$) for
+$\sin\theta_{t,n}\sin\theta_{t,n'}$ (which is $O(1/|\ntilde|^2)$).
+The substitution error on the cross-term is therefore
+$O(1/|\ntilde|^2)$.
+
+The physical content is that the in-tissue normal field
+$E_\perp \propto \sin\theta_t = O(1/|\ntilde|)$, so its contribution
+to $\|\bm{E}^{\mathrm{trans}}\|^2$ is $O(1/|\ntilde|^2)$. For skin
+at 28~GHz with $|\ntilde| \approx 4.83$, the bound is
+$\lesssim 4\%$. The error shrinks at higher frequencies and on
+tissues with larger $|\ntilde|$. Per-tissue values appear in
+Table~III of the main paper.
+\end{proof}
+
+\subsection{Proof of Approximation~2 (universal depth coupling)}
+
+\begin{proposition}[Approximation~2]\label{prop:S-approx2}
+With $\xi_n = \sqrt{\ntilde^2 - 1 + \mu_n^2}$ and the depth
+attenuation/phase rates $\alpha_n - j\beta_n = -j k_0 \xi_n$, the
+depth coupling
+$\Lambda_{nn'} = 1 / [\alpha_n + \alpha_{n'} - j(\beta_{n'} - \beta_n)]$
+satisfies
+\begin{equation}\label{eq:Gamma-norm}
+  \Gamma_{nn'}
+    \equiv \frac{\Lambda_{nn'}}{\sqrt{\Lambda_{nn}\Lambda_{n'n'}}}
+    = \frac{2\sqrt{\alpha_n \alpha_{n'}}}
+           {\alpha_n + \alpha_{n'} - j(\beta_{n'} - \beta_n)},
+\end{equation}
+with $\Gamma_{nn} = 1$ by construction. For skin at 28~GHz over all
+incidence-angle pairs $(\theta_n, \theta_{n'}) \in
+[0^{\circ}, 85^{\circ}]^2$, the substitution $\Gamma_{nn'} \approx 1$
+incurs a non-conservative error $|1 - \Gamma_{nn'}| \leq 0.44\%$
+with mean $0.17\%$.
+\end{proposition}
+
+\begin{proof}
+Snell's law in complex form, $\sin\theta_{t,n} = \sin\theta_n/\ntilde$
+with $|\ntilde| \approx 4.83$, gives
+$|\sin\theta_{t,n}| \leq 1/|\ntilde| \approx 0.21$ across all
+incident angles, so $|\theta_{t,n}| \leq \arcsin(0.21) \approx
+12^{\circ}$. The tissue refractive index $\ntilde$ therefore
+compresses all refracted rays into a $\sim\!10^{\circ}$ cone around
+normal. Because $\xi_n = \ntilde \cos\theta_{t,n}$, the variation
+of $\xi_n$ across the full incident range is bounded by
+$|\xi_n - \ntilde| \leq |\ntilde|(1 - \cos 12^{\circ}) \approx
+0.022\,|\ntilde|$. Both $\alpha_n = -k_0 \IM(\xi_n)$ and
+$\beta_n = k_0 \RE(\xi_n)$ inherit the same $\sim\!2\%$ relative
+spread. The differences $\alpha_n - \alpha_{n'}$ and
+$\beta_n - \beta_{n'}$ are therefore second-order in this spread.
+Substituting into~\eqref{eq:Gamma-norm} and expanding to first
+order in $(\alpha_n - \alpha_{n'})/\bar\alpha$ and
+$(\beta_n - \beta_{n'})/\bar\alpha$, with
+$\bar\alpha = \tfrac{1}{2}(\alpha_n + \alpha_{n'})$, gives
+\begin{equation}
+  |1 - \Gamma_{nn'}|
+    \leq \frac{1}{2}
+    \left(\frac{\alpha_n - \alpha_{n'}}{\bar\alpha}\right)^2
+    + \frac{1}{4}
+    \left(\frac{\beta_n - \beta_{n'}}{\bar\alpha}\right)^2
+    + O(\delta^3),
+\end{equation}
+with $\delta \sim 0.02$. A numerical sweep across
+$(\theta_n, \theta_{n'}) \in [0^{\circ}, 85^{\circ}]^2$ for skin at
+28~GHz gives $|1 - \Gamma_{nn'}| \leq 0.44\%$ with mean $0.17\%$.
+The bound is non-conservative: it can over- or under-estimate
+cross-term magnitudes. It is an order of magnitude smaller than the
+calibration headroom absorbed by the body-side $\gammab$ regression
+of Section~VI of the main paper.
+\end{proof}
+
+% =====================================================================
+\section{Per-path Fresnel transmission operator $\mathbf{F}_n$}\label{si:Fn}
+% =====================================================================
+
+The main paper invokes $\Fn$ as rank-2 and polarisation-aware
+without writing the matrix. The full derivation from Maxwell's
+equations (Snell's law via phase matching, TE and TM boundary
+conditions on a lossy half-space) is standard~\cite{BornWolf}.
+
+At the surface point $\rr$ on triangle $t$, path $n$ has incidence
+cosine $\mu_n = \nhat_t \cdot (-\khat_n)$. For $\mu_n > 0$ the local
+TE and TM unit vectors are
+\begin{equation}\label{eq:S-TE-TM-basis}
+  \hat{e}_{s,n} = \frac{\khat_n \times \nhat_t}
+                       {\|\khat_n \times \nhat_t\|},
+  \qquad
+  \hat{e}_{p,n} = \hat{e}_{s,n} \times \khat_n.
+\end{equation}
+Continuity of the tangential $\bm{E}$ and $\bm{H}$ fields at $z=0$
+gives the Fresnel TE and TM amplitude transmission coefficients
+\begin{equation}\label{eq:S-fresnel-t}
+  t_{s,n} = \frac{2 \mu_n}{\mu_n + \xi_n},
+  \qquad
+  t_{p,n} = \frac{2\,\ntilde\,\mu_n}{\ntilde^2\,\mu_n + \xi_n},
+\end{equation}
+with $\xi_n = \sqrt{\ntilde^2 - 1 + \mu_n^2}$ and $\RE(\xi_n) > 0$.
+
+\begin{definition}[Fresnel transmission operator]\label{def:S-Fn}
+The dimensionless rank-2 operator
+\begin{equation}\label{eq:S-Fn-def}
+  \Fn(\rr) =
+  \bigl(t_{s,n}\,\hat{e}_{s,n}\hat{e}_{s,n}^{\!\top}
+      + t_{p,n}\,\hat{e}_{p,n}\hat{e}_{p,n}^{\!\top}\bigr)\,H(\mu_n)
+\end{equation}
+acts on the incident polarisation amplitude vector
+$\psin = \psi_{s,n}\hat{e}_{s,n} + \psi_{p,n}\hat{e}_{p,n}$ by
+projecting onto the local TE and TM directions and scaling each
+component by its Fresnel coefficient. The Heaviside factor
+$H(\mu_n)$ vanishes on back-facing paths.
+\end{definition}
+
+The operator is rank-2 because the incident-side polarisation basis
+$(\hat{e}_{s,n}, \hat{e}_{p,n})$ spans the 2-D transverse plane to
+$\khat_n$. In that basis $\Fn$ is diagonal,
+\begin{equation}\label{eq:S-Fn-diag}
+  \Fn = \mathrm{diag}(t_{s,n}, t_{p,n}) \cdot H(\mu_n),
+\end{equation}
+and the diagonal form follows from Approximation~1
+(\cref{prop:S-approx1}). Replacing the refracted TM direction by the
+incident TM direction makes the TE and TM channels orthogonal in the
+$(\hat{e}_{s,n}, \hat{e}_{p,n})$ basis. The transmitted surface
+field is
+\begin{equation}\label{eq:S-Etrans}
+  \bm{E}_n^{\mathrm{trans}}(\rr, 0)
+    = \Fn(\rr)\,\psin\,x_{j(n)}\,e^{-jk_0\khat_n\cdot\rr},
+\end{equation}
+the per-triangle integrand of the Kirchhoff render in Section~IV of
+the main paper and of the exposure operator
+$\Qabs(\thetab) = \Jmat^{H}\mathbf{M}(\thetab)\Jmat$.
+
+% =====================================================================
+\section{Scene and signal-budget conventions}\label{si:scene}
+% =====================================================================
+
+This section lists the scene parameters that the main paper uses
+without re-deriving them.
+
+\textbf{Coordinates.} The world frame is right-handed and Z-up. The
+user stands at $\bm{r}_u = (30, 0, 1.2)\,$m. The base station sits in
+one of three regimes: far-BS at $\bm{r}_\mathrm{BS} = (0, 0, 8)\,$m
+(30~m horizontal, 8~m mast), mid-BS at $(20, 0, 5)\,$m, and close-BS
+at $(25, 0, 3)\,$m. The phone is held at chest height, $40\,$cm in
+front of the body centroid, at world position
+$\bm{r}_p = \bm{r}_u + (-0.40, 0, 0.05)\,$m, so its broadside faces
+the BS in all three regimes.
+
+\textbf{Body orientation.} The SMPL-X canonical mesh (Y-up, body
+facing $+z$) is mapped to the world frame by
+$\mathbf{R}_z(-90^{\circ}) \mathbf{R}_x(-90^{\circ})$. The body's
+vertical axis then lies along world $+z$, the facing direction along
+world $-x$ (toward the BS), the left arm along world $-y$, and the
+right arm along world $+y$.
+
+\textbf{Link budget.} The BS transmits at $P_\mathrm{tx} = 43\,$dBm.
+The noise floor is $-94\,$dBm ($100\,$MHz bandwidth, $5\,$dB noise
+figure). The carrier is $f_c = 28\,$GHz with $100\,$MHz bandwidth,
+and the BS $8 \times 8$ URA uses $\lambda/2$ spacing. The main paper's
+numerical study (Section~VIII of the main text) runs on the canonical
+Sionna RT Munich scene with $16$ traced Rx positions. This SI also
+documents a \emph{parametric scalar-loss companion} that the main
+paper uses for the comfort-vs.\ rate Pareto and the baseline
+comparison: a free-space LOS link with three scalar-loss bands that
+enumerate the rest of the propagation budget, namely $35\,$dB
+(LOS-attenuated, body is a small perturbation), $55\,$dB
+(body-comparable, body-mediated and LOS contributions of equal
+magnitude), and $80\,$dB (body-dominant, body channel dominates
+direct LOS). The companion is a controlled abstraction. It strips
+out the per-scene RT variance and isolates how rate, comfort budget,
+and baseline-precoder choice trade off against a single
+propagation-budget parameter. Rates are reported as plain Shannon
+$R = \log_2(1 + \mathrm{SINR})$ in bps/Hz throughout.
+
+% =====================================================================
+\section{VPoser latent-space details}\label{si:vposer}
+% =====================================================================
+
+The variational pose prior of \cite{Pavlakos2019VPoser} parametrises
+a learned manifold of plausible body poses. The decoder
+$\bm{G}: \Reals^{32} \to \Reals^{63}$ is a 3-layer MLP
+($512 \to 512 \to 126$, leaky-ReLU) with a 6-D continuous-rotation
+output, decoded to per-joint axis-angle for the 21 SMPL-X body joints
+(global orientation and hands excluded). The encoder $\bm{G}^{-1}$
+is a parallel 3-layer MLP that returns the mean and log-variance of
+an approximate Gaussian posterior. We take the mean for deterministic
+AMASS-frame inversion.
+
+\textbf{Pretrained weights.} We load the official V02\_05 checkpoint
+(epoch 13), trained on the AMASS corpus~\cite{AMASS2019} with batch
+size 128 on the CMU + BMLrub split.
+
+\textbf{Comfort radius.} The latent ball
+$\|\bm{z} - \bm{z}_0\| \leq \rho_z$ with $\rho_z = 1.5$ corresponds,
+under $p(\bm{z}) = \mathcal{N}(\bm{0}, \bm{I})$, to a prior
+log-probability above $\log p(\bm{z}_0) - 1.125$. Empirically, this
+threshold rules out the implausible-pose tail while allowing torso
+yaws of $\pm 30^{\circ}$ and shoulder rolls of $\pm 25^{\circ}$ on
+the seated and standing baselines we evaluate.
+
+\textbf{Encoder round-trip.} An AMASS walk frame projected to its
+posterior mean and decoded back has a per-joint reconstruction
+error of $\sim\!11^{\circ}$ on average. This matches the
+information-bottleneck loss the VAE was trained against, and the
+body-side $\gammab$ calibration of the main paper's Section~V
+absorbs it entirely.
+
+% =====================================================================
+\section{Calibration recovery}\label{si:calibration}
+% =====================================================================
+
+\textbf{Tier-D scalar pre-conditioning.} Before the body-side
+$K$-mode SVD fit, we fit a single complex scalar $\beta_0$ on the
+LOS coefficient and a single real scalar on $\hbody$ to absorb gain
+miscalibration. The Tier-B SVD fit then operates on the resulting
+Tier-D residual $\bm{r}^{(D)}$.
+
+\textbf{Tier-B operator-SVD basis.} The $K = K_{99}$ leading right
+singular vectors of $\Lambda_\mathrm{KH}$ form the basis $\bm{V}_K$.
+The empirical operator-spectrum sweep of~\cref{si:svd} gives
+$K_{99} \in \{1, 2, 4\}$ across the three BS regimes, and the leading
+mode absorbs $\geq 93\%$ of the body-channel energy at far-BS.
+
+\textbf{Recovery vs.\ SNR sweep on the plaza geometry.}
+\Cref{fig:resid-snr} reports the post-calibration residual
+$\rho = \|\hat{\bm{\beta}} - \bm{\gamma}\| / \|\bm{\gamma}\|$ as a
+function of UL pilot SNR for path-set sizes
+$N \in \{20, 40, 60\}$ on the plaza geometry of the predecessor
+manuscript, under both plain LS and ridge LS ($\lambda = 10^{-2}$).
+The no-calibration baseline sits at $-4.7\,$dB. Trusting the
+in-silico amplitudes leaves a $58\%$ relative error on the per-path
+complex amplitudes. Plain LS at $N = 20$ beats the no-cal baseline
+above $15\,$dB UL SNR and reaches $-21\,$dB at $30\,$dB UL SNR. At
+$N = 60$, the column count approaches the array size ($M = 64$),
+and the steering matrix develops small singular values that amplify
+pilot noise. Ridge LS then recovers $\sim\!25\,$dB of headroom and
+beats the no-cal baseline above $25\,$dB UL SNR. A deployment should
+therefore pick $N < M_\mathrm{ant} / 2$, regularise, or merge
+correlated paths into clusters.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{residual_vs_snr.pdf}
+\caption{Post-calibration residual $\rho$ vs.\ UL pilot SNR on the
+plaza geometry of the predecessor manuscript, $200$ Monte Carlo
+trials per $(\mathrm{SNR}, N)$ cell. Solid: plain LS. Dashed: ridge
+LS, $\lambda = 10^{-2}$. Dotted horizontal: no-calibration baseline
+at $-4.7\,$dB. The plain-LS failure at $N = 60$ comes from
+column-correlated steering matrices, and ridge regularisation
+recovers $\sim\!25\,$dB.}
+\label{fig:resid-snr}
+\end{figure}
+
+\textbf{Recovery vs.\ scene loss.} The post-calibration residual
+$\rho$ above is invariant under the scene-loss sweep: the Tier-B
+fit recovers the body channel equally well across the parametric
+scalar-loss bands of~\S\ref{si:scene}. This matches the
+operator-spectrum analysis of~\S\ref{si:svd}: the $K_{99}$-mode SVD
+basis tracks the dominant channel modes regardless of their per-path
+scaling.
+
+% =====================================================================
+\section{IMU sensitivity overlay}\label{si:imu}
+% =====================================================================
+
+We measure the closed-loop rate loss when the on-device twin
+receives a noisy IMU pose estimate. The IMU model adds
+i.i.d.\ zero-mean Gaussian noise of standard deviation
+$\sigma_\mathrm{joint}$ to each of the $21$ SMPL-X body joint
+axis-angle components. The twin renders the body and predicts the
+channel at $\thetab + \bm{\epsilon}$, and gradient ascent on the
+twin's perceived SINR drives the latent to a $\bm{z}^{\star}$ that
+optimises the perturbed channel, not the true one. The reported
+rate loss is the SINR gap between $\bm{z}^{\star}$ and the
+noiseless-IMU optimum, evaluated on the user's true channel.
+
+\Cref{fig:imu-overlay} reports the closed-loop SINR loss versus
+$\sigma_\mathrm{joint} \in \{0, 2, 4, 8, 16\}^{\circ}$ across the
+$18$ Munich scenes, with $5$ Monte-Carlo trials per cell. The
+mean rate loss stays under $0.5\,$dB across the swept range. At
+the canonical $\sigma_\mathrm{joint} = 4^{\circ}$ operating point
+(consumer-grade in-pocket IMU), the mean loss is bounded by
+$0.4\,$dB on LOS and $0.1\,$dB on NLOS. At the worst-case
+$\sigma_\mathrm{joint} = 16^{\circ}$ (poorly calibrated IMU), the
+mean loss is bounded by $0.3\,$dB on both classes. The
+$90$th-percentile single-trial loss stays under $\sim\!1.8\,$dB
+across the swept range. The closed loop is therefore robust to
+IMU drift over the consumer-grade operating range, with no
+explicit IMU compensation in the gradient.
+
+The IMU model used here is a steady-state per-tick attitude error,
+i.i.d.\ Gaussian on each joint axis-angle component. It captures
+the magnitude of the per-tick attitude noise that a consumer-grade
+strap-down filter (e.g., Madgwick~\cite{Madgwick2011}) reports at
+its operating point, but does not model temporal correlation
+(gyro-bias drift) or motion-dependent corrector lag. A follow-up
+study tracking these dynamics across a continuous walk would run
+a Madgwick or Mahony filter directly in the loop. The per-tick
+robustness reported here is a lower bound on what such a fuller
+model would report, since the steady-state error envelope
+dominates the per-tick gradient distortion.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{imu_gamma_overlay.pdf}
+\caption{IMU sensitivity sweep. Closed-loop SINR loss
+relative to a noiseless-IMU oracle, vs.\ per-joint IMU attitude
+error $\sigma_\mathrm{joint}$, mean $\pm 1\sigma$ over $5$
+Monte-Carlo trials and the $9 + 9$ LOS/NLOS Munich scenes.}
+\label{fig:imu-overlay}
+\end{figure}
+
+% =====================================================================
+\section{Peak-APD location sensitivity}\label{si:peak-apd}
+% =====================================================================
+
+The cohort-side $S_\mathrm{ab}$ reading takes two forms: the
+\emph{whole-body integrated} absorbed power $P_\mathrm{abs}
+= \int_\Sigma S_\mathrm{ab}\,\mathrm{d}A$, and the \emph{peak local}
+$S_\mathrm{ab}$ on a localised body region (the ICNIRP-style
+$4\,$cm$^2$ surface-averaged hot spot). The two differ sharply in
+their sensitivity to the IMU pose estimate.
+
+\Cref{fig:peak-apd} sweeps both quantities against per-joint
+IMU attitude noise $\sigma_\mathrm{joint}$ on the same $18$
+Munich scenes. For each scene we evaluate $S_\mathrm{ab}$ on
+every visible triangle for the operator's noiseless precoder
+(MRT against the cascaded oracle channel), once on the true
+pose and once on each of $8$ Monte-Carlo perturbations
+$\hat{\bm{\theta}} = \bm{\theta} + \bm{\epsilon}(\sigma)$.
+
+\textbf{Whole-body integrated $P_\mathrm{abs}$ is robust.}
+Reporting the perturbed-vs-true ratio
+$P_\mathrm{abs}(\hat{\bm{\theta}}) / P_\mathrm{abs}(\bm{\theta})$
+as a percentage offset (so $0\%$ is exact recovery, negative
+means the reading is biased low):
+\begin{itemize}
+  \item $\sigma = 2^{\circ}$ (research-grade body suit): mean
+    bias $-0.0\%$, $\pm 0.7\%$ standard deviation across
+    scenes and trials.
+  \item $\sigma = 4^{\circ}$ (Madgwick on a 6-IMU body
+    suit~\cite{Madgwick2011}): mean $-0.5\%$, $\pm 1.4\%$.
+  \item $\sigma = 8^{\circ}$ (mid-range): mean $-1.2\%$,
+    $\pm 2.8\%$.
+  \item $\sigma = 16^{\circ}$ (consumer-grade phone-class IMU
+    pose, MobilePoser-class accuracy): mean $-3.2\%$,
+    $\pm 4.5\%$.
+\end{itemize}
+The integration over the full body surface averages out the
+per-triangle $S_\mathrm{ab}$ redistribution caused by
+joint-level pose error: the cohort-side $P_\mathrm{abs}$
+reading tracks the true value to within ${\sim}5\%$ across
+the entire IMU operating range we consider, with a small
+($<4\%$) systematic low-bias at the worst-case noise.
+
+\textbf{Single-triangle peak $S_\mathrm{ab}$ location is fragile.}
+The peak triangle's centroid moves by a mean of $52\,$cm at
+$\sigma = 2^{\circ}$ and $58\,$cm at $\sigma = 16^{\circ}$
+(saturating), with standard deviation across scenes and trials
+above $30\,$cm. The mechanism is that several triangles carry
+near-equal $S_\mathrm{ab}$ values around the per-tick maximum, so
+small pose perturbations flip the argmax across body regions
+(forearm$\leftrightarrow$shoulder, hip$\leftrightarrow$knee). The
+effect is independent of noise magnitude and therefore not
+removable by a better IMU.
+
+\textbf{Implication for cohort framing.} The cohort-monitoring
+output supported by the present results is the whole-body
+integrated $P_\mathrm{abs}$ (and the time-integrated dose
+$\int P_\mathrm{abs}\,dt$ over the user's session), with
+anatomical-region resolution explicitly out of scope for the
+single-tick reading. Spatial averaging at the regulatory
+$4\,$cm$^2$ window may recover a stable peak. We leave that
+analysis to a follow-up.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{peak_apd_sensitivity.pdf}
+\caption{Peak-APD location and whole-body $P_\mathrm{abs}$
+sensitivity to IMU pose noise, over $18$ Munich scenes ($9$
+LOS, $9$ NLOS), $8$ Monte-Carlo trials per cell, fixed MRT
+precoder against the noiseless cascaded channel. (Left)
+Euclidean distance between peak-Sab triangle centroids on
+perturbed vs.\ true body, mean $\pm 1\sigma$. (Right) Ratio
+of whole-body integrated $P_\mathrm{abs}$ on perturbed vs.\
+true body, mean $\pm 1\sigma$.}
+\label{fig:peak-apd}
+\end{figure}
+
+% =====================================================================
+\section{Operator spectrum and $K_{99}$ adaptivity}\label{si:svd}
+% =====================================================================
+
+\Cref{fig:rank-cdf} reports the $\epsilon$-effective rank of
+$\Qabs$ across $20$ sample positions on the Thelonious phantom for
+two channel models: a plaza specular dictionary (LOS plus a ground
+bounce plus two facade reflections, $4$ paths per body) and a
+3GPP~38.901 UMa-LOS stochastic dictionary ($12$ clusters
+$\times$ $5$ subpaths $= 56$ subpaths per body), both at $26\,$GHz
+on an $8\times 8$ half-wavelength UPA.
+
+At $\epsilon = 10^{-2}$, the median rank is $4$ for the specular
+dictionary and $3$ for the stochastic dictionary, with maxima of
+$4$ and $3$ respectively. The specular case drops sharply after
+$k = 4$ to the double-precision numerical floor, which follows
+from $\mathrm{rank}(\Qabs) \leq B$ with $B = 4$ bounces. The
+stochastic case decays smoothly, limited by the
+$\sim\!14^{\circ}$ angular resolution of the panel: of the $56$
+subpaths, only $3$ to $5$ resolvable BS-side directions exceed
+$\epsilon = 10^{-2}$, and a long sub-dominant tail reaches the
+numerical floor near $k = 30$.
+
+\Cref{fig:svd-spectrum} reports the singular-value spectrum of
+$\Lambda_\mathrm{KH}$ across the three BS regimes of the JSAC2
+Munich scene. The far-BS geometry concentrates body-channel
+energy in a single mode ($K_{99} = 1$). The close-BS geometry,
+where the body subtends a wide solid angle, spreads energy across
+$K_{99} = 4$ modes. Both figures cover the same physical regime
+(rank-few BS-side excitation of the body) on different array
+conventions, so the rank-few claim transfers between them.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{rank_cdf.pdf}
+\caption{$\epsilon$-effective rank of $\Qabs$ on $20$ Thelonious body
+positions at $26\,$GHz with an $8\times 8$ half-wavelength UPA.
+Median (blue), per-body traces (grey), $10$--$90$ percentile band
+(shaded). Left: plaza specular dictionary, hard cliff at $k = 4$
+bounces. Right: 3GPP UMa-LOS stochastic dictionary, smooth decay
+limited by array angular resolution. Reproduced from the predecessor
+manuscript's rank-check experiment.}
+\label{fig:rank-cdf}
+\end{figure}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{fig2_svd_spectrum.pdf}
+\caption{Operator $\Lambda_\mathrm{KH}$ singular-value spectrum
+on the JSAC2 Munich scene, normalised per regime. Far-BS is
+rank-1. Close-BS is rank-4.}
+\label{fig:svd-spectrum}
+\end{figure}
+
+% =====================================================================
+\section{Strict visibility variant for fingertip features}\label{si:visibility}
+% =====================================================================
+
+The default Kirchhoff render of Section~IV of the main paper culls
+non-illuminated triangles by a per-path back-face test
+$\mu_n = \nhat_t \cdot (-\khat_n) > 0$. The cost is
+$O(M \cdot M_\mathrm{tri,vis})$ per pose, with $M_\mathrm{tri,vis}$
+the number of front-facing triangles. The back-face test is exact
+for convex regions and a faithful approximation for the torso, head,
+and limbs at FR2 mesh resolution. It under-counts self-shadowing on
+the body's concave features.
+
+\textbf{Strict variant.} For a triangle $t$ to be BS-visible along
+path $n$, no other body triangle may block the BS-to-$\bm{c}_t$ ray
+segment. The strict visibility flag
+$V^{(\mathrm{strict})}_{nt} \in \{0, 1\}$ is the conjunction of the
+back-face test with a ray-mesh intersection query:
+\begin{equation}\label{eq:V-strict}
+  V^{(\mathrm{strict})}_{nt} = H(\mu_n) \cdot
+    \mathbf{1}\bigl\{\text{no $t' \neq t$ blocks
+      $\bm{c}_t \to \bm{r}_\mathrm{BS}^{(n)}$}\bigr\}.
+\end{equation}
+The intersection query is run against all $M_\mathrm{tri,total} =
+20\,908$ body triangles per (path, candidate-triangle) pair, so the
+per-pose cost scales as
+$O(M \cdot M_\mathrm{tri,vis} \cdot M_\mathrm{tri,total})$.
+
+\textbf{Cost factor.} The ratio
+$M_\mathrm{tri,total} / M_\mathrm{tri,vis} \approx 5$ on the SMPL-X
+mesh ($M_\mathrm{tri,total} = 20\,908$ triangles,
+$M_\mathrm{tri,vis} \approx 4\,000$ front-facing per BS direction).
+The strict variant therefore costs ${\sim}5{\times}$ more per pose
+than the back-face default. A bounding-volume hierarchy reduces the
+per-query intersection cost to $O(\log M_\mathrm{tri,total})$ but
+does not change the asymptotic ratio.
+
+\textbf{When required.} Strict visibility matters when the
+self-shadowed feature is comparable in surface area to the
+back-face-culled estimate of its visible region. For fingertip,
+ear-edge, and inner-thigh features, adjacent body geometry casts a
+shadow that the back-face test misses. For torso, head, and
+forearm-scale features, the strict and default tests agree to within
+the per-triangle sampling resolution. The main paper's numerical
+study uses the back-face default. The strict variant is invoked
+only for the fingertip-features case.
+
+% =====================================================================
+\section{Layered Fabry--P\'{e}rot extension to sub-6\,GHz}\label{si:fp}
+% =====================================================================
+
+The pseudo-Brewster collapse $\Tepskin \approx 0.54$ at $28\,$GHz
+that licenses the single-Fresnel reduction of the main paper does
+not hold below ${\sim}10\,$GHz, where layered tissue resonances
+(skin, fat, and muscle Fabry--P\'{e}rot dips) introduce oscillations
+of $\pm 30\%$ in the per-element transmission coefficient. The
+extension recipe replaces the constant $\Tepskin$ by the
+flux-averaged transmission
+$\bar{T}(f) = 2\int_0^1 T_\mathrm{avg}(\mu, f)\,\mu\,\diff\mu$,
+computed once per frequency from a layered-tissue Fresnel sweep.
+The body-side $\gammab$ calibration absorbs any residual layered
+mismatch at no additional pilot cost.
+
+% =====================================================================
+\section{Failure-mode taxonomy}\label{si:failure-modes}
+% =====================================================================
+
+The closed loop of Section~VII of the main paper either reaches a
+comfort-bounded latent perturbation that achieves the target rate
+gain or it does not. Failures fall into four categories, and the
+iterate trace alone distinguishes them. \Cref{tab:failure-modes}
+lists each category with its diagnostic criterion on the iterates
+$\bm{z}_0, \bm{z}_1, \ldots, \bm{z}_K$, the typical underlying
+cause, and the mitigation.
+
+\begin{table*}[!t]
+\centering
+\caption{Failure-mode taxonomy for the comfort-bounded latent
+gradient ascent. ``BF'' denotes the brute-force optimum within the
+comfort ball $\|\bm{z} - \bm{z}_0\| \leq \rho_z = 1.5$, found by
+random sampling. ``Best-iterate'' refers to the iterate
+$\bm{z}_{k^\star}$ with the highest measured rate, which the closed
+loop returns rather than $\bm{z}_K$.}
+\label{tab:failure-modes}
+\footnotesize
+\begin{tabular}{@{}lp{0.30\textwidth}p{0.27\textwidth}p{0.25\textwidth}@{}}
+\toprule
+Mode & Diagnostic on iterates & Typical cause & Mitigation \\
+\midrule
+Stagnant
+  & $\|\nabla_{\bm{z}} R\| < \epsilon$ for all $k = 0, \ldots, K$
+  & Latent ball is flat at $\bm{z}_0$ (local plateau)
+  & Random restart inside comfort ball \\[2pt]
+Partial
+  & $R(\bm{z}_K) \in [R_\mathrm{BF} - 3, R_\mathrm{BF} - 1]\,$dB
+  & FD gradient direction biased by probe noise
+  & Larger FD step, more probe averages \\[2pt]
+Drift
+  & $R(\bm{z}_K) > R(\bm{z}_0)$ but $R(\bm{z}_K) < R(\bm{z}_{k^\star})$
+  & Line-search backoff failed to track best-iterate
+  & Return best-iterate $\bm{z}_{k^\star}$ \\[2pt]
+IMU-floor
+  & $R(\bm{z}_K) \approx R(\bm{z}_0)$ at high $\sigma_\mathrm{joint}$
+  & FD probe drowns in pose-induced channel-prediction error
+  & Require $\sigma_\mathrm{joint} \lesssim 4^{\circ}$ \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+The first three mitigations are independent: random restarts cure
+stagnant ascent, larger FD steps cure partial recovery, and
+best-iterate tracking cures drift. The IMU-floor mode is the
+operating envelope itself, the bound on $\sigma_\mathrm{joint}$
+that the hardware loop must respect. Section~VIII of the main
+paper labels each non-reaching trajectory by its dominant mode and
+reports the relative frequencies stratified by BS-distance regime.
+
+% =====================================================================
+\section{Compliance metrics}\label{si:compliance}
+% =====================================================================
+
+\textbf{Whole-body SAR.} The ICNIRP 2020 general-public limit is
+$0.08\,$W/kg, averaged over $10\,$g of contiguous tissue and a
+$30\,$min time window. At the canonical operating point
+($43\,$dBm BS power, $30\,$m range), the whole-body SAR is
+$\leq 1.2 \times 10^{-4}\,$W/kg, more than two orders of magnitude
+below the limit.
+
+\textbf{Peak local APD.} The ICNIRP 2020 general-public limit
+above $6\,$GHz is $4\,$W/m$^{2}$, averaged over $4\,$cm$^{2}$. The
+peak-local APD over the body surface is $0.58\%$ of the limit at
+the canonical operating point. The local averaging kernel is a
+disk of radius $\sqrt{4\,\mathrm{cm}^{2}/\pi} \approx 1.13\,$cm
+centred at each surface vertex, and the peak across the body is
+reported.
+
+\textbf{Why compliance is not the binding constraint.} At FR2
+operating points, the link budget (BS-to-body path loss) limits
+$\xx$ before any compliance constraint binds. The exposure reading
+of the main paper's Section~VIII is therefore informational: it
+reports the per-user dose that the regulatory framework specifies
+but does not measure directly.
+
+\bibliographystyle{IEEEtran}
+\begin{thebibliography}{9}
+\bibitem{BornWolf}
+M.~Born and E.~Wolf, \emph{Principles of Optics: Electromagnetic
+Theory of Propagation, Interference and Diffraction of Light},
+7th~ed. Cambridge, U.K.: Cambridge Univ.\ Press, 1999.
+
+\bibitem{Pavlakos2019VPoser}
+N.~Ghorbani, A.~Osman, J.~Romero, D.~Tzionas, and M.~J. Black,
+``VPoser: Variational human pose prior for body inverse
+kinematics,'' software release, Max Planck Inst.\ Intell.\ Syst.,
+T\"ubingen, Germany, 2019. [Online]. Available:
+\url{https://github.com/nghorbani/human_body_prior}
+
+\bibitem{AMASS2019}
+N.~Mahmood, N.~Ghorbani, N.~F. Troje, G.~Pons-Moll, and M.~J.
+Black, ``AMASS: Archive of motion capture as surface shapes,'' in
+\emph{Proc.\ IEEE/CVF Int.\ Conf.\ Comput.\ Vis.\ (ICCV)}, Seoul,
+Republic of Korea, Oct.~2019, pp.~5442--5451.
+
+\bibitem{Madgwick2011}
+S.~O.~H. Madgwick, A.~J.~L. Harrison, and R.~Vaidyanathan,
+``Estimation of IMU and MARG orientation using a gradient descent
+algorithm,'' in \emph{Proc.\ IEEE Int.\ Conf.\ Rehabil.\ Robot.\
+(ICORR)}, Zurich, Switzerland, Jun.--Jul.~2011, pp.~1--7.
+\end{thebibliography}
+
+\end{document}

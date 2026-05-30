@@ -1,0 +1,18 @@
+Yet another angle
+--mmWave has been declared dead for two reasons: blockage and worries! we solve both 
+--trees and human bodies really block it. that's basically the death of it.
+--usually you dont, but sometimes, you do a giant download on ur 5G phone, where it really shines. a pop-up / app whatever appears to ask to estimate your pose, position, orientation ... (consent is ok)
+--the pose of the body is differentiable wrt theta parameters
+--we just need the absorption cross seciton, probably more so the one that's re-reflected onto the phone (exposure is free too)?
+--ON TOP of this optimization, you also get your dose for free! 
+--there IS a connection with the BS, so it really is a closed loop
+---- User wants to initiate a big download
+---- User becomes intelligent, moves around either statically or in location
+---- BS sends it's ray-traced base scene to it, calibrated by the UL pilots
+---- User uses its own pose estimator to know how their body affects it
+---- BS and user keep talking together in a differentiable way until MSC27 is found or whatever, user is satisfied
+---- the download finishes, user is happy
+--so this IS RIHB (this is clearer than RIB)
+-- you can be cheeky: "humans bodies are reflector at mmWaves. They are also mounted with a highly intelligent organ called the brain. they are therefore RIHBs."
+--humans also worry about exposure, especially of 5G. so they must be satisfied
+--does this hinge fully on our fast method to know the body exposure and 
