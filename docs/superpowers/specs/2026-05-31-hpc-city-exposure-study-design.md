@@ -3,6 +3,17 @@
 **Date:** 2026-05-31
 **Status:** Draft
 
+> **Addendum (2026-05-31, post-implementation):** the deterministic ray-tracing
+> engine is **local Sionna RT** (Dr.Jit, runs on CPU and auto-uses a GPU when
+> present), not DiffeRT. Reason: upstream DiffeRT 0.7.0 path finding is exhaustive
+> image-method (O(N^K)), which does not scale to a city mesh; Sionna RT uses SBR
+> and scales. DiffeRT is retained as a selectable second tracer for
+> cross-validation (a two-tracer check strengthens the ground-truth claim). The
+> "no Sionna/TF" rule still holds for the **stochastic 38.901 generator** (Plan 2);
+> it never applied to the deterministic arm. Sionna RT 2.0 needs ITU radio
+> materials, handled by a `radio_materials` mode on `to_sionna_xml`. Modal GPU
+> offload is optional, not required.
+
 ## Problem
 
 AEGIS can compute the absorbed power density on a single body from a single source, interactively, through the web viewer. It cannot run a population. There is no way to walk many people through a real city, expose them to a realistic deployment, and collect exposure statistics. The CLI (`aegis-run`) is single-shot and ignores its own `channel:` and `mimo:` config sections. The only existing time-stepped multi-body code is `JSAC/code/experiments/plaza_run/`, which is hardwired to one Brussels plaza and built entirely around an ECBF power-reduction comparison that is not relevant here.

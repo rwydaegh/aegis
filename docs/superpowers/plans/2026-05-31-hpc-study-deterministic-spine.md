@@ -6,7 +6,9 @@
 
 **Architecture:** A new config-driven module under `src/aegis/study/`, no Flask. The deterministic arm only. It composes production AEGIS physics (OSM mesh, DiffeRT ray tracer, coherent Sab kernel, UPA array, MRT precoder, the coherent Q translation phasor) into a per-agent serial time loop with three independent cadence knobs (`dt`, `pose_period`, `recompute_period`). Parallelism is over agents via a scheduler job array; this plan builds the single-process kernel. The three precursor repos (`plaza_run`, `pedestrian_flow_ABM`, `hybrid-QuaDRiGa-FDTD`) are inspiration only, not imported and not copied.
 
-**Tech Stack:** Python 3.12, NumPy/SciPy, JAX (engine + coherent kernel), DiffeRT (`aegis[rt]`), SMPL-X via `smplx`/`torch` (`aegis[body]`), Google Directions API for routing, GHSL raster for population sampling, PyYAML for config, matplotlib/scienceplots for the CDF.
+**Tech Stack:** Python 3.12, NumPy/SciPy, JAX (engine + coherent kernel), Sionna RT via Dr.Jit (`aegis[sionna]`, default deterministic tracer, CPU or GPU), DiffeRT (`aegis[rt]`, selectable second tracer), SMPL-X via `smplx`/`torch` (`aegis[body]`), Google Directions API for routing, GHSL raster for population sampling, PyYAML for config, matplotlib/scienceplots for the CDF.
+
+> **Engine note (during execution):** Task 8 originally targeted DiffeRT. It was switched to **local Sionna RT** (Dr.Jit) as the default because upstream DiffeRT 0.7.0 uses exhaustive image-method path finding (O(N^K)), which will not scale to a city mesh. `channel_det` dispatches `engine="sionna"|"differt"`; DiffeRT is kept as a cross-validation tracer. Sionna RT 2.0 requires ITU radio materials, so `to_sionna_xml(..., radio_materials=True)` names BSDFs `mat-itu_*` and maps AEGIS materials to mmWave-valid ITU materials. This also resolved a `differt_core` XML-loader rejection: the in-memory `to_differt_scene()` is used for the DiffeRT path.
 
 **Design spec:** `docs/superpowers/specs/2026-05-31-hpc-city-exposure-study-design.md`. Read it before starting.
 
