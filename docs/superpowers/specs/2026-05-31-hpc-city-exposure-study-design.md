@@ -38,14 +38,15 @@ Production AEGIS pieces used directly:
 
 - `src/aegis/engine.py` `DosimetryEngine.compute` is the dosimetry core, run at a coherent level (7-8) with a fixed precoder. The coherent kernel is JAX/GPU-capable and uses factored Fresnel.
 - `src/aegis/coherent/` builds the body-surface channel `G_tilde(r)`, the per-element field channel, and the exposure operator. `src/aegis/coherent/translation.py` (`translation_phasor`, `q_translate`) is the cheap per-slot Q refresh between full re-poses, which is exactly the framerate mechanism (see temporal model).
-- `src/aegis/integration/differt.py` `paths_from_differt_scene(scene_path, tx_positions, rx_position, freq_hz, ...)` is the deterministic arm, with full TE/TM phase tracking (coherent). It loads a Sionna XML scene, so the city mesh is exported once per city via `EnvironmentMesh.to_sionna_xml(path)` and the cached path is passed in. The viewer's `compute_paths_differt` is incoherent-only and is not used.
+- `src/aegis/integration/differt.py` `paths_from_differt_scene(scene_path, tx_positions, rx_position, freq_hz, ...)` is the deterministic arm, with full TE/TM phase tracking (coherent). It loads a Sionna XML scene, so the city mesh is exported once per city via `EnvironmentMesh.to_sionna_xml(path)` and the cached path is passed in. Its returned `PropagationPaths` already carries per-element complex `psi` and `element_index` in `[0, M_ant)`, so it feeds the coherent body channel directly. Do not call `expand_paths_to_array` on top of it, that would double-apply the per-element phase. The viewer's `compute_paths_differt` is incoherent-only and is not used.
 - `src/aegis/environment/__init__.py` `EnvironmentMesh.from_osm` and `parse_osm_xml` build the city mesh and expose building footprints and heights.
 - `src/aegis/geometry/pose_stream.py` `PoseStream` and `src/aegis/geometry/parametric.py` `ParametricBody` pose the walking SMPL-X body.
 - `src/aegis/mimo/` provides the UPA array, steering vectors, and the MRT precoder that forms the beam.
 
 New physics to write (natively in AEGIS, JAX-friendly):
 
-- A coherent 38.901 cluster channel. AEGIS's existing `channel/generator.py` `generate_channel` produces cluster angles, delays, and powers but collapses to `PropagationPaths.from_powers`, discarding phase and polarization. The study needs the complex per-element channel: keep the existing cluster geometry, apply per-element steering phases from the array response, and add the 38.901 cross-polarization (XPR). This is the single largest new component, and it deliberately avoids QuaDRiGa and any TF/Sionna dependency.
+- A coherent 38.901 cluster channel, written as a new function `generate_coherent_channel(params, array, ...)` that supersedes `generate_channel` for coherent use. The existing `generate_channel` stays unchanged for the incoherent viewer path: it computes cluster angles, delays, and powers but returns `PropagationPaths.from_powers`, which collapses to one virtual element per path with arbitrary polarization and no phase. The new function reuses the cluster geometry but emits a full coherent `PropagationPaths` with per-element complex `psi` and `element_index` in `[0, M_ant)`: per-element steering phases via `mimo/array.py` `AntennaArray.steering_vector`, TE/TM polarization with 38.901 cross-polarization (XPR), assembled with the existing `expand_paths_to_array` helper. New signature, new return contract, new `array` argument. No QuaDRiGa, no TF/Sionna. This is the single largest new component.
+- The 38.901 LOS probability $P_{\mathrm{LOS}}(d)$ (for example the UMi street-canyon form). Not present in the codebase, written fresh. It weights the LOS/NLOS blend in the stochastic arm.
 
 Ideas taken (not code) from the precursor repos: the population-weighted origin-destination plus Directions routing pattern from `pedestrian_flow_ABM`, the time-stepped multi-body plus CDF-accumulation structure from `plaza_run` (minus its ECBF core), and the LOS/NLOS-aware stochastic-channel idea from `hybrid-QuaDRiGa-FDTD` (without QuaDRiGa). All re-implemented cleanly.
 
@@ -65,7 +66,7 @@ $$S_{\mathrm{ab}}(\mathbf{r}) = S_{\mathrm{inc}} \cdot T_0 \cdot [\hat{n}(\mathb
 
 ### Physics note: coherent dosimetry with a fixed beam
 
-Each site forms a beam toward its served users with a fixed MRT precoder `x`. The body absorption is computed coherently: the per-element body-surface channel `G_tilde(r)` carries phase and polarization, and the per-triangle exposure is `||G_tilde(r) x||^2`. This uses AEGIS's coherent Sab kernel, the engine's differentiator, rather than collapsing to summed path powers. What is dropped from the JSAC line is only the adaptive part: the precoder is fixed (MRT), with no exposure-constrained or power-reduced optimization. The served-versus-bystander split comes from the ABM: served users are beam targets, non-users catch the resulting sidelobes and main-lobe sweeps. Elements within a site combine coherently, distinct sites are uncorrelated and add in power.
+Each site forms a beam toward its served users with a fixed MRT precoder `x`. The precoder is built from the served user's channel `h`: in the deterministic arm `h` is the ray-traced user channel, in the geometry-blind stochastic arm `h` comes from the coherent 38.901 generator evaluated at the served user's position (not the bystander's). The body absorption is computed coherently: the per-element body-surface channel `G_tilde(r)` carries phase and polarization, and the per-triangle exposure is `||G_tilde(r) x||^2`. This uses AEGIS's coherent Sab kernel, the engine's differentiator, rather than collapsing to summed path powers. What is dropped from the JSAC line is only the adaptive part: the precoder is fixed (MRT), with no exposure-constrained or power-reduced optimization. The served-versus-bystander split comes from the ABM: served users are beam targets, non-users catch the resulting sidelobes and main-lobe sweeps. Elements within a site combine coherently, distinct sites are uncorrelated and add in power.
 
 ## Temporal model and the framerate knob
 
@@ -75,7 +76,7 @@ Three cadences are independent, tunable parameters:
 
 - `dt` (slot length). The sampling interval along each walk.
 - `pose_period` (slots between full SMPL-X re-pose). Between re-poses, the body articulation is frozen.
-- `recompute_period` (slots between full channel recompute). For the deterministic arm this is the ray-trace cadence, the dominant cost. Between recomputes, the body's bulk translation is applied analytically by the coherent Q translation phasor (`coherent/translation.py` `q_translate`): the pose-frozen per-path Gram is refreshed by `exp(-j k0 (k_hat . delta))` without re-tracing or re-posing. This is the production version of the trick `plaza_run` used for per-slot speed, and it is why coherent dosimetry does not blow up the time loop.
+- `recompute_period` (slots between full channel recompute). For the deterministic arm this is the ray-trace cadence, the dominant cost. Between recomputes, the body's bulk translation is applied analytically by the coherent Q translation phasor (`coherent/translation.py` `q_translate`): the pose-frozen per-path Gram is refreshed by `exp(-j k0 (k_hat . delta))` without re-tracing or re-posing. This is the production version of the trick `plaza_run` used for per-slot speed, and it is why coherent dosimetry does not blow up the time loop. The phasor refreshes the exposure operator Q, so it gives the per-person scalar exposure ($\mathbf{x}^H Q \mathbf{x}$) at slot cadence, which is exactly the headline metric. The full per-triangle $S_{\mathrm{ab}}$ map is recomputed only at `recompute_period` (and for the visualization tab), not every slot.
 
 This makes temporal resolution a free knob. The default is coarse and cheap. After we measure the cost on real hardware, the cadences can be dialed toward per-slot if the GPU and schedule allow. Cost discovery (wall-clock per slot for ray tracing versus the stochastic draw, and GPU memory) is an explicit early task, and the chosen defaults follow from it. The stochastic draw is cheap, so the knob matters mainly for the deterministic arm.
 
@@ -124,8 +125,7 @@ channel:
   los_blend: p_los          # P_LOS(d)-weighted LOS/NLOS, geometry-blind
   seed: 42
 dosimetry:
-  coherent: true
-  level: 7                  # coherent MIMO Sab = ||G_tilde x||^2
+  level: 7                  # coherent MIMO Sab = ||G_tilde x||^2 (>=7 implies coherent)
 temporal:
   dt_s: TBD                 # set after cost measurement
   pose_period: TBD
