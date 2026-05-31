@@ -348,3 +348,26 @@ class TestJAXConversion:
         eps = 1e-7
         fd_grad = (float(loss(a_val + eps)) - float(loss(a_val - eps))) / (2 * eps)
         np.testing.assert_allclose(float(jax_grad[0]), fd_grad, rtol=1e-3)
+
+
+@pytest.mark.slow
+def test_trace_sets_scene_frequency_to_carrier():
+    """paths_from_sionna_scene must set the carrier on the scene.
+
+    Sionna defaults a loaded scene to 3.5 GHz, and the frequency drives the
+    radio material coefficients, synthetic-array spacing, and path-loss
+    wavelength. A caller that does not set it would silently trace the wrong
+    band, so the bridge sets it from freq_hz.
+    """
+    srt = pytest.importorskip("sionna.rt")
+
+    from aegis.integration.sionna import paths_from_sionna_scene
+
+    scene = srt.load_scene(srt.scene.simple_street_canyon)
+    scene.frequency = 3.5e9  # wrong band on purpose
+
+    tx = np.array([[0.0, 0.0, 20.0]])
+    rx = np.array([30.0, 0.0, 1.5])
+    paths_from_sionna_scene(scene, tx, rx, freq_hz=28e9, max_bounces=2, tx_power_dbm=30.0)
+
+    assert float(scene.frequency[0]) == pytest.approx(28e9)

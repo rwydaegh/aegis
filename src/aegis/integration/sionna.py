@@ -301,6 +301,13 @@ def paths_from_sionna_scene(
     tx_power_w = 10 ** ((tx_power_dbm - 30) / 10)
     n_elements = tx_positions.shape[0]
 
+    # Set the carrier on the scene before building arrays or solving. Sionna
+    # defaults a loaded scene to 3.5 GHz, and the frequency drives the radio
+    # material coefficients, the synthetic-array element spacing (lambda/2), and
+    # the path-loss wavelength. Leaving the default silently traces the wrong
+    # band (at 28 GHz the field power is ~5000x lower than at 3.5 GHz).
+    scene.frequency = float(freq_hz)
+
     # Map common pattern names to Sionna v2 registry names
     _pattern_map = {"isotropic": "iso", "half_wave_dipole": "hw_dipole"}
     sionna_tx_pattern = _pattern_map.get(tx_pattern, tx_pattern)
