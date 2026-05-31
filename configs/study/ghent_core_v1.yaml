@@ -1,0 +1,38 @@
+# HPC population-exposure study, v1 single-city config.
+# Starts deliberately small (one city, a few blocks, a small crowd, a short
+# window). Every size is a grow-later knob. Temporal cadences are null until the
+# cost-discovery spike sets them.
+cities:
+  count: 1                  # start with one, code for many
+  radius_m: 200             # small dense core to start (~0.13 km2), grow later
+mobility:
+  n_agents: 50              # start small; grow until the CDF converges (~1000)
+  window_s: 60              # synchronized crowd window, grow later
+  walk_speed_mps: 1.4
+  user_fraction: 0.5        # active (schedulable) vs bystander
+deployment:
+  process: ginibre          # repulsive thinning of rooftop candidates
+  density_source: dataset    # real macro-site count in the footprint, scalar
+  densification: 1.0        # optional 6G overlay multiplier on site count
+  realizations_K: 1         # one random site layout to start; raise to ~20 to marginalize
+  sectoring:
+    sectors: 3              # panels per site, 120 deg apart
+    az_coverage_deg: 120    # each panel's azimuth wedge (+/- 60 deg)
+    max_range_m: 150        # mmWave useful range; bodies beyond are not lit or served
+  equipment:                # AEGIS-side scenario, not a 38.901 preset
+    name: mmwave_mamimo_28ghz
+    array: [8, 8]           # UPA elements per panel
+    tx_power_dbm: 30
+    height_class: rooftop
+    freq_hz: 28.0e+9         # explicit exponent sign: PyYAML needs it to parse as float
+  precoder: mrt             # fixed beam toward served users, no optimization
+channel:
+  stochastic: coherent_38901   # AEGIS-native coherent cluster channel (UMi)
+  los_blend: p_los          # P_LOS(d)-weighted LOS/NLOS, geometry-blind
+  seed: 42
+dosimetry:
+  level: 7                  # coherent MIMO Sab = ||G_tilde x||^2 (>=7 implies coherent)
+temporal:
+  dt_s: null                # set after cost measurement
+  pose_period: null
+  recompute_period: null
