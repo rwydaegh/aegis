@@ -38,10 +38,10 @@ Reuse map:
 
 - `src/aegis/engine.py` `DosimetryEngine.compute` is the dosimetry core, run at incoherent levels.
 - `src/aegis/channel/generator.py` `generate_channel` and `src/aegis/channel/presets.py` `load_preset` are the stochastic arm.
-- `src/aegis/integration/differt.py` `paths_from_differt_scene` (full TE/TM tracking) is the deterministic arm. `src/aegis/viewer/raytracer.py` `compute_paths_differt` is the incoherent-only shortcut.
+- `src/aegis/integration/differt.py` `paths_from_differt_scene(scene_path, tx_positions, rx_position, freq_hz, ...)` is the deterministic arm. It loads a Sionna XML scene, so the city mesh is exported once per city via `EnvironmentMesh.to_sionna_xml(path)` and the cached path is passed in. `compute_paths_differt` in `src/aegis/viewer/raytracer.py` is the viewer's incoherent-only shortcut (`from_powers`, one element at a time) and is for reference only, not used here.
 - `src/aegis/environment/__init__.py` `EnvironmentMesh.from_osm` builds the city mesh.
 - `src/aegis/geometry/pose_stream.py` `PoseStream` and `src/aegis/geometry/parametric.py` `ParametricBody` pose the walking SMPL-X body.
-- `src/aegis/coherent/translation.py` (`translation_phasor`, `q_translate`) provides the cheap per-frame field refresh between full re-poses. This is the production version of the trick `plaza_run` reimplements locally.
+- `src/aegis/coherent/translation.py` (`translation_phasor`, `q_translate`) refreshes the coherent exposure operator Q cheaply. It applies only in the optional coherent mode (Q is `(M_ant, M_ant)` and is absent from the incoherent path). The incoherent default uses a different cheap refresh, described under the temporal model.
 - `src/aegis/paths.py` `PropagationPaths.from_powers` is the common path container both channel arms produce.
 
 Code borrowed (copied and adapted, not imported):
@@ -54,10 +54,10 @@ Parallelism is over the independent axis (city, deployment realization, agent). 
 
 ## Pipeline, per city
 
-1. **City mesh.** AEGIS-native OSM build to a materialed triangle mesh: building footprints, heights, tag-based materials, ground plane. One fixed bounding box of urban core per city, same nominal area across cities. Cached to disk so it is built once.
+1. **City mesh.** AEGIS-native OSM build via `EnvironmentMesh.from_osm(lat, lon, radius_m)` to a materialed triangle mesh: building footprints, heights, tag-based materials, ground plane. The same `radius_m` is used for every city (the footprint is circular, not square), so the analysis area is fixed across cities. The mesh is cached to disk, exported once to a Sionna XML scene (`to_sionna_xml`) for the deterministic arm, and turned into a BVH (`geometry/occlusion.build_bvh`) for visibility tests.
 2. **Walks.** Sample home and destination positions weighted by GHSL population density. Route each with the Google Directions API in walking mode. Decode polylines to a lat/lon path. Project to the city local ENU frame using the same origin as the OSM mesh. Each agent walks at a sampled speed (default 1.4 m/s). The agent is an SMPL-X body posed walking, heading set to the path tangent.
-3. **Deployment.** A repulsive point process (minimum-spacing, Ginibre-style) places base-station sites. Site density is anchored to the real site count for that city (read once from the base-station dataset, used only as a scalar density, not as per-site attributes). Sites are snapped to building rooftops. Each site is configured from one forward-looking equipment scenario (default 28 GHz mmWave MaMIMO: fixed array geometry, transmit power, height class). K independent realizations are sampled per city.
-4. **Dual-channel exposure.** For each (deployment realization, agent, timestep), build the incident field two ways. Deterministic: ray trace the city mesh from the active sites to the body via `paths_from_differt_scene`. Stochastic: `generate_channel` with the matching 38.901 scenario per link, seeded for reproducibility. Both produce `PropagationPaths`. Both feed the same `DosimetryEngine.compute` at an incoherent level. Coherent is available but off.
+3. **Deployment.** Candidate rooftop points come from `parse_osm_xml`, which returns `Building` objects carrying `footprint` (N,2 local XY) and `height`. Each building yields a candidate site at its footprint centroid raised to its roof height. A repulsive point process (minimum-spacing, Ginibre-style) thins these candidates to the final site set, with target density anchored to the real site count for that city (read once from the base-station dataset as a scalar count, not per-site attributes). Each surviving site is configured from one equipment scenario, an AEGIS-side config block (not a 38.901 preset): array geometry, transmit power, height class, frequency. The default scenario is 28 GHz mmWave MaMIMO. K independent realizations are sampled per city.
+4. **Dual-channel exposure.** For each (deployment realization, agent, timestep), build the incident field two ways. Deterministic: ray trace the cached Sionna scene from the active sites to the body via `paths_from_differt_scene`. Stochastic: `generate_channel(params, freq_ghz, antenna_pos, body_center, power_dbm, seed)` with `params` from `load_preset`, seeded for reproducibility. The preset per link is chosen by a line-of-sight test: cast a shadow ray from the site to the body center against the city BVH, then map `{LOS: 3GPP_38.901_UMi_LOS, NLOS: 3GPP_38.901_UMi_NLOS}` (UMi parameters cover 28 GHz). Both arms produce `PropagationPaths`, both feed the same `DosimetryEngine.compute` at an incoherent fidelity level. Coherent is available but off.
 5. **Exposure reduction.** Per-triangle $S_{\mathrm{ab}}$ reduces to a per-person exposure sample per timestep, then to a per-person summary over the walk.
 
 The core absorption law is unchanged:
@@ -75,10 +75,10 @@ The time-stepped slot machinery from `plaza_run` is kept. The ECBF solve inside 
 Three cadences are independent, tunable parameters:
 
 - `dt` (slot length). The sampling interval along each walk.
-- `pose_period` (slots between full SMPL-X re-pose). Between re-poses, the body shape is frozen.
-- `recompute_period` (slots between full channel and exposure recompute). Between recomputes, the body's bulk translation is applied analytically by the translation phasor (`coherent/translation.py`), which refreshes the incident-field response cheaply without re-tracing or re-posing.
+- `pose_period` (slots between full SMPL-X re-pose). Between re-poses, the body articulation is frozen.
+- `recompute_period` (slots between full channel recompute). For the deterministic arm this is the ray-trace cadence, the dominant cost. Between recomputes the last path set is reused with a free-space correction for the body's small translation (update each path's propagation distance and phase from the new body position, and optionally re-test paths whose visibility could have changed). This is the incoherent analog of the coherent Q translation phasor, applied to scalar path power and direction rather than to the Gram operator. In the optional coherent mode, `coherent/translation.py` supplies the exact Q-phasor refresh instead.
 
-This makes temporal resolution a free knob. The default is coarse and cheap. After we measure the cost on real hardware, the cadences can be dialed toward per-slot if the GPU and schedule allow. The cost discovery (wall-clock per slot for ray tracing vs stochastic, GPU memory) is an explicit early task, and the chosen defaults follow from it rather than being asserted now.
+This makes temporal resolution a free knob. The default is coarse and cheap. After we measure the cost on real hardware, the cadences can be dialed toward per-slot if the GPU and schedule allow. Cost discovery (wall-clock per slot for ray tracing versus the stochastic draw, and GPU memory) is an explicit early task, and the chosen defaults follow from it. The stochastic draw is cheap NumPy, so the knob matters mainly for the deterministic arm.
 
 ## Exposure metric and normalization
 
@@ -104,25 +104,49 @@ Parameters and their proposed defaults. Defaults marked TBD-after-measurement ar
 ```yaml
 cities:
   count: 10                 # spanning dense-historic, grid, sprawl morphologies
-  bbox_area_km2: 1.0        # fixed urban-core box per city, same nominal size
+  radius_m: 565             # circular footprint, same for every city (~1 km2)
 mobility:
   n_agents: convergence     # grown until the CDF converges, order 1000
   walk_speed_mps: 1.4
   user_fraction: 0.5        # served (beam target) vs non-user
 deployment:
-  process: ginibre          # repulsive, minimum spacing
+  process: ginibre          # repulsive thinning of rooftop candidates
   density_source: dataset    # real site count for the city, scalar only
   realizations_K: 20        # 10-30, enough for a stable band
-  scenario: mmwave_mamimo_28ghz   # array, power, height class
-frequency_hz: 28.0e9        # primary; 3.5 GHz arm is a later add
+  equipment:                # AEGIS-side scenario, not a 38.901 preset
+    name: mmwave_mamimo_28ghz
+    array: [8, 8]           # UPA elements
+    tx_power_dbm: 30
+    height_class: rooftop
+    freq_hz: 28.0e9
+channel:
+  stochastic_preset_family: 3GPP_38.901_UMi   # _LOS / _NLOS chosen per link
+  seed: 42
+dosimetry:
+  coherent: false
+  level: 3                  # Fresnel-corrected incoherent Sab (angle-dependent)
 temporal:
   dt_s: TBD                 # set after cost measurement
   pose_period: TBD
   recompute_period: TBD
-dosimetry:
-  coherent: false
-  level: 3                  # incoherent spatial level, confirm at implementation
 ```
+
+A 3.5 GHz arm is a clean later addition (swap `equipment.freq_hz` and the preset family). Your prior work covered both bands.
+
+## Dependencies and setup
+
+The body model and ray tracer pull heavy optional dependencies that must be provisioned on every compute node.
+
+- SMPL-X posing needs `smplx` and `torch` (the `aegis[body]` extra). Model weights are a manual download from the MPI-IS site, placed at `~/.aegis/models/smplx/SMPLX_{GENDER}.npz`. `plaza_run` already relies on these, so the lab has them.
+- Walking motion needs AMASS clips in AEGIS `.npz` pose format (`PoseStream.load`). A small set of walking clips (for example CMU or ACCAD) is pre-ingested and staged on the cluster. AMASS itself requires a separate licence and download.
+- The deterministic arm needs DiffeRT (the `aegis[rt]` extra), which runs on CPU via JAX and uses GPU when present.
+- Mobility needs a Google Directions API key. Routes are cached aggressively (the ABM already caches agents) because the API is billed per call.
+
+For the cost-discovery spike, a static STL phantom (for example `duke`) translated and yaw-rotated along the path is a cheap stand-in for the SMPL-X twin. It drops the `smplx`/`torch`/AMASS dependency and isolates the ray-tracing cost. The SMPL-X twin is the production path, the static phantom is the fallback if posing dominates the budget.
+
+## Execution and hardware
+
+One job is one (city, deployment realization, agent-chunk) task, dispatched as a scheduler job array (PBS or Slurm). There is no cross-task communication. The per-task resource assumption (CPU cores, GPU, memory) is fixed by the cost-discovery spike. The deterministic arm runs DiffeRT locally on the node when a GPU is present, with `src/aegis/modal_rt` GPU offload as the fallback when nodes are CPU-only. The stochastic arm and the dosimetry kernel are CPU and NumPy.
 
 ## Data flow
 
@@ -150,7 +174,7 @@ OSM ---> AEGIS mesh (cached) ---> local ENU frame <-----------------------------
 ## Open questions and risks
 
 - **Ray-tracing cost.** Ray tracing the full city mesh per body per timestep across cities and realizations is the dominant cost and the schedule risk. The framerate knob and the cost-discovery task exist to bound it. Modal GPU offload is the fallback if local CPU is too slow.
-- **Stochastic per-link scenario assignment.** The stochastic arm needs the correct 38.901 scenario (LOS or NLOS, UMi-type parameters) per body-site link to be a fair comparison. The LOS or NLOS label can be derived from a cheap visibility test against the city mesh (the same trick `outdoor_environment.py` used to feed QuaDRiGa).
+- **Stochastic scenario family.** Step 4 assigns LOS/NLOS by a deterministic shadow-ray test and maps to UMi presets. Open: whether UMi is the right family for every city, and whether a hard LOS/NLOS split (versus the 38.901 probabilistic LOS model) biases the comparison. Resolve with a sensitivity check.
 - **Fairness of total power.** The deterministic and stochastic arms must agree on total radiated and incident power before their spatial $S_{\mathrm{ab}}$ maps are compared. Normalize and check `paths.total_power` per arm.
 - **Native mesh fidelity.** AEGIS's OSM-to-mesh has known imperfections. The plan is to validate empirically that geometry fidelity does not move the exposure CDF (a one-city check), not to assume it.
 - **Google Directions cost and caching.** Routing is billed per call. Cache aggressively (the ABM already caches agents). Order 1000 agents per city is affordable, larger runs need care.
