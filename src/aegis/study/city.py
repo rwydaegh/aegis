@@ -45,6 +45,7 @@ class CityCache:
     origin_lat: float
     origin_lon: float
     _differt_scene: object = None
+    _sionna_scene: object = None
 
     @property
     def differt_scene(self):
@@ -56,6 +57,23 @@ class CityCache:
         if self._differt_scene is None:
             self._differt_scene = self.mesh.to_differt_scene()
         return self._differt_scene
+
+    @property
+    def sionna_scene(self):
+        """Sionna RT scene for the deterministic arm (default engine).
+
+        Exports a radio-material Mitsuba XML (ITU material ids) and loads it
+        once. Sionna RT runs on CPU via Dr.Jit and auto-uses a GPU when present.
+        """
+        if self._sionna_scene is None:
+            import sionna.rt as srt
+
+            radio_xml = self.scene_xml.with_name(self.scene_xml.stem + "_radio.xml")
+            if not radio_xml.exists():
+                self.mesh.to_sionna_xml(radio_xml, radio_materials=True)
+            scene = srt.load_scene(str(radio_xml))
+            self._sionna_scene = scene
+        return self._sionna_scene
 
     @classmethod
     def build(cls, lat: float, lon: float, radius_m: float, cache_dir: Path) -> CityCache:

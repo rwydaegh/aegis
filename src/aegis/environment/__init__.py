@@ -60,11 +60,15 @@ class EnvironmentMesh:
 
         return to_differt_scene(self)
 
-    def to_sionna_xml(self, path: Path | str) -> Path:
-        """Write a Mitsuba-format XML scene for Sionna RT and return the path."""
+    def to_sionna_xml(self, path: Path | str, radio_materials: bool = False) -> Path:
+        """Write a Mitsuba-format XML scene for Sionna RT and return the path.
+
+        Set ``radio_materials=True`` for Sionna RT 2.0's path solver (ITU radio
+        material ids); leave False for visualization or the DiffeRT path.
+        """
         from aegis.environment.export import to_sionna_xml
 
-        return to_sionna_xml(self, Path(path))
+        return to_sionna_xml(self, Path(path), radio_materials=radio_materials)
 
     def to_binary(self) -> tuple[bytes, dict]:
         """Serialize to a compact binary blob and metadata dict."""

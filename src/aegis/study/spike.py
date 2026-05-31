@@ -62,7 +62,7 @@ def _run_real(config_path: str) -> int:  # pragma: no cover - needs mesh + Diffe
     from aegis.geometry.mesh import BodyMesh
     from aegis.mimo.array_paths import expand_paths_to_array
     from aegis.study.bodies import StaticPhantomPoser
-    from aegis.study.channel_det import sector_paths_det
+    from aegis.study.channel_det import center_paths, sector_paths
     from aegis.study.city import CityCache
     from aegis.study.config import StudyConfig
     from aegis.study.deployment import build_sites
@@ -97,11 +97,12 @@ def _run_real(config_path: str) -> int:  # pragma: no cover - needs mesh + Diffe
     rx = np.array([pos[0], pos[1], 1.1])
 
     engine = DosimetryEngine(TissueModel.from_database("Skin", freq))
+    scene = city.sionna_scene
 
     def trace():
-        return sector_paths_det(city.differt_scene, sector, rx, freq)
+        return sector_paths(scene, sector, rx, freq, engine="sionna")
 
-    center = sector_paths_det(city.differt_scene, sector, rx, freq)
+    center = center_paths(scene, sector, rx, freq, engine="sionna")
     per_elem = expand_paths_to_array(center, sector.array, freq)
     h = user_channel_vector(per_elem, sector.m_ant)
     precoder = mrt_for_user(h, sector.tx_power_w)
