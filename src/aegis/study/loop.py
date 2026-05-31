@@ -38,6 +38,7 @@ class AgentResult:
     exposure_w: np.ndarray  # (T,) per-slot absorbed power [W]
     is_user: bool
     agent_id: int
+    peak_sab_w_m2: np.ndarray | None = None  # (T,) 4 cm^2-averaged peak S_ab [W/m^2]
 
 
 @dataclass
@@ -45,6 +46,7 @@ class _SectorState:
     m_static: object
     center_k_hat: np.ndarray
     ref_xy: np.ndarray
+    center_paths: object = None
 
 
 def run_agent(
@@ -58,6 +60,7 @@ def run_agent(
     gram_fn,
     refresh_fn,
     beam_fn,
+    sab_fn=None,
 ) -> AgentResult:
     """Walk one agent and return its per-slot absorbed-power series.
 
@@ -71,14 +74,20 @@ def run_agent(
     gram_fn(body, center_paths, sector) -> M_static
     refresh_fn(m_static, center_k_hat, delta_xy) -> Q  (delta_xy is 3-vector)
     beam_fn(sector, t) -> precoder x (M_ant,) for the served-user beam at slot t
+    sab_fn(body, sector, x, center_paths) -> peak 4 cm^2-averaged S_ab [W/m^2].
+        Optional; evaluated only at recompute frames (the per-triangle map is
+        the expensive path). The peak over lit sectors is carried forward
+        between recomputes. When None, the density series is left as None.
     """
     positions = np.asarray(agent.trajectory.positions, dtype=float)
     headings = np.asarray(agent.trajectory.headings_rad, dtype=float)
     n_slots = positions.shape[0]
     exposure = np.zeros(n_slots)
+    peak_sab = np.zeros(n_slots) if sab_fn is not None else None
 
     body = None
     states: dict[int, _SectorState] = {}
+    last_peak = 0.0
 
     for t in range(n_slots):
         pos_xy = positions[t]
@@ -90,15 +99,18 @@ def run_agent(
 
         lit = sectors_illuminating(pos3, sites)
         total = 0.0
+        recompute_frame = t % recompute_period == 0
+        slot_peak = 0.0
         for sector in lit:
             sid = id(sector)
-            need = sid not in states or t % recompute_period == 0
+            need = sid not in states or recompute_frame
             if need:
                 center_paths = channel_fn(sector, body, pos_xy)
                 states[sid] = _SectorState(
                     m_static=gram_fn(body, center_paths, sector),
                     center_k_hat=np.asarray(center_paths.k_hat),
                     ref_xy=pos_xy.copy(),
+                    center_paths=center_paths,
                 )
             st = states[sid]
             delta = pos_xy - st.ref_xy
@@ -106,6 +118,17 @@ def run_agent(
             Q = refresh_fn(st.m_static, st.center_k_hat, delta3)
             x = beam_fn(sector, t)
             total += scalar_exposure_w(Q, x)
+            if sab_fn is not None and need:
+                slot_peak = max(slot_peak, float(sab_fn(body, sector, x, st.center_paths)))
         exposure[t] = total
+        if peak_sab is not None:
+            if recompute_frame and lit:
+                last_peak = slot_peak
+            peak_sab[t] = last_peak
 
-    return AgentResult(exposure_w=exposure, is_user=agent.is_user, agent_id=agent.agent_id)
+    return AgentResult(
+        exposure_w=exposure,
+        is_user=agent.is_user,
+        agent_id=agent.agent_id,
+        peak_sab_w_m2=peak_sab,
+    )

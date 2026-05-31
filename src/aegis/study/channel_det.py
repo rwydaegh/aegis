@@ -28,9 +28,35 @@ def sector_paths_det(
     max_bounces=3,
     tx_power_dbm=30.0,
 ):
+    """Per-element ray-traced paths (one tx per array element)."""
     return paths_from_differt_scene_obj(
         scene,
         tx_positions=np.asarray(sector.array.element_positions),
+        rx_position=np.asarray(rx_position, dtype=float),
+        freq_hz=freq_hz,
+        max_bounces=max_bounces,
+        tx_power_dbm=tx_power_dbm,
+        initial_polarisation="vertical",
+    )
+
+
+def center_paths_det(
+    scene,
+    sector,
+    rx_position,
+    freq_hz,
+    max_bounces=3,
+    tx_power_dbm=30.0,
+):
+    """Center-of-array paths: trace from the array phase center as a single tx.
+
+    These feed the translation-phasor Gram and (after expand_paths_to_array) the
+    coherent Sab map. Tracing once from the center instead of M_ant times is the
+    far-field array model and is much cheaper.
+    """
+    return paths_from_differt_scene_obj(
+        scene,
+        tx_positions=np.asarray(sector.array.reference_position)[None, :],
         rx_position=np.asarray(rx_position, dtype=float),
         freq_hz=freq_hz,
         max_bounces=max_bounces,
