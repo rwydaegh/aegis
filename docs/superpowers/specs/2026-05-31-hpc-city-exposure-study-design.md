@@ -55,8 +55,8 @@ Parallelism is over the independent axis (city, deployment realization, agent). 
 ## Pipeline, per city
 
 1. **City mesh.** AEGIS-native OSM build via `EnvironmentMesh.from_osm(lat, lon, radius_m)` to a materialed triangle mesh: building footprints, heights, tag-based materials, ground plane. The same `radius_m` is used for every city (the footprint is circular, not square), so the analysis area is fixed across cities. The mesh is cached to disk, exported once to a Sionna XML scene (`to_sionna_xml`) for the deterministic arm, and turned into a BVH (`geometry/occlusion.build_bvh`) for visibility tests.
-2. **Walks.** Sample home and destination positions weighted by GHSL population density. Route each with the Google Directions API in walking mode. Decode polylines to a lat/lon path. Project to the city local ENU frame using the same origin as the OSM mesh. Each agent walks at a sampled speed (default 1.4 m/s). The agent is an SMPL-X body posed walking, heading set to the path tangent.
-3. **Deployment.** Candidate rooftop points come from `parse_osm_xml`, which returns `Building` objects carrying `footprint` (N,2 local XY) and `height`. Each building yields a candidate site at its footprint centroid raised to its roof height. A repulsive point process (minimum-spacing, Ginibre-style) thins these candidates to the final site set, with target density anchored to the real site count for that city (read once from the base-station dataset as a scalar count, not per-site attributes). Each surviving site is configured from one equipment scenario, an AEGIS-side config block (not a 38.901 preset): array geometry, transmit power, height class, frequency. The default scenario is 28 GHz mmWave MaMIMO. Each site serves its assigned ABM users with a fixed MRT precoder toward the served-user channel (no adaptive optimization). K independent realizations are sampled per city.
+2. **Walks.** Sample home and destination positions weighted by GHSL population density. Route each with the Google Directions API in walking mode. Decode polylines to a lat/lon path. Project to the city local ENU frame using the same origin as the OSM mesh. Each agent walks at a sampled speed (default 1.4 m/s). The agent is an SMPL-X body posed walking, heading set to the path tangent. The population is a synchronized crowd over a window `window_s` (agents enter staggered, walk, exit), not a bag of independent walks, because beam scheduling needs a shared clock to know which users a sector serves at each slot.
+3. **Deployment.** Candidate rooftop points come from `parse_osm_xml`, which returns `Building` objects carrying `footprint` (N,2 local XY) and `height`. Each building yields a candidate site at its footprint centroid raised to its roof height. A repulsive point process (minimum-spacing, Ginibre-style) thins these candidates to the final site set, with target density anchored to the real site count for that city (read once from the base-station dataset as a scalar count, not per-site attributes). Each surviving site is configured from one equipment scenario, an AEGIS-side config block (not a 38.901 preset): array geometry, transmit power, height class, frequency. The default scenario is 28 GHz mmWave MaMIMO. Each site carries S sector panels (default 3, 120 degrees apart), each an 8x8 UPA covering a +/-60 degree azimuth wedge with a finite useful range (default 150 m at mmWave). A body is illuminated only by sectors whose wedge and range it falls inside, which adds realism and limits per-body cost because each body interacts with a few nearby panels rather than every site. Each sector serves the active users within its wedge and range with a fixed MRT precoder toward the served-user channel (no adaptive optimization). K independent realizations (random site layouts) are sampled per city.
 4. **Dual-channel exposure.** For each (deployment realization, agent, timestep), build the per-element coherent channel two ways. Deterministic: ray trace the cached Sionna scene with TE/TM phase tracking via `paths_from_differt_scene`, giving the complex paths the body-surface channel is built from. Stochastic: the AEGIS-native coherent 38.901 cluster channel, seeded for reproducibility, geometry-blind by design (it never sees the actual buildings). Rather than a hard LOS/NLOS switch from a shadow ray, the stochastic exposure is the $P_{\mathrm{LOS}}(d)$-weighted blend of the LOS and NLOS channel statistics, with $P_{\mathrm{LOS}}(d)$ the standard 38.901 distance-based probability. This keeps the stochastic arm purely statistical, so the comparison against ray tracing (which gets real occlusion for free) is honest. Both arms feed the same coherent dosimetry path with the same fixed precoder.
 5. **Exposure reduction.** The coherent per-triangle $S_{\mathrm{ab}} = \lVert \tilde{G}(\mathbf{r})\,\mathbf{x} \rVert^2$ (body-surface channel times precoder) reduces to a per-person exposure sample per timestep, then to a per-person summary over the walk. Distinct sites are uncorrelated transmitters and sum in power.
 
@@ -86,7 +86,7 @@ The headline random variable is **per-person time-averaged exposure** over the w
 
 Normalization is the part that makes cross-city results meaningful.
 
-- **Marginalize over deployment realizations.** For each city, the K realizations give a distribution of exposure CDFs. Report the expected CDF with an uncertainty band. A single unlucky close-site layout is one draw, not a skew.
+- **Marginalize over deployment realizations.** A realization is one random draw of the Ginibre site layout. For each city, the K realizations give a distribution of exposure CDFs. Report the expected CDF with an uncertainty band. A single unlucky close-site layout is one draw, not a skew. v1 runs K=1, marginalization comes once a single realization works.
 - **No grand cross-city mean.** Report per-city CDFs. Explain the spread across cities with covariates: site density, building-footprint density, line-of-sight fraction. The result is a relationship, not an average.
 - **Paired, scale-invariant agreement.** The det-vs-stoch comparison is paired within scenario: the same body at the same instant under the same deployment, computed both ways. Report the agreement as a scale-invariant error (log-ratio or dB error) and as a distance between the two CDFs. Magnitude divides out, so high-exposure cities do not dominate, and the disagreements are the finding.
 
@@ -101,21 +101,29 @@ Two surfaces.
 
 Parameters and their proposed defaults. Defaults marked TBD-after-measurement are set by the cost-discovery task.
 
+v1 starts deliberately small (one city, a few blocks, a small crowd, a short window). Every size is a grow-later knob.
+
 ```yaml
 cities:
-  count: 10                 # spanning dense-historic, grid, sprawl morphologies
-  radius_m: 565             # circular footprint, same for every city (~1 km2)
+  count: 1                  # start with one, code for many
+  radius_m: 200             # small dense core to start (~0.13 km2), grow later
 mobility:
-  n_agents: convergence     # grown until the CDF converges, order 1000
+  n_agents: 50              # start small; grow until the CDF converges (~1000)
+  window_s: 60              # synchronized crowd window, grow later
   walk_speed_mps: 1.4
-  user_fraction: 0.5        # served (beam target) vs non-user
+  user_fraction: 0.5        # active (schedulable) vs bystander
 deployment:
   process: ginibre          # repulsive thinning of rooftop candidates
-  density_source: dataset    # real site count for the city, scalar only
-  realizations_K: 20        # 10-30, enough for a stable band
+  density_source: dataset    # real macro-site count in the footprint, scalar
+  densification: 1.0        # optional 6G overlay multiplier on site count
+  realizations_K: 1         # one random site layout to start; raise to ~20 to marginalize
+  sectoring:
+    sectors: 3              # panels per site, 120 deg apart
+    az_coverage_deg: 120    # each panel's azimuth wedge (+/- 60 deg)
+    max_range_m: 150        # mmWave useful range; bodies beyond are not lit or served
   equipment:                # AEGIS-side scenario, not a 38.901 preset
     name: mmwave_mamimo_28ghz
-    array: [8, 8]           # UPA elements
+    array: [8, 8]           # UPA elements per panel
     tx_power_dbm: 30
     height_class: rooftop
     freq_hz: 28.0e9
@@ -189,7 +197,7 @@ OSM ---> AEGIS mesh (cached) ---> local ENU frame <-----------------------------
 ## Suggested build order
 
 1. Cost-discovery spike: measure ray-tracing and coherent-dosimetry wall-clock per slot on a real city mesh, set the temporal cadences.
-2. Headless single-city, deterministic-only run end to end (coherent Sab, fixed MRT beam), writing per-person exposure.
+2. Headless run on one small Ghent core (radius 200 m, ~50 agents, 60 s window, a handful of sectored sites, K=1), deterministic-only, coherent Sab with the fixed MRT beam, writing per-person exposure.
 3. Write the coherent 38.901 stochastic channel (steering phases plus XPR), validate it against a reference on a fixed link.
 4. Add the stochastic arm with the P_LOS-weighted blend and the paired comparison.
 5. Add the deployment generator and K-realization marginalization.
