@@ -120,7 +120,19 @@ def _write_cdf_figure(x, f, headline, path):
 class RealKernel:
     """Physics callables backed by the ray tracer and the coherent kernel."""
 
-    def __init__(self, scene, engine, poser, sites, freq_hz, level, user_agents, recompute_period, torso_z=1.1):
+    def __init__(
+        self,
+        scene,
+        engine,
+        poser,
+        sites,
+        freq_hz,
+        level,
+        user_agents,
+        recompute_period,
+        torso_z=1.1,
+        rt_engine="sionna",
+    ):
         self.scene = scene
         self.engine = engine
         self.poser = poser
@@ -130,16 +142,17 @@ class RealKernel:
         self.user_agents = list(user_agents)
         self.recompute_period = max(1, int(recompute_period))
         self.torso_z = torso_z
+        self.rt_engine = rt_engine
         self._beam_cache: dict = {}
 
     def pose_fn(self, pos_xy, heading_rad, frame_idx, z_ground):
         return self.poser.pose(pos_xy, heading_rad, z_ground=z_ground, frame_idx=frame_idx)
 
     def channel_fn(self, sector, body, pos_xy):
-        from aegis.study.channel_det import center_paths_det
+        from aegis.study.channel_det import center_paths
 
         rx = np.array([pos_xy[0], pos_xy[1], self.torso_z])
-        return center_paths_det(self.scene, sector, rx, self.freq_hz)
+        return center_paths(self.scene, sector, rx, self.freq_hz, engine=self.rt_engine)
 
     def gram_fn(self, body, center_paths, sector):
         from aegis.study.exposure import build_static_gram
@@ -174,12 +187,12 @@ class RealKernel:
 
     def _mrt_to_user(self, sector, user, slot):
         from aegis.mimo.array_paths import expand_paths_to_array
-        from aegis.study.channel_det import center_paths_det
+        from aegis.study.channel_det import center_paths
         from aegis.study.precoding import mrt_for_user, user_channel_vector
 
         pos = user.trajectory.positions[min(slot, len(user.trajectory.positions) - 1)]
         rx = np.array([pos[0], pos[1], self.torso_z])
-        center = center_paths_det(self.scene, sector, rx, self.freq_hz)
+        center = center_paths(self.scene, sector, rx, self.freq_hz, engine=self.rt_engine)
         per_elem = expand_paths_to_array(center, sector.array, self.freq_hz)
         h = user_channel_vector(per_elem, sector.m_ant)
         return mrt_for_user(h, sector.tx_power_w).x
@@ -242,7 +255,7 @@ def _build_real(cfg, out_dir, seed, agent_start, agent_count):  # pragma: no cov
     n_slots = max((len(a.trajectory.positions) for a in agents), default=1)
     _, recompute_period = _cadences(cfg, n_slots)
     kernel = RealKernel(
-        city.differt_scene,
+        city.sionna_scene,
         engine,
         poser,
         sites,
@@ -250,6 +263,7 @@ def _build_real(cfg, out_dir, seed, agent_start, agent_count):  # pragma: no cov
         cfg.dosimetry.level,
         [a for a in agents if a.is_user],
         recompute_period,
+        rt_engine="sionna",
     )
     return agents, sites, kernel, freq
 

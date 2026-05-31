@@ -34,6 +34,30 @@ _MATERIAL_COLORS: dict[MaterialType, tuple[float, float, float]] = {
     MaterialType.PLASTER: (0.9, 0.87, 0.82),
 }
 
+# AEGIS material -> Sionna RT built-in ITU radio material. Sionna RT 2.0
+# requires radio materials (bsdf id "mat-itu_*"), not visual BSDFs. Only the
+# building ITU materials are defined at mmWave; the ITU ground models
+# (very_dry/medium_dry/wet_ground) are undefined above a few GHz. So at the
+# study's 28 GHz, ground/asphalt/soil and the foliage/water surfaces (which have
+# no mmWave ITU model at all) map to itu_concrete as a hard-surface proxy.
+# Refinement (a custom radio-material from AEGIS's own eps_r/sigma) is a later knob.
+_MATERIAL_ITU: dict[MaterialType, str] = {
+    MaterialType.CONCRETE: "itu_concrete",
+    MaterialType.BRICK: "itu_brick",
+    MaterialType.GLASS: "itu_glass",
+    MaterialType.METAL: "itu_metal",
+    MaterialType.ASPHALT: "itu_concrete",
+    MaterialType.VEGETATION: "itu_concrete",
+    MaterialType.WATER: "itu_concrete",
+    MaterialType.WOOD: "itu_wood",
+    MaterialType.GROUND: "itu_concrete",
+    MaterialType.UNKNOWN: "itu_concrete",
+    MaterialType.ROOF_TILE: "itu_brick",
+    MaterialType.SOIL: "itu_concrete",
+    MaterialType.VEGETATION_DENSE: "itu_concrete",
+    MaterialType.PLASTER: "itu_plasterboard",
+}
+
 
 def to_binary(mesh: EnvironmentMesh) -> tuple[bytes, dict]:
     """Serialize mesh to a compact binary blob plus metadata dict.
@@ -143,7 +167,7 @@ def _compute_object_bounds(materials: np.ndarray) -> np.ndarray:
     return np.array(bounds, dtype=np.int32)
 
 
-def to_sionna_xml(mesh: EnvironmentMesh, path: Path | str) -> Path:
+def to_sionna_xml(mesh: EnvironmentMesh, path: Path | str, radio_materials: bool = False) -> Path:
     """Write a Mitsuba-format XML scene file for Sionna RT.
 
     One PLY file per material group is written alongside the XML.  The PLY
@@ -154,6 +178,10 @@ def to_sionna_xml(mesh: EnvironmentMesh, path: Path | str) -> Path:
         mesh: Source environment mesh (ENU coordinates).
         path: Output path for the ``.xml`` file. Sibling ``.ply`` files are
             written to the same directory.
+        radio_materials: When True, name each BSDF ``mat-itu_<name>`` so Sionna
+            RT 2.0's path solver treats it as a built-in ITU radio material
+            (it rejects plain visual BSDFs). Leave False for visualization or
+            for the in-memory DiffeRT path.
 
     Returns:
         Path to the written XML file.
@@ -161,17 +189,19 @@ def to_sionna_xml(mesh: EnvironmentMesh, path: Path | str) -> Path:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Group triangles by material
-    groups: dict[int, list[int]] = {}
+    # Group triangles by the shape material. For radio materials, group by ITU
+    # name so several AEGIS materials that map to the same ITU material share one
+    # shape (and one unique BSDF id), avoiding duplicate-id collisions.
+    groups: dict[str, list[int]] = {}
     for i, mat in enumerate(mesh.materials):
-        groups.setdefault(int(mat), []).append(i)
+        mat_type = MaterialType(int(mat))
+        key = _MATERIAL_ITU[mat_type] if radio_materials else mat_type.name.lower()
+        groups.setdefault(key, []).append(i)
 
     # Build XML tree
     scene_el = ET.Element("scene", version="2.1.0")
 
-    for mat_id, face_indices in groups.items():
-        mat_type = MaterialType(mat_id)
-        mat_name = mat_type.name.lower()
+    for mat_name, face_indices in groups.items():
         ply_name = f"{path.stem}_{mat_name}.ply"
         ply_path = path.parent / ply_name
 
@@ -190,9 +220,15 @@ def to_sionna_xml(mesh: EnvironmentMesh, path: Path | str) -> Path:
         shape_el = ET.SubElement(scene_el, "shape", type="ply", id=f"mesh_{mat_name}")
         ET.SubElement(shape_el, "string", name="filename", value=ply_name)
 
-        # BSDF reference
-        bsdf_el = ET.SubElement(shape_el, "bsdf", type="diffuse", id=f"bsdf_{mat_name}")
-        r, g, b = _MATERIAL_COLORS[mat_type]
+        # BSDF reference. For Sionna RT, name it after a built-in ITU radio
+        # material so the path solver accepts it; otherwise a visual diffuse id.
+        if radio_materials:
+            bsdf_id = f"mat-{mat_name}"  # mat_name is already the itu_* name
+            r, g, b = (0.5, 0.5, 0.5)  # reflectance is unused by radio materials
+        else:
+            bsdf_id = f"bsdf_{mat_name}"
+            r, g, b = _MATERIAL_COLORS[MaterialType[mat_name.upper()]]
+        bsdf_el = ET.SubElement(shape_el, "bsdf", type="diffuse", id=bsdf_id)
         ET.SubElement(
             bsdf_el,
             "rgb",

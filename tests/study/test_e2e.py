@@ -10,7 +10,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-pytest.importorskip("differt")
+pytest.importorskip("sionna.rt")
+
+import tempfile  # noqa: E402
 
 from aegis.engine import DosimetryEngine  # noqa: E402
 from aegis.environment import EnvironmentMesh, MaterialType  # noqa: E402
@@ -27,6 +29,9 @@ _DUKE = Path(__file__).parents[2] / "data" / "duke.stl"
 
 
 def _ground_scene():
+    """Synthetic ground-plane Sionna RT scene (radio materials, loaded on CPU)."""
+    import sionna.rt as srt
+
     s = 200.0
     verts = np.array([[-s, -s, 0.0], [s, -s, 0.0], [s, s, 0.0], [-s, s, 0.0]], dtype=float)
     tris = np.array([[0, 1, 2], [0, 2, 3]])
@@ -41,7 +46,8 @@ def _ground_scene():
         origin_lon=3.7,
         source="e2e_ground",
     )
-    return mesh.to_differt_scene()
+    xml = mesh.to_sionna_xml(Path(tempfile.mkdtemp()) / "scene.xml", radio_materials=True)
+    return srt.load_scene(str(xml))
 
 
 @pytest.mark.slow

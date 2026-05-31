@@ -75,6 +75,34 @@ class TestToSionnaXml:
         content = out.read_text()
         assert "<?xml" in content or "<scene" in content
 
+    def test_radio_materials_use_itu_ids_and_dedupe(self, tmp_path):
+        import numpy as np
+
+        from aegis.environment import EnvironmentMesh, MaterialType
+
+        # concrete + asphalt both map to itu_concrete -> a single deduped shape
+        verts = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0], [2, 0, 0], [2, 1, 0]], dtype=float)
+        tris = np.array([[0, 1, 2], [1, 3, 2], [1, 4, 5]])
+        normals = np.tile([0.0, 0.0, 1.0], (3, 1))
+        materials = np.array([MaterialType.CONCRETE, MaterialType.ASPHALT, MaterialType.GLASS])
+        mesh = EnvironmentMesh(
+            vertices=verts,
+            triangles=tris,
+            normals=normals,
+            materials=materials,
+            origin_lat=51.0,
+            origin_lon=3.7,
+            source="t",
+        )
+        out = to_sionna_xml(mesh, tmp_path / "radio.xml", radio_materials=True)
+        content = out.read_text()
+        assert 'id="mat-itu_concrete"' in content
+        assert 'id="mat-itu_glass"' in content
+        # concrete + asphalt collapsed to one itu_concrete bsdf (no duplicate id)
+        assert content.count('id="mat-itu_concrete"') == 1
+        # no visual bsdf ids leak into the radio scene
+        assert "bsdf_concrete" not in content
+
 
 class TestToDiffertScene:
     @pytest.fixture
