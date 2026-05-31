@@ -18,6 +18,7 @@ import {
   ChartLine,
   TrendingUp,
   Download,
+  Film,
 } from 'lucide-react'
 import { RayTracingIcon } from '@/components/icons/RayTracingIcon'
 
@@ -37,6 +38,7 @@ import StochasticPanel from '@/components/panels/StochasticPanel'
 import TissuePanel from '@/components/panels/TissuePanel'
 import PatternBrowserPanel from '@/components/panels/PatternBrowserPanel'
 import ExportPanel from '@/components/panels/ExportPanel'
+import ReplayPanel from '@/components/panels/ReplayPanel'
 
 export type GroupId = 'world' | 'source' | 'exposure' | 'analysis'
 
@@ -97,6 +99,7 @@ export const SIDEBAR_GROUPS: GroupDef[] = [
     sections: [
       { value: 'analysis', label: 'Analysis', icon: ChartLine, component: AnalysisPanel },
       { value: 'optimize', label: 'Optimize', icon: TrendingUp, component: OptimizePanel },
+      { value: 'replay', label: 'Replay', icon: Film, component: ReplayPanel },
       { value: 'export', label: 'Export', icon: Download, component: ExportPanel },
     ],
   },

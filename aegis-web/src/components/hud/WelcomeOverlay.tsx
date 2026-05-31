@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Radio, Zap, Building2, Globe } from 'lucide-react';
 import { useSimulationStore } from '../../stores/simulation';
 import { useUIStore } from '../../stores/ui';
+import { useReplayStore } from '../../stores/replay';
 import { useScenario } from '../../hooks/useScenario';
 
 const ICON_MAP: Record<string, React.FC<{ size?: number; className?: string }>> = {
@@ -16,6 +17,7 @@ export function WelcomeOverlay() {
   const welcomeDismissed = useUIStore((s) => s.welcomeDismissed);
   const setWelcomeDismissed = useUIStore((s) => s.setWelcomeDismissed);
   const { visibleScenarios, loadScenario } = useScenario();
+  const replayActive = useReplayStore((s) => s.active);
 
   const hasScenarioParam = new URLSearchParams(window.location.search).has('scenario');
   const hasShareLink = window.location.hash.startsWith('#s=');
@@ -24,7 +26,8 @@ export function WelcomeOverlay() {
     antennaPos == null &&
     !welcomeDismissed &&
     !hasScenarioParam &&
-    !hasShareLink;
+    !hasShareLink &&
+    !replayActive;
 
   // Dismiss on Escape - MUST be before conditional return (React hooks rules)
   useEffect(() => {
