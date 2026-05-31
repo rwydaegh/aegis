@@ -20,8 +20,27 @@ from __future__ import annotations
 
 import numpy as np
 
+# Shoot-and-bounce rays per source for Sionna RT. A convergence sweep on the
+# Ghent core at 28 GHz (rooftop -> ground receiver, max_depth 3, 1-100M samples,
+# 5 seeds) showed the bridge default of 1M finds only ~9 of the 19 valid paths
+# with ~19% power error and large seed-to-seed variance. The path set is fully
+# resolved (19 paths every seed, power flat to <0.01% vs 100M) at 30M, which
+# costs ~3 s here, negligible beside the ~60 s coherent dosimetry. mmWave needs
+# this many because a small receiver subtends a tiny solid angle. Geometry
+# dependent: deep-NLOS receivers may warrant a re-check.
+SAMPLES_PER_SRC = 30_000_000
 
-def _trace(scene, tx_positions, rx_position, freq_hz, engine, max_bounces, tx_power_dbm):
+
+def _trace(
+    scene,
+    tx_positions,
+    rx_position,
+    freq_hz,
+    engine,
+    max_bounces,
+    tx_power_dbm,
+    samples_per_src=SAMPLES_PER_SRC,
+):
     tx_positions = np.asarray(tx_positions, dtype=float)
     rx_position = np.asarray(rx_position, dtype=float)
     if engine == "sionna":
@@ -34,6 +53,7 @@ def _trace(scene, tx_positions, rx_position, freq_hz, engine, max_bounces, tx_po
             freq_hz=freq_hz,
             max_bounces=max_bounces,
             tx_power_dbm=tx_power_dbm,
+            samples_per_src=samples_per_src,
         )
     if engine == "differt":
         from aegis.integration.differt import paths_from_differt_scene_obj
@@ -50,7 +70,17 @@ def _trace(scene, tx_positions, rx_position, freq_hz, engine, max_bounces, tx_po
     raise ValueError(f"unknown ray-tracing engine: {engine!r} (use 'sionna' or 'differt')")
 
 
-def sector_paths(scene, sector, rx_position, freq_hz, *, engine="sionna", max_bounces=3, tx_power_dbm=30.0):
+def sector_paths(
+    scene,
+    sector,
+    rx_position,
+    freq_hz,
+    *,
+    engine="sionna",
+    max_bounces=3,
+    tx_power_dbm=30.0,
+    samples_per_src=SAMPLES_PER_SRC,
+):
     """Per-element ray-traced paths (one tx per array element)."""
     return _trace(
         scene,
@@ -60,10 +90,21 @@ def sector_paths(scene, sector, rx_position, freq_hz, *, engine="sionna", max_bo
         engine,
         max_bounces,
         tx_power_dbm,
+        samples_per_src,
     )
 
 
-def center_paths(scene, sector, rx_position, freq_hz, *, engine="sionna", max_bounces=3, tx_power_dbm=30.0):
+def center_paths(
+    scene,
+    sector,
+    rx_position,
+    freq_hz,
+    *,
+    engine="sionna",
+    max_bounces=3,
+    tx_power_dbm=30.0,
+    samples_per_src=SAMPLES_PER_SRC,
+):
     """Center-of-array paths: trace from the array phase center as a single tx.
 
     These feed the translation-phasor Gram and (after expand_paths_to_array) the
@@ -78,4 +119,5 @@ def center_paths(scene, sector, rx_position, freq_hz, *, engine="sionna", max_bo
         engine,
         max_bounces,
         tx_power_dbm,
+        samples_per_src,
     )

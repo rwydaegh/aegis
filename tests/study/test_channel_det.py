@@ -72,3 +72,27 @@ def test_differt_engine_still_works():
 def test_unknown_engine_raises():
     with pytest.raises(ValueError, match="unknown ray-tracing engine"):
         sector_paths(object(), _sector(), [0, 0, 1.5], 28e9, engine="bogus")
+
+
+def test_samples_per_src_converged_default_threads_to_sionna(monkeypatch):
+    # The default must be the convergence-study value, and it must reach the
+    # solver. A regression to the 1M bridge default would silently halve the
+    # discovered paths at 28 GHz.
+    import aegis.integration.sionna as sio
+    from aegis.study.channel_det import SAMPLES_PER_SRC
+
+    assert SAMPLES_PER_SRC == 30_000_000
+
+    captured = {}
+
+    def fake(scene, **kw):
+        captured.update(kw)
+        return object()
+
+    monkeypatch.setattr(sio, "paths_from_sionna_scene", fake)
+
+    sector_paths(object(), _sector(), [10.0, 0.0, 1.5], 28e9, engine="sionna")
+    assert captured["samples_per_src"] == SAMPLES_PER_SRC
+
+    center_paths(object(), _sector(), [10.0, 0.0, 1.5], 28e9, engine="sionna", samples_per_src=12345)
+    assert captured["samples_per_src"] == 12345
