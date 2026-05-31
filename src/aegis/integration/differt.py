@@ -523,6 +523,49 @@ def paths_from_differt_scene(
     from differt.scene import TriangleScene
 
     scene = TriangleScene.load_xml(str(scene_path))
+    return paths_from_differt_scene_obj(
+        scene,
+        tx_positions=tx_positions,
+        rx_position=rx_position,
+        freq_hz=freq_hz,
+        max_bounces=max_bounces,
+        tx_power_dbm=tx_power_dbm,
+        initial_polarisation=initial_polarisation,
+    )
+
+
+def paths_from_differt_scene_obj(
+    scene,
+    tx_positions: np.ndarray,
+    rx_position: np.ndarray,
+    freq_hz: float,
+    max_bounces: int = 3,
+    tx_power_dbm: float = DEFAULT_POWER_DBM,
+    initial_polarisation: str = "vertical",
+) -> PropagationPaths:
+    """Ray trace an in-memory DiffeRT ``TriangleScene`` and return PropagationPaths.
+
+    Same as :func:`paths_from_differt_scene` but takes an already-loaded scene
+    object instead of an XML path. Use this for AEGIS-native meshes via
+    ``EnvironmentMesh.to_differt_scene()``: the ``to_sionna_xml`` export targets
+    Sionna's lenient Mitsuba loader and is not accepted by ``differt_core``'s
+    stricter parser, and building the scene once avoids re-parsing per call.
+
+    Parameters
+    ----------
+    scene : differt.scene.TriangleScene with face_materials and material_names
+    tx_positions : (M_ant, 3) transmitter element positions [m]
+    rx_position : (3,) receiver (body) position [m]
+    freq_hz : operating frequency [Hz]
+    max_bounces : maximum number of reflections (default 3)
+    tx_power_dbm : transmit power per element [dBm]
+    initial_polarisation : "vertical" or "horizontal" TX antenna polarisation
+
+    Returns
+    -------
+    PropagationPaths
+    """
+    _check_differt()
 
     scene_vertices = np.asarray(scene.mesh.vertices)
     scene_normals = np.asarray(scene.mesh.normals)

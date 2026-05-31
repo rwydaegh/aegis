@@ -44,6 +44,18 @@ class CityCache:
     candidates: np.ndarray
     origin_lat: float
     origin_lon: float
+    _differt_scene: object = None
+
+    @property
+    def differt_scene(self):
+        """In-memory DiffeRT TriangleScene for the deterministic arm.
+
+        Built once and reused. The deterministic ray tracer uses this rather
+        than re-parsing the Sionna XML, which differt_core's loader rejects.
+        """
+        if self._differt_scene is None:
+            self._differt_scene = self.mesh.to_differt_scene()
+        return self._differt_scene
 
     @classmethod
     def build(cls, lat: float, lon: float, radius_m: float, cache_dir: Path) -> CityCache:
