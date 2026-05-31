@@ -40,6 +40,8 @@ import ClusterPaths from './ClusterPaths'
 import ComplianceRing from './ComplianceRing'
 import ComplianceVolume from './ComplianceVolume'
 import OptimizeGridPreview from './OptimizeGridPreview'
+import ReplayContent from './replay/ReplayContent'
+import { useReplayStore } from '@/stores/replay'
 import { cameraState } from '@/lib/cameraState'
 
 function GroundPlane() {
@@ -398,6 +400,7 @@ export default function SceneRoot() {
   const voxelData = useSceneStore(s => s.voxelData)
   const antennaEntries = useAntennaStore(useShallow(s => [...s.antennas.values()]))
   const selectedAntennaId = useAntennaStore(s => s.selectedId)
+  const replayActive = useReplayStore(s => s.active)
   const controlsRef = useRef<OrbitControlsImpl | null>(null)
   if (!webglAvailable) return <WebGLUnavailable />
   if (!config) return null
@@ -407,7 +410,9 @@ export default function SceneRoot() {
   const initialPosition = (cam.initial_position as [number, number, number]) ?? [0, 2, 5]
   const isCoverageMode = envSource === 'coverage'
 
-  const sceneContent = (
+  const sceneContent = replayActive ? (
+    <ReplayContent />
+  ) : (
     <>
       {!isCoverageMode && <color attach="background" args={[config.scene.background_color ?? '#0a0a0f']} />}
       {!isCoverageMode && <SceneLighting />}
