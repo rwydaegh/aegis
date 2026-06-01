@@ -35,6 +35,35 @@ def compute_path_loss(
         return _fspl(d3d, freq_ghz)
 
 
+def p_los(d_2d_m: float, scenario: str = "umi") -> float:
+    """3GPP TR 38.901 line-of-sight probability (Table 7.4.2-1).
+
+    The stochastic study arm blends LOS and NLOS channel statistics by this
+    distance-based probability instead of shadow-raying the real mesh, so the
+    comparison against the deterministic (ray-traced) arm stays honest.
+
+    Parameters
+    ----------
+    d_2d_m : 2D (ground-plane) BS-UE distance in metres.
+    scenario : "umi" (street canyon, default) or "uma".
+
+    Returns
+    -------
+    Probability in [0, 1]. Both forms assume a ground-level user (the
+    height-dependent UMa correction C(h_UT) is 0 for h_UT <= 13 m, which holds
+    for pedestrians, so it is omitted).
+    """
+    d = max(float(d_2d_m), 0.0)
+    if d <= 18.0:
+        return 1.0
+    s = scenario.lower()
+    if s == "umi":
+        return 18.0 / d + math.exp(-d / 36.0) * (1.0 - 18.0 / d)
+    if s == "uma":
+        return 18.0 / d + math.exp(-d / 63.0) * (1.0 - 18.0 / d)
+    raise ValueError(f"unknown LOS scenario {scenario!r} (use 'umi' or 'uma')")
+
+
 def _fspl(d3d: float, freq_ghz: float) -> float:
     return 20 * math.log10(d3d) + 20 * math.log10(freq_ghz) + 32.45
 

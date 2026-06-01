@@ -66,3 +66,23 @@ def test_constant_model_default_a():
 
     params = {"PL_model": "constant"}
     assert compute_path_loss(params, distance_m=100, freq_ghz=28) == pytest.approx(0.0)
+
+
+def test_p_los_38901_umi():
+    import math
+
+    from aegis.channel.path_loss import p_los
+
+    # <= 18 m is always LOS
+    assert p_los(5.0, "umi") == 1.0
+    assert p_los(18.0, "umi") == 1.0
+    # UMi street-canyon formula at a known distance
+    d = 100.0
+    expected = 18.0 / d + math.exp(-d / 36.0) * (1.0 - 18.0 / d)
+    assert abs(p_los(d, "umi") - expected) < 1e-12
+    # monotonically decreasing beyond 18 m, stays in [0, 1]
+    vals = [p_los(d, "umi") for d in (20, 50, 100, 200, 400)]
+    assert all(0.0 <= v <= 1.0 for v in vals)
+    assert all(a >= b for a, b in zip(vals, vals[1:], strict=False))
+    # UMa decays slower than UMi at the same distance
+    assert p_los(100.0, "uma") > p_los(100.0, "umi")
