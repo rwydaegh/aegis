@@ -311,3 +311,7 @@ presentations/patent_meeting/*.log
 # ── Raw scrape data (large, regenerable) ──
 spinoff/nature career column ai/*.json
 spinoff/nature career column ai/*.txt
+
+# RunPod SSH keys (never commit private keys)
+runpod_april26
+runpod_april26.pub
