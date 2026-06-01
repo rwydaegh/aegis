@@ -30,6 +30,15 @@ import numpy as np
 # dependent: deep-NLOS receivers may warrant a re-check.
 SAMPLES_PER_SRC = 30_000_000
 
+# Diffraction on by default for the deterministic arm. A rooftop antenna looking
+# down at a near-ground receiver is partly shadowed by its own roof edge, so edge
+# diffraction carries real energy: on the Ghent core at 28 GHz, enabling it raised
+# the received power ~2.2x over specular-only (and the diffracted power converges
+# by max_depth 3). Sionna's diffraction is an approximate UTD-style model and the
+# discovered-path set is mildly sample-noisy, so treat the magnitude as indicative
+# and sanity-check it in the deterministic-vs-stochastic comparison.
+DIFFRACTION = True
+
 
 def _trace(
     scene,
@@ -40,6 +49,7 @@ def _trace(
     max_bounces,
     tx_power_dbm,
     samples_per_src=SAMPLES_PER_SRC,
+    diffraction=DIFFRACTION,
 ):
     tx_positions = np.asarray(tx_positions, dtype=float)
     rx_position = np.asarray(rx_position, dtype=float)
@@ -54,6 +64,8 @@ def _trace(
             max_bounces=max_bounces,
             tx_power_dbm=tx_power_dbm,
             samples_per_src=samples_per_src,
+            diffraction=diffraction,
+            edge_diffraction=diffraction,
         )
     if engine == "differt":
         from aegis.integration.differt import paths_from_differt_scene_obj
@@ -80,6 +92,7 @@ def sector_paths(
     max_bounces=3,
     tx_power_dbm=30.0,
     samples_per_src=SAMPLES_PER_SRC,
+    diffraction=DIFFRACTION,
 ):
     """Per-element ray-traced paths (one tx per array element)."""
     return _trace(
@@ -91,6 +104,7 @@ def sector_paths(
         max_bounces,
         tx_power_dbm,
         samples_per_src,
+        diffraction,
     )
 
 
@@ -104,6 +118,7 @@ def center_paths(
     max_bounces=3,
     tx_power_dbm=30.0,
     samples_per_src=SAMPLES_PER_SRC,
+    diffraction=DIFFRACTION,
 ):
     """Center-of-array paths: trace from the array phase center as a single tx.
 
@@ -120,4 +135,5 @@ def center_paths(
         max_bounces,
         tx_power_dbm,
         samples_per_src,
+        diffraction,
     )

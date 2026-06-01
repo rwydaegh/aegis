@@ -93,6 +93,14 @@ def test_samples_per_src_converged_default_threads_to_sionna(monkeypatch):
 
     sector_paths(object(), _sector(), [10.0, 0.0, 1.5], 28e9, engine="sionna")
     assert captured["samples_per_src"] == SAMPLES_PER_SRC
+    # diffraction is on by default (rooftop-edge diffraction carries ~2.2x the
+    # specular-only power for near-ground receivers); a regression to off would
+    # silently underestimate exposure.
+    assert captured["diffraction"] is True
+    assert captured["edge_diffraction"] is True
 
     center_paths(object(), _sector(), [10.0, 0.0, 1.5], 28e9, engine="sionna", samples_per_src=12345)
     assert captured["samples_per_src"] == 12345
+
+    center_paths(object(), _sector(), [10.0, 0.0, 1.5], 28e9, engine="sionna", diffraction=False)
+    assert captured["diffraction"] is False
