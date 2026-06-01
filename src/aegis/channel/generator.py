@@ -221,6 +221,76 @@ def generate_channel(
     return PropagationPaths.from_powers(k_hat=k_hats, power=path_powers)
 
 
+def _transverse_basis(k_hat: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Two orthonormal vectors spanning the plane transverse to each ``k_hat``.
+
+    e1 = normalize(k x z) (k x x where k is near-vertical), e2 = k x e1. The
+    incident field lives in this plane (transverse EM wave).
+    """
+    k = k_hat / np.linalg.norm(k_hat, axis=1, keepdims=True)
+    z = np.tile([0.0, 0.0, 1.0], (k.shape[0], 1))
+    ref = np.where(np.abs(k[:, 2:3]) > 0.99, np.tile([1.0, 0.0, 0.0], (k.shape[0], 1)), z)
+    e1 = np.cross(k, ref)
+    e1 /= np.maximum(np.linalg.norm(e1, axis=1, keepdims=True), NUMERICAL_FLOOR)
+    e2 = np.cross(k, e1)
+    e2 /= np.maximum(np.linalg.norm(e2, axis=1, keepdims=True), NUMERICAL_FLOOR)
+    return e1, e2
+
+
+def generate_coherent_channel(
+    params: dict,
+    freq_ghz: float,
+    antenna_pos: np.ndarray,
+    body_center: np.ndarray,
+    power_dbm: float,
+    seed: int = DEFAULT_SEED,
+    overrides: dict | None = None,
+    xpr_db: float = 8.0,
+) -> PropagationPaths:
+    """Coherent 38.901 cluster channel for the stochastic study arm.
+
+    Reuses the cluster geometry of :func:`generate_channel` (same presets, LSPs,
+    sub-paths) but emits a coherent ``PropagationPaths`` with a complex per-path
+    field ``psi`` instead of collapsing to scalar powers. Each sub-path carries a
+    transverse field split between two orthogonal polarisations by the 38.901
+    cross-polarisation ratio ``xpr_db`` with independent random phases, scaled to
+    the path's incident power density via ``|E|^2 = 2 Z_0 S``.
+
+    The result is a center-of-array path set (``element_index`` all zero), the
+    same contract the deterministic arm's ``center_paths`` returns, so the study
+    loop expands it across the array with ``expand_paths_to_array`` identically.
+    Geometry-blind by design: it never sees the real mesh. The LOS/NLOS blend by
+    ``p_los`` happens at the loop level, not here.
+    """
+    from aegis.constants import Z_0
+
+    incoh = generate_channel(params, freq_ghz, antenna_pos, body_center, power_dbm, seed, overrides)
+    k = np.asarray(incoh.k_hat, dtype=float)
+    s = np.asarray(incoh.power, dtype=float)  # per-path incident power density [W/m^2]
+    n = k.shape[0]
+    if n == 0:
+        return incoh
+
+    rng = np.random.default_rng(seed + 1)  # phases independent of the cluster draw
+    e1, e2 = _transverse_basis(k)
+    xpr = 10.0 ** (xpr_db / 10.0)
+    s1 = s * xpr / (1.0 + xpr)  # co-pol share
+    s2 = s / (1.0 + xpr)  # cross-pol share
+    e_mag1 = np.sqrt(2.0 * Z_0 * np.maximum(s1, 0.0))
+    e_mag2 = np.sqrt(2.0 * Z_0 * np.maximum(s2, 0.0))
+    a1 = e_mag1 * np.exp(1j * rng.uniform(0.0, 2.0 * np.pi, n))
+    a2 = e_mag2 * np.exp(1j * rng.uniform(0.0, 2.0 * np.pi, n))
+    psi = a1[:, None] * e1 + a2[:, None] * e2  # (N, 3) complex incident field
+
+    return PropagationPaths(
+        k_hat=k,
+        psi=psi,
+        element_index=np.zeros(n, dtype=np.intp),
+        delay=np.zeros(n),
+        is_los=np.zeros(n, dtype=bool),
+    )
+
+
 def _draw_large_scale_sc(
     params: dict,
     freq_ghz: float,

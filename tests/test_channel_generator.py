@@ -262,3 +262,35 @@ def test_rejects_zero_cluster_or_subpath_override(override, expected):
             seed=42,
             overrides=override,
         )
+
+
+def test_generate_coherent_channel_structure():
+    import numpy as np
+
+    from aegis.channel.generator import generate_channel, generate_coherent_channel
+    from aegis.channel.presets import load_preset
+    from aegis.constants import Z_0
+
+    preset = load_preset("3GPP_38.901_UMi_LOS", DATA_DIR)
+    kw = dict(
+        freq_ghz=28,
+        antenna_pos=np.array([20.0, 0.0, 10.0]),
+        body_center=np.array([0.0, 0.0, 1.1]),
+        power_dbm=30,
+        seed=7,
+    )
+    incoh = generate_channel(preset["params"], **kw)
+    coh = generate_coherent_channel(preset["params"], xpr_db=8.0, **kw)
+
+    n = coh.k_hat.shape[0]
+    assert n == incoh.n_paths and n > 0
+    # coherent: complex field, one per path, in 3D
+    assert coh.psi.shape == (n, 3) and np.iscomplexobj(coh.psi)
+    assert np.any(np.abs(coh.psi.imag) > 0)
+    # center-of-array contract: all element_index zero
+    assert np.all(np.asarray(coh.element_index) == 0)
+    # field is transverse to the propagation direction
+    dot = np.einsum("ni,ni->n", coh.psi, coh.k_hat.astype(complex))
+    assert np.all(np.abs(dot) < 1e-9 * (np.linalg.norm(coh.psi, axis=1) + 1e-30))
+    # energy consistency: sum |psi|^2 == 2 Z0 * sum incident power density
+    np.testing.assert_allclose(np.sum(np.abs(coh.psi) ** 2), 2.0 * Z_0 * incoh.power.sum(), rtol=1e-6)
