@@ -29,6 +29,10 @@ class MobilityConfig:
     window_s: float = 60.0
     walk_speed_mps: float = 1.4
     user_fraction: float = 0.5
+    # "radial" = synthetic straight diameters (no key needed).
+    # "directions" = real Google Directions walking routes between uniformly
+    # sampled origin/destination points (needs GOOGLE_DIRECTIONS_API_KEY).
+    routing: str = "radial"
 
 
 @dataclass(frozen=True)

@@ -1,0 +1,42 @@
+# MVP: one city (Ghent), REAL Google-Maps walking routes, small crowd, fast.
+# The point is a believable end-to-end demonstration + good visualization, not
+# breadth. Needs GOOGLE_DIRECTIONS_API_KEY (see ~/.config/aegis/study.env).
+cities:
+  count: 1
+  radius_m: 180
+mobility:
+  n_agents: 10
+  window_s: 40              # ~56 m of walk per agent at 1.4 m/s
+  walk_speed_mps: 1.4
+  user_fraction: 0.5
+  routing: directions       # real street routes between uniform OD points
+deployment:
+  process: ginibre
+  density_source: dataset
+  densification: 1.0
+  realizations_K: 1
+  sectoring:
+    sectors: 3
+    az_coverage_deg: 120
+    max_range_m: 150
+  equipment:
+    name: mmwave_mamimo_28ghz
+    array: [8, 8]
+    tx_power_dbm: 30
+    height_class: rooftop
+    freq_hz: 28.0e+9
+  precoder: mrt
+channel:
+  stochastic: coherent_38901
+  los_blend: p_los
+  seed: 42
+  samples_per_src: 3000000
+  diffraction: true
+  max_center_paths: 16
+dosimetry:
+  level: 7
+  peak_sab: false
+temporal:
+  dt_s: 1.0
+  pose_period: 20
+  recompute_period: 20

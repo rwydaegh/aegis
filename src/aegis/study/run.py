@@ -87,7 +87,40 @@ def run_study(cfg, agents, sites, kernel, out_dir, freq_hz) -> dict:
     }
     (out_dir / "summary.json").write_text(json.dumps(summary, indent=2))
     _write_cdf_figure(x, f, summary["headline"], out_dir / "cdf.png")
+    _write_scene_json(out_dir, agents, sites, p_abs_w, is_user)
     return summary
+
+
+def _write_scene_json(out_dir, agents, sites, p_abs_w, is_user):
+    """Dump exact deployment + walks + per-agent exposure for visualization (and
+    as a step toward a replay artifact). Positions are local XY metres."""
+    scene = {
+        "sites": [
+            {
+                "position": [float(s.position[0]), float(s.position[1]), float(s.position[2])],
+                "sectors": [
+                    {
+                        "boresight_az_deg": float(sec.boresight_az_deg),
+                        "az_coverage_deg": float(sec.az_coverage_deg),
+                        "max_range_m": float(sec.max_range_m),
+                        "m_ant": int(sec.m_ant),
+                    }
+                    for sec in s.sectors
+                ],
+            }
+            for s in sites
+        ],
+        "agents": [
+            {
+                "agent_id": int(a.agent_id),
+                "is_user": bool(is_user[i]) if i < len(is_user) else bool(a.is_user),
+                "exposure_w": float(p_abs_w[i]) if i < len(p_abs_w) else None,
+                "positions": np.asarray(a.trajectory.positions, dtype=float).tolist(),
+            }
+            for i, a in enumerate(agents)
+        ],
+    }
+    (out_dir / "scene.json").write_text(json.dumps(scene))
 
 
 def _write_cdf_figure(x, f, headline, path):
@@ -227,6 +260,79 @@ class RealKernel:
         return 0.0 if peak is None else float(peak)
 
 
+def _sample_xy_in_disk(rng, radius_m):
+    """Uniform point in a disk of the given radius (server XY, metres)."""
+    import numpy as np
+
+    r = radius_m * np.sqrt(rng.uniform())
+    a = rng.uniform(0.0, 2.0 * np.pi)
+    return np.array([r * np.cos(a), r * np.sin(a)])
+
+
+def _directions_route_xy(city, rng, radius_m, cache_dir):  # pragma: no cover - network
+    """A real Google Directions walking route between two uniformly sampled
+    points in the core, returned as local XY (the study/mesh frame).
+
+    Origin/destination are sampled uniformly in the disk (population weighting is
+    deferred). Endpoints are projected to lat/lon for the Directions call, and
+    the returned street polyline is projected back to the local frame so the walk
+    shares the mesh origin. Falls back to the straight OD line only if the API
+    cannot route this pair, with a logged warning (not silent)."""
+    import numpy as np
+
+    from aegis.study.geo import enu_to_latlon, latlon_to_enu
+    from aegis.study.mobility import route_walk
+
+    o_xy = _sample_xy_in_disk(rng, 0.85 * radius_m)
+    d_xy = _sample_xy_in_disk(rng, 0.85 * radius_m)
+    o_ll = enu_to_latlon(float(o_xy[0]), float(o_xy[1]), city.origin_lat, city.origin_lon)
+    d_ll = enu_to_latlon(float(d_xy[0]), float(d_xy[1]), city.origin_lat, city.origin_lon)
+    try:
+        coords = route_walk(o_ll, d_ll, cache_dir)
+        xy = np.array([latlon_to_enu(lat, lon, city.origin_lat, city.origin_lon) for lat, lon in coords])
+        if xy.shape[0] >= 2:
+            return xy
+        print(f"[walk] degenerate route ({xy.shape[0]} pts), using straight OD")
+    except Exception as exc:
+        print(f"[walk] Directions failed ({exc}); using straight OD for this agent")
+    return np.array([o_xy, d_xy])
+
+
+def _build_agents(cfg, city, rng, agent_start, agent_count, cache_dir):  # pragma: no cover
+    """Build the crowd. ``routing='directions'`` walks real Google street routes;
+    otherwise synthetic radial diameters across the core."""
+    import numpy as np
+
+    from aegis.study.loop import Agent
+    from aegis.study.walk import sample_trajectory
+
+    n = cfg.mobility.n_agents
+    radius_m = cfg.cities.radius_m
+    routing = getattr(cfg.mobility, "routing", "radial")
+    max_slots = max(2, int(round(cfg.mobility.window_s / 1.0)))
+
+    agents = []
+    for i in range(agent_start, min(agent_start + agent_count, n)):
+        if routing == "directions":
+            route = _directions_route_xy(city, rng, radius_m, cache_dir)
+        else:
+            ang = 2 * np.pi * i / n
+            route = np.array(
+                [[-radius_m * np.cos(ang), -radius_m * np.sin(ang)], [radius_m * np.cos(ang), radius_m * np.sin(ang)]]
+            )
+        traj = sample_trajectory(route, cfg.mobility.walk_speed_mps, dt_s=1.0)
+        # Bound the walk to the synchronised window so per-agent cost stays fixed
+        # regardless of how long a sampled OD route happens to be.
+        if len(traj.positions) > max_slots:
+            traj = type(traj)(
+                positions=traj.positions[:max_slots],
+                headings_rad=traj.headings_rad[:max_slots],
+                t0_s=traj.t0_s,
+            )
+        agents.append(Agent(trajectory=traj, is_user=(i % 2 == 0), agent_id=i))
+    return agents
+
+
 def _build_real(cfg, out_dir, seed, agent_start, agent_count, city_latlon=(51.0536, 3.7253)):  # pragma: no cover
     import numpy as np
 
@@ -235,7 +341,6 @@ def _build_real(cfg, out_dir, seed, agent_start, agent_count, city_latlon=(51.05
     from aegis.study.bodies import StaticPhantomPoser
     from aegis.study.city import CityCache
     from aegis.study.deployment import build_sites, thin_min_spacing
-    from aegis.study.walk import sample_trajectory
     from aegis.tissue.dielectric import TissueModel
 
     rng = np.random.default_rng(seed)
@@ -258,18 +363,7 @@ def _build_real(cfg, out_dir, seed, agent_start, agent_count, city_latlon=(51.05
         eq.tx_power_dbm,
     )
 
-    # Straight radial walks across the core (Directions routing is the real path,
-    # gated on an API key; for an unkeyed run we fall back to synthetic straights).
-    from aegis.study.loop import Agent
-
-    n = cfg.mobility.n_agents
-    agents = []
-    for i in range(agent_start, min(agent_start + agent_count, n)):
-        ang = 2 * np.pi * i / n
-        r = cfg.cities.radius_m
-        route = np.array([[-r * np.cos(ang), -r * np.sin(ang)], [r * np.cos(ang), r * np.sin(ang)]])
-        traj = sample_trajectory(route, cfg.mobility.walk_speed_mps, dt_s=1.0)
-        agents.append(Agent(trajectory=traj, is_user=(i % 2 == 0), agent_id=i))
+    agents = _build_agents(cfg, city, rng, agent_start, agent_count, out_dir / "routes")
 
     poser = StaticPhantomPoser(BodyMesh.load(Path("data/duke.stl"), name="duke"))
     engine = DosimetryEngine(TissueModel.from_database("Skin", freq))
