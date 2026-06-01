@@ -4,10 +4,50 @@ import AppShell from '@/components/layout/AppShell'
 import { deserializeShareLink, applyShareState } from '@/lib/shareLink'
 import { useScenario } from '@/hooks/useScenario'
 import { useNotificationStore } from '@/stores/notifications'
+import { useReplayStore } from '@/stores/replay'
+import {
+  validateArtifact,
+  findFrameIndex,
+  parseFrameQuery,
+  type ReplayArtifact,
+} from '@/api/replayTypes'
+
+/** Resolve deep-link frame params against a freshly loaded artifact and jump. */
+function applyFrameParams(a: ReplayArtifact) {
+  const want = parseFrameQuery(window.location.search)
+  if (Object.keys(want).length === 0) return
+  const i = findFrameIndex(a.frames, want)
+  if (i >= 0) useReplayStore.getState().setFrameIndex(i)
+}
 
 export default function AppInner() {
   const { status, error } = useConfig()
   const { loadScenario } = useScenario()
+
+  // Auto-load a replay artifact from ?artifact=<url> at app mount, so a single
+  // link opens the replay scene directly (the store's `active` flag makes
+  // SceneRoot render ReplayContent). Independent of which sidebar panel is open.
+  useEffect(() => {
+    const url = new URLSearchParams(window.location.search).get('artifact')
+    if (!url) return
+    fetch(url)
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        return r.text()
+      })
+      .then((text) => {
+        const parsed = JSON.parse(text)
+        const err = validateArtifact(parsed)
+        if (err) {
+          useReplayStore.getState().setError(err)
+          return
+        }
+        const a = parsed as ReplayArtifact
+        useReplayStore.getState().loadArtifact(a)
+        applyFrameParams(a)
+      })
+      .catch((e) => useReplayStore.getState().setError(`fetch ${url}: ${(e as Error).message}`))
+  }, [])
 
   // Hydrate from URL fragment once config has loaded (share link overrides server defaults)
   useEffect(() => {

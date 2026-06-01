@@ -1,6 +1,11 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { useReplayStore } from '@/stores/replay'
-import { validateArtifact, type ReplayArtifact, type ReplayFrame } from '@/api/replayTypes'
+import {
+  validateArtifact,
+  findFrameIndex,
+  type ReplayArtifact,
+  type FrameQuery,
+} from '@/api/replayTypes'
 
 const INPUT_CLASS = 'w-full bg-background border border-border rounded px-2 py-1.5 text-sm text-foreground'
 const LABEL_CLASS = 'text-xs text-muted-foreground block mb-1'
@@ -10,38 +15,43 @@ function uniq<T>(xs: T[]): T[] {
   return [...new Set(xs)]
 }
 
-/** Find the index of the first frame matching all given constraints. */
-function findFrame(frames: ReplayFrame[], want: Partial<Pick<ReplayFrame, 'ue_index' | 'condition' | 'precoder'>>): number {
-  const i = frames.findIndex(
-    (f) =>
-      (want.ue_index === undefined || f.ue_index === want.ue_index) &&
-      (want.condition === undefined || f.condition === want.condition) &&
-      (want.precoder === undefined || f.precoder === want.precoder),
-  )
-  return i >= 0 ? i : -1
-}
-
 function Loader() {
   const fileRef = useRef<HTMLInputElement>(null)
   const loadArtifact = useReplayStore((s) => s.loadArtifact)
   const setError = useReplayStore((s) => s.setError)
   const error = useReplayStore((s) => s.error)
+  const [url, setUrl] = useState('')
 
-  function ingest(text: string) {
+  function ingest(text: string): ReplayArtifact | null {
     let parsed: unknown
     try {
       parsed = JSON.parse(text)
     } catch (e) {
       setError(`JSON parse error: ${(e as Error).message}`)
-      return
+      return null
     }
     const err = validateArtifact(parsed)
     if (err) {
       setError(err)
-      return
+      return null
     }
-    loadArtifact(parsed as ReplayArtifact)
+    const a = parsed as ReplayArtifact
+    loadArtifact(a)
+    return a
   }
+
+  function loadFromUrl(u: string) {
+    if (!u) return
+    fetch(u)
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        return r.text()
+      })
+      .then(ingest)
+      .catch((e) => setError(`fetch ${u}: ${(e as Error).message}`))
+  }
+  // Note: autoload from ?artifact=<url> (and deep-link frame params) is handled
+  // globally in AppInner so it works regardless of which panel is open.
 
   return (
     <div>
@@ -57,6 +67,21 @@ function Loader() {
           file.text().then(ingest)
         }}
       />
+      <div className="flex gap-1 mt-1.5">
+        <input
+          type="text"
+          placeholder="or fetch a served URL, e.g. /factory.json"
+          className={INPUT_CLASS}
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') loadFromUrl(url)
+          }}
+        />
+        <button className={BTN_CLASS} onClick={() => loadFromUrl(url)}>
+          Load
+        </button>
+      </div>
       {error && <p className="text-xs text-destructive mt-2">{error}</p>}
       <p className="text-xs text-muted-foreground mt-2">
         Produced by a headless run, e.g. <code>build_replay_artifact.py</code>.
@@ -76,9 +101,11 @@ function Controls() {
   const conditions = uniq(frames.map((f) => f.condition))
   const precoders = uniq(frames.map((f) => f.precoder))
   const ueIndices = uniq(frames.map((f) => f.ue_index)).sort((a, b) => a - b)
+  const realizations = uniq(frames.map((f) => f.realization ?? 0)).sort((a, b) => a - b)
 
-  function jump(want: Partial<Pick<ReplayFrame, 'ue_index' | 'condition' | 'precoder'>>) {
-    const i = findFrame(frames, want)
+  // Keep the current realization fixed when changing any other dimension.
+  function jump(want: FrameQuery) {
+    const i = findFrameIndex(frames, { realization: frame.realization, ...want })
     if (i >= 0) setFrameIndex(i)
   }
 
@@ -92,6 +119,21 @@ function Controls() {
           Exit
         </button>
       </div>
+
+      {realizations.length > 1 && (
+        <div>
+          <label className={LABEL_CLASS}>Realization (scatterer layout)</label>
+          <select
+            className={INPUT_CLASS}
+            value={frame.realization ?? 0}
+            onChange={(e) => jump({ realization: Number(e.target.value) })}
+          >
+            {realizations.map((r) => (
+              <option key={r} value={r}>Realization {r}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {conditions.length > 1 && (
         <div>
