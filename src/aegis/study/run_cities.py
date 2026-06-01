@@ -104,12 +104,11 @@ def _overlay_cdf(results, path_stem):
             x = np.asarray(r["cdf_x"], dtype=float)
             f = np.asarray(r["cdf_f"], dtype=float)
             if x.size:
-                ax.step(x, f, where="post", label=r.get("name", "?"), lw=0.9)
-        if headline == "icnirp_fraction":
-            ax.set_xscale("log")
-            ax.set_xlabel("ICNIRP fraction")
-        else:
-            ax.set_xlabel(headline)
+                # clamp non-positive (uncovered floor) so the log axis is valid
+                ax.step(np.maximum(x, 1e-18), f, where="post", label=r.get("name", "?"), lw=0.9)
+        # both ICNIRP fraction and absorbed power span orders of magnitude -> log x
+        ax.set_xscale("log")
+        ax.set_xlabel("ICNIRP fraction" if headline == "icnirp_fraction" else headline)
         ax.set_ylabel("Population CDF")
         ax.set_ylim(0, 1)
         ax.legend(fontsize=5, ncol=2, frameon=False)
