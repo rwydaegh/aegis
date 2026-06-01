@@ -11,6 +11,8 @@ Monograph: thm:coherent-law (Theorem 4.1).
 
 from __future__ import annotations
 
+import os
+
 import numpy as np
 from numpy.typing import NDArray
 
@@ -21,6 +23,22 @@ from aegis.coherent.exposure_operator import (
     compute_rho,
     eigendecompose_Q,
 )
+
+# Triangle-chunk budget: the body channel's transient (B, N, 3) intermediate
+# (B triangles, N paths) is the kernel's memory peak. At full phantom resolution
+# (56k triangles) with a diffraction-rich path set it reaches tens of GB, which
+# overflows a GPU. Process triangles in blocks sized so B*N stays near this many
+# (m, n) pairs; Q is a triangle-sum (additive) and sab is per-triangle, so the
+# blocked result is identical to the unchunked one. Override per device with
+# AEGIS_TRI_CHUNK_MN.
+_TRI_CHUNK_MN = int(os.environ.get("AEGIS_TRI_CHUNK_MN", 6_000_000))
+
+
+def _triangle_chunk(n_tri: int, n_paths: int) -> int:
+    """Number of triangles per block so the (B, N, 3) intermediate stays bounded."""
+    if n_paths <= 0:
+        return max(1, n_tri)
+    return max(1, min(n_tri, _TRI_CHUNK_MN // max(1, n_paths)))
 
 
 def level7_coherent(
@@ -66,26 +84,39 @@ def level7_coherent(
     eigenvalues : (M_ant,) or None, eigenvalues of Q
     rho : float or None, exposure-signal alignment
     """
-    G_tilde = compute_body_channel(
-        normals,
-        centroids,
-        k_hat,
-        psi,
-        element_index,
-        n_tilde,
-        sigma,
-        freq_hz,
-        n_elements,
-    )
+    # Process triangles in blocks. Building G_tilde for all M triangles at once
+    # peaks at the (M, N, 3) body-channel intermediate, which overflows a GPU at
+    # full resolution. Q is a triangle-sum and sab is per-triangle, so blocking
+    # gives the identical result (up to floating-point summation order) at a
+    # bounded memory footprint.
+    M = normals.shape[0]
+    n_paths = int(np.asarray(k_hat).shape[0]) if np.asarray(k_hat).ndim else 0
+    chunk = _triangle_chunk(M, n_paths)
 
-    # S_ab(r) = ||G_tilde(r) @ x||^2
-    # G_tilde: (M, 3, M_ant), x: (M_ant,)
-    field = xp.einsum("mia,a->mi", G_tilde, x)  # (M, 3)
-    sab = xp.real(xp.sum(xp.conj(field) * field, axis=1))  # (M,)
-    sab = xp.maximum(sab, 0.0)
+    sab_blocks: list = []
+    Q = xp.zeros((n_elements, n_elements), dtype=complex)
+    for start in range(0, M, chunk):
+        sl = slice(start, start + chunk)
+        G_blk = compute_body_channel(
+            normals[sl],
+            centroids[sl],
+            k_hat,
+            psi,
+            element_index,
+            n_tilde,
+            sigma,
+            freq_hz,
+            n_elements,
+        )  # (B, 3, M_ant)
 
-    # Exposure operator Q
-    Q = compute_exposure_operator(G_tilde, areas)
+        # S_ab(r) = ||G_tilde(r) @ x||^2 for this block
+        field = xp.einsum("mia,a->mi", G_blk, x)  # (B, 3)
+        sab_blocks.append(xp.maximum(xp.real(xp.sum(xp.conj(field) * field, axis=1)), 0.0))
+
+        # Q accumulates over triangles (each block already Hermitian-symmetrised)
+        Q = Q + compute_exposure_operator(G_blk, areas[sl])
+
+    sab = sab_blocks[0] if len(sab_blocks) == 1 else xp.concatenate(sab_blocks)
     eigenvalues, _ = eigendecompose_Q(Q)
 
     # Exposure-signal alignment rho

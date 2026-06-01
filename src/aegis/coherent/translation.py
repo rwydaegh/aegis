@@ -21,10 +21,26 @@ Reference: paper_v2.tex §III.C, eq:Mphase.
 
 from __future__ import annotations
 
+import os
+
 from aegis.coherent.fresnel_operator import compute_fresnel_operator
 from aegis.constants import C_0
 from aegis.defaults import NUMERICAL_FLOOR
 from aegis.tissue.fresnel import xi_from_mu
+
+# The static gram's transient `a_weighted` tensor is (M_tri, N_c, 3, M_ant); at
+# full phantom resolution with a diffraction-rich path set it reaches tens of GB
+# and overflows a GPU. Process triangles in blocks sized so this tensor stays
+# near this many elements. M_static contracts the triangle index, so the blocked
+# sum is identical to the unchunked einsum. Override per device with
+# AEGIS_GRAM_CHUNK_ELEMS.
+_GRAM_CHUNK_ELEMS = int(os.environ.get("AEGIS_GRAM_CHUNK_ELEMS", 32_000_000))
+
+
+def _gram_chunk(n_tri: int, n_c: int, m_ant: int) -> int:
+    """Triangles per block so the (B, N_c, 3, M_ant) intermediate stays bounded."""
+    per = max(1, n_c * 3 * m_ant)
+    return max(1, min(max(1, n_tri), _GRAM_CHUNK_ELEMS // per))
 
 
 def compute_static_path_gram(
@@ -68,32 +84,46 @@ def compute_static_path_gram(
 
     k0 = 2.0 * jnp.pi * freq_hz / C_0
 
-    mu, t_s, t_p, e_s, e_p = compute_fresnel_operator(normals, center_k_hat, n_tilde)
+    normals = jnp.asarray(normals)
+    centroids_0 = jnp.asarray(centroids_0)
+    areas = jnp.asarray(areas)
+    center_k_hat = jnp.asarray(center_k_hat)
+    center_psi = jnp.asarray(center_psi)
+    array_offsets = jnp.asarray(array_offsets)
 
-    xi = xi_from_mu(mu, n_tilde)
-    alpha = -jnp.imag(k0 * xi)
-    alpha = jnp.maximum(alpha, NUMERICAL_FLOOR)
-    depth_weight = jnp.sqrt(sigma / (4.0 * alpha))  # (M, N_c)
+    n_tri = normals.shape[0]
+    n_c = center_k_hat.shape[0]
+    m_ant = array_offsets.shape[0]
 
-    phase_pos = jnp.exp(-1j * k0 * (centroids_0 @ center_k_hat.T))  # (M, N_c)
-    scalar = depth_weight * phase_pos  # (M, N_c)
-
-    psi_s = jnp.einsum("mci,ci->mc", e_s, center_psi)
-    psi_p = jnp.einsum("mci,ci->mc", e_p, center_psi)
-    F_psi_center = (t_s * psi_s)[:, :, None] * e_s + (t_p * psi_p)[:, :, None] * e_p  # (M, N_c, 3)
-
+    # Block-independent: advance of each center direction across the array.
     phase_advance = jnp.exp(1j * k0 * (center_k_hat @ array_offsets.T))  # (N_c, M_ant)
 
-    # h[m, c, i, j] = scalar[m, c] * F_psi_center[m, c, i] * phase_advance[c, j]
-    # area-weighted: a[m, c, i, j] = sqrt(area[m]) * h[m, c, i, j]
-    # (split the area weight so the gram becomes a clean inner product)
-    sqrt_area = jnp.sqrt(areas)
-    a_weighted = (
-        (sqrt_area[:, None] * scalar)[:, :, None, None] * F_psi_center[:, :, :, None] * phase_advance[None, :, None, :]
-    )  # (M, N_c, 3, M_ant)
+    def _block_gram(sl: slice):
+        nrm, cen, ar = normals[sl], centroids_0[sl], areas[sl]
+        mu, t_s, t_p, e_s, e_p = compute_fresnel_operator(nrm, center_k_hat, n_tilde)
+        xi = xi_from_mu(mu, n_tilde)
+        alpha = jnp.maximum(-jnp.imag(k0 * xi), NUMERICAL_FLOOR)
+        depth_weight = jnp.sqrt(sigma / (4.0 * alpha))  # (B, N_c)
+        phase_pos = jnp.exp(-1j * k0 * (cen @ center_k_hat.T))  # (B, N_c)
+        scalar = depth_weight * phase_pos  # (B, N_c)
+        psi_s = jnp.einsum("mci,ci->mc", e_s, center_psi)
+        psi_p = jnp.einsum("mci,ci->mc", e_p, center_psi)
+        f_psi = (t_s * psi_s)[:, :, None] * e_s + (t_p * psi_p)[:, :, None] * e_p  # (B, N_c, 3)
+        # a[m, c, i, j] = sqrt(area[m]) * scalar[m, c] * f_psi[m, c, i] * phase_advance[c, j]
+        sqrt_area = jnp.sqrt(ar)
+        a_weighted = (
+            (sqrt_area[:, None] * scalar)[:, :, None, None] * f_psi[:, :, :, None] * phase_advance[None, :, None, :]
+        )  # (B, N_c, 3, M_ant)
+        # M_static[c, d, p, q] = sum_{m, i} conj(a[m, c, i, p]) * a[m, d, i, q]
+        return jnp.einsum("mcip,mdiq->cdpq", jnp.conj(a_weighted), a_weighted)
 
-    # M_static[c, d, p, q] = sum_{m, i} conj(a_weighted[m, c, i, p]) * a_weighted[m, d, i, q]
-    return jnp.einsum("mcip,mdiq->cdpq", jnp.conj(a_weighted), a_weighted)
+    # Triangles are independent and summed, so accumulate the gram block by block
+    # to bound the (B, N_c, 3, M_ant) intermediate.
+    chunk = _gram_chunk(n_tri, n_c, m_ant)
+    m_static = jnp.zeros((n_c, n_c, m_ant, m_ant), dtype=complex)
+    for start in range(0, n_tri, chunk):
+        m_static = m_static + _block_gram(slice(start, start + chunk))
+    return m_static
 
 
 def translation_phasor(center_k_hat, delta_t, freq_hz):
