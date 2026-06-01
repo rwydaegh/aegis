@@ -11,7 +11,7 @@
 
 \graphicspath{{figures/}}
 
-\title{Population exposure to mmWave massive-MIMO across ten cities:\\
+\title{Population exposure to mmWave massive-MIMO across cities:\\
 a deterministic ray-traced spine}
 \author{AEGIS study report}
 
@@ -21,7 +21,9 @@ a deterministic ray-traced spine}
 \begin{abstract}
 We compute the distribution of radio-frequency exposure across a walking
 pedestrian population under a \SI{28}{\giga\hertz} massive-MIMO deployment, for
-ten real cities of differing urban morphology. Exposure is evaluated coherently:
+real cities of differing urban morphology. Pedestrians follow real walking
+routes (Google Directions); the base stations sit on real building rooftops.
+Exposure is evaluated coherently:
 each base-station sector forms a fixed maximum-ratio-transmission beam toward its
 served users, and every bystander body absorbs power according to the coherent
 body-surface channel, $S_\mathrm{ab}(\mathbf r) = \lVert \tilde{\mathbf
@@ -61,7 +63,7 @@ captured power at near-ground receivers in dense cores by finding rooftop-edge
 paths). The shoot-and-bounce sample count is set near its convergence plateau.
 
 \subsection{Cost reductions for breadth}
-To run all ten cities, fidelity knobs are dialled down deliberately
+To run several cities, fidelity knobs are dialled down deliberately
 (Section~\ref{sec:knobs}); the pipeline supports raising every one of them. The
 per-person scalar \(\mathbf x^H \mathbf Q\, \mathbf x\) is the reported metric;
 the expensive per-triangle peak-\(S_\mathrm{ab}\) map (for an ICNIRP-fraction
@@ -74,7 +76,7 @@ while bounding the exposure-operator cost.
 \begin{figure}[t]
   \centering
   \includegraphics[width=\columnwidth]{cities_cdf.pdf}
-  \caption{Population exposure CDFs for ten cities of differing morphology.
+  \caption{Population exposure CDFs across cities of differing morphology.
   Horizontal axis: per-person whole-body absorbed power \(\mathbf x^H \mathbf Q\,
   \mathbf x\) [\si{\watt}]. Each curve is one city's bystander population.}
   \label{fig:cdf}
@@ -91,7 +93,7 @@ line-of-sight fraction the ray tracer resolves.
 
 \section{Knobs dialled down for this pass}
 \label{sec:knobs}
-This pass trades fidelity for breadth, to land all ten cities. Each is a config
+This pass trades fidelity for breadth. Each knob is a config
 knob and can be raised:
 \begin{itemize}
   \item crowd size per city (modest, not yet CDF-converged),

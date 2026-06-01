@@ -50,6 +50,7 @@ def _trace(
     tx_power_dbm,
     samples_per_src=SAMPLES_PER_SRC,
     diffraction=DIFFRACTION,
+    return_viz=False,
 ):
     tx_positions = np.asarray(tx_positions, dtype=float)
     rx_position = np.asarray(rx_position, dtype=float)
@@ -66,11 +67,12 @@ def _trace(
             samples_per_src=samples_per_src,
             diffraction=diffraction,
             edge_diffraction=diffraction,
+            return_viz=return_viz,
         )
     if engine == "differt":
         from aegis.integration.differt import paths_from_differt_scene_obj
 
-        return paths_from_differt_scene_obj(
+        paths = paths_from_differt_scene_obj(
             scene,
             tx_positions=tx_positions,
             rx_position=rx_position,
@@ -79,6 +81,8 @@ def _trace(
             tx_power_dbm=tx_power_dbm,
             initial_polarisation="vertical",
         )
+        # DiffeRT path bounce vertices are not surfaced here yet.
+        return (paths, []) if return_viz else paths
     raise ValueError(f"unknown ray-tracing engine: {engine!r} (use 'sionna' or 'differt')")
 
 
@@ -146,15 +150,18 @@ def center_paths(
     samples_per_src=SAMPLES_PER_SRC,
     diffraction=DIFFRACTION,
     max_center_paths=None,
+    return_viz=False,
 ):
     """Center-of-array paths: trace from the array phase center as a single tx.
 
     These feed the translation-phasor Gram and (after expand_paths_to_array) the
     coherent Sab map. Tracing once from the center instead of M_ant times is the
     far-field array model and is much cheaper. ``max_center_paths`` caps the path
-    set to the strongest few (by power) to bound the Gram cost.
+    set to the strongest few (by power) to bound the Gram cost. ``return_viz``
+    also returns the real per-bounce ray waypoints (TX -> bounces -> RX) for the
+    replay viewer, as ``(paths, viz)``.
     """
-    paths = _trace(
+    res = _trace(
         scene,
         np.asarray(sector.array.reference_position)[None, :],
         rx_position,
@@ -164,5 +171,9 @@ def center_paths(
         tx_power_dbm,
         samples_per_src,
         diffraction,
+        return_viz=return_viz,
     )
-    return _cap_paths(paths, max_center_paths)
+    if return_viz:
+        paths, viz = res
+        return _cap_paths(paths, max_center_paths), viz
+    return _cap_paths(res, max_center_paths)
