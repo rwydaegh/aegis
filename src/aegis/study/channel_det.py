@@ -108,6 +108,32 @@ def sector_paths(
     )
 
 
+def _cap_paths(paths, max_paths):
+    """Keep the ``max_paths`` strongest paths by field power ``||psi||^2``.
+
+    The translation-phasor Gram cost grows with the number of center paths, so a
+    diffraction-rich trace (tens of paths) can dominate. The exposure operator is
+    dominated by the strongest paths, so truncating to the top few by power is a
+    cheap, physically reasonable bound. Returns ``paths`` unchanged if it already
+    has at most ``max_paths`` or if ``max_paths`` is falsy.
+    """
+    import dataclasses
+
+    if not max_paths or paths is None or paths.k_hat is None:
+        return paths
+    n = paths.k_hat.shape[0]
+    if n <= int(max_paths):
+        return paths
+    power = np.sum(np.abs(np.asarray(paths.psi)) ** 2, axis=1)  # (N,)
+    keep = np.argsort(power)[::-1][: int(max_paths)]
+    keep = np.sort(keep)  # preserve original ordering among the kept paths
+    fields = {}
+    for f in dataclasses.fields(paths):
+        val = getattr(paths, f.name)
+        fields[f.name] = val[keep] if isinstance(val, np.ndarray) and val.shape[:1] == (n,) else val
+    return dataclasses.replace(paths, **fields)
+
+
 def center_paths(
     scene,
     sector,
@@ -119,14 +145,16 @@ def center_paths(
     tx_power_dbm=30.0,
     samples_per_src=SAMPLES_PER_SRC,
     diffraction=DIFFRACTION,
+    max_center_paths=None,
 ):
     """Center-of-array paths: trace from the array phase center as a single tx.
 
     These feed the translation-phasor Gram and (after expand_paths_to_array) the
     coherent Sab map. Tracing once from the center instead of M_ant times is the
-    far-field array model and is much cheaper.
+    far-field array model and is much cheaper. ``max_center_paths`` caps the path
+    set to the strongest few (by power) to bound the Gram cost.
     """
-    return _trace(
+    paths = _trace(
         scene,
         np.asarray(sector.array.reference_position)[None, :],
         rx_position,
@@ -137,3 +165,4 @@ def center_paths(
         samples_per_src,
         diffraction,
     )
+    return _cap_paths(paths, max_center_paths)

@@ -1,0 +1,41 @@
+# Tiny end-to-end smoke: validate the deterministic study pipeline runs on CPU
+# and calibrate per-city cost. Not a science config; everything is dialed to the
+# floor so a full city -> crowd -> coherent dosimetry -> CDF completes in minutes.
+cities:
+  count: 1
+  radius_m: 150
+mobility:
+  n_agents: 4
+  window_s: 16
+  walk_speed_mps: 1.4
+  user_fraction: 0.5
+deployment:
+  process: ginibre
+  density_source: dataset
+  densification: 1.0
+  realizations_K: 1
+  sectoring:
+    sectors: 3
+    az_coverage_deg: 120
+    max_range_m: 150
+  equipment:
+    name: mmwave_mamimo_28ghz
+    array: [8, 8]
+    tx_power_dbm: 30
+    height_class: rooftop
+    freq_hz: 28.0e+9
+  precoder: mrt
+channel:
+  stochastic: coherent_38901
+  los_blend: p_los
+  seed: 42
+  samples_per_src: 3000000   # smoke: ~0.5% off the 30M plateau, much faster trace
+  diffraction: true
+  max_center_paths: 24    # cap Gram cost; keep strongest paths
+dosimetry:
+  level: 7
+  peak_sab: false           # headline CDF = cheap scalar x^H Q x, skip the map
+temporal:
+  dt_s: 1.0
+  pose_period: 8
+  recompute_period: 8

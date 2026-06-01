@@ -18,6 +18,9 @@ import yaml
 class CitiesConfig:
     count: int = 1
     radius_m: float = 200.0
+    # Optional explicit city list for multi-city runs. Each entry is a dict with
+    # "name", "lat", "lon". Empty falls back to the single hardcoded core (Ghent).
+    specs: list = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -60,11 +63,25 @@ class ChannelConfig:
     stochastic: str = "coherent_38901"
     los_blend: str = "p_los"
     seed: int = 42
+    # Deterministic-arm ray-trace shoot-and-bounce sample count. 30M is the
+    # converged plateau (per the samples convergence study); 3M is ~0.5% off and
+    # ~10x cheaper, a fair knob to trade for breadth (more cities) on CPU.
+    samples_per_src: int = 30_000_000
+    diffraction: bool = True
+    # Cap the center-path set to the strongest K (by power) before the Gram. The
+    # Gram cost grows with path count; a diffraction-rich trace (tens of paths)
+    # otherwise dominates. None keeps all paths.
+    max_center_paths: int | None = None
 
 
 @dataclass(frozen=True)
 class DosimetryConfig:
     level: int = 7
+    # Compute the per-triangle 4 cm^2-peak S_ab map (the expensive ~100 s/call
+    # spatial map). Off -> the headline CDF is the cheap scalar x^H Q x absorbed
+    # power, which the spec names the per-person headline. Keep off for breadth
+    # (many cities); turn on for the ICNIRP-peak-density figure.
+    peak_sab: bool = True
 
 
 @dataclass(frozen=True)

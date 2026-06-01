@@ -132,6 +132,10 @@ class RealKernel:
         recompute_period,
         torso_z=1.1,
         rt_engine="sionna",
+        samples_per_src=None,
+        diffraction=None,
+        max_center_paths=None,
+        compute_peak_sab=True,
     ):
         self.scene = scene
         self.engine = engine
@@ -143,7 +147,23 @@ class RealKernel:
         self.recompute_period = max(1, int(recompute_period))
         self.torso_z = torso_z
         self.rt_engine = rt_engine
+        self.samples_per_src = samples_per_src
+        self.diffraction = diffraction
+        self.max_center_paths = max_center_paths
+        # run_study reads kernel.sab_fn via getattr; None disables the per-triangle
+        # map so only the cheap scalar exposure is computed.
+        self.sab_fn = self._peak_sab if compute_peak_sab else None
         self._beam_cache: dict = {}
+
+    def _trace_kwargs(self):
+        kw = {}
+        if self.samples_per_src is not None:
+            kw["samples_per_src"] = int(self.samples_per_src)
+        if self.diffraction is not None:
+            kw["diffraction"] = bool(self.diffraction)
+        if self.max_center_paths is not None:
+            kw["max_center_paths"] = int(self.max_center_paths)
+        return kw
 
     def pose_fn(self, pos_xy, heading_rad, frame_idx, z_ground):
         return self.poser.pose(pos_xy, heading_rad, z_ground=z_ground, frame_idx=frame_idx)
@@ -152,7 +172,7 @@ class RealKernel:
         from aegis.study.channel_det import center_paths
 
         rx = np.array([pos_xy[0], pos_xy[1], self.torso_z])
-        return center_paths(self.scene, sector, rx, self.freq_hz, engine=self.rt_engine)
+        return center_paths(self.scene, sector, rx, self.freq_hz, engine=self.rt_engine, **self._trace_kwargs())
 
     def gram_fn(self, body, center_paths, sector):
         from aegis.study.exposure import build_static_gram
@@ -192,12 +212,12 @@ class RealKernel:
 
         pos = user.trajectory.positions[min(slot, len(user.trajectory.positions) - 1)]
         rx = np.array([pos[0], pos[1], self.torso_z])
-        center = center_paths(self.scene, sector, rx, self.freq_hz, engine=self.rt_engine)
+        center = center_paths(self.scene, sector, rx, self.freq_hz, engine=self.rt_engine, **self._trace_kwargs())
         per_elem = expand_paths_to_array(center, sector.array, self.freq_hz)
         h = user_channel_vector(per_elem, sector.m_ant)
         return mrt_for_user(h, sector.tx_power_w).x
 
-    def sab_fn(self, body, sector, x, center_paths):
+    def _peak_sab(self, body, sector, x, center_paths):
         from aegis.mimo.array_paths import expand_paths_to_array
         from aegis.precoder import Precoder
 
@@ -207,7 +227,7 @@ class RealKernel:
         return 0.0 if peak is None else float(peak)
 
 
-def _build_real(cfg, out_dir, seed, agent_start, agent_count):  # pragma: no cover - heavy
+def _build_real(cfg, out_dir, seed, agent_start, agent_count, city_latlon=(51.0536, 3.7253)):  # pragma: no cover
     import numpy as np
 
     from aegis.engine import DosimetryEngine
@@ -222,7 +242,8 @@ def _build_real(cfg, out_dir, seed, agent_start, agent_count):  # pragma: no cov
     eq = cfg.deployment.equipment
     freq = eq.freq_hz
 
-    city = CityCache.build(51.0536, 3.7253, cfg.cities.radius_m, out_dir / "city")
+    lat, lon = float(city_latlon[0]), float(city_latlon[1])
+    city = CityCache.build(lat, lon, cfg.cities.radius_m, out_dir / "city")
     n_sites = max(1, int(round(3 * cfg.deployment.densification)))
     site_xy = thin_min_spacing(city.candidates, min_spacing_m=60.0, n_target=n_sites, rng=rng)
     if site_xy.shape[0] == 0:
@@ -264,6 +285,10 @@ def _build_real(cfg, out_dir, seed, agent_start, agent_count):  # pragma: no cov
         [a for a in agents if a.is_user],
         recompute_period,
         rt_engine="sionna",
+        samples_per_src=getattr(cfg.channel, "samples_per_src", None),
+        diffraction=getattr(cfg.channel, "diffraction", None),
+        max_center_paths=getattr(cfg.channel, "max_center_paths", None),
+        compute_peak_sab=getattr(cfg.dosimetry, "peak_sab", True),
     )
     return agents, sites, kernel, freq
 

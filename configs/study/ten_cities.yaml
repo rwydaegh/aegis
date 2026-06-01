@@ -1,0 +1,45 @@
+# Ten cities of differing morphology -> one population-exposure CDF overlay.
+# This is the headline deliverable config. Knobs are dialed for tractability on
+# CPU (the gram is ~5.6 s/recompute; the deterministic arm is the cost). Fidelity
+# knobs (n_agents, window, recompute cadence) are intentionally modest so all ten
+# cities land; raise them once the figure exists. The ten cities come from
+# run_cities.DEFAULT_CITIES (empty specs + count: 10).
+cities:
+  count: 10
+  radius_m: 180             # fixed analysis area across all cities
+  specs: []                 # empty -> DEFAULT_CITIES[:count]
+mobility:
+  n_agents: 24              # modest crowd per city; grow once the CDF converges
+  window_s: 30
+  walk_speed_mps: 1.4
+  user_fraction: 0.5
+deployment:
+  process: ginibre
+  density_source: dataset
+  densification: 1.0
+  realizations_K: 1
+  sectoring:
+    sectors: 3
+    az_coverage_deg: 120
+    max_range_m: 150
+  equipment:
+    name: mmwave_mamimo_28ghz
+    array: [8, 8]
+    tx_power_dbm: 30
+    height_class: rooftop
+    freq_hz: 28.0e+9
+  precoder: mrt
+channel:
+  stochastic: coherent_38901
+  los_blend: p_los
+  seed: 42
+  samples_per_src: 10000000  # ~0.05% off the 30M plateau, ~3x faster per trace
+  diffraction: true
+  max_center_paths: 24    # cap Gram cost; keep strongest paths
+dosimetry:
+  level: 7
+  peak_sab: false            # headline CDF = scalar x^H Q x (cheap); add peak map later
+temporal:
+  dt_s: 1.0
+  pose_period: 10
+  recompute_period: 10

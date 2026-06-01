@@ -5,8 +5,34 @@ import numpy as np
 import pytest
 
 from aegis.environment import EnvironmentMesh, MaterialType  # noqa: E402
-from aegis.study.channel_det import center_paths, sector_paths  # noqa: E402
+from aegis.paths import PropagationPaths  # noqa: E402
+from aegis.study.channel_det import _cap_paths, center_paths, sector_paths  # noqa: E402
 from aegis.study.deployment import build_sites  # noqa: E402
+
+
+def test_cap_paths_keeps_strongest_by_power():
+    n = 6
+    rng = np.random.default_rng(0)
+    psi = np.zeros((n, 3), dtype=complex)
+    # path i has power i^2, so the top-3 by power are paths 3, 4, 5
+    for i in range(n):
+        psi[i, 0] = float(i)
+    k = rng.standard_normal((n, 3))
+    k /= np.linalg.norm(k, axis=1, keepdims=True)
+    paths = PropagationPaths(
+        k_hat=k,
+        psi=psi,
+        element_index=np.zeros(n, dtype=np.intp),
+        delay=np.arange(n, dtype=float),
+        is_los=np.zeros(n, dtype=bool),
+    )
+    capped = _cap_paths(paths, 3)
+    assert capped.k_hat.shape[0] == 3
+    # kept the three strongest (delays 3, 4, 5), in original order
+    np.testing.assert_array_equal(capped.delay, np.array([3.0, 4.0, 5.0]))
+    # at-or-below count and None are no-ops (same object back)
+    assert _cap_paths(paths, 10) is paths
+    assert _cap_paths(paths, None) is paths
 
 
 def _ground_mesh():
