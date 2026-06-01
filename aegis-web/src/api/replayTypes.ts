@@ -19,9 +19,19 @@ export interface ReplayBox {
   kind?: 'scatterer' | 'blocker' | 'wall' | string
 }
 
+/** The real city geometry as an indexed triangle mesh: the exact surfaces the
+ *  ray tracer bounces off (OSM footprints extruded with parsed roofs), not
+ *  bounding boxes. Vertices are server Z-up (ENU). */
+export interface ReplaySceneMesh {
+  vertices: Vec3[]
+  triangles: [number, number, number][]
+}
+
 export interface ReplaySceneSpec {
   /** Room extent as a wireframe box. center defaults to origin if omitted. */
   room?: { center?: Vec3; size: Vec3 }
+  /** Real ray-traced city geometry. Rendered in place of building boxes. */
+  mesh?: ReplaySceneMesh
   /** Scatterer/blocker boxes shared across all frames (single-realization artifacts). */
   boxes?: ReplayBox[]
   /** NLOS blocker, rendered only on frames whose condition contains NLOS. */

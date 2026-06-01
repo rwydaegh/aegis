@@ -35,31 +35,24 @@ def _canonical_body(stl_path):
     return body, verts.tolist(), faces
 
 
-def _city_boxes(lat, lon, radius_m, sites, max_buildings=500):  # pragma: no cover - network
-    """Buildings as axis-aligned boxes (footprint bbox x height) + a marker box at
-    each base-station site, so the replay scene shows the city and all antennas,
-    not just bare ground. Returns a list of ReplayBox dicts (server Z-up)."""
-    from aegis.environment.osm import fetch_osm, parse_osm_xml
+def _city_mesh(city):  # pragma: no cover - heavy
+    """The real ray-traced city geometry as an indexed triangle mesh.
 
+    This is exactly the mesh the deterministic arm bounces rays off
+    (``CityCache.mesh``): true polygonal footprints extruded to per-building
+    height with parsed roof shapes, not axis-aligned bounding boxes. The Ghent
+    core is ~7k triangles (~0.4 MB JSON), so there is no size reason to send a
+    box caricature. Coordinates are server Z-up (ENU), rounded to the cm.
+    """
+    m = city.mesh
+    verts = np.round(np.asarray(m.vertices, dtype=float), 2)
+    tris = np.asarray(m.triangles, dtype=int)
+    return {"vertices": verts.tolist(), "triangles": tris.tolist()}
+
+
+def _site_marker_boxes(sites):  # pragma: no cover - trivial
+    """A small marker box at each base-station rooftop site (server Z-up)."""
     boxes = []
-    try:
-        xml = fetch_osm(lat, lon, radius_m)
-        buildings, _, _ = parse_osm_xml(xml, origin_lat=lat, origin_lon=lon)
-    except Exception as exc:
-        print(f"[replay] building boxes skipped ({exc})")
-        buildings = []
-    # largest-footprint buildings first, capped for artifact size
-    buildings = sorted(buildings, key=lambda b: len(getattr(b, "footprint", [])), reverse=True)[:max_buildings]
-    for b in buildings:
-        fp = np.asarray(b.footprint, dtype=float)
-        if fp.shape[0] < 3:
-            continue
-        cx, cy = fp[:, 0].mean(), fp[:, 1].mean()
-        sx = max(float(fp[:, 0].max() - fp[:, 0].min()), 1.0)
-        sy = max(float(fp[:, 1].max() - fp[:, 1].min()), 1.0)
-        h = max(float(b.height), 3.0)
-        boxes.append({"center": [cx, cy, h / 2.0], "size": [sx, sy, h], "yaw_rad": 0.0, "kind": "scatterer"})
-    # base-station site markers (a small box at each rooftop site)
     for s in sites:
         p = np.asarray(s.position, dtype=float)
         boxes.append({"center": [float(p[0]), float(p[1]), float(p[2])], "size": [4.0, 4.0, 4.0], "kind": "blocker"})
@@ -191,14 +184,16 @@ def build_artifact(cfg, out_dir, seed, frames, city_latlon=(51.0536, 3.7253)):  
         "n_v": int(eq.array[1]),
         "M": int(serving_sector.m_ant),
     }
-    scene_boxes = _city_boxes(lat, lon, cfg.cities.radius_m, sites)
+    # Buildings render as the real ray-traced triangle mesh (scene.mesh); only
+    # the base-station site markers stay as boxes. No realizations: with a single
+    # static city, ReplayContent falls back to scene.boxes for the markers.
     artifact = {
         "meta": {"source": "aegis.study", "city_latlon": [lat, lon], "freq_hz": float(freq)},
-        # Buildings go in the realization boxes too: ReplayContent uses
-        # realizations[frame.realization].boxes when realizations is present,
-        # falling back to scene.boxes only for single-realization artifacts.
-        "scene": {"ground": {"size": float(2 * cfg.cities.radius_m)}, "boxes": scene_boxes},
-        "realizations": [{"seed": int(seed), "boxes": scene_boxes}],
+        "scene": {
+            "ground": {"size": float(2 * cfg.cities.radius_m)},
+            "mesh": _city_mesh(city),
+            "boxes": _site_marker_boxes(sites),
+        },
         "array": panel,
         "body": {"vertices": cverts, "faces": cfaces},
         "ues": ue_positions,

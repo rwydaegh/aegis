@@ -1,5 +1,6 @@
 import { toScene } from '@/api/coordinates'
 import type { ReplaySceneSpec, ReplayBox, Vec3 } from '@/api/replayTypes'
+import ReplayCityMesh from './ReplayCityMesh'
 
 const KIND_COLOR: Record<string, string> = {
   scatterer: '#7a8595',
@@ -53,6 +54,7 @@ export default function ReplaySceneGeometry({
         <planeGeometry args={[groundSize, groundSize]} />
         <meshStandardMaterial color="#15171c" roughness={1} />
       </mesh>
+      {scene.mesh && <ReplayCityMesh mesh={scene.mesh} />}
       {boxes.map((b, i) => (
         <Box key={i} {...b} />
       ))}
