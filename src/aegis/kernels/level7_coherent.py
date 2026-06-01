@@ -93,8 +93,10 @@ def level7_coherent(
     n_paths = int(np.asarray(k_hat).shape[0]) if np.asarray(k_hat).ndim else 0
     chunk = _triangle_chunk(M, n_paths)
 
-    sab_blocks: list = []
-    Q = xp.zeros((n_elements, n_elements), dtype=complex)
+    sab_blocks: list[NDArray[np.floating]] = []
+    # Lowercase accumulator inside the loop: Q is bound once, after the loop, so
+    # the all-caps return name is a single definition, not a reassigned constant.
+    q_acc: NDArray[np.complexfloating] = xp.zeros((n_elements, n_elements), dtype=complex)
     for start in range(0, M, chunk):
         sl = slice(start, start + chunk)
         G_blk = compute_body_channel(
@@ -111,12 +113,14 @@ def level7_coherent(
 
         # S_ab(r) = ||G_tilde(r) @ x||^2 for this block
         field = xp.einsum("mia,a->mi", G_blk, x)  # (B, 3)
-        sab_blocks.append(xp.maximum(xp.real(xp.sum(xp.conj(field) * field, axis=1)), 0.0))
+        power: NDArray[np.floating] = xp.real(xp.sum(xp.conj(field) * field, axis=1))
+        sab_blocks.append(xp.maximum(power, 0.0))
 
         # Q accumulates over triangles (each block already Hermitian-symmetrised)
-        Q = Q + compute_exposure_operator(G_blk, areas[sl])
+        q_acc = q_acc + compute_exposure_operator(G_blk, areas[sl])
 
-    sab = sab_blocks[0] if len(sab_blocks) == 1 else xp.concatenate(sab_blocks)
+    sab: NDArray[np.floating] = sab_blocks[0] if len(sab_blocks) == 1 else xp.concatenate(sab_blocks)
+    Q: NDArray[np.complexfloating] = q_acc
     eigenvalues, _ = eigendecompose_Q(Q)
 
     # Exposure-signal alignment rho
