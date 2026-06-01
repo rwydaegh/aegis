@@ -37,7 +37,14 @@ function RoomWireframe({ center, size }: { center?: Vec3; size: Vec3 }) {
   )
 }
 
-export default function ReplaySceneGeometry({ scene }: { scene: ReplaySceneSpec }) {
+export default function ReplaySceneGeometry({
+  scene,
+  boxes,
+}: {
+  scene: ReplaySceneSpec
+  /** Boxes for the active frame (realization scatterers + optional blocker). */
+  boxes: ReplayBox[]
+}) {
   const groundSize = scene.ground?.size ?? 80
   return (
     <group>
@@ -46,7 +53,7 @@ export default function ReplaySceneGeometry({ scene }: { scene: ReplaySceneSpec 
         <planeGeometry args={[groundSize, groundSize]} />
         <meshStandardMaterial color="#15171c" roughness={1} />
       </mesh>
-      {scene.boxes.map((b, i) => (
+      {boxes.map((b, i) => (
         <Box key={i} {...b} />
       ))}
     </group>

@@ -1,16 +1,23 @@
 import { useMemo, useEffect } from 'react'
 import * as THREE from 'three'
-import { jetColor } from '@/lib/colormap'
+import { jetColor, gainTFromLinear } from '@/lib/colormap'
 import { toScene } from '@/api/coordinates'
-import type { ReplayBodyMesh } from '@/api/replayTypes'
+import type { ReplayBodyMesh, Vec3 } from '@/api/replayTypes'
+
+// dB dynamic range for coloring. Absorbed power density is sharply peaked, so a
+// linear map leaves all but the hotspot black; a log/dB map (as in the live
+// viewer's dB legend) renders the whole body's relative pattern.
+const DYNAMIC_RANGE_DB = 30
 
 /**
  * Body mesh colored per-vertex by the current frame's Sab. Geometry is built
- * once from the artifact; colors are re-written whenever the frame's sab
- * array changes. Coloring matches the live viewer (jet colormap, normalised
- * to the per-frame max).
+ * once from the canonical artifact mesh (feet on floor at the origin); the
+ * per-frame `bodyPos` translates it to the served UE. Colors are re-written
+ * whenever the frame's sab array changes. Coloring matches the live viewer
+ * (jet colormap, normalised to the per-frame max). The material is
+ * double-sided so triangles are never culled by inconsistent winding.
  */
-export default function ReplayBody({ body, sab }: { body: ReplayBodyMesh; sab?: number[] }) {
+export default function ReplayBody({ body, sab, bodyPos }: { body: ReplayBodyMesh; sab?: number[]; bodyPos?: Vec3 }) {
   const geometry = useMemo(() => {
     const g = new THREE.BufferGeometry()
     const n = body.vertices.length
@@ -42,21 +49,25 @@ export default function ReplayBody({ body, sab }: { body: ReplayBodyMesh; sab?: 
     } else {
       let max = 0
       for (let i = 0; i < sab.length; i++) if (sab[i] > max) max = sab[i]
-      const inv = max > 0 ? 1 / max : 0
-      const n = Math.min(sab.length, buf.length / 3)
-      for (let i = 0; i < n; i++) {
-        const [r, g, b] = jetColor(sab[i] * inv)
-        buf[i * 3] = r
-        buf[i * 3 + 1] = g
-        buf[i * 3 + 2] = b
+      const nVerts = buf.length / 3
+      // Sab may be per-vertex (length == nVerts) or per-face (length == nVerts/3,
+      // i.e. one value per soup triangle). Expand per-face to its three verts.
+      const perFace = sab.length * 3 === nVerts
+      for (let v = 0; v < nVerts; v++) {
+        const s = perFace ? sab[(v / 3) | 0] : sab[v]
+        const [r, g, b] = jetColor(gainTFromLinear(s ?? 0, max, DYNAMIC_RANGE_DB))
+        buf[v * 3] = r
+        buf[v * 3 + 1] = g
+        buf[v * 3 + 2] = b
       }
     }
     colorAttr.needsUpdate = true
   }, [geometry, sab])
 
+  const pos = bodyPos ? toScene(bodyPos) : ([0, 0, 0] as Vec3)
   return (
-    <mesh geometry={geometry} castShadow>
-      <meshStandardMaterial vertexColors roughness={0.7} metalness={0.1} />
+    <mesh geometry={geometry} position={pos} castShadow>
+      <meshStandardMaterial vertexColors roughness={0.7} metalness={0.1} side={THREE.DoubleSide} />
     </mesh>
   )
 }
