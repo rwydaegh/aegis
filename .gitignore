@@ -19,6 +19,7 @@ htmlcov/
 # Virtual environments
 .venv
 .venv/
+.venv-nf/
 venv/
 
 # IDE
@@ -315,3 +316,6 @@ spinoff/nature career column ai/*.txt
 # RunPod SSH keys (never commit private keys)
 runpod_april26
 runpod_april26.pub
+
+# ── Study outputs (generated meshes / exposure maps, regenerable) ──
+results/
