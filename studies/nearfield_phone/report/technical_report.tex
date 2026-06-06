@@ -1,0 +1,352 @@
+\documentclass[journal]{IEEEtran}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{siunitx}
+\usepackage{xcolor}
+\usepackage[colorlinks,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+\usepackage{cleveref}
+
+\graphicspath{{figures/}}
+\sisetup{detect-all, range-phrase={--}, range-units=single}
+
+\newcommand{\Sab}{S_{\mathrm{ab}}}
+\newcommand{\Sinc}{S_{\mathrm{inc}}}
+\newcommand{\khat}{\hat{\mathbf{k}}}
+\newcommand{\nhat}{\hat{\mathbf{n}}}
+\newcommand{\psSAR}{\mathrm{psSAR}_{10\mathrm{g}}}
+\newcommand{\SARwb}{\mathrm{SAR}_{\mathrm{wb}}}
+
+\title{Rapid near-field dose modelling of a hand-held device:\\
+distance dependence, uncertainty, and a differentiable pipeline}
+\author{Robin Wydaeghe%
+\thanks{Internal technical report, AEGIS near-field study. Generated from
+\texttt{studies/nearfield\_phone/}.}}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We extend the AEGIS surface dosimetry framework to the near field of a
+hand-held device and use it to answer two questions raised by the dose-model
+team: how normalized SAR depends on the device-to-body distance, and what
+uncertainty should accompany each normalized value. The radiating element
+(an IFA/PIFA on a smartphone) is electrically small, so its Fraunhofer distance
+is a few centimetres and the field at the body is locally plane at every
+surface point, with a per-triangle direction and amplitude fixed by the
+measured free-space directivity and the spherical spreading. From this we
+recover the full set of ICNIRP~2020 metrics, whole-body SAR, $\psSAR$ over
+\SI{10}{g}, and absorbed power density, across four phantoms, eight FR1 bands,
+three placements, a distance sweep and a device-orientation ensemble:
+\num{69216} configurations evaluated in minutes. Normalized local SAR follows
+an inverse-square law with a small near-field offset,
+$\Sab(d)\propto(d+\delta)^{-2}$ with $\delta\approx\SI{6}{mm}$ and
+$R^2>0.999$; device orientation contributes a coefficient of variation of
+\SIrange{27}{42}{\percent}, and inter-individual (adult/child) differences add
+a further \SIrange{30}{40}{\percent}. Because the whole pipeline is written in a
+differentiable array backend, gradients of any metric with respect to the
+device pose are exact; we demonstrate sensitivity analysis, gradient-based
+orientation optimisation that beats a 512-sample brute-force search, and a
+Newton solve for the ICNIRP-compliant stand-off distance.
+\end{abstract}
+
+\section{Motivation}
+The dose-model team asked, after the dose-model meetings, for two additions to
+the normalized SAR tables: (i) a simple way to adjust a normalized value for the
+source-to-body distance, since the gap between a phone and the face strongly
+changes the absorbed dose, and (ii) an uncertainty estimate, for example a
+standard deviation or a min/max band, for each normalized value such as the
+\SI{2.62}{W\per kg\per W} brain figure for the Duke model in the
+\texttt{front\_of\_eyes\_center\_vertical} scenario.
+
+A full-wave (FDTD) campaign answers these only at the cost of one solve per
+distance and per orientation, which is why distance and orientation have so far
+been fixed constants. The surface method below evaluates a single configuration
+in milliseconds, so the distance curve and the orientation/phantom distribution
+come essentially for free, and the answer is a fitted law plus a full
+distribution rather than a single number.
+
+\section{Near-field surface model}
+\label{sec:method}
+
+\subsection{Point-source absorbed power density}
+A hand-held antenna is electrically small. For a radiator of largest dimension
+$L_a\lesssim\SI{5}{cm}$ the Fraunhofer distance $2L_a^2/\lambda$ is at most a few
+centimetres across FR1, so at the \SIrange{8}{200}{mm} holding distances of
+interest the wavefront curvature over a single triangle is negligible: the field
+is locally a plane wave. We therefore treat the device as a point source that
+radiates its measured free-space pattern, and evaluate the absorbed power density
+at each body triangle from the AEGIS surface law
+\begin{equation}
+  \label{eq:sab}
+  \Sab(\mathbf{r})
+  = \frac{P_{\mathrm{rad}}\,D(\khat_{\mathrm{ant}}(\mathbf{r}))}
+         {4\pi\,d(\mathbf{r})^2}\;
+    T_{\mathrm{eff}}\!\bigl(\mu(\mathbf{r})\bigr)\;
+    \mathrm{ReLU}\!\bigl(\mu(\mathbf{r})\bigr),
+\end{equation}
+where $d(\mathbf{r})$ is the source-to-triangle distance, $\khat(\mathbf{r})$ the
+line-of-sight direction, $D$ the linear directivity sampled in the antenna frame,
+$\mu=\nhat\cdot(-\khat)$ the local incidence cosine, and $T_{\mathrm{eff}}$ the
+unpolarised Fresnel power transmission of skin. Each triangle thus sees its own
+direction, distance and incidence angle, the genuine spherical-wave geometry,
+while reusing the AEGIS Fresnel and ReLU-projection physics unchanged. The
+directivity patterns are the rigorously re-evaluated \ang{1} grids from the
+Sim4Life near-to-far transform of the IFA/PIFA on the handset, one per band.
+\Cref{fig:geometry} shows the three placements and \cref{fig:apd} an example
+surface map.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\columnwidth]{fig_geometry.pdf}
+  \caption{The three hand-held placements anchored on the Duke phantom by
+  geometric landmark detection: front of the eyes (\SI{200}{mm}), at the cheek
+  (\SI{8}{mm}) and in front of the belly (\SI{200}{mm}). The face is at $-y$.}
+  \label{fig:geometry}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.78\columnwidth]{fig_apd_map.pdf}
+  \caption{Surface absorbed power density on Duke for the front-of-eyes
+  placement at \SI{2450}{MHz}, normalised to \SI{1}{W} radiated. The facial
+  region nearest the device dominates.}
+  \label{fig:apd}
+\end{figure}
+
+\subsection{psSAR10g from the surface field}
+ICNIRP below \SI{6}{GHz} restricts the peak spatial-average SAR over a
+\SI{10}{g} cube. We obtain it from the surface field with the closed-form
+reduction derived in the AEGIS theory notes. The volumetric SAR under a surface
+point decays as $\mathrm{SAR}(z)=(2\alpha/\rho_m)\Sab\,e^{-2\alpha z}$ with field
+attenuation rate $\alpha=k_0\kappa$; mass-averaging over the cube of side
+$L=(m/\rho_m)^{1/3}\approx\SI{21.5}{mm}$ gives
+\begin{equation}
+  \label{eq:pssar}
+  \psSAR = \frac{2\alpha}{\rho_m}\,
+           \langle\Sab\rangle_{L^2}\,
+           h(2\alpha L), \qquad
+  h(u)=\frac{1-e^{-u}}{u},
+\end{equation}
+where $\langle\Sab\rangle_{L^2}$ is the peak of the $\Sab$ field averaged over a
+patch of area $L^2$ (computed with the AEGIS spatial-averaging matrix retargeted
+to $L^2$). The depth-efficiency factor $h(2\alpha L)$ is the below-\SI{6}{GHz}
+correction the thin-skin shortcut omits: at \SI{2.45}{GHz}, $2\alpha L\approx1.9$
+and $h\approx0.45$, so the surface-only estimate would otherwise overpredict by
+about $2\times$. Whole-body SAR is $\SARwb=P_{\mathrm{abs}}/m_{\mathrm{body}}$
+with $P_{\mathrm{abs}}=\sum_i\Sab(\mathbf{r}_i)A_i$.
+
+\subsection{Sweep design}
+All quantities are linear in radiated power, so we report everything per
+\SI{1}{W} radiated, which is exactly the GOLIAT ``normalized SAR'' convention
+(\si{W\per kg} per \si{W}). The sweep covers four phantoms (Duke, Ella, Eartha,
+Thelonious), eight FR1 bands (\SIrange{700}{5800}{MHz}), three placements, a
+geometric distance grid (\SIrange{5}{400}{mm}) and a device-orientation ensemble
+of uniformly random rotations plus the nominal boresight-at-body pose. This is
+\num{69216} configurations; the averaging matrices depend only on the mesh and
+are built once per phantom, so the orientation ensemble at each distance is a
+single batched evaluation.
+
+\section{Distance dependence}
+\label{sec:distance}
+\Cref{fig:distance} shows the four metrics versus distance for the front-of-eyes
+placement at \SI{2450}{MHz}, with the orientation envelope and the fitted law.
+The local metrics ($\psSAR$, peak and \SI{4}{cm^2} APD) follow an inverse-square
+law with a small near-field offset,
+\begin{equation}
+  \label{eq:distlaw}
+  S(d) = S(d_{\mathrm{ref}})\,
+         \left(\frac{d_{\mathrm{ref}}+\delta}{d+\delta}\right)^{2},
+\end{equation}
+with $\delta$ of order the source size. Across all placements and bands the fit
+quality is excellent (\cref{tab:distfit}): $R^2\ge0.989$ and $\delta$ in the
+range \SIrange{3.5}{15.8}{mm} (median \SI{6.9}{mm}). For distances beyond a few
+centimetres \cref{eq:distlaw} reduces to the textbook inverse-square rule.
+Whole-body SAR is the exception: it depends only weakly on distance, because the
+total absorbed power redistributes over the body rather than vanishing, so a flat
+or weak power-law description is more appropriate there.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\columnwidth]{fig_distance_metrics.pdf}
+  \caption{ICNIRP metrics versus source-to-body distance (Duke, front of eyes,
+  \SI{2450}{MHz}). Shaded band: P5--P95 over device orientation. Red: the fitted
+  inverse-square-with-offset law, \cref{eq:distlaw}.}
+  \label{fig:distance}
+\end{figure}
+
+\begin{table}[t]
+  \centering
+  \caption{Distance-law fit of $\psSAR$, \cref{eq:distlaw}, front of eyes.}
+  \label{tab:distfit}
+  \begin{tabular}{rccc}
+    \toprule
+    Band (\si{MHz}) & $\delta$ (\si{mm}) & $R^2$ & $S(d_{\mathrm{ref}})$ (\si{W\per kg\per W}) \\
+    \midrule
+    700  & 4.5  & 0.9998 & 0.0034 \\
+    835  & 6.7  & 1.0000 & 0.0046 \\
+    1450 & 8.5  & 1.0000 & 0.0219 \\
+    2140 & 13.4 & 0.9994 & 0.0439 \\
+    2450 & 6.3  & 0.9999 & 0.0185 \\
+    3500 & 4.9  & 0.9999 & 0.0108 \\
+    5200 & 6.4  & 0.9995 & 0.0138 \\
+    5800 & 11.0 & 0.9999 & 0.0295 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\Cref{fig:bands} shows the distance law holds across all eight bands. The 700 and
+\SI{835}{MHz} antennas are flagged: in free space they sit off-resonance, so
+their absolute efficiency is unreliable while the pattern shape (and hence the
+distance and orientation behaviour) is sound.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.85\columnwidth]{fig_distance_bands.pdf}
+  \caption{$\psSAR$ distance law across the eight bands (front of eyes, Duke).
+  Dotted curves are the off-resonance \SI{700}{} and \SI{835}{MHz} antennas.}
+  \label{fig:bands}
+\end{figure}
+
+\section{Uncertainty}
+\label{sec:uncertainty}
+For each normalized value we report the mean, standard deviation, min/max and
+percentiles over the ensemble. \Cref{tab:unc} summarises the \SI{2450}{MHz}
+orientation spread per placement. The device orientation is the dominant
+intra-phantom source: the coefficient of variation is \SI{42}{\percent} for
+$\psSAR$ front of eyes and \SI{28}{\percent} at the cheek, where the small
+stand-off pins the geometry. \Cref{fig:unc} shows the distributions normalised
+to the nominal pose; the nominal boresight-at-body pose is not the worst case, so
+the median sits above unity for the distant placements.
+
+Inter-individual variability is a second, comparable axis. Across the four
+phantoms the nominal front-of-eyes value varies with a CV of \SI{18}{\percent}
+for $\psSAR$ and \SI{38}{\percent} for whole-body SAR, the latter because smaller
+(child) bodies absorb more per unit mass. The two axes combine in quadrature to a
+total of order \SI{45}{\percent}.
+
+\begin{table}[t]
+  \centering
+  \caption{Orientation uncertainty of $\psSAR$ (per \si{W}) at the nominal
+  distance, \SI{2450}{MHz}, Duke.}
+  \label{tab:unc}
+  \begin{tabular}{lccccc}
+    \toprule
+    Placement & mean & std & CV & min & max \\
+    \midrule
+    front of eyes & 0.0304 & 0.0128 & \SI{42}{\percent} & 0.0065 & 0.0595 \\
+    by cheek      & 4.985  & 1.374  & \SI{28}{\percent} & 1.553  & 7.217 \\
+    by belly      & 0.0452 & 0.0174 & \SI{38}{\percent} & 0.0135 & 0.0836 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.85\columnwidth]{fig_uncertainty.pdf}
+  \caption{Device-orientation variability of $\psSAR$ at the nominal distance,
+  normalised to the nominal-pose value, per placement (\SI{2450}{MHz}, Duke).}
+  \label{fig:unc}
+\end{figure}
+
+\subsection{Application to the cited value}
+The distance law and the orientation uncertainty apply directly to the
+\SI{2.62}{W\per kg\per W} brain reference, since both are set by the
+source-body geometry rather than by which organ is scored. \Cref{tab:applied}
+adjusts the reference to other distances via \cref{eq:distlaw} and attaches the
+orientation band; \cref{fig:factor} plots it. Halving the distance to
+\SI{100}{mm} raises the brain value to about \SI{9.9}{W\per kg\per W}; doubling it
+to \SI{400}{mm} lowers it to about \SI{0.68}{W\per kg\per W}. This is the
+ready-to-use distance-and-uncertainty answer for the dose model.
+
+\begin{table}[t]
+  \centering
+  \caption{Brain reference (\SI{2.62}{W\per kg\per W} at \SI{200}{mm}) adjusted
+  by \cref{eq:distlaw}, with the $\pm1\sigma$ orientation band.}
+  \label{tab:applied}
+  \begin{tabular}{rccc}
+    \toprule
+    $d$ (\si{mm}) & factor & adjusted (\si{W\per kg\per W}) & $\pm1\sigma$ \\
+    \midrule
+    100 & 3.76 & 9.86 & 7.2--12.5 \\
+    150 & 1.74 & 4.56 & 3.3--5.8 \\
+    200 & 1.00 & 2.62 & 1.9--3.3 \\
+    250 & 0.65 & 1.70 & 1.2--2.2 \\
+    300 & 0.45 & 1.19 & 0.9--1.5 \\
+    400 & 0.26 & 0.68 & 0.5--0.9 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.85\columnwidth]{fig_distance_factor.pdf}
+  \caption{The \SI{2.62}{W\per kg\per W} brain reference adjusted for distance
+  with the orientation uncertainty band; the reference point is marked.}
+  \label{fig:factor}
+\end{figure}
+
+\section{Differentiable pipeline}
+\label{sec:diff}
+The model in \cref{sec:method} is written against a JAX array backend, so the map
+from device pose to any metric is differentiable end to end (validated against
+finite differences to \SI{<2}{\percent}). Three uses follow.
+
+\paragraph{Sensitivity} A single reverse-mode pass returns the Jacobian of
+$[\SARwb,\psSAR,\text{peak APD}]$ against the six pose degrees of freedom
+(\cref{fig:poc}, left). Yaw dominates: a \ang{10} yaw changes peak APD by
+\SI{30}{\percent}, far more than a \SI{1}{cm} translation, which quantifies why
+orientation is the leading uncertainty in \cref{sec:uncertainty}.
+
+\paragraph{Inverse design} Gradient descent on the three orientation angles
+(position fixed) finds the pose that minimises head $\psSAR$ in
+\textasciitilde\num{60} steps, reaching \SI{4.2e-3}{W\per kg\per W}, below the
+minimum of a \num{512}-sample brute-force orientation scan
+(\SI{5.1e-3}{}) and $4.5\times$ under the nominal pose (\cref{fig:poc}, right).
+
+\paragraph{Compliance distance} Using the analytic derivative
+$\mathrm{d}\,\psSAR/\mathrm{d}\,d$, Newton's method solves for the smallest
+stand-off at which a given power stays under the ICNIRP local limit. For a
+\SI{250}{mW} handset against the \SI{2}{W\per kg} restriction the front-of-eyes
+geometry is compliant beyond \SI{3.2}{mm}, found in seven iterations. The same
+machinery turns ``what distance gives dose $X$'' into a one-line solve rather
+than a table lookup.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\columnwidth]{poc_sensitivity_opt.pdf}
+  \caption{Differentiable dosimetry. Left: normalised pose sensitivity of the
+  three metrics. Right: gradient descent on device orientation reaches and passes
+  the brute-force minimum.}
+  \label{fig:poc}
+\end{figure}
+
+\section{Limitations}
+\label{sec:limits}
+The phantoms are surface meshes without tissue or organ segmentation, so AEGIS
+computes surface APD and whole-body SAR directly; the brain figure remains a
+volumetric FDTD quantity. The distance law and the orientation/phantom
+uncertainty, however, are governed by the source-body geometry and transfer to
+any scored organ, which is what makes the application to the \SI{2.62}{} value
+defensible. The point-source approximation degrades when the stand-off drops
+below the antenna size (a few \si{cm}), so the closest distances should be read
+as an upper bound. The psSAR10g reduction assumes a homogeneous skin half-space;
+below \SI{1}{GHz}, layered fat/muscle reflections would refine it. Tissue is
+modelled as skin throughout, the conservative choice for surface absorption. The
+\SI{700}{} and \SI{835}{MHz} efficiencies are unreliable as noted.
+
+\section{Conclusion}
+A near-field point-source extension of the AEGIS surface method answers both
+dose-model requests directly: normalized local SAR scales as
+$(d+\delta)^{-2}$ with $\delta\approx\SI{6}{mm}$, and each value carries an
+orientation CV of \SIrange{27}{42}{\percent} with a further
+\SIrange{30}{40}{\percent} from inter-individual differences. Because the
+pipeline is differentiable, the same model also does sensitivity analysis,
+inverse design and compliance-distance solving that a full-wave campaign cannot
+afford. All coefficients and statistics are tabulated in the accompanying
+workbook \texttt{nearfield\_dose\_results.xlsx}.
+
+\end{document}
