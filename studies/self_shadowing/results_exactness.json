@@ -1,0 +1,38 @@
+{
+  "phantom": "thelonious",
+  "n_triangles": 23826,
+  "inter_body": {
+    "n_triangles": 23826,
+    "total_area_m2": 0.7865814496864133,
+    "f_global_diffuse": 0.13456885957966197,
+    "C_global_diffuse": 1.076529933377947,
+    "eta_weighted_enhancement": 1.051684496295156,
+    "worst_diffuse_f": 1.0,
+    "worst_diffuse_C": 1.8518518518518516,
+    "f_spec_mean": 0.14499581563444078,
+    "f_spec_max": 0.18922103125964057,
+    "f_spec_over_f_diff": 1.0774841674912632,
+    "Rbar": 0.46
+  },
+  "polarization": {
+    "deltaT_at_75deg": {
+      "3.5 GHz": 0.785985955592393,
+      "28 GHz": 0.7700459684026811,
+      "60 GHz": 0.7265906696608175
+    },
+    "P_vert_over_unpol": 0.8724837179379755,
+    "P_horiz_over_unpol": 1.1275162820620246,
+    "vert_minus_horiz_rel": -0.25503256412404895,
+    "max_local_Teff_dev_rel": 0.9180661045584954,
+    "grazing_area_frac_gt60deg": 0.43905981286157386
+  },
+  "soft_hard": {
+    "q1_soft": 2.3381074104597674,
+    "q1_hard": 1.0187929716474715,
+    "alpha_soft": 2.024860414234808,
+    "alpha_hard": 0.8823005946437497,
+    "alpha_ratio_soft_hard": 2.2949779548232025,
+    "fock_m_factor_R5cm_28GHz": 2.447478495159356,
+    "pol_split_dB_at_15deg_arc": 6.368791232279282
+  }
+}

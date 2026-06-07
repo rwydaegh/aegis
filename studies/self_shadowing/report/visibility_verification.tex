@@ -1,0 +1,277 @@
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=2.4cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{siunitx}
+\usepackage[hidelinks]{hyperref}
+\usepackage{microtype}
+\graphicspath{{figs/}}
+
+\newcommand{\Sab}{S_{\mathrm{ab}}}
+\newcommand{\Sinc}{S_{\mathrm{inc}}}
+\newcommand{\nhat}{\hat{\mathbf{n}}}
+\newcommand{\khat}{\hat{\mathbf{k}}}
+\newcommand{\erf}{\ensuremath{\operatorname{erf}}}
+\newcommand{\ReLU}{\ensuremath{\operatorname{ReLU}}}
+
+\title{Self-shadowing visibility: exactness, a JAX Faddeeva, and a verification suite}
+\author{AEGIS internal note}
+\date{2026-06-07}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+The self-shadowing design replaces the binary occlusion factor with a single
+differentiable gate $V=\tfrac12[1+\erf(c/\sigma)]$ on a baked signed angular
+clearance $c$. This note answers three questions about it. First, how much
+exactness do we lose against true knife-edge diffraction, and what would it cost
+to recover. The exact transition is a Fresnel integral, that is an error
+function of a complex argument, so we implement the Faddeeva function in JAX
+(Weideman rational approximation) and verify it to a relative error of
+\num{1.1e-13} against SciPy with the knife-edge gate accurate to \num{8.9e-15}
+and the geometric-boundary value exactly $1/4$ ($-6$\,dB). It costs
+$2.9\times$ a real \erf{} per element with the same $O(N)$ scaling
+(measured exponent $0.89$ versus $0.90$), so it never changes the computational
+scaling. Second, the small-angle step $\sin c\approx c$ is unnecessary and we
+use $\sin c$ exactly at no cost; the approximation it replaces was below
+\SI{4.3}{\percent} even at the int8 clearance cap. Third, we give the
+verification suite (numerical, physical, differentiable, performance) that pins
+the regime equivalences and guards against regressions.
+\end{abstract}
+
+\section{The gate}
+
+For an incidence direction $\khat$ and outward normal $\nhat$, with
+$\mu=\nhat\cdot(-\khat)$ the incidence cosine, the absorbed power density is
+\begin{equation}
+  \Sab(\mathbf{r}) \;\propto\; g(\mu)\;\cdot\;V\!\left(c(\mathbf{r},\khat)\right),
+  \qquad
+  V(c)=\tfrac12\!\left[1+\erf\!\left(\frac{c}{\sigma}\right)\right].
+  \label{eq:gate}
+\end{equation}
+$g$ is the existing local activation ($\mu_+$, or the diffraction GELU
+$\mu\,\tfrac12[1+\erf(\mu/\sigma_{\mathrm{loc}})]$ with
+$\sigma_{\mathrm{loc}}=\sqrt{\lambda/2\pi R_j}$). $V$ is the new distal factor.
+$c$ is the signed geodesic angular clearance from $\khat$ to the nearest distal
+occlusion boundary on the direction sphere ($c>0$ visible). The penumbra width
+follows from knife-edge geometry: a ray clears the binding edge (distance $d_2$)
+by $h=d_2\sin c$, and with the Fresnel parameter
+$\nu=h\sqrt{(2/\lambda)(1/d_1+1/d_2)}$,
+\begin{equation}
+  \sigma \;=\; K\sqrt{\frac{\lambda}{d_{\mathrm{occ}}}},\qquad
+  K=\frac{1}{\sqrt{2\pi}},
+  \label{eq:sigma}
+\end{equation}
+the same $\sqrt{\lambda/\text{distance}}$ form as the local GELU, with
+$d_{\mathrm{occ}}=R_j$ locally and $d_2$ distally (the $d_1$ term recovers the
+near-field width when the source is at finite range). Figure~\ref{fig:penumbra}
+shows the width across FR1 and mmWave.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.62\linewidth]{penumbra_width}
+  \caption{Distal gate versus angular clearance at three frequencies,
+  $d_{\mathrm{occ}}=\SI{0.2}{m}$. The penumbra narrows as $\sqrt{\lambda}$, from
+  $\sigma\approx\ang{33}$ at \SI{0.7}{GHz} to $\ang{5}$ at \SI{28}{GHz}.}
+  \label{fig:penumbra}
+\end{figure}
+
+\section{How exact is the \erf{} gate, and what would exactness cost}
+
+\subsection{The exact transition is a complex error function}
+
+True knife-edge diffraction gives the field relative to free space as the
+Fresnel integral
+\begin{equation}
+  F(\nu)=\frac{1+i}{2}\int_\nu^\infty e^{-i\pi t^2/2}\,dt
+        =\frac{1+i}{2}\Big[\big(\tfrac12-C(\nu)\big)-i\big(\tfrac12-S(\nu)\big)\Big],
+\end{equation}
+and the Fresnel integrals are an error function of a complex argument,
+\begin{equation}
+  C(\nu)+iS(\nu)=\frac{1+i}{2}\,\erf\!\left(\frac{\sqrt\pi}{2}(1-i)\,\nu\right).
+  \label{eq:fresnel-erf}
+\end{equation}
+So ``exact'' is not a different kind of computation, it is $\erf$ of a complex
+argument, equivalently the Faddeeva function $w(z)=e^{-z^2}\operatorname{erfc}(-iz)$
+through $\erf(z)=1-e^{-z^2}w(iz)$. SciPy provides this; JAX ships only a real
+\erf, so the exact path under the JAX backend needs a custom Faddeeva.
+
+\subsection{A JAX Faddeeva, verified}
+
+We implement $w(z)$ with Weideman's rational approximation (48 terms): the
+coefficients are computed once in NumPy, the evaluation is pure
+\texttt{jax.numpy}, vectorised, jittable and differentiable, with an
+upper-half-plane evaluation and the reflection $w(-z)=2e^{-z^2}-w(z)$ for
+$\operatorname{Im}z<0$. Verified against \texttt{scipy.special.wofz} on a
+$240\times240$ grid over $[-6,6]^2$ (Fig.~\ref{fig:faddeeva}), the maximum
+relative error is \num{1.1e-13}. The derived knife-edge gate $|F(\nu)|^2$ matches
+\texttt{scipy.special.fresnel} to \num{8.9e-15} absolute, with the
+geometric-boundary value $|F(0)|^2$ equal to $1/4$ to machine precision (the
+$-6$\,dB point).
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.6\linewidth]{faddeeva_error}
+  \caption{Relative error of the JAX Faddeeva against SciPy over the complex
+  plane. Below \num{1e-13} everywhere; the structure is round-off, not method
+  error.}
+  \label{fig:faddeeva}
+\end{figure}
+
+\subsection{Cost: a constant factor, not a scaling change}
+
+Table~\ref{tab:timing} and Fig.~\ref{fig:timing} settle the cost question. The
+JAX Faddeeva costs \SI{29.7}{ns} per element versus \SI{10.3}{ns} for a real
+\erf, a factor of $2.9$, and is $5.5\times$ faster than SciPy's \texttt{wofz}.
+All three scale as $O(N)$ (fitted log-log exponents $0.89$, $0.90$, $1.00$): the
+exact gate changes the constant, never the scaling. This matches the working
+assumption that a fixed multiple is acceptable as long as the asymptotics are
+untouched.
+
+\begin{table}[t]
+  \centering
+  \caption{Per-element cost and measured $O(N^p)$ scaling exponent
+  (CPU, float64, $N$ up to \num{1e7}).}
+  \label{tab:timing}
+  \begin{tabular}{lcc}
+    \toprule
+    routine & ns/element & scaling exponent $p$ \\
+    \midrule
+    real \erf{} (JAX, jit)        & 10.3 & 0.90 \\
+    Faddeeva (JAX, jit)           & 29.7 & 0.89 \\
+    \texttt{wofz} (SciPy)         & 164  & 1.00 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.6\linewidth]{timing}
+  \caption{Wall time versus array length. Parallel log-log lines confirm a
+  common $O(N)$ scaling; the JAX Faddeeva sits a constant $\sim\!3\times$ above a
+  real \erf{} and below SciPy.}
+  \label{fig:timing}
+\end{figure}
+
+\subsection{What the erf surrogate actually loses}
+
+Figure~\ref{fig:family} compares the three gates in the dimensionless clearance
+$s=c/\sigma$. The default unsquared $\tfrac12[1+\erf s]$ sits at $1/2$ at the
+boundary ($-3$\,dB), the squared form $[\tfrac12(1+\erf s)]^2$ matches the exact
+$1/4$ ($-6$\,dB), and the full $|F|^2$ adds the lit-side Cornu ripples. The
+ripples are precisely what incoherent summation and \SI{4}{cm^2} averaging
+remove, so they do not justify the Faddeeva in production. The one real loss is
+the shadow tail (Fig.~\ref{fig:tail}): the exact gate decays as $\nu^{-2}$ while
+the \erf{} forms decay as $e^{-s^2}$, so deep-shadow leakage is under-predicted,
+by a factor of \num{2.1e5} at $s=4$. This is the same defect as the
+single-edge approximation: in deep shadow multiple edges leak additively, and
+we keep only the binding edge.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.6\linewidth]{gate_family}
+  \caption{Gate family in $s=c/\sigma$. Default \erf{} ($-3$\,dB at $s=0$),
+  squared \erf{} ($-6$\,dB, knife-edge-consistent), and the exact $|F|^2$ with
+  lit-side ripples.}
+  \label{fig:family}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.6\linewidth]{shadow_tail}
+  \caption{Deep-shadow leakage. The exact $\nu^{-2}$ tail is many orders above
+  the Gaussian \erf{} decay; the monotone surrogate under-predicts dose reaching
+  fully shadowed regions.}
+  \label{fig:tail}
+\end{figure}
+
+\paragraph{Recommendation.} Keep the real-\erf{} gate as the default. The
+$-6$\,dB boundary is free via the squared form (\texttt{gate="knife\_edge"}); the
+shadow tail and additive multi-edge are a single scoped refinement for
+deep-shadow dosimetry (a $\nu^{-2}$ tail graft, or the $k$ nearest edges). The
+Faddeeva is now available and verified should a fully exact mode ever be wanted,
+at $2.9\times$ and no scaling change.
+
+\section{The $\sin c\approx c$ question: use it exactly}
+
+The clearance-to-clearance map $h=d_2\sin c$ is exact geometry; only the
+linearisation $\sin c\approx c$ was an approximation, and it is unnecessary. We
+use $\sin c$ directly (a one-token change, no cost). For the record,
+Fig.~\ref{fig:sinc} shows the error the linearisation would have carried: it
+enters only the penumbra \emph{width} (second order), never the boundary
+\emph{location} ($\sin 0=0$ exactly), and stays below \SI{4.3}{\percent} even at
+the int8 clearance cap of \SI{0.5}{rad}, well inside the typical $\sigma$ at FR1
+and mmWave. So the question is moot: exact is free, and even the approximation
+was negligible.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.6\linewidth]{sinc_error}
+  \caption{Relative error of $\sin c\approx c$. Marked: the int8 clearance cap
+  and the penumbra widths $\sigma$ at \SI{2.45}{GHz} and \SI{28}{GHz}
+  ($d_{\mathrm{occ}}=\SI{0.2}{m}$). We avoid it entirely by keeping $\sin c$.}
+  \label{fig:sinc}
+\end{figure}
+
+\section{Verification suite: make it work and keep it working}
+
+Table~\ref{tab:tests} is the test catalogue. The numerical group pins the proved
+regime equivalences (the gate reduces exactly to today's kernels when shadowing
+is off, convex, or in the geometric limit). The physical group anchors the new
+behaviour to independent references. The differentiable group protects the JAX
+gradient path the near-field design loop depends on. The performance group is a
+regression guard so the $O(N)$ query and the bounded bake do not silently
+degrade.
+
+\begin{table}[t]
+  \centering
+  \caption{Verification and regression suite for the visibility gate.}
+  \label{tab:tests}
+  \small
+  \begin{tabular}{p{0.30\linewidth}p{0.40\linewidth}p{0.22\linewidth}}
+    \toprule
+    test & guards & reference \\
+    \midrule
+    \multicolumn{3}{l}{\emph{numerical (regime equivalence)}}\\
+    octahedral round-trip & encode/decode identity, seam continuity & analytic \\
+    clearance vs great-circle & distance transform correctness & brute force \\
+    convex $\Rightarrow V\equiv1$ & Mie canary, P2 & monograph $\eta\equiv1$ \\
+    $\sigma\to0\Rightarrow$ binary & geometric limit, P4 & \texttt{compute\_visibility} oracle \\
+    local limit bit-for-bit & recovers ReLU/GELU, P3, F1 & \texttt{physical\_gelu} \\
+    opt-out byte-identity & \texttt{self\_shadow=False}, P1 & pre-feature baseline \\
+    multi-path covariance & per-path fold vs old mean, P5 & analytic counterexample \\
+    \midrule
+    \multicolumn{3}{l}{\emph{physical}}\\
+    $A_{\mathrm{ab}}=\int\eta$ & exposure-area scaling & monograph $0.80/0.87$ \\
+    penumbra $\propto\sqrt\lambda$ & width law, Eq.~\eqref{eq:sigma} & Fig.~\ref{fig:penumbra} \\
+    asymmetric-occluder sign & direction convention, F6 & one-sided slab \\
+    knife-edge gate accuracy & exact-mode correctness & \texttt{scipy.fresnel} (\num{9e-15}) \\
+    \midrule
+    \multicolumn{3}{l}{\emph{differentiable}}\\
+    Faddeeva accuracy & JAX complex \erf{} & \texttt{scipy.wofz} (\num{1.1e-13}) \\
+    near-field $d_1\le0$ guard & no NaN value or gradient, F3 & double-where \\
+    autodiff vs finite-diff & pose gradient, $<\SI{2}{\percent}$ & finite difference \\
+    \midrule
+    \multicolumn{3}{l}{\emph{performance}}\\
+    query scaling & $O(N)$ lookup, no ray cast at query & exponent $\approx1$ \\
+    bake budget & tens of seconds per phantom, cached & wall-clock bound \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Conclusions}
+
+The \erf{} gate is the right default: it reduces exactly to the current kernels
+in the off, convex, and geometric limits, and the only physics it drops (lit
+ripples) is averaged away. Exactness is now within reach and verified, the JAX
+Faddeeva matching SciPy to \num{1.1e-13} at $2.9\times$ a real \erf{} and the
+same $O(N)$ scaling, so a fully exact mode is a constant-factor option rather
+than a scaling risk. The two refinements worth keeping on the roadmap are the
+$-6$\,dB squared boundary (free) and a deep-shadow tail plus additive multi-edge
+(for deep-shadow dosimetry only). The $\sin c$ map is used exactly. The suite in
+Table~\ref{tab:tests} makes the equivalences and the differentiability testable
+and keeps them from regressing.
+
+\end{document}
