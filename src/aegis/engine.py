@@ -685,6 +685,9 @@ class DosimetryEngine:
             from aegis.kernels.spatial import spatial_kernel
 
             t_kernel = time.perf_counter()
+            # Use the physical polarisation from psi only when the paths carry a
+            # real one; otherwise fall back to the legacy scalar q knob.
+            psi_arg = paths.psi if (polarisation and paths.polarised) else None
             sab = spatial_kernel(
                 body.normals,
                 paths.k_hat,
@@ -695,6 +698,7 @@ class DosimetryEngine:
                 fresnel=fresnel,
                 polarisation=polarisation,
                 q=q,
+                psi=psi_arg,
                 curvature=curvature,
                 diffraction=diffraction,
                 curvature_H=curvature_H,
@@ -943,6 +947,7 @@ class DosimetryEngine:
             paths.power,
             kwargs.get("n_tilde", self.n_tilde),
             q=q,
+            psi=paths.psi if paths.polarised else None,
         )
 
     def _level5(

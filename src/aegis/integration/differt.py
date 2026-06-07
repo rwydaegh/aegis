@@ -355,10 +355,12 @@ def paths_from_differt(
             amplitude,
             initial_polarisation,
         )
+        polarised = True
     else:
         # Fallback: arbitrary perpendicular (sufficient for incoherent levels)
         e_perp = _arbitrary_perpendicular(k_hat)
         psi = (amplitude[:, np.newaxis] * e_perp).astype(complex)
+        polarised = False
 
     # Element indices
     if element_indices is None:
@@ -387,6 +389,7 @@ def paths_from_differt(
         element_index=element_indices,
         delay=delay,
         is_los=is_los,
+        polarised=polarised,
     )
 
 

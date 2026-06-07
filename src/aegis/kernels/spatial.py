@@ -19,7 +19,12 @@ from numpy.typing import NDArray
 
 from aegis._array_backend import JAX_AVAILABLE, jit, xp
 from aegis.constants import C_0
-from aegis.kernels._base import fresnel_weights, incidence_geometry, physical_gelu
+from aegis.kernels._base import (
+    fresnel_weights,
+    incidence_geometry,
+    physical_gelu,
+    te_tm_power_weights,
+)
 
 # Maximum number of (M, N) elements before we split paths into chunks.
 # The Fresnel path allocates multiple complex128 (M, N) intermediates
@@ -45,6 +50,7 @@ def _spatial_kernel_unbatched(
     fresnel: bool = True,
     polarisation: bool = False,
     q: float | NDArray[np.floating] = 0.0,
+    psi: NDArray[np.complexfloating] | None = None,
     curvature: bool = False,
     diffraction: bool = False,
     curvature_H: NDArray[np.floating] | None = None,
@@ -60,7 +66,12 @@ def _spatial_kernel_unbatched(
     t_factor: float | NDArray[np.floating]
     if fresnel:
         T_s, T_p, T_avg = fresnel_weights(mu, n_tilde)
-        if polarisation:
+        if polarisation and psi is not None:
+            # Physical per-(triangle, path) polarisation from the incident field.
+            w_s, w_p = te_tm_power_weights(normals, k_hat, psi)
+            t_factor = w_s * T_s + w_p * T_p
+        elif polarisation:
+            # Legacy scalar/array TM-excess knob (no real polarisation state).
             DeltaT = T_p - T_s
             t_factor = T_avg + 0.5 * q * DeltaT
         else:
@@ -109,6 +120,7 @@ def spatial_kernel(
     fresnel: bool = True,
     polarisation: bool = False,
     q: float | NDArray[np.floating] = 0.0,
+    psi: NDArray[np.complexfloating] | None = None,
     curvature: bool = False,
     diffraction: bool = False,
     curvature_H: NDArray[np.floating] | None = None,
@@ -132,6 +144,10 @@ def spatial_kernel(
     fresnel : use angle-dependent T_avg(mu) instead of constant T0
     polarisation : enable polarisation correction (requires fresnel=True)
     q : TM excess parameter (scalar or (N,) array), used if polarisation=True
+        and ``psi`` is None (legacy knob)
+    psi : (N, 3) complex incident polarisation. When given with
+        polarisation=True, the physical per-(triangle, path) TE/TM split is
+        used instead of the scalar ``q``.
     curvature : enable curvature correction (requires curvature_H)
     diffraction : enable diffraction smoothing (requires curvature_H)
     curvature_H : (M,) twice mean curvature per triangle [1/m]
@@ -145,11 +161,18 @@ def spatial_kernel(
     if (curvature or diffraction) and curvature_H is None:
         raise ValueError("curvature_H is required when curvature=True or diffraction=True")
 
+    use_psi = polarisation and psi is not None
+
     M = normals.shape[0]
     N = k_hat.shape[0]
 
+    # The psi polarisation path allocates the (M, N, 3) TE/TM bases, so it needs
+    # roughly twice the transient memory of the scalar Fresnel path; halve the
+    # chunking threshold accordingly.
+    max_mn = _MAX_MN_ELEMENTS // 2 if use_psi else _MAX_MN_ELEMENTS
+
     # Fast path: small enough to run in one shot
-    if M * N <= _MAX_MN_ELEMENTS or JAX_AVAILABLE:
+    if max_mn >= M * N or JAX_AVAILABLE:
         sab = _spatial_kernel_unbatched(
             normals,
             k_hat,
@@ -160,13 +183,14 @@ def spatial_kernel(
             fresnel=fresnel,
             polarisation=polarisation,
             q=q,
+            psi=psi,
             curvature=curvature,
             diffraction=diffraction,
             curvature_H=curvature_H,
         )
     else:
         # Chunked path: split along N to bound peak memory
-        chunk_size = max(_MAX_MN_ELEMENTS // M, 1)
+        chunk_size = max(max_mn // M, 1)
         sab = np.zeros(M, dtype=np.float64)
 
         for start in range(0, N, chunk_size):
@@ -174,6 +198,7 @@ def spatial_kernel(
             k_chunk = k_hat[start:end]
             p_chunk = power[start:end]
             q_chunk: float | NDArray[np.floating] = q[start:end] if isinstance(q, np.ndarray) and q.ndim > 0 else q
+            psi_chunk = psi[start:end] if psi is not None else None
 
             chunk_sab = _spatial_kernel_unbatched(
                 normals,
@@ -185,6 +210,7 @@ def spatial_kernel(
                 fresnel=fresnel,
                 polarisation=polarisation,
                 q=q_chunk,
+                psi=psi_chunk,
                 curvature=curvature,
                 diffraction=diffraction,
                 curvature_H=curvature_H,

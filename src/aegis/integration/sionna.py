@@ -243,6 +243,7 @@ def _paths_from_sionna_jax(paths, valid_np, n_elements, freq_hz, tx_power_w):
         element_index=element_index,
         delay=tau_all,
         is_los=is_los,
+        polarised=True,
     )
 
 
@@ -459,5 +460,6 @@ def paths_from_sionna_scene(
         element_index=np.concatenate(all_element_index),
         delay=np.concatenate(all_delay),
         is_los=np.concatenate(all_is_los),
+        polarised=True,
     )
     return (result, path_viz) if return_viz else result

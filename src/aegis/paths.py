@@ -33,6 +33,11 @@ class PropagationPaths:
     element_index: np.ndarray = field(repr=False)
     delay: np.ndarray = field(repr=False)
     is_los: np.ndarray = field(repr=False)
+    # True when ``psi`` carries a physically meaningful incident polarisation
+    # (ray tracer, coherent channel, or an explicit polarisation in from_powers).
+    # False when the polarisation was fabricated (from_powers default), in which
+    # case incoherent dosimetry must treat the field as unpolarised.
+    polarised: bool = field(default=False, repr=False)
 
     def __post_init__(self) -> None:
         n = self.k_hat.shape[0]
@@ -74,6 +79,7 @@ class PropagationPaths:
             element_index=self.element_index[idx],
             delay=self.delay[idx],
             is_los=self.is_los[idx],
+            polarised=self.polarised,
         )
 
     @property
@@ -103,16 +109,21 @@ class PropagationPaths:
         cls,
         k_hat: np.ndarray,
         power: np.ndarray,
+        polarisation: np.ndarray | None = None,
     ) -> PropagationPaths:
-        """Construct from directions and scalar powers (incoherent-only use).
-
-        Assigns an arbitrary perpendicular polarisation to each path and
-        treats each path as from a separate virtual element.
+        """Construct from directions and scalar powers (incoherent use).
 
         Parameters
         ----------
         k_hat : (N, 3) incident directions (will be normalised)
         power : (N,) incident power density per path [W/m^2]
+        polarisation : optional (3,) or (N, 3) incident E-field direction.
+            When given, the field is projected onto the plane transverse to
+            each ``k_hat`` and the result is flagged ``polarised=True`` so
+            polarisation-aware kernels use it. Real or complex (elliptical).
+            When ``None`` (default) an arbitrary perpendicular polarisation is
+            fabricated and the result is flagged ``polarised=False`` so
+            incoherent dosimetry treats the field as unpolarised.
         """
         k_hat = np.asarray(k_hat, dtype=np.float64)
         power = np.asarray(power, dtype=np.float64)
@@ -137,19 +148,38 @@ class PropagationPaths:
             raise ValueError("k_hat rows must have positive norm (non-zero direction)")
         k_hat = k_hat / norms
 
-        # Build arbitrary perpendicular polarisation for each k_hat
-        # Pick the axis least aligned with k_hat as reference
-        ref = np.zeros_like(k_hat)
-        abs_k = np.abs(k_hat)
-        min_axis = np.argmin(abs_k, axis=1)
-        ref[np.arange(n), min_axis] = 1.0
-        e_perp = np.cross(k_hat, ref)
-        e_perp_norm = np.linalg.norm(e_perp, axis=1, keepdims=True)
-        e_perp = e_perp / np.where(e_perp_norm > 0, e_perp_norm, 1.0)
-
-        # psi such that |psi|^2 / (2*Z_0) = power
         amplitude = np.sqrt(2 * Z_0 * np.maximum(power, 0.0))
-        psi = (amplitude[:, np.newaxis] * e_perp).astype(complex)
+
+        if polarisation is None:
+            # Fabricate an arbitrary perpendicular polarisation: physically
+            # meaningless, so the path is flagged unpolarised.
+            ref = np.zeros_like(k_hat)
+            abs_k = np.abs(k_hat)
+            min_axis = np.argmin(abs_k, axis=1)
+            ref[np.arange(n), min_axis] = 1.0
+            e_dir = np.cross(k_hat, ref)
+            e_dir = e_dir / np.where(
+                np.linalg.norm(e_dir, axis=1, keepdims=True) > 0,
+                np.linalg.norm(e_dir, axis=1, keepdims=True),
+                1.0,
+            )
+            psi = (amplitude[:, np.newaxis] * e_dir).astype(complex)
+            polarised = False
+        else:
+            pol = np.asarray(polarisation, dtype=complex)
+            if pol.ndim == 1:
+                pol = np.broadcast_to(pol, (n, 3))
+            if pol.shape != (n, 3):
+                raise ValueError(f"polarisation shape {pol.shape} doesn't match k_hat ({n}, 3)")
+            # Remove any longitudinal component so the field is transverse to k.
+            k_dot_p = np.einsum("nj,nj->n", k_hat.astype(complex), pol)
+            pol_t = pol - k_dot_p[:, np.newaxis] * k_hat
+            t_norm = np.sqrt(np.sum(np.abs(pol_t) ** 2, axis=1, keepdims=True))
+            if n > 0 and np.any(t_norm[:, 0] <= 0):
+                raise ValueError("polarisation must have a component transverse to k_hat")
+            pol_hat = pol_t / t_norm
+            psi = (amplitude[:, np.newaxis] * pol_hat).astype(complex)
+            polarised = True
 
         return cls(
             k_hat=k_hat,
@@ -157,6 +187,7 @@ class PropagationPaths:
             element_index=np.arange(n, dtype=np.intp),
             delay=np.zeros(n, dtype=np.float64),
             is_los=np.ones(n, dtype=bool),
+            polarised=polarised,
         )
 
     @classmethod
@@ -291,6 +322,9 @@ class PropagationPaths:
             element_index=np.concatenate(elem_indices, axis=0),
             delay=np.concatenate(delays, axis=0),
             is_los=np.concatenate(is_loss, axis=0),
+            # Only treat the result as polarised if every input was; a mix would
+            # leave fabricated polarisations alongside real ones.
+            polarised=all(p.polarised for p in paths_list),
         )
 
     def to_dict(self) -> dict:
@@ -307,6 +341,7 @@ class PropagationPaths:
             "element_index": self.element_index.tolist(),
             "delay": self.delay.tolist(),
             "is_los": self.is_los.tolist(),
+            "polarised": bool(self.polarised),
         }
 
     @classmethod
@@ -329,6 +364,7 @@ class PropagationPaths:
             element_index=np.array(d["element_index"], dtype=np.intp),
             delay=np.array(d["delay"], dtype=np.float64),
             is_los=np.array(d["is_los"], dtype=bool),
+            polarised=bool(d.get("polarised", False)),
         )
 
     def __repr__(self) -> str:
