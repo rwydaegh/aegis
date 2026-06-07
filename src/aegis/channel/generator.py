@@ -50,6 +50,7 @@ def generate_channel(
     seed: int = DEFAULT_SEED,
     overrides: dict | None = None,
     viz_out: dict | None = None,
+    xpr_db: float | None = None,
 ) -> PropagationPaths:
     """Generate stochastic multipath from a 3GPP/QuaDRiGa preset.
 
@@ -57,6 +58,13 @@ def generate_channel(
 
     If *viz_out* is a dict, it is populated with cluster-level metadata for
     visualization (center angles, powers, delays, departure angles).
+
+    If *xpr_db* is given, each path is assigned a physical polarisation (a
+    transverse field split between two orthogonal components by the 38.901
+    cross-polarisation ratio with independent random phases) and the result is
+    flagged ``polarised=True`` so polarisation-aware incoherent dosimetry uses
+    it. When ``None`` (default) the polarisation is fabricated and flagged
+    unpolarised, matching the historical behaviour.
     """
     if freq_ghz <= 0:
         raise ValueError(f"freq_ghz must be positive, got {freq_ghz}")
@@ -218,7 +226,49 @@ def generate_channel(
 
     path_powers = np.maximum(powers * s_inc, 0.0)
 
-    return PropagationPaths.from_powers(k_hat=k_hats, power=path_powers)
+    if xpr_db is None:
+        return PropagationPaths.from_powers(k_hat=k_hats, power=path_powers)
+
+    # Physical polarisation: same XPR construction as the coherent arm, but
+    # kept under the incoherent element/LOS convention of from_powers.
+    psi = _assign_xpr_polarisation(k_hats, path_powers, xpr_db, seed + 1)
+    n = k_hats.shape[0]
+    return PropagationPaths(
+        k_hat=k_hats / np.linalg.norm(k_hats, axis=1, keepdims=True),
+        psi=psi,
+        element_index=np.arange(n, dtype=np.intp),
+        delay=np.zeros(n, dtype=np.float64),
+        is_los=np.ones(n, dtype=bool),
+        polarised=True,
+    )
+
+
+def _assign_xpr_polarisation(
+    k_hat: np.ndarray,
+    power: np.ndarray,
+    xpr_db: float,
+    seed: int,
+) -> np.ndarray:
+    """Build a transverse complex field per path with a 38.901 XPR split.
+
+    Splits each path's incident power density between two orthogonal transverse
+    polarisations by the cross-polarisation ratio ``xpr_db`` with independent
+    random phases, scaled so ``|psi|^2 / (2 Z_0) = power``.
+    """
+    from aegis.constants import Z_0
+
+    k = np.asarray(k_hat, dtype=float)
+    n = k.shape[0]
+    if n == 0:
+        return np.zeros((0, 3), dtype=complex)
+    rng = np.random.default_rng(seed)
+    e1, e2 = _transverse_basis(k)
+    xpr = 10.0 ** (xpr_db / 10.0)
+    s1 = power * xpr / (1.0 + xpr)
+    s2 = power / (1.0 + xpr)
+    a1 = np.sqrt(2.0 * Z_0 * np.maximum(s1, 0.0)) * np.exp(1j * rng.uniform(0.0, 2.0 * np.pi, n))
+    a2 = np.sqrt(2.0 * Z_0 * np.maximum(s2, 0.0)) * np.exp(1j * rng.uniform(0.0, 2.0 * np.pi, n))
+    return a1[:, None] * e1 + a2[:, None] * e2
 
 
 def _transverse_basis(k_hat: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
@@ -262,8 +312,6 @@ def generate_coherent_channel(
     Geometry-blind by design: it never sees the real mesh. The LOS/NLOS blend by
     ``p_los`` happens at the loop level, not here.
     """
-    from aegis.constants import Z_0
-
     incoh = generate_channel(params, freq_ghz, antenna_pos, body_center, power_dbm, seed, overrides)
     k = np.asarray(incoh.k_hat, dtype=float)
     s = np.asarray(incoh.power, dtype=float)  # per-path incident power density [W/m^2]
@@ -271,16 +319,7 @@ def generate_coherent_channel(
     if n == 0:
         return incoh
 
-    rng = np.random.default_rng(seed + 1)  # phases independent of the cluster draw
-    e1, e2 = _transverse_basis(k)
-    xpr = 10.0 ** (xpr_db / 10.0)
-    s1 = s * xpr / (1.0 + xpr)  # co-pol share
-    s2 = s / (1.0 + xpr)  # cross-pol share
-    e_mag1 = np.sqrt(2.0 * Z_0 * np.maximum(s1, 0.0))
-    e_mag2 = np.sqrt(2.0 * Z_0 * np.maximum(s2, 0.0))
-    a1 = e_mag1 * np.exp(1j * rng.uniform(0.0, 2.0 * np.pi, n))
-    a2 = e_mag2 * np.exp(1j * rng.uniform(0.0, 2.0 * np.pi, n))
-    psi = a1[:, None] * e1 + a2[:, None] * e2  # (N, 3) complex incident field
+    psi = _assign_xpr_polarisation(k, s, xpr_db, seed + 1)  # phases independent of the cluster draw
 
     return PropagationPaths(
         k_hat=k,
@@ -288,6 +327,7 @@ def generate_coherent_channel(
         element_index=np.zeros(n, dtype=np.intp),
         delay=np.zeros(n),
         is_los=np.zeros(n, dtype=bool),
+        polarised=True,
     )
 
 

@@ -49,6 +49,7 @@ def expand_paths_to_array(
             element_index=np.empty(0, dtype=np.intp),
             delay=np.empty(0, dtype=np.float64),
             is_los=np.empty(0, dtype=bool),
+            polarised=center_paths.polarised,
         )
 
     k0 = 2 * np.pi * freq_hz / C_0
@@ -83,4 +84,5 @@ def expand_paths_to_array(
         element_index=element_idx,
         delay=delay_all,
         is_los=is_los_all,
+        polarised=center_paths.polarised,
     )
