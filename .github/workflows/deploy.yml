@@ -4,6 +4,15 @@ on:
   push:
     branches: [master]
 
+# Serialize deploys: only one deploy workflow runs per branch at a time. Parallel
+# deploys (several master pushes landing close together) contend for the shared
+# ubicloud runner pool and the shared ghcr :buildcache, which has produced builds
+# that die mid-image with no output. Queue rather than cancel so an in-flight
+# deploy (mid SSH restart of the single Hetzner box) is never left half-applied.
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   ci:
     uses: ./.github/workflows/ci.yml
