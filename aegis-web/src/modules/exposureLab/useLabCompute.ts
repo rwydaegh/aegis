@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react'
 import * as Sentry from '@sentry/react'
+import { isClientError } from '@/api/client'
+import { useNotificationStore } from '@/stores/notifications'
 import { useLabStore } from './store'
 import { poseBody, computeDose, type ComputeDoseParams, type LabSource } from './api'
 
@@ -122,7 +124,12 @@ export function useLabCompute(): void {
           setResults(res.sab, res.stats, res.arrays)
         } catch (err) {
           if (isStale()) return
-          Sentry.captureException(err)
+          if (isClientError(err)) {
+            const msg = (err as Error)?.message ?? 'Lab compute request was rejected.'
+            useNotificationStore.getState().addNotification('warning', msg)
+          } else {
+            Sentry.captureException(err)
+          }
         } finally {
           // Only the latest pipeline owns the loading flag; a stale run that was
           // superseded must not flip computing off under the newer run.

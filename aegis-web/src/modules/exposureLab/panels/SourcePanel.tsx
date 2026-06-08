@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import * as Sentry from '@sentry/react'
+import { isClientError } from '@/api/client'
 import { useLabStore } from '../store'
 import { getNfPatterns, type LabPattern } from '../api'
 
@@ -82,7 +83,8 @@ export default function SourcePanel() {
         if (!cancelled) setPatterns(p)
       })
       .catch((err) => {
-        if (!cancelled) Sentry.captureException(err)
+        if (cancelled) return
+        if (!isClientError(err)) Sentry.captureException(err)
       })
     return () => {
       cancelled = true

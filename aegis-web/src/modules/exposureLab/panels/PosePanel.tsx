@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import * as Sentry from '@sentry/react'
+import { isClientError } from '@/api/client'
 import { useLabStore } from '../store'
 import { getPresets } from '../api'
 import { CURATED_JOINTS } from '../lbs'
@@ -71,7 +72,8 @@ export default function PosePanel() {
         if (!cancelled) setPresets(p)
       })
       .catch(err => {
-        if (!cancelled) Sentry.captureException(err)
+        if (cancelled) return
+        if (!isClientError(err)) Sentry.captureException(err)
       })
     return () => {
       cancelled = true

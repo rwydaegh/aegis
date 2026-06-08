@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import * as Sentry from '@sentry/react'
 import * as THREE from 'three'
+import { isClientError } from '@/api/client'
 import { useLabStore } from '../store'
 import { getPatternLobe, type PatternLobe } from '../api'
 
@@ -68,7 +69,8 @@ export default function RadiationLobe() {
         if (!cancelled) setLobe(data)
       })
       .catch((err) => {
-        if (!cancelled) Sentry.captureException(err)
+        if (cancelled) return
+        if (!isClientError(err)) Sentry.captureException(err)
       })
     return () => {
       cancelled = true

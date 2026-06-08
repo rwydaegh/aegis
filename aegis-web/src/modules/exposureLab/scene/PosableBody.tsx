@@ -1,6 +1,8 @@
 import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import * as Sentry from '@sentry/react'
+import { isClientError } from '@/api/client'
+import { useNotificationStore } from '@/stores/notifications'
 import BodyMeshInstance from '@/components/scene/BodyMeshInstance'
 import { useLabStore } from '../store'
 import { getRig } from '../api'
@@ -33,7 +35,12 @@ export default function PosableBody() {
       })
       .catch(err => {
         if (cancelled) return
-        Sentry.captureException(err)
+        if (isClientError(err)) {
+          const msg = (err as Error)?.message ?? 'Lab rig request was rejected.'
+          useNotificationStore.getState().addNotification('warning', msg)
+        } else {
+          Sentry.captureException(err)
+        }
       })
     return () => {
       cancelled = true
