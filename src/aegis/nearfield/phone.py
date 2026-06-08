@@ -182,6 +182,76 @@ def _local_gate(
     return fock_local(mu, xp.asarray(fock_R), freq_hz, 0.5, 0.5, None, q_F_h, d1=dist, d2=None)
 
 
+def _distal_factor(
+    body: BodyMesh,
+    k_hat,
+    *,
+    source_pos,
+    freq_hz: float,
+    n_tilde: complex | None,
+    diffraction_model: str,
+    resolution: int,
+    lut=None,
+):
+    """Per-triangle distal self-shadow attenuation in ``[0, ~1]``.
+
+    Bakes/loads the visibility LUT, queries the near-field clearance along the
+    per-triangle source -> point direction, and evaluates
+    :func:`aegis.kernels.fock.distal_gate`. Returns ``(M,)`` (the ``(M, 1)`` query
+    is squeezed). Uses an equal soft/hard split (``w_s = w_p = 0.5``).
+
+    ``q_F_h`` is the hard-boundary creeping eigenvalue keyed to the OCCLUDER
+    radius ``R_occ`` (the part casting the shadow), self-consistent with
+    :func:`distal_gate` which uses ``R_occ`` for its Fock curvature width. This
+    deliberately differs from :func:`aegis.engine.compute`, which reuses its
+    single body-surface-derived ``q_F_h`` for both the local and distal gates.
+
+    A convex body short-circuits to an all-exposed LUT, so the gate is exactly
+    1 everywhere (no-op). This is the NumPy path; it is not JAX-traced.
+
+    ``source_pos`` should equal ``source.position``: ``k_hat`` is computed from
+    ``source.position``, so passing a different ``source_pos`` mixes two source
+    locations. The lab always passes them equal.
+
+    ``lut`` may be supplied to reuse a pre-baked visibility LUT (the LUT is
+    pose-independent, so the batch path bakes it once); ``None`` bakes/loads it.
+    """
+    if n_tilde is None:
+        raise ValueError("n_tilde required when self_shadow=True")
+
+    from aegis.geometry import fock_gate as _fg
+    from aegis.geometry import visibility
+    from aegis.kernels import fock
+
+    if lut is None:
+        lut = visibility.get_or_bake(body, resolution, "erf")
+    # No active (shadowed) triangles -> fully exposed body. Mirror the engine's
+    # short-circuit (engine._distal_kwargs returns None on lut.exposed_mask.all())
+    # so a convex body is an exact no-op: the saturated-lit query would otherwise
+    # drive distal_gate to ~0.96, not exactly 1, spuriously dimming lit faces.
+    if bool(lut.exposed_mask.all()):
+        return 1.0
+    clearance, R_occ, d1, d2 = visibility.query_visibility(
+        lut, np.asarray(k_hat), body.centroids, source_pos=np.asarray(source_pos)
+    )
+    # Hard creeping eigenvalue keyed to the occluder radius R_occ, self-consistent
+    # with distal_gate (which uses R_occ for its Fock curvature width). This differs
+    # from engine.compute, which reuses its single body-surface-derived q_F_h.
+    q_F_h = _fg.fock_q_hard(np.asarray(R_occ, dtype=float), freq_hz, n_tilde)
+    g = fock.distal_gate(
+        clearance,
+        R_occ,
+        freq_hz,
+        0.5,
+        0.5,
+        d1=d1,
+        d2=d2,
+        q_F_h=q_F_h,
+        diffraction_model=diffraction_model,
+    )
+    return np.asarray(g).reshape(-1)
+
+
 def compute_sab(
     centroids,
     normals,
@@ -193,6 +263,9 @@ def compute_sab(
     diffraction_model: str = "fock",
     fock_R=None,
     q_F_h: complex | None = None,
+    self_shadow: bool = False,
+    source_pos: np.ndarray | None = None,
+    vis_resolution: int = 32,
 ):
     """Absorbed power density per triangle for a phone source.
 
@@ -215,6 +288,14 @@ def compute_sab(
     fock_R, q_F_h : optionally precomputed Fock radius array and representative
         hard eigenvalue (see :func:`_local_gate`), to keep the gate differentiable
         in the source position under the JAX backend.
+    self_shadow : if True, multiply in the distal self-shadowing gate (one body
+        part shadowing another, e.g. an arm in front of the torso) via the baked
+        visibility LUT. Requires ``body`` and ``n_tilde``. A convex body short-
+        circuits to a no-op. Default False (back-compatible, leaves the Mie canary
+        and existing callers unchanged). This is a NumPy-only path.
+    source_pos : optional override for the near-field source position fed to the
+        visibility query. Defaults to ``source.position``.
+    vis_resolution : octahedral resolution of the baked visibility LUT.
 
     Returns
     -------
@@ -249,7 +330,18 @@ def compute_sab(
         fock_R=fock_R,
         q_F_h=q_F_h,
     )
-    return s_inc * t_eff * gate
+    sab = s_inc * t_eff * gate
+    if self_shadow and body is not None:
+        sab = sab * _distal_factor(
+            body,
+            k_hat,
+            source_pos=source.position if source_pos is None else source_pos,
+            freq_hz=source.pattern.freq_hz,
+            n_tilde=n_tilde,
+            diffraction_model=diffraction_model,
+            resolution=vis_resolution,
+        )
+    return sab
 
 
 def compute_sab_batch(
@@ -266,6 +358,8 @@ def compute_sab_batch(
     diffraction_model: str = "fock",
     fock_R=None,
     q_F_h: complex | None = None,
+    self_shadow: bool = False,
+    vis_resolution: int = 32,
 ):
     """Vectorised absorbed power density for a batch of source poses.
 
@@ -282,6 +376,10 @@ def compute_sab_batch(
     body, diffraction_model, fock_R, q_F_h : the Fock shadow gate, as in
         :func:`compute_sab`. With ``diffraction_model="fock"`` and a ``body`` the
         per-pose curvature radius is resolved face by face (shape ``(B, M)``).
+    self_shadow, vis_resolution : distal self-shadowing gate, as in
+        :func:`compute_sab`. The visibility LUT is pose-independent (baked once for
+        ``body``); the per-pose distal factor is applied in a loop over poses,
+        using that pose's source -> point direction and position.
 
     Returns
     -------
@@ -321,4 +419,27 @@ def compute_sab_batch(
         fock_R=fock_R,
         q_F_h=q_F_h,
     )
-    return s_inc * t_eff * gate
+    sab = s_inc * t_eff * gate
+    if self_shadow and body is not None:
+        # k_hat is (B, M, 3); apply the per-pose distal factor in a loop. The LUT
+        # is pose-independent, so bake it ONCE here and reuse it across all poses
+        # (only the source -> point direction and source position differ per pose).
+        from aegis.geometry import visibility
+
+        lut = visibility.get_or_bake(body, vis_resolution, "erf")
+        sab_np = np.asarray(sab).copy()
+        kh_np = np.asarray(k_hat)
+        pos_np = np.asarray(positions)
+        for b in range(sab_np.shape[0]):
+            sab_np[b] = sab_np[b] * _distal_factor(
+                body,
+                kh_np[b],
+                source_pos=pos_np[b],
+                freq_hz=pattern.freq_hz,
+                n_tilde=n_tilde,
+                diffraction_model=diffraction_model,
+                resolution=vis_resolution,
+                lut=lut,
+            )
+        return xp.asarray(sab_np)
+    return sab

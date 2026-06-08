@@ -21,6 +21,19 @@ import numpy as np
 from aegis._array_backend import xp
 
 
+def _normalise_sphere_average(f_theta: np.ndarray, theta: np.ndarray) -> np.ndarray:
+    """Scale a theta-profile so the sphere-average directivity is 1.
+
+    avg = (1/4pi) int D dOmega = (1/2) int_0^pi D(theta) sin(theta) dtheta
+    (phi-independent). Returns f_theta * (1 / avg).
+    """
+    sin_th = np.sin(theta)
+    avg = 0.5 * np.trapezoid(f_theta * sin_th, theta)
+    if avg <= 0:
+        return np.ones_like(f_theta)
+    return f_theta / avg
+
+
 @dataclass(frozen=True)
 class AntennaPattern3D:
     """A directivity pattern D(theta, phi) on a regular spherical grid.
@@ -113,6 +126,50 @@ class AntennaPattern3D:
             peak_directivity=1.0,
             radiation_efficiency=1.0,
             name="isotropic",
+        )
+
+    @classmethod
+    def dipole(cls, freq_hz: float) -> AntennaPattern3D:
+        """Half-wave dipole directivity, axis along +z.
+
+        D(theta) propto (cos(pi/2 cos theta) / sin theta)^2, peak ~1.64
+        broadside. Phi-independent.
+        """
+        theta = np.linspace(0.0, np.pi, 181)
+        phi = np.linspace(-np.pi, np.pi, 361)
+        s = np.sin(theta)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            f = np.where(s > 1e-9, np.cos(0.5 * np.pi * np.cos(theta)) / s, 0.0) ** 2
+        d_theta = _normalise_sphere_average(f, theta)
+        directivity = np.repeat(d_theta[None, :], phi.size, axis=0)
+        return cls(
+            theta,
+            phi,
+            directivity,
+            float(freq_hz),
+            peak_directivity=float(directivity.max()),
+            name="dipole",
+        )
+
+    @classmethod
+    def patch(cls, freq_hz: float, n: float = 4.0) -> AntennaPattern3D:
+        """Broadside patch-like lobe, main beam along +z (theta=0).
+
+        D propto cos(theta)^n in the front hemisphere, 0 in the back.
+        """
+        theta = np.linspace(0.0, np.pi, 181)
+        phi = np.linspace(-np.pi, np.pi, 361)
+        front = np.cos(theta)
+        f = np.where(front > 0.0, front**n, 0.0)
+        d_theta = _normalise_sphere_average(f, theta)
+        directivity = np.repeat(d_theta[None, :], phi.size, axis=0)
+        return cls(
+            theta,
+            phi,
+            directivity,
+            float(freq_hz),
+            peak_directivity=float(directivity.max()),
+            name="patch",
         )
 
     # -- sampling -----------------------------------------------------------

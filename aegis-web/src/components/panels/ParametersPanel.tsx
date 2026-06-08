@@ -5,6 +5,7 @@ import { useBaseStationsStore } from '@/stores/basestations'
 import type { DosimetryMode, ExposureMode, DiffractionModel } from '@/stores/simulation'
 import QuantitiesPanel from './QuantitiesPanel'
 import Tex from '@/components/ui/Tex'
+import CorrectionToggle from '@/components/common/CorrectionToggle'
 
 const MODES: { value: DosimetryMode; label: string }[] = [
   { value: 'bound', label: 'Bound' },
@@ -17,36 +18,6 @@ const DIFFRACTION_MODELS: { value: DiffractionModel; label: string; title: strin
   { value: 'gelu', label: 'GeLU', title: 'Smooth GELU shadow kernel with a fixed transition width.' },
   { value: 'fock', label: 'Fock', title: 'Physical Fock-region shadow kernel tied to local body curvature.' },
 ]
-
-function CorrectionToggle({
-  label,
-  checked,
-  onChange,
-  disabled,
-  title,
-}: {
-  label: string
-  checked: boolean
-  onChange: (on: boolean) => void
-  disabled?: boolean
-  title?: string
-}) {
-  return (
-    <label
-      className={`flex items-center gap-2 text-xs cursor-pointer select-none ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
-      title={title}
-    >
-      <input
-        type="checkbox"
-        className="rounded border-border accent-primary h-3.5 w-3.5"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        disabled={disabled}
-      />
-      <span className="text-foreground">{label}</span>
-    </label>
-  )
-}
 
 export default function ParametersPanel() {
   const mode = useSimulationStore((s) => s.mode)

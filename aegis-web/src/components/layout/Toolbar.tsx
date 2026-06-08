@@ -1,4 +1,5 @@
-import { PanelLeft, Box, Share2, BookOpen, Keyboard, CirclePlay } from 'lucide-react'
+import { PanelLeft, Box, Share2, BookOpen, Keyboard, CirclePlay, FlaskConical } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { useSimulationStore } from '@/stores/simulation'
@@ -172,6 +173,13 @@ export default function Toolbar() {
           <BookOpen className="size-3" />
           Docs
         </a>
+        <Link
+          to="/lab"
+          className="hidden md:inline-flex items-center gap-1 rounded-full bg-primary/10 border border-primary/20 px-2.5 py-0.5 text-xs font-medium text-primary hover:bg-primary/20 transition-colors shrink-0"
+        >
+          <FlaskConical className="size-3" />
+          Exposure Lab
+        </Link>
         <ScenarioDropdown />
         {scenario && (
           <span className="text-xs text-muted-foreground truncate hidden sm:block">{scenario}</span>

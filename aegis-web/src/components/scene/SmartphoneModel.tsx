@@ -9,28 +9,54 @@ const PHONE_D = 0.008 // depth (thickness)
 const BEZEL = 0.004
 
 interface SmartphoneModelProps {
-  /** User body position in scene (Y-up) coords */
+  /** Phone position. In body-relative mode this is the user body position
+   *  (Y-up); in absolute-orientation mode it is the phone origin directly. */
   position: [number, number, number]
-  /** User body Y-rotation in radians */
-  rotationY: number
-  /** Device offset in Z-up [right, forward, up] from body origin */
-  deviceOffset: [number, number, number]
+  /** User body Y-rotation in radians (body-relative mode only) */
+  rotationY?: number
+  /** Device offset in Z-up [right, forward, up] from body origin (body-relative mode only) */
+  deviceOffset?: [number, number, number]
+  /** Absolute Euler orientation [x, y, z] in radians, applied with intrinsic
+   *  Z-Y-X order to match the server's euler_to_matrix(yaw, pitch, roll). When
+   *  provided, the phone renders at `position` with this rotation and the
+   *  body-relative `deviceOffset` / `rotationY` math is ignored. */
+  orientation?: [number, number, number]
 }
 
-export default memo(function SmartphoneModel({ position, rotationY, deviceOffset }: SmartphoneModelProps) {
+export default memo(function SmartphoneModel({
+  position,
+  rotationY = 0,
+  deviceOffset = [0, 0, 0],
+  orientation,
+}: SmartphoneModelProps) {
   const groupRef = useRef<THREE.Group>(null)
 
-  // Convert Z-up device offset to Y-up scene coords: [x, z_up, -y_fwd]
-  const localX = deviceOffset[0]
-  const localY = deviceOffset[2] // z-up height -> y-up height
-  const localZ = -deviceOffset[1] // z-up forward -> -scene z
+  const absolute = orientation != null
 
-  // Rotate local offset by user body orientation around Y
-  const cos = Math.cos(rotationY)
-  const sin = Math.sin(rotationY)
-  const worldX = position[0] + cos * localX + sin * localZ
-  const worldZ = position[2] - sin * localX + cos * localZ
-  const baseY = position[1] + localY
+  let worldX: number
+  let baseY: number
+  let worldZ: number
+  let groupRotation: [number, number, number] | [number, number, number, THREE.EulerOrder]
+
+  if (absolute) {
+    worldX = position[0]
+    baseY = position[1]
+    worldZ = position[2]
+    groupRotation = [orientation[0], orientation[1], orientation[2], 'ZYX']
+  } else {
+    // Convert Z-up device offset to Y-up scene coords: [x, z_up, -y_fwd]
+    const localX = deviceOffset[0]
+    const localY = deviceOffset[2] // z-up height -> y-up height
+    const localZ = -deviceOffset[1] // z-up forward -> -scene z
+
+    // Rotate local offset by user body orientation around Y
+    const cos = Math.cos(rotationY)
+    const sin = Math.sin(rotationY)
+    worldX = position[0] + cos * localX + sin * localZ
+    worldZ = position[2] - sin * localX + cos * localZ
+    baseY = position[1] + localY
+    groupRotation = [0, rotationY, 0]
+  }
 
   // Subtle hover animation
   useFrame(({ clock }) => {
@@ -43,7 +69,7 @@ export default memo(function SmartphoneModel({ position, rotationY, deviceOffset
     <group
       ref={groupRef}
       position={[worldX, baseY, worldZ]}
-      rotation={[0, rotationY, 0]}
+      rotation={groupRotation}
     >
       {/* Phone body */}
       <mesh castShadow>
