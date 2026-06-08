@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import functools
-import hashlib
 import math
 import os
-import threading
 import time
 import warnings
 from pathlib import Path
@@ -18,6 +16,7 @@ from aegis.basestation.classify import _lookup_tdd
 from aegis.constants import C_0, EPS_0
 from aegis.defaults import DEFAULT_FREQ_HZ, DEFAULT_POWER_DBM
 from aegis.engine import DosimetryEngine
+from aegis.geometry import curvature as _curvature_module
 from aegis.geometry.mesh import BodyMesh
 from aegis.paths import PropagationPaths
 from aegis.tissue.cole_cole import debye_permittivity
@@ -46,72 +45,24 @@ def _load_phantom_masses() -> dict[str, float]:
     return {name: info["mass_kg"] for name, info in data.items()}
 
 
-# Cache for curvature computation (expensive, only changes when body changes)
-_curvature_cache: dict = {}
-_curvature_cache_lock = threading.Lock()
-_CURVATURE_CACHE_MAX = 32
-
-
-def _curvature_cache_key(body: BodyMesh) -> int:
-    """Rigid-transform-invariant cache key for viewer curvature estimates."""
-    edge_vecs = np.roll(body.vertices, -1, axis=1) - body.vertices
-    edge_lengths = np.sort(np.linalg.norm(edge_vecs, axis=2), axis=1)
-    centered = body.centroids - body.centroids.mean(axis=0, keepdims=True)
-    radii = np.sort(np.linalg.norm(centered, axis=1))
-    normal_svals = np.linalg.svd(body.normals, compute_uv=False)
-
-    h = hashlib.sha256(body.areas.astype(np.float32).tobytes())
-    h.update(edge_lengths.astype(np.float32).tobytes())
-    h.update(radii.astype(np.float32).tobytes())
-    h.update(normal_svals.astype(np.float32).tobytes())
-    digest = h.digest()[:8]
-    return hash((int.from_bytes(digest, "little"), body.n_triangles))
+# Curvature is cached inside ``aegis.geometry.curvature`` (the real owner). These
+# names are re-exported aliases of that module's cache and lock so the viewer and
+# its tests share the single live cache rather than a dead viewer-local copy.
+_curvature_cache = _curvature_module._cache
+_curvature_cache_lock = _curvature_module._cache_lock
 
 
 def _compute_face_curvature(body: BodyMesh) -> np.ndarray:
-    """Estimate per-face mean curvature from normal variation to neighbors.
+    """Per-face twice-mean-curvature, in 1/m.
 
-    Uses KD-tree for fast neighbor lookup: for each face, the curvature
-    is estimated as the average |delta_normal| / distance to its 6 nearest
-    neighbors. This gives a good proxy for the discrete mean curvature.
-
-    The result is invariant to rigid transforms: translation preserves all
-    inter-centroid distances and rotation preserves both distances and
-    |delta_normal| (since ||R n_i - R n_j|| = ||n_i - n_j||). Cache using a
-    rigid-transform-invariant key so translated/rotated bodies hit the cache
-    without letting unrelated meshes collide.
+    Thin wrapper over ``geometry.curvature.face_curvature`` (a local quadric fit
+    over the centroid k-NN, caching internally on the rigid-invariant geometry
+    hash). It supersedes the old |delta_normal| / distance proxy with the same
+    twice-mean-curvature quantity used by the Fock gate.
     """
-    cache_key = _curvature_cache_key(body)
+    from aegis.geometry.curvature import face_curvature
 
-    with _curvature_cache_lock:
-        if cache_key in _curvature_cache:
-            return _curvature_cache[cache_key]
-
-    from scipy.spatial import cKDTree
-
-    centroids = body.centroids
-    normals = body.normals
-    M = body.n_triangles
-    if M <= 1:
-        return np.zeros(M, dtype=np.float64)
-
-    k = min(7, M)
-    tree = cKDTree(centroids)
-    dists, indices = tree.query(centroids, k=k)
-
-    neighbor_normals = normals[indices]
-    face_normals = normals[:, np.newaxis, :]
-    delta_n = np.linalg.norm(neighbor_normals - face_normals, axis=2)
-    safe_dists = np.maximum(dists, 1e-12)
-    curvature_per_neighbor = delta_n / safe_dists
-
-    H = np.mean(curvature_per_neighbor[:, 1:], axis=1)
-
-    with _curvature_cache_lock:
-        while len(_curvature_cache) >= _CURVATURE_CACHE_MAX:
-            _curvature_cache.pop(next(iter(_curvature_cache)))
-        _curvature_cache[cache_key] = H
-    return H
+    return face_curvature(body)
 
 
 # ---------------------------------------------------------------------------
@@ -669,10 +620,19 @@ def _run_engine_mode(
     if corr.get("curvature"):
         mode_kwargs["curvature"] = True
         mode_kwargs["curvature_H"] = _compute_face_curvature(body)
-    if corr.get("diffraction"):
+    # Shadow-edge gate: an explicit diffraction_model wins over the legacy bool.
+    diffraction_model = corr.get("diffraction_model")
+    if diffraction_model is not None:
+        mode_kwargs["diffraction_model"] = diffraction_model
+        if diffraction_model != "none" and "curvature_H" not in mode_kwargs:
+            mode_kwargs["curvature_H"] = _compute_face_curvature(body)
+    elif corr.get("diffraction"):
         mode_kwargs["diffraction"] = True
         if "curvature_H" not in mode_kwargs:
             mode_kwargs["curvature_H"] = _compute_face_curvature(body)
+    inter_body = corr.get("inter_body")
+    if inter_body is not None:
+        mode_kwargs["inter_body"] = inter_body
     return engine.compute_with_timings(body, paths, body_mass=body_mass, **mode_kwargs)
 
 
@@ -765,8 +725,14 @@ def _build_compute_extras(
 
     corr_list = None
     if mode is not None:
+        # Lazy import: _responses imports this module at top level, so a
+        # module-level import here would be circular.
+        from aegis.viewer.routes.compute._responses import _diffraction_active
+
         corr = corrections or {}
-        corr_list = [k for k in ("fresnel", "polarisation", "curvature", "diffraction") if corr.get(k)]
+        corr_list = [k for k in ("fresnel", "polarisation", "curvature") if corr.get(k)]
+        if _diffraction_active(corr):
+            corr_list.append("diffraction")
     return extra, corr_list
 
 

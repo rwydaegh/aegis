@@ -241,7 +241,12 @@ class TestLevelReduction:
     """Levels must reduce to simpler levels under special conditions."""
 
     def test_level6_zero_curvature_matches_level3(self):
-        """Level 6 with H=0 must match Level 3 (GELU->ReLU, no curvature term)."""
+        """Level 6 with H=0 and no shadow gate must match Level 3 (ReLU).
+
+        The shadow gate is orthogonal to curvature: with diffraction_model="none"
+        (no gate) and zero curvature, level 6 reduces to the bare ReLU level 3.
+        The engine default is now "fock", so this identity requires "none".
+        """
         body = make_icosahedron()
         rng = np.random.default_rng(77)
         k_hat = rng.standard_normal((10, 3))
@@ -252,7 +257,7 @@ class TestLevelReduction:
         engine = DosimetryEngine(SKIN_28GHZ)
         r3 = engine.compute(body, paths, level=3)
         H = np.zeros(body.n_triangles)
-        r6 = engine.compute(body, paths, level=6, curvature_H=H)
+        r6 = engine.compute(body, paths, level=6, curvature_H=H, diffraction_model="none")
 
         np.testing.assert_allclose(r6.sab, r3.sab, rtol=1e-6, atol=1e-12)
 
@@ -265,7 +270,7 @@ class TestLevelReduction:
         )
         engine = DosimetryEngine(SKIN_28GHZ)
         r2 = engine.compute(body, paths, level=2)
-        r_sp = engine.compute(body, paths, mode="spatial", fresnel=False)
+        r_sp = engine.compute(body, paths, mode="spatial", fresnel=False, diffraction_model="none")
         np.testing.assert_allclose(r_sp.sab, r2.sab, rtol=1e-12, atol=1e-15)
 
 

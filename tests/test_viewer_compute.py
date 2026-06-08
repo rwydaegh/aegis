@@ -96,6 +96,84 @@ def test_compute_dosimetry_keeps_diffraction_independent_from_curvature():
     assert "curvature_H" in kwargs
 
 
+def test_compute_dosimetry_forwards_diffraction_model_and_inter_body():
+    body = make_flat_mesh(12)
+
+    with patch(
+        "aegis.viewer.compute.DosimetryEngine.compute_with_timings",
+        return_value=(_fake_result(body.n_triangles), {}),
+    ) as compute_mock:
+        compute_dosimetry(
+            body,
+            antenna_pos=np.array([0.0, 0.0, 2.0]),
+            mode="spatial",
+            corrections={"diffraction_model": "fock", "inter_body": "off"},
+        )
+
+    kwargs = compute_mock.call_args.kwargs
+    assert kwargs["diffraction_model"] == "fock"
+    assert kwargs["inter_body"] == "off"
+    # An active gate still needs curvature data even without the curvature flag.
+    assert "curvature_H" in kwargs
+
+
+def test_compute_dosimetry_none_model_skips_curvature_injection():
+    body = make_flat_mesh(12)
+
+    with patch(
+        "aegis.viewer.compute.DosimetryEngine.compute_with_timings",
+        return_value=(_fake_result(body.n_triangles), {}),
+    ) as compute_mock:
+        compute_dosimetry(
+            body,
+            antenna_pos=np.array([0.0, 0.0, 2.0]),
+            mode="spatial",
+            corrections={"diffraction_model": "none"},
+        )
+
+    kwargs = compute_mock.call_args.kwargs
+    assert kwargs["diffraction_model"] == "none"
+    assert "curvature_H" not in kwargs
+
+
+def test_route_parses_diffraction_model_and_inter_body():
+    from aegis.viewer.routes.compute.dosimetry import _parse_mode_level_corrections
+
+    dcfg = {"default_level": 2}
+    _, mode, corrections, err = _parse_mode_level_corrections(
+        {"mode": "spatial", "diffraction_model": "gelu", "inter_body": "specular1"}, dcfg
+    )
+    assert err is None
+    assert mode == "spatial"
+    assert corrections["diffraction_model"] == "gelu"
+    assert corrections["inter_body"] == "specular1"
+
+
+def test_route_maps_legacy_diffraction_bool_to_model():
+    from aegis.viewer.routes.compute.dosimetry import _parse_mode_level_corrections
+
+    dcfg = {"default_level": 2}
+    _, _, corr_true, err = _parse_mode_level_corrections({"mode": "spatial", "diffraction": True}, dcfg)
+    assert err is None
+    assert corr_true["diffraction_model"] == "fock"
+
+    _, _, corr_false, err = _parse_mode_level_corrections({"mode": "spatial", "diffraction": False}, dcfg)
+    assert err is None
+    assert corr_false["diffraction_model"] == "none"
+
+
+def test_route_rejects_invalid_diffraction_model(viewer_app):
+    from aegis.viewer.routes.compute.dosimetry import _parse_mode_level_corrections
+
+    dcfg = {"default_level": 2}
+    # jsonify (used to build the 400 response) needs an application context.
+    with viewer_app.app_context():
+        _, _, _, err = _parse_mode_level_corrections({"mode": "spatial", "diffraction_model": "bogus"}, dcfg)
+    assert err is not None
+    _resp, status = err
+    assert status == 400
+
+
 def test_curvature_cache_key_distinguishes_meshes_with_same_area_spectrum():
     body_flat = make_flat_mesh(16)
     tilted_vertices = body_flat.vertices.copy()

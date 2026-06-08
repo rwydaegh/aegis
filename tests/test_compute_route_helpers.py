@@ -438,7 +438,8 @@ class TestParseModeOrLevel:
         assert "fresnel" in kw
 
     def test_mode_spatial_default_corrections(self) -> None:
-        """Spatial mode defaults: fresnel=True, polarisation/curvature/diffraction=False.
+        """Spatial mode defaults: fresnel=True, polarisation/curvature=False,
+        diffraction_model="none", inter_body="off".
         Mutmut surfaced that `_parse_bool(..., True)` -> `_parse_bool(None, True)`
         survived because tests didn't assert the default booleans.
         """
@@ -447,7 +448,8 @@ class TestParseModeOrLevel:
         assert kw["fresnel"] is True
         assert kw["polarisation"] is False
         assert kw["curvature"] is False
-        assert kw["diffraction"] is False
+        assert kw["diffraction_model"] == "none"
+        assert kw["inter_body"] == "off"
 
     def test_mode_spatial_fresnel_can_be_disabled(self) -> None:
         kw, err = _parse_mode_or_level({"mode": "spatial", "fresnel": "false"})
@@ -460,11 +462,17 @@ class TestParseModeOrLevel:
         assert kw["polarisation"] is True
 
     def test_mode_spatial_diffraction_can_be_enabled(self) -> None:
-        """Diffraction toggle must read from the ``diffraction`` key
-        specifically (not ``None`` and not a case-shifted variant)."""
+        """Legacy ``diffraction=true`` maps to ``diffraction_model="fock"``."""
         kw, err = _parse_mode_or_level({"mode": "spatial", "diffraction": "true"})
         assert err is None
-        assert kw["diffraction"] is True
+        assert kw["diffraction_model"] == "fock"
+
+    def test_mode_spatial_diffraction_model_explicit_wins(self) -> None:
+        """An explicit ``diffraction_model`` is passed through verbatim and
+        overrides the legacy ``diffraction`` bool."""
+        kw, err = _parse_mode_or_level({"mode": "spatial", "diffraction_model": "fock", "diffraction": "false"})
+        assert err is None
+        assert kw["diffraction_model"] == "fock"
 
     def test_mode_spatial_curvature_can_be_enabled(self) -> None:
         kw, err = _parse_mode_or_level({"mode": "spatial", "curvature": "true"})

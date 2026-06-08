@@ -33,6 +33,39 @@ def _parse_bool(value, default: bool) -> bool:
     return bool(value)
 
 
+_VALID_DIFFRACTION_MODELS = ("none", "gelu", "fock")
+_VALID_INTER_BODY = ("off", "specular1")
+
+
+def _parse_diffraction_model(params: dict) -> tuple[str | None, _ErrResp | None]:
+    """Resolve the shadow-edge gate selector from request params.
+
+    An explicit ``diffraction_model`` wins. Otherwise the legacy ``diffraction``
+    bool maps ``True -> "fock"`` and ``False -> "none"``. Returns
+    ``(model, None)`` on success or ``(None, error_response)`` on failure.
+    """
+    raw = params.get("diffraction_model")
+    if raw is not None:
+        if not isinstance(raw, str) or raw not in _VALID_DIFFRACTION_MODELS:
+            return None, (
+                jsonify({"error": f"diffraction_model must be one of: {', '.join(_VALID_DIFFRACTION_MODELS)}"}),
+                400,
+            )
+        return raw, None
+    return ("fock" if _parse_bool(params.get("diffraction"), False) else "none"), None
+
+
+def _parse_inter_body(params: dict) -> tuple[str | None, _ErrResp | None]:
+    """Parse the inter-body backend selector. Returns ``(value, None)`` or ``(None, error)``."""
+    raw = params.get("inter_body", "off")
+    if not isinstance(raw, str) or raw not in _VALID_INTER_BODY:
+        return None, (
+            jsonify({"error": f"inter_body must be one of: {', '.join(_VALID_INTER_BODY)}"}),
+            400,
+        )
+    return raw, None
+
+
 def _validate_scene_path(scene_path: str) -> bool:
     """Check that scene_path matches a known scene from list_available_scenes.
 
@@ -183,7 +216,14 @@ def _parse_mode_or_level(params: dict, default_level: int = 2) -> tuple[dict[str
             out["fresnel"] = _parse_bool(params.get("fresnel"), True)
             out["polarisation"] = _parse_bool(params.get("polarisation"), False)
             out["curvature"] = _parse_bool(params.get("curvature"), False)
-            out["diffraction"] = _parse_bool(params.get("diffraction"), False)
+            diffraction_model, err = _parse_diffraction_model(params)
+            if err is not None:
+                return None, err
+            out["diffraction_model"] = diffraction_model
+            inter_body, err = _parse_inter_body(params)
+            if err is not None:
+                return None, err
+            out["inter_body"] = inter_body
         return out, None
     try:
         level = int(params.get("level", default_level))

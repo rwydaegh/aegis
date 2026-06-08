@@ -360,7 +360,7 @@ def _parse_placement_engine_params(params: dict):
         engine_params["mode"] = params["dosimetry_mode"]
     if params.get("level") is not None:
         engine_params["level"] = params["level"]
-    for flag in ("fresnel", "polarisation", "curvature", "diffraction"):
+    for flag in ("fresnel", "polarisation", "curvature", "diffraction", "diffraction_model", "inter_body"):
         if params.get(flag) is not None:
             engine_params[flag] = params[flag]
 

@@ -1,6 +1,7 @@
 import type { ViewerConfig, Capabilities, BodyMeta, VoxelMeta, DosimetryStats, SystemInfo, TissueSpectrum } from './types'
 import { parseBodyBinary, parseVoxelBinary, parseSabBinary, parseSceneBinary } from './binary'
 import { toServer, type ScenePos } from './coordinates'
+import type { DiffractionModel, InterBody } from '@/stores/simulation'
 
 const BASE = ''
 
@@ -352,7 +353,8 @@ export interface ComputeParams {
   fresnel: boolean
   polarisation: boolean
   curvature: boolean
-  diffraction: boolean
+  diffractionModel: DiffractionModel
+  interBody: InterBody
   powerDbm: number
   skinModel: string
   freqGhz: number
@@ -376,7 +378,8 @@ function computePayload(params: ComputeParams) {
     fresnel: params.fresnel,
     polarisation: params.polarisation,
     curvature: params.curvature,
-    diffraction: params.diffraction,
+    diffraction_model: params.diffractionModel,
+    inter_body: params.interBody,
     power_dbm: params.powerDbm,
     skin_model: params.skinModel,
     freq_hz: params.freqGhz * 1e9,

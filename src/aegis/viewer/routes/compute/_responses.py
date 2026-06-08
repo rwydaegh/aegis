@@ -64,9 +64,15 @@ def _cache_dosimetry_for_export(cache: dict, result, body, stats: dict, paths=No
     scoped_cache_set(cache, "_last_rt_tissue", tissue)
 
 
+def _diffraction_active(engine_kw: dict) -> bool:
+    """True when a shadow-edge gate is active (legacy bool or non-"none" model)."""
+    model = engine_kw.get("diffraction_model")
+    return bool(engine_kw.get("diffraction")) or (model is not None and model != "none")
+
+
 def _inject_curvature_H(engine_kw: dict, body) -> dict:
     """Add curvature_H to engine kwargs if curvature or diffraction is requested."""
-    if engine_kw.get("curvature") or engine_kw.get("diffraction"):
+    if engine_kw.get("curvature") or _diffraction_active(engine_kw):
         from aegis.viewer.compute import _compute_face_curvature
 
         engine_kw["curvature_H"] = _compute_face_curvature(body)
@@ -170,7 +176,9 @@ def _stats_label(engine_kwargs: dict) -> tuple:
     """Return (level_int, mode_str, corrections_list) for stats response."""
     if "mode" in engine_kwargs:
         mode = engine_kwargs["mode"]
-        corrections = [k for k in ("fresnel", "polarisation", "curvature", "diffraction") if engine_kwargs.get(k)]
+        corrections = [k for k in ("fresnel", "polarisation", "curvature") if engine_kwargs.get(k)]
+        if _diffraction_active(engine_kwargs):
+            corrections.append("diffraction")
         return (None, mode, corrections)
     return (engine_kwargs.get("level", 2), None, [])
 

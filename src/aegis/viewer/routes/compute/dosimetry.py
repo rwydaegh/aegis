@@ -16,7 +16,9 @@ from aegis.viewer.routes._types import RouteResponse
 
 from ._parsing import (
     _parse_bool,
+    _parse_diffraction_model,
     _parse_freq_and_tissue,
+    _parse_inter_body,
     _parse_quantities_and_scenario,
     _parse_rotation_y,
     _parse_vec3,
@@ -227,11 +229,19 @@ def _parse_mode_level_corrections(params: dict, dcfg: dict):
         if mode not in ("bound", "aggregate", "spatial"):
             return None, None, None, (jsonify({"error": "mode must be one of: bound, aggregate, spatial"}), 400)
         if mode == "spatial":
+            diffraction_model, err = _parse_diffraction_model(params)
+            if err is not None:
+                return None, None, None, err
+            inter_body, err = _parse_inter_body(params)
+            if err is not None:
+                return None, None, None, err
             corrections = {
                 "fresnel": _parse_bool(params.get("fresnel"), True),
                 "polarisation": _parse_bool(params.get("polarisation"), False),
                 "curvature": _parse_bool(params.get("curvature"), False),
                 "diffraction": _parse_bool(params.get("diffraction"), False),
+                "diffraction_model": diffraction_model,
+                "inter_body": inter_body,
             }
         else:
             corrections = None
@@ -493,6 +503,9 @@ def _api_compute_impl(cache: dict, cache_lock) -> RouteResponse:
             antennas=pp["antennas"],
             exposure_mode=pp["exposure_mode"],
         )
+    except NotImplementedError as exc:
+        logger.info("compute_dosimetry received unimplemented option: %s", exc)
+        return jsonify({"error": str(exc)}), 501
     except (ValueError, FileNotFoundError) as exc:
         logger.warning("compute_dosimetry rejected invalid request: %s", exc)
         return jsonify({"error": str(exc)}), 400

@@ -54,6 +54,9 @@ def level7_coherent(
     freq_hz: float,
     n_elements: int,
     h: NDArray[np.complexfloating] | None = None,
+    fock_R: NDArray[np.floating] | None = None,
+    q_F_s: complex | None = None,
+    q_F_h: complex | None = None,
 ) -> tuple[
     NDArray[np.floating],
     NDArray[np.complexfloating],
@@ -76,6 +79,11 @@ def level7_coherent(
     freq_hz : frequency [Hz]
     n_elements : int
     h : (M_ant,) UE channel vector (optional, for rho computation)
+    fock_R : (M,) or (M, N) or None
+        In-incidence-plane curvature radius [m] for the Fock shadow gate. ``None``
+        disables the gate (exact GO/Fresnel channel, back-compat).
+    q_F_s, q_F_h : complex or None
+        Soft/hard impedance-Fock parameters (``None`` selects the PEC gate).
 
     Returns
     -------
@@ -97,8 +105,13 @@ def level7_coherent(
     # Lowercase accumulator inside the loop: Q is bound once, after the loop, so
     # the all-caps return name is a single definition, not a reassigned constant.
     q_acc: NDArray[np.complexfloating] = xp.zeros((n_elements, n_elements), dtype=complex)
+    # Slice the per-triangle Fock radius to match each triangle block. A (M, N)
+    # radius (per path) is row-sliced too; a scalar/None passes through unchanged.
+    fock_R_arr = None if fock_R is None else xp.asarray(fock_R)
+
     for start in range(0, M, chunk):
         sl = slice(start, start + chunk)
+        fock_R_blk = None if fock_R_arr is None else fock_R_arr[sl]
         G_blk = compute_body_channel(
             normals[sl],
             centroids[sl],
@@ -109,6 +122,9 @@ def level7_coherent(
             sigma,
             freq_hz,
             n_elements,
+            fock_R=fock_R_blk,
+            q_F_s=q_F_s,
+            q_F_h=q_F_h,
         )  # (B, 3, M_ant)
 
         # S_ab(r) = ||G_tilde(r) @ x||^2 for this block

@@ -21,6 +21,7 @@ from aegis.coherent.body_channel import compute_body_channel_factored
 from aegis.coherent.exposure_operator import compute_exposure_operator
 from aegis.constants import C_0
 from aegis.defaults import DEFAULT_NOISE_POWER, DEFAULT_P_ABS_MAX, NUMERICAL_FLOOR
+from aegis.geometry import fock_gate
 from aegis.mimo.array_paths import expand_paths_to_array
 from aegis.mimo.channel import compute_channel_vector
 from aegis.mimo.precoders import compute_precoder
@@ -77,11 +78,26 @@ def make_stochastic_paths_fn(
     return _generate
 
 
-def build_user_channels(scene: MIMOScene) -> None:
+def _resolve_mimo_diffraction_model(diffraction_model: str) -> str:
+    """Validate the MIMO shadow-gate selector (default ``"fock"``).
+
+    Mirrors the engine default (DECISIONS.md L8) so MIMO scene compute matches
+    the single-user coherent engine result. ``"none"`` disables the gate.
+    """
+    if diffraction_model not in fock_gate.DIFFRACTION_MODELS:
+        raise ValueError(f"diffraction_model must be one of {fock_gate.DIFFRACTION_MODELS}, got {diffraction_model!r}")
+    return diffraction_model
+
+
+def build_user_channels(scene: MIMOScene, diffraction_model: str = "fock") -> None:
     """Expand paths and build per-user channels, G_tilde, Q, and h.
 
     Populates each user's paths, G_tilde, Q, and h fields in-place.
     Skips users that already have all four fields populated.
+
+    ``diffraction_model`` selects the Fock shadow gate folded into G_tilde:
+    ``"fock"`` (default, matches the engine) gates the body-surface channel with
+    the uniform Fock penumbra; ``"none"`` reproduces the ungated channel.
 
     Raises ValueError if scene.tissue is None or any user is missing
     body or center_paths.
@@ -89,6 +105,7 @@ def build_user_channels(scene: MIMOScene) -> None:
     if scene.tissue is None:
         raise ValueError("scene.tissue must be set before building channels")
 
+    model = _resolve_mimo_diffraction_model(diffraction_model)
     tissue = scene.tissue
 
     for user in scene.users:
@@ -104,6 +121,16 @@ def build_user_channels(scene: MIMOScene) -> None:
         # Expand center paths to per-element paths
         user.paths = expand_paths_to_array(user.center_paths, scene.array, scene.freq_hz)
 
+        # Fock shadow gate keyed on the center directions (matches the factored
+        # Fresnel solve, one gate per unique direction).
+        fock_R, q_F_s, q_F_h = fock_gate.fock_params(
+            user.body,
+            user.center_paths.k_hat,
+            model,
+            scene.freq_hz,
+            tissue.n_complex,
+        )
+
         # Body-surface channel G_tilde (factored Fresnel for array-expanded paths)
         user.G_tilde = compute_body_channel_factored(
             normals=user.body.normals,
@@ -116,6 +143,9 @@ def build_user_channels(scene: MIMOScene) -> None:
             sigma=tissue.sigma,
             freq_hz=scene.freq_hz,
             n_elements=scene.array.n_elements,
+            fock_R=fock_R,
+            q_F_s=q_F_s,
+            q_F_h=q_F_h,
         )
 
         # Exposure operator Q
@@ -280,6 +310,7 @@ def compute_mimo_scene(
     precoder_type: str = "zf",
     noise_power: float = DEFAULT_NOISE_POWER,
     P_abs_max: float = DEFAULT_P_ABS_MAX,
+    diffraction_model: str = "fock",
 ) -> dict:
     """Full multi-user MIMO dosimetry pipeline.
 
@@ -299,6 +330,8 @@ def compute_mimo_scene(
         Noise power for MMSE precoder.
     P_abs_max : float
         Per-user absorbed power limit for zf_exposure.
+    diffraction_model : str
+        Shadow-edge gate "none" | "fock" (default "fock", matches the engine).
 
     Returns
     -------
@@ -311,7 +344,7 @@ def compute_mimo_scene(
         raise ValueError("Scene has no users")
 
     # Step 1: build channels
-    build_user_channels(scene)
+    build_user_channels(scene, diffraction_model=diffraction_model)
 
     # Step 2: assemble H and Q, compute precoder
     H = scene.all_h()
@@ -366,6 +399,7 @@ def compute_mimo_scene_with_bodies(
     level: int = 7,
     generate_paths_fn: Callable | None = None,
     precoder_type: str = "mrt",
+    diffraction_model: str = "fock",
 ) -> dict:
     """Full multi-user MIMO compute pipeline with body positioning.
 
@@ -381,6 +415,8 @@ def compute_mimo_scene_with_bodies(
     generate_paths_fn : optional callable(body, array_center, freq_hz, device_position) -> PropagationPaths.
         Defaults to _default_los_paths if None.
     precoder_type : "mrt", "zf", "mmse", or "zf_exposure".
+    diffraction_model : shadow-edge gate "none" | "fock" (default "fock",
+        matches the engine).
 
     Returns
     -------
@@ -390,6 +426,7 @@ def compute_mimo_scene_with_bodies(
     from aegis.geometry.mesh import BodyMesh as _BodyMesh
     from aegis.tissue.dielectric import TissueModel
 
+    model = _resolve_mimo_diffraction_model(diffraction_model)
     timings: dict[str, float] = {}
     t_total_start = time.perf_counter()
 
@@ -455,6 +492,9 @@ def compute_mimo_scene_with_bodies(
         # This computes Fresnel for N_center directions instead of N_center*M_elements,
         # giving ~M_elements speedup (e.g. 16x for 4x4 UPA)
         n_tilde = tissue.n_complex
+        # Fock shadow gate keyed on the center directions (one gate per unique
+        # direction, matching the factored Fresnel solve and the engine default).
+        fock_R, q_F_s, q_F_h = fock_gate.fock_params(body, center_paths.k_hat, model, freq_hz, n_tilde)
         G_tilde = compute_body_channel_factored(
             normals=body.normals,
             centroids=body.centroids,
@@ -466,6 +506,9 @@ def compute_mimo_scene_with_bodies(
             sigma=tissue.sigma,
             freq_hz=freq_hz,
             n_elements=array.n_elements,
+            fock_R=fock_R,
+            q_F_s=q_F_s,
+            q_F_h=q_F_h,
         )
         user.G_tilde = G_tilde
 

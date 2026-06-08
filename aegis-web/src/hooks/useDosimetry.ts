@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import * as Sentry from '@sentry/react'
-import { useSimulationStore } from '@/stores/simulation'
+import { useSimulationStore, type DiffractionModel, type InterBody } from '@/stores/simulation'
 import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
 import { useNotificationStore } from '@/stores/notifications'
@@ -37,7 +37,8 @@ type SimSlice = {
   fresnel: boolean
   polarisation: boolean
   curvature: boolean
-  diffraction: boolean
+  diffractionModel: DiffractionModel
+  interBody: InterBody
   powerDbm: number
   skinModel: string
   freqGhz: number
@@ -95,7 +96,8 @@ export function buildComputeParams(
     fresnel: sim.fresnel,
     polarisation: sim.polarisation,
     curvature: sim.curvature,
-    diffraction: sim.diffraction,
+    diffractionModel: sim.diffractionModel,
+    interBody: sim.interBody,
     powerDbm: sim.powerDbm,
     skinModel: sim.skinModel,
     freqGhz: sim.freqGhz,
@@ -294,7 +296,8 @@ export function useDosimetry() {
     fresnel: s.fresnel,
     polarisation: s.polarisation,
     curvature: s.curvature,
-    diffraction: s.diffraction,
+    diffractionModel: s.diffractionModel,
+    interBody: s.interBody,
     powerDbm: s.powerDbm,
     skinModel: s.skinModel,
     freqGhz: s.freqGhz,
