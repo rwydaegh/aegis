@@ -105,14 +105,24 @@ def _spatial_kernel_unbatched(
     """
     mu, mu_plus = incidence_geometry(normals, k_hat)
 
+    # Physical per-(triangle, path) TE/TM power weights from the incident field.
+    # These are shared by the Fresnel factor and the Fock gate, so compute them
+    # once here (it is one of the most expensive ops in the kernel). ``polarisation``
+    # implies ``fresnel`` (guarded in ``spatial_kernel``), so this condition matches
+    # exactly when either consumer below needs the weights.
+    use_psi = polarisation and psi is not None
+    w_s_pol: NDArray[np.floating] | None = None
+    w_p_pol: NDArray[np.floating] | None = None
+    if use_psi:
+        w_s_pol, w_p_pol = te_tm_power_weights(normals, k_hat, psi)
+
     # Fresnel factor
     t_factor: float | NDArray[np.floating]
     if fresnel:
         T_s, T_p, T_avg = fresnel_weights(mu, n_tilde)
-        if polarisation and psi is not None:
+        if use_psi:
             # Physical per-(triangle, path) polarisation from the incident field.
-            w_s, w_p = te_tm_power_weights(normals, k_hat, psi)
-            t_factor = w_s * T_s + w_p * T_p
+            t_factor = w_s_pol * T_s + w_p_pol * T_p
         elif polarisation:
             # Legacy scalar/array TM-excess knob (no real polarisation state).
             DeltaT = T_p - T_s
@@ -133,8 +143,8 @@ def _spatial_kernel_unbatched(
         g = physical_gelu(mu, sigma)
     else:  # "fock"
         assert fock_R is not None, "diffraction_model='fock' requires fock_R"
-        if polarisation and psi is not None:
-            w_s, w_p = te_tm_power_weights(normals, k_hat, psi)
+        if use_psi:
+            w_s, w_p = w_s_pol, w_p_pol
         else:
             w_s, w_p = 0.5, 0.5
         # Far-field radius is per-triangle (M,); reshape so m*theta broadcasts
@@ -202,7 +212,7 @@ def spatial_kernel(
         used instead of the scalar ``q``.
     curvature : enable curvature correction (requires curvature_H)
     diffraction : legacy bool. Mapped to ``diffraction_model`` when the latter is
-        None: True -> "fock", False -> "none". An explicit ``diffraction_model``
+        None: True -> "gelu", False -> "none". An explicit ``diffraction_model``
         always wins.
     diffraction_model : gate selector "none" | "gelu" | "fock". "none" is exact
         ReLU, "gelu" is the legacy physical-GELU smoothing (requires curvature_H),
