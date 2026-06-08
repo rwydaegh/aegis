@@ -167,15 +167,6 @@ class DosimetryEngine:
                 "feature and not yet implemented; use inter_body='off'."
             )
 
-    @staticmethod
-    def _fock_radius_per_path(body: BodyMesh, k_hat: np.ndarray) -> np.ndarray:
-        """In-incidence-plane radius for each path direction.
-
-        Thin wrapper over :func:`aegis.geometry.fock_gate.fock_radius_per_path`,
-        the shared source of truth used by the MIMO compute path too.
-        """
-        return fock_gate.fock_radius_per_path(body, k_hat)
-
     def _fock_params(
         self,
         body: BodyMesh,
