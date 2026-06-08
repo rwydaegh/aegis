@@ -16,6 +16,7 @@ import numpy as np
 from aegis._array_backend import JAX_AVAILABLE
 from aegis.constants import C_0, Z_0
 from aegis.defaults import DEFAULT_P_ABS_MAX
+from aegis.geometry import fock_gate
 from aegis.geometry.mesh import BodyMesh
 from aegis.paths import PropagationPaths
 from aegis.result import DosimetryResult
@@ -36,14 +37,9 @@ _ERR_LEVEL_AND_MODE = "Cannot specify both level and mode"
 # Engine-layer diffraction-gate selector. The kernel maps the legacy bool
 # True->"gelu" for back-compat; the engine maps it True->"fock" (the user-facing
 # default, D7) and always supplies the in-plane radius (DECISIONS.md L8).
-_ENGINE_DIFFRACTION_MODELS = ("none", "gelu", "fock")
-# Representative-radius guards for the scalar impedance-Fock hard eigenvalue.
-# Flat faces clamp to 1/eps (~1e6 m) in fock_radius; exclude them from the
-# median so they do not skew the representative body radius. The kR_rep used for
-# the single mpmath pole solve is clamped to the validated grid [4, 2048].
-_FOCK_FLAT_R_CAP = 1e3
-_FOCK_KR_MIN = 4.0
-_FOCK_KR_MAX = 2048.0
+# The Fock-parameter helpers and their guards live in geometry.fock_gate so the
+# MIMO compute path (mimo/compute.py) shares one source of truth.
+_ENGINE_DIFFRACTION_MODELS = fock_gate.DIFFRACTION_MODELS
 
 
 def _to_numpy(arr):
@@ -175,20 +171,10 @@ class DosimetryEngine:
     def _fock_radius_per_path(body: BodyMesh, k_hat: np.ndarray) -> np.ndarray:
         """In-incidence-plane radius for each path direction.
 
-        ``paths.k_hat`` is ``(N, 3)`` (one direction per path), so a single path
-        yields ``(M,)`` and multiple paths yield ``(M, N)`` (the kernel broadcasts
-        ``(M,) -> (M, 1)`` and uses ``(M, N)`` as is). ``principal_curvatures`` is
-        cached per body inside ``geometry.curvature``, so the repeated per-path
-        calls only redo the cheap Euler projection.
+        Thin wrapper over :func:`aegis.geometry.fock_gate.fock_radius_per_path`,
+        the shared source of truth used by the MIMO compute path too.
         """
-        from aegis.geometry import curvature
-
-        kh = np.asarray(k_hat, dtype=float)
-        if kh.ndim == 1:
-            kh = kh[None, :]
-        if kh.shape[0] == 1:
-            return curvature.fock_radius(body, kh[0])
-        return np.stack([curvature.fock_radius(body, kh[n]) for n in range(kh.shape[0])], axis=1)
+        return fock_gate.fock_radius_per_path(body, k_hat)
 
     def _fock_params(
         self,
@@ -200,31 +186,10 @@ class DosimetryEngine:
     ) -> tuple[np.ndarray | None, complex | None, complex | None]:
         """Fock radius and the representative impedance-corrected eigenvalues.
 
-        Returns ``(fock_R, q_F_s, q_F_h)``. For any non-Fock model returns
-        ``(None, None, None)`` so the gate paths stay untouched. The soft creeping
-        wave keeps the PEC eigenvalue (``q_F_s = None``); the hard eigenvalue is a
-        single representative value per (band, body): a scalar drift across
-        triangles is dose-negligible (DECISIONS.md L10). ``kR_rep`` uses the
-        median curved-face radius, clamped to the validated grid for the one
-        cached mpmath pole solve.
+        Thin wrapper over :func:`aegis.geometry.fock_gate.fock_params`, the
+        shared source of truth used by the MIMO compute path too.
         """
-        if model != "fock":
-            return None, None, None
-        from aegis.kernels import fock
-
-        fock_R = self._fock_radius_per_path(body, k_hat)
-        eta = complex(1.0 / n_tilde)
-        if eta.imag <= 0:
-            raise ValueError(f"eta = 1/n_tilde must have Im(eta) > 0 (passive skin, n - ik convention), got {eta}")
-        R_arr = np.asarray(fock_R, dtype=float)
-        finite = np.isfinite(R_arr)
-        curved = finite & (R_arr < _FOCK_FLAT_R_CAP)
-        sample = R_arr[curved] if np.any(curved) else R_arr[finite]
-        R_rep = float(np.median(sample)) if sample.size else 1.0
-        k0 = 2.0 * np.pi * freq_hz / C_0
-        kR_rep = float(np.clip(k0 * R_rep, _FOCK_KR_MIN, _FOCK_KR_MAX))
-        q_F_h = fock.fock_impedance_param(eta, kR_rep, "hard")
-        return fock_R, None, q_F_h
+        return fock_gate.fock_params(body, k_hat, model, freq_hz, n_tilde)
 
     @staticmethod
     def _body_cache_key(body: BodyMesh) -> int:
