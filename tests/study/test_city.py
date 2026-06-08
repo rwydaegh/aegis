@@ -29,7 +29,14 @@ def test_empty_building_list():
 @pytest.mark.slow
 def test_city_cache_build_ghent(tmp_path):
     # Network + mesh build. Small radius to keep it cheap.
-    city = CityCache.build(lat=51.0536, lon=3.7253, radius_m=120.0, cache_dir=tmp_path)
+    # Overpass is a shared third-party API: a 429/timeout is an infrastructure
+    # condition, not a code defect, so skip rather than fail the suite.
+    from aegis.environment.osm import OverpassRateLimitError, OverpassTimeoutError
+
+    try:
+        city = CityCache.build(lat=51.0536, lon=3.7253, radius_m=120.0, cache_dir=tmp_path)
+    except (OverpassRateLimitError, OverpassTimeoutError) as exc:
+        pytest.skip(f"Overpass API unavailable: {exc}")
     assert city.scene_xml.exists()
     assert city.candidates.shape[1] == 3
     # candidates lie within the fetch radius of the origin
