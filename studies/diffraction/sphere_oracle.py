@@ -115,8 +115,8 @@ def validate_total_absorbed():
     TH, PH = np.meshgrid(th, phs, indexing="ij")
     E, H = mp.eh_near(2 * np.pi, 2 * x, M, 1.0, np.full(TH.size, x * (1 + 1e-4)),
                       TH.ravel(), PH.ravel(), include_incident=True)
-    Et, Ep, Ht, Ht2 = E[1], E[2], H[1], H[2]
-    Pabs = (-0.5 * np.real(Et * np.conj(H[2]) - Ep * np.conj(H[1]))).reshape(TH.shape)
+    Et, Ep, Ht, Hp = E[1], E[2], H[1], H[2]
+    Pabs = (-0.5 * np.real(Et * np.conj(Hp) - Ep * np.conj(Ht))).reshape(TH.shape)
     # integrate P_abs * a^2 sin(theta) dtheta dphi ; absorbed cross section = that / S_inc
     da = (x**2) * np.sin(TH)
     W = np.trapezoid(np.trapezoid(Pabs * da, phs, axis=1), th, axis=0)
