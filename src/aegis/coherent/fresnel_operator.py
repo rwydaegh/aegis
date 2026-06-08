@@ -13,15 +13,16 @@ Monograph: Definition in sec:fresnel-operator, Approximation 1 applied.
 from __future__ import annotations
 
 import numpy as np
+from numpy.typing import NDArray
 
 from aegis._array_backend import JAX_AVAILABLE, xp
 from aegis.tissue.fresnel import _fresnel_core
 
 
 def te_tm_basis(
-    k_hat,
-    normals,
-):
+    k_hat: NDArray[np.floating],
+    normals: NDArray[np.floating],
+) -> tuple[NDArray[np.floating], NDArray[np.floating]]:
     """Compute TE and TM basis vectors for each (path, triangle) pair.
 
     Parameters

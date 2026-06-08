@@ -1,0 +1,357 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{siunitx}
+\usepackage[hidelinks]{hyperref}
+\usepackage{xcolor}
+\usepackage{caption}
+
+\graphicspath{{figures/}}
+
+\newcommand{\erf}{\ensuremath{\operatorname{erf}}}
+\newcommand{\ReLU}{\ensuremath{\operatorname{ReLU}}}
+\newcommand{\Sab}{\ensuremath{S_{\mathrm{ab}}}}
+\newcommand{\Sinc}{\ensuremath{S_{\mathrm{inc}}}}
+\newcommand{\Teff}{\ensuremath{T_{\mathrm{eff}}}}
+\newcommand{\Tavg}{\ensuremath{\bar{T}}}
+\newcommand{\khat}{\ensuremath{\hat{k}}}
+\newcommand{\nhat}{\ensuremath{\hat{n}}}
+\newcommand{\rr}{\ensuremath{\mathbf{r}}}
+\newcommand{\Rbar}{\ensuremath{\bar{R}}}
+
+\title{How exact can the surface dosimetry get?\\
+\large Inter-body reflection and polarization, tested on Thelonious}
+\author{AEGIS self-shadowing study}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+The companion note verified the diffraction-smoothed visibility gate. This
+note asks how much further the surface-dosimetry law can be pushed toward
+the exact electromagnetic answer, and tests every claim on the real
+Thelonious phantom mesh (\num{23826} triangles). Two refinements are
+candidates: inter-body re-illumination and polarization. We find, first,
+that the monograph's omission of inter-body reflection is essentially
+correct for body-averaged exposure (enhancement $C\approx 1.05$--$1.08$),
+but its specular estimate is optimistic: a forward specular-bounce test
+gives a recapture fraction \emph{comparable} to the diffuse bound, not the
+assumed one-third of it, and the deepest concavity reaches a local
+$C\approx 1.85$. Second, and more consequentially, polarization is the
+largest unexploited source of inaccuracy in the incoherent pipeline:
+switching the incident wave between horizontal and vertical polarization
+changes the whole-body absorbed power by \SI{25}{\percent}, the local
+effective transmission deviates from its unpolarized value by up to
+\SI{92}{\percent}, and \SI{44}{\percent} of the lit body lies at grazing
+incidence ($\theta>\SI{60}{\degree}$) where the TE/TM splitting peaks.
+The diffraction gate inherits a polarization signature of its own: for the
+smooth convex human body the hard (TM) creeping wave decays
+$2.3\times$ slower than the soft (TE) one, a \SI{6.4}{\dB} polarization
+split \SI{15}{\degree} into the geodesic shadow. We conclude that the
+highest-value exactness upgrade is not more elaborate diffraction but
+carrying the true polarization state through the incoherent levels, with a
+soft/hard gate as the natural and inexpensive refinement.
+\end{abstract}
+
+\section{Scope}
+
+The production law is the first-bounce, polarization-averaged statement
+\begin{equation}\label{eq:base}
+  \Sab(\rr) = \Sinc\,T_0\,\ReLU\!\bigl(\mu(\rr)\bigr)\,O(\rr,\khat),
+  \qquad \mu = \nhat\cdot(-\khat),
+\end{equation}
+with the visibility $O$ developed and verified in the companion note. Three
+physical effects sit outside~\eqref{eq:base}: (i) one body part reflecting
+power onto another (inter-body reflection); (ii) the dependence of the
+absorbed power on the incident polarization, which the incoherent levels
+0--6 replace with an angle-averaged transmission; and (iii) the
+polarization dependence of the diffraction that smooths the shadow edge.
+This note quantifies all three on the Thelonious mesh and identifies where
+the accuracy is actually being lost. All numbers below are reproduced by
+\texttt{studies/self\_shadowing/exactness\_study.py}.
+
+\section{Inter-body reflection: small, but not for the reason assumed}
+
+\paragraph{Theory.} At an illuminated point a fraction
+$\Rbar = 1-T_0 \approx 0.46$ of the incident power is reflected. If a
+fraction $f(\rr)$ of that reflected power strikes the body again, summing
+the geometric series of bounces enhances the absorbed power by
+\begin{equation}\label{eq:C}
+  C(f) = \frac{1}{1-\Rbar\,f}.
+\end{equation}
+Under diffuse (Lambertian) reflection the recaptured fraction is bounded by
+the cosine-weighted hemisphere blocked by the body, $f(\rr)\le 1-\eta(\rr)$,
+where $\eta$ is exactly the ambient-occlusion exposure fraction AEGIS
+already computes. The monograph argues this is negligible through a
+self-compensation mechanism: $C$ is largest precisely where $\eta$ is
+smallest, so a deep concavity sees less direct power but recaptures more,
+and the product $\eta\,C$ stays close to~$\eta$.
+
+\paragraph{Test.} We compute $\eta$ on Thelonious (\num{128} cosine-weighted
+rays per triangle, production BVH), form the diffuse recapture map
+$f = 1-\eta$ and the enhancement~\eqref{eq:C}, and separately fire the
+specular bounce ray $\hat r = \khat - 2(\khat\cdot\nhat)\nhat$ from every
+lit triangle over a sweep of \num{24} incidence directions to measure the
+true specular recapture fraction. Results are summarized in
+Table~\ref{tab:interbody} and Fig.~\ref{fig:interbody}.
+
+\begin{table}[!htb]
+\centering
+\caption{Inter-body reflection on Thelonious. The diffuse bound and the
+body-averaged enhancement confirm the effect is small; the specular
+recapture and the worst-case concavity show the monograph's specular
+estimate is optimistic.}
+\label{tab:interbody}
+\begin{tabular}{lcc}
+\toprule
+Quantity & This study & Monograph \\
+\midrule
+Diffuse recapture $f_{\mathrm{global}}$ & 0.135 & $\approx 0.09$ \\
+Body-averaged enhancement $C_{\mathrm{global}}$ & 1.077 & $\approx 1.04$ \\
+$\eta$-weighted enhancement & 1.052 & $\lesssim 1.02$ \\
+Specular recapture $f_{\mathrm{spec}}/f_{\mathrm{diffuse}}$ & 1.08 & $\approx 0.3$ \\
+Worst-concavity diffuse $C$ & 1.85 & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[!htb]
+\centering
+\includegraphics[width=\textwidth]{inter_body}
+\caption{Left: area-weighted distribution of the diffuse recapture fraction
+$f=1-\eta$ on Thelonious; the body average is \num{0.135}. Right: the
+self-compensation mechanism. Effective exposure $\eta\,C$ stays close to the
+no-reflection line $\eta$ for both the diffuse bound (red) and the specular
+estimate (blue); deviations grow only in deep concavities (small $\eta$).}
+\label{fig:interbody}
+\end{figure}
+
+\paragraph{Verdict.} The self-compensation argument holds: the
+body-averaged enhancement is \SIrange{5}{8}{\percent}, well inside the
+diffraction and tissue-property error bars, so omitting inter-body
+reflection from the body-averaged law is justified. Two honest caveats
+emerge from the data. (1) The diffuse recapture fraction we measure
+(\num{0.135}) is roughly \SI{50}{\percent} above the monograph's quoted
+\num{0.09}; the difference is pose- and resolution-dependent but does not
+change the conclusion. (2) The specular recapture is \emph{not}
+one-third of the diffuse bound as assumed. In concavities the mirror
+direction points back at the opposing surface, so the specular bounce is
+recaptured about as often as the diffuse hemisphere is blocked
+($f_{\mathrm{spec}}\approx 1.08\,f_{\mathrm{diffuse}}$). The specular
+enhancement is therefore close to the diffuse $C\approx 1.05$--$1.08$
+rather than the $C\approx 1.01$ the monograph states, and the deepest
+concavity reaches $C\approx 1.85$. This matters for spatial maps in tight
+gaps (between the legs, under the arms), not for compliance, which is set
+by the most-illuminated surface. Recommendation: keep inter-body reflection
+out of the default law, but correct the specular claim in the error budget
+and expose it as an optional first-bounce pass for spatial-map fidelity.
+
+\section{Polarization: the largest unexploited inaccuracy}
+
+\paragraph{Theory.} A plane wave is fully polarized. At a surface point the
+incidence plane is spanned by $\khat$ and $\nhat$, with local TE and TM unit
+vectors $\hat e_s = (\khat\times\nhat)/|\khat\times\nhat|$ and
+$\hat e_p = \hat e_s\times\khat$. The electric field decomposes as
+$\mathbf{E}_0 = a_s\hat e_s + a_p\hat e_p$, and the exact effective
+power-transmission coefficient is
+\begin{equation}\label{eq:Teff}
+  \Teff(\rr) = |e_s|^2 T_s(\theta) + |e_p|^2 T_p(\theta)
+  = \Tavg(\theta) + \tfrac{1}{2}\,q(\rr)\,\Delta T(\theta),
+\end{equation}
+with $\Tavg = \tfrac12(T_s+T_p)$, $\Delta T = T_p - T_s$, and the local
+TM excess $q = |e_p|^2 - |e_s|^2 \in[-1,1]$. The exact absorbed power density
+is $\Sab = \Sinc\,\Teff\,\ReLU(\mu)$. The incoherent levels 0--6 set
+$\Teff = \Tavg$ (level~3) or apply a single scalar $q$ knob (level~4), so
+they cannot represent the spatial pattern of $q(\rr)$ that a real polarized
+source imposes. The splitting $\Delta T$ is the lever: it vanishes at normal
+incidence and grows steeply with angle.
+
+\begin{figure}[!htb]
+\centering
+\includegraphics[width=0.46\textwidth]{deltaT_angle}
+\caption{Polarization splitting $\Delta T(\theta) = T_p - T_s$ for skin at
+three bands. The splitting vanishes at normal incidence and exceeds
+\num{0.77} by \SI{75}{\degree}: at grazing, TM transmits almost completely
+while TE is strongly reflected.}
+\label{fig:deltaT}
+\end{figure}
+
+\paragraph{Test.} For a horizontally propagating plane wave ($\khat=+\hat x$)
+on the upright Thelonious phantom we compute the per-triangle incidence
+angle, $T_s,T_p,\Tavg$, the local TE/TM basis, and the integrated absorbed
+power for vertical polarization, horizontal polarization, and the
+unpolarized assumption. Results in Table~\ref{tab:pol},
+Figs.~\ref{fig:deltaT}--\ref{fig:bodymap}.
+
+\begin{table}[!htb]
+\centering
+\caption{Polarization on Thelonious, wave from $+\hat x$, skin at
+\SI{28}{\GHz}. The incoherent pipeline uses the ``unpolarized'' column and
+misses the rest.}
+\label{tab:pol}
+\begin{tabular}{lc}
+\toprule
+Quantity & Value \\
+\midrule
+$\Delta T$ at \SI{75}{\degree} (28\,GHz) & 0.77 \\
+Whole-body absorbed power, vertical / unpolarized & 0.87 \\
+Whole-body absorbed power, horizontal / unpolarized & 1.13 \\
+Horizontal $-$ vertical (relative to unpolarized) & \SI{25}{\percent} \\
+Max local $|\Teff-\Tavg|/\Tavg$ & \SI{92}{\percent} \\
+Lit area at grazing ($\theta>\SI{60}{\degree}$) & \SI{44}{\percent} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[!htb]
+\centering
+\includegraphics[width=\textwidth]{polarization_body}
+\caption{Left: area-weighted distribution of lit-surface incidence angle.
+Almost half the illuminated body is at grazing ($\theta>\SI{60}{\degree}$),
+where polarization dominates. Right: the resulting per-triangle deviation
+of the effective transmission from its unpolarized value for vertical
+polarization, reaching $\pm\SI{90}{\percent}$.}
+\label{fig:polbody}
+\end{figure}
+
+\begin{figure}[!htb]
+\centering
+\includegraphics[width=0.7\textwidth]{polarization_bodymap}
+\caption{Where polarization matters, on the body. Left: relative deviation
+of $\Teff$ from the unpolarized value (vertical polarization). Near-vertical
+surfaces (torso, limbs) face the horizontal wave at grazing and transmit
+\emph{less} than the average for vertical polarization (blue); near-horizontal
+surfaces (shoulders, head crown, insteps) transmit more (red). Right: the
+incidence-angle map that drives it.}
+\label{fig:bodymap}
+\end{figure}
+
+\paragraph{Verdict.} Polarization is the dominant unexploited inaccuracy in
+the incoherent pipeline. A \SI{25}{\percent} swing in whole-body absorbed
+power between the two linear polarizations, and a local effective-transmission
+error approaching a factor of two, both exceed the diffraction and
+tissue-property error bars that justified dropping inter-body reflection.
+The effect is structural, not incidental: an upright body illuminated near
+the horizontal presents \SI{44}{\percent} of its lit area at grazing, exactly
+where $\Delta T$ is largest. The exact law~\eqref{eq:Teff} is already in the
+monograph and is implemented in the coherent levels~7--8; the gap is that
+levels 0--6 discard the polarization state. Carrying a single Stokes vector
+(or the $q(\rr)$ field) through the incoherent kernels closes it at the cost
+of two extra dot products per triangle and is, in our view, the single
+highest-value exactness upgrade available.
+
+\section{Polarization in the diffraction gate: soft and hard}
+
+The same grazing region that maximizes $\Delta T$ is where the diffraction
+gate operates, and diffraction is itself polarization-dependent. For a
+perfectly conducting smooth convex body, the deep-shadow surface field is a
+sum of creeping-wave modes $\propto \exp(i t_m\,\xi)$ in the Fock arc-length
+parameter $\xi = m\,(s/R)$, with $m=(kR/2)^{1/3}$ and $s$ the geodesic depth
+past the terminator on a feature of radius~$R$. The modal eigenvalues are
+$t_m = q_m\,e^{i\pi/3}$, so each mode decays at rate
+$\operatorname{Im} t_m = q_m\sin(\pi/3) = \tfrac{\sqrt3}{2}q_m$ per unit
+$\xi$. The crucial point is that $q_m$ differs by polarization:
+\begin{equation}
+  \text{soft (TE, Dirichlet): } q_1 = 2.338\ (\text{zeros of } \mathrm{Ai}),
+  \qquad
+  \text{hard (TM, Neumann): } q_1 = 1.019\ (\text{zeros of } \mathrm{Ai}').
+\end{equation}
+The hard (TM) creeping wave therefore decays $2.295\times$ slower than the
+soft (TE) one. On a \SI{5}{\cm} limb at \SI{28}{\GHz} ($m=2.45$), this is a
+\SI{6.4}{\dB} polarization split only \SI{15}{\degree} of arc into the
+geodesic shadow (Fig.~\ref{fig:softhard}). A scalar shadow gate cannot
+represent this; a gate that carries the soft/hard label can, at no extra
+baked storage, because the geometric inputs ($R$, $s$, $\xi$) are shared and
+only the modal constant changes. (The human body is a lossy dielectric, not
+a perfect conductor, so the exact constants are modified by the surface
+impedance; the PEC values bracket the true split and preserve the sign and
+$2.3\times$ asymmetry.)
+
+\begin{figure}[!htb]
+\centering
+\includegraphics[width=\textwidth]{soft_hard}
+\caption{Soft/hard creeping-wave split on a \SI{5}{\cm} limb at
+\SI{28}{\GHz}. Left: surface field vs geodesic depth into shadow for the two
+polarizations; the hard (TM) field penetrates much deeper. Right: the
+polarization split grows past \SI{6}{\dB} within \SI{15}{\degree} of arc.}
+\label{fig:softhard}
+\end{figure}
+
+This also resolves a sign question. The companion note found the scalar
+erf gate \emph{over}-predicts deep-shadow leakage relative to a knife edge
+(Gaussian vs $\nu^{-2}$ tail), but a knife edge is the wrong canonical
+problem for a smooth body. The correct smooth-convex tail is the creeping
+wave, which decays \emph{exponentially} in $\xi$, faster than either. So on
+the body the scalar gate over-predicts leakage for both polarizations, and
+most so for TE; the soft/hard refinement corrects the rate and splits it.
+
+\section{Synthesis and recommendations}
+
+\begin{enumerate}
+\item \textbf{Carry polarization through levels 0--6 (highest value).} Use
+the exact $\Teff = \Tavg + \tfrac12 q\,\Delta T$ with the true per-triangle
+$q(\rr)$ from the source polarization, not a scalar knob. Cost: two dot
+products per triangle. Payoff: removes a \SI{25}{\percent} whole-body and
+up to \SI{92}{\percent} local error. This is already exact theory and is
+the form the coherent levels use.
+\item \textbf{Make the diffraction gate soft/hard.} Replace the single
+scalar transition with a polarization-labelled creeping-wave gate using the
+soft and hard Airy constants. The bake is unchanged (same geometric $R$,
+$\xi$); only a constant switches. Payoff: a \SI{6.4}{\dB} polarization
+signature in the shadow, and the physically correct exponential smooth-body
+tail rather than the knife-edge surrogate.
+\item \textbf{Keep inter-body reflection optional.} The body-averaged
+enhancement ($\le\SI{8}{\percent}$) does not warrant inclusion in the default
+law, but the error budget should record the specular recapture as
+\emph{comparable to} the diffuse bound (not one-third of it) and the
+worst-concavity $C\approx 1.85$. A single first-bounce pass, reusing the
+visibility BVH, suffices for spatial-map fidelity in concavities if needed.
+\end{enumerate}
+
+\section{Verification suite}
+
+Table~\ref{tab:tests} lists the checks that pin these results and that
+should run in CI to keep them true. The numerical oracles are exact; the
+physical checks are regression tests against the values reported here.
+
+\begin{table}[!htb]
+\centering
+\caption{Verification tests for the exactness study.}
+\label{tab:tests}
+\begin{tabular}{lll}
+\toprule
+Test & Asserts & Oracle / tolerance \\
+\midrule
+$\Teff$ at normal incidence & $\Teff = T_0$ for any polarization & exact \\
+$\Delta T(0)=0$ & no splitting at normal incidence & exact \\
+$q\in[-1,1]$ & TM excess bounded & exact \\
+$\Teff$ unpolarized average & $\langle\Teff\rangle_\phi = \Tavg$ & exact \\
+Energy conservation & $T_s,T_p\in[0,1]$, $T+R=1$ lossless limit & exact \\
+Fresnel vs monograph & $T_0(\text{skin},28\,\text{GHz})=0.539$ & $<1\%$ \\
+Recapture bound & $f \le 1-\eta$ everywhere & exact \\
+Self-compensation & $\eta\,C \le 1$ and monotone in $\eta$ & exact \\
+Airy constants & $q_1^{\text{soft}}=2.338$, $q_1^{\text{hard}}=1.019$ & $<10^{-3}$ \\
+Soft/hard ratio & $\alpha_{\text{soft}}/\alpha_{\text{hard}} = 2.295$ & $<10^{-3}$ \\
+Thelonious regression & whole-body H/V ratio, grazing fraction & $\pm 2\%$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Conclusion}
+
+Pushing the surface law toward the exact electromagnetic answer, the biggest
+win is not more elaborate diffraction or inter-body radiosity, both of which
+the data show to be modest. It is polarization. The exact polarization-aware
+transmission is already derived and already used in the coherent levels;
+extending it to the incoherent levels removes the single largest error in
+the pipeline at trivial cost, and a soft/hard creeping-wave gate carries the
+same polarization distinction into the shadow edge where the body spends
+\SI{44}{\percent} of its illuminated area. Inter-body reflection stays
+optional, with its specular contribution corrected upward to match the
+measured recapture.
+
+\end{document}

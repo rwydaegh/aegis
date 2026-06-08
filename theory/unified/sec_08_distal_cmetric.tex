@@ -1,0 +1,368 @@
+% sec_08_distal_cmetric
+\section{Distal occlusion: the angular-clearance metric}\label{sec:cmetric}
+
+The local gate of \cref{sec:fock-local} smooths the body's own terminator, the
+edge where a facet curves into its own shadow. The other half of self-shadowing
+is distal: one body part blocks the line of sight to another across a finite gap.
+A hand over the cheek, the arm across the torso, the chin over the throat, the gap
+between the legs. \cref{sec:geom} wrote this as the binary occlusion factor $O$
+(\cref{def:occlusion}), exact as $\lambda\to0$ and discontinuous across the shadow
+edge. This section makes it wave-correct with the same Fock transition $g(\xi)$
+(\cref{def:fock-g}), now driven by an angular clearance to the occluder edge
+rather than the obliquity to the body's own terminator. The clearance is a single
+signed scalar field on the direction sphere, the C-metric. The central result is
+that the C-metric and the local terminator angle $\theta$ are one object measured
+against two boundaries, so distal and local diffraction are the same gate.
+
+\subsection{The signed angular-clearance field}\label{sec:cmetric-def}
+
+Fix a surface point $\rr$. On the unit direction sphere $S^2$, equipped with the
+geodesic metric $d_g(\bm{\omega},\bm{\omega}')=\arccos(\bm{\omega}\cdot\bm{\omega}')$,
+let $B(\rr)\subset S^2$ be the blocked set, the directions along which $\rr$ is
+occluded by another part of the body (the open ray $\rr+t\bm{\omega}$, $t>0$, meets
+the mesh before escaping). Its boundary $\partial B(\rr)$ is the occlusion horizon
+seen from $\rr$, the union of occluder silhouettes, a curve of arbitrary topology.
+
+\begin{definition}[Signed angular clearance, the C-metric]\label{def:c-metric}
+The signed angular clearance is the signed geodesic distance on $S^2$ from the
+incidence direction $-\khat$ to the occlusion horizon,
+\begin{equation}\label{eq:c-def}
+  \clr(\rr,\khat) = s(\rr,\khat)\,
+  \inf_{\bm{b}\in\partial B(\rr)}\arccos\!\bigl[(-\khat)\cdot\bm{b}\bigr],
+  \qquad
+  s = \begin{cases}
+    +1 & -\khat\notin B(\rr)\ \text{(source visible)},\\
+    -1 & -\khat\in B(\rr)\ \text{(shadowed)}.
+  \end{cases}
+\end{equation}
+A positive $\clr$ is lit, or clear: the source is directly visible and $\abs{\clr}$
+is the angular margin before an occluder edge cuts the line of sight. A negative
+$\clr$ is in the geometric shadow of the occluder, $\abs{\clr}$ deep.
+\end{definition}
+
+The clearance refines the binary occlusion of \cref{def:occlusion}. Its sign is
+$O$, its zero set is the exact occlusion boundary for any number of disjoint
+blocked regions, and its magnitude is the clearance the diffractive penumbra
+needs,
+\begin{equation}\label{eq:c-to-O}
+  O(\rr,\khat) = \ident\!\bigl[\clr(\rr,\khat)>0\bigr]
+  = \lim_{\sigma\to0}\half\Bigl[1+\erf\!\bigl(\clr/\sigma\bigr)\Bigr].
+\end{equation}
+Away from the medial axis (the cut locus of $\partial B$, where two horizon arcs
+are equidistant), $\clr$ is a true signed distance and satisfies the eikonal
+equation
+\begin{equation}\label{eq:eikonal}
+  \abs{\nabla_{\!S^2}\,\clr} = 1 .
+\end{equation}
+This is a spherical signed-distance function. AEGIS bakes it per triangle on an
+octahedral direction grid by a fast-marching eikonal solve with the great-circle
+metric, then interpolates it at query time, so the runtime gate is one lookup per
+path and the expensive ray casting is paid once per body.
+
+\subsection{One metric, two boundaries}\label{sec:cmetric-unify}
+
+The clearance $\clr$ and the local terminator angle $\theta$ of \cref{eq:theta-mu}
+are not analogues. They are the same construction.
+
+\begin{proposition}[Unification of the local and distal metrics]\label{prop:unify}
+Both $\theta$ and $\clr$ are the signed geodesic distance on $S^2$ from the
+incidence direction $-\khat$ to a shadow boundary. They differ only in the
+boundary curve.
+\begin{enumerate}
+  \item Local: the boundary is the terminator great circle
+    $T=\{\bm{\omega}\in S^2 : \bm{\omega}\cdot\nhat=0\}$, the locus of grazing
+    directions for the facet normal $\nhat$. The signed geodesic distance from
+    $-\khat$ to $T$ is
+    \begin{equation}\label{eq:theta-as-distance}
+      d_g^{\,\pm}(-\khat,T) = \arcsin\!\bigl[(-\khat)\cdot\nhat\bigr]
+      = \arcsin\mu = \theta .
+    \end{equation}
+  \item Distal: the boundary is the occluder silhouette $\partial B(\rr)$, and the
+    signed geodesic distance is $\clr(\rr,\khat)$ by \cref{def:c-metric}.
+\end{enumerate}
+Consequently a single transition $g(\xi)$ gates both, with $\xi$ built from the
+relevant clearance, and the only difference is which curvature radius enters the
+Fock parameter $\mfock$: the facet's own in-plane radius $\Rfock$
+(\cref{prop:fock-radius}) for the local gate, the binding occluder's edge radius
+$\Rocc$ for the distal gate.
+\end{proposition}
+
+\begin{proof}
+Statement (ii) is \cref{def:c-metric}. For (i), the great circle $T$ has pole
+$\nhat$ and is the equator at geodesic distance $\pi/2$ from $\nhat$. A direction
+$\bm{\omega}$ lies at geodesic latitude $\phi$ above $T$ with
+$\sin\phi=\bm{\omega}\cdot\nhat$, and its geodesic distance to the equator is
+$\abs{\pi/2-\arccos(\bm{\omega}\cdot\nhat)}=\abs{\arcsin(\bm{\omega}\cdot\nhat)}$.
+Taking $\bm{\omega}=-\khat$ gives $\bm{\omega}\cdot\nhat=\mu$, and the signed
+distance, positive toward the lit hemisphere $\mu>0$, is $\arcsin\mu=\theta$ by
+\cref{eq:theta-mu}. The two quantities are the same functional of $-\khat$, applied
+to two boundaries.
+\end{proof}
+
+The unification is exact and has a clean reading. The angular clearance is purely
+kinematic, a great-circle distance on the direction sphere. The curvature radius
+is a physical property of whichever surface diffracts the ray. The local
+terminator is the special case in which the diffracting body is the observation
+point's own body and the boundary is its own terminator, which happens to be a
+great circle, the geodesic of zero geodesic curvature. The distal case replaces
+that great circle by the silhouette of a separate occluder, whose finite edge
+curvature sets $\Rocc$. Local self-shadowing and distal cross-shadowing are one
+mechanism at two scales.
+
+\subsection{The distal Fock detour}\label{sec:cmetric-detour}
+
+The diffracted ray that reaches $\rr$ past the occluder grazes the occluder
+silhouette. Let the binding edge, the point of $\partial B(\rr)$ nearest $-\khat$,
+have in-incidence-plane radius of curvature $\Rocc$, obtained from the occluder's
+principal curvatures (\cref{eq:euler}, \cref{prop:fock-radius}) at the grazing
+point. Write $d_2=\abs{\rr-\bm{r}_{\mathrm{edge}}}$ for the edge-to-point distance
+and $d_1$ for the source-to-edge distance, so the diffracted path is source
+$\,\xrightarrow{d_1}\,$ edge $\,\xrightarrow{d_2}\,\rr$.
+
+\begin{proposition}[Distal detour and gate]\label{prop:distal-xi}
+The distal detour parameter is
+\begin{equation}\label{eq:xi-distal}
+  \xi_{\mathrm d} = \frac{\mfock_{\mathrm{occ}}\,\clr}{w_{\mathrm{nf}}},
+  \qquad
+  \mfock_{\mathrm{occ}} = \Bigl(\tfrac{k\Rocc}{2}\Bigr)^{1/3},
+\end{equation}
+with $w_{\mathrm{nf}}$ the near-field wavefront factor of \cref{sec:cmetric-nf}
+($w_{\mathrm{nf}}=1$ in the far field, so $\xi_{\mathrm d}=\mfock_{\mathrm{occ}}\clr$).
+It feeds the same transition $g(\xi_{\mathrm d})$ as the local gate
+(\cref{def:fock-g}). The distal gate attenuates only the would-be-lit response,
+\begin{equation}\label{eq:distal-gate}
+  G_{\mathrm d}(\rr,\khat) =
+  w_s\,\abs{g_{\text{soft}}(\xi_{\mathrm d})}^2
+  + w_p\,\abs{g_{\text{hard}}(\xi_{\mathrm d})}^2,
+  \qquad
+  g(\rr,\khat) = \begin{cases}
+    g_{\mathrm{loc}}(\mu)\,G_{\mathrm d} & \mu>0,\\[2pt]
+    g_{\mathrm{loc}}(\mu) & \mu\le0,
+  \end{cases}
+\end{equation}
+with $g_{\mathrm{loc}}$ the local Fock gate of \cref{eq:fock-local} and $w_s,w_p$
+the TE/TM power weights of \cref{sec:pol}. The absorbed power density is the
+path sum $\Sab(\rr)=\sum_n\Sinc^{(n)}T_0\,g(\rr,\khat_n)$, the wave-correct form
+of \cref{eq:Sab-occluded}. The gate has the limits
+\begin{enumerate}
+  \item clear line of sight, $\clr\to+\infty$: $\xi_{\mathrm d}\to+\infty$,
+    $g_{\text{soft}},g_{\text{hard}}\to1$, so $G_{\mathrm d}\to1$ and no
+    attenuation;
+  \item deep distal shadow, $\clr\to-\infty$: $\xi_{\mathrm d}\to-\infty$,
+    $\abs{G_{\mathrm d}}\sim e^{-\sqrt3\,q_1\abs{\xi_{\mathrm d}}}$, the creeping
+    leakage past the occluder;
+  \item geometric-optics, $\lambda\to0$: $\mfock_{\mathrm{occ}}\to\infty$, so for
+    any $\clr\neq0$, $\xi_{\mathrm d}\to\pm\infty$ and
+    $G_{\mathrm d}\to\ident[\clr>0]=O(\rr,\khat)$. The distal gate degrades
+    gracefully to the binary occlusion of \cref{def:occlusion}.
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}[Justification of the transferred machinery]
+Fock's boundary-layer analysis of the shadow boundary is local. Near the grazing
+point the occluder is, to leading order, a smooth convex body of in-plane radius
+$\Rocc$, and the diffracted field depends only on the wavenumber $k$, the
+grazing-point radius, and the surface impedance. It does not depend on whether the
+diffracting body carries the observation point (local) or is a separate occluder
+(distal). The uniform composite $g=\Philit+\Psishad$ (\cref{eq:fock-g}), the
+creeping eigenvalues $q_p$ (PEC, \cref{eq:q-soft,eq:q-hard}, or impedance-shifted,
+\cref{eq:leontovich}), the soft/hard split, and the $\sqrt3\,q_p$ decay law
+therefore transfer verbatim under $\Rfock\to\Rocc$ and $\theta\to\clr$. Limit (i)
+and (ii) are \cref{prop:fock-limits} applied at $\xi_{\mathrm d}$. For (iii),
+$\mfock_{\mathrm{occ}}\propto k^{1/3}\to\infty$ drives $\xi_{\mathrm d}$ to
+$\pm\infty$ off the boundary, where $\Philit\to\ident[\clr>0]$ and $\Psishad\to0$,
+recovering \cref{eq:c-to-O}. The construction is valid when the occluder edge is
+smooth and convex on the boundary-layer scale: $\Rocc\gg\lambda$, with the edge
+radius varying slowly across the penumbra width $(k\Rocc)^{-1/3}$.
+\end{proof}
+
+\begin{remark}[Sign of the detour]\label{rem:distal-sign}
+The clearance and the detour share their sign. A clear line of sight ($\clr>0$)
+maps to the lit branch ($\xi_{\mathrm d}>0$), matching the convention of
+\cref{sec:fock-local} ($\xi>0$ lit) with no inversion, so $G_{\mathrm d}\to1$ in
+the clear as it must. An implementation that stores a positive shadow depth
+$s_{\mathrm{sh}}=-\clr\ge0$ writes the same quantity as
+$\xi_{\mathrm d}=-\mfock_{\mathrm{occ}}\,s_{\mathrm{sh}}/w_{\mathrm{nf}}$, the
+negative branch into shadow. The leading minus is a property of the shadow-depth
+argument, not of the signed clearance.
+\end{remark}
+
+\subsection{The knife-edge limit and the two penumbra widths}\label{sec:cmetric-knife}
+
+Two distinct mechanisms set the distal penumbra, and the lit transition $\Philit$
+of \cref{eq:phi-lit} is common to both. They are not two limits of one formula.
+
+\begin{proposition}[Knife-edge reduction and width scalings]\label{prop:knife}
+Surface curvature and path detour each smooth the shadow boundary.
+\begin{enumerate}
+  \item \emph{Curvature, Fock.} A smooth convex occluder of finite $\Rocc$ gives,
+    from $\xi_{\mathrm d}=\mfock_{\mathrm{occ}}\clr$ through
+    $\Philit(\xi_{\mathrm d})=\half[1+\erf(\clr/\sigma_{\mathrm{F}})]$, the
+    curvature width
+    \begin{equation}\label{eq:sigma-fock}
+      \sigma_{\mathrm{F}} = \frac{\sqrt2}{\mfock_{\mathrm{occ}}}
+      = \sqrt2\,\Bigl(\tfrac{2}{k\Rocc}\Bigr)^{1/3}
+      = 2^{5/6}\,(k\Rocc)^{-1/3}
+      \ \propto\ (k\Rocc)^{-1/3},
+    \end{equation}
+    plus the exponential creeping shadow tail of $\Psishad$.
+  \item \emph{Path detour, knife edge.} A sharp or flat-faced occluder edge
+    ($\Rocc\to\infty$, no surface to launch a creeping wave) diffracts by the
+    Fresnel-zone path detour alone. The transition reduces to the bare
+    error-function gate
+    \begin{equation}\label{eq:knife-gate}
+      g \longrightarrow V(\clr) = \half\Bigl[1+\erf\!\bigl(\clr/\sigma_{\mathrm{ke}}\bigr)\Bigr],
+      \qquad
+      \sigma_{\mathrm{ke}} = K\sqrt{\frac{\lambda\,d_1}{d_2\,(d_1+d_2)}}
+      \ \propto\ (k\,d_2)^{-1/2}\ \text{(far field)},
+    \end{equation}
+    with no creeping tail. $K$ is a modeling constant ($K=1/\sqrt2$ is
+    knife-edge-exact at the boundary).
+\end{enumerate}
+The crossover is at $\sigma_{\mathrm{F}}\sim\sigma_{\mathrm{ke}}$, that is at an
+edge radius $\Rocc^\star\sim \ell\,\sqrt{k\ell}$ (order of magnitude, leading
+constant near unity), with $\ell=d_2(d_1+d_2)/d_1$ the reduced Fresnel distance
+($\ell\to d_2$ in the far field). For $\Rocc\ll\Rocc^\star$ curvature dominates
+(smooth limb occluder, the Fock regime). For $\Rocc\gg\Rocc^\star$ the Fresnel
+zone dominates (sharp edge, flat panel, or distant gently curved occluder, the
+knife regime). At 28\,GHz with a hand-to-cheek standoff of a few centimetres,
+$\Rocc^\star\approx 10$\,cm, so a finger or limb ($\Rocc\sim1$\,cm) is firmly Fock
+and a flat wall edge is knife. The physical penumbra follows the broader
+mechanism, $\sigma_{\mathrm{eff}}\sim\max(\sigma_{\mathrm{F}},\sigma_{\mathrm{ke}})$.
+A smooth quadrature blend is a modeling refinement.
+\end{proposition}
+
+\begin{proof}
+Part (i) is the identification of the $\erf$ argument: writing
+$\Philit(\mfock_{\mathrm{occ}}\clr)=\half[1+\erf(\mfock_{\mathrm{occ}}\clr/\sqrt2)]
+=\half[1+\erf(\clr/\sigma_{\mathrm{F}})]$ gives
+$\sigma_{\mathrm{F}}=\sqrt2/\mfock_{\mathrm{occ}}$, and substituting
+$\mfock_{\mathrm{occ}}=(k\Rocc/2)^{1/3}$ yields \cref{eq:sigma-fock}. For part (ii),
+the diffracted ray with transverse miss-distance $h$ from the edge has extra path
+\begin{equation}\label{eq:detour-path}
+  \delta(h) = \sqrt{d_1^2+h^2}+\sqrt{d_2^2+h^2}-(d_1+d_2)
+  \approx \frac{h^2}{2}\Bigl(\frac1{d_1}+\frac1{d_2}\Bigr),
+  \qquad h\ll d_1,d_2,
+\end{equation}
+so the Fresnel integral carries phase $e^{\mathrm{i}k\delta}=e^{\mathrm{i}(\pi/2)\nu^2}$
+with the Fresnel parameter
+\begin{equation}\label{eq:fresnel-nu}
+  \nu = h\sqrt{\frac{2}{\lambda}\Bigl(\frac1{d_1}+\frac1{d_2}\Bigr)}.
+\end{equation}
+Its magnitude transitions from $1$ (lit) to $0$ (shadow) over $\nu\sim O(1)$, with
+the half-value at $\nu=0$ ($h=0$), the geometric shadow boundary. The
+real-argument error function is the monotone surrogate for this complex Fresnel
+integral: they share the leading penumbra profile and the boundary value, and
+differ only in the lit-side Cornu ripples and the algebraic shadow tail, both of
+which incoherent path summation and 4\,cm$^2$ spatial averaging remove. Mapping
+the clearance to the miss-distance by $h=d_2\sin\clr\approx d_2\clr$ and setting
+$V=\half[1+\erf(\clr/\sigma_{\mathrm{ke}})]$ gives
+$\sigma_{\mathrm{ke}}=K\sqrt{\lambda\,d_1/[d_2(d_1+d_2)]}$ with $K=1/\sqrt2$, which
+is \cref{eq:knife-gate} and reproduces the validated self-shadowing gate. The
+crossover follows from equating \cref{eq:sigma-fock,eq:knife-gate} with
+$\lambda=2\pi/k$: $(k\Rocc)^{-1/3}\sim(k\ell)^{-1/2}$ gives
+$k\Rocc\sim(k\ell)^{3/2}$, hence $\Rocc^\star\sim k^{1/2}\ell^{3/2}=\ell\sqrt{k\ell}$.
+\end{proof}
+
+\begin{remark}[Why the knife edge is a separate mechanism]\label{rem:not-a-limit}
+Taking $\Rocc\to\infty$ in the Fock formula alone is not the knife edge. The
+curvature width $\sigma_{\mathrm{F}}\propto(k\Rocc)^{-1/3}\to0$ and the creeping
+decay rate $\sqrt3\,q_p\,\mfock_{\mathrm{occ}}\to\infty$, so the Fock gate collapses
+to a step. A flat occluder still casts a finite penumbra because the Fresnel path
+detour of \cref{eq:detour-path} does not vanish: its width $\sigma_{\mathrm{ke}}$
+is set by the propagation distances, not by the surface curvature. The Fock
+variable $\xi_{\mathrm d}=\mfock_{\mathrm{occ}}\clr$ does not contain this
+mechanism. The gate must therefore carry both widths, and the sharp-edge limit
+recovers the Fresnel transition $V(\clr)$, not a step. This is the precise sense in
+which the old $\erf$ self-shadowing gate is the knife-edge limit of the Fock distal
+gate: the lit core $\Philit$ survives with the Fresnel width, and the creeping tail
+drops out.
+\end{remark}
+
+\begin{remark}[Boundary value: $-3$ versus $-6$\,dB]\label{rem:boundary-db}
+At $\clr=0$ the unsquared gate $V(0)=\half$ acts on power as $-3$\,dB. The rigorous
+knife-edge \emph{field} is $\half$, hence $\tfrac14$ power, $-6$\,dB, recovered by
+squaring the gate. The Fock gate pins $\abs{g(0)}^2$ to the exact oracle terminator
+value $\approx0.488$ (\cref{sec:fock-g}), close to $-3$\,dB because the creeping
+wave adds constructively above the knife-edge half value. AEGIS defaults to the
+$-3$\,dB convention for continuity with the local gate and offers the squared,
+$-6$\,dB form as a documented option. The difference is confined to the penumbra
+and is sub-decibel after incoherent summation and 4\,cm$^2$ averaging.
+\end{remark}
+
+\subsection{The near-field wavefront factor}\label{sec:cmetric-nf}
+
+The far-field gate assumes a plane incident wave. A source at finite range $d_1$
+from the binding edge presents a spherical wavefront, which tightens the Fresnel
+zone and sharpens the penumbra. Factor the knife-edge width of
+\cref{eq:knife-gate} into its plane-wave value and a wavefront correction,
+\begin{equation}\label{eq:wnf}
+  \sigma_{\mathrm{ke}}
+  = \underbrace{K\sqrt{\frac{\lambda}{d_2}}}_{\sigma_{\mathrm{ke}}^{\,\infty}}
+    \;\cdot\;
+    \underbrace{\sqrt{\frac{d_1}{d_1+d_2}}}_{w_{\mathrm{nf}}},
+  \qquad
+  w_{\mathrm{nf}} = \sqrt{\frac{d_1}{d_1+d_2}}\ \in(0,1].
+\end{equation}
+This is the spherical-wave Fresnel zone read off \cref{eq:fresnel-nu}: the plane
+wave ($d_1\to\infty$) gives $w_{\mathrm{nf}}\to1$ and
+$\sigma_{\mathrm{ke}}^{\,\infty}=K\sqrt{\lambda/d_2}$, while a finite $d_1$ replaces
+the observation distance $d_2$ by the reduced distance $d_1d_2/(d_1+d_2)$ in the
+Fresnel parameter. The factor is the square root of the ratio of the two,
+$w_{\mathrm{nf}}=\sqrt{[d_1d_2/(d_1+d_2)]/d_2}$. As the source approaches the edge
+the penumbra narrows: a point source pressed against the edge casts a sharp
+shadow, smeared only by $\sqrt{\lambda d_1}\to0$ at the edge plane.
+
+The same wavefront curvature enters the Fock detour, so $w_{\mathrm{nf}}$
+multiplies the curvature width as well, $\sigma_{\mathrm{F}}\to w_{\mathrm{nf}}\,
+\sigma_{\mathrm{F}}$, which is the division in \cref{eq:xi-distal}, since
+$\xi_{\mathrm d}\propto\clr/\sigma_{\mathrm{F}}$. The same construction governs the
+near-field local gate of \cref{sec:fock-local}, where the binding edge is the
+body's own terminator, $d_2=\Rfock\abs{\theta}$ is the geodesic arc from terminator
+to field point, and $d_1$ is the source-to-grazing-point distance
+(\cref{sec:nearfar}).
+
+\begin{remark}[Placement of the wavefront factor]\label{rem:wnf-placement}
+The wavefront factor belongs on the width, not on the detour. Because
+$w_{\mathrm{nf}}\le1$ and $\xi_{\mathrm d}\propto\clr/\sigma$, a near-field source
+\emph{raises} $\xi_{\mathrm d}$, which sharpens the penumbra, matching the knife-edge
+$\sigma_{\mathrm{ke}}\propto w_{\mathrm{nf}}$ derived independently above. Writing
+the detour as $\xi_{\mathrm d}=\mfock_{\mathrm{occ}}\,\clr\,w_{\mathrm{nf}}$, with
+$w_{\mathrm{nf}}$ as a multiplier, would invert the near-field trend and broaden the
+penumbra as the source approaches, contradicting the Fresnel-zone result. The
+division in \cref{eq:xi-distal} is the form consistent with both.
+\end{remark}
+
+\subsection{Multi-edge shadow and the deep-shadow amplitude}\label{sec:cmetric-validity}
+
+\begin{remark}[Domain of validity of the distal gate]\label{rem:distal-validity}
+The distal gate is built on a single binding edge and the three-pole creeping
+composite. Three regimes bound its validity.
+
+\emph{Single binding edge.} The C-metric stores the signed distance to the nearest
+horizon point. In the lit penumbra a direction is shadowed if any edge blocks it,
+so visibility is the product (AND) of per-edge gates, dominated by the nearest,
+binding edge. The single-edge gate is then exact at leading order, and overlapping
+penumbrae from a second edge are a second-order correction.
+
+\emph{Deep-shadow additivity.} In deep shadow each edge leaks diffracted power and
+the powers add. Two edges around a narrow gap leak more than one. The single
+binding edge takes only the nearest, so it under-predicts deep-shadow leakage, the
+same defect as the error-function tail standing in for the algebraic Fresnel tail
+or the multi-pole creeping ladder.
+
+\emph{Amplitude caveat.} The three-pole composite of \cref{def:fock-g}, with one
+prefactor pinned to the terminator value, under-predicts the deep-shadow creeping
+amplitude by a factor of $3$ to $4$ (\cref{rem:deep-shadow}). For the local gate
+this is dose-negligible: the deep shadow carries about $10^{-6}$ of the lit value,
+so the absolute error is order $4\times10^{-6}$ of lit. For the distal gate it is
+not automatically negligible. A hand fully shadowing the cheek puts the
+observation point deep inside one occluder's shadow, where the cross-body shadow
+can carry real dose, and a factor of $3$ to $4$ there is a factor of $3$ to $4$ on
+a dose that matters. The remedy is to treat the deep-shadow amplitude separately:
+more creeping poles, a deep-shadow anchor that decouples the tail amplitude from
+the $C^1$ terminator match, or the tabulated Pekeris-Logan Fock function. Until
+then the distal gate is quantitative in the lit region and the penumbra, where the
+C-metric and the single binding edge are exact to leading order, and a documented
+lower bound on deep cross-body shadow dose.
+\end{remark}

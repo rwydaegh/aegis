@@ -76,6 +76,53 @@ def fresnel_weights(
     return T_s, T_p, T_avg
 
 
+def te_tm_power_weights(
+    normals: NDArray[np.floating],
+    k_hat: NDArray[np.floating],
+    psi: NDArray[np.complexfloating],
+) -> tuple[NDArray[np.floating], NDArray[np.floating]]:
+    """TE/TM power fractions of each path's polarisation at each triangle.
+
+    For incident field direction ``E_hat = psi / |psi|`` and the local TE/TM
+    basis ``(e_s, e_p)`` at each (triangle, path) pair, returns
+
+        w_s = |e_s . E_hat|^2,   w_p = |e_p . E_hat|^2
+
+    renormalised so ``w_s + w_p = 1`` (exact for a transverse plane wave). The
+    polarisation-aware transmission is then ``T_eff = w_s*T_s + w_p*T_p``,
+    identical to the ``T_avg + (q/2) DeltaT`` form with ``q = w_p - w_s``.
+
+    Parameters
+    ----------
+    normals : (M, 3) unit outward normals
+    k_hat : (N, 3) incident directions
+    psi : (N, 3) complex polarisation-amplitude vectors
+
+    Returns
+    -------
+    w_s, w_p : (M, N) TE and TM power fractions
+    """
+    # Reused here for the incoherent path; te_tm_basis is pure geometry.
+    from aegis.coherent.fresnel_operator import te_tm_basis
+
+    e_s, e_p = te_tm_basis(k_hat, normals)  # (M, N, 3), real
+
+    psi = xp.asarray(psi)
+    p_norm = xp.sqrt(xp.sum(xp.abs(psi) ** 2, axis=1))  # (N,)
+    p_norm_safe = xp.where(p_norm > 0, p_norm, 1.0)
+    e_hat = psi / p_norm_safe[:, None]  # (N, 3) complex unit
+    re = xp.real(e_hat)
+    im = xp.imag(e_hat)
+
+    # |e_s . E_hat|^2 = (e_s . Re)^2 + (e_s . Im)^2, keeping e_s real.
+    ws = xp.einsum("mnj,nj->mn", e_s, re) ** 2 + xp.einsum("mnj,nj->mn", e_s, im) ** 2
+    wp = xp.einsum("mnj,nj->mn", e_p, re) ** 2 + xp.einsum("mnj,nj->mn", e_p, im) ** 2
+
+    norm = ws + wp
+    norm_safe = xp.where(norm > 0, norm, 1.0)
+    return ws / norm_safe, wp / norm_safe
+
+
 def physical_gelu(
     mu: NDArray[np.floating],
     sigma: NDArray[np.floating],

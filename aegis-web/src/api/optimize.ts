@@ -1,4 +1,5 @@
 import { fetchWithRetry, type RtConfig } from '@/api/client'
+import type { DiffractionModel, InterBody } from '@/stores/simulation'
 
 const BASE = ''
 
@@ -33,7 +34,8 @@ export interface OptimizeRequest {
   fresnel?: boolean
   polarisation?: boolean
   curvature?: boolean
-  diffraction?: boolean
+  diffraction_model?: DiffractionModel
+  inter_body?: InterBody
   scene_path?: string
   rt_config?: RtConfig
 }

@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
+import pako from 'pako'
 import {
   serializeShareableState,
   deserializeShareLink,
@@ -112,5 +113,83 @@ describe('shareLink environment round-trip', () => {
     const env = useEnvironmentStore.getState()
     expect(env.source).toBe('none')
     expect(env.location).toBeNull()
+  })
+})
+
+describe('shareLink diffraction model round-trip', () => {
+  beforeEach(() => {
+    resetEnvStore()
+    useSimulationStore.setState({
+      diffractionModel: 'fock',
+      diffraction: true,
+      curvature: true,
+      interBody: 'off',
+    })
+  })
+
+  it('omits the default fock model and off inter-body from the diff', () => {
+    const decoded = deserializeShareLink(serializeShareableState())
+    expect(decoded.diffractionModel).toBeUndefined()
+    expect(decoded.interBody).toBeUndefined()
+  })
+
+  it('persists a non-default diffraction model and inter-body selector', () => {
+    useSimulationStore.getState().setDiffractionModel('gelu')
+    useSimulationStore.getState().setInterBody('specular1')
+
+    const decoded = deserializeShareLink(serializeShareableState())
+    expect(decoded.diffractionModel).toBe('gelu')
+    expect(decoded.interBody).toBe('specular1')
+  })
+
+  it('applyShareState restores the diffraction model and keeps diffraction derived', () => {
+    useSimulationStore.setState({
+      diffractionModel: 'fock',
+      diffraction: true,
+      curvature: true,
+    })
+    applyShareState({ diffractionModel: 'none' })
+    const sim = useSimulationStore.getState()
+    expect(sim.diffractionModel).toBe('none')
+    expect(sim.diffraction).toBe(false)
+  })
+})
+
+// Encode a raw object the same way serializeShareableState does (deflateRaw +
+// base64url), bypassing the store so we can forge legacy share payloads.
+function encodeLegacy(obj: Record<string, unknown>): string {
+  const compressed = pako.deflateRaw(new TextEncoder().encode(JSON.stringify(obj)))
+  let binary = ''
+  for (const b of compressed) binary += String.fromCharCode(b)
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+
+describe('shareLink legacy diffraction bool back-compat', () => {
+  beforeEach(() => {
+    resetEnvStore()
+  })
+
+  it('decodes a legacy diffraction bool and applies it as a model', () => {
+    // Old link: explicit top-level bool, no diffractionModel field.
+    const decodedOff = deserializeShareLink(encodeLegacy({ diffraction: false }))
+    expect((decodedOff as { diffraction?: boolean }).diffraction).toBe(false)
+    expect(decodedOff.diffractionModel).toBeUndefined()
+
+    useSimulationStore.setState({ diffractionModel: 'fock', diffraction: true, curvature: true })
+    applyShareState(decodedOff)
+    expect(useSimulationStore.getState().diffractionModel).toBe('none')
+
+    const decodedOn = deserializeShareLink(encodeLegacy({ diffraction: true }))
+    expect((decodedOn as { diffraction?: boolean }).diffraction).toBe(true)
+    useSimulationStore.setState({ diffractionModel: 'none', diffraction: false })
+    applyShareState(decodedOn)
+    expect(useSimulationStore.getState().diffractionModel).toBe('fock')
+  })
+
+  it('lets a new link diffractionModel win over a stale legacy bool', () => {
+    const decoded = deserializeShareLink(encodeLegacy({ diffraction: false, diffractionModel: 'gelu' }))
+    useSimulationStore.setState({ diffractionModel: 'fock', diffraction: true, curvature: true })
+    applyShareState(decoded)
+    expect(useSimulationStore.getState().diffractionModel).toBe('gelu')
   })
 })

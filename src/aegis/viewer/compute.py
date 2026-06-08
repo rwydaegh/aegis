@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import functools
-import hashlib
 import math
 import os
-import threading
 import time
 import warnings
 from pathlib import Path
@@ -18,6 +16,7 @@ from aegis.basestation.classify import _lookup_tdd
 from aegis.constants import C_0, EPS_0
 from aegis.defaults import DEFAULT_FREQ_HZ, DEFAULT_POWER_DBM
 from aegis.engine import DosimetryEngine
+from aegis.geometry import curvature as _curvature_module
 from aegis.geometry.mesh import BodyMesh
 from aegis.paths import PropagationPaths
 from aegis.tissue.cole_cole import debye_permittivity
@@ -46,72 +45,24 @@ def _load_phantom_masses() -> dict[str, float]:
     return {name: info["mass_kg"] for name, info in data.items()}
 
 
-# Cache for curvature computation (expensive, only changes when body changes)
-_curvature_cache: dict = {}
-_curvature_cache_lock = threading.Lock()
-_CURVATURE_CACHE_MAX = 32
-
-
-def _curvature_cache_key(body: BodyMesh) -> int:
-    """Rigid-transform-invariant cache key for viewer curvature estimates."""
-    edge_vecs = np.roll(body.vertices, -1, axis=1) - body.vertices
-    edge_lengths = np.sort(np.linalg.norm(edge_vecs, axis=2), axis=1)
-    centered = body.centroids - body.centroids.mean(axis=0, keepdims=True)
-    radii = np.sort(np.linalg.norm(centered, axis=1))
-    normal_svals = np.linalg.svd(body.normals, compute_uv=False)
-
-    h = hashlib.sha256(body.areas.astype(np.float32).tobytes())
-    h.update(edge_lengths.astype(np.float32).tobytes())
-    h.update(radii.astype(np.float32).tobytes())
-    h.update(normal_svals.astype(np.float32).tobytes())
-    digest = h.digest()[:8]
-    return hash((int.from_bytes(digest, "little"), body.n_triangles))
+# Curvature is cached inside ``aegis.geometry.curvature`` (the real owner). These
+# names are re-exported aliases of that module's cache and lock so the viewer and
+# its tests share the single live cache rather than a dead viewer-local copy.
+_curvature_cache = _curvature_module._cache
+_curvature_cache_lock = _curvature_module._cache_lock
 
 
 def _compute_face_curvature(body: BodyMesh) -> np.ndarray:
-    """Estimate per-face mean curvature from normal variation to neighbors.
+    """Per-face twice-mean-curvature, in 1/m.
 
-    Uses KD-tree for fast neighbor lookup: for each face, the curvature
-    is estimated as the average |delta_normal| / distance to its 6 nearest
-    neighbors. This gives a good proxy for the discrete mean curvature.
-
-    The result is invariant to rigid transforms: translation preserves all
-    inter-centroid distances and rotation preserves both distances and
-    |delta_normal| (since ||R n_i - R n_j|| = ||n_i - n_j||). Cache using a
-    rigid-transform-invariant key so translated/rotated bodies hit the cache
-    without letting unrelated meshes collide.
+    Thin wrapper over ``geometry.curvature.face_curvature`` (a local quadric fit
+    over the centroid k-NN, caching internally on the rigid-invariant geometry
+    hash). It supersedes the old |delta_normal| / distance proxy with the same
+    twice-mean-curvature quantity used by the Fock gate.
     """
-    cache_key = _curvature_cache_key(body)
+    from aegis.geometry.curvature import face_curvature
 
-    with _curvature_cache_lock:
-        if cache_key in _curvature_cache:
-            return _curvature_cache[cache_key]
-
-    from scipy.spatial import cKDTree
-
-    centroids = body.centroids
-    normals = body.normals
-    M = body.n_triangles
-    if M <= 1:
-        return np.zeros(M, dtype=np.float64)
-
-    k = min(7, M)
-    tree = cKDTree(centroids)
-    dists, indices = tree.query(centroids, k=k)
-
-    neighbor_normals = normals[indices]
-    face_normals = normals[:, np.newaxis, :]
-    delta_n = np.linalg.norm(neighbor_normals - face_normals, axis=2)
-    safe_dists = np.maximum(dists, 1e-12)
-    curvature_per_neighbor = delta_n / safe_dists
-
-    H = np.mean(curvature_per_neighbor[:, 1:], axis=1)
-
-    with _curvature_cache_lock:
-        while len(_curvature_cache) >= _CURVATURE_CACHE_MAX:
-            _curvature_cache.pop(next(iter(_curvature_cache)))
-        _curvature_cache[cache_key] = H
-    return H
+    return face_curvature(body)
 
 
 # ---------------------------------------------------------------------------
@@ -493,8 +444,13 @@ def _generate_stochastic_paths(
     body_center: np.ndarray,
     power_dbm: float,
     cfg: dict,
+    polarised: bool = False,
 ) -> tuple[PropagationPaths, dict | None]:
-    """Build paths from a stochastic channel preset; returns ``(paths, cluster_viz)``."""
+    """Build paths from a stochastic channel preset; returns ``(paths, cluster_viz)``.
+
+    When ``polarised`` is True the channel assigns a physical XPR-split
+    polarisation per path so polarisation-aware dosimetry uses it.
+    """
     from aegis.channel import generate_channel, load_preset
 
     preset_dir = _resolve_channel_preset_dir(cfg)
@@ -509,9 +465,28 @@ def _generate_stochastic_paths(
         seed=stochastic.get("seed", 42),
         overrides=stochastic.get("overrides"),
         viz_out=viz_out,
+        xpr_db=float(stochastic.get("xpr_db", 8.0)) if polarised else None,
     )
     cluster_viz = _build_cluster_viz(viz_out)
     return paths, cluster_viz
+
+
+def _default_incident_polarisation(k_hat: np.ndarray) -> np.ndarray:
+    """A physical default incident polarisation for analytic single-source paths.
+
+    Vertical (z) projected onto the plane transverse to ``k_hat``, falling back
+    to horizontal when ``k_hat`` is (anti)parallel to z. Base-station antennas
+    are predominantly vertically polarised. Replaces the unphysical uniform
+    ``q=1`` knob, so the polarisation toggle yields the true polarised answer.
+    """
+    k = np.asarray(k_hat, dtype=np.float64)
+    k = k / np.linalg.norm(k)
+    z = np.array([0.0, 0.0, 1.0])
+    pol = z - (z @ k) * k
+    if np.linalg.norm(pol) < 1e-6:
+        x = np.array([1.0, 0.0, 0.0])
+        pol = x - (x @ k) * k
+    return pol / np.linalg.norm(pol)
 
 
 def _build_single_antenna_paths(
@@ -562,6 +537,7 @@ def _build_single_antenna_paths(
     paths = PropagationPaths.from_powers(
         k_hat=a_k_hat[np.newaxis, :],
         power=np.array([a_S_eff]),
+        polarisation=_default_incident_polarisation(a_k_hat),
     )
     return paths, a_S_eff
 
@@ -610,6 +586,7 @@ def _generate_single_plane_wave_paths(
     paths = PropagationPaths.from_powers(
         k_hat=k_hat[np.newaxis, :],
         power=np.array([S_inc]),
+        polarisation=_default_incident_polarisation(k_hat),
     )
     return paths, S_inc
 
@@ -638,14 +615,24 @@ def _run_engine_mode(
     mode_kwargs: dict = {"mode": "spatial", "fresnel": corr.get("fresnel", True)}
     if corr.get("polarisation"):
         mode_kwargs["polarisation"] = True
-        mode_kwargs["q"] = 1.0  # short dipole TM-polarized
+        # Real polarisation flows through paths.psi (set by the path builders);
+        # no scalar q knob.
     if corr.get("curvature"):
         mode_kwargs["curvature"] = True
         mode_kwargs["curvature_H"] = _compute_face_curvature(body)
-    if corr.get("diffraction"):
+    # Shadow-edge gate: an explicit diffraction_model wins over the legacy bool.
+    diffraction_model = corr.get("diffraction_model")
+    if diffraction_model is not None:
+        mode_kwargs["diffraction_model"] = diffraction_model
+        if diffraction_model != "none" and "curvature_H" not in mode_kwargs:
+            mode_kwargs["curvature_H"] = _compute_face_curvature(body)
+    elif corr.get("diffraction"):
         mode_kwargs["diffraction"] = True
         if "curvature_H" not in mode_kwargs:
             mode_kwargs["curvature_H"] = _compute_face_curvature(body)
+    inter_body = corr.get("inter_body")
+    if inter_body is not None:
+        mode_kwargs["inter_body"] = inter_body
     return engine.compute_with_timings(body, paths, body_mass=body_mass, **mode_kwargs)
 
 
@@ -673,7 +660,6 @@ def _run_engine_legacy_level(
             mode_kwargs["fresnel"] = False
         if level >= 4:
             mode_kwargs["polarisation"] = True
-            mode_kwargs["q"] = 1.0
         if level >= 5:
             mode_kwargs["curvature"] = True
             mode_kwargs["curvature_H"] = _compute_face_curvature(body)
@@ -739,8 +725,14 @@ def _build_compute_extras(
 
     corr_list = None
     if mode is not None:
+        # Lazy import: _responses imports this module at top level, so a
+        # module-level import here would be circular.
+        from aegis.viewer.routes.compute._responses import _diffraction_active
+
         corr = corrections or {}
-        corr_list = [k for k in ("fresnel", "polarisation", "curvature", "diffraction") if corr.get(k)]
+        corr_list = [k for k in ("fresnel", "polarisation", "curvature") if corr.get(k)]
+        if _diffraction_active(corr):
+            corr_list.append("diffraction")
     return extra, corr_list
 
 
@@ -800,9 +792,17 @@ def compute_dosimetry(
 
     k_hat, dist, S_inc, d_clamped = _compute_incidence_geometry(antenna_pos, body_center, power_dbm)
 
+    # Polarisation-aware dosimetry needs a real incident polarisation. For the
+    # stochastic arm that means assigning an XPR-split field per path.
+    want_polarisation = bool(
+        (corrections or {}).get("polarisation") if mode is not None else (level is not None and level >= 4)
+    )
+
     cluster_viz = None
     if stochastic:
-        paths, cluster_viz = _generate_stochastic_paths(stochastic, antenna_pos, body_center, power_dbm, cfg)
+        paths, cluster_viz = _generate_stochastic_paths(
+            stochastic, antenna_pos, body_center, power_dbm, cfg, polarised=want_polarisation
+        )
     elif antennas is not None:
         paths, S_inc = _generate_multi_antenna_paths(antennas, body_center, tissue, exposure_mode, power_dbm, k_hat)
     else:

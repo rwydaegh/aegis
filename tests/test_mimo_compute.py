@@ -227,6 +227,37 @@ class TestComputeMIMOScene:
         np.testing.assert_allclose(mimo_result.sab, ref_result.sab, rtol=1e-10)
         np.testing.assert_allclose(mimo_result.p_abs, ref_result.p_abs, rtol=1e-10)
 
+    def test_mimo_accepts_diffraction_model(self):
+        """MIMO compute runs with "none"/"fock"; "none" matches the ungated engine."""
+        rng = np.random.default_rng(21)
+        engine = DosimetryEngine(SKIN_28GHZ)
+
+        # "fock" (default) and "none" both run and produce finite, non-negative sab.
+        results = {}
+        for model in ("none", "fock"):
+            scene = _make_test_scene(rng, n_users=1, n_h=2, n_v=2, n_paths=5)
+            compute_mimo_scene(scene, engine, precoder_type="mrt", diffraction_model=model)
+            res = scene.users[0].result
+            assert np.all(np.isfinite(res.sab))
+            assert np.all(res.sab >= 0)
+            assert np.isfinite(res.p_abs)
+            results[model] = res
+
+        # "none" reproduces the pre-fock (ungated) single-user engine result.
+        scene = _make_test_scene(rng, n_users=1, n_h=2, n_v=2, n_paths=5)
+        compute_mimo_scene(scene, engine, precoder_type="mrt", diffraction_model="none")
+        user = scene.users[0]
+        precoder = Precoder.mrt(user.h, P=scene.total_power)
+        ref_none = engine.compute(
+            user.body,
+            user.paths,
+            level=7,
+            precoder=precoder,
+            freq_hz=scene.freq_hz,
+            diffraction_model="none",
+        )
+        np.testing.assert_allclose(user.result.sab, ref_none.sab, rtol=1e-10)
+
     def test_p_abs_matches_trace(self):
         """p_abs from sab integration matches trace(W^H Q W)."""
         rng = np.random.default_rng(12)

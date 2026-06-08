@@ -319,3 +319,13 @@ runpod_april26.pub
 
 # ── Study outputs (generated meshes / exposure maps, regenerable) ──
 results/
+
+# unified report build artifacts
+theory/unified_physics.pdf
+theory/unified_physics.aux
+theory/unified_physics.toc
+theory/unified_physics.out
+theory/unified_physics.fls
+theory/unified_physics.fdb_latexmk
+theory/unified_physics.log
+theory/_harness_*

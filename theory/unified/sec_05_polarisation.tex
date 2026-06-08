@@ -1,0 +1,120 @@
+% sec_05_polarisation
+\section{Polarisation-aware absorption}\label{sec:pol}
+
+The unpolarised transmission $\Tavg$ of \cref{sec:fresnel} discards the
+orientation of the incident field. At oblique incidence the TE and TM
+transmissions differ by $\Delta T = T_p-T_s$, and a fully polarised wave samples
+this splitting according to how its field aligns with the local plane of
+incidence. This section derives the exact polarisation-aware transmission
+$\Teff$, its decomposition into baseline and correction, and the limits that
+collapse it back to $\Tavg$. The TM-excess structure derived here also fixes the
+soft and hard polarisations used by the diffraction gate of \cref{sec:fock-local}.
+
+\subsection{Local TE/TM decomposition}\label{sec:te-tm}
+
+A plane wave with propagation direction $\khat$ carries a transverse electric
+field $\EE_0$. At a surface point $\rr$ the plane of incidence is spanned by
+$\khat$ and $\nhat(\rr)$, and defines a local orthonormal TE/TM basis in the
+plane perpendicular to $\khat$,
+\begin{equation}\label{eq:es-ep}
+  \hat{e}_s(\rr) = \frac{\khat\times\nhat}{\norm{\khat\times\nhat}},
+  \qquad
+  \hat{e}_p(\rr) = \hat{e}_s\times\khat.
+\end{equation}
+The field decomposes as $\EE_0 = a_s\,\hat{e}_s + a_p\,\hat{e}_p$ with
+$a_s,a_p\in\Complex$, and the local power fractions are
+\begin{equation}\label{eq:ws-wp}
+  w_s(\rr) = \frac{\abs{a_s}^2}{\norm{\EE_0}^2}
+  = \abs{\hat{e}_s\cdot\hat{\EE}_0}^2,
+  \qquad
+  w_p(\rr) = \frac{\abs{a_p}^2}{\norm{\EE_0}^2}
+  = \abs{\hat{e}_p\cdot\hat{\EE}_0}^2,
+  \qquad w_s+w_p=1,
+\end{equation}
+where $\hat{\EE}_0=\EE_0/\norm{\EE_0}$. The fractions $w_s$ and $w_p$ are the
+energy weights of the wave in the local TE and TM channels.
+
+\subsection{Effective transmission}\label{sec:Teff}
+
+Each channel transmits with its own coefficient, so the effective transmission
+is the weighted sum.
+
+\begin{definition}[Effective transmission]\label{def:Teff}
+\begin{equation}\label{eq:Teff}
+  \Teff(\rr) \;=\; w_s(\rr)\,T_s(\theta) \;+\; w_p(\rr)\,T_p(\theta).
+\end{equation}
+\end{definition}
+
+\noindent
+Substituting \cref{eq:Teff} into the master law gives the exact
+polarisation-resolved absorbed power density of \cref{eq:master-law-exact},
+\begin{equation}\label{eq:Sab-pol}
+  \Sab(\rr) \;=\; \Sinc\;\Teff(\rr)\;\ReLU\!\bigl[\mu(\rr)\bigr]\;O(\rr,\khat),
+\end{equation}
+which holds for any polarisation, any frequency, and any geometry locally flat
+on the scale of the wavelength.
+
+\subsection{Baseline plus correction}\label{sec:decomp}
+
+Writing the weights through the TM excess $q\equiv w_p-w_s\in[-1,1]$ separates
+the unpolarised baseline from the polarisation correction.
+
+\begin{proposition}[Polarisation decomposition]\label{prop:decomp}
+With $\Tavg=\half(T_s+T_p)$, $\Delta T=T_p-T_s$, and $q=w_p-w_s$,
+\begin{equation}\label{eq:Teff-decomp}
+  \Teff(\rr) \;=\; \Tavg(\theta) \;+\; \frac{q(\rr)}{2}\,\Delta T(\theta).
+\end{equation}
+\end{proposition}
+
+The first term is the polarisation-independent baseline of \cref{def:Tavg},
+depending only on the incidence angle. The second is the polarisation
+correction, the product of the wave-and-geometry factor $q$ and the
+tissue-and-angle factor $\Delta T$. This is exactly the
+$\Tavg+\tfrac{q}{2}\Delta T$ form the incoherent kernels use, with the code
+computing $q=w_p-w_s$ from the field and surface geometry.
+
+\subsection{TM excess near grazing}\label{sec:tm-excess}
+
+The correction is largest where both factors are large. The geometric factor
+admits the closed form (with ellipticity angle $\chi$, ellipse orientation
+$\psi_0$, and local-basis rotation $\alpha(\rr)$)
+\begin{equation}\label{eq:q-exact}
+  q(\rr) \;=\; -\cos(2\chi)\,\cos\!\bigl(2\alpha(\rr)-2\psi_0\bigr),
+\end{equation}
+so $q$ reaches $\pm1$ for linear polarisation aligned with or perpendicular to
+the plane of incidence. The tissue factor $\Delta T(\theta)$ grows steeply
+toward grazing incidence, reaching $\approx0.83$ at $\theta=75^\circ$ for skin
+at \SI{28}{\giga\hertz}, driven by the pseudo-Brewster rise of $T_p$ against the
+monotone fall of $T_s$. Where a TM-dominant field ($q\to+1$) strikes the surface
+near grazing, $\Teff$ exceeds $\Tavg$ by up to $\tfrac{1}{2}\Delta T\approx0.4$,
+a polarisation enhancement of local heating that the unpolarised model misses.
+
+\subsection{Unpolarised and circular limits}\label{sec:pol-limits}
+
+The correction vanishes when any one of three conditions holds, which recovers
+the scalar law of \cref{sec:fresnel}.
+
+\begin{corollary}[Collapse to the baseline]\label{cor:collapse}
+$\Teff=\Tavg$ pointwise when either the illumination is circularly polarised
+($\cos2\chi=0$, hence $q=0$ everywhere) or the incidence is normal
+($\Delta T(0)=0$). For genuinely unpolarised illumination, described by the
+isotropic coherency matrix $\mathbf{J}=\half\Sinc\,\ident_2$, the ensemble
+average gives $\langle q\rangle=0$ and $\langle\Teff\rangle=\Tavg$ at every
+surface point.
+\end{corollary}
+
+The third condition is azimuthal averaging: if $\alpha(\rr)$ sweeps uniformly
+over $2\pi$ across the illuminated surface, the cosine in \cref{eq:q-exact}
+averages to zero and the body-integrated correction cancels even when it is
+locally nonzero.
+
+\subsection{Soft and hard polarisations}\label{sec:soft-hard}
+
+The TE/TM split also labels the two boundary-condition classes that the
+diffraction gate of \cref{sec:fock-local} treats differently. The TE (s)
+component sees a soft (Dirichlet-like) boundary and the TM (p) component a hard
+(Neumann-like) boundary, and the two diffract with different attenuation around
+a curved shadow boundary. The decomposition of \cref{prop:decomp} therefore
+feeds forward twice: the power weights $w_s,w_p$ scale the transmission here, and
+the same TE/TM labelling selects the soft or hard Fock coefficient in the
+diffraction sections.
