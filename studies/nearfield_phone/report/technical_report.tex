@@ -23,41 +23,34 @@
 \maketitle
 \vspace{-1.5em}
 
-You asked for two things at the dose-model meeting. A way to correct a normalized
-SAR value when the phone sits at a different distance. And an uncertainty estimate
-for each value, like the \SI{2.62}{W\per kg\per W} brain figure for Duke in the
-front-of-eyes scenario. Both are ready. This note has the short version. The
-numbers and tables are in the attached workbook \texttt{nearfield\_dose\_results.xlsx},
-and the figures here are also in the email.
+You asked for two things at the dose-model meeting. First, a way to correct a
+normalized SAR value when the phone is at a different distance. Second, an
+uncertainty estimate for each value, such as the \SI{2.62}{W\per kg\per W} brain
+figure for Duke in the front-of-eyes scenario. Both are ready. The numbers and
+tables are in the attached workbook \texttt{nearfield\_dose\_results.xlsx}, and
+the figures below are also in the email.
 
-The nice part: we no longer hand you one number per scenario. We hand you the
-whole picture. How the value moves with distance, and how much it spreads.
+Each scenario now has a full distance curve and an uncertainty range, not a single
+number.
 
-\section*{A quick word on the method}
+\section*{The method}
 
-We switched the dosimetry to a new in-house method. I will keep this light, partly
-because it is under patent and partly because the physics is not the point for you.
-Two things matter.
-
-It works on the body \emph{surface} rather than the full \SI{}{3D} tissue volume.
-Think of it as a fast \SI{}{2D} skin model instead of a full-wave solve.
-
-And it is fast. A full-wave (FDTD) run gives you one number for one phone position
-and one orientation, and it takes hours. Ours runs thousands of positions and
-orientations in minutes. So the distance curve and the orientation spread come
-almost for free. We calibrate it against the full-wave reference, so the absolute
-level stays anchored to what you already trust.
+This is a new method. It is a fast surface model: it computes the dose on the
+\SI{}{2D} body surface, not in the full \SI{}{3D} tissue volume. A full-wave
+(FDTD) run gives one number for one phone position and orientation, and takes
+hours. The new method gives thousands of positions and orientations in minutes. We
+calibrate it against full-wave, so the absolute level matches.
 
 Figure~\ref{fig:geometry} shows the three phone placements on the Duke model.
-Figure~\ref{fig:apd} shows what one run produces: the absorbed power painted over
-the skin. The patch of face nearest the phone takes most of the dose.
+Figure~\ref{fig:apd} shows the absorbed power on the skin. The dose is highest on
+the face nearest the phone.
 
 \begin{figure}[h]
   \centering
   \includegraphics[width=\linewidth]{fig_geometry.pdf}
   \caption{The three hand-held placements on Duke: in front of the eyes
   (\SI{200}{mm}), at the cheek (\SI{8}{mm}), and in front of the belly
-  (\SI{200}{mm}). The face points toward $-y$.}
+  (\SI{200}{mm}). The face is at $-y$.}
   \label{fig:geometry}
 \end{figure}
 
@@ -65,14 +58,14 @@ the skin. The patch of face nearest the phone takes most of the dose.
   \centering
   \includegraphics[width=\linewidth]{fig_apd_map.pdf}
   \caption{Absorbed power on the skin for the front-of-eyes case at
-  \SI{2450}{MHz}, per watt radiated. Front view and side view. The dose
-  concentrates on the near cheek and brow.}
+  \SI{2450}{MHz}, per watt radiated. Front view and side view. The dose is highest
+  on the near cheek and brow.}
   \label{fig:apd}
 \end{figure}
 
 \section*{1. Distance correction}
 
-Near the body the dose follows a simple inverse-square law with a small offset:
+The dose near the body is inverse-square in distance, with a small offset:
 \begin{equation}
   \label{eq:dist}
   \mathrm{SAR}(d) = \mathrm{SAR}(d_{\mathrm{ref}})\,
@@ -80,16 +73,17 @@ Near the body the dose follows a simple inverse-square law with a small offset:
 \end{equation}
 Here $d$ is the phone-to-body distance, $d_{\mathrm{ref}}$ is the distance the
 value was computed at (\SI{200}{mm} for front of eyes), and $\delta$ is a small
-near-field offset of about \SI{6}{mm}. Beyond a few centimetres this is just the
-textbook inverse-square rule. Halve the distance and the dose roughly quadruples.
-The fit to our runs is tight: $R^2 > 0.999$ across every band and placement.
+near-field offset of about \SI{6}{mm}. This is the textbook inverse-square rule
+beyond a few centimetres. Halve the distance and the dose is about four times
+higher. The fit is good: $R^2 > 0.999$ for every band and placement.
 
-Applied to your brain value, \SI{2.62}{W\per kg\per W} at \SI{200}{mm} becomes:
+The brain value of \SI{2.62}{W\per kg\per W} at \SI{200}{mm} becomes:
 
 \begin{table}[h]
   \centering
-  \caption{The \SI{2.62}{W\per kg\per W} brain value moved to other distances with
-  Eq.~\eqref{eq:dist}. Last column is the $\pm1\sigma$ orientation band (Section~2).}
+  \caption{The \SI{2.62}{W\per kg\per W} brain value at other distances, from
+  Eq.~\eqref{eq:dist}. The last column is the $\pm1\sigma$ orientation band
+  (Section~2).}
   \label{tab:applied}
   \begin{tabular}{rccc}
     \toprule
@@ -105,8 +99,8 @@ Applied to your brain value, \SI{2.62}{W\per kg\per W} at \SI{200}{mm} becomes:
   \end{tabular}
 \end{table}
 
-Figure~\ref{fig:factor} plots this, with the reference point marked. Figure~\ref{fig:bands}
-shows the same distance law holds for all eight bands. The full per-band, per-metric
+Figure~\ref{fig:factor} plots this, with the reference point marked.
+Figure~\ref{fig:bands} shows that the law holds for all eight bands. The per-band
 fit coefficients are in the workbook (sheets \texttt{distlaw\_*}).
 
 \begin{figure}[h]
@@ -120,33 +114,33 @@ fit coefficients are in the workbook (sheets \texttt{distlaw\_*}).
 \begin{figure}[h]
   \centering
   \includegraphics[width=\linewidth]{fig_distance_bands.pdf}
-  \caption{The distance law across all eight bands (front of eyes, Duke). The
-  dotted \SI{700}{} and \SI{835}{MHz} curves are flagged: their shape is fine,
-  their absolute level is not (see caveats).}
+  \caption{The distance law for all eight bands (front of eyes, Duke). The dotted
+  \SI{700}{} and \SI{835}{MHz} curves are flagged: their shape is correct, their
+  absolute level is not (see caveats).}
   \label{fig:bands}
 \end{figure}
 
 \section*{2. Uncertainty}
 
-For each value we now give the mean, standard deviation, min, max, and the
-\SIrange{5}{95}{} percentiles. For a fixed body the main driver is how the phone is
-held, its orientation. We sample that with a large set of random orientations.
+We give the mean, standard deviation, min, max, and the \SIrange{5}{95}{}
+percentiles for each value. For a fixed body the main source is the phone
+orientation. We sample it with a large set of random orientations.
 
-For the Duke brain value the orientation spread is about \SI{27}{\percent} (one
+The orientation spread for the Duke brain value is about \SI{27}{\percent} (one
 standard deviation). So
 \[
-  \SI{2.62}{W\per kg\per W} \;\longrightarrow\; 2.6 \pm 0.7~\si{W\per kg\per W},
+  \SI{2.62}{W\per kg\per W} \text{ becomes } 2.6 \pm 0.7~\si{W\per kg\per W},
 \]
-and over all orientations the full range runs from roughly \SI{0.8}{} to
-\SI{3.8}{W\per kg\per W}. Worth noting: the straight-at-the-head pose is not the
-worst case, so the spread is not symmetric.
+and over all orientations the full range is \SIrange{0.8}{3.8}{W\per kg\per W}. The
+straight-at-the-head pose is not the worst case, so the spread is not symmetric.
 
-Body model is a second axis. Across the four models (Duke, Ella, Eartha,
-Thelonious) the value shifts by a further \SIrange{30}{40}{\percent}. Smaller
-bodies absorb more per kilogram, so a child model sits above the adult. The two
-axes add in quadrature to about \SI{45}{\percent} total. Figure~\ref{fig:unc}
-shows the orientation spread per placement. The per-scenario tables are in the
-workbook (sheets \texttt{unc\_*}).
+The body model is a second source. The value differs by a further
+\SIrange{30}{40}{\percent} across the four models (Duke, Ella, Eartha,
+Thelonious). Smaller
+bodies absorb more per kilogram, so a child model is higher than the adult. The two
+sources add in quadrature, for about \SI{45}{\percent} in total.
+Figure~\ref{fig:unc} shows the orientation spread per placement. The per-scenario
+tables are in the workbook (sheets \texttt{unc\_*}).
 
 \begin{figure}[h]
   \centering
@@ -156,32 +150,32 @@ workbook (sheets \texttt{unc\_*}).
   \label{fig:unc}
 \end{figure}
 
-\section*{What is in the workbook}
+\section*{The workbook}
 
+The workbook has:
 \begin{itemize}\setlength{\itemsep}{0pt}
-  \item \texttt{README} -- what the sheets are and the normalization.
-  \item \texttt{distlaw\_*} -- the distance-law coefficients ($\delta$, $R^2$) for
+  \item \texttt{README}: the sheet descriptions and the normalization.
+  \item \texttt{distlaw\_*}: the distance-law coefficients ($\delta$, $R^2$) for
   every band and metric.
-  \item \texttt{unc\_*} -- mean, std, min, max, percentiles per scenario.
-  \item \texttt{duke\_fronteyes\_detail} -- per-distance stats for the front-of-eyes case.
-  \item \texttt{brain\_2.62\_adjusted} -- Table~\ref{tab:applied} in full.
+  \item \texttt{unc\_*}: mean, std, min, max, and percentiles per scenario.
+  \item \texttt{duke\_fronteyes\_detail}: per-distance statistics for the
+  front-of-eyes case.
+  \item \texttt{brain\_2.62\_adjusted}: Table~\ref{tab:applied} in full.
 \end{itemize}
 
-\section*{A few honest caveats}
+\section*{Caveats}
 
-The very closest distances (under a couple of centimetres) are an upper bound. The
-phone is no longer a clean point at that range, so read those as conservative.
+The closest distances (under a couple of centimetres) are an upper bound. The phone
+is no longer a point source at that range, so these values are conservative.
 
-The brain number itself is still a volume quantity from your full-wave model. We do
-not recompute the brain. What we do is take the distance scaling and the spread,
-which are set by the geometry between phone and body, and carry them onto your
-\SI{2.62}{} value. That transfer is the defensible part.
+The brain number is a volume quantity from your full-wave model. We do not
+recompute it. We apply the distance scaling and the spread to your \SI{2.62}{}
+value. Both depend only on the phone-body geometry, so the transfer is valid.
 
-The \SI{700}{} and \SI{835}{MHz} antennas sit off-resonance in free space, so their
-absolute level is unreliable. The \emph{shape} of the distance and orientation
-behaviour is still sound, which is all the distance law and the uncertainty need.
+The \SI{700}{} and \SI{835}{MHz} antennas are off-resonance in free space, so their
+absolute level is unreliable. The shape of the distance and orientation behaviour
+is correct, and the distance law and the uncertainty depend only on that shape.
 
-Happy to walk through any of it. And if you want the same treatment for another
-tissue, band, or scenario, we can turn it around fast now.
+We can extend this to other tissues, bands, or scenarios.
 
 \end{document}
