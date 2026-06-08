@@ -35,11 +35,11 @@ number.
 
 \section*{The method}
 
-This is my method. It is a fast surface model: it computes the dose on the
+This is a new method. It is a fast surface model: it computes the dose on the
 \SI{}{2D} body surface, not in the full \SI{}{3D} tissue volume. A full-wave
 (FDTD) run gives one number for one phone position and orientation, and takes
-hours. Mine gives thousands of positions and orientations in minutes. It does not
-replace full-wave results.
+hours. The new method gives thousands of positions and orientations in minutes. It
+does not replace full-wave results.
 
 Figure~\ref{fig:geometry} shows the three phone placements on the Duke model.
 Figure~\ref{fig:apd} shows the absorbed power on the skin. The dose is highest on
@@ -142,11 +142,11 @@ sources add in quadrature, for about \SI{45}{\percent} in total.
 Figure~\ref{fig:unc} shows the orientation spread per placement. The per-scenario
 tables are in the Excel file (sheets \texttt{unc\_*}).
 
-My method is a third source, and the largest one on absolute values. Against
+The method is a third source, and the largest one on absolute values. Against
 full-wave it is within a few percent near the top of the range, and it
 underestimates toward the lowest bands, by up to roughly a factor of two at
 \SI{700}{MHz}. This does not reach the numbers here. The absolute level is your
-full-wave value, and my method gives only the distance correction and the spread.
+full-wave value, and the method gives only the distance correction and the spread.
 Both are ratios, and a steady per-band bias cancels in a ratio. It would matter
 only for an absolute SAR read straight from the method, which the dose model does
 not use.
