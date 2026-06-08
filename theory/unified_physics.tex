@@ -1,0 +1,81 @@
+% ============================================================
+% AEGIS unified physics report — "all the physics, in all cases"
+% A single formal derivation of every physical model in the AEGIS
+% absorbed-power-density engine: the incoherent surface law, the
+% Fock diffraction gate (local angle metric and distal C-metric),
+% impedance creeping waves, the coherent exposure operator, near
+% and far field, inter-body reflection, and the psSAR10g bridge.
+%
+% Build:  cd theory && latexmk -pdf unified_physics.tex
+%   (or:  cd theory && pdflatex unified_physics && pdflatex unified_physics)
+% Reuses the monograph preamble (unified/_preamble_base.tex) so notation
+% matches theory/monograph_v2.tex. Section bodies live in unified/sec_*.tex.
+% ============================================================
+\documentclass[11pt,a4paper]{article}
+
+\input{unified/_preamble_base.tex}
+\input{unified/_fock_macros.tex}
+
+\graphicspath{{figures/}{unified/figures/}}
+
+\title{\textbf{AEGIS: A Unified Derivation of Geometric and\\[0.3em]
+Diffractive Absorbed-Power-Density Dosimetry}}
+\author{%
+  Robin Wydaeghe \\
+  Ghent University \& imec, Ghent, Belgium \\
+  \normalfont\texttt{robin.wydaeghe@ugent.be}
+}
+\date{\today}
+
+\makeatletter
+\renewcommand{\maketitle}{%
+  \thispagestyle{plain}%
+  \begin{center}
+    \rule{\linewidth}{1pt}\\[0.4em]
+    {\LARGE\bfseries \@title}\\[0.5em]
+    {\large \@author}\\[0.3em]
+    {\small \@date}
+    \\[0.4em]\rule{\linewidth}{1pt}
+  \end{center}
+  \vspace{0.5em}
+}
+\makeatother
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This report derives, from first principles and in one consistent notation, the
+complete physical model used by the AEGIS absorbed-power-density engine. We start
+from the local surface law $\Sab(\rr)=\Sinc\,T_0\,\ReLU[\nhat\cdot(-\khat)]\,O$
+and build outward: tissue electromagnetics and Fresnel transmission; the
+orthogonal fidelity grid; polarisation-aware absorption; the geometric quantities
+(projected area, occlusion, principal curvature); the Fock diffraction gate, in
+both its \emph{local} terminator-angle form and its \emph{distal} angular-clearance
+(``C-metric'') form, including the soft/hard impedance creeping-wave eigenvalues;
+inter-body reflection; the near- and far-field limits; the coherent exposure
+operator and energy-constrained beamforming; and the bridge to peak spatial SAR.
+Every model is stated formally, with its domain of validity and its validation
+against exact references (Mie spheres, Bessel--Hankel cylinders). The convention
+throughout is $\ntilde = n - \mathrm{i}\kappa$ ($e^{+\mathrm{i}\omega t}$).
+\end{abstract}
+
+\tableofcontents
+\bigskip
+
+% ---- sections (authored in unified/sec_*.tex) ----
+\input{unified/sec_01_surface_law.tex}
+\input{unified/sec_02_tissue.tex}
+\input{unified/sec_03_fresnel.tex}
+\input{unified/sec_04_fidelity_grid.tex}
+\input{unified/sec_05_polarisation.tex}
+\input{unified/sec_06_geometry.tex}
+\input{unified/sec_07_fock_local.tex}
+\input{unified/sec_08_distal_cmetric.tex}
+\input{unified/sec_09_interbody.tex}
+\input{unified/sec_10_nearfar.tex}
+\input{unified/sec_11_coherent.tex}
+\input{unified/sec_12_pssar.tex}
+\input{unified/sec_13_validation.tex}
+
+\end{document}
