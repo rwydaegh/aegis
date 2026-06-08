@@ -117,6 +117,53 @@ def test_fock_local_nonnegative_and_shadow_leakage():
     assert g[np.argmin(np.abs(mu))] > 0.0
 
 
+def test_w_nf_far_field_and_clamp():
+    # Far field (d1 None) is exactly unity, leaving the gate plane-wave-identical.
+    assert fock.w_nf(None, None, 1.0, 0.3) == 1.0
+    # w_nf in (0, 1]; a finite source distance shrinks it below 1.
+    theta = np.array([0.1, 0.2, 0.3])
+    w = np.asarray(fock.w_nf(0.02, None, 0.1, theta))
+    assert np.all((w > 0.0) & (w < 1.0))
+    # d1 <= 0 (source on/behind the surface) stays finite and NaN-free (-> 0).
+    w0 = np.asarray(fock.w_nf(0.0, None, 0.1, theta))
+    assert np.all(np.isfinite(w0))
+    assert np.all(w0 == 0.0)
+    wneg = np.asarray(fock.w_nf(-1.0, None, 0.1, theta))
+    assert np.all(np.isfinite(wneg))
+
+
+def test_fock_local_near_field_narrows_penumbra():
+    """A finite source distance NARROWS the penumbra (L13: w_nf divides xi).
+
+    Regression for the merged multiply-bug ``xi = m theta * w_nf``, which would
+    instead WIDEN the transition. Narrowing means the gate hugs the GO ramp more
+    tightly, so the integrated deviation from ReLU shrinks. The terminator value
+    g(theta=0) is identical (xi=0 regardless of w_nf), so the test isolates width.
+    """
+    mu = np.linspace(-0.3, 0.8, 400)
+    relu = np.maximum(mu, 0.0)
+    R, freq = 0.1, 28e9
+    g_far = np.asarray(fock.fock_local(mu, R, freq, 0.5, 0.5))
+    # d1 small vs d2 = R|theta| so w_nf < 1 by a clear margin.
+    g_near = np.asarray(fock.fock_local(mu, R, freq, 0.5, 0.5, d1=0.005))
+    dev_far = float(np.trapezoid(np.abs(g_far - relu), mu))
+    dev_near = float(np.trapezoid(np.abs(g_near - relu), mu))
+    assert dev_near < dev_far  # near field narrows -> smaller deviation band
+    assert np.all(g_near >= 0.0)
+    # terminator value unchanged by the wavefront factor (xi=0 at theta=0)
+    g0_far = float(np.asarray(fock.fock_local(np.array(0.0), R, freq, 0.5, 0.5)))
+    g0_near = float(np.asarray(fock.fock_local(np.array(0.0), R, freq, 0.5, 0.5, d1=0.005)))
+    assert g0_near == pytest.approx(g0_far, rel=1e-9)
+
+
+def test_fock_local_d1_zero_finite():
+    """A source on the surface (d1=0) gives a sharp but finite, NaN-free gate."""
+    mu = np.linspace(-0.3, 0.8, 200)
+    g = np.asarray(fock.fock_local(mu, 0.1, 28e9, 0.5, 0.5, d1=0.0))
+    assert np.all(np.isfinite(g))
+    assert np.all(g >= 0.0)
+
+
 def _hard_slope(eta, kR):
     """Shadow power-decay slope 2 Im(nu) for the impedance hard pole."""
     m = (kR / 2.0) ** (1.0 / 3.0)

@@ -410,19 +410,27 @@ def w_nf(
     R: NDArray[np.floating] | float,
     theta: ArrayLike,
 ) -> NDArray[np.floating] | float:
-    """Near-field width taper ``sqrt(d1 / (d1 + d2))``.
+    """Near-field width taper ``sqrt(d1 / (d1 + d2)) in (0, 1]``.
+
+    The penumbra width scales with this factor (``sigma -> w_nf sigma``), so a
+    finite source distance ``d1`` *narrows* the shadow transition relative to the
+    plane wave; the gate divides the detour by it (``xi = m theta / w_nf``, see
+    :func:`fock_local` and theory/unified/sec_08_distal_cmetric.tex eq:xi-distal).
 
     ``d2 = R * |theta|`` (geodesic arc from the terminator) when ``None``.
     Returns ``1.0`` in the far field (``d1 is None``).
 
-    A floor is applied to the denominator to avoid 0/0 at the degenerate
-    ``d1 == 0, theta == 0`` point.
+    ``d1`` is clamped to ``>= 0`` (a source at or behind the surface gives
+    ``w_nf = 0``, an infinitely sharp transition) and the denominator is floored,
+    so the result is finite and NaN-free at the degenerate ``d1 == 0, theta == 0``
+    point.
     """
     if d1 is None:
         return 1.0
     if d2 is None:
         d2 = R * xp.abs(theta)
-    return cast("NDArray[np.floating]", xp.sqrt(d1 / xp.maximum(d1 + d2, NUMERICAL_FLOOR)))
+    d1c = cast("NDArray[np.floating]", xp.maximum(d1, 0.0))
+    return cast("NDArray[np.floating]", xp.sqrt(d1c / xp.maximum(d1c + d2, NUMERICAL_FLOOR)))
 
 
 def fock_local(
@@ -444,7 +452,12 @@ def fock_local(
     """
     theta = theta_from_mu(mu)
     m = (xp.pi * freq_hz * R / C_0) ** (1.0 / 3.0)
-    xi = m * theta * w_nf(d1, d2, R, theta)
+    # The near-field factor is the penumbra WIDTH (sigma -> w_nf sigma), so it
+    # DIVIDES the detour: a finite source distance narrows the transition (L13,
+    # sec_08_distal_cmetric.tex eq:xi-distal). Floor it so a source on the
+    # surface (w_nf -> 0) gives a sharp, finite, NaN-free gate.
+    width = w_nf(d1, d2, R, theta)
+    xi = m * theta / xp.maximum(width, NUMERICAL_FLOOR)
     creep = cast(
         "NDArray[np.complexfloating]",
         w_s * psi_shadow(xi, "soft", q_F_s) + w_p * psi_shadow(xi, "hard", q_F_h),
