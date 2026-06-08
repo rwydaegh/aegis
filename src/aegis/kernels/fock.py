@@ -64,11 +64,11 @@ from __future__ import annotations
 
 import functools
 from collections.abc import Callable
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
-from scipy import special
+from scipy import special as _special  # pyright: ignore[reportMissingTypeStubs]
 
 if TYPE_CHECKING:
     from aegis.tissue.dielectric import TissueModel
@@ -76,6 +76,13 @@ if TYPE_CHECKING:
 from aegis._array_backend import erf, xp
 from aegis.constants import C_0
 from aegis.defaults import NUMERICAL_FLOOR
+
+# scipy ships no py.typed marker, so basedpyright treats its members as untyped
+# (the project config disables reportMissingTypeStubs globally; the strict kernels
+# override re-escalates it, hence the import-line ignore above). Bind the module
+# through Any so member access stays clean at this numerical boundary; concrete
+# return types are recovered with explicit casts at each call site below.
+special: Any = _special
 
 _SQRT2 = np.sqrt(2.0)
 _SQRT3 = np.sqrt(3.0)
@@ -97,7 +104,7 @@ def theta_from_mu(mu: ArrayLike) -> NDArray[np.floating]:
     return xp.arcsin(xp.clip(mu, -1.0, 1.0))
 
 
-def _impedance_roots(pol: str, q_F: complex, n_terms: int) -> np.ndarray:
+def _impedance_roots(pol: str, q_F: complex, n_terms: int) -> NDArray[np.complexfloating]:
     """Creeping eigenvalues ``q_p`` from the Leontovich impedance-Fock equation.
 
     Newton-iterates the roots of ``Ai'(t) - q_F Ai(t) = 0`` from the PEC seeds
@@ -143,7 +150,11 @@ def _leontovich_pole(eta: complex, ka: float, pol: str) -> complex:
     is ``2 Im(nu)``. mpmath is imported lazily so the PEC path stays dependency
     free.
     """
-    import mpmath as mp
+    import mpmath as _mpmath  # pyright: ignore[reportMissingTypeStubs]
+
+    # mpmath ships no type stubs; bind it through Any so its arbitrary-precision
+    # members stay clean under the strict kernels ruleset.
+    mp: Any = _mpmath
 
     with mp.workdps(30):
         n = mp.mpc(1.0 / complex(eta))
@@ -152,17 +163,17 @@ def _leontovich_pole(eta: complex, ka: float, pol: str) -> complex:
         ka_m = mp.mpf(float(ka))
         g = (-1j * ka_m * n) if pol == "soft" else (-1j * ka_m / n)
 
-        def hankel_d(v, z):  # H_nu'(z) via the recurrence H_{v-1} - (v/z) H_v
+        def hankel_d(v: Any, z: Any) -> Any:  # H_nu'(z) via H_{v-1} - (v/z) H_v
             return mp.hankel1(v - 1, z) - (v / z) * mp.hankel1(v, z)
 
         m = (ka_m / 2) ** mp.mpf("0.3333333333333333")
         q1 = mp.mpf("2.338") if pol == "soft" else mp.mpf("1.019")
         guess = ka_m + mp.exp(1j * mp.pi / 3) * m * q1
-        nu = mp.findroot(
-            lambda v: ka_m * hankel_d(v, ka_m) - g * mp.hankel1(v, ka_m),
-            guess,
-            tol=mp.mpf(10) ** -13,
-        )
+
+        def residual(v: Any) -> Any:
+            return ka_m * hankel_d(v, ka_m) - g * mp.hankel1(v, ka_m)
+
+        nu = mp.findroot(residual, guess, tol=mp.mpf(10) ** -13)
         return complex(nu)
 
 
@@ -202,7 +213,7 @@ def fock_impedance_param(eta: complex, kR: float, pol: str) -> complex:
 
 
 @functools.cache
-def _q_hard_table_cached(eta: complex):
+def _q_hard_table_cached(eta: complex) -> Callable[[ArrayLike], NDArray[np.floating]]:
     """Cached log-``kR`` interpolator of ``q_eff(hard)`` for surface admittance ``eta``."""
     q_eff = np.empty(_Q_HARD_GRID.shape, dtype=float)
     for i, kR in enumerate(_Q_HARD_GRID):
@@ -212,8 +223,11 @@ def _q_hard_table_cached(eta: complex):
         q_eff[i] = q_p.real + q_p.imag / _SQRT3
     log_grid = np.log(_Q_HARD_GRID)
 
-    def interp(kR):
-        return np.interp(np.log(np.asarray(kR, dtype=float)), log_grid, q_eff)
+    def interp(kR: ArrayLike) -> NDArray[np.floating]:
+        return cast(
+            "NDArray[np.floating]",
+            np.interp(np.log(np.asarray(kR, dtype=float)), log_grid, q_eff),
+        )
 
     return interp
 
@@ -242,16 +256,16 @@ def fock_q_hard_table(band: TissueModel) -> Callable[[ArrayLike], NDArray[np.flo
 
 
 @functools.cache
-def _fock_eigenvalues_cached(pol: str, q_F_key, n_terms: int) -> tuple:
+def _fock_eigenvalues_cached(pol: str, q_F_key: tuple[float, float] | None, n_terms: int) -> tuple[complex, ...]:
     if pol not in {"soft", "hard"}:
         raise ValueError(f"pol must be 'soft' or 'hard', got {pol!r}")
     if q_F_key is not None:
         re, im = q_F_key
-        return tuple(_impedance_roots(pol, complex(re, im), n_terms))
+        return cast("tuple[complex, ...]", tuple(_impedance_roots(pol, complex(re, im), n_terms)))
     # PEC: magnitudes of the Airy / Airy' zeros.
     a_soft, ap_hard, _, _ = special.ai_zeros(n_terms)
     zeros = a_soft if pol == "soft" else ap_hard
-    return tuple(np.abs(zeros).astype(complex))
+    return cast("tuple[complex, ...]", tuple(np.abs(zeros).astype(complex)))
 
 
 def fock_eigenvalues(pol: str, q_F: complex | None = None, n_terms: int = 3) -> NDArray[np.complexfloating]:
@@ -263,11 +277,11 @@ def fock_eigenvalues(pol: str, q_F: complex | None = None, n_terms: int = 3) -> 
     """
     # Quantize the real and imag parts separately; never round() a complex.
     q_F_key = None if q_F is None else (round(q_F.real, 4), round(q_F.imag, 4))
-    return np.asarray(_fock_eigenvalues_cached(pol, q_F_key, n_terms))
+    return cast("NDArray[np.complexfloating]", np.asarray(_fock_eigenvalues_cached(pol, q_F_key, n_terms)))
 
 
 @functools.cache
-def _residue_amplitudes(pol: str, q_F_key, n_terms: int) -> tuple:
+def _residue_amplitudes(pol: str, q_F_key: tuple[float, float] | None, n_terms: int) -> tuple[float, ...]:
     """PEC creeping residue magnitudes ``A_p`` (constructive, real, positive).
 
     soft: ``|1/Ai'(a_p)^2|``; hard: ``|1/[a_p Ai(a_p)^2]|``, ``a_p`` the signed
@@ -287,7 +301,7 @@ def _residue_amplitudes(pol: str, q_F_key, n_terms: int) -> tuple:
         t = -q_p
         ai, aip, _, _ = special.airy(t)
         amp = 1.0 / (aip**2) if pol == "soft" else 1.0 / (t * ai**2)
-        return tuple(np.abs(amp))
+        return cast("tuple[float, ...]", tuple(np.abs(amp)))
     a_soft, ap_hard, _, _ = special.ai_zeros(n_terms)
     if pol == "soft":
         _, aip, _, _ = special.airy(a_soft)
@@ -295,12 +309,12 @@ def _residue_amplitudes(pol: str, q_F_key, n_terms: int) -> tuple:
     else:
         ai, _, _, _ = special.airy(ap_hard)
         amp = 1.0 / (ap_hard * ai**2)
-    return tuple(np.abs(amp))
+    return cast("tuple[float, ...]", tuple(np.abs(amp)))
 
 
-def _smin(xi):
+def _smin(xi: NDArray[np.floating] | float) -> NDArray[np.floating]:
     """Smooth ``min(xi, 0)``: identity deep shadow, saturates to 0 deep lit."""
-    return -xp.logaddexp(0.0, -_SMIN_BETA * xi) / _SMIN_BETA
+    return cast("NDArray[np.floating]", -xp.logaddexp(0.0, -_SMIN_BETA * xi) / _SMIN_BETA)
 
 
 def phi_lit(xi: ArrayLike) -> NDArray[np.floating]:
@@ -312,7 +326,12 @@ def phi_lit(xi: ArrayLike) -> NDArray[np.floating]:
     return 0.5 * (1.0 + erf(xi / _SQRT2))
 
 
-def _creep_series(xi, pol: str, q_F, n_terms: int):
+def _creep_series(
+    xi: NDArray[np.floating] | float,
+    pol: str,
+    q_F: complex | None,
+    n_terms: int,
+) -> NDArray[np.complexfloating]:
     """Bounded creeping sum ``sum_p A_p exp(i nu_p smin(xi))`` (un-scaled, un-windowed)."""
     q = fock_eigenvalues(pol, q_F, n_terms)
     q_F_key = None if q_F is None else (round(q_F.real, 4), round(q_F.imag, 4))
@@ -322,7 +341,7 @@ def _creep_series(xi, pol: str, q_F, n_terms: int):
     total = 0.0
     for p in range(n_terms):
         total = total + amp[p] * xp.exp(1j * nu[p] * xn)
-    return total
+    return cast("NDArray[np.complexfloating]", total)
 
 
 def _solve_scale() -> float:
@@ -346,7 +365,7 @@ _SCALE = _solve_scale()
 
 
 def psi_shadow(
-    xi: ArrayLike,
+    xi: NDArray[np.floating] | float,
     pol: str,
     q_F: complex | None = None,
     n_terms: int = 3,
@@ -358,34 +377,37 @@ def psi_shadow(
     to the exact creeping residue series with the ``sqrt3 q_p`` decay law.
     """
     window = 1.0 - phi_lit(xi)
-    return window * _SCALE * _creep_series(xi, pol, q_F, n_terms)
+    return cast("NDArray[np.complexfloating]", window * _SCALE * _creep_series(xi, pol, q_F, n_terms))
 
 
 def fock_g(
-    xi: ArrayLike,
+    xi: NDArray[np.floating] | float,
     pol: str,
     q_F: complex | None = None,
     n_terms: int = 3,
 ) -> NDArray[np.complexfloating]:
     """Uniform complex field gate ``g(xi) = phi_lit(xi) + psi_shadow(xi)``."""
-    return phi_lit(xi) + psi_shadow(xi, pol, q_F, n_terms)
+    return cast("NDArray[np.complexfloating]", phi_lit(xi) + psi_shadow(xi, pol, q_F, n_terms))
 
 
 def fock_gate(
-    xi: ArrayLike,
-    w_s: ArrayLike,
-    w_p: ArrayLike,
+    xi: NDArray[np.floating] | float,
+    w_s: NDArray[np.floating] | float,
+    w_p: NDArray[np.floating] | float,
     q_F_s: complex | None = None,
     q_F_h: complex | None = None,
 ) -> NDArray[np.complexfloating]:
     """Combined complex field gate ``w_s g_soft + w_p g_hard`` (the coherent gate)."""
-    return w_s * fock_g(xi, "soft", q_F_s) + w_p * fock_g(xi, "hard", q_F_h)
+    return cast(
+        "NDArray[np.complexfloating]",
+        w_s * fock_g(xi, "soft", q_F_s) + w_p * fock_g(xi, "hard", q_F_h),
+    )
 
 
 def w_nf(
-    d1: ArrayLike | None,
-    d2: ArrayLike | None,
-    R: float,
+    d1: NDArray[np.floating] | float | None,
+    d2: NDArray[np.floating] | float | None,
+    R: NDArray[np.floating] | float,
     theta: ArrayLike,
 ) -> NDArray[np.floating] | float:
     """Near-field width taper ``sqrt(d1 / (d1 + d2))``.
@@ -400,19 +422,19 @@ def w_nf(
         return 1.0
     if d2 is None:
         d2 = R * xp.abs(theta)
-    return xp.sqrt(d1 / xp.maximum(d1 + d2, NUMERICAL_FLOOR))
+    return cast("NDArray[np.floating]", xp.sqrt(d1 / xp.maximum(d1 + d2, NUMERICAL_FLOOR)))
 
 
 def fock_local(
     mu: ArrayLike,
-    R: float,
+    R: NDArray[np.floating] | float,
     freq_hz: float,
-    w_s: ArrayLike,
-    w_p: ArrayLike,
+    w_s: NDArray[np.floating] | float,
+    w_p: NDArray[np.floating] | float,
     q_F_s: complex | None = None,
     q_F_h: complex | None = None,
-    d1: ArrayLike | None = None,
-    d2: ArrayLike | None = None,
+    d1: NDArray[np.floating] | float | None = None,
+    d2: NDArray[np.floating] | float | None = None,
 ) -> NDArray[np.floating]:
     """Incoherent Fock gate (drop-in replacement for ``physical_gelu``).
 
@@ -423,5 +445,11 @@ def fock_local(
     theta = theta_from_mu(mu)
     m = (xp.pi * freq_hz * R / C_0) ** (1.0 / 3.0)
     xi = m * theta * w_nf(d1, d2, R, theta)
-    creep = w_s * psi_shadow(xi, "soft", q_F_s) + w_p * psi_shadow(xi, "hard", q_F_h)
-    return xp.maximum(mu, 0.0) * xp.abs(phi_lit(xi)) ** 2 + xp.abs(creep) ** 2
+    creep = cast(
+        "NDArray[np.complexfloating]",
+        w_s * psi_shadow(xi, "soft", q_F_s) + w_p * psi_shadow(xi, "hard", q_F_h),
+    )
+    return cast(
+        "NDArray[np.floating]",
+        xp.maximum(mu, 0.0) * xp.abs(phi_lit(xi)) ** 2 + xp.abs(creep) ** 2,
+    )

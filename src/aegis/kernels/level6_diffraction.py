@@ -9,7 +9,7 @@ from aegis._array_backend import jit, xp
 from aegis.constants import C_0
 from aegis.kernels._base import fresnel_weights, physical_gelu
 from aegis.kernels.fock import fock_local
-from aegis.kernels.spatial import _resolve_diffraction_model
+from aegis.kernels.spatial import resolve_diffraction_model
 
 
 @jit(static_argnames=("diffraction_model", "q_F_s", "q_F_h"))
@@ -38,7 +38,7 @@ def level6_diffraction(
     """
     # This kernel has always applied the GELU gate, so the legacy default is
     # "gelu" (diffraction=True), mirroring spatial.py's bool mapping.
-    model = _resolve_diffraction_model(True, diffraction_model)
+    model = resolve_diffraction_model(True, diffraction_model)
 
     wavelength = C_0 / freq_hz
     # Floor k to avoid division by near-zero at very low frequencies

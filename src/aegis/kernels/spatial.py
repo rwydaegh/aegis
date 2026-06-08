@@ -15,6 +15,8 @@ See theory/composability_analysis.md for derivation and limiting cases.
 
 from __future__ import annotations
 
+from typing import cast
+
 import numpy as np
 from numpy.typing import NDArray
 
@@ -33,7 +35,7 @@ from aegis.kernels.fock import fock_local
 _DIFFRACTION_MODELS = ("none", "gelu", "fock")
 
 
-def _resolve_diffraction_model(
+def resolve_diffraction_model(
     diffraction: bool,
     diffraction_model: str | None,
 ) -> str:
@@ -114,6 +116,7 @@ def _spatial_kernel_unbatched(
     w_s_pol: NDArray[np.floating] | None = None
     w_p_pol: NDArray[np.floating] | None = None
     if use_psi:
+        assert psi is not None  # narrowed by use_psi; makes the guard visible to the type checker
         w_s_pol, w_p_pol = te_tm_power_weights(normals, k_hat, psi)
 
     # Fresnel factor
@@ -122,6 +125,8 @@ def _spatial_kernel_unbatched(
         T_s, T_p, T_avg = fresnel_weights(mu, n_tilde)
         if use_psi:
             # Physical per-(triangle, path) polarisation from the incident field.
+            assert w_s_pol is not None
+            assert w_p_pol is not None
             t_factor = w_s_pol * T_s + w_p_pol * T_p
         elif polarisation:
             # Legacy scalar/array TM-excess knob (no real polarisation state).
@@ -143,7 +148,11 @@ def _spatial_kernel_unbatched(
         g = physical_gelu(mu, sigma)
     else:  # "fock"
         assert fock_R is not None, "diffraction_model='fock' requires fock_R"
+        w_s: NDArray[np.floating] | float
+        w_p: NDArray[np.floating] | float
         if use_psi:
+            assert w_s_pol is not None
+            assert w_p_pol is not None
             w_s, w_p = w_s_pol, w_p_pol
         else:
             w_s, w_p = 0.5, 0.5
@@ -152,7 +161,7 @@ def _spatial_kernel_unbatched(
         R = fock_R[:, None] if fock_R.ndim == 1 else fock_R
         g = fock_local(mu, R, freq_hz, w_s, w_p, q_F_s, q_F_h)
 
-    sab = (t_factor * g) @ power
+    sab = cast("NDArray[np.floating]", (t_factor * g) @ power)
 
     # Curvature correction: additive perturbative term
     if curvature:
@@ -162,7 +171,7 @@ def _spatial_kernel_unbatched(
         # einsum avoids two (M, N) intermediates (g**2 and H-scaled g**2)
         g_sq_power = xp.einsum("mn,mn,n->m", g, g, power)
         sab_curvature = T0 * (H_for_curv / k) * g_sq_power
-        sab = sab + sab_curvature
+        sab = cast("NDArray[np.floating]", sab + sab_curvature)
 
     return sab
 
@@ -230,7 +239,7 @@ def spatial_kernel(
     if polarisation and not fresnel:
         raise ValueError("polarisation correction requires fresnel=True")
 
-    model = _resolve_diffraction_model(diffraction, diffraction_model)
+    model = resolve_diffraction_model(diffraction, diffraction_model)
 
     if (curvature or model == "gelu") and curvature_H is None:
         raise ValueError("curvature_H is required when curvature=True or diffraction_model='gelu'")
@@ -272,17 +281,16 @@ def spatial_kernel(
         chunk_size = max(max_mn // M, 1)
         sab = np.zeros(M, dtype=np.float64)
 
-        # fock_R only carries an N axis when per-path (M, N); a per-triangle
-        # (M,) radius broadcasts across all paths and needs no slicing.
-        fock_R_has_n = fock_R is not None and fock_R.ndim == 2
-
         for start in range(0, N, chunk_size):
             end = min(start + chunk_size, N)
             k_chunk = k_hat[start:end]
             p_chunk = power[start:end]
             q_chunk: float | NDArray[np.floating] = q[start:end] if isinstance(q, np.ndarray) and q.ndim > 0 else q
             psi_chunk = psi[start:end] if psi is not None else None
-            fock_R_chunk = fock_R[:, start:end] if fock_R_has_n else fock_R
+            # fock_R only carries an N axis when per-path (M, N); a per-triangle
+            # (M,) radius broadcasts across all paths and needs no slicing. The
+            # explicit ``is not None`` keeps the subscript visible as safe.
+            fock_R_chunk = fock_R[:, start:end] if fock_R is not None and fock_R.ndim == 2 else fock_R
 
             chunk_sab = _spatial_kernel_unbatched(
                 normals,
