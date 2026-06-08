@@ -48,10 +48,12 @@ from __future__ import annotations
 import functools
 
 import numpy as np
+from numpy.typing import ArrayLike, NDArray
 from scipy import special
 
 from aegis._array_backend import erf, xp
 from aegis.constants import C_0
+from aegis.defaults import NUMERICAL_FLOOR
 
 _SQRT2 = np.sqrt(2.0)
 # Shadow-clamp sharpness for smin(xi) ~ min(xi, 0). Large enough that the higher
@@ -62,7 +64,7 @@ _SMIN_BETA = 8.0
 _TERMINATOR_GATE_SQ_HARD = 0.488
 
 
-def theta_from_mu(mu):
+def theta_from_mu(mu: ArrayLike) -> NDArray[np.floating]:
     """Signed terminator angle ``theta = arcsin(clip(mu, -1, 1))`` (radians)."""
     return xp.arcsin(xp.clip(mu, -1.0, 1.0))
 
@@ -87,7 +89,7 @@ def _fock_eigenvalues_cached(pol: str, q_F_key, n_terms: int) -> tuple:
     return tuple(np.abs(zeros).astype(complex))
 
 
-def fock_eigenvalues(pol: str, q_F: complex | None = None, n_terms: int = 3) -> np.ndarray:
+def fock_eigenvalues(pol: str, q_F: complex | None = None, n_terms: int = 3) -> NDArray[np.complexfloating]:
     """Creeping eigenvalues ``q_p`` for the given polarization.
 
     PEC (``q_F is None``): ``|zeros of Ai|`` for ``"soft"``, ``|zeros of Ai'|``
@@ -100,13 +102,21 @@ def fock_eigenvalues(pol: str, q_F: complex | None = None, n_terms: int = 3) -> 
 
 
 @functools.cache
-def _residue_amplitudes(pol: str, n_terms: int) -> tuple:
+def _residue_amplitudes(pol: str, q_F_key, n_terms: int) -> tuple:
     """PEC creeping residue magnitudes ``A_p`` (constructive, real, positive).
 
     soft: ``|1/Ai'(a_p)^2|``; hard: ``|1/[a_p Ai(a_p)^2]|``, ``a_p`` the signed
     Airy / Airy' zeros. Magnitudes give the constructive terminator the oracle
     shows (field above the knife-edge half value).
+
+    ``q_F_key`` is ``None`` for PEC or a ``(round(re,4), round(im,4))`` tuple for
+    impedance surface (not yet implemented).
     """
+    # PEC only; impedance residues are a later task.
+    if q_F_key is not None:
+        raise NotImplementedError(
+            "Impedance-corrected Fock residues (q_F != None) are a later task; PEC only for now (pass q_F=None)."
+        )
     a_soft, ap_hard, _, _ = special.ai_zeros(n_terms)
     if pol == "soft":
         _, aip, _, _ = special.airy(a_soft)
@@ -122,7 +132,7 @@ def _smin(xi):
     return -xp.logaddexp(0.0, -_SMIN_BETA * xi) / _SMIN_BETA
 
 
-def phi_lit(xi):
+def phi_lit(xi: ArrayLike) -> NDArray[np.floating]:
     """Lit transition ``0.5 (1 + erf(xi / sqrt2))``: 1 deep lit, 0 deep shadow.
 
     Uses the backend-aware ``erf`` (xi is real on every path, so a real erf
@@ -134,7 +144,8 @@ def phi_lit(xi):
 def _creep_series(xi, pol: str, q_F, n_terms: int):
     """Bounded creeping sum ``sum_p A_p exp(i nu_p smin(xi))`` (un-scaled, un-windowed)."""
     q = fock_eigenvalues(pol, q_F, n_terms)
-    amp = np.asarray(_residue_amplitudes(pol, n_terms))
+    q_F_key = None if q_F is None else (round(q_F.real, 4), round(q_F.imag, 4))
+    amp = np.asarray(_residue_amplitudes(pol, q_F_key, n_terms))
     nu = q * np.exp(-1j * np.pi / 3.0)
     xn = _smin(xi)
     total = 0.0
@@ -163,7 +174,12 @@ def _solve_scale() -> float:
 _SCALE = _solve_scale()
 
 
-def psi_shadow(xi, pol: str, q_F: complex | None = None, n_terms: int = 3):
+def psi_shadow(
+    xi: ArrayLike,
+    pol: str,
+    q_F: complex | None = None,
+    n_terms: int = 3,
+) -> NDArray[np.complexfloating]:
     """Shadow creeping contribution: 0 deep lit, ``sum_p A_p exp(i nu_p xi)`` deep shadow.
 
     ``= (1 - phi_lit(xi)) * scale * sum_p A_p exp(i nu_p smin(xi))``. In the deep
@@ -174,30 +190,59 @@ def psi_shadow(xi, pol: str, q_F: complex | None = None, n_terms: int = 3):
     return window * _SCALE * _creep_series(xi, pol, q_F, n_terms)
 
 
-def fock_g(xi, pol: str, q_F: complex | None = None, n_terms: int = 3):
+def fock_g(
+    xi: ArrayLike,
+    pol: str,
+    q_F: complex | None = None,
+    n_terms: int = 3,
+) -> NDArray[np.complexfloating]:
     """Uniform complex field gate ``g(xi) = phi_lit(xi) + psi_shadow(xi)``."""
     return phi_lit(xi) + psi_shadow(xi, pol, q_F, n_terms)
 
 
-def fock_gate(xi, w_s, w_p, q_F_s: complex | None = None, q_F_h: complex | None = None):
+def fock_gate(
+    xi: ArrayLike,
+    w_s: ArrayLike,
+    w_p: ArrayLike,
+    q_F_s: complex | None = None,
+    q_F_h: complex | None = None,
+) -> NDArray[np.complexfloating]:
     """Combined complex field gate ``w_s g_soft + w_p g_hard`` (the coherent gate)."""
     return w_s * fock_g(xi, "soft", q_F_s) + w_p * fock_g(xi, "hard", q_F_h)
 
 
-def w_nf(d1, d2, R, theta):
+def w_nf(
+    d1: ArrayLike | None,
+    d2: ArrayLike | None,
+    R: float,
+    theta: ArrayLike,
+) -> NDArray[np.floating] | float:
     """Near-field width taper ``sqrt(d1 / (d1 + d2))``.
 
     ``d2 = R * |theta|`` (geodesic arc from the terminator) when ``None``.
     Returns ``1.0`` in the far field (``d1 is None``).
+
+    A floor is applied to the denominator to avoid 0/0 at the degenerate
+    ``d1 == 0, theta == 0`` point.
     """
     if d1 is None:
         return 1.0
     if d2 is None:
         d2 = R * xp.abs(theta)
-    return xp.sqrt(d1 / (d1 + d2))
+    return xp.sqrt(d1 / xp.maximum(d1 + d2, NUMERICAL_FLOOR))
 
 
-def fock_local(mu, R, freq_hz, w_s, w_p, q_F_s=None, q_F_h=None, d1=None, d2=None):
+def fock_local(
+    mu: ArrayLike,
+    R: float,
+    freq_hz: float,
+    w_s: ArrayLike,
+    w_p: ArrayLike,
+    q_F_s: complex | None = None,
+    q_F_h: complex | None = None,
+    d1: ArrayLike | None = None,
+    d2: ArrayLike | None = None,
+) -> NDArray[np.floating]:
     """Incoherent Fock gate (drop-in replacement for ``physical_gelu``).
 
     ``= max(mu, 0) |phi_lit(xi)|^2 + |w_s psi_soft + w_p psi_hard|^2``: the GO
