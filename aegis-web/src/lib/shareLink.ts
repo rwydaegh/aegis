@@ -161,6 +161,13 @@ export function deserializeShareLink(encoded: string): Partial<ShareState> {
         result[key] = parsed[key]
       }
     }
+    // Back-compat passthrough: legacy links serialized a top-level `diffraction`
+    // bool before the model selector existed. It is NOT a primary serialized
+    // field (new links use diffractionModel), but it must survive decoding so
+    // the apply path can honour an old link's explicit on/off choice.
+    if (typeof parsed.diffraction === 'boolean') {
+      result.diffraction = parsed.diffraction
+    }
     return result as Partial<ShareState>
   } catch {
     console.warn('Failed to parse share link')
@@ -184,6 +191,13 @@ function applySimulationState(state: Partial<ShareState>, sim: SimStore): void {
   if (state.curvature !== undefined) sim.setCurvature(state.curvature)
   if (state.diffractionModel !== undefined) {
     sim.setDiffractionModel(state.diffractionModel as Parameters<typeof sim.setDiffractionModel>[0])
+  } else {
+    // Back-compat: an old link with no model but an explicit legacy bool. A new
+    // link's model always wins (handled by the branch above).
+    const legacyDiffraction = (state as { diffraction?: boolean }).diffraction
+    if (legacyDiffraction !== undefined) {
+      sim.setDiffractionModel(legacyDiffraction ? 'fock' : 'none')
+    }
   }
   if (state.interBody !== undefined) {
     sim.setInterBody(state.interBody as Parameters<typeof sim.setInterBody>[0])

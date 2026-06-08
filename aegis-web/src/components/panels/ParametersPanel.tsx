@@ -127,12 +127,14 @@ export default function ParametersPanel() {
           </div>
 
           <label className={labelClass}>Diffraction model</label>
-          <div className="flex gap-0" data-testid="diffraction-model">
+          <div className="flex gap-0" data-testid="diffraction-model" role="radiogroup" aria-label="Diffraction model">
             {DIFFRACTION_MODELS.map(({ value, label, title }, i) => (
               <button
                 key={value}
                 title={title}
                 data-testid={`diffraction-model-${value}`}
+                role="radio"
+                aria-checked={diffractionModel === value}
                 className={`text-xs px-3 py-1.5 border transition-colors cursor-pointer ${
                   i === 0 ? 'rounded-l' : i === DIFFRACTION_MODELS.length - 1 ? 'rounded-r border-l-0' : 'border-l-0'
                 } ${

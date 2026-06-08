@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import * as Sentry from '@sentry/react'
-import { useSimulationStore } from '@/stores/simulation'
+import { useSimulationStore, type DiffractionModel, type InterBody } from '@/stores/simulation'
 import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
 import { useNotificationStore } from '@/stores/notifications'
@@ -37,8 +37,8 @@ type SimSlice = {
   fresnel: boolean
   polarisation: boolean
   curvature: boolean
-  diffractionModel: string
-  interBody: string
+  diffractionModel: DiffractionModel
+  interBody: InterBody
   powerDbm: number
   skinModel: string
   freqGhz: number

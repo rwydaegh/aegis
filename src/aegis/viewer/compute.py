@@ -725,10 +725,13 @@ def _build_compute_extras(
 
     corr_list = None
     if mode is not None:
+        # Lazy import: _responses imports this module at top level, so a
+        # module-level import here would be circular.
+        from aegis.viewer.routes.compute._responses import _diffraction_active
+
         corr = corrections or {}
         corr_list = [k for k in ("fresnel", "polarisation", "curvature") if corr.get(k)]
-        model = corr.get("diffraction_model")
-        if corr.get("diffraction") or (model is not None and model != "none"):
+        if _diffraction_active(corr):
             corr_list.append("diffraction")
     return extra, corr_list
 
