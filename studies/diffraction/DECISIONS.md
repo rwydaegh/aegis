@@ -113,6 +113,95 @@ Supersedes/absorbs `2026-06-06-self-shadowing-visibility-design.md`.
 
 ## Decision log (made autonomously overnight)
 
+- 2026-06-08 L10 (Task 7 design). The kernel takes a SCALAR static `q_F_h`. The
+  hard eigenvalue drifts with per-triangle kR, but that drift is ~20% on a shadow
+  tail of ~1e-6 of lit dose (F5) - dose-negligible. So the engine passes a single
+  representative impedance-corrected hard q_F per (band, body): kR_rep =
+  k * median(fock_R[finite]), q_F_h = fock_impedance_param(eta, kR_rep, "hard")
+  (one cached mpmath solve). Soft uses PEC (q_F_s=None). This captures the big
+  impedance effect (ratio ~1.7 vs PEC 2.295); the secondary per-triangle drift is
+  a documented, dose-negligible approximation. A per-triangle eigenvalue-array
+  path was deliberately NOT added (it would need another fock.py + kernel
+  signature change for no dose benefit). Revisit only if a distal/deep-shadow use
+  case (Phase B) makes the drift dose-relevant.
+- 2026-06-08 L9 (from Task 6 implementation). The D2 "coherent >= incoherent by
+  construction" claim needs a precise qualifier. `compute_fresnel_operator` hard-
+  zeros the transmission (t_s = t_p = 0) for mu <= 0, so the coherent body channel
+  carries field ONLY in the lit + penumbra region. The coherent-local Fock gate
+  therefore modulates the penumbra rolloff (complex, exact, where the dose lives)
+  but injects NO creeping FIELD into the deep geometric shadow, whereas the
+  incoherent fock_local adds |creep|^2 there independent of t. Consequence:
+  * Lit + penumbra (dose-relevant): coherent >= incoherent holds (constructive
+    phase headroom). Verified by trace(Q_complex) == trace(Q_magnitude) exactly
+    (|g_complex|^2 = |g|^2, the complex gate loses no total dose vs the magnitude
+    gate) and matched-filter dose n_elem*lambda_max(Q) >= trace(Q) >= isotropic.
+  * Deep geometric shadow (mu < 0): coherent-local is identically 0 (no field)
+    while incoherent has |creep|^2 ~ 1e-6 of lit, so coherent is ~1e-6 BELOW
+    incoherent there. Dose-negligible (F5), documented, NOT a pointwise D2
+    violation worth fixing in Phase A. Carrying the complex creeping FIELD into
+    the coherent deep shadow is the same follow-up family as coherent-distal
+    (D9/A3): it needs the creeping geodesic field vector, which the Fresnel
+    operator does not provide. Deferred with coherent-distal.
+- 2026-06-08 L8 (from Task 4 implementation). The legacy `diffraction` bool maps
+  to a diffraction_model differently at the two layers, to keep back-compat while
+  still making Fock the user-facing default (D7):
+  * KERNEL (`spatial_kernel`): explicit `diffraction_model` wins; else legacy bool
+    True -> "gelu", False -> "none". This preserves byte-identical behavior for
+    the ~10 existing direct kernel callers (tests, viewer dosimetry, chunking
+    suite) that pass `curvature_H` but no `fock_R`. Making the kernel bool default
+    to fock would raise fock_R-missing ValueErrors in all of them.
+  * ENGINE (`engine.compute`, Task 7): `diffraction_model` defaults to "fock" (the
+    new D7 default); the engine ALWAYS computes and supplies `fock_R`, and maps
+    its own legacy bool True -> "fock", False -> "none", passing the resolved
+    EXPLICIT diffraction_model down to the kernel (so the kernel's bool mapping is
+    bypassed). Net effect: end users get Fock by default via the engine/frontend;
+    direct kernel callers keep gelu. Task 9 rebaselines the goldens that move
+    under the new fock default.
+- 2026-06-08 L7 (from Task 2 implementation). The schematic Fock impedance
+  parameter q_F_hard = i m eta (leading-order Leontovich) does NOT reproduce the
+  exact dielectric pole at body-scale kR: it overshoots the hard pole by ~17% at
+  kR=40 (6.08 vs target 5.65), worsening with kR, and the discrepancy is
+  eta-dependent (no universal rotation fixes it) - the irreducible finite-kR
+  pre-asymptotic error of leading-order Fock. Resolution (the right one):
+  `fock_impedance_param` solves the EXACT Leontovich creeping pole (via mpmath,
+  the same method as studies/diffraction/poles.py, which reproduces
+  HARD_POL_RESOLUTION.md table a to 3 digits) and returns the equivalent
+  q_F = Ai'(t*)/Ai(t*). Feeding that to the Newton _impedance_roots recovers the
+  dominant pole to rel err < 0.002 (5.654/7.503/10.099 vs targets exactly).
+  q_eff drift 1.13 -> 1.80 over kR 4 -> 2048 and soft/hard ratio 1.94 -> 1.57
+  over kR 20 -> 320 both match the doc. Cost: adds mpmath as a runtime dep (was
+  transitive); used only at table-build time (cached per band), PEC path stays
+  mpmath-free (lazy import). Eigenvalues are constants fed into the xp gate, so
+  differentiability w.r.t. xi/mu is preserved. Spec's "q_F ~ i m eta" is now
+  marked as the schematic leading-order form, superseded by the exact pole solve.
+- 2026-06-08 L6 (from Task 1 implementation). Two refinements surfaced building
+  kernels/fock.py against the oracle:
+  * The creeping residue series is a SHADOW-SIDE asymptotic: with nu_p =
+    q_p exp(-i pi/3), |exp(i nu_p xi)| GROWS for xi > 0 (lit). The additive
+    composite g = Phi_lit + Psi_shadow therefore requires Psi_shadow to be
+    windowed to vanish in the lit (evaluate the creeping phase at min(xi,0) and
+    taper by (1 - Phi_lit)). In deep shadow the window is the identity, so the
+    validated sqrt3*q_p decay law and the 2.295 ratio are recovered exactly
+    (~0.5% in tests). The spec's "Psi_shadow -> 0 deep lit" was only true with
+    this windowing; spec updated to state it.
+  * PEC oracle observables are polarization-dependent: the hard (TE) observable
+    is the surface FIELD (angle-independent GO), giving a clean kR-independent
+    field-gate terminator |g(0)|^2 ~ 0.488 (amplitude 0.70, ABOVE the knife 0.5:
+    the creeping wave adds CONSTRUCTIVELY, so use residue MAGNITUDES). The soft
+    (TM) observable is the surface CURRENT (~sin^2 GO, diverges as 1/sin^2 at the
+    terminator) and cannot anchor a field-gate terminator; soft is validated via
+    its shadow decay instead. One shared Fock prefactor is pinned to the hard
+    terminator.
+  * LIMITATION (carry to Phase B): a 3-pole additive composite with one prefactor
+    cannot simultaneously match the terminator value AND the deep-shadow creeping
+    amplitude; pinning the terminator under-predicts the deep shadow by ~3-4x.
+    Accepted for Phase A (local gate): the penumbra/terminator (dose-relevant) is
+    matched to ~0.09 abs on |g|^2, and deep-shadow dose is ~1e-6 of lit (F5), so
+    a 3-4x error there is ~4e-6 of lit, negligible. BUT the DISTAL occlusion gate
+    (Phase B) reuses fock_g in deeper shadow where dose can matter (hand
+    shadowing cheek); revisit the deep-shadow amplitude there (more poles, or a
+    separate deep-shadow amplitude anchor, or the tabulated Pekeris/Logan Fock
+    function) before relying on distal deep-shadow magnitudes.
 - 2026-06-08 L5. Spec-review loop complete (3 iterations, strict reviewer vs the
   actual codebase). Outcome and physics/design clarifications now baked into the
   spec:
