@@ -26,6 +26,35 @@ from aegis.defaults import NUMERICAL_FLOOR
 from aegis.tissue.fresnel import xi_from_mu
 
 
+def _fock_gate_factors(mu, fock_R, freq_hz, q_F_s, q_F_h):
+    """Polarization-resolved complex Fock gate factors ``(g_soft, g_hard)``.
+
+    Builds the Fock detour parameter ``xi = m * theta`` from the incidence cosine
+    ``mu`` (the value :func:`compute_fresnel_operator` already returns) and the
+    in-incidence-plane radius ``fock_R``, then evaluates the complex uniform Fock
+    gate separately for the soft (TE) and hard (TM) creeping constants. Deep lit
+    both ``-> 1`` (the coherent field is unchanged, exact GO), with the penumbra
+    rolloff and complex creeping tail near and past the terminator.
+
+    ``fock_R`` is ``(M,)`` (per-triangle, broadcast across paths) or ``(M, N)``;
+    ``q_F_s`` / ``q_F_h`` are scalar impedance parameters (``None`` for the PEC
+    Fock gate). Returns two ``(M, N)`` complex arrays matching ``mu``.
+    """
+    # Lazy import: aegis.kernels.__init__ imports the coherent kernels (which
+    # import this module), so a module-level import here is circular.
+    from aegis.kernels.fock import fock_g, theta_from_mu
+
+    R = xp.asarray(fock_R)
+    if R.ndim == 1:
+        R = R[:, None]  # (M, 1) -> broadcast across paths
+    theta = theta_from_mu(mu)  # (M, N) signed terminator angle
+    m = (xp.pi * freq_hz * R / C_0) ** (1.0 / 3.0)
+    xi = m * theta  # (M, N) detour parameter
+    g_soft = fock_g(xi, "soft", q_F_s)
+    g_hard = fock_g(xi, "hard", q_F_h)
+    return g_soft, g_hard
+
+
 def compute_body_channel(
     normals: np.ndarray,
     centroids: np.ndarray,
@@ -36,6 +65,9 @@ def compute_body_channel(
     sigma: float,
     freq_hz: float,
     n_elements: int,
+    fock_R: np.ndarray | None = None,
+    q_F_s: complex | None = None,
+    q_F_h: complex | None = None,
 ) -> np.ndarray:
     """Build the body-surface channel G_tilde(r) at each triangle centroid.
 
@@ -59,6 +91,13 @@ def compute_body_channel(
         Frequency [Hz].
     n_elements : int
         Total number of antenna elements M_ant.
+    fock_R : (M,) or (M, N) or None
+        In-incidence-plane radius of curvature [m] for the Fock shadow gate.
+        ``None`` (default) disables the gate, reproducing the ungated channel
+        bit-for-bit (back-compat).
+    q_F_s, q_F_h : complex or None
+        Impedance-Fock parameters for the soft (TE) and hard (TM) creeping
+        constants. ``None`` selects the PEC Fock gate.
 
     Returns
     -------
@@ -79,8 +118,16 @@ def compute_body_channel(
     # Fresnel operator components
     mu, t_s, t_p, e_s, e_p = compute_fresnel_operator(normals, k_hat, n_tilde)
 
-    # F_n(r) @ psi_n for each (m, n): shape (M, N, 3)
-    F_psi = apply_fresnel_operator(psi, t_s, t_p, e_s, e_p)
+    # F_n(r) @ psi_n for each (m, n): shape (M, N, 3). With the Fock gate the
+    # soft/hard creeping constants gate the TE/TM field components separately,
+    # so the s/p parts are rebuilt directly instead of using the combined output.
+    if fock_R is None:
+        F_psi = apply_fresnel_operator(psi, t_s, t_p, e_s, e_p)
+    else:
+        g_soft, g_hard = _fock_gate_factors(mu, fock_R, freq_hz, q_F_s, q_F_h)
+        psi_s = xp.einsum("mnj,nj->mn", e_s, psi)  # (M, N)
+        psi_p = xp.einsum("mnj,nj->mn", e_p, psi)  # (M, N)
+        F_psi = (g_soft * t_s * psi_s)[:, :, None] * e_s + (g_hard * t_p * psi_p)[:, :, None] * e_p
 
     # Depth coupling weight: sqrt(sigma / (4 * alpha_n))
     # alpha_n is the amplitude decay rate: k0*xi = beta - i*alpha, so alpha = -Im(k0*xi)
@@ -117,6 +164,9 @@ def compute_body_channel_factored(
     sigma,
     freq_hz,
     n_elements,
+    fock_R=None,
+    q_F_s=None,
+    q_F_h=None,
 ):
     """Build G_tilde using factored Fresnel for array-expanded paths.
 
@@ -139,6 +189,9 @@ def compute_body_channel_factored(
     element_index : (N_total,)
         Element index for each expanded path.
     n_tilde, sigma, freq_hz, n_elements : same as compute_body_channel.
+    fock_R, q_F_s, q_F_h : same as compute_body_channel. ``fock_R`` is keyed on
+        the center directions, so it is ``(M,)`` or ``(M, N_center)``. ``None``
+        disables the gate (back-compat).
 
     Returns
     -------
@@ -173,6 +226,14 @@ def compute_body_channel_factored(
     # Precomputed scalar factor per (M, N_center)
     scalar = depth_weight * phase  # (M, N_center)
 
+    # Polarization-resolved Fock gate per (M, N_center). The soft/hard factors
+    # fold into the TE/TM transmission coefficients per center direction, so the
+    # factoring (one Fresnel solve per unique direction) is preserved.
+    if fock_R is None:
+        g_soft = g_hard = None
+    else:
+        g_soft, g_hard = _fock_gate_factors(mu, fock_R, freq_hz, q_F_s, q_F_h)
+
     # For each expanded path, apply F @ psi_n using precomputed Fresnel components
     # element_psi is laid out as [elem0_path0..N, elem1_path0..N, ...] (element-major)
     # so expanded path (j * N_center + c) maps to center path c
@@ -187,6 +248,9 @@ def compute_body_channel_factored(
         # scalar[:, c]: (M,) combined depth*phase weight
         t_s_c = t_s[:, c]  # (M,)
         t_p_c = t_p[:, c]  # (M,)
+        if g_soft is not None:
+            t_s_c = t_s_c * g_soft[:, c]  # gate the TE transmission
+            t_p_c = t_p_c * g_hard[:, c]  # gate the TM transmission
         e_s_c = e_s[:, c, :]  # (M, 3)
         e_p_c = e_p[:, c, :]  # (M, 3)
         sc = scalar[:, c]  # (M,)

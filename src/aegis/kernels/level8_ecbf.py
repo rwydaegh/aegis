@@ -37,6 +37,9 @@ def level8_ecbf(
     n_elements: int,
     P: float = 1.0,
     P_abs_max: float = DEFAULT_P_ABS_MAX,
+    fock_R: NDArray[np.floating] | None = None,
+    q_F_s: complex | None = None,
+    q_F_h: complex | None = None,
 ) -> tuple[
     NDArray[np.floating],
     NDArray[np.complexfloating],
@@ -61,6 +64,11 @@ def level8_ecbf(
     n_elements : int
     P : total transmit power [W]
     P_abs_max : maximum absorbed power [W]
+    fock_R : (M,) or (M, N) or None
+        In-incidence-plane curvature radius [m] for the Fock shadow gate. ``None``
+        disables the gate (exact GO/Fresnel channel, back-compat).
+    q_F_s, q_F_h : complex or None
+        Soft/hard impedance-Fock parameters (``None`` selects the PEC gate).
 
     Returns
     -------
@@ -80,6 +88,9 @@ def level8_ecbf(
         sigma,
         freq_hz,
         n_elements,
+        fock_R=fock_R,
+        q_F_s=q_F_s,
+        q_F_h=q_F_h,
     )
 
     # Exposure operator Q
