@@ -157,6 +157,21 @@ class DosimetryEngine:
         return "fock" if diffraction else "none"
 
     @staticmethod
+    def _validate_inter_body(inter_body: str) -> None:
+        """Validate the inter-body backend selector.
+
+        ``"off"`` is the only implemented option. ``"specular1"`` is a Phase B
+        feature and raises NotImplementedError; anything else is a ValueError.
+        """
+        if inter_body not in ("off", "specular1"):
+            raise ValueError(f"inter_body must be 'off' or 'specular1', got {inter_body!r}")
+        if inter_body == "specular1":
+            raise NotImplementedError(
+                "inter_body='specular1' (single-bounce inter-body reflection) is a Phase B "
+                "feature and not yet implemented; use inter_body='off'."
+            )
+
+    @staticmethod
     def _fock_radius_per_path(body: BodyMesh, k_hat: np.ndarray) -> np.ndarray:
         """In-incidence-plane radius for each path direction.
 
@@ -418,8 +433,8 @@ class DosimetryEngine:
             "none". An explicit ``diffraction_model`` always wins. ``None``
             (the default) leaves the model at its "fock" default.
         diffraction_model : shadow-edge gate "none" | "gelu" | "fock". Default
-            "fock". Consumed by the spatial mode, level 6, and the coherent
-            levels 7-8; levels 2-5 have no gate and ignore it.
+            "fock". Levels 0-5 have no shadow gate and ignore diffraction_model;
+            it applies to spatial mode, level 6, and coherent levels 7-8.
         inter_body : "off" (default) or "specular1". The single-bounce inter-body
             backend is a Phase B feature; passing "specular1" raises
             NotImplementedError.
@@ -443,13 +458,7 @@ class DosimetryEngine:
         active_freq_hz, active_n_tilde, active_T0, active_sigma = self._active_em_params(freq_hz)
 
         effective_model = self._resolve_diffraction_model(diffraction_model, diffraction)
-        if inter_body not in ("off", "specular1"):
-            raise ValueError(f"inter_body must be 'off' or 'specular1', got {inter_body!r}")
-        if inter_body == "specular1":
-            raise NotImplementedError(
-                "inter_body='specular1' (single-bounce inter-body reflection) is a Phase B "
-                "feature and not yet implemented; use inter_body='off'."
-            )
+        self._validate_inter_body(inter_body)
 
         # Mode-based path
         if mode is not None:
@@ -608,6 +617,7 @@ class DosimetryEngine:
         polarisation: bool = False,
         diffraction: bool | None = None,
         diffraction_model: str | None = None,
+        inter_body: str = "off",
         curvature: bool = False,
         freq_hz: float | None = None,
     ):
@@ -618,7 +628,10 @@ class DosimetryEngine:
         optimization. The diffraction-model resolution mirrors compute(), so
         compute_sab stays numerically consistent with compute().sab (default
         "fock"). The Fock radius is a geometry constant, so threading it does not
-        break autodiff w.r.t. the precoder or source.
+        break autodiff w.r.t. the precoder or source. ``inter_body`` mirrors
+        compute()'s validation contract ("specular1" raises NotImplementedError)
+        but is otherwise ignored: single-bounce recapture is Phase B and does not
+        apply to the autodiff path.
         """
         if level is not None and mode is not None:
             raise ValueError(_ERR_LEVEL_AND_MODE)
@@ -629,6 +642,9 @@ class DosimetryEngine:
 
         active_freq_hz, active_n_tilde, active_T0, active_sigma = self._active_em_params(freq_hz)
         effective_model = self._resolve_diffraction_model(diffraction_model, diffraction)
+        # Single-bounce recapture is Phase B and does not apply to the autodiff
+        # path; validate-and-ignore to mirror compute()'s error contract.
+        self._validate_inter_body(inter_body)
 
         # Mode-based path for spatial
         if mode is not None:

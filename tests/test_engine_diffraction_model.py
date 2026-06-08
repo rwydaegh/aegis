@@ -147,6 +147,11 @@ def test_inter_body_specular1_not_implemented(engine, body, paths):
         engine.compute(body, paths, level=3, inter_body="specular1")
 
 
+def test_compute_sab_inter_body_specular1_not_implemented(engine, body, paths):
+    with pytest.raises(NotImplementedError):
+        engine.compute_sab(body, paths, level=3, inter_body="specular1")
+
+
 def test_invalid_diffraction_model_rejected(engine, body, paths):
     with pytest.raises(ValueError, match="diffraction_model"):
         engine.compute(body, paths, level=3, diffraction_model="bogus")
