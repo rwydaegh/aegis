@@ -398,3 +398,78 @@ def test_get_or_bake_round_trips_disk(tmp_path, monkeypatch):
     assert np.array_equal(first.clearance, second.clearance)
     assert np.array_equal(first.active_index, second.active_index)
     assert second.vertex_hash == body.vertex_hash
+
+
+# ---------------------------------------------------------------------------
+# Task 10: query_visibility (per-path gather, far/near dispatch)
+# ---------------------------------------------------------------------------
+
+
+def _two_spheres():
+    a = BodyMesh.sphere(radius=0.2, n_subdivisions=2)
+    b = BodyMesh.from_arrays(a.vertices + np.array([0.6, 0.0, 0.0]))
+    return BodyMesh.from_arrays(np.concatenate([a.vertices, b.vertices]))
+
+
+def test_query_visibility_far_field_shapes_and_exposed():
+    from aegis.geometry.visibility import bake_visibility_lut, query_visibility
+
+    body = _two_spheres()
+    lut = bake_visibility_lut(body, resolution=16)
+    k = np.array([[1.0, 0.0, 0.0], [0.0, 0.0, 1.0]])
+    clr, R_occ, d1, d2 = query_visibility(lut, k, body.centroids, source_pos=None)
+    M, N = body.n_triangles, 2
+    assert clr.shape == (M, N)
+    assert R_occ.shape == (M, N)
+    # exposed triangles are lit (large positive clearance) in every direction
+    assert np.all(clr[lut.exposed_mask] > 0.4)
+    # far field: d1 is infinite everywhere
+    assert np.all(np.isinf(d1))
+
+
+def test_query_visibility_active_rows_have_finite_occluder():
+    from aegis.geometry.visibility import bake_visibility_lut, query_visibility
+
+    body = _two_spheres()
+    lut = bake_visibility_lut(body, resolution=16)
+    k = np.array([[1.0, 0.0, 0.0]])
+    clr, R_occ, d1, d2 = query_visibility(lut, k, body.centroids, source_pos=None)
+    ai = lut.active_index
+    assert np.all(R_occ[ai, 0] > 0)
+    assert np.all(d2[ai, 0] > 0)
+    # active rows carry their baked occluder radius / distance
+    assert np.allclose(R_occ[ai, 0], lut.R_occ)
+    assert np.allclose(d2[ai, 0], lut.d_occ)
+
+
+def test_query_visibility_near_field_d1():
+    from aegis.geometry.visibility import bake_visibility_lut, query_visibility
+
+    body = _two_spheres()
+    lut = bake_visibility_lut(body, resolution=16)
+    src = np.array([-1.0, 0.0, 0.0])
+    k = body.centroids - src
+    k /= np.linalg.norm(k, axis=1, keepdims=True)
+    clr, R_occ, d1, d2 = query_visibility(lut, k, body.centroids, source_pos=src)
+    assert clr.shape == (body.n_triangles, 1)
+    d_src = np.linalg.norm(body.centroids - src, axis=1, keepdims=True)
+    fin = np.isfinite(d1)
+    # finite edge-to-source distance never exceeds the full source-to-point range
+    assert np.all(d1[fin] <= d_src[fin] + 1e-9)
+
+
+def test_query_visibility_near_field_occluder_behind_source_is_exposed():
+    # An occluder farther than the source (d1 = d_src - d2 <= 0) cannot shadow:
+    # the d1<=0 guard blends the clearance back to exposed (large positive).
+    from aegis.geometry.visibility import bake_visibility_lut, query_visibility
+
+    body = _two_spheres()
+    lut = bake_visibility_lut(body, resolution=16)
+    # source very close to the body so d_src < d_occ for shadowed rows
+    src = np.array([0.0, 0.0, 0.0])
+    k = body.centroids - src
+    k /= np.linalg.norm(k, axis=1, keepdims=True)
+    clr, R_occ, d1, d2 = query_visibility(lut, k, body.centroids, source_pos=src, d_band=0.01)
+    # rows whose binding occluder sits beyond the source are pushed back to lit
+    behind = d1[:, 0] <= 0.0
+    assert np.all(clr[behind, 0] > 0.4)

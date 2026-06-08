@@ -743,6 +743,91 @@ def bake_visibility_lut(
 
 
 # ---------------------------------------------------------------------------
+# Query: per-path (clearance, R_occ, d1, d2) for the kernel
+# ---------------------------------------------------------------------------
+
+# Saturated-lit clearance (the max the int8 codec can hold); a query at this
+# value drives the distal gate to ~1. Used for exposed / non-active triangles.
+SATURATED_LIT = 127.0 * CLEARANCE_SCALE
+
+
+def _smoothstep(a: float, b: float, x: NDArray[np.floating]) -> NDArray[np.floating]:
+    """Hermite smoothstep in ``[a, b]`` (0 below ``a``, 1 above ``b``)."""
+    t = np.clip((x - a) / max(b - a, 1e-12), 0.0, 1.0)
+    return t * t * (3.0 - 2.0 * t)
+
+
+def query_visibility(
+    lut: VisibilityLUT,
+    k_hats: NDArray[np.floating],
+    centroids: NDArray[np.floating],
+    source_pos: NDArray[np.floating] | None = None,
+    *,
+    d_band: float = 0.01,
+    default_d2: float = 1.0,
+) -> tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
+    """Kernel-ready ``(clearance, R_occ, d1, d2)``, each ``(M, N)``.
+
+    Far field (``source_pos is None``): ``k_hats`` is ``(N, 3)`` and the look
+    direction ``omega = -k_hat`` is shared across triangles, so ``N`` is the path
+    count; ``d1 = inf``. Near field (``source_pos`` given): ``k_hats`` is the
+    per-triangle ``(M, 3)`` source->point direction, ``N = 1``, ``d2 = d_occ`` and
+    ``d1 = |point - source| - d_occ`` (edge-to-source distance). When the binding
+    occluder sits at or beyond the source (``d1 <= 0`` it cannot shadow), a
+    smoothstep over ``[0, d_band]`` blends the clearance back to exposed so the
+    transition is C1 (spec F3).
+
+    Exposed / non-active triangles return a saturated-lit clearance (gate ~ 1),
+    ``R_occ = 1``, ``d2 = default_d2``, ``d1 = inf``.
+    """
+    centroids = np.asarray(centroids, dtype=np.float64)
+    M = centroids.shape[0]
+    ai = lut.active_index
+    n_active = int(ai.size)
+
+    if source_pos is None:
+        k = np.atleast_2d(np.asarray(k_hats, dtype=np.float64))
+        k = k / np.linalg.norm(k, axis=1, keepdims=True)
+        omega = -k  # (N, 3)
+        N = omega.shape[0]
+        clearance = np.full((M, N), SATURATED_LIT)
+        R_occ = np.ones((M, N))
+        d1 = np.full((M, N), np.inf)
+        d2 = np.full((M, N), default_d2)
+        if n_active:
+            rows = np.arange(n_active)
+            for n in range(N):
+                dirs = np.broadcast_to(omega[n], (n_active, 3))
+                clearance[ai, n] = _gather_clearance(lut, rows, dirs)
+                R_occ[ai, n] = lut.R_occ
+                d2[ai, n] = lut.d_occ
+        return clearance, R_occ, d1, d2
+
+    # Near field: per-triangle direction, single "path".
+    src = np.asarray(source_pos, dtype=np.float64)
+    k = np.asarray(k_hats, dtype=np.float64)
+    if k.ndim == 1:
+        k = np.broadcast_to(k, (M, 3))
+    omega = -k / np.linalg.norm(k, axis=1, keepdims=True)  # (M, 3)
+    d_src = np.linalg.norm(centroids - src, axis=1)  # (M,)
+    clearance = np.full((M, 1), SATURATED_LIT)
+    R_occ = np.ones((M, 1))
+    d1 = np.full((M, 1), np.inf)
+    d2 = np.full((M, 1), default_d2)
+    if n_active:
+        rows = np.arange(n_active)
+        c = _gather_clearance(lut, rows, omega[ai])
+        d_occ_a = lut.d_occ.astype(np.float64)
+        d1a = d_src[ai] - d_occ_a
+        blend = _smoothstep(0.0, d_band, d1a)  # 0 when occluder is beyond the source
+        clearance[ai, 0] = blend * c + (1.0 - blend) * SATURATED_LIT
+        R_occ[ai, 0] = lut.R_occ
+        d2[ai, 0] = d_occ_a
+        d1[ai, 0] = np.maximum(d1a, 0.0)
+    return clearance, R_occ, d1, d2
+
+
+# ---------------------------------------------------------------------------
 # Disk cache + get_or_bake + CLI
 # ---------------------------------------------------------------------------
 
