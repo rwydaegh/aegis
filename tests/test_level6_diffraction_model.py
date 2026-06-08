@@ -105,6 +105,10 @@ LEGACY_LEVEL6 = [
     3.4877871071032103,
 ]
 
+# Tolerance for comparing the GELU gate against Linux-generated reference values.
+# The gate uses transcendental libm calls whose last ULPs differ across platforms.
+_LEGACY_RTOL = 1e-9
+
 
 @pytest.fixture
 def setup():
@@ -137,17 +141,17 @@ def test_level6_accepts_diffraction_model(setup):
 
 
 def test_level6_gelu_matches_legacy(setup):
-    """diffraction_model="gelu" reproduces the pre-change kernel byte-for-byte."""
+    """diffraction_model="gelu" reproduces the pre-change kernel to libm tolerance."""
     body, k_hat, power, n_tilde, t0, freq_hz, curvature_h, _ = setup
     g = level6_diffraction(body.normals, k_hat, power, n_tilde, t0, curvature_h, freq_hz, diffraction_model="gelu")
-    np.testing.assert_array_equal(g, np.asarray(LEGACY_LEVEL6))
+    np.testing.assert_allclose(g, np.asarray(LEGACY_LEVEL6), rtol=_LEGACY_RTOL)
 
 
 def test_level6_default_matches_legacy(setup):
     """The default (diffraction_model=None) keeps the historical GELU gate."""
     body, k_hat, power, n_tilde, t0, freq_hz, curvature_h, _ = setup
     g = level6_diffraction(body.normals, k_hat, power, n_tilde, t0, curvature_h, freq_hz)
-    np.testing.assert_array_equal(g, np.asarray(LEGACY_LEVEL6))
+    np.testing.assert_allclose(g, np.asarray(LEGACY_LEVEL6), rtol=_LEGACY_RTOL)
 
 
 def test_level6_none_is_relu(setup):

@@ -107,6 +107,10 @@ LEGACY_GELU = [
     3.3939410684372238,
 ]
 
+# Tolerance for comparing the GELU gate against Linux-generated reference values.
+# The gate uses transcendental libm calls whose last ULPs differ across platforms.
+_LEGACY_RTOL = 1e-9
+
 
 @pytest.fixture
 def setup():
@@ -125,7 +129,11 @@ def setup():
     return body, k_hat, power, n_tilde, t0, freq_hz, curvature_h, fock_r
 
 
-def test_gelu_byte_identical_to_legacy(setup):
+def test_gelu_matches_legacy(setup):
+    # The GELU gate uses transcendental functions (erf/exp), whose last few ULPs
+    # differ between platform libm implementations (Linux vs Windows ~1e-13 rel).
+    # rtol=1e-9 is far below any real numerical change a refactor would introduce
+    # yet tolerates cross-platform libm noise. The reference is Linux-generated.
     body, k_hat, power, n_tilde, t0, freq_hz, curvature_h, _ = setup
     g = spatial_kernel(
         body.normals,
@@ -138,7 +146,7 @@ def test_gelu_byte_identical_to_legacy(setup):
         diffraction_model="gelu",
         curvature_H=curvature_h,
     )
-    np.testing.assert_array_equal(g, np.asarray(LEGACY_GELU))
+    np.testing.assert_allclose(g, np.asarray(LEGACY_GELU), rtol=_LEGACY_RTOL)
 
 
 def test_none_is_exact_relu(setup):
@@ -214,7 +222,7 @@ def test_legacy_bool_maps_to_gelu(setup):
     g_bool = spatial_kernel(
         body.normals, k_hat, power, n_tilde, t0, freq_hz, fresnel=True, diffraction=True, curvature_H=curvature_h
     )
-    np.testing.assert_array_equal(g_bool, np.asarray(LEGACY_GELU))
+    np.testing.assert_allclose(g_bool, np.asarray(LEGACY_GELU), rtol=_LEGACY_RTOL)
 
 
 def test_explicit_model_wins_over_bool(setup):
@@ -232,7 +240,7 @@ def test_explicit_model_wins_over_bool(setup):
         diffraction_model="gelu",
         curvature_H=curvature_h,
     )
-    np.testing.assert_array_equal(g_gelu, np.asarray(LEGACY_GELU))
+    np.testing.assert_allclose(g_gelu, np.asarray(LEGACY_GELU), rtol=_LEGACY_RTOL)
 
 
 def test_fock_requires_radius(setup):
