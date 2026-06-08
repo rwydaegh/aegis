@@ -142,14 +142,21 @@ def test_fock_radius_sourced_from_geometry(engine, body, paths, monkeypatch):
     assert not calls, "the 'none' model must not compute a Fock radius"
 
 
-def test_inter_body_specular1_not_implemented(engine, body, paths):
-    with pytest.raises(NotImplementedError):
-        engine.compute(body, paths, level=3, inter_body="specular1")
+def test_inter_body_specular1_runs(engine, body, paths):
+    """specular1 is implemented: it returns a finite, non-negative map that is
+    at least as large as the direct law (recapture only adds power)."""
+    off = engine.compute(body, paths, level=3, inter_body="off").sab
+    on = engine.compute(body, paths, level=3, inter_body="specular1").sab
+    assert np.all(np.isfinite(on))
+    assert np.all(on >= 0.0)
+    assert np.all(on >= off - 1e-12)
 
 
-def test_compute_sab_inter_body_specular1_not_implemented(engine, body, paths):
-    with pytest.raises(NotImplementedError):
-        engine.compute_sab(body, paths, level=3, inter_body="specular1")
+def test_compute_sab_inter_body_specular1_ignored(engine, body, paths):
+    """compute_sab accepts specular1 but ignores it (non-differentiable pass)."""
+    base = np.asarray(engine.compute_sab(body, paths, level=3, inter_body="off"))
+    same = np.asarray(engine.compute_sab(body, paths, level=3, inter_body="specular1"))
+    np.testing.assert_array_equal(base, same)
 
 
 def test_invalid_diffraction_model_rejected(engine, body, paths):

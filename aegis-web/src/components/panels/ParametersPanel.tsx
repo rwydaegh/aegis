@@ -155,10 +155,8 @@ export default function ParametersPanel() {
               label="Single-bounce (specular1)"
               checked={interBody === 'specular1'}
               onChange={(on) => setInterBody(on ? 'specular1' : 'off')}
-              disabled
-              title="Experimental: single-bounce inter-body specular reflection. Not yet active (Phase B)."
+              title="Single specular recapture: each lit triangle's reflected ray is cast through the visibility BVH and the recaptured power is deposited where it lands. Off by default."
             />
-            <span className="text-[10px] text-muted-foreground pl-5.5">Experimental, not yet active</span>
           </div>
         </>
       )}
