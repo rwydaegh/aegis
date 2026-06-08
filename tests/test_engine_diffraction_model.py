@@ -173,3 +173,47 @@ def test_mie_canary_unchanged():
         text=True,
     )
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+# ---------------------------------------------------------------------------
+# Task 12: self-shadowing (distal visibility) engine integration
+# ---------------------------------------------------------------------------
+
+
+def _two_spheres_body():
+    from aegis.geometry.mesh import BodyMesh
+
+    a = BodyMesh.sphere(radius=0.2, n_subdivisions=2)
+    b = BodyMesh.from_arrays(a.vertices + np.array([0.6, 0.0, 0.0]))
+    return BodyMesh.from_arrays(np.concatenate([a.vertices, b.vertices]))
+
+
+def test_engine_self_shadow_attenuates_two_spheres():
+    body = _two_spheres_body()
+    paths = PropagationPaths.from_powers(k_hat=np.array([[1.0, 0.0, 0.0]]), power=np.array([1.0]))
+    eng = DosimetryEngine(SKIN_28GHZ)
+    on = eng.compute(body, paths, mode="spatial", diffraction_model="fock", self_shadow=True, spatial_averaging=False)
+    off = eng.compute(body, paths, mode="spatial", diffraction_model="fock", self_shadow=False, spatial_averaging=False)
+    assert on.p_abs < off.p_abs  # shadowing reduces total absorbed power
+    assert np.all(on.sab <= off.sab + 1e-12)
+
+
+def test_engine_self_shadow_convex_noop():
+    from aegis.geometry.mesh import BodyMesh
+
+    body = BodyMesh.sphere(radius=0.3, n_subdivisions=2)
+    paths = PropagationPaths.from_powers(k_hat=np.array([[0.0, 0.0, -1.0]]), power=np.array([1.0]))
+    eng = DosimetryEngine(SKIN_28GHZ)
+    on = eng.compute(body, paths, mode="spatial", diffraction_model="fock", self_shadow=True, spatial_averaging=False)
+    off = eng.compute(body, paths, mode="spatial", diffraction_model="fock", self_shadow=False, spatial_averaging=False)
+    # convex body short-circuits the LUT, so the gate is a no-op: bit-for-bit
+    assert np.array_equal(on.sab, off.sab)
+
+
+def test_engine_self_shadow_level6_attenuates():
+    body = _two_spheres_body()
+    paths = PropagationPaths.from_powers(k_hat=np.array([[1.0, 0.0, 0.0]]), power=np.array([1.0]))
+    eng = DosimetryEngine(SKIN_28GHZ)
+    on = eng.compute(body, paths, level=6, diffraction_model="fock", self_shadow=True, spatial_averaging=False)
+    off = eng.compute(body, paths, level=6, diffraction_model="fock", self_shadow=False, spatial_averaging=False)
+    assert on.p_abs < off.p_abs
