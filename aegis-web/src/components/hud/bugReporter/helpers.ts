@@ -22,6 +22,7 @@ export function collectState(): Record<string, unknown> {
     curvature: sim.curvature,
     diffractionModel: sim.diffractionModel,
     interBody: sim.interBody,
+    selfShadow: sim.selfShadow,
     skinModel: sim.skinModel,
     antennaPos: sim.antennaPos ? sim.antennaPos.join(', ') : null,
     cameraMode: ui.cameraMode,

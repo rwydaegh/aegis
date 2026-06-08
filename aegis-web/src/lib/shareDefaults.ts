@@ -24,6 +24,7 @@ export const SHARE_DEFAULTS = {
   curvature: true,
   diffractionModel: 'fock' as string,
   interBody: 'off' as string,
+  selfShadow: false,
   powerDbm: 43,
   skinModel: 'itis',
   freqGhz: 28,

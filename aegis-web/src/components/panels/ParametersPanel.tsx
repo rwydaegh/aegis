@@ -61,6 +61,8 @@ export default function ParametersPanel() {
   const setDiffractionModel = useSimulationStore((s) => s.setDiffractionModel)
   const interBody = useSimulationStore((s) => s.interBody)
   const setInterBody = useSimulationStore((s) => s.setInterBody)
+  const selfShadow = useSimulationStore((s) => s.selfShadow)
+  const setSelfShadow = useSimulationStore((s) => s.setSelfShadow)
   const skinModel = useSimulationStore((s) => s.skinModel)
   const setSkinModel = useSimulationStore((s) => s.setSkinModel)
   const stats = useSimulationStore((s) => s.stats)
@@ -156,6 +158,16 @@ export default function ParametersPanel() {
               checked={interBody === 'specular1'}
               onChange={(on) => setInterBody(on ? 'specular1' : 'off')}
               title="Single specular recapture: each lit triangle's reflected ray is cast through the visibility BVH and the recaptured power is deposited where it lands. Off by default."
+            />
+          </div>
+
+          <label className={labelClass}>Self-shadowing</label>
+          <div className="flex flex-col gap-1.5 pl-0.5">
+            <CorrectionToggle
+              label="Distal self-shadow"
+              checked={selfShadow}
+              onChange={setSelfShadow}
+              title="One body part shadowing another (arm over torso) via the baked visibility LUT and the distal Fock diffraction gate. The first compute on a new pose bakes the LUT (a few seconds). Convex bodies are a no-op. Off by default."
             />
           </div>
         </>
