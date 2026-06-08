@@ -250,3 +250,151 @@ def test_bake_raw_convex_all_visible():
     mu = body.normals @ grid_dirs.reshape(-1, 3).T  # (M, R*R)
     front = mu.reshape(vis.shape) > 1e-3
     assert np.all(vis[front])
+
+
+# ---------------------------------------------------------------------------
+# Task 7: signed-clearance transform + bake_visibility_lut
+# ---------------------------------------------------------------------------
+
+
+def test_grid_directions_unit_and_shape():
+    from aegis.geometry.visibility import _grid_directions
+
+    R = 12
+    g = _grid_directions(R)
+    assert g.shape == (R, R, 3)
+    assert np.allclose(np.linalg.norm(g.reshape(-1, 3), axis=1), 1.0, atol=1e-9)
+
+
+def test_clearance_matches_brute_force_great_circle():
+    # On a synthetic map (a hemisphere blocked), the signed clearance equals the
+    # great-circle distance to the boundary within one cell.
+    from aegis.geometry.visibility import _grid_directions, _signed_clearance
+
+    R = 24
+    dirs = _grid_directions(R).reshape(-1, 3)
+    blocked = dirs[:, 0] < 0.0  # block the -x hemisphere
+    vis_map = (~blocked).reshape(R, R)
+    c = _signed_clearance(vis_map[None], _grid_directions(R)).reshape(R, R)
+    # boundary is the great circle x=0; great-circle angle to that plane is
+    # arcsin(|x|), signed by visibility (visible +, shadowed -).
+    expected = np.where(vis_map, 1.0, -1.0) * np.abs(np.arcsin(np.clip(dirs[:, 0], -1, 1))).reshape(R, R)
+    near = np.abs(expected) < 0.4  # away from saturation, within ~2 cells
+    assert np.allclose(c[near], expected[near], atol=0.15)
+
+
+def test_clearance_sign_follows_visibility():
+    from aegis.geometry.visibility import _grid_directions, _signed_clearance
+
+    R = 20
+    dirs = _grid_directions(R).reshape(-1, 3)
+    vis_map = (dirs[:, 1] >= 0.0).reshape(R, R)
+    c = _signed_clearance(vis_map[None], _grid_directions(R)).reshape(R, R)
+    assert np.all(c[vis_map] >= 0.0)
+    assert np.all(c[~vis_map] <= 0.0)
+
+
+def test_bake_convex_short_circuits():
+    from aegis.geometry.visibility import bake_visibility_lut
+
+    body = BodyMesh.sphere(radius=0.3, n_subdivisions=2)
+    lut = bake_visibility_lut(body, resolution=16)
+    assert lut.exposed_mask.all()
+    assert lut.active_index.size == 0
+    assert lut.clearance.shape[0] == 0
+    assert lut.vertex_hash == body.vertex_hash
+
+
+def test_bake_two_spheres_has_active_rows():
+    from aegis.geometry.visibility import bake_visibility_lut
+
+    a = BodyMesh.sphere(radius=0.2, n_subdivisions=2)
+    b = BodyMesh.from_arrays(a.vertices + np.array([0.6, 0.0, 0.0]))
+    body = BodyMesh.from_arrays(np.concatenate([a.vertices, b.vertices]))
+    lut = bake_visibility_lut(body, resolution=16)
+    assert lut.active_index.size > 0
+    assert lut.clearance.shape == (lut.active_index.size, 16, 16)
+    assert np.all(lut.d_occ > 0)
+    assert np.all(lut.R_occ > 0)
+    assert lut.exposed_mask.shape == (body.n_triangles,)
+    # active rows must carry at least one shadowed (negative-clearance) direction
+    dec = lut.clearance.astype(np.float64) * lut.clearance_scale
+    assert np.all((dec.reshape(lut.active_index.size, -1) < 0).any(axis=1))
+
+
+def test_bake_clearance_magnitude_within_resolution():
+    # The baked clearance on the two-sphere fixture matches a brute-force
+    # great-circle distance to the binary boundary within the octahedral cell.
+    from aegis.geometry.visibility import (
+        _bake_raw_maps,
+        _grid_directions,
+        _signed_clearance,
+        bake_visibility_lut,
+    )
+
+    a = BodyMesh.sphere(radius=0.2, n_subdivisions=2)
+    b = BodyMesh.from_arrays(a.vertices + np.array([0.6, 0.0, 0.0]))
+    body = BodyMesh.from_arrays(np.concatenate([a.vertices, b.vertices]))
+    R = 16
+    vis_map, _, _, grid_dirs = _bake_raw_maps(body, resolution=R)
+    c_ref = _signed_clearance(vis_map, _grid_directions(R))
+    lut = bake_visibility_lut(body, resolution=R)
+    dec = lut.clearance.astype(np.float64) * lut.clearance_scale
+    ref_active = c_ref[lut.active_index]
+    # int8 codec saturates at +-0.5 rad; compare in the unsaturated band
+    band = np.abs(ref_active) < 0.45
+    assert np.allclose(dec[band], ref_active[band], atol=2 * lut.clearance_scale + 1e-9)
+
+
+# ---------------------------------------------------------------------------
+# Task 8: disk cache + get_or_bake
+# ---------------------------------------------------------------------------
+
+
+def test_disk_cache_roundtrip(tmp_path, monkeypatch):
+    monkeypatch.setenv("AEGIS_CACHE_DIR", str(tmp_path))
+    from aegis.geometry import visibility as vis
+
+    a = BodyMesh.sphere(radius=0.2, n_subdivisions=2)
+    b = BodyMesh.from_arrays(a.vertices + np.array([0.6, 0.0, 0.0]))
+    body = BodyMesh.from_arrays(np.concatenate([a.vertices, b.vertices]))
+    lut = vis.bake_visibility_lut(body, resolution=16)
+    vis.save_lut_to_disk(lut, body, resolution=16, gate="erf")
+    loaded = vis.load_lut_from_disk(body, resolution=16, gate="erf")
+    assert loaded is not None
+    assert np.array_equal(loaded.clearance, lut.clearance)
+    assert np.array_equal(loaded.active_index, lut.active_index)
+    assert np.array_equal(loaded.exposed_mask, lut.exposed_mask)
+    assert np.allclose(loaded.d_occ, lut.d_occ)
+    assert np.allclose(loaded.R_occ, lut.R_occ)
+    assert loaded.vertex_hash == lut.vertex_hash
+    assert loaded.resolution == lut.resolution
+
+
+def test_disk_cache_misses_on_pose_change(tmp_path, monkeypatch):
+    monkeypatch.setenv("AEGIS_CACHE_DIR", str(tmp_path))
+    from aegis.geometry import visibility as vis
+
+    a = BodyMesh.sphere(radius=0.2, n_subdivisions=2)
+    b = BodyMesh.from_arrays(a.vertices + np.array([0.6, 0.0, 0.0]))
+    body = BodyMesh.from_arrays(np.concatenate([a.vertices, b.vertices]))
+    lut = vis.bake_visibility_lut(body, resolution=16)
+    vis.save_lut_to_disk(lut, body, resolution=16, gate="erf")
+    # a yawed copy has a different vertex_hash, so the cache must miss
+    Rz = np.array([[0.0, -1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 1.0]])
+    moved = BodyMesh.from_arrays(body.vertices @ Rz.T, name="yawed")
+    assert vis.load_lut_from_disk(moved, resolution=16, gate="erf") is None
+
+
+def test_get_or_bake_round_trips_disk(tmp_path, monkeypatch):
+    monkeypatch.setenv("AEGIS_CACHE_DIR", str(tmp_path))
+    from aegis.geometry import visibility as vis
+
+    a = BodyMesh.sphere(radius=0.2, n_subdivisions=2)
+    b = BodyMesh.from_arrays(a.vertices + np.array([0.6, 0.0, 0.0]))
+    body = BodyMesh.from_arrays(np.concatenate([a.vertices, b.vertices]))
+    first = vis.get_or_bake(body, resolution=16, gate="erf")  # bakes + writes
+    second = vis.get_or_bake(body, resolution=16, gate="erf")  # loads from disk
+    assert np.array_equal(first.clearance, second.clearance)
+    assert np.array_equal(first.active_index, second.active_index)
+    assert second.vertex_hash == body.vertex_hash

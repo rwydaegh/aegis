@@ -15,6 +15,7 @@ docs/superpowers/plans/2026-06-08-visibility-distal-gate.md.
 from __future__ import annotations
 
 import dataclasses
+import pathlib
 
 import numpy as np
 from numpy.typing import NDArray
@@ -591,3 +592,248 @@ def _is_convex(body: BodyMesh, area_tol: float = 0.02) -> bool:
     if hull.area <= 0.0:
         return False
     return abs(body.total_area - hull.area) / hull.area < area_tol
+
+
+# ---------------------------------------------------------------------------
+# Signed-clearance transform + full bake
+# ---------------------------------------------------------------------------
+
+
+def _signed_clearance(
+    vis_maps: NDArray[np.bool_],
+    grid_dirs: NDArray[np.floating],
+) -> NDArray[np.float64]:
+    """Signed great-circle angular clearance per cell, shape matching ``vis_maps``.
+
+    For each ``(R, R)`` boolean visibility map, the clearance magnitude at a cell
+    is the minimum great-circle angle ``arccos(omega . omega_b)`` to any boundary
+    cell ``b`` (a cell with a 4-neighbour of opposite visibility). The sign is
+    ``+1`` where visible (clear) and ``-1`` where shadowed. Computing the distance
+    in 3D makes it seam-exact regardless of the octahedral fold; only the
+    boundary detection (``np.roll`` neighbour diff) is approximate at the seam,
+    which is negligible at ``R >= 16`` (plan Risks). A map with no boundary (all
+    one state) gets a saturated magnitude (pi).
+    """
+    maps = np.asarray(vis_maps, dtype=bool)
+    R = grid_dirs.shape[0]
+    dirs = np.ascontiguousarray(grid_dirs.reshape(-1, 3))  # (G, 3)
+    out = np.empty((maps.shape[0], R, R), dtype=np.float64)
+    for m in range(maps.shape[0]):
+        vis = maps[m]
+        # boundary = a cell adjacent (4-neighbour) to a cell of opposite state
+        diff = np.zeros((R, R), dtype=bool)
+        diff[:-1, :] |= vis[:-1, :] != vis[1:, :]
+        diff[1:, :] |= vis[:-1, :] != vis[1:, :]
+        diff[:, :-1] |= vis[:, :-1] != vis[:, 1:]
+        diff[:, 1:] |= vis[:, :-1] != vis[:, 1:]
+        bcells = diff.reshape(-1)
+        sign = np.where(vis, 1.0, -1.0)
+        if not bcells.any():
+            out[m] = sign * np.pi
+            continue
+        bdirs = dirs[bcells]  # (B, 3)
+        cosang = np.clip(dirs @ bdirs.T, -1.0, 1.0)  # (G, B)
+        mag = np.arccos(cosang).min(axis=1).reshape(R, R)  # (R, R)
+        out[m] = sign * mag
+    return out
+
+
+def _fock_radius_at(
+    body: BodyMesh,
+    tri_idx: NDArray[np.integer],
+    dirs: NDArray[np.floating],
+) -> NDArray[np.float64]:
+    """In-plane Fock radius of triangles ``tri_idx`` along per-pair directions ``dirs``.
+
+    A gather form of :func:`aegis.geometry.curvature.fock_radius`: evaluates
+    Euler's theorem at the given (occluder triangle, blocking direction) pairs
+    instead of one shared direction over all faces.
+    """
+    from aegis.geometry import curvature
+
+    kappa1, kappa2, d1 = curvature.principal_curvatures(body)
+    idx = np.asarray(tri_idx, dtype=np.int64)
+    n = body.normals[idx]
+    k1 = kappa1[idx]
+    k2 = kappa2[idx]
+    dd1 = d1[idx]
+    dd2 = np.cross(n, dd1)
+    kh = np.asarray(dirs, dtype=np.float64)
+    proj = kh - np.einsum("kj,kj->k", kh, n)[:, None] * n
+    pn = np.linalg.norm(proj, axis=1)
+    valid = pn > 1e-9
+    pn_safe = np.where(valid, pn, 1.0)
+    cos_c = np.einsum("kj,kj->k", proj, dd1)
+    sin_c = np.einsum("kj,kj->k", proj, dd2)
+    cos2 = np.where(valid, (cos_c / pn_safe) ** 2, 1.0)
+    sin2 = np.where(valid, (sin_c / pn_safe) ** 2, 0.0)
+    kappa_t = k1 * cos2 + k2 * sin2
+    return 1.0 / np.maximum(kappa_t, 1e-6)
+
+
+def bake_visibility_lut(
+    body: BodyMesh,
+    resolution: int = 32,
+    gate: str = "erf",
+    *,
+    delta: float = 1e-4,
+) -> VisibilityLUT:
+    """Bake the per-body directional signed-clearance LUT.
+
+    A convex body short-circuits to an all-exposed LUT (no bake, Mie canary
+    exact). Otherwise the octahedral grid is ray-cast (``_bake_raw_maps``),
+    transformed to a signed clearance field, reduced to a per-active-triangle
+    binding-occluder distance ``d_occ`` and in-plane radius ``R_occ``, and the
+    clearance is encoded to int8 over the active (non-exposed) rows only.
+
+    ``gate`` is carried through to the disk cache key (Task 8); it does not change
+    the baked field, which is frequency- and gate-independent.
+    """
+    vhash = body.vertex_hash
+    empty_clear = np.empty((0, resolution, resolution), dtype=np.int8)
+    if _is_convex(body):
+        return VisibilityLUT(
+            clearance=empty_clear,
+            clearance_scale=CLEARANCE_SCALE,
+            d_occ=np.empty(0, np.float32),
+            R_occ=np.empty(0, np.float32),
+            active_index=np.empty(0, np.int32),
+            exposed_mask=np.ones(body.n_triangles, dtype=bool),
+            resolution=resolution,
+            vertex_hash=vhash,
+        )
+
+    vis, d2, occ_idx, grid_dirs = _bake_raw_maps(body, resolution, delta=delta)
+    c = _signed_clearance(vis, grid_dirs)  # (M, R, R)
+
+    # Exposed = never shadowed in the STORED field: a triangle is active iff its
+    # most-shadowed direction quantizes to a strictly negative int8 clearance.
+    # Using the quantized min (not the float c) keeps the active set consistent
+    # with the int8 LUT, so every active row carries a negative cell after encode
+    # (a barely-negative float that rounds to 0 is not a real shadow).
+    exposed_mask = _encode_int8(c.min(axis=(1, 2))) >= 0
+    active_index = np.where(~exposed_mask)[0].astype(np.int32)
+
+    n_active = active_index.size
+    d_occ = np.empty(n_active, np.float32)
+    R_occ = np.empty(n_active, np.float32)
+    flat_dirs = grid_dirs.reshape(-1, 3)
+    for row, i in enumerate(active_index):
+        blocked = ~vis[i].reshape(-1)  # (G,)
+        if not blocked.any():
+            d_occ[row] = body.scale
+            R_occ[row] = body.scale
+            continue
+        d_occ[row] = float(np.mean(d2[i].reshape(-1)[blocked]))
+        occ_tris = occ_idx[i].reshape(-1)[blocked]
+        occ_dirs = flat_dirs[blocked]
+        R_occ[row] = float(np.mean(_fock_radius_at(body, occ_tris, occ_dirs)))
+
+    clearance_int8 = _encode_int8(c[active_index]) if n_active else empty_clear
+    return VisibilityLUT(
+        clearance=clearance_int8,
+        clearance_scale=CLEARANCE_SCALE,
+        d_occ=d_occ,
+        R_occ=R_occ,
+        active_index=active_index,
+        exposed_mask=exposed_mask,
+        resolution=resolution,
+        vertex_hash=vhash,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Disk cache + get_or_bake + CLI
+# ---------------------------------------------------------------------------
+
+
+def _cache_dir() -> pathlib.Path:
+    """Visibility-LUT cache directory (``$AEGIS_CACHE_DIR`` or ``~/.cache/aegis``)."""
+    import os
+
+    base = pathlib.Path(os.environ.get("AEGIS_CACHE_DIR", "~/.cache/aegis")).expanduser()
+    d = base / "visibility"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def _cache_key(body: BodyMesh, resolution: int, gate: str) -> str:
+    """Cache filename for a baked LUT, keyed by pose-dependent vertex hash."""
+    h = body.vertex_hash & 0xFFFFFFFFFFFFFFFF
+    return f"{h:016x}_r{resolution}_{gate}.npz"
+
+
+def save_lut_to_disk(lut: VisibilityLUT, body: BodyMesh, resolution: int, gate: str) -> pathlib.Path:
+    """Persist a baked LUT to the disk cache and return the path."""
+    path = _cache_dir() / _cache_key(body, resolution, gate)
+    np.savez(
+        path,
+        clearance=lut.clearance,
+        clearance_scale=np.float64(lut.clearance_scale),
+        d_occ=lut.d_occ,
+        R_occ=lut.R_occ,
+        active_index=lut.active_index,
+        exposed_mask=lut.exposed_mask,
+        resolution=np.int64(lut.resolution),
+        vertex_hash=np.int64(lut.vertex_hash),
+        gate=np.str_(gate),
+    )
+    return path
+
+
+def load_lut_from_disk(body: BodyMesh, resolution: int, gate: str) -> VisibilityLUT | None:
+    """Load a cached LUT, or ``None`` on a miss (absent file or hash mismatch)."""
+    path = _cache_dir() / _cache_key(body, resolution, gate)
+    if not path.exists():
+        return None
+    with np.load(path, allow_pickle=False) as data:
+        if int(data["vertex_hash"]) != body.vertex_hash or int(data["resolution"]) != resolution:
+            return None
+        return VisibilityLUT(
+            clearance=data["clearance"],
+            clearance_scale=float(data["clearance_scale"]),
+            d_occ=data["d_occ"],
+            R_occ=data["R_occ"],
+            active_index=data["active_index"],
+            exposed_mask=data["exposed_mask"],
+            resolution=int(data["resolution"]),
+            vertex_hash=int(data["vertex_hash"]),
+        )
+
+
+def get_or_bake(body: BodyMesh, resolution: int = 32, gate: str = "erf") -> VisibilityLUT:
+    """Return the cached LUT for ``body`` if present, otherwise bake and persist it."""
+    cached = load_lut_from_disk(body, resolution, gate)
+    if cached is not None:
+        return cached
+    lut = bake_visibility_lut(body, resolution, gate)
+    save_lut_to_disk(lut, body, resolution, gate)
+    return lut
+
+
+def _main(argv: list[str] | None = None) -> int:
+    """``python -m aegis.geometry.visibility --bake-all`` warms the disk cache."""
+    import argparse
+
+    from aegis.geometry import phantom
+
+    parser = argparse.ArgumentParser(description="Bake per-body visibility LUTs into the disk cache.")
+    parser.add_argument("--bake-all", action="store_true", help="bake every bundled phantom")
+    parser.add_argument("--resolution", type=int, default=32)
+    parser.add_argument("--gate", default="erf")
+    args = parser.parse_args(argv)
+
+    names = ["thelonious", "duke", "eartha", "ella"] if args.bake_all else []
+    for name in names:
+        try:
+            body = phantom.load_phantom(name)
+        except (FileNotFoundError, KeyError, ValueError) as exc:
+            print(f"skip {name}: {exc}")
+            continue
+        lut = get_or_bake(body, args.resolution, args.gate)
+        print(f"baked {name}: {lut.active_index.size}/{body.n_triangles} active, r={args.resolution}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(_main())
