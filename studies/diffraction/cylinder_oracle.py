@@ -57,6 +57,11 @@ def dielectric_cylinder_surface_field(ka: float, n_complex: complex, phi: np.nda
     hard). The interior enters only through the stable log derivative
     D_n = J_n'(k1 a)/J_n(k1 a). This is exactly the quantity AEGIS's S_ab models.
     """
+    # Enforce the oracle's e^{-iwt}/outgoing-H^(1) convention: a passive lossy
+    # medium needs Im(n) > 0. AEGIS stores n - ik (engineering e^{+iwt}); feeding
+    # Im(n) < 0 here models a GAIN cylinder and corrupts the hard channel.
+    if np.imag(n_complex) < 0:
+        n_complex = np.conj(n_complex)
     k0a = ka
     k1a = n_complex * ka
     N = int(ka + 14 * max(ka, 1.0) ** (1.0 / 3.0) + 25)
@@ -75,8 +80,8 @@ def dielectric_cylinder_surface_field(ka: float, n_complex: complex, phi: np.nda
     b = (g * Jn0 - k0a * Jp0) / (k0a * Hp0 - g * Hn0)
 
     e = np.exp(1j * np.outer(phi, ns))
-    psi_c = (1j ** ns) * (Jn0 + b * Hn0)
-    dpsi_c = (1j ** ns) * (Jp0 + b * Hp0)  # d/d(k0 rho); common k0 factor drops in shape
+    psi_c = (1j**ns) * (Jn0 + b * Hn0)
+    dpsi_c = (1j**ns) * (Jp0 + b * Hp0)  # d/d(k0 rho); common k0 factor drops in shape
     Psi = (psi_c[None, :] * e).sum(axis=1)
     dPsi = (dpsi_c[None, :] * e).sum(axis=1)
     return np.imag(Psi * np.conj(dPsi))  # inward Poynting ~ absorbed power per area
@@ -98,13 +103,13 @@ def pec_cylinder_surface_field(ka: float, phi: np.ndarray, pol: str):
     if pol == "TM":
         # E_z = sum i^n [J + b H]; b = -J/H. Surface current ~ d/drho E_z ~ k(J' + b H').
         b = -Jn / Hn
-        coeff = (1j ** ns) * ka * (Jp + b * Hp)
+        coeff = (1j**ns) * ka * (Jp + b * Hp)
         f = (coeff[None, :] * np.exp(1j * np.outer(phi, ns))).sum(axis=1)
         return np.abs(f) ** 2
     else:
         # H_z = sum i^n [J + b H]; Neumann b = -J'/H'. Observable |H_z(a)|^2.
         b = -Jp / Hp
-        coeff = (1j ** ns) * (Jn + b * Hn)
+        coeff = (1j**ns) * (Jn + b * Hn)
         f = (coeff[None, :] * np.exp(1j * np.outer(phi, ns))).sum(axis=1)
         return np.abs(f) ** 2
 
@@ -140,13 +145,17 @@ def make_figures():
     # Columns: (TM vs xi), (TE vs xi), (TM vs zeta). Rows: PEC, skin.
     fig, axes = plt.subplots(2, 3, figsize=(16, 9))
     for row, (label, solver) in enumerate(
-        [("PEC", lambda kR, ph, pol: pec_cylinder_surface_field(kR, ph, pol)),
-         ("skin", lambda kR, ph, pol: dielectric_cylinder_surface_field(kR, n_complex, ph, pol))]
+        [
+            ("PEC", lambda kR, ph, pol: pec_cylinder_surface_field(kR, ph, pol)),
+            ("skin", lambda kR, ph, pol: dielectric_cylinder_surface_field(kR, n_complex, ph, pol)),
+        ]
     ):
         for ci, (pol, xvar, xlabel) in enumerate(
-            [("TM", "xi", r"$\xi=(kR/2)^{1/3}\,\theta_{shadow}$"),
-             ("TE", "xi", r"$\xi=(kR/2)^{1/3}\,\theta_{shadow}$"),
-             ("TM", "zeta", r"$\zeta=\sqrt{kR}\,\theta_{shadow}$")]
+            [
+                ("TM", "xi", r"$\xi=(kR/2)^{1/3}\,\theta_{shadow}$"),
+                ("TE", "xi", r"$\xi=(kR/2)^{1/3}\,\theta_{shadow}$"),
+                ("TM", "zeta", r"$\zeta=\sqrt{kR}\,\theta_{shadow}$"),
+            ]
         ):
             ax = axes[row, ci]
             for c, kR in enumerate(kR_list):
@@ -222,8 +231,14 @@ def decay_analysis():
     for c, kR in enumerate(kR_list):
         for pol, ls in (("TM", "-"), ("TE", "--")):
             P = np.abs(dielectric_cylinder_surface_field(kR, n_complex, phi, pol))
-            ax.plot(np.rad2deg(th_sh), np.log(P / P[0]), ls, color=cmap[c], lw=1.2,
-                    label=f"kR={kR} {pol}" if kR in (10, 320) else None)
+            ax.plot(
+                np.rad2deg(th_sh),
+                np.log(P / P[0]),
+                ls,
+                color=cmap[c],
+                lw=1.2,
+                label=f"kR={kR} {pol}" if kR in (10, 320) else None,
+            )
     ax.set_xlabel("angle into shadow (deg)")
     ax.set_ylabel("ln P_abs (normalised)")
     ax.set_title("skin: shadow decay (solid=TM soft, dash=TE hard)")
@@ -235,9 +250,16 @@ def decay_analysis():
     for kind, mk in (("PEC", "o"), ("skin", "s")):
         for pol, col in (("TM", "C0"), ("TE", "C3")):
             s = np.array([slope(kR, pol, kind) for kR in kR_list])
-            ax.loglog(kk, s, mk + "-", color=col, ms=5,
-                      label=f"{kind} {pol}", alpha=0.8 if kind == "skin" else 1.0,
-                      mfc="none" if kind == "skin" else col)
+            ax.loglog(
+                kk,
+                s,
+                mk + "-",
+                color=col,
+                ms=5,
+                label=f"{kind} {pol}",
+                alpha=0.8 if kind == "skin" else 1.0,
+                mfc="none" if kind == "skin" else col,
+            )
     s0 = slope(kR_list[0], "TM", "PEC")
     ax.loglog(kk, s0 * (kk / kk[0]) ** (1 / 3), "k-", lw=1, label="(kR)^1/3 (Fock)")
     ax.loglog(kk, s0 * (kk / kk[0]) ** (1 / 2), "k:", lw=1, label="(kR)^1/2 (knife)")

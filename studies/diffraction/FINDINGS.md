@@ -76,29 +76,45 @@ correction is the penumbra and shadow near the terminator, which is pointwise
 (consistent with the 2-4 percent whole-limb integral) and carries the
 soft/hard split in its shadow decay.
 
-## The hard / p-pol question on the cylinder (superseded by the sphere above)
+## The hard / p-pol question on the cylinder (a sign bug, then resonance, both resolved)
 
-The hard (p-pol) polarization on skin behaves qualitatively differently from
-PEC and from s-pol:
+Earlier I reported that the hard (p-pol) skin channel decayed anomalously
+slowly and rose far above flat Fresnel in the lit region (1.4x to 5x). Two
+distinct artifacts produced that, and both are now fixed.
 
-- Its shadow decay is much slower than the PEC hard wave (the lossy surface
-  impedance binds a p-pol surface wave that hugs the surface), and the decay
-  rate even decreases with `kR` rather than growing. The simple PEC hard
-  constant is not adequate for p-pol on skin.
-- In the lit region the exact p-pol absorbed power sits well above the flat
-  Fresnel `T_p * mu`, growing toward grazing (apparent factors of 1.4x to 5x
-  at 48 to 80 degrees incidence on the cylinder).
+1. Gain-medium sign bug. AEGIS stores the refractive index as `n - ik`
+   (engineering `e^{+iwt}`); the oracle integrates `e^{-iwt}` outgoing
+   Hankels, which need `Im(n) > 0` for a lossy body. Feeding the stored
+   `Im(n) < 0` straight in modelled a GAIN cylinder and corrupted the hard
+   channel specifically (the hard creeping wave is the one bound to the
+   surface, so it is the one a gain surface amplifies). `cylinder_oracle.py`
+   now conjugates to `Im(n) > 0` before solving. With the fix the skin TE
+   shadow exponent jumps from a nonsensical 0.045 to a clean 0.455.
+2. Closed-cylinder lit-region resonance. The earlier erratic, non-convergent
+   p-pol lit ratios (3.4, 41.9, 12.1, ... in `kR`) were a closed-loop
+   surface-wave resonance, independently confirmed gone on the sphere.
 
-That apparent lit-region enhancement is NOT trustworthy as a body number. A
-fixed-incidence sweep in `kR` shows the s-pol ratio is flat (recovers GO) but
-the p-pol ratio is erratic and non-convergent (for example at 50 degrees:
-3.4, 41.9, 12.1, 3.1, 3.4 as `kR` steps up). That is the signature of
-closed-cylinder surface-wave resonances: the slowly-decaying p-pol wave
-circulates a closed 2D cylinder and resonates at particular `kR`. An open,
-tapered, attached limb or a doubly-curved surface would not resonate the same
-way, so the cylinder overstates the p-pol effect. The sign and existence of a
-p-pol curvature-polarization coupling are real; the magnitude on a body is not
-measurable from the cylinder.
+Corrected skin cylinder (lossy, `n - ik` conjugated to `Im(n) > 0`):
+
+- Shadow decay exponents are both clean and Fock-like: skin TM (soft) 0.402,
+  skin TE (hard) 0.455. The hard channel is NOT anomalous. Neither hugs the
+  surface pathologically.
+- The soft/hard decay-slope ratio is 1.88, 1.95, 1.89, 1.81, 1.71, 1.59 over
+  `kR = 10 -> 320`, i.e. it sits BELOW the PEC 2.295 and decreases with `kR`.
+  Physical reading: the lossy surface impedance damps both creeping waves and
+  shrinks the soft/hard asymmetry, pulling the hard eigenvalue up from the PEC
+  `q1 = 1.019` toward roughly `2.338 / 1.7 ~ 1.4`. This is exactly the regime
+  where the impedance-Fock solve (`Ai'(t) - q Ai(t) = 0`) matters, and it
+  confirms D5: the PEC hard constant is wrong for skin, but the correction is
+  modest (a sub-2x change in a shadow tail that carries ~1e-6 of lit dose).
+- Lit region: both polarizations now recover GO to within 1 percent. The
+  fixed-incidence `kR` sweep gives `exact/(T*mu) -> -1.00` for both s and p
+  at every tested incidence (30, 50, 70 deg) by `kR = 320`. No p-pol lit
+  enhancement survives the sign fix, matching the sphere exactly.
+
+So the corrected cylinder and the sphere now AGREE: no lit-region p-pol
+curvature coupling, both channels Fock in the shadow, and a real-but-modest
+impedance reduction of the soft/hard split on skin.
 
 ## Consequences for the framework (revised after the sphere)
 
@@ -111,11 +127,16 @@ diffraction physics is narrower than tier 3 implied.
 - The one justified local upgrade is a Fock penumbra/shadow gate replacing the
   GeLU: correct `(kR)^{1/3}` width and exponential shadow tail, with the
   soft/hard split (PEC ratio 2.295, validated). This is pointwise near shadow
-  edges, not a whole-body-SAR mover. For skin the soft (s-pol) gate is clean;
-  the hard (p-pol) shadow decay wants the impedance-Fock eigenvalues
-  (`Ai'(t) - q Ai(t) = 0`, `q` from `eta = 1/n = 0.19 + 0.08j`), a small
-  per-band solve. But since shadow dose is small, even getting the hard
-  constant slightly wrong is a small absolute error.
+  edges, not a whole-body-SAR mover. For skin the soft (s-pol) gate is clean
+  (exponent 0.402). The hard (p-pol) shadow decay on skin is also clean
+  (exponent 0.455) but the soft/hard ratio drops to 1.6-1.9 (below the PEC
+  2.295 and decreasing with `kR`): the lossy impedance damps the hard creeping
+  wave less asymmetrically than PEC. This is what the impedance-Fock
+  eigenvalues capture (`Ai'(t) - q Ai(t) = 0`, `q` from `eta = 1/n =
+  0.19 + 0.08j`), a small per-band solve pulling the hard `q1` from 1.019 up
+  toward ~1.4. Since shadow dose is ~1e-6 of lit, even a modest hard-constant
+  error is small in absolute dose; the impedance correction is included for
+  correctness, not because it moves the SAR.
 - Coherent multi-edge / double diffraction (tier 3's reach) is not justified by
   the dose impact and is out, matching the steer.
 - Distal occlusion (one body part shadowing another) is a separate geometry
