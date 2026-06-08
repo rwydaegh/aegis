@@ -38,6 +38,20 @@ except (ImportError, OSError):
         return lambda f: f
 
 
+_NUMBA_REQUIRED_MSG = (
+    "the self-shadow visibility bake requires numba: without the JIT the "
+    "per-triangle ray-cast runs as pure Python and is impractically slow "
+    "(minutes to effectively hang on a full body). Install it via "
+    "'pip install aegis[fast]' (it is also part of the aegis[viewer] extra)."
+)
+
+
+def _require_numba() -> None:
+    """Fail fast (not a silent pure-Python hang) when a real bake needs numba."""
+    if not NUMBA_AVAILABLE:
+        raise RuntimeError(_NUMBA_REQUIRED_MSG)
+
+
 # ---------------------------------------------------------------------------
 # Octahedral mapping (simple, full-sphere; Cigolle/Meyer)
 # ---------------------------------------------------------------------------
@@ -706,6 +720,7 @@ def bake_visibility_lut(
             vertex_hash=vhash,
         )
 
+    _require_numba()  # non-convex body: a real ray-cast bake follows
     vis, d2, occ_idx, grid_dirs = _bake_raw_maps(body, resolution, delta=delta)
     c = _signed_clearance(vis, grid_dirs)  # (M, R, R)
 
@@ -968,6 +983,7 @@ def directional_clearance(
     interpolation). ``d1 = inf`` (far field). A convex body has no blocked cells
     and returns all saturated-lit (the caller treats that as a gate no-op).
     """
+    _require_numba()
     k = np.atleast_2d(np.asarray(k_hats, dtype=np.float64))
     k = k / np.linalg.norm(k, axis=1, keepdims=True)
     omegas = -k  # (N, 3)
