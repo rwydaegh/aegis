@@ -33,7 +33,10 @@ from aegis.coherent._fast import (  # noqa: E402
     compute_q_batch_vmap,
     compute_q_for_body,
 )
-from aegis.coherent.body_channel import compute_body_channel  # noqa: E402
+from aegis.coherent.body_channel import (  # noqa: E402
+    compute_body_channel,
+    compute_body_channel_factored,
+)
 from aegis.coherent.exposure_operator import compute_exposure_operator  # noqa: E402
 from aegis.coherent.translation import (  # noqa: E402
     compute_static_path_gram,
@@ -286,3 +289,229 @@ def test_translation_batch_matches_per_body():
     for b in range(n_bodies):
         Q_one = q_translate(M_static, phi_b[b])
         np.testing.assert_allclose(np.asarray(Q_b[b]), np.asarray(Q_one), atol=ATOL, rtol=RTOL)
+
+
+# ---------------------------------------------------------------------------
+# Fock shadow gate parity (the _fast.py JAX twins vs the NumPy reference).
+# ---------------------------------------------------------------------------
+
+
+def _grazing_mesh(n=80, seed=4):
+    """Flat patch with normals spread away from +z, so incidence vs the scenario's
+    downward directions spans the grazing penumbra (gate materially active)."""
+    rng = np.random.default_rng(seed)
+    centroids = rng.uniform(-0.05, 0.05, (n, 3))
+    centroids[:, 2] = 0.0
+    nrm = rng.normal(0.0, 0.6, (n, 3))
+    nrm[:, 2] = 1.0
+    normals = nrm / np.linalg.norm(nrm, axis=1, keepdims=True)
+    areas = np.full(n, 1e-4)
+    return normals, centroids, areas
+
+
+def test_fast_gate_off_bit_identical():
+    """fock_R=None must reproduce the current ungated twin output bit-for-bit."""
+    normals, centroids, areas = _grazing_mesh()
+    sc = _scenario()
+
+    common = dict(
+        normals=jnp.asarray(normals),
+        centroids=jnp.asarray(centroids),
+        center_k_hat=jnp.asarray(sc["center_paths"].k_hat),
+        center_psi=jnp.asarray(sc["center_psi_gained"]),
+        array_offsets=jnp.asarray(sc["offsets"]),
+        n_tilde=sc["n_tilde"],
+        sigma=sc["sigma"],
+        freq_hz=sc["freq_hz"],
+    )
+    G_default = compute_body_channel_factored_jax(**common)
+    G_none = compute_body_channel_factored_jax(**common, fock_R=None)
+    # Bit-identical: the None branch must skip the gate entirely.
+    np.testing.assert_array_equal(np.asarray(G_none), np.asarray(G_default))
+
+    # Same through the Q twins (single body and vmap batch).
+    Q_default = compute_q_for_body(
+        jnp.asarray(normals),
+        jnp.asarray(centroids),
+        jnp.asarray(areas),
+        jnp.asarray(sc["center_paths"].k_hat),
+        jnp.asarray(sc["center_psi_gained"]),
+        jnp.asarray(sc["offsets"]),
+        sc["n_tilde"],
+        sc["sigma"],
+        sc["freq_hz"],
+    )
+    Q_none = compute_q_for_body(
+        jnp.asarray(normals),
+        jnp.asarray(centroids),
+        jnp.asarray(areas),
+        jnp.asarray(sc["center_paths"].k_hat),
+        jnp.asarray(sc["center_psi_gained"]),
+        jnp.asarray(sc["offsets"]),
+        sc["n_tilde"],
+        sc["sigma"],
+        sc["freq_hz"],
+        fock_R=None,
+    )
+    np.testing.assert_array_equal(np.asarray(Q_none), np.asarray(Q_default))
+
+
+def _q_F_h_impedance(sc, R):
+    """Representative impedance-Fock hard eigenvalue (matches engine fock_params)."""
+    from aegis.kernels import fock
+
+    eta = complex(1.0 / sc["n_tilde"])
+    k0 = 2.0 * np.pi * sc["freq_hz"] / 3e8
+    kR = float(np.clip(k0 * R, 4.0, 2048.0))
+    return fock.fock_impedance_param(eta, kR, "hard")
+
+
+@pytest.mark.parametrize("impedance", [False, True])
+def test_fast_gate_matches_numpy_reference(impedance):
+    """Gated JAX twin G_tilde and Q match the NumPy compute_body_channel_factored.
+
+    Both run under the JAX x64 backend (the test module forces
+    AEGIS_ARRAY_BACKEND=jax and jax_enable_x64), so the only divergence is
+    summation order (einsum vs the numpy np.add.at scatter in the reference).
+    rtol 1e-6 / atol 1e-9 absorbs that float64 round-off, matching the tolerance
+    of the pre-existing factored-equivalence test.
+    """
+    normals, centroids, areas = _grazing_mesh()
+    sc = _scenario()
+    M = normals.shape[0]
+    R = 0.03
+    fock_R = np.full(M, R)
+    q_F_h = _q_F_h_impedance(sc, R) if impedance else None
+
+    # NumPy reference: factored channel with the gate (center-keyed fock_R).
+    G_ref = compute_body_channel_factored(
+        normals,
+        centroids,
+        sc["center_paths"].k_hat,
+        sc["center_psi_gained"],
+        sc["expanded"].psi,
+        sc["expanded"].element_index,
+        sc["n_tilde"],
+        sc["sigma"],
+        sc["freq_hz"],
+        sc["n_elements"],
+        fock_R=fock_R,
+        q_F_s=None,
+        q_F_h=q_F_h,
+    )
+    Q_ref = compute_exposure_operator(G_ref, jnp.asarray(areas))
+
+    # JAX twin with the same gate.
+    G_fast = compute_body_channel_factored_jax(
+        normals=jnp.asarray(normals),
+        centroids=jnp.asarray(centroids),
+        center_k_hat=jnp.asarray(sc["center_paths"].k_hat),
+        center_psi=jnp.asarray(sc["center_psi_gained"]),
+        array_offsets=jnp.asarray(sc["offsets"]),
+        n_tilde=sc["n_tilde"],
+        sigma=sc["sigma"],
+        freq_hz=sc["freq_hz"],
+        fock_R=jnp.asarray(fock_R),
+        q_F_s=None,
+        q_F_h=q_F_h,
+    )
+    Q_fast = compute_q_for_body(
+        jnp.asarray(normals),
+        jnp.asarray(centroids),
+        jnp.asarray(areas),
+        jnp.asarray(sc["center_paths"].k_hat),
+        jnp.asarray(sc["center_psi_gained"]),
+        jnp.asarray(sc["offsets"]),
+        sc["n_tilde"],
+        sc["sigma"],
+        sc["freq_hz"],
+        fock_R=jnp.asarray(fock_R),
+        q_F_s=None,
+        q_F_h=q_F_h,
+    )
+
+    np.testing.assert_allclose(np.asarray(G_fast), np.asarray(G_ref), atol=ATOL, rtol=RTOL)
+    np.testing.assert_allclose(np.asarray(Q_fast), np.asarray(Q_ref), atol=ATOL, rtol=RTOL)
+
+    # The gate must be materially active (otherwise this would pass trivially).
+    G_ungated = compute_body_channel_factored_jax(
+        normals=jnp.asarray(normals),
+        centroids=jnp.asarray(centroids),
+        center_k_hat=jnp.asarray(sc["center_paths"].k_hat),
+        center_psi=jnp.asarray(sc["center_psi_gained"]),
+        array_offsets=jnp.asarray(sc["offsets"]),
+        n_tilde=sc["n_tilde"],
+        sigma=sc["sigma"],
+        freq_hz=sc["freq_hz"],
+    )
+    rel = np.linalg.norm(np.asarray(G_fast) - np.asarray(G_ungated)) / np.linalg.norm(np.asarray(G_ungated))
+    assert rel > 1e-2
+
+    # vmap batch traces the gate (q_F_h is a static Python scalar, not a tracer)
+    # and matches the per-body Q.
+    n_bodies = 3
+    normals_b = np.broadcast_to(normals, (n_bodies, *normals.shape)).copy()
+    centroids_b = np.broadcast_to(centroids, (n_bodies, *centroids.shape)).copy()
+    areas_b = np.broadcast_to(areas, (n_bodies, *areas.shape)).copy()
+    k_b = np.broadcast_to(sc["center_paths"].k_hat, (n_bodies, *sc["center_paths"].k_hat.shape)).copy()
+    psi_b = np.broadcast_to(sc["center_psi_gained"], (n_bodies, *sc["center_psi_gained"].shape)).copy()
+    fock_R_b = np.broadcast_to(fock_R, (n_bodies, *fock_R.shape)).copy()
+
+    Q_batch = compute_q_batch_vmap(
+        jnp.asarray(normals_b),
+        jnp.asarray(centroids_b),
+        jnp.asarray(areas_b),
+        jnp.asarray(k_b),
+        jnp.asarray(psi_b),
+        jnp.asarray(sc["offsets"]),
+        sc["n_tilde"],
+        sc["sigma"],
+        sc["freq_hz"],
+        fock_R_b=jnp.asarray(fock_R_b),
+        q_F_s=None,
+        q_F_h=q_F_h,
+    )
+    for b in range(n_bodies):
+        np.testing.assert_allclose(np.asarray(Q_batch[b]), np.asarray(Q_fast), atol=ATOL, rtol=RTOL)
+
+
+def test_fast_lit_unchanged():
+    """Deep-lit triangles: g -> 1, so the gated twin matches the ungated twin."""
+    sc = _scenario()
+    # Normals near +z, single straight-down direction -> mu ~ 1 (deep lit).
+    rng = np.random.default_rng(2)
+    n = 40
+    centroids = rng.uniform(-0.05, 0.05, (n, 3))
+    centroids[:, 2] = 0.0
+    nrm = rng.normal(0.0, 0.03, (n, 3))
+    nrm[:, 2] = 1.0
+    normals = nrm / np.linalg.norm(nrm, axis=1, keepdims=True)
+
+    k_hat = np.array([[0.0, 0.0, -1.0]])
+    assert np.all((normals @ (-k_hat).T) > 0.99)
+    psi = np.array([[1.0 + 0.2j, 0.3 - 0.1j, 0.0]]) * 0.1
+    offsets = sc["offsets"][:1]  # single element
+    fock_R = np.full(n, 0.1)
+
+    G_no = compute_body_channel_factored_jax(
+        normals=jnp.asarray(normals),
+        centroids=jnp.asarray(centroids),
+        center_k_hat=jnp.asarray(k_hat),
+        center_psi=jnp.asarray(psi),
+        array_offsets=jnp.asarray(offsets),
+        n_tilde=sc["n_tilde"],
+        sigma=sc["sigma"],
+        freq_hz=sc["freq_hz"],
+    )
+    G_gate = compute_body_channel_factored_jax(
+        normals=jnp.asarray(normals),
+        centroids=jnp.asarray(centroids),
+        center_k_hat=jnp.asarray(k_hat),
+        center_psi=jnp.asarray(psi),
+        array_offsets=jnp.asarray(offsets),
+        n_tilde=sc["n_tilde"],
+        sigma=sc["sigma"],
+        freq_hz=sc["freq_hz"],
+        fock_R=jnp.asarray(fock_R),
+    )
+    np.testing.assert_allclose(np.asarray(G_gate), np.asarray(G_no), rtol=1e-5, atol=1e-12)

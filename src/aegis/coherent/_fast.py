@@ -28,6 +28,7 @@ from __future__ import annotations
 import jax
 import jax.numpy as jnp
 
+from aegis.coherent.body_channel import _fock_gate_factors
 from aegis.coherent.fresnel_operator import compute_fresnel_operator
 from aegis.constants import C_0
 from aegis.defaults import NUMERICAL_FLOOR
@@ -43,6 +44,9 @@ def compute_body_channel_factored_jax(
     n_tilde,
     sigma,
     freq_hz,
+    fock_R=None,
+    q_F_s=None,
+    q_F_h=None,
 ):
     """Build G_tilde(r) for a single body using factored Fresnel.
 
@@ -71,6 +75,17 @@ def compute_body_channel_factored_jax(
         Tissue conductivity [S/m].
     freq_hz : float
         Carrier frequency [Hz].
+    fock_R : (M,) or (M, N_center) or None
+        In-incidence-plane radius of curvature [m] for the Fock shadow gate,
+        keyed on the center directions. ``None`` (default) disables the gate,
+        reproducing the ungated channel bit-for-bit (back-compat). This mirrors
+        the NumPy reference ``compute_body_channel_factored``.
+    q_F_s, q_F_h : complex or None
+        Impedance-Fock parameters for the soft (TE) and hard (TM) creeping
+        constants. ``None`` selects the PEC Fock gate. These are static scalar
+        constants (the Airy/Leontovich eigenvalue solve runs in numpy/scipy
+        outside the traced region inside :func:`_fock_gate_factors`), so they
+        must be passed as Python scalars, not traced arrays.
 
     Returns
     -------
@@ -79,6 +94,16 @@ def compute_body_channel_factored_jax(
     k0 = 2.0 * jnp.pi * freq_hz / C_0
 
     mu, t_s, t_p, e_s, e_p = compute_fresnel_operator(normals, center_k_hat, n_tilde)
+
+    # Polarization-resolved Fock gate folds into the TE/TM transmission
+    # coefficients per center direction, identical to the NumPy reference
+    # ``apply_fresnel_operator(psi, g_soft*t_s, g_hard*t_p, e_s, e_p)``. The
+    # factoring (one Fresnel solve per unique direction) is preserved because
+    # the gate is a per-(triangle, direction) scalar multiplier on t_s / t_p.
+    if fock_R is not None:
+        g_soft, g_hard = _fock_gate_factors(mu, fock_R, freq_hz, q_F_s, q_F_h)
+        t_s = g_soft * t_s
+        t_p = g_hard * t_p
 
     xi = xi_from_mu(mu, n_tilde)
     alpha = -jnp.imag(k0 * xi)
@@ -113,8 +138,15 @@ def compute_q_for_body(
     n_tilde,
     sigma,
     freq_hz,
+    fock_R=None,
+    q_F_s=None,
+    q_F_h=None,
 ):
     """Single-body Q via the factored body channel.
+
+    ``fock_R`` / ``q_F_s`` / ``q_F_h`` thread the Fock shadow gate through the
+    factored channel (see :func:`compute_body_channel_factored_jax`). ``None``
+    disables the gate.
 
     Returns
     -------
@@ -129,6 +161,9 @@ def compute_q_for_body(
         n_tilde,
         sigma,
         freq_hz,
+        fock_R=fock_R,
+        q_F_s=q_F_s,
+        q_F_h=q_F_h,
     )
     Q = jnp.einsum("m,mia,mib->ab", areas, jnp.conj(G_tilde), G_tilde)
     return 0.5 * (Q + jnp.conj(Q).T)
@@ -144,6 +179,9 @@ def compute_q_batch_vmap(
     n_tilde,
     sigma,
     freq_hz,
+    fock_R_b=None,
+    q_F_s=None,
+    q_F_h=None,
 ):
     """Batched (over bodies) Q construction via ``jax.vmap``.
 
@@ -160,12 +198,24 @@ def compute_q_batch_vmap(
     center_psi_b : (B, N_c, 3) complex
     array_offsets : (M_ant, 3) -- shared across bodies
     n_tilde, sigma, freq_hz : same as ``compute_body_channel``.
+    fock_R_b : (B, M) or (B, M, N_c) or None
+        Per-body Fock radius (mapped over the leading body axis). ``None``
+        disables the gate for the whole batch, matching the ungated behavior
+        bit-for-bit.
+    q_F_s, q_F_h : complex or None
+        Shared (non-mapped) impedance-Fock scalar parameters. Passed as Python
+        scalars so the eigenvalue solve stays a numpy/scipy constant outside the
+        traced region (see :func:`compute_body_channel_factored_jax`).
 
     Returns
     -------
     Q_b : (B, M_ant, M_ant) complex
     """
-    in_axes = (0, 0, 0, 0, 0, None, None, None, None)
+    # ``fock_R`` is per-body (mapped); ``q_F_s`` / ``q_F_h`` are shared static
+    # scalars (not mapped). When the gate is off, ``fock_R_b`` is ``None`` and is
+    # broadcast (in_axes None) so every body runs the ungated path.
+    fock_axis = None if fock_R_b is None else 0
+    in_axes = (0, 0, 0, 0, 0, None, None, None, None, fock_axis, None, None)
     return jax.vmap(compute_q_for_body, in_axes=in_axes)(
         normals_b,
         centroids_b,
@@ -176,4 +226,7 @@ def compute_q_batch_vmap(
         n_tilde,
         sigma,
         freq_hz,
+        fock_R_b,
+        q_F_s,
+        q_F_h,
     )
