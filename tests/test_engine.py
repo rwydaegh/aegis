@@ -227,12 +227,14 @@ class TestLevel5:
 
 class TestLevel6:
     def test_zero_curvature_matches_level3(self, engine, ico_mesh, multi_path):
-        """With H=0, GELU -> ReLU, Level 6 -> Level 3 (approximately)."""
+        """With H=0 and no shadow gate, Level 6 reduces to Level 3 (ReLU).
+
+        The engine default is now diffraction_model="fock", so this reduction
+        holds only for "none" (no gate); the curvature term vanishes at H=0.
+        """
         r3 = engine.compute(ico_mesh, multi_path, level=3)
         curvature_H = np.zeros(ico_mesh.n_triangles)
-        r6 = engine.compute(ico_mesh, multi_path, level=6, curvature_H=curvature_H)
-        # GELU with sigma->0 converges to ReLU, but not exactly at sigma=0
-        # With sigma=1e-30, it should be very close
+        r6 = engine.compute(ico_mesh, multi_path, level=6, curvature_H=curvature_H, diffraction_model="none")
         np.testing.assert_allclose(r6.sab, r3.sab, rtol=1e-6)
 
     def test_sab_non_negative(self, engine, ico_mesh, multi_path):

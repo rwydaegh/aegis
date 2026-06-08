@@ -344,8 +344,8 @@ class TestComputeSabCoherent:
             engine.compute_sab(ico_mesh, paths, level=8, precoder=precoder)
 
     def test_compute_sab_mode_spatial_matches_level(self, engine, ico_mesh, multi_path):
-        """compute_sab with mode='spatial' matches mode-less level 3."""
-        sab_mode = engine.compute_sab(ico_mesh, multi_path, mode="spatial")
+        """compute_sab mode='spatial' (no gate) matches mode-less level 3 (ReLU)."""
+        sab_mode = engine.compute_sab(ico_mesh, multi_path, mode="spatial", diffraction_model="none")
         sab_level = engine.compute_sab(ico_mesh, multi_path, level=3)
         np.testing.assert_allclose(sab_mode, sab_level, rtol=1e-12)
 

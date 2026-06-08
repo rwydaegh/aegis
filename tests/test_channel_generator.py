@@ -283,9 +283,11 @@ def test_generate_coherent_channel_structure():
     coh = generate_coherent_channel(preset["params"], xpr_db=8.0, **kw)
 
     n = coh.k_hat.shape[0]
-    assert n == incoh.n_paths and n > 0
+    assert n == incoh.n_paths
+    assert n > 0
     # coherent: complex field, one per path, in 3D
-    assert coh.psi.shape == (n, 3) and np.iscomplexobj(coh.psi)
+    assert coh.psi.shape == (n, 3)
+    assert np.iscomplexobj(coh.psi)
     assert np.any(np.abs(coh.psi.imag) > 0)
     # center-of-array contract: all element_index zero
     assert np.all(np.asarray(coh.element_index) == 0)

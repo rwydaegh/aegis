@@ -177,7 +177,7 @@ class TestSpatialKernelComposability:
     def test_spatial_fresnel_matches_level3(self, mesh, paths):
         engine = DosimetryEngine(SKIN_28GHZ)
         r3 = engine.compute(mesh, paths, level=3)
-        r_sp = engine.compute(mesh, paths, mode="spatial", fresnel=True)
+        r_sp = engine.compute(mesh, paths, mode="spatial", fresnel=True, diffraction_model="none")
         np.testing.assert_allclose(r_sp.sab, r3.sab, rtol=1e-12, atol=1e-15)
 
     @given(mesh=random_mesh(), paths=random_paths())
@@ -185,7 +185,7 @@ class TestSpatialKernelComposability:
     def test_spatial_no_fresnel_matches_level2(self, mesh, paths):
         engine = DosimetryEngine(SKIN_28GHZ)
         r2 = engine.compute(mesh, paths, level=2)
-        r_sp = engine.compute(mesh, paths, mode="spatial", fresnel=False)
+        r_sp = engine.compute(mesh, paths, mode="spatial", fresnel=False, diffraction_model="none")
         np.testing.assert_allclose(r_sp.sab, r2.sab, rtol=1e-12, atol=1e-15)
 
 
