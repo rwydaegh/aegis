@@ -156,16 +156,11 @@ class DosimetryEngine:
     def _validate_inter_body(inter_body: str) -> None:
         """Validate the inter-body backend selector.
 
-        ``"off"`` is the only implemented option. ``"specular1"`` is a Phase B
-        feature and raises NotImplementedError; anything else is a ValueError.
+        ``"off"`` (default) and ``"specular1"`` (single specular recapture
+        bounce) are the implemented options; anything else is a ValueError.
         """
         if inter_body not in ("off", "specular1"):
             raise ValueError(f"inter_body must be 'off' or 'specular1', got {inter_body!r}")
-        if inter_body == "specular1":
-            raise NotImplementedError(
-                "inter_body='specular1' (single-bounce inter-body reflection) is a Phase B "
-                "feature and not yet implemented; use inter_body='off'."
-            )
 
     def _fock_params(
         self,
@@ -391,9 +386,11 @@ class DosimetryEngine:
         diffraction_model : shadow-edge gate "none" | "gelu" | "fock". Default
             "fock". Levels 0-5 have no shadow gate and ignore diffraction_model;
             it applies to spatial mode, level 6, and coherent levels 7-8.
-        inter_body : "off" (default) or "specular1". The single-bounce inter-body
-            backend is a Phase B feature; passing "specular1" raises
-            NotImplementedError.
+        inter_body : "off" (default) or "specular1". "specular1" adds one
+            specular recapture bounce (off-by-default, single bounce): each lit
+            triangle's Fresnel-reflected ray is cast through the visibility BVH
+            and, when it strikes another body triangle, the recaptured power is
+            deposited there. Applies to spatial mode and legacy levels >= 2.
         curvature : enable curvature correction (spatial mode)
         _timings : if provided, fine-grained timing data is written into this dict
 
@@ -445,15 +442,22 @@ class DosimetryEngine:
                 sigma=active_sigma,
                 _timings=_timings,
             )
-            if occlusion is not None and mode == "spatial":
-                # Re-build the result with occlusion-multiplied sab. We post-
-                # multiply the per-triangle Sab so paper eq. 3.1's O(r, k_hat)
-                # factor is applied to the spatial map.
-                occ = np.asarray(occlusion, dtype=result.sab.dtype)
-                if occ.ndim == 2:
-                    pw = np.asarray(paths.power, dtype=result.sab.dtype)
-                    occ = (occ * pw[None, :]).sum(axis=1) / max(pw.sum(), 1e-30)
-                new_sab = result.sab * occ
+            if mode == "spatial" and (occlusion is not None or inter_body == "specular1"):
+                # Re-build the result with the occlusion-multiplied direct sab
+                # plus the optional specular recapture. Occlusion post-multiplies
+                # the per-triangle Sab (paper eq. 3.1's O(r, k_hat) factor);
+                # specular1 adds a single recapture bounce on top.
+                new_sab = result.sab
+                if occlusion is not None:
+                    occ = np.asarray(occlusion, dtype=result.sab.dtype)
+                    if occ.ndim == 2:
+                        pw = np.asarray(paths.power, dtype=result.sab.dtype)
+                        occ = (occ * pw[None, :]).sum(axis=1) / max(pw.sum(), 1e-30)
+                    new_sab = new_sab * occ
+                if inter_body == "specular1":
+                    from aegis.geometry.inter_body import specular1_sab
+
+                    new_sab = new_sab + specular1_sab(body, paths, active_n_tilde)
                 result = self._build_result(
                     body,
                     paths,
@@ -525,6 +529,10 @@ class DosimetryEngine:
                 pw = np.asarray(paths.power, dtype=sab.dtype)
                 occ = (occ * pw[None, :]).sum(axis=1) / max(pw.sum(), 1e-30)
             sab = sab * occ
+        if inter_body == "specular1" and level is not None and level >= 2:
+            from aegis.geometry.inter_body import specular1_sab
+
+            sab = sab + specular1_sab(body, paths, active_n_tilde)
         return self._build_result(
             body,
             paths,
@@ -585,9 +593,9 @@ class DosimetryEngine:
         compute_sab stays numerically consistent with compute().sab (default
         "fock"). The Fock radius is a geometry constant, so threading it does not
         break autodiff w.r.t. the precoder or source. ``inter_body`` mirrors
-        compute()'s validation contract ("specular1" raises NotImplementedError)
-        but is otherwise ignored: single-bounce recapture is Phase B and does not
-        apply to the autodiff path.
+        compute()'s validation contract but is otherwise ignored here: the
+        single specular recapture is a ray-cast pass that is not differentiable,
+        so it does not apply to the autodiff path.
         """
         if level is not None and mode is not None:
             raise ValueError(_ERR_LEVEL_AND_MODE)
@@ -598,8 +606,8 @@ class DosimetryEngine:
 
         active_freq_hz, active_n_tilde, active_T0, active_sigma = self._active_em_params(freq_hz)
         effective_model = self._resolve_diffraction_model(diffraction_model, diffraction)
-        # Single-bounce recapture is Phase B and does not apply to the autodiff
-        # path; validate-and-ignore to mirror compute()'s error contract.
+        # The single specular recapture is a non-differentiable ray-cast pass;
+        # validate-and-ignore here to mirror compute()'s error contract.
         self._validate_inter_body(inter_body)
 
         # Mode-based path for spatial

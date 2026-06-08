@@ -380,6 +380,264 @@ def ray_mesh_any_hit(
 
 
 # ---------------------------------------------------------------------------
+# Closest-hit ray-mesh intersection (for inter-body specular recapture)
+# ---------------------------------------------------------------------------
+
+
+@njit(cache=True)
+def _ray_triangle_t(
+    ox: float,
+    oy: float,
+    oz: float,
+    dx: float,
+    dy: float,
+    dz: float,
+    v0x: float,
+    v0y: float,
+    v0z: float,
+    e1x: float,
+    e1y: float,
+    e1z: float,
+    e2x: float,
+    e2y: float,
+    e2z: float,
+    t_min: float,
+) -> float:
+    """Moller-Trumbore intersection returning the ray parameter t, or -1.0 on miss."""
+    px = dy * e2z - dz * e2y
+    py = dz * e2x - dx * e2z
+    pz = dx * e2y - dy * e2x
+
+    det = e1x * px + e1y * py + e1z * pz
+    if abs(det) < 1e-12:
+        return -1.0
+    inv_det = 1.0 / det
+
+    tx = ox - v0x
+    ty = oy - v0y
+    tz = oz - v0z
+    u = (tx * px + ty * py + tz * pz) * inv_det
+    if u < 0.0 or u > 1.0:
+        return -1.0
+
+    qx = ty * e1z - tz * e1y
+    qy = tz * e1x - tx * e1z
+    qz = tx * e1y - ty * e1x
+    v = (dx * qx + dy * qy + dz * qz) * inv_det
+    if v < 0.0 or (u + v) > 1.0:
+        return -1.0
+
+    t = (e2x * qx + e2y * qy + e2z * qz) * inv_det
+    if t > t_min:
+        return t
+    return -1.0
+
+
+@njit(cache=True)
+def _ray_mesh_closest_hit_numba(
+    ox,
+    oy,
+    oz,
+    dx,
+    dy,
+    dz,
+    bvh_bmin,
+    bvh_bmax,
+    bvh_left,
+    bvh_right,
+    bvh_start,
+    bvh_count,
+    tri_indices,
+    tri_v0x,
+    tri_v0y,
+    tri_v0z,
+    tri_e1x,
+    tri_e1y,
+    tri_e1z,
+    tri_e2x,
+    tri_e2y,
+    tri_e2z,
+    ignore_tri,
+    t_min,
+):
+    """Numba-JIT BVH traversal returning the nearest hit triangle index, or -1."""
+    inv_dx = 1.0 / dx if abs(dx) > 1e-15 else (1.0e30 if dx >= 0 else -1.0e30)
+    inv_dy = 1.0 / dy if abs(dy) > 1e-15 else (1.0e30 if dy >= 0 else -1.0e30)
+    inv_dz = 1.0 / dz if abs(dz) > 1e-15 else (1.0e30 if dz >= 0 else -1.0e30)
+
+    stack = np.empty(64, dtype=np.int32)
+    stack[0] = 0
+    sp = 1
+
+    best_t = 1.0e300
+    best_tri = -1
+
+    while sp > 0:
+        sp -= 1
+        ni = stack[sp]
+        bminx = bvh_bmin[ni, 0]
+        bminy = bvh_bmin[ni, 1]
+        bminz = bvh_bmin[ni, 2]
+        bmaxx = bvh_bmax[ni, 0]
+        bmaxy = bvh_bmax[ni, 1]
+        bmaxz = bvh_bmax[ni, 2]
+        if not _ray_aabb_hit(ox, oy, oz, inv_dx, inv_dy, inv_dz, bminx, bminy, bminz, bmaxx, bmaxy, bmaxz):
+            continue
+
+        li = bvh_left[ni]
+        ri = bvh_right[ni]
+        if li < 0 and ri < 0:
+            s0 = bvh_start[ni]
+            e0 = s0 + bvh_count[ni]
+            for k in range(s0, e0):
+                ti = tri_indices[k]
+                if ti == ignore_tri:
+                    continue
+                t = _ray_triangle_t(
+                    ox,
+                    oy,
+                    oz,
+                    dx,
+                    dy,
+                    dz,
+                    tri_v0x[ti],
+                    tri_v0y[ti],
+                    tri_v0z[ti],
+                    tri_e1x[ti],
+                    tri_e1y[ti],
+                    tri_e1z[ti],
+                    tri_e2x[ti],
+                    tri_e2y[ti],
+                    tri_e2z[ti],
+                    t_min,
+                )
+                if t > 0.0 and t < best_t:
+                    best_t = t
+                    best_tri = ti
+        else:
+            stack[sp] = li
+            sp += 1
+            stack[sp] = ri
+            sp += 1
+
+    return best_tri
+
+
+@njit(cache=True)
+def _batch_closest_hits_numba(
+    ox,
+    oy,
+    oz,
+    dirs,
+    ignore,
+    n_rays,
+    t_min,
+    bvh_bmin,
+    bvh_bmax,
+    bvh_left,
+    bvh_right,
+    bvh_start,
+    bvh_count,
+    tri_order,
+    tri_v0x,
+    tri_v0y,
+    tri_v0z,
+    tri_e1x,
+    tri_e1y,
+    tri_e1z,
+    tri_e2x,
+    tri_e2y,
+    tri_e2z,
+):
+    """Closest-hit triangle index for a batch of rays. Returns (n_rays,) int32."""
+    out = np.empty(n_rays, dtype=np.int32)
+    for r in range(n_rays):
+        out[r] = _ray_mesh_closest_hit_numba(
+            ox[r],
+            oy[r],
+            oz[r],
+            dirs[r, 0],
+            dirs[r, 1],
+            dirs[r, 2],
+            bvh_bmin,
+            bvh_bmax,
+            bvh_left,
+            bvh_right,
+            bvh_start,
+            bvh_count,
+            tri_order,
+            tri_v0x,
+            tri_v0y,
+            tri_v0z,
+            tri_e1x,
+            tri_e1y,
+            tri_e1z,
+            tri_e2x,
+            tri_e2y,
+            tri_e2z,
+            ignore[r],
+            t_min,
+        )
+    return out
+
+
+def batch_closest_hits(
+    origins: np.ndarray,
+    dirs: np.ndarray,
+    ignore: np.ndarray,
+    bvh: dict[str, np.ndarray],
+    tri_order: np.ndarray,
+    tri_data: dict[str, np.ndarray],
+    t_min: float,
+) -> np.ndarray:
+    """Nearest hit triangle index for each ray, -1 on miss.
+
+    Parameters
+    ----------
+    origins : (R, 3) ray origins
+    dirs : (R, 3) ray directions (need not be normalised)
+    ignore : (R,) triangle index to skip per ray (e.g. the originating triangle)
+    bvh, tri_order, tri_data : structures from build_bvh / _precompute_triangle_data
+    t_min : minimum ray parameter to count as a hit (self-intersection guard)
+
+    Returns
+    -------
+    (R,) int array of hit triangle indices, -1 where the ray escapes.
+    """
+    origins = np.ascontiguousarray(origins, dtype=np.float64)
+    dirs = np.ascontiguousarray(dirs, dtype=np.float64)
+    ignore = np.ascontiguousarray(ignore, dtype=np.int32)
+    n_rays = origins.shape[0]
+    if n_rays == 0:
+        return np.empty(0, dtype=np.int32)
+    return _batch_closest_hits_numba(
+        origins[:, 0],
+        origins[:, 1],
+        origins[:, 2],
+        dirs,
+        ignore,
+        n_rays,
+        t_min,
+        bvh["bmin"],
+        bvh["bmax"],
+        bvh["left"],
+        bvh["right"],
+        bvh["start"],
+        bvh["count"],
+        tri_order,
+        tri_data["tri_v0x"],
+        tri_data["tri_v0y"],
+        tri_data["tri_v0z"],
+        tri_data["tri_e1x"],
+        tri_data["tri_e1y"],
+        tri_data["tri_e1z"],
+        tri_data["tri_e2x"],
+        tri_data["tri_e2y"],
+        tri_data["tri_e2z"],
+    )
+
+
+# ---------------------------------------------------------------------------
 # Ambient occlusion (exposure fraction eta)
 # ---------------------------------------------------------------------------
 
