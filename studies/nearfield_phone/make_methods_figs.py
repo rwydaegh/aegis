@@ -15,7 +15,14 @@ from aegis.nearfield.scenarios import make_source, standard_placements
 from studies.nearfield_phone import config as C
 
 sys.path.insert(0, str(C.REPO / "theory" / "scripts"))
-from _plot_style import apply_monograph_style, fig_size_ieee  # noqa: E402
+from _plot_style import apply_monograph_style  # noqa: E402
+
+# Single-column report: full text width (~6.5 in), wider than tall.
+REPORT_W_IN = 6.5
+
+
+def rsize(aspect: float) -> tuple[float, float]:
+    return (REPORT_W_IN, REPORT_W_IN * float(aspect))
 
 
 def fig_geometry():
@@ -23,7 +30,7 @@ def fig_geometry():
     mesh = C.load_mesh("duke")
     c = np.asarray(mesh.centroids) * 1e3
     pl = standard_placements(mesh)
-    fig, axes = plt.subplots(1, 2, figsize=fig_size_ieee(columns=2, aspect=0.55))
+    fig, axes = plt.subplots(1, 2, figsize=rsize(0.5))
     for ax, (a, b) in zip(axes, [(1, 2), (0, 2)], strict=False):
         ax.scatter(c[:, a], c[:, b], s=0.15, color="0.78", rasterized=True)
         for name, p in pl.items():
@@ -35,7 +42,7 @@ def fig_geometry():
     axes[0].set_xlabel("y [mm] (face at -y)")
     axes[0].set_ylabel("z [mm]")
     axes[1].set_xlabel("x [mm]")
-    axes[0].legend(frameon=False, fontsize=6, loc="lower left")
+    axes[0].legend(frameon=False, fontsize=8, loc="lower left")
     axes[0].set_title("Hand-held placements on the Duke phantom")
     fig.tight_layout()
     _save(fig, "fig_geometry")
@@ -56,16 +63,21 @@ def fig_apd_map():
     order = np.argsort(sab[lit])
     cc = c[lit][order]
     ss = sab[lit][order]
-    fig, ax = plt.subplots(figsize=fig_size_ieee(columns=1, aspect=1.1))
-    scat = ax.scatter(cc[:, 0], cc[:, 2], c=ss, s=2.5, cmap="inferno", rasterized=True)
-    ax.set_aspect("equal")
-    ax.set_ylim(c[:, 2].max() - 450, c[:, 2].max() + 20)
-    ax.set_xlabel("x [mm]")
-    ax.set_ylabel("z [mm]")
-    ax.set_title("Surface APD, front of eyes\n2450 MHz, 1 W radiated")
-    cb = fig.colorbar(scat, ax=ax, shrink=0.8)
+    zhi = c[:, 2].max() + 20
+    zlo = c[:, 2].max() - 450
+    fig, axes = plt.subplots(1, 2, figsize=rsize(0.62))
+    scat = None
+    for ax, (h, hlabel) in zip(axes, [(0, "x [mm]"), (1, "y [mm] (face at -y)")], strict=False):
+        scat = ax.scatter(cc[:, h], cc[:, 2], c=ss, s=2.5, cmap="inferno", rasterized=True)
+        ax.set_aspect("equal")
+        ax.set_ylim(zlo, zhi)
+        ax.set_xlabel(hlabel)
+    axes[0].set_ylabel("z [mm]")
+    axes[0].set_title("front view")
+    axes[1].set_title("side view")
+    fig.suptitle("Surface absorbed power, front of eyes (2450 MHz, 1 W radiated)", y=1.0)
+    cb = fig.colorbar(scat, ax=axes, shrink=0.8)
     cb.set_label(r"$S_{ab}$  [W/m$^2$ per W]")
-    fig.tight_layout()
     _save(fig, "fig_apd_map")
 
 

@@ -45,7 +45,7 @@ that comes out at about +/- 27% (one standard deviation), so
 
     2.62 W/kg/W  ->  roughly 2.6 +/- 0.7 W/kg/W,
 
-with the full range over phone orientations running from about 2.0 to 3.8 W/kg/W.
+with the full range over phone orientations running from about 0.8 to 3.8 W/kg/W.
 On top of that, differences between body models (adult vs child) add a further
 spread of roughly 30 to 40%: smaller bodies absorb more per kilogram, so a child
 model can sit noticeably above the adult value. The per-scenario and

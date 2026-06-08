@@ -26,7 +26,16 @@ from studies.nearfield_phone import analysis as A
 from studies.nearfield_phone import config as C
 
 sys.path.insert(0, str(C.REPO / "theory" / "scripts"))
-from _plot_style import apply_monograph_style, fig_size_ieee  # noqa: E402
+from _plot_style import apply_monograph_style  # noqa: E402
+
+# Single-column report: figures span the full text width (~6.5 in) and are wider
+# than tall. aspect = height / width.
+REPORT_W_IN = 6.5
+
+
+def rsize(aspect: float) -> tuple[float, float]:
+    return (REPORT_W_IN, REPORT_W_IN * float(aspect))
+
 
 # The dose-model team's cited reference value.
 BRAIN_REF = {
@@ -48,7 +57,7 @@ METRIC_LABELS = {
 def fig_distance_metrics(df):
     apply_monograph_style(mode="png")
     metrics = ["pssar_10g", "sar_wb", "peak_apd", "apd_4cm2"]
-    fig, axes = plt.subplots(2, 2, figsize=fig_size_ieee(columns=2, aspect=0.7))
+    fig, axes = plt.subplots(2, 2, figsize=rsize(0.62))
     pl = "front_of_eyes"
     sub_all = df[(df.placement == pl) & (df.freq_mhz == REPORT_BAND) & (df.phantom == "duke")]
     for ax, met in zip(axes.ravel(), metrics, strict=False):
@@ -73,7 +82,7 @@ def fig_distance_metrics(df):
         ax.set_yscale("log")
         ax.set_xlabel("source-to-body distance [mm]")
         ax.set_ylabel(METRIC_LABELS[met])
-        ax.legend(frameon=False, fontsize=6)
+        ax.legend(frameon=False, fontsize=8)
     fig.suptitle(f"Duke, front of eyes, {REPORT_BAND} MHz", y=1.0)
     fig.tight_layout()
     _save(fig, "fig_distance_metrics")
@@ -81,7 +90,7 @@ def fig_distance_metrics(df):
 
 def fig_distance_bands(df):
     apply_monograph_style(mode="png")
-    fig, ax = plt.subplots(figsize=fig_size_ieee(columns=1, aspect=0.8))
+    fig, ax = plt.subplots(figsize=rsize(0.52))
     pl = "front_of_eyes"
     bands = sorted(df.freq_mhz.unique())
     cmap = plt.cm.viridis(np.linspace(0, 0.95, len(bands)))
@@ -96,14 +105,14 @@ def fig_distance_bands(df):
     ax.set_xlabel("source-to-body distance [mm]")
     ax.set_ylabel(r"psSAR10g  [W/kg per W]")
     ax.set_title("Distance law across bands (front of eyes)")
-    ax.legend(frameon=False, fontsize=6, ncol=2, title="MHz", title_fontsize=6)
+    ax.legend(frameon=False, fontsize=8, ncol=2, title="MHz", title_fontsize=8)
     fig.tight_layout()
     _save(fig, "fig_distance_bands")
 
 
 def fig_uncertainty(df):
     apply_monograph_style(mode="png")
-    fig, ax = plt.subplots(figsize=fig_size_ieee(columns=1, aspect=0.8))
+    fig, ax = plt.subplots(figsize=rsize(0.5))
     data, labels = [], []
     for pl in C.PLACEMENTS:
         d_ref = A.NOMINAL_D[pl]
@@ -118,7 +127,7 @@ def fig_uncertainty(df):
     for pc in parts["bodies"]:
         pc.set_alpha(0.4)
     ax.set_xticks(range(1, len(labels) + 1))
-    ax.set_xticklabels(labels, fontsize=7)
+    ax.set_xticklabels(labels, fontsize=8)
     ax.axhline(1.0, ls=":", color="0.4", lw=1)
     ax.set_ylabel("psSAR10g / nominal-pose value")
     ax.set_title(f"Orientation variability at nominal distance ({REPORT_BAND} MHz)")
@@ -164,7 +173,7 @@ def applied_to_reference(df) -> pd.DataFrame:
 def fig_distance_factor(df):
     apply_monograph_style(mode="png")
     tbl, fit, unc = applied_to_reference(df)
-    fig, ax = plt.subplots(figsize=fig_size_ieee(columns=1, aspect=0.75))
+    fig, ax = plt.subplots(figsize=rsize(0.5))
     d = tbl.distance_mm.to_numpy()
     ax.plot(d, tbl.brain_SAR_adjusted_W_per_kg_per_W, "o-", color="C0", label="adjusted value")
     ax.fill_between(d, tbl.minus_1sigma, tbl.plus_1sigma, alpha=0.25, color="C0", label=r"$\pm 1\sigma$ (orientation)")
@@ -182,7 +191,7 @@ def fig_distance_factor(df):
     ax.set_xlabel("phone-to-face distance [mm]")
     ax.set_ylabel("brain normalized SAR  [W/kg per W]")
     ax.set_title("Distance-adjusted brain SAR with uncertainty")
-    ax.legend(frameon=False, fontsize=6, loc="upper right")
+    ax.legend(frameon=False, fontsize=8, loc="upper right")
     fig.tight_layout()
     _save(fig, "fig_distance_factor")
     return tbl, fit, unc
@@ -207,16 +216,17 @@ def write_excel(df):
                     "note_on_2.62",
                 ],
                 "description": [
-                    "AEGIS surface absorbed-power-density dosimetry (differentiable, near-field point-source).",
+                    "Fast near-field surface dose method (in-house, patent pending). Runs thousands of"
+                    " phone positions and orientations in minutes; calibrated against full-wave reference.",
                     "ICNIRP 2020 metrics: whole-body SAR, psSAR10g, peak/4cm2/1cm2 APD.",
-                    "Per 1 W radiated power (W/kg per W, or W/m^2 per W) - the GOLIAT normalized-SAR convention.",
+                    "Per 1 W radiated power (W/kg per W, or W/m^2 per W) - the same normalized-SAR convention.",
                     "Duke, Ella, Eartha, Thelonious.",
                     "700, 835, 1450, 2140, 2450, 3500, 5200, 5800.",
                     "front_of_eyes (200 mm), by_cheek (8 mm), by_belly (200 mm).",
                     "S(d) = A / (d + delta)^2 ; equivalently S(d)=S_ref*((d_ref+delta)/(d+delta))^2.",
                     "mean/std/min/max/percentiles over device orientation and phantom ensemble.",
-                    "The 2.62 W/kg/W brain value is the partner FDTD figure; sheet 'brain_2.62_adjusted'"
-                    " applies our distance law and uncertainty band to it.",
+                    "The 2.62 W/kg/W brain value is your reference figure; sheet 'brain_2.62_adjusted'"
+                    " applies the distance law and uncertainty band to it.",
                 ],
             }
         )
