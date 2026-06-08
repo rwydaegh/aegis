@@ -64,9 +64,15 @@ def test_real_pattern_sphere_average_is_one():
 
 
 def _load_real_patterns():
+    import os
+
     from aegis.nearfield.patterns import load_band_patterns
 
-    return load_band_patterns("/home/user/goliat_farfield_results")
+    pattern_dir = os.environ.get("AEGIS_NEARFIELD_PATTERNS", "/home/user/goliat_farfield_results")
+    patterns = load_band_patterns(pattern_dir)
+    if not patterns:
+        pytest.skip("real GOLIAT patterns not available")
+    return patterns
 
 
 # -- kernel physics ---------------------------------------------------------
