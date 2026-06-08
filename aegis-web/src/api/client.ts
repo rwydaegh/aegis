@@ -352,7 +352,8 @@ export interface ComputeParams {
   fresnel: boolean
   polarisation: boolean
   curvature: boolean
-  diffraction: boolean
+  diffractionModel: string
+  interBody: string
   powerDbm: number
   skinModel: string
   freqGhz: number
@@ -376,7 +377,8 @@ function computePayload(params: ComputeParams) {
     fresnel: params.fresnel,
     polarisation: params.polarisation,
     curvature: params.curvature,
-    diffraction: params.diffraction,
+    diffraction_model: params.diffractionModel,
+    inter_body: params.interBody,
     power_dbm: params.powerDbm,
     skin_model: params.skinModel,
     freq_hz: params.freqGhz * 1e9,

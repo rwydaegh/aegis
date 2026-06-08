@@ -55,7 +55,8 @@ export function collectState(): Record<string, unknown> {
     fresnel: sim.fresnel,
     polarisation: sim.polarisation,
     curvature: sim.curvature,
-    diffraction: sim.diffraction,
+    diffractionModel: sim.diffractionModel,
+    interBody: sim.interBody,
     powerDbm: sim.powerDbm,
     skinModel: sim.skinModel,
     freqGhz: sim.freqGhz,
@@ -181,7 +182,12 @@ function applySimulationState(state: Partial<ShareState>, sim: SimStore): void {
   if (state.fresnel !== undefined) sim.setFresnel(state.fresnel)
   if (state.polarisation !== undefined) sim.setPolarisation(state.polarisation)
   if (state.curvature !== undefined) sim.setCurvature(state.curvature)
-  if (state.diffraction !== undefined) sim.setDiffraction(state.diffraction)
+  if (state.diffractionModel !== undefined) {
+    sim.setDiffractionModel(state.diffractionModel as Parameters<typeof sim.setDiffractionModel>[0])
+  }
+  if (state.interBody !== undefined) {
+    sim.setInterBody(state.interBody as Parameters<typeof sim.setInterBody>[0])
+  }
   if (state.powerDbm !== undefined) sim.setPowerDbm(state.powerDbm)
   if (state.skinModel !== undefined) sim.setSkinModel(state.skinModel)
   if (state.freqGhz !== undefined) sim.setFreqGhz(state.freqGhz)

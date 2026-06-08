@@ -6,6 +6,8 @@ import { useAntennaStore } from '@/stores/antenna'
 
 export type DosimetryMode = 'bound' | 'aggregate' | 'spatial'
 export type ExposureMode = 'theoretical' | 'actual_max' | 'typical'
+export type DiffractionModel = 'none' | 'gelu' | 'fock'
+export type InterBody = 'off' | 'specular1'
 
 interface SimulationStore {
   // Inputs
@@ -40,7 +42,11 @@ interface SimulationStore {
   fresnel: boolean
   polarisation: boolean
   curvature: boolean
+  // Authoritative shadow-edge gate selector. `diffraction` is a derived mirror
+  // (diffractionModel !== 'none') kept for back-compat consumers.
+  diffractionModel: DiffractionModel
   diffraction: boolean
+  interBody: InterBody
   powerDbm: number
   skinModel: string
   stochasticPreset: string
@@ -91,7 +97,8 @@ interface SimulationStore {
   setFresnel: (on: boolean) => void
   setPolarisation: (on: boolean) => void
   setCurvature: (on: boolean) => void
-  setDiffraction: (on: boolean) => void
+  setDiffractionModel: (model: DiffractionModel) => void
+  setInterBody: (v: InterBody) => void
   setPowerDbm: (power: number) => void
   setSkinModel: (model: string) => void
   setStochasticPreset: (v: string) => void
@@ -168,8 +175,12 @@ export const useSimulationStore = create<SimulationStore>()(persist((set) => ({
   exposureMode: 'theoretical',
   fresnel: true,
   polarisation: false,
-  curvature: false,
-  diffraction: false,
+  // Default to Fock (matches engine default). Curvature is required by any
+  // active diffraction gate, so it defaults on too.
+  curvature: true,
+  diffractionModel: 'fock',
+  diffraction: true,
+  interBody: 'off',
   powerDbm: 43,
   skinModel: 'itis',
   stochasticPreset: '3GPP_38.901_UMi_LOS',
@@ -240,15 +251,16 @@ export const useSimulationStore = create<SimulationStore>()(persist((set) => ({
     return { polarisation: false }
   }),
   setCurvature: (on) => set(() => {
-    // Diffraction requires curvature, so auto-disable it
-    if (!on) return { curvature: false, diffraction: false }
+    // Diffraction requires curvature, so disabling curvature also clears the gate
+    if (!on) return { curvature: false, diffractionModel: 'none' as DiffractionModel, diffraction: false }
     return { curvature: true }
   }),
-  setDiffraction: (on) => set(() => {
-    // Diffraction requires curvature data, so auto-enable it
-    if (on) return { diffraction: true, curvature: true }
-    return { diffraction: false }
+  setDiffractionModel: (model) => set(() => {
+    // Any active gate requires curvature data, so auto-enable it
+    const active = model !== 'none'
+    return { diffractionModel: model, diffraction: active, ...(active ? { curvature: true } : {}) }
   }),
+  setInterBody: (v) => set({ interBody: v }),
   setPowerDbm: (power) => {
     set({ powerDbm: power })
     const antStore = useAntennaStore.getState()
@@ -326,7 +338,8 @@ export const useSimulationStore = create<SimulationStore>()(persist((set) => ({
     fresnel: state.fresnel,
     polarisation: state.polarisation,
     curvature: state.curvature,
-    diffraction: state.diffraction,
+    diffractionModel: state.diffractionModel,
+    interBody: state.interBody,
     powerDbm: state.powerDbm,
     skinModel: state.skinModel,
     freqGhz: state.freqGhz,
@@ -335,6 +348,10 @@ export const useSimulationStore = create<SimulationStore>()(persist((set) => ({
   }),
   merge: (persisted, current) => {
     const merged = { ...current, ...(persisted as Partial<SimulationStore>) }
+    // `diffraction` is derived, not persisted: recompute it from the persisted
+    // model and keep curvature consistent with any active gate.
+    merged.diffraction = merged.diffractionModel !== 'none'
+    if (merged.diffraction) merged.curvature = true
     // Validate displayQuantity against the default enabledQuantities set.
     // enabledQuantities is NOT persisted, so it resets to default on reload.
     // If the persisted displayQuantity is not in the default set, fall back.

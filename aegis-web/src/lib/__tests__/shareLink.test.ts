@@ -114,3 +114,42 @@ describe('shareLink environment round-trip', () => {
     expect(env.location).toBeNull()
   })
 })
+
+describe('shareLink diffraction model round-trip', () => {
+  beforeEach(() => {
+    resetEnvStore()
+    useSimulationStore.setState({
+      diffractionModel: 'fock',
+      diffraction: true,
+      curvature: true,
+      interBody: 'off',
+    })
+  })
+
+  it('omits the default fock model and off inter-body from the diff', () => {
+    const decoded = deserializeShareLink(serializeShareableState())
+    expect(decoded.diffractionModel).toBeUndefined()
+    expect(decoded.interBody).toBeUndefined()
+  })
+
+  it('persists a non-default diffraction model and inter-body selector', () => {
+    useSimulationStore.getState().setDiffractionModel('gelu')
+    useSimulationStore.getState().setInterBody('specular1')
+
+    const decoded = deserializeShareLink(serializeShareableState())
+    expect(decoded.diffractionModel).toBe('gelu')
+    expect(decoded.interBody).toBe('specular1')
+  })
+
+  it('applyShareState restores the diffraction model and keeps diffraction derived', () => {
+    useSimulationStore.setState({
+      diffractionModel: 'fock',
+      diffraction: true,
+      curvature: true,
+    })
+    applyShareState({ diffractionModel: 'none' })
+    const sim = useSimulationStore.getState()
+    expect(sim.diffractionModel).toBe('none')
+    expect(sim.diffraction).toBe(false)
+  })
+})

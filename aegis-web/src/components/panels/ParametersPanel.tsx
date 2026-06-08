@@ -2,7 +2,7 @@ import { useSimulationStore } from '@/stores/simulation'
 import { useSceneStore } from '@/stores/scene'
 import { useUIStore } from '@/stores/ui'
 import { useBaseStationsStore } from '@/stores/basestations'
-import type { DosimetryMode, ExposureMode } from '@/stores/simulation'
+import type { DosimetryMode, ExposureMode, DiffractionModel } from '@/stores/simulation'
 import QuantitiesPanel from './QuantitiesPanel'
 import Tex from '@/components/ui/Tex'
 
@@ -10,6 +10,12 @@ const MODES: { value: DosimetryMode; label: string }[] = [
   { value: 'bound', label: 'Bound' },
   { value: 'aggregate', label: 'Aggregate' },
   { value: 'spatial', label: 'Spatial' },
+]
+
+const DIFFRACTION_MODELS: { value: DiffractionModel; label: string; title: string }[] = [
+  { value: 'none', label: 'None', title: 'Sharp geometric ReLU shadow boundary (no diffraction).' },
+  { value: 'gelu', label: 'GeLU', title: 'Smooth GELU shadow kernel with a fixed transition width.' },
+  { value: 'fock', label: 'Fock', title: 'Physical Fock-region shadow kernel tied to local body curvature.' },
 ]
 
 function CorrectionToggle({
@@ -51,8 +57,10 @@ export default function ParametersPanel() {
   const setPolarisation = useSimulationStore((s) => s.setPolarisation)
   const curvature = useSimulationStore((s) => s.curvature)
   const setCurvature = useSimulationStore((s) => s.setCurvature)
-  const diffraction = useSimulationStore((s) => s.diffraction)
-  const setDiffraction = useSimulationStore((s) => s.setDiffraction)
+  const diffractionModel = useSimulationStore((s) => s.diffractionModel)
+  const setDiffractionModel = useSimulationStore((s) => s.setDiffractionModel)
+  const interBody = useSimulationStore((s) => s.interBody)
+  const setInterBody = useSimulationStore((s) => s.setInterBody)
   const skinModel = useSimulationStore((s) => s.skinModel)
   const setSkinModel = useSimulationStore((s) => s.setSkinModel)
   const stats = useSimulationStore((s) => s.stats)
@@ -111,17 +119,44 @@ export default function ParametersPanel() {
             />
             <CorrectionToggle
               label="Curvature"
-              checked={curvature}
+              checked={diffractionModel !== 'none' ? true : curvature}
               onChange={setCurvature}
-              disabled={diffraction}
-              title={diffraction ? 'Required by diffraction' : 'First-order physical-optics curvature correction (adds H/k · g² term).'}
+              disabled={diffractionModel !== 'none'}
+              title={diffractionModel !== 'none' ? 'Required by diffraction' : 'First-order physical-optics curvature correction (adds H/k · g² term).'}
             />
+          </div>
+
+          <label className={labelClass}>Diffraction model</label>
+          <div className="flex gap-0" data-testid="diffraction-model">
+            {DIFFRACTION_MODELS.map(({ value, label, title }, i) => (
+              <button
+                key={value}
+                title={title}
+                data-testid={`diffraction-model-${value}`}
+                className={`text-xs px-3 py-1.5 border transition-colors cursor-pointer ${
+                  i === 0 ? 'rounded-l' : i === DIFFRACTION_MODELS.length - 1 ? 'rounded-r border-l-0' : 'border-l-0'
+                } ${
+                  diffractionModel === value
+                    ? 'border-primary/40 bg-primary/15 text-primary'
+                    : 'border-border bg-muted/50 text-foreground hover:bg-muted'
+                }`}
+                onClick={() => setDiffractionModel(value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          <label className={labelClass}>Inter-body reflection</label>
+          <div className="flex flex-col gap-1.5 pl-0.5">
             <CorrectionToggle
-              label="Diffraction"
-              checked={diffraction}
-              onChange={setDiffraction}
-              title="Replaces sharp ReLU shadow boundary with a physical-GELU kernel tied to local curvature."
+              label="Single-bounce (specular1)"
+              checked={interBody === 'specular1'}
+              onChange={(on) => setInterBody(on ? 'specular1' : 'off')}
+              disabled
+              title="Experimental: single-bounce inter-body specular reflection. Not yet active (Phase B)."
             />
+            <span className="text-[10px] text-muted-foreground pl-5.5">Experimental, not yet active</span>
           </div>
         </>
       )}

@@ -158,7 +158,8 @@ function buildPlacementRequest(base: OptimizeRequest, constraints: OptimizeConst
   base.fresnel = sim.fresnel
   base.polarisation = sim.polarisation
   base.curvature = sim.curvature
-  base.diffraction = sim.diffraction
+  base.diffraction_model = sim.diffractionModel
+  base.inter_body = sim.interBody
   base.scene_path = scene.loadedScenePath || undefined
   base.rt_config = {
     max_depth: scene.rtMaxOrder,

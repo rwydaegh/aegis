@@ -33,7 +33,8 @@ export interface OptimizeRequest {
   fresnel?: boolean
   polarisation?: boolean
   curvature?: boolean
-  diffraction?: boolean
+  diffraction_model?: string
+  inter_body?: string
   scene_path?: string
   rt_config?: RtConfig
 }

@@ -620,10 +620,19 @@ def _run_engine_mode(
     if corr.get("curvature"):
         mode_kwargs["curvature"] = True
         mode_kwargs["curvature_H"] = _compute_face_curvature(body)
-    if corr.get("diffraction"):
+    # Shadow-edge gate: an explicit diffraction_model wins over the legacy bool.
+    diffraction_model = corr.get("diffraction_model")
+    if diffraction_model is not None:
+        mode_kwargs["diffraction_model"] = diffraction_model
+        if diffraction_model != "none" and "curvature_H" not in mode_kwargs:
+            mode_kwargs["curvature_H"] = _compute_face_curvature(body)
+    elif corr.get("diffraction"):
         mode_kwargs["diffraction"] = True
         if "curvature_H" not in mode_kwargs:
             mode_kwargs["curvature_H"] = _compute_face_curvature(body)
+    inter_body = corr.get("inter_body")
+    if inter_body is not None:
+        mode_kwargs["inter_body"] = inter_body
     return engine.compute_with_timings(body, paths, body_mass=body_mass, **mode_kwargs)
 
 
@@ -717,7 +726,10 @@ def _build_compute_extras(
     corr_list = None
     if mode is not None:
         corr = corrections or {}
-        corr_list = [k for k in ("fresnel", "polarisation", "curvature", "diffraction") if corr.get(k)]
+        corr_list = [k for k in ("fresnel", "polarisation", "curvature") if corr.get(k)]
+        model = corr.get("diffraction_model")
+        if corr.get("diffraction") or (model is not None and model != "none"):
+            corr_list.append("diffraction")
     return extra, corr_list
 
 
