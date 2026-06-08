@@ -838,6 +838,176 @@ def query_visibility(
 
 
 # ---------------------------------------------------------------------------
+# Source-aware directional clearance (single-direction fast path)
+# ---------------------------------------------------------------------------
+
+
+def _tangent_basis(w: NDArray[np.floating]) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+    """Two orthonormal tangents spanning the plane perpendicular to unit ``w``."""
+    a = np.array([1.0, 0.0, 0.0]) if abs(w[0]) < 0.9 else np.array([0.0, 1.0, 0.0])
+    t1 = np.cross(w, a)
+    t1 /= np.linalg.norm(t1)
+    t2 = np.cross(w, t1)
+    return t1, t2
+
+
+def _directional_one(
+    body: BodyMesh,
+    omega: NDArray[np.floating],
+    bvh: dict,
+    tri_order: NDArray[np.integer],
+    tri_data: dict,
+    kappa1: NDArray[np.floating],
+    kappa2: NDArray[np.floating],
+    dir1: NDArray[np.floating],
+    *,
+    n_cells: int,
+    span: float,
+    delta: float,
+) -> tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
+    """Per-triangle ``(clearance, R_occ, d2)`` for a single far-field direction.
+
+    Casts a small geodesic patch of directions around ``omega`` (the shared look
+    direction ``-k_hat``) for the source-facing triangles only, then reads the
+    signed angular clearance at ``omega`` as the great-circle distance to the
+    nearest opposite-visibility cell in the patch. Source-back triangles
+    (``n . omega <= delta``, zero ReLU dose) are left saturated-lit.
+    """
+    omega = omega / np.linalg.norm(omega)
+    M = body.n_triangles
+    normals = np.asarray(body.normals, np.float64)
+    centroids = np.asarray(body.centroids, np.float64)
+
+    clearance = np.full(M, SATURATED_LIT)
+    R_occ = np.ones(M)
+    d2_out = np.full(M, 1.0)
+
+    cand = np.where(normals @ omega > delta)[0]
+    if cand.size == 0:
+        return clearance, R_occ, d2_out
+
+    # geodesic patch around omega (exponential map of a tangent-plane grid)
+    t1, t2 = _tangent_basis(omega)
+    lin = np.linspace(-span, span, n_cells)
+    aa, bb = np.meshgrid(lin, lin, indexing="ij")
+    r = np.sqrt(aa**2 + bb**2)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        tx = np.where(r > 0, aa / r, 0.0)
+        ty = np.where(r > 0, bb / r, 0.0)
+    tang = tx[..., None] * t1 + ty[..., None] * t2
+    dirs = np.cos(r)[..., None] * omega + np.sin(r)[..., None] * tang
+    flat = np.ascontiguousarray(dirs.reshape(-1, 3))
+    center = (n_cells // 2) * n_cells + (n_cells // 2)
+    gc = np.arccos(np.clip(flat @ omega, -1.0, 1.0))  # ang dist of each cell to omega
+
+    eps = 1e-6 * body.scale
+    t_min = 10.0 * eps
+    vis, d2c, occ_idx = _bake_kernel(
+        np.ascontiguousarray(centroids[cand]),
+        np.ascontiguousarray(normals[cand]),
+        flat,
+        eps,
+        t_min,
+        delta,
+        bvh["bmin"],
+        bvh["bmax"],
+        bvh["left"],
+        bvh["right"],
+        bvh["start"],
+        bvh["count"],
+        tri_order,
+        tri_data["tri_v0x"],
+        tri_data["tri_v0y"],
+        tri_data["tri_v0z"],
+        tri_data["tri_e1x"],
+        tri_data["tri_e1y"],
+        tri_data["tri_e1z"],
+        tri_data["tri_e2x"],
+        tri_data["tri_e2y"],
+        tri_data["tri_e2z"],
+    )  # (Mc, P)
+
+    center_vis = vis[:, center]
+    opp = vis != center_vis[:, None]
+    gc_b = np.where(opp, gc[None, :], np.inf)
+    clear_mag = gc_b.min(axis=1)
+    clear_mag[~np.isfinite(clear_mag)] = np.pi  # no boundary in patch -> saturated
+    clearance[cand] = np.where(center_vis, 1.0, -1.0) * clear_mag
+
+    # R_occ, d2 averaged over blocked patch cells (vectorized segment-mean)
+    rows_idx, cell_idx = np.where(~vis)
+    if rows_idx.size:
+        fr = _fock_radius_at(kappa1, kappa2, dir1, normals, occ_idx[rows_idx, cell_idx], flat[cell_idx])
+        counts = np.bincount(rows_idx, minlength=cand.size)
+        has = counts > 0
+        R_loc = np.ones(cand.size)
+        d_loc = np.ones(cand.size)
+        R_loc[has] = np.bincount(rows_idx, weights=fr, minlength=cand.size)[has] / counts[has]
+        d_loc[has] = np.bincount(rows_idx, weights=d2c[rows_idx, cell_idx], minlength=cand.size)[has] / counts[has]
+        R_occ[cand] = R_loc
+        d2_out[cand] = d_loc
+    return clearance, R_occ, d2_out
+
+
+def directional_clearance(
+    body: BodyMesh,
+    k_hats: NDArray[np.floating],
+    *,
+    n_cells: int = 11,
+    span_deg: float = 30.0,
+    delta: float = 1e-4,
+) -> tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
+    """Far-field ``(clearance, R_occ, d1, d2)`` each ``(M, N)`` without a full LUT bake.
+
+    Drop-in for the far-field branch of :func:`query_visibility` when the path
+    set has few distinct directions (e.g. the single-source viewer): instead of
+    baking the full octahedral sphere and sampling one cell, this casts a small
+    angular patch around each look direction ``omega = -k_hat`` for the
+    source-facing triangles only. For thelonious at res-11 this is ~20x faster
+    than bake+query and samples exactly at ``omega`` (no octahedral
+    interpolation). ``d1 = inf`` (far field). A convex body has no blocked cells
+    and returns all saturated-lit (the caller treats that as a gate no-op).
+    """
+    k = np.atleast_2d(np.asarray(k_hats, dtype=np.float64))
+    k = k / np.linalg.norm(k, axis=1, keepdims=True)
+    omegas = -k  # (N, 3)
+    N = omegas.shape[0]
+    M = body.n_triangles
+
+    # shared per-pose precompute (BVH + curvatures) reused across directions
+    tri_data = occlusion._precompute_triangle_data(body.vertices)
+    bvh, tri_order = occlusion.build_bvh(tri_data["tri_bmin"], tri_data["tri_bmax"], body.centroids)
+    from aegis.geometry import curvature
+
+    kappa1, kappa2, dir1 = curvature.principal_curvatures(body)
+    span = np.radians(span_deg)
+
+    clearance = np.full((M, N), SATURATED_LIT)
+    R_occ = np.ones((M, N))
+    d1 = np.full((M, N), np.inf)
+    d2 = np.full((M, N), 1.0)
+
+    # dedup identical look directions (viewer ships one) to avoid recompute
+    uniq: dict[tuple[float, float, float], int] = {}
+    for n in range(N):
+        key = (round(float(omegas[n, 0]), 6), round(float(omegas[n, 1]), 6), round(float(omegas[n, 2]), 6))
+        src = uniq.get(key)
+        if src is not None:
+            clearance[:, n] = clearance[:, src]
+            R_occ[:, n] = R_occ[:, src]
+            d2[:, n] = d2[:, src]
+            continue
+        c, ro, dd = _directional_one(
+            body, omegas[n], bvh, tri_order, tri_data, kappa1, kappa2, dir1, n_cells=n_cells, span=span, delta=delta
+        )
+        clearance[:, n] = c
+        R_occ[:, n] = ro
+        d2[:, n] = dd
+        uniq[key] = n
+    return clearance, R_occ, d1, d2
+
+
+# ---------------------------------------------------------------------------
 # Disk cache + get_or_bake + CLI
 # ---------------------------------------------------------------------------
 

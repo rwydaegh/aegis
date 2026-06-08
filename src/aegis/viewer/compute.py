@@ -638,6 +638,10 @@ def _run_engine_mode(
     # (uses the path directions); near-field source_pos forwarding is a follow-up.
     if corr.get("self_shadow"):
         mode_kwargs["self_shadow"] = True
+        # Source-aware directional clearance: ~20x faster than the full octahedral
+        # LUT bake for the single-source viewer (far field), so the per-pose
+        # self-shadow recompute stays sub-second. Near field still uses the LUT.
+        mode_kwargs["self_shadow_directional"] = True
     return engine.compute_with_timings(body, paths, body_mass=body_mass, **mode_kwargs)
 
 

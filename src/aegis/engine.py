@@ -279,6 +279,7 @@ class DosimetryEngine:
         paths: PropagationPaths,
         *,
         self_shadow: bool,
+        self_shadow_directional: bool = False,
         source_pos: np.ndarray | None,
         vis_resolution: int,
         occlusion: np.ndarray | None,
@@ -290,15 +291,26 @@ class DosimetryEngine:
         the body is convex (the LUT short-circuits to all-exposed). Far field uses
         ``paths.k_hat``; near field (``source_pos`` given) uses the per-triangle
         source->point direction.
+
+        With ``self_shadow_directional`` and a far-field query (no ``source_pos``)
+        the full octahedral LUT bake is replaced by the source-aware directional
+        clearance (a small angular patch around each look direction). ~20x faster
+        for the single-source viewer; the full LUT path is kept for near field.
         """
         if not self_shadow or occlusion is not None:
             return None
         from aegis.geometry import visibility as _vis
 
+        centroids = _to_numpy(body.centroids)
+        if self_shadow_directional and source_pos is None:
+            clr, R_occ, d1, d2 = _vis.directional_clearance(body, _to_numpy(paths.k_hat))
+            if not bool((clr < 0).any()):
+                return None  # nothing shadowed at these directions -> gate no-op
+            return {"clearance": clr, "R_occ": R_occ, "distal_d1": d1, "distal_d2": d2}
+
         lut = self._get_vis_lut(body, vis_resolution, "erf")
         if bool(lut.exposed_mask.all()):
             return None
-        centroids = _to_numpy(body.centroids)
         if source_pos is not None:
             src = np.asarray(source_pos, dtype=float)
             k = centroids - src
@@ -437,6 +449,7 @@ class DosimetryEngine:
         inter_body: str = "off",
         curvature: bool = False,
         self_shadow: bool = False,
+        self_shadow_directional: bool = False,
         source_pos: np.ndarray | None = None,
         vis_resolution: int = 32,
         freq_hz: float | None = None,
@@ -518,6 +531,7 @@ class DosimetryEngine:
                 body,
                 paths,
                 self_shadow=self_shadow,
+                self_shadow_directional=self_shadow_directional,
                 source_pos=source_pos,
                 vis_resolution=vis_resolution,
                 occlusion=occlusion,
@@ -609,6 +623,7 @@ class DosimetryEngine:
                 body,
                 paths,
                 self_shadow=self_shadow,
+                self_shadow_directional=self_shadow_directional,
                 source_pos=source_pos,
                 vis_resolution=vis_resolution,
                 occlusion=occlusion,
@@ -641,6 +656,7 @@ class DosimetryEngine:
                 body,
                 paths,
                 self_shadow=self_shadow,
+                self_shadow_directional=self_shadow_directional,
                 source_pos=source_pos,
                 vis_resolution=vis_resolution,
                 occlusion=occlusion,

@@ -305,6 +305,50 @@ def test_bake_convex_short_circuits():
     assert lut.vertex_hash == body.vertex_hash
 
 
+# ---------------------------------------------------------------------------
+# Source-aware directional clearance (single-direction fast path)
+# ---------------------------------------------------------------------------
+
+
+def test_directional_clearance_finds_shadow():
+    # On the concave two-sphere fixture, far-sphere facets facing the source
+    # (behind the near sphere) must read a negative (shadowed) clearance.
+    from aegis.geometry.visibility import directional_clearance
+
+    body = _two_spheres()  # near sphere ~x=0, far sphere ~x=0.6
+    k_hat = np.array([[1.0, 0.0, 0.0]])  # source at -x; near sphere shadows far
+    clr, R_occ, d1, d2 = directional_clearance(body, k_hat)
+    assert clr.shape == (body.n_triangles, 1)
+    assert np.all(np.isinf(d1))  # far field
+    far = body.centroids[:, 0] > 0.3  # triangles on the far sphere
+    mu = body.normals @ np.array([-1.0, 0.0, 0.0])  # facing the source
+    shadowed_far = (clr[:, 0] < 0) & far & (mu > 0.1)
+    assert shadowed_far.sum() > 0
+
+
+def test_directional_clearance_convex_noop():
+    # A convex sphere never self-shadows: no facet reads a negative clearance.
+    from aegis.geometry.visibility import directional_clearance
+
+    body = BodyMesh.sphere(radius=0.3, n_subdivisions=2)
+    clr, _, _, _ = directional_clearance(body, np.array([[1.0, 0.0, 0.0]]))
+    assert np.all(clr >= 0.0)
+
+
+def test_directional_clearance_sign_matches_exact_oracle():
+    # The directional clearance samples exactly at omega, so its sign (shadowed
+    # vs lit) must match the exact BVH visibility oracle at the same direction
+    # bit-for-bit, not just statistically: both cast omega from centroid+eps*n
+    # through the same closest-hit kernel with the same front filter.
+    from aegis.geometry.visibility import compute_visibility, directional_clearance
+
+    body = _two_spheres()
+    k_hat = np.array([[1.0, 0.0, 0.0]])
+    clr = directional_clearance(body, k_hat)[0][:, 0]
+    vis = compute_visibility(body, k_hat)[:, 0]
+    assert np.array_equal(clr >= 0.0, vis)
+
+
 def test_bake_two_spheres_has_active_rows():
     from aegis.geometry.visibility import bake_visibility_lut
 
