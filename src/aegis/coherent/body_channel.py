@@ -119,15 +119,15 @@ def compute_body_channel(
     mu, t_s, t_p, e_s, e_p = compute_fresnel_operator(normals, k_hat, n_tilde)
 
     # F_n(r) @ psi_n for each (m, n): shape (M, N, 3). With the Fock gate the
-    # soft/hard creeping constants gate the TE/TM field components separately,
-    # so the s/p parts are rebuilt directly instead of using the combined output.
+    # soft/hard creeping constants fold into the TE/TM transmission coefficients
+    # (a per-(m, n) scalar multiplier), so the canonical Fresnel operator applies
+    # unchanged. This is identical to gating the combined output because the
+    # projection is linear in t_s/t_p.
     if fock_R is None:
         F_psi = apply_fresnel_operator(psi, t_s, t_p, e_s, e_p)
     else:
         g_soft, g_hard = _fock_gate_factors(mu, fock_R, freq_hz, q_F_s, q_F_h)
-        psi_s = xp.einsum("mnj,nj->mn", e_s, psi)  # (M, N)
-        psi_p = xp.einsum("mnj,nj->mn", e_p, psi)  # (M, N)
-        F_psi = (g_soft * t_s * psi_s)[:, :, None] * e_s + (g_hard * t_p * psi_p)[:, :, None] * e_p
+        F_psi = apply_fresnel_operator(psi, g_soft * t_s, g_hard * t_p, e_s, e_p)
 
     # Depth coupling weight: sqrt(sigma / (4 * alpha_n))
     # alpha_n is the amplitude decay rate: k0*xi = beta - i*alpha, so alpha = -Im(k0*xi)

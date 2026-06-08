@@ -107,7 +107,7 @@ def level7_coherent(
     q_acc: NDArray[np.complexfloating] = xp.zeros((n_elements, n_elements), dtype=complex)
     # Slice the per-triangle Fock radius to match each triangle block. A (M, N)
     # radius (per path) is row-sliced too; a scalar/None passes through unchanged.
-    fock_R_arr = None if fock_R is None else np.asarray(fock_R)
+    fock_R_arr = None if fock_R is None else xp.asarray(fock_R)
 
     for start in range(0, M, chunk):
         sl = slice(start, start + chunk)
