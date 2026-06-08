@@ -33,6 +33,18 @@ _timings_lock = threading.Lock()
 
 _ERR_LEVEL_AND_MODE = "Cannot specify both level and mode"
 
+# Engine-layer diffraction-gate selector. The kernel maps the legacy bool
+# True->"gelu" for back-compat; the engine maps it True->"fock" (the user-facing
+# default, D7) and always supplies the in-plane radius (DECISIONS.md L8).
+_ENGINE_DIFFRACTION_MODELS = ("none", "gelu", "fock")
+# Representative-radius guards for the scalar impedance-Fock hard eigenvalue.
+# Flat faces clamp to 1/eps (~1e6 m) in fock_radius; exclude them from the
+# median so they do not skew the representative body radius. The kR_rep used for
+# the single mpmath pole solve is clamped to the validated grid [4, 2048].
+_FOCK_FLAT_R_CAP = 1e3
+_FOCK_KR_MIN = 4.0
+_FOCK_KR_MAX = 2048.0
+
 
 def _to_numpy(arr):
     """Convert JAX arrays to NumPy. No-op for NumPy arrays."""
@@ -122,6 +134,82 @@ class DosimetryEngine:
         active_n_tilde = fresnel_n_complex(self.tissue.eps_r, self.tissue.sigma, freq_hz)
         active_T0 = fresnel_T0(active_n_tilde)
         return float(freq_hz), active_n_tilde, active_T0, self.tissue.sigma
+
+    @staticmethod
+    def _resolve_diffraction_model(diffraction_model: str | None, diffraction: bool | None) -> str:
+        """Resolve the engine-layer gate selector.
+
+        An explicit ``diffraction_model`` always wins. Otherwise the legacy
+        ``diffraction`` bool maps ``True -> "fock"`` (the new default, D7) and
+        ``False -> "none"``; when neither is given (``diffraction is None``) the
+        default is ``"fock"``. This differs from the kernel's own bool mapping
+        (``True -> "gelu"``) on purpose: the engine always supplies ``fock_R``,
+        direct kernel callers do not (DECISIONS.md L8).
+        """
+        if diffraction_model is not None:
+            if diffraction_model not in _ENGINE_DIFFRACTION_MODELS:
+                raise ValueError(
+                    f"diffraction_model must be one of {_ENGINE_DIFFRACTION_MODELS}, got {diffraction_model!r}"
+                )
+            return diffraction_model
+        if diffraction is None:
+            return "fock"
+        return "fock" if diffraction else "none"
+
+    @staticmethod
+    def _fock_radius_per_path(body: BodyMesh, k_hat: np.ndarray) -> np.ndarray:
+        """In-incidence-plane radius for each path direction.
+
+        ``paths.k_hat`` is ``(N, 3)`` (one direction per path), so a single path
+        yields ``(M,)`` and multiple paths yield ``(M, N)`` (the kernel broadcasts
+        ``(M,) -> (M, 1)`` and uses ``(M, N)`` as is). ``principal_curvatures`` is
+        cached per body inside ``geometry.curvature``, so the repeated per-path
+        calls only redo the cheap Euler projection.
+        """
+        from aegis.geometry import curvature
+
+        kh = np.asarray(k_hat, dtype=float)
+        if kh.ndim == 1:
+            kh = kh[None, :]
+        if kh.shape[0] == 1:
+            return curvature.fock_radius(body, kh[0])
+        return np.stack([curvature.fock_radius(body, kh[n]) for n in range(kh.shape[0])], axis=1)
+
+    def _fock_params(
+        self,
+        body: BodyMesh,
+        k_hat: np.ndarray,
+        model: str,
+        freq_hz: float,
+        n_tilde: complex,
+    ) -> tuple[np.ndarray | None, complex | None, complex | None]:
+        """Fock radius and the representative impedance-corrected eigenvalues.
+
+        Returns ``(fock_R, q_F_s, q_F_h)``. For any non-Fock model returns
+        ``(None, None, None)`` so the gate paths stay untouched. The soft creeping
+        wave keeps the PEC eigenvalue (``q_F_s = None``); the hard eigenvalue is a
+        single representative value per (band, body): a scalar drift across
+        triangles is dose-negligible (DECISIONS.md L10). ``kR_rep`` uses the
+        median curved-face radius, clamped to the validated grid for the one
+        cached mpmath pole solve.
+        """
+        if model != "fock":
+            return None, None, None
+        from aegis.kernels import fock
+
+        fock_R = self._fock_radius_per_path(body, k_hat)
+        eta = complex(1.0 / n_tilde)
+        if eta.imag <= 0:
+            raise ValueError(f"eta = 1/n_tilde must have Im(eta) > 0 (passive skin, n - ik convention), got {eta}")
+        R_arr = np.asarray(fock_R, dtype=float)
+        finite = np.isfinite(R_arr)
+        curved = finite & (R_arr < _FOCK_FLAT_R_CAP)
+        sample = R_arr[curved] if np.any(curved) else R_arr[finite]
+        R_rep = float(np.median(sample)) if sample.size else 1.0
+        k0 = 2.0 * np.pi * freq_hz / C_0
+        kR_rep = float(np.clip(k0 * R_rep, _FOCK_KR_MIN, _FOCK_KR_MAX))
+        q_F_h = fock.fock_impedance_param(eta, kR_rep, "hard")
+        return fock_R, None, q_F_h
 
     @staticmethod
     def _body_cache_key(body: BodyMesh) -> int:
@@ -296,7 +384,9 @@ class DosimetryEngine:
         mode: str | None = None,
         fresnel: bool = True,
         polarisation: bool = False,
-        diffraction: bool = False,
+        diffraction: bool | None = None,
+        diffraction_model: str | None = None,
+        inter_body: str = "off",
         curvature: bool = False,
         freq_hz: float | None = None,
         _timings: dict[str, float] | None = None,
@@ -324,7 +414,15 @@ class DosimetryEngine:
         mode : one of 'bound', 'aggregate', 'spatial', 'coherent', 'ecbf'
         fresnel : use angle-dependent Fresnel (spatial mode, default True)
         polarisation : enable polarisation correction (spatial mode)
-        diffraction : enable diffraction smoothing (spatial mode)
+        diffraction : legacy bool. At the engine layer True -> "fock", False ->
+            "none". An explicit ``diffraction_model`` always wins. ``None``
+            (the default) leaves the model at its "fock" default.
+        diffraction_model : shadow-edge gate "none" | "gelu" | "fock". Default
+            "fock". Consumed by the spatial mode, level 6, and the coherent
+            levels 7-8; levels 2-5 have no gate and ignore it.
+        inter_body : "off" (default) or "specular1". The single-bounce inter-body
+            backend is a Phase B feature; passing "specular1" raises
+            NotImplementedError.
         curvature : enable curvature correction (spatial mode)
         _timings : if provided, fine-grained timing data is written into this dict
 
@@ -344,6 +442,15 @@ class DosimetryEngine:
 
         active_freq_hz, active_n_tilde, active_T0, active_sigma = self._active_em_params(freq_hz)
 
+        effective_model = self._resolve_diffraction_model(diffraction_model, diffraction)
+        if inter_body not in ("off", "specular1"):
+            raise ValueError(f"inter_body must be 'off' or 'specular1', got {inter_body!r}")
+        if inter_body == "specular1":
+            raise NotImplementedError(
+                "inter_body='specular1' (single-bounce inter-body reflection) is a Phase B "
+                "feature and not yet implemented; use inter_body='off'."
+            )
+
         # Mode-based path
         if mode is not None:
             result = self._compute_mode(
@@ -352,7 +459,7 @@ class DosimetryEngine:
                 mode=mode,
                 fresnel=fresnel,
                 polarisation=polarisation,
-                diffraction=diffraction,
+                diffraction_model=effective_model,
                 curvature=curvature,
                 q=q,
                 curvature_H=curvature_H,
@@ -399,6 +506,7 @@ class DosimetryEngine:
             raise ValueError(f"Fidelity level must be 0-8, got {level}")
 
         if level >= 7:
+            fock_R, q_F_s, q_F_h = self._fock_params(body, paths.k_hat, effective_model, active_freq_hz, active_n_tilde)
             return self._compute_coherent(
                 body,
                 paths,
@@ -411,7 +519,16 @@ class DosimetryEngine:
                 freq_hz=active_freq_hz,
                 n_tilde=active_n_tilde,
                 sigma=active_sigma,
+                fock_R=fock_R,
+                q_F_s=q_F_s,
+                q_F_h=q_F_h,
             )
+
+        # Only level 6 consumes the gate on the legacy level path; levels 2-5
+        # have no shadow gate, so the Fock radius is computed only when needed.
+        fock_R = q_F_s = q_F_h = None
+        if level == 6:
+            fock_R, q_F_s, q_F_h = self._fock_params(body, paths.k_hat, effective_model, active_freq_hz, active_n_tilde)
 
         sab = self._dispatch(
             body,
@@ -428,6 +545,10 @@ class DosimetryEngine:
             freq_hz=active_freq_hz,
             n_tilde=active_n_tilde,
             T0=active_T0,
+            diffraction_model=effective_model,
+            fock_R=fock_R,
+            q_F_s=q_F_s,
+            q_F_h=q_F_h,
         )
         sab = _to_numpy(sab)
         if occlusion is not None and level is not None and level >= 2:
@@ -485,7 +606,8 @@ class DosimetryEngine:
         mode: str | None = None,
         fresnel: bool = True,
         polarisation: bool = False,
-        diffraction: bool = False,
+        diffraction: bool | None = None,
+        diffraction_model: str | None = None,
         curvature: bool = False,
         freq_hz: float | None = None,
     ):
@@ -493,7 +615,10 @@ class DosimetryEngine:
 
         Unlike compute(), this does not convert to NumPy or wrap in
         DosimetryResult. Use inside jax.grad boundaries for differentiable
-        optimization.
+        optimization. The diffraction-model resolution mirrors compute(), so
+        compute_sab stays numerically consistent with compute().sab (default
+        "fock"). The Fock radius is a geometry constant, so threading it does not
+        break autodiff w.r.t. the precoder or source.
         """
         if level is not None and mode is not None:
             raise ValueError(_ERR_LEVEL_AND_MODE)
@@ -503,12 +628,16 @@ class DosimetryEngine:
             level = 2
 
         active_freq_hz, active_n_tilde, active_T0, active_sigma = self._active_em_params(freq_hz)
+        effective_model = self._resolve_diffraction_model(diffraction_model, diffraction)
 
         # Mode-based path for spatial
         if mode is not None:
             if mode == "spatial":
                 from aegis.kernels.spatial import spatial_kernel
 
+                fock_R, q_F_s, q_F_h = self._fock_params(
+                    body, paths.k_hat, effective_model, active_freq_hz, active_n_tilde
+                )
                 return spatial_kernel(
                     body.normals,
                     paths.k_hat,
@@ -520,8 +649,11 @@ class DosimetryEngine:
                     polarisation=polarisation,
                     q=q,
                     curvature=curvature,
-                    diffraction=diffraction,
+                    diffraction_model=effective_model,
                     curvature_H=curvature_H,
+                    fock_R=fock_R,
+                    q_F_s=q_F_s,
+                    q_F_h=q_F_h,
                 )
             # For non-spatial modes, map to the legacy dispatch
             mode_to_level = {
@@ -539,6 +671,11 @@ class DosimetryEngine:
             raise ValueError(f"Fidelity level must be 0-8, got {level}")
 
         if level <= 6:
+            fock_R = q_F_s = q_F_h = None
+            if level == 6:
+                fock_R, q_F_s, q_F_h = self._fock_params(
+                    body, paths.k_hat, effective_model, active_freq_hz, active_n_tilde
+                )
             return self._dispatch(
                 body,
                 paths,
@@ -554,6 +691,10 @@ class DosimetryEngine:
                 freq_hz=active_freq_hz,
                 n_tilde=active_n_tilde,
                 T0=active_T0,
+                diffraction_model=effective_model,
+                fock_R=fock_R,
+                q_F_s=q_F_s,
+                q_F_h=q_F_h,
             )
 
         # Coherent levels 7-8
@@ -562,6 +703,7 @@ class DosimetryEngine:
             x = precoder.x
 
         n_elements = paths.n_elements
+        fock_R, q_F_s, q_F_h = self._fock_params(body, paths.k_hat, effective_model, active_freq_hz, active_n_tilde)
 
         if level == 7:
             if x is None:
@@ -584,6 +726,9 @@ class DosimetryEngine:
                 active_freq_hz,
                 n_elements,
                 h=h,
+                fock_R=fock_R,
+                q_F_s=q_F_s,
+                q_F_h=q_F_h,
             )
             return sab
 
@@ -610,6 +755,9 @@ class DosimetryEngine:
                 n_elements,
                 P=P,
                 P_abs_max=P_abs_max,
+                fock_R=fock_R,
+                q_F_s=q_F_s,
+                q_F_h=q_F_h,
             )
             return sab
 
@@ -623,7 +771,7 @@ class DosimetryEngine:
         mode: str,
         fresnel: bool = True,
         polarisation: bool = False,
-        diffraction: bool = False,
+        diffraction_model: str = "none",
         curvature: bool = False,
         q: np.ndarray | float = 0.0,
         curvature_H: np.ndarray | None = None,
@@ -649,6 +797,8 @@ class DosimetryEngine:
         if mode not in _valid_modes:
             raise ValueError(f"Unknown mode '{mode}', expected one of {_valid_modes}")
 
+        diffraction_active = diffraction_model != "none"
+
         # Build corrections tuple for result metadata
         corrections: list[str] = []
         if mode == "spatial":
@@ -658,7 +808,7 @@ class DosimetryEngine:
                 corrections.append("polarisation")
             if curvature:
                 corrections.append("curvature")
-            if diffraction:
+            if diffraction_active:
                 corrections.append("diffraction")
 
         # Map mode to level for fidelity_level field
@@ -670,7 +820,7 @@ class DosimetryEngine:
                 fidelity_level = max(fidelity_level, 4)
             if curvature:
                 fidelity_level = max(fidelity_level, 5)
-            if diffraction:
+            if diffraction_active:
                 fidelity_level = max(fidelity_level, 6)
         else:
             mode_to_level = {
@@ -688,20 +838,26 @@ class DosimetryEngine:
             # Use the physical polarisation from psi only when the paths carry a
             # real one; otherwise fall back to the legacy scalar q knob.
             psi_arg = paths.psi if (polarisation and paths.polarised) else None
+            kernel_freq = freq_hz if freq_hz is not None else self.freq_hz
+            kernel_n_tilde = n_tilde if n_tilde is not None else self.n_tilde
+            fock_R, q_F_s, q_F_h = self._fock_params(body, paths.k_hat, diffraction_model, kernel_freq, kernel_n_tilde)
             sab = spatial_kernel(
                 body.normals,
                 paths.k_hat,
                 paths.power,
-                n_tilde if n_tilde is not None else self.n_tilde,
+                kernel_n_tilde,
                 T0 if T0 is not None else self.T0,
-                freq_hz if freq_hz is not None else self.freq_hz,
+                kernel_freq,
                 fresnel=fresnel,
                 polarisation=polarisation,
                 q=q,
                 psi=psi_arg,
                 curvature=curvature,
-                diffraction=diffraction,
+                diffraction_model=diffraction_model,
                 curvature_H=curvature_H,
+                fock_R=fock_R,
+                q_F_s=q_F_s,
+                q_F_h=q_F_h,
             )
             sab = _to_numpy(sab)
             kernel_ms = (time.perf_counter() - t_kernel) * 1e3
@@ -710,6 +866,9 @@ class DosimetryEngine:
             with _timings_lock:
                 _last_timings["kernel_ms"] = kernel_ms
         elif mode in ("coherent", "ecbf"):
+            coh_freq = freq_hz if freq_hz is not None else self.freq_hz
+            coh_n_tilde = n_tilde if n_tilde is not None else self.n_tilde
+            fock_R, q_F_s, q_F_h = self._fock_params(body, paths.k_hat, diffraction_model, coh_freq, coh_n_tilde)
             return self._compute_coherent(
                 body,
                 paths,
@@ -724,6 +883,9 @@ class DosimetryEngine:
                 sigma=sigma,
                 mode=mode,
                 corrections=tuple(corrections),
+                fock_R=fock_R,
+                q_F_s=q_F_s,
+                q_F_h=q_F_h,
             )
         else:
             # bound or aggregate: use legacy dispatch
@@ -773,6 +935,9 @@ class DosimetryEngine:
         sigma: float | None = None,
         mode: str | None = None,
         corrections: tuple[str, ...] = (),
+        fock_R: np.ndarray | None = None,
+        q_F_s: complex | None = None,
+        q_F_h: complex | None = None,
     ) -> DosimetryResult:
         """Dispatch coherent levels 7-8."""
         n_elements = paths.n_elements
@@ -799,6 +964,9 @@ class DosimetryEngine:
                 active_freq_hz,
                 n_elements,
                 h=h,
+                fock_R=fock_R,
+                q_F_s=q_F_s,
+                q_F_h=q_F_h,
             )
         elif level == 8:
             if h is None:
@@ -820,6 +988,9 @@ class DosimetryEngine:
                 n_elements,
                 P=P,
                 P_abs_max=P_abs_max,
+                fock_R=fock_R,
+                q_F_s=q_F_s,
+                q_F_h=q_F_h,
             )
         else:
             raise ValueError(f"Unknown coherent level {level}")
@@ -990,6 +1161,10 @@ class DosimetryEngine:
             kwargs.get("T0", self.T0),
             curvature_H,
             kwargs.get("freq_hz", self.freq_hz),
+            diffraction_model=kwargs.get("diffraction_model"),
+            fock_R=kwargs.get("fock_R"),
+            q_F_s=kwargs.get("q_F_s"),
+            q_F_h=kwargs.get("q_F_h"),
         )
 
     def sweep_levels(
