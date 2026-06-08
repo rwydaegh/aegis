@@ -96,6 +96,21 @@ class TestComputeDosimetryHappyPath:
         assert "polarisation" in stats.get("corrections", [])
         assert "curvature" in stats.get("corrections", [])
 
+    def test_spatial_inter_body_specular1_returns_501(self, viewer_app):
+        """inter_body="specular1" is a Phase B feature: the engine raises
+        NotImplementedError and the route maps it to HTTP 501."""
+        with viewer_app.test_client() as c:
+            resp = c.post(
+                "/api/compute",
+                json={
+                    "mode": "spatial",
+                    "inter_body": "specular1",
+                    "antenna_pos": [1, 0, 0.1],
+                },
+            )
+        assert resp.status_code == 501, resp.data[:200]
+        assert "specular1" in resp.get_json()["error"]
+
 
 # ---------------------------------------------------------------------------
 # Invalid payloads (400)
