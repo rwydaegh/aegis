@@ -24,7 +24,11 @@ ENV SETUPTOOLS_SCM_PRETEND_VERSION=${SETUPTOOLS_SCM_PRETEND_VERSION}
 
 # Stub package so hatchling can resolve metadata without real source
 RUN mkdir -p src/aegis && touch src/aegis/__init__.py
-RUN pip install uv && uv pip install --system ".[viewer,body]" gunicorn
+# 'fast' pulls in numba: without it every @njit kernel (the self-shadow
+# visibility bake, occlusion ray casts) falls back to pure Python and is
+# orders of magnitude slower (the self-shadow bake went from seconds to
+# minutes on the 2-vCPU box). Numba is required, not optional, for the viewer.
+RUN pip install uv && uv pip install --system ".[viewer,body,fast]" gunicorn
 
 # ---------- Data layer (cached unless mesh/tissue data change) ----------
 COPY data/ data/
