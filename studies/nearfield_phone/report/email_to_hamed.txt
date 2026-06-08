@@ -1,0 +1,66 @@
+Subject: Distance and uncertainty for the normalized SAR values
+
+Dear Hamed,
+
+Thanks for the two clear questions at the dose-model meeting. Both are ready: a
+way to correct a normalized SAR value for distance, and an uncertainty estimate for
+each value. The short version is below. The detail is in the attached report and
+Excel file.
+
+I moved the dosimetry to a new method. It is fast, so this time I did not hold
+distance and orientation fixed. The sweep was 4 body models, 8 bands, 3 phone
+positions, distances from 5 to 400 mm, and tens of orientations at each: 69,216
+configurations. Each one would be a separate full-wave run. It finished in a few
+minutes. So for every value you now get a distance curve and a spread, not a single
+point.
+
+1. Distance correction
+
+Near the body the dose follows an inverse-square law with a small offset:
+
+    SAR(d) = SAR(d_ref) * ( (d_ref + delta) / (d + delta) )^2
+
+Here d is the phone-to-body distance, d_ref is the distance the value was computed
+at (200 mm in front of the eyes), and delta is about 6 mm. Beyond a few centimetres
+this is the plain inverse-square rule: halve the distance, and the dose is about
+four times higher. The fit is tight, with R^2 = 0.9999.
+
+For your brain value, 2.62 W/kg per W for Duke at 200 mm, this gives:
+
+    100 mm  ->  9.9   (about 3.8 times higher)
+    150 mm  ->  4.6
+    200 mm  ->  2.62  (reference)
+    300 mm  ->  1.2
+    400 mm  ->  0.68
+
+The plot fig_distance_factor shows the curve with the reference marked. The full
+table is in the Excel sheet brain_2.62_adjusted.
+
+2. Uncertainty
+
+For each value I give the mean, standard deviation, min, max, and the 5th and 95th
+percentiles. For a fixed body the main source is how the phone is held. For the
+Duke brain value that is about 27% (one standard deviation), so
+
+    2.62 W/kg per W  ->  2.6 +/- 0.7,
+
+with the full range over orientations from about 0.8 to 3.8. Body model adds
+another 30 to 40%: smaller bodies absorb more per kilogram, so a child is higher
+than the adult. The per-scenario tables are in the sheets named unc_.
+
+One honest note. The method does not replace full-wave. Your absolute numbers stay
+the full-wave ones. The distance correction and the spread are ratios around them,
+so the parts that are hardest to model mostly cancel.
+
+In the attachment:
+
+- near_field_dose_report.pdf: the method in brief, the figures, and the caveats.
+- nearfield_dose_results.xlsx: distance coefficients and uncertainty statistics for
+  every scenario and band, plus the worked brain example.
+- fig_distance_factor.png and fig_uncertainty.png: the two plots.
+
+Happy to walk through any of it, or to run the same for another tissue, band, or
+scenario. That is quick now.
+
+Best regards,
+Robin
