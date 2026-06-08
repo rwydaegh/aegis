@@ -113,6 +113,19 @@ Supersedes/absorbs `2026-06-06-self-shadowing-visibility-design.md`.
 
 ## Decision log (made autonomously overnight)
 
+- 2026-06-08 L12 (real-phantom E2E validation, post-CI). Ran the full pipeline on
+  the real duke phantom (56024 triangles) under diffraction_model none vs fock,
+  far-field plane wave + random psi: incoherent L3 IDENTICAL (no gate at L3,
+  correct), L6 finite & sab>=0, pointwise max |fock-none|/max = 40.8% near
+  terminators (the penumbra, expected), WHOLE-BODY SAR change 6.58%, sub-second.
+  Coherent L7 (with precoder) finite & sab>=0, lit-region max unchanged (consistent
+  with L9). No NaN, no crash, ~1-3s on 56k tris. NOTE: the whole-body change vs
+  ReLU is ~6-7% on a real one-side-lit phantom, ABOVE the cylinder oracle's 2-4%
+  (F5) - a real phantom has far more grazing/shadowed area under a single plane
+  wave, so the penumbra reweighting matters more. Physically sensible (fock adds
+  the real penumbra+creeping leakage that hard-ReLU cuts); not a bug. The "2-4%"
+  claim is cylinder-specific; quote ~6-7% for real phantoms vs ReLU. CI fully
+  green (ruff + basedpyright 0 + full pytest + benchmarks) on the branch.
 - 2026-06-08 L11 (final review gap, follow-up). `src/aegis/coherent/_fast.py` (the
   JAX-accelerated twins compute_body_channel_factored_jax / compute_q_for_body /
   compute_q_batch_vmap, used by the JSAC v0.33 batched ECBF solver) did NOT
