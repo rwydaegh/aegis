@@ -8,7 +8,7 @@ Outputs (under ``studies/nearfield_phone/``):
 * ``report/figures/fig_uncertainty.pdf``       - orientation spread per placement.
 * ``report/figures/fig_distance_factor.pdf``   - distance-adjustment factor and
   the worked example applied to the 2.62 W/kg/W brain reference.
-* ``out/nearfield_dose_results.xlsx``          - the partner workbook.
+* ``out/nearfield_dose_results.xlsx``          - the partner Excel file.
 """
 
 from __future__ import annotations
@@ -217,7 +217,8 @@ def write_excel(df):
                 ],
                 "description": [
                     "Fast near-field surface dose method (in-house, patent pending). Runs thousands of"
-                    " phone positions and orientations in minutes; calibrated against full-wave reference.",
+                    " phone positions and orientations in minutes. Does not replace full-wave: the"
+                    " distance law and the uncertainty are ratios applied to a full-wave reference value.",
                     "ICNIRP 2020 metrics: whole-body SAR, psSAR10g, peak/4cm2/1cm2 APD.",
                     "Per 1 W radiated power (W/kg per W, or W/m^2 per W) - the same normalized-SAR convention.",
                     "Duke, Ella, Eartha, Thelonious.",

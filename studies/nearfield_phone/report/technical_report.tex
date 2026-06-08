@@ -27,7 +27,7 @@ You asked for two things at the dose-model meeting. First, a way to correct a
 normalized SAR value when the phone is at a different distance. Second, an
 uncertainty estimate for each value, such as the \SI{2.62}{W\per kg\per W} brain
 figure for Duke in the front-of-eyes scenario. Both are ready. The numbers and
-tables are in the attached workbook \texttt{nearfield\_dose\_results.xlsx}, and
+tables are in the attached Excel file \texttt{nearfield\_dose\_results.xlsx}, and
 the figures below are also in the email.
 
 Each scenario now has a full distance curve and an uncertainty range, not a single
@@ -38,8 +38,8 @@ number.
 This is a new method. It is a fast surface model: it computes the dose on the
 \SI{}{2D} body surface, not in the full \SI{}{3D} tissue volume. A full-wave
 (FDTD) run gives one number for one phone position and orientation, and takes
-hours. The new method gives thousands of positions and orientations in minutes. We
-calibrate it against full-wave, so the absolute level matches.
+hours. The new method gives thousands of positions and orientations in minutes. It
+does not replace full-wave results.
 
 Figure~\ref{fig:geometry} shows the three phone placements on the Duke model.
 Figure~\ref{fig:apd} shows the absorbed power on the skin. The dose is highest on
@@ -101,7 +101,7 @@ The brain value of \SI{2.62}{W\per kg\per W} at \SI{200}{mm} becomes:
 
 Figure~\ref{fig:factor} plots this, with the reference point marked.
 Figure~\ref{fig:bands} shows that the law holds for all eight bands. The per-band
-fit coefficients are in the workbook (sheets \texttt{distlaw\_*}).
+fit coefficients are in the Excel file (sheets \texttt{distlaw\_*}).
 
 \begin{figure}[h]
   \centering
@@ -140,7 +140,7 @@ Thelonious). Smaller
 bodies absorb more per kilogram, so a child model is higher than the adult. The two
 sources add in quadrature, for about \SI{45}{\percent} in total.
 Figure~\ref{fig:unc} shows the orientation spread per placement. The per-scenario
-tables are in the workbook (sheets \texttt{unc\_*}).
+tables are in the Excel file (sheets \texttt{unc\_*}).
 
 \begin{figure}[h]
   \centering
@@ -150,9 +150,9 @@ tables are in the workbook (sheets \texttt{unc\_*}).
   \label{fig:unc}
 \end{figure}
 
-\section*{The workbook}
+\section*{The Excel file}
 
-The workbook has:
+The Excel file has:
 \begin{itemize}\setlength{\itemsep}{0pt}
   \item \texttt{README}: the sheet descriptions and the normalization.
   \item \texttt{distlaw\_*}: the distance-law coefficients ($\delta$, $R^2$) for
@@ -165,16 +165,22 @@ The workbook has:
 
 \section*{Caveats}
 
-The closest distances (under a couple of centimetres) are an upper bound. The phone
-is no longer a point source at that range, so these values are conservative.
-
 The brain number is a volume quantity from your full-wave model. We do not
-recompute it. We apply the distance scaling and the spread to your \SI{2.62}{}
-value. Both depend only on the phone-body geometry, so the transfer is valid.
+recompute it. We take that value and report how it scales with distance and how
+much it varies. The scaling and the spread are ratios, set by the phone-body
+geometry.
+
+This split matters for accuracy. Our method leaves out some near-field effects: the
+antenna coupling to the body, the reactive zone at the smallest gaps, and internal
+tissue resonances. These add uncertainty to the absolute SAR, most at the lowest
+bands and the smallest gaps. In a ratio they largely cancel, so the distance
+correction and the spread carry less of this error than an absolute value would.
+Beyond a few centimetres the field is radiating and the scaling rests on the
+geometry. The closest distances (under a couple of centimetres) are an upper bound.
 
 The \SI{700}{} and \SI{835}{MHz} antennas are off-resonance in free space, so their
-absolute level is unreliable. The shape of the distance and orientation behaviour
-is correct, and the distance law and the uncertainty depend only on that shape.
+absolute level is unreliable. Their shape with distance and orientation is still
+correct, and the scaling and the spread depend only on that shape.
 
 We can extend this to other tissues, bands, or scenarios.
 
