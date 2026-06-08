@@ -6,7 +6,8 @@ Computes per-triangle S_ab from the general incoherent formula:
 
 where:
     T = T_avg + (q/2)*DeltaT  (with polarisation) or T_avg (without)
-    g = GELU(mu, sigma)        (with diffraction)  or ReLU(mu) (without)
+    g = the diffraction gate: ReLU(mu) ("none"), GELU(mu, sigma) ("gelu"),
+        or the Fock smooth-convex-body gate ("fock")
     curvature term present or absent
 
 See theory/composability_analysis.md for derivation and limiting cases.
@@ -25,6 +26,36 @@ from aegis.kernels._base import (
     physical_gelu,
     te_tm_power_weights,
 )
+from aegis.kernels.fock import fock_local
+
+# Diffraction gate selector. ``"none"`` is exact ReLU, ``"gelu"`` is the legacy
+# physical-GELU smoothing, ``"fock"`` is the smooth-convex-body (Fock) gate.
+_DIFFRACTION_MODELS = ("none", "gelu", "fock")
+
+
+def _resolve_diffraction_model(
+    diffraction: bool,
+    diffraction_model: str | None,
+) -> str:
+    """Resolve the gate selector from the new string and the legacy bool.
+
+    Precedence: an explicit ``diffraction_model`` always wins. When it is
+    ``None`` the legacy ``diffraction`` bool is mapped to its historical
+    meaning: ``True -> "gelu"`` (the physical-GELU smoothing this flag has always
+    selected) and ``False -> "none"`` (exact ReLU).
+
+    The Fock gate is reachable only by passing ``diffraction_model="fock"``
+    explicitly, because it requires an in-plane radius (``fock_R``) that legacy
+    bool callers do not supply. The engine selects Fock as its default and
+    threads ``fock_R`` through (see the engine integration task); the kernel
+    never guesses a radius.
+    """
+    if diffraction_model is not None:
+        if diffraction_model not in _DIFFRACTION_MODELS:
+            raise ValueError(f"diffraction_model must be one of {_DIFFRACTION_MODELS}, got {diffraction_model!r}")
+        return diffraction_model
+    return "gelu" if diffraction else "none"
+
 
 # Maximum number of (M, N) elements before we split paths into chunks.
 # The Fresnel path allocates multiple complex128 (M, N) intermediates
@@ -38,7 +69,16 @@ from aegis.kernels._base import (
 _MAX_MN_ELEMENTS = 10_000_000
 
 
-@jit(static_argnames=("fresnel", "polarisation", "curvature", "diffraction"))
+@jit(
+    static_argnames=(
+        "fresnel",
+        "polarisation",
+        "curvature",
+        "diffraction_model",
+        "q_F_s",
+        "q_F_h",
+    )
+)
 def _spatial_kernel_unbatched(
     normals: NDArray[np.floating],
     k_hat: NDArray[np.floating],
@@ -52,8 +92,11 @@ def _spatial_kernel_unbatched(
     q: float | NDArray[np.floating] = 0.0,
     psi: NDArray[np.complexfloating] | None = None,
     curvature: bool = False,
-    diffraction: bool = False,
+    diffraction_model: str = "none",
     curvature_H: NDArray[np.floating] | None = None,
+    fock_R: NDArray[np.floating] | None = None,
+    q_F_s: complex | None = None,
+    q_F_h: complex | None = None,
 ) -> NDArray[np.floating]:
     """Core spatial kernel operating on all paths at once.
 
@@ -79,28 +122,33 @@ def _spatial_kernel_unbatched(
     else:
         t_factor = T0  # constant, broadcasts over (M, N)
 
-    # Activation: ReLU or GELU (with diffraction)
-    H_safe: NDArray[np.floating] | None = None
-    if diffraction:
+    # Activation gate: ReLU ("none"), GELU smoothing ("gelu"), or Fock ("fock").
+    if diffraction_model == "none":
+        g = mu_plus
+    elif diffraction_model == "gelu":
         wavelength = C_0 / freq_hz
-        assert curvature_H is not None, "diffraction=True requires curvature_H"
+        assert curvature_H is not None, "diffraction_model='gelu' requires curvature_H"
         H_safe = xp.maximum(curvature_H, 0.0)
         sigma = xp.sqrt(xp.maximum(wavelength * H_safe / (4.0 * xp.pi), 1e-20))
         g = physical_gelu(mu, sigma)
-    else:
-        g = mu_plus
+    else:  # "fock"
+        assert fock_R is not None, "diffraction_model='fock' requires fock_R"
+        if polarisation and psi is not None:
+            w_s, w_p = te_tm_power_weights(normals, k_hat, psi)
+        else:
+            w_s, w_p = 0.5, 0.5
+        # Far-field radius is per-triangle (M,); reshape so m*theta broadcasts
+        # against theta of shape (M, N). A per-path radius (M, N) is used as is.
+        R = fock_R[:, None] if fock_R.ndim == 1 else fock_R
+        g = fock_local(mu, R, freq_hz, w_s, w_p, q_F_s, q_F_h)
 
     sab = (t_factor * g) @ power
 
     # Curvature correction: additive perturbative term
     if curvature:
         k = xp.maximum(2.0 * xp.pi * freq_hz / C_0, 1e-6)
-        if diffraction:
-            assert H_safe is not None
-            H_for_curv = H_safe
-        else:
-            assert curvature_H is not None, "curvature=True requires curvature_H"
-            H_for_curv = xp.maximum(curvature_H, 0.0)
+        assert curvature_H is not None, "curvature=True requires curvature_H"
+        H_for_curv = xp.maximum(curvature_H, 0.0)
         # einsum avoids two (M, N) intermediates (g**2 and H-scaled g**2)
         g_sq_power = xp.einsum("mn,mn,n->m", g, g, power)
         sab_curvature = T0 * (H_for_curv / k) * g_sq_power
@@ -123,7 +171,11 @@ def spatial_kernel(
     psi: NDArray[np.complexfloating] | None = None,
     curvature: bool = False,
     diffraction: bool = False,
+    diffraction_model: str | None = None,
     curvature_H: NDArray[np.floating] | None = None,
+    fock_R: NDArray[np.floating] | None = None,
+    q_F_s: complex | None = None,
+    q_F_h: complex | None = None,
 ) -> NDArray[np.floating]:
     """Compute per-triangle S_ab with composable physics corrections.
 
@@ -149,8 +201,17 @@ def spatial_kernel(
         polarisation=True, the physical per-(triangle, path) TE/TM split is
         used instead of the scalar ``q``.
     curvature : enable curvature correction (requires curvature_H)
-    diffraction : enable diffraction smoothing (requires curvature_H)
+    diffraction : legacy bool. Mapped to ``diffraction_model`` when the latter is
+        None: True -> "fock", False -> "none". An explicit ``diffraction_model``
+        always wins.
+    diffraction_model : gate selector "none" | "gelu" | "fock". "none" is exact
+        ReLU, "gelu" is the legacy physical-GELU smoothing (requires curvature_H),
+        "fock" is the smooth-convex-body gate (requires fock_R).
     curvature_H : (M,) twice mean curvature per triangle [1/m]
+    fock_R : (M,) or (M, N) in-incidence-plane radius of curvature [m], required
+        when diffraction_model="fock" (from geometry.curvature.fock_radius)
+    q_F_s, q_F_h : Leontovich impedance-Fock parameters for the soft/hard
+        creeping waves. None (default) selects the PEC eigenvalues.
 
     Returns
     -------
@@ -158,8 +219,13 @@ def spatial_kernel(
     """
     if polarisation and not fresnel:
         raise ValueError("polarisation correction requires fresnel=True")
-    if (curvature or diffraction) and curvature_H is None:
-        raise ValueError("curvature_H is required when curvature=True or diffraction=True")
+
+    model = _resolve_diffraction_model(diffraction, diffraction_model)
+
+    if (curvature or model == "gelu") and curvature_H is None:
+        raise ValueError("curvature_H is required when curvature=True or diffraction_model='gelu'")
+    if model == "fock" and fock_R is None:
+        raise ValueError("fock_R is required when diffraction_model='fock'")
 
     use_psi = polarisation and psi is not None
 
@@ -185,13 +251,20 @@ def spatial_kernel(
             q=q,
             psi=psi,
             curvature=curvature,
-            diffraction=diffraction,
+            diffraction_model=model,
             curvature_H=curvature_H,
+            fock_R=fock_R,
+            q_F_s=q_F_s,
+            q_F_h=q_F_h,
         )
     else:
         # Chunked path: split along N to bound peak memory
         chunk_size = max(max_mn // M, 1)
         sab = np.zeros(M, dtype=np.float64)
+
+        # fock_R only carries an N axis when per-path (M, N); a per-triangle
+        # (M,) radius broadcasts across all paths and needs no slicing.
+        fock_R_has_n = fock_R is not None and fock_R.ndim == 2
 
         for start in range(0, N, chunk_size):
             end = min(start + chunk_size, N)
@@ -199,6 +272,7 @@ def spatial_kernel(
             p_chunk = power[start:end]
             q_chunk: float | NDArray[np.floating] = q[start:end] if isinstance(q, np.ndarray) and q.ndim > 0 else q
             psi_chunk = psi[start:end] if psi is not None else None
+            fock_R_chunk = fock_R[:, start:end] if fock_R_has_n else fock_R
 
             chunk_sab = _spatial_kernel_unbatched(
                 normals,
@@ -212,15 +286,18 @@ def spatial_kernel(
                 q=q_chunk,
                 psi=psi_chunk,
                 curvature=curvature,
-                diffraction=diffraction,
+                diffraction_model=model,
                 curvature_H=curvature_H,
+                fock_R=fock_R_chunk,
+                q_F_s=q_F_s,
+                q_F_h=q_F_h,
             )
             sab = sab + chunk_sab
 
     # Clamp the final summed result. Clamping per-chunk would produce
     # chunk-size-dependent answers because partial sums can be negative while
     # the full sum is positive (or vice versa).
-    if curvature or diffraction:
+    if curvature or model != "none":
         sab = xp.maximum(sab, 0.0)
 
     return sab
