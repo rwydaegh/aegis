@@ -19,7 +19,11 @@ jobs:
 
   deploy:
     needs: ci
-    runs-on: ubicloud-standard-2
+    # standard-4 (more RAM/disk): the Docker image build (torch + sionna +
+    # differt + scientific stack) exhausted the 7.75 GiB standard-2 runner and
+    # the job died mid-build with no step-level error. loc-badge and modal-deploy
+    # are lighter and stay on standard-2.
+    runs-on: ubicloud-standard-4
     if: github.ref == 'refs/heads/master'
     permissions:
       contents: read
