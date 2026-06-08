@@ -63,10 +63,15 @@ Sign convention: AEGIS stores ``n - i k`` (``e^{+i w t}``), so ``eta = 1/n`` has
 from __future__ import annotations
 
 import functools
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 from scipy import special
+
+if TYPE_CHECKING:
+    from aegis.tissue.dielectric import TissueModel
 
 from aegis._array_backend import erf, xp
 from aegis.constants import C_0
@@ -97,7 +102,8 @@ def _impedance_roots(pol: str, q_F: complex, n_terms: int) -> np.ndarray:
 
     Newton-iterates the roots of ``Ai'(t) - q_F Ai(t) = 0`` from the PEC seeds
     (the signed ``Ai`` zeros for ``"soft"``, ``Ai'`` zeros for ``"hard"``) and
-    returns ``q_p = -t`` (so PEC ``q_F = 0`` gives back ``q_p = |zero|``). The
+    returns ``q_p = -t``. The hard PEC limit is ``q_F = 0`` (Neumann: ``Ai'(t) = 0``);
+    the soft PEC limit is ``q_F -> inf`` (Dirichlet: ``Ai(t) = 0``). The
     Newton derivative is ``d/dt[Ai'(t) - q_F Ai(t)] = t Ai(t) - q_F Ai'(t)``
     using ``Ai''(t) = t Ai(t)``.
 
@@ -119,6 +125,10 @@ def _impedance_roots(pol: str, q_F: complex, n_terms: int) -> np.ndarray:
             t = t - step
             if abs(step) < _NEWTON_TOL:
                 break
+        ai_c, aip_c, _, _ = special.airy(t)
+        residual = abs(aip_c - q_F * ai_c)
+        if residual > _NEWTON_TOL:
+            raise RuntimeError(f"impedance-Fock Newton did not converge for pol={pol!r}, q_F={q_F}")
         roots[p] = -t  # q_p = -t
     return roots
 
@@ -135,25 +145,25 @@ def _leontovich_pole(eta: complex, ka: float, pol: str) -> complex:
     """
     import mpmath as mp
 
-    mp.mp.dps = 30
-    n = mp.mpc(1.0 / complex(eta))
-    if n.imag < 0:  # e^{-i w t}/outgoing-H^(1) convention needs Im(n) > 0
-        n = mp.conj(n)
-    ka_m = mp.mpf(float(ka))
-    g = (-1j * ka_m * n) if pol == "soft" else (-1j * ka_m / n)
+    with mp.workdps(30):
+        n = mp.mpc(1.0 / complex(eta))
+        if n.imag < 0:  # e^{-i w t}/outgoing-H^(1) convention needs Im(n) > 0
+            n = mp.conj(n)
+        ka_m = mp.mpf(float(ka))
+        g = (-1j * ka_m * n) if pol == "soft" else (-1j * ka_m / n)
 
-    def hankel_d(v, z):  # H_nu'(z) via the recurrence H_{v-1} - (v/z) H_v
-        return mp.hankel1(v - 1, z) - (v / z) * mp.hankel1(v, z)
+        def hankel_d(v, z):  # H_nu'(z) via the recurrence H_{v-1} - (v/z) H_v
+            return mp.hankel1(v - 1, z) - (v / z) * mp.hankel1(v, z)
 
-    m = (ka_m / 2) ** mp.mpf("0.3333333333333333")
-    q1 = mp.mpf("2.338") if pol == "soft" else mp.mpf("1.019")
-    guess = ka_m + mp.exp(1j * mp.pi / 3) * m * q1
-    nu = mp.findroot(
-        lambda v: ka_m * hankel_d(v, ka_m) - g * mp.hankel1(v, ka_m),
-        guess,
-        tol=mp.mpf(10) ** -13,
-    )
-    return complex(nu)
+        m = (ka_m / 2) ** mp.mpf("0.3333333333333333")
+        q1 = mp.mpf("2.338") if pol == "soft" else mp.mpf("1.019")
+        guess = ka_m + mp.exp(1j * mp.pi / 3) * m * q1
+        nu = mp.findroot(
+            lambda v: ka_m * hankel_d(v, ka_m) - g * mp.hankel1(v, ka_m),
+            guess,
+            tol=mp.mpf(10) ** -13,
+        )
+        return complex(nu)
 
 
 @functools.cache
@@ -175,6 +185,10 @@ def fock_impedance_param(eta: complex, kR: float, pol: str) -> complex:
     """
     if pol not in {"soft", "hard"}:
         raise ValueError(f"pol must be 'soft' or 'hard', got {pol!r}")
+    if eta == 0:
+        raise ValueError(
+            "eta = 0 is the exact PEC limit; the Leontovich impedance is undefined. Use q_F=None for the PEC Fock gate."
+        )
     if eta.imag < -1e-12:
         raise ValueError(
             f"Im(eta) = {eta.imag:.4g} < 0 is a gain medium; pass eta = 1/n with the "
@@ -204,17 +218,27 @@ def _q_hard_table_cached(eta: complex):
     return interp
 
 
-def fock_q_hard_table(band):
+def fock_q_hard_table(band: TissueModel) -> Callable[[ArrayLike], NDArray[np.floating]]:
     """Cached interpolator ``q_hard(kR)`` for a tissue band's drifting hard eigenvalue.
 
-    ``band`` is a tissue dielectric object exposing ``.n_complex`` (e.g.
-    ``aegis.tissue.dielectric.SKIN_28GHZ``). Returns ``callable(kR) -> q_eff``,
-    the effective hard creeping eigenvalue obtained by solving the impedance-Fock
-    pole on a log-spaced ``kR`` grid (4 ... 2048) and linearly interpolating in
-    ``log(kR)``. The eigenvalue drifts from the PEC-hard 1.019 toward the
-    PEC-soft 2.338 as ``kR`` grows. Cached per band (keyed on ``eta = 1/n``).
+    ``band`` is a :class:`~aegis.tissue.dielectric.TissueModel` instance exposing
+    ``.n_complex`` (e.g. ``aegis.tissue.dielectric.SKIN_28GHZ``). Returns
+    ``callable(kR) -> q_eff``, the effective hard creeping eigenvalue obtained by
+    solving the impedance-Fock pole on a log-spaced ``kR`` grid (4 ... 2048) and
+    linearly interpolating in ``log(kR)``. The eigenvalue drifts from the PEC-hard
+    1.019 toward the PEC-soft 2.338 as ``kR`` grows. Cached per band (keyed on
+    ``eta = 1/n``).
+
+    Outside the grid (``kR < 4`` or ``kR > 2048``) the returned callable clamps
+    to the nearest endpoint value (``np.interp`` hold-constant extrapolation).
+    Body-scale ``kR`` (~6-90 at 28 GHz) sits well inside the grid.
     """
-    return _q_hard_table_cached(complex(1.0 / band.n_complex))
+    n = band.n_complex
+    if n == 0:
+        raise ValueError(
+            "band.n_complex = 0 is unphysical; the surface impedance is undefined. Use q_F=None for the PEC Fock gate."
+        )
+    return _q_hard_table_cached(complex(1.0 / n))
 
 
 @functools.cache
