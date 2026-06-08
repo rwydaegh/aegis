@@ -639,7 +639,10 @@ def _signed_clearance(
 
 
 def _fock_radius_at(
-    body: BodyMesh,
+    kappa1: NDArray[np.floating],
+    kappa2: NDArray[np.floating],
+    dir1: NDArray[np.floating],
+    normals: NDArray[np.floating],
     tri_idx: NDArray[np.integer],
     dirs: NDArray[np.floating],
 ) -> NDArray[np.float64]:
@@ -647,16 +650,16 @@ def _fock_radius_at(
 
     A gather form of :func:`aegis.geometry.curvature.fock_radius`: evaluates
     Euler's theorem at the given (occluder triangle, blocking direction) pairs
-    instead of one shared direction over all faces.
+    instead of one shared direction over all faces. The per-face principal
+    curvatures ``(kappa1, kappa2, dir1)`` and ``normals`` are passed in
+    precomputed (body-global, index-independent) so the caller hoists the
+    expensive ``principal_curvatures`` bake out of any per-triangle loop.
     """
-    from aegis.geometry import curvature
-
-    kappa1, kappa2, d1 = curvature.principal_curvatures(body)
     idx = np.asarray(tri_idx, dtype=np.int64)
-    n = body.normals[idx]
+    n = normals[idx]
     k1 = kappa1[idx]
     k2 = kappa2[idx]
-    dd1 = d1[idx]
+    dd1 = dir1[idx]
     dd2 = np.cross(n, dd1)
     kh = np.asarray(dirs, dtype=np.float64)
     proj = kh - np.einsum("kj,kj->k", kh, n)[:, None] * n
@@ -718,6 +721,13 @@ def bake_visibility_lut(
     d_occ = np.empty(n_active, np.float32)
     R_occ = np.empty(n_active, np.float32)
     flat_dirs = grid_dirs.reshape(-1, 3)
+    # Hoist the body-global principal curvatures out of the per-triangle loop:
+    # they are index-independent, so recomputing them per active triangle made
+    # the bake O(M_active * mesh) instead of O(mesh) (the dominant cost).
+    from aegis.geometry import curvature
+
+    kappa1, kappa2, dir1 = curvature.principal_curvatures(body)
+    body_normals = body.normals
     for row, i in enumerate(active_index):
         blocked = ~vis[i].reshape(-1)  # (G,)
         if not blocked.any():
@@ -727,7 +737,7 @@ def bake_visibility_lut(
         d_occ[row] = float(np.mean(d2[i].reshape(-1)[blocked]))
         occ_tris = occ_idx[i].reshape(-1)[blocked]
         occ_dirs = flat_dirs[blocked]
-        R_occ[row] = float(np.mean(_fock_radius_at(body, occ_tris, occ_dirs)))
+        R_occ[row] = float(np.mean(_fock_radius_at(kappa1, kappa2, dir1, body_normals, occ_tris, occ_dirs)))
 
     clearance_int8 = _encode_int8(c[active_index]) if n_active else empty_clear
     return VisibilityLUT(
