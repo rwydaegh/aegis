@@ -113,6 +113,35 @@ Supersedes/absorbs `2026-06-06-self-shadowing-visibility-design.md`.
 
 ## Decision log (made autonomously overnight)
 
+- 2026-06-08 L5. Spec-review loop complete (3 iterations, strict reviewer vs the
+  actual codebase). Outcome and physics/design clarifications now baked into the
+  spec:
+  * Coherent gate goes into `coherent/body_channel.py` (the G_tilde -> Q dose
+    path), NOT `field_channel.py` (G, which is not in the dose path). Verified.
+  * Fock radius is the IN-INCIDENCE-PLANE principal radius via Euler's theorem
+    (`principal_curvatures` + `fock_radius`), NOT `R = 2/H`. For a cylinder
+    `2/H = 2R` would be 2x off (penumbra width off by 2^{1/3}), and the cylinder
+    is a primary oracle. This supersedes A1's "mean curvature for v1".
+  * Single xi convention pinned document-wide: xi > 0 lit, xi < 0 shadow; the
+    creeping exponent is nu_p = q_p exp(-i pi/3) (so |exp(i nu_p xi)| decays for
+    xi < 0). The gate is an additive uniform composite g = Phi_lit(xi) +
+    Psi_shadow(xi), Phi_lit = 0.5 erfc(-xi/sqrt2).
+  * Build order: local far-field gate (kernels/fock.py + geometry/curvature.py +
+    spatial.py/body_channel.py + frontend) ships first with NO unmerged
+    dependency. Distal gate is a HARD prerequisite on the 2026-06-06 visibility
+    spec (not on master). Near-field local gate depends on PR #834. inter_body is
+    lowest-priority/optional.
+  * Lambda->0 recovers ReLU asymptotically (not bit-exact; bit-exact is
+    diffraction_model="none"). Mie canary is unaffected (it never calls the
+    kernel). Convex-body goldens DO move under the new fock default.
+- 2026-06-08 L4. q_hard exposed as a precomputed `fock_q_hard_table(band)`
+  interpolator over a log-kR grid (the hard eigenvalue drifts with kR, L2);
+  d q_hard/d freq dropped from autodiff as a documented negligible term.
+- 2026-06-08 L3. fock.py sign convention pinned: AEGIS stores n - ik (e^{+iwt}),
+  so eta = 1/n already has Im(eta) > 0 (physical inductive skin). q_F_hard =
+  i m eta, q_F_soft = -i m/eta. Regression asserts the hard pole (5.654 vs
+  5.652 at kR=40) to guard the sign.
+
 - 2026-06-08 L2. The parallel cron agent's `HARD_POL_RESOLUTION.md` (rigorous
   Q_sca/Q_abs positivity proof + matrix-pencil pole extraction + 280-seed pole
   scan) independently reached the SAME sign-bug conclusion and goes further,
