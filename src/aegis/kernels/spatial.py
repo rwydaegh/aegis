@@ -171,8 +171,8 @@ def _spatial_kernel_unbatched(
     # would-be-lit response (mu > 0); the single ``g`` then feeds both the main
     # term and the curvature einsum, so the curvature term is gated for free.
     if clearance is not None:
-        if distal_d1 is None or distal_d2 is None:
-            raise ValueError("clearance requires distal_d1 and distal_d2")
+        if R_occ is None or distal_d1 is None or distal_d2 is None:
+            raise ValueError("clearance requires R_occ, distal_d1 and distal_d2")
         if use_psi:
             assert w_s_pol is not None
             assert w_p_pol is not None

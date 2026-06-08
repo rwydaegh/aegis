@@ -70,6 +70,8 @@ def level6_diffraction(
     # spatial kernel), gated on the would-be-lit response so the curvature term
     # below is gated by the same g.
     if clearance is not None:
+        if R_occ is None or distal_d1 is None or distal_d2 is None:
+            raise ValueError("clearance requires R_occ, distal_d1 and distal_d2")
         g_distal = distal_gate(
             clearance,
             R_occ,
