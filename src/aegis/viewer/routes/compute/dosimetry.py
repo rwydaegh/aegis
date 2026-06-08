@@ -242,6 +242,7 @@ def _parse_mode_level_corrections(params: dict, dcfg: dict):
                 "diffraction": _parse_bool(params.get("diffraction"), False),
                 "diffraction_model": diffraction_model,
                 "inter_body": inter_body,
+                "self_shadow": _parse_bool(params.get("self_shadow"), False),
             }
         else:
             corrections = None

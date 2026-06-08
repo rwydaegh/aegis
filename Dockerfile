@@ -24,7 +24,7 @@ ENV SETUPTOOLS_SCM_PRETEND_VERSION=${SETUPTOOLS_SCM_PRETEND_VERSION}
 
 # Stub package so hatchling can resolve metadata without real source
 RUN mkdir -p src/aegis && touch src/aegis/__init__.py
-RUN pip install uv && uv pip install --system ".[viewer]" gunicorn
+RUN pip install uv && uv pip install --system ".[viewer,body]" gunicorn
 
 # ---------- Data layer (cached unless mesh/tissue data change) ----------
 COPY data/ data/

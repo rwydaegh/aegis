@@ -117,6 +117,55 @@ def test_compute_dosimetry_forwards_diffraction_model_and_inter_body():
     assert "curvature_H" in kwargs
 
 
+def test_compute_dosimetry_forwards_self_shadow():
+    # Regression: the /api/compute route dropped self_shadow from its
+    # corrections dict, so the engine never received it (production no-op).
+    body = make_flat_mesh(12)
+
+    with patch(
+        "aegis.viewer.compute.DosimetryEngine.compute_with_timings",
+        return_value=(_fake_result(body.n_triangles), {}),
+    ) as compute_mock:
+        compute_dosimetry(
+            body,
+            antenna_pos=np.array([0.0, 0.0, 2.0]),
+            mode="spatial",
+            corrections={"diffraction_model": "fock", "inter_body": "off", "self_shadow": True},
+        )
+
+    assert compute_mock.call_args.kwargs["self_shadow"] is True
+
+
+def test_compute_dosimetry_self_shadow_off_not_forwarded():
+    body = make_flat_mesh(12)
+
+    with patch(
+        "aegis.viewer.compute.DosimetryEngine.compute_with_timings",
+        return_value=(_fake_result(body.n_triangles), {}),
+    ) as compute_mock:
+        compute_dosimetry(
+            body,
+            antenna_pos=np.array([0.0, 0.0, 2.0]),
+            mode="spatial",
+            corrections={"diffraction_model": "fock", "self_shadow": False},
+        )
+
+    # Off is the engine default, so the kwarg is simply omitted.
+    assert "self_shadow" not in compute_mock.call_args.kwargs
+
+
+def test_route_parses_self_shadow():
+    from aegis.viewer.routes.compute.dosimetry import _parse_mode_level_corrections
+
+    dcfg = {"default_level": 2}
+    _, _, corr_on, err = _parse_mode_level_corrections({"mode": "spatial", "self_shadow": "true"}, dcfg)
+    assert err is None
+    assert corr_on["self_shadow"] is True
+    _, _, corr_def, err = _parse_mode_level_corrections({"mode": "spatial"}, dcfg)
+    assert err is None
+    assert corr_def["self_shadow"] is False
+
+
 def test_compute_dosimetry_none_model_skips_curvature_injection():
     body = make_flat_mesh(12)
 
