@@ -2,6 +2,8 @@ import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import * as Sentry from '@sentry/react'
 import BodyMeshInstance from '@/components/scene/BodyMeshInstance'
+import { isClientError } from '@/api/client'
+import { useNotificationStore } from '@/stores/notifications'
 import { useLabStore } from '../store'
 import { getRig } from '../api'
 import { forwardKinematics, skin } from '../lbs'
@@ -33,6 +35,10 @@ export default function PosableBody() {
       })
       .catch(err => {
         if (cancelled) return
+        if (isClientError(err)) {
+          useNotificationStore.getState().addNotification('warning', (err as Error).message)
+          return
+        }
         Sentry.captureException(err)
       })
     return () => {
