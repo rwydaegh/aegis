@@ -35,11 +35,11 @@ number.
 
 \section*{The method}
 
-This is a new method. It is a fast surface model: it computes the dose on the
+This is my method. It is a fast surface model: it computes the dose on the
 \SI{}{2D} body surface, not in the full \SI{}{3D} tissue volume. A full-wave
 (FDTD) run gives one number for one phone position and orientation, and takes
-hours. The new method gives thousands of positions and orientations in minutes. It
-does not replace full-wave results.
+hours. Mine gives thousands of positions and orientations in minutes. It does not
+replace full-wave results.
 
 Figure~\ref{fig:geometry} shows the three phone placements on the Duke model.
 Figure~\ref{fig:apd} shows the absorbed power on the skin. The dose is highest on
@@ -122,9 +122,9 @@ fit coefficients are in the Excel file (sheets \texttt{distlaw\_*}).
 
 \section*{2. Uncertainty}
 
-We give the mean, standard deviation, min, max, and the \SIrange{5}{95}{}
+I give the mean, standard deviation, min, max, and the \SIrange{5}{95}{}
 percentiles for each value. For a fixed body the main source is the phone
-orientation. We sample it with a large set of random orientations.
+orientation. I sample it with a large set of random orientations.
 
 The orientation spread for the Duke brain value is about \SI{27}{\percent} (one
 standard deviation). So
@@ -141,6 +141,15 @@ bodies absorb more per kilogram, so a child model is higher than the adult. The 
 sources add in quadrature, for about \SI{45}{\percent} in total.
 Figure~\ref{fig:unc} shows the orientation spread per placement. The per-scenario
 tables are in the Excel file (sheets \texttt{unc\_*}).
+
+My method is a third source, and the largest one on absolute values. Against
+full-wave it is within a few percent near the top of the range, and it
+underestimates toward the lowest bands, by up to roughly a factor of two at
+\SI{700}{MHz}. This does not reach the numbers here. The absolute level is your
+full-wave value, and my method gives only the distance correction and the spread.
+Both are ratios, and a steady per-band bias cancels in a ratio. It would matter
+only for an absolute SAR read straight from the method, which the dose model does
+not use.
 
 \begin{figure}[h]
   \centering
@@ -165,24 +174,20 @@ The Excel file has:
 
 \section*{Caveats}
 
-The brain number is a volume quantity from your full-wave model. We do not
-recompute it. We take that value and report how it scales with distance and how
-much it varies. The scaling and the spread are ratios, set by the phone-body
-geometry.
+The brain number is a volume quantity from your full-wave model. I do not
+recompute it. I take that value and report how it scales with distance and how
+much it varies.
 
-We have checked the method below 6 GHz against full-wave simulations. The absolute
-level agrees within a few percent near the top of our range, and underestimates
-toward the lowest bands. The near-field placement adds one effect the check does
-not cover: the coupling between the phone and the body at the smallest gaps. So the
-absolute SAR is least certain at the cheek and the lowest bands. The distance
-correction and the spread are ratios, though, so a steady bias within a band
-cancels. Beyond a few centimetres the scaling rests on the geometry, and the
-closest distances (under a couple of centimetres) are an upper bound.
+The near-field placement adds one effect the full-wave validation does not cover:
+the coupling between the phone and the body at the smallest gaps. So the absolute
+SAR is least certain at the cheek and the lowest bands. Beyond a few centimetres
+the scaling rests on the geometry, and the closest distances (under a couple of
+centimetres) are an upper bound.
 
 The \SI{700}{} and \SI{835}{MHz} antennas are off-resonance in free space, so their
 absolute level is unreliable. Their shape with distance and orientation is still
 correct, and the scaling and the spread depend only on that shape.
 
-We can extend this to other tissues, bands, or scenarios.
+I can extend this to other tissues, bands, or scenarios.
 
 \end{document}
