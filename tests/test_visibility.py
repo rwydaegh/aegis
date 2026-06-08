@@ -11,7 +11,6 @@ import numpy as np
 
 from aegis.geometry.mesh import BodyMesh
 
-
 # ---------------------------------------------------------------------------
 # Task 1: BodyMesh.vertex_hash (pose-dependent content hash)
 # ---------------------------------------------------------------------------
@@ -71,10 +70,9 @@ def test_int8_codec_roundtrip():
     q = _encode_int8(c)
     assert q.dtype == np.int8
     d = _decode_int8(q)
-    assert np.allclose(
-        d[:3], np.clip(c[:3], -127 * CLEARANCE_SCALE, 127 * CLEARANCE_SCALE), atol=CLEARANCE_SCALE
-    )
-    assert d[3] == 127 * CLEARANCE_SCALE and d[4] == -127 * CLEARANCE_SCALE
+    assert np.allclose(d[:3], np.clip(c[:3], -127 * CLEARANCE_SCALE, 127 * CLEARANCE_SCALE), atol=CLEARANCE_SCALE)
+    assert d[3] == 127 * CLEARANCE_SCALE
+    assert d[4] == -127 * CLEARANCE_SCALE
 
 
 def test_lut_bilinear_gather_constant_field():
