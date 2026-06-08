@@ -170,13 +170,14 @@ recompute it. We take that value and report how it scales with distance and how
 much it varies. The scaling and the spread are ratios, set by the phone-body
 geometry.
 
-This split matters for accuracy. Our method leaves out some near-field effects: the
-antenna coupling to the body, the reactive zone at the smallest gaps, and internal
-tissue resonances. These add uncertainty to the absolute SAR, most at the lowest
-bands and the smallest gaps. In a ratio they largely cancel, so the distance
-correction and the spread carry less of this error than an absolute value would.
-Beyond a few centimetres the field is radiating and the scaling rests on the
-geometry. The closest distances (under a couple of centimetres) are an upper bound.
+We have checked the method below 6 GHz against full-wave simulations. The absolute
+level agrees within a few percent near the top of our range, and underestimates
+toward the lowest bands. The near-field placement adds one effect the check does
+not cover: the coupling between the phone and the body at the smallest gaps. So the
+absolute SAR is least certain at the cheek and the lowest bands. The distance
+correction and the spread are ratios, though, so a steady bias within a band
+cancels. Beyond a few centimetres the scaling rests on the geometry, and the
+closest distances (under a couple of centimetres) are an upper bound.
 
 The \SI{700}{} and \SI{835}{MHz} antennas are off-resonance in free space, so their
 absolute level is unreliable. Their shape with distance and orientation is still
