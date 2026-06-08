@@ -40,13 +40,26 @@ def _static_assets_impl(cache: dict, cache_lock, filename: str) -> RouteResponse
 
 
 def _static_root_files_impl(cache: dict, cache_lock, filename: str) -> RouteResponse:
-    """Serve root-level static files (fonts, favicons) from static/."""
-    from flask import abort, send_from_directory
+    """Serve root-level static files (fonts, favicons) from static/.
+
+    Also acts as the SPA history-API fallback: a hard GET to a client-side
+    route like ``/lab`` (no file extension, not under ``api/``) returns
+    ``index.html`` so react-router can hydrate the requested route. Missing
+    assets (paths with an extension, e.g. ``foo.js``) and unknown API paths
+    still 404.
+    """
+    from flask import send_from_directory
 
     static_dir = Path(__file__).parent.parent / "static"
-    # Only serve files that actually exist to avoid masking API routes
+    # Serve a real root-level static file if it exists (fonts, favicons, etc).
     if (static_dir / filename).is_file():
         return send_from_directory(str(static_dir), filename)
+    # SPA fallback for client-side routes: not an API path and has no file
+    # extension (a missing asset like "foo.js" must 404, not return HTML).
+    last_segment = filename.rsplit("/", 1)[-1]
+    is_extensionless = "." not in last_segment
+    if not filename.startswith("api/") and is_extensionless:
+        return _handle_index(cache, cache_lock)
     return abort(404)
 
 

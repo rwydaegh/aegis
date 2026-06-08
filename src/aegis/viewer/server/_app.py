@@ -200,6 +200,7 @@ def _register_route_modules(app: Flask) -> None:
         coverage,
         data,
         environment,
+        lab,
         location,
         mimo,
         optimize,
@@ -224,6 +225,7 @@ def _register_route_modules(app: Flask) -> None:
         terrain,
         optimize,
         bugreport,
+        lab,
     ):
         module.register(app, _cache, _cache_lock)
 

@@ -18,6 +18,15 @@ def register(app, cache, cache_lock):
         params, err = get_json_dict()
         if err is not None:
             return err
+
+        preset = params.get("preset")
+        if preset is not None:
+            from aegis.viewer.routes.lab._presets import POSE_PRESETS
+
+            if preset not in POSE_PRESETS:
+                return jsonify({"error": f"unknown preset {preset!r}"}), 400
+            params = {**params, "pose": POSE_PRESETS[preset]}
+
         model_type = params.get("model", "smplx")
         gender = params.get("gender", "neutral")
 
@@ -60,6 +69,7 @@ def register(app, cache, cache_lock):
 
         body = pb.generate(betas, pose=pose, name=f"{model_type}_{gender}")
         binary, meta = body_to_binary(body)
+        meta["vertex_hash"] = int(body.vertex_hash) & 0xFFFFFFFFFFFFFFFF
 
         resp = app.make_response(binary)
         resp.headers["Content-Type"] = "application/octet-stream"
