@@ -40,6 +40,10 @@ def level8_ecbf(
     fock_R: NDArray[np.floating] | None = None,
     q_F_s: complex | None = None,
     q_F_h: complex | None = None,
+    clearance: NDArray[np.floating] | None = None,
+    R_occ: NDArray[np.floating] | None = None,
+    distal_d1: NDArray[np.floating] | None = None,
+    distal_d2: NDArray[np.floating] | None = None,
 ) -> tuple[
     NDArray[np.floating],
     NDArray[np.complexfloating],
@@ -91,6 +95,10 @@ def level8_ecbf(
         fock_R=fock_R,
         q_F_s=q_F_s,
         q_F_h=q_F_h,
+        clearance=clearance,
+        R_occ=R_occ,
+        distal_d1=distal_d1,
+        distal_d2=distal_d2,
     )
 
     # Exposure operator Q

@@ -8,7 +8,7 @@ from numpy.typing import NDArray
 from aegis._array_backend import jit, xp
 from aegis.constants import C_0
 from aegis.kernels._base import fresnel_weights, physical_gelu
-from aegis.kernels.fock import fock_local
+from aegis.kernels.fock import distal_gate, fock_local
 from aegis.kernels.spatial import resolve_diffraction_model
 
 
@@ -26,6 +26,10 @@ def level6_diffraction(
     fock_R: NDArray[np.floating] | None = None,
     q_F_s: complex | None = None,
     q_F_h: complex | None = None,
+    clearance: NDArray[np.floating] | None = None,
+    R_occ: NDArray[np.floating] | None = None,
+    distal_d1: NDArray[np.floating] | None = None,
+    distal_d2: NDArray[np.floating] | None = None,
 ) -> NDArray[np.floating]:
     """Compute per-triangle S_ab with Fresnel + curvature + diffraction.
 
@@ -61,6 +65,26 @@ def level6_diffraction(
         # Incoherent, no incident polarisation state: equal TE/TM power split.
         R = fock_R[:, None] if fock_R.ndim == 1 else fock_R
         g = fock_local(mu, R, freq_hz, 0.5, 0.5, q_F_s, q_F_h)
+
+    # Distal self-shadowing gate (same dual-width Fock/knife treatment as the
+    # spatial kernel), gated on the would-be-lit response so the curvature term
+    # below is gated by the same g.
+    if clearance is not None:
+        if R_occ is None or distal_d1 is None or distal_d2 is None:
+            raise ValueError("clearance requires R_occ, distal_d1 and distal_d2")
+        g_distal = distal_gate(
+            clearance,
+            R_occ,
+            freq_hz,
+            0.5,
+            0.5,
+            d1=distal_d1,
+            d2=distal_d2,
+            q_F_s=q_F_s,
+            q_F_h=q_F_h,
+            diffraction_model=model,
+        )
+        g = xp.where(mu > 0.0, g * g_distal, g)
 
     _T_s, _T_p, T_avg = fresnel_weights(mu, n_tilde)
 

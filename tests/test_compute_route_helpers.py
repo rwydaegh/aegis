@@ -450,6 +450,12 @@ class TestParseModeOrLevel:
         assert kw["curvature"] is False
         assert kw["diffraction_model"] == "none"
         assert kw["inter_body"] == "off"
+        assert kw["self_shadow"] is False
+
+    def test_mode_spatial_self_shadow_can_be_enabled(self) -> None:
+        kw, err = _parse_mode_or_level({"mode": "spatial", "self_shadow": "true"})
+        assert err is None
+        assert kw["self_shadow"] is True
 
     def test_mode_spatial_fresnel_can_be_disabled(self) -> None:
         kw, err = _parse_mode_or_level({"mode": "spatial", "fresnel": "false"})

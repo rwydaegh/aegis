@@ -47,6 +47,10 @@ interface SimulationStore {
   diffractionModel: DiffractionModel
   diffraction: boolean
   interBody: InterBody
+  // Distal self-shadowing (one body part shadowing another) via the baked
+  // visibility LUT and distal Fock gate. Opt-in: off by default (matches the
+  // engine default and keeps convex bodies bit-stable). Spatial mode only.
+  selfShadow: boolean
   powerDbm: number
   skinModel: string
   stochasticPreset: string
@@ -99,6 +103,7 @@ interface SimulationStore {
   setCurvature: (on: boolean) => void
   setDiffractionModel: (model: DiffractionModel) => void
   setInterBody: (v: InterBody) => void
+  setSelfShadow: (on: boolean) => void
   setPowerDbm: (power: number) => void
   setSkinModel: (model: string) => void
   setStochasticPreset: (v: string) => void
@@ -181,6 +186,7 @@ export const useSimulationStore = create<SimulationStore>()(persist((set) => ({
   diffractionModel: 'fock',
   diffraction: true,
   interBody: 'off',
+  selfShadow: false,
   powerDbm: 43,
   skinModel: 'itis',
   stochasticPreset: '3GPP_38.901_UMi_LOS',
@@ -261,6 +267,7 @@ export const useSimulationStore = create<SimulationStore>()(persist((set) => ({
     return { diffractionModel: model, diffraction: active, ...(active ? { curvature: true } : {}) }
   }),
   setInterBody: (v) => set({ interBody: v }),
+  setSelfShadow: (on) => set({ selfShadow: on }),
   setPowerDbm: (power) => {
     set({ powerDbm: power })
     const antStore = useAntennaStore.getState()
@@ -340,6 +347,7 @@ export const useSimulationStore = create<SimulationStore>()(persist((set) => ({
     curvature: state.curvature,
     diffractionModel: state.diffractionModel,
     interBody: state.interBody,
+    selfShadow: state.selfShadow,
     powerDbm: state.powerDbm,
     skinModel: state.skinModel,
     freqGhz: state.freqGhz,

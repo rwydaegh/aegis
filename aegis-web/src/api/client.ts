@@ -355,6 +355,7 @@ export interface ComputeParams {
   curvature: boolean
   diffractionModel: DiffractionModel
   interBody: InterBody
+  selfShadow?: boolean
   powerDbm: number
   skinModel: string
   freqGhz: number
@@ -380,6 +381,7 @@ function computePayload(params: ComputeParams) {
     curvature: params.curvature,
     diffraction_model: params.diffractionModel,
     inter_body: params.interBody,
+    self_shadow: params.selfShadow ?? false,
     power_dbm: params.powerDbm,
     skin_model: params.skinModel,
     freq_hz: params.freqGhz * 1e9,

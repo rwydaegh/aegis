@@ -57,6 +57,7 @@ export function collectState(): Record<string, unknown> {
     curvature: sim.curvature,
     diffractionModel: sim.diffractionModel,
     interBody: sim.interBody,
+    selfShadow: sim.selfShadow,
     powerDbm: sim.powerDbm,
     skinModel: sim.skinModel,
     freqGhz: sim.freqGhz,
@@ -202,6 +203,7 @@ function applySimulationState(state: Partial<ShareState>, sim: SimStore): void {
   if (state.interBody !== undefined) {
     sim.setInterBody(state.interBody as Parameters<typeof sim.setInterBody>[0])
   }
+  if (state.selfShadow !== undefined) sim.setSelfShadow(state.selfShadow)
   if (state.powerDbm !== undefined) sim.setPowerDbm(state.powerDbm)
   if (state.skinModel !== undefined) sim.setSkinModel(state.skinModel)
   if (state.freqGhz !== undefined) sim.setFreqGhz(state.freqGhz)

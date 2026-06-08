@@ -28,7 +28,7 @@ from aegis.kernels._base import (
     physical_gelu,
     te_tm_power_weights,
 )
-from aegis.kernels.fock import fock_local
+from aegis.kernels.fock import distal_gate, fock_local
 
 # Diffraction gate selector. ``"none"`` is exact ReLU, ``"gelu"`` is the legacy
 # physical-GELU smoothing, ``"fock"`` is the smooth-convex-body (Fock) gate.
@@ -99,6 +99,10 @@ def _spatial_kernel_unbatched(
     fock_R: NDArray[np.floating] | None = None,
     q_F_s: complex | None = None,
     q_F_h: complex | None = None,
+    clearance: NDArray[np.floating] | None = None,
+    R_occ: NDArray[np.floating] | None = None,
+    distal_d1: NDArray[np.floating] | None = None,
+    distal_d2: NDArray[np.floating] | None = None,
 ) -> NDArray[np.floating]:
     """Core spatial kernel operating on all paths at once.
 
@@ -161,6 +165,35 @@ def _spatial_kernel_unbatched(
         R = fock_R[:, None] if fock_R.ndim == 1 else fock_R
         g = fock_local(mu, R, freq_hz, w_s, w_p, q_F_s, q_F_h)
 
+    # Distal self-shadowing gate (one body part shadowing another). Applies to
+    # ALL models: "fock" gets the dual-width Fock+knife gate, "none"/"gelu" get
+    # the pure knife erf (the legacy self-shadowing behaviour). Gated only on the
+    # would-be-lit response (mu > 0); the single ``g`` then feeds both the main
+    # term and the curvature einsum, so the curvature term is gated for free.
+    if clearance is not None:
+        if R_occ is None or distal_d1 is None or distal_d2 is None:
+            raise ValueError("clearance requires R_occ, distal_d1 and distal_d2")
+        if use_psi:
+            assert w_s_pol is not None
+            assert w_p_pol is not None
+            w_s_d: NDArray[np.floating] | float = w_s_pol
+            w_p_d: NDArray[np.floating] | float = w_p_pol
+        else:
+            w_s_d, w_p_d = 0.5, 0.5
+        g_distal = distal_gate(
+            clearance,
+            R_occ,
+            freq_hz,
+            w_s_d,
+            w_p_d,
+            d1=distal_d1,
+            d2=distal_d2,
+            q_F_s=q_F_s,
+            q_F_h=q_F_h,
+            diffraction_model=diffraction_model,
+        )
+        g = xp.where(mu > 0.0, g * g_distal, g)
+
     sab = cast("NDArray[np.floating]", (t_factor * g) @ power)
 
     # Curvature correction: additive perturbative term
@@ -195,6 +228,10 @@ def spatial_kernel(
     fock_R: NDArray[np.floating] | None = None,
     q_F_s: complex | None = None,
     q_F_h: complex | None = None,
+    clearance: NDArray[np.floating] | None = None,
+    R_occ: NDArray[np.floating] | None = None,
+    distal_d1: NDArray[np.floating] | None = None,
+    distal_d2: NDArray[np.floating] | None = None,
 ) -> NDArray[np.floating]:
     """Compute per-triangle S_ab with composable physics corrections.
 
@@ -275,6 +312,10 @@ def spatial_kernel(
             fock_R=fock_R,
             q_F_s=q_F_s,
             q_F_h=q_F_h,
+            clearance=clearance,
+            R_occ=R_occ,
+            distal_d1=distal_d1,
+            distal_d2=distal_d2,
         )
     else:
         # Chunked path: split along N to bound peak memory
@@ -291,6 +332,11 @@ def spatial_kernel(
             # (M,) radius broadcasts across all paths and needs no slicing. The
             # explicit ``is not None`` keeps the subscript visible as safe.
             fock_R_chunk = fock_R[:, start:end] if fock_R is not None and fock_R.ndim == 2 else fock_R
+            # The distal arrays are always (M, N), so slice their path axis.
+            clr_chunk = clearance[:, start:end] if clearance is not None else None
+            R_occ_chunk = R_occ[:, start:end] if R_occ is not None else None
+            d1_chunk = distal_d1[:, start:end] if distal_d1 is not None else None
+            d2_chunk = distal_d2[:, start:end] if distal_d2 is not None else None
 
             chunk_sab = _spatial_kernel_unbatched(
                 normals,
@@ -309,6 +355,10 @@ def spatial_kernel(
                 fock_R=fock_R_chunk,
                 q_F_s=q_F_s,
                 q_F_h=q_F_h,
+                clearance=clr_chunk,
+                R_occ=R_occ_chunk,
+                distal_d1=d1_chunk,
+                distal_d2=d2_chunk,
             )
             sab = sab + chunk_sab
 

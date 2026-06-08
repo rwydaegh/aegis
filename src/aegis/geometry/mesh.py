@@ -152,6 +152,17 @@ class BodyMesh:
     def geometry_hash(self) -> int:
         return self._geometry_hash
 
+    @property
+    def vertex_hash(self) -> int:
+        """Pose-dependent content hash of the raw vertices.
+
+        Distinct from ``geometry_hash`` (rigid-invariant). Visibility is
+        direction-dependent, so a yawed body must miss the cache. Quantized to
+        float32 so float64 round-off does not spuriously change the key.
+        """
+        h = hashlib.sha256(np.ascontiguousarray(self.vertices, dtype=np.float32).tobytes())
+        return hash((int.from_bytes(h.digest()[:8], "little"), self.n_triangles))
+
     @classmethod
     def from_arrays(
         cls,

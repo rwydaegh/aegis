@@ -55,6 +55,40 @@ def _fock_gate_factors(mu, fock_R, freq_hz, q_F_s, q_F_h):
     return g_soft, g_hard
 
 
+def _distal_amplitude(mu, clearance, R_occ, distal_d1, distal_d2, freq_hz, q_F_s, q_F_h):
+    """Real distal-gate amplitude ``sqrt(G_d)`` per ``(M, N)``, 1.0 where ``mu <= 0``.
+
+    The A3 coherent approximation (DECISIONS L9): the distal power gate ``G_d``
+    attenuates the field amplitude by ``sqrt(G_d)`` on the lit response, leaving
+    the plane-wave phase intact. Returns 1.0 on the back face so only the
+    would-be-lit response is gated.
+    """
+    from aegis.kernels.fock import distal_gate
+
+    g_d = distal_gate(
+        clearance,
+        R_occ,
+        freq_hz,
+        0.5,
+        0.5,
+        d1=distal_d1,
+        d2=distal_d2,
+        q_F_s=q_F_s,
+        q_F_h=q_F_h,
+        diffraction_model="fock",
+    )
+    amp = xp.sqrt(xp.maximum(g_d, 0.0))
+    return xp.where(mu > 0.0, amp, 1.0)
+
+
+def _apply_distal_amplitude(weighted, mu, clearance, R_occ, distal_d1, distal_d2, freq_hz, q_F_s, q_F_h):
+    """Multiply the A3 distal amplitude into a ``(M, N, 3)`` weighted channel."""
+    if clearance is None:
+        return weighted
+    amp = _distal_amplitude(mu, clearance, R_occ, distal_d1, distal_d2, freq_hz, q_F_s, q_F_h)
+    return weighted * amp[:, :, None]
+
+
 def compute_body_channel(
     normals: np.ndarray,
     centroids: np.ndarray,
@@ -68,6 +102,10 @@ def compute_body_channel(
     fock_R: np.ndarray | None = None,
     q_F_s: complex | None = None,
     q_F_h: complex | None = None,
+    clearance: np.ndarray | None = None,
+    R_occ: np.ndarray | None = None,
+    distal_d1: np.ndarray | None = None,
+    distal_d2: np.ndarray | None = None,
 ) -> np.ndarray:
     """Build the body-surface channel G_tilde(r) at each triangle centroid.
 
@@ -149,6 +187,12 @@ def compute_body_channel(
     weighted = depth_weight[:, :, None] * F_psi * phase[:, :, None]
     # weighted: (M, N, 3) complex
 
+    # Distal self-shadowing (A3 approximation, DECISIONS L9 / sec_08): fold the
+    # real amplitude sqrt(G_d) into the channel on the would-be-lit response
+    # (mu > 0), keeping the existing plane-wave phase. Correct amplitude,
+    # approximate interference phase; never overpredicts.
+    weighted = _apply_distal_amplitude(weighted, mu, clearance, R_occ, distal_d1, distal_d2, freq_hz, q_F_s, q_F_h)
+
     # Accumulate by element
     return accumulate_by_element(weighted, element_index, M, n_elements)
 
@@ -167,6 +211,10 @@ def compute_body_channel_factored(
     fock_R=None,
     q_F_s=None,
     q_F_h=None,
+    clearance=None,
+    R_occ=None,
+    distal_d1=None,
+    distal_d2=None,
 ):
     """Build G_tilde using factored Fresnel for array-expanded paths.
 
@@ -234,6 +282,11 @@ def compute_body_channel_factored(
     else:
         g_soft, g_hard = _fock_gate_factors(mu, fock_R, freq_hz, q_F_s, q_F_h)
 
+    # Distal self-shadowing amplitude per (M, N_center) (A3; 1.0 on the back face).
+    distal_amp = None
+    if clearance is not None:
+        distal_amp = _distal_amplitude(mu, clearance, R_occ, distal_d1, distal_d2, freq_hz, q_F_s, q_F_h)
+
     # For each expanded path, apply F @ psi_n using precomputed Fresnel components
     # element_psi is laid out as [elem0_path0..N, elem1_path0..N, ...] (element-major)
     # so expanded path (j * N_center + c) maps to center path c
@@ -254,6 +307,8 @@ def compute_body_channel_factored(
         e_s_c = e_s[:, c, :]  # (M, 3)
         e_p_c = e_p[:, c, :]  # (M, 3)
         sc = scalar[:, c]  # (M,)
+        if distal_amp is not None:
+            sc = sc * distal_amp[:, c]  # A3 distal amplitude for this direction
 
         # Gather all element psi vectors for this center direction
         # element_psi layout is element-major: elem j has indices [j*N_center : (j+1)*N_center]

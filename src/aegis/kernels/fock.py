@@ -466,3 +466,101 @@ def fock_local(
         "NDArray[np.floating]",
         xp.maximum(mu, 0.0) * xp.abs(phi_lit(xi)) ** 2 + xp.abs(creep) ** 2,
     )
+
+
+# ---------------------------------------------------------------------------
+# Distal (self-shadowing) gate: one body part shadowing another
+# ---------------------------------------------------------------------------
+
+# Knife-edge Fresnel width constant. 1/sqrt(2 pi) gives C1 continuity with the
+# local GeLU form; 1/sqrt(2) is the knife-exact option.
+_K_DEFAULT = 1.0 / np.sqrt(2.0 * np.pi)
+
+
+def fock_xi_distal(
+    clearance: ArrayLike,
+    R_occ: ArrayLike,
+    freq_hz: float,
+    w_nf: NDArray[np.floating] | float = 1.0,
+) -> NDArray[np.floating]:
+    """Distal Fock detour parameter (DECISIONS L13 / sec_08 eq:xi-distal).
+
+    ``xi_d = m_occ c / w_nf`` with ``m_occ = (pi f R_occ / C_0)**(1/3)``. The
+    signed angular clearance ``c > 0`` (clear) maps to the lit branch (NO minus
+    sign), ``c < 0`` (shadowed) to the shadow branch. The near-field factor
+    ``w_nf <= 1`` DIVIDES the detour, narrowing the penumbra at finite source
+    distance.
+    """
+    m_occ = (xp.pi * freq_hz * xp.asarray(R_occ) / C_0) ** (1.0 / 3.0)
+    return cast(
+        "NDArray[np.floating]",
+        m_occ * xp.asarray(clearance) / xp.maximum(w_nf, NUMERICAL_FLOOR),
+    )
+
+
+def distal_gate(
+    clearance: ArrayLike,
+    R_occ: ArrayLike,
+    freq_hz: float,
+    w_s: NDArray[np.floating] | float,
+    w_p: NDArray[np.floating] | float,
+    *,
+    d1: NDArray[np.floating] | float,
+    d2: NDArray[np.floating] | float,
+    q_F_s: complex | None = None,
+    q_F_h: complex | None = None,
+    diffraction_model: str = "fock",
+    K: float = _K_DEFAULT,
+    n_terms: int = 5,
+    boundary: str = "erf",
+) -> NDArray[np.floating]:
+    """Distal self-shadowing power gate (dual width: Fock curvature + knife Fresnel).
+
+    The gate carries BOTH the Fock curvature width ``sigma_F ~ (k R_occ)^{-1/3}``
+    and the knife-edge Fresnel width ``sigma_ke ~ (k L)^{-1/2}`` (sec_08
+    prop:knife); the broader mechanism wins. The sharp-edge limit
+    (``R_occ -> inf``) recovers the erf knife gate exactly, and ``lambda -> 0``
+    recovers binary occlusion ``1[c > 0]``.
+
+    For ``diffraction_model != "fock"`` (flat occluder, no creeping wave) the gate
+    is the pure knife erf ``0.5 (1 + erf(c / sigma_ke))``, which is the old
+    self-shadowing behaviour.
+
+    ``n_terms`` defaults to 5 (not 3) for the distal creeping series: the distal
+    deep shadow (a hand over the cheek) can carry real dose, where the 3-pole
+    composite under-predicts by 3-4x (DECISIONS L6, sec_08 rem:distal-validity).
+    The Fock branch is documented as a LOWER BOUND on deep cross-body shadow dose.
+    A smooth-quadrature blend ``sigma_eff = sqrt(sigma_F^2 + sigma_ke^2)`` is a
+    documented refinement; v1 uses a hard switch on the baked ``R_occ`` (constant
+    in the pose gradient).
+    """
+    c = xp.asarray(clearance)
+    R = xp.asarray(R_occ)
+    lam = C_0 / freq_hz
+    k = 2.0 * xp.pi / lam
+    d2a = xp.asarray(d2)
+    # near-field wavefront factor (double-where guard for d1 finite vs inf)
+    d1a = xp.asarray(d1)
+    d1_finite = xp.isfinite(d1a)
+    d1s = xp.where(d1_finite, d1a, 1.0)
+    width_nf = xp.where(d1_finite, xp.sqrt(d1s / xp.maximum(d1s + d2a, NUMERICAL_FLOOR)), 1.0)
+    # knife Fresnel width (far field: K sqrt(lam / d2))
+    sigma_ke_far = K * xp.sqrt(lam / xp.maximum(d2a, NUMERICAL_FLOOR))
+    sigma_ke = xp.where(
+        d1_finite,
+        K * xp.sqrt(lam * d1s / xp.maximum(d2a * (d1s + d2a), NUMERICAL_FLOOR)),
+        sigma_ke_far,
+    )
+    v_ke = 0.5 * (1.0 + erf(c / xp.maximum(sigma_ke, NUMERICAL_FLOOR)))
+    if boundary == "knife_edge":
+        v_ke = v_ke**2
+    if diffraction_model != "fock":
+        return cast("NDArray[np.floating]", v_ke)
+    # Fock curvature branch
+    sigma_f = 2.0 ** (5.0 / 6.0) * (k * R) ** (-1.0 / 3.0)
+    xi_d = fock_xi_distal(c, R, freq_hz, width_nf)
+    g_soft = fock_g(xi_d, "soft", q_F_s, n_terms)
+    g_hard = fock_g(xi_d, "hard", q_F_h, n_terms)
+    g_fock = w_s * xp.abs(g_soft) ** 2 + w_p * xp.abs(g_hard) ** 2
+    # broader mechanism wins; R_occ is baked so the switch is constant in pose-grad
+    return cast("NDArray[np.floating]", xp.where(sigma_f >= sigma_ke, g_fock, v_ke))

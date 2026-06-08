@@ -106,6 +106,14 @@ class DosimetryEngine:
     _G_computing: dict[tuple, threading.Event] = {}
     _G_CACHE_MAX: int = 16
 
+    # Per-body visibility LUT cache (the self-shadowing bake), same in-flight
+    # dedup pattern as the averaging matrix. Keyed by the pose-dependent
+    # vertex_hash, so a yawed body misses (visibility is direction-dependent).
+    _vis_lut_cache: OrderedDict = OrderedDict()
+    _vis_lock: threading.Lock = threading.Lock()
+    _vis_computing: dict[tuple, threading.Event] = {}
+    _VIS_CACHE_MAX: int = 8
+
     def __init__(self, tissue: TissueModel) -> None:
         self.tissue = tissue
         self.T0 = tissue.T0
@@ -225,6 +233,80 @@ class DosimetryEngine:
             self._G_cache[key] = G
 
         return G
+
+    def _get_vis_lut(self, body: BodyMesh, resolution: int, gate: str):
+        """Cached per-body visibility LUT (double-checked in-flight dedup).
+
+        Mirrors :meth:`_get_G`; the worker calls ``visibility.get_or_bake`` which
+        checks the disk cache before baking. Keyed by the pose-dependent
+        ``vertex_hash`` so a yawed body misses.
+        """
+        key = (body.vertex_hash, resolution, gate)
+        with self._vis_lock:
+            if key in self._vis_lut_cache:
+                self._vis_lut_cache.move_to_end(key)
+                return self._vis_lut_cache[key]
+            if key in self._vis_computing:
+                event = self._vis_computing[key]
+                self._vis_lock.release()
+                event.wait()
+                self._vis_lock.acquire()
+                if key in self._vis_lut_cache:
+                    self._vis_lut_cache.move_to_end(key)
+                    return self._vis_lut_cache[key]
+            event = threading.Event()
+            self._vis_computing[key] = event
+
+        from aegis.geometry import visibility as _vis
+
+        try:
+            lut = _vis.get_or_bake(body, resolution, gate)
+        finally:
+            with self._vis_lock:
+                self._vis_computing.pop(key, None)
+                event.set()
+
+        with self._vis_lock:
+            while len(self._vis_lut_cache) >= self._VIS_CACHE_MAX:
+                self._vis_lut_cache.popitem(last=False)
+            self._vis_lut_cache[key] = lut
+
+        return lut
+
+    def _distal_inputs(
+        self,
+        body: BodyMesh,
+        paths: PropagationPaths,
+        *,
+        self_shadow: bool,
+        source_pos: np.ndarray | None,
+        vis_resolution: int,
+        occlusion: np.ndarray | None,
+    ) -> dict[str, np.ndarray] | None:
+        """Build the distal-gate kwargs ``{clearance, R_occ, distal_d1, distal_d2}``.
+
+        Returns ``None`` (gate is a no-op) when self-shadowing is off, when an
+        explicit ``occlusion`` override is supplied (it bypasses the LUT), or when
+        the body is convex (the LUT short-circuits to all-exposed). Far field uses
+        ``paths.k_hat``; near field (``source_pos`` given) uses the per-triangle
+        source->point direction.
+        """
+        if not self_shadow or occlusion is not None:
+            return None
+        from aegis.geometry import visibility as _vis
+
+        lut = self._get_vis_lut(body, vis_resolution, "erf")
+        if bool(lut.exposed_mask.all()):
+            return None
+        centroids = _to_numpy(body.centroids)
+        if source_pos is not None:
+            src = np.asarray(source_pos, dtype=float)
+            k = centroids - src
+            k = k / np.linalg.norm(k, axis=1, keepdims=True)
+            clr, R_occ, d1, d2 = _vis.query_visibility(lut, k, centroids, source_pos=src)
+        else:
+            clr, R_occ, d1, d2 = _vis.query_visibility(lut, _to_numpy(paths.k_hat), centroids, source_pos=None)
+        return {"clearance": clr, "R_occ": R_occ, "distal_d1": d1, "distal_d2": d2}
 
     def _build_result(
         self,
@@ -354,6 +436,9 @@ class DosimetryEngine:
         diffraction_model: str | None = None,
         inter_body: str = "off",
         curvature: bool = False,
+        self_shadow: bool = False,
+        source_pos: np.ndarray | None = None,
+        vis_resolution: int = 32,
         freq_hz: float | None = None,
         _timings: dict[str, float] | None = None,
     ) -> DosimetryResult:
@@ -392,6 +477,17 @@ class DosimetryEngine:
             and, when it strikes another body triangle, the recaptured power is
             deposited there. Applies to spatial mode and legacy levels >= 2.
         curvature : enable curvature correction (spatial mode)
+        self_shadow : enable distal self-shadowing (one body part shadowing
+            another) via the baked per-body visibility LUT and the distal Fock
+            gate. Default False (opt-in): turning it on changes the dose for
+            non-convex bodies and breaks the spatial==level-N composability
+            invariant, so it is off until explicitly requested. Convex bodies
+            short-circuit to a no-op. Applies to spatial mode, level 6, and
+            coherent levels 7-8; ignored when an explicit ``occlusion`` override
+            is supplied.
+        source_pos : (3,) point-source position for near-field self-shadowing.
+            None (default) uses the far-field path directions in ``paths.k_hat``.
+        vis_resolution : octahedral LUT resolution for the self-shadow bake.
         _timings : if provided, fine-grained timing data is written into this dict
 
         Returns
@@ -413,6 +509,20 @@ class DosimetryEngine:
         effective_model = self._resolve_diffraction_model(diffraction_model, diffraction)
         self._validate_inter_body(inter_body)
 
+        # Distal self-shadowing gate inputs (spatial + coherent modes; the gate
+        # is built inside the kernel from these per-(M, N) arrays). A convex body
+        # or an explicit occlusion override returns None (no-op).
+        distal = None
+        if mode in ("spatial", "coherent", "ecbf"):
+            distal = self._distal_inputs(
+                body,
+                paths,
+                self_shadow=self_shadow,
+                source_pos=source_pos,
+                vis_resolution=vis_resolution,
+                occlusion=occlusion,
+            )
+
         # Mode-based path
         if mode is not None:
             result = self._compute_mode(
@@ -423,6 +533,7 @@ class DosimetryEngine:
                 polarisation=polarisation,
                 diffraction_model=effective_model,
                 curvature=curvature,
+                distal=distal,
                 q=q,
                 curvature_H=curvature_H,
                 body_mass=body_mass,
@@ -474,8 +585,34 @@ class DosimetryEngine:
         if level < 0 or level > 8:
             raise ValueError(f"Fidelity level must be 0-8, got {level}")
 
+        # The distal gate is only wired into level 6 and the coherent levels on
+        # the legacy level path (levels 0-5 use dedicated kernels with no shadow
+        # gate). Silently dropping self_shadow there would mislead a caller into
+        # believing shadowing was applied, so warn instead of no-op'ing quietly.
+        # The mode="spatial" path (and explicit occlusion override) is unaffected.
+        if self_shadow and (level < 6 or (level == 6 and occlusion is not None)):
+            import warnings
+
+            _why = (
+                "an explicit occlusion override takes precedence" if level == 6 else f"level {level} has no shadow gate"
+            )
+            warnings.warn(
+                f"self_shadow=True was ignored: {_why}. Distal self-shadowing applies "
+                "to mode='spatial', level 6, and coherent levels 7-8. Use mode='spatial' "
+                "for the level 2-5 equivalents with self-shadowing.",
+                stacklevel=2,
+            )
+
         if level >= 7:
             fock_R, q_F_s, q_F_h = self._fock_params(body, paths.k_hat, effective_model, active_freq_hz, active_n_tilde)
+            distal = self._distal_inputs(
+                body,
+                paths,
+                self_shadow=self_shadow,
+                source_pos=source_pos,
+                vis_resolution=vis_resolution,
+                occlusion=occlusion,
+            )
             return self._compute_coherent(
                 body,
                 paths,
@@ -491,13 +628,23 @@ class DosimetryEngine:
                 fock_R=fock_R,
                 q_F_s=q_F_s,
                 q_F_h=q_F_h,
+                distal=distal,
             )
 
         # Only level 6 consumes the gate on the legacy level path; levels 2-5
         # have no shadow gate, so the Fock radius is computed only when needed.
         fock_R = q_F_s = q_F_h = None
+        distal = None
         if level == 6:
             fock_R, q_F_s, q_F_h = self._fock_params(body, paths.k_hat, effective_model, active_freq_hz, active_n_tilde)
+            distal = self._distal_inputs(
+                body,
+                paths,
+                self_shadow=self_shadow,
+                source_pos=source_pos,
+                vis_resolution=vis_resolution,
+                occlusion=occlusion,
+            )
 
         sab = self._dispatch(
             body,
@@ -518,6 +665,7 @@ class DosimetryEngine:
             fock_R=fock_R,
             q_F_s=q_F_s,
             q_F_h=q_F_h,
+            **(distal or {}),
         )
         sab = _to_numpy(sab)
         if occlusion is not None and level is not None and level >= 2:
@@ -770,6 +918,7 @@ class DosimetryEngine:
         n_tilde: complex | None = None,
         T0: float | None = None,
         sigma: float | None = None,
+        distal: dict[str, np.ndarray] | None = None,
         _timings: dict | None = None,
     ) -> DosimetryResult:
         """Dispatch based on mode string with composable correction flags."""
@@ -838,6 +987,7 @@ class DosimetryEngine:
                 fock_R=fock_R,
                 q_F_s=q_F_s,
                 q_F_h=q_F_h,
+                **(distal or {}),
             )
             sab = _to_numpy(sab)
             kernel_ms = (time.perf_counter() - t_kernel) * 1e3
@@ -866,6 +1016,7 @@ class DosimetryEngine:
                 fock_R=fock_R,
                 q_F_s=q_F_s,
                 q_F_h=q_F_h,
+                distal=distal,
             )
         else:
             # bound or aggregate: use legacy dispatch
@@ -918,6 +1069,7 @@ class DosimetryEngine:
         fock_R: np.ndarray | None = None,
         q_F_s: complex | None = None,
         q_F_h: complex | None = None,
+        distal: dict[str, np.ndarray] | None = None,
     ) -> DosimetryResult:
         """Dispatch coherent levels 7-8."""
         n_elements = paths.n_elements
@@ -925,6 +1077,7 @@ class DosimetryEngine:
         active_freq_hz = freq_hz if freq_hz is not None else self.freq_hz
         active_n_tilde = n_tilde if n_tilde is not None else self.n_tilde
         active_sigma = sigma if sigma is not None else self.tissue.sigma
+        distal_kw = distal or {}
 
         if level == 7:
             if precoder is None:
@@ -947,6 +1100,7 @@ class DosimetryEngine:
                 fock_R=fock_R,
                 q_F_s=q_F_s,
                 q_F_h=q_F_h,
+                **distal_kw,
             )
         elif level == 8:
             if h is None:
@@ -971,6 +1125,7 @@ class DosimetryEngine:
                 fock_R=fock_R,
                 q_F_s=q_F_s,
                 q_F_h=q_F_h,
+                **distal_kw,
             )
         else:
             raise ValueError(f"Unknown coherent level {level}")
@@ -1145,6 +1300,10 @@ class DosimetryEngine:
             fock_R=kwargs.get("fock_R"),
             q_F_s=kwargs.get("q_F_s"),
             q_F_h=kwargs.get("q_F_h"),
+            clearance=kwargs.get("clearance"),
+            R_occ=kwargs.get("R_occ"),
+            distal_d1=kwargs.get("distal_d1"),
+            distal_d2=kwargs.get("distal_d2"),
         )
 
     def sweep_levels(

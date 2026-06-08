@@ -39,6 +39,7 @@ type SimSlice = {
   curvature: boolean
   diffractionModel: DiffractionModel
   interBody: InterBody
+  selfShadow: boolean
   powerDbm: number
   skinModel: string
   freqGhz: number
@@ -98,6 +99,9 @@ export function buildComputeParams(
     curvature: sim.curvature,
     diffractionModel: sim.diffractionModel,
     interBody: sim.interBody,
+    // Self-shadowing only affects spatial mode; pass it through regardless and
+    // let the backend ignore it for non-spatial modes (it parses spatial-only).
+    selfShadow: sim.selfShadow,
     powerDbm: sim.powerDbm,
     skinModel: sim.skinModel,
     freqGhz: sim.freqGhz,
@@ -298,6 +302,7 @@ export function useDosimetry() {
     curvature: s.curvature,
     diffractionModel: s.diffractionModel,
     interBody: s.interBody,
+    selfShadow: s.selfShadow,
     powerDbm: s.powerDbm,
     skinModel: s.skinModel,
     freqGhz: s.freqGhz,

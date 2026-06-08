@@ -224,6 +224,7 @@ def _parse_mode_or_level(params: dict, default_level: int = 2) -> tuple[dict[str
             if err is not None:
                 return None, err
             out["inter_body"] = inter_body
+            out["self_shadow"] = _parse_bool(params.get("self_shadow"), False)
         return out, None
     try:
         level = int(params.get("level", default_level))
