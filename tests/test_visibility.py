@@ -215,3 +215,38 @@ def test_is_convex_sphere_and_concave():
     b = BodyMesh.from_arrays(a.vertices + np.array([0.6, 0.0, 0.0]))
     two = BodyMesh.from_arrays(np.concatenate([a.vertices, b.vertices]))
     assert not _is_convex(two)
+
+
+# ---------------------------------------------------------------------------
+# Task 6: ray-cast bake (binary map + binding distance + occluder index)
+# ---------------------------------------------------------------------------
+
+
+def test_bake_raw_records_binding_distance():
+    from aegis.geometry.visibility import _bake_raw_maps
+
+    a = BodyMesh.sphere(radius=0.2, n_subdivisions=2)
+    b = BodyMesh.from_arrays(a.vertices + np.array([0.6, 0.0, 0.0]))
+    body = BodyMesh.from_arrays(np.concatenate([a.vertices, b.vertices]))
+    R = 16
+    vis, d2, occ_idx, grid_dirs = _bake_raw_maps(body, resolution=R)
+    assert vis.shape == (body.n_triangles, R, R)
+    assert grid_dirs.shape == (R, R, 3)
+    # blocked cells carry a finite positive binding distance and a valid occluder
+    blocked = ~vis
+    assert blocked.any()
+    assert np.all(d2[blocked] > 0)
+    assert np.all((occ_idx[blocked] >= 0) & (occ_idx[blocked] < body.n_triangles))
+    # visible cells carry no binding occluder
+    assert np.all(occ_idx[vis] == -1)
+
+
+def test_bake_raw_convex_all_visible():
+    from aegis.geometry.visibility import _bake_raw_maps
+
+    body = BodyMesh.sphere(radius=0.3, n_subdivisions=2)
+    vis, d2, occ_idx, grid_dirs = _bake_raw_maps(body, resolution=16)
+    # a convex body never self-shadows a front-facing direction
+    mu = body.normals @ grid_dirs.reshape(-1, 3).T  # (M, R*R)
+    front = mu.reshape(vis.shape) > 1e-3
+    assert np.all(vis[front])
