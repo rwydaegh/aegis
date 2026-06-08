@@ -66,8 +66,10 @@ The absorbed power density at a surface point $\rr$ is
   \boxed{\;\Sab(\rr) \;=\; \Sinc\;T_0\;\ReLU\!\bigl[\nhat(\rr)\cdot(-\khat)\bigr]\;
   O(\rr,\khat)\;}
 \end{equation}
-where $\ReLU(\mu)=\max(0,\mu)$ and $O(\rr,\khat)\in[0,1]$ is the visibility
-factor. Each factor is independent and is refined separately in later sections.
+where $\ReLU(\mu)=\max(0,\mu)$ and $O(\rr,\khat)\in\{0,1\}$ in the
+geometric-optics limit is the visibility factor, smoothed by the diffraction gate
+in later sections. Each factor is independent and is refined separately in later
+sections.
 \end{proposition}
 
 The five factors carry the whole physics:
@@ -83,7 +85,7 @@ The five factors carry the whole physics:
     is zero in geometric shadow and equal to $\cos\theta_i$ on the lit side.
     \Cref{sec:grid} and the diffraction sections soften this hard gate into a
     physically derived smooth transition near the shadow boundary.
-  \item $O(\rr,\khat)\in[0,1]$: the visibility or occlusion factor, unity for a
+  \item $O(\rr,\khat)\in\{0,1\}$ in the geometric-optics limit: the visibility or occlusion factor, unity for a
     directly illuminated point and reduced by self-shadowing, inter-body
     occlusion, and ambient occlusion. It is developed in the geometry and
     inter-body sections.

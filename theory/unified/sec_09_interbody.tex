@@ -17,9 +17,9 @@ At a front-facing point $\rr$ with incidence cosine
 $\mu=\nhat\cdot(-\khat)$ the Fresnel reflection coefficients are the
 siblings of the transmission coefficients of \cref{sec:fresnel},
 \begin{equation}\label{eq:r-coeffs}
-  r_s(\mu)=\frac{\mu-\xi}{\mu+\xi},\qquad
-  r_p(\mu)=\frac{\ntilde^2\mu-\xi}{\ntilde^2\mu+\xi},\qquad
-  \xi=\sqrt{\ntilde^2-1+\mu^2},\ \ \RE\xi>0,
+  r_s(\mu)=\frac{\mu-\zeta}{\mu+\zeta},\qquad
+  r_p(\mu)=\frac{\ntilde^2\mu-\zeta}{\ntilde^2\mu+\zeta},\qquad
+  \zeta=\sqrt{\ntilde^2-1+\mu^2},\ \ \RE\zeta>0,
 \end{equation}
 and they satisfy the polarisation-wise energy identity
 $T_s+\abs{r_s}^2=1$, $T_p+\abs{r_p}^2=1$ at the lossy interface.
@@ -29,7 +29,7 @@ With TE and TM power weights $w_s,w_p$ ($w_s+w_p=1$) carried from the
 incident polarisation as in \cref{sec:pol}, the locally reflected
 fraction of the incident power density is
 \begin{equation}\label{eq:rho-refl}
-  \rho_m(\rr)=\abs{r_s(\mu)}^2 w_s+\abs{r_p(\mu)}^2 w_p
+  \rho_R(\rr)=\abs{r_s(\mu)}^2 w_s+\abs{r_p(\mu)}^2 w_p
             =1-T_0(\rr),
 \end{equation}
 the Fresnel reflectance. The specularly reflected ray leaves along
@@ -46,7 +46,7 @@ The single specular recapture casts the reflected ray
 \cref{eq:k-refl} from every lit triangle and reuses the visibility
 acceleration structure of \cref{sec:geom} to test whether it
 strikes another body triangle before escaping. When it does, the
-reflected power density $\rho_m\,\Sinc$ is deposited at the hit point,
+reflected power density $\rho_R\,\Sinc$ is deposited at the hit point,
 weighted by its own incidence cosine, and added to the direct
 first-bounce term there. This is the $\mathtt{inter\_body=specular1}$
 axis: a single optional pass, orthogonal to the diffraction and
@@ -63,18 +63,18 @@ with $\Tbar_R$ the flux-weighted reflectance. Under diffuse
 (Lambertian) reflection the recaptured fraction is bounded by the
 cosine-weighted hemisphere blocked by other body parts,
 \begin{equation}\label{eq:f-bound}
-  f(\rr)\le 1-\eta(\rr),
+  f(\rr)\le 1-\Omega(\rr),
 \end{equation}
-where $\eta$ is exactly the ambient-occlusion exposure fraction of
+where $\Omega$ is exactly the ambient-occlusion exposure fraction of
 \cref{sec:geom}. For a convex body every reflected ray escapes,
 $f\equiv 0$, and the first-bounce law is exact.
 
 \begin{proposition}[Self-compensation]\label{prop:self-comp}
-The enhancement $C$ is largest precisely where $\eta$ is smallest. A
+The enhancement $C$ is largest precisely where $\Omega$ is smallest. A
 deep concavity sees little direct power but recaptures a large share of
-the reflected power, so the product $\eta\,C$ stays close to $\eta$.
-By \cref{eq:f-bound} a point with $\eta=0.3$ admits $f\le 0.7$, hence
-$C\le 1/(1-0.46\times 0.7)\approx 1.47$ and $\eta\,C\le 0.44$,
+the reflected power, so the product $\Omega\,C$ stays close to $\Omega$.
+By \cref{eq:f-bound} a point with $\Omega=0.3$ admits $f\le 0.7$, hence
+$C\le 1/(1-0.46\times 0.7)\approx 1.47$ and $\Omega\,C\le 0.44$,
 recovering less than a fifth of the $70\%$ shadow deficit.
 \end{proposition}
 

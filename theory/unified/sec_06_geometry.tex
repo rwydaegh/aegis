@@ -48,17 +48,17 @@ shadowing another across a finite gap (a hand over the cheek) is the distal
 angular-clearance gate of \cref{sec:cmetric}. Both reduce to \cref{eq:O-def} as
 $\lambda\to 0$.
 
-\begin{definition}[Exposure fraction]\label{def:eta}
+\begin{definition}[Exposure fraction]\label{def:exposure-frac}
 The exposure fraction at $\rr$ is the cosine-weighted fraction of the hemisphere
 from which $\rr$ is visible,
-\begin{equation}\label{eq:eta-def}
-  \eta(\rr) = \frac{1}{\pi}\int_{S^2}
+\begin{equation}\label{eq:exposure-frac-def}
+  \Omega(\rr) = \frac{1}{\pi}\int_{S^2}
   \ReLU\!\bigl[\nhat(\rr)\cdot(-\khat)\bigr]\,O(\rr,\khat)\,\diff\Omega(\khat).
 \end{equation}
 \end{definition}
 
-For convex bodies $\eta\equiv 1$. For non-convex bodies $\eta<1$ in concavities
-and $\eta=1$ on exposed regions. The exposure fraction is mathematically
+For convex bodies $\Omega\equiv 1$. For non-convex bodies $\Omega<1$ in concavities
+and $\Omega=1$ on exposed regions. The exposure fraction is mathematically
 identical to the ambient-occlusion factor of computer
 graphics~\cite{Zhukov1998}, which imports decades of GPU ray-casting and
 bounding-volume-hierarchy machinery into dosimetry.
@@ -85,14 +85,14 @@ result~\cite{Cauchy1841} and its non-convex generalisation through the exposure
 fraction.
 
 \begin{theorem}[Generalised Cauchy formula]\label{thm:gen-cauchy}
-For any body with surface $\Sigma$ and exposure fraction $\eta$, the
+For any body with surface $\Sigma$ and exposure fraction $\Omega$, the
 direction-averaged absorbed power is
 \begin{equation}\label{eq:gen-cauchy}
   \langle P_{\mathrm{abs}}\rangle
   = \frac{1}{4\pi}\int_{S^2} P_{\mathrm{abs}}(\khat)\,\diff\Omega
   = \Sinc\,T_0\,\frac{\Aab}{4},
   \qquad
-  \Aab \equiv \int_\Sigma \eta(\rr)\,\diff A .
+  \Aab \equiv \int_\Sigma \Omega(\rr)\,\diff A .
 \end{equation}
 \end{theorem}
 
@@ -105,7 +105,7 @@ $\langle P_{\mathrm{abs}}\rangle = (\pi/4\pi)\,\Sinc\,T_0\,\Aab = \Sinc\,T_0\,\A
 \end{proof}
 
 The absorption area $\Aab\le A$ collapses all of self-shadowing into one scalar;
-for convex bodies $\eta\equiv 1$ and $\Aab=A$, recovering $\langle\Aperp\rangle =
+for convex bodies $\Omega\equiv 1$ and $\Aab=A$, recovering $\langle\Aperp\rangle =
 A/4$. Replacing $T_0$ with the exact averaged transmission $\Tavg$
 (\cref{sec:fresnel}) makes \cref{eq:gen-cauchy} exact at any frequency.
 

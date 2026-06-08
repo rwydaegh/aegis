@@ -51,8 +51,8 @@ $\rhom\int_0^\infty \SAR(\rr,z)\,\diff z = \Sab(\rr)$ by construction.
 
 The relation $\abs{\EE(\rr,0)}^2 = (4\alpha/\sigma)\Sab$ is exact for TE
 polarisation. For TM there is a multiplicative correction
-$C_p = 1 + \sin^2\theta/\abs{\xi}^2$ with
-$\xi = \sqrt{\ntilde^2 - 1 + \mu^2}$, bounded by $4.5\%$ for skin at 28\,GHz and
+$C_p = 1 + \sin^2\theta/\abs{\zeta}^2$ with
+$\zeta = \sqrt{\ntilde^2 - 1 + \mu^2}$, bounded by $4.5\%$ for skin at 28\,GHz and
 below $2\%$ for $\theta\le 60^\circ$. The characteristic SAR depth is
 $1/(2\alpha) \approx 0.48$\,mm for skin at 28\,GHz, so the absorption is
 concentrated in a layer far thinner than the cube.
@@ -107,7 +107,11 @@ transcendental equation in the dimensionless ratio
 $\lambda = \alpha m/(\rhom\pi R^2)$. At $R = 15$\,cm, 28\,GHz,
 $\Sinc = 10\;\mathrm{W/m^2}$ the optimum is a thin $0.21$\,mm slab spanning
 $\approx 479\;\mathrm{cm}^2$ with $\psSAR \approx 7.59\;\mathrm{W/kg}$,
-reflecting the exponential concentration of SAR near the surface.
+reflecting the exponential concentration of SAR near the surface. This $7.59$
+figure is the shape-relaxed, any-orientation upper bound of
+\cref{eq:pssar-slab}, far above the regulated 10\,g-cube value bounded in
+\cref{sec:pssar-dominance}; it is a worst-case envelope, not a compliance
+prediction.
 
 \subsection{The APD-dominance bound}
 \label{sec:pssar-dominance}
