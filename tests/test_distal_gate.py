@@ -35,8 +35,14 @@ def test_distal_gate_clear_is_unity():
     # saturates the gate to 1. At 28 GHz a 0.1 m occluder has m_occ ~ 3, so a
     # 1 rad clearance is > 3 sigma into the lit region.
     g = distal_gate(
-        np.array([1.0]), np.array([0.1]), 28e9, 0.5, 0.5,
-        d1=np.array([np.inf]), d2=np.array([0.05]), diffraction_model="fock",
+        np.array([1.0]),
+        np.array([0.1]),
+        28e9,
+        0.5,
+        0.5,
+        d1=np.array([np.inf]),
+        d2=np.array([0.05]),
+        diffraction_model="fock",
     )
     assert np.all(g > 0.99)
 
@@ -69,8 +75,14 @@ def test_distal_gate_knife_limit_recovers_erf():
 def test_distal_gate_non_fock_is_pure_knife():
     c = np.array([0.0])
     g = distal_gate(
-        c, np.array([0.02]), 28e9, 0.5, 0.5,
-        d1=np.array([np.inf]), d2=np.array([0.05]), diffraction_model="none",
+        c,
+        np.array([0.02]),
+        28e9,
+        0.5,
+        0.5,
+        d1=np.array([np.inf]),
+        d2=np.array([0.05]),
+        diffraction_model="none",
     )
     assert np.allclose(g, 0.5, atol=1e-6)  # exactly the erf half value
 
@@ -87,3 +99,99 @@ def test_distal_gate_monotonic_in_clearance():
     assert g[-1] > 0.85
     # non-decreasing up to small creeping-tail ripple
     assert np.all(np.diff(g) > -1e-3)
+
+
+# ---------------------------------------------------------------------------
+# Task 11: distal gate threaded through the spatial kernel
+# ---------------------------------------------------------------------------
+
+
+def test_spatial_kernel_distal_attenuates_shadowed():
+    from aegis.kernels.spatial import spatial_kernel
+
+    M, N = 4, 1
+    normals = np.tile([0.0, 0.0, 1.0], (M, 1))
+    k_hat = np.array([[0.0, 0.0, -1.0]])  # mu = 1 (front-facing)
+    power = np.array([1.0])
+    n_tilde = 3.0 - 1.0j
+    fock_R = np.full(M, 0.1)
+    # rows 0,1 deep clear; rows 2,3 shadowed (clearance well beyond the penumbra)
+    clearance = np.array([[1.0], [1.0], [-0.5], [-0.5]])
+    R_occ = np.full((M, N), 0.1)
+    d1 = np.full((M, N), np.inf)
+    d2 = np.full((M, N), 0.05)
+    base = spatial_kernel(normals, k_hat, power, n_tilde, 0.5, 28e9, diffraction_model="fock", fock_R=fock_R)
+    gated = spatial_kernel(
+        normals,
+        k_hat,
+        power,
+        n_tilde,
+        0.5,
+        28e9,
+        diffraction_model="fock",
+        fock_R=fock_R,
+        clearance=clearance,
+        R_occ=R_occ,
+        distal_d1=d1,
+        distal_d2=d2,
+    )
+    assert np.all(gated[:2] >= base[:2] * 0.99)  # clear rows ~ unchanged
+    assert np.all(gated[2:] < base[2:] * 0.5)  # shadowed rows attenuated
+
+
+def test_spatial_kernel_distal_backface_rule():
+    # mu <= 0 rows must be untouched by the distal gate (where(mu>0, g*Gd, g)).
+    from aegis.kernels.spatial import spatial_kernel
+
+    normals = np.array([[0.0, 0.0, 1.0], [0.0, 0.0, -1.0]])  # row 1 is back-facing
+    k_hat = np.array([[0.0, 0.0, -1.0]])
+    power = np.array([1.0])
+    fock_R = np.full(2, 0.1)
+    clearance = np.array([[-0.5], [-0.5]])
+    R_occ = np.full((2, 1), 0.1)
+    d1 = np.full((2, 1), np.inf)
+    d2 = np.full((2, 1), 0.05)
+    g_off = spatial_kernel(normals, k_hat, power, 3 - 1j, 0.5, 28e9, diffraction_model="fock", fock_R=fock_R)
+    g_on = spatial_kernel(
+        normals,
+        k_hat,
+        power,
+        3 - 1j,
+        0.5,
+        28e9,
+        diffraction_model="fock",
+        fock_R=fock_R,
+        clearance=clearance,
+        R_occ=R_occ,
+        distal_d1=d1,
+        distal_d2=d2,
+    )
+    assert np.isclose(g_on[1], g_off[1])  # back face identical
+
+
+def test_spatial_kernel_distal_opt_out_is_byte_identical():
+    from aegis.kernels.spatial import spatial_kernel
+
+    M = 6
+    rng = np.random.default_rng(0)
+    normals = rng.standard_normal((M, 3))
+    normals /= np.linalg.norm(normals, axis=1, keepdims=True)
+    k_hat = np.array([[0.0, 0.0, -1.0], [1.0, 0.0, 0.0]])
+    power = np.array([1.0, 0.5])
+    fock_R = np.full(M, 0.1)
+    a = spatial_kernel(normals, k_hat, power, 3 - 1j, 0.5, 28e9, diffraction_model="fock", fock_R=fock_R)
+    b = spatial_kernel(
+        normals,
+        k_hat,
+        power,
+        3 - 1j,
+        0.5,
+        28e9,
+        diffraction_model="fock",
+        fock_R=fock_R,
+        clearance=None,
+        R_occ=None,
+        distal_d1=None,
+        distal_d2=None,
+    )
+    assert np.array_equal(a, b)
