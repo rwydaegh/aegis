@@ -66,8 +66,16 @@ def _distal_amplitude(mu, clearance, R_occ, distal_d1, distal_d2, freq_hz, q_F_s
     from aegis.kernels.fock import distal_gate
 
     g_d = distal_gate(
-        clearance, R_occ, freq_hz, 0.5, 0.5,
-        d1=distal_d1, d2=distal_d2, q_F_s=q_F_s, q_F_h=q_F_h, diffraction_model="fock",
+        clearance,
+        R_occ,
+        freq_hz,
+        0.5,
+        0.5,
+        d1=distal_d1,
+        d2=distal_d2,
+        q_F_s=q_F_s,
+        q_F_h=q_F_h,
+        diffraction_model="fock",
     )
     amp = xp.sqrt(xp.maximum(g_d, 0.0))
     return xp.where(mu > 0.0, amp, 1.0)
@@ -183,9 +191,7 @@ def compute_body_channel(
     # real amplitude sqrt(G_d) into the channel on the would-be-lit response
     # (mu > 0), keeping the existing plane-wave phase. Correct amplitude,
     # approximate interference phase; never overpredicts.
-    weighted = _apply_distal_amplitude(
-        weighted, mu, clearance, R_occ, distal_d1, distal_d2, freq_hz, q_F_s, q_F_h
-    )
+    weighted = _apply_distal_amplitude(weighted, mu, clearance, R_occ, distal_d1, distal_d2, freq_hz, q_F_s, q_F_h)
 
     # Accumulate by element
     return accumulate_by_element(weighted, element_index, M, n_elements)

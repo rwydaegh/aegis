@@ -377,8 +377,20 @@ def test_distal_off_is_bit_identical():
     n_elem = 5
     a = compute_body_channel(normals, centroids, k_hat, psi, eidx, N_TILDE, SIGMA, FREQ, n_elem, fock_R=None)
     b = compute_body_channel(
-        normals, centroids, k_hat, psi, eidx, N_TILDE, SIGMA, FREQ, n_elem,
-        fock_R=None, clearance=None, R_occ=None, distal_d1=None, distal_d2=None,
+        normals,
+        centroids,
+        k_hat,
+        psi,
+        eidx,
+        N_TILDE,
+        SIGMA,
+        FREQ,
+        n_elem,
+        fock_R=None,
+        clearance=None,
+        R_occ=None,
+        distal_d1=None,
+        distal_d2=None,
     )
     assert np.array_equal(a, b)
 
@@ -398,8 +410,19 @@ def test_distal_amplitude_attenuates_shadow():
 
     G_off = compute_body_channel(normals, centroids, k_hat, psi, eidx, N_TILDE, SIGMA, FREQ, n_elem)
     G_on = compute_body_channel(
-        normals, centroids, k_hat, psi, eidx, N_TILDE, SIGMA, FREQ, n_elem,
-        clearance=clearance, R_occ=R_occ, distal_d1=d1, distal_d2=d2,
+        normals,
+        centroids,
+        k_hat,
+        psi,
+        eidx,
+        N_TILDE,
+        SIGMA,
+        FREQ,
+        n_elem,
+        clearance=clearance,
+        R_occ=R_occ,
+        distal_d1=d1,
+        distal_d2=d2,
     )
     norm_off = np.linalg.norm(G_off.reshape(M, -1), axis=1)
     norm_on = np.linalg.norm(G_on.reshape(M, -1), axis=1)
@@ -446,16 +469,34 @@ def test_distal_factored_matches_direct():
     d2 = np.full((M, 1), 0.05)
 
     G_direct = compute_body_channel(
-        normals, centroids, expanded.k_hat, expanded.psi, expanded.element_index,
-        N_TILDE, SIGMA, FREQ, n_elem,
+        normals,
+        centroids,
+        expanded.k_hat,
+        expanded.psi,
+        expanded.element_index,
+        N_TILDE,
+        SIGMA,
+        FREQ,
+        n_elem,
         clearance=np.repeat(clearance, n_total, axis=1),
         R_occ=np.repeat(R_occ, n_total, axis=1),
         distal_d1=np.repeat(d1, n_total, axis=1),
         distal_d2=np.repeat(d2, n_total, axis=1),
     )
     G_fac = compute_body_channel_factored(
-        normals, centroids, center_paths.k_hat, center_psi_gained, expanded.psi, expanded.element_index,
-        N_TILDE, SIGMA, FREQ, n_elem,
-        clearance=clearance, R_occ=R_occ, distal_d1=d1, distal_d2=d2,
+        normals,
+        centroids,
+        center_paths.k_hat,
+        center_psi_gained,
+        expanded.psi,
+        expanded.element_index,
+        N_TILDE,
+        SIGMA,
+        FREQ,
+        n_elem,
+        clearance=clearance,
+        R_occ=R_occ,
+        distal_d1=d1,
+        distal_d2=d2,
     )
     assert np.allclose(G_direct, G_fac, atol=1e-10)
