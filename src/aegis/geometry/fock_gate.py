@@ -52,6 +52,31 @@ def fock_radius_per_path(body: BodyMesh, k_hat: np.ndarray) -> np.ndarray:
     return np.stack([curvature.fock_radius(body, kh[n]) for n in range(kh.shape[0])], axis=1)
 
 
+def fock_q_hard(fock_R: np.ndarray, freq_hz: float, n_tilde: complex) -> complex:
+    """Representative impedance-corrected hard creeping eigenvalue ``q_F_h``.
+
+    Takes a per-face Fock radius array (any shape), uses its median curved-face
+    radius for the single cached mpmath pole solve, and returns the Airy-equation
+    parameter for the lossy-skin hard pole. The soft creeping wave keeps the PEC
+    eigenvalue (``q_F_s = None``), so only the hard value is computed here. Shared
+    by the engine, the MIMO compute path, and the near-field phone kernel so their
+    gates agree triangle for triangle (DECISIONS.md L10).
+    """
+    from aegis.kernels import fock
+
+    eta = complex(1.0 / n_tilde)
+    if eta.imag <= 0:
+        raise ValueError(f"eta = 1/n_tilde must have Im(eta) > 0 (passive skin, n - ik convention), got {eta}")
+    R_arr = np.asarray(fock_R, dtype=float)
+    finite = np.isfinite(R_arr)
+    curved = finite & (R_arr < FOCK_FLAT_R_CAP)
+    sample = R_arr[curved] if np.any(curved) else R_arr[finite]
+    R_rep = float(np.median(sample)) if sample.size else 1.0
+    k0 = 2.0 * np.pi * freq_hz / C_0
+    kR_rep = float(np.clip(k0 * R_rep, FOCK_KR_MIN, FOCK_KR_MAX))
+    return fock.fock_impedance_param(eta, kR_rep, "hard")
+
+
 def fock_params(
     body: BodyMesh,
     k_hat: np.ndarray,
@@ -68,18 +93,7 @@ def fock_params(
     """
     if model != "fock":
         return None, None, None
-    from aegis.kernels import fock
 
     fock_R = fock_radius_per_path(body, k_hat)
-    eta = complex(1.0 / n_tilde)
-    if eta.imag <= 0:
-        raise ValueError(f"eta = 1/n_tilde must have Im(eta) > 0 (passive skin, n - ik convention), got {eta}")
-    R_arr = np.asarray(fock_R, dtype=float)
-    finite = np.isfinite(R_arr)
-    curved = finite & (R_arr < FOCK_FLAT_R_CAP)
-    sample = R_arr[curved] if np.any(curved) else R_arr[finite]
-    R_rep = float(np.median(sample)) if sample.size else 1.0
-    k0 = 2.0 * np.pi * freq_hz / C_0
-    kR_rep = float(np.clip(k0 * R_rep, FOCK_KR_MIN, FOCK_KR_MAX))
-    q_F_h = fock.fock_impedance_param(eta, kR_rep, "hard")
+    q_F_h = fock_q_hard(fock_R, freq_hz, n_tilde)
     return fock_R, None, q_F_h

@@ -15,12 +15,16 @@ so under JAX it is differentiable in ``position`` and ``rotation``.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from aegis._array_backend import xp
 from aegis.nearfield.patterns import AntennaPattern3D
 from aegis.tissue.fresnel import _fresnel_core
+
+if TYPE_CHECKING:
+    from aegis.geometry.mesh import BodyMesh
 
 
 @dataclass
@@ -101,6 +105,7 @@ def incident_field(centroids, position, rotation, pattern: AntennaPattern3D, rad
     -------
     s_inc : (M,) incident power density [W/m^2]
     k_hat : (M, 3) unit propagation direction (source -> centroid)
+    dist : (M,) source -> centroid distance [m] (the near-field detour ``d1``)
     """
     pos = xp.asarray(position)
     rot = xp.asarray(rotation)
@@ -113,7 +118,68 @@ def incident_field(centroids, position, rotation, pattern: AntennaPattern3D, rad
     directivity = pattern.sample(dir_ant)  # (M,)
 
     s_inc = radiated_power_w * directivity / (4.0 * np.pi * dist * dist)
-    return s_inc, k_hat
+    return s_inc, k_hat, dist
+
+
+def _fock_radius_per_face(body: BodyMesh, k_hat: np.ndarray) -> np.ndarray:
+    """In-incidence-plane Fock radius for per-face directions (NumPy only).
+
+    ``k_hat`` is ``(M, 3)`` (single pose) or ``(B, M, 3)`` (a pose batch); each
+    face carries its own source -> centroid direction, so unlike the engine's
+    far-field ``fock_radius_per_path`` (one direction for all faces) the curvature
+    is resolved per face. Returns ``(M,)`` or ``(B, M)``.
+    """
+    from aegis.geometry import curvature
+
+    kh = np.asarray(k_hat, dtype=float)
+    if kh.ndim == 2:
+        return curvature.fock_radius(body, kh)
+    return np.stack([curvature.fock_radius(body, kh[b]) for b in range(kh.shape[0])], axis=0)
+
+
+def _local_gate(
+    mu,
+    k_hat,
+    dist,
+    *,
+    body: BodyMesh | None,
+    freq_hz: float,
+    n_tilde: complex | None,
+    diffraction_model: str,
+    fock_R=None,
+    q_F_h: complex | None = None,
+):
+    """Shadow-edge gate that replaces ``ReLU(mu)`` in the absorbed-power law.
+
+    ``"none"`` returns the bare ``max(mu, 0)`` (back-compatible). ``"fock"``
+    returns the near-field Fock local gate :func:`aegis.kernels.fock.fock_local`
+    (GO obliquity * lit penumbra + creeping leakage), with the finite-distance
+    wavefront taper ``w_nf`` set by ``d1 = dist`` and ``d2 = R |theta|``. In the
+    GO / far-field limit the Fock gate reduces to ``max(mu, 0)``.
+
+    The Fock gate needs the body curvature, so it is applied only when ``body`` is
+    given; without it the call degrades to ``"none"``. ``fock_R`` and ``q_F_h`` may
+    be precomputed (a NumPy radius array and the representative hard eigenvalue) to
+    keep the gate differentiable under the JAX backend, where the curvature solve
+    cannot trace a symbolic source position.
+    """
+    relu_mu = xp.maximum(mu, 0.0)
+    if diffraction_model == "none" or body is None:
+        return relu_mu
+    if diffraction_model != "fock":
+        raise ValueError(f"diffraction_model must be 'none' or 'fock', got {diffraction_model!r}")
+    if n_tilde is None:
+        raise ValueError("n_tilde required when diffraction_model='fock'")
+
+    from aegis.geometry import fock_gate as _fg
+    from aegis.kernels.fock import fock_local
+
+    if fock_R is None:
+        fock_R = _fock_radius_per_face(body, k_hat)
+    if q_F_h is None:
+        q_F_h = _fg.fock_q_hard(np.asarray(fock_R, dtype=float), freq_hz, n_tilde)
+    # Incoherent, unpolarised: equal TE/TM split; soft keeps the PEC eigenvalue.
+    return fock_local(mu, xp.asarray(fock_R), freq_hz, 0.5, 0.5, None, q_F_h, d1=dist, d2=None)
 
 
 def compute_sab(
@@ -123,6 +189,10 @@ def compute_sab(
     t0: float,
     n_tilde: complex | None = None,
     fresnel: bool = True,
+    body: BodyMesh | None = None,
+    diffraction_model: str = "fock",
+    fock_R=None,
+    q_F_h: complex | None = None,
 ):
     """Absorbed power density per triangle for a phone source.
 
@@ -132,9 +202,19 @@ def compute_sab(
     normals : (M, 3) unit outward normals
     source : PhoneSource
     t0 : float normal-incidence Fresnel power transmission (tissue.T0)
-    n_tilde : complex refractive index; required when ``fresnel=True`` to apply
-        the angle-dependent (unpolarised) transmission T_eff(mu).
+    n_tilde : complex refractive index; required when ``fresnel=True`` (the
+        angle-dependent unpolarised transmission) or when the Fock gate is active.
     fresnel : if False use the constant ``t0`` (geometric level-2 style).
+    body : BodyMesh providing the surface curvature for the Fock shadow gate.
+        Required to apply ``diffraction_model="fock"``; without it the gate falls
+        back to ``"none"``.
+    diffraction_model : ``"fock"`` (default) applies the near-field Fock local
+        gate (smooth penumbra + creeping leakage with the finite-distance
+        wavefront taper), matching the engine default. ``"none"`` is the exact
+        ``ReLU`` projection (back-compatible).
+    fock_R, q_F_h : optionally precomputed Fock radius array and representative
+        hard eigenvalue (see :func:`_local_gate`), to keep the gate differentiable
+        in the source position under the JAX backend.
 
     Returns
     -------
@@ -142,7 +222,9 @@ def compute_sab(
     """
     centroids = xp.asarray(centroids)
     normals = xp.asarray(normals)
-    s_inc, k_hat = incident_field(centroids, source.position, source.rotation, source.pattern, source.radiated_power_w)
+    s_inc, k_hat, dist = incident_field(
+        centroids, source.position, source.rotation, source.pattern, source.radiated_power_w
+    )
     mu = xp.sum(normals * (-k_hat), axis=-1)  # incidence cosine
     relu_mu = xp.maximum(mu, 0.0)
 
@@ -156,7 +238,18 @@ def compute_sab(
     else:
         t_eff = t0
 
-    return s_inc * t_eff * relu_mu
+    gate = _local_gate(
+        mu,
+        k_hat,
+        dist,
+        body=body,
+        freq_hz=source.pattern.freq_hz,
+        n_tilde=n_tilde,
+        diffraction_model=diffraction_model,
+        fock_R=fock_R,
+        q_F_h=q_F_h,
+    )
+    return s_inc * t_eff * gate
 
 
 def compute_sab_batch(
@@ -169,6 +262,10 @@ def compute_sab_batch(
     n_tilde: complex,
     radiated_power_w: float = 1.0,
     fresnel: bool = True,
+    body: BodyMesh | None = None,
+    diffraction_model: str = "fock",
+    fock_R=None,
+    q_F_h: complex | None = None,
 ):
     """Vectorised absorbed power density for a batch of source poses.
 
@@ -182,6 +279,9 @@ def compute_sab_batch(
     positions : (B, 3) source positions [m]
     rotations : (B, 3, 3) antenna-frame -> world rotation matrices
     pattern, t0, n_tilde, radiated_power_w, fresnel : as in :func:`compute_sab`
+    body, diffraction_model, fock_R, q_F_h : the Fock shadow gate, as in
+        :func:`compute_sab`. With ``diffraction_model="fock"`` and a ``body`` the
+        per-pose curvature radius is resolved face by face (shape ``(B, M)``).
 
     Returns
     -------
@@ -210,4 +310,15 @@ def compute_sab_batch(
     else:
         t_eff = t0
 
-    return s_inc * t_eff * relu_mu
+    gate = _local_gate(
+        mu,
+        k_hat,
+        dist,
+        body=body,
+        freq_hz=pattern.freq_hz,
+        n_tilde=n_tilde,
+        diffraction_model=diffraction_model,
+        fock_R=fock_R,
+        q_F_h=q_F_h,
+    )
+    return s_inc * t_eff * gate

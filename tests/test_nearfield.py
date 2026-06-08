@@ -118,6 +118,75 @@ def test_back_face_is_shadowed(mesh, tissue):
     assert np.all(sab[mu <= 0] == 0.0)
 
 
+# -- Fock local diffraction gate --------------------------------------------
+
+
+def _gate_geometry(mesh, src):
+    """Per-face mu, distance, and curvature radius for the phone geometry."""
+    from aegis.geometry import curvature
+
+    c = np.asarray(mesh.centroids)
+    n = np.asarray(mesh.normals)
+    rel = c - src.position[None, :]
+    dist = np.linalg.norm(rel, axis=1)
+    k_hat = rel / dist[:, None]
+    mu = np.sum(n * (-k_hat), axis=1)
+    fock_R = np.asarray(curvature.fock_radius(mesh, k_hat))
+    return mu, dist, k_hat, fock_R
+
+
+def test_nearfield_gate_off_unchanged(mesh, tissue):
+    """diffraction_model='none' (and the legacy no-body call) reproduce ReLU."""
+    nt, t0 = tissue
+    src = _source(mesh)
+    legacy = np.asarray(compute_sab(mesh.centroids, mesh.normals, src, t0, nt))  # no body -> no gate
+    none = np.asarray(compute_sab(mesh.centroids, mesh.normals, src, t0, nt, body=mesh, diffraction_model="none"))
+    assert np.allclose(legacy, none, rtol=1e-12, atol=0.0)
+
+
+def test_nearfield_gate_finite(mesh, tissue):
+    """The Fock gate is finite, non-negative, and rolls the grazing dose off
+    below the bare ReLU near the terminator (the dose-relevant penumbra effect).
+
+    The creeping wave does leak past the geometric terminator (validated at the
+    field level in tests/test_fock.py), but in the absorbed-power law it is gated
+    by the Fresnel transmission, which vanishes at grazing (``relu_mu=0``), so the
+    measurable dose change lives in the lit penumbra, not the deep shadow."""
+    nt, t0 = tissue
+    src = _source(mesh)
+    none = np.asarray(compute_sab(mesh.centroids, mesh.normals, src, t0, nt, body=mesh, diffraction_model="none"))
+    fock = np.asarray(compute_sab(mesh.centroids, mesh.normals, src, t0, nt, body=mesh, diffraction_model="fock"))
+    assert np.all(np.isfinite(fock))
+    assert np.all(fock >= 0.0)
+    assert np.any(fock > 0.0)
+    assert not np.allclose(fock, none)  # the gate actually changes the dose
+
+    mu, _, _, _ = _gate_geometry(mesh, src)
+    # Lit grazing band: the smooth penumbra rolls the dose off below GO/ReLU.
+    lit_band = (mu > 0.0) & (mu < 0.15)
+    assert fock[lit_band].sum() < none[lit_band].sum()
+
+
+def test_nearfield_wnf_narrows(mesh, tissue):
+    """In the phone geometry the near-field penumbra is NARROWER than the far
+    field (L13: w_nf divides the detour). A multiply-bug would widen it."""
+    from aegis.geometry import fock_gate as fg
+    from aegis.kernels.fock import fock_local
+
+    nt, _ = tissue
+    src = _source(mesh)
+    mu, dist, _, fock_R = _gate_geometry(mesh, src)
+    freq = src.pattern.freq_hz
+    q_F_h = fg.fock_q_hard(fock_R, freq, nt)
+    relu = np.maximum(mu, 0.0)
+
+    g_near = np.asarray(fock_local(mu, fock_R, freq, 0.5, 0.5, None, q_F_h, d1=dist, d2=None))
+    g_far = np.asarray(fock_local(mu, fock_R, freq, 0.5, 0.5, None, q_F_h, d1=None))
+    dev_near = float(np.sum(np.abs(g_near - relu)))
+    dev_far = float(np.sum(np.abs(g_far - relu)))
+    assert dev_near < dev_far
+
+
 # -- metrics ----------------------------------------------------------------
 
 
@@ -204,3 +273,49 @@ def test_gradient_wrt_position_matches_fd(mesh, tissue):
         [float((total_sab(pos0.at[i].add(eps)) - total_sab(pos0.at[i].add(-eps))) / (2 * eps)) for i in range(3)]
     )
     assert np.max(np.abs((g - fd) / (np.abs(fd) + 1e-6))) < 0.05
+
+
+@pytest.mark.skipif(not JAX_AVAILABLE, reason="requires AEGIS_ARRAY_BACKEND=jax")
+def test_nearfield_fock_gate_differentiable(mesh, tissue):
+    """The Fock-gated dose stays differentiable in the source position.
+
+    The curvature solve cannot trace a symbolic position, so ``fock_R`` and the
+    representative hard eigenvalue are precomputed (NumPy) at the nominal pose and
+    passed in; the gate's position dependence then flows through ``mu`` and the
+    wavefront distance ``d1`` only, which stay traceable.
+    """
+    import jax
+    import jax.numpy as jnp
+
+    from aegis.geometry import curvature
+    from aegis.geometry import fock_gate as fg
+    from aegis.nearfield.scenarios import _rotation_aligning_z_to
+
+    nt, t0 = tissue
+    pat = next(iter(_load_real_patterns().values()))
+    pl = standard_placements(mesh)["front_of_eyes"]
+
+    cen = jnp.asarray(mesh.centroids)
+    nor = jnp.asarray(mesh.normals)
+    rot = jnp.asarray(_rotation_aligning_z_to(pl.look_dir))
+    pos0 = jnp.asarray(pl.position())
+
+    # Precompute curvature radius + hard eigenvalue at the nominal pose (NumPy).
+    rel = np.asarray(mesh.centroids) - np.asarray(pos0)[None, :]
+    k0 = rel / np.linalg.norm(rel, axis=1, keepdims=True)
+    fock_R = np.asarray(curvature.fock_radius(mesh, k0))
+    q_F_h = fg.fock_q_hard(fock_R, pat.freq_hz, nt)
+
+    def total_sab(pos):
+        src = PhoneSource(position=pos, rotation=rot, pattern=pat, radiated_power_w=1.0)
+        return jnp.sum(
+            compute_sab(cen, nor, src, t0, nt, body=mesh, diffraction_model="fock", fock_R=fock_R, q_F_h=q_F_h)
+        )
+
+    g = np.asarray(jax.grad(total_sab)(pos0))
+    assert np.all(np.isfinite(g))  # no NaN from the gate / w_nf floor
+    eps = 1e-5
+    fd = np.array(
+        [float((total_sab(pos0.at[i].add(eps)) - total_sab(pos0.at[i].add(-eps))) / (2 * eps)) for i in range(3)]
+    )
+    assert np.max(np.abs((g - fd) / (np.abs(fd) + 1e-6))) < 0.02
