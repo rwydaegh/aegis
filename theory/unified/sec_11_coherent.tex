@@ -1,0 +1,263 @@
+% sec_11_coherent
+\section{Coherent dosimetry: the exposure operator}\label{sec:coherent}
+
+The incoherent levels of \cref{sec:grid} add path powers and
+lose all phase. A phased array does not: the field at a body point is
+the coherent superposition of every element's contribution, and the
+absorbed power depends on how those contributions interfere. This
+section carries the complex field through the surface law, factors the
+whole-body absorbed power into a single Hermitian operator $\Qop$, and
+shows that worst-case exposure, exposure-constrained beamforming, and
+multi-user MIMO all reduce to spectral problems on $\Qop$. It closes
+with the complex Fock gate and the precise sense in which the coherent
+model dominates the incoherent one.
+
+\subsection{The field channel}
+
+A base station with $M_{\mathrm{ant}}$ elements drives the array with a
+precoder $\xx\in\Complex^{M_{\mathrm{ant}}}$. Each propagation path $n$
+originates at one element $j(n)$ and arrives at a body point with
+direction $\khat_n$, polarisation-amplitude vector $\psivec_n$, and
+phase $e^{-ik_0\khat_n\cdot\rr}$. Grouping the paths by originating
+element gives the field channel matrix
+$\mathbf{G}(\rr)\in\Complex^{3\times M_{\mathrm{ant}}}$ with columns
+$\mathbf{g}_j(\rr)=\sum_{n:j(n)=j}\psivec_n\,e^{-ik_0\khat_n\cdot\rr}$,
+and the total incident field is $\EE(\rr)=\mathbf{G}(\rr)\,\xx$, exact
+in the locally plane-wave regime of \cref{sec:nearfar}.
+
+The surface filters that field. The Fresnel transmission operator of
+\cref{sec:fresnel} acts per path as the rank-two projector
+\begin{equation}\label{eq:Fn}
+  \mathbf{F}_n(\rr)=\bigl(t_{s,n}\,\hat e_{s,n}\hat e_{s,n}^{\!\top}
+                        +t_{p,n}\,\hat e_{p,n}\hat e_{p,n}^{\!\top}\bigr)
+                    H(\mu_n),
+\end{equation}
+splitting $\psivec_n$ into its TE and TM parts, scaling each by its
+transmission coefficient, and gating front-facing incidence through
+$H(\mu_n)$. Collecting the depth-decay prefactor $\sqrt{\sigma/4\alpha_n}$
+(with $\alpha_n=k_0\IM\zeta_n$ the field attenuation in tissue) defines the
+\emph{body-surface channel}.
+
+\begin{definition}[Body-surface channel]\label{def:Gtil}
+The exposure channel vector for element $j$ and the body-surface channel
+matrix are
+\begin{equation}\label{eq:Gtil}
+  \tilde{\mathbf g}_j(\rr)=\sum_{n:j(n)=j}\sqrt{\frac{\sigma}{4\alpha_n}}\,
+    \mathbf{F}_n(\rr)\,\psivec_n\,e^{-ik_0\khat_n\cdot\rr}\in\Complex^3,
+  \qquad
+  \Gtil(\rr)=\bigl[\tilde{\mathbf g}_1(\rr),\ldots,
+                   \tilde{\mathbf g}_{M_{\mathrm{ant}}}(\rr)\bigr]
+            \in\Complex^{3\times M_{\mathrm{ant}}}.
+\end{equation}
+\end{definition}
+
+Unlike the user-equipment channel, which collapses each path to a scalar
+through the receive antenna response and discards the vector structure,
+$\Gtil$ retains the full 3D field. That structural difference is the
+geometric origin of the decoupling between signal quality and body
+absorption.
+
+\subsection{The coherent absorption law}
+
+The absorbed power density is the ohmic loss of the transmitted field
+integrated over depth. Expanding the squared norm over path pairs
+produces a depth coupling factor
+\begin{equation}\label{eq:Lambda}
+  \Lambda_{nn'}=\int_0^\infty
+    e^{-(\alpha_n+\alpha_{n'})z}\,e^{i(\beta_n-\beta_{n'})z}\,\diff z
+   =\frac{1}{\alpha_n+\alpha_{n'}-i(\beta_{n'}-\beta_n)},
+\end{equation}
+a Hermitian positive-semidefinite matrix with $\Lambda_{nn}=1/2\alpha_n$.
+The single approximation that closes the algebra is the universal depth
+coupling
+$\Gamma_{nn'}=\Lambda_{nn'}/\sqrt{\Lambda_{nn}\Lambda_{n'n'}}\approx 1$,
+which is exact on the diagonal and holds to $\abs{1-\Gamma_{nn'}}\le 0.44\%$
+across all incidence-angle pairs for skin at \SI{28}{\giga\hertz},
+because the high refractive index $\abs{\ntilde}\approx 4.8$ compresses
+every refraction angle to within $\sim\!10^\circ$ of normal. With
+$\Lambda_{nn'}=\sqrt{\Lambda_{nn}\Lambda_{n'n'}}$ the double sum
+collapses into the expansion of a single squared norm.
+
+\begin{theorem}[Coherent absorption law]\label{thm:coherent-law}
+Under the TM-direction approximation of \cref{sec:fresnel} and universal
+depth coupling, the absorbed power density is
+\begin{equation}\label{eq:coherent-law}
+  \Sab(\rr)=\norm{\Gtil(\rr)\,\xx}^2
+           =\xx\herm\,\Gtil(\rr)\herm\Gtil(\rr)\,\xx,
+\end{equation}
+for any precoder $\xx$.
+\end{theorem}
+
+For a single path the squared norm collapses to one term, and the
+depth-integral identity $\frac{\sigma}{4\alpha_n}\abs{t_{s,n}}^2
+=T_{s,n}\cos\theta_n/Z_0$ recovers exactly the polarisation-aware law of
+\cref{sec:pol}, $\Sab=\Sinc\,\Teff\,\ReLU(\mu)$. The coherent law is
+thus the phased-array lift of the surface law: the incoherent levels are
+its diagonal, the cross-terms are the interference the array controls.
+
+\subsection{The exposure operator}
+
+Integrating the coherent law over the body surface yields a quadratic
+form in the precoder.
+
+\begin{definition}[Exposure operator]\label{def:Q}
+The exposure operator is the Gram integral
+\begin{equation}\label{eq:Q-def}
+  \Qop=\int_\Sigma \Gtil(\rr)\herm\Gtil(\rr)\,\diff A
+     \;\approx\;\sum_m a_m\,\Gtil_m\herm\Gtil_m
+     \;\in\;\Complex^{M_{\mathrm{ant}}\times M_{\mathrm{ant}}},
+  \qquad
+  P_{\mathrm{abs}}=\xx\herm\Qop\,\xx,
+\end{equation}
+where $\Gtil_m=\Gtil(\rr_m)$ and $a_m$ is the area of triangle $m$.
+\end{definition}
+
+$\Qop$ is Hermitian positive-semidefinite by construction, with rank at
+most $\min(M_{\mathrm{ant}},3M_\triangle)$. Its eigendecomposition
+$\Qop=\sum_k\lambda_k\mathbf v_k\mathbf v_k\herm$
+($\lambda_1\ge\cdots\ge 0$) is the spectral description of the body's
+response to the array: $\mathbf v_1$ is the precoder direction that
+maximises whole-body absorption,
+$\lambda_1=\max_{\norm{\xx}=1}P_{\mathrm{abs}}$ is the worst-case absorbed
+power per unit transmit power, and $\operatorname{tr}\Qop=\sum_k\lambda_k$
+is the absorbed power under isotropic transmission. The operator plays
+the same role in the coherent regime that the absorption directivity
+plays in \cref{sec:geom}: it reduces the infinite-dimensional space
+of precoders to a finite spectrum. The quadratic form
+$\xx\herm\Qop\xx$ shares the algebraic structure of the SAR matrix of
+Hochwald \emph{et al.}, but $\Qop$ integrates over the whole body and
+its entries follow in closed form from the path geometry and Fresnel
+coefficients, with no FDTD calibration.
+
+A path-space factorisation makes this practical. Writing the channel as
+$\Gtil(\rr)=\tilde{\boldsymbol\Psi}(\rr)\,\boldsymbol\Phi(\rr)\,\mathbf J$
+with $\mathbf J$ the element-to-path dispatch matrix, the operator
+factors as $\Qop=\mathbf J^{\!\top}\mathbf M\,\mathbf J$ through the
+$N\times N$ path-exposure Gram $\mathbf M$. Worst-case exposure and the
+optimal precoder then live on the $N$ paths rather than the
+$M_{\mathrm{ant}}$ elements, which is the smaller space whenever the
+array is large.
+
+\subsection{MRT, worst case, and exposure-constrained beamforming}
+
+Maximum-ratio transmission $\xx_{\mathrm{MRT}}=\sqrt P\,\mathbf h^*/\norm{\mathbf h}$
+maximises received signal power at the user. Its exposure cost is one
+number, the exposure-signal alignment
+\begin{equation}\label{eq:rho}
+  \varrho=\frac{\mathbf h^{\!\top}\Qop\,\mathbf h^*}
+              {\norm{\mathbf h}^2\,\lambda_{\max}(\Qop)}\in[0,1],
+  \qquad
+  P_{\mathrm{abs}}^{\mathrm{MRT}}=P\,\varrho\,\lambda_{\max}(\Qop).
+\end{equation}
+A large $\varrho$ means the dominant signal paths also illuminate the
+body at moderate incidence; a small $\varrho$ means they arrive at
+grazing incidence or from self-shadowed directions, so the body is
+geometrically protected and strong signal coexists with low absorption.
+
+The worst case is the other extreme. By Rayleigh--Ritz,
+\begin{equation}\label{eq:worstcase}
+  \max_{\norm{\xx}=1}\xx\herm\Qop\,\xx=\lambda_{\max}(\Qop),
+\end{equation}
+attained at the top eigenvector $\mathbf v_1$: the energy-constrained
+beamformer that an adversary, or a conservative compliance bound, would
+choose. Between the two lies the design objective, maximise signal
+subject to an absorption cap,
+\begin{equation}\label{eq:QCQP}
+  \max_{\xx}\ \abs{\mathbf h^{\!\top}\xx}^2
+  \quad\text{s.t.}\quad
+  \xx\herm\Qop\,\xx\le P_{\mathrm{abs}}^{\max},\ \ \norm{\xx}^2\le P.
+\end{equation}
+This QCQP has the closed-form solution
+\begin{equation}\label{eq:ecbf}
+  \xx^\star=\sqrt P\,
+    \frac{(\lambda\Qop+\nu\mathbf I)^{-1}\mathbf h^*}
+         {\norm{(\lambda\Qop+\nu\mathbf I)^{-1}\mathbf h^*}},
+\end{equation}
+with multipliers $\lambda,\nu\ge 0$ fixed by complementary slackness.
+The inverse $(\lambda\Qop+\nu\mathbf I)^{-1}$ regularises MRT in the
+$\Qop$-eigenbasis: it suppresses the precoder along high-absorption
+modes and leaves the absorption null-space unpenalised. As
+$\lambda\to 0$ it reduces to MRT; as $\lambda\to\infty$ it steers
+strictly through the null-space. A Woodbury push-through lifts
+\cref{eq:ecbf} to the path space, replacing the
+$M_{\mathrm{ant}}\times M_{\mathrm{ant}}$ inverse by the nonzero
+eigenpairs of $\mathbf M\mathbf P$, of which there are at most
+$M_{\mathrm{ant}}$.
+
+\subsection{Multi-user and multi-body}
+
+The single-user law extends without new approximations. With $K$ data
+streams the total precoder is $\xx_{\mathrm{tot}}=\sum_k\mathbf w_k s_k$,
+and since the symbols are uncorrelated the expected absorbed power
+density on body $u$ is the incoherent sum of per-stream coherent
+contributions,
+$\mathbb E[\Sab^{(u)}(\rr)]=\sum_k\norm{\Gtil^{(u)}(\rr)\mathbf w_k}^2$.
+Integrating gives a per-body exposure operator $\Qop^{(u)}$ and
+\begin{equation}\label{eq:MU}
+  P_{\mathrm{abs}}^{(u)}=\sum_{k=1}^K\mathbf w_k\herm\Qop^{(u)}\mathbf w_k,
+\end{equation}
+so each stream contributes to every body it illuminates, intended
+recipient or bystander. Sum-rate maximisation subject to per-body caps
+$P_{\mathrm{abs}}^{(u)}\le P_{\mathrm{abs}}^{\max}$ keeps the convex
+quadratic structure and drops into WMMSE or alternating optimisation.
+The limiting case where every cap is zero is exposure-null precoding:
+the precoder is confined to the quiet subspace
+$\mathcal Q=\bigcap_u\ker\Qop^{(u)}$, the joint absorption null-space,
+of dimension at least $M_{\mathrm{ant}}-\sum_u\operatorname{rank}\Qop^{(u)}$.
+This generalises classical zero-forcing, which nulls rank-one user
+channels, to nulling the rank-$3M_\triangle$ absorption operators of
+whole bodies.
+
+\subsection{The coherent Fock gate}
+
+Diffraction enters the coherent channel as the single complex Fock gate
+$g(\xi)=\Philit+\Psishad$ of \cref{sec:fock-local}, evaluated at the
+detour $\xi$ (positive in the lit region, negative in the shadow). It is
+carried per polarisation, the soft constant on the TE field and the hard
+constant on the TM field, and folded directly into the Fresnel
+transmission of \cref{eq:Fn} by replacing the coefficients,
+\begin{equation}\label{eq:gated-fresnel}
+  t_{s,n}\ \longmapsto\ g_{\mathrm{soft}}(\xi_n)\,t_{s,n},
+  \qquad
+  t_{p,n}\ \longmapsto\ g_{\mathrm{hard}}(\xi_n)\,t_{p,n}.
+\end{equation}
+Deep in the lit region $g\to 1$ and the channel is the exact
+geometric-optics field, unchanged. Across the penumbra the gate applies
+the complex transition: amplitude rolloff and phase shift on the
+field, not on the power. Because $\abs{g}^2$ on the incoherent power and
+$g$ on the coherent field come from the same function, the incoherent
+and coherent diffraction models are consistent by construction.
+
+\subsection{Coherent dominates incoherent, and where}
+
+The complex gate cannot lower the total dose relative to the incoherent
+magnitude gate, and matched-filter steering can raise it.
+
+\begin{proposition}[Coherent dominance in the dose-relevant region]\label{prop:coh-ge-incoh}
+In the lit region and the penumbra,
+$\operatorname{tr}\Qop_{\mathrm{coh}}=\operatorname{tr}\Qop_{\mathrm{inc}}$,
+because $\abs{g}^2=\abs{g}^2$ pointwise so the complex gate loses no
+total dose against the magnitude gate. The worst-case coherent dose
+dominates the isotropic incoherent dose,
+\begin{equation}\label{eq:coh-ge-incoh}
+  M_{\mathrm{ant}}\,\lambda_{\max}(\Qop)\ \ge\
+  \operatorname{tr}\Qop\ \ge\ P_{\mathrm{abs}}^{\mathrm{iso}},
+\end{equation}
+the constructive-interference headroom of matched-filter steering over
+incoherent superposition.
+\end{proposition}
+
+The domain of \cref{prop:coh-ge-incoh} is the lit region plus penumbra,
+which is where the dose lives. It does not extend into the deep
+geometric shadow. The Fresnel operator hard-zeros the transmission
+($t_s=t_p=0$ for $\mu\le 0$), so the coherent body channel carries no
+field past the terminator: the coherent-local model injects no creeping
+field into the deep shadow, whereas the incoherent model adds a residual
+$\abs{g}^2\sim 10^{-6}$ of the lit value there. The coherent model is
+therefore pointwise below the incoherent one by that same negligible
+factor in the deep shadow, a documented limitation rather than a
+violation of the construction. Carrying the complex creeping field into
+the coherent deep shadow requires the diffracted-geodesic field vector,
+which the Fresnel operator does not supply, and is the same follow-up
+family as the coherent-distal phase: gated on a two-body oracle and
+deferred (cf.\ the diffraction decisions log, L9).

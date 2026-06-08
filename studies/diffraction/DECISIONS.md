@@ -113,6 +113,27 @@ Supersedes/absorbs `2026-06-06-self-shadowing-visibility-design.md`.
 
 ## Decision log (made autonomously overnight)
 
+- 2026-06-08 L13 (from the unified-report C-metric derivation; CORRECTS the Phase B
+  distal gate before it is wired). Formalizing the distal angular-clearance gate
+  (theory/unified/sec_08_distal_cmetric.tex) surfaced three errors in the spec's
+  `fock_xi_distal` that must be fixed when the distal gate is implemented (Phase B):
+  * SIGN: the spec wrote xi_d = -(k R_occ/2)^{1/3} c w_nf. Under the locked
+    conventions (c>0 = clear, xi>0 = lit) that minus zeros the gate on every clear
+    direction. Correct: xi_d = m_occ * c / w_nf (clear maps to the lit branch). The
+    spec's minus is only meaningful if c is reinterpreted as shadow depth s=-c.
+  * NEAR-FIELD FACTOR PLACEMENT: w_nf = sqrt(d1/(d1+d2)) multiplies the WIDTH
+    (DIVIDES the detour: xi_d = m_occ c / w_nf), NOT multiplies xi. Near field
+    NARROWS the penumbra; the spec's "w_nf * xi" inverts the trend. Matches the
+    2026-06-06 self-shadowing spec's validated sigma_ke ~ sqrt(d1/(d1+d2)).
+  * KNIFE-EDGE IS A SEPARATE WIDTH, not a naive R_occ->inf limit. The finite knife
+    penumbra comes from the Fresnel PATH detour (distance-set), absent from the
+    Fock curvature variable. The distal gate must carry BOTH widths: Fock-curvature
+    sigma_Fock = 2^{5/6}(k R_occ)^{-1/3} AND Fresnel sigma_ke ~ (k L)^{-1/2}. The
+    sharp-edge limit recovers the old erf self-shadowing gate exactly (Phi_lit IS
+    that erf gate). Crossover R_occ* ~ L sqrt(kL) (~1 const): at 28 GHz few-cm
+    standoff R_occ* ~ 10 cm, so a finger/limb is Fock, a wall edge is knife.
+  Carry these into the Phase B distal implementation; do NOT copy the spec's
+  fock_xi_distal sign/placement verbatim. Now formally derived in the report.
 - 2026-06-08 L12 (real-phantom E2E validation, post-CI). Ran the full pipeline on
   the real duke phantom (56024 triangles) under diffraction_model none vs fock,
   far-field plane wave + random psi: incoherent L3 IDENTICAL (no gate at L3,
