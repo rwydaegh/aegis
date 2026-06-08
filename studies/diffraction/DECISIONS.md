@@ -113,6 +113,17 @@ Supersedes/absorbs `2026-06-06-self-shadowing-visibility-design.md`.
 
 ## Decision log (made autonomously overnight)
 
+- 2026-06-08 L11 (final review gap, follow-up). `src/aegis/coherent/_fast.py` (the
+  JAX-accelerated twins compute_body_channel_factored_jax / compute_q_for_body /
+  compute_q_batch_vmap, used by the JSAC v0.33 batched ECBF solver) did NOT
+  receive the Fock gate, while the NumPy reference compute_body_channel_factored
+  did. No live src/ caller routes user-facing dose through the JAX twins today
+  (only tests + the JSAC batched solver), so nothing is silently ungated in the
+  product. But if the batched solver is later wired into a user/paper dose path it
+  will diverge from the engine fock default. Tracked as a follow-up (thread fock_R
+  + representative q_F into the _fast.py twins, JAX-traceable). Not in this PR to
+  keep it focused; the PR's final holistic review approved with this as a noted
+  Minor.
 - 2026-06-08 L10 (Task 7 design). The kernel takes a SCALAR static `q_F_h`. The
   hard eigenvalue drifts with per-triangle kR, but that drift is ~20% on a shadow
   tail of ~1e-6 of lit dose (F5) - dose-negligible. So the engine passes a single
