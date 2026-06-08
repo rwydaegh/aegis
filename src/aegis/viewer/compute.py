@@ -633,6 +633,11 @@ def _run_engine_mode(
     inter_body = corr.get("inter_body")
     if inter_body is not None:
         mode_kwargs["inter_body"] = inter_body
+    # Distal self-shadowing (one body part shadowing another). Opt-in: only set
+    # when the toggle is on, so the default viewer dose is unchanged. Far-field
+    # (uses the path directions); near-field source_pos forwarding is a follow-up.
+    if corr.get("self_shadow"):
+        mode_kwargs["self_shadow"] = True
     return engine.compute_with_timings(body, paths, body_mass=body_mass, **mode_kwargs)
 
 
