@@ -195,3 +195,58 @@ def test_spatial_kernel_distal_opt_out_is_byte_identical():
         distal_d2=None,
     )
     assert np.array_equal(a, b)
+
+
+# ---------------------------------------------------------------------------
+# Task 14: multipath fold correctness (P5)
+# ---------------------------------------------------------------------------
+
+
+def test_distal_multipath_fold_differs_from_mean_postmultiply():
+    # When both the local gate and the distal gate vary across paths, folding the
+    # distal gate per-path inside (T*g)@power is NOT the same as multiplying the
+    # ungated result by a power-weighted-mean gate (sum-of-products vs
+    # product-of-sums). This is why the gate lives in the kernel, not as a
+    # post-hoc occlusion factor.
+    from aegis.kernels.fock import distal_gate
+    from aegis.kernels.spatial import spatial_kernel
+
+    rng = np.random.default_rng(3)
+    M = 8
+    normals = rng.standard_normal((M, 3))
+    normals /= np.linalg.norm(normals, axis=1, keepdims=True)
+    # two genuinely different directions so the local gate varies per path
+    k_hat = np.array([[0.0, 0.0, -1.0], [1.0, 0.0, 0.0]])
+    power = np.array([1.0, 0.7])
+    n_tilde = 3.0 - 1.0j
+    fock_R = np.full(M, 0.1)
+    # path 0 shadows, path 1 clear
+    clearance = np.column_stack([np.full(M, -0.4), np.full(M, 5.0)])
+    R_occ = np.full((M, 2), 0.1)
+    d1 = np.full((M, 2), np.inf)
+    d2 = np.full((M, 2), 0.05)
+
+    folded = spatial_kernel(
+        normals,
+        k_hat,
+        power,
+        n_tilde,
+        0.5,
+        28e9,
+        diffraction_model="fock",
+        fock_R=fock_R,
+        clearance=clearance,
+        R_occ=R_occ,
+        distal_d1=d1,
+        distal_d2=d2,
+    )
+    ungated = spatial_kernel(normals, k_hat, power, n_tilde, 0.5, 28e9, diffraction_model="fock", fock_R=fock_R)
+    # power-weighted-mean distal gate per row (the naive post-multiply)
+    g0 = distal_gate(clearance[:, 0], R_occ[:, 0], 28e9, 0.5, 0.5, d1=d1[:, 0], d2=d2[:, 0])
+    g1 = distal_gate(clearance[:, 1], R_occ[:, 1], 28e9, 0.5, 0.5, d1=d1[:, 1], d2=d2[:, 1])
+    mean_gate = (g0 * power[0] + g1 * power[1]) / power.sum()
+    post_mult = ungated * mean_gate
+    # the two are materially different on at least some rows
+    assert not np.allclose(folded, post_mult, rtol=1e-2)
+    # and the folded result never exceeds the ungated dose (shadowing only removes)
+    assert np.all(folded <= ungated + 1e-12)

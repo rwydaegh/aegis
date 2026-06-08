@@ -473,3 +473,60 @@ def test_query_visibility_near_field_occluder_behind_source_is_exposed():
     # rows whose binding occluder sits beyond the source are pushed back to lit
     behind = d1[:, 0] <= 0.0
     assert np.all(clr[behind, 0] > 0.4)
+
+
+# ---------------------------------------------------------------------------
+# Task 14: validation (LUT vs exact binary oracle, penumbra scaling)
+# ---------------------------------------------------------------------------
+
+
+def test_lut_distal_gate_matches_binary_oracle_highfreq():
+    # In the high-frequency limit the distal gate's lit/shadow decision (> 0.5)
+    # reproduces the exact binary visibility oracle on the active rows, modulo
+    # the measure-zero c = 0 boundary cells.
+    from aegis.geometry.visibility import bake_visibility_lut, compute_visibility, query_visibility
+    from aegis.kernels.fock import distal_gate
+
+    body = _two_spheres()
+    lut = bake_visibility_lut(body, resolution=32)
+    k = np.array([[1.0, 0.0, 0.0]])
+    vis_binary = compute_visibility(body, k)[:, 0]  # (M,) exact oracle
+    clr, R_occ, d1, d2 = query_visibility(lut, k, body.centroids, source_pos=None)
+    g = distal_gate(clr[:, 0], R_occ[:, 0], 300e9, 0.5, 0.5, d1=d1[:, 0], d2=d2[:, 0], diffraction_model="fock")
+    ai = lut.active_index
+    # Compare away from the boundary: the gate is SUPPOSED to differ from a hard
+    # binary inside the penumbra (that is the Fock physics). Where the clearance
+    # is clearly lit or clearly shadowed (|c| > ~one octahedral cell), the gate
+    # sign must reproduce the exact oracle.
+    clear = np.abs(clr[ai, 0]) > 0.06
+    gate_visible = g[ai][clear] > 0.5
+    agree = (gate_visible == vis_binary[ai][clear]).mean()
+    assert agree > 0.95
+
+
+def test_lut_penumbra_sharpens_with_frequency():
+    # The fraction of active rows in the soft penumbra band (0.1 < gate < 0.9)
+    # shrinks as frequency rises (Fock width ~ (k R_occ)^{-1/3}).
+    from aegis.geometry.visibility import bake_visibility_lut, query_visibility
+    from aegis.kernels.fock import distal_gate
+
+    body = _two_spheres()
+    lut = bake_visibility_lut(body, resolution=32)
+    k = np.array([[1.0, 0.0, 0.0]])
+    clr, R_occ, d1, d2 = query_visibility(lut, k, body.centroids, source_pos=None)
+    ai = lut.active_index
+
+    def penumbra_fraction(freq):
+        g = distal_gate(
+            clr[ai, 0],
+            R_occ[ai, 0],
+            freq,
+            0.5,
+            0.5,
+            d1=d1[ai, 0],
+            d2=d2[ai, 0],
+            diffraction_model="fock",
+        )
+        return float(((g > 0.1) & (g < 0.9)).mean())
+
+    assert penumbra_fraction(300e9) < penumbra_fraction(28e9)
