@@ -363,3 +363,99 @@ def test_module_exposes_gate_helper():
     assert gs.shape == (2, 2)
     assert gh.shape == (2, 2)
     assert np.iscomplexobj(np.asarray(gs))
+
+
+# ---------------------------------------------------------------------------
+# Task 13: distal self-shadowing amplitude gate (A3 approximation)
+# ---------------------------------------------------------------------------
+
+
+def test_distal_off_is_bit_identical():
+    # clearance=None must reproduce the no-distal channel bit-for-bit.
+    normals, centroids, _ = _tilted_lit_mesh()
+    k_hat, psi, eidx = _paths(5, seed=7)
+    n_elem = 5
+    a = compute_body_channel(normals, centroids, k_hat, psi, eidx, N_TILDE, SIGMA, FREQ, n_elem, fock_R=None)
+    b = compute_body_channel(
+        normals, centroids, k_hat, psi, eidx, N_TILDE, SIGMA, FREQ, n_elem,
+        fock_R=None, clearance=None, R_occ=None, distal_d1=None, distal_d2=None,
+    )
+    assert np.array_equal(a, b)
+
+
+def test_distal_amplitude_attenuates_shadow():
+    # Shadowed rows (clearance < 0) lose channel amplitude; lit rows (clearance
+    # large positive) are essentially unchanged. A3: amplitude only, phase kept.
+    normals, centroids, _ = _tilted_lit_mesh(n=12, seed=2)
+    M = normals.shape[0]
+    k_hat, psi, eidx = _paths(1, seed=2)
+    n_elem = 1
+    clearance = np.full((M, 1), 5.0)  # deep clear: gate saturates to 1
+    clearance[: M // 2, 0] = -0.5  # first half shadowed
+    R_occ = np.full((M, 1), 0.1)
+    d1 = np.full((M, 1), np.inf)
+    d2 = np.full((M, 1), 0.05)
+
+    G_off = compute_body_channel(normals, centroids, k_hat, psi, eidx, N_TILDE, SIGMA, FREQ, n_elem)
+    G_on = compute_body_channel(
+        normals, centroids, k_hat, psi, eidx, N_TILDE, SIGMA, FREQ, n_elem,
+        clearance=clearance, R_occ=R_occ, distal_d1=d1, distal_d2=d2,
+    )
+    norm_off = np.linalg.norm(G_off.reshape(M, -1), axis=1)
+    norm_on = np.linalg.norm(G_on.reshape(M, -1), axis=1)
+    lit = slice(M // 2, M)
+    # shadowed rows attenuated (only where the row actually sees the source, mu>0)
+    mu = normals @ (-k_hat[0])
+    sh_lit = (np.arange(M) < M // 2) & (mu > 1e-3)
+    assert np.all(norm_on[sh_lit] < norm_off[sh_lit] * 0.999)
+    # lit rows unchanged
+    assert np.allclose(norm_on[lit], norm_off[lit], rtol=1e-9)
+    # amplitude gate never amplifies
+    assert np.all(norm_on <= norm_off + 1e-12)
+
+
+def test_distal_factored_matches_direct():
+    # The factored channel applies the same distal amplitude as the direct one.
+    from aegis.mimo.array import AntennaArray
+    from aegis.mimo.array_paths import expand_paths_to_array
+    from aegis.paths import PropagationPaths
+
+    normals, centroids, _ = _tilted_lit_mesh(n=12, seed=4)
+    M = normals.shape[0]
+    positions = np.array([[0.0, 0.0, 1.0], [0.05, 0.0, 1.0], [0.0, 0.05, 1.0]])
+    array = AntennaArray(element_positions=positions, element_pattern="isotropic")
+
+    # Single center direction so the clearance tiling across elements is exact.
+    k_hat, psi, _ = _paths(1, seed=9)
+    center_paths = PropagationPaths(
+        k_hat=k_hat,
+        psi=psi,
+        element_index=np.zeros(1, dtype=np.intp),
+        delay=np.zeros(1),
+        is_los=np.zeros(1, dtype=bool),
+    )
+    expanded = expand_paths_to_array(center_paths, array, FREQ)
+    gain = array.element_gain(center_paths.k_hat)
+    center_psi_gained = center_paths.psi * gain[:, None]
+    n_elem = array.n_elements
+    n_total = expanded.k_hat.shape[0]
+
+    clearance = np.full((M, 1), -0.3)
+    R_occ = np.full((M, 1), 0.1)
+    d1 = np.full((M, 1), np.inf)
+    d2 = np.full((M, 1), 0.05)
+
+    G_direct = compute_body_channel(
+        normals, centroids, expanded.k_hat, expanded.psi, expanded.element_index,
+        N_TILDE, SIGMA, FREQ, n_elem,
+        clearance=np.repeat(clearance, n_total, axis=1),
+        R_occ=np.repeat(R_occ, n_total, axis=1),
+        distal_d1=np.repeat(d1, n_total, axis=1),
+        distal_d2=np.repeat(d2, n_total, axis=1),
+    )
+    G_fac = compute_body_channel_factored(
+        normals, centroids, center_paths.k_hat, center_psi_gained, expanded.psi, expanded.element_index,
+        N_TILDE, SIGMA, FREQ, n_elem,
+        clearance=clearance, R_occ=R_occ, distal_d1=d1, distal_d2=d2,
+    )
+    assert np.allclose(G_direct, G_fac, atol=1e-10)

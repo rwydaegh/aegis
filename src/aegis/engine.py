@@ -1059,6 +1059,7 @@ class DosimetryEngine:
         active_freq_hz = freq_hz if freq_hz is not None else self.freq_hz
         active_n_tilde = n_tilde if n_tilde is not None else self.n_tilde
         active_sigma = sigma if sigma is not None else self.tissue.sigma
+        distal_kw = distal or {}
 
         if level == 7:
             if precoder is None:
@@ -1081,6 +1082,7 @@ class DosimetryEngine:
                 fock_R=fock_R,
                 q_F_s=q_F_s,
                 q_F_h=q_F_h,
+                **distal_kw,
             )
         elif level == 8:
             if h is None:
@@ -1105,6 +1107,7 @@ class DosimetryEngine:
                 fock_R=fock_R,
                 q_F_s=q_F_s,
                 q_F_h=q_F_h,
+                **distal_kw,
             )
         else:
             raise ValueError(f"Unknown coherent level {level}")

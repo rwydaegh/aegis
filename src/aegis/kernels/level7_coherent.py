@@ -57,6 +57,10 @@ def level7_coherent(
     fock_R: NDArray[np.floating] | None = None,
     q_F_s: complex | None = None,
     q_F_h: complex | None = None,
+    clearance: NDArray[np.floating] | None = None,
+    R_occ: NDArray[np.floating] | None = None,
+    distal_d1: NDArray[np.floating] | None = None,
+    distal_d2: NDArray[np.floating] | None = None,
 ) -> tuple[
     NDArray[np.floating],
     NDArray[np.complexfloating],
@@ -108,6 +112,11 @@ def level7_coherent(
     # Slice the per-triangle Fock radius to match each triangle block. A (M, N)
     # radius (per path) is row-sliced too; a scalar/None passes through unchanged.
     fock_R_arr = None if fock_R is None else xp.asarray(fock_R)
+    # The distal arrays are per-(triangle, path), so row-slice them per block.
+    clr_arr = None if clearance is None else xp.asarray(clearance)
+    R_occ_arr = None if R_occ is None else xp.asarray(R_occ)
+    d1_arr = None if distal_d1 is None else xp.asarray(distal_d1)
+    d2_arr = None if distal_d2 is None else xp.asarray(distal_d2)
 
     for start in range(0, M, chunk):
         sl = slice(start, start + chunk)
@@ -125,6 +134,10 @@ def level7_coherent(
             fock_R=fock_R_blk,
             q_F_s=q_F_s,
             q_F_h=q_F_h,
+            clearance=None if clr_arr is None else clr_arr[sl],
+            R_occ=None if R_occ_arr is None else R_occ_arr[sl],
+            distal_d1=None if d1_arr is None else d1_arr[sl],
+            distal_d2=None if d2_arr is None else d2_arr[sl],
         )  # (B, 3, M_ant)
 
         # S_ab(r) = ||G_tilde(r) @ x||^2 for this block
