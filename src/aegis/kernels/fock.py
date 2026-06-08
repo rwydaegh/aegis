@@ -39,8 +39,25 @@ Fock prefactor ``_SCALE`` is pinned so the hard terminator value
 kR-independent); soft shares the prefactor (same Fock Green's-function
 calculus). This is pinned to the oracle in tests/test_fock.py, not assumed.
 
-Impedance (lossy skin) is a later task: the ``q_F`` parameters are accepted but
-not yet implemented (PEC only here).
+Impedance (lossy skin). The PEC eigenvalues shift to roots of the Leontovich
+impedance-Fock equation ``Ai'(t) - q_F Ai(t) = 0``. The naive leading-Fock
+parameter ``q_F = i m eta`` is NOT sufficient: against the exact dielectric
+cylinder oracle it overshoots the hard pole by ~17% at body-scale ``kR`` (40 to
+160), and the required correction is ``eta``-dependent (no clean rotation fixes
+it, validated in studies/diffraction/HARD_POL_RESOLUTION.md). So
+``fock_impedance_param`` solves the exact Leontovich pole (the validated truth in
+studies/diffraction/poles.py) and returns the equivalent Airy-equation parameter
+``q_F = Ai'(t*)/Ai(t*)`` evaluated at the exact pole's Airy argument ``t*``.
+Feeding that ``q_F`` to the ``Ai'(t) - q_F Ai(t) = 0`` Newton solve in
+``_impedance_roots`` recovers the exact dominant pole to three digits, while the
+deeper poles (``n_terms > 1``) remain the documented leading-Fock approximation
+(DECISIONS.md L6, dose-negligible deep shadow). The exact pole drifts with
+``kR`` (the surface looks progressively softer to the hard creeping wave), so
+``fock_q_hard_table`` tabulates ``q_eff(hard)`` over a log-``kR`` grid.
+
+Sign convention: AEGIS stores ``n - i k`` (``e^{+i w t}``), so ``eta = 1/n`` has
+``Im(eta) > 0`` (a passive inductive skin, ``eta = 0.192 + 0.076j`` at 28 GHz).
+``Im(eta) < 0`` is a gain medium and is rejected.
 """
 
 from __future__ import annotations
@@ -56,6 +73,12 @@ from aegis.constants import C_0
 from aegis.defaults import NUMERICAL_FLOOR
 
 _SQRT2 = np.sqrt(2.0)
+_SQRT3 = np.sqrt(3.0)
+# Newton iteration controls for the impedance-Fock root solve.
+_NEWTON_MAXITER = 100
+_NEWTON_TOL = 1e-13
+# Log-spaced kR grid for the tabulated drifting hard eigenvalue (4 ... 2048).
+_Q_HARD_GRID = 2.0 ** np.arange(2, 12)
 # Shadow-clamp sharpness for smin(xi) ~ min(xi, 0). Large enough that the higher
 # creeping poles stay bounded in the lit, small enough to keep smin C-infinity.
 _SMIN_BETA = 8.0
@@ -70,10 +93,128 @@ def theta_from_mu(mu: ArrayLike) -> NDArray[np.floating]:
 
 
 def _impedance_roots(pol: str, q_F: complex, n_terms: int) -> np.ndarray:
-    """Creeping eigenvalues from the impedance-Fock equation (LATER task)."""
-    raise NotImplementedError(
-        "Impedance-corrected Fock eigenvalues (q_F != None) are a later task; PEC only for now (pass q_F=None)."
+    """Creeping eigenvalues ``q_p`` from the Leontovich impedance-Fock equation.
+
+    Newton-iterates the roots of ``Ai'(t) - q_F Ai(t) = 0`` from the PEC seeds
+    (the signed ``Ai`` zeros for ``"soft"``, ``Ai'`` zeros for ``"hard"``) and
+    returns ``q_p = -t`` (so PEC ``q_F = 0`` gives back ``q_p = |zero|``). The
+    Newton derivative is ``d/dt[Ai'(t) - q_F Ai(t)] = t Ai(t) - q_F Ai'(t)``
+    using ``Ai''(t) = t Ai(t)``.
+
+    The dominant root (seeded from the first PEC zero) reproduces the exact
+    Leontovich pole when ``q_F`` comes from :func:`fock_impedance_param`. The
+    deeper roots are the leading-Fock approximation (DECISIONS.md L6).
+    """
+    a_soft, ap_hard, _, _ = special.ai_zeros(n_terms)
+    seeds = a_soft if pol == "soft" else ap_hard  # signed (negative) zeros = PEC roots
+    roots = np.empty(n_terms, dtype=complex)
+    for p, t0 in enumerate(seeds):
+        t = complex(t0)
+        for _ in range(_NEWTON_MAXITER):
+            ai, aip, _, _ = special.airy(t)
+            df = t * ai - q_F * aip
+            if df == 0:
+                break
+            step = (aip - q_F * ai) / df
+            t = t - step
+            if abs(step) < _NEWTON_TOL:
+                break
+        roots[p] = -t  # q_p = -t
+    return roots
+
+
+def _leontovich_pole(eta: complex, ka: float, pol: str) -> complex:
+    """Exact Leontovich creeping pole ``nu`` of the impedance cylinder (mpmath).
+
+    Solves ``ka H_nu'(ka) - g H_nu(ka) = 0`` for the dominant complex order,
+    seeded from the PEC pole, with the boundary admittance ``g = -i ka n``
+    (soft / TM) or ``g = -i ka/n`` (hard / TE), ``n = 1/eta``. This is the
+    validated truth (studies/diffraction/poles.py); the shadow power-decay slope
+    is ``2 Im(nu)``. mpmath is imported lazily so the PEC path stays dependency
+    free.
+    """
+    import mpmath as mp
+
+    mp.mp.dps = 30
+    n = mp.mpc(1.0 / complex(eta))
+    if n.imag < 0:  # e^{-i w t}/outgoing-H^(1) convention needs Im(n) > 0
+        n = mp.conj(n)
+    ka_m = mp.mpf(float(ka))
+    g = (-1j * ka_m * n) if pol == "soft" else (-1j * ka_m / n)
+
+    def hankel_d(v, z):  # H_nu'(z) via the recurrence H_{v-1} - (v/z) H_v
+        return mp.hankel1(v - 1, z) - (v / z) * mp.hankel1(v, z)
+
+    m = (ka_m / 2) ** mp.mpf("0.3333333333333333")
+    q1 = mp.mpf("2.338") if pol == "soft" else mp.mpf("1.019")
+    guess = ka_m + mp.exp(1j * mp.pi / 3) * m * q1
+    nu = mp.findroot(
+        lambda v: ka_m * hankel_d(v, ka_m) - g * mp.hankel1(v, ka_m),
+        guess,
+        tol=mp.mpf(10) ** -13,
     )
+    return complex(nu)
+
+
+@functools.cache
+def fock_impedance_param(eta: complex, kR: float, pol: str) -> complex:
+    """Airy-equation parameter ``q_F`` for the lossy-skin (impedance) Fock pole.
+
+    Calibrated to the exact Leontovich pole, not the leading-Fock estimate. The
+    schematic ``q_F = i m eta`` (hard) / ``-i m/eta`` (soft), ``m = (kR/2)**(1/3)``,
+    overshoots the hard pole by ~17% at body-scale ``kR`` and the correction is
+    ``eta``-dependent (HARD_POL_RESOLUTION.md). So this solves the exact
+    Leontovich pole ``nu`` (:func:`_leontovich_pole`), maps it to its Airy
+    argument ``t* = -(nu - ka) / (m e^{i pi/3})``, and returns
+    ``q_F = Ai'(t*)/Ai(t*)``. Fed to :func:`_impedance_roots`, this recovers the
+    exact dominant eigenvalue ``q_p = -t*`` (pole reproduced to three digits).
+
+    Sign convention: AEGIS stores ``n - i k``, so a physical skin has
+    ``Im(eta) > 0``. ``Im(eta) < 0`` is a gain medium (corrupts the hard
+    creeping wave) and raises ``ValueError``.
+    """
+    if pol not in {"soft", "hard"}:
+        raise ValueError(f"pol must be 'soft' or 'hard', got {pol!r}")
+    if eta.imag < -1e-12:
+        raise ValueError(
+            f"Im(eta) = {eta.imag:.4g} < 0 is a gain medium; pass eta = 1/n with the "
+            "AEGIS n - i k convention (Im(eta) > 0, a passive inductive skin)."
+        )
+    m = (kR / 2.0) ** (1.0 / 3.0)
+    nu = _leontovich_pole(eta, kR, pol)
+    t_star = -(nu - kR) / (m * np.exp(1j * np.pi / 3.0))
+    ai, aip, _, _ = special.airy(t_star)
+    return complex(aip / ai)
+
+
+@functools.cache
+def _q_hard_table_cached(eta: complex):
+    """Cached log-``kR`` interpolator of ``q_eff(hard)`` for surface admittance ``eta``."""
+    q_eff = np.empty(_Q_HARD_GRID.shape, dtype=float)
+    for i, kR in enumerate(_Q_HARD_GRID):
+        q_F = fock_impedance_param(eta, float(kR), "hard")
+        q_p = fock_eigenvalues("hard", q_F)[0]
+        # q_eff = Im(nu)/[(kR/2)^{1/3} sin60] = Re(q_p) + Im(q_p)/sqrt3.
+        q_eff[i] = q_p.real + q_p.imag / _SQRT3
+    log_grid = np.log(_Q_HARD_GRID)
+
+    def interp(kR):
+        return np.interp(np.log(np.asarray(kR, dtype=float)), log_grid, q_eff)
+
+    return interp
+
+
+def fock_q_hard_table(band):
+    """Cached interpolator ``q_hard(kR)`` for a tissue band's drifting hard eigenvalue.
+
+    ``band`` is a tissue dielectric object exposing ``.n_complex`` (e.g.
+    ``aegis.tissue.dielectric.SKIN_28GHZ``). Returns ``callable(kR) -> q_eff``,
+    the effective hard creeping eigenvalue obtained by solving the impedance-Fock
+    pole on a log-spaced ``kR`` grid (4 ... 2048) and linearly interpolating in
+    ``log(kR)``. The eigenvalue drifts from the PEC-hard 1.019 toward the
+    PEC-soft 2.338 as ``kR`` grows. Cached per band (keyed on ``eta = 1/n``).
+    """
+    return _q_hard_table_cached(complex(1.0 / band.n_complex))
 
 
 @functools.cache
@@ -110,13 +251,19 @@ def _residue_amplitudes(pol: str, q_F_key, n_terms: int) -> tuple:
     shows (field above the knife-edge half value).
 
     ``q_F_key`` is ``None`` for PEC or a ``(round(re,4), round(im,4))`` tuple for
-    impedance surface (not yet implemented).
+    an impedance surface. For the impedance case the same pol-appropriate
+    residue magnitude is evaluated at the shifted (complex) roots ``t_p = -q_p``;
+    this is the documented amplitude approximation (DECISIONS.md L6), exact in
+    the PEC limit and continuous away from it. The dose-relevant quantity, the
+    dominant-pole decay, is set by the eigenvalues (exact), not these amplitudes.
     """
-    # PEC only; impedance residues are a later task.
     if q_F_key is not None:
-        raise NotImplementedError(
-            "Impedance-corrected Fock residues (q_F != None) are a later task; PEC only for now (pass q_F=None)."
-        )
+        # Impedance roots t_p = -q_p; pol-appropriate residue magnitude at t_p.
+        q_p = np.asarray(_fock_eigenvalues_cached(pol, q_F_key, n_terms))
+        t = -q_p
+        ai, aip, _, _ = special.airy(t)
+        amp = 1.0 / (aip**2) if pol == "soft" else 1.0 / (t * ai**2)
+        return tuple(np.abs(amp))
     a_soft, ap_hard, _, _ = special.ai_zeros(n_terms)
     if pol == "soft":
         _, aip, _, _ = special.airy(a_soft)

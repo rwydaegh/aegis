@@ -117,6 +117,104 @@ def test_fock_local_nonnegative_and_shadow_leakage():
     assert g[np.argmin(np.abs(mu))] > 0.0
 
 
+def _hard_slope(eta, kR):
+    """Shadow power-decay slope 2 Im(nu) for the impedance hard pole."""
+    m = (kR / 2.0) ** (1.0 / 3.0)
+    q_F = fock.fock_impedance_param(eta, kR, "hard")
+    q_p = fock.fock_eigenvalues("hard", q_F)[0]
+    nu = kR + m * np.exp(1j * np.pi / 3.0) * q_p
+    return 2.0 * nu.imag
+
+
+def test_impedance_hard_pole_matches_exact_dielectric():
+    """The impedance (Leontovich) hard pole reproduces the exact dielectric
+    p-pol shadow decay (HARD_POL_RESOLUTION.md table a) to within 5%."""
+    from aegis.tissue.dielectric import SKIN_28GHZ
+
+    eta = 1.0 / SKIN_28GHZ.n_complex
+    assert eta.imag > 0  # physical inductive skin (AEGIS stores n - ik)
+    targets = {40.0: 5.654, 80.0: 7.503, 160.0: 10.099}
+    for kR, tgt in targets.items():
+        assert _hard_slope(eta, kR) == pytest.approx(tgt, rel=0.05)
+
+
+def test_q_hard_table_drifts_upward():
+    """q_eff(hard) drifts upward with kR (1.0 -> 2.4), the lossy-skin signature."""
+    from aegis.tissue.dielectric import SKIN_28GHZ
+
+    table = fock.fock_q_hard_table(SKIN_28GHZ)
+    q40 = float(table(40.0))
+    q320 = float(table(320.0))
+    assert 1.0 < q40 < 2.4
+    assert 1.0 < q320 < 2.4
+    assert q40 < q320
+
+
+def test_q_F_sign_guard():
+    """A gain medium (Im(eta) < 0) is rejected; the physical branch decays."""
+    from aegis.tissue.dielectric import SKIN_28GHZ
+
+    eta = 1.0 / SKIN_28GHZ.n_complex
+    # Feeding the conjugate (Im(eta) < 0) models gain and must not silently
+    # produce an anti-physical (growing) pole.
+    with pytest.raises(ValueError, match="gain medium"):
+        fock.fock_impedance_param(np.conj(eta), 80.0, "hard")
+    # The physical branch (Im(eta) > 0) gives a decaying pole, Im(nu) > 0.
+    assert _hard_slope(eta, 80.0) > 0.0
+
+
+def test_soft_hard_impedance_ratio_skin():
+    """Skin soft/hard decay-slope ratio is in (1.5, 2.0) and decreases with kR
+    (HARD_POL_RESOLUTION.md table c: ~1.95 -> ~1.59), below the PEC 2.295."""
+    from aegis.tissue.dielectric import SKIN_28GHZ
+
+    eta = 1.0 / SKIN_28GHZ.n_complex
+
+    def slope(kR, pol):
+        m = (kR / 2.0) ** (1.0 / 3.0)
+        q_F = fock.fock_impedance_param(eta, kR, pol)
+        q_p = fock.fock_eigenvalues(pol, q_F)[0]
+        return 2.0 * (kR + m * np.exp(1j * np.pi / 3.0) * q_p).imag
+
+    ratios = [slope(kR, "soft") / slope(kR, "hard") for kR in (20.0, 40.0, 80.0, 160.0, 320.0)]
+    for r in ratios:
+        assert 1.5 < r < 2.0
+    assert ratios[0] > ratios[-1]  # decreasing with kR
+    assert ratios[0] == pytest.approx(1.95, abs=0.1)
+    assert ratios[-1] == pytest.approx(1.59, abs=0.1)
+
+
+def test_impedance_reduces_to_pec_as_n_large():
+    """As |n| -> inf (eta -> 0) the hard eigenvalue -> the PEC hard value 1.019
+    (the Leontovich -> PEC limit)."""
+    from aegis.tissue.dielectric import SKIN_28GHZ
+
+    eta = (1.0 / SKIN_28GHZ.n_complex) * 1e-3  # shrink the skin impedance
+    kR = 160.0
+    q_F = fock.fock_impedance_param(eta, kR, "hard")
+    q_p = fock.fock_eigenvalues("hard", q_F)[0]
+    q_eff = q_p.real + q_p.imag / SQRT3
+    assert q_eff == pytest.approx(1.019, abs=0.03)
+
+
+def test_impedance_psi_shadow_finite_and_decays():
+    """End-to-end: the impedance path gives finite, shadow-decaying gates."""
+    from aegis.tissue.dielectric import SKIN_28GHZ
+
+    eta = 1.0 / SKIN_28GHZ.n_complex
+    q_F_h = fock.fock_impedance_param(eta, 80.0, "hard")
+    q_F_s = fock.fock_impedance_param(eta, 80.0, "soft")
+    xi = np.linspace(-6.0, -2.0, 40)
+    psi = fock.psi_shadow(xi, "hard", q_F_h)
+    assert np.all(np.isfinite(psi))
+    slope = np.polyfit(xi, np.log(np.abs(psi) ** 2), 1)[0]
+    assert slope > 0  # decays into the shadow (xi < 0)
+    mu = np.linspace(-0.3, 0.8, 200)
+    g = fock.fock_local(mu, 0.05, 28e9, 0.5, 0.5, q_F_s=q_F_s, q_F_h=q_F_h)
+    assert np.all(np.isfinite(g))
+    assert np.all(g >= 0.0)
+
+
 def test_gate_matches_pec_cylinder_oracle():
     """Pin the residue-amplitude scale to the exact PEC cylinder oracle.
 
