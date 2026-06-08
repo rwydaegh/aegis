@@ -144,6 +144,11 @@ def principal_curvatures(
     Curvature is positive for a convex (outward-bulging) surface. Cached per body
     on a rigid-transform-invariant content hash, so moved or rotated copies hit
     the cache.
+
+    Caveat: the neighborhood is a global centroid k-NN with no mesh topology, so
+    on thin or folded geometry (e.g. the front and back of a thin limb) the
+    nearest centroids can straddle the sheet and degrade the quadric fit, a known
+    limitation of the topology-free approach.
     """
     key = _content_hash(body)
     with _cache_lock:
@@ -154,6 +159,7 @@ def principal_curvatures(
     result = _principal_curvatures(body, k_neighbors)
 
     with _cache_lock:
+        # Bounded cache with FIFO eviction (drop the oldest insertion), not LRU.
         while len(_cache) >= _CACHE_MAX:
             _cache.pop(next(iter(_cache)))
         _cache[key] = result

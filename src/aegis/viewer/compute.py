@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import functools
-import hashlib
 import math
 import os
-import threading
 import time
 import warnings
 from pathlib import Path
@@ -18,6 +16,7 @@ from aegis.basestation.classify import _lookup_tdd
 from aegis.constants import C_0, EPS_0
 from aegis.defaults import DEFAULT_FREQ_HZ, DEFAULT_POWER_DBM
 from aegis.engine import DosimetryEngine
+from aegis.geometry import curvature as _curvature_module
 from aegis.geometry.mesh import BodyMesh
 from aegis.paths import PropagationPaths
 from aegis.tissue.cole_cole import debye_permittivity
@@ -46,26 +45,11 @@ def _load_phantom_masses() -> dict[str, float]:
     return {name: info["mass_kg"] for name, info in data.items()}
 
 
-# Cache for curvature computation (expensive, only changes when body changes)
-_curvature_cache: dict = {}
-_curvature_cache_lock = threading.Lock()
-_CURVATURE_CACHE_MAX = 32
-
-
-def _curvature_cache_key(body: BodyMesh) -> int:
-    """Rigid-transform-invariant cache key for viewer curvature estimates."""
-    edge_vecs = np.roll(body.vertices, -1, axis=1) - body.vertices
-    edge_lengths = np.sort(np.linalg.norm(edge_vecs, axis=2), axis=1)
-    centered = body.centroids - body.centroids.mean(axis=0, keepdims=True)
-    radii = np.sort(np.linalg.norm(centered, axis=1))
-    normal_svals = np.linalg.svd(body.normals, compute_uv=False)
-
-    h = hashlib.sha256(body.areas.astype(np.float32).tobytes())
-    h.update(edge_lengths.astype(np.float32).tobytes())
-    h.update(radii.astype(np.float32).tobytes())
-    h.update(normal_svals.astype(np.float32).tobytes())
-    digest = h.digest()[:8]
-    return hash((int.from_bytes(digest, "little"), body.n_triangles))
+# Curvature is cached inside ``aegis.geometry.curvature`` (the real owner). These
+# names are re-exported aliases of that module's cache and lock so the viewer and
+# its tests share the single live cache rather than a dead viewer-local copy.
+_curvature_cache = _curvature_module._cache
+_curvature_cache_lock = _curvature_module._cache_lock
 
 
 def _compute_face_curvature(body: BodyMesh) -> np.ndarray:
