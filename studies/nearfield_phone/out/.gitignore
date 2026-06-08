@@ -1,0 +1,5 @@
+# Regenerable sweep data, logs, and results (run run_sweep.py to reproduce)
+*.parquet
+*.log
+*.xlsx
+*.json
