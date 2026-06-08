@@ -1,4 +1,228 @@
 % sec_13_validation
 \section{Validation against exact references}\label{sec:validation}
 
-\emph{[section pending]}
+\providecommand{\SAR}{\mathrm{SAR}}
+\providecommand{\rhom}{\rho_{\mathrm{m}}}
+\providecommand{\Tzero}{T_{0}}
+\providecommand{\Qabs}{Q_{\mathrm{abs}}}
+
+The framework is validated against problems whose answers are known exactly. The
+absorbed power density $\Sab(\rr) = \Sinc\,\Teff\,\ReLU(\mu)$, the Fock shadow
+gate of \cref{sec:fock-local}, and the differentiable JAX implementation are
+each measured against a closed-form oracle rather than against another
+approximation. Two analytic oracles carry the load: the Mie sphere, which is the
+continuous-integration canary, and the Bessel-Hankel cylinder, which resolves
+the diffraction physics at a shadow edge. This section defines both, tabulates
+the validated numbers, and states the error budget.
+
+\subsection{The two exact oracles}
+\label{sec:val-oracles}
+
+Both oracles use the same physical observable as the framework: the absorbed
+power density is the time-averaged Poynting flux flowing inward through the body
+surface, evaluated from the exact exterior total field. No interior field model
+enters the observable, so the comparison is apples-to-apples with $\Sab$.
+
+\begin{definition}[Mie sphere oracle]\label{def:mie-oracle}
+For a lossy dielectric sphere of size parameter $x = k_0 a$ and complex
+refractive index $\ntilde = n - \mathrm{i}\kappa$ illuminated by a plane wave,
+Mie theory gives the exact spherical-harmonic series for the absorption
+efficiency $\Qabs$, the ratio of absorption cross section to geometric cross
+section $\pi a^2$. The surface observable is the inward radial Poynting vector
+just outside $r = a$,
+\begin{equation}\label{eq:mie-poynting}
+  \Sab^{\mathrm{exact}}(\theta,\phi)
+  = -\half\,\RE\!\left(E_\theta H_\phi^{*} - E_\phi H_\theta^{*}\right),
+\end{equation}
+with the spherical field components from the validated near-field routine. The
+surface integral of \cref{eq:mie-poynting} recovers the Mie $\Qabs$ to
+$0.7\%$, which certifies the observable. The sphere has double curvature and no
+two-dimensional line resonance, so it isolates curvature effects cleanly.
+\end{definition}
+
+\begin{definition}[Bessel-Hankel cylinder oracle]\label{def:cyl-oracle}
+For a homogeneous circular cylinder (the canonical limb), two-dimensional
+plane-wave scattering has a closed-form Bessel-Hankel series for both lossy
+dielectric and PEC. The exterior field is expanded in $H_n^{(1)}$ (time factor
+$e^{-\mathrm{i}\omega t}$), and the interior enters only through the numerically
+stable log-derivative $D_n = J_n'(k_1 a)/J_n(k_1 a)$ by downward recurrence, so
+there is no large-argument Bessel overflow for the lossy interior. The
+observable is the inward radial Poynting flux from the exterior total field.
+Cylinder TM$_z$ (E along the axis) is the Fresnel s-polarisation and the soft
+(Dirichlet) case; TE$_z$ (H along the axis) is Fresnel p-polarisation and the
+hard (Neumann) case.
+\end{definition}
+
+\begin{remark}[The sign convention trap]\label{rem:sign-trap}
+AEGIS stores $\ntilde = n - \mathrm{i}\kappa$ for the $e^{+\mathrm{i}\omega t}$
+convention, whereas the cylinder oracle integrates outgoing $H_n^{(1)}$ under
+$e^{-\mathrm{i}\omega t}$, which requires $\IM(\ntilde) > 0$ for a passive lossy
+medium. Feeding the stored $\IM(\ntilde) < 0$ models a gain cylinder and
+corrupts the surface-bound hard creeping wave specifically. The oracle
+conjugates to $\IM(\ntilde) > 0$ before solving; a convention-free check
+confirms the fix, since $Q_{\mathrm{sca}}$ exceeds its lossless value (negative
+$\Qabs$, unphysical gain) only for the stored sign. The Mie oracle uses
+\texttt{miepython}, whose $n - \mathrm{i}\kappa$ convention makes the stored
+constant correct there, which is why the sphere was clean from the start.
+\end{remark}
+
+\subsection{Lit-region and phantom accuracy}
+\label{sec:val-lit}
+
+On the sphere at size parameter $x = 240$, flat-interface Fresnel reproduces the
+exact $\Sab$ to about $1\%$ out to $66^\circ$ incidence for both polarisations,
+departing only within $\sim 15^\circ$ of grazing where the penumbra rises ($1.46$
+for s-pol and $1.35$ for p-pol at $82^\circ$, nearly polarisation-symmetric).
+There is no large p-polarisation lit-region curvature coupling on a doubly
+curved body, so flat Fresnel plus the per-triangle polarisation weighting is
+correct in the lit region. The earlier $1.4\times$ to $5\times$ p-polarisation
+enhancement seen on the cylinder was the gain-sign artifact of
+\cref{rem:sign-trap} stacked with a closed-cylinder surface-wave resonance; with
+the physical index, lit-region exact-to-GO converges to $-1.00$ for both
+polarisations at every tested incidence by $x = 320$.
+
+On the Thelonious phantom (23\,826 triangles) the geometric law
+$\Sab = \Sinc\Tzero\ReLU(\mu)$ matches the full angle-dependent Fresnel
+integration to $0.35\%$ in total absorbed power, $0.5\%$ in mean $\Sab$, and
+$0.0\%$ in peak $\Sab$ (skin, 28\,GHz). The local error over the 4\,907
+triangles with $\theta<75^\circ$ is mean $-2.6\%$, RMS $3.2\%$, conservative
+because $\Tavg(\theta)>\Tzero$ in this band. Against exact Mie absorption the
+framework underestimates by $3$ to $14\%$ for torso and head in the 28 to
+60\,GHz band, dominated by diffraction into the geometric shadow that the
+geometric law misses, with the deficit shrinking as the size parameter grows
+(Fock scaling $x^{-2/3}$).
+
+\subsection{Diffraction at the shadow edge}
+\label{sec:val-diffraction}
+
+The cylinder oracle answers the question the surface law cannot answer about
+itself: a limb's shadow edge is Fock diffraction by a smooth convex body, not a
+knife edge. The deep-shadow field decays exponentially at a rate scaling as
+$(k\Rfock)^{1/3}$ (Fock), not $(k\Rfock)^{1/2}$ (knife edge). A similarity
+collapse confirms this: the exact curves for many $k\Rfock$ collapse onto one
+universal curve in the Fock variable $\xi = (k\Rfock/2)^{1/3}\theta$ but spread
+in the knife variable $\theta\sqrt{k\Rfock}$.
+
+\begin{proposition}[Fock scaling and the soft/hard split]\label{prop:fock}
+The convex-body penumbra width scales as $(k\Rfock)^{-1/3}$, and the PEC
+soft-to-hard shadow decay-rate ratio converges to
+$q_{1,\mathrm{soft}}/q_{1,\mathrm{hard}} = 2.338/1.019 = 2.295$, the ratio of
+the first zeros of $\Ai$ and $\Aip$. The heuristic GeLU gate, whose width
+scales as $(k\Rfock)^{-1/2}$, has the wrong functional form: it is too narrow by
+$(k\Rfock)^{1/6}$, a factor $1.6$ to $2.7$ across body parts at 28\,GHz.
+\end{proposition}
+
+The validated decay exponents sit near the Fock $1/3$ and far from the knife
+$1/2$: PEC $0.35$ to $0.39$, skin soft $0.40$, skin hard $0.46$. On a lossy
+surface the impedance damps the hard creeping wave, so the skin soft/hard decay
+ratio drops to $1.6$ to $1.9$ (below the PEC $2.295$ and decreasing with
+$k\Rfock$), pulling the hard eigenvalue from the PEC value $q_1 = 1.019$ up
+toward $\sim 1.4$. This is captured by the impedance-Fock (Leontovich) creeping
+pole $\Aip(t) - \qF\,\Ai(t) = 0$ with $\qF$ from the surface impedance
+$\eta = 1/\ntilde$.
+
+\begin{proposition}[Impedance pole matches the exact dielectric pole]\label{prop:pole}
+At the physical sign ($\IM(\ntilde) > 0$), the Leontovich creeping pole
+reproduces the exact dielectric p-polarisation shadow field to three digits. The
+dominant pole slope $2\,\IM(\nu)$ matches the exact field at $k\Rfock = 40$
+($5.654$ vs $5.652$), $k\Rfock = 80$ ($7.503$ vs $7.499$), and
+$k\Rfock = 160$ ($10.099$ vs $10.085$). A three-route cross-check (analytic
+zero, matrix-pencil extraction from the exact field, and measured slope) agrees,
+and a 280-seed pole scan finds no slower physical pole, so no separate
+surface-wave term is needed.
+\end{proposition}
+
+As the wavelength vanishes the Fock gate recovers the geometric $\ReLU(\mu)$
+asymptotically (the penumbra width $(k\Rfock)^{-1/3}\to 0$), so the surface law
+is the $\lambda\to 0$ limit of the diffraction model. Bit-exact ReLU remains
+available by selecting the no-diffraction model.
+
+\subsection{Dose impact and differentiability}
+\label{sec:val-dose}
+
+The diffraction upgrade is a pointwise correction near shadow edges, not a
+whole-body mover. On the cylinder the integrated whole-limb change versus
+$\ReLU$ is $2$ to $4\%$. On a real one-side-lit phantom (Duke, 56\,024
+triangles, far-field plane wave) the whole-body SAR change versus $\ReLU$ is
+$6$ to $7\%$, larger than the cylinder because a real phantom has far more
+grazing and shadowed area under a single plane wave, while the pointwise change
+peaks at $\sim 40\%$ in the penumbra near terminators. Deep-shadow creeping
+leakage is real but carries only $\sim 10^{-6}$ of the lit dose, so it matters
+only for dedicated deep-shadow or distal-occlusion studies, never for whole-body
+or typical pointwise maps.
+
+The gate is differentiable. Under the JAX backend, the gradient of the Fock gate
+with respect to frequency matches a central finite difference to within $2\%$
+(achieved relative error $4\times 10^{-9}$), and the gradient with respect to
+the detour parameter $\xi$ is finite and flows cleanly. Differentiability is
+preserved because the creeping eigenvalues are constants fed into the gate
+rather than functions traced through the autodiff graph.
+
+\begin{table}[ht]
+\centering
+\caption{Validated diffraction results against the exact oracles. The Fock
+exponent is near $1/3$ for every case, far from the knife-edge $1/2$.}
+\label{tab:val-diffraction}
+\begin{threeparttable}
+\begin{tabular}{@{}lll@{}}
+\toprule
+Quantity & Oracle & Result \\
+\midrule
+Shadow decay exponent, PEC      & cylinder & $0.35$--$0.39$ (Fock $1/3$) \\
+Shadow decay exponent, skin soft & cylinder & $0.40$ \\
+Shadow decay exponent, skin hard & cylinder & $0.46$ \\
+PEC soft/hard decay ratio       & cylinder & $\to 2.295$ ($\Ai$ vs $\Aip$ zeros) \\
+Leontovich pole ($k\Rfock = 40$) & cylinder & $5.654$ vs exact $5.652$ \\
+Lit-region Fresnel accuracy     & sphere   & $\sim 1\%$ to $66^\circ$, both pol. \\
+Surface integral vs Mie $\Qabs$ & sphere   & $0.7\%$ \\
+$\lambda\to 0$ limit            & both     & recovers $\ReLU(\mu)$ \\
+Whole-body SAR change vs ReLU   & cylinder / Duke & $2$--$4\%$ / $6$--$7\%$ \\
+Pointwise penumbra change       & Duke     & $\sim 40\%$ near terminators \\
+Autodiff vs finite difference   & JAX      & $<2\%$ (rel.\ err.\ $4\times 10^{-9}$) \\
+\bottomrule
+\end{tabular}
+\end{threeparttable}
+\end{table}
+
+\subsection{Error budget}
+\label{sec:val-budget}
+
+\Cref{tab:val-budget} collects the framework error against exact electromagnetics
+at mmWave. The Fresnel approximation contributes $\sim 5\%$ locally but only
+$\sim 1\%$ integrated; diffraction into the shadow contributes $\sim 10\%$ for a
+torso at 28\,GHz in the sphere worst case; curvature and near-field corrections
+are sub-percent. These are dominated by the $\sim 20\%$ spread in the IT'IS
+tissue database. The total framework error against exact EM is $10$ to $15\%$
+(sphere worst case), rising to $15$ to $20\%$ once tissue uncertainty is
+included. The sphere is a conservative bound: its uniform curvature maximises
+both the Fresnel and diffraction errors, and a real body with large flat torso
+regions has smaller net errors. The peak $\Sab$, which drives local exposure
+limits, occurs at normal incidence where the Fresnel approximation is exact, so
+the framework reproduces the peak faithfully.
+
+\begin{table}[ht]
+\centering
+\caption{Framework error budget at mmWave frequencies.}
+\label{tab:val-budget}
+\begin{tabular}{@{}llp{4.8cm}@{}}
+\toprule
+Source & Magnitude & Notes \\
+\midrule
+Fresnel ($\Tavg\approx\Tzero$) & $\sim 5\%$ local, $\sim 1\%$ integrated & Worst over $\theta<75^\circ$ \\
+Diffraction (shadow absorption) & $\sim 10\%$ torso at 28\,GHz & Sphere worst case \\
+Curvature corrections & $\sim 0.5\%$ & Most body regions \\
+Near-field effects & $\sim 1\%$ & Sources $>1\lambda$ away \\
+Tissue-parameter uncertainty & $\sim 20\%$ & IT'IS database spread \\
+\midrule
+Total (vs exact EM) & $\sim 10$--$15\%$ & Sphere worst case \\
+Total (incl.\ tissue) & $\sim 15$--$20\%$ & Tissue $+$ diffraction dominated \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The Mie comparison is the continuous-integration canary: a single regression
+test asserts that the framework reproduces exact Mie absorption within tolerance
+at body-relevant size parameters. It does not call the dosimetry kernel, so it
+is unaffected by the Fock default, and it remains the fastest signal that the
+physics is correct. If the Mie canary passes, the surface law, the Fresnel
+coefficients, and the tissue model are all consistent with exact wave theory.

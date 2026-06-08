@@ -1,4 +1,115 @@
 % sec_03_fresnel
 \section{Fresnel transmission}\label{sec:fresnel}
 
-\emph{[section pending]}
+The material factor of the master law is angle dependent. At oblique incidence
+the normal-incidence scalar $T_0$ of \cref{prop:T0} splits into two
+polarisation-specific coefficients $T_s$ and $T_p$. This section derives them
+from the electromagnetic boundary conditions, records the unpolarised average
+$\Tavg$ that the incoherent levels use, and notes the complex transmitted-angle
+quantity that the coherent depth coupling of \cref{sec:coherent} reuses.
+
+\subsection{Snell's law and the complex normal wave number}\label{sec:snell}
+
+The body surface is a planar interface at $z=0$ between free space ($n_1=1$,
+$z>0$) and a lossy half-space of index $\ntilde$ ($z<0$). Phase matching of the
+incident, reflected, and transmitted waves along the interface forces a common
+tangential wave number, which gives the law of reflection $\theta_r=\theta_i$
+and Snell's law generalised to complex media,
+\begin{equation}\label{eq:snell}
+  \sin\theta_t \;=\; \frac{\sin\theta_i}{\ntilde}.
+\end{equation}
+Because $\ntilde$ is complex, $\theta_t$ is complex and is not a geometric
+angle. The physically meaningful quantity is the normal component of the
+transmitted wave vector, $k_{t,z}=k_0\ntilde\cos\theta_t \equiv k_0\,\xi$, with
+
+\begin{definition}[Complex normal wave number]\label{def:xi}
+\begin{equation}\label{eq:xi-def}
+  \xi(\mu,\ntilde) \;\equiv\; \ntilde\cos\theta_t
+  \;=\; \sqrt{\ntilde^2 - \sin^2\theta_i}
+  \;=\; \sqrt{\ntilde^2 - 1 + \mu^2},
+  \qquad \RE(\xi)>0,
+\end{equation}
+where $\mu=\cos\theta_i$. The branch $\RE(\xi)>0$ enforces decay into the
+medium. For a lossless dielectric $\xi$ is real; for tissue it is complex, and
+its imaginary part sets the oblique penetration depth.
+\end{definition}
+
+\subsection{Reflection coefficients from boundary conditions}\label{sec:rs-rp}
+
+Continuity of the tangential electric and magnetic fields across $z=0$ gives the
+Fresnel amplitude reflection coefficients. For TE (s) polarisation the electric
+field is perpendicular to the plane of incidence, and matching tangential $E$
+and $H$ yields an impedance-mismatch ratio between the free-space factor $\mu$
+and the medium factor $\xi$,
+\begin{equation}\label{eq:rs}
+  r_s \;=\; \frac{\mu-\xi}{\mu+\xi}.
+\end{equation}
+For TM (p) polarisation the magnetic field is perpendicular to the plane of
+incidence, and the constitutive relation $\mathbf{D}=\epstilde\,\varepsilon_0\,\EE$
+introduces a factor $\ntilde^2$,
+\begin{equation}\label{eq:rp}
+  r_p \;=\; \frac{\ntilde^2\,\mu-\xi}{\ntilde^2\,\mu+\xi}.
+\end{equation}
+Energy conservation (all transmitted power is absorbed, \cref{sec:power-balance})
+turns these into power-transmission coefficients.
+
+\begin{definition}[Polarisation-resolved transmission]\label{def:Ts-Tp}
+\begin{equation}\label{eq:Ts-Tp}
+  T_s(\theta) = 1-\abs*{\frac{\mu-\xi}{\mu+\xi}}^2,
+  \qquad
+  T_p(\theta) = 1-\abs*{\frac{\ntilde^2\mu-\xi}{\ntilde^2\mu+\xi}}^2.
+\end{equation}
+\end{definition}
+
+At normal incidence $\mu=1$ and $\xi=\ntilde$, so $r_s$ and $r_p$ coincide and
+both transmissions reduce to $T_0$ of \cref{prop:T0}. The complex amplitude
+transmission coefficients used by the coherent channel of \cref{sec:coherent}
+are $t_s = 2\mu/(\mu+\xi)$ and $t_p = 2\ntilde\mu/(\ntilde^2\mu+\xi)$.
+
+\subsection{Unpolarised average and obliquity}\label{sec:Tavg}
+
+The incoherent levels of \cref{sec:grid} that do not track polarisation use the
+average of the two transmissions.
+
+\begin{definition}[Unpolarised transmission]\label{def:Tavg}
+For unpolarised or circularly polarised illumination the effective transmission
+is
+\begin{equation}\label{eq:Tavg-def}
+  T_0^{\,\mathrm{eff}}(\theta) \;=\; \Tavg(\theta)
+  \;\equiv\; \half\bigl[T_s(\theta)+T_p(\theta)\bigr].
+\end{equation}
+\end{definition}
+
+\noindent
+The associated polarisation splitting $\Delta T(\theta)\equiv T_p(\theta)-T_s(\theta)\ge0$
+(for $\abs{\ntilde}>1$) is the quantity activated by the polarisation-aware law
+of \cref{sec:pol}. In the absorbed-power-density product the transmission always
+multiplies the projection factor $\mu=\cos\theta_i$, so the obliquity factor
+$\cos\theta_i$ and the transmission $T(\theta)$ act together: at grazing
+incidence $\cos\theta_i\to0$ suppresses absorption even where transmission
+remains finite.
+
+\subsection{Pseudo-Brewster behaviour}\label{sec:brewster}
+
+For a lossless interface the TM reflection vanishes at the Brewster angle
+$\theta_B=\arctan(n_2/n_1)$. For a lossy dielectric the TM reflection does not
+reach zero but passes through a finite minimum at the pseudo-Brewster angle
+$\theta_{pB}$, where $T_p$ peaks. The TE transmission $T_s$ decreases
+monotonically with angle. The two effects partly cancel in the average, so
+$\Tavg(\theta)$ stays close to its normal-incidence value $T_0$ over a wide
+angular range. For skin at \SI{28}{\giga\hertz} the average remains within
+\SI{5.6}{\percent} of $T_0$ up to steep angles, which is what justifies the
+constant-$T_0$ approximation used by the lowest fidelity levels of
+\cref{sec:grid}. The full angular structure of $\Delta T$ (it reaches
+$\approx0.83$ near $75^\circ$ at \SI{28}{\giga\hertz}) is the lever the
+polarisation correction of \cref{sec:pol} pulls on.
+
+\subsection{Transmitted angle and depth coupling}\label{sec:xi-coherent}
+
+The complex normal wave number $\xi(\mu,\ntilde)$ of \cref{def:xi} is not
+merely an intermediate algebraic quantity. Its imaginary part is the oblique
+attenuation constant, and the coherent formulation of \cref{sec:coherent} uses
+it directly to phase and attenuate the transmitted field as it couples energy
+into the lossy layer. Carrying $\xi$ (rather than only the real power
+coefficients $T_s,T_p$) is therefore necessary for the coherent levels and is
+forward-referenced there.

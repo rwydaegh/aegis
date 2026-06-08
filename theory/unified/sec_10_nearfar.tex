@@ -1,4 +1,124 @@
 % sec_10_nearfar
 \section{Near and far field}\label{sec:nearfar}
 
-\emph{[section pending]}
+The surface law of \cref{sec:surface-law} is stated for a plane wave: a
+single incidence direction $\khat$ and a single incident power density
+$\Sinc$ shared by every surface point. That is the far-field limit of a
+source receding to infinity. This section places it in a distance
+hierarchy and gives the point-source generalisation that the
+differentiable design loop and the coherent phase of \cref{sec:coherent}
+both build on.
+
+\subsection{Three distance regimes}
+
+Let $d(\rr)=\abs{\rr-\rr_{\mathrm{src}}}$ be the distance from the
+source to a surface point and $L$ the largest body dimension.
+
+\begin{definition}[Reactive near field, $d<\lambda/2\pi$]\label{def:reactive}
+The field is dominated by non-propagating evanescent components and the
+plane-wave surface law does not apply. At \SI{28}{\giga\hertz} this
+boundary is \SI{1.7}{\milli\metre} from the source, so only sources in
+direct skin contact fall in this regime.
+\end{definition}
+
+\begin{definition}[Locally plane-wave regime, $d>3\lambda$]\label{def:lpw}
+The reactive field has decayed and the wavefront curvature is small
+enough over a single triangle that the illumination is locally plane
+but spatially non-uniform. The surface law holds pointwise with inputs
+that vary across the body,
+\begin{equation}\label{eq:Sab-point}
+  \Sab(\rr)=\frac{P_t\,G\!\bigl(\khat(\rr)\bigr)}{4\pi\,d(\rr)^2}\,
+            T_0\,\ReLU\!\bigl[\nhat(\rr)\cdot(-\khat(\rr))\bigr],
+\end{equation}
+where $P_t$ is the radiated power, $G$ the antenna gain pattern, and
+the per-point incidence direction is
+\begin{equation}\label{eq:khat-r}
+  \khat(\rr)=\frac{\rr-\rr_{\mathrm{src}}}{d(\rr)}
+            =\widehat{\rr-\rr_{\mathrm{src}}}.
+\end{equation}
+The pseudo-Brewster compensation and the ReLU cosine gate carry over
+unchanged. The cost is $O(M)$ per source, the same as a plane wave.
+\end{definition}
+
+\begin{definition}[Far field, $d>5L$]\label{def:farfield}
+Wavefront curvature and distance variation are negligible over the
+whole body: $d(\rr)\to d_0$ and $\khat(\rr)\to\khat_0$ for every
+surface point, recovering the plane-wave law with
+$\Sinc=P_t\,G(\khat_0)/(4\pi d_0^2)$. The approximation error scales as
+$(L/2d)^2$: below $1\%$ at $d>\SI{4}{\metre}$ and below $3\%$ at
+$d\approx\SI{2}{\metre}$ for a standing human illuminated from the
+front.
+\end{definition}
+
+\subsection{Point source and the view factor}
+
+Integrating \cref{eq:Sab-point} over the visible front-facing surface,
+the factor $\mu(\rr)\,\diff A/d(\rr)^2$ is the differential solid angle
+$\diff\Omega_s$ subtended by a surface element at the source. For an
+isotropic source this collapses to a view-factor law,
+\begin{equation}\label{eq:Pabs-solidangle}
+  P_{\mathrm{abs}}=\frac{P_t\,T_0}{4\pi}\,\Omega_{\mathrm{body}}(\rr_{\mathrm{src}}),
+  \qquad
+  \Omega_{\mathrm{body}}=\int_{\Sigma_+}\frac{\mu(\rr)}{d(\rr)^2}\,\diff A,
+\end{equation}
+so absorbed power equals $T_0$ times the radiated power times the view
+factor of the body seen from the source. As $\rr_{\mathrm{src}}$ recedes,
+$\Omega_{\mathrm{body}}\to\Aperp(\khat_0)/d_0^2$ and
+$P_{\mathrm{abs}}\to\Sinc\,T_0\,\Aperp$; as the source approaches the
+skin, $\Omega_{\mathrm{body}}\to 2\pi$ and
+$P_{\mathrm{abs}}\to P_t\,T_0/2$. A directive antenna carries its gain
+pattern into the integrand as a weight.
+
+\subsection{The wavefront factor}
+
+The finite distance $d_1$ to the last scatter enters the rest of the
+framework through one geometric factor, in two places.
+
+First, it sets the diffraction penumbra width. The Fock detour scale of
+\cref{sec:fock-local} acquires the source-distance correction
+$w_{\mathrm{nf}}$ of \cref{sec:cmetric}: a converging or diverging
+wavefront widens or narrows the geometric shadow transition relative to
+the plane-wave value, and the gate is evaluated at the corrected detour.
+
+Second, it sets the coherent phase. In the coherent regime of
+\cref{sec:coherent} the plane-wave phase $e^{-ik_0\khat_n\cdot\rr}$ is
+replaced by the near-field phase kernel
+\begin{equation}\label{eq:NF-kernel}
+  \varphi_n(\rr)=\frac{R_n^{(0)}}{R_n(\rr)}\,
+                 e^{-ik_0\bigl(R_n(\rr)-R_n^{(0)}\bigr)},
+  \qquad R_n(\rr)=\abs{\rr-\rr_n^{\mathrm{scat}}},
+\end{equation}
+referenced to a fixed body point $\rr^{(0)}$ so that
+$\varphi_n(\rr^{(0)})=1$. Unlike the plane-wave phase diagonal, this
+kernel is diagonal but \emph{not} unitary: it carries both the
+$e^{-ik_0 R_n}$ phase and the $1/R_n$ amplitude decay. With this
+substitution the channel factorisation, the exposure operator, and the
+exposure-constrained precoder of \cref{sec:coherent} all proceed
+verbatim, because the derivation uses only the diagonal structure of
+the kernel, not its specific form. The coherent hotspot shape changes:
+the constant-wave-vector Fourier cells of the far field deform into
+confocal lobes whose foci are the last-scatter points of the
+interfering path pair.
+
+\subsection{Differentiability in the source position}
+
+Both $d(\rr)$ and $\khat(\rr)$ are smooth functions of the source
+position $\rr_{\mathrm{src}}$, and the ReLU gate is differentiable
+almost everywhere with a defined subgradient at the terminator. The
+point-source law \cref{eq:Sab-point} and the view-factor integral
+\cref{eq:Pabs-solidangle} are therefore differentiable in
+$\rr_{\mathrm{src}}$, which is what lets the design loop optimise source
+placement by gradient descent rather than by sweep. The view factor
+also admits an antenna-agnostic factorisation: expanding the gain in
+spherical harmonics, $G(\hat u)=\sum_{lm}g_{lm}Y_{lm}(\hat u)$, and
+exchanging the sum with the surface integral gives
+\begin{equation}\label{eq:Gamma-lm}
+  P_{\mathrm{abs}}=\frac{T_0}{4\pi}\sum_{lm}g_{lm}\,\Gamma_{lm}(\rr_{\mathrm{src}}),
+  \qquad
+  \Gamma_{lm}=\int_{\Sigma_+}\frac{\mu(\rr)\,Y_{lm}\!\bigl(\khat(\rr)\bigr)}
+                                  {d(\rr)^2}\,O(\rr,\khat)\,\diff A,
+\end{equation}
+so the body response $\Gamma_{lm}$ depends on the source position but
+not the antenna pattern. Any antenna at a fixed position is then
+evaluated by one dot product, the acceleration that makes
+phone-scale dosimetry over many antenna orientations tractable.
