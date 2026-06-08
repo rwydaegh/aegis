@@ -217,3 +217,16 @@ def test_engine_self_shadow_level6_attenuates():
     on = eng.compute(body, paths, level=6, diffraction_model="fock", self_shadow=True, spatial_averaging=False)
     off = eng.compute(body, paths, level=6, diffraction_model="fock", self_shadow=False, spatial_averaging=False)
     assert on.p_abs < off.p_abs
+
+
+def test_engine_self_shadow_ignored_on_low_level_warns():
+    # Levels 0-5 have no shadow gate on the legacy level path. self_shadow=True
+    # there is a silent no-op without a warning, which would mislead callers.
+    body = _two_spheres_body()
+    paths = PropagationPaths.from_powers(k_hat=np.array([[1.0, 0.0, 0.0]]), power=np.array([1.0]))
+    eng = DosimetryEngine(SKIN_28GHZ)
+    with pytest.warns(UserWarning, match="self_shadow=True was ignored"):
+        ignored = eng.compute(body, paths, level=3, self_shadow=True, spatial_averaging=False)
+    baseline = eng.compute(body, paths, level=3, self_shadow=False, spatial_averaging=False)
+    # The warning is honest: the dose is identical to self_shadow=False.
+    assert np.array_equal(ignored.sab, baseline.sab)

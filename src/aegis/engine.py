@@ -585,6 +585,24 @@ class DosimetryEngine:
         if level < 0 or level > 8:
             raise ValueError(f"Fidelity level must be 0-8, got {level}")
 
+        # The distal gate is only wired into level 6 and the coherent levels on
+        # the legacy level path (levels 0-5 use dedicated kernels with no shadow
+        # gate). Silently dropping self_shadow there would mislead a caller into
+        # believing shadowing was applied, so warn instead of no-op'ing quietly.
+        # The mode="spatial" path (and explicit occlusion override) is unaffected.
+        if self_shadow and (level < 6 or (level == 6 and occlusion is not None)):
+            import warnings
+
+            _why = (
+                "an explicit occlusion override takes precedence" if level == 6 else f"level {level} has no shadow gate"
+            )
+            warnings.warn(
+                f"self_shadow=True was ignored: {_why}. Distal self-shadowing applies "
+                "to mode='spatial', level 6, and coherent levels 7-8. Use mode='spatial' "
+                "for the level 2-5 equivalents with self-shadowing.",
+                stacklevel=2,
+            )
+
         if level >= 7:
             fock_R, q_F_s, q_F_h = self._fock_params(body, paths.k_hat, effective_model, active_freq_hz, active_n_tilde)
             distal = self._distal_inputs(
