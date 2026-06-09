@@ -109,6 +109,7 @@ function GpuPill() {
 function ColorBarMetrics() {
   const sab = useLabStore((s) => s.sab)
   const stats = useLabStore((s) => s.stats)
+  const averaging = useLabStore((s) => s.averaging)
   if (!sab || !stats) return null
 
   const peak = arrayMax(sab)
@@ -118,10 +119,15 @@ function ColorBarMetrics() {
     return { label: fmt(peak * (1 - frac)), pct: frac }
   })
 
+  // The 4 cm^2 / ICNIRP verdict is filled by the deferred second pass; show a
+  // "computing" state while it runs rather than a stale or fallback value.
+  const avgPending = averaging && stats.peak_sab_averaged == null
   const compliant = stats.compliant
   const badge =
     compliant == null
-      ? { text: 'n/a', color: '#888', bg: 'rgba(136,136,136,0.15)' }
+      ? avgPending
+        ? { text: 'checking...', color: '#aab', bg: 'rgba(136,136,136,0.15)' }
+        : { text: 'n/a', color: '#888', bg: 'rgba(136,136,136,0.15)' }
       : compliant
         ? { text: 'PASS', color: '#7ee29a', bg: 'rgba(126,226,154,0.15)' }
         : { text: 'OVER LIMIT', color: '#e27e7e', bg: 'rgba(226,126,126,0.15)' }
@@ -155,9 +161,11 @@ function ColorBarMetrics() {
 
       <div style={{ marginTop: 12, fontSize: 12, lineHeight: 1.8 }}>
         <Metric label="Peak Sab" value={fmt(stats.peak_sab, ' W/m²')} />
-        {stats.peak_sab_averaged != null && (
+        {stats.peak_sab_averaged != null ? (
           <Metric label="Peak 4 cm²" value={fmt(stats.peak_sab_averaged, ' W/m²')} />
-        )}
+        ) : avgPending ? (
+          <Metric label="Peak 4 cm²" value="computing…" />
+        ) : null}
         <Metric label="Absorbed" value={fmt(stats.p_abs_mw, ' mW')} />
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
           <span style={{ color: '#99a' }}>ICNIRP</span>

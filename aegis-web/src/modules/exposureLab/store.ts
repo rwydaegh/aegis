@@ -58,6 +58,8 @@ interface LabState {
   // UI
   baking: boolean
   computing: boolean
+  // True while the deferred 4 cm^2 / ICNIRP pass runs after the fast heatmap.
+  averaging: boolean
 
   // Actions
   setGender: (gender: LabGender) => void
@@ -87,6 +89,7 @@ interface LabState {
   setPosedMesh: (vertices: Float32Array | null, normals: Float32Array | null, vertexHash?: number | null) => void
   setBaking: (baking: boolean) => void
   setComputing: (computing: boolean) => void
+  setAveraging: (averaging: boolean) => void
 }
 
 export const useLabStore = create<LabState>()((set) => ({
@@ -125,6 +128,7 @@ export const useLabStore = create<LabState>()((set) => ({
 
   baking: false,
   computing: false,
+  averaging: false,
 
   setGender: (gender) => set({ gender }),
   setBetas: (betas) => set({ betas }),
@@ -150,4 +154,5 @@ export const useLabStore = create<LabState>()((set) => ({
     set(vertexHash !== undefined ? { posedVertices, posedNormals, vertexHash } : { posedVertices, posedNormals }),
   setBaking: (baking) => set({ baking }),
   setComputing: (computing) => set({ computing }),
+  setAveraging: (averaging) => set({ averaging }),
 }))
