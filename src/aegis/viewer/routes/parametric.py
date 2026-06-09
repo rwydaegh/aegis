@@ -13,7 +13,7 @@ def register(app, cache, cache_lock):
     @app.route("/api/parametric-body", methods=["POST"])
     def api_parametric_body():
         """Generate a parametric body mesh from shape/pose parameters."""
-        from aegis.geometry.parametric import ParametricBody
+        from aegis.geometry.parametric import generate_posed
 
         params, err = get_json_dict()
         if err is not None:
@@ -63,11 +63,9 @@ def register(app, cache, cache_lock):
                 return jsonify({"error": "pose must contain at most 500 finite values"}), 400
 
         try:
-            pb = ParametricBody.load(model_type, gender)
+            body = generate_posed(model_type, gender, betas, pose=pose, name=f"{model_type}_{gender}")
         except (FileNotFoundError, NotImplementedError, ImportError, ValueError) as e:
             return jsonify({"error": str(e)}), 400
-
-        body = pb.generate(betas, pose=pose, name=f"{model_type}_{gender}")
         binary, meta = body_to_binary(body)
         meta["vertex_hash"] = int(body.vertex_hash) & 0xFFFFFFFFFFFFFFFF
 

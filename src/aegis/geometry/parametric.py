@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import functools
+import threading
+from collections import OrderedDict
 from pathlib import Path
 
 import numpy as np
@@ -23,12 +26,13 @@ class ParametricBody:
         gender: str = "neutral",
         model_path: str | Path | None = None,
     ) -> ParametricBody:
-        if model_type == "smplx":
-            return _load_smplx(gender, model_path)
-        elif model_type == "anny":
-            return _load_anny(gender, model_path)
-        else:
-            raise ValueError(f"Unknown model type: {model_type}")
+        # Loading a parametric model reads a ~120 MB .npz and constructs a torch
+        # nn.Module, which costs hundreds of ms. The model is read-only across
+        # forward passes, so the built object is cached per (type, gender, path).
+        # Without this the viewer rebuilt the model on every slider tick (twice,
+        # since /api/parametric-body and /api/lab/compute each loaded it).
+        key = str(Path(model_path)) if model_path is not None else None
+        return _load_cached(model_type, gender, key)
 
     def generate(
         self,
@@ -71,6 +75,64 @@ class ParametricBody:
         norms = np.where(norms < 1e-10, 1.0, norms)
         normals = normals / norms
         return BodyMesh.from_arrays(tri_verts.astype(np.float64), normals, name=name)
+
+
+@functools.lru_cache(maxsize=6)
+def _load_cached(model_type: str, gender: str, model_path: str | None) -> ParametricBody:
+    """Cached model construction. Key is hashable (str/None), one entry per gender."""
+    if model_type == "smplx":
+        return _load_smplx(gender, model_path)
+    elif model_type == "anny":
+        return _load_anny(gender, model_path)
+    else:
+        raise ValueError(f"Unknown model type: {model_type}")
+
+
+# Posed-body cache. The lab re-poses the body on /api/parametric-body (for the
+# visible mesh) and again on /api/lab/compute (for dose); a pure source/physics
+# edit re-poses with the identical (gender, betas, pose), so caching the result
+# means the second call and every same-pose recompute skip the torch forward
+# pass entirely. Keyed by exact float bytes (the frontend resends the same
+# vectors), bounded with FIFO eviction.
+_POSED_CACHE: OrderedDict[tuple, BodyMesh] = OrderedDict()
+_POSED_CACHE_MAX = 8
+_POSED_CACHE_LOCK = threading.Lock()
+
+
+def _pose_key(arr: np.ndarray | None) -> bytes | None:
+    if arr is None:
+        return None
+    return np.asarray(arr, dtype=np.float64).tobytes()
+
+
+def generate_posed(
+    model_type: str,
+    gender: str,
+    betas: np.ndarray,
+    pose: np.ndarray | None = None,
+    name: str = "parametric",
+    model_path: str | Path | None = None,
+) -> BodyMesh:
+    """Generate a posed body, reusing a cached result for identical inputs.
+
+    Shared by /api/parametric-body and the Exposure Lab dose route so a single
+    SMPL-X forward pass serves both, and same-pose recomputes are torch-free.
+    """
+    key = (model_type, gender, _pose_key(betas), _pose_key(pose))
+    with _POSED_CACHE_LOCK:
+        cached = _POSED_CACHE.get(key)
+        if cached is not None:
+            _POSED_CACHE.move_to_end(key)
+            return cached
+    # Build outside the lock: the torch forward pass is slow and two threads
+    # racing on a fresh pose just duplicate work once, which is cheaper than
+    # serialising every generate behind one mutex.
+    body = ParametricBody.load(model_type, gender, model_path).generate(betas, pose=pose, name=name)
+    with _POSED_CACHE_LOCK:
+        _POSED_CACHE[key] = body
+        while len(_POSED_CACHE) > _POSED_CACHE_MAX:
+            _POSED_CACHE.popitem(last=False)
+    return body
 
 
 def _load_smplx(gender: str, model_path: str | Path | None) -> ParametricBody:

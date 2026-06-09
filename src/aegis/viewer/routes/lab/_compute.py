@@ -8,19 +8,23 @@ requests never pay the RAM.
 
 from __future__ import annotations
 
+import time
 from typing import Any
 
 import numpy as np
 
 
 def _posed_body(params: dict[str, Any]):
-    """Load the SMPL-X parametric body and pose it from preset or raw pose vector."""
-    from aegis.geometry.parametric import ParametricBody
+    """Load the SMPL-X parametric body and pose it from preset or raw pose vector.
+
+    Uses the shared cached generator so this dose-side pose reuses the body the
+    /api/parametric-body call already built for the same (gender, betas, pose).
+    """
+    from aegis.geometry.parametric import generate_posed
 
     from ._presets import POSE_PRESETS
 
     gender = params.get("gender", "neutral")
-    pb = ParametricBody.load("smplx", gender)
 
     raw_betas = params.get("betas")
     betas = np.asarray(raw_betas, dtype=np.float64) if raw_betas else np.zeros(10)
@@ -35,7 +39,7 @@ def _posed_body(params: dict[str, Any]):
     else:
         pose = None
 
-    return pb.generate(betas, pose=pose)
+    return generate_posed("smplx", gender, betas, pose=pose)
 
 
 def _near_field(body, tissue, freq_hz: float, src: dict, physics: dict, power_w: float):
@@ -129,15 +133,26 @@ def compute_lab(params: dict[str, Any]) -> tuple[Any, Any, Any, dict[str, Any]]:
     physics = params.get("physics", {})
     src = params["source"]
 
+    timings: dict[str, float] = {}
+    t_total = time.perf_counter()
+
+    t0 = time.perf_counter()
     body = _posed_body(params)
+    timings["pose_body_ms"] = (time.perf_counter() - t0) * 1e3
+
+    t0 = time.perf_counter()
     tissue = resolve_skin_model("itis", freq_hz)
+    timings["tissue_ms"] = (time.perf_counter() - t0) * 1e3
 
     kind = src.get("kind", "near")
+    t0 = time.perf_counter()
     if kind == "near":
         result = _near_field(body, tissue, freq_hz, src, physics, power_w)
     elif kind == "far":
         result = _far_field(body, tissue, freq_hz, src, physics, power_w)
     else:
         raise ValueError(f"unknown source kind {kind!r}")
+    timings["dose_ms"] = (time.perf_counter() - t0) * 1e3
+    timings["total_ms"] = (time.perf_counter() - t_total) * 1e3
 
-    return body, tissue, result, {}
+    return body, tissue, result, {"timings": timings}
