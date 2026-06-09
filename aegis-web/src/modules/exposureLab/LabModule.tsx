@@ -1,51 +1,20 @@
 import { Link } from 'react-router-dom'
 import LabScene from './scene/LabScene'
+import LabHud from './LabHud'
 import PosePanel from './panels/PosePanel'
 import SourcePanel from './panels/SourcePanel'
 import PhysicsPanel from './panels/PhysicsPanel'
-import { useLabStore } from './store'
 import { useLabCompute } from './useLabCompute'
 
 export default function LabModule() {
   // Drive the debounced re-pose -> dose pipeline while the lab is open.
   useLabCompute()
-  const computing = useLabStore((s) => s.computing)
 
   return (
     <div style={{ display: 'flex', height: '100vh', background: '#0a0a0f', color: '#ddd' }}>
       <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
         <LabScene />
-        {computing && (
-          <div
-            style={{
-              position: 'absolute',
-              top: 16,
-              right: 16,
-              zIndex: 10,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '6px 12px',
-              borderRadius: 6,
-              background: 'rgba(13, 13, 18, 0.85)',
-              border: '1px solid #1e1e26',
-              color: '#9cf',
-              fontSize: 13,
-            }}
-          >
-            <span
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: '50%',
-                background: '#6cf',
-                animation: 'labPulse 1s ease-in-out infinite',
-              }}
-            />
-            Computing dose...
-            <style>{'@keyframes labPulse{0%,100%{opacity:0.3}50%{opacity:1}}'}</style>
-          </div>
-        )}
+        <LabHud />
         <Link
           to="/"
           style={{
