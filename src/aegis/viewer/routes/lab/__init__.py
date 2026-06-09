@@ -53,13 +53,17 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         if err is not None:
             return err
         try:
-            body, tissue, result, _extra = _compute.compute_lab(params)
+            body, tissue, result, extra = _compute.compute_lab(params)
         except (KeyError, ValueError, FileNotFoundError, ImportError) as e:
             return jsonify({"error": str(e)}), 400
         quantities = params.get("quantities", ["sab", "sab_4cm2"])
         buf, arrays_meta = _build_binary_response(result, quantities)
         stats = _build_stats_response(result, body, tissue, None, mode="spatial")
         stats["arrays"] = arrays_meta
+        timings = extra.get("timings")
+        if timings is not None:
+            timings["payload_bytes"] = len(buf)
+            stats["timings"] = timings
         resp = app.make_response(bytes(buf))
         resp.headers["Content-Type"] = "application/octet-stream"
         resp.headers["X-Stats"] = _json_dumps_safe(stats)
