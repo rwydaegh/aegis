@@ -184,12 +184,13 @@ export async function poseBody(
 export async function computeDose(
   params: ComputeDoseParams,
   signal?: AbortSignal,
+  quantities: string[] = ['sab', 'sab_4cm2'],
 ): Promise<ComputeResult> {
   const path = '/api/lab/compute'
   const res = await fetchWithRetry(`${BASE}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...params, quantities: ['sab', 'sab_4cm2'] }),
+    body: JSON.stringify({ ...params, quantities }),
     signal,
   })
   if (res.status === 401) {

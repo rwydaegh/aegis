@@ -359,6 +359,8 @@ export interface DosimetryStats {
   path_viz?: PathViz[]
   peak_sab_averaged: number | null
   compliance: ComplianceInfo | null
+  // Exposure Lab: false on the fast first pass before 4 cm^2 averaging is filled.
+  spatial_averaged?: boolean
   timings?: ComputeTimings
   peaks?: Record<string, number>
   arrays?: ArrayMeta[]

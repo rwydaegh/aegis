@@ -60,6 +60,19 @@ def register(app: Flask, cache: dict, cache_lock) -> None:
         buf, arrays_meta = _build_binary_response(result, quantities)
         stats = _build_stats_response(result, body, tissue, None, mode="spatial")
         stats["arrays"] = arrays_meta
+        # Deferred-averaging contract: a fast phase has no 4 cm^2 result yet.
+        # _build_stats_response falls the missing averaged peak back to the raw
+        # peak (a conservative over-estimate for the main route), which would
+        # show a wrong 4 cm^2 / compliance verdict here that then drops when the
+        # real averaging arrives. Flag the state and strip the fallback so the
+        # frontend can show "computing" instead of a value it will overwrite.
+        stats["spatial_averaged"] = result.sab_averaged is not None
+        if result.sab_averaged is None:
+            stats["peak_sab_averaged"] = None
+            stats["compliant"] = None
+            stats["compliance"] = None
+            if isinstance(stats.get("peaks"), dict):
+                stats["peaks"].pop("sab_4cm2", None)
         timings = extra.get("timings")
         if timings is not None:
             timings["payload_bytes"] = len(buf)

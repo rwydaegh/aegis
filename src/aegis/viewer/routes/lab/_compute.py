@@ -42,8 +42,14 @@ def _posed_body(params: dict[str, Any]):
     return generate_posed("smplx", gender, betas, pose=pose)
 
 
-def _near_field(body, tissue, freq_hz: float, src: dict, physics: dict, power_w: float):
-    """Near-field phone-source dose. Returns a DosimetryResult shaped like /api/compute."""
+def _near_field(body, tissue, freq_hz: float, src: dict, physics: dict, power_w: float, spatial_averaging: bool = True):
+    """Near-field phone-source dose. Returns a DosimetryResult shaped like /api/compute.
+
+    When ``spatial_averaging`` is False the 4 cm^2 ICNIRP averaging build is
+    skipped (``sab_averaged`` stays None), so the fast first phase returns the
+    raw heatmap without paying the averaging-matrix cost. The lab issues a
+    second call with averaging on to fill the 4 cm^2 / compliance metrics.
+    """
     from aegis.geometry.averaging import apply_spatial_averaging
     from aegis.nearfield import phone
     from aegis.result import DosimetryResult
@@ -75,7 +81,7 @@ def _near_field(body, tissue, freq_hz: float, src: dict, physics: dict, power_w:
     )
     sab = np.asarray(sab)
     p_abs = float(np.sum(sab * body.areas))
-    sab_avg = apply_spatial_averaging(sab, body.centroids, body.areas, 4e-4)
+    sab_avg = apply_spatial_averaging(sab, body.centroids, body.areas, 4e-4) if spatial_averaging else None
     return DosimetryResult(
         sab=sab,
         sab_averaged=sab_avg,
@@ -87,8 +93,12 @@ def _near_field(body, tissue, freq_hz: float, src: dict, physics: dict, power_w:
     )
 
 
-def _far_field(body, tissue, freq_hz: float, src: dict, physics: dict, power_w: float):
-    """Far-field plane-wave dose via the standard spatial engine."""
+def _far_field(body, tissue, freq_hz: float, src: dict, physics: dict, power_w: float, spatial_averaging: bool = True):
+    """Far-field plane-wave dose via the standard spatial engine.
+
+    ``spatial_averaging=False`` skips the 4 cm^2 averaging-matrix build (the
+    dominant new-pose cost) for the fast first phase; see ``_near_field``.
+    """
     from aegis.engine import DosimetryEngine
     from aegis.paths import PropagationPaths
 
@@ -117,6 +127,7 @@ def _far_field(body, tissue, freq_hz: float, src: dict, physics: dict, power_w: 
         polarisation=True,
         self_shadow=physics.get("self_shadow", False),
         diffraction_model=physics.get("diffraction_model", "fock"),
+        spatial_averaging=spatial_averaging,
     )
 
 
@@ -133,6 +144,14 @@ def compute_lab(params: dict[str, Any]) -> tuple[Any, Any, Any, dict[str, Any]]:
     physics = params.get("physics", {})
     src = params["source"]
 
+    # Deferred averaging: the 4 cm^2 ICNIRP build is the dominant new-pose cost,
+    # so the lab runs two phases. The fast phase requests only ["sab"] (raw
+    # heatmap, no averaging); the follow-up requests "sab_4cm2" to fill the
+    # metric. Default to averaging on so the main /api/compute contract and any
+    # direct caller are unchanged.
+    quantities = params.get("quantities") or ["sab", "sab_4cm2"]
+    want_avg = "sab_4cm2" in quantities
+
     timings: dict[str, float] = {}
     t_total = time.perf_counter()
 
@@ -147,9 +166,9 @@ def compute_lab(params: dict[str, Any]) -> tuple[Any, Any, Any, dict[str, Any]]:
     kind = src.get("kind", "near")
     t0 = time.perf_counter()
     if kind == "near":
-        result = _near_field(body, tissue, freq_hz, src, physics, power_w)
+        result = _near_field(body, tissue, freq_hz, src, physics, power_w, spatial_averaging=want_avg)
     elif kind == "far":
-        result = _far_field(body, tissue, freq_hz, src, physics, power_w)
+        result = _far_field(body, tissue, freq_hz, src, physics, power_w, spatial_averaging=want_avg)
     else:
         raise ValueError(f"unknown source kind {kind!r}")
     timings["dose_ms"] = (time.perf_counter() - t0) * 1e3

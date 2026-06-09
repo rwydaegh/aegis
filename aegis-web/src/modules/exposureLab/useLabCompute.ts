@@ -88,6 +88,7 @@ export function useLabCompute(): void {
       setResults,
       clearResults,
       setComputing,
+      setAveraging,
     } = store
 
     // Leading edge: if the pose or shape changed, drop the stale authoritative
@@ -117,11 +118,23 @@ export function useLabCompute(): void {
           if (isStale()) return
           setPosedMesh(body.positions, body.normals, body.vertexHash)
 
-          // Dose (the server bakes the visibility LUT inside this call).
           const params = buildComputeParams(useLabStore.getState())
-          const res = await computeDose(params)
+
+          // Phase 1: raw Sab heatmap only. Skipping the 4 cm^2 averaging build
+          // (the dominant new-pose cost) gets the heatmap on screen in ~0.5 s.
+          // The server bakes the visibility LUT inside this call.
+          const fast = await computeDose(params, undefined, ['sab'])
           if (isStale()) return
-          setResults(res.sab, res.stats, res.arrays)
+          setResults(fast.sab, fast.stats, fast.arrays)
+          setComputing(false)
+
+          // Phase 2: 4 cm^2 averaging + ICNIRP, off the interactive path. The
+          // posed body and kernel are server-cached, so this only pays the
+          // averaging build, then fills the metric the heatmap is already showing.
+          setAveraging(true)
+          const full = await computeDose(params, undefined, ['sab', 'sab_4cm2'])
+          if (isStale()) return
+          setResults(full.sab, full.stats, full.arrays)
         } catch (err) {
           if (isStale()) return
           if (isClientError(err)) {
@@ -130,9 +143,12 @@ export function useLabCompute(): void {
             Sentry.captureException(err)
           }
         } finally {
-          // Only the latest pipeline owns the loading flag; a stale run that was
-          // superseded must not flip computing off under the newer run.
-          if (!isStale()) setComputing(false)
+          // Only the latest pipeline owns the loading flags; a stale run that was
+          // superseded must not flip them off under the newer run.
+          if (!isStale()) {
+            setComputing(false)
+            setAveraging(false)
+          }
         }
       }
 
