@@ -30,6 +30,10 @@ services:
     volumes:
       - docs_site:/srv/docs
       - pipeline_cache:/app/pipeline_cache
+      # Persistent numba JIT cache so the boot-time kernel warm-up is a fast
+      # cache load (not a ~60 s recompile) after the first deploy. Path matches
+      # NUMBA_CACHE_DIR in the Dockerfile.
+      - numba_cache:/numba-cache
       # SMPL-X parametric body models (license-gated, never in the repo or image).
       # Files live on the host at /opt/aegis/models/smplx/ and are read by
       # ParametricBody.load("smplx") at /root/.aegis/models inside the container.
@@ -75,4 +79,5 @@ volumes:
   caddy_config:
   docs_site:
   pipeline_cache:
+  numba_cache:
   umami_data:

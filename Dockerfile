@@ -34,6 +34,13 @@ RUN pip install uv && uv pip install --system ".[viewer,body,fast]" gunicorn
 COPY data/ data/
 ENV SIONNA_SCENES_DIR=/app/data/scenes
 
+# Persistent numba JIT cache. Mounted to a named volume in docker-compose so the
+# compiled dosimetry kernels survive container recreation: the boot-time warm-up
+# (gunicorn post_fork) then becomes a fast cache load instead of a ~60 s
+# recompile. Compiled on the real host CPU at boot, never baked at build time.
+ENV NUMBA_CACHE_DIR=/numba-cache
+RUN mkdir -p /numba-cache
+
 # ---------- Source layer (changes every build, but just a fast COPY) ----------
 COPY src/ src/
 # Reinstall just the aegis package with real source (deps already cached above)
