@@ -31,7 +31,7 @@ jobs:
       - run: uv sync --python 3.12 --extra dev --extra viewer
       - run: uv run pytest tests/ --cov=src/aegis --cov-report=xml -x
       - name: Upload coverage
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v7
         with:
           files: coverage.xml
         env:
@@ -52,7 +52,7 @@ jobs:
       - run: npm ci
       - run: npm run test:coverage
       - name: Upload frontend coverage
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v7
         with:
           files: aegis-web/coverage/lcov.info
           flags: frontend

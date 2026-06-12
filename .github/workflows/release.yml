@@ -37,7 +37,7 @@ jobs:
       - run: uv run pytest tests/ --cov=src/aegis --cov-report=xml -x
       - name: Upload coverage
         if: matrix.os == 'ubicloud-standard-2' && matrix.python-version == '3.12'
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v7
         with:
           files: coverage.xml
         env:
