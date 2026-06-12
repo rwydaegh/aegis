@@ -319,6 +319,8 @@ runpod_april26.pub
 
 # ── Study outputs (generated meshes / exposure maps, regenerable) ──
 results/
+studies/**/*.aux
+studies/**/*.out
 
 # unified report build artifacts
 theory/unified_physics.pdf
