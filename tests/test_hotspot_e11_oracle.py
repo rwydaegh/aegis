@@ -1,13 +1,15 @@
 """Ground-truth oracle for the hotspot field reconstruction (e11).
 
 Replays a real ray-traced LOS path pack from the coherent-exposure-operator
-study, builds a maximum-ratio-transmission (MRT) precoder, reconstructs the
-free-space focal spot and an apples-to-apples unfocused (random-phase,
-matched-power) baseline, and checks the focused/unfocused peak ratio against
-the documented range. The study reports a LOS free-space focusing peak ratio
-of about 52x (results/e11_hotspot_report.md, sec. 2). This test uses a broad
-[20, 200] band so it stays robust to slice orientation and resolution while
-still catching a gross regression in the synthesis or MRT path.
+study, builds a maximum-ratio-transmission (MRT) precoder focused at the air
+focus, reconstructs the free-space focal spot on a transverse slice through
+that same point, and compares its peak against an apples-to-apples unfocused
+(random-phase, matched-power) baseline. Focusing and slicing at the same point
+is what makes this an honest free-space focusing measurement: the slice cuts
+through the focal peak, not a transverse beam cross-section upstream of it. The
+study reports a LOS free-space focusing peak ratio of about 52x
+(results/e11_hotspot_report.md, sec. 2); this configuration reproduces ~48.9x
+on bs16_los_seed0. The [35, 75] band is a real regression guard.
 
 Marked slow: it loads a multi-megabyte path pack and reconstructs dense
 slices. Skipped if the data pack is absent.
@@ -38,8 +40,7 @@ _PACK = (
     / "bs16_los_seed0.npz"
 )
 
-# Focus targets from the e11 study geometry.
-CHEST_FOCUS = np.array([0.923, -0.005, 0.734])
+# Free-space focus target from the e11 study geometry.
 AIR_FOCUS = np.array([0.502, 0.0, 1.794])
 
 
@@ -71,15 +72,15 @@ def test_e11_los_free_space_focusing_ratio():
 
     k, psi, elem, n_elements = _load_pack()
 
-    # MRT to the chest focus, matched transmit power ||x||^2 = 1.
-    x_foc = _mrt(CHEST_FOCUS, k, psi, elem, n_elements, power=1.0)
+    # MRT focused at the air focus, matched transmit power ||x||^2 = 1.
+    x_foc = _mrt(AIR_FOCUS, k, psi, elem, n_elements, power=1.0)
     assert abs(np.vdot(x_foc, x_foc) - 1.0) < 1e-9
 
     x_unf = _unfocused(n_elements, power=1.0, seed=0)
     assert abs(np.vdot(x_unf, x_unf) - 1.0) < 1e-9  # matched power
 
-    # Transverse free-space slice at the air focus, plane normal along the
-    # mean propagation direction so the focal spot lies in the plane.
+    # Transverse free-space slice centred on the air focus, plane normal along
+    # the mean propagation direction so the slice cuts through the focal peak.
     axis = k.mean(axis=0)
     axis /= np.linalg.norm(axis)
     plane = SlicePlane.oriented(AIR_FOCUS, axis, 0.04, 200)
@@ -87,5 +88,7 @@ def test_e11_los_free_space_focusing_ratio():
     s_foc = power_density(field_on(plane, k, psi, elem, x_foc, FREQ))
     s_unf = power_density(field_on(plane, k, psi, elem, x_unf, FREQ))
 
+    # Focused peak (slice cuts the focal spot) vs matched-power unfocused
+    # baseline. Reproduces the documented ~52x (~48.9x here).
     ratio = float(s_foc.max() / s_unf.max())
-    assert 20.0 < ratio < 200.0, f"focused/unfocused peak ratio {ratio:.1f} outside documented band"
+    assert 35.0 < ratio < 75.0, f"focused/unfocused peak ratio {ratio:.1f} outside documented band"
