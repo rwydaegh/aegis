@@ -8,28 +8,26 @@ import { useStudioStore } from './store'
 // only phantom the manifest advertises).
 const MESH = 'thelonious'
 
-// Fetch the phantom geometry once and store it. Guarded so it fetches a single
-// time even across re-renders.
+// Fetch the phantom geometry and store it. Race-safe via a monotonic request id
+// (the same pattern as useStudioRays): under React 18 StrictMode the effect runs,
+// is torn down, and runs again on mount. A "fetch once" ref guard would let the
+// first (now stale) request win the guard while its result is discarded, leaving
+// the store empty; the id check instead lets the live mount's fetch commit.
 export function useStudioPhantom(): void {
-  const fetchedRef = useRef(false)
+  const latestRef = useRef(0)
 
   useEffect(() => {
-    if (fetchedRef.current) return
-    fetchedRef.current = true
+    const myId = ++latestRef.current
+    const isStale = () => myId !== latestRef.current
 
-    let cancelled = false
     fetchPhantom(MESH)
       .then((geom) => {
-        if (cancelled) return
+        if (isStale()) return
         useStudioStore.getState().setPhantom(geom)
       })
       .catch((err) => {
-        if (cancelled) return
-        fetchedRef.current = false
+        if (isStale()) return
         Sentry.captureException(err)
       })
-    return () => {
-      cancelled = true
-    }
   }, [])
 }

@@ -30,6 +30,10 @@ function usePhantomGeometry(): THREE.BufferGeometry | null {
     const g = new THREE.BufferGeometry()
     g.setAttribute('position', new THREE.BufferAttribute(phantom.vertices, 3))
     g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(phantom.vertices.length), 3))
+    // Phantom vertices ship in the e11 world frame (Z-up). The scene is Y-up, so
+    // rotate -90 deg about X (the exact rotation toScene applies to points) to
+    // land the body where the toScene-converted focus, slice, and camera expect.
+    g.rotateX(-Math.PI / 2)
     g.computeVertexNormals()
     return g
   }, [phantom])
