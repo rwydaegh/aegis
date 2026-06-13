@@ -71,9 +71,24 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             plane["center"] = focus_xyz
 
             paths = _paths.load_paths(condition, array_n, seed, cache, cache_lock)
-            phantom = _paths.load_phantom("thelonious", cache, cache_lock) if beam == "ecbf" else None
-            x = _precoders.build_precoder(beam, paths, focus_xyz, freq_hz, power=1.0, phantom=phantom)
-            out = _slice.compute_slice(paths, x, plane, freq_hz, quantity)
+            if beam == "decohered":
+                # Canonical decohered baseline: scramble inter-direction phase
+                # after collapse (not expressible as a per-element precoder).
+                x_base = _precoders.build_precoder("mrt", paths, focus_xyz, freq_hz, power=1.0)
+                field_source = _slice.decohered_field_source(paths, x_base)
+                out = _slice.compute_slice(paths, None, plane, freq_hz, quantity, field_source=field_source)
+            elif beam == "ecbf":
+                q = _paths.load_q(condition, array_n, freq_ghz, cache, cache_lock)
+                if q is None:
+                    stem = f"{condition}_bs{int(array_n)}_{freq_ghz:g}"
+                    return jsonify(
+                        {"error": f"exposure-operator (Q) pack not precomputed: {stem}", "not_precomputed": True}
+                    ), 409
+                x = _precoders.build_ecbf_from_q(paths, focus_xyz, freq_hz, q, power=1.0)
+                out = _slice.compute_slice(paths, x, plane, freq_hz, quantity)
+            else:
+                x = _precoders.build_precoder(beam, paths, focus_xyz, freq_hz, power=1.0)
+                out = _slice.compute_slice(paths, x, plane, freq_hz, quantity)
         except FileNotFoundError as e:
             return jsonify({"error": str(e)}), 404
         except (KeyError, ValueError, TypeError, NotImplementedError) as e:
