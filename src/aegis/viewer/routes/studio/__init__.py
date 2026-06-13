@@ -29,7 +29,7 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
     from aegis.viewer.routes._helpers import get_json_dict
     from aegis.viewer.routes.compute._responses import _json_dumps_safe
 
-    from . import _bodymap, _paths, _precoders, _presets, _slice
+    from . import _bodymap, _paths, _phantom, _precoders, _presets, _slice
 
     @app.route("/api/studio/manifest")
     def api_studio_manifest():
@@ -92,6 +92,24 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             "provenance": f"studio runtime | {condition} bs{array_n} seed{seed} | beam={beam} | {freq_ghz:g}GHz",
         }
         buf = np.ascontiguousarray(scalar, dtype=np.float32).tobytes()
+        resp = app.make_response(buf)
+        resp.headers["Content-Type"] = "application/octet-stream"
+        resp.headers["X-Stats"] = _json_dumps_safe(stats)
+        resp.headers["Access-Control-Expose-Headers"] = "X-Stats"
+        return resp
+
+    @app.route("/api/studio/phantom")
+    def api_studio_phantom():
+        from flask import request
+
+        mesh = request.args.get("mesh", "thelonious")
+        if not _phantom.is_known_mesh(mesh):
+            return jsonify({"error": f"unknown mesh: {mesh}"}), 404
+        try:
+            buf, stats = _phantom.build_phantom_payload(mesh, cache, cache_lock)
+        except FileNotFoundError:
+            # Same not-precomputed sentinel the bodymap endpoint uses.
+            return jsonify({"error": f"phantom pack not precomputed: {mesh}", "not_precomputed": True}), 409
         resp = app.make_response(buf)
         resp.headers["Content-Type"] = "application/octet-stream"
         resp.headers["X-Stats"] = _json_dumps_safe(stats)

@@ -17,7 +17,14 @@ def _studio_data_present() -> bool:
     return (root / "rays" / "bs16_los_seed0.npz").is_file()
 
 
+def _phantom_present() -> bool:
+    from aegis.viewer.routes.studio import studio_data_dir
+
+    return (studio_data_dir() / "phantom" / "thelonious.npz").is_file()
+
+
 needs_packs = pytest.mark.skipif(not _studio_data_present(), reason="studio data packs not present")
+needs_phantom = pytest.mark.skipif(not _phantom_present(), reason="studio phantom pack not present")
 
 
 def test_manifest_returns_default_tuple(client):
@@ -154,6 +161,37 @@ def test_slice_res_is_clamped(client):
     assert arr.shape[0] == 512 * 512
     # X-Stats agrees exactly with the shipped float32 payload.
     assert float(arr.max()) == pytest.approx(stats["peak_value"], rel=0, abs=0)
+
+
+@needs_phantom
+def test_phantom_returns_geometry_buffer(client):
+    r = client.get("/api/studio/phantom?mesh=thelonious")
+    assert r.status_code == 200, r.get_data(as_text=True)
+    stats = json.loads(r.headers["X-Stats"])
+    assert stats["mesh"] == "thelonious"
+    manifest = {a["name"]: a for a in stats["arrays"]}
+    # The contract the frontend slices against.
+    assert manifest["vertices"]["shape"] == [24000, 3]
+    assert manifest["vertices"]["dtype"] == "float32"
+    assert manifest["faces"]["shape"] == [8000, 3]
+    assert manifest["faces"]["dtype"] == "int32"
+    assert {"centroids", "normals"} <= set(manifest)
+    # Each array slices out of the binary body at its declared offset/shape.
+    data = r.data
+    verts = manifest["vertices"]
+    v = np.frombuffer(data, dtype=np.float32, count=verts["length"], offset=verts["offset"])
+    assert v.reshape(verts["shape"]).shape == (24000, 3)
+    faces = manifest["faces"]
+    f = np.frombuffer(data, dtype=np.int32, count=faces["length"], offset=faces["offset"])
+    assert f.reshape(faces["shape"]).shape == (8000, 3)
+    assert int(f.max()) < 24000  # face indices stay inside the vertex soup
+
+
+def test_phantom_unknown_mesh_404(client):
+    # No packs needed: the unknown mesh is rejected before any disk access.
+    r = client.get("/api/studio/phantom?mesh=nope")
+    assert r.status_code == 404
+    assert "error" in r.get_json()
 
 
 @needs_packs
