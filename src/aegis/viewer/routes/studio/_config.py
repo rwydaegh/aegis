@@ -16,7 +16,7 @@ from pathlib import Path
 _REPO_ROOT = Path(__file__).resolve().parents[5]
 
 # Subdirectories of the studio data dir, one per pack kind.
-_PACK_DIRS = ("rays", "phantom", "bodymaps", "ensemble")
+_PACK_DIRS = ("rays", "phantom", "bodymaps", "ensemble", "qop")
 
 
 def studio_data_dir() -> Path:
@@ -44,9 +44,10 @@ def available_packs() -> dict[str, list[str]]:
     """Scan the studio data dir and report the packs present.
 
     Returns a dict keyed by pack kind (``rays``, ``phantom``, ``bodymaps``,
-    ``ensemble``), each value a sorted list of pack stems (filenames without
-    the ``.npz`` suffix). A missing data dir or missing subdir yields empty
-    lists rather than raising, so a fresh checkout reports an empty structure.
+    ``ensemble``, ``qop``), each value a sorted list of pack stems (filenames
+    without the ``.npz`` suffix). A missing data dir or missing subdir yields
+    empty lists rather than raising, so a fresh checkout reports an empty
+    structure.
     """
     root = studio_data_dir()
     out: dict[str, list[str]] = {kind: [] for kind in _PACK_DIRS}

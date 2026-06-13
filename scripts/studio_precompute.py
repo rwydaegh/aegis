@@ -30,13 +30,18 @@ Subcommands (combine freely):
     --bodymaps    compute per-triangle body maps for each (condition, array,
                   freq, beam)
     --ensemble    mean and p95 of each body-map quantity over LOS seeds
+    --qoperator   precompute the exposure operator Q (M_ant x M_ant) for each
+                  (condition, array, freq) so the runtime can do a fast ECBF
+                  solve without rebuilding the full-body tissue channel
 """
 
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import sys
+import tempfile
 from pathlib import Path
 
 import numpy as np
@@ -182,14 +187,21 @@ def _trace_pack(out: Path, bs_n: int, condition: str, seed: int) -> None:
 
 
 def sync_rays(studio_dir: Path, arrays: list[int], conditions: list[str], seeds: list[int]) -> None:
-    """Copy ray packs from the fork's cache, tracing any that are missing."""
+    """Copy ray packs from the fork's cache, tracing any that are missing.
+
+    NLOS has a single realisation in the fork (``bs{N}_nlos_seed0.npz``); the
+    multi-seed ensemble is LOS-only. So for NLOS we sync only seed 0 and never
+    attempt to trace the other seeds (a stray NLOS trace would also exhaust the
+    box). LOS keeps the full requested seed list.
+    """
     from aegis.viewer.routes.studio._config import paper_fork_paths_dir
 
     fork_dir = paper_fork_paths_dir()
     (studio_dir / "rays").mkdir(parents=True, exist_ok=True)
     for bs_n in arrays:
         for cond in conditions:
-            for seed in seeds:
+            cond_seeds = [0] if cond == "nlos" else seeds
+            for seed in cond_seeds:
                 dst = _rays_path(studio_dir, bs_n, cond, seed)
                 src = fork_dir / f"bs{bs_n}_{cond}_seed{seed}.npz" if fork_dir else None
                 if src is not None and src.exists():
@@ -364,11 +376,30 @@ def _ghz_tag(freq_ghz: float) -> str:
     return f"{freq_ghz:g}"
 
 
+def _atomic_savez(out: Path, **arrays) -> None:
+    """Write an .npz atomically: savez to a tmp file, then os.replace.
+
+    A crash or interrupt mid-write leaves the tmp file, never a truncated or
+    half-written pack at ``out``. ``os.replace`` is atomic on the same
+    filesystem, and the tmp file is created in the destination dir so the
+    rename never crosses devices. The tmp name ends in ``.npz`` so numpy does
+    not append a second extension.
+    """
+    out.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=out.parent, prefix=out.stem + ".", suffix=".npz")
+    os.close(fd)
+    try:
+        np.savez(tmp, **arrays)
+        os.replace(tmp, out)
+    finally:
+        if os.path.exists(tmp):
+            os.remove(tmp)
+
+
 def _write_map(out: Path, values: np.ndarray, beam: str, provenance: str) -> None:
     quantity, units = _QUANTITY[beam]
-    out.parent.mkdir(parents=True, exist_ok=True)
     values = np.asarray(values, np.float32)
-    np.savez(
+    _atomic_savez(
         out,
         values=values,
         vmin=np.float32(values.min()),
@@ -462,6 +493,82 @@ def compute_ensemble(
 
 
 # --------------------------------------------------------------------------
+# Exposure operator Q
+# --------------------------------------------------------------------------
+def _compute_q_chunked(body, k, psi, elem, m, n_tilde, sigma, freq_hz, chunk: int = 128) -> np.ndarray:
+    """Accumulate the exposure operator Q (M_ant x M_ant) in triangle chunks.
+
+    Q = sum_t area_t * G_tilde_t^H @ G_tilde_t is linear in the per-triangle
+    contributions (see ``compute_exposure_operator``), so summing the operators
+    of disjoint triangle chunks is exact and equals the full-body Q. Building
+    G_tilde one 128-triangle chunk at a time keeps the working set tiny: the
+    full (T, N, 3) channel for ~8000 triangles and ~67k paths would be ~26 GB,
+    which swap-kills the box, but a single chunk's contribution to the running
+    256x256 accumulator is negligible.
+    """
+    from aegis.coherent import compute_exposure_operator
+    from aegis.coherent.body_channel import compute_body_channel
+
+    t = body.normals.shape[0]
+    q = np.zeros((m, m), dtype=np.complex128)
+    for a in range(0, t, chunk):
+        b = min(a + chunk, t)
+        g = np.asarray(
+            compute_body_channel(body.normals[a:b], body.centroids[a:b], k, psi, elem, n_tilde, sigma, freq_hz, m)
+        )
+        q += np.asarray(compute_exposure_operator(g, body.areas[a:b]))
+    # Each chunk operator is already Hermitian; the sum is too. Re-symmetrise to
+    # scrub the last bit of floating-point asymmetry before serialising.
+    return (q + np.conj(q).T) / 2
+
+
+def compute_qoperators(
+    studio_dir: Path,
+    arrays: list[int],
+    conditions: list[str],
+    freqs: list[float],
+    seed: int = 0,
+) -> None:
+    """Precompute and serialise the exposure operator Q for each scenario.
+
+    Writes ``<studio>/qop/{condition}_bs{N}_{ghz}.npz`` with the Hermitian PSD
+    operator so the runtime can run a fast small ECBF solve (x^H Q x) instead of
+    rebuilding the full-body tissue channel (~8 min). Verifies Hermitian
+    symmetry and positive-semidefiniteness before writing.
+    """
+    for bs_n in arrays:
+        _, body = _load_body(bs_n)
+        for cond in conditions:
+            k, psi, elem, m = _load_rays(studio_dir, bs_n, cond, seed)
+            for freq_ghz in freqs:
+                n_tilde, sigma = _skin_props(freq_ghz)
+                freq_hz = freq_ghz * 1e9
+                q = _compute_q_chunked(body, k, psi, elem, m, n_tilde, sigma, freq_hz)
+                herm_err = float(np.linalg.norm(q - np.conj(q).T))
+                eigs = np.linalg.eigvalsh(q)
+                min_eig = float(eigs.min())
+                tag = _ghz_tag(freq_ghz)
+                out = studio_dir / "qop" / f"{cond}_bs{bs_n}_{tag}.npz"
+                prov = (
+                    f"studio_precompute qoperator cond={cond} bs{bs_n} {tag}GHz seed={seed} "
+                    f"| e11 recipe | Q=sum_t area_t G_t^H G_t (128-tri chunked)"
+                )
+                _atomic_savez(
+                    out,
+                    Q=np.asarray(q, np.complex128),
+                    condition=cond,
+                    array_n=np.int64(bs_n),
+                    frequency_ghz=np.float64(freq_ghz),
+                    provenance=prov,
+                )
+                print(
+                    f"  wrote {out.name}: shape={q.shape} "
+                    f"||Q-Q^H||={herm_err:.3e} min_eig={min_eig:.3e} "
+                    f"lambda_max={float(eigs.max()):.3e}"
+                )
+
+
+# --------------------------------------------------------------------------
 # CLI
 # --------------------------------------------------------------------------
 def main() -> None:
@@ -470,6 +577,7 @@ def main() -> None:
     ap.add_argument("--phantom", action="store_true", help="export the placed thelonious mesh")
     ap.add_argument("--bodymaps", action="store_true", help="compute per-triangle body maps")
     ap.add_argument("--ensemble", action="store_true", help="mean/p95 over LOS seeds")
+    ap.add_argument("--qoperator", action="store_true", help="precompute exposure operator Q packs")
     ap.add_argument("--conditions", nargs="+", default=["los"], choices=["los", "nlos"])
     ap.add_argument("--arrays", nargs="+", type=int, default=[16])
     ap.add_argument("--freqs", nargs="+", type=float, default=[28.0], help="dosimetry frequencies [GHz]")
@@ -489,8 +597,8 @@ def main() -> None:
     studio_dir = studio_data_dir()
     print(f"studio data dir: {studio_dir}")
 
-    if not any((args.sync_rays, args.phantom, args.bodymaps, args.ensemble)):
-        ap.error("choose at least one of --sync-rays --phantom --bodymaps --ensemble")
+    if not any((args.sync_rays, args.phantom, args.bodymaps, args.ensemble, args.qoperator)):
+        ap.error("choose at least one of --sync-rays --phantom --bodymaps --ensemble --qoperator")
 
     if args.sync_rays:
         print("[sync-rays]")
@@ -505,6 +613,9 @@ def main() -> None:
     if args.ensemble:
         print("[ensemble]")
         compute_ensemble(studio_dir, args.arrays, args.freqs, args.beams)
+    if args.qoperator:
+        print("[qoperator]")
+        compute_qoperators(studio_dir, args.arrays, args.conditions, args.freqs, seed=args.seed)
 
     print("done")
 
