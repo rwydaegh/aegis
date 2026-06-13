@@ -6,6 +6,7 @@ import {
   conditionHasRayPack,
   EXTENT_OPTIONS_M,
   extentLabel,
+  FIELD_QUANTITY_OPTIONS,
   frameProvenance,
   packsOf,
   rayPackStem,
@@ -145,5 +146,17 @@ describe('frameProvenance', () => {
     expect(p.confidence).toBeGreaterThan(0.4)
     expect(p.confidence).toBeLessThan(0.8)
     expect(p.title).toContain('computed')
+  })
+})
+
+describe('FIELD_QUANTITY_OPTIONS', () => {
+  it('exposes the full Phase 2 slice quantity set the backend supports', () => {
+    const values = FIELD_QUANTITY_OPTIONS.map((o) => o.value)
+    expect(values).toEqual(['S', 'absE', 'absH', 'poynting', 'ReEx', 'ReEy', 'ReEz'])
+  })
+
+  it('does not offer Sab (a surface quantity served by the body-map endpoint)', () => {
+    const values = FIELD_QUANTITY_OPTIONS.map((o) => o.value as string)
+    expect(values).not.toContain('Sab')
   })
 })

@@ -103,8 +103,12 @@ export function beamOptions(manifest: StudioManifest | null): BeamOption[] {
 }
 
 // ---------------------------------------------------------------------------
-// Field-quantity catalogue (the slice). Phase 1 ships |E|^2 power density and
-// |E|; components / H / Poynting / Sab are Phase 2.
+// Field-quantity catalogue (the slice). The backend reconstructs the coherent
+// field on the plane and reduces it to the requested scalar. The signed real
+// components (ReEx/y/z) read best on a diverging colour map (a follow-up; the
+// current viridis LUT still renders them, just not centred on zero). Sab is a
+// per-triangle surface quantity, so it is served by the body-map endpoint, not
+// the free-space slice.
 // ---------------------------------------------------------------------------
 
 export interface FieldQuantityOption {
@@ -115,6 +119,11 @@ export interface FieldQuantityOption {
 export const FIELD_QUANTITY_OPTIONS: FieldQuantityOption[] = [
   { value: 'S', label: 'Power density |E|²' },
   { value: 'absE', label: 'Field magnitude |E|' },
+  { value: 'absH', label: 'Field magnitude |H|' },
+  { value: 'poynting', label: 'Poynting |Re(E×H*)|/2' },
+  { value: 'ReEx', label: 'Re(Eₓ)' },
+  { value: 'ReEy', label: 'Re(E_y)' },
+  { value: 'ReEz', label: 'Re(E_z)' },
 ]
 
 // ---------------------------------------------------------------------------

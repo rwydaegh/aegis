@@ -16,7 +16,7 @@ const STUDIO = '/api/studio'
 // ---------------------------------------------------------------------------
 
 export type StudioFocusMode = 'at-skin' | 'free-space'
-export type StudioFieldQuantity = 'S' | 'absE'
+export type StudioFieldQuantity = 'S' | 'absE' | 'ReEx' | 'ReEy' | 'ReEz' | 'absH' | 'poynting'
 export type StudioPlaneOrientation = 'transverse' | 'axial' | 'free'
 
 /** Server-side (Z-up, metres) 3-vector. */
