@@ -7,10 +7,10 @@ when the absorption constraint binds.
 
 ``ecbf`` is built by :func:`build_ecbf_from_q` from the precomputed exposure
 operator Q served on disk (``data/studio/qop/``); the old request-time full-body
-tissue-channel build (~8 min) is gone. The decohered baseline is a field-domain
-inter-direction phase scramble that cannot be a per-element precoder, so the
-canonical path lives in ``_slice.decohered_field_source``; the ``decohered``
-branch here keeps a per-element analogue as a working fallback only.
+tissue-channel build (~8 min) is gone. The ``decohered`` baseline is a
+field-domain inter-direction phase scramble that cannot be a per-element
+precoder, so it is not built here at all: the slice route synthesizes it via
+``_slice.decohered_field_source``.
 
 Fork-free: imports only ``aegis.hotspot``/``aegis.coherent`` and numpy.
 """
@@ -21,7 +21,6 @@ import numpy as np
 
 # Random-phase precoders use a fixed seed so a given scene is reproducible.
 _UNFOCUSED_SEED = 0xC0FFEE
-_DECOHERE_SEED = 0xBEEF
 # ECBF absorbed-power budget as a fraction of the MRT-induced absorption,
 # matching ECBF_BUDGET_FRAC in scripts/studio_precompute.py.
 _ECBF_BUDGET_FRAC = 0.5
@@ -45,12 +44,11 @@ def build_precoder(
 ) -> np.ndarray:
     """Build the precoder ``x`` of shape ``(n_elements,)`` for ``kind``.
 
-    Kinds: ``mrt``, ``unfocused``, ``decohered``, ``decoy``, ``worstcase``.
-    ``ecbf`` is not built here: call :func:`build_ecbf_from_q` with the
-    precomputed exposure operator Q. The ``decohered`` kind returns a
-    per-element phase-scramble analogue (a working fallback); the canonical
-    decohered baseline is the field-domain scramble in
-    ``_slice.decohered_field_source``.
+    Kinds: ``mrt``, ``unfocused``, ``decoy``, ``worstcase``. ``ecbf`` is built
+    from the precomputed exposure operator Q (call :func:`build_ecbf_from_q`),
+    and ``decohered`` is a field-domain scramble that is not a per-element
+    precoder (synthesize it via ``_slice.decohered_field_source``); both raise
+    here.
     """
     from aegis.hotspot import field_channel_at, local_max_intensity, make_rx_response
 
@@ -67,15 +65,10 @@ def build_precoder(
         return np.sqrt(power / n_elements) * np.exp(1j * phases)
 
     if kind == "decohered":
-        # Per-element phase scramble of MRT: per-element power (hence the
-        # regional illumination) is preserved while the coherent focus is
-        # destroyed. The canonical decohered baseline scrambles inter-direction
-        # phase AFTER collapse (see _slice.decohered_field_source); that cannot
-        # be a per-element precoder, so this is a fallback for x-only callers.
-        x_mrt = _mrt(focus, k_hat, psi, element_index, freq_hz, n_elements, ue_rx, power)
-        rng = np.random.default_rng(_DECOHERE_SEED)
-        phases = rng.uniform(0.0, 2 * np.pi, n_elements)
-        return np.abs(x_mrt) * np.exp(1j * phases)
+        raise ValueError(
+            "decohered baseline scrambles inter-direction phase after collapse and "
+            "cannot be a per-element precoder; synthesize via _slice.decohered_field_source"
+        )
 
     if kind == "decoy":
         decoy_focus = focus + _DECOY_OFFSET
