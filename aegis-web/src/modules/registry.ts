@@ -14,4 +14,10 @@ export const MODULES: ModuleEntry[] = [
     path: '/lab',
     component: lazy(() => import('./exposureLab/LabModule')),
   },
+  {
+    id: 'studio',
+    label: 'Coherent Exposure Studio',
+    path: '/studio',
+    component: lazy(() => import('./coherentStudio/StudioModule')),
+  },
 ]
