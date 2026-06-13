@@ -20,6 +20,19 @@ export interface BodyMeshInstanceProps {
   rotationY: number
   opacity?: number
   onClick?: () => void
+  // --- Optional colour-scale overrides ---
+  // When provided, these take precedence over the shared useUIStore /
+  // useSimulationStore reads, letting a standalone module (e.g. the Coherent
+  // Exposure Studio) drive its own colour scale without cross-talk with the main
+  // viewer. When omitted, the component falls back to the stores as before.
+  displayQuantityOverride?: string
+  legendScaleOverride?: string
+  dynamicRangeDbOverride?: number
+  colormapLockedOverride?: boolean
+  colormapLockedMaxOverride?: number | null
+  ratioModeOverride?: boolean
+  /** Colour ramp returning [r, g, b] in 0..1. Defaults to jetColor. */
+  colorFn?: (t: number) => [number, number, number]
 }
 
 // ---------------------------------------------------------------------------
@@ -60,7 +73,12 @@ function resolveRatioLimit(
   return compliance.checks.find(finder)?.limit ?? 20.0
 }
 
-function writeRatioColors(buf: Float32Array, dataArray: Float32Array, ratioLimit: number): void {
+function writeRatioColors(
+  buf: Float32Array,
+  dataArray: Float32Array,
+  ratioLimit: number,
+  colorFn: (t: number) => [number, number, number] = jetColor,
+): void {
   const nFaces = dataArray.length
   const invLimit = ratioLimit > 0 ? 1 / ratioLimit : 0
   let maxRatio = 0
@@ -72,7 +90,7 @@ function writeRatioColors(buf: Float32Array, dataArray: Float32Array, ratioLimit
   const invMax = 1 / maxRatio
   for (let f = 0; f < nFaces; f++) {
     const t = dataArray[f] * invLimit * invMax
-    const [r, g, b] = jetColor(t)
+    const [r, g, b] = colorFn(t)
     const base = f * 9
     buf[base] = r; buf[base + 1] = g; buf[base + 2] = b
     buf[base + 3] = r; buf[base + 4] = g; buf[base + 5] = b
@@ -87,6 +105,7 @@ function writeAbsoluteColors(
   dynamicRangeDb: number,
   colormapLocked: boolean,
   colormapLockedMax: number | null,
+  colorFn: (t: number) => [number, number, number] = jetColor,
 ): void {
   const currentMax = arrayMax(dataArray)
 
@@ -103,7 +122,7 @@ function writeAbsoluteColors(
     const t = isDb
       ? gainTFromLinear(dataArray[f], maxSab, dynamicRangeDb)
       : dataArray[f] * invMax
-    const [r, g, b] = jetColor(t)
+    const [r, g, b] = colorFn(t)
     const base = f * 9
     buf[base] = r; buf[base + 1] = g; buf[base + 2] = b
     buf[base + 3] = r; buf[base + 4] = g; buf[base + 5] = b
@@ -128,16 +147,32 @@ export default function BodyMeshInstance({
   rotationY,
   opacity = 1,
   onClick,
+  displayQuantityOverride,
+  legendScaleOverride,
+  dynamicRangeDbOverride,
+  colormapLockedOverride,
+  colormapLockedMaxOverride,
+  ratioModeOverride,
+  colorFn,
 }: BodyMeshInstanceProps) {
   const meshRef = useRef<THREE.Mesh>(null)
 
-  const displayQuantity = useSimulationStore(s => s.displayQuantity)
+  // Always read the stores (hooks cannot be conditional), then let any provided
+  // override win. Absent overrides fall back to the shared viewer state.
+  const storeDisplayQuantity = useSimulationStore(s => s.displayQuantity)
   const wireframe = useUIStore(s => s.wireframe)
-  const ratioMode = useUIStore(s => s.ratioMode)
-  const legendScale = useUIStore(s => s.legendScale)
-  const dynamicRangeDb = useUIStore(s => s.dynamicRangeDb)
-  const colormapLocked = useUIStore(s => s.colormapLocked)
-  const colormapLockedMax = useUIStore(s => s.colormapLockedMax)
+  const storeRatioMode = useUIStore(s => s.ratioMode)
+  const storeLegendScale = useUIStore(s => s.legendScale)
+  const storeDynamicRangeDb = useUIStore(s => s.dynamicRangeDb)
+  const storeColormapLocked = useUIStore(s => s.colormapLocked)
+  const storeColormapLockedMax = useUIStore(s => s.colormapLockedMax)
+
+  const displayQuantity = displayQuantityOverride ?? storeDisplayQuantity
+  const ratioMode = ratioModeOverride ?? storeRatioMode
+  const legendScale = legendScaleOverride ?? storeLegendScale
+  const dynamicRangeDb = dynamicRangeDbOverride ?? storeDynamicRangeDb
+  const colormapLocked = colormapLockedOverride ?? storeColormapLocked
+  const colormapLockedMax = colormapLockedMaxOverride ?? storeColormapLockedMax
 
   const dataArray = selectDataArray(
     displayQuantity, sabArray, sabAveragedArray, sincArray, sincAveragedArray, sab1cm2AveragedArray,
@@ -158,12 +193,12 @@ export default function BodyMeshInstance({
     if (!dataArray) {
       buf.fill(0.5)
     } else if (isRatioMode) {
-      writeRatioColors(buf, dataArray, ratioLimit)
+      writeRatioColors(buf, dataArray, ratioLimit, colorFn)
     } else {
-      writeAbsoluteColors(buf, dataArray, legendScale, dynamicRangeDb, colormapLocked, colormapLockedMax)
+      writeAbsoluteColors(buf, dataArray, legendScale, dynamicRangeDb, colormapLocked, colormapLockedMax, colorFn)
     }
     colorAttr.needsUpdate = true
-  }, [dataArray, isRatioMode, ratioLimit, geometry, legendScale, dynamicRangeDb, colormapLocked, colormapLockedMax])
+  }, [dataArray, isRatioMode, ratioLimit, geometry, legendScale, dynamicRangeDb, colormapLocked, colormapLockedMax, colorFn])
 
   if (!geometry) return null
 
