@@ -15,6 +15,7 @@ from ._config import studio_data_dir
 
 _PATHS_KEY = "_studio_paths"
 _PHANTOM_KEY = "_studio_phantom"
+_Q_KEY = "_studio_q"
 
 
 def _cache_get(cache: dict | None, lock, top_key: str, sub_key, builder):
@@ -88,6 +89,43 @@ def load_phantom(
             }
 
     return _cache_get(cache, cache_lock, _PHANTOM_KEY, str(name), _build)
+
+
+def load_q(
+    condition: str,
+    array_n: int,
+    frequency_ghz: float,
+    cache: dict | None = None,
+    cache_lock: threading.RLock | None = None,
+) -> np.ndarray | None:
+    """Load the exposure operator ``Q`` for a scenario, or ``None`` if absent.
+
+    Resolves ``<studio>/qop/{condition}_bs{N}_{ghz}.npz`` (the freq tag matches
+    the body-map convention, ``f"{float(ghz):g}"``). Returns the
+    ``(M_ant, M_ant)`` complex Hermitian PSD operator on hit, ``None`` on miss
+    so the slice route can return the not-precomputed sentinel without ever
+    triggering the multi-minute full-body build. Only hits are cached, so a Q
+    pack generated after a miss is still picked up.
+    """
+    freq_tag = f"{float(frequency_ghz):g}"
+    stem = f"{condition}_bs{int(array_n)}_{freq_tag}"
+
+    if cache is not None:
+        with cache_lock:
+            store = cache.setdefault(_Q_KEY, {})
+            if stem in store:
+                return store[stem]
+
+    path = studio_data_dir() / "qop" / f"{stem}.npz"
+    if not path.is_file():
+        return None
+    with np.load(path) as d:
+        q = np.ascontiguousarray(d["Q"], dtype=complex)
+
+    if cache is not None:
+        with cache_lock:
+            cache.setdefault(_Q_KEY, {})[stem] = q
+    return q
 
 
 def unique_directions(

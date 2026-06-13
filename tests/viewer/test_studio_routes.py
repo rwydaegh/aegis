@@ -23,8 +23,15 @@ def _phantom_present() -> bool:
     return (studio_data_dir() / "phantom" / "thelonious.npz").is_file()
 
 
+def _qpack_present() -> bool:
+    from aegis.viewer.routes.studio import studio_data_dir
+
+    return (studio_data_dir() / "qop" / "los_bs16_10.npz").is_file()
+
+
 needs_packs = pytest.mark.skipif(not _studio_data_present(), reason="studio data packs not present")
 needs_phantom = pytest.mark.skipif(not _phantom_present(), reason="studio phantom pack not present")
+needs_qpack = pytest.mark.skipif(not _qpack_present(), reason="studio Q-operator pack not present")
 
 
 def test_manifest_returns_default_tuple(client):
@@ -192,6 +199,136 @@ def test_phantom_unknown_mesh_404(client):
     r = client.get("/api/studio/phantom?mesh=nope")
     assert r.status_code == 404
     assert "error" in r.get_json()
+
+
+def _slice_post(client, beam, quantity="S", frequency_ghz=10, res=160):
+    body = {
+        "condition": "los",
+        "array_n": 16,
+        "seed": 0,
+        "beam": beam,
+        "focus_xyz": [0.923, -0.005, 0.734],
+        "frequency_ghz": frequency_ghz,
+        "plane": {"orientation": "transverse", "extent_m": 0.08, "res": res},
+        "quantity": quantity,
+    }
+    return client.post("/api/studio/slice", json=body)
+
+
+@needs_packs
+def test_slice_decohered_destroys_focus(client):
+    # The decohered baseline scrambles inter-direction phase after collapse: it
+    # preserves the angular power spectrum (matched illumination) but destroys
+    # the coherent focus, so its peak sits well below MRT yet far above the
+    # fully random-phase unfocused floor.
+    mrt = _slice_peak(client, "mrt")
+    decohered = _slice_peak(client, "decohered")
+    unfocused = _slice_peak(client, "unfocused")
+    assert mrt["peak_value"] > decohered["peak_value"] * 1.5  # focus destroyed
+    assert decohered["peak_value"] > unfocused["peak_value"] * 2.0  # matched illumination floor
+
+
+@needs_packs
+def test_slice_decohered_reproducible(client):
+    # Fixed scramble seed -> identical bytes across requests.
+    r1 = _slice_post(client, "decohered")
+    r2 = _slice_post(client, "decohered")
+    assert r1.status_code == 200
+    assert r2.status_code == 200
+    assert r1.data == r2.data
+
+
+@needs_packs
+def test_slice_decohered_preserves_total_power(client):
+    # decohere_weights preserves sum_u ||w_u||^2 exactly, so the matched-power
+    # property holds: the decohered weight source carries the same total power
+    # as the MRT collapse it was built from.
+    from aegis.hotspot import collapse_paths
+    from aegis.viewer.routes.studio import _paths, _precoders, _slice
+
+    paths = _paths.load_paths("los", 16, 0)
+    focus = [0.923, -0.005, 0.734]
+    freq_hz = 10e9
+    x_mrt = _precoders.build_precoder("mrt", paths, focus, freq_hz)
+    _ku, w = collapse_paths(paths[0], paths[1], paths[2], x_mrt)
+    _ku2, w_dec = _slice.decohered_field_source(paths, x_mrt)
+    assert np.allclose(np.sum(np.abs(w) ** 2), np.sum(np.abs(w_dec) ** 2))
+
+
+@needs_packs
+@needs_qpack
+def test_slice_ecbf_via_q_is_fast(client):
+    # ECBF loads the precomputed Q operator and runs a 256x256 QCQP solve, never
+    # the ~8 min full-body channel build. The whole request must be well under a
+    # second of compute, and the exposure-reducing trade must lower the focal
+    # peak below MRT.
+    import time
+
+    t0 = time.perf_counter()
+    r = _slice_post(client, "ecbf")
+    dt = time.perf_counter() - t0
+    assert r.status_code == 200, r.get_data(as_text=True)
+    assert dt < 5.0, f"ecbf slice took {dt:.2f}s (expected a fast Q-pack solve)"
+    ecbf = json.loads(r.headers["X-Stats"])
+    mrt = _slice_peak(client, "mrt")
+    assert ecbf["peak_value"] < mrt["peak_value"]  # trades signal for lower exposure
+
+
+@needs_packs
+def test_slice_ecbf_missing_q_409(client):
+    # No Q pack for this frequency: the endpoint returns the not-precomputed
+    # sentinel, never the multi-minute full-body build.
+    r = _slice_post(client, "ecbf", frequency_ghz=99)
+    assert r.status_code == 409, r.get_data(as_text=True)
+    j = r.get_json()
+    assert j["not_precomputed"] is True
+    assert "error" in j
+
+
+@needs_packs
+@pytest.mark.parametrize("quantity", ["absH", "ReEx", "ReEy", "ReEz"])
+def test_slice_field_quantities(client, quantity):
+    r = _slice_post(client, "mrt", quantity=quantity)
+    assert r.status_code == 200, r.get_data(as_text=True)
+    stats = json.loads(r.headers["X-Stats"])
+    arr = np.frombuffer(r.data, dtype=np.float32)
+    assert np.all(np.isfinite(arr))
+    if quantity == "absH":
+        assert stats["units"] == "A/m"
+        assert float(arr.min()) >= 0.0  # magnitudes are non-negative
+        assert stats["vmax"] > 0.0
+    else:
+        assert stats["units"] == "V/m"
+        # real E components are signed: the diverging colormap handles vmin < 0.
+        assert np.any(arr < 0.0) or np.any(arr > 0.0)
+
+
+@needs_packs
+def test_slice_poynting_consistent_with_S(client):
+    # Both are non-negative and finite, and in this near-LOS region the Poynting
+    # magnitude and S = |E|^2/2Z0 agree to within a modest factor (they are not
+    # identical in multipath).
+    rs = _slice_post(client, "mrt", quantity="S")
+    rp = _slice_post(client, "mrt", quantity="poynting")
+    assert rs.status_code == 200
+    assert rp.status_code == 200
+    s_peak = json.loads(rs.headers["X-Stats"])["peak_value"]
+    p_peak = json.loads(rp.headers["X-Stats"])["peak_value"]
+    p_arr = np.frombuffer(rp.data, dtype=np.float32)
+    assert np.all(np.isfinite(p_arr))
+    assert float(p_arr.min()) >= 0.0
+    assert s_peak > 0.0
+    assert p_peak > 0.0
+    assert 0.2 < (p_peak / s_peak) < 5.0
+
+
+@needs_packs
+def test_slice_sab_deferred_400(client):
+    # Sab on a free-space slice needs body-intersection machinery; it is
+    # deferred and surfaces as a clean 400 the frontend greys out.
+    r = _slice_post(client, "mrt", quantity="Sab")
+    assert r.status_code == 400
+    assert "Sab" in r.get_json()["error"]
 
 
 @needs_packs
