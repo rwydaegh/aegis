@@ -159,9 +159,13 @@ def compute_slice(
         raise NotImplementedError(f"unknown slice quantity: {quantity!r}")
 
     # Compute stats from the same float32 array that ships in the buffer so the
-    # X-Stats header agrees exactly with the payload.
+    # X-Stats header agrees exactly with the payload. The peak tracks field
+    # strength (largest magnitude), so for the signed ReEx/y/z components it
+    # locks onto the strongest lobe even when that lobe is negative; peak_value
+    # then reports the signed field there. For non-negative quantities argmax of
+    # the magnitude is identical to argmax of the value.
     scalar = scalar.astype(np.float32)
-    flat_i = int(np.argmax(scalar))
+    flat_i = int(np.argmax(np.abs(scalar)))
     i, j = np.unravel_index(flat_i, scalar.shape)
     peak_xyz = plane.coords[i, j].tolist()
 

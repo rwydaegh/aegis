@@ -43,7 +43,9 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
         array_n = request.args.get("array_n", default=16, type=int)
         seed = request.args.get("seed", default=0, type=int)
         top_k = request.args.get("top_k", default=200, type=int)
-        top_k = min(int(top_k), 2000)  # bound allocation against a huge top_k
+        # Bound allocation against a huge top_k and keep a negative value from
+        # silently slicing entries off the end via the [::-1][:top_k] path.
+        top_k = min(max(int(top_k), 1), 2000)
         try:
             k_hat, psi, element_index, _n = _paths.load_paths(condition, array_n, seed, cache, cache_lock)
         except FileNotFoundError as e:
