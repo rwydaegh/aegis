@@ -109,7 +109,8 @@ export interface SliceWorld {
   center: Vec3
   e1: Vec3
   e2: Vec3
-  extent: number
+  /** Physical plane size as [width along e1, height along e2], metres. */
+  extent: [number, number]
 }
 
 export interface SliceResult {

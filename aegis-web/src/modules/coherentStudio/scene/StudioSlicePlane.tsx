@@ -28,7 +28,12 @@ const FRAG_SHADER = /* glsl */ `
   uniform float opacity;
   varying vec2 vUv;
   void main() {
-    float raw = texture2D(dataTex, vUv).r;
+    // The grid ships row-major as scalar[i, j] with i indexing e1 (plane local x)
+    // and j indexing e2 (local y). A DataTexture built (width=n2, height=n1) maps
+    // its column to j (e2) and row to i (e1), so the texture is the transpose of
+    // the plane's xy. Swap the sample coords so local x reads e1 and local y reads
+    // e2, keeping the rendered field aligned with the true world axes.
+    float raw = texture2D(dataTex, vec2(vUv.y, vUv.x)).r;
     float t;
     if (logMode > 0.5) {
       float eps = 1e-12;
@@ -108,9 +113,11 @@ export default function StudioSlicePlane() {
   const lutTex = useMemo(() => buildLutTexture(colormap), [colormap])
   useEffect(() => () => lutTex.dispose(), [lutTex])
 
-  // Plane geometry: rebuilt only when the physical extent changes.
-  const extent = sliceResult?.world.extent ?? 0.08
-  const geometry = useMemo(() => new THREE.PlaneGeometry(extent, extent), [extent])
+  // Plane geometry: rebuilt only when the physical extent changes. The backend
+  // returns extent as [width along e1, height along e2] (metres), matching the
+  // makeBasis(e1, e2, ...) orientation below.
+  const [extentW, extentH] = sliceResult?.world.extent ?? [0.08, 0.08]
+  const geometry = useMemo(() => new THREE.PlaneGeometry(extentW, extentH), [extentW, extentH])
   useEffect(() => () => geometry.dispose(), [geometry])
 
   // Material is created once; uniforms are patched in effects below.
@@ -195,7 +202,7 @@ export default function StudioSlicePlane() {
         <mesh geometry={geometry} material={material} />
         <Line points={refSquare} color="#ffffff" lineWidth={1.5} transparent opacity={0.8} />
         <mesh position={[0, 0, 0.001]}>
-          <sphereGeometry args={[Math.max(extent * 0.02, 0.002), 16, 16]} />
+          <sphereGeometry args={[Math.max(extentW * 0.02, 0.002), 16, 16]} />
           <meshBasicMaterial color="#00e5ff" depthTest={false} />
         </mesh>
       </primitive>
