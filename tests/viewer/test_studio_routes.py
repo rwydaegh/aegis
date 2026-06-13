@@ -67,7 +67,8 @@ def test_rays_returns_directions_and_power(client):
 
 @needs_packs
 def test_rays_missing_pack_404(client):
-    r = client.get("/api/studio/rays?condition=nlos&array_n=16&seed=0")
+    # seed 99 has no ray pack on disk for any condition, so this is a genuine miss.
+    r = client.get("/api/studio/rays?condition=los&array_n=16&seed=99")
     assert r.status_code == 404
 
 
