@@ -39,11 +39,20 @@ def test_available_packs_lists_stems(monkeypatch, tmp_path):
     assert packs["phantom"] == []
 
 
-def test_register_is_callable_noop():
-    # Stub must import and be callable without registering endpoints.
+def test_register_adds_studio_routes():
+    # register() wires the studio endpoints onto the Flask app.
+    import threading
+
+    from flask import Flask
+
     from aegis.viewer.routes import studio
 
-    assert studio.register(None, {}, None) is None
+    app = Flask(__name__)
+    studio.register(app, {}, threading.Lock())
+    rules = {r.rule for r in app.url_map.iter_rules()}
+    assert "/api/studio/manifest" in rules
+    assert "/api/studio/slice" in rules
+    assert "/api/studio/bodymap" in rules
 
 
 def test_paper_fork_paths_dir_type():
