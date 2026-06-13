@@ -33,11 +33,15 @@ export function useStudioBodyMap(): void {
       try {
         const res = await fetchBodyMap(buildBodyMapParams(useStudioStore.getState()))
         if (isStale()) return
+        const store = useStudioStore.getState()
         if (res.ok) {
-          useStudioStore.getState().setBodyMap(res.data)
+          store.setBodyMap(res.data)
+          store.setBodyMapNotPrecomputed(false)
         } else {
-          // Not precomputed: clear so the phantom renders without a heatmap.
-          useStudioStore.getState().setBodyMap(null)
+          // Not precomputed: clear so the phantom renders without a heatmap, but
+          // record the flag so the HUD can show a "not precomputed" provenance.
+          store.setBodyMap(null)
+          store.setBodyMapNotPrecomputed(true)
         }
       } catch (err) {
         if (isStale()) return

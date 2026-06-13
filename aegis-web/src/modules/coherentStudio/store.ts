@@ -38,6 +38,8 @@ interface StudioState {
   phantom: PhantomGeometry | null
   manifest: StudioManifest | null
   computing: boolean
+  /** True when the last body-map fetch found no precomputed pack for the combo. */
+  bodyMapNotPrecomputed: boolean
   /** Provenance of the currently displayed slice / body map (whichever was set last). */
   provenance: Provenance | null
 
@@ -59,6 +61,7 @@ interface StudioState {
   // --- Result actions ---
   setSliceResult: (sliceResult: SliceResult | null) => void
   setBodyMap: (bodyMap: BodyMapResult | null) => void
+  setBodyMapNotPrecomputed: (notPrecomputed: boolean) => void
   setPhantom: (phantom: PhantomGeometry | null) => void
   setManifest: (manifest: StudioManifest | null) => void
   setComputing: (computing: boolean) => void
@@ -85,6 +88,7 @@ export const useStudioStore = create<StudioState>()((set) => ({
   phantom: null,
   manifest: null,
   computing: false,
+  bodyMapNotPrecomputed: false,
   provenance: null,
 
   setCondition: (condition) => set({ condition }),
@@ -105,6 +109,7 @@ export const useStudioStore = create<StudioState>()((set) => ({
     set({ sliceResult, provenance: sliceResult ? sliceResult.provenance : null }),
   setBodyMap: (bodyMap) =>
     set({ bodyMap, provenance: bodyMap ? bodyMap.provenance : null }),
+  setBodyMapNotPrecomputed: (bodyMapNotPrecomputed) => set({ bodyMapNotPrecomputed }),
   setPhantom: (phantom) => set({ phantom }),
   setManifest: (manifest) => set({ manifest }),
   setComputing: (computing) => set({ computing }),
