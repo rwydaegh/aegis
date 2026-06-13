@@ -60,6 +60,10 @@ export function useStudioSlice(): void {
       void run()
     }, DEBOUNCE_MS)
 
-    return () => clearTimeout(timer)
+    return () => {
+      clearTimeout(timer)
+      // Drop any in-flight slice request when the key changes or the studio unmounts.
+      abortRef.current?.abort()
+    }
   }, [key])
 }

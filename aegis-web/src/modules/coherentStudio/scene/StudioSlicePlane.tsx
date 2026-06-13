@@ -80,7 +80,7 @@ export default function StudioSlicePlane() {
 
   // Stable object the TransformControls attaches to; children render inside it so
   // the plane, reference square, and focus dot move together.
-  const planeObj = useRef(new THREE.Group())
+  const planeObj = useMemo(() => new THREE.Group(), [])
   const draggingRef = useRef(false)
 
   // Data texture: rebuilt only when the slice scalar grid changes.
@@ -152,9 +152,9 @@ export default function StudioSlicePlane() {
     const ey = new THREE.Vector3(...toScene(e2)).normalize()
     const ez = new THREE.Vector3().crossVectors(ex, ey).normalize()
     const m = new THREE.Matrix4().makeBasis(ex, ey, ez)
-    planeObj.current.quaternion.setFromRotationMatrix(m)
-    planeObj.current.position.set(...toScene(center))
-    planeObj.current.updateMatrixWorld()
+    planeObj.quaternion.setFromRotationMatrix(m)
+    planeObj.position.set(...toScene(center))
+    planeObj.updateMatrixWorld()
   }, [sliceResult])
 
   // Reference square corners in the plane's local frame (z = small lift to avoid
@@ -178,7 +178,7 @@ export default function StudioSlicePlane() {
   // On drag end, convert the settled transform back to server coords and commit.
   const onMouseUp = () => {
     onDraggingChanged(false)
-    const obj = planeObj.current
+    const obj = planeObj
     const centerScene: [number, number, number] = [obj.position.x, obj.position.y, obj.position.z]
     const normalScene = new THREE.Vector3(0, 0, 1).applyQuaternion(obj.quaternion).normalize()
     const centerServer = toServer(centerScene) as ServerPos
@@ -191,7 +191,7 @@ export default function StudioSlicePlane() {
 
   return (
     <>
-      <primitive object={planeObj.current}>
+      <primitive object={planeObj}>
         <mesh geometry={geometry} material={material} />
         <Line points={refSquare} color="#ffffff" lineWidth={1.5} transparent opacity={0.8} />
         <mesh position={[0, 0, 0.001]}>
@@ -201,7 +201,7 @@ export default function StudioSlicePlane() {
       </primitive>
 
       <TransformControls
-        object={planeObj.current}
+        object={planeObj}
         mode="translate"
         size={0.6}
         onMouseDown={() => onDraggingChanged(true)}
