@@ -1,19 +1,18 @@
-"""Coherent Exposure Studio API routes (data layer).
+"""Coherent Exposure Studio API routes (runtime backend).
 
-Phase 1a is the data layer only: config resolution (``_config``) and this
-blueprint stub. ``register`` is intentionally a no-op for now; the studio
-endpoints (pack listing, body-map serving) arrive in a later task. The stub
-exists so the viewer app can wire the studio in without conditional imports.
-
-The runtime studio is fork-free: it reads precomputed packs resolved by
-``_config.studio_data_dir`` and never imports the paper fork or the ray tracer.
+Phase 1b serves the precomputed packs resolved by :mod:`._config` and
+reconstructs coherent field slices on demand. The runtime studio is
+fork-free: it imports only ``aegis.*`` (notably ``aegis.hotspot`` and
+``aegis.coherent``) plus stdlib/numpy, and never touches the paper fork or the
+ray tracer. Packs are produced offline by ``scripts/studio_precompute.py``.
 """
 
 from __future__ import annotations
 
 import threading
 
-from flask import Flask
+import numpy as np
+from flask import Flask, jsonify
 
 from ._config import available_packs, paper_fork_paths_dir, studio_data_dir
 
@@ -26,9 +25,86 @@ __all__ = [
 
 
 def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
-    """Register Coherent Exposure Studio API routes.
+    """Register the Coherent Exposure Studio API routes."""
+    from aegis.viewer.routes._helpers import get_json_dict
+    from aegis.viewer.routes.compute._responses import _json_dumps_safe
 
-    No-op stub for Phase 1a. Endpoints are added in a later task; this keeps
-    the registration call site stable in the meantime.
-    """
-    return None
+    from . import _bodymap, _paths, _precoders, _presets, _slice
+
+    @app.route("/api/studio/manifest")
+    def api_studio_manifest():
+        return jsonify(_presets.manifest())
+
+    @app.route("/api/studio/rays")
+    def api_studio_rays():
+        from flask import request
+
+        condition = request.args.get("condition", "los")
+        array_n = request.args.get("array_n", default=16, type=int)
+        seed = request.args.get("seed", default=0, type=int)
+        top_k = request.args.get("top_k", default=200, type=int)
+        try:
+            k_hat, psi, element_index, _n = _paths.load_paths(condition, array_n, seed, cache, cache_lock)
+        except FileNotFoundError as e:
+            return jsonify({"error": str(e)}), 404
+        return jsonify(_paths.unique_directions(k_hat, psi, element_index, top_k))
+
+    @app.route("/api/studio/slice", methods=["POST"])
+    def api_studio_slice():
+        params, err = get_json_dict()
+        if err is not None:
+            return err
+        condition = params.get("condition", "los")
+        array_n = int(params.get("array_n", 16))
+        seed = int(params.get("seed", 0))
+        beam = params.get("beam", "mrt")
+        focus_xyz = params.get("focus_xyz", [0.923, -0.005, 0.734])
+        freq_ghz = float(params.get("frequency_ghz", 10))
+        freq_hz = freq_ghz * 1e9
+        quantity = params.get("quantity", "S")
+        plane = dict(params.get("plane", {}))
+        plane["center"] = focus_xyz
+
+        try:
+            paths = _paths.load_paths(condition, array_n, seed, cache, cache_lock)
+            phantom = _paths.load_phantom("thelonious", cache, cache_lock) if beam == "ecbf" else None
+            x = _precoders.build_precoder(beam, paths, focus_xyz, freq_hz, power=1.0, phantom=phantom)
+            out = _slice.compute_slice(paths, x, plane, freq_hz, quantity)
+        except FileNotFoundError as e:
+            return jsonify({"error": str(e)}), 404
+        except (KeyError, ValueError, NotImplementedError) as e:
+            return jsonify({"error": str(e)}), 400
+
+        scalar = out["scalar"]
+        stats = {
+            "shape": list(scalar.shape),
+            "world": out["world"],
+            "vmin": out["vmin"],
+            "vmax": out["vmax"],
+            "units": out["units"],
+            "peak_xyz": out["peak_xyz"],
+            "peak_value": out["peak_value"],
+            "quantity": out["quantity"],
+            "provenance": f"studio runtime | {condition} bs{array_n} seed{seed} | beam={beam} | {freq_ghz:g}GHz",
+        }
+        buf = np.ascontiguousarray(scalar, dtype=np.float32).tobytes()
+        resp = app.make_response(buf)
+        resp.headers["Content-Type"] = "application/octet-stream"
+        resp.headers["X-Stats"] = _json_dumps_safe(stats)
+        resp.headers["Access-Control-Expose-Headers"] = "X-Stats"
+        return resp
+
+    @app.route("/api/studio/bodymap")
+    def api_studio_bodymap():
+        from flask import request
+
+        condition = request.args.get("condition", "los")
+        array_n = request.args.get("array_n", default=16, type=int)
+        beam = request.args.get("beam", "mrt")
+        quantity = request.args.get("quantity", "mrt")
+        frequency_ghz = request.args.get("frequency_ghz", default=28.0, type=float)
+        realisation = request.args.get("realisation", default=0, type=int)
+        out = _bodymap.get_bodymap(condition, array_n, beam, quantity, frequency_ghz, realisation, cache, cache_lock)
+        if out.get("not_precomputed"):
+            return jsonify({"error": out["error"], "not_precomputed": True}), 409
+        return jsonify(out)

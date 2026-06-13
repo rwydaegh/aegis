@@ -207,6 +207,7 @@ def _register_route_modules(app: Flask) -> None:
         parametric,
         patterns,
         sentry_webhook,
+        studio,
         terrain,
     )
 
@@ -226,6 +227,7 @@ def _register_route_modules(app: Flask) -> None:
         optimize,
         bugreport,
         lab,
+        studio,
     ):
         module.register(app, _cache, _cache_lock)
 
