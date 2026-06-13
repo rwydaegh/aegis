@@ -36,9 +36,12 @@ export interface StudioManifest {
   seeds: number[]
   array_sizes: number[]
   beams: string[]
-  /** Each entry describes one precomputed (condition, array_n, beam, ...) combo. */
-  precomputed: unknown[][]
-  /** Canonical opening scene; shape is backend-defined. */
+  /**
+   * Precomputed pack descriptors. The backend manifest returns these under the
+   * key `packs` (verified against routes/studio/_presets.py::manifest).
+   */
+  packs: unknown[]
+  /** Canonical opening scene; shape is backend-defined (snake_case keys). */
   default_scene: Record<string, unknown>
 }
 
