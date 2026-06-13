@@ -43,6 +43,7 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
         array_n = request.args.get("array_n", default=16, type=int)
         seed = request.args.get("seed", default=0, type=int)
         top_k = request.args.get("top_k", default=200, type=int)
+        top_k = min(int(top_k), 2000)  # bound allocation against a huge top_k
         try:
             k_hat, psi, element_index, _n = _paths.load_paths(condition, array_n, seed, cache, cache_lock)
         except FileNotFoundError as e:
@@ -55,24 +56,27 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
         if err is not None:
             return err
         condition = params.get("condition", "los")
-        array_n = int(params.get("array_n", 16))
-        seed = int(params.get("seed", 0))
         beam = params.get("beam", "mrt")
         focus_xyz = params.get("focus_xyz", [0.923, -0.005, 0.734])
-        freq_ghz = float(params.get("frequency_ghz", 10))
-        freq_hz = freq_ghz * 1e9
         quantity = params.get("quantity", "S")
-        plane = dict(params.get("plane", {}))
-        plane["center"] = focus_xyz
 
         try:
+            # Coerce client-supplied fields inside the try so a malformed body
+            # (e.g. {"array_n": "abc"} or {"plane": 5}) returns 400, not 500.
+            array_n = int(params.get("array_n", 16))
+            seed = int(params.get("seed", 0))
+            freq_ghz = float(params.get("frequency_ghz", 10))
+            freq_hz = freq_ghz * 1e9
+            plane = dict(params.get("plane", {}))
+            plane["center"] = focus_xyz
+
             paths = _paths.load_paths(condition, array_n, seed, cache, cache_lock)
             phantom = _paths.load_phantom("thelonious", cache, cache_lock) if beam == "ecbf" else None
             x = _precoders.build_precoder(beam, paths, focus_xyz, freq_hz, power=1.0, phantom=phantom)
             out = _slice.compute_slice(paths, x, plane, freq_hz, quantity)
         except FileNotFoundError as e:
             return jsonify({"error": str(e)}), 404
-        except (KeyError, ValueError, NotImplementedError) as e:
+        except (KeyError, ValueError, TypeError, NotImplementedError) as e:
             return jsonify({"error": str(e)}), 400
 
         scalar = out["scalar"]

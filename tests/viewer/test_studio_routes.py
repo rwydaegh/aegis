@@ -122,6 +122,40 @@ def test_slice_default_peak_matches_focusing(client):
     assert mrt["peak_value"] <= worstcase["peak_value"] * 1.02
 
 
+@pytest.mark.parametrize("body", [{"array_n": "abc"}, {"plane": 5}])
+def test_slice_malformed_body_400(client, body):
+    # Malformed client fields must be coerced inside the try block so they map
+    # to a clean 400, not a 500. int("abc") raises ValueError, dict(5) raises
+    # TypeError; both are caught. No packs needed (the cast fails first).
+    r = client.post("/api/studio/slice", json=body)
+    assert r.status_code == 400, r.get_data(as_text=True)
+    assert "error" in r.get_json()
+
+
+@needs_packs
+def test_slice_res_is_clamped(client):
+    # An unbounded res allocates (res, res, 3) and OOMs the server. The endpoint
+    # must clamp res to <= 512 and still succeed (no 500/OOM).
+    body = {
+        "condition": "los",
+        "array_n": 16,
+        "seed": 0,
+        "beam": "mrt",
+        "focus_xyz": [0.923, -0.005, 0.734],
+        "frequency_ghz": 10,
+        "plane": {"orientation": "transverse", "extent_m": 0.08, "res": 99999},
+        "quantity": "S",
+    }
+    r = client.post("/api/studio/slice", json=body)
+    assert r.status_code == 200, r.get_data(as_text=True)
+    stats = json.loads(r.headers["X-Stats"])
+    assert stats["shape"] == [512, 512]
+    arr = np.frombuffer(r.data, dtype=np.float32)
+    assert arr.shape[0] == 512 * 512
+    # X-Stats agrees exactly with the shipped float32 payload.
+    assert float(arr.max()) == pytest.approx(stats["peak_value"], rel=0, abs=0)
+
+
 @needs_packs
 def test_bodymap_worstcase(client):
     r = client.get("/api/studio/bodymap?condition=los&array_n=16&beam=worstcase&quantity=worstcase&frequency_ghz=28")

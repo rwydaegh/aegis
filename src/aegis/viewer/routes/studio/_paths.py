@@ -25,6 +25,9 @@ def _cache_get(cache: dict | None, lock, top_key: str, sub_key, builder):
         store = cache.setdefault(top_key, {})
         if sub_key in store:
             return store[sub_key]
+    # Lock intentionally released before builder() so heavy np.load IO does not
+    # serialize requests. The tradeoff is an idempotent duplicate build under a
+    # concurrent miss. Do not hoist builder() into the lock.
     value = builder()
     with lock:
         cache.setdefault(top_key, {})[sub_key] = value

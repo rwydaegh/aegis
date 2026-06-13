@@ -33,8 +33,11 @@ def compute_slice(paths, x, plane_spec: dict, freq_hz: float, quantity: str) -> 
     k_hat, psi, element_index, _n_elements = paths
     center = np.asarray(plane_spec["center"], dtype=float)
     orientation = plane_spec.get("orientation", "transverse")
+    # Bound client-supplied geometry: an unbounded res allocates (res, res, 3)
+    # and OOMs the server, an unbounded extent is physically meaningless.
     extent = float(plane_spec.get("extent_m", 0.08))
-    res = int(plane_spec.get("res", 160))
+    extent = min(max(extent, 1e-3), 3.0)
+    res = min(max(int(plane_spec.get("res", 160)), 8), 512)
     beam = _beam_axis(center)
 
     if orientation == "transverse":
@@ -46,9 +49,12 @@ def compute_slice(paths, x, plane_spec: dict, freq_hz: float, quantity: str) -> 
             normal = np.cross(beam, np.array([1.0, 0.0, 0.0]))
         in_plane = beam
     elif orientation == "free":
-        if plane_spec.get("normal_xyz") is None:
+        normal_xyz = plane_spec.get("normal_xyz")
+        if normal_xyz is None:
             raise ValueError("free orientation requires normal_xyz")
-        normal = np.asarray(plane_spec["normal_xyz"], dtype=float)
+        normal = np.asarray(normal_xyz, dtype=float)
+        if np.linalg.norm(normal) < 1e-9:
+            raise ValueError("free orientation normal_xyz must be non-degenerate")
         in_plane = None
     else:
         raise ValueError(f"unknown plane orientation: {orientation!r}")
@@ -65,12 +71,15 @@ def compute_slice(paths, x, plane_spec: dict, freq_hz: float, quantity: str) -> 
     else:
         raise NotImplementedError(f"quantity {quantity!r} arrives in Phase 2")
 
+    # Compute stats from the same float32 array that ships in the buffer so the
+    # X-Stats header agrees exactly with the payload.
+    scalar = scalar.astype(np.float32)
     flat_i = int(np.argmax(scalar))
     i, j = np.unravel_index(flat_i, scalar.shape)
     peak_xyz = plane.coords[i, j].tolist()
 
     return {
-        "scalar": scalar.astype(np.float32),
+        "scalar": scalar,
         "world": {
             "center": center.tolist(),
             "e1": plane.e1.tolist(),
