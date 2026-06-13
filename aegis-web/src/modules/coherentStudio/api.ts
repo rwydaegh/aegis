@@ -29,6 +29,19 @@ export type Provenance = unknown
 // Manifest
 // ---------------------------------------------------------------------------
 
+/**
+ * Precomputed packs present in the studio data dir, keyed by pack kind. The
+ * backend (`routes/studio/_config.py::available_packs`) returns a dict of pack
+ * kind -> sorted list of pack stems (filenames without the `.npz` suffix), not
+ * a flat array.
+ */
+export interface StudioPacks {
+  rays: string[]
+  phantom: string[]
+  bodymaps: string[]
+  ensemble: string[]
+}
+
 export interface StudioManifest {
   phantoms: string[]
   conditions: string[]
@@ -36,11 +49,13 @@ export interface StudioManifest {
   seeds: number[]
   array_sizes: number[]
   beams: string[]
+  /** Per-triangle body-map quantities the backend can serve (floor, mrt, ...). */
+  body_map_quantities: string[]
   /**
    * Precomputed pack descriptors. The backend manifest returns these under the
    * key `packs` (verified against routes/studio/_presets.py::manifest).
    */
-  packs: unknown[]
+  packs: StudioPacks
   /** Canonical opening scene; shape is backend-defined (snake_case keys). */
   default_scene: Record<string, unknown>
 }
