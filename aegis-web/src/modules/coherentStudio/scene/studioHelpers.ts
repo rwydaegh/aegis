@@ -56,6 +56,34 @@ export function expandTriangleValues(perTri: Float32Array | number[]): Float32Ar
   return out
 }
 
+/**
+ * Snap a focus point to the nearest body-surface triangle centroid. Mirrors the
+ * backend's `_phantom.snap_focus_to_skin` so the focus marker and beam axis the
+ * scene draws agree with the steering focus the slice endpoint actually uses.
+ * `centroids` is the flat per-triangle array (length nFaces * 3). Returns the
+ * input unchanged when there are no centroids.
+ */
+export function snapFocusToSkin(
+  focus: [number, number, number],
+  centroids: Float32Array | null | undefined,
+): [number, number, number] {
+  if (!centroids || centroids.length < 3) return focus
+  const [fx, fy, fz] = focus
+  let best = 0
+  let bestD2 = Infinity
+  for (let i = 0; i < centroids.length; i += 3) {
+    const dx = centroids[i] - fx
+    const dy = centroids[i + 1] - fy
+    const dz = centroids[i + 2] - fz
+    const d2 = dx * dx + dy * dy + dz * dz
+    if (d2 < bestD2) {
+      bestD2 = d2
+      best = i
+    }
+  }
+  return [centroids[best], centroids[best + 1], centroids[best + 2]]
+}
+
 /** Colormap lookup returning [r, g, b] in 0..255 for a normalised t in [0, 1]. */
 export function colormapRgb(name: string, t: number): [number, number, number] {
   if (name === 'jet') {

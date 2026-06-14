@@ -27,10 +27,19 @@ interface StudioState {
   plane: SlicePlane
   fieldQuantity: StudioFieldQuantity
   bodyMapQuantity: string
+  /** ECBF absorbed-power budget as a fraction of MRT (1 = MRT, lower = safer). */
+  ecbfBudgetFrac: number
 
-  // --- Render-only (never trigger a re-fetch) ---
+  // --- Render-only (never trigger a slice/body-map re-fetch) ---
   colormap: string
   scaleMode: StudioScaleMode
+  /** Number of arrival rays drawn in the scene (decoration; own fetch). */
+  topK: number
+  showRays: boolean
+  showArrayPattern: boolean
+  wireframe: boolean
+  /** When true, clicking the body moves the focus to the clicked surface point. */
+  pickFocusOnBody: boolean
 
   // --- Results ---
   sliceResult: SliceResult | null
@@ -57,6 +66,12 @@ interface StudioState {
   setBodyMapQuantity: (bodyMapQuantity: string) => void
   setColormap: (colormap: string) => void
   setScaleMode: (scaleMode: StudioScaleMode) => void
+  setEcbfBudgetFrac: (ecbfBudgetFrac: number) => void
+  setTopK: (topK: number) => void
+  setShowRays: (showRays: boolean) => void
+  setShowArrayPattern: (showArrayPattern: boolean) => void
+  setWireframe: (wireframe: boolean) => void
+  setPickFocusOnBody: (pickFocusOnBody: boolean) => void
 
   // --- Result actions ---
   setSliceResult: (sliceResult: SliceResult | null) => void
@@ -79,9 +94,15 @@ export const useStudioStore = create<StudioState>()((set) => ({
   plane: { orientation: 'transverse', normalXyz: null, extentM: 0.08, res: 160 },
   fieldQuantity: 'S',
   bodyMapQuantity: 'mrt',
+  ecbfBudgetFrac: 0.5,
 
   colormap: 'viridis',
   scaleMode: 'auto',
+  topK: 150,
+  showRays: true,
+  showArrayPattern: true,
+  wireframe: false,
+  pickFocusOnBody: false,
 
   sliceResult: null,
   bodyMap: null,
@@ -104,6 +125,12 @@ export const useStudioStore = create<StudioState>()((set) => ({
   setBodyMapQuantity: (bodyMapQuantity) => set({ bodyMapQuantity }),
   setColormap: (colormap) => set({ colormap }),
   setScaleMode: (scaleMode) => set({ scaleMode }),
+  setEcbfBudgetFrac: (ecbfBudgetFrac) => set({ ecbfBudgetFrac }),
+  setTopK: (topK) => set({ topK }),
+  setShowRays: (showRays) => set({ showRays }),
+  setShowArrayPattern: (showArrayPattern) => set({ showArrayPattern }),
+  setWireframe: (wireframe) => set({ wireframe }),
+  setPickFocusOnBody: (pickFocusOnBody) => set({ pickFocusOnBody }),
 
   setSliceResult: (sliceResult) =>
     set({ sliceResult, provenance: sliceResult ? sliceResult.provenance : null }),
@@ -135,6 +162,7 @@ export type SliceKeyState = Pick<
   | 'frequencyGhz'
   | 'plane'
   | 'fieldQuantity'
+  | 'ecbfBudgetFrac'
 >
 
 /** Params requiring a body-map pack swap. */
@@ -157,6 +185,7 @@ export function sliceFetchKey(s: SliceKeyState): string {
     s.plane.extentM,
     s.plane.res,
     s.fieldQuantity,
+    s.beam === 'ecbf' ? s.ecbfBudgetFrac : null,
   ])
 }
 

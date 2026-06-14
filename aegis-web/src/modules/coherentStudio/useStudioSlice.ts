@@ -16,6 +16,7 @@ function buildSliceParams(s: ReturnType<typeof useStudioStore.getState>): SliceP
     frequencyGhz: s.frequencyGhz,
     plane: s.plane,
     quantity: s.fieldQuantity,
+    ecbfBudgetFrac: s.ecbfBudgetFrac,
   }
 }
 

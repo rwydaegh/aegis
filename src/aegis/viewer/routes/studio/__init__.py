@@ -60,6 +60,7 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
         condition = params.get("condition", "los")
         beam = params.get("beam", "mrt")
         focus_xyz = params.get("focus_xyz", [0.923, -0.005, 0.734])
+        focus_mode = params.get("focus_mode", "free-space")
         quantity = params.get("quantity", "S")
 
         try:
@@ -69,6 +70,12 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             seed = int(params.get("seed", 0))
             freq_ghz = float(params.get("frequency_ghz", 10))
             freq_hz = freq_ghz * 1e9
+            ecbf_budget_frac = float(params.get("ecbf_budget_frac", 0.5))
+            # "at-skin" snaps the steering focus onto the nearest body surface so
+            # the beam targets the skin where absorbed power matters; "free-space"
+            # leaves the focus wherever the sliders placed it.
+            if focus_mode == "at-skin":
+                focus_xyz = _phantom.snap_focus_to_skin(focus_xyz, cache=cache, cache_lock=cache_lock)
             plane = dict(params.get("plane", {}))
             plane["center"] = focus_xyz
 
@@ -86,7 +93,7 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
                     return jsonify(
                         {"error": f"exposure-operator (Q) pack not precomputed: {stem}", "not_precomputed": True}
                     ), 409
-                x = _precoders.build_ecbf_from_q(paths, focus_xyz, freq_hz, q, power=1.0)
+                x = _precoders.build_ecbf_from_q(paths, focus_xyz, freq_hz, q, power=1.0, budget_frac=ecbf_budget_frac)
                 out = _slice.compute_slice(paths, x, plane, freq_hz, quantity)
             else:
                 x = _precoders.build_precoder(beam, paths, focus_xyz, freq_hz, power=1.0)

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { scalarToLutIndex, expandTriangleValues } from '../scene/studioHelpers'
+import { scalarToLutIndex, expandTriangleValues, snapFocusToSkin } from '../scene/studioHelpers'
 
 describe('scalarToLutIndex', () => {
   const N = 256
@@ -65,5 +65,20 @@ describe('expandTriangleValues', () => {
       expect(out[f * 3 + 1]).toBe(perTri[f])
       expect(out[f * 3 + 2]).toBe(perTri[f])
     }
+  })
+})
+
+describe('snapFocusToSkin', () => {
+  // Three centroids; the focus should land on the nearest one.
+  const centroids = new Float32Array([0, 0, 0, 1, 0, 0, 0, 2, 0])
+
+  it('snaps to the nearest centroid', () => {
+    expect(snapFocusToSkin([0.9, 0.1, 0], centroids)).toEqual([1, 0, 0])
+    expect(snapFocusToSkin([0.1, 1.9, 0], centroids)).toEqual([0, 2, 0])
+  })
+
+  it('returns the focus unchanged when there are no centroids', () => {
+    expect(snapFocusToSkin([3, 3, 3], null)).toEqual([3, 3, 3])
+    expect(snapFocusToSkin([3, 3, 3], new Float32Array([]))).toEqual([3, 3, 3])
   })
 })

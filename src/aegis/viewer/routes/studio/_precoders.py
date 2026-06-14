@@ -91,15 +91,19 @@ def build_ecbf_from_q(
     freq_hz: float,
     q: np.ndarray,
     power: float = 1.0,
+    budget_frac: float = _ECBF_BUDGET_FRAC,
 ) -> np.ndarray:
     """Solve the ECBF QCQP against a precomputed exposure operator ``q``.
 
     ``q`` is the served Hermitian PSD exposure operator
     (``data/studio/qop/{condition}_bs{N}_{ghz}.npz``). The absorbed-power budget
-    is set exactly as the offline precompute defines it:
-    ``P_abs_max = _ECBF_BUDGET_FRAC * (x_mrt^H q x_mrt)`` with an MRT precoder.
-    ``solve_ecbf`` may return ``||x||^2 <= power`` (power-slack regime); that is
-    the correct QCQP optimum, so the result is not renormalised.
+    is ``P_abs_max = budget_frac * (x_mrt^H q x_mrt)`` with an MRT precoder, so
+    ``budget_frac`` traces the exposure / signal Pareto front: 1.0 reproduces
+    the MRT operating point, smaller values trade received signal for lower
+    absorbed power. It defaults to the offline-precompute fraction and is
+    clipped to ``[1e-3, 1]``. ``solve_ecbf`` may return ``||x||^2 <= power``
+    (power-slack regime); that is the correct QCQP optimum, so the result is not
+    renormalised.
     """
     from aegis.coherent import solve_ecbf
     from aegis.hotspot import channel_at, make_rx_response
@@ -107,8 +111,9 @@ def build_ecbf_from_q(
     k_hat, psi, element_index, n_elements = paths
     focus = np.asarray(focus_xyz, dtype=float)
     q = np.asarray(q)
+    frac = float(np.clip(budget_frac, 1e-3, 1.0))
     ue_rx = make_rx_response("dipole", freq_hz)
     h = channel_at(focus, k_hat, psi, element_index, freq_hz, n_elements, rx_response=ue_rx)
     x_mrt = np.sqrt(power) * np.conj(h) / np.linalg.norm(h)
     p_abs_mrt = float(np.real(x_mrt.conj() @ q @ x_mrt))
-    return np.asarray(solve_ecbf(h, q, _ECBF_BUDGET_FRAC * p_abs_mrt, power))
+    return np.asarray(solve_ecbf(h, q, frac * p_abs_mrt, power))

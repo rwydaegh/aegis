@@ -178,21 +178,30 @@ def test_phantom_returns_geometry_buffer(client):
     stats = json.loads(r.headers["X-Stats"])
     assert stats["mesh"] == "thelonious"
     manifest = {a["name"]: a for a in stats["arrays"]}
-    # The contract the frontend slices against.
-    assert manifest["vertices"]["shape"] == [24000, 3]
+    # The contract the frontend slices against: full-resolution mesh (no
+    # decimation), N vertices x 3 and M faces x 3, centroids/normals per face.
+    n_vertices, vcols = manifest["vertices"]["shape"]
+    n_faces, fcols = manifest["faces"]["shape"]
+    assert vcols == 3
+    assert fcols == 3
+    assert n_vertices > 0
+    assert n_faces > 0
     assert manifest["vertices"]["dtype"] == "float32"
-    assert manifest["faces"]["shape"] == [8000, 3]
     assert manifest["faces"]["dtype"] == "int32"
     assert {"centroids", "normals"} <= set(manifest)
+    assert manifest["centroids"]["shape"] == [n_faces, 3]
+    assert manifest["normals"]["shape"] == [n_faces, 3]
+    assert stats["n_vertices"] == n_vertices
+    assert stats["n_faces"] == n_faces
     # Each array slices out of the binary body at its declared offset/shape.
     data = r.data
     verts = manifest["vertices"]
     v = np.frombuffer(data, dtype=np.float32, count=verts["length"], offset=verts["offset"])
-    assert v.reshape(verts["shape"]).shape == (24000, 3)
+    assert v.reshape(verts["shape"]).shape == (n_vertices, 3)
     faces = manifest["faces"]
     f = np.frombuffer(data, dtype=np.int32, count=faces["length"], offset=faces["offset"])
-    assert f.reshape(faces["shape"]).shape == (8000, 3)
-    assert int(f.max()) < 24000  # face indices stay inside the vertex soup
+    assert f.reshape(faces["shape"]).shape == (n_faces, 3)
+    assert int(f.max()) < n_vertices  # face indices stay inside the vertex soup
 
 
 def test_phantom_unknown_mesh_404(client):
@@ -214,6 +223,32 @@ def _slice_post(client, beam, quantity="S", frequency_ghz=10, res=160):
         "quantity": quantity,
     }
     return client.post("/api/studio/slice", json=body)
+
+
+@needs_phantom
+def test_slice_focus_mode_at_skin_snaps_to_body(client):
+    # focus_mode="at-skin" snaps the steering focus onto the nearest body-surface
+    # centroid. A focus set off the body (well inside free space) must produce a
+    # different field than the same focus in free-space mode, since the precoder
+    # now steers at the snapped skin point.
+    off_body = [0.923, -0.4, 0.734]  # 40 cm in front of the chest
+    common = {
+        "condition": "los",
+        "array_n": 16,
+        "seed": 0,
+        "beam": "mrt",
+        "focus_xyz": off_body,
+        "frequency_ghz": 10,
+        "plane": {"orientation": "transverse", "extent_m": 0.08, "res": 160},
+        "quantity": "S",
+    }
+    r_free = client.post("/api/studio/slice", json={**common, "focus_mode": "free-space"})
+    r_skin = client.post("/api/studio/slice", json={**common, "focus_mode": "at-skin"})
+    assert r_free.status_code == 200, r_free.get_data(as_text=True)
+    assert r_skin.status_code == 200, r_skin.get_data(as_text=True)
+    # Snapping moves the slice plane center (and the steered field), so the bytes
+    # differ from the free-space request.
+    assert r_free.data != r_skin.data
 
 
 @needs_packs
@@ -337,7 +372,11 @@ def test_bodymap_worstcase(client):
     r = client.get("/api/studio/bodymap?condition=los&array_n=16&beam=worstcase&quantity=worstcase&frequency_ghz=28")
     assert r.status_code == 200, r.get_data(as_text=True)
     j = r.get_json()
-    assert len(j["values"]) == 8000
+    # One value per phantom face: the body map must align to the full-resolution
+    # phantom mesh the geometry endpoint serves.
+    ph = client.get("/api/studio/phantom?mesh=thelonious")
+    n_faces = json.loads(ph.headers["X-Stats"])["n_faces"]
+    assert len(j["values"]) == n_faces
     assert j["vmax"] >= j["vmin"]
     assert "provenance" in j
 

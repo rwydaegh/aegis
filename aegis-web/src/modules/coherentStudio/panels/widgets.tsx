@@ -148,3 +148,63 @@ export function DiscreteSlider<T>({
     </label>
   )
 }
+
+/** A continuous range slider over [min, max] with a formatted value readout. */
+export function Slider({
+  value,
+  min,
+  max,
+  step,
+  onChange,
+  labelOf,
+  disabled,
+}: {
+  value: number
+  min: number
+  max: number
+  step: number
+  onChange: (v: number) => void
+  labelOf?: (v: number) => string
+  disabled?: boolean
+}) {
+  return (
+    <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, opacity: disabled ? 0.4 : 1 }}>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        disabled={disabled}
+        onChange={(e) => onChange(parseFloat(e.target.value))}
+        style={{ flex: 1 }}
+      />
+      <span style={{ width: 56, textAlign: 'right', color: '#aaa', fontVariantNumeric: 'tabular-nums' }}>
+        {labelOf ? labelOf(value) : value}
+      </span>
+    </label>
+  )
+}
+
+/** A labelled checkbox row. */
+export function Checkbox({
+  checked,
+  onChange,
+  children,
+  title,
+}: {
+  checked: boolean
+  onChange: (v: boolean) => void
+  children: ReactNode
+  title?: string
+}) {
+  return (
+    <label
+      title={title}
+      style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#ccc', margin: '8px 0', cursor: 'pointer' }}
+    >
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+      {children}
+    </label>
+  )
+}

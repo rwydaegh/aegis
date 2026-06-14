@@ -40,6 +40,8 @@ export interface StudioPacks {
   phantom: string[]
   bodymaps: string[]
   ensemble: string[]
+  /** Exposure-operator (Q) pack stems, e.g. `los_bs16_10`. Gates the ECBF beam. */
+  qop: string[]
 }
 
 export interface StudioManifest {
@@ -102,6 +104,8 @@ export interface SliceParams {
   frequencyGhz: number
   plane: SlicePlane
   quantity: StudioFieldQuantity
+  /** ECBF absorbed-power budget as a fraction of MRT; only used when beam=ecbf. */
+  ecbfBudgetFrac?: number
 }
 
 /** World-space frame of the returned scalar grid (all Z-up metres). */
@@ -155,7 +159,7 @@ export interface BodyMapParams {
 }
 
 export interface BodyMapResult {
-  /** Per-triangle values, length 8000, aligned to phantom faces. */
+  /** Per-triangle values, one per phantom face, aligned to the phantom mesh. */
   values: number[]
   vmin: number
   vmax: number
@@ -272,6 +276,7 @@ function slicePayload(params: SliceParams) {
       res: params.plane.res,
     },
     quantity: params.quantity,
+    ecbf_budget_frac: params.ecbfBudgetFrac ?? 0.5,
   }
 }
 

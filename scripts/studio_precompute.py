@@ -50,7 +50,6 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 FORK_ROOT = REPO_ROOT / "papers" / "coherent-exposure-operator" / "code"
 
 UE_IDX = 4  # the 14 m UE, mid-corridor (e11 convention)
-MAX_TRIANGLES = 8000
 BEAMS = ("floor", "mrt", "worstcase", "amp", "ecbf")
 ENSEMBLE_SEEDS = (0, 1, 2, 3, 4, 5)
 ECBF_BUDGET_FRAC = 0.5  # P_abs_max as a fraction of the MRT absorbed power
@@ -231,16 +230,23 @@ def _load_rays(studio_dir: Path, bs_n: int, condition: str, seed: int):
 # Phantom
 # --------------------------------------------------------------------------
 def _load_body(bs_n: int):
-    """Load the placed, decimated thelonious phantom in the e11 world frame.
+    """Load the placed, full-resolution thelonious phantom in the e11 world frame.
 
     Replicates the fork's ``load_phantom_at_ue`` placement (translate so feet
-    are at z=0 and centre at the UE xy, then linspace-decimate to
-    ``MAX_TRIANGLES``) so face order matches the body maps. Deliberately avoids
-    importing the fork's e8_rt_runner module, whose top-level ``import
-    sionna.rt`` pulls in TensorFlow and exhausts memory; only ``build_scene``
-    (pure numpy) and the vendored ``BodyMesh`` are needed here. Placement
-    depends only on the deterministic UE xy, so geometry is identical across
-    conditions and seeds.
+    are at z=0 and centre at the UE xy). The full mesh (~23.8k triangles) is
+    kept: the previous ``np.linspace`` index-decimation to 8000 faces
+    threw away two thirds of the faces at scattered indices, leaving a
+    non-manifold scatter (~15% shared edges) that rendered as a holey body.
+    Every downstream build (``_compute_g_tilde``, ``_compute_q_chunked``) is
+    already triangle-chunked, so the working set is capped by ``chunk`` and is
+    independent of the triangle count; full resolution only costs wall-clock,
+    not memory, and the served mesh is now a coherent closed surface.
+
+    Deliberately avoids importing the fork's e8_rt_runner module, whose
+    top-level ``import sionna.rt`` pulls in TensorFlow and exhausts memory; only
+    ``build_scene`` (pure numpy) and the vendored ``BodyMesh`` are needed here.
+    Placement depends only on the deterministic UE xy, so geometry is identical
+    across conditions and seeds.
     """
     _bootstrap_fork()
     import e8_scene_setup as scene_lib
@@ -257,12 +263,7 @@ def _load_body(bs_n: int):
     new_v[:, :, 2] -= bb_min[2]
     new_v[:, :, 0] += ue_x
     new_v[:, :, 1] += ue_y
-    normals = mesh.normals
-    if new_v.shape[0] > MAX_TRIANGLES:
-        idx = np.linspace(0, new_v.shape[0] - 1, MAX_TRIANGLES, dtype=int)
-        new_v = new_v[idx]
-        normals = normals[idx]
-    body = BodyMesh.from_arrays(new_v, normals=normals, name=f"thelonious_at_UE{UE_IDX}")
+    body = BodyMesh.from_arrays(new_v, normals=mesh.normals, name=f"thelonious_at_UE{UE_IDX}")
     return spec, body
 
 

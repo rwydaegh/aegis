@@ -6,14 +6,14 @@ import type { StudioFieldQuantity, StudioManifest, StudioPacks } from '../api'
 // tested in the node vitest env.
 // ---------------------------------------------------------------------------
 
-const EMPTY_PACKS: StudioPacks = { rays: [], phantom: [], bodymaps: [], ensemble: [] }
+const EMPTY_PACKS: StudioPacks = { rays: [], phantom: [], bodymaps: [], ensemble: [], qop: [] }
 
 /** Read the typed pack lists off the manifest, tolerating a missing manifest. */
 export function packsOf(manifest: StudioManifest | null): StudioPacks {
   const p = manifest?.packs
   if (!p || typeof p !== 'object') return EMPTY_PACKS
   // Cast through unknown: the backend is trusted to send a dict, but tolerate
-  // missing / malformed keys defensively rather than assuming all four lists.
+  // missing / malformed keys defensively rather than assuming all the lists.
   const o = p as unknown as Record<string, unknown>
   const list = (v: unknown): string[] => (Array.isArray(v) ? (v.filter((x) => typeof x === 'string') as string[]) : [])
   return {
@@ -21,6 +21,7 @@ export function packsOf(manifest: StudioManifest | null): StudioPacks {
     phantom: list(o.phantom),
     bodymaps: list(o.bodymaps),
     ensemble: list(o.ensemble),
+    qop: list(o.qop),
   }
 }
 
@@ -70,25 +71,63 @@ export function bodyMapHasPack(
   return packs.bodymaps.includes(bodyMapStem(condition, arrayN, quantity, frequencyGhz))
 }
 
+/** Exposure-operator (Q) pack stem for a (condition, array, frequency). */
+export function qopStem(condition: string, arrayN: number, frequencyGhz: number): string {
+  return `${condition}_bs${arrayN}_${freqTag(frequencyGhz)}`
+}
+
+/**
+ * The ECBF beam needs a precomputed exposure operator Q for the current
+ * (condition, array, frequency). Q packs ship at the dosimetry frequencies the
+ * offline precompute covered (10 and 28 GHz today), so ECBF greys out at the
+ * intermediate frequencies until their Q packs exist.
+ */
+export function qopHasPack(
+  packs: StudioPacks,
+  condition: string,
+  arrayN: number,
+  frequencyGhz: number,
+): boolean {
+  return packs.qop.includes(qopStem(condition, arrayN, frequencyGhz))
+}
+
+/**
+ * Whether a beam can be computed for the current scenario. Every beam needs the
+ * condition's ray pack; ECBF additionally needs the exposure-operator (Q) pack
+ * at this frequency (it solves the QCQP against the precomputed operator).
+ */
+export function beamAvailability(
+  packs: StudioPacks,
+  beam: string,
+  condition: string,
+  arrayN: number,
+  frequencyGhz: number,
+): { available: boolean; hint?: string } {
+  if (!conditionHasRayPack(packs, condition, arrayN)) return { available: false, hint: 'no ray pack' }
+  if (beam === 'ecbf' && !qopHasPack(packs, condition, arrayN, frequencyGhz)) {
+    return { available: false, hint: 'no Q pack at this freq' }
+  }
+  return { available: true }
+}
+
 // ---------------------------------------------------------------------------
-// Beam catalogue. Phase 1 wires the focused / unfocused / worst-case precoders;
-// the decohered / decoy / ECBF beams exist in the backend but are Phase 2, so we
-// surface them disabled with a hint rather than hiding them.
+// Beam catalogue. Every beam is wired end to end (the backend synthesizes the
+// precoder / field for each); a beam greys out only when its precomputed packs
+// are absent for the current scenario (see beamAvailability).
 // ---------------------------------------------------------------------------
 
 export interface BeamOption {
   value: string
   label: string
-  phase2: boolean
 }
 
 const BEAM_CATALOGUE: BeamOption[] = [
-  { value: 'mrt', label: 'MRT (focused)', phase2: false },
-  { value: 'unfocused', label: 'Unfocused', phase2: false },
-  { value: 'worstcase', label: 'Worst case', phase2: false },
-  { value: 'decohered', label: 'Decohered', phase2: true },
-  { value: 'decoy', label: 'Decoy', phase2: true },
-  { value: 'ecbf', label: 'ECBF', phase2: true },
+  { value: 'mrt', label: 'MRT (focused)' },
+  { value: 'unfocused', label: 'Unfocused' },
+  { value: 'worstcase', label: 'Worst case' },
+  { value: 'decohered', label: 'Decohered' },
+  { value: 'decoy', label: 'Decoy' },
+  { value: 'ecbf', label: 'ECBF' },
 ]
 
 /** Beam options to show, ordered, restricted to those the manifest advertises. */
@@ -96,9 +135,7 @@ export function beamOptions(manifest: StudioManifest | null): BeamOption[] {
   const advertised = manifest?.beams
   if (!advertised || advertised.length === 0) return BEAM_CATALOGUE
   const known = new Set(BEAM_CATALOGUE.map((b) => b.value))
-  const extra = advertised
-    .filter((v) => !known.has(v))
-    .map((v) => ({ value: v, label: v, phase2: true }))
+  const extra = advertised.filter((v) => !known.has(v)).map((v) => ({ value: v, label: v }))
   return [...BEAM_CATALOGUE.filter((b) => advertised.includes(b.value)), ...extra]
 }
 

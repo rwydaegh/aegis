@@ -1,15 +1,16 @@
 import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
-import { useThree } from '@react-three/fiber'
+import { useThree, type ThreeEvent } from '@react-three/fiber'
 import { OrbitControls, Line, Html } from '@react-three/drei'
 import AntennaArray from '@/components/scene/AntennaArray'
 import FocusPointMarker from '@/components/scene/FocusPointMarker'
 import BodyMeshInstance from '@/components/scene/BodyMeshInstance'
-import { toScene, type ServerPos } from '@/api/coordinates'
+import { toScene, toServer, type ServerPos } from '@/api/coordinates'
+import type { Vec3 } from '../api'
 import type { ArrayConfig } from '@/api/types'
 import { useStudioStore } from '../store'
 import { useStudioRays } from '../useStudioRays'
-import { colormapRgb } from './studioHelpers'
+import { colormapRgb, snapFocusToSkin } from './studioHelpers'
 import StudioSlicePlane from './StudioSlicePlane'
 import StudioRays from './StudioRays'
 
@@ -70,29 +71,44 @@ function CameraRig({ snapSignal, focusScene }: { snapSignal: number; focusScene:
 
 export default function StudioScene({ snapSignal }: StudioSceneProps) {
   const focusXyz = useStudioStore((s) => s.focusXyz)
+  const setFocusXyz = useStudioStore((s) => s.setFocusXyz)
+  const focusMode = useStudioStore((s) => s.focusMode)
+  const phantom = useStudioStore((s) => s.phantom)
   const frequencyGhz = useStudioStore((s) => s.frequencyGhz)
   const colormap = useStudioStore((s) => s.colormap)
   const scaleMode = useStudioStore((s) => s.scaleMode)
   const bodyMap = useStudioStore((s) => s.bodyMap)
+  const showRays = useStudioStore((s) => s.showRays)
+  const showArrayPattern = useStudioStore((s) => s.showArrayPattern)
+  const wireframe = useStudioStore((s) => s.wireframe)
+  const pickFocusOnBody = useStudioStore((s) => s.pickFocusOnBody)
 
   const rays = useStudioRays()
   const geometry = usePhantomGeometry()
 
-  const focusScene = useMemo<[number, number, number]>(() => toScene(focusXyz), [focusXyz])
+  // Steering focus: in at-skin mode the slice endpoint snaps the focus onto the
+  // nearest body surface, so mirror that here (same nearest-centroid search) for
+  // the focus marker and beam axis to line up with the field that is computed.
+  const steeringFocus = useMemo<[number, number, number]>(
+    () => (focusMode === 'at-skin' ? snapFocusToSkin(focusXyz, phantom?.centroids) : focusXyz),
+    [focusMode, focusXyz, phantom],
+  )
+
+  const focusScene = useMemo<[number, number, number]>(() => toScene(steeringFocus), [steeringFocus])
   const bsScene = useMemo<[number, number, number]>(() => toScene(BS_SERVER), [])
 
   // Beam axis: BS -> focus. Range and downtilt computed in server coords (rigid
   // transform preserves lengths and angles).
   const { rangeM, downDeg } = useMemo(() => {
-    const dx = BS_SERVER[0] - focusXyz[0]
-    const dy = BS_SERVER[1] - focusXyz[1]
-    const dz = BS_SERVER[2] - focusXyz[2]
+    const dx = BS_SERVER[0] - steeringFocus[0]
+    const dy = BS_SERVER[1] - steeringFocus[1]
+    const dz = BS_SERVER[2] - steeringFocus[2]
     const horiz = Math.hypot(dx, dy)
     return {
       rangeM: Math.hypot(dx, dy, dz),
       downDeg: (Math.atan2(dz, horiz) * 180) / Math.PI,
     }
-  }, [focusXyz])
+  }, [steeringFocus])
 
   const beamMidScene = useMemo<[number, number, number]>(
     () => [
@@ -136,6 +152,15 @@ export default function StudioScene({ snapSignal }: StudioSceneProps) {
     [bodyMap],
   )
 
+  // Pick the beam focus by clicking the body: convert the world-space hit point
+  // (scene Y-up) back to the server Z-up frame the focus store expects.
+  const onBodyClick = (e: ThreeEvent<MouseEvent>) => {
+    if (!pickFocusOnBody) return
+    e.stopPropagation()
+    const p = e.point
+    setFocusXyz(toServer([p.x, p.y, p.z]) as Vec3)
+  }
+
   return (
     <>
       <color attach="background" args={['#0a0a0f']} />
@@ -146,7 +171,7 @@ export default function StudioScene({ snapSignal }: StudioSceneProps) {
 
       <gridHelper args={[30, 30, '#444444', '#222222']} position={[0, 0, 0]} />
 
-      <AntennaArray config={arrayConfig} freqHz={frequencyGhz * 1e9} showPattern />
+      <AntennaArray config={arrayConfig} freqHz={frequencyGhz * 1e9} showPattern={showArrayPattern} />
 
       {/* Beam axis + range / downtilt label. */}
       <Line points={[bsScene, focusScene]} color="#00e5ff" lineWidth={1} dashed dashSize={0.3} gapSize={0.2} transparent opacity={0.5} />
@@ -165,7 +190,7 @@ export default function StudioScene({ snapSignal }: StudioSceneProps) {
         </div>
       </Html>
 
-      <StudioRays rays={rays} />
+      {showRays && <StudioRays rays={rays} />}
       <FocusPointMarker focusPoint={focusScene} arrayPosition={bsScene} />
       <StudioSlicePlane />
 
@@ -179,7 +204,10 @@ export default function StudioScene({ snapSignal }: StudioSceneProps) {
         dynamicRangeDbOverride={30}
         colormapLockedOverride={false}
         ratioModeOverride={false}
+        wireframeOverride={wireframe}
         colorFn={colorFn}
+        doubleSided
+        onClick={pickFocusOnBody ? onBodyClick : undefined}
       />
 
       <CameraRig snapSignal={snapSignal} focusScene={focusScene} />

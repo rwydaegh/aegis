@@ -37,6 +37,28 @@ def is_known_mesh(name: str) -> bool:
     return str(name) in _KNOWN_MESHES
 
 
+def snap_focus_to_skin(
+    focus_xyz,
+    name: str = "thelonious",
+    cache: dict | None = None,
+    cache_lock: threading.RLock | None = None,
+):
+    """Project a focus point onto the nearest body-surface triangle centroid.
+
+    The phantom centroids ship in the same e11 world frame (Z-up metres) as the
+    focus, so the snap is a plain nearest-centroid search. Returns the snapped
+    point as a length-3 float list. Raises :class:`FileNotFoundError` when the
+    phantom pack is absent (load_phantom does), which the caller surfaces as the
+    not-precomputed sentinel.
+    """
+    focus = np.asarray(focus_xyz, dtype=float).reshape(3)
+    phantom = load_phantom(name, cache, cache_lock)
+    centroids = np.asarray(phantom["centroids"], dtype=float)
+    d2 = np.einsum("ij,ij->i", centroids - focus, centroids - focus)
+    nearest = centroids[int(np.argmin(d2))]
+    return [float(nearest[0]), float(nearest[1]), float(nearest[2])]
+
+
 def build_phantom_payload(
     name: str,
     cache: dict | None = None,

@@ -1,5 +1,6 @@
 import { useRef, useEffect } from 'react'
 import * as THREE from 'three'
+import type { ThreeEvent } from '@react-three/fiber'
 import { useSimulationStore } from '@/stores/simulation'
 import { useUIStore } from '@/stores/ui'
 import { jetColor, gainTFromLinear, arrayMax } from '@/lib/colormap'
@@ -19,7 +20,11 @@ export interface BodyMeshInstanceProps {
   position: ScenePos
   rotationY: number
   opacity?: number
-  onClick?: () => void
+  /** Click handler. Receives the R3F pointer event (with the world-space hit
+   * point) so callers that need the surface coordinate, e.g. the studio's
+   * pick-focus-on-body, can read `e.point`. Callers that ignore the arg keep
+   * working unchanged. */
+  onClick?: (e: ThreeEvent<MouseEvent>) => void
   // --- Optional colour-scale overrides ---
   // When provided, these take precedence over the shared useUIStore /
   // useSimulationStore reads, letting a standalone module (e.g. the Coherent
@@ -31,8 +36,19 @@ export interface BodyMeshInstanceProps {
   colormapLockedOverride?: boolean
   colormapLockedMaxOverride?: number | null
   ratioModeOverride?: boolean
+  /** Drive the wireframe toggle independently of the shared useUIStore (used by
+   * the studio so its body-wireframe checkbox does not cross-talk with the main
+   * viewer). When omitted, falls back to useUIStore.wireframe. */
+  wireframeOverride?: boolean
   /** Colour ramp returning [r, g, b] in 0..1. Defaults to jetColor. */
   colorFn?: (t: number) => [number, number, number]
+  /**
+   * Render both faces of every triangle. Defaults to false (single-sided, the
+   * main viewer's long-standing behaviour). The Coherent Exposure Studio sets
+   * this true so the body never shows back-face culling holes regardless of
+   * per-triangle winding.
+   */
+  doubleSided?: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -153,14 +169,17 @@ export default function BodyMeshInstance({
   colormapLockedOverride,
   colormapLockedMaxOverride,
   ratioModeOverride,
+  wireframeOverride,
   colorFn,
+  doubleSided = false,
 }: BodyMeshInstanceProps) {
   const meshRef = useRef<THREE.Mesh>(null)
 
   // Always read the stores (hooks cannot be conditional), then let any provided
   // override win. Absent overrides fall back to the shared viewer state.
   const storeDisplayQuantity = useSimulationStore(s => s.displayQuantity)
-  const wireframe = useUIStore(s => s.wireframe)
+  const storeWireframe = useUIStore(s => s.wireframe)
+  const wireframe = wireframeOverride ?? storeWireframe
   const storeRatioMode = useUIStore(s => s.ratioMode)
   const storeLegendScale = useUIStore(s => s.legendScale)
   const storeDynamicRangeDb = useUIStore(s => s.dynamicRangeDb)
@@ -215,6 +234,7 @@ export default function BodyMeshInstance({
           wireframe={wireframe}
           roughness={0.7}
           metalness={0.1}
+          side={doubleSided ? THREE.DoubleSide : THREE.FrontSide}
           transparent={opacity < 1}
           opacity={opacity}
         />
