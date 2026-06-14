@@ -52,6 +52,8 @@ interface StudioState {
   volumeExtentM: number
   /** Voxels below this fraction of the box peak are not drawn (declutter). */
   volumeThreshold: number
+  /** Per-voxel cube opacity for the field-volume cloud. */
+  volumeOpacity: number
 
   // --- Results ---
   sliceResult: SliceResult | null
@@ -90,6 +92,7 @@ interface StudioState {
   setVolumeRes: (volumeRes: number) => void
   setVolumeExtentM: (volumeExtentM: number) => void
   setVolumeThreshold: (volumeThreshold: number) => void
+  setVolumeOpacity: (volumeOpacity: number) => void
 
   // --- Result actions ---
   setSliceResult: (sliceResult: SliceResult | null) => void
@@ -127,6 +130,7 @@ export const useStudioStore = create<StudioState>()((set) => ({
   volumeRes: 24,
   volumeExtentM: 0.16,
   volumeThreshold: 0.25,
+  volumeOpacity: 0.45,
 
   sliceResult: null,
   volumeResult: null,
@@ -161,6 +165,7 @@ export const useStudioStore = create<StudioState>()((set) => ({
   setVolumeRes: (volumeRes) => set({ volumeRes }),
   setVolumeExtentM: (volumeExtentM) => set({ volumeExtentM }),
   setVolumeThreshold: (volumeThreshold) => set({ volumeThreshold }),
+  setVolumeOpacity: (volumeOpacity) => set({ volumeOpacity }),
 
   setSliceResult: (sliceResult) =>
     set({ sliceResult, provenance: sliceResult ? sliceResult.provenance : null }),

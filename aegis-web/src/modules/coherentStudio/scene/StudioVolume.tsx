@@ -18,6 +18,7 @@ export default function StudioVolume() {
   const colormap = useStudioStore((s) => s.colormap)
   const scaleMode = useStudioStore((s) => s.scaleMode)
   const threshold = useStudioStore((s) => s.volumeThreshold)
+  const opacity = useStudioStore((s) => s.volumeOpacity)
 
   const meshRef = useRef<THREE.InstancedMesh>(null)
 
@@ -95,7 +96,7 @@ export default function StudioVolume() {
       frustumCulled={false}
     >
       <boxGeometry args={[side, side, side]} />
-      <meshBasicMaterial transparent opacity={0.45} depthWrite={false} toneMapped={false} />
+      <meshBasicMaterial transparent opacity={opacity} depthWrite={false} toneMapped={false} />
     </instancedMesh>
   )
 }

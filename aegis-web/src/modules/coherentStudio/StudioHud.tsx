@@ -77,6 +77,8 @@ function ProvenanceCard() {
   const sliceResult = useStudioStore((s) => s.sliceResult)
   const bodyMap = useStudioStore((s) => s.bodyMap)
   const bodyMapNotPrecomputed = useStudioStore((s) => s.bodyMapNotPrecomputed)
+  const showVolume = useStudioStore((s) => s.showVolume)
+  const volumeResult = useStudioStore((s) => s.volumeResult)
   if (!sliceResult) return null
 
   const prov = frameProvenance({
@@ -104,6 +106,14 @@ function ProvenanceCard() {
       <div style={{ marginTop: 4, fontSize: 11, color: '#778', fontFamily: 'monospace', textAlign: 'right' }}>
         at [{px.toFixed(2)}, {py.toFixed(2)}, {pz.toFixed(2)}]
       </div>
+      {showVolume && volumeResult && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 6, borderTop: '1px solid #1e1e26', paddingTop: 6 }}>
+          <span style={{ color: '#aab' }}>Volume peak</span>
+          <span style={{ fontFamily: 'monospace', color: '#dde' }}>
+            {fmt(volumeResult.peakValue, ` ${volumeResult.units}`)}
+          </span>
+        </div>
+      )}
     </div>
   )
 }

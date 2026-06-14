@@ -78,9 +78,10 @@ describe('coherentStudio fetch keys', () => {
     expect(afterExtent.slice).toBe(before.slice)
   })
 
-  it('volumeThreshold is render-only: changes no fetch key', () => {
+  it('volumeThreshold / volumeOpacity are render-only: change no fetch key', () => {
     const before = keys()
     useStudioStore.getState().setVolumeThreshold(0.6)
+    useStudioStore.getState().setVolumeOpacity(0.8)
     const after = keys()
     expect(after.volume).toBe(before.volume)
     expect(after.slice).toBe(before.slice)

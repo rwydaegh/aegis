@@ -119,6 +119,8 @@ export default function StudioPanel() {
   const setVolumeExtentM = useStudioStore((s) => s.setVolumeExtentM)
   const volumeThreshold = useStudioStore((s) => s.volumeThreshold)
   const setVolumeThreshold = useStudioStore((s) => s.setVolumeThreshold)
+  const volumeOpacity = useStudioStore((s) => s.volumeOpacity)
+  const setVolumeOpacity = useStudioStore((s) => s.setVolumeOpacity)
 
   const packs = packsOf(manifest)
 
@@ -322,6 +324,18 @@ export default function StudioPanel() {
               step={0.05}
               onChange={setVolumeThreshold}
               labelOf={(v) => `${Math.round(v * 100)}% of peak`}
+            />
+
+            <FieldLabel title="Per-voxel cube opacity. Lower to see through a dense cloud.">
+              Opacity
+            </FieldLabel>
+            <Slider
+              value={volumeOpacity}
+              min={0.1}
+              max={1}
+              step={0.05}
+              onChange={setVolumeOpacity}
+              labelOf={(v) => `${Math.round(v * 100)}%`}
             />
           </>
         )}
