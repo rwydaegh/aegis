@@ -7,6 +7,7 @@ import StudioHud from './StudioHud'
 import { useStudioManifest } from './useStudioManifest'
 import { useStudioPhantom } from './useStudioPhantom'
 import { useStudioSlice } from './useStudioSlice'
+import { useStudioVolume } from './useStudioVolume'
 import { useStudioBodyMap } from './useStudioBodyMap'
 
 // Coherent Exposure Studio: the hero scene, the data-fetch loop, the grouped
@@ -17,6 +18,7 @@ export default function StudioModule() {
   useStudioManifest()
   useStudioPhantom()
   useStudioSlice()
+  useStudioVolume()
   useStudioBodyMap()
 
   // Bumped by the "snap to BS axis" button; the scene's CameraRig reframes on it.

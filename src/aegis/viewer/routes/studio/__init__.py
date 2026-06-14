@@ -24,12 +24,43 @@ __all__ = [
 ]
 
 
+class _QPackMissing(Exception):
+    """ECBF was requested but its exposure-operator (Q) pack is absent.
+
+    Carries the pack stem so the route can emit the not-precomputed 409 sentinel.
+    """
+
+    def __init__(self, stem: str) -> None:
+        self.stem = stem
+        super().__init__(stem)
+
+
 def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
     """Register the Coherent Exposure Studio API routes."""
     from aegis.viewer.routes._helpers import get_json_dict
     from aegis.viewer.routes.compute._responses import _json_dumps_safe
 
-    from . import _bodymap, _paths, _phantom, _precoders, _presets, _slice
+    from . import _bodymap, _paths, _phantom, _precoders, _presets, _slice, _volume
+
+    def _beam_field(beam, paths, focus_xyz, freq_hz, condition, array_n, freq_ghz, ecbf_budget_frac):
+        """Resolve a beam to ``(x, field_source)`` for the field reconstructors.
+
+        Most beams collapse a per-element precoder ``x`` (field_source None); the
+        decohered baseline is a precomputed weight source instead (x None). ECBF
+        loads its precomputed Q and raises :class:`_QPackMissing` when absent.
+        """
+        if beam == "decohered":
+            # Canonical decohered baseline: scramble inter-direction phase after
+            # collapse (not expressible as a per-element precoder).
+            x_base = _precoders.build_precoder("mrt", paths, focus_xyz, freq_hz, power=1.0)
+            return None, _slice.decohered_field_source(paths, x_base)
+        if beam == "ecbf":
+            q = _paths.load_q(condition, array_n, freq_ghz, cache, cache_lock)
+            if q is None:
+                raise _QPackMissing(f"{condition}_bs{int(array_n)}_{freq_ghz:g}")
+            x = _precoders.build_ecbf_from_q(paths, focus_xyz, freq_hz, q, power=1.0, budget_frac=ecbf_budget_frac)
+            return x, None
+        return _precoders.build_precoder(beam, paths, focus_xyz, freq_hz, power=1.0), None
 
     @app.route("/api/studio/manifest")
     def api_studio_manifest():
@@ -80,24 +111,14 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             plane["center"] = focus_xyz
 
             paths = _paths.load_paths(condition, array_n, seed, cache, cache_lock)
-            if beam == "decohered":
-                # Canonical decohered baseline: scramble inter-direction phase
-                # after collapse (not expressible as a per-element precoder).
-                x_base = _precoders.build_precoder("mrt", paths, focus_xyz, freq_hz, power=1.0)
-                field_source = _slice.decohered_field_source(paths, x_base)
-                out = _slice.compute_slice(paths, None, plane, freq_hz, quantity, field_source=field_source)
-            elif beam == "ecbf":
-                q = _paths.load_q(condition, array_n, freq_ghz, cache, cache_lock)
-                if q is None:
-                    stem = f"{condition}_bs{int(array_n)}_{freq_ghz:g}"
-                    return jsonify(
-                        {"error": f"exposure-operator (Q) pack not precomputed: {stem}", "not_precomputed": True}
-                    ), 409
-                x = _precoders.build_ecbf_from_q(paths, focus_xyz, freq_hz, q, power=1.0, budget_frac=ecbf_budget_frac)
-                out = _slice.compute_slice(paths, x, plane, freq_hz, quantity)
-            else:
-                x = _precoders.build_precoder(beam, paths, focus_xyz, freq_hz, power=1.0)
-                out = _slice.compute_slice(paths, x, plane, freq_hz, quantity)
+            x, field_source = _beam_field(
+                beam, paths, focus_xyz, freq_hz, condition, array_n, freq_ghz, ecbf_budget_frac
+            )
+            out = _slice.compute_slice(paths, x, plane, freq_hz, quantity, field_source=field_source)
+        except _QPackMissing as e:
+            return jsonify(
+                {"error": f"exposure-operator (Q) pack not precomputed: {e.stem}", "not_precomputed": True}
+            ), 409
         except FileNotFoundError as e:
             return jsonify({"error": str(e)}), 404
         except (KeyError, ValueError, TypeError, NotImplementedError) as e:
@@ -114,6 +135,61 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             "peak_value": out["peak_value"],
             "quantity": out["quantity"],
             "provenance": f"studio runtime | {condition} bs{array_n} seed{seed} | beam={beam} | {freq_ghz:g}GHz",
+        }
+        buf = np.ascontiguousarray(scalar, dtype=np.float32).tobytes()
+        resp = app.make_response(buf)
+        resp.headers["Content-Type"] = "application/octet-stream"
+        resp.headers["X-Stats"] = _json_dumps_safe(stats)
+        resp.headers["Access-Control-Expose-Headers"] = "X-Stats"
+        return resp
+
+    @app.route("/api/studio/volume", methods=["POST"])
+    def api_studio_volume():
+        params, err = get_json_dict()
+        if err is not None:
+            return err
+        condition = params.get("condition", "los")
+        beam = params.get("beam", "mrt")
+        focus_xyz = params.get("focus_xyz", [0.923, -0.005, 0.734])
+        focus_mode = params.get("focus_mode", "free-space")
+
+        try:
+            array_n = int(params.get("array_n", 16))
+            seed = int(params.get("seed", 0))
+            freq_ghz = float(params.get("frequency_ghz", 10))
+            freq_hz = freq_ghz * 1e9
+            ecbf_budget_frac = float(params.get("ecbf_budget_frac", 0.5))
+            extent_m = float(params.get("extent_m", 0.16))
+            res = int(params.get("res", 32))
+            if focus_mode == "at-skin":
+                focus_xyz = _phantom.snap_focus_to_skin(focus_xyz, cache=cache, cache_lock=cache_lock)
+
+            paths = _paths.load_paths(condition, array_n, seed, cache, cache_lock)
+            x, field_source = _beam_field(
+                beam, paths, focus_xyz, freq_hz, condition, array_n, freq_ghz, ecbf_budget_frac
+            )
+            out = _volume.compute_volume(paths, x, focus_xyz, freq_hz, extent_m, res, field_source=field_source)
+        except _QPackMissing as e:
+            return jsonify(
+                {"error": f"exposure-operator (Q) pack not precomputed: {e.stem}", "not_precomputed": True}
+            ), 409
+        except FileNotFoundError as e:
+            return jsonify({"error": str(e)}), 404
+        except (KeyError, ValueError, TypeError, NotImplementedError) as e:
+            return jsonify({"error": str(e)}), 400
+
+        scalar = out["scalar"]
+        stats = {
+            "shape": out["shape"],
+            "origin": out["origin"],
+            "spacing": out["spacing"],
+            "vmin": out["vmin"],
+            "vmax": out["vmax"],
+            "units": out["units"],
+            "peak_xyz": out["peak_xyz"],
+            "peak_value": out["peak_value"],
+            "quantity": out["quantity"],
+            "provenance": f"studio runtime volume | {condition} bs{array_n} seed{seed} | beam={beam} | {freq_ghz:g}GHz",
         }
         buf = np.ascontiguousarray(scalar, dtype=np.float32).tobytes()
         resp = app.make_response(buf)

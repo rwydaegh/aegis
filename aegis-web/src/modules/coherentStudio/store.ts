@@ -10,6 +10,7 @@ import type {
   StudioFocusMode,
   StudioManifest,
   Vec3,
+  VolumeResult,
 } from './api'
 
 export type StudioScaleMode = 'auto' | 'fixed' | 'log'
@@ -43,9 +44,18 @@ interface StudioState {
   wireframe: boolean
   /** When true, clicking the body moves the focus to the clicked surface point. */
   pickFocusOnBody: boolean
+  /** Render the focal lobe as a 3D field-volume cloud (own fetch). */
+  showVolume: boolean
+  /** Per-axis sample count of the field-volume box (clamped 8..48 server-side). */
+  volumeRes: number
+  /** Full side length of the field-volume box, metres. */
+  volumeExtentM: number
+  /** Voxels below this fraction of the box peak are not drawn (declutter). */
+  volumeThreshold: number
 
   // --- Results ---
   sliceResult: SliceResult | null
+  volumeResult: VolumeResult | null
   bodyMap: BodyMapResult | null
   phantom: PhantomGeometry | null
   manifest: StudioManifest | null
@@ -76,9 +86,14 @@ interface StudioState {
   setShowArrayPattern: (showArrayPattern: boolean) => void
   setWireframe: (wireframe: boolean) => void
   setPickFocusOnBody: (pickFocusOnBody: boolean) => void
+  setShowVolume: (showVolume: boolean) => void
+  setVolumeRes: (volumeRes: number) => void
+  setVolumeExtentM: (volumeExtentM: number) => void
+  setVolumeThreshold: (volumeThreshold: number) => void
 
   // --- Result actions ---
   setSliceResult: (sliceResult: SliceResult | null) => void
+  setVolumeResult: (volumeResult: VolumeResult | null) => void
   setBodyMap: (bodyMap: BodyMapResult | null) => void
   setBodyMapNotPrecomputed: (notPrecomputed: boolean) => void
   setPhantom: (phantom: PhantomGeometry | null) => void
@@ -108,8 +123,13 @@ export const useStudioStore = create<StudioState>()((set) => ({
   showArrayPattern: true,
   wireframe: false,
   pickFocusOnBody: false,
+  showVolume: false,
+  volumeRes: 24,
+  volumeExtentM: 0.16,
+  volumeThreshold: 0.25,
 
   sliceResult: null,
+  volumeResult: null,
   bodyMap: null,
   phantom: null,
   manifest: null,
@@ -137,9 +157,14 @@ export const useStudioStore = create<StudioState>()((set) => ({
   setShowArrayPattern: (showArrayPattern) => set({ showArrayPattern }),
   setWireframe: (wireframe) => set({ wireframe }),
   setPickFocusOnBody: (pickFocusOnBody) => set({ pickFocusOnBody }),
+  setShowVolume: (showVolume) => set({ showVolume }),
+  setVolumeRes: (volumeRes) => set({ volumeRes }),
+  setVolumeExtentM: (volumeExtentM) => set({ volumeExtentM }),
+  setVolumeThreshold: (volumeThreshold) => set({ volumeThreshold }),
 
   setSliceResult: (sliceResult) =>
     set({ sliceResult, provenance: sliceResult ? sliceResult.provenance : null }),
+  setVolumeResult: (volumeResult) => set({ volumeResult }),
   setBodyMap: (bodyMap) =>
     set({ bodyMap, provenance: bodyMap ? bodyMap.provenance : null }),
   setBodyMapNotPrecomputed: (bodyMapNotPrecomputed) => set({ bodyMapNotPrecomputed }),
@@ -204,5 +229,37 @@ export function bodyMapFetchKey(s: BodyMapKeyState): string {
     s.bodyMapStatistic,
     s.frequencyGhz,
     s.seed,
+  ])
+}
+
+/** Params requiring a field-volume re-fetch (only when showVolume is on). */
+export type VolumeKeyState = Pick<
+  StudioState,
+  | 'showVolume'
+  | 'condition'
+  | 'arrayN'
+  | 'seed'
+  | 'beam'
+  | 'focusMode'
+  | 'focusXyz'
+  | 'frequencyGhz'
+  | 'volumeRes'
+  | 'volumeExtentM'
+  | 'ecbfBudgetFrac'
+>
+
+export function volumeFetchKey(s: VolumeKeyState): string {
+  return JSON.stringify([
+    s.showVolume,
+    s.condition,
+    s.arrayN,
+    s.seed,
+    s.beam,
+    s.focusMode,
+    s.focusXyz,
+    s.frequencyGhz,
+    s.volumeRes,
+    s.volumeExtentM,
+    s.beam === 'ecbf' ? s.ecbfBudgetFrac : null,
   ])
 }

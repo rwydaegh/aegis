@@ -12,6 +12,7 @@ import { useStudioStore } from '../store'
 import { useStudioRays } from '../useStudioRays'
 import { colormapRgb, snapFocusToSkin } from './studioHelpers'
 import StudioSlicePlane from './StudioSlicePlane'
+import StudioVolume from './StudioVolume'
 import StudioRays from './StudioRays'
 
 // Base station position (server Z-up metres), fixed by the e11 geometry.
@@ -193,6 +194,7 @@ export default function StudioScene({ snapSignal }: StudioSceneProps) {
       {showRays && <StudioRays rays={rays} />}
       <FocusPointMarker focusPoint={focusScene} arrayPosition={bsScene} />
       <StudioSlicePlane />
+      <StudioVolume />
 
       <BodyMeshInstance
         geometry={geometry}

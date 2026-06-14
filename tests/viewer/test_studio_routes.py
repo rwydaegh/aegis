@@ -328,6 +328,65 @@ def test_slice_ecbf_missing_q_409(client):
     assert "error" in j
 
 
+def _volume_post(client, beam, res=20, frequency_ghz=10, extent_m=0.16):
+    body = {
+        "condition": "los",
+        "array_n": 16,
+        "seed": 0,
+        "beam": beam,
+        "focus_xyz": [0.923, -0.005, 0.734],
+        "frequency_ghz": frequency_ghz,
+        "extent_m": extent_m,
+        "res": res,
+    }
+    return client.post("/api/studio/volume", json=body)
+
+
+@needs_packs
+def test_volume_returns_3d_grid(client):
+    # The volume endpoint reconstructs power density on a res^3 box and ships it
+    # as a float32 buffer with box geometry (origin + spacing) in the X-Stats.
+    res = 20
+    r = _volume_post(client, "mrt", res=res)
+    assert r.status_code == 200, r.get_data(as_text=True)
+    stats = json.loads(r.headers["X-Stats"])
+    assert stats["shape"] == [res, res, res]
+    arr = np.frombuffer(r.data, dtype=np.float32)
+    assert arr.size == res**3
+    assert np.all(np.isfinite(arr))
+    assert float(arr.min()) >= 0.0  # power density is non-negative
+    # origin is the min corner: centre - extent/2 on each axis.
+    assert stats["origin"][0] == pytest.approx(0.923 - 0.16 / 2, abs=1e-6)
+    assert stats["spacing"] == pytest.approx(0.16 / (res - 1), abs=1e-9)
+    assert stats["peak_value"] == pytest.approx(float(arr.max()), rel=0, abs=0)
+
+
+@needs_packs
+def test_volume_resolution_is_clamped(client):
+    # An unbounded res would allocate res^3 points and OOM; the box clamps to 48.
+    r = _volume_post(client, "mrt", res=4096)
+    assert r.status_code == 200, r.get_data(as_text=True)
+    stats = json.loads(r.headers["X-Stats"])
+    assert stats["shape"] == [48, 48, 48]
+
+
+@needs_packs
+@needs_qpack
+def test_volume_ecbf_peak_below_mrt(client):
+    # The volume honours the beam: ECBF trades focal intensity for lower dose, so
+    # its box peak sits below MRT's, mirroring the slice.
+    mrt = json.loads(_volume_post(client, "mrt").headers["X-Stats"])
+    ecbf = json.loads(_volume_post(client, "ecbf").headers["X-Stats"])
+    assert ecbf["peak_value"] < mrt["peak_value"]
+
+
+@needs_packs
+def test_volume_ecbf_missing_q_409(client):
+    r = _volume_post(client, "ecbf", frequency_ghz=99)
+    assert r.status_code == 409, r.get_data(as_text=True)
+    assert r.get_json()["not_precomputed"] is True
+
+
 @needs_packs
 @pytest.mark.parametrize("quantity", ["absH", "ReEx", "ReEy", "ReEz"])
 def test_slice_field_quantities(client, quantity):

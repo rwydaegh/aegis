@@ -38,6 +38,19 @@ const FOCUS_MODE_OPTIONS: Option<StudioFocusMode>[] = [
   { value: 'free-space', label: 'Free space' },
 ]
 
+// Per-axis sample counts for the 3D field-volume box (clamped 8..48 server-side;
+// res^3 points, so 40^3 ~ 64k is the practical ceiling on CPU).
+const VOLUME_RES_OPTIONS: Option<number>[] = [
+  { value: 16, label: '16' },
+  { value: 24, label: '24' },
+  { value: 32, label: '32' },
+  { value: 40, label: '40' },
+]
+
+// Box side lengths for the field volume; kept small (the box is centred on the
+// focus to show the focal lobe, not the whole room).
+const VOLUME_EXTENT_OPTIONS_M = [0.08, 0.16, 0.4] as const
+
 const CONDITION_LABELS: Record<string, string> = { los: 'LOS', nlos: 'NLOS' }
 
 const FREQ_TOOLTIP =
@@ -98,6 +111,14 @@ export default function StudioPanel() {
   const setShowArrayPattern = useStudioStore((s) => s.setShowArrayPattern)
   const wireframe = useStudioStore((s) => s.wireframe)
   const setWireframe = useStudioStore((s) => s.setWireframe)
+  const showVolume = useStudioStore((s) => s.showVolume)
+  const setShowVolume = useStudioStore((s) => s.setShowVolume)
+  const volumeRes = useStudioStore((s) => s.volumeRes)
+  const setVolumeRes = useStudioStore((s) => s.setVolumeRes)
+  const volumeExtentM = useStudioStore((s) => s.volumeExtentM)
+  const setVolumeExtentM = useStudioStore((s) => s.setVolumeExtentM)
+  const volumeThreshold = useStudioStore((s) => s.volumeThreshold)
+  const setVolumeThreshold = useStudioStore((s) => s.setVolumeThreshold)
 
   const packs = packsOf(manifest)
 
@@ -266,6 +287,44 @@ export default function StudioPanel() {
         <Checkbox checked={wireframe} onChange={setWireframe} title="Render the phantom as a wireframe.">
           Body wireframe
         </Checkbox>
+      </Group>
+
+      <Group title="Field volume (3D)">
+        <Checkbox
+          checked={showVolume}
+          onChange={setShowVolume}
+          title="Reconstruct the field on a 3D box around the focus and draw the focal lobe as a coloured voxel cloud. More expensive than the 2D slice."
+        >
+          Show field volume
+        </Checkbox>
+        {showVolume && (
+          <>
+            <FieldLabel title="Side length of the box centred on the focus.">Box size</FieldLabel>
+            <DiscreteSlider<number>
+              value={volumeExtentM}
+              options={VOLUME_EXTENT_OPTIONS_M as unknown as number[]}
+              labelOf={extentLabel}
+              onChange={setVolumeExtentM}
+            />
+
+            <FieldLabel title="Per-axis sample count; the box holds res³ voxels, so higher is sharper but slower.">
+              Resolution
+            </FieldLabel>
+            <Segmented<number> value={volumeRes} options={VOLUME_RES_OPTIONS} onChange={setVolumeRes} />
+
+            <FieldLabel title="Hide voxels below this fraction of the box peak, so only the bright lobe is drawn.">
+              Threshold
+            </FieldLabel>
+            <Slider
+              value={volumeThreshold}
+              min={0.05}
+              max={0.95}
+              step={0.05}
+              onChange={setVolumeThreshold}
+              labelOf={(v) => `${Math.round(v * 100)}% of peak`}
+            />
+          </>
+        )}
       </Group>
 
       <Group title="Colour scale">

@@ -147,6 +147,104 @@ interface SliceStatsHeader {
 }
 
 // ---------------------------------------------------------------------------
+// Field volume (3D box)
+// ---------------------------------------------------------------------------
+
+export interface VolumeParams {
+  condition: string
+  arrayN: number
+  seed: number
+  beam: string
+  focusMode: StudioFocusMode
+  focusXyz: Vec3
+  frequencyGhz: number
+  /** Full cube side length, metres (clamped server-side to [1e-3, 3]). */
+  extentM: number
+  /** Per-axis sample count (clamped server-side to [8, 48]). */
+  res: number
+  /** ECBF budget as a fraction of MRT; only used when beam=ecbf. */
+  ecbfBudgetFrac?: number
+}
+
+export interface VolumeResult {
+  /** Row-major float32 grid, indexed [i, j, k] (i->x, j->y, k->z), length nx*ny*nz. */
+  scalar: Float32Array
+  shape: [number, number, number]
+  /** Min-corner voxel centre, server Z-up metres. */
+  origin: Vec3
+  /** Isotropic voxel pitch, metres. */
+  spacing: number
+  vmin: number
+  vmax: number
+  units: string
+  peakXyz: Vec3
+  peakValue: number
+  provenance: Provenance
+  quantity: string
+}
+
+interface VolumeStatsHeader {
+  shape: [number, number, number]
+  origin: Vec3
+  spacing: number
+  vmin: number
+  vmax: number
+  units: string
+  peak_xyz: Vec3
+  peak_value: number
+  provenance: Provenance
+  quantity: string
+}
+
+function volumePayload(params: VolumeParams) {
+  return {
+    condition: params.condition,
+    array_n: params.arrayN,
+    seed: params.seed,
+    beam: params.beam,
+    focus_mode: params.focusMode,
+    focus_xyz: params.focusXyz,
+    frequency_ghz: params.frequencyGhz,
+    extent_m: params.extentM,
+    res: params.res,
+    ecbf_budget_frac: params.ecbfBudgetFrac ?? 0.5,
+  }
+}
+
+export async function fetchVolume(params: VolumeParams, signal?: AbortSignal): Promise<VolumeResult> {
+  const path = `${STUDIO}/volume`
+  const res = await fetchWithRetry(`${BASE}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(volumePayload(params)),
+    signal,
+  })
+  if (res.status === 401) {
+    handle401()
+    throw new ApiError(`POST ${path} failed: 401 Unauthorized`, 401)
+  }
+  if (!res.ok) throw new ApiError(await extractErrorMessage(res, 'POST', path), res.status)
+
+  const stats = parseJsonHeader<VolumeStatsHeader>(res.headers.get('X-Stats'), 'X-Stats')
+  const buffer = await res.arrayBuffer()
+  const scalar = new Float32Array(buffer)
+
+  return {
+    scalar,
+    shape: stats.shape,
+    origin: stats.origin,
+    spacing: stats.spacing,
+    vmin: stats.vmin,
+    vmax: stats.vmax,
+    units: stats.units,
+    peakXyz: stats.peak_xyz,
+    peakValue: stats.peak_value,
+    provenance: stats.provenance,
+    quantity: stats.quantity,
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Body map
 // ---------------------------------------------------------------------------
 

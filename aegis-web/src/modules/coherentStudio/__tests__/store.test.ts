@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { useStudioStore, sliceFetchKey, bodyMapFetchKey } from '../store'
+import { useStudioStore, sliceFetchKey, bodyMapFetchKey, volumeFetchKey } from '../store'
 
 function keys() {
   const s = useStudioStore.getState()
-  return { slice: sliceFetchKey(s), bodyMap: bodyMapFetchKey(s) }
+  return { slice: sliceFetchKey(s), bodyMap: bodyMapFetchKey(s), volume: volumeFetchKey(s) }
 }
 
 describe('coherentStudio fetch keys', () => {
@@ -54,5 +54,36 @@ describe('coherentStudio fetch keys', () => {
     const after = keys()
     expect(after.slice).not.toBe(before.slice)
     expect(after.bodyMap).not.toBe(before.bodyMap)
+  })
+
+  it('toggling showVolume changes the volume key but not slice / body-map', () => {
+    const before = keys()
+    useStudioStore.getState().setShowVolume(true)
+    const after = keys()
+    expect(after.volume).not.toBe(before.volume)
+    expect(after.slice).toBe(before.slice)
+    expect(after.bodyMap).toBe(before.bodyMap)
+  })
+
+  it('volumeRes / volumeExtentM change the volume key only', () => {
+    const before = keys()
+    useStudioStore.getState().setVolumeRes(40)
+    const afterRes = keys()
+    expect(afterRes.volume).not.toBe(before.volume)
+    expect(afterRes.slice).toBe(before.slice)
+
+    useStudioStore.getState().setVolumeExtentM(0.4)
+    const afterExtent = keys()
+    expect(afterExtent.volume).not.toBe(afterRes.volume)
+    expect(afterExtent.slice).toBe(before.slice)
+  })
+
+  it('volumeThreshold is render-only: changes no fetch key', () => {
+    const before = keys()
+    useStudioStore.getState().setVolumeThreshold(0.6)
+    const after = keys()
+    expect(after.volume).toBe(before.volume)
+    expect(after.slice).toBe(before.slice)
+    expect(after.bodyMap).toBe(before.bodyMap)
   })
 })
