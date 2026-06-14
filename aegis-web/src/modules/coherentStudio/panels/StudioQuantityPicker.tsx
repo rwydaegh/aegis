@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import type { StudioBodyMapStatistic, StudioFieldQuantity } from '../api'
 import { useStudioStore } from '../store'
 import { bodyMapHasPack, ensembleHasPack, FIELD_QUANTITY_OPTIONS, packsOf } from './controls'
@@ -58,6 +59,15 @@ export default function StudioQuantityPicker() {
       hint: 'no ensemble pack',
     }
   })
+
+  // Keep the realisation valid as the scenario changes: an ensemble statistic
+  // selected before switching to NLOS (or a frequency with no ensemble pack)
+  // would otherwise 409 and grey the body, so fall back to the single
+  // realisation, which always ships.
+  const statAvailable = ensembleHasPack(packs, bodyMapStatistic, condition, arrayN, bodyMapQuantity, frequencyGhz)
+  useEffect(() => {
+    if (bodyMapStatistic !== 'single' && !statAvailable) setBodyMapStatistic('single')
+  }, [bodyMapStatistic, statAvailable, setBodyMapStatistic])
 
   return (
     <div>
