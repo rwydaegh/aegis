@@ -4,7 +4,7 @@ import { useThree } from '@react-three/fiber'
 import { Line, TransformControls } from '@react-three/drei'
 import { toScene, toServer, type ServerPos } from '@/api/coordinates'
 import { useStudioStore } from '../store'
-import { colormapRgb } from './studioHelpers'
+import { colormapRgb, resolveSliceDisplay } from './studioHelpers'
 
 const LUT_SIZE = 256
 // Reference window side: 4 cm^2 ICNIRP averaging area = 2 cm x 2 cm.
@@ -78,8 +78,19 @@ export default function StudioSlicePlane() {
   const sliceResult = useStudioStore((s) => s.sliceResult)
   const colormap = useStudioStore((s) => s.colormap)
   const scaleMode = useStudioStore((s) => s.scaleMode)
+  const fieldQuantity = useStudioStore((s) => s.fieldQuantity)
   const setPlane = useStudioStore((s) => s.setPlane)
   const setFocusXyz = useStudioStore((s) => s.setFocusXyz)
+
+  // Signed components (ReEx/y/z) render on a diverging map over a symmetric
+  // range so zero is the neutral centre; everything else keeps the user's scale.
+  const display = resolveSliceDisplay({
+    quantity: fieldQuantity,
+    vmin: sliceResult?.vmin ?? 0,
+    vmax: sliceResult?.vmax ?? 1,
+    colormap,
+    logMode: scaleMode === 'log',
+  })
 
   const controls = useThree((s) => s.controls) as { enabled: boolean } | null
 
@@ -109,8 +120,8 @@ export default function StudioSlicePlane() {
 
   useEffect(() => () => dataTex?.dispose(), [dataTex])
 
-  // LUT texture: rebuilt only when the colormap changes.
-  const lutTex = useMemo(() => buildLutTexture(colormap), [colormap])
+  // LUT texture: rebuilt only when the (resolved) colormap changes.
+  const lutTex = useMemo(() => buildLutTexture(display.colormap), [display.colormap])
   useEffect(() => () => lutTex.dispose(), [lutTex])
 
   // Plane geometry: rebuilt only when the physical extent changes. The backend
@@ -144,11 +155,11 @@ export default function StudioSlicePlane() {
   useEffect(() => {
     material.uniforms.dataTex.value = dataTex
     material.uniforms.lut.value = lutTex
-    material.uniforms.vmin.value = sliceResult?.vmin ?? 0
-    material.uniforms.vmax.value = sliceResult?.vmax ?? 1
-    material.uniforms.logMode.value = scaleMode === 'log' ? 1 : 0
+    material.uniforms.vmin.value = display.vmin
+    material.uniforms.vmax.value = display.vmax
+    material.uniforms.logMode.value = display.logMode ? 1 : 0
     material.needsUpdate = true
-  }, [material, dataTex, lutTex, sliceResult, scaleMode])
+  }, [material, dataTex, lutTex, display])
 
   // Place + orient the plane from the (server-frame) world frame, converted to
   // scene Y-up. Skipped while dragging so the gizmo owns the transform.

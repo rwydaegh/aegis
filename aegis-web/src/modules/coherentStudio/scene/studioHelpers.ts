@@ -84,12 +84,64 @@ export function snapFocusToSkin(
   return [centroids[best], centroids[best + 1], centroids[best + 2]]
 }
 
+// Diverging coolwarm control points (blue -> near-white -> red), the standard
+// choice for signed fields where zero must read as the neutral centre.
+const COOLWARM_STOPS: [number, number, number][] = [
+  [59, 76, 192],
+  [221, 221, 221],
+  [180, 4, 38],
+]
+
+/** Diverging coolwarm ramp; t in [0, 1] with 0.5 the neutral centre. [r,g,b] 0..255. */
+export function coolwarmColor(t: number): [number, number, number] {
+  const x = Math.min(1, Math.max(0, t))
+  const [a, b] = x < 0.5 ? [COOLWARM_STOPS[0], COOLWARM_STOPS[1]] : [COOLWARM_STOPS[1], COOLWARM_STOPS[2]]
+  const f = x < 0.5 ? x / 0.5 : (x - 0.5) / 0.5
+  return [
+    Math.round(a[0] + (b[0] - a[0]) * f),
+    Math.round(a[1] + (b[1] - a[1]) * f),
+    Math.round(a[2] + (b[2] - a[2]) * f),
+  ]
+}
+
 /** Colormap lookup returning [r, g, b] in 0..255 for a normalised t in [0, 1]. */
 export function colormapRgb(name: string, t: number): [number, number, number] {
   if (name === 'jet') {
     const [r, g, b] = jetColor(t)
     return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)]
   }
+  if (name === 'coolwarm') return coolwarmColor(t)
   // Viridis is the default and the fallback for any unknown name.
   return viridisColor(t)
+}
+
+/** The signed field components, which read best on a diverging map centred at zero. */
+export function isSignedQuantity(quantity: string): boolean {
+  return quantity === 'ReEx' || quantity === 'ReEy' || quantity === 'ReEz'
+}
+
+export interface SliceDisplay {
+  colormap: string
+  vmin: number
+  vmax: number
+  logMode: boolean
+}
+
+/**
+ * Resolve the colour-scale a slice should render with. Signed quantities
+ * (ReEx/y/z) get a diverging coolwarm map over a symmetric range so zero lands
+ * on the neutral centre (and log mode is forced off, since a signed field has
+ * no log scale); everything else keeps the user's colormap and scale mode.
+ */
+export function resolveSliceDisplay(args: {
+  quantity: string
+  vmin: number
+  vmax: number
+  colormap: string
+  logMode: boolean
+}): SliceDisplay {
+  const { quantity, vmin, vmax, colormap, logMode } = args
+  if (!isSignedQuantity(quantity)) return { colormap, vmin, vmax, logMode }
+  const vsym = Math.max(Math.abs(vmin), Math.abs(vmax)) || 1
+  return { colormap: 'coolwarm', vmin: -vsym, vmax: vsym, logMode: false }
 }

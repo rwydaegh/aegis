@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { scalarToLutIndex, expandTriangleValues, snapFocusToSkin } from '../scene/studioHelpers'
+import {
+  scalarToLutIndex,
+  expandTriangleValues,
+  snapFocusToSkin,
+  coolwarmColor,
+  isSignedQuantity,
+  resolveSliceDisplay,
+} from '../scene/studioHelpers'
 
 describe('scalarToLutIndex', () => {
   const N = 256
@@ -80,5 +87,56 @@ describe('snapFocusToSkin', () => {
   it('returns the focus unchanged when there are no centroids', () => {
     expect(snapFocusToSkin([3, 3, 3], null)).toEqual([3, 3, 3])
     expect(snapFocusToSkin([3, 3, 3], new Float32Array([]))).toEqual([3, 3, 3])
+  })
+})
+
+describe('coolwarmColor', () => {
+  it('is blue at 0, near-neutral at 0.5, red at 1', () => {
+    const lo = coolwarmColor(0)
+    const mid = coolwarmColor(0.5)
+    const hi = coolwarmColor(1)
+    expect(lo[2]).toBeGreaterThan(lo[0]) // blue dominates at the low end
+    expect(hi[0]).toBeGreaterThan(hi[2]) // red dominates at the high end
+    expect(mid[0]).toBeGreaterThan(180) // light neutral centre
+    expect(mid[1]).toBeGreaterThan(180)
+  })
+
+  it('clamps out-of-range t', () => {
+    expect(coolwarmColor(-1)).toEqual(coolwarmColor(0))
+    expect(coolwarmColor(2)).toEqual(coolwarmColor(1))
+  })
+})
+
+describe('isSignedQuantity', () => {
+  it('flags the real field components', () => {
+    expect(isSignedQuantity('ReEx')).toBe(true)
+    expect(isSignedQuantity('ReEy')).toBe(true)
+    expect(isSignedQuantity('ReEz')).toBe(true)
+  })
+  it('does not flag magnitude quantities', () => {
+    expect(isSignedQuantity('S')).toBe(false)
+    expect(isSignedQuantity('absE')).toBe(false)
+    expect(isSignedQuantity('poynting')).toBe(false)
+  })
+})
+
+describe('resolveSliceDisplay', () => {
+  it('keeps the user scale for magnitude quantities', () => {
+    const d = resolveSliceDisplay({ quantity: 'S', vmin: 2, vmax: 10, colormap: 'jet', logMode: true })
+    expect(d).toEqual({ colormap: 'jet', vmin: 2, vmax: 10, logMode: true })
+  })
+
+  it('forces a symmetric diverging scale for signed components', () => {
+    const d = resolveSliceDisplay({ quantity: 'ReEx', vmin: -3, vmax: 7, colormap: 'viridis', logMode: true })
+    expect(d.colormap).toBe('coolwarm')
+    expect(d.vmin).toBe(-7)
+    expect(d.vmax).toBe(7)
+    expect(d.logMode).toBe(false) // signed has no log scale
+  })
+
+  it('falls back to a unit range when the slice is flat', () => {
+    const d = resolveSliceDisplay({ quantity: 'ReEz', vmin: 0, vmax: 0, colormap: 'viridis', logMode: false })
+    expect(d.vmin).toBe(-1)
+    expect(d.vmax).toBe(1)
   })
 })

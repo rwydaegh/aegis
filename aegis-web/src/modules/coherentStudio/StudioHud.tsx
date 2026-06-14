@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import GradientBar, { type GradientBarTick } from '@/components/hud/GradientBar'
 import ProvenanceDot from '@/components/panels/ProvenanceDot'
 import { useStudioStore } from './store'
-import { colormapRgb } from './scene/studioHelpers'
+import { colormapRgb, resolveSliceDisplay } from './scene/studioHelpers'
 import { frameProvenance } from './panels/controls'
 
 const CARD = {
@@ -113,11 +113,21 @@ function StudioColorBar() {
   const sliceResult = useStudioStore((s) => s.sliceResult)
   const colormap = useStudioStore((s) => s.colormap)
   const scaleMode = useStudioStore((s) => s.scaleMode)
+  const fieldQuantity = useStudioStore((s) => s.fieldQuantity)
 
-  const gradient = useMemo(() => colormapGradient(colormap), [colormap])
+  // Mirror the slice plane's colour scale so the legend never lies: signed
+  // components get the diverging map over the symmetric range.
+  const display = resolveSliceDisplay({
+    quantity: fieldQuantity,
+    vmin: sliceResult?.vmin ?? 0,
+    vmax: sliceResult?.vmax ?? 1,
+    colormap,
+    logMode: scaleMode === 'log',
+  })
+  const gradient = useMemo(() => colormapGradient(display.colormap), [display.colormap])
   if (!sliceResult) return null
 
-  const ticks = buildTicks(sliceResult.vmin, sliceResult.vmax, scaleMode === 'log')
+  const ticks = buildTicks(display.vmin, display.vmax, display.logMode)
   const title = (
     <span style={{ fontSize: 12, color: '#cdd' }}>
       {sliceResult.quantity} ({sliceResult.units || '--'})
