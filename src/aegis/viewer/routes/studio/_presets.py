@@ -12,6 +12,9 @@ _SEEDS = (0, 1, 2, 3, 4, 5)
 _ARRAY_SIZES = (16,)
 _BEAMS = ("mrt", "unfocused", "decohered", "decoy", "worstcase", "ecbf")
 _BODY_MAP_QUANTITIES = ("floor", "mrt", "worstcase", "amp")
+# Body-map realisation statistic: the single served realisation, or the mean /
+# 95th percentile over the LOS seed ensemble (served from the ensemble packs).
+_BODY_MAP_STATISTICS = ("single", "mean", "p95")
 
 # At-skin chest focus and air focus in the e11 world frame (Z-up, metres).
 _FOCUS_CHEST = (0.923, -0.005, 0.734)
@@ -36,6 +39,7 @@ def default_scene() -> dict:
         },
         "fieldQuantity": "S",
         "bodyMapQuantity": "mrt",
+        "bodyMapStatistic": "single",
     }
 
 
@@ -49,6 +53,7 @@ def manifest() -> dict:
         "array_sizes": list(_ARRAY_SIZES),
         "beams": list(_BEAMS),
         "body_map_quantities": list(_BODY_MAP_QUANTITIES),
+        "body_map_statistics": list(_BODY_MAP_STATISTICS),
         "packs": available_packs(),
         "default_scene": default_scene(),
     }

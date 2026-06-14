@@ -150,7 +150,18 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
         quantity = request.args.get("quantity", "mrt")
         frequency_ghz = request.args.get("frequency_ghz", default=28.0, type=float)
         realisation = request.args.get("realisation", default=0, type=int)
-        out = _bodymap.get_bodymap(condition, array_n, beam, quantity, frequency_ghz, realisation, cache, cache_lock)
+        statistic = request.args.get("statistic", "single")
+        out = _bodymap.get_bodymap(
+            condition,
+            array_n,
+            beam,
+            quantity,
+            frequency_ghz,
+            realisation,
+            statistic=statistic,
+            cache=cache,
+            cache_lock=cache_lock,
+        )
         if out.get("not_precomputed"):
             return jsonify({"error": out["error"], "not_precomputed": True}), 409
         return jsonify(out)

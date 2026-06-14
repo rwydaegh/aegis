@@ -71,6 +71,28 @@ export function bodyMapHasPack(
   return packs.bodymaps.includes(bodyMapStem(condition, arrayN, quantity, frequencyGhz))
 }
 
+/**
+ * Whether an ensemble statistic (mean / p95) pack is present for a given
+ * (condition, array, quantity, frequency). Ensemble packs are LOS-only and
+ * named `{condition}_bs{n}_{quantity}_{freqTag}_{mean<K>|p95}`; the mean pack
+ * carries the seed count K, so match it by prefix. The "single" statistic is
+ * always available (it is the default body-map pack, gated by bodyMapHasPack).
+ */
+export function ensembleHasPack(
+  packs: StudioPacks,
+  statistic: string,
+  condition: string,
+  arrayN: number,
+  quantity: string,
+  frequencyGhz: number,
+): boolean {
+  if (statistic === 'single') return true
+  const base = `${condition}_bs${arrayN}_${quantity}_${freqTag(frequencyGhz)}`
+  if (statistic === 'p95') return packs.ensemble.includes(`${base}_p95`)
+  if (statistic === 'mean') return packs.ensemble.some((s) => s.startsWith(`${base}_mean`))
+  return false
+}
+
 /** Exposure-operator (Q) pack stem for a (condition, array, frequency). */
 export function qopStem(condition: string, arrayN: number, frequencyGhz: number): string {
   return `${condition}_bs${arrayN}_${freqTag(frequencyGhz)}`

@@ -53,6 +53,8 @@ export interface StudioManifest {
   beams: string[]
   /** Per-triangle body-map quantities the backend can serve (floor, mrt, ...). */
   body_map_quantities: string[]
+  /** Body-map realisation statistics (single, mean, p95). */
+  body_map_statistics?: string[]
   /**
    * Precomputed pack descriptors. The backend manifest returns these under the
    * key `packs` (verified against routes/studio/_presets.py::manifest).
@@ -148,6 +150,10 @@ interface SliceStatsHeader {
 // Body map
 // ---------------------------------------------------------------------------
 
+/** Body-map realisation statistic: a single realisation, or the mean / 95th
+ * percentile over the LOS seed ensemble. */
+export type StudioBodyMapStatistic = 'single' | 'mean' | 'p95'
+
 export interface BodyMapParams {
   condition: string
   arrayN: number
@@ -156,6 +162,8 @@ export interface BodyMapParams {
   frequencyGhz: number
   /** Realisation index (the seed / ensemble member). */
   realisation: number
+  /** Single realisation (default) or an ensemble statistic over the LOS seeds. */
+  statistic?: StudioBodyMapStatistic
 }
 
 export interface BodyMapResult {
@@ -324,6 +332,7 @@ export async function fetchBodyMap(params: BodyMapParams): Promise<BodyMapFetch>
     quantity: params.quantity,
     frequency_ghz: String(params.frequencyGhz),
     realisation: String(params.realisation),
+    statistic: params.statistic ?? 'single',
   })
   const path = `${STUDIO}/bodymap?${qs}`
   const res = await fetchWithRetry(`${BASE}${path}`)

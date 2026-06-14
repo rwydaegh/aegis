@@ -1,6 +1,6 @@
-import type { StudioFieldQuantity } from '../api'
+import type { StudioBodyMapStatistic, StudioFieldQuantity } from '../api'
 import { useStudioStore } from '../store'
-import { bodyMapHasPack, FIELD_QUANTITY_OPTIONS, packsOf } from './controls'
+import { bodyMapHasPack, ensembleHasPack, FIELD_QUANTITY_OPTIONS, packsOf } from './controls'
 import { FieldLabel, LabeledSelect, type Option } from './widgets'
 
 const QTY_LABELS: Record<string, string> = {
@@ -8,6 +8,12 @@ const QTY_LABELS: Record<string, string> = {
   mrt: 'MRT (focused)',
   worstcase: 'Worst case',
   amp: 'Amplified',
+}
+
+const STAT_LABELS: Record<string, string> = {
+  single: 'Single realisation',
+  mean: 'Ensemble mean',
+  p95: 'Ensemble p95',
 }
 
 /**
@@ -21,6 +27,8 @@ export default function StudioQuantityPicker() {
   const setFieldQuantity = useStudioStore((s) => s.setFieldQuantity)
   const bodyMapQuantity = useStudioStore((s) => s.bodyMapQuantity)
   const setBodyMapQuantity = useStudioStore((s) => s.setBodyMapQuantity)
+  const bodyMapStatistic = useStudioStore((s) => s.bodyMapStatistic)
+  const setBodyMapStatistic = useStudioStore((s) => s.setBodyMapStatistic)
 
   const manifest = useStudioStore((s) => s.manifest)
   const condition = useStudioStore((s) => s.condition)
@@ -29,6 +37,7 @@ export default function StudioQuantityPicker() {
 
   const packs = packsOf(manifest)
   const bodyQuantities = manifest?.body_map_quantities ?? []
+  const statistics = manifest?.body_map_statistics ?? ['single']
 
   const bodyOptions: Option<string>[] = bodyQuantities.map((q) => {
     const available = bodyMapHasPack(packs, condition, arrayN, q, frequencyGhz)
@@ -37,6 +46,16 @@ export default function StudioQuantityPicker() {
       label: QTY_LABELS[q] ?? q,
       disabled: !available,
       hint: 'no pack',
+    }
+  })
+
+  const statOptions: Option<StudioBodyMapStatistic>[] = statistics.map((st) => {
+    const available = ensembleHasPack(packs, st, condition, arrayN, bodyMapQuantity, frequencyGhz)
+    return {
+      value: st as StudioBodyMapStatistic,
+      label: STAT_LABELS[st] ?? st,
+      disabled: !available,
+      hint: 'no ensemble pack',
     }
   })
 
@@ -56,6 +75,15 @@ export default function StudioQuantityPicker() {
         value={bodyMapQuantity}
         options={bodyOptions}
         onChange={setBodyMapQuantity}
+      />
+
+      <FieldLabel title="Single seed, or the mean / 95th percentile of the body map over the LOS seed ensemble.">
+        Body-map realisation
+      </FieldLabel>
+      <LabeledSelect<StudioBodyMapStatistic>
+        value={bodyMapStatistic}
+        options={statOptions}
+        onChange={setBodyMapStatistic}
       />
     </div>
   )

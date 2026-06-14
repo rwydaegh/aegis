@@ -16,6 +16,31 @@ from ._config import studio_data_dir
 _BODYMAP_KEY = "_studio_bodymap"
 
 
+def _resolve_pack(condition: str, array_n: int, quantity: str, freq_tag: str, statistic: str):
+    """Resolve the (stem, path) for a body-map request.
+
+    ``statistic`` selects the single realisation (the default body-map pack) or
+    an ensemble statistic over the LOS seeds (``mean``/``p95``, served from the
+    ensemble dir). The mean pack carries the seed count K in its name, so it is
+    matched by glob. Returns ``(stem, path_or_none)``; ``path_or_none`` is None
+    when no pack matches (the caller emits the not-precomputed sentinel).
+    """
+    base = f"{condition}_bs{int(array_n)}_{quantity}_{freq_tag}"
+    if statistic == "single":
+        path = studio_data_dir() / "bodymaps" / f"{base}.npz"
+        return base, (path if path.is_file() else None)
+
+    ens = studio_data_dir() / "ensemble"
+    if statistic == "p95":
+        path = ens / f"{base}_p95.npz"
+        return f"{base}_p95", (path if path.is_file() else None)
+    if statistic == "mean":
+        # The mean pack name carries the seed count (e.g. ..._mean6.npz).
+        hits = sorted(ens.glob(f"{base}_mean*.npz"))
+        return f"{base}_mean", (hits[0] if hits else None)
+    return base, None
+
+
 def get_bodymap(
     condition: str,
     array_n: int,
@@ -23,6 +48,7 @@ def get_bodymap(
     quantity: str,
     frequency_ghz: float,
     realisation: int = 0,
+    statistic: str = "single",
     cache: dict | None = None,
     cache_lock: threading.RLock | None = None,
 ) -> dict:
@@ -30,13 +56,14 @@ def get_bodymap(
 
     On hit returns ``{values, vmin, vmax, units, quantity, provenance}``. On
     miss returns ``{not_precomputed: True, error, stem}`` (the endpoint turns
-    this into a 409-style payload).
+    this into a 409-style payload). ``statistic`` is ``single`` (default),
+    ``mean`` or ``p95``; the ensemble statistics are LOS-only and miss cleanly
+    for NLOS or any uncovered combination.
     """
     freq_tag = f"{float(frequency_ghz):g}"
-    stem = f"{condition}_bs{int(array_n)}_{quantity}_{freq_tag}"
-    path = studio_data_dir() / "bodymaps" / f"{stem}.npz"
+    stem, path = _resolve_pack(condition, array_n, quantity, freq_tag, statistic)
 
-    if not path.is_file():
+    if path is None:
         return {
             "not_precomputed": True,
             "error": f"body-map pack not precomputed: {stem}",

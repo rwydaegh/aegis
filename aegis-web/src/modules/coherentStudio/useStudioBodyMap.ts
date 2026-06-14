@@ -11,6 +11,7 @@ function buildBodyMapParams(s: ReturnType<typeof useStudioStore.getState>): Body
     quantity: s.bodyMapQuantity,
     frequencyGhz: s.frequencyGhz,
     realisation: s.seed,
+    statistic: s.bodyMapStatistic,
   }
 }
 

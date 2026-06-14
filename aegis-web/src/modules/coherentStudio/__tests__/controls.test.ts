@@ -5,6 +5,7 @@ import {
   bodyMapHasPack,
   bodyMapStem,
   conditionHasRayPack,
+  ensembleHasPack,
   EXTENT_OPTIONS_M,
   extentLabel,
   FIELD_QUANTITY_OPTIONS,
@@ -19,7 +20,7 @@ const PACKS: StudioPacks = {
   rays: ['bs16_los_seed0', 'bs16_los_seed1', 'bs16_los_seed5'],
   phantom: ['thelonious'],
   bodymaps: ['los_bs16_mrt_10', 'los_bs16_worstcase_10', 'los_bs16_mrt_28'],
-  ensemble: [],
+  ensemble: ['los_bs16_mrt_28_mean6', 'los_bs16_mrt_28_p95'],
   qop: ['los_bs16_10', 'los_bs16_28'],
 }
 
@@ -144,6 +145,23 @@ describe('beamAvailability', () => {
     const a = beamAvailability(PACKS, 'ecbf', 'los', 16, 20)
     expect(a.available).toBe(false)
     expect(a.hint).toBe('no Q pack at this freq')
+  })
+})
+
+describe('ensembleHasPack', () => {
+  it('always allows the single realisation', () => {
+    expect(ensembleHasPack(PACKS, 'single', 'los', 16, 'amp', 12)).toBe(true)
+  })
+
+  it('enables mean / p95 only where the ensemble pack ships (LOS, that quantity + freq)', () => {
+    expect(ensembleHasPack(PACKS, 'mean', 'los', 16, 'mrt', 28)).toBe(true)
+    expect(ensembleHasPack(PACKS, 'p95', 'los', 16, 'mrt', 28)).toBe(true)
+  })
+
+  it('disables mean / p95 where no ensemble pack ships', () => {
+    expect(ensembleHasPack(PACKS, 'mean', 'los', 16, 'mrt', 10)).toBe(false)
+    expect(ensembleHasPack(PACKS, 'p95', 'los', 16, 'worstcase', 28)).toBe(false)
+    expect(ensembleHasPack(PACKS, 'mean', 'nlos', 16, 'mrt', 28)).toBe(false)
   })
 })
 

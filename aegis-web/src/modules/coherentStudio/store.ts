@@ -5,6 +5,7 @@ import type {
   Provenance,
   SlicePlane,
   SliceResult,
+  StudioBodyMapStatistic,
   StudioFieldQuantity,
   StudioFocusMode,
   StudioManifest,
@@ -27,6 +28,8 @@ interface StudioState {
   plane: SlicePlane
   fieldQuantity: StudioFieldQuantity
   bodyMapQuantity: string
+  /** Body-map realisation: single, or mean / p95 over the LOS seed ensemble. */
+  bodyMapStatistic: StudioBodyMapStatistic
   /** ECBF absorbed-power budget as a fraction of MRT (1 = MRT, lower = safer). */
   ecbfBudgetFrac: number
 
@@ -64,6 +67,7 @@ interface StudioState {
   setPlane: (patch: Partial<SlicePlane>) => void
   setFieldQuantity: (fieldQuantity: StudioFieldQuantity) => void
   setBodyMapQuantity: (bodyMapQuantity: string) => void
+  setBodyMapStatistic: (bodyMapStatistic: StudioBodyMapStatistic) => void
   setColormap: (colormap: string) => void
   setScaleMode: (scaleMode: StudioScaleMode) => void
   setEcbfBudgetFrac: (ecbfBudgetFrac: number) => void
@@ -94,6 +98,7 @@ export const useStudioStore = create<StudioState>()((set) => ({
   plane: { orientation: 'transverse', normalXyz: null, extentM: 0.08, res: 160 },
   fieldQuantity: 'S',
   bodyMapQuantity: 'mrt',
+  bodyMapStatistic: 'single',
   ecbfBudgetFrac: 0.5,
 
   colormap: 'viridis',
@@ -123,6 +128,7 @@ export const useStudioStore = create<StudioState>()((set) => ({
   setPlane: (patch) => set((s) => ({ plane: { ...s.plane, ...patch } })),
   setFieldQuantity: (fieldQuantity) => set({ fieldQuantity }),
   setBodyMapQuantity: (bodyMapQuantity) => set({ bodyMapQuantity }),
+  setBodyMapStatistic: (bodyMapStatistic) => set({ bodyMapStatistic }),
   setColormap: (colormap) => set({ colormap }),
   setScaleMode: (scaleMode) => set({ scaleMode }),
   setEcbfBudgetFrac: (ecbfBudgetFrac) => set({ ecbfBudgetFrac }),
@@ -168,7 +174,7 @@ export type SliceKeyState = Pick<
 /** Params requiring a body-map pack swap. */
 export type BodyMapKeyState = Pick<
   StudioState,
-  'condition' | 'arrayN' | 'beam' | 'bodyMapQuantity' | 'frequencyGhz' | 'seed'
+  'condition' | 'arrayN' | 'beam' | 'bodyMapQuantity' | 'bodyMapStatistic' | 'frequencyGhz' | 'seed'
 >
 
 export function sliceFetchKey(s: SliceKeyState): string {
@@ -195,6 +201,7 @@ export function bodyMapFetchKey(s: BodyMapKeyState): string {
     s.arrayN,
     s.beam,
     s.bodyMapQuantity,
+    s.bodyMapStatistic,
     s.frequencyGhz,
     s.seed,
   ])

@@ -29,9 +29,16 @@ def _qpack_present() -> bool:
     return (studio_data_dir() / "qop" / "los_bs16_10.npz").is_file()
 
 
+def _ensemble_present() -> bool:
+    from aegis.viewer.routes.studio import studio_data_dir
+
+    return any((studio_data_dir() / "ensemble").glob("los_bs16_mrt_28_mean*.npz"))
+
+
 needs_packs = pytest.mark.skipif(not _studio_data_present(), reason="studio data packs not present")
 needs_phantom = pytest.mark.skipif(not _phantom_present(), reason="studio phantom pack not present")
 needs_qpack = pytest.mark.skipif(not _qpack_present(), reason="studio Q-operator pack not present")
+needs_ensemble = pytest.mark.skipif(not _ensemble_present(), reason="studio ensemble packs not present")
 
 
 def test_manifest_returns_default_tuple(client):
@@ -379,6 +386,37 @@ def test_bodymap_worstcase(client):
     assert len(j["values"]) == n_faces
     assert j["vmax"] >= j["vmin"]
     assert "provenance" in j
+
+
+@needs_packs
+def test_bodymap_ensemble_statistic_is_los_only(client):
+    # The ensemble statistics are computed over LOS seeds only, so an NLOS mean /
+    # p95 request must miss cleanly with the not-precomputed sentinel.
+    r = client.get(
+        "/api/studio/bodymap?condition=nlos&array_n=16&quantity=mrt&frequency_ghz=28&statistic=p95"
+    )
+    assert r.status_code == 409
+    assert r.get_json()["not_precomputed"] is True
+
+
+@needs_ensemble
+def test_bodymap_ensemble_mean_and_p95_served(client):
+    # When the ensemble packs are present, mean and p95 serve one value per face
+    # and differ from each other (p95 >= mean elementwise for a non-degenerate
+    # ensemble, so at least their peaks differ).
+    ph = client.get("/api/studio/phantom?mesh=thelonious")
+    n_faces = json.loads(ph.headers["X-Stats"])["n_faces"]
+    base = "/api/studio/bodymap?condition=los&array_n=16&quantity=mrt&frequency_ghz=28"
+    r_mean = client.get(base + "&statistic=mean")
+    r_p95 = client.get(base + "&statistic=p95")
+    assert r_mean.status_code == 200, r_mean.get_data(as_text=True)
+    assert r_p95.status_code == 200, r_p95.get_data(as_text=True)
+    vm = np.asarray(r_mean.get_json()["values"])
+    vp = np.asarray(r_p95.get_json()["values"])
+    assert len(vm) == n_faces
+    assert len(vp) == n_faces
+    # p95 is an upper tail of the same ensemble, so its peak is at least the mean's.
+    assert vp.max() >= vm.max()
 
 
 @needs_packs
