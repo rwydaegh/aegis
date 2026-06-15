@@ -15,6 +15,7 @@ import {
   RESOLUTION_OPTIONS,
 } from './controls'
 import StudioQuantityPicker from './StudioQuantityPicker'
+import StudioExposureHistogram from './StudioExposureHistogram'
 import {
   Checkbox,
   DiscreteSlider,
@@ -518,6 +519,10 @@ export default function StudioPanel() {
         >
           Robust autoscale (clip outliers)
         </Checkbox>
+      </Group>
+
+      <Group title="Distribution">
+        <StudioExposureHistogram />
       </Group>
     </div>
   )
