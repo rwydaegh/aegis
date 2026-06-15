@@ -19,6 +19,7 @@ import StudioExposureHistogram from './StudioExposureHistogram'
 import StudioRadialFalloff from './StudioRadialFalloff'
 import StudioLineProfile from './StudioLineProfile'
 import StudioPatternCut from './StudioPatternCut'
+import StudioCompare from './StudioCompare'
 import {
   Checkbox,
   DiscreteSlider,
@@ -538,6 +539,10 @@ export default function StudioPanel() {
 
       <Group title="Array pattern">
         <StudioPatternCut />
+      </Group>
+
+      <Group title="A/B compare">
+        <StudioCompare />
       </Group>
     </div>
   )

@@ -41,9 +41,18 @@ export default function StudioRadialFalloff() {
 
   const data = useMemo(() => {
     if (!volume || volume.scalar.length === 0) return null
+    // Centre on the box geometric centre (the steered focus the box is built
+    // around), not the field peak: that keeps the reliable radius at half the box
+    // extent and measures falloff from the focus, as the paper plot does. For a
+    // focused beam the peak sits at the centre anyway, so the two agree.
+    const center: [number, number, number] = [
+      volume.origin[0] + ((volume.shape[0] - 1) / 2) * volume.spacing,
+      volume.origin[1] + ((volume.shape[1] - 1) / 2) * volume.spacing,
+      volume.origin[2] + ((volume.shape[2] - 1) / 2) * volume.spacing,
+    ]
     const prof = radialProfile(
       { scalar: volume.scalar, shape: volume.shape, origin: volume.origin, spacing: volume.spacing },
-      volume.peakXyz,
+      center,
       36,
     )
     if (prof.bins.length < 2) return null
@@ -138,7 +147,7 @@ export default function StudioRadialFalloff() {
         </span>
       </div>
       <p style={{ fontSize: 10, color: '#667', margin: '4px 2px 0' }}>
-        median {data.units} vs distance from the field peak
+        median {data.units} vs distance from the focus
       </p>
     </div>
   )

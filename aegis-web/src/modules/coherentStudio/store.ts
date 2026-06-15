@@ -49,6 +49,8 @@ interface StudioState {
   robustClip: boolean
   /** User-locked colour range, applied in 'fixed' scale mode (null = not yet set). */
   fixedRange: Range | null
+  /** Captured body map to compare the live map against (A in the A/B compare). */
+  referenceMap: { values: number[]; label: string } | null
   /** Number of arrival rays drawn in the scene (decoration; own fetch). */
   topK: number
   showRays: boolean
@@ -99,6 +101,7 @@ interface StudioState {
   setDynamicRangeDb: (dynamicRangeDb: number) => void
   setRobustClip: (robustClip: boolean) => void
   setFixedRange: (fixedRange: Range | null) => void
+  setReferenceMap: (referenceMap: { values: number[]; label: string } | null) => void
   setEcbfBudgetFrac: (ecbfBudgetFrac: number) => void
   setTopK: (topK: number) => void
   setShowRays: (showRays: boolean) => void
@@ -148,6 +151,7 @@ export const useStudioStore = create<StudioState>()((set) => ({
   dynamicRangeDb: 30,
   robustClip: false,
   fixedRange: null,
+  referenceMap: null,
   topK: 150,
   showRays: true,
   showArrayPattern: true,
@@ -187,6 +191,7 @@ export const useStudioStore = create<StudioState>()((set) => ({
   setDynamicRangeDb: (dynamicRangeDb) => set({ dynamicRangeDb }),
   setRobustClip: (robustClip) => set({ robustClip }),
   setFixedRange: (fixedRange) => set({ fixedRange }),
+  setReferenceMap: (referenceMap) => set({ referenceMap }),
   setEcbfBudgetFrac: (ecbfBudgetFrac) => set({ ecbfBudgetFrac }),
   setTopK: (topK) => set({ topK }),
   setShowRays: (showRays) => set({ showRays }),

@@ -44,20 +44,23 @@ function fwhmOf(points: ProfilePoint[], peakIdx: number, peakValue: number): num
     if (Math.abs(denom) < 1e-30) return a.t
     return a.t + ((half - a.value) / denom) * (b.t - a.t)
   }
-  let left = points[0].t
+  let left = NaN
   for (let i = peakIdx; i > 0; i--) {
     if (points[i - 1].value <= half) {
       left = cross(points[i - 1], points[i])
       break
     }
   }
-  let right = points[points.length - 1].t
+  let right = NaN
   for (let i = peakIdx; i < points.length - 1; i++) {
     if (points[i + 1].value <= half) {
       right = cross(points[i + 1], points[i])
       break
     }
   }
+  // Require a genuine half-crossing on both flanks; otherwise the focal spot is
+  // wider than the slice window and the width is undefined (reported as --).
+  if (!isFinite(left) || !isFinite(right)) return NaN
   const w = right - left
   return w > 0 ? w : NaN
 }
