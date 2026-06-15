@@ -24,7 +24,7 @@ def test_available_packs_missing_dir_returns_empty(monkeypatch, tmp_path):
     missing = tmp_path / "does_not_exist"
     monkeypatch.setenv("AEGIS_STUDIO_PATHS", str(missing))
     packs = _config.available_packs()
-    assert packs == {"rays": [], "phantom": [], "bodymaps": [], "ensemble": [], "qop": []}
+    assert packs == {"rays": [], "phantom": [], "bodymaps": [], "ensemble": [], "qop": [], "channel": []}
 
 
 def test_available_packs_lists_stems(monkeypatch, tmp_path):
