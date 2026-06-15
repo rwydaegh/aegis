@@ -68,6 +68,15 @@ describe('coherentStudio fetch keys', () => {
     expect(after.volume).not.toBe(before.volume)
   })
 
+  it('opens on the live deposited map so the body responds to focus by default', () => {
+    // Regression guard: the studio's headline interaction is "move the focus,
+    // watch the body recolour". That only works when the default body-map
+    // quantity is the live, precoder-applied 'deposited' map, not a static
+    // focus-frozen pack. Defaulting to a static pack reads as "the body map is
+    // not responding to the focus".
+    expect(useStudioStore.getInitialState().bodyMapQuantity).toBe('deposited')
+  })
+
   it('static body map ignores focus, but the live deposited map tracks it', () => {
     // Default quantity (mrt) is a static pack: focus must not change its key.
     const beforeStatic = keys()

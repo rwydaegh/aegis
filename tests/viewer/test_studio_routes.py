@@ -62,7 +62,10 @@ def test_manifest_returns_default_tuple(client):
     assert scene["frequency_ghz"] == 10
     assert scene["plane"]["orientation"] == "transverse"
     assert scene["fieldQuantity"] == "S"
-    assert scene["bodyMapQuantity"] == "mrt"
+    # The studio opens on the live, focus-tracking deposited map so the body
+    # recolours as the beam steers. A static default (mrt / floor / ...) is
+    # frozen at one focus and reads as "the body map ignores the focus".
+    assert scene["bodyMapQuantity"] == "deposited"
 
 
 @needs_packs

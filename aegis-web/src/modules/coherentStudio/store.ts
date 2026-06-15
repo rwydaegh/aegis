@@ -119,7 +119,12 @@ export const useStudioStore = create<StudioState>()((set) => ({
   frequencyGhz: 10,
   plane: { orientation: 'transverse', normalXyz: null, extentM: 0.08, res: 160 },
   fieldQuantity: 'S',
-  bodyMapQuantity: 'mrt',
+  // Open on the live, focus-tracking deposited map so the headline interaction
+  // (move the focus, watch the body recolour) works out of the box. Static
+  // packs (mrt / floor / worstcase / amp) are frozen at a reference focus and
+  // would read as "the body map is not responding". The quantity picker falls
+  // back to 'mrt' if the default scene has no field-channel pack.
+  bodyMapQuantity: 'deposited',
   bodyMapStatistic: 'single',
   ecbfBudgetFrac: 0.5,
 

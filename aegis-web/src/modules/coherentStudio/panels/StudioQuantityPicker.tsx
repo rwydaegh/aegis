@@ -72,10 +72,13 @@ export default function StudioQuantityPicker() {
 
   // If the live map is selected but its channel pack is absent for the current
   // scenario (seed / freq / condition without a pack), fall back to the static
-  // MRT map so the body never greys out on a dead selection.
+  // MRT map so the body never greys out on a dead selection. Gate on the
+  // manifest: before it loads, packs is empty and liveAvailable is spuriously
+  // false, which would otherwise clobber the default 'deposited' quantity to
+  // 'mrt' on first mount (and the studio would open focus-frozen again).
   useEffect(() => {
-    if (isLive && !liveAvailable) setBodyMapQuantity('mrt')
-  }, [isLive, liveAvailable, setBodyMapQuantity])
+    if (manifest && isLive && !liveAvailable) setBodyMapQuantity('mrt')
+  }, [manifest, isLive, liveAvailable, setBodyMapQuantity])
 
   const statOptions: Option<StudioBodyMapStatistic>[] = statistics.map((st) => {
     const available = ensembleHasPack(packs, st, mesh, condition, arrayN, bodyMapQuantity, frequencyGhz)
@@ -120,6 +123,10 @@ export default function StudioQuantityPicker() {
         </p>
       ) : (
         <>
+          <p style={{ fontSize: 11, color: '#b58', margin: '8px 2px 0' }}>
+            Static pack, frozen at a reference focus: moving the focus does not change it. Pick
+            &ldquo;Deposited (live)&rdquo; for a focus-tracking map.
+          </p>
           <FieldLabel title="Single seed, or the mean / 95th percentile of the body map over the LOS seed ensemble.">
             Body-map realisation
           </FieldLabel>

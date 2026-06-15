@@ -40,7 +40,11 @@ def default_scene() -> dict:
             "res": 160,
         },
         "fieldQuantity": "S",
-        "bodyMapQuantity": "mrt",
+        # Open on the live, focus-tracking deposited map (applies the live
+        # precoder to the field channel) so the body recolours as the beam
+        # steers. Static packs are frozen at one focus; the frontend falls back
+        # to 'mrt' when the default scene has no field-channel pack.
+        "bodyMapQuantity": "deposited",
         "bodyMapStatistic": "single",
     }
 
