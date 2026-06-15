@@ -211,6 +211,7 @@ export default function StudioScene({ snapSignal }: StudioSceneProps) {
         dynamicRangeDbOverride={bodyScale.dynamicRangeDb}
         colormapLockedOverride
         colormapLockedMaxOverride={bodyScale.vmax}
+        colormapLockedMinOverride={bodyScale.vmin}
         ratioModeOverride={false}
         wireframeOverride={wireframe}
         colorFn={colorFn}

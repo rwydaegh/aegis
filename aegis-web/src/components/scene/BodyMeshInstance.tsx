@@ -35,6 +35,10 @@ export interface BodyMeshInstanceProps {
   dynamicRangeDbOverride?: number
   colormapLockedOverride?: boolean
   colormapLockedMaxOverride?: number | null
+  /** Lower bound of the locked linear colour range. Defaults to 0 (the main
+   * viewer normalises power densities from 0); the studio passes its resolved
+   * scale's vmin so the body map matches the slice/volume in fixed mode. */
+  colormapLockedMinOverride?: number | null
   ratioModeOverride?: boolean
   /** Drive the wireframe toggle independently of the shared useUIStore (used by
    * the studio so its body-wireframe checkbox does not cross-talk with the main
@@ -122,6 +126,7 @@ function writeAbsoluteColors(
   colormapLocked: boolean,
   colormapLockedMax: number | null,
   colorFn: (t: number) => [number, number, number] = jetColor,
+  colormapLockedMin = 0,
 ): void {
   const currentMax = arrayMax(dataArray)
 
@@ -130,14 +135,20 @@ function writeAbsoluteColors(
   }
 
   const maxSab = (colormapLocked && colormapLockedMax != null) ? colormapLockedMax : currentMax
+  // Linear floor: 0 for the main viewer, the resolved scale's vmin for the
+  // studio. The dB path is a vmax-anchored window and ignores vmin (matching
+  // scaleNormalise / the slice shader), so vmin only enters the linear branch.
+  const minSab = colormapLockedMin
+  const span = maxSab - minSab
+  const invSpan = span > 0 ? 1 / span : 0
   const nFaces = dataArray.length
-  const invMax = maxSab > 0 ? 1 / maxSab : 0
   const isDb = legendScale === 'dB'
 
   for (let f = 0; f < nFaces; f++) {
-    const t = isDb
+    const raw = isDb
       ? gainTFromLinear(dataArray[f], maxSab, dynamicRangeDb)
-      : dataArray[f] * invMax
+      : (dataArray[f] - minSab) * invSpan
+    const t = raw < 0 ? 0 : raw > 1 ? 1 : raw
     const [r, g, b] = colorFn(t)
     const base = f * 9
     buf[base] = r; buf[base + 1] = g; buf[base + 2] = b
@@ -168,6 +179,7 @@ export default function BodyMeshInstance({
   dynamicRangeDbOverride,
   colormapLockedOverride,
   colormapLockedMaxOverride,
+  colormapLockedMinOverride,
   ratioModeOverride,
   wireframeOverride,
   colorFn,
@@ -192,6 +204,8 @@ export default function BodyMeshInstance({
   const dynamicRangeDb = dynamicRangeDbOverride ?? storeDynamicRangeDb
   const colormapLocked = colormapLockedOverride ?? storeColormapLocked
   const colormapLockedMax = colormapLockedMaxOverride ?? storeColormapLockedMax
+  // No store equivalent: absent override means "normalise from 0" (main viewer).
+  const colormapLockedMin = colormapLockedMinOverride ?? 0
 
   const dataArray = selectDataArray(
     displayQuantity, sabArray, sabAveragedArray, sincArray, sincAveragedArray, sab1cm2AveragedArray,
@@ -214,10 +228,10 @@ export default function BodyMeshInstance({
     } else if (isRatioMode) {
       writeRatioColors(buf, dataArray, ratioLimit, colorFn)
     } else {
-      writeAbsoluteColors(buf, dataArray, legendScale, dynamicRangeDb, colormapLocked, colormapLockedMax, colorFn)
+      writeAbsoluteColors(buf, dataArray, legendScale, dynamicRangeDb, colormapLocked, colormapLockedMax, colorFn, colormapLockedMin)
     }
     colorAttr.needsUpdate = true
-  }, [dataArray, isRatioMode, ratioLimit, geometry, legendScale, dynamicRangeDb, colormapLocked, colormapLockedMax, colorFn])
+  }, [dataArray, isRatioMode, ratioLimit, geometry, legendScale, dynamicRangeDb, colormapLocked, colormapLockedMax, colormapLockedMin, colorFn])
 
   if (!geometry) return null
 
