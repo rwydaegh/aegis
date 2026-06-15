@@ -2,7 +2,9 @@ import { useMemo } from 'react'
 import GradientBar, { type GradientBarTick } from '@/components/hud/GradientBar'
 import ProvenanceDot from '@/components/panels/ProvenanceDot'
 import { useStudioStore } from './store'
-import { colormapRgb, resolveSliceDisplay } from './scene/studioHelpers'
+import { useStudioScales } from './useStudioScales'
+import { colormapRgb } from './scene/studioHelpers'
+import { logFloor, type ResolvedScale } from './scene/colorScale'
 import { frameProvenance } from './panels/controls'
 
 const CARD = {
@@ -33,19 +35,17 @@ function colormapGradient(name: string): string {
   return `linear-gradient(to bottom, ${stops.join(', ')})`
 }
 
-function buildTicks(vmin: number, vmax: number, logMode: boolean): GradientBarTick[] {
+function buildTicks(scale: ResolvedScale): GradientBarTick[] {
   const N = 5
+  // In log/dB mode the bar spans the dynamic-range window [logFloor, vmax]; in
+  // linear mode it spans [vmin, vmax]. pct 0 = top = vmax.
+  const useLog = scale.logMode && scale.vmax > 0
+  const lo = useLog ? Math.log10(logFloor(scale)) : scale.vmin
+  const hi = useLog ? Math.log10(scale.vmax) : scale.vmax
   return Array.from({ length: N }, (_, i) => {
-    const frac = i / (N - 1) // 0 = top = vmax
-    let value: number
-    if (logMode && vmin > 0 && vmax > 0) {
-      const lo = Math.log10(vmin)
-      const hi = Math.log10(vmax)
-      value = 10 ** (hi - frac * (hi - lo))
-    } else {
-      value = vmax - frac * (vmax - vmin)
-    }
-    return { label: fmt(value), pct: frac }
+    const frac = i / (N - 1)
+    const at = hi - frac * (hi - lo)
+    return { label: fmt(useLog ? 10 ** at : at), pct: frac }
   })
 }
 
@@ -118,33 +118,43 @@ function ProvenanceCard() {
   )
 }
 
-// --- Colour bar for the active slice colour scale ------------------------------
+// --- Colour bar for the active colour scale ------------------------------------
 function StudioColorBar() {
   const sliceResult = useStudioStore((s) => s.sliceResult)
-  const colormap = useStudioStore((s) => s.colormap)
+  const bodyMap = useStudioStore((s) => s.bodyMap)
+  const scaleScope = useStudioStore((s) => s.scaleScope)
   const scaleMode = useStudioStore((s) => s.scaleMode)
-  const fieldQuantity = useStudioStore((s) => s.fieldQuantity)
+  const robustClip = useStudioStore((s) => s.robustClip)
+  const scales = useStudioScales()
 
-  // Mirror the slice plane's colour scale so the legend never lies: signed
-  // components get the diverging map over the symmetric range.
-  const display = resolveSliceDisplay({
-    quantity: fieldQuantity,
-    vmin: sliceResult?.vmin ?? 0,
-    vmax: sliceResult?.vmax ?? 1,
-    colormap,
-    logMode: scaleMode === 'log',
-  })
-  const gradient = useMemo(() => colormapGradient(display.colormap), [display.colormap])
-  if (!sliceResult) return null
+  // The legend follows the slice scale when a slice is present (its diverging map
+  // for signed components, its dB window in log); otherwise it falls back to the
+  // body-map scale so a coloured body is never legend-less.
+  const scale = sliceResult ? scales.slice : bodyMap ? scales.body : null
+  const gradient = useMemo(() => (scale ? colormapGradient(scale.colormap) : ''), [scale])
+  if (!scale) return null
 
-  const ticks = buildTicks(display.vmin, display.vmax, display.logMode)
+  const quantity = sliceResult ? sliceResult.quantity : 'S_ab (deposited)'
+  const units = sliceResult ? sliceResult.units || '--' : 'W/m^2 per W'
+  const ticks = buildTicks(scale)
+
+  // Honest footer: what the scale actually is (scope / robust / log dynamic range).
+  const tags = [
+    scaleScope === 'shared' ? 'shared' : 'per-surface',
+    robustClip ? 'robust' : null,
+    scaleMode === 'log' ? `${Math.round(scale.dynamicRangeDb)} dB` : scaleMode === 'fixed' ? 'fixed' : null,
+  ].filter(Boolean)
+
   const title = (
     <span style={{ fontSize: 12, color: '#cdd' }}>
-      {sliceResult.quantity} ({sliceResult.units || '--'})
+      {quantity} ({units})
     </span>
   )
+  const footer = (
+    <span style={{ fontSize: 10, color: '#8a93a6', letterSpacing: 0.3 }}>{tags.join(' · ')}</span>
+  )
 
-  return <GradientBar gradient={gradient} ticks={ticks} title={title} />
+  return <GradientBar gradient={gradient} ticks={ticks} title={title} footer={footer} />
 }
 
 // Overlay container, mounted inside the scene column of StudioModule.

@@ -4,7 +4,8 @@ import { useThree } from '@react-three/fiber'
 import { Line, TransformControls } from '@react-three/drei'
 import { toScene, toServer, type ServerPos } from '@/api/coordinates'
 import { useStudioStore } from '../store'
-import { colormapRgb, resolveSliceDisplay } from './studioHelpers'
+import { useStudioScales } from '../useStudioScales'
+import { colormapRgb } from './studioHelpers'
 
 const LUT_SIZE = 256
 // Reference window side: 4 cm^2 ICNIRP averaging area = 2 cm x 2 cm.
@@ -25,6 +26,7 @@ const FRAG_SHADER = /* glsl */ `
   uniform float vmin;
   uniform float vmax;
   uniform float logMode;
+  uniform float dynamicRangeDb;
   uniform float opacity;
   varying vec2 vUv;
   void main() {
@@ -36,11 +38,14 @@ const FRAG_SHADER = /* glsl */ `
     float raw = texture2D(dataTex, vec2(vUv.y, vUv.x)).r;
     float t;
     if (logMode > 0.5) {
-      float eps = 1e-12;
-      float lo = log(max(vmin, eps));
-      float hi = log(max(vmax, max(vmin, eps) * 1.0001));
-      float v = clamp(raw, max(vmin, eps), max(vmax, eps));
-      t = (hi > lo) ? (log(v) - lo) / (hi - lo) : 0.0;
+      // Dynamic-range window of dynamicRangeDb dB below vmax, identical to the
+      // body mesh (gainTFromLinear) and the volume, so "log" means one thing.
+      float gMax = max(vmax, 1e-30);
+      float gMin = gMax * pow(10.0, -dynamicRangeDb / 10.0);
+      float lo = log2(gMin);
+      float hi = log2(max(gMax, gMin * 1.0001));
+      float v = clamp(raw, gMin, gMax);
+      t = (hi > lo) ? (log2(v) - lo) / (hi - lo) : 0.0;
     } else {
       t = (vmax > vmin) ? (raw - vmin) / (vmax - vmin) : 0.0;
     }
@@ -76,21 +81,12 @@ function buildLutTexture(name: string): THREE.DataTexture {
 // (in server Z-up coords), which the debounced slice hook turns into a refetch.
 export default function StudioSlicePlane() {
   const sliceResult = useStudioStore((s) => s.sliceResult)
-  const colormap = useStudioStore((s) => s.colormap)
-  const scaleMode = useStudioStore((s) => s.scaleMode)
-  const fieldQuantity = useStudioStore((s) => s.fieldQuantity)
   const setPlane = useStudioStore((s) => s.setPlane)
   const setFocusXyz = useStudioStore((s) => s.setFocusXyz)
 
-  // Signed components (ReEx/y/z) render on a diverging map over a symmetric
-  // range so zero is the neutral centre; everything else keeps the user's scale.
-  const display = resolveSliceDisplay({
-    quantity: fieldQuantity,
-    vmin: sliceResult?.vmin ?? 0,
-    vmax: sliceResult?.vmax ?? 1,
-    colormap,
-    logMode: scaleMode === 'log',
-  })
+  // The resolved slice scale honours scope / mode / robust-clip / fixed range and,
+  // for signed components (ReEx/y/z), the diverging coolwarm symmetric map.
+  const { slice: display } = useStudioScales()
 
   const controls = useThree((s) => s.controls) as { enabled: boolean } | null
 
@@ -145,6 +141,7 @@ export default function StudioSlicePlane() {
           vmin: { value: 0 },
           vmax: { value: 1 },
           logMode: { value: 0 },
+          dynamicRangeDb: { value: 30 },
           opacity: { value: 0.92 },
         },
       }),
@@ -158,6 +155,7 @@ export default function StudioSlicePlane() {
     material.uniforms.vmin.value = display.vmin
     material.uniforms.vmax.value = display.vmax
     material.uniforms.logMode.value = display.logMode ? 1 : 0
+    material.uniforms.dynamicRangeDb.value = display.dynamicRangeDb
     material.needsUpdate = true
   }, [material, dataTex, lutTex, display])
 

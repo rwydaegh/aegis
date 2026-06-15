@@ -2,7 +2,9 @@ import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { toScene } from '@/api/coordinates'
 import { useStudioStore } from '../store'
+import { useStudioScales } from '../useStudioScales'
 import { colormapRgb } from './studioHelpers'
+import { scaleNormalise } from './colorScale'
 
 // The focal lobe rendered as a 3D field cloud: one small cube per voxel of the
 // reconstructed field-volume box whose power density clears the declutter
@@ -15,10 +17,9 @@ import { colormapRgb } from './studioHelpers'
 // component is cheap to keep mounted.
 export default function StudioVolume() {
   const volumeResult = useStudioStore((s) => s.volumeResult)
-  const colormap = useStudioStore((s) => s.colormap)
-  const scaleMode = useStudioStore((s) => s.scaleMode)
   const threshold = useStudioStore((s) => s.volumeThreshold)
   const opacity = useStudioStore((s) => s.volumeOpacity)
+  const { volume: scale } = useStudioScales()
 
   const meshRef = useRef<THREE.InstancedMesh>(null)
 
@@ -27,13 +28,11 @@ export default function StudioVolume() {
   // matrices/colours are written into the InstancedMesh in the effect below.
   const cloud = useMemo(() => {
     if (!volumeResult) return null
-    const { scalar, shape, origin, spacing, vmin, vmax } = volumeResult
+    const { scalar, shape, origin, spacing, vmax } = volumeResult
     const [nx, ny, nz] = shape
+    // The declutter cut stays a fraction of THIS box's own peak (intuitive), while
+    // the colour mapping follows the resolved (possibly shared / robust) scale.
     const cut = vmax * Math.min(Math.max(threshold, 0), 1)
-    const logMode = scaleMode === 'log'
-    const eps = 1e-12
-    const lo = Math.log10(Math.max(vmin, eps))
-    const hi = Math.log10(Math.max(vmax, Math.max(vmin, eps) * 1.0001))
 
     const centres: [number, number, number][] = []
     const colours: [number, number, number][] = []
@@ -50,20 +49,14 @@ export default function StudioVolume() {
             origin[2] + k * spacing,
           ]
           centres.push(toScene(server))
-          let t: number
-          if (logMode) {
-            t = hi > lo ? (Math.log10(Math.max(v, eps)) - lo) / (hi - lo) : 0
-          } else {
-            t = vmax > vmin ? (v - vmin) / (vmax - vmin) : 0
-          }
-          t = Math.min(1, Math.max(0, t))
-          const [r, g, b] = colormapRgb(colormap, t)
+          const t = scaleNormalise(v, scale)
+          const [r, g, b] = colormapRgb(scale.colormap, t)
           colours.push([r / 255, g / 255, b / 255])
         }
       }
     }
     return { centres, colours, spacing }
-  }, [volumeResult, threshold, colormap, scaleMode])
+  }, [volumeResult, threshold, scale])
 
   // Push the instance matrices and colours into the mesh once the cloud changes.
   useEffect(() => {

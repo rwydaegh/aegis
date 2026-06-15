@@ -1,5 +1,7 @@
 import type { StudioFocusMode, StudioPlaneOrientation, Vec3 } from '../api'
 import { useStudioStore, type StudioScaleMode } from '../store'
+import { useStudioScales } from '../useStudioScales'
+import type { StudioScaleScope } from '../scene/colorScale'
 import {
   arraySizeHasRayPack,
   beamAvailability,
@@ -26,7 +28,12 @@ import {
 
 const COLORMAP_OPTIONS: Option<string>[] = [
   { value: 'viridis', label: 'Viridis' },
-  { value: 'jet', label: 'Jet' },
+  { value: 'plasma', label: 'Plasma' },
+  { value: 'inferno', label: 'Inferno' },
+  { value: 'magma', label: 'Magma' },
+  { value: 'cividis', label: 'Cividis' },
+  { value: 'turbo', label: 'Turbo' },
+  { value: 'jet', label: 'Jet (legacy)' },
 ]
 
 const SCALE_OPTIONS: Option<StudioScaleMode>[] = [
@@ -34,6 +41,47 @@ const SCALE_OPTIONS: Option<StudioScaleMode>[] = [
   { value: 'fixed', label: 'Fixed' },
   { value: 'log', label: 'Log' },
 ]
+
+const SCOPE_OPTIONS: Option<StudioScaleScope>[] = [
+  { value: 'surface', label: 'Per-surface' },
+  { value: 'shared', label: 'Shared' },
+]
+
+// A compact numeric field for the fixed colour range. Shows the live value but
+// only commits a parsed, finite number on blur / Enter, so partial typing never
+// pushes a NaN range into the store.
+function RangeInput({ value, onCommit, label }: { value: number; onCommit: (v: number) => void; label: string }) {
+  const commit = (raw: string) => {
+    const n = parseFloat(raw)
+    if (Number.isFinite(n)) onCommit(n)
+  }
+  return (
+    <label style={{ flex: 1, fontSize: 10, color: '#8a93a6' }}>
+      {label}
+      <input
+        type="number"
+        defaultValue={value}
+        key={value}
+        step="any"
+        onBlur={(e) => commit(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') commit((e.target as HTMLInputElement).value)
+        }}
+        style={{
+          width: '100%',
+          marginTop: 2,
+          padding: '3px 5px',
+          fontSize: 11,
+          fontFamily: 'monospace',
+          color: '#dde',
+          background: '#0e1016',
+          border: '1px solid #2a2f3a',
+          borderRadius: 4,
+        }}
+      />
+    </label>
+  )
+}
 
 const FOCUS_MODE_OPTIONS: Option<StudioFocusMode>[] = [
   { value: 'at-skin', label: 'At skin' },
@@ -116,6 +164,15 @@ export default function StudioPanel() {
   const setColormap = useStudioStore((s) => s.setColormap)
   const scaleMode = useStudioStore((s) => s.scaleMode)
   const setScaleMode = useStudioStore((s) => s.setScaleMode)
+  const scaleScope = useStudioStore((s) => s.scaleScope)
+  const setScaleScope = useStudioStore((s) => s.setScaleScope)
+  const dynamicRangeDb = useStudioStore((s) => s.dynamicRangeDb)
+  const setDynamicRangeDb = useStudioStore((s) => s.setDynamicRangeDb)
+  const robustClip = useStudioStore((s) => s.robustClip)
+  const setRobustClip = useStudioStore((s) => s.setRobustClip)
+  const fixedRange = useStudioStore((s) => s.fixedRange)
+  const setFixedRange = useStudioStore((s) => s.setFixedRange)
+  const scales = useStudioScales()
 
   const topK = useStudioStore((s) => s.topK)
   const setTopK = useStudioStore((s) => s.setTopK)
@@ -385,8 +442,82 @@ export default function StudioPanel() {
         <FieldLabel>Colormap</FieldLabel>
         <LabeledSelect<string> value={colormap} options={COLORMAP_OPTIONS} onChange={setColormap} />
 
-        <FieldLabel>Scale</FieldLabel>
-        <Segmented<StudioScaleMode> value={scaleMode} options={SCALE_OPTIONS} onChange={setScaleMode} />
+        <FieldLabel title="Per-surface autoscales each of the slice, body, and volume to its own range. Shared puts all three on one range so equal colours mean equal values.">
+          Scope
+        </FieldLabel>
+        <Segmented<StudioScaleScope> value={scaleScope} options={SCOPE_OPTIONS} onChange={setScaleScope} />
+
+        <FieldLabel title="Auto autoscales to the data. Fixed locks an editable range. Log uses a dB window below the peak.">
+          Scale
+        </FieldLabel>
+        <Segmented<StudioScaleMode>
+          value={scaleMode}
+          options={SCALE_OPTIONS}
+          onChange={(m) => {
+            // Entering Fixed for the first time, seed the locked range from what is
+            // currently on screen so the view does not jump.
+            if (m === 'fixed' && !fixedRange) setFixedRange(scales.autoRange)
+            setScaleMode(m)
+          }}
+        />
+
+        {scaleMode === 'log' && (
+          <>
+            <FieldLabel title="Span of the logarithmic colour window below the peak, in decibels.">
+              Dynamic range
+            </FieldLabel>
+            <Slider
+              value={dynamicRangeDb}
+              min={10}
+              max={60}
+              step={5}
+              onChange={setDynamicRangeDb}
+              labelOf={(v) => `${v} dB`}
+            />
+          </>
+        )}
+
+        {scaleMode === 'fixed' && (
+          <>
+            <FieldLabel>Fixed range</FieldLabel>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', margin: '2px 0 6px' }}>
+              <RangeInput
+                value={fixedRange?.vmin ?? scales.autoRange.vmin}
+                onCommit={(vmin) => setFixedRange({ vmin, vmax: fixedRange?.vmax ?? scales.autoRange.vmax })}
+                label="min"
+              />
+              <RangeInput
+                value={fixedRange?.vmax ?? scales.autoRange.vmax}
+                onCommit={(vmax) => setFixedRange({ vmin: fixedRange?.vmin ?? scales.autoRange.vmin, vmax })}
+                label="max"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => setFixedRange(scales.autoRange)}
+              style={{
+                width: '100%',
+                padding: '5px 8px',
+                fontSize: 11,
+                color: '#bcd',
+                background: '#161922',
+                border: '1px solid #2a2f3a',
+                borderRadius: 5,
+                cursor: 'pointer',
+              }}
+            >
+              Lock to current view
+            </button>
+          </>
+        )}
+
+        <Checkbox
+          checked={robustClip}
+          onChange={setRobustClip}
+          title="Clip the colour range to the 0.5th..99.5th percentiles so a single hot triangle or voxel does not wash out the map."
+        >
+          Robust autoscale (clip outliers)
+        </Checkbox>
       </Group>
     </div>
   )

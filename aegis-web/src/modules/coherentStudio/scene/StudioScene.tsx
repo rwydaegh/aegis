@@ -10,6 +10,7 @@ import type { Vec3 } from '../api'
 import type { ArrayConfig } from '@/api/types'
 import { useStudioStore } from '../store'
 import { useStudioRays } from '../useStudioRays'
+import { useStudioScales } from '../useStudioScales'
 import { colormapRgb, snapFocusToSkin } from './studioHelpers'
 import StudioSlicePlane from './StudioSlicePlane'
 import StudioVolume from './StudioVolume'
@@ -81,8 +82,6 @@ export default function StudioScene({ snapSignal }: StudioSceneProps) {
   const focusMode = useStudioStore((s) => s.focusMode)
   const phantom = useStudioStore((s) => s.phantom)
   const frequencyGhz = useStudioStore((s) => s.frequencyGhz)
-  const colormap = useStudioStore((s) => s.colormap)
-  const scaleMode = useStudioStore((s) => s.scaleMode)
   const bodyMap = useStudioStore((s) => s.bodyMap)
   const showRays = useStudioStore((s) => s.showRays)
   const showArrayPattern = useStudioStore((s) => s.showArrayPattern)
@@ -91,6 +90,7 @@ export default function StudioScene({ snapSignal }: StudioSceneProps) {
 
   const rays = useStudioRays()
   const geometry = usePhantomGeometry()
+  const { body: bodyScale } = useStudioScales()
 
   // Steering focus: in at-skin mode the slice endpoint snaps the focus onto the
   // nearest body surface, so mirror that here (same nearest-centroid search) for
@@ -148,10 +148,10 @@ export default function StudioScene({ snapSignal }: StudioSceneProps) {
   // perturbs the main viewer's shared useUIStore state.
   const colorFn = useMemo(() => {
     return (t: number): [number, number, number] => {
-      const [r, g, b] = colormapRgb(colormap, t)
+      const [r, g, b] = colormapRgb(bodyScale.colormap, t)
       return [r / 255, g / 255, b / 255]
     }
-  }, [colormap])
+  }, [bodyScale.colormap])
 
   const sabArray = useMemo(
     () => (bodyMap ? Float32Array.from(bodyMap.values) : null),
@@ -207,9 +207,10 @@ export default function StudioScene({ snapSignal }: StudioSceneProps) {
         position={[0, 0, 0]}
         rotationY={0}
         displayQuantityOverride="sab"
-        legendScaleOverride={scaleMode === 'log' ? 'dB' : 'linear'}
-        dynamicRangeDbOverride={30}
-        colormapLockedOverride={false}
+        legendScaleOverride={bodyScale.logMode ? 'dB' : 'linear'}
+        dynamicRangeDbOverride={bodyScale.dynamicRangeDb}
+        colormapLockedOverride
+        colormapLockedMaxOverride={bodyScale.vmax}
         ratioModeOverride={false}
         wireframeOverride={wireframe}
         colorFn={colorFn}

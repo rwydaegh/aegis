@@ -1,4 +1,4 @@
-import { jetColor, viridisColor } from '@/lib/colormap'
+import { jetColor, sampleNamedStops, viridisColor } from '@/lib/colormap'
 
 // Pure (no THREE, no DOM) helpers for the studio scene. Kept separate from the
 // React/Three components so they can be unit tested in the node vitest env.
@@ -111,6 +111,9 @@ export function colormapRgb(name: string, t: number): [number, number, number] {
     return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)]
   }
   if (name === 'coolwarm') return coolwarmColor(t)
+  // Perceptually-uniform family (plasma / inferno / magma / cividis / turbo).
+  const named = sampleNamedStops(name, t)
+  if (named) return named
   // Viridis is the default and the fallback for any unknown name.
   return viridisColor(t)
 }
@@ -118,6 +121,12 @@ export function colormapRgb(name: string, t: number): [number, number, number] {
 /** The signed field components, which read best on a diverging map centred at zero. */
 export function isSignedQuantity(quantity: string): boolean {
   return quantity === 'ReEx' || quantity === 'ReEy' || quantity === 'ReEz'
+}
+
+/** Symmetric range [-m, m] (m = max|vmin|,|vmax|, never 0) for a signed field. */
+export function signedSymmetricRange(vmin: number, vmax: number): { vmin: number; vmax: number } {
+  const m = Math.max(Math.abs(vmin), Math.abs(vmax)) || 1
+  return { vmin: -m, vmax: m }
 }
 
 export interface SliceDisplay {
@@ -142,6 +151,6 @@ export function resolveSliceDisplay(args: {
 }): SliceDisplay {
   const { quantity, vmin, vmax, colormap, logMode } = args
   if (!isSignedQuantity(quantity)) return { colormap, vmin, vmax, logMode }
-  const vsym = Math.max(Math.abs(vmin), Math.abs(vmax)) || 1
-  return { colormap: 'coolwarm', vmin: -vsym, vmax: vsym, logMode: false }
+  const sym = signedSymmetricRange(vmin, vmax)
+  return { colormap: 'coolwarm', vmin: sym.vmin, vmax: sym.vmax, logMode: false }
 }

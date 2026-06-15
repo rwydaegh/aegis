@@ -13,6 +13,8 @@ import type {
   VolumeResult,
 } from './api'
 
+import type { Range, StudioScaleScope } from './scene/colorScale'
+
 export type StudioScaleMode = 'auto' | 'fixed' | 'log'
 export type StudioUeAntenna = 'dipole'
 
@@ -39,6 +41,14 @@ interface StudioState {
   // --- Render-only (never trigger a slice/body-map re-fetch) ---
   colormap: string
   scaleMode: StudioScaleMode
+  /** Colour-scale scope: each surface autoscales, or one range shared by all. */
+  scaleScope: StudioScaleScope
+  /** Dynamic range (dB) of the log / dB colour window below the peak. */
+  dynamicRangeDb: number
+  /** Robust autoscale: clip the colour range to the p0.5..p99.5 percentiles. */
+  robustClip: boolean
+  /** User-locked colour range, applied in 'fixed' scale mode (null = not yet set). */
+  fixedRange: Range | null
   /** Number of arrival rays drawn in the scene (decoration; own fetch). */
   topK: number
   showRays: boolean
@@ -85,6 +95,10 @@ interface StudioState {
   setBodyMapStatistic: (bodyMapStatistic: StudioBodyMapStatistic) => void
   setColormap: (colormap: string) => void
   setScaleMode: (scaleMode: StudioScaleMode) => void
+  setScaleScope: (scaleScope: StudioScaleScope) => void
+  setDynamicRangeDb: (dynamicRangeDb: number) => void
+  setRobustClip: (robustClip: boolean) => void
+  setFixedRange: (fixedRange: Range | null) => void
   setEcbfBudgetFrac: (ecbfBudgetFrac: number) => void
   setTopK: (topK: number) => void
   setShowRays: (showRays: boolean) => void
@@ -130,6 +144,10 @@ export const useStudioStore = create<StudioState>()((set) => ({
 
   colormap: 'viridis',
   scaleMode: 'auto',
+  scaleScope: 'surface',
+  dynamicRangeDb: 30,
+  robustClip: false,
+  fixedRange: null,
   topK: 150,
   showRays: true,
   showArrayPattern: true,
@@ -165,6 +183,10 @@ export const useStudioStore = create<StudioState>()((set) => ({
   setBodyMapStatistic: (bodyMapStatistic) => set({ bodyMapStatistic }),
   setColormap: (colormap) => set({ colormap }),
   setScaleMode: (scaleMode) => set({ scaleMode }),
+  setScaleScope: (scaleScope) => set({ scaleScope }),
+  setDynamicRangeDb: (dynamicRangeDb) => set({ dynamicRangeDb }),
+  setRobustClip: (robustClip) => set({ robustClip }),
+  setFixedRange: (fixedRange) => set({ fixedRange }),
   setEcbfBudgetFrac: (ecbfBudgetFrac) => set({ ecbfBudgetFrac }),
   setTopK: (topK) => set({ topK }),
   setShowRays: (showRays) => set({ showRays }),
