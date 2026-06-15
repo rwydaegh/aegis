@@ -16,6 +16,9 @@ import {
 } from './controls'
 import StudioQuantityPicker from './StudioQuantityPicker'
 import StudioExposureHistogram from './StudioExposureHistogram'
+import StudioRadialFalloff from './StudioRadialFalloff'
+import StudioLineProfile from './StudioLineProfile'
+import StudioPatternCut from './StudioPatternCut'
 import {
   Checkbox,
   DiscreteSlider,
@@ -523,6 +526,18 @@ export default function StudioPanel() {
 
       <Group title="Distribution">
         <StudioExposureHistogram />
+      </Group>
+
+      <Group title="Line probe">
+        <StudioLineProfile />
+      </Group>
+
+      <Group title="Falloff">
+        <StudioRadialFalloff />
+      </Group>
+
+      <Group title="Array pattern">
+        <StudioPatternCut />
       </Group>
     </div>
   )
