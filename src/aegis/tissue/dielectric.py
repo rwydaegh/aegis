@@ -116,3 +116,33 @@ SKIN_28GHZ = TissueModel("Skin 28 GHz", eps_r=17.0, sigma=25.0, freq_hz=28e9)
 SKIN_60GHZ = TissueModel("Skin 60 GHz", eps_r=7.9, sigma=36.4, freq_hz=60e9)
 MUSCLE_28GHZ = TissueModel("Muscle 28 GHz", eps_r=25.0, sigma=30.0, freq_hz=28e9)
 FAT_28GHZ = TissueModel("Fat 28 GHz", eps_r=4.0, sigma=2.0, freq_hz=28e9)
+
+# IT'IS v5.0 Gabriel 4-pole Cole-Cole skin (eps_r, sigma [S/m]) per dosimetry
+# frequency, the single source of truth for the coherent-studio frequency sweep.
+# 28 GHz resolves to SKIN_28GHZ above (eps_r=17, sigma=25) to stay byte-identical
+# with the e11 oracle; the other points come from the IT'IS database.
+SKIN_BY_GHZ = {
+    8.0: (33.18, 5.82),
+    10.0: (31.29, 8.01),
+    12.0: (29.33, 10.34),
+    15.0: (26.40, 13.85),
+    20.0: (21.96, 19.22),
+    28.0: (16.55, 25.82),
+}
+
+
+def skin_props(freq_ghz: float) -> tuple[complex, float]:
+    """Skin complex refractive index ``n_tilde`` and conductivity ``sigma``.
+
+    The single source both the offline studio precompute and the runtime
+    (worst-case absorption beam) use, so the live tissue channel is built with
+    the exact dielectric the static body maps were precomputed with. 28 GHz
+    returns :data:`SKIN_28GHZ` verbatim; other frequencies use
+    :data:`SKIN_BY_GHZ` via the Cole-Cole ``n_complex``.
+    """
+    if abs(freq_ghz - 28.0) < 1e-9:
+        return complex(SKIN_28GHZ.n_complex), float(SKIN_28GHZ.sigma)
+    if freq_ghz not in SKIN_BY_GHZ:
+        raise ValueError(f"no skin dielectric for {freq_ghz} GHz. Known: {sorted(SKIN_BY_GHZ)} (or 28).")
+    eps_r, sigma = SKIN_BY_GHZ[freq_ghz]
+    return complex(_n_complex(eps_r, sigma, freq_ghz * 1e9)), float(sigma)

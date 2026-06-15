@@ -108,8 +108,10 @@ def compute_slice(
         if normal_xyz is None:
             raise ValueError("free orientation requires normal_xyz")
         normal = np.asarray(normal_xyz, dtype=float)
-        if np.linalg.norm(normal) < 1e-9:
-            raise ValueError("free orientation normal_xyz must be non-degenerate")
+        # NaN/Inf slips past a bare norm check (nan < 1e-9 is False) and would
+        # poison the frame, coords, and stats; reject it as a 400, not a NaN map.
+        if not np.all(np.isfinite(normal)) or np.linalg.norm(normal) < 1e-9:
+            raise ValueError("free orientation normal_xyz must be finite and non-degenerate")
         in_plane = None
     else:
         raise ValueError(f"unknown plane orientation: {orientation!r}")

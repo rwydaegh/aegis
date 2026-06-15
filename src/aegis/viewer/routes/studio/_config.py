@@ -44,8 +44,8 @@ def available_packs() -> dict[str, list[str]]:
     """Scan the studio data dir and report the packs present.
 
     Returns a dict keyed by pack kind (``rays``, ``phantom``, ``bodymaps``,
-    ``ensemble``, ``qop``), each value a sorted list of pack stems (filenames
-    without the ``.npz`` suffix). A missing data dir or missing subdir yields
+    ``ensemble``, ``qop``, ``channel``), each value a sorted list of pack stems
+    (filenames without the ``.npz`` suffix). A missing data dir or missing subdir yields
     empty lists rather than raising, so a fresh checkout reports an empty
     structure.
     """

@@ -41,6 +41,10 @@ def build_precoder(
     focus_xyz,
     freq_hz: float,
     power: float = 1.0,
+    *,
+    body_normal=None,
+    n_tilde: complex | None = None,
+    sigma: float | None = None,
 ) -> np.ndarray:
     """Build the precoder ``x`` of shape ``(n_elements,)`` for ``kind``.
 
@@ -49,6 +53,13 @@ def build_precoder(
     and ``decohered`` is a field-domain scramble that is not a per-element
     precoder (synthesize it via ``_slice.decohered_field_source``); both raise
     here.
+
+    For ``worstcase``, passing ``body_normal`` + ``n_tilde`` + ``sigma`` builds
+    the precoder from the tissue channel ``G_tilde`` at the focus surface, so it
+    maximises absorbed power density (matching the worst-case body map) rather
+    than free-space field intensity. Without them it falls back to the
+    free-space field channel (the only well-defined worst case for an in-air
+    focus).
     """
     from aegis.hotspot import field_channel_at, local_max_intensity, make_rx_response
 
@@ -75,6 +86,25 @@ def build_precoder(
         return _mrt(decoy_focus, k_hat, psi, element_index, freq_hz, n_elements, ue_rx, power)
 
     if kind == "worstcase":
+        if body_normal is not None and n_tilde is not None and sigma is not None:
+            # Absorption-optimal: leading right singular vector of the tissue
+            # channel G_tilde at the focus triangle, so the deposited map peaks at
+            # the same lambda_max(G_tilde^H G_tilde) the worst-case body map shows.
+            from aegis.coherent.body_channel import compute_body_channel
+
+            g_tilde = compute_body_channel(
+                np.asarray(body_normal, dtype=float).reshape(1, 3),
+                focus.reshape(1, 3),
+                k_hat,
+                psi,
+                element_index,
+                n_tilde,
+                float(sigma),
+                freq_hz,
+                n_elements,
+            )  # (1, 3, n_elements)
+            _lam, x_opt = local_max_intensity(g_tilde[0], power)
+            return np.asarray(x_opt)
         g = field_channel_at(focus, k_hat, psi, element_index, freq_hz, n_elements)
         _lam, x_opt = local_max_intensity(g, power)
         return np.asarray(x_opt)
@@ -96,7 +126,7 @@ def build_ecbf_from_q(
     """Solve the ECBF QCQP against a precomputed exposure operator ``q``.
 
     ``q`` is the served Hermitian PSD exposure operator
-    (``data/studio/qop/{condition}_bs{N}_{ghz}.npz``). The absorbed-power budget
+    (``data/studio/qop/{mesh}_{condition}_bs{N}_{ghz}_seed{s}.npz``). The absorbed-power budget
     is ``P_abs_max = budget_frac * (x_mrt^H q x_mrt)`` with an MRT precoder, so
     ``budget_frac`` traces the exposure / signal Pareto front: 1.0 reproduces
     the MRT operating point, smaller values trade received signal for lower

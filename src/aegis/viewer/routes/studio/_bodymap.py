@@ -36,9 +36,15 @@ def _resolve_pack(mesh: str, condition: str, array_n: int, quantity: str, freq_t
         path = ens / f"{base}_p95.npz"
         return f"{base}_p95", (path if path.is_file() else None)
     if statistic == "mean":
-        # The mean pack name carries the seed count (e.g. ..._mean6.npz).
-        hits = sorted(ens.glob(f"{base}_mean*.npz"))
-        return f"{base}_mean", (hits[0] if hits else None)
+        # The mean pack name carries the seed count (e.g. ..._mean6.npz). Pick the
+        # largest K numerically, not lexicographically (else _mean12 < _mean6 and a
+        # stale lower-K pack would win when seed counts change).
+        def _k(p):
+            tail = p.stem.rpartition("_mean")[2]
+            return int(tail) if tail.isdigit() else -1
+
+        hits = sorted(ens.glob(f"{base}_mean*.npz"), key=_k)
+        return f"{base}_mean", (hits[-1] if hits else None)
     return base, None
 
 

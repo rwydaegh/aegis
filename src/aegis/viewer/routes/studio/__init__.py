@@ -42,7 +42,19 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
 
     from . import _bodymap, _channel, _paths, _phantom, _precoders, _presets, _slice, _volume
 
-    def _beam_field(beam, paths, focus_xyz, freq_hz, condition, array_n, freq_ghz, ecbf_budget_frac, mesh="thelonious"):
+    def _beam_field(
+        beam,
+        paths,
+        focus_xyz,
+        freq_hz,
+        condition,
+        array_n,
+        freq_ghz,
+        ecbf_budget_frac,
+        mesh="thelonious",
+        focus_mode="free-space",
+        seed=0,
+    ):
         """Resolve a beam to ``(x, field_source)`` for the field reconstructors.
 
         Most beams collapse a per-element precoder ``x`` (field_source None); the
@@ -56,10 +68,32 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             x_base = _precoders.build_precoder("mrt", paths, focus_xyz, freq_hz, power=1.0)
             return None, _slice.decohered_field_source(paths, x_base)
         if beam == "ecbf":
-            q = _paths.load_q(condition, array_n, freq_ghz, mesh, cache, cache_lock)
+            # Q must match the seed of the channel/UE the map is shown at, so the
+            # exposure budget and the displayed S_ab refer to the same realisation.
+            q = _paths.load_q(condition, array_n, freq_ghz, seed, mesh, cache, cache_lock)
             if q is None:
-                raise _QPackMissing(f"{mesh}_{condition}_bs{int(array_n)}_{freq_ghz:g}")
+                raise _QPackMissing(f"{mesh}_{condition}_bs{int(array_n)}_{freq_ghz:g}_seed{int(seed)}")
             x = _precoders.build_ecbf_from_q(paths, focus_xyz, freq_hz, q, power=1.0, budget_frac=ecbf_budget_frac)
+            return x, None
+        if beam == "worstcase" and focus_mode == "at-skin":
+            # On the body: build the worst-case ABSORPTION beam from the tissue
+            # channel at the snapped focus, so the deposited map there reaches the
+            # worst-case body-map envelope. In free-space mode there is no surface,
+            # so build_precoder falls back to the free-space field worst case.
+            from aegis.tissue.dielectric import skin_props
+
+            normal = _phantom.focus_surface_normal(focus_xyz, mesh, cache, cache_lock)
+            n_tilde, sigma = skin_props(freq_ghz)
+            x = _precoders.build_precoder(
+                "worstcase",
+                paths,
+                focus_xyz,
+                freq_hz,
+                power=1.0,
+                body_normal=normal,
+                n_tilde=n_tilde,
+                sigma=sigma,
+            )
             return x, None
         return _precoders.build_precoder(beam, paths, focus_xyz, freq_hz, power=1.0), None
 
@@ -114,7 +148,7 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
 
             paths = _paths.load_paths(condition, array_n, seed, cache, cache_lock)
             x, field_source = _beam_field(
-                beam, paths, focus_xyz, freq_hz, condition, array_n, freq_ghz, ecbf_budget_frac, mesh
+                beam, paths, focus_xyz, freq_hz, condition, array_n, freq_ghz, ecbf_budget_frac, mesh, focus_mode, seed
             )
             out = _slice.compute_slice(paths, x, plane, freq_hz, quantity, field_source=field_source)
         except _QPackMissing as e:
@@ -171,7 +205,7 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
 
             paths = _paths.load_paths(condition, array_n, seed, cache, cache_lock)
             x, field_source = _beam_field(
-                beam, paths, focus_xyz, freq_hz, condition, array_n, freq_ghz, ecbf_budget_frac, mesh
+                beam, paths, focus_xyz, freq_hz, condition, array_n, freq_ghz, ecbf_budget_frac, mesh, focus_mode, seed
             )
             out = _volume.compute_volume(paths, x, focus_xyz, freq_hz, extent_m, res, field_source=field_source)
         except _QPackMissing as e:
@@ -231,7 +265,7 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
         array_n = request.args.get("array_n", default=16, type=int)
         beam = request.args.get("beam", "mrt")
         quantity = request.args.get("quantity", "mrt")
-        frequency_ghz = request.args.get("frequency_ghz", default=28.0, type=float)
+        frequency_ghz = request.args.get("frequency_ghz", default=10.0, type=float)
         realisation = request.args.get("realisation", default=0, type=int)
         statistic = request.args.get("statistic", "single")
         mesh = request.args.get("mesh", "thelonious")
@@ -286,7 +320,7 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
 
             paths = _paths.load_paths(condition, array_n, seed, cache, cache_lock)
             x, _field_source = _beam_field(
-                beam, paths, focus_xyz, freq_hz, condition, array_n, freq_ghz, ecbf_budget_frac, mesh
+                beam, paths, focus_xyz, freq_hz, condition, array_n, freq_ghz, ecbf_budget_frac, mesh, focus_mode, seed
             )
             if x is None:
                 # The decohered baseline is a field-domain weight source, not a

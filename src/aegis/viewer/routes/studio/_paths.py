@@ -95,22 +95,26 @@ def load_q(
     condition: str,
     array_n: int,
     frequency_ghz: float,
+    seed: int = 0,
     mesh: str = "thelonious",
     cache: dict | None = None,
     cache_lock: threading.RLock | None = None,
 ) -> np.ndarray | None:
-    """Load the exposure operator ``Q`` for a scenario, or ``None`` if absent.
+    """Load the exposure operator ``Q`` for a scenario+seed, or ``None`` if absent.
 
-    Resolves ``<studio>/qop/{mesh}_{condition}_bs{N}_{ghz}.npz`` (the freq tag
-    matches the body-map convention, ``f"{float(ghz):g}"``). Q is per-phantom,
-    so the stem carries the mesh prefix. Returns the ``(M_ant, M_ant)`` complex
-    Hermitian PSD operator on hit, ``None`` on miss so the slice route can
-    return the not-precomputed sentinel without ever triggering the multi-minute
-    full-body build. Only hits are cached, so a Q pack generated after a miss is
-    still picked up.
+    Resolves ``<studio>/qop/{mesh}_{condition}_bs{N}_{ghz}_seed{s}.npz`` (the
+    freq tag matches the body-map convention, ``f"{float(ghz):g}"``). Q is
+    per-phantom and per-realisation: ``Q = sum_t area_t G_tilde(seed)^H
+    G_tilde(seed)``, so it must match the channel/UE seed the ECBF map is shown
+    at for ``x^H Q x = integral S_ab dA`` to hold. Seed 0 falls back to the
+    legacy seedless stem ``{mesh}_{condition}_bs{N}_{ghz}.npz`` for backward
+    compatibility. Returns the ``(M_ant, M_ant)`` complex Hermitian PSD operator
+    on hit, ``None`` on miss (the route returns the not-precomputed sentinel).
+    Only hits are cached.
     """
     freq_tag = f"{float(frequency_ghz):g}"
-    stem = f"{mesh}_{condition}_bs{int(array_n)}_{freq_tag}"
+    base = f"{mesh}_{condition}_bs{int(array_n)}_{freq_tag}"
+    stem = f"{base}_seed{int(seed)}"
 
     if cache is not None:
         with cache_lock:
@@ -118,9 +122,17 @@ def load_q(
             if stem in store:
                 return store[stem]
 
-    path = studio_data_dir() / "qop" / f"{stem}.npz"
+    qop_dir = studio_data_dir() / "qop"
+    path = qop_dir / f"{stem}.npz"
     if not path.is_file():
-        return None
+        # Legacy seedless pack is the seed-0 operator; use it only for seed 0 so
+        # other seeds honestly report "not precomputed" rather than optimising
+        # against the wrong realisation.
+        legacy = qop_dir / f"{base}.npz"
+        if int(seed) == 0 and legacy.is_file():
+            path = legacy
+        else:
+            return None
     with np.load(path) as d:
         q = np.ascontiguousarray(d["Q"], dtype=complex)
 

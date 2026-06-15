@@ -338,3 +338,43 @@ def test_antenna_changes_precoder_but_not_worstcase():
     # both precoders are bounded by the same eigenvalue
     assert np.sum(np.abs(G @ xv) ** 2) <= lam + 1e-9
     assert np.sum(np.abs(G @ xd) ** 2) <= lam + 1e-9
+
+
+def test_worstcase_beam_at_skin_reaches_absorption_envelope():
+    # The studio's at-skin worstcase beam is built from the tissue channel
+    # G_tilde at the focus, so it must deposit exactly the worst-case absorption
+    # eigenvalue lambda_max(G_tilde^H G_tilde) there. The free-space field-optimal
+    # beam (the only option for an in-air focus) is a different precoder that
+    # underachieves that envelope once the Fresnel filter is applied.
+    from aegis.coherent.body_channel import compute_body_channel
+    from aegis.tissue.dielectric import skin_props
+    from aegis.viewer.routes.studio._precoders import build_precoder
+
+    k, psi, elem, M = _synthetic_array()
+    paths = (k, psi, elem, M)
+    focus = np.array([0.05, -0.02, 1.0])
+    normal = np.array([0.0, 0.0, 1.0])  # faces the -z arrivals (mu = n.(-k) > 0)
+    n_tilde, sigma = skin_props(28.0)
+
+    g_tilde = compute_body_channel(
+        normal.reshape(1, 3), focus.reshape(1, 3), k, psi, elem, n_tilde, sigma, FREQ, M
+    )
+    lam = float(np.linalg.svd(g_tilde[0], compute_uv=False)[0] ** 2)
+
+    x_abs = build_precoder(
+        "worstcase", paths, focus, FREQ, power=1.0, body_normal=normal, n_tilde=n_tilde, sigma=sigma
+    )
+    x_field = build_precoder("worstcase", paths, focus, FREQ, power=1.0)
+
+    dep_abs = float(np.sum(np.abs(g_tilde[0] @ x_abs) ** 2))
+    dep_field = float(np.sum(np.abs(g_tilde[0] @ x_field) ** 2))
+
+    # Both are matched-power precoders.
+    assert np.isclose(np.vdot(x_abs, x_abs).real, 1.0)
+    assert np.isclose(np.vdot(x_field, x_field).real, 1.0)
+    # The absorption beam reaches the worst-case envelope; the field beam cannot exceed it.
+    assert np.isclose(dep_abs, lam, rtol=1e-6)
+    assert dep_field <= lam + 1e-9
+    # The two are genuinely different beams (the bug was using the field one on the body).
+    assert np.abs(np.vdot(x_abs, x_field)) < 0.999
+    assert dep_field < lam  # field-optimal strictly underachieves absorption worst case

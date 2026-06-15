@@ -54,18 +54,11 @@ BEAMS = ("floor", "mrt", "worstcase", "amp", "ecbf")
 ENSEMBLE_SEEDS = (0, 1, 2, 3, 4, 5)
 ECBF_BUDGET_FRAC = 0.5  # P_abs_max as a fraction of the MRT absorbed power
 
-# IT'IS v5.0 Gabriel 4-pole Cole-Cole skin (eps_r, sigma [S/m]) per dosimetry
-# frequency, copied verbatim from SKIN_BY_GHZ in the paper fork's
-# code/scripts/e11b_freq_sweep.py (same source/convention as SKIN_28GHZ). The
-# ray geometry stays fixed at 28 GHz; only the tissue response moves with freq.
-SKIN_BY_GHZ = {
-    8.0: (33.18, 5.82),
-    10.0: (31.29, 8.01),
-    12.0: (29.33, 10.34),
-    15.0: (26.40, 13.85),
-    20.0: (21.96, 19.22),
-    28.0: (16.55, 25.82),
-}
+# The per-frequency skin dielectric (SKIN_BY_GHZ) now lives in
+# aegis.tissue.dielectric so the runtime worst-case-absorption beam builds the
+# live tissue channel with the identical dielectric these packs were made with.
+# The ray geometry stays fixed at 28 GHz; only the tissue response moves with
+# freq (see _skin_props below).
 
 
 # --------------------------------------------------------------------------
@@ -116,18 +109,12 @@ def _skin_focus_point(spec, body, height_frac: float = 0.62) -> np.ndarray:
 
 def _skin_props(freq_ghz: float) -> tuple[complex, float]:
     """Complex refractive index and conductivity of skin at a frequency."""
-    from aegis.tissue.dielectric import SKIN_28GHZ
-    from aegis.tissue.fresnel import n_complex
+    from aegis.tissue.dielectric import skin_props
 
-    if abs(freq_ghz - 28.0) < 1e-9:
-        return complex(SKIN_28GHZ.n_complex), float(SKIN_28GHZ.sigma)
-    if freq_ghz not in SKIN_BY_GHZ:
-        raise SystemExit(
-            f"error: no skin dielectric for {freq_ghz} GHz. Known: "
-            f"{sorted(SKIN_BY_GHZ)} (or 28). Add it to SKIN_BY_GHZ."
-        )
-    eps_r, sigma = SKIN_BY_GHZ[freq_ghz]
-    return complex(n_complex(eps_r, sigma, freq_ghz * 1e9)), float(sigma)
+    try:
+        return skin_props(freq_ghz)
+    except ValueError as e:
+        raise SystemExit(f"error: {e} Add it to SKIN_BY_GHZ in aegis.tissue.dielectric.") from e
 
 
 # --------------------------------------------------------------------------
@@ -397,8 +384,8 @@ def _ensemble_base(mesh: str, cond: str, bs_n: int, beam: str, freq_ghz: float) 
     return f"{mesh}_{cond}_bs{bs_n}_{beam}_{_ghz_tag(freq_ghz)}"
 
 
-def _qop_path(studio_dir: Path, mesh: str, cond: str, bs_n: int, freq_ghz: float) -> Path:
-    return studio_dir / "qop" / f"{mesh}_{cond}_bs{bs_n}_{_ghz_tag(freq_ghz)}.npz"
+def _qop_path(studio_dir: Path, mesh: str, cond: str, bs_n: int, freq_ghz: float, seed: int = 0) -> Path:
+    return studio_dir / "qop" / f"{mesh}_{cond}_bs{bs_n}_{_ghz_tag(freq_ghz)}_seed{int(seed)}.npz"
 
 
 def _atomic_savez(out: Path, **arrays) -> None:
@@ -564,7 +551,7 @@ def compute_qoperators(
 ) -> None:
     """Precompute and serialise the exposure operator Q for each scenario.
 
-    Writes ``<studio>/qop/{mesh}_{condition}_bs{N}_{ghz}.npz`` with the
+    Writes ``<studio>/qop/{mesh}_{condition}_bs{N}_{ghz}_seed{s}.npz`` with the
     Hermitian PSD operator so the runtime can run a fast small ECBF solve
     (x^H Q x) instead of rebuilding the full-body tissue channel (~8 min). Q is
     per-phantom (Q = sum_t area_t G_t^H G_t over that phantom's triangles), so
@@ -584,7 +571,7 @@ def compute_qoperators(
                     eigs = np.linalg.eigvalsh(q)
                     min_eig = float(eigs.min())
                     tag = _ghz_tag(freq_ghz)
-                    out = _qop_path(studio_dir, mesh, cond, bs_n, freq_ghz)
+                    out = _qop_path(studio_dir, mesh, cond, bs_n, freq_ghz, seed)
                     prov = (
                         f"studio_precompute qoperator mesh={mesh} cond={cond} bs{bs_n} {tag}GHz seed={seed} "
                         f"| e11 recipe | Q=sum_t area_t G_t^H G_t (128-tri chunked)"
@@ -603,6 +590,54 @@ def compute_qoperators(
                         f"||Q-Q^H||={herm_err:.3e} min_eig={min_eig:.3e} "
                         f"lambda_max={float(eigs.max()):.3e}"
                     )
+
+
+def qop_from_channels(studio_dir: Path, meshes: list[str] | None = None) -> None:
+    """Derive per-seed exposure operators Q from existing G_tilde channel packs.
+
+    ``Q(seed) = sum_t area_t G_tilde(seed)_t^H G_tilde(seed)_t`` is exactly the
+    reduction of the channel pack the live ECBF map is shown at, so deriving Q
+    here (instead of re-tracing) makes ``x^H Q x = integral S_ab dA`` hold per
+    seed. Fork-free and cheap: reads each ``<studio>/channel/*.npz`` and writes
+    the matching seed-keyed ``<studio>/qop/..._seed{s}.npz``. ``meshes`` filters
+    by mesh prefix.
+    """
+    from aegis.coherent.exposure_operator import compute_exposure_operator
+
+    packs = sorted((studio_dir / "channel").glob("*.npz"))
+    if not packs:
+        print("  no channel packs found; nothing to do")
+        return
+    for path in packs:
+        base, _, seed_tok = path.stem.rpartition("_seed")
+        if not seed_tok:
+            print(f"  skip {path.name}: no seed suffix")
+            continue
+        parts = base.split("_")  # {mesh...}_{cond}_bs{N}_{ghz}
+        ghz_tok, bs_tok, cond = parts[-1], parts[-2], parts[-3]
+        mesh = "_".join(parts[:-3])
+        if meshes and mesh not in meshes:
+            continue
+        bs_n, freq_ghz, seed = int(bs_tok.removeprefix("bs")), float(ghz_tok), int(seed_tok)
+        with np.load(path) as d:
+            q = compute_exposure_operator(np.asarray(d["g_tilde"]), np.asarray(d["areas"], dtype=float))
+        q = (q + np.conj(q).T) / 2
+        eigs = np.linalg.eigvalsh(q)
+        out = _qop_path(studio_dir, mesh, cond, bs_n, freq_ghz, seed)
+        prov = (
+            f"studio_precompute qop_from_channels mesh={mesh} cond={cond} bs{bs_n} "
+            f"{_ghz_tag(freq_ghz)}GHz seed={seed} | Q=sum_t area_t G_t^H G_t from channel pack"
+        )
+        _atomic_savez(
+            out,
+            Q=np.asarray(q, np.complex128),
+            condition=cond,
+            array_n=np.int64(bs_n),
+            frequency_ghz=np.float64(freq_ghz),
+            mesh=mesh,
+            provenance=prov,
+        )
+        print(f"  wrote {out.name}: min_eig={float(eigs.min()):.3e} lambda_max={float(eigs.max()):.3e}")
 
 
 # --------------------------------------------------------------------------
@@ -672,6 +707,11 @@ def main() -> None:
     ap.add_argument("--bodymaps", action="store_true", help="compute per-triangle body maps")
     ap.add_argument("--ensemble", action="store_true", help="mean/p95 over LOS seeds")
     ap.add_argument("--qoperator", action="store_true", help="precompute exposure operator Q packs")
+    ap.add_argument(
+        "--qop-from-channels",
+        action="store_true",
+        help="derive per-seed Q packs from existing G_tilde channel packs (fork-free, no re-trace)",
+    )
     ap.add_argument("--channel", action="store_true", help="persist G_tilde field-channel packs (live body map)")
     ap.add_argument("--conditions", nargs="+", default=["los"], choices=["los", "nlos"])
     ap.add_argument(
@@ -699,8 +739,21 @@ def main() -> None:
     studio_dir = studio_data_dir()
     print(f"studio data dir: {studio_dir}")
 
-    if not any((args.sync_rays, args.phantom, args.bodymaps, args.ensemble, args.qoperator, args.channel)):
-        ap.error("choose at least one of --sync-rays --phantom --bodymaps --ensemble --qoperator --channel")
+    if not any(
+        (
+            args.sync_rays,
+            args.phantom,
+            args.bodymaps,
+            args.ensemble,
+            args.qoperator,
+            args.qop_from_channels,
+            args.channel,
+        )
+    ):
+        ap.error(
+            "choose at least one of --sync-rays --phantom --bodymaps --ensemble "
+            "--qoperator --qop-from-channels --channel"
+        )
 
     if args.sync_rays:
         print("[sync-rays]")
@@ -721,6 +774,9 @@ def main() -> None:
     if args.qoperator:
         print("[qoperator]")
         compute_qoperators(studio_dir, args.arrays, args.conditions, args.freqs, seed=args.seed, meshes=args.meshes)
+    if args.qop_from_channels:
+        print("[qop-from-channels]")
+        qop_from_channels(studio_dir, meshes=args.meshes)
     if args.channel:
         print("[channel]")
         compute_channels(studio_dir, args.arrays, args.conditions, args.freqs, args.sync_seeds, meshes=args.meshes)

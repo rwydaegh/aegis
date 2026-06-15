@@ -65,6 +65,26 @@ def snap_focus_to_skin(
     return [float(nearest[0]), float(nearest[1]), float(nearest[2])]
 
 
+def focus_surface_normal(
+    focus_xyz,
+    name: str = "thelonious",
+    cache: dict | None = None,
+    cache_lock: threading.RLock | None = None,
+):
+    """Outward normal of the body triangle nearest ``focus_xyz`` (length-3 array).
+
+    Used by the worst-case-absorption beam to build the tissue channel at the
+    snapped focus. Same nearest-centroid search as :func:`snap_focus_to_skin`,
+    so a focus already snapped at-skin resolves to its own triangle's normal.
+    """
+    focus = np.asarray(focus_xyz, dtype=float).reshape(3)
+    phantom = load_phantom(name, cache, cache_lock)
+    centroids = np.asarray(phantom["centroids"], dtype=float)
+    normals = np.asarray(phantom["normals"], dtype=float)
+    d2 = np.einsum("ij,ij->i", centroids - focus, centroids - focus)
+    return normals[int(np.argmin(d2))].astype(float)
+
+
 def build_phantom_payload(
     name: str,
     cache: dict | None = None,
