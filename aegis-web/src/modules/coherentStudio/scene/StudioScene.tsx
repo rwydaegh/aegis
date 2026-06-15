@@ -30,7 +30,12 @@ function usePhantomGeometry(): THREE.BufferGeometry | null {
   const geometry = useMemo(() => {
     if (!phantom) return null
     const g = new THREE.BufferGeometry()
-    g.setAttribute('position', new THREE.BufferAttribute(phantom.vertices, 3))
+    // Clone the vertex buffer: g.rotateX mutates the position array IN PLACE, and
+    // phantom.vertices is the shared store buffer. If we wrapped it directly, a
+    // re-run of this memo on the same buffer (StrictMode double-invoke, or a
+    // re-fetch on phantom switch) would rotate the already-rotated data again and
+    // tip the body onto the floor. Rotating a private copy keeps it idempotent.
+    g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(phantom.vertices), 3))
     g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(phantom.vertices.length), 3))
     // Phantom vertices ship in the e11 world frame (Z-up). The scene is Y-up, so
     // rotate -90 deg about X (the exact rotation toScene applies to points) to
