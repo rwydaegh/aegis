@@ -4,6 +4,8 @@ import {
   beamOptions,
   bodyMapHasPack,
   bodyMapStem,
+  channelHasPack,
+  channelStem,
   conditionHasRayPack,
   ensembleHasPack,
   EXTENT_OPTIONS_M,
@@ -22,6 +24,7 @@ const PACKS: StudioPacks = {
   bodymaps: ['los_bs16_mrt_10', 'los_bs16_worstcase_10', 'los_bs16_mrt_28'],
   ensemble: ['los_bs16_mrt_28_mean6', 'los_bs16_mrt_28_p95'],
   qop: ['los_bs16_10', 'los_bs16_28'],
+  channel: ['los_bs16_10_seed0', 'los_bs16_28_seed0', 'nlos_bs16_10_seed0'],
 }
 
 function manifest(extra: Partial<StudioManifest> = {}): StudioManifest {
@@ -107,6 +110,25 @@ describe('bodyMapHasPack', () => {
     expect(bodyMapHasPack(PACKS, 'los', 16, 'worstcase', 28)).toBe(false)
     expect(bodyMapHasPack(PACKS, 'los', 16, 'floor', 10)).toBe(false)
     expect(bodyMapHasPack(PACKS, 'los', 16, 'amp', 10)).toBe(false)
+  })
+})
+
+describe('channelStem / channelHasPack', () => {
+  it('builds the seed-bearing channel stem', () => {
+    expect(channelStem('los', 16, 10, 0)).toBe('los_bs16_10_seed0')
+    expect(channelStem('nlos', 16, 28, 3)).toBe('nlos_bs16_28_seed3')
+  })
+
+  it('is true only when the channel pack for the seed exists', () => {
+    expect(channelHasPack(PACKS, 'los', 16, 10, 0)).toBe(true)
+    expect(channelHasPack(PACKS, 'los', 16, 28, 0)).toBe(true)
+    expect(channelHasPack(PACKS, 'nlos', 16, 10, 0)).toBe(true)
+  })
+
+  it('is false for a seed / freq / condition without a channel pack', () => {
+    expect(channelHasPack(PACKS, 'los', 16, 10, 3)).toBe(false)
+    expect(channelHasPack(PACKS, 'los', 16, 12, 0)).toBe(false)
+    expect(channelHasPack(PACKS, 'nlos', 16, 28, 0)).toBe(false)
   })
 })
 

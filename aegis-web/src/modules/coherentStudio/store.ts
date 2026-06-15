@@ -201,10 +201,19 @@ export type SliceKeyState = Pick<
   | 'ecbfBudgetFrac'
 >
 
-/** Params requiring a body-map pack swap. */
+/** Params requiring a body-map pack swap (or a live recompute for 'deposited'). */
 export type BodyMapKeyState = Pick<
   StudioState,
-  'condition' | 'arrayN' | 'beam' | 'bodyMapQuantity' | 'bodyMapStatistic' | 'frequencyGhz' | 'seed'
+  | 'condition'
+  | 'arrayN'
+  | 'beam'
+  | 'bodyMapQuantity'
+  | 'bodyMapStatistic'
+  | 'frequencyGhz'
+  | 'seed'
+  | 'focusMode'
+  | 'focusXyz'
+  | 'ecbfBudgetFrac'
 >
 
 export function sliceFetchKey(s: SliceKeyState): string {
@@ -226,6 +235,21 @@ export function sliceFetchKey(s: SliceKeyState): string {
 }
 
 export function bodyMapFetchKey(s: BodyMapKeyState): string {
+  // The live "deposited" map is a function of the precoder, so it keys on the
+  // beam + focus axes (like the slice) rather than a static pack identity.
+  if (s.bodyMapQuantity === 'deposited') {
+    return JSON.stringify([
+      'live',
+      s.condition,
+      s.arrayN,
+      s.seed,
+      s.beam,
+      s.focusMode,
+      s.focusXyz,
+      s.frequencyGhz,
+      s.beam === 'ecbf' ? s.ecbfBudgetFrac : null,
+    ])
+  }
   return JSON.stringify([
     s.condition,
     s.arrayN,

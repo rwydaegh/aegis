@@ -16,7 +16,7 @@ from pathlib import Path
 _REPO_ROOT = Path(__file__).resolve().parents[5]
 
 # Subdirectories of the studio data dir, one per pack kind.
-_PACK_DIRS = ("rays", "phantom", "bodymaps", "ensemble", "qop")
+_PACK_DIRS = ("rays", "phantom", "bodymaps", "ensemble", "qop", "channel")
 
 
 def studio_data_dir() -> Path:

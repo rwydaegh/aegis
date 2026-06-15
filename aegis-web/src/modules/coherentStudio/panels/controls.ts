@@ -6,7 +6,7 @@ import type { StudioFieldQuantity, StudioManifest, StudioPacks } from '../api'
 // tested in the node vitest env.
 // ---------------------------------------------------------------------------
 
-const EMPTY_PACKS: StudioPacks = { rays: [], phantom: [], bodymaps: [], ensemble: [], qop: [] }
+const EMPTY_PACKS: StudioPacks = { rays: [], phantom: [], bodymaps: [], ensemble: [], qop: [], channel: [] }
 
 /** Read the typed pack lists off the manifest, tolerating a missing manifest. */
 export function packsOf(manifest: StudioManifest | null): StudioPacks {
@@ -22,6 +22,7 @@ export function packsOf(manifest: StudioManifest | null): StudioPacks {
     bodymaps: list(o.bodymaps),
     ensemble: list(o.ensemble),
     qop: list(o.qop),
+    channel: list(o.channel),
   }
 }
 
@@ -111,6 +112,27 @@ export function qopHasPack(
   frequencyGhz: number,
 ): boolean {
   return packs.qop.includes(qopStem(condition, arrayN, frequencyGhz))
+}
+
+/** Field-channel pack stem for a (condition, array, frequency, seed). */
+export function channelStem(condition: string, arrayN: number, frequencyGhz: number, seed: number): string {
+  return `${condition}_bs${arrayN}_${freqTag(frequencyGhz)}_seed${seed}`
+}
+
+/**
+ * The live ("deposited") body map needs a precomputed field channel for the
+ * current (condition, array, frequency, seed). Channel packs ship at the
+ * dosimetry frequencies and seeds the offline precompute covered, so the live
+ * map greys out elsewhere until those packs exist.
+ */
+export function channelHasPack(
+  packs: StudioPacks,
+  condition: string,
+  arrayN: number,
+  frequencyGhz: number,
+  seed: number,
+): boolean {
+  return packs.channel.includes(channelStem(condition, arrayN, frequencyGhz, seed))
 }
 
 /**

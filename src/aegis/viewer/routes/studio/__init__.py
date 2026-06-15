@@ -40,7 +40,7 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
     from aegis.viewer.routes._helpers import get_json_dict
     from aegis.viewer.routes.compute._responses import _json_dumps_safe
 
-    from . import _bodymap, _paths, _phantom, _precoders, _presets, _slice, _volume
+    from . import _bodymap, _channel, _paths, _phantom, _precoders, _presets, _slice, _volume
 
     def _beam_field(beam, paths, focus_xyz, freq_hz, condition, array_n, freq_ghz, ecbf_budget_frac):
         """Resolve a beam to ``(x, field_source)`` for the field reconstructors.
@@ -240,4 +240,59 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
         )
         if out.get("not_precomputed"):
             return jsonify({"error": out["error"], "not_precomputed": True}), 409
+        return jsonify(out)
+
+    @app.route("/api/studio/bodymap-live", methods=["POST"])
+    def api_studio_bodymap_live():
+        """Live per-triangle deposited S_ab for the current beam + focus.
+
+        Unlike the precomputed (focus-frozen) body map, this applies the live
+        precoder to the stored field channel, so the map tracks focus, beam, and
+        ECBF budget. Mirrors the slice's parameter handling and the bodymap JSON
+        payload, so the frontend reuses the same body-map render path.
+        """
+        params, err = get_json_dict()
+        if err is not None:
+            return err
+        condition = params.get("condition", "los")
+        beam = params.get("beam", "mrt")
+        focus_xyz = params.get("focus_xyz", [0.923, -0.005, 0.734])
+        focus_mode = params.get("focus_mode", "free-space")
+
+        try:
+            array_n = int(params.get("array_n", 16))
+            seed = int(params.get("seed", 0))
+            freq_ghz = float(params.get("frequency_ghz", 10))
+            freq_hz = freq_ghz * 1e9
+            ecbf_budget_frac = float(params.get("ecbf_budget_frac", 0.5))
+            if focus_mode == "at-skin":
+                focus_xyz = _phantom.snap_focus_to_skin(focus_xyz, cache=cache, cache_lock=cache_lock)
+
+            loaded = _channel.load_channel(condition, array_n, freq_ghz, seed, cache, cache_lock)
+            if loaded is None:
+                stem = f"{condition}_bs{int(array_n)}_{freq_ghz:g}_seed{int(seed)}"
+                return jsonify({"error": f"field-channel pack not precomputed: {stem}", "not_precomputed": True}), 409
+            g_tilde, _areas = loaded
+
+            paths = _paths.load_paths(condition, array_n, seed, cache, cache_lock)
+            x, _field_source = _beam_field(
+                beam, paths, focus_xyz, freq_hz, condition, array_n, freq_ghz, ecbf_budget_frac
+            )
+            if x is None:
+                # The decohered baseline is a field-domain weight source, not a
+                # per-element precoder, so it does not compose with G_tilde.
+                return jsonify({"error": f"live body map unsupported for beam '{beam}'", "not_precomputed": True}), 409
+            out = _channel.compute_live_bodymap(g_tilde, x)
+        except _QPackMissing as e:
+            return jsonify(
+                {"error": f"exposure-operator (Q) pack not precomputed: {e.stem}", "not_precomputed": True}
+            ), 409
+        except FileNotFoundError as e:
+            return jsonify({"error": str(e)}), 404
+        except (KeyError, ValueError, TypeError, NotImplementedError) as e:
+            return jsonify({"error": str(e)}), 400
+
+        out["provenance"] = (
+            f"studio runtime live body map | {condition} bs{array_n} seed{seed} | beam={beam} | {freq_ghz:g}GHz"
+        )
         return jsonify(out)

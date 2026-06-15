@@ -35,10 +35,17 @@ def _ensemble_present() -> bool:
     return any((studio_data_dir() / "ensemble").glob("los_bs16_mrt_28_mean*.npz"))
 
 
+def _channel_present() -> bool:
+    from aegis.viewer.routes.studio import studio_data_dir
+
+    return (studio_data_dir() / "channel" / "los_bs16_10_seed0.npz").is_file()
+
+
 needs_packs = pytest.mark.skipif(not _studio_data_present(), reason="studio data packs not present")
 needs_phantom = pytest.mark.skipif(not _phantom_present(), reason="studio phantom pack not present")
 needs_qpack = pytest.mark.skipif(not _qpack_present(), reason="studio Q-operator pack not present")
 needs_ensemble = pytest.mark.skipif(not _ensemble_present(), reason="studio ensemble packs not present")
+needs_channel = pytest.mark.skipif(not _channel_present(), reason="studio field-channel pack not present")
 
 
 def test_manifest_returns_default_tuple(client):
@@ -451,9 +458,7 @@ def test_bodymap_worstcase(client):
 def test_bodymap_ensemble_statistic_is_los_only(client):
     # The ensemble statistics are computed over LOS seeds only, so an NLOS mean /
     # p95 request must miss cleanly with the not-precomputed sentinel.
-    r = client.get(
-        "/api/studio/bodymap?condition=nlos&array_n=16&quantity=mrt&frequency_ghz=28&statistic=p95"
-    )
+    r = client.get("/api/studio/bodymap?condition=nlos&array_n=16&quantity=mrt&frequency_ghz=28&statistic=p95")
     assert r.status_code == 409
     assert r.get_json()["not_precomputed"] is True
 
@@ -499,3 +504,65 @@ def test_bodymap_missing_pack_409(client):
     j = r.get_json()
     assert j["not_precomputed"] is True
     assert "error" in j
+
+
+def _live_bodymap_post(client, beam="mrt", focus_xyz=(0.923, -0.005, 0.734), frequency_ghz=10):
+    body = {
+        "condition": "los",
+        "array_n": 16,
+        "seed": 0,
+        "beam": beam,
+        "focus_xyz": list(focus_xyz),
+        "focus_mode": "free-space",
+        "frequency_ghz": frequency_ghz,
+    }
+    return client.post("/api/studio/bodymap-live", json=body)
+
+
+@needs_channel
+def test_live_bodymap_tracks_focus(client):
+    # The core of the fix: the live deposited map applies the live precoder to the
+    # stored field channel, so moving the focus must change the per-triangle map
+    # (the precomputed packs were focus-frozen, which is the bug Robin reported).
+    near_chest = _live_bodymap_post(client, focus_xyz=(0.923, -0.005, 0.734))
+    near_head = _live_bodymap_post(client, focus_xyz=(0.85, -0.02, 1.45))
+    assert near_chest.status_code == 200, near_chest.get_data(as_text=True)
+    assert near_head.status_code == 200, near_head.get_data(as_text=True)
+    va = np.asarray(near_chest.get_json()["values"])
+    vb = np.asarray(near_head.get_json()["values"])
+    assert not np.array_equal(va, vb)
+
+
+@needs_channel
+def test_live_bodymap_per_triangle(client):
+    # One finite, non-negative value per phantom face: the live map aligns to the
+    # same full-resolution mesh the geometry endpoint serves.
+    r = _live_bodymap_post(client)
+    assert r.status_code == 200, r.get_data(as_text=True)
+    j = r.get_json()
+    ph = client.get("/api/studio/phantom?mesh=thelonious")
+    n_faces = json.loads(ph.headers["X-Stats"])["n_faces"]
+    v = np.asarray(j["values"])
+    assert len(v) == n_faces
+    assert np.all(np.isfinite(v))
+    assert v.min() >= 0.0
+    assert j["quantity"] == "deposited"
+    assert "provenance" in j
+
+
+@needs_channel
+def test_live_bodymap_decohered_409(client):
+    # The decohered baseline is a field-domain weight source, not a per-element
+    # precoder, so it does not compose with the field channel: clean 409.
+    r = _live_bodymap_post(client, beam="decohered")
+    assert r.status_code == 409
+    assert r.get_json()["not_precomputed"] is True
+
+
+@needs_channel
+def test_live_bodymap_missing_channel_409(client):
+    # A frequency with no channel pack misses cleanly with the sentinel the
+    # frontend greys out on.
+    r = _live_bodymap_post(client, frequency_ghz=99)
+    assert r.status_code == 409
+    assert r.get_json()["not_precomputed"] is True

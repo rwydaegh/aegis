@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import * as Sentry from '@sentry/react'
-import { fetchBodyMap, type BodyMapParams } from './api'
+import { fetchBodyMap, fetchLiveBodyMap, type BodyMapParams, type LiveBodyMapParams } from './api'
 import { bodyMapFetchKey, useStudioStore } from './store'
 
 function buildBodyMapParams(s: ReturnType<typeof useStudioStore.getState>): BodyMapParams {
@@ -12,6 +12,19 @@ function buildBodyMapParams(s: ReturnType<typeof useStudioStore.getState>): Body
     frequencyGhz: s.frequencyGhz,
     realisation: s.seed,
     statistic: s.bodyMapStatistic,
+  }
+}
+
+function buildLiveBodyMapParams(s: ReturnType<typeof useStudioStore.getState>): LiveBodyMapParams {
+  return {
+    condition: s.condition,
+    arrayN: s.arrayN,
+    seed: s.seed,
+    beam: s.beam,
+    focusMode: s.focusMode,
+    focusXyz: s.focusXyz,
+    frequencyGhz: s.frequencyGhz,
+    ecbfBudgetFrac: s.ecbfBudgetFrac,
   }
 }
 
@@ -32,9 +45,15 @@ export function useStudioBodyMap(): void {
 
     const run = async () => {
       try {
-        const res = await fetchBodyMap(buildBodyMapParams(useStudioStore.getState()))
-        if (isStale()) return
         const store = useStudioStore.getState()
+        // The "deposited" quantity is the live, focus-tracking map (applies the
+        // current precoder to the field channel); everything else is a static
+        // precomputed pack.
+        const res =
+          store.bodyMapQuantity === 'deposited'
+            ? await fetchLiveBodyMap(buildLiveBodyMapParams(store))
+            : await fetchBodyMap(buildBodyMapParams(store))
+        if (isStale()) return
         if (res.ok) {
           store.setBodyMap(res.data)
           store.setBodyMapNotPrecomputed(false)

@@ -56,6 +56,20 @@ describe('coherentStudio fetch keys', () => {
     expect(after.bodyMap).not.toBe(before.bodyMap)
   })
 
+  it('static body map ignores focus, but the live deposited map tracks it', () => {
+    // Default quantity (mrt) is a static pack: focus must not change its key.
+    const beforeStatic = keys()
+    useStudioStore.getState().setFocusXyz([0.5, 0.1, 0.8])
+    expect(keys().bodyMap).toBe(beforeStatic.bodyMap)
+
+    // The live deposited map is a function of the precoder, so focus moves drive
+    // a refetch (this is the fix for "body map does not respond to the focus").
+    useStudioStore.getState().setBodyMapQuantity('deposited')
+    const beforeLive = keys()
+    useStudioStore.getState().setFocusXyz([0.9, -0.2, 0.7])
+    expect(keys().bodyMap).not.toBe(beforeLive.bodyMap)
+  })
+
   it('toggling showVolume changes the volume key but not slice / body-map', () => {
     const before = keys()
     useStudioStore.getState().setShowVolume(true)

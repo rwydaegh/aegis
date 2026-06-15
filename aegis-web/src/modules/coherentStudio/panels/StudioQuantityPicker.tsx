@@ -1,10 +1,15 @@
 import { useEffect } from 'react'
 import type { StudioBodyMapStatistic, StudioFieldQuantity } from '../api'
 import { useStudioStore } from '../store'
-import { bodyMapHasPack, ensembleHasPack, FIELD_QUANTITY_OPTIONS, packsOf } from './controls'
+import { bodyMapHasPack, channelHasPack, ensembleHasPack, FIELD_QUANTITY_OPTIONS, packsOf } from './controls'
 import { FieldLabel, LabeledSelect, type Option } from './widgets'
 
+// The live, focus-tracking deposited map is served from the field-channel pack
+// rather than a static body-map pack, so it is offered as its own quantity.
+const LIVE_DEPOSITED = 'deposited'
+
 const QTY_LABELS: Record<string, string> = {
+  deposited: 'Deposited (live, beam+focus)',
   floor: 'Floor (lower bound)',
   mrt: 'MRT (focused)',
   worstcase: 'Worst case',
@@ -35,20 +40,41 @@ export default function StudioQuantityPicker() {
   const condition = useStudioStore((s) => s.condition)
   const arrayN = useStudioStore((s) => s.arrayN)
   const frequencyGhz = useStudioStore((s) => s.frequencyGhz)
+  const seed = useStudioStore((s) => s.seed)
 
   const packs = packsOf(manifest)
-  const bodyQuantities = manifest?.body_map_quantities ?? []
+  // Drop any backend-advertised 'deposited' so it is not listed twice: the live
+  // option is always prepended below, gated by the channel pack.
+  const bodyQuantities = (manifest?.body_map_quantities ?? []).filter((q) => q !== LIVE_DEPOSITED)
   const statistics = manifest?.body_map_statistics ?? ['single']
 
-  const bodyOptions: Option<string>[] = bodyQuantities.map((q) => {
-    const available = bodyMapHasPack(packs, condition, arrayN, q, frequencyGhz)
-    return {
-      value: q,
-      label: QTY_LABELS[q] ?? q,
-      disabled: !available,
-      hint: 'no pack',
-    }
-  })
+  const liveAvailable = channelHasPack(packs, condition, arrayN, frequencyGhz, seed)
+  const isLive = bodyMapQuantity === LIVE_DEPOSITED
+
+  const bodyOptions: Option<string>[] = [
+    {
+      value: LIVE_DEPOSITED,
+      label: QTY_LABELS[LIVE_DEPOSITED],
+      disabled: !liveAvailable,
+      hint: 'no channel pack',
+    },
+    ...bodyQuantities.map((q) => {
+      const available = bodyMapHasPack(packs, condition, arrayN, q, frequencyGhz)
+      return {
+        value: q,
+        label: QTY_LABELS[q] ?? q,
+        disabled: !available,
+        hint: 'no pack',
+      }
+    }),
+  ]
+
+  // If the live map is selected but its channel pack is absent for the current
+  // scenario (seed / freq / condition without a pack), fall back to the static
+  // MRT map so the body never greys out on a dead selection.
+  useEffect(() => {
+    if (isLive && !liveAvailable) setBodyMapQuantity('mrt')
+  }, [isLive, liveAvailable, setBodyMapQuantity])
 
   const statOptions: Option<StudioBodyMapStatistic>[] = statistics.map((st) => {
     const available = ensembleHasPack(packs, st, condition, arrayN, bodyMapQuantity, frequencyGhz)
@@ -87,14 +113,22 @@ export default function StudioQuantityPicker() {
         onChange={setBodyMapQuantity}
       />
 
-      <FieldLabel title="Single seed, or the mean / 95th percentile of the body map over the LOS seed ensemble.">
-        Body-map realisation
-      </FieldLabel>
-      <LabeledSelect<StudioBodyMapStatistic>
-        value={bodyMapStatistic}
-        options={statOptions}
-        onChange={setBodyMapStatistic}
-      />
+      {isLive ? (
+        <p style={{ fontSize: 11, color: '#7a8', margin: '8px 2px 0' }}>
+          Live map: deposited S_ab under the selected beam, recomputed as you move the focus.
+        </p>
+      ) : (
+        <>
+          <FieldLabel title="Single seed, or the mean / 95th percentile of the body map over the LOS seed ensemble.">
+            Body-map realisation
+          </FieldLabel>
+          <LabeledSelect<StudioBodyMapStatistic>
+            value={bodyMapStatistic}
+            options={statOptions}
+            onChange={setBodyMapStatistic}
+          />
+        </>
+      )}
     </div>
   )
 }

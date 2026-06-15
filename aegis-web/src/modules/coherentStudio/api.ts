@@ -42,6 +42,8 @@ export interface StudioPacks {
   ensemble: string[]
   /** Exposure-operator (Q) pack stems, e.g. `los_bs16_10`. Gates the ECBF beam. */
   qop: string[]
+  /** Field-channel pack stems, e.g. `los_bs16_10_seed0`. Gates the live body map. */
+  channel: string[]
 }
 
 export interface StudioManifest {
@@ -421,6 +423,57 @@ export async function fetchSlice(params: SliceParams, signal?: AbortSignal): Pro
 // ---------------------------------------------------------------------------
 // Body map
 // ---------------------------------------------------------------------------
+
+/** Params for the live (focus-tracking) body map: the precoder-bearing axes. */
+export interface LiveBodyMapParams {
+  condition: string
+  arrayN: number
+  seed: number
+  beam: string
+  focusMode: StudioFocusMode
+  focusXyz: Vec3
+  frequencyGhz: number
+  ecbfBudgetFrac?: number
+}
+
+/**
+ * Live per-triangle deposited S_ab for the current beam + focus, applying the
+ * precoder to the precomputed field channel on the backend. Returns the same
+ * discriminated shape as fetchBodyMap: a 409 (no channel pack, or a beam the
+ * live map cannot express such as decohered) is reported as not-precomputed.
+ */
+export async function fetchLiveBodyMap(params: LiveBodyMapParams): Promise<BodyMapFetch> {
+  const path = `${STUDIO}/bodymap-live`
+  const res = await fetchWithRetry(`${BASE}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      condition: params.condition,
+      array_n: params.arrayN,
+      seed: params.seed,
+      beam: params.beam,
+      focus_mode: params.focusMode,
+      focus_xyz: params.focusXyz,
+      frequency_ghz: params.frequencyGhz,
+      ecbf_budget_frac: params.ecbfBudgetFrac ?? 0.5,
+    }),
+  })
+  if (res.status === 401) {
+    handle401()
+    throw new ApiError(`POST ${path} failed: 401 Unauthorized`, 401)
+  }
+  if (res.status === 409) {
+    const body = await res.json().catch(() => ({}))
+    return {
+      ok: false,
+      notPrecomputed: true,
+      error: typeof body?.error === 'string' ? body.error : 'Live body map not available for this combination',
+    }
+  }
+  if (!res.ok) throw new ApiError(await extractErrorMessage(res, 'POST', path), res.status)
+  const data = (await res.json()) as BodyMapResult
+  return { ok: true, data }
+}
 
 export async function fetchBodyMap(params: BodyMapParams): Promise<BodyMapFetch> {
   const qs = new URLSearchParams({

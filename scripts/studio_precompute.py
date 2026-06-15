@@ -570,6 +570,59 @@ def compute_qoperators(
 
 
 # --------------------------------------------------------------------------
+# Field channel G_tilde (for the live, focus-tracking body map)
+# --------------------------------------------------------------------------
+def _channel_path(studio_dir: Path, bs_n: int, condition: str, freq_ghz: float, seed: int) -> Path:
+    return studio_dir / "channel" / f"{condition}_bs{bs_n}_{_ghz_tag(freq_ghz)}_seed{seed}.npz"
+
+
+def compute_channels(
+    studio_dir: Path,
+    arrays: list[int],
+    conditions: list[str],
+    freqs: list[float],
+    seeds: list[int],
+) -> None:
+    """Persist the per-triangle field channel G_tilde (T, 3, M) per scenario.
+
+    Unlike the finished body-map packs (frozen at one focus), the channel is
+    precoder-free: the runtime live-body-map endpoint loads it and applies the
+    current precoder x to get deposited S_ab = sum|G_tilde @ x|^2 on the fly, so
+    the served map tracks focus / beam / ECBF budget exactly the way the slice
+    does. Stored as complex64: the build is complex128 but half precision is
+    ample for a visualised map and halves the pack to ~150 MB. The build is
+    triangle-chunked, so peak memory is independent of triangle count.
+    """
+    for bs_n in arrays:
+        _, body = _load_body(bs_n)
+        areas = np.asarray(body.areas, np.float32)
+        for cond in conditions:
+            for seed in seeds:
+                if not _rays_path(studio_dir, bs_n, cond, seed).exists():
+                    print(f"  no ray pack for bs{bs_n} {cond} seed{seed}, skipping")
+                    continue
+                k, psi, elem, m = _load_rays(studio_dir, bs_n, cond, seed)
+                for freq_ghz in freqs:
+                    n_tilde, sigma = _skin_props(freq_ghz)
+                    freq_hz = freq_ghz * 1e9
+                    g_tilde = _compute_g_tilde(body, k, psi, elem, m, n_tilde, sigma, freq_hz)
+                    out = _channel_path(studio_dir, bs_n, cond, freq_ghz, seed)
+                    prov = (
+                        f"studio_precompute channel cond={cond} bs{bs_n} {_ghz_tag(freq_ghz)}GHz "
+                        f"seed={seed} | G_tilde (T,3,M)={tuple(g_tilde.shape)} | e11 recipe"
+                    )
+                    _atomic_savez(
+                        out,
+                        g_tilde=np.asarray(g_tilde, np.complex64),
+                        areas=areas,
+                        n_elements=np.int32(m),
+                        mesh="thelonious",
+                        provenance=prov,
+                    )
+                    print(f"  wrote {out.name}: G_tilde={tuple(g_tilde.shape)} ({out.stat().st_size / 1e6:.0f} MB)")
+
+
+# --------------------------------------------------------------------------
 # CLI
 # --------------------------------------------------------------------------
 def main() -> None:
@@ -579,6 +632,7 @@ def main() -> None:
     ap.add_argument("--bodymaps", action="store_true", help="compute per-triangle body maps")
     ap.add_argument("--ensemble", action="store_true", help="mean/p95 over LOS seeds")
     ap.add_argument("--qoperator", action="store_true", help="precompute exposure operator Q packs")
+    ap.add_argument("--channel", action="store_true", help="persist G_tilde field-channel packs (live body map)")
     ap.add_argument("--conditions", nargs="+", default=["los"], choices=["los", "nlos"])
     ap.add_argument("--arrays", nargs="+", type=int, default=[16])
     ap.add_argument("--freqs", nargs="+", type=float, default=[28.0], help="dosimetry frequencies [GHz]")
@@ -598,8 +652,8 @@ def main() -> None:
     studio_dir = studio_data_dir()
     print(f"studio data dir: {studio_dir}")
 
-    if not any((args.sync_rays, args.phantom, args.bodymaps, args.ensemble, args.qoperator)):
-        ap.error("choose at least one of --sync-rays --phantom --bodymaps --ensemble --qoperator")
+    if not any((args.sync_rays, args.phantom, args.bodymaps, args.ensemble, args.qoperator, args.channel)):
+        ap.error("choose at least one of --sync-rays --phantom --bodymaps --ensemble --qoperator --channel")
 
     if args.sync_rays:
         print("[sync-rays]")
@@ -617,6 +671,9 @@ def main() -> None:
     if args.qoperator:
         print("[qoperator]")
         compute_qoperators(studio_dir, args.arrays, args.conditions, args.freqs, seed=args.seed)
+    if args.channel:
+        print("[channel]")
+        compute_channels(studio_dir, args.arrays, args.conditions, args.freqs, args.sync_seeds)
 
     print("done")
 
