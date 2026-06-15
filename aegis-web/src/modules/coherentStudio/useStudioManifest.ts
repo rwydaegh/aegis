@@ -22,6 +22,7 @@ export function useStudioManifest(): void {
         s.setManifest(m)
 
         const d = (m.default_scene ?? {}) as Record<string, unknown>
+        if (typeof d.mesh === 'string') s.setMesh(d.mesh)
         if (typeof d.condition === 'string') s.setCondition(d.condition)
         if (typeof d.array_n === 'number') s.setArrayN(d.array_n)
         if (typeof d.seed === 'number') s.setSeed(d.seed)

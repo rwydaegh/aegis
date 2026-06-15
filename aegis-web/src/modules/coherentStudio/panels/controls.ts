@@ -27,9 +27,11 @@ export function packsOf(manifest: StudioManifest | null): StudioPacks {
 }
 
 // Backend pack-stem conventions (see routes/studio/_paths.py and _bodymap.py):
-//   ray pack:      bs{arrayN}_{condition}_seed{seed}
-//   body-map pack: {condition}_bs{arrayN}_{quantity}_{freqTag}
-// where freqTag mirrors python's f"{float(ghz):g}" (integers print bare).
+//   ray pack:      bs{arrayN}_{condition}_seed{seed}            (body-independent)
+//   body-map pack: {mesh}_{condition}_bs{arrayN}_{quantity}_{freqTag}
+//   Q / channel:   {mesh}_{condition}_bs{arrayN}_{freqTag}[...]
+// Rays are shared across phantoms; every body-dependent pack carries the mesh
+// as a prefix. freqTag mirrors python's f"{float(ghz):g}" (integers print bare).
 
 /** Frequency tag used in body-map pack stems (python `%g` for the GHz value). */
 export function freqTag(frequencyGhz: number): string {
@@ -41,14 +43,15 @@ export function rayPackStem(condition: string, arrayN: number, seed: number): st
   return `bs${arrayN}_${condition}_seed${seed}`
 }
 
-/** Body-map pack stem for a (condition, array, quantity, frequency). */
+/** Body-map pack stem for a (mesh, condition, array, quantity, frequency). */
 export function bodyMapStem(
+  mesh: string,
   condition: string,
   arrayN: number,
   quantity: string,
   frequencyGhz: number,
 ): string {
-  return `${condition}_bs${arrayN}_${quantity}_${freqTag(frequencyGhz)}`
+  return `${mesh}_${condition}_bs${arrayN}_${quantity}_${freqTag(frequencyGhz)}`
 }
 
 /**
@@ -61,15 +64,31 @@ export function conditionHasRayPack(packs: StudioPacks, condition: string, array
   return packs.rays.some((s) => s.startsWith(prefix))
 }
 
+/**
+ * An array size is selectable if a ray pack ships for it at the current
+ * condition (any seed). Rays are body-independent, so this gates the array
+ * selector the same way conditionHasRayPack gates the condition segmented
+ * control, just with the array size as the free variable.
+ */
+export function arraySizeHasRayPack(packs: StudioPacks, arrayN: number, condition: string): boolean {
+  return conditionHasRayPack(packs, condition, arrayN)
+}
+
 /** A body-map quantity is selectable if its precomputed pack is present. */
 export function bodyMapHasPack(
   packs: StudioPacks,
+  mesh: string,
   condition: string,
   arrayN: number,
   quantity: string,
   frequencyGhz: number,
 ): boolean {
-  return packs.bodymaps.includes(bodyMapStem(condition, arrayN, quantity, frequencyGhz))
+  return packs.bodymaps.includes(bodyMapStem(mesh, condition, arrayN, quantity, frequencyGhz))
+}
+
+/** A phantom geometry pack is present for the mesh. */
+export function phantomHasPack(packs: StudioPacks, mesh: string): boolean {
+  return packs.phantom.includes(mesh)
 }
 
 /**
@@ -82,21 +101,22 @@ export function bodyMapHasPack(
 export function ensembleHasPack(
   packs: StudioPacks,
   statistic: string,
+  mesh: string,
   condition: string,
   arrayN: number,
   quantity: string,
   frequencyGhz: number,
 ): boolean {
   if (statistic === 'single') return true
-  const base = `${condition}_bs${arrayN}_${quantity}_${freqTag(frequencyGhz)}`
+  const base = `${mesh}_${condition}_bs${arrayN}_${quantity}_${freqTag(frequencyGhz)}`
   if (statistic === 'p95') return packs.ensemble.includes(`${base}_p95`)
   if (statistic === 'mean') return packs.ensemble.some((s) => s.startsWith(`${base}_mean`))
   return false
 }
 
-/** Exposure-operator (Q) pack stem for a (condition, array, frequency). */
-export function qopStem(condition: string, arrayN: number, frequencyGhz: number): string {
-  return `${condition}_bs${arrayN}_${freqTag(frequencyGhz)}`
+/** Exposure-operator (Q) pack stem for a (mesh, condition, array, frequency). */
+export function qopStem(mesh: string, condition: string, arrayN: number, frequencyGhz: number): string {
+  return `${mesh}_${condition}_bs${arrayN}_${freqTag(frequencyGhz)}`
 }
 
 /**
@@ -107,16 +127,23 @@ export function qopStem(condition: string, arrayN: number, frequencyGhz: number)
  */
 export function qopHasPack(
   packs: StudioPacks,
+  mesh: string,
   condition: string,
   arrayN: number,
   frequencyGhz: number,
 ): boolean {
-  return packs.qop.includes(qopStem(condition, arrayN, frequencyGhz))
+  return packs.qop.includes(qopStem(mesh, condition, arrayN, frequencyGhz))
 }
 
-/** Field-channel pack stem for a (condition, array, frequency, seed). */
-export function channelStem(condition: string, arrayN: number, frequencyGhz: number, seed: number): string {
-  return `${condition}_bs${arrayN}_${freqTag(frequencyGhz)}_seed${seed}`
+/** Field-channel pack stem for a (mesh, condition, array, frequency, seed). */
+export function channelStem(
+  mesh: string,
+  condition: string,
+  arrayN: number,
+  frequencyGhz: number,
+  seed: number,
+): string {
+  return `${mesh}_${condition}_bs${arrayN}_${freqTag(frequencyGhz)}_seed${seed}`
 }
 
 /**
@@ -127,12 +154,13 @@ export function channelStem(condition: string, arrayN: number, frequencyGhz: num
  */
 export function channelHasPack(
   packs: StudioPacks,
+  mesh: string,
   condition: string,
   arrayN: number,
   frequencyGhz: number,
   seed: number,
 ): boolean {
-  return packs.channel.includes(channelStem(condition, arrayN, frequencyGhz, seed))
+  return packs.channel.includes(channelStem(mesh, condition, arrayN, frequencyGhz, seed))
 }
 
 /**
@@ -143,12 +171,13 @@ export function channelHasPack(
 export function beamAvailability(
   packs: StudioPacks,
   beam: string,
+  mesh: string,
   condition: string,
   arrayN: number,
   frequencyGhz: number,
 ): { available: boolean; hint?: string } {
   if (!conditionHasRayPack(packs, condition, arrayN)) return { available: false, hint: 'no ray pack' }
-  if (beam === 'ecbf' && !qopHasPack(packs, condition, arrayN, frequencyGhz)) {
+  if (beam === 'ecbf' && !qopHasPack(packs, mesh, condition, arrayN, frequencyGhz)) {
     return { available: false, hint: 'no Q pack at this freq' }
   }
   return { available: true }

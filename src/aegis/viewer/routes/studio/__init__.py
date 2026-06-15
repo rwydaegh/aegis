@@ -42,12 +42,13 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
 
     from . import _bodymap, _channel, _paths, _phantom, _precoders, _presets, _slice, _volume
 
-    def _beam_field(beam, paths, focus_xyz, freq_hz, condition, array_n, freq_ghz, ecbf_budget_frac):
+    def _beam_field(beam, paths, focus_xyz, freq_hz, condition, array_n, freq_ghz, ecbf_budget_frac, mesh="thelonious"):
         """Resolve a beam to ``(x, field_source)`` for the field reconstructors.
 
         Most beams collapse a per-element precoder ``x`` (field_source None); the
         decohered baseline is a precomputed weight source instead (x None). ECBF
-        loads its precomputed Q and raises :class:`_QPackMissing` when absent.
+        loads its precomputed Q (per-phantom) and raises :class:`_QPackMissing`
+        when absent.
         """
         if beam == "decohered":
             # Canonical decohered baseline: scramble inter-direction phase after
@@ -55,9 +56,9 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             x_base = _precoders.build_precoder("mrt", paths, focus_xyz, freq_hz, power=1.0)
             return None, _slice.decohered_field_source(paths, x_base)
         if beam == "ecbf":
-            q = _paths.load_q(condition, array_n, freq_ghz, cache, cache_lock)
+            q = _paths.load_q(condition, array_n, freq_ghz, mesh, cache, cache_lock)
             if q is None:
-                raise _QPackMissing(f"{condition}_bs{int(array_n)}_{freq_ghz:g}")
+                raise _QPackMissing(f"{mesh}_{condition}_bs{int(array_n)}_{freq_ghz:g}")
             x = _precoders.build_ecbf_from_q(paths, focus_xyz, freq_hz, q, power=1.0, budget_frac=ecbf_budget_frac)
             return x, None
         return _precoders.build_precoder(beam, paths, focus_xyz, freq_hz, power=1.0), None
@@ -90,6 +91,7 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             return err
         condition = params.get("condition", "los")
         beam = params.get("beam", "mrt")
+        mesh = params.get("mesh", "thelonious")
         focus_xyz = params.get("focus_xyz", [0.923, -0.005, 0.734])
         focus_mode = params.get("focus_mode", "free-space")
         quantity = params.get("quantity", "S")
@@ -106,13 +108,13 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             # the beam targets the skin where absorbed power matters; "free-space"
             # leaves the focus wherever the sliders placed it.
             if focus_mode == "at-skin":
-                focus_xyz = _phantom.snap_focus_to_skin(focus_xyz, cache=cache, cache_lock=cache_lock)
+                focus_xyz = _phantom.snap_focus_to_skin(focus_xyz, mesh, cache=cache, cache_lock=cache_lock)
             plane = dict(params.get("plane", {}))
             plane["center"] = focus_xyz
 
             paths = _paths.load_paths(condition, array_n, seed, cache, cache_lock)
             x, field_source = _beam_field(
-                beam, paths, focus_xyz, freq_hz, condition, array_n, freq_ghz, ecbf_budget_frac
+                beam, paths, focus_xyz, freq_hz, condition, array_n, freq_ghz, ecbf_budget_frac, mesh
             )
             out = _slice.compute_slice(paths, x, plane, freq_hz, quantity, field_source=field_source)
         except _QPackMissing as e:
@@ -134,7 +136,9 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             "peak_xyz": out["peak_xyz"],
             "peak_value": out["peak_value"],
             "quantity": out["quantity"],
-            "provenance": f"studio runtime | {condition} bs{array_n} seed{seed} | beam={beam} | {freq_ghz:g}GHz",
+            "provenance": (
+                f"studio runtime | {mesh} | {condition} bs{array_n} seed{seed} | beam={beam} | {freq_ghz:g}GHz"
+            ),
         }
         buf = np.ascontiguousarray(scalar, dtype=np.float32).tobytes()
         resp = app.make_response(buf)
@@ -150,6 +154,7 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             return err
         condition = params.get("condition", "los")
         beam = params.get("beam", "mrt")
+        mesh = params.get("mesh", "thelonious")
         focus_xyz = params.get("focus_xyz", [0.923, -0.005, 0.734])
         focus_mode = params.get("focus_mode", "free-space")
 
@@ -162,11 +167,11 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             extent_m = float(params.get("extent_m", 0.16))
             res = int(params.get("res", 32))
             if focus_mode == "at-skin":
-                focus_xyz = _phantom.snap_focus_to_skin(focus_xyz, cache=cache, cache_lock=cache_lock)
+                focus_xyz = _phantom.snap_focus_to_skin(focus_xyz, mesh, cache=cache, cache_lock=cache_lock)
 
             paths = _paths.load_paths(condition, array_n, seed, cache, cache_lock)
             x, field_source = _beam_field(
-                beam, paths, focus_xyz, freq_hz, condition, array_n, freq_ghz, ecbf_budget_frac
+                beam, paths, focus_xyz, freq_hz, condition, array_n, freq_ghz, ecbf_budget_frac, mesh
             )
             out = _volume.compute_volume(paths, x, focus_xyz, freq_hz, extent_m, res, field_source=field_source)
         except _QPackMissing as e:
@@ -189,7 +194,9 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             "peak_xyz": out["peak_xyz"],
             "peak_value": out["peak_value"],
             "quantity": out["quantity"],
-            "provenance": f"studio runtime volume | {condition} bs{array_n} seed{seed} | beam={beam} | {freq_ghz:g}GHz",
+            "provenance": (
+                f"studio runtime volume | {mesh} | {condition} bs{array_n} seed{seed} | beam={beam} | {freq_ghz:g}GHz"
+            ),
         }
         buf = np.ascontiguousarray(scalar, dtype=np.float32).tobytes()
         resp = app.make_response(buf)
@@ -227,6 +234,7 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
         frequency_ghz = request.args.get("frequency_ghz", default=28.0, type=float)
         realisation = request.args.get("realisation", default=0, type=int)
         statistic = request.args.get("statistic", "single")
+        mesh = request.args.get("mesh", "thelonious")
         out = _bodymap.get_bodymap(
             condition,
             array_n,
@@ -235,6 +243,7 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             frequency_ghz,
             realisation,
             statistic=statistic,
+            mesh=mesh,
             cache=cache,
             cache_lock=cache_lock,
         )
@@ -256,6 +265,7 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             return err
         condition = params.get("condition", "los")
         beam = params.get("beam", "mrt")
+        mesh = params.get("mesh", "thelonious")
         focus_xyz = params.get("focus_xyz", [0.923, -0.005, 0.734])
         focus_mode = params.get("focus_mode", "free-space")
 
@@ -266,17 +276,17 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             freq_hz = freq_ghz * 1e9
             ecbf_budget_frac = float(params.get("ecbf_budget_frac", 0.5))
             if focus_mode == "at-skin":
-                focus_xyz = _phantom.snap_focus_to_skin(focus_xyz, cache=cache, cache_lock=cache_lock)
+                focus_xyz = _phantom.snap_focus_to_skin(focus_xyz, mesh, cache=cache, cache_lock=cache_lock)
 
-            loaded = _channel.load_channel(condition, array_n, freq_ghz, seed, cache, cache_lock)
+            loaded = _channel.load_channel(condition, array_n, freq_ghz, seed, mesh, cache, cache_lock)
             if loaded is None:
-                stem = f"{condition}_bs{int(array_n)}_{freq_ghz:g}_seed{int(seed)}"
+                stem = f"{mesh}_{condition}_bs{int(array_n)}_{freq_ghz:g}_seed{int(seed)}"
                 return jsonify({"error": f"field-channel pack not precomputed: {stem}", "not_precomputed": True}), 409
             g_tilde, _areas = loaded
 
             paths = _paths.load_paths(condition, array_n, seed, cache, cache_lock)
             x, _field_source = _beam_field(
-                beam, paths, focus_xyz, freq_hz, condition, array_n, freq_ghz, ecbf_budget_frac
+                beam, paths, focus_xyz, freq_hz, condition, array_n, freq_ghz, ecbf_budget_frac, mesh
             )
             if x is None:
                 # The decohered baseline is a field-domain weight source, not a
@@ -293,6 +303,7 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             return jsonify({"error": str(e)}), 400
 
         out["provenance"] = (
-            f"studio runtime live body map | {condition} bs{array_n} seed{seed} | beam={beam} | {freq_ghz:g}GHz"
+            f"studio runtime live body map | {mesh} | {condition} bs{array_n} seed{seed} "
+            f"| beam={beam} | {freq_ghz:g}GHz"
         )
         return jsonify(out)

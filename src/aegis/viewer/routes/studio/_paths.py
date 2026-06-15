@@ -95,20 +95,22 @@ def load_q(
     condition: str,
     array_n: int,
     frequency_ghz: float,
+    mesh: str = "thelonious",
     cache: dict | None = None,
     cache_lock: threading.RLock | None = None,
 ) -> np.ndarray | None:
     """Load the exposure operator ``Q`` for a scenario, or ``None`` if absent.
 
-    Resolves ``<studio>/qop/{condition}_bs{N}_{ghz}.npz`` (the freq tag matches
-    the body-map convention, ``f"{float(ghz):g}"``). Returns the
-    ``(M_ant, M_ant)`` complex Hermitian PSD operator on hit, ``None`` on miss
-    so the slice route can return the not-precomputed sentinel without ever
-    triggering the multi-minute full-body build. Only hits are cached, so a Q
-    pack generated after a miss is still picked up.
+    Resolves ``<studio>/qop/{mesh}_{condition}_bs{N}_{ghz}.npz`` (the freq tag
+    matches the body-map convention, ``f"{float(ghz):g}"``). Q is per-phantom,
+    so the stem carries the mesh prefix. Returns the ``(M_ant, M_ant)`` complex
+    Hermitian PSD operator on hit, ``None`` on miss so the slice route can
+    return the not-precomputed sentinel without ever triggering the multi-minute
+    full-body build. Only hits are cached, so a Q pack generated after a miss is
+    still picked up.
     """
     freq_tag = f"{float(frequency_ghz):g}"
-    stem = f"{condition}_bs{int(array_n)}_{freq_tag}"
+    stem = f"{mesh}_{condition}_bs{int(array_n)}_{freq_tag}"
 
     if cache is not None:
         with cache_lock:

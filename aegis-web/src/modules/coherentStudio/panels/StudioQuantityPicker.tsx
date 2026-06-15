@@ -37,6 +37,7 @@ export default function StudioQuantityPicker() {
   const setBodyMapStatistic = useStudioStore((s) => s.setBodyMapStatistic)
 
   const manifest = useStudioStore((s) => s.manifest)
+  const mesh = useStudioStore((s) => s.mesh)
   const condition = useStudioStore((s) => s.condition)
   const arrayN = useStudioStore((s) => s.arrayN)
   const frequencyGhz = useStudioStore((s) => s.frequencyGhz)
@@ -48,7 +49,7 @@ export default function StudioQuantityPicker() {
   const bodyQuantities = (manifest?.body_map_quantities ?? []).filter((q) => q !== LIVE_DEPOSITED)
   const statistics = manifest?.body_map_statistics ?? ['single']
 
-  const liveAvailable = channelHasPack(packs, condition, arrayN, frequencyGhz, seed)
+  const liveAvailable = channelHasPack(packs, mesh, condition, arrayN, frequencyGhz, seed)
   const isLive = bodyMapQuantity === LIVE_DEPOSITED
 
   const bodyOptions: Option<string>[] = [
@@ -59,7 +60,7 @@ export default function StudioQuantityPicker() {
       hint: 'no channel pack',
     },
     ...bodyQuantities.map((q) => {
-      const available = bodyMapHasPack(packs, condition, arrayN, q, frequencyGhz)
+      const available = bodyMapHasPack(packs, mesh, condition, arrayN, q, frequencyGhz)
       return {
         value: q,
         label: QTY_LABELS[q] ?? q,
@@ -77,7 +78,7 @@ export default function StudioQuantityPicker() {
   }, [isLive, liveAvailable, setBodyMapQuantity])
 
   const statOptions: Option<StudioBodyMapStatistic>[] = statistics.map((st) => {
-    const available = ensembleHasPack(packs, st, condition, arrayN, bodyMapQuantity, frequencyGhz)
+    const available = ensembleHasPack(packs, st, mesh, condition, arrayN, bodyMapQuantity, frequencyGhz)
     return {
       value: st as StudioBodyMapStatistic,
       label: STAT_LABELS[st] ?? st,
@@ -90,7 +91,7 @@ export default function StudioQuantityPicker() {
   // selected before switching to NLOS (or a frequency with no ensemble pack)
   // would otherwise 409 and grey the body, so fall back to the single
   // realisation, which always ships.
-  const statAvailable = ensembleHasPack(packs, bodyMapStatistic, condition, arrayN, bodyMapQuantity, frequencyGhz)
+  const statAvailable = ensembleHasPack(packs, bodyMapStatistic, mesh, condition, arrayN, bodyMapQuantity, frequencyGhz)
   useEffect(() => {
     if (bodyMapStatistic !== 'single' && !statAvailable) setBodyMapStatistic('single')
   }, [bodyMapStatistic, statAvailable, setBodyMapStatistic])

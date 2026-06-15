@@ -229,8 +229,8 @@ def _load_rays(studio_dir: Path, bs_n: int, condition: str, seed: int):
 # --------------------------------------------------------------------------
 # Phantom
 # --------------------------------------------------------------------------
-def _load_body(bs_n: int):
-    """Load the placed, full-resolution thelonious phantom in the e11 world frame.
+def _load_body(bs_n: int, mesh: str = "thelonious"):
+    """Load the placed, full-resolution phantom in the e11 world frame.
 
     Replicates the fork's ``load_phantom_at_ue`` placement (translate so feet
     are at z=0 and centre at the UE xy). The full mesh (~23.8k triangles) is
@@ -246,35 +246,43 @@ def _load_body(bs_n: int):
     top-level ``import sionna.rt`` pulls in TensorFlow and exhausts memory; only
     ``build_scene`` (pure numpy) and the vendored ``BodyMesh`` are needed here.
     Placement depends only on the deterministic UE xy, so geometry is identical
-    across conditions and seeds.
+    across conditions and seeds. The placement recipe (feet at z=0, midline at
+    the UE xy) is phantom-agnostic, so any of the IT'IS phantoms (thelonious,
+    duke, eartha, ella) loads the same way.
     """
     _bootstrap_fork()
     import e8_scene_setup as scene_lib
     from paper_aegis.geometry.mesh import BodyMesh
 
     spec = scene_lib.build_scene(with_blocker=False, seed=0, bs_n=bs_n)
-    stl = str(FORK_ROOT.parent / "data" / "thelonious.stl")
-    mesh = BodyMesh.load(stl, name="thelonious")
-    bb_min, bb_max = mesh.bounding_box
+    # Phantom STLs canonically live in the repo data dir (AEGIS_DATA_DIR or
+    # repo/data); thelonious also has a copy in the fork's data dir, kept as a
+    # fallback so the original single-phantom path still resolves.
+    data_dir = Path(os.environ.get("AEGIS_DATA_DIR") or (REPO_ROOT / "data"))
+    stl = data_dir / f"{mesh}.stl"
+    if not stl.is_file():
+        stl = FORK_ROOT.parent / "data" / f"{mesh}.stl"
+    body_mesh = BodyMesh.load(str(stl), name=mesh)
+    bb_min, bb_max = body_mesh.bounding_box
     ue_x, ue_y, _ = spec.ue_positions[UE_IDX]
-    new_v = mesh.vertices.copy()
+    new_v = body_mesh.vertices.copy()
     new_v[:, :, 0] -= (bb_min[0] + bb_max[0]) / 2
     new_v[:, :, 1] -= (bb_min[1] + bb_max[1]) / 2
     new_v[:, :, 2] -= bb_min[2]
     new_v[:, :, 0] += ue_x
     new_v[:, :, 1] += ue_y
-    body = BodyMesh.from_arrays(new_v, normals=mesh.normals, name=f"thelonious_at_UE{UE_IDX}")
+    body = BodyMesh.from_arrays(new_v, normals=body_mesh.normals, name=f"{mesh}_at_UE{UE_IDX}")
     return spec, body
 
 
-def export_phantom(studio_dir: Path, bs_n: int) -> None:
-    """Export the placed phantom mesh to <studio>/phantom/thelonious.npz."""
-    _, body = _load_body(bs_n)
+def export_phantom(studio_dir: Path, bs_n: int, mesh: str = "thelonious") -> None:
+    """Export the placed phantom mesh to <studio>/phantom/{mesh}.npz."""
+    _, body = _load_body(bs_n, mesh)
     tri = np.asarray(body.vertices, float)  # (M, 3, 3) per-triangle vertices
     m = tri.shape[0]
     vertices = tri.reshape(-1, 3).astype(np.float32)  # (3M, 3)
     faces = np.arange(3 * m, dtype=np.int32).reshape(m, 3)  # face order == body order
-    out = studio_dir / "phantom" / "thelonious.npz"
+    out = studio_dir / "phantom" / f"{mesh}.npz"
     out.parent.mkdir(parents=True, exist_ok=True)
     np.savez(
         out,
@@ -377,6 +385,22 @@ def _ghz_tag(freq_ghz: float) -> str:
     return f"{freq_ghz:g}"
 
 
+# Mesh-specific pack stems. Rays are body-independent so they keep the bare
+# `bs{n}_{cond}_seed{s}` stem; everything that depends on the phantom geometry
+# (body maps, ensemble, exposure operator Q, field channel) carries the mesh
+# name as a prefix so multiple phantoms coexist in the same studio data dir.
+def _bodymap_path(studio_dir: Path, mesh: str, cond: str, bs_n: int, beam: str, freq_ghz: float) -> Path:
+    return studio_dir / "bodymaps" / f"{mesh}_{cond}_bs{bs_n}_{beam}_{_ghz_tag(freq_ghz)}.npz"
+
+
+def _ensemble_base(mesh: str, cond: str, bs_n: int, beam: str, freq_ghz: float) -> str:
+    return f"{mesh}_{cond}_bs{bs_n}_{beam}_{_ghz_tag(freq_ghz)}"
+
+
+def _qop_path(studio_dir: Path, mesh: str, cond: str, bs_n: int, freq_ghz: float) -> Path:
+    return studio_dir / "qop" / f"{mesh}_{cond}_bs{bs_n}_{_ghz_tag(freq_ghz)}.npz"
+
+
 def _atomic_savez(out: Path, **arrays) -> None:
     """Write an .npz atomically: savez to a tmp file, then os.replace.
 
@@ -397,7 +421,7 @@ def _atomic_savez(out: Path, **arrays) -> None:
             os.remove(tmp)
 
 
-def _write_map(out: Path, values: np.ndarray, beam: str, provenance: str) -> None:
+def _write_map(out: Path, values: np.ndarray, beam: str, provenance: str, mesh: str = "thelonious") -> None:
     quantity, units = _QUANTITY[beam]
     values = np.asarray(values, np.float32)
     _atomic_savez(
@@ -407,7 +431,7 @@ def _write_map(out: Path, values: np.ndarray, beam: str, provenance: str) -> Non
         vmax=np.float32(values.max()),
         units=units,
         quantity=quantity,
-        mesh="thelonious",
+        mesh=mesh,
         provenance=provenance,
     )
 
@@ -419,31 +443,35 @@ def compute_bodymaps(
     freqs: list[float],
     beams: list[str],
     seed: int = 0,
+    meshes: list[str] | None = None,
 ) -> None:
     """Compute and write per-triangle body maps for each combination."""
     from aegis.hotspot import make_rx_response
 
-    for bs_n in arrays:
-        spec, body = _load_body(bs_n)
-        focus = _skin_focus_point(spec, body)
-        for cond in conditions:
-            k, psi, elem, m = _load_rays(studio_dir, bs_n, cond, seed)
-            for freq_ghz in freqs:
-                n_tilde, sigma = _skin_props(freq_ghz)
-                freq_hz = freq_ghz * 1e9
-                ue_rx = make_rx_response("dipole", freq_hz)
-                g_tilde = _compute_g_tilde(body, k, psi, elem, m, n_tilde, sigma, freq_hz)
-                maps = _maps_from_g(g_tilde, body, beams, focus, k, psi, elem, m, freq_hz, ue_rx)
-                tag = _ghz_tag(freq_ghz)
-                for beam in beams:
-                    values = maps[beam]
-                    out = studio_dir / "bodymaps" / f"{cond}_bs{bs_n}_{beam}_{tag}.npz"
-                    prov = (
-                        f"studio_precompute {beam} cond={cond} bs{bs_n} {tag}GHz seed={seed} "
-                        f"| e11 recipe | focus={np.round(focus, 4).tolist()}"
-                    )
-                    _write_map(out, values, beam, prov)
-                    print(f"  wrote {out.name}: shape={values.shape} vmin={values.min():.4e} vmax={values.max():.4e}")
+    for mesh in meshes or ["thelonious"]:
+        for bs_n in arrays:
+            spec, body = _load_body(bs_n, mesh)
+            focus = _skin_focus_point(spec, body)
+            for cond in conditions:
+                k, psi, elem, m = _load_rays(studio_dir, bs_n, cond, seed)
+                for freq_ghz in freqs:
+                    n_tilde, sigma = _skin_props(freq_ghz)
+                    freq_hz = freq_ghz * 1e9
+                    ue_rx = make_rx_response("dipole", freq_hz)
+                    g_tilde = _compute_g_tilde(body, k, psi, elem, m, n_tilde, sigma, freq_hz)
+                    maps = _maps_from_g(g_tilde, body, beams, focus, k, psi, elem, m, freq_hz, ue_rx)
+                    tag = _ghz_tag(freq_ghz)
+                    for beam in beams:
+                        values = maps[beam]
+                        out = _bodymap_path(studio_dir, mesh, cond, bs_n, beam, freq_ghz)
+                        prov = (
+                            f"studio_precompute {beam} mesh={mesh} cond={cond} bs{bs_n} {tag}GHz seed={seed} "
+                            f"| e11 recipe | focus={np.round(focus, 4).tolist()}"
+                        )
+                        _write_map(out, values, beam, prov, mesh=mesh)
+                        print(
+                            f"  wrote {out.name}: shape={values.shape} vmin={values.min():.4e} vmax={values.max():.4e}"
+                        )
 
 
 # --------------------------------------------------------------------------
@@ -454,43 +482,46 @@ def compute_ensemble(
     arrays: list[int],
     freqs: list[float],
     beams: list[str],
+    meshes: list[str] | None = None,
 ) -> None:
     """Mean and p95 of each body-map quantity over the available LOS seeds."""
     from aegis.hotspot import make_rx_response
 
     cond = "los"
-    for bs_n in arrays:
-        spec, body = _load_body(bs_n)
-        focus = _skin_focus_point(spec, body)
-        present = [s for s in ENSEMBLE_SEEDS if _rays_path(studio_dir, bs_n, cond, s).exists()]
-        if not present:
-            print(f"  no LOS ray packs for bs{bs_n}, skipping ensemble")
-            continue
-        k_count = len(present)
-        for freq_ghz in freqs:
-            n_tilde, sigma = _skin_props(freq_ghz)
-            freq_hz = freq_ghz * 1e9
-            ue_rx = make_rx_response("dipole", freq_hz)
-            tag = _ghz_tag(freq_ghz)
-            per_seed: dict[str, list[np.ndarray]] = {beam: [] for beam in beams}
-            for s in present:
-                k, psi, elem, m = _load_rays(studio_dir, bs_n, cond, s)
-                g_tilde = _compute_g_tilde(body, k, psi, elem, m, n_tilde, sigma, freq_hz)
-                maps = _maps_from_g(g_tilde, body, beams, focus, k, psi, elem, m, freq_hz, ue_rx)
+    for mesh in meshes or ["thelonious"]:
+        for bs_n in arrays:
+            spec, body = _load_body(bs_n, mesh)
+            focus = _skin_focus_point(spec, body)
+            present = [s for s in ENSEMBLE_SEEDS if _rays_path(studio_dir, bs_n, cond, s).exists()]
+            if not present:
+                print(f"  no LOS ray packs for bs{bs_n}, skipping ensemble")
+                continue
+            k_count = len(present)
+            for freq_ghz in freqs:
+                n_tilde, sigma = _skin_props(freq_ghz)
+                freq_hz = freq_ghz * 1e9
+                ue_rx = make_rx_response("dipole", freq_hz)
+                per_seed: dict[str, list[np.ndarray]] = {beam: [] for beam in beams}
+                for s in present:
+                    k, psi, elem, m = _load_rays(studio_dir, bs_n, cond, s)
+                    g_tilde = _compute_g_tilde(body, k, psi, elem, m, n_tilde, sigma, freq_hz)
+                    maps = _maps_from_g(g_tilde, body, beams, focus, k, psi, elem, m, freq_hz, ue_rx)
+                    for beam in beams:
+                        per_seed[beam].append(maps[beam])
                 for beam in beams:
-                    per_seed[beam].append(maps[beam])
-            for beam in beams:
-                stack = np.asarray(per_seed[beam])  # (K, M)
-                mean_v = stack.mean(axis=0)
-                p95_v = np.percentile(stack, 95, axis=0)
-                base = f"{cond}_bs{bs_n}_{beam}_{tag}"
-                prov = (
-                    f"studio_precompute ensemble {beam} cond={cond} bs{bs_n} {tag}GHz "
-                    f"| LOS seeds {present} (K={k_count})"
-                )
-                _write_map(studio_dir / "ensemble" / f"{base}_mean{k_count}.npz", mean_v, beam, prov + " | mean")
-                _write_map(studio_dir / "ensemble" / f"{base}_p95.npz", p95_v, beam, prov + " | p95")
-                print(f"  wrote {base}_mean{k_count}.npz and {base}_p95.npz (K={k_count})")
+                    stack = np.asarray(per_seed[beam])  # (K, M)
+                    mean_v = stack.mean(axis=0)
+                    p95_v = np.percentile(stack, 95, axis=0)
+                    base = _ensemble_base(mesh, cond, bs_n, beam, freq_ghz)
+                    prov = (
+                        f"studio_precompute ensemble {beam} mesh={mesh} cond={cond} bs{bs_n} {_ghz_tag(freq_ghz)}GHz "
+                        f"| LOS seeds {present} (K={k_count})"
+                    )
+                    _write_map(
+                        studio_dir / "ensemble" / f"{base}_mean{k_count}.npz", mean_v, beam, prov + " | mean", mesh=mesh
+                    )
+                    _write_map(studio_dir / "ensemble" / f"{base}_p95.npz", p95_v, beam, prov + " | p95", mesh=mesh)
+                    print(f"  wrote {base}_mean{k_count}.npz and {base}_p95.npz (K={k_count})")
 
 
 # --------------------------------------------------------------------------
@@ -529,51 +560,58 @@ def compute_qoperators(
     conditions: list[str],
     freqs: list[float],
     seed: int = 0,
+    meshes: list[str] | None = None,
 ) -> None:
     """Precompute and serialise the exposure operator Q for each scenario.
 
-    Writes ``<studio>/qop/{condition}_bs{N}_{ghz}.npz`` with the Hermitian PSD
-    operator so the runtime can run a fast small ECBF solve (x^H Q x) instead of
-    rebuilding the full-body tissue channel (~8 min). Verifies Hermitian
-    symmetry and positive-semidefiniteness before writing.
+    Writes ``<studio>/qop/{mesh}_{condition}_bs{N}_{ghz}.npz`` with the
+    Hermitian PSD operator so the runtime can run a fast small ECBF solve
+    (x^H Q x) instead of rebuilding the full-body tissue channel (~8 min). Q is
+    per-phantom (Q = sum_t area_t G_t^H G_t over that phantom's triangles), so
+    it carries the mesh prefix. Verifies Hermitian symmetry and
+    positive-semidefiniteness before writing.
     """
-    for bs_n in arrays:
-        _, body = _load_body(bs_n)
-        for cond in conditions:
-            k, psi, elem, m = _load_rays(studio_dir, bs_n, cond, seed)
-            for freq_ghz in freqs:
-                n_tilde, sigma = _skin_props(freq_ghz)
-                freq_hz = freq_ghz * 1e9
-                q = _compute_q_chunked(body, k, psi, elem, m, n_tilde, sigma, freq_hz)
-                herm_err = float(np.linalg.norm(q - np.conj(q).T))
-                eigs = np.linalg.eigvalsh(q)
-                min_eig = float(eigs.min())
-                tag = _ghz_tag(freq_ghz)
-                out = studio_dir / "qop" / f"{cond}_bs{bs_n}_{tag}.npz"
-                prov = (
-                    f"studio_precompute qoperator cond={cond} bs{bs_n} {tag}GHz seed={seed} "
-                    f"| e11 recipe | Q=sum_t area_t G_t^H G_t (128-tri chunked)"
-                )
-                _atomic_savez(
-                    out,
-                    Q=np.asarray(q, np.complex128),
-                    condition=cond,
-                    array_n=np.int64(bs_n),
-                    frequency_ghz=np.float64(freq_ghz),
-                    provenance=prov,
-                )
-                print(
-                    f"  wrote {out.name}: shape={q.shape} "
-                    f"||Q-Q^H||={herm_err:.3e} min_eig={min_eig:.3e} "
-                    f"lambda_max={float(eigs.max()):.3e}"
-                )
+    for mesh in meshes or ["thelonious"]:
+        for bs_n in arrays:
+            _, body = _load_body(bs_n, mesh)
+            for cond in conditions:
+                k, psi, elem, m = _load_rays(studio_dir, bs_n, cond, seed)
+                for freq_ghz in freqs:
+                    n_tilde, sigma = _skin_props(freq_ghz)
+                    freq_hz = freq_ghz * 1e9
+                    q = _compute_q_chunked(body, k, psi, elem, m, n_tilde, sigma, freq_hz)
+                    herm_err = float(np.linalg.norm(q - np.conj(q).T))
+                    eigs = np.linalg.eigvalsh(q)
+                    min_eig = float(eigs.min())
+                    tag = _ghz_tag(freq_ghz)
+                    out = _qop_path(studio_dir, mesh, cond, bs_n, freq_ghz)
+                    prov = (
+                        f"studio_precompute qoperator mesh={mesh} cond={cond} bs{bs_n} {tag}GHz seed={seed} "
+                        f"| e11 recipe | Q=sum_t area_t G_t^H G_t (128-tri chunked)"
+                    )
+                    _atomic_savez(
+                        out,
+                        Q=np.asarray(q, np.complex128),
+                        condition=cond,
+                        array_n=np.int64(bs_n),
+                        frequency_ghz=np.float64(freq_ghz),
+                        mesh=mesh,
+                        provenance=prov,
+                    )
+                    print(
+                        f"  wrote {out.name}: shape={q.shape} "
+                        f"||Q-Q^H||={herm_err:.3e} min_eig={min_eig:.3e} "
+                        f"lambda_max={float(eigs.max()):.3e}"
+                    )
 
 
 # --------------------------------------------------------------------------
 # Field channel G_tilde (for the live, focus-tracking body map)
 # --------------------------------------------------------------------------
-def _channel_path(studio_dir: Path, bs_n: int, condition: str, freq_ghz: float, seed: int) -> Path:
-    return studio_dir / "channel" / f"{condition}_bs{bs_n}_{_ghz_tag(freq_ghz)}_seed{seed}.npz"
+def _channel_path(
+    studio_dir: Path, bs_n: int, condition: str, freq_ghz: float, seed: int, mesh: str = "thelonious"
+) -> Path:
+    return studio_dir / "channel" / f"{mesh}_{condition}_bs{bs_n}_{_ghz_tag(freq_ghz)}_seed{seed}.npz"
 
 
 def compute_channels(
@@ -582,6 +620,7 @@ def compute_channels(
     conditions: list[str],
     freqs: list[float],
     seeds: list[int],
+    meshes: list[str] | None = None,
 ) -> None:
     """Persist the per-triangle field channel G_tilde (T, 3, M) per scenario.
 
@@ -593,33 +632,34 @@ def compute_channels(
     ample for a visualised map and halves the pack to ~150 MB. The build is
     triangle-chunked, so peak memory is independent of triangle count.
     """
-    for bs_n in arrays:
-        _, body = _load_body(bs_n)
-        areas = np.asarray(body.areas, np.float32)
-        for cond in conditions:
-            for seed in seeds:
-                if not _rays_path(studio_dir, bs_n, cond, seed).exists():
-                    print(f"  no ray pack for bs{bs_n} {cond} seed{seed}, skipping")
-                    continue
-                k, psi, elem, m = _load_rays(studio_dir, bs_n, cond, seed)
-                for freq_ghz in freqs:
-                    n_tilde, sigma = _skin_props(freq_ghz)
-                    freq_hz = freq_ghz * 1e9
-                    g_tilde = _compute_g_tilde(body, k, psi, elem, m, n_tilde, sigma, freq_hz)
-                    out = _channel_path(studio_dir, bs_n, cond, freq_ghz, seed)
-                    prov = (
-                        f"studio_precompute channel cond={cond} bs{bs_n} {_ghz_tag(freq_ghz)}GHz "
-                        f"seed={seed} | G_tilde (T,3,M)={tuple(g_tilde.shape)} | e11 recipe"
-                    )
-                    _atomic_savez(
-                        out,
-                        g_tilde=np.asarray(g_tilde, np.complex64),
-                        areas=areas,
-                        n_elements=np.int32(m),
-                        mesh="thelonious",
-                        provenance=prov,
-                    )
-                    print(f"  wrote {out.name}: G_tilde={tuple(g_tilde.shape)} ({out.stat().st_size / 1e6:.0f} MB)")
+    for mesh in meshes or ["thelonious"]:
+        for bs_n in arrays:
+            _, body = _load_body(bs_n, mesh)
+            areas = np.asarray(body.areas, np.float32)
+            for cond in conditions:
+                for seed in seeds:
+                    if not _rays_path(studio_dir, bs_n, cond, seed).exists():
+                        print(f"  no ray pack for bs{bs_n} {cond} seed{seed}, skipping")
+                        continue
+                    k, psi, elem, m = _load_rays(studio_dir, bs_n, cond, seed)
+                    for freq_ghz in freqs:
+                        n_tilde, sigma = _skin_props(freq_ghz)
+                        freq_hz = freq_ghz * 1e9
+                        g_tilde = _compute_g_tilde(body, k, psi, elem, m, n_tilde, sigma, freq_hz)
+                        out = _channel_path(studio_dir, bs_n, cond, freq_ghz, seed, mesh)
+                        prov = (
+                            f"studio_precompute channel mesh={mesh} cond={cond} bs{bs_n} {_ghz_tag(freq_ghz)}GHz "
+                            f"seed={seed} | G_tilde (T,3,M)={tuple(g_tilde.shape)} | e11 recipe"
+                        )
+                        _atomic_savez(
+                            out,
+                            g_tilde=np.asarray(g_tilde, np.complex64),
+                            areas=areas,
+                            n_elements=np.int32(m),
+                            mesh=mesh,
+                            provenance=prov,
+                        )
+                        print(f"  wrote {out.name}: G_tilde={tuple(g_tilde.shape)} ({out.stat().st_size / 1e6:.0f} MB)")
 
 
 # --------------------------------------------------------------------------
@@ -634,6 +674,13 @@ def main() -> None:
     ap.add_argument("--qoperator", action="store_true", help="precompute exposure operator Q packs")
     ap.add_argument("--channel", action="store_true", help="persist G_tilde field-channel packs (live body map)")
     ap.add_argument("--conditions", nargs="+", default=["los"], choices=["los", "nlos"])
+    ap.add_argument(
+        "--meshes",
+        nargs="+",
+        default=["thelonious"],
+        choices=["thelonious", "duke", "eartha", "ella"],
+        help="phantom meshes to build (rays are shared; body maps/Q/channel are per-mesh)",
+    )
     ap.add_argument("--arrays", nargs="+", type=int, default=[16])
     ap.add_argument("--freqs", nargs="+", type=float, default=[28.0], help="dosimetry frequencies [GHz]")
     ap.add_argument("--beams", nargs="+", default=["floor", "mrt", "worstcase", "amp"], choices=list(BEAMS))
@@ -660,20 +707,23 @@ def main() -> None:
         sync_rays(studio_dir, args.arrays, args.conditions, args.sync_seeds)
     if args.phantom:
         print("[phantom]")
-        for bs_n in args.arrays:
-            export_phantom(studio_dir, bs_n)
+        for mesh in args.meshes:
+            for bs_n in args.arrays:
+                export_phantom(studio_dir, bs_n, mesh)
     if args.bodymaps:
         print("[bodymaps]")
-        compute_bodymaps(studio_dir, args.arrays, args.conditions, args.freqs, args.beams, seed=args.seed)
+        compute_bodymaps(
+            studio_dir, args.arrays, args.conditions, args.freqs, args.beams, seed=args.seed, meshes=args.meshes
+        )
     if args.ensemble:
         print("[ensemble]")
-        compute_ensemble(studio_dir, args.arrays, args.freqs, args.beams)
+        compute_ensemble(studio_dir, args.arrays, args.freqs, args.beams, meshes=args.meshes)
     if args.qoperator:
         print("[qoperator]")
-        compute_qoperators(studio_dir, args.arrays, args.conditions, args.freqs, seed=args.seed)
+        compute_qoperators(studio_dir, args.arrays, args.conditions, args.freqs, seed=args.seed, meshes=args.meshes)
     if args.channel:
         print("[channel]")
-        compute_channels(studio_dir, args.arrays, args.conditions, args.freqs, args.sync_seeds)
+        compute_channels(studio_dir, args.arrays, args.conditions, args.freqs, args.sync_seeds, meshes=args.meshes)
 
     print("done")
 

@@ -7,6 +7,7 @@ const DEBOUNCE_MS = 120
 
 function buildSliceParams(s: ReturnType<typeof useStudioStore.getState>): SliceParams {
   return {
+    mesh: s.mesh,
     condition: s.condition,
     arrayN: s.arrayN,
     seed: s.seed,

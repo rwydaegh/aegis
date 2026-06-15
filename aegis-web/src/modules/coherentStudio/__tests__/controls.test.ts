@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  arraySizeHasRayPack,
   beamAvailability,
   beamOptions,
   bodyMapHasPack,
@@ -13,6 +14,7 @@ import {
   FIELD_QUANTITY_OPTIONS,
   frameProvenance,
   packsOf,
+  phantomHasPack,
   qopStem,
   rayPackStem,
 } from '../panels/controls'
@@ -20,16 +22,16 @@ import type { StudioManifest, StudioPacks } from '../api'
 
 const PACKS: StudioPacks = {
   rays: ['bs16_los_seed0', 'bs16_los_seed1', 'bs16_los_seed5'],
-  phantom: ['thelonious'],
-  bodymaps: ['los_bs16_mrt_10', 'los_bs16_worstcase_10', 'los_bs16_mrt_28'],
-  ensemble: ['los_bs16_mrt_28_mean6', 'los_bs16_mrt_28_p95'],
-  qop: ['los_bs16_10', 'los_bs16_28'],
-  channel: ['los_bs16_10_seed0', 'los_bs16_28_seed0', 'nlos_bs16_10_seed0'],
+  phantom: ['thelonious', 'duke'],
+  bodymaps: ['thelonious_los_bs16_mrt_10', 'thelonious_los_bs16_worstcase_10', 'thelonious_los_bs16_mrt_28'],
+  ensemble: ['thelonious_los_bs16_mrt_28_mean6', 'thelonious_los_bs16_mrt_28_p95'],
+  qop: ['thelonious_los_bs16_10', 'thelonious_los_bs16_28'],
+  channel: ['thelonious_los_bs16_10_seed0', 'thelonious_los_bs16_28_seed0', 'thelonious_nlos_bs16_10_seed0'],
 }
 
 function manifest(extra: Partial<StudioManifest> = {}): StudioManifest {
   return {
-    phantoms: ['thelonious'],
+    phantoms: ['thelonious', 'duke'],
     conditions: ['los', 'nlos'],
     frequencies: [8, 10, 12, 15, 20, 28],
     seeds: [0, 1, 2, 3, 4, 5],
@@ -69,8 +71,20 @@ describe('pack stems', () => {
   })
 
   it('builds the backend body-map stem', () => {
-    expect(bodyMapStem('los', 16, 'mrt', 10)).toBe('los_bs16_mrt_10')
-    expect(bodyMapStem('los', 16, 'worstcase', 28)).toBe('los_bs16_worstcase_28')
+    expect(bodyMapStem('thelonious', 'los', 16, 'mrt', 10)).toBe('thelonious_los_bs16_mrt_10')
+    expect(bodyMapStem('duke', 'los', 16, 'worstcase', 28)).toBe('duke_los_bs16_worstcase_28')
+  })
+})
+
+describe('phantomHasPack', () => {
+  it('enables a phantom whose geometry pack ships', () => {
+    expect(phantomHasPack(PACKS, 'thelonious')).toBe(true)
+    expect(phantomHasPack(PACKS, 'duke')).toBe(true)
+  })
+
+  it('disables a phantom with no geometry pack yet', () => {
+    expect(phantomHasPack(PACKS, 'ella')).toBe(false)
+    expect(phantomHasPack(PACKS, 'eartha')).toBe(false)
   })
 })
 
@@ -100,35 +114,54 @@ describe('conditionHasRayPack', () => {
   })
 })
 
+describe('arraySizeHasRayPack', () => {
+  it('enables an array size that ships a ray pack at the current condition', () => {
+    expect(arraySizeHasRayPack(PACKS, 16, 'los')).toBe(true)
+  })
+
+  it('disables an array size with no ray pack yet (bs8 not built)', () => {
+    expect(arraySizeHasRayPack(PACKS, 8, 'los')).toBe(false)
+  })
+
+  it('disables when the condition has no ray pack at that array size', () => {
+    expect(arraySizeHasRayPack(PACKS, 16, 'nlos')).toBe(false)
+  })
+})
+
 describe('bodyMapHasPack', () => {
   it('enables a quantity whose pack exists at the current frequency', () => {
-    expect(bodyMapHasPack(PACKS, 'los', 16, 'mrt', 10)).toBe(true)
-    expect(bodyMapHasPack(PACKS, 'los', 16, 'mrt', 28)).toBe(true)
+    expect(bodyMapHasPack(PACKS, 'thelonious', 'los', 16, 'mrt', 10)).toBe(true)
+    expect(bodyMapHasPack(PACKS, 'thelonious', 'los', 16, 'mrt', 28)).toBe(true)
   })
 
   it('disables a quantity with no pack at this frequency', () => {
-    expect(bodyMapHasPack(PACKS, 'los', 16, 'worstcase', 28)).toBe(false)
-    expect(bodyMapHasPack(PACKS, 'los', 16, 'floor', 10)).toBe(false)
-    expect(bodyMapHasPack(PACKS, 'los', 16, 'amp', 10)).toBe(false)
+    expect(bodyMapHasPack(PACKS, 'thelonious', 'los', 16, 'worstcase', 28)).toBe(false)
+    expect(bodyMapHasPack(PACKS, 'thelonious', 'los', 16, 'floor', 10)).toBe(false)
+    expect(bodyMapHasPack(PACKS, 'thelonious', 'los', 16, 'amp', 10)).toBe(false)
+  })
+
+  it('disables a quantity for a phantom with no packs (duke ships geometry only)', () => {
+    expect(bodyMapHasPack(PACKS, 'duke', 'los', 16, 'mrt', 10)).toBe(false)
   })
 })
 
 describe('channelStem / channelHasPack', () => {
   it('builds the seed-bearing channel stem', () => {
-    expect(channelStem('los', 16, 10, 0)).toBe('los_bs16_10_seed0')
-    expect(channelStem('nlos', 16, 28, 3)).toBe('nlos_bs16_28_seed3')
+    expect(channelStem('thelonious', 'los', 16, 10, 0)).toBe('thelonious_los_bs16_10_seed0')
+    expect(channelStem('thelonious', 'nlos', 16, 28, 3)).toBe('thelonious_nlos_bs16_28_seed3')
   })
 
   it('is true only when the channel pack for the seed exists', () => {
-    expect(channelHasPack(PACKS, 'los', 16, 10, 0)).toBe(true)
-    expect(channelHasPack(PACKS, 'los', 16, 28, 0)).toBe(true)
-    expect(channelHasPack(PACKS, 'nlos', 16, 10, 0)).toBe(true)
+    expect(channelHasPack(PACKS, 'thelonious', 'los', 16, 10, 0)).toBe(true)
+    expect(channelHasPack(PACKS, 'thelonious', 'los', 16, 28, 0)).toBe(true)
+    expect(channelHasPack(PACKS, 'thelonious', 'nlos', 16, 10, 0)).toBe(true)
   })
 
-  it('is false for a seed / freq / condition without a channel pack', () => {
-    expect(channelHasPack(PACKS, 'los', 16, 10, 3)).toBe(false)
-    expect(channelHasPack(PACKS, 'los', 16, 12, 0)).toBe(false)
-    expect(channelHasPack(PACKS, 'nlos', 16, 28, 0)).toBe(false)
+  it('is false for a seed / freq / condition / mesh without a channel pack', () => {
+    expect(channelHasPack(PACKS, 'thelonious', 'los', 16, 10, 3)).toBe(false)
+    expect(channelHasPack(PACKS, 'thelonious', 'los', 16, 12, 0)).toBe(false)
+    expect(channelHasPack(PACKS, 'thelonious', 'nlos', 16, 28, 0)).toBe(false)
+    expect(channelHasPack(PACKS, 'duke', 'los', 16, 10, 0)).toBe(false)
   })
 })
 
@@ -145,26 +178,32 @@ describe('beamOptions', () => {
 
 describe('qopStem', () => {
   it('builds the backend exposure-operator pack stem', () => {
-    expect(qopStem('los', 16, 10)).toBe('los_bs16_10')
-    expect(qopStem('los', 16, 28)).toBe('los_bs16_28')
+    expect(qopStem('thelonious', 'los', 16, 10)).toBe('thelonious_los_bs16_10')
+    expect(qopStem('thelonious', 'los', 16, 28)).toBe('thelonious_los_bs16_28')
   })
 })
 
 describe('beamAvailability', () => {
   it('enables a Phase 1 beam wherever its ray pack ships', () => {
-    expect(beamAvailability(PACKS, 'mrt', 'los', 16, 28).available).toBe(true)
-    expect(beamAvailability(PACKS, 'worstcase', 'los', 16, 10).available).toBe(true)
+    expect(beamAvailability(PACKS, 'mrt', 'thelonious', 'los', 16, 28).available).toBe(true)
+    expect(beamAvailability(PACKS, 'worstcase', 'thelonious', 'los', 16, 10).available).toBe(true)
   })
 
   it('disables any beam when the condition has no ray pack', () => {
-    const a = beamAvailability(PACKS, 'mrt', 'nlos', 16, 28)
+    const a = beamAvailability(PACKS, 'mrt', 'thelonious', 'nlos', 16, 28)
     expect(a.available).toBe(false)
     expect(a.hint).toBe('no ray pack')
   })
 
   it('enables ECBF only where a Q pack ships at this frequency', () => {
-    expect(beamAvailability(PACKS, 'ecbf', 'los', 16, 28).available).toBe(true)
-    const a = beamAvailability(PACKS, 'ecbf', 'los', 16, 20)
+    expect(beamAvailability(PACKS, 'ecbf', 'thelonious', 'los', 16, 28).available).toBe(true)
+    const a = beamAvailability(PACKS, 'ecbf', 'thelonious', 'los', 16, 20)
+    expect(a.available).toBe(false)
+    expect(a.hint).toBe('no Q pack at this freq')
+  })
+
+  it('disables ECBF for a phantom without its Q pack (duke)', () => {
+    const a = beamAvailability(PACKS, 'ecbf', 'duke', 'los', 16, 28)
     expect(a.available).toBe(false)
     expect(a.hint).toBe('no Q pack at this freq')
   })
@@ -172,18 +211,19 @@ describe('beamAvailability', () => {
 
 describe('ensembleHasPack', () => {
   it('always allows the single realisation', () => {
-    expect(ensembleHasPack(PACKS, 'single', 'los', 16, 'amp', 12)).toBe(true)
+    expect(ensembleHasPack(PACKS, 'single', 'thelonious', 'los', 16, 'amp', 12)).toBe(true)
   })
 
   it('enables mean / p95 only where the ensemble pack ships (LOS, that quantity + freq)', () => {
-    expect(ensembleHasPack(PACKS, 'mean', 'los', 16, 'mrt', 28)).toBe(true)
-    expect(ensembleHasPack(PACKS, 'p95', 'los', 16, 'mrt', 28)).toBe(true)
+    expect(ensembleHasPack(PACKS, 'mean', 'thelonious', 'los', 16, 'mrt', 28)).toBe(true)
+    expect(ensembleHasPack(PACKS, 'p95', 'thelonious', 'los', 16, 'mrt', 28)).toBe(true)
   })
 
   it('disables mean / p95 where no ensemble pack ships', () => {
-    expect(ensembleHasPack(PACKS, 'mean', 'los', 16, 'mrt', 10)).toBe(false)
-    expect(ensembleHasPack(PACKS, 'p95', 'los', 16, 'worstcase', 28)).toBe(false)
-    expect(ensembleHasPack(PACKS, 'mean', 'nlos', 16, 'mrt', 28)).toBe(false)
+    expect(ensembleHasPack(PACKS, 'mean', 'thelonious', 'los', 16, 'mrt', 10)).toBe(false)
+    expect(ensembleHasPack(PACKS, 'p95', 'thelonious', 'los', 16, 'worstcase', 28)).toBe(false)
+    expect(ensembleHasPack(PACKS, 'mean', 'thelonious', 'nlos', 16, 'mrt', 28)).toBe(false)
+    expect(ensembleHasPack(PACKS, 'mean', 'duke', 'los', 16, 'mrt', 28)).toBe(false)
   })
 })
 

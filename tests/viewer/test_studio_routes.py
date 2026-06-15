@@ -26,19 +26,19 @@ def _phantom_present() -> bool:
 def _qpack_present() -> bool:
     from aegis.viewer.routes.studio import studio_data_dir
 
-    return (studio_data_dir() / "qop" / "los_bs16_10.npz").is_file()
+    return (studio_data_dir() / "qop" / "thelonious_los_bs16_10.npz").is_file()
 
 
 def _ensemble_present() -> bool:
     from aegis.viewer.routes.studio import studio_data_dir
 
-    return any((studio_data_dir() / "ensemble").glob("los_bs16_mrt_28_mean*.npz"))
+    return any((studio_data_dir() / "ensemble").glob("thelonious_los_bs16_mrt_28_mean*.npz"))
 
 
 def _channel_present() -> bool:
     from aegis.viewer.routes.studio import studio_data_dir
 
-    return (studio_data_dir() / "channel" / "los_bs16_10_seed0.npz").is_file()
+    return (studio_data_dir() / "channel" / "thelonious_los_bs16_10_seed0.npz").is_file()
 
 
 needs_packs = pytest.mark.skipif(not _studio_data_present(), reason="studio data packs not present")

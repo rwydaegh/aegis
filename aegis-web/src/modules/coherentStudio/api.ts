@@ -99,6 +99,7 @@ export interface SlicePlane {
 }
 
 export interface SliceParams {
+  mesh: string
   condition: string
   arrayN: number
   seed: number
@@ -153,6 +154,7 @@ interface SliceStatsHeader {
 // ---------------------------------------------------------------------------
 
 export interface VolumeParams {
+  mesh: string
   condition: string
   arrayN: number
   seed: number
@@ -200,6 +202,7 @@ interface VolumeStatsHeader {
 
 function volumePayload(params: VolumeParams) {
   return {
+    mesh: params.mesh,
     condition: params.condition,
     array_n: params.arrayN,
     seed: params.seed,
@@ -255,6 +258,7 @@ export async function fetchVolume(params: VolumeParams, signal?: AbortSignal): P
 export type StudioBodyMapStatistic = 'single' | 'mean' | 'p95'
 
 export interface BodyMapParams {
+  mesh: string
   condition: string
   arrayN: number
   beam: string
@@ -370,6 +374,7 @@ export async function fetchRays(params: RaysParams): Promise<RaysResponse> {
 
 function slicePayload(params: SliceParams) {
   return {
+    mesh: params.mesh,
     condition: params.condition,
     array_n: params.arrayN,
     seed: params.seed,
@@ -426,6 +431,7 @@ export async function fetchSlice(params: SliceParams, signal?: AbortSignal): Pro
 
 /** Params for the live (focus-tracking) body map: the precoder-bearing axes. */
 export interface LiveBodyMapParams {
+  mesh: string
   condition: string
   arrayN: number
   seed: number
@@ -448,6 +454,7 @@ export async function fetchLiveBodyMap(params: LiveBodyMapParams): Promise<BodyM
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
+      mesh: params.mesh,
       condition: params.condition,
       array_n: params.arrayN,
       seed: params.seed,
@@ -477,6 +484,7 @@ export async function fetchLiveBodyMap(params: LiveBodyMapParams): Promise<BodyM
 
 export async function fetchBodyMap(params: BodyMapParams): Promise<BodyMapFetch> {
   const qs = new URLSearchParams({
+    mesh: params.mesh,
     condition: params.condition,
     array_n: String(params.arrayN),
     beam: params.beam,

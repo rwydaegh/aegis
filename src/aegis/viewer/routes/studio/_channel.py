@@ -23,9 +23,13 @@ from ._config import studio_data_dir
 _CHANNEL_KEY = "_studio_channel"
 
 
-def channel_path(condition: str, array_n: int, freq_ghz: float, seed: int):
-    """Path to the field-channel pack for a scenario (may not exist)."""
-    stem = f"{condition}_bs{int(array_n)}_{float(freq_ghz):g}_seed{int(seed)}"
+def channel_path(condition: str, array_n: int, freq_ghz: float, seed: int, mesh: str = "thelonious"):
+    """Path to the field-channel pack for a scenario (may not exist).
+
+    The channel is per-phantom (G_tilde is the body's tissue channel), so the
+    stem carries the mesh as a prefix.
+    """
+    stem = f"{mesh}_{condition}_bs{int(array_n)}_{float(freq_ghz):g}_seed{int(seed)}"
     return studio_data_dir() / "channel" / f"{stem}.npz"
 
 
@@ -34,6 +38,7 @@ def load_channel(
     array_n: int,
     freq_ghz: float,
     seed: int,
+    mesh: str = "thelonious",
     cache: dict | None = None,
     cache_lock: threading.RLock | None = None,
 ):
@@ -44,7 +49,7 @@ def load_channel(
     (~150 MB), so the in-process cache keyed by stem avoids re-reading it on
     every focus nudge.
     """
-    path = channel_path(condition, array_n, freq_ghz, seed)
+    path = channel_path(condition, array_n, freq_ghz, seed, mesh)
     if not path.is_file():
         return None
     stem = path.stem

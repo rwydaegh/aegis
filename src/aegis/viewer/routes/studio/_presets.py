@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 from ._config import available_packs
+from ._phantom import known_meshes
 
 # Design-space axes for the studio. Ray packs ship for LOS only at present;
 # NLOS is part of the design space but its packs are produced on demand.
 _CONDITIONS = ("los", "nlos")
 _FREQUENCIES = (8, 10, 12, 15, 20, 28)
 _SEEDS = (0, 1, 2, 3, 4, 5)
-_ARRAY_SIZES = (16,)
+_ARRAY_SIZES = (8, 16)
 _BEAMS = ("mrt", "unfocused", "decohered", "decoy", "worstcase", "ecbf")
 _BODY_MAP_QUANTITIES = ("floor", "mrt", "worstcase", "amp")
 # Body-map realisation statistic: the single served realisation, or the mean /
@@ -23,6 +24,7 @@ _FOCUS_CHEST = (0.923, -0.005, 0.734)
 def default_scene() -> dict:
     """The default studio scene the frontend opens with."""
     return {
+        "mesh": "thelonious",
         "condition": "los",
         "array_n": 16,
         "seed": 0,
@@ -46,7 +48,7 @@ def default_scene() -> dict:
 def manifest() -> dict:
     """Capabilities: design-space axes, precomputed packs, and the default scene."""
     return {
-        "phantoms": ["thelonious"],
+        "phantoms": list(known_meshes()) or ["thelonious"],
         "conditions": list(_CONDITIONS),
         "frequencies": list(_FREQUENCIES),
         "seeds": list(_SEEDS),

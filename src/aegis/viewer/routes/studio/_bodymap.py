@@ -16,16 +16,17 @@ from ._config import studio_data_dir
 _BODYMAP_KEY = "_studio_bodymap"
 
 
-def _resolve_pack(condition: str, array_n: int, quantity: str, freq_tag: str, statistic: str):
+def _resolve_pack(mesh: str, condition: str, array_n: int, quantity: str, freq_tag: str, statistic: str):
     """Resolve the (stem, path) for a body-map request.
 
     ``statistic`` selects the single realisation (the default body-map pack) or
     an ensemble statistic over the LOS seeds (``mean``/``p95``, served from the
     ensemble dir). The mean pack carries the seed count K in its name, so it is
-    matched by glob. Returns ``(stem, path_or_none)``; ``path_or_none`` is None
+    matched by glob. Body-map packs are per-phantom, so the stem carries the
+    mesh as a prefix. Returns ``(stem, path_or_none)``; ``path_or_none`` is None
     when no pack matches (the caller emits the not-precomputed sentinel).
     """
-    base = f"{condition}_bs{int(array_n)}_{quantity}_{freq_tag}"
+    base = f"{mesh}_{condition}_bs{int(array_n)}_{quantity}_{freq_tag}"
     if statistic == "single":
         path = studio_data_dir() / "bodymaps" / f"{base}.npz"
         return base, (path if path.is_file() else None)
@@ -49,6 +50,7 @@ def get_bodymap(
     frequency_ghz: float,
     realisation: int = 0,
     statistic: str = "single",
+    mesh: str = "thelonious",
     cache: dict | None = None,
     cache_lock: threading.RLock | None = None,
 ) -> dict:
@@ -61,7 +63,7 @@ def get_bodymap(
     for NLOS or any uncovered combination.
     """
     freq_tag = f"{float(frequency_ghz):g}"
-    stem, path = _resolve_pack(condition, array_n, quantity, freq_tag, statistic)
+    stem, path = _resolve_pack(mesh, condition, array_n, quantity, freq_tag, statistic)
 
     if path is None:
         return {

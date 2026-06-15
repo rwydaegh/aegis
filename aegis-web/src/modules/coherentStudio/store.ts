@@ -18,6 +18,8 @@ export type StudioUeAntenna = 'dipole'
 
 interface StudioState {
   // --- Parameters (all positions in SERVER / Z-up metres) ---
+  /** Phantom mesh (thelonious, duke, eartha, ella). Selects all per-body packs. */
+  mesh: string
   condition: string
   arrayN: number
   seed: number
@@ -68,6 +70,7 @@ interface StudioState {
   provenance: Provenance | null
 
   // --- Parameter actions ---
+  setMesh: (mesh: string) => void
   setCondition: (condition: string) => void
   setArrayN: (arrayN: number) => void
   setSeed: (seed: number) => void
@@ -105,6 +108,7 @@ interface StudioState {
 }
 
 export const useStudioStore = create<StudioState>()((set) => ({
+  mesh: 'thelonious',
   condition: '',
   arrayN: 16,
   seed: 0,
@@ -141,6 +145,7 @@ export const useStudioStore = create<StudioState>()((set) => ({
   bodyMapNotPrecomputed: false,
   provenance: null,
 
+  setMesh: (mesh) => set({ mesh }),
   setCondition: (condition) => set({ condition }),
   setArrayN: (arrayN) => set({ arrayN }),
   setSeed: (seed) => set({ seed }),
@@ -189,6 +194,7 @@ export const useStudioStore = create<StudioState>()((set) => ({
 /** Params requiring a slice re-fetch. */
 export type SliceKeyState = Pick<
   StudioState,
+  | 'mesh'
   | 'condition'
   | 'arrayN'
   | 'seed'
@@ -204,6 +210,7 @@ export type SliceKeyState = Pick<
 /** Params requiring a body-map pack swap (or a live recompute for 'deposited'). */
 export type BodyMapKeyState = Pick<
   StudioState,
+  | 'mesh'
   | 'condition'
   | 'arrayN'
   | 'beam'
@@ -218,6 +225,7 @@ export type BodyMapKeyState = Pick<
 
 export function sliceFetchKey(s: SliceKeyState): string {
   return JSON.stringify([
+    s.mesh,
     s.condition,
     s.arrayN,
     s.seed,
@@ -240,6 +248,7 @@ export function bodyMapFetchKey(s: BodyMapKeyState): string {
   if (s.bodyMapQuantity === 'deposited') {
     return JSON.stringify([
       'live',
+      s.mesh,
       s.condition,
       s.arrayN,
       s.seed,
@@ -251,6 +260,7 @@ export function bodyMapFetchKey(s: BodyMapKeyState): string {
     ])
   }
   return JSON.stringify([
+    s.mesh,
     s.condition,
     s.arrayN,
     s.beam,
@@ -265,6 +275,7 @@ export function bodyMapFetchKey(s: BodyMapKeyState): string {
 export type VolumeKeyState = Pick<
   StudioState,
   | 'showVolume'
+  | 'mesh'
   | 'condition'
   | 'arrayN'
   | 'seed'
@@ -280,6 +291,7 @@ export type VolumeKeyState = Pick<
 export function volumeFetchKey(s: VolumeKeyState): string {
   return JSON.stringify([
     s.showVolume,
+    s.mesh,
     s.condition,
     s.arrayN,
     s.seed,

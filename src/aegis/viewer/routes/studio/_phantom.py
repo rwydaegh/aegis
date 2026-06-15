@@ -13,11 +13,8 @@ import threading
 
 import numpy as np
 
+from ._config import available_packs
 from ._paths import load_phantom
-
-# Phantoms that have a precomputed pack on disk. Used to reject unknown meshes
-# with a clean 404 before touching the filesystem.
-_KNOWN_MESHES = ("thelonious",)
 
 # Each geometry array ships as a contiguous slice of the binary buffer. Floats
 # go out as float32 (THREE.BufferAttribute defaults), faces as int32 indices.
@@ -32,9 +29,18 @@ _ARRAY_DTYPES = {
 _ARRAY_ORDER = ("vertices", "faces", "centroids", "normals")
 
 
+def known_meshes() -> tuple[str, ...]:
+    """Phantoms with a precomputed geometry pack on disk (sorted)."""
+    return tuple(available_packs().get("phantom", []))
+
+
 def is_known_mesh(name: str) -> bool:
-    """True when ``name`` has a precomputed phantom pack."""
-    return str(name) in _KNOWN_MESHES
+    """True when ``name`` has a precomputed phantom pack.
+
+    Derived from the phantom packs present so a newly built phantom is picked
+    up without editing a static list.
+    """
+    return str(name) in known_meshes()
 
 
 def snap_focus_to_skin(

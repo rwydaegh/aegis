@@ -7,6 +7,7 @@ const DEBOUNCE_MS = 160
 
 function buildVolumeParams(s: ReturnType<typeof useStudioStore.getState>): VolumeParams {
   return {
+    mesh: s.mesh,
     condition: s.condition,
     arrayN: s.arrayN,
     seed: s.seed,

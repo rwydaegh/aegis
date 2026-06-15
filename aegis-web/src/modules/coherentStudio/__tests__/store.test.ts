@@ -9,6 +9,7 @@ function keys() {
 describe('coherentStudio fetch keys', () => {
   beforeEach(() => {
     useStudioStore.setState({
+      mesh: 'thelonious',
       condition: 'urban',
       arrayN: 16,
       seed: 0,
@@ -54,6 +55,17 @@ describe('coherentStudio fetch keys', () => {
     const after = keys()
     expect(after.slice).not.toBe(before.slice)
     expect(after.bodyMap).not.toBe(before.bodyMap)
+  })
+
+  it('mesh (phantom) changes slice, body-map and volume keys', () => {
+    // Switching the phantom swaps every per-body pack (channel, Q, body map) and
+    // the at-skin snap target, so all three fetch keys must change.
+    const before = keys()
+    useStudioStore.getState().setMesh('duke')
+    const after = keys()
+    expect(after.slice).not.toBe(before.slice)
+    expect(after.bodyMap).not.toBe(before.bodyMap)
+    expect(after.volume).not.toBe(before.volume)
   })
 
   it('static body map ignores focus, but the live deposited map tracks it', () => {

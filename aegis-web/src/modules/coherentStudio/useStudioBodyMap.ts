@@ -5,6 +5,7 @@ import { bodyMapFetchKey, useStudioStore } from './store'
 
 function buildBodyMapParams(s: ReturnType<typeof useStudioStore.getState>): BodyMapParams {
   return {
+    mesh: s.mesh,
     condition: s.condition,
     arrayN: s.arrayN,
     beam: s.beam,
@@ -17,6 +18,7 @@ function buildBodyMapParams(s: ReturnType<typeof useStudioStore.getState>): Body
 
 function buildLiveBodyMapParams(s: ReturnType<typeof useStudioStore.getState>): LiveBodyMapParams {
   return {
+    mesh: s.mesh,
     condition: s.condition,
     arrayN: s.arrayN,
     seed: s.seed,

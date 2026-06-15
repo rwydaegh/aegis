@@ -1,6 +1,7 @@
 import type { StudioFocusMode, StudioPlaneOrientation, Vec3 } from '../api'
 import { useStudioStore, type StudioScaleMode } from '../store'
 import {
+  arraySizeHasRayPack,
   beamAvailability,
   beamOptions,
   conditionHasRayPack,
@@ -8,6 +9,7 @@ import {
   extentLabel,
   ORIENTATION_OPTIONS,
   packsOf,
+  phantomHasPack,
   RESOLUTION_OPTIONS,
 } from './controls'
 import StudioQuantityPicker from './StudioQuantityPicker'
@@ -53,6 +55,15 @@ const VOLUME_EXTENT_OPTIONS_M = [0.08, 0.16, 0.4] as const
 
 const CONDITION_LABELS: Record<string, string> = { los: 'LOS', nlos: 'NLOS' }
 
+// IT'IS virtual family phantoms. Labels carry the age/sex so the geometry change
+// reads as deliberate (Thelonious is a 6-year-old; Duke/Ella/Eartha are adults).
+const PHANTOM_LABELS: Record<string, string> = {
+  thelonious: 'Thelonious (6 yo)',
+  duke: 'Duke (34 yo M)',
+  ella: 'Ella (26 yo F)',
+  eartha: 'Eartha (8 yo F)',
+}
+
 const FREQ_TOOLTIP =
   'Sweeps the dosimetry frequency over the fixed 28 GHz multipath geometry ' +
   '(specular geometry is frequency independent); not a per-frequency re-trace.'
@@ -74,11 +85,14 @@ const FOCUS_RANGE: Record<'x' | 'y' | 'z', [number, number]> = {
 export default function StudioPanel() {
   const manifest = useStudioStore((s) => s.manifest)
 
+  const mesh = useStudioStore((s) => s.mesh)
+  const setMesh = useStudioStore((s) => s.setMesh)
   const condition = useStudioStore((s) => s.condition)
   const setCondition = useStudioStore((s) => s.setCondition)
   const seed = useStudioStore((s) => s.seed)
   const setSeed = useStudioStore((s) => s.setSeed)
   const arrayN = useStudioStore((s) => s.arrayN)
+  const setArrayN = useStudioStore((s) => s.setArrayN)
 
   const beam = useStudioStore((s) => s.beam)
   const setBeam = useStudioStore((s) => s.setBeam)
@@ -124,10 +138,26 @@ export default function StudioPanel() {
 
   const packs = packsOf(manifest)
 
+  const phantomOptions: Option<string>[] = (manifest?.phantoms ?? [mesh]).map((p) => ({
+    value: p,
+    label: PHANTOM_LABELS[p] ?? p,
+    disabled: !phantomHasPack(packs, p),
+    hint: 'no pack',
+  }))
+
   const conditionOptions: Option<string>[] = (manifest?.conditions ?? ['los']).map((c) => ({
     value: c,
     label: CONDITION_LABELS[c] ?? c.toUpperCase(),
     disabled: !conditionHasRayPack(packs, c, arrayN),
+    hint: 'no pack',
+  }))
+
+  // Per-side URA count: bs{n} is an n x n array, so n = 16 is 256 elements.
+  // Surface the element count in the label so the array size reads physically.
+  const arrayOptions: Option<number>[] = (manifest?.array_sizes ?? [arrayN]).map((n) => ({
+    value: n,
+    label: `${n}x${n} (${n * n} ant)`,
+    disabled: !arraySizeHasRayPack(packs, n, condition),
     hint: 'no pack',
   }))
 
@@ -137,7 +167,7 @@ export default function StudioPanel() {
   }))
 
   const beams: Option<string>[] = beamOptions(manifest).map((b) => {
-    const { available, hint } = beamAvailability(packs, b.value, condition, arrayN, frequencyGhz)
+    const { available, hint } = beamAvailability(packs, b.value, mesh, condition, arrayN, frequencyGhz)
     return { value: b.value, label: b.label, disabled: !available, hint }
   })
 
@@ -159,10 +189,20 @@ export default function StudioPanel() {
   return (
     <div>
       <Group title="Channel">
+        <FieldLabel title="Anatomical phantom (IT'IS virtual family). Switches the body geometry and all per-body dosimetry packs.">
+          Phantom
+        </FieldLabel>
+        <LabeledSelect<string> value={mesh} options={phantomOptions} onChange={setMesh} />
+
         <FieldLabel title="Line-of-sight or non-line-of-sight multipath condition.">
           Condition
         </FieldLabel>
         <Segmented<string> value={condition} options={conditionOptions} onChange={setCondition} />
+
+        <FieldLabel title="Base-station array size (per-side count of the square URA). 16 is a 256-element array.">
+          Array
+        </FieldLabel>
+        <Segmented<number> value={arrayN} options={arrayOptions} onChange={setArrayN} />
 
         <FieldLabel title="Realisation / ensemble member of the small-scale fading.">Seed</FieldLabel>
         <LabeledSelect<number>
