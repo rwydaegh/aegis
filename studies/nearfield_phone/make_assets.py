@@ -46,6 +46,13 @@ BRAIN_REF = {
     "d_ref_mm": 200.0,
 }
 REPORT_BAND = 2450
+PHANTOM_AGE = {"duke": 34, "ella": 26, "eartha": 8, "thelonious": 6}
+PHANTOM_KIND = {
+    "duke": "adult male",
+    "ella": "adult female",
+    "eartha": "child",
+    "thelonious": "child",
+}
 METRIC_LABELS = {
     "sar_wb": r"whole-body SAR  [W/kg per W]",
     "pssar_10g": r"psSAR10g  [W/kg per W]",
@@ -170,6 +177,62 @@ def applied_to_reference(df) -> pd.DataFrame:
     )
 
 
+def child_ratio_table(df) -> pd.DataFrame:
+    """Per-band ratio of each phantom to Duke at the nominal pose.
+
+    The body-model spread is a directional age effect, not symmetric uncertainty:
+    a smaller body absorbs more per kilogram, so a child sits above the adult on
+    whole-body SAR. Brain is a deep organ and does not scale like the whole body
+    (the local psSAR10g column even runs the other way for the youngest model), so
+    the whole-body ratio is a proxy, not a brain factor.
+    """
+    rows = []
+    for pl in C.PLACEMENTS:
+        d_ref = A.NOMINAL_D[pl]
+        for mhz in sorted(df.freq_mhz.unique()):
+            sub = df[(df.placement == pl) & (df.freq_mhz == mhz) & df.is_nominal]
+            vals = {}
+            for ph in df.phantom.unique():
+                s = sub[sub.phantom == ph]
+                if s.empty:
+                    continue
+                near = s.distance_mm.iloc[(s.distance_mm - d_ref).abs().argmin()]
+                r = s[np.isclose(s.distance_mm, near)]
+                vals[ph] = (float(r.sar_wb.iloc[0]), float(r.pssar_10g.iloc[0]))
+            if "duke" not in vals:
+                continue
+            duke_wb, duke_ps = vals["duke"]
+            for ph, (wb, ps) in vals.items():
+                rows.append(
+                    {
+                        "phantom": ph,
+                        "age_years": PHANTOM_AGE.get(ph),
+                        "kind": PHANTOM_KIND.get(ph),
+                        "placement": pl,
+                        "freq_mhz": mhz,
+                        "wholebody_ratio_vs_duke": wb / duke_wb,
+                        "pssar10g_ratio_vs_duke": ps / duke_ps,
+                    }
+                )
+    return pd.DataFrame(rows)
+
+
+def child_ratio_summary(df) -> pd.DataFrame:
+    """Whole-body ratio to Duke, averaged over bands, per phantom and placement."""
+    t = child_ratio_table(df)
+    g = (
+        t.groupby(["placement", "phantom", "age_years", "kind"], dropna=False)
+        .agg(
+            wholebody_ratio_mean=("wholebody_ratio_vs_duke", "mean"),
+            wholebody_ratio_min=("wholebody_ratio_vs_duke", "min"),
+            wholebody_ratio_max=("wholebody_ratio_vs_duke", "max"),
+            pssar10g_ratio_mean=("pssar10g_ratio_vs_duke", "mean"),
+        )
+        .reset_index()
+    )
+    return g.sort_values(["placement", "age_years"]).reset_index(drop=True)
+
+
 def fig_distance_factor(df):
     apply_monograph_style(mode="png")
     tbl, fit, unc = applied_to_reference(df)
@@ -214,6 +277,7 @@ def write_excel(df):
                     "distance_law",
                     "uncertainty",
                     "note_on_2.62",
+                    "child_ratios",
                 ],
                 "description": [
                     "Fast near-field surface dose method (in-house, patent pending). Runs thousands of"
@@ -228,6 +292,11 @@ def write_excel(df):
                     "mean/std/min/max/percentiles over device orientation and phantom ensemble.",
                     "The 2.62 W/kg/W brain value is your reference figure; sheet 'brain_2.62_adjusted'"
                     " applies the distance law and uncertainty band to it.",
+                    "Sheets 'child_ratios_summary' and 'child_ratios_byband' give each model relative to"
+                    " the Duke adult at the nominal pose. This is a directional age effect, not a"
+                    " symmetric +/- uncertainty: apply it as a multiplier, do not add it in quadrature."
+                    " The ratio is whole-body SAR; brain does not scale the same way (see psSAR10g"
+                    " column), so use the whole-body ratio as a proxy only, not a brain factor.",
                 ],
             }
         )
@@ -246,6 +315,9 @@ def write_excel(df):
         detail.to_excel(xw, sheet_name="duke_fronteyes_detail", index=False)
 
         applied_tbl.to_excel(xw, sheet_name="brain_2.62_adjusted", index=False)
+
+        child_ratio_summary(df).to_excel(xw, sheet_name="child_ratios_summary", index=False)
+        child_ratio_table(df).to_excel(xw, sheet_name="child_ratios_byband", index=False)
     print(f"wrote {path}")
     return path
 
