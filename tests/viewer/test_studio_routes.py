@@ -154,6 +154,42 @@ def test_slice_default_peak_matches_focusing(client):
     assert mrt["peak_value"] <= worstcase["peak_value"] * 1.02
 
 
+def test_slice_unknown_ue_antenna_400(client):
+    # The UE receive antenna is validated against the manifest allowlist before
+    # any pack is touched, so a bogus kind is a clean 400 (no packs needed).
+    r = client.post("/api/studio/slice", json={"ue_antenna": "nope", "frequency_ghz": 10})
+    assert r.status_code == 400
+    assert "ue_antenna" in r.get_data(as_text=True)
+
+
+@needs_packs
+def test_slice_ue_antenna_shapes_precoder(client):
+    # The receive antenna enters the signal channel h via C_R(k)^H psi, so it
+    # reshapes the MRT precoder and the field it produces. A directive patch must
+    # give a different focal peak than the isotropic reference (the matched filter
+    # reweights paths by the receive gain), and both must be valid positive peaks.
+    def peak(ue):
+        body = {
+            "condition": "los",
+            "array_n": 16,
+            "seed": 0,
+            "beam": "mrt",
+            "focus_xyz": [0.923, -0.005, 0.734],
+            "frequency_ghz": 10,
+            "plane": {"orientation": "transverse", "extent_m": 0.08, "res": 120},
+            "quantity": "S",
+            "ue_antenna": ue,
+        }
+        r = client.post("/api/studio/slice", json=body)
+        assert r.status_code == 200, r.get_data(as_text=True)
+        return json.loads(r.headers["X-Stats"])["peak_value"]
+
+    iso = peak("isotropic")
+    patch = peak("patch")
+    assert iso > 0 and patch > 0
+    assert abs(patch - iso) / iso > 1e-3
+
+
 @pytest.mark.parametrize("body", [{"array_n": "abc"}, {"plane": 5}])
 def test_slice_malformed_body_400(client, body):
     # Malformed client fields must be coerced inside the try block so they map

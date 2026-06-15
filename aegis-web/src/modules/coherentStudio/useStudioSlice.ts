@@ -18,6 +18,7 @@ function buildSliceParams(s: ReturnType<typeof useStudioStore.getState>): SliceP
     plane: s.plane,
     quantity: s.fieldQuantity,
     ecbfBudgetFrac: s.ecbfBudgetFrac,
+    ueAntenna: s.ueAntenna,
   }
 }
 

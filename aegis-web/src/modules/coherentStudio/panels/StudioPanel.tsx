@@ -1,5 +1,5 @@
 import type { StudioFocusMode, StudioPlaneOrientation, Vec3 } from '../api'
-import { useStudioStore, type StudioScaleMode } from '../store'
+import { useStudioStore, type StudioScaleMode, type StudioUeAntenna } from '../store'
 import { useStudioScales } from '../useStudioScales'
 import type { StudioScaleScope } from '../scene/colorScale'
 import {
@@ -39,6 +39,13 @@ const COLORMAP_OPTIONS: Option<string>[] = [
   { value: 'cividis', label: 'Cividis' },
   { value: 'turbo', label: 'Turbo' },
   { value: 'jet', label: 'Jet (legacy)' },
+]
+
+const UE_ANTENNA_OPTIONS: Option<StudioUeAntenna>[] = [
+  { value: 'isotropic', label: 'Isotropic' },
+  { value: 'vertical', label: 'Vertical (reference)' },
+  { value: 'dipole', label: 'Half-wave dipole' },
+  { value: 'patch', label: 'Patch (cos^n)' },
 ]
 
 const SCALE_OPTIONS: Option<StudioScaleMode>[] = [
@@ -149,6 +156,8 @@ export default function StudioPanel() {
 
   const beam = useStudioStore((s) => s.beam)
   const setBeam = useStudioStore((s) => s.setBeam)
+  const ueAntenna = useStudioStore((s) => s.ueAntenna)
+  const setUeAntenna = useStudioStore((s) => s.setUeAntenna)
   const ecbfBudgetFrac = useStudioStore((s) => s.ecbfBudgetFrac)
   const setEcbfBudgetFrac = useStudioStore((s) => s.setEcbfBudgetFrac)
 
@@ -277,6 +286,11 @@ export default function StudioPanel() {
 
       <Group title="Beam">
         <LabeledSelect<string> value={beam} options={beams} onChange={setBeam} />
+
+        <FieldLabel title="UE receive antenna pattern C_R(k). The signal channel projects each path via C_R(k)^H psi, so the receive antenna reshapes the matched filter and the resulting beam, hence (indirectly) the deposited map. Affects the live slice / deposited / volume; the worst-case beam and the static body-map packs do not use it.">
+          Receive antenna
+        </FieldLabel>
+        <LabeledSelect<StudioUeAntenna> value={ueAntenna} options={UE_ANTENNA_OPTIONS} onChange={setUeAntenna} />
         {beam === 'ecbf' && (
           <>
             <FieldLabel title="ECBF absorbed-power budget as a fraction of the MRT operating point. 1 reproduces MRT; lower trades received signal for lower whole-body dose.">

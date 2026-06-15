@@ -42,6 +42,7 @@ def build_precoder(
     freq_hz: float,
     power: float = 1.0,
     *,
+    ue_antenna: str = "dipole",
     body_normal=None,
     n_tilde: complex | None = None,
     sigma: float | None = None,
@@ -54,18 +55,24 @@ def build_precoder(
     precoder (synthesize it via ``_slice.decohered_field_source``); both raise
     here.
 
+    ``ue_antenna`` selects the UE receive pattern C_R(k) the matched-filter
+    channel projects onto (``isotropic`` / ``vertical`` / ``dipole`` / ``patch``,
+    see :func:`aegis.hotspot.make_rx_response`). It reshapes h and so the MRT /
+    decoy precoders; ``unfocused`` is antenna-independent (random phases).
+
     For ``worstcase``, passing ``body_normal`` + ``n_tilde`` + ``sigma`` builds
     the precoder from the tissue channel ``G_tilde`` at the focus surface, so it
     maximises absorbed power density (matching the worst-case body map) rather
     than free-space field intensity. Without them it falls back to the
     free-space field channel (the only well-defined worst case for an in-air
-    focus).
+    focus). The worst-case beam maximises absorption directly and so does not use
+    the UE antenna.
     """
     from aegis.hotspot import field_channel_at, local_max_intensity, make_rx_response
 
     k_hat, psi, element_index, n_elements = paths
     focus = np.asarray(focus_xyz, dtype=float)
-    ue_rx = make_rx_response("dipole", freq_hz)
+    ue_rx = make_rx_response(ue_antenna, freq_hz)
 
     if kind == "mrt":
         return _mrt(focus, k_hat, psi, element_index, freq_hz, n_elements, ue_rx, power)
@@ -122,6 +129,7 @@ def build_ecbf_from_q(
     q: np.ndarray,
     power: float = 1.0,
     budget_frac: float = _ECBF_BUDGET_FRAC,
+    ue_antenna: str = "dipole",
 ) -> np.ndarray:
     """Solve the ECBF QCQP against a precomputed exposure operator ``q``.
 
@@ -142,7 +150,7 @@ def build_ecbf_from_q(
     focus = np.asarray(focus_xyz, dtype=float)
     q = np.asarray(q)
     frac = float(np.clip(budget_frac, 1e-3, 1.0))
-    ue_rx = make_rx_response("dipole", freq_hz)
+    ue_rx = make_rx_response(ue_antenna, freq_hz)
     h = channel_at(focus, k_hat, psi, element_index, freq_hz, n_elements, rx_response=ue_rx)
     x_mrt = np.sqrt(power) * np.conj(h) / np.linalg.norm(h)
     p_abs_mrt = float(np.real(x_mrt.conj() @ q @ x_mrt))

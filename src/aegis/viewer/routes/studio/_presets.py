@@ -12,6 +12,12 @@ _FREQUENCIES = (8, 10, 12, 15, 20, 28)
 _SEEDS = (0, 1, 2, 3, 4, 5)
 _ARRAY_SIZES = (8, 16)
 _BEAMS = ("mrt", "unfocused", "decohered", "decoy", "worstcase", "ecbf")
+# UE receive antenna patterns C_R(k). The signal channel projects each path via
+# C_R(k_n)^H psi_n (monograph signal branch), so the receive antenna shapes h,
+# hence the MRT / ECBF precoder, hence (indirectly) the deposited map. The
+# exposure channel G_tilde does NOT contain C_R, so only the live precoder-driven
+# quantities respond to this; the static body-map packs are frozen at dipole.
+_UE_ANTENNAS = ("isotropic", "vertical", "dipole", "patch")
 _BODY_MAP_QUANTITIES = ("floor", "mrt", "worstcase", "amp")
 # Body-map realisation statistic: the single served realisation, or the mean /
 # 95th percentile over the LOS seed ensemble (served from the ensemble packs).
@@ -58,6 +64,7 @@ def manifest() -> dict:
         "seeds": list(_SEEDS),
         "array_sizes": list(_ARRAY_SIZES),
         "beams": list(_BEAMS),
+        "ue_antennas": list(_UE_ANTENNAS),
         "body_map_quantities": list(_BODY_MAP_QUANTITIES),
         "body_map_statistics": list(_BODY_MAP_STATISTICS),
         "packs": available_packs(),

@@ -16,7 +16,9 @@ import type {
 import type { Range, StudioScaleScope } from './scene/colorScale'
 
 export type StudioScaleMode = 'auto' | 'fixed' | 'log'
-export type StudioUeAntenna = 'dipole'
+/** UE receive antenna pattern C_R(k); shapes the matched filter, hence the
+ * precoder and the live (deposited / slice / volume) maps. */
+export type StudioUeAntenna = 'isotropic' | 'vertical' | 'dipole' | 'patch'
 
 interface StudioState {
   // --- Parameters (all positions in SERVER / Z-up metres) ---
@@ -237,6 +239,7 @@ export type SliceKeyState = Pick<
   | 'plane'
   | 'fieldQuantity'
   | 'ecbfBudgetFrac'
+  | 'ueAntenna'
 >
 
 /** Params requiring a body-map pack swap (or a live recompute for 'deposited'). */
@@ -253,6 +256,7 @@ export type BodyMapKeyState = Pick<
   | 'focusMode'
   | 'focusXyz'
   | 'ecbfBudgetFrac'
+  | 'ueAntenna'
 >
 
 export function sliceFetchKey(s: SliceKeyState): string {
@@ -271,6 +275,7 @@ export function sliceFetchKey(s: SliceKeyState): string {
     s.plane.res,
     s.fieldQuantity,
     s.beam === 'ecbf' ? s.ecbfBudgetFrac : null,
+    s.ueAntenna,
   ])
 }
 
@@ -289,6 +294,7 @@ export function bodyMapFetchKey(s: BodyMapKeyState): string {
       s.focusXyz,
       s.frequencyGhz,
       s.beam === 'ecbf' ? s.ecbfBudgetFrac : null,
+      s.ueAntenna,
     ])
   }
   return JSON.stringify([
@@ -318,6 +324,7 @@ export type VolumeKeyState = Pick<
   | 'volumeRes'
   | 'volumeExtentM'
   | 'ecbfBudgetFrac'
+  | 'ueAntenna'
 >
 
 export function volumeFetchKey(s: VolumeKeyState): string {
@@ -334,5 +341,6 @@ export function volumeFetchKey(s: VolumeKeyState): string {
     s.volumeRes,
     s.volumeExtentM,
     s.beam === 'ecbf' ? s.ecbfBudgetFrac : null,
+    s.ueAntenna,
   ])
 }

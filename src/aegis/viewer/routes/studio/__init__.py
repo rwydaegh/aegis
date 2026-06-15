@@ -54,6 +54,7 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
         mesh="thelonious",
         focus_mode="free-space",
         seed=0,
+        ue_antenna="dipole",
     ):
         """Resolve a beam to ``(x, field_source)`` for the field reconstructors.
 
@@ -61,11 +62,15 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
         decohered baseline is a precomputed weight source instead (x None). ECBF
         loads its precomputed Q (per-phantom) and raises :class:`_QPackMissing`
         when absent.
+
+        ``ue_antenna`` selects the UE receive pattern that shapes the matched
+        filter, so MRT / decoy / decohered / ECBF respond to it; the worst-case
+        beam maximises absorption directly and is antenna-independent.
         """
         if beam == "decohered":
             # Canonical decohered baseline: scramble inter-direction phase after
             # collapse (not expressible as a per-element precoder).
-            x_base = _precoders.build_precoder("mrt", paths, focus_xyz, freq_hz, power=1.0)
+            x_base = _precoders.build_precoder("mrt", paths, focus_xyz, freq_hz, power=1.0, ue_antenna=ue_antenna)
             return None, _slice.decohered_field_source(paths, x_base)
         if beam == "ecbf":
             # Q must match the seed of the channel/UE the map is shown at, so the
@@ -73,7 +78,9 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             q = _paths.load_q(condition, array_n, freq_ghz, seed, mesh, cache, cache_lock)
             if q is None:
                 raise _QPackMissing(f"{mesh}_{condition}_bs{int(array_n)}_{freq_ghz:g}_seed{int(seed)}")
-            x = _precoders.build_ecbf_from_q(paths, focus_xyz, freq_hz, q, power=1.0, budget_frac=ecbf_budget_frac)
+            x = _precoders.build_ecbf_from_q(
+                paths, focus_xyz, freq_hz, q, power=1.0, budget_frac=ecbf_budget_frac, ue_antenna=ue_antenna
+            )
             return x, None
         if beam == "worstcase" and focus_mode == "at-skin":
             # On the body: build the worst-case ABSORPTION beam from the tissue
@@ -95,7 +102,14 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
                 sigma=sigma,
             )
             return x, None
-        return _precoders.build_precoder(beam, paths, focus_xyz, freq_hz, power=1.0), None
+        return _precoders.build_precoder(beam, paths, focus_xyz, freq_hz, power=1.0, ue_antenna=ue_antenna), None
+
+    def _parse_ue_antenna(params):
+        """Validated UE receive-antenna kind from a request body (default dipole)."""
+        ue_antenna = params.get("ue_antenna", "dipole")
+        if ue_antenna not in _presets._UE_ANTENNAS:
+            raise ValueError(f"unknown ue_antenna {ue_antenna!r}; expected one of {_presets._UE_ANTENNAS}")
+        return ue_antenna
 
     @app.route("/api/studio/manifest")
     def api_studio_manifest():
@@ -143,12 +157,14 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             # leaves the focus wherever the sliders placed it.
             if focus_mode == "at-skin":
                 focus_xyz = _phantom.snap_focus_to_skin(focus_xyz, mesh, cache=cache, cache_lock=cache_lock)
+            ue_antenna = _parse_ue_antenna(params)
             plane = dict(params.get("plane", {}))
             plane["center"] = focus_xyz
 
             paths = _paths.load_paths(condition, array_n, seed, cache, cache_lock)
             x, field_source = _beam_field(
-                beam, paths, focus_xyz, freq_hz, condition, array_n, freq_ghz, ecbf_budget_frac, mesh, focus_mode, seed
+                beam, paths, focus_xyz, freq_hz, condition, array_n, freq_ghz, ecbf_budget_frac, mesh, focus_mode,
+                seed, ue_antenna=ue_antenna,
             )
             out = _slice.compute_slice(paths, x, plane, freq_hz, quantity, field_source=field_source)
         except _QPackMissing as e:
@@ -200,12 +216,14 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             ecbf_budget_frac = float(params.get("ecbf_budget_frac", 0.5))
             extent_m = float(params.get("extent_m", 0.16))
             res = int(params.get("res", 32))
+            ue_antenna = _parse_ue_antenna(params)
             if focus_mode == "at-skin":
                 focus_xyz = _phantom.snap_focus_to_skin(focus_xyz, mesh, cache=cache, cache_lock=cache_lock)
 
             paths = _paths.load_paths(condition, array_n, seed, cache, cache_lock)
             x, field_source = _beam_field(
-                beam, paths, focus_xyz, freq_hz, condition, array_n, freq_ghz, ecbf_budget_frac, mesh, focus_mode, seed
+                beam, paths, focus_xyz, freq_hz, condition, array_n, freq_ghz, ecbf_budget_frac, mesh, focus_mode,
+                seed, ue_antenna=ue_antenna,
             )
             out = _volume.compute_volume(paths, x, focus_xyz, freq_hz, extent_m, res, field_source=field_source)
         except _QPackMissing as e:
@@ -309,6 +327,7 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             freq_ghz = float(params.get("frequency_ghz", 10))
             freq_hz = freq_ghz * 1e9
             ecbf_budget_frac = float(params.get("ecbf_budget_frac", 0.5))
+            ue_antenna = _parse_ue_antenna(params)
             if focus_mode == "at-skin":
                 focus_xyz = _phantom.snap_focus_to_skin(focus_xyz, mesh, cache=cache, cache_lock=cache_lock)
 
@@ -320,7 +339,8 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
 
             paths = _paths.load_paths(condition, array_n, seed, cache, cache_lock)
             x, _field_source = _beam_field(
-                beam, paths, focus_xyz, freq_hz, condition, array_n, freq_ghz, ecbf_budget_frac, mesh, focus_mode, seed
+                beam, paths, focus_xyz, freq_hz, condition, array_n, freq_ghz, ecbf_budget_frac, mesh, focus_mode,
+                seed, ue_antenna=ue_antenna,
             )
             if x is None:
                 # The decohered baseline is a field-domain weight source, not a

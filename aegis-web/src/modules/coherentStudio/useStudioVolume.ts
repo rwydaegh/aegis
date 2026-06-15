@@ -18,6 +18,7 @@ function buildVolumeParams(s: ReturnType<typeof useStudioStore.getState>): Volum
     extentM: s.volumeExtentM,
     res: s.volumeRes,
     ecbfBudgetFrac: s.ecbfBudgetFrac,
+    ueAntenna: s.ueAntenna,
   }
 }
 

@@ -34,6 +34,7 @@ function buildLiveBodyMapParams(s: ReturnType<typeof useStudioStore.getState>): 
     focusXyz: s.focusXyz,
     frequencyGhz: s.frequencyGhz,
     ecbfBudgetFrac: s.ecbfBudgetFrac,
+    ueAntenna: s.ueAntenna,
   }
 }
 

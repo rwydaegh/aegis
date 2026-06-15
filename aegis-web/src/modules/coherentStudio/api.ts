@@ -111,6 +111,8 @@ export interface SliceParams {
   quantity: StudioFieldQuantity
   /** ECBF absorbed-power budget as a fraction of MRT; only used when beam=ecbf. */
   ecbfBudgetFrac?: number
+  /** UE receive antenna pattern; shapes the matched-filter precoder. */
+  ueAntenna?: string
 }
 
 /** World-space frame of the returned scalar grid (all Z-up metres). */
@@ -168,6 +170,8 @@ export interface VolumeParams {
   res: number
   /** ECBF budget as a fraction of MRT; only used when beam=ecbf. */
   ecbfBudgetFrac?: number
+  /** UE receive antenna pattern; shapes the matched-filter precoder. */
+  ueAntenna?: string
 }
 
 export interface VolumeResult {
@@ -213,6 +217,7 @@ function volumePayload(params: VolumeParams) {
     extent_m: params.extentM,
     res: params.res,
     ecbf_budget_frac: params.ecbfBudgetFrac ?? 0.5,
+    ue_antenna: params.ueAntenna ?? 'dipole',
   }
 }
 
@@ -390,6 +395,7 @@ function slicePayload(params: SliceParams) {
     },
     quantity: params.quantity,
     ecbf_budget_frac: params.ecbfBudgetFrac ?? 0.5,
+    ue_antenna: params.ueAntenna ?? 'dipole',
   }
 }
 
@@ -440,6 +446,8 @@ export interface LiveBodyMapParams {
   focusXyz: Vec3
   frequencyGhz: number
   ecbfBudgetFrac?: number
+  /** UE receive antenna pattern; shapes the matched-filter precoder. */
+  ueAntenna?: string
 }
 
 /**
@@ -463,6 +471,7 @@ export async function fetchLiveBodyMap(params: LiveBodyMapParams): Promise<BodyM
       focus_xyz: params.focusXyz,
       frequency_ghz: params.frequencyGhz,
       ecbf_budget_frac: params.ecbfBudgetFrac ?? 0.5,
+      ue_antenna: params.ueAntenna ?? 'dipole',
     }),
   })
   if (res.status === 401) {
