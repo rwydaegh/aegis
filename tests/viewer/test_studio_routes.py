@@ -186,7 +186,8 @@ def test_slice_ue_antenna_shapes_precoder(client):
 
     iso = peak("isotropic")
     patch = peak("patch")
-    assert iso > 0 and patch > 0
+    assert iso > 0
+    assert patch > 0
     assert abs(patch - iso) / iso > 1e-3
 
 
@@ -605,3 +606,65 @@ def test_live_bodymap_missing_channel_409(client):
     r = _live_bodymap_post(client, frequency_ghz=99)
     assert r.status_code == 409
     assert r.get_json()["not_precomputed"] is True
+
+
+def _scene_present() -> bool:
+    from aegis.viewer.routes.studio import studio_data_dir
+
+    return (studio_data_dir() / "scene" / "nlos_seed0.json").is_file()
+
+
+needs_scene = pytest.mark.skipif(not _scene_present(), reason="studio scene packs not present")
+
+
+def test_get_scene_reads_pack(monkeypatch, tmp_path):
+    from aegis.viewer.routes.studio import _scene
+
+    monkeypatch.setenv("AEGIS_STUDIO_PATHS", str(tmp_path))
+    scene_dir = tmp_path / "scene"
+    scene_dir.mkdir()
+    payload = {
+        "room_dims": [40, 20, 5],
+        "blocker": {"center": [-8, 0, 2.5], "size": [0.5, 2, 4.98]},
+        "scatterers": [{"center": [1, 2, 1], "size": [2, 0.5, 2], "yaw_rad": 0.1}],
+    }
+    (scene_dir / "nlos_seed0.json").write_text(json.dumps(payload))
+    out = _scene.get_scene("nlos", 0)
+    assert out["blocker"]["center"] == [-8, 0, 2.5]
+    assert len(out["scatterers"]) == 1
+    assert "provenance" in out
+    assert not out.get("not_precomputed")
+
+
+def test_get_scene_nlos_collapses_to_seed0(monkeypatch, tmp_path):
+    from aegis.viewer.routes.studio import _scene
+
+    monkeypatch.setenv("AEGIS_STUDIO_PATHS", str(tmp_path))
+    scene_dir = tmp_path / "scene"
+    scene_dir.mkdir()
+    (scene_dir / "nlos_seed0.json").write_text(json.dumps({"scatterers": [], "blocker": None}))
+    # Any NLOS seed resolves to the single NLOS realisation (seed 0).
+    out = _scene.get_scene("nlos", 5)
+    assert not out.get("not_precomputed")
+    assert out["provenance"].endswith("nlos seed0")
+
+
+def test_get_scene_missing_returns_sentinel(monkeypatch, tmp_path):
+    from aegis.viewer.routes.studio import _scene
+
+    monkeypatch.setenv("AEGIS_STUDIO_PATHS", str(tmp_path))
+    out = _scene.get_scene("los", 0)
+    assert out["not_precomputed"] is True
+    assert out["stem"] == "los_seed0"
+
+
+@needs_scene
+def test_scene_route_hit_and_miss(client):
+    r = client.get("/api/studio/scene?condition=nlos&seed=0")
+    assert r.status_code == 200
+    d = r.get_json()
+    assert d["blocker"] is not None
+    assert d["scatterers"]
+    miss = client.get("/api/studio/scene?condition=los&seed=99")
+    assert miss.status_code == 409
+    assert miss.get_json()["not_precomputed"] is True

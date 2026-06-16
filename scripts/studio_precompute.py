@@ -38,6 +38,7 @@ Subcommands (combine freely):
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import shutil
 import sys
@@ -198,6 +199,35 @@ def sync_rays(studio_dir: Path, arrays: list[int], conditions: list[str], seeds:
                 else:
                     print(f"  missing in fork, tracing {dst.name}")
                     _trace_pack(dst, bs_n, cond, seed)
+
+
+def sync_scene(studio_dir: Path, arrays: list[int], conditions: list[str], seeds: list[int]) -> None:
+    """Dump the e8 world geometry as a JSON scene pack per (condition, seed).
+
+    Writes the room box, scatterer cuboids, optional NLOS blocker, BS array
+    placement and UE positions so the runtime can draw the real blockers
+    without importing the fork. Geometry is bs_n-independent (scatterer
+    placement keys off the seed and the fixed BS->far-wall corridor, not the
+    array size), so one pack per (condition, seed) covers every array size.
+    NLOS has a single realisation, so only seed 0 is written for it. The pack
+    is plain JSON (small structured geometry, not arrays), read back by the
+    fork-free ``_scene`` route.
+    """
+    _bootstrap_fork()
+    import e8_scene_setup as scene_lib  # pure numpy, no RT import
+
+    out_dir = studio_dir / "scene"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    bs_n = int(arrays[0]) if arrays else int(scene_lib.BS_N)
+    for cond in conditions:
+        with_blocker = cond == "nlos"
+        cond_seeds = [0] if cond == "nlos" else seeds
+        for seed in cond_seeds:
+            spec = scene_lib.build_scene(with_blocker=with_blocker, seed=int(seed), bs_n=bs_n)
+            out = out_dir / f"{cond}_seed{int(seed)}.json"
+            out.write_text(json.dumps(spec.to_dict()))
+            tail = ", +blocker" if spec.blocker else ""
+            print(f"  wrote   {out.name} ({len(spec.scatterers)} scatterers{tail})")
 
 
 def _load_rays(studio_dir: Path, bs_n: int, condition: str, seed: int):
@@ -713,6 +743,7 @@ def main() -> None:
         help="derive per-seed Q packs from existing G_tilde channel packs (fork-free, no re-trace)",
     )
     ap.add_argument("--channel", action="store_true", help="persist G_tilde field-channel packs (live body map)")
+    ap.add_argument("--scene", action="store_true", help="dump room/scatterer/blocker geometry as scene packs")
     ap.add_argument("--conditions", nargs="+", default=["los"], choices=["los", "nlos"])
     ap.add_argument(
         "--meshes",
@@ -748,16 +779,20 @@ def main() -> None:
             args.qoperator,
             args.qop_from_channels,
             args.channel,
+            args.scene,
         )
     ):
         ap.error(
             "choose at least one of --sync-rays --phantom --bodymaps --ensemble "
-            "--qoperator --qop-from-channels --channel"
+            "--qoperator --qop-from-channels --channel --scene"
         )
 
     if args.sync_rays:
         print("[sync-rays]")
         sync_rays(studio_dir, args.arrays, args.conditions, args.sync_seeds)
+    if args.scene:
+        print("[scene]")
+        sync_scene(studio_dir, args.arrays, args.conditions, args.sync_seeds)
     if args.phantom:
         print("[phantom]")
         for mesh in args.meshes:

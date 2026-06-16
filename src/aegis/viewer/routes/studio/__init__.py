@@ -40,7 +40,7 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
     from aegis.viewer.routes._helpers import get_json_dict
     from aegis.viewer.routes.compute._responses import _json_dumps_safe
 
-    from . import _bodymap, _channel, _paths, _phantom, _precoders, _presets, _slice, _volume
+    from . import _bodymap, _channel, _paths, _phantom, _precoders, _presets, _scene, _slice, _volume
 
     def _beam_field(
         beam,
@@ -274,6 +274,17 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
         resp.headers["X-Stats"] = _json_dumps_safe(stats)
         resp.headers["Access-Control-Expose-Headers"] = "X-Stats"
         return resp
+
+    @app.route("/api/studio/scene")
+    def api_studio_scene():
+        from flask import request
+
+        condition = request.args.get("condition", "los")
+        seed = request.args.get("seed", default=0, type=int)
+        out = _scene.get_scene(condition, seed, cache, cache_lock)
+        if out.get("not_precomputed"):
+            return jsonify(out), 409
+        return jsonify(out)
 
     @app.route("/api/studio/bodymap")
     def api_studio_bodymap():
