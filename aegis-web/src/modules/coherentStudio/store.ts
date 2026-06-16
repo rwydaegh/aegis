@@ -57,6 +57,7 @@ interface StudioState {
   topK: number
   showRays: boolean
   showArrayPattern: boolean
+  showRxPattern: boolean
   wireframe: boolean
   /** When true, clicking the body moves the focus to the clicked surface point. */
   pickFocusOnBody: boolean
@@ -108,6 +109,7 @@ interface StudioState {
   setTopK: (topK: number) => void
   setShowRays: (showRays: boolean) => void
   setShowArrayPattern: (showArrayPattern: boolean) => void
+  setShowRxPattern: (showRxPattern: boolean) => void
   setWireframe: (wireframe: boolean) => void
   setPickFocusOnBody: (pickFocusOnBody: boolean) => void
   setShowVolume: (showVolume: boolean) => void
@@ -157,6 +159,7 @@ export const useStudioStore = create<StudioState>()((set) => ({
   topK: 150,
   showRays: true,
   showArrayPattern: true,
+  showRxPattern: false,
   wireframe: false,
   pickFocusOnBody: false,
   showVolume: false,
@@ -198,6 +201,7 @@ export const useStudioStore = create<StudioState>()((set) => ({
   setTopK: (topK) => set({ topK }),
   setShowRays: (showRays) => set({ showRays }),
   setShowArrayPattern: (showArrayPattern) => set({ showArrayPattern }),
+  setShowRxPattern: (showRxPattern) => set({ showRxPattern }),
   setWireframe: (wireframe) => set({ wireframe }),
   setPickFocusOnBody: (pickFocusOnBody) => set({ pickFocusOnBody }),
   setShowVolume: (showVolume) => set({ showVolume }),

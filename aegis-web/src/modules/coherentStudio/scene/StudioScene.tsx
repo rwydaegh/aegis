@@ -15,6 +15,7 @@ import { colormapRgb, snapFocusToSkin } from './studioHelpers'
 import StudioSlicePlane from './StudioSlicePlane'
 import StudioVolume from './StudioVolume'
 import StudioRays from './StudioRays'
+import StudioRxPattern from './StudioRxPattern'
 
 // Base station position (server Z-up metres), fixed by the e11 geometry.
 const BS_SERVER: ServerPos = [-13, 0, 3]
@@ -85,6 +86,7 @@ export default function StudioScene({ snapSignal }: StudioSceneProps) {
   const bodyMap = useStudioStore((s) => s.bodyMap)
   const showRays = useStudioStore((s) => s.showRays)
   const showArrayPattern = useStudioStore((s) => s.showArrayPattern)
+  const showRxPattern = useStudioStore((s) => s.showRxPattern)
   const wireframe = useStudioStore((s) => s.wireframe)
   const pickFocusOnBody = useStudioStore((s) => s.pickFocusOnBody)
 
@@ -197,6 +199,7 @@ export default function StudioScene({ snapSignal }: StudioSceneProps) {
       </Html>
 
       {showRays && <StudioRays rays={rays} />}
+      {showRxPattern && <StudioRxPattern focusScene={focusScene} />}
       <FocusPointMarker focusPoint={focusScene} arrayPosition={bsScene} />
       <StudioSlicePlane />
       <StudioVolume />
