@@ -1,15 +1,15 @@
 import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
-import { jetColor, gainTFromLinear } from '@/lib/colormap'
+import { jetColor } from '@/lib/colormap'
 import { toServer } from '@/api/coordinates'
 import { useStudioStore } from '../store'
 import { rxGain } from '../panels/studioRxPattern'
 
 // The receive (UE) antenna pattern, drawn as a lobe balloon at the steering
 // focus (which IS r_UE: the studio computes the channel h at the focus). Vertex
-// radius is proportional to |C_R(k)| in that direction and the surface is
-// jet-coloured by magnitude in dB, so a dipole reads as a donut, a patch as a
-// forward lobe, and isotropic / vertical as a featureless sphere.
+// radius is proportional to |C_R(k)| in that direction, so a dipole reads as a
+// donut, a patch as a forward lobe, and isotropic / vertical as a featureless
+// sphere.
 //
 // The backend builds C_R via make_rx_response(kind, freq) with its defaults
 // (axis = +z, no rotation), so the antenna is Z-up in the world frame. We
@@ -21,15 +21,15 @@ interface StudioRxPatternProps {
   focusScene: [number, number, number]
 }
 
-// Physical-ish size of the lobe in metres. The phantom is ~1.7 m tall, so a
-// half-metre balloon at the focus is visible without engulfing the body.
-const BASE_RADIUS = 0.5
 // Compress the radial dynamic range so deep nulls do not collapse the mesh to a
-// point (matches the base-station pattern balloon's lobeGamma).
+// point (matches the base-station pattern balloon's lobeGamma). The same
+// exponent drives the colour, so blue->red tracks the surface you actually see.
 const LOBE_GAMMA = 0.42
-// Colour dynamic range in dB below the peak.
-const DYN_DB = 30
 
+// Build a UNIT-radius lobe (max radius 1) for the given antenna kind; the caller
+// scales it to the user's extent. Colour is the displayed radius (gn^gamma)
+// mapped through jet, so the full colormap spreads across the lobe instead of
+// pinning the whole high-gain region to red as a dB mapping would.
 function buildRxGeometry(kind: string): THREE.BufferGeometry {
   const base = new THREE.IcosahedronGeometry(1, 5)
   const posAttr = base.attributes.position as THREE.BufferAttribute
@@ -54,12 +54,13 @@ function buildRxGeometry(kind: string): THREE.BufferGeometry {
   const colors = new Float32Array(nV * 3)
   for (let i = 0; i < nV; i++) {
     const gn = gains[i] / gMax
-    const rr = BASE_RADIUS * Math.max(gn, 1e-9) ** LOBE_GAMMA
+    // Normalised displayed radius in [0, 1]; both the geometry and the colour
+    // read from this so colour and shape never disagree.
+    const norm = Math.max(gn, 1e-9) ** LOBE_GAMMA
     const d = dirs[i]
-    posAttr.setXYZ(i, d.x * rr, d.y * rr, d.z * rr)
+    posAttr.setXYZ(i, d.x * norm, d.y * norm, d.z * norm)
 
-    const t = gainTFromLinear(gains[i], gMax, DYN_DB)
-    const [cr, cg, cb] = jetColor(t)
+    const [cr, cg, cb] = jetColor(norm)
     colors[i * 3] = cr
     colors[i * 3 + 1] = cg
     colors[i * 3 + 2] = cb
@@ -73,13 +74,15 @@ function buildRxGeometry(kind: string): THREE.BufferGeometry {
 
 export default function StudioRxPattern({ focusScene }: StudioRxPatternProps) {
   const ueAntenna = useStudioStore((s) => s.ueAntenna)
+  const extentM = useStudioStore((s) => s.rxPatternExtentM)
 
   const geo = useMemo(() => buildRxGeometry(ueAntenna), [ueAntenna])
   useEffect(() => () => geo.dispose(), [geo])
 
   return (
     <group position={focusScene}>
-      <mesh geometry={geo}>
+      {/* Unit lobe scaled to the user's max extent (metres). */}
+      <mesh geometry={geo} scale={extentM}>
         <meshStandardMaterial
           vertexColors
           transparent
@@ -90,7 +93,8 @@ export default function StudioRxPattern({ focusScene }: StudioRxPatternProps) {
           roughness={0.7}
         />
       </mesh>
-      {/* Marker at the receive origin (r_UE). */}
+      {/* Marker at the receive origin (r_UE); kept outside the scale so it stays
+          a fixed size as the lobe grows. */}
       <mesh>
         <sphereGeometry args={[0.025, 16, 16]} />
         <meshStandardMaterial color="#ffffff" emissive="#888888" emissiveIntensity={0.5} />

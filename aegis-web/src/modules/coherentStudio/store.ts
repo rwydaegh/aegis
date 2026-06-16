@@ -58,6 +58,8 @@ interface StudioState {
   showRays: boolean
   showArrayPattern: boolean
   showRxPattern: boolean
+  /** Max radius (metres) of the Rx pattern lobe. Render-only. */
+  rxPatternExtentM: number
   wireframe: boolean
   /** When true, clicking the body moves the focus to the clicked surface point. */
   pickFocusOnBody: boolean
@@ -110,6 +112,7 @@ interface StudioState {
   setShowRays: (showRays: boolean) => void
   setShowArrayPattern: (showArrayPattern: boolean) => void
   setShowRxPattern: (showRxPattern: boolean) => void
+  setRxPatternExtentM: (rxPatternExtentM: number) => void
   setWireframe: (wireframe: boolean) => void
   setPickFocusOnBody: (pickFocusOnBody: boolean) => void
   setShowVolume: (showVolume: boolean) => void
@@ -160,6 +163,7 @@ export const useStudioStore = create<StudioState>()((set) => ({
   showRays: true,
   showArrayPattern: true,
   showRxPattern: false,
+  rxPatternExtentM: 0.5,
   wireframe: false,
   pickFocusOnBody: false,
   showVolume: false,
@@ -202,6 +206,7 @@ export const useStudioStore = create<StudioState>()((set) => ({
   setShowRays: (showRays) => set({ showRays }),
   setShowArrayPattern: (showArrayPattern) => set({ showArrayPattern }),
   setShowRxPattern: (showRxPattern) => set({ showRxPattern }),
+  setRxPatternExtentM: (rxPatternExtentM) => set({ rxPatternExtentM }),
   setWireframe: (wireframe) => set({ wireframe }),
   setPickFocusOnBody: (pickFocusOnBody) => set({ pickFocusOnBody }),
   setShowVolume: (showVolume) => set({ showVolume }),

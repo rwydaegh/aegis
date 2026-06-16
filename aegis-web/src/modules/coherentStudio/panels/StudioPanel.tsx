@@ -196,6 +196,8 @@ export default function StudioPanel() {
   const setShowArrayPattern = useStudioStore((s) => s.setShowArrayPattern)
   const showRxPattern = useStudioStore((s) => s.showRxPattern)
   const setShowRxPattern = useStudioStore((s) => s.setShowRxPattern)
+  const rxPatternExtentM = useStudioStore((s) => s.rxPatternExtentM)
+  const setRxPatternExtentM = useStudioStore((s) => s.setRxPatternExtentM)
   const wireframe = useStudioStore((s) => s.wireframe)
   const setWireframe = useStudioStore((s) => s.setWireframe)
   const showVolume = useStudioStore((s) => s.showVolume)
@@ -407,6 +409,16 @@ export default function StudioPanel() {
         <Checkbox checked={showRxPattern} onChange={setShowRxPattern} title="Draw the UE receive antenna pattern |C_R(k)| as a 3D lobe at the focus (r_UE). Reflects the selected receive antenna in the world (Z-up) frame the precoder uses.">
           Show Rx pattern
         </Checkbox>
+        <FieldLabel title="Maximum radius of the Rx pattern lobe in metres (display only).">Rx pattern size</FieldLabel>
+        <Slider
+          value={rxPatternExtentM}
+          min={0.1}
+          max={2}
+          step={0.1}
+          onChange={setRxPatternExtentM}
+          disabled={!showRxPattern}
+          labelOf={(v) => `${v.toFixed(1)} m`}
+        />
         <Checkbox checked={wireframe} onChange={setWireframe} title="Render the phantom as a wireframe.">
           Body wireframe
         </Checkbox>
