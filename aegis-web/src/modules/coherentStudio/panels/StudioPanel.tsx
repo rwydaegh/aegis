@@ -200,6 +200,16 @@ export default function StudioPanel() {
   const setRxPatternExtentM = useStudioStore((s) => s.setRxPatternExtentM)
   const wireframe = useStudioStore((s) => s.wireframe)
   const setWireframe = useStudioStore((s) => s.setWireframe)
+  const showBlockers = useStudioStore((s) => s.showBlockers)
+  const setShowBlockers = useStudioStore((s) => s.setShowBlockers)
+  const showRoomOutline = useStudioStore((s) => s.showRoomOutline)
+  const setShowRoomOutline = useStudioStore((s) => s.setShowRoomOutline)
+  const background = useStudioStore((s) => s.background)
+  const setBackground = useStudioStore((s) => s.setBackground)
+  const arrayPatternScale = useStudioStore((s) => s.arrayPatternScale)
+  const setArrayPatternScale = useStudioStore((s) => s.setArrayPatternScale)
+  const screenshotMode = useStudioStore((s) => s.screenshotMode)
+  const setScreenshotMode = useStudioStore((s) => s.setScreenshotMode)
   const showVolume = useStudioStore((s) => s.showVolume)
   const setShowVolume = useStudioStore((s) => s.setShowVolume)
   const volumeRes = useStudioStore((s) => s.volumeRes)
@@ -406,6 +416,23 @@ export default function StudioPanel() {
         <Checkbox checked={showArrayPattern} onChange={setShowArrayPattern} title="Draw the base-station array pattern lobe.">
           Show array pattern
         </Checkbox>
+        <Checkbox
+          checked={arrayPatternScale > 1}
+          onChange={(c) => setArrayPatternScale(c ? 20 : 1)}
+          title="Cosmetically blow up the array pattern lobe so it reads from the distant Rx vantage (the array is ~14 m away)."
+        >
+          Magnify array pattern
+        </Checkbox>
+        <FieldLabel title="Cosmetic magnification of the array pattern lobe (1 = true size).">Pattern magnify</FieldLabel>
+        <Slider
+          value={arrayPatternScale}
+          min={1}
+          max={60}
+          step={1}
+          onChange={setArrayPatternScale}
+          disabled={!showArrayPattern}
+          labelOf={(v) => `${v}x`}
+        />
         <Checkbox checked={showRxPattern} onChange={setShowRxPattern} title="Draw the UE receive antenna pattern |C_R(k)| as a 3D lobe at the focus (r_UE). Reflects the selected receive antenna in the world (Z-up) frame the precoder uses.">
           Show Rx pattern
         </Checkbox>
@@ -421,6 +448,40 @@ export default function StudioPanel() {
         />
         <Checkbox checked={wireframe} onChange={setWireframe} title="Render the phantom as a wireframe.">
           Body wireframe
+        </Checkbox>
+      </Group>
+
+      <Group title="Scene & capture">
+        <Checkbox
+          checked={showBlockers}
+          onChange={setShowBlockers}
+          title="Draw the real traced factory blockers: metallic scatterer cuboids, plus the NLOS corridor slab (semi-transparent) in the NLOS condition."
+        >
+          Show blockers
+        </Checkbox>
+        <Checkbox
+          checked={showRoomOutline}
+          onChange={setShowRoomOutline}
+          title="Draw the room as a lineart wireframe (the factory outline) to convey the 3D space."
+        >
+          Room outline
+        </Checkbox>
+        <FieldLabel title="Scene backdrop. Transparent exports a figure-ready PNG with no background.">Background</FieldLabel>
+        <Segmented<'dark' | 'white' | 'transparent'>
+          value={background}
+          options={[
+            { value: 'dark', label: 'Dark' },
+            { value: 'white', label: 'White' },
+            { value: 'transparent', label: 'None' },
+          ]}
+          onChange={setBackground}
+        />
+        <Checkbox
+          checked={screenshotMode}
+          onChange={setScreenshotMode}
+          title="Strip the grid, gizmos and overlays and force a transparent backdrop, leaving only the phantom, field and blockers for a clean figure capture."
+        >
+          Screenshot mode
         </Checkbox>
       </Group>
 

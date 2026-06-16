@@ -11,6 +11,9 @@ interface AntennaArrayProps {
   showPattern?: boolean
   weights?: { real: number[][]; imag: number[][] } | null
   selected?: boolean
+  /** Cosmetic magnification of the radiation-pattern lobe (default 1). The
+   * studio uses a large value so the lobe reads from the distant Rx vantage. */
+  patternScale?: number
 }
 
 const ARROW_COLOR = new THREE.Color(1, 0.4, 0)
@@ -197,7 +200,7 @@ function computeBroadsideAngles(broadside: number[]): { azimuthDeg: number; tilt
 // Component
 // ---------------------------------------------------------------------------
 
-export default memo(function AntennaArray({ config, freqHz, showPattern, weights, selected }: AntennaArrayProps) {
+export default memo(function AntennaArray({ config, freqHz, showPattern, weights, selected, patternScale = 1 }: AntennaArrayProps) {
   const localPositions = useMemo(
     () => buildLocalPositions(config, freqHz),
     [config.n_h, config.n_v, config.d_h_wavelengths, config.d_v_wavelengths, config.broadside, freqHz],
@@ -261,7 +264,7 @@ export default memo(function AntennaArray({ config, freqHz, showPattern, weights
 
         {showPattern && patternGeo && (
           <group>
-            <mesh geometry={patternGeo}>
+            <mesh geometry={patternGeo} scale={patternScale}>
               <meshStandardMaterial
                 vertexColors
                 transparent

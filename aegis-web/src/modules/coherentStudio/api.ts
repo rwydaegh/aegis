@@ -327,6 +327,42 @@ interface PhantomStatsHeader {
 }
 
 // ---------------------------------------------------------------------------
+// Scene geometry (real factory blockers)
+// ---------------------------------------------------------------------------
+
+/** One scatterer cuboid. `size` is (length, width, height) in the server frame;
+ * `yaw_rad` rotates it about the server +z (up) axis. */
+export interface SceneScatterer {
+  center: Vec3
+  size: Vec3
+  yaw_rad: number
+}
+
+/** The NLOS blocker slab. Axis-aligned in the server frame. */
+export interface SceneBlocker {
+  center: Vec3
+  size: Vec3
+}
+
+/** Real scene geometry from the traced e8/e11 world (server Z-up metres). */
+export interface SceneGeometry {
+  room_dims: Vec3
+  bs_position: Vec3
+  bs_n: number
+  bs_tilt_deg: number
+  scatterers: SceneScatterer[]
+  /** Present only in the NLOS condition. */
+  blocker: SceneBlocker | null
+  ue_positions: Vec3[]
+  provenance: Provenance
+}
+
+/** Either the geometry, or a flag that this (condition, seed) was not precomputed. */
+export type SceneFetch =
+  | { ok: true; data: SceneGeometry }
+  | { ok: false; notPrecomputed: true; error: string }
+
+// ---------------------------------------------------------------------------
 // Internal helpers (mirror src/api/client.ts patterns)
 // ---------------------------------------------------------------------------
 
@@ -524,6 +560,27 @@ export async function fetchBodyMap(params: BodyMapParams): Promise<BodyMapFetch>
 // ---------------------------------------------------------------------------
 // Phantom geometry
 // ---------------------------------------------------------------------------
+
+export async function fetchScene(condition: string, seed: number): Promise<SceneFetch> {
+  const qs = new URLSearchParams({ condition, seed: String(seed) })
+  const path = `${STUDIO}/scene?${qs}`
+  const res = await fetchWithRetry(`${BASE}${path}`)
+  if (res.status === 401) {
+    handle401()
+    throw new ApiError(`GET ${path} failed: 401 Unauthorized`, 401)
+  }
+  if (res.status === 409) {
+    const body = await res.json().catch(() => ({}))
+    return {
+      ok: false,
+      notPrecomputed: true,
+      error: typeof body?.error === 'string' ? body.error : 'Scene geometry not precomputed for this combination',
+    }
+  }
+  if (!res.ok) throw new ApiError(await extractErrorMessage(res, 'GET', path), res.status)
+  const data = (await res.json()) as SceneGeometry
+  return { ok: true, data }
+}
 
 export async function fetchPhantom(mesh: string): Promise<PhantomGeometry> {
   const path = `${STUDIO}/phantom?mesh=${encodeURIComponent(mesh)}`

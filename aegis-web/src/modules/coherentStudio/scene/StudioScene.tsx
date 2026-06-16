@@ -10,12 +10,22 @@ import type { Vec3 } from '../api'
 import type { ArrayConfig } from '@/api/types'
 import { useStudioStore } from '../store'
 import { useStudioRays } from '../useStudioRays'
+import { useStudioScene } from '../useStudioScene'
 import { useStudioScales } from '../useStudioScales'
 import { colormapRgb, snapFocusToSkin } from './studioHelpers'
 import StudioSlicePlane from './StudioSlicePlane'
 import StudioVolume from './StudioVolume'
 import StudioRays from './StudioRays'
 import StudioRxPattern from './StudioRxPattern'
+import StudioBlockers from './StudioBlockers'
+
+// Scene backdrop colours; 'transparent' renders no <color> so the alpha buffer
+// shows through (used for figure export).
+const BG_COLOR: Record<string, string | null> = {
+  dark: '#0a0a0f',
+  white: '#ffffff',
+  transparent: null,
+}
 
 // Base station position (server Z-up metres), fixed by the e11 geometry.
 const BS_SERVER: ServerPos = [-13, 0, 3]
@@ -87,10 +97,20 @@ export default function StudioScene({ snapSignal }: StudioSceneProps) {
   const showRays = useStudioStore((s) => s.showRays)
   const showArrayPattern = useStudioStore((s) => s.showArrayPattern)
   const showRxPattern = useStudioStore((s) => s.showRxPattern)
+  const arrayPatternScale = useStudioStore((s) => s.arrayPatternScale)
+  const background = useStudioStore((s) => s.background)
+  const screenshotMode = useStudioStore((s) => s.screenshotMode)
   const wireframe = useStudioStore((s) => s.wireframe)
   const pickFocusOnBody = useStudioStore((s) => s.pickFocusOnBody)
 
+  // In screenshot mode the backdrop is always transparent regardless of the
+  // background toggle, so the captured PNG drops onto any figure.
+  const bgColor = screenshotMode ? null : BG_COLOR[background]
+  // Chrome (grid, focus marker, beam-axis label) only in the dark working view.
+  const showChrome = !screenshotMode && background === 'dark'
+
   const rays = useStudioRays()
+  useStudioScene()
   const geometry = usePhantomGeometry()
   const { body: bodyScale } = useStudioScales()
 
@@ -171,36 +191,51 @@ export default function StudioScene({ snapSignal }: StudioSceneProps) {
 
   return (
     <>
-      <color attach="background" args={['#0a0a0f']} />
+      {bgColor && <color attach="background" args={[bgColor]} />}
 
-      <ambientLight intensity={0.55} />
-      <directionalLight position={[5, 10, 5]} intensity={0.9} />
+      {/* Lights: brighter, multi-directional for the white / figure look so the
+          metallic blockers pick up speculars without a remote environment map. */}
+      <ambientLight intensity={0.6} />
+      <directionalLight position={[5, 10, 5]} intensity={1.0} />
+      <directionalLight position={[-8, 6, -4]} intensity={0.5} />
+      <pointLight position={[0, 4, 6]} intensity={0.4} />
       <hemisphereLight args={['#b1e1ff', '#2c2c2c', 0.35]} />
 
-      <gridHelper args={[30, 30, '#444444', '#222222']} position={[0, 0, 0]} />
+      {showChrome && <gridHelper args={[30, 30, '#444444', '#222222']} position={[0, 0, 0]} />}
 
-      <AntennaArray config={arrayConfig} freqHz={frequencyGhz * 1e9} showPattern={showArrayPattern} />
+      <StudioBlockers />
 
-      {/* Beam axis + range / downtilt label. */}
-      <Line points={[bsScene, focusScene]} color="#00e5ff" lineWidth={1} dashed dashSize={0.3} gapSize={0.2} transparent opacity={0.5} />
-      <Html position={beamMidScene} center style={{ pointerEvents: 'none' }}>
-        <div
-          style={{
-            color: '#9fe',
-            fontSize: 11,
-            background: 'rgba(10,10,15,0.7)',
-            padding: '2px 6px',
-            borderRadius: 4,
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {rangeM.toFixed(1)} m, {Math.round(downDeg)} deg down
-        </div>
-      </Html>
+      <AntennaArray
+        config={arrayConfig}
+        freqHz={frequencyGhz * 1e9}
+        showPattern={showArrayPattern}
+        patternScale={arrayPatternScale}
+      />
+
+      {/* Beam axis + range / downtilt label (working view only). */}
+      {showChrome && (
+        <>
+          <Line points={[bsScene, focusScene]} color="#00e5ff" lineWidth={1} dashed dashSize={0.3} gapSize={0.2} transparent opacity={0.5} />
+          <Html position={beamMidScene} center style={{ pointerEvents: 'none' }}>
+            <div
+              style={{
+                color: '#9fe',
+                fontSize: 11,
+                background: 'rgba(10,10,15,0.7)',
+                padding: '2px 6px',
+                borderRadius: 4,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {rangeM.toFixed(1)} m, {Math.round(downDeg)} deg down
+            </div>
+          </Html>
+        </>
+      )}
 
       {showRays && <StudioRays rays={rays} />}
       {showRxPattern && <StudioRxPattern focusScene={focusScene} />}
-      <FocusPointMarker focusPoint={focusScene} arrayPosition={bsScene} />
+      {!screenshotMode && <FocusPointMarker focusPoint={focusScene} arrayPosition={bsScene} />}
       <StudioSlicePlane />
       <StudioVolume />
 

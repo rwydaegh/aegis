@@ -3,6 +3,7 @@ import type {
   BodyMapResult,
   PhantomGeometry,
   Provenance,
+  SceneGeometry,
   SlicePlane,
   SliceResult,
   StudioBodyMapStatistic,
@@ -16,6 +17,9 @@ import type {
 import type { Range, StudioScaleScope } from './scene/colorScale'
 
 export type StudioScaleMode = 'auto' | 'fixed' | 'log'
+/** Scene backdrop: the dark app look, a pure-white scientific-figure look, or
+ * a transparent buffer for figure export. Render-only. */
+export type StudioBackground = 'dark' | 'white' | 'transparent'
 /** UE receive antenna pattern C_R(k); shapes the matched filter, hence the
  * precoder and the live (deposited / slice / volume) maps. */
 export type StudioUeAntenna = 'isotropic' | 'vertical' | 'dipole' | 'patch'
@@ -60,6 +64,16 @@ interface StudioState {
   showRxPattern: boolean
   /** Max radius (metres) of the Rx pattern lobe. Render-only. */
   rxPatternExtentM: number
+  /** Draw the real factory blockers (metallic scatterers + NLOS slab). */
+  showBlockers: boolean
+  /** Draw the room as a lineart wireframe (the factory outline). */
+  showRoomOutline: boolean
+  /** Scene backdrop (dark / white / transparent). Render-only. */
+  background: StudioBackground
+  /** Multiplier on the BS array pattern lobe so it reads from the Rx vantage. */
+  arrayPatternScale: number
+  /** Strip chrome (grid, gizmos, helpers) for a clean figure capture. */
+  screenshotMode: boolean
   wireframe: boolean
   /** When true, clicking the body moves the focus to the clicked surface point. */
   pickFocusOnBody: boolean
@@ -81,6 +95,8 @@ interface StudioState {
   phantom: PhantomGeometry | null
   manifest: StudioManifest | null
   computing: boolean
+  /** Real scene geometry (blockers, room, BS). Null until fetched / on miss. */
+  scene: SceneGeometry | null
   /** True when the last body-map fetch found no precomputed pack for the combo. */
   bodyMapNotPrecomputed: boolean
   /** Provenance of the currently displayed slice / body map (whichever was set last). */
@@ -113,6 +129,11 @@ interface StudioState {
   setShowArrayPattern: (showArrayPattern: boolean) => void
   setShowRxPattern: (showRxPattern: boolean) => void
   setRxPatternExtentM: (rxPatternExtentM: number) => void
+  setShowBlockers: (showBlockers: boolean) => void
+  setShowRoomOutline: (showRoomOutline: boolean) => void
+  setBackground: (background: StudioBackground) => void
+  setArrayPatternScale: (arrayPatternScale: number) => void
+  setScreenshotMode: (screenshotMode: boolean) => void
   setWireframe: (wireframe: boolean) => void
   setPickFocusOnBody: (pickFocusOnBody: boolean) => void
   setShowVolume: (showVolume: boolean) => void
@@ -129,6 +150,7 @@ interface StudioState {
   setPhantom: (phantom: PhantomGeometry | null) => void
   setManifest: (manifest: StudioManifest | null) => void
   setComputing: (computing: boolean) => void
+  setScene: (scene: SceneGeometry | null) => void
 }
 
 export const useStudioStore = create<StudioState>()((set) => ({
@@ -164,6 +186,11 @@ export const useStudioStore = create<StudioState>()((set) => ({
   showArrayPattern: true,
   showRxPattern: false,
   rxPatternExtentM: 0.5,
+  showBlockers: true,
+  showRoomOutline: false,
+  background: 'dark',
+  arrayPatternScale: 1,
+  screenshotMode: false,
   wireframe: false,
   pickFocusOnBody: false,
   showVolume: false,
@@ -178,6 +205,7 @@ export const useStudioStore = create<StudioState>()((set) => ({
   phantom: null,
   manifest: null,
   computing: false,
+  scene: null,
   bodyMapNotPrecomputed: false,
   provenance: null,
 
@@ -207,6 +235,11 @@ export const useStudioStore = create<StudioState>()((set) => ({
   setShowArrayPattern: (showArrayPattern) => set({ showArrayPattern }),
   setShowRxPattern: (showRxPattern) => set({ showRxPattern }),
   setRxPatternExtentM: (rxPatternExtentM) => set({ rxPatternExtentM }),
+  setShowBlockers: (showBlockers) => set({ showBlockers }),
+  setShowRoomOutline: (showRoomOutline) => set({ showRoomOutline }),
+  setBackground: (background) => set({ background }),
+  setArrayPatternScale: (arrayPatternScale) => set({ arrayPatternScale }),
+  setScreenshotMode: (screenshotMode) => set({ screenshotMode }),
   setWireframe: (wireframe) => set({ wireframe }),
   setPickFocusOnBody: (pickFocusOnBody) => set({ pickFocusOnBody }),
   setShowVolume: (showVolume) => set({ showVolume }),
@@ -224,6 +257,7 @@ export const useStudioStore = create<StudioState>()((set) => ({
   setPhantom: (phantom) => set({ phantom }),
   setManifest: (manifest) => set({ manifest }),
   setComputing: (computing) => set({ computing }),
+  setScene: (scene) => set({ scene }),
 }))
 
 // ---------------------------------------------------------------------------

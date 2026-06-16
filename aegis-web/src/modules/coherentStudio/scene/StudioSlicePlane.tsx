@@ -83,6 +83,7 @@ export default function StudioSlicePlane() {
   const sliceResult = useStudioStore((s) => s.sliceResult)
   const setPlane = useStudioStore((s) => s.setPlane)
   const setFocusXyz = useStudioStore((s) => s.setFocusXyz)
+  const screenshotMode = useStudioStore((s) => s.screenshotMode)
 
   // The resolved slice scale honours scope / mode / robust-clip / fixed range and,
   // for signed components (ReEx/y/z), the diverging coolwarm symmetric map.
@@ -216,13 +217,17 @@ export default function StudioSlicePlane() {
         </mesh>
       </primitive>
 
-      <TransformControls
-        object={planeObj}
-        mode="translate"
-        size={0.6}
-        onMouseDown={() => onDraggingChanged(true)}
-        onMouseUp={onMouseUp}
-      />
+      {/* The translate gizmo (RGB axis triad) is editing chrome, so it is hidden
+          for a clean figure capture. */}
+      {!screenshotMode && (
+        <TransformControls
+          object={planeObj}
+          mode="translate"
+          size={0.6}
+          onMouseDown={() => onDraggingChanged(true)}
+          onMouseUp={onMouseUp}
+        />
+      )}
     </>
   )
 }
