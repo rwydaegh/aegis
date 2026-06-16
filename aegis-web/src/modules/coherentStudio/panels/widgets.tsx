@@ -40,6 +40,18 @@ export interface Option<T> {
   label: string
   disabled?: boolean
   hint?: string
+  /** Hover explanation shown on the option (segmented button or native option). */
+  title?: string
+}
+
+/**
+ * A muted explanatory paragraph shown under a control. Use it to describe what
+ * the current selection actually does (the studio has many app-specific terms
+ * that are not self-evident from the label alone).
+ */
+export function HelpText({ children, tone = 'muted' }: { children: ReactNode; tone?: 'muted' | 'live' | 'warn' }) {
+  const color = tone === 'live' ? '#7a8' : tone === 'warn' ? '#b58' : '#8a93a6'
+  return <p style={{ fontSize: 11, lineHeight: 1.4, color, margin: '6px 2px 2px' }}>{children}</p>
 }
 
 /** A native select bound to a string/number value. */
@@ -65,7 +77,7 @@ export function LabeledSelect<T extends string | number>({
       style={selectStyle}
     >
       {options.map((o) => (
-        <option key={String(o.value)} value={String(o.value)} disabled={o.disabled}>
+        <option key={String(o.value)} value={String(o.value)} disabled={o.disabled} title={o.title}>
           {o.label}
           {o.disabled && o.hint ? ` (${o.hint})` : ''}
         </option>
@@ -93,7 +105,7 @@ export function Segmented<T extends string | number>({
             key={String(o.value)}
             type="button"
             disabled={o.disabled}
-            title={o.disabled ? o.hint : undefined}
+            title={o.disabled ? o.hint : o.title}
             onClick={() => !o.disabled && onChange(o.value)}
             style={{
               padding: '6px 4px',

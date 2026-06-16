@@ -1,15 +1,19 @@
-import type { StudioFocusMode, StudioPlaneOrientation, Vec3 } from '../api'
+import type { StudioFocusMode, Vec3 } from '../api'
 import { useStudioStore, type StudioScaleMode, type StudioUeAntenna } from '../store'
 import { useStudioScales } from '../useStudioScales'
 import type { StudioScaleScope } from '../scene/colorScale'
 import {
+  activeOrientationKey,
   arraySizeHasRayPack,
   beamAvailability,
+  beamDescription,
   beamOptions,
   conditionHasRayPack,
   EXTENT_OPTIONS_M,
   extentLabel,
   ORIENTATION_OPTIONS,
+  orientationDescription,
+  orientationPatch,
   packsOf,
   phantomHasPack,
   RESOLUTION_OPTIONS,
@@ -25,6 +29,7 @@ import {
   DiscreteSlider,
   FieldLabel,
   Group,
+  HelpText,
   LabeledSelect,
   Segmented,
   Slider,
@@ -42,21 +47,21 @@ const COLORMAP_OPTIONS: Option<string>[] = [
 ]
 
 const UE_ANTENNA_OPTIONS: Option<StudioUeAntenna>[] = [
-  { value: 'isotropic', label: 'Isotropic' },
-  { value: 'vertical', label: 'Vertical (reference)' },
-  { value: 'dipole', label: 'Half-wave dipole' },
-  { value: 'patch', label: 'Patch (cos^n)' },
+  { value: 'isotropic', label: 'Isotropic', title: 'Flat directivity (vertical polarisation), unit sphere-average gain. The receiver weights every arrival direction equally.' },
+  { value: 'vertical', label: 'Vertical (reference)', title: 'Legacy unit-gain vertical reference, no directivity.' },
+  { value: 'dipole', label: 'Half-wave dipole', title: 'Analytic half-wave dipole pattern (the default): donut directivity with a null along the dipole axis.' },
+  { value: 'patch', label: 'Patch (cos^n)', title: 'cos^n(theta) front-facing patch directivity: a forward lobe that rejects the back hemisphere.' },
 ]
 
 const SCALE_OPTIONS: Option<StudioScaleMode>[] = [
-  { value: 'auto', label: 'Auto' },
-  { value: 'fixed', label: 'Fixed' },
-  { value: 'log', label: 'Log' },
+  { value: 'auto', label: 'Auto', title: 'Linear scale, floor pinned to zero, top taken from the data.' },
+  { value: 'fixed', label: 'Fixed', title: 'Hold a user-locked min and max so frames stay comparable.' },
+  { value: 'log', label: 'Log', title: 'Logarithmic over a dynamic-range window below the peak (set the dB span below).' },
 ]
 
 const SCOPE_OPTIONS: Option<StudioScaleScope>[] = [
-  { value: 'surface', label: 'Per-surface' },
-  { value: 'shared', label: 'Shared' },
+  { value: 'surface', label: 'Per-surface', title: 'Each surface (slice, body, volume) autoscales to its own data range.' },
+  { value: 'shared', label: 'Shared', title: 'One colour range shared by all visible surfaces, so equal colours mean equal values everywhere.' },
 ]
 
 // A compact numeric field for the fixed colour range. Shows the live value but
@@ -96,8 +101,8 @@ function RangeInput({ value, onCommit, label }: { value: number; onCommit: (v: n
 }
 
 const FOCUS_MODE_OPTIONS: Option<StudioFocusMode>[] = [
-  { value: 'at-skin', label: 'At skin' },
-  { value: 'free-space', label: 'Free space' },
+  { value: 'at-skin', label: 'At skin', title: 'Snaps the focus to the nearest skin triangle before forming the beam, so it targets the body surface where absorbed power matters.' },
+  { value: 'free-space', label: 'Free space', title: 'The focus stays exactly where you put it, including in mid-air.' },
 ]
 
 // Per-axis sample counts for the 3D field-volume box (clamped 8..48 server-side;
@@ -255,7 +260,7 @@ export default function StudioPanel() {
 
   const beams: Option<string>[] = beamOptions(manifest).map((b) => {
     const { available, hint } = beamAvailability(packs, b.value, mesh, condition, arrayN, frequencyGhz)
-    return { value: b.value, label: b.label, disabled: !available, hint }
+    return { value: b.value, label: b.label, disabled: !available, hint, title: b.title }
   })
 
   const frequencies = manifest?.frequencies ?? [frequencyGhz]
@@ -281,17 +286,17 @@ export default function StudioPanel() {
         </FieldLabel>
         <LabeledSelect<string> value={mesh} options={phantomOptions} onChange={setMesh} />
 
-        <FieldLabel title="Line-of-sight or non-line-of-sight multipath condition.">
+        <FieldLabel title="Line-of-sight vs non-line-of-sight. NLOS inserts a blocker slab between the array and the body, so the body is lit only by reflections and diffraction. LOS ships a 6-seed fading ensemble; NLOS ships seed 0 only.">
           Condition
         </FieldLabel>
         <Segmented<string> value={condition} options={conditionOptions} onChange={setCondition} />
 
-        <FieldLabel title="Base-station array size (per-side count of the square URA). 16 is a 256-element array.">
+        <FieldLabel title="Side length of the square base-station array, so 16 is a 16x16 = 256-element URA (8 is 64). More elements give a finer focus and a higher worst-case amplification ceiling.">
           Array
         </FieldLabel>
         <Segmented<number> value={arrayN} options={arrayOptions} onChange={setArrayN} />
 
-        <FieldLabel title="Realisation / ensemble member of the small-scale fading.">Seed</FieldLabel>
+        <FieldLabel title="Fading realisation index: an independent draw of the small-scale multipath (scatterer placement and phases). LOS has seeds 0-5, NLOS only 0. Shows how much the hotspot moves between statistically-equivalent channels.">Seed</FieldLabel>
         <LabeledSelect<number>
           value={seed}
           options={seedOptions}
@@ -302,11 +307,17 @@ export default function StudioPanel() {
 
       <Group title="Beam">
         <LabeledSelect<string> value={beam} options={beams} onChange={setBeam} />
+        <HelpText>{beamDescription(beam)}</HelpText>
 
-        <FieldLabel title="UE receive antenna pattern C_R(k). The signal channel projects each path via C_R(k)^H psi, so the receive antenna reshapes the matched filter and the resulting beam, hence (indirectly) the deposited map. Affects the live slice / deposited / volume; the worst-case beam and the static body-map packs do not use it.">
+        <FieldLabel title="UE receive antenna pattern C_R(k). The signal channel projects each path via C_R(k)^H psi, so the receive antenna reshapes the matched filter and the resulting beam, hence (indirectly) the deposited map.">
           Receive antenna
         </FieldLabel>
         <LabeledSelect<StudioUeAntenna> value={ueAntenna} options={UE_ANTENNA_OPTIONS} onChange={setUeAntenna} />
+        <HelpText>
+          Shapes the matched filter, so it affects the MRT / decoy / ECBF / decohered beams and the
+          live deposited map. The worst-case beam ignores it, and the static body-map packs are
+          frozen at dipole.
+        </HelpText>
         {beam === 'ecbf' && (
           <>
             <FieldLabel title="ECBF absorbed-power budget as a fraction of the MRT operating point. 1 reproduces MRT; lower trades received signal for lower whole-body dose.">
@@ -355,24 +366,25 @@ export default function StudioPanel() {
       </Group>
 
       <Group title="Slice">
-        <FieldLabel>Orientation</FieldLabel>
-        <Segmented<StudioPlaneOrientation>
-          value={plane.orientation}
+        <FieldLabel title="The cut plane through the focus that the field is reconstructed on. Anatomical planes use fixed world axes; 'facing base station' is the tilted wavefront plane.">
+          Orientation
+        </FieldLabel>
+        <LabeledSelect<string>
+          value={activeOrientationKey(plane.orientation, plane.normalXyz)}
           options={ORIENTATION_OPTIONS}
-          onChange={(orientation) =>
-            // The free plane needs a normal or the backend rejects the slice; seed
-            // a sensible default (toward the BS) the first time free is selected.
-            setPlane(
-              orientation === 'free' && !plane.normalXyz
-                ? { orientation, normalXyz: [1, 0, 0] }
-                : { orientation },
-            )
-          }
+          onChange={(key) => {
+            // The free plane needs a finite normal or the backend rejects the
+            // slice; seed one when stepping into Custom from a canned orientation.
+            const patch = orientationPatch(key)
+            if (key === 'free' && !plane.normalXyz) patch.normalXyz = [1, 0, 0]
+            setPlane(patch)
+          }}
         />
+        <HelpText>{orientationDescription(activeOrientationKey(plane.orientation, plane.normalXyz))}</HelpText>
 
         {plane.orientation === 'free' && (
           <>
-            <FieldLabel title="Plane normal for the free orientation (unnormalised; the backend normalises).">
+            <FieldLabel title="Plane normal in world Z-up metres (unnormalised; the backend normalises). The plane passes through the focus.">
               Plane normal
             </FieldLabel>
             <Slider value={normal[0]} min={-1} max={1} step={0.05} onChange={(v) => setNormalAxis(0, v)} labelOf={(v) => `nx ${v.toFixed(2)}`} />

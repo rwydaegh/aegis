@@ -1,4 +1,4 @@
-import type { StudioFieldQuantity, StudioManifest, StudioPacks } from '../api'
+import type { SlicePlane, StudioFieldQuantity, StudioManifest, StudioPacks, StudioPlaneOrientation, Vec3 } from '../api'
 
 // ---------------------------------------------------------------------------
 // Pure (no React, no DOM) helpers backing the studio control surface. Kept in a
@@ -218,23 +218,63 @@ export function beamAvailability(
 export interface BeamOption {
   value: string
   label: string
+  /** Plain-language explanation of the precoder this beam synthesises. */
+  title: string
 }
 
+// Definitions are code-grounded (src/aegis/viewer/routes/studio/_precoders.py and
+// src/aegis/coherent/ecbf.py). The precoder x is normalised to unit transmit
+// power for every beam except ECBF, which may sit below it.
 const BEAM_CATALOGUE: BeamOption[] = [
-  { value: 'mrt', label: 'MRT (focused)' },
-  { value: 'unfocused', label: 'Unfocused' },
-  { value: 'worstcase', label: 'Worst case' },
-  { value: 'decohered', label: 'Decohered' },
-  { value: 'decoy', label: 'Decoy' },
-  { value: 'ecbf', label: 'ECBF' },
+  {
+    value: 'mrt',
+    label: 'MRT (focused)',
+    title:
+      'Maximum-ratio transmission, the realistic communication beam. Conjugate-matches the channel to put the strongest signal at the focus (x = conj(h)/||h||). This is the operating point a base station would actually use.',
+  },
+  {
+    value: 'unfocused',
+    label: 'Unfocused',
+    title:
+      'Equal power per element with independent random phases. No focusing at all, just diffuse illumination of the region at the same total transmit power. A no-beamforming baseline.',
+  },
+  {
+    value: 'worstcase',
+    label: 'Worst case',
+    title:
+      'The single unit-power beam that maximises absorbed power density at the focus (field intensity in free space). An absolute upper bound no real beam exceeds at that point, not a beam anyone deploys. It is the top eigenvector of the local channel.',
+  },
+  {
+    value: 'decohered',
+    label: 'Decohered',
+    title:
+      'The MRT beam with each arrival direction phase-scrambled. The same multipath power still lights the body, but the wavefront alignment that builds the hotspot is gone, so the field falls to the incoherent floor. Shows what coherent focusing adds. The live deposited body map is not available for this beam.',
+  },
+  {
+    value: 'decoy',
+    label: 'Decoy',
+    title:
+      'A matched-ratio beam focused 6 cm above the target. Still a tight coherent hotspot, just aimed at the wrong place. Shows how sharply the focus localises and how fast exposure drops when mis-aimed. The opposite of decohered: focus elsewhere, vs no focus anywhere.',
+  },
+  {
+    value: 'ecbf',
+    label: 'ECBF',
+    title:
+      'Exposure-constrained beamformer. Maximises received signal subject to a cap on total absorbed power (max |h^T x|^2 s.t. x^H Q x <= budget). The compliant beam: keep the link strong while holding whole-body absorption under a budget. Set the cap with the budget slider.',
+  },
 ]
+
+/** Plain-language explanation for a beam value (falls back to the value). */
+export function beamDescription(value: string): string {
+  return BEAM_CATALOGUE.find((b) => b.value === value)?.title ?? value
+}
 
 /** Beam options to show, ordered, restricted to those the manifest advertises. */
 export function beamOptions(manifest: StudioManifest | null): BeamOption[] {
   const advertised = manifest?.beams
   if (!advertised || advertised.length === 0) return BEAM_CATALOGUE
   const known = new Set(BEAM_CATALOGUE.map((b) => b.value))
-  const extra = advertised.filter((v) => !known.has(v)).map((v) => ({ value: v, label: v }))
+  const extra = advertised.filter((v) => !known.has(v)).map((v) => ({ value: v, label: v, title: v }))
   return [...BEAM_CATALOGUE.filter((b) => advertised.includes(b.value)), ...extra]
 }
 
@@ -250,16 +290,28 @@ export function beamOptions(manifest: StudioManifest | null): BeamOption[] {
 export interface FieldQuantityOption {
   value: StudioFieldQuantity
   label: string
+  title: string
 }
 
+// Reductions of the synthesised complex E-field phasor on the plane
+// (src/aegis/viewer/routes/studio/_slice.py).
 export const FIELD_QUANTITY_OPTIONS: FieldQuantityOption[] = [
-  { value: 'S', label: 'Power density |E|²' },
-  { value: 'absE', label: 'Field magnitude |E|' },
-  { value: 'absH', label: 'Field magnitude |H|' },
-  { value: 'poynting', label: 'Poynting |Re(E×H*)|/2' },
-  { value: 'ReEx', label: 'Re(Eₓ)' },
-  { value: 'ReEy', label: 'Re(E_y)' },
-  { value: 'ReEz', label: 'Re(E_z)' },
+  {
+    value: 'S',
+    label: 'Power density |E|²',
+    title: 'Time-averaged power density S = |E|^2 / (2 Z0), in W/m^2. Note this is not |E|^2 itself.',
+  },
+  { value: 'absE', label: 'Field magnitude |E|', title: 'Electric field magnitude ||E|| (vector 2-norm of the complex field), in V/m.' },
+  { value: 'absH', label: 'Field magnitude |H|', title: 'Magnetic field magnitude ||H||, in A/m, from the plane-wave relation H = (k x E)/Z0.' },
+  {
+    value: 'poynting',
+    label: 'Poynting |Re(E×H*)|/2',
+    title:
+      'Magnitude of the active (time-averaged) power-flow vector |Re(E x H*)|/2, in W/m^2. Differs from S where reactive standing-wave field exists.',
+  },
+  { value: 'ReEx', label: 'Re(Eₓ)', title: 'Signed real part of the world-x E-field component, in V/m. Shown on a diverging scale about zero.' },
+  { value: 'ReEy', label: 'Re(E_y)', title: 'Signed real part of the world-y E-field component, in V/m. Shown on a diverging scale about zero.' },
+  { value: 'ReEz', label: 'Re(E_z)', title: 'Signed real part of the world-z E-field component, in V/m. Shown on a diverging scale about zero.' },
 ]
 
 // ---------------------------------------------------------------------------
@@ -288,11 +340,85 @@ export const RESOLUTION_OPTIONS: ResolutionOption[] = [
   { value: 320, label: 'Crisp (320)' },
 ]
 
-export const ORIENTATION_OPTIONS: { value: 'transverse' | 'axial' | 'free'; label: string }[] = [
-  { value: 'transverse', label: 'Transverse' },
-  { value: 'axial', label: 'Axial' },
-  { value: 'free', label: 'Free' },
+// Slice-plane orientation presets. The phantom is placed axis-aligned in the
+// world frame (feet at z=0, facing -x toward the base station, up is +z), so the
+// anatomical planes map to fixed world-axis normals through the focus and are
+// exactly reproducible. They are sent to the backend as orientation 'free' with
+// that normal, so they never depend on the oblique beam axis (unlike the old
+// 'transverse'/'axial', which were beam-relative and only "kind of" axis-aligned).
+// 'facing-bs' keeps the genuinely beam-defined wavefront plane, honestly labelled.
+export interface OrientationOption {
+  value: string
+  label: string
+  title: string
+}
+
+export const ORIENTATION_OPTIONS: OrientationOption[] = [
+  {
+    value: 'horizontal',
+    label: 'Horizontal (transverse)',
+    title: 'Level cut through the focus, normal along world up (+Z). The anatomical transverse plane: shows the hotspot spread at one height.',
+  },
+  {
+    value: 'coronal',
+    label: 'Coronal (frontal)',
+    title: 'Front-facing cut, normal along +X (toward the base station). Contains up and left-right, shows the hotspot across the chest as the array sees it.',
+  },
+  {
+    value: 'sagittal',
+    label: 'Sagittal',
+    title: 'Front-to-back cut, normal along +Y. Contains up and the base-station axis, shows beam penetration depth versus height.',
+  },
+  {
+    value: 'facing-bs',
+    label: 'Facing base station',
+    title: 'Plane perpendicular to the beam (focus toward the base station), the wavefront plane. Tilted off the world axes by the array downtilt, so it is deliberately not axis-aligned.',
+  },
+  {
+    value: 'free',
+    label: 'Custom normal',
+    title: 'Set the plane normal by hand with the sliders below.',
+  },
 ]
+
+// World-axis normals for the anatomical planes (server Z-up frame).
+const ORIENTATION_NORMAL: Record<string, Vec3> = {
+  horizontal: [0, 0, 1],
+  coronal: [1, 0, 0],
+  sagittal: [0, 1, 0],
+}
+
+/** Is a (possibly unnormalised) normal aligned with an axis (either sign)? */
+function alignedWith(n: Vec3, axis: Vec3): boolean {
+  const len = Math.hypot(n[0], n[1], n[2])
+  if (len < 1e-9) return false
+  const d = (n[0] * axis[0] + n[1] * axis[1] + n[2] * axis[2]) / len
+  return Math.abs(d) > 0.999
+}
+
+/** The plane-state patch a preset selection produces (kept fork-free: every
+ * anatomical plane is a 'free' plane with a fixed world-axis normal). */
+export function orientationPatch(key: string): Partial<SlicePlane> {
+  if (key === 'facing-bs') return { orientation: 'transverse' as StudioPlaneOrientation }
+  if (key === 'free') return { orientation: 'free' as StudioPlaneOrientation }
+  const normal = ORIENTATION_NORMAL[key]
+  return { orientation: 'free' as StudioPlaneOrientation, normalXyz: normal ?? [0, 1, 0] }
+}
+
+/** Which preset key the current plane state corresponds to (for the dropdown). */
+export function activeOrientationKey(orientation: string, normalXyz: Vec3 | null): string {
+  if (orientation === 'transverse') return 'facing-bs'
+  if (orientation !== 'free' || !normalXyz) return 'free'
+  for (const key of Object.keys(ORIENTATION_NORMAL)) {
+    if (alignedWith(normalXyz, ORIENTATION_NORMAL[key])) return key
+  }
+  return 'free'
+}
+
+/** Plain-language explanation for an orientation preset key. */
+export function orientationDescription(key: string): string {
+  return ORIENTATION_OPTIONS.find((o) => o.value === key)?.title ?? ''
+}
 
 // ---------------------------------------------------------------------------
 // Provenance summary for the HUD dot. Combines the live-computed slice with the

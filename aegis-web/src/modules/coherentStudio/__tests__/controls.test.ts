@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import {
+  activeOrientationKey,
   arraySizeHasRayPack,
   beamAvailability,
+  beamDescription,
   beamOptions,
   bodyMapHasPack,
   bodyMapStem,
@@ -13,6 +15,8 @@ import {
   extentLabel,
   FIELD_QUANTITY_OPTIONS,
   frameProvenance,
+  ORIENTATION_OPTIONS,
+  orientationPatch,
   packsOf,
   phantomHasPack,
   qopStem,
@@ -290,5 +294,45 @@ describe('FIELD_QUANTITY_OPTIONS', () => {
   it('does not offer Sab (a surface quantity served by the body-map endpoint)', () => {
     const values = FIELD_QUANTITY_OPTIONS.map((o) => o.value as string)
     expect(values).not.toContain('Sab')
+  })
+})
+
+describe('slice orientation presets', () => {
+  it('maps anatomical planes to fixed world-axis normals via a free plane', () => {
+    expect(orientationPatch('horizontal')).toEqual({ orientation: 'free', normalXyz: [0, 0, 1] })
+    expect(orientationPatch('coronal')).toEqual({ orientation: 'free', normalXyz: [1, 0, 0] })
+    expect(orientationPatch('sagittal')).toEqual({ orientation: 'free', normalXyz: [0, 1, 0] })
+  })
+
+  it('keeps "facing base station" as the backend beam-normal (transverse) orientation', () => {
+    expect(orientationPatch('facing-bs')).toEqual({ orientation: 'transverse' })
+  })
+
+  it('custom leaves the normal for the sliders to set', () => {
+    expect(orientationPatch('free')).toEqual({ orientation: 'free' })
+  })
+
+  it('recovers the active preset key from the plane state (either normal sign)', () => {
+    expect(activeOrientationKey('free', [0, 1, 0])).toBe('sagittal')
+    expect(activeOrientationKey('free', [0, -1, 0])).toBe('sagittal')
+    expect(activeOrientationKey('free', [0, 0, 1])).toBe('horizontal')
+    expect(activeOrientationKey('free', [1, 0, 0])).toBe('coronal')
+    expect(activeOrientationKey('transverse', null)).toBe('facing-bs')
+    expect(activeOrientationKey('free', [1, 1, 0])).toBe('free')
+    expect(activeOrientationKey('free', null)).toBe('free')
+  })
+
+  it('every orientation option carries an explanatory title', () => {
+    for (const o of ORIENTATION_OPTIONS) expect(o.title.length).toBeGreaterThan(20)
+  })
+})
+
+describe('beamDescription', () => {
+  it('distinguishes the subtle beams', () => {
+    expect(beamDescription('decohered')).toContain('phase-scrambled')
+    expect(beamDescription('decoy')).toContain('6 cm')
+    expect(beamDescription('ecbf')).toContain('absorbed power')
+    expect(beamDescription('mrt')).toContain('Maximum-ratio')
+    expect(beamDescription('unknown-beam')).toBe('unknown-beam')
   })
 })

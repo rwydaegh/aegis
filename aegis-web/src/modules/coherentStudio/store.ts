@@ -173,10 +173,10 @@ export const useStudioStore = create<StudioState>()((set) => ({
   seed: 0,
   ueAntenna: 'dipole',
   beam: '',
-  focusMode: 'at-skin',
+  focusMode: 'free-space',
   focusXyz: [0.923, -0.005, 0.734],
   frequencyGhz: 10,
-  plane: { orientation: 'transverse', normalXyz: null, extentM: 0.08, res: 160 },
+  plane: { orientation: 'free', normalXyz: [0, 1, 0], extentM: 0.4, res: 160 },
   fieldQuantity: 'S',
   // Open on the live, focus-tracking deposited map so the headline interaction
   // (move the focus, watch the body recolour) works out of the box. Static

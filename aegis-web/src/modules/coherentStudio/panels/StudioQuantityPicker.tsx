@@ -9,7 +9,7 @@ import {
   packsOf,
   reconcileBodyMapQuantity,
 } from './controls'
-import { FieldLabel, LabeledSelect, type Option } from './widgets'
+import { FieldLabel, HelpText, LabeledSelect, type Option } from './widgets'
 
 // The live, focus-tracking deposited map is served from the field-channel pack
 // rather than a static body-map pack, so it is offered as its own quantity.
@@ -21,6 +21,25 @@ const QTY_LABELS: Record<string, string> = {
   mrt: 'MRT (focused)',
   worstcase: 'Worst case',
   amp: 'Amplified',
+}
+
+// Code-grounded explanations (scripts/studio_precompute.py _maps_from_g, and the
+// live src/aegis/viewer/routes/studio/_channel.py). All are absorbed power
+// density W/m^2 per watt of transmit power, except amp which is a ratio.
+const QTY_DESCRIPTIONS: Record<string, string> = {
+  deposited:
+    'Absorbed power density S_ab on each skin triangle under the beam and focus you set, recomputed live as you steer (S_ab = ||G̃·x||²). The headline interaction.',
+  floor:
+    'Incoherent lower bound: the absorbed power with no coherent focusing (equal amplitude, random phase, averaged over phase). Every coherent beam sits at or above this.',
+  mrt: 'Absorbed power deposited by the matched-ratio (communication) beam at the reference chest focus. What a normal base-station beam does to the body.',
+  worstcase:
+    'Per-triangle upper bound: the most absorption any unit-power beam could deposit on each patch (the exposure eigenvalue λ_max). Independent of any one beam.',
+  amp: 'Amplification factor = worst case / floor. How much coherent focusing can raise absorption above the incoherent baseline at each patch. Large where the array has many independent looks.',
+}
+
+/** Plain-language description for the current slice field quantity. */
+function fieldDescription(value: string): string {
+  return FIELD_QUANTITY_OPTIONS.find((o) => o.value === value)?.title ?? ''
 }
 
 const STAT_LABELS: Record<string, string> = {
@@ -67,6 +86,7 @@ export default function StudioQuantityPicker() {
       label: QTY_LABELS[LIVE_DEPOSITED],
       disabled: !liveAvailable,
       hint: 'no channel pack',
+      title: QTY_DESCRIPTIONS[LIVE_DEPOSITED],
     },
     ...bodyQuantities.map((q) => {
       const available = bodyMapHasPack(packs, mesh, condition, arrayN, q, frequencyGhz)
@@ -75,6 +95,7 @@ export default function StudioQuantityPicker() {
         label: QTY_LABELS[q] ?? q,
         disabled: !available,
         hint: 'no pack',
+        title: QTY_DESCRIPTIONS[q],
       }
     }),
   ]
@@ -122,14 +143,15 @@ export default function StudioQuantityPicker() {
 
   return (
     <div>
-      <FieldLabel title="The scalar painted onto the field slice plane.">Slice quantity</FieldLabel>
+      <FieldLabel title="The scalar field reduction painted onto the free-space slice plane.">Slice quantity</FieldLabel>
       <LabeledSelect<StudioFieldQuantity>
         value={fieldQuantity}
         options={FIELD_QUANTITY_OPTIONS}
         onChange={setFieldQuantity}
       />
+      <HelpText>{fieldDescription(fieldQuantity)}</HelpText>
 
-      <FieldLabel title="The per-triangle quantity painted onto the phantom body.">
+      <FieldLabel title="The per-triangle quantity painted onto the phantom body surface.">
         Body-map quantity
       </FieldLabel>
       <LabeledSelect<string>
@@ -137,18 +159,20 @@ export default function StudioQuantityPicker() {
         options={bodyOptions}
         onChange={onPickQuantity}
       />
+      <HelpText>{QTY_DESCRIPTIONS[bodyMapQuantity] ?? ''}</HelpText>
 
       {isLive ? (
-        <p style={{ fontSize: 11, color: '#7a8', margin: '8px 2px 0' }}>
-          Live map: deposited S_ab under the selected beam, recomputed as you move the focus.
-        </p>
+        <HelpText tone="live">
+          Live map: tracks the focus, beam, budget and receive antenna. Move the focus and the body recolours.
+        </HelpText>
       ) : (
         <>
-          <p style={{ fontSize: 11, color: '#b58', margin: '8px 2px 0' }}>
-            Static pack, frozen at a reference focus: moving the focus does not change it. Pick
-            &ldquo;Deposited (live)&rdquo; for a focus-tracking map.
-          </p>
-          <FieldLabel title="Single seed, or the mean / 95th percentile of the body map over the LOS seed ensemble.">
+          <HelpText tone="warn">
+            Static pack, frozen at a reference chest focus and a dipole receive antenna: the focus
+            slider and antenna picker do not change it. Pick &ldquo;Deposited (live)&rdquo; for a
+            focus-tracking map.
+          </HelpText>
+          <FieldLabel title="Single seed, or the mean / 95th percentile of the body map over the LOS seed ensemble (seeds 0-5). Ensemble packs are LOS-only.">
             Body-map realisation
           </FieldLabel>
           <LabeledSelect<StudioBodyMapStatistic>
