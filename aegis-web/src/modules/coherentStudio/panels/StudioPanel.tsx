@@ -1,5 +1,5 @@
 import type { StudioFocusMode, Vec3 } from '../api'
-import { useStudioStore, type StudioScaleMode, type StudioUeAntenna } from '../store'
+import { useStudioStore, type StudioCameraView, type StudioScaleMode, type StudioUeAntenna } from '../store'
 import { useStudioScales } from '../useStudioScales'
 import type { StudioScaleScope } from '../scene/colorScale'
 import {
@@ -57,6 +57,11 @@ const SCALE_OPTIONS: Option<StudioScaleMode>[] = [
   { value: 'auto', label: 'Auto', title: 'Linear scale, floor pinned to zero, top taken from the data.' },
   { value: 'fixed', label: 'Fixed', title: 'Hold a user-locked min and max so frames stay comparable.' },
   { value: 'log', label: 'Log', title: 'Logarithmic over a dynamic-range window below the peak (set the dB span below).' },
+]
+
+const CAMERA_OPTIONS: Option<StudioCameraView>[] = [
+  { value: 'orbit', label: 'Free orbit', title: 'Orbit, pan and zoom the camera freely. The app never moves the camera in this mode.' },
+  { value: 'bs-axis', label: 'BS axis', title: 'Park the camera looking down the base-station to focus beam axis, re-applied whenever the focus moves. Switch back to Free orbit to move the camera yourself.' },
 ]
 
 const SCOPE_OPTIONS: Option<StudioScaleScope>[] = [
@@ -217,6 +222,10 @@ export default function StudioPanel() {
   const setArrayPatternScale = useStudioStore((s) => s.setArrayPatternScale)
   const screenshotMode = useStudioStore((s) => s.screenshotMode)
   const setScreenshotMode = useStudioStore((s) => s.setScreenshotMode)
+  const showRefSquare = useStudioStore((s) => s.showRefSquare)
+  const setShowRefSquare = useStudioStore((s) => s.setShowRefSquare)
+  const cameraView = useStudioStore((s) => s.cameraView)
+  const setCameraView = useStudioStore((s) => s.setCameraView)
   const showVolume = useStudioStore((s) => s.showVolume)
   const setShowVolume = useStudioStore((s) => s.setShowVolume)
   const volumeRes = useStudioStore((s) => s.volumeRes)
@@ -467,12 +476,23 @@ export default function StudioPanel() {
           disabled={!showRxPattern}
           labelOf={(v) => `${v.toFixed(1)} m`}
         />
+        <Checkbox
+          checked={showRefSquare}
+          onChange={setShowRefSquare}
+          title="Draw the 4 cm² (2 cm x 2 cm) ICNIRP spatial-averaging reference square on the slice at the focus."
+        >
+          Reference square (4 cm²)
+        </Checkbox>
         <Checkbox checked={wireframe} onChange={setWireframe} title="Render the phantom as a wireframe.">
           Body wireframe
         </Checkbox>
       </Group>
 
       <Group title="Scene & capture">
+        <FieldLabel title="Free orbit lets you move the camera. BS axis parks it looking down the beam and follows the focus.">
+          Camera view
+        </FieldLabel>
+        <Segmented<StudioCameraView> value={cameraView} options={CAMERA_OPTIONS} onChange={setCameraView} />
         <Checkbox
           checked={showBlockers}
           onChange={setShowBlockers}

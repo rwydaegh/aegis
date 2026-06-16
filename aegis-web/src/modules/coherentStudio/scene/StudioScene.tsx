@@ -3,12 +3,11 @@ import * as THREE from 'three'
 import { useThree, type ThreeEvent } from '@react-three/fiber'
 import { OrbitControls, Line, Html } from '@react-three/drei'
 import AntennaArray from '@/components/scene/AntennaArray'
-import FocusPointMarker from '@/components/scene/FocusPointMarker'
 import BodyMeshInstance from '@/components/scene/BodyMeshInstance'
 import { toScene, toServer, type ServerPos } from '@/api/coordinates'
 import type { Vec3 } from '../api'
 import type { ArrayConfig } from '@/api/types'
-import { useStudioStore } from '../store'
+import { useStudioStore, type StudioCameraView } from '../store'
 import { useStudioRays } from '../useStudioRays'
 import { useStudioScene } from '../useStudioScene'
 import { useStudioScales } from '../useStudioScales'
@@ -30,10 +29,6 @@ const BG_COLOR: Record<string, string | null> = {
 // Base station position (server Z-up metres), fixed by the e11 geometry.
 const BS_SERVER: ServerPos = [-13, 0, 3]
 
-interface StudioSceneProps {
-  /** Bumped by the module's "snap to BS axis" button to reframe the camera. */
-  snapSignal: number
-}
 
 // Build a renderable phantom geometry: a non-indexed triangle soup with a colour
 // attribute that BodyMeshInstance overwrites per face.
@@ -61,15 +56,19 @@ function usePhantomGeometry(): THREE.BufferGeometry | null {
   return geometry
 }
 
-// Reframe the camera to look down the BS -> focus beam axis when snapSignal bumps.
-function CameraRig({ snapSignal, focusScene }: { snapSignal: number; focusScene: [number, number, number] }) {
+// Camera framing. In 'bs-axis' mode the camera is parked looking down the
+// BS -> focus beam axis and re-applies whenever the focus moves (so it tracks
+// the beam). In 'orbit' mode the app never touches the camera, so the user can
+// orbit freely. Switching back to 'orbit' simply stops the auto-framing; it
+// does not snatch the camera back.
+function CameraRig({ cameraView, focusScene }: { cameraView: StudioCameraView; focusScene: [number, number, number] }) {
   const camera = useThree((s) => s.camera)
   const controls = useThree((s) => s.controls) as
     | { target: THREE.Vector3; update: () => void }
     | null
 
   useEffect(() => {
-    if (snapSignal === 0) return
+    if (cameraView !== 'bs-axis') return
     const bs = new THREE.Vector3(...toScene(BS_SERVER))
     const focus = new THREE.Vector3(...focusScene)
     const dir = focus.clone().sub(bs).normalize()
@@ -82,12 +81,12 @@ function CameraRig({ snapSignal, focusScene }: { snapSignal: number; focusScene:
     } else {
       camera.lookAt(focus)
     }
-  }, [snapSignal, focusScene, camera, controls])
+  }, [cameraView, focusScene, camera, controls])
 
   return null
 }
 
-export default function StudioScene({ snapSignal }: StudioSceneProps) {
+export default function StudioScene() {
   const focusXyz = useStudioStore((s) => s.focusXyz)
   const setFocusXyz = useStudioStore((s) => s.setFocusXyz)
   const focusMode = useStudioStore((s) => s.focusMode)
@@ -100,6 +99,7 @@ export default function StudioScene({ snapSignal }: StudioSceneProps) {
   const arrayPatternScale = useStudioStore((s) => s.arrayPatternScale)
   const background = useStudioStore((s) => s.background)
   const screenshotMode = useStudioStore((s) => s.screenshotMode)
+  const cameraView = useStudioStore((s) => s.cameraView)
   const wireframe = useStudioStore((s) => s.wireframe)
   const pickFocusOnBody = useStudioStore((s) => s.pickFocusOnBody)
 
@@ -236,7 +236,6 @@ export default function StudioScene({ snapSignal }: StudioSceneProps) {
 
       {showRays && <StudioRays rays={rays} />}
       {showRxPattern && <StudioRxPattern focusScene={focusScene} />}
-      {!screenshotMode && <FocusPointMarker focusPoint={focusScene} arrayPosition={bsScene} />}
       <StudioSlicePlane />
       <StudioVolume />
 
@@ -258,7 +257,7 @@ export default function StudioScene({ snapSignal }: StudioSceneProps) {
         onClick={pickFocusOnBody ? onBodyClick : undefined}
       />
 
-      <CameraRig snapSignal={snapSignal} focusScene={focusScene} />
+      <CameraRig cameraView={cameraView} focusScene={focusScene} />
       <OrbitControls makeDefault enableDamping target={focusScene} />
     </>
   )

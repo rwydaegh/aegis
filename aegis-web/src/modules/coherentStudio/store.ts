@@ -20,6 +20,8 @@ export type StudioScaleMode = 'auto' | 'fixed' | 'log'
 /** Scene backdrop: the dark app look, a pure-white scientific-figure look, or
  * a transparent buffer for figure export. Render-only. */
 export type StudioBackground = 'dark' | 'white' | 'transparent'
+/** Camera view: free orbit, or locked looking down the BS -> focus beam axis. */
+export type StudioCameraView = 'orbit' | 'bs-axis'
 /** UE receive antenna pattern C_R(k); shapes the matched filter, hence the
  * precoder and the live (deposited / slice / volume) maps. */
 export type StudioUeAntenna = 'isotropic' | 'vertical' | 'dipole' | 'patch'
@@ -85,6 +87,10 @@ interface StudioState {
   arrayPatternScale: number
   /** Strip chrome (grid, gizmos, helpers) for a clean figure capture. */
   screenshotMode: boolean
+  /** Draw the 4 cm^2 ICNIRP reference square on the slice at the focus. */
+  showRefSquare: boolean
+  /** Camera view: free orbit, or locked down the BS -> focus beam axis. */
+  cameraView: StudioCameraView
   wireframe: boolean
   /** When true, clicking the body moves the focus to the clicked surface point. */
   pickFocusOnBody: boolean
@@ -147,6 +153,8 @@ interface StudioState {
   setBackground: (background: StudioBackground) => void
   setArrayPatternScale: (arrayPatternScale: number) => void
   setScreenshotMode: (screenshotMode: boolean) => void
+  setShowRefSquare: (showRefSquare: boolean) => void
+  setCameraView: (cameraView: StudioCameraView) => void
   setWireframe: (wireframe: boolean) => void
   setPickFocusOnBody: (pickFocusOnBody: boolean) => void
   setShowVolume: (showVolume: boolean) => void
@@ -209,6 +217,8 @@ export const useStudioStore = create<StudioState>()((set) => ({
   background: 'dark',
   arrayPatternScale: 1,
   screenshotMode: false,
+  showRefSquare: true,
+  cameraView: 'orbit',
   wireframe: false,
   pickFocusOnBody: false,
   showVolume: false,
@@ -260,6 +270,8 @@ export const useStudioStore = create<StudioState>()((set) => ({
   setBackground: (background) => set({ background }),
   setArrayPatternScale: (arrayPatternScale) => set({ arrayPatternScale }),
   setScreenshotMode: (screenshotMode) => set({ screenshotMode }),
+  setShowRefSquare: (showRefSquare) => set({ showRefSquare }),
+  setCameraView: (cameraView) => set({ cameraView }),
   setWireframe: (wireframe) => set({ wireframe }),
   setPickFocusOnBody: (pickFocusOnBody) => set({ pickFocusOnBody }),
   setShowVolume: (showVolume) => set({ showVolume }),

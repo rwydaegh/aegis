@@ -84,6 +84,7 @@ export default function StudioSlicePlane() {
   const setPlane = useStudioStore((s) => s.setPlane)
   const setFocusXyz = useStudioStore((s) => s.setFocusXyz)
   const screenshotMode = useStudioStore((s) => s.screenshotMode)
+  const showRefSquare = useStudioStore((s) => s.showRefSquare)
 
   // The resolved slice scale honours scope / mode / robust-clip / fixed range and,
   // for signed components (ReEx/y/z), the diverging coolwarm symmetric map.
@@ -210,7 +211,7 @@ export default function StudioSlicePlane() {
     <>
       <primitive object={planeObj}>
         <mesh geometry={geometry} material={material} />
-        <Line points={refSquare} color="#ffffff" lineWidth={1.5} transparent opacity={0.8} />
+        {showRefSquare && <Line points={refSquare} color="#ffffff" lineWidth={1.5} transparent opacity={0.8} />}
         {/* Focus marker: a flat black disc lying in the slice plane (the group's
             local z is the plane normal, so a circleGeometry is coplanar) rather
             than a sphere floating off the field. */}

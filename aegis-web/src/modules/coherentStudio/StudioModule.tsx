@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { Canvas } from '@react-three/fiber'
 import StudioScene from './scene/StudioScene'
@@ -20,9 +20,6 @@ export default function StudioModule() {
   useStudioSlice()
   useStudioVolume()
   useStudioBodyMap()
-
-  // Bumped by the "snap to BS axis" button; the scene's CameraRig reframes on it.
-  const [snapSignal, setSnapSignal] = useState(0)
 
   // The scene column; we query its <canvas> to grab the rendered pixels.
   const sceneRef = useRef<HTMLDivElement>(null)
@@ -53,7 +50,7 @@ export default function StudioModule() {
     <div style={{ display: 'flex', height: '100vh', background: '#0a0a0f', color: '#ddd' }}>
       <div ref={sceneRef} style={{ position: 'relative', flex: 1, minWidth: 0 }}>
         <Canvas camera={{ position: [-5, 2.5, 5], fov: 45 }} gl={{ preserveDrawingBuffer: true, alpha: true }}>
-          <StudioScene snapSignal={snapSignal} />
+          <StudioScene />
         </Canvas>
 
         <StudioHud />
@@ -75,31 +72,11 @@ export default function StudioModule() {
 
         <button
           type="button"
-          onClick={() => setSnapSignal((n) => n + 1)}
-          style={{
-            position: 'absolute',
-            top: 44,
-            left: 16,
-            zIndex: 10,
-            padding: '6px 12px',
-            fontSize: 13,
-            color: '#ddd',
-            background: '#1a1a22',
-            border: '1px solid #2a2a36',
-            borderRadius: 6,
-            cursor: 'pointer',
-          }}
-        >
-          Snap to BS axis
-        </button>
-
-        <button
-          type="button"
           onClick={capturePng}
           title="Save the current 3D view as a PNG (transparent in screenshot mode)"
           style={{
             position: 'absolute',
-            top: 80,
+            top: 44,
             left: 16,
             zIndex: 10,
             padding: '6px 12px',
