@@ -13,6 +13,8 @@ Monograph: eq:Gtilde-def, thm:coherent-law.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import numpy as np
 
 from aegis._array_backend import xp
@@ -20,6 +22,8 @@ from aegis.coherent._accumulate import accumulate_by_element
 from aegis.coherent.fresnel_operator import (
     apply_fresnel_operator,
     compute_fresnel_operator,
+    fresnel_coeffs_from_mu,
+    te_tm_basis,
 )
 from aegis.constants import C_0
 from aegis.defaults import NUMERICAL_FLOOR
@@ -151,6 +155,16 @@ def compute_body_channel(
         if idx_min < 0 or idx_max >= n_elements:
             raise ValueError(f"element_index values must be in [0, {n_elements}), got range [{idx_min}, {idx_max}]")
 
+    # Fast path for the common ungated case (no Fock shadow gate, no distal
+    # self-shadow): route through the geometry / frequency split. Bit-identical
+    # to the full path below for these inputs (it is the same operations, just
+    # factored), and it lets a multi-frequency sweep hoist the geometry via
+    # precompute_body_channel_geometry. The Fock / distal branch keeps the
+    # original inline path unchanged.
+    if fock_R is None and clearance is None:
+        geom = precompute_body_channel_geometry(normals, centroids, k_hat, psi, element_index, n_elements)
+        return body_channel_from_geometry(geom, n_tilde, sigma, freq_hz)
+
     k0 = 2 * xp.pi * freq_hz / C_0
 
     # Fresnel operator components
@@ -195,6 +209,84 @@ def compute_body_channel(
 
     # Accumulate by element
     return accumulate_by_element(weighted, element_index, M, n_elements)
+
+
+@dataclass
+class BodyChannelGeometry:
+    """Frequency-invariant geometry for the simple (ungated) body channel.
+
+    Holds the parts of G_tilde that depend only on geometry, not on frequency or
+    tissue: the incidence cosine ``mu``, the TE/TM basis vectors, and the
+    geometric phase dot ``centroids @ k_hat.T``. Built once per (body chunk, ray
+    set) and reused across a frequency sweep by :func:`body_channel_from_geometry`.
+    """
+
+    mu: np.ndarray  # (M, N) incidence cosine n_hat . (-k_hat)
+    e_s: np.ndarray  # (M, N, 3) TE basis
+    e_p: np.ndarray  # (M, N, 3) TM basis
+    geom_phase: np.ndarray  # (M, N) = centroids @ k_hat.T (phase before -k0 scale)
+    psi: np.ndarray  # (N, 3) polarisation-amplitude vectors (passthrough)
+    element_index: np.ndarray  # (N,) antenna element per path
+    n_triangles: int
+    n_elements: int
+
+
+def precompute_body_channel_geometry(normals, centroids, k_hat, psi, element_index, n_elements) -> BodyChannelGeometry:
+    """Build the frequency-invariant geometry for the simple body channel.
+
+    Pairs with :func:`body_channel_from_geometry`. For a single frequency the two
+    together reproduce :func:`compute_body_channel` (ungated: no Fock gate, no
+    distal shadow) bit-for-bit. The payoff is a frequency sweep over fixed
+    geometry: ``mu``, the TE/TM basis, and the geometric phase are computed once
+    and reused for every frequency, so only the cheaper Fresnel / depth / phase
+    assembly re-runs per frequency. On the studio 6-frequency grid that removes
+    the dominant Fresnel-basis cost from five of every six builds.
+    """
+    element_index = np.asarray(element_index)
+    if element_index.size > 0:
+        idx_min, idx_max = int(element_index.min()), int(element_index.max())
+        if idx_min < 0 or idx_max >= n_elements:
+            raise ValueError(f"element_index values must be in [0, {n_elements}), got range [{idx_min}, {idx_max}]")
+
+    mu = normals @ (-k_hat).T  # (M, N)
+    e_s, e_p = te_tm_basis(k_hat, normals)
+    geom_phase = centroids @ k_hat.T  # (M, N)
+    return BodyChannelGeometry(
+        mu=mu,
+        e_s=e_s,
+        e_p=e_p,
+        geom_phase=geom_phase,
+        psi=psi,
+        element_index=element_index,
+        n_triangles=normals.shape[0],
+        n_elements=n_elements,
+    )
+
+
+def body_channel_from_geometry(geom: BodyChannelGeometry, n_tilde, sigma, freq_hz) -> np.ndarray:
+    """Assemble G_tilde for one frequency from precomputed geometry.
+
+    The frequency- and tissue-dependent half of the simple (ungated) body
+    channel: Fresnel transmission, depth coupling, and the plane-wave phase,
+    reusing the cached ``mu`` / TE-TM basis / geometric phase from
+    :func:`precompute_body_channel_geometry`. The operations match
+    :func:`compute_body_channel` exactly, so the result is bit-identical.
+    """
+    k0 = 2 * xp.pi * freq_hz / C_0
+
+    t_s, t_p = fresnel_coeffs_from_mu(geom.mu, n_tilde)
+    F_psi = apply_fresnel_operator(geom.psi, t_s, t_p, geom.e_s, geom.e_p)
+
+    # Depth coupling weight sqrt(sigma / (4 * alpha)), alpha = -Im(k0 * xi).
+    xi = xi_from_mu(geom.mu, n_tilde)
+    alpha = xp.maximum(-xp.imag(k0 * xi), NUMERICAL_FLOOR)
+    depth_weight = xp.sqrt(sigma / (4 * alpha))
+
+    # Phase: exp(-i*k0 * k_hat_n . r_m) with the geometric dot precomputed.
+    phase = xp.exp(1j * (-k0 * geom.geom_phase))
+
+    weighted = depth_weight[:, :, None] * F_psi * phase[:, :, None]
+    return accumulate_by_element(weighted, geom.element_index, geom.n_triangles, geom.n_elements)
 
 
 def compute_body_channel_factored(

@@ -81,6 +81,28 @@ def _set_ref_numpy(N, min_ax):
     return ref
 
 
+def fresnel_coeffs_from_mu(mu, n_tilde):
+    """TE/TM transmission amplitudes from a precomputed incidence cosine.
+
+    The frequency- and tissue-dependent half of :func:`compute_fresnel_operator`:
+    given ``mu = n_hat . (-k_hat)`` (pure geometry, freq-invariant) and the
+    complex refractive index ``n_tilde``, returns the gated ``(t_s, t_p)``. Split
+    out so a multi-frequency sweep over fixed geometry can reuse ``mu`` (and the
+    TE/TM basis) and recompute only this part per frequency.
+
+    Returns ``(t_s, t_p)`` each shaped like ``mu``, zero for back-facing paths.
+    """
+    # _fresnel_core is element-wise; pass (M, N) directly, no ravel needed
+    mu_complex = xp.asarray(mu, dtype=complex)
+    _, _, _, _, t_s_out, t_p_out = _fresnel_core(mu_complex, n_tilde)
+
+    # Heaviside gate: zero for back-facing paths
+    mask = mu > 0
+    t_s_out = xp.where(mask, t_s_out, 0.0 + 0j)
+    t_p_out = xp.where(mask, t_p_out, 0.0 + 0j)
+    return t_s_out, t_p_out
+
+
 def compute_fresnel_operator(
     normals,
     k_hat,
@@ -116,14 +138,7 @@ def compute_fresnel_operator(
     mu = normals @ (-k_hat).T
 
     # Fresnel amplitude coefficients (vectorised over all M*N pairs)
-    # _fresnel_core is element-wise; pass (M, N) directly, no ravel needed
-    mu_complex = xp.asarray(mu, dtype=complex)
-    _, _, _, _, t_s_out, t_p_out = _fresnel_core(mu_complex, n_tilde)
-
-    # Heaviside gate: zero for back-facing paths
-    mask = mu > 0
-    t_s_out = xp.where(mask, t_s_out, 0.0 + 0j)
-    t_p_out = xp.where(mask, t_p_out, 0.0 + 0j)
+    t_s_out, t_p_out = fresnel_coeffs_from_mu(mu, n_tilde)
 
     # TE/TM basis vectors
     e_s, e_p = te_tm_basis(k_hat, normals)

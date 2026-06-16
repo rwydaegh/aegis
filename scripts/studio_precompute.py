@@ -347,6 +347,35 @@ def _compute_g_tilde(body, k, psi, elem, m, n_tilde, sigma, freq_hz, chunk: int 
     return g
 
 
+def _compute_g_tilde_multifreq(body, k, psi, elem, m, freq_props, chunk: int = 128) -> dict[float, np.ndarray]:
+    """Build G_tilde for several frequencies over one ray geometry in one pass.
+
+    ``freq_props`` is a list of ``(freq_ghz, freq_hz, n_tilde, sigma)``. The
+    body-channel geometry (incidence cosine, TE/TM basis, plane-wave phase) does
+    not depend on frequency, so it is computed once per triangle chunk and reused
+    for every frequency (``body_channel_from_geometry``); only the Fresnel / depth
+    / phase assembly re-runs per frequency. Result is bit-identical to calling
+    :func:`_compute_g_tilde` per frequency (see tests/test_body_channel_geometry),
+    and on the 6-frequency studio grid it drops the dominant Fresnel-basis cost
+    from five of every six builds.
+
+    Returns ``{freq_ghz: (T, 3, M) complex}``.
+    """
+    from aegis.coherent.body_channel import (
+        body_channel_from_geometry,
+        precompute_body_channel_geometry,
+    )
+
+    t = body.normals.shape[0]
+    out = {fg: np.empty((t, 3, m), dtype=complex) for (fg, _, _, _) in freq_props}
+    for a in range(0, t, chunk):
+        b = min(a + chunk, t)
+        geom = precompute_body_channel_geometry(body.normals[a:b], body.centroids[a:b], k, psi, elem, m)
+        for fg, fhz, n_tilde, sigma in freq_props:
+            out[fg][a:b] = np.asarray(body_channel_from_geometry(geom, n_tilde, sigma, fhz))
+    return out
+
+
 def _maps_from_g(g_tilde: np.ndarray, body, beams, focus, k, psi, elem, m, freq_hz, ue_rx) -> dict[str, np.ndarray]:
     """Derive every requested per-triangle body map from one G_tilde build.
 
@@ -707,10 +736,12 @@ def compute_channels(
                         print(f"  no ray pack for bs{bs_n} {cond} seed{seed}, skipping")
                         continue
                     k, psi, elem, m = _load_rays(studio_dir, bs_n, cond, seed)
-                    for freq_ghz in freqs:
-                        n_tilde, sigma = _skin_props(freq_ghz)
-                        freq_hz = freq_ghz * 1e9
-                        g_tilde = _compute_g_tilde(body, k, psi, elem, m, n_tilde, sigma, freq_hz)
+                    # Build every requested frequency in one pass, hoisting the
+                    # frequency-invariant body-channel geometry out of the loop.
+                    freq_props = [(fg, fg * 1e9, *_skin_props(fg)) for fg in freqs]
+                    g_by_freq = _compute_g_tilde_multifreq(body, k, psi, elem, m, freq_props)
+                    for freq_ghz, _freq_hz, _n_tilde, _sigma in freq_props:
+                        g_tilde = g_by_freq[freq_ghz]
                         out = _channel_path(studio_dir, bs_n, cond, freq_ghz, seed, mesh)
                         prov = (
                             f"studio_precompute channel mesh={mesh} cond={cond} bs{bs_n} {_ghz_tag(freq_ghz)}GHz "
