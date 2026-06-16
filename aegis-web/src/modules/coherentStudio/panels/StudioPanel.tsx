@@ -38,7 +38,7 @@ const COLORMAP_OPTIONS: Option<string>[] = [
   { value: 'magma', label: 'Magma' },
   { value: 'cividis', label: 'Cividis' },
   { value: 'turbo', label: 'Turbo' },
-  { value: 'jet', label: 'Jet (legacy)' },
+  { value: 'jet', label: 'Jet' },
 ]
 
 const UE_ANTENNA_OPTIONS: Option<StudioUeAntenna>[] = [

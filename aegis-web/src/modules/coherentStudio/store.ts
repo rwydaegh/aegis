@@ -178,7 +178,7 @@ export const useStudioStore = create<StudioState>()((set) => ({
   bodyMapStatistic: 'single',
   ecbfBudgetFrac: 0.5,
 
-  colormap: 'viridis',
+  colormap: 'jet',
   scaleMode: 'auto',
   scaleScope: 'surface',
   dynamicRangeDb: 30,
