@@ -64,6 +64,9 @@ interface StudioState {
   showRxPattern: boolean
   /** Max radius (metres) of the Rx pattern lobe. Render-only. */
   rxPatternExtentM: number
+  /** Gap (metres) between the focus and the ray arrowheads, so the rays stop
+   * short of the hotspot. Independent of the Rx pattern extent. Render-only. */
+  rayCutoffM: number
   /** Draw the real factory blockers (metallic scatterers + NLOS slab). */
   showBlockers: boolean
   /** Draw the room as a lineart wireframe (the factory outline). */
@@ -129,6 +132,7 @@ interface StudioState {
   setShowArrayPattern: (showArrayPattern: boolean) => void
   setShowRxPattern: (showRxPattern: boolean) => void
   setRxPatternExtentM: (rxPatternExtentM: number) => void
+  setRayCutoffM: (rayCutoffM: number) => void
   setShowBlockers: (showBlockers: boolean) => void
   setShowRoomOutline: (showRoomOutline: boolean) => void
   setBackground: (background: StudioBackground) => void
@@ -186,6 +190,7 @@ export const useStudioStore = create<StudioState>()((set) => ({
   showArrayPattern: true,
   showRxPattern: false,
   rxPatternExtentM: 0.5,
+  rayCutoffM: 0.5,
   showBlockers: true,
   showRoomOutline: false,
   background: 'dark',
@@ -235,6 +240,7 @@ export const useStudioStore = create<StudioState>()((set) => ({
   setShowArrayPattern: (showArrayPattern) => set({ showArrayPattern }),
   setShowRxPattern: (showRxPattern) => set({ showRxPattern }),
   setRxPatternExtentM: (rxPatternExtentM) => set({ rxPatternExtentM }),
+  setRayCutoffM: (rayCutoffM) => set({ rayCutoffM }),
   setShowBlockers: (showBlockers) => set({ showBlockers }),
   setShowRoomOutline: (showRoomOutline) => set({ showRoomOutline }),
   setBackground: (background) => set({ background }),

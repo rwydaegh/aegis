@@ -210,6 +210,7 @@ export default function StudioScene({ snapSignal }: StudioSceneProps) {
         freqHz={frequencyGhz * 1e9}
         showPattern={showArrayPattern}
         patternScale={arrayPatternScale}
+        patternDetail={6}
       />
 
       {/* Beam axis + range / downtilt label (working view only). */}

@@ -198,6 +198,8 @@ export default function StudioPanel() {
   const setShowRxPattern = useStudioStore((s) => s.setShowRxPattern)
   const rxPatternExtentM = useStudioStore((s) => s.rxPatternExtentM)
   const setRxPatternExtentM = useStudioStore((s) => s.setRxPatternExtentM)
+  const rayCutoffM = useStudioStore((s) => s.rayCutoffM)
+  const setRayCutoffM = useStudioStore((s) => s.setRayCutoffM)
   const wireframe = useStudioStore((s) => s.wireframe)
   const setWireframe = useStudioStore((s) => s.setWireframe)
   const showBlockers = useStudioStore((s) => s.showBlockers)
@@ -413,17 +415,24 @@ export default function StudioPanel() {
           disabled={!showRays}
           labelOf={(v) => String(v)}
         />
+        <FieldLabel title="Gap between the focus and the ray arrowheads, so the rays stop short of the hotspot instead of occluding it. Independent of the Rx pattern size.">
+          Ray cutoff radius
+        </FieldLabel>
+        <Slider
+          value={rayCutoffM}
+          min={0}
+          max={2}
+          step={0.05}
+          onChange={setRayCutoffM}
+          disabled={!showRays}
+          labelOf={(v) => `${v.toFixed(2)} m`}
+        />
         <Checkbox checked={showArrayPattern} onChange={setShowArrayPattern} title="Draw the base-station array pattern lobe.">
           Show array pattern
         </Checkbox>
-        <Checkbox
-          checked={arrayPatternScale > 1}
-          onChange={(c) => setArrayPatternScale(c ? 20 : 1)}
-          title="Cosmetically blow up the array pattern lobe so it reads from the distant Rx vantage (the array is ~14 m away)."
-        >
-          Magnify array pattern
-        </Checkbox>
-        <FieldLabel title="Cosmetic magnification of the array pattern lobe (1 = true size).">Pattern magnify</FieldLabel>
+        <FieldLabel title="Cosmetically blow up the array pattern lobe so it reads from the distant Rx vantage (the array is ~14 m away). 1 = true size.">
+          Pattern magnify
+        </FieldLabel>
         <Slider
           value={arrayPatternScale}
           min={1}

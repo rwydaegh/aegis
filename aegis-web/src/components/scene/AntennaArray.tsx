@@ -14,6 +14,9 @@ interface AntennaArrayProps {
   /** Cosmetic magnification of the radiation-pattern lobe (default 1). The
    * studio uses a large value so the lobe reads from the distant Rx vantage. */
   patternScale?: number
+  /** Icosphere subdivision for the pattern lobe (default 5). The studio bumps
+   * this so the lobe stays smooth when magnified close to the camera. */
+  patternDetail?: number
 }
 
 const ARROW_COLOR = new THREE.Color(1, 0.4, 0)
@@ -125,12 +128,13 @@ function buildPatternGeometry(
   weights: { real: number[][]; imag: number[][] } | null | undefined,
   elementPattern: string,
   broadside: number[],
+  detail: number,
 ): THREE.BufferGeometry {
   const M = localPositions.length
   const { wRe, wIm } = buildComplexWeights(M, weights)
   const k0 = 2 * Math.PI * freqHz / 3e8
 
-  const base = new THREE.IcosahedronGeometry(1, 5)
+  const base = new THREE.IcosahedronGeometry(1, detail)
   const posAttr = base.attributes.position as THREE.BufferAttribute
   const nV = posAttr.count
 
@@ -200,7 +204,7 @@ function computeBroadsideAngles(broadside: number[]): { azimuthDeg: number; tilt
 // Component
 // ---------------------------------------------------------------------------
 
-export default memo(function AntennaArray({ config, freqHz, showPattern, weights, selected, patternScale = 1 }: AntennaArrayProps) {
+export default memo(function AntennaArray({ config, freqHz, showPattern, weights, selected, patternScale = 1, patternDetail = 5 }: AntennaArrayProps) {
   const localPositions = useMemo(
     () => buildLocalPositions(config, freqHz),
     [config.n_h, config.n_v, config.d_h_wavelengths, config.d_v_wavelengths, config.broadside, freqHz],
@@ -208,8 +212,8 @@ export default memo(function AntennaArray({ config, freqHz, showPattern, weights
 
   const patternGeo = useMemo(() => {
     if (localPositions.length === 0) return null
-    return buildPatternGeometry(localPositions, freqHz, weights, config.element_pattern, config.broadside)
-  }, [localPositions, freqHz, weights, config.element_pattern, config.broadside])
+    return buildPatternGeometry(localPositions, freqHz, weights, config.element_pattern, config.broadside, patternDetail)
+  }, [localPositions, freqHz, weights, config.element_pattern, config.broadside, patternDetail])
 
   useEffect(() => {
     return () => { patternGeo?.dispose() }

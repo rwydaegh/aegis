@@ -8,8 +8,8 @@ import type { RaysResponse } from '../api'
 
 const MAX_RAYS = 150
 // Visible ray length, drawn OUTWARD from the cutoff radius [m]. The inner end
-// sits at the Rx-pattern extent so the rays stop short of the focus instead of
-// piling onto the hotspot and hiding it.
+// sits at the ray cutoff radius (rayCutoffM) so the rays stop short of the
+// focus instead of piling onto the hotspot and hiding it.
 const SEGMENT_LEN = 1.8
 // Power dynamic range spread across the colormap (dB below the strongest path).
 const RAY_RANGE_DB = 40
@@ -24,13 +24,14 @@ interface StudioRaysProps {
 
 // Top arrival directions drawn as short arrows pointing in toward the focus
 // (downlink onto the body). Each ray is a fixed-length segment whose inner end
-// stops at the Rx-pattern radius (rxPatternExtentM) so it never reaches the
-// focus and occludes the hotspot. Per-ray power drives line WIDTH (fat =
+// stops at the ray cutoff radius (rayCutoffM, an independent slider) so it
+// never reaches the focus and occludes the hotspot. Per-ray power drives line
+// WIDTH (fat =
 // strong) and COLOUR through the studio colormap on a dB scale, so the weaker
 // arrivals stay legible instead of all collapsing to the cold end.
 export default function StudioRays({ rays }: StudioRaysProps) {
   const focusXyz = useStudioStore((s) => s.focusXyz)
-  const cutoffM = useStudioStore((s) => s.rxPatternExtentM)
+  const cutoffM = useStudioStore((s) => s.rayCutoffM)
   const colormap = useStudioStore((s) => s.colormap)
   const headsRef = useRef<THREE.InstancedMesh>(null)
 

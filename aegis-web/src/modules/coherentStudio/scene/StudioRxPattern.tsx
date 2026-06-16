@@ -22,9 +22,14 @@ interface StudioRxPatternProps {
 }
 
 // Compress the radial dynamic range so deep nulls do not collapse the mesh to a
-// point (matches the base-station pattern balloon's lobeGamma). The same
-// exponent drives the colour, so blue->red tracks the surface you actually see.
+// point (matches the base-station pattern balloon's lobeGamma).
 const LOBE_GAMMA = 0.42
+
+// Minimum drawn radius as a fraction of the peak, so deep nulls (e.g. a dipole's
+// end-fire zero) keep a small visible shell instead of touching the focus point
+// at the centre. The true (un-floored) gain still drives the colour, so a null
+// reads as a blue dimple at this floor rather than collapsing onto the hotspot.
+const MIN_NORM = 0.12
 
 // Build a UNIT-radius lobe (max radius 1) for the given antenna kind; the caller
 // scales it to the user's extent. Colour is the displayed radius (gn^gamma)
@@ -54,11 +59,13 @@ function buildRxGeometry(kind: string): THREE.BufferGeometry {
   const colors = new Float32Array(nV * 3)
   for (let i = 0; i < nV; i++) {
     const gn = gains[i] / gMax
-    // Normalised displayed radius in [0, 1]; both the geometry and the colour
-    // read from this so colour and shape never disagree.
+    // True normalised gain in [0, 1] (drives the colour) and the drawn radius,
+    // affinely lifted off zero so the peak still reaches 1 but nulls sit at
+    // MIN_NORM instead of the centre.
     const norm = Math.max(gn, 1e-9) ** LOBE_GAMMA
+    const drawNorm = MIN_NORM + (1 - MIN_NORM) * norm
     const d = dirs[i]
-    posAttr.setXYZ(i, d.x * norm, d.y * norm, d.z * norm)
+    posAttr.setXYZ(i, d.x * drawNorm, d.y * drawNorm, d.z * drawNorm)
 
     const [cr, cg, cb] = jetColor(norm)
     colors[i * 3] = cr
