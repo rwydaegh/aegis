@@ -36,7 +36,7 @@ def default_scene() -> dict:
         "seed": 0,
         "ue": "dipole",
         "beam": "mrt",
-        "focus_mode": "at-skin",
+        "focus_mode": "free-space",
         "focus_xyz": list(_FOCUS_CHEST),
         "frequency_ghz": 10,
         "plane": {
