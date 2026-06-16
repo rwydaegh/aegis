@@ -43,11 +43,19 @@ if TYPE_CHECKING:
     def jit(fn: _F | None = None, **kwargs: Any) -> _F | Callable[[_F], _F]: ...
 
 
+# Whether JAX honours 64-bit dtypes. Default on, so float64/complex128 requests
+# keep full precision (the correctness default everywhere). Set AEGIS_JAX_X64=0
+# to run JAX in single precision: 64-bit dtype requests then auto-downcast to
+# float32/complex64, which is ~30-60x faster on consumer/workstation GPUs (their
+# FP64 is heavily throttled). Used by the studio precompute, whose packs are
+# stored complex64 anyway, so single precision is lossless for that output.
+_JAX_X64 = os.environ.get("AEGIS_JAX_X64", "1").strip().lower() not in {"0", "false", "no"}
+
 if _BACKEND in {"jax", "auto"}:
     try:
         import jax
 
-        jax.config.update("jax_enable_x64", True)
+        jax.config.update("jax_enable_x64", _JAX_X64)
         import jax.numpy as jnp
 
         JAX_AVAILABLE = True

@@ -7,6 +7,10 @@ factored, so it must reproduce the monolithic build bit-for-bit; the studio
 multi-frequency precompute relies on that.
 """
 
+import importlib.util
+import subprocess
+import sys
+
 import numpy as np
 import pytest
 
@@ -66,3 +70,54 @@ def test_precompute_validates_element_index():
     elem[0] = m  # out of [0, m)
     with pytest.raises(ValueError, match="element_index"):
         precompute_body_channel_geometry(normals, centroids, k, psi, elem, m)
+
+
+# Inline program: build a small deterministic channel under whatever backend the
+# environment selects and print the result dtype. Run in a subprocess because the
+# array backend (and JAX x64 flag) is fixed at import time.
+_DTYPE_PROBE = """
+import numpy as np
+from aegis.coherent.body_channel import compute_body_channel
+rng = np.random.default_rng(0)
+T, N, M = 20, 50, 8
+normals = rng.normal(size=(T, 3)); normals[:, 2] = np.abs(normals[:, 2]) + 0.3
+normals /= np.linalg.norm(normals, axis=1, keepdims=True)
+centroids = rng.normal(size=(T, 3)) * 0.2
+k = rng.normal(size=(N, 3)); k[:, 2] = -np.abs(k[:, 2]) - 0.1
+k /= np.linalg.norm(k, axis=1, keepdims=True)
+psi = (rng.normal(size=(N, 3)) + 1j * rng.normal(size=(N, 3))) * 0.05
+elem = rng.integers(0, M, size=N).astype(np.int64)
+g = np.asarray(compute_body_channel(normals, centroids, k, psi, elem, 6.0 - 8j, 25.0, 28e9, M))
+print(g.dtype)
+"""
+
+
+@pytest.mark.skipif(importlib.util.find_spec("jax") is None, reason="JAX backend not installed")
+def test_jax_x64_toggle_controls_precision():
+    """AEGIS_JAX_X64=0 runs the JAX backend in single precision (complex64).
+
+    This is the studio GPU path: workstation/consumer GPUs throttle FP64, so the
+    precompute runs single precision (its packs are stored complex64 anyway). The
+    default keeps x64 on for full precision elsewhere.
+    """
+
+    def _dtype(env_extra):
+        env = {"AEGIS_ARRAY_BACKEND": "jax", **env_extra}
+        out = subprocess.run(
+            [sys.executable, "-c", _DTYPE_PROBE],
+            capture_output=True,
+            text=True,
+            env={**_base_env(), **env},
+        )
+        assert out.returncode == 0, out.stderr
+        return out.stdout.strip().splitlines()[-1]
+
+    assert _dtype({"AEGIS_JAX_X64": "0"}) == "complex64"
+    assert _dtype({"AEGIS_JAX_X64": "1"}) == "complex128"
+
+
+def _base_env():
+    import os
+
+    # Keep PATH / venv visibility; only override the backend knobs per call.
+    return {k: v for k, v in os.environ.items() if k not in {"AEGIS_ARRAY_BACKEND", "AEGIS_JAX_X64"}}
