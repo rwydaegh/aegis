@@ -39,6 +39,23 @@ export function scalarToLutIndex(
 }
 
 /**
+ * Map a ray's linear power to a colormap parameter t in [0, 1] on a dB scale
+ * relative to the strongest path. The strongest ray (power == pMax) maps to
+ * t = 1 (the warm/high end of the colormap); a ray `rangeDb` below the peak
+ * maps to t = 0. A plain linear power map collapses everything but the few
+ * dominant paths to the cold end, so the dB spread is what makes the weaker
+ * arrivals legible. Power is clamped to a tiny floor so a zero-power ray is
+ * well defined rather than -infinity.
+ */
+export function rayPowerToColorT(power: number, pMax: number, rangeDb = 40): number {
+  if (rangeDb <= 0) return 0
+  const peak = pMax > 0 ? pMax : 1
+  const pdb = 10 * Math.log10(Math.max(power, 1e-30) / peak)
+  const t = 1 + pdb / rangeDb
+  return Math.min(1, Math.max(0, t))
+}
+
+/**
  * Expand a per-triangle scalar array (length nFaces) into a per-vertex array
  * (length nFaces * 3) where the three vertices of each triangle share the
  * triangle's value. Used when a per-vertex consumer is needed; note that
