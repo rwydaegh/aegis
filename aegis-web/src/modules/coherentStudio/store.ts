@@ -39,6 +39,14 @@ interface StudioState {
   plane: SlicePlane
   fieldQuantity: StudioFieldQuantity
   bodyMapQuantity: string
+  /**
+   * Sticky preference for the live "deposited" map. When set, the quantity
+   * picker auto-promotes back to 'deposited' the moment its channel pack
+   * becomes available again (after an automatic fall-back to 'mrt' on a combo
+   * that lacks one). Cleared only when the user explicitly picks a non-live
+   * quantity. Render-only meta-state: never part of any fetch key.
+   */
+  preferDeposited: boolean
   /** Body-map realisation: single, or mean / p95 over the LOS seed ensemble. */
   bodyMapStatistic: StudioBodyMapStatistic
   /** ECBF absorbed-power budget as a fraction of MRT (1 = MRT, lower = safer). */
@@ -118,6 +126,7 @@ interface StudioState {
   setPlane: (patch: Partial<SlicePlane>) => void
   setFieldQuantity: (fieldQuantity: StudioFieldQuantity) => void
   setBodyMapQuantity: (bodyMapQuantity: string) => void
+  setPreferDeposited: (preferDeposited: boolean) => void
   setBodyMapStatistic: (bodyMapStatistic: StudioBodyMapStatistic) => void
   setColormap: (colormap: string) => void
   setScaleMode: (scaleMode: StudioScaleMode) => void
@@ -175,6 +184,10 @@ export const useStudioStore = create<StudioState>()((set) => ({
   // would read as "the body map is not responding". The quantity picker falls
   // back to 'mrt' if the default scene has no field-channel pack.
   bodyMapQuantity: 'deposited',
+  // Default scene opens on 'deposited', so the preference starts on: any combo
+  // without a channel pack falls back to 'mrt', and stepping back onto a packed
+  // combo restores the live map without the user re-selecting it.
+  preferDeposited: true,
   bodyMapStatistic: 'single',
   ecbfBudgetFrac: 0.5,
 
@@ -226,6 +239,7 @@ export const useStudioStore = create<StudioState>()((set) => ({
   setPlane: (patch) => set((s) => ({ plane: { ...s.plane, ...patch } })),
   setFieldQuantity: (fieldQuantity) => set({ fieldQuantity }),
   setBodyMapQuantity: (bodyMapQuantity) => set({ bodyMapQuantity }),
+  setPreferDeposited: (preferDeposited) => set({ preferDeposited }),
   setBodyMapStatistic: (bodyMapStatistic) => set({ bodyMapStatistic }),
   setColormap: (colormap) => set({ colormap }),
   setScaleMode: (scaleMode) => set({ scaleMode }),

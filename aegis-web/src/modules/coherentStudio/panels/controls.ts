@@ -114,6 +114,32 @@ export function ensembleHasPack(
   return false
 }
 
+/**
+ * Reconcile the body-map quantity against the live "deposited" map's
+ * availability and the user's sticky preference. Returns the quantity to switch
+ * TO, or null to leave the current selection untouched.
+ *
+ * - Live selected but its channel pack is gone -> fall back to 'mrt' (so the
+ *   body never greys out on a dead selection), without clearing the preference.
+ * - Preference on, currently off the live map, and the channel pack is back ->
+ *   promote to 'deposited' so cycling scenarios snaps back to the focus-tracking
+ *   map whenever the combo supports it.
+ *
+ * The two cases are mutually exclusive on `liveAvailable`, so this never
+ * ping-pongs.
+ */
+export function reconcileBodyMapQuantity(args: {
+  current: string
+  preferDeposited: boolean
+  liveAvailable: boolean
+}): string | null {
+  const { current, preferDeposited, liveAvailable } = args
+  const isLive = current === 'deposited'
+  if (isLive && !liveAvailable) return 'mrt'
+  if (preferDeposited && !isLive && liveAvailable) return 'deposited'
+  return null
+}
+
 /** Exposure-operator (Q) pack stem for a (mesh, condition, array, frequency). */
 export function qopStem(mesh: string, condition: string, arrayN: number, frequencyGhz: number): string {
   return `${mesh}_${condition}_bs${arrayN}_${freqTag(frequencyGhz)}`

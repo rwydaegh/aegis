@@ -1,7 +1,14 @@
 import { useEffect } from 'react'
 import type { StudioBodyMapStatistic, StudioFieldQuantity } from '../api'
 import { useStudioStore } from '../store'
-import { bodyMapHasPack, channelHasPack, ensembleHasPack, FIELD_QUANTITY_OPTIONS, packsOf } from './controls'
+import {
+  bodyMapHasPack,
+  channelHasPack,
+  ensembleHasPack,
+  FIELD_QUANTITY_OPTIONS,
+  packsOf,
+  reconcileBodyMapQuantity,
+} from './controls'
 import { FieldLabel, LabeledSelect, type Option } from './widgets'
 
 // The live, focus-tracking deposited map is served from the field-channel pack
@@ -33,6 +40,8 @@ export default function StudioQuantityPicker() {
   const setFieldQuantity = useStudioStore((s) => s.setFieldQuantity)
   const bodyMapQuantity = useStudioStore((s) => s.bodyMapQuantity)
   const setBodyMapQuantity = useStudioStore((s) => s.setBodyMapQuantity)
+  const preferDeposited = useStudioStore((s) => s.preferDeposited)
+  const setPreferDeposited = useStudioStore((s) => s.setPreferDeposited)
   const bodyMapStatistic = useStudioStore((s) => s.bodyMapStatistic)
   const setBodyMapStatistic = useStudioStore((s) => s.setBodyMapStatistic)
 
@@ -70,15 +79,27 @@ export default function StudioQuantityPicker() {
     }),
   ]
 
-  // If the live map is selected but its channel pack is absent for the current
-  // scenario (seed / freq / condition without a pack), fall back to the static
-  // MRT map so the body never greys out on a dead selection. Gate on the
-  // manifest: before it loads, packs is empty and liveAvailable is spuriously
-  // false, which would otherwise clobber the default 'deposited' quantity to
-  // 'mrt' on first mount (and the studio would open focus-frozen again).
+  // Explicit picks from the dropdown set the sticky preference: choosing the
+  // live map turns auto-promotion on, choosing anything else turns it off (the
+  // user wants that static quantity, so do not yank them back to 'deposited').
+  // The auto fall-back / promote effects below use the raw setter so they never
+  // touch the preference.
+  const onPickQuantity = (q: string) => {
+    setPreferDeposited(q === LIVE_DEPOSITED)
+    setBodyMapQuantity(q)
+  }
+
+  // Keep the body-map quantity reconciled with the live map's availability and
+  // the sticky preference: fall back to 'mrt' on a dead live selection, promote
+  // back to 'deposited' once its channel pack returns. Gate on the manifest:
+  // before it loads, packs is empty and liveAvailable is spuriously false, which
+  // would otherwise clobber the default 'deposited' quantity on first mount.
+  const nextQuantity = manifest
+    ? reconcileBodyMapQuantity({ current: bodyMapQuantity, preferDeposited, liveAvailable })
+    : null
   useEffect(() => {
-    if (manifest && isLive && !liveAvailable) setBodyMapQuantity('mrt')
-  }, [manifest, isLive, liveAvailable, setBodyMapQuantity])
+    if (nextQuantity) setBodyMapQuantity(nextQuantity)
+  }, [nextQuantity, setBodyMapQuantity])
 
   const statOptions: Option<StudioBodyMapStatistic>[] = statistics.map((st) => {
     const available = ensembleHasPack(packs, st, mesh, condition, arrayN, bodyMapQuantity, frequencyGhz)
@@ -114,7 +135,7 @@ export default function StudioQuantityPicker() {
       <LabeledSelect<string>
         value={bodyMapQuantity}
         options={bodyOptions}
-        onChange={setBodyMapQuantity}
+        onChange={onPickQuantity}
       />
 
       {isLive ? (

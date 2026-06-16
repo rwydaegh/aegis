@@ -17,6 +17,7 @@ import {
   phantomHasPack,
   qopStem,
   rayPackStem,
+  reconcileBodyMapQuantity,
 } from '../panels/controls'
 import type { StudioManifest, StudioPacks } from '../api'
 
@@ -85,6 +86,38 @@ describe('phantomHasPack', () => {
   it('disables a phantom with no geometry pack yet', () => {
     expect(phantomHasPack(PACKS, 'ella')).toBe(false)
     expect(phantomHasPack(PACKS, 'eartha')).toBe(false)
+  })
+})
+
+describe('reconcileBodyMapQuantity', () => {
+  it('falls back to mrt when the live map is selected but unavailable', () => {
+    expect(
+      reconcileBodyMapQuantity({ current: 'deposited', preferDeposited: true, liveAvailable: false }),
+    ).toBe('mrt')
+  })
+
+  it('promotes back to deposited once the channel pack returns and the preference holds', () => {
+    expect(
+      reconcileBodyMapQuantity({ current: 'mrt', preferDeposited: true, liveAvailable: true }),
+    ).toBe('deposited')
+  })
+
+  it('leaves a static quantity alone when the user opted out of the live map', () => {
+    expect(
+      reconcileBodyMapQuantity({ current: 'mrt', preferDeposited: false, liveAvailable: true }),
+    ).toBeNull()
+  })
+
+  it('leaves the live map alone when it is available', () => {
+    expect(
+      reconcileBodyMapQuantity({ current: 'deposited', preferDeposited: true, liveAvailable: true }),
+    ).toBeNull()
+  })
+
+  it('does not promote a static quantity the user picked while the live map is down', () => {
+    expect(
+      reconcileBodyMapQuantity({ current: 'worstcase', preferDeposited: false, liveAvailable: false }),
+    ).toBeNull()
   })
 })
 
