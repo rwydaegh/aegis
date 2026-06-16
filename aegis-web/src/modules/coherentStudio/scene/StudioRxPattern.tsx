@@ -82,6 +82,7 @@ function buildRxGeometry(kind: string): THREE.BufferGeometry {
 export default function StudioRxPattern({ focusScene }: StudioRxPatternProps) {
   const ueAntenna = useStudioStore((s) => s.ueAntenna)
   const extentM = useStudioStore((s) => s.rxPatternExtentM)
+  const screenshotMode = useStudioStore((s) => s.screenshotMode)
 
   const geo = useMemo(() => buildRxGeometry(ueAntenna), [ueAntenna])
   useEffect(() => () => geo.dispose(), [geo])
@@ -101,11 +102,14 @@ export default function StudioRxPattern({ focusScene }: StudioRxPatternProps) {
         />
       </mesh>
       {/* Marker at the receive origin (r_UE); kept outside the scale so it stays
-          a fixed size as the lobe grows. */}
-      <mesh>
-        <sphereGeometry args={[0.025, 16, 16]} />
-        <meshStandardMaterial color="#ffffff" emissive="#888888" emissiveIntensity={0.5} />
-      </mesh>
+          a fixed size as the lobe grows. Hidden for a clean figure capture (the
+          slice's black focus disc marks the point there). */}
+      {!screenshotMode && (
+        <mesh>
+          <sphereGeometry args={[0.025, 16, 16]} />
+          <meshStandardMaterial color="#ffffff" emissive="#888888" emissiveIntensity={0.5} />
+        </mesh>
+      )}
     </group>
   )
 }

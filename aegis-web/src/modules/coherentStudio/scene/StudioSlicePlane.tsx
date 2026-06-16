@@ -211,9 +211,12 @@ export default function StudioSlicePlane() {
       <primitive object={planeObj}>
         <mesh geometry={geometry} material={material} />
         <Line points={refSquare} color="#ffffff" lineWidth={1.5} transparent opacity={0.8} />
+        {/* Focus marker: a flat black disc lying in the slice plane (the group's
+            local z is the plane normal, so a circleGeometry is coplanar) rather
+            than a sphere floating off the field. */}
         <mesh position={[0, 0, 0.001]}>
-          <sphereGeometry args={[Math.max(extentW * 0.02, 0.002), 16, 16]} />
-          <meshBasicMaterial color="#00e5ff" depthTest={false} />
+          <circleGeometry args={[Math.max(extentW * 0.02, 0.002), 48]} />
+          <meshBasicMaterial color="#000000" side={THREE.DoubleSide} depthTest={false} />
         </mesh>
       </primitive>
 
