@@ -43,6 +43,13 @@ function buildTxGeometry(p: PrecoderResult): THREE.BufferGeometry {
   const im = p.imag ?? []
   const axisH = toSceneDir(p.axis_h ?? [0, 1, 0])
   const axisV = toSceneDir(p.axis_v ?? [0, 0, 1])
+  // Panel normal (boresight) = axis_h x axis_v. The wall-mounted panel radiates
+  // into its forward hemisphere only; the channel was traced with isotropic
+  // elements, but rendering the raw isotropic array factor leaves a spurious
+  // mirror lobe behind the panel (and it can even beat the true beam). A patch
+  // element factor (cos^1.5 toward boresight) suppresses the back hemisphere and
+  // leaves the forward beam direction unchanged.
+  const boresight = axisH.clone().cross(axisV).normalize()
   const k0 = (2 * Math.PI * (p.freq_hz ?? C0)) / C0
   const step = k0 * (p.spacing_m ?? 0) // phase per unit index along an axis, times the axis projection
   const midH = (nH - 1) / 2
@@ -95,7 +102,9 @@ function buildTxGeometry(p: PrecoderResult): THREE.BufferGeometry {
       afRe += rowRe * evRe[a] - rowIm * evIm[a]
       afIm += rowRe * evIm[a] + rowIm * evRe[a]
     }
-    const g = afRe * afRe + afIm * afIm
+    const cosB = boresight.dot(dir)
+    const eg = cosB > 0 ? cosB ** 1.5 : 0
+    const g = (afRe * afRe + afIm * afIm) * eg * eg
     gains[i] = g
     if (g > gMax) gMax = g
   }
