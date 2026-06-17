@@ -327,7 +327,7 @@ def _deposited_sab(g_tilde: np.ndarray, x: np.ndarray) -> np.ndarray:
     return (np.abs(np.einsum("tim,m->ti", g_tilde, x)) ** 2).sum(axis=1)
 
 
-def _compute_g_tilde(body, k, psi, elem, m, n_tilde, sigma, freq_hz, chunk: int = 128) -> np.ndarray:
+def _compute_g_tilde(body, k, psi, elem, m, n_tilde, sigma, freq_hz, chunk: int = 512) -> np.ndarray:
     """Build the tissue channel G_tilde (T, 3, M_ant) in triangle chunks.
 
     Chunking is essential: ``compute_body_channel`` forms a per-path
@@ -347,7 +347,7 @@ def _compute_g_tilde(body, k, psi, elem, m, n_tilde, sigma, freq_hz, chunk: int 
     return g
 
 
-def _compute_g_tilde_multifreq(body, k, psi, elem, m, freq_props, chunk: int = 128) -> dict[float, np.ndarray]:
+def _compute_g_tilde_multifreq(body, k, psi, elem, m, freq_props, chunk: int = 512) -> dict[float, np.ndarray]:
     """Build G_tilde for several frequencies over one ray geometry in one pass.
 
     ``freq_props`` is a list of ``(freq_ghz, freq_hz, n_tilde, sigma)``. The
@@ -573,7 +573,7 @@ def compute_ensemble(
 # --------------------------------------------------------------------------
 # Exposure operator Q
 # --------------------------------------------------------------------------
-def _compute_q_chunked(body, k, psi, elem, m, n_tilde, sigma, freq_hz, chunk: int = 128) -> np.ndarray:
+def _compute_q_chunked(body, k, psi, elem, m, n_tilde, sigma, freq_hz, chunk: int = 512) -> np.ndarray:
     """Accumulate the exposure operator Q (M_ant x M_ant) in triangle chunks.
 
     Q = sum_t area_t * G_tilde_t^H @ G_tilde_t is linear in the per-triangle
