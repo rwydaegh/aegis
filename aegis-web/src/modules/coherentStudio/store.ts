@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type {
   BodyMapResult,
   PhantomGeometry,
+  PrecoderResult,
   Provenance,
   SceneGeometry,
   SlicePlane,
@@ -112,6 +113,8 @@ interface StudioState {
   sliceResult: SliceResult | null
   volumeResult: VolumeResult | null
   bodyMap: BodyMapResult | null
+  /** Synthesised precoder x + array geometry for the live Tx radiation lobe. */
+  precoder: PrecoderResult | null
   phantom: PhantomGeometry | null
   manifest: StudioManifest | null
   computing: boolean
@@ -172,6 +175,7 @@ interface StudioState {
   setVolumeResult: (volumeResult: VolumeResult | null) => void
   setBodyMap: (bodyMap: BodyMapResult | null) => void
   setBodyMapNotPrecomputed: (notPrecomputed: boolean) => void
+  setPrecoder: (precoder: PrecoderResult | null) => void
   setPhantom: (phantom: PhantomGeometry | null) => void
   setManifest: (manifest: StudioManifest | null) => void
   setComputing: (computing: boolean) => void
@@ -237,6 +241,7 @@ export const useStudioStore = create<StudioState>()((set) => ({
   sliceResult: null,
   volumeResult: null,
   bodyMap: null,
+  precoder: null,
   phantom: null,
   manifest: null,
   computing: false,
@@ -294,6 +299,7 @@ export const useStudioStore = create<StudioState>()((set) => ({
   setBodyMap: (bodyMap) =>
     set({ bodyMap, provenance: bodyMap ? bodyMap.provenance : null }),
   setBodyMapNotPrecomputed: (bodyMapNotPrecomputed) => set({ bodyMapNotPrecomputed }),
+  setPrecoder: (precoder) => set({ precoder }),
   setPhantom: (phantom) => set({ phantom }),
   setManifest: (manifest) => set({ manifest }),
   setComputing: (computing) => set({ computing }),
@@ -392,6 +398,25 @@ export function bodyMapFetchKey(s: BodyMapKeyState): string {
     s.frequencyGhz,
     s.seed,
     s.ueIdx,
+  ])
+}
+
+// The Tx radiation lobe is a function of the synthesised precoder, so it keys on
+// the same beam + focus axes as the live deposited map.
+export function precoderFetchKey(s: BodyMapKeyState): string {
+  return JSON.stringify([
+    'precoder',
+    s.mesh,
+    s.condition,
+    s.arrayN,
+    s.seed,
+    s.ueIdx,
+    s.beam,
+    s.focusMode,
+    s.focusXyz,
+    s.frequencyGhz,
+    s.beam === 'ecbf' ? s.ecbfBudgetFrac : null,
+    s.ueAntenna,
   ])
 }
 

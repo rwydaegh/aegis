@@ -40,7 +40,7 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
     from aegis.viewer.routes._helpers import get_json_dict
     from aegis.viewer.routes.compute._responses import _json_dumps_safe
 
-    from . import _bodymap, _channel, _paths, _phantom, _precoders, _presets, _scene, _slice, _volume
+    from . import _array, _bodymap, _channel, _paths, _phantom, _precoders, _presets, _scene, _slice, _volume
 
     def _beam_field(
         beam,
@@ -419,3 +419,87 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             f"| beam={beam} | {freq_ghz:g}GHz"
         )
         return jsonify(out)
+
+    @app.route("/api/studio/precoder", methods=["POST"])
+    def api_studio_precoder():
+        """Per-element precoder ``x`` + array geometry for the live Tx lobe.
+
+        Returns the synthesised precoder weights and the physical element layout
+        they index against, so the frontend can draw the realised transmit
+        radiation pattern ``|sum_j x_j exp(+i k0 r_j . d)|^2`` rather than a
+        uniform-excitation stand-in. Mirrors bodymap-live's parameter handling.
+        The decohered baseline scrambles inter-direction phase after collapse and
+        is not a per-element precoder, so it reports ``available: false``.
+        """
+        params, err = get_json_dict()
+        if err is not None:
+            return err
+        condition = params.get("condition", "los")
+        beam = params.get("beam", "mrt")
+        mesh = params.get("mesh", "thelonious")
+        focus_xyz = params.get("focus_xyz", [0.923, -0.005, 0.734])
+        focus_mode = params.get("focus_mode", "free-space")
+
+        try:
+            array_n = int(params.get("array_n", 16))
+            seed = int(params.get("seed", 0))
+            freq_ghz = float(params.get("frequency_ghz", 10))
+            freq_hz = freq_ghz * 1e9
+            ecbf_budget_frac = float(params.get("ecbf_budget_frac", 0.5))
+            ue_antenna = _parse_ue_antenna(params)
+            ue_idx = int(params.get("ue_idx", _channel.DEFAULT_UE_IDX))
+            if focus_mode == "at-skin":
+                focus_xyz = _phantom.snap_focus_to_skin(
+                    focus_xyz, mesh, cache=cache, cache_lock=cache_lock, ue_idx=ue_idx
+                )
+
+            paths = _paths.load_paths(condition, array_n, seed, cache, cache_lock, ue_idx)
+            x, _field_source = _beam_field(
+                beam,
+                paths,
+                focus_xyz,
+                freq_hz,
+                condition,
+                array_n,
+                freq_ghz,
+                ecbf_budget_frac,
+                mesh,
+                focus_mode,
+                seed,
+                ue_antenna=ue_antenna,
+                ue_idx=ue_idx,
+            )
+        except _QPackMissing as e:
+            return jsonify(
+                {"error": f"exposure-operator (Q) pack not precomputed: {e.stem}", "not_precomputed": True}
+            ), 409
+        except FileNotFoundError as e:
+            return jsonify({"error": str(e)}), 404
+        except (KeyError, ValueError, TypeError, NotImplementedError) as e:
+            return jsonify({"error": str(e)}), 400
+
+        if x is None:
+            return jsonify({"available": False, "reason": f"beam '{beam}' has no per-element precoder"})
+
+        x = np.asarray(x).reshape(-1)
+        e_y, e_zp = _array.array_axes()
+        return jsonify(
+            {
+                "available": True,
+                "beam": beam,
+                "n_h": int(array_n),
+                "n_v": int(array_n),
+                "axis_h": e_y.tolist(),
+                "axis_v": e_zp.tolist(),
+                "spacing_m": _array.element_spacing_m(),
+                # k0 for the array factor must match the frequency x was designed
+                # at (channel_at uses the dosimetry freq), so the MRT lobe points
+                # at the focus. The element spacing stays physical (28 GHz panel).
+                "freq_hz": freq_hz,
+                "real": np.real(x).astype(float).tolist(),
+                "imag": np.imag(x).astype(float).tolist(),
+                "provenance": (
+                    f"studio precoder | {mesh} | {condition} bs{array_n} seed{seed} | beam={beam} | {freq_ghz:g}GHz"
+                ),
+            }
+        )

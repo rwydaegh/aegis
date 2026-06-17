@@ -668,3 +668,59 @@ def test_scene_route_hit_and_miss(client):
     miss = client.get("/api/studio/scene?condition=los&seed=99")
     assert miss.status_code == 409
     assert miss.get_json()["not_precomputed"] is True
+
+
+def _precoder_post(client, beam, frequency_ghz=28, array_n=16):
+    body = {
+        "condition": "los",
+        "array_n": array_n,
+        "seed": 0,
+        "beam": beam,
+        "focus_xyz": [0.923, -0.005, 0.734],
+        "focus_mode": "free-space",
+        "frequency_ghz": frequency_ghz,
+        "ue_idx": 4,
+    }
+    return client.post("/api/studio/precoder", json=body)
+
+
+@needs_packs
+def test_precoder_mrt_returns_weights_and_geometry(client):
+    # The MRT precoder feeds the live transmit radiation lobe: a matched-power
+    # per-element vector (||x||^2 == 1) paired with the physical URA geometry it
+    # is indexed against, so the frontend can draw the realised beam.
+    r = _precoder_post(client, "mrt", frequency_ghz=28)
+    assert r.status_code == 200, r.get_data(as_text=True)
+    d = r.get_json()
+    assert d["available"] is True
+    assert d["n_h"] == 16
+    assert d["n_v"] == 16
+    assert len(d["real"]) == 256
+    assert len(d["imag"]) == 256
+    x = np.asarray(d["real"]) + 1j * np.asarray(d["imag"])
+    assert np.isclose(np.sum(np.abs(x) ** 2), 1.0, atol=1e-3)
+    # Panel axes: horizontal e_y and panel-up e_zp tilted 10 deg down, plus the
+    # half-wave spacing and the design (dosimetry) frequency k0 must match.
+    assert np.allclose(d["axis_h"], [0.0, 1.0, 0.0])
+    assert np.allclose(d["axis_v"], [np.sin(np.deg2rad(10)), 0.0, np.cos(np.deg2rad(10))], atol=1e-6)
+    assert np.isclose(d["spacing_m"], 0.5 * 299792458.0 / 28e9)
+    assert np.isclose(d["freq_hz"], 28e9)
+
+
+@needs_packs
+def test_precoder_design_frequency_follows_request(client):
+    # x is synthesised at the dosimetry frequency, so the array-factor k0 the lobe
+    # uses must follow the requested frequency (not the fixed 28 GHz panel carrier).
+    r = _precoder_post(client, "mrt", frequency_ghz=10)
+    assert r.status_code == 200
+    assert np.isclose(r.get_json()["freq_hz"], 10e9)
+
+
+@needs_packs
+def test_precoder_decohered_unavailable(client):
+    # The decohered baseline scrambles inter-direction phase after collapse and is
+    # not a per-element precoder, so it reports available=false (the lobe falls
+    # back to the uniform-excitation pattern) rather than erroring.
+    r = _precoder_post(client, "decohered")
+    assert r.status_code == 200
+    assert r.get_json()["available"] is False

@@ -16,7 +16,9 @@ import StudioSlicePlane from './StudioSlicePlane'
 import StudioVolume from './StudioVolume'
 import StudioRays from './StudioRays'
 import StudioRxPattern from './StudioRxPattern'
+import StudioTxPattern from './StudioTxPattern'
 import StudioBlockers from './StudioBlockers'
+import { useStudioTxPrecoder } from '../useStudioTxPrecoder'
 
 // Scene backdrop colours; 'transparent' renders no <color> so the alpha buffer
 // shows through (used for figure export).
@@ -28,6 +30,13 @@ const BG_COLOR: Record<string, string | null> = {
 
 // Base station position (server Z-up metres), fixed by the e11 geometry.
 const BS_SERVER: ServerPos = [-13, 0, 3]
+
+// Physical panel boresight: the array faces +x and is tilted 10 deg down (server
+// (cos t, 0, -sin t), matching e8_scene_setup BS_TILT_DEG). The panel is FIXED;
+// the precoder steers the beam electronically, so the panel box and its arrow
+// point here regardless of focus.
+const BS_TILT_RAD = (10 * Math.PI) / 180
+const PANEL_BORESIGHT_SCENE = toScene([Math.cos(BS_TILT_RAD), 0, -Math.sin(BS_TILT_RAD)]) as [number, number, number]
 
 
 // Build a renderable phantom geometry: a non-indexed triangle soup with a colour
@@ -97,6 +106,8 @@ export default function StudioScene() {
   const showArrayPattern = useStudioStore((s) => s.showArrayPattern)
   const showRxPattern = useStudioStore((s) => s.showRxPattern)
   const arrayPatternScale = useStudioStore((s) => s.arrayPatternScale)
+  const arrayN = useStudioStore((s) => s.arrayN)
+  const precoder = useStudioStore((s) => s.precoder)
   const background = useStudioStore((s) => s.background)
   const screenshotMode = useStudioStore((s) => s.screenshotMode)
   const cameraView = useStudioStore((s) => s.cameraView)
@@ -111,6 +122,7 @@ export default function StudioScene() {
 
   const rays = useStudioRays()
   useStudioScene()
+  useStudioTxPrecoder()
   const geometry = usePhantomGeometry()
   const { body: bodyScale } = useStudioScales()
 
@@ -147,24 +159,21 @@ export default function StudioScene() {
     [bsScene, focusScene],
   )
 
-  // 16x16 URA broadside pointed from the BS toward the focus (scene coords).
+  // The physical NxN URA at the BS. Broadside is the fixed panel boresight (the
+  // precoder does the steering), so the drawn panel and arrow stay put as the
+  // focus moves. Element count follows the array-size selection.
   const arrayConfig = useMemo<ArrayConfig>(() => {
-    const dir = new THREE.Vector3(
-      focusScene[0] - bsScene[0],
-      focusScene[1] - bsScene[1],
-      focusScene[2] - bsScene[2],
-    ).normalize()
     return {
       type: 'upa',
-      n_h: 16,
-      n_v: 16,
+      n_h: arrayN,
+      n_v: arrayN,
       d_h_wavelengths: 0.5,
       d_v_wavelengths: 0.5,
       position: bsScene,
-      broadside: [dir.x, dir.y, dir.z],
+      broadside: PANEL_BORESIGHT_SCENE,
       element_pattern: 'patch',
     }
-  }, [bsScene, focusScene])
+  }, [bsScene, arrayN])
 
   // Studio drives its own colour scale (viridis, own log toggle) so it never
   // perturbs the main viewer's shared useUIStore state.
@@ -208,10 +217,21 @@ export default function StudioScene() {
       <AntennaArray
         config={arrayConfig}
         freqHz={frequencyGhz * 1e9}
-        showPattern={showArrayPattern}
+        showPattern={showArrayPattern && !precoder}
         patternScale={arrayPatternScale}
         patternDetail={40}
       />
+
+      {/* Realised transmit beam of the synthesised precoder. Replaces the
+          uniform-excitation lobe above whenever the backend returns a precoder. */}
+      {showArrayPattern && precoder && (
+        <StudioTxPattern
+          precoder={precoder}
+          position={bsScene}
+          scale={arrayPatternScale}
+          screenshot={screenshotMode}
+        />
+      )}
 
       {/* Beam axis + range / downtilt label (working view only). */}
       {showChrome && (

@@ -534,6 +534,77 @@ export async function fetchLiveBodyMap(params: LiveBodyMapParams): Promise<BodyM
   return { ok: true, data }
 }
 
+// ---------------------------------------------------------------------------
+// Precoder (transmit radiation pattern)
+// ---------------------------------------------------------------------------
+
+export interface PrecoderResult {
+  /** False for beams with no per-element precoder (e.g. decohered). */
+  available: boolean
+  reason?: string
+  beam?: string
+  /** Elements per row / column of the URA (square here). */
+  n_h?: number
+  n_v?: number
+  /** Panel horizontal / panel-up unit axes in the server (Z-up) frame. */
+  axis_h?: Vec3
+  axis_v?: Vec3
+  /** Inter-element spacing [m] and physical panel carrier [Hz]. */
+  spacing_m?: number
+  freq_hz?: number
+  /** Per-element complex weights, element order k = a*n_h + b (a row, b col). */
+  real?: number[]
+  imag?: number[]
+  provenance?: string
+}
+
+export type PrecoderFetch =
+  | { ok: true; data: PrecoderResult }
+  | { ok: false; notPrecomputed: boolean; error: string }
+
+/**
+ * Synthesised precoder x + array geometry for the current beam + focus, so the
+ * frontend can draw the realised transmit radiation pattern. Same parameter
+ * shape as the live body map. A 409 (missing Q pack for ECBF) is reported as
+ * not-precomputed; a beam with no per-element precoder returns available=false.
+ */
+export async function fetchPrecoder(params: LiveBodyMapParams, signal?: AbortSignal): Promise<PrecoderFetch> {
+  const path = `${STUDIO}/precoder`
+  const res = await fetchWithRetry(`${BASE}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      mesh: params.mesh,
+      condition: params.condition,
+      array_n: params.arrayN,
+      seed: params.seed,
+      beam: params.beam,
+      focus_mode: params.focusMode,
+      focus_xyz: params.focusXyz,
+      frequency_ghz: params.frequencyGhz,
+      ecbf_budget_frac: params.ecbfBudgetFrac ?? 0.5,
+      ue_antenna: params.ueAntenna ?? 'dipole',
+      ue_idx: params.ueIdx ?? 4,
+    }),
+    signal,
+  })
+  if (res.status === 401) {
+    handle401()
+    throw new ApiError(`POST ${path} failed: 401 Unauthorized`, 401)
+  }
+  if (res.status === 409) {
+    const body = await res.json().catch(() => ({}))
+    return {
+      ok: false,
+      notPrecomputed: true,
+      error: typeof body?.error === 'string' ? body.error : 'Precoder not available for this combination',
+    }
+  }
+  if (!res.ok) throw new ApiError(await extractErrorMessage(res, 'POST', path), res.status)
+  const data = (await res.json()) as PrecoderResult
+  return { ok: true, data }
+}
+
 export async function fetchBodyMap(params: BodyMapParams): Promise<BodyMapFetch> {
   const qs = new URLSearchParams({
     mesh: params.mesh,
