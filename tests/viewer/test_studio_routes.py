@@ -58,7 +58,7 @@ def test_manifest_returns_default_tuple(client):
     assert scene["condition"] == "los"
     assert scene["array_n"] == 16
     assert scene["seed"] == 0
-    assert scene["beam"] == "mrt"
+    assert scene["beam"] == "ecbf"
     assert scene["frequency_ghz"] == 10
     assert scene["plane"]["orientation"] == "transverse"
     assert scene["fieldQuantity"] == "S"

@@ -105,19 +105,24 @@ export default function StudioScene() {
   const showRays = useStudioStore((s) => s.showRays)
   const showArrayPattern = useStudioStore((s) => s.showArrayPattern)
   const showRxPattern = useStudioStore((s) => s.showRxPattern)
-  const arrayPatternScale = useStudioStore((s) => s.arrayPatternScale)
+  const arrayPatternSizeM = useStudioStore((s) => s.arrayPatternSizeM)
   const arrayN = useStudioStore((s) => s.arrayN)
   const precoder = useStudioStore((s) => s.precoder)
   const background = useStudioStore((s) => s.background)
   const screenshotMode = useStudioStore((s) => s.screenshotMode)
   const cameraView = useStudioStore((s) => s.cameraView)
-  const wireframe = useStudioStore((s) => s.wireframe)
   const pickFocusOnBody = useStudioStore((s) => s.pickFocusOnBody)
   const showBeamAxis = useStudioStore((s) => s.showBeamAxis)
 
-  // In screenshot mode the backdrop is always transparent regardless of the
-  // background toggle, so the captured PNG drops onto any figure.
-  const bgColor = screenshotMode ? null : BG_COLOR[background]
+  // The pattern lobes (precoder lobe and the uniform-excitation stand-in) are
+  // built at a nominal 0.6 m radius, so the user-facing lobe size in metres maps
+  // to a plain geometry scale factor.
+  const patternScale = arrayPatternSizeM / 0.6
+
+  // In screenshot mode the backdrop is a clean white (KISS: a figure-ready PNG
+  // on white, not a transparent buffer to composite). The background toggle still
+  // drives the working view.
+  const bgColor = screenshotMode ? '#ffffff' : BG_COLOR[background]
   // Chrome (grid, focus marker, beam-axis label) only in the dark working view.
   const showChrome = !screenshotMode && background === 'dark'
 
@@ -219,7 +224,7 @@ export default function StudioScene() {
         config={arrayConfig}
         freqHz={frequencyGhz * 1e9}
         showPattern={showArrayPattern && !precoder}
-        patternScale={arrayPatternScale}
+        patternScale={patternScale}
         patternDetail={40}
       />
 
@@ -229,7 +234,7 @@ export default function StudioScene() {
         <StudioTxPattern
           precoder={precoder}
           position={bsScene}
-          scale={arrayPatternScale}
+          scale={patternScale}
           screenshot={screenshotMode}
         />
       )}
@@ -272,7 +277,6 @@ export default function StudioScene() {
         colormapLockedMaxOverride={bodyScale.vmax}
         colormapLockedMinOverride={bodyScale.vmin}
         ratioModeOverride={false}
-        wireframeOverride={wireframe}
         colorFn={colorFn}
         doubleSided
         onClick={pickFocusOnBody ? onBodyClick : undefined}

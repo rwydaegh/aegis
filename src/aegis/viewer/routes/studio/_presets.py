@@ -41,7 +41,7 @@ def default_scene() -> dict:
         "array_n": 16,
         "seed": 0,
         "ue": "dipole",
-        "beam": "mrt",
+        "beam": "ecbf",
         "focus_mode": "free-space",
         "focus_xyz": list(_FOCUS_CHEST),
         "frequency_ghz": 10,

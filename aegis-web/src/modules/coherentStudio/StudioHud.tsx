@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import GradientBar, { type GradientBarTick } from '@/components/hud/GradientBar'
+import Tex from '@/components/ui/Tex'
 import ProvenanceDot from '@/components/panels/ProvenanceDot'
 import { useStudioStore } from './store'
 import { useStudioScales } from './useStudioScales'
@@ -21,10 +21,10 @@ function fmt(value: number | null | undefined, unit = ''): string {
   return `${value.toPrecision(3)}${unit}`
 }
 
-// CSS gradient sampled from the active colormap, high value at the top to match
-// the GradientBar tick layout (pct 0 = top = vmax).
+// CSS gradient sampled from the active colormap, high value at the top (pct 0 =
+// top = vmax), so the bar reads like a printed colour scale.
 function colormapGradient(name: string): string {
-  const N = 8
+  const N = 16
   const stops: string[] = []
   for (let i = 0; i <= N; i++) {
     const pct = i / N
@@ -35,7 +35,12 @@ function colormapGradient(name: string): string {
   return `linear-gradient(to bottom, ${stops.join(', ')})`
 }
 
-function buildTicks(scale: ResolvedScale): GradientBarTick[] {
+interface BarTick {
+  label: string
+  pct: number
+}
+
+function buildTicks(scale: ResolvedScale): BarTick[] {
   const N = 5
   // In log/dB mode the bar spans the dynamic-range window [logFloor, vmax]; in
   // linear mode it spans [vmin, vmax]. pct 0 = top = vmax.
@@ -47,6 +52,98 @@ function buildTicks(scale: ResolvedScale): GradientBarTick[] {
     const at = hi - frac * (hi - lo)
     return { label: fmt(useLog ? 10 ** at : at), pct: frac }
   })
+}
+
+// Fractional position (0 = top = vmax, 1 = bottom) of the zero level, or null
+// when zero is off a linear scale's span (log scales have no zero). A signed
+// (diverging) scale puts zero at its centre; a non-negative scale pins its floor
+// to zero so it lands at the bottom. The user asked for zero always marked.
+function zeroPct(scale: ResolvedScale): number | null {
+  if (scale.logMode) return null
+  const { vmin, vmax } = scale
+  if (vmax <= vmin || vmin > 0 || vmax < 0) return null
+  return (vmax - 0) / (vmax - vmin)
+}
+
+// LaTeX symbol for a slice / body quantity. Falls back to the raw key.
+const QUANTITY_TEX: Record<string, string> = {
+  S: 'S',
+  poynting: '|\\langle\\mathbf{S}\\rangle|',
+  absE: '|E|',
+  ReEx: '\\mathrm{Re}\\,E_x',
+  ReEy: '\\mathrm{Re}\\,E_y',
+  ReEz: '\\mathrm{Re}\\,E_z',
+}
+
+function quantityTex(quantity: string): string {
+  return QUANTITY_TEX[quantity] ?? quantity
+}
+
+// Body-map symbol. Every map is absorbed power density S_ab except 'amp', which
+// is the dimensionless amplification ratio.
+function bodyTitleTex(quantity: string): string {
+  return quantity === 'amp' ? 'A' : 'S_{\\mathrm{ab}}'
+}
+
+// Render a units string as upright LaTeX, e.g. "W/m^2 per W" -> roman with a
+// squared exponent and thin spaces. Tex has throwOnError off, so an odd unit
+// string degrades gracefully rather than breaking the HUD.
+function unitsTex(units: string): string {
+  const u = units.replace(/\^(\d+)/g, '^{$1}').replace(/ /g, '\\,')
+  return `\\left[\\mathrm{${u}}\\right]`
+}
+
+const BAR_H = 188
+const BAR_W = 14
+
+// One scientific colour scale: a white box with a square black border, a
+// LaTeX-set definition, evenly spaced ticks, and an explicit zero marker (centre
+// for a diverging scale, bottom for a non-negative one).
+function ScientificColorBar({ scale, titleTex, units }: { scale: ResolvedScale; titleTex: string; units: string }) {
+  const gradient = useMemo(() => colormapGradient(scale.colormap), [scale.colormap])
+  const ticks = buildTicks(scale)
+  const z = zeroPct(scale)
+  return (
+    <div style={{ background: '#ffffff', border: '1px solid #000000', padding: '8px 10px', color: '#000000', fontFamily: 'serif' }}>
+      <div style={{ fontSize: 13, marginBottom: 6, whiteSpace: 'nowrap' }}>
+        <Tex math={units && units !== '-' ? `${titleTex}\\;${unitsTex(units)}` : titleTex} />
+      </div>
+      <div style={{ display: 'flex', gap: 6 }}>
+        <div style={{ position: 'relative', height: BAR_H, width: 54 }}>
+          {ticks.map(({ label, pct }, i) => (
+            <span
+              key={i}
+              style={{
+                position: 'absolute',
+                right: 0,
+                top: pct * BAR_H - 7,
+                fontSize: 11,
+                fontFamily: 'monospace',
+                fontVariantNumeric: 'tabular-nums',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {label}
+            </span>
+          ))}
+        </div>
+        <div style={{ position: 'relative', height: BAR_H, width: BAR_W }}>
+          <div style={{ background: gradient, height: BAR_H, width: BAR_W, border: '1px solid #000000' }} />
+          {ticks.map(({ pct }, i) => (
+            <div key={i} style={{ position: 'absolute', top: pct * BAR_H, left: -3, width: 3, height: 1, background: '#000000' }} />
+          ))}
+          {z != null && (
+            <>
+              <div style={{ position: 'absolute', top: z * BAR_H, left: -5, width: BAR_W + 7, height: 2, background: '#000000' }} />
+              <span style={{ position: 'absolute', top: z * BAR_H - 7, left: BAR_W + 5, fontSize: 11, fontFamily: 'monospace', fontWeight: 700 }}>
+                0
+              </span>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 // --- Local computing pill: shimmer while computing, else last-slice summary ---
@@ -118,43 +215,31 @@ function ProvenanceCard() {
   )
 }
 
-// --- Colour bar for the active colour scale ------------------------------------
+// --- Colour bars: one for the field slice, one for the deposited body map ------
+// They can carry different quantities and (in per-surface scope) different
+// ranges, so each gets its own scale; shown side by side.
 function StudioColorBar() {
   const sliceResult = useStudioStore((s) => s.sliceResult)
   const bodyMap = useStudioStore((s) => s.bodyMap)
-  const scaleScope = useStudioStore((s) => s.scaleScope)
-  const scaleMode = useStudioStore((s) => s.scaleMode)
-  const robustClip = useStudioStore((s) => s.robustClip)
+  const bodyMapQuantity = useStudioStore((s) => s.bodyMapQuantity)
   const scales = useStudioScales()
 
-  // The legend follows the slice scale when a slice is present (its diverging map
-  // for signed components, its dB window in log); otherwise it falls back to the
-  // body-map scale so a coloured body is never legend-less.
-  const scale = sliceResult ? scales.slice : bodyMap ? scales.body : null
-  const gradient = useMemo(() => (scale ? colormapGradient(scale.colormap) : ''), [scale])
-  if (!scale) return null
+  if (!sliceResult && !bodyMap) return null
 
-  const quantity = sliceResult ? sliceResult.quantity : 'S_ab (deposited)'
-  const units = sliceResult ? sliceResult.units || '--' : 'W/m^2 per W'
-  const ticks = buildTicks(scale)
-
-  // Honest footer: what the scale actually is (scope / robust / log dynamic range).
-  const tags = [
-    scaleScope === 'shared' ? 'shared' : 'per-surface',
-    robustClip ? 'robust' : null,
-    scaleMode === 'log' ? `${Math.round(scale.dynamicRangeDb)} dB` : scaleMode === 'fixed' ? 'fixed' : null,
-  ].filter(Boolean)
-
-  const title = (
-    <span style={{ fontSize: 12, color: '#cdd' }}>
-      {quantity} ({units})
-    </span>
+  return (
+    <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
+      {sliceResult && (
+        <ScientificColorBar
+          scale={scales.slice}
+          titleTex={quantityTex(sliceResult.quantity)}
+          units={sliceResult.units || '-'}
+        />
+      )}
+      {bodyMap && (
+        <ScientificColorBar scale={scales.body} titleTex={bodyTitleTex(bodyMapQuantity)} units={bodyMap.units || 'W/m^2 per W'} />
+      )}
+    </div>
   )
-  const footer = (
-    <span style={{ fontSize: 10, color: '#8a93a6', letterSpacing: 0.3 }}>{tags.join(' · ')}</span>
-  )
-
-  return <GradientBar gradient={gradient} ticks={ticks} title={title} footer={footer} />
 }
 
 // Overlay container, mounted inside the scene column of StudioModule.

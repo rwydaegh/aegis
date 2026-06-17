@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import * as THREE from 'three'
+import { Line } from '@react-three/drei'
 import { useStudioStore } from '../store'
 
 // The real factory blockers from the traced scene: metallic scatterer cuboids
@@ -20,23 +21,33 @@ import { useStudioStore } from '../store'
 // brushed-metal specular sheen on both the dark and white backgrounds.
 const METAL_COLOR = '#c4cad3'
 const BLOCKER_COLOR = '#aebfcf'
-const ROOM_COLOR = '#8895a5'
 const METALNESS = 0.45
 const ROUGHNESS = 0.4
 
 export default function StudioBlockers() {
   const scene = useStudioStore((s) => s.scene)
   const showBlockers = useStudioStore((s) => s.showBlockers)
-  const showRoomOutline = useStudioStore((s) => s.showRoomOutline)
+  const background = useStudioStore((s) => s.background)
 
-  // Room wireframe edges, rebuilt only when the room dimensions change.
-  const roomEdges = useMemo(() => {
+  // Room wireframe edge segments (point pairs), rebuilt only when the room
+  // dimensions change. Drawn with drei's Line so the stroke is genuinely thick
+  // (WebGL lineWidth on lineSegments is clamped to 1 px on most drivers).
+  const roomEdgePoints = useMemo<[number, number, number][] | null>(() => {
     if (!scene) return null
     const [sx, sy, sz] = scene.room_dims
-    return new THREE.EdgesGeometry(new THREE.BoxGeometry(sx, sy, sz))
+    const edges = new THREE.EdgesGeometry(new THREE.BoxGeometry(sx, sy, sz))
+    const pos = edges.attributes.position as THREE.BufferAttribute
+    const pts: [number, number, number][] = []
+    for (let i = 0; i < pos.count; i++) pts.push([pos.getX(i), pos.getY(i), pos.getZ(i)])
+    edges.dispose()
+    return pts
   }, [scene])
 
   if (!scene) return null
+
+  // The factory outline reads as plain line-art: black on the white / figure
+  // backdrop, white on the dark working view.
+  const roomColor = background === 'white' ? '#000000' : '#ffffff'
 
   return (
     <group rotation={[-Math.PI / 2, 0, 0]}>
@@ -63,12 +74,16 @@ export default function StudioBlockers() {
         </mesh>
       )}
 
-      {showRoomOutline && roomEdges && (
+      {roomEdgePoints && (
         // Room box is centred at the world origin (BS at x=-13, far wall at +x),
-        // floor at z=0 so the centre sits at z = room_height / 2.
-        <lineSegments position={[0, 0, scene.room_dims[2] / 2]} geometry={roomEdges}>
-          <lineBasicMaterial color={ROOM_COLOR} transparent opacity={0.4} />
-        </lineSegments>
+        // floor at z=0 so the centre sits at z = room_height / 2. Always drawn.
+        <Line
+          points={roomEdgePoints}
+          segments
+          color={roomColor}
+          lineWidth={2.5}
+          position={[0, 0, scene.room_dims[2] / 2]}
+        />
       )}
     </group>
   )

@@ -91,21 +91,21 @@ interface StudioState {
   rayColorMode: StudioRayColorMode
   /** Draw the real factory blockers (metallic scatterers + NLOS slab). */
   showBlockers: boolean
-  /** Draw the room as a lineart wireframe (the factory outline). */
-  showRoomOutline: boolean
   /** Draw the dashed BS -> focus beam axis and its range / downtilt label. */
   showBeamAxis: boolean
   /** Scene backdrop (dark / white / transparent). Render-only. */
   background: StudioBackground
-  /** Multiplier on the BS array pattern lobe so it reads from the Rx vantage. */
-  arrayPatternScale: number
+  /** Visible radius (metres) of the BS array pattern lobe. The panel is ~14 m
+   * from the body, so the true lobe is tiny; this sets a legible display size. */
+  arrayPatternSizeM: number
   /** Strip chrome (grid, gizmos, helpers) for a clean figure capture. */
   screenshotMode: boolean
   /** Draw the 4 cm^2 ICNIRP reference square on the slice at the focus. */
   showRefSquare: boolean
+  /** Draw the slice TransformControls gizmo (the RGB axis triad on the plane). */
+  showGizmo: boolean
   /** Camera view: free orbit, or locked down the BS -> focus beam axis. */
   cameraView: StudioCameraView
-  wireframe: boolean
   /** When true, clicking the body moves the focus to the clicked surface point. */
   pickFocusOnBody: boolean
   /** Render the focal lobe as a 3D field-volume cloud (own fetch). */
@@ -168,14 +168,13 @@ interface StudioState {
   setRayThickness: (rayThickness: number) => void
   setRayColorMode: (rayColorMode: StudioRayColorMode) => void
   setShowBlockers: (showBlockers: boolean) => void
-  setShowRoomOutline: (showRoomOutline: boolean) => void
   setShowBeamAxis: (showBeamAxis: boolean) => void
   setBackground: (background: StudioBackground) => void
-  setArrayPatternScale: (arrayPatternScale: number) => void
+  setArrayPatternSizeM: (arrayPatternSizeM: number) => void
   setScreenshotMode: (screenshotMode: boolean) => void
   setShowRefSquare: (showRefSquare: boolean) => void
+  setShowGizmo: (showGizmo: boolean) => void
   setCameraView: (cameraView: StudioCameraView) => void
-  setWireframe: (wireframe: boolean) => void
   setPickFocusOnBody: (pickFocusOnBody: boolean) => void
   setShowVolume: (showVolume: boolean) => void
   setVolumeRes: (volumeRes: number) => void
@@ -204,11 +203,11 @@ export const useStudioStore = create<StudioState>()((set) => ({
   // original unsuffixed names. The manifest's default_ue_idx confirms this.
   ueIdx: 4,
   ueAntenna: 'dipole',
-  beam: '',
+  beam: 'ecbf',
   focusMode: 'free-space',
   focusXyz: [0.923, -0.005, 0.734],
   frequencyGhz: 10,
-  plane: { orientation: 'free', normalXyz: [0, 1, 0], extentM: 0.4, res: 160 },
+  plane: { orientation: 'free', normalXyz: [0, 1, 0], extentM: 0.8, res: 160 },
   fieldQuantity: 'S',
   // Open on the live, focus-tracking deposited map so the headline interaction
   // (move the focus, watch the body recolour) works out of the box. Static
@@ -234,19 +233,18 @@ export const useStudioStore = create<StudioState>()((set) => ({
   showRays: true,
   showArrayPattern: true,
   showRxPattern: true,
-  rxPatternExtentM: 0.5,
+  rxPatternExtentM: 0.3,
   rayCutoffM: 0.5,
   rayThickness: 1,
   rayColorMode: 'power',
   showBlockers: true,
-  showRoomOutline: true,
   showBeamAxis: true,
-  background: 'dark',
-  arrayPatternScale: 1,
+  background: 'white',
+  arrayPatternSizeM: 1.8,
   screenshotMode: false,
   showRefSquare: true,
+  showGizmo: true,
   cameraView: 'orbit',
-  wireframe: false,
   pickFocusOnBody: false,
   showVolume: false,
   volumeRes: 24,
@@ -311,14 +309,13 @@ export const useStudioStore = create<StudioState>()((set) => ({
   setRayThickness: (rayThickness) => set({ rayThickness }),
   setRayColorMode: (rayColorMode) => set({ rayColorMode }),
   setShowBlockers: (showBlockers) => set({ showBlockers }),
-  setShowRoomOutline: (showRoomOutline) => set({ showRoomOutline }),
   setShowBeamAxis: (showBeamAxis) => set({ showBeamAxis }),
   setBackground: (background) => set({ background }),
-  setArrayPatternScale: (arrayPatternScale) => set({ arrayPatternScale }),
+  setArrayPatternSizeM: (arrayPatternSizeM) => set({ arrayPatternSizeM }),
   setScreenshotMode: (screenshotMode) => set({ screenshotMode }),
   setShowRefSquare: (showRefSquare) => set({ showRefSquare }),
+  setShowGizmo: (showGizmo) => set({ showGizmo }),
   setCameraView: (cameraView) => set({ cameraView }),
-  setWireframe: (wireframe) => set({ wireframe }),
   setPickFocusOnBody: (pickFocusOnBody) => set({ pickFocusOnBody }),
   setShowVolume: (showVolume) => set({ showVolume }),
   setVolumeRes: (volumeRes) => set({ volumeRes }),

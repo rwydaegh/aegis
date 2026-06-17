@@ -227,18 +227,16 @@ export default function StudioPanel() {
   const setRayThickness = useStudioStore((s) => s.setRayThickness)
   const rayColorMode = useStudioStore((s) => s.rayColorMode)
   const setRayColorMode = useStudioStore((s) => s.setRayColorMode)
-  const wireframe = useStudioStore((s) => s.wireframe)
-  const setWireframe = useStudioStore((s) => s.setWireframe)
   const showBlockers = useStudioStore((s) => s.showBlockers)
   const setShowBlockers = useStudioStore((s) => s.setShowBlockers)
-  const showRoomOutline = useStudioStore((s) => s.showRoomOutline)
-  const setShowRoomOutline = useStudioStore((s) => s.setShowRoomOutline)
   const showBeamAxis = useStudioStore((s) => s.showBeamAxis)
   const setShowBeamAxis = useStudioStore((s) => s.setShowBeamAxis)
+  const showGizmo = useStudioStore((s) => s.showGizmo)
+  const setShowGizmo = useStudioStore((s) => s.setShowGizmo)
   const background = useStudioStore((s) => s.background)
   const setBackground = useStudioStore((s) => s.setBackground)
-  const arrayPatternScale = useStudioStore((s) => s.arrayPatternScale)
-  const setArrayPatternScale = useStudioStore((s) => s.setArrayPatternScale)
+  const arrayPatternSizeM = useStudioStore((s) => s.arrayPatternSizeM)
+  const setArrayPatternSizeM = useStudioStore((s) => s.setArrayPatternSizeM)
   const screenshotMode = useStudioStore((s) => s.screenshotMode)
   const setScreenshotMode = useStudioStore((s) => s.setScreenshotMode)
   const showRefSquare = useStudioStore((s) => s.showRefSquare)
@@ -509,21 +507,21 @@ export default function StudioPanel() {
         />
       </Group>
 
-      <Group title="Overlays" active={showArrayPattern || showRxPattern || showBeamAxis || showRefSquare || wireframe}>
+      <Group title="Overlays" active={showArrayPattern || showRxPattern || showBeamAxis || showRefSquare || showGizmo}>
         <Checkbox checked={showArrayPattern} onChange={setShowArrayPattern} title="Draw the base-station array pattern lobe.">
           Show array pattern
         </Checkbox>
-        <FieldLabel title="Cosmetically blow up the array pattern lobe so it reads from the distant Rx vantage (the array is ~14 m away). 1 = true size.">
-          Pattern magnify
+        <FieldLabel title="Visible radius of the array pattern lobe. The panel is ~14 m from the body so the true lobe is tiny; this is a display size, not the physical beamwidth.">
+          Pattern size
         </FieldLabel>
         <Slider
-          value={arrayPatternScale}
-          min={1}
-          max={60}
-          step={1}
-          onChange={setArrayPatternScale}
+          value={arrayPatternSizeM}
+          min={0.6}
+          max={6}
+          step={0.2}
+          onChange={setArrayPatternSizeM}
           disabled={!showArrayPattern}
-          labelOf={(v) => `${v}x`}
+          labelOf={(v) => `${v.toFixed(1)} m`}
         />
         <Checkbox checked={showRxPattern} onChange={setShowRxPattern} title="Draw the UE receive antenna pattern |C_R(k)| as a 3D lobe at the focus (r_UE). Reflects the selected receive antenna in the world (Z-up) frame the precoder uses.">
           Show Rx pattern
@@ -546,14 +544,18 @@ export default function StudioPanel() {
           Beam axis
         </Checkbox>
         <Checkbox
+          checked={showGizmo}
+          onChange={setShowGizmo}
+          title="Show the slice's drag gizmo (the RGB axis triad). Turn off for an unobstructed view; it is always hidden in screenshot mode."
+        >
+          Slice gizmo
+        </Checkbox>
+        <Checkbox
           checked={showRefSquare}
           onChange={setShowRefSquare}
           title="Draw the 4 cm² (2 cm x 2 cm) ICNIRP spatial-averaging reference square on the slice at the focus."
         >
           Reference square (4 cm²)
-        </Checkbox>
-        <Checkbox checked={wireframe} onChange={setWireframe} title="Render the phantom as a wireframe.">
-          Body wireframe
         </Checkbox>
       </Group>
 
@@ -569,14 +571,7 @@ export default function StudioPanel() {
         >
           Show blockers
         </Checkbox>
-        <Checkbox
-          checked={showRoomOutline}
-          onChange={setShowRoomOutline}
-          title="Draw the room as a lineart wireframe (the factory outline) to convey the 3D space."
-        >
-          Room outline
-        </Checkbox>
-        <FieldLabel title="Scene backdrop. Transparent exports a figure-ready PNG with no background.">Background</FieldLabel>
+        <FieldLabel title="Scene backdrop for the working view. The room outline is always drawn (black on white, white on dark).">Background</FieldLabel>
         <Segmented<'dark' | 'white' | 'transparent'>
           value={background}
           options={[
