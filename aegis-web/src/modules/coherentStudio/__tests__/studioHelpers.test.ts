@@ -6,6 +6,9 @@ import {
   coolwarmColor,
   isSignedQuantity,
   resolveSliceDisplay,
+  rayWidth,
+  rayOpacity,
+  rayHeadScale,
 } from '../scene/studioHelpers'
 
 describe('scalarToLutIndex', () => {
@@ -104,6 +107,30 @@ describe('coolwarmColor', () => {
   it('clamps out-of-range t', () => {
     expect(coolwarmColor(-1)).toEqual(coolwarmColor(0))
     expect(coolwarmColor(2)).toEqual(coolwarmColor(1))
+  })
+})
+
+describe('ray power -> visual encodings', () => {
+  it('rayWidth: strong rays are far bolder than weak ones, and scale with thickness', () => {
+    expect(rayWidth(1)).toBeGreaterThan(rayWidth(0) * 5) // strong/weak contrast is large
+    expect(rayWidth(0.5, 2)).toBeCloseTo(2 * rayWidth(0.5, 1)) // thickness is a linear multiplier
+    expect(rayWidth(1)).toBeGreaterThan(rayWidth(0.5)) // monotonic in power
+  })
+
+  it('rayWidth: clamps out-of-range t', () => {
+    expect(rayWidth(-1)).toBe(rayWidth(0))
+    expect(rayWidth(2)).toBe(rayWidth(1))
+  })
+
+  it('rayOpacity: faint paths recede but stay visible, strong paths near-solid', () => {
+    expect(rayOpacity(0)).toBeGreaterThan(0.2)
+    expect(rayOpacity(0)).toBeLessThan(rayOpacity(1))
+    expect(rayOpacity(1)).toBeLessThanOrEqual(1)
+  })
+
+  it('rayHeadScale: weak heads shrink but never vanish', () => {
+    expect(rayHeadScale(0)).toBeGreaterThan(0)
+    expect(rayHeadScale(1)).toBeGreaterThan(rayHeadScale(0))
   })
 })
 

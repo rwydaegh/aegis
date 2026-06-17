@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 
 // Shared presentational primitives for the studio control surface. Inline-styled
 // to match the exposureLab panels (no Tailwind dependency, no semicolons).
@@ -13,15 +13,91 @@ const selectStyle: React.CSSProperties = {
   borderRadius: 4,
 }
 
-/** A titled group with a thin divider, used to chunk the panel into sections. */
-export function Group({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
+// Persist each group's open/closed state across reloads, keyed by title. Wrapped
+// so a locked-down browser (no localStorage) degrades to in-memory state.
+function readCollapsed(title: string, fallback: boolean): boolean {
+  try {
+    const v = localStorage.getItem(`studio.group.${title}`)
+    return v == null ? fallback : v === '1'
+  } catch {
+    return fallback
+  }
+}
+function writeCollapsed(title: string, collapsed: boolean) {
+  try {
+    localStorage.setItem(`studio.group.${title}`, collapsed ? '1' : '0')
+  } catch {
+    // ignore: state still lives in React for this session
+  }
+}
+
+/**
+ * A titled, collapsible group used to chunk the panel into sections. The header
+ * toggles the body; the open/closed state is remembered per title so a long
+ * control surface stays where the user left it. `defaultCollapsed` seeds the
+ * first-ever state (advanced / analysis sections start folded). An `active` dot
+ * flags a section that is currently doing something even while collapsed.
+ */
+export function Group({
+  title,
+  hint,
+  children,
+  defaultCollapsed = false,
+  active = false,
+}: {
+  title: string
+  hint?: string
+  children: ReactNode
+  defaultCollapsed?: boolean
+  active?: boolean
+}) {
+  const [collapsed, setCollapsed] = useState(() => readCollapsed(title, defaultCollapsed))
+  const toggle = () => {
+    const next = !collapsed
+    setCollapsed(next)
+    writeCollapsed(title, next)
+  }
   return (
-    <div style={{ margin: '18px 0 0' }}>
-      <h2 style={{ fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5, color: '#7a8', margin: '0 0 8px' }}>
-        {title}
-      </h2>
-      {hint && <p style={{ fontSize: 11, color: '#666', margin: '0 0 8px' }}>{hint}</p>}
-      {children}
+    <div style={{ margin: '14px 0 0', borderTop: '1px solid #1a1a22', paddingTop: 12 }}>
+      <button
+        type="button"
+        onClick={toggle}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          width: '100%',
+          padding: 0,
+          margin: '0 0 8px',
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          textAlign: 'left',
+        }}
+      >
+        <span
+          style={{
+            display: 'inline-block',
+            width: 8,
+            color: '#5a7',
+            fontSize: 10,
+            transform: collapsed ? 'rotate(-90deg)' : 'none',
+            transition: 'transform 0.12s ease',
+          }}
+        >
+          ▾
+        </span>
+        <h2 style={{ flex: 1, fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5, color: '#7a8', margin: 0 }}>
+          {title}
+        </h2>
+        {active && <span style={{ width: 6, height: 6, borderRadius: 3, background: '#5cf', boxShadow: '0 0 5px #5cf' }} />}
+      </button>
+      {!collapsed && (
+        <>
+          {hint && <p style={{ fontSize: 11, color: '#666', margin: '0 0 8px' }}>{hint}</p>}
+          {children}
+        </>
+      )}
     </div>
   )
 }

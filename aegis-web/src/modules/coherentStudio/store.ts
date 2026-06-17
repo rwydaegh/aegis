@@ -26,6 +26,9 @@ export type StudioCameraView = 'orbit' | 'bs-axis'
 /** UE receive antenna pattern C_R(k); shapes the matched filter, hence the
  * precoder and the live (deposited / slice / volume) maps. */
 export type StudioUeAntenna = 'isotropic' | 'vertical' | 'dipole' | 'patch'
+/** How the arrival rays are tinted: by per-path power on the active colormap, or
+ * a single neutral colour (so the rays read as geometry, not as a second field). */
+export type StudioRayColorMode = 'power' | 'mono'
 
 interface StudioState {
   // --- Parameters (all positions in SERVER / Z-up metres) ---
@@ -81,10 +84,17 @@ interface StudioState {
   /** Gap (metres) between the focus and the ray arrowheads, so the rays stop
    * short of the hotspot. Independent of the Rx pattern extent. Render-only. */
   rayCutoffM: number
+  /** Overall thickness multiplier on the arrival rays. Per-ray width still scales
+   * with path power on top of this, so it sets how bold the strong rays read. */
+  rayThickness: number
+  /** Tint the rays by power (colormap) or with a single neutral colour. */
+  rayColorMode: StudioRayColorMode
   /** Draw the real factory blockers (metallic scatterers + NLOS slab). */
   showBlockers: boolean
   /** Draw the room as a lineart wireframe (the factory outline). */
   showRoomOutline: boolean
+  /** Draw the dashed BS -> focus beam axis and its range / downtilt label. */
+  showBeamAxis: boolean
   /** Scene backdrop (dark / white / transparent). Render-only. */
   background: StudioBackground
   /** Multiplier on the BS array pattern lobe so it reads from the Rx vantage. */
@@ -155,8 +165,11 @@ interface StudioState {
   setShowRxPattern: (showRxPattern: boolean) => void
   setRxPatternExtentM: (rxPatternExtentM: number) => void
   setRayCutoffM: (rayCutoffM: number) => void
+  setRayThickness: (rayThickness: number) => void
+  setRayColorMode: (rayColorMode: StudioRayColorMode) => void
   setShowBlockers: (showBlockers: boolean) => void
   setShowRoomOutline: (showRoomOutline: boolean) => void
+  setShowBeamAxis: (showBeamAxis: boolean) => void
   setBackground: (background: StudioBackground) => void
   setArrayPatternScale: (arrayPatternScale: number) => void
   setScreenshotMode: (screenshotMode: boolean) => void
@@ -223,8 +236,11 @@ export const useStudioStore = create<StudioState>()((set) => ({
   showRxPattern: true,
   rxPatternExtentM: 0.5,
   rayCutoffM: 0.5,
+  rayThickness: 1,
+  rayColorMode: 'power',
   showBlockers: true,
   showRoomOutline: true,
+  showBeamAxis: true,
   background: 'dark',
   arrayPatternScale: 1,
   screenshotMode: false,
@@ -292,8 +308,11 @@ export const useStudioStore = create<StudioState>()((set) => ({
   setShowRxPattern: (showRxPattern) => set({ showRxPattern }),
   setRxPatternExtentM: (rxPatternExtentM) => set({ rxPatternExtentM }),
   setRayCutoffM: (rayCutoffM) => set({ rayCutoffM }),
+  setRayThickness: (rayThickness) => set({ rayThickness }),
+  setRayColorMode: (rayColorMode) => set({ rayColorMode }),
   setShowBlockers: (showBlockers) => set({ showBlockers }),
   setShowRoomOutline: (showRoomOutline) => set({ showRoomOutline }),
+  setShowBeamAxis: (showBeamAxis) => set({ showBeamAxis }),
   setBackground: (background) => set({ background }),
   setArrayPatternScale: (arrayPatternScale) => set({ arrayPatternScale }),
   setScreenshotMode: (screenshotMode) => set({ screenshotMode }),

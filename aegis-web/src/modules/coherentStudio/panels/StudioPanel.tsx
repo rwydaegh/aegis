@@ -1,5 +1,11 @@
 import type { StudioFocusMode, Vec3 } from '../api'
-import { useStudioStore, type StudioCameraView, type StudioScaleMode, type StudioUeAntenna } from '../store'
+import {
+  useStudioStore,
+  type StudioCameraView,
+  type StudioRayColorMode,
+  type StudioScaleMode,
+  type StudioUeAntenna,
+} from '../store'
 import { useStudioScales } from '../useStudioScales'
 import type { StudioScaleScope } from '../scene/colorScale'
 import {
@@ -57,6 +63,11 @@ const SCALE_OPTIONS: Option<StudioScaleMode>[] = [
   { value: 'auto', label: 'Auto', title: 'Linear scale, floor pinned to zero, top taken from the data.' },
   { value: 'fixed', label: 'Fixed', title: 'Hold a user-locked min and max so frames stay comparable.' },
   { value: 'log', label: 'Log', title: 'Logarithmic over a dynamic-range window below the peak (set the dB span below).' },
+]
+
+const RAY_COLOR_OPTIONS: Option<StudioRayColorMode>[] = [
+  { value: 'power', label: 'By power', title: 'Tint each ray by its path power on the active colormap (dB scale), so colour echoes the field map.' },
+  { value: 'mono', label: 'Neutral', title: 'Draw the rays in a single neutral colour so they read as geometry and do not compete with the field colour scale. Power still drives width and opacity.' },
 ]
 
 const CAMERA_OPTIONS: Option<StudioCameraView>[] = [
@@ -212,12 +223,18 @@ export default function StudioPanel() {
   const setRxPatternExtentM = useStudioStore((s) => s.setRxPatternExtentM)
   const rayCutoffM = useStudioStore((s) => s.rayCutoffM)
   const setRayCutoffM = useStudioStore((s) => s.setRayCutoffM)
+  const rayThickness = useStudioStore((s) => s.rayThickness)
+  const setRayThickness = useStudioStore((s) => s.setRayThickness)
+  const rayColorMode = useStudioStore((s) => s.rayColorMode)
+  const setRayColorMode = useStudioStore((s) => s.setRayColorMode)
   const wireframe = useStudioStore((s) => s.wireframe)
   const setWireframe = useStudioStore((s) => s.setWireframe)
   const showBlockers = useStudioStore((s) => s.showBlockers)
   const setShowBlockers = useStudioStore((s) => s.setShowBlockers)
   const showRoomOutline = useStudioStore((s) => s.showRoomOutline)
   const setShowRoomOutline = useStudioStore((s) => s.setShowRoomOutline)
+  const showBeamAxis = useStudioStore((s) => s.showBeamAxis)
+  const setShowBeamAxis = useStudioStore((s) => s.setShowBeamAxis)
   const background = useStudioStore((s) => s.background)
   const setBackground = useStudioStore((s) => s.setBackground)
   const arrayPatternScale = useStudioStore((s) => s.arrayPatternScale)
@@ -444,8 +461,8 @@ export default function StudioPanel() {
         <StudioQuantityPicker />
       </Group>
 
-      <Group title="Display">
-        <Checkbox checked={showRays} onChange={setShowRays} title="Draw the strongest arrival rays from the base station.">
+      <Group title="Rays" active={showRays}>
+        <Checkbox checked={showRays} onChange={setShowRays} title="Draw the strongest arrival rays from the base station, pointing in toward the focus.">
           Show arrival rays
         </Checkbox>
         <FieldLabel title="How many of the strongest arrival rays to draw.">Ray count</FieldLabel>
@@ -457,6 +474,26 @@ export default function StudioPanel() {
           onChange={setTopK}
           disabled={!showRays}
           labelOf={(v) => String(v)}
+        />
+        <FieldLabel title="Overall ray thickness. Each ray's width still scales with its path power on top of this, so a higher value makes the strong arrivals bolder relative to the faint ones.">
+          Ray thickness
+        </FieldLabel>
+        <Slider
+          value={rayThickness}
+          min={0.4}
+          max={2.5}
+          step={0.1}
+          onChange={setRayThickness}
+          disabled={!showRays}
+          labelOf={(v) => `${v.toFixed(1)}x`}
+        />
+        <FieldLabel title="Colour the rays by path power (echoing the field colormap) or in a single neutral colour so they read as pure geometry. Width and opacity always track power.">
+          Ray colour
+        </FieldLabel>
+        <Segmented<StudioRayColorMode>
+          value={rayColorMode}
+          options={RAY_COLOR_OPTIONS}
+          onChange={setRayColorMode}
         />
         <FieldLabel title="Gap between the focus and the ray arrowheads, so the rays stop short of the hotspot instead of occluding it. Independent of the Rx pattern size.">
           Ray cutoff radius
@@ -470,6 +507,9 @@ export default function StudioPanel() {
           disabled={!showRays}
           labelOf={(v) => `${v.toFixed(2)} m`}
         />
+      </Group>
+
+      <Group title="Overlays" active={showArrayPattern || showRxPattern || showBeamAxis || showRefSquare || wireframe}>
         <Checkbox checked={showArrayPattern} onChange={setShowArrayPattern} title="Draw the base-station array pattern lobe.">
           Show array pattern
         </Checkbox>
@@ -499,6 +539,13 @@ export default function StudioPanel() {
           labelOf={(v) => `${v.toFixed(1)} m`}
         />
         <Checkbox
+          checked={showBeamAxis}
+          onChange={setShowBeamAxis}
+          title="Draw the dashed base-station to focus beam axis and its range / downtilt label (working dark view only)."
+        >
+          Beam axis
+        </Checkbox>
+        <Checkbox
           checked={showRefSquare}
           onChange={setShowRefSquare}
           title="Draw the 4 cm² (2 cm x 2 cm) ICNIRP spatial-averaging reference square on the slice at the focus."
@@ -510,7 +557,7 @@ export default function StudioPanel() {
         </Checkbox>
       </Group>
 
-      <Group title="Scene & capture">
+      <Group title="Scene & capture" active={screenshotMode}>
         <FieldLabel title="Free orbit lets you move the camera. BS axis parks it looking down the beam and follows the focus.">
           Camera view
         </FieldLabel>
@@ -548,7 +595,7 @@ export default function StudioPanel() {
         </Checkbox>
       </Group>
 
-      <Group title="Field volume (3D)">
+      <Group title="Field volume (3D)" defaultCollapsed active={showVolume}>
         <Checkbox
           checked={showVolume}
           onChange={setShowVolume}
@@ -680,23 +727,23 @@ export default function StudioPanel() {
         </Checkbox>
       </Group>
 
-      <Group title="Distribution">
+      <Group title="Distribution" defaultCollapsed>
         <StudioExposureHistogram />
       </Group>
 
-      <Group title="Line probe">
+      <Group title="Line probe" defaultCollapsed>
         <StudioLineProfile />
       </Group>
 
-      <Group title="Falloff">
+      <Group title="Falloff" defaultCollapsed>
         <StudioRadialFalloff />
       </Group>
 
-      <Group title="Array pattern">
+      <Group title="Array pattern" defaultCollapsed>
         <StudioPatternCut />
       </Group>
 
-      <Group title="A/B compare">
+      <Group title="A/B compare" defaultCollapsed>
         <StudioCompare />
       </Group>
     </div>

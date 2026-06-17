@@ -56,6 +56,30 @@ export function rayPowerToColorT(power: number, pMax: number, rangeDb = 40): num
 }
 
 /**
+ * Map a ray's normalised power t (0 = faintest, 1 = strongest path) to a
+ * screen-space line width. Quadratic so the strong arrivals read as bold trunks
+ * while the weak ones taper to hairlines; `thickness` is the user multiplier on
+ * top, so the strong / weak contrast is what lets the eye pick out what is
+ * actually impinging hardest.
+ */
+export function rayWidth(t: number, thickness = 1): number {
+  const x = Math.min(1, Math.max(0, t))
+  return thickness * (0.5 + 6 * x * x)
+}
+
+/** Per-ray opacity from normalised power: faint paths recede, strong ones stay solid. */
+export function rayOpacity(t: number): number {
+  const x = Math.min(1, Math.max(0, t))
+  return 0.28 + 0.62 * x
+}
+
+/** Arrowhead size multiplier from normalised power; weak heads shrink but never vanish. */
+export function rayHeadScale(t: number): number {
+  const x = Math.min(1, Math.max(0, t))
+  return 0.55 + 0.95 * x
+}
+
+/**
  * Expand a per-triangle scalar array (length nFaces) into a per-vertex array
  * (length nFaces * 3) where the three vertices of each triangle share the
  * triangle's value. Used when a per-vertex consumer is needed; note that

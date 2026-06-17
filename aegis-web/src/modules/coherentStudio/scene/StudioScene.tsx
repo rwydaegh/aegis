@@ -113,6 +113,7 @@ export default function StudioScene() {
   const cameraView = useStudioStore((s) => s.cameraView)
   const wireframe = useStudioStore((s) => s.wireframe)
   const pickFocusOnBody = useStudioStore((s) => s.pickFocusOnBody)
+  const showBeamAxis = useStudioStore((s) => s.showBeamAxis)
 
   // In screenshot mode the backdrop is always transparent regardless of the
   // background toggle, so the captured PNG drops onto any figure.
@@ -234,7 +235,7 @@ export default function StudioScene() {
       )}
 
       {/* Beam axis + range / downtilt label (working view only). */}
-      {showChrome && (
+      {showChrome && showBeamAxis && (
         <>
           <Line points={[bsScene, focusScene]} color="#00e5ff" lineWidth={1} dashed dashSize={0.3} gapSize={0.2} transparent opacity={0.5} />
           <Html position={beamMidScene} center style={{ pointerEvents: 'none' }}>
