@@ -21,6 +21,12 @@ export function useStudioManifest(): void {
         const s = useStudioStore.getState()
         s.setManifest(m)
 
+        // When the studio is opened at /studio?preset=<name>, the Figure preset
+        // is the source of truth for the params; seeding the default scene over it
+        // would clobber the panel the URL asked for. Still store the manifest (the
+        // controls need its option lists).
+        if (new URLSearchParams(window.location.search).get('preset')) return
+
         const d = (m.default_scene ?? {}) as Record<string, unknown>
         if (typeof d.mesh === 'string') s.setMesh(d.mesh)
         if (typeof d.condition === 'string') s.setCondition(d.condition)

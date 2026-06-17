@@ -1,19 +1,33 @@
-import { useCallback, useRef } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Canvas } from '@react-three/fiber'
 import StudioScene from './scene/StudioScene'
 import StudioPanel from './panels/StudioPanel'
 import StudioHud from './StudioHud'
+import StudioCaptureBridge, { type StudioCaptureFn } from './StudioCaptureBridge'
 import { useStudioManifest } from './useStudioManifest'
 import { useStudioPhantom } from './useStudioPhantom'
 import { useStudioSlice } from './useStudioSlice'
 import { useStudioVolume } from './useStudioVolume'
 import { useStudioBodyMap } from './useStudioBodyMap'
 import { useStudioCompliance } from './useStudioCompliance'
+import { useStudioScales } from './useStudioScales'
+import { useStudioStore, type StudioAspect } from './store'
+import { findFigurePreset } from './figurePresets'
+import type { ColorbarSpec } from './figureExport'
+
+// Aspect-ratio (width:height) for each letterbox option; 'free' fills the column.
+const ASPECT_WH: Record<Exclude<StudioAspect, 'free'>, [number, number]> = {
+  '1:1': [1, 1],
+  '4:5': [4, 5],
+  '3:2': [3, 2],
+  '16:9': [16, 9],
+}
 
 // Coherent Exposure Studio: the hero scene, the data-fetch loop, the grouped
-// control panel, and the HUD overlay. Layout mirrors exposureLab/LabModule: a
-// full-bleed Canvas column with absolute overlays, plus a fixed-width side panel.
+// control panel, and the HUD overlay. The scene canvas can be letterboxed to a
+// fixed aspect for figure capture; the capture re-renders at a target resolution
+// and optionally composites the colour bars.
 export default function StudioModule() {
   // Data-fetch hooks (manifest seeds params -> slice + body map fetch follow).
   useStudioManifest()
@@ -23,37 +37,115 @@ export default function StudioModule() {
   useStudioBodyMap()
   useStudioCompliance()
 
-  // The scene column; we query its <canvas> to grab the rendered pixels.
   const sceneRef = useRef<HTMLDivElement>(null)
+  const captureRef = useRef<StudioCaptureFn | null>(null)
 
-  // Capture the WebGL canvas to a PNG and download it. preserveDrawingBuffer on
-  // the Canvas keeps the last frame readable; alpha keeps a transparent
-  // background transparent in the export. A double rAF ensures the latest frame
-  // (e.g. just after toggling screenshot mode) is the one captured.
+  const exportAspect = useStudioStore((s) => s.exportAspect)
+  const exportLongEdgePx = useStudioStore((s) => s.exportLongEdgePx)
+  const colorbarFieldInExport = useStudioStore((s) => s.colorbarFieldInExport)
+  const colorbarBodyInExport = useStudioStore((s) => s.colorbarBodyInExport)
+  const beam = useStudioStore((s) => s.beam)
+  const sliceResult = useStudioStore((s) => s.sliceResult)
+  const bodyMap = useStudioStore((s) => s.bodyMap)
+  const showSlice = useStudioStore((s) => s.showSlice)
+  const applyFigurePreset = useStudioStore((s) => s.applyFigurePreset)
+  const scales = useStudioScales()
+
+  // Open at /studio?preset=<name> to land straight on a figure panel (the URL is
+  // the reproducer). Runs once on mount. Also exposes the store handle so a
+  // headless driver (and power users) can script captures and camera poses.
+  useEffect(() => {
+    ;(window as unknown as { __studioStore?: typeof useStudioStore }).__studioStore = useStudioStore
+    const name = new URLSearchParams(window.location.search).get('preset')
+    if (!name) return
+    const preset = findFigurePreset(name)
+    if (preset) applyFigurePreset(preset)
+  }, [applyFigurePreset])
+
+  // Letterbox box size: largest rectangle of the chosen aspect that fits the scene
+  // column. Recomputed on column resize and aspect change, so the scene reacts.
+  const [box, setBox] = useState<{ w: number; h: number } | null>(null)
+  useLayoutEffect(() => {
+    const el = sceneRef.current
+    if (!el) return
+    const measure = () => {
+      if (exportAspect === 'free') {
+        setBox(null)
+        return
+      }
+      const cw = el.clientWidth
+      const ch = el.clientHeight
+      const [aw, ah] = ASPECT_WH[exportAspect]
+      const ar = aw / ah
+      let w = cw
+      let h = cw / ar
+      if (h > ch) {
+        h = ch
+        w = ch * ar
+      }
+      setBox({ w: Math.round(w), h: Math.round(h) })
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [exportAspect])
+
   const capturePng = useCallback(() => {
-    const canvas = sceneRef.current?.querySelector('canvas')
-    if (!canvas) return
-    requestAnimationFrame(() =>
-      requestAnimationFrame(() => {
-        canvas.toBlob((blob) => {
-          if (!blob) return
-          const url = URL.createObjectURL(blob)
-          const a = document.createElement('a')
-          a.href = url
-          a.download = 'studio_fig.png'
-          a.click()
-          URL.revokeObjectURL(url)
-        }, 'image/png')
-      }),
-    )
-  }, [])
+    const bars: ColorbarSpec[] = []
+    if (colorbarFieldInExport && showSlice && sliceResult) {
+      bars.push({
+        title: 'field',
+        unit: scales.slice.logMode ? 'dB' : 'S',
+        vmin: scales.slice.vmin,
+        vmax: scales.slice.vmax,
+        colormap: scales.slice.colormap,
+        logMode: scales.slice.logMode,
+        dynamicRangeDb: scales.slice.dynamicRangeDb,
+      })
+    }
+    if (colorbarBodyInExport && bodyMap) {
+      bars.push({
+        title: 'S_ab',
+        unit: scales.body.logMode ? 'dB' : 'abs.',
+        vmin: scales.body.vmin,
+        vmax: scales.body.vmax,
+        colormap: scales.body.colormap,
+        logMode: scales.body.logMode,
+        dynamicRangeDb: scales.body.dynamicRangeDb,
+      })
+    }
+    void captureRef.current?.({
+      longEdgePx: exportLongEdgePx,
+      bars,
+      filename: `studio_${beam}.png`,
+    })
+  }, [colorbarFieldInExport, colorbarBodyInExport, showSlice, sliceResult, bodyMap, scales, exportLongEdgePx, beam])
+
+  const innerStyle = box
+    ? { width: box.w, height: box.h, position: 'relative' as const }
+    : { width: '100%', height: '100%', position: 'relative' as const }
 
   return (
     <div style={{ display: 'flex', height: '100vh', background: '#0a0a0f', color: '#ddd' }}>
-      <div ref={sceneRef} style={{ position: 'relative', flex: 1, minWidth: 0 }}>
-        <Canvas camera={{ position: [-5, 2.5, 5], fov: 45 }} gl={{ preserveDrawingBuffer: true, alpha: true }}>
-          <StudioScene />
-        </Canvas>
+      <div
+        ref={sceneRef}
+        style={{
+          position: 'relative',
+          flex: 1,
+          minWidth: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          overflow: 'hidden',
+        }}
+      >
+        <div style={innerStyle}>
+          <Canvas camera={{ position: [-5, 2.5, 5], fov: 45 }} gl={{ preserveDrawingBuffer: true, alpha: true }}>
+            <StudioScene />
+            <StudioCaptureBridge captureRef={captureRef} />
+          </Canvas>
+        </div>
 
         <StudioHud />
 
@@ -75,7 +167,7 @@ export default function StudioModule() {
         <button
           type="button"
           onClick={capturePng}
-          title="Save the current 3D view as a PNG (transparent in screenshot mode)"
+          title="Save the current 3D view as a PNG, re-rendered at the export resolution"
           style={{
             position: 'absolute',
             top: 44,

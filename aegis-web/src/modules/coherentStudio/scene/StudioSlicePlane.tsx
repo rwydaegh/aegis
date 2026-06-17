@@ -81,6 +81,7 @@ function buildLutTexture(name: string): THREE.DataTexture {
 // (in server Z-up coords), which the debounced slice hook turns into a refetch.
 export default function StudioSlicePlane() {
   const sliceResult = useStudioStore((s) => s.sliceResult)
+  const showSlice = useStudioStore((s) => s.showSlice)
   const setPlane = useStudioStore((s) => s.setPlane)
   const setFocusXyz = useStudioStore((s) => s.setFocusXyz)
   const screenshotMode = useStudioStore((s) => s.screenshotMode)
@@ -212,7 +213,7 @@ export default function StudioSlicePlane() {
     setPlane({ orientation: 'free', normalXyz: normalServer })
   }
 
-  if (!sliceResult || !dataTex) return null
+  if (!showSlice || !sliceResult || !dataTex) return null
 
   return (
     <>

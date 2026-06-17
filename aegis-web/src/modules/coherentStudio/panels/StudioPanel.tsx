@@ -1,11 +1,14 @@
+import type { CSSProperties } from 'react'
 import type { StudioFocusMode, Vec3 } from '../api'
 import {
   useStudioStore,
+  type StudioAspect,
   type StudioCameraView,
   type StudioRayColorMode,
   type StudioScaleMode,
   type StudioUeAntenna,
 } from '../store'
+import { FIGURE_PRESETS } from '../figurePresets'
 import { useStudioScales } from '../useStudioScales'
 import type { StudioScaleScope } from '../scene/colorScale'
 import {
@@ -74,6 +77,25 @@ const CAMERA_OPTIONS: Option<StudioCameraView>[] = [
   { value: 'orbit', label: 'Free orbit', title: 'Orbit, pan and zoom the camera freely. The app never moves the camera in this mode.' },
   { value: 'bs-axis', label: 'BS axis', title: 'Park the camera looking down the base-station to focus beam axis, re-applied whenever the focus moves. Switch back to Free orbit to move the camera yourself.' },
 ]
+
+const ASPECT_OPTIONS: Option<StudioAspect>[] = [
+  { value: 'free', label: 'Free', title: 'Fill the column; the capture takes whatever shape the window is.' },
+  { value: '1:1', label: '1:1', title: 'Square: good for a body tile.' },
+  { value: '4:5', label: '4:5', title: 'Portrait: frames a standing body.' },
+  { value: '3:2', label: '3:2', title: 'Landscape: frames the array-to-body scene.' },
+  { value: '16:9', label: '16:9', title: 'Wide landscape.' },
+]
+
+const captureBtnStyle: CSSProperties = {
+  flex: 1,
+  padding: '5px 8px',
+  fontSize: 11,
+  color: '#bcd',
+  background: '#161922',
+  border: '1px solid #2a2f3a',
+  borderRadius: 5,
+  cursor: 'pointer',
+}
 
 const SCOPE_OPTIONS: Option<StudioScaleScope>[] = [
   { value: 'surface', label: 'Per-surface', title: 'Each surface (slice, body, volume) autoscales to its own data range.' },
@@ -256,6 +278,21 @@ export default function StudioPanel() {
   const setVolumeThreshold = useStudioStore((s) => s.setVolumeThreshold)
   const volumeOpacity = useStudioStore((s) => s.volumeOpacity)
   const setVolumeOpacity = useStudioStore((s) => s.setVolumeOpacity)
+
+  const showSlice = useStudioStore((s) => s.showSlice)
+  const setShowSlice = useStudioStore((s) => s.setShowSlice)
+  const exportAspect = useStudioStore((s) => s.exportAspect)
+  const setExportAspect = useStudioStore((s) => s.setExportAspect)
+  const exportLongEdgePx = useStudioStore((s) => s.exportLongEdgePx)
+  const setExportLongEdgePx = useStudioStore((s) => s.setExportLongEdgePx)
+  const colorbarFieldInExport = useStudioStore((s) => s.colorbarFieldInExport)
+  const setColorbarFieldInExport = useStudioStore((s) => s.setColorbarFieldInExport)
+  const colorbarBodyInExport = useStudioStore((s) => s.colorbarBodyInExport)
+  const setColorbarBodyInExport = useStudioStore((s) => s.setColorbarBodyInExport)
+  const savedCamera = useStudioStore((s) => s.savedCamera)
+  const requestCameraSave = useStudioStore((s) => s.requestCameraSave)
+  const requestCameraApply = useStudioStore((s) => s.requestCameraApply)
+  const applyFigurePreset = useStudioStore((s) => s.applyFigurePreset)
 
   const packs = packsOf(manifest)
 
@@ -500,6 +537,36 @@ export default function StudioPanel() {
         </Checkbox>
       </Group>
 
+      <Group title="Figure 1 presets" defaultCollapsed>
+        <HelpText>
+          One click reproduces a panel of the paper figure (config, beam, fixed scale, framing).
+          Each preset is also reachable at /studio?preset=&lt;name&gt;. Capture exports it.
+        </HelpText>
+        {FIGURE_PRESETS.map((p) => (
+          <button
+            key={p.name}
+            type="button"
+            onClick={() => applyFigurePreset(p)}
+            title={p.description}
+            style={{
+              display: 'block',
+              width: '100%',
+              textAlign: 'left',
+              margin: '3px 0',
+              padding: '6px 9px',
+              fontSize: 12,
+              color: '#cde',
+              background: '#141822',
+              border: '1px solid #28303c',
+              borderRadius: 5,
+              cursor: 'pointer',
+            }}
+          >
+            {p.label}
+          </button>
+        ))}
+      </Group>
+
       <Group title="Rays" active={showRays}>
         <Checkbox checked={showRays} onChange={setShowRays} title="Draw the strongest arrival rays from the base station, pointing in toward the focus.">
           Show arrival rays
@@ -629,6 +696,69 @@ export default function StudioPanel() {
         >
           Screenshot mode
         </Checkbox>
+        <Checkbox
+          checked={showSlice}
+          onChange={setShowSlice}
+          title="Draw the free-space field slice plane. Turn off for a clean body-only tile where the slice would occlude the deposited map."
+        >
+          Show field slice
+        </Checkbox>
+
+        <FieldLabel title="Letterbox the scene to a fixed aspect so captures have reproducible dimensions and the camera framing is stable. Free fills the column.">
+          Export aspect
+        </FieldLabel>
+        <Segmented<StudioAspect> value={exportAspect} options={ASPECT_OPTIONS} onChange={setExportAspect} />
+
+        <FieldLabel title="Long-edge resolution the scene is re-rendered at on capture, so the PNG is print-crisp and independent of the on-screen window size.">
+          Export resolution
+        </FieldLabel>
+        <DiscreteSlider<number>
+          value={exportLongEdgePx}
+          options={[1200, 1600, 2000, 2400, 3000]}
+          labelOf={(v) => `${v}px`}
+          onChange={setExportLongEdgePx}
+        />
+
+        <FieldLabel title="Composite the colour bars into the captured PNG. Each can be toggled independently; off keeps the capture bar-free (e.g. to draw vector bars in LaTeX).">
+          Colour bars in capture
+        </FieldLabel>
+        <Checkbox
+          checked={colorbarBodyInExport}
+          onChange={setColorbarBodyInExport}
+          title="Composite the body (deposited S_ab) colour bar into the exported PNG."
+        >
+          Body S_ab bar
+        </Checkbox>
+        <Checkbox
+          checked={colorbarFieldInExport}
+          onChange={setColorbarFieldInExport}
+          title="Composite the field-slice colour bar into the exported PNG (only when the slice is shown)."
+        >
+          Field slice bar
+        </Checkbox>
+
+        <FieldLabel title="Save the current camera viewpoint, then recall it later (or from a Figure preset) so a panel reproduces exactly.">
+          Camera viewpoint
+        </FieldLabel>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button
+            type="button"
+            onClick={requestCameraSave}
+            title="Store the current camera position, target and field of view."
+            style={captureBtnStyle}
+          >
+            Save view
+          </button>
+          <button
+            type="button"
+            onClick={requestCameraApply}
+            disabled={!savedCamera}
+            title="Move the camera back to the saved viewpoint."
+            style={{ ...captureBtnStyle, opacity: savedCamera ? 1 : 0.5 }}
+          >
+            Recall view
+          </button>
+        </div>
       </Group>
 
       <Group title="Field volume (3D)" defaultCollapsed active={showVolume}>

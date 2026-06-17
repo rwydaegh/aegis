@@ -74,9 +74,10 @@ export default function StudioBlockers() {
         </mesh>
       )}
 
-      {roomEdgePoints && (
+      {showBlockers && roomEdgePoints && (
         // Room box is centred at the world origin (BS at x=-13, far wall at +x),
-        // floor at z=0 so the centre sits at z = room_height / 2. Always drawn.
+        // floor at z=0 so the centre sits at z = room_height / 2. Part of the
+        // scene context, so it follows the blockers toggle (off -> clean body tile).
         <Line
           points={roomEdgePoints}
           segments

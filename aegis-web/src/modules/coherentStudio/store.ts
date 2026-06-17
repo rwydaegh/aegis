@@ -30,6 +30,27 @@ export type StudioUeAntenna = 'isotropic' | 'vertical' | 'dipole' | 'patch'
 /** How the arrival rays are tinted: by per-path power on the active colormap, or
  * a single neutral colour (so the rays read as geometry, not as a second field). */
 export type StudioRayColorMode = 'power' | 'mono'
+/** Fixed framing of the scene canvas for figure export. 'free' fills the column;
+ * the others letterbox the canvas to a fixed aspect so the captured PNG has
+ * predictable, reproducible dimensions (and the camera reacts to the new aspect). */
+export type StudioAspect = 'free' | '1:1' | '4:5' | '3:2' | '16:9'
+/** A reproducible camera viewpoint. position drives the orbit vantage; the target
+ * normally follows the focus, but is stored so a preset can pin it. fov in degrees. */
+export interface StudioCameraPose {
+  position: Vec3
+  target: Vec3
+  fov: number
+}
+/** A named, reproducible Figure panel: a full settings patch (beam, budget,
+ * colormap, fixed scale, visible surfaces, background, export framing) plus an
+ * optional camera. Applying one reproduces exactly one panel of a paper figure. */
+export interface FigurePreset {
+  name: string
+  label: string
+  description: string
+  settings: Partial<StudioSettings>
+  camera?: StudioCameraPose
+}
 
 interface StudioState {
   // --- Parameters (all positions in SERVER / Z-up metres) ---
@@ -109,6 +130,9 @@ interface StudioState {
   cameraView: StudioCameraView
   /** When true, clicking the body moves the focus to the clicked surface point. */
   pickFocusOnBody: boolean
+  /** Draw the free-space field slice plane. Off makes a clean body-only tile for
+   * figure panels where the slice would occlude the deposited map. */
+  showSlice: boolean
   /** Render the focal lobe as a 3D field-volume cloud (own fetch). */
   showVolume: boolean
   /** Per-axis sample count of the field-volume box (clamped 8..48 server-side). */
@@ -123,6 +147,23 @@ interface StudioState {
    * signal vs MRT). Opt-in: the first request per phantom builds the 4 cm^2
    * averaging matrix (a few seconds), so it is off by default. Render-only. */
   showCompliance: boolean
+
+  // --- Figure export (render-only; reproducible captures for paper figures) ---
+  /** Letterbox the scene canvas to this aspect so captures have fixed dimensions. */
+  exportAspect: StudioAspect
+  /** Target long-edge resolution (px) the canvas is re-rendered at on capture, so
+   * the exported PNG is print-crisp and independent of the on-screen window size. */
+  exportLongEdgePx: number
+  /** Composite the field (slice / volume) colour bar into the exported PNG. */
+  colorbarFieldInExport: boolean
+  /** Composite the body (deposited APD) colour bar into the exported PNG. */
+  colorbarBodyInExport: boolean
+  /** Last saved camera viewpoint (null until the user saves one). */
+  savedCamera: StudioCameraPose | null
+  /** Bumped to ask the in-canvas bridge to read the live camera into savedCamera. */
+  cameraSaveNonce: number
+  /** Bumped to ask the in-canvas bridge to apply savedCamera to the live camera. */
+  cameraApplyNonce: number
 
   // --- Results ---
   sliceResult: SliceResult | null
@@ -186,12 +227,25 @@ interface StudioState {
   setShowGizmo: (showGizmo: boolean) => void
   setCameraView: (cameraView: StudioCameraView) => void
   setPickFocusOnBody: (pickFocusOnBody: boolean) => void
+  setShowSlice: (showSlice: boolean) => void
   setShowVolume: (showVolume: boolean) => void
   setVolumeRes: (volumeRes: number) => void
   setVolumeExtentM: (volumeExtentM: number) => void
   setVolumeThreshold: (volumeThreshold: number) => void
   setVolumeOpacity: (volumeOpacity: number) => void
   setShowCompliance: (showCompliance: boolean) => void
+  setExportAspect: (exportAspect: StudioAspect) => void
+  setExportLongEdgePx: (exportLongEdgePx: number) => void
+  setColorbarFieldInExport: (colorbarFieldInExport: boolean) => void
+  setColorbarBodyInExport: (colorbarBodyInExport: boolean) => void
+  setSavedCamera: (savedCamera: StudioCameraPose | null) => void
+  /** Ask the in-canvas bridge to read the live camera into savedCamera. */
+  requestCameraSave: () => void
+  /** Ask the in-canvas bridge to apply savedCamera to the live camera. */
+  requestCameraApply: () => void
+  /** Apply a named Figure preset: a full settings patch + optional camera, in one
+   * atomic update, so a panel of the paper figure reproduces exactly. */
+  applyFigurePreset: (preset: FigurePreset) => void
   /** Restore every knob to STUDIO_DEFAULTS (results refetch from the new params). */
   resetDefaults: () => void
 
@@ -211,7 +265,7 @@ interface StudioState {
 
 /** The user-settable knobs (parameters + render-only state), minus results,
  * fetched geometry, and actions. This is exactly what `resetDefaults` restores. */
-type StudioSettings = Pick<
+export type StudioSettings = Pick<
   StudioState,
   | 'mesh'
   | 'condition'
@@ -253,12 +307,17 @@ type StudioSettings = Pick<
   | 'showGizmo'
   | 'cameraView'
   | 'pickFocusOnBody'
+  | 'showSlice'
   | 'showVolume'
   | 'volumeRes'
   | 'volumeExtentM'
   | 'volumeThreshold'
   | 'volumeOpacity'
   | 'showCompliance'
+  | 'exportAspect'
+  | 'exportLongEdgePx'
+  | 'colorbarFieldInExport'
+  | 'colorbarBodyInExport'
 >
 
 // Default values for every user-settable knob (parameters + render-only state).
@@ -317,6 +376,7 @@ export const STUDIO_DEFAULTS: StudioSettings = {
   showGizmo: true,
   cameraView: 'orbit',
   pickFocusOnBody: false,
+  showSlice: true,
   showVolume: false,
   volumeRes: 24,
   volumeExtentM: 0.16,
@@ -325,6 +385,14 @@ export const STUDIO_DEFAULTS: StudioSettings = {
   // Opt-in: the first compliance request per phantom builds the 4 cm^2 averaging
   // matrix (a few seconds), so the panel stays off until the user asks for it.
   showCompliance: false,
+
+  // Figure export defaults: fill the column (working view), and capture at a
+  // print-crisp long edge. Both colour bars off so a plain capture is just the
+  // scene (the figure presets turn the relevant bar on).
+  exportAspect: 'free',
+  exportLongEdgePx: 2000,
+  colorbarFieldInExport: false,
+  colorbarBodyInExport: false,
 }
 
 export const useStudioStore = create<StudioState>()((set) => ({
@@ -342,6 +410,9 @@ export const useStudioStore = create<StudioState>()((set) => ({
   compliance: null,
   complianceNotAvailable: false,
   provenance: null,
+  savedCamera: null,
+  cameraSaveNonce: 0,
+  cameraApplyNonce: 0,
 
   setMesh: (mesh) => set({ mesh }),
   setCondition: (condition) => set({ condition }),
@@ -397,12 +468,28 @@ export const useStudioStore = create<StudioState>()((set) => ({
   setShowGizmo: (showGizmo) => set({ showGizmo }),
   setCameraView: (cameraView) => set({ cameraView }),
   setPickFocusOnBody: (pickFocusOnBody) => set({ pickFocusOnBody }),
+  setShowSlice: (showSlice) => set({ showSlice }),
   setShowVolume: (showVolume) => set({ showVolume }),
   setVolumeRes: (volumeRes) => set({ volumeRes }),
   setVolumeExtentM: (volumeExtentM) => set({ volumeExtentM }),
   setVolumeThreshold: (volumeThreshold) => set({ volumeThreshold }),
   setVolumeOpacity: (volumeOpacity) => set({ volumeOpacity }),
   setShowCompliance: (showCompliance) => set({ showCompliance }),
+  setExportAspect: (exportAspect) => set({ exportAspect }),
+  setExportLongEdgePx: (exportLongEdgePx) => set({ exportLongEdgePx }),
+  setColorbarFieldInExport: (colorbarFieldInExport) => set({ colorbarFieldInExport }),
+  setColorbarBodyInExport: (colorbarBodyInExport) => set({ colorbarBodyInExport }),
+  setSavedCamera: (savedCamera) => set({ savedCamera }),
+  requestCameraSave: () => set((s) => ({ cameraSaveNonce: s.cameraSaveNonce + 1 })),
+  requestCameraApply: () => set((s) => ({ cameraApplyNonce: s.cameraApplyNonce + 1 })),
+  applyFigurePreset: (preset) =>
+    set((s) => ({
+      ...preset.settings,
+      // Pin the camera and bump the apply nonce in the same update so the bridge
+      // re-frames the scene the instant the preset's params land.
+      savedCamera: preset.camera ?? s.savedCamera,
+      cameraApplyNonce: preset.camera ? s.cameraApplyNonce + 1 : s.cameraApplyNonce,
+    })),
   resetDefaults: () => set({ ...STUDIO_DEFAULTS }),
 
   setSliceResult: (sliceResult) =>
