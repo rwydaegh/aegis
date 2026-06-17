@@ -11,6 +11,7 @@ export function useStudioRays(): RaysResponse | null {
   const arrayN = useStudioStore((s) => s.arrayN)
   const seed = useStudioStore((s) => s.seed)
   const topK = useStudioStore((s) => s.topK)
+  const ueIdx = useStudioStore((s) => s.ueIdx)
 
   const [rays, setRays] = useState<RaysResponse | null>(null)
   const latestRef = useRef(0)
@@ -20,7 +21,7 @@ export function useStudioRays(): RaysResponse | null {
     const myId = ++latestRef.current
     const isStale = () => myId !== latestRef.current
 
-    fetchRays({ condition, arrayN, seed, topK })
+    fetchRays({ condition, arrayN, seed, topK, ueIdx })
       .then((res) => {
         if (isStale()) return
         setRays(res)
@@ -29,7 +30,7 @@ export function useStudioRays(): RaysResponse | null {
         if (isStale()) return
         Sentry.captureException(err)
       })
-  }, [condition, arrayN, seed, topK])
+  }, [condition, arrayN, seed, topK, ueIdx])
 
   return rays
 }

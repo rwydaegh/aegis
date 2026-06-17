@@ -253,7 +253,21 @@ export const useStudioStore = create<StudioState>()((set) => ({
   setCondition: (condition) => set({ condition }),
   setArrayN: (arrayN) => set({ arrayN }),
   setSeed: (seed) => set({ seed }),
-  setUeIdx: (ueIdx) => set({ ueIdx }),
+  setUeIdx: (ueIdx) =>
+    set((s) => {
+      // Move the steering focus with the body. The corridor relocates the body
+      // (and hence its natural focus) by ue_positions[new] - ue_positions[old],
+      // a pure x translation in the e11 frame. Shifting focusXyz by the same
+      // vector keeps the beam tracking the same spot on the body as the slider
+      // moves, so the rays / slice / volume / Rx marker / gizmo all follow it
+      // instead of staying pinned at the previous standing position.
+      const ue = s.scene?.ue_positions
+      if (!ue || ueIdx === s.ueIdx || !ue[ueIdx] || !ue[s.ueIdx]) return { ueIdx }
+      const [ox, oy, oz] = ue[s.ueIdx]
+      const [nx, ny, nz] = ue[ueIdx]
+      const [fx, fy, fz] = s.focusXyz
+      return { ueIdx, focusXyz: [fx + (nx - ox), fy + (ny - oy), fz + (nz - oz)] as Vec3 }
+    }),
   setUeAntenna: (ueAntenna) => set({ ueAntenna }),
   setBeam: (beam) => set({ beam }),
   setFocusMode: (focusMode) => set({ focusMode }),
@@ -329,6 +343,7 @@ export type SliceKeyState = Pick<
   | 'fieldQuantity'
   | 'ecbfBudgetFrac'
   | 'ueAntenna'
+  | 'ueIdx'
 >
 
 /** Params requiring a body-map pack swap (or a live recompute for 'deposited'). */
@@ -366,6 +381,7 @@ export function sliceFetchKey(s: SliceKeyState): string {
     s.fieldQuantity,
     s.beam === 'ecbf' ? s.ecbfBudgetFrac : null,
     s.ueAntenna,
+    s.ueIdx,
   ])
 }
 
@@ -436,6 +452,7 @@ export type VolumeKeyState = Pick<
   | 'volumeExtentM'
   | 'ecbfBudgetFrac'
   | 'ueAntenna'
+  | 'ueIdx'
 >
 
 export function volumeFetchKey(s: VolumeKeyState): string {
@@ -453,5 +470,6 @@ export function volumeFetchKey(s: VolumeKeyState): string {
     s.volumeExtentM,
     s.beam === 'ecbf' ? s.ecbfBudgetFrac : null,
     s.ueAntenna,
+    s.ueIdx,
   ])
 }

@@ -79,6 +79,8 @@ export interface RaysParams {
   arrayN: number
   seed: number
   topK?: number
+  /** Corridor standing position of the body (UE index 0..8; default 4). */
+  ueIdx?: number
 }
 
 export interface RaysResponse {
@@ -117,6 +119,8 @@ export interface SliceParams {
   ecbfBudgetFrac?: number
   /** UE receive antenna pattern; shapes the matched-filter precoder. */
   ueAntenna?: string
+  /** Corridor standing position of the body (UE index 0..8; default 4). */
+  ueIdx?: number
 }
 
 /** World-space frame of the returned scalar grid (all Z-up metres). */
@@ -176,6 +180,8 @@ export interface VolumeParams {
   ecbfBudgetFrac?: number
   /** UE receive antenna pattern; shapes the matched-filter precoder. */
   ueAntenna?: string
+  /** Corridor standing position of the body (UE index 0..8; default 4). */
+  ueIdx?: number
 }
 
 export interface VolumeResult {
@@ -222,6 +228,7 @@ function volumePayload(params: VolumeParams) {
     res: params.res,
     ecbf_budget_frac: params.ecbfBudgetFrac ?? 0.5,
     ue_antenna: params.ueAntenna ?? 'dipole',
+    ue_idx: params.ueIdx ?? 4,
   }
 }
 
@@ -408,6 +415,7 @@ export async function fetchRays(params: RaysParams): Promise<RaysResponse> {
     condition: params.condition,
     array_n: String(params.arrayN),
     seed: String(params.seed),
+    ue_idx: String(params.ueIdx ?? 4),
   })
   if (params.topK != null) qs.set('top_k', String(params.topK))
   return getJson<RaysResponse>(`${STUDIO}/rays?${qs}`)
@@ -436,6 +444,7 @@ function slicePayload(params: SliceParams) {
     quantity: params.quantity,
     ecbf_budget_frac: params.ecbfBudgetFrac ?? 0.5,
     ue_antenna: params.ueAntenna ?? 'dipole',
+    ue_idx: params.ueIdx ?? 4,
   }
 }
 

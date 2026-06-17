@@ -122,4 +122,65 @@ describe('coherentStudio fetch keys', () => {
     expect(after.slice).toBe(before.slice)
     expect(after.bodyMap).toBe(before.bodyMap)
   })
+
+  it('ueIdx changes slice, body-map and volume keys', () => {
+    // Regression guard for "scrolling the UE slider only moved the phantom".
+    // The standing position selects per-UE ray / channel packs, so every live
+    // fetch (slice, deposited body map, volume) must refetch when it changes.
+    const before = keys()
+    useStudioStore.getState().setUeIdx(2)
+    const after = keys()
+    expect(after.slice).not.toBe(before.slice)
+    expect(after.bodyMap).not.toBe(before.bodyMap)
+    expect(after.volume).not.toBe(before.volume)
+  })
+})
+
+describe('coherentStudio UE focus tracking', () => {
+  // The corridor relocates the body by ue_positions[new] - ue_positions[old]
+  // (a pure x translation), so the steering focus must shift by the same vector
+  // to keep tracking the same spot on the body. This is what makes the rays,
+  // slice, volume, Rx marker and gizmo follow the body down the corridor instead
+  // of staying pinned at the previous standing position.
+  beforeEach(() => {
+    useStudioStore.setState({
+      ueIdx: 4,
+      focusXyz: [0.923, -0.005, 0.734],
+      // Minimal scene carrying the corridor positions (2 m x-spacing, UE4 at x=1).
+      scene: {
+        room_dims: [0, 0, 0],
+        bs_position: [-13, 0, 3],
+        bs_n: 16,
+        bs_tilt_deg: 0,
+        scatterers: [],
+        blocker: null,
+        ue_positions: Array.from({ length: 9 }, (_, i) => [-7 + 2 * i, 0, 1.75]),
+        provenance: 'test',
+      },
+    })
+  })
+
+  it('shifts the focus by the corridor delta when the UE moves', () => {
+    useStudioStore.getState().setUeIdx(0) // x: 1 -> -7, delta -8 in x
+    const s = useStudioStore.getState()
+    expect(s.ueIdx).toBe(0)
+    expect(s.focusXyz[0]).toBeCloseTo(0.923 - 8, 6)
+    expect(s.focusXyz[1]).toBeCloseTo(-0.005, 6)
+    expect(s.focusXyz[2]).toBeCloseTo(0.734, 6)
+  })
+
+  it('stepping UE4 -> UE8 -> UE4 returns the focus to its origin', () => {
+    useStudioStore.getState().setUeIdx(8) // +8 in x
+    useStudioStore.getState().setUeIdx(4) // -8 in x
+    const s = useStudioStore.getState()
+    expect(s.focusXyz[0]).toBeCloseTo(0.923, 6)
+  })
+
+  it('leaves the focus untouched when the scene (hence ue_positions) is absent', () => {
+    useStudioStore.setState({ scene: null })
+    useStudioStore.getState().setUeIdx(0)
+    const s = useStudioStore.getState()
+    expect(s.ueIdx).toBe(0)
+    expect(s.focusXyz[0]).toBeCloseTo(0.923, 6)
+  })
 })

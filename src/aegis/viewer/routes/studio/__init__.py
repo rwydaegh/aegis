@@ -124,11 +124,14 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
         array_n = request.args.get("array_n", default=16, type=int)
         seed = request.args.get("seed", default=0, type=int)
         top_k = request.args.get("top_k", default=200, type=int)
+        # Corridor UE the body stands at: the BS->UE multipath geometry changes
+        # with the standing position, so the drawn arrival rays follow the slider.
+        ue_idx = request.args.get("ue_idx", default=_channel.DEFAULT_UE_IDX, type=int)
         # Bound allocation against a huge top_k and keep a negative value from
         # silently slicing entries off the end via the [::-1][:top_k] path.
         top_k = min(max(int(top_k), 1), 2000)
         try:
-            k_hat, psi, element_index, _n = _paths.load_paths(condition, array_n, seed, cache, cache_lock)
+            k_hat, psi, element_index, _n = _paths.load_paths(condition, array_n, seed, cache, cache_lock, ue_idx)
         except FileNotFoundError as e:
             return jsonify({"error": str(e)}), 404
         return jsonify(_paths.unique_directions(k_hat, psi, element_index, top_k))
@@ -153,17 +156,23 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             freq_ghz = float(params.get("frequency_ghz", 10))
             freq_hz = freq_ghz * 1e9
             ecbf_budget_frac = float(params.get("ecbf_budget_frac", 0.5))
+            # Corridor UE the body stands at: selects the per-UE ray pack so the
+            # field cut reflects the beam steered to this standing position.
+            ue_idx = int(params.get("ue_idx", _channel.DEFAULT_UE_IDX))
             # "at-skin" snaps the steering focus onto the nearest body surface so
             # the beam targets the skin where absorbed power matters; "free-space"
             # leaves the focus wherever the sliders placed it.
             if focus_mode == "at-skin":
-                focus_xyz = _phantom.snap_focus_to_skin(focus_xyz, mesh, cache=cache, cache_lock=cache_lock)
+                focus_xyz = _phantom.snap_focus_to_skin(
+                    focus_xyz, mesh, cache=cache, cache_lock=cache_lock, ue_idx=ue_idx
+                )
             ue_antenna = _parse_ue_antenna(params)
             plane = dict(params.get("plane", {}))
             plane["center"] = focus_xyz
 
-            # TODO(ue): slice still default-UE (free-space field cut, body-independent).
-            paths = _paths.load_paths(condition, array_n, seed, cache, cache_lock)
+            # The field cut is body-independent, but the BS->UE paths it is built
+            # from are per-UE, so the cut follows the body down the corridor.
+            paths = _paths.load_paths(condition, array_n, seed, cache, cache_lock, ue_idx)
             x, field_source = _beam_field(
                 beam,
                 paths,
@@ -177,6 +186,7 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
                 focus_mode,
                 seed,
                 ue_antenna=ue_antenna,
+                ue_idx=ue_idx,
             )
             out = _slice.compute_slice(paths, x, plane, freq_hz, quantity, field_source=field_source)
         except _QPackMissing as e:
@@ -229,11 +239,17 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             extent_m = float(params.get("extent_m", 0.16))
             res = int(params.get("res", 32))
             ue_antenna = _parse_ue_antenna(params)
+            # Corridor UE the body stands at: selects the per-UE ray pack so the
+            # field box reflects the beam steered to this standing position.
+            ue_idx = int(params.get("ue_idx", _channel.DEFAULT_UE_IDX))
             if focus_mode == "at-skin":
-                focus_xyz = _phantom.snap_focus_to_skin(focus_xyz, mesh, cache=cache, cache_lock=cache_lock)
+                focus_xyz = _phantom.snap_focus_to_skin(
+                    focus_xyz, mesh, cache=cache, cache_lock=cache_lock, ue_idx=ue_idx
+                )
 
-            # TODO(ue): volume still default-UE (free-space field box, body-independent).
-            paths = _paths.load_paths(condition, array_n, seed, cache, cache_lock)
+            # The field box is body-independent, but the BS->UE paths it is built
+            # from are per-UE, so the box follows the body down the corridor.
+            paths = _paths.load_paths(condition, array_n, seed, cache, cache_lock, ue_idx)
             x, field_source = _beam_field(
                 beam,
                 paths,
@@ -247,6 +263,7 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
                 focus_mode,
                 seed,
                 ue_antenna=ue_antenna,
+                ue_idx=ue_idx,
             )
             out = _volume.compute_volume(paths, x, focus_xyz, freq_hz, extent_m, res, field_source=field_source)
         except _QPackMissing as e:
