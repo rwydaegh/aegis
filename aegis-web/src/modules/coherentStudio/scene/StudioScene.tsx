@@ -210,7 +210,7 @@ export default function StudioScene() {
         freqHz={frequencyGhz * 1e9}
         showPattern={showArrayPattern}
         patternScale={arrayPatternScale}
-        patternDetail={6}
+        patternDetail={40}
       />
 
       {/* Beam axis + range / downtilt label (working view only). */}

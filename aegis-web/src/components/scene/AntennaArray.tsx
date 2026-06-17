@@ -14,8 +14,10 @@ interface AntennaArrayProps {
   /** Cosmetic magnification of the radiation-pattern lobe (default 1). The
    * studio uses a large value so the lobe reads from the distant Rx vantage. */
   patternScale?: number
-  /** Icosphere subdivision for the pattern lobe (default 5). The studio bumps
-   * this so the lobe stays smooth when magnified close to the camera. */
+  /** Icosphere subdivision for the pattern lobe (default 20). In three r183
+   * `detail` scales the vertex count as 60*(detail+1)^2, so a high value is
+   * needed to resolve a narrow array beam. The uniform lobe uses a closed-form
+   * array factor, so a fine tessellation stays cheap. */
   patternDetail?: number
 }
 
@@ -122,49 +124,85 @@ function computeElementGain(
   return 1.0
 }
 
+// |D_N(psi)|^2, the squared Dirichlet kernel sum_{n} exp(j n psi) for an
+// N-element uniform line array with symmetric phase centres. This is the
+// closed-form magnitude of the array factor along one principal axis.
+function dirichletSq(n: number, psi: number): number {
+  const s = Math.sin(psi / 2)
+  if (Math.abs(s) < 1e-9) return n * n
+  const d = Math.sin(n * psi / 2) / s
+  return d * d
+}
+
+// Cap the icosphere detail for the (rare) weighted path: that branch costs
+// O(verts * elements) per rebuild, whereas the uniform closed form below is
+// O(verts) and stays smooth even at detail 40+.
+const WEIGHTED_DETAIL_CAP = 18
+
 function buildPatternGeometry(
-  localPositions: THREE.Vector3[],
+  config: ArrayConfig,
   freqHz: number,
   weights: { real: number[][]; imag: number[][] } | null | undefined,
-  elementPattern: string,
-  broadside: number[],
   detail: number,
 ): THREE.BufferGeometry {
-  const M = localPositions.length
-  const { wRe, wIm } = buildComplexWeights(M, weights)
-  const k0 = 2 * Math.PI * freqHz / 3e8
+  const nH = config.n_h
+  const nV2 = config.n_v
+  const M = nH * nV2
+  // A uniformly excited URA has a separable closed-form pattern (the product of
+  // two Dirichlet kernels), so we sample it directly. The icosphere `detail`
+  // governs only how finely we tessellate the lobe; r183 made `detail` scale the
+  // vertex count as 60*(detail+1)^2 (not 60*4^detail), so a high value is needed
+  // to resolve the narrow 16x16 main beam.
+  const uniform = !(weights && weights.real.length === M)
+  const effDetail = uniform ? detail : Math.min(detail, WEIGHTED_DETAIL_CAP)
 
-  const base = new THREE.IcosahedronGeometry(1, detail)
+  const base = new THREE.IcosahedronGeometry(1, effDetail)
   const posAttr = base.attributes.position as THREE.BufferAttribute
   const nV = posAttr.count
+
+  const isPatch = config.element_pattern === 'patch'
+  const isDipole = config.element_pattern === 'short_dipole'
+  const bsDir = new THREE.Vector3(...config.broadside).normalize()
+  const dipoleAxis = isDipole ? buildDipoleAxis(bsDir) : null
+  const { hAxis, vAxis } = computeArrayAxes(config.broadside)
 
   const gains = new Float32Array(nV)
   const dirs: THREE.Vector3[] = []
   let gMax = 0
 
-  const isPatch = elementPattern === 'patch'
-  const isDipole = elementPattern === 'short_dipole'
-  const bsDir = new THREE.Vector3(...broadside).normalize()
-  const dipoleAxis = isDipole ? buildDipoleAxis(bsDir) : null
-
-  for (let i = 0; i < nV; i++) {
-    const dir = new THREE.Vector3(
-      posAttr.getX(i), posAttr.getY(i), posAttr.getZ(i)
-    ).normalize()
-    dirs.push(dir)
-
-    const elementGain = computeElementGain(dir, isPatch, isDipole, bsDir, dipoleAxis)
-
-    let reSum = 0, imSum = 0
-    for (let m = 0; m < M; m++) {
-      const phase = k0 * localPositions[m].dot(dir)
-      const cosP = Math.cos(phase), sinP = Math.sin(phase)
-      reSum += wRe[m] * cosP - wIm[m] * sinP
-      imSum += wRe[m] * sinP + wIm[m] * cosP
+  if (uniform) {
+    // psi = k0 * d * u = 2*pi * d_wavelengths * u, independent of frequency.
+    const psiH = 2 * Math.PI * config.d_h_wavelengths
+    const psiV = 2 * Math.PI * config.d_v_wavelengths
+    for (let i = 0; i < nV; i++) {
+      const dir = new THREE.Vector3(posAttr.getX(i), posAttr.getY(i), posAttr.getZ(i)).normalize()
+      dirs.push(dir)
+      const elementGain = computeElementGain(dir, isPatch, isDipole, bsDir, dipoleAxis)
+      const af2 = dirichletSq(nH, psiH * hAxis.dot(dir)) * dirichletSq(nV2, psiV * vAxis.dot(dir))
+      const gain = af2 * elementGain * elementGain
+      gains[i] = gain
+      if (gain > gMax) gMax = gain
     }
-    const gain = (reSum * reSum + imSum * imSum) * elementGain * elementGain
-    gains[i] = gain
-    if (gain > gMax) gMax = gain
+  } else {
+    // General precoder: full coherent sum over every element excitation.
+    const localPositions = buildLocalPositions(config, freqHz)
+    const { wRe, wIm } = buildComplexWeights(M, weights)
+    const k0 = 2 * Math.PI * freqHz / 3e8
+    for (let i = 0; i < nV; i++) {
+      const dir = new THREE.Vector3(posAttr.getX(i), posAttr.getY(i), posAttr.getZ(i)).normalize()
+      dirs.push(dir)
+      const elementGain = computeElementGain(dir, isPatch, isDipole, bsDir, dipoleAxis)
+      let reSum = 0, imSum = 0
+      for (let m = 0; m < M; m++) {
+        const phase = k0 * localPositions[m].dot(dir)
+        const cosP = Math.cos(phase), sinP = Math.sin(phase)
+        reSum += wRe[m] * cosP - wIm[m] * sinP
+        imSum += wRe[m] * sinP + wIm[m] * cosP
+      }
+      const gain = (reSum * reSum + imSum * imSum) * elementGain * elementGain
+      gains[i] = gain
+      if (gain > gMax) gMax = gain
+    }
   }
   if (gMax < 1e-12) gMax = 1
 
@@ -204,16 +242,11 @@ function computeBroadsideAngles(broadside: number[]): { azimuthDeg: number; tilt
 // Component
 // ---------------------------------------------------------------------------
 
-export default memo(function AntennaArray({ config, freqHz, showPattern, weights, selected, patternScale = 1, patternDetail = 5 }: AntennaArrayProps) {
-  const localPositions = useMemo(
-    () => buildLocalPositions(config, freqHz),
-    [config.n_h, config.n_v, config.d_h_wavelengths, config.d_v_wavelengths, config.broadside, freqHz],
-  )
-
+export default memo(function AntennaArray({ config, freqHz, showPattern, weights, selected, patternScale = 1, patternDetail = 20 }: AntennaArrayProps) {
   const patternGeo = useMemo(() => {
-    if (localPositions.length === 0) return null
-    return buildPatternGeometry(localPositions, freqHz, weights, config.element_pattern, config.broadside, patternDetail)
-  }, [localPositions, freqHz, weights, config.element_pattern, config.broadside, patternDetail])
+    if (config.n_h * config.n_v === 0) return null
+    return buildPatternGeometry(config, freqHz, weights, patternDetail)
+  }, [config, freqHz, weights, patternDetail])
 
   useEffect(() => {
     return () => { patternGeo?.dispose() }
