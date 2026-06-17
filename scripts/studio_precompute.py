@@ -689,6 +689,10 @@ def qop_from_channels(studio_dir: Path, meshes: list[str] | None = None) -> None
         print("  no channel packs found; nothing to do")
         return
     for path in packs:
+        if "_ue" in path.stem:
+            # Q stays UE-agnostic (the default-UE headline); skip per-UE channel
+            # packs whose seed token would carry a ``_ue{idx}`` suffix.
+            continue
         base, _, seed_tok = path.stem.rpartition("_seed")
         if not seed_tok:
             print(f"  skip {path.name}: no seed suffix")
