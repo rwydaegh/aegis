@@ -215,6 +215,62 @@ function ProvenanceCard() {
   )
 }
 
+// --- ICNIRP compliance scalars (opt-in) ----------------------------------------
+function ComplianceRow({ label, value, title }: { label: string; value: string; title?: string }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, marginTop: 5 }} title={title}>
+      <span style={{ color: '#aab' }}>{label}</span>
+      <span style={{ fontFamily: 'monospace', color: '#dde' }}>{value}</span>
+    </div>
+  )
+}
+
+function ComplianceCard() {
+  const showCompliance = useStudioStore((s) => s.showCompliance)
+  const compliance = useStudioStore((s) => s.compliance)
+  const notAvailable = useStudioStore((s) => s.complianceNotAvailable)
+  if (!showCompliance) return null
+
+  if (!compliance) {
+    return (
+      <div style={{ ...CARD, padding: 12, fontSize: 12, minWidth: 200 }}>
+        <div style={{ color: '#aab', marginBottom: 2 }}>Compliance</div>
+        <div style={{ fontSize: 11, color: '#778' }}>
+          {notAvailable ? 'Not available for this beam / scenario' : 'Computing...'}
+        </div>
+      </div>
+    )
+  }
+
+  // signal_rel is a fraction of the MRT served signal; show it as a percentage.
+  const signalPct = isFinite(compliance.signal_rel) ? `${(compliance.signal_rel * 100).toPrecision(3)}%` : '--'
+  return (
+    <div style={{ ...CARD, padding: 12, fontSize: 12, minWidth: 200 }}>
+      <div style={{ color: '#aab', marginBottom: 2, display: 'flex', justifyContent: 'space-between' }}>
+        <span>Compliance</span>
+        <span style={{ fontSize: 10, color: '#667' }}>per W tx</span>
+      </div>
+      <ComplianceRow label="Signal vs MRT" value={signalPct} title="Served signal |h.x|^2 relative to the matched-filter beam (100% = MRT)" />
+      <ComplianceRow label="P_abs" value={fmt(compliance.p_abs_w, ' W')} title="Total absorbed power per watt transmitted (the absorption fraction)" />
+      <ComplianceRow
+        label="SAR_wb"
+        value={compliance.sar_wb == null ? '--' : fmt(compliance.sar_wb, ' W/kg')}
+        title={
+          compliance.body_mass_kg == null
+            ? 'Whole-body SAR (body mass unknown)'
+            : `Whole-body SAR = P_abs / ${compliance.body_mass_kg} kg`
+        }
+      />
+      <ComplianceRow
+        label={`psSAR (${compliance.averaging_area_cm2} cm²)`}
+        value={fmt(compliance.pssar_4cm2, ' W/m²')}
+        title="Peak absorbed power density spatially averaged over the ICNIRP 4 cm^2 area"
+      />
+      <ComplianceRow label="η (peak/mean)" value={fmt(compliance.eta_4cm2)} title="psSAR over the area-mean absorbed power density (localisation factor)" />
+    </div>
+  )
+}
+
 // --- Colour bars: one for the field slice, one for the deposited body map ------
 // They can carry different quantities and (in per-surface scope) different
 // ranges, so each gets its own scale; shown side by side.
@@ -260,6 +316,7 @@ export default function StudioHud() {
       >
         <ComputingPill />
         <ProvenanceCard />
+        <ComplianceCard />
       </div>
       <div style={{ position: 'absolute', bottom: 16, left: 16, zIndex: 10 }}>
         <StudioColorBar />

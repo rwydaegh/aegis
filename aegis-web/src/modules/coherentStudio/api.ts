@@ -544,6 +544,84 @@ export async function fetchLiveBodyMap(params: LiveBodyMapParams): Promise<BodyM
 }
 
 // ---------------------------------------------------------------------------
+// Compliance scalars (ICNIRP readouts)
+// ---------------------------------------------------------------------------
+
+/**
+ * ICNIRP compliance scalars for the current beam + focus, all per watt
+ * transmitted (the precoders are unit-power). Returned by /api/studio/compliance.
+ */
+export interface ComplianceResult {
+  /** Total absorbed power, W per W transmitted (the absorption fraction). */
+  p_abs_w: number
+  /** Whole-body SAR = p_abs / body mass, W/kg per W transmitted (null if mass unknown). */
+  sar_wb: number | null
+  /** 4 cm^2 spatially-averaged peak absorbed power density (psSAR proxy), W/m^2 per W. */
+  pssar_4cm2: number
+  /** Raw per-triangle peak absorbed power density, W/m^2 per W. */
+  peak_sab: number
+  /** Area-weighted mean absorbed power density, W/m^2 per W. */
+  mean_sab: number
+  /** Peak (4 cm^2) over mean absorbed power density (dimensionless). */
+  eta_4cm2: number
+  /** Served signal relative to the matched-filter (MRT) beam (1.0 = MRT). */
+  signal_rel: number
+  /** Whole-body mass used for SAR_wb, kg (null if unknown). */
+  body_mass_kg: number | null
+  /** Spatial-averaging area used for psSAR, cm^2 (4.0). */
+  averaging_area_cm2: number
+  units: Record<string, string>
+  provenance?: string
+}
+
+export type ComplianceFetch =
+  | { ok: true; data: ComplianceResult }
+  | { ok: false; notPrecomputed: true; error: string }
+
+/**
+ * ICNIRP compliance scalars for the current beam + focus. Same precoder-bearing
+ * parameter shape as the live body map. A 409 (no channel / Q pack, or a beam
+ * with no per-element precoder such as decohered) is reported as not-precomputed,
+ * so the panel greys out the same way the live map does.
+ */
+export async function fetchCompliance(params: LiveBodyMapParams, signal?: AbortSignal): Promise<ComplianceFetch> {
+  const path = `${STUDIO}/compliance`
+  const res = await fetchWithRetry(`${BASE}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      mesh: params.mesh,
+      condition: params.condition,
+      array_n: params.arrayN,
+      seed: params.seed,
+      beam: params.beam,
+      focus_mode: params.focusMode,
+      focus_xyz: params.focusXyz,
+      frequency_ghz: params.frequencyGhz,
+      ecbf_budget_frac: params.ecbfBudgetFrac ?? 0.5,
+      ue_antenna: params.ueAntenna ?? 'dipole',
+      ue_idx: params.ueIdx ?? 4,
+    }),
+    signal,
+  })
+  if (res.status === 401) {
+    handle401()
+    throw new ApiError(`POST ${path} failed: 401 Unauthorized`, 401)
+  }
+  if (res.status === 409) {
+    const body = await res.json().catch(() => ({}))
+    return {
+      ok: false,
+      notPrecomputed: true,
+      error: typeof body?.error === 'string' ? body.error : 'Compliance metrics not available for this combination',
+    }
+  }
+  if (!res.ok) throw new ApiError(await extractErrorMessage(res, 'POST', path), res.status)
+  const data = (await res.json()) as ComplianceResult
+  return { ok: true, data }
+}
+
+// ---------------------------------------------------------------------------
 // Precoder (transmit radiation pattern)
 // ---------------------------------------------------------------------------
 

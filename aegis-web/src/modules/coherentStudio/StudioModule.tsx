@@ -9,6 +9,7 @@ import { useStudioPhantom } from './useStudioPhantom'
 import { useStudioSlice } from './useStudioSlice'
 import { useStudioVolume } from './useStudioVolume'
 import { useStudioBodyMap } from './useStudioBodyMap'
+import { useStudioCompliance } from './useStudioCompliance'
 
 // Coherent Exposure Studio: the hero scene, the data-fetch loop, the grouped
 // control panel, and the HUD overlay. Layout mirrors exposureLab/LabModule: a
@@ -20,6 +21,7 @@ export default function StudioModule() {
   useStudioSlice()
   useStudioVolume()
   useStudioBodyMap()
+  useStudioCompliance()
 
   // The scene column; we query its <canvas> to grab the rendered pixels.
   const sceneRef = useRef<HTMLDivElement>(null)

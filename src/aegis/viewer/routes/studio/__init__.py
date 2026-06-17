@@ -40,7 +40,19 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
     from aegis.viewer.routes._helpers import get_json_dict
     from aegis.viewer.routes.compute._responses import _json_dumps_safe
 
-    from . import _array, _bodymap, _channel, _paths, _phantom, _precoders, _presets, _scene, _slice, _volume
+    from . import (
+        _array,
+        _bodymap,
+        _channel,
+        _compliance,
+        _paths,
+        _phantom,
+        _precoders,
+        _presets,
+        _scene,
+        _slice,
+        _volume,
+    )
 
     def _beam_field(
         beam,
@@ -82,6 +94,15 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             x = _precoders.build_ecbf_from_q(
                 paths, focus_xyz, freq_hz, q, power=1.0, budget_frac=ecbf_budget_frac, ue_antenna=ue_antenna
             )
+            return x, None
+        if beam == "gep":
+            # GEP is the unconstrained dual to ECBF (x propto Q^{-1} conj(h)), so
+            # it reads the same per-realisation Q pack and reports the same
+            # not-precomputed sentinel when absent.
+            q = _paths.load_q(condition, array_n, freq_ghz, seed, mesh, cache, cache_lock)
+            if q is None:
+                raise _QPackMissing(f"{mesh}_{condition}_bs{int(array_n)}_{freq_ghz:g}_seed{int(seed)}")
+            x = _precoders.build_gep_from_q(paths, focus_xyz, freq_hz, q, power=1.0, ue_antenna=ue_antenna)
             return x, None
         if beam == "worstcase" and focus_mode == "at-skin":
             # On the body: build the worst-case ABSORPTION beam from the tissue
@@ -434,6 +455,93 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
         out["provenance"] = (
             f"studio runtime live body map | {mesh} | {condition} bs{array_n} seed{seed} "
             f"| beam={beam} | {freq_ghz:g}GHz"
+        )
+        return jsonify(out)
+
+    @app.route("/api/studio/compliance", methods=["POST"])
+    def api_studio_compliance():
+        """ICNIRP compliance scalars for the current beam + focus.
+
+        Returns the absorbed power, whole-body SAR, the 4 cm^2 spatially-averaged
+        peak absorbed power density (psSAR proxy), the peak / mean ratio, and the
+        served signal relative to MRT. Mirrors bodymap-live's parameter handling
+        (it applies the same live precoder to the same field channel). The 4 cm^2
+        averaging matrix is cached per phantom, so the first request for a mesh
+        pays the build cost and the rest are cheap; the frontend gates this behind
+        an opt-in toggle for that reason.
+        """
+        params, err = get_json_dict()
+        if err is not None:
+            return err
+        condition = params.get("condition", "los")
+        beam = params.get("beam", "mrt")
+        mesh = params.get("mesh", "thelonious")
+        focus_xyz = params.get("focus_xyz", [0.923, -0.005, 0.734])
+        focus_mode = params.get("focus_mode", "free-space")
+
+        try:
+            from aegis.hotspot import channel_at, make_rx_response
+
+            array_n = int(params.get("array_n", 16))
+            seed = int(params.get("seed", 0))
+            freq_ghz = float(params.get("frequency_ghz", 10))
+            freq_hz = freq_ghz * 1e9
+            ecbf_budget_frac = float(params.get("ecbf_budget_frac", 0.5))
+            ue_antenna = _parse_ue_antenna(params)
+            ue_idx = int(params.get("ue_idx", _channel.DEFAULT_UE_IDX))
+            if focus_mode == "at-skin":
+                focus_xyz = _phantom.snap_focus_to_skin(
+                    focus_xyz, mesh, cache=cache, cache_lock=cache_lock, ue_idx=ue_idx
+                )
+
+            loaded = _channel.load_channel(condition, array_n, freq_ghz, seed, mesh, cache, cache_lock, ue_idx)
+            if loaded is None:
+                stem = f"{mesh}_{condition}_bs{int(array_n)}_{freq_ghz:g}_seed{int(seed)}{_channel.ue_suffix(ue_idx)}"
+                return jsonify({"error": f"field-channel pack not precomputed: {stem}", "not_precomputed": True}), 409
+            g_tilde, areas = loaded
+
+            paths = _paths.load_paths(condition, array_n, seed, cache, cache_lock, ue_idx)
+            x, _field_source = _beam_field(
+                beam,
+                paths,
+                focus_xyz,
+                freq_hz,
+                condition,
+                array_n,
+                freq_ghz,
+                ecbf_budget_frac,
+                mesh,
+                focus_mode,
+                seed,
+                ue_antenna=ue_antenna,
+                ue_idx=ue_idx,
+            )
+            if x is None:
+                # The decohered baseline is a field-domain weight source, not a
+                # per-element precoder, so it has no x to score.
+                return jsonify({"error": f"compliance unsupported for beam '{beam}'", "not_precomputed": True}), 409
+
+            # Signal channel + MRT reference at the (possibly snapped) focus, so
+            # signal_rel measures this beam against the matched filter it competes
+            # with at the same operating point.
+            k_hat, psi, element_index, n_elements = paths
+            ue_rx = make_rx_response(ue_antenna, freq_hz)
+            h = channel_at(focus_xyz, k_hat, psi, element_index, freq_hz, n_elements, rx_response=ue_rx)
+            x_mrt = _precoders.build_precoder("mrt", paths, focus_xyz, freq_hz, power=1.0, ue_antenna=ue_antenna)
+
+            g_avg = _compliance.averaging_matrix(mesh, ue_idx, cache, cache_lock)
+            out = _compliance.compute_scalars(g_tilde, areas, x, h, x_mrt, g_avg, _compliance.body_mass_kg(mesh))
+        except _QPackMissing as e:
+            return jsonify(
+                {"error": f"exposure-operator (Q) pack not precomputed: {e.stem}", "not_precomputed": True}
+            ), 409
+        except FileNotFoundError as e:
+            return jsonify({"error": str(e)}), 404
+        except (KeyError, ValueError, TypeError, NotImplementedError) as e:
+            return jsonify({"error": str(e)}), 400
+
+        out["provenance"] = (
+            f"studio compliance | {mesh} | {condition} bs{array_n} seed{seed} | beam={beam} | {freq_ghz:g}GHz"
         )
         return jsonify(out)
 

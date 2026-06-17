@@ -215,7 +215,8 @@ export function beamAvailability(
   frequencyGhz: number,
 ): { available: boolean; hint?: string } {
   if (!conditionHasRayPack(packs, condition, arrayN)) return { available: false, hint: 'no ray pack' }
-  if (beam === 'ecbf' && !qopHasPack(packs, mesh, condition, arrayN, frequencyGhz)) {
+  // ECBF and GEP both solve against the precomputed exposure operator Q.
+  if ((beam === 'ecbf' || beam === 'gep') && !qopHasPack(packs, mesh, condition, arrayN, frequencyGhz)) {
     return { available: false, hint: 'no Q pack at this freq' }
   }
   return { available: true }
@@ -273,6 +274,12 @@ const BEAM_CATALOGUE: BeamOption[] = [
     label: 'ECBF',
     title:
       'Exposure-constrained beamformer. Maximises received signal subject to a cap on total absorbed power (max |h^T x|^2 s.t. x^H Q x <= budget). The compliant beam: keep the link strong while holding whole-body absorption under a budget. Set the cap with the budget slider.',
+  },
+  {
+    value: 'gep',
+    label: 'GEP',
+    title:
+      'Generalised-eigenvalue precoder, the unconstrained dual to ECBF. Maximises the signal-per-absorbed-power ratio |h^T x|^2 / (x^H Q x), with optimum x = Q^{-1} conj(h). The single most exposure-efficient direction: it steers energy away from the body while keeping the link, so its on-body field is deliberately low. Needs the same Q pack as ECBF.',
   },
 ]
 

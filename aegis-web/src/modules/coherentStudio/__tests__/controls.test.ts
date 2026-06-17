@@ -275,6 +275,14 @@ describe('beamAvailability', () => {
     expect(a.available).toBe(false)
     expect(a.hint).toBe('no Q pack at this freq')
   })
+
+  it('gates GEP on the Q pack the same way as ECBF', () => {
+    // GEP is the unconstrained dual to ECBF and solves against the same Q pack.
+    expect(beamAvailability(PACKS, 'gep', 'thelonious', 'los', 16, 28).available).toBe(true)
+    const a = beamAvailability(PACKS, 'gep', 'thelonious', 'los', 16, 20)
+    expect(a.available).toBe(false)
+    expect(a.hint).toBe('no Q pack at this freq')
+  })
 })
 
 describe('ensembleHasPack', () => {

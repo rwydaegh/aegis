@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type {
   BodyMapResult,
+  ComplianceResult,
   PhantomGeometry,
   PrecoderResult,
   Provenance,
@@ -118,6 +119,10 @@ interface StudioState {
   volumeThreshold: number
   /** Per-voxel cube opacity for the field-volume cloud. */
   volumeOpacity: number
+  /** Show the ICNIRP compliance scalars panel (P_abs, SAR_wb, psSAR, eta,
+   * signal vs MRT). Opt-in: the first request per phantom builds the 4 cm^2
+   * averaging matrix (a few seconds), so it is off by default. Render-only. */
+  showCompliance: boolean
 
   // --- Results ---
   sliceResult: SliceResult | null
@@ -132,6 +137,11 @@ interface StudioState {
   scene: SceneGeometry | null
   /** True when the last body-map fetch found no precomputed pack for the combo. */
   bodyMapNotPrecomputed: boolean
+  /** ICNIRP compliance scalars for the current beam + focus (null until fetched). */
+  compliance: ComplianceResult | null
+  /** True when compliance is unavailable for the combo (no channel/Q pack, or a
+   * beam with no per-element precoder such as decohered). */
+  complianceNotAvailable: boolean
   /** Provenance of the currently displayed slice / body map (whichever was set last). */
   provenance: Provenance | null
 
@@ -181,6 +191,7 @@ interface StudioState {
   setVolumeExtentM: (volumeExtentM: number) => void
   setVolumeThreshold: (volumeThreshold: number) => void
   setVolumeOpacity: (volumeOpacity: number) => void
+  setShowCompliance: (showCompliance: boolean) => void
   /** Restore every knob to STUDIO_DEFAULTS (results refetch from the new params). */
   resetDefaults: () => void
 
@@ -194,6 +205,8 @@ interface StudioState {
   setManifest: (manifest: StudioManifest | null) => void
   setComputing: (computing: boolean) => void
   setScene: (scene: SceneGeometry | null) => void
+  setCompliance: (compliance: ComplianceResult | null) => void
+  setComplianceNotAvailable: (complianceNotAvailable: boolean) => void
 }
 
 /** The user-settable knobs (parameters + render-only state), minus results,
@@ -245,6 +258,7 @@ type StudioSettings = Pick<
   | 'volumeExtentM'
   | 'volumeThreshold'
   | 'volumeOpacity'
+  | 'showCompliance'
 >
 
 // Default values for every user-settable knob (parameters + render-only state).
@@ -308,6 +322,9 @@ export const STUDIO_DEFAULTS: StudioSettings = {
   volumeExtentM: 0.16,
   volumeThreshold: 0.25,
   volumeOpacity: 0.45,
+  // Opt-in: the first compliance request per phantom builds the 4 cm^2 averaging
+  // matrix (a few seconds), so the panel stays off until the user asks for it.
+  showCompliance: false,
 }
 
 export const useStudioStore = create<StudioState>()((set) => ({
@@ -322,6 +339,8 @@ export const useStudioStore = create<StudioState>()((set) => ({
   computing: false,
   scene: null,
   bodyMapNotPrecomputed: false,
+  compliance: null,
+  complianceNotAvailable: false,
   provenance: null,
 
   setMesh: (mesh) => set({ mesh }),
@@ -383,6 +402,7 @@ export const useStudioStore = create<StudioState>()((set) => ({
   setVolumeExtentM: (volumeExtentM) => set({ volumeExtentM }),
   setVolumeThreshold: (volumeThreshold) => set({ volumeThreshold }),
   setVolumeOpacity: (volumeOpacity) => set({ volumeOpacity }),
+  setShowCompliance: (showCompliance) => set({ showCompliance }),
   resetDefaults: () => set({ ...STUDIO_DEFAULTS }),
 
   setSliceResult: (sliceResult) =>
@@ -396,6 +416,8 @@ export const useStudioStore = create<StudioState>()((set) => ({
   setManifest: (manifest) => set({ manifest }),
   setComputing: (computing) => set({ computing }),
   setScene: (scene) => set({ scene }),
+  setCompliance: (compliance) => set({ compliance }),
+  setComplianceNotAvailable: (complianceNotAvailable) => set({ complianceNotAvailable }),
 }))
 
 // ---------------------------------------------------------------------------
@@ -500,6 +522,29 @@ export function bodyMapFetchKey(s: BodyMapKeyState): string {
 export function precoderFetchKey(s: BodyMapKeyState): string {
   return JSON.stringify([
     'precoder',
+    s.mesh,
+    s.condition,
+    s.arrayN,
+    s.seed,
+    s.ueIdx,
+    s.beam,
+    s.focusMode,
+    s.focusXyz,
+    s.frequencyGhz,
+    s.beam === 'ecbf' ? s.ecbfBudgetFrac : null,
+    s.ueAntenna,
+  ])
+}
+
+// The compliance scalars are a function of the synthesised precoder + body
+// channel, so they key on the same beam + focus axes as the live deposited map,
+// plus the showCompliance gate (so toggling the panel on triggers the fetch).
+export type ComplianceKeyState = BodyMapKeyState & Pick<StudioState, 'showCompliance'>
+
+export function complianceFetchKey(s: ComplianceKeyState): string {
+  return JSON.stringify([
+    'compliance',
+    s.showCompliance,
     s.mesh,
     s.condition,
     s.arrayN,

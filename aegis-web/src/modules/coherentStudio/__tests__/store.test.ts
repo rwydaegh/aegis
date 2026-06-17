@@ -1,5 +1,12 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { useStudioStore, sliceFetchKey, bodyMapFetchKey, volumeFetchKey, STUDIO_DEFAULTS } from '../store'
+import {
+  useStudioStore,
+  sliceFetchKey,
+  bodyMapFetchKey,
+  volumeFetchKey,
+  complianceFetchKey,
+  STUDIO_DEFAULTS,
+} from '../store'
 
 function keys() {
   const s = useStudioStore.getState()
@@ -111,6 +118,25 @@ describe('coherentStudio fetch keys', () => {
     const afterExtent = keys()
     expect(afterExtent.volume).not.toBe(afterRes.volume)
     expect(afterExtent.slice).toBe(before.slice)
+  })
+
+  it('toggling showCompliance changes the compliance key but not slice / body-map', () => {
+    const before = { ...keys(), compliance: complianceFetchKey(useStudioStore.getState()) }
+    useStudioStore.getState().setShowCompliance(true)
+    const after = { ...keys(), compliance: complianceFetchKey(useStudioStore.getState()) }
+    expect(after.compliance).not.toBe(before.compliance)
+    expect(after.slice).toBe(before.slice)
+    expect(after.bodyMap).toBe(before.bodyMap)
+    expect(after.volume).toBe(before.volume)
+  })
+
+  it('compliance key tracks the beam / focus, not render-only colormap', () => {
+    useStudioStore.getState().setShowCompliance(true)
+    const before = complianceFetchKey(useStudioStore.getState())
+    useStudioStore.getState().setColormap('magma')
+    expect(complianceFetchKey(useStudioStore.getState())).toBe(before)
+    useStudioStore.getState().setFocusXyz([0.4, 0.1, 0.9])
+    expect(complianceFetchKey(useStudioStore.getState())).not.toBe(before)
   })
 
   it('volumeThreshold / volumeOpacity are render-only: change no fetch key', () => {

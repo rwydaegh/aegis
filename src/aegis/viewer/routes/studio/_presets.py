@@ -17,7 +17,7 @@ _CONDITIONS = ("los", "nlos")
 _FREQUENCIES = (8, 10, 12, 15, 20, 28)
 _SEEDS = (0, 1, 2, 3, 4, 5)
 _ARRAY_SIZES = (8, 16)
-_BEAMS = ("mrt", "unfocused", "decohered", "decoy", "worstcase", "ecbf")
+_BEAMS = ("mrt", "unfocused", "decohered", "decoy", "worstcase", "ecbf", "gep")
 # UE receive antenna patterns C_R(k). The signal channel projects each path via
 # C_R(k_n)^H psi_n (monograph signal branch), so the receive antenna shapes h,
 # hence the MRT / ECBF precoder, hence (indirectly) the deposited map. The

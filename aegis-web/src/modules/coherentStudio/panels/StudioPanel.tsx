@@ -246,6 +246,8 @@ export default function StudioPanel() {
   const setCameraView = useStudioStore((s) => s.setCameraView)
   const showVolume = useStudioStore((s) => s.showVolume)
   const setShowVolume = useStudioStore((s) => s.setShowVolume)
+  const showCompliance = useStudioStore((s) => s.showCompliance)
+  const setShowCompliance = useStudioStore((s) => s.setShowCompliance)
   const volumeRes = useStudioStore((s) => s.volumeRes)
   const setVolumeRes = useStudioStore((s) => s.setVolumeRes)
   const volumeExtentM = useStudioStore((s) => s.volumeExtentM)
@@ -486,6 +488,16 @@ export default function StudioPanel() {
 
       <Group title="Quantities">
         <StudioQuantityPicker />
+      </Group>
+
+      <Group title="Compliance" active={showCompliance}>
+        <Checkbox
+          checked={showCompliance}
+          onChange={setShowCompliance}
+          title="Show the ICNIRP compliance readouts for the current beam in the HUD: absorbed power, whole-body SAR, the 4 cm² spatially-averaged peak (psSAR), the peak/mean ratio, and the served signal relative to MRT. Opt-in: the first request per phantom builds the 4 cm² averaging matrix (a few seconds), then updates live as you steer."
+        >
+          Compliance metrics
+        </Checkbox>
       </Group>
 
       <Group title="Rays" active={showRays}>

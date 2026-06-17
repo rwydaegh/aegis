@@ -724,3 +724,162 @@ def test_precoder_decohered_unavailable(client):
     r = _precoder_post(client, "decohered")
     assert r.status_code == 200
     assert r.get_json()["available"] is False
+
+
+# --- GEP precoder + compliance scalars ------------------------------------------
+
+
+def test_build_gep_reduces_to_mrt_when_q_is_identity():
+    # With Q = I the exposure operator imposes no preference, so the
+    # signal-per-absorbed-power optimum x propto Q^{-1} conj(h) collapses onto the
+    # matched filter x propto conj(h). This pins the GEP eigen-math independent of
+    # any pack: same h, same normalisation, so the two precoders must coincide.
+    from aegis.viewer.routes.studio._precoders import build_gep_from_q, build_precoder
+
+    rng = np.random.default_rng(0)
+    n_elements = 4
+    n_paths = 6
+    k_hat = rng.normal(size=(n_paths, 3))
+    k_hat /= np.linalg.norm(k_hat, axis=1, keepdims=True)
+    psi = rng.normal(size=(n_paths, 3)) + 1j * rng.normal(size=(n_paths, 3))
+    element_index = np.array([0, 1, 2, 3, 0, 1], dtype=np.int64)
+    paths = (k_hat, psi, element_index, n_elements)
+    focus = [0.9, 0.0, 0.7]
+    freq_hz = 28e9
+
+    q = np.eye(n_elements, dtype=complex)
+    x_gep = build_gep_from_q(paths, focus, freq_hz, q, power=1.0)
+    x_mrt = build_precoder("mrt", paths, focus, freq_hz, power=1.0)
+    assert np.allclose(x_gep, x_mrt, atol=1e-10)
+    # Unit transmit power.
+    assert np.isclose(np.vdot(x_gep, x_gep).real, 1.0, atol=1e-10)
+
+
+def test_compute_scalars_math_is_self_consistent():
+    # Deterministic check of the scalar definitions with an identity averaging
+    # matrix (so psSAR = peak per-triangle Sab) and x == x_mrt (so signal_rel = 1).
+    from scipy import sparse
+
+    from aegis.viewer.routes.studio._compliance import compute_scalars
+
+    n_tri, n_ant = 5, 3
+    rng = np.random.default_rng(1)
+    g_tilde = rng.normal(size=(n_tri, 3, n_ant)) + 1j * rng.normal(size=(n_tri, 3, n_ant))
+    areas = np.full(n_tri, 2.0)
+    x = rng.normal(size=n_ant) + 1j * rng.normal(size=n_ant)
+    h = rng.normal(size=n_ant) + 1j * rng.normal(size=n_ant)
+    g_avg = sparse.eye(n_tri, format="csr")
+
+    out = compute_scalars(g_tilde, areas, x, h, x, g_avg, body_mass=70.0)
+
+    sab = (np.abs(np.einsum("tim,m->ti", g_tilde, x)) ** 2).sum(axis=1)
+    assert np.isclose(out["p_abs_w"], float((sab * areas).sum()))
+    assert np.isclose(out["pssar_4cm2"], float(sab.max()))  # identity averaging
+    assert np.isclose(out["peak_sab"], float(sab.max()))
+    assert np.isclose(out["mean_sab"], out["p_abs_w"] / areas.sum())
+    assert np.isclose(out["eta_4cm2"], out["pssar_4cm2"] / out["mean_sab"])
+    assert np.isclose(out["sar_wb"], out["p_abs_w"] / 70.0)
+    # x_mrt == x, so the beam delivers exactly the reference signal.
+    assert np.isclose(out["signal_rel"], 1.0)
+
+
+def test_body_mass_kg_reads_phantoms_yaml():
+    from aegis.viewer.routes.studio._compliance import body_mass_kg
+
+    assert body_mass_kg("thelonious") == pytest.approx(17.4)
+    assert body_mass_kg("duke") == pytest.approx(72.4)
+    assert body_mass_kg("nope") is None
+
+
+def _compliance_post(client, beam="mrt", frequency_ghz=10, ecbf_budget_frac=0.5, focus_xyz=(0.923, -0.005, 0.734)):
+    body = {
+        "mesh": "thelonious",
+        "condition": "los",
+        "array_n": 16,
+        "seed": 0,
+        "beam": beam,
+        "focus_xyz": list(focus_xyz),
+        "focus_mode": "free-space",
+        "frequency_ghz": frequency_ghz,
+        "ecbf_budget_frac": ecbf_budget_frac,
+    }
+    return client.post("/api/studio/compliance", json=body)
+
+
+@needs_channel
+def test_compliance_mrt_scalars(client):
+    r = _compliance_post(client, beam="mrt")
+    assert r.status_code == 200, r.get_data(as_text=True)
+    j = r.get_json()
+    for key in ("p_abs_w", "sar_wb", "pssar_4cm2", "eta_4cm2", "signal_rel"):
+        assert key in j
+    assert np.isfinite(j["p_abs_w"])
+    assert j["p_abs_w"] > 0
+    assert np.isfinite(j["sar_wb"])
+    assert j["sar_wb"] > 0
+    # SAR_wb = P_abs / body mass (thelonious = 17.4 kg from phantoms.yaml).
+    assert j["sar_wb"] == pytest.approx(j["p_abs_w"] / 17.4, rel=1e-6)
+    # psSAR (4 cm^2 averaged peak) cannot exceed the raw per-triangle peak.
+    assert j["pssar_4cm2"] <= j["peak_sab"] + 1e-12
+    # eta = psSAR / mean Sab >= 1 (the peak averaged density beats the mean).
+    assert j["eta_4cm2"] >= 1.0
+    # The MRT beam is its own reference, so it delivers exactly the MRT signal.
+    assert j["signal_rel"] == pytest.approx(1.0, abs=1e-6)
+    assert j["averaging_area_cm2"] == pytest.approx(4.0)
+
+
+@needs_channel
+@needs_qpack
+def test_compliance_ecbf_trades_signal_for_absorption(client):
+    # ECBF at half the MRT absorption budget must absorb less power and deliver
+    # less signal than MRT: the compliance trade-off the panel exists to show.
+    mrt = _compliance_post(client, beam="mrt").get_json()
+    ecbf = _compliance_post(client, beam="ecbf", ecbf_budget_frac=0.5).get_json()
+    assert ecbf["p_abs_w"] < mrt["p_abs_w"]
+    assert ecbf["signal_rel"] < 1.0
+    assert 0.0 < ecbf["signal_rel"] <= 1.0
+
+
+@needs_channel
+@needs_qpack
+def test_compliance_gep_is_valid(client):
+    r = _compliance_post(client, beam="gep")
+    assert r.status_code == 200, r.get_data(as_text=True)
+    j = r.get_json()
+    assert np.isfinite(j["p_abs_w"])
+    assert j["p_abs_w"] > 0
+    assert 0.0 < j["signal_rel"] <= 1.0 + 1e-9
+
+
+@needs_channel
+def test_compliance_decohered_409(client):
+    # No per-element precoder to score, same sentinel the live body map uses.
+    r = _compliance_post(client, beam="decohered")
+    assert r.status_code == 409
+    assert r.get_json()["not_precomputed"] is True
+
+
+@needs_channel
+def test_compliance_missing_channel_409(client):
+    r = _compliance_post(client, frequency_ghz=99)
+    assert r.status_code == 409
+    assert r.get_json()["not_precomputed"] is True
+
+
+@needs_packs
+@needs_qpack
+def test_slice_gep_computes(client):
+    # GEP solves against the same Q pack ECBF uses and returns a valid field.
+    # Unlike MRT it is exposure-avoiding (it maximises signal per absorbed power),
+    # so its field on the body focus is deliberately low rather than peaked; the
+    # signal-efficiency property is checked in the compliance / identity-Q tests.
+    gep = _slice_peak(client, "gep")
+    assert np.isfinite(gep["peak_value"])
+    assert gep["peak_value"] > 0.0
+
+
+@needs_packs
+def test_slice_gep_missing_q_409(client):
+    r = _slice_post(client, "gep", frequency_ghz=99)
+    assert r.status_code == 409
+    assert r.get_json()["not_precomputed"] is True

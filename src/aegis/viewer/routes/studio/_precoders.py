@@ -155,3 +155,47 @@ def build_ecbf_from_q(
     x_mrt = np.sqrt(power) * np.conj(h) / np.linalg.norm(h)
     p_abs_mrt = float(np.real(x_mrt.conj() @ q @ x_mrt))
     return np.asarray(solve_ecbf(h, q, frac * p_abs_mrt, power))
+
+
+def build_gep_from_q(
+    paths: tuple[np.ndarray, np.ndarray, np.ndarray, int],
+    focus_xyz,
+    freq_hz: float,
+    q: np.ndarray,
+    power: float = 1.0,
+    ue_antenna: str = "dipole",
+) -> np.ndarray:
+    """Generalised-eigenvalue precoder ``x`` against the exposure operator ``q``.
+
+    The GEP beam maximises the signal-to-absorbed-power Rayleigh quotient
+    ``|h^T x|^2 / (x^H Q x)``, whose optimiser is ``x propto Q^{-1} conj(h)``
+    (the leading generalised eigenvector of the pencil ``(h h^H, Q)``). It is the
+    unconstrained dual to ECBF: ECBF caps absorption at a budget, GEP picks the
+    single most signal-efficient direction per unit absorbed power. Normalised to
+    ``||x||^2 = power``.
+
+    ``q`` is the precomputed Hermitian PSD exposure operator (same pack ECBF
+    uses). The inverse is formed from the eigendecomposition with a relative
+    eigenvalue floor so the rank-deficient / ill-conditioned directions are
+    dropped rather than amplified; a degenerate solve (zero ``y``) falls back to
+    MRT. Matches the reference ``gep`` in build_replay_artifact.py.
+    """
+    from aegis.hotspot import channel_at, make_rx_response
+
+    k_hat, psi, element_index, n_elements = paths
+    focus = np.asarray(focus_xyz, dtype=float)
+    q = np.asarray(q)
+    ue_rx = make_rx_response(ue_antenna, freq_hz)
+    h = channel_at(focus, k_hat, psi, element_index, freq_hz, n_elements, rx_response=ue_rx)
+
+    eigvals, vecs = np.linalg.eigh(q)
+    eigvals = np.maximum(eigvals.real, 0.0)
+    tol = max(q.shape) * np.finfo(eigvals.dtype).eps * float(eigvals.max(initial=0.0))
+    inv = np.where(eigvals > tol, 1.0 / np.where(eigvals > tol, eigvals, 1.0), 0.0)
+    y = vecs @ (inv * (vecs.conj().T @ np.conj(h)))
+    nrm = float(np.linalg.norm(y))
+    if nrm < 1e-30:
+        # Q annihilates conj(h): no signal-bearing direction is cheap, so fall
+        # back to the matched filter (the power-only optimum).
+        return np.sqrt(power) * np.conj(h) / np.linalg.norm(h)
+    return np.sqrt(power) * y / nrm
