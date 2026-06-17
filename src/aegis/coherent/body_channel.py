@@ -65,6 +65,24 @@ if JAX_AVAILABLE:
         g = xp.zeros((n_triangles, 3, n_elements), dtype=weighted.dtype)
         return g.at[:, :, element_index].add(xp.transpose(weighted, (0, 2, 1)))
 
+    @jax.jit
+    def _geometry_body_channel_jax(normals, centroids, k_hat):
+        """JIT-fused frequency-invariant geometry for the simple body channel.
+
+        Used by :func:`precompute_body_channel_geometry` under the JAX backend.
+        Fuses the incidence cosine ``mu``, the TE/TM basis, and the geometric
+        phase dot into one XLA kernel, so each studio chunk issues a single
+        dispatch for the geometry instead of the ~dozen small eager ops the
+        per-(m, n) cross products and norms would otherwise emit. Returns
+        ``(mu, e_s, e_p, geom_phase)``; ``psi`` and ``element_index`` pass through
+        unchanged in the caller. Retraces once per (triangle, path) shape, like
+        :func:`_assemble_body_channel_jax`.
+        """
+        mu = normals @ (-k_hat).T
+        e_s, e_p = te_tm_basis(k_hat, normals)
+        geom_phase = centroids @ k_hat.T
+        return mu, e_s, e_p, geom_phase
+
 
 def _fock_gate_factors(mu, fock_R, freq_hz, q_F_s, q_F_h):
     """Polarization-resolved complex Fock gate factors ``(g_soft, g_hard)``.
@@ -286,11 +304,15 @@ def precompute_body_channel_geometry(normals, centroids, k_hat, psi, element_ind
 
     # Keep the geometry on the active backend (device arrays under JAX) so a
     # frequency sweep reuses one on-device copy instead of re-transferring it per
-    # frequency. Under NumPy these are plain arrays, so the eager assembly stays
-    # bit-identical to compute_body_channel.
-    mu = xp.asarray(normals @ (-k_hat).T)  # (M, N)
-    e_s, e_p = te_tm_basis(k_hat, normals)
-    geom_phase = xp.asarray(centroids @ k_hat.T)  # (M, N)
+    # frequency. Under JAX the whole geometry is one jitted dispatch
+    # (:func:`_geometry_body_channel_jax`); under NumPy these are plain eager
+    # arrays, bit-identical to compute_body_channel.
+    if JAX_AVAILABLE:
+        mu, e_s, e_p, geom_phase = _geometry_body_channel_jax(normals, centroids, k_hat)
+    else:
+        mu = xp.asarray(normals @ (-k_hat).T)  # (M, N)
+        e_s, e_p = te_tm_basis(k_hat, normals)
+        geom_phase = xp.asarray(centroids @ k_hat.T)  # (M, N)
     return BodyChannelGeometry(
         mu=mu,
         e_s=e_s,
