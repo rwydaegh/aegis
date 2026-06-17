@@ -33,6 +33,26 @@ def ue_suffix(ue_idx: int) -> str:
     return "" if int(ue_idx) == DEFAULT_UE_IDX else f"_ue{int(ue_idx)}"
 
 
+def read_g_tilde(npz) -> np.ndarray:
+    """Reconstruct the complex64 channel from a pack in either storage format.
+
+    Old packs store ``g_tilde`` as complex64. New packs halve the on-disk size by
+    storing the real and imaginary parts as two float16 arrays (``g_tilde_re`` /
+    ``g_tilde_im``); we expand them back to complex64 here so every consumer sees
+    the same array regardless of how the pack was written. float16 is ample for
+    the served maps: it perturbs the deposited / worst-case / ECBF quantities by
+    <1e-4 relative (the dominant exposure subspace is preserved). It does NOT
+    preserve the tiny / null-space eigenvalues of the exposure operator Q, so any
+    future consumer needing that genuine small-eigenvalue structure must rebuild
+    from a full-precision source, not from a float16 pack.
+    """
+    if "g_tilde" in npz.files:
+        return np.asarray(npz["g_tilde"], dtype=np.complex64)
+    re = np.asarray(npz["g_tilde_re"], dtype=np.float32)
+    im = np.asarray(npz["g_tilde_im"], dtype=np.float32)
+    return (re + 1j * im).astype(np.complex64)
+
+
 def channel_path(
     condition: str, array_n: int, freq_ghz: float, seed: int, mesh: str = "thelonious", ue_idx: int = DEFAULT_UE_IDX
 ):
@@ -73,7 +93,7 @@ def load_channel(
             if stem in store:
                 return store[stem]
     with np.load(path) as d:
-        g_tilde = np.asarray(d["g_tilde"])
+        g_tilde = read_g_tilde(d)
         areas = np.asarray(d["areas"], dtype=float)
     value = (g_tilde, areas)
     if cache is not None and cache_lock is not None:

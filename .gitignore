@@ -161,6 +161,7 @@ scripts/*
 !scripts/fetch_smplx.py
 !scripts/fuzz_api.sh
 !scripts/ingest_amass.py
+!scripts/migrate_channel_fp16.py
 !scripts/run_mutmut.sh
 !scripts/studio_precompute.py
 
@@ -335,3 +336,9 @@ theory/unified_physics.fls
 theory/unified_physics.fdb_latexmk
 theory/unified_physics.log
 theory/_harness_*
+
+# Deep-research notes (local only)
+anti-ai.md
+
+# Replay artifact (26MB, regenerable via paper repo build_replay_artifact.py)
+aegis-web/public/factory.json

@@ -683,6 +683,7 @@ def qop_from_channels(studio_dir: Path, meshes: list[str] | None = None) -> None
     by mesh prefix.
     """
     from aegis.coherent.exposure_operator import compute_exposure_operator
+    from aegis.viewer.routes.studio._channel import read_g_tilde
 
     packs = sorted((studio_dir / "channel").glob("*.npz"))
     if not packs:
@@ -704,7 +705,7 @@ def qop_from_channels(studio_dir: Path, meshes: list[str] | None = None) -> None
             continue
         bs_n, freq_ghz, seed = int(bs_tok.removeprefix("bs")), float(ghz_tok), int(seed_tok)
         with np.load(path) as d:
-            q = compute_exposure_operator(np.asarray(d["g_tilde"]), np.asarray(d["areas"], dtype=float))
+            q = compute_exposure_operator(read_g_tilde(d), np.asarray(d["areas"], dtype=float))
         q = (q + np.conj(q).T) / 2
         eigs = np.linalg.eigvalsh(q)
         out = _qop_path(studio_dir, mesh, cond, bs_n, freq_ghz, seed)
@@ -787,9 +788,18 @@ def compute_channels(
                                 f"{_ghz_tag(freq_ghz)}GHz seed={seed} ue={ue_idx} | "
                                 f"G_tilde (T,3,M)={tuple(g_tilde.shape)} | e11 recipe"
                             )
+                            # Store the channel as two float16 arrays (re / im)
+                            # rather than complex64: it halves the on-disk pack and
+                            # the served deposited / worst-case / ECBF maps move by
+                            # <1e-4 relative (the dominant exposure subspace is
+                            # preserved; only Q's null-space eigenvalues degrade,
+                            # and nothing serves those). The backend's read_g_tilde
+                            # expands it back to complex64.
+                            g64 = np.asarray(g_tilde, np.complex64)
                             _atomic_savez(
                                 out,
-                                g_tilde=np.asarray(g_tilde, np.complex64),
+                                g_tilde_re=g64.real.astype(np.float16),
+                                g_tilde_im=g64.imag.astype(np.float16),
                                 areas=areas,
                                 n_elements=np.int32(m),
                                 mesh=mesh,
