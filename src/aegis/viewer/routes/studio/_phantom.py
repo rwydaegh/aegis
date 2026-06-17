@@ -13,6 +13,7 @@ import threading
 
 import numpy as np
 
+from ._channel import DEFAULT_UE_IDX
 from ._config import available_packs
 from ._paths import load_phantom
 
@@ -30,8 +31,14 @@ _ARRAY_ORDER = ("vertices", "faces", "centroids", "normals")
 
 
 def known_meshes() -> tuple[str, ...]:
-    """Phantoms with a precomputed geometry pack on disk (sorted)."""
-    return tuple(available_packs().get("phantom", []))
+    """Base phantoms with a precomputed geometry pack on disk (sorted).
+
+    Per-UE phantom packs carry a ``_ue{idx}`` suffix on the same mesh name; they
+    are alternate standing positions of an already-known mesh, not new meshes, so
+    they are filtered out here. The mesh selector lists only the base phantoms
+    (thelonious / duke / eartha / ella).
+    """
+    return tuple(p for p in available_packs().get("phantom", []) if "_ue" not in p)
 
 
 def is_known_mesh(name: str) -> bool:
@@ -48,6 +55,7 @@ def snap_focus_to_skin(
     name: str = "thelonious",
     cache: dict | None = None,
     cache_lock: threading.RLock | None = None,
+    ue_idx: int = DEFAULT_UE_IDX,
 ):
     """Project a focus point onto the nearest body-surface triangle centroid.
 
@@ -55,10 +63,11 @@ def snap_focus_to_skin(
     focus, so the snap is a plain nearest-centroid search. Returns the snapped
     point as a length-3 float list. Raises :class:`FileNotFoundError` when the
     phantom pack is absent (load_phantom does), which the caller surfaces as the
-    not-precomputed sentinel.
+    not-precomputed sentinel. ``ue_idx`` selects the corridor standing position,
+    so the snap follows the body when the UE slider moves it.
     """
     focus = np.asarray(focus_xyz, dtype=float).reshape(3)
-    phantom = load_phantom(name, cache, cache_lock)
+    phantom = load_phantom(name, cache, cache_lock, ue_idx)
     centroids = np.asarray(phantom["centroids"], dtype=float)
     d2 = np.einsum("ij,ij->i", centroids - focus, centroids - focus)
     nearest = centroids[int(np.argmin(d2))]
@@ -70,15 +79,17 @@ def focus_surface_normal(
     name: str = "thelonious",
     cache: dict | None = None,
     cache_lock: threading.RLock | None = None,
+    ue_idx: int = DEFAULT_UE_IDX,
 ):
     """Outward normal of the body triangle nearest ``focus_xyz`` (length-3 array).
 
     Used by the worst-case-absorption beam to build the tissue channel at the
     snapped focus. Same nearest-centroid search as :func:`snap_focus_to_skin`,
     so a focus already snapped at-skin resolves to its own triangle's normal.
+    ``ue_idx`` selects the corridor standing position.
     """
     focus = np.asarray(focus_xyz, dtype=float).reshape(3)
-    phantom = load_phantom(name, cache, cache_lock)
+    phantom = load_phantom(name, cache, cache_lock, ue_idx)
     centroids = np.asarray(phantom["centroids"], dtype=float)
     normals = np.asarray(phantom["normals"], dtype=float)
     d2 = np.einsum("ij,ij->i", centroids - focus, centroids - focus)
@@ -89,6 +100,7 @@ def build_phantom_payload(
     name: str,
     cache: dict | None = None,
     cache_lock: threading.RLock | None = None,
+    ue_idx: int = DEFAULT_UE_IDX,
 ) -> tuple[bytes, dict]:
     """Pack a phantom's geometry into ``(buffer, stats)``.
 
@@ -96,8 +108,10 @@ def build_phantom_payload(
     ``arrays`` manifest with one entry per array giving ``name``, ``dtype``,
     byte ``offset``, element ``length`` and ``shape``. Raises
     :class:`FileNotFoundError` when the pack is absent (load_phantom does).
+    ``ue_idx`` selects the corridor standing position, so the served geometry
+    sits where the UE slider placed the body.
     """
-    phantom = load_phantom(name, cache, cache_lock)
+    phantom = load_phantom(name, cache, cache_lock, ue_idx)
 
     buf = bytearray()
     arrays_meta = []

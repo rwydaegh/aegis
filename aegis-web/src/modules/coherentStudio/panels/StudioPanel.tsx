@@ -163,6 +163,8 @@ export default function StudioPanel() {
   const setSeed = useStudioStore((s) => s.setSeed)
   const arrayN = useStudioStore((s) => s.arrayN)
   const setArrayN = useStudioStore((s) => s.setArrayN)
+  const ueIdx = useStudioStore((s) => s.ueIdx)
+  const setUeIdx = useStudioStore((s) => s.setUeIdx)
 
   const beam = useStudioStore((s) => s.beam)
   const setBeam = useStudioStore((s) => s.setBeam)
@@ -267,6 +269,14 @@ export default function StudioPanel() {
     label: `Seed ${s}`,
   }))
 
+  // Corridor UE standing positions the body can occupy. The manifest advertises
+  // the available indices (0..8); the body's world-x is x = -7 + 2*idx m in the
+  // e11 corridor, so idx 4 is the default mid-corridor (+1 m, "14 m") UE.
+  const ueIndices = manifest?.ue_indices ?? [ueIdx]
+  const ueMin = ueIndices.length ? ueIndices[0] : 0
+  const ueMax = ueIndices.length ? ueIndices[ueIndices.length - 1] : 8
+  const ueLabel = (i: number) => `UE ${i} (x ${(-7 + 2 * i).toFixed(0)} m)`
+
   const beams: Option<string>[] = beamOptions(manifest).map((b) => {
     const { available, hint } = beamAvailability(packs, b.value, mesh, condition, arrayN, frequencyGhz)
     return { value: b.value, label: b.label, disabled: !available, hint, title: b.title }
@@ -311,6 +321,18 @@ export default function StudioPanel() {
           options={seedOptions}
           onChange={setSeed}
           parse={(raw) => Number(raw)}
+        />
+
+        <FieldLabel title="Where the person stands in the corridor. Slides the body through the 9 candidate UE positions (x = -7..+9 m); the deposited body map and the phantom geometry follow it down the corridor. UE 4 is the default mid-corridor position.">
+          Standing position (UE)
+        </FieldLabel>
+        <Slider
+          value={ueIdx}
+          min={ueMin}
+          max={ueMax}
+          step={1}
+          onChange={(v) => setUeIdx(Math.round(v))}
+          labelOf={ueLabel}
         />
       </Group>
 

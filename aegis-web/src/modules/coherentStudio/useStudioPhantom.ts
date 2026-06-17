@@ -12,13 +12,16 @@ import { useStudioStore } from './store'
 // also clears the stale body so the new phantom's geometry replaces it.
 export function useStudioPhantom(): void {
   const mesh = useStudioStore((s) => s.mesh)
+  // The UE slider moves the body down the corridor: each position ships its own
+  // translated phantom pack, so refetch the geometry when it changes too.
+  const ueIdx = useStudioStore((s) => s.ueIdx)
   const latestRef = useRef(0)
 
   useEffect(() => {
     const myId = ++latestRef.current
     const isStale = () => myId !== latestRef.current
 
-    fetchPhantom(mesh)
+    fetchPhantom(mesh, ueIdx)
       .then((geom) => {
         if (isStale()) return
         useStudioStore.getState().setPhantom(geom)
@@ -27,5 +30,5 @@ export function useStudioPhantom(): void {
         if (isStale()) return
         Sentry.captureException(err)
       })
-  }, [mesh])
+  }, [mesh, ueIdx])
 }

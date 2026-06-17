@@ -55,6 +55,7 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
         focus_mode="free-space",
         seed=0,
         ue_antenna="dipole",
+        ue_idx=_channel.DEFAULT_UE_IDX,
     ):
         """Resolve a beam to ``(x, field_source)`` for the field reconstructors.
 
@@ -89,7 +90,7 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             # so build_precoder falls back to the free-space field worst case.
             from aegis.tissue.dielectric import skin_props
 
-            normal = _phantom.focus_surface_normal(focus_xyz, mesh, cache, cache_lock)
+            normal = _phantom.focus_surface_normal(focus_xyz, mesh, cache, cache_lock, ue_idx)
             n_tilde, sigma = skin_props(freq_ghz)
             x = _precoders.build_precoder(
                 "worstcase",
@@ -161,10 +162,21 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             plane = dict(params.get("plane", {}))
             plane["center"] = focus_xyz
 
+            # TODO(ue): slice still default-UE (free-space field cut, body-independent).
             paths = _paths.load_paths(condition, array_n, seed, cache, cache_lock)
             x, field_source = _beam_field(
-                beam, paths, focus_xyz, freq_hz, condition, array_n, freq_ghz, ecbf_budget_frac, mesh, focus_mode,
-                seed, ue_antenna=ue_antenna,
+                beam,
+                paths,
+                focus_xyz,
+                freq_hz,
+                condition,
+                array_n,
+                freq_ghz,
+                ecbf_budget_frac,
+                mesh,
+                focus_mode,
+                seed,
+                ue_antenna=ue_antenna,
             )
             out = _slice.compute_slice(paths, x, plane, freq_hz, quantity, field_source=field_source)
         except _QPackMissing as e:
@@ -220,10 +232,21 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             if focus_mode == "at-skin":
                 focus_xyz = _phantom.snap_focus_to_skin(focus_xyz, mesh, cache=cache, cache_lock=cache_lock)
 
+            # TODO(ue): volume still default-UE (free-space field box, body-independent).
             paths = _paths.load_paths(condition, array_n, seed, cache, cache_lock)
             x, field_source = _beam_field(
-                beam, paths, focus_xyz, freq_hz, condition, array_n, freq_ghz, ecbf_budget_frac, mesh, focus_mode,
-                seed, ue_antenna=ue_antenna,
+                beam,
+                paths,
+                focus_xyz,
+                freq_hz,
+                condition,
+                array_n,
+                freq_ghz,
+                ecbf_budget_frac,
+                mesh,
+                focus_mode,
+                seed,
+                ue_antenna=ue_antenna,
             )
             out = _volume.compute_volume(paths, x, focus_xyz, freq_hz, extent_m, res, field_source=field_source)
         except _QPackMissing as e:
@@ -262,10 +285,17 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
         from flask import request
 
         mesh = request.args.get("mesh", "thelonious")
+        # The body stands at a corridor UE position; non-default positions carry
+        # a _ue{idx} suffix on the phantom pack. Accept it from the query string
+        # (GET) or, defensively, a JSON body so the client can pick either form.
+        ue_idx = request.args.get("ue_idx", default=None, type=int)
+        if ue_idx is None:
+            body = request.get_json(silent=True) or {}
+            ue_idx = int(body.get("ue_idx", _channel.DEFAULT_UE_IDX))
         if not _phantom.is_known_mesh(mesh):
             return jsonify({"error": f"unknown mesh: {mesh}"}), 404
         try:
-            buf, stats = _phantom.build_phantom_payload(mesh, cache, cache_lock)
+            buf, stats = _phantom.build_phantom_payload(mesh, cache, cache_lock, ue_idx)
         except FileNotFoundError:
             # Same not-precomputed sentinel the bodymap endpoint uses.
             return jsonify({"error": f"phantom pack not precomputed: {mesh}", "not_precomputed": True}), 409
@@ -339,19 +369,36 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             freq_hz = freq_ghz * 1e9
             ecbf_budget_frac = float(params.get("ecbf_budget_frac", 0.5))
             ue_antenna = _parse_ue_antenna(params)
+            # Corridor UE the body stands at; selects the per-UE ray / channel /
+            # phantom packs so the live deposited map follows the body down the
+            # corridor. Defaults to the mid-corridor UE (empty suffix).
+            ue_idx = int(params.get("ue_idx", _channel.DEFAULT_UE_IDX))
             if focus_mode == "at-skin":
-                focus_xyz = _phantom.snap_focus_to_skin(focus_xyz, mesh, cache=cache, cache_lock=cache_lock)
+                focus_xyz = _phantom.snap_focus_to_skin(
+                    focus_xyz, mesh, cache=cache, cache_lock=cache_lock, ue_idx=ue_idx
+                )
 
-            loaded = _channel.load_channel(condition, array_n, freq_ghz, seed, mesh, cache, cache_lock)
+            loaded = _channel.load_channel(condition, array_n, freq_ghz, seed, mesh, cache, cache_lock, ue_idx)
             if loaded is None:
-                stem = f"{mesh}_{condition}_bs{int(array_n)}_{freq_ghz:g}_seed{int(seed)}"
+                stem = f"{mesh}_{condition}_bs{int(array_n)}_{freq_ghz:g}_seed{int(seed)}{_channel.ue_suffix(ue_idx)}"
                 return jsonify({"error": f"field-channel pack not precomputed: {stem}", "not_precomputed": True}), 409
             g_tilde, _areas = loaded
 
-            paths = _paths.load_paths(condition, array_n, seed, cache, cache_lock)
+            paths = _paths.load_paths(condition, array_n, seed, cache, cache_lock, ue_idx)
             x, _field_source = _beam_field(
-                beam, paths, focus_xyz, freq_hz, condition, array_n, freq_ghz, ecbf_budget_frac, mesh, focus_mode,
-                seed, ue_antenna=ue_antenna,
+                beam,
+                paths,
+                focus_xyz,
+                freq_hz,
+                condition,
+                array_n,
+                freq_ghz,
+                ecbf_budget_frac,
+                mesh,
+                focus_mode,
+                seed,
+                ue_antenna=ue_antenna,
+                ue_idx=ue_idx,
             )
             if x is None:
                 # The decohered baseline is a field-domain weight source, not a

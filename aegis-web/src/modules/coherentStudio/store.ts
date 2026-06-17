@@ -33,6 +33,9 @@ interface StudioState {
   condition: string
   arrayN: number
   seed: number
+  /** Corridor standing position of the person (UE index 0..8). The body moves
+   * down the corridor and the deposited map + phantom geometry follow. */
+  ueIdx: number
   ueAntenna: StudioUeAntenna
   beam: string
   focusMode: StudioFocusMode
@@ -124,6 +127,7 @@ interface StudioState {
   setCondition: (condition: string) => void
   setArrayN: (arrayN: number) => void
   setSeed: (seed: number) => void
+  setUeIdx: (ueIdx: number) => void
   setUeAntenna: (ueAntenna: StudioUeAntenna) => void
   setBeam: (beam: string) => void
   setFocusMode: (focusMode: StudioFocusMode) => void
@@ -179,6 +183,9 @@ export const useStudioStore = create<StudioState>()((set) => ({
   condition: '',
   arrayN: 16,
   seed: 0,
+  // Mid-corridor UE (14 m), the default standing position whose packs keep the
+  // original unsuffixed names. The manifest's default_ue_idx confirms this.
+  ueIdx: 4,
   ueAntenna: 'dipole',
   beam: '',
   focusMode: 'free-space',
@@ -241,6 +248,7 @@ export const useStudioStore = create<StudioState>()((set) => ({
   setCondition: (condition) => set({ condition }),
   setArrayN: (arrayN) => set({ arrayN }),
   setSeed: (seed) => set({ seed }),
+  setUeIdx: (ueIdx) => set({ ueIdx }),
   setUeAntenna: (ueAntenna) => set({ ueAntenna }),
   setBeam: (beam) => set({ beam }),
   setFocusMode: (focusMode) => set({ focusMode }),
@@ -328,6 +336,7 @@ export type BodyMapKeyState = Pick<
   | 'bodyMapStatistic'
   | 'frequencyGhz'
   | 'seed'
+  | 'ueIdx'
   | 'focusMode'
   | 'focusXyz'
   | 'ecbfBudgetFrac'
@@ -364,6 +373,7 @@ export function bodyMapFetchKey(s: BodyMapKeyState): string {
       s.condition,
       s.arrayN,
       s.seed,
+      s.ueIdx,
       s.beam,
       s.focusMode,
       s.focusXyz,
@@ -381,6 +391,7 @@ export function bodyMapFetchKey(s: BodyMapKeyState): string {
     s.bodyMapStatistic,
     s.frequencyGhz,
     s.seed,
+    s.ueIdx,
   ])
 }
 

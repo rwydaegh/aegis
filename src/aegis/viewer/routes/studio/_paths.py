@@ -11,6 +11,7 @@ import threading
 
 import numpy as np
 
+from ._channel import DEFAULT_UE_IDX, ue_suffix
 from ._config import studio_data_dir
 
 _PATHS_KEY = "_studio_paths"
@@ -41,17 +42,21 @@ def load_paths(
     seed: int,
     cache: dict | None = None,
     cache_lock: threading.RLock | None = None,
+    ue_idx: int = DEFAULT_UE_IDX,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, int]:
     """Load one ray pack and return ``(k_hat, psi, element_index, n_elements)``.
 
     ``k_hat`` is ``(N, 3)`` float64, ``psi`` is ``(N, 3)`` complex, and
     ``element_index`` is ``(N,)`` int64. Raises :class:`FileNotFoundError` when
-    the requested pack is not on disk.
+    the requested pack is not on disk. Non-default corridor UEs carry a
+    ``_ue{idx}`` suffix (empty for the default UE), so the body can stand at any
+    of the candidate corridor positions.
     """
-    sub_key = (str(condition), int(array_n), int(seed))
+    sub_key = (str(condition), int(array_n), int(seed), int(ue_idx))
 
     def _build():
-        path = studio_data_dir() / "rays" / f"bs{int(array_n)}_{condition}_seed{int(seed)}.npz"
+        suffix = ue_suffix(ue_idx)
+        path = studio_data_dir() / "rays" / f"bs{int(array_n)}_{condition}_seed{int(seed)}{suffix}.npz"
         if not path.is_file():
             raise FileNotFoundError(f"ray pack not found: {path}")
         with np.load(path) as d:
@@ -68,15 +73,19 @@ def load_phantom(
     name: str = "thelonious",
     cache: dict | None = None,
     cache_lock: threading.RLock | None = None,
+    ue_idx: int = DEFAULT_UE_IDX,
 ) -> dict:
     """Load a phantom pack: vertices, faces, centroids, normals, areas.
 
     All arrays are in the e11 world frame (Z-up, metres). Cached in the shared
-    viewer cache keyed by phantom name.
+    viewer cache keyed by phantom name and UE position. Non-default corridor UEs
+    carry a ``_ue{idx}`` suffix (empty for the default UE): the body geometry is
+    translated to the chosen corridor standing position.
     """
 
     def _build():
-        path = studio_data_dir() / "phantom" / f"{name}.npz"
+        suffix = ue_suffix(ue_idx)
+        path = studio_data_dir() / "phantom" / f"{name}{suffix}.npz"
         if not path.is_file():
             raise FileNotFoundError(f"phantom pack not found: {path}")
         with np.load(path) as d:
@@ -88,7 +97,7 @@ def load_phantom(
                 "areas": np.ascontiguousarray(d["areas"], dtype=np.float64),
             }
 
-    return _cache_get(cache, cache_lock, _PHANTOM_KEY, str(name), _build)
+    return _cache_get(cache, cache_lock, _PHANTOM_KEY, (str(name), int(ue_idx)), _build)
 
 
 def load_q(

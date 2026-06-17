@@ -38,6 +38,16 @@ export function freqTag(frequencyGhz: number): string {
   return String(frequencyGhz)
 }
 
+// Default corridor UE (mid-corridor, 14 m). Its per-body packs keep the original
+// unsuffixed names; every other standing position carries a `_ue{idx}` suffix.
+// Mirrors routes/studio/_channel.py::ue_suffix and studio_precompute._ue_suffix.
+export const STUDIO_DEFAULT_UE_IDX = 4
+
+/** Pack-name suffix for the UE the body stands at ('' for the default UE). */
+export function ueSuffix(ueIdx: number): string {
+  return ueIdx === STUDIO_DEFAULT_UE_IDX ? '' : `_ue${ueIdx}`
+}
+
 /** Ray-pack stem for a (condition, array) at a given seed. */
 export function rayPackStem(condition: string, arrayN: number, seed: number): string {
   return `bs${arrayN}_${condition}_seed${seed}`
@@ -86,9 +96,9 @@ export function bodyMapHasPack(
   return packs.bodymaps.includes(bodyMapStem(mesh, condition, arrayN, quantity, frequencyGhz))
 }
 
-/** A phantom geometry pack is present for the mesh. */
-export function phantomHasPack(packs: StudioPacks, mesh: string): boolean {
-  return packs.phantom.includes(mesh)
+/** A phantom geometry pack is present for the mesh at the given UE position. */
+export function phantomHasPack(packs: StudioPacks, mesh: string, ueIdx: number = STUDIO_DEFAULT_UE_IDX): boolean {
+  return packs.phantom.includes(`${mesh}${ueSuffix(ueIdx)}`)
 }
 
 /**
@@ -161,22 +171,23 @@ export function qopHasPack(
   return packs.qop.includes(qopStem(mesh, condition, arrayN, frequencyGhz))
 }
 
-/** Field-channel pack stem for a (mesh, condition, array, frequency, seed). */
+/** Field-channel pack stem for a (mesh, condition, array, frequency, seed, UE). */
 export function channelStem(
   mesh: string,
   condition: string,
   arrayN: number,
   frequencyGhz: number,
   seed: number,
+  ueIdx: number = STUDIO_DEFAULT_UE_IDX,
 ): string {
-  return `${mesh}_${condition}_bs${arrayN}_${freqTag(frequencyGhz)}_seed${seed}`
+  return `${mesh}_${condition}_bs${arrayN}_${freqTag(frequencyGhz)}_seed${seed}${ueSuffix(ueIdx)}`
 }
 
 /**
  * The live ("deposited") body map needs a precomputed field channel for the
- * current (condition, array, frequency, seed). Channel packs ship at the
- * dosimetry frequencies and seeds the offline precompute covered, so the live
- * map greys out elsewhere until those packs exist.
+ * current (condition, array, frequency, seed, UE). Channel packs ship at the
+ * dosimetry frequencies, seeds, and corridor UE positions the offline precompute
+ * covered, so the live map greys out elsewhere until those packs exist.
  */
 export function channelHasPack(
   packs: StudioPacks,
@@ -185,8 +196,9 @@ export function channelHasPack(
   arrayN: number,
   frequencyGhz: number,
   seed: number,
+  ueIdx: number = STUDIO_DEFAULT_UE_IDX,
 ): boolean {
-  return packs.channel.includes(channelStem(mesh, condition, arrayN, frequencyGhz, seed))
+  return packs.channel.includes(channelStem(mesh, condition, arrayN, frequencyGhz, seed, ueIdx))
 }
 
 /**

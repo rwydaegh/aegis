@@ -26,12 +26,17 @@ import {
 import type { StudioManifest, StudioPacks } from '../api'
 
 const PACKS: StudioPacks = {
-  rays: ['bs16_los_seed0', 'bs16_los_seed1', 'bs16_los_seed5'],
-  phantom: ['thelonious', 'duke'],
+  rays: ['bs16_los_seed0', 'bs16_los_seed1', 'bs16_los_seed5', 'bs16_los_seed0_ue0'],
+  phantom: ['thelonious', 'duke', 'thelonious_ue0'],
   bodymaps: ['thelonious_los_bs16_mrt_10', 'thelonious_los_bs16_worstcase_10', 'thelonious_los_bs16_mrt_28'],
   ensemble: ['thelonious_los_bs16_mrt_28_mean6', 'thelonious_los_bs16_mrt_28_p95'],
   qop: ['thelonious_los_bs16_10', 'thelonious_los_bs16_28'],
-  channel: ['thelonious_los_bs16_10_seed0', 'thelonious_los_bs16_28_seed0', 'thelonious_nlos_bs16_10_seed0'],
+  channel: [
+    'thelonious_los_bs16_10_seed0',
+    'thelonious_los_bs16_28_seed0',
+    'thelonious_nlos_bs16_10_seed0',
+    'thelonious_los_bs16_10_seed0_ue0',
+  ],
 }
 
 function manifest(extra: Partial<StudioManifest> = {}): StudioManifest {
@@ -199,6 +204,32 @@ describe('channelStem / channelHasPack', () => {
     expect(channelHasPack(PACKS, 'thelonious', 'los', 16, 12, 0)).toBe(false)
     expect(channelHasPack(PACKS, 'thelonious', 'nlos', 16, 28, 0)).toBe(false)
     expect(channelHasPack(PACKS, 'duke', 'los', 16, 10, 0)).toBe(false)
+  })
+
+  it('omits the UE suffix for the default UE (4) and appends it otherwise', () => {
+    // Default UE keeps the original unsuffixed stem (the grid stays valid).
+    expect(channelStem('thelonious', 'los', 16, 10, 0, 4)).toBe('thelonious_los_bs16_10_seed0')
+    expect(channelStem('thelonious', 'los', 16, 10, 0)).toBe('thelonious_los_bs16_10_seed0')
+    // Non-default UEs carry a _ue{idx} suffix.
+    expect(channelStem('thelonious', 'los', 16, 10, 0, 0)).toBe('thelonious_los_bs16_10_seed0_ue0')
+    expect(channelStem('thelonious', 'nlos', 16, 28, 3, 7)).toBe('thelonious_nlos_bs16_28_seed3_ue7')
+  })
+
+  it('gates the live map per UE position', () => {
+    // The default-UE channel ships; UE 0 ships its suffixed channel; UE 1 does not.
+    expect(channelHasPack(PACKS, 'thelonious', 'los', 16, 10, 0, 4)).toBe(true)
+    expect(channelHasPack(PACKS, 'thelonious', 'los', 16, 10, 0, 0)).toBe(true)
+    expect(channelHasPack(PACKS, 'thelonious', 'los', 16, 10, 0, 1)).toBe(false)
+  })
+})
+
+describe('phantomHasPack per UE', () => {
+  it('finds the unsuffixed pack at the default UE and the suffixed pack otherwise', () => {
+    expect(phantomHasPack(PACKS, 'thelonious')).toBe(true)
+    expect(phantomHasPack(PACKS, 'thelonious', 4)).toBe(true)
+    expect(phantomHasPack(PACKS, 'thelonious', 0)).toBe(true)
+    expect(phantomHasPack(PACKS, 'thelonious', 1)).toBe(false)
+    expect(phantomHasPack(PACKS, 'duke', 0)).toBe(false)
   })
 })
 

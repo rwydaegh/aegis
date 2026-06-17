@@ -2,8 +2,14 @@
 
 from __future__ import annotations
 
+from ._channel import DEFAULT_UE_IDX
 from ._config import available_packs
 from ._phantom import known_meshes
+
+# Corridor UE standing positions 0..N_UE-1 (x = -7..+9 m at 2 m spacing in the
+# e11 convention). Mirrors scripts/studio_precompute.N_UE; the body stands at
+# DEFAULT_UE_IDX (mid-corridor, 14 m) unless the UE slider moves it.
+_N_UE = 9
 
 # Design-space axes for the studio. Ray packs ship for LOS only at present;
 # NLOS is part of the design space but its packs are produced on demand.
@@ -67,6 +73,8 @@ def manifest() -> dict:
         "ue_antennas": list(_UE_ANTENNAS),
         "body_map_quantities": list(_BODY_MAP_QUANTITIES),
         "body_map_statistics": list(_BODY_MAP_STATISTICS),
+        "ue_indices": list(range(_N_UE)),
+        "default_ue_idx": DEFAULT_UE_IDX,
         "packs": available_packs(),
         "default_scene": default_scene(),
     }

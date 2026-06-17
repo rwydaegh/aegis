@@ -57,6 +57,10 @@ export interface StudioManifest {
   body_map_quantities: string[]
   /** Body-map realisation statistics (single, mean, p95). */
   body_map_statistics?: string[]
+  /** Corridor UE standing positions the body can occupy (indices 0..8). */
+  ue_indices?: number[]
+  /** Default corridor UE index (mid-corridor, 14 m; its packs are unsuffixed). */
+  default_ue_idx?: number
   /**
    * Precomputed pack descriptors. The backend manifest returns these under the
    * key `packs` (verified against routes/studio/_presets.py::manifest).
@@ -484,6 +488,8 @@ export interface LiveBodyMapParams {
   ecbfBudgetFrac?: number
   /** UE receive antenna pattern; shapes the matched-filter precoder. */
   ueAntenna?: string
+  /** Corridor standing position of the body (UE index 0..8; default 4). */
+  ueIdx?: number
 }
 
 /**
@@ -508,6 +514,7 @@ export async function fetchLiveBodyMap(params: LiveBodyMapParams): Promise<BodyM
       frequency_ghz: params.frequencyGhz,
       ecbf_budget_frac: params.ecbfBudgetFrac ?? 0.5,
       ue_antenna: params.ueAntenna ?? 'dipole',
+      ue_idx: params.ueIdx ?? 4,
     }),
   })
   if (res.status === 401) {
@@ -582,8 +589,8 @@ export async function fetchScene(condition: string, seed: number): Promise<Scene
   return { ok: true, data }
 }
 
-export async function fetchPhantom(mesh: string): Promise<PhantomGeometry> {
-  const path = `${STUDIO}/phantom?mesh=${encodeURIComponent(mesh)}`
+export async function fetchPhantom(mesh: string, ueIdx = 4): Promise<PhantomGeometry> {
+  const path = `${STUDIO}/phantom?mesh=${encodeURIComponent(mesh)}&ue_idx=${encodeURIComponent(String(ueIdx))}`
   const res = await fetchWithRetry(`${BASE}${path}`)
   if (res.status === 401) {
     handle401()

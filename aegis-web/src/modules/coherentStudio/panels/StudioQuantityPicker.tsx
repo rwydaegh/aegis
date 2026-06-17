@@ -70,6 +70,7 @@ export default function StudioQuantityPicker() {
   const arrayN = useStudioStore((s) => s.arrayN)
   const frequencyGhz = useStudioStore((s) => s.frequencyGhz)
   const seed = useStudioStore((s) => s.seed)
+  const ueIdx = useStudioStore((s) => s.ueIdx)
 
   const packs = packsOf(manifest)
   // Drop any backend-advertised 'deposited' so it is not listed twice: the live
@@ -77,7 +78,7 @@ export default function StudioQuantityPicker() {
   const bodyQuantities = (manifest?.body_map_quantities ?? []).filter((q) => q !== LIVE_DEPOSITED)
   const statistics = manifest?.body_map_statistics ?? ['single']
 
-  const liveAvailable = channelHasPack(packs, mesh, condition, arrayN, frequencyGhz, seed)
+  const liveAvailable = channelHasPack(packs, mesh, condition, arrayN, frequencyGhz, seed, ueIdx)
   const isLive = bodyMapQuantity === LIVE_DEPOSITED
 
   const bodyOptions: Option<string>[] = [
