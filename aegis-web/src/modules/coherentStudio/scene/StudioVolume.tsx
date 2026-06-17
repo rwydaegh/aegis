@@ -87,6 +87,9 @@ export default function StudioVolume() {
       ref={meshRef}
       args={[undefined, undefined, cloud.centres.length]}
       frustumCulled={false}
+      // Draw after the other translucent surfaces (slice, lobes) so the cloud
+      // blends on top of them with a stable, angle-independent order.
+      renderOrder={3}
     >
       <boxGeometry args={[side, side, side]} />
       <meshBasicMaterial transparent opacity={opacity} depthWrite={false} toneMapped={false} />

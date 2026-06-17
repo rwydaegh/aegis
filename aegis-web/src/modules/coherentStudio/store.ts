@@ -181,6 +181,8 @@ interface StudioState {
   setVolumeExtentM: (volumeExtentM: number) => void
   setVolumeThreshold: (volumeThreshold: number) => void
   setVolumeOpacity: (volumeOpacity: number) => void
+  /** Restore every knob to STUDIO_DEFAULTS (results refetch from the new params). */
+  resetDefaults: () => void
 
   // --- Result actions ---
   setSliceResult: (sliceResult: SliceResult | null) => void
@@ -194,7 +196,62 @@ interface StudioState {
   setScene: (scene: SceneGeometry | null) => void
 }
 
-export const useStudioStore = create<StudioState>()((set) => ({
+/** The user-settable knobs (parameters + render-only state), minus results,
+ * fetched geometry, and actions. This is exactly what `resetDefaults` restores. */
+type StudioSettings = Pick<
+  StudioState,
+  | 'mesh'
+  | 'condition'
+  | 'arrayN'
+  | 'seed'
+  | 'ueIdx'
+  | 'ueAntenna'
+  | 'beam'
+  | 'focusMode'
+  | 'focusXyz'
+  | 'frequencyGhz'
+  | 'plane'
+  | 'fieldQuantity'
+  | 'bodyMapQuantity'
+  | 'preferDeposited'
+  | 'bodyMapStatistic'
+  | 'ecbfBudgetFrac'
+  | 'colormap'
+  | 'scaleMode'
+  | 'scaleScope'
+  | 'dynamicRangeDb'
+  | 'robustClip'
+  | 'fixedRange'
+  | 'referenceMap'
+  | 'topK'
+  | 'showRays'
+  | 'showArrayPattern'
+  | 'showRxPattern'
+  | 'rxPatternExtentM'
+  | 'rayCutoffM'
+  | 'rayThickness'
+  | 'rayColorMode'
+  | 'showBlockers'
+  | 'showBeamAxis'
+  | 'background'
+  | 'arrayPatternSizeM'
+  | 'screenshotMode'
+  | 'showRefSquare'
+  | 'showGizmo'
+  | 'cameraView'
+  | 'pickFocusOnBody'
+  | 'showVolume'
+  | 'volumeRes'
+  | 'volumeExtentM'
+  | 'volumeThreshold'
+  | 'volumeOpacity'
+>
+
+// Default values for every user-settable knob (parameters + render-only state).
+// The store initialises from this, and `resetDefaults` restores it, so the two
+// can never drift. Results / fetched geometry (slice, body map, manifest, scene)
+// are NOT here: they refetch from the restored parameters.
+export const STUDIO_DEFAULTS: StudioSettings = {
   mesh: 'thelonious',
   condition: '',
   arrayN: 16,
@@ -251,6 +308,10 @@ export const useStudioStore = create<StudioState>()((set) => ({
   volumeExtentM: 0.16,
   volumeThreshold: 0.25,
   volumeOpacity: 0.45,
+}
+
+export const useStudioStore = create<StudioState>()((set) => ({
+  ...STUDIO_DEFAULTS,
 
   sliceResult: null,
   volumeResult: null,
@@ -322,6 +383,7 @@ export const useStudioStore = create<StudioState>()((set) => ({
   setVolumeExtentM: (volumeExtentM) => set({ volumeExtentM }),
   setVolumeThreshold: (volumeThreshold) => set({ volumeThreshold }),
   setVolumeOpacity: (volumeOpacity) => set({ volumeOpacity }),
+  resetDefaults: () => set({ ...STUDIO_DEFAULTS }),
 
   setSliceResult: (sliceResult) =>
     set({ sliceResult, provenance: sliceResult ? sliceResult.provenance : null }),

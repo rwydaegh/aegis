@@ -137,6 +137,12 @@ export default function StudioSlicePlane() {
         vertexShader: VERT_SHADER,
         fragmentShader: FRAG_SHADER,
         transparent: true,
+        // The slice is a single translucent quad. Writing depth would make it
+        // occlude any transparent object that sorts after it (notably the 3D
+        // field-volume cloud, whose box is centred on this plane), so the cloud
+        // would vanish at the camera angles where the plane sorts first. Opaque
+        // geometry (the body) still hides the slice via depthTest. So: no write.
+        depthWrite: false,
         side: THREE.DoubleSide,
         uniforms: {
           dataTex: { value: null },

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { useStudioStore, sliceFetchKey, bodyMapFetchKey, volumeFetchKey } from '../store'
+import { useStudioStore, sliceFetchKey, bodyMapFetchKey, volumeFetchKey, STUDIO_DEFAULTS } from '../store'
 
 function keys() {
   const s = useStudioStore.getState()
@@ -121,6 +121,39 @@ describe('coherentStudio fetch keys', () => {
     expect(after.volume).toBe(before.volume)
     expect(after.slice).toBe(before.slice)
     expect(after.bodyMap).toBe(before.bodyMap)
+  })
+
+  it('resetDefaults restores every knob to STUDIO_DEFAULTS', () => {
+    // Mutate a spread of params (channel / render-only / nested / volume) away
+    // from their defaults, then reset and confirm each comes back.
+    const st = useStudioStore.getState()
+    st.setMesh('duke')
+    st.setBeam('mrt')
+    st.setBackground('dark')
+    st.setRayThickness(3)
+    st.setShowGizmo(false)
+    st.setPlane({ extentM: 0.4 })
+    st.setVolumeOpacity(0.9)
+    st.setReferenceMap({ values: [1, 2], label: 'ref' })
+
+    useStudioStore.getState().resetDefaults()
+    const s = useStudioStore.getState()
+    expect(s.mesh).toBe(STUDIO_DEFAULTS.mesh)
+    expect(s.beam).toBe(STUDIO_DEFAULTS.beam)
+    expect(s.background).toBe(STUDIO_DEFAULTS.background)
+    expect(s.rayThickness).toBe(STUDIO_DEFAULTS.rayThickness)
+    expect(s.showGizmo).toBe(STUDIO_DEFAULTS.showGizmo)
+    expect(s.plane.extentM).toBe(STUDIO_DEFAULTS.plane.extentM)
+    expect(s.volumeOpacity).toBe(STUDIO_DEFAULTS.volumeOpacity)
+    expect(s.referenceMap).toBeNull()
+  })
+
+  it('resetDefaults does not wipe fetched results / scene', () => {
+    // Reset is a knob reset, not a teardown: results refetch from the restored
+    // params, so clearing them here would just flash the scene empty.
+    useStudioStore.setState({ scene: { provenance: 'keep' } as never })
+    useStudioStore.getState().resetDefaults()
+    expect(useStudioStore.getState().scene).not.toBeNull()
   })
 
   it('ueIdx changes slice, body-map and volume keys', () => {

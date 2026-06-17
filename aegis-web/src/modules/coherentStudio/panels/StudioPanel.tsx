@@ -165,6 +165,7 @@ const FOCUS_RANGE: Record<'x' | 'y' | 'z', [number, number]> = {
  */
 export default function StudioPanel() {
   const manifest = useStudioStore((s) => s.manifest)
+  const resetDefaults = useStudioStore((s) => s.resetDefaults)
 
   const mesh = useStudioStore((s) => s.mesh)
   const setMesh = useStudioStore((s) => s.setMesh)
@@ -314,6 +315,34 @@ export default function StudioPanel() {
 
   return (
     <div>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '2px 2px 8px',
+        }}
+      >
+        <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: 0.3, color: '#9aa' }}>CONTROLS</span>
+        <button
+          type="button"
+          onClick={() => {
+            if (window.confirm('Reset all studio controls to their defaults?')) resetDefaults()
+          }}
+          title="Restore every control (channel, beam, slice, colour, overlays, volume) to its default value, and clear the captured A/B reference."
+          style={{
+            fontSize: 11,
+            color: '#bcd',
+            background: 'transparent',
+            border: '1px solid #2a2a33',
+            borderRadius: 5,
+            padding: '3px 9px',
+            cursor: 'pointer',
+          }}
+        >
+          Reset defaults
+        </button>
+      </div>
       <Group title="Channel">
         <FieldLabel title="Anatomical phantom (IT'IS virtual family). Switches the body geometry and all per-body dosimetry packs.">
           Phantom
