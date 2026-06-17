@@ -22,14 +22,27 @@ from ._config import studio_data_dir
 
 _CHANNEL_KEY = "_studio_channel"
 
+# Default corridor UE (mid-corridor, 14 m). Packs for this position keep the
+# original unsuffixed name; other positions carry a ``_ue{idx}`` suffix so the
+# UE slider can switch standing positions. Mirrors studio_precompute._ue_suffix.
+DEFAULT_UE_IDX = 4
 
-def channel_path(condition: str, array_n: int, freq_ghz: float, seed: int, mesh: str = "thelonious"):
+
+def ue_suffix(ue_idx: int) -> str:
+    """Pack-name suffix for the UE the body stands at ('' for the default UE)."""
+    return "" if int(ue_idx) == DEFAULT_UE_IDX else f"_ue{int(ue_idx)}"
+
+
+def channel_path(
+    condition: str, array_n: int, freq_ghz: float, seed: int, mesh: str = "thelonious", ue_idx: int = DEFAULT_UE_IDX
+):
     """Path to the field-channel pack for a scenario (may not exist).
 
     The channel is per-phantom (G_tilde is the body's tissue channel), so the
-    stem carries the mesh as a prefix.
+    stem carries the mesh as a prefix, and per-UE (the body stands at a corridor
+    position), so non-default positions carry a ``_ue{idx}`` suffix.
     """
-    stem = f"{mesh}_{condition}_bs{int(array_n)}_{float(freq_ghz):g}_seed{int(seed)}"
+    stem = f"{mesh}_{condition}_bs{int(array_n)}_{float(freq_ghz):g}_seed{int(seed)}{ue_suffix(ue_idx)}"
     return studio_data_dir() / "channel" / f"{stem}.npz"
 
 
@@ -41,6 +54,7 @@ def load_channel(
     mesh: str = "thelonious",
     cache: dict | None = None,
     cache_lock: threading.RLock | None = None,
+    ue_idx: int = DEFAULT_UE_IDX,
 ):
     """Load ``(g_tilde (T, 3, M) complex, areas (T,))`` for a scenario, cached.
 
@@ -49,7 +63,7 @@ def load_channel(
     (~150 MB), so the in-process cache keyed by stem avoids re-reading it on
     every focus nudge.
     """
-    path = channel_path(condition, array_n, freq_ghz, seed, mesh)
+    path = channel_path(condition, array_n, freq_ghz, seed, mesh, ue_idx)
     if not path.is_file():
         return None
     stem = path.stem

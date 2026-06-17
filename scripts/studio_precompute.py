@@ -50,9 +50,22 @@ import numpy as np
 REPO_ROOT = Path(__file__).resolve().parents[1]
 FORK_ROOT = REPO_ROOT / "papers" / "coherent-exposure-operator" / "code"
 
-UE_IDX = 4  # the 14 m UE, mid-corridor (e11 convention)
+UE_IDX = 4  # the default 14 m UE, mid-corridor (e11 convention)
+N_UE = 9  # corridor UE positions 0..8 (x = -7..+9 m at 2 m spacing)
 BEAMS = ("floor", "mrt", "worstcase", "amp", "ecbf")
 ENSEMBLE_SEEDS = (0, 1, 2, 3, 4, 5)
+
+
+def _ue_suffix(ue_idx: int) -> str:
+    """Pack-name suffix for the UE the body stands at.
+
+    Empty for the default UE (``UE_IDX``) so the original single-position packs
+    keep their names; ``_ue{idx}`` otherwise. Lets the UE slider add the other
+    corridor positions without renaming or invalidating the default grid.
+    """
+    return "" if int(ue_idx) == UE_IDX else f"_ue{int(ue_idx)}"
+
+
 ECBF_BUDGET_FRAC = 0.5  # P_abs_max as a fraction of the MRT absorbed power
 
 # The per-frequency skin dielectric (SKIN_BY_GHZ) now lives in
@@ -121,11 +134,11 @@ def _skin_props(freq_ghz: float) -> tuple[complex, float]:
 # --------------------------------------------------------------------------
 # Ray packs
 # --------------------------------------------------------------------------
-def _rays_path(studio_dir: Path, bs_n: int, condition: str, seed: int) -> Path:
-    return studio_dir / "rays" / f"bs{bs_n}_{condition}_seed{seed}.npz"
+def _rays_path(studio_dir: Path, bs_n: int, condition: str, seed: int, ue_idx: int = UE_IDX) -> Path:
+    return studio_dir / "rays" / f"bs{bs_n}_{condition}_seed{seed}{_ue_suffix(ue_idx)}.npz"
 
 
-def _trace_pack(out: Path, bs_n: int, condition: str, seed: int) -> None:
+def _trace_pack(out: Path, bs_n: int, condition: str, seed: int, ue_idx: int = UE_IDX) -> None:
     """Trace one BS->UE ray pack with Sionna RT into the studio dir.
 
     Mirrors the fork's e11.trace_paths but writes to the studio data dir (the
@@ -142,7 +155,7 @@ def _trace_pack(out: Path, bs_n: int, condition: str, seed: int) -> None:
 
     with_blocker = condition == "nlos"
     spec = scene_lib.build_scene(with_blocker=with_blocker, seed=seed, bs_n=bs_n)
-    rx = np.asarray(spec.ue_positions[UE_IDX], float)
+    rx = np.asarray(spec.ue_positions[ue_idx], float)
     scene = scene_spec_to_sionna_scene(spec, with_blocker=with_blocker)
     tx = bs_element_positions(spec)
     paths = paths_from_sionna_scene(
@@ -173,32 +186,40 @@ def _trace_pack(out: Path, bs_n: int, condition: str, seed: int) -> None:
     print(f"  traced  {out.name}")
 
 
-def sync_rays(studio_dir: Path, arrays: list[int], conditions: list[str], seeds: list[int]) -> None:
+def sync_rays(
+    studio_dir: Path,
+    arrays: list[int],
+    conditions: list[str],
+    seeds: list[int],
+    ue_idxs: list[int] | None = None,
+) -> None:
     """Copy ray packs from the fork's cache, tracing any that are missing.
 
-    NLOS has a single realisation in the fork (``bs{N}_nlos_seed0.npz``); the
-    multi-seed ensemble is LOS-only. So for NLOS we sync only seed 0 and never
-    attempt to trace the other seeds (a stray NLOS trace would also exhaust the
-    box). LOS keeps the full requested seed list.
+    The fork cache only holds the default UE (``UE_IDX``); every other corridor
+    UE position has no cached pack and is always traced fresh. NLOS keeps the
+    full requested seed list now that tracing is cheap (the body-incident solve
+    runs on CPU in ~10 s), so the multi-seed ensemble is available for both
+    conditions.
     """
     from aegis.viewer.routes.studio._config import paper_fork_paths_dir
 
+    ue_idxs = ue_idxs or [UE_IDX]
     fork_dir = paper_fork_paths_dir()
     (studio_dir / "rays").mkdir(parents=True, exist_ok=True)
-    for bs_n in arrays:
-        for cond in conditions:
-            cond_seeds = [0] if cond == "nlos" else seeds
-            for seed in cond_seeds:
-                dst = _rays_path(studio_dir, bs_n, cond, seed)
-                src = fork_dir / f"bs{bs_n}_{cond}_seed{seed}.npz" if fork_dir else None
-                if src is not None and src.exists():
-                    shutil.copy2(src, dst)
-                    print(f"  copied  {dst.name}")
-                elif dst.exists():
-                    print(f"  present {dst.name}")
-                else:
-                    print(f"  missing in fork, tracing {dst.name}")
-                    _trace_pack(dst, bs_n, cond, seed)
+    for ue_idx in ue_idxs:
+        for bs_n in arrays:
+            for cond in conditions:
+                for seed in seeds:
+                    dst = _rays_path(studio_dir, bs_n, cond, seed, ue_idx)
+                    src = fork_dir / f"bs{bs_n}_{cond}_seed{seed}.npz" if (fork_dir and ue_idx == UE_IDX) else None
+                    if src is not None and src.exists():
+                        shutil.copy2(src, dst)
+                        print(f"  copied  {dst.name}")
+                    elif dst.exists():
+                        print(f"  present {dst.name}")
+                    else:
+                        print(f"  missing in fork, tracing {dst.name}")
+                        _trace_pack(dst, bs_n, cond, seed, ue_idx)
 
 
 def sync_scene(studio_dir: Path, arrays: list[int], conditions: list[str], seeds: list[int]) -> None:
@@ -230,8 +251,8 @@ def sync_scene(studio_dir: Path, arrays: list[int], conditions: list[str], seeds
             print(f"  wrote   {out.name} ({len(spec.scatterers)} scatterers{tail})")
 
 
-def _load_rays(studio_dir: Path, bs_n: int, condition: str, seed: int):
-    path = _rays_path(studio_dir, bs_n, condition, seed)
+def _load_rays(studio_dir: Path, bs_n: int, condition: str, seed: int, ue_idx: int = UE_IDX):
+    path = _rays_path(studio_dir, bs_n, condition, seed, ue_idx)
     if not path.exists():
         raise SystemExit(f"error: ray pack {path} not found. Run --sync-rays first.")
     d = np.load(path)
@@ -246,7 +267,7 @@ def _load_rays(studio_dir: Path, bs_n: int, condition: str, seed: int):
 # --------------------------------------------------------------------------
 # Phantom
 # --------------------------------------------------------------------------
-def _load_body(bs_n: int, mesh: str = "thelonious"):
+def _load_body(bs_n: int, mesh: str = "thelonious", ue_idx: int = UE_IDX):
     """Load the placed, full-resolution phantom in the e11 world frame.
 
     Replicates the fork's ``load_phantom_at_ue`` placement (translate so feet
@@ -281,25 +302,25 @@ def _load_body(bs_n: int, mesh: str = "thelonious"):
         stl = FORK_ROOT.parent / "data" / f"{mesh}.stl"
     body_mesh = BodyMesh.load(str(stl), name=mesh)
     bb_min, bb_max = body_mesh.bounding_box
-    ue_x, ue_y, _ = spec.ue_positions[UE_IDX]
+    ue_x, ue_y, _ = spec.ue_positions[ue_idx]
     new_v = body_mesh.vertices.copy()
     new_v[:, :, 0] -= (bb_min[0] + bb_max[0]) / 2
     new_v[:, :, 1] -= (bb_min[1] + bb_max[1]) / 2
     new_v[:, :, 2] -= bb_min[2]
     new_v[:, :, 0] += ue_x
     new_v[:, :, 1] += ue_y
-    body = BodyMesh.from_arrays(new_v, normals=body_mesh.normals, name=f"{mesh}_at_UE{UE_IDX}")
+    body = BodyMesh.from_arrays(new_v, normals=body_mesh.normals, name=f"{mesh}_at_UE{ue_idx}")
     return spec, body
 
 
-def export_phantom(studio_dir: Path, bs_n: int, mesh: str = "thelonious") -> None:
-    """Export the placed phantom mesh to <studio>/phantom/{mesh}.npz."""
-    _, body = _load_body(bs_n, mesh)
+def export_phantom(studio_dir: Path, bs_n: int, mesh: str = "thelonious", ue_idx: int = UE_IDX) -> None:
+    """Export the placed phantom mesh to <studio>/phantom/{mesh}[_ue{idx}].npz."""
+    _, body = _load_body(bs_n, mesh, ue_idx)
     tri = np.asarray(body.vertices, float)  # (M, 3, 3) per-triangle vertices
     m = tri.shape[0]
     vertices = tri.reshape(-1, 3).astype(np.float32)  # (3M, 3)
     faces = np.arange(3 * m, dtype=np.int32).reshape(m, 3)  # face order == body order
-    out = studio_dir / "phantom" / f"{mesh}.npz"
+    out = studio_dir / "phantom" / f"{mesh}{_ue_suffix(ue_idx)}.npz"
     out.parent.mkdir(parents=True, exist_ok=True)
     np.savez(
         out,
@@ -703,9 +724,16 @@ def qop_from_channels(studio_dir: Path, meshes: list[str] | None = None) -> None
 # Field channel G_tilde (for the live, focus-tracking body map)
 # --------------------------------------------------------------------------
 def _channel_path(
-    studio_dir: Path, bs_n: int, condition: str, freq_ghz: float, seed: int, mesh: str = "thelonious"
+    studio_dir: Path,
+    bs_n: int,
+    condition: str,
+    freq_ghz: float,
+    seed: int,
+    mesh: str = "thelonious",
+    ue_idx: int = UE_IDX,
 ) -> Path:
-    return studio_dir / "channel" / f"{mesh}_{condition}_bs{bs_n}_{_ghz_tag(freq_ghz)}_seed{seed}.npz"
+    stem = f"{mesh}_{condition}_bs{bs_n}_{_ghz_tag(freq_ghz)}_seed{seed}{_ue_suffix(ue_idx)}"
+    return studio_dir / "channel" / f"{stem}.npz"
 
 
 def compute_channels(
@@ -715,6 +743,7 @@ def compute_channels(
     freqs: list[float],
     seeds: list[int],
     meshes: list[str] | None = None,
+    ue_idxs: list[int] | None = None,
 ) -> None:
     """Persist the per-triangle field channel G_tilde (T, 3, M) per scenario.
 
@@ -725,37 +754,47 @@ def compute_channels(
     does. Stored as complex64: the build is complex128 but half precision is
     ample for a visualised map and halves the pack to ~150 MB. The build is
     triangle-chunked, so peak memory is independent of triangle count.
+
+    ``ue_idxs`` builds the channel at each corridor UE position (the body is
+    re-placed at that UE); the pack name carries the UE so the front-end slider
+    can switch standing positions.
     """
-    for mesh in meshes or ["thelonious"]:
-        for bs_n in arrays:
-            _, body = _load_body(bs_n, mesh)
-            areas = np.asarray(body.areas, np.float32)
-            for cond in conditions:
-                for seed in seeds:
-                    if not _rays_path(studio_dir, bs_n, cond, seed).exists():
-                        print(f"  no ray pack for bs{bs_n} {cond} seed{seed}, skipping")
-                        continue
-                    k, psi, elem, m = _load_rays(studio_dir, bs_n, cond, seed)
-                    # Build every requested frequency in one pass, hoisting the
-                    # frequency-invariant body-channel geometry out of the loop.
-                    freq_props = [(fg, fg * 1e9, *_skin_props(fg)) for fg in freqs]
-                    g_by_freq = _compute_g_tilde_multifreq(body, k, psi, elem, m, freq_props)
-                    for freq_ghz, _freq_hz, _n_tilde, _sigma in freq_props:
-                        g_tilde = g_by_freq[freq_ghz]
-                        out = _channel_path(studio_dir, bs_n, cond, freq_ghz, seed, mesh)
-                        prov = (
-                            f"studio_precompute channel mesh={mesh} cond={cond} bs{bs_n} {_ghz_tag(freq_ghz)}GHz "
-                            f"seed={seed} | G_tilde (T,3,M)={tuple(g_tilde.shape)} | e11 recipe"
-                        )
-                        _atomic_savez(
-                            out,
-                            g_tilde=np.asarray(g_tilde, np.complex64),
-                            areas=areas,
-                            n_elements=np.int32(m),
-                            mesh=mesh,
-                            provenance=prov,
-                        )
-                        print(f"  wrote {out.name}: G_tilde={tuple(g_tilde.shape)} ({out.stat().st_size / 1e6:.0f} MB)")
+    ue_idxs = ue_idxs or [UE_IDX]
+    for ue_idx in ue_idxs:
+        for mesh in meshes or ["thelonious"]:
+            for bs_n in arrays:
+                _, body = _load_body(bs_n, mesh, ue_idx)
+                areas = np.asarray(body.areas, np.float32)
+                for cond in conditions:
+                    for seed in seeds:
+                        if not _rays_path(studio_dir, bs_n, cond, seed, ue_idx).exists():
+                            print(f"  no ray pack for bs{bs_n} {cond} seed{seed} ue{ue_idx}, skipping")
+                            continue
+                        k, psi, elem, m = _load_rays(studio_dir, bs_n, cond, seed, ue_idx)
+                        # Build every requested frequency in one pass, hoisting the
+                        # frequency-invariant body-channel geometry out of the loop.
+                        freq_props = [(fg, fg * 1e9, *_skin_props(fg)) for fg in freqs]
+                        g_by_freq = _compute_g_tilde_multifreq(body, k, psi, elem, m, freq_props)
+                        for freq_ghz, _freq_hz, _n_tilde, _sigma in freq_props:
+                            g_tilde = g_by_freq[freq_ghz]
+                            out = _channel_path(studio_dir, bs_n, cond, freq_ghz, seed, mesh, ue_idx)
+                            prov = (
+                                f"studio_precompute channel mesh={mesh} cond={cond} bs{bs_n} "
+                                f"{_ghz_tag(freq_ghz)}GHz seed={seed} ue={ue_idx} | "
+                                f"G_tilde (T,3,M)={tuple(g_tilde.shape)} | e11 recipe"
+                            )
+                            _atomic_savez(
+                                out,
+                                g_tilde=np.asarray(g_tilde, np.complex64),
+                                areas=areas,
+                                n_elements=np.int32(m),
+                                mesh=mesh,
+                                provenance=prov,
+                            )
+                            print(
+                                f"  wrote {out.name}: G_tilde={tuple(g_tilde.shape)} "
+                                f"({out.stat().st_size / 1e6:.0f} MB)"
+                            )
 
 
 # --------------------------------------------------------------------------
@@ -794,6 +833,13 @@ def main() -> None:
         default=list(ENSEMBLE_SEEDS),
         help="seeds to sync/trace for --sync-rays",
     )
+    ap.add_argument(
+        "--ue-idx",
+        nargs="+",
+        type=int,
+        default=[UE_IDX],
+        help=f"corridor UE positions 0..{N_UE - 1} to build rays/channel/phantom for (default {UE_IDX})",
+    )
     args = ap.parse_args()
 
     from aegis.viewer.routes.studio._config import studio_data_dir
@@ -820,15 +866,16 @@ def main() -> None:
 
     if args.sync_rays:
         print("[sync-rays]")
-        sync_rays(studio_dir, args.arrays, args.conditions, args.sync_seeds)
+        sync_rays(studio_dir, args.arrays, args.conditions, args.sync_seeds, args.ue_idx)
     if args.scene:
         print("[scene]")
         sync_scene(studio_dir, args.arrays, args.conditions, args.sync_seeds)
     if args.phantom:
         print("[phantom]")
-        for mesh in args.meshes:
-            for bs_n in args.arrays:
-                export_phantom(studio_dir, bs_n, mesh)
+        for ue_idx in args.ue_idx:
+            for mesh in args.meshes:
+                for bs_n in args.arrays:
+                    export_phantom(studio_dir, bs_n, mesh, ue_idx)
     if args.bodymaps:
         print("[bodymaps]")
         compute_bodymaps(
@@ -845,7 +892,15 @@ def main() -> None:
         qop_from_channels(studio_dir, meshes=args.meshes)
     if args.channel:
         print("[channel]")
-        compute_channels(studio_dir, args.arrays, args.conditions, args.freqs, args.sync_seeds, meshes=args.meshes)
+        compute_channels(
+            studio_dir,
+            args.arrays,
+            args.conditions,
+            args.freqs,
+            args.sync_seeds,
+            meshes=args.meshes,
+            ue_idxs=args.ue_idx,
+        )
 
     print("done")
 
