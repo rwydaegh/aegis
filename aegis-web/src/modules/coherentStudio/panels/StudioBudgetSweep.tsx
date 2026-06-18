@@ -38,17 +38,23 @@ export default function StudioBudgetSweep() {
   const showCompliance = useStudioStore((s) => s.showCompliance)
   const snrMrtDb = useStudioStore((s) => s.snrMrtDb)
   const budgetFrac = useStudioStore((s) => s.ecbfBudgetFrac)
+  const txPowerDbm = useStudioStore((s) => s.txPowerDbm)
+  const calibDbm = useStudioStore((s) => s.manifest?.calibration_tx_power_dbm ?? 25)
+  // Absolute-power readouts (P_abs, S_ab) scale with transmit power; the curve
+  // shapes are normalised per-series so they are unchanged, only the tooltip
+  // values move. signal / rate / eta are ratios and stay invariant.
+  const powerScale = 10 ** ((txPowerDbm - calibDbm) / 10)
 
   const data = useMemo(() => {
     if (!sweep || sweep.budget_frac.length === 0) return null
     const s = sweep.series
     const se = s.signal_rel.map((r) => spectralEfficiency(r, snrMrtDb))
     const raw = {
-      p_abs: s.p_abs_w,
+      p_abs: s.p_abs_w.map((v) => v * powerScale),
       signal: s.signal_rel.map((r) => r * 100),
       se,
-      peak: s.peak_sab,
-      pssar: s.pssar_4cm2,
+      peak: s.peak_sab.map((v) => v * powerScale),
+      pssar: s.pssar_4cm2.map((v) => v * powerScale),
       eta: s.eta_4cm2,
     }
     const maxOf = (xs: number[]) => xs.reduce((m, v) => (isFinite(v) && Math.abs(v) > m ? Math.abs(v) : m), 0)
@@ -62,7 +68,7 @@ export default function StudioBudgetSweep() {
       }
       return point
     })
-  }, [sweep, snrMrtDb])
+  }, [sweep, snrMrtDb, powerScale])
 
   if (!showCompliance) {
     return <span style={{ fontSize: 10, color: '#667' }}>Enable the Compliance panel to chart the budget sweep.</span>

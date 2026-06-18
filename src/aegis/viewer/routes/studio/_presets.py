@@ -29,6 +29,22 @@ _BODY_MAP_QUANTITIES = ("floor", "mrt", "worstcase", "amp")
 # 95th percentile over the LOS seed ensemble (served from the ensemble packs).
 _BODY_MAP_STATISTICS = ("single", "mean", "p95")
 
+# Per-element transmit power the ray packs were traced at: psi carries the factor
+# sqrt(8 pi Z_0 P_T)/lambda, so every absolute field / absorbed-power output is
+# calibrated to this. MUST match `tx_power_dbm` in
+# scripts/studio_precompute.py::_trace_pack. With the precoders normalised to
+# ||x||^2 = 1, the unit-norm precoder spreads the per-element baseline across the
+# array (total radiated power = ||x||^2 * P_T), so the studio's absolute numbers
+# correspond to a 25 dBm = 0.316 W total transmit power. The Tx-power slider
+# rescales every absolute quantity from this baseline (ratios stay invariant).
+CALIBRATION_TX_POWER_DBM = 25.0
+
+
+def calibration_power_w() -> float:
+    """Total transmit power [W] the studio's ||x||^2 = 1 outputs are calibrated to."""
+    return 10.0 ** ((CALIBRATION_TX_POWER_DBM - 30.0) / 10.0)
+
+
 # At-skin chest focus and air focus in the e11 world frame (Z-up, metres).
 _FOCUS_CHEST = (0.923, -0.005, 0.734)
 
@@ -75,6 +91,8 @@ def manifest() -> dict:
         "body_map_statistics": list(_BODY_MAP_STATISTICS),
         "ue_indices": list(range(_N_UE)),
         "default_ue_idx": DEFAULT_UE_IDX,
+        "calibration_tx_power_dbm": CALIBRATION_TX_POWER_DBM,
+        "calibration_power_w": calibration_power_w(),
         "packs": available_packs(),
         "default_scene": default_scene(),
     }

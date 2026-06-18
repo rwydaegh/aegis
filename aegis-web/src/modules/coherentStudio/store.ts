@@ -86,6 +86,11 @@ interface StudioState {
   /** MRT-reference SNR (dB) anchoring the spectral efficiency readout. Render-only:
    * spectral efficiency is recomputed client-side from signal_rel, no re-fetch. */
   snrMrtDb: number
+  /** Total array transmit power (dBm) the absolute readouts are shown at. Render-only:
+   * the pipeline is homogeneous in power, so all absolute quantities are rescaled
+   * client-side from the manifest calibration power (no re-fetch). Ratios are
+   * invariant. Default matches the calibration so the baseline is unchanged. */
+  txPowerDbm: number
 
   // --- Render-only (never trigger a slice/body-map re-fetch) ---
   colormap: string
@@ -220,6 +225,7 @@ interface StudioState {
   setReferenceMap: (referenceMap: { values: number[]; label: string } | null) => void
   setEcbfBudgetFrac: (ecbfBudgetFrac: number) => void
   setSnrMrtDb: (snrMrtDb: number) => void
+  setTxPowerDbm: (txPowerDbm: number) => void
   setTopK: (topK: number) => void
   setShowRays: (showRays: boolean) => void
   setShowArrayPattern: (showArrayPattern: boolean) => void
@@ -296,6 +302,7 @@ export type StudioSettings = Pick<
   | 'bodyMapStatistic'
   | 'ecbfBudgetFrac'
   | 'snrMrtDb'
+  | 'txPowerDbm'
   | 'colormap'
   | 'scaleMode'
   | 'scaleScope'
@@ -365,6 +372,9 @@ export const STUDIO_DEFAULTS: StudioSettings = {
   bodyMapStatistic: 'single',
   ecbfBudgetFrac: 0.5,
   snrMrtDb: 20,
+  // 25 dBm = the pack calibration power, so the default leaves every absolute
+  // readout at its as-traced baseline (powerScale = 1).
+  txPowerDbm: 25,
 
   colormap: 'jet',
   scaleMode: 'auto',
@@ -468,6 +478,7 @@ export const useStudioStore = create<StudioState>()((set) => ({
   setReferenceMap: (referenceMap) => set({ referenceMap }),
   setEcbfBudgetFrac: (ecbfBudgetFrac) => set({ ecbfBudgetFrac }),
   setSnrMrtDb: (snrMrtDb) => set({ snrMrtDb }),
+  setTxPowerDbm: (txPowerDbm) => set({ txPowerDbm }),
   setTopK: (topK) => set({ topK }),
   setShowRays: (showRays) => set({ showRays }),
   setShowArrayPattern: (showArrayPattern) => set({ showArrayPattern }),

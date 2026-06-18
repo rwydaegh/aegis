@@ -61,6 +61,12 @@ export interface StudioManifest {
   ue_indices?: number[]
   /** Default corridor UE index (mid-corridor, 14 m; its packs are unsuffixed). */
   default_ue_idx?: number
+  /** Per-element transmit power the packs were traced at (dBm); also the total
+   * array power the ||x||^2 = 1 outputs are calibrated to. The Tx-power slider
+   * rescales absolute quantities from here. */
+  calibration_tx_power_dbm?: number
+  /** Total transmit power [W] the absolute outputs are calibrated to (= 10^((dBm-30)/10)). */
+  calibration_power_w?: number
   /**
    * Precomputed pack descriptors. The backend manifest returns these under the
    * key `packs` (verified against routes/studio/_presets.py::manifest).

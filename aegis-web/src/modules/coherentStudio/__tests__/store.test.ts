@@ -9,6 +9,7 @@ import {
   STUDIO_DEFAULTS,
 } from '../store'
 import { spectralEfficiency } from '../api'
+import { powerDisplayFactor, quantityIsField } from '../scene/studioHelpers'
 
 function keys() {
   const s = useStudioStore.getState()
@@ -166,6 +167,24 @@ describe('coherentStudio fetch keys', () => {
     expect(complianceSweepFetchKey(useStudioStore.getState())).not.toBe(mrtKey)
   })
 
+  it('txPowerDbm is render-only: rescales display, triggers no re-fetch', () => {
+    const s = useStudioStore.getState()
+    s.setShowCompliance(true)
+    s.setBeam('ecbf')
+    const before = {
+      ...keys(),
+      compliance: complianceFetchKey(useStudioStore.getState()),
+      sweep: complianceSweepFetchKey(useStudioStore.getState()),
+    }
+    s.setTxPowerDbm(43)
+    const after = {
+      ...keys(),
+      compliance: complianceFetchKey(useStudioStore.getState()),
+      sweep: complianceSweepFetchKey(useStudioStore.getState()),
+    }
+    expect(after).toEqual(before)
+  })
+
   it('volumeThreshold / volumeOpacity are render-only: change no fetch key', () => {
     const before = keys()
     useStudioStore.getState().setVolumeThreshold(0.6)
@@ -200,6 +219,8 @@ describe('coherentStudio fetch keys', () => {
     expect(s.volumeOpacity).toBe(STUDIO_DEFAULTS.volumeOpacity)
     expect(s.referenceMap).toBeNull()
     expect(s.snrMrtDb).toBe(STUDIO_DEFAULTS.snrMrtDb)
+    expect(s.txPowerDbm).toBe(STUDIO_DEFAULTS.txPowerDbm)
+    expect(s.txPowerDbm).toBe(25) // calibration power -> powerScale 1, baseline unchanged
   })
 
   it('spectralEfficiency = log2(1 + SNR_mrt * signal_rel)', () => {
@@ -209,6 +230,22 @@ describe('coherentStudio fetch keys', () => {
     expect(spectralEfficiency(0.25, 20)).toBeCloseTo(Math.log2(1 + 100 * 0.25), 9)
     // No signal -> no rate.
     expect(spectralEfficiency(0, 20)).toBe(0)
+  })
+
+  it('powerDisplayFactor: power-class scales linearly, field-class as sqrt', () => {
+    // S / S_ab / P_abs / SAR are power-class (quadratic in x) -> x powerScale.
+    expect(quantityIsField('S')).toBe(false)
+    expect(quantityIsField('sab')).toBe(false)
+    expect(powerDisplayFactor('S', 4)).toBeCloseTo(4, 12)
+    expect(powerDisplayFactor('sab', 4)).toBeCloseTo(4, 12)
+    // Field amplitudes (|E|, |H|, Re E) are linear in x -> x sqrt(powerScale).
+    expect(quantityIsField('absE')).toBe(true)
+    expect(quantityIsField('ReEz')).toBe(true)
+    expect(powerDisplayFactor('absE', 4)).toBeCloseTo(2, 12)
+    expect(powerDisplayFactor('ReEz', 9)).toBeCloseTo(3, 12)
+    // Identity at the calibration power (powerScale = 1).
+    expect(powerDisplayFactor('S', 1)).toBe(1)
+    expect(powerDisplayFactor('absE', 1)).toBe(1)
   })
 
   it('resetDefaults does not wipe fetched results / scene', () => {

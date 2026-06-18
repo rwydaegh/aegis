@@ -164,6 +164,23 @@ export function isSignedQuantity(quantity: string): boolean {
   return quantity === 'ReEx' || quantity === 'ReEy' || quantity === 'ReEz'
 }
 
+/** Field-amplitude quantities (V/m or A/m): linear in the precoder x, so they
+ * scale with sqrt(power). Everything else the studio shows (S, poynting, S_ab,
+ * P_abs, SAR) is a power density / power, quadratic in x, scaling linearly with
+ * power. Ratios (amp, eta, signal_rel) are handled by the caller (factor 1). */
+export function quantityIsField(quantity: string): boolean {
+  return quantity === 'absE' || quantity === 'absH' || isSignedQuantity(quantity)
+}
+
+/** Display multiplier for an absolute quantity when the transmit power is scaled
+ * by `powerScale` (= chosen power / calibration power). Field amplitudes go as
+ * sqrt(powerScale); power densities and powers go as powerScale. The whole studio
+ * pipeline is homogeneous in transmit power, so this is exact, not an
+ * approximation. Ratio quantities must NOT be passed here (their factor is 1). */
+export function powerDisplayFactor(quantity: string, powerScale: number): number {
+  return quantityIsField(quantity) ? Math.sqrt(powerScale) : powerScale
+}
+
 /** Symmetric range [-m, m] (m = max|vmin|,|vmax|, never 0) for a signed field. */
 export function signedSymmetricRange(vmin: number, vmax: number): { vmin: number; vmax: number } {
   const m = Math.max(Math.abs(vmin), Math.abs(vmax)) || 1

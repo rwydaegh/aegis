@@ -4,7 +4,7 @@ import ProvenanceDot from '@/components/panels/ProvenanceDot'
 import { useStudioStore } from './store'
 import { spectralEfficiency } from './api'
 import { useStudioScales } from './useStudioScales'
-import { colormapRgb } from './scene/studioHelpers'
+import { colormapRgb, powerDisplayFactor } from './scene/studioHelpers'
 import { logFloor, type ResolvedScale } from './scene/colorScale'
 import { frameProvenance } from './panels/controls'
 
@@ -20,6 +20,23 @@ function fmt(value: number | null | undefined, unit = ''): string {
   const a = Math.abs(value)
   if (a !== 0 && (a < 1e-2 || a >= 1e4)) return `${value.toExponential(2)}${unit}`
   return `${value.toPrecision(3)}${unit}`
+}
+
+// Multiplier on absolute (power-class) readouts when the chosen Tx power differs
+// from the calibration power the packs were traced at: powerScale = chosen/calib
+// = 10^((txPowerDbm - calibDbm)/10). Field amplitudes use sqrt of this (see
+// powerDisplayFactor). 1 at the default, so the baseline is unchanged.
+function usePowerScale(): number {
+  const txPowerDbm = useStudioStore((s) => s.txPowerDbm)
+  const calibDbm = useStudioStore((s) => s.manifest?.calibration_tx_power_dbm ?? 25)
+  return 10 ** ((txPowerDbm - calibDbm) / 10)
+}
+
+// "25 dBm (0.32 W)" style label for the chosen total transmit power.
+function txPowerLabel(txPowerDbm: number): string {
+  const w = 10 ** ((txPowerDbm - 30) / 10)
+  const wStr = w >= 1 ? `${w.toPrecision(3)} W` : w >= 1e-3 ? `${(w * 1e3).toPrecision(3)} mW` : `${w.toExponential(1)} W`
+  return `${txPowerDbm.toFixed(0)} dBm (${wStr})`
 }
 
 // CSS gradient sampled from the active colormap, high value at the top (pct 0 =
@@ -41,17 +58,19 @@ interface BarTick {
   pct: number
 }
 
-function buildTicks(scale: ResolvedScale): BarTick[] {
+function buildTicks(scale: ResolvedScale, factor = 1): BarTick[] {
   const N = 5
   // In log/dB mode the bar spans the dynamic-range window [logFloor, vmax]; in
-  // linear mode it spans [vmin, vmax]. pct 0 = top = vmax.
+  // linear mode it spans [vmin, vmax]. pct 0 = top = vmax. `factor` rescales the
+  // tick *labels* to the chosen Tx power (the colours come from raw data, so the
+  // bar is unchanged; only the numbers move).
   const useLog = scale.logMode && scale.vmax > 0
   const lo = useLog ? Math.log10(logFloor(scale)) : scale.vmin
   const hi = useLog ? Math.log10(scale.vmax) : scale.vmax
   return Array.from({ length: N }, (_, i) => {
     const frac = i / (N - 1)
     const at = hi - frac * (hi - lo)
-    return { label: fmt(useLog ? 10 ** at : at), pct: frac }
+    return { label: fmt((useLog ? 10 ** at : at) * factor), pct: frac }
   })
 }
 
@@ -100,9 +119,19 @@ const BAR_W = 14
 // One scientific colour scale: a white box with a square black border, a
 // LaTeX-set definition, evenly spaced ticks, and an explicit zero marker (centre
 // for a diverging scale, bottom for a non-negative one).
-function ScientificColorBar({ scale, titleTex, units }: { scale: ResolvedScale; titleTex: string; units: string }) {
+function ScientificColorBar({
+  scale,
+  titleTex,
+  units,
+  factor = 1,
+}: {
+  scale: ResolvedScale
+  titleTex: string
+  units: string
+  factor?: number
+}) {
   const gradient = useMemo(() => colormapGradient(scale.colormap), [scale.colormap])
-  const ticks = buildTicks(scale)
+  const ticks = buildTicks(scale, factor)
   const z = zeroPct(scale)
   return (
     <div style={{ background: '#ffffff', border: '1px solid #000000', padding: '8px 10px', color: '#000000', fontFamily: 'serif' }}>
@@ -177,6 +206,7 @@ function ProvenanceCard() {
   const bodyMapNotPrecomputed = useStudioStore((s) => s.bodyMapNotPrecomputed)
   const showVolume = useStudioStore((s) => s.showVolume)
   const volumeResult = useStudioStore((s) => s.volumeResult)
+  const powerScale = usePowerScale()
   if (!sliceResult) return null
 
   const prov = frameProvenance({
@@ -185,6 +215,9 @@ function ProvenanceCard() {
     bodyMapNotPrecomputed,
   })
   const [px, py, pz] = sliceResult.peakXyz
+  // Slice peak follows its quantity (field vs power); volume is always S (power).
+  const slicePeak = sliceResult.peakValue * powerDisplayFactor(sliceResult.quantity, powerScale)
+  const volumePeak = volumeResult ? volumeResult.peakValue * powerScale : 0
 
   return (
     <div style={{ ...CARD, padding: 12, fontSize: 12, minWidth: 160 }}>
@@ -198,7 +231,7 @@ function ProvenanceCard() {
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 6 }}>
         <span style={{ color: '#aab' }}>Peak</span>
         <span style={{ fontFamily: 'monospace', color: '#dde' }}>
-          {fmt(sliceResult.peakValue, ` ${sliceResult.units}`)}
+          {fmt(slicePeak, ` ${sliceResult.units}`)}
         </span>
       </div>
       <div style={{ marginTop: 4, fontSize: 11, color: '#778', fontFamily: 'monospace', textAlign: 'right' }}>
@@ -208,7 +241,7 @@ function ProvenanceCard() {
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 6, borderTop: '1px solid #1e1e26', paddingTop: 6 }}>
           <span style={{ color: '#aab' }}>Volume peak</span>
           <span style={{ fontFamily: 'monospace', color: '#dde' }}>
-            {fmt(volumeResult.peakValue, ` ${volumeResult.units}`)}
+            {fmt(volumePeak, ` ${volumeResult.units}`)}
           </span>
         </div>
       )}
@@ -231,6 +264,8 @@ function ComplianceCard() {
   const compliance = useStudioStore((s) => s.compliance)
   const notAvailable = useStudioStore((s) => s.complianceNotAvailable)
   const snrMrtDb = useStudioStore((s) => s.snrMrtDb)
+  const txPowerDbm = useStudioStore((s) => s.txPowerDbm)
+  const powerScale = usePowerScale()
   if (!showCompliance) return null
 
   if (!compliance) {
@@ -249,22 +284,27 @@ function ComplianceCard() {
   // Spectral efficiency is recomputed live from signal_rel + the SNR knob, so the
   // SNR slider updates this with no server round-trip.
   const se = isFinite(compliance.signal_rel) ? spectralEfficiency(compliance.signal_rel, snrMrtDb) : null
+  // All density / power scalars scale linearly with transmit power; signal_rel,
+  // eta and the SNR-anchored rate are ratios and stay invariant.
+  const sarWb = compliance.sar_wb == null ? null : compliance.sar_wb * powerScale
   return (
     <div style={{ ...CARD, padding: 12, fontSize: 12, minWidth: 200 }}>
       <div style={{ color: '#aab', marginBottom: 2, display: 'flex', justifyContent: 'space-between' }}>
         <span>Compliance</span>
-        <span style={{ fontSize: 10, color: '#667' }}>per W tx</span>
+        <span style={{ fontSize: 10, color: '#667' }} title="Absolute dose / field at the chosen total transmit power">
+          at {txPowerLabel(txPowerDbm)}
+        </span>
       </div>
       <ComplianceRow label="Signal vs MRT" value={signalPct} title="Served signal |h.x|^2 relative to the matched-filter beam (100% = MRT)" />
       <ComplianceRow
         label="Rate"
         value={se == null ? '--' : fmt(se, ' bit/s/Hz')}
-        title={`Single-user spectral efficiency log2(1 + SNR_mrt * signal), anchored at SNR_mrt = ${snrMrtDb} dB`}
+        title={`Single-user spectral efficiency log2(1 + SNR_mrt * signal), anchored at SNR_mrt = ${snrMrtDb} dB. Independent of transmit power (set by the SNR knob).`}
       />
-      <ComplianceRow label="P_abs" value={fmt(compliance.p_abs_w, ' W')} title="Total absorbed power per watt transmitted (the absorption fraction)" />
+      <ComplianceRow label="P_abs" value={fmt(compliance.p_abs_w * powerScale, ' W')} title="Total absorbed power at the chosen transmit power" />
       <ComplianceRow
         label="SAR_wb"
-        value={compliance.sar_wb == null ? '--' : fmt(compliance.sar_wb, ' W/kg')}
+        value={sarWb == null ? '--' : fmt(sarWb, ' W/kg')}
         title={
           compliance.body_mass_kg == null
             ? 'Whole-body SAR (body mass unknown)'
@@ -273,12 +313,12 @@ function ComplianceCard() {
       />
       <ComplianceRow
         label="S_ab (peak)"
-        value={fmt(compliance.peak_sab, ' W/m²')}
+        value={fmt(compliance.peak_sab * powerScale, ' W/m²')}
         title="Peak per-triangle absorbed power density (the unaveraged hotspot, ICNIRP basic-restriction quantity above 6 GHz)"
       />
       <ComplianceRow
         label={`S_ab,${compliance.averaging_area_cm2}cm² (peak)`}
-        value={fmt(compliance.pssar_4cm2, ' W/m²')}
+        value={fmt(compliance.pssar_4cm2 * powerScale, ' W/m²')}
         title="Peak absorbed power density spatially averaged over the ICNIRP 4 cm^2 area (the >6 GHz basic restriction; this is the W/m^2 S_ab, not a mass-averaged SAR)"
       />
       <ComplianceRow label="η (peak/mean)" value={fmt(compliance.eta_4cm2)} title="Peak 4 cm^2 S_ab over the area-mean absorbed power density (localisation factor)" />
@@ -294,8 +334,14 @@ function StudioColorBar() {
   const bodyMap = useStudioStore((s) => s.bodyMap)
   const bodyMapQuantity = useStudioStore((s) => s.bodyMapQuantity)
   const scales = useStudioScales()
+  const powerScale = usePowerScale()
 
   if (!sliceResult && !bodyMap) return null
+
+  // The slice carries S / field components; the body map is S_ab (power-class)
+  // except 'amp', which is a dimensionless ratio and must not be rescaled.
+  const sliceFactor = sliceResult ? powerDisplayFactor(sliceResult.quantity, powerScale) : 1
+  const bodyFactor = bodyMapQuantity === 'amp' ? 1 : powerScale
 
   return (
     <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
@@ -304,10 +350,16 @@ function StudioColorBar() {
           scale={scales.slice}
           titleTex={quantityTex(sliceResult.quantity)}
           units={sliceResult.units || '-'}
+          factor={sliceFactor}
         />
       )}
       {bodyMap && (
-        <ScientificColorBar scale={scales.body} titleTex={bodyTitleTex(bodyMapQuantity)} units={bodyMap.units || 'W/m^2 per W'} />
+        <ScientificColorBar
+          scale={scales.body}
+          titleTex={bodyTitleTex(bodyMapQuantity)}
+          units={bodyMap.units || 'W/m^2 per W'}
+          factor={bodyFactor}
+        />
       )}
     </div>
   )

@@ -812,6 +812,44 @@ def test_spectral_efficiency_anchors_to_snr():
     assert weak["spectral_efficiency_bps_hz"] == pytest.approx(np.log2(1.0 + 100.0 * 0.25))
 
 
+def test_compute_scalars_is_homogeneous_in_transmit_power():
+    # The whole pipeline is quadratic in the precoder x, so scaling x by c (i.e.
+    # transmit power by c^2) scales every absorbed-power density / power by c^2
+    # while signal_rel and eta (ratios) stay invariant. This is what licenses the
+    # frontend to rescale absolute readouts by a single power factor client-side.
+    from scipy import sparse
+
+    from aegis.viewer.routes.studio._compliance import compute_scalars
+
+    rng = np.random.default_rng(3)
+    n_tri, n_ant = 6, 4
+    g_tilde = rng.normal(size=(n_tri, 3, n_ant)) + 1j * rng.normal(size=(n_tri, 3, n_ant))
+    areas = rng.uniform(0.5, 2.0, n_tri)
+    x = rng.normal(size=n_ant) + 1j * rng.normal(size=n_ant)
+    h = rng.normal(size=n_ant) + 1j * rng.normal(size=n_ant)
+    x_mrt = rng.normal(size=n_ant) + 1j * rng.normal(size=n_ant)
+    g_avg = sparse.eye(n_tri, format="csr")
+
+    c = 1.7  # field scale; transmit power scales by c^2
+    base = compute_scalars(g_tilde, areas, x, h, x_mrt, g_avg, body_mass=70.0, snr_mrt_db=20.0)
+    # Scale BOTH x and x_mrt so signal_rel stays a true ratio (as the routes do).
+    scaled = compute_scalars(g_tilde, areas, c * x, h, c * x_mrt, g_avg, body_mass=70.0, snr_mrt_db=20.0)
+
+    for key in ("p_abs_w", "sar_wb", "pssar_4cm2", "peak_sab", "mean_sab"):
+        assert scaled[key] == pytest.approx(base[key] * c**2, rel=1e-9), key
+    # Ratios and the SNR-anchored rate are invariant to transmit power.
+    assert scaled["signal_rel"] == pytest.approx(base["signal_rel"], rel=1e-9)
+    assert scaled["eta_4cm2"] == pytest.approx(base["eta_4cm2"], rel=1e-9)
+    assert scaled["spectral_efficiency_bps_hz"] == pytest.approx(base["spectral_efficiency_bps_hz"], rel=1e-9)
+
+
+def test_manifest_exposes_calibration_power(client):
+    j = client.get("/api/studio/manifest").get_json()
+    assert j["calibration_tx_power_dbm"] == pytest.approx(25.0)
+    # 25 dBm = 10^((25-30)/10) W = 0.31623 W total.
+    assert j["calibration_power_w"] == pytest.approx(10 ** ((25.0 - 30.0) / 10.0), rel=1e-9)
+
+
 def test_body_mass_kg_reads_phantoms_yaml():
     from aegis.viewer.routes.studio._compliance import body_mass_kg
 

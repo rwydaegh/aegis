@@ -209,6 +209,8 @@ export default function StudioPanel() {
   const setEcbfBudgetFrac = useStudioStore((s) => s.setEcbfBudgetFrac)
   const snrMrtDb = useStudioStore((s) => s.snrMrtDb)
   const setSnrMrtDb = useStudioStore((s) => s.setSnrMrtDb)
+  const txPowerDbm = useStudioStore((s) => s.txPowerDbm)
+  const setTxPowerDbm = useStudioStore((s) => s.setTxPowerDbm)
 
   const frequencyGhz = useStudioStore((s) => s.frequencyGhz)
   const setFrequencyGhz = useStudioStore((s) => s.setFrequencyGhz)
@@ -435,6 +437,19 @@ export default function StudioPanel() {
           live deposited map. The worst-case beam ignores it, and the static body-map packs are
           frozen at dipole.
         </HelpText>
+
+        <FieldLabel title="Total radiated power of the whole array. All absolute readouts (S, S_ab, P_abs, SAR, and both colour bars) scale with it; ratios (signal vs MRT, eta) and the rate are invariant. The packs are calibrated at 25 dBm (0.32 W) total, so 25 dBm leaves everything at its as-traced baseline. Realised EIRP is higher by the array gain (~10 log10 of the element count).">
+          Transmit power (total array)
+        </FieldLabel>
+        <Slider
+          value={txPowerDbm}
+          min={0}
+          max={50}
+          step={1}
+          onChange={setTxPowerDbm}
+          labelOf={(v) => `${v} dBm`}
+        />
+
         {beam === 'ecbf' && (
           <>
             <FieldLabel title="ECBF absorbed-power budget as a fraction of the MRT operating point. 1 reproduces MRT; lower trades received signal for lower whole-body dose.">
