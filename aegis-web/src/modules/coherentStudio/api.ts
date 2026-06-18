@@ -785,7 +785,7 @@ export type PowerSweepFetch =
  */
 export async function fetchPowerSweep(
   params: LiveBodyMapParams,
-  nPoints = 24,
+  nPoints = 18,
   signal?: AbortSignal,
 ): Promise<PowerSweepFetch> {
   const path = `${STUDIO}/power-sweep`

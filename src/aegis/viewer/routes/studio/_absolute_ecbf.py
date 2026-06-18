@@ -95,6 +95,7 @@ def build_ecbf_absolute(
     scenario: str = "general_public",
     max_gen: int = 8,
     max_regions: int = 16,
+    q_glob: np.ndarray | None = None,
 ) -> dict:
     """Absolute-limit ECBF precoder against the active ICNIRP restrictions.
 
@@ -110,6 +111,10 @@ def build_ecbf_absolute(
     Limits come from :func:`aegis.compliance.icnirp_limits`. The 4 cm^2 S_ab limit
     only exists above 6 GHz; at or below it ``peak_on`` is ignored (falls back to
     SAR_wb-only). When ``mass`` is unknown the SAR_wb restriction is skipped.
+
+    ``q_glob`` optionally supplies the whole-body operator ``Q_glob`` (which is
+    independent of the transmit power), so a power sweep can build it once and pass
+    it to every point instead of re-forming the area-weighted Gram each call.
     """
     from aegis.coherent import solve_multibody_ecbf
     from aegis.compliance import ExposureScenario, icnirp_limits
@@ -137,7 +142,7 @@ def build_ecbf_absolute(
     l_list: list[float] = []
     names: list = []
     if sar_active:
-        q_list.append(global_operator(g_tilde, areas))
+        q_list.append(global_operator(g_tilde, areas) if q_glob is None else np.asarray(q_glob))
         l_list.append(l_wb * float(mass))
         names.append("sar_wb")
 

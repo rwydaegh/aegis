@@ -8,7 +8,7 @@ import { powerSweepFetchKey, useStudioStore } from './store'
 // focus/scenario changes like the other live hooks so a drag collapses to one
 // sweep on settle.
 const DEBOUNCE_MS = 240
-const SWEEP_POINTS = 24
+const SWEEP_POINTS = 18
 
 function buildParams(s: ReturnType<typeof useStudioStore.getState>): LiveBodyMapParams {
   return {

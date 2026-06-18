@@ -157,6 +157,39 @@ def build_ecbf_from_q(
     return np.asarray(solve_ecbf(h, q, frac * p_abs_mrt, power))
 
 
+def build_ecbf_sweep_from_q(
+    paths: tuple[np.ndarray, np.ndarray, np.ndarray, int],
+    focus_xyz,
+    freq_hz: float,
+    q: np.ndarray,
+    budget_fracs,
+    power: float = 1.0,
+    ue_antenna: str = "dipole",
+) -> list[np.ndarray]:
+    """ECBF precoders for many budget fractions sharing one ``(h, Q)``.
+
+    The budget sweep solves the ECBF QCQP at ~20 absorbed-power budgets against
+    the same channel and exposure operator, so the served channel ``h`` and the
+    eigendecomposition of ``q`` are identical across the sweep. Computing them once
+    here (and delegating to :func:`aegis.coherent.solve_ecbf_sweep`) turns a sweep
+    into a single ``eigh`` plus one cheap bisection per point, instead of
+    re-factorising ``q`` on every call to :func:`build_ecbf_from_q`. Returns one
+    precoder per entry of ``budget_fracs`` (each clipped to ``[1e-3, 1]``).
+    """
+    from aegis.coherent import solve_ecbf_sweep
+    from aegis.hotspot import channel_at, make_rx_response
+
+    k_hat, psi, element_index, n_elements = paths
+    focus = np.asarray(focus_xyz, dtype=float)
+    q = np.asarray(q)
+    ue_rx = make_rx_response(ue_antenna, freq_hz)
+    h = channel_at(focus, k_hat, psi, element_index, freq_hz, n_elements, rx_response=ue_rx)
+    x_mrt = np.sqrt(power) * np.conj(h) / np.linalg.norm(h)
+    p_abs_mrt = float(np.real(x_mrt.conj() @ q @ x_mrt))
+    budgets = [float(np.clip(frac, 1e-3, 1.0)) * p_abs_mrt for frac in budget_fracs]
+    return [np.asarray(x) for x in solve_ecbf_sweep(h, q, budgets, power)]
+
+
 def build_gep_from_q(
     paths: tuple[np.ndarray, np.ndarray, np.ndarray, int],
     focus_xyz,

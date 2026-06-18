@@ -776,10 +776,13 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
                 "spectral_efficiency_bps_hz",
             )
             series: dict[str, list] = {k: [] for k in keys}
-            for frac in fracs:
-                x = _precoders.build_ecbf_from_q(
-                    paths, focus_xyz, freq_hz, q, power=1.0, budget_frac=float(frac), ue_antenna=ue_antenna
-                )
+            # Solve every budget against one eigendecomposition of Q (the operator
+            # and channel are fixed across the sweep), so the sweep costs a single
+            # eigh, not one per point. Then score each precoder.
+            xs = _precoders.build_ecbf_sweep_from_q(
+                paths, focus_xyz, freq_hz, q, fracs, power=1.0, ue_antenna=ue_antenna
+            )
+            for x in xs:
                 row = _compliance.compute_scalars(g_tilde, areas, x, h, x_mrt, g_avg, body_mass, snr_mrt_db=snr_mrt_db)
                 for k in keys:
                     series[k].append(row[k])
@@ -844,7 +847,7 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             seed = int(params.get("seed", 0))
             freq_ghz = float(params.get("frequency_ghz", 10))
             freq_hz = freq_ghz * 1e9
-            n_points = int(np.clip(int(params.get("n_points", 24)), 4, 48))
+            n_points = int(np.clip(int(params.get("n_points", 18)), 4, 48))
             sar_wb_on = bool(params.get("sar_wb_on", True))
             peak_sab_on = bool(params.get("peak_sab_on", True))
             power_min_dbm = float(params.get("power_min_dbm", 0.0))
@@ -882,6 +885,12 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             powers_dbm = np.linspace(power_min_dbm, power_max_dbm, n_points)
             powers_w = 10.0 ** ((powers_dbm - 30.0) / 10.0)
 
+            # The whole-body operator Q_glob is independent of transmit power, so
+            # build the (heavy) area-weighted Gram once and reuse it across every
+            # point instead of re-forming it inside each solve.
+            has_mass = mass is not None and float(mass) > 0
+            q_glob = _absolute_ecbf.global_operator(g_tilde, areas) if (sar_wb_on and has_mass) else None
+
             ecbf: dict[str, list] = {"p_abs_w": [], "sar_wb": [], "peak_sab": [], "regime": []}
             mrt: dict[str, list] = {"p_abs_w": [], "sar_wb": [], "peak_sab": []}
             for p_w in powers_w:
@@ -895,6 +904,7 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
                     float(p_w),
                     sar_wb_on=sar_wb_on,
                     peak_on=peak_sab_on,
+                    q_glob=q_glob,
                 )
                 per = {c["name"]: c for c in res["per_constraint"]}
                 ecbf["p_abs_w"].append(res["p_abs_w"])
