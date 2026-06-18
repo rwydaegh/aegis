@@ -739,6 +739,92 @@ export async function fetchComplianceSweep(
   return { ok: true, data }
 }
 
+/** Absolute-ICNIRP ECBF vs MRT absorbed power swept across transmit power. The
+ * payload of the absolute-mode power chart: ECBF flattens against the fixed
+ * ICNIRP limit while MRT diverges. Arrays are parallel to power_dbm / power_w. */
+export interface PowerSweepResult {
+  /** Swept total transmit power, dBm (the chart X axis). */
+  power_dbm: number[]
+  /** The same powers in watts. */
+  power_w: number[]
+  /** Absolute-limit ECBF curves at each power (nulls where a restriction is off
+   * or does not apply, e.g. peak S_ab at or below 6 GHz). */
+  ecbf: {
+    p_abs_w: number[]
+    sar_wb: (number | null)[]
+    peak_sab: (number | null)[]
+    /** Which restriction binds at each power (free / sar_wb / peak_sab / both / infeasible). */
+    regime: ComplianceResult['regime'][]
+  }
+  /** Matched-filter (MRT) reference at the same powers: linear, so it diverges. */
+  mrt: {
+    p_abs_w: number[]
+    sar_wb: (number | null)[]
+    peak_sab: number[]
+  }
+  /** ICNIRP limits plus the absolute whole-body P_abs limit (L_wb * mass, W). */
+  limits: { sar_wb: number; sab_4cm2: number | null; scenario: string; p_abs_wb_w: number | null }
+  /** Whole-body mass used for the P_abs limit, kg (null if unknown). */
+  mass_kg: number | null
+  /** Whether each restriction was actually enforced in this sweep. */
+  sar_wb_on: boolean
+  peak_sab_on: boolean
+  provenance?: string
+}
+
+export type PowerSweepFetch =
+  | { ok: true; data: PowerSweepResult }
+  | { ok: false; notPrecomputed: true; error: string }
+
+/**
+ * Absolute-ICNIRP ECBF vs MRT absorbed power swept across the transmit-power
+ * range (default 0..100 dBm). Independent of the live transmit power (it covers
+ * the whole range), so dragging the dBm slider only moves the cursor; the fetch
+ * is keyed on everything else, plus which restrictions are enforced. A 409 (no
+ * channel pack) is reported as not-precomputed like the compliance route.
+ */
+export async function fetchPowerSweep(
+  params: LiveBodyMapParams,
+  nPoints = 24,
+  signal?: AbortSignal,
+): Promise<PowerSweepFetch> {
+  const path = `${STUDIO}/power-sweep`
+  const res = await fetchWithRetry(`${BASE}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      mesh: params.mesh,
+      condition: params.condition,
+      array_n: params.arrayN,
+      seed: params.seed,
+      focus_mode: params.focusMode,
+      focus_xyz: params.focusXyz,
+      frequency_ghz: params.frequencyGhz,
+      n_points: nPoints,
+      sar_wb_on: params.sarWbOn ?? true,
+      peak_sab_on: params.peakSabOn ?? true,
+      ue_antenna: params.ueAntenna ?? 'dipole',
+      ue_idx: params.ueIdx ?? 4,
+    }),
+    signal,
+  })
+  if (res.status === 401) {
+    handle401()
+    throw new ApiError(`POST ${path} failed: 401 Unauthorized`, 401)
+  }
+  if (res.status === 409) {
+    const body = await res.json().catch(() => ({}))
+    return {
+      ok: false,
+      notPrecomputed: true,
+      error: typeof body?.error === 'string' ? body.error : 'Power sweep not available for this combination',
+    }
+  }
+  if (!res.ok) throw new ApiError(await extractErrorMessage(res, 'POST', path), res.status)
+  const data = (await res.json()) as PowerSweepResult
+  return { ok: true, data }
+}
+
 /**
  * ICNIRP compliance scalars for the current beam + focus. Same precoder-bearing
  * parameter shape as the live body map. A 409 (no channel / Q pack, or a beam

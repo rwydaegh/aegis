@@ -35,6 +35,7 @@ import StudioRadialFalloff from './StudioRadialFalloff'
 import StudioLineProfile from './StudioLineProfile'
 import StudioPatternCut from './StudioPatternCut'
 import StudioBudgetSweep from './StudioBudgetSweep'
+import StudioPowerSweep from './StudioPowerSweep'
 import StudioCompare from './StudioCompare'
 import {
   Checkbox,
@@ -535,7 +536,7 @@ export default function StudioPanel() {
               onChange={setSnrMrtDb}
               labelOf={(v) => `${v} dB`}
             />
-            {ecbfConstraintMode === 'relative' && <StudioBudgetSweep />}
+            {ecbfConstraintMode === 'relative' ? <StudioBudgetSweep /> : <StudioPowerSweep />}
           </>
         )}
       </Group>

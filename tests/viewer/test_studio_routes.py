@@ -1042,6 +1042,64 @@ def test_compliance_absolute_flattens_with_power(client):
         assert hi["p_abs_w"] == pytest.approx(0.08 * 17.4, rel=1e-2)
 
 
+def _power_sweep_post(client, n_points=16, sar_wb_on=True, peak_sab_on=True):
+    body = {
+        "mesh": "thelonious",
+        "condition": "los",
+        "array_n": 16,
+        "seed": 0,
+        "focus_xyz": [0.923, -0.005, 0.734],
+        "focus_mode": "free-space",
+        "frequency_ghz": 10,
+        "n_points": n_points,
+        "sar_wb_on": sar_wb_on,
+        "peak_sab_on": peak_sab_on,
+    }
+    return client.post("/api/studio/power-sweep", json=body)
+
+
+@needs_channel
+def test_power_sweep_ecbf_flattens_mrt_diverges(client):
+    # The headline chart: across the transmit-power range MRT absorbed power is
+    # exactly linear in power (it diverges), while the absolute ECBF beam tracks it
+    # at low power and then flattens once an ICNIRP restriction binds. So the ECBF
+    # curve's growth from the first to the last power must be far below MRT's.
+    r = _power_sweep_post(client, n_points=16)
+    assert r.status_code == 200, r.get_data(as_text=True)
+    j = r.get_json()
+    assert len(j["power_dbm"]) == 16
+    assert j["power_dbm"][0] == pytest.approx(0.0)
+    assert j["power_dbm"][-1] == pytest.approx(100.0)
+
+    ecbf = np.asarray(j["ecbf"]["p_abs_w"])
+    mrt = np.asarray(j["mrt"]["p_abs_w"])
+    # Both rise with power, ECBF never exceeds MRT (it is the constrained beam).
+    assert np.all(np.diff(ecbf) >= -1e-9)
+    assert np.all(np.diff(mrt) >= -1e-9)
+    assert np.all(ecbf <= mrt * (1.0 + 1e-6))
+    # MRT is linear, so its top/bottom ratio matches the power ratio; ECBF flattens,
+    # so it grows much less across the same span.
+    power_ratio = j["power_w"][-1] / j["power_w"][0]
+    assert mrt[-1] / mrt[0] == pytest.approx(power_ratio, rel=1e-3)
+    assert ecbf[-1] / ecbf[0] < 0.1 * power_ratio
+    # At the top power some restriction binds; at the bottom the beam is free, so
+    # the regimes differ along the sweep.
+    assert j["ecbf"]["regime"][0] == "free"
+    assert j["ecbf"]["regime"][-1] in ("sar_wb", "peak_sab", "both")
+    # The whole-body P_abs limit (L_wb * mass) is echoed for the chart reference.
+    assert j["limits"]["p_abs_wb_w"] == pytest.approx(0.08 * j["mass_kg"], rel=1e-9)
+    # ECBF whole-body SAR never meaningfully exceeds the ICNIRP limit it enforces.
+    sar = np.asarray([v for v in j["ecbf"]["sar_wb"] if v is not None])
+    assert np.all(sar <= j["limits"]["sar_wb"] * (1.0 + 1e-2))
+
+
+@needs_channel
+def test_power_sweep_missing_channel_409(client):
+    r = client.post("/api/studio/power-sweep", json={"frequency_ghz": 99})
+    assert r.status_code == 409
+    assert r.get_json()["not_precomputed"] is True
+
+
 @needs_packs
 @needs_qpack
 def test_slice_gep_computes(client):

@@ -809,6 +809,127 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             }
         )
 
+    @app.route("/api/studio/power-sweep", methods=["POST"])
+    def api_studio_power_sweep():
+        """Absolute-ICNIRP ECBF vs MRT absorbed power swept across transmit power.
+
+        The headline of absolute mode. As the total transmit power rises, the
+        matched filter (MRT) absorbed power climbs without bound (it "diverges"
+        straight through the ICNIRP basic restriction), while the absolute-limit
+        ECBF beam tracks it until a restriction binds and then flattens against the
+        fixed limit. For each transmit power it re-solves the two-restriction QCQP
+        and also scores the MRT reference at the same power, so the chart can draw
+        both curves and the horizontal ICNIRP limit they are measured against. MRT
+        is exactly linear in power (the matched filter is fixed), so it is scored
+        once at unit power and scaled. Only the field-channel pack is required (the
+        absolute solver uses the channel + 4 cm^2 averaging matrix directly, no Q
+        pack), so the 409 sentinel matches the channel-load path of the other
+        routes. Independent of the live transmit power: the dBm slider only marks a
+        cursor on these curves, so it is not in the fetch key.
+        """
+        params, err = get_json_dict()
+        if err is not None:
+            return err
+        condition = params.get("condition", "los")
+        mesh = params.get("mesh", "thelonious")
+        focus_xyz = params.get("focus_xyz", [0.923, -0.005, 0.734])
+        focus_mode = params.get("focus_mode", "free-space")
+
+        try:
+            from aegis.hotspot import channel_at, make_rx_response
+
+            from ._channel import deposited_sab
+
+            array_n = int(params.get("array_n", 16))
+            seed = int(params.get("seed", 0))
+            freq_ghz = float(params.get("frequency_ghz", 10))
+            freq_hz = freq_ghz * 1e9
+            n_points = int(np.clip(int(params.get("n_points", 24)), 4, 48))
+            sar_wb_on = bool(params.get("sar_wb_on", True))
+            peak_sab_on = bool(params.get("peak_sab_on", True))
+            power_min_dbm = float(params.get("power_min_dbm", 0.0))
+            power_max_dbm = float(params.get("power_max_dbm", 100.0))
+            ue_antenna = _parse_ue_antenna(params)
+            ue_idx = int(params.get("ue_idx", _channel.DEFAULT_UE_IDX))
+            if focus_mode == "at-skin":
+                focus_xyz = _phantom.snap_focus_to_skin(
+                    focus_xyz, mesh, cache=cache, cache_lock=cache_lock, ue_idx=ue_idx
+                )
+
+            loaded = _channel.load_channel(condition, array_n, freq_ghz, seed, mesh, cache, cache_lock, ue_idx)
+            if loaded is None:
+                stem = f"{mesh}_{condition}_bs{int(array_n)}_{freq_ghz:g}_seed{int(seed)}{_channel.ue_suffix(ue_idx)}"
+                return jsonify({"error": f"field-channel pack not precomputed: {stem}", "not_precomputed": True}), 409
+            g_tilde, areas = loaded
+            areas = np.asarray(areas, dtype=float).ravel()
+
+            paths = _paths.load_paths(condition, array_n, seed, cache, cache_lock, ue_idx)
+            k_hat, psi, element_index, n_elements = paths
+            ue_rx = make_rx_response(ue_antenna, freq_hz)
+            h = channel_at(focus_xyz, k_hat, psi, element_index, freq_hz, n_elements, rx_response=ue_rx)
+            g_avg = _compliance.averaging_matrix(mesh, ue_idx, cache, cache_lock)
+            mass = _compliance.body_mass_kg(mesh)
+            limits = _compliance_limits(freq_hz)
+
+            # MRT is the matched filter; its absorbed densities are exactly linear
+            # in transmit power, so score it once at unit power and scale per point.
+            x_mrt_unit = np.conj(h) / max(float(np.linalg.norm(h)), 1e-30)
+            sab_mrt_unit = deposited_sab(g_tilde, x_mrt_unit)
+            p_abs_mrt_unit = float(np.sum(sab_mrt_unit * areas))
+            avg_mrt_unit = np.asarray(g_avg @ sab_mrt_unit).ravel()
+            peak_mrt_unit = float(avg_mrt_unit.max()) if avg_mrt_unit.size else 0.0
+
+            powers_dbm = np.linspace(power_min_dbm, power_max_dbm, n_points)
+            powers_w = 10.0 ** ((powers_dbm - 30.0) / 10.0)
+
+            ecbf: dict[str, list] = {"p_abs_w": [], "sar_wb": [], "peak_sab": [], "regime": []}
+            mrt: dict[str, list] = {"p_abs_w": [], "sar_wb": [], "peak_sab": []}
+            for p_w in powers_w:
+                res = _absolute_ecbf.build_ecbf_absolute(
+                    g_tilde,
+                    areas,
+                    g_avg,
+                    h,
+                    freq_hz,
+                    mass,
+                    float(p_w),
+                    sar_wb_on=sar_wb_on,
+                    peak_on=peak_sab_on,
+                )
+                per = {c["name"]: c for c in res["per_constraint"]}
+                ecbf["p_abs_w"].append(res["p_abs_w"])
+                ecbf["sar_wb"].append(per["sar_wb"]["value"] if "sar_wb" in per else None)
+                ecbf["peak_sab"].append(per["peak_sab"]["value"] if "peak_sab" in per else None)
+                ecbf["regime"].append(res["regime"])
+                p_abs_mrt = p_abs_mrt_unit * float(p_w)
+                mrt["p_abs_w"].append(p_abs_mrt)
+                mrt["sar_wb"].append((p_abs_mrt / float(mass)) if (mass and float(mass) > 0) else None)
+                mrt["peak_sab"].append(peak_mrt_unit * float(p_w))
+        except FileNotFoundError as e:
+            return jsonify({"error": str(e)}), 404
+        except (KeyError, ValueError, TypeError, NotImplementedError) as e:
+            return jsonify({"error": str(e)}), 400
+
+        # The absolute whole-body limit on total absorbed power is L_wb * mass [W],
+        # so the P_abs curve can be drawn against a single horizontal reference.
+        p_abs_wb_w = (limits["sar_wb"] * float(mass)) if (mass and float(mass) > 0) else None
+        return jsonify(
+            {
+                "power_dbm": [float(d) for d in powers_dbm],
+                "power_w": [float(w) for w in powers_w],
+                "ecbf": ecbf,
+                "mrt": mrt,
+                "limits": {**limits, "p_abs_wb_w": p_abs_wb_w},
+                "mass_kg": (float(mass) if (mass and float(mass) > 0) else None),
+                "sar_wb_on": sar_wb_on,
+                "peak_sab_on": peak_sab_on and limits["sab_4cm2"] is not None,
+                "provenance": (
+                    f"studio power sweep | {mesh} | {condition} bs{array_n} seed{seed} | "
+                    f"ecbf vs mrt | {freq_ghz:g}GHz | {n_points} pts"
+                ),
+            }
+        )
+
     @app.route("/api/studio/precoder", methods=["POST"])
     def api_studio_precoder():
         """Per-element precoder ``x`` + array geometry for the live Tx lobe.

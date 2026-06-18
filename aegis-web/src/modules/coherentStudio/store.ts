@@ -4,6 +4,7 @@ import type {
   ComplianceResult,
   ComplianceSweepResult,
   PhantomGeometry,
+  PowerSweepResult,
   PrecoderResult,
   Provenance,
   SceneGeometry,
@@ -208,6 +209,11 @@ interface StudioState {
   complianceSweep: ComplianceSweepResult | null
   /** True when the budget sweep is unavailable for the combo (no channel/Q pack). */
   complianceSweepNotAvailable: boolean
+  /** Absolute-mode power sweep (ECBF P_abs flattening vs MRT diverging across the
+   * dBm range; null until fetched, only while showCompliance and absolute ECBF). */
+  powerSweep: PowerSweepResult | null
+  /** True when the power sweep is unavailable for the combo (no channel pack). */
+  powerSweepNotAvailable: boolean
   /** Provenance of the currently displayed slice / body map (whichever was set last). */
   provenance: Provenance | null
 
@@ -293,6 +299,8 @@ interface StudioState {
   setComplianceNotAvailable: (complianceNotAvailable: boolean) => void
   setComplianceSweep: (complianceSweep: ComplianceSweepResult | null) => void
   setComplianceSweepNotAvailable: (complianceSweepNotAvailable: boolean) => void
+  setPowerSweep: (powerSweep: PowerSweepResult | null) => void
+  setPowerSweepNotAvailable: (powerSweepNotAvailable: boolean) => void
 }
 
 /** The user-settable knobs (parameters + render-only state), minus results,
@@ -458,6 +466,8 @@ export const useStudioStore = create<StudioState>()((set) => ({
   complianceNotAvailable: false,
   complianceSweep: null,
   complianceSweepNotAvailable: false,
+  powerSweep: null,
+  powerSweepNotAvailable: false,
   provenance: null,
   savedCamera: null,
   cameraSaveNonce: 0,
@@ -561,6 +571,8 @@ export const useStudioStore = create<StudioState>()((set) => ({
   setComplianceNotAvailable: (complianceNotAvailable) => set({ complianceNotAvailable }),
   setComplianceSweep: (complianceSweep) => set({ complianceSweep }),
   setComplianceSweepNotAvailable: (complianceSweepNotAvailable) => set({ complianceSweepNotAvailable }),
+  setPowerSweep: (powerSweep) => set({ powerSweep }),
+  setPowerSweepNotAvailable: (powerSweepNotAvailable) => set({ powerSweepNotAvailable }),
 }))
 
 // ---------------------------------------------------------------------------
@@ -744,6 +756,31 @@ export function complianceSweepFetchKey(s: ComplianceKeyState): string {
     s.focusXyz,
     s.frequencyGhz,
     s.ueAntenna,
+  ])
+}
+
+// The absolute-mode power sweep covers the whole transmit-power range at once, so
+// it does NOT key on txPowerDbm (the live power is only a cursor on the curves)
+// nor snrMrtDb. It re-solves ECBF per power, so it DOES key on which restrictions
+// are enforced (sarWbOn / peakOn). Only fetched while the panel is open and the
+// absolute ECBF beam is selected.
+export function powerSweepFetchKey(s: ComplianceKeyState): string {
+  const active = s.showCompliance && s.beam === 'ecbf' && s.ecbfConstraintMode === 'absolute'
+  return JSON.stringify([
+    'power-sweep',
+    active,
+    s.mesh,
+    s.condition,
+    s.arrayN,
+    s.seed,
+    s.ueIdx,
+    s.focusMode,
+    s.focusXyz,
+    s.frequencyGhz,
+    s.ueAntenna,
+    // Which ICNIRP restrictions the sweep enforces (only meaningful when active).
+    active ? s.ecbfSarWbOn : null,
+    active ? s.ecbfPeakOn : null,
   ])
 }
 

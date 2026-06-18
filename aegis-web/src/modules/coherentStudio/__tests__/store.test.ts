@@ -6,6 +6,7 @@ import {
   volumeFetchKey,
   complianceFetchKey,
   complianceSweepFetchKey,
+  powerSweepFetchKey,
   STUDIO_DEFAULTS,
 } from '../store'
 import { dbmToWatts, icnirpLimits, spectralEfficiency } from '../api'
@@ -169,6 +170,35 @@ describe('coherentStudio fetch keys', () => {
     const mrtKey = complianceSweepFetchKey(useStudioStore.getState())
     s.setBeam('ecbf')
     expect(complianceSweepFetchKey(useStudioStore.getState())).not.toBe(mrtKey)
+  })
+
+  it('power-sweep key is gated on showCompliance AND the absolute ECBF beam', () => {
+    const s = useStudioStore.getState()
+    s.setBeam('ecbf')
+    s.setEcbfConstraintMode('relative')
+    // Relative ECBF: the power sweep is inactive (the gate flag is false).
+    const relative = powerSweepFetchKey(useStudioStore.getState())
+    s.setShowCompliance(true)
+    s.setEcbfConstraintMode('absolute')
+    const absolute = powerSweepFetchKey(useStudioStore.getState())
+    expect(absolute).not.toBe(relative)
+    // Turning the panel off flips the gate back off.
+    s.setShowCompliance(false)
+    expect(powerSweepFetchKey(useStudioStore.getState())).not.toBe(absolute)
+  })
+
+  it('power-sweep key ignores live power but tracks the enforced restrictions', () => {
+    const s = useStudioStore.getState()
+    s.setBeam('ecbf')
+    s.setShowCompliance(true)
+    s.setEcbfConstraintMode('absolute')
+    const before = powerSweepFetchKey(useStudioStore.getState())
+    // The sweep spans every transmit power, so the dBm slider only moves the cursor.
+    s.setTxPowerDbm(70)
+    expect(powerSweepFetchKey(useStudioStore.getState())).toBe(before)
+    // Which restriction is enforced changes the solved curves, so it is a fetch axis.
+    s.setEcbfSarWbOn(false)
+    expect(powerSweepFetchKey(useStudioStore.getState())).not.toBe(before)
   })
 
   it('txPowerDbm is render-only: rescales display, triggers no re-fetch', () => {
