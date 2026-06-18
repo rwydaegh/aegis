@@ -8,7 +8,7 @@ import {
   complianceSweepFetchKey,
   STUDIO_DEFAULTS,
 } from '../store'
-import { spectralEfficiency } from '../api'
+import { dbmToWatts, icnirpLimits, spectralEfficiency } from '../api'
 import { powerDisplayFactor, quantityIsField } from '../scene/studioHelpers'
 
 function keys() {
@@ -32,6 +32,10 @@ describe('coherentStudio fetch keys', () => {
       bodyMapQuantity: 'mrt',
       colormap: 'viridis',
       scaleMode: 'auto',
+      ecbfConstraintMode: 'relative',
+      ecbfSarWbOn: true,
+      ecbfPeakOn: true,
+      txPowerDbm: 25,
     })
   })
 
@@ -185,6 +189,80 @@ describe('coherentStudio fetch keys', () => {
     expect(after).toEqual(before)
   })
 
+  it('absolute mode setters update state', () => {
+    const s = useStudioStore.getState()
+    s.setEcbfConstraintMode('absolute')
+    expect(useStudioStore.getState().ecbfConstraintMode).toBe('absolute')
+    s.setEcbfSarWbOn(false)
+    expect(useStudioStore.getState().ecbfSarWbOn).toBe(false)
+    s.setEcbfPeakOn(false)
+    expect(useStudioStore.getState().ecbfPeakOn).toBe(false)
+  })
+
+  it('switching to absolute mode changes the ECBF fetch keys', () => {
+    const s = useStudioStore.getState()
+    s.setBeam('ecbf')
+    s.setShowCompliance(true)
+    s.setBodyMapQuantity('deposited') // the live map reflects the precoder (static packs do not)
+    const before = { ...keys(), compliance: complianceFetchKey(useStudioStore.getState()) }
+    s.setEcbfConstraintMode('absolute')
+    const after = { ...keys(), compliance: complianceFetchKey(useStudioStore.getState()) }
+    expect(after.compliance).not.toBe(before.compliance)
+    expect(after.slice).not.toBe(before.slice)
+    expect(after.bodyMap).not.toBe(before.bodyMap)
+    expect(after.volume).not.toBe(before.volume)
+  })
+
+  it('txPowerDbm enters the ECBF fetch keys ONLY in absolute mode', () => {
+    const s = useStudioStore.getState()
+    s.setBeam('ecbf')
+    s.setShowCompliance(true)
+    s.setBodyMapQuantity('deposited') // the live map reflects the precoder (static packs do not)
+    // Relative mode: the dBm slider is render-only (no key change).
+    const relBefore = { ...keys(), compliance: complianceFetchKey(useStudioStore.getState()) }
+    s.setTxPowerDbm(43)
+    const relAfter = { ...keys(), compliance: complianceFetchKey(useStudioStore.getState()) }
+    expect(relAfter).toEqual(relBefore)
+
+    // Absolute mode: the dBm slider feeds the solve, so it joins the keys.
+    s.setEcbfConstraintMode('absolute')
+    const absBefore = { ...keys(), compliance: complianceFetchKey(useStudioStore.getState()) }
+    s.setTxPowerDbm(70)
+    const absAfter = { ...keys(), compliance: complianceFetchKey(useStudioStore.getState()) }
+    expect(absAfter.compliance).not.toBe(absBefore.compliance)
+    expect(absAfter.slice).not.toBe(absBefore.slice)
+    expect(absAfter.bodyMap).not.toBe(absBefore.bodyMap)
+    expect(absAfter.volume).not.toBe(absBefore.volume)
+  })
+
+  it('restriction toggles enter the keys only in absolute mode', () => {
+    const s = useStudioStore.getState()
+    s.setBeam('ecbf')
+    s.setShowCompliance(true)
+    // Relative: toggling a restriction is inert (the budget ECBF ignores them).
+    const relBefore = complianceFetchKey(useStudioStore.getState())
+    s.setEcbfPeakOn(false)
+    expect(complianceFetchKey(useStudioStore.getState())).toBe(relBefore)
+
+    // Absolute: the enforced restriction set changes the solved beam.
+    s.setEcbfConstraintMode('absolute')
+    const absBefore = complianceFetchKey(useStudioStore.getState())
+    s.setEcbfSarWbOn(false)
+    expect(complianceFetchKey(useStudioStore.getState())).not.toBe(absBefore)
+  })
+
+  it('absolute-mode keys stay render-only for a non-ECBF beam', () => {
+    const s = useStudioStore.getState()
+    s.setBeam('mrt')
+    s.setEcbfConstraintMode('absolute')
+    s.setShowCompliance(true)
+    const before = { ...keys(), compliance: complianceFetchKey(useStudioStore.getState()) }
+    // The absolute params only steer ECBF, so for MRT the dBm slider stays render-only.
+    s.setTxPowerDbm(80)
+    const after = { ...keys(), compliance: complianceFetchKey(useStudioStore.getState()) }
+    expect(after).toEqual(before)
+  })
+
   it('volumeThreshold / volumeOpacity are render-only: change no fetch key', () => {
     const before = keys()
     useStudioStore.getState().setVolumeThreshold(0.6)
@@ -221,6 +299,23 @@ describe('coherentStudio fetch keys', () => {
     expect(s.snrMrtDb).toBe(STUDIO_DEFAULTS.snrMrtDb)
     expect(s.txPowerDbm).toBe(STUDIO_DEFAULTS.txPowerDbm)
     expect(s.txPowerDbm).toBe(25) // calibration power -> powerScale 1, baseline unchanged
+    expect(s.ecbfConstraintMode).toBe(STUDIO_DEFAULTS.ecbfConstraintMode)
+    expect(s.ecbfConstraintMode).toBe('relative') // absolute mode is opt-in
+    expect(s.ecbfSarWbOn).toBe(true)
+    expect(s.ecbfPeakOn).toBe(true)
+  })
+
+  it('dbmToWatts converts dBm to watts (P[W] = 10^((dBm-30)/10))', () => {
+    expect(dbmToWatts(30)).toBeCloseTo(1, 9)
+    expect(dbmToWatts(25)).toBeCloseTo(0.31623, 4) // calibration power
+    expect(dbmToWatts(60)).toBeCloseTo(1000, 6) // near the binding knee
+    expect(dbmToWatts(0)).toBeCloseTo(1e-3, 12)
+  })
+
+  it('icnirpLimits exposes the 4 cm^2 S_ab limit only above 6 GHz', () => {
+    expect(icnirpLimits(10).sarWb).toBe(0.08)
+    expect(icnirpLimits(10).sab4cm2).toBe(20)
+    expect(icnirpLimits(3.5).sab4cm2).toBeNull() // below 6 GHz: SAR_wb only
   })
 
   it('spectralEfficiency = log2(1 + SNR_mrt * signal_rel)', () => {

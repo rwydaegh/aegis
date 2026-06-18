@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import * as Sentry from '@sentry/react'
-import { fetchBodyMap, fetchLiveBodyMap, type BodyMapParams, type LiveBodyMapParams } from './api'
+import { dbmToWatts, fetchBodyMap, fetchLiveBodyMap, type BodyMapParams, type LiveBodyMapParams } from './api'
 import { bodyMapFetchKey, useStudioStore } from './store'
 
 // The default "deposited" map is live (a full-body precoder + field-channel
@@ -34,6 +34,10 @@ function buildLiveBodyMapParams(s: ReturnType<typeof useStudioStore.getState>): 
     focusXyz: s.focusXyz,
     frequencyGhz: s.frequencyGhz,
     ecbfBudgetFrac: s.ecbfBudgetFrac,
+    constraintMode: s.ecbfConstraintMode,
+    sarWbOn: s.ecbfSarWbOn,
+    peakSabOn: s.ecbfPeakOn,
+    txPowerW: dbmToWatts(s.txPowerDbm),
     ueAntenna: s.ueAntenna,
     ueIdx: s.ueIdx,
   }

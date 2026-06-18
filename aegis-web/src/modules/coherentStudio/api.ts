@@ -25,6 +25,43 @@ export type Vec3 = [number, number, number]
 /** Opaque provenance blob returned by the backend (string tag or JSON object). */
 export type Provenance = unknown
 
+/** Total radiated power in watts from a dBm reading (P[W] = 10^((dBm-30)/10)). */
+export function dbmToWatts(dbm: number): number {
+  return Math.pow(10, (dbm - 30) / 10)
+}
+
+/** ECBF constraint-mode fields shared by every precoder-bearing request. In
+ * relative mode (default) they are inert; in absolute mode they select the
+ * ICNIRP restrictions and the literal transmit power the QCQP is solved at. */
+export interface EcbfConstraintParams {
+  /** 'relative' (budget-fraction ECBF, default) or 'absolute' (ICNIRP limits). */
+  constraintMode?: string
+  /** Enforce the whole-body SAR restriction (absolute mode). */
+  sarWbOn?: boolean
+  /** Enforce the peak 4 cm^2 S_ab restriction (absolute mode, above 6 GHz). */
+  peakSabOn?: boolean
+  /** Absolute transmit power in watts the absolute solve uses for ||x||^2 <= P. */
+  txPowerW?: number
+}
+
+/** Snake-case request body for the ECBF constraint fields, with defaults that
+ * reproduce the existing relative-mode behaviour when the caller omits them. */
+function ecbfConstraintBody(p: EcbfConstraintParams): Record<string, unknown> {
+  return {
+    constraint_mode: p.constraintMode ?? 'relative',
+    sar_wb_on: p.sarWbOn ?? true,
+    peak_sab_on: p.peakSabOn ?? true,
+    tx_power_w: p.txPowerW ?? 1.0,
+  }
+}
+
+/** General-public ICNIRP 2020 basic restrictions at a frequency, for the
+ * client-side utilisation bars in relative mode (the backend echoes the same
+ * values in absolute mode). The 4 cm^2 S_ab limit only exists above 6 GHz. */
+export function icnirpLimits(freqGhz: number): { sarWb: number; sab4cm2: number | null } {
+  return { sarWb: 0.08, sab4cm2: freqGhz > 6 ? 20.0 : null }
+}
+
 // ---------------------------------------------------------------------------
 // Manifest
 // ---------------------------------------------------------------------------
@@ -110,7 +147,7 @@ export interface SlicePlane {
   res: number
 }
 
-export interface SliceParams {
+export interface SliceParams extends EcbfConstraintParams {
   mesh: string
   condition: string
   arrayN: number
@@ -169,7 +206,7 @@ interface SliceStatsHeader {
 // Field volume (3D box)
 // ---------------------------------------------------------------------------
 
-export interface VolumeParams {
+export interface VolumeParams extends EcbfConstraintParams {
   mesh: string
   condition: string
   arrayN: number
@@ -233,6 +270,7 @@ function volumePayload(params: VolumeParams) {
     extent_m: params.extentM,
     res: params.res,
     ecbf_budget_frac: params.ecbfBudgetFrac ?? 0.5,
+    ...ecbfConstraintBody(params),
     ue_antenna: params.ueAntenna ?? 'dipole',
     ue_idx: params.ueIdx ?? 4,
   }
@@ -449,6 +487,7 @@ function slicePayload(params: SliceParams) {
     },
     quantity: params.quantity,
     ecbf_budget_frac: params.ecbfBudgetFrac ?? 0.5,
+    ...ecbfConstraintBody(params),
     ue_antenna: params.ueAntenna ?? 'dipole',
     ue_idx: params.ueIdx ?? 4,
   }
@@ -491,7 +530,7 @@ export async function fetchSlice(params: SliceParams, signal?: AbortSignal): Pro
 // ---------------------------------------------------------------------------
 
 /** Params for the live (focus-tracking) body map: the precoder-bearing axes. */
-export interface LiveBodyMapParams {
+export interface LiveBodyMapParams extends EcbfConstraintParams {
   mesh: string
   condition: string
   arrayN: number
@@ -528,6 +567,7 @@ export async function fetchLiveBodyMap(params: LiveBodyMapParams): Promise<BodyM
       focus_xyz: params.focusXyz,
       frequency_ghz: params.frequencyGhz,
       ecbf_budget_frac: params.ecbfBudgetFrac ?? 0.5,
+      ...ecbfConstraintBody(params),
       ue_antenna: params.ueAntenna ?? 'dipole',
       ue_idx: params.ueIdx ?? 4,
     }),
@@ -584,6 +624,39 @@ export interface ComplianceResult {
   averaging_area_cm2: number
   units: Record<string, string>
   provenance?: string
+
+  // --- Absolute-mode fields (present only when constraint_mode === 'absolute') ---
+  /** 'relative' (default) or 'absolute'. Selects how the HUD reads the scalars:
+   * relative values are per-watt and rescaled client-side; absolute values are
+   * already at tx_power_w and come with the regime + per-restriction readout. */
+  constraint_mode?: 'relative' | 'absolute'
+  /** Which ICNIRP restriction binds the absolute ECBF solution. */
+  regime?: 'free' | 'sar_wb' | 'peak_sab' | 'both' | 'infeasible'
+  /** Per-restriction utilisation readout (one entry per enforced restriction). */
+  per_constraint?: PerConstraint[]
+  /** Number of local 4 cm^2 region operators binding at the solution. */
+  n_regions_active?: number
+  /** Whether the absolute solve converged (constraint generation did not hit the cap). */
+  ecbf_converged?: boolean
+  /** Absolute transmit power the solve ran at, W. */
+  tx_power_w?: number
+  /** ICNIRP limit values for the current frequency (sab_4cm2 null at/below 6 GHz). */
+  icnirp_limits?: { sar_wb: number; sab_4cm2: number | null; scenario: string }
+}
+
+/** One ICNIRP basic restriction at the absolute ECBF solution. */
+export interface PerConstraint {
+  /** 'sar_wb' (whole-body SAR) or 'peak_sab' (peak 4 cm^2 S_ab). */
+  name: 'sar_wb' | 'peak_sab'
+  /** The restricted quantity at the solution (W/kg for SAR_wb, W/m^2 for peak). */
+  value: number
+  /** The ICNIRP limit for this restriction (same unit as value). */
+  limit: number
+  unit: string
+  /** value / limit; >= 1 means the restriction is at or over its limit. */
+  utilisation: number | null
+  /** True when this restriction binds (sits on its limit) at the solution. */
+  active: boolean
 }
 
 export type ComplianceFetch =
@@ -687,6 +760,7 @@ export async function fetchCompliance(params: LiveBodyMapParams, signal?: AbortS
       focus_xyz: params.focusXyz,
       frequency_ghz: params.frequencyGhz,
       ecbf_budget_frac: params.ecbfBudgetFrac ?? 0.5,
+      ...ecbfConstraintBody(params),
       ue_antenna: params.ueAntenna ?? 'dipole',
       ue_idx: params.ueIdx ?? 4,
     }),
@@ -758,6 +832,7 @@ export async function fetchPrecoder(params: LiveBodyMapParams, signal?: AbortSig
       focus_xyz: params.focusXyz,
       frequency_ghz: params.frequencyGhz,
       ecbf_budget_frac: params.ecbfBudgetFrac ?? 0.5,
+      ...ecbfConstraintBody(params),
       ue_antenna: params.ueAntenna ?? 'dipole',
       ue_idx: params.ueIdx ?? 4,
     }),

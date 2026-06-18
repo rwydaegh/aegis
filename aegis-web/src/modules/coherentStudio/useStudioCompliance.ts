@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import * as Sentry from '@sentry/react'
-import { fetchCompliance, type LiveBodyMapParams } from './api'
+import { dbmToWatts, fetchCompliance, type LiveBodyMapParams } from './api'
 import { complianceFetchKey, useStudioStore } from './store'
 
 // The compliance scalars track the focus and ECBF-budget sliders (they apply the
@@ -20,6 +20,10 @@ function buildParams(s: ReturnType<typeof useStudioStore.getState>): LiveBodyMap
     focusXyz: s.focusXyz,
     frequencyGhz: s.frequencyGhz,
     ecbfBudgetFrac: s.ecbfBudgetFrac,
+    constraintMode: s.ecbfConstraintMode,
+    sarWbOn: s.ecbfSarWbOn,
+    peakSabOn: s.ecbfPeakOn,
+    txPowerW: dbmToWatts(s.txPowerDbm),
     ueAntenna: s.ueAntenna,
     ueIdx: s.ueIdx,
   }

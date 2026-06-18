@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import * as Sentry from '@sentry/react'
-import { fetchPrecoder, type LiveBodyMapParams } from './api'
+import { dbmToWatts, fetchPrecoder, type LiveBodyMapParams } from './api'
 import { precoderFetchKey, useStudioStore } from './store'
 
 // The precoder drives the Tx radiation lobe, and its key tracks the focus and
@@ -19,6 +19,10 @@ function buildParams(s: ReturnType<typeof useStudioStore.getState>): LiveBodyMap
     focusXyz: s.focusXyz,
     frequencyGhz: s.frequencyGhz,
     ecbfBudgetFrac: s.ecbfBudgetFrac,
+    constraintMode: s.ecbfConstraintMode,
+    sarWbOn: s.ecbfSarWbOn,
+    peakSabOn: s.ecbfPeakOn,
+    txPowerW: dbmToWatts(s.txPowerDbm),
     ueAntenna: s.ueAntenna,
     ueIdx: s.ueIdx,
   }

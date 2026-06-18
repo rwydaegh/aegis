@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import Tex from '@/components/ui/Tex'
 import ProvenanceDot from '@/components/panels/ProvenanceDot'
 import { useStudioStore } from './store'
-import { spectralEfficiency } from './api'
+import { icnirpLimits, spectralEfficiency, type ComplianceResult, type PerConstraint } from './api'
 import { useStudioScales } from './useStudioScales'
 import { colormapRgb, powerDisplayFactor } from './scene/studioHelpers'
 import { logFloor, type ResolvedScale } from './scene/colorScale'
@@ -259,12 +259,139 @@ function ComplianceRow({ label, value, title }: { label: string; value: string; 
   )
 }
 
+// Regime badge: which ICNIRP restriction binds the absolute ECBF solution.
+const REGIME_INFO: Record<NonNullable<ComplianceResult['regime']>, { label: string; color: string }> = {
+  free: { label: 'Free', color: '#5c8' },
+  sar_wb: { label: 'SAR_wb-bound', color: '#fb3' },
+  peak_sab: { label: 'Peak S_ab-bound', color: '#fb3' },
+  both: { label: 'Both bound', color: '#f93' },
+  infeasible: { label: 'Infeasible', color: '#f55' },
+}
+
+function RegimeBadge({ regime }: { regime: NonNullable<ComplianceResult['regime']> }) {
+  const info = REGIME_INFO[regime]
+  return (
+    <span
+      title="The ICNIRP basic restriction that limits the absolute ECBF beam at this transmit power. 'Free' means the power constraint binds (no restriction is active yet)."
+      style={{
+        fontFamily: 'monospace',
+        fontSize: 11,
+        fontWeight: 600,
+        color: '#111',
+        background: info.color,
+        borderRadius: 4,
+        padding: '1px 6px',
+      }}
+    >
+      {info.label}
+    </span>
+  )
+}
+
+// Utilisation bar: fraction of the ICNIRP limit a restriction reaches. Green
+// under 80%, amber approaching the limit, red at or over it (a violation in
+// relative mode, where nothing enforces the limit).
+function utilColor(util: number): string {
+  if (util >= 1.0) return '#f55'
+  if (util >= 0.8) return '#fb3'
+  return '#5c8'
+}
+
+function UtilisationBar({
+  label,
+  util,
+  detail,
+  active,
+}: {
+  label: string
+  util: number | null
+  detail: string
+  active?: boolean
+}) {
+  const u = util == null || !isFinite(util) ? 0 : util
+  const pct = Math.min(100, Math.max(0, u * 100))
+  return (
+    <div style={{ marginTop: 6 }} title={detail}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 11 }}>
+        <span style={{ color: active ? '#dde' : '#aab' }}>
+          {label}
+          {active ? ' •' : ''}
+        </span>
+        <span style={{ fontFamily: 'monospace', color: '#dde' }}>{(u * 100).toPrecision(3)}%</span>
+      </div>
+      <div style={{ marginTop: 3, height: 5, background: '#1e1e26', borderRadius: 3, overflow: 'hidden' }}>
+        <div style={{ width: `${pct}%`, height: '100%', background: utilColor(u) }} />
+      </div>
+    </div>
+  )
+}
+
+// Absolute mode: regime badge + a utilisation bar per enforced restriction, read
+// straight from the backend (the solve ran at the chosen transmit power, so the
+// utilisation is already absolute).
+function AbsoluteComplianceBars({ compliance }: { compliance: ComplianceResult }) {
+  const per = compliance.per_constraint ?? []
+  const labelOf = (c: PerConstraint) =>
+    c.name === 'sar_wb' ? 'SAR_wb' : `S_ab,4cm² (≤ ${c.limit} ${c.unit})`
+  return (
+    <>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
+        <span style={{ color: '#aab', fontSize: 11 }}>Regime</span>
+        {compliance.regime && <RegimeBadge regime={compliance.regime} />}
+      </div>
+      {per.map((c) => (
+        <UtilisationBar
+          key={c.name}
+          label={labelOf(c)}
+          util={c.utilisation}
+          active={c.active}
+          detail={`${c.name === 'sar_wb' ? 'Whole-body SAR' : 'Peak 4 cm² S_ab'}: ${fmt(c.value, ' ' + c.unit)} of the ${c.limit} ${c.unit} ICNIRP limit`}
+        />
+      ))}
+    </>
+  )
+}
+
+// Relative mode: the scalars are per-watt, so the utilisation compares the
+// dBm-scaled dose to the ICNIRP limit. Nothing enforces it here, so > 100% is a
+// genuine (flagged) violation, not a binding regime.
+function RelativeComplianceBars({
+  compliance,
+  powerScale,
+  freqGhz,
+}: {
+  compliance: ComplianceResult
+  powerScale: number
+  freqGhz: number
+}) {
+  const limits = icnirpLimits(freqGhz)
+  const sarWb = compliance.sar_wb == null ? null : compliance.sar_wb * powerScale
+  const peak = compliance.pssar_4cm2 * powerScale
+  return (
+    <div style={{ marginTop: 6, borderTop: '1px solid #1e1e26', paddingTop: 4 }}>
+      <UtilisationBar
+        label={`SAR_wb (≤ ${limits.sarWb} W/kg)`}
+        util={sarWb == null ? null : sarWb / limits.sarWb}
+        detail="Whole-body SAR at the chosen transmit power as a fraction of the ICNIRP limit. Relative mode does not enforce it, so over 100% is a violation."
+      />
+      {limits.sab4cm2 != null && (
+        <UtilisationBar
+          label={`S_ab,4cm² (≤ ${limits.sab4cm2} W/m²)`}
+          util={peak / limits.sab4cm2}
+          detail="Peak 4 cm² S_ab at the chosen transmit power as a fraction of the ICNIRP limit. Relative mode does not enforce it, so over 100% is a violation."
+        />
+      )}
+    </div>
+  )
+}
+
 function ComplianceCard() {
   const showCompliance = useStudioStore((s) => s.showCompliance)
   const compliance = useStudioStore((s) => s.compliance)
   const notAvailable = useStudioStore((s) => s.complianceNotAvailable)
   const snrMrtDb = useStudioStore((s) => s.snrMrtDb)
   const txPowerDbm = useStudioStore((s) => s.txPowerDbm)
+  const frequencyGhz = useStudioStore((s) => s.frequencyGhz)
   const powerScale = usePowerScale()
   if (!showCompliance) return null
 
@@ -284,11 +411,15 @@ function ComplianceCard() {
   // Spectral efficiency is recomputed live from signal_rel + the SNR knob, so the
   // SNR slider updates this with no server round-trip.
   const se = isFinite(compliance.signal_rel) ? spectralEfficiency(compliance.signal_rel, snrMrtDb) : null
-  // All density / power scalars scale linearly with transmit power; signal_rel,
-  // eta and the SNR-anchored rate are ratios and stay invariant.
-  const sarWb = compliance.sar_wb == null ? null : compliance.sar_wb * powerScale
+  // Absolute mode already ran the solve at the chosen transmit power, so its
+  // densities are absolute (no rescale). Relative mode is per-watt, so the
+  // dBm-scaled display multiplies by powerScale. signal_rel, eta and the
+  // SNR-anchored rate are ratios and stay invariant either way.
+  const absolute = compliance.constraint_mode === 'absolute'
+  const scale = absolute ? 1 : powerScale
+  const sarWb = compliance.sar_wb == null ? null : compliance.sar_wb * scale
   return (
-    <div style={{ ...CARD, padding: 12, fontSize: 12, minWidth: 200 }}>
+    <div style={{ ...CARD, padding: 12, fontSize: 12, minWidth: 210 }}>
       <div style={{ color: '#aab', marginBottom: 2, display: 'flex', justifyContent: 'space-between' }}>
         <span>Compliance</span>
         <span style={{ fontSize: 10, color: '#667' }} title="Absolute dose / field at the chosen total transmit power">
@@ -301,7 +432,7 @@ function ComplianceCard() {
         value={se == null ? '--' : fmt(se, ' bit/s/Hz')}
         title={`Single-user spectral efficiency log2(1 + SNR_mrt * signal), anchored at SNR_mrt = ${snrMrtDb} dB. Independent of transmit power (set by the SNR knob).`}
       />
-      <ComplianceRow label="P_abs" value={fmt(compliance.p_abs_w * powerScale, ' W')} title="Total absorbed power at the chosen transmit power" />
+      <ComplianceRow label="P_abs" value={fmt(compliance.p_abs_w * scale, ' W')} title="Total absorbed power at the chosen transmit power" />
       <ComplianceRow
         label="SAR_wb"
         value={sarWb == null ? '--' : fmt(sarWb, ' W/kg')}
@@ -313,15 +444,20 @@ function ComplianceCard() {
       />
       <ComplianceRow
         label="S_ab (peak)"
-        value={fmt(compliance.peak_sab * powerScale, ' W/m²')}
+        value={fmt(compliance.peak_sab * scale, ' W/m²')}
         title="Peak per-triangle absorbed power density (the unaveraged hotspot, ICNIRP basic-restriction quantity above 6 GHz)"
       />
       <ComplianceRow
         label={`S_ab,${compliance.averaging_area_cm2}cm² (peak)`}
-        value={fmt(compliance.pssar_4cm2 * powerScale, ' W/m²')}
+        value={fmt(compliance.pssar_4cm2 * scale, ' W/m²')}
         title="Peak absorbed power density spatially averaged over the ICNIRP 4 cm^2 area (the >6 GHz basic restriction; this is the W/m^2 S_ab, not a mass-averaged SAR)"
       />
       <ComplianceRow label="η (peak/mean)" value={fmt(compliance.eta_4cm2)} title="Peak 4 cm^2 S_ab over the area-mean absorbed power density (localisation factor)" />
+      {absolute ? (
+        <AbsoluteComplianceBars compliance={compliance} />
+      ) : (
+        <RelativeComplianceBars compliance={compliance} powerScale={powerScale} freqGhz={frequencyGhz} />
+      )}
     </div>
   )
 }

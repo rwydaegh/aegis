@@ -1,9 +1,11 @@
 import type { CSSProperties } from 'react'
 import type { StudioFocusMode, Vec3 } from '../api'
+import { dbmToWatts, icnirpLimits } from '../api'
 import {
   useStudioStore,
   type StudioAspect,
   type StudioCameraView,
+  type StudioConstraintMode,
   type StudioRayColorMode,
   type StudioScaleMode,
   type StudioUeAntenna,
@@ -45,6 +47,13 @@ import {
   Slider,
   type Option,
 } from './widgets'
+
+/** Compact watts label for the absolute-mode transmit power (mW / W / kW). */
+function fmtWatts(w: number): string {
+  if (w >= 1000) return `${(w / 1000).toPrecision(2)} kW`
+  if (w >= 1) return `${w.toPrecision(2)} W`
+  return `${(w * 1000).toPrecision(2)} mW`
+}
 
 const COLORMAP_OPTIONS: Option<string>[] = [
   { value: 'viridis', label: 'Viridis' },
@@ -207,6 +216,12 @@ export default function StudioPanel() {
   const setUeAntenna = useStudioStore((s) => s.setUeAntenna)
   const ecbfBudgetFrac = useStudioStore((s) => s.ecbfBudgetFrac)
   const setEcbfBudgetFrac = useStudioStore((s) => s.setEcbfBudgetFrac)
+  const ecbfConstraintMode = useStudioStore((s) => s.ecbfConstraintMode)
+  const setEcbfConstraintMode = useStudioStore((s) => s.setEcbfConstraintMode)
+  const ecbfSarWbOn = useStudioStore((s) => s.ecbfSarWbOn)
+  const setEcbfSarWbOn = useStudioStore((s) => s.setEcbfSarWbOn)
+  const ecbfPeakOn = useStudioStore((s) => s.ecbfPeakOn)
+  const setEcbfPeakOn = useStudioStore((s) => s.setEcbfPeakOn)
   const snrMrtDb = useStudioStore((s) => s.snrMrtDb)
   const setSnrMrtDb = useStudioStore((s) => s.setSnrMrtDb)
   const txPowerDbm = useStudioStore((s) => s.txPowerDbm)
@@ -452,17 +467,63 @@ export default function StudioPanel() {
 
         {beam === 'ecbf' && (
           <>
-            <FieldLabel title="ECBF absorbed-power budget as a fraction of the MRT operating point. 1 reproduces MRT; lower trades received signal for lower whole-body dose.">
-              Exposure budget (fraction of MRT)
+            <FieldLabel title="Relative caps absorbed power at a fraction of the MRT operating point (a render-only Pareto visualisation, scales with transmit power). Absolute enforces the ICNIRP 2020 basic restrictions at the literal transmit power, so the beam flattens against a fixed limit as the power rises.">
+              Constraint mode
             </FieldLabel>
-            <Slider
-              value={ecbfBudgetFrac}
-              min={0.05}
-              max={1}
-              step={0.05}
-              onChange={setEcbfBudgetFrac}
-              labelOf={(v) => `${Math.round(v * 100)}%`}
+            <Segmented<StudioConstraintMode>
+              value={ecbfConstraintMode}
+              options={[
+                { value: 'relative', label: 'Relative budget' },
+                { value: 'absolute', label: 'Absolute ICNIRP' },
+              ]}
+              onChange={setEcbfConstraintMode}
             />
+
+            {ecbfConstraintMode === 'relative' ? (
+              <>
+                <FieldLabel title="ECBF absorbed-power budget as a fraction of the MRT operating point. 1 reproduces MRT; lower trades received signal for lower whole-body dose.">
+                  Exposure budget (fraction of MRT)
+                </FieldLabel>
+                <Slider
+                  value={ecbfBudgetFrac}
+                  min={0.05}
+                  max={1}
+                  step={0.05}
+                  onChange={setEcbfBudgetFrac}
+                  labelOf={(v) => `${Math.round(v * 100)}%`}
+                />
+              </>
+            ) : (
+              <>
+                <HelpText>
+                  Enforces the ICNIRP basic restrictions at the chosen transmit power (
+                  {fmtWatts(dbmToWatts(txPowerDbm))}). Raise the transmit-power slider above to drive
+                  the beam into a binding regime (the HUD badge shows which restriction binds).
+                </HelpText>
+                <Checkbox
+                  checked={ecbfSarWbOn}
+                  onChange={setEcbfSarWbOn}
+                  title="Constrain the whole-body SAR (total absorbed power / body mass) to the ICNIRP basic restriction."
+                >
+                  Whole-body SAR (≤ {icnirpLimits(frequencyGhz).sarWb} W/kg)
+                </Checkbox>
+                {icnirpLimits(frequencyGhz).sab4cm2 != null ? (
+                  <Checkbox
+                    checked={ecbfPeakOn}
+                    onChange={setEcbfPeakOn}
+                    title="Constrain the peak 4 cm^2 spatially-averaged absorbed power density to the ICNIRP local basic restriction (applies above 6 GHz)."
+                  >
+                    Peak 4 cm² S_ab (≤ {icnirpLimits(frequencyGhz).sab4cm2} W/m²)
+                  </Checkbox>
+                ) : (
+                  <HelpText>
+                    Peak 4 cm² S_ab applies only above 6 GHz; at {frequencyGhz} GHz only whole-body
+                    SAR is enforced.
+                  </HelpText>
+                )}
+              </>
+            )}
+
             <FieldLabel title="MRT-reference SNR that anchors the spectral efficiency (bit/s/Hz) in the compliance panel: the rate is log2(1 + SNR_mrt * signal). The studio runs in normalised per-watt units, so the served signal is only known relative to MRT; this scalar turns it into a rate. Re-scales the Rate readout and the sweep curve instantly.">
               MRT reference SNR
             </FieldLabel>
@@ -474,7 +535,7 @@ export default function StudioPanel() {
               onChange={setSnrMrtDb}
               labelOf={(v) => `${v} dB`}
             />
-            <StudioBudgetSweep />
+            {ecbfConstraintMode === 'relative' && <StudioBudgetSweep />}
           </>
         )}
       </Group>

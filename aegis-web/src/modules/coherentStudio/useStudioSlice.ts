@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import * as Sentry from '@sentry/react'
-import { fetchSlice, type SliceParams } from './api'
+import { dbmToWatts, fetchSlice, type SliceParams } from './api'
 import { sliceFetchKey, useStudioStore } from './store'
 
 const DEBOUNCE_MS = 120
@@ -18,6 +18,10 @@ function buildSliceParams(s: ReturnType<typeof useStudioStore.getState>): SliceP
     plane: s.plane,
     quantity: s.fieldQuantity,
     ecbfBudgetFrac: s.ecbfBudgetFrac,
+    constraintMode: s.ecbfConstraintMode,
+    sarWbOn: s.ecbfSarWbOn,
+    peakSabOn: s.ecbfPeakOn,
+    txPowerW: dbmToWatts(s.txPowerDbm),
     ueAntenna: s.ueAntenna,
     ueIdx: s.ueIdx,
   }

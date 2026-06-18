@@ -31,6 +31,11 @@ export type StudioUeAntenna = 'isotropic' | 'vertical' | 'dipole' | 'patch'
 /** How the arrival rays are tinted: by per-path power on the active colormap, or
  * a single neutral colour (so the rays read as geometry, not as a second field). */
 export type StudioRayColorMode = 'power' | 'mono'
+/** ECBF constraint mode. 'relative' caps absorbed power at a fraction of the MRT
+ * operating point (render-only Pareto visualisation); 'absolute' enforces the
+ * ICNIRP basic restrictions at the literal transmit power, so the solve sees the
+ * power-to-limit ratio and the binding regime is reported. */
+export type StudioConstraintMode = 'relative' | 'absolute'
 /** Fixed framing of the scene canvas for figure export. 'free' fills the column;
  * the others letterbox the canvas to a fixed aspect so the captured PNG has
  * predictable, reproducible dimensions (and the camera reacts to the new aspect). */
@@ -83,6 +88,12 @@ interface StudioState {
   bodyMapStatistic: StudioBodyMapStatistic
   /** ECBF absorbed-power budget as a fraction of MRT (1 = MRT, lower = safer). */
   ecbfBudgetFrac: number
+  /** ECBF constraint mode: relative budget (default) or absolute ICNIRP limits. */
+  ecbfConstraintMode: StudioConstraintMode
+  /** Enforce the whole-body SAR restriction in absolute mode. */
+  ecbfSarWbOn: boolean
+  /** Enforce the peak 4 cm^2 S_ab restriction in absolute mode (above 6 GHz). */
+  ecbfPeakOn: boolean
   /** MRT-reference SNR (dB) anchoring the spectral efficiency readout. Render-only:
    * spectral efficiency is recomputed client-side from signal_rel, no re-fetch. */
   snrMrtDb: number
@@ -224,6 +235,9 @@ interface StudioState {
   setFixedRange: (fixedRange: Range | null) => void
   setReferenceMap: (referenceMap: { values: number[]; label: string } | null) => void
   setEcbfBudgetFrac: (ecbfBudgetFrac: number) => void
+  setEcbfConstraintMode: (ecbfConstraintMode: StudioConstraintMode) => void
+  setEcbfSarWbOn: (ecbfSarWbOn: boolean) => void
+  setEcbfPeakOn: (ecbfPeakOn: boolean) => void
   setSnrMrtDb: (snrMrtDb: number) => void
   setTxPowerDbm: (txPowerDbm: number) => void
   setTopK: (topK: number) => void
@@ -301,6 +315,9 @@ export type StudioSettings = Pick<
   | 'preferDeposited'
   | 'bodyMapStatistic'
   | 'ecbfBudgetFrac'
+  | 'ecbfConstraintMode'
+  | 'ecbfSarWbOn'
+  | 'ecbfPeakOn'
   | 'snrMrtDb'
   | 'txPowerDbm'
   | 'colormap'
@@ -371,6 +388,12 @@ export const STUDIO_DEFAULTS: StudioSettings = {
   preferDeposited: true,
   bodyMapStatistic: 'single',
   ecbfBudgetFrac: 0.5,
+  // Relative budget by default (the existing Pareto visualisation); absolute mode
+  // is opt-in because it re-solves on the dBm slider. Both restrictions on so
+  // absolute mode enforces the full ICNIRP basic-restriction set out of the box.
+  ecbfConstraintMode: 'relative',
+  ecbfSarWbOn: true,
+  ecbfPeakOn: true,
   snrMrtDb: 20,
   // 25 dBm = the pack calibration power, so the default leaves every absolute
   // readout at its as-traced baseline (powerScale = 1).
@@ -477,6 +500,9 @@ export const useStudioStore = create<StudioState>()((set) => ({
   setFixedRange: (fixedRange) => set({ fixedRange }),
   setReferenceMap: (referenceMap) => set({ referenceMap }),
   setEcbfBudgetFrac: (ecbfBudgetFrac) => set({ ecbfBudgetFrac }),
+  setEcbfConstraintMode: (ecbfConstraintMode) => set({ ecbfConstraintMode }),
+  setEcbfSarWbOn: (ecbfSarWbOn) => set({ ecbfSarWbOn }),
+  setEcbfPeakOn: (ecbfPeakOn) => set({ ecbfPeakOn }),
   setSnrMrtDb: (snrMrtDb) => set({ snrMrtDb }),
   setTxPowerDbm: (txPowerDbm) => set({ txPowerDbm }),
   setTopK: (topK) => set({ topK }),
@@ -545,6 +571,21 @@ export const useStudioStore = create<StudioState>()((set) => ({
 // be minimal: render-only state (colormap, scaleMode, camera) must NOT appear.
 // ---------------------------------------------------------------------------
 
+/** ECBF absolute-mode key fields, shared by every precoder-bearing fetch key. */
+export type EcbfAbsoluteKeyState = Pick<
+  StudioState,
+  'beam' | 'ecbfConstraintMode' | 'ecbfSarWbOn' | 'ecbfPeakOn' | 'txPowerDbm'
+>
+
+// In absolute mode the solved ECBF beam depends on which restrictions are enforced
+// and the literal transmit power (the dBm slider), so those join the fetch key.
+// Relative mode and every other beam keep the dBm slider render-only (null here),
+// so dragging it only rescales the display client-side.
+function ecbfAbsoluteKey(s: EcbfAbsoluteKeyState): unknown {
+  if (s.beam !== 'ecbf' || s.ecbfConstraintMode !== 'absolute') return null
+  return [s.ecbfSarWbOn, s.ecbfPeakOn, s.txPowerDbm]
+}
+
 /** Params requiring a slice re-fetch. */
 export type SliceKeyState = Pick<
   StudioState,
@@ -561,7 +602,8 @@ export type SliceKeyState = Pick<
   | 'ecbfBudgetFrac'
   | 'ueAntenna'
   | 'ueIdx'
->
+> &
+  EcbfAbsoluteKeyState
 
 /** Params requiring a body-map pack swap (or a live recompute for 'deposited'). */
 export type BodyMapKeyState = Pick<
@@ -579,7 +621,8 @@ export type BodyMapKeyState = Pick<
   | 'focusXyz'
   | 'ecbfBudgetFrac'
   | 'ueAntenna'
->
+> &
+  EcbfAbsoluteKeyState
 
 export function sliceFetchKey(s: SliceKeyState): string {
   return JSON.stringify([
@@ -597,6 +640,8 @@ export function sliceFetchKey(s: SliceKeyState): string {
     s.plane.res,
     s.fieldQuantity,
     s.beam === 'ecbf' ? s.ecbfBudgetFrac : null,
+    s.beam === 'ecbf' ? s.ecbfConstraintMode : null,
+    ecbfAbsoluteKey(s),
     s.ueAntenna,
     s.ueIdx,
   ])
@@ -618,6 +663,8 @@ export function bodyMapFetchKey(s: BodyMapKeyState): string {
       s.focusXyz,
       s.frequencyGhz,
       s.beam === 'ecbf' ? s.ecbfBudgetFrac : null,
+      s.beam === 'ecbf' ? s.ecbfConstraintMode : null,
+      ecbfAbsoluteKey(s),
       s.ueAntenna,
     ])
   }
@@ -649,6 +696,8 @@ export function precoderFetchKey(s: BodyMapKeyState): string {
     s.focusXyz,
     s.frequencyGhz,
     s.beam === 'ecbf' ? s.ecbfBudgetFrac : null,
+    s.beam === 'ecbf' ? s.ecbfConstraintMode : null,
+    ecbfAbsoluteKey(s),
     s.ueAntenna,
   ])
 }
@@ -672,6 +721,8 @@ export function complianceFetchKey(s: ComplianceKeyState): string {
     s.focusXyz,
     s.frequencyGhz,
     s.beam === 'ecbf' ? s.ecbfBudgetFrac : null,
+    s.beam === 'ecbf' ? s.ecbfConstraintMode : null,
+    ecbfAbsoluteKey(s),
     s.ueAntenna,
   ])
 }
@@ -713,7 +764,8 @@ export type VolumeKeyState = Pick<
   | 'ecbfBudgetFrac'
   | 'ueAntenna'
   | 'ueIdx'
->
+> &
+  EcbfAbsoluteKeyState
 
 export function volumeFetchKey(s: VolumeKeyState): string {
   return JSON.stringify([
@@ -729,6 +781,8 @@ export function volumeFetchKey(s: VolumeKeyState): string {
     s.volumeRes,
     s.volumeExtentM,
     s.beam === 'ecbf' ? s.ecbfBudgetFrac : null,
+    s.beam === 'ecbf' ? s.ecbfConstraintMode : null,
+    ecbfAbsoluteKey(s),
     s.ueAntenna,
     s.ueIdx,
   ])

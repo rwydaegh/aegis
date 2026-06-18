@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import * as Sentry from '@sentry/react'
-import { fetchVolume, type VolumeParams } from './api'
+import { dbmToWatts, fetchVolume, type VolumeParams } from './api'
 import { useStudioStore, volumeFetchKey } from './store'
 
 const DEBOUNCE_MS = 160
@@ -18,6 +18,10 @@ function buildVolumeParams(s: ReturnType<typeof useStudioStore.getState>): Volum
     extentM: s.volumeExtentM,
     res: s.volumeRes,
     ecbfBudgetFrac: s.ecbfBudgetFrac,
+    constraintMode: s.ecbfConstraintMode,
+    sarWbOn: s.ecbfSarWbOn,
+    peakSabOn: s.ecbfPeakOn,
+    txPowerW: dbmToWatts(s.txPowerDbm),
     ueAntenna: s.ueAntenna,
     ueIdx: s.ueIdx,
   }
