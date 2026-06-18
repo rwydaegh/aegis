@@ -41,6 +41,7 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
     from aegis.viewer.routes.compute._responses import _json_dumps_safe
 
     from . import (
+        _absolute_ecbf,
         _array,
         _bodymap,
         _channel,
@@ -53,6 +54,56 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
         _slice,
         _volume,
     )
+
+    def _absolute_ecbf_beam(
+        paths,
+        focus_xyz,
+        freq_hz,
+        condition,
+        array_n,
+        freq_ghz,
+        seed,
+        mesh,
+        ue_idx,
+        ue_antenna,
+        sar_wb_on,
+        peak_sab_on,
+        tx_power_w,
+        scenario="general_public",
+    ):
+        """Absolute-limit ECBF result dict (loads channel + averaging matrix + h).
+
+        Single source of truth for the absolute ECBF beam: it loads the field
+        channel (per-phantom), the cached 4 cm^2 averaging matrix, and the signal
+        channel h at the focus, then solves the two-restriction QCQP at the
+        absolute transmit power. Raises :class:`_QPackMissing` (the channel stem)
+        when the field-channel pack is absent, so the same not-precomputed 409 the
+        relative path uses is returned. Both ``_beam_field`` (for the rendered
+        beam) and the compliance route (for the regime readout) call this.
+        """
+        from aegis.hotspot import channel_at, make_rx_response
+
+        loaded = _channel.load_channel(condition, array_n, freq_ghz, seed, mesh, cache, cache_lock, ue_idx)
+        if loaded is None:
+            stem = f"{mesh}_{condition}_bs{int(array_n)}_{freq_ghz:g}_seed{int(seed)}{_channel.ue_suffix(ue_idx)}"
+            raise _QPackMissing(stem)
+        g_tilde, areas = loaded
+        k_hat, psi, element_index, n_elements = paths
+        ue_rx = make_rx_response(ue_antenna, freq_hz)
+        h = channel_at(focus_xyz, k_hat, psi, element_index, freq_hz, n_elements, rx_response=ue_rx)
+        g_avg = _compliance.averaging_matrix(mesh, ue_idx, cache, cache_lock)
+        return _absolute_ecbf.build_ecbf_absolute(
+            g_tilde,
+            areas,
+            g_avg,
+            h,
+            freq_hz,
+            _compliance.body_mass_kg(mesh),
+            tx_power_w,
+            sar_wb_on=sar_wb_on,
+            peak_on=peak_sab_on,
+            scenario=scenario,
+        )
 
     def _beam_field(
         beam,
@@ -68,6 +119,10 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
         seed=0,
         ue_antenna="dipole",
         ue_idx=_channel.DEFAULT_UE_IDX,
+        constraint_mode="relative",
+        sar_wb_on=True,
+        peak_sab_on=True,
+        tx_power_w=1.0,
     ):
         """Resolve a beam to ``(x, field_source)`` for the field reconstructors.
 
@@ -76,10 +131,32 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
         loads its precomputed Q (per-phantom) and raises :class:`_QPackMissing`
         when absent.
 
+        ``constraint_mode`` switches ECBF between the relative budget (default,
+        a fraction of the MRT absorption, render-only) and the absolute ICNIRP
+        restrictions solved at ``tx_power_w`` watts (``sar_wb_on`` / ``peak_sab_on``
+        toggle which basic restriction binds).
+
         ``ue_antenna`` selects the UE receive pattern that shapes the matched
         filter, so MRT / decoy / decohered / ECBF respond to it; the worst-case
         beam maximises absorption directly and is antenna-independent.
         """
+        if beam == "ecbf" and constraint_mode == "absolute":
+            res = _absolute_ecbf_beam(
+                paths,
+                focus_xyz,
+                freq_hz,
+                condition,
+                array_n,
+                freq_ghz,
+                seed,
+                mesh,
+                ue_idx,
+                ue_antenna,
+                sar_wb_on,
+                peak_sab_on,
+                tx_power_w,
+            )
+            return res["x"], None
         if beam == "decohered":
             # Canonical decohered baseline: scramble inter-direction phase after
             # collapse (not expressible as a per-element precoder).
@@ -132,6 +209,39 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
         if ue_antenna not in _presets._UE_ANTENNAS:
             raise ValueError(f"unknown ue_antenna {ue_antenna!r}; expected one of {_presets._UE_ANTENNAS}")
         return ue_antenna
+
+    def _parse_constraint_args(params):
+        """ECBF constraint-mode kwargs for ``_beam_field`` from a request body.
+
+        ``relative`` (default) keeps the render-only budget ECBF; ``absolute``
+        switches to the two-restriction ICNIRP solve at ``tx_power_w`` watts. The
+        SAR_wb / peak toggles default on so absolute mode enforces both unless the
+        client opts out.
+        """
+        constraint_mode = params.get("constraint_mode", "relative")
+        if constraint_mode not in ("relative", "absolute"):
+            raise ValueError(f"unknown constraint_mode {constraint_mode!r}; expected 'relative' or 'absolute'")
+        return {
+            "constraint_mode": constraint_mode,
+            "sar_wb_on": bool(params.get("sar_wb_on", True)),
+            "peak_sab_on": bool(params.get("peak_sab_on", True)),
+            "tx_power_w": float(params.get("tx_power_w", 1.0)),
+        }
+
+    def _compliance_limits(freq_hz):
+        """ICNIRP limit values for the current frequency, for the absolute readout.
+
+        ``sab_4cm2`` is ``None`` at or below 6 GHz (the peak restriction does not
+        apply there); the frontend hides the peak toggle in that case.
+        """
+        from aegis.compliance import ExposureScenario, icnirp_limits
+
+        limits = icnirp_limits(ExposureScenario.GENERAL_PUBLIC, freq_hz=float(freq_hz))
+        return {
+            "sar_wb": float(limits.sar_wb),
+            "sab_4cm2": (float(limits.sab_4cm2) if limits.sab_4cm2 is not None else None),
+            "scenario": "general_public",
+        }
 
     @app.route("/api/studio/manifest")
     def api_studio_manifest():
@@ -188,6 +298,7 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
                     focus_xyz, mesh, cache=cache, cache_lock=cache_lock, ue_idx=ue_idx
                 )
             ue_antenna = _parse_ue_antenna(params)
+            constraint_args = _parse_constraint_args(params)
             plane = dict(params.get("plane", {}))
             plane["center"] = focus_xyz
 
@@ -208,6 +319,7 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
                 seed,
                 ue_antenna=ue_antenna,
                 ue_idx=ue_idx,
+                **constraint_args,
             )
             out = _slice.compute_slice(paths, x, plane, freq_hz, quantity, field_source=field_source)
         except _QPackMissing as e:
@@ -260,6 +372,7 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             extent_m = float(params.get("extent_m", 0.16))
             res = int(params.get("res", 32))
             ue_antenna = _parse_ue_antenna(params)
+            constraint_args = _parse_constraint_args(params)
             # Corridor UE the body stands at: selects the per-UE ray pack so the
             # field box reflects the beam steered to this standing position.
             ue_idx = int(params.get("ue_idx", _channel.DEFAULT_UE_IDX))
@@ -285,6 +398,7 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
                 seed,
                 ue_antenna=ue_antenna,
                 ue_idx=ue_idx,
+                **constraint_args,
             )
             out = _volume.compute_volume(paths, x, focus_xyz, freq_hz, extent_m, res, field_source=field_source)
         except _QPackMissing as e:
@@ -422,6 +536,7 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
                 return jsonify({"error": f"field-channel pack not precomputed: {stem}", "not_precomputed": True}), 409
             g_tilde, _areas = loaded
 
+            constraint_args = _parse_constraint_args(params)
             paths = _paths.load_paths(condition, array_n, seed, cache, cache_lock, ue_idx)
             x, _field_source = _beam_field(
                 beam,
@@ -437,6 +552,7 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
                 seed,
                 ue_antenna=ue_antenna,
                 ue_idx=ue_idx,
+                **constraint_args,
             )
             if x is None:
                 # The decohered baseline is a field-domain weight source, not a
@@ -500,40 +616,81 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
                 return jsonify({"error": f"field-channel pack not precomputed: {stem}", "not_precomputed": True}), 409
             g_tilde, areas = loaded
 
+            constraint_args = _parse_constraint_args(params)
+            absolute = beam == "ecbf" and constraint_args["constraint_mode"] == "absolute"
+
             paths = _paths.load_paths(condition, array_n, seed, cache, cache_lock, ue_idx)
-            x, _field_source = _beam_field(
-                beam,
-                paths,
-                focus_xyz,
-                freq_hz,
-                condition,
-                array_n,
-                freq_ghz,
-                ecbf_budget_frac,
-                mesh,
-                focus_mode,
-                seed,
-                ue_antenna=ue_antenna,
-                ue_idx=ue_idx,
-            )
-            if x is None:
-                # The decohered baseline is a field-domain weight source, not a
-                # per-element precoder, so it has no x to score.
-                return jsonify({"error": f"compliance unsupported for beam '{beam}'", "not_precomputed": True}), 409
 
             # Signal channel + MRT reference at the (possibly snapped) focus, so
             # signal_rel measures this beam against the matched filter it competes
-            # with at the same operating point.
+            # with at the same operating point. In absolute mode both the beam and
+            # the MRT reference run at tx_power_w watts, so the readout densities
+            # are absolute (W, W/kg, W/m^2) and comparable to the ICNIRP limits.
             k_hat, psi, element_index, n_elements = paths
             ue_rx = make_rx_response(ue_antenna, freq_hz)
             h = channel_at(focus_xyz, k_hat, psi, element_index, freq_hz, n_elements, rx_response=ue_rx)
-            x_mrt = _precoders.build_precoder("mrt", paths, focus_xyz, freq_hz, power=1.0, ue_antenna=ue_antenna)
-
             snr_mrt_db = float(params.get("snr_mrt_db", 20.0))
             g_avg = _compliance.averaging_matrix(mesh, ue_idx, cache, cache_lock)
+
+            abs_res = None
+            if absolute:
+                abs_res = _absolute_ecbf_beam(
+                    paths,
+                    focus_xyz,
+                    freq_hz,
+                    condition,
+                    array_n,
+                    freq_ghz,
+                    seed,
+                    mesh,
+                    ue_idx,
+                    ue_antenna,
+                    constraint_args["sar_wb_on"],
+                    constraint_args["peak_sab_on"],
+                    constraint_args["tx_power_w"],
+                )
+                x = abs_res["x"]
+                p_tx = float(constraint_args["tx_power_w"])
+                x_mrt = np.sqrt(p_tx) * np.conj(h) / np.linalg.norm(h)
+            else:
+                x, _field_source = _beam_field(
+                    beam,
+                    paths,
+                    focus_xyz,
+                    freq_hz,
+                    condition,
+                    array_n,
+                    freq_ghz,
+                    ecbf_budget_frac,
+                    mesh,
+                    focus_mode,
+                    seed,
+                    ue_antenna=ue_antenna,
+                    ue_idx=ue_idx,
+                    **constraint_args,
+                )
+                if x is None:
+                    # The decohered baseline is a field-domain weight source, not a
+                    # per-element precoder, so it has no x to score.
+                    return jsonify({"error": f"compliance unsupported for beam '{beam}'", "not_precomputed": True}), 409
+                x_mrt = _precoders.build_precoder("mrt", paths, focus_xyz, freq_hz, power=1.0, ue_antenna=ue_antenna)
+
             out = _compliance.compute_scalars(
                 g_tilde, areas, x, h, x_mrt, g_avg, _compliance.body_mass_kg(mesh), snr_mrt_db=snr_mrt_db
             )
+            if abs_res is not None:
+                # Absolute mode: surface the binding restriction and the per-limit
+                # utilisation so the HUD can show the regime and margin bars.
+                limits = _compliance_limits(freq_hz)
+                out["constraint_mode"] = "absolute"
+                out["tx_power_w"] = float(constraint_args["tx_power_w"])
+                out["regime"] = abs_res["regime"]
+                out["per_constraint"] = abs_res["per_constraint"]
+                out["n_regions_active"] = abs_res["n_regions_active"]
+                out["ecbf_converged"] = abs_res["converged"]
+                out["icnirp_limits"] = limits
+            else:
+                out["constraint_mode"] = "relative"
         except _QPackMissing as e:
             return jsonify(
                 {"error": f"exposure-operator (Q) pack not precomputed: {e.stem}", "not_precomputed": True}
@@ -679,6 +836,7 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             freq_hz = freq_ghz * 1e9
             ecbf_budget_frac = float(params.get("ecbf_budget_frac", 0.5))
             ue_antenna = _parse_ue_antenna(params)
+            constraint_args = _parse_constraint_args(params)
             ue_idx = int(params.get("ue_idx", _channel.DEFAULT_UE_IDX))
             if focus_mode == "at-skin":
                 focus_xyz = _phantom.snap_focus_to_skin(
@@ -700,6 +858,7 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
                 seed,
                 ue_antenna=ue_antenna,
                 ue_idx=ue_idx,
+                **constraint_args,
             )
         except _QPackMissing as e:
             return jsonify(

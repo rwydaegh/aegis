@@ -986,6 +986,62 @@ def test_compliance_missing_channel_409(client):
     assert r.get_json()["not_precomputed"] is True
 
 
+def _absolute_compliance_post(client, tx_power_w, sar_wb_on=True, peak_sab_on=True):
+    body = {
+        "mesh": "thelonious",
+        "condition": "los",
+        "array_n": 16,
+        "seed": 0,
+        "beam": "ecbf",
+        "focus_xyz": [0.923, -0.005, 0.734],
+        "focus_mode": "free-space",
+        "frequency_ghz": 10,
+        "constraint_mode": "absolute",
+        "sar_wb_on": sar_wb_on,
+        "peak_sab_on": peak_sab_on,
+        "tx_power_w": tx_power_w,
+    }
+    return client.post("/api/studio/compliance", json=body)
+
+
+@needs_channel
+def test_compliance_absolute_reports_regime_and_constraints(client):
+    # Absolute mode returns the binding regime and a per-restriction utilisation
+    # readout the HUD renders as the regime badge + margin bars.
+    r = _absolute_compliance_post(client, tx_power_w=1.0)
+    assert r.status_code == 200, r.get_data(as_text=True)
+    j = r.get_json()
+    assert j["constraint_mode"] == "absolute"
+    assert j["regime"] in ("free", "sar_wb", "peak_sab", "both", "infeasible")
+    names = {c["name"] for c in j["per_constraint"]}
+    assert names == {"sar_wb", "peak_sab"}
+    for c in j["per_constraint"]:
+        assert c["limit"] > 0
+        assert c["utilisation"] == pytest.approx(c["value"] / c["limit"], rel=1e-6)
+    # The ICNIRP limit values for the current frequency are echoed for the panel.
+    assert j["icnirp_limits"]["sar_wb"] == pytest.approx(0.08)
+    assert j["icnirp_limits"]["sab_4cm2"] == pytest.approx(20.0)
+    assert j["tx_power_w"] == pytest.approx(1.0)
+
+
+@needs_channel
+def test_compliance_absolute_flattens_with_power(client):
+    # The core value proposition: at low power nothing binds (the beam is free),
+    # but raising transmit power past the knee drives ECBF into a binding regime
+    # where the absorbed power stops scaling with power. The knee for the default
+    # thelonious / 10 GHz geometry is ~1 kW (whole-body SAR), so straddle it.
+    lo = _absolute_compliance_post(client, tx_power_w=10.0).get_json()
+    hi = _absolute_compliance_post(client, tx_power_w=4000.0).get_json()
+    assert lo["regime"] == "free"
+    assert hi["regime"] in ("sar_wb", "peak_sab", "both")
+    # MRT absorption would have scaled by 400x with the power; ECBF flattens, so
+    # the absorbed power grows far less than linearly past the knee.
+    assert hi["p_abs_w"] < 400.0 * lo["p_abs_w"]
+    # The whole-body bound caps absorbed power at L_wb * mass.
+    if hi["regime"] in ("sar_wb", "both"):
+        assert hi["p_abs_w"] == pytest.approx(0.08 * 17.4, rel=1e-2)
+
+
 @needs_packs
 @needs_qpack
 def test_slice_gep_computes(client):
