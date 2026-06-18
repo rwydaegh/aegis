@@ -444,7 +444,7 @@ export default function StudioPanel() {
         <Slider
           value={txPowerDbm}
           min={0}
-          max={50}
+          max={100}
           step={1}
           onChange={setTxPowerDbm}
           labelOf={(v) => `${v} dBm`}
