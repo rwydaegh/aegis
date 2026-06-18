@@ -566,6 +566,12 @@ export interface ComplianceResult {
   eta_4cm2: number
   /** Served signal relative to the matched-filter (MRT) beam (1.0 = MRT). */
   signal_rel: number
+  /** Single-user spectral efficiency log2(1 + SNR_mrt * signal_rel), bit/s/Hz
+   * (null if no SNR anchor was requested). The frontend recomputes this live
+   * from signal_rel + the SNR knob, so the slider needs no server round-trip. */
+  spectral_efficiency_bps_hz: number | null
+  /** MRT-reference SNR used to anchor the spectral efficiency, dB (null if none). */
+  snr_mrt_db: number | null
   /** Whole-body mass used for SAR_wb, kg (null if unknown). */
   body_mass_kg: number | null
   /** Spatial-averaging area used for psSAR, cm^2 (4.0). */
@@ -577,6 +583,82 @@ export interface ComplianceResult {
 export type ComplianceFetch =
   | { ok: true; data: ComplianceResult }
   | { ok: false; notPrecomputed: true; error: string }
+
+/** Single-user spectral efficiency from the served-signal ratio and an MRT SNR
+ * anchor: R = log2(1 + SNR_mrt * signal_rel). SINR is linear in received signal
+ * power, so scaling the MRT operating SNR by signal_rel gives this beam's SNR.
+ * Computed client-side so the SNR knob updates the card and chart instantly. */
+export function spectralEfficiency(signalRel: number, snrMrtDb: number): number {
+  return Math.log2(1 + Math.pow(10, snrMrtDb / 10) * signalRel)
+}
+
+/** ECBF compliance scalars swept across the absorbed-power budget (the Pareto
+ * front the budget slider rides). Each array is parallel to budget_frac. */
+export interface ComplianceSweepResult {
+  budget_frac: number[]
+  series: {
+    p_abs_w: number[]
+    sar_wb: (number | null)[]
+    pssar_4cm2: number[]
+    peak_sab: number[]
+    eta_4cm2: number[]
+    signal_rel: number[]
+    spectral_efficiency_bps_hz: (number | null)[]
+  }
+  snr_mrt_db: number
+  units: Record<string, string>
+  provenance?: string
+}
+
+export type ComplianceSweepFetch =
+  | { ok: true; data: ComplianceSweepResult }
+  | { ok: false; notPrecomputed: true; error: string }
+
+/**
+ * ECBF compliance scalars swept across the budget (5% to 100%). Independent of
+ * the live budget (it covers the whole range), so dragging the slider only moves
+ * the cursor on the returned curves; the fetch is keyed on everything else. A 409
+ * (no channel / Q pack) is reported as not-precomputed like the compliance route.
+ */
+export async function fetchComplianceSweep(
+  params: LiveBodyMapParams,
+  nPoints = 20,
+  signal?: AbortSignal,
+): Promise<ComplianceSweepFetch> {
+  const path = `${STUDIO}/compliance-sweep`
+  const res = await fetchWithRetry(`${BASE}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      mesh: params.mesh,
+      condition: params.condition,
+      array_n: params.arrayN,
+      seed: params.seed,
+      focus_mode: params.focusMode,
+      focus_xyz: params.focusXyz,
+      frequency_ghz: params.frequencyGhz,
+      n_points: nPoints,
+      ue_antenna: params.ueAntenna ?? 'dipole',
+      ue_idx: params.ueIdx ?? 4,
+    }),
+    signal,
+  })
+  if (res.status === 401) {
+    handle401()
+    throw new ApiError(`POST ${path} failed: 401 Unauthorized`, 401)
+  }
+  if (res.status === 409) {
+    const body = await res.json().catch(() => ({}))
+    return {
+      ok: false,
+      notPrecomputed: true,
+      error: typeof body?.error === 'string' ? body.error : 'Budget sweep not available for this combination',
+    }
+  }
+  if (!res.ok) throw new ApiError(await extractErrorMessage(res, 'POST', path), res.status)
+  const data = (await res.json()) as ComplianceSweepResult
+  return { ok: true, data }
+}
 
 /**
  * ICNIRP compliance scalars for the current beam + focus. Same precoder-bearing

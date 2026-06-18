@@ -11,6 +11,7 @@ import { useStudioSlice } from './useStudioSlice'
 import { useStudioVolume } from './useStudioVolume'
 import { useStudioBodyMap } from './useStudioBodyMap'
 import { useStudioCompliance } from './useStudioCompliance'
+import { useStudioComplianceSweep } from './useStudioComplianceSweep'
 import { useStudioScales } from './useStudioScales'
 import { useStudioStore, type StudioAspect } from './store'
 import { findFigurePreset } from './figurePresets'
@@ -36,6 +37,7 @@ export default function StudioModule() {
   useStudioVolume()
   useStudioBodyMap()
   useStudioCompliance()
+  useStudioComplianceSweep()
 
   const sceneRef = useRef<HTMLDivElement>(null)
   const captureRef = useRef<StudioCaptureFn | null>(null)

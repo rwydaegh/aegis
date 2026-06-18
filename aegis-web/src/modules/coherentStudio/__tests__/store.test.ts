@@ -5,8 +5,10 @@ import {
   bodyMapFetchKey,
   volumeFetchKey,
   complianceFetchKey,
+  complianceSweepFetchKey,
   STUDIO_DEFAULTS,
 } from '../store'
+import { spectralEfficiency } from '../api'
 
 function keys() {
   const s = useStudioStore.getState()
@@ -139,6 +141,31 @@ describe('coherentStudio fetch keys', () => {
     expect(complianceFetchKey(useStudioStore.getState())).not.toBe(before)
   })
 
+  it('budget-sweep key ignores the live budget and SNR (cursor + client-side rate)', () => {
+    const s = useStudioStore.getState()
+    s.setShowCompliance(true)
+    s.setBeam('ecbf')
+    const before = complianceSweepFetchKey(useStudioStore.getState())
+    // The sweep spans every budget, so moving the slider only moves the cursor.
+    s.setEcbfBudgetFrac(0.3)
+    expect(complianceSweepFetchKey(useStudioStore.getState())).toBe(before)
+    // Spectral efficiency is recomputed client-side, so SNR is not a fetch axis.
+    s.setSnrMrtDb(5)
+    expect(complianceSweepFetchKey(useStudioStore.getState())).toBe(before)
+    // Focus / beam selection does change it.
+    s.setFocusXyz([0.4, 0.1, 0.9])
+    expect(complianceSweepFetchKey(useStudioStore.getState())).not.toBe(before)
+  })
+
+  it('budget-sweep key is gated on showCompliance AND the ecbf beam', () => {
+    const s = useStudioStore.getState()
+    s.setShowCompliance(true)
+    s.setBeam('mrt')
+    const mrtKey = complianceSweepFetchKey(useStudioStore.getState())
+    s.setBeam('ecbf')
+    expect(complianceSweepFetchKey(useStudioStore.getState())).not.toBe(mrtKey)
+  })
+
   it('volumeThreshold / volumeOpacity are render-only: change no fetch key', () => {
     const before = keys()
     useStudioStore.getState().setVolumeThreshold(0.6)
@@ -172,6 +199,16 @@ describe('coherentStudio fetch keys', () => {
     expect(s.plane.extentM).toBe(STUDIO_DEFAULTS.plane.extentM)
     expect(s.volumeOpacity).toBe(STUDIO_DEFAULTS.volumeOpacity)
     expect(s.referenceMap).toBeNull()
+    expect(s.snrMrtDb).toBe(STUDIO_DEFAULTS.snrMrtDb)
+  })
+
+  it('spectralEfficiency = log2(1 + SNR_mrt * signal_rel)', () => {
+    // At the MRT operating point (signal_rel = 1) the rate is log2(1 + SNR_mrt).
+    expect(spectralEfficiency(1, 20)).toBeCloseTo(Math.log2(101), 9)
+    // SINR is linear in received signal power, so a weaker beam scales inside.
+    expect(spectralEfficiency(0.25, 20)).toBeCloseTo(Math.log2(1 + 100 * 0.25), 9)
+    // No signal -> no rate.
+    expect(spectralEfficiency(0, 20)).toBe(0)
   })
 
   it('resetDefaults does not wipe fetched results / scene', () => {

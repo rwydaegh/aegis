@@ -114,6 +114,7 @@ def compute_scalars(
     x_mrt: np.ndarray,
     g_avg,
     body_mass: float | None,
+    snr_mrt_db: float | None = None,
 ) -> dict:
     """Compliance scalars for precoder ``x`` against the field channel ``g_tilde``.
 
@@ -122,6 +123,12 @@ def compute_scalars(
     signal-relative-to-MRT ratio. All densities carry the studio's "per watt
     transmitted" normalisation (the precoders are unit-power), so ``p_abs`` is the
     absorbed-power fraction and ``sar_wb`` is W/kg per transmitted watt.
+
+    ``snr_mrt_db`` anchors the single-user spectral efficiency: the studio runs in
+    normalised per-watt units, so the served signal is only known relative to MRT
+    (``signal_rel``). Given the SNR the matched filter would achieve, the served
+    rate is ``log2(1 + SNR_mrt * signal_rel)`` (single-link Shannon, SINR linear in
+    received signal power). Pass ``None`` to skip it.
     """
     x = np.asarray(x).reshape(-1)
     areas = np.asarray(areas, dtype=float).reshape(-1)
@@ -148,6 +155,12 @@ def compute_scalars(
 
     sar_wb = (p_abs / body_mass) if (body_mass is not None and body_mass > 0) else None
 
+    if snr_mrt_db is not None:
+        snr_mrt_lin = 10.0 ** (float(snr_mrt_db) / 10.0)
+        spectral_efficiency = float(np.log2(1.0 + snr_mrt_lin * signal_rel))
+    else:
+        spectral_efficiency = None
+
     return {
         "p_abs_w": p_abs,
         "sar_wb": sar_wb,
@@ -156,6 +169,8 @@ def compute_scalars(
         "mean_sab": mean_apd,
         "eta_4cm2": eta,
         "signal_rel": signal_rel,
+        "spectral_efficiency_bps_hz": spectral_efficiency,
+        "snr_mrt_db": (float(snr_mrt_db) if snr_mrt_db is not None else None),
         "body_mass_kg": body_mass,
         "averaging_area_cm2": float(AVERAGING_AREA_M2 * 1e4),
         "units": {
@@ -166,5 +181,6 @@ def compute_scalars(
             "mean_sab": "W/m^2 per W tx",
             "eta_4cm2": "-",
             "signal_rel": "-",
+            "spectral_efficiency_bps_hz": "bit/s/Hz",
         },
     }

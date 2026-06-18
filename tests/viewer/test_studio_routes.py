@@ -781,6 +781,35 @@ def test_compute_scalars_math_is_self_consistent():
     assert np.isclose(out["sar_wb"], out["p_abs_w"] / 70.0)
     # x_mrt == x, so the beam delivers exactly the reference signal.
     assert np.isclose(out["signal_rel"], 1.0)
+    # No SNR anchor requested: spectral efficiency is left undefined.
+    assert out["spectral_efficiency_bps_hz"] is None
+
+
+def test_spectral_efficiency_anchors_to_snr():
+    # The studio runs in normalised units, so the served rate is only defined
+    # relative to MRT via an SNR anchor: R = log2(1 + SNR_mrt * signal_rel). At
+    # the MRT operating point (signal_rel = 1) it is exactly log2(1 + SNR_mrt).
+    from scipy import sparse
+
+    from aegis.viewer.routes.studio._compliance import compute_scalars
+
+    rng = np.random.default_rng(2)
+    n_tri, n_ant = 4, 3
+    g_tilde = rng.normal(size=(n_tri, 3, n_ant)) + 1j * rng.normal(size=(n_tri, 3, n_ant))
+    areas = np.full(n_tri, 1.0)
+    h = rng.normal(size=n_ant) + 1j * rng.normal(size=n_ant)
+    g_avg = sparse.eye(n_tri, format="csr")
+
+    # x == x_mrt -> signal_rel == 1 -> R == log2(1 + SNR_mrt).
+    mrt = compute_scalars(g_tilde, areas, h, h, h, g_avg, body_mass=None, snr_mrt_db=20.0)
+    assert mrt["snr_mrt_db"] == pytest.approx(20.0)
+    assert mrt["spectral_efficiency_bps_hz"] == pytest.approx(np.log2(1.0 + 100.0))
+
+    # A weaker beam (half the field) keeps signal_rel = 0.25 and the rate follows.
+    x_half = 0.5 * h
+    weak = compute_scalars(g_tilde, areas, x_half, h, h, g_avg, body_mass=None, snr_mrt_db=20.0)
+    assert weak["signal_rel"] == pytest.approx(0.25)
+    assert weak["spectral_efficiency_bps_hz"] == pytest.approx(np.log2(1.0 + 100.0 * 0.25))
 
 
 def test_body_mass_kg_reads_phantoms_yaml():
@@ -849,6 +878,59 @@ def test_compliance_gep_is_valid(client):
     assert np.isfinite(j["p_abs_w"])
     assert j["p_abs_w"] > 0
     assert 0.0 < j["signal_rel"] <= 1.0 + 1e-9
+
+
+@needs_channel
+def test_compliance_reports_spectral_efficiency(client):
+    # The compliance route anchors a default 20 dB MRT SNR, so MRT (signal_rel = 1)
+    # reports exactly log2(1 + 100) bit/s/Hz.
+    j = _compliance_post(client, beam="mrt").get_json()
+    assert j["snr_mrt_db"] == pytest.approx(20.0)
+    assert j["spectral_efficiency_bps_hz"] == pytest.approx(np.log2(101.0), rel=1e-6)
+
+
+@needs_channel
+@needs_qpack
+def test_compliance_sweep_traces_pareto_front(client):
+    # The budget sweep re-solves ECBF across the absorbed-power budget. P_abs must
+    # be non-decreasing in the budget (a looser cap can only raise absorption) and
+    # the served signal rises with it: the exposure/signal trade the chart shows.
+    body = {
+        "mesh": "thelonious",
+        "condition": "los",
+        "array_n": 16,
+        "seed": 0,
+        "focus_xyz": [0.923, -0.005, 0.734],
+        "focus_mode": "free-space",
+        "frequency_ghz": 10,
+        "n_points": 12,
+        "snr_mrt_db": 20.0,
+    }
+    r = client.post("/api/studio/compliance-sweep", json=body)
+    assert r.status_code == 200, r.get_data(as_text=True)
+    j = r.get_json()
+    fracs = j["budget_frac"]
+    assert len(fracs) == 12
+    assert fracs[0] == pytest.approx(0.05)
+    assert fracs[-1] == pytest.approx(1.0)
+
+    p_abs = np.asarray(j["series"]["p_abs_w"])
+    signal = np.asarray(j["series"]["signal_rel"])
+    se = np.asarray(j["series"]["spectral_efficiency_bps_hz"])
+    # Monotone (allow a tiny solver tolerance), and signal stays a fraction of MRT.
+    assert np.all(np.diff(p_abs) >= -1e-9)
+    assert np.all(np.diff(signal) >= -1e-6)
+    assert np.all((signal > 0.0) & (signal <= 1.0 + 1e-9))
+    # Spectral efficiency tracks signal through the SNR anchor.
+    assert np.all(se >= 0.0)
+    assert se[-1] == pytest.approx(np.log2(1.0 + 100.0 * signal[-1]), rel=1e-6)
+
+
+@needs_channel
+def test_compliance_sweep_missing_channel_409(client):
+    r = client.post("/api/studio/compliance-sweep", json={"frequency_ghz": 99})
+    assert r.status_code == 409
+    assert r.get_json()["not_precomputed"] is True
 
 
 @needs_channel

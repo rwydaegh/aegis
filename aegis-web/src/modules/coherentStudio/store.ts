@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type {
   BodyMapResult,
   ComplianceResult,
+  ComplianceSweepResult,
   PhantomGeometry,
   PrecoderResult,
   Provenance,
@@ -82,6 +83,9 @@ interface StudioState {
   bodyMapStatistic: StudioBodyMapStatistic
   /** ECBF absorbed-power budget as a fraction of MRT (1 = MRT, lower = safer). */
   ecbfBudgetFrac: number
+  /** MRT-reference SNR (dB) anchoring the spectral efficiency readout. Render-only:
+   * spectral efficiency is recomputed client-side from signal_rel, no re-fetch. */
+  snrMrtDb: number
 
   // --- Render-only (never trigger a slice/body-map re-fetch) ---
   colormap: string
@@ -183,6 +187,11 @@ interface StudioState {
   /** True when compliance is unavailable for the combo (no channel/Q pack, or a
    * beam with no per-element precoder such as decohered). */
   complianceNotAvailable: boolean
+  /** ECBF budget sweep (the Pareto curves under the budget slider; null until
+   * fetched, only while showCompliance and beam === 'ecbf'). */
+  complianceSweep: ComplianceSweepResult | null
+  /** True when the budget sweep is unavailable for the combo (no channel/Q pack). */
+  complianceSweepNotAvailable: boolean
   /** Provenance of the currently displayed slice / body map (whichever was set last). */
   provenance: Provenance | null
 
@@ -210,6 +219,7 @@ interface StudioState {
   setFixedRange: (fixedRange: Range | null) => void
   setReferenceMap: (referenceMap: { values: number[]; label: string } | null) => void
   setEcbfBudgetFrac: (ecbfBudgetFrac: number) => void
+  setSnrMrtDb: (snrMrtDb: number) => void
   setTopK: (topK: number) => void
   setShowRays: (showRays: boolean) => void
   setShowArrayPattern: (showArrayPattern: boolean) => void
@@ -261,6 +271,8 @@ interface StudioState {
   setScene: (scene: SceneGeometry | null) => void
   setCompliance: (compliance: ComplianceResult | null) => void
   setComplianceNotAvailable: (complianceNotAvailable: boolean) => void
+  setComplianceSweep: (complianceSweep: ComplianceSweepResult | null) => void
+  setComplianceSweepNotAvailable: (complianceSweepNotAvailable: boolean) => void
 }
 
 /** The user-settable knobs (parameters + render-only state), minus results,
@@ -283,6 +295,7 @@ export type StudioSettings = Pick<
   | 'preferDeposited'
   | 'bodyMapStatistic'
   | 'ecbfBudgetFrac'
+  | 'snrMrtDb'
   | 'colormap'
   | 'scaleMode'
   | 'scaleScope'
@@ -351,6 +364,7 @@ export const STUDIO_DEFAULTS: StudioSettings = {
   preferDeposited: true,
   bodyMapStatistic: 'single',
   ecbfBudgetFrac: 0.5,
+  snrMrtDb: 20,
 
   colormap: 'jet',
   scaleMode: 'auto',
@@ -409,6 +423,8 @@ export const useStudioStore = create<StudioState>()((set) => ({
   bodyMapNotPrecomputed: false,
   compliance: null,
   complianceNotAvailable: false,
+  complianceSweep: null,
+  complianceSweepNotAvailable: false,
   provenance: null,
   savedCamera: null,
   cameraSaveNonce: 0,
@@ -451,6 +467,7 @@ export const useStudioStore = create<StudioState>()((set) => ({
   setFixedRange: (fixedRange) => set({ fixedRange }),
   setReferenceMap: (referenceMap) => set({ referenceMap }),
   setEcbfBudgetFrac: (ecbfBudgetFrac) => set({ ecbfBudgetFrac }),
+  setSnrMrtDb: (snrMrtDb) => set({ snrMrtDb }),
   setTopK: (topK) => set({ topK }),
   setShowRays: (showRays) => set({ showRays }),
   setShowArrayPattern: (showArrayPattern) => set({ showArrayPattern }),
@@ -505,6 +522,8 @@ export const useStudioStore = create<StudioState>()((set) => ({
   setScene: (scene) => set({ scene }),
   setCompliance: (compliance) => set({ compliance }),
   setComplianceNotAvailable: (complianceNotAvailable) => set({ complianceNotAvailable }),
+  setComplianceSweep: (complianceSweep) => set({ complianceSweep }),
+  setComplianceSweepNotAvailable: (complianceSweepNotAvailable) => set({ complianceSweepNotAvailable }),
 }))
 
 // ---------------------------------------------------------------------------
@@ -642,6 +661,26 @@ export function complianceFetchKey(s: ComplianceKeyState): string {
     s.focusXyz,
     s.frequencyGhz,
     s.beam === 'ecbf' ? s.ecbfBudgetFrac : null,
+    s.ueAntenna,
+  ])
+}
+
+// The budget sweep covers every budget at once, so unlike the compliance scalars
+// it does NOT key on ecbfBudgetFrac (the live budget is only a cursor on the
+// curves) nor on snrMrtDb (spectral efficiency is recomputed client-side). It is
+// only fetched while the panel is open and the ECBF beam is selected.
+export function complianceSweepFetchKey(s: ComplianceKeyState): string {
+  return JSON.stringify([
+    'compliance-sweep',
+    s.showCompliance && s.beam === 'ecbf',
+    s.mesh,
+    s.condition,
+    s.arrayN,
+    s.seed,
+    s.ueIdx,
+    s.focusMode,
+    s.focusXyz,
+    s.frequencyGhz,
     s.ueAntenna,
   ])
 }

@@ -32,6 +32,7 @@ import StudioExposureHistogram from './StudioExposureHistogram'
 import StudioRadialFalloff from './StudioRadialFalloff'
 import StudioLineProfile from './StudioLineProfile'
 import StudioPatternCut from './StudioPatternCut'
+import StudioBudgetSweep from './StudioBudgetSweep'
 import StudioCompare from './StudioCompare'
 import {
   Checkbox,
@@ -206,6 +207,8 @@ export default function StudioPanel() {
   const setUeAntenna = useStudioStore((s) => s.setUeAntenna)
   const ecbfBudgetFrac = useStudioStore((s) => s.ecbfBudgetFrac)
   const setEcbfBudgetFrac = useStudioStore((s) => s.setEcbfBudgetFrac)
+  const snrMrtDb = useStudioStore((s) => s.snrMrtDb)
+  const setSnrMrtDb = useStudioStore((s) => s.setSnrMrtDb)
 
   const frequencyGhz = useStudioStore((s) => s.frequencyGhz)
   const setFrequencyGhz = useStudioStore((s) => s.setFrequencyGhz)
@@ -445,6 +448,18 @@ export default function StudioPanel() {
               onChange={setEcbfBudgetFrac}
               labelOf={(v) => `${Math.round(v * 100)}%`}
             />
+            <FieldLabel title="MRT-reference SNR that anchors the spectral efficiency (bit/s/Hz) in the compliance panel: the rate is log2(1 + SNR_mrt * signal). The studio runs in normalised per-watt units, so the served signal is only known relative to MRT; this scalar turns it into a rate. Re-scales the Rate readout and the sweep curve instantly.">
+              MRT reference SNR
+            </FieldLabel>
+            <Slider
+              value={snrMrtDb}
+              min={-10}
+              max={40}
+              step={1}
+              onChange={setSnrMrtDb}
+              labelOf={(v) => `${v} dB`}
+            />
+            <StudioBudgetSweep />
           </>
         )}
       </Group>
@@ -531,7 +546,7 @@ export default function StudioPanel() {
         <Checkbox
           checked={showCompliance}
           onChange={setShowCompliance}
-          title="Show the ICNIRP compliance readouts for the current beam in the HUD: absorbed power, whole-body SAR, the 4 cm² spatially-averaged peak (psSAR), the peak/mean ratio, and the served signal relative to MRT. Opt-in: the first request per phantom builds the 4 cm² averaging matrix (a few seconds), then updates live as you steer."
+          title="Show the ICNIRP compliance readouts for the current beam in the HUD: served signal vs MRT, spectral efficiency (bit/s/Hz), absorbed power, whole-body SAR, the point-peak and 4 cm² spatially-averaged peak S_ab (the >6 GHz basic restriction, in W/m²), and the peak/mean ratio. With ECBF it also charts every metric across the budget. Opt-in: the first request per phantom builds the 4 cm² averaging matrix (a few seconds), then updates live as you steer."
         >
           Compliance metrics
         </Checkbox>

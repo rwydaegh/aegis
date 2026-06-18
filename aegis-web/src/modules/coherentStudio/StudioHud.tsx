@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import Tex from '@/components/ui/Tex'
 import ProvenanceDot from '@/components/panels/ProvenanceDot'
 import { useStudioStore } from './store'
+import { spectralEfficiency } from './api'
 import { useStudioScales } from './useStudioScales'
 import { colormapRgb } from './scene/studioHelpers'
 import { logFloor, type ResolvedScale } from './scene/colorScale'
@@ -229,6 +230,7 @@ function ComplianceCard() {
   const showCompliance = useStudioStore((s) => s.showCompliance)
   const compliance = useStudioStore((s) => s.compliance)
   const notAvailable = useStudioStore((s) => s.complianceNotAvailable)
+  const snrMrtDb = useStudioStore((s) => s.snrMrtDb)
   if (!showCompliance) return null
 
   if (!compliance) {
@@ -244,6 +246,9 @@ function ComplianceCard() {
 
   // signal_rel is a fraction of the MRT served signal; show it as a percentage.
   const signalPct = isFinite(compliance.signal_rel) ? `${(compliance.signal_rel * 100).toPrecision(3)}%` : '--'
+  // Spectral efficiency is recomputed live from signal_rel + the SNR knob, so the
+  // SNR slider updates this with no server round-trip.
+  const se = isFinite(compliance.signal_rel) ? spectralEfficiency(compliance.signal_rel, snrMrtDb) : null
   return (
     <div style={{ ...CARD, padding: 12, fontSize: 12, minWidth: 200 }}>
       <div style={{ color: '#aab', marginBottom: 2, display: 'flex', justifyContent: 'space-between' }}>
@@ -251,6 +256,11 @@ function ComplianceCard() {
         <span style={{ fontSize: 10, color: '#667' }}>per W tx</span>
       </div>
       <ComplianceRow label="Signal vs MRT" value={signalPct} title="Served signal |h.x|^2 relative to the matched-filter beam (100% = MRT)" />
+      <ComplianceRow
+        label="Rate"
+        value={se == null ? '--' : fmt(se, ' bit/s/Hz')}
+        title={`Single-user spectral efficiency log2(1 + SNR_mrt * signal), anchored at SNR_mrt = ${snrMrtDb} dB`}
+      />
       <ComplianceRow label="P_abs" value={fmt(compliance.p_abs_w, ' W')} title="Total absorbed power per watt transmitted (the absorption fraction)" />
       <ComplianceRow
         label="SAR_wb"
@@ -262,11 +272,16 @@ function ComplianceCard() {
         }
       />
       <ComplianceRow
-        label={`psSAR (${compliance.averaging_area_cm2} cm²)`}
-        value={fmt(compliance.pssar_4cm2, ' W/m²')}
-        title="Peak absorbed power density spatially averaged over the ICNIRP 4 cm^2 area"
+        label="S_ab (peak)"
+        value={fmt(compliance.peak_sab, ' W/m²')}
+        title="Peak per-triangle absorbed power density (the unaveraged hotspot, ICNIRP basic-restriction quantity above 6 GHz)"
       />
-      <ComplianceRow label="η (peak/mean)" value={fmt(compliance.eta_4cm2)} title="psSAR over the area-mean absorbed power density (localisation factor)" />
+      <ComplianceRow
+        label={`S_ab,${compliance.averaging_area_cm2}cm² (peak)`}
+        value={fmt(compliance.pssar_4cm2, ' W/m²')}
+        title="Peak absorbed power density spatially averaged over the ICNIRP 4 cm^2 area (the >6 GHz basic restriction; this is the W/m^2 S_ab, not a mass-averaged SAR)"
+      />
+      <ComplianceRow label="η (peak/mean)" value={fmt(compliance.eta_4cm2)} title="Peak 4 cm^2 S_ab over the area-mean absorbed power density (localisation factor)" />
     </div>
   )
 }

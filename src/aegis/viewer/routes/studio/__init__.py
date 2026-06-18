@@ -529,8 +529,11 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             h = channel_at(focus_xyz, k_hat, psi, element_index, freq_hz, n_elements, rx_response=ue_rx)
             x_mrt = _precoders.build_precoder("mrt", paths, focus_xyz, freq_hz, power=1.0, ue_antenna=ue_antenna)
 
+            snr_mrt_db = float(params.get("snr_mrt_db", 20.0))
             g_avg = _compliance.averaging_matrix(mesh, ue_idx, cache, cache_lock)
-            out = _compliance.compute_scalars(g_tilde, areas, x, h, x_mrt, g_avg, _compliance.body_mass_kg(mesh))
+            out = _compliance.compute_scalars(
+                g_tilde, areas, x, h, x_mrt, g_avg, _compliance.body_mass_kg(mesh), snr_mrt_db=snr_mrt_db
+            )
         except _QPackMissing as e:
             return jsonify(
                 {"error": f"exposure-operator (Q) pack not precomputed: {e.stem}", "not_precomputed": True}
@@ -544,6 +547,110 @@ def register(app: Flask, cache: dict, cache_lock: threading.RLock) -> None:
             f"studio compliance | {mesh} | {condition} bs{array_n} seed{seed} | beam={beam} | {freq_ghz:g}GHz"
         )
         return jsonify(out)
+
+    @app.route("/api/studio/compliance-sweep", methods=["POST"])
+    def api_studio_compliance_sweep():
+        """ECBF compliance scalars swept across the absorbed-power budget.
+
+        The budget slider only steers ECBF, so this traces the ECBF
+        exposure/signal Pareto front: for each ``budget_frac`` it re-solves the
+        QCQP against the same precomputed Q and scores the resulting beam. Every
+        input except the precoder is fixed across the sweep (channel, Q, averaging
+        matrix, MRT reference), so all of them are loaded once and only
+        ``solve_ecbf`` runs per point. The 409 sentinels match the compliance
+        route (no field-channel / Q pack). Used by the budget-sweep chart, which
+        marks the live budget on these curves.
+        """
+        params, err = get_json_dict()
+        if err is not None:
+            return err
+        condition = params.get("condition", "los")
+        mesh = params.get("mesh", "thelonious")
+        focus_xyz = params.get("focus_xyz", [0.923, -0.005, 0.734])
+        focus_mode = params.get("focus_mode", "free-space")
+
+        try:
+            import numpy as np
+
+            from aegis.hotspot import channel_at, make_rx_response
+
+            array_n = int(params.get("array_n", 16))
+            seed = int(params.get("seed", 0))
+            freq_ghz = float(params.get("frequency_ghz", 10))
+            freq_hz = freq_ghz * 1e9
+            snr_mrt_db = float(params.get("snr_mrt_db", 20.0))
+            n_points = int(np.clip(int(params.get("n_points", 20)), 4, 64))
+            ue_antenna = _parse_ue_antenna(params)
+            ue_idx = int(params.get("ue_idx", _channel.DEFAULT_UE_IDX))
+            if focus_mode == "at-skin":
+                focus_xyz = _phantom.snap_focus_to_skin(
+                    focus_xyz, mesh, cache=cache, cache_lock=cache_lock, ue_idx=ue_idx
+                )
+
+            loaded = _channel.load_channel(condition, array_n, freq_ghz, seed, mesh, cache, cache_lock, ue_idx)
+            if loaded is None:
+                stem = f"{mesh}_{condition}_bs{int(array_n)}_{freq_ghz:g}_seed{int(seed)}{_channel.ue_suffix(ue_idx)}"
+                return jsonify({"error": f"field-channel pack not precomputed: {stem}", "not_precomputed": True}), 409
+            g_tilde, areas = loaded
+
+            q = _paths.load_q(condition, array_n, freq_ghz, seed, mesh, cache, cache_lock)
+            if q is None:
+                stem = f"{mesh}_{condition}_bs{int(array_n)}_{freq_ghz:g}_seed{int(seed)}"
+                return jsonify(
+                    {"error": f"exposure-operator (Q) pack not precomputed: {stem}", "not_precomputed": True}
+                ), 409
+
+            paths = _paths.load_paths(condition, array_n, seed, cache, cache_lock, ue_idx)
+            k_hat, psi, element_index, n_elements = paths
+            ue_rx = make_rx_response(ue_antenna, freq_hz)
+            h = channel_at(focus_xyz, k_hat, psi, element_index, freq_hz, n_elements, rx_response=ue_rx)
+            x_mrt = _precoders.build_precoder("mrt", paths, focus_xyz, freq_hz, power=1.0, ue_antenna=ue_antenna)
+            g_avg = _compliance.averaging_matrix(mesh, ue_idx, cache, cache_lock)
+            body_mass = _compliance.body_mass_kg(mesh)
+
+            fracs = np.linspace(0.05, 1.0, n_points)
+            keys = (
+                "p_abs_w",
+                "sar_wb",
+                "pssar_4cm2",
+                "peak_sab",
+                "eta_4cm2",
+                "signal_rel",
+                "spectral_efficiency_bps_hz",
+            )
+            series: dict[str, list] = {k: [] for k in keys}
+            for frac in fracs:
+                x = _precoders.build_ecbf_from_q(
+                    paths, focus_xyz, freq_hz, q, power=1.0, budget_frac=float(frac), ue_antenna=ue_antenna
+                )
+                row = _compliance.compute_scalars(g_tilde, areas, x, h, x_mrt, g_avg, body_mass, snr_mrt_db=snr_mrt_db)
+                for k in keys:
+                    series[k].append(row[k])
+        except FileNotFoundError as e:
+            return jsonify({"error": str(e)}), 404
+        except (KeyError, ValueError, TypeError, NotImplementedError) as e:
+            return jsonify({"error": str(e)}), 400
+
+        return jsonify(
+            {
+                "budget_frac": [float(f) for f in fracs],
+                "series": series,
+                "snr_mrt_db": snr_mrt_db,
+                "units": {
+                    "p_abs_w": "W per W tx",
+                    "sar_wb": "W/kg per W tx",
+                    "pssar_4cm2": "W/m^2 per W tx",
+                    "peak_sab": "W/m^2 per W tx",
+                    "eta_4cm2": "-",
+                    "signal_rel": "-",
+                    "spectral_efficiency_bps_hz": "bit/s/Hz",
+                },
+                "provenance": (
+                    f"studio compliance sweep | {mesh} | {condition} bs{array_n} seed{seed} | "
+                    f"ecbf | {freq_ghz:g}GHz | {n_points} pts"
+                ),
+            }
+        )
 
     @app.route("/api/studio/precoder", methods=["POST"])
     def api_studio_precoder():
