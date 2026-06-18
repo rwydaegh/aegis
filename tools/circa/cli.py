@@ -141,13 +141,15 @@ def main() -> None:
             build_timeout_s=args.build_timeout,
             batch_timeout_s=args.batch_timeout,
             pdfcomment_enabled=actually_pdfcomment,
+            tex_name=paper_tex.name,
         )
     elif args.cmd == "revert":
         from server.snapshots import SnapshotManager
 
-        paper_dir = args.paper_tex.parent.resolve()
+        paper_tex = args.paper_tex.resolve()
+        paper_dir = paper_tex.parent
         # Refuse if a circa server is running for this paper — its in-memory state
-        # would be out of sync after we revert paper.tex behind its back.
+        # would be out of sync after we revert the tex behind its back.
         pf = paths.pidfile(paper_dir)
         if pf.exists():
             try:
@@ -157,7 +159,7 @@ def main() -> None:
                     sys.exit(2)
             except ValueError:
                 pass
-        SnapshotManager(paper_dir).revert(args.batch_id, force=args.force)
+        SnapshotManager(paper_dir, tex_name=paper_tex.name).revert(args.batch_id, force=args.force)
         print(f"reverted batch {args.batch_id}")
     elif args.cmd == "clean-comments":
         from server.cleanup import clean_comments
