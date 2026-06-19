@@ -28,7 +28,7 @@ fast = ["numba>=0.65.1"]
 jax = ["jax>=0.10.1"]
 gpu = ["jax[cuda12]>=0.10.1"]
 viz = [
-    "matplotlib>=3.10.9",
+    "matplotlib>=3.11.0",
     "plotly>=6.8.0",
     "pyvista>=0.48.4",
     "trame>=3.13.2",
