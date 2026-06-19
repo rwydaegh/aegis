@@ -74,7 +74,7 @@ dev = [
     # docs/internal/testing_roadmap.md (Phase 4) for the tiering rationale.
     "mutmut>=3.6.0",
 ]
-body = ["smplx>=0.1.28", "torch>=2.12.0", "pygltflib>=1.16.5"]
+body = ["smplx>=0.1.28", "torch>=2.12.1", "pygltflib>=1.16.5"]
 benchmark = ["pytest-codspeed>=5.0.3"]
 cloud = ["requests>=2.34.2"]
 all = ["aegis[jax,gpu,viz,viewer,rt,sionna,docs,dev,cloud,modal,benchmark]"]
