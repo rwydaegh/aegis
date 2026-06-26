@@ -16,7 +16,7 @@ jobs:
   lint:
     runs-on: ubicloud-standard-2
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
       - run: uv sync --python 3.12 --extra dev
       - run: uv run ruff check src/ tests/
@@ -31,13 +31,13 @@ jobs:
         os: [ubicloud-standard-2, windows-latest]
         python-version: ["3.11", "3.12", "3.13"]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
       - run: uv sync --python ${{ matrix.python-version }} --extra dev --extra viewer
       - run: uv run pytest tests/ --cov=src/aegis --cov-report=xml -x
       - name: Upload coverage
         if: matrix.os == 'ubicloud-standard-2' && matrix.python-version == '3.12'
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v7
         with:
           files: coverage.xml
         env:
@@ -51,7 +51,7 @@ jobs:
     # fuzzed inputs) that PR-tier doesn't afford. Budget ~5 min.
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
       - run: uv sync --python 3.12 --extra viewer --extra dev
       - name: Start viewer
@@ -95,7 +95,7 @@ jobs:
     timeout-minutes: 45
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
       - run: uv sync --python 3.12 --extra dev --extra viewer
       - name: Mutmut — fresnel
@@ -142,7 +142,7 @@ jobs:
     timeout-minutes: 20
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
       - uses: actions/setup-node@v6
         with:
@@ -211,7 +211,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Create GitHub release
         run: gh release create ${{ github.ref_name }} --generate-notes
         env:
