@@ -50,7 +50,7 @@ docs = [
     "pygments>=2.20,<2.21",
     "mkdocstrings[python]>=1.0.4",
     "mkdocs-minify-plugin>=0.8.0",
-    "jupytext>=1.19.3",
+    "jupytext>=1.19.4",
 ]
 dev = [
     "pytest>=9.1.1",
