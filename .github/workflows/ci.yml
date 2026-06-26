@@ -16,7 +16,7 @@ jobs:
   lint:
     runs-on: ubicloud-standard-2
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
       - run: uv sync --python 3.12 --extra dev --extra viewer
       - run: uv run ruff check src/ tests/
@@ -26,12 +26,12 @@ jobs:
   test:
     runs-on: ubicloud-standard-2
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
       - run: uv sync --python 3.12 --extra dev --extra viewer
       - run: uv run pytest tests/ --cov=src/aegis --cov-report=xml -x
       - name: Upload coverage
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v7
         with:
           files: coverage.xml
         env:
@@ -43,7 +43,7 @@ jobs:
       run:
         working-directory: aegis-web
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v6
         with:
           node-version: '20'
@@ -52,7 +52,7 @@ jobs:
       - run: npm ci
       - run: npm run test:coverage
       - name: Upload frontend coverage
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v7
         with:
           files: aegis-web/coverage/lcov.info
           flags: frontend
