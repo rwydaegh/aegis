@@ -30,6 +30,31 @@ The "no parallel VLAIO channel" rule (mandataris "kan niet tegelijkertijd aanvra
 - VLAIO decision is **~3 months** after submission (Sept to Dec), not the "~6 months" in `external_briefing.md`.
 - Use **StarTT / ConcepTT**, not Stepstone. Stepstone is more money and more strings than this ~15-30K/yr-burn business needs.
 
+### 2026B confirmed (Claude Sonnet, 2026-07-08, from the live VLAIO 2026B call page)
+
+All "best estimate, must confirm" language below for the September VLAIO call is now resolved:
+
+| Step | Date |
+|---|---|
+| Verkennende gesprekken (online, ~1hr) | **Thu 2 Jul 2026** and **Tue 18 Aug 2026** — book via the VLAIO web form |
+| Submission deadline | **Tue 1 Sep 2026, 12:00** |
+| Signed IP afsprakennota due | **Mon 28 Sep 2026** (4 weeks after submission, not the estimated 6) |
+| Oral defense ("mondelinge colleges") | **Mon 26 Oct – Mon 16 Nov 2026** |
+| Decision | **Thu 10 Dec 2026** |
+| Decision letters sent | from **Mon 14 Dec 2026** |
+
+The Jul 2 exploratory slot is gone by the time this was checked (8 Jul) — **Aug 18 is the only one left** before the deadline.
+
+**Eligibility relief, confirmed from the VLAIO voorwaarden page:** you do **not** need the PhD diploma in hand at submission. If defending within 6 months of the submission date, a signed statement from your scientific promotor (Wout) confirming you're in the final phase with no blockers, ideally naming the planned defense date, substitutes for the diploma. This removes the "must defend before Sept 1" pressure that earlier docs implied — Wout's letter is the actual gate, not the defense itself.
+
+**Also confirmed:** for spin-off mandates the company must be incorporated in Flanders (headquarters can be elsewhere later, but Flemish valorisation is a scored criterion). Mandataris time can split between the university and the company during the mandate.
+
+**Unrelated, don't chase:** "Frank De Winne mandaten" on the same page are a separate pot ring-fenced for space-sector postdocs (1 left in 2026) — not applicable to AEGIS.
+
+**Policy note:** since 4 Apr 2025, VLAIO can fund dual-use/military-final projects (Flemish defense plan) subject to an Ethisch en Strategisch Adviescomité review if the project is primarily military. Not relevant to AEGIS's civilian RF-exposure framing, flagging only because it changed on the same page.
+
+Source: [VLAIO Innovatiemandaten oproep 2026B](https://www.vlaio.be/nl/subsidies-financiering/innovatiemandaten/aanvraagprocedure-innovatiemandaten/innovatiemandaten-oproep-2026b), [Voorwaarden](https://www.vlaio.be/nl/subsidies-financiering/innovatiemandaten/voorwaarden).
+
 ---
 
 ## How hard is it to get? (real numbers)
