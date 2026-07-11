@@ -1,0 +1,143 @@
+% COMBINED Letter of Intent (LoI) + appendix - Marta Parazzini (CNR-IEIIT)
+% to Robin Wydaeghe & Prof. Wout Joseph. One signable document:
+%   page 1 = the LoI (explicitly headed "Letter of Intent (LoI)"), which references
+%   the Appendix = the 22/06/2026 record of interview with her verbatim quotes.
+% Title corrected to "Director of Research". Licence phrasing generalised (not "a licence").
+% Disclosure guard: method only "substantially faster than FDTD, similar accuracy, differentiable".
+% Compile: pdflatex parazzini_letter_of_intent_combined.tex
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage{parskip}
+\usepackage{graphicx}
+\usepackage{enumitem}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\pagestyle{empty}
+
+\begin{document}
+
+% --- CNR-IEIIT letterhead placeholder ---------------------------------------
+% \includegraphics[height=1.6cm]{cnr_ieiit_logo}\\[0.5em]
+{\large\textbf{CNR-IEIIT}}\\
+Istituto di Elettronica e di Ingegneria dell'Informazione e delle Telecomunicazioni\\
+Consiglio Nazionale delle Ricerche, Milan, Italy\\[1.5em]
+% ----------------------------------------------------------------------------
+
+\begin{center}
+\textbf{\Large Letter of Intent (LoI)}
+\end{center}
+
+\bigskip
+\begin{flushright}
+Mr.\ Robin Wydaeghe and Prof.\ Wout Joseph\\
+Ghent University -- imec\\[1em]
+Milan, 22 June 2026
+\end{flushright}
+
+\bigskip
+\textbf{Subject: Letter of Intent (LoI) regarding the fast numerical-dosimetry tool (AEGIS),
+by Robin Wydaeghe}
+
+\bigskip
+Dear Mr.\ Wydaeghe, dear Prof.\ Joseph,
+
+As Director of Research at CNR-IEIIT in Milan, working on numerical and stochastic dosimetry
+of human exposure to electromagnetic fields, I am very aware of how much the computational
+cost of full-wave (FDTD) simulation limits what we can study in practice. A method that is
+very substantially faster than FDTD with comparable accuracy, and that is differentiable,
+would be of real value to our work.
+
+In our high-frequency work the mesh is the constant bottleneck, \textbf{it is our `nightmare'},
+and the time my researchers spend waiting for FDTD simulations to finish amounts to
+\textbf{over 1.5 FTE}. As I put it during our conversation, \textbf{if I find a real improvement
+over what I have now, I would be able to pay for it}.
+
+Should this method become available as a software tool, CNR-IEIIT would therefore be
+interested, in principle, in evaluating it and, if it fits our needs, in licensing it for use
+in our research group.
+
+This is a letter of intent. It is entirely non-binding, creates no obligation on either side,
+and any future use would naturally depend on availability, terms, and our needs at the time.
+The practical needs and constraints behind this interest are set out in more detail in the
+appended record of our interview of 22 June 2026 (Appendix~A), which forms part of this letter.
+
+On this basis I am glad to support Robin Wydaeghe's IOF proposal, and I look forward to seeing
+the tool take shape.
+
+\bigskip
+With best regards,
+
+\vspace{2.2cm}
+
+\rule{6cm}{0.4pt}\\
+Dr.\ Marta Parazzini\\
+Director of Research, CNR-IEIIT\\
+Consiglio Nazionale delle Ricerche, Milan, Italy\\
+marta.parazzini@cnr.it \hfill Date: 22 June 2026
+
+% ============================ APPENDIX ======================================
+\newpage
+
+\begin{center}
+\textbf{\large Appendix A --- Record of interview (22 June 2026)}\\[0.3em]
+Appendix to the Letter of Intent above, in support of the IOF valorisation project (AEGIS)
+\end{center}
+
+\bigskip
+On 22 June 2026, I had a video conference call with Mr.\ Robin Wydaeghe. I was asked
+questions in a non-leading, objective way. During this call, I am either quoted or faithfully
+paraphrased in the following statements:
+
+\medskip
+\begin{itemize}[leftmargin=1.4em,itemsep=0.5em]
+
+  \item There are 4 to 5 researchers working with FDTD in my research group. Two of them work
+  in the high-frequency regime ($>6$\,GHz), three of them in the low-frequency regime for
+  biomedical applications ($<6$\,GHz).
+
+  \item With the advent of 6G comprising the new Frequency Band 3, I intend to hire more
+  researchers working in the high-frequency regime in the coming years.
+
+  \item Each of the employees in this category spends around 30--50\% of their time waiting
+  for FDTD simulations to finish, which translates to \textbf{1.5 FTE} in total (rising in the future).
+  The rest of their time is spent on data analysis, paper writing, reading literature, and
+  similar tasks.
+
+  \item Configuring FDTD simulations takes around 10\% of a senior researcher's time and
+  around 30\% of a junior researcher's time.
+
+  \item The bottleneck in their research is always the mesh; \textbf{it is our `nightmare'}.
+
+  \item Researchers perform high-frequency simulations in both the far-field (incident fields
+  in an environment) and the near-field (incident from a device).
+
+  \item Three things would help convince me to use a fast numerical dosimetry method, or to
+  recommend it to others:
+  \begin{enumerate}[leftmargin=1.6em,topsep=0.3em,itemsep=0.2em]
+    \item Clear tutorials and an easy-to-use platform are extremely useful. This enables us to
+    validate it ourselves while learning it. I rate the importance of this 5/5.
+    \item A peer-reviewed paper, in the sense that it validates the method. I rate the
+    importance of this 4/5.
+    \item If I am performing standards-related work, it is useful if it is suggested as a
+    viable method in the standards. I rate the importance of this 3/5.
+  \end{enumerate}
+  Point 1 is likely enough to convince me, with the others strengthening my decision.
+
+  \item On the commercial value of the method: \textbf{``If I really find a real improvement
+  with respect to what I have now, I would be able to pay you.''}
+
+  \item Currently, we own 4 licences necessary to run high-frequency exposure simulations,
+  each at 3\,kEUR per year, and various other ones (such as those for phantoms) similarly
+  priced.
+
+  \item Zurich MedTech provides some licences for free as part of their University Research
+  Agreement, but only when we use them for research purposes. We also pay for discounted CST
+  licences.
+
+\end{itemize}
+
+\vspace{1.5em}
+\rule{6cm}{0.4pt}\\
+Dr.\ Marta Parazzini, Director of Research, CNR-IEIIT \hfill Date: 22 June 2026
+
+\end{document}
