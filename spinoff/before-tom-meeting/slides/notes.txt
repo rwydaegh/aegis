@@ -1,0 +1,14 @@
+0. intro
+5 slides / 10 min
+20 min discussion
+outline
+1. Method (2 slides)
+“Dosimetry uses FDTD. I introduce PO.”
+Insight is that transmission coeff can be more complicated
+Differentiability
+2. Intake meeting (1 slide)
+Problems
+3. Generalizibility (1 slide)
+Lists yes/no
+Vision…
+4. Concrete questions (1 slide)

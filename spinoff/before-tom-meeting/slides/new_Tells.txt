@@ -1,0 +1,17 @@
+"The decision on the table, patent paused for one week"
+--> "Need to decide, patent paused 1 week"
+
+
+REMOVE the word knob/dial/... hate that
+
+"Dosimetry froze three knobs: the wave (electromagnetic), the quantity (absorbed power), the object (a human
+body). "
+-->Variants on dosimetry: the wave (electromagnetic), the quantity (absorbed power), the object (a human
+body). 
+
+There is still em dash, e.g. "bold -- reuses my". REMOVE
+
+"Dosimetry was the first setting of a general machine. T"
+-->"Dosimetry was the `inspiration'. "
+dont use the word handle. KISS!! 
+remove functional characteristic modes too
