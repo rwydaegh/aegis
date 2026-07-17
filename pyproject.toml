@@ -32,7 +32,7 @@ viz = [
     "plotly>=6.9.0",
     "pyvista>=0.48.4",
     "trame>=3.13.2",
-    "scienceplots>=2.2.1",
+    "scienceplots>=2.2.2",
 ]
 # numba is required, not optional: the viewer UI exposes self-shadowing and
 # inter-body reflection, whose @njit visibility/occlusion bakes are orders of
