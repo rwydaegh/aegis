@@ -44,7 +44,7 @@ jobs:
           echo "value=$PEP440" >> "$GITHUB_OUTPUT"
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: 20
           cache: npm
@@ -166,7 +166,7 @@ jobs:
           echo "lines=$LINES" >> "$GITHUB_OUTPUT"
 
       - name: Update badge gist
-        uses: schneegans/dynamic-badges-action@v1.8.0
+        uses: schneegans/dynamic-badges-action@v1.9.0
         with:
           auth: ${{ secrets.GIST_TOKEN }}
           gistID: ${{ vars.LOC_GIST_ID }}
