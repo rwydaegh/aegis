@@ -138,6 +138,9 @@ spinoff/*.xlsx
 spinoff/small_random/*.xlsx
 spinoff/publications/JSAC special issue DIGITAL TWIN clo.txt
 
+# Heavy FCC data pulls (regenerable via eas_pull.py)
+spinoff/nearfield_gtm/fcc_pull/*.csv
+
 # Local task list
 TODO.txt
 

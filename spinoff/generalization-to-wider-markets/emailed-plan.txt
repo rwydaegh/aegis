@@ -1,0 +1,19 @@
+Dear Filip, all,
+
+Let me first state that the points raised during the intake meeting were definitely fruitful for me to improve the valorization story. Generalizing the method and selling to the bigger EDA players can yield a higher reward, that we are in the process of de-risking both from a scientific and a business perspective. That could work in our favor, or it could be that the literature/physics, Dries, Keysight, ... determines that it is a 'dead-end'.
+
+I have done some feasibility analyses when it comes to generalizing it in various areas. More often than not, I run into problems since it's a solution in search of a problem and I'm not perfectly familiar with these industries, but I don't in-principle exclude that there could be something there. For example, military applications currently seem, perhaps, promising (RadHaz, HERP, weapons, ...)
+
+Currently, we have spent 2.5 weeks for these meetings, as the individuals have busy agendas. While definitely useful, I'd like to propose an idea before it's too late, that I detail in the following.
+
+In the meantime, I have recently had 3 more planned conversations that lead to LoI in the normal 'dosimetry-track', including Ericsson and Nokia. Overall, the calls were positive and will help me strengthen the IOF to solve their specific problems. These calls, together with the intake meeting feedback, made me realize I can change the valorization story to something more convincing even if it's purely dosimetry. @Filip, we touched on this point at the end of our last meeting with Tom. I will try to give you a one- or two-page draft of the valorization section of the IOF by the end of the week, which will contain new concrete elements that I haven't mentioned yet and I believe will be valuable. You can then give feedback and we can optimize it to be as good as possible.
+
+Concretely, after haven given it careful consideration, I would propose the following plan. The deadline for the next IOF call is August 3rd, and a decision to go for it should be taken at latest around now. It will take us until well after summer to submit with a clear idea how we can target different applications.
+Under the motto "een nee heb je en een ja kun je krijgen", I do believe there is a sufficiently high enough chance to submit on August 3rd with a new, sharper, valorization story but with the dosimetry as the main application. However, one of the work packages could be exactly what we're doing right now. The IOF is a perfect venue to de-risk the 'generalization', perhaps with a go/no-go date after 6 months. Even if it is not accepted, I think the feedback of the IoF jury is immediately useful for the next application (including perhaps other areas than valorization). 
+If we know how to generalize after summer, and if the previous one is rejected, apply for the next call on September 19th. The first application wouldn't be wasted work, as some elements could definitely be reused. By this date, if at all possible, I think we should have a better idea if we can license it to EDA players.
+
+Alessandro confirmed to me on Teams that in his experience, the IOF jury does not mind it if the patent isn't quite filed yet, the draft is nonetheless an asset that will help the application. I would suggest keeping it on-hold for the foreseeable future.
+
+Kind regards
+
+Robin
