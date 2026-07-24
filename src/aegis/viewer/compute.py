@@ -33,7 +33,7 @@ def _load_phantom_masses() -> dict[str, float]:
         return {
             "thelonious": 17.4,
             "duke": 72.4,
-            "eartha": 56.0,
+            "eartha": 29.9,
             "ella": 58.7,
             "adult_male": 73.0,
             "adult_female": 60.0,

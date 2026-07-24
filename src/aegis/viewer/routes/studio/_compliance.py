@@ -43,7 +43,7 @@ AVERAGING_AREA_M2 = 4e-4
 _FALLBACK_MASS_KG = {
     "thelonious": 17.4,
     "duke": 72.4,
-    "eartha": 56.0,
+    "eartha": 29.9,
     "ella": 58.7,
 }
 
