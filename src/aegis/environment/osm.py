@@ -23,8 +23,10 @@ from aegis.environment.osm_helpers import (
     WaterBody,
     _parse_building_material,
     _parse_height,
+    _parse_roof_height,
     _parse_roof_shape,
     _parse_tags,
+    _split_height,
 )
 from aegis.environment.roofs import generate_building, triangulate_polygon
 
@@ -106,11 +108,20 @@ def fetch_osm(
 
     import requests
 
+    # way["building:part"] must be matched explicitly: `way["building"]` does
+    # not cover it, and the trailing `out skel qt` recursion strips tags, so
+    # tower parts reaching the output only as relation members would parse
+    # with empty tags and default to 8 m flat boxes. The recursion stays skel
+    # on purpose: printing member bodies would leak tagged ways of relations
+    # that extend far outside the fetch radius into the parse. Parsers dedupe
+    # the resulting double-printed ways, preferring the tagged copy.
     query = (
         f"[out:xml][timeout:{timeout}];"
         f"("
         f'  way["building"](around:{radius_m},{lat},{lon});'
+        f'  way["building:part"](around:{radius_m},{lat},{lon});'
         f'  way["highway"](around:{radius_m},{lat},{lon});'
+        f'  way["area:highway"](around:{radius_m},{lat},{lon});'
         f'  way["natural"="water"](around:{radius_m},{lat},{lon});'
         f'  way["waterway"](around:{radius_m},{lat},{lon});'
         f'  relation["building"](around:{radius_m},{lat},{lon});'
@@ -209,6 +220,22 @@ def _is_closed_way(node_ids: list[int]) -> bool:
     return len(node_ids) >= 4 and node_ids[0] == node_ids[-1]
 
 
+def _unique_way_elems(root: ET.Element) -> dict[int, ET.Element]:
+    """Deduplicate <way> elements by id, preferring the copy that has tags.
+
+    Overpass prints an element once per matching ``out`` statement, so a way
+    can appear both in the tagged body output and again through the relation
+    member recursion. Without dedup a tagged duplicate would double the
+    building and a tagless (skel) duplicate would shadow the tags.
+    """
+    elems: dict[int, ET.Element] = {}
+    for way_elem in root.findall("way"):
+        wid = int(way_elem.attrib["id"])
+        if wid not in elems or (way_elem.find("tag") is not None and elems[wid].find("tag") is None):
+            elems[wid] = way_elem
+    return elems
+
+
 def _footprint_from_way(
     way_elem: ET.Element,
     nodes: dict[int, tuple[float, float]],
@@ -243,6 +270,20 @@ def parse_osm_xml(
     If origin is (0, 0), coordinates are still projected but relative to the null island.
     Callers should pass the actual origin for meaningful metric coordinates.
 
+    The OSM ``height`` tag is total ground-to-peak height. For non-flat roofs
+    it is split into ``Building.height`` (eave, wall top) plus
+    ``Building.roof_height`` (peak above eave) so the roof peak lands at the
+    tagged total. Flat-roof buildings keep the tagged total as their height.
+
+    Standalone ``building:part`` ways (Simple 3D Buildings tower parts that
+    are not members of a ``type=building`` relation) are returned as regular
+    buildings. Parts extrude from the ground: ``min_height`` is not honored,
+    which is correct for stacked tower tiers and wrong only for skybridges.
+
+    Closed ``highway=pedestrian`` ways tagged ``area=yes`` and ``area:highway``
+    polygons are returned as area roads (``Road.is_area``) whose centerline
+    holds the footprint polygon.
+
     Args:
         xml_str: OSM XML string (from Overpass or file).
         origin_lat: Latitude of the local coordinate origin.
@@ -272,25 +313,23 @@ def parse_osm_xml(
     roads: list[Road] = []
     water: list[WaterBody] = []
 
-    for way_elem in root.findall("way"):
-        way_id = int(way_elem.attrib["id"])
+    for way_id, way_elem in _unique_way_elems(root).items():
         tags = _parse_tags(way_elem)
+        part_value = tags.get("building:part")
+        is_part = part_value is not None and part_value != "no"
 
-        if "building" in tags:
+        if "building" in tags or is_part:
+            # Standalone building:part ways (Simple 3D Buildings without a
+            # type=building relation, the common case for towers) are emitted
+            # as regular buildings: they carry the real per-part heights.
             footprint = _footprint_from_way(way_elem, nodes, origin_lat, origin_lon)
             if footprint is None:
                 continue
-            building_type = tags.get("building", "yes")
-            height = _parse_height(tags, building_type, default=default_building_height)
+            building_type = tags.get("building", part_value if is_part else "yes")
+            total_height = _parse_height(tags, building_type, default=default_building_height)
             roof_shape = _parse_roof_shape(tags)
-            roof_height_str = tags.get("roof:height", None)
-            if roof_height_str is not None:
-                try:
-                    roof_height = float(roof_height_str.split()[0])
-                except (ValueError, IndexError):
-                    roof_height = max(2.0, height * 0.25)
-            else:
-                roof_height = max(2.0, height * 0.25)
+            roof_height = _parse_roof_height(tags, total_height)
+            height, roof_height = _split_height(total_height, roof_shape, roof_height)
 
             material = _parse_building_material(tags)
             roof_material = material  # use same material for roof by default
@@ -308,12 +347,13 @@ def parse_osm_xml(
                 )
             )
 
-        elif "highway" in tags:
+        elif "highway" in tags or "area:highway" in tags:
             node_ids = _node_refs(way_elem)
-            centerline = _project_nodes(node_ids, nodes, origin_lat, origin_lon)
-            if len(centerline) < 2:
-                continue
-            highway_type = tags.get("highway", "unclassified")
+            area_type = tags.get("area:highway")
+            is_area = _is_closed_way(node_ids) and (
+                area_type is not None or (tags.get("highway") == "pedestrian" and tags.get("area") == "yes")
+            )
+            highway_type = tags.get("highway", area_type or "unclassified")
             width = _HIGHWAY_WIDTH.get(highway_type, 6.0)
             lanes_str = tags.get("lanes", None)
             if lanes_str is not None:
@@ -323,6 +363,32 @@ def parse_osm_xml(
                     lanes = 1
             else:
                 lanes = 1
+
+            if is_area:
+                # A mapped surface (pedestrian square, area:highway polygon):
+                # keep the footprint so the builder can fill it instead of
+                # misrendering the outline as a centerline ribbon ring.
+                footprint = _footprint_from_way(way_elem, nodes, origin_lat, origin_lon)
+                if footprint is None:
+                    continue
+                roads.append(
+                    Road(
+                        way_id=way_id,
+                        centerline=footprint,
+                        highway_type=highway_type,
+                        width=width,
+                        lanes=lanes,
+                        is_area=True,
+                    )
+                )
+                continue
+
+            if "highway" not in tags:
+                # Open area:highway fragment: no centerline semantics, skip.
+                continue
+            centerline = _project_nodes(node_ids, nodes, origin_lat, origin_lon)
+            if len(centerline) < 2:
+                continue
             roads.append(
                 Road(
                     way_id=way_id,
@@ -423,6 +489,52 @@ def _road_to_mesh(
     return v, t, m
 
 
+def _road_area_to_mesh(
+    road: Road,
+    z: float = 0.0,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Convert an area road (pedestrian square) to a filled flat mesh.
+
+    Returns (vertices (V,3), triangles (T,3), materials (T,)).
+    """
+    fp = road.centerline
+    tris_2d = triangulate_polygon(fp)
+    if len(tris_2d) == 0:
+        return (
+            np.empty((0, 3), dtype=np.float64),
+            np.empty((0, 3), dtype=np.uint32),
+            np.empty(0, dtype=np.int32),
+        )
+    verts = np.zeros((len(fp), 3), dtype=np.float64)
+    verts[:, :2] = fp
+    verts[:, 2] = z
+    mats = np.full(len(tris_2d), int(MaterialType.ASPHALT), dtype=np.int32)
+    return verts, tris_2d, mats
+
+
+def _ground_disk_mesh(
+    radius: float,
+    z: float,
+    n_seg: int = 64,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Triangle-fan disk centered on the local origin at height z.
+
+    Returns (vertices (V,3), triangles (T,3), materials (T,)) with upward
+    (+z) winding and GROUND material.
+    """
+    theta = 2.0 * np.pi * np.arange(n_seg) / n_seg
+    verts = np.zeros((n_seg + 1, 3), dtype=np.float64)
+    verts[1:, 0] = radius * np.cos(theta)
+    verts[1:, 1] = radius * np.sin(theta)
+    verts[:, 2] = z
+    tris = np.array(
+        [[0, 1 + i, 1 + (i + 1) % n_seg] for i in range(n_seg)],
+        dtype=np.uint32,
+    )
+    mats = np.full(len(tris), int(MaterialType.GROUND), dtype=np.int32)
+    return verts, tris, mats
+
+
 def _water_to_mesh(
     wb: WaterBody,
     z: float = -0.1,
@@ -490,6 +602,7 @@ def build_environment_from_osm(
     road_z: float = 0.0,
     water_z: float = -0.1,
     detail: bool = False,
+    ground_radius_m: float | None = None,
 ) -> EnvironmentMesh:
     """Build an EnvironmentMesh from an OSM XML string.
 
@@ -507,6 +620,13 @@ def build_environment_from_osm(
         water_z: Z coordinate for water surfaces (slightly below ground).
         detail: When True, use facade-level building geometry with window and
             door openings instead of plain extruded walls.
+        ground_radius_m: When set, add a GROUND-material disk of this radius
+            centered on the origin, 1 cm below ``road_z``. Without it the mesh
+            has no surface between the road strips, so the street-level ground
+            reflection is missing over most of the walkable area. The 1 cm
+            offset avoids coincident-surface double reflections with the road
+            quads. GROUND exports to Sionna as itu_concrete (the ITU ground
+            models are undefined at mmWave, see environment/export.py).
 
     Returns:
         EnvironmentMesh with all features combined.
@@ -568,15 +688,31 @@ def build_environment_from_osm(
         all_mats.append(m)
         vert_offset += len(v)
 
-    # Buildings from simple ways
+    # Buildings from simple ways. Ways that are relation members with role
+    # "part" are skipped here: the relation emission below covers them, and
+    # emitting both would duplicate the geometry.
+    rel_part_ids = {part.way_id for bwp in relation_result.building_parts for part in bwp.parts}
     for bld in buildings:
+        if bld.way_id in rel_part_ids:
+            continue
         _add_building(bld)
 
-    # Roads
+    # Roads (area roads are filled polygons, the rest centerline quad-strips)
     for road in roads:
-        v, t, m = _road_to_mesh(road, z=road_z)
+        if road.is_area:
+            v, t, m = _road_area_to_mesh(road, z=road_z)
+        else:
+            v, t, m = _road_to_mesh(road, z=road_z)
         if len(v) == 0 or len(t) == 0:
             continue
+        all_verts.append(v)
+        all_tris.append(t + vert_offset)
+        all_mats.append(m)
+        vert_offset += len(v)
+
+    # Optional ground disk, 1 cm below the roads
+    if ground_radius_m is not None and ground_radius_m > 0:
+        v, t, m = _ground_disk_mesh(ground_radius_m, z=road_z - 0.01)
         all_verts.append(v)
         all_tris.append(t + vert_offset)
         all_mats.append(m)
@@ -597,14 +733,13 @@ def build_environment_from_osm(
         if not mp.outer_rings:
             continue
         footprint = mp.outer_rings[0]
-        roof_height = max(2.0, mp.height * 0.25)
         material = mp.material if mp.material is not None else MaterialType.CONCRETE
         bld = Building(
             way_id=-mp.relation_id,
             footprint=footprint,
             height=mp.height,
             roof_shape=mp.roof_shape,
-            roof_height=roof_height,
+            roof_height=mp.roof_height,
             material=material,
             roof_material=material,
         )

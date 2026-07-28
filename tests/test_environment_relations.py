@@ -174,6 +174,106 @@ class TestParseRelationsFromXml:
                 assert ring.shape[1] == 2
 
 
+TOWER_XML = """<?xml version="1.0"?>
+<osm version="0.6">
+  <node id="1" lat="51.0500" lon="3.7200"/>
+  <node id="2" lat="51.0500" lon="3.7206"/>
+  <node id="3" lat="51.0504" lon="3.7206"/>
+  <node id="4" lat="51.0504" lon="3.7200"/>
+  <node id="5" lat="51.0504" lon="3.7206"/>
+  <node id="6" lat="51.0504" lon="3.7212"/>
+  <node id="7" lat="51.0508" lon="3.7212"/>
+  <node id="8" lat="51.0508" lon="3.7206"/>
+  <way id="10">
+    <nd ref="1"/><nd ref="2"/><nd ref="3"/><nd ref="4"/><nd ref="1"/>
+    <tag k="building:part" v="yes"/>
+    <tag k="height" v="120"/>
+    <tag k="building:material" v="glass"/>
+  </way>
+  <way id="11">
+    <nd ref="5"/><nd ref="6"/><nd ref="7"/><nd ref="8"/><nd ref="5"/>
+    <tag k="building:part" v="yes"/>
+    <tag k="height" v="20"/>
+    <tag k="roof:shape" v="pyramidal"/>
+    <tag k="roof:height" v="5"/>
+  </way>
+  <relation id="100">
+    <member type="way" ref="10" role="part"/>
+    <member type="way" ref="11" role="part"/>
+    <tag k="type" v="building"/>
+    <tag k="building" v="yes"/>
+  </relation>
+</osm>"""
+
+
+class TestPartTagsParsed:
+    """Relation member parts carry their own height/roof/material tags.
+
+    Regression for the Overpass `out skel qt` defect: member ways used to
+    arrive without tags, so every tower part collapsed to an 8 m flat
+    concrete default.
+    """
+
+    def setup_method(self):
+        self.result = parse_relations(TOWER_XML, origin_lat=51.0504, origin_lon=3.7206)
+        bwp = next(b for b in self.result.building_parts if b.relation_id == 100)
+        self.parts = {p.way_id: p for p in bwp.parts}
+
+    def test_tower_part_height(self):
+        assert self.parts[10].height == pytest.approx(120.0)
+
+    def test_tower_part_material(self):
+        from aegis.environment import MaterialType
+
+        assert self.parts[10].material == MaterialType.GLASS
+
+    def test_part_tags_carried(self):
+        assert self.parts[10].tags.get("building:part") == "yes"
+
+    def test_pyramidal_part_height_is_eave(self):
+        # height=20 total, roof:height=5 -> walls to 15, peak back at 20
+        p = self.parts[11]
+        assert p.roof_shape == "pyramidal"
+        assert p.height == pytest.approx(15.0)
+        assert p.roof_height == pytest.approx(5.0)
+
+    def test_skel_duplicate_does_not_shadow_tags(self):
+        # Overpass may print the member way a second time without tags via
+        # the recursion; the tagged copy must win regardless of order.
+        skel = '<way id="10">\n    <nd ref="1"/><nd ref="2"/><nd ref="3"/><nd ref="4"/><nd ref="1"/>\n  </way>'
+        xml = TOWER_XML.replace("</osm>", skel + "\n</osm>")
+        result = parse_relations(xml, origin_lat=51.0504, origin_lon=3.7206)
+        bwp = next(b for b in result.building_parts if b.relation_id == 100)
+        parts = {p.way_id: p for p in bwp.parts}
+        assert parts[10].height == pytest.approx(120.0)
+
+
+class TestMultipolygonHeightSplit:
+    def test_gabled_multipolygon_height_is_eave(self):
+        xml = """<?xml version="1.0"?>
+        <osm version="0.6">
+          <node id="1" lat="51.0500" lon="3.7200"/>
+          <node id="2" lat="51.0500" lon="3.7206"/>
+          <node id="3" lat="51.0504" lon="3.7206"/>
+          <node id="4" lat="51.0504" lon="3.7200"/>
+          <way id="10">
+            <nd ref="1"/><nd ref="2"/><nd ref="3"/><nd ref="4"/><nd ref="1"/>
+          </way>
+          <relation id="200">
+            <member type="way" ref="10" role="outer"/>
+            <tag k="type" v="multipolygon"/>
+            <tag k="building" v="yes"/>
+            <tag k="height" v="16"/>
+            <tag k="roof:shape" v="gabled"/>
+          </relation>
+        </osm>"""
+        result = parse_relations(xml, origin_lat=51.0502, origin_lon=3.7203)
+        mp = next(m for m in result.multipolygons if m.relation_id == 200)
+        # 16 m total, default roof span max(2, 0.25 * 16) = 4 -> eave 12
+        assert mp.height == pytest.approx(12.0)
+        assert mp.roof_height == pytest.approx(4.0)
+
+
 class TestBuildingWithParts:
     """Building relation with outline + parts at different heights."""
 

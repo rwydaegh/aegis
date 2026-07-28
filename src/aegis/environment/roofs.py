@@ -141,6 +141,13 @@ def generate_building(
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Generate building geometry with walls and roof.
 
+    ``height`` is the eave height (wall top): walls extrude from 0 to
+    ``height`` and the roof spans [height, height + roof_height], so the peak
+    sits at ``height + roof_height``. The OSM ``height`` tag is total
+    ground-to-peak; callers must split it into eave and roof spans first
+    (``osm_helpers._split_height``) or non-flat buildings come out too tall.
+    Flat roofs cap the walls at ``height`` and ignore ``roof_height``.
+
     Returns: (vertices (V,3), triangles (T,3), materials (T,))
     """
     footprint = np.asarray(footprint, dtype=np.float64)

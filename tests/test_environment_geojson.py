@@ -27,8 +27,11 @@ def test_parse_geojson_buildings(sample_geojson: str) -> None:
     assert len(buildings) == 1
     bld = buildings[0]
 
-    # Height tag "10" should parse to 10.0
-    assert bld.height == pytest.approx(10.0)
+    # Height tag "10" is total ground-to-peak. For the gabled roof the default
+    # roof span is max(2, 0.25 * 10) = 2.5, so the stored eave height is 7.5
+    # and the peak lands back at the tagged 10.
+    assert bld.height == pytest.approx(7.5)
+    assert bld.height + bld.roof_height == pytest.approx(10.0)
 
     # Roof shape "gabled" should be preserved
     assert bld.roof_shape == "gabled"

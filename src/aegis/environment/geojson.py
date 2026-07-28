@@ -26,6 +26,7 @@ from aegis.environment.osm import (
     _road_to_mesh,
     _water_to_mesh,
 )
+from aegis.environment.osm_helpers import _parse_roof_height, _split_height
 from aegis.environment.roofs import generate_building
 
 # ---------------------------------------------------------------------------
@@ -93,16 +94,12 @@ def _parse_building_feature(
         return None
 
     building_type = props.get("building", "yes")
-    height = _parse_height(props, building_type)
+    total_height = _parse_height(props, building_type)
     roof_shape = _parse_roof_shape(props)
-    roof_height_str = props.get("roof:height")
-    if roof_height_str is not None:
-        try:
-            roof_height = float(str(roof_height_str).split()[0])
-        except (ValueError, IndexError):
-            roof_height = max(2.0, height * 0.25)
-    else:
-        roof_height = max(2.0, height * 0.25)
+    roof_height = _parse_roof_height(props, total_height)
+    # GeoJSON heights are total ground-to-peak like the OSM tag they mirror,
+    # so split into eave + roof span (see osm_helpers.Building).
+    height, roof_height = _split_height(total_height, roof_shape, roof_height)
     material = _parse_building_material(props)
     return Building(
         way_id=way_id,

@@ -20,7 +20,15 @@ from aegis.environment import MaterialType
 
 @dataclass
 class Building:
-    """A building extracted from OSM."""
+    """A building extracted from OSM.
+
+    Height convention: ``height`` is the eave height (wall top, the parapet a
+    rooftop antenna mounts at) and ``roof_height`` is the roof's own extent
+    above the eave, so the peak sits at ``height + roof_height``. The OSM
+    ``height`` tag is total ground-to-peak; parsers split it with
+    ``_split_height`` before storing it here. Flat roofs have the peak at the
+    eave, so ``height`` equals the tagged total.
+    """
 
     way_id: int
     footprint: np.ndarray  # (N, 2) local XY coords in meters
@@ -34,13 +42,19 @@ class Building:
 
 @dataclass
 class Road:
-    """A road (highway) extracted from OSM."""
+    """A road (highway) extracted from OSM.
+
+    When ``is_area`` is True the way is a mapped surface (a pedestrian square
+    or an ``area:highway`` polygon): ``centerline`` then holds the closed
+    footprint polygon (closing node dropped) and ``width`` is meaningless.
+    """
 
     way_id: int
     centerline: np.ndarray  # (N, 2) local XY coords in meters
     highway_type: str = "residential"
     width: float = 6.0  # meters
     lanes: int = 1
+    is_area: bool = False
 
 
 @dataclass
@@ -131,6 +145,42 @@ def _parse_height(tags: dict[str, str], building_type: str, default: float = 8.0
         except (ValueError, TypeError):
             pass
     return _BUILDING_TYPE_HEIGHT.get(building_type, default)
+
+
+def _parse_roof_height(tags: dict[str, str], height: float) -> float:
+    """Parse the roof:height tag, falling back to max(2, 0.25 * height).
+
+    ``height`` is the building's total tagged height. The fallback matches the
+    proportions blosm uses for untagged roofs.
+    """
+    raw = tags.get("roof:height")
+    if raw is not None:
+        try:
+            if isinstance(raw, (int, float)):
+                return float(raw)
+            return float(str(raw).split()[0])
+        except (ValueError, IndexError, TypeError):
+            pass
+    return max(2.0, height * 0.25)
+
+
+def _split_height(total_height: float, roof_shape: str, roof_height: float) -> tuple[float, float]:
+    """Split an OSM total height into (eave_height, roof_height).
+
+    OSM defines the ``height`` tag as total ground-to-peak height. Building
+    geometry extrudes walls to the eave and stacks the roof on top, so for
+    non-flat roofs the walls stop at ``total_height - roof_height`` and the
+    roof spans the rest, putting the peak exactly at the tagged total. The
+    eave is floored at ``min(2, total / 2)`` so malformed roof:height tags
+    cannot produce zero or negative walls; the returned roof_height shrinks
+    accordingly to keep the peak at the total.
+
+    Flat roofs are returned unchanged: the tagged total is the wall top.
+    """
+    if roof_shape == "flat" or total_height <= 0.0:
+        return total_height, roof_height
+    eave = max(total_height - roof_height, min(2.0, 0.5 * total_height))
+    return eave, total_height - eave
 
 
 def _parse_roof_shape(tags: dict[str, str]) -> str:
