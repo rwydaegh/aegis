@@ -53,6 +53,7 @@ def compute_static_path_gram(
     n_tilde,
     sigma,
     freq_hz,
+    center_k_hat_tx=None,
 ):
     """Build the static path-correlation Gram ``M_static[c, d, a, b]``.
 
@@ -75,6 +76,11 @@ def compute_static_path_gram(
     n_tilde : complex
     sigma : float
     freq_hz : float
+    center_k_hat_tx : optional (N_c, 3)
+        Departure directions at the array. The steering phase across the
+        elements advances along the departure direction of each path, which
+        differs from the arrival direction for bounced paths. Defaults to
+        ``center_k_hat`` (exact for LOS-only producers).
 
     Returns
     -------
@@ -90,13 +96,14 @@ def compute_static_path_gram(
     center_k_hat = jnp.asarray(center_k_hat)
     center_psi = jnp.asarray(center_psi)
     array_offsets = jnp.asarray(array_offsets)
+    k_dep = center_k_hat if center_k_hat_tx is None else jnp.asarray(center_k_hat_tx)
 
     n_tri = normals.shape[0]
     n_c = center_k_hat.shape[0]
     m_ant = array_offsets.shape[0]
 
-    # Block-independent: advance of each center direction across the array.
-    phase_advance = jnp.exp(1j * k0 * (center_k_hat @ array_offsets.T))  # (N_c, M_ant)
+    # Block-independent: advance of each departure direction across the array.
+    phase_advance = jnp.exp(1j * k0 * (k_dep @ array_offsets.T))  # (N_c, M_ant)
 
     def _block_gram(sl: slice):
         nrm, cen, ar = normals[sl], centroids_0[sl], areas[sl]

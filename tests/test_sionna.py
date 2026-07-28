@@ -371,3 +371,121 @@ def test_trace_sets_scene_frequency_to_carrier():
     paths_from_sionna_scene(scene, tx, rx, freq_hz=28e9, max_bounces=2, tx_power_dbm=30.0)
 
     assert float(scene.frequency[0]) == pytest.approx(28e9)
+
+
+def _wrap(x):
+    return (x + np.pi) % (2 * np.pi) - np.pi
+
+
+def test_coherent_psi_carries_propagation_phase_away_from_origin():
+    """The kernel plane-wave expansion E(r) = sum_n psi_n exp(-i k0 k_n . r)
+    (absolute coordinates) must reproduce the analytic spherical-wave phase at
+    a receiver far from the world origin.
+
+    Regression for two 2026-07 bugs: Sionna keeps the carrier propagation
+    phase in tau (not in a) and the bridge normalized delays to zero, so psi
+    carried no propagation phase at all; and psi was referenced to the rx
+    point while every coherent kernel phases at absolute coordinates.
+    """
+    srt = pytest.importorskip("sionna.rt")
+
+    from aegis.integration.sionna import paths_from_sionna_scene
+
+    scene = srt.load_scene()  # empty: single LOS path
+    freq = 28e9
+    k0 = 2 * np.pi * freq / C_0
+    tx = np.array([40.0, -25.0, 12.0])
+    rx = np.array([120.0, 80.0, 1.5])
+    d = np.linalg.norm(rx - tx)
+
+    paths = paths_from_sionna_scene(
+        scene,
+        tx_positions=tx[None, :],
+        rx_position=rx,
+        freq_hz=freq,
+        max_bounces=1,
+        tx_power_dbm=30.0,
+        samples_per_src=100_000,
+    )
+    assert paths.n_paths == 1
+    assert paths.k_hat_tx is not None
+    np.testing.assert_allclose(paths.k_hat[0], (rx - tx) / d, atol=1e-3)
+    np.testing.assert_allclose(paths.k_hat_tx[0], (rx - tx) / d, atol=1e-3)
+    # true delay survives (no first-arrival normalization)
+    np.testing.assert_allclose(paths.delay[0], d / C_0, rtol=1e-6)
+
+    psi = np.asarray(paths.psi[0])
+    comp = int(np.argmax(np.abs(psi)))
+    # kernel-reconstructed field phase at the rx (absolute-coordinate rule)
+    ph_kernel = _wrap(np.angle(psi[comp]) - k0 * float(paths.k_hat[0] @ rx))
+    # analytic spherical wave, up to the pi from Sionna's V-pol e_theta basis
+    ph_analytic = _wrap(-k0 * d + np.pi)
+    assert abs(_wrap(ph_kernel - ph_analytic)) < 1e-2
+
+    # and the phase advances like a plane wave across a body-sized offset
+    delta = 0.5
+    rx2 = rx + paths.k_hat[0] * delta
+    ph_kernel2 = _wrap(np.angle(psi[comp]) - k0 * float(paths.k_hat[0] @ rx2))
+    assert abs(_wrap(ph_kernel2 - (ph_kernel - k0 * delta))) < 1e-4
+
+
+def test_coherent_interpath_phase_advances_with_rx_translation():
+    """Move the receiver a couple of wavelengths: the RELATIVE phase between
+    the LOS and a bounce path must advance by k0 delta . (k_b - k_los), the
+    geometry that creates interference fringes on a walking body.
+
+    This is the decisive regression for the missing-carrier-phase bug: with
+    psi built from Sionna's a alone (no delay phase), the relative phase stays
+    constant under rx translation and no fringe can ever form.
+    """
+    srt = pytest.importorskip("sionna.rt")
+
+    from aegis.integration.sionna import paths_from_sionna_scene
+
+    scene = srt.load_scene(srt.scene.simple_street_canyon)
+    freq = 28e9
+    k0 = 2 * np.pi * freq / C_0
+    tx = np.array([12.0, 4.0, 18.0])
+    rx = np.array([-9.0, -3.0, 1.5])
+    # ~2-3 wavelengths with a z component so both wall and ground bounces
+    # produce a nonzero predicted advance; reflection geometry ~unchanged
+    delta = np.array([0.02, 0.01, 0.015])
+
+    def trace(rx_pos):
+        paths = paths_from_sionna_scene(
+            scene,
+            tx_positions=tx[None, :],
+            rx_position=rx_pos,
+            freq_hz=freq,
+            max_bounces=1,
+            tx_power_dbm=30.0,
+            samples_per_src=2_000_000,
+            seed=7,
+        )
+        assert paths.n_paths >= 2
+        return np.asarray(paths.psi), np.asarray(paths.k_hat), np.asarray(paths.delay)
+
+    psi0, k0hat, delay0 = trace(rx)
+    psi1, k1hat, _ = trace(rx + delta)
+    los = int(np.argmin(delay0))
+    bounce = int(np.argsort(delay0)[1])
+
+    def phase_at(psi_row, k_row, rx_pos, comp):
+        return np.angle(psi_row[comp]) - k0 * float(k_row @ rx_pos)
+
+    def match(k_ref):
+        # same physical path in the second trace: nearest arrival direction
+        return int(np.argmax(k1hat @ k_ref))
+
+    comp_l = int(np.argmax(np.abs(psi0[los])))
+    comp_b = int(np.argmax(np.abs(psi0[bounce])))
+    ml, mb = match(k0hat[los]), match(k0hat[bounce])
+    assert float(k1hat[ml] @ k0hat[los]) > 0.9999
+    assert float(k1hat[mb] @ k0hat[bounce]) > 0.9999
+
+    rel0 = _wrap(phase_at(psi0[bounce], k0hat[bounce], rx, comp_b) - phase_at(psi0[los], k0hat[los], rx, comp_l))
+    rel1 = _wrap(phase_at(psi1[mb], k1hat[mb], rx + delta, comp_b) - phase_at(psi1[ml], k1hat[ml], rx + delta, comp_l))
+    measured_advance = _wrap(rel1 - rel0)
+    predicted_advance = _wrap(-k0 * float((k0hat[bounce] - k0hat[los]) @ delta))
+    assert abs(predicted_advance) > 0.3  # geometry actually discriminates
+    assert abs(_wrap(measured_advance - predicted_advance)) < 0.15

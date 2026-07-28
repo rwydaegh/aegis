@@ -26,6 +26,11 @@ class PropagationPaths:
     element_index : (N,) originating antenna element index
     delay : (N,) propagation delay in seconds (optional metadata)
     is_los : (N,) line-of-sight flag (optional metadata)
+    k_hat_tx : optional (N, 3) unit departure directions at the source. For a
+        bounced path this differs from ``k_hat``: array steering and element
+        patterns act on the departure direction, body-side physics on arrival.
+        ``None`` when the producer cannot supply it (consumers fall back to
+        ``k_hat``, exact for LOS).
     """
 
     k_hat: np.ndarray = field(repr=False)
@@ -38,6 +43,7 @@ class PropagationPaths:
     # False when the polarisation was fabricated (from_powers default), in which
     # case incoherent dosimetry must treat the field as unpolarised.
     polarised: bool = field(default=False, repr=False)
+    k_hat_tx: np.ndarray | None = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
         n = self.k_hat.shape[0]
@@ -51,6 +57,8 @@ class PropagationPaths:
             raise ValueError(f"delay must be (N,), got {self.delay.shape}")
         if self.is_los.shape != (n,):
             raise ValueError(f"is_los must be (N,), got {self.is_los.shape}")
+        if self.k_hat_tx is not None and self.k_hat_tx.shape != (n, 3):
+            raise ValueError(f"k_hat_tx must be (N, 3) or None, got {self.k_hat_tx.shape}")
         if n > 0 and np.any(self.element_index < 0):
             raise ValueError("element_index must be non-negative")
         if n > 0:
@@ -80,6 +88,7 @@ class PropagationPaths:
             delay=self.delay[idx],
             is_los=self.is_los[idx],
             polarised=self.polarised,
+            k_hat_tx=self.k_hat_tx[idx] if self.k_hat_tx is not None else None,
         )
 
     @property
@@ -325,6 +334,12 @@ class PropagationPaths:
             # Only treat the result as polarised if every input was; a mix would
             # leave fabricated polarisations alongside real ones.
             polarised=all(p.polarised for p in paths_list),
+            # Departure directions survive only if every input carries them.
+            k_hat_tx=(
+                np.concatenate([p.k_hat_tx for p in paths_list], axis=0)
+                if all(p.k_hat_tx is not None for p in paths_list)
+                else None
+            ),
         )
 
     def to_dict(self) -> dict:
@@ -332,7 +347,7 @@ class PropagationPaths:
 
         Complex arrays (psi) are stored as {"real": [...], "imag": [...]}.
         """
-        return {
+        d = {
             "k_hat": self.k_hat.tolist(),
             "psi": {
                 "real": self.psi.real.tolist(),
@@ -343,6 +358,9 @@ class PropagationPaths:
             "is_los": self.is_los.tolist(),
             "polarised": bool(self.polarised),
         }
+        if self.k_hat_tx is not None:
+            d["k_hat_tx"] = self.k_hat_tx.tolist()
+        return d
 
     @classmethod
     def from_dict(cls, d: dict) -> PropagationPaths:
@@ -358,6 +376,7 @@ class PropagationPaths:
             k_hat = k_hat.reshape(0, 3)
         if psi.ndim == 1 and psi.shape[0] == 0:
             psi = psi.reshape(0, 3)
+        k_hat_tx = d.get("k_hat_tx")
         return cls(
             k_hat=k_hat,
             psi=psi,
@@ -365,6 +384,7 @@ class PropagationPaths:
             delay=np.array(d["delay"], dtype=np.float64),
             is_los=np.array(d["is_los"], dtype=bool),
             polarised=bool(d.get("polarised", False)),
+            k_hat_tx=np.array(k_hat_tx, dtype=np.float64) if k_hat_tx is not None else None,
         )
 
     def __repr__(self) -> str:

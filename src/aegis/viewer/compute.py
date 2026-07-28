@@ -268,8 +268,10 @@ def array_factor_gain(
     if element_pattern == "isotropic":
         g_elem = 1.0
     elif element_pattern == "patch":
+        # Power pattern D cos^3 with D = 8 (9.0 dBi): the energy-conserving
+        # normalization of the cos^1.5 amplitude in AntennaArray.element_gain.
         cos_theta = float(k_hat @ broadside)
-        g_elem = max(cos_theta, 0.0) ** 1.5
+        g_elem = 8.0 * max(cos_theta, 0.0) ** 3
     elif element_pattern == "short_dipole":
         # Dipole axis: perpendicular to broadside, using least-aligned canonical axis
         abs_b = np.abs(broadside)
