@@ -69,7 +69,9 @@ def compare_city(cfg, city_latlon, out_dir, seed=42):  # pragma: no cover - heav
 
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    agents, sites, kernel, freq = _build_real(cfg, out_dir, seed, 0, cfg.mobility.n_agents, city_latlon=city_latlon)
+    agents, sites, kernel, freq, _city = _build_real(
+        cfg, out_dir, seed, 0, cfg.mobility.n_agents, city_latlon=city_latlon
+    )
     scene, poser = kernel.scene, kernel.poser
     freq_ghz = freq / 1e9
     pdbm = cfg.deployment.equipment.tx_power_dbm

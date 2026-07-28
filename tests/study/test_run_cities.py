@@ -50,7 +50,7 @@ def _fake_build(cfg, out_dir, seed, agent_start, agent_count, city_latlon=(0.0, 
         array=(2, 2),
         tx_power_dbm=30.0,
     )
-    return _agents(3, 4), sites, FakeKernel(), 28e9
+    return _agents(3, 4), sites, FakeKernel(), 28e9, None
 
 
 def _cfg_two_cities():

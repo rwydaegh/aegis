@@ -60,10 +60,10 @@ def run_cities(cfg, out_dir, seed) -> dict:
         city_out = out_dir / name
         print(f"[run_cities] building + running {name} ({spec['lat']}, {spec['lon']})")
         try:
-            agents, sites, kernel, freq = _build_real(
+            agents, sites, kernel, freq, city = _build_real(
                 cfg, city_out, seed, 0, cfg.mobility.n_agents, city_latlon=(spec["lat"], spec["lon"])
             )
-            summary = run_study(cfg, agents, sites, kernel, city_out, freq)
+            summary = run_study(cfg, agents, sites, kernel, city_out, freq, city=city)
             summary["name"] = name
             results.append(summary)
             print(f"[run_cities] {name} done: n={summary['n_agents']} median={summary.get('median')}")

@@ -31,8 +31,12 @@ def _cadences(cfg: StudyConfig, n_slots: int) -> tuple[int, int]:
     return pose, recompute
 
 
-def run_study(cfg, agents, sites, kernel, out_dir, freq_hz) -> dict:
-    """Run the crowd and write results. ``kernel`` supplies the physics callables."""
+def run_study(cfg, agents, sites, kernel, out_dir, freq_hz, city=None) -> dict:
+    """Run the crowd and write results. ``kernel`` supplies the physics callables.
+
+    ``city`` (a CityCache), when given, adds per-city morphology covariates to
+    the summary so the cross-city spread can be explained, not just stated.
+    """
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -85,6 +89,29 @@ def run_study(cfg, agents, sites, kernel, out_dir, freq_hz) -> dict:
         "median": float(np.median(headline)) if headline.size else None,
         "p95": float(np.percentile(headline, 95)) if headline.size else None,
     }
+
+    # Whole-body SAR context: absorbed power / phantom mass against the ICNIRP
+    # 2020 whole-body basic restriction. Nearly free, and it anchors the CDF to
+    # a compliance scale even when the expensive peak-Sab map is off.
+    phantom = getattr(getattr(getattr(kernel, "poser", None), "base_mesh", None), "name", None)
+    if phantom is not None and p_abs_w.size:
+        from aegis.compliance import ExposureScenario, icnirp_limits
+        from aegis.study.covariates import phantom_mass_kg
+
+        mass = phantom_mass_kg(phantom)
+        if mass:
+            sar_med = float(np.median(p_abs_w)) / mass
+            limit = icnirp_limits(scenario=ExposureScenario.GENERAL_PUBLIC, freq_hz=freq_hz).sar_wb
+            summary["phantom"] = phantom
+            summary["mass_kg"] = mass
+            summary["sar_wb_median_w_kg"] = sar_med
+            summary["icnirp_wb_fraction_median"] = sar_med / limit
+
+    if city is not None:
+        from aegis.study.covariates import city_covariates
+
+        summary["covariates"] = city_covariates(city, sites, agents, cfg.cities.radius_m)
+
     (out_dir / "summary.json").write_text(json.dumps(summary, indent=2))
     _write_cdf_figure(x, f, summary["headline"], out_dir / "cdf.png")
     _write_scene_json(out_dir, agents, sites, p_abs_w, is_user)
@@ -392,7 +419,7 @@ def _build_real(cfg, out_dir, seed, agent_start, agent_count, city_latlon=(51.05
         max_center_paths=getattr(cfg.channel, "max_center_paths", None),
         compute_peak_sab=getattr(cfg.dosimetry, "peak_sab", True),
     )
-    return agents, sites, kernel, freq
+    return agents, sites, kernel, freq, city
 
 
 def main(argv=None) -> int:
@@ -409,8 +436,8 @@ def main(argv=None) -> int:
     agent_count = args.agent_count if args.agent_count is not None else cfg.mobility.n_agents
     out_dir = Path(args.out)
 
-    agents, sites, kernel, freq = _build_real(cfg, out_dir, seed, args.agent_start, agent_count)
-    summary = run_study(cfg, agents, sites, kernel, out_dir, freq)
+    agents, sites, kernel, freq, city = _build_real(cfg, out_dir, seed, args.agent_start, agent_count)
+    summary = run_study(cfg, agents, sites, kernel, out_dir, freq, city=city)
     print(json.dumps(summary, indent=2))
     return 0
 
