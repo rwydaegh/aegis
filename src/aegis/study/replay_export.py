@@ -101,6 +101,7 @@ def build_artifact(cfg, out_dir, seed, frames, city_latlon=(51.0536, 3.7253)):  
         eq.array,
         eq.tx_power_dbm,
         downtilt_deg=cfg.deployment.sectoring.downtilt_deg,
+        rng=rng,
     )
 
     agents = _build_agents(cfg, city, rng, 0, cfg.mobility.n_agents, out_dir / "routes")

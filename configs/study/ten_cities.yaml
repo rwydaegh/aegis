@@ -10,14 +10,16 @@ cities:
   specs: []                 # empty -> DEFAULT_CITIES[:count]
 mobility:
   n_agents: 24              # modest crowd per city; grow once the CDF converges
-  window_s: 30
+  window_s: 20
   walk_speed_mps: 1.4
   user_fraction: 0.5
+  routing: directions       # real street walks (falls back to straight OD per
+                            # agent if the Routes API cannot route a pair)
 deployment:
-  process: ginibre
-  density_source: dataset
+  process: ginibre          # NOT YET WIRED: placement is height-band + spacing
+  density_source: dataset   # NOT YET WIRED: site count is 3 * densification
   densification: 1.0
-  realizations_K: 1
+  realizations_K: 1         # NOT YET WIRED: single deployment realization
   sectoring:
     sectors: 3
     az_coverage_deg: 120
@@ -41,15 +43,19 @@ channel:
   stochastic: coherent_38901
   los_blend: p_los
   seed: 42
-  samples_per_src: 4000000   # ~1% off the 30M plateau, ~7x faster per trace
+  samples_per_src: 3000000   # ~0.5% off the 30M plateau, ~10x faster per trace
   diffraction: true
-  # Gram cost is quadratic in the path count (24 paths -> 30 s, 12 -> ~8 s on
-  # 4 CPU cores); the strongest 12 carry the energy. Raise for the paper run.
-  max_center_paths: 12
+  # Gram cost is quadratic in the path count (24 paths -> 30 s, 10 -> ~5 s on
+  # 4 CPU cores); the strongest 10 carry the energy. Raise for the paper run.
+  max_center_paths: 10
 dosimetry:
   level: 7
   peak_sab: false            # headline CDF = scalar x^H Q x (cheap); add peak map later
 temporal:
   dt_s: 1.0
-  pose_period: 10
-  recompute_period: 10
+  # Keep pose and recompute EQUAL and aligned: the loop rebuilds sector grams
+  # on pose frames anyway, and an unequal split leaves the gram built for a
+  # stale body position. 5 s also bounds the translation-phasor extrapolation
+  # to ~7 m between re-traces (it was 14 m, far beyond plane-wave validity).
+  pose_period: 5
+  recompute_period: 5

@@ -67,10 +67,11 @@ def select_rooftop_sites(
     else:
         # Starved band (all-tower or all-shed core): walk candidates nearest the
         # band first and greedily keep spacing, so the most plausible roof
-        # heights win instead of a random draw over supertalls.
+        # heights win instead of a random draw over supertalls. Ties (uniform
+        # cores) break by rng so realizations stay decorrelated.
         dist = np.maximum(lo - z, 0.0) + np.maximum(z - hi, 0.0)
         kept: list[np.ndarray] = []
-        for i in np.argsort(dist):
+        for i in np.lexsort((rng.random(cand.shape[0]), dist)):
             p = cand[i]
             if all(np.linalg.norm(p[:2] - k[:2]) >= min_spacing_m for k in kept):
                 kept.append(p)
@@ -118,11 +119,15 @@ def build_sites(
     array,
     tx_power_dbm,
     downtilt_deg=0.0,
+    rng=None,
 ) -> list[Site]:
     """Place n_sectors UPA panels per site, evenly spaced in azimuth.
 
     ``downtilt_deg`` tilts each panel's broadside below the horizon, the way
-    real urban sectors aim at the street rather than the skyline.
+    real urban sectors aim at the street rather than the skyline. ``rng`` draws
+    a uniform per-site azimuth offset so sites do not share one global panel
+    orientation (real deployments orient panels per site; a fleet-wide 0/120/240
+    alignment imprints spurious azimuthal structure on the exposure CDF).
     """
     site_positions = np.atleast_2d(np.asarray(site_positions, dtype=float))
     n_h, n_v = int(array[0]), int(array[1])
@@ -131,9 +136,10 @@ def build_sites(
 
     sites: list[Site] = []
     for pos in site_positions:
+        offset = float(rng.uniform(0.0, 360.0)) if rng is not None else 0.0
         sectors: list[Sector] = []
         for s in range(n_sectors):
-            az = s * (360.0 / n_sectors)
+            az = (offset + s * (360.0 / n_sectors)) % 360.0
             broadside = _az_to_broadside(az, downtilt_deg)
             panel = AntennaArray.upa(
                 n_h=n_h,
@@ -165,19 +171,25 @@ def _angle_diff_deg(a: float, b: float) -> float:
 
 
 def sectors_illuminating(point, sites) -> list[Sector]:
-    """Return the sectors whose wedge and range contain the point."""
+    """Return the sectors whose wedge and range contain the point.
+
+    Range is 3D (a rooftop site's slant range, not its map distance) and the
+    wedge is half-open, [-w/2, w/2), so a point on the boundary azimuth belongs
+    to exactly one sector of a site instead of double-counting in the exposure
+    sum.
+    """
     p = np.asarray(point, dtype=float)
     hit: list[Sector] = []
     for site in sites:
         for sector in site.sectors:
-            d = p[:2] - sector.position[:2]
-            rng = float(np.linalg.norm(d))
-            if rng > sector.max_range_m:
+            if float(np.linalg.norm(p - sector.position)) > sector.max_range_m:
                 continue
-            if rng < 1e-9:
+            d = p[:2] - sector.position[:2]
+            if float(np.linalg.norm(d)) < 1e-9:
                 hit.append(sector)
                 continue
             az_to_point = np.degrees(np.arctan2(d[1], d[0]))
-            if _angle_diff_deg(az_to_point, sector.boresight_az_deg) <= sector.az_coverage_deg / 2.0:
+            diff = (az_to_point - sector.boresight_az_deg + 180.0) % 360.0 - 180.0
+            if -sector.az_coverage_deg / 2.0 <= diff < sector.az_coverage_deg / 2.0:
                 hit.append(sector)
     return hit

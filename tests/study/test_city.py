@@ -48,16 +48,18 @@ def test_candidate_z_snaps_to_mesh_roof():
     np.testing.assert_allclose(pts[0, 2], 8.0)
 
 
-def test_candidate_z_falls_back_to_height_off_mesh():
-    # Building outside the mesh extent: fall back to the parsed height.
+def test_candidate_skipped_when_building_missing_from_mesh():
+    # The builder dropped this building from the traced mesh (no surface under
+    # the point): trusting the tag would float a mast in empty air, so skip.
     class FakeMesh:
         vertices = np.array([[100.0, 100.0, 5.0], [110.0, 100.0, 5.0], [110.0, 110.0, 5.0]])
         triangles = np.array([[0, 1, 2]])
 
     fp = np.array([[0, 0], [10, 0], [10, 10], [0, 10]], dtype=float)
     b = Building(way_id=9, footprint=fp, height=17.0)
-    pts = rooftop_candidates([b], mesh=FakeMesh())
-    np.testing.assert_allclose(pts[0, 2], 17.0)
+    assert rooftop_candidates([b], mesh=FakeMesh()).shape == (0, 3)
+    # without a mesh the parsed height is still the honest fallback
+    np.testing.assert_allclose(rooftop_candidates([b])[0, 2], 17.0)
 
 
 def test_skips_degenerate_footprints():

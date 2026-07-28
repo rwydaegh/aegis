@@ -275,6 +275,11 @@ class RealKernel:
         center = center_paths(self.scene, sector, rx, self.freq_hz, engine=self.rt_engine, **self._trace_kwargs())
         per_elem = expand_paths_to_array(center, sector.array, self.freq_hz)
         h = user_channel_vector(per_elem, sector.m_ant)
+        if not np.any(np.abs(h) > 0):
+            # Deep-shadowed user with zero traced channel: a real scheduler
+            # would not serve it, and Precoder.mrt's e_0 fallback would blast
+            # full power on one element instead. Keep the sector silent.
+            return np.zeros(sector.m_ant, dtype=complex)
         return mrt_for_user(h, sector.tx_power_w).x
 
     def _peak_sab(self, body, sector, x, center_paths):
@@ -325,7 +330,7 @@ def _directions_route_xy(city, rng, radius_m, cache_dir):  # pragma: no cover - 
     return np.array([o_xy, d_xy])
 
 
-def _build_agents(cfg, city, rng, agent_start, agent_count, cache_dir):  # pragma: no cover
+def _build_agents(cfg, city, rng, agent_start, agent_count, cache_dir, seed=0):  # pragma: no cover
     """Build the crowd. ``routing='directions'`` walks real Google street routes;
     otherwise synthetic radial diameters across the core."""
     import numpy as np
@@ -337,6 +342,10 @@ def _build_agents(cfg, city, rng, agent_start, agent_count, cache_dir):  # pragm
     radius_m = cfg.cities.radius_m
     routing = getattr(cfg.mobility, "routing", "radial")
     max_slots = max(2, int(round(cfg.mobility.window_s / 1.0)))
+    # User assignment honours mobility.user_fraction, drawn from the seed alone
+    # (not the shared rng stream) so job-array shards agree on who the users are.
+    n_users = int(round(float(cfg.mobility.user_fraction) * n))
+    users = set(np.random.default_rng([int(seed), 1701]).permutation(n)[:n_users].tolist())
 
     agents = []
     for i in range(agent_start, min(agent_start + agent_count, n)):
@@ -356,7 +365,7 @@ def _build_agents(cfg, city, rng, agent_start, agent_count, cache_dir):  # pragm
                 headings_rad=traj.headings_rad[:max_slots],
                 t0_s=traj.t0_s,
             )
-        agents.append(Agent(trajectory=traj, is_user=(i % 2 == 0), agent_id=i))
+        agents.append(Agent(trajectory=traj, is_user=(i in users), agent_id=i))
     return agents
 
 
@@ -396,9 +405,10 @@ def _build_real(cfg, out_dir, seed, agent_start, agent_count, city_latlon=(51.05
         eq.array,
         eq.tx_power_dbm,
         downtilt_deg=cfg.deployment.sectoring.downtilt_deg,
+        rng=rng,
     )
 
-    agents = _build_agents(cfg, city, rng, agent_start, agent_count, out_dir / "routes")
+    agents = _build_agents(cfg, city, rng, agent_start, agent_count, out_dir / "routes", seed=seed)
 
     poser = StaticPhantomPoser(BodyMesh.load(Path("data/duke.stl"), name="duke"))
     engine = DosimetryEngine(TissueModel.from_database("Skin", freq))
@@ -422,6 +432,23 @@ def _build_real(cfg, out_dir, seed, agent_start, agent_count, city_latlon=(51.05
     return agents, sites, kernel, freq, city
 
 
+def _resolve_city(spec: str | None, cfg) -> tuple[float, float]:
+    """Resolve --city into (lat, lon): 'lat,lon' literal, a name from
+    cfg.cities.specs, or a name from run_cities.DEFAULT_CITIES. Defaults to
+    Ghent when omitted (the historical single-city behavior)."""
+    if spec is None:
+        return (51.0536, 3.7253)
+    if "," in spec:
+        lat, lon = spec.split(",", 1)
+        return (float(lat), float(lon))
+    from aegis.study.run_cities import DEFAULT_CITIES
+
+    for entry in list(getattr(cfg.cities, "specs", []) or []) + DEFAULT_CITIES:
+        if entry.get("name") == spec:
+            return (float(entry["lat"]), float(entry["lon"]))
+    raise SystemExit(f"unknown city {spec!r}: not in cities.specs or DEFAULT_CITIES")
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="HPC population-exposure study run")
     parser.add_argument("--config", required=True)
@@ -429,6 +456,11 @@ def main(argv=None) -> int:
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--agent-start", type=int, default=0)
     parser.add_argument("--agent-count", type=int, default=None)
+    parser.add_argument(
+        "--city",
+        default=None,
+        help="city name (cities.specs or DEFAULT_CITIES) or 'lat,lon'; default Ghent",
+    )
     args = parser.parse_args(argv)
 
     cfg = StudyConfig.from_yaml(args.config)
@@ -436,7 +468,9 @@ def main(argv=None) -> int:
     agent_count = args.agent_count if args.agent_count is not None else cfg.mobility.n_agents
     out_dir = Path(args.out)
 
-    agents, sites, kernel, freq, city = _build_real(cfg, out_dir, seed, args.agent_start, agent_count)
+    agents, sites, kernel, freq, city = _build_real(
+        cfg, out_dir, seed, args.agent_start, agent_count, city_latlon=_resolve_city(args.city, cfg)
+    )
     summary = run_study(cfg, agents, sites, kernel, out_dir, freq, city=city)
     print(json.dumps(summary, indent=2))
     return 0

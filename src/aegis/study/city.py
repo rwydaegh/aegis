@@ -102,8 +102,14 @@ def rooftop_candidates(buildings, mesh=None) -> np.ndarray:
         xy = _interior_point(fp)
         if xy is None:
             continue
-        z = _roof_z_at(mesh, xy) if mesh is not None else None
-        if z is None:
+        if mesh is not None:
+            z = _roof_z_at(mesh, xy)
+            # No surface under the point means the builder dropped this
+            # building from the traced mesh. Trusting the parsed tag here would
+            # recreate a mast floating in empty air, so skip the candidate.
+            if z is None:
+                continue
+        else:
             z = float(b.height)
         pts.append([xy[0], xy[1], z])
     if not pts:
@@ -134,6 +140,22 @@ class CityCache:
             self._differt_scene = self.mesh.to_differt_scene()
         return self._differt_scene
 
+    def _mesh_tag(self) -> str:
+        import hashlib
+
+        return hashlib.sha256(np.asarray(self.mesh.vertices, dtype=float).tobytes()).hexdigest()[:16]
+
+    def _export(self, path: Path, *, radio: bool) -> None:
+        """Export the mesh to a Sionna XML, guarded by a mesh-content hash so a
+        stale export (older snapshot, older builder) is never traced against the
+        current mesh silently."""
+        tag_file = path.with_suffix(".hash")
+        tag = self._mesh_tag()
+        if path.exists() and tag_file.exists() and tag_file.read_text() == tag:
+            return
+        self.mesh.to_sionna_xml(path, radio_materials=True) if radio else self.mesh.to_sionna_xml(path)
+        tag_file.write_text(tag)
+
     @property
     def sionna_scene(self):
         """Sionna RT scene for the deterministic arm (default engine).
@@ -145,8 +167,7 @@ class CityCache:
             import sionna.rt as srt
 
             radio_xml = self.scene_xml.with_name(self.scene_xml.stem + "_radio.xml")
-            if not radio_xml.exists():
-                self.mesh.to_sionna_xml(radio_xml, radio_materials=True)
+            self._export(radio_xml, radio=True)
             scene = srt.load_scene(str(radio_xml))
             self._sionna_scene = scene
         return self._sionna_scene
@@ -162,18 +183,25 @@ class CityCache:
         cache_dir = Path(cache_dir)
         cache_dir.mkdir(parents=True, exist_ok=True)
 
-        xml = fetch_osm(lat, lon, radius_m)
-        mesh = build_environment_from_osm(xml, origin_lat=lat, origin_lon=lon)
+        # Cache the raw Overpass snapshot: repeat runs are offline-reproducible
+        # and mesh, candidates, and traced scene always derive from one snapshot.
+        osm_path = cache_dir / "osm.xml"
+        if osm_path.exists():
+            xml = osm_path.read_text()
+        else:
+            xml = fetch_osm(lat, lon, radius_m)
+            osm_path.write_text(xml)
+        # Ground disk past the analysis radius: the street-level ground bounce
+        # is a first-order path at 28 GHz and OSM only meshes road ribbons.
+        mesh = build_environment_from_osm(xml, origin_lat=lat, origin_lon=lon, ground_radius_m=1.5 * float(radius_m))
         buildings, _, _ = parse_osm_xml(xml, origin_lat=lat, origin_lon=lon)
 
-        scene_xml = cache_dir / "scene.xml"
-        if not scene_xml.exists():
-            mesh.to_sionna_xml(scene_xml)
-
-        return cls(
+        city = cls(
             mesh=mesh,
-            scene_xml=scene_xml,
+            scene_xml=cache_dir / "scene.xml",
             candidates=rooftop_candidates(buildings, mesh=mesh),
             origin_lat=mesh.origin_lat,
             origin_lon=mesh.origin_lon,
         )
+        city._export(city.scene_xml, radio=False)
+        return city

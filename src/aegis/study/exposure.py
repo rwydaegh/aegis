@@ -40,7 +40,11 @@ def build_static_gram(body, center_paths, array, freq_hz, n_tilde=None, sigma=No
     """
     if n_tilde is None or sigma is None:
         n_tilde, sigma = tissue_skin_params(freq_hz)
-    gain = array.element_gain(center_paths.k_hat)  # (N,)
+    # Element pattern and steering act on the departure direction at the array
+    # (differs from arrival for bounced paths); fall back to arrival for
+    # producers without departure angles.
+    k_dep = center_paths.k_hat_tx if getattr(center_paths, "k_hat_tx", None) is not None else center_paths.k_hat
+    gain = array.element_gain(k_dep)  # (N,)
     psi_gained = center_paths.psi * gain[:, None]
     array_offsets = array.element_positions - array.reference_position
     M_static = compute_static_path_gram(
@@ -53,6 +57,7 @@ def build_static_gram(body, center_paths, array, freq_hz, n_tilde=None, sigma=No
         n_tilde=n_tilde,
         sigma=sigma,
         freq_hz=freq_hz,
+        center_k_hat_tx=k_dep,
     )
     return np.asarray(M_static)
 
