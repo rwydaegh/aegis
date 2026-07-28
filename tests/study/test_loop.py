@@ -100,3 +100,33 @@ def test_loop_no_illumination_gives_zero():
         beam_fn=boom,
     )
     np.testing.assert_allclose(result.exposure_w, 0.0)
+
+
+def test_peak_sab_clears_when_agent_leaves_coverage():
+    # Walk east through the sector's range and out of it: the carried peak
+    # must drop to zero once no sector illuminates, not stick at its last
+    # lit value for the rest of the walk.
+    positions = np.column_stack([np.array([50.0, 100.0, 400.0, 500.0]), np.zeros(4)])
+    traj = types.SimpleNamespace(positions=positions, headings_rad=np.zeros(4), t0_s=0.0)
+    agent = Agent(trajectory=traj)
+    sites = _one_east_sector()
+
+    def pose_fn(pos, hdg, frame, z):
+        return types.SimpleNamespace()
+
+    def channel_fn(sector, body, pos):
+        return types.SimpleNamespace(k_hat=np.array([[0.0, 0.0, -1.0]]))
+
+    result = run_agent(
+        agent,
+        sites,
+        pose_period=1,
+        recompute_period=1,
+        pose_fn=pose_fn,
+        channel_fn=channel_fn,
+        gram_fn=lambda body, cp, sector: "M",
+        refresh_fn=lambda m, k, d: np.eye(2, dtype=complex),
+        beam_fn=lambda sector, t: np.ones(2, dtype=complex),
+        sab_fn=lambda body, sector, x, cp: 7.5,
+    )
+    np.testing.assert_allclose(result.peak_sab_w_m2, [7.5, 7.5, 0.0, 0.0])
