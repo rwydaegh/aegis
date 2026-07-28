@@ -75,9 +75,10 @@ def compare_city(cfg, city_latlon, out_dir, seed=42):  # pragma: no cover - heav
     scene, poser = kernel.scene, kernel.poser
     freq_ghz = freq / 1e9
     env = getattr(cfg.channel, "stochastic_env", "umi")
+    preset_env = {"umi": "UMi", "uma": "UMa"}[env.lower()]
     preset_dir = Path("data/channel_presets")
-    los = load_preset(f"3GPP_38.901_{env.upper()}_LOS", preset_dir)["params"]
-    nlos = load_preset(f"3GPP_38.901_{env.upper()}_NLOS", preset_dir)["params"]
+    los = load_preset(f"3GPP_38.901_{preset_env}_LOS", preset_dir)["params"]
+    nlos = load_preset(f"3GPP_38.901_{preset_env}_NLOS", preset_dir)["params"]
     samp = getattr(cfg.channel, "samples_per_src", 3_000_000)
     cap = getattr(cfg.channel, "max_center_paths", 16)
     diffraction = getattr(cfg.channel, "diffraction", None)
@@ -117,8 +118,16 @@ def compare_city(cfg, city_latlon, out_dir, seed=42):  # pragma: no cover - heav
         # is quadratic in paths and an uncapped 400-sub-path NLOS draw is ~5 GB.
         xpr_l = float(los.get("XPR_mu", 8.0))
         xpr_n = float(nlos.get("XPR_mu", 8.0))
-        cl = _cap_paths(generate_coherent_channel(los, freq_ghz, ant, rx, 30.0, seed=seed, xpr_db=xpr_l), cap)
-        cn = _cap_paths(generate_coherent_channel(nlos, freq_ghz, ant, rx, 30.0, seed=seed + 1, xpr_db=xpr_n), cap)
+        cl = _cap_paths(
+            generate_coherent_channel(los, freq_ghz, ant, rx, 30.0, seed=seed, xpr_db=xpr_l),
+            cap,
+            array=sector.array,
+        )
+        cn = _cap_paths(
+            generate_coherent_channel(nlos, freq_ghz, ant, rx, 30.0, seed=seed + 1, xpr_db=xpr_n),
+            cap,
+            array=sector.array,
+        )
         p = p_los(d2d, env)
         e_stoch = 0.0
         for c, weight in ((cl, p), (cn, 1.0 - p)):
