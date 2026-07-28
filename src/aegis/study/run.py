@@ -69,6 +69,16 @@ def run_study(cfg, agents, sites, kernel, out_dir, freq_hz, city=None) -> dict:
     icnirp_frac = np.asarray(icnirp_frac)
     is_user = np.asarray(is_user)
 
+    # Link-budget gate: a crowd whose median absorbed power is exactly zero has
+    # a broken run (scene, placement, or channel), not a quiet city. The July
+    # rerun shipped exactly this and was only caught by manual inspection.
+    if p_abs_w.size and float(np.median(p_abs_w)) == 0.0:
+        print(
+            f"[run_study] WARNING: median absorbed power is 0 for {out_dir} "
+            f"({int((p_abs_w == 0).sum())}/{p_abs_w.size} agents at zero); "
+            "the deployment/coverage/channel chain likely failed silently"
+        )
+
     np.savez(
         out_dir / "exposure.npz",
         p_abs_w=p_abs_w,
@@ -337,6 +347,12 @@ def _directions_route_xy(city, rng, radius_m, cache_dir):  # pragma: no cover - 
         if xy.shape[0] >= 2:
             return xy
         print(f"[walk] degenerate route ({xy.shape[0]} pts), using straight OD")
+    except RuntimeError as exc:
+        if "API key" in str(exc):
+            # No key means EVERY walk would silently degrade to a straight
+            # line, changing the study's mobility model wholesale: fatal.
+            raise
+        print(f"[walk] Directions failed ({exc}); using straight OD for this agent")
     except Exception as exc:
         print(f"[walk] Directions failed ({exc}); using straight OD for this agent")
     return np.array([o_xy, d_xy])
