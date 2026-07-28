@@ -345,3 +345,4 @@ anti-ai.md
 
 # Replay artifact (26MB, regenerable via paper repo build_replay_artifact.py)
 aegis-web/public/factory.json
+papers/city-population-exposure/
