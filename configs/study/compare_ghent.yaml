@@ -11,6 +11,7 @@ mobility:
   window_s: 30
   walk_speed_mps: 1.4
   user_fraction: 0.5
+  routing: directions
 deployment:
   process: ginibre
   density_source: dataset

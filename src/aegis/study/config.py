@@ -76,6 +76,9 @@ class DeploymentConfig:
 class ChannelConfig:
     stochastic: str = "coherent_38901"
     los_blend: str = "p_los"
+    # 38.901 environment for the stochastic arm (presets + P_LOS model):
+    # "umi" (below-rooftop street canyon) or "uma" (above-rooftop macro).
+    stochastic_env: str = "umi"
     seed: int = 42
     # Deterministic-arm ray-trace shoot-and-bounce sample count. 30M is the
     # converged plateau (per the samples convergence study); 3M is ~0.5% off and
@@ -127,6 +130,12 @@ def _build(cls, raw: dict):
     # ``from __future__ import annotations`` stringizes f.type, so resolve the
     # real classes via get_type_hints before checking is_dataclass.
     hints = get_type_hints(cls)
+    known = {f.name for f in fields(cls)}
+    for key in raw:
+        if key not in known:
+            # A typo like sample_per_src silently reverting to a 7.5x-slower
+            # default is exactly the failure a batch cannot afford.
+            print(f"[config] WARNING: unknown key {key!r} for {cls.__name__} is ignored")
     kwargs = {}
     for f in fields(cls):
         if f.name not in raw:

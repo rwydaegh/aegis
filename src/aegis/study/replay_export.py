@@ -104,10 +104,12 @@ def build_artifact(cfg, out_dir, seed, frames, city_latlon=(51.0536, 3.7253)):  
         rng=rng,
     )
 
-    agents = _build_agents(cfg, city, rng, 0, cfg.mobility.n_agents, out_dir / "routes")
+    from aegis.study.covariates import data_dir
+
+    agents = _build_agents(cfg, city, rng, 0, cfg.mobility.n_agents, out_dir / "routes", seed=seed)
     engine = DosimetryEngine(TissueModel.from_database("Skin", freq))
-    poser = StaticPhantomPoser(BodyMesh.load(Path("data/duke.stl"), name="duke"))
-    _, cverts, cfaces = _canonical_body("data/duke.stl")
+    poser = StaticPhantomPoser(BodyMesh.load(data_dir() / "duke.stl", name="duke"))
+    _, cverts, cfaces = _canonical_body(data_dir() / "duke.stl")
 
     # Pick the agent with the most illuminated slots, and sample frames from
     # those lit slots (evenly-spaced slots can miss the covered stretch).

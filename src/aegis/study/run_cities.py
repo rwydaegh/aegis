@@ -55,24 +55,30 @@ def run_cities(cfg, out_dir, seed) -> dict:
     cities = _cities(cfg)
 
     results = []
-    for spec in cities:
+    failures = []
+    for i, spec in enumerate(cities):
         name = spec["name"]
         city_out = out_dir / name
         print(f"[run_cities] building + running {name} ({spec['lat']}, {spec['lon']})")
         try:
+            # Per-city seed offset: with one shared seed every city drew the
+            # same user-index set and identical deployment RNG streams.
             agents, sites, kernel, freq, city = _build_real(
-                cfg, city_out, seed, 0, cfg.mobility.n_agents, city_latlon=(spec["lat"], spec["lon"])
+                cfg, city_out, seed + i, 0, cfg.mobility.n_agents, city_latlon=(spec["lat"], spec["lon"])
             )
             summary = run_study(cfg, agents, sites, kernel, city_out, freq, city=city)
             summary["name"] = name
+            summary["seed"] = int(seed + i)
             results.append(summary)
             print(f"[run_cities] {name} done: n={summary['n_agents']} median={summary.get('median')}")
         except Exception:
+            failures.append({"name": name, "error": traceback.format_exc().strip().splitlines()[-1]})
             print(f"[run_cities] {name} FAILED, skipping:\n{traceback.format_exc()}")
 
     combined = {
         "n_cities_requested": len(cities),
         "n_cities_succeeded": len(results),
+        "failures": failures,
         "cities": results,
     }
     (out_dir / "cities_summary.json").write_text(json.dumps(combined, indent=2))
@@ -132,7 +138,9 @@ def main(argv=None) -> int:
     seed = args.seed if args.seed is not None else cfg.channel.seed
     combined = run_cities(cfg, args.out, seed)
     print(json.dumps({k: v for k, v in combined.items() if k != "cities"}, indent=2))
-    return 0
+    # A batch where nothing succeeded must not exit 0 (HPC schedulers and CI
+    # would archive empty outputs as success).
+    return 0 if combined["n_cities_succeeded"] > 0 else 1
 
 
 if __name__ == "__main__":  # pragma: no cover

@@ -10,6 +10,7 @@ grand mean.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import numpy as np
@@ -22,9 +23,19 @@ _FALLBACK_MASS_KG = {
 }
 
 
+def data_dir() -> Path:
+    """The AEGIS data directory: AEGIS_DATA_DIR, else the repo's data/.
+
+    Resolved from this file rather than the cwd so batch jobs launched from
+    anywhere (HPC scratch dirs, cron) find the phantom meshes.
+    """
+    env = os.environ.get("AEGIS_DATA_DIR")
+    return Path(env) if env else Path(__file__).resolve().parents[3] / "data"
+
+
 def phantom_mass_kg(name: str) -> float | None:
     """Whole-body mass [kg] for a phantom, from data/phantoms.yaml when present."""
-    path = Path("data/phantoms.yaml")
+    path = data_dir() / "phantoms.yaml"
     if path.is_file():
         try:
             import yaml

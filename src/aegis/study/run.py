@@ -89,6 +89,14 @@ def run_study(cfg, agents, sites, kernel, out_dir, freq_hz, city=None) -> dict:
         "median": float(np.median(headline)) if headline.size else None,
         "p95": float(np.percentile(headline, 95)) if headline.size else None,
     }
+    # Users are periodically the beam target, bystanders never are: the split
+    # matters, so publish both sub-CDFs alongside the whole-population one.
+    if headline.size == is_user.shape[0]:
+        for label, mask in (("users", is_user), ("bystanders", ~is_user)):
+            xs, fs = population_cdf(headline[mask])
+            summary[f"cdf_x_{label}"] = xs.tolist()
+            summary[f"cdf_f_{label}"] = fs.tolist()
+            summary[f"median_{label}"] = float(np.median(headline[mask])) if mask.any() else None
 
     # Whole-body SAR context: absorbed power / phantom mass against the ICNIRP
     # 2020 whole-body basic restriction. Nearly free, and it anchors the CDF to
@@ -216,7 +224,11 @@ class RealKernel:
         self._beam_cache: dict = {}
 
     def _trace_kwargs(self):
-        kw = {}
+        # Traces always run at the 30 dBm = 1 W field reference: the configured
+        # transmit power enters the exposure exactly once, via the MRT
+        # normalization ||x||^2 = sector.tx_power_w. Passing the config power
+        # here as well would square it.
+        kw = {"tx_power_dbm": 30.0}
         if self.samples_per_src is not None:
             kw["samples_per_src"] = int(self.samples_per_src)
         if self.diffraction is not None:
@@ -410,7 +422,9 @@ def _build_real(cfg, out_dir, seed, agent_start, agent_count, city_latlon=(51.05
 
     agents = _build_agents(cfg, city, rng, agent_start, agent_count, out_dir / "routes", seed=seed)
 
-    poser = StaticPhantomPoser(BodyMesh.load(Path("data/duke.stl"), name="duke"))
+    from aegis.study.covariates import data_dir
+
+    poser = StaticPhantomPoser(BodyMesh.load(data_dir() / "duke.stl", name="duke"))
     engine = DosimetryEngine(TissueModel.from_database("Skin", freq))
     n_slots = max((len(a.trajectory.positions) for a in agents), default=1)
     _, recompute_period = _cadences(cfg, n_slots)
