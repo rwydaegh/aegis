@@ -71,6 +71,38 @@ figure) is left off this pass. The center-path set is capped to the strongest fe
 by power, which preserves the absorbed power to better than \SI{0.4}{\percent}
 while bounding the exposure-operator cost.
 
+\section{Scenarios}
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\textwidth]{cities_scenarios.pdf}
+  \caption{The ten scenarios as ray traced: buildings shaded by roof height
+  (per-city gray scale), roads and water from the same OpenStreetMap snapshot,
+  the three rooftop sites with their \(120^\circ\) sector wedges (red), and
+  every pedestrian's street-routed walk colored by its time-averaged absorbed
+  power on the shared logarithmic scale. Black dots mark served users at their
+  walk's end. The morphology contrast that drives
+  Fig.~\ref{fig:cdf} is visible directly: open cores light up, dense uniform
+  blocks stay cold.}
+  \label{fig:scenarios}
+\end{figure*}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\columnwidth]{scenario_ghent.pdf}
+  \caption{The Ghent scenario in detail. Walks inside a sector wedge and range
+  glow; the medieval north of the core sits beyond every sector's
+  \SI{150}{\metre} range and stays in deep shadow. The two churches and the
+  belfry block are the dominant occluders.}
+  \label{fig:scenario-ghent}
+\end{figure}
+
+Figure~\ref{fig:scenarios} shows all ten cities as the ray tracer sees them,
+with the deployment and the walks; Fig.~\ref{fig:scenario-ghent} zooms into
+one. Sites sit on interior points of real rooftops inside an
+8--\SI{45}{\metre} height band with \SI{10}{\degree} downtilt, and walks are
+real street routes.
+
 \section{Results}
 
 \begin{figure}[t]
