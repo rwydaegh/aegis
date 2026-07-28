@@ -340,7 +340,7 @@ def _build_real(cfg, out_dir, seed, agent_start, agent_count, city_latlon=(51.05
     from aegis.geometry.mesh import BodyMesh
     from aegis.study.bodies import StaticPhantomPoser
     from aegis.study.city import CityCache
-    from aegis.study.deployment import build_sites, thin_min_spacing
+    from aegis.study.deployment import build_sites, select_rooftop_sites
     from aegis.tissue.dielectric import TissueModel
 
     rng = np.random.default_rng(seed)
@@ -350,7 +350,14 @@ def _build_real(cfg, out_dir, seed, agent_start, agent_count, city_latlon=(51.05
     lat, lon = float(city_latlon[0]), float(city_latlon[1])
     city = CityCache.build(lat, lon, cfg.cities.radius_m, out_dir / "city")
     n_sites = max(1, int(round(3 * cfg.deployment.densification)))
-    site_xy = thin_min_spacing(city.candidates, min_spacing_m=60.0, n_target=n_sites, rng=rng)
+    site_xy = select_rooftop_sites(
+        city.candidates,
+        n_sites,
+        rng,
+        min_spacing_m=60.0,
+        height_band_m=(cfg.deployment.site_height_min_m, cfg.deployment.site_height_max_m),
+        mount_height_m=cfg.deployment.mount_height_m,
+    )
     if site_xy.shape[0] == 0:
         site_xy = np.array([[0.0, 0.0, 15.0]])
     sites = build_sites(
@@ -361,6 +368,7 @@ def _build_real(cfg, out_dir, seed, agent_start, agent_count, city_latlon=(51.05
         freq,
         eq.array,
         eq.tx_power_dbm,
+        downtilt_deg=cfg.deployment.sectoring.downtilt_deg,
     )
 
     agents = _build_agents(cfg, city, rng, agent_start, agent_count, out_dir / "routes")

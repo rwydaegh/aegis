@@ -40,6 +40,10 @@ class SectoringConfig:
     sectors: int = 3
     az_coverage_deg: float = 120.0
     max_range_m: float = 150.0
+    # Panel broadside tilt below the horizon. Real urban sectors run 6-12 deg of
+    # electrical+mechanical downtilt so the beam serves the street, not the
+    # skyline. 0 reproduces the historical horizontal panels.
+    downtilt_deg: float = 10.0
 
 
 @dataclass(frozen=True)
@@ -60,6 +64,12 @@ class DeploymentConfig:
     sectoring: SectoringConfig = field(default_factory=SectoringConfig)
     equipment: EquipmentConfig = field(default_factory=EquipmentConfig)
     precoder: str = "mrt"
+    # Rooftop-site realism: only roofs inside the height band host sites (no
+    # church spires, no ground-floor sheds), and panels mount this far above
+    # the parapet. See deployment.select_rooftop_sites.
+    site_height_min_m: float = 8.0
+    site_height_max_m: float = 45.0
+    mount_height_m: float = 2.0
 
 
 @dataclass(frozen=True)

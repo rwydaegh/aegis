@@ -16,20 +16,96 @@ import numpy as np
 from aegis.environment import EnvironmentMesh
 
 
-def rooftop_candidates(buildings) -> np.ndarray:
-    """Candidate site points: footprint centroid at the building eave height.
+def _interior_point(fp: np.ndarray) -> np.ndarray | None:
+    """A point guaranteed inside the footprint polygon (XY).
 
-    Returns an ``(K, 3)`` array. The z coordinate is ``building.height``, the
-    eave/parapet height, where rooftop antennas mount. ``roof_height`` (the
-    roof's own peak extent above the eave) is deliberately excluded.
+    The vertex mean lands outside concave/L-shaped or edge-truncated footprints
+    (12/232 buildings on the Ghent core), which put base-station markers in
+    mid-air over streets. Use the shoelace centroid when it is inside, else the
+    interior grid point farthest from the boundary (a cheap pole of
+    inaccessibility).
+    """
+    from matplotlib.path import Path as _MplPath
+
+    fp = np.asarray(fp, dtype=float)[:, :2]
+    path = _MplPath(fp)
+
+    x, y = fp[:, 0], fp[:, 1]
+    xr, yr = np.roll(x, -1), np.roll(y, -1)
+    cross = x * yr - xr * y
+    area2 = cross.sum()
+    if abs(area2) > 1e-9:
+        centroid = np.array([((x + xr) * cross).sum(), ((y + yr) * cross).sum()]) / (3.0 * area2)
+        if path.contains_point(centroid):
+            return centroid
+
+    lo, hi = fp.min(axis=0), fp.max(axis=0)
+    gx, gy = np.meshgrid(np.linspace(lo[0], hi[0], 14)[1:-1], np.linspace(lo[1], hi[1], 14)[1:-1])
+    grid = np.column_stack([gx.ravel(), gy.ravel()])
+    inside = grid[path.contains_points(grid)]
+    if inside.shape[0] == 0:
+        return None
+    # distance of each inside point to the nearest polygon edge
+    a, b = fp, np.roll(fp, -1, axis=0)
+    ab = b - a  # (E, 2)
+    ap = inside[:, None, :] - a[None, :, :]  # (P, E, 2)
+    tt = np.clip(np.einsum("pej,ej->pe", ap, ab) / np.maximum((ab**2).sum(axis=1), 1e-12), 0.0, 1.0)
+    closest = a[None, :, :] + tt[:, :, None] * ab[None, :, :]
+    d = np.linalg.norm(inside[:, None, :] - closest, axis=2).min(axis=1)
+    return inside[np.argmax(d)]
+
+
+def _roof_z_at(mesh, xy: np.ndarray) -> float | None:
+    """Highest mesh surface directly above/below the XY point (vertical ray).
+
+    Pure-numpy point-in-triangle on the XY projection: the roof the rays
+    actually bounce off, independent of what the OSM height tag claimed.
+    """
+    v = np.asarray(mesh.vertices, dtype=float)
+    t = np.asarray(mesh.triangles, dtype=int)
+    tri = v[t]  # (T, 3, 3)
+    a, b, c = tri[:, 0], tri[:, 1], tri[:, 2]
+    d = np.asarray(xy, dtype=float)
+
+    det = (b[:, 1] - c[:, 1]) * (a[:, 0] - c[:, 0]) + (c[:, 0] - b[:, 0]) * (a[:, 1] - c[:, 1])
+    ok = np.abs(det) > 1e-12
+    if not np.any(ok):
+        return None
+    a, b, c, det = a[ok], b[ok], c[ok], det[ok]
+    l1 = ((b[:, 1] - c[:, 1]) * (d[0] - c[:, 0]) + (c[:, 0] - b[:, 0]) * (d[1] - c[:, 1])) / det
+    l2 = ((c[:, 1] - a[:, 1]) * (d[0] - c[:, 0]) + (a[:, 0] - c[:, 0]) * (d[1] - c[:, 1])) / det
+    l3 = 1.0 - l1 - l2
+    eps = -1e-9
+    hit = (l1 >= eps) & (l2 >= eps) & (l3 >= eps)
+    if not np.any(hit):
+        return None
+    z = l1[hit] * a[hit, 2] + l2[hit] * b[hit, 2] + l3[hit] * c[hit, 2]
+    return float(z.max())
+
+
+def rooftop_candidates(buildings, mesh=None) -> np.ndarray:
+    """Candidate site points: an interior rooftop point per building.
+
+    Returns an ``(K, 3)`` array. XY is a point guaranteed inside the footprint
+    (not the vertex mean, which floats off concave buildings). When ``mesh`` is
+    given, z is snapped to the actual mesh roof under that point, so candidates
+    can never hover above (or hide below) the geometry the rays bounce off;
+    otherwise z falls back to the parsed eave height ``building.height``.
+    ``roof_height`` (the roof's own peak above the eave) stays excluded: rooftop
+    antennas mount at the parapet, not the roof peak.
     """
     pts = []
     for b in buildings:
         fp = np.asarray(b.footprint, dtype=float)
         if fp.shape[0] < 3:
             continue
-        centroid = fp.mean(axis=0)
-        pts.append([centroid[0], centroid[1], float(b.height)])
+        xy = _interior_point(fp)
+        if xy is None:
+            continue
+        z = _roof_z_at(mesh, xy) if mesh is not None else None
+        if z is None:
+            z = float(b.height)
+        pts.append([xy[0], xy[1], z])
     if not pts:
         return np.zeros((0, 3))
     return np.asarray(pts)
@@ -97,7 +173,7 @@ class CityCache:
         return cls(
             mesh=mesh,
             scene_xml=scene_xml,
-            candidates=rooftop_candidates(buildings),
+            candidates=rooftop_candidates(buildings, mesh=mesh),
             origin_lat=mesh.origin_lat,
             origin_lon=mesh.origin_lon,
         )

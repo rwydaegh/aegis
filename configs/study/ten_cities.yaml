@@ -22,6 +22,7 @@ deployment:
     sectors: 3
     az_coverage_deg: 120
     max_range_m: 150
+    downtilt_deg: 10.0        # urban sectors aim at the street, not the skyline
   equipment:
     name: mmwave_mamimo_28ghz
     array: [8, 8]
@@ -29,13 +30,22 @@ deployment:
     height_class: rooftop
     freq_hz: 28.0e+9
   precoder: mrt
+  # rooftop realism: sites only on roofs in this band (no spires/sheds), panel
+  # mounted 2 m above the parapet, z snapped to the traced mesh roof
+  site_height_min_m: 8.0
+  site_height_max_m: 45.0
+  mount_height_m: 2.0
 channel:
+  # stochastic names the comparison arm used by aegis.study.compare only; the
+  # run_cities batch itself is fully deterministic (Sionna RT).
   stochastic: coherent_38901
   los_blend: p_los
   seed: 42
-  samples_per_src: 10000000  # ~0.05% off the 30M plateau, ~3x faster per trace
+  samples_per_src: 4000000   # ~1% off the 30M plateau, ~7x faster per trace
   diffraction: true
-  max_center_paths: 24    # cap Gram cost; keep strongest paths
+  # Gram cost is quadratic in the path count (24 paths -> 30 s, 12 -> ~8 s on
+  # 4 CPU cores); the strongest 12 carry the energy. Raise for the paper run.
+  max_center_paths: 12
 dosimetry:
   level: 7
   peak_sab: false            # headline CDF = scalar x^H Q x (cheap); add peak map later
