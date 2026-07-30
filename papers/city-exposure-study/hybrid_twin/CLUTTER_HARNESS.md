@@ -200,3 +200,67 @@ six-view sheet, and the audit model sees the sheet rather than one hero render.
    allows and procedural priors where it does not.
 5. The scene auditor, with six-view sheets, before any run that produces more
    scenes than a human will look at.
+
+## 9. Every facade is currently specular-only (check this first)
+
+Verified against the installed sionna-rt on 2026-07-30:
+
+```
+itu_material('brick', 3.5e9)  -> (3.91, 0.0291)     # permittivity, conductivity only
+RadioMaterial defaults        -> S = 0.0, Kx = 0.0  # no diffuse component
+```
+
+`export_scenes.py` emits `<bsdf type="itu-radio-material" id="mat-itu_{name}">`
+with no scattering parameters, so all three scene variants trace facades as
+pure specular reflectors. The only material in the pipeline with custom
+scattering behaviour is the vegetation effective medium built in
+`run_ablation.py`.
+
+This is worth testing before any geometry work, because ray tracing represents
+small-scale facade structure as a **material parameter rather than as geometry**.
+The effective roughness model (Degli-Esposti, IEEE TAP, July 2001; implemented
+in Sionna) splits incident power as `R^2 + S^2 = 1` with a scattering
+coefficient `S`, a cross-polarisation coefficient `Kx` and a lobe shape.
+Measured `S` for brick and concrete at these frequencies is typically of order
+0.2 to 0.4, not 0.
+
+Hypothesis, not a result: a specular-only melted mesh sends reflected power in
+the wrong directions and the receiver never sees it, which is what a uniform
+12-20 dB deficit looks like. A diffuse lobe is much less sensitive to exact
+normal orientation, so switching `S` on should preferentially rescue the
+photogrammetry scene - the one that is failing. It will move all three scenes,
+which is exactly why it needs the ablation rather than an argument.
+
+Cost: one parameter per material. Compare against reconstructing balcony
+geometry.
+
+## 10. On generative 3D as a cleanup step
+
+The idea of cutting the tiles into pieces and handing each blob to a 3D-native
+generative model is feasible in the narrow sense. `MeshReGen` (arXiv 2604.28134)
+does VecSet-conditioned geometry regeneration - update or improve an input mesh
+with fine-grained detail - which is the shape of the request.
+
+Three reasons it is the wrong tool for this target:
+
+1. **Off-the-shelf models are out of distribution.** The MeshReGen evaluation
+   notes that TRELLIS "fails to recover fine geometry, as it is trained on clean
+   geometry which does not generalize to broken, incomplete inputs", with
+   Hunyuan3D-Omni degrading similarly. Photogrammetry blobs are that case.
+2. **Ray tracing needs correct, not plausible.** A generated balcony cannot be
+   falsified against the real building, so it cannot enter `decisions.json` with
+   a justification, which is the property that makes this pipeline defensible.
+3. **It generates geometry the physics wants as a parameter** (section 9), on a
+   heavier mesh, which the solver then reduces to statistics anyway.
+
+The vegetation case makes the cost concrete: a generative tree brings tens of
+thousands of leaf facets, when the correct RF model is a volumetric attenuator
+with the P.833-10 effective medium already derived in
+`data/vegetation_material.json`. Denser and less correct at once.
+
+**Where multimodal 3D models do belong: recognition and parameterisation.**
+Blob plus street imagery in, a typed description out - "plane tree, 12 m,
+trunk at (x, y), canopy radius 4 m", or "brick, four storeys, balconies,
+ground-floor glazing" - and the harness instantiates a parametric proxy or sets
+`S`, `Kx` and permittivity. That output is small, checkable against held-out
+ground truth, and fits the typed-contract table in section 6.
