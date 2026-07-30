@@ -284,7 +284,11 @@ def build_materials() -> dict:
     m["panel"] = _principled("panel_radome", (0.86, 0.86, 0.84), 0.35)
     m["bracket"] = _principled("bracket", (0.22, 0.22, 0.24), 0.42, metal=0.85)
     m["element"] = _principled("element", (0.72, 0.66, 0.30), 0.30, metal=1.0)
-    m["water"] = _principled("water", (0.012, 0.028, 0.032), 0.035, spec=1.0)
+    # Roughness 0.035 was a mirror, and a mirror reflects the row as a second row
+    # of equal sharpness, which is the single strongest tell that a render is CG.
+    # A canal under a light breeze sits nearer 0.09.
+    m["water"] = _principled("water", (0.012, 0.028, 0.032), 0.09, spec=1.0)
+    m["quay"] = _stone("quay_stone", (0.30, 0.29, 0.26), 9.0)
     return m
 
 
@@ -390,7 +394,79 @@ def river_width(w) -> float:
     return 28.0 if "leie" in (w.tags.get("name") or "").lower() else 14.0
 
 
-def _in_water(a, x: float, y: float, *, margin: float = 1.0) -> bool:
+def _nearest_on_line(p: np.ndarray, line: np.ndarray) -> tuple[np.ndarray, float]:
+    """Closest point on a polyline, and the distance to it."""
+    a_i, b_i = line[:-1], line[1:]
+    ab = b_i - a_i
+    denom = (ab * ab).sum(axis=1)
+    denom[denom < 1e-12] = 1e-12
+    t = np.clip(((p - a_i) * ab).sum(axis=1) / denom, 0.0, 1.0)
+    proj = a_i + t[:, None] * ab
+    d = np.linalg.norm(proj - p, axis=1)
+    k = int(d.argmin())
+    return proj[k], float(d[k])
+
+
+def _inside_ring(ring: np.ndarray, x: float, y: float) -> bool:
+    xs, ys = ring[:, 0], ring[:, 1]
+    x2, y2 = np.roll(xs, -1), np.roll(ys, -1)
+    cond = (ys > y) != (y2 > y)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        xin = (x2 - xs) * (y - ys) / (y2 - ys) + xs
+    return int((cond & (x < xin)).sum()) % 2 == 1
+
+
+def water_bodies(a, centre=None, radius: float = 1e9) -> list:
+    """Every water feature that will actually be built, as (kind, geometry).
+
+    Terrain and water used to filter by different rules: the hole was cut wherever
+    any water way said so, but the sheet was only laid within a radius of the study
+    centre. Beyond that radius the two disagreed and the result was a hole with
+    nothing under it, which renders as the black wedge that sat over the north
+    canal in every plate. One list, consulted by both, is the fix.
+    """
+    c = np.array(centre if centre is not None else (0.0, 0.0), dtype=float)
+    out = []
+    for w in a.ways_of("waterline"):
+        line = np.asarray(w.line, dtype=float)
+        if len(line) >= 2 and np.linalg.norm(line - c, axis=1).min() <= radius:
+            out.append(("line", line, river_width(w) / 2.0))
+    for w in a.ways_of("water"):
+        ring = np.asarray(w.line, dtype=float)
+        if len(ring) >= 3 and np.linalg.norm(ring - c, axis=1).min() <= radius:
+            out.append(("poly", ring, 0.0))
+    return out
+
+
+def water_sdf(bodies, p: np.ndarray) -> tuple[float, np.ndarray]:
+    """Signed distance to the nearest bank, negative in the water, plus the
+    outward normal, so a wet vertex can be pushed onto the bank rather than merely
+    deleted.
+
+    Polygons are included and not only the widthed centrelines. Snapping the
+    centrelines alone straightened the Leie and left every polygon-cut channel as
+    a 4 m staircase, which is the same defect surviving in half the scene.
+    """
+    best = (1e9, np.array([1.0, 0.0]))
+    for kind, geom, half in bodies:
+        if kind == "line":
+            q, d = _nearest_on_line(p, geom)
+            s = d - half
+        else:
+            q, d = _nearest_on_line(p, np.vstack([geom, geom[:1]]))
+            s = -d if _inside_ring(geom, float(p[0]), float(p[1])) else d
+        if s < best[0]:
+            n = (p - q) / (d + 1e-9) if d > 1e-6 else np.array([1.0, 0.0])
+            # For a centreline that vector already points away from the water. For
+            # a polygon it points from the ring towards whichever side `p` is on,
+            # so inside the ring it has to be flipped to face out.
+            if kind == "poly" and s < 0:
+                n = -n
+            best = (s, n)
+    return best
+
+
+def _in_water(a, x: float, y: float, *, margin: float = 1.0, bodies=None) -> bool:
     """Is this ground sample inside the canal.
 
     The terrain grid is a filtered ground surface and interpolates straight across
@@ -398,45 +474,121 @@ def _in_water(a, x: float, y: float, *, margin: float = 1.0) -> bool:
     sits 1.85 m below a continuous cobble lid and never appears in any shot.
     """
     p = np.array([x, y])
-    for w in a.ways_of("waterline"):
-        if len(w.line) >= 2 and facade_mod._seg_dist(p, w.line) < \
-                river_width(w) / 2.0 - margin:
-            return True
-    for w in a.ways_of("water"):
-        ring = np.asarray(w.line, dtype=float)
-        if len(ring) < 3:
-            continue
-        xs, ys = ring[:, 0], ring[:, 1]
-        x2, y2 = np.roll(xs, -1), np.roll(ys, -1)
-        cond = (ys > y) != (y2 > y)
-        with np.errstate(divide="ignore", invalid="ignore"):
-            xin = (x2 - xs) * (y - ys) / (y2 - ys) + xs
-        if int((cond & (x < xin)).sum()) % 2 == 1:
+    for kind, geom, half in (bodies if bodies is not None else water_bodies(a)):
+        if kind == "line":
+            if facade_mod._seg_dist(p, geom) < half - margin:
+                return True
+        elif _inside_ring(geom, x, y):
             return True
     return False
 
 
-def build_terrain(a, mats, collection, half: float, centre) -> None:
-    step = 4.0
+def ground_grid(a, half: float, centre, bodies, step: float = 2.0):
+    """One sampled grid over the block, with each vertex marked wet or dry.
+
+    Terrain and water are cut from this single grid so that they tile the same
+    plane and cannot disagree about where the bank is. Building them separately is
+    what produced every water artefact in this scene in turn: a cobble lid over the
+    canal, then a staircase bank, then a hole with nothing under it, then a black
+    wedge where an offset ribbon tied itself in a bowtie.
+    """
     n = int(2 * half / step) + 1
-    verts, faces = [], []
     cx, cy = centre
-    wet = []
+    verts, wet = [], []
     for j in range(n):
         for i in range(n):
             x = cx - half + i * step
             y = cy - half + j * step
-            verts.append((x, y, a.terrain.at(x, y) - 0.05))
-            wet.append(_in_water(a, x, y))
+            verts.append([x, y, a.terrain.at(x, y) - 0.05])
+            wet.append(_in_water(a, x, y, bodies=bodies))
+
+    # Dropping whole quads leaves the bank as a 4 m staircase, which reads as a
+    # rendering fault rather than a quay. Pulling the wet vertices of a mixed quad
+    # out onto the bank first straightens the same edge to the river line, and
+    # costs nothing extra because the quad count does not change.
+    # Against a frozen mask, and applied afterwards. Reading and writing `wet` in
+    # the same pass let each newly dried vertex dry its neighbour in turn, and the
+    # bank walked inward across the whole channel until the river had drained.
+    was_wet = list(wet)
+    for j in range(n):
+        for i in range(n):
+            k = j * n + i
+            if not was_wet[k]:
+                continue
+            nb = [k - 1 if i else k, k + 1 if i < n - 1 else k,
+                  k - n if j else k, k + n if j < n - 1 else k]
+            dry = [v for v in nb if not was_wet[v]]
+            if not dry:
+                continue
+            # Bisect towards the nearest dry neighbour rather than stepping along
+            # the signed distance. Where a river centreline runs inside a water
+            # polygon, both bodies claim the vertex and `water_sdf` reports the
+            # deeper of the two, so the sdf version tried to move a vertex 8 m to
+            # a boundary that is not on the outside of the union at all, hit its
+            # own sanity clamp, and gave up: that is the staircase that survived
+            # on the south channel while the Leie came out clean. The union
+            # predicate is the only thing here that is unambiguously right, so
+            # search on it directly.
+            p = np.array(verts[k][:2])
+            best = None
+            for v in dry:
+                lo, hi = p, np.array(verts[v][:2])
+                for _ in range(14):
+                    mid = (lo + hi) / 2.0
+                    if _in_water(a, float(mid[0]), float(mid[1]), bodies=bodies):
+                        lo = mid
+                    else:
+                        hi = mid
+                d = float(np.linalg.norm(hi - p))
+                if best is None or d < best[0]:
+                    best = (d, hi)
+            verts[k][0], verts[k][1] = float(best[1][0]), float(best[1][1])
+            verts[k][2] = a.ground_global - 0.05
+            wet[k] = False      # it is on the bank now, so its quads survive
+
+    # Flatten the strip of ground next to the water to quay level. The DEM is a
+    # filtered surface that dips as it crosses the channel, so a vertex snapped up
+    # onto the bank stood up to 1.7 m above its unsnapped neighbour and the join
+    # rendered as a row of pale flaps along both banks, like teeth. A quay is flat;
+    # this makes it flat, and it is the surface a grazing ray reflects off.
+    # Flat in both directions, not just raised. Clamping only the vertices below
+    # quay level left the ones the DEM puts above it standing as a row of blocks
+    # along the water, which read as broken wall panels. A quay deck is a built
+    # flat surface; the DEM's undulation across it is filtering, not topography.
+    band = int(np.ceil(9.0 / step))
+    lip = a.ground_global - 0.05
+    for j in range(n):
+        for i in range(n):
+            k = j * n + i
+            if wet[k] or abs(verts[k][2] - lip) < 1e-3:
+                continue
+            near = any(was_wet[(j + dj) * n + (i + di)]
+                       for dj in range(-band, band + 1)
+                       for di in range(-band, band + 1)
+                       if 0 <= j + dj < n and 0 <= i + di < n)
+            if near:
+                verts[k][2] = lip
+    return n, verts, wet
+
+
+def build_terrain(a, mats, collection, grid) -> list:
+    n, verts, wet = grid
+    faces = []
     for j in range(n - 1):
         for i in range(n - 1):
             k = j * n + i
             quad = [k, k + 1, k + n + 1, k + n]
-            if all(wet[v] for v in quad):
+            # Every corner dry, not merely one. Keeping the mixed quads dragged
+            # their still-wet corners along at raw DEM height, and since the DEM
+            # dips as it crosses the channel that built a 29 degree apron of
+            # pavement running down into the river along the whole bank. The snap
+            # has already pulled the real boundary vertices out onto the
+            # waterline, so all-dry is exactly the quay and nothing else.
+            if not all(not wet[v] for v in quad):
                 continue        # leave the canal open
             faces.append(quad)
     me = bpy.data.meshes.new("terrain")
-    me.from_pydata(verts, [], faces)
+    me.from_pydata([tuple(v) for v in verts], [], faces)
     me.validate(verbose=False)
     # Metre-scale UVs, same reason the walls needed them: without a UV map the
     # cobble collapses and the ground renders as a flat grey plane.
@@ -447,70 +599,83 @@ def build_terrain(a, mats, collection, half: float, centre) -> None:
     me.materials.append(mats["ground:sett"])
     ob = bpy.data.objects.new("terrain", me)
     collection.objects.link(ob)
+    return faces
 
 
-def _strip(line: np.ndarray, width: float, z: float):
-    """Buffer a centreline into a flat ribbon.
+def build_quay_wall(a, mats, collection, verts, faces, bodies, *,
+                    foot: float = 1.4) -> None:
+    """Skin the open bank edge with a vertical stone wall down past the water.
 
-    OSM gives the Leie at Graslei as `waterway=river`, a centreline with no area
-    polygon anywhere near the row, so the canal simply does not exist unless it is
-    built from the line. The Leie is about 28 m wide here.
+    Without it the quay is a single sheet of polygons and any camera at eye level
+    on the far bank sees the pavement edge-on as a line with nothing under it. The
+    wall is also the surface a 28 GHz ray actually hits when it grazes the quay, so
+    this is geometry the propagation run needs, not only the picture.
     """
-    half = width / 2.0
-    left, right = [], []
-    n = len(line)
-    for i in range(n):
-        a_i = line[max(0, i - 1)]
-        b_i = line[min(n - 1, i + 1)]
-        t = b_i - a_i
-        norm = float(np.linalg.norm(t))
-        t = np.array([1.0, 0.0]) if norm < 1e-9 else t / norm
-        nrm = np.array([-t[1], t[0]])
-        left.append(line[i] + nrm * half)
-        right.append(line[i] - nrm * half)
-    verts = [(float(p[0]), float(p[1]), z) for p in left]
-    verts += [(float(p[0]), float(p[1]), z) for p in reversed(right)]
-    faces = []
-    for i in range(n - 1):
-        j = 2 * n - 1 - i
-        faces.append([i, i + 1, j - 1, j])
-    return verts, faces
+    use: dict[tuple[int, int], int] = {}
+    for f in faces:
+        for i in range(4):
+            e = (f[i], f[(i + 1) % 4])
+            use[tuple(sorted(e))] = use.get(tuple(sorted(e)), 0) + 1
+    z_bed = a.ground_global - 1.9 - foot
+    wv, wf = [], []
+    for (u, v), count in use.items():
+        if count != 1:
+            continue
+        pu, pv = verts[u], verts[v]
+        # Only the river bank, not the four outer edges of the terrain patch.
+        # On `max` this wall came out as a row of detached slabs: a bank edge runs
+        # between a vertex snapped onto the waterline and an ordinary grid vertex
+        # up to a cell inland, so the inland end failed the test and every second
+        # panel was dropped. One endpoint on the water is what makes an edge a
+        # bank, so the test belongs on `min`.
+        if min(water_sdf(bodies, np.array(pu[:2]))[0],
+               water_sdf(bodies, np.array(pv[:2]))[0]) > 0.6:
+            continue
+        k = len(wv)
+        wv += [tuple(pu), tuple(pv), (pv[0], pv[1], z_bed), (pu[0], pu[1], z_bed)]
+        wf.append([k, k + 1, k + 2, k + 3])
+    if not wf:
+        return
+    me = bpy.data.meshes.new("quay_wall")
+    me.from_pydata(wv, [], wf)
+    me.validate(verbose=False)
+    uv = me.uv_layers.new(name="UVMap")
+    for loop in me.loops:
+        x, y, z = wv[loop.vertex_index]
+        uv.data[loop.index].uv = (x + y, z)
+    me.materials.append(mats["quay"])
+    collection.objects.link(bpy.data.objects.new("quay_wall", me))
+    print(f"[realise] quay wall {len(wf)} panels")
 
 
-def build_water(a, mats, collection, centre=None, radius: float = 1e9) -> None:
-    c = np.array(centre if centre is not None else (0.0, 0.0), dtype=float)
+def build_water(a, mats, collection, grid) -> None:
+    """The complement of the terrain, one sheet, flat at the water line.
+
+    A quad with any wet corner belongs to the water; a quad with any dry corner
+    belongs to the terrain. Boundary quads are therefore in both, 1.9 m apart in z,
+    so the terrain hides the water's ragged outer row and the visible edge is the
+    snapped bank the two meshes share. Nothing is coplanar with anything, which is
+    what the previous ribbon got wrong: overlapping faces at identical z make rays
+    self-intersect and the whole canal renders black.
+    """
+    n, verts, wet = grid
     z = a.ground_global - 1.9
-
-    for w in a.ways_of("water"):
-        if len(w.line) < 3 or np.linalg.norm(w.line - c, axis=1).min() > radius:
-            continue
-        ring = [(float(p[0]), float(p[1]), z) for p in w.line]
-        # Not `c`: that is the study centre, and reusing the name here moved the
-        # radius test onto the last polygon's centroid, which then culled the Leie
-        # centreline out of the very shot it is the subject of.
-        mid = np.array(w.line, dtype=float).mean(axis=0)
-        verts = [(float(mid[0]), float(mid[1]), z)] + ring
-        n = len(ring)
-        # A single n-gon over a non-convex, non-planar ring renders black. A fan
-        # from the centroid is always planar here because z is constant.
-        faces = [[0, 1 + i, 1 + (i + 1) % n] for i in range(n)]
-        me = bpy.data.meshes.new(f"water_{w.osm_id}")
-        me.from_pydata(verts, [], faces)
-        me.validate(verbose=False)
-        me.materials.append(mats["water"])
-        collection.objects.link(bpy.data.objects.new(f"water_{w.osm_id}", me))
-
-    for w in a.ways_of("waterline"):
-        if len(w.line) < 2 or np.linalg.norm(w.line - c, axis=1).min() > radius:
-            continue
-        name = (w.tags.get("name") or "").lower()
-        width = 28.0 if "leie" in name else 14.0
-        verts, faces = _strip(w.line, width, z)
-        me = bpy.data.meshes.new(f"river_{w.osm_id}")
-        me.from_pydata(verts, [], faces)
-        me.validate(verbose=False)
-        me.materials.append(mats["water"])
-        collection.objects.link(bpy.data.objects.new(f"river_{w.osm_id}", me))
+    faces = []
+    for j in range(n - 1):
+        for i in range(n - 1):
+            k = j * n + i
+            quad = [k, k + 1, k + n + 1, k + n]
+            if any(wet[v] for v in quad):
+                faces.append(quad)
+    if not faces:
+        return
+    me = bpy.data.meshes.new("water")
+    me.from_pydata([(v[0], v[1], z) for v in verts], [], faces)
+    me.validate(verbose=False)
+    me.materials.append(mats["water"])
+    ob = bpy.data.objects.new("water", me)
+    collection.objects.link(ob)
+    print(f"[realise] water {len(faces)} quads")
 
 
 # --------------------------------------------------------------------------
@@ -718,12 +883,117 @@ def hero_camera(a, buildings, centre):
     hfov = math.atan(18.0 / 28.0)          # 36 mm sensor, 28 mm lens
     dist = float(np.clip(1.15 * half_len / math.tan(hfov), 34.0, 72.0))
 
+    top = float(np.percentile([b.top_z for b in buildings], 75))
+    aim3 = np.array([focus[0], focus[1],
+                     a.ground_global + 0.62 * (top - a.ground_global)])
+
+    # The analytic stand-off gives a sensible *radius*, but it says nothing about
+    # what is at that point. Squaring up to the row put the first preset 1.0 m from
+    # a facade with no water in frame. Scoring the ring settles both: the same
+    # criteria that ranked the contact sheet pick the shipped camera, so a new city
+    # gets a framed hero shot without anyone authoring coordinates for it.
+    cands = candidate_eyes(a, buildings, focus, aim3, ring=dist)
+    if cands:
+        s, eye_xy, clear, water, infront, _rad, _th = max(cands, key=lambda c: c[0])
+        z_eye = max(a.terrain.at(*eye_xy), a.ground_global) + 2.20
+        print(f"[realise] hero eye={np.round(eye_xy, 1)} clear={clear:.1f} m "
+              f"water={water:.2f} row={infront}/{len(buildings)} score={s:.3f}")
+        return np.array([eye_xy[0], eye_xy[1], z_eye]), aim3
+
     stand = focus + normal * dist - along * half_len * 0.35
     z_eye = max(a.terrain.at(*stand), a.ground_global) + 2.20
-    top = float(np.percentile([b.top_z for b in buildings], 75))
-    aim = a.ground_global + 0.62 * (top - a.ground_global)
-    return (np.array([stand[0], stand[1], z_eye]),
-            np.array([focus[0], focus[1], aim]))
+    return np.array([stand[0], stand[1], z_eye]), aim3
+
+
+def clearance(a, p) -> float:
+    """Distance from a point to the nearest building footprint."""
+    return min(facade_mod._seg_dist(p, np.vstack([b.ring, b.ring[:1]]))
+               for b in a.buildings)
+
+
+def water_in_shot(a, eye, aim) -> float:
+    """Fraction of the sight line that runs over water.
+
+    Foreground water is not decoration on a canal quay, it is the reason the view
+    exists: it separates the camera from the row, fills the bottom of the frame,
+    and doubles the facade through its reflection. The first hero preset had none,
+    which is most of why it read as a car park with houses at the far end.
+    """
+    lines = [(np.asarray(w.line, dtype=float), river_width(w) / 2.0)
+             for w in a.ways_of("waterline") if len(w.line) >= 2]
+    if not lines:
+        return 0.0
+    eye, aim = np.asarray(eye, dtype=float)[:2], np.asarray(aim, dtype=float)[:2]
+    n = 24
+    hits = sum(1 for i in range(n)
+               if any(facade_mod._seg_dist(eye + (aim - eye) * ((i + 0.5) / n), ln)
+                      < half for ln, half in lines))
+    return hits / n
+
+
+def frame_fill(top_z: float, eye_z: float, dist: float, *, lens: float = 28.0,
+               aspect: float = 720.0 / 1280.0) -> float:
+    """How much of the frame height the row occupies, as a fraction.
+
+    Rewarding clearance alone has an obvious runaway: the emptiest, safest, most
+    water-covered spot in any city is far away, so the scorer walked backwards
+    until the quay was 100 m off and the subject was a strip along the horizon
+    under half a frame of cobbles. Distance has to cost something, and the honest
+    cost is how small it makes the thing being photographed.
+    """
+    return (top_z - eye_z) / max(dist, 1e-6) / (18.0 * aspect / lens)
+
+
+def candidate_eyes(a, sel, focus, aim, *, ring: float, n: int = 8,
+                   top_z: float | None = None, lens: float = 28.0) -> list:
+    """Viewpoints that are outdoors, clear of walls, and looking at something big
+    enough to be the subject.
+
+    A bare ring of azimuths puts a third of its cameras inside the block. Scoring
+    first is cheap, and the number that matters is clearance: the previous authored
+    preset stood 1.0 m from a facade, which no amount of lens choice recovers.
+    """
+    if top_z is None:
+        top_z = float(np.percentile([b.top_z for b in sel], 75))
+    out = []
+    bodies = water_bodies(a, focus, 2.0 * ring + 60.0)
+    for k in range(n * 6):
+        th = 2 * math.pi * k / (n * 6)
+        best = None
+        for rad in (r * ring for r in (0.45, 0.6, 0.75, 1.0, 1.25, 1.5)):
+            eye = focus + np.array([math.cos(th), math.sin(th)]) * rad
+            clear = clearance(a, eye)
+            if clear < 5.0:
+                continue
+            # Clearance only knows about walls, so on its own it rated a viewpoint
+            # in the middle of the river as the best in the scene: maximum water
+            # along the sight line, nothing nearby to collide with. The camera
+            # floated at quay height out in the Leie and the near bank rose in
+            # front of it as a wall across the bottom of the frame.
+            if _in_water(a, float(eye[0]), float(eye[1]), margin=-2.0,
+                         bodies=bodies):
+                continue
+            water = water_in_shot(a, eye, aim)
+            # How much of the row is actually in front of this camera.
+            view = (aim[:2] - eye) / (np.linalg.norm(aim[:2] - eye) + 1e-9)
+            infront = sum(1 for b in sel
+                          if np.dot(b.centroid - eye, view) > 0.3 * rad)
+            fill = frame_fill(top_z, a.ground_global + 2.2,
+                              float(np.linalg.norm(aim[:2] - eye)), lens=lens)
+            s = (min(clear, 25.0) / 25.0) * (0.35 + 1.4 * water) \
+                * (infront / max(len(sel), 1)) \
+                * math.exp(-((fill - 0.62) / 0.26) ** 2)
+            if best is None or s > best[0]:
+                best = (s, eye, clear, water, infront, rad)
+        if best:
+            out.append((th, *best))
+    # Keep the best in each of `n` azimuth buckets, so the sheet stays a sheet.
+    buckets: dict[int, tuple] = {}
+    for th, s, eye, clear, water, infront, rad in out:
+        b = int(n * th / (2 * math.pi)) % n
+        if b not in buckets or s > buckets[b][0]:
+            buckets[b] = (s, eye, clear, water, infront, rad, th)
+    return [buckets[k] for k in sorted(buckets)]
 
 
 def render(path: str, res=(1280, 720), samples: int = 64) -> None:
@@ -758,6 +1028,9 @@ def main() -> None:
     ap.add_argument("--people", default="data/twin/people.npz")
     ap.add_argument("--no-people", action="store_true")
     ap.add_argument("--lobe", action="store_true")
+    ap.add_argument("--preset-camera", action="store_true",
+                    help="use the authored camera in areas.py instead of the "
+                         "scored one")
     args = ap.parse_args(argv)
 
     bpy.ops.object.select_all(action="SELECT")
@@ -794,12 +1067,17 @@ def main() -> None:
     eye, target = hero_camera(a, sel, (cx, cy))
     # Terrain must reach the camera, or the shot opens on a hole in the world.
     reach = float(np.linalg.norm(eye[:2] - np.array([cx, cy]))) + 45.0
-    build_terrain(a, mats, col_g, max(radius + 25.0, reach), (cx, cy))
-    build_water(a, mats, col_g, centre=(cx, cy), radius=radius + 30.0)
+    half = max(radius + 25.0, reach)
+    bodies = water_bodies(a, (cx, cy), half)
+    grid = ground_grid(a, half, (cx, cy), bodies)
+    faces = build_terrain(a, mats, col_g, grid)
+    build_water(a, mats, col_g, grid)
+    build_quay_wall(a, mats, col_g, grid[1], faces, bodies)
 
     if not args.no_clutter:
-        plan = clutter_mod.build_plan(a, seed=args.seed,
-                                      frontage=(cx, cy, radius))
+        plan = clutter_mod.build_plan(
+            a, seed=args.seed, frontage=(cx, cy, radius),
+            ground_floor={k: s.ground_floor for k, s in readings.items()})
         plan.instances = [i for i in plan.instances
                           if (i.xy[0] - cx) ** 2 + (i.xy[1] - cy) ** 2 < radius ** 2]
         assets = load_citygen_assets({i.kind for i in plan.instances})
@@ -828,7 +1106,12 @@ def main() -> None:
         print(f"[twin] saved {args.save}")
 
     if args.render:
-        preset = CAMERAS.get(args.area)
+        # The authored preset is opt-in, not the default. It used to win silently,
+        # so `hero_camera` computed a viewpoint, printed it, and was then thrown
+        # away at render time: every improvement to the scorer landed in the
+        # contact sheet and none of it reached the shipped picture. An authored
+        # camera also does not survive "now do Paris", which is the whole point.
+        preset = CAMERAS.get(args.area) if args.preset_camera else None
         if preset:
             (ex, ey), (tx, ty), lens = preset
             top = float(np.percentile([b.top_z for b in sel], 75))

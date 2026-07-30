@@ -37,6 +37,8 @@ PROXY_DIMS: dict[str, tuple[float, float, float]] = {
     "bicycle": (1.70, 0.45, 1.05),
     "terrace": (4.00, 2.50, 2.30),    # parasols and tables as one block
     "railing": (1.50, 0.06, 0.95),
+    "aboard": (0.70, 0.55, 1.10),     # pavement sign outside a shop
+    "planter": (1.10, 0.55, 0.95),
 }
 
 # Radio material per class. Vehicles are the reason this layer exists at 28 GHz:
@@ -52,7 +54,24 @@ PROXY_MATERIAL: dict[str, str] = {
     "bicycle": "metal",
     "terrace": "wood",
     "railing": "metal",
+    "aboard": "wood",
+    "planter": "concrete",
 }
+
+# What a frontage puts on the pavement, by what the director read on its ground
+# floor. Blanketing every long edge at one probability was the uniform-detail
+# failure mode arriving through the clutter layer instead of the mesh: a quay
+# where the residential doors, the bank and the cafes all had the same terrace
+# outside them. The reading already distinguishes them, so use it.
+FRONTAGE_KIT: dict[str, tuple[float, tuple[str, ...]]] = {
+    "cafe_glazing": (0.85, ("terrace", "terrace", "planter")),
+    "arcade": (0.55, ("terrace", "bench")),
+    "shopfront": (0.50, ("aboard", "planter", "bicycle")),
+    "garage": (0.05, ("bollard",)),
+    "residential_door": (0.18, ("planter", "bicycle", "bicycle")),
+    "institutional_portal": (0.22, ("bollard", "bench")),
+}
+FRONTAGE_DEFAULT = (0.35, ("planter", "bicycle"))
 
 
 @dataclass
@@ -339,19 +358,27 @@ def fill_street_trees(anchor: Anchor, plan: Plan, rng: np.random.Generator, *,
 
 def frontage_terraces(anchor: Anchor, plan: Plan, rng: np.random.Generator,
                       centre, radius: float, *, pitch: float = 7.0,
-                      standoff: float = 3.4, probability: float = 0.7) -> None:
-    """Terraces along the quay frontage, whether or not a POI was mapped there.
+                      standoff: float = 3.4, probability: float = 0.7,
+                      ground_floor: dict[int, str] | None = None) -> None:
+    """Pavement clutter along the frontage, keyed to what each ground floor is.
 
     The mapped hospitality nodes cluster around Korenmarkt, so keying terraces to
     POIs alone leaves the Graslei bare, and a bare Graslei is wrong about Ghent in a
     way that looks finished. This is the macro-faithful, small-plausible rule doing
-    its job: the frontage is measured, the terraces on it are generated because a
-    quay like this one, in a month worth simulating, is covered in them.
+    its job: the frontage is measured, what stands on it is generated because a
+    quay like this one, in a month worth simulating, is covered in it.
+
+    Which kit lands is the director's call, not a constant. `probability` now only
+    scales the reading, so a run with no readings still behaves as it used to.
     """
     c = np.asarray(centre, dtype=float)
+    ground_floor = ground_floor or {}
     for b in anchor.buildings:
         if np.linalg.norm(b.centroid - c) > radius:
             continue
+        p_edge, kit = FRONTAGE_KIT.get(ground_floor.get(b.osm_id, ""),
+                                       FRONTAGE_DEFAULT)
+        p_edge *= probability / 0.7
         ring = b.ring
         for i in range(len(ring)):
             a0, a1 = ring[i], ring[(i + 1) % len(ring)]
@@ -370,15 +397,21 @@ def frontage_terraces(anchor: Anchor, plan: Plan, rng: np.random.Generator,
                 continue
             n_slots = max(1, int(length // pitch))
             for k in range(n_slots):
-                if rng.random() > probability:
+                if rng.random() > p_edge:
                     continue
+                kind = kit[int(rng.integers(len(kit)))]
+                depth = PROXY_DIMS[kind][1]
+                # A parasol block and an A-board do not stand at the same distance
+                # from the glass: the terrace needs its own footprint, the sign
+                # leans on the wall. Scaling the standoff by the object's own depth
+                # keeps a bicycle from floating 3.4 m out in the middle of the quay.
+                off = standoff * (0.35 + 0.65 * depth / PROXY_DIMS["terrace"][1])
                 t = (k + 0.5) * length / n_slots
-                xy = a0 + tang * t + nrm * standoff
+                xy = a0 + tang * t + nrm * off
                 if not _clear_of_buildings(anchor, xy, 1.0):
                     continue
-                _ = k
                 plan.add(Instance(
-                    kind="terrace",
+                    kind=kind,
                     xy=(float(xy[0]), float(xy[1])),
                     z=anchor.terrain.at(*xy),
                     yaw=float(np.arctan2(nrm[1], nrm[0])),
@@ -392,7 +425,8 @@ def frontage_terraces(anchor: Anchor, plan: Plan, rng: np.random.Generator,
 def build_plan(anchor: Anchor, seed: int = 0, *,
                cars: bool = True, trees: bool = True,
                terraces: bool = True,
-               frontage: tuple | None = None) -> Plan:
+               frontage: tuple | None = None,
+               ground_floor: dict[int, str] | None = None) -> Plan:
     """The whole clutter layer for one seed."""
     plan = Plan(seed=seed)
     rng = np.random.default_rng(seed)
@@ -405,7 +439,8 @@ def build_plan(anchor: Anchor, seed: int = 0, *,
     if terraces:
         terraces_at_hospitality(anchor, plan, rng)
     if frontage is not None:
-        frontage_terraces(anchor, plan, rng, frontage[:2], frontage[2])
+        frontage_terraces(anchor, plan, rng, frontage[:2], frontage[2],
+                          ground_floor=ground_floor)
     return plan
 
 

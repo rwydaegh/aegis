@@ -266,26 +266,92 @@ def _balcony(mesh: Mesh, P, t0: float, t1: float, zb: float, trim) -> None:
                        P(t, 0, zb + rail)], trim)
 
 
+def _box(mesh, P, t0: float, t1: float, y0: float, y1: float,
+         z0: float, z1: float, tag) -> None:
+    """Five faces of an axis-aligned block in facade coordinates.
+
+    The sixth, against the wall plane, is left off: it is never visible and it is
+    a coplanar duplicate of the wall, which is the classic source of z-fighting
+    stripes across a whole terrace.
+    """
+    mesh.add_face([P(t0, y1, z0), P(t1, y1, z0), P(t1, y1, z1), P(t0, y1, z1)], tag)
+    mesh.add_face([P(t0, y0, z0), P(t0, y1, z0), P(t0, y1, z1), P(t0, y0, z1)], tag)
+    mesh.add_face([P(t1, y1, z0), P(t1, y0, z0), P(t1, y0, z1), P(t1, y1, z1)], tag)
+    mesh.add_face([P(t0, y0, z1), P(t0, y1, z1), P(t1, y1, z1), P(t1, y0, z1)], tag)
+    mesh.add_face([P(t0, y1, z0), P(t0, y0, z0), P(t1, y0, z0), P(t1, y1, z0)], tag)
+
+
+def _shopfront_order(mesh: Mesh, P, spec: FacadeSpec, z0: float, span: float,
+                     pad: float, d: float, top: float) -> None:
+    """Pilasters, stallriser, fascia and a recessed door under the glass.
+
+    The reading for nearly every commercial frontage on this quay says the same
+    thing in different words: the ground-floor order is where the detail budget
+    belongs, because the pilasters and the entablature are 25 to 30 cm projections
+    standing at 3 m, which is exactly the height a downtilted small cell
+    illuminates and exactly the depth that stops being roughness at 28 GHz. A flat
+    inset pane, which is what this used to build, is a specular strip that returns
+    one lobe; a pilaster order is a run of wedges and shallow corner reflectors.
+
+    It is also the difference between a street and a row of boxes with dark
+    rectangles on them, which is what the first renders looked like.
+    """
+    glass = (L, "glass", "glass")
+    wall = (L, "wall", spec.wall_material)
+    trim = (L, "sill", spec.trim_material or spec.wall_material)
+    door = (L, "door", "wood")
+
+    t0, t1 = pad, span - pad
+    zb = z0 + 0.62                       # stallriser: glass does not meet the sett
+    if top - zb < 1.2:                   # too shallow for an order, keep it plain
+        mesh.add_face([P(t0, -d, zb), P(t1, -d, zb), P(t1, -d, top),
+                       P(t0, -d, top)], glass)
+        return
+
+    nb = max(1, spec.bays)
+    edges = [t0 + (t1 - t0) * i / nb for i in range(nb + 1)]
+    pw = min(0.42, 0.30 * (t1 - t0) / nb)
+    proj = 0.28
+    door_bay = nb // 2 if spec.ground_floor != "arcade" else -1
+
+    for i in range(nb):
+        a, b_ = edges[i] + pw / 2, edges[i + 1] - pw / 2
+        if b_ - a < 0.5:
+            continue
+        if i == door_bay and b_ - a > 1.0:
+            dw = min(1.15, (b_ - a) * 0.5)
+            dc = (a + b_) / 2
+            mesh.add_face([P(dc - dw / 2, -d, z0), P(dc + dw / 2, -d, z0),
+                           P(dc + dw / 2, -d, z0 + 2.35),
+                           P(dc - dw / 2, -d, z0 + 2.35)], door)
+            for u, v in ((a, dc - dw / 2), (dc + dw / 2, b_)):
+                if v - u > 0.25:
+                    mesh.add_face([P(u, -d, zb), P(v, -d, zb), P(v, -d, top),
+                                   P(u, -d, top)], glass)
+            continue
+        mesh.add_face([P(a, -d, zb), P(b_, -d, zb), P(b_, -d, top),
+                       P(a, -d, top)], glass)
+        # Stallriser panel under the glass, set slightly forward of it.
+        mesh.add_face([P(a, -d + 0.06, z0), P(b_, -d + 0.06, z0),
+                       P(b_, -d + 0.06, zb), P(a, -d + 0.06, zb)], wall)
+
+    for e in edges:
+        _box(mesh, P, e - pw / 2, e + pw / 2, -d, proj, z0, top, trim)
+
+    # Entablature over the whole run, standing a little proud of the pilasters so
+    # the shadow line reads and the upward-facing soffit exists as a facet.
+    _box(mesh, P, t0 - pw / 2, t1 + pw / 2, -d, proj + 0.07, top, top + 0.42, trim)
+
+
 def _ground_floor(mesh: Mesh, P, spec: FacadeSpec, z0: float, span: float,
                   pad: float, d: float) -> None:
     kind = spec.ground_floor
     top = z0 + spec.ground_height_m - 0.55
-    glass = (L, "glass", "glass")
     wall = (L, "wall", spec.wall_material)
     door = (L, "door", "wood")
 
     if kind in {"shopfront", "cafe_glazing", "arcade"}:
-        t0, t1 = pad, span - pad
-        zb = z0 + 0.35
-        mesh.add_face([P(t0, -d, zb), P(t1, -d, zb), P(t1, -d, top),
-                       P(t0, -d, top)], glass)
-        for t in (t0, t1):
-            sgn = 1.0 if t == t0 else -1.0
-            mesh.add_face([P(t, 0, zb), P(t, -d, zb), P(t, -d, top),
-                           P(t, 0, top)], wall)
-            del sgn
-        mesh.add_face([P(t0, -d, top), P(t1, -d, top), P(t1, 0, top),
-                       P(t0, 0, top)], wall)
+        _shopfront_order(mesh, P, spec, z0, span, pad, d, top)
     elif kind in {"residential_door", "institutional_portal", "garage"}:
         w = 1.4 if kind == "residential_door" else 2.6
         h = 2.5 if kind == "residential_door" else 3.0

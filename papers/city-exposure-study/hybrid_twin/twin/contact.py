@@ -38,69 +38,10 @@ def ortho_camera(centre, half: float, z: float):
     return ob
 
 
-def clearance(a, p) -> float:
-    """Distance from a point to the nearest building footprint."""
-    from twin.facade import _seg_dist
-    return min(_seg_dist(p, np.vstack([b.ring, b.ring[:1]])) for b in a.buildings)
-
-
-def water_in_shot(a, eye, aim) -> float:
-    """Fraction of the sight line that runs over water.
-
-    Foreground water is not decoration on a canal quay, it is the reason the view
-    exists: it separates the camera from the row, fills the bottom of the frame, and
-    doubles the facade through its reflection. The first hero preset had none,
-    which is most of why it read as a car park with houses at the far end.
-    """
-    from twin.facade import _seg_dist
-    lines = [(w.line, 14.0 if "leie" in (w.tags.get("name") or "").lower() else 7.0)
-             for w in a.ways_of("waterline")]
-    if not lines:
-        return 0.0
-    eye, aim = np.asarray(eye)[:2], np.asarray(aim)[:2]
-    hits = 0
-    n = 24
-    for i in range(n):
-        p = eye + (aim - eye) * ((i + 0.5) / n)
-        if any(_seg_dist(p, ln) < half for ln, half in lines):
-            hits += 1
-    return hits / n
-
-
-def candidate_eyes(a, sel, focus, aim, *, ring: float, n: int = 8) -> list:
-    """Viewpoints that are outdoors, clear of walls, and looking at something.
-
-    A bare ring of azimuths puts a third of its cameras inside the block. Scoring
-    first is cheap, and the number that matters is clearance: the previous authored
-    preset stood 1.0 m from a facade, which no amount of lens choice recovers.
-    """
-    out = []
-    for k in range(n * 6):
-        th = 2 * math.pi * k / (n * 6)
-        best = None
-        for rad in (ring, ring * 0.75, ring * 1.25, ring * 0.55):
-            eye = focus + np.array([math.cos(th), math.sin(th)]) * rad
-            clear = clearance(a, eye)
-            if clear < 5.0:
-                continue
-            water = water_in_shot(a, eye, aim)
-            # How much of the row is actually in front of this camera.
-            view = (aim[:2] - eye) / (np.linalg.norm(aim[:2] - eye) + 1e-9)
-            infront = sum(1 for b in sel
-                          if np.dot(b.centroid - eye, view) > 0.3 * rad)
-            s = (min(clear, 25.0) / 25.0) * (0.35 + 1.4 * water) \
-                * (infront / max(len(sel), 1))
-            if best is None or s > best[0]:
-                best = (s, eye, clear, water, infront, rad)
-        if best:
-            out.append((th, *best))
-    # Keep the best in each of `n` azimuth buckets, so the sheet stays a sheet.
-    buckets: dict[int, tuple] = {}
-    for th, s, eye, clear, water, infront, rad in out:
-        b = int(n * th / (2 * math.pi)) % n
-        if b not in buckets or s > buckets[b][0]:
-            buckets[b] = (s, eye, clear, water, infront, rad, th)
-    return [buckets[k] for k in sorted(buckets)]
+# The viewpoint scorer lives in `realise` because the shipped hero camera uses it
+# too. Keeping a second copy here is how the sheet and the render drift apart, and
+# the sheet is only worth rendering if it predicts what the render will do.
+candidate_eyes = realise.candidate_eyes
 
 
 def main() -> None:
