@@ -356,14 +356,10 @@ def test_worstcase_beam_at_skin_reaches_absorption_envelope():
     normal = np.array([0.0, 0.0, 1.0])  # faces the -z arrivals (mu = n.(-k) > 0)
     n_tilde, sigma = skin_props(28.0)
 
-    g_tilde = compute_body_channel(
-        normal.reshape(1, 3), focus.reshape(1, 3), k, psi, elem, n_tilde, sigma, FREQ, M
-    )
+    g_tilde = compute_body_channel(normal.reshape(1, 3), focus.reshape(1, 3), k, psi, elem, n_tilde, sigma, FREQ, M)
     lam = float(np.linalg.svd(g_tilde[0], compute_uv=False)[0] ** 2)
 
-    x_abs = build_precoder(
-        "worstcase", paths, focus, FREQ, power=1.0, body_normal=normal, n_tilde=n_tilde, sigma=sigma
-    )
+    x_abs = build_precoder("worstcase", paths, focus, FREQ, power=1.0, body_normal=normal, n_tilde=n_tilde, sigma=sigma)
     x_field = build_precoder("worstcase", paths, focus, FREQ, power=1.0)
 
     dep_abs = float(np.sum(np.abs(g_tilde[0] @ x_abs) ** 2))
