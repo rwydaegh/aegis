@@ -1,0 +1,89 @@
+{
+ "osm_id": 494007950,
+ "status": "ok",
+ "reading": {
+  "identification": "Late-19th-century rendered corner house at Korenmarkt/Kortemunt in Ghent, four storeys of flats over a pharmacy shopfront, distinguished by a painted timber canted oriel at first floor.",
+  "storeys": {
+   "count": 4,
+   "ground_height_m": 4,
+   "upper_height_m": 3.15,
+   "evidence": "inferred"
+  },
+  "bays": {
+   "count": 3,
+   "evidence": "inferred"
+  },
+  "window": {
+   "width_m": 1.3,
+   "height_m": 2.3,
+   "reveal_class": "shallow",
+   "glazing_bars": false,
+   "evidence": "seen"
+  },
+  "ground_floor": {
+   "kind": "shopfront",
+   "evidence": "seen"
+  },
+  "roof": {
+   "form": "gabled",
+   "ridge_parallel_to_street": true,
+   "evidence": "inferred"
+  },
+  "ledges": {
+   "sills": true,
+   "cornice": true,
+   "string_courses": true,
+   "balconies": false,
+   "evidence": "seen"
+  },
+  "material": {
+   "wall": "concrete",
+   "roughness_mm": 0.6,
+   "trim": "marble",
+   "evidence": "seen"
+  },
+  "confidence": 0.58,
+  "notes": "STOREYS/ROOF ARE THE WEAK HALF. Set B's outline is dashed at the top, so no storey count is observable; the count is reconstructed from height_m 17.1 against a 5.3 m depth. 4.0 + 3x3.15 = 13.45 m eaves leaves 3.65 m of roof over a 5.3 m span, a ~54 deg Flemish pitch that lands on 17.1. Five storeys would leave ~1.1 m of roof, which this city does not build. A mansard is the plausible alternative to gabled for this period and would keep the same eaves line; if the generator supports it, mansard is roughly a coin-flip against gabled here. Ridge orientation follows the shallow plan (spanning the 5.3 m depth, parallel to Korenmarkt); as a corner unit with 2 street frontages it may carry a half-hip at the exposed end, which set A cannot resolve.\n\nMATERIAL CHOICES. Wall is smooth painted cement render over masonry, not fair-face brick, so I chose concrete over brick: at 28 GHz the penetration depth is small enough that the render skin, not the brick substrate, sets the surface impedance. roughness_mm 0.6 is the smooth-render regime, deliberately far below the 3-8 mm you would give recessed brick joints. Trim = marble stands for the grey natural stone (Belgian blue stone) plinth and the smooth stone-look surrounds around the shopfront, which is the electrically distinct band at exactly the height a street-level beam hits. Caveat: the oriel itself is painted timber joinery, a different material from the trim value; if the generator can take a per-element override, the oriel box should be wood.\n\nDETAIL BUDGET. distance_m 0.0 from the pedestrian corridor puts this building in the top tier. Spend it on the canted oriel: it must be real geometry, a three-sided corbelled projection roughly 2.6 m wide and 0.5-0.6 m deep spanning first floor, because it is the one feature that makes this facade a specific building rather than a rendered box, and at ~0.5 m projection it is firmly in the explicit-geometry regime. Second priority is the ground floor: the shop entrance is genuinely recessed (roughly 0.6-0.9 m behind the frontage line) and that reveal is a strong corner reflector at pedestrian height. Third, the string course and window sills as real ledges. Do NOT mesh the render texture or the moulding ornament - the panelled pilaster strips on the oriel and the fascia lettering are 1-5 cm relief and belong in the roughness/scattering coefficient, not the mesh.\n\nCLUTTER. car_access is none on Korenmarkt and the photograph confirms it: trams and pedestrians only, no parked vehicles anywhere in frame. Do not place vehicles on this frontage under any rule. What the photo does show and what belongs here: bicycles parked loose against the facades, a bike trailer, freestanding timber terrace benches on the pavement directly in front of the neighbouring unit, and the tram rails set into the paving_stones. The projecting illuminated pharmacy cross is a real metre-scale metal object cantilevered off the wall at about first-floor level and is a legitimate scatterer if the generator has a signage class.\n\nWHAT I DID NOT SEE. Bay count is inferred from 8.4 m frontage at a typical 2.7 m rhythm; the frame shows the oriel plus one adjacent opening and cuts off the rest. Window dimensions are read off the first-floor openings and assumed repeated up the elevation, which is standard for this type but not observed above the second floor."
+ },
+ "flags": [],
+ "facts": {
+  "osm_id": 494007950,
+  "city": "Ghent, Belgium",
+  "osm_tags": {
+   "building": "house",
+   "addr:street": "Kortemunt"
+  },
+  "frontage_width_m": 8.4,
+  "footprint_m": [
+   9.2,
+   5.3
+  ],
+  "footprint_area_m2": 43,
+  "height_m": 17.1,
+  "height_source": "adopted-photo",
+  "street_frontages": 2,
+  "attached_neighbours": 2,
+  "fronting_street": {
+   "highway": "pedestrian",
+   "name": "Korenmarkt",
+   "surface": "paving_stones",
+   "car_access": "none",
+   "distance_m": 0.0
+  },
+  "plate_view": "oblique",
+  "street_photos": 1,
+  "target_box_normalised": {
+   "x0": 0.377,
+   "x1": 0.63,
+   "y0": 0.434,
+   "y1": 0.835
+  }
+ },
+ "plate": "renders/plates/graslei/494007950.png",
+ "photos": [
+  "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007950_0.jpg"
+ ],
+ "view": "oblique",
+ "cost_usd": 0.6730415000000001,
+ "model": "claude-opus-5"
+}

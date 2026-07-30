@@ -21,6 +21,7 @@ centimetre features is wrong physics rather than merely expensive.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 
 import numpy as np
@@ -132,9 +133,22 @@ def _longest_edge(ring: np.ndarray) -> int:
     return int(np.argmax(lens))
 
 
+GLAZED_GROUND = {"shopfront", "cafe_glazing", "arcade", "garage"}
+
+
 def _window_rows(spec: FacadeSpec, z0: float) -> list[float]:
-    """Sill heights, one per upper storey."""
+    """Sill heights, one per storey that gets a punched window.
+
+    The ground floor is included unless it is glazed as a shopfront or blocked by a
+    garage door, because those get their own treatment. Leaving it out unconditionally
+    was wrong and visible: a director reading of four storeys rendered three rows of
+    windows over a blank plinth with a door in it, which is not what a Ghent quay
+    house looks like and loses a whole storey of window reveals from the wall the
+    beam actually illuminates.
+    """
     rows = []
+    if spec.ground_floor not in GLAZED_GROUND and spec.ground_height_m > 2.6:
+        rows.append(z0 + 0.95)
     z = z0 + spec.ground_height_m
     for _ in range(max(0, spec.storeys - 1)):
         rows.append(z + 0.5 * (spec.upper_height_m - spec.window_h))
@@ -172,9 +186,16 @@ def _openings_on_edge(mesh: Mesh, a: np.ndarray, c: np.ndarray, spec: FacadeSpec
         p = a + u * t + nrm * off
         return (float(p[0]), float(p[1]), float(z))
 
-    for zb in _window_rows(spec, z0):
-        zt = zb + spec.window_h
+    rows = _window_rows(spec, z0)
+    # Which bay the front door occupies, so the ground row does not punch a window
+    # through it. Centre bay on an odd rhythm, just off centre on an even one.
+    door_bay = bays // 2 if spec.ground_floor not in GLAZED_GROUND else -1
+    for row_i, zb in enumerate(rows):
+        ground_row = row_i == 0 and zb < z0 + spec.ground_height_m - 0.1
+        zt = zb + (spec.window_h * 0.85 if ground_row else spec.window_h)
         for k in range(bays):
+            if ground_row and k == door_bay:
+                continue
             tc = pad + (k + 0.5) * pitch
             t0, t1 = tc - spec.window_w / 2, tc + spec.window_w / 2
             # reveal: four jambs stepping back from the wall plane
@@ -204,8 +225,45 @@ def _openings_on_edge(mesh: Mesh, a: np.ndarray, c: np.ndarray, spec: FacadeSpec
                                P(t1, -d + 0.01, zm - 0.03),
                                P(t1, -d + 0.01, zm + 0.03),
                                P(t0, -d + 0.01, zm + 0.03)], bar)
+            if spec.balconies:
+                _balcony(mesh, P, t0, t1, zb, trim)
+
+    if spec.string_courses:
+        _string_courses(mesh, P, spec, z0, span, trim)
 
     _ground_floor(mesh, P, spec, z0, span, pad, d)
+
+
+def _string_courses(mesh: Mesh, P, spec: FacadeSpec, z0: float, span: float,
+                    trim) -> None:
+    """A band at each floor line. 0.15 m proud, so it is a facet at 28 GHz.
+
+    Horizontal relief on this scale is the reason a real street does not behave
+    like a flat reflector: it is 14 wavelengths deep and it faces up, which is where
+    a downtilted small cell is putting its energy.
+    """
+    p = 0.15
+    z = z0 + spec.ground_height_m
+    for _ in range(max(0, spec.storeys - 1)):
+        mesh.add_face([P(0, p, z), P(span, p, z), P(span, p, z + 0.18),
+                       P(0, p, z + 0.18)], trim)
+        mesh.add_face([P(0, 0, z + 0.18), P(span, 0, z + 0.18),
+                       P(span, p, z + 0.18), P(0, p, z + 0.18)], trim)
+        mesh.add_face([P(0, p, z), P(span, p, z), P(span, 0, z), P(0, 0, z)], trim)
+        z += spec.upper_height_m
+
+
+def _balcony(mesh: Mesh, P, t0: float, t1: float, zb: float, trim) -> None:
+    """Slab and railing under one window. Depth 0.9 m, rail 1.0 m."""
+    a, b_, dep, rail = t0 - 0.25, t1 + 0.25, 0.9, 1.0
+    mesh.add_face([P(a, 0, zb), P(b_, 0, zb), P(b_, dep, zb), P(a, dep, zb)], trim)
+    mesh.add_face([P(a, dep, zb - 0.12), P(b_, dep, zb - 0.12),
+                   P(b_, dep, zb), P(a, dep, zb)], trim)
+    mesh.add_face([P(a, dep, zb), P(b_, dep, zb), P(b_, dep, zb + rail),
+                   P(a, dep, zb + rail)], trim)
+    for t in (a, b_):
+        mesh.add_face([P(t, 0, zb), P(t, dep, zb), P(t, dep, zb + rail),
+                       P(t, 0, zb + rail)], trim)
 
 
 def _ground_floor(mesh: Mesh, P, spec: FacadeSpec, z0: float, span: float,
@@ -230,11 +288,48 @@ def _ground_floor(mesh: Mesh, P, spec: FacadeSpec, z0: float, span: float,
                        P(t0, 0, top)], wall)
     elif kind in {"residential_door", "institutional_portal", "garage"}:
         w = 1.4 if kind == "residential_door" else 2.6
-        tc = span / 2
-        mesh.add_face([P(tc - w / 2, -0.06, z0),
-                       P(tc + w / 2, -0.06, z0),
-                       P(tc + w / 2, -0.06, z0 + 2.5),
-                       P(tc - w / 2, -0.06, z0 + 2.5)], door)
+        h = 2.5 if kind == "residential_door" else 3.0
+        tc = _door_centre(span, pad, spec)
+        # Recessed, with a surround. A flush rectangle of door-coloured wall reads
+        # as a decal, and at 28 GHz a 0.15 m reveal on the one opening the beam
+        # sees at grazing incidence is not decoration either.
+        rc = 0.15
+        for t0, t1, sgn in ((tc - w / 2, tc - w / 2, 1.0), (tc + w / 2,
+                                                            tc + w / 2, -1.0)):
+            mesh.add_face([P(t0, 0, z0), P(t0, -rc, z0), P(t1, -rc, z0 + h),
+                           P(t1, 0, z0 + h)], wall)
+            del sgn
+        mesh.add_face([P(tc - w / 2, -rc, z0 + h), P(tc + w / 2, -rc, z0 + h),
+                       P(tc + w / 2, 0, z0 + h), P(tc - w / 2, 0, z0 + h)], wall)
+        mesh.add_face([P(tc - w / 2, -rc, z0), P(tc + w / 2, -rc, z0),
+                       P(tc + w / 2, -rc, z0 + h), P(tc - w / 2, -rc, z0 + h)], door)
+        if spec.trim_material:
+            b = 0.16
+            mesh.add_face([P(tc - w / 2 - b, 0.05, z0), P(tc - w / 2, 0.05, z0),
+                           P(tc - w / 2, 0.05, z0 + h + b),
+                           P(tc - w / 2 - b, 0.05, z0 + h + b)],
+                          (L, "surround", spec.trim_material))
+            mesh.add_face([P(tc + w / 2, 0.05, z0), P(tc + w / 2 + b, 0.05, z0),
+                           P(tc + w / 2 + b, 0.05, z0 + h + b),
+                           P(tc + w / 2, 0.05, z0 + h + b)],
+                          (L, "surround", spec.trim_material))
+            mesh.add_face([P(tc - w / 2 - b, 0.05, z0 + h),
+                           P(tc + w / 2 + b, 0.05, z0 + h),
+                           P(tc + w / 2 + b, 0.05, z0 + h + b),
+                           P(tc - w / 2 - b, 0.05, z0 + h + b)],
+                          (L, "surround", spec.trim_material))
+
+
+def _door_centre(span: float, pad: float, spec: FacadeSpec) -> float:
+    """Put the door in the bay the window rhythm left empty, not at mid-span.
+
+    Mid-span only coincides with the empty bay on an odd rhythm. On four bays the
+    door landed on a mullion.
+    """
+    usable = span - 2 * pad
+    bays = max(1, min(spec.bays, int(usable // (spec.window_w * 1.35)) or 1))
+    pitch = usable / bays
+    return pad + (bays // 2 + 0.5) * pitch
 
 
 def _roof(mesh: Mesh, b: Building, rect: OrientedRect, spec: FacadeSpec,
@@ -390,6 +485,68 @@ def _weighted_pick(options, r: float) -> str:
         if r < acc:
             return name
     return options[-1][0]
+
+
+def spec_from_reading(r: dict) -> FacadeSpec:
+    """Turn one director reading into generator knobs. No geometry crosses here.
+
+    The reveal arrives as a class rather than a number and is resolved against
+    `director.REVEAL_M`, so the depth stays a project constant that can be swept
+    without re-reading 32 buildings.
+    """
+    from .director import REVEAL_M
+
+    st, win, mat = r["storeys"], r["window"], r["material"]
+    led = r["ledges"]
+    return FacadeSpec(
+        storeys=int(st["count"]),
+        ground_height_m=float(st["ground_height_m"]),
+        upper_height_m=float(st["upper_height_m"]),
+        bays=int(r["bays"]["count"]),
+        window_w=float(win["width_m"]),
+        window_h=float(win["height_m"]),
+        reveal_m=REVEAL_M[win["reveal_class"]],
+        glazing_bars=bool(win["glazing_bars"]),
+        ground_floor=r["ground_floor"]["kind"],
+        roof_form=r["roof"]["form"],
+        ridge_parallel_to_street=bool(r["roof"]["ridge_parallel_to_street"]),
+        sills=bool(led["sills"]),
+        cornice=bool(led["cornice"]),
+        string_courses=bool(led["string_courses"]),
+        balconies=bool(led["balconies"]),
+        wall_material=mat["wall"],
+        roughness_mm=float(mat["roughness_mm"]),
+        trim_material=mat["trim"],
+    )
+
+
+def load_readings(area: str = "graslei", path=None) -> dict[int, FacadeSpec]:
+    """Director readings for an area, keyed by OSM id. Missing file means none."""
+    import pathlib
+
+    root = pathlib.Path(__file__).resolve().parent.parent / "data" / "twin"
+    p = pathlib.Path(path) if path else root / f"facades_{area}.json"
+    records = []
+    if p.exists():
+        records = json.loads(p.read_text())["readings"]
+    else:
+        # The per-building cache, so a director run that is still going or that
+        # died partway still dresses the buildings it did manage to read.
+        cache = root / f"readings_{area}"
+        records = [json.loads(f.read_text()) for f in sorted(cache.glob("*.json"))]
+    out = {}
+    for rec in records:
+        if rec.get("status") != "ok":
+            continue
+        out[int(rec["osm_id"])] = spec_from_reading(rec["reading"])
+    return out
+
+
+def spec_for(b: Building, readings: dict[int, FacadeSpec] | None) -> FacadeSpec:
+    """A reading if one exists for this building, otherwise the regional prior."""
+    if readings and b.osm_id in readings:
+        return readings[b.osm_id]
+    return default_spec(b)
 
 
 def default_spec(b: Building) -> FacadeSpec:

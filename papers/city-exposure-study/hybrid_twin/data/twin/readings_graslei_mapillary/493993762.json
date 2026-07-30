@@ -1,0 +1,97 @@
+{
+ "osm_id": 493993762,
+ "status": "ok",
+ "reading": {
+  "bays": {
+   "count": 2,
+   "evidence": "inferred"
+  },
+  "confidence": 0.5,
+  "ground_floor": {
+   "kind": "blank",
+   "evidence": "inferred"
+  },
+  "identification": "The Graanspijker, a late-medieval/early-modern Ghent brick grain-staple warehouse on the Pensmarkt, turning a tall steep tiled gable to the narrow Vleeshuistragel alley beside the Groot Vleeshuis, three tall storage floors under a deep loft, heritage-listed and currently under restoration behind contractor hoarding.",
+  "ledges": {
+   "sills": true,
+   "cornice": true,
+   "string_courses": false,
+   "balconies": false,
+   "evidence": "inferred"
+  },
+  "material": {
+   "wall": "brick",
+   "roughness_mm": 6,
+   "trim": "marble",
+   "evidence": "inferred"
+  },
+  "notes": "EVIDENCE STATE: set B does not show this facade at all - the target is entirely behind white Denys site hoarding, scaffolding and a green temporary weather roof at the right frame edge. The crisp brick, sash joinery and stone plinth visible in set B belong to the buildings on the LEFT of the tragel and must not be attributed here. All facade fields are therefore inferred from building type; only massing and roof come from plate A.\n\nHEIGHT LOGIC: 18 m confirmed over 3 levels only closes with warehouse storeys (4.5 / 4.0 / 4.0 -> ~12.5 m eaves, ~5.5 m gable). Across the 4.8 m alley frontage that is a very steep pitch, which is correct for a spijker - grain lofts are volume, not headroom - and matches the sharp apex in plate A. Do not substitute domestic 2.8 m storeys; they force a physically impossible roof.\n\nGEOMETRY TO GENERATE (>10 cm, the regime that matters at 28 GHz): deep window reveals in thick brick, ~0.25 m, with segmental brick relieving arches and projecting Balegem limestone sills; a corbelled brick eaves table (muizentand) at the gable springing; stone gable coping with kneelers; a limestone plinth ~0.8 m at the base; iron wall anchors at floor levels. On the loft face, one hoisting door with a projecting timber hoist beam under the apex - this is the signature element of a graanspijker and is the strongest silhouette feature from any camera angle.\n\nMATERIAL, NOT GEOMETRY: hand-formed small brick with recessed weathered lime joints is the 6 mm roughness figure plus a scattering coefficient. Do not mesh the bond. Trim is set to marble as the nearest EM proxy for Balegem/Tournai calcareous limestone dressings.\n\nGROUND FLOOR: blank is deliberate. Vleeshuistragel is a gravel path, car_access=none, 1.1 m off the wall - a service flank, not a retail frontage. Place a single tall segmental-arched loading/service door within the blank plane; no shopfront, no glazing.\n\nCLUTTER, and this is the one thing set B genuinely proves: the current state is a construction site. Place the white plank hoarding line, scaffolding standards, tarpaulin/temporary roofing and site signage along the alley face. Absolutely no parked vehicles - car access is none and the plate shows a pedestrian cobble/gravel tragel. Pedestrians and a parked bicycle at the Groentenmarkt end only.\n\nDETAIL BUDGET: this wall is 1.1 m from the path, so it sits directly on the street-level corridor. Spend on reveals, the plinth, the arched door and the gable silhouette. The Pensmarkt flank and the party walls to the 5 attached neighbours are occluded and deserve almost nothing.",
+  "roof": {
+   "form": "gabled",
+   "ridge_parallel_to_street": false,
+   "evidence": "seen"
+  },
+  "storeys": {
+   "count": 3,
+   "ground_height_m": 4.5,
+   "upper_height_m": 4,
+   "evidence": "inferred"
+  },
+  "window": {
+   "width_m": 0.95,
+   "height_m": 1.5,
+   "reveal_class": "deep",
+   "glazing_bars": false,
+   "evidence": "inferred"
+  }
+ },
+ "flags": [
+  "roof form marked `seen`, but no view here looks down on it"
+ ],
+ "facts": {
+  "osm_id": 493993762,
+  "city": "Ghent, Belgium",
+  "osm_tags": {
+   "building": "yes",
+   "name": "Graanspijker",
+   "building:material": "brick",
+   "building:levels": "3",
+   "roof:shape": "gabled",
+   "roof:material": "roof_tiles",
+   "heritage": "4",
+   "addr:street": "Pensmarkt"
+  },
+  "frontage_width_m": 4.8,
+  "footprint_m": [
+   21.9,
+   19.6
+  ],
+  "footprint_area_m2": 327,
+  "height_m": 18.0,
+  "height_source": "confirmed",
+  "street_frontages": 2,
+  "attached_neighbours": 5,
+  "fronting_street": {
+   "highway": "path",
+   "name": "Vleeshuistragel",
+   "surface": "gravel",
+   "car_access": "none",
+   "distance_m": 1.1
+  },
+  "plate_view": "street",
+  "street_photos": 1,
+  "target_box_normalised": {
+   "x0": 0.434,
+   "x1": 0.564,
+   "y0": 0.121,
+   "y1": 0.813
+  }
+ },
+ "plate": "renders/plates/graslei/493993762.png",
+ "photos": [
+  "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/493993762_0.jpg"
+ ],
+ "view": "street",
+ "cost_usd": 0.3803225,
+ "model": "claude-opus-5"
+}

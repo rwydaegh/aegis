@@ -257,16 +257,43 @@ FACADE_SCHEMA = {
 FACADE_TASK = """\
 Read this facade and return its grammar.
 
-The image is a street-level render of Google photorealistic 3D tiles, so it carries
-real colour and massing but melts detail below about 25 cm per texel. Treat it as
-evidence for material, storey count, bay rhythm and roof form. Treat it as unable to
-resolve reveal depth, glazing bars, or anything finer, and mark those `inferred`.
+{evidence}
+
+Every image is paired with an annotated copy in which the target building is
+outlined in magenta. The outline is drawn on afterwards and is not part of the
+scene. Read detail from the clean copy and use the outlined one only to be certain
+which building you are being asked about. Where an outline has a dashed top edge,
+the building continues above the top of that frame.
 
 What is known from data, do not contradict it:
 {facts}
 
-Identify the building first, in one sentence, then set the parameters.
+Identify the building first, in one sentence, then set the parameters. Mark a field
+`seen` only if an image actually shows it at a resolution that supports the answer.
 """
+
+# How much each evidence source can actually carry, stated to the director rather
+# than left implied. The two sources fail in opposite directions and saying so is
+# what stops a roof form being read off a photograph that cannot see the roof.
+EVIDENCE_NOTE = {
+    "tiles_street": "Image set A is a rendered eye-level view of Google "
+                    "photorealistic 3D tiles. It carries true colour, massing and "
+                    "storey rhythm, and dissolves below roughly 25 cm per texel, "
+                    "so it cannot resolve mullions, reveal depth or brick bond.",
+    "tiles_oblique": "Image set A is a rendered aerial three-quarter view of "
+                     "Google photorealistic 3D tiles, used because this building "
+                     "has no street a camera can stand in. It is the only view of "
+                     "the roof, and it is weak evidence for anything on the wall.",
+    "photo": "Image set B is a real street photograph. It is the strongest "
+             "evidence available for wall material, window size and subdivision, "
+             "sills and string courses, and what the ground floor is. It is weak "
+             "evidence for roof form, which is foreshortened or hidden from the "
+             "pavement, and its wide lens curves straight lines near the frame "
+             "edge.",
+    "photo_pano": "One image in set B is a 360 panorama, so the facade is "
+                  "stretched. Trust its material and colour, distrust its "
+                  "proportions.",
+}
 
 
 # --------------------------------------------------------------------------
@@ -340,13 +367,15 @@ class Task:
                 "schema": self.schema, "images": self.images}
 
 
-def facade_task(*, osm_id: int, facts: dict, image: str) -> Task:
+def facade_task(*, osm_id: int, facts: dict, images: list[str],
+                evidence: str) -> Task:
     return Task(
         name=f"facade:{osm_id}",
         system=BRIEF,
-        prompt=FACADE_TASK.format(facts=json.dumps(facts, indent=2)),
+        prompt=FACADE_TASK.format(evidence=evidence,
+                                  facts=json.dumps(facts, indent=2)),
         schema=FACADE_SCHEMA,
-        images=[image],
+        images=images,
     )
 
 

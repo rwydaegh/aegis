@@ -1,0 +1,95 @@
+{
+ "osm_id": 494008011,
+ "status": "ok",
+ "reading": {
+  "identification": "Wide-fronted Flemish brick-and-Balegem-limestone merchant/guild house on Graslei, Ghent \u2014 Scheldt-Gothic in character, C17 core reworked in the 1913 World's Fair restoration of the quay, with three storeys of stone-mullioned two-light leaded windows over a caf\u00e9-restaurant ground floor.",
+  "storeys": {
+   "count": 3,
+   "ground_height_m": 4.2,
+   "upper_height_m": 3.7,
+   "evidence": "seen"
+  },
+  "bays": {
+   "count": 5,
+   "evidence": "seen"
+  },
+  "window": {
+   "width_m": 1.15,
+   "height_m": 2.6,
+   "reveal_class": "deep",
+   "glazing_bars": true,
+   "evidence": "seen"
+  },
+  "ground_floor": {
+   "kind": "cafe_glazing",
+   "evidence": "seen"
+  },
+  "roof": {
+   "form": "gabled",
+   "ridge_parallel_to_street": true,
+   "evidence": "seen"
+  },
+  "ledges": {
+   "sills": true,
+   "cornice": true,
+   "string_courses": true,
+   "balconies": false,
+   "evidence": "seen"
+  },
+  "material": {
+   "wall": "brick",
+   "roughness_mm": 5,
+   "trim": "marble",
+   "evidence": "seen"
+  },
+  "confidence": 0.78,
+  "notes": "BAY COUNT (seen, both photos independently): 5 window bays separated by 4 projecting brick piers. Verified by horizontal red-minus-blue saturation profile across the middle storey in each photo \u2014 brick piers as saturation peaks, dark glazed openings as troughs, at perspective-consistent pitch, with one iron wall anchor centred over each pier. Window:pier width ratio ~2:1, so opening ~0.65 of bay pitch. 5 bays over the stated 8.6 m frontage gives a 1.72 m pitch, which is tight; the footprint OBB short side is 9.7 m. If the generator can use the wider street-facing dimension, scale window width with it (up to ~1.28 m) rather than reducing the bay count \u2014 the count is the better-evidenced quantity.\n\nROOF (seen): NOT a street-facing gable, which is the trap on this quay. The facade ends in a straight projecting stone eaves cornice; the steep slate plane sits behind it with a horizontal ridge running parallel to Graslei. Rising off that slope are TWO brick wall dormers with stepped (crow-stepped) tops, each with a small arched opening, plus a tall brick chimney stack near the left party line. These dormers are the dominant silhouette event on this building and are worth explicit geometry \u2014 they read from every rotated camera angle and they are what the set-A plate resolves as spikes above the roofline. The stepped gable visible at the left edge of the target is the party-wall gable; the stepped gable further right belongs to the neighbour, not to this footprint. Pitch is steep, roughly 55-60 deg (inferred).\n\n>10 cm REGIME \u2014 ask for geometry: projecting brick piers running the full height between openings; stone-framed window openings recessed behind them; continuous stone sill/string course under each window row; the projecting eaves cornice with its corbel run; the two stepped dormers; a stone pinnacle/finial on the pilaster at the left party edge (visible in photo 0). Iron wall anchors (fleur-de-lis muurankers, one per pier per floor) sit at ~5-8 cm relief \u2014 borderline, best left out of the mesh and folded into the roughness of the frieze band rather than modelled as thin metal, since thin high-conductivity slivers are numerically nasty and contribute little.\n\n1-10 cm REGIME \u2014 must NOT be meshed: the alternating brick/stone speklagen friezes above each window row, and the alternating stone-and-brick voussoirs over each opening. These are visually the signature of the facade but are 3-6 cm relief; meshing them at 28 GHz violates the locally-smooth assumption and produces specular garbage. They belong in the roughness figure (5 mm RMS set here covers the brick field with its recessed joints) plus an elevated diffuse scattering coefficient on the string-course bands \u2014 suggest S ~0.4-0.5 there against ~0.3 for plain brick, and render them as albedo.\n\nTRIM MATERIAL: the dressings (mullions, transoms, sills, string courses, cornice) are Balegem limestone, not concrete. 'marble' is chosen as the closest available dielectric proxy (eps ~7.1) since limestone runs ~7.6 at microwave; 'concrete' at ~5.2 would under-predict the reflection off what is a large fraction of this facade's projecting area.\n\nGLAZING: each opening is a two-light unit with a stone mullion and a transom in the upper third, filled with small-pane leaded glass. glazing_bars true reflects real lead cames plus stone subdivision \u2014 the subdivision is the ~2-5 cm regime and should be texture, but the mullion and transom themselves are stone members of ~10-15 cm and are legitimate geometry.\n\nGROUND FLOOR (seen, but partly obstructed): ~80% hidden behind the caf\u00e9 tenting in both photos. Brightening the shadows resolves leaded glazing set back behind masonry piers with deep reveals and the lit restaurant interior beyond. Classified cafe_glazing rather than arcade because glass is visible but a walk-through colonnade is not confirmable; if a cadastral or heritage source says arcade, that source should win, since the two differ materially in radio terms (a large open cavity vs a flat glazed plane).\n\nCLUTTER \u2014 calibrate to this street, do not apply a generic rule: fronting street is highway=pedestrian, car_access=none, surface=sett. ZERO vehicles. The correct ground-plane population is the terrace, which the photos show occupying the full frontage and extending 3-4 m onto the quay: two large square grey parasols/tents on poles (De Graslei, De Witte Leeuw next door), wicker armchairs, small round tables, patio heaters, a chalkboard menu on a stand, and seated people. This is directly in the beam path at street level and is a bigger scattering contribution here than anything on the upper facade. Parasol canopies are fabric over a metal frame at ~2.2-2.5 m \u2014 they will shadow the ground floor from most street-level rays and should be present.\n\nDETAIL BUDGET: this facade is on the Graslei quay itself, at 0.0 m from the fronting street, so it earns full resolution on openings, piers, cornice and dormers. The rear and party walls (22.3 m deep footprint, attached on both sides, 4 attached neighbours) are invisible and unilluminated \u2014 extrude plain and spend nothing there."
+ },
+ "flags": [
+  "roof form marked `seen`, but no view here looks down on it"
+ ],
+ "facts": {
+  "osm_id": 494008011,
+  "city": "Ghent, Belgium",
+  "osm_tags": {
+   "building": "house",
+   "start_date": "C17..1913",
+   "heritage": "4",
+   "historic": "house",
+   "addr:street": "Graslei"
+  },
+  "frontage_width_m": 8.6,
+  "footprint_m": [
+   22.3,
+   9.7
+  ],
+  "footprint_area_m2": 200,
+  "height_m": 11.6,
+  "height_source": "adopted-photo",
+  "street_frontages": 1,
+  "attached_neighbours": 4,
+  "fronting_street": {
+   "highway": "pedestrian",
+   "name": "Graslei",
+   "surface": "sett",
+   "car_access": "none",
+   "distance_m": 0.0
+  },
+  "plate_view": "street",
+  "street_photos": 2,
+  "target_box_normalised": {
+   "x0": 0.306,
+   "x1": 0.694,
+   "y0": 0.166,
+   "y1": 0.806
+  }
+ },
+ "plate": "renders/plates/graslei/494008011.png",
+ "photos": [
+  "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494008011_0.jpg",
+  "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494008011_1.jpg"
+ ],
+ "view": "street",
+ "cost_usd": 1.4912785,
+ "model": "claude-opus-5"
+}

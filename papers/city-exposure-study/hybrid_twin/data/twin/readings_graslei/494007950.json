@@ -1,0 +1,90 @@
+{
+ "osm_id": 494007950,
+ "status": "ok",
+ "reading": {
+  "bays": {
+   "count": 3,
+   "evidence": "seen"
+  },
+  "confidence": 0.62,
+  "ground_floor": {
+   "kind": "shopfront",
+   "evidence": "seen"
+  },
+  "identification": "Late-19th-century eclectic/neoclassical commercial corner block in pale ashlar or painted render, currently a bank branch, with a tall rusticated ground-floor base of plate-glass bays and tall transomed windows in recessed panels above.",
+  "ledges": {
+   "sills": true,
+   "cornice": true,
+   "string_courses": true,
+   "balconies": false,
+   "evidence": "inferred"
+  },
+  "material": {
+   "wall": "concrete",
+   "roughness_mm": 1.5,
+   "trim": "concrete",
+   "evidence": "seen"
+  },
+  "notes": "Evidence split within groups, stated explicitly. LEDGES: projecting moulded sills under each upper window and the heavy string course/band above the shopfront are both directly seen in set B image 0; the crowning cornice is above the top of both street frames and is inferred from the building type (a facade of this order does not stop without one). Balconies false and that is a genuine negative observation, not an omission. ROOF: set A is degraded Google-tile geometry inside the magenta box - a pale grey plane with a weak slope break behind it. Read as a simple double-pitched roof, ridge parallel to the 9.2 m frontage over a 5.3 m span (about 40 deg to reach 17.1 m from an eaves near 14.8 m), gable ends on the two party walls. A mansard is not credible at 5.3 m depth. Marked inferred; do not treat set A as roof evidence. STOREYS: derived from height_m, not counted. Both photos crop the building mid-elevation. Ground 4.6 m matches the visibly tall glazed base; three uppers at 3.4 m gives eaves 14.8 m and leaves 2.3 m of roof. If the ground floor is shorter than read, the alternative is ground + 4 at ~3.0 m; the total height is fixed either way, so the silhouette is safe and only the floor banding shifts. MATERIAL: smooth pale ashlar or cemented render, fine joints, 1.5 mm RMS. The ground-floor rustication grooves are 2-4 cm deep and are deliberately left in the roughness term, not meshed - at 1.07 cm they are in the band where facetting breaks the locally-smooth assumption. trim=concrete is a considered choice: the timber window joinery is real but a few cm wide and sub-geometry, whereas every element the generator will extrude as trim (sills, string course, architraves, rusticated piers, cornice) is the same stone/render as the wall. Assigning wood there would put the wrong permittivity on every ledge. WINDOWS: two vertical lights per opening with transoms, clearly resolved in set B image 0; reveal read as deep from the shadow depth on the left jambs plus the recessed panel between the pilaster strips, and this is a heavy masonry wall. Bay pitch about 2.8 m across the 8.4 m frontage. GEOMETRY BUDGET: this facade sits at 0.0 m from the corridor, so spend on the ground-floor pier/glazing rhythm and the window reveals and sills - that is the off-specular structure that decides street-level field here. CONTEXT: fronting street is pedestrian with car_access none on paving stones, so no parked vehicles on this frontage under any rule. Set B image 1 shows terrace seating to the left, standing pedestrians at the corner, a canted corner pier, wall-mounted CCTV, a projecting bank fascia, and tram catenary overhead. The catenary is near-resonant at 28 GHz but conventionally omitted; flagging it rather than silently dropping it.",
+  "roof": {
+   "form": "gabled",
+   "ridge_parallel_to_street": true,
+   "evidence": "inferred"
+  },
+  "storeys": {
+   "count": 4,
+   "ground_height_m": 4.6,
+   "upper_height_m": 3.4,
+   "evidence": "inferred"
+  },
+  "window": {
+   "width_m": 1.25,
+   "height_m": 2.8,
+   "reveal_class": "deep",
+   "glazing_bars": true,
+   "evidence": "seen"
+  }
+ },
+ "flags": [],
+ "facts": {
+  "osm_id": 494007950,
+  "city": "Ghent, Belgium",
+  "osm_tags": {
+   "building": "house",
+   "addr:street": "Kortemunt"
+  },
+  "frontage_width_m": 8.4,
+  "footprint_m": [
+   9.2,
+   5.3
+  ],
+  "footprint_area_m2": 43,
+  "height_m": 17.1,
+  "height_source": "adopted-photo",
+  "street_frontages": 2,
+  "attached_neighbours": 2,
+  "fronting_street": {
+   "highway": "pedestrian",
+   "name": "Korenmarkt",
+   "surface": "paving_stones",
+   "car_access": "none",
+   "distance_m": 0.0
+  },
+  "plate_view": "oblique",
+  "street_photos": 2,
+  "target_box_normalised": {
+   "x0": 0.377,
+   "x1": 0.63,
+   "y0": 0.434,
+   "y1": 0.835
+  }
+ },
+ "plate": "renders/plates/graslei/494007950.png",
+ "photos": [
+  "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007950_0.jpg",
+  "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494007950_1.jpg"
+ ],
+ "view": "oblique",
+ "cost_usd": 0.42419299999999993,
+ "model": "claude-opus-5"
+}

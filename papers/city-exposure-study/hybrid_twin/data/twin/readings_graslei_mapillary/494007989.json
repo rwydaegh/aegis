@@ -1,0 +1,91 @@
+{
+ "osm_id": 494007989,
+ "status": "ok",
+ "reading": {
+  "identification": "A late-16th/17th-century Ghent patrician canal house on the Korenlei quay in traditional Flemish brick-and-sandstone style, four storeys of hand-made brick with sandstone cross-windows under a steep slate roof crowned by a scrolled bell-profiled gable, heritage-listed and in hospitality use at quay level.",
+  "storeys": {
+   "count": 4,
+   "ground_height_m": 3.8,
+   "upper_height_m": 3.3,
+   "evidence": "inferred"
+  },
+  "bays": {
+   "count": 3,
+   "evidence": "seen"
+  },
+  "window": {
+   "width_m": 1.5,
+   "height_m": 2.6,
+   "reveal_class": "deep",
+   "glazing_bars": true,
+   "evidence": "seen"
+  },
+  "ground_floor": {
+   "kind": "cafe_glazing",
+   "evidence": "inferred"
+  },
+  "roof": {
+   "form": "bell_gable",
+   "ridge_parallel_to_street": false,
+   "evidence": "seen"
+  },
+  "ledges": {
+   "sills": true,
+   "cornice": true,
+   "string_courses": true,
+   "balconies": true,
+   "evidence": "seen"
+  },
+  "material": {
+   "wall": "brick",
+   "roughness_mm": 6,
+   "trim": "concrete",
+   "evidence": "seen"
+  },
+  "confidence": 0.7,
+  "notes": "Wall, windows and ledges read from set B photo 1, where the outline is tight on a brick facade seen obliquely from the quay (Groot Vleeshuis and Gravensteen behind confirm the camera looks north along Korenlei). Clearly resolved there: sandstone kruiskozijnen (mullion + transom, four lights), leaded small-pane upper lights, red-painted timber frames, deep chamfered stone reveals, continuous sandstone sill bands running across the wall as string courses, segmental brick relieving arches, red-painted timber eaves cornice, a wrought-iron balconet at the gable window plus a second dark balustrade one floor down, and stone volute scrolls flanking the crowning gable.\n\nSet B photo 0 conflicts: its box lands on a white-rendered Baroque facade with a rococo corner niche, black awning and restaurant terrace, materially incompatible with the brick of photo 1. Either it is the parcel's second frontage (street_frontages: 2) or the projection slipped onto a neighbour. I used it only as weak support for hospitality use at ground level, hence ground_floor is marked inferred, not seen. The target's own quay-level storey is below the frame bottom in photo 1.\n\nStoreys: three window rows are directly visible and the ground floor is cut off; count 4 is the reconciliation of those rows with the 17.1 m height datum (3.8 + 3x3.3 = 13.7 m to eaves, leaving ~3.4 m of gable). Per-storey heights are priors, so the whole block is inferred.\n\nSet A is badly degraded photogrammetry but supports two things: the roof is dark slate rather than the red pantile of the eastern neighbours, and a raised vertical element faces the quay. Gable form (bell_gable, standing for a Flemish scrolled neck/klokgevel, which the enum has no exact term for) and the ridge-perpendicular-to-street orientation come from photo 1, where the slate-clad ogee raking edge and its stone volutes are visible against the sky.\n\nMaterial mapping: the dressings are Balegem sandstone. Emitted as concrete (ITU eps_r ~5.24) rather than marble (7.07) because the concrete dielectric is the closer proxy for sandstone; the label reads wrong, the physics reads right. Roughness 6 mm covers hand-made brick with eroded and raked lime joints, weathering streaks and the flat brick relieving arches - all of which sit in the 1-10 cm band and must stay a roughness number, not geometry.\n\nDetail budget: put the explicit geometry on the deep window reveals, the projecting sill and cordon bands, the two balconets, the eaves cornice and the gable volutes. All are above 10 cm and all sit on the silhouette or around the openings.\n\nStreet context, do not violate: fronting_street is pedestrian with car_access none on sett paving, so no parked or moving vehicles anywhere on this frontage. The clutter that belongs is terrace tables and chairs, planters, umbrellas, A-boards, bollards, hanging restaurant banners (KorenleiTwee signage is visible on this stretch), quay railings, moored tour boats and a quay-wall segmental arch at water level."
+ },
+ "flags": [],
+ "facts": {
+  "osm_id": 494007989,
+  "city": "Ghent, Belgium",
+  "osm_tags": {
+   "building": "yes",
+   "heritage": "4",
+   "addr:street": "Korenlei"
+  },
+  "frontage_width_m": 7.1,
+  "footprint_m": [
+   14.5,
+   16.8
+  ],
+  "footprint_area_m2": 161,
+  "height_m": 17.1,
+  "height_source": "adopted-photo",
+  "street_frontages": 2,
+  "attached_neighbours": 6,
+  "fronting_street": {
+   "highway": "pedestrian",
+   "name": "Korenlei",
+   "surface": "sett",
+   "car_access": "none",
+   "distance_m": 0.0
+  },
+  "plate_view": "oblique",
+  "street_photos": 2,
+  "target_box_normalised": {
+   "x0": 0.207,
+   "x1": 0.445,
+   "y0": 0.472,
+   "y1": 0.92
+  }
+ },
+ "plate": "renders/plates/graslei/494007989.png",
+ "photos": [
+  "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007989_0.jpg",
+  "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007989_1.jpg"
+ ],
+ "view": "oblique",
+ "cost_usd": 1.528408,
+ "model": "claude-opus-5"
+}

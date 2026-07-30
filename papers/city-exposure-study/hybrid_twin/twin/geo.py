@@ -53,6 +53,21 @@ class Frame:
         """One (lon, lat) pair, in OSM's argument order, to ENU metres."""
         return self.rot @ (llh_to_ecef(lat, lon, h) - self.p0)
 
+    def bbox(self, radius_m: float, centre_xy=(0.0, 0.0)) -> tuple[float, ...]:
+        """A (west, south, east, north) lon/lat box covering an ENU disk.
+
+        Local flat-earth scaling, which is good to well under a metre over the few
+        hundred metres a study area spans, and this only has to be generous enough
+        to catch every candidate photograph.
+        """
+        deg_lat = 111_320.0
+        deg_lon = deg_lat * float(np.cos(np.radians(self.lat0)))
+        cx, cy = centre_xy
+        return (self.lon0 + (cx - radius_m) / deg_lon,
+                self.lat0 + (cy - radius_m) / deg_lat,
+                self.lon0 + (cx + radius_m) / deg_lon,
+                self.lat0 + (cy + radius_m) / deg_lat)
+
     def ring_to_enu(self, ring: list[tuple[float, float]]) -> np.ndarray:
         """An OSM ring of (lon, lat) pairs to an (N, 2) array of ENU x, y.
 

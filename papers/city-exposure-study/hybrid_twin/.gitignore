@@ -1,0 +1,5 @@
+data/tiles/
+renders/
+*.blend
+*.blend1
+data/twin/*.npz

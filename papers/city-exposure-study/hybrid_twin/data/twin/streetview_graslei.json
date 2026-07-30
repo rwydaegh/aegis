@@ -1,0 +1,654 @@
+{
+ "area": "graslei",
+ "photos": {
+  "493993762": [
+   {
+    "id": "2730375767153165",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/493993762_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/493993762_0_key.jpg",
+    "target_box": {
+     "x0": 0.833,
+     "x1": 0.939,
+     "y0": 0.0,
+     "y1": 0.562,
+     "top_clipped": true
+    },
+    "range_m": 16.4,
+    "score": 0.081,
+    "is_pano": false,
+    "captured_at": 1735988226000
+   }
+  ],
+  "514020945": [
+   {
+    "id": "127532659397758",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/514020945_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/514020945_0_key.jpg",
+    "target_box": {
+     "x0": 0.016,
+     "x1": 0.414,
+     "y0": 0.0,
+     "y1": 0.881,
+     "top_clipped": true
+    },
+    "range_m": 7.0,
+    "score": 0.501,
+    "is_pano": false,
+    "captured_at": 1428087686196
+   },
+   {
+    "id": "319971609526230",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/514020945_1.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/514020945_1_key.jpg",
+    "target_box": {
+     "x0": 0.507,
+     "x1": 0.616,
+     "y0": 0.0,
+     "y1": 0.637,
+     "top_clipped": false
+    },
+    "range_m": 14.0,
+    "score": 0.281,
+    "is_pano": false,
+    "captured_at": 1580740910585
+   }
+  ],
+  "514020946": [
+   {
+    "id": "4059465484147247",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/514020946_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/514020946_0_key.jpg",
+    "target_box": {
+     "x0": 0.475,
+     "x1": 0.718,
+     "y0": 0.0,
+     "y1": 0.628,
+     "top_clipped": true
+    },
+    "range_m": 10.1,
+    "score": 0.438,
+    "is_pano": false,
+    "captured_at": 1430737207000
+   },
+   {
+    "id": "819843438886808",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/514020946_1.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/514020946_1_key.jpg",
+    "target_box": {
+     "x0": 0.574,
+     "x1": 0.933,
+     "y0": 0.0,
+     "y1": 0.901,
+     "top_clipped": false
+    },
+    "range_m": 19.0,
+    "score": 0.094,
+    "is_pano": false,
+    "captured_at": 1450000228603
+   }
+  ],
+  "494008001": [
+   {
+    "id": "470545130723068",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494008001_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494008001_0_key.jpg",
+    "target_box": {
+     "x0": 0.737,
+     "x1": 0.954,
+     "y0": 0.159,
+     "y1": 0.707,
+     "top_clipped": false
+    },
+    "range_m": 12.0,
+    "score": 0.287,
+    "is_pano": false,
+    "captured_at": 1430737713000
+   }
+  ],
+  "493993763": [
+   {
+    "id": "127142749406522",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/493993763_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/493993763_0_key.jpg",
+    "target_box": {
+     "x0": 0.679,
+     "x1": 0.822,
+     "y0": 0.0,
+     "y1": 0.783,
+     "top_clipped": false
+    },
+    "range_m": 6.8,
+    "score": 0.232,
+    "is_pano": false,
+    "captured_at": 1430737736000
+   }
+  ],
+  "494007824": [
+   {
+    "id": "214990933337604",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007824_1.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007824_1_key.jpg",
+    "target_box": {
+     "x0": 0.0,
+     "x1": 0.258,
+     "y0": 0.0,
+     "y1": 0.761,
+     "top_clipped": true
+    },
+    "range_m": 11.7,
+    "score": 0.104,
+    "is_pano": false,
+    "captured_at": 1430737608000
+   }
+  ],
+  "494007983": [
+   {
+    "id": "2291689404294384",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007983_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007983_0_key.jpg",
+    "target_box": {
+     "x0": 0.21,
+     "x1": 0.537,
+     "y0": 0.0,
+     "y1": 0.624,
+     "top_clipped": false
+    },
+    "range_m": 14.2,
+    "score": 0.435,
+    "is_pano": false,
+    "captured_at": 1430737612000
+   }
+  ],
+  "494007930": [],
+  "494007986": [
+   {
+    "id": "2291689404294384",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007986_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007986_0_key.jpg",
+    "target_box": {
+     "x0": 0.31,
+     "x1": 0.612,
+     "y0": 0.0,
+     "y1": 0.592,
+     "top_clipped": false
+    },
+    "range_m": 17.5,
+    "score": 0.515,
+    "is_pano": false,
+    "captured_at": 1430737612000
+   },
+   {
+    "id": "3032523313552906",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007986_1.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007986_1_key.jpg",
+    "target_box": {
+     "x0": 0.079,
+     "x1": 0.279,
+     "y0": 0.0,
+     "y1": 0.582,
+     "top_clipped": true
+    },
+    "range_m": 15.4,
+    "score": 0.102,
+    "is_pano": false,
+    "captured_at": 1735988260000
+   }
+  ],
+  "494007823": [
+   {
+    "id": "2291689404294384",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007823_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007823_0_key.jpg",
+    "target_box": {
+     "x0": 0.389,
+     "x1": 0.666,
+     "y0": 0.061,
+     "y1": 0.575,
+     "top_clipped": false
+    },
+    "range_m": 21.7,
+    "score": 0.444,
+    "is_pano": false,
+    "captured_at": 1430737612000
+   },
+   {
+    "id": "333473358432182",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007823_1.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007823_1_key.jpg",
+    "target_box": {
+     "x0": 0.194,
+     "x1": 0.963,
+     "y0": 0.0,
+     "y1": 0.865,
+     "top_clipped": true
+    },
+    "range_m": 6.7,
+    "score": 0.324,
+    "is_pano": false,
+    "captured_at": 1580745337100
+   }
+  ],
+  "493993764": [
+   {
+    "id": "587579407210044",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/493993764_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/493993764_0_key.jpg",
+    "target_box": {
+     "x0": 0.846,
+     "x1": 0.951,
+     "y0": 0.0,
+     "y1": 0.624,
+     "top_clipped": true
+    },
+    "range_m": 13.5,
+    "score": 0.117,
+    "is_pano": false,
+    "captured_at": 1735988219000
+   },
+   {
+    "id": "2879533275561271",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/493993764_1.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/493993764_1_key.jpg",
+    "target_box": {
+     "x0": 0.715,
+     "x1": 0.838,
+     "y0": 0.219,
+     "y1": 0.581,
+     "top_clipped": false
+    },
+    "range_m": 19.8,
+    "score": 0.04,
+    "is_pano": false,
+    "captured_at": 1735988216500
+   }
+  ],
+  "494007984": [],
+  "494007977": [
+   {
+    "id": "799598987616373",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007977_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007977_0_key.jpg",
+    "target_box": {
+     "x0": 0.126,
+     "x1": 0.569,
+     "y0": 0.0,
+     "y1": 1.0,
+     "top_clipped": false
+    },
+    "range_m": 12.3,
+    "score": 0.426,
+    "is_pano": false,
+    "captured_at": 1450000222260
+   },
+   {
+    "id": "1432922620385154",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007977_1.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007977_1_key.jpg",
+    "target_box": {
+     "x0": 0.598,
+     "x1": 1.0,
+     "y0": 0.0,
+     "y1": 0.625,
+     "top_clipped": true
+    },
+    "range_m": 15.0,
+    "score": 0.29,
+    "is_pano": false,
+    "captured_at": 1580740941199
+   }
+  ],
+  "494007999": [
+   {
+    "id": "799598987616373",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007999_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007999_0_key.jpg",
+    "target_box": {
+     "x0": 0.347,
+     "x1": 0.569,
+     "y0": 0.11,
+     "y1": 1.0,
+     "top_clipped": false
+    },
+    "range_m": 17.0,
+    "score": 0.205,
+    "is_pano": false,
+    "captured_at": 1450000222260
+   },
+   {
+    "id": "1416127635420930",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007999_1.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007999_1_key.jpg",
+    "target_box": {
+     "x0": 0.189,
+     "x1": 0.293,
+     "y0": 0.179,
+     "y1": 0.916,
+     "top_clipped": false
+    },
+    "range_m": 17.5,
+    "score": 0.073,
+    "is_pano": false,
+    "captured_at": 1426253728000
+   }
+  ],
+  "494007927": [
+   {
+    "id": "281628950261291",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007927_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007927_0_key.jpg",
+    "target_box": {
+     "x0": 0.787,
+     "x1": 1.0,
+     "y0": 0.0,
+     "y1": 0.61,
+     "top_clipped": true
+    },
+    "range_m": 15.2,
+    "score": 0.16,
+    "is_pano": false,
+    "captured_at": 1430737040000
+   }
+  ],
+  "493993761": [
+   {
+    "id": "1026624108591972",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/493993761_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/493993761_0_key.jpg",
+    "target_box": {
+     "x0": 0.084,
+     "x1": 0.918,
+     "y0": 0.0,
+     "y1": 0.488,
+     "top_clipped": false
+    },
+    "range_m": 42.8,
+    "score": 0.668,
+    "is_pano": false,
+    "captured_at": 1687514524437
+   },
+   {
+    "id": "882472926803325",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/493993761_1.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/493993761_1_key.jpg",
+    "target_box": {
+     "x0": 0.243,
+     "x1": 0.594,
+     "y0": 0.002,
+     "y1": 0.489,
+     "top_clipped": false
+    },
+    "range_m": 35.4,
+    "score": 0.56,
+    "is_pano": false,
+    "captured_at": 1687514525650
+   }
+  ],
+  "494008008": [
+   {
+    "id": "481594509633790",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494008008_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494008008_0_key.jpg",
+    "target_box": {
+     "x0": 0.273,
+     "x1": 0.839,
+     "y0": 0.0,
+     "y1": 0.687,
+     "top_clipped": true
+    },
+    "range_m": 6.6,
+    "score": 0.734,
+    "is_pano": false,
+    "captured_at": 1430737618000
+   }
+  ],
+  "494007953": [],
+  "494007989": [
+   {
+    "id": "481026273166737",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007989_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007989_0_key.jpg",
+    "target_box": {
+     "x0": 0.794,
+     "x1": 1.0,
+     "y0": 0.0,
+     "y1": 0.767,
+     "top_clipped": true
+    },
+    "range_m": 9.5,
+    "score": 0.309,
+    "is_pano": false,
+    "captured_at": 1580740947980
+   },
+   {
+    "id": "799598987616373",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007989_1.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007989_1_key.jpg",
+    "target_box": {
+     "x0": 0.023,
+     "x1": 0.365,
+     "y0": 0.0,
+     "y1": 1.0,
+     "top_clipped": false
+    },
+    "range_m": 15.6,
+    "score": 0.191,
+    "is_pano": false,
+    "captured_at": 1450000222260
+   }
+  ],
+  "494007850": [
+   {
+    "id": "183011160339863",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007850_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007850_0_key.jpg",
+    "target_box": {
+     "x0": 0.555,
+     "x1": 0.856,
+     "y0": 0.0,
+     "y1": 0.649,
+     "top_clipped": true
+    },
+    "range_m": 16.7,
+    "score": 0.357,
+    "is_pano": false,
+    "captured_at": 1430737031000
+   },
+   {
+    "id": "3041225542788542",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007850_1.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007850_1_key.jpg",
+    "target_box": {
+     "x0": 0.0,
+     "x1": 0.289,
+     "y0": 0.0,
+     "y1": 0.69,
+     "top_clipped": true
+    },
+    "range_m": 21.3,
+    "score": 0.168,
+    "is_pano": false,
+    "captured_at": 1580745347992
+   }
+  ],
+  "493993666": [
+   {
+    "id": "607107765128402",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/493993666_1.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/493993666_1_key.jpg",
+    "target_box": {
+     "x0": 0.776,
+     "x1": 0.855,
+     "y0": 0.238,
+     "y1": 0.594,
+     "top_clipped": false
+    },
+    "range_m": 18.1,
+    "score": 0.052,
+    "is_pano": false,
+    "captured_at": 1735988212000
+   }
+  ],
+  "494008011": [],
+  "493993669": [],
+  "494007959": [
+   {
+    "id": "183011160339863",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007959_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007959_0_key.jpg",
+    "target_box": {
+     "x0": 0.647,
+     "x1": 0.947,
+     "y0": 0.0,
+     "y1": 0.622,
+     "top_clipped": true
+    },
+    "range_m": 20.6,
+    "score": 0.149,
+    "is_pano": false,
+    "captured_at": 1430737031000
+   }
+  ],
+  "1410441581": [],
+  "494018352": [],
+  "494007995": [
+   {
+    "id": "591709190147706",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007995_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007995_0_key.jpg",
+    "target_box": {
+     "x0": 0.6,
+     "x1": 0.873,
+     "y0": 0.0,
+     "y1": 0.58,
+     "top_clipped": true
+    },
+    "range_m": 12.3,
+    "score": 0.322,
+    "is_pano": false,
+    "captured_at": 1735988286500
+   },
+   {
+    "id": "1105473894567165",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007995_1.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007995_1_key.jpg",
+    "target_box": {
+     "x0": 0.528,
+     "x1": 0.662,
+     "y0": 0.155,
+     "y1": 0.582,
+     "top_clipped": false
+    },
+    "range_m": 19.5,
+    "score": 0.064,
+    "is_pano": false,
+    "captured_at": 1735988283500
+   }
+  ],
+  "494007934": [
+   {
+    "id": "562200083305779",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007934_1.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007934_1_key.jpg",
+    "target_box": {
+     "x0": 0.765,
+     "x1": 0.909,
+     "y0": 0.0,
+     "y1": 0.555,
+     "top_clipped": true
+    },
+    "range_m": 20.6,
+    "score": 0.02,
+    "is_pano": false,
+    "captured_at": 1736000192000
+   }
+  ],
+  "494007950": [
+   {
+    "id": "315089673534340",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007950_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007950_0_key.jpg",
+    "target_box": {
+     "x0": 0.593,
+     "x1": 0.86,
+     "y0": 0.0,
+     "y1": 0.64,
+     "top_clipped": true
+    },
+    "range_m": 12.8,
+    "score": 0.385,
+    "is_pano": false,
+    "captured_at": 1568199537000
+   }
+  ],
+  "494007957": [
+   {
+    "id": "1104832754277312",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007957_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007957_0_key.jpg",
+    "target_box": {
+     "x0": 0.844,
+     "x1": 0.926,
+     "y0": 0.0,
+     "y1": 0.613,
+     "top_clipped": true
+    },
+    "range_m": 12.3,
+    "score": 0.128,
+    "is_pano": false,
+    "captured_at": 1736000208000
+   },
+   {
+    "id": "170671208204114",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007957_1.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007957_1_key.jpg",
+    "target_box": {
+     "x0": 0.711,
+     "x1": 0.795,
+     "y0": 0.0,
+     "y1": 1.0,
+     "top_clipped": true
+    },
+    "range_m": 4.2,
+    "score": 0.119,
+    "is_pano": false,
+    "captured_at": 1580745373189
+   }
+  ],
+  "1410441582": [
+   {
+    "id": "1627960801476448",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/1410441582_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/1410441582_0_key.jpg",
+    "target_box": {
+     "x0": 0.607,
+     "x1": 0.887,
+     "y0": 0.0,
+     "y1": 0.795,
+     "top_clipped": true
+    },
+    "range_m": 4.6,
+    "score": 0.217,
+    "is_pano": false,
+    "captured_at": 1735988298500
+   }
+  ],
+  "494007922": [
+   {
+    "id": "315089673534340",
+    "file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007922_0.jpg",
+    "keyed_file": "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview/graslei/494007922_0_key.jpg",
+    "target_box": {
+     "x0": 0.63,
+     "x1": 0.87,
+     "y0": 0.0,
+     "y1": 0.752,
+     "top_clipped": true
+    },
+    "range_m": 7.1,
+    "score": 0.238,
+    "is_pano": false,
+    "captured_at": 1568199537000
+   }
+  ]
+ }
+}

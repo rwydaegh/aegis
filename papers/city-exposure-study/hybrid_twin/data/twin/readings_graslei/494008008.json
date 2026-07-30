@@ -1,0 +1,93 @@
+{
+ "osm_id": 494008008,
+ "status": "ok",
+ "reading": {
+  "identification": "A 1726 Graslei canal-front burgher house in Ghent (date stones \"17\"/\"26\" on the facade), late-Baroque/classicising: red brick with white natural-stone dressings, three storeys under a triangular screen pediment with oculus and S-scrolled flanking wings with urn finials, on a deep 27 m plot in a terrace of five, historically a house and now with restaurant use behind a historic front.",
+  "storeys": {
+   "count": 3,
+   "ground_height_m": 3.8,
+   "upper_height_m": 3.3,
+   "evidence": "seen"
+  },
+  "bays": {
+   "count": 5,
+   "evidence": "seen"
+  },
+  "window": {
+   "width_m": 2,
+   "height_m": 2.4,
+   "reveal_class": "shallow",
+   "glazing_bars": true,
+   "evidence": "seen"
+  },
+  "ground_floor": {
+   "kind": "residential_door",
+   "evidence": "seen"
+  },
+  "roof": {
+   "form": "gabled",
+   "ridge_parallel_to_street": false,
+   "evidence": "inferred"
+  },
+  "ledges": {
+   "sills": true,
+   "cornice": true,
+   "string_courses": true,
+   "balconies": false,
+   "evidence": "seen"
+  },
+  "material": {
+   "wall": "brick",
+   "roughness_mm": 3,
+   "trim": "marble",
+   "evidence": "seen"
+  },
+  "confidence": 0.82,
+  "notes": "BAY RHYTHM IS NOT UNIFORM VERTICALLY. Ground and first floor carry all 5 bays across the full 14.3 m Graslei frontage. The top storey has only 3 bays, sitting under the pediment; the outer two bays are omitted there and the facade steps down left and right via concave S-scrolled wing pieces, each terminated by a stone urn/vase finial standing proud of the silhouette. This step-down is the building's signature and must be geometry, not texture \u2014 it is the profile a rotated camera will read first.\n\nOPENINGS. Each bay is ONE stone-framed opening subdivided by a stone mullion into two lights, with a stone transom across at roughly 60% height \u2014 a Flemish cross-window in classicising dress. Each light is leaded/small-pane, so glazing_bars is dense (roughly 4x6 panes per light), not Georgian-sparse. The emitted width_m 2.0 / height_m 2.4 describes the whole stone-framed opening at first floor, which is the dominant case. Scale the top storey to about 0.75 of that height (measurably shorter in the photo), and the ground floor to about 1.1x. The white stone frame stands proud of the brick by a few cm and the casement sits back behind it \u2014 net reveal is a shallow class, around 0.12 m. That reveal is above 10 cm and belongs in geometry; it is the main off-specular scatterer on this wall.\n\nLEDGES. sills: continuous stone sill bands under each window row, running through as string courses between bays. string_courses: yes, including the horizontal band at top-storey sill level into which the two date cartouches are set as flush raised panels. cornice: strong entablature/cornice at the base of the pediment, plus the raking cornice of the pediment itself \u2014 both project well past 10 cm and should be modelled. balconies: false, but this is a judgement call and the reason matters. Each first-floor bay has a stone BALUSTRADE APRON beneath it, sitting on the head band of the ground-floor window. These are balconets set nearly flush, with no projecting slab to stand on, so they are not balconies. Model them as a shallow pierced parapet, roughly 0.9 m tall and 0.05-0.10 m proud. The piercing between balusters is a real aperture at 1.07 cm wavelength and is worth the facets \u2014 this is a silhouette-edge and eye-level feature, exactly where the detail budget belongs.\n\nMATERIALS. Wall is red brick, uniformly vermillion, tightly and recently pointed \u2014 a restored heritage-4 facade, not weathered stock. Joints are visibly recessed but shallow, hence roughness_mm 3.0. Do NOT mesh the bond; at 28 GHz that is wrong physics, not merely expensive. It is a roughness number plus a scattering coefficient. Trim is Balegem-type calcareous limestone, painted off-white; \"marble\" is chosen as the dielectric analogue because calcite limestone sits near eps 7, closer to marble than to the concrete entry. Joinery is painted timber, sage/pale green on the windows and a stronger green on the door \u2014 colour only, no dielectric consequence, but it is the strongest colour cue for the renderer.\n\nGROUND FLOOR. A green painted timber double door in a white stone surround, reached by a short stone stoop of about three steps, so the ground floor is raised over a cellar. Flanking it are tall leaded stone-framed windows, some with amber glass. There is NO shopfront and no cafe glazing in this building's own fabric, despite hospitality use behind it \u2014 do not give it a modern glazed frontage.\n\nROOF, INFERRED, TREAT AS SOFT. The pediment is a screen and tells you nothing about the roof behind it. A slate plane and a brick chimney stack are visible past the gable's right edge in street photo 1, which is why I chose gabled over flat, but the ridge direction is a prior, not an observation. The 27.2 m plot depth against a 14.3 m frontage makes a ridge running back from the quay, perpendicular to the street, the overwhelmingly likely arrangement for this typology. If the generator can source a roof plane from lidar or tiles, that data should override this field. Ridge height should sit above the 11.3 m adopted height, which reads as the main cornice, not the apex; the pediment apex is roughly 13.5-14 m.\n\nCLUTTER AND CONTEXT. fronting_street is Schuddeveestraatje, a living_street with car_access \"none\" and sett surface at 1.1 m. Emit NO parked vehicles here. The correct clutter is a cafe terrace on the Graslei quay in front of the facade: large square dark-grey canvas parasols on centre poles roughly 3 m across, rattan chairs, small tables, patio heaters, a windbreak screen. This is present in both street photographs and is the dominant near-field scatterer between the beam and the wall \u2014 a fabric canopy at roughly 2.5 m is not radio-transparent clutter, it sits directly in the street-level path. Also present and worth a line each: a wall-mounted lantern bracket on the neighbour to the right, a small stone stoop with an iron handrail at the door, bicycles against the quay edge.\n\nDETAIL BUDGET. Spend it on the pediment profile and its raking cornice, the two urn finials, the S-scroll wings, the balustrade aprons, the stone mullions and transoms, and the door surround with its stoop. Spend nothing on brick relief, nothing on the cartouche lettering, and nothing on the rear 20 m of the plot, which faces an alley no beam reaches."
+ },
+ "flags": [],
+ "facts": {
+  "osm_id": 494008008,
+  "city": "Ghent, Belgium",
+  "osm_tags": {
+   "building": "yes",
+   "start_date": "1626..1726",
+   "heritage": "4",
+   "historic": "house",
+   "addr:street": "Graslei"
+  },
+  "frontage_width_m": 9.1,
+  "footprint_m": [
+   14.3,
+   27.2
+  ],
+  "footprint_area_m2": 237,
+  "height_m": 11.3,
+  "height_source": "adopted-photo",
+  "street_frontages": 2,
+  "attached_neighbours": 5,
+  "fronting_street": {
+   "highway": "living_street",
+   "name": "Schuddeveestraatje",
+   "surface": "sett",
+   "car_access": "none",
+   "distance_m": 1.1
+  },
+  "plate_view": "street",
+  "street_photos": 2,
+  "target_box_normalised": {
+   "x0": 0.29,
+   "x1": 0.71,
+   "y0": 0.169,
+   "y1": 0.805
+  }
+ },
+ "plate": "renders/plates/graslei/494008008.png",
+ "photos": [
+  "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494008008_0.jpg",
+  "/home/user/aegis/papers/city-exposure-study/hybrid_twin/renders/streetview_g/graslei/494008008_1.jpg"
+ ],
+ "view": "street",
+ "cost_usd": 0.6773454999999999,
+ "model": "claude-opus-5"
+}

@@ -1,0 +1,89 @@
+{
+ "osm_id": 494008011,
+ "status": "ok",
+ "reading": {
+  "bays": {
+   "count": 4,
+   "evidence": "inferred"
+  },
+  "confidence": 0.55,
+  "ground_floor": {
+   "kind": "cafe_glazing",
+   "evidence": "inferred"
+  },
+  "identification": "A narrow gable-fronted brick-and-sandstone burgher/quay house on the Graslei, 17th-century in origin and restored or partly rebuilt for the 1913 Ghent World's Fair, standing on a deep 22 m plot running back from the Leie with its short gable end to the water and a caf\u00e9-occupied ground floor at quay level.",
+  "ledges": {
+   "sills": true,
+   "cornice": false,
+   "string_courses": true,
+   "balconies": false,
+   "evidence": "inferred"
+  },
+  "material": {
+   "wall": "brick",
+   "roughness_mm": 5,
+   "trim": "concrete",
+   "evidence": "inferred"
+  },
+  "notes": "READ FROM PLATE: the lower band of facade in set A is the Leie reflection / tile LOD duplication, not a second storey group \u2014 only the upper band was used. The magenta box is a footprint bounding box, ~2x the 8.6 m frontage in screen width, so it straddles both neighbours; bay count was NOT taken from it.\n\nSTOREYS: derived from height_m 11.6 (data), not counted. A gable-fronted Graslei house of this modest size carries three full storeys to the gable springing (3.6 + 2.8 + 2.8 = 9.2 m) with the attic inside the ~2.4 m gable. The apparent fourth window row in the plate is the attic light in the gable, which is why count excludes it.\n\nROOF: stepped gable (trapgevel) is the Graslei row idiom and the immediate right-hand neighbour in the plate shows one clearly, with finials \u2014 but I could not attribute a specific gable profile to the target at this resolution, hence inferred. Ridge perpendicular to the quay follows directly from 8.6 m frontage on a 9.7 x 22.3 m footprint.\n\nTRIM MATERIAL: \"concrete\" is a dielectric proxy for Balegem/Ledian sandstone dressings (bandeaux, window surrounds, gable copings), whose dry permittivity sits near ITU concrete rather than marble. Do NOT render it as concrete \u2014 it is pale honey-grey ashlar banding against dark red-brown brick. That brick/stone alternation is the strongest visual signature of this row and must be albedo plus the string-course geometry, never a painted stripe.\n\n28 GHz BUDGET: put geometry into (a) the horizontal sandstone string courses between storeys, (b) deep window reveals with sills, and (c) the stepped gable coping treads \u2014 these are the >10 cm features that give this quay its off-specular return and they read from every camera angle. Brick bond and mortar joints stay as the 5 mm roughness number; meshing them would be wrong physics. The gable steps in particular are a strong retroreflective set at grazing incidence across the water, which matters for any link on the Korenlei side.\n\nCLUTTER, do not get this wrong: fronting_street is highway=pedestrian, car_access=none. There are no vehicles on Graslei. Populate instead with cafe terrace furniture on the sett quay, mooring bollards and the quay edge drop to the water, bicycles against the facade, and pedestrians. A parked-car rule applied here would be the same failure as the medieval-square case.\n\nCONFIDENCE: macro (storey banding, gable-fronted massing, brick-with-stone-banding) is well supported by data plus row context; everything at opening and reveal scale is regional prior for restored C17 Ghent quay houses and would be overturned by a single street photograph.",
+  "roof": {
+   "form": "stepped_gable",
+   "ridge_parallel_to_street": false,
+   "evidence": "inferred"
+  },
+  "storeys": {
+   "count": 3,
+   "ground_height_m": 3.6,
+   "upper_height_m": 2.8,
+   "evidence": "inferred"
+  },
+  "window": {
+   "width_m": 1.2,
+   "height_m": 2,
+   "reveal_class": "deep",
+   "glazing_bars": true,
+   "evidence": "inferred"
+  }
+ },
+ "flags": [],
+ "facts": {
+  "osm_id": 494008011,
+  "city": "Ghent, Belgium",
+  "osm_tags": {
+   "building": "house",
+   "start_date": "C17..1913",
+   "heritage": "4",
+   "historic": "house",
+   "addr:street": "Graslei"
+  },
+  "frontage_width_m": 8.6,
+  "footprint_m": [
+   22.3,
+   9.7
+  ],
+  "footprint_area_m2": 200,
+  "height_m": 11.6,
+  "height_source": "adopted-photo",
+  "street_frontages": 1,
+  "attached_neighbours": 4,
+  "fronting_street": {
+   "highway": "pedestrian",
+   "name": "Graslei",
+   "surface": "sett",
+   "car_access": "none",
+   "distance_m": 0.0
+  },
+  "plate_view": "street",
+  "target_box_normalised": {
+   "x0": 0.306,
+   "x1": 0.694,
+   "y0": 0.166,
+   "y1": 0.806
+  }
+ },
+ "plate": "renders/plates/graslei/494008011.png",
+ "photos": [],
+ "view": "street",
+ "cost_usd": 0.281558,
+ "model": "claude-opus-5"
+}

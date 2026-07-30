@@ -33,12 +33,23 @@ where the model has any business making decisions.
 Three consequences follow, and they resolve problems that previously looked like
 blockers.
 
-**Street-level imagery stops being a dependency.** Work was blocked on a Mapillary
-token to measure clutter coverage along the walk. Under this principle the
+**Street-level imagery stops being a dependency for clutter.** Work was blocked on a
+Mapillary token to measure clutter coverage along the walk. Under this principle the
 measurement is beside the point. Google tiles cannot resolve a 15 cm lamp post at
 25 cm/texel and OSM has three street lamps mapped within 200 m of Korenmarkt, so
 clutter was never going to be recovered. It is going to be instantiated, and the
 question is whether it is plausible, not whether it is the real one.
+
+It does *not* stop being a dependency for facade grammar, and the distinction is
+worth keeping straight. Clutter is genuinely unrecoverable and therefore generated.
+A facade is right there in a photograph, and the difference shows: reading one
+building from tiles alone marked four of seven schema groups `inferred`, and the
+director's own note on the tile plate was that it "shreds the gable into spikes and
+the facade into a purple smear". Given the same building's street photograph it read
+stone cross-mullioned windows with a transom in the upper third and leaded upper
+lights, and justified 7 mm RMS roughness from visibly washed-out mortar. Generating
+plausible detail is the right move where no evidence exists. It is the wrong move
+where evidence exists and was not fetched.
 
 **The phase problem stops being a confession.** Window reveal depth cannot be pinned
 tighter than about 0.10 m from the available evidence, while the interference phase
@@ -100,12 +111,58 @@ load-bearing and provenance-free.
 | layer | content | provenance |
 |---|---|---|
 | L0 anchor | terrain, water, footprints, heights, road graph | measured (GRB, OSM, tiles) |
-| L1 envelopes | roof forms | measured from tile geometry where legible, else observed |
-| L2 facade grammar | storey count, window pitch and size, storefronts, balconies, sills | storeys and pitch observed from tile renders, profiles plausible |
-| L3 materials | ITU class, roughness sigma, scattering coefficient, PBR appearance | observed where legible, regional prior else |
+| L1 envelopes | roof forms | observed from the aerial plate, which is the only view of a roof |
+| L2 facade grammar | storey count, window pitch and size, storefronts, balconies, sills | observed from street photographs where one exists, else plausible |
+| L3 materials | ITU class, roughness sigma, scattering coefficient, PBR appearance | observed from street photographs, regional prior else |
 | L4 clutter | vehicles in real parking lanes, trees, bollards, lamps, terraces | plausible, positions constrained by L0 |
 | L5 people | 10 SMPL-X walkers on the real footway | measured route, sampled gait |
 | L6 radiator | the 8x8 panel | placed by rule |
+
+Provenance is per field, not per layer, and the director marks each one `seen` or
+`inferred` itself. The audit in `twin/read.py` then checks the marks against what
+the evidence could possibly support: a roof form marked `seen` from a street-level
+view is flagged, because nothing at eye level looks down on a roof. That check
+caught a real over-claim on its first run.
+
+### Evidence sources, and what each can carry
+
+| | Google 3D tiles | Mapillary photograph |
+|---|---|---|
+| roof form, massing | the only source | foreshortened or hidden |
+| storey count, bay rhythm | usable | good |
+| window size, glazing bars, reveal | no | good |
+| ground floor kind | no | good |
+| wall material, roughness | colour only | good |
+
+Both go to the director, labelled, with a note on what each is weak at. Matching a
+photograph to a building is geometric and never a search: the camera must stand
+outside the building's street-facing edge, in range, and be pointing at it. The
+target facade is then projected into the frame and outlined, so the director is
+never asked to guess which of five houses it is being shown. Where the projection
+runs off the top of the frame the outline gets a dashed lid, and the director marks
+the roof `inferred` rather than reading a roof line that is not in the picture.
+
+## Where the pipeline actually stands
+
+Modules under `twin/`, each one job, no bpy below the realiser so every layer runs
+under the venv and inside `blender -b` alike.
+
+| module | job | state |
+|---|---|---|
+| `geo`, `anchor` | one ENU frame, the measured layer | done |
+| `fetch_surface` | roads, water, trees, barriers from Overpass | done |
+| `shoot` | one solved reference plate per building from the tiles | done, 32/32 |
+| `mapillary` | street photographs matched and outlined by projection | done, 25/32 |
+| `director` | the standing brief and the typed tasks | done |
+| `read` | runs the director, audits against measured data | done |
+| `facade` | the parametric grammar the readings drive | done |
+| `clutter`, `people`, `radiator` | seeded plan, SMPL-X walkers, the 8x8 panel | done |
+| `realise` | Blender realiser and materials | done |
+| `rtproxy` | Sionna export at the coarse LOD | not built |
+
+Run order for a new area: `fetch_surface` -> `shoot` -> `mapillary` -> `read` ->
+`realise`. Only `areas.py` is city-specific, and only the camera and cell presets in
+it are authored rather than derived.
 
 ## Toolbox
 

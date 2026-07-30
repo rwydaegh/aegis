@@ -264,8 +264,13 @@ def build_materials() -> dict:
     m["wall:marble"] = _stone("wall_marble", (0.80, 0.78, 0.73), 6.0)
     m["wall:concrete"] = _stone("wall_concrete", (0.60, 0.59, 0.57), 8.0)
     m["wall:wood"] = _principled("wall_wood", (0.32, 0.20, 0.11), 0.72)
-    m["glass"] = _principled("glass_dark", (0.035, 0.055, 0.065), 0.05,
-                             spec=0.9, metal=0.35)
+    # Dielectric, not metal. At `metal=0.35` the pane reflects the sky at every
+    # angle equally and 200 windows render as 200 identical sage rectangles, which
+    # is what the earlier hero shots show. A dielectric obeys Fresnel: nearly black
+    # face on, bright at grazing, so a row of windows picks up the raking light the
+    # way glass does and the facade stops looking printed.
+    m["glass"] = _principled("glass_dark", (0.018, 0.026, 0.032), 0.045,
+                             spec=1.0, metal=0.0)
     m["sill"] = _stone("trim_stone", (0.76, 0.74, 0.69), 14.0)
     m["cornice"] = _stone("cornice_stone", (0.72, 0.70, 0.65), 12.0)
     m["roof"] = _principled("roof_tile", (0.20, 0.17, 0.17), 0.80)
@@ -380,20 +385,56 @@ def mesh_to_object(mesh, name: str, mats: dict, collection):
     return ob
 
 
+def river_width(w) -> float:
+    """Water width by name. The Leie is about 28 m through Graslei."""
+    return 28.0 if "leie" in (w.tags.get("name") or "").lower() else 14.0
+
+
+def _in_water(a, x: float, y: float, *, margin: float = 1.0) -> bool:
+    """Is this ground sample inside the canal.
+
+    The terrain grid is a filtered ground surface and interpolates straight across
+    the Leie, so without this the quay is paved over its own river: the water sheet
+    sits 1.85 m below a continuous cobble lid and never appears in any shot.
+    """
+    p = np.array([x, y])
+    for w in a.ways_of("waterline"):
+        if len(w.line) >= 2 and facade_mod._seg_dist(p, w.line) < \
+                river_width(w) / 2.0 - margin:
+            return True
+    for w in a.ways_of("water"):
+        ring = np.asarray(w.line, dtype=float)
+        if len(ring) < 3:
+            continue
+        xs, ys = ring[:, 0], ring[:, 1]
+        x2, y2 = np.roll(xs, -1), np.roll(ys, -1)
+        cond = (ys > y) != (y2 > y)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            xin = (x2 - xs) * (y - ys) / (y2 - ys) + xs
+        if int((cond & (x < xin)).sum()) % 2 == 1:
+            return True
+    return False
+
+
 def build_terrain(a, mats, collection, half: float, centre) -> None:
     step = 4.0
     n = int(2 * half / step) + 1
     verts, faces = [], []
     cx, cy = centre
+    wet = []
     for j in range(n):
         for i in range(n):
             x = cx - half + i * step
             y = cy - half + j * step
             verts.append((x, y, a.terrain.at(x, y) - 0.05))
+            wet.append(_in_water(a, x, y))
     for j in range(n - 1):
         for i in range(n - 1):
             k = j * n + i
-            faces.append([k, k + 1, k + n + 1, k + n])
+            quad = [k, k + 1, k + n + 1, k + n]
+            if all(wet[v] for v in quad):
+                continue        # leave the canal open
+            faces.append(quad)
     me = bpy.data.meshes.new("terrain")
     me.from_pydata(verts, [], faces)
     me.validate(verbose=False)
@@ -444,8 +485,11 @@ def build_water(a, mats, collection, centre=None, radius: float = 1e9) -> None:
         if len(w.line) < 3 or np.linalg.norm(w.line - c, axis=1).min() > radius:
             continue
         ring = [(float(p[0]), float(p[1]), z) for p in w.line]
-        c = np.array(w.line, dtype=float).mean(axis=0)
-        verts = [(float(c[0]), float(c[1]), z)] + ring
+        # Not `c`: that is the study centre, and reusing the name here moved the
+        # radius test onto the last polygon's centroid, which then culled the Leie
+        # centreline out of the very shot it is the subject of.
+        mid = np.array(w.line, dtype=float).mean(axis=0)
+        verts = [(float(mid[0]), float(mid[1]), z)] + ring
         n = len(ring)
         # A single n-gon over a non-convex, non-planar ring renders black. A fan
         # from the centroid is always planar here because z is constant.
@@ -708,6 +752,9 @@ def main() -> None:
     ap.add_argument("--save", default="")
     ap.add_argument("--samples", type=int, default=64)
     ap.add_argument("--no-clutter", action="store_true")
+    ap.add_argument("--no-readings", action="store_true",
+                    help="ignore director readings and use the regional prior, "
+                         "which is the A/B for whether reading the street helped")
     ap.add_argument("--people", default="data/twin/people.npz")
     ap.add_argument("--no-people", action="store_true")
     ap.add_argument("--lobe", action="store_true")
@@ -733,9 +780,12 @@ def main() -> None:
            if np.linalg.norm(b.centroid - np.array([cx, cy])) < radius]
     print(f"[twin] area={args.area} buildings={len(sel)}")
 
+    readings = {} if args.no_readings else facade_mod.load_readings(args.area)
+    print(f"[twin] director readings: {len(readings)} of {len(sel)} buildings")
+
     tris = 0
     for b in sel:
-        spec = facade_mod.default_spec(b)
+        spec = facade_mod.spec_for(b, readings)
         m = facade_mod.build(b, spec, a)
         tris += m.n_tris
         mesh_to_object(m, f"b_{b.osm_id}", mats, col_b)
