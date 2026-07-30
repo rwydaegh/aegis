@@ -350,3 +350,11 @@ papers/city-population-exposure/
 # Blender/web scene build output
 tools/blender-mcp/renders/
 tools/rf-scene-web/dist/
+
+# Vendored third-party Blender assets. Never commit these.
+# City Generator: 565 MB blend, "Royalty Free" licence, redistribution unclear.
+# Buildify (Pavel Oliva): licence forbids selling the graph or its derivatives,
+# and AEGIS is proprietary, so it must not be shipped inside it.
+tools/citygen/The_City_Generator_2.6/
+tools/buildify/
+The_City_Generator_2.6*.zip
