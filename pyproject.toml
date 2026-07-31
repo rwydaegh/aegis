@@ -68,7 +68,7 @@ dev = [
     "pyarrow>=25.0.0",
     # Schemathesis drives the OpenAPI fuzzer at release-tier and the in-process
     # smoke test in tests/test_viewer_schemathesis_smoke.py.
-    "schemathesis>=4.23.0",
+    "schemathesis>=4.24.3",
     "apispec>=6.10",
     # Mutmut runs as a local audit + minor-release CI tool, not per-PR. See
     # docs/internal/testing_roadmap.md (Phase 4) for the tiering rationale.
