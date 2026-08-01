@@ -20,6 +20,49 @@ import pathlib
 import numpy as np
 from PIL import Image
 
+# What UniDepthV2's ``confidence`` output actually is, settled from the source
+# rather than from the key name.  ``unidepth/models/unidepthv2/decoder.py``
+# returns ``exp(logconfidence)``, and ``unidepthv2.py`` trains ``logconfidence``
+# with the ``Confidence`` loss, which regresses it against the magnitude of the
+# depth error of the median-rescaled prediction.  The upstream V2 notes agree:
+# "the model outputs confidence as the estimated scale-invariant log error, i.e.
+# the confidence is a ranking and relative within one input".  A corruption
+# probe on a real Korenmarkt crop confirms the direction: the median field value
+# rises from 0.583 on the original image to 0.849 under heavy pixel noise and
+# 0.741 on a flat grey frame.  The field is an error ranking that grows where
+# the prediction is worse.  It is not a confidence, and its absolute magnitude
+# is not a log-depth standard deviation.
+UNCERTAINTY_FIELD = "UniDepthV2 confidence output, an error ranking relative within one crop"
+
+# Anchor for turning that ranking into a usable log-depth sigma.  UniDepthV2
+# reports roughly 10-20 percent absolute relative depth error on outdoor
+# benchmarks, so pinning the median pixel at 0.15 in log-depth is an engineering
+# prior of the same kind as the mesh prior in ``compare_mesh_depth.py``.  It is
+# deliberately a stated, recorded choice rather than raw model units.
+DEFAULT_REFERENCE_LOG_SIGMA = 0.15
+
+
+def relative_error_to_log_sigma(
+    relative_error: np.ndarray,
+    *,
+    reference_log_sigma: float = DEFAULT_REFERENCE_LOG_SIGMA,
+) -> np.ndarray:
+    """Anchor UniDepth's relative error ranking onto a log-depth sigma.
+
+    The raw field carries no metric units, so consuming it directly as a
+    standard deviation invents an absolute scale.  The median pixel of a crop is
+    pinned to ``reference_log_sigma`` and every other pixel keeps its relative
+    order, which makes the absolute scale an explicit calibration instead of an
+    accident of the checkpoint.
+    """
+    field = np.asarray(relative_error, dtype=np.float64)
+    if reference_log_sigma <= 0.0:
+        raise ValueError("reference_log_sigma must be positive")
+    finite = np.isfinite(field) & (field > 0.0)
+    if not np.any(finite):
+        raise ValueError("the relative error field has no positive finite values to anchor")
+    return (reference_log_sigma * np.abs(field) / np.median(field[finite])).astype(np.float32)
+
 
 def pinhole_intrinsics(width: int, height: int, horizontal_fov_deg: float = 90.0) -> np.ndarray:
     """Return the known intrinsics of one panorama perspective crop."""
@@ -28,7 +71,7 @@ def pinhole_intrinsics(width: int, height: int, horizontal_fov_deg: float = 90.0
 
 
 def uncertainty_visual(uncertainty: np.ndarray) -> Image.Image:
-    """Render relative log-depth error: dark is more certain, bright is less."""
+    """Render the relative error ranking: dark is more reliable, bright is less."""
     low, high = np.nanpercentile(uncertainty, (2.0, 98.0))
     scaled = np.clip((uncertainty - low) / max(high - low, 1e-6), 0.0, 1.0)
     return Image.fromarray(np.round(scaled * 255.0).astype(np.uint8), mode="L")
@@ -52,6 +95,7 @@ def arguments() -> argparse.Namespace:
     parser.add_argument("--out", type=pathlib.Path, required=True)
     parser.add_argument("--model", default="unidepth-v2-vitl14")
     parser.add_argument("--resolution-level", type=float, default=7.0)
+    parser.add_argument("--reference-log-sigma", type=float, default=DEFAULT_REFERENCE_LOG_SIGMA)
     parser.add_argument("--limit", type=int)
     return parser.parse_args()
 
@@ -82,17 +126,19 @@ def main() -> None:
             prediction = model.infer(tensor, torch.from_numpy(intrinsics))
         range_m = prediction["radius"][0, 0].float().cpu().numpy()
         depth_z_m = prediction["depth"][0, 0].float().cpu().numpy()
-        log_error = prediction["confidence"][0, 0].float().cpu().numpy()
+        relative_error = prediction["confidence"][0, 0].float().cpu().numpy()
+        log_sigma = relative_error_to_log_sigma(relative_error, reference_log_sigma=args.reference_log_sigma)
         output = args.out / f"{image_path.stem}.npz"
         np.savez_compressed(
             output,
             range_m=range_m.astype(np.float32),
             depth_z_m=depth_z_m.astype(np.float32),
-            log_error=log_error.astype(np.float32),
+            relative_error=relative_error.astype(np.float32),
+            log_sigma=log_sigma,
             intrinsics=intrinsics,
         )
         depth_visual(range_m).save(args.out / f"{image_path.stem}_range.png")
-        uncertainty_visual(log_error).save(args.out / f"{image_path.stem}_uncertainty.png")
+        uncertainty_visual(relative_error).save(args.out / f"{image_path.stem}_uncertainty.png")
         manifest.append(
             {
                 "view": image_path.stem,
@@ -100,7 +146,8 @@ def main() -> None:
                 "range_median": float(np.median(range_m)),
                 "range_p05": float(np.percentile(range_m, 5.0)),
                 "range_p95": float(np.percentile(range_m, 95.0)),
-                "relative_log_error_median": float(np.median(log_error)),
+                "relative_error_median": float(np.median(relative_error)),
+                "log_sigma_median": float(np.median(log_sigma)),
             }
         )
         print(f"[unidepth] {image_path.stem}: median range {manifest[-1]['range_median']:.2f} m")
@@ -110,7 +157,9 @@ def main() -> None:
                 "model": f"lpiccinelli/{args.model}",
                 "source": str(args.views),
                 "camera": "known 90-degree pinhole intrinsics per perspective crop",
-                "uncertainty": "UniDepthV2 estimated scale-invariant log error, relative within each crop",
+                "uncertainty_field": UNCERTAINTY_FIELD,
+                "uncertainty_anchor": "median pixel pinned to reference_log_sigma, ordering preserved",
+                "reference_log_sigma": args.reference_log_sigma,
                 "views": manifest,
             },
             indent=2,

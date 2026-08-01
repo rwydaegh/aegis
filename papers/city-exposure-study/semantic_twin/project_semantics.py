@@ -12,6 +12,10 @@ Run in Blender so its BVH settles visibility::
 Only surface classes paint the source mesh. People, vehicles, bollards and other
 object detections are counted as unmodelled observations instead of incorrectly
 painting the background triangle hit by their camera ray.
+
+Geometry that no panorama ray ever reached is not given an RF material. It
+carries the explicit :data:`UNOBSERVED_MATERIAL` sentinel, is excluded from
+``scene.xml``, and is counted separately in the manifest.
 """
 
 from __future__ import annotations
@@ -22,15 +26,17 @@ import math
 import pathlib
 import sys
 
-import bpy
 import numpy as np
-from mathutils import Vector
-from mathutils.bvhtree import BVHTree
 
 ROOT = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
 from semantic_twin.export import compact, scene_xml, write_ply  # noqa: E402
+
+# Material id 0 is the real ``unknown`` class, which a segmenter can genuinely
+# assign to an observed surface. Never-observed geometry therefore needs its own
+# out-of-band value so a consumer can tell "seen, unclassified" from "not seen".
+UNOBSERVED_MATERIAL = int(np.iinfo(np.uint16).max)
 
 OBJECT_WORDS = {
     "person",
@@ -149,12 +155,34 @@ def is_object(label: str) -> bool:
     return any(word in text for word in OBJECT_WORDS)
 
 
+def assign_materials(face_material: np.ndarray, visible: np.ndarray) -> np.ndarray:
+    """Return per-face material ids with an explicit never-observed sentinel."""
+    assigned = np.full(len(visible), UNOBSERVED_MATERIAL, dtype=np.uint16)
+    assigned[visible] = np.asarray(face_material)[visible]
+    return assigned
+
+
+def material_groups(assigned_material: np.ndarray, material_names: dict[int, str]) -> dict[str, np.ndarray]:
+    """Group observed faces by material name, leaving unobserved faces out."""
+    groups: dict[str, np.ndarray] = {}
+    for material_id in np.unique(assigned_material):
+        if int(material_id) == UNOBSERVED_MATERIAL:
+            continue
+        name = material_names.get(int(material_id), "unknown")
+        selection = assigned_material == material_id
+        groups[name] = selection if name not in groups else groups[name] | selection
+    return groups
+
+
 def visible_faces(
     vertices: np.ndarray,
     faces: np.ndarray,
     camera: np.ndarray,
     candidates: np.ndarray,
 ) -> np.ndarray:
+    from mathutils import Vector
+    from mathutils.bvhtree import BVHTree
+
     vectors = [Vector(v) for v in vertices]
     bvh = BVHTree.FromPolygons(vectors, faces.tolist(), all_triangles=True)
     centroids = vertices[faces].mean(axis=1)
@@ -174,6 +202,8 @@ def visible_faces(
 
 
 def main() -> None:
+    import bpy
+
     args = parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
     (args.out / "meshes").mkdir(parents=True, exist_ok=True)
@@ -210,16 +240,11 @@ def main() -> None:
     candidates = (~object_mask) & (~sky_mask) & (face_confidence >= args.min_confidence)
     visible = visible_faces(vertices, faces, camera, candidates)
 
-    assigned_material = np.zeros(len(faces), dtype=np.uint16)
-    assigned_material[visible] = face_material[visible]
-    groups: dict[str, np.ndarray] = {}
+    assigned_material = assign_materials(face_material, visible)
+    groups = material_groups(assigned_material, material_names)
     shapes = []
     counts = {}
-    for material_id in np.unique(assigned_material):
-        name = material_names.get(int(material_id), "unknown")
-        selection = assigned_material == material_id
-        if not np.any(selection):
-            continue
+    for name, selection in groups.items():
         itu = RF_TO_ITU.get(name, "concrete")
         mesh_id = f"semantic_{name}".replace(" ", "_")
         compact_vertices, compact_faces = compact(vertices, faces[selection])
@@ -227,12 +252,12 @@ def main() -> None:
         write_ply(args.out / relative, compact_vertices, compact_faces)
         shapes.append((mesh_id, relative, itu))
         counts[name] = int(selection.sum())
-        groups[name] = selection
 
     comments = [
         "Street View semantic projection onto the Inhouse photogrammetry mesh.",
         "Only first-visible surface triangles receive panorama labels.",
         "Object classes are not painted onto background geometry.",
+        "Faces no panorama ray reached are omitted entirely and carry no ITU material.",
         "ITU materials are provisional mappings from material hints, not calibrated values.",
     ]
     (args.out / "scene.xml").write_text(scene_xml(shapes, comments=comments))
@@ -253,15 +278,18 @@ def main() -> None:
         "source_mesh": str(args.mesh),
         "source_faces": len(faces),
         "camera_enu_m": camera.tolist(),
-        "visible_labelled_faces": int(visible.sum()),
-        "hidden_or_unresolved_faces": int((~visible).sum()),
-        "face_groups": counts,
+        "observed_faces": int(visible.sum()),
+        "unobserved_faces": int((~visible).sum()),
+        "exported_faces": int(sum(counts.values())),
+        "unobserved_material_id": UNOBSERVED_MATERIAL,
+        "observed_face_groups": counts,
         "unmodelled_object_pixel_counts": object_pixels,
         "object_policy": "retain as observations; never paint their background hit",
+        "unobserved_policy": "no RF material, no PLY, no scene.xml shape",
         "material_policy": "provisional RF hints mapped to nearest installed ITU material",
     }
     (args.out / "projection_manifest.json").write_text(json.dumps(manifest, indent=2))
-    print(f"[project] {visible.sum()}/{len(faces)} first-visible faces labelled")
+    print(f"[project] {visible.sum()}/{len(faces)} first-visible faces labelled, {(~visible).sum()} left unobserved")
     print(f"[project] -> {args.out / 'scene.xml'}")
 
 

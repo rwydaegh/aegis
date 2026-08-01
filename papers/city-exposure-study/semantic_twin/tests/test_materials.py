@@ -3,6 +3,7 @@ from __future__ import annotations
 import pathlib
 
 import numpy as np
+import pytest
 
 from semantic_twin.materials import MaterialLibrary, radio_material_from_roughness
 
@@ -21,7 +22,7 @@ def test_itu_concrete_at_28_ghz_matches_reference_curve() -> None:
 
 
 def test_out_of_range_evaluation_is_explicit_and_more_uncertain() -> None:
-    brick = library()["brick"].evaluate(60e9)
+    brick = library()["brick"].evaluate(60e9, allow_extrapolation=True)
     assert brick.applicability == "indicative_extrapolation"
     assert brick.uncertainty_multiplier > 1.0
 
@@ -45,3 +46,11 @@ def test_complete_radio_material_retains_non_itu_provenance() -> None:
     assert material.relative_permittivity == evaluation.relative_permittivity_real
     assert material.scattering_coefficient > 0.0
     assert material.provenance["roughness_closure"]["status"].startswith("engineering")
+
+
+def test_extrapolation_beyond_the_recommendation_range_needs_an_explicit_opt_in() -> None:
+    for name in ("brick", "asphalt_concrete"):
+        with pytest.raises(ValueError, match="GHz"):
+            library()[name].evaluate(60e9)
+        with pytest.raises(ValueError, match="GHz"):
+            library()[name].sample(60e9, 4, np.random.default_rng(0))

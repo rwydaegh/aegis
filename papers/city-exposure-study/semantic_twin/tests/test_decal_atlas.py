@@ -66,3 +66,36 @@ def test_conservative_simplifier_removes_collinear_points_but_preserves_concave_
 
     assert np.any(np.all(guarded == (2.0, 1.0), axis=1))
     assert np.any(np.all(guarded == (1.0, 1.0), axis=1))
+
+
+def test_hypotenuse_observations_stay_inside_the_canonical_triangle() -> None:
+    atlas = rasterize_triangle_evidence(
+        triangle_indices=np.array((0,)),
+        barycentric=np.array(((0.0, 0.5, 0.5),)),
+        labels=np.array((1,)),
+        confidence=np.array((2.0,)),
+        resolution=8,
+        triangle_count=1,
+        class_count=2,
+    )
+
+    assert atlas.support.sum() == pytest.approx(2.0)
+    assert atlas.weights.sum() == pytest.approx(2.0)
+    assert int((atlas.labels == 1).sum()) == 1
+
+
+def test_a_high_triangle_identifier_does_not_allocate_a_dense_atlas() -> None:
+    atlas = rasterize_triangle_evidence(
+        triangle_indices=np.array((157_743,)),
+        barycentric=np.array(((0.2, 0.3, 0.5),)),
+        labels=np.array((7,)),
+        confidence=np.array((1.0,)),
+        resolution=8,
+        triangle_count=157_744,
+        class_count=66,
+    )
+
+    assert atlas.weights.nbytes < 10 * 2**20
+    np.testing.assert_array_equal(atlas.triangle_ids, np.array((157_743,)))
+    np.testing.assert_array_equal(atlas.rows_for(np.array((157_743, 5))), np.array((0, -1)))
+    assert int(atlas.labels[0].max()) == 7

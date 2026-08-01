@@ -114,7 +114,16 @@ class PowerLawMaterial:
     sigma_log_std: float
     provenance: dict[str, Any]
 
-    def evaluate(self, frequency_hz: float, *, allow_extrapolation: bool = True) -> MaterialEvaluation:
+    def evaluate(self, frequency_hz: float, *, allow_extrapolation: bool = False) -> MaterialEvaluation:
+        """Evaluate the ITU power-law curve, refusing to leave its stated range.
+
+        Recommendation ITU-R P.2040-4 Table 3 states a validity band per
+        material and says nothing about the curve outside it. Extrapolation is
+        therefore opt-in: a caller that wants an indicative value above the
+        band has to ask for it, and gets ``applicability`` set to
+        ``indicative_extrapolation`` with an inflated uncertainty multiplier.
+        ``hard_limit`` records the rows where even that is not defensible.
+        """
         frequency_ghz = frequency_hz / 1e9
         if frequency_ghz <= 0.0:
             raise ValueError("frequency must be positive")
@@ -146,8 +155,10 @@ class PowerLawMaterial:
         frequency_hz: float,
         count: int,
         rng: np.random.Generator,
+        *,
+        allow_extrapolation: bool = False,
     ) -> tuple[np.ndarray, np.ndarray]:
-        evaluation = self.evaluate(frequency_hz)
+        evaluation = self.evaluate(frequency_hz, allow_extrapolation=allow_extrapolation)
         scale = evaluation.uncertainty_multiplier
         eps = rng.normal(
             evaluation.relative_permittivity_real,

@@ -17,18 +17,41 @@ import numpy as np
 class TriangleSemanticAtlas:
     """Categorical evidence accumulated in canonical UV space per triangle.
 
-    ``weights`` has shape ``(triangles, height, width, classes)``.  ``labels``
-    is ``invalid_label`` where there is no observation or where a square texel
-    falls outside the canonical triangle.  ``confidence`` is the winning class
-    weight divided by total categorical weight at that texel.
+    The atlas is sparse over the support mesh.  Only triangles that appear in
+    the projected observations get a row, so a city mesh with millions of
+    triangles costs nothing for the triangles no panorama has seen.  Row ``i``
+    belongs to support-mesh triangle ``triangle_ids[i]``, and ``triangle_ids``
+    is ascending.  Use :meth:`rows_for` to go from triangle identifiers to rows.
+
+    ``weights`` has shape ``(observed_triangles, height, width, classes)``.
+    ``labels`` is ``invalid_label`` where there is no observation or where a
+    square texel falls outside the canonical triangle.  ``confidence`` is the
+    winning class weight divided by total categorical weight at that texel.
+    ``triangle_count`` is the size of the support mesh when the caller declared
+    it, and ``None`` when it was inferred from the observations.
     """
 
+    triangle_ids: np.ndarray
     weights: np.ndarray
     labels: np.ndarray
     confidence: np.ndarray
     support: np.ndarray
     valid_texels: np.ndarray
     invalid_label: int = -1
+    triangle_count: int | None = None
+
+    @property
+    def observed_triangle_count(self) -> int:
+        """Number of support-mesh triangles that own a row in this atlas."""
+        return len(self.triangle_ids)
+
+    def rows_for(self, triangle_ids: np.ndarray) -> np.ndarray:
+        """Return the atlas row of each triangle, or ``-1`` when unobserved."""
+        query = np.asarray(triangle_ids, dtype=np.int64)
+        if not len(self.triangle_ids):
+            return np.full(query.shape, -1, dtype=np.intp)
+        position = np.clip(np.searchsorted(self.triangle_ids, query), 0, len(self.triangle_ids) - 1)
+        return np.where(self.triangle_ids[position] == query, position, -1).astype(np.intp)
 
 
 def barycentric_uv(vertices: np.ndarray) -> np.ndarray:
@@ -66,6 +89,10 @@ def rasterize_triangle_evidence(
     Negative labels represent intentionally unlabelled observations and are
     ignored.  Invalid triangle indices, barycentrics, and confidences raise so
     that a bad projection cannot quietly corrupt a decal layer.
+
+    The returned atlas allocates one row per *observed* triangle, not one row
+    per support-mesh triangle.  ``triangle_count`` therefore only bounds the
+    accepted identifiers, it never sizes the buffer.
     """
     height, width = _resolution(resolution)
     triangle_indices = np.asarray(triangle_indices, dtype=np.int64)
@@ -90,29 +117,30 @@ def rasterize_triangle_evidence(
         class_count = int(labels[labelled].max()) + 1 if np.any(labelled) else 0
     if class_count < 0 or np.any(labels[labelled] >= class_count):
         raise ValueError("class_count must include every nonnegative label")
+    declared_triangle_count = triangle_count
     if triangle_count is None:
         triangle_count = int(triangle_indices.max()) + 1 if observations else 0
     if triangle_count < 0 or np.any((triangle_indices < 0) | (triangle_indices >= triangle_count)):
         raise ValueError("triangle indices must lie in [0, triangle_count)")
 
     valid_texels = _canonical_triangle_texels(height, width)
-    weights = np.zeros((triangle_count, height, width, class_count), dtype=np.float32)
+    observed, atlas_row = np.unique(triangle_indices, return_inverse=True)
+    observed = observed.astype(np.int64, copy=False)
+    atlas_row = np.reshape(atlas_row, (observations,)).astype(np.intp, copy=False)
+    weights = np.zeros((len(observed), height, width, class_count), dtype=np.float32)
     if class_count:
         active = labelled & (confidence > 0.0)
         if np.any(active):
-            u = np.clip(barycentric[active, 1], 0.0, 1.0)
-            v = np.clip(barycentric[active, 2], 0.0, 1.0)
-            columns = np.floor(u * (width - 1) + 0.5).astype(np.intp)
-            rows = np.floor(v * (height - 1) + 0.5).astype(np.intp)
+            rows, columns = _texel_indices(barycentric[active, 2], barycentric[active, 1], height, width)
             np.add.at(
                 weights,
-                (triangle_indices[active], rows, columns, labels[active]),
+                (atlas_row[active], rows, columns, labels[active]),
                 confidence[active].astype(np.float32),
             )
 
     support = weights.sum(axis=-1)
-    labels_out = np.full((triangle_count, height, width), invalid_label, dtype=np.int64)
-    confidence_out = np.zeros((triangle_count, height, width), dtype=np.float32)
+    labels_out = np.full((len(observed), height, width), invalid_label, dtype=np.int64)
+    confidence_out = np.zeros((len(observed), height, width), dtype=np.float32)
     if class_count:
         winner = weights.argmax(axis=-1)
         has_support = support > 0.0
@@ -121,10 +149,20 @@ def rasterize_triangle_evidence(
         confidence_out[has_support] /= support[has_support]
 
     outside = ~valid_texels
+    weights[:, outside] = 0.0
     labels_out[:, outside] = invalid_label
     confidence_out[:, outside] = 0.0
     support[:, outside] = 0.0
-    return TriangleSemanticAtlas(weights, labels_out, confidence_out, support, valid_texels, invalid_label)
+    return TriangleSemanticAtlas(
+        observed,
+        weights,
+        labels_out,
+        confidence_out,
+        support,
+        valid_texels,
+        invalid_label,
+        declared_triangle_count,
+    )
 
 
 def conservative_simplify_contour(points: np.ndarray, tolerance: float) -> np.ndarray:
@@ -178,6 +216,36 @@ def _resolution(resolution: int | tuple[int, int]) -> tuple[int, int]:
     if not isinstance(height, (int, np.integer)) or not isinstance(width, (int, np.integer)) or height < 2 or width < 2:
         raise ValueError("atlas resolution must have integer height and width >= 2")
     return int(height), int(width)
+
+
+def _texel_indices(v: np.ndarray, u: np.ndarray, height: int, width: int) -> tuple[np.ndarray, np.ndarray]:
+    """Map barycentric ``(u, v)`` onto the nearest texel inside the triangle.
+
+    Rounding each axis independently can push a point that genuinely lies in
+    the triangle across the hypotenuse: at 8 x 8 the barycentric midpoint of
+    the hypotenuse rounds to texel (4, 4), where ``u + v = 8/7``.  That texel
+    is masked out of the canonical triangle, so the observation would be
+    accumulated and then discarded.  Whenever the rounded texel lands outside,
+    the axis that was rounded up hardest steps back to its neighbouring texel
+    until the pair is inside again.  A texel outside the triangle always has
+    both indices above zero, so the walk terminates at the origin at worst.
+    """
+    v = np.clip(v, 0.0, 1.0)
+    u = np.clip(u, 0.0, 1.0)
+    rows = np.floor(v * (height - 1) + 0.5)
+    columns = np.floor(u * (width - 1) + 0.5)
+    row_excess = rows - v * (height - 1)
+    column_excess = columns - u * (width - 1)
+    outside = rows / (height - 1) + columns / (width - 1) > 1.0 + 1e-12
+    while np.any(outside):
+        step_row = outside & (row_excess >= column_excess)
+        step_column = outside & ~step_row
+        rows[step_row] -= 1.0
+        columns[step_column] -= 1.0
+        row_excess[step_row] -= 1.0
+        column_excess[step_column] -= 1.0
+        outside = rows / (height - 1) + columns / (width - 1) > 1.0 + 1e-12
+    return rows.astype(np.intp), columns.astype(np.intp)
 
 
 def _canonical_triangle_texels(height: int, width: int) -> np.ndarray:

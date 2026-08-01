@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import pathlib
+
 import numpy as np
+import pytest
 
 from semantic_twin.evidence import EvidenceAccumulator, ObservationQuality, SoftAssociation, categorical_information
 
@@ -52,3 +55,28 @@ def test_evidence_round_trip(tmp_path) -> None:
     restored = EvidenceAccumulator.load(path)
     np.testing.assert_array_equal(restored.entity_alpha, evidence.entity_alpha)
     assert restored.attribute_labels == ["thin"]
+
+
+def _corrupted_checkpoint(tmp_path, **overrides) -> pathlib.Path:
+    evidence = EvidenceAccumulator(3, ["a", "b"], ["x", "y"], ["thin"])
+    path = tmp_path / "evidence.npz"
+    evidence.save(path)
+    with np.load(path, allow_pickle=False) as document:
+        arrays = {name: document[name] for name in document.files}
+    arrays.update(overrides)
+    np.savez_compressed(path, **arrays)
+    return path
+
+
+def test_evidence_load_rejects_arrays_that_disagree_with_the_label_lists(tmp_path) -> None:
+    path = _corrupted_checkpoint(tmp_path, entity_alpha=np.zeros((3, 5), dtype=np.float32))
+    with pytest.raises(ValueError, match="entity_alpha must have shape"):
+        EvidenceAccumulator.load(path)
+
+    path = _corrupted_checkpoint(tmp_path, support_weight=np.zeros(3, dtype=np.float64))
+    with pytest.raises(ValueError, match="support_weight must have shape"):
+        EvidenceAccumulator.load(path)
+
+    path = _corrupted_checkpoint(tmp_path, material_alpha=np.full((3, 2), np.nan, dtype=np.float32))
+    with pytest.raises(ValueError, match="finite non-negative"):
+        EvidenceAccumulator.load(path)

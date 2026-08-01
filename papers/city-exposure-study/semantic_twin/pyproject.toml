@@ -8,9 +8,12 @@ version = "0.1.0"
 description = "Panorama-driven semantic reconstruction for radio digital twins"
 requires-python = ">=3.12"
 dependencies = [
+  "mapbox-earcut>=1.0",
   "numpy>=2.0",
   "pillow>=11",
+  "scikit-image>=0.24",
   "scipy>=1.14",
+  "shapely>=2.0",
 ]
 
 [project.optional-dependencies]

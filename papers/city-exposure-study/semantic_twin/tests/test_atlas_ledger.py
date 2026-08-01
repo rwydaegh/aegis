@@ -130,3 +130,17 @@ def test_ledger_rejects_invalid_barycentrics_and_unknown_depth_state() -> None:
             np.array((1.0,)),
             "not-a-state",
         )
+
+
+def test_ledger_load_refuses_a_capacity_that_would_silently_drop_rows(tmp_path) -> None:
+    ledger = SparseAtlasLedger(1000, ["glass", "metal"])
+    append_rows(ledger, np.arange(300))
+    path = tmp_path / "ledger.npz"
+    ledger.save(path)
+
+    with pytest.raises(ValueError, match="does not fit"):
+        SparseAtlasLedger.load(path, max_observations=100)
+
+    restored = SparseAtlasLedger.load(path, max_observations=5000)
+    assert restored.max_observations == 5000
+    assert len(restored) == 300

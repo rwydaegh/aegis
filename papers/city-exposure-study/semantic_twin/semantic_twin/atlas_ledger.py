@@ -259,14 +259,24 @@ class SparseAtlasLedger:
 
     @classmethod
     def load(cls, path: pathlib.Path, *, max_observations: int | None = None) -> SparseAtlasLedger:
-        """Load a compressed sparse NPZ ledger, optionally into a new capacity."""
+        """Load a compressed sparse NPZ ledger, optionally into a new capacity.
+
+        A checkpoint is durable storage, so loading never evicts.  Requesting a
+        capacity below the saved observation count raises instead of quietly
+        returning the newest rows.
+        """
         with np.load(path, allow_pickle=False) as document:
             metadata = json.loads(str(document["metadata"]))
             if metadata.get("format_version") != cls._FORMAT_VERSION:
                 raise ValueError("unsupported sparse atlas ledger format")
             saved_count = len(document["triangle_id"])
             capacity = int(max_observations) if max_observations is not None else int(metadata["max_observations"])
-            result = cls(max(capacity, min(saved_count, capacity)), metadata["material_channel_names"])
+            if saved_count > capacity:
+                raise ValueError(
+                    f"the checkpoint holds {saved_count} observations, which does not fit a capacity of "
+                    f"{capacity}; load with max_observations >= {saved_count} to keep every row"
+                )
+            result = cls(capacity, metadata["material_channel_names"])
             result.append(
                 document["triangle_id"],
                 document["barycentric_uv"],

@@ -188,21 +188,42 @@ class EvidenceAccumulator:
 
     @classmethod
     def load(cls, path: pathlib.Path) -> EvidenceAccumulator:
-        document = np.load(path)
-        metadata = json.loads(str(document["metadata"]))
-        result = cls(
-            len(document["support_weight"]),
-            metadata["entity_labels"],
-            metadata["material_labels"],
-            metadata["attribute_labels"],
-        )
-        for name in (
-            "entity_alpha",
-            "material_alpha",
-            "attribute_alpha",
-            "attribute_beta",
-            "support_weight",
-            "observation_count",
-        ):
-            setattr(result, name, document[name])
+        """Restore posteriors from an NPZ checkpoint, rejecting anything else.
+
+        Pickled payloads are refused, the archive handle is released before
+        returning, and every array must match the shape and dtype implied by
+        the stored label lists. A checkpoint that disagrees with its own
+        metadata is a corrupted posterior, not something to load half of.
+        """
+        with np.load(path, allow_pickle=False) as document:
+            metadata = json.loads(str(document["metadata"]))
+            for key in ("entity_labels", "material_labels", "attribute_labels"):
+                names = metadata.get(key)
+                if not isinstance(names, list) or not all(isinstance(name, str) for name in names):
+                    raise ValueError(f"evidence metadata must carry a list of string {key}")
+            surfaces = len(np.asarray(document["support_weight"]))
+            result = cls(
+                surfaces,
+                metadata["entity_labels"],
+                metadata["material_labels"],
+                metadata["attribute_labels"],
+            )
+            expected = {
+                "entity_alpha": ((surfaces, len(result.entity_labels)), np.float32),
+                "material_alpha": ((surfaces, len(result.material_labels)), np.float32),
+                "attribute_alpha": ((surfaces, len(result.attribute_labels)), np.float32),
+                "attribute_beta": ((surfaces, len(result.attribute_labels)), np.float32),
+                "support_weight": ((surfaces,), np.float32),
+                "observation_count": ((surfaces,), np.uint32),
+            }
+            for name, (shape, dtype) in expected.items():
+                array = np.asarray(document[name])
+                if array.shape != shape or array.dtype != dtype:
+                    raise ValueError(
+                        f"{name} must have shape {shape} and dtype {np.dtype(dtype).name}, "
+                        f"not {array.shape} and {array.dtype.name}"
+                    )
+                if not np.all(np.isfinite(array)) or np.any(array < 0.0):
+                    raise ValueError(f"{name} must hold finite non-negative evidence counts")
+                setattr(result, name, array)
         return result
