@@ -1051,6 +1051,37 @@ with zero slivers. Bad normals on large triangles hold for Milan only, 19.5%
 inverted in the top 0.1% by area against a 6.5% baseline, and not for Korenmarkt.
 The defect is topological and orientational, not metric.
 
+### The phase screen is barred from the monostatic branch
+
+The cheap Kirchhoff phase screen and the rigorous coupled wave solve agree on
+standard brickwork in the forward and specular directions to 2 dB. In backscatter
+they do not. The rigorous backscattered orders sit on a flat floor near -41.5 dB
+from -30 to -78 degrees, while the phase screen falls to -68.2 dB at -33 and -36
+degrees. That is a gap of 13 to 27 dB across a 14 degree span.
+
+It is not a bias to be corrected, because the cause is structural. A phase screen
+can redirect power but it cannot send power back the way it came, and the
+backscatter from brickwork comes from the groove walls and the arris of every
+unit, neither of which a screen represents. **So a phase screen surface model may
+be used for the forward and specular branches and must not be used for the
+monostatic branch at FR2.** At FR3 both directions agree to 3 dB.
+
+A second result from the same solve is worth recording because it is a claim about
+real facades rather than about a numerical method. The rigorous order envelope is
+flat to 1.2 dB at 10 GHz over the whole hemisphere, and 5 to 6 dB at 28 GHz, with
+backscatter between half and 1.2 times the forward power. That is Lambertian.
+Published measurement work fits Lambertian to real facades and attributes it to
+pillars, balconies and street furniture. Here the brickwork alone produces it,
+from construction geometry, with nothing fitted.
+
+The FR2 grazing columns of the sweep, which are the street canyon case, over-count
+diffuse scattering by roughly a factor of two, because an earlier validity rule for
+the phase screen was wrong. The rule said the screen held to a groove aspect ratio
+of one half at any frequency. There are in fact two failure modes, deep groove and
+grazing-incidence shadowing, and the second only bites once the joint is
+resolvable, which is why 10 GHz at 60 degrees is fine to 7 percent while 28 GHz at
+60 degrees is 34 percent low on specular.
+
 ### Diffraction is demoted, the crop radius is promoted
 
 `MONOSTATIC_SBR.md` called diffraction the largest known physical omission in
