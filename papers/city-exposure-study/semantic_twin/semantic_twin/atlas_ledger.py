@@ -6,6 +6,12 @@ panorama only observes a small subset.  A fixed-capacity ring buffer keeps the
 in-memory representation bounded and preserves the newest observations in
 chronological append order.  Callers can checkpoint the compressed NPZ before
 advancing to the next acquisition batch.
+
+Reads are shaped by the fact that a per-city batch is millions of rows over tens
+of thousands of triangles.  Grouping sorts once instead of rescanning the batch
+per triangle, and view identifiers are stored as codes into a table rather than
+as a fixed-width string per observation.  Both are invisible from the outside:
+the arrays handed back, and the NPZ written, are unchanged.
 """
 
 from __future__ import annotations
@@ -48,8 +54,24 @@ class LedgerObservations:
     @property
     def barycentric(self) -> np.ndarray:
         """Return full ``(w0, w1, w2)`` coordinates for ray-hit consumers."""
-        uv = self.barycentric_uv
-        return np.column_stack((1.0 - uv[:, 0] - uv[:, 1], uv)).astype(np.float32, copy=False)
+        return _barycentric(self.barycentric_uv)
+
+
+@dataclass(frozen=True)
+class _ValidatedBatch:
+    """One accepted append, with view identifiers already reduced to codes."""
+
+    triangle_id: np.ndarray
+    barycentric_uv: np.ndarray
+    label: np.ndarray
+    material_channels: np.ndarray
+    confidence: np.ndarray
+    view_code: np.ndarray
+    range_m: np.ndarray
+    depth_conflict: np.ndarray
+
+    def __len__(self) -> int:
+        return len(self.triangle_id)
 
 
 @dataclass(frozen=True)
@@ -96,7 +118,15 @@ class SparseAtlasLedger:
         self._label = np.empty(self.max_observations, dtype=np.int32)
         self._material_channels = np.empty((self.max_observations, len(names)), dtype=np.float32)
         self._confidence = np.empty(self.max_observations, dtype=np.float32)
-        self._view_id = np.empty(self.max_observations, dtype=f"U{self._VIEW_ID_MAX_CHARS}")
+        # Observations are per pixel while view identifiers are per panorama, so
+        # the buffer stores a code and keeps one copy of each name.  A fixed
+        # 128 character slot per observation would otherwise be 512 bytes of the
+        # 549 this ledger spends per row, and would put a per-city batch of a
+        # million and a half observations at 790 MB of which 737 MB is repeated
+        # panorama names.
+        self._view_code = np.empty(self.max_observations, dtype=np.int32)
+        self._view_names: list[str] = []
+        self._view_lookup: dict[str, int] = {}
         self._range_m = np.empty(self.max_observations, dtype=np.float32)
         self._depth_conflict = np.empty(self.max_observations, dtype=np.uint8)
 
@@ -141,7 +171,7 @@ class SparseAtlasLedger:
         if not count:
             return
         if count >= self.max_observations:
-            batch = _slice_observations(batch, slice(-self.max_observations, None))
+            batch = _slice_batch(batch, slice(-self.max_observations, None))
             count = self.max_observations
             self._head = 0
             self._size = 0
@@ -156,23 +186,73 @@ class SparseAtlasLedger:
         self._label[slots] = batch.label
         self._material_channels[slots] = batch.material_channels
         self._confidence[slots] = batch.confidence
-        self._view_id[slots] = batch.view_id
+        self._view_code[slots] = batch.view_code
         self._range_m[slots] = batch.range_m
         self._depth_conflict[slots] = batch.depth_conflict
 
+    def _chronological_indices(self) -> np.ndarray | slice:
+        """Ring-buffer slots in append order, as a slice while nothing has wrapped."""
+        end = self._head + self._size
+        if end <= self.max_observations:
+            return slice(self._head, end)
+        return (self._head + np.arange(self._size, dtype=np.intp)) % self.max_observations
+
     def observations(self) -> LedgerObservations:
         """Return retained observations in chronological append order."""
-        indices = (self._head + np.arange(self._size, dtype=np.intp)) % self.max_observations
+        indices = self._chronological_indices()
+        # A basic slice is a view, so it still needs the copy that keeps the
+        # returned record independent of the ring buffer.  Advanced indexing
+        # already copies, and copying that result again would double both the
+        # allocation and the memory traffic of every read of the ledger.
+        copy = isinstance(indices, slice)
         return LedgerObservations(
-            self._triangle_id[indices].copy(),
-            self._barycentric_uv[indices].copy(),
-            self._label[indices].copy(),
-            self._material_channels[indices].copy(),
-            self._confidence[indices].copy(),
-            self._view_id[indices].copy(),
-            self._range_m[indices].copy(),
-            self._depth_conflict[indices].copy(),
+            _read(self._triangle_id, indices, copy),
+            _read(self._barycentric_uv, indices, copy),
+            _read(self._label, indices, copy),
+            _read(self._material_channels, indices, copy),
+            _read(self._confidence, indices, copy),
+            self._view_ids(self._view_code[indices]),
+            _read(self._range_m, indices, copy),
+            _read(self._depth_conflict, indices, copy),
         )
+
+    def _view_ids(self, codes: np.ndarray) -> np.ndarray:
+        """Expand stored view codes back into the fixed-width identifier array."""
+        table = np.asarray(self._view_names, dtype=f"U{self._VIEW_ID_MAX_CHARS}")
+        if not len(table):
+            return np.empty(len(codes), dtype=f"U{self._VIEW_ID_MAX_CHARS}")
+        return table[codes]
+
+    def _triangle_segments(
+        self,
+        depth_conflicts: Iterable[DepthConflictState | str | int] | None,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Retained slots reordered by triangle, plus each triangle's start row.
+
+        A single stable argsort replaces the per-triangle rescan of the whole
+        batch that this used to do.  Stability is what preserves the documented
+        contract: rows inside one triangle stay in chronological append order,
+        and the triangles themselves come out ascending, exactly as a scan
+        driven by ``np.unique`` produced them.
+        """
+        chronological = self._chronological_indices()
+        if isinstance(chronological, slice):
+            slots = np.arange(chronological.start, chronological.stop, dtype=np.intp)
+        else:
+            slots = chronological
+        selected = _selected_conflicts(depth_conflicts)
+        if selected is not None:
+            wanted = np.zeros(256, dtype=bool)
+            wanted[selected] = True
+            slots = slots[wanted[self._depth_conflict[slots]]]
+        triangles = self._triangle_id[slots]
+        order = np.argsort(triangles, kind="stable")
+        slots = slots[order]
+        triangles = triangles[order]
+        if not len(triangles):
+            return slots, triangles, np.empty(0, dtype=np.intp)
+        starts = np.flatnonzero(np.concatenate(([True], triangles[1:] != triangles[:-1])))
+        return slots, triangles, starts.astype(np.intp, copy=False)
 
     def groups_by_triangle(
         self,
@@ -185,29 +265,30 @@ class SparseAtlasLedger:
         order within each triangle.  They can be concatenated into the arrays
         consumed by :func:`semantic_twin.decal_atlas.rasterize_triangle_evidence`.
         """
-        observations = self.observations()
-        selected = _selected_conflicts(depth_conflicts)
-        keep = np.ones(len(observations), dtype=bool)
-        if selected is not None:
-            keep &= np.isin(observations.depth_conflict, selected)
-        indices = np.flatnonzero(keep)
-        triangles = observations.triangle_id[indices]
-        groups: list[TriangleObservationGroup] = []
-        for triangle in np.unique(triangles):
-            rows = indices[triangles == triangle]
-            groups.append(
-                TriangleObservationGroup(
-                    int(triangle),
-                    observations.barycentric[rows],
-                    observations.label[rows],
-                    observations.material_channels[rows],
-                    observations.confidence[rows],
-                    observations.view_id[rows],
-                    observations.range_m[rows],
-                    observations.depth_conflict[rows],
-                )
+        slots, triangles, starts = self._triangle_segments(depth_conflicts)
+        if not len(starts):
+            return ()
+        stops = np.concatenate((starts[1:], [len(slots)]))
+        barycentric = _barycentric(self._barycentric_uv[slots])
+        label = self._label[slots]
+        material = self._material_channels[slots]
+        confidence = self._confidence[slots]
+        view_id = self._view_ids(self._view_code[slots])
+        range_m = self._range_m[slots]
+        depth_conflict = self._depth_conflict[slots]
+        return tuple(
+            TriangleObservationGroup(
+                int(triangles[start]),
+                barycentric[start:stop].copy(),
+                label[start:stop].copy(),
+                material[start:stop].copy(),
+                confidence[start:stop].copy(),
+                view_id[start:stop].copy(),
+                range_m[start:stop].copy(),
+                depth_conflict[start:stop].copy(),
             )
-        return tuple(groups)
+            for start, stop in zip(starts, stops)
+        )
 
     def rasterize_inputs(
         self,
@@ -219,9 +300,13 @@ class SparseAtlasLedger:
         By default every retained depth state is returned.  Callers normally
         request only ``AGREEMENT`` and optionally ``UNCERTAIN`` evidence before
         painting a static support mesh.
+
+        The grouped rows are already the concatenation this needs, so nothing
+        here builds the per-triangle records.  That also keeps the view
+        identifiers, which dominate the ledger's memory, out of the read path.
         """
-        groups = self.groups_by_triangle(depth_conflicts=depth_conflicts)
-        if not groups:
+        slots, triangles, _ = self._triangle_segments(depth_conflicts)
+        if not len(slots):
             return (
                 np.empty(0, dtype=np.int64),
                 np.empty((0, 3), dtype=np.float32),
@@ -229,10 +314,10 @@ class SparseAtlasLedger:
                 np.empty(0, dtype=np.float32),
             )
         return (
-            np.concatenate([group.triangle_id * np.ones(len(group.labels), dtype=np.int64) for group in groups]),
-            np.concatenate([group.barycentric for group in groups]),
-            np.concatenate([group.labels for group in groups]),
-            np.concatenate([group.confidence for group in groups]),
+            triangles,
+            _barycentric(self._barycentric_uv[slots]),
+            self._label[slots],
+            self._confidence[slots],
         )
 
     def save(self, path: pathlib.Path) -> None:
@@ -299,7 +384,7 @@ class SparseAtlasLedger:
         view_id: np.ndarray | Iterable[str] | str,
         range_m: np.ndarray,
         depth_conflict: np.ndarray | Iterable[DepthConflictState | str | int] | DepthConflictState | str | int,
-    ) -> LedgerObservations:
+    ) -> _ValidatedBatch:
         triangle = np.asarray(triangle_id, dtype=np.int64)
         uv = np.asarray(barycentric_uv, dtype=np.float32)
         label = np.asarray(labels, dtype=np.int32)
@@ -330,36 +415,59 @@ class SparseAtlasLedger:
             raise ValueError("confidence must be finite and lie in [0, 1]")
         if not np.all(np.isfinite(distance)) or np.any(distance < 0.0):
             raise ValueError("range_m must be finite and nonnegative")
-        views = _view_ids(view_id, count, self._VIEW_ID_MAX_CHARS)
+        views = self._view_codes(view_id, count)
         conflicts = _depth_conflicts(depth_conflict, count)
-        return LedgerObservations(triangle, uv, label, material, confidence_array, views, distance, conflicts)
+        return _ValidatedBatch(triangle, uv, label, material, confidence_array, views, distance, conflicts)
 
-
-def _slice_observations(observations: LedgerObservations, selector: slice) -> LedgerObservations:
-    return LedgerObservations(
-        observations.triangle_id[selector],
-        observations.barycentric_uv[selector],
-        observations.label[selector],
-        observations.material_channels[selector],
-        observations.confidence[selector],
-        observations.view_id[selector],
-        observations.range_m[selector],
-        observations.depth_conflict[selector],
-    )
-
-
-def _view_ids(value: np.ndarray | Iterable[str] | str, count: int, maximum_length: int) -> np.ndarray:
-    if isinstance(value, str):
-        source = np.full(count, value, dtype=object)
-    else:
-        source = np.asarray(value, dtype=object)
+    def _view_codes(self, value: np.ndarray | Iterable[str] | str, count: int) -> np.ndarray:
+        """Validate view identifiers and reduce them to one code per observation."""
+        if isinstance(value, str):
+            return np.full(count, self._view_code_of(value), dtype=np.int32)
+        source = np.asarray(value)
         if source.shape != (count,):
             raise ValueError("view_id must be a scalar string or one value per observation")
-    if np.any(source == ""):
-        raise ValueError("view_id cannot be empty")
-    if any(len(str(item)) > maximum_length for item in source):
-        raise ValueError(f"view_id cannot exceed {maximum_length} characters")
-    return source.astype(f"U{maximum_length}")
+        names, inverse = np.unique(source, return_inverse=True)
+        codes = np.fromiter(
+            (self._view_code_of(name) for name in names.tolist()),
+            dtype=np.int32,
+            count=len(names),
+        )
+        return codes[inverse.reshape(-1)]
+
+    def _view_code_of(self, value: object) -> int:
+        text = str(value)
+        if not text:
+            raise ValueError("view_id cannot be empty")
+        if len(text) > self._VIEW_ID_MAX_CHARS:
+            raise ValueError(f"view_id cannot exceed {self._VIEW_ID_MAX_CHARS} characters")
+        code = self._view_lookup.get(text)
+        if code is None:
+            code = len(self._view_names)
+            self._view_names.append(text)
+            self._view_lookup[text] = code
+        return code
+
+
+def _barycentric(uv: np.ndarray) -> np.ndarray:
+    return np.column_stack((1.0 - uv[:, 0] - uv[:, 1], uv)).astype(np.float32, copy=False)
+
+
+def _read(buffer: np.ndarray, indices: np.ndarray | slice, copy: bool) -> np.ndarray:
+    values = buffer[indices]
+    return values.copy() if copy else values
+
+
+def _slice_batch(batch: _ValidatedBatch, selector: slice) -> _ValidatedBatch:
+    return _ValidatedBatch(
+        batch.triangle_id[selector],
+        batch.barycentric_uv[selector],
+        batch.label[selector],
+        batch.material_channels[selector],
+        batch.confidence[selector],
+        batch.view_code[selector],
+        batch.range_m[selector],
+        batch.depth_conflict[selector],
+    )
 
 
 def _depth_conflicts(

@@ -3,20 +3,83 @@
 from __future__ import annotations
 
 import json
+import os
 import pathlib
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
 import numpy as np
+from scipy import sparse
+
+# Row blocks of the scatter are independent and each block sums its own entries
+# in the same order a single-threaded pass would, so splitting the work is
+# arithmetically inert. The cap keeps a batch pipeline from oversubscribing a
+# machine that is already running several stages at once.
+_SCATTER_WORKERS = max(1, min(8, os.cpu_count() or 1))
+_SCATTER_PARALLEL_ENTRIES = 4_000_000
+# Rows of a per-observation elementwise chain, sized to stay inside cache.
+_ROW_BLOCK = 8192
 
 
 def categorical_information(probability: np.ndarray) -> np.ndarray:
-    """Normalised information above a uniform categorical distribution."""
+    """Normalised information above a uniform categorical distribution.
+
+    Each row's entropy is independent, so the clip, logarithm and product run
+    over blocks of rows small enough to stay in cache instead of walking three
+    full copies of the input through memory. The arithmetic per element is
+    unchanged, so the result is unchanged bit for bit.
+    """
     probability = np.asarray(probability, dtype=np.float64)
     if probability.shape[-1] <= 1:
         return np.ones(probability.shape[:-1], dtype=np.float64)
-    clipped = np.clip(probability, 1e-12, 1.0)
-    entropy = -np.sum(clipped * np.log(clipped), axis=-1)
-    return np.clip(1.0 - entropy / np.log(probability.shape[-1]), 0.0, 1.0)
+    flat = probability.reshape(-1, probability.shape[-1])
+    entropy = np.empty(len(flat), dtype=np.float64)
+    for start in range(0, len(flat), _ROW_BLOCK):
+        block = np.clip(flat[start : start + _ROW_BLOCK], 1e-12, 1.0)
+        weighted = np.log(block)
+        weighted *= block
+        np.sum(weighted, axis=-1, out=entropy[start : start + _ROW_BLOCK])
+    np.negative(entropy, out=entropy)
+    entropy /= np.log(probability.shape[-1])
+    np.subtract(1.0, entropy, out=entropy)
+    return np.clip(entropy, 0.0, 1.0, out=entropy).reshape(probability.shape[:-1])
+
+
+def _scatter(operator: sparse.csr_matrix, values: np.ndarray) -> np.ndarray:
+    """Apply the scatter operator, splitting its rows across worker threads.
+
+    ``scipy.sparse`` releases the interpreter lock inside the sparse-times-dense
+    kernel, and a row block only ever writes its own slice of the result, so the
+    threaded form returns the same array bit for bit.
+    """
+    columns = 1 if values.ndim == 1 else values.shape[1]
+    rows = operator.shape[0]
+    workers = _SCATTER_WORKERS
+    if workers < 2 or rows < workers or operator.nnz * columns < _SCATTER_PARALLEL_ENTRIES:
+        return operator @ values
+    result = np.empty((rows,) if values.ndim == 1 else (rows, columns), dtype=np.float64)
+    bounds = np.linspace(0, rows, workers + 1).astype(np.intp)
+
+    def block(index: int) -> None:
+        start, stop = bounds[index], bounds[index + 1]
+        result[start:stop] = operator[start:stop] @ values
+
+    with ThreadPoolExecutor(workers) as pool:
+        for _ in pool.map(block, range(workers)):
+            pass
+    return result
+
+
+def _weighted(operator: sparse.csr_matrix, column_scale: np.ndarray) -> sparse.csr_matrix:
+    """Scale each observation column of the scatter operator by one factor.
+
+    Folding a per-observation weight into the operator costs one pass over the
+    stored entries.  Scaling the dense probability block instead would copy a
+    full ``[observations, classes]`` array, which for the entity posterior is
+    the largest buffer in the update.
+    """
+    data = operator.data * column_scale[operator.indices]
+    return sparse.csr_matrix((data, operator.indices, operator.indptr), shape=operator.shape, copy=False)
 
 
 @dataclass(frozen=True)
@@ -117,6 +180,15 @@ class EvidenceAccumulator:
         material_probability: np.ndarray,
         attribute_probability: np.ndarray,
     ) -> None:
+        """Fold one batch of soft-associated observations into the posteriors.
+
+        A batch is reduced per surface in double precision and added to the
+        stored single-precision counts once, rather than accumulated into them
+        one observation at a time. Beyond being much faster, that is what keeps
+        the counts meaningful at city scale: adding an increment of order 1e-3
+        to a single-precision total that has already reached 1e4 loses the
+        increment outright, and a ten-city run reaches those totals.
+        """
         association = association.normalised()
         observations, candidates = association.surface_indices.shape
         if np.any((association.surface_indices < 0) | (association.surface_indices >= self.surface_count)):
@@ -146,18 +218,48 @@ class EvidenceAccumulator:
         material_weight = base_weight * categorical_information(material)
         attribute_weight = base_weight[:, None] * np.abs(2.0 * attributes - 1.0)
 
-        for candidate in range(candidates):
-            surfaces = association.surface_indices[:, candidate]
-            association_weight = association.probabilities[:, candidate]
-            entity_increment = entity * (entity_weight * association_weight)[:, None]
-            material_increment = material * (material_weight * association_weight)[:, None]
-            attribute_scale = attribute_weight * association_weight[:, None]
-            np.add.at(self.entity_alpha, surfaces, entity_increment.astype(np.float32))
-            np.add.at(self.material_alpha, surfaces, material_increment.astype(np.float32))
-            np.add.at(self.attribute_alpha, surfaces, (attribute_scale * attributes).astype(np.float32))
-            np.add.at(self.attribute_beta, surfaces, (attribute_scale * (1.0 - attributes)).astype(np.float32))
-            np.add.at(self.support_weight, surfaces, (base_weight * association_weight).astype(np.float32))
-            np.add.at(self.observation_count, surfaces, association_weight > 0.0)
+        scatter, touched, counts = self._scatter_operator(association, observations, candidates)
+        if scatter is None:
+            return
+        self.entity_alpha[touched] += _scatter(_weighted(scatter, entity_weight), entity).astype(np.float32)
+        self.material_alpha[touched] += _scatter(_weighted(scatter, material_weight), material).astype(np.float32)
+        self.attribute_alpha[touched] += _scatter(scatter, attribute_weight * attributes).astype(np.float32)
+        self.attribute_beta[touched] += _scatter(scatter, attribute_weight * (1.0 - attributes)).astype(np.float32)
+        self.support_weight[touched] += _scatter(scatter, base_weight).astype(np.float32)
+        self.observation_count[touched] += counts
+
+    @staticmethod
+    def _scatter_operator(
+        association: SoftAssociation,
+        observations: int,
+        candidates: int,
+    ) -> tuple[sparse.csr_matrix | None, np.ndarray, np.ndarray]:
+        """Sparse operator mapping observation rows onto the surfaces they touch.
+
+        Every posterior is scattered with the same association probabilities, so
+        the operator is built once and reused for all five accumulators.  Its
+        rows are then restricted to the surfaces this batch actually reaches,
+        which keeps the output independent of the support mesh size: a city mesh
+        with millions of triangles must not force a dense per-update array over
+        all of them.  Candidates with zero probability contribute nothing and
+        are dropped, which is exact rather than approximate.
+        """
+        surfaces = np.asarray(association.surface_indices).reshape(-1)
+        weights = np.asarray(association.probabilities).reshape(-1)
+        rows = np.repeat(np.arange(observations, dtype=np.int64), candidates)
+        contributing = weights > 0.0
+        if not contributing.all():
+            surfaces, weights, rows = surfaces[contributing], weights[contributing], rows[contributing]
+        if not surfaces.size:
+            return None, np.empty(0, dtype=np.int64), np.empty(0, dtype=np.uint32)
+        reached = int(surfaces.max()) + 1
+        full = sparse.csr_matrix((weights, (surfaces, rows)), shape=(reached, observations))
+        touched = np.flatnonzero(np.diff(full.indptr))
+        # Two candidates of one observation may name the same surface.  The
+        # sparse build merges those into a single stored entry, so the
+        # per-surface observation tally has to be counted before that merge.
+        counts = np.bincount(surfaces, minlength=reached)[touched].astype(np.uint32)
+        return full[touched], touched, counts
 
     def entity_posterior(self) -> np.ndarray:
         return self.entity_alpha / self.entity_alpha.sum(axis=1, keepdims=True)

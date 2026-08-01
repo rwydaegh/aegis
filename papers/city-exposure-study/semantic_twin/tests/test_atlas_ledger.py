@@ -144,3 +144,89 @@ def test_ledger_load_refuses_a_capacity_that_would_silently_drop_rows(tmp_path) 
     restored = SparseAtlasLedger.load(path, max_observations=5000)
     assert restored.max_observations == 5000
     assert len(restored) == 300
+
+
+def test_grouping_keeps_triangles_ascending_and_rows_chronological() -> None:
+    # The grouping sorts by triangle instead of rescanning the batch once per
+    # triangle, so the two orderings it has to preserve are pinned here on a
+    # batch whose triangles arrive interleaved and out of order.
+    rng = np.random.default_rng(3)
+    triangles = rng.integers(0, 40, size=600).astype(np.int64)
+    ledger = SparseAtlasLedger(len(triangles), ["glass", "metal"])
+    ledger.append(
+        triangles,
+        np.zeros((len(triangles), 2)) + 0.25,
+        np.arange(len(triangles), dtype=np.int32),
+        np.zeros((len(triangles), 2)) + 0.5,
+        np.full(len(triangles), 0.5),
+        np.array([f"view-{index % 7}" for index in range(len(triangles))]),
+        np.full(len(triangles), 3.0),
+        [DepthConflictState.AGREEMENT] * len(triangles),
+    )
+
+    groups = ledger.groups_by_triangle()
+
+    identifiers = [group.triangle_id for group in groups]
+    assert identifiers == sorted(set(triangles.tolist()))
+    for group in groups:
+        # The label was set to the append position, so it doubles as a clock.
+        assert group.labels.tolist() == sorted(group.labels.tolist())
+        np.testing.assert_array_equal(group.labels, np.flatnonzero(triangles == group.triangle_id))
+        assert group.view_ids.tolist() == [f"view-{index % 7}" for index in group.labels]
+
+
+def test_grouped_rows_do_not_alias_each_other_or_the_ledger() -> None:
+    ledger = SparseAtlasLedger(4, ["glass"])
+    ledger.append(
+        np.array((5, 6, 5, 6)),
+        np.full((4, 2), 0.25),
+        np.array((0, 1, 2, 3), dtype=np.int32),
+        np.full((4, 1), 0.5),
+        np.full(4, 0.5),
+        "view-a",
+        np.full(4, 1.0),
+        "agreement",
+    )
+
+    first, second = ledger.groups_by_triangle()
+    first.labels[0] = 99
+    first.confidence[0] = 0.0
+
+    assert second.labels.tolist() == [1, 3]
+    np.testing.assert_array_equal(ledger.observations().label, np.array((0, 1, 2, 3)))
+
+
+def test_repeated_view_identifiers_cost_one_code_per_observation() -> None:
+    # View identifiers are per panorama while observations are per pixel, so the
+    # buffer must not reserve a fixed-width string slot for every row.
+    ledger = SparseAtlasLedger(100_000, ["glass", "metal"])
+    assert ledger._view_code.nbytes == 400_000
+
+    append_rows(ledger, np.arange(4), views="a-single-panorama")
+    append_rows(ledger, np.arange(4, 8), views=np.array(["b"] * 4))
+
+    observations = ledger.observations()
+    assert observations.view_id.dtype == np.dtype("U128")
+    assert observations.view_id.tolist() == ["a-single-panorama"] * 4 + ["b"] * 4
+
+
+def test_view_identifiers_survive_wrapping_and_a_save_load_round_trip(tmp_path) -> None:
+    ledger = SparseAtlasLedger(3, ["glass", "metal"])
+    append_rows(ledger, np.arange(2), views=np.array(["first", "second"]))
+    append_rows(ledger, np.arange(2, 4), views=np.array(["third", "fourth"]))
+
+    assert ledger.observations().view_id.tolist() == ["second", "third", "fourth"]
+
+    path = tmp_path / "ledger.npz"
+    ledger.save(path)
+    restored = SparseAtlasLedger.load(path)
+    np.testing.assert_array_equal(restored.observations().view_id, ledger.observations().view_id)
+
+
+def test_view_identifiers_are_still_rejected_when_empty_or_too_long() -> None:
+    ledger = SparseAtlasLedger(2, ["glass", "metal"])
+    with pytest.raises(ValueError, match="cannot be empty"):
+        append_rows(ledger, np.arange(2), views=np.array(["ok", ""]))
+    with pytest.raises(ValueError, match="cannot exceed"):
+        append_rows(ledger, np.arange(2), views=np.array(["ok", "x" * 129]))
+    assert len(ledger) == 0
