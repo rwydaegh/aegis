@@ -164,6 +164,89 @@ Area is conserved exactly. At every view, `emitted_area_px + rejected_area_px`
 equals `clipped_source_area_px` to the last pixel, so nothing is lost or double
 counted between the accepted and rejected tables.
 
+### Fidelity after the depth fusion was wired in
+
+The table above was produced with the decision maps in
+`outputs/korenmarkt_depth_consistency_two_models`, which have two defects. They
+were written before either fitted range scale was gated, and they were written
+without `--semantics-json`, so the legacy identifier set `{9..13}` decided which
+class was dynamic. In Vistas those are Curb Cut, Parking, Pedestrian Area, Rail
+Track and Road, so the whole pedestrian area was withheld as `dynamic_object`,
+and at yaw 180 and 270 the `mesh_or_pose_blocker` verdict, driven by a fitted
+scale of 0.05, was withheld as `clutter_in_front`.
+
+Same mesh, pose and label maps, four configurations. *Withheld* is the extra
+pixel count the run refused to paint relative to the last row.
+
+| configuration | leaked | phantom | deleted | withheld |
+| --- | --- | --- | --- | --- |
+| shipped decision maps (the table above) | 0.310% | 0.161% | 1.079% | 111,551 |
+| shipped maps, `mesh_or_pose_conflict` split out | 0.310% | 0.161% | 1.079% | 111,551 |
+| fused, plausibility gate overridden | 0.262% | 0.170% | 1.092% | 145,471 |
+| fused, degraded to mesh only | 0.231% | 0.164% | 1.080% | 1,350 |
+| no depth evidence supplied at all | 0.231% | 0.164% | 1.080% | 0 |
+
+Rates are pooled over the four crops, 2,724,852 paintable pixels in the last
+row. *Withheld* counts pixels the run refused to paint that the last row paints.
+
+- Splitting `mesh_or_pose_conflict` out of `clutter_in_front` changes no number.
+  Both reasons withhold the pixel and the round trip is identical to the pixel.
+  It is a naming fix, and the point of it is that the rejected table no longer
+  reports a registration conflict as an observed scatterer.
+- Degrading to the mesh-only decision cuts the transient leak from 0.310 to
+  0.231 percent, a 25 percent reduction, and halves it at yaw 0 from 0.294 to
+  0.147 percent. Phantom moves from 0.161 to 0.164 percent and deleted from
+  1.079 to 1.080 percent, so neither direction of the visibility error pays for
+  it. The leak fell because the shipped maps were withholding ground and
+  registration error, which fragmented islands.
+- The degraded run and the run with no depth evidence at all differ by 15
+  triangles at yaw 180 and 1,350 pixels overall, which is the intended
+  behaviour: a withheld distance test contributes exactly the class verdict it
+  never needed a fitted scale for, and that verdict resolves the person classes
+  from the segmentation manifest rather than from a numeric guess.
+- Overriding the gate is worse on phantom and deleted than degrading, and it
+  withholds 145,471 pixels on the strength of a fitted scale of 0.05. It is
+  included because it is what the pipeline did before the gate existed.
+
+Per-view, degraded against the shipped baseline:
+
+| view | leaked | phantom | deleted |
+| --- | --- | --- | --- |
+| yaw 0 | 0.294% -> 0.147% | 0.380% -> 0.396% | 1.086% -> 1.246% |
+| yaw 90 | 0.117% -> 0.068% | 0.094% -> 0.090% | 1.262% -> 1.191% |
+| yaw 180 | 0.121% -> 0.075% | 0.129% -> 0.125% | 1.080% -> 1.016% |
+| yaw 270 | 1.111% -> 0.995% | 0.063% -> 0.072% | 0.731% -> 0.790% |
+
+Yaw 0 is the one view where deleted rises, by 0.16 points, and it rises because
+37,240 pixels the shipped map had withheld as dynamic are now paintable, so the
+denominator and the exposed surface both grow.
+
+### Occlusion budget
+
+`occlusion_budget` and `aggregate_occlusion_budget` report per crop and per site
+what occlusion removed, as a share of the projected image area of the visible
+support triangles. Three terms, because they fail differently:
+
+- *within cell*, the area accepted faces carry but do not own, which is the only
+  term the "treat a face as fully visible with area scaled by `visible_fraction`"
+  decision is about,
+- *absent*, whole cells rejected with nothing downstream to put them back,
+- *deferred*, whole cells handed to the dynamic body layer or the object proxy
+  pipeline.
+
+| net | within cell | absent | deferred | total |
+| --- | --- | --- | --- | --- |
+| Vistas, 10,534 faces | 0.725% | 9.169% | 20.490% | 30.385% |
+| SAM 3, 16,451 faces | 0.474% | 9.663% | 27.252% | 37.389% |
+
+The kept faces are a truncated sample: a piece owning less than
+`piece_visibility_fraction`, default 0.5, is rejected rather than kept with a low
+visible fraction, so the within-cell term read alone flatters the surface. The
+threshold is reported next to the budget for that reason. `build_fishnet_surface.py`
+warns on stderr above five percent of combined budget, which Korenmarkt already
+exceeds, so what keeps the sub-cell decision alive here is the split rather than
+the total.
+
 ### The tolerance trade
 
 Yaw 0, sweeping the boundary simplification tolerance and the minimum island
@@ -206,11 +289,33 @@ Counts are higher because SAM3 separates windows, roof tile and paving inside
 regions that Vistas calls one Building or one Pedestrian Area, so genuinely more
 boundaries land inside each support triangle.
 
+### What happens to the withheld transients
+
+Nothing paints them. `transient_object` pixels leave a hole in the static
+surface, and the hole is filled by the dynamic body layer rather than by the
+cutter: `infer_sam3_body.py` reconstructs every person the segmenter found and
+`build_dynamic_bodies.py` places them in scene ENU, which is why the occlusion
+budget separates *deferred* from *absent*. On the four Korenmarkt crops that is
+18 people from 18 person instances, statures 1.40 to 1.71 m with a mean of 1.56,
+placed 3.2 to 15.0 m from the capture point.
+
 ### Cost
 
-2.3 s for the cut and 2.7 s end to end per 1024 x 1024 view on one core, with
+Per 1024 x 1024 view on one core: 2.3 s for the cut and 2.7 s end to end, with
 1.2 MB of NPZ per view of which most is the pixel provenance. Turn provenance off
 with `record_provenance=False` if that matters at city scale.
+
+The mesh first-hit buffer that feeds it now costs 1.15 s per view rather than a
+per-pixel Python loop through a Blender BVH: `raycast_mesh_depth.py` casts the
+whole crop through `trimesh` with Embree, which drops the Blender dependency
+along with the loop. All four Korenmarkt crops, 4.19 M rays, take 5.0 s including
+the 157,744-triangle mesh load. It reproduces the Blender buffer to a median
+5e-7 m, with 6 of 3.4 M hit pixels differing by more than 1 cm, all of them
+silhouette ties where the two builders pick different coplanar triangles.
+
+The body layer costs 1.6 s per person on an RTX A6000, 29.5 s for 18 people
+across four crops, and 6.7 s to place all 18 locally including the mesh load and
+the per-body support-floor ray.
 
 ## Dependencies added
 
@@ -266,3 +371,14 @@ has a symmetric error bound, which is what a partition needs.
   fraction falls, and the piece is either kept with reduced pixel support or
   rejected as `no_semantic_support`. Degenerate and behind-camera triangles are
   counted in the rejection table instead of raising.
+
+## Where the cited runs live
+
+- `outputs/korenmarkt_unidepth_cited`, `outputs/korenmarkt_depth_anything_cited`:
+  the four crops of each depth model that the fusion is fitted and gated on. The
+  full 26-crop runs are on the GPU host under `~/semantic_twin/`.
+- `outputs/korenmarkt_depth_fused`: the fused decision maps in degraded mode,
+  which is what the gate produces at this site.
+- `outputs/korenmarkt_fishnet_vistas_fused`: the surface set built from them.
+- `outputs/korenmarkt_sam3_body_raw`: camera-frame SAM 3D Body reconstructions.
+- `outputs/korenmarkt_dynamic_bodies`: the placed ENU body artifacts.

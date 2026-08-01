@@ -250,14 +250,55 @@ $B$ is a ray cast. What we genuinely lack at $B$ is not its geometry but its
 \emph{material}, because $B$ is out of view and carries no image evidence. That is
 a much smaller and much sharper problem than inventing a hidden city.
 
+\subsection{Where this argument stops applying}
+
+Everything in this section is conditional on one thing: that the path must
+\emph{return to a point}. The closure condition \eqref{eq:closure} is an equality
+between two unit vectors, and it is an equality only because the transmitter and
+the receiver are the same point. That is what makes the solution set isolated, and
+that is what makes random shooting useless.
+
+Section~\ref{sec:repair} replaces that requirement. There the quantity of interest
+is not the returning field but the field associated with rays that \emph{escape}
+in direction $\Omega$, and $\Omega$ is accumulated into a finite angular bin. A
+bin has non-zero solid angle. There is no closure constraint at all, only a
+half-open one: leave $\bs$, interact, exit somewhere. So a randomly shot ray lands
+in some bin with probability one, and the measure-zero obstruction simply is not
+there.
+
+The honest consequence is that the search is \emph{not} the primary estimator. The
+primary estimator in the adjoint frame is ordinary gather-based Monte Carlo with
+escaping rays recorded, which is a well-understood thing rather than a novel one.
+The pair search survives in two narrower roles, both real:
+
+\begin{itemize}
+\item As the deterministic specular branch. Mirror lobes on smooth planes are
+      narrow, and narrow lobes are exactly what Monte Carlo samples badly. Enumerating
+      them in closed form over merged planes and treating the rest stochastically is
+      the standard split, and it is where the image method belongs.
+\item As the derived monostatic diagnostic, where the closure constraint genuinely
+      does apply and where the measure-zero argument is therefore exactly right. If
+      that number is ever quoted, the deterministic branch is the only way to obtain
+      its specular part.
+\end{itemize}
+
+This also means the element-count table above should not be read as the argument
+for the fishnet. Quadratic pair enumeration is a cost only in the specular branch.
+The fishnet's load-bearing justifications are the ones that survive the change:
+per-element material and roughness bookkeeping, the solid-angle pruning bound, and
+keeping the number of things carrying a semantic posterior small enough to store
+for ten cities. Those hold in either frame. The $596\times$ figure holds only in
+the branch that enumerates pairs.
+
 \section{What the search misses, and it is most of the power}
 
 Everything above assumes mirror-like reflection. Real surfaces at millimetre
 wavelengths are not mirrors, and the numbers are not marginal.
 
 The Rayleigh roughness parameter compares surface height deviation to
-wavelength. At $28$~GHz the free-space wavelength is $10.71$~mm, so a brick wall
-with $1$~mm of RMS height variation gives, from this repository's implementation:
+wavelength. At $28$~GHz the free-space wavelength is $10.71$~mm. An earlier draft
+of this section assumed $1$~mm of RMS height on brick, which gives, from this
+repository's implementation:
 
 \begin{table}[h]
 \centering
@@ -271,17 +312,38 @@ $60^\circ$ & $0.587$ & $0.540$ & $0.71$ \\
 $80^\circ$ & $0.204$ & $0.202$ & $0.96$ \\
 \bottomrule
 \end{tabular}
-\caption{A millimetre of roughness on brick at $28$~GHz. At normal incidence only
-a quarter of the reflected power stays specular.}
+\caption{An \emph{assumed} millimetre of roughness on brick at $28$~GHz. The
+number in the first column was never sourced, and the measurement campaign
+described below says it is wrong by a factor of thirty.}
 \end{table}
 
-Read the first row again. At normal incidence, three quarters of the power
-leaving that wall is diffuse. The specular skeleton that the image-method search
-finds so elegantly accounts for about a quarter of the physics there, rising to
-most of it only at grazing incidence.
+That millimetre does not survive contact with the metrology. Every direct
+measurement of a brick face returns $0.024$ to $0.095$~mm, which is a Rayleigh
+$g$ near $0.03$ and leaves the face $99.9\%$ specular. The same holds across the
+material set: measured RMS heights for glass, render, as-cast concrete, wood and
+dressed stone all sit between $0.001$ and $0.3$~mm, and every one of them is
+mostly specular at $28$~GHz. Full table and provenance in \texttt{ROUGHNESS.md}.
 
-This is not a defect in the idea, but it does settle the architecture, and it
-settles it against a pure search:
+So the conclusion this section reached may still be right while its mechanism is
+wrong, and that distinction matters more than the number. Measured $28$~GHz
+campaigns do find roughly a fifth of received power in the diffuse component. But
+micro-roughness cannot produce it: applying the Rayleigh closure to a study's own
+profilometry under-predicts that same study's own fitted scattering coefficient by
+five to twenty-four times in amplitude and by twenty-nine to five-hundred-fifty
+times in power, consistently, across five samples measured both ways. Whatever
+generates the diffuse power at these frequencies, it is not the surface finish.
+
+The candidate that fits the magnitude is structure rather than roughness: mortar
+joints, unit-to-unit offsets and block relief, at a pitch of seven to fifteen
+wavelengths. That is a grating with on the order of fifteen propagating orders,
+not a smooth lobe, and the two readings imply genuinely different architectures.
+A comb and a lobe carrying equal total power are indistinguishable in any
+measurement fitted with a lobe in the first place, which is how the question has
+stayed open. Settling it needs a bistatic $28$~GHz scan of one square metre of
+real brickwork at fine enough angular resolution to tell the two apart. Nobody
+appears to have done it, and it is an afternoon of anechoic time.
+
+Either way it settles the architecture, and it settles it against a pure search:
 
 \begin{itemize}
 \item \textbf{Specular contributions} live on isolated points. Monte Carlo cannot
@@ -389,6 +451,7 @@ That is a legitimate and interesting thing to compute. It simply is not exposure
 and calling it a representative worst case invites exactly the rebuttal above.
 
 \section{The repair, which costs nothing}
+\label{sec:repair}
 
 Here is why none of this threatens the actual work.
 
@@ -465,19 +528,28 @@ Do I believe the objection? Yes, and it is not subtle once stated in terms of th
 operator diagonal. But it invalidates the interpretation, not the machinery, and
 the machinery is the part that took work.
 
-Is the method clever? Yes, and more so than the usual pitch for it. The pitch
-``the first bounce is free so it is fast'' is weak, worth maybe a factor of
-$1.5$. The real content is twofold. First, the panorama supplies material and
-clutter at centimetre scale on the bounce that carries most of the power, where a
-mesh-only tracer has a $2$~m-error triangle and no material at all. Second, the
-closed specular paths form a measure-zero set that random ray shooting provably
-cannot find, which makes the pair-search framing correct rather than merely
-convenient, and which makes aggressive geometric simplification a hard
-requirement rather than a nicety.
+Is the method clever? Yes, but not for the reason it is usually pitched, and not
+for the reason I gave two drafts ago either. The pitch ``the first bounce is free
+so it is fast'' is weak, worth maybe a factor of $1.5$. The pitch ``closed
+specular paths are measure zero so pair search is forced'' is sharper, but it is
+an argument about the co-located geometry specifically, and once the observable
+moves to the adjoint tensor that geometry is gone and the argument goes with it.
 
-Where I would temper the enthusiasm: at $28$~GHz with realistic surface roughness
-most of the reflected power is diffuse, so the elegant specular search covers a
-minority of the physics and must be paired with ordinary gather-based Monte Carlo.
-The result is a hybrid, and the paper should say so up front.
+What is left is the part that was load-bearing all along. The panorama supplies
+material, roughness and clutter at centimetre scale on the bounce that carries
+most of the power, where a mesh-only tracer has a $2$~m-error triangle and no
+material at all. That advantage is indifferent to which observable you compute,
+and it is the one thing here that a conventional tracer with the same mesh cannot
+have.
+
+Where I would temper the enthusiasm: measured $28$~GHz campaigns put roughly a
+fifth of received power in the diffuse component, so the specular branch is a
+branch of the estimator rather than the whole estimator, and the result is a
+hybrid that the paper should describe as one. The larger honesty is that we do
+not yet know what produces that diffuse fifth. It is not surface finish, because
+every measured facade material is nearly specular at this wavelength. The
+leading candidate is masonry structure acting as a coarse grating, and until
+someone runs the bistatic scan described above, any scattering lobe we ship is a
+fitted stand-in for a mechanism we have not identified.
 
 \end{document}
