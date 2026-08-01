@@ -1207,3 +1207,36 @@ any claim here that materials or roughness change path loss.
 Materials in that paper are one flat ITU value per class over five classes, with
 no glass class at all in an urban scene, and the two concrete rows come from
 different revisions of P.2040. Sub-facade material assignment is untouched.
+
+### Voxel remeshing also deletes a third to a half of the scene
+
+The rejection recorded above rested on normals, on the fishnet face floor, and on
+the operational damage being smaller than the edge table implies. A later check
+from the camera found a fourth reason, larger than any of them.
+
+Cast the panorama's own rays into each mesh and count how many escape to sky:
+
+| mesh | triangles | sky fraction |
+|---|---|---|
+| as built | 157,862 | 14.5% |
+| voxel 2.00 m | 79,832 | 64.8% |
+| voxel 1.00 m | 384,048 | 34.7% |
+| voxel 0.50 m | 1,976,934 | 29.5% |
+
+Measured twice, once from the stored first-hit buffers and once by an independent
+`trimesh` ray cast at a different resolution, agreeing to 0.6 percentage points.
+
+The mechanism is the solidify step. Photogrammetric buildings are hollow shells,
+so solidify gives them a 0.30 m wall, and a voxel grid coarser than 0.30 m cannot
+represent that wall. It erodes into lace and the thinner parts vanish outright.
+At 2.00 m voxels the pavement itself is gone, which is why the surface area falls
+from 147,093 to 84,842 square metres.
+
+This is consistent with the mesh being watertight afterwards. What survives is
+closed. It is simply that a third to a half of the geometry the camera can see is
+no longer present, and for an exposure study the pavement is not optional, since
+the ground bounce is one of the few interactions guaranteed at every location.
+
+The fishnet class-fidelity coverage of about 99 percent recorded for these cases
+is not in conflict. It is a fraction of the pixels the cutter was asked to paint,
+so geometry that has disappeared never enters the denominator.
