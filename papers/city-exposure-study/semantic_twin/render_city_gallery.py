@@ -56,6 +56,8 @@ def arguments() -> argparse.Namespace:
     parser.add_argument("--height", type=int, default=1000)
     parser.add_argument("--azimuth-deg", type=float, default=215.0)
     parser.add_argument("--elevation-deg", type=float, default=30.0)
+    parser.add_argument("--fov-deg", type=float, default=46.0)
+    parser.add_argument("--margin", type=float, default=1.12, help="Standoff slack beyond a tight fit")
     argv = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
     return parser.parse_args(argv)
 
@@ -123,12 +125,21 @@ def render_site(site: str, tiles_dir: pathlib.Path, args: argparse.Namespace) ->
     anchor = ground + Vector((0.0, 0.0, 0.35 * height))
     az = math.radians(args.azimuth_deg)
     el = math.radians(args.elevation_deg)
-    distance = 2.0 * radius
+
+    # Pull back far enough that the whole region of interest fits, horizontally
+    # and vertically. A fixed multiple of the horizontal reach frames a low rise
+    # square well and puts the camera inside the canyon at Times Square, whose
+    # skyline is 254 m against a 27 m square in Toulouse.
+    fov = math.radians(args.fov_deg)
+    half_h = fov / 2.0
+    half_v = math.atan(math.tan(half_h) * args.height / args.width)
+    distance = args.margin * max(radius / math.tan(half_h), 0.5 * height / math.tan(half_v))
+    print(f"[frame] {site}: standoff {distance:.0f} m", flush=True)
     eye = anchor + Vector((math.cos(el) * math.cos(az), math.cos(el) * math.sin(az), math.sin(el))) * distance
 
     camera_data = bpy.data.cameras.new("orbit")
     camera_data.lens_unit = "FOV"
-    camera_data.angle = math.radians(46.0)
+    camera_data.angle = fov
     camera_data.clip_start = 0.5
     camera_data.clip_end = 6000.0
     camera = bpy.data.objects.new("orbit", camera_data)
