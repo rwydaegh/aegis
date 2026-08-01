@@ -182,6 +182,63 @@ and the walk is mandatory across all eleven cities. If it moves and then flatten
 the flattening point is how much evidence a site actually needs, which is a design
 number nobody currently has.
 
+## Brickwork, derived rather than measured
+
+No measurement will be taken in this project, so the scattering behaviour of
+masonry is derived from construction standards and solved rigorously. A coupled
+wave solve over standard bond geometry, checked against a Kirchhoff phase screen,
+with nothing fitted anywhere in the chain.
+
+Convergence is established rather than assumed. Over 293 to 2,397 retained
+Floquet orders the specular efficiency settles within 0.6 percent, while the
+diffuse term oscillates between 0.0162 and 0.0178 with no monotone trend, so
+**every diffuse number carries a 6 percent bar**. The propagating order count
+saturates at 458 against the 462 the visible disc predicts. Elliptic rather than
+rectangular harmonic truncation drops the box corner orders, which are the most
+deeply evanescent in the set, for 30 percent fewer modes and half the memory with
+the answer moving 0.08 percent.
+
+**The result that constrains another part of this project.** The rigorous solve
+and the phase screen agree in the forward and specular directions to 2 dB. In
+backscatter they diverge by 13 to 27 dB across a 14 degree span, with the rigorous
+orders on a flat floor near -41.5 dB where the screen falls to -68.2 dB. It is not
+a correctable bias: a phase screen can redirect power but cannot send it back the
+way it came, and the backscatter here comes from the groove walls and the arris of
+every unit. So the phase screen is barred from the monostatic branch at FR2.
+
+**And one claim about real facades rather than about a method.** The rigorous
+order envelope is flat to 1.2 dB at 10 GHz across the whole hemisphere, with
+backscatter between half and 1.2 times the forward power. That is Lambertian.
+Published measurement work fits Lambertian to facades and attributes it to
+pillars, balconies and street furniture. Here the brickwork alone produces it,
+from construction geometry.
+
+### A validation that could not be run
+
+Against Landron 1996 at 4 GHz the model predicts reflection magnitude to 2.0 dB
+rms with no fitted parameter. Against Dillard 2003 at 28 GHz it is 8.2 dB rms and
+systematically low, which is the band this study actually works in, so it was
+chased rather than reported.
+
+Inverting the two geometric parameters fits all six points to 1.40 dB, at a joint
+recess of 8.2 mm and a unit scatter of 0.90 mm, both construction plausible, and
+without breaking the 4 GHz agreement. So the disagreement is in the parameters
+rather than in the form of the model. The leading hypothesis, flush pointing, is
+not the answer on its own, because at 28 GHz the unit scatter dominates the recess.
+
+But the residual turned out not to be testable. In the source's own tables, four
+repeats at one angle span a factor of 3.3 to 8.4 in amplitude with standard
+deviations at or above the means, the brick and limestone clouds overlap
+completely below 60 degrees, and the 60 degree points exceed the smooth surface
+Fresnel bound implied by the permittivities the same document reports, which is
+impossible. The absolute calibration is a sidelobe gain estimate read 85 degrees
+off boresight, and four of six angles were never calibrated at all.
+
+So the honest verdict is symmetric: **1.40 dB is not a validation and 8.2 dB is
+not a refutation**, because the disagreement is smaller than the measurement's own
+repeat scatter. The model is validated at 4 GHz and unvalidated at FR2, and that
+is the top open item for this workstream.
+
 ## Ten cities
 
 Twenty four candidate squares were screened before any acquisition spend, in
