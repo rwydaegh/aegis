@@ -4,6 +4,12 @@ The module fetches metadata only. Image downloads remain an explicit later
 decision after candidates have been ranked for baseline, direction, date and
 quality. It is intentionally source-specific at the boundary and feeds the
 generic observation ledger downstream.
+
+Its one piece of real geometry is :func:`orientation_from_computed_rotation`.
+Mapillary's structure from motion already solves for gravity and publishes the
+answer in ``computed_rotation``, so a Mapillary panorama arrives with a measured
+tilt and roll rather than an assumed level camera. The three panoramas selected
+at Korenmarkt tilt by 4.52, 7.75 and 26.82 degrees off gravity.
 """
 
 from __future__ import annotations
@@ -14,6 +20,7 @@ import os
 import pathlib
 import urllib.parse
 import urllib.request
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass
 from io import BytesIO
 from typing import Any
@@ -22,8 +29,10 @@ import numpy as np
 from PIL import Image
 
 from .geo import EnuFrame
-from .panorama import PanoramaPose
+from .pano_geometry import panorama_to_world_matrix
+from .panorama import PanoramaPose, load_support_mesh
 from .scene import load_scene
+from .support_mesh import camera_altitude
 
 GRAPH = "https://graph.mapillary.com/images"
 FIELDS = (
@@ -155,21 +164,89 @@ def diversify(
     return chosen
 
 
-def pose_from_metadata(metadata: dict[str, Any], scene: dict[str, Any]) -> PanoramaPose:
-    """Create a levelled initial pose for a Mapillary spherical panorama."""
+def rodrigues(rotation_vector: Sequence[float]) -> np.ndarray:
+    """Rotation matrix from an axis-angle vector, as OpenSfM stores it."""
+    vector = np.asarray(rotation_vector, dtype=float)
+    if vector.shape != (3,):
+        raise ValueError("a rotation vector has exactly three components")
+    angle = float(np.linalg.norm(vector))
+    if angle < 1e-12:
+        return np.eye(3)
+    axis = vector / angle
+    cross = np.array(
+        [
+            [0.0, -axis[2], axis[1]],
+            [axis[2], 0.0, -axis[0]],
+            [-axis[1], axis[0], 0.0],
+        ]
+    )
+    return np.eye(3) + math.sin(angle) * cross + (1.0 - math.cos(angle)) * (cross @ cross)
+
+
+def orientation_from_computed_rotation(rotation_vector: Sequence[float]) -> tuple[float, float, float]:
+    """Heading, tilt and roll in degrees from Mapillary's ``computed_rotation``.
+
+    ``computed_rotation`` is the OpenSfM world-to-camera axis-angle vector in the
+    reconstruction's topocentric east-north-up frame, and for a spherical camera
+    the image centre column is the optical axis with x right and y down. Those
+    three world-frame axes are exactly the panorama-local right, forward and up
+    that ``pano_geometry.panorama_to_world_matrix`` composes, so the decomposition
+    is a rearrangement rather than a convention guess.
+
+    The returned heading is the azimuth of the *levelled* panorama frame. It is
+    not ``computed_compass_angle``, which is the azimuth of the tilted optical
+    axis, and the two separate by more than a degree once the camera is tilted
+    far off gravity.
+    """
+    rotation = rodrigues(rotation_vector)
+    world = np.column_stack([rotation[0, :], rotation[2, :], -rotation[1, :]])
+    roll_deg = math.degrees(math.atan2(-world[2, 0], math.hypot(world[2, 1], world[2, 2])))
+    pitch_deg = math.degrees(math.atan2(world[2, 1], world[2, 2]))
+    levelled = world @ panorama_to_world_matrix(0.0, pitch_deg=pitch_deg, roll_deg=roll_deg).T
+    heading_deg = math.degrees(math.atan2(levelled[0, 1], levelled[0, 0])) % 360.0
+    return heading_deg, 90.0 + pitch_deg, roll_deg
+
+
+def pose_from_metadata(
+    metadata: dict[str, Any],
+    scene: dict[str, Any],
+    *,
+    support_mesh: tuple[np.ndarray, np.ndarray] | None = None,
+) -> PanoramaPose:
+    """Initial pose for a Mapillary spherical panorama, orientation included.
+
+    Mapillary's structure from motion already solves for gravity, and the answer
+    is in ``computed_rotation``. Discarding it and assuming a level camera is not
+    conservative: the three Korenmarkt panoramas carry gravity tilts of 4.5, 7.8
+    and 26.8 degrees, and the last of those is four times the pitch range the
+    skyline refinement is allowed to search. Only a panorama with no
+    ``computed_rotation`` at all gets the level assumption, and it is labelled.
+    """
     longitude, latitude = map(float, metadata["computed_geometry"]["coordinates"])
     origin = scene["enu_origin"]
     frame = EnuFrame(float(origin["lat"]), float(origin["lon"]), float(origin.get("ellipsoid_height_m", 0.0)))
     camera_height = float(scene.get("camera_height_m", 2.5))
+    easting, northing = frame.to_enu(latitude, longitude)[:2]
+    altitude, altitude_provenance = camera_altitude(scene, float(easting), float(northing), support_mesh=support_mesh)
+
+    rotation_vector = metadata.get("computed_rotation")
+    if rotation_vector is None:
+        heading_deg = float(metadata.get("computed_compass_angle") or 0.0)
+        tilt_deg, roll_deg = 90.0, 0.0
+        orientation_source = "absent: no computed_rotation, camera assumed level"
+    else:
+        heading_deg, tilt_deg, roll_deg = orientation_from_computed_rotation(rotation_vector)
+        orientation_source = "mapillary computed_rotation, structure from motion gravity"
     return PanoramaPose(
-        position_enu_m=tuple(frame.to_enu(latitude, longitude)[:2])
-        + (float(scene["camera_ground_z_m"]) + camera_height,),
+        position_enu_m=(float(easting), float(northing), float(altitude)),
         position_wgs84=(latitude, longitude),
-        heading_deg=float(metadata.get("computed_compass_angle") or 0.0),
-        tilt_deg=90.0,
-        roll_deg=0.0,
+        heading_deg=heading_deg,
+        tilt_deg=tilt_deg,
+        roll_deg=roll_deg,
         camera_height_m=camera_height,
-        altitude_source="scene terrain plus configured camera height",
+        altitude_source=str(altitude_provenance["altitude_source"]),
+        orientation_source=orientation_source,
+        provenance=altitude_provenance,
     )
 
 
@@ -202,7 +279,8 @@ def persist_selected_panorama(
     scene = load_scene(scene_path)
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "metadata.json").write_text(json.dumps(metadata, indent=2))
-    (out_dir / "pose_initial.json").write_text(json.dumps(asdict(pose_from_metadata(metadata, scene)), indent=2))
+    pose = pose_from_metadata(metadata, scene, support_mesh=load_support_mesh(scene))
+    (out_dir / "pose_initial.json").write_text(json.dumps(asdict(pose), indent=2))
     image_name = "panorama_original.jpg" if metadata.get("thumb_original_url") else "panorama_thumb_2048.jpg"
     destination, source_field = download_panorama_image(metadata, out_dir / image_name)
     (out_dir / "provenance.json").write_text(

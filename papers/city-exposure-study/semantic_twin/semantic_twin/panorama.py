@@ -24,14 +24,16 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from io import BytesIO
 from typing import Any
 
+import numpy as np
 from PIL import Image
 
 from .geo import EnuFrame
 from .scene import inhouse_api_key, load_scene
+from .support_mesh import camera_altitude, read_binary_ply
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 CREATE_SESSION = "https://tile.googleapis.com/v1/createSession"
@@ -42,11 +44,18 @@ MAX_ZOOM = 5
 
 @dataclass(frozen=True)
 class PanoramaPose:
-    """Street View camera in the configured geometry's local ENU frame.
+    """Panorama camera in the configured geometry's local ENU frame.
 
-    Inhouse supplies latitude, longitude and orientation but no camera altitude.
-    The initial z therefore comes from the measured terrain plus ``camera_height``.
-    Skyline registration is expected to refine it before semantic projection.
+    The provider supplies latitude, longitude and orientation but no camera
+    altitude, so the initial z comes from the ground under this camera plus
+    ``camera_height_m``. Skyline registration refines it before semantic
+    projection.
+
+    ``orientation_source`` exists because a missing orientation and a level
+    camera look identical in the numbers. Both arrive as ``tilt_deg = 90`` and
+    ``roll_deg = 0``, and every downstream consumer that treats them the same is
+    trusting a default it was never given. ``provenance`` carries the altitude
+    measurement so the number can be argued with rather than only believed.
     """
 
     position_enu_m: tuple[float, float, float]
@@ -57,6 +66,25 @@ class PanoramaPose:
     camera_height_m: float
     altitude_source: str = "terrain_plus_camera_height"
     coordinate_frame: str = "ENU: x east, y north, z up"
+    orientation_source: str = "unspecified"
+    provenance: dict[str, Any] = field(default_factory=dict)
+
+
+def streetview_orientation_source(metadata: dict[str, Any]) -> str:
+    """Say whether a Street View panorama has measured orientation or a default.
+
+    ``tilt = 90`` with ``roll = 0`` exactly is the tell for a capture with no
+    orientation metadata at all, which is a different claim from a levelled
+    camera. Three of the five sites screened for this study reported exactly
+    those values and are user photospheres with no pose solution behind them.
+    """
+    if "tilt" not in metadata and "roll" not in metadata:
+        return "absent: metadata carries neither tilt nor roll, camera assumed level"
+    tilt = float(metadata.get("tilt", 90.0))
+    roll = float(metadata.get("roll", 0.0))
+    if tilt == 90.0 and roll == 0.0:
+        return "degenerate: tilt is exactly 90 and roll exactly 0, which marks a capture with no orientation solution"
+    return "map tiles streetview metadata tilt and roll"
 
 
 class StreetViewTiles:
@@ -146,7 +174,19 @@ def stitch_tiles(
     return canvas.crop((0, 0, width, height))
 
 
-def pose_from_metadata(metadata: dict[str, Any], scene: dict[str, Any]) -> PanoramaPose:
+def pose_from_metadata(
+    metadata: dict[str, Any],
+    scene: dict[str, Any],
+    *,
+    support_mesh: tuple[np.ndarray, np.ndarray] | None = None,
+) -> PanoramaPose:
+    """Initial pose for one Street View panorama.
+
+    When ``support_mesh`` is supplied the altitude is cast for under this
+    camera's own easting and northing instead of inheriting the scene-wide
+    ``camera_ground_z_m``, which is only correct for the one camera it was
+    measured under.
+    """
     origin = scene["enu_origin"]
     frame = EnuFrame(
         float(origin["lat"]),
@@ -155,8 +195,7 @@ def pose_from_metadata(metadata: dict[str, Any], scene: dict[str, Any]) -> Panor
     )
     xy = frame.to_enu(float(metadata["lat"]), float(metadata["lng"]))[:2]
     camera_height_m = float(scene.get("camera_height_m", 2.5))
-    ground_z = float(scene["camera_ground_z_m"])
-    z = ground_z + camera_height_m
+    z, provenance = camera_altitude(scene, float(xy[0]), float(xy[1]), support_mesh=support_mesh)
     return PanoramaPose(
         position_enu_m=(float(xy[0]), float(xy[1]), float(z)),
         position_wgs84=(float(metadata["lat"]), float(metadata["lng"])),
@@ -164,7 +203,22 @@ def pose_from_metadata(metadata: dict[str, Any], scene: dict[str, Any]) -> Panor
         tilt_deg=float(metadata.get("tilt", 90.0)),
         roll_deg=float(metadata.get("roll", 0.0)),
         camera_height_m=camera_height_m,
+        altitude_source=str(provenance["altitude_source"]),
+        orientation_source=streetview_orientation_source(metadata),
+        provenance=provenance,
     )
+
+
+def load_support_mesh(scene: dict[str, Any], *, root: pathlib.Path = ROOT) -> tuple[np.ndarray, np.ndarray] | None:
+    """Load the scene's support mesh if the config names one that exists."""
+    relative = scene.get("source_mesh")
+    if not relative:
+        return None
+    path = pathlib.Path(str(relative))
+    resolved = path if path.is_absolute() else root / path
+    if not resolved.exists():
+        return None
+    return read_binary_ply(resolved)
 
 
 def download_panorama(
@@ -239,7 +293,7 @@ def main() -> None:
     if "panoId" not in metadata:
         raise SystemExit(f"no Street View panorama found: {metadata}")
 
-    pose = pose_from_metadata(metadata, scene)
+    pose = pose_from_metadata(metadata, scene, support_mesh=load_support_mesh(scene))
     safe_session = {k: session[k] for k in ("expiry", "tileWidth", "tileHeight", "imageFormat")}
     (out_dir / "metadata.json").parent.mkdir(parents=True, exist_ok=True)
     (out_dir / "metadata.json").write_text(json.dumps(metadata, indent=2))
