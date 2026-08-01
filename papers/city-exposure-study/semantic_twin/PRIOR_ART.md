@@ -93,10 +93,30 @@ elements and ray traced at millimetre wave, is published at a top venue. Do not
 claim it. What remains genuinely different here: photogrammetric geometry instead
 of OSM prisms, cuts that follow the semantic island boundary exactly instead of a
 10 cm grid with a majority vote, a retained posterior instead of the majority
-vote, ITU-R P.2040 permittivity with roughness and a Rayleigh specular-diffuse
-split instead of a scalar reflection-loss lookup, polarisation, clutter promoted
-to geometry, and the exposure observable. That is a real list. It is a much
-shorter list than the method's framing assumes.
+vote, ITU-R P.2040 permittivity **plus a separately sourced roughness prior**
+feeding a Rayleigh specular-diffuse split instead of a scalar reflection-loss
+lookup, polarisation, clutter promoted to geometry, and the exposure observable.
+That is a real list. It is a much shorter list than the method's framing assumes.
+
+Two corrections to that sentence, both from `ROUGHNESS.md`, which read the
+in-force Recommendation rather than trusting the usual restatement.
+
+**P.2040 does not supply roughness and never did.** Its section 3 Table 3 gives
+`eps' = a f^b` and `sigma = c f^d` and nothing else: no roughness column, no RMS
+height, no scattering coefficient. The layered-slab model in section 2.2.2 that
+Table 3 feeds assumes smooth, planar, parallel interfaces, so its reflection and
+transmission coefficients are smooth-surface coefficients by construction. The
+only RMS height anywhere in P.2040-4 is in equation 48, a per-metre waveguide
+attenuation for corridors and tunnels, and the only place it models scattering
+from a building surface at all is section 2.3, where the rough surface is defined
+as "a round convexity array formed by locating circular cylinders periodically"
+and solved with lattice sums and a T-matrix. P.2040-3 is the same, and P.1411-13
+has no facade roughness either. So the roughness half of the sentence above is
+this repository's own contribution (`config/surface_roughness.json`, sixteen
+classes with evidence grades), not an ITU inheritance. Writing "ITU-R P.2040
+permittivity and roughness" in a paper hands a referee a free correction.
+
+**The Rayleigh split covers the random-roughness classes only.** See section 4.6.
 
 ## Tier 1, the rest of what can sink section 1
 
@@ -152,14 +172,21 @@ industrial co-author.
   instance so a wall is one material, majority voting explicitly discards the
   distribution, no roughness or diffuse scattering. They name outdoor urban as
   future work.
-- **Xia, Zhou, Zhang et al.**, "Path Loss Prediction in Urban Environments With
-  Sionna-RT Based on Accurate Propagation Scene Models at 2.8 GHz", IEEE TAP
-  Oct 2024, `10.1109/TAP.2024.3451214`. **Abstract-only, paywalled.** Threatens the
-  photogrammetry and clutter claims simultaneously: scene construction from
-  photogrammetric point clouds, deep-learning semantic segmentation into ground,
-  buildings, vegetation, fences, **street furniture and cars**, tailor-made surface
-  reconstruction per category, then Sionna-RT. Gaps: 2.8 GHz, per-class materials,
-  no posterior, no roughness.
+- **Xia, Zhou, Zhang, Cui, Liu, Ji, Zhang, Zhao, Xiao** (Wuhan University), "Path
+  Loss Prediction in Urban Environments With Sionna-RT Based on Accurate
+  Propagation Scene Models at 2.8 GHz", IEEE TAP 72(10):7986-7997, Oct 2024,
+  `10.1109/TAP.2024.3451214`. **Full PDF read**, from
+  `lit/Path_Loss_Prediction_in_Urban_Environments_With_Sionna-RT_...pdf` in this
+  directory. Code public at
+  `github.com/GuozhenXia/Accurate-propagation-scene-modeling-method`. This entry
+  was marked abstract-only in an earlier revision and the details below change
+  two verdicts, so it is written out at length in section 4.7. Summary:
+  their own DJI Matrice 30 oblique drone survey of a 900 by 800 m green suburban
+  district near Qingdao with 55 buildings, RandLA-Net segmentation, ball-pivoting
+  reconstruction of vegetation, fences and street furniture, cars **deleted**,
+  one ITU material per class over five classes, Sionna-RT at 2.8 GHz with both
+  ends at 2.2 to 2.5 m. Gaps: no street-level imagery anywhere, no posterior, no
+  sub-facade variation, no glass class at all, best RMSE about 6 dB.
 - **Zhang, Zhou, Brennan, Wang, Li**, IEEE TAP Mar 2024,
   `10.1109/TAP.2024.3355502`. **Abstract-only.** Deep-learning semantic
   segmentation on a point cloud to electrical parameters, surface reconstruction,
@@ -807,15 +834,22 @@ noise.
 
 ## 4.1 The diffraction self-diagnosis is wrong, in the direction that hurts
 
-`MONOSTATIC_SBR.md` sections 9.3 and 14 call diffraction "the largest known
-physical omission", landing on "exactly the elevation band the
+`MONOSTATIC_SBR.md` sections 9.3 and 14 **used to** call diffraction "the largest
+known physical omission", landing on "exactly the elevation band the
 rooftop-illumination scalar needs". **Four independent lines say that is false at
-28 GHz, and the paper is defending the wrong flank.**
+28 GHz, and the paper was defending the wrong flank.**
+
+**Status: actioned.** That document's decision table, section 2.7, section 9.3
+and section 14 now carry the ranking and the bound below, and diffraction has
+been demoted from first to fifth in its weakness list. This section is kept as
+the evidence, not as an outstanding complaint.
 
 **The measured answer.** Charbonnier, Lai, Tenoux, Caudill, Gougeon, Senic,
-Gentile, Chuang, Golmie (NIST and Siradel), "Calibration of Ray-Tracing With
-Diffuse Scattering Against 28-GHz Directional Urban Channel Measurements", IEEE
-TVT 2020, `10.1109/TVT.2020.3038620`. Verbatim: "while most papers on
+Gentile, **Corre**, Chuang, Golmie (NIST and Siradel), "Calibration of
+Ray-Tracing With Diffuse Scattering Against 28-GHz Directional Urban Channel
+Measurements", IEEE TVT 2020, `10.1109/TVT.2020.3038620`. An earlier revision of
+this document dropped Corre from the list. `ROUGHNESS.md` has it from the full
+NIST-hosted PDF, and the ten-author form is the one to cite. Verbatim: "while most papers on
 millimeter-wave ray-tracing do not even consider diffuse scattering, it accounted
 for **20% of the total received power**, whereas **diffraction accounted for less
 than 1%**." 28 GHz, directional sounder, urban, super-resolution MPC extraction,
@@ -860,10 +894,11 @@ genuinely discontinuous, has half-width sqrt(lambda*s/2) = 28 cm at 28 GHz for
 s = 15 m against 106 cm at 2 GHz, roughly 1.9 percent of directions at a
 worst-case 6 dB, so about 0.06 dB of bias on `K_iso`.
 
-**Recommendation.** Replace section 9.3's qualitative worry with this
-quantitative bound, and publish `f_open`, the low-elevation open-azimuth fraction,
-per location as the validity flag. That converts a confessed hole into a scoped
-and defended decision, and it is a stronger paper for it.
+**Recommendation, now carried out.** Section 9.3's qualitative worry has been
+replaced with this quantitative bound, and the recommendation to publish
+`f_open`, the low-elevation open-azimuth fraction, per location as the validity
+flag went in with it. Nothing computes `f_open` yet. That converts a confessed
+hole into a scoped and defended decision, and it is a stronger paper for it.
 
 **The genuine exceptions, stated plainly.** The parapet case is unambiguous:
 Chizhik measures that moving the base station 5 m back from the roof edge costs
@@ -939,6 +974,18 @@ and fatal for the low-elevation source weight. Note also that atmospheric
 absorption cannot be used to justify truncation: ITU-R P.676-13 gives about
 0.1 dB/km at 28 GHz, so 0.026 dB over 260 m.
 
+**Status: actioned, and it grew a third leg.** `MONOSTATIC_SBR.md` now has a
+section 9.4 carrying this argument, and its decision table and weakness list rank
+the crop first. Writing it up surfaced that three different crop questions were
+being run together, and only two of them are covered above. Scattered power is
+bounded small, as this section says. Source support is broken, as this section
+says. But section 7.5's own measurement is about neither: it is about
+**occlusion**, and under the adjoint `R^0` law a distant blocker changes `K_S(u)`
+in that direction at full per-direction strength, which is why directions beyond
+90 m carry -28.4 dB of the isotropic weight and that figure is still growing with
+radius against a 30 dB budget. The delay-spread bound above does not retire that
+one. The three compound rather than cancel.
+
 ## 4.3 Three novelty claims already in print
 
 **The microfacet BRDF for radio propagation.** J.-F. Wagen, "Diffuse Scattering
@@ -965,18 +1012,27 @@ finds it does not go to zero at grazing scattering angles, **which is where the
 rooftop weight lives**. RER reaches 1.59 dB RMSE against legacy ER's 1.85 dB.
 
 Their strongest physical objection to Beckmann-Gaussian microfacets: to match the
-Kirchhoff lobe for a brick wall at sigma_h = 1 cm and l_corr = 0.5 m, RER needs
-alpha_R = 65, whereas the measured brick wall fits alpha_R = 4, because real
-scattering comes from indentations, brick and mortar alternation and sub-surface
-inhomogeneity rather than Gaussian surface roughness. Follow-on: Melloni, Vitucci,
-Degli-Esposti, Berweger, Chuang, Gentile, Golmie, arXiv:2605.17988 (2026), a
-directive and reciprocal ER model, which also supplies the number "diffuse
-scattering can account for up to 40% of the received power" at mmWave and sub-THz.
+Kirchhoff lobe for a brick **wall** at sigma_h = 1 cm and l_corr = 0.5 m, RER
+needs alpha_R = 65, whereas the measured brick wall fits alpha_R = 4, because
+real scattering comes from indentations, brick and mortar alternation and
+sub-surface inhomogeneity rather than Gaussian surface roughness. That
+centimetre is a wall statistic, not a brick face, and section 4.6.4 says why the
+distinction has to be carried every time the number is quoted. Follow-on:
+Melloni, Vitucci, Degli-Esposti, Berweger, Chuang, Gentile, Golmie,
+arXiv:2605.17988 (2026), a directive and reciprocal ER model, which also supplies
+the number "diffuse scattering can account for up to 40% of the received power"
+at mmWave and sub-THz. Section 4.6.5 explains why that 40 % must not be quoted
+alongside Charbonnier's measured 20 % as if the two disagreed.
 
 **What survives:** the Rayleigh specular-diffuse split is a direct answer to
-Vitucci's stated objection that microfacet models do not distinguish specular from
-diffuse. Frame it as answering a published objection, cite the objection, and
-benchmark against both RER and Wagen's GGX, or reviewers will.
+Vitucci's stated objection that microfacet models do not distinguish specular
+from diffuse. Frame it as answering a published objection, cite the objection,
+and benchmark against both RER and Wagen's GGX, or reviewers will. Two
+qualifications, both from section 4.6. The split is the right model only for the
+random-roughness classes, and Vitucci's own alpha_R = 65 against alpha_R = 4 is
+the first of two independent demonstrations that facade diffuse power is
+structural rather than Gaussian, which cuts against any framing that leans on the
+split as a *complete* answer.
 
 **Materials from imagery.** Question 1 above.
 
@@ -1016,13 +1072,25 @@ Published corroboration:
   arXiv:2210.06883**: outdoor mmWave with measured materials, 4.7 dB RMSE at
   27 GHz and 3.6 dB at 38 GHz. Adding 1.7 dB in quadrature gives 5.0 dB and does
   not change the character of the result.
-- **Roughness is nearly free.** Guo, Zhang, Sun, Tao, arXiv:2502.00699, measured
-  real facades at 28 GHz: h_rms 0.170 mm (metal sheet), 0.216 (marble), 0.445
-  (smooth wall), 0.715 (rough wall), all sub-Rayleigh at 28 GHz (threshold 1.89 mm
-  at 45 degrees). A 2x error in sigma_h costs 0.35 to 3.5 dB at 28 GHz and 0.02 to
-  0.19 dB at 10 GHz. Caution: their in-plane-only fit mispredicts out-of-plane
-  backscatter, so if the output is a sphere integral, the in-plane-fitted S values
-  in the literature are the wrong ones.
+- **Roughness is nearly free, on the smaller of the two available height sets.**
+  Guo, Zhang, Sun, Tao, **Gao**, arXiv:2502.00699, IEEE WCNC Wkshps 2025,
+  `10.1109/WCNC61545.2025.10978814`: h_rms 0.170 mm (metal sheet), 0.216 (marble
+  wall), 0.445 (smooth wall), 0.715 (rough wall), all sub-Rayleigh at 28 GHz
+  (threshold 1.89 mm at 45 degrees). A 2x error in sigma_h costs 0.35 to 3.5 dB at
+  28 GHz and 0.02 to 0.19 dB at 10 GHz. **Two corrections to how an earlier
+  revision of this bullet described the source.** It was cited as "measured real
+  facades", and it is not: the 28 GHz *scattering* was measured, the h_rms values
+  were not, and the paper never states where Table I came from. There is no
+  profilometer, laser, stylus or scan anywhere in it, and h_rms is used as an
+  *input* that seeds the initial scattering coefficient before `S`, `alpha_R`,
+  `alpha_i` and `Lambda` are tuned to minimise FVU in Wireless InSite. The
+  giveaway is that the same table assigns a relative permittivity of 6.0 to a
+  *metal sheet*, which is not a measurable dielectric constant. Read Table I as
+  nominal simulator inputs. Second, the author list drops Ruifeng Gao. Caution
+  that stands: their in-plane-only fit mispredicts out-of-plane backscatter, so if
+  the output is a sphere integral, the in-plane-fitted `S` values in the
+  literature are the wrong ones. This set turns out to be the same three walls as
+  the set `ROUGHNESS.md` quarantines, which is section 4.6.3.
 
 Two reframings that make the paper stronger. **Stop leading with 3.1 percent
 surface visibility.** Area coverage is not the relevant number, power-weighted
@@ -1060,6 +1128,294 @@ moment is more geometry-tolerant than a delay or power statistic, which is exact
 what Cazzella's 12 to 20x Hausdorff-to-Chamfer ratio supports. It has to be
 demonstrated, not asserted.
 
+## 4.6 The roughness position, reconciled against `ROUGHNESS.md`
+
+This document and `ROUGHNESS.md` were written by different passes that did not
+read each other, and they collided on the one thing both treat as load-bearing.
+This section is the reconciled position. Where the two disagreed on a number, the
+number was checked against the source or against
+`config/surface_roughness.json`, and the loser is named.
+
+### 4.6.1 The Rayleigh split survives, at half its advertised width
+
+Sections 4.3 and the claim list below sell the Rayleigh specular-diffuse split as
+the surviving physics differentiator, on the grounds that it answers Vitucci's
+published objection that microfacet models cannot separate specular from diffuse.
+That framing is correct and it should stay. But `ROUGHNESS.md` establishes that
+the split is **the wrong model for eight of the sixteen classes** in
+`config/surface_roughness.json`, and the code enforces that:
+`SurfaceRoughnessPrior.specular_power_fraction` raises for any class whose
+`structure` is `periodic_dominant` or `two_scale_periodic_plus_random` unless the
+caller passes `allow_periodic=True`.
+
+The two positions are not in conflict once the scope is stated. **The Rayleigh
+split applies to the random-roughness classes. Periodic structure needs its own
+treatment, and that treatment is being built rather than shipped**
+(`semantic_twin/floquet.py`, `masonry.py`, `rcwa.py` and `kirchhoff.py` exist,
+and nothing in the propagation path imports them yet). Concretely:
+
+- Gaussian-random and therefore inside the split: `glass_glazing_unit`,
+  `metal_cladding_panel_smooth`, `render_plaster_painted`,
+  `concrete_as_cast_smooth`, `concrete_board_marked_or_exposed_aggregate`,
+  `brick_face`, `asphalt_road_dense_graded`, `asphalt_road_coarse`.
+- Periodic or two-scale and therefore outside it:
+  `brick_wall_with_mortar_joints`, `stone_ashlar_dressed`,
+  `stone_rough_rusticated`, `wood_cladding`, `metal_profiled_sheet`,
+  `ceramic_tile_facade`, `concrete_paving_slab`, `stone_sett_paving`.
+
+A mortar grid at 75 mm pitch supports 15 propagating orders at 28 GHz and 31 at
+60 GHz, arriving at computable angles, so a smooth Gaussian lobe gets both the
+magnitude and the angular distribution wrong. That is not a caveat to bury. It is
+half the facade area in a European core.
+
+What to write in the paper: claim the split for the random-roughness classes and
+name the periodic ones as an explicit open item with a stated refusal in the
+code. Claiming the split across the board invites the reviewer to find the eight
+classes, and `ROUGHNESS.md` will be the document that finds it for them.
+
+Note also, against claim 8 in the list below, that the Rayleigh split and the
+roughness prior are separable claims. The prior distribution per semantic class
+is unoccupied regardless of which scattering closure consumes it.
+
+### 4.6.2 The strongest result in the pair, reached twice from disjoint sources
+
+This is the finding that should be stated once, prominently, in the paper.
+
+**Facade diffuse power at millimetre wave is structural, not Gaussian
+micro-roughness.** Two independent literature passes reached that conclusion from
+sources that do not overlap, and neither knew the other had.
+
+From this document's strand, Vitucci, Cenni, Fuschini, Degli-Esposti, IEEE TAP
+2023, `10.1109/TAP.2023.3278796`, arXiv:2209.12685: to match the Kirchhoff lobe
+for a brick wall, their reciprocal effective-roughness model needs
+`alpha_R = 65`, whereas the measured brick wall fits `alpha_R = 4`, because real
+scattering comes from indentations, brick and mortar alternation and sub-surface
+inhomogeneity rather than from Gaussian surface roughness.
+
+From `ROUGHNESS.md`'s strand, four separate results:
+
+- Kodra, Bernardi, Cenni, Hu, Barbiroli, Fuschini, Vitucci, Molina Garcia-Pardo,
+  Martinez-Ingles, Salous, Degli-Esposti, IEEE OJAP 6(5):1490-1501, 2025,
+  `10.1109/OJAP.2025.3587403`, on their own flat laboratory slabs: "The main
+  origin of diffuse scattering in the considered cases cannot be surface
+  roughness since all three materials have similar, smooth surfaces." Their
+  fitted `S` falls with frequency for wood flooring and rises for plasterboard,
+  which no RMS height can produce.
+- Pascual-Garcia et al., IEEE Access 4:690-701, 2016,
+  `10.1109/ACCESS.2016.2526600`, the only paper that measures metrology and fits
+  `S` on the *same* physical samples: measured micro-roughness under-predicts the
+  observed diffuse scattering by roughly an order of magnitude in amplitude and
+  two in power, consistently, on every one of five samples.
+- Landron, Feuerstein, Rappaport, IEEE TAP 44(3), 1996, Table I: real exterior
+  walls characterised at 50 to 250 times the coupon values, a rough limestone
+  wall at 2.5 cm RMS and a brick wall at 0.5 cm.
+- Koivumaki et al. fitted whole facades at 28 GHz and found the Lambertian
+  pattern beat the directive one, because pillars, protruding windows and street
+  furniture returned as much backscatter as forward scatter.
+
+Same conclusion, from Vitucci on one side and Kodra, Pascual-Garcia and Landron
+on the other. Independent corroboration across two literature passes is the
+strongest thing either document contains, and it is more publishable than either
+document's separate contribution. It also has a direct architectural consequence:
+if the diffuse fraction is set by structure rather than finish, it arrives in a
+comb of grating orders at angles the semantic layer can already estimate from
+course pitch, which a random roughness parameter can never predict.
+
+The one honest hedge, which `ROUGHNESS.md` states and this document endorses: no
+published experiment separates a comb from a smooth lobe on a real facade,
+because every mmWave campaign uses either a jointless coupon or a whole building
+with no angular resolution on a single patch. The measurement that would close it
+is a bistatic scan at 28 GHz across one square metre of real brickwork at fixed
+incidence. Until it exists, "structural" is very strongly indicated and not
+proven.
+
+### 4.6.3 The two RMS height sets are the same three walls, and that is a result
+
+`ROUGHNESS.md` quarantines a second wall-scale set giving a marble wall 1.0 to
+1.1 mm, a brick wall 6.5 to 8 mm and a "smooth wall" 4.1 mm, on the grounds that
+it is radio-fitted and `SurfaceRoughnessPrior.__post_init__` raises if
+`radio_fitted` is true. The names are near-identical to Guo's and the values
+differ by 5 to 11 times, which looked like two campaigns disagreeing. It is not.
+
+The second set is **Zhang, Sun, Tao, Zhu, Gao, "Diffuse scattering measurements
+and mechanism analysis at 8, 12, and 28 GHz for typical building surfaces", npj
+Wireless Technology 2(1), article 1, 2026, `10.1038/s44459-025-00016-9`**, open
+access. Four of its five authors are Guo's co-authors, Guo himself is thanked in
+the acknowledgements for the same measurement campaign, the site is the same
+Minhang campus of Shanghai Jiao Tong University, and it cites the WCNC paper
+directly. The dielectric constants identify the surfaces one to one: marble
+6.2 against 6.1 and 6.2, smooth wall 5.8 against 6.0 and 5.7, and Guo's "rough
+wall" at 10.5 is the npj paper's "brick wall" at 10.1 and 11.5. **Same three
+walls, measured by the same people, at the same place.**
+
+So there is no contradiction to resolve. There is one clean demonstration, on
+identical physical surfaces, that a Gaussian roughness height inverted from radio
+data is 5 to 11 times the geometric height the same group assumes going forward.
+Three things make the npj numbers unusable as physical priors, and they are worth
+writing down because the same trap catches every fitted height in this
+literature:
+
+- Their own Table 2 is captioned "Fitting parameters of BK and ER models for
+  different materials", scored by SMAPE, and the text says the parameters come
+  from "minimizing the discrepancy between measured data and ray-tracing
+  simulation results". They are outputs, not measurements.
+- **The fits are at 8 GHz**, where the free-space wavelength is 37.5 mm, and the
+  28 GHz figure in that paper is a *simulation* driven by the 8 GHz fit rather
+  than an independent 28 GHz roughness. Effective roughness does not transfer
+  across frequency, and their own results show it failing: diffuse scattering at
+  8 and 12 GHz is similar and distinct from 28 GHz, and the 28 GHz delay spread
+  is much larger than at the other two bands. A true geometric sigma inside a
+  Kirchhoff model would have handled all three with one number.
+- Taken as geometry the npj brick height is self-refuting. At 6.5 mm and
+  30 degrees incidence, `g^2` is 3.6 at 8 GHz but **43.6 at 28 GHz**, a coherent
+  power fraction of 1e-19, and the same group reports 28 GHz power "concentrated
+  in the specular reflection direction" for every surface. Guo's 0.715 mm gives
+  `g^2 = 0.53` and 59 percent specular, which is a physically sensible facade.
+
+The honest position for the paper is that **neither set is a surface metrology
+result**. Guo's is an unsourced nominal input and the npj set is an explicit fit
+output, and the gap between them is the size of the structural contribution that
+section 4.6.2 says carries the diffuse power. That is the same conclusion
+Vitucci reaches from `alpha_R = 65` against `alpha_R = 4`, arrived at from a
+completely different direction, which makes it a third independent corroboration
+rather than a fourth data set.
+
+### 4.6.4 Brick roughness: say face or wall, every single time
+
+The two documents quote brick RMS height as 1 cm and as 0.03 mm, a factor of 333.
+**Both are right and they describe different objects.** This was the largest
+apparent contradiction in the pair and it is not a contradiction at all.
+
+- **Face.** A prepared monolithic patch with no joints, which is what a
+  profilometer measures and what almost every published RMS height is. Every
+  direct measurement of a brick face returns 0.024 to 0.095 mm.
+  `config/surface_roughness.json` carries `brick_face` at 0.03 mm and that face
+  is 99.9 % specular at 28 GHz.
+- **Wall.** A metre-scale facade patch, which is what a fishnet face actually
+  stands for, additionally carrying mortar joints, course relief, block relief,
+  pointing, sills and reveals at centimetre pitch. Landron measures 0.5 cm RMS on
+  a real brick wall and Vitucci's model parameter sits at 1 cm with a correlation
+  length of 0.5 m, which is a wall-scale figure by any reading: no brick face has
+  a half-metre correlation length.
+
+The config enforces the distinction rather than averaging it. `brick_face` and
+`brick_wall_with_mortar_joints` both carry `rms_height_mm = 0.03`, because that
+field is defined as the face statistic in both, and the wall's structure lives in
+a separate `periodic_component` block. The file's own `two_scales.do_not_average`
+note says it directly: averaging the two produces a value that describes neither.
+
+**Rule for every document and the paper: no brick roughness number appears
+without the word face or the word wall next to it.** The same rule applies to
+stone and to concrete paving.
+
+### 4.6.5 The diffuse ceiling, and one number that has no source
+
+Three figures for "how much of the received power is diffuse" are in circulation
+across the two documents, and they do not all mean the same thing.
+
+- **20 % of total received power.** Charbonnier et al. 2020, measured, 28 GHz,
+  urban, directional sounder, 488 acquisitions. This is the one number with a
+  measurement, a band and a denominator all stated. Use it.
+- **Up to 40 %.** Melloni, Vitucci, Degli-Esposti, Berweger, Chuang, Gentile,
+  Golmie, arXiv:2605.17988 (2026), stated for "mmWave and sub-THz". That is a
+  cross-band envelope, not a 28 GHz urban figure, and quoting it against
+  Charbonnier's 20 % as though they disagree is a category error.
+- **36 %.** `ROUGHNESS.md` carries "20 to 36 percent" and gives no citation for
+  the upper end. **It could not be sourced here.** The only quantity in either
+  document that yields 0.36 is Charbonnier's calibrated building scattering
+  coefficient `S = 0.6`, whose square is the diffuse share of *reflected* power
+  rather than of *total received* power. That is a plausible arithmetic origin
+  and it is an inference, not a confirmation, so it is recorded as an open item
+  rather than repaired. Whoever wrote the 36 should say where it came from, and
+  if it is the `S = 0.6` route then the sentence needs a different denominator.
+
+Until that is settled, quote 20 % with Charbonnier attached, and quote 40 % with
+Melloni and the words "across mmWave and sub-THz" attached. Do not write a range
+that silently spans two denominators.
+
+## 4.7 Xia et al., now read in full, and it settles two verdicts
+
+The IEEE TAP 2024 paper was marked abstract-only and paywalled in two places in
+an earlier revision of this document. The PDF is in `lit/` and has been read.
+Page and section references below are to the printed article, IEEE TAP
+72(10):7986-7997.
+
+**Geometry is their own drone survey.** Section III-A: "The DJI Matrice 30 drone
+equipped with a Seir v3 lens was used for oblique aerial photography, capturing
+around 7000 aerial images. Subsequent 3-D reconstruction was performed using DJI
+Terra software, resulting in the photogrammetric point clouds." The site is
+Huangdao District, Qingdao, about 900 by 800 m, 55 buildings, 33 m of relief,
+described as high greenery with minimal traffic and pedestrian flow. No ground
+sample distance or point density is reported anywhere. That is a green suburban
+campus, not a dense European core.
+
+**Classes, with an internal inconsistency worth knowing.** Section II-A trains
+seven: "ground, vegetation, building, wall, car, water, and street furniture".
+The abstract and the Fig. 1 legend give six, with "fence" in place of "wall" and
+no water. They are the same class under two names. Segmentation is RandLA-Net
+pretrained on SensatUrban, so the taxonomy is not theirs either.
+
+**Cars are deleted, clutter is retained.** Section I: "By construct, this
+propagation scene model does not take car point clouds, owing to their
+temporariness." Table II has five rows and no car row. Vegetation, fences and
+street furniture are kept and meshed by ball pivoting (section II-B-3). Vegetation
+becomes a closed triangle shell with wood permittivity, with no canopy volume
+model, and they say so: "it is assumed that all the materials of the vegetation
+are simplified as wood although actual vegetation should also include green
+leaves."
+
+**Retained, not recovered, and this is the verdict that matters.** There is no
+street-level imagery in the paper. The clutter is in the model because the drone
+overflew it, and the pipeline is strictly segment, drop cars, mesh the rest.
+Nothing is inferred for anything the survey did not directly see. Their own
+concession, section V-A: "There is an underestimation of path loss at transmitter
+positions 1 and 3 possibly because more minute obstacles are not considered in
+the scene model, leading to rays being traced that should not exist." Nadir and
+oblique aerial photogrammetry is systematically blind to vertical facade detail,
+under-canopy furniture, ground-level poles and bollards, awnings and parked
+vehicle geometry, which is precisely what a street-level camera sees best.
+**Surviving claim 1 holds.**
+
+**Materials are one flat value per class.** Table II, five rows: Building
+concrete 5.24 / 0.103, Ground very dry ground 3 / 0.002, Fence concrete 5.31 /
+0.075, Pole metal 1 / 1e7, Vegetation wood 1.99 / 0.014, sourced from ITU-R
+P.2040. No glass or window class exists at all, in an urban scene. The two
+concrete rows come from *different revisions* of P.2040, the building row from
+P.2040-3 and the fence row from P.2040-1, which is a small sloppiness and also
+positive evidence that nothing was fitted.
+
+**Two numbers to use, and one to be careful with.** Their scene-model ablation,
+Table VI, at three transmitter positions: buildings and ground alone give RMSE
+12.79 / 10.17 / 11.07 dB, adding fences and poles gives 12.06 / 9.72 / 10.49,
+adding vegetation instead gives 7.17 / 6.33 / 6.82, and everything together gives
+7.09 / 6.15 / 5.95. So **non-vegetation clutter is worth 0.6 to 0.7 dB and
+vegetation is worth 4 to 5 dB**, and the two are never separated from each other.
+Their headline "clutter matters" result is really a vegetation result. That is a
+caution for this study's own motivation, not for its novelty. The geometry is
+also unusual: both link ends at 2.2 to 2.5 m, vehicle-mounted, which is a V2V
+geometry rather than a rooftop macrocell, and their best RMSE is about 6 dB,
+which is not a tight benchmark.
+
+**Their diffuse-scattering result is a useful negative.** They sweep the full
+Degli-Esposti family (`S` from 0 to 1, `alpha_r` and `alpha_i` 1 to 4, `Lambda`
+0.1 to 0.9) in Sionna-RT and conclude: "the account of vegetation scattering does
+not significantly improve the prediction accuracy. This further confirms previous
+studies that diffuse scattering plays an important role in modeling the
+time/angle dispersion characteristics of channels (such as delay spread and angle
+spread) [52], [53], rather than in path loss prediction." The whole `S` sweep
+moves RMSE by under 0.3 dB. **Cite this whenever the paper argues that the
+angular second moment is the right observable**, because it is a published,
+measured statement that scalar path loss is the wrong place to look for
+scattering physics. It is also a warning: any claim here that materials or
+roughness change *path loss* has this paper against it at 2.8 GHz.
+
+**Adjacent items this reading surfaced**, none previously in this document:
+F. Zhang et al., IEEE TAP 72(3):2712-2722, Mar 2024 (same Wuhan group, the direct
+predecessor), and Semkin et al., IEEE TVT 66(6):4647-4656, 2017, which did
+drone oblique photogrammetry into a mesh into 60 GHz channel modelling seven
+years earlier, and whose only stated gap is that it "does not distinguish between
+different environmental elements in the scene".
+
 ---
 
 # What the paper may claim
@@ -1070,9 +1426,13 @@ In descending order of safety.
    side knows it matters and has not solved it (`10.1017/S1759078716000349`,
    `10.1109/EUMC.2015.7345733`). The vision side does pole, sign and tree
    inventory from Mapillary at scale (`10.1177/03611981251372093`). Nobody joins
-   them. Caveat: Xia et al. segment street furniture, fences and cars out of
-   photogrammetric point clouds, so verify whether they recover clutter or merely
-   retain it.
+   them. **The Xia caveat is now closed and it closed in this claim's favour**:
+   Xia et al. merely retain, from their own drone survey, and there is no
+   street-level imagery anywhere in that paper. Section 4.7. The honest
+   qualification is not about novelty but about motivation: their own ablation
+   puts non-vegetation clutter at 0.6 to 0.7 dB at 2.8 GHz, so the case that it
+   matters has to be made at FR2 or on a dispersion metric, not on path loss at
+   sub-6.
 2. **A delay-resolved, polarisation-complete, second-moment reciprocal transfer
    operator published as a reusable per-location deliverable, for RF exposure.**
    Not found in graphics, acoustics or radio. The narrowest claim and the only one
@@ -1097,11 +1457,16 @@ In descending order of safety.
    `10.1109/ICCVW.2013.121`. Cite it.
 7. **Sky view factor, or any named urban-form metric, as an RF exposure
    covariate.** Unoccupied, with the title-and-abstract caveat.
-8. **Roughness priors per semantic class feeding a Rayleigh split at two bands.**
-   Partially contested. VisRFTwin does VLM to discrete roughness level to
-   scattering coefficient, and AODT already exposes RMS roughness and lobe
-   exponents. Nobody puts a roughness prior *distribution* per semantic class into
-   a Rayleigh split. Claim it at that resolution, not broader.
+8. **A roughness prior *distribution* per semantic class, with evidence grades,
+   at two bands.** Partially contested. VisRFTwin does VLM to discrete roughness
+   level to scattering coefficient, and AODT already exposes RMS roughness and
+   lobe exponents. Nobody publishes a per-class lognormal with its provenance and
+   its refusals attached. Claim it at that resolution, not broader, and claim the
+   prior separately from the closure that consumes it: section 4.6.1 restricts
+   the Rayleigh split to the eight random-roughness classes, so a claim phrased
+   as "roughness priors feeding a Rayleigh split" is claiming something the code
+   deliberately refuses to do for the other eight. The prior itself is
+   closure-agnostic and does not inherit that limit.
 9. **A real street-level equirectangular panorama registered to Google
    Photorealistic 3D Tiles.** Nobody does exactly this: mmSV projects onto OSM
    prisms, VisRFTwin renders Google Earth Studio virtual views, DeepTelecom
@@ -1121,7 +1486,10 @@ In descending order of safety.
 - First to vary material within a facade for outdoor ray tracing at 28 GHz.
   Cazzella et al. did it, in Sionna, at 28 GHz, and measured the impact.
 - First to use photogrammetric geometry plus semantic segmentation plus clutter
-  classes for outdoor ray tracing. Xia et al., IEEE TAP 2024.
+  classes for outdoor ray tracing. Xia et al., IEEE TAP 2024, end to end with
+  public code. Their own contribution 1 stakes exactly that sentence. What they
+  do not do is get the clutter from imagery the survey could not see, which is
+  where claim 1 lives.
 - Reciprocity, source-independence, hardware-independence, per-point
   precomputation, angular resolution, or polarisation-completeness of a transfer
   operator. See question 2.
@@ -1141,7 +1509,6 @@ resolves most of them.
 |---|---|---|
 | Wagen, ISNCC 2020 | `10.1109/ISNCC49221.2020.9297355` | Does he use the full D/G/F microfacet form, or only the GGX D factor? If full, the microfacet contribution here is essentially nil and the framing must shift entirely to the Rayleigh split. IEEE returned 418, ResearchGate 403. |
 | Kim et al., ETRI Journal 42(6) 2020 | `10.4218/etrij.2019-0411` | "Millimetre-wave diffraction-loss model based on over-rooftop propagation measurements". The only direct measurement of rooftop diffraction loss against angle at mmWave, so it is the check on section 4.1's entire argument. Wiley 403 on four routes. |
-| Xia et al., IEEE TAP 2024 | `10.1109/TAP.2024.3451214` | Material granularity, and whether clutter is recovered from imagery or merely retained from the point cloud. This decides whether surviving claim 1 holds. |
 | Göktepe, Peter, Weiler, Keusgen, IJMWT 2016 | `10.1017/S1759078716000349` | Delta dB, delta delay spread and delta angular spread with and without cylindrical street clutter. Directly relevant to the safest available headline. Cambridge Core and IEEE blocked. |
 | IEC/IEEE 63195-2:2022 | `10.1109/IEEESTD.2022.9770556` | The multiple-simultaneous-transmitter clause and the power density definition (`\|S\|`, `n_hat . Re{S}`, or modulus over a conformal surface). If it mandates a coherent vector sum, a referee can argue it already combines incident directions. Roughly 507 euro. Same question for IEC 62232:2025. |
 | Zhang, Brennan et al., IEEE TAP 2024 | `10.1109/TAP.2024.3355502` | Whether any single building carries more than one material, and whether the electrical parameters are ITU-R P.2040 values or fitted. |

@@ -875,3 +875,335 @@ from a single run carries about three percent of run-to-run noise, concentrated
 on the ground plane. Ten cities of ground-material statistics should either
 average several runs or raise the threshold on the paving prompts specifically.
 Facade materials, which are what the concept backend exists for, are stable.
+
+### The tile placement is read in double precision, not through Blender
+
+A Photorealistic 3D Tiles leaf does not carry local coordinates. It carries its
+full ECEF placement in the glTF node matrix, so a translation component reads
+around 4423590.456613353 m. `Object.matrix_world` is float32, whose spacing at
+that magnitude is 0.5 m, so Blender quantises every tile independently at
+import. The earlier diagnosis blamed the ECEF-to-ENU assignment inside
+`build_inhouse_mesh.py`, which is one step too late: `collect_world_triangles`
+already promoted to float64, and folding the transform into the numpy world
+matrix there would have recovered nothing, because the damage was already in
+the object.
+
+`semantic_twin/gltf.py` reads node matrices out of the GLB in float64 and the
+builder matches them per object. `matrix_world` is now mutated only for the
+optional `--blend` export, after the geometry has been written.
+
+The quantity that matters is not the rigid shift, which a registration fit
+absorbs, but the differential seaming between neighbouring tiles, which nothing
+downstream can undo:
+
+| site | rigid shift | mean per-vertex | worst tile-to-tile seam |
+|---|---|---|---|
+| Korenmarkt | 0.262 m | 0.299 m | 0.661 m |
+| Milan | 0.175 m | 0.273 m | 0.996 m |
+
+Milan's worst seam is 93 wavelengths at 28 GHz. Against an independent pure
+numpy assembler that reads the GLB accessors without Blender, the rebuilt
+meshes agree to 2.3 um median at Korenmarkt and 5.5 um at Milan, which is the
+float32 PLY storage quantum, so the residual seaming is three orders below the
+1 cm target. The old meshes sat at 0.256 m and 0.234 m median against the same
+reference.
+
+A side effect worth remembering when reading old numbers: camera-visible
+inverted-normal area at Korenmarkt fell from 5.81% to 1.00%. The likely
+mechanism is that seams no longer gap, so the camera stops seeing back faces
+through tile cracks. It is not isolated from the region-of-interest change,
+which pulled a different tile set.
+
+The region of interest was a ball centred on the ellipsoid, so horizontal reach
+fell off as `sqrt(r^2 - h^2)` with site altitude. It is now a vertical cylinder
+about the site up axis, so `--radius-m` means horizontal reach at every height
+and no site-height parameter is needed. Milan at r=320 costs 691 requests, so
+the old 500 request cap would have silently truncated it.
+
+Corrected meshes are committed as `*_f64.ply` alongside the originals. Every
+registration, fishnet and texture-evidence number recorded before this entry
+was computed against the superseded geometry. The skyline residual moves from
+1.297 to 1.327 deg, which is inside the seed spread of +/- 0.26 deg, so
+registration does not need redoing on accuracy grounds, but the provenance
+should be stated.
+
+### Voxel remeshing is rejected for the production path
+
+The support mesh has a real topological defect: 16.6% boundary edges, 34.7 km
+of boundary, 2.29% non-manifold edges, essentially no watertight area. Voxel
+remeshing fixes all of it completely. Measured at Korenmarkt with a 0.30 m
+solidify and a 1 degree planar dissolve:
+
+| voxel | triangles | boundary edges | watertight area | median first-hit normal tilt | median range shift | fishnet face floor |
+|---|---|---|---|---|---|---|
+| none | 157,862 | 42,158 | 0.6% | - | - | 6,271 |
+| 2.00 m | 79,832 | 0 | 100% | 57.7 deg | 2.94 m | 8,933 |
+| 1.00 m | 384,048 | 0 | 100% | 17.5 deg | 0.387 m | 48,758 |
+| 0.50 m | 1,976,934 | 0 | 100% | 12.9 deg | 0.264 m | 99,886 |
+| 0.35 m | 4,481,690 | 0 | 100% | 6.9 deg | 0.208 m | 125,714 |
+
+It is rejected for three reasons.
+
+It defeats the cutter. The fishnet can never emit fewer faces than the visible
+support triangles, and that floor goes from 6,271 to 125,714, a twentyfold
+regression in exactly the quantity `FISHNET.md` exists to reduce. At 0.35 m the
+emitted count collapses onto the floor, 125,835 against 125,714, so the cutter
+stops doing anything at all.
+
+It costs specular fidelity to buy closure. Median first-hit normal tilt is still
+6.9 deg at the finest size that fits in memory, with p90 at 43 deg and 55.6% of
+visible pixels beyond 5 deg. The curve falls slowly, so sub-degree needs voxels
+well under 0.1 m, which is order 1e8 triangles. The median range shift of 0.21 m
+is comparable to the 0.26 m float32 defect just removed.
+
+The problem it solves is smaller than the edge table implies. Measured from the
+camera rather than from topology, only 0.091% of first-hit rays land on a back
+face and 1.00% of visible area is inverted. That is two orders below what 16.6%
+boundary edges suggests, because tiles overlap rather than gap.
+
+Two related findings. A 5 degree planar dissolve destroys closure, watertight
+area 100% to 0.74%, from two non-manifold edges breaking the largest component,
+so 1 degree or nothing. And the skyline residual does improve under remeshing,
+1.327 to 0.614 deg at 1.00 m voxels, but the mechanism is the solidify dilating
+the silhouette upward, which happens to cancel the known low-mesh-skyline bias.
+That argues for the explicit bias term already planned, not for a dilation.
+
+The cheap alternative of welding and orienting per component is worse than doing
+nothing: camera-visible inverted area went from 1.00% to 4.33%, because
+component-level sign voting is too coarse. The targeted fix is to orient per
+face from the camera's own first-hit votes and make the BSDF two-sided, which
+addresses the 1.00% at no geometric cost.
+
+One flag remains untested. The solidify ran at `offset = 0`, which straddles the
+surface and moves the visible face outward by 0.15 m, and that accounts for most
+of the range error that plateaus near 0.2 m independent of voxel size.
+`offset = -1` grows the shell inward and should leave the visible face where it
+was. If this question is ever reopened, that is the first rerun.
+
+### The support mesh does not have a small-triangle problem
+
+The premise behind the original remesh suggestion was that decimation would clean
+up slivers. Measured on both meshes: zero degenerate faces, smallest triangle
+180 cm2, zero duplicate index triples, and the largest triangles carry the best
+minimum angles, 31.8 and 36.5 deg median against 26.6 and 22.6 deg mesh-wide,
+with zero slivers. Bad normals on large triangles hold for Milan only, 19.5%
+inverted in the top 0.1% by area against a 6.5% baseline, and not for Korenmarkt.
+The defect is topological and orientational, not metric.
+
+### Diffraction is demoted, the crop radius is promoted
+
+`MONOSTATIC_SBR.md` called diffraction the largest known physical omission in
+three places and said it lands on exactly the elevation band the rooftop weight
+needs. Both halves were wrong and the ranking is now reversed.
+
+Diffraction at 28 GHz is measured at under 1% of received power against 20% for
+diffuse, in the same NIST campaign this repository already cites for the diffuse
+share. The theoretical edge coefficient is about -42 dB at 28 GHz, triangulated
+three ways: Chizhik's Manhattan and Valparaiso measurements, the -46 dB 60 GHz
+companion, and an ITU-R P.526-15 knife-edge computation for Ghent geometry
+returning 43 to 48 dB. Scaling as 10 log10 f puts FR3 at 16.95 GHz only 4.5 dB
+more diffractive than 28 GHz, so FR3 is not a different regime.
+
+The power-integral error is unmeasurable. With blocked directions at -45 dB, the
+omission costs 0.000 dB of `K_iso` at open-azimuth fraction 0.30, 0.135 dB at
+0.001, and reaching 1 dB needs an open fraction below 0.012% of azimuth.
+Korenmarkt's measured sky fraction is 0.2271. The UTD transition region adds
+about 0.06 dB of bias.
+
+The geometry claim reverses outright. Rooftop-diffracted power reaches a head at
+1.7 m from the edge directly overhead, so it arrives at 35 to 86 degrees of
+elevation, and `1/sin^3(el)` at 60 degrees is 0.001 times its value at 5 degrees.
+Adding UTD would deposit power where the study's own weight suppresses it by
+three orders of magnitude. The old text conflated the link with the local tensor:
+over-rooftop multiscreen transport is upstream of `K_S` and factored out by
+construction, and what `K_S` must capture is only the last edge.
+
+Two exceptions survive and are recorded rather than dismissed. A transmitter
+sited behind a parapet is a hard failure, since Chizhik measures over 15 dB of
+extra loss for a 5 m setback under 100 m and a diffraction-free tracer predicts a
+zero where measurement shows signal. And Koivumaki finds weak diffracted paths at
+28 GHz outdoor that diffuse scattering cannot reproduce, so the Rayleigh split is
+not a substitute for the diffracted field.
+
+The decision: no diffraction term, and publish `f_open`, the low-elevation
+open-azimuth fraction, per location as the validity flag. Nothing computes
+`f_open` yet.
+
+What takes first place is the crop radius, and writing it up showed that three
+different crop questions had been running together.
+
+1. **Scattered power.** Bounded small. ITU-R P.1411-13 Table 11 gives a measured
+   28 GHz NLOS delay spread of 74.5 ns median, 22 m of excess path, and 3GPP
+   38.901 UMi-SC gives 65.9 ns, so a scatterer at 130 m sits at -19 to -41 dB,
+   under 0.05 dB of error. Atmospheric absorption cannot be used to justify the
+   truncation either: P.676-13 gives 0.026 dB over 260 m at 28 GHz.
+2. **Occlusion.** Not converged. Under the adjoint `R^0` law a distant blocker
+   changes `K_S(u)` at full per-direction strength, directions beyond 90 m carry
+   -28.4 dB of the isotropic weight, and that figure is still growing with radius
+   against a 30 dB budget.
+3. **Source support.** Broken. The rooftop weight is supported on `Delta_h` in
+   [13.5, 43.5] m and `d` in [25, 250] m, the scene is cropped at 130 m, and the
+   fraction of the `cos/sin^3` measure needing a source outside the crop is 27.5%
+   at `Delta_h = 8` m, 79.4% at 15 m, 88.5% at 20 m and 94.9% at 30 m.
+
+The delay-spread bound retires the first and not the other two. The repair for
+the third is a reporting change: either narrow the stated support of `w_roof` to
+what the crop contains, or keep the support and publish the fraction of its
+measure that no geometry backs.
+
+### Roughness: face against wall, and the Rayleigh split is scoped to half the classes
+
+Three roughness contradictions across the documents resolved the same way, by
+noticing that a single symbol was carrying three different physical quantities.
+
+**Brick is 1 cm and 0.03 mm and both are right.** A profilometer measures a
+prepared monolithic patch, and every direct measurement of a brick face returns
+0.024 to 0.095 mm. A metre-scale facade patch, which is what a fishnet face
+stands for, additionally carries mortar joints, course relief, block relief,
+pointing, sills and reveals at centimetre pitch, and Landron measures 0.5 cm RMS
+on a real brick wall. `config/surface_roughness.json` keeps `rms_height_mm` as
+the face statistic in both `brick_face` and `brick_wall_with_mortar_joints` and
+puts the wall structure in a separate `periodic_component` block, and its
+`two_scales.do_not_average` note forbids reconciling them into one number. The
+rule adopted: no brick, stone or paving roughness number appears anywhere without
+the word face or the word wall next to it.
+
+**Vitucci's 1 cm is neither measured nor fitted.** Checked against arXiv:2209.12685
+verbatim: it is "typical literature values for a brick wall", assumed and plugged
+into Kirchhoff purely to generate a comparison lobe, at 1.3 GHz, referring to a
+building facade with the joints inside the illuminated patch. So it is a
+wall-scale model parameter and it should never be quoted as metrology.
+
+**The Rayleigh split is the right model for eight of sixteen classes, not
+sixteen.** `PRIOR_ART.md` was selling it as the surviving physics differentiator
+while `ROUGHNESS.md` and `materials.py` refuse to evaluate it for the periodic and
+two-scale classes. Both stand once the scope is stated. Gaussian-random and
+inside the split: glass, smooth metal cladding, painted render, as-cast concrete,
+board-marked concrete, brick face, and both asphalt classes. Outside it: brick
+wall with joints, dressed ashlar, rusticated stone, wood cladding, profiled metal
+sheet, ceramic tile facade, concrete paving slab, sett paving. A 75 mm mortar
+pitch supports 15 propagating orders at 28 GHz and 31 at 60 GHz. Claim the split
+for the random classes and name the periodic ones as an open item with a stated
+refusal in the code. Claim the roughness *prior* separately, because a per-class
+lognormal with evidence grades is closure-agnostic and does not inherit the
+limit.
+
+Two stale numbers fell out of the same pass. `MONOSTATIC_SBR.md` section 5.4's
+`sigma_h` table was an invented engineering prior, one to two orders of magnitude
+too rough, and is now marked superseded rather than deleted, because its shape is
+still the right illustration of the frequency-and-incidence interaction. And its
+headline sensitivity, a factor-30 60 GHz swing between painted plaster and bare
+concrete, dissolved: the config puts both at 0.15 mm. The surviving
+random-roughness sensitivity is inside concrete, as-cast 0.15 mm against
+board-marked 0.6 mm, worth a factor of 1.6 at 28 GHz and 8.4 at 60 GHz at normal
+incidence and only 1.2 at 70 degrees.
+
+### The two conflicting facade RMS height sets are the same three walls
+
+Two measured-looking sets were in play with near-identical material names and
+values differing 5 to 11 times. Guo, Zhang, Sun, Tao and Gao (arXiv:2502.00699,
+IEEE WCNC Wkshps 2025, `10.1109/WCNC61545.2025.10978814`) give metal sheet
+0.170 mm, marble wall 0.216, smooth wall 0.445, rough wall 0.715. Zhang, Sun,
+Tao, Zhu and Gao (npj Wireless Technology 2(1) article 1, 2026,
+`10.1038/s44459-025-00016-9`) give marble 1.0 to 1.1 mm, smooth wall 4.1, brick
+wall 6.5 to 8.
+
+They are the same three walls. Four of five authors overlap, Guo is thanked in
+the acknowledgements of the second for the same campaign, the site is the same
+Minhang campus, the second cites the first, and the dielectric constants identify
+the surfaces one to one: marble 6.2 against 6.1 and 6.2, smooth wall 5.8 against
+6.0 and 5.7, and the first paper's "rough wall" at 10.5 is the second's "brick
+wall" at 10.1 and 11.5.
+
+So there is no contradiction. There is one clean demonstration on identical
+physical surfaces that a Gaussian height inverted from radio data is 5 to 11
+times the geometric height the same group assumes going forward. Three facts make
+the npj set unusable as a physical prior. Its own table is captioned "Fitting
+parameters" and scored by SMAPE. The fits are at 8 GHz, where the wavelength is
+37.5 mm, and its 28 GHz figure is a simulation driven by the 8 GHz fit rather
+than an independent measurement. And taken as geometry it is self-refuting: brick
+at 6.5 mm and 30 degrees gives `g^2 = 43.6` at 28 GHz, a coherent fraction of
+1e-19, while the same group reports 28 GHz power concentrated in the specular
+direction.
+
+The correction that goes the other way: Guo's set is not metrology either. The
+paper never states how `h_rms` was obtained, contains no profilometer, laser or
+scan, uses the value as an *input* seeding the initial scattering coefficient
+before `S`, `alpha_R`, `alpha_i` and `Lambda` are tuned to minimise FVU, and
+assigns a relative permittivity of 6.0 to a metal sheet. It is a table of nominal
+simulator inputs. `PRIOR_ART.md` had described it as "measured real facades" and
+that has been corrected. Neither set belongs in a physical prior library, which
+is what `SurfaceRoughnessPrior.__post_init__` already enforces for the second.
+
+### Facade diffuse power is structural, and the conclusion was reached twice
+
+Two literature passes that did not read each other reached the same conclusion
+from sources that do not overlap, and that independent corroboration is the
+strongest result the pair of documents contains.
+
+From the scattering-model side: reproducing a brick wall's measured lobe width
+from a Gaussian surface at 1 cm and 0.5 m correlation length needs a directivity
+exponent of 65, while the measured wall fits 4, and the authors attribute the
+excess to indentations, brick and mortar alternation and sub-surface
+inhomogeneity rather than to surface roughness.
+
+From the metrology side, four separate results. Kodra et al. say outright that
+the diffuse power on their own flat slabs cannot be surface roughness because all
+three materials are smooth, and their fitted `S` falls with frequency for one
+material and rises for another, which no RMS height can do. Pascual-Garcia
+measures metrology and fits `S` on the same five physical samples and finds
+micro-roughness under-predicting the observed diffuse scattering by an order of
+magnitude in amplitude and two in power, every time. Landron characterises real
+exterior walls at 50 to 250 times the coupon values. Koivumaki finds the
+Lambertian pattern beating the directive one on whole facades at 28 GHz, because
+pillars and protruding windows backscatter as much as they forward-scatter.
+
+The RMS-set finding above is a third independent route to the same place.
+
+Architectural consequence: if the diffuse fraction is set by structure, it
+arrives in a comb of grating orders at angles the semantic layer can already
+estimate from course pitch, which a random roughness parameter can never predict.
+The honest hedge stays attached. No published experiment separates a comb from a
+smooth lobe on a real facade, because every campaign uses a jointless coupon or a
+whole building with no angular resolution on one patch. The measurement that
+closes it is a bistatic 28 GHz scan across one square metre of real brickwork at
+fixed incidence, and it is an afternoon of anechoic time.
+
+### Xia et al. retain clutter, they do not recover it
+
+The IEEE TAP 2024 paper that threatened the photogrammetry and clutter claims
+simultaneously was marked abstract-only and paywalled. The PDF was in `lit/` and
+has been read. Xia, Zhou, Zhang, Cui, Liu, Ji, Zhang, Zhao and Xiao, IEEE TAP
+72(10):7986-7997, `10.1109/TAP.2024.3451214`, code public.
+
+Their geometry is their own DJI Matrice 30 oblique drone survey, about 7000
+aerial frames over a 900 by 800 m district near Qingdao with 55 buildings and
+33 m of relief, described as high greenery with minimal traffic. There is no
+street-level imagery anywhere in the paper. Cars are deleted, on the stated
+grounds of temporariness. Vegetation, fences and street furniture are kept and
+meshed by ball pivoting, vegetation as a closed shell with wood permittivity and
+no canopy volume model. So the pipeline is segment, drop cars, mesh the rest, and
+nothing is inferred for anything the survey did not directly see. Their own
+concession: "more minute obstacles are not considered in the scene model, leading
+to rays being traced that should not exist."
+
+The clutter-recovery claim therefore survives, and it survives on the distinction
+between recovering and retaining. Aerial photogrammetry is systematically blind
+to vertical facade detail, under-canopy furniture, ground-level poles and
+bollards, awnings and parked-vehicle geometry, which is what a street-level
+camera sees best.
+
+Two things from that paper cut the other way and are recorded because they will
+be quoted back. Their scene-model ablation puts non-vegetation clutter at 0.6 to
+0.7 dB and vegetation at 4 to 5 dB, and never separates fences from poles, so
+their "clutter matters" headline is really a vegetation result. And their full
+Degli-Esposti sweep concludes that diffuse scattering matters for delay and
+angular spread rather than for path loss, moving RMSE by under 0.3 dB across the
+whole `S` range. That second one is a gift: it is a published measured statement
+that scalar path loss is the wrong place to look for scattering physics, which
+supports computing an angular second moment instead. It is also a warning against
+any claim here that materials or roughness change path loss.
+
+Materials in that paper are one flat ITU value per class over five classes, with
+no glass class at all in an urban scene, and the two concrete rows come from
+different revisions of P.2040. Sub-facade material assignment is untouched.

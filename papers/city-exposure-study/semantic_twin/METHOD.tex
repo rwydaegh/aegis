@@ -23,11 +23,19 @@
 This is an honest account of the co-located transmitter idea, written because the
 external criticism of it was correct but badly explained. The short version: the
 objection is real, it kills one \emph{claim} and not the \emph{method}, and the
-repair costs nothing because it reuses the identical computation. Separately, the
-method is genuinely clever, but for a different reason than ``it avoids ray
-tracing''. The reason it is clever is that the closed monostatic paths form a
-measure-zero set, which makes them invisible to Monte Carlo ray shooting and
-findable by a direct search. All numbers below come from this repository.
+repair costs nothing because it reuses the identical computation. Two arguments
+that earlier drafts leaned on are stated here with their range of validity
+attached. The closed monostatic paths do form a measure-zero set invisible to
+Monte Carlo ray shooting, but that holds only because transmitter and receiver
+coincide at a point, and the repair of Section~\ref{sec:repair} removes exactly
+that condition, so the pair search ends up as one branch of the estimator rather
+than its foundation. And the claim that most reflected power is diffuse rested on
+an unsourced millimetre of surface roughness, where the metrology says every
+common facade material is nearly specular at $28$~GHz. What survives both
+corrections, and does not depend on which observable is computed, is that the
+panorama supplies material, roughness and clutter at centimetre scale on the
+bounce that carries most of the power. All numbers below come from this
+repository.
 \end{abstract}
 
 \section{What we have at every point}
@@ -129,10 +137,11 @@ the pseudo-Brewster angle. Any scalar treatment of this scene is throwing away a
 first-order effect, which is the concrete argument for carrying a
 polarisation-complete field rather than a scalar amplitude.
 
-\section{Why this is a search and not a ray trace}
+\section{Why the co-located problem is a search and not a ray trace}
 
 This is the part that is genuinely clever, and it deserves a careful statement
-because it is easy to get backwards.
+because it is easy to get backwards. It is also conditional on the co-located
+geometry, and Section~\ref{subsec:stops} says where that condition fails.
 
 \subsection{One bounce}
 
@@ -251,6 +260,7 @@ $B$ is a ray cast. What we genuinely lack at $B$ is not its geometry but its
 a much smaller and much sharper problem than inventing a hidden city.
 
 \subsection{Where this argument stops applying}
+\label{subsec:stops}
 
 Everything in this section is conditional on one thing: that the path must
 \emph{return to a point}. The closure condition \eqref{eq:closure} is an equality
@@ -290,10 +300,11 @@ keeping the number of things carrying a semantic posterior small enough to store
 for ten cities. Those hold in either frame. The $596\times$ figure holds only in
 the branch that enumerates pairs.
 
-\section{What the search misses, and it is most of the power}
+\section{What the search misses, and why we cannot yet say what produces it}
 
 Everything above assumes mirror-like reflection. Real surfaces at millimetre
-wavelengths are not mirrors, and the numbers are not marginal.
+wavelengths are not perfect mirrors, and the size of the departure was the single
+most-revised number in this document.
 
 The Rayleigh roughness parameter compares surface height deviation to
 wavelength. At $28$~GHz the free-space wavelength is $10.71$~mm. An earlier draft
@@ -314,12 +325,13 @@ $80^\circ$ & $0.204$ & $0.202$ & $0.96$ \\
 \end{tabular}
 \caption{An \emph{assumed} millimetre of roughness on brick at $28$~GHz. The
 number in the first column was never sourced, and the measurement campaign
-described below says it is wrong by a factor of thirty.}
+described below says it is between ten and forty times too large.}
 \end{table}
 
 That millimetre does not survive contact with the metrology. Every direct
-measurement of a brick face returns $0.024$ to $0.095$~mm, which is a Rayleigh
-$g$ near $0.03$ and leaves the face $99.9\%$ specular. The same holds across the
+measurement of a brick face returns $0.024$ to $0.095$~mm, a Rayleigh $g$ of
+$0.03$ to $0.11$ at normal incidence, which leaves the face $98.8$ to $99.9\%$
+specular. The same holds across the
 material set: measured RMS heights for glass, render, as-cast concrete, wood and
 dressed stone all sit between $0.001$ and $0.3$~mm, and every one of them is
 mostly specular at $28$~GHz. Full table and provenance in \texttt{ROUGHNESS.md}.
@@ -333,10 +345,23 @@ five to twenty-four times in amplitude and by twenty-nine to five-hundred-fifty
 times in power, consistently, across five samples measured both ways. Whatever
 generates the diffuse power at these frequencies, it is not the surface finish.
 
-The candidate that fits the magnitude is structure rather than roughness: mortar
-joints, unit-to-unit offsets and block relief, at a pitch of seven to fifteen
-wavelengths. That is a grating with on the order of fifteen propagating orders,
-not a smooth lobe, and the two readings imply genuinely different architectures.
+That negative is worth more than it looks, because it was reached twice over,
+from sources that do not overlap. One route is the metrology: five samples
+measured both ways in one study, plus a campaign that states outright that the
+diffuse power on its own flat slabs cannot be surface roughness because all three
+materials are smooth, plus a 1996 characterisation of real exterior walls at
+fifty to two hundred fifty times the coupon values. The other route is the
+scattering-model literature, where reproducing a brick wall's measured lobe width
+from a Gaussian surface needs a directivity exponent of sixty-five while the wall
+itself fits four, and the authors attribute the excess to indentations, brick and
+mortar alternation and sub-surface inhomogeneity. Two independent readings, one
+conclusion.
+
+The candidate that fits the magnitude is therefore structure rather than
+roughness: mortar joints, unit-to-unit offsets and block relief, at a pitch of
+seven to fifteen wavelengths. That is a grating with on the order of fifteen
+propagating orders, not a smooth lobe, and the two readings imply genuinely
+different architectures.
 A comb and a lobe carrying equal total power are indistinguishable in any
 measurement fitted with a lobe in the first place, which is how the question has
 stayed open. Settling it needs a bistatic $28$~GHz scan of one square metre of

@@ -23,8 +23,8 @@ asserted from memory of the literature.
 | Search over patch pairs | Rejected as the primary strategy. Kept for the deterministic specular branch over planes | 6 |
 | Bounce count | 4, not 3, if the dynamic range budget is 25 dB or deeper. Measured, not assumed | 7.4, 9 |
 | Range prune | Per-semantic-class, and in the adjoint formulation the exponent is not what it looks like | 7 |
-| 130 m crop | Not converged at Korenmarkt. Physics disagrees with the coverage argument | 7.5 |
-| Diffraction | **Absent, and this is the largest known hole.** It lands on exactly the elevation band the rooftop-illumination scalar needs | 9.3, 14 |
+| 130 m crop | **Not converged at Korenmarkt, and this is the largest known hole.** Physics disagrees with the coverage argument, and the rooftop weight's own support asks for sources the crop does not contain | 7.5, 9.4 |
+| Diffraction | Absent, and the omission is bounded rather than fatal. Measured at under 1 % of received power at 28 GHz, and it arrives above the elevation band where `w_roof` puts its mass | 9.3, 14 |
 | Tracer | Ours, on Mitsuba `ray_intersect`. Sionna as the cross-validation oracle | 10 |
 
 ---
@@ -271,9 +271,24 @@ weight on dOmega  proportional to  1/(sin(el)*cos^2(el))
 
 uniform in azimuth, supported on `el` in `[atan(Delta_h_min/d_max), atan(Delta_h_max/d_min)]`.
 For `Delta_h` in [13.5, 43.5] m and `d` in [25, 250] m that is `el` in
-[3.1, 60.1] degrees. Both forms are heavily low-elevation weighted, which is the
-right physics and is exactly the elevation band that rooftop-edge diffraction
-dominates. See section 9.3, that is a real hole.
+[3.1, 60.1] degrees. Both forms are heavily low-elevation weighted: 64 % of the
+pure geometric weight sits below 5 degrees and 89 % below 9 degrees.
+
+Two consequences, and an earlier draft of this document had them the wrong way
+round.
+
+The first is that the stated support and the crop radius contradict each other.
+Sources at `d = 250` m with `Delta_h = 13.5` m sit at 3.1 degrees, and the scene
+is cropped at 130 m. The fraction of the `cos/sin^3` measure lying at elevations
+that require a source outside the crop is 27.5 % at `Delta_h = 8` m, 79.4 % at
+15 m, 88.5 % at 20 m and 94.9 % at 30 m. That is section 9.4, and it is the
+largest hole in this document.
+
+The second is that low elevation is **not** where rooftop-edge diffraction
+arrives. Diffraction from the near roofline reaches a head at 1.7 m from the edge
+directly overhead, so its arrival elevation is 35 to 86 degrees for the eaves
+heights and standoffs of a European core. The `1/sin^3(el)` weight at 60 degrees
+is 0.001 times its value at 5 degrees. Section 9.3 carries the numbers.
 
 **Street-level small-cell susceptibility.** Same construction with `Delta_h` in
 [2.5, 6.5] m and `d` in [10, 150] m, giving `el` in [0.95, 33] degrees.
@@ -773,9 +788,16 @@ regression. `materials.py` is therefore right to flag its roughness closure as
 `"not ITU-R P.2040"`, and P.2146-0 is the better ITU anchor for the roughness
 factor itself.
 
-**Measured split at the three bands**, computed here, with `sigma_h` values
-labelled as engineering priors and not as ITU values. `|rho_s|^2` is the
-coherent power fraction, `S` the diffuse amplitude coefficient.
+**Superseded illustrative split at the three bands**, computed here. The
+`sigma_h` column was an engineering prior invented for this table and it has
+since been replaced by `config/surface_roughness.json`, whose provenance is in
+`ROUGHNESS.md`. **The table below is kept only because it shows the shape of the
+frequency-and-incidence interaction. Do not take numbers out of it.** Almost
+every entry is one to two orders of magnitude too rough: the metrology says a
+brick face is 0.024 to 0.095 mm rather than the millimetres assumed here, and
+glass, painted render, as-cast concrete, wood and dressed stone all land between
+0.001 and 0.3 mm. `|rho_s|^2` is the coherent power fraction, `S` the diffuse
+amplitude coefficient.
 
 | Material (`sigma_h`) | 28 GHz, normal | 28 GHz, 70 deg | 39 GHz, normal | 60 GHz, normal | 60 GHz, 70 deg |
 |---|---|---|---|---|---|
@@ -792,14 +814,45 @@ The Rayleigh smoothness threshold `sigma_h < lam/(8*cos(th))` sits at 1.34 mm
 (28 GHz), 0.96 mm (39 GHz) and 0.62 mm (60 GHz) at normal incidence. Two
 consequences worth stating in the paper:
 
-- at 60 GHz almost every outdoor building material is rough at normal incidence,
-  so the specular skeleton collapses and the response becomes diffuse-dominated
 - grazing incidence makes everything smoother, and street canyons are grazing, so
-  the specular skeleton survives along the street even at 60 GHz. Brick at 70
-  degrees retains 5 % coherent power at 60 GHz versus 0.0 % at normal incidence
+  the specular skeleton survives along the street even at 60 GHz
+- the first bullet of an earlier revision said that at 60 GHz almost every
+  outdoor material is rough at normal incidence and the specular skeleton
+  collapses. On the measured heights that is false. At 0.15 mm of render the
+  coherent power fraction at 60 GHz normal incidence is 0.87, not 0.57, and a
+  brick face is above 0.99
 
 That frequency-and-incidence interaction is a result in its own right and it
-falls straight out of the machinery.
+falls straight out of the machinery. Its magnitude is not, and the magnitude is
+what `ROUGHNESS.md` had to settle.
+
+**The face and the wall are different objects, and the table above conflates
+them.** A profilometer measures a prepared monolithic patch, which is what almost
+every published RMS height is. A metre-scale facade patch, which is what a
+fishnet face actually stands for, additionally carries mortar joints, course
+relief, block relief, pointing, sills and reveals at centimetre pitch. The row
+labelled "brick + mortar 2.0 mm" above is trying to be a wall number and the
+literature's brick numbers are face numbers, so they were never comparable.
+`config/surface_roughness.json` splits them into `brick_face` and
+`brick_wall_with_mortar_joints`, keeps `rms_height_mm` as the face statistic in
+both, and records the wall structure in a separate `periodic_component` block
+rather than folding it into the height. Any brick roughness quoted anywhere
+downstream has to say which of the two it means.
+
+**And for eight of the sixteen classes the Rayleigh closure is not the right
+model at all.** A mortar grid, a sett pavement, corrugated cladding or a roof
+tile course reradiates into discrete grating orders at
+`sin(th_m) = sin(th_i) + m*lam/d`, not into a broad lobe. Brick coursing at
+75 mm pitch supports 15 propagating orders at 28 GHz and 31 at 60 GHz.
+`SurfaceRoughnessPrior.specular_power_fraction` raises for those classes unless
+the caller passes `allow_periodic=True`, which is deliberate: the refusal keeps
+that gap visible instead of letting it be absorbed into a plausible-looking
+scattering coefficient. Section 5.5's mapping and this section's split therefore
+apply to the random-roughness classes, and the periodic classes need their own
+treatment. That treatment is under construction rather than absent
+(`semantic_twin/floquet.py`, `masonry.py`, `rcwa.py`, `kirchhoff.py`), but at the
+time of writing nothing in the propagation path imports it, so a scattering model
+assembled today still has no grating term in it.
 
 ### 5.5 Tying roughness to the semantic posteriors
 
@@ -819,11 +872,38 @@ collapse to a MAP roughness. The specular fraction `exp(-g^2)` is exponential in
 `sigma_h^2`, so it is exactly the kind of nonlinearity where the mean of the
 function is far from the function of the mean.
 
-A concrete check to run before trusting any of this: at 60 GHz, `exp(-g^2)` for
-`sigma_h` between 0.3 and 0.8 mm swings from 0.57 to 0.02. A material posterior
-that cannot separate painted plaster from bare concrete cannot pin the 60 GHz
-specular fraction to better than a factor of 30. Report that as the dominant
-material-side uncertainty, because it is.
+**Status.** Half of this shipped. `config/surface_roughness.json` and
+`SurfaceRoughnessLibrary` supply `(mu_mat, s_mat)` as `rms_height_mm` and
+`log_standard_deviation` for sixteen classes, each with an `evidence_grade`, a
+plausible range and a `concepts` list linking it back to the prompts in
+`config/semantic_concepts.json`, and `SurfaceRoughnessPrior.sample` draws the
+lognormal rather than returning the median. Correlation length is present where
+the literature gives one and marked `not_reported` otherwise, so
+`(mu_lc_mat, s_lc_mat)` is not a distribution yet. **The
+`beta*(P(rough) - 0.5)` shift is not implemented anywhere.** The `rough`
+Bernoulli attribute exists in the taxonomy and accumulates in `evidence.py`, but
+nothing reads it into a roughness prior, and no value of `beta` has been chosen
+or defended. Treat the shift as an open proposal, not as a described behaviour.
+
+A concrete check to run before trusting any of this, restated on the measured
+priors rather than on the invented ones an earlier revision used. The old version
+said a posterior that cannot separate painted plaster from bare concrete cannot
+pin the 60 GHz specular fraction to better than a factor of 30, from `sigma_h`
+of 0.3 against 0.8 mm. Both numbers were wrong: `config/surface_roughness.json`
+puts painted render and as-cast concrete at the same 0.15 mm, so that particular
+confusion now costs nothing at all.
+
+The ambiguity that does still bite is inside concrete, between
+`concrete_as_cast_smooth` at 0.15 mm and
+`concrete_board_marked_or_exposed_aggregate` at 0.6 mm. The coherent power
+fraction at normal incidence goes 0.97 against 0.61 at 28 GHz and 0.87 against
+0.10 at 60 GHz, so a factor of 1.6 at FR2 and 8.4 at 60 GHz. That is a real
+sensitivity and it is a finish distinction a segmenter can plausibly be asked to
+make from imagery, which the render-against-concrete distinction was not. At
+70 degrees the same pair is 0.94 against 0.77 at 60 GHz, so the canyon geometry
+absorbs most of it. Report the concrete-finish split as the dominant
+random-roughness uncertainty, and note that it is smaller than the periodic-class
+gap above it.
 
 ### 5.6 The Degli-Esposti directive model, and why it is a comparison mode
 
@@ -1610,27 +1690,117 @@ Recommend `L = 4` with Russian roulette above `L = 2`, which costs little becaus
 82 % of rays have already escaped by then, and let the convergence protocol
 confirm or overturn it per city. State the number as measured, not as convention.
 
-### 9.3 The diffraction hole, stated before a reviewer finds it
+### 9.3 The diffraction hole, bounded rather than confessed
 
-There is no diffraction term in this design, and the external advice that
-included one is right to.
+There is no diffraction term in this design. Earlier revisions of this document
+called that the largest known physical omission and said it lands on exactly the
+elevation band `w_roof` needs. **Both halves of that sentence are wrong**, and
+the correction comes from `PRIOR_ART.md` section 4.1, which is the hostile review
+of this design. The omission is real, it is bounded, and the bound is small.
 
-For a rooftop base station illuminating a street canyon, propagation over the
-near roofline is often **the** mechanism, and the elevation band it dominates is
-exactly the band that `w_roof(el)` weights most heavily (section 2.7 puts the
-rooftop weight's mass at low elevation). So the omission is not a uniform small
-error, it is concentrated precisely where the exposure paper needs accuracy.
+**Measured.** Charbonnier, Lai, Tenoux, Caudill, Gougeon, Senic, Gentile, Corre,
+Chuang, Golmie (NIST and Siradel), "Calibration of Ray-Tracing With Diffuse
+Scattering Against 28-GHz Directional Urban Channel Measurements", IEEE Trans.
+Veh. Technol. 2020, `10.1109/TVT.2020.3038620`, verbatim: diffuse scattering
+"accounted for 20% of the total received power, whereas diffraction accounted for
+less than 1%". 28 GHz, directional sounder, urban, super-resolution MPC
+extraction, 488 acquisitions. That is the same campaign this repository already
+leans on for the diffuse share, so it costs nothing to cite it for both.
 
-Options, in order of cost:
+**Theoretical, triangulated.** Chizhik et al. (Nokia Bell Labs), IEEE TAP 2021,
+`10.1109/TAP.2020.3044398`, over 3000 links and 21 million power samples at
+28 GHz: the theoretical edge diffraction coefficient at large diffraction angles
+is of order **-42 dB at 28 GHz**. The 60 GHz companion gives -46 dB, and
+knife-edge shadow loss going as `10 log10 f` predicts -45.3 dB from the 28 GHz
+anchor. An ITU-R P.526-15 knife-edge computation for Ghent geometry (eaves 12 to
+20 m, head 1.7 m, pedestrian 2 to 12 m from the facade) returns 43 to 48 dB
+across the whole low-elevation band. Scaled from that anchor, FR3 at 16.95 GHz is
+-39.8 dB, so **FR3 is only 4.5 dB more diffractive than 28 GHz** and is not a
+different regime.
 
-- report `K_roof` with an explicit diffraction-absent caveat and a sensitivity
-  bound obtained by adding a UTD wedge term at the near rooflines only
-- add a single UTD or Fock edge interaction, drawing on the AEGIS Fock work,
-  restricted to explicitly tagged roofline edges, which the exporter is already
-  asked to emit in `DESIGN.md`
-- do nothing and restrict the published claims to `K_iso` and `K_street`
+**The power-integral error is unmeasurable.** With blocked directions carrying
+-45 dB, omitting diffraction costs 0.000 dB of `K_iso` at open-azimuth fraction
+0.30, 0.003 dB at 0.05, 0.014 dB at 0.01 and 0.135 dB at 0.001. Reaching 1 dB
+needs an open fraction below 0.012 % of azimuth. Korenmarkt's measured sky
+fraction is 0.2271 (section 2.7). The UTD transition region, the one place
+geometrical optics is genuinely discontinuous, has half-width `sqrt(lam*s/2)`,
+which is 28 cm at 28 GHz for `s = 15` m against 106 cm at 2 GHz, so roughly 1.9 %
+of directions at a worst-case 6 dB, about 0.06 dB of bias on `K_iso`.
 
-The first is the minimum acceptable position for a paper.
+**The geometry argument reverses the old one.** Rooftop-diffracted power arrives
+from the edge directly above the near facade, so at a head at 1.7 m the arrival
+elevation is 35 to 86 degrees. That is the top of the 3 to 60 degree band or
+above it entirely, and `1/sin^3(el)` at 60 degrees is 0.001 times its value at
+5 degrees. Adding UTD would deposit power exactly where this document's own
+weight suppresses it by three orders of magnitude. The old section conflated the
+link with the local tensor: the over-rooftop multiscreen transport a macrocell
+link needs is upstream of `K_S` and is factored out by construction. What `K_S`
+has to capture is only the last edge.
+
+**The genuine exceptions, which do not go away.** If any assumed transmitter site
+sits behind a parapet, a diffraction-free tracer predicts a hard zero where
+measurement shows usable signal: Chizhik measures that moving a base station 5 m
+back from the roof edge costs over 15 dB of extra average loss under 100 m. And
+Koivumaki, Steinbock, Haneda, IEEE TAP 2021, `10.1109/TAP.2021.3050482`, at
+28 GHz outdoor, find "many weak diffracted paths that are found in measurements
+and cannot be reproduced by diffuse scattering". The Rayleigh split is not a
+substitute for the diffracted field. Note also that no paper was found reporting
+"RMSE grows from X to Y dB when diffraction is disabled" for urban mmWave, so do
+not claim one exists.
+
+**What to do.** Publish `f_open`, the low-elevation open-azimuth fraction, per
+location as the validity flag, alongside the bound above. That converts a
+confessed hole into a scoped decision. Reserve the UTD or Fock edge term, at
+explicitly tagged roofline edges only, for the parapet case and for any site
+whose `f_open` falls under a percent.
+
+Two factual corrections to section 10 belong here rather than there. Sionna RT
+diffraction was added in 0.15.0, removed in 1.0.0, restored in 1.2.0, and is
+present in 2.0.1 as Kouyoumjian-Pathak UTD with the Luebbers finitely-conducting
+heuristic, first order but supporting `R...R.D.R...R` chains, with the
+`diffraction` and `edge_diffraction` flags defaulting to False, so most published
+Sionna results silently run without it. And MATLAB's `Method="sbr"` does
+second-order UTD while its image method does none, which kills any "SBR
+architecturally cannot diffract" argument.
+
+The "photogrammetric meshes make diffraction impossible" defence is partial.
+Sionna applies no dihedral-angle or coplanarity filter to wedges
+(`utils/wedges.py` uses Mitsuba's `primitive_silhouette_projection` with only
+exterior-side and distinct-primitive tests), so triangle soup does yield
+diffraction sources on tessellation artefacts. But Koivumaki solved wedge
+extraction on unstructured survey geometry five years ago. The honest wording is
+"unreliable without a preprocessing stage we did not build", not "impossible".
+
+### 9.4 The crop radius is the largest hole, and it is about sources
+
+Section 7.5 measured that the 130 m crop has not converged as an **occluder** set:
+the far tail of the first-hit range CCDF is real geometry, directions beyond 90 m
+carry -28.4 dB of the isotropic weight under the adjoint `R^0` law, and that
+number is still growing with radius, against a 30 dB budget.
+
+`PRIOR_ART.md` section 4.2 adds the second and larger failure, which is about
+**source placement** rather than scatterers. Section 2.7 supports `w_roof` on
+`Delta_h` in [13.5, 43.5] m and `d` in [25, 250] m. The scene is cropped at
+130 m. The fraction of the `cos/sin^3` measure lying at elevations that require a
+source outside the crop is 27.5 % for `Delta_h = 8` m, 79.4 % at 15 m, 88.5 % at
+20 m and 94.9 % at 30 m. The weight's stated support and the crop radius
+contradict each other outright.
+
+These two are not the same measurement and they do not cancel. Scatterer
+truncation beyond 130 m is separately bounded as small: ITU-R P.1411-13 Table 11
+gives a measured 28 GHz NLOS delay spread of 74.5 ns median (22 m excess path)
+and 3GPP 38.901 UMi-SC NLOS at 28 GHz gives 65.9 ns (19.8 m), which puts a
+scatterer at 130 m at -19 to -41 dB, under 0.05 dB of error. Atmospheric
+absorption cannot be used to justify the truncation either: ITU-R P.676-13 gives
+about 0.1 dB/km at 28 GHz, so 0.026 dB over 260 m. So the crop is defensible for
+scattered power, marginal for occlusion under `R^0`, and indefensible as stated
+for the rooftop weight's source support.
+
+The repair is a documentation and reporting change, not a tracer change. Either
+narrow the stated support of `w_roof` to the range the crop can actually contain
+and say so, or keep the support and report `K_roof` with the fraction of its
+measure that is unsupported by geometry. Doing neither is the thing a reviewer
+will find.
 
 ---
 
@@ -1673,11 +1843,12 @@ What we would have to reimplement, honestly:
 | Jones transport and basis rotations | moderate, and the main correctness risk | Section 8.3. Gate it with the reciprocity test |
 | Delay binning and exit binning | small | HEALPix or Fibonacci lattice plus scatter-add |
 | MIS and Russian roulette | small | Balance heuristic, textbook |
-| Diffraction | **not attempted initially** | Section 9.3. This is the real gap, not the tracer |
+| Diffraction | **not attempted** | Section 9.3, where the omission is bounded at under 0.14 dB on `K_iso`. Sionna 2.0.1 does have first-order UTD, but its flags default to False and it carries no measurement validation |
 
-The reimplementation risk sits entirely in polarisation bookkeeping and
-diffraction, and neither is solved by adopting Sionna, since Sionna's scattering
-pattern is non-reciprocal and its diffraction is tied to its own solver.
+The reimplementation risk sits in polarisation bookkeeping, and adopting Sionna
+would not remove it, because Sionna's scattering pattern is non-reciprocal.
+Diffraction is the one thing Sionna would genuinely add, and section 9.3 prices
+that addition at a fraction of a decibel outside the parapet case.
 
 ### 10.3 Architecture
 
@@ -2071,23 +2242,34 @@ even for the arm of the study that has no panorama at the transmitter.
 
 In order of how much it would cost us if it is wrong.
 
-1. **Diffraction.** Section 9.3. This is the largest known physical omission and
-   it lands on the rooftop-illumination band the exposure paper depends on. It is
-   not a tracer problem, so it will not be solved by any tooling choice.
+1. **Crop radius.** Sections 7.5 and 9.4. Not converged at 130 m at Korenmarkt,
+   and Korenmarkt is the friendly case. Worse, `w_roof`'s stated support in
+   section 2.7 asks for sources out to 250 m, so 79 to 95 % of its measure sits
+   at elevations the crop cannot supply a source for. Every city needs its own
+   sweep, and the answer for Manhattan will not resemble the answer for Ghent.
+   This is the largest known hole and it is cheap to at least bound.
 2. **Out-of-view materials.** 27 % of order-3 vertices have no street-level
    evidence, and only 3.1 % of the mesh is directly visible (section 5.7). The
    tile-texture route is the largest recoverable gain and has not been tried.
-3. **The 60 GHz specular fraction.** `exp(-g^2)` swings by a factor 30 across a
-   material-classification ambiguity we currently cannot resolve
-   (section 5.5). At 60 GHz the specular skeleton is the model's most sensitive
-   output.
+3. **Periodic structure, which the Rayleigh split does not model.** Eight of the
+   sixteen roughness classes in `config/surface_roughness.json` are mortar grids,
+   sett paving, corrugated cladding or tile courses, and those reradiate into
+   discrete grating orders rather than a lobe. The library refuses to evaluate a
+   Gaussian coherent fraction for them and nothing downstream supplies the
+   alternative (sections 5.4 and 5.5). This displaced the old entry here, which
+   was a factor-30 60 GHz swing between painted plaster and bare concrete, and
+   which the measured priors dissolved: the surviving random-roughness
+   sensitivity is the concrete-finish split, a factor of 1.6 at 28 GHz and 8.4 at
+   60 GHz at normal incidence.
 4. **Jones-basis bookkeeping, and coherency accumulation.** The two parts of the
    reimplementation that fail silently rather than loudly. Section 2.8 was found
    by a closed-form test returning a clean, plausible, wrong answer. Build
    sections 11.1 and 11.3 before any physics goes on top of them.
-5. **Crop radius.** Not converged at 130 m at Korenmarkt (section 7.5), and
-   Korenmarkt is the friendly case. Every city needs its own sweep, and the
-   answer for Manhattan will not resemble the answer for Ghent.
+5. **Diffraction.** Section 9.3. Absent, and it stays absent. The omission is
+   bounded at under 0.14 dB on `K_iso` for any plausible open-azimuth fraction,
+   and the one place it is not bounded is a transmitter sited behind a parapet.
+   Demoted from first place in an earlier revision of this list, on measured
+   evidence rather than taste.
 6. **The plane-wave reduction.** Publishable only with `sigma_exit` attached.
    Publishing `K_S(u_ext)` alone, without the validity flag, would be the easiest
    claim in this document for a reviewer to break.
